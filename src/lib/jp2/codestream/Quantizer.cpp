@@ -238,7 +238,7 @@ bool Quantizer::read_SQcd_SQcc(bool fromQCC, grk_j2k *p_j2k, uint32_t comp_no,
 	/* Sqcx */
 	uint32_t tmp = 0;
 	auto current_ptr = p_header_data;
-	grk_read_bytes(current_ptr++, &tmp, 1);
+	grk_read<uint32_t>(current_ptr++, &tmp, 1);
 	uint8_t qntsty = tmp & 0x1f;
 	*header_size = (uint16_t)(*header_size - 1);
 
@@ -289,7 +289,7 @@ bool Quantizer::read_SQcd_SQcc(bool fromQCC, grk_j2k *p_j2k, uint32_t comp_no,
 		for (uint32_t band_no = 0; band_no < tccp->numStepSizes;
 				band_no++) {
 			/* SPqcx_i */
-			grk_read_bytes(current_ptr++, &tmp, 1);
+			grk_read<uint32_t>(current_ptr++, &tmp, 1);
 			if (!ignore) {
 				if (band_no < GRK_J2K_MAXBANDS) {
 					//top 5 bits for exponent
@@ -308,7 +308,7 @@ bool Quantizer::read_SQcd_SQcc(bool fromQCC, grk_j2k *p_j2k, uint32_t comp_no,
 		for (uint32_t band_no = 0; band_no < tccp->numStepSizes;
 				band_no++) {
 			/* SPqcx_i */
-			grk_read_bytes(current_ptr, &tmp, 2);
+			grk_read<uint32_t>(current_ptr, &tmp, 2);
 			current_ptr += 2;
 			if (!ignore) {
 				if (band_no < GRK_J2K_MAXBANDS) {

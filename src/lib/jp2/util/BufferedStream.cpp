@@ -443,61 +443,6 @@ bool BufferedStream::isMemStream() {
 	return !m_buf->owns_data;
 }
 
-void grk_write_bytes(uint8_t *p_buffer, uint32_t value, uint32_t nb_bytes) {
-	grk_write<uint32_t>(p_buffer, value, nb_bytes);
-}
-void grk_write_8(uint8_t *p_buffer, uint8_t value) {
-	*(p_buffer++) = value;
-}
-
-void grk_write_64(uint8_t *p_buffer, uint64_t value) {
-	grk_write<uint64_t>(p_buffer, value);
-}
-
-void grk_write_float(uint8_t *p_buffer, float value) {
-	grk_write<float>(p_buffer, value);
-}
-
-void grk_write_double(uint8_t *p_buffer, double value) {
-	grk_write<double>(p_buffer, value);
-}
-
-template<typename TYPE> void grk_read(const uint8_t *p_buffer, TYPE *value,
-		uint32_t nb_bytes) {
-#if defined(GROK_BIG_ENDIAN)
-	uint8_t * l_data_ptr = ((uint8_t *)value);
-	assert(nb_bytes > 0 && nb_bytes <= sizeof(TYPE));
-	*value = 0;
-	memcpy(l_data_ptr + sizeof(TYPE) - nb_bytes, p_buffer, nb_bytes);
-#else
-	uint8_t *l_data_ptr = ((uint8_t*) value) + nb_bytes - 1;
-	assert(nb_bytes > 0 && nb_bytes <= sizeof(TYPE));
-	*value = 0;
-	for (uint32_t i = 0; i < nb_bytes; ++i)
-		*(l_data_ptr--) = *(p_buffer++);
-#endif
-}
-
-template<typename TYPE> void grk_read(const uint8_t *p_buffer, TYPE *value){
-	grk_read<TYPE>(p_buffer, value, sizeof(TYPE));
-}
-
-void grk_read_bytes(const uint8_t *p_buffer, uint32_t *value,
-		uint32_t nb_bytes) {
-	grk_read<uint32_t>(p_buffer, value, nb_bytes);
-}
-void grk_read_8(const uint8_t *p_buffer, uint8_t *value) {
-	*value = *(p_buffer++);
-}
-void grk_read_64(const uint8_t *p_buffer, uint64_t *value) {
-	grk_read<uint64_t>(p_buffer, value);
-}
-void grk_read_float(const uint8_t *p_buffer, float *value) {
-	grk_read<float>(p_buffer, value);
-}
-void grk_read_double(const uint8_t *p_buffer, double *value) {
-	grk_read<double>(p_buffer, value);
-}
 }
 grk_stream* GRK_CALLCONV grk_stream_create(size_t buffer_size,
 		bool l_is_input) {

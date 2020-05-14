@@ -251,91 +251,17 @@ private:
 
 };
 
-/**
- * Write some bytes to the given data buffer
- * @param p_buffer		pointer the data buffer to write data to.
- * @param value		the value to write
- * @param nb_bytes	the number of bytes to write
- */
-void grk_write_bytes(uint8_t *p_buffer, uint32_t value, uint32_t nb_bytes);
-
-/**
- * Reads some bytes from the given data buffer
- * @param p_buffer		pointer the data buffer to read data from.
- * @param value		pointer to the value that will store the data.
- * @param nb_bytes	the nb bytes to read.
- */
-void grk_read_bytes(const uint8_t *p_buffer, uint32_t *value,
-		uint32_t nb_bytes);
-
-/**
- * Write a byte to the given data buffer
- * @param p_buffer		pointer the data buffer to write data to.
- * @param value		the value to write
- */
-void grk_write_8(uint8_t *p_buffer, uint8_t value);
-
-/**
- * Reads a byte from the given data buffer
- * @param p_buffer		pointer the data buffer to read data from.
- * @param value		pointer to the value that will store the data.
- */
-void grk_read_8(const uint8_t *p_buffer, uint8_t *value);
-
-/**
- * Write a 64 bit int to the given data buffer
- * @param p_buffer		pointer the data buffer to write data to.
- * @param value		the value to write
- */
-void grk_write_64(uint8_t *p_buffer, uint64_t value);
-
-/**
- * Reads a 64 bit int from the given data buffer
- * @param p_buffer		pointer the data buffer to read data from.
- * @param value		pointer to the value that will store the data.
- */
-void grk_read_64(const uint8_t *p_buffer, uint64_t *value);
-/**
- * Write a double to the given data buffer
- * @param p_buffer		pointer the data buffer to write data to.
- * @param value		the value to write
- */
-void grk_write_double(uint8_t *p_buffer, double value);
-
-/**
- * Reads a double from the given data buffer
- * @param p_buffer		pointer the data buffer to read data from.
- * @param value		pointer to the value that will store the data.
- */
-void grk_read_double(const uint8_t *p_buffer, double *value);
-
-/**
- * Reads a float from the given data buffer
- * @param p_buffer		pointer the data buffer to read data from.
- * @param value		pointer to the value that will store the data.
- */
-void grk_read_float(const uint8_t *p_buffer, float *value);
-
-/**
- * Write a float to the given data buffer
- * @param p_buffer		pointer the data buffer to write data to.
- * @param value		the value to write
- */
-void grk_write_float(uint8_t *p_buffer, float value);
-
 template<typename TYPE> void grk_write(uint8_t *p_buffer, TYPE value,
 		uint32_t nb_bytes) {
-	assert(nb_bytes > 0);
 	if (nb_bytes == 0)
 		return;
+	assert(nb_bytes <= sizeof(TYPE));
 #if defined(GROK_BIG_ENDIAN)
 	const uint8_t * l_data_ptr = ((const uint8_t *)&value) + sizeof(TYPE) - nb_bytes;
-	assert(nb_bytes > 0 && nb_bytes <= sizeof(TYPE));
 	memcpy(p_buffer, l_data_ptr, nb_bytes);
 #else
 	const uint8_t *l_data_ptr = ((const uint8_t*) &value)
 			+ (size_t)(nb_bytes - 1);
-	assert(nb_bytes > 0 && nb_bytes <= sizeof(TYPE));
 	for (uint32_t i = 0; i < nb_bytes; ++i) {
 		*(p_buffer++) = *(l_data_ptr--);
 	}
@@ -344,6 +270,25 @@ template<typename TYPE> void grk_write(uint8_t *p_buffer, TYPE value,
 
 template<typename TYPE> void grk_write(uint8_t *p_buffer, TYPE value) {
 	grk_write<TYPE>(p_buffer, value, sizeof(TYPE));
+}
+
+template<typename TYPE> void grk_read(const uint8_t *p_buffer, TYPE *value,
+		uint32_t nb_bytes) {
+	assert(nb_bytes > 0 && nb_bytes <= sizeof(TYPE));
+#if defined(GROK_BIG_ENDIAN)
+	auto l_data_ptr = ((uint8_t *)value);
+	*value = 0;
+	memcpy(l_data_ptr + sizeof(TYPE) - nb_bytes, p_buffer, nb_bytes);
+#else
+	auto l_data_ptr = ((uint8_t*) value) + nb_bytes - 1;
+	*value = 0;
+	for (uint32_t i = 0; i < nb_bytes; ++i)
+		*(l_data_ptr--) = *(p_buffer++);
+#endif
+}
+
+template<typename TYPE> void grk_read(const uint8_t *p_buffer, TYPE *value){
+	grk_read<TYPE>(p_buffer, value, sizeof(TYPE));
 }
 
 }

@@ -103,7 +103,7 @@ void PacketLengthMarkers::write() {
 	for (auto map_iter = m_markers->begin(); map_iter != m_markers->end();
 			++map_iter) {
 		// write index
-		grk_write_8(m_write_ptr, map_iter->first);
+		*m_write_ptr = map_iter->first;
 		write_increment(1);
 
 		// write marker lengths

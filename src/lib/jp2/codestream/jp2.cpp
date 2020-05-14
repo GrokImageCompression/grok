@@ -492,9 +492,9 @@ static bool jp2_read_box_hdr(grk_jp2_box *box, uint32_t *p_number_bytes_read,
 
 	/* process read data */
 	uint32_t L = 0;
-	grk_read_bytes(data_header, &L, 4);
+	grk_read<uint32_t>(data_header, &L, 4);
 	box->length = L;
-	grk_read_bytes(data_header + 4, &(box->type), 4);
+	grk_read<uint32_t>(data_header + 4, &(box->type), 4);
 
 	if (box->length == 0) { /* last box */
 		box->length = stream->get_number_byte_left() + 8U;
@@ -508,7 +508,7 @@ static bool jp2_read_box_hdr(grk_jp2_box *box, uint32_t *p_number_bytes_read,
 		if (nb_bytes_read < 8) {
 			return false;
 		}
-		grk_read_64(data_header, &box->length);
+		grk_read<uint64_t>(data_header, &box->length);
 		*p_number_bytes_read += nb_bytes_read;
 	}
 	if (box->length < *p_number_bytes_read) {
@@ -560,11 +560,11 @@ static bool jp2_read_ihdr(grk_jp2 *jp2, uint8_t *p_image_header_data,
 		return false;
 	}
 
-	grk_read_bytes(p_image_header_data, &(jp2->h), 4); /* HEIGHT */
+	grk_read<uint32_t>(p_image_header_data, &(jp2->h), 4); /* HEIGHT */
 	p_image_header_data += 4;
-	grk_read_bytes(p_image_header_data, &(jp2->w), 4); /* WIDTH */
+	grk_read<uint32_t>(p_image_header_data, &(jp2->w), 4); /* WIDTH */
 	p_image_header_data += 4;
-	grk_read_bytes(p_image_header_data, &(jp2->numcomps), 2); /* NC */
+	grk_read<uint32_t>(p_image_header_data, &(jp2->numcomps), 2); /* NC */
 	p_image_header_data += 2;
 
 	if ((jp2->numcomps == 0) || (jp2->numcomps > max_num_components)) {
@@ -582,7 +582,7 @@ static bool jp2_read_ihdr(grk_jp2 *jp2, uint8_t *p_image_header_data,
 		return false;
 	}
 
-	grk_read_bytes(p_image_header_data, &(jp2->bpc), 1); /* BPC */
+	grk_read<uint32_t>(p_image_header_data, &(jp2->bpc), 1); /* BPC */
 	++p_image_header_data;
 
 	///////////////////////////////////////////////////
@@ -599,7 +599,7 @@ static bool jp2_read_ihdr(grk_jp2 *jp2, uint8_t *p_image_header_data,
 		return false;
 	}
 
-	grk_read_bytes(p_image_header_data, &(jp2->C), 1); /* C */
+	grk_read<uint32_t>(p_image_header_data, &(jp2->C), 1); /* C */
 	++p_image_header_data;
 
 	/* Should be equal to 7 cf. chapter about image header box of the norm */
@@ -609,7 +609,7 @@ static bool jp2_read_ihdr(grk_jp2 *jp2, uint8_t *p_image_header_data,
 				jp2->C);
 	}
 
-	grk_read_bytes(p_image_header_data, &(jp2->UnkC), 1); /* UnkC */
+	grk_read<uint32_t>(p_image_header_data, &(jp2->UnkC), 1); /* UnkC */
 	++p_image_header_data;
 
 	// UnkC must be binary : {0,1}
@@ -619,7 +619,7 @@ static bool jp2_read_ihdr(grk_jp2 *jp2, uint8_t *p_image_header_data,
 		return false;
 	}
 
-	grk_read_bytes(p_image_header_data, &(jp2->IPR), 1); /* IPR */
+	grk_read<uint32_t>(p_image_header_data, &(jp2->IPR), 1); /* IPR */
 	++p_image_header_data;
 
 	// IPR must be binary : {0,1}
@@ -647,39 +647,39 @@ static uint8_t* jp2_write_ihdr(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
 	current_ihdr_ptr = ihdr_data;
 
 	/* write box size */
-	grk_write_bytes(current_ihdr_ptr, 22, 4);
+	grk_write<uint32_t>(current_ihdr_ptr, 22, 4);
 	current_ihdr_ptr += 4;
 
 	/* IHDR */
-	grk_write_bytes(current_ihdr_ptr, JP2_IHDR, 4);
+	grk_write<uint32_t>(current_ihdr_ptr, JP2_IHDR, 4);
 	current_ihdr_ptr += 4;
 
 	/* HEIGHT */
-	grk_write_bytes(current_ihdr_ptr, jp2->h, 4);
+	grk_write<uint32_t>(current_ihdr_ptr, jp2->h, 4);
 	current_ihdr_ptr += 4;
 
 	/* WIDTH */
-	grk_write_bytes(current_ihdr_ptr, jp2->w, 4);
+	grk_write<uint32_t>(current_ihdr_ptr, jp2->w, 4);
 	current_ihdr_ptr += 4;
 
 	/* NC */
-	grk_write_bytes(current_ihdr_ptr, jp2->numcomps, 2);
+	grk_write<uint32_t>(current_ihdr_ptr, jp2->numcomps, 2);
 	current_ihdr_ptr += 2;
 
 	/* BPC */
-	grk_write_bytes(current_ihdr_ptr, jp2->bpc, 1);
+	grk_write<uint32_t>(current_ihdr_ptr, jp2->bpc, 1);
 	++current_ihdr_ptr;
 
 	/* C : Always 7 */
-	grk_write_bytes(current_ihdr_ptr, jp2->C, 1);
+	grk_write<uint32_t>(current_ihdr_ptr, jp2->C, 1);
 	++current_ihdr_ptr;
 
 	/* UnkC, colorspace unknown */
-	grk_write_bytes(current_ihdr_ptr, jp2->UnkC, 1);
+	grk_write<uint32_t>(current_ihdr_ptr, jp2->UnkC, 1);
 	++current_ihdr_ptr;
 
 	/* IPR, no intellectual property */
-	grk_write_bytes(current_ihdr_ptr, jp2->IPR, 1);
+	grk_write<uint32_t>(current_ihdr_ptr, jp2->IPR, 1);
 	++current_ihdr_ptr;
 
 	*p_nb_bytes_written = 22;
@@ -701,11 +701,11 @@ static uint8_t* jp2_write_buffer(uint32_t boxId, grk_jp2_buffer *buffer,
 	uint8_t *current_ptr = data;
 
 	/* write box size */
-	grk_write_bytes(current_ptr, total_size, 4);
+	grk_write<uint32_t>(current_ptr, total_size, 4);
 	current_ptr += 4;
 
 	/* write box id */
-	grk_write_bytes(current_ptr, boxId, 4);
+	grk_write<uint32_t>(current_ptr, boxId, 4);
 	current_ptr += 4;
 
 	/* write buffer data */
@@ -771,30 +771,30 @@ static bool jp2_read_res_box(uint32_t *id, uint32_t *num, uint32_t *den,
 	uint32_t box_size = 4 + 4 + 10;
 
 	uint32_t size = 0;
-	grk_read_bytes(*p_resolution_data, &size, 4);
+	grk_read<uint32_t>(*p_resolution_data, &size, 4);
 	*p_resolution_data += 4;
 	if (size != box_size)
 		return false;
 
-	grk_read_bytes(*p_resolution_data, id, 4);
+	grk_read<uint32_t>(*p_resolution_data, id, 4);
 	*p_resolution_data += 4;
 
-	grk_read_bytes(*p_resolution_data, num + 1, 2);
+	grk_read<uint32_t>(*p_resolution_data, num + 1, 2);
 	*p_resolution_data += 2;
 
-	grk_read_bytes(*p_resolution_data, den + 1, 2);
+	grk_read<uint32_t>(*p_resolution_data, den + 1, 2);
 	*p_resolution_data += 2;
 
-	grk_read_bytes(*p_resolution_data, num, 2);
+	grk_read<uint32_t>(*p_resolution_data, num, 2);
 	*p_resolution_data += 2;
 
-	grk_read_bytes(*p_resolution_data, den, 2);
+	grk_read<uint32_t>(*p_resolution_data, den, 2);
 	*p_resolution_data += 2;
 
-	grk_read_bytes(*p_resolution_data, exponent + 1, 1);
+	grk_read<uint32_t>(*p_resolution_data, exponent + 1, 1);
 	*p_resolution_data += 1;
 
-	grk_read_bytes(*p_resolution_data, exponent, 1);
+	grk_read<uint32_t>(*p_resolution_data, exponent, 1);
 	*p_resolution_data += 1;
 
 	return true;
@@ -879,11 +879,11 @@ static void jp2_write_res_box(double resx, double resy, uint32_t box_id,
 		uint8_t **current_res_ptr) {
 
 	/* write box size */
-	grk_write_bytes(*current_res_ptr, GRK_RESOLUTION_BOX_SIZE, 4);
+	grk_write<uint32_t>(*current_res_ptr, GRK_RESOLUTION_BOX_SIZE, 4);
 	*current_res_ptr += 4;
 
 	/* Box ID */
-	grk_write_bytes(*current_res_ptr, box_id, 4);
+	grk_write<uint32_t>(*current_res_ptr, box_id, 4);
 	*current_res_ptr += 4;
 
 	double res[2];
@@ -905,13 +905,13 @@ static void jp2_write_res_box(double resx, double resy, uint32_t box_id,
 		find_cf(res[i], num + i, den + i);
 	}
 	for (size_t i = 0; i < 2; ++i) {
-		grk_write_bytes(*current_res_ptr, num[i], 2);
+		grk_write<uint32_t>(*current_res_ptr, num[i], 2);
 		*current_res_ptr += 2;
-		grk_write_bytes(*current_res_ptr, den[i], 2);
+		grk_write<uint32_t>(*current_res_ptr, den[i], 2);
 		*current_res_ptr += 2;
 	}
 	for (size_t i = 0; i < 2; ++i) {
-		grk_write_bytes(*current_res_ptr, (uint32_t)exponent[i], 1);
+		grk_write<uint32_t>(*current_res_ptr, (uint32_t)exponent[i], 1);
 		*current_res_ptr += 1;
 	}
 }
@@ -940,11 +940,11 @@ static uint8_t* jp2_write_res(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
 	current_res_ptr = res_data;
 
 	/* write super-box size */
-	grk_write_bytes(current_res_ptr, size, 4);
+	grk_write<uint32_t>(current_res_ptr, size, 4);
 	current_res_ptr += 4;
 
 	/* Super-box ID */
-	grk_write_bytes(current_res_ptr, JP2_RES, 4);
+	grk_write<uint32_t>(current_res_ptr, JP2_RES, 4);
 	current_res_ptr += 4;
 
 	if (storeCapture) {
@@ -978,16 +978,16 @@ static uint8_t* jp2_write_bpcc(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
 	current_bpcc_ptr = bpcc_data;
 
 	/* write box size */
-	grk_write_bytes(current_bpcc_ptr, bpcc_size, 4);
+	grk_write<uint32_t>(current_bpcc_ptr, bpcc_size, 4);
 	current_bpcc_ptr += 4;
 
 	/* BPCC */
-	grk_write_bytes(current_bpcc_ptr, JP2_BPCC, 4);
+	grk_write<uint32_t>(current_bpcc_ptr, JP2_BPCC, 4);
 	current_bpcc_ptr += 4;
 
 	for (i = 0; i < jp2->numcomps; ++i) {
 		/* write each component information */
-		grk_write_bytes(current_bpcc_ptr, jp2->comps[i].bpcc, 1);
+		grk_write<uint32_t>(current_bpcc_ptr, jp2->comps[i].bpcc, 1);
 		++current_bpcc_ptr;
 	}
 
@@ -1017,7 +1017,7 @@ static bool jp2_read_bpcc(grk_jp2 *jp2, uint8_t *p_bpc_header_data,
 
 	/* read info for each component */
 	for (i = 0; i < jp2->numcomps; ++i) {
-		grk_read_bytes(p_bpc_header_data, &jp2->comps[i].bpcc, 1); /* read each BPCC component */
+		grk_read<uint32_t>(p_bpc_header_data, &jp2->comps[i].bpcc, 1); /* read each BPCC component */
 		++p_bpc_header_data;
 	}
 
@@ -1046,30 +1046,30 @@ static uint8_t* jp2_write_cdef(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
 	current_cdef_ptr = cdef_data;
 
 	/* write box size */
-	grk_write_bytes(current_cdef_ptr, cdef_size, 4);
+	grk_write<uint32_t>(current_cdef_ptr, cdef_size, 4);
 	current_cdef_ptr += 4;
 
 	/* BPCC */
-	grk_write_bytes(current_cdef_ptr, JP2_CDEF, 4);
+	grk_write<uint32_t>(current_cdef_ptr, JP2_CDEF, 4);
 	current_cdef_ptr += 4;
 
 	value = jp2->color.jp2_cdef->n;
 	/* N */
-	grk_write_bytes(current_cdef_ptr, value, 2);
+	grk_write<uint32_t>(current_cdef_ptr, value, 2);
 	current_cdef_ptr += 2;
 
 	for (i = 0U; i < jp2->color.jp2_cdef->n; ++i) {
 		value = jp2->color.jp2_cdef->info[i].cn;
 		/* Cni */
-		grk_write_bytes(current_cdef_ptr, value, 2);
+		grk_write<uint32_t>(current_cdef_ptr, value, 2);
 		current_cdef_ptr += 2;
 		value = jp2->color.jp2_cdef->info[i].typ;
 		/* Typi */
-		grk_write_bytes(current_cdef_ptr, value, 2);
+		grk_write<uint32_t>(current_cdef_ptr, value, 2);
 		current_cdef_ptr += 2;
 		value = jp2->color.jp2_cdef->info[i].asoc;
 		/* Asoci */
-		grk_write_bytes(current_cdef_ptr, value, 2);
+		grk_write<uint32_t>(current_cdef_ptr, value, 2);
 		current_cdef_ptr += 2;
 	}
 	*p_nb_bytes_written = cdef_size;
@@ -1106,29 +1106,29 @@ static uint8_t* jp2_write_colr(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
 	current_colr_ptr = colr_data;
 
 	/* write box size */
-	grk_write_bytes(current_colr_ptr, colr_size, 4);
+	grk_write<uint32_t>(current_colr_ptr, colr_size, 4);
 	current_colr_ptr += 4;
 
 	/* BPCC */
-	grk_write_bytes(current_colr_ptr, JP2_COLR, 4);
+	grk_write<uint32_t>(current_colr_ptr, JP2_COLR, 4);
 	current_colr_ptr += 4;
 
 	/* METH */
-	grk_write_bytes(current_colr_ptr, jp2->meth, 1);
+	grk_write<uint32_t>(current_colr_ptr, jp2->meth, 1);
 	++current_colr_ptr;
 
 	/* PRECEDENCE */
-	grk_write_bytes(current_colr_ptr, jp2->precedence, 1);
+	grk_write<uint32_t>(current_colr_ptr, jp2->precedence, 1);
 	++current_colr_ptr;
 
 	/* APPROX */
-	grk_write_bytes(current_colr_ptr, jp2->approx, 1);
+	grk_write<uint32_t>(current_colr_ptr, jp2->approx, 1);
 	++current_colr_ptr;
 
 	/* Meth value is restricted to 1 or 2 (Table I.9 of part 1) */
 	if (jp2->meth == 1) {
 		/* EnumCS */
-		grk_write_bytes(current_colr_ptr, jp2->enumcs, 4);
+		grk_write<uint32_t>(current_colr_ptr, jp2->enumcs, 4);
 	} else {
 		/* ICC profile */
 		if (jp2->meth == 2) {
@@ -1427,7 +1427,7 @@ static bool jp2_read_pclr(grk_jp2 *jp2, uint8_t *p_pclr_header_data,
 	if (pclr_header_size < 3)
 		return false;
 
-	grk_read_bytes(p_pclr_header_data, &value, 2); /* NE */
+	grk_read<uint32_t>(p_pclr_header_data, &value, 2); /* NE */
 	p_pclr_header_data += 2;
 	nr_entries = (uint16_t) value;
 	if ((nr_entries == 0U) || (nr_entries > 1024U)) {
@@ -1435,7 +1435,7 @@ static bool jp2_read_pclr(grk_jp2 *jp2, uint8_t *p_pclr_header_data,
 		return false;
 	}
 
-	grk_read_bytes(p_pclr_header_data, &value, 1); /* NPC */
+	grk_read<uint32_t>(p_pclr_header_data, &value, 1); /* NPC */
 	++p_pclr_header_data;
 	nr_channels = (uint16_t) value;
 	if (nr_channels == 0U) {
@@ -1480,7 +1480,7 @@ static bool jp2_read_pclr(grk_jp2 *jp2, uint8_t *p_pclr_header_data,
 	jp2->color.jp2_pclr = jp2_pclr;
 
 	for (i = 0; i < nr_channels; ++i) {
-		grk_read_bytes(p_pclr_header_data, &value, 1); /* Bi */
+		grk_read<uint32_t>(p_pclr_header_data, &value, 1); /* Bi */
 		++p_pclr_header_data;
 
 		channel_size[i] = (uint8_t) ((value & 0x7f) + 1);
@@ -1498,7 +1498,7 @@ static bool jp2_read_pclr(grk_jp2 *jp2, uint8_t *p_pclr_header_data,
 							+ (ptrdiff_t) bytes_to_read)
 				return false;
 
-			grk_read_bytes(p_pclr_header_data, &value, bytes_to_read); /* Cji */
+			grk_read<uint32_t>(p_pclr_header_data, &value, bytes_to_read); /* Cji */
 			p_pclr_header_data += bytes_to_read;
 			*entries = (uint32_t) value;
 			entries++;
@@ -1543,15 +1543,15 @@ static bool jp2_read_cmap(grk_jp2 *jp2, uint8_t *p_cmap_header_data,
 		return false;
 
 	for (i = 0; i < nr_channels; ++i) {
-		grk_read_bytes(p_cmap_header_data, &value, 2); /* CMP^i */
+		grk_read<uint32_t>(p_cmap_header_data, &value, 2); /* CMP^i */
 		p_cmap_header_data += 2;
 		cmap[i].cmp = (uint16_t) value;
 
-		grk_read_bytes(p_cmap_header_data, &value, 1); /* MTYP^i */
+		grk_read<uint32_t>(p_cmap_header_data, &value, 1); /* MTYP^i */
 		++p_cmap_header_data;
 		cmap[i].mtyp = (uint8_t) value;
 
-		grk_read_bytes(p_cmap_header_data, &value, 1); /* PCOL^i */
+		grk_read<uint32_t>(p_cmap_header_data, &value, 1); /* PCOL^i */
 		++p_cmap_header_data;
 		cmap[i].pcol = (uint8_t) value;
 	}
@@ -1643,7 +1643,7 @@ static bool jp2_read_cdef(grk_jp2 *jp2, uint8_t *p_cdef_header_data,
 		return false;
 	}
 
-	grk_read_bytes(p_cdef_header_data, &value, 2); /* N */
+	grk_read<uint32_t>(p_cdef_header_data, &value, 2); /* N */
 	p_cdef_header_data += 2;
 
 	if ((uint16_t) value == 0) { /* szukw000: FIXME */
@@ -1670,11 +1670,11 @@ static bool jp2_read_cdef(grk_jp2 *jp2, uint8_t *p_cdef_header_data,
 	jp2->color.jp2_cdef->n = (uint16_t) value;
 
 	for (i = 0; i < jp2->color.jp2_cdef->n; ++i) {
-		grk_read_bytes(p_cdef_header_data, &value, 2); /* Cn^i */
+		grk_read<uint32_t>(p_cdef_header_data, &value, 2); /* Cn^i */
 		p_cdef_header_data += 2;
 		cdef_info[i].cn = (uint16_t) value;
 
-		grk_read_bytes(p_cdef_header_data, &value, 2); /* Typ^i */
+		grk_read<uint32_t>(p_cdef_header_data, &value, 2); /* Typ^i */
 		p_cdef_header_data += 2;
 		if (value > 2 && value != GRK_COMPONENT_TYPE_UNSPECIFIED){
 			GROK_ERROR(
@@ -1683,7 +1683,7 @@ static bool jp2_read_cdef(grk_jp2 *jp2, uint8_t *p_cdef_header_data,
 		}
 		cdef_info[i].typ = (uint16_t) value;
 
-		grk_read_bytes(p_cdef_header_data, &value, 2); /* Asoc^i */
+		grk_read<uint32_t>(p_cdef_header_data, &value, 2); /* Asoc^i */
 		if (value > 3 && value != GRK_COMPONENT_ASSOC_UNASSOCIATED){
 			GROK_ERROR(
 					"CDEF box : Illegal channel association %d",value);
@@ -1750,13 +1750,13 @@ static bool jp2_read_colr(grk_jp2 *jp2, uint8_t *p_colr_header_data,
 		return true;
 	}
 
-	grk_read_bytes(p_colr_header_data, &jp2->meth, 1); /* METH */
+	grk_read<uint32_t>(p_colr_header_data, &jp2->meth, 1); /* METH */
 	++p_colr_header_data;
 
-	grk_read_bytes(p_colr_header_data, &jp2->precedence, 1); /* PRECEDENCE */
+	grk_read<uint32_t>(p_colr_header_data, &jp2->precedence, 1); /* PRECEDENCE */
 	++p_colr_header_data;
 
-	grk_read_bytes(p_colr_header_data, &jp2->approx, 1); /* APPROX */
+	grk_read<uint32_t>(p_colr_header_data, &jp2->approx, 1); /* APPROX */
 	++p_colr_header_data;
 
 	if (jp2->meth == 1) {
@@ -1764,7 +1764,7 @@ static bool jp2_read_colr(grk_jp2 *jp2, uint8_t *p_colr_header_data,
 			GROK_ERROR("Bad COLR header box (bad size: %d)", colr_header_size);
 			return false;
 		}
-		grk_read_bytes(p_colr_header_data, &jp2->enumcs, 4); /* EnumCS */
+		grk_read<uint32_t>(p_colr_header_data, &jp2->enumcs, 4); /* EnumCS */
 		p_colr_header_data += 4;
 
 		if ((colr_header_size > 7) && (jp2->enumcs != 14)) { /* handled below for CIELab) */
@@ -1787,19 +1787,19 @@ static bool jp2_read_colr(grk_jp2 *jp2, uint8_t *p_colr_header_data,
 
 			if (colr_header_size == 35) {
 				uint32_t rl, ol, ra, oa, rb, ob, il;
-				grk_read_bytes(p_colr_header_data, &rl, 4);
+				grk_read<uint32_t>(p_colr_header_data, &rl, 4);
 				p_colr_header_data += 4;
-				grk_read_bytes(p_colr_header_data, &ol, 4);
+				grk_read<uint32_t>(p_colr_header_data, &ol, 4);
 				p_colr_header_data += 4;
-				grk_read_bytes(p_colr_header_data, &ra, 4);
+				grk_read<uint32_t>(p_colr_header_data, &ra, 4);
 				p_colr_header_data += 4;
-				grk_read_bytes(p_colr_header_data, &oa, 4);
+				grk_read<uint32_t>(p_colr_header_data, &oa, 4);
 				p_colr_header_data += 4;
-				grk_read_bytes(p_colr_header_data, &rb, 4);
+				grk_read<uint32_t>(p_colr_header_data, &rb, 4);
 				p_colr_header_data += 4;
-				grk_read_bytes(p_colr_header_data, &ob, 4);
+				grk_read<uint32_t>(p_colr_header_data, &ob, 4);
 				p_colr_header_data += 4;
-				grk_read_bytes(p_colr_header_data, &il, 4);
+				grk_read<uint32_t>(p_colr_header_data, &il, 4);
 				p_colr_header_data += 4;
 
 				cielab[1] = GRK_CUSTOM_CIELAB_SPACE;
@@ -2750,7 +2750,7 @@ static bool jp2_read_jp(grk_jp2 *jp2, uint8_t *p_header_data,
 	}
 
 	/* rearrange data */
-	grk_read_bytes(p_header_data, &magic_number, 4);
+	grk_read<uint32_t>(p_header_data, &magic_number, 4);
 	if (magic_number != 0x0d0a870a) {
 		GROK_ERROR("Error with JP Signature : bad magic number");
 		return false;
@@ -2789,10 +2789,10 @@ static bool jp2_read_ftyp(grk_jp2 *jp2, uint8_t *p_header_data,
 		return false;
 	}
 
-	grk_read_bytes(p_header_data, &jp2->brand, 4); /* BR */
+	grk_read<uint32_t>(p_header_data, &jp2->brand, 4); /* BR */
 	p_header_data += 4;
 
-	grk_read_bytes(p_header_data, &jp2->minversion, 4); /* MinV */
+	grk_read<uint32_t>(p_header_data, &jp2->minversion, 4); /* MinV */
 	p_header_data += 4;
 
 	remaining_bytes = header_size - 8;
@@ -2814,7 +2814,7 @@ static bool jp2_read_ftyp(grk_jp2 *jp2, uint8_t *p_header_data,
 	}
 
 	for (i = 0; i < jp2->numcl; ++i) {
-		grk_read_bytes(p_header_data, &jp2->cl[i], 4); /* CLi */
+		grk_read<uint32_t>(p_header_data, &jp2->cl[i], 4); /* CLi */
 		p_header_data += 4;
 	}
 
@@ -2924,11 +2924,11 @@ static bool jp2_read_box(grk_jp2_box *box, uint8_t *p_data,
 
 	/* process read data */
 	uint32_t L = 0;
-	grk_read_bytes(p_data, &L, 4);
+	grk_read<uint32_t>(p_data, &L, 4);
 	box->length = L;
 	p_data += 4;
 
-	grk_read_bytes(p_data, &box->type, 4);
+	grk_read<uint32_t>(p_data, &box->type, 4);
 	p_data += 4;
 
 	*p_number_bytes_read = 8;
@@ -2940,7 +2940,7 @@ static bool jp2_read_box(grk_jp2_box *box, uint8_t *p_data,
 			return false;
 		}
 
-		grk_read_64(p_data, &box->length);
+		grk_read<uint64_t>(p_data, &box->length);
 		p_data += 8;
 		*p_number_bytes_read += 8;
 
