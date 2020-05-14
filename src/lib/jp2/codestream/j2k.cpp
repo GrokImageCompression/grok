@@ -7082,7 +7082,11 @@ PacketLengthMarkers::PacketLengthMarkers() : markers(new PL_MAP()),
 											packet_len(0),
 											pull_index(0U),
 											marker_bytes_written(0),
-											total_bytes_written(0)
+											total_bytes_written(0),
+											m_marker_len_cache(nullptr),
+											m_write_ptr(nullptr),
+											m_available_bytes(0)
+
 {}
 
 PacketLengthMarkers::~PacketLengthMarkers(){
@@ -7094,70 +7098,84 @@ PacketLengthMarkers::~PacketLengthMarkers(){
 }
 
 void PacketLengthMarkers::encodeNext(uint32_t len){
+	assert(len);
 	curr_vec->push_back(len);
 }
-void PacketLengthMarkers::write_increment_bytes_written(uint32_t bytes){
+void PacketLengthMarkers::write_increment_bytes_written(size_t bytes){
 	   marker_bytes_written += bytes;
 	   total_bytes_written  += bytes;
+	   m_write_ptr += bytes;
+	   assert(total_bytes_written <= m_available_bytes);
 }
 // check if we need to start a new marker
-void PacketLengthMarkers::write_marker_header(uint8_t **currptr, grk_buf *buf){
+void PacketLengthMarkers::write_marker_header(){
    // we 4 bytes for marker + marker length,
    // 1 byte for index,
     // and 5 bytes worst-case to write a packet length
    if (total_bytes_written ==0 ||
 		   (marker_bytes_written >= USHRT_MAX - 1 - 4 - 5)){
+
+	   // write marker bytes (not including 2 bytes for marker itself)
+	   if (marker_bytes_written && m_marker_len_cache)
+		   grk_write<uint16_t>(m_marker_len_cache, (uint16_t)(marker_bytes_written-2));
+	   m_marker_len_cache = nullptr;
 	   marker_bytes_written = 0;
-	   grk_write<uint16_t>(*currptr, J2K_MS_PLT);
-	   *currptr+=2;
+
+	   // write marker
+	   grk_write<uint16_t>(m_write_ptr, J2K_MS_PLT);
 	   write_increment_bytes_written(2);
-	   assert (total_bytes_written <= buf->len);
-	   (void)buf;
+
+	   // cache location of marker length and skip over
+	   m_marker_len_cache = m_write_ptr;
+	   write_increment_bytes_written(2);
    }
 }
-void PacketLengthMarkers::write(grk_buf *buf){
-	assert(buf && buf->buf && buf->len);
-	uint8_t *currptr = buf->buf;
+void PacketLengthMarkers::write(grk_buf buf){
+	assert(buf.buf && buf.len);
+	m_write_ptr = buf.buf;
+	m_available_bytes = buf.len;
 
 	total_bytes_written = 0;
 	marker_bytes_written = 0;
-	write_marker_header(&currptr, buf);
+	m_marker_len_cache = nullptr;
+
+	write_marker_header();
 	for (auto map_iter = markers->begin();
 			map_iter != markers->end(); ++map_iter){
 		// write index
-		grk_write_8(currptr++, map_iter->first);
+		grk_write_8(m_write_ptr, map_iter->first);
 		write_increment_bytes_written(1);
 
 		// write marker lengths
 		for (auto val_iter = map_iter->second->begin();
 				val_iter != map_iter->second->end(); ++val_iter){
-			uint32_t val = *val_iter;
-			uint8_t pack = val & 0x7F;
-
 			//check if we need to start a new PLT marker segment
-			write_marker_header(&currptr, buf);
+			write_marker_header();
 
-			while (pack != val){
-				// with comma
-				*currptr++ = pack | 0x80;
-				write_increment_bytes_written(1);
-				assert (total_bytes_written < buf->len);
+			// write from MSB down to LSB
+			uint32_t val = *val_iter;
+			uint32_t numbits = uint_floorlog2(val)+1;
+			uint32_t numbytes = (numbits + 6)/7;
+			size_t counter = numbytes - 1;
+
+			// write period
+			*m_write_ptr = val & 0x7F;
+			val = (uint32_t)(val >> 7);
+
+			//write commas
+			while (val){
+				m_write_ptr[counter--] = (uint8_t)((val & 0x7F) | 0x80);
 				val = (uint32_t)(val >> 7);
-				pack = val & 0x7F;
 			}
-			// with period
-			*currptr++ = pack;
-			write_increment_bytes_written(1);
+			assert(counter == 0);
+			write_increment_bytes_written(numbytes);
 		}
 	}
-	assert (total_bytes_written <= buf->len);
 }
 
 void PacketLengthMarkers::init(uint8_t index){
 	Zpl = index;
 	packet_len = 0;
-	marker_bytes_written = 0;
-	total_bytes_written = 0;
 	auto pair = markers->find(Zpl);
 	if (pair != markers->end()) {
 		curr_vec = pair->second;
