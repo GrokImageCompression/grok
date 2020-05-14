@@ -508,7 +508,7 @@ static bool jp2_read_box_hdr(grk_jp2_box *box, uint32_t *p_number_bytes_read,
 		if (nb_bytes_read < 8) {
 			return false;
 		}
-		grk_read_64(data_header, &box->length, 8);
+		grk_read_64(data_header, &box->length);
 		*p_number_bytes_read += nb_bytes_read;
 	}
 	if (box->length < *p_number_bytes_read) {
@@ -2940,7 +2940,7 @@ static bool jp2_read_box(grk_jp2_box *box, uint8_t *p_data,
 			return false;
 		}
 
-		grk_read_64(p_data, &box->length, 8);
+		grk_read_64(p_data, &box->length);
 		p_data += 8;
 		*p_number_bytes_read += 8;
 

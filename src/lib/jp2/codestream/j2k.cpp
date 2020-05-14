@@ -627,6 +627,11 @@ bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 		uint32_t *p_tile_x1, uint32_t *p_tile_y1, uint32_t *p_nb_comps,
 		bool *p_go_on, BufferedStream *stream) {
 
+
+	// clean up markers from previous tile
+	delete p_j2k->m_tileProcessor->plt_markers;
+	p_j2k->m_tileProcessor->plt_markers = nullptr;
+
 	uint32_t current_marker = J2K_MS_SOT;
 	uint32_t marker_size = 0;
 
@@ -4545,7 +4550,7 @@ static bool j2k_read_plm(grk_j2k *p_j2k, uint8_t *p_header_data,
 		p_j2k->m_cp.plm_markers = new PacketLengthMarkers();
 	auto markers = p_j2k->m_cp.plm_markers;
 
-	markers->initPush(Zplm);
+	markers->init(Zplm);
 	while (header_size > 0) {
 		// Nplm
 		grk_read_8(p_header_data, &Nplm);
@@ -4559,7 +4564,7 @@ static bool j2k_read_plm(grk_j2k *p_j2k, uint8_t *p_header_data,
 			uint8_t tmp;
 			grk_read_8(p_header_data, &tmp);
 			++p_header_data;
-			markers->push(tmp);
+			markers->decodeNext(tmp);
 		}
 		if (packet_len != 0) {
 			GROK_ERROR("Malformed PLM marker segment");
@@ -4599,14 +4604,14 @@ static bool j2k_read_plt(grk_j2k *p_j2k, uint8_t *p_header_data,
 	auto markers = p_j2k->m_tileProcessor->plt_markers;
 
 	uint8_t tmp;
-	markers->initPush(Zpl);
+	markers->init(Zpl);
 	for (uint32_t i = 0; i < header_size; ++i) {
 		/* Iplt_ij */
 		grk_read_8(p_header_data, &tmp);
 		++p_header_data;
-		markers->push(tmp);
+		markers->decodeNext(tmp);
 	}
-	if (markers->packet_len != 0) {
+	if (markers->decodeIsPendingPacketLength()) {
 		GROK_ERROR("Malformed PLT marker segment");
 		return false;
 	}
@@ -7075,7 +7080,9 @@ PacketLengthMarkers::PacketLengthMarkers() : markers(new PL_MAP()),
 											Zpl(0),
 											curr_vec(nullptr),
 											packet_len(0),
-											pull_index(0U)
+											pull_index(0U),
+											marker_bytes_written(0),
+											total_bytes_written(0)
 {}
 
 PacketLengthMarkers::~PacketLengthMarkers(){
@@ -7086,9 +7093,69 @@ PacketLengthMarkers::~PacketLengthMarkers(){
 	}
 }
 
-void PacketLengthMarkers::initPush(uint8_t index){
+void PacketLengthMarkers::encodeNext(uint32_t len){
+	curr_vec->push_back(len);
+}
+void PacketLengthMarkers::write_increment_bytes_written(uint32_t bytes){
+	   marker_bytes_written += bytes;
+	   total_bytes_written  += bytes;
+}
+// check if we need to start a new marker
+void PacketLengthMarkers::write_marker_header(uint8_t **currptr, grk_buf *buf){
+   // we need 4 bytes for marker + marker length,
+   // and 5 bytes worst-case to write a packet length
+   if (total_bytes_written ==0 ||
+		   (marker_bytes_written >= 65535 - 4 - 5)){
+	   marker_bytes_written = 0;
+	   grk_write<uint16_t>(*currptr, J2K_MS_PLT);
+	   *currptr+=2;
+	   write_increment_bytes_written(2);
+	   assert (total_bytes_written <= buf->len);
+   }
+}
+void PacketLengthMarkers::write(grk_buf *buf){
+	assert(buf && buf->buf && buf->len);
+	uint8_t *currptr = buf->buf;
+
+	total_bytes_written = 0;
+	marker_bytes_written = 0;
+	write_marker_header(&currptr, buf);
+	for (auto map_iter = markers->begin();
+			map_iter != markers->end(); ++map_iter){
+		// write index
+		grk_write_8(currptr++, map_iter->first);
+		write_increment_bytes_written(1);
+
+		// write marker lengths
+		for (auto val_iter = map_iter->second->begin();
+				val_iter != map_iter->second->end(); ++val_iter){
+			uint32_t val = *val_iter;
+			uint8_t pack = val & 0x7F;
+
+			//check if we need to start a new PLT marker segment
+			write_marker_header(&currptr, buf);
+
+			while (pack != val){
+				// with comma
+				*currptr++ = pack | 0x80;
+				write_increment_bytes_written(1);
+				assert (total_bytes_written < buf->len);
+				val = (uint32_t)(val >> 7);
+				pack = val & 0x7F;
+			}
+			// with period
+			*currptr++ = pack;
+			write_increment_bytes_written(1);
+		}
+	}
+	assert (total_bytes_written <= buf->len);
+}
+
+void PacketLengthMarkers::init(uint8_t index){
 	Zpl = index;
 	packet_len = 0;
+	marker_bytes_written = 0;
+	total_bytes_written = 0;
 	auto pair = markers->find(Zpl);
 	if (pair != markers->end()) {
 		curr_vec = pair->second;
@@ -7098,7 +7165,7 @@ void PacketLengthMarkers::initPush(uint8_t index){
 	}
 }
 
-void PacketLengthMarkers::push(uint8_t Iplm){
+void PacketLengthMarkers::decodeNext(uint8_t Iplm){
 	/* take only the lower seven bits */
 	packet_len |= (Iplm & 0x7f);
 	if (Iplm & 0x80) {
@@ -7111,7 +7178,11 @@ void PacketLengthMarkers::push(uint8_t Iplm){
 	}
 }
 
-void PacketLengthMarkers::initPull(void){
+bool PacketLengthMarkers::decodeIsPendingPacketLength(){
+	return packet_len != 0;
+}
+
+void PacketLengthMarkers::readInit(void){
 	pull_index = 0;
 	Zpl = 0;
 	curr_vec = nullptr;
@@ -7125,7 +7196,7 @@ void PacketLengthMarkers::initPull(void){
 
 // note: packet length must be at least 1, so 0 indicates
 // no packet length available
-uint32_t PacketLengthMarkers::pull(void){
+uint32_t PacketLengthMarkers::readNext(void){
    if (!markers)
 	   return 0;
    if (curr_vec){

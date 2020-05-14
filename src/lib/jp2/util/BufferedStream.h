@@ -164,12 +164,14 @@ struct BufferedStream: public IBufferedStream {
 
 	/**
 	 * Tells the byte offset on the stream (similar to ftell).
+	 *
 	 * @return		the current position of the stream.
 	 */
 	uint64_t tell(void);
 
 	/**
 	 * Get the number of bytes left before the end of the stream
+	 *
 	 * @return		Number of bytes left before the end of the stream.
 	 */
 	uint64_t get_number_byte_left(void);
@@ -177,6 +179,7 @@ struct BufferedStream: public IBufferedStream {
 	/**
 	 * Seeks a number of bytes from the stream (absolute)
 	 * @param		offset		the number of bytes to skip.
+	 *
 	 * @return		true if the stream is seekable.
 	 */
 	bool seek(uint64_t offset);
@@ -273,50 +276,48 @@ void grk_read_bytes(const uint8_t *p_buffer, uint32_t *value,
 void grk_write_8(uint8_t *p_buffer, uint8_t value);
 
 /**
- * Reads a byte form the given data buffer
+ * Reads a byte from the given data buffer
  * @param p_buffer		pointer the data buffer to read data from.
  * @param value		pointer to the value that will store the data.
  */
 void grk_read_8(const uint8_t *p_buffer, uint8_t *value);
 
 /**
- * Write some bytes to the given data buffer
+ * Write a 64 bit int to the given data buffer
  * @param p_buffer		pointer the data buffer to write data to.
  * @param value		the value to write
- * @param nb_bytes	the number of bytes to write
  */
-void grk_write_64(uint8_t *p_buffer, uint64_t value, uint32_t nb_bytes);
+void grk_write_64(uint8_t *p_buffer, uint64_t value);
 
 /**
- * Reads some bytes from the given data buffer
+ * Reads a 64 bit int from the given data buffer
  * @param p_buffer		pointer the data buffer to read data from.
  * @param value		pointer to the value that will store the data.
- * @param nb_bytes	the nb bytes to read.
  */
-void grk_read_64(const uint8_t *p_buffer, uint64_t *value, uint32_t nb_bytes);
+void grk_read_64(const uint8_t *p_buffer, uint64_t *value);
 /**
- * Write some bytes to the given data buffer
+ * Write a double to the given data buffer
  * @param p_buffer		pointer the data buffer to write data to.
  * @param value		the value to write
  */
 void grk_write_double(uint8_t *p_buffer, double value);
 
 /**
- * Reads some bytes from the given data buffer
+ * Reads a double from the given data buffer
  * @param p_buffer		pointer the data buffer to read data from.
  * @param value		pointer to the value that will store the data.
  */
 void grk_read_double(const uint8_t *p_buffer, double *value);
 
 /**
- * Reads some bytes from the given data buffer
+ * Reads a float from the given data buffer
  * @param p_buffer		pointer the data buffer to read data from.
  * @param value		pointer to the value that will store the data.
  */
 void grk_read_float(const uint8_t *p_buffer, float *value);
 
 /**
- * Write some bytes to the given data buffer
+ * Write a float to the given data buffer
  * @param p_buffer		pointer the data buffer to write data to.
  * @param value		the value to write
  */
@@ -340,4 +341,9 @@ template<typename TYPE> void grk_write(uint8_t *p_buffer, TYPE value,
 	}
 #endif
 }
+
+template<typename TYPE> void grk_write(uint8_t *p_buffer, TYPE value) {
+	grk_write<TYPE>(p_buffer, value, sizeof(TYPE));
+}
+
 }

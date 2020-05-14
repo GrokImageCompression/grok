@@ -450,16 +450,16 @@ void grk_write_8(uint8_t *p_buffer, uint8_t value) {
 	*(p_buffer++) = value;
 }
 
-void grk_write_64(uint8_t *p_buffer, uint64_t value, uint32_t nb_bytes) {
-	grk_write<uint64_t>(p_buffer, value, nb_bytes);
+void grk_write_64(uint8_t *p_buffer, uint64_t value) {
+	grk_write<uint64_t>(p_buffer, value);
 }
 
 void grk_write_float(uint8_t *p_buffer, float value) {
-	grk_write<float>(p_buffer, value, sizeof(float));
+	grk_write<float>(p_buffer, value);
 }
 
 void grk_write_double(uint8_t *p_buffer, double value) {
-	grk_write<double>(p_buffer, value, sizeof(double));
+	grk_write<double>(p_buffer, value);
 }
 
 template<typename TYPE> void grk_read(const uint8_t *p_buffer, TYPE *value,
@@ -478,6 +478,10 @@ template<typename TYPE> void grk_read(const uint8_t *p_buffer, TYPE *value,
 #endif
 }
 
+template<typename TYPE> void grk_read(const uint8_t *p_buffer, TYPE *value){
+	grk_read<TYPE>(p_buffer, value, sizeof(TYPE));
+}
+
 void grk_read_bytes(const uint8_t *p_buffer, uint32_t *value,
 		uint32_t nb_bytes) {
 	grk_read<uint32_t>(p_buffer, value, nb_bytes);
@@ -485,14 +489,14 @@ void grk_read_bytes(const uint8_t *p_buffer, uint32_t *value,
 void grk_read_8(const uint8_t *p_buffer, uint8_t *value) {
 	*value = *(p_buffer++);
 }
-void grk_read_64(const uint8_t *p_buffer, uint64_t *value, uint32_t nb_bytes) {
-	grk_read<uint64_t>(p_buffer, value, nb_bytes);
+void grk_read_64(const uint8_t *p_buffer, uint64_t *value) {
+	grk_read<uint64_t>(p_buffer, value);
 }
 void grk_read_float(const uint8_t *p_buffer, float *value) {
-	grk_read<float>(p_buffer, value, sizeof(float));
+	grk_read<float>(p_buffer, value);
 }
 void grk_read_double(const uint8_t *p_buffer, double *value) {
-	grk_read<double>(p_buffer, value, sizeof(double));
+	grk_read<double>(p_buffer, value);
 }
 }
 grk_stream* GRK_CALLCONV grk_stream_create(size_t buffer_size,

@@ -83,7 +83,12 @@ TileProcessor::TileProcessor(bool isDecoder) :
 }
 
 TileProcessor::~TileProcessor() {
-	free_tile();
+	if (!tile)
+		return;
+	delete[] tile->comps;
+	tile->comps = nullptr;
+	grok_free(tile);
+	tile = nullptr;
 	grok_free(m_tlm_sot_offsets_buffer);
 	grok_free(m_marker_scratch);
 	delete plt_markers;
@@ -1204,15 +1209,6 @@ bool TileProcessor::update_tile_data(uint8_t *p_dest, uint64_t dest_length) {
 	}
 
 	return true;
-}
-
-void TileProcessor::free_tile() {
-	if (!tile)
-		return;
-	delete[] tile->comps;
-	tile->comps = nullptr;
-	grok_free(tile);
-	tile = nullptr;
 }
 
 void TileProcessor::copy_image_to_tile() {

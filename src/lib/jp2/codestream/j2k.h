@@ -388,20 +388,30 @@ typedef std::vector<uint32_t> PL_INFO_VEC;
 typedef std::map<uint8_t, PL_INFO_VEC*> PL_MAP;
 
 struct PacketLengthMarkers{
-	PacketLengthMarkers();
-	~PacketLengthMarkers();
-	void initPush(uint8_t Zplt);
-	void push(uint8_t Iplm);
-	void initPull(void);
-	uint32_t pull(void);
+	PacketLengthMarkers(void);
+	~PacketLengthMarkers(void);
+
+	// read packet lengths from decoder
+	void init(uint8_t index);
+	void decodeNext(uint8_t Iplm);
+    bool decodeIsPendingPacketLength();
+	void readInit(void);
+	uint32_t readNext(void);
+
+	// write packet lengths for encoder
+	void encodeNext(uint32_t len);
+	void write(grk_buf *buf);
+
+private:
+	void write_marker_header(uint8_t **currptr, grk_buf *buf);
+	void write_increment_bytes_written(uint32_t bytes);
 	PL_MAP *markers;
 	uint8_t Zpl;
 	PL_INFO_VEC *curr_vec;
-
-	//push
 	uint32_t packet_len;
-
 	size_t pull_index;
+	uint32_t marker_bytes_written;
+	uint32_t total_bytes_written;
 };
 
 
