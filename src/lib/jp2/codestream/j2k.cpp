@@ -3862,7 +3862,7 @@ static bool j2k_read_cod(grk_j2k *p_j2k, uint8_t *p_header_data,
 	grk_read_bytes(p_header_data, &tcp->numlayers, 2); /* SGcod (B) */
 	p_header_data += 2;
 
-	if ((tcp->numlayers < 1U) || (tcp->numlayers > 65535U)) {
+	if ((tcp->numlayers < 1U) || (tcp->numlayers > USHRT_MAX)) {
 		GROK_ERROR(
 				"Invalid number of layers in COD marker : %d not in range [1-65535]",
 				tcp->numlayers);
@@ -7102,15 +7102,17 @@ void PacketLengthMarkers::write_increment_bytes_written(uint32_t bytes){
 }
 // check if we need to start a new marker
 void PacketLengthMarkers::write_marker_header(uint8_t **currptr, grk_buf *buf){
-   // we need 4 bytes for marker + marker length,
-   // and 5 bytes worst-case to write a packet length
+   // we 4 bytes for marker + marker length,
+   // 1 byte for index,
+    // and 5 bytes worst-case to write a packet length
    if (total_bytes_written ==0 ||
-		   (marker_bytes_written >= 65535 - 4 - 5)){
+		   (marker_bytes_written >= USHRT_MAX - 1 - 4 - 5)){
 	   marker_bytes_written = 0;
 	   grk_write<uint16_t>(*currptr, J2K_MS_PLT);
 	   *currptr+=2;
 	   write_increment_bytes_written(2);
 	   assert (total_bytes_written <= buf->len);
+	   (void)buf;
    }
 }
 void PacketLengthMarkers::write(grk_buf *buf){

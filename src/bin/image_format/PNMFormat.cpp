@@ -67,6 +67,7 @@
 #include <algorithm>
 #include <iterator>
 #include <vector>
+#include <climits>
 using namespace std;
 
 enum PNM_COLOUR_SPACE {
@@ -206,7 +207,7 @@ static bool read_pnm_header(FILE *reader, struct pnm_header *ph) {
 
 				} else if (idf == "MAXVAL") {
 					temp = convert(tokens[1]);
-					if (temp < 1 || temp > 65535) {
+					if (temp < 1 || temp > USHRT_MAX) {
 						spdlog::error("Invalid maximum value {}", temp);
 						return false;
 					}
@@ -315,7 +316,7 @@ static bool read_pnm_header(FILE *reader, struct pnm_header *ph) {
 		}/* while(fgets( ) */
 
 		if (format == 2 || format == 3 || format > 4) {
-			if (ph->maxval < 1 || ph->maxval > 65535) {
+			if (ph->maxval < 1 || ph->maxval > USHRT_MAX) {
 				spdlog::error("Invalid max value {}", ph->maxval);
 				return false;
 			}

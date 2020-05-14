@@ -76,9 +76,11 @@ const uint32_t  GRK_COMP_PARAM_DEFAULT_NUMRESOLUTION =  6;
 const uint32_t max_precision_jpeg_2000 = 38; // maximum number of magnitude bits, according to ISO standard
 const uint32_t max_num_components = 16384;	// maximum allowed number components
 const uint32_t max_passes_per_segment = (max_precision_jpeg_2000-1) * 3 +1;
-const uint32_t max_num_tiles = 65535;
+const uint32_t max_num_tiles = USHRT_MAX;
 const uint32_t max_num_tile_parts_per_tile = 256;
 const uint32_t max_num_tile_parts = max_num_tiles * max_num_tile_parts_per_tile;
+// includes tile part header
+const uint32_t max_tile_part_size = UINT_MAX;
 
 // limits in Grok library
 const uint64_t max_tile_area = 67108864000;

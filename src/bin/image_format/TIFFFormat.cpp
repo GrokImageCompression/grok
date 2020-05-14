@@ -2111,6 +2111,7 @@ static int imagetotif(grk_image *image, const char *outfile,
     			tmsize_t written =
     					TIFFWriteEncodedStrip(tif, strip++, (void*) buf, bytesToWrite);
     			assert(written == bytesToWrite);
+    			(void)written;
     			bufptr = (int8_t*)buf;
     			bytesToWrite = 0;
     		}
@@ -2147,12 +2148,14 @@ static int imagetotif(grk_image *image, const char *outfile,
 			}
 			tmsize_t written =  TIFFWriteEncodedStrip(tif, strip++,(void*) buf, byesToWrite);
 			assert(written == byesToWrite);
+			(void)written;
 			h_start += (h - h_start);
     	}
     }
 	//cleanup
 	if (bytesToWrite) {
 	  tmsize_t written =  TIFFWriteEncodedStrip(tif, strip++, (void*) buf, bytesToWrite);
+	  (void)written;
 	  assert(written == bytesToWrite);
 	}
 

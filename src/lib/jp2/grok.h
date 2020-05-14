@@ -67,6 +67,7 @@ extern "C" {
 #include <stdint.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <limits.h>
 
 #ifdef __GNUC__
 #define GRK_DEPRECATED(func) func __attribute__ ((deprecated))
@@ -764,7 +765,7 @@ typedef struct _grk_prec {
 	grk_precision_mode mode;
 } grk_precision;
 
-#define GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT (-65535)
+#define GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT (-USHRT_MAX)
 
 /**
  * Decompress parameters
