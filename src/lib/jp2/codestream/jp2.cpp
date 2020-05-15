@@ -3034,7 +3034,7 @@ static bool jp2_init_decompress_validation(grk_jp2 *jp2) {
 
 	assert(jp2 != nullptr);
 
-	/* DEVELOPER CORNER, add your custom validation procedure */
+	/* add your custom validation procedure */
 
 	return true;
 }
@@ -3072,21 +3072,21 @@ bool jp2_read_tile_header(grk_jp2 *p_jp2, uint16_t *tile_index,
 }
 
 bool jp2_compress_tile(grk_jp2 *p_jp2, uint16_t tile_index, uint8_t *p_data,
-		uint64_t data_size, BufferedStream *stream)
-
-		{
+		uint64_t data_size, BufferedStream *stream)	{
 	return j2k_compress_tile(p_jp2->j2k, tile_index, p_data, data_size, stream);
 }
 
 bool jp2_decompress_tile(grk_jp2 *p_jp2, uint16_t tile_index, uint8_t *p_data,
 		uint64_t data_size, BufferedStream *stream) {
 	bool rc = false;
+
 	try {
 		rc = j2k_decompress_tile(p_jp2->j2k, tile_index, p_data, data_size,
 				stream);
 	} catch (DecodeUnknownMarkerAtEndOfTileException &e) {
 		//suppress exception
 	}
+
 	return rc;
 }
 
@@ -3134,10 +3134,8 @@ void jp2_destroy(grk_jp2 *jp2) {
 		}
 
 		jp2->xml.dealloc();
-
-		for (uint32_t i = 0; i < jp2->numUuids; ++i) {
+		for (uint32_t i = 0; i < jp2->numUuids; ++i)
 			(jp2->uuids + i)->dealloc();
-		}
 		jp2->numUuids = 0;
 
 		grok_free(jp2);

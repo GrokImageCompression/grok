@@ -469,17 +469,6 @@ static bool j2k_write_coc(grk_j2k *p_j2k, uint32_t comp_no,
 		BufferedStream *stream);
 
 /**
- * Writes the COC marker (Coding style component)
- *
- * @param       p_j2k       J2K codec.
- * @param       comp_no   the index of the component to output.
- * @param       stream    the stream to write data to.
-
- */
-static bool j2k_write_coc_in_memory(grk_j2k *p_j2k, uint32_t comp_no,
-		BufferedStream *stream);
-
-/**
  * Gets the maximum size taken by a coc.
  *
  * @param       p_j2k   the JPEG 2000 codec to use.
@@ -541,17 +530,6 @@ static bool j2k_write_qcc(grk_j2k *p_j2k, uint32_t comp_no,
 		BufferedStream *stream);
 
 /**
- * Writes the QCC marker (quantization component)
- *
- * @param       p_j2k           J2K codec.
- * @param       comp_no       the index of the component to output.
- * @param       stream        the stream to write data to.
-
- */
-static bool j2k_write_qcc_in_memory(grk_j2k *p_j2k, uint32_t comp_no,
-		BufferedStream *stream);
-
-/**
  * Gets the maximum size taken by a qcc.
  */
 static uint32_t j2k_get_max_qcc_size(grk_j2k *p_j2k);
@@ -584,7 +562,7 @@ static bool j2k_write_poc(grk_j2k *p_j2k, BufferedStream *stream);
  * @param       p_data_written number of bytes written
 
  */
-static bool j2k_write_poc_in_memory(grk_j2k *p_j2k, BufferedStream *stream,
+static bool j2k_write_poc(grk_j2k *p_j2k, BufferedStream *stream,
 		uint64_t *p_data_written);
 /**
  * Gets the maximum size taken by the writing of a POC.

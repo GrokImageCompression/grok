@@ -982,8 +982,8 @@ bool j2k_read_tile_header(grk_j2k *p_j2k,
 
 		return false;
 	}
-	if (!p_j2k->m_tileProcessor->init_decompress_tile(p_j2k->m_output_image,
-			p_j2k->m_tileProcessor->m_current_tile_number)) {
+	if (!p_j2k->m_tileProcessor->init_tile(p_j2k->m_tileProcessor->m_current_tile_number,
+											p_j2k->m_output_image,false)) {
 		GROK_ERROR("Cannot decompress tile %d",
 				p_j2k->m_tileProcessor->m_current_tile_number);
 
@@ -2170,8 +2170,8 @@ static bool j2k_pre_write_tile(grk_j2k *p_j2k, uint16_t tile_index) {
 	p_j2k->m_tileProcessor->m_current_poc_tile_part_number = 0;
 
 	/* initialisation before tile encoding  */
-	if (!p_j2k->m_tileProcessor->init_compress_tile(
-			p_j2k->m_tileProcessor->m_current_tile_number)) {
+	if (!p_j2k->m_tileProcessor->init_tile(
+			p_j2k->m_tileProcessor->m_current_tile_number,nullptr,true)) {
 		return false;
 	}
 
@@ -2383,7 +2383,7 @@ static bool j2k_write_first_tile_part(grk_j2k *p_j2k, uint64_t *tile_bytes_writt
 	if (!GRK_IS_CINEMA(cp->rsiz)) {
 		if (cp->tcps[p_j2k->m_tileProcessor->m_current_tile_number].numpocs) {
 			temp_bytes_written = 0;
-			if (!j2k_write_poc_in_memory(p_j2k, stream,
+			if (!j2k_write_poc(p_j2k, stream,
 					&temp_bytes_written))
 				return false;
 			*tile_bytes_written += temp_bytes_written;
@@ -3826,32 +3826,7 @@ static bool j2k_read_cod(grk_j2k *p_j2k, uint8_t *p_header_data,
 static bool j2k_write_coc(grk_j2k *p_j2k, uint32_t comp_no,
 		BufferedStream *stream) {
 	assert(p_j2k != nullptr);
-
 	assert(stream != nullptr);
-	return j2k_write_coc_in_memory(p_j2k, comp_no, stream);
-
-}
-
-static bool j2k_compare_coc(grk_j2k *p_j2k, uint32_t first_comp_no,
-		uint32_t second_comp_no) {
-	grk_coding_parameters *cp = nullptr;
-	grk_tcp *tcp = nullptr;
-
-	assert(p_j2k != nullptr);
-
-	cp = &(p_j2k->m_cp);
-	tcp = &cp->tcps[p_j2k->m_tileProcessor->m_current_tile_number];
-
-	if (tcp->tccps[first_comp_no].csty != tcp->tccps[second_comp_no].csty) {
-		return false;
-	}
-	return j2k_compare_SPCod_SPCoc(p_j2k,
-			p_j2k->m_tileProcessor->m_current_tile_number, first_comp_no,
-			second_comp_no);
-}
-
-static bool j2k_write_coc_in_memory(grk_j2k *p_j2k, uint32_t comp_no,
-		BufferedStream *stream) {
 	uint32_t coc_size;
 	uint32_t comp_room;
 
@@ -3886,8 +3861,26 @@ static bool j2k_write_coc_in_memory(grk_j2k *p_j2k, uint32_t comp_no,
 
 	return j2k_write_SPCod_SPCoc(p_j2k,
 			p_j2k->m_tileProcessor->m_current_tile_number, 0, stream);
+
 }
 
+static bool j2k_compare_coc(grk_j2k *p_j2k, uint32_t first_comp_no,
+		uint32_t second_comp_no) {
+	grk_coding_parameters *cp = nullptr;
+	grk_tcp *tcp = nullptr;
+
+	assert(p_j2k != nullptr);
+
+	cp = &(p_j2k->m_cp);
+	tcp = &cp->tcps[p_j2k->m_tileProcessor->m_current_tile_number];
+
+	if (tcp->tccps[first_comp_no].csty != tcp->tccps[second_comp_no].csty) {
+		return false;
+	}
+	return j2k_compare_SPCod_SPCoc(p_j2k,
+			p_j2k->m_tileProcessor->m_current_tile_number, first_comp_no,
+			second_comp_no);
+}
 static uint32_t j2k_get_max_coc_size(grk_j2k *p_j2k) {
 	uint32_t max = 0;
 	uint32_t nb_tiles = p_j2k->m_cp.t_grid_width * p_j2k->m_cp.t_grid_height;
@@ -4011,19 +4004,6 @@ static bool j2k_write_qcc(grk_j2k *p_j2k, uint32_t comp_no,
 		BufferedStream *stream) {
 	assert(p_j2k != nullptr);
 	assert(stream != nullptr);
-	return j2k_write_qcc_in_memory(p_j2k, comp_no, stream);
-}
-
-static bool j2k_compare_qcc(grk_j2k *p_j2k, uint32_t first_comp_no,
-		uint32_t second_comp_no) {
-	return j2k_compare_SQcd_SQcc(p_j2k,
-			p_j2k->m_tileProcessor->m_current_tile_number, first_comp_no,
-			second_comp_no);
-}
-
-static bool j2k_write_qcc_in_memory(grk_j2k *p_j2k, uint32_t comp_no,
-		BufferedStream *stream) {
-	assert(p_j2k != nullptr);
 	uint32_t qcc_size = 6
 			+ j2k_get_SQcd_SQcc_size(p_j2k,
 					p_j2k->m_tileProcessor->m_current_tile_number, comp_no);
@@ -4055,6 +4035,12 @@ static bool j2k_write_qcc_in_memory(grk_j2k *p_j2k, uint32_t comp_no,
 			p_j2k->m_tileProcessor->m_current_tile_number, comp_no, stream);
 }
 
+static bool j2k_compare_qcc(grk_j2k *p_j2k, uint32_t first_comp_no,
+		uint32_t second_comp_no) {
+	return j2k_compare_SQcd_SQcc(p_j2k,
+			p_j2k->m_tileProcessor->m_current_tile_number, first_comp_no,
+			second_comp_no);
+}
 static uint32_t j2k_get_max_qcc_size(grk_j2k *p_j2k) {
 	return j2k_get_max_coc_size(p_j2k);
 }
@@ -4125,10 +4111,10 @@ static bool j2k_write_poc(grk_j2k *p_j2k, BufferedStream *stream) {
 	assert(stream != nullptr);
 
 	uint64_t data_written = 0;
-	return j2k_write_poc_in_memory(p_j2k, stream, &data_written);
+	return j2k_write_poc(p_j2k, stream, &data_written);
 }
 
-static bool j2k_write_poc_in_memory(grk_j2k *p_j2k, BufferedStream *stream,
+static bool j2k_write_poc(grk_j2k *p_j2k, BufferedStream *stream,
 		uint64_t *p_data_written) {
 	assert(p_j2k != nullptr);
 
@@ -4230,7 +4216,7 @@ static uint64_t j2k_get_max_tile_sot_header_size(grk_j2k *p_j2k) {
 	}
 	nb_bytes += j2k_get_max_poc_size(p_j2k);
 
-	/*** DEVELOPER CORNER, Add room for your headers ***/
+	/*** Add room for your headers ***/
 
 	return nb_bytes;
 }

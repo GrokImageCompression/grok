@@ -633,18 +633,16 @@ static void prepareBlockForFirstLayer(grk_tcd_cblk_enc *cblk) {
  */
 void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 		bool final) {
-	uint32_t compno, resno, bandno, precno, cblkno;
-	uint32_t passno;
 	tile->distolayer[layno] = 0;
-	for (compno = 0; compno < tile->numcomps; compno++) {
+	for (uint32_t compno = 0; compno < tile->numcomps; compno++) {
 		auto tilec = tile->comps + compno;
-		for (resno = 0; resno < tilec->numresolutions; resno++) {
+		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
 			auto res = tilec->resolutions + resno;
-			for (bandno = 0; bandno < res->numbands; bandno++) {
+			for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
 				auto band = res->bands + bandno;
-				for (precno = 0; precno < res->pw * res->ph; precno++) {
+				for (uint32_t precno = 0; precno < res->pw * res->ph; precno++) {
 					auto prc = band->precincts + precno;
-					for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
+					for (uint32_t cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
 						auto cblk = prc->cblks.enc + cblkno;
 						auto layer = cblk->layers + layno;
 						uint32_t cumulative_included_passes_in_block;
@@ -657,7 +655,7 @@ void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 						} else {
 							cumulative_included_passes_in_block =
 									cblk->num_passes_included_in_previous_layers;
-							for (passno =
+							for (uint32_t passno =
 									cblk->num_passes_included_in_previous_layers;
 									passno < cblk->num_passes_encoded;
 									passno++) {
@@ -738,23 +736,20 @@ void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 
 // Add all remaining passes to this layer
 void TileProcessor::makelayer_final(uint32_t layno) {
-	uint32_t compno, resno, bandno, precno, cblkno;
 	tile->distolayer[layno] = 0;
-
-	for (compno = 0; compno < tile->numcomps; compno++) {
+	for (uint32_t compno = 0; compno < tile->numcomps; compno++) {
 		auto tilec = tile->comps + compno;
-		for (resno = 0; resno < tilec->numresolutions; resno++) {
+		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
 			auto res = tilec->resolutions + resno;
-			for (bandno = 0; bandno < res->numbands; bandno++) {
+			for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
 				auto band = res->bands + bandno;
-				for (precno = 0; precno < res->pw * res->ph; precno++) {
+				for (uint32_t precno = 0; precno < res->pw * res->ph; precno++) {
 					auto prc = band->precincts + precno;
-					for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
+					for (uint32_t cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
 						auto cblk = prc->cblks.enc + cblkno;
 						auto layer = cblk->layers + layno;
-						if (layno == 0) {
+						if (layno == 0)
 							prepareBlockForFirstLayer(cblk);
-						}
 						uint32_t cumulative_included_passes_in_block =
 								cblk->num_passes_included_in_previous_layers;
 						if (cblk->num_passes_encoded
@@ -820,10 +815,7 @@ bool TileProcessor::init(grk_image *p_image, grk_coding_parameters *p_cp) {
 
 	return true;
 }
-
-/* ----------------------------------------------------------------------- */
-
-inline bool TileProcessor::init_tile(uint16_t tile_no, grk_image *output_image,
+bool TileProcessor::init_tile(uint16_t tile_no, grk_image *output_image,
 		bool isEncoder) {
 	uint32_t state = grk_plugin_get_debug_state();
 	auto tcp = &(m_cp->tcps[tile_no]);
@@ -879,9 +871,8 @@ inline bool TileProcessor::init_tile(uint16_t tile_no, grk_image *output_image,
 	// decoder plugin debug sanity check on tile struct
 	if (!isEncoder) {
 		if (state & GRK_PLUGIN_STATE_DEBUG) {
-			if (!tile_equals(current_plugin_tile, tile)) {
+			if (!tile_equals(current_plugin_tile, tile))
 				GROK_WARN("plugin tile differs from grok tile", nullptr);
-			}
 		}
 	}
 	tile->packno = 0;
@@ -894,27 +885,17 @@ inline bool TileProcessor::init_tile(uint16_t tile_no, grk_image *output_image,
 				auto res = tilec->resolutions + resno;
 				for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
 					auto band = res->bands + bandno;
+
 					max_precincts = max<size_t>(max_precincts, band->numPrecincts);
 				}
 			}
 		}
-
 		m_packetTracker.init(tile->numcomps,
 						tile->comps->numresolutions,
 						max_precincts,
 						tcp->numlayers);
 	}
 	return true;
-}
-
-bool TileProcessor::init_compress_tile(uint16_t tile_no) {
-	return init_tile(tile_no, nullptr, true);
-}
-
-bool TileProcessor::init_decompress_tile(grk_image *output_image,
-		uint16_t tile_no) {
-	return init_tile(tile_no, output_image, false);
-
 }
 
 bool TileProcessor::compress_tile(uint16_t tile_no, BufferedStream *stream,

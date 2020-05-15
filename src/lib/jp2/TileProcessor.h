@@ -349,8 +349,8 @@ struct TileProcessor {
 	 *
 	 * @return	true if the remaining data is sufficient.
 	 */
-	bool init_decompress_tile(grk_image *output_image,
-			uint16_t tile_no);
+	 bool init_tile(uint16_t tile_no,
+			grk_image *output_image, bool isEncoder);
 
 	/**
 	 * Sets the given area to be decoded. This function should be called right after grk_read_header
@@ -402,15 +402,6 @@ struct TileProcessor {
 
 
 	uint64_t get_uncompressed_tile_size(bool reduced);
-
-	/**
-	 * Initialize the tile coder and may reuse some meory.
-	 *
-	 * @param	tile_no	current tile index to compress.
-	 *
-	 * @return true if the encoding values could be set (false otherwise).
-	 */
-	bool init_compress_tile(uint16_t tile_no);
 
 	/**
 	 * Copies tile data from the given memory block onto the system.
@@ -492,11 +483,6 @@ private:
 	grk_tcp *m_tcp;
 	/** current encoded tile (not used for decompress) */
 	uint16_t m_tileno;
-	/**
-	 * Initializes tile coding/decoding
-	 */
-	 inline bool init_tile(uint16_t tile_no,
-			grk_image *output_image, bool isEncoder);
 
 	 bool t2_decode(uint16_t tile_no, ChunkBuffer *src_buf,
 			uint64_t *p_data_read);
