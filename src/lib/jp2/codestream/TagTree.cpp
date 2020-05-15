@@ -227,7 +227,7 @@ void TagTree::setvalue(uint64_t leafno, int64_t value) {
 	}
 }
 
-void TagTree::compress(BitIO *bio, uint64_t leafno, int64_t threshold) {
+bool TagTree::compress(BitIO *bio, uint64_t leafno, int64_t threshold) {
 	TagTreeNode *stk[31];
 	TagTreeNode **stkptr;
 	TagTreeNode *node;
@@ -251,12 +251,14 @@ void TagTree::compress(BitIO *bio, uint64_t leafno, int64_t threshold) {
 		while (low < threshold) {
 			if (low >= node->value) {
 				if (!node->known) {
-					bio->write(1, 1);
+					if (!bio->write(1, 1))
+						return false;
 					node->known = 1;
 				}
 				break;
 			}
-			bio->write(0, 1);
+			if (!bio->write(0, 1))
+				return false;
 			++low;
 		}
 
@@ -265,6 +267,7 @@ void TagTree::compress(BitIO *bio, uint64_t leafno, int64_t threshold) {
 			break;
 		node = *--stkptr;
 	}
+	return true;
 }
 
 bool TagTree::decompress(BitIO *bio, uint64_t leafno, int64_t threshold,

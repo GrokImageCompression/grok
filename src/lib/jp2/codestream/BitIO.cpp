@@ -115,9 +115,8 @@ bool BitIO::putbit(uint8_t b) {
 
 bool BitIO::getbit(uint32_t *bits, uint8_t pos) {
 	if (ct == 0) {
-		if (!bytein()) {
+		if (!bytein())
 			return false;
-		}
 	}
 	assert(ct > 0);
 	ct = (uint8_t)(ct-1);
@@ -130,9 +129,7 @@ size_t BitIO::numbytes() {
 }
 
 bool BitIO::write(uint32_t v, uint32_t n) {
-	if (n > 32U)
-		return false;
-	assert(n != 0);
+	assert(n != 0 && n <= 32);
 	for (int32_t i = (int32_t)(n - 1); i >= 0; i--) {
 		if (!putbit((v >> i) & 1))
 			return false;
@@ -141,9 +138,7 @@ bool BitIO::write(uint32_t v, uint32_t n) {
 }
 
 bool BitIO::read(uint32_t *bits, uint32_t n) {
-	assert(n > 0 && n <= 32);
-	if (n == 0 || n > 32)
-		return false;
+	assert(n != 0 && n <= 32U);
 #ifdef GRK_UBSAN_BUILD
 	/* This assert fails for some corrupted images which are gracefully rejected */
 	/* Add this assert only for ubsan build. */
@@ -152,39 +147,34 @@ bool BitIO::read(uint32_t *bits, uint32_t n) {
 #endif
 	*bits = 0U;
 	for (int32_t i = (int32_t)(n - 1); i >= 0; i--) {
-		if (!getbit(bits, static_cast<uint8_t>(i))) {
+		if (!getbit(bits, static_cast<uint8_t>(i)))
 			return false;
-		}
 	}
 	return true;
 }
 
 bool BitIO::flush() {
-	if (!byteout()) {
+	if (!byteout())
 		return false;
-	}
 	if (ct == 7) {
-		if (!byteout()) {
+		if (!byteout())
 			return false;
-		}
 	}
 	return true;
 }
 
 bool BitIO::inalign() {
 	if (buf == 0xff) {
-		if (!bytein()) {
+		if (!bytein())
 			return false;
-		}
 	}
 	ct = 0;
 	return true;
 }
 
 void BitIO::putcommacode(int32_t n) {
-	while (--n >= 0) {
+	while (--n >= 0)
 		write(1, 1);
-	}
 	write(0, 1);
 }
 
@@ -192,24 +182,23 @@ bool BitIO::getcommacode(uint32_t *n) {
 	*n = 0;
 	uint32_t temp;
 	bool rc = true;
-	while ((rc = read(&temp, 1)) && temp) {
+	while ((rc = read(&temp, 1)) && temp)
 		++*n;
-	}
+
 	return rc;
 }
 
 void BitIO::putnumpasses(uint32_t n) {
-	if (n == 1) {
+	if (n == 1)
 		write(0, 1);
-	} else if (n == 2) {
+	else if (n == 2)
 		write(2, 2);
-	} else if (n <= 5) {
+	else if (n <= 5)
 		write(0xc | (n - 3), 4);
-	} else if (n <= 36) {
+	else if (n <= 36)
 		write(0x1e0 | (n - 6), 9);
-	} else if (n <= 164) {
+	else if (n <= 164)
 		write(0xff80 | (n - 37), 16);
-	}
 }
 
 bool BitIO::getnumpasses(uint32_t *numpasses) {

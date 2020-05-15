@@ -117,8 +117,9 @@ public:
 	 @param bio Pointer to a BIO handle
 	 @param leafno Number that identifies the leaf to compress
 	 @param threshold Threshold to use when encoding value of the leaf
+	 @return true if successful, otherwise false
 	 */
-	void compress(BitIO *bio, uint64_t leafno, int64_t threshold);
+	bool compress(BitIO *bio, uint64_t leafno, int64_t threshold);
 	/**
 	 Decode the value of a leaf of the tag tree up to a given threshold
 	 @param bio Pointer to a BIO handle

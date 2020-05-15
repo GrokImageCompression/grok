@@ -1003,8 +1003,11 @@ bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp, PacketIter *pi,
 
 			/* cblk inclusion bits */
 			if (!cblk->num_passes_included_in_current_layer) {
-				prc->incltree->compress(bio.get(), cblkno,
+				bool rc = prc->incltree->compress(bio.get(), cblkno,
 						(int32_t) (layno + 1));
+				assert(rc);
+				if (!rc)
+				   return false;
 #ifdef DEBUG_LOSSLESS_T2
 					cblk->included = layno;
 #endif
@@ -1025,8 +1028,11 @@ bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp, PacketIter *pi,
 			/* if first instance of cblk --> zero bit-planes information */
 			if (!cblk->num_passes_included_in_current_layer) {
 				cblk->numlenbits = 3;
-				prc->imsbtree->compress(bio.get(), cblkno,
+				bool rc = prc->imsbtree->compress(bio.get(), cblkno,
 						tag_tree_uninitialized_node_value);
+				assert(rc);
+				if (!rc)
+					return false;
 			}
 			/* number of coding passes included */
 			bio->putnumpasses(layer->numpasses);
@@ -1339,7 +1345,6 @@ bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp, PacketIter *pi,
 
 bool T2::encode_packet_simulate(grk_tcp *tcp, PacketIter *pi,
 		uint64_t *packet_bytes_written, uint64_t max_bytes_available) {
-	uint32_t bandno, cblkno;
 	uint32_t compno = pi->compno;
 	uint32_t resno = pi->resno;
 	uint32_t precno = pi->precno;
@@ -1369,7 +1374,7 @@ bool T2::encode_packet_simulate(grk_tcp *tcp, PacketIter *pi,
 	/* </SOP> */
 
 	if (!layno) {
-		for (bandno = 0; bandno < res->numbands; ++bandno) {
+		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
 			auto band = res->bands + bandno;
 			auto prc = band->precincts + precno;
 
@@ -1379,7 +1384,7 @@ bool T2::encode_packet_simulate(grk_tcp *tcp, PacketIter *pi,
 				prc->imsbtree->reset();
 
 			nb_blocks = prc->cw * prc->ch;
-			for (cblkno = 0; cblkno < nb_blocks; ++cblkno) {
+			for (uint32_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 				auto cblk = prc->cblks.enc + cblkno;
 				cblk->num_passes_included_in_current_layer = 0;
 				if (band->numbps < cblk->numbps) {
@@ -1401,12 +1406,12 @@ bool T2::encode_packet_simulate(grk_tcp *tcp, PacketIter *pi,
 		return false;
 
 	/* Writing Packet header */
-	for (bandno = 0; bandno < res->numbands; ++bandno) {
+	for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
 		auto band = res->bands + bandno;
 		auto prc = band->precincts + precno;
 
 		nb_blocks = prc->cw * prc->ch;
-		for (cblkno = 0; cblkno < nb_blocks; ++cblkno) {
+		for (uint32_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 			auto cblk = prc->cblks.enc + cblkno;
 			auto layer = cblk->layers + layno;
 			if (!cblk->num_passes_included_in_current_layer
@@ -1414,7 +1419,7 @@ bool T2::encode_packet_simulate(grk_tcp *tcp, PacketIter *pi,
 				prc->incltree->setvalue(cblkno, (int32_t) layno);
 			}
 		}
-		for (cblkno = 0; cblkno < nb_blocks; cblkno++) {
+		for (uint32_t cblkno = 0; cblkno < nb_blocks; cblkno++) {
 			auto cblk = prc->cblks.enc + cblkno;
 			auto layer = cblk->layers + layno;
 			uint32_t increment = 0;
@@ -1424,24 +1429,24 @@ bool T2::encode_packet_simulate(grk_tcp *tcp, PacketIter *pi,
 
 			/* cblk inclusion bits */
 			if (!cblk->num_passes_included_in_current_layer) {
-				prc->incltree->compress(bio.get(), cblkno,
-						(int32_t) (layno + 1));
+				if (!prc->incltree->compress(bio.get(), cblkno,
+						(int32_t) (layno + 1)))
+					return false;
 			} else {
 				if (!bio->write(layer->numpasses != 0, 1))
 					return false;
 			}
 
 			/* if cblk not included, go to the next cblk  */
-			if (!layer->numpasses) {
-				++cblk;
+			if (!layer->numpasses)
 				continue;
-			}
 
 			/* if first instance of cblk --> zero bit-planes information */
 			if (!cblk->num_passes_included_in_current_layer) {
 				cblk->numlenbits = 3;
-				prc->imsbtree->compress(bio.get(), cblkno,
-						tag_tree_uninitialized_node_value);
+				if (!prc->imsbtree->compress(bio.get(), cblkno,
+						tag_tree_uninitialized_node_value))
+					return false;
 			}
 
 			/* number of coding passes included */
@@ -1508,12 +1513,12 @@ bool T2::encode_packet_simulate(grk_tcp *tcp, PacketIter *pi,
 	/* </EPH> */
 
 	/* Writing the packet body */
-	for (bandno = 0; bandno < res->numbands; bandno++) {
+	for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
 		auto band = res->bands + bandno;
 		auto prc = band->precincts + precno;
 
 		nb_blocks = prc->cw * prc->ch;
-		for (cblkno = 0; cblkno < nb_blocks; ++cblkno) {
+		for (uint32_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 			auto cblk = prc->cblks.enc + cblkno;
 			auto layer = cblk->layers + layno;
 
