@@ -1492,6 +1492,8 @@ template<typename T> bool readTiffPixelsSigned(TIFF *tif, grk_image_comp *comps,
 
 }
 
+//rec 601 conversion factors, multiplied by 1000
+const uint32_t rec_601_luma[3] {299, 587, 114};
 
 /*
  * libtiff/tif_getimage.c : 1,2,4,8,16 bitspersample accepted
@@ -1534,7 +1536,6 @@ static grk_image* tiftoimage(const char *filename,
 	TIFFGetFieldDefaulted(tif, TIFFTAG_PLANARCONFIG, &tiPC);
 	hasTiSf = TIFFGetFieldDefaulted(tif, TIFFTAG_SAMPLEFORMAT, &tiSf) == 1;
 
-	TIFFGetFieldDefaulted(tif, TIFFTAG_YCBCRCOEFFICIENTS, &luma);
 	TIFFGetFieldDefaulted(tif, TIFFTAG_REFERENCEBLACKWHITE,
 	    &refBlackWhite);
 
@@ -1551,16 +1552,26 @@ static grk_image* tiftoimage(const char *filename,
 	uint16 extrasamples = 0;
 	bool hasXRes = false, hasYRes = false, hasResUnit = false;
 	bool isSigned = (tiSf == SAMPLEFORMAT_INT);
-	chroma_subsample_x = 1;
-	chroma_subsample_y = 1;
 
 	// 1. sanity checks
+	//check for rec601
+	if (tiPhoto == PHOTOMETRIC_YCBCR) {
+		TIFFGetFieldDefaulted(tif, TIFFTAG_YCBCRCOEFFICIENTS, &luma);
+		for (size_t i = 0; i < 3; ++i){
+			if ((uint32_t)(luma[i] * 1000.0f + 0.5f) != rec_601_luma[i]){
+				spdlog::error("tiftoimage: YCbCr image with unsupported non Rec. 601 colour space;");
+				spdlog::error("YCbCrCoefficients: {},{},{}",luma[0],luma[1],luma[2]);
+				spdlog::error("Please convert to sRGB before compressing.");
+				goto cleanup;
+			}
+		}
+	}
 	if (hasTiSf && tiSf != SAMPLEFORMAT_UINT && tiSf != SAMPLEFORMAT_INT) {
 		spdlog::error("tiftoimage: Unsupported sample format: {}.", getSampleFormatString(tiSf));
 		goto cleanup;
 	}
 	if (tiSpp == 0 ) {
-		spdlog::error("tiftoimage: Samples per pixel must be positive");
+		spdlog::error("tiftoimage: Samples per pixel must be non-zero");
 		goto cleanup;
 	}
 	if (tiBps > 16U || tiBps == 0) {
