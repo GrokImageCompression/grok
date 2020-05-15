@@ -124,7 +124,7 @@ static grk_image* pgxtoimage(const char *filename,
 	max = 0;
 	f = fopen(filename, "rb");
 	if (!f) {
-		spdlog::error("Failed to open {} for reading !", filename);
+		spdlog::error("Failed to open {} for reading.", filename);
 		return nullptr;
 	}
 
@@ -133,7 +133,7 @@ static grk_image* pgxtoimage(const char *filename,
 	if (fscanf(f, "PG%31[ \t]%c%c%31[ \t+-]%d%31[ \t]%d%31[ \t]%d", temp,
 			&endian1, &endian2, signtmp, &prec, temp, &w, temp, &h) != 9) {
 		spdlog::error(
-				" Failed to read the right number of element from the fscanf() function!");
+				" Failed to read the right number of element from the fscanf() function.");
 		goto cleanup;
 	}
 

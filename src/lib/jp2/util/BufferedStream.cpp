@@ -322,7 +322,7 @@ bool BufferedStream::flush() {
 
 		if (l_current_write_nb_bytes != m_buffered_bytes) {
 			m_status |= GROK_STREAM_STATUS_ERROR;
-			GROK_ERROR("Error on writing stream!");
+			GROK_ERROR("Error on writing stream.");
 			return false;
 		}
 		m_buf->incr_offset((ptrdiff_t) l_current_write_nb_bytes);

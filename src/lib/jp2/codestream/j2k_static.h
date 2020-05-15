@@ -330,7 +330,7 @@ static bool j2k_post_write_tile(grk_j2k *p_j2k, BufferedStream *stream);
 static bool j2k_init_header_writing(grk_j2k *p_j2k);
 
 static bool j2k_write_first_tile_part(grk_j2k *p_j2k, uint64_t *p_data_written,
-		uint64_t total_data_size, BufferedStream *stream);
+		uint64_t tile_bytes_available, BufferedStream *stream);
 
 static bool j2k_write_all_tile_parts(grk_j2k *p_j2k, uint64_t *p_data_written,
 		uint64_t total_data_size, BufferedStream *stream);

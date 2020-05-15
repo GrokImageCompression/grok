@@ -230,7 +230,7 @@ bool update_image_dimensions(grk_image* image, uint32_t reduce)
                 image->y0 > (uint32_t)INT_MAX ||
                 image->x1 > (uint32_t)INT_MAX ||
                 image->y1 > (uint32_t)INT_MAX) {
-            GROK_ERROR("Image coordinates above INT_MAX are not supported\n");
+            GROK_ERROR("Image coordinates above INT_MAX are not supported.");
             return false;
         }
 

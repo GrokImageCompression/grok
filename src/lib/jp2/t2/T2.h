@@ -93,7 +93,7 @@ struct T2 {
 			uint32_t pino);
 
 	/**
-	 Encode the packets of a tile to a destination buffer
+	 Simulate encoding packets of a tile to a destination buffer
 	 @param tileno           number of the tile encoded
 	 @param maxlayers        maximum number of layers
 	 @param p_data_written   FIXME DOC

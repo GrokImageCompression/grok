@@ -131,8 +131,9 @@ bool T2::encode_packets(uint16_t tile_no, uint32_t max_layers,
 }
 
 bool T2::encode_packets_simulate(uint16_t tile_no, uint32_t max_layers,
-		uint64_t *p_data_written, uint64_t max_len, uint32_t tp_pos) {
+		uint64_t *all_packets_len, uint64_t max_len, uint32_t tp_pos) {
 
+	assert(all_packets_len);
 	auto cp = tileProcessor->m_cp;
 	auto image = tileProcessor->image;
 	auto tcp = cp->tcps + tile_no;
@@ -141,14 +142,11 @@ bool T2::encode_packets_simulate(uint16_t tile_no, uint32_t max_layers,
 			cp->m_coding_param.m_enc.m_max_comp_size > 0 ? image->numcomps : 1;
 	uint32_t nb_pocs = tcp->numpocs + 1;
 
-	if (!p_data_written)
-		return false;
-
 	auto pi = pi_initialise_encode(image, cp, tile_no, THRESH_CALC);
 	if (!pi)
 		return false;
 
-	*p_data_written = 0;
+	*all_packets_len = 0;
 	auto current_pi = pi;
 
 	tileProcessor->m_packetTracker.clear();
@@ -172,6 +170,7 @@ bool T2::encode_packets_simulate(uint16_t tile_no, uint32_t max_layers,
 			while (pi_next(current_pi)) {
 				if (current_pi->layno < max_layers) {
 					uint64_t bytesInPacket = 0;
+
 					if (!encode_packet_simulate(tcp, current_pi, &bytesInPacket,
 							max_len)) {
 						pi_destroy(pi, nb_pocs);
@@ -180,7 +179,7 @@ bool T2::encode_packets_simulate(uint16_t tile_no, uint32_t max_layers,
 
 					comp_len += bytesInPacket;
 					max_len -= bytesInPacket;
-					*p_data_written += bytesInPacket;
+					*all_packets_len += bytesInPacket;
 				}
 			}
 
@@ -895,8 +894,9 @@ bool T2::init_seg(grk_tcd_cblk_dec *cblk, uint32_t index, uint8_t cblk_sty,
 
 //--------------------------------------------------------------------------------------------------
 bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp, PacketIter *pi,
-		BufferedStream *stream, uint64_t *p_data_written,
-		uint64_t num_bytes_available, grk_codestream_info *cstr_info) {
+		BufferedStream *stream, uint64_t *packet_bytes_written,
+		uint64_t tile_bytes_available, grk_codestream_info *cstr_info) {
+	assert(stream);
 	uint32_t compno = pi->compno;
 	uint32_t resno = pi->resno;
 	uint32_t precno = pi->precno;
@@ -904,10 +904,7 @@ bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp, PacketIter *pi,
 	auto tile = tileProcessor->tile;
 	auto tilec = &tile->comps[compno];
 	auto res = &tilec->resolutions[resno];
-	uint64_t numHeaderBytes = 0;
-	size_t streamBytes = 0;
-	if (stream)
-		streamBytes = stream->tell();
+	size_t stream_start = stream->tell();
 
 	if (tileProcessor->m_packetTracker.is_packet_encoded(compno, resno, precno,
 			layno))
@@ -921,28 +918,21 @@ bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp, PacketIter *pi,
 
 	// SOP marker
 	if (tcp->csty & J2K_CP_CSTY_SOP) {
-		if (!stream->write_byte(255)) {
+		if (!stream->write_byte(255))
 			return false;
-		}
-		if (!stream->write_byte(145)) {
+		if (!stream->write_byte(145))
 			return false;
-		}
-		if (!stream->write_byte(0)) {
+		if (!stream->write_byte(0))
 			return false;
-		}
-		if (!stream->write_byte(4)) {
+		if (!stream->write_byte(4))
 			return false;
-		}
 		/* packno is uint32_t modulo 65536, in big endian format */
 		uint16_t packno = (uint16_t) (tile->packno % 0x10000);
-		if (!stream->write_byte((uint8_t) (packno >> 8))) {
+		if (!stream->write_byte((uint8_t) (packno >> 8)))
 			return false;
-		}
-		if (!stream->write_byte((uint8_t) (packno & 0xff))) {
+		if (!stream->write_byte((uint8_t) (packno & 0xff)))
 			return false;
-		}
-		num_bytes_available -= 6;
-		numHeaderBytes += 6;
+		tile_bytes_available -= 6;
 	}
 
 	// initialize precinct and code blocks if this is the first layer
@@ -1097,8 +1087,7 @@ bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp, PacketIter *pi,
 	}
 
 	auto temp = bio->numbytes();
-	num_bytes_available -= (uint64_t) temp;
-	numHeaderBytes += (uint64_t) temp;
+	tile_bytes_available -= (uint64_t) temp;
 
 	// EPH marker
 	if (tcp->csty & J2K_CP_CSTY_EPH) {
@@ -1108,8 +1097,7 @@ bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp, PacketIter *pi,
 		if (!stream->write_byte(146)) {
 			return false;
 		}
-		num_bytes_available -= 2;
-		numHeaderBytes += 2;
+		tile_bytes_available -= 2;
 	}
 
 	/* << INDEX */
@@ -1141,10 +1129,10 @@ bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp, PacketIter *pi,
 				continue;
 			}
 
-			if (cblk_layer->len > num_bytes_available) {
+			if (cblk_layer->len > tile_bytes_available) {
 				GROK_ERROR(
 						"Code block layer size %d exceeds number of available bytes %d in tile buffer",
-						cblk_layer->len, num_bytes_available);
+						cblk_layer->len, tile_bytes_available);
 				return false;
 			}
 
@@ -1152,7 +1140,7 @@ bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp, PacketIter *pi,
 				if (!stream->write_bytes(cblk_layer->data, cblk_layer->len)) {
 					return false;
 				}
-				num_bytes_available -= cblk_layer->len;
+				tile_bytes_available -= cblk_layer->len;
 			}
 			cblk->num_passes_included_in_current_layer += cblk_layer->numpasses;
 			if (cstr_info && cstr_info->index_write) {
@@ -1167,14 +1155,14 @@ bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp, PacketIter *pi,
 		}
 		++band;
 	}
-	*p_data_written += stream->tell() - streamBytes;
+	*packet_bytes_written += stream->tell() - stream_start;
 
 #ifdef DEBUG_LOSSLESS_T2
-		auto originalDataBytes = *p_data_written - numHeaderBytes;
+		auto originalDataBytes = *packet_bytes_written - numHeaderBytes;
 		auto roundRes = &tilec->round_trip_resolutions[resno];
 		size_t nb_bytes_read = 0;
 		auto src_buf = std::unique_ptr<ChunkBuffer>(new ChunkBuffer());
-		seg_buf_push_back(src_buf.get(), dest, *p_data_written);
+		seg_buf_push_back(src_buf.get(), dest, *packet_bytes_written);
 
 		bool rc = true;
 		bool read_data;
@@ -1350,22 +1338,18 @@ bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp, PacketIter *pi,
 }
 
 bool T2::encode_packet_simulate(grk_tcp *tcp, PacketIter *pi,
-		uint64_t *p_data_written, uint64_t length) {
+		uint64_t *packet_bytes_written, uint64_t max_bytes_available) {
 	uint32_t bandno, cblkno;
-	uint64_t nb_bytes;
 	uint32_t compno = pi->compno;
 	uint32_t resno = pi->resno;
 	uint32_t precno = pi->precno;
 	uint32_t layno = pi->layno;
 	uint32_t nb_blocks;
-	grk_tcd_band *band = nullptr;
-	grk_tcd_cblk_enc *cblk = nullptr;
-	grk_tcd_pass *pass = nullptr;
 
 	auto tile = tileProcessor->tile;
-	TileComponent *tilec = tile->comps + compno;
-	grk_tcd_resolution *res = tilec->resolutions + resno;
-	uint64_t packet_bytes_written = 0;
+	auto tilec = tile->comps + compno;
+	auto res = tilec->resolutions + resno;
+	*packet_bytes_written = 0;
 
 	if (tileProcessor->m_packetTracker.is_packet_encoded(compno, resno, precno,
 			layno))
@@ -1379,16 +1363,15 @@ bool T2::encode_packet_simulate(grk_tcp *tcp, PacketIter *pi,
 
 	/* <SOP 0xff91> */
 	if (tcp->csty & J2K_CP_CSTY_SOP) {
-		length -= 6;
-		packet_bytes_written += 6;
+		max_bytes_available -= 6;
+		*packet_bytes_written += 6;
 	}
 	/* </SOP> */
 
 	if (!layno) {
-		band = res->bands;
-
 		for (bandno = 0; bandno < res->numbands; ++bandno) {
-			grk_tcd_precinct *prc = band->precincts + precno;
+			auto band = res->bands + bandno;
+			auto prc = band->precincts + precno;
 
 			if (prc->incltree)
 				prc->incltree->reset();
@@ -1397,7 +1380,7 @@ bool T2::encode_packet_simulate(grk_tcp *tcp, PacketIter *pi,
 
 			nb_blocks = prc->cw * prc->ch;
 			for (cblkno = 0; cblkno < nb_blocks; ++cblkno) {
-				cblk = prc->cblks.enc + cblkno;
+				auto cblk = prc->cblks.enc + cblkno;
 				cblk->num_passes_included_in_current_layer = 0;
 				if (band->numbps < cblk->numbps) {
 					GROK_WARN(
@@ -1408,38 +1391,32 @@ bool T2::encode_packet_simulate(grk_tcp *tcp, PacketIter *pi,
 							(int64_t) (band->numbps - cblk->numbps));
 				}
 			}
-			++band;
 		}
 	}
 
-	std::unique_ptr<BitIO> bio(new BitIO(0, length, true));
+	std::unique_ptr<BitIO> bio(new BitIO(0, max_bytes_available, true));
 	bio->simulateOutput(true);
 	/* Empty header bit */
 	if (!bio->write(1, 1))
 		return false;
 
 	/* Writing Packet header */
-	band = res->bands;
 	for (bandno = 0; bandno < res->numbands; ++bandno) {
-		grk_tcd_precinct *prc = band->precincts + precno;
+		auto band = res->bands + bandno;
+		auto prc = band->precincts + precno;
 
 		nb_blocks = prc->cw * prc->ch;
-		cblk = prc->cblks.enc;
-
 		for (cblkno = 0; cblkno < nb_blocks; ++cblkno) {
-			grk_tcd_layer *layer = cblk->layers + layno;
-
+			auto cblk = prc->cblks.enc + cblkno;
+			auto layer = cblk->layers + layno;
 			if (!cblk->num_passes_included_in_current_layer
 					&& layer->numpasses) {
 				prc->incltree->setvalue(cblkno, (int32_t) layno);
 			}
-
-			++cblk;
 		}
-
-		cblk = prc->cblks.enc;
 		for (cblkno = 0; cblkno < nb_blocks; cblkno++) {
-			grk_tcd_layer *layer = cblk->layers + layno;
+			auto cblk = prc->cblks.enc + cblkno;
+			auto layer = cblk->layers + layno;
 			uint32_t increment = 0;
 			uint32_t nump = 0;
 			uint32_t len = 0, passno;
@@ -1471,11 +1448,11 @@ bool T2::encode_packet_simulate(grk_tcp *tcp, PacketIter *pi,
 			bio->putnumpasses(layer->numpasses);
 			nb_passes = cblk->num_passes_included_in_current_layer
 					+ layer->numpasses;
-			pass = cblk->passes + cblk->num_passes_included_in_current_layer;
-
 			/* computation of the increase of the length indicator and insertion in the header     */
 			for (passno = cblk->num_passes_included_in_current_layer;
 					passno < nb_passes; ++passno) {
+				auto pass =
+						cblk->passes + cblk->num_passes_included_in_current_layer + passno;
 				++nump;
 				len += pass->len;
 
@@ -1491,21 +1468,18 @@ bool T2::encode_packet_simulate(grk_tcp *tcp, PacketIter *pi,
 					len = 0;
 					nump = 0;
 				}
-
-				++pass;
 			}
 			bio->putcommacode((int32_t) increment);
 
 			/* computation of the new Length indicator */
 			cblk->numlenbits += increment;
-
-			pass = cblk->passes + cblk->num_passes_included_in_current_layer;
 			/* insertion of the codeword segment length */
 			for (passno = cblk->num_passes_included_in_current_layer;
 					passno < nb_passes; ++passno) {
+				auto pass =
+						cblk->passes + cblk->num_passes_included_in_current_layer + passno;
 				nump++;
 				len += pass->len;
-
 				if (pass->term
 						|| passno
 								== (cblk->num_passes_included_in_current_layer
@@ -1516,58 +1490,44 @@ bool T2::encode_packet_simulate(grk_tcp *tcp, PacketIter *pi,
 					len = 0;
 					nump = 0;
 				}
-				++pass;
 			}
-
-			++cblk;
 		}
-
-		++band;
 	}
 
-	if (!bio->flush()) {
+	if (!bio->flush())
 		return false;
-	}
 
-	nb_bytes = (uint64_t) bio->numbytes();
-	packet_bytes_written += nb_bytes;
-	length -= nb_bytes;
+	*packet_bytes_written += (uint64_t) bio->numbytes();
+	max_bytes_available -= (uint64_t) bio->numbytes();
 
 	/* <EPH 0xff92> */
 	if (tcp->csty & J2K_CP_CSTY_EPH) {
-		length -= 2;
-		packet_bytes_written += 2;
+		max_bytes_available -= 2;
+		*packet_bytes_written += 2;
 	}
 	/* </EPH> */
 
 	/* Writing the packet body */
-	band = res->bands;
 	for (bandno = 0; bandno < res->numbands; bandno++) {
-		grk_tcd_precinct *prc = band->precincts + precno;
+		auto band = res->bands + bandno;
+		auto prc = band->precincts + precno;
 
 		nb_blocks = prc->cw * prc->ch;
-		cblk = prc->cblks.enc;
-
 		for (cblkno = 0; cblkno < nb_blocks; ++cblkno) {
-			grk_tcd_layer *layer = cblk->layers + layno;
+			auto cblk = prc->cblks.enc + cblkno;
+			auto layer = cblk->layers + layno;
 
-			if (!layer->numpasses) {
-				++cblk;
+			if (!layer->numpasses)
 				continue;
-			}
 
-			if (layer->len > length) {
+			if (layer->len > max_bytes_available)
 				return false;
-			}
 
 			cblk->num_passes_included_in_current_layer += layer->numpasses;
-			packet_bytes_written += layer->len;
-			length -= layer->len;
-			++cblk;
+			*packet_bytes_written += layer->len;
+			max_bytes_available -= layer->len;
 		}
-		++band;
 	}
-	*p_data_written += packet_bytes_written;
 
 	return true;
 }

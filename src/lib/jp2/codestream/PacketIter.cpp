@@ -671,11 +671,8 @@ static void grk_get_encoding_parameters(const grk_image *p_image,
 	*ty1 = std::min<uint32_t>(p_cp->ty0 + (q + 1) * p_cp->t_height,
 			p_image->y1);
 
-	/* max precision is 0 (can only grow) */
 	*max_prec = 0;
 	*max_res = 0;
-
-	/* take the largest value for dx_min and dy_min */
 	*dx_min = UINT_MAX;
 	*dy_min = UINT_MAX;
 
@@ -714,26 +711,18 @@ static void grk_get_encoding_parameters(const grk_image *p_image,
 			if (dy < UINT_MAX)
 				*dy_min = std::min<uint32_t>(*dy_min, (uint32_t) dy);
 
-			/* various calculations of extents */
 			uint32_t level_no = tccp->numresolutions - 1 - resno;
-
 			uint32_t rx0 = uint_ceildivpow2(tcx0, level_no);
 			uint32_t ry0 = uint_ceildivpow2(tcy0, level_no);
 			uint32_t rx1 = uint_ceildivpow2(tcx1, level_no);
 			uint32_t ry1 = uint_ceildivpow2(tcy1, level_no);
-
 			uint32_t px0 = uint_floordivpow2(rx0, pdx) << pdx;
 			uint32_t py0 = uint_floordivpow2(ry0, pdy) << pdy;
 			uint32_t px1 = uint_ceildivpow2(rx1, pdx) << pdx;
-
 			uint32_t py1 = uint_ceildivpow2(ry1, pdy) << pdy;
-
 			uint32_t pw = (rx0 == rx1) ? 0 : ((px1 - px0) >> pdx);
 			uint32_t ph = (ry0 == ry1) ? 0 : ((py1 - py0) >> pdy);
-
 			uint32_t product = pw * ph;
-
-			/* update precision */
 			if (product > *max_prec)
 				*max_prec = product;
 		}
@@ -753,28 +742,25 @@ static void grk_get_all_encoding_parameters(const grk_image *p_image,
 	uint32_t p = tileno % p_cp->t_grid_width;
 	uint32_t q = tileno / p_cp->t_grid_width;
 
-	/* here calculation of tx0, tx1, ty0, ty1, maxprec, dx and dy */
-
 	/* non-corrected (in regard to image offset) tile offset */
-	uint32_t uncorrected_tx0 = p_cp->tx0 + p * p_cp->t_width; /* can't be greater than p_image->x1 so won't overflow */
+
+	/* can't be greater than p_image->x1 so won't overflow */
+	uint32_t uncorrected_tx0 = p_cp->tx0 + p * p_cp->t_width;
 	*tx0 = std::max<uint32_t>(uncorrected_tx0, p_image->x0);
 	*tx1 = std::min<uint32_t>(uint_adds(uncorrected_tx0, p_cp->t_width),
 			p_image->x1);
-	uint32_t uncorrected_ty0 = p_cp->ty0 + q * p_cp->t_height; /* can't be greater than p_image->y1 so won't overflow */
+	/* can't be greater than p_image->y1 so won't overflow */
+	uint32_t uncorrected_ty0 = p_cp->ty0 + q * p_cp->t_height;
 	*ty0 = std::max<uint32_t>(uncorrected_ty0, p_image->y0);
 	*ty1 = std::min<uint32_t>(uint_adds(uncorrected_ty0, p_cp->t_height),
 			p_image->y1);
 
-	/* max precision and resolution is 0 (can only grow)*/
 	*max_prec = 0;
 	*max_res = 0;
-
-	/* take the largest value for dx_min and dy_min*/
 	*dx_min = UINT_MAX;
 	*dy_min = UINT_MAX;
 
 	auto tcp = &p_cp->tcps[tileno];
-
 	for (uint32_t compno = 0; compno < p_image->numcomps; ++compno) {
 		uint32_t level_no;
 
@@ -795,18 +781,15 @@ static void grk_get_all_encoding_parameters(const grk_image *p_image,
 		for (uint32_t resno = 0; resno < tccp->numresolutions; ++resno) {
 			uint32_t pdx = tccp->prcw[resno];
 			uint32_t pdy = tccp->prch[resno];
-
 			*lResolutionPtr++ = pdx;
 			*lResolutionPtr++ = pdy;
+
 			uint64_t dx = img_comp->dx * ((uint64_t) 1u << (pdx + level_no));
 			uint64_t dy = img_comp->dy * ((uint64_t) 1u << (pdy + level_no));
-			/* take the minimum size for dx for each comp and resolution*/
 			if (dx < UINT_MAX)
 				*dx_min = std::min<uint32_t>(*dx_min, (uint32_t) dx);
 			if (dy < UINT_MAX)
 				*dy_min = std::min<uint32_t>(*dy_min, (uint32_t) dy);
-
-			/* various calculations of extents*/
 			uint32_t rx0 = uint_ceildivpow2(tcx0, level_no);
 			uint32_t ry0 = uint_ceildivpow2(tcy0, level_no);
 			uint32_t rx1 = uint_ceildivpow2(tcx1, level_no);
@@ -820,8 +803,6 @@ static void grk_get_all_encoding_parameters(const grk_image *p_image,
 			*lResolutionPtr++ = pw;
 			*lResolutionPtr++ = ph;
 			uint32_t product = pw * ph;
-
-			/* update precision*/
 			if (product > *max_prec)
 				*max_prec = product;
 			--level_no;

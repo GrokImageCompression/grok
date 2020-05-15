@@ -355,7 +355,7 @@ static grk_image* pnmtoimage(const char *filename,
 	bool success = false;
 
 	if ((fp = fopen(filename, "rb")) == nullptr) {
-		spdlog::error("pnmtoimage:Failed to open {} for reading!", filename);
+		spdlog::error("pnmtoimage:Failed to open {} for reading.", filename);
 		goto cleanup;
 	}
 	memset(&header_info, 0, sizeof(struct pnm_header));

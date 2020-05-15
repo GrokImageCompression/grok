@@ -397,11 +397,11 @@ struct TileProcessor {
 	/**
 	 * Copies tile data from the system onto the given memory block.
 	 */
-	bool update_tile_data(uint8_t *p_dest,
+	bool composite_tile(uint8_t *p_dest,
 			uint64_t dest_length);
 
 
-	uint64_t get_tile_size(bool reduced);
+	uint64_t get_uncompressed_tile_size(bool reduced);
 
 	/**
 	 * Initialize the tile coder and may reuse some meory.

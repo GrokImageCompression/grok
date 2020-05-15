@@ -321,7 +321,7 @@ static bool bmp_read_file_header(FILE *INPUT, GRK_BITMAPFILEHEADER *header) {
 	if (!get_int(INPUT, &header->bfType))
 		return false;
 	if (header->bfType != 19778) {
-		spdlog::error("not a BMP file!");
+		spdlog::error("Not a BMP file");
 		return false;
 	}
 	if (!get_int(INPUT, &header->bfSize))

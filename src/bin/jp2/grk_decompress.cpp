@@ -839,7 +839,7 @@ static grk_image* convert_gray_to_rgb(grk_image *original) {
 			(original->numcomps + 2U) * sizeof(grk_image_cmptparm));
 	if (new_components == nullptr) {
 		spdlog::error(
-				"grk_decompress: failed to allocate memory for RGB image!");
+				"grk_decompress: failed to allocate memory for RGB image.");
 		grk_image_destroy(original);
 		return nullptr;
 	}
@@ -877,7 +877,7 @@ static grk_image* convert_gray_to_rgb(grk_image *original) {
 	free(new_components);
 	if (new_image == nullptr) {
 		spdlog::error(
-				"grk_decompress: failed to allocate memory for RGB image!");
+				"grk_decompress: failed to allocate memory for RGB image.");
 		grk_image_destroy(original);
 		return nullptr;
 	}
@@ -940,7 +940,7 @@ static grk_image* upsample_image_components(grk_image *original) {
 			original->numcomps * sizeof(grk_image_cmptparm));
 	if (new_components == nullptr) {
 		spdlog::error(
-				"grk_decompress: failed to allocate memory for upsampled components!");
+				"grk_decompress: failed to allocate memory for upsampled components.");
 		grk_image_destroy(original);
 		return nullptr;
 	}
@@ -972,7 +972,7 @@ static grk_image* upsample_image_components(grk_image *original) {
 	free(new_components);
 	if (new_image == nullptr) {
 		spdlog::error(
-				"grk_decompress: failed to allocate memory for upsampled components!");
+				"grk_decompress: failed to allocate memory for upsampled components.");
 		grk_image_destroy(original);
 		return nullptr;
 	}
@@ -1564,7 +1564,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 	if (!parameters->nb_tile_to_decode) {
 		if (!(grk_decompress(info->l_codec, info->tile, info->image)
 				&& grk_end_decompress(info->l_codec))) {
-			spdlog::error("grk_decompress: failed to decompress image!");
+			spdlog::error("grk_decompress: failed to decompress image.");
 			failed = 1;
 			goto cleanup;
 		}
@@ -1573,11 +1573,11 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 	else {
 		if (!grk_decompress_tile(info->l_codec, info->image,
 				parameters->tile_index)) {
-			spdlog::error("grk_decompress: failed to decompress tile!");
+			spdlog::error("grk_decompress: failed to decompress tile");
 			failed = 1;
 			goto cleanup;
 		}
-		spdlog::info("Tile {} was decoded.\n", parameters->tile_index);
+		spdlog::info("Tile {} was decoded.", parameters->tile_index);
 	}
 
 	cleanup: if (info->l_stream)
@@ -1768,7 +1768,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		image = upsample_image_components(image);
 		if (image == nullptr) {
 			spdlog::error(
-					"grk_decompress: failed to upsample image components!");
+					"grk_decompress: failed to upsample image components.");
 			goto cleanup;
 		}
 	}
@@ -1784,13 +1784,13 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			break;
 		default:
 			spdlog::error(
-					"grk_decompress: don't know how to convert image to RGB colorspace!");
+					"grk_decompress: don't know how to convert image to RGB colorspace.");
 			grk_image_destroy(image);
 			image = nullptr;
 			goto cleanup;
 		}
 		if (image == nullptr) {
-			spdlog::error("grk_decompress: failed to convert to RGB image!");
+			spdlog::error("grk_decompress: failed to convert to RGB image.");
 			goto cleanup;
 		}
 	}

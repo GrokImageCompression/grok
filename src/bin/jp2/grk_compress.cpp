@@ -1199,7 +1199,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 
 				if (!(mainlevel >= 0 && mainlevel <= 11)) {
 					/* Voluntarily rough validation. More fine grained done in library */
-					spdlog::error("Invalid mainlevel value {}.\n", mainlevel);
+					spdlog::error("Invalid mainlevel value {}.", mainlevel);
 					return 1;
 				}
 				parameters->rsiz = (uint16_t) (profile | mainlevel);
@@ -1283,12 +1283,12 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 
 				if (!(mainlevel >= 0 && mainlevel <= 11)) {
 					/* Voluntarily rough validation. More fine grained done in library */
-					spdlog::error("Invalid main level {}.\n",mainlevel);
+					spdlog::error("Invalid main level {}.",mainlevel);
 					return 1;
 				}
 				if (!(sublevel >= 0 && sublevel <= 9)) {
 					/* Voluntarily rough validation. More fine grained done in library */
-					spdlog::error("Invalid sub-level {}.\n",sublevel);
+					spdlog::error("Invalid sub-level {}.",sublevel);
 					return 1;
 				}
 				parameters->rsiz = (uint16_t) (profile | (sublevel << 4)

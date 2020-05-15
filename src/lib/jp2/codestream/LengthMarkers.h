@@ -18,11 +18,14 @@
 
 namespace grk {
 
-// 4 bytes for (marker + marker length), and 1 byte for index
-const uint32_t max_packet_len_bytes_per_plt = USHRT_MAX - 1 - 4;
+// bytes available in PLT marker to store packet lengths
+// (4 bytes are reserved for (marker + marker length), and 1 byte for index)
+const uint32_t available_packet_len_bytes_per_plt = USHRT_MAX - 1 - 4;
 
-// 5 is maximum number of bytes for a single packet length
-const uint32_t min_packets_per_plt = max_packet_len_bytes_per_plt / 5;
+// minimum number of packet lengths that can be stored in a full
+// length PLT marker
+// (5 is maximum number of bytes for a single packet length)
+const uint32_t min_packets_per_full_plt = available_packet_len_bytes_per_plt / 5;
 
 // tile part length
 struct grk_tl_info {

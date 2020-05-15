@@ -80,7 +80,7 @@ void PacketLengthMarkers::write_increment(size_t bytes) {
 void PacketLengthMarkers::write_marker_header() {
 	// 5 bytes worst-case to store a packet length
 	if (m_total_bytes_written == 0
-			|| (m_marker_bytes_written >= max_packet_len_bytes_per_plt - 5)) {
+			|| (m_marker_bytes_written >= available_packet_len_bytes_per_plt - 5)) {
 
 		// write marker bytes (not including 2 bytes for marker itself)
 		if (m_marker_bytes_written && m_marker_len_cache)
