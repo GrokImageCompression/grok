@@ -730,16 +730,16 @@ static bool j2k_get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 static bool j2k_read_sot(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 /**
- * Writes the SOD marker (Start of data)
+ * Write a tile part
  *
- * @param       p_j2k               J2K codec.
- * @param       p_data_written      number of bytes written
- * @param       total_data_size     total data size
- * @param       stream            the stream to write data to.
+ * @param       p_j2k                    J2K codec.
+ * @param       tile_part_bytes_written  tile part bytes written
+ * @param       tile_bytes_available     bytes available
+ * @param       stream                   the stream to write data to.
 
  */
-static bool j2k_write_sod(grk_j2k *p_j2k,
-		uint64_t *p_data_written, uint64_t total_data_size,
+static bool j2k_write_tile_part(grk_j2k *p_j2k,
+		uint64_t *tile_part_bytes_written, uint64_t total_data_size,
 		BufferedStream *stream);
 
 /**

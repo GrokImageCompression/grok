@@ -2392,7 +2392,7 @@ static bool j2k_write_first_tile_part(grk_j2k *p_j2k, uint64_t *tile_bytes_writt
 	}
 
 	temp_bytes_written = 0;
-	if (!j2k_write_sod(p_j2k, &temp_bytes_written, tile_bytes_available,
+	if (!j2k_write_tile_part(p_j2k, &temp_bytes_written, tile_bytes_available,
 			stream)) {
 		return false;
 	}
@@ -2454,7 +2454,7 @@ static bool j2k_write_all_tile_parts(grk_j2k *p_j2k, uint64_t *tile_bytes_writte
 		part_tile_size += (uint32_t) temp_bytes_written;
 
 		temp_bytes_written = 0;
-		if (!j2k_write_sod(p_j2k, &temp_bytes_written, tile_bytes_available,
+		if (!j2k_write_tile_part(p_j2k, &temp_bytes_written, tile_bytes_available,
 				stream)) {
 			return false;
 		}
@@ -2506,7 +2506,7 @@ static bool j2k_write_all_tile_parts(grk_j2k *p_j2k, uint64_t *tile_bytes_writte
 			part_tile_size += (uint32_t) temp_bytes_written;
 
 			temp_bytes_written = 0;
-			if (!j2k_write_sod(p_j2k, &temp_bytes_written,
+			if (!j2k_write_tile_part(p_j2k, &temp_bytes_written,
 					tile_bytes_available, stream)) {
 				return false;
 			}
@@ -5148,8 +5148,8 @@ static bool j2k_read_sot(grk_j2k *p_j2k, uint8_t *p_header_data,
 	return true;
 }
 
-static bool j2k_write_sod(grk_j2k *p_j2k, uint64_t *p_data_written,
-		uint64_t total_data_size, BufferedStream *stream) {
+static bool j2k_write_tile_part(grk_j2k *p_j2k, uint64_t *tile_part_bytes_written,
+		uint64_t tile_bytes_available, BufferedStream *stream) {
 	grk_codestream_info *cstr_info = nullptr;
 	uint64_t remaining_data;
 
@@ -5157,14 +5157,10 @@ static bool j2k_write_sod(grk_j2k *p_j2k, uint64_t *p_data_written,
 	assert(stream != nullptr);
 	TileProcessor *p_tile_coder = p_j2k->m_tileProcessor;
 
-	/* SOD */
-	if (!stream->write_short(J2K_MS_SOD))
-		return false;
-
-	*p_data_written = 2;
-
-	/* make room for the EOF marker */
-	remaining_data = total_data_size - 4;
+	/* make room for SOD and EOC marker,
+	 * but don't write them yet
+	 */
+	remaining_data = tile_bytes_available - 2 - 2;
 
 	/* set packno to zero when writing the first tile part */
 	if (p_j2k->m_tileProcessor->m_current_tile_part_number == 0) {
@@ -5173,9 +5169,9 @@ static bool j2k_write_sod(grk_j2k *p_j2k, uint64_t *p_data_written,
 			cstr_info->packno = 0;
 		}
 	}
-	if (!p_tile_coder->compress_tile(
+	if (!p_tile_coder->compress_tile_part(
 			p_j2k->m_tileProcessor->m_current_tile_number, stream,
-			p_data_written, remaining_data, cstr_info)) {
+			tile_part_bytes_written, remaining_data, cstr_info)) {
 		GROK_ERROR("Cannot compress tile");
 		return false;
 	}

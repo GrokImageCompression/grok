@@ -374,16 +374,16 @@ struct TileProcessor {
 						uint32_t end_y);
 
 	/**
-	 * Compress a tile from a raw image into the given buffer.
+	 * Compress a tile from a raw image into stream.
 	 * @param	tile_no		Index of the tile to compress.
-	 * @param	stream			stream
-	 * @param	p_data_written	pointer to an int that is incremented by the number of bytes really written on p_dest
+	 * @param	stream		stream
+	 * @param	tile_bytes_written	number of bytes written to stream
 	 * @param	len			Maximum length of the destination buffer
 	 * @param	p_cstr_info		Code stream information structure
 	 * @return  true if the coding is successful.
 	 */
-	bool compress_tile(uint16_t tile_no, BufferedStream *stream,
-			uint64_t *p_data_written, uint64_t len,
+	bool compress_tile_part(uint16_t tile_no, BufferedStream *stream,
+			uint64_t *tile_bytes_written, uint64_t len,
 			 grk_codestream_info  *p_cstr_info);
 
 	/**
@@ -502,10 +502,11 @@ private:
 	 bool t1_encode();
 
 	 bool t2_encode(BufferedStream *stream,
-			uint64_t *p_data_written, uint64_t max_dest_size,
+			uint64_t *packet_bytes_written,
+			uint64_t max_dest_size,
 			 grk_codestream_info  *p_cstr_info);
 
-	 bool rate_allocate_encode(uint64_t max_dest_size,
+	 bool rate_allocate(uint64_t max_dest_size,
 			 grk_codestream_info  *p_cstr_info);
 
 	 bool layer_needs_rate_control(uint32_t layno);

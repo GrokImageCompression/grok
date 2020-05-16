@@ -898,8 +898,8 @@ bool TileProcessor::init_tile(uint16_t tile_no, grk_image *output_image,
 	return true;
 }
 
-bool TileProcessor::compress_tile(uint16_t tile_no, BufferedStream *stream,
-		uint64_t *p_data_written, uint64_t max_length,
+bool TileProcessor::compress_tile_part(uint16_t tile_no, BufferedStream *stream,
+		uint64_t *tile_bytes_written, uint64_t max_length,
 		grk_codestream_info *p_cstr_info) {
 	uint32_t state = grk_plugin_get_debug_state();
 
@@ -957,14 +957,30 @@ bool TileProcessor::compress_tile(uint16_t tile_no, BufferedStream *stream,
 			if (!t1_encode())
 				return false;
 		}
-		if (!rate_allocate_encode(max_length, p_cstr_info))
+		// 1. create PLT marker
+
+		// 2. rate control
+		if (!rate_allocate(max_length, p_cstr_info))
 			return false;
 		m_packetTracker.clear();
 	}
+
+	//3 write SOD
+	if (!stream->write_short(J2K_MS_SOD))
+		return false;
+
+	*tile_bytes_written = 2;
+
+	//4 write PLT
+	if (m_current_tile_part_number == 0) {
+
+	}
+
+
 	if (p_cstr_info)
 		p_cstr_info->index_write = 1;
 
-	return t2_encode(stream, p_data_written, max_length, p_cstr_info);
+	return t2_encode(stream, tile_bytes_written, max_length, p_cstr_info);
 }
 
 /** Returns whether a tile component should be fully decoded,
@@ -1455,7 +1471,7 @@ bool TileProcessor::t1_encode() {
 			needs_rate_control());
 }
 
-bool TileProcessor::t2_encode(BufferedStream *stream, uint64_t *p_data_written,
+bool TileProcessor::t2_encode(BufferedStream *stream, uint64_t *packet_bytes_written,
 		uint64_t max_dest_size, grk_codestream_info *p_cstr_info) {
 
 	auto l_t2 = new T2(this);
@@ -1512,7 +1528,7 @@ bool TileProcessor::t2_encode(BufferedStream *stream, uint64_t *p_data_written,
 #endif
 
 	if (!l_t2->encode_packets(m_tileno, m_tcp->numlayers, stream,
-			p_data_written, max_dest_size, p_cstr_info,
+			packet_bytes_written, max_dest_size, p_cstr_info,
 			m_current_poc_tile_part_number, tp_pos, cur_pino)) {
 		delete l_t2;
 		return false;
@@ -1544,7 +1560,7 @@ bool TileProcessor::t2_encode(BufferedStream *stream, uint64_t *p_data_written,
 	return true;
 }
 
-bool TileProcessor::rate_allocate_encode(uint64_t max_dest_size,
+bool TileProcessor::rate_allocate(uint64_t max_dest_size,
 		grk_codestream_info *p_cstr_info) {
 	auto l_cp = m_cp;
 	uint64_t all_packets_len = 0;

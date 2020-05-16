@@ -364,7 +364,7 @@ typedef enum _GRK_COLOR_SPACE {
 	GRK_CLRSPC_ICC = 9 				/**< ICC profile */
 } GRK_COLOR_SPACE;
 
-
+/* JPEG 2000 standard values for colour spaces */
 enum GRK_ENUM_COLOUR_SPACE{
 	GRK_ENUM_CLRSPC_UNKNOWN = 0,
 	GRK_ENUM_CLRSPC_UNSPECIFIED = 1,
