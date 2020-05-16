@@ -691,10 +691,10 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB) {
 }/* color_apply_icc_profile() */
 
 // transform LAB colour space to sRGB @ 16 bit precision
-void color_cielab_to_rgb(grk_image *image) {
+bool color_cielab_to_rgb(grk_image *image) {
 	// sanity checks
 	if (image->numcomps == 0 || !grk::all_components_sanity_check(image))
-		return;
+		return false;
 	size_t i;
 	for (i = 1U; i < image->numcomps; ++i) {
 		auto comp0 = image->comps;
@@ -707,7 +707,7 @@ void color_cielab_to_rgb(grk_image *image) {
 	}
 	if(i != image->numcomps){
 		spdlog::warn("All components must have same precision and sign");
-		return;
+		return false;
 	}
 
 	auto row = (uint32_t*) image->icc_profile_buf;
@@ -715,7 +715,7 @@ void color_cielab_to_rgb(grk_image *image) {
 	if (enumcs != 14) { /* CIELab */
 		spdlog::warn("{}:{}:\n\tenumCS {} not handled. Ignoring.", __FILE__,
 					__LINE__, enumcs);
-		return;
+		return false;
 	}
 
 	bool defaultType = true;
@@ -732,8 +732,9 @@ void color_cielab_to_rgb(grk_image *image) {
 	cmsUInt16Number RGB[3];
 	auto new_image = image_create(3, image->comps[0].w, image->comps[0].h,
 			image->comps[0].prec);
-	if (!new_image)
-		return;
+	if (!new_image) {
+		return false;
+	}
 	prec_L = (double) image->comps[0].prec;
 	prec_a = (double) image->comps[1].prec;
 	prec_b = (double) image->comps[2].prec;
@@ -798,7 +799,7 @@ void color_cielab_to_rgb(grk_image *image) {
 	cmsCloseProfile(out);
 	if (transform == nullptr) {
 		grk_image_destroy(new_image);
-		return;
+		return false;
 	}
 
 	L = src[0] = image->comps[0].data;
@@ -852,7 +853,7 @@ void color_cielab_to_rgb(grk_image *image) {
 	}
 	image->color_space = GRK_CLRSPC_SRGB;
 
-
+	return true;
 }/* color_cielab_to_rgb() */
 
 #endif /* GROK_HAVE_LIBLCMS */

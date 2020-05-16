@@ -57,7 +57,7 @@
 
 extern bool color_sycc_to_rgb(grk_image *img);
 #if defined(GROK_HAVE_LIBLCMS)
-extern void color_cielab_to_rgb(grk_image *image);
+extern bool color_cielab_to_rgb(grk_image *image);
 extern void color_apply_icc_profile(grk_image *image, bool forceRGB);
 #endif
 extern bool color_cmyk_to_rgb(grk_image *image);

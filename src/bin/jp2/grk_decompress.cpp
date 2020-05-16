@@ -1671,10 +1671,16 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 							"output file {}.\n"
 							"The output image will therefore be converted to sRGB before saving.",
 							infile, outfile);
-				color_cielab_to_rgb(image);
+				if (color_cielab_to_rgb(image)){
+					grk_buffer_delete(image->icc_profile_buf);
+					image->icc_profile_buf = nullptr;
+					image->icc_profile_len = 0;
+				} else {
+					spdlog::warn("Unable to convert L*a*b image to sRGB");
+				}
 #else
 			spdlog::warn(" Input file is stored in CIELab colour space,"
-					" but lcms library is not linked, so codec can't convert Lab to RGB");
+					" but lcms library is not linked, so codec can't convert L*a*b to sRGB");
 #endif
 			}
 		} else {
@@ -1697,14 +1703,11 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 							infile, outfile);
 				color_apply_icc_profile(image,
 						info->decoder_parameters->force_rgb);
+				grk_buffer_delete(image->icc_profile_buf);
+				image->icc_profile_buf = nullptr;
+				image->icc_profile_len = 0;
 #endif
 			}
-		}
-		if ((isCIE && !canStoreCIE) || info->decoder_parameters->force_rgb
-				|| (!isCIE && !canStoreICC)) {
-			grk_buffer_delete(image->icc_profile_buf);
-			image->icc_profile_buf = nullptr;
-			image->icc_profile_len = 0;
 		}
 	}
 

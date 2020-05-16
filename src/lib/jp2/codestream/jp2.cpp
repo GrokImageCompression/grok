@@ -555,7 +555,7 @@ static bool jp2_read_ihdr(grk_jp2 *jp2, uint8_t *p_image_header_data,
 		return true;
 	}
 
-	if (image_header_size != 14) {
+	if (image_header_size != GRK_ENUM_CLRSPC_CIE) {
 		GROK_ERROR("Bad image header box (bad size)");
 		return false;
 	}
@@ -1767,12 +1767,12 @@ static bool jp2_read_colr(grk_jp2 *jp2, uint8_t *p_colr_header_data,
 		grk_read<uint32_t>(p_colr_header_data, &jp2->enumcs, 4); /* EnumCS */
 		p_colr_header_data += 4;
 
-		if ((colr_header_size > 7) && (jp2->enumcs != 14)) { /* handled below for CIELab) */
+		if ((colr_header_size > 7) && (jp2->enumcs != GRK_ENUM_CLRSPC_CIE)) { /* handled below for CIELab) */
 			/* testcase Altona_Technical_v20_x4.pdf */
 			GROK_WARN("Bad COLR header box (bad size: %d)", colr_header_size);
 		}
 
-		if (jp2->enumcs == GRK_ENUM_CLRSPC_CIE) { /* CIELab */
+		if (jp2->enumcs == GRK_ENUM_CLRSPC_CIE) {
 			uint32_t *cielab;
 			bool nonDefaultLab = colr_header_size == 35;
 			// only two ints are needed for default CIELab space
@@ -2287,15 +2287,16 @@ bool jp2_init_compress(grk_jp2 *jp2, grk_cparameters *parameters,
 	}
 
 	switch (jp2->enumcs) {
-	case 12:
+	case GRK_ENUM_CLRSPC_CMYK:
 		color_channels = 4;
 		break;
-	case 14:
-	case 16:
-	case 18:
+	case GRK_ENUM_CLRSPC_CIE:
+	case GRK_ENUM_CLRSPC_SRGB:
+	case GRK_ENUM_CLRSPC_SYCC:
+	case GRK_ENUM_CLRSPC_EYCC:
 		color_channels = 3;
 		break;
-	case 17:
+	case GRK_ENUM_CLRSPC_GRAY:
 		color_channels = 1;
 		break;
 	default:

@@ -302,11 +302,11 @@ bool all_components_sanity_check(grk_image *image) {
 	auto comp0 = image->comps;
 
 	if (!comp0->data) {
-		spdlog::error("component 0 data is null.");
+		spdlog::warn("component 0 data is null.");
 		return false;
 	}
 	if (comp0->prec == 0 || comp0->prec > 16) {
-		spdlog::error("component 0 precision {} is not supported.", 0, comp0->prec);
+		spdlog::warn("component 0 precision {} is not supported.", 0, comp0->prec);
 		return false;
 	}
 
@@ -318,14 +318,12 @@ bool all_components_sanity_check(grk_image *image) {
 			return false;
 		}
 		if (comp0->prec != compi->prec){
-			spdlog::error(
-					"Color conversion: precision {} of component {}"
+			spdlog::warn("precision {} of component {}"
 					" differs from precision {} of component 0.",compi->prec, i, comp0->prec);
 			return false;
 		}
 		if (comp0->sgnd != compi->sgnd){
-			spdlog::error(
-					"Color conversion: signedness {} of component {}"
+			spdlog::warn("signedness {} of component {}"
 					" differs from signedness {} of component 0.",compi->sgnd, i, comp0->sgnd);
 			return false;
 		}
