@@ -179,11 +179,7 @@ static grk_image* pgxtoimage(const char *filename,
 							+ (uint32_t) (h - 1) * parameters->subsampling_dy
 							+ 1;
 
-	if (sign == '-') {
-		cmptparm.sgnd = 1;
-	} else {
-		cmptparm.sgnd = 0;
-	}
+	cmptparm.sgnd = sign == '-';
 	if (prec < 8) {
 		force8 = true;
 		ushift = (uint32_t)(8 - prec);
@@ -192,7 +188,7 @@ static grk_image* pgxtoimage(const char *filename,
 			adjustS = (1 << (prec - 1));
 		else
 			adjustS = 0;
-		cmptparm.sgnd = 0;
+		cmptparm.sgnd = false;
 		prec = 8;
 	} else{
 		ushift = dshift =  adjustS = 0;

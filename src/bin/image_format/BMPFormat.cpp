@@ -710,7 +710,7 @@ static grk_image* bmptoimage(const char *filename,
 	memset(&cmptparm[0], 0, sizeof(cmptparm));
 	for (i = 0; i < 4U; i++) {
 		cmptparm[i].prec = 8;
-		cmptparm[i].sgnd = 0;
+		cmptparm[i].sgnd = false;
 		cmptparm[i].dx = parameters->subsampling_dx;
 		cmptparm[i].dy = parameters->subsampling_dy;
 		cmptparm[i].w = Info_h.biWidth;

@@ -317,7 +317,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 	fprintf(out_stream, "%s dx=%d, dy=%d\n", tab, comp_header->dx,
 			comp_header->dy);
 	fprintf(out_stream, "%s prec=%d\n", tab, comp_header->prec);
-	fprintf(out_stream, "%s sgnd=%d\n", tab, comp_header->sgnd);
+	fprintf(out_stream, "%s sgnd=%d\n", tab, comp_header->sgnd ? 1 : 0);
 
 	if (dev_dump_flag)
 		fprintf(out_stream, "}\n");

@@ -308,7 +308,7 @@ static grk_image* tgatoimage(const char *filename,
 
 	for (i = 0; i < numcomps; i++) {
 		cmptparm[i].prec = 8;
-		cmptparm[i].sgnd = 0;
+		cmptparm[i].sgnd = false;
 		cmptparm[i].dx = subsampling_dx;
 		cmptparm[i].dy = subsampling_dy;
 		cmptparm[i].w = image_width;

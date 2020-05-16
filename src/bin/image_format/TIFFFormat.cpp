@@ -1769,7 +1769,7 @@ static grk_image* tiftoimage(const char *filename,
 				}
 
 		}
-		comp->sgnd = isSigned ? 1 : 0;
+		comp->sgnd = isSigned;
 	}
 
 	// 5. extract capture resolution
@@ -1862,7 +1862,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 	size_t numExtraChannels = 0;
 	planes[0] = image->comps[0].data;
 	uint32_t numcomps = image->numcomps;
-	uint32_t sgnd = image->comps[0].sgnd;
+	bool sgnd = image->comps[0].sgnd;
 	uint32_t width = image->comps[0].w;
 	uint32_t height = image->comps[0].h;
 	uint32_t bps =  image->comps[0].prec;

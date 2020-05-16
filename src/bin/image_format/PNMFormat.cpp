@@ -405,7 +405,7 @@ static grk_image* pnmtoimage(const char *filename,
 
 	for (uint32_t i = 0; i < numcomps; i++) {
 		cmptparm[i].prec = prec;
-		cmptparm[i].sgnd = 0;
+		cmptparm[i].sgnd = false;
 		cmptparm[i].dx = subsampling_dx;
 		cmptparm[i].dy = subsampling_dy;
 		cmptparm[i].w = w;

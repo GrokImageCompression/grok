@@ -906,8 +906,7 @@ typedef struct _grk_image_comp {
 	uint32_t y0;
 	/** precision */
 	uint32_t prec;
-	/** signed (1) / unsigned (0) */
-	uint32_t sgnd;
+	bool sgnd;
 	/** number of decoded resolution */
 	uint32_t resno_decoded;
 	/** image component data */
@@ -970,8 +969,7 @@ typedef struct _grk_image_comptparm {
 	uint32_t y0;
 	/** precision */
 	uint32_t prec;
-	/** signed (1) / unsigned (0) */
-	uint32_t sgnd;
+	bool sgnd;
 } grk_image_cmptparm;
 
 /*
