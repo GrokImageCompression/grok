@@ -52,8 +52,6 @@
 
 #include "grok_includes.h"
 
-namespace grk {
-
 int main()
 {
     uint32_t i, j, w, h;
@@ -216,6 +214,4 @@ int main()
     delete sa;
 
     return 0;
-}
-
 }
