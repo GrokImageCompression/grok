@@ -1462,13 +1462,11 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 	if (!info->l_codec) {
 		switch (decod_format) {
 		case GRK_J2K_FMT: { /* JPEG 2000 code stream */
-			/* Get a decoder handle */
 			info->l_codec = grk_create_decompress(GRK_CODEC_J2K,
 					info->l_stream);
 			break;
 		}
 		case GRK_JP2_FMT: { /* JPEG 2000 compressed image data */
-			/* Get a decoder handle */
 			info->l_codec = grk_create_decompress(GRK_CODEC_JP2,
 					info->l_stream);
 			break;
@@ -1513,8 +1511,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 				failed = 1;
 				goto cleanup;
 			}
-			if (fp
-					&& fwrite(info->header_info.xml_data, 1,
+			if (fp && fwrite(info->header_info.xml_data, 1,
 							info->header_info.xml_data_len, fp)
 							!= info->header_info.xml_data_len) {
 				spdlog::error(
@@ -1530,7 +1527,6 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 				goto cleanup;
 			}
 		}
-
 		if (info->init_decoders_func)
 			return info->init_decoders_func(&info->header_info, info->image);
 	}
@@ -1580,15 +1576,13 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 		spdlog::info("Tile {} was decoded.", parameters->tile_index);
 	}
 
-	cleanup: if (info->l_stream)
-		grk_stream_destroy(info->l_stream);
+	cleanup:
+	grk_stream_destroy(info->l_stream);
 	info->l_stream = nullptr;
-	if (info->l_codec)
-		grk_destroy_codec(info->l_codec);
+	grk_destroy_codec(info->l_codec);
 	info->l_codec = nullptr;
 	if (failed) {
-		if (info->image)
-			grk_image_destroy(info->image);
+		grk_image_destroy(info->image);
 		info->image = nullptr;
 	}
 
@@ -1603,10 +1597,9 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		return -1;
 	int failed = 1;
 	bool canStoreICC = false;
-	bool convert_ycc_to_rgb = true;
 	bool isTiff = info->decoder_parameters->cod_format == GRK_TIF_FMT;
 	grk_decompress_parameters *parameters = info->decoder_parameters;
-	grk_image *image = info->image;
+	auto image = info->image;
 	bool canStoreCIE = isTiff && image->color_space == GRK_CLRSPC_DEFAULT_CIE;
 	bool isCIE = image->color_space == GRK_CLRSPC_DEFAULT_CIE
 			|| image->color_space == GRK_CLRSPC_CUSTOM_CIE;
@@ -1630,41 +1623,23 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 	if (image->color_space == GRK_CLRSPC_SYCC ||
 			image->color_space == GRK_CLRSPC_EYCC){
 		if (image->numcomps != 3){
-			spdlog::error("grk_decompress: YCC: number of components {} not equal to 3 ", image->numcomps);
+			spdlog::error("grk_decompress: YCC: number of components {} "
+					"not equal to 3 ", image->numcomps);
 			goto cleanup;
 		}
-		convert_ycc_to_rgb =  !isTiff || info->decoder_parameters->force_rgb;
 	}
 	if (image->color_space == GRK_CLRSPC_SYCC) {
-		if (convert_ycc_to_rgb) {
-			if (!color_sycc_to_rgb(image)) {
+		if (!isTiff || info->decoder_parameters->force_rgb) {
+			if (!color_sycc_to_rgb(image))
 				spdlog::warn("grk_decompress: sYCC to RGB colour conversion failed");
-			}
 		}
 	} else if (image->color_space == GRK_CLRSPC_EYCC) {
-		if (convert_ycc_to_rgb) {
-			if (!color_esycc_to_rgb(image)) {
-				spdlog::warn("grk_decompress: eYCC to RGB colour conversion failed");
-			}
-		}
+		if (!color_esycc_to_rgb(image))
+			spdlog::warn("grk_decompress: eYCC to RGB colour conversion failed");
 	} else if (image->color_space == GRK_CLRSPC_CMYK) {
 		if (!isTiff || info->decoder_parameters->force_rgb) {
-			if (!color_cmyk_to_rgb(image)) {
+			if (!color_cmyk_to_rgb(image))
 				spdlog::warn("grk_decompress: CMYK to RGB colour conversion failed");
-			}
-		}
-	}
-	//let's try to guess
-	else if (image->color_space == GRK_CLRSPC_UNKNOWN ){
-		if (image->numcomps >= 3 && isSubsampled(image)){
-			auto Y = image->comps;
-			auto U = image->comps+1;
-			auto V = image->comps+2;
-			if (Y->dx == 1 && Y->dy == 1 &&
-				U->dx == V->dx &&
-				U->dy == V->dy){
-				image->color_space = GRK_CLRSPC_SYCC;
-			}
 		}
 	}
 	if (image->xmp_buf) {
@@ -1676,7 +1651,6 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 					infile, outfile);
 		}
 	}
-
 	if (image->iptc_buf) {
 		bool canStoreIPTC_IIM = (info->decoder_parameters->cod_format
 				== GRK_TIF_FMT);
@@ -1693,12 +1667,14 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 				if (!info->decoder_parameters->force_rgb)
 					spdlog::warn(
 							" Input file {} is in CIE colour space,\n"
-									"but the codec is unable to store this information in the output file {}.\n"
-									"The output image will therefore be converted to sRGB before saving.",
+							"but the codec is unable to store this information in the "
+							"output file {}.\n"
+							"The output image will therefore be converted to sRGB before saving.",
 							infile, outfile);
 				color_cielab_to_rgb(image);
 #else
-			spdlog::warn(" Input file is stored in CIELab colour space, but lcms library is not linked, so codec can't convert Lab to RGB");
+			spdlog::warn(" Input file is stored in CIELab colour space,"
+					" but lcms library is not linked, so codec can't convert Lab to RGB");
 #endif
 			}
 		} else {
@@ -1732,22 +1708,15 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		}
 	}
 
-	/* Force output precision */
-	/* ---------------------- */
 	if (parameters->precision != nullptr) {
 		uint32_t compno;
 		for (compno = 0; compno < image->numcomps; ++compno) {
 			uint32_t precno = compno;
-			uint32_t prec;
-
-			if (precno >= parameters->nb_precision) {
+			if (precno >= parameters->nb_precision)
 				precno = parameters->nb_precision - 1U;
-			}
-
-			prec = parameters->precision[precno].prec;
-			if (prec == 0) {
+			uint32_t prec = parameters->precision[precno].prec;
+			if (prec == 0)
 				prec = image->comps[compno].prec;
-			}
 
 			switch (parameters->precision[precno].mode) {
 			case GRK_PREC_MODE_CLIP:
@@ -1761,9 +1730,6 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			}
 		}
 	}
-
-	/* Upsample components */
-	/* ------------------- */
 	if (parameters->upsample) {
 		image = upsample_image_components(image);
 		if (image == nullptr) {
@@ -1773,8 +1739,6 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		}
 	}
 
-	/* Force RGB output */
-	/* ---------------- */
 	if (parameters->force_rgb) {
 		switch (image->color_space) {
 		case GRK_CLRSPC_SRGB:
@@ -1796,10 +1760,8 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 	}
 
 	if (store_file_to_disk) {
-		/* create output image */
-		/* ------------------- */
 		switch (cod_format) {
-		case GRK_PXM_FMT: /* PNM PGM PPM */
+		case GRK_PXM_FMT:
 		{
 			PNMFormat pnm(parameters->split_pnm);
 			if (!pnm.encode(image, outfile, 0)) {
@@ -1808,8 +1770,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			}
 		}
 			break;
-
-		case GRK_PGX_FMT: /* PGX */
+		case GRK_PGX_FMT:
 		{
 			PGXFormat pgx;
 			if (!pgx.encode(image, outfile, 0)) {
@@ -1818,8 +1779,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			}
 		}
 			break;
-
-		case GRK_BMP_FMT: /* BMP */
+		case GRK_BMP_FMT:
 		{
 			BMPFormat bmp;
 			if (!bmp.encode(image, outfile, 0, parameters->verbose)) {
@@ -1829,7 +1789,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		}
 			break;
 #ifdef GROK_HAVE_LIBTIFF
-		case GRK_TIF_FMT: /* TIFF */
+		case GRK_TIF_FMT:
 		{
 			TIFFFormat tif;
 			if (!tif.encode(image, outfile, parameters->compression)) {
@@ -1838,8 +1798,8 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			}
 		}
 			break;
-#endif /* GROK_HAVE_LIBTIFF */
-		case GRK_RAW_FMT: /* RAW */
+#endif
+		case GRK_RAW_FMT:
 		{
 			RAWFormat raw(true);
 			if (raw.encode(image, outfile, 0)) {
@@ -1850,8 +1810,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			}
 		}
 			break;
-
-		case GRK_RAWL_FMT: /* RAWL */
+		case GRK_RAWL_FMT:
 		{
 			RAWFormat raw(false);
 			if (raw.encode(image, outfile, 0)) {
@@ -1862,7 +1821,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			}
 		}
 			break;
-		case GRK_TGA_FMT: /* TGA */
+		case GRK_TGA_FMT:
 		{
 			TGAFormat tga;
 			if (!tga.encode(image, outfile, 0)) {
@@ -1874,7 +1833,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		}
 			break;
 #ifdef GROK_HAVE_LIBJPEG 
-		case GRK_JPG_FMT: /* JPEG */
+		case GRK_JPG_FMT:
 		{
 			JPEGFormat jpeg;
 			if (!jpeg.encode(image, outfile, parameters->compressionLevel)) {
@@ -1885,11 +1844,10 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			}
 		}
 			break;
-
 #endif
 
 #ifdef GROK_HAVE_LIBPNG
-		case GRK_PNG_FMT: /* PNG */
+		case GRK_PNG_FMT:
 		{
 			PNGFormat png;
 			if (!png.encode(image, outfile, parameters->compressionLevel)) {
@@ -1900,10 +1858,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			}
 		}
 			break;
-#endif /* GROK_HAVE_LIBPNG */
-			/* Can happen if output file is TIFF or PNG
-			 * and GROK_HAVE_LIBTIF or GROK_HAVE_LIBPNG is undefined
-			 */
+#endif
 		default:
 			spdlog::error("Outfile {} not generated", outfile);
 			goto cleanup;
@@ -1911,11 +1866,10 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		}
 	}
 	failed = 0;
-	cleanup: if (info->l_stream)
-		grk_stream_destroy(info->l_stream);
+	cleanup:
+	grk_stream_destroy(info->l_stream);
 	info->l_stream = nullptr;
-	if (info->l_codec)
-		grk_destroy_codec(info->l_codec);
+	grk_destroy_codec(info->l_codec);
 	info->l_codec = nullptr;
 	if (image && !info->plugin_owns_image) {
 		grk_image_destroy(image);
@@ -1925,6 +1879,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		if (outfile)
 			(void) remove(actual_path(outfile)); /* ignore return value */
 	}
+
 	return failed;
 }
 
