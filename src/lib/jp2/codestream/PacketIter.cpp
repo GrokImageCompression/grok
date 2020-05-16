@@ -1231,7 +1231,7 @@ PacketIter* pi_initialise_encode(const grk_image *p_image,
 	uint32_t step_l = max_res * step_r;
 
 	/* set values for first packet iterator*/
-	pi->tp_on = (uint8_t) p_cp->m_coding_param.m_enc.m_tp_on;
+	pi->tp_on = p_cp->m_coding_param.m_enc.m_tp_on;
 	auto current_pi = pi;
 	current_pi->include = (int16_t*) grk_calloc(
 			(size_t) tcp->numlayers * step_l, sizeof(int16_t));

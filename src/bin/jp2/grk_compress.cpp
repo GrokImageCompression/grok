@@ -352,6 +352,8 @@ static void encode_help_display(void) {
 	fprintf(stdout, "    Offset of the origin of the image.\n");
 	fprintf(stdout, "[-T|-TileOffset] <tile offset X,tile offset Y>\n");
 	fprintf(stdout, "    Offset of the origin of the tiles.\n");
+	fprintf(stdout, "[-L|-PLT\n");
+	fprintf(stdout, "    Use PLT markers.\n");
 	fprintf(stdout, "[-I|-Irreversible\n");
 	fprintf(stdout, "    Use the irreversible DWT 9-7.\n");
 	fprintf(stdout, "[-Y|-mct] <0|1|2>\n");
@@ -683,6 +685,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 
 		SwitchArg irreversibleArg("I", "Irreversible", "Irreversible", cmd);
 
+		SwitchArg pltArg("L", "PLT", "PLT marker", cmd);
+
 		ValueArg<string> customMCTArg("m", "CustomMCT", "MCT input file", false,
 				"", "string", cmd);
 
@@ -699,8 +703,13 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		img_fol->set_out_format = false;
 		parameters->raw_cp.width = 0;
 
+		if (pltArg.isSet())
+			parameters->writePlt = true;
+
 		if (verboseArg.isSet())
-			parameters->verbose = verboseArg.getValue();
+			parameters->verbose = true;
+		else
+			spdlog::set_level(spdlog::level::level_enum::err);
 
 		if (repetitionsArg.isSet())
 			parameters->repeats = repetitionsArg.getValue();
@@ -833,7 +842,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				lastRate = parameters->tcp_rates[i];
 			}
 
-			parameters->cp_disto_alloc = 1;
+			parameters->cp_disto_alloc = true;
 			// set compression ratio of 1 equal to 0, to signal lossless layer
 			for (uint32_t i = 0; i < parameters->tcp_numlayers; ++i) {
 				if (parameters->tcp_rates[i] == 1)
@@ -854,7 +863,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 					break;
 				s++;
 			}
-			parameters->cp_fixed_quality = 1;
+			parameters->cp_fixed_quality = true;
 
 			// sanity check on quality values
 			double lastDistortion = -1;
@@ -1630,7 +1639,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 	}
 
 	if ((parameters->cp_disto_alloc || parameters->cp_fixed_quality)
-			&& (!(parameters->cp_disto_alloc ^ parameters->cp_fixed_quality))) {
+			&& (!(parameters->cp_disto_alloc != parameters->cp_fixed_quality))) {
 		spdlog::error("options -r and -q cannot be used together");
 		return 1;
 	}
@@ -2246,9 +2255,6 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 	isBatch = initParams->img_fol.imgdirpath &&  initParams->out_fol.imgdirpath;
 	state = grk_plugin_get_debug_state();
 
-
-	if (!initParams->parameters.verbose)
-		spdlog::set_level(spdlog::level::level_enum::err);
 
 #ifdef GROK_HAVE_LIBTIFF
 	tiffSetErrorAndWarningHandlers(initParams->parameters.verbose);

@@ -101,7 +101,8 @@ struct T2 {
 	 @param tppos            The position of the tile part flag in the progression order
 	 */
 	bool encode_packets_simulate(uint16_t tileno, uint32_t maxlayers,
-			uint64_t *p_data_written, uint64_t max_len, uint32_t tppos);
+			uint64_t *p_data_written, uint64_t max_len, uint32_t tppos,
+			PacketLengthMarkers *markers);
 
 	/**
 	 Decode the packets of a tile from a source buffer
@@ -140,7 +141,8 @@ private:
 	 @return
 	 */
 	bool encode_packet_simulate(grk_tcp *tcp, PacketIter *pi,
-			uint64_t *p_data_written, uint64_t len);
+			uint64_t *p_data_written, uint64_t len,
+			PacketLengthMarkers *markers);
 
 	/**
 	 Decode a packet of a tile from a source buffer

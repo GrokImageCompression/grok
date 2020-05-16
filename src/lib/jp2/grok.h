@@ -474,9 +474,9 @@ typedef struct _grk_cparameters {
 	/** YTsiz */
 	uint32_t t_height;
 	/** allocation by rate/distortion */
-	uint32_t cp_disto_alloc;
+	bool cp_disto_alloc;
 	/** allocation by fixed_quality */
-	uint32_t cp_fixed_quality;
+	bool cp_fixed_quality;
 	/** comment for coding */
 	char *cp_comment[GRK_NUM_COMMENTS_SUPPORTED];
 	uint16_t cp_comment_len[GRK_NUM_COMMENTS_SUPPORTED];
@@ -581,6 +581,7 @@ typedef struct _grk_cparameters {
 	uint32_t duration; //seconds
 	uint32_t kernelBuildOptions;
 	uint32_t repeats;
+	bool writePlt;
 	bool verbose;
 } grk_cparameters;
 

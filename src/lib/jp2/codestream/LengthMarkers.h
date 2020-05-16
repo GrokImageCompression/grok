@@ -74,7 +74,7 @@ struct PacketLengthMarkers {
 	// encode packet lengths
 	void encodeInit(void);
 	void encodeNext(uint32_t len);
-	void write();
+	size_t write();
 
 private:
 	PL_MAP *m_markers;
@@ -84,6 +84,7 @@ private:
 	size_t m_read_index;
 
 	void write_marker_header(void);
+	void write_marker_length();
 	void write_increment(size_t bytes);
 	size_t m_marker_bytes_written;
 	size_t m_total_bytes_written;

@@ -76,32 +76,43 @@ void PacketLengthMarkers::write_increment(size_t bytes) {
 	m_marker_bytes_written += bytes;
 	m_total_bytes_written += bytes;
 }
+void PacketLengthMarkers::write_marker_length(){
+	// write marker length
+	if (m_marker_len_cache){
+		uint64_t current_pos = m_stream->tell();
+		m_stream->seek(m_marker_len_cache);
+		//do not include 2 bytes for marker itself
+		m_stream->write_short((uint16_t) (m_marker_bytes_written - 2));
+		m_stream->seek(current_pos);
+		m_marker_len_cache = 0;
+		m_marker_bytes_written = 0;
+	}
+	assert(m_marker_bytes_written == 0);
+}
 // check if we need to start a new marker
 void PacketLengthMarkers::write_marker_header() {
 	// 5 bytes worst-case to store a packet length
 	if (m_total_bytes_written == 0
 			|| (m_marker_bytes_written >= available_packet_len_bytes_per_plt - 5)) {
 
-		// write marker bytes (not including 2 bytes for marker itself)
-		if (m_marker_bytes_written && m_marker_len_cache){
-			m_stream->seek(m_marker_len_cache);
-			m_stream->write_short((uint16_t) (m_marker_bytes_written - 2));
-		}
-		m_marker_bytes_written = 0;
+		// complete current marker
+		write_marker_length();
 
-		// write marker
+		// begin new marker
 		m_stream->write_short(J2K_MS_PLT);
 		write_increment(2);
 
 		// cache location of marker length and skip over
 		m_marker_len_cache = m_stream->tell();
+		m_stream->skip(2);
 		write_increment(2);
 	}
 }
-void PacketLengthMarkers::write() {
+size_t PacketLengthMarkers::write() {
 	write_marker_header();
 	for (auto map_iter = m_markers->begin(); map_iter != m_markers->end();
 			++map_iter) {
+
 		// write index
 		m_stream->write_byte(map_iter->first);
 		write_increment(1);
@@ -120,20 +131,26 @@ void PacketLengthMarkers::write() {
 
 			// write period
 			uint8_t temp[5];
-			size_t counter = numbytes - 1;
-			temp[counter] = (val & 0x7F);
+			int32_t counter = numbytes - 1;
+			temp[counter--] = (val & 0x7F);
 			val = (uint32_t) (val >> 7);
 
 			//write commas (backwards from LSB to MSB)
 			while (val) {
-				temp[counter--] = (uint8_t) ((val & 0x7F) | 0x80);
+				uint8_t b = (uint8_t) ((val & 0x7F) | 0x80);
+				temp[counter--] = b;
 				val = (uint32_t) (val >> 7);
 			}
-			assert(counter == 0);
-			m_stream->write_bytes(temp, numbytes);
+			assert(counter == -1);
+			size_t written = m_stream->write_bytes(temp, numbytes);
+			assert(written == numbytes);
+			(void)written;
 			write_increment(numbytes);
 		}
 	}
+	// write final marker length
+	write_marker_length();
+	return m_total_bytes_written;
 }
 
 void PacketLengthMarkers::decodeInitIndex(uint8_t index) {

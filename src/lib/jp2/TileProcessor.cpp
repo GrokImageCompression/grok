@@ -221,8 +221,8 @@ bool TileProcessor::set_decompress_area(grk_j2k *p_j2k, grk_image *output_image,
 bool TileProcessor::layer_needs_rate_control(uint32_t layno) {
 
 	auto enc_params = &m_cp->m_coding_param.m_enc;
-	return ((enc_params->m_disto_alloc == 1) && (m_tcp->rates[layno] > 0.0))
-			|| ((enc_params->m_fixed_quality == 1)
+	return (enc_params->m_disto_alloc && (m_tcp->rates[layno] > 0.0))
+			|| (enc_params->m_fixed_quality
 					&& (m_tcp->distoratio[layno] > 0.0f));
 }
 
@@ -439,7 +439,8 @@ bool TileProcessor::pcrd_bisect_feasible(uint64_t *all_packets_len,
 					lowerBound = thresh;
 				} else {
 					if (!t2->encode_packets_simulate(m_tileno,
-							layno + 1, all_packets_len, maxlen, tp_pos)) {
+							layno + 1, all_packets_len, maxlen,
+							tp_pos, nullptr)) {
 						lowerBound = thresh;
 						continue;
 					}
@@ -544,8 +545,19 @@ bool TileProcessor::pcrd_bisect_simple(uint64_t *all_packets_len, uint64_t len) 
 					* (double) tilec->numpix;
 
 	} /* compno */
-	if (single_lossless)
+	if (single_lossless){
+		if (plt_markers) {
+			auto t2 = new T2(this);
+			uint64_t all_packets_len = 0;
+			t2->encode_packets_simulate(m_tileno,
+										0 + 1, &all_packets_len, UINT_MAX,
+										tp_pos, plt_markers);
+			delete t2;
+		}
 		return true;
+
+	}
+
 
 	double upperBound = max_slope;
 	for (layno = 0; layno < m_tcp->numlayers; layno++) {
@@ -594,7 +606,8 @@ bool TileProcessor::pcrd_bisect_simple(uint64_t *all_packets_len, uint64_t len) 
 					lowerBound = thresh;
 				} else {
 					if (!t2->encode_packets_simulate(m_tileno, layno + 1,
-							all_packets_len, maxlen, tp_pos)) {
+							all_packets_len, maxlen,
+							tp_pos, nullptr)) {
 						lowerBound = thresh;
 						continue;
 					}
@@ -899,7 +912,7 @@ bool TileProcessor::init_tile(uint16_t tile_no, grk_image *output_image,
 }
 
 bool TileProcessor::compress_tile_part(uint16_t tile_no, BufferedStream *stream,
-		uint64_t *tile_bytes_written, uint64_t max_length,
+		uint64_t *tile_bytes_written, uint64_t bytes_available,
 		grk_codestream_info *p_cstr_info) {
 	uint32_t state = grk_plugin_get_debug_state();
 
@@ -943,7 +956,6 @@ bool TileProcessor::compress_tile_part(uint16_t tile_no, BufferedStream *stream,
 		bool debugMCT = (state & GRK_PLUGIN_STATE_MCT_ONLY) ? true : false;
 
 		if (!current_plugin_tile || debugEncode) {
-
 			if (!debugEncode) {
 				if (!dc_level_shift_encode())
 					return false;
@@ -957,30 +969,36 @@ bool TileProcessor::compress_tile_part(uint16_t tile_no, BufferedStream *stream,
 			if (!t1_encode())
 				return false;
 		}
-		// 1. create PLT marker
+		// 1. create PLT marker if required
+		delete plt_markers;
+		if (m_cp->m_coding_param.m_enc.writePlt)
+			plt_markers = new PacketLengthMarkers(stream);
 
 		// 2. rate control
-		if (!rate_allocate(max_length, p_cstr_info))
+		if (!rate_allocate(bytes_available, p_cstr_info))
 			return false;
 		m_packetTracker.clear();
+	}
+
+	//4 write PLT
+	if (m_current_tile_part_number == 0 && plt_markers){
+		size_t written = plt_markers->write();
+		*tile_bytes_written += written;
+		bytes_available -= written;
 	}
 
 	//3 write SOD
 	if (!stream->write_short(J2K_MS_SOD))
 		return false;
 
-	*tile_bytes_written = 2;
-
-	//4 write PLT
-	if (m_current_tile_part_number == 0) {
-
-	}
+	*tile_bytes_written += 2;
+	bytes_available -= 2;
 
 
 	if (p_cstr_info)
 		p_cstr_info->index_write = 1;
 
-	return t2_encode(stream, tile_bytes_written, max_length, p_cstr_info);
+	return t2_encode(stream, tile_bytes_written, bytes_available, p_cstr_info);
 }
 
 /** Returns whether a tile component should be fully decoded,
@@ -1471,8 +1489,8 @@ bool TileProcessor::t1_encode() {
 			needs_rate_control());
 }
 
-bool TileProcessor::t2_encode(BufferedStream *stream, uint64_t *packet_bytes_written,
-		uint64_t max_dest_size, grk_codestream_info *p_cstr_info) {
+bool TileProcessor::t2_encode(BufferedStream *stream, uint64_t *all_packet_bytes_written,
+		uint64_t bytes_available, grk_codestream_info *p_cstr_info) {
 
 	auto l_t2 = new T2(this);
 #ifdef DEBUG_LOSSLESS_T2
@@ -1528,7 +1546,7 @@ bool TileProcessor::t2_encode(BufferedStream *stream, uint64_t *packet_bytes_wri
 #endif
 
 	if (!l_t2->encode_packets(m_tileno, m_tcp->numlayers, stream,
-			packet_bytes_written, max_dest_size, p_cstr_info,
+			all_packet_bytes_written, bytes_available, p_cstr_info,
 			m_current_poc_tile_part_number, tp_pos, cur_pino)) {
 		delete l_t2;
 		return false;
@@ -1562,16 +1580,14 @@ bool TileProcessor::t2_encode(BufferedStream *stream, uint64_t *packet_bytes_wri
 
 bool TileProcessor::rate_allocate(uint64_t max_dest_size,
 		grk_codestream_info *p_cstr_info) {
-	auto l_cp = m_cp;
 	uint64_t all_packets_len = 0;
-
 	if (p_cstr_info)
 		p_cstr_info->index_write = 0;
 
-	if (l_cp->m_coding_param.m_enc.m_disto_alloc
-			|| l_cp->m_coding_param.m_enc.m_fixed_quality) {
+	if (m_cp->m_coding_param.m_enc.m_disto_alloc
+			|| m_cp->m_coding_param.m_enc.m_fixed_quality) {
 		// rate control by rate/distortion or fixed quality
-		switch (l_cp->m_coding_param.m_enc.rateControlAlgorithm) {
+		switch (m_cp->m_coding_param.m_enc.rateControlAlgorithm) {
 		case 0:
 			if (!pcrd_bisect_simple(&all_packets_len, max_dest_size))
 				return false;

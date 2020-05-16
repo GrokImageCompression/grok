@@ -340,11 +340,13 @@ struct grk_encoding_param {
 	/** Flag determining tile part generation*/
 	uint8_t m_tp_flag;
 	/** allocation by rate/distortion */
-	uint32_t m_disto_alloc :1;
+	bool m_disto_alloc;
 	/** allocation by fixed_quality */
-	uint32_t m_fixed_quality :1;
+	bool m_fixed_quality;
 	/** Enabling Tile part generation*/
-	uint32_t m_tp_on :1;
+	bool m_tp_on;
+	/* write plt marker */
+	bool writePlt;
 	/* rate control algorithm */
 	uint32_t rateControlAlgorithm;
 };
@@ -417,11 +419,10 @@ struct grk_coding_parameters {
 		grk_encoding_param m_enc;
 	} m_coding_param;
 
-	/******** FLAGS *********/
-	/** if ppm == 1 --> there was a PPM marker*/
-	uint32_t ppm :1;
-	/** tells if the parameter is a coding or decoding one */
-	uint32_t m_is_decoder :1;
+	/** if ppm is true --> there was a PPM marker*/
+	bool ppm;
+	/** specifies if the parameter is a coding or decoding one */
+	bool m_is_decoder;
 
 	TileLengthMarkers *tlm_markers;
 	PacketLengthMarkers *plm_markers;

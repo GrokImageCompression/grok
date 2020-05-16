@@ -533,8 +533,9 @@ void GRK_CALLCONV grk_set_default_compress_params(
 		parameters->cod_format = GRK_UNK_FMT;
 		parameters->tcp_rates[0] = 0;
 		parameters->tcp_numlayers = 0;
-		parameters->cp_disto_alloc = 0;
-		parameters->cp_fixed_quality = 0;
+		parameters->cp_disto_alloc = false;
+		parameters->cp_fixed_quality = false;
+		parameters->writePlt = false;
 		if (!parameters->numThreads)
 			parameters->numThreads = ThreadPool::hardware_concurrency();
 		parameters->deviceId = 0;

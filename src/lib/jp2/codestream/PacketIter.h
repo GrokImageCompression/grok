@@ -91,7 +91,7 @@ struct grk_pi_comp {
  */
 struct PacketIter {
 	/** Enabling Tile part generation*/
-	uint8_t tp_on;
+	bool  tp_on;
 	/** precise if the packet has been already used (useful for progression order change) */
 	int16_t *include;
 	/** layer step used to localize the packet in the include vector */

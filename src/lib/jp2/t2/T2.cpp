@@ -131,7 +131,8 @@ bool T2::encode_packets(uint16_t tile_no, uint32_t max_layers,
 }
 
 bool T2::encode_packets_simulate(uint16_t tile_no, uint32_t max_layers,
-		uint64_t *all_packets_len, uint64_t max_len, uint32_t tp_pos) {
+		uint64_t *all_packets_len, uint64_t max_len, uint32_t tp_pos,
+		PacketLengthMarkers *markers) {
 
 	assert(all_packets_len);
 	auto cp = tileProcessor->m_cp;
@@ -172,7 +173,7 @@ bool T2::encode_packets_simulate(uint16_t tile_no, uint32_t max_layers,
 					uint64_t bytesInPacket = 0;
 
 					if (!encode_packet_simulate(tcp, current_pi, &bytesInPacket,
-							max_len)) {
+							max_len, markers)) {
 						pi_destroy(pi, nb_pocs);
 						return false;
 					}
@@ -1344,7 +1345,8 @@ bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp, PacketIter *pi,
 }
 
 bool T2::encode_packet_simulate(grk_tcp *tcp, PacketIter *pi,
-		uint64_t *packet_bytes_written, uint64_t max_bytes_available) {
+		uint64_t *packet_bytes_written, uint64_t max_bytes_available,
+		PacketLengthMarkers *markers) {
 	uint32_t compno = pi->compno;
 	uint32_t resno = pi->resno;
 	uint32_t precno = pi->precno;
@@ -1533,6 +1535,8 @@ bool T2::encode_packet_simulate(grk_tcp *tcp, PacketIter *pi,
 			max_bytes_available -= layer->len;
 		}
 	}
+	if (markers)
+		markers->encodeNext((uint32_t)*packet_bytes_written);
 
 	return true;
 }
