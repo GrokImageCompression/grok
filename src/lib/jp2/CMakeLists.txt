@@ -52,6 +52,7 @@ include_directories(
 set(GROK_EXECUTABLES_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/test_sparse_array.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/bench_dwt.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_generate_luts.cpp
 )
 
 # Defines the source code for the library
