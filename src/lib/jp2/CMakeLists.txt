@@ -47,10 +47,15 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/mct
   ${CMAKE_CURRENT_SOURCE_DIR}/t2
 )
-# Defines the source code for the library
-set(GROK_SRCS
+
+# Defines the source code for executables
+set(GROK_EXECUTABLES_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/test_sparse_array.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/bench_dwt.cpp
+)
+
+# Defines the source code for the library
+set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/BufferedStream.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/BufferedStream.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/IBufferedStream.h
@@ -196,17 +201,17 @@ if(WIN32)
   else()
     add_definitions(-DGRK_STATIC)
   endif()
-  add_library(${GROK_LIBRARY_NAME} ${GROK_SRCS})
+  add_library(${GROK_LIBRARY_NAME} ${GROK_LIBRARY_SRCS})
   set(INSTALL_LIBS ${GROK_LIBRARY_NAME})
 else()
   if(BUILD_SHARED_LIBS AND BUILD_STATIC_LIBS)
       # Builds both static and dynamic libs, and install static version
-	  add_library(${GROK_LIBRARY_NAME} SHARED ${GROK_SRCS})
-	  add_library(${GROK_LIBRARY_NAME}_static STATIC ${GROK_SRCS})
+	  add_library(${GROK_LIBRARY_NAME} SHARED ${GROK_LIBRARY_SRCS})
+	  add_library(${GROK_LIBRARY_NAME}_static STATIC ${GROK_LIBRARY_SRCS})
 	  set_target_properties(${GROK_LIBRARY_NAME}_static PROPERTIES OUTPUT_NAME ${GROK_LIBRARY_NAME})
 	  set(INSTALL_LIBS ${GROK_LIBRARY_NAME} ${GROK_LIBRARY_NAME}_static)
   else()
-	  add_library(${GROK_LIBRARY_NAME} ${GROK_SRCS})
+	  add_library(${GROK_LIBRARY_NAME} ${GROK_LIBRARY_SRCS})
 	  set(INSTALL_LIBS ${GROK_LIBRARY_NAME})
   endif()
 endif()
@@ -257,7 +262,7 @@ endif()
 # warning regex to catch them.
 if(GROK_CPPCHECK)
   find_package(CPPCHECK REQUIRED)
-  foreach(f ${GROK_SRCS})
+  foreach(f ${GROK_EXECUTABLES_SRCS} ${GROK_LIBRARY_SRCS})
     # cppcheck complains about too many configuration, pretend to be WIN32:
     add_custom_command(TARGET ${GROK_LIBRARY_NAME}
       COMMAND ${CPPCHECK_EXECUTABLE} -DWIN32 ${f})
