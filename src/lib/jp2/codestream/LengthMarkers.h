@@ -61,6 +61,7 @@ typedef std::map<uint8_t, PL_INFO_VEC*> PL_MAP;
 
 struct PacketLengthMarkers {
 	PacketLengthMarkers(void);
+	PacketLengthMarkers(BufferedStream *strm);
 	~PacketLengthMarkers(void);
 
 	// decode packet lengths
@@ -71,7 +72,7 @@ struct PacketLengthMarkers {
 	uint32_t readNext(void);
 
 	// encode packet lengths
-	void encodeInit(uint8_t *tile_header_cache, size_t available_bytes);
+	void encodeInit(void);
 	void encodeNext(uint32_t len);
 	void write();
 
@@ -86,9 +87,8 @@ private:
 	void write_increment(size_t bytes);
 	size_t m_marker_bytes_written;
 	size_t m_total_bytes_written;
-	uint8_t *m_marker_len_cache;
-	uint8_t *m_write_ptr;
-	size_t m_available_bytes;
+	uint64_t m_marker_len_cache;
+	BufferedStream *m_stream;
 };
 
 }
