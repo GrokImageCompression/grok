@@ -750,13 +750,12 @@ static bool jp2_read_uuid(grk_jp2 *jp2, uint8_t *p_header_data,
 	auto uuid = jp2->uuids + jp2->numUuids;
 	memcpy(uuid->uuid, p_header_data, 16);
 	p_header_data += 16;
-	if (uuid->alloc(header_size - 16)) {
-		memcpy(uuid->buffer, p_header_data, uuid->len);
-		jp2->numUuids++;
-		return true;
-	}
+	uuid->alloc(header_size - 16);
+	memcpy(uuid->buffer, p_header_data, uuid->len);
+	jp2->numUuids++;
 
-	return false;
+	return true;
+
 }
 
 double calc_res(uint16_t num, uint16_t den, uint8_t exponent) {
