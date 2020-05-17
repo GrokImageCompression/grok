@@ -695,7 +695,7 @@ bool color_cielab_to_rgb(grk_image *image) {
 	// sanity checks
 	if (image->numcomps == 0 || !grk::all_components_sanity_check(image))
 		return false;
-	size_t i;
+	uint64_t i;
 	for (i = 1U; i < image->numcomps; ++i) {
 		auto comp0 = image->comps;
 		auto compi = image->comps + i;
@@ -711,8 +711,8 @@ bool color_cielab_to_rgb(grk_image *image) {
 	}
 
 	auto row = (uint32_t*) image->icc_profile_buf;
-	uint32_t enumcs = row[0];
-	if (enumcs != 14) { /* CIELab */
+	GRK_ENUM_COLOUR_SPACE enumcs = (GRK_ENUM_COLOUR_SPACE)row[0];
+	if (enumcs != GRK_ENUM_CLRSPC_CIE) { /* CIELab */
 		spdlog::warn("{}:{}:\n\tenumCS {} not handled. Ignoring.", __FILE__,
 					__LINE__, enumcs);
 		return false;
@@ -728,7 +728,7 @@ bool color_cielab_to_rgb(grk_image *image) {
 	// range, offset and precision for L,a and b coordinates
 	double r_L, o_L, r_a, o_a, r_b, o_b, prec_L, prec_a, prec_b;
 	double minL, maxL, mina, maxa, minb, maxb;
-	size_t max;
+	uint64_t area = 0;;
 	cmsUInt16Number RGB[3];
 	auto new_image = image_create(3, image->comps[0].w, image->comps[0].h,
 			image->comps[0].prec);
@@ -806,7 +806,7 @@ bool color_cielab_to_rgb(grk_image *image) {
 	a = src[1] = image->comps[1].data;
 	b = src[2] = image->comps[2].data;
 
-	max = image->comps[0].w * image->comps[0].h;
+	area = (uint64_t)image->comps[0].w * image->comps[0].h;
 
 	red = dst[0] = new_image->comps[0].data;
 	green = dst[1] = new_image->comps[1].data;
@@ -828,7 +828,7 @@ bool color_cielab_to_rgb(grk_image *image) {
 	minb = -(r_b * o_b) / (pow(2, prec_b) - 1);
 	maxb = minb + r_b;
 
-	for (i = 0; i < max; ++i) {
+	for (uint64_t i = 0; i < area; ++i) {
 		cmsCIELab Lab;
 		Lab.L = minL + (double) (*L) * (maxL - minL) / (pow(2, prec_L) - 1);
 		++L;
