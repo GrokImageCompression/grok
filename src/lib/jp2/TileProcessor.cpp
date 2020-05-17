@@ -391,6 +391,14 @@ bool TileProcessor::pcrd_bisect_feasible(uint64_t *all_packets_len) {
 
 	if (single_lossless) {
 		makelayer_final(0);
+		if (plt_markers) {
+			auto t2 = new T2(this);
+			uint64_t all_packets_len = 0;
+			t2->encode_packets_simulate(m_tileno,
+										0 + 1, &all_packets_len, UINT_MAX,
+										tp_pos, plt_markers);
+			delete t2;
+		}
 		return true;
 	}
 
@@ -964,9 +972,12 @@ bool TileProcessor::compress_tile_part(uint16_t tile_no, BufferedStream *stream,
 		}
 		// 1. create PLT marker if required
 		delete plt_markers;
-		if (m_cp->m_coding_param.m_enc.writePlt)
-			plt_markers = new PacketLengthMarkers(stream);
-
+		if (m_cp->m_coding_param.m_enc.writePlt){
+			if (!needs_rate_control())
+				plt_markers = new PacketLengthMarkers(stream);
+			else
+				GROK_WARN("PLT marker generation disabled due to rate control.");
+		}
 		// 2. rate control
 		if (!rate_allocate(p_cstr_info))
 			return false;
