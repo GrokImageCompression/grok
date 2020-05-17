@@ -1629,7 +1629,7 @@ bool j2k_init_compress(grk_j2k *p_j2k, grk_cparameters *parameters,
 	if (parameters->tcp_numlayers == 0) {
 		parameters->tcp_rates[0] = 0;
 		parameters->tcp_numlayers = 1;
-		parameters->cp_disto_alloc = 1;
+		parameters->cp_disto_alloc = true;
 	}
 
 	/* see if max_codestream_size does limit input rate */

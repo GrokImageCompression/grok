@@ -81,8 +81,8 @@ int main(int argc, char *argv[]) {
 	grk_cparameters param;
 	grk_codec *codec = nullptr;
 	grk_image *image = nullptr;
-	grk_image_cmptparm params[NUM_COMPS_MAX];
 	grk_stream *stream = nullptr;
+	grk_image_cmptparm params[NUM_COMPS_MAX];
 	uint32_t nb_tiles = 0;
 	uint64_t data_size = 0;
 	size_t len = 0;
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
 	}
 	nb_tiles = (image_width / tile_width) * (image_height / tile_height);
 	data_size = (uint64_t) tile_width * tile_height * num_comps
-			* (comp_prec / 8);
+			* ((comp_prec + 7) / 8);
 	if (!data_size) {
 		rc = 1;
 		goto cleanup;
@@ -154,16 +154,15 @@ int main(int argc, char *argv[]) {
 
 	fprintf(stdout,
 			"Encoding random values -> keep in mind that this is very hard to compress\n");
-	for (i = 0; i < data_size; ++i) {
-		data[i] = (uint8_t) i; /*rand();*/
-	}
+	for (i = 0; i < data_size; ++i)
+		data[i] = (uint8_t) i;
 
 	grk_set_default_compress_params(&param);
 	/** you may here add custom encoding parameters */
 	/* rate specifications */
 	/** number of quality layers in the stream */
 	param.tcp_numlayers = 1;
-	param.cp_fixed_quality = 1;
+	param.cp_fixed_quality = true;
 	param.tcp_distoratio[0] = 20;
 	/* is using others way of calculation */
 	/* param.cp_disto_alloc = 1 or param.cp_fixed_alloc = 1 */
@@ -236,7 +235,7 @@ int main(int argc, char *argv[]) {
 		current_param_ptr->h = image_height;
 		current_param_ptr->w = image_width;
 
-		current_param_ptr->sgnd = 0;
+		current_param_ptr->sgnd = false;
 		current_param_ptr->prec = comp_prec;
 
 		current_param_ptr->x0 = 0;
@@ -309,17 +308,12 @@ int main(int argc, char *argv[]) {
 		goto cleanup;
 	}
 
-	cleanup: if (stream)
-		grk_stream_destroy(stream);
-	if (codec)
-		grk_destroy_codec(codec);
-	if (image)
-		grk_image_destroy(image);
+	cleanup:
+	grk_stream_destroy(stream);
+	grk_destroy_codec(codec);
+	grk_image_destroy(image);
 
 	free(data);
-
-	/* Print profiling*/
-	/*PROFPRINT();*/
 	grk_deinitialize();
 
 	return rc;

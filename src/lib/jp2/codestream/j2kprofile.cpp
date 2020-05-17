@@ -1037,7 +1037,7 @@ void J2KProfile::set_cinema_parameters(grk_cparameters *parameters,
 	}
 
 	/* Limit bit-rate */
-	parameters->cp_disto_alloc = 1;
+	parameters->cp_disto_alloc = true;
 	if (parameters->max_cs_size == 0) {
 		/* No rate has been introduced for code stream, so 24 fps is assumed */
 		parameters->max_cs_size = GRK_CINEMA_24_CS;
