@@ -74,9 +74,8 @@ bool TileBuffer::alloc_component_data_decode() {
 		uint64_t area = (uint64_t)reduced_region_dim.area();
 		if (area) {
 			data = (int32_t*) grk_aligned_malloc(area * sizeof(int32_t));
-			if (!data) {
+			if (!data)
 				return false;
-			}
 			memset(data, 0, area * sizeof(int32_t));
 		}
 		data_size = area * sizeof(int32_t);

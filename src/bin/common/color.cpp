@@ -846,7 +846,7 @@ bool color_cielab_to_rgb(grk_image *image) {
 	cmsDeleteTransform(transform);
 	for (size_t i = 0; i < 3; ++i){
 		auto comp = image->comps + i;
-		grk_image_single_component_data_alloc(comp);
+		grk_image_single_component_data_free(comp);
 		comp->data = dst[i];
 		comp->owns_data = true;
 		comp->prec = 16;
