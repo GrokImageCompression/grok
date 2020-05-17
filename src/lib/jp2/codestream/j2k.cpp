@@ -2149,15 +2149,57 @@ static bool j2k_pre_write_tile(grk_j2k *p_j2k, uint16_t tile_index) {
 }
 
 static bool j2k_post_write_tile(grk_j2k *p_j2k, BufferedStream *stream) {
-	uint64_t temp_bytes_written = 0;
-	if (!j2k_write_first_tile_part(p_j2k, &temp_bytes_written, 	stream)) {
+	auto tileProcessor = p_j2k->m_tileProcessor;
+	assert(tileProcessor->m_current_tile_part_number == 0);
+
+	//1. write first tile part
+	tileProcessor->cur_pino = 0;
+	tileProcessor->m_current_poc_tile_part_number = 0;
+	if (!j2k_write_tile_part(p_j2k, true, stream))
+		return false;
+
+	//2. write the other tile parts
+	uint32_t tot_num_tp;
+	uint32_t pino;
+
+	auto cp = &(p_j2k->m_cp);
+	auto tcp = cp->tcps + tileProcessor->m_current_tile_number;
+
+	// write tile parts for first progression order
+	tot_num_tp = j2k_get_num_tp(cp, 0,tileProcessor->m_current_tile_number);
+	if (tot_num_tp > 255) {
+		GROK_ERROR("Tile %d contains more than 255 tile parts,"
+				" which is not permitted by the JPEG 2000 standard.",
+				tileProcessor->m_current_tile_number);
 		return false;
 	}
-	temp_bytes_written = 0;
-	if (!j2k_write_all_tile_parts(p_j2k, &temp_bytes_written, stream)) {
-		return false;
+	for (uint8_t tilepartno = 1; tilepartno < tot_num_tp; ++tilepartno) {
+		tileProcessor->m_current_poc_tile_part_number = tilepartno;
+		if (!j2k_write_tile_part(p_j2k,false, stream))
+			return false;
 	}
-	++p_j2k->m_tileProcessor->m_current_tile_number;
+
+	// write tile parts for remaining progression orders
+	for (pino = 1; pino <= tcp->numpocs; ++pino) {
+		tileProcessor->cur_pino = pino;
+
+		tot_num_tp = j2k_get_num_tp(cp, pino,
+				tileProcessor->m_current_tile_number);
+		if (tot_num_tp > 255) {
+			GROK_ERROR(	"Tile %d contains more than 255 tile parts, "
+					"which is not permitted by the JPEG 2000 standard.",
+					tileProcessor->m_current_tile_number);
+			return false;
+		}
+
+		for (uint8_t tilepartno = 0; tilepartno < tot_num_tp; ++tilepartno) {
+			tileProcessor->m_current_poc_tile_part_number = tilepartno;
+			if (!j2k_write_tile_part(p_j2k,false,stream))
+				return false;
+		}
+	}
+	++tileProcessor->m_current_tile_number;
+
 	return true;
 }
 
@@ -2303,194 +2345,23 @@ static bool j2k_init_header_writing(grk_j2k *p_j2k) {
 	return true;
 }
 
-static bool j2k_write_first_tile_part(grk_j2k *p_j2k, uint64_t *tile_bytes_written,
-		BufferedStream *stream) {
-	auto tcd = p_j2k->m_tileProcessor;
-	auto cp = &(p_j2k->m_cp);
-
-	tcd->cur_pino = 0;
-
-	/*Get number of tile parts*/
-	p_j2k->m_tileProcessor->m_current_poc_tile_part_number = 0;
-
-	uint64_t temp_bytes_written = 0;
-	uint64_t psot_location = 0;
-	if (!j2k_write_sot(p_j2k, stream, &psot_location,
-			&temp_bytes_written)) {
-		return false;
-	}
-	*tile_bytes_written = temp_bytes_written;
-
-	if (!GRK_IS_CINEMA(cp->rsiz)) {
-		if (cp->tcps[p_j2k->m_tileProcessor->m_current_tile_number].numpocs) {
-			temp_bytes_written = 0;
-			if (!j2k_write_poc(p_j2k, stream,
-					&temp_bytes_written))
-				return false;
-			*tile_bytes_written += temp_bytes_written;
-		}
-	}
-
-	temp_bytes_written = 0;
-	if (!j2k_write_tile_part(p_j2k, &temp_bytes_written, stream)) {
-		return false;
-	}
-	*tile_bytes_written += temp_bytes_written;
-
-	/* Writing Psot in SOT marker */
-	/* PSOT */
-	auto currentLocation = stream->tell();
-	stream->seek(psot_location);
-	if (!stream->write_int((uint32_t) *tile_bytes_written)) {
-		return false;
-	}
-	stream->seek(currentLocation);
-	if (GRK_IS_CINEMA(
-			cp->rsiz) || GRK_IS_BROADCAST(cp->rsiz) | GRK_IS_IMF(cp->rsiz)) {
-		j2k_update_tlm(p_j2k, (uint32_t) *tile_bytes_written);
-	}
-
-	return true;
-}
-
-static bool j2k_write_all_tile_parts(grk_j2k *p_j2k, uint64_t *tile_bytes_written,
-		 BufferedStream *stream) {
-	uint8_t tilepartno = 0;
-	uint64_t temp_bytes_written;
-	uint32_t part_tile_size;
-	uint32_t tot_num_tp;
-	uint32_t pino;
-
-	auto tcd = p_j2k->m_tileProcessor;
-	auto cp = &(p_j2k->m_cp);
-	auto tcp = cp->tcps + p_j2k->m_tileProcessor->m_current_tile_number;
-
-	/*Get number of tile parts*/
-	tot_num_tp = j2k_get_num_tp(cp, 0,
-			p_j2k->m_tileProcessor->m_current_tile_number);
-	if (tot_num_tp > 255) {
-		GROK_ERROR(
-				"Tile %d contains more than 255 tile parts, which is not permitted by the JPEG 2000 standard.",
-				p_j2k->m_tileProcessor->m_current_tile_number);
-		return false;
-	}
-
-	/* start writing remaining tile parts */
-	++p_j2k->m_tileProcessor->m_current_tile_part_number;
-	for (tilepartno = 1; tilepartno < tot_num_tp; ++tilepartno) {
-		p_j2k->m_tileProcessor->m_current_poc_tile_part_number = tilepartno;
-		temp_bytes_written = 0;
-		part_tile_size = 0;
-
-		uint64_t psot_location = 0;
-		if (!j2k_write_sot(p_j2k, stream, &psot_location,
-				&temp_bytes_written)) {
-			return false;
-		}
-		*tile_bytes_written += temp_bytes_written;
-		part_tile_size += (uint32_t) temp_bytes_written;
-
-		temp_bytes_written = 0;
-		if (!j2k_write_tile_part(p_j2k, &temp_bytes_written,
-				stream)) {
-			return false;
-		}
-		*tile_bytes_written += temp_bytes_written;
-		part_tile_size += (uint32_t) temp_bytes_written;
-
-		/* Writing Psot in SOT marker */
-		/* PSOT */
-		auto currentLocation = stream->tell();
-		stream->seek(psot_location);
-		if (!stream->write_int(part_tile_size)) {
-			return false;
-		}
-		stream->seek(currentLocation);
-		if (GRK_IS_CINEMA(
-				cp->rsiz) || GRK_IS_BROADCAST(cp->rsiz) || GRK_IS_IMF(cp->rsiz)) {
-			j2k_update_tlm(p_j2k, part_tile_size);
-		}
-
-		++p_j2k->m_tileProcessor->m_current_tile_part_number;
-	}
-
-	for (pino = 1; pino <= tcp->numpocs; ++pino) {
-		tcd->cur_pino = pino;
-
-		/*Get number of tile parts*/
-		tot_num_tp = j2k_get_num_tp(cp, pino,
-				p_j2k->m_tileProcessor->m_current_tile_number);
-		if (tot_num_tp > 255) {
-			GROK_ERROR(
-					"Tile %d contains more than 255 tile parts, which is not permitted by the JPEG 2000 standard.",
-					p_j2k->m_tileProcessor->m_current_tile_number);
-			return false;
-		}
-
-		for (tilepartno = 0; tilepartno < tot_num_tp; ++tilepartno) {
-			p_j2k->m_tileProcessor->m_current_poc_tile_part_number = tilepartno;
-			temp_bytes_written = 0;
-			part_tile_size = 0;
-			uint64_t psot_location = 0;
-			if (!j2k_write_sot(p_j2k, stream, &psot_location,
-					&temp_bytes_written)) {
-				return false;
-			}
-
-			*tile_bytes_written += temp_bytes_written;
-			part_tile_size += (uint32_t) temp_bytes_written;
-
-			temp_bytes_written = 0;
-			if (!j2k_write_tile_part(p_j2k, &temp_bytes_written,
-					stream)) {
-				return false;
-			}
-
-			*tile_bytes_written += temp_bytes_written;
-			part_tile_size += (uint32_t) temp_bytes_written;
-
-			/* Writing Psot in SOT marker */
-			/* PSOT */
-			auto currentLocation = stream->tell();
-			stream->seek(psot_location);
-			if (!stream->write_int(part_tile_size)) {
-				return false;
-			}
-			stream->seek(currentLocation);
-
-			if (GRK_IS_CINEMA(
-					cp->rsiz) || GRK_IS_BROADCAST(cp->rsiz) || GRK_IS_IMF(cp->rsiz))
-				j2k_update_tlm(p_j2k, part_tile_size);
-
-			++p_j2k->m_tileProcessor->m_current_tile_part_number;
-		}
-	}
-	return true;
-}
-
-static bool j2k_write_updated_tlm(grk_j2k *p_j2k, BufferedStream *stream) {
-	uint32_t tlm_size;
-	uint64_t tlm_position, current_position;
-
+static bool j2k_write_updated_tlm(grk_j2k *p_j2k,
+									BufferedStream *stream) {
 	assert(p_j2k != nullptr);
 	assert(stream != nullptr);
 
-	tlm_size = tlm_len_per_tile_part *
+	uint32_t tlm_size = tlm_len_per_tile_part *
 				p_j2k->m_specific_param.m_encoder.m_total_tile_parts;
-	tlm_position = 6 + p_j2k->m_tileProcessor->m_tlm_start;
-	current_position = stream->tell();
+	uint64_t tlm_position = 6 + p_j2k->m_tileProcessor->m_tlm_start;
+	uint64_t current_position = stream->tell();
 
-	if (!stream->seek(tlm_position)) {
+	if (!stream->seek(tlm_position))
 		return false;
-	}
 	if (stream->write_bytes(p_j2k->m_tileProcessor->m_tlm_sot_offsets_buffer,
-			tlm_size) != tlm_size) {
+			tlm_size) != tlm_size)
 		return false;
-	}
-	if (!stream->seek(current_position)) {
-		return false;
-	}
-	return true;
+
+	return stream->seek(current_position);
 }
 
 bool j2k_init_mct_encoding(grk_tcp *p_tcp, grk_image *p_image) {
@@ -2504,9 +2375,8 @@ bool j2k_init_mct_encoding(grk_tcp *p_tcp, grk_image *p_image) {
 
 	assert(p_tcp != nullptr);
 
-	if (p_tcp->mct != 2) {
+	if (p_tcp->mct != 2)
 		return true;
-	}
 
 	if (p_tcp->m_mct_decoding_matrix) {
 		if (p_tcp->m_nb_mct_records == p_tcp->m_nb_max_mct_records) {
@@ -2590,17 +2460,14 @@ bool j2k_init_mct_encoding(grk_tcp *p_tcp, grk_image *p_image) {
 	mct_size = nb_elem * MCT_ELEMENT_SIZE[mct_offset_data->m_element_type];
 	mct_offset_data->m_data = (uint8_t*) grk_malloc(mct_size);
 
-	if (!mct_offset_data->m_data) {
+	if (!mct_offset_data->m_data)
 		return false;
-	}
-
 	data = (float*) grk_malloc(nb_elem * sizeof(float));
 	if (!data) {
 		grok_free(mct_offset_data->m_data);
 		mct_offset_data->m_data = nullptr;
 		return false;
 	}
-
 	tccp = p_tcp->tccps;
 	current_data = data;
 
@@ -2613,9 +2480,7 @@ bool j2k_init_mct_encoding(grk_tcp *p_tcp, grk_image *p_image) {
 			mct_offset_data->m_data, nb_elem);
 
 	grok_free(data);
-
 	mct_offset_data->m_data_size = mct_size;
-
 	++p_tcp->m_nb_mct_records;
 
 	if (p_tcp->m_nb_mcc_records == p_tcp->m_nb_max_mcc_records) {
@@ -2640,7 +2505,6 @@ bool j2k_init_mct_encoding(grk_tcp *p_tcp, grk_image *p_image) {
 						* sizeof(grk_simple_mcc_decorrelation_data));
 
 	}
-
 	mcc_data = p_tcp->m_mcc_records + p_tcp->m_nb_mcc_records;
 	mcc_data->m_decorrelation_array = mct_deco_data;
 	mcc_data->m_is_irreversible = 1;
@@ -2658,15 +2522,14 @@ static bool j2k_end_encoding(grk_j2k *p_j2k, BufferedStream *stream) {
 	assert(p_j2k != nullptr);
 	delete p_j2k->m_tileProcessor;
 	p_j2k->m_tileProcessor = nullptr;
-
 	return true;
 }
 
 static bool j2k_init_info(grk_j2k *p_j2k, BufferedStream *stream) {
 	(void) stream;
 	assert(p_j2k != nullptr);
-
 	assert(stream != nullptr);
+
 	return j2k_calculate_tp(&p_j2k->m_cp,
 			&p_j2k->m_specific_param.m_encoder.m_total_tile_parts,
 			p_j2k->m_private_image);
@@ -2778,9 +2641,8 @@ static bool j2k_update_rates(grk_j2k *p_j2k, BufferedStream *stream) {
 			if (*rates > 0.0) {
 				*rates -= sot_adjust;
 
-				if (*rates < 30.0f) {
+				if (*rates < 30.0f)
 					*rates = 30.0f;
-				}
 			}
 			++rates;
 			last_res = tcp->numlayers - 1;
@@ -2790,18 +2652,16 @@ static bool j2k_update_rates(grk_j2k *p_j2k, BufferedStream *stream) {
 				if (*rates > 0.0) {
 					*rates -= sot_adjust;
 
-					if (*rates < *(rates - 1) + 10.0) {
+					if (*rates < *(rates - 1) + 10.0)
 						*rates = (*(rates - 1)) + 20.0;
-					}
 				}
 				++rates;
 			}
 
 			if (*rates > 0.0) {
 				*rates -= (sot_adjust + 2.0);
-				if (*rates < *(rates - 1) + 10.0) {
+				if (*rates < *(rates - 1) + 10.0)
 					*rates = (*(rates - 1)) + 20.0;
-				}
 			}
 			++tcp;
 		}
@@ -5018,26 +4878,61 @@ static bool j2k_read_sot(grk_j2k *p_j2k, uint8_t *p_header_data,
 	return true;
 }
 
-static bool j2k_write_tile_part(grk_j2k *p_j2k, uint64_t *tile_part_bytes_written,
-		BufferedStream *stream) {
+static bool j2k_write_tile_part(grk_j2k *p_j2k, bool writePOC,
+								BufferedStream *stream) {
 	grk_codestream_info *cstr_info = nullptr;
 	assert(p_j2k != nullptr);
 	assert(stream != nullptr);
-	TileProcessor *p_tile_coder = p_j2k->m_tileProcessor;
+	auto tileProcessor = p_j2k->m_tileProcessor;
+	uint16_t currentTileNumber = tileProcessor->m_current_tile_number;
+	auto cp = &p_j2k->m_cp;
 
-	/* set packno to zero when writing the first tile part */
-	if (p_j2k->m_tileProcessor->m_current_tile_part_number == 0) {
-		p_tile_coder->tile->packno = 0;
-		if (cstr_info) {
-			cstr_info->packno = 0;
+	//1. write SOT
+	uint64_t temp_bytes_written = 0;
+	uint64_t psot_location = 0;
+	if (!j2k_write_sot(p_j2k, stream, &psot_location,
+			&temp_bytes_written))
+		return false;
+	uint64_t tile_part_bytes_written = temp_bytes_written;
+
+	//2. write POC (only in first tile part)
+	if (writePOC) {
+		if (!GRK_IS_CINEMA(cp->rsiz)) {
+			if (cp->tcps[currentTileNumber].numpocs) {
+				temp_bytes_written = 0;
+				if (!j2k_write_poc(p_j2k, stream,&temp_bytes_written))
+					return false;
+				tile_part_bytes_written += temp_bytes_written;
+			}
 		}
 	}
-	if (!p_tile_coder->compress_tile_part(
-			p_j2k->m_tileProcessor->m_current_tile_number, stream,
-			tile_part_bytes_written, cstr_info)) {
+
+	// 3. compress tile part
+	/* set packno to zero when writing the first tile part */
+	if (currentTileNumber == 0) {
+		tileProcessor->tile->packno = 0;
+		if (cstr_info)
+			cstr_info->packno = 0;
+	}
+	if (!tileProcessor->compress_tile_part(currentTileNumber, stream,
+			&tile_part_bytes_written, cstr_info)) {
 		GROK_ERROR("Cannot compress tile");
 		return false;
 	}
+
+	/* 4. write Psot in SOT marker */
+	auto currentLocation = stream->tell();
+	stream->seek(psot_location);
+	if (!stream->write_int((uint32_t) tile_part_bytes_written))
+		return false;
+	stream->seek(currentLocation);
+
+	// 5. update TLM
+	if (GRK_IS_CINEMA(cp->rsiz) ||
+			GRK_IS_BROADCAST(cp->rsiz) || GRK_IS_IMF(cp->rsiz))
+		j2k_update_tlm(p_j2k, (uint32_t) tile_part_bytes_written);
+
+	++tileProcessor->m_current_tile_part_number;
 
 	return true;
 }

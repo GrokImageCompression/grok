@@ -294,21 +294,23 @@ static bool j2k_write_SQcd_SQcc(grk_j2k *p_j2k, uint16_t tile_no,
 static void j2k_update_tlm(grk_j2k *p_j2k, uint32_t tile_part_size);
 
 /**
- * Reads a SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
+ * Reads a SQcd or SQcc element, i.e. the quantization values of a band
+ * in the QCD or QCC.
  *
  * @param		fromQCC			true if reading QCC, otherwise false (reading QCD)
  * @param       p_j2k           J2K codec.
  * @param       compno          the component number to output.
  * @param       p_header_data   the data buffer.
- * @param       header_size   pointer to the size of the data buffer, it is changed by the function.
-
+ * @param       header_size   pointer to the size of the data buffer,
+ *              it is changed by the function.
  *
  */
 static bool j2k_read_SQcd_SQcc(bool fromQCC, grk_j2k *p_j2k, uint32_t compno,
 		uint8_t *p_header_data, uint16_t *header_size);
 
 /**
- * Copies the tile component parameters of all the component from the first tile component.
+ * Copies the tile component parameters of all the component
+ * from the first tile component.
  *
  * @param               p_j2k           the J2k codec.
  */
@@ -319,21 +321,10 @@ static void j2k_copy_tile_component_parameters(grk_j2k *p_j2k);
  */
 static bool j2k_decompress_tiles(grk_j2k *p_j2k, BufferedStream *stream);
 
+static bool j2k_init_header_writing(grk_j2k *p_j2k);
 static bool j2k_pre_write_tile(grk_j2k *p_j2k, uint16_t tile_index);
-
 static bool j2k_post_write_tile(grk_j2k *p_j2k, BufferedStream *stream);
 
-/**
- * Set up the procedures to do on writing header.
- * Developers wanting to extend the library can add their own writing procedures.
- */
-static bool j2k_init_header_writing(grk_j2k *p_j2k);
-
-static bool j2k_write_first_tile_part(grk_j2k *p_j2k, uint64_t *p_data_written,
-		 BufferedStream *stream);
-
-static bool j2k_write_all_tile_parts(grk_j2k *p_j2k, uint64_t *p_data_written,
-		 BufferedStream *stream);
 
 /**
  * Gets the offset of the header.
@@ -343,13 +334,6 @@ static bool j2k_write_all_tile_parts(grk_j2k *p_j2k, uint64_t *p_data_written,
 
  */
 static bool j2k_get_end_header(grk_j2k *p_j2k, BufferedStream *stream);
-
-
-/*
- * -----------------------------------------------------------------------
- * -----------------------------------------------------------------------
- * -----------------------------------------------------------------------
- */
 
 /**
  * Writes the SOC marker (Start Of Codestream)
@@ -704,12 +688,13 @@ static bool j2k_read_sot(grk_j2k *p_j2k, uint8_t *p_header_data,
  * Write a tile part
  *
  * @param       p_j2k                    J2K codec.
- * @param       tile_part_bytes_written  tile part bytes written
+ * @param       writePOC                 write POC
  * @param       stream                   the stream to write data to.
 
  */
 static bool j2k_write_tile_part(grk_j2k *p_j2k,
-		uint64_t *tile_part_bytes_written, BufferedStream *stream);
+		bool writePOC,
+		BufferedStream *stream);
 
 /**
  * Reads a SOD marker (Start Of Data)
