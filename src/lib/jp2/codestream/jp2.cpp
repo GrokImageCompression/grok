@@ -1144,19 +1144,10 @@ static uint8_t* jp2_write_colr(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
 static void jp2_free_pclr(grk_jp2_color *color) {
 	if (color) {
 		if (color->jp2_pclr) {
-			if (color->jp2_pclr->channel_sign) {
-				grok_free(color->jp2_pclr->channel_sign);
-			}
-			if (color->jp2_pclr->channel_size) {
-				grok_free(color->jp2_pclr->channel_size);
-			}
-			if (color->jp2_pclr->entries) {
-				grok_free(color->jp2_pclr->entries);
-			}
-
-			if (color->jp2_pclr->cmap) {
-				grok_free(color->jp2_pclr->cmap);
-			}
+			grok_free(color->jp2_pclr->channel_sign);
+			grok_free(color->jp2_pclr->channel_size);
+			grok_free(color->jp2_pclr->entries);
+			grok_free(color->jp2_pclr->cmap);
 			grok_free(color->jp2_pclr);
 			color->jp2_pclr = nullptr;
 		}
@@ -1287,8 +1278,8 @@ static bool jp2_check_color(grk_image *image, grk_jp2_color *color) {
 				}
 			}
 		}
-		cleanup: if (pcol_usage)
-			grok_free(pcol_usage);
+		cleanup:
+		grok_free(pcol_usage);
 		if (!is_sane) {
 			return false;
 		}
@@ -1613,9 +1604,7 @@ static void jp2_apply_cdef(grk_image *image, grk_jp2_color *color) {
 		}
 	}
 
-	if (color->jp2_cdef->info)
-		grok_free(color->jp2_cdef->info);
-
+	grok_free(color->jp2_cdef->info);
 	grok_free(color->jp2_cdef);
 	color->jp2_cdef = nullptr;
 
@@ -2014,9 +2003,7 @@ static bool jp2_write_jp2h(grk_jp2 *jp2, BufferedStream *stream) {
 
 	/* cleanup */
 	for (i = 0; i < nb_writers; ++i) {
-		if (current_writer->m_data != nullptr) {
-			grok_free(current_writer->m_data);
-		}
+		grok_free(current_writer->m_data);
 		++current_writer;
 	}
 
@@ -3092,52 +3079,21 @@ bool jp2_decompress_tile(grk_jp2 *p_jp2, uint16_t tile_index, uint8_t *p_data,
 
 void jp2_destroy(grk_jp2 *jp2) {
 	if (jp2) {
-		/* destroy the J2K codec */
 		j2k_destroy(jp2->j2k);
-		jp2->j2k = nullptr;
-
-		if (jp2->comps) {
-			grok_free(jp2->comps);
-			jp2->comps = nullptr;
-		}
-
-		if (jp2->cl) {
-			grok_free(jp2->cl);
-			jp2->cl = nullptr;
-		}
-
-		if (jp2->color.icc_profile_buf) {
-			grk_buffer_delete(jp2->color.icc_profile_buf);
-			jp2->color.icc_profile_buf = nullptr;
-		}
-
+		grok_free(jp2->comps);
+		grok_free(jp2->cl);
+		grk_buffer_delete(jp2->color.icc_profile_buf);
 		if (jp2->color.jp2_cdef) {
-			if (jp2->color.jp2_cdef->info) {
-				grok_free(jp2->color.jp2_cdef->info);
-				jp2->color.jp2_cdef->info = nullptr;
-			}
-
+			grok_free(jp2->color.jp2_cdef->info);
 			grok_free(jp2->color.jp2_cdef);
-			jp2->color.jp2_cdef = nullptr;
 		}
-
 		jp2_free_pclr(&jp2->color);
-
-		if (jp2->m_validation_list) {
-			delete jp2->m_validation_list;
-			jp2->m_validation_list = nullptr;
-		}
-
-		if (jp2->m_procedure_list) {
-			delete jp2->m_procedure_list;
-			jp2->m_procedure_list = nullptr;
-		}
-
+		delete jp2->m_validation_list;
+		delete jp2->m_procedure_list;
 		jp2->xml.dealloc();
 		for (uint32_t i = 0; i < jp2->numUuids; ++i)
 			(jp2->uuids + i)->dealloc();
 		jp2->numUuids = 0;
-
 		grok_free(jp2);
 	}
 }

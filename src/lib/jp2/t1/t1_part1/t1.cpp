@@ -1153,15 +1153,11 @@ static int t1_enc_is_term_pass(tcd_cblk_enc_t *cblk, uint32_t cblksty,
 /**
  * Deallocates the encoding data of the given precinct.
  */
-void t1_code_block_enc_deallocate(tcd_cblk_enc_t *l_code_block) {
-	if (l_code_block->layers) {
-		grk::grok_free(l_code_block->layers);
-		l_code_block->layers = 00;
-	}
-	if (l_code_block->passes) {
-		grk::grok_free(l_code_block->passes);
-		l_code_block->passes = 00;
-	}
+void t1_code_block_enc_deallocate(tcd_cblk_enc_t *code_block) {
+	grk::grok_free(code_block->layers);
+	code_block->layers = nullptr;
+	grk::grok_free(code_block->passes);
+	code_block->passes = nullptr;
 }
 static bool t1_code_block_enc_allocate(tcd_cblk_enc_t *p_code_block) {
 	if (!p_code_block->layers) {

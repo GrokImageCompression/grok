@@ -1224,8 +1224,7 @@ static bool j2k_decompress_tiles(grk_j2k *p_j2k, BufferedStream *stream) {
 		try {
 			if (!j2k_decompress_tile(p_j2k, current_tile_no, tile_compositing_buff,
 					all_tile_data_len, stream)) {
-				if (tile_compositing_buff)
-					grok_free(tile_compositing_buff);
+				grok_free(tile_compositing_buff);
 				GROK_ERROR("Failed to decompress tile %d/%d", current_tile_no + 1,
 						num_tiles_to_decode);
 				return false;
@@ -1234,8 +1233,7 @@ static bool j2k_decompress_tiles(grk_j2k *p_j2k, BufferedStream *stream) {
 			// only worry about exception if we have more tiles to decompress
 			if (nr_tiles < num_tiles_to_decode - 1) {
 				GROK_ERROR("Stream too short, expected SOT");
-				if (tile_compositing_buff)
-					grok_free(tile_compositing_buff);
+				grok_free(tile_compositing_buff);
 				GROK_ERROR("Failed to decompress tile %d/%d", current_tile_no + 1,
 						num_tiles_to_decode);
 				return false;
@@ -1496,40 +1494,25 @@ bool j2k_get_tile(grk_j2k *p_j2k, BufferedStream *stream, grk_image *p_image,
 }
 
 static void j2k_tcp_destroy(grk_tcp *p_tcp) {
-	if (p_tcp == nullptr) {
+	if (!p_tcp)
 		return;
-	}
+
 	if (p_tcp->ppt_markers != nullptr) {
-		uint32_t i;
-		for (i = 0U; i < p_tcp->ppt_markers_count; ++i) {
-			if (p_tcp->ppt_markers[i].m_data != nullptr) {
-				grok_free(p_tcp->ppt_markers[i].m_data);
-			}
-		}
+		for (uint32_t i = 0U; i < p_tcp->ppt_markers_count; ++i)
+			grok_free(p_tcp->ppt_markers[i].m_data);
 		p_tcp->ppt_markers_count = 0U;
 		grok_free(p_tcp->ppt_markers);
 		p_tcp->ppt_markers = nullptr;
 	}
 
-	if (p_tcp->ppt_buffer != nullptr) {
-		grok_free(p_tcp->ppt_buffer);
-		p_tcp->ppt_buffer = nullptr;
-	}
-
-	if (p_tcp->tccps != nullptr) {
-		grok_free(p_tcp->tccps);
-		p_tcp->tccps = nullptr;
-	}
-
-	if (p_tcp->m_mct_coding_matrix != nullptr) {
-		grok_free(p_tcp->m_mct_coding_matrix);
-		p_tcp->m_mct_coding_matrix = nullptr;
-	}
-
-	if (p_tcp->m_mct_decoding_matrix != nullptr) {
-		grok_free(p_tcp->m_mct_decoding_matrix);
-		p_tcp->m_mct_decoding_matrix = nullptr;
-	}
+	grok_free(p_tcp->ppt_buffer);
+	p_tcp->ppt_buffer = nullptr;
+	grok_free(p_tcp->tccps);
+	p_tcp->tccps = nullptr;
+	grok_free(p_tcp->m_mct_coding_matrix);
+	p_tcp->m_mct_coding_matrix = nullptr;
+	grok_free(p_tcp->m_mct_decoding_matrix);
+	p_tcp->m_mct_decoding_matrix = nullptr;
 
 	if (p_tcp->m_mcc_records) {
 		grok_free(p_tcp->m_mcc_records);
@@ -1539,30 +1522,18 @@ static void j2k_tcp_destroy(grk_tcp *p_tcp) {
 	}
 
 	if (p_tcp->m_mct_records) {
-		grk_mct_data *mct_data = p_tcp->m_mct_records;
-		uint32_t i;
-
-		for (i = 0; i < p_tcp->m_nb_mct_records; ++i) {
-			if (mct_data->m_data) {
-				grok_free(mct_data->m_data);
-				mct_data->m_data = nullptr;
-			}
-
+		auto mct_data = p_tcp->m_mct_records;
+		for (uint32_t i = 0; i < p_tcp->m_nb_mct_records; ++i) {
+			grok_free(mct_data->m_data);
 			++mct_data;
 		}
-
 		grok_free(p_tcp->m_mct_records);
 		p_tcp->m_mct_records = nullptr;
 	}
-
-	if (p_tcp->mct_norms != nullptr) {
-		grok_free(p_tcp->mct_norms);
-		p_tcp->mct_norms = nullptr;
-	}
-
+	grok_free(p_tcp->mct_norms);
+	p_tcp->mct_norms = nullptr;
 	delete p_tcp->m_tile_data;
 	p_tcp->m_tile_data = nullptr;
-
 }
 
 /************************************************
@@ -2055,10 +2026,9 @@ bool j2k_init_compress(grk_j2k *p_j2k, grk_cparameters *parameters,
 			tcp->qcd.pull(tccp->stepsizes, !parameters->irreversible);
 		}
 	}
-	if (parameters->mct_data) {
-		grok_free(parameters->mct_data);
-		parameters->mct_data = nullptr;
-	}
+	grok_free(parameters->mct_data);
+	parameters->mct_data = nullptr;
+
 	return true;
 }
 
@@ -2597,11 +2567,8 @@ bool j2k_init_mct_encoding(grk_tcp *p_tcp, grk_image *p_image) {
 							* sizeof(grk_mct_data));
 		}
 		mct_deco_data = p_tcp->m_mct_records + p_tcp->m_nb_mct_records;
-
-		if (mct_deco_data->m_data) {
-			grok_free(mct_deco_data->m_data);
-			mct_deco_data->m_data = nullptr;
-		}
+		grok_free(mct_deco_data->m_data);
+		mct_deco_data->m_data = nullptr;
 
 		mct_deco_data->m_index = indix++;
 		mct_deco_data->m_array_type = MCT_TYPE_DECORRELATION;
@@ -2610,9 +2577,8 @@ bool j2k_init_mct_encoding(grk_tcp *p_tcp, grk_image *p_image) {
 		mct_size = nb_elem * MCT_ELEMENT_SIZE[mct_deco_data->m_element_type];
 		mct_deco_data->m_data = (uint8_t*) grk_malloc(mct_size);
 
-		if (!mct_deco_data->m_data) {
+		if (!mct_deco_data->m_data)
 			return false;
-		}
 
 		j2k_mct_write_functions_from_float[mct_deco_data->m_element_type](
 				p_tcp->m_mct_decoding_matrix, mct_deco_data->m_data, nb_elem);
@@ -6073,11 +6039,8 @@ static bool j2k_read_mco(grk_j2k *p_j2k, uint8_t *p_header_data,
 		tccp->m_dc_level_shift = 0;
 		++tccp;
 	}
-
-	if (tcp->m_mct_decoding_matrix) {
-		grok_free(tcp->m_mct_decoding_matrix);
-		tcp->m_mct_decoding_matrix = nullptr;
-	}
+	grok_free(tcp->m_mct_decoding_matrix);
+	tcp->m_mct_decoding_matrix = nullptr;
 
 	for (i = 0; i < nb_stages; ++i) {
 		grk_read<uint32_t>(p_header_data, &tmp, 1);

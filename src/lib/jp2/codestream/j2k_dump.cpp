@@ -560,41 +560,19 @@ grk_codestream_index  *  j2k_create_cstr_index(void) {
 
 void j2k_destroy_cstr_index( grk_codestream_index  *p_cstr_ind) {
 	if (p_cstr_ind) {
-
-		if (p_cstr_ind->marker) {
-			grok_free(p_cstr_ind->marker);
-			p_cstr_ind->marker = nullptr;
-		}
-
+		grok_free(p_cstr_ind->marker);
 		if (p_cstr_ind->tile_index) {
 			uint32_t it_tile = 0;
 
 			for (it_tile = 0; it_tile < p_cstr_ind->nb_of_tiles; it_tile++) {
-
-				if (p_cstr_ind->tile_index[it_tile].packet_index) {
-					grok_free(p_cstr_ind->tile_index[it_tile].packet_index);
-					p_cstr_ind->tile_index[it_tile].packet_index = nullptr;
-				}
-
-				if (p_cstr_ind->tile_index[it_tile].tp_index) {
-					grok_free(p_cstr_ind->tile_index[it_tile].tp_index);
-					p_cstr_ind->tile_index[it_tile].tp_index = nullptr;
-				}
-
-				if (p_cstr_ind->tile_index[it_tile].marker) {
-					grok_free(p_cstr_ind->tile_index[it_tile].marker);
-					p_cstr_ind->tile_index[it_tile].marker = nullptr;
-
-				}
+				grok_free(p_cstr_ind->tile_index[it_tile].packet_index);
+				grok_free(p_cstr_ind->tile_index[it_tile].tp_index);
+				grok_free(p_cstr_ind->tile_index[it_tile].marker);
 			}
-
 			grok_free(p_cstr_ind->tile_index);
-			p_cstr_ind->tile_index = nullptr;
 		}
-
 		grok_free(p_cstr_ind);
 	}
 }
-
 
 }

@@ -82,11 +82,8 @@ sparse_array::sparse_array(uint32_t width,
 
 sparse_array::~sparse_array()
 {
-	for (uint32_t i = 0; i < (uint64_t)block_count_hor * block_count_ver; i++) {
-		if (data_blocks[i]) {
-			grok_free(data_blocks[i]);
-		}
-	}
+	for (uint32_t i = 0; i < (uint64_t)block_count_hor * block_count_ver; i++)
+		grok_free(data_blocks[i]);
 	grok_free(data_blocks);
 }
 

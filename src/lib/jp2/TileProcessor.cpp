@@ -2046,15 +2046,10 @@ void grk_tcd_cblk_enc::cleanup() {
 		owns_data = false;
 	}
 
-	if (layers) {
-		grok_free(layers);
-		layers = nullptr;
-	}
-
-	if (passes) {
-		grok_free(passes);
-		passes = nullptr;
-	}
+	grok_free(layers);
+	layers = nullptr;
+	grok_free(passes);
+	passes = nullptr;
 #ifdef DEBUG_LOSSLESS_T2
 	delete packet_length_info;
 	packet_length_info = nullptr;

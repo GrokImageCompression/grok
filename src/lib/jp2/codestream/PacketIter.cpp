@@ -1601,10 +1601,7 @@ void pi_init_encode(PacketIter *pi, grk_coding_parameters *cp, uint16_t tileno,
 
 void pi_destroy(PacketIter *p_pi, uint32_t nb_elements) {
 	if (p_pi) {
-		if (p_pi->include) {
-			grok_free(p_pi->include);
-			p_pi->include = nullptr;
-		}
+		grok_free(p_pi->include);
 		for (uint32_t pino = 0; pino < nb_elements; ++pino) {
 			auto current_pi = p_pi + pino;
 
@@ -1613,13 +1610,9 @@ void pi_destroy(PacketIter *p_pi, uint32_t nb_elements) {
 						compno++) {
 					auto current_component = current_pi->comps + compno;
 
-					if (current_component->resolutions) {
-						grok_free(current_component->resolutions);
-						current_component->resolutions = nullptr;
-					}
+					grok_free(current_component->resolutions);
 				}
 				grok_free(current_pi->comps);
-				current_pi->comps = 0;
 			}
 		}
 		grok_free(p_pi);

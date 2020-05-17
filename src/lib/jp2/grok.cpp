@@ -679,10 +679,8 @@ void GRK_CALLCONV grk_dump_codec( grk_codec  *p_codec, int32_t info_flag,
 }
 void GRK_CALLCONV grk_destroy_cstr_info( grk_codestream_info_v2  **cstr_info) {
 	if (cstr_info) {
-		if ((*cstr_info)->m_default_tile_info.tccp_info) {
+		if ((*cstr_info)->m_default_tile_info.tccp_info)
 			grok_free((*cstr_info)->m_default_tile_info.tccp_info);
-		}
-
 		if ((*cstr_info)->tile_info) {
 			/* FIXME not used for the moment*/
 		}

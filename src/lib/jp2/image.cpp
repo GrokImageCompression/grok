@@ -109,18 +109,9 @@ void GRK_CALLCONV grk_image_destroy(grk_image *image) {
 			grk_image_all_components_data_free(image);
 			grk::grok_free(image->comps);
 		}
-		if (image->icc_profile_buf) {
-			grk_buffer_delete(image->icc_profile_buf);
-			image->icc_profile_buf = nullptr;
-		}
-		if (image->iptc_buf) {
-			grk_buffer_delete(image->iptc_buf);
-			image->iptc_buf = nullptr;
-		}
-		if (image->xmp_buf) {
-			grk_buffer_delete(image->xmp_buf);
-			image->xmp_buf = nullptr;
-		}
+		grk_buffer_delete(image->icc_profile_buf);
+		grk_buffer_delete(image->iptc_buf);
+		grk_buffer_delete(image->xmp_buf);
 		grk::grok_free(image);
 	}
 }
