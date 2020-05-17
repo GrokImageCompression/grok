@@ -81,14 +81,13 @@ struct T2 {
 	 @param maxlayers        maximum number of layers
 	 @param dest             the destination buffer
 	 @param p_data_written   FIXME DOC
-	 @param len              the length of the destination buffer
 	 @param cstr_info        Codestream information structure
 	 @param tpnum            Tile part number of the current tile
 	 @param tppos            The position of the tile part flag in the progression order
 	 @param pino             FIXME DOC
 	 */
 	bool encode_packets(uint16_t tileno, uint32_t maxlayers,
-			BufferedStream *stream, uint64_t *p_data_written, uint64_t len,
+			BufferedStream *stream, uint64_t *p_data_written,
 			grk_codestream_info *cstr_info, uint32_t tpnum, uint32_t tppos,
 			uint32_t pino);
 
@@ -124,12 +123,11 @@ private:
 	 @param pi Packet identity
 	 @param stream stream
 	 @param p_data_written   FIXME DOC
-	 @param len Length of the destination buffer
 	 @param cstr_info Codestream information structure
 	 @return
 	 */
 	bool encode_packet(uint16_t tileno, grk_tcp *tcp, PacketIter *pi,
-			BufferedStream *stream, uint64_t *p_data_written, uint64_t len,
+			BufferedStream *stream, uint64_t *p_data_written,
 			grk_codestream_info *cstr_info);
 
 	/**

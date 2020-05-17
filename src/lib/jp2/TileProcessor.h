@@ -378,13 +378,11 @@ struct TileProcessor {
 	 * @param	tile_no		Index of the tile to compress.
 	 * @param	stream		stream
 	 * @param	tile_bytes_written	number of bytes written to stream
-	 * @param	len			Maximum length of the destination buffer
 	 * @param	p_cstr_info		Code stream information structure
 	 * @return  true if the coding is successful.
 	 */
 	bool compress_tile_part(uint16_t tile_no, BufferedStream *stream,
-			uint64_t *tile_bytes_written, uint64_t len,
-			 grk_codestream_info  *p_cstr_info);
+			uint64_t *tile_bytes_written, grk_codestream_info  *p_cstr_info);
 
 	/**
 	 Decode a tile from a buffer
@@ -503,11 +501,9 @@ private:
 
 	 bool t2_encode(BufferedStream *stream,
 			uint64_t *packet_bytes_written,
-			uint64_t max_dest_size,
 			 grk_codestream_info  *p_cstr_info);
 
-	 bool rate_allocate(uint64_t max_dest_size,
-			 grk_codestream_info  *p_cstr_info);
+	 bool rate_allocate( grk_codestream_info  *p_cstr_info);
 
 	 bool layer_needs_rate_control(uint32_t layno);
 
@@ -515,14 +511,12 @@ private:
 
 	 void makelayer_final(uint32_t layno);
 
-	 bool pcrd_bisect_simple(uint64_t *p_data_written,
-			uint64_t len);
+	 bool pcrd_bisect_simple(uint64_t *p_data_written);
 
 	 void make_layer_simple(uint32_t layno, double thresh,
 			bool final);
 
-	 bool pcrd_bisect_feasible(uint64_t *p_data_written,
-			uint64_t len);
+	 bool pcrd_bisect_feasible(uint64_t *p_data_written);
 
 	 void makelayer_feasible(uint32_t layno, uint16_t thresh,
 			bool final);

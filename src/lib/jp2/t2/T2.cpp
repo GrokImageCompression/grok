@@ -63,7 +63,7 @@
 namespace grk {
 
 bool T2::encode_packets(uint16_t tile_no, uint32_t max_layers,
-		BufferedStream *stream, uint64_t *p_data_written, uint64_t max_len,
+		BufferedStream *stream, uint64_t *p_data_written,
 		grk_codestream_info *cstr_info, uint32_t tp_num, uint32_t tp_pos,
 		uint32_t pino) {
 
@@ -91,12 +91,10 @@ bool T2::encode_packets(uint16_t tile_no, uint32_t max_layers,
 			nb_bytes = 0;
 
 			if (!encode_packet(tile_no, tcp, current_pi, stream, &nb_bytes,
-					max_len, cstr_info)) {
+					cstr_info)) {
 				pi_destroy(pi, nb_pocs);
 				return false;
 			}
-
-			max_len -= nb_bytes;
 			*p_data_written += nb_bytes;
 
 			/* INDEX >> */
@@ -896,7 +894,7 @@ bool T2::init_seg(grk_tcd_cblk_dec *cblk, uint32_t index, uint8_t cblk_sty,
 //--------------------------------------------------------------------------------------------------
 bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp, PacketIter *pi,
 		BufferedStream *stream, uint64_t *packet_bytes_written,
-		uint64_t tile_bytes_available, grk_codestream_info *cstr_info) {
+		grk_codestream_info *cstr_info) {
 	assert(stream);
 	uint32_t compno = pi->compno;
 	uint32_t resno = pi->resno;
@@ -933,7 +931,6 @@ bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp, PacketIter *pi,
 			return false;
 		if (!stream->write_byte((uint8_t) (packno & 0xff)))
 			return false;
-		tile_bytes_available -= 6;
 	}
 
 	// initialize precinct and code blocks if this is the first layer
@@ -1093,18 +1090,12 @@ bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp, PacketIter *pi,
 		return false;
 	}
 
-	auto temp = bio->numbytes();
-	tile_bytes_available -= (uint64_t) temp;
-
 	// EPH marker
 	if (tcp->csty & J2K_CP_CSTY_EPH) {
-		if (!stream->write_byte(255)) {
+		if (!stream->write_byte(255))
 			return false;
-		}
-		if (!stream->write_byte(146)) {
+		if (!stream->write_byte(146))
 			return false;
-		}
-		tile_bytes_available -= 2;
 	}
 
 	/* << INDEX */
@@ -1136,18 +1127,9 @@ bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp, PacketIter *pi,
 				continue;
 			}
 
-			if (cblk_layer->len > tile_bytes_available) {
-				GROK_ERROR(
-						"Code block layer size %d exceeds number of available bytes %d in tile buffer",
-						cblk_layer->len, tile_bytes_available);
-				return false;
-			}
-
 			if (cblk_layer->len) {
-				if (!stream->write_bytes(cblk_layer->data, cblk_layer->len)) {
+				if (!stream->write_bytes(cblk_layer->data, cblk_layer->len))
 					return false;
-				}
-				tile_bytes_available -= cblk_layer->len;
 			}
 			cblk->num_passes_included_in_current_layer += cblk_layer->numpasses;
 			if (cstr_info && cstr_info->index_write) {

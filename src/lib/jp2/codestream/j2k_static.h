@@ -330,10 +330,10 @@ static bool j2k_post_write_tile(grk_j2k *p_j2k, BufferedStream *stream);
 static bool j2k_init_header_writing(grk_j2k *p_j2k);
 
 static bool j2k_write_first_tile_part(grk_j2k *p_j2k, uint64_t *p_data_written,
-		uint64_t tile_bytes_available, BufferedStream *stream);
+		 BufferedStream *stream);
 
 static bool j2k_write_all_tile_parts(grk_j2k *p_j2k, uint64_t *p_data_written,
-		uint64_t total_data_size, BufferedStream *stream);
+		 BufferedStream *stream);
 
 /**
  * Gets the offset of the header.
@@ -469,13 +469,6 @@ static bool j2k_write_coc(grk_j2k *p_j2k, uint32_t comp_no,
 		BufferedStream *stream);
 
 /**
- * Gets the maximum size taken by a coc.
- *
- * @param       p_j2k   the JPEG 2000 codec to use.
- */
-static uint32_t j2k_get_max_coc_size(grk_j2k *p_j2k);
-
-/**
  * Reads a COC marker (Coding Style Component)
  *
  * @param       p_j2k           JPEG 2000 codec
@@ -528,12 +521,6 @@ static bool j2k_compare_qcc(grk_j2k *p_j2k, uint32_t first_comp_no,
  */
 static bool j2k_write_qcc(grk_j2k *p_j2k, uint32_t comp_no,
 		BufferedStream *stream);
-
-/**
- * Gets the maximum size taken by a qcc.
- */
-static uint32_t j2k_get_max_qcc_size(grk_j2k *p_j2k);
-
 /**
  * Reads a QCC marker (Quantization component)
  * @param       p_j2k                   JPEG 2000 codec
@@ -564,10 +551,6 @@ static bool j2k_write_poc(grk_j2k *p_j2k, BufferedStream *stream);
  */
 static bool j2k_write_poc(grk_j2k *p_j2k, BufferedStream *stream,
 		uint64_t *p_data_written);
-/**
- * Gets the maximum size taken by the writing of a POC.
- */
-static uint32_t j2k_get_max_poc_size(grk_j2k *p_j2k);
 
 /**
  * Reads a POC marker (Progression Order Change)
@@ -579,18 +562,6 @@ static uint32_t j2k_get_max_poc_size(grk_j2k *p_j2k);
  */
 static bool j2k_read_poc(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
-
-/**
- * Gets the maximum size taken by the sot headers of all the tile parts of any given tile.
- */
-static uint32_t j2k_get_max_sot_size(grk_j2k *p_j2k);
-
-/**
- * Gets the maximum size taken by the headers of the SOT.
- *
- * @param       p_j2k   the JPEG 2000 codec to use.
- */
-static uint64_t j2k_get_max_tile_sot_header_size(grk_j2k *p_j2k);
 
 /**
  * Reads a CRG marker (Component registration)
@@ -734,13 +705,11 @@ static bool j2k_read_sot(grk_j2k *p_j2k, uint8_t *p_header_data,
  *
  * @param       p_j2k                    J2K codec.
  * @param       tile_part_bytes_written  tile part bytes written
- * @param       tile_bytes_available     bytes available
  * @param       stream                   the stream to write data to.
 
  */
 static bool j2k_write_tile_part(grk_j2k *p_j2k,
-		uint64_t *tile_part_bytes_written, uint64_t total_data_size,
-		BufferedStream *stream);
+		uint64_t *tile_part_bytes_written, BufferedStream *stream);
 
 /**
  * Reads a SOD marker (Start Of Data)

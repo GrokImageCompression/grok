@@ -2149,40 +2149,12 @@ static bool j2k_pre_write_tile(grk_j2k *p_j2k, uint16_t tile_index) {
 }
 
 static bool j2k_post_write_tile(grk_j2k *p_j2k, BufferedStream *stream) {
-	auto cp = &(p_j2k->m_cp);
-	auto image = p_j2k->m_private_image;
-	auto img_comp = image->comps;
-	uint64_t tile_size = 0;
-
-	// calculate uncompressed tile size in bits
-	for (uint32_t i = 0; i < image->numcomps; ++i) {
-		tile_size += (uint64_t) ceildiv<uint32_t>(cp->t_width, img_comp->dx)
-				* ceildiv<uint32_t>(cp->t_height, img_comp->dy) * img_comp->prec;
-		++img_comp;
-	}
-
-	// convert to bytes (assume worst case of 2x size of uncompressed tile)
-	tile_size = (uint64_t) ((double) (tile_size) * 0.25); /* 2/8 = 0.25 */
-	tile_size += j2k_get_max_tile_sot_header_size(p_j2k);
-
-	// ToDo: use better estimate of signaling overhead for packets,
-	// to avoid hard-coding this lower bound on tile buffer size
-	// i.e. estimate size of tile header
-
-	// allocate at least 1K bytes per component
-	if (tile_size < 1024 * image->numcomps)
-		tile_size = 1024 * image->numcomps;
-
-	uint64_t tile_bytes_available = tile_size;
 	uint64_t temp_bytes_written = 0;
-	if (!j2k_write_first_tile_part(p_j2k, &temp_bytes_written, tile_bytes_available,
-			stream)) {
+	if (!j2k_write_first_tile_part(p_j2k, &temp_bytes_written, 	stream)) {
 		return false;
 	}
-	tile_bytes_available -= temp_bytes_written;
 	temp_bytes_written = 0;
-	if (!j2k_write_all_tile_parts(p_j2k, &temp_bytes_written, tile_bytes_available,
-			stream)) {
+	if (!j2k_write_all_tile_parts(p_j2k, &temp_bytes_written, stream)) {
 		return false;
 	}
 	++p_j2k->m_tileProcessor->m_current_tile_number;
@@ -2332,7 +2304,7 @@ static bool j2k_init_header_writing(grk_j2k *p_j2k) {
 }
 
 static bool j2k_write_first_tile_part(grk_j2k *p_j2k, uint64_t *tile_bytes_written,
-		uint64_t tile_bytes_available, BufferedStream *stream) {
+		BufferedStream *stream) {
 	auto tcd = p_j2k->m_tileProcessor;
 	auto cp = &(p_j2k->m_cp);
 
@@ -2348,7 +2320,6 @@ static bool j2k_write_first_tile_part(grk_j2k *p_j2k, uint64_t *tile_bytes_writt
 		return false;
 	}
 	*tile_bytes_written = temp_bytes_written;
-	tile_bytes_available -= temp_bytes_written;
 
 	if (!GRK_IS_CINEMA(cp->rsiz)) {
 		if (cp->tcps[p_j2k->m_tileProcessor->m_current_tile_number].numpocs) {
@@ -2357,17 +2328,14 @@ static bool j2k_write_first_tile_part(grk_j2k *p_j2k, uint64_t *tile_bytes_writt
 					&temp_bytes_written))
 				return false;
 			*tile_bytes_written += temp_bytes_written;
-			tile_bytes_available -= temp_bytes_written;
 		}
 	}
 
 	temp_bytes_written = 0;
-	if (!j2k_write_tile_part(p_j2k, &temp_bytes_written, tile_bytes_available,
-			stream)) {
+	if (!j2k_write_tile_part(p_j2k, &temp_bytes_written, stream)) {
 		return false;
 	}
 	*tile_bytes_written += temp_bytes_written;
-	tile_bytes_available -= temp_bytes_written;
 
 	/* Writing Psot in SOT marker */
 	/* PSOT */
@@ -2386,7 +2354,7 @@ static bool j2k_write_first_tile_part(grk_j2k *p_j2k, uint64_t *tile_bytes_writt
 }
 
 static bool j2k_write_all_tile_parts(grk_j2k *p_j2k, uint64_t *tile_bytes_written,
-		uint64_t tile_bytes_available, BufferedStream *stream) {
+		 BufferedStream *stream) {
 	uint8_t tilepartno = 0;
 	uint64_t temp_bytes_written;
 	uint32_t part_tile_size;
@@ -2420,16 +2388,14 @@ static bool j2k_write_all_tile_parts(grk_j2k *p_j2k, uint64_t *tile_bytes_writte
 			return false;
 		}
 		*tile_bytes_written += temp_bytes_written;
-		tile_bytes_available -= temp_bytes_written;
 		part_tile_size += (uint32_t) temp_bytes_written;
 
 		temp_bytes_written = 0;
-		if (!j2k_write_tile_part(p_j2k, &temp_bytes_written, tile_bytes_available,
+		if (!j2k_write_tile_part(p_j2k, &temp_bytes_written,
 				stream)) {
 			return false;
 		}
 		*tile_bytes_written += temp_bytes_written;
-		tile_bytes_available -= temp_bytes_written;
 		part_tile_size += (uint32_t) temp_bytes_written;
 
 		/* Writing Psot in SOT marker */
@@ -2472,17 +2438,15 @@ static bool j2k_write_all_tile_parts(grk_j2k *p_j2k, uint64_t *tile_bytes_writte
 			}
 
 			*tile_bytes_written += temp_bytes_written;
-			tile_bytes_available -= temp_bytes_written;
 			part_tile_size += (uint32_t) temp_bytes_written;
 
 			temp_bytes_written = 0;
 			if (!j2k_write_tile_part(p_j2k, &temp_bytes_written,
-					tile_bytes_available, stream)) {
+					stream)) {
 				return false;
 			}
 
 			*tile_bytes_written += temp_bytes_written;
-			tile_bytes_available -= temp_bytes_written;
 			part_tile_size += (uint32_t) temp_bytes_written;
 
 			/* Writing Psot in SOT marker */
@@ -3847,19 +3811,6 @@ static bool j2k_compare_coc(grk_j2k *p_j2k, uint32_t first_comp_no,
 			p_j2k->m_tileProcessor->m_current_tile_number, first_comp_no,
 			second_comp_no);
 }
-static uint32_t j2k_get_max_coc_size(grk_j2k *p_j2k) {
-	uint32_t max = 0;
-	uint32_t nb_tiles = p_j2k->m_cp.t_grid_width * p_j2k->m_cp.t_grid_height;
-	uint32_t nb_comp = p_j2k->m_private_image->numcomps;
-
-	for (uint16_t i = 0; i < nb_tiles; ++i) {
-		for (uint32_t j = 0; j < nb_comp; ++j) {
-			max = std::max<uint32_t>(max,
-					j2k_get_SPCod_SPCoc_size(p_j2k, i, j));
-		}
-	}
-	return 6 + max;
-}
 
 /**
  * Reads a COC marker (Coding Style Component)
@@ -4007,9 +3958,6 @@ static bool j2k_compare_qcc(grk_j2k *p_j2k, uint32_t first_comp_no,
 			p_j2k->m_tileProcessor->m_current_tile_number, first_comp_no,
 			second_comp_no);
 }
-static uint32_t j2k_get_max_qcc_size(grk_j2k *p_j2k) {
-	return j2k_get_max_coc_size(p_j2k);
-}
 
 /**
  * Reads a QCC marker (Quantization component)
@@ -4138,53 +4086,6 @@ static bool j2k_write_poc(grk_j2k *p_j2k, BufferedStream *stream,
 	}
 	*p_data_written = poc_size;
 	return true;
-}
-
-static uint32_t j2k_get_max_poc_size(grk_j2k *p_j2k) {
-	uint32_t max_poc = 0;
-	auto tcp = p_j2k->m_cp.tcps;
-	uint32_t nb_tiles = p_j2k->m_cp.t_grid_height * p_j2k->m_cp.t_grid_width;
-
-	for (uint32_t i = 0; i < nb_tiles; ++i) {
-		max_poc = std::max<uint32_t>(max_poc, tcp->numpocs);
-		++tcp;
-	}
-	++max_poc;
-
-	return 4 + 9 * max_poc;
-}
-
-static uint32_t j2k_get_max_sot_size(grk_j2k *p_j2k) {
-	uint32_t max_tile_parts = 0;
-	auto tcp = p_j2k->m_cp.tcps;
-	uint32_t nb_tiles = p_j2k->m_cp.t_grid_width * p_j2k->m_cp.t_grid_height;
-
-	for (uint32_t i = 0; i < nb_tiles; ++i) {
-		max_tile_parts =
-				std::max<uint32_t>(max_tile_parts, tcp->m_nb_tile_parts);
-		++tcp;
-	}
-
-	return sot_marker_segment_len * max_tile_parts;
-}
-
-static uint64_t j2k_get_max_tile_sot_header_size(grk_j2k *p_j2k) {
-	uint64_t nb_bytes = j2k_get_max_sot_size(p_j2k);
-
-	// Cinema profiles disallow COC and QCC markers
-	if (!(GRK_IS_CINEMA(p_j2k->m_cp.rsiz))) {
-		uint32_t num_markers = p_j2k->m_private_image->numcomps;
-		uint32_t coc_bytes = j2k_get_max_coc_size(p_j2k);
-		nb_bytes += num_markers * coc_bytes;
-
-		uint32_t qcc_bytes = j2k_get_max_qcc_size(p_j2k);
-		nb_bytes += num_markers * qcc_bytes;
-	}
-	nb_bytes += j2k_get_max_poc_size(p_j2k);
-
-	/*** Add room for your headers ***/
-
-	return nb_bytes;
 }
 
 /**
@@ -5118,16 +5019,11 @@ static bool j2k_read_sot(grk_j2k *p_j2k, uint8_t *p_header_data,
 }
 
 static bool j2k_write_tile_part(grk_j2k *p_j2k, uint64_t *tile_part_bytes_written,
-		uint64_t tile_bytes_available, BufferedStream *stream) {
+		BufferedStream *stream) {
 	grk_codestream_info *cstr_info = nullptr;
-	uint64_t remaining_data;
-
 	assert(p_j2k != nullptr);
 	assert(stream != nullptr);
 	TileProcessor *p_tile_coder = p_j2k->m_tileProcessor;
-
-	/* make room for EOC marker	 */
-	remaining_data = tile_bytes_available - 2;
 
 	/* set packno to zero when writing the first tile part */
 	if (p_j2k->m_tileProcessor->m_current_tile_part_number == 0) {
@@ -5138,7 +5034,7 @@ static bool j2k_write_tile_part(grk_j2k *p_j2k, uint64_t *tile_part_bytes_writte
 	}
 	if (!p_tile_coder->compress_tile_part(
 			p_j2k->m_tileProcessor->m_current_tile_number, stream,
-			tile_part_bytes_written, remaining_data, cstr_info)) {
+			tile_part_bytes_written, cstr_info)) {
 		GROK_ERROR("Cannot compress tile");
 		return false;
 	}
