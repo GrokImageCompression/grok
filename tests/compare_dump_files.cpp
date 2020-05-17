@@ -53,6 +53,7 @@
 #include <sstream>
 #include <string>
 #include "grok.h"
+#include "test_common.h"
 
 using namespace TCLAP;
 using namespace std;
@@ -166,8 +167,9 @@ int main(int argc, char **argv) {
 			inParam.test_filename);
 	printf("************************* \n");
 
-	// uncomment to copy test dump file to test file repo
-	//rename(inParam.test_filename, inParam.base_filename);
+#ifdef COPY_TEST_FILES_TO_REPO
+	rename(inParam.test_filename, inParam.base_filename);
+#endif
 
 	/* open base file */
 	printf("Try to open: %s for reading ... ", inParam.base_filename);

@@ -1665,13 +1665,13 @@ static grk_image* tiftoimage(const char *filename,
 	if (tiPhoto == PHOTOMETRIC_CIELAB) {
 		if (hasTiSf && (tiSf != SAMPLEFORMAT_INT)) {
 			spdlog::warn("tiftoimage: Input image is in CIE colour space"
-					" but sample format is unsigned int");
+					" but sample format is unsigned int. Forcing to signed int");
 		}
 		isSigned = true;
 	} else if (tiPhoto == PHOTOMETRIC_ICCLAB) {
 		if (hasTiSf && (tiSf != SAMPLEFORMAT_UINT)) {
 			spdlog::warn("tiftoimage: Input image is in ICC CIE colour"
-					" space but sample format is signed int");
+					" space but sample format is signed int. Forcing to unsigned int");
 		}
 		isSigned = false;
 	}

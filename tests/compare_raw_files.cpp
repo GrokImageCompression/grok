@@ -57,6 +57,7 @@
 using namespace TCLAP;
 using namespace std;
 #include <string>
+#include "test_common.h"
 
 typedef struct test_cmp_parameters {
 	/**  */
@@ -157,8 +158,9 @@ int main(int argc, char **argv) {
 		goto cleanup;
 	}
 
-	// uncomment to copy test raw file to test file repo
-	//rename(inParam.test_filename, inParam.base_filename);
+#ifdef COPY_TEST_FILES_TO_REPO
+	rename(inParam.test_filename, inParam.base_filename);
+#endif
 
 	file_test = fopen(inParam.test_filename, "rb");
 	if (!file_test) {
