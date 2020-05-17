@@ -102,7 +102,6 @@ using namespace grk;
 #include <chrono>  // for high_resolution_clock
 
 using namespace TCLAP;
-using namespace std;
 
 int load_images(grk_dircnt *dirptr, char *imgdirpath);
 static char get_next_file(std::string file_name, grk_img_fol *img_fol,

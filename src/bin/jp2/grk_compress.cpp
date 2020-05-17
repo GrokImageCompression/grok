@@ -103,7 +103,6 @@ using namespace grk;
 #include <chrono>  // for high_resolution_clock
 
 using namespace TCLAP;
-using namespace std;
 
 static bool plugin_compress_callback(
 		grk_plugin_encode_user_callback_info *info);

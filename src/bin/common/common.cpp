@@ -52,10 +52,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
-#include "common.h"
-#include <cstdio>
-#include <cstdlib>
 #ifdef _WIN32
 #include <Windows.h>
 #include "windirent.h"
@@ -75,7 +71,9 @@
 #include <fcntl.h>
 #include <dirent.h>
 #endif /* _WIN32 */
-
+#include "common.h"
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <condition_variable>
 using namespace std::chrono_literals;
