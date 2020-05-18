@@ -1,5 +1,5 @@
-libgrokj2k (7.1.0-1) unstable; urgency=medium
+libgrokj2k (7.2.0-1) unstable; urgency=medium
 
   * Initial release. Closes: #954265
 
- -- Aaron Boxer <boxerab@gmail.com>  Fri, 17 Apr 2020 21:10:00 +0200
+ -- Aaron Boxer <boxerab@gmail.com>  Sun, 17 May 2020 21:10:00 +0200
