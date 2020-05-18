@@ -64,7 +64,7 @@ namespace grk {
 
 struct  grk_dec_memory_marker_handler  {
 	/** marker value */
-	uint32_t id;
+	uint16_t id;
 	/** value of the state when the marker can appear */
 	uint32_t states;
 	/** action linked to the marker */
@@ -191,7 +191,7 @@ static bool j2k_copy_default_tcp_and_create_tcd(grk_j2k *p_j2k,
  * @return      the handler associated with the id.
  */
 static const  grk_dec_memory_marker_handler  *  j2k_get_marker_handler(
-		uint32_t id);
+		uint16_t id);
 
 /**
  * Destroys a tile coding parameter structure.
@@ -790,7 +790,7 @@ static bool j2k_add_tlmarker(uint16_t tileno,
  * @return      true                    if the marker could be deduced.
  */
 static bool j2k_read_unk(grk_j2k *p_j2k, BufferedStream *stream,
-		uint32_t *output_marker);
+		uint16_t *output_marker);
 
 /**
  * Writes the MCT marker (Multiple Component Transform)
@@ -997,6 +997,6 @@ static bool j2k_calculate_tp(grk_coding_parameters *cp, uint32_t *p_nb_tile_part
  *
  * @return true if the function was successful, false else.
  */
-static bool j2k_need_nb_tile_parts_correction(BufferedStream *stream,
+static bool j2k_need_nb_tile_parts_correction(grk_j2k *p_j2k, BufferedStream *stream,
 		uint16_t tile_no, bool *p_correction_needed);
 }

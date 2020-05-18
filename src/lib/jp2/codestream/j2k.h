@@ -147,7 +147,7 @@ enum J2K_STATUS {
 	J2K_DEC_STATE_NEOC = 0x0040, /**< the decoding process must not expect a EOC marker because the code stream is truncated */
 	J2K_DEC_STATE_DATA = 0x0080, /**< the decoding process is expecting to read tile data from the code stream */
 	J2K_DEC_STATE_EOC = 0x0100, /**< the decoding process has encountered the EOC marker */
-	J2K_DEC_STATE_ERR = 0x8000 /**< the decoding process has encountered an error (FIXME warning V1 = 0x0080)*/
+	J2K_DEC_STATE_ERR = 0x0200 /**< the decoding process has encountered an error */
 };
 
 /**

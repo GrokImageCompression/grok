@@ -414,6 +414,8 @@ struct TileProcessor {
 
 	void copy_image_to_tile();
 
+	bool read_marker(BufferedStream *stream, uint16_t *val);
+
 	/** Index of the tile to decompress (used in get_tile); initialized to -1 */
 	int32_t m_tile_ind_to_dec;
 
@@ -467,7 +469,7 @@ struct TileProcessor {
     bool   whole_tile_decoding;
 
 	uint8_t *m_marker_scratch;
-	uint32_t m_marker_scratch_size;
+	uint16_t m_marker_scratch_size;
 
 	PacketLengthMarkers *plt_markers;
 

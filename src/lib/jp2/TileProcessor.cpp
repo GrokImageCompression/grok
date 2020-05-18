@@ -1222,6 +1222,18 @@ void TileProcessor::copy_image_to_tile() {
 		}
 	}
 }
+
+
+bool TileProcessor::read_marker(BufferedStream *stream, uint16_t *val){
+	if (stream->read(m_marker_scratch, 2) != 2) {
+		GROK_ERROR("read marker: stream too short");
+		return false;
+	}
+	grk_read<uint16_t>(m_marker_scratch, val);
+
+	return true;
+
+}
 bool TileProcessor::t2_decode(uint16_t tile_no, ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
 	auto t2 = new T2(this);
