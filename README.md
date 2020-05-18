@@ -23,5 +23,5 @@ Please see the project WIKI for library usage.
 [link-build]: https://travis-ci.org/GrokImageCompression/grok "Build Status"
 [badge-msvc-build]: https://ci.appveyor.com/api/projects/status/github/GrokImageCompression/grok?branch=master&svg=true "Windows Build Status"
 [link-msvc-build]: https://ci.appveyor.com/project/boxerab/grok/branch/master "Windows Build Status"
-[badge-oss-fuzz]: https://oss-fuzz-build-logs.storage.googleapis.com/badges/grok.svg "Build Status"
-[link-oss-fuzz]: https://oss-fuzz-build-logs.storage.googleapis.com/index.html#grok "Build Status"
+[badge-oss-fuzz]: https://oss-fuzz-build-logs.storage.googleapis.com/badges/grok.svg "Fuzzing Status"
+[link-oss-fuzz]: https://bugs.chromium.org/p/oss-fuzz/issues/list?sort=-opened&can=1&q=proj:grok "Fuzzing Status"
