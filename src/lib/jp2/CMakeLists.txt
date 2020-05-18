@@ -216,13 +216,15 @@ else()
 	  set(INSTALL_LIBS ${GROK_LIBRARY_NAME})
   endif()
 endif()
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+	target_link_options(${GROK_LIBRARY_NAME} PUBLIC "LINKER:-z,now")
+endif() 
 if(UNIX)
   target_link_libraries(${GROK_LIBRARY_NAME} ${CMAKE_THREAD_LIBS_INIT})
 endif()
 set_target_properties(${GROK_LIBRARY_NAME} PROPERTIES ${GROK_LIBRARY_PROPERTIES})
-if(${CMAKE_VERSION} VERSION_GREATER "2.8.11")
-  target_compile_options(${GROK_LIBRARY_NAME} PRIVATE ${GROK_COMPILE_OPTIONS})
-endif()
+target_compile_options(${GROK_LIBRARY_NAME} PRIVATE ${GROK_COMPILE_OPTIONS})
+
 
 # Install library
 install(TARGETS ${INSTALL_LIBS}

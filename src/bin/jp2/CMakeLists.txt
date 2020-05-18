@@ -81,14 +81,13 @@ add_definitions(-DSPDLOG_COMPILED_LIB)
 # Loop over all executables:
 foreach(exe grk_decompress grk_compress grk_dump)
   add_executable(${exe} ${exe}.cpp ${common_SRCS})
-  if(${CMAKE_VERSION} VERSION_GREATER "2.8.11")
-    target_compile_options(${exe} PRIVATE ${GROK_COMPILE_OPTIONS})
-  endif()
+  target_compile_options(${exe} PRIVATE ${GROK_COMPILE_OPTIONS})
+  if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+	target_link_options(${exe}  PUBLIC "LINKER:-z,now")
+  endif()  
   target_link_libraries(${exe} ${GROK_LIBRARY_NAME}
-    ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME}  ${JPEG_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT}
-     )
-
-	
+    ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME}  
+    ${JPEG_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
 
   # To support universal exe:
   if(ZLIB_FOUND AND APPLE)
