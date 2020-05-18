@@ -51,8 +51,11 @@ typedef std::map<uint8_t, TL_INFO_VEC*> TL_MAP;
 struct TileLengthMarkers {
 	TileLengthMarkers();
 	~TileLengthMarkers();
+	bool decode(uint8_t *p_header_data, uint16_t header_size);
+private:
 	void push(uint8_t i_TLM, grk_tl_info curr_vec);
 	TL_MAP *markers;
+
 };
 
 typedef std::vector<uint32_t> PL_INFO_VEC;
@@ -65,9 +68,8 @@ struct PacketLengthMarkers {
 	~PacketLengthMarkers(void);
 
 	// decode packet lengths
-	void decodeInitIndex(uint8_t index);
-	void decodeNext(uint8_t Iplm);
-	bool decodeHasPendingPacketLength();
+	bool decodePLT(uint8_t *p_header_data, uint16_t header_size);
+	bool decodePLM(uint8_t *p_header_data, uint16_t header_size);
 	void readInit(void);
 	uint32_t readNext(void);
 
@@ -82,6 +84,9 @@ private:
 	PL_INFO_VEC *m_curr_vec;
 	uint32_t m_packet_len;
 	size_t m_read_index;
+
+	void decodeInitIndex(uint8_t index);
+	void decodeNext(uint8_t Iplm);
 
 	void write_marker_header(void);
 	void write_marker_length();

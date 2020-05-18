@@ -4026,57 +4026,11 @@ static bool j2k_read_crg(grk_j2k *p_j2k, uint8_t *p_header_data,
  */
 static bool j2k_read_tlm(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
-	(void) p_j2k;
-	uint8_t i_TLM, L;
-	uint32_t L_iT, L_LTP;
-
-	assert(p_header_data != nullptr);
-	assert(p_j2k != nullptr);
-
-	if (header_size < 2) {
-		GROK_ERROR("Error reading TLM marker");
-		return false;
-	}
-	// correct for length of marker
-	header_size = (uint16_t) (header_size - 2);
-	// read TLM marker segment index
-	i_TLM = *p_header_data++;
-	// read and parse L parameter, which indicates number of bytes used to represent
-	// remaining parameters
-	L = *p_header_data++;
-	// 0x70 ==  1110000
-	if ((L & ~0x70) != 0) {
-		GROK_ERROR("Illegal L value in TLM marker");
-		return false;
-	}
-	L_iT = ((L >> 4) & 0x3);	// 0 <= L_iT <= 2
-	L_LTP = (L >> 6) & 0x1;		// 0 <= L_iTP <= 1
-
-	uint32_t bytes_per_tile_part_length = L_LTP ? 4U : 2U;
-	uint32_t quotient = bytes_per_tile_part_length + L_iT;
-	if (header_size % quotient != 0) {
-		GROK_ERROR("Error reading TLM marker");
-		return false;
-	}
+	assert(p_j2k);
 	if (!p_j2k->m_cp.tlm_markers)
 		p_j2k->m_cp.tlm_markers = new TileLengthMarkers();
-	auto tlm_markers = p_j2k->m_cp.tlm_markers;
 
-	uint8_t num_tp = (uint8_t) (header_size / quotient);
-	uint32_t Ttlm_i = 0, Ptlm_i = 0;
-	for (uint8_t i = 0; i < num_tp; ++i) {
-		if (L_iT) {
-			grk_read<uint32_t>(p_header_data, &Ttlm_i, L_iT);
-			p_header_data += L_iT;
-		}
-		grk_read<uint32_t>(p_header_data, &Ptlm_i, bytes_per_tile_part_length);
-		auto info =
-				L_iT ? grk_tl_info((uint16_t) Ttlm_i, Ptlm_i) : grk_tl_info(
-								Ptlm_i);
-		tlm_markers->push(i_TLM, info);
-		p_header_data += bytes_per_tile_part_length;
-	}
-	return true;
+	return p_j2k->m_cp.tlm_markers->decode(p_header_data, header_size);
 }
 
 /**
@@ -4089,48 +4043,13 @@ static bool j2k_read_tlm(grk_j2k *p_j2k, uint8_t *p_header_data,
  */
 static bool j2k_read_plm(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t hdr_size) {
-	(void) p_j2k;
-
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
 
-	uint8_t Zplm, Nplm;
-	uint32_t packet_len = 0, i;
-	if (hdr_size < 1) {
-		GROK_ERROR("PLM marker segment too short");
-		return false;
-	}
-
-	int32_t header_size = hdr_size;
-
-	// Zplm
-	Zplm = *p_header_data++;
-	--header_size;
-
 	if (!p_j2k->m_cp.plm_markers)
 		p_j2k->m_cp.plm_markers = new PacketLengthMarkers();
-	auto markers = p_j2k->m_cp.plm_markers;
 
-	markers->decodeInitIndex(Zplm);
-	while (header_size > 0) {
-		// Nplm
-		Nplm = *p_header_data++;
-		header_size -= (1 + Nplm);
-		if (header_size < 0) {
-			GROK_ERROR("Malformed PLM marker segment");
-			return false;
-		}
-		for (i = 0; i < Nplm; ++i) {
-			uint8_t tmp = *p_header_data;
-			++p_header_data;
-			markers->decodeNext(tmp);
-		}
-		if (packet_len != 0) {
-			GROK_ERROR("Malformed PLM marker segment");
-			return false;
-		}
-	}
-	return true;
+	return p_j2k->m_cp.plm_markers->decodePLM(p_header_data, hdr_size);
 }
 
 /**
@@ -4143,36 +4062,13 @@ static bool j2k_read_plm(grk_j2k *p_j2k, uint8_t *p_header_data,
  */
 static bool j2k_read_plt(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
-	(void) p_j2k;
+
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
-
-	if (header_size < 1) {
-		GROK_ERROR("PLT marker segment too short");
-		return false;
-	}
-
-	/* Zplt */
-	uint8_t Zpl;
-	Zpl = *p_header_data++;
-	--header_size;
-
 	if (!p_j2k->m_tileProcessor->plt_markers)
 		p_j2k->m_tileProcessor->plt_markers = new PacketLengthMarkers();
-	auto markers = p_j2k->m_tileProcessor->plt_markers;
 
-	uint8_t tmp;
-	markers->decodeInitIndex(Zpl);
-	for (uint32_t i = 0; i < header_size; ++i) {
-		/* Iplt_ij */
-		tmp = *p_header_data++;
-		markers->decodeNext(tmp);
-	}
-	if (markers->decodeHasPendingPacketLength()) {
-		GROK_ERROR("Malformed PLT marker segment");
-		return false;
-	}
-	return true;
+	return p_j2k->m_tileProcessor->plt_markers->decodePLT(p_header_data, header_size);
 }
 
 /**

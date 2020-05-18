@@ -30,6 +30,52 @@ TileLengthMarkers::~TileLengthMarkers() {
 		delete markers;
 	}
 }
+bool TileLengthMarkers::decode(uint8_t *p_header_data, uint16_t header_size){
+	if (header_size < 2) {
+		GROK_ERROR("Error reading TLM marker");
+		return false;
+	}
+	uint8_t i_TLM, L;
+	uint32_t L_iT, L_LTP;
+
+	// correct for length of marker
+	header_size = (uint16_t) (header_size - 2);
+	// read TLM marker segment index
+	i_TLM = *p_header_data++;
+	// read and parse L parameter, which indicates number of bytes used to represent
+	// remaining parameters
+	L = *p_header_data++;
+	// 0x70 ==  1110000
+	if ((L & ~0x70) != 0) {
+		GROK_ERROR("Illegal L value in TLM marker");
+		return false;
+	}
+	L_iT = ((L >> 4) & 0x3);	// 0 <= L_iT <= 2
+	L_LTP = (L >> 6) & 0x1;		// 0 <= L_iTP <= 1
+
+	uint32_t bytes_per_tile_part_length = L_LTP ? 4U : 2U;
+	uint32_t quotient = bytes_per_tile_part_length + L_iT;
+	if (header_size % quotient != 0) {
+		GROK_ERROR("Error reading TLM marker");
+		return false;
+	}
+	uint8_t num_tp = (uint8_t) (header_size / quotient);
+	uint32_t Ttlm_i = 0, Ptlm_i = 0;
+	for (uint8_t i = 0; i < num_tp; ++i) {
+		if (L_iT) {
+			grk_read<uint32_t>(p_header_data, &Ttlm_i, L_iT);
+			p_header_data += L_iT;
+		}
+		grk_read<uint32_t>(p_header_data, &Ptlm_i, bytes_per_tile_part_length);
+		auto info =
+				L_iT ? grk_tl_info((uint16_t) Ttlm_i, Ptlm_i) : grk_tl_info(
+								Ptlm_i);
+		push(i_TLM, info);
+		p_header_data += bytes_per_tile_part_length;
+	}
+	return true;
+}
+
 void TileLengthMarkers::push(uint8_t i_TLM, grk_tl_info info) {
 	auto pair = markers->find(i_TLM);
 	if (pair != markers->end()) {
@@ -153,6 +199,61 @@ size_t PacketLengthMarkers::write() {
 	return m_total_bytes_written;
 }
 
+bool PacketLengthMarkers::decodePLM(uint8_t *p_header_data, uint16_t header_size){
+	if (header_size < 1) {
+		GROK_ERROR("PLM marker segment too short");
+		return false;
+	}
+	// Zplm
+	uint8_t Zplm = *p_header_data++;
+	--header_size;
+	decodeInitIndex(Zplm);
+	while (header_size > 0) {
+		// Nplm
+		uint8_t Nplm = *p_header_data++;
+		if (header_size < (1 + Nplm)) {
+			GROK_ERROR("Malformed PLM marker segment");
+			return false;
+		}
+		for (uint32_t i = 0; i < Nplm; ++i) {
+			uint8_t tmp = *p_header_data;
+			++p_header_data;
+			decodeNext(tmp);
+		}
+		header_size = (uint16_t)(header_size - (1 + Nplm));
+		if (m_packet_len != 0) {
+			GROK_ERROR("Malformed PLM marker segment");
+			return false;
+		}
+	}
+	return true;
+}
+
+bool PacketLengthMarkers::decodePLT(uint8_t *p_header_data, uint16_t header_size){
+	if (header_size < 1) {
+		GROK_ERROR("PLT marker segment too short");
+		return false;
+	}
+
+	/* Zplt */
+	uint8_t Zpl;
+	Zpl = *p_header_data++;
+	--header_size;
+
+	uint8_t tmp;
+	decodeInitIndex(Zpl);
+	for (uint32_t i = 0; i < header_size; ++i) {
+		/* Iplt_ij */
+		tmp = *p_header_data++;
+		decodeNext(tmp);
+	}
+	if (m_packet_len != 0) {
+		GROK_ERROR("Malformed PLT marker segment");
+		return false;
+	}
+	return true;
+}
+
 void PacketLengthMarkers::decodeInitIndex(uint8_t index) {
 	m_Zpl = index;
 	m_packet_len = 0;
@@ -176,10 +277,6 @@ void PacketLengthMarkers::decodeNext(uint8_t Iplm) {
 		//GROK_INFO("Packet length: (%d, %d)", Zpl, packet_len);
 		m_packet_len = 0;
 	}
-}
-
-bool PacketLengthMarkers::decodeHasPendingPacketLength() {
-	return m_packet_len != 0;
 }
 
 void PacketLengthMarkers::readInit(void) {
