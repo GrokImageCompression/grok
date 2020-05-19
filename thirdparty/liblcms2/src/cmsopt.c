@@ -1,7 +1,7 @@
 //---------------------------------------------------------------------------------
 //
 //  Little Color Management System
-//  Copyright (c) 1998-2017 Marti Maria Saguer
+//  Copyright (c) 1998-2020 Marti Maria Saguer
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the "Software"),
@@ -1084,6 +1084,7 @@ cmsBool OptimizeByComputingLinearization(cmsPipeline** Lut, cmsUInt32Number Inte
     {
         cmsStage* last = cmsPipelineGetPtrToLastStage(OriginalLut);
 
+        if (last == NULL) goto Error;
         if (cmsStageType(last) == cmsSigCurveSetElemType) {
 
             _cmsStageToneCurvesData* Data = (_cmsStageToneCurvesData*)cmsStageData(last);
