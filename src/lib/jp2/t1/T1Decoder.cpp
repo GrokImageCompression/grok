@@ -21,7 +21,7 @@
 
 namespace grk {
 
-T1Decoder::T1Decoder(grk_tcp *tcp,
+T1Decoder::T1Decoder(TileCodingParams *tcp,
 					uint16_t blockw,
 					uint16_t blockh) :
 		codeblock_width((uint16_t) (blockw ? (uint32_t) 1 << blockw : 0)),

@@ -30,7 +30,7 @@ using namespace ojph::local;
 namespace grk {
 
 T1Interface* T1Factory::get_t1(bool isEncoder,
-								grk_tcp *tcp,
+								TileCodingParams *tcp,
 								uint32_t maxCblkW,
 								uint32_t maxCblkH) {
 	bool isHT = tcp->isHT;

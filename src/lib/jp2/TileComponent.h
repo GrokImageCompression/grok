@@ -81,11 +81,11 @@ struct TileComponent {
 	bool init(bool isEncoder,
 			bool whole_tile,
 			grk_image *output_image,
-			grk_coding_parameters *cp,
-			grk_tcp *tcp,
+			CodingParams *cp,
+			TileCodingParams *tcp,
 			grk_tcd_tile *tile,
 			grk_image_comp* image_comp,
-			grk_tccp* tccp,
+			TileComponentCodingParams* tccp,
 			grk_plugin_tile *current_plugin_tile);
 
 	 void alloc_sparse_array(uint32_t numres);
@@ -114,7 +114,7 @@ struct TileComponent {
 	grk_rect unreduced_tile_dim;
 	bool m_is_encoder;
 	sparse_array *m_sa;
-	grk_tccp *m_tccp;
+	TileComponentCodingParams *m_tccp;
 
 private:
 	void finalizeCoordinates();

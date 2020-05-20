@@ -26,14 +26,14 @@
 
 namespace grk {
 
-struct grk_tcp;
+struct TileCodingParams;
 
 namespace t1_ht {
 
 
 class T1HT: public T1Interface {
 public:
-	T1HT(bool isEncoder, grk_tcp *tcp, uint32_t maxCblkW, uint32_t maxCblkH);
+	T1HT(bool isEncoder, TileCodingParams *tcp, uint32_t maxCblkW, uint32_t maxCblkH);
 	virtual ~T1HT();
 
 	void preEncode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t &max);

@@ -23,7 +23,7 @@ namespace grk {
 
 class T1Encoder {
 public:
-	T1Encoder(grk_tcp *tcp, grk_tcd_tile *tile, uint32_t encodeMaxCblkW,
+	T1Encoder(TileCodingParams *tcp, grk_tcd_tile *tile, uint32_t encodeMaxCblkW,
 			uint32_t encodeMaxCblkH, bool needsRateControl);
 	~T1Encoder();
 	bool compress(std::vector<encodeBlockInfo*> *blocks);

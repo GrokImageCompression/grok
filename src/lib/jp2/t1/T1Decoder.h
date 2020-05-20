@@ -27,7 +27,7 @@ class T1Interface;
 
 class T1Decoder {
 public:
-	T1Decoder(grk_tcp *tcp, uint16_t blockw, uint16_t blockh);
+	T1Decoder(TileCodingParams *tcp, uint16_t blockw, uint16_t blockh);
 	~T1Decoder();
 	bool decompress(std::vector<decodeBlockInfo*> *blocks);
 

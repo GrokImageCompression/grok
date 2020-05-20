@@ -23,7 +23,7 @@ using namespace std;
 namespace grk {
 namespace t1_part1{
 
-T1Part1::T1Part1(bool isEncoder, grk_tcp *tcp, uint32_t maxCblkW,
+T1Part1::T1Part1(bool isEncoder, TileCodingParams *tcp, uint32_t maxCblkW,
 		uint32_t maxCblkH) : t1(nullptr){
 	(void) tcp;
 	t1 = t1_create(isEncoder);

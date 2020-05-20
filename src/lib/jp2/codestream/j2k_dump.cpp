@@ -67,7 +67,7 @@ static void j2k_dump_MH_info(grk_j2k *p_j2k, FILE *out_stream);
 
 static void j2k_dump_MH_index(grk_j2k *p_j2k, FILE *out_stream);
 
-static void j2k_dump_tile_info(grk_tcp *default_tile, uint32_t numcomps,
+static void j2k_dump_tile_info(TileCodingParams *default_tile, uint32_t numcomps,
 		FILE *out_stream) {
 	if (default_tile) {
 		uint32_t compno;
@@ -79,7 +79,7 @@ static void j2k_dump_tile_info(grk_tcp *default_tile, uint32_t numcomps,
 		fprintf(out_stream, "\t\t mct=%x\n", default_tile->mct);
 
 		for (compno = 0; compno < numcomps; compno++) {
-			grk_tccp *tccp = &(default_tile->tccps[compno]);
+			TileComponentCodingParams *tccp = &(default_tile->tccps[compno]);
 			uint32_t resno;
 			uint32_t bandno, numbands;
 
@@ -146,7 +146,7 @@ void j2k_dump(grk_j2k *p_j2k, int32_t flag, FILE *out_stream) {
 	if (flag & GRK_J2K_TCH_INFO) {
 		uint32_t nb_tiles = p_j2k->m_cp.t_grid_height * p_j2k->m_cp.t_grid_width;
 		uint32_t i;
-		grk_tcp *tcp = p_j2k->m_cp.tcps;
+		TileCodingParams *tcp = p_j2k->m_cp.tcps;
 		if (p_j2k->m_private_image) {
 			for (i = 0; i < nb_tiles; ++i) {
 				j2k_dump_tile_info(tcp, p_j2k->m_private_image->numcomps,
@@ -326,7 +326,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
  grk_codestream_info_v2  *  j2k_get_cstr_info(grk_j2k *p_j2k) {
 	uint32_t compno;
 	uint32_t numcomps = p_j2k->m_private_image->numcomps;
-	grk_tcp *default_tile;
+	TileCodingParams *default_tile;
 	 grk_codestream_info_v2  *cstr_info =
 			( grk_codestream_info_v2  * ) grk_calloc(1,
 					sizeof( grk_codestream_info_v2) );
@@ -359,7 +359,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 	}
 
 	for (compno = 0; compno < numcomps; compno++) {
-		grk_tccp *tccp = &(default_tile->tccps[compno]);
+		TileComponentCodingParams *tccp = &(default_tile->tccps[compno]);
 		 grk_tccp_info  *tccp_info =
 				&(cstr_info->m_default_tile_info.tccp_info[compno]);
 		uint32_t bandno, numbands;

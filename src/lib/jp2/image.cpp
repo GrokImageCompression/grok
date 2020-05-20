@@ -129,7 +129,7 @@ grk_image *  grk_image_create0(void) {
  * @param p_cp				the coding parameters from which to update the image.
  */
 void grk_image_comp_header_update(grk_image *image_header,
-		const grk_coding_parameters *p_cp) {
+		const CodingParams *p_cp) {
 
 	//1. calculate canvas coordinates of image
 	uint32_t x0 = std::max<uint32_t>(p_cp->tx0, image_header->x0);
@@ -145,7 +145,7 @@ void grk_image_comp_header_update(grk_image *image_header,
 
 	// 2. convert from canvas to tile coordinates, taking into account
 	// resolution reduction
-	uint32_t reduce = p_cp->m_coding_param.m_dec.m_reduce;
+	uint32_t reduce = p_cp->m_coding_params.m_dec.m_reduce;
 	for (uint32_t i = 0; i < image_header->numcomps; ++i) {
 		auto img_comp = image_header->comps + i;
 		uint32_t comp_x0 = ceildiv<uint32_t>(x0, img_comp->dx);

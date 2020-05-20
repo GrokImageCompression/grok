@@ -21,7 +21,7 @@
 
 namespace grk {
 
-T1Encoder::T1Encoder(grk_tcp *tcp, grk_tcd_tile *tile, uint32_t encodeMaxCblkW,
+T1Encoder::T1Encoder(TileCodingParams *tcp, grk_tcd_tile *tile, uint32_t encodeMaxCblkW,
 		uint32_t encodeMaxCblkH, bool needsRateControl) :
 		tile(tile),
 		needsRateControl(needsRateControl),

@@ -338,7 +338,7 @@ struct TileProcessor {
 	 *
 	 * @return true if the encoding values could be set (false otherwise).
 	 */
-	bool init(grk_image *p_image, grk_coding_parameters *p_cp);
+	bool init(grk_image *p_image, CodingParams *p_cp);
 
 	/**
 	 * Allocates memory for decoding a specific tile.
@@ -474,13 +474,13 @@ struct TileProcessor {
 	PacketLengthMarkers *plt_markers;
 
 	/** coding parameters */
-	grk_coding_parameters *m_cp;
+	CodingParams *m_cp;
 
 	PacketTracker m_packetTracker;
 private:
 
 	/** coding/decoding parameters common to all tiles */
-	grk_tcp *m_tcp;
+	TileCodingParams *m_tcp;
 	/** current encoded tile (not used for decompress) */
 	uint16_t m_tileno;
 

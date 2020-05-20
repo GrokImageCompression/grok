@@ -193,12 +193,6 @@ static bool j2k_copy_default_tcp_and_create_tcd(grk_j2k *p_j2k,
 static const  grk_dec_memory_marker_handler  *  j2k_get_marker_handler(
 		uint16_t id);
 
-/**
- * Destroys a tile coding parameter structure.
- *
- * @param       p_tcp           the tile coding parameter to destroy.
- */
-static void j2k_tcp_destroy(grk_tcp *p_tcp);
 
 /**
  * Compare 2 a SPCod/ SPCoc elements, i.e. the coding style of a given component of a tile.
@@ -616,7 +610,7 @@ static bool j2k_read_ppm(grk_j2k *p_j2k, uint8_t *p_header_data,
  * @param       p_cp      main coding parameters.
 
  */
-static bool j2k_merge_ppm(grk_coding_parameters *p_cp);
+static bool j2k_merge_ppm(CodingParams *p_cp);
 
 /**
  * Reads a PPT marker (Packed packet headers, tile-part header)
@@ -635,7 +629,7 @@ static bool j2k_read_ppt(grk_j2k *p_j2k, uint8_t *p_header_data,
  * @param       p_tcp   the tile.
 
  */
-static bool j2k_merge_ppt(grk_tcp *p_tcp);
+static bool j2k_merge_ppt(TileCodingParams *p_tcp);
 
 /**
  * Writes the TLM marker (Tile Length Marker)
@@ -838,7 +832,7 @@ static bool j2k_write_mco(grk_j2k *p_j2k, BufferedStream *stream);
 static bool j2k_read_mco(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 
-static bool j2k_add_mct(grk_tcp *p_tcp, grk_image *p_image, uint32_t index);
+static bool j2k_add_mct(TileCodingParams *p_tcp, grk_image *p_image, uint32_t index);
 
 static void j2k_read_int16_to_float(const void *p_src_data, void *p_dest_data,
 		uint32_t nb_elem);
@@ -957,7 +951,7 @@ static bool j2k_check_poc_val(const  grk_poc  *p_pocs, uint32_t nb_pocs,
  *
  * @return              the number of tile parts.
  */
-static uint32_t j2k_get_num_tp(grk_coding_parameters *cp, uint32_t pino, uint16_t tileno);
+static uint32_t j2k_get_num_tp(CodingParams *cp, uint32_t pino, uint16_t tileno);
 
 /**
  * Calculates the total number of tile parts needed by the encoder to
@@ -970,7 +964,7 @@ static uint32_t j2k_get_num_tp(grk_coding_parameters *cp, uint32_t pino, uint16_
  *
  * @return true if the function was successful, false else.
  */
-static bool j2k_calculate_tp(grk_coding_parameters *cp, uint32_t *p_nb_tile_parts, grk_image *image);
+static bool j2k_calculate_tp(CodingParams *cp, uint32_t *p_nb_tile_parts, grk_image *image);
 
 /**
  * Checks for invalid number of tile-parts in SOT marker (TPsot==TNsot). See issue 254.

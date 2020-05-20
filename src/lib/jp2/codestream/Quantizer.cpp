@@ -62,11 +62,11 @@
 
 namespace grk {
 
-void Quantizer::setBandStepSizeAndBps(grk_tcp *tcp,
+void Quantizer::setBandStepSizeAndBps(TileCodingParams *tcp,
 							grk_tcd_band *band,
 		                   uint32_t resno,
 						   uint8_t bandno,
-							grk_tccp *tccp,
+							TileComponentCodingParams *tccp,
 							uint32_t image_precision,
 							float fraction){
 
@@ -104,7 +104,7 @@ void Quantizer::setBandStepSizeAndBps(grk_tcp *tcp,
 	}
 }
 
-void Quantizer::apply_quant(grk_tccp *src, grk_tccp *dest){
+void Quantizer::apply_quant(TileComponentCodingParams *src, TileComponentCodingParams *dest){
 	if (!src || !dest)
 		return;
 

@@ -21,7 +21,7 @@
 
 namespace grk {
 
-bool Tier1::encodeCodeblocks(grk_tcp *tcp,
+bool Tier1::encodeCodeblocks(TileCodingParams *tcp,
 							grk_tcd_tile *tile,
 							const double *mct_norms,
 							uint32_t mct_numcomps,
@@ -35,7 +35,7 @@ bool Tier1::encodeCodeblocks(grk_tcp *tcp,
 
 	for (compno = 0; compno < tile->numcomps; ++compno) {
 		TileComponent *tilec = &tile->comps[compno];
-		grk_tccp *tccp = &tcp->tccps[compno];
+		TileComponentCodingParams *tccp = &tcp->tccps[compno];
 		for (resno = 0; resno < tilec->numresolutions; ++resno) {
 			grk_tcd_resolution *res = &tilec->resolutions[resno];
 
@@ -95,7 +95,7 @@ bool Tier1::encodeCodeblocks(grk_tcp *tcp,
 	return encoder.compress(&blocks);
 }
 
-bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, grk_tccp *tccp,
+bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, TileComponentCodingParams *tccp,
 		std::vector<decodeBlockInfo*> *blocks) {
 	uint32_t resno, bandno, precno;
 	if (!tilec->buf->alloc_component_data_decode()) {
@@ -179,7 +179,7 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, grk_tccp *tccp,
 }
 
 
-bool Tier1::decodeCodeblocks(grk_tcp *tcp,
+bool Tier1::decodeCodeblocks(TileCodingParams *tcp,
 		                    uint16_t blockw, uint16_t blockh,
 		                    std::vector<decodeBlockInfo*> *blocks) {
 	T1Decoder decoder(tcp, blockw, blockh);

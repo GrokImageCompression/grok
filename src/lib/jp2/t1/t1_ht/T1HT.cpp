@@ -34,7 +34,7 @@ namespace grk {
 namespace t1_ht {
 
 T1HT::T1HT(bool isEncoder,
-			grk_tcp *tcp,
+			TileCodingParams *tcp,
 			uint32_t maxCblkW,
 			uint32_t maxCblkH) :
 				coded_data_size(isEncoder ? 0 : (uint32_t)(maxCblkW*maxCblkH* sizeof(int32_t))),

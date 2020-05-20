@@ -69,6 +69,15 @@ namespace grk {
 /*@{*/
 
 /**
+ T2 encoding mode
+ */
+enum J2K_T2_MODE {
+	THRESH_CALC = 0, /** Function called in Rate allocation process*/
+	FINAL_PASS = 1 /** Function called in Tier 2 process*/
+};
+
+
+/**
  FIXME DOC
  */
 struct grk_pi_resolution {
@@ -139,7 +148,7 @@ struct PacketIter {
  *
  * @return	a list of packet iterator that points to the first packet of the tile (not true).
  */
-PacketIter* pi_initialise_encode(const grk_image *image, grk_coding_parameters *cp,
+PacketIter* pi_initialise_encode(const grk_image *image, CodingParams *cp,
 		uint16_t tileno, J2K_T2_MODE t2_mode);
 
 /**
@@ -149,7 +158,7 @@ PacketIter* pi_initialise_encode(const grk_image *image, grk_coding_parameters *
  * @param	p_cp		the coding parameters.
  * @param	tile_no	index of the tile being encoded.
  */
-void pi_update_encoding_parameters(const grk_image *p_image, grk_coding_parameters *p_cp,
+void pi_update_encoding_parameters(const grk_image *p_image, CodingParams *p_cp,
 		uint16_t tile_no);
 
 /**
@@ -162,7 +171,7 @@ void pi_update_encoding_parameters(const grk_image *p_image, grk_coding_paramete
  @param tppos The position of the tile part flag in the progression order
  @param t2_mode FIXME DOC
  */
-void pi_init_encode(PacketIter *pi, grk_coding_parameters *cp, uint16_t tileno, uint32_t pino,
+void pi_init_encode(PacketIter *pi, CodingParams *cp, uint16_t tileno, uint32_t pino,
 		uint32_t tpnum, uint32_t tppos, J2K_T2_MODE t2_mode);
 
 /**
@@ -173,7 +182,7 @@ void pi_init_encode(PacketIter *pi, grk_coding_parameters *cp, uint16_t tileno, 
  @return a packet iterator that points to the first packet of the tile
  @see pi_destroy
  */
-PacketIter* pi_create_decode(grk_image *image, grk_coding_parameters *cp, uint16_t tileno);
+PacketIter* pi_create_decode(grk_image *image, CodingParams *cp, uint16_t tileno);
 /**
  * Destroys a packet iterator array.
  *

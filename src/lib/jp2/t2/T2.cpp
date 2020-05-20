@@ -106,7 +106,7 @@ bool T2::encode_packets(uint16_t tile_no, uint32_t max_layers,
 						info_PK->start_pos = info_TL->end_header + 1;
 					} else {
 						info_PK->start_pos =
-								((cp->m_coding_param.m_enc.m_tp_on | tcp->POC)
+								((cp->m_coding_params.m_enc.m_tp_on | tcp->POC)
 										&& info_PK->start_pos) ?
 										info_PK->start_pos :
 										info_TL->packet[cstr_info->packno - 1].end_pos
@@ -138,7 +138,7 @@ bool T2::encode_packets_simulate(uint16_t tile_no, uint32_t max_layers,
 	auto tcp = cp->tcps + tile_no;
 	uint32_t pocno = (cp->rsiz == GRK_PROFILE_CINEMA_4K) ? 2 : 1;
 	uint32_t max_comp =
-			cp->m_coding_param.m_enc.m_max_comp_size > 0 ? image->numcomps : 1;
+			cp->m_coding_params.m_enc.m_max_comp_size > 0 ? image->numcomps : 1;
 	uint32_t nb_pocs = tcp->numpocs + 1;
 
 	auto pi = pi_initialise_encode(image, cp, tile_no, THRESH_CALC);
@@ -182,8 +182,8 @@ bool T2::encode_packets_simulate(uint16_t tile_no, uint32_t max_layers,
 				}
 			}
 
-			if (cp->m_coding_param.m_enc.m_max_comp_size) {
-				if (comp_len > cp->m_coding_param.m_enc.m_max_comp_size) {
+			if (cp->m_coding_params.m_enc.m_max_comp_size) {
+				if (comp_len > cp->m_coding_params.m_enc.m_max_comp_size) {
 					pi_destroy(pi, nb_pocs);
 					return false;
 				}
@@ -316,7 +316,7 @@ T2::T2(TileProcessor *tileProc) :
 		tileProcessor(tileProc) {
 }
 
-bool T2::decode_packet(grk_tcp *p_tcp, PacketIter *p_pi, ChunkBuffer *src_buf,
+bool T2::decode_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
 	uint64_t max_length = src_buf->data_len - src_buf->get_global_offset();
 	if (max_length == 0) {
@@ -350,7 +350,7 @@ bool T2::decode_packet(grk_tcp *p_tcp, PacketIter *p_pi, ChunkBuffer *src_buf,
 	return true;
 }
 
-bool T2::read_packet_header(grk_tcp *p_tcp, PacketIter *p_pi,
+bool T2::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 		bool *p_is_data_present, ChunkBuffer *src_buf, uint64_t *p_data_read) {
 	auto p_tile = tileProcessor->tile;
 	auto res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
@@ -413,12 +413,12 @@ bool T2::read_packet_header(grk_tcp *p_tcp, PacketIter *p_pi,
 	size_t *modified_length_ptr = nullptr;
 	size_t remaining_length = 0;
 	auto cp = tileProcessor->m_cp;
-	if (cp->ppm == 1) { /* PPM */
+	if (cp->ppm) { /* PPM */
 		header_data_start = &cp->ppm_data;
 		header_data = *header_data_start;
 		modified_length_ptr = &(cp->ppm_len);
 
-	} else if (p_tcp->ppt == 1) { /* PPT */
+	} else if (p_tcp->ppt) { /* PPT */
 		header_data_start = &(p_tcp->ppt_data);
 		header_data = *header_data_start;
 		modified_length_ptr = &(p_tcp->ppt_len);
@@ -759,7 +759,7 @@ bool T2::read_packet_data(grk_tcd_resolution *res, PacketIter *p_pi,
 	}
 	return true;
 }
-bool T2::skip_packet(grk_tcp *p_tcp, PacketIter *p_pi, ChunkBuffer *src_buf,
+bool T2::skip_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
 	bool read_data;
 	uint64_t nb_bytes_read = 0;
@@ -892,7 +892,7 @@ bool T2::init_seg(grk_tcd_cblk_dec *cblk, uint32_t index, uint8_t cblk_sty,
 }
 
 //--------------------------------------------------------------------------------------------------
-bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp, PacketIter *pi,
+bool T2::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
 		BufferedStream *stream, uint64_t *packet_bytes_written,
 		grk_codestream_info *cstr_info) {
 	assert(stream);
@@ -1326,7 +1326,7 @@ bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp, PacketIter *pi,
 	return true;
 }
 
-bool T2::encode_packet_simulate(grk_tcp *tcp, PacketIter *pi,
+bool T2::encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 		uint64_t *packet_bytes_written, uint64_t max_bytes_available,
 		PacketLengthMarkers *markers) {
 	uint32_t compno = pi->compno;

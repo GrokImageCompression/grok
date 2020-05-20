@@ -99,7 +99,9 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/j2k.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/j2k.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/jp2.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/jp2.h  
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/jp2.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodingParams.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodingParams.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/PacketIter.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/PacketIter.h  
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/TagTree.cpp

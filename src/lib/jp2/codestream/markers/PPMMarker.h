@@ -82,7 +82,7 @@ public:
 	 * @param       p_cp      main coding parameters.
 
 	 */
-	bool merge(grk_coding_parameters *p_cp);
+	bool merge(CodingParams *p_cp);
 
 };
 

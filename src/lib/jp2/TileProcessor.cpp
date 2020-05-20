@@ -199,7 +199,7 @@ bool TileProcessor::set_decompress_area(grk_j2k *p_j2k, grk_image *output_image,
 	decoder->m_discard_tiles = 1;
 	whole_tile_decoding = false;
 	if (!update_image_dimensions(output_image,
-			cp->m_coding_param.m_dec.m_reduce))
+			cp->m_coding_params.m_dec.m_reduce))
 		return false;
 
 	GROK_INFO("Setting decoding area to %d,%d,%d,%d", output_image->x0,
@@ -220,7 +220,7 @@ bool TileProcessor::set_decompress_area(grk_j2k *p_j2k, grk_image *output_image,
  */
 bool TileProcessor::layer_needs_rate_control(uint32_t layno) {
 
-	auto enc_params = &m_cp->m_coding_param.m_enc;
+	auto enc_params = &m_cp->m_coding_params.m_enc;
 	return (enc_params->m_disto_alloc && (m_tcp->rates[layno] > 0.0))
 			|| (enc_params->m_fixed_quality
 					&& (m_tcp->distoratio[layno] > 0.0f));
@@ -430,7 +430,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint64_t *all_packets_len) {
 					break;
 				makelayer_feasible(layno, (uint16_t) thresh, false);
 				prevthresh = thresh;
-				if (m_cp->m_coding_param.m_enc.m_fixed_quality) {
+				if (m_cp->m_coding_params.m_enc.m_fixed_quality) {
 					double distoachieved =
 							layno == 0 ?
 									tile->distolayer[0] :
@@ -594,7 +594,7 @@ bool TileProcessor::pcrd_bisect_simple(uint64_t *all_packets_len) {
 				if (prevthresh != -1 && (fabs(prevthresh - thresh)) < 0.001)
 					break;
 				prevthresh = thresh;
-				if (m_cp->m_coding_param.m_enc.m_fixed_quality) {
+				if (m_cp->m_coding_params.m_enc.m_fixed_quality) {
 					double distoachieved =
 							layno == 0 ?
 									tile->distolayer[0] :
@@ -817,7 +817,7 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 		}
 	}
 }
-bool TileProcessor::init(grk_image *p_image, grk_coding_parameters *p_cp) {
+bool TileProcessor::init(grk_image *p_image, CodingParams *p_cp) {
 	image = p_image;
 	m_cp = p_cp;
 	tile = (grk_tcd_tile*) grk_calloc(1, sizeof(grk_tcd_tile));
@@ -826,7 +826,7 @@ bool TileProcessor::init(grk_image *p_image, grk_coding_parameters *p_cp) {
 
 	tile->comps = new TileComponent[p_image->numcomps];
 	tile->numcomps = p_image->numcomps;
-	tp_pos = p_cp->m_coding_param.m_enc.m_tp_pos;
+	tp_pos = p_cp->m_coding_params.m_enc.m_tp_pos;
 
 	return true;
 }
@@ -972,7 +972,7 @@ bool TileProcessor::compress_tile_part(uint16_t tile_no, BufferedStream *stream,
 		}
 		// 1. create PLT marker if required
 		delete plt_markers;
-		if (m_cp->m_coding_param.m_enc.writePlt){
+		if (m_cp->m_coding_params.m_enc.writePlt){
 			if (!needs_rate_control())
 				plt_markers = new PacketLengthMarkers(stream);
 			else
@@ -1596,10 +1596,10 @@ bool TileProcessor::rate_allocate(grk_codestream_info *p_cstr_info) {
 	if (p_cstr_info)
 		p_cstr_info->index_write = 0;
 
-	if (m_cp->m_coding_param.m_enc.m_disto_alloc
-			|| m_cp->m_coding_param.m_enc.m_fixed_quality) {
+	if (m_cp->m_coding_params.m_enc.m_disto_alloc
+			|| m_cp->m_coding_params.m_enc.m_fixed_quality) {
 		// rate control by rate/distortion or fixed quality
-		switch (m_cp->m_coding_param.m_enc.rateControlAlgorithm) {
+		switch (m_cp->m_coding_params.m_enc.rateControlAlgorithm) {
 		case 0:
 			if (!pcrd_bisect_simple(&all_packets_len))
 				return false;
@@ -1667,7 +1667,7 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(uint8_t *tile_data,
 
 		/* Border of the current output component. (x0_dest,y0_dest)
 		 * corresponds to origin of dest buffer */
-		auto reduce = m_cp->m_coding_param.m_dec.m_reduce;
+		auto reduce = m_cp->m_coding_params.m_dec.m_reduce;
 		uint32_t x0_dest = uint_ceildivpow2(img_comp_dest->x0, reduce);
 		uint32_t y0_dest = uint_ceildivpow2(img_comp_dest->y0, reduce);
 		/* can't overflow given that image->x1 is uint32 */

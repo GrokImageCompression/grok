@@ -81,20 +81,20 @@ struct grk_stepsize {
 
 
 struct grk_j2k;
-struct grk_tccp;
+struct TileComponentCodingParams;
 struct BufferedStream;
 struct grk_tcd_band;
-struct grk_tcp;
+struct TileCodingParams;
 
 
 class Quantizer {
 public:
 
-	void setBandStepSizeAndBps( grk_tcp *tcp,
+	void setBandStepSizeAndBps( TileCodingParams *tcp,
 								grk_tcd_band *band,
 								uint32_t resno,
 								 uint8_t bandno,
-								grk_tccp *tccp,
+								TileComponentCodingParams *tccp,
 								uint32_t image_precision,
 								float fraction);
 
@@ -107,7 +107,7 @@ public:
 			uint8_t *p_header_data, uint16_t *header_size);
 	bool write_SQcd_SQcc(grk_j2k *p_j2k, uint16_t tile_no,
 			uint32_t comp_no, BufferedStream *stream);
-	void apply_quant(grk_tccp *src, grk_tccp *dest);
+	void apply_quant(TileComponentCodingParams *src, TileComponentCodingParams *dest);
 };
 
 }

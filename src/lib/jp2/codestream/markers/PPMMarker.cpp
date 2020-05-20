@@ -63,7 +63,7 @@ namespace grk {
 
 bool PPMMarker::read(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size){
-	grk_coding_parameters *cp = nullptr;
+	CodingParams *cp = nullptr;
 	uint32_t Z_ppm;
 
 	assert(p_header_data != nullptr);
@@ -127,7 +127,7 @@ bool PPMMarker::read(grk_j2k *p_j2k, uint8_t *p_header_data,
 
 	return true;
 }
-bool PPMMarker::merge(grk_coding_parameters *p_cp){
+bool PPMMarker::merge(CodingParams *p_cp){
 	uint32_t i, ppm_data_size, N_ppm_remaining;
 
 	assert(p_cp != nullptr);

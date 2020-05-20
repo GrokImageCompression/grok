@@ -24,7 +24,7 @@ namespace grk {
 class T1Factory {
 public:
 	static T1Interface* get_t1(bool isEncoder,
-								grk_tcp *tcp,
+								TileCodingParams *tcp,
 								uint32_t maxCblkW,
 								uint32_t maxCblkH);
 

@@ -126,7 +126,7 @@ private:
 	 @param cstr_info Codestream information structure
 	 @return
 	 */
-	bool encode_packet(uint16_t tileno, grk_tcp *tcp, PacketIter *pi,
+	bool encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
 			BufferedStream *stream, uint64_t *p_data_written,
 			grk_codestream_info *cstr_info);
 
@@ -138,7 +138,7 @@ private:
 	 @param len Length of the destination buffer
 	 @return
 	 */
-	bool encode_packet_simulate(grk_tcp *tcp, PacketIter *pi,
+	bool encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 			uint64_t *p_data_written, uint64_t len,
 			PacketLengthMarkers *markers);
 
@@ -150,13 +150,13 @@ private:
 	 @param data_read   FIXME DOC
 	 @return  true if packet was successfully decoded
 	 */
-	bool decode_packet(grk_tcp *tcp, PacketIter *pi, ChunkBuffer *src_buf,
+	bool decode_packet(TileCodingParams *tcp, PacketIter *pi, ChunkBuffer *src_buf,
 			uint64_t *data_read);
 
-	bool skip_packet(grk_tcp *p_tcp, PacketIter *p_pi, ChunkBuffer *src_buf,
+	bool skip_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuffer *src_buf,
 			uint64_t *p_data_read);
 
-	bool read_packet_header(grk_tcp *p_tcp, PacketIter *p_pi,
+	bool read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 			bool *p_is_data_present, ChunkBuffer *src_buf,
 			uint64_t *p_data_read);
 

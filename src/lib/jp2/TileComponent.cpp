@@ -166,11 +166,11 @@ void TileComponent::get_dimensions(grk_image *image,
 bool TileComponent::init(bool isEncoder,
 						bool whole_tile,
 						grk_image *output_image,
-						grk_coding_parameters *cp,
-						grk_tcp *tcp,
+						CodingParams *cp,
+						TileCodingParams *tcp,
 						grk_tcd_tile* tile,
 						grk_image_comp* image_comp,
-						grk_tccp* tccp,
+						TileComponentCodingParams* tccp,
 						grk_plugin_tile *current_plugin_tile){
 	uint32_t state = grk_plugin_get_debug_state();
 	m_is_encoder = isEncoder;
@@ -198,11 +198,11 @@ bool TileComponent::init(bool isEncoder,
 	/*fprintf(stderr, "\tTile compo border = %d,%d,%d,%d\n", X0(), Y0(),x1,y1);*/
 
 	numresolutions = m_tccp->numresolutions;
-	if (numresolutions < cp->m_coding_param.m_dec.m_reduce) {
+	if (numresolutions < cp->m_coding_params.m_dec.m_reduce) {
 		minimum_num_resolutions = 1;
 	} else {
 		minimum_num_resolutions = numresolutions
-				- cp->m_coding_param.m_dec.m_reduce;
+				- cp->m_coding_params.m_dec.m_reduce;
 	}
 	if (!resolutions) {
 		resolutions = new grk_tcd_resolution[numresolutions];

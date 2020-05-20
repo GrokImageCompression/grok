@@ -67,7 +67,7 @@ namespace grk {
 bool grk_j2k::decodingTilePartHeader() {
 	return (m_specific_param.m_decoder.m_state & J2K_DEC_STATE_TPH);
 }
-grk_tcp* grk_j2k::get_current_decode_tcp() {
+TileCodingParams* grk_j2k::get_current_decode_tcp() {
 	return (decodingTilePartHeader()) ?
 			m_cp.tcps + m_tileProcessor->m_current_tile_number :
 			m_specific_param.m_decoder.m_default_tcp;
@@ -203,7 +203,6 @@ void j2k_destroy(grk_j2k *p_j2k) {
 	if (p_j2k->m_is_decoder) {
 
 		if (p_j2k->m_specific_param.m_decoder.m_default_tcp != nullptr) {
-			j2k_tcp_destroy(p_j2k->m_specific_param.m_decoder.m_default_tcp);
 			delete p_j2k->m_specific_param.m_decoder.m_default_tcp;
 			p_j2k->m_specific_param.m_decoder.m_default_tcp = nullptr;
 		}
@@ -212,7 +211,7 @@ void j2k_destroy(grk_j2k *p_j2k) {
 	delete p_j2k->m_tileProcessor;
 
 	p_j2k->m_cp.destroy();
-	memset(&(p_j2k->m_cp), 0, sizeof(grk_coding_parameters));
+	memset(&(p_j2k->m_cp), 0, sizeof(CodingParams));
 
 	delete p_j2k->m_procedure_list;
 	p_j2k->m_procedure_list = nullptr;
@@ -432,9 +431,9 @@ bool j2k_read_header(BufferedStream *stream, grk_j2k *p_j2k,
 	}
 
 	if (header_info) {
-		grk_coding_parameters *cp = nullptr;
-		grk_tcp *tcp = nullptr;
-		grk_tccp *tccp = nullptr;
+		CodingParams *cp = nullptr;
+		TileCodingParams *tcp = nullptr;
+		TileComponentCodingParams *tccp = nullptr;
 
 		cp = &(p_j2k->m_cp);
 		tcp = p_j2k->get_current_decode_tcp();
@@ -514,8 +513,8 @@ static bool j2k_decompress_validation(grk_j2k *p_j2k, BufferedStream *stream) {
 void j2k_init_decompressor(void *j2k_void, grk_dparameters *parameters) {
 	grk_j2k *j2k = (grk_j2k*) j2k_void;
 	if (j2k && parameters) {
-		j2k->m_cp.m_coding_param.m_dec.m_layer = parameters->cp_layer;
-		j2k->m_cp.m_coding_param.m_dec.m_reduce = parameters->cp_reduce;
+		j2k->m_cp.m_coding_params.m_dec.m_layer = parameters->cp_layer;
+		j2k->m_cp.m_coding_params.m_dec.m_reduce = parameters->cp_reduce;
 	}
 }
 
@@ -871,7 +870,7 @@ bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 		}
 
 		//2. Check Tile QCD
-		grk_tccp *qcd_comp = nullptr;
+		TileComponentCodingParams *qcd_comp = nullptr;
 		for (uint32_t k = 0; k < numComps; ++k) {
 			auto tccp = tcp->tccps + k;
 			if (tccp->fromTileHeader && !tccp->fromQCC) {
@@ -969,12 +968,12 @@ bool j2k_decompress_tile(grk_j2k *p_j2k, uint16_t tile_index,
 
 	auto tcp = p_j2k->m_cp.tcps + tile_index;
 	if (!tcp->m_tile_data) {
-		j2k_tcp_destroy(tcp);
+		tcp->destroy();
 		return false;
 	}
 
 	if (!tileProcessor->decompress_tile(tcp->m_tile_data, tile_index)) {
-		j2k_tcp_destroy(tcp);
+		tcp->destroy();
 		decoder->m_state |= J2K_DEC_STATE_ERR;
 		GROK_ERROR("Failed to decompress.");
 		return false;
@@ -1088,10 +1087,10 @@ grk_j2k* j2k_create_decompress(void) {
 	j2k->m_cp.m_is_decoder = true;
 
 #ifdef GRK_DISABLE_TPSOT_FIX
-    j2k->m_coding_param.m_decoder.m_nb_tile_parts_correction_checked = 1;
+    j2k->m_coding_params.m_decoder.m_nb_tile_parts_correction_checked = 1;
 #endif
 
-	j2k->m_specific_param.m_decoder.m_default_tcp = new grk_tcp();
+	j2k->m_specific_param.m_decoder.m_default_tcp = new TileCodingParams();
 	if (!j2k->m_specific_param.m_decoder.m_default_tcp) {
 		j2k_destroy(j2k);
 		return nullptr;
@@ -1393,7 +1392,7 @@ bool j2k_get_tile(grk_j2k *p_j2k, BufferedStream *stream, grk_image *p_image,
 	}
 
 	img_comp = p_image->comps;
-	auto reduce = p_j2k->m_cp.m_coding_param.m_dec.m_reduce;
+	auto reduce = p_j2k->m_cp.m_coding_params.m_dec.m_reduce;
 	for (compno = 0; compno < p_image->numcomps; ++compno) {
 		uint32_t comp_x1, comp_y1;
 
@@ -1440,48 +1439,6 @@ bool j2k_get_tile(grk_j2k *p_j2k, BufferedStream *stream, grk_image *p_image,
 	return true;
 }
 
-static void j2k_tcp_destroy(grk_tcp *p_tcp) {
-	if (!p_tcp)
-		return;
-
-	if (p_tcp->ppt_markers != nullptr) {
-		for (uint32_t i = 0U; i < p_tcp->ppt_markers_count; ++i)
-			grok_free(p_tcp->ppt_markers[i].m_data);
-		p_tcp->ppt_markers_count = 0U;
-		grok_free(p_tcp->ppt_markers);
-		p_tcp->ppt_markers = nullptr;
-	}
-
-	grok_free(p_tcp->ppt_buffer);
-	p_tcp->ppt_buffer = nullptr;
-	grok_free(p_tcp->tccps);
-	p_tcp->tccps = nullptr;
-	grok_free(p_tcp->m_mct_coding_matrix);
-	p_tcp->m_mct_coding_matrix = nullptr;
-	grok_free(p_tcp->m_mct_decoding_matrix);
-	p_tcp->m_mct_decoding_matrix = nullptr;
-
-	if (p_tcp->m_mcc_records) {
-		grok_free(p_tcp->m_mcc_records);
-		p_tcp->m_mcc_records = nullptr;
-		p_tcp->m_nb_max_mcc_records = 0;
-		p_tcp->m_nb_mcc_records = 0;
-	}
-
-	if (p_tcp->m_mct_records) {
-		auto mct_data = p_tcp->m_mct_records;
-		for (uint32_t i = 0; i < p_tcp->m_nb_mct_records; ++i) {
-			grok_free(mct_data->m_data);
-			++mct_data;
-		}
-		grok_free(p_tcp->m_mct_records);
-		p_tcp->m_mct_records = nullptr;
-	}
-	grok_free(p_tcp->mct_norms);
-	p_tcp->mct_norms = nullptr;
-	delete p_tcp->m_tile_data;
-	p_tcp->m_tile_data = nullptr;
-}
 
 /************************************************
  * High level Encode Methods
@@ -1508,7 +1465,7 @@ grk_j2k* j2k_create_compress(void) {
 bool j2k_init_compress(grk_j2k *p_j2k, grk_cparameters *parameters,
 		grk_image *image) {
 	uint32_t i, j, tileno, numpocs_tile;
-	grk_coding_parameters *cp = nullptr;
+	CodingParams *cp = nullptr;
 
 	if (!p_j2k || !parameters || !image) {
 		return false;
@@ -1669,12 +1626,12 @@ bool j2k_init_compress(grk_j2k *p_j2k, grk_cparameters *parameters,
 	cp->t_grid_width = 1;
 	cp->t_grid_height = 1;
 
-	cp->m_coding_param.m_enc.m_max_comp_size = parameters->max_comp_size;
+	cp->m_coding_params.m_enc.m_max_comp_size = parameters->max_comp_size;
 	cp->rsiz = parameters->rsiz;
-	cp->m_coding_param.m_enc.m_disto_alloc = parameters->cp_disto_alloc;
-	cp->m_coding_param.m_enc.m_fixed_quality = parameters->cp_fixed_quality;
-	cp->m_coding_param.m_enc.writePlt = parameters->writePlt;
-	cp->m_coding_param.m_enc.rateControlAlgorithm =
+	cp->m_coding_params.m_enc.m_disto_alloc = parameters->cp_disto_alloc;
+	cp->m_coding_params.m_enc.m_fixed_quality = parameters->cp_fixed_quality;
+	cp->m_coding_params.m_enc.writePlt = parameters->writePlt;
+	cp->m_coding_params.m_enc.rateControlAlgorithm =
 			parameters->rateControlAlgorithm;
 
 	/* tiles */
@@ -1746,14 +1703,14 @@ bool j2k_init_compress(grk_j2k *p_j2k, grk_cparameters *parameters,
 	}
 
 	if (parameters->tp_on) {
-		cp->m_coding_param.m_enc.m_tp_flag = parameters->tp_flag;
-		cp->m_coding_param.m_enc.m_tp_on = true;
+		cp->m_coding_params.m_enc.m_tp_flag = parameters->tp_flag;
+		cp->m_coding_params.m_enc.m_tp_on = true;
 	}
 
 	uint8_t numgbits = parameters->isHT ? 1 : 2;
-	cp->tcps = new grk_tcp[cp->t_grid_width * cp->t_grid_height];
+	cp->tcps = new TileCodingParams[cp->t_grid_width * cp->t_grid_height];
 	for (tileno = 0; tileno < cp->t_grid_width * cp->t_grid_height; tileno++) {
-		grk_tcp *tcp = cp->tcps + tileno;
+		TileCodingParams *tcp = cp->tcps + tileno;
 		tcp->isHT = parameters->isHT;
 		tcp->qcd.generate(numgbits, (uint32_t) (parameters->numresolution - 1),
 				!parameters->irreversible, image->comps[0].prec, tcp->mct > 0,
@@ -1763,12 +1720,12 @@ bool j2k_init_compress(grk_j2k *p_j2k, grk_cparameters *parameters,
 		for (j = 0; j < tcp->numlayers; j++) {
 			if (GRK_IS_CINEMA(
 					cp->rsiz) || GRK_IS_BROADCAST(cp->rsiz) || GRK_IS_IMF(cp->rsiz)) {
-				if (cp->m_coding_param.m_enc.m_fixed_quality)
+				if (cp->m_coding_params.m_enc.m_fixed_quality)
 					tcp->distoratio[j] = parameters->tcp_distoratio[j];
 				tcp->rates[j] = parameters->tcp_rates[j];
 			} else {
 				/* add fixed_quality */
-				if (cp->m_coding_param.m_enc.m_fixed_quality)
+				if (cp->m_coding_params.m_enc.m_fixed_quality)
 					tcp->distoratio[j] = parameters->tcp_distoratio[j];
 				else
 					tcp->rates[j] = parameters->tcp_rates[j];
@@ -1780,11 +1737,11 @@ bool j2k_init_compress(grk_j2k *p_j2k, grk_cparameters *parameters,
 		tcp->mct = parameters->tcp_mct;
 
 		numpocs_tile = 0;
-		tcp->POC = 0;
+		tcp->POC = false;
 
 		if (parameters->numpocs) {
 			/* initialisation of POC */
-			tcp->POC = 1;
+			tcp->POC = true;
 			for (i = 0; i < parameters->numpocs; i++) {
 				if (tileno + 1 == parameters->POC[i].tile) {
 					grk_poc *tcp_poc = &tcp->pocs[numpocs_tile];
@@ -1809,7 +1766,7 @@ bool j2k_init_compress(grk_j2k *p_j2k, grk_cparameters *parameters,
 			tcp->numpocs = 0;
 		}
 
-		tcp->tccps = (grk_tccp*) grk_calloc(image->numcomps, sizeof(grk_tccp));
+		tcp->tccps = (TileComponentCodingParams*) grk_calloc(image->numcomps, sizeof(TileComponentCodingParams));
 		if (!tcp->tccps) {
 			GROK_ERROR(
 					"Not enough memory to allocate tile component coding parameters");
@@ -1869,7 +1826,7 @@ bool j2k_init_compress(grk_j2k *p_j2k, grk_cparameters *parameters,
 			grok_free(lTmpBuf);
 
 			for (i = 0; i < image->numcomps; i++) {
-				grk_tccp *tccp = &tcp->tccps[i];
+				TileComponentCodingParams *tccp = &tcp->tccps[i];
 				tccp->m_dc_level_shift = dc_shift[i];
 			}
 
@@ -1896,7 +1853,7 @@ bool j2k_init_compress(grk_j2k *p_j2k, grk_cparameters *parameters,
 				}
 			}
 			for (i = 0; i < image->numcomps; i++) {
-				grk_tccp *tccp = tcp->tccps + i;
+				TileComponentCodingParams *tccp = tcp->tccps + i;
 				grk_image_comp *comp = image->comps + i;
 				if (!comp->sgnd) {
 					tccp->m_dc_level_shift = 1 << (comp->prec - 1);
@@ -1905,7 +1862,7 @@ bool j2k_init_compress(grk_j2k *p_j2k, grk_cparameters *parameters,
 		}
 
 		for (i = 0; i < image->numcomps; i++) {
-			grk_tccp *tccp = &tcp->tccps[i];
+			TileComponentCodingParams *tccp = &tcp->tccps[i];
 
 			/* 0 => one precinct || 1 => custom precinct  */
 			tccp->csty = parameters->csty & J2K_CP_CSTY_PRT;
@@ -2236,11 +2193,11 @@ static bool j2k_mct_validation(grk_j2k *p_j2k, BufferedStream *stream) {
 	if ((p_j2k->m_cp.rsiz & 0x8200) == 0x8200) {
 		uint32_t nb_tiles = p_j2k->m_cp.t_grid_height
 				* p_j2k->m_cp.t_grid_width;
-		grk_tcp *tcp = p_j2k->m_cp.tcps;
+		TileCodingParams *tcp = p_j2k->m_cp.tcps;
 
 		for (i = 0; i < nb_tiles; ++i) {
 			if (tcp->mct == 2) {
-				grk_tccp *tccp = tcp->tccps;
+				TileComponentCodingParams *tccp = tcp->tccps;
 				is_valid &= (tcp->m_mct_coding_matrix != nullptr);
 
 				for (j = 0; j < p_j2k->m_private_image->numcomps; ++j) {
@@ -2352,14 +2309,14 @@ static bool j2k_init_header_writing(grk_j2k *p_j2k) {
 	return true;
 }
 
-bool j2k_init_mct_encoding(grk_tcp *p_tcp, grk_image *p_image) {
+bool j2k_init_mct_encoding(TileCodingParams *p_tcp, grk_image *p_image) {
 	uint32_t i;
 	uint32_t indix = 1;
 	grk_mct_data *mct_deco_data = nullptr, *mct_offset_data = nullptr;
 	grk_simple_mcc_decorrelation_data *mcc_data;
 	uint32_t mct_size, nb_elem;
 	float *data, *current_data;
-	grk_tccp *tccp;
+	TileComponentCodingParams *tccp;
 
 	assert(p_tcp != nullptr);
 
@@ -2577,7 +2534,7 @@ static bool j2k_copy_default_tcp_and_create_tcd(grk_j2k *p_j2k,
 	image = p_j2k->m_private_image;
 	nb_tiles = p_j2k->m_cp.t_grid_height * p_j2k->m_cp.t_grid_width;
 	auto tcp = p_j2k->m_cp.tcps;
-	tccp_size = image->numcomps * (uint32_t) sizeof(grk_tccp);
+	tccp_size = image->numcomps * (uint32_t) sizeof(TileComponentCodingParams);
 	auto default_tcp = p_j2k->m_specific_param.m_decoder.m_default_tcp;
 	mct_size = image->numcomps * image->numcomps * (uint32_t) sizeof(float);
 
@@ -2586,10 +2543,10 @@ static bool j2k_copy_default_tcp_and_create_tcd(grk_j2k *p_j2k,
 		/* keep the tile-compo coding parameters pointer of the current tile coding parameters*/
 		auto current_tccp = tcp->tccps;
 		/*Copy default coding parameters into the current tile coding parameters*/
-		memcpy(tcp, default_tcp, sizeof(grk_tcp));
+		*tcp = *default_tcp;
 		/* Initialize some values of the current tile coding parameters*/
-		tcp->cod = 0;
-		tcp->ppt = 0;
+		tcp->cod = false;
+		tcp->ppt = false;
 		tcp->ppt_data = nullptr;
 		/* Remove memory not owned by this tile in case of early error return. */
 		tcp->m_mct_decoding_matrix = nullptr;
@@ -2743,7 +2700,7 @@ static bool j2k_update_rates(grk_j2k *p_j2k, BufferedStream *stream) {
 	for (i = 0; i < cp->t_grid_height; ++i) {
 		for (j = 0; j < cp->t_grid_width; ++j) {
 			double stride = 0;
-			if (cp->m_coding_param.m_enc.m_tp_on)
+			if (cp->m_coding_params.m_enc.m_tp_on)
 				stride = (tcp->m_nb_tile_parts - 1) * 14;
 
 			double offset = stride / tcp->numlayers;
@@ -2826,7 +2783,7 @@ static bool j2k_update_rates(grk_j2k *p_j2k, BufferedStream *stream) {
 	return true;
 }
 
-static uint32_t j2k_get_num_tp(grk_coding_parameters *cp, uint32_t pino,
+static uint32_t j2k_get_num_tp(CodingParams *cp, uint32_t pino,
 		uint16_t tileno) {
 	const char *prog = nullptr;
 	uint32_t tpnum = 1;
@@ -2846,7 +2803,7 @@ static uint32_t j2k_get_num_tp(grk_coding_parameters *cp, uint32_t pino,
 	prog = j2k_convert_progression_order(tcp->prg);
 	assert(strlen(prog) > 0);
 
-	if (cp->m_coding_param.m_enc.m_tp_on) {
+	if (cp->m_coding_params.m_enc.m_tp_on) {
 		for (uint32_t i = 0; i < 4; ++i) {
 			switch (prog[i]) {
 			/* component wise */
@@ -2867,8 +2824,8 @@ static uint32_t j2k_get_num_tp(grk_coding_parameters *cp, uint32_t pino,
 				break;
 			}
 			//we start a new tile part with every progression change
-			if (cp->m_coding_param.m_enc.m_tp_flag == prog[i]) {
-				cp->m_coding_param.m_enc.m_tp_pos = i;
+			if (cp->m_coding_params.m_enc.m_tp_flag == prog[i]) {
+				cp->m_coding_params.m_enc.m_tp_pos = i;
 				break;
 			}
 		}
@@ -2888,12 +2845,12 @@ char* j2k_convert_progression_order(GRK_PROG_ORDER prg_order) {
 	return po->str_prog;
 }
 
-static bool j2k_calculate_tp(grk_coding_parameters *cp,
+static bool j2k_calculate_tp(CodingParams *cp,
 		uint32_t *p_nb_tile_parts, grk_image *image) {
 	uint32_t pino;
 	uint16_t tileno;
 	uint32_t nb_tiles;
-	grk_tcp *tcp;
+	TileCodingParams *tcp;
 
 	assert(p_nb_tile_parts != nullptr);
 	assert(cp != nullptr);
@@ -3077,7 +3034,7 @@ static bool j2k_write_siz(grk_j2k *p_j2k, BufferedStream *stream) {
  */
 static bool j2k_read_cap(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
-	grk_coding_parameters *cp = &(p_j2k->m_cp);
+	CodingParams *cp = &(p_j2k->m_cp);
 
 	if (header_size < 6) {
 		GROK_ERROR("Error with SIZ marker size");
@@ -3329,7 +3286,7 @@ static bool j2k_read_cod(grk_j2k *p_j2k, uint8_t *p_header_data,
 				"Multiple COD markers detected for tile part %d. The JPEG 2000 standard does not allow more than one COD marker per tile.",
 				tcp->m_current_tile_part_number);
 	}
-	tcp->cod = 1;
+	tcp->cod = true;
 
 	/* Make sure room is sufficient */
 	if (header_size < cod_coc_len) {
@@ -3365,8 +3322,8 @@ static bool j2k_read_cod(grk_j2k *p_j2k, uint8_t *p_header_data,
 	}
 
 	/* If user didn't set a number layer to decompress take the max specify in the code stream. */
-	if (cp->m_coding_param.m_dec.m_layer) {
-		tcp->num_layers_to_decode = cp->m_coding_param.m_dec.m_layer;
+	if (cp->m_coding_params.m_dec.m_layer) {
+		tcp->num_layers_to_decode = cp->m_coding_params.m_dec.m_layer;
 	} else {
 		tcp->num_layers_to_decode = tcp->numlayers;
 	}
@@ -3441,8 +3398,8 @@ static bool j2k_write_coc(grk_j2k *p_j2k, uint32_t comp_no,
 
 static bool j2k_compare_coc(grk_j2k *p_j2k, uint32_t first_comp_no,
 		uint32_t second_comp_no) {
-	grk_coding_parameters *cp = nullptr;
-	grk_tcp *tcp = nullptr;
+	CodingParams *cp = nullptr;
+	TileCodingParams *tcp = nullptr;
 
 	assert(p_j2k != nullptr);
 
@@ -3773,7 +3730,7 @@ static bool j2k_read_poc(grk_j2k *p_j2k, uint8_t *p_header_data,
 	assert(current_poc_nb < 32);
 
 	/* now poc is in use.*/
-	tcp->POC = 1;
+	tcp->POC = true;
 
 	auto current_poc = &tcp->pocs[old_poc_nb];
 	for (i = old_poc_nb; i < current_poc_nb; ++i) {
@@ -3900,7 +3857,7 @@ static bool j2k_read_ppm(grk_j2k *p_j2k, uint8_t *p_header_data,
  * @param       p_cp      main coding parameters.
  
  */
-static bool j2k_merge_ppm(grk_coding_parameters *p_cp) {
+static bool j2k_merge_ppm(CodingParams *p_cp) {
 	PPMMarker ppm;
 
    return ppm.merge(p_cp);
@@ -3935,7 +3892,7 @@ static bool j2k_read_ppt(grk_j2k *p_j2k, uint8_t *p_header_data,
 	}
 
 	auto tcp = &(cp->tcps[p_j2k->m_tileProcessor->m_current_tile_number]);
-	tcp->ppt = 1;
+	tcp->ppt = true;
 
 	/* Z_ppt */
 	grk_read<uint32_t>(p_header_data, &Z_ppt, 1);
@@ -3992,11 +3949,11 @@ static bool j2k_read_ppt(grk_j2k *p_j2k, uint8_t *p_header_data,
  * @param       p_tcp   the tile.
 
  */
-static bool j2k_merge_ppt(grk_tcp *p_tcp) {
+static bool j2k_merge_ppt(TileCodingParams *p_tcp) {
 	assert(p_tcp != nullptr);
 	assert(p_tcp->ppt_buffer == nullptr);
 
-	if (p_tcp->ppt == 0U)
+	if (!p_tcp->ppt)
 		return true;
 
 	if (p_tcp->ppt_buffer != nullptr) {
@@ -4127,7 +4084,7 @@ static bool j2k_read_sod(grk_j2k *p_j2k, BufferedStream *stream) {
 	assert(stream != nullptr);
 
 	// note: we subtract 2 to account for SOD marker
-	grk_tcp *tcp = p_j2k->get_current_decode_tcp();
+	TileCodingParams *tcp = p_j2k->get_current_decode_tcp();
 	if (p_j2k->m_specific_param.m_decoder.m_last_tile_part) {
 		p_j2k->m_tileProcessor->tile_part_data_length =
 				(uint32_t) (stream->get_number_byte_left() - 2);
@@ -4965,11 +4922,11 @@ static bool j2k_read_mco(grk_j2k *p_j2k, uint8_t *p_header_data,
 	return true;
 }
 
-static bool j2k_add_mct(grk_tcp *p_tcp, grk_image *p_image, uint32_t index) {
+static bool j2k_add_mct(TileCodingParams *p_tcp, grk_image *p_image, uint32_t index) {
 	uint32_t i;
 	uint32_t data_size, mct_size, offset_size;
 	uint32_t nb_elem;
-	grk_tccp *tccp;
+	TileComponentCodingParams *tccp;
 
 	assert(p_tcp != nullptr);
 
@@ -5368,7 +5325,7 @@ static bool j2k_read_SPCod_SPCoc(grk_j2k *p_j2k, uint32_t compno,
 	}
 
 	/* If user wants to remove more resolutions than the code stream contains, return error */
-	if (cp->m_coding_param.m_dec.m_reduce >= tccp->numresolutions) {
+	if (cp->m_coding_params.m_dec.m_reduce >= tccp->numresolutions) {
 		GROK_ERROR("Error decoding component %d.\nThe number of resolutions"
 				" to remove is higher than the number "
 				"of resolutions of this component\n"
@@ -5479,64 +5436,6 @@ static bool j2k_read_SQcd_SQcc(bool fromQCC, grk_j2k *p_j2k, uint32_t comp_no,
 			header_size);
 }
 
-/*******************
- * Miscellaneous
- ******************/
 
-void grk_coding_parameters::destroy() {
-	uint32_t nb_tiles;
-	grk_tcp *current_tile = nullptr;
-	if (tcps != nullptr) {
-		uint32_t i;
-		current_tile = tcps;
-		nb_tiles = t_grid_height * t_grid_width;
-
-		for (i = 0U; i < nb_tiles; ++i) {
-			j2k_tcp_destroy(current_tile);
-			++current_tile;
-		}
-		delete[] tcps;
-		tcps = nullptr;
-	}
-	if (ppm_markers != nullptr) {
-		uint32_t i;
-		for (i = 0U; i < ppm_markers_count; ++i) {
-			if (ppm_markers[i].m_data != nullptr) {
-				grok_free(ppm_markers[i].m_data);
-			}
-		}
-		ppm_markers_count = 0U;
-		grok_free(ppm_markers);
-		ppm_markers = nullptr;
-	}
-	grok_free(ppm_buffer);
-	ppm_buffer = nullptr;
-	ppm_data = nullptr; /* ppm_data belongs to the allocated buffer pointed by ppm_buffer */
-	for (size_t i = 0; i < num_comments; ++i) {
-		grk_buffer_delete((uint8_t*) comment[i]);
-		comment[i] = nullptr;
-	}
-	num_comments = 0;
-	delete plm_markers;
-	delete tlm_markers;
-}
-
-grk_tcp::grk_tcp() :
-		csty(0), prg(GRK_PROG_UNKNOWN), numlayers(0), num_layers_to_decode(0), mct(
-				0), numpocs(0), ppt_markers_count(0), ppt_markers(nullptr), ppt_data(
-				nullptr), ppt_buffer(nullptr), ppt_data_size(0), ppt_len(0), main_qcd_qntsty(
-				0), main_qcd_numStepSizes(0), tccps(nullptr), m_current_tile_part_number(
-				-1), m_nb_tile_parts(0), m_tile_data(nullptr), mct_norms(
-				nullptr), m_mct_decoding_matrix(nullptr), m_mct_coding_matrix(
-				nullptr), m_mct_records(nullptr), m_nb_mct_records(0), m_nb_max_mct_records(
-				0), m_mcc_records(nullptr), m_nb_mcc_records(0), m_nb_max_mcc_records(
-				0), cod(0), ppt(0), POC(0), isHT(false) {
-	for (auto i = 0; i < 100; ++i)
-		rates[i] = 0.0;
-	for (auto i = 0; i < 100; ++i)
-		distoratio[i] = 0;
-	for (auto i = 0; i < 32; ++i)
-		memset(pocs + i, 0, sizeof(grk_poc));
-}
 
 }
