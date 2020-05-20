@@ -63,12 +63,6 @@
 
 namespace grk {
 
-// includes marker and marker length (4 bytes)
-const uint32_t sot_marker_segment_len = 12U;
-
-const uint32_t SPCod_SPCoc_len = 5U;
-const uint32_t cod_coc_len = 5U;
-const uint32_t tlm_len_per_tile_part = 5;
 
 bool grk_j2k::decodingTilePartHeader() {
 	return (m_specific_param.m_decoder.m_state & J2K_DEC_STATE_TPH);
@@ -113,6 +107,83 @@ J2K_MS_MCO, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mco }, {
 J2K_MS_UNK, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, 0 }/*j2k_read_unk is directly used*/
 };
 
+static bool j2k_add_mhmarker(grk_codestream_index *cstr_index, uint32_t type,
+		uint64_t pos, uint32_t len) {
+	assert(cstr_index != nullptr);
+
+	/* expand the list? */
+	if ((cstr_index->marknum + 1) > cstr_index->maxmarknum) {
+		grk_marker_info *new_marker;
+		cstr_index->maxmarknum = (uint32_t) (100
+				+ (float) cstr_index->maxmarknum);
+		new_marker = (grk_marker_info*) grk_realloc(cstr_index->marker,
+				cstr_index->maxmarknum * sizeof(grk_marker_info));
+		if (!new_marker) {
+			grok_free(cstr_index->marker);
+			cstr_index->marker = nullptr;
+			cstr_index->maxmarknum = 0;
+			cstr_index->marknum = 0;
+			/* GROK_ERROR( "Not enough memory to add mh marker"); */
+			return false;
+		}
+		cstr_index->marker = new_marker;
+	}
+
+	/* add the marker */
+	cstr_index->marker[cstr_index->marknum].type = (uint16_t) type;
+	cstr_index->marker[cstr_index->marknum].pos = (uint64_t) pos;
+	cstr_index->marker[cstr_index->marknum].len = (uint32_t) len;
+	cstr_index->marknum++;
+	return true;
+}
+
+static bool j2k_read_unk(grk_j2k *p_j2k, BufferedStream *stream,
+		uint16_t *output_marker) {
+	uint16_t unknown_marker;
+	const grk_dec_memory_marker_handler *marker_handler;
+	uint32_t size_unk = 2;
+
+	/* preconditions*/
+	assert(p_j2k != nullptr);
+	assert(stream != nullptr);
+
+	GROK_WARN("Unknown marker 0x%02x", *output_marker);
+
+	while(true) {
+		if (!p_j2k->m_tileProcessor->read_marker(stream, &unknown_marker))
+			return false;
+		if (!(unknown_marker < 0xff00)) {
+
+			/* Get the marker handler from the marker ID*/
+			marker_handler = j2k_get_marker_handler(unknown_marker);
+
+			if (!(p_j2k->m_specific_param.m_decoder.m_state
+					& marker_handler->states)) {
+				GROK_ERROR("Marker is not compliant with its position");
+				return false;
+			} else {
+				if (marker_handler->id != J2K_MS_UNK) {
+					/* Add the marker to the code stream index*/
+					if (p_j2k->cstr_index && marker_handler->id != J2K_MS_SOT) {
+						bool res = j2k_add_mhmarker(p_j2k->cstr_index,
+						J2K_MS_UNK, stream->tell() - size_unk, size_unk);
+
+						if (res == false) {
+							GROK_ERROR("Not enough memory to add mh marker");
+							return false;
+						}
+					}
+					break; /* next marker is known and well located */
+				} else {
+					size_unk += 2;
+				}
+			}
+		}
+	}
+	*output_marker = marker_handler->id;
+
+	return true;
+}
 static const grk_dec_memory_marker_handler* j2k_get_marker_handler(
 		uint16_t id) {
 	const grk_dec_memory_marker_handler *e;
@@ -321,60 +392,6 @@ static bool j2k_read_header_procedure(grk_j2k *p_j2k, BufferedStream *stream) {
 	return true;
 }
 
-static bool j2k_decompress_validation(grk_j2k *p_j2k, BufferedStream *stream) {
-
-	(void) stream;
-	bool is_valid = true;
-
-	/* preconditions*/
-	assert(p_j2k != nullptr);
-	assert(stream != nullptr);
-
-	/* STATE checking */
-	/* make sure the state is at 0 */
-	is_valid &=
-			(p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_NONE);
-
-	/* POINTER validation */
-	/* make sure a p_j2k codec is present */
-	/* make sure a procedure list is present */
-	is_valid &= (p_j2k->m_procedure_list != nullptr);
-	/* make sure a validation list is present */
-	is_valid &= (p_j2k->m_validation_list != nullptr);
-
-	/* PARAMETER VALIDATION */
-	return is_valid;
-}
-
-void j2k_init_decompressor(void *j2k_void, grk_dparameters *parameters) {
-	grk_j2k *j2k = (grk_j2k*) j2k_void;
-	if (j2k && parameters) {
-		j2k->m_cp.m_coding_param.m_dec.m_layer = parameters->cp_layer;
-		j2k->m_cp.m_coding_param.m_dec.m_reduce = parameters->cp_reduce;
-	}
-}
-
-/**
- * Sets up the procedures to do on decoding data.
- * Developers wanting to extend the library can add their own reading procedures.
- */
-static bool j2k_init_decompress(grk_j2k *p_j2k) {
-	/* preconditions*/
-	assert(p_j2k != nullptr);
-
-	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_decompress_tiles);
-	// custom procedures here
-
-	return true;
-}
-
-bool j2k_end_decompress(grk_j2k *p_j2k, BufferedStream *stream) {
-	(void) p_j2k;
-	(void) stream;
-
-	return true;
-}
-
 bool j2k_read_header(BufferedStream *stream, grk_j2k *p_j2k,
 		grk_header_info *header_info, grk_image **p_image) {
 	assert(p_j2k != nullptr);
@@ -469,6 +486,60 @@ bool j2k_read_header(BufferedStream *stream, grk_j2k *p_j2k,
 	}
 	return true;
 }
+static bool j2k_decompress_validation(grk_j2k *p_j2k, BufferedStream *stream) {
+
+	(void) stream;
+	bool is_valid = true;
+
+	/* preconditions*/
+	assert(p_j2k != nullptr);
+	assert(stream != nullptr);
+
+	/* STATE checking */
+	/* make sure the state is at 0 */
+	is_valid &=
+			(p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_NONE);
+
+	/* POINTER validation */
+	/* make sure a p_j2k codec is present */
+	/* make sure a procedure list is present */
+	is_valid &= (p_j2k->m_procedure_list != nullptr);
+	/* make sure a validation list is present */
+	is_valid &= (p_j2k->m_validation_list != nullptr);
+
+	/* PARAMETER VALIDATION */
+	return is_valid;
+}
+
+void j2k_init_decompressor(void *j2k_void, grk_dparameters *parameters) {
+	grk_j2k *j2k = (grk_j2k*) j2k_void;
+	if (j2k && parameters) {
+		j2k->m_cp.m_coding_param.m_dec.m_layer = parameters->cp_layer;
+		j2k->m_cp.m_coding_param.m_dec.m_reduce = parameters->cp_reduce;
+	}
+}
+
+/**
+ * Sets up the procedures to do on decoding data.
+ * Developers wanting to extend the library can add their own reading procedures.
+ */
+static bool j2k_init_decompress(grk_j2k *p_j2k) {
+	/* preconditions*/
+	assert(p_j2k != nullptr);
+
+	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_decompress_tiles);
+	// custom procedures here
+
+	return true;
+}
+
+bool j2k_end_decompress(grk_j2k *p_j2k, BufferedStream *stream) {
+	(void) p_j2k;
+	(void) stream;
+
+	return true;
+}
+
 
 static bool j2k_init_header_reading(grk_j2k *p_j2k) {
 	/* preconditions*/
@@ -505,6 +576,7 @@ static bool j2k_need_nb_tile_parts_correction(grk_j2k *p_j2k, BufferedStream *st
 	uint8_t current_part, num_parts;
 	uint32_t tot_len;
 	auto tileProcessor = p_j2k->m_tileProcessor;
+	SOTMarker sotMarker;
 
 	/* initialize to no correction needed */
 	*p_correction_needed = false;
@@ -539,7 +611,7 @@ static bool j2k_need_nb_tile_parts_correction(grk_j2k *p_j2k, BufferedStream *st
 			return false;
 		}
 
-		if (!j2k_get_sot_values(header_data, marker_size, &read_tile_no,
+		if (!sotMarker.get_sot_values(header_data, marker_size, &read_tile_no,
 				&tot_len, &current_part, &num_parts))
 			return false;
 
@@ -2024,6 +2096,63 @@ static bool j2k_pre_write_tile(grk_j2k *p_j2k, uint16_t tile_index) {
 
 	return true;
 }
+static bool j2k_write_tile_part(grk_j2k *p_j2k, bool writePOC,
+		BufferedStream *stream) {
+	grk_codestream_info *cstr_info = nullptr;
+	assert(p_j2k != nullptr);
+	assert(stream != nullptr);
+	auto tileProcessor = p_j2k->m_tileProcessor;
+	uint16_t currentTileNumber = tileProcessor->m_current_tile_number;
+	auto cp = &p_j2k->m_cp;
+
+	//1. write SOT
+	uint64_t temp_bytes_written = 0;
+	uint64_t psot_location = 0;
+	if (!j2k_write_sot(p_j2k, stream, &psot_location, &temp_bytes_written))
+		return false;
+	uint64_t tile_part_bytes_written = temp_bytes_written;
+
+	//2. write POC (only in first tile part)
+	if (writePOC) {
+		if (!GRK_IS_CINEMA(cp->rsiz)) {
+			if (cp->tcps[currentTileNumber].numpocs) {
+				temp_bytes_written = 0;
+				if (!j2k_write_poc(p_j2k, stream, &temp_bytes_written))
+					return false;
+				tile_part_bytes_written += temp_bytes_written;
+			}
+		}
+	}
+
+	// 3. compress tile part
+	/* set packno to zero when writing the first tile part */
+	if (currentTileNumber == 0) {
+		tileProcessor->tile->packno = 0;
+		if (cstr_info)
+			cstr_info->packno = 0;
+	}
+	if (!tileProcessor->compress_tile_part(currentTileNumber, stream,
+			&tile_part_bytes_written, cstr_info)) {
+		GROK_ERROR("Cannot compress tile");
+		return false;
+	}
+
+	/* 4. write Psot in SOT marker */
+	auto currentLocation = stream->tell();
+	stream->seek(psot_location);
+	if (!stream->write_int((uint32_t) tile_part_bytes_written))
+		return false;
+	stream->seek(currentLocation);
+
+	// 5. update TLM
+	if (GRK_IS_CINEMA(cp->rsiz) ||
+	GRK_IS_BROADCAST(cp->rsiz) || GRK_IS_IMF(cp->rsiz))
+		j2k_update_tlm(p_j2k, (uint32_t) tile_part_bytes_written);
+
+	++tileProcessor->m_current_tile_part_number;
+
+	return true;
+}
 
 static bool j2k_post_write_tile(grk_j2k *p_j2k, BufferedStream *stream) {
 	auto tileProcessor = p_j2k->m_tileProcessor;
@@ -2223,24 +2352,6 @@ static bool j2k_init_header_writing(grk_j2k *p_j2k) {
 	return true;
 }
 
-static bool j2k_write_updated_tlm(grk_j2k *p_j2k, BufferedStream *stream) {
-	assert(p_j2k != nullptr);
-	assert(stream != nullptr);
-
-	uint32_t tlm_size = tlm_len_per_tile_part
-			* p_j2k->m_specific_param.m_encoder.m_total_tile_parts;
-	uint64_t tlm_position = 6 + p_j2k->m_tileProcessor->m_tlm_start;
-	uint64_t current_position = stream->tell();
-
-	if (!stream->seek(tlm_position))
-		return false;
-	if (stream->write_bytes(p_j2k->m_tileProcessor->m_tlm_sot_offsets_buffer,
-			tlm_size) != tlm_size)
-		return false;
-
-	return stream->seek(current_position);
-}
-
 bool j2k_init_mct_encoding(grk_tcp *p_tcp, grk_image *p_image) {
 	uint32_t i;
 	uint32_t indix = 1;
@@ -2403,6 +2514,15 @@ static bool j2k_init_info(grk_j2k *p_j2k, BufferedStream *stream) {
 			p_j2k->m_private_image);
 }
 
+static bool j2k_get_end_header(grk_j2k *p_j2k, BufferedStream *stream) {
+	assert(p_j2k != nullptr);
+	assert(stream != nullptr);
+
+	p_j2k->cstr_index->main_head_end = stream->tell();
+
+	return true;
+}
+
 bool j2k_compress_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 		uint64_t data_size, BufferedStream *stream) {
 	if (!j2k_pre_write_tile(p_j2k, tile_index)) {
@@ -2436,6 +2556,169 @@ bool j2k_compress_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 	return true;
 }
 
+/* FIXME DOC*/
+static bool j2k_copy_default_tcp_and_create_tcd(grk_j2k *p_j2k,
+		BufferedStream *stream) {
+
+	(void) stream;
+	uint32_t nb_tiles;
+	uint32_t i, j;
+	uint32_t tccp_size;
+	uint32_t mct_size;
+	grk_image *image;
+	uint32_t mcc_records_size, mct_records_size;
+	grk_mct_data *src_mct_rec, *dest_mct_rec;
+	grk_simple_mcc_decorrelation_data *src_mcc_rec, *dest_mcc_rec;
+	uint32_t offset;
+
+	assert(p_j2k != nullptr);
+	assert(stream != nullptr);
+
+	image = p_j2k->m_private_image;
+	nb_tiles = p_j2k->m_cp.t_grid_height * p_j2k->m_cp.t_grid_width;
+	auto tcp = p_j2k->m_cp.tcps;
+	tccp_size = image->numcomps * (uint32_t) sizeof(grk_tccp);
+	auto default_tcp = p_j2k->m_specific_param.m_decoder.m_default_tcp;
+	mct_size = image->numcomps * image->numcomps * (uint32_t) sizeof(float);
+
+	/* For each tile */
+	for (i = 0; i < nb_tiles; ++i) {
+		/* keep the tile-compo coding parameters pointer of the current tile coding parameters*/
+		auto current_tccp = tcp->tccps;
+		/*Copy default coding parameters into the current tile coding parameters*/
+		memcpy(tcp, default_tcp, sizeof(grk_tcp));
+		/* Initialize some values of the current tile coding parameters*/
+		tcp->cod = 0;
+		tcp->ppt = 0;
+		tcp->ppt_data = nullptr;
+		/* Remove memory not owned by this tile in case of early error return. */
+		tcp->m_mct_decoding_matrix = nullptr;
+		tcp->m_nb_max_mct_records = 0;
+		tcp->m_mct_records = nullptr;
+		tcp->m_nb_max_mcc_records = 0;
+		tcp->m_mcc_records = nullptr;
+		/* Reconnect the tile-compo coding parameters pointer to the current tile coding parameters*/
+		tcp->tccps = current_tccp;
+
+		/* Get the mct_decoding_matrix of the dflt_tile_cp and copy them into the current tile cp*/
+		if (default_tcp->m_mct_decoding_matrix) {
+			tcp->m_mct_decoding_matrix = (float*) grk_malloc(mct_size);
+			if (!tcp->m_mct_decoding_matrix) {
+				return false;
+			}
+			memcpy(tcp->m_mct_decoding_matrix,
+					default_tcp->m_mct_decoding_matrix, mct_size);
+		}
+
+		/* Get the mct_record of the dflt_tile_cp and copy them into the current tile cp*/
+		mct_records_size = default_tcp->m_nb_max_mct_records
+				* (uint32_t) sizeof(grk_mct_data);
+		tcp->m_mct_records = (grk_mct_data*) grk_malloc(mct_records_size);
+		if (!tcp->m_mct_records) {
+			return false;
+		}
+		memcpy(tcp->m_mct_records, default_tcp->m_mct_records,
+				mct_records_size);
+
+		/* Copy the mct record data from dflt_tile_cp to the current tile*/
+		src_mct_rec = default_tcp->m_mct_records;
+		dest_mct_rec = tcp->m_mct_records;
+
+		for (j = 0; j < default_tcp->m_nb_mct_records; ++j) {
+
+			if (src_mct_rec->m_data) {
+
+				dest_mct_rec->m_data = (uint8_t*) grk_malloc(
+						src_mct_rec->m_data_size);
+				if (!dest_mct_rec->m_data) {
+					return false;
+				}
+				memcpy(dest_mct_rec->m_data, src_mct_rec->m_data,
+						src_mct_rec->m_data_size);
+			}
+
+			++src_mct_rec;
+			++dest_mct_rec;
+			/* Update with each pass to free exactly what has been allocated on early return. */
+			tcp->m_nb_max_mct_records += 1;
+		}
+
+		/* Get the mcc_record of the dflt_tile_cp and copy them into the current tile cp*/
+		mcc_records_size = default_tcp->m_nb_max_mcc_records
+				* (uint32_t) sizeof(grk_simple_mcc_decorrelation_data);
+		tcp->m_mcc_records = (grk_simple_mcc_decorrelation_data*) grk_malloc(
+				mcc_records_size);
+		if (!tcp->m_mcc_records) {
+			return false;
+		}
+		memcpy(tcp->m_mcc_records, default_tcp->m_mcc_records,
+				mcc_records_size);
+		tcp->m_nb_max_mcc_records = default_tcp->m_nb_max_mcc_records;
+
+		/* Copy the mcc record data from dflt_tile_cp to the current tile*/
+		src_mcc_rec = default_tcp->m_mcc_records;
+		dest_mcc_rec = tcp->m_mcc_records;
+
+		for (j = 0; j < default_tcp->m_nb_max_mcc_records; ++j) {
+
+			if (src_mcc_rec->m_decorrelation_array) {
+				offset = (uint32_t) (src_mcc_rec->m_decorrelation_array
+						- default_tcp->m_mct_records);
+				dest_mcc_rec->m_decorrelation_array = tcp->m_mct_records
+						+ offset;
+			}
+
+			if (src_mcc_rec->m_offset_array) {
+				offset = (uint32_t) (src_mcc_rec->m_offset_array
+						- default_tcp->m_mct_records);
+				dest_mcc_rec->m_offset_array = tcp->m_mct_records + offset;
+			}
+
+			++src_mcc_rec;
+			++dest_mcc_rec;
+		}
+
+		/* Copy all the dflt_tile_compo_cp to the current tile cp */
+		memcpy(current_tccp, default_tcp->tccps, tccp_size);
+
+		/* Move to next tile cp*/
+		++tcp;
+	}
+
+	if (!p_j2k->m_tileProcessor->init(image, &(p_j2k->m_cp))) {
+		delete p_j2k->m_tileProcessor;
+		p_j2k->m_tileProcessor = nullptr;
+		GROK_ERROR("Cannot decompress tile, memory error");
+		return false;
+	}
+
+	return true;
+}
+
+
+static void j2k_copy_tile_component_parameters(grk_j2k *p_j2k) {
+	/* loop */
+	uint32_t i;
+	uint32_t prc_size;
+
+	assert(p_j2k != nullptr);
+
+	auto tcp = p_j2k->get_current_decode_tcp();
+	auto ref_tccp = &tcp->tccps[0];
+	auto copied_tccp = ref_tccp + 1;
+	prc_size = ref_tccp->numresolutions * (uint32_t) sizeof(uint32_t);
+
+	for (i = 1; i < p_j2k->m_private_image->numcomps; ++i) {
+		copied_tccp->numresolutions = ref_tccp->numresolutions;
+		copied_tccp->cblkw = ref_tccp->cblkw;
+		copied_tccp->cblkh = ref_tccp->cblkh;
+		copied_tccp->cblk_sty = ref_tccp->cblk_sty;
+		copied_tccp->qmfbid = ref_tccp->qmfbid;
+		memcpy(copied_tccp->prcw, ref_tccp->prcw, prc_size);
+		memcpy(copied_tccp->prch, ref_tccp->prch, prc_size);
+		++copied_tccp;
+	}
+}
 static bool j2k_update_rates(grk_j2k *p_j2k, BufferedStream *stream) {
 	uint32_t i, j, k;
 	double *rates = 0;
@@ -2780,71 +3063,9 @@ static bool j2k_read_soc(grk_j2k *p_j2k, BufferedStream *stream) {
 }
 
 static bool j2k_write_siz(grk_j2k *p_j2k, BufferedStream *stream) {
-	uint32_t i;
-	uint32_t size_len;
+	SIZMarker siz;
 
-	assert(stream != nullptr);
-	assert(p_j2k != nullptr);
-
-	auto image = p_j2k->m_private_image;
-	auto cp = &(p_j2k->m_cp);
-	size_len = 40 + 3 * image->numcomps;
-	auto img_comp = image->comps;
-
-	/* write SOC identifier */
-
-	/* SIZ */
-	if (!stream->write_short(J2K_MS_SIZ))
-		return false;
-
-	/* L_SIZ */
-	if (!stream->write_short((uint16_t) (size_len - 2)))
-		return false;
-	/* Rsiz (capabilities) */
-	if (!stream->write_short(cp->rsiz))
-		return false;
-	/* Xsiz */
-	if (!stream->write_int(image->x1))
-		return false;
-	/* Ysiz */
-	if (!stream->write_int(image->y1))
-		return false;
-	/* X0siz */
-	if (!stream->write_int(image->x0))
-		return false;
-	/* Y0siz */
-	if (!stream->write_int(image->y0))
-		return false;
-	/* XTsiz */
-	if (!stream->write_int(cp->t_width))
-		return false;
-	/* YTsiz */
-	if (!stream->write_int(cp->t_height))
-		return false;
-	/* XT0siz */
-	if (!stream->write_int(cp->tx0))
-		return false;
-	/* YT0siz */
-	if (!stream->write_int(cp->ty0))
-		return false;
-	/* Csiz */
-	if (!stream->write_short((uint16_t) image->numcomps))
-		return false;
-	for (i = 0; i < image->numcomps; ++i) {
-		/* TODO here with MCT ? */
-		if (!stream->write_byte(
-				(uint8_t) (img_comp->prec - 1 + (img_comp->sgnd << 7))))
-			return false;
-		/* XRsiz_i */
-		if (!stream->write_byte((uint8_t) img_comp->dx))
-			return false;
-		/* YRsiz_i */
-		if (!stream->write_byte((uint8_t) img_comp->dy))
-			return false;
-		++img_comp;
-	}
-
-	return true;
+   return siz.write(p_j2k, stream);
 }
 
 /**
@@ -2944,273 +3165,9 @@ static bool j2k_write_cap(grk_j2k *p_j2k, BufferedStream *stream) {
  */
 static bool j2k_read_siz(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
-	uint32_t i;
-	uint32_t nb_comp;
-	uint32_t nb_comp_remain;
-	uint32_t remaining_size;
-	uint32_t nb_tiles;
-	uint32_t tmp, tx1, ty1;
-	grk_image_comp *img_comp = nullptr;
-	grk_tcp *current_tile_param = nullptr;
+	SIZMarker siz;
 
-	assert(p_j2k != nullptr);
-	assert(p_header_data != nullptr);
-
-	auto image = p_j2k->m_private_image;
-	auto cp = &(p_j2k->m_cp);
-
-	/* minimum size == 39 - 3 (= minimum component parameter) */
-	if (header_size < 36) {
-		GROK_ERROR("Error with SIZ marker size");
-		return false;
-	}
-
-	remaining_size = header_size - 36;
-	nb_comp = remaining_size / 3;
-	nb_comp_remain = remaining_size % 3;
-	if (nb_comp_remain != 0) {
-		GROK_ERROR("Error with SIZ marker size");
-		return false;
-	}
-
-	grk_read<uint32_t>(p_header_data, &tmp, 2); /* Rsiz (capabilities) */
-	p_header_data += 2;
-
-	// sanity check on RSIZ
-	uint16_t profile = 0;
-	uint16_t part2_extensions = 0;
-	// check for Part 2
-	if (tmp & GRK_PROFILE_PART2) {
-		profile = GRK_PROFILE_PART2;
-		part2_extensions = tmp & GRK_PROFILE_PART2_EXTENSIONS_MASK;
-		(void) part2_extensions;
-	} else {
-		profile = tmp & GRK_PROFILE_MASK;
-		if ((profile > GRK_PROFILE_CINEMA_LTS)
-				&& !GRK_IS_BROADCAST(profile) && !GRK_IS_IMF(profile)) {
-			GROK_ERROR("Non-compliant Rsiz value 0x%x in SIZ marker", tmp);
-			return false;
-		}
-	}
-
-	cp->rsiz = (uint16_t) tmp;
-	grk_read<uint32_t>(p_header_data, &image->x1, 4); /* Xsiz */
-	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &image->y1, 4); /* Ysiz */
-	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &image->x0, 4); /* X0siz */
-	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &image->y0, 4); /* Y0siz */
-	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &cp->t_width, 4); /* XTsiz */
-	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &cp->t_height, 4); /* YTsiz */
-	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &cp->tx0, 4); /* XT0siz */
-	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &cp->ty0, 4); /* YT0siz */
-	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &tmp, 2); /* Csiz */
-	p_header_data += 2;
-	if (tmp <= max_num_components)
-		image->numcomps = (uint16_t) tmp;
-	else {
-		GROK_ERROR("Error in SIZ marker: number of component is illegal -> %d",
-				tmp);
-		return false;
-	}
-
-	if (image->numcomps != nb_comp) {
-		GROK_ERROR(
-				"Error in SIZ marker: number of component is not compatible with the remaining number of parameters ( %d vs %d)",
-				image->numcomps, nb_comp);
-		return false;
-	}
-
-	/* testcase 4035.pdf.SIGSEGV.d8b.3375 */
-	/* testcase issue427-null-image-size.jp2 */
-	if ((image->x0 >= image->x1) || (image->y0 >= image->y1)) {
-		std::stringstream ss;
-		ss << "Error in SIZ marker: negative or zero image dimensions ("
-				<< (int64_t) image->x1 - image->x0 << " x "
-				<< (int64_t) image->y1 - image->y0 << ")" << std::endl;
-		GROK_ERROR("%s", ss.str().c_str());
-		return false;
-	}
-	/* testcase 2539.pdf.SIGFPE.706.1712 (also 3622.pdf.SIGFPE.706.2916 and 4008.pdf.SIGFPE.706.3345 and maybe more) */
-	if ((cp->t_width == 0U) || (cp->t_height == 0U)) {
-		GROK_ERROR("Error in SIZ marker: invalid tile size (%d, %d)",
-				cp->t_width, cp->t_height);
-		return false;
-	}
-
-	/* testcase issue427-illegal-tile-offset.jp2 */
-	if (cp->tx0 > image->x0 || cp->ty0 > image->y0) {
-		GROK_ERROR(
-				"Error in SIZ marker: tile origin (%d,%d) cannot lie in the region"
-						" to the right and bottom of image origin (%d,%d)",
-				cp->tx0, cp->ty0, image->x0, image->y0);
-		return false;
-	}
-	tx1 = uint_adds(cp->tx0, cp->t_width); /* manage overflow */
-	ty1 = uint_adds(cp->ty0, cp->t_height); /* manage overflow */
-	if (tx1 <= image->x0 || ty1 <= image->y0) {
-		GROK_ERROR("Error in SIZ marker: first tile (%d,%d,%d,%d) must overlap"
-				" image (%d,%d,%d,%d)", cp->tx0, cp->ty0, tx1, ty1, image->x0,
-				image->y0, image->x1, image->y1);
-		return false;
-	}
-
-	uint64_t tileArea = (uint64_t) cp->t_width * cp->t_height;
-	if (tileArea > max_tile_area) {
-		GROK_ERROR(
-				"Error in SIZ marker: tile area = %llu greater than max tile area = %llu",
-				tileArea, max_tile_area);
-		return false;
-
-	}
-
-	/* Allocate the resulting image components */
-	image->comps = (grk_image_comp*) grk_calloc(image->numcomps,
-			sizeof(grk_image_comp));
-	if (image->comps == nullptr) {
-		image->numcomps = 0;
-		GROK_ERROR("Not enough memory to take in charge SIZ marker");
-		return false;
-	}
-
-	img_comp = image->comps;
-
-	/* Read the component information */
-	for (i = 0; i < image->numcomps; ++i) {
-		uint32_t tmp;
-		grk_read<uint32_t>(p_header_data, &tmp, 1); /* Ssiz_i */
-		++p_header_data;
-		img_comp->prec = (tmp & 0x7f) + 1;
-		img_comp->sgnd = tmp >> 7;
-		grk_read<uint32_t>(p_header_data, &tmp, 1); /* XRsiz_i */
-		++p_header_data;
-		img_comp->dx = tmp; /* should be between 1 and 255 */
-		grk_read<uint32_t>(p_header_data, &tmp, 1); /* YRsiz_i */
-		++p_header_data;
-		img_comp->dy = tmp; /* should be between 1 and 255 */
-		if (img_comp->dx < 1 || img_comp->dx > 255 || img_comp->dy < 1
-				|| img_comp->dy > 255) {
-			GROK_ERROR(
-					"Invalid values for comp = %d : dx=%u dy=%u\n (should be between 1 and 255 according to the JPEG2000 standard)",
-					i, img_comp->dx, img_comp->dy);
-			return false;
-		}
-
-		if (img_comp->prec == 0 || img_comp->prec > max_supported_precision) {
-			GROK_ERROR(
-					"Unsupported precision for comp = %d : prec=%u (Grok only supportes precision between 1 and %d)",
-					i, img_comp->prec, max_supported_precision);
-			return false;
-		}
-		img_comp->resno_decoded = 0; /* number of resolution decoded */
-		++img_comp;
-	}
-
-	/* Compute the number of tiles */
-	cp->t_grid_width = ceildiv<uint32_t>(image->x1 - cp->tx0, cp->t_width);
-	cp->t_grid_height = ceildiv<uint32_t>(image->y1 - cp->ty0, cp->t_height);
-
-	/* Check that the number of tiles is valid */
-	if (cp->t_grid_width == 0 || cp->t_grid_height == 0) {
-		GROK_ERROR(
-				"Invalid grid of tiles: %u x %u. JPEG 2000 standard requires at least one tile in grid. ",
-				cp->t_grid_width, cp->t_grid_height);
-		return false;
-	}
-	if (cp->t_grid_width * cp->t_grid_height > max_num_tiles) {
-		GROK_ERROR(
-				"Invalid grid of tiles : %u x %u.  JPEG 2000 standard specifies maximum of %d tiles",
-				max_num_tiles, cp->t_grid_width, cp->t_grid_height);
-		return false;
-	}
-	nb_tiles = cp->t_grid_width * cp->t_grid_height;
-
-	/* Define the tiles which will be decoded */
-	if (p_j2k->m_specific_param.m_decoder.m_discard_tiles) {
-		p_j2k->m_specific_param.m_decoder.m_start_tile_x_index =
-				(p_j2k->m_specific_param.m_decoder.m_start_tile_x_index
-						- cp->tx0) / cp->t_width;
-		p_j2k->m_specific_param.m_decoder.m_start_tile_y_index =
-				(p_j2k->m_specific_param.m_decoder.m_start_tile_y_index
-						- cp->ty0) / cp->t_height;
-		p_j2k->m_specific_param.m_decoder.m_end_tile_x_index =
-				ceildiv<uint32_t>(
-						(p_j2k->m_specific_param.m_decoder.m_end_tile_x_index
-								- cp->tx0), cp->t_width);
-		p_j2k->m_specific_param.m_decoder.m_end_tile_y_index =
-				ceildiv<uint32_t>(
-						(p_j2k->m_specific_param.m_decoder.m_end_tile_y_index
-								- cp->ty0), cp->t_height);
-	} else {
-		p_j2k->m_specific_param.m_decoder.m_start_tile_x_index = 0;
-		p_j2k->m_specific_param.m_decoder.m_start_tile_y_index = 0;
-		p_j2k->m_specific_param.m_decoder.m_end_tile_x_index = cp->t_grid_width;
-		p_j2k->m_specific_param.m_decoder.m_end_tile_y_index =
-				cp->t_grid_height;
-	}
-
-	/* memory allocations */
-	cp->tcps = new grk_tcp[nb_tiles];
-	p_j2k->m_specific_param.m_decoder.m_default_tcp->tccps =
-			(grk_tccp*) grk_calloc(image->numcomps, sizeof(grk_tccp));
-	if (p_j2k->m_specific_param.m_decoder.m_default_tcp->tccps == nullptr) {
-		GROK_ERROR("Not enough memory to take in charge SIZ marker");
-		return false;
-	}
-
-	p_j2k->m_specific_param.m_decoder.m_default_tcp->m_mct_records =
-			(grk_mct_data*) grk_calloc(default_number_mct_records,
-					sizeof(grk_mct_data));
-
-	if (!p_j2k->m_specific_param.m_decoder.m_default_tcp->m_mct_records) {
-		GROK_ERROR("Not enough memory to take in charge SIZ marker");
-		return false;
-	}
-	p_j2k->m_specific_param.m_decoder.m_default_tcp->m_nb_max_mct_records =
-			default_number_mct_records;
-
-	p_j2k->m_specific_param.m_decoder.m_default_tcp->m_mcc_records =
-			(grk_simple_mcc_decorrelation_data*) grk_calloc(
-					default_number_mcc_records,
-					sizeof(grk_simple_mcc_decorrelation_data));
-
-	if (!p_j2k->m_specific_param.m_decoder.m_default_tcp->m_mcc_records) {
-		GROK_ERROR("Not enough memory to take in charge SIZ marker");
-		return false;
-	}
-	p_j2k->m_specific_param.m_decoder.m_default_tcp->m_nb_max_mcc_records =
-			default_number_mcc_records;
-
-	/* set up default dc level shift */
-	for (i = 0; i < image->numcomps; ++i) {
-		if (!image->comps[i].sgnd) {
-			p_j2k->m_specific_param.m_decoder.m_default_tcp->tccps[i].m_dc_level_shift =
-					1 << (image->comps[i].prec - 1);
-		}
-	}
-
-	current_tile_param = cp->tcps;
-	for (i = 0; i < nb_tiles; ++i) {
-		current_tile_param->tccps = (grk_tccp*) grk_calloc(image->numcomps,
-				sizeof(grk_tccp));
-		if (current_tile_param->tccps == nullptr) {
-			GROK_ERROR("Not enough memory to take in charge SIZ marker");
-			return false;
-		}
-
-		++current_tile_param;
-	}
-
-	p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_MH;
-	grk_image_comp_header_update(image, cp);
-
-	return true;
+	return siz.read(p_j2k, p_header_data, header_size);
 }
 
 static bool j2k_write_com(grk_j2k *p_j2k, BufferedStream *stream) {
@@ -3344,29 +3301,6 @@ static bool j2k_write_cod(grk_j2k *p_j2k, BufferedStream *stream) {
 	return true;
 }
 
-static void j2k_copy_tile_component_parameters(grk_j2k *p_j2k) {
-	/* loop */
-	uint32_t i;
-	uint32_t prc_size;
-
-	assert(p_j2k != nullptr);
-
-	auto tcp = p_j2k->get_current_decode_tcp();
-	auto ref_tccp = &tcp->tccps[0];
-	auto copied_tccp = ref_tccp + 1;
-	prc_size = ref_tccp->numresolutions * (uint32_t) sizeof(uint32_t);
-
-	for (i = 1; i < p_j2k->m_private_image->numcomps; ++i) {
-		copied_tccp->numresolutions = ref_tccp->numresolutions;
-		copied_tccp->cblkw = ref_tccp->cblkw;
-		copied_tccp->cblkh = ref_tccp->cblkh;
-		copied_tccp->cblk_sty = ref_tccp->cblk_sty;
-		copied_tccp->qmfbid = ref_tccp->qmfbid;
-		memcpy(copied_tccp->prcw, ref_tccp->prcw, prc_size);
-		memcpy(copied_tccp->prch, ref_tccp->prch, prc_size);
-		++copied_tccp;
-	}
-}
 
 /**
  * Reads a COD marker (Coding Style defaults)
@@ -3905,22 +3839,7 @@ static bool j2k_read_crg(grk_j2k *p_j2k, uint8_t *p_header_data,
 	return true;
 }
 
-/**
- * Reads a TLM marker (Tile Length Marker)
- *
- * @param       p_j2k                   JPEG 2000 codec
- * @param       p_header_data   the data contained in the TLM box.
- * @param       header_size   the size of the data contained in the TLM marker.
 
- */
-static bool j2k_read_tlm(grk_j2k *p_j2k, uint8_t *p_header_data,
-		uint16_t header_size) {
-	assert(p_j2k);
-	if (!p_j2k->m_cp.tlm_markers)
-		p_j2k->m_cp.tlm_markers = new TileLengthMarkers();
-
-	return p_j2k->m_cp.tlm_markers->decode(p_header_data, header_size);
-}
 
 /**
  * Reads a PLM marker (Packet length, main header marker)
@@ -3938,7 +3857,7 @@ static bool j2k_read_plm(grk_j2k *p_j2k, uint8_t *p_header_data,
 	if (!p_j2k->m_cp.plm_markers)
 		p_j2k->m_cp.plm_markers = new PacketLengthMarkers();
 
-	return p_j2k->m_cp.plm_markers->decodePLM(p_header_data, hdr_size);
+	return p_j2k->m_cp.plm_markers->readPLM(p_header_data, hdr_size);
 }
 
 /**
@@ -3951,13 +3870,12 @@ static bool j2k_read_plm(grk_j2k *p_j2k, uint8_t *p_header_data,
  */
 static bool j2k_read_plt(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
-
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
 	if (!p_j2k->m_tileProcessor->plt_markers)
 		p_j2k->m_tileProcessor->plt_markers = new PacketLengthMarkers();
 
-	return p_j2k->m_tileProcessor->plt_markers->decodePLT(p_header_data, header_size);
+	return p_j2k->m_tileProcessor->plt_markers->readPLT(p_header_data, header_size);
 }
 
 /**
@@ -3971,69 +3889,9 @@ static bool j2k_read_plt(grk_j2k *p_j2k, uint8_t *p_header_data,
 
 static bool j2k_read_ppm(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
-	grk_coding_parameters *cp = nullptr;
-	uint32_t Z_ppm;
+	PPMMarker ppm;
 
-	assert(p_header_data != nullptr);
-	assert(p_j2k != nullptr);
-
-	/* We need to have the Z_ppm element + 1 byte of Nppm/Ippm at minimum */
-	if (header_size < 2) {
-		GROK_ERROR("Error reading PPM marker");
-		return false;
-	}
-
-	cp = &(p_j2k->m_cp);
-	cp->ppm = true;
-
-	/* Z_ppm */
-	grk_read<uint32_t>(p_header_data, &Z_ppm, 1);
-	++p_header_data;
-	--header_size;
-
-	/* check allocation needed */
-	if (cp->ppm_markers == nullptr) { /* first PPM marker */
-		uint32_t newCount = Z_ppm + 1U; /* can't overflow, Z_ppm is UINT8 */
-		assert(cp->ppm_markers_count == 0U);
-
-		cp->ppm_markers = (grk_ppx*) grk_calloc(newCount, sizeof(grk_ppx));
-		if (cp->ppm_markers == nullptr) {
-			GROK_ERROR("Not enough memory to read PPM marker");
-			return false;
-		}
-		cp->ppm_markers_count = newCount;
-	} else if (cp->ppm_markers_count <= Z_ppm) {
-		uint32_t newCount = Z_ppm + 1U; /* can't overflow, Z_ppm is UINT8 */
-		grk_ppx *new_ppm_markers;
-		new_ppm_markers = (grk_ppx*) grk_realloc(cp->ppm_markers,
-				newCount * sizeof(grk_ppx));
-		if (new_ppm_markers == nullptr) {
-			/* clean up to be done on cp destruction */
-			GROK_ERROR("Not enough memory to read PPM marker");
-			return false;
-		}
-		cp->ppm_markers = new_ppm_markers;
-		memset(cp->ppm_markers + cp->ppm_markers_count, 0,
-				(newCount - cp->ppm_markers_count) * sizeof(grk_ppx));
-		cp->ppm_markers_count = newCount;
-	}
-
-	if (cp->ppm_markers[Z_ppm].m_data != nullptr) {
-		/* clean up to be done on cp destruction */
-		GROK_ERROR("Zppm %u already read", Z_ppm);
-		return false;
-	}
-
-	cp->ppm_markers[Z_ppm].m_data = (uint8_t*) grk_malloc(header_size);
-	if (cp->ppm_markers[Z_ppm].m_data == nullptr) {
-		/* clean up to be done on cp destruction */
-		GROK_ERROR("Not enough memory to read PPM marker");
-		return false;
-	}
-	cp->ppm_markers[Z_ppm].m_data_size = header_size;
-	memcpy(cp->ppm_markers[Z_ppm].m_data, p_header_data, header_size);
-
-	return true;
+   return ppm.read(p_j2k, p_header_data, header_size);
 }
 
 /**
@@ -4043,129 +3901,9 @@ static bool j2k_read_ppm(grk_j2k *p_j2k, uint8_t *p_header_data,
  
  */
 static bool j2k_merge_ppm(grk_coding_parameters *p_cp) {
-	uint32_t i, ppm_data_size, N_ppm_remaining;
+	PPMMarker ppm;
 
-	assert(p_cp != nullptr);
-	assert(p_cp->ppm_buffer == nullptr);
-
-	if (!p_cp->ppm)
-		return true;
-
-	ppm_data_size = 0U;
-	N_ppm_remaining = 0U;
-	for (i = 0U; i < p_cp->ppm_markers_count; ++i) {
-		if (p_cp->ppm_markers[i].m_data != nullptr) { /* standard doesn't seem to require contiguous Zppm */
-			uint32_t N_ppm;
-			uint32_t data_size = p_cp->ppm_markers[i].m_data_size;
-			const uint8_t *data = p_cp->ppm_markers[i].m_data;
-
-			if (N_ppm_remaining >= data_size) {
-				N_ppm_remaining -= data_size;
-				data_size = 0U;
-			} else {
-				data += N_ppm_remaining;
-				data_size -= N_ppm_remaining;
-				N_ppm_remaining = 0U;
-			}
-
-			if (data_size > 0U) {
-				do {
-					/* read Nppm */
-					if (data_size < 4U) {
-						/* clean up to be done on cp destruction */
-						GROK_ERROR("Not enough bytes to read Nppm");
-						return false;
-					}
-					grk_read<uint32_t>(data, &N_ppm, 4);
-					data += 4;
-					data_size -= 4;
-					ppm_data_size += N_ppm; /* can't overflow, max 256 markers of max 65536 bytes, that is when PPM markers are not corrupted which is checked elsewhere */
-
-					if (data_size >= N_ppm) {
-						data_size -= N_ppm;
-						data += N_ppm;
-					} else {
-						N_ppm_remaining = N_ppm - data_size;
-						data_size = 0U;
-					}
-				} while (data_size > 0U);
-			}
-		}
-	}
-
-	if (N_ppm_remaining != 0U) {
-		/* clean up to be done on cp destruction */
-		GROK_ERROR("Corrupted PPM markers");
-		return false;
-	}
-
-	p_cp->ppm_buffer = (uint8_t*) grk_malloc(ppm_data_size);
-	if (p_cp->ppm_buffer == nullptr) {
-		GROK_ERROR("Not enough memory to read PPM marker");
-		return false;
-	}
-	p_cp->ppm_len = ppm_data_size;
-	ppm_data_size = 0U;
-	N_ppm_remaining = 0U;
-	for (i = 0U; i < p_cp->ppm_markers_count; ++i) {
-		if (p_cp->ppm_markers[i].m_data != nullptr) { /* standard doesn't seem to require contiguous Zppm */
-			uint32_t N_ppm;
-			uint32_t data_size = p_cp->ppm_markers[i].m_data_size;
-			const uint8_t *data = p_cp->ppm_markers[i].m_data;
-
-			if (N_ppm_remaining >= data_size) {
-				memcpy(p_cp->ppm_buffer + ppm_data_size, data, data_size);
-				ppm_data_size += data_size;
-				N_ppm_remaining -= data_size;
-				data_size = 0U;
-			} else {
-				memcpy(p_cp->ppm_buffer + ppm_data_size, data, N_ppm_remaining);
-				ppm_data_size += N_ppm_remaining;
-				data += N_ppm_remaining;
-				data_size -= N_ppm_remaining;
-				N_ppm_remaining = 0U;
-			}
-
-			if (data_size > 0U) {
-				do {
-					/* read Nppm */
-					if (data_size < 4U) {
-						/* clean up to be done on cp destruction */
-						GROK_ERROR("Not enough bytes to read Nppm");
-						return false;
-					}
-					grk_read<uint32_t>(data, &N_ppm, 4);
-					data += 4;
-					data_size -= 4;
-
-					if (data_size >= N_ppm) {
-						memcpy(p_cp->ppm_buffer + ppm_data_size, data, N_ppm);
-						ppm_data_size += N_ppm;
-						data_size -= N_ppm;
-						data += N_ppm;
-					} else {
-						memcpy(p_cp->ppm_buffer + ppm_data_size, data,
-								data_size);
-						ppm_data_size += data_size;
-						N_ppm_remaining = N_ppm - data_size;
-						data_size = 0U;
-					}
-				} while (data_size > 0U);
-			}
-			grok_free(p_cp->ppm_markers[i].m_data);
-			p_cp->ppm_markers[i].m_data = nullptr;
-			p_cp->ppm_markers[i].m_data_size = 0U;
-		}
-	}
-
-	p_cp->ppm_data = p_cp->ppm_buffer;
-	p_cp->ppm_data_size = p_cp->ppm_len;
-
-	p_cp->ppm_markers_count = 0U;
-	grok_free(p_cp->ppm_markers);
-	p_cp->ppm_markers = nullptr;
-
-	return true;
+   return ppm.merge(p_cp);
 }
 
 /**
@@ -4300,6 +4038,42 @@ static bool j2k_merge_ppt(grk_tcp *p_tcp) {
 	return true;
 }
 
+/**
+ * Reads a TLM marker (Tile Length Marker)
+ *
+ * @param       p_j2k                   JPEG 2000 codec
+ * @param       p_header_data   the data contained in the TLM box.
+ * @param       header_size   the size of the data contained in the TLM marker.
+
+ */
+static bool j2k_read_tlm(grk_j2k *p_j2k, uint8_t *p_header_data,
+		uint16_t header_size) {
+	assert(p_j2k);
+	if (!p_j2k->m_cp.tlm_markers)
+		p_j2k->m_cp.tlm_markers = new TileLengthMarkers();
+
+	return p_j2k->m_cp.tlm_markers->read(p_header_data, header_size);
+}
+
+
+static bool j2k_write_updated_tlm(grk_j2k *p_j2k, BufferedStream *stream) {
+	assert(p_j2k != nullptr);
+	assert(stream != nullptr);
+
+	uint32_t tlm_size = tlm_len_per_tile_part
+			* p_j2k->m_specific_param.m_encoder.m_total_tile_parts;
+	uint64_t tlm_position = 6 + p_j2k->m_tileProcessor->m_tlm_start;
+	uint64_t current_position = stream->tell();
+
+	if (!stream->seek(tlm_position))
+		return false;
+	if (stream->write_bytes(p_j2k->m_tileProcessor->m_tlm_sot_offsets_buffer,
+			tlm_size) != tlm_size)
+		return false;
+
+	return stream->seek(current_position);
+}
+
 static bool j2k_write_tlm(grk_j2k *p_j2k, BufferedStream *stream) {
 	assert(p_j2k != nullptr);
 	assert(stream != nullptr);
@@ -4337,346 +4111,15 @@ static bool j2k_write_tlm(grk_j2k *p_j2k, BufferedStream *stream) {
 
 static bool j2k_write_sot(grk_j2k *p_j2k, BufferedStream *stream,
 		uint64_t *psot_location, uint64_t *p_data_written) {
-	assert(p_j2k != nullptr);
+	SOTMarker sot;
 
-	/* SOT */
-	if (!stream->write_short(J2K_MS_SOT))
-		return false;
-
-	/* Lsot */
-	if (!stream->write_short(10))
-		return false;
-	/* Isot */
-	if (!stream->write_short(
-			(uint16_t) p_j2k->m_tileProcessor->m_current_tile_number))
-		return false;
-
-	/* Psot  */
-	*psot_location = stream->tell();
-	if (!stream->skip(4))
-		return false;
-
-	/* TPsot */
-	if (!stream->write_byte(p_j2k->m_tileProcessor->m_current_tile_part_number))
-		return false;
-
-	/* TNsot */
-	if (!stream->write_byte(
-			p_j2k->m_cp.tcps[p_j2k->m_tileProcessor->m_current_tile_number].m_nb_tile_parts))
-		return false;
-
-	*p_data_written += sot_marker_segment_len;
-	return true;
-
-}
-
-static bool j2k_get_sot_values(uint8_t *p_header_data, uint32_t header_size,
-		uint16_t *tile_no, uint32_t *p_tot_len, uint8_t *p_current_part,
-		uint8_t *p_num_parts) {
-
-	assert(p_header_data != nullptr);
-
-	/* Size of this marker is fixed = 12 (we have already read marker and its size)*/
-	if (header_size != 8) {
-		GROK_ERROR("Error reading SOT marker");
-		return false;
-	}
-	/* Isot */
-	uint32_t temp;
-	grk_read<uint32_t>(p_header_data, &temp, 2);
-	p_header_data += 2;
-	*tile_no = (uint16_t) temp;
-	/* Psot */
-	grk_read<uint32_t>(p_header_data, p_tot_len, 4);
-	p_header_data += 4;
-	/* TPsot */
-	grk_read<uint32_t>(p_header_data, &temp, 1);
-	*p_current_part = (uint8_t) temp;
-	++p_header_data;
-	/* TNsot */
-	grk_read<uint32_t>(p_header_data, &temp, 1);
-	*p_num_parts = (uint8_t) temp;
-	++p_header_data;
-	return true;
+	return sot.write(p_j2k, stream,psot_location, p_data_written);
 }
 
 static bool j2k_read_sot(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
-	uint32_t tot_len = 0;
-	uint8_t num_parts = 0;
-	uint8_t current_part;
-	uint32_t tile_x, tile_y;
-
-	assert(p_j2k != nullptr);
-
-	if (!j2k_get_sot_values(p_header_data, header_size,
-			&p_j2k->m_tileProcessor->m_current_tile_number, &tot_len,
-			&current_part, &num_parts)) {
-		GROK_ERROR("Error reading SOT marker");
-		return false;
-	}
-	auto tile_number = p_j2k->m_tileProcessor->m_current_tile_number;
-
-	auto cp = &(p_j2k->m_cp);
-
-	/* testcase 2.pdf.SIGFPE.706.1112 */
-	if (tile_number >= cp->t_grid_width * cp->t_grid_height) {
-		GROK_ERROR("Invalid tile number %d", tile_number);
-		return false;
-	}
-
-	auto tcp = &cp->tcps[tile_number];
-	tile_x = tile_number % cp->t_grid_width;
-	tile_y = tile_number / cp->t_grid_width;
-
-	/* Fixes issue with id_000020,sig_06,src_001958,op_flip4,pos_149 */
-	/* of https://github.com/uclouvain/openjpeg/issues/939 */
-	/* We must avoid reading the same tile part number twice for a given tile */
-	/* to avoid various issues, like grk_j2k_merge_ppt being called several times. */
-	/* ISO 15444-1 A.4.2 Start of tile-part (SOT) mandates that tile parts */
-	/* should appear in increasing order. */
-	if (tcp->m_current_tile_part_number + 1 != (int32_t) current_part) {
-		GROK_ERROR("Invalid tile part index for tile number %d. "
-				"Got %d, expected %d", tile_number, current_part,
-				tcp->m_current_tile_part_number + 1);
-		return false;
-	}
-	++tcp->m_current_tile_part_number;
-	/* PSot should be equal to zero or >=14 or <= 2^32-1 */
-	if ((tot_len != 0) && (tot_len < 14)) {
-		if (tot_len == sot_marker_segment_len) {
-			GROK_WARN("Empty SOT marker detected: Psot=%d.", tot_len);
-		} else {
-			GROK_ERROR(
-					"Psot value is not correct regards to the JPEG2000 norm: %d.",
-					tot_len);
-			return false;
-		}
-	}
-
-	/* Ref A.4.2: Psot may equal zero if it is the last tile-part of the code stream.*/
-	if (!tot_len) {
-		//GROK_WARN( "Psot value of the current tile-part is equal to zero; "
-		//              "we assume it is the last tile-part of the code stream.");
-		p_j2k->m_specific_param.m_decoder.m_last_tile_part = 1;
-	}
-
-	// ensure that current tile part number read from SOT marker
-	// is not larger than total number of tile parts
-	if (tcp->m_nb_tile_parts != 0 && current_part >= tcp->m_nb_tile_parts) {
-		/* Fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=2851 */
-		GROK_ERROR(
-				"Current tile part number (%d) read from SOT marker is greater than total "
-						"number of tile-parts (%d).", current_part,
-				tcp->m_nb_tile_parts);
-		p_j2k->m_specific_param.m_decoder.m_last_tile_part = 1;
-		return false;
-	}
-
-	if (num_parts != 0) { /* Number of tile-part header is provided
-	 by this tile-part header */
-		num_parts = (uint8_t) (num_parts
-				+ p_j2k->m_tileProcessor->m_nb_tile_parts_correction);
-		/* Useful to manage the case of textGBR.jp2 file because two values
-		 *  of TNSot are allowed: the correct numbers of
-		 * tile-parts for that tile and zero (A.4.2 of 15444-1 : 2002). */
-		if (tcp->m_nb_tile_parts) {
-			if (current_part >= tcp->m_nb_tile_parts) {
-				GROK_ERROR(
-						"In SOT marker, TPSot (%d) is not valid regards to the current "
-								"number of tile-part (%d), giving up",
-						current_part, tcp->m_nb_tile_parts);
-				p_j2k->m_specific_param.m_decoder.m_last_tile_part = 1;
-				return false;
-			}
-		}
-		if (current_part >= num_parts) {
-			/* testcase 451.pdf.SIGSEGV.ce9.3723 */
-			GROK_ERROR(
-					"In SOT marker, TPSot (%d) is not valid regards to the current "
-							"number of tile-part (header) (%d), giving up",
-					current_part, num_parts);
-			p_j2k->m_specific_param.m_decoder.m_last_tile_part = 1;
-			return false;
-		}
-		tcp->m_nb_tile_parts = num_parts;
-	}
-
-	/* If know the number of tile part header we will check if we didn't read the last*/
-	if (tcp->m_nb_tile_parts) {
-		if (tcp->m_nb_tile_parts == (current_part + 1)) {
-			p_j2k->m_specific_param.m_decoder.ready_to_decode_tile_part_data =
-					1; /* Process the last tile-part header*/
-		}
-	}
-
-	if (!p_j2k->m_specific_param.m_decoder.m_last_tile_part) {
-		/* Keep the size of data to skip after this marker */
-		p_j2k->m_tileProcessor->tile_part_data_length = tot_len
-				- sot_marker_segment_len;
-	} else {
-		/* FIXME: need to be computed from the number of bytes
-		 *  remaining in the code stream */
-		p_j2k->m_tileProcessor->tile_part_data_length = 0;
-	}
-
-	p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_TPH;
-
-	/* Check if the current tile is outside the area we want
-	 *  decompress or not corresponding to the tile index*/
-	if (p_j2k->m_tileProcessor->m_tile_ind_to_dec == -1) {
-		p_j2k->m_specific_param.m_decoder.m_skip_data =
-				(tile_x < p_j2k->m_specific_param.m_decoder.m_start_tile_x_index)
-						|| (tile_x
-								>= p_j2k->m_specific_param.m_decoder.m_end_tile_x_index)
-						|| (tile_y
-								< p_j2k->m_specific_param.m_decoder.m_start_tile_y_index)
-						|| (tile_y
-								>= p_j2k->m_specific_param.m_decoder.m_end_tile_y_index);
-	} else {
-		assert(p_j2k->m_tileProcessor->m_tile_ind_to_dec >= 0);
-		p_j2k->m_specific_param.m_decoder.m_skip_data = (tile_number
-				!= (uint32_t) p_j2k->m_tileProcessor->m_tile_ind_to_dec);
-	}
-
-	/* Index */
-	if (p_j2k->cstr_index) {
-		assert(p_j2k->cstr_index->tile_index != nullptr);
-		p_j2k->cstr_index->tile_index[tile_number].tileno = tile_number;
-		p_j2k->cstr_index->tile_index[tile_number].current_tpsno = current_part;
-
-		if (num_parts != 0) {
-			p_j2k->cstr_index->tile_index[tile_number].nb_tps = num_parts;
-			p_j2k->cstr_index->tile_index[tile_number].current_nb_tps =
-					num_parts;
-
-			if (!p_j2k->cstr_index->tile_index[tile_number].tp_index) {
-				p_j2k->cstr_index->tile_index[tile_number].tp_index =
-						(grk_tp_index*) grk_calloc(num_parts,
-								sizeof(grk_tp_index));
-				if (!p_j2k->cstr_index->tile_index[tile_number].tp_index) {
-					GROK_ERROR("Not enough memory to read SOT marker. "
-							"Tile index allocation failed");
-					return false;
-				}
-			} else {
-				grk_tp_index *new_tp_index = (grk_tp_index*) grk_realloc(
-						p_j2k->cstr_index->tile_index[tile_number].tp_index,
-						num_parts * sizeof(grk_tp_index));
-				if (!new_tp_index) {
-					grok_free(
-							p_j2k->cstr_index->tile_index[tile_number].tp_index);
-					p_j2k->cstr_index->tile_index[tile_number].tp_index =
-							nullptr;
-					GROK_ERROR("Not enough memory to read SOT marker. "
-							"Tile index allocation failed");
-					return false;
-				}
-				p_j2k->cstr_index->tile_index[tile_number].tp_index =
-						new_tp_index;
-			}
-		} else {
-			if (!p_j2k->cstr_index->tile_index[tile_number].tp_index) {
-				p_j2k->cstr_index->tile_index[tile_number].current_nb_tps = 10;
-				p_j2k->cstr_index->tile_index[tile_number].tp_index =
-						(grk_tp_index*) grk_calloc(
-								p_j2k->cstr_index->tile_index[tile_number].current_nb_tps,
-								sizeof(grk_tp_index));
-				if (!p_j2k->cstr_index->tile_index[tile_number].tp_index) {
-					p_j2k->cstr_index->tile_index[tile_number].current_nb_tps =
-							0;
-					GROK_ERROR("Not enough memory to read SOT marker. "
-							"Tile index allocation failed");
-					return false;
-				}
-			}
-
-			if (current_part
-					>= p_j2k->cstr_index->tile_index[tile_number].current_nb_tps) {
-				grk_tp_index *new_tp_index;
-				p_j2k->cstr_index->tile_index[tile_number].current_nb_tps =
-						current_part + 1;
-				new_tp_index =
-						(grk_tp_index*) grk_realloc(
-								p_j2k->cstr_index->tile_index[tile_number].tp_index,
-								p_j2k->cstr_index->tile_index[tile_number].current_nb_tps
-										* sizeof(grk_tp_index));
-				if (!new_tp_index) {
-					grok_free(
-							p_j2k->cstr_index->tile_index[tile_number].tp_index);
-					p_j2k->cstr_index->tile_index[tile_number].tp_index =
-							nullptr;
-					p_j2k->cstr_index->tile_index[tile_number].current_nb_tps =
-							0;
-					GROK_ERROR(
-							"Not enough memory to read SOT marker. Tile index allocation failed");
-					return false;
-				}
-				p_j2k->cstr_index->tile_index[tile_number].tp_index =
-						new_tp_index;
-			}
-		}
-
-	}
-	return true;
-}
-
-static bool j2k_write_tile_part(grk_j2k *p_j2k, bool writePOC,
-		BufferedStream *stream) {
-	grk_codestream_info *cstr_info = nullptr;
-	assert(p_j2k != nullptr);
-	assert(stream != nullptr);
-	auto tileProcessor = p_j2k->m_tileProcessor;
-	uint16_t currentTileNumber = tileProcessor->m_current_tile_number;
-	auto cp = &p_j2k->m_cp;
-
-	//1. write SOT
-	uint64_t temp_bytes_written = 0;
-	uint64_t psot_location = 0;
-	if (!j2k_write_sot(p_j2k, stream, &psot_location, &temp_bytes_written))
-		return false;
-	uint64_t tile_part_bytes_written = temp_bytes_written;
-
-	//2. write POC (only in first tile part)
-	if (writePOC) {
-		if (!GRK_IS_CINEMA(cp->rsiz)) {
-			if (cp->tcps[currentTileNumber].numpocs) {
-				temp_bytes_written = 0;
-				if (!j2k_write_poc(p_j2k, stream, &temp_bytes_written))
-					return false;
-				tile_part_bytes_written += temp_bytes_written;
-			}
-		}
-	}
-
-	// 3. compress tile part
-	/* set packno to zero when writing the first tile part */
-	if (currentTileNumber == 0) {
-		tileProcessor->tile->packno = 0;
-		if (cstr_info)
-			cstr_info->packno = 0;
-	}
-	if (!tileProcessor->compress_tile_part(currentTileNumber, stream,
-			&tile_part_bytes_written, cstr_info)) {
-		GROK_ERROR("Cannot compress tile");
-		return false;
-	}
-
-	/* 4. write Psot in SOT marker */
-	auto currentLocation = stream->tell();
-	stream->seek(psot_location);
-	if (!stream->write_int((uint32_t) tile_part_bytes_written))
-		return false;
-	stream->seek(currentLocation);
-
-	// 5. update TLM
-	if (GRK_IS_CINEMA(cp->rsiz) ||
-	GRK_IS_BROADCAST(cp->rsiz) || GRK_IS_IMF(cp->rsiz))
-		j2k_update_tlm(p_j2k, (uint32_t) tile_part_bytes_written);
-
-	++tileProcessor->m_current_tile_part_number;
-
-	return true;
+	SOTMarker sot;
+	return sot.read(p_j2k,p_header_data, header_size);
 }
 
 static bool j2k_read_sod(grk_j2k *p_j2k, BufferedStream *stream) {
@@ -4860,14 +4303,6 @@ static bool j2k_read_rgn(grk_j2k *p_j2k, uint8_t *p_header_data,
 	return true;
 }
 
-static bool j2k_get_end_header(grk_j2k *p_j2k, BufferedStream *stream) {
-	assert(p_j2k != nullptr);
-	assert(stream != nullptr);
-
-	p_j2k->cstr_index->main_head_end = stream->tell();
-
-	return true;
-}
 
 static bool j2k_write_mct_data_group(grk_j2k *p_j2k, BufferedStream *stream) {
 	uint32_t i;
@@ -4958,54 +4393,6 @@ static bool j2k_write_epc(grk_j2k *p_j2k, BufferedStream *stream) {
 		cstr_index->codestream_size -= (uint64_t) cstr_index->main_head_start;
 
 	}
-	return true;
-}
-
-static bool j2k_read_unk(grk_j2k *p_j2k, BufferedStream *stream,
-		uint16_t *output_marker) {
-	uint16_t unknown_marker;
-	const grk_dec_memory_marker_handler *marker_handler;
-	uint32_t size_unk = 2;
-
-	/* preconditions*/
-	assert(p_j2k != nullptr);
-	assert(stream != nullptr);
-
-	GROK_WARN("Unknown marker 0x%02x", *output_marker);
-
-	while(true) {
-		if (!p_j2k->m_tileProcessor->read_marker(stream, &unknown_marker))
-			return false;
-		if (!(unknown_marker < 0xff00)) {
-
-			/* Get the marker handler from the marker ID*/
-			marker_handler = j2k_get_marker_handler(unknown_marker);
-
-			if (!(p_j2k->m_specific_param.m_decoder.m_state
-					& marker_handler->states)) {
-				GROK_ERROR("Marker is not compliant with its position");
-				return false;
-			} else {
-				if (marker_handler->id != J2K_MS_UNK) {
-					/* Add the marker to the code stream index*/
-					if (p_j2k->cstr_index && marker_handler->id != J2K_MS_SOT) {
-						bool res = j2k_add_mhmarker(p_j2k->cstr_index,
-						J2K_MS_UNK, stream->tell() - size_unk, size_unk);
-
-						if (res == false) {
-							GROK_ERROR("Not enough memory to add mh marker");
-							return false;
-						}
-					}
-					break; /* next marker is known and well located */
-				} else {
-					size_unk += 2;
-				}
-			}
-		}
-	}
-	*output_marker = marker_handler->id;
-
 	return true;
 }
 
@@ -5793,35 +5180,6 @@ static bool j2k_check_poc_val(const grk_poc *p_pocs, uint32_t nb_pocs,
 	return !loss;
 }
 
-static bool j2k_add_mhmarker(grk_codestream_index *cstr_index, uint32_t type,
-		uint64_t pos, uint32_t len) {
-	assert(cstr_index != nullptr);
-
-	/* expand the list? */
-	if ((cstr_index->marknum + 1) > cstr_index->maxmarknum) {
-		grk_marker_info *new_marker;
-		cstr_index->maxmarknum = (uint32_t) (100
-				+ (float) cstr_index->maxmarknum);
-		new_marker = (grk_marker_info*) grk_realloc(cstr_index->marker,
-				cstr_index->maxmarknum * sizeof(grk_marker_info));
-		if (!new_marker) {
-			grok_free(cstr_index->marker);
-			cstr_index->marker = nullptr;
-			cstr_index->maxmarknum = 0;
-			cstr_index->marknum = 0;
-			/* GROK_ERROR( "Not enough memory to add mh marker"); */
-			return false;
-		}
-		cstr_index->marker = new_marker;
-	}
-
-	/* add the marker */
-	cstr_index->marker[cstr_index->marknum].type = (uint16_t) type;
-	cstr_index->marker[cstr_index->marknum].pos = (uint64_t) pos;
-	cstr_index->marker[cstr_index->marknum].len = (uint32_t) len;
-	cstr_index->marknum++;
-	return true;
-}
 
 static void j2k_update_tlm(grk_j2k *p_j2k, uint32_t tile_part_size) {
 	/* PSOT */
@@ -5879,145 +5237,6 @@ static bool j2k_add_tlmarker(uint16_t tileno, grk_codestream_index *cstr_index,
 					pos;
 
 	}
-	return true;
-}
-
-/* FIXME DOC*/
-static bool j2k_copy_default_tcp_and_create_tcd(grk_j2k *p_j2k,
-		BufferedStream *stream) {
-
-	(void) stream;
-	uint32_t nb_tiles;
-	uint32_t i, j;
-	uint32_t tccp_size;
-	uint32_t mct_size;
-	grk_image *image;
-	uint32_t mcc_records_size, mct_records_size;
-	grk_mct_data *src_mct_rec, *dest_mct_rec;
-	grk_simple_mcc_decorrelation_data *src_mcc_rec, *dest_mcc_rec;
-	uint32_t offset;
-
-	assert(p_j2k != nullptr);
-	assert(stream != nullptr);
-
-	image = p_j2k->m_private_image;
-	nb_tiles = p_j2k->m_cp.t_grid_height * p_j2k->m_cp.t_grid_width;
-	auto tcp = p_j2k->m_cp.tcps;
-	tccp_size = image->numcomps * (uint32_t) sizeof(grk_tccp);
-	auto default_tcp = p_j2k->m_specific_param.m_decoder.m_default_tcp;
-	mct_size = image->numcomps * image->numcomps * (uint32_t) sizeof(float);
-
-	/* For each tile */
-	for (i = 0; i < nb_tiles; ++i) {
-		/* keep the tile-compo coding parameters pointer of the current tile coding parameters*/
-		auto current_tccp = tcp->tccps;
-		/*Copy default coding parameters into the current tile coding parameters*/
-		memcpy(tcp, default_tcp, sizeof(grk_tcp));
-		/* Initialize some values of the current tile coding parameters*/
-		tcp->cod = 0;
-		tcp->ppt = 0;
-		tcp->ppt_data = nullptr;
-		/* Remove memory not owned by this tile in case of early error return. */
-		tcp->m_mct_decoding_matrix = nullptr;
-		tcp->m_nb_max_mct_records = 0;
-		tcp->m_mct_records = nullptr;
-		tcp->m_nb_max_mcc_records = 0;
-		tcp->m_mcc_records = nullptr;
-		/* Reconnect the tile-compo coding parameters pointer to the current tile coding parameters*/
-		tcp->tccps = current_tccp;
-
-		/* Get the mct_decoding_matrix of the dflt_tile_cp and copy them into the current tile cp*/
-		if (default_tcp->m_mct_decoding_matrix) {
-			tcp->m_mct_decoding_matrix = (float*) grk_malloc(mct_size);
-			if (!tcp->m_mct_decoding_matrix) {
-				return false;
-			}
-			memcpy(tcp->m_mct_decoding_matrix,
-					default_tcp->m_mct_decoding_matrix, mct_size);
-		}
-
-		/* Get the mct_record of the dflt_tile_cp and copy them into the current tile cp*/
-		mct_records_size = default_tcp->m_nb_max_mct_records
-				* (uint32_t) sizeof(grk_mct_data);
-		tcp->m_mct_records = (grk_mct_data*) grk_malloc(mct_records_size);
-		if (!tcp->m_mct_records) {
-			return false;
-		}
-		memcpy(tcp->m_mct_records, default_tcp->m_mct_records,
-				mct_records_size);
-
-		/* Copy the mct record data from dflt_tile_cp to the current tile*/
-		src_mct_rec = default_tcp->m_mct_records;
-		dest_mct_rec = tcp->m_mct_records;
-
-		for (j = 0; j < default_tcp->m_nb_mct_records; ++j) {
-
-			if (src_mct_rec->m_data) {
-
-				dest_mct_rec->m_data = (uint8_t*) grk_malloc(
-						src_mct_rec->m_data_size);
-				if (!dest_mct_rec->m_data) {
-					return false;
-				}
-				memcpy(dest_mct_rec->m_data, src_mct_rec->m_data,
-						src_mct_rec->m_data_size);
-			}
-
-			++src_mct_rec;
-			++dest_mct_rec;
-			/* Update with each pass to free exactly what has been allocated on early return. */
-			tcp->m_nb_max_mct_records += 1;
-		}
-
-		/* Get the mcc_record of the dflt_tile_cp and copy them into the current tile cp*/
-		mcc_records_size = default_tcp->m_nb_max_mcc_records
-				* (uint32_t) sizeof(grk_simple_mcc_decorrelation_data);
-		tcp->m_mcc_records = (grk_simple_mcc_decorrelation_data*) grk_malloc(
-				mcc_records_size);
-		if (!tcp->m_mcc_records) {
-			return false;
-		}
-		memcpy(tcp->m_mcc_records, default_tcp->m_mcc_records,
-				mcc_records_size);
-		tcp->m_nb_max_mcc_records = default_tcp->m_nb_max_mcc_records;
-
-		/* Copy the mcc record data from dflt_tile_cp to the current tile*/
-		src_mcc_rec = default_tcp->m_mcc_records;
-		dest_mcc_rec = tcp->m_mcc_records;
-
-		for (j = 0; j < default_tcp->m_nb_max_mcc_records; ++j) {
-
-			if (src_mcc_rec->m_decorrelation_array) {
-				offset = (uint32_t) (src_mcc_rec->m_decorrelation_array
-						- default_tcp->m_mct_records);
-				dest_mcc_rec->m_decorrelation_array = tcp->m_mct_records
-						+ offset;
-			}
-
-			if (src_mcc_rec->m_offset_array) {
-				offset = (uint32_t) (src_mcc_rec->m_offset_array
-						- default_tcp->m_mct_records);
-				dest_mcc_rec->m_offset_array = tcp->m_mct_records + offset;
-			}
-
-			++src_mcc_rec;
-			++dest_mcc_rec;
-		}
-
-		/* Copy all the dflt_tile_compo_cp to the current tile cp */
-		memcpy(current_tccp, default_tcp->tccps, tccp_size);
-
-		/* Move to next tile cp*/
-		++tcp;
-	}
-
-	if (!p_j2k->m_tileProcessor->init(image, &(p_j2k->m_cp))) {
-		delete p_j2k->m_tileProcessor;
-		p_j2k->m_tileProcessor = nullptr;
-		GROK_ERROR("Cannot decompress tile, memory error");
-		return false;
-	}
-
 	return true;
 }
 

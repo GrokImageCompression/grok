@@ -212,7 +212,7 @@ bool T2::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 	// so we disable packet length markers if we have both PLT and PLM
 	bool usePlt = packetLengths && !cp->plm_markers;
 	if (usePlt)
-		packetLengths->readInit();
+		packetLengths->getInit();
 	for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
 		/* if the resolution needed is too low, one dim of the tilec could be equal to zero
 		 * and no packets are used to decode this resolution and
@@ -239,7 +239,7 @@ bool T2::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			auto img_comp = image->comps + current_pi->compno;
 			uint32_t pltMarkerLen = 0;
 			if (usePlt)
-				pltMarkerLen = packetLengths->readNext();
+				pltMarkerLen = packetLengths->getNext();
 
 			/*
 			 GROK_INFO(
@@ -1518,7 +1518,7 @@ bool T2::encode_packet_simulate(grk_tcp *tcp, PacketIter *pi,
 		}
 	}
 	if (markers)
-		markers->encodeNext((uint32_t)*packet_bytes_written);
+		markers->writeNext((uint32_t)*packet_bytes_written);
 
 	return true;
 }

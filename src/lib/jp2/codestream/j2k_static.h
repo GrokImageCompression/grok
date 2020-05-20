@@ -658,22 +658,7 @@ static bool j2k_write_tlm(grk_j2k *p_j2k, BufferedStream *stream);
 static bool j2k_write_sot(grk_j2k *p_j2k, BufferedStream *stream,
 		uint64_t *psot_location, uint64_t *p_data_written);
 
-/**
- * Reads values from a SOT marker (Start of tile-part)
- *
- * the j2k decoder state is not affected. No side effects, no checks except for header_size.
- *
- * @param       p_header_data   the data contained in the SOT marker.
- * @param       header_size   the size of the data contained in the SOT marker.
- * @param       tile_no       Isot.
- * @param       p_tot_len       Psot.
- * @param       p_current_part  TPsot.
- * @param       p_num_parts     TNsot.
 
- */
-static bool j2k_get_sot_values(uint8_t *p_header_data, uint32_t header_size,
-		uint16_t *tile_no, uint32_t *p_tot_len, uint8_t *p_current_part,
-		uint8_t *p_num_parts);
 /**
  * Reads a SOT marker (Start of tile-part)
  *

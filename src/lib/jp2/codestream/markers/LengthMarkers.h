@@ -18,15 +18,6 @@
 
 namespace grk {
 
-// bytes available in PLT marker to store packet lengths
-// (4 bytes are reserved for (marker + marker length), and 1 byte for index)
-const uint32_t available_packet_len_bytes_per_plt = USHRT_MAX - 1 - 4;
-
-// minimum number of packet lengths that can be stored in a full
-// length PLT marker
-// (5 is maximum number of bytes for a single packet length)
-const uint32_t min_packets_per_full_plt = available_packet_len_bytes_per_plt / 5;
-
 // tile part length
 struct grk_tl_info {
 	grk_tl_info() :
@@ -51,12 +42,21 @@ typedef std::map<uint8_t, TL_INFO_VEC*> TL_MAP;
 struct TileLengthMarkers {
 	TileLengthMarkers();
 	~TileLengthMarkers();
-	bool decode(uint8_t *p_header_data, uint16_t header_size);
+	bool read(uint8_t *p_header_data, uint16_t header_size);
 private:
 	void push(uint8_t i_TLM, grk_tl_info curr_vec);
 	TL_MAP *markers;
 
 };
+
+// bytes available in PLT marker to store packet lengths
+// (4 bytes are reserved for (marker + marker length), and 1 byte for index)
+const uint32_t available_packet_len_bytes_per_plt = USHRT_MAX - 1 - 4;
+
+// minimum number of packet lengths that can be stored in a full
+// length PLT marker
+// (5 is maximum number of bytes for a single packet length)
+const uint32_t min_packets_per_full_plt = available_packet_len_bytes_per_plt / 5;
 
 typedef std::vector<uint32_t> PL_INFO_VEC;
 // map of (PLT/PLM marker id) => (packet length vector)
@@ -68,14 +68,17 @@ struct PacketLengthMarkers {
 	~PacketLengthMarkers(void);
 
 	// decode packet lengths
-	bool decodePLT(uint8_t *p_header_data, uint16_t header_size);
-	bool decodePLM(uint8_t *p_header_data, uint16_t header_size);
-	void readInit(void);
-	uint32_t readNext(void);
+	bool readPLT(uint8_t *p_header_data, uint16_t header_size);
+	bool readPLM(uint8_t *p_header_data, uint16_t header_size);
+
+	// get decoded packet lengths
+	void getInit(void);
+	uint32_t getNext(void);
 
 	// encode packet lengths
-	void encodeInit(void);
-	void encodeNext(uint32_t len);
+	void writeInit(void);
+	void writeNext(uint32_t len);
+	// write marker to stream
 	size_t write();
 
 private:
@@ -85,8 +88,8 @@ private:
 	uint32_t m_packet_len;
 	size_t m_read_index;
 
-	void decodeInitIndex(uint8_t index);
-	void decodeNext(uint8_t Iplm);
+	void readInitIndex(uint8_t index);
+	void readNext(uint8_t Iplm);
 
 	void write_marker_header(void);
 	void write_marker_length();

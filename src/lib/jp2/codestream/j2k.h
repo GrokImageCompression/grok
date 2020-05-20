@@ -66,6 +66,13 @@
 
 namespace grk {
 
+// includes marker and marker length (4 bytes)
+const uint32_t sot_marker_segment_len = 12U;
+
+const uint32_t SPCod_SPCoc_len = 5U;
+const uint32_t cod_coc_len = 5U;
+const uint32_t tlm_len_per_tile_part = 5;
+
 
 const uint32_t  GRK_COMP_PARAM_DEFAULT_CBLOCKW  =      64;
 const uint32_t  GRK_COMP_PARAM_DEFAULT_CBLOCKH  =      64;

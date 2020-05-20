@@ -44,6 +44,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/others
   ${CMAKE_CURRENT_SOURCE_DIR}/util
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers
   ${CMAKE_CURRENT_SOURCE_DIR}/mct
   ${CMAKE_CURRENT_SOURCE_DIR}/t2
 )
@@ -107,9 +108,15 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Quantizer.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/HTParams.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/HTParams.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/LengthMarkers.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/LengthMarkers.cpp
-  
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/LengthMarkers.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/LengthMarkers.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/SIZMarker.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/SIZMarker.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/PPMMarker.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/PPMMarker.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/SOTMarker.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/SOTMarker.cpp
+    
   ${CMAKE_CURRENT_SOURCE_DIR}/mct/invert.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/mct/invert.h
   ${CMAKE_CURRENT_SOURCE_DIR}/mct/mct.cpp
