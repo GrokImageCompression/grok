@@ -366,7 +366,7 @@ struct TileProcessor {
 	 *
 	 * @return	true			if the area could be set.
 	 */
-	bool set_decompress_area(grk_j2k *p_j2k,
+	bool set_decompress_area(CodeStream *p_j2k,
 						grk_image *p_image,
 						uint32_t start_x,
 						uint32_t start_y,

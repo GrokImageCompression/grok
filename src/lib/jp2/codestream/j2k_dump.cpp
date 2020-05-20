@@ -63,9 +63,9 @@
 namespace grk {
 
 
-static void j2k_dump_MH_info(grk_j2k *p_j2k, FILE *out_stream);
+static void j2k_dump_MH_info(CodeStream *p_j2k, FILE *out_stream);
 
-static void j2k_dump_MH_index(grk_j2k *p_j2k, FILE *out_stream);
+static void j2k_dump_MH_index(CodeStream *p_j2k, FILE *out_stream);
 
 static void j2k_dump_tile_info(TileCodingParams *default_tile, uint32_t numcomps,
 		FILE *out_stream) {
@@ -124,7 +124,7 @@ static void j2k_dump_tile_info(TileCodingParams *default_tile, uint32_t numcomps
 	}
 }
 
-void j2k_dump(grk_j2k *p_j2k, int32_t flag, FILE *out_stream) {
+void j2k_dump(CodeStream *p_j2k, int32_t flag, FILE *out_stream) {
 	/* Check if the flag is compatible with j2k file*/
 	if ((flag & GRK_JP2_INFO) || (flag & GRK_JP2_IND)) {
 		fprintf(out_stream, "Wrong flag\n");
@@ -173,7 +173,7 @@ void j2k_dump(grk_j2k *p_j2k, int32_t flag, FILE *out_stream) {
 
 }
 
-static void j2k_dump_MH_index(grk_j2k *p_j2k, FILE *out_stream) {
+static void j2k_dump_MH_index(CodeStream *p_j2k, FILE *out_stream) {
 	 grk_codestream_index  *cstr_index = p_j2k->cstr_index;
 	uint32_t it_marker, it_tile, it_tile_part;
 
@@ -255,7 +255,7 @@ static void j2k_dump_MH_index(grk_j2k *p_j2k, FILE *out_stream) {
 	fprintf(out_stream, "}\n");
 }
 
-static void j2k_dump_MH_info(grk_j2k *p_j2k, FILE *out_stream) {
+static void j2k_dump_MH_info(CodeStream *p_j2k, FILE *out_stream) {
 
 	fprintf(out_stream, "Codestream info from main header: {\n");
 
@@ -323,7 +323,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 		fprintf(out_stream, "}\n");
 }
 
- grk_codestream_info_v2  *  j2k_get_cstr_info(grk_j2k *p_j2k) {
+ grk_codestream_info_v2  *  j2k_get_cstr_info(CodeStream *p_j2k) {
 	uint32_t compno;
 	uint32_t numcomps = p_j2k->m_private_image->numcomps;
 	TileCodingParams *default_tile;
@@ -399,7 +399,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 	return cstr_info;
 }
 
- grk_codestream_index  *  j2k_get_cstr_index(grk_j2k *p_j2k) {
+ grk_codestream_index  *  j2k_get_cstr_index(CodeStream *p_j2k) {
 	 grk_codestream_index  *cstr_index =
 			( grk_codestream_index  * ) grk_calloc(1,
 					sizeof( grk_codestream_index) );
@@ -516,7 +516,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 	return cstr_index;
 }
 
-bool j2k_allocate_tile_element_cstr_index(grk_j2k *p_j2k) {
+bool j2k_allocate_tile_element_cstr_index(CodeStream *p_j2k) {
 	uint32_t it_tile = 0;
 
 	p_j2k->cstr_index->nb_of_tiles = p_j2k->m_cp.t_grid_width * p_j2k->m_cp.t_grid_height;

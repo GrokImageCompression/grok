@@ -94,7 +94,7 @@ TileProcessor::~TileProcessor() {
 	delete plt_markers;
 }
 
-bool TileProcessor::set_decompress_area(grk_j2k *p_j2k, grk_image *output_image,
+bool TileProcessor::set_decompress_area(CodeStream *p_j2k, grk_image *output_image,
 		uint32_t start_x, uint32_t start_y, uint32_t end_x, uint32_t end_y) {
 
 	auto cp = &(p_j2k->m_cp);

@@ -63,7 +63,7 @@
 namespace grk {
 
 
-bool SOTMarker::write(grk_j2k *p_j2k, BufferedStream *stream,
+bool SOTMarker::write(CodeStream *p_j2k, BufferedStream *stream,
 		uint64_t *psot_location, uint64_t *p_data_written){
 	assert(p_j2k != nullptr);
 
@@ -128,7 +128,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	return true;
 }
 
- bool SOTMarker::read(grk_j2k *p_j2k, uint8_t *p_header_data,
+ bool SOTMarker::read(CodeStream *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size){
 	 uint32_t tot_len = 0;
 	uint8_t num_parts = 0;

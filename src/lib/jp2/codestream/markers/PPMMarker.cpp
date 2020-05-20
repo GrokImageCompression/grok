@@ -61,7 +61,7 @@
 
 namespace grk {
 
-bool PPMMarker::read(grk_j2k *p_j2k, uint8_t *p_header_data,
+bool PPMMarker::read(CodeStream *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size){
 	CodingParams *cp = nullptr;
 	uint32_t Z_ppm;

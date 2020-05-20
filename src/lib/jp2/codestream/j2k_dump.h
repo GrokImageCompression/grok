@@ -74,7 +74,7 @@ namespace grk {
  *@param out_stream			output stream where dump the elements.
  *
  */
-void j2k_dump(grk_j2k *p_j2k, int32_t flag, FILE *out_stream);
+void j2k_dump(CodeStream *p_j2k, int32_t flag, FILE *out_stream);
 
 /**
  * Dump an image header structure.
@@ -103,7 +103,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp, bool dev_dump_flag,
  *
  *@return	the code stream information extract from the jpg2000 codec
  */
- grk_codestream_info_v2  *  j2k_get_cstr_info(grk_j2k *p_j2k);
+ grk_codestream_info_v2  *  j2k_get_cstr_info(CodeStream *p_j2k);
 
 /**
  * Get the code stream index from a JPEG2000 codec.
@@ -112,11 +112,11 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp, bool dev_dump_flag,
  *
  *@return	the code stream index extract from the jpg2000 codec
  */
- grk_codestream_index  *  j2k_get_cstr_index(grk_j2k *p_j2k);
+ grk_codestream_index  *  j2k_get_cstr_index(CodeStream *p_j2k);
 
  grk_codestream_index  *  j2k_create_cstr_index(void);
 
- bool j2k_allocate_tile_element_cstr_index(grk_j2k *p_j2k);
+ bool j2k_allocate_tile_element_cstr_index(CodeStream *p_j2k);
 
  /**
   * Destroys a code stream index structure.

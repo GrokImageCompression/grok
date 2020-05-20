@@ -162,7 +162,7 @@ typedef bool (*jp2_procedure)(grk_jp2 *jp2, BufferedStream*);
  */
 struct grk_jp2 {
 	/** handle to the J2K codec  */
-	grk_j2k *j2k;
+	CodeStream *j2k;
 	/** list of validation procedures */
 	std::vector<jp2_procedure> *m_validation_list;
 	/** list of execution procedures */

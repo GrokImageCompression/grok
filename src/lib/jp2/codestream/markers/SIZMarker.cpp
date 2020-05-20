@@ -62,7 +62,7 @@
 
 namespace grk {
 
-bool SIZMarker::read(grk_j2k *p_j2k, uint8_t *p_header_data,
+bool SIZMarker::read(CodeStream *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size){
 	uint32_t i;
 	uint32_t nb_comp;
@@ -335,7 +335,7 @@ bool SIZMarker::read(grk_j2k *p_j2k, uint8_t *p_header_data,
 
 }
 
-bool SIZMarker::write(grk_j2k *p_j2k, BufferedStream *stream){
+bool SIZMarker::write(CodeStream *p_j2k, BufferedStream *stream){
 	uint32_t i;
 	uint32_t size_len;
 

@@ -73,7 +73,7 @@ public:
 	 * @param       header_size   the size of the data contained in the POC marker.
 
 	 */
-	bool read(grk_j2k *p_j2k, uint8_t *p_header_data,
+	bool read(CodeStream *p_j2k, uint8_t *p_header_data,
 			uint16_t header_size);
 
 	/**

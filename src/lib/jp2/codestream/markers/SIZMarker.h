@@ -72,7 +72,7 @@ public:
 	 * @param       header_size   the size of the data contained in the SIZ marker.
 
 	 */
-	bool read(grk_j2k *p_j2k, uint8_t *p_header_data,
+	bool read(CodeStream *p_j2k, uint8_t *p_header_data,
 			uint16_t header_size);
 
 	/**
@@ -82,7 +82,7 @@ public:
 	 * @param       stream        the stream to write data to.
 
 	 */
-	bool write(grk_j2k *p_j2k, BufferedStream *stream);
+	bool write(CodeStream *p_j2k, BufferedStream *stream);
 
 };
 
