@@ -18,8 +18,16 @@
 
 namespace grk {
 
+// TLM(2) + Ltlm(2) + Ztlm(1) + Stlm(1)
+const uint32_t tlm_marker_start_bytes = 6;
+
 TileLengthMarkers::TileLengthMarkers() :
-		markers(new TL_MAP()) {
+		markers(new TL_MAP()), m_stream(nullptr) {
+}
+
+TileLengthMarkers::TileLengthMarkers(BufferedStream *stream):
+		markers(new TL_MAP()), m_stream(stream) {
+
 }
 
 TileLengthMarkers::~TileLengthMarkers() {
@@ -31,7 +39,7 @@ TileLengthMarkers::~TileLengthMarkers() {
 	}
 }
 bool TileLengthMarkers::read(uint8_t *p_header_data, uint16_t header_size){
-	if (header_size < 2) {
+	if (header_size < tlm_marker_start_bytes) {
 		GROK_ERROR("Error reading TLM marker");
 		return false;
 	}
@@ -50,22 +58,42 @@ bool TileLengthMarkers::read(uint8_t *p_header_data, uint16_t header_size){
 		GROK_ERROR("Illegal L value in TLM marker");
 		return false;
 	}
-	L_iT = ((L >> 4) & 0x3);	// 0 <= L_iT <= 2
-	L_LTP = (L >> 6) & 0x1;		// 0 <= L_iTP <= 1
 
+	/*
+	 * 0 <= L_LTP <= 1
+	 *
+	 * 0 => 16 bit tile part lengths
+	 * 1 => 32 bit tile part lengths
+	 */
+	L_LTP = (L >> 6) & 0x1;
 	uint32_t bytes_per_tile_part_length = L_LTP ? 4U : 2U;
+
+	/*
+	* 0 <= L_iT <= 2
+	*
+	* 0 => no tile part indices
+	* 1 => 1 byte tile part indices
+	* 2 => 2 byte tile part indices
+	*/
+	L_iT = ((L >> 4) & 0x3);
 	uint32_t quotient = bytes_per_tile_part_length + L_iT;
 	if (header_size % quotient != 0) {
 		GROK_ERROR("Error reading TLM marker");
 		return false;
 	}
-	uint8_t num_tp = (uint8_t) (header_size / quotient);
+	// note: each tile can have max 255 tile parts, but
+	// the whole image with multiple tiles can have more than
+	// 255
+	size_t num_tp = (uint8_t) (header_size / quotient);
+
 	uint32_t Ttlm_i = 0, Ptlm_i = 0;
-	for (uint8_t i = 0; i < num_tp; ++i) {
+	for (size_t i = 0; i < num_tp; ++i) {
+		// read tile part index
 		if (L_iT) {
 			grk_read<uint32_t>(p_header_data, &Ttlm_i, L_iT);
 			p_header_data += L_iT;
 		}
+		// read tile part length
 		grk_read<uint32_t>(p_header_data, &Ptlm_i, bytes_per_tile_part_length);
 		auto info =
 				L_iT ? grk_tl_info((uint16_t) Ttlm_i, Ptlm_i) : grk_tl_info(
@@ -73,11 +101,13 @@ bool TileLengthMarkers::read(uint8_t *p_header_data, uint16_t header_size){
 		push(i_TLM, info);
 		p_header_data += bytes_per_tile_part_length;
 	}
+
 	return true;
 }
 
 void TileLengthMarkers::push(uint8_t i_TLM, grk_tl_info info) {
 	auto pair = markers->find(i_TLM);
+
 	if (pair != markers->end()) {
 		pair->second->push_back(info);
 	} else {
@@ -86,6 +116,117 @@ void TileLengthMarkers::push(uint8_t i_TLM, grk_tl_info info) {
 		markers->operator[](i_TLM) = vec;
 	}
 }
+
+bool TileLengthMarkers::write_updated(CodeStream *p_j2k) {
+	assert(p_j2k != nullptr);
+
+	uint32_t tlm_size = tlm_len_per_tile_part
+			* p_j2k->m_specific_param.m_encoder.m_total_tile_parts;
+	uint64_t tlm_position =
+			p_j2k->m_tileProcessor->m_tlm_start + tlm_marker_start_bytes;
+	uint64_t current_position = m_stream->tell();
+
+	if (!m_stream->seek(tlm_position))
+		return false;
+	if (m_stream->write_bytes(p_j2k->m_tileProcessor->m_tlm_sot_offsets_buffer,
+			tlm_size) != tlm_size)
+		return false;
+
+	return m_stream->seek(current_position);
+}
+
+bool TileLengthMarkers::write(CodeStream *p_j2k) {
+	assert(p_j2k != nullptr);
+
+	uint32_t tlm_size = tlm_marker_start_bytes
+			+ (tlm_len_per_tile_part
+					* p_j2k->m_specific_param.m_encoder.m_total_tile_parts);
+
+	p_j2k->m_tileProcessor->m_tlm_start = m_stream->tell();
+
+	/* TLM */
+	if (!m_stream->write_short(J2K_MS_TLM))
+		return false;
+
+	/* Ltlm */
+	if (!m_stream->write_short((uint16_t) (tlm_size - 2)))
+		return false;
+
+	/* Ztlm=0*/
+	if (!m_stream->write_byte(0))
+		return false;
+
+	/* Stlm ST=1(8bits-255 tiles max),SP=1(Ptlm=32bits) */
+	if (!m_stream->write_byte(0x50))
+		return false;
+
+	/* do nothing on the
+	 * tlm_len_per_tile_part * j2k->m_specific_param.m_encoder.m_total_tile_parts
+	 * remaining data */
+	return m_stream->skip(
+			(tlm_len_per_tile_part
+					* p_j2k->m_specific_param.m_encoder.m_total_tile_parts));
+}
+
+void TileLengthMarkers::update(CodeStream *p_j2k, uint32_t tile_part_size) {
+	/* PSOT */
+	grk_write<uint32_t>(p_j2k->m_tileProcessor->m_tlm_sot_offsets_current,
+			p_j2k->m_tileProcessor->m_current_tile_number, 1);
+	++p_j2k->m_tileProcessor->m_tlm_sot_offsets_current;
+
+	/* PSOT */
+	grk_write<uint32_t>(p_j2k->m_tileProcessor->m_tlm_sot_offsets_current,
+			tile_part_size, 4);
+	p_j2k->m_tileProcessor->m_tlm_sot_offsets_current += 4;
+}
+
+bool TileLengthMarkers::add_to_index(uint16_t tileno, grk_codestream_index *cstr_index,
+		uint32_t type, uint64_t pos, uint32_t len) {
+	assert(cstr_index != nullptr);
+	assert(cstr_index->tile_index != nullptr);
+
+	/* expand the list? */
+	if ((cstr_index->tile_index[tileno].marknum + 1)
+			> cstr_index->tile_index[tileno].maxmarknum) {
+		grk_marker_info *new_marker;
+		cstr_index->tile_index[tileno].maxmarknum = (uint32_t) (100
+				+ (float) cstr_index->tile_index[tileno].maxmarknum);
+		new_marker = (grk_marker_info*) grk_realloc(
+				cstr_index->tile_index[tileno].marker,
+				cstr_index->tile_index[tileno].maxmarknum
+						* sizeof(grk_marker_info));
+		if (!new_marker) {
+			grok_free(cstr_index->tile_index[tileno].marker);
+			cstr_index->tile_index[tileno].marker = nullptr;
+			cstr_index->tile_index[tileno].maxmarknum = 0;
+			cstr_index->tile_index[tileno].marknum = 0;
+			GROK_ERROR("Not enough memory to add tl marker");
+			return false;
+		}
+		cstr_index->tile_index[tileno].marker = new_marker;
+	}
+
+	/* add the marker */
+	cstr_index->tile_index[tileno].marker[cstr_index->tile_index[tileno].marknum].type =
+			(uint16_t) type;
+	cstr_index->tile_index[tileno].marker[cstr_index->tile_index[tileno].marknum].pos =
+			pos;
+	cstr_index->tile_index[tileno].marker[cstr_index->tile_index[tileno].marknum].len =
+			(uint32_t) len;
+	cstr_index->tile_index[tileno].marknum++;
+
+	if (type == J2K_MS_SOT) {
+		uint32_t current_tile_part =
+				cstr_index->tile_index[tileno].current_tpsno;
+
+		if (cstr_index->tile_index[tileno].tp_index)
+			cstr_index->tile_index[tileno].tp_index[current_tile_part].start_pos =
+					pos;
+
+	}
+	return true;
+}
+
 
 PacketLengthMarkers::PacketLengthMarkers() :
 		m_markers(new PL_MAP()), m_Zpl(0), m_curr_vec(nullptr), m_packet_len(0), m_read_index(

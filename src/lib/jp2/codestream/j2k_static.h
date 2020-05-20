@@ -746,17 +746,6 @@ static bool j2k_init_info(CodeStream *p_j2k, BufferedStream *stream);
  */
 static bool j2k_add_mhmarker( grk_codestream_index  *cstr_index, uint32_t type,
 		uint64_t pos, uint32_t len);
-/**
- Add tile header marker information
- @param tileno       tile index number
- @param cstr_index   Codestream information structure
- @param type         marker type
- @param pos          byte offset of marker segment
- @param len          length of marker segment
- */
-static bool j2k_add_tlmarker(uint16_t tileno,
-		 grk_codestream_index  *cstr_index, uint32_t type, uint64_t pos,
-		uint32_t len);
 
 /**
  * Reads an unknown marker

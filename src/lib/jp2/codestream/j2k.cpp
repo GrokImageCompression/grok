@@ -734,7 +734,7 @@ bool j2k_read_tile_header(CodeStream *p_j2k, uint16_t *tile_index,
 
 			/* Add the marker to the code stream index*/
 			if (p_j2k->cstr_index) {
-				if (!j2k_add_tlmarker(tileProcessor->m_current_tile_number,
+				if (!TileLengthMarkers::add_to_index(tileProcessor->m_current_tile_number,
 						p_j2k->cstr_index, marker_handler->id,
 						(uint32_t) stream->tell() - marker_size - 4,
 						marker_size + 4)) {
@@ -3980,76 +3980,6 @@ static bool j2k_merge_ppt(TileCodingParams *p_tcp) {
 	return true;
 }
 
-/**
- * Reads a TLM marker (Tile Length Marker)
- *
- * @param       p_j2k                   JPEG 2000 codec
- * @param       p_header_data   the data contained in the TLM box.
- * @param       header_size   the size of the data contained in the TLM marker.
-
- */
-static bool j2k_read_tlm(CodeStream *p_j2k, uint8_t *p_header_data,
-		uint16_t header_size) {
-	assert(p_j2k);
-	if (!p_j2k->m_cp.tlm_markers)
-		p_j2k->m_cp.tlm_markers = new TileLengthMarkers();
-
-	return p_j2k->m_cp.tlm_markers->read(p_header_data, header_size);
-}
-
-
-static bool j2k_write_updated_tlm(CodeStream *p_j2k, BufferedStream *stream) {
-	assert(p_j2k != nullptr);
-	assert(stream != nullptr);
-
-	uint32_t tlm_size = tlm_len_per_tile_part
-			* p_j2k->m_specific_param.m_encoder.m_total_tile_parts;
-	uint64_t tlm_position = 6 + p_j2k->m_tileProcessor->m_tlm_start;
-	uint64_t current_position = stream->tell();
-
-	if (!stream->seek(tlm_position))
-		return false;
-	if (stream->write_bytes(p_j2k->m_tileProcessor->m_tlm_sot_offsets_buffer,
-			tlm_size) != tlm_size)
-		return false;
-
-	return stream->seek(current_position);
-}
-
-static bool j2k_write_tlm(CodeStream *p_j2k, BufferedStream *stream) {
-	assert(p_j2k != nullptr);
-	assert(stream != nullptr);
-
-	uint32_t tlm_size = 6
-			+ (tlm_len_per_tile_part
-					* p_j2k->m_specific_param.m_encoder.m_total_tile_parts);
-
-	/* change the way data is written to avoid seeking if possible */
-	/* TODO */
-	p_j2k->m_tileProcessor->m_tlm_start = stream->tell();
-
-	/* TLM */
-	if (!stream->write_short(J2K_MS_TLM))
-		return false;
-
-	/* Lpoc */
-	if (!stream->write_short((uint16_t) (tlm_size - 2)))
-		return false;
-
-	/* Ztlm=0*/
-	if (!stream->write_byte(0))
-		return false;
-
-	/* Stlm ST=1(8bits-255 tiles max),SP=1(Ptlm=32bits) */
-	if (!stream->write_byte(0x50))
-		return false;
-
-	/* do nothing on the
-	 * tlm_len_per_tile_part * j2k->m_specific_param.m_encoder.m_total_tile_parts remaining data */
-	return stream->skip(
-			(tlm_len_per_tile_part
-					* p_j2k->m_specific_param.m_encoder.m_total_tile_parts));
-}
 
 static bool j2k_write_sot(CodeStream *p_j2k, BufferedStream *stream,
 		uint64_t *psot_location, uint64_t *p_data_written) {
@@ -4108,7 +4038,7 @@ static bool j2k_read_sod(CodeStream *p_j2k, BufferedStream *stream) {
 		cstr_index->tile_index[p_j2k->m_tileProcessor->m_current_tile_number].tp_index[current_tile_part].end_pos =
 				current_pos + p_j2k->m_tileProcessor->tile_part_data_length + 2;
 
-		if (!j2k_add_tlmarker(p_j2k->m_tileProcessor->m_current_tile_number,
+		if (!TileLengthMarkers::add_to_index(p_j2k->m_tileProcessor->m_current_tile_number,
 				cstr_index,
 				J2K_MS_SOD, current_pos, 0)) {
 			GROK_ERROR("Not enough memory to add tl marker");
@@ -5121,67 +5051,44 @@ static bool j2k_check_poc_val(const grk_poc *p_pocs, uint32_t nb_pocs,
 	delete[] packet_array;
 	return !loss;
 }
+/**
+ * Reads a TLM marker (Tile Length Marker)
+ *
+ * @param       p_j2k                   JPEG 2000 codec
+ * @param       p_header_data   the data contained in the TLM box.
+ * @param       header_size   the size of the data contained in the TLM marker.
 
+ */
+static bool j2k_read_tlm(CodeStream *p_j2k, uint8_t *p_header_data,
+		uint16_t header_size) {
+	assert(p_j2k);
+	if (!p_j2k->m_cp.tlm_markers)
+		p_j2k->m_cp.tlm_markers = new TileLengthMarkers();
+
+	return p_j2k->m_cp.tlm_markers->read(p_header_data, header_size);
+}
+
+static bool j2k_write_updated_tlm(CodeStream *p_j2k, BufferedStream *stream) {
+	assert(p_j2k != nullptr);
+	assert(stream != nullptr);
+
+	return p_j2k->m_cp.tlm_markers->write_updated(p_j2k);
+}
+
+static bool j2k_write_tlm(CodeStream *p_j2k, BufferedStream *stream) {
+	assert(p_j2k != nullptr);
+	assert(stream != nullptr);
+
+	if (!p_j2k->m_cp.tlm_markers)
+		p_j2k->m_cp.tlm_markers = new TileLengthMarkers(stream);
+
+	return p_j2k->m_cp.tlm_markers->write(p_j2k);
+}
 
 static void j2k_update_tlm(CodeStream *p_j2k, uint32_t tile_part_size) {
-	/* PSOT */
-	grk_write<uint32_t>(p_j2k->m_tileProcessor->m_tlm_sot_offsets_current,
-			p_j2k->m_tileProcessor->m_current_tile_number, 1);
-	++p_j2k->m_tileProcessor->m_tlm_sot_offsets_current;
-
-	/* PSOT */
-	grk_write<uint32_t>(p_j2k->m_tileProcessor->m_tlm_sot_offsets_current,
-			tile_part_size, 4);
-	p_j2k->m_tileProcessor->m_tlm_sot_offsets_current += 4;
+	assert(p_j2k->m_cp.tlm_markers);
+	p_j2k->m_cp.tlm_markers->update(p_j2k, tile_part_size);
 }
-
-static bool j2k_add_tlmarker(uint16_t tileno, grk_codestream_index *cstr_index,
-		uint32_t type, uint64_t pos, uint32_t len) {
-	assert(cstr_index != nullptr);
-	assert(cstr_index->tile_index != nullptr);
-
-	/* expand the list? */
-	if ((cstr_index->tile_index[tileno].marknum + 1)
-			> cstr_index->tile_index[tileno].maxmarknum) {
-		grk_marker_info *new_marker;
-		cstr_index->tile_index[tileno].maxmarknum = (uint32_t) (100
-				+ (float) cstr_index->tile_index[tileno].maxmarknum);
-		new_marker = (grk_marker_info*) grk_realloc(
-				cstr_index->tile_index[tileno].marker,
-				cstr_index->tile_index[tileno].maxmarknum
-						* sizeof(grk_marker_info));
-		if (!new_marker) {
-			grok_free(cstr_index->tile_index[tileno].marker);
-			cstr_index->tile_index[tileno].marker = nullptr;
-			cstr_index->tile_index[tileno].maxmarknum = 0;
-			cstr_index->tile_index[tileno].marknum = 0;
-			GROK_ERROR("Not enough memory to add tl marker");
-			return false;
-		}
-		cstr_index->tile_index[tileno].marker = new_marker;
-	}
-
-	/* add the marker */
-	cstr_index->tile_index[tileno].marker[cstr_index->tile_index[tileno].marknum].type =
-			(uint16_t) type;
-	cstr_index->tile_index[tileno].marker[cstr_index->tile_index[tileno].marknum].pos =
-			pos;
-	cstr_index->tile_index[tileno].marker[cstr_index->tile_index[tileno].marknum].len =
-			(uint32_t) len;
-	cstr_index->tile_index[tileno].marknum++;
-
-	if (type == J2K_MS_SOT) {
-		uint32_t current_tile_part =
-				cstr_index->tile_index[tileno].current_tpsno;
-
-		if (cstr_index->tile_index[tileno].tp_index)
-			cstr_index->tile_index[tileno].tp_index[current_tile_part].start_pos =
-					pos;
-
-	}
-	return true;
-}
-
 static uint32_t j2k_get_SPCod_SPCoc_size(CodeStream *p_j2k, uint16_t tile_no,
 		uint32_t comp_no) {
 	assert(p_j2k != nullptr);
@@ -5420,7 +5327,4 @@ static bool j2k_read_SQcd_SQcc(bool fromQCC, CodeStream *p_j2k, uint32_t comp_no
 	return tccp->quant.read_SQcd_SQcc(fromQCC, p_j2k, comp_no, p_header_data,
 			header_size);
 }
-
-
-
 }

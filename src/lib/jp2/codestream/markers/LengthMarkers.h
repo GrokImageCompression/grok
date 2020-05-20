@@ -41,11 +41,28 @@ typedef std::map<uint8_t, TL_INFO_VEC*> TL_MAP;
 
 struct TileLengthMarkers {
 	TileLengthMarkers();
+	TileLengthMarkers(BufferedStream *stream);
 	~TileLengthMarkers();
+
 	bool read(uint8_t *p_header_data, uint16_t header_size);
+	bool write_updated(CodeStream *p_j2k);
+	bool write(CodeStream *p_j2k);
+	void update(CodeStream *p_j2k, uint32_t tile_part_size);
+
+	/**
+	 Add tile header marker information
+	 @param tileno       tile index number
+	 @param cstr_index   Codestream information structure
+	 @param type         marker type
+	 @param pos          byte offset of marker segment
+	 @param len          length of marker segment
+	 */
+	static bool add_to_index(uint16_t tileno, grk_codestream_index *cstr_index,
+			uint32_t type, uint64_t pos, uint32_t len);
 private:
 	void push(uint8_t i_TLM, grk_tl_info curr_vec);
 	TL_MAP *markers;
+	BufferedStream *m_stream;
 
 };
 
