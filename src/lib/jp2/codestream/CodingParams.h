@@ -269,8 +269,6 @@ struct CodingParams {
 
 	/** if ppm is true --> there was a PPM marker*/
 	bool ppm;
-	/** specifies if the parameter is a coding or decoding one */
-	bool m_is_decoder;
 
 	TileLengthMarkers *tlm_markers;
 	PacketLengthMarkers *plm_markers;

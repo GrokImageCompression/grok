@@ -262,10 +262,8 @@ static grk_image* readImageFromFilePPM(const char *filename, size_t nbFilenamePG
 				param_image_read[it_file].h * param_image_read[it_file].w
 						* sizeof(int));
 		if (!data[it_file]) {
-			if (image_read)
-				grk_image_destroy(image_read);
-			if (filenameComponentPGX)
-				free(filenameComponentPGX);
+			grk_image_destroy(image_read);
+			free(filenameComponentPGX);
 			goto cleanup;
 		}
 		memcpy(data[it_file], image_read->comps->data,

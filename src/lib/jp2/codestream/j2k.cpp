@@ -196,20 +196,13 @@ static const grk_dec_memory_marker_handler* j2k_get_marker_handler(
 }
 
 void j2k_destroy(grk_j2k *p_j2k) {
-	if (p_j2k == nullptr) {
+	if (p_j2k == nullptr)
 		return;
-	}
 
-	if (p_j2k->m_is_decoder) {
-
-		if (p_j2k->m_specific_param.m_decoder.m_default_tcp != nullptr) {
-			delete p_j2k->m_specific_param.m_decoder.m_default_tcp;
-			p_j2k->m_specific_param.m_decoder.m_default_tcp = nullptr;
-		}
-	}
+	delete p_j2k->m_specific_param.m_decoder.m_default_tcp;
+	p_j2k->m_specific_param.m_decoder.m_default_tcp = nullptr;
 
 	delete p_j2k->m_tileProcessor;
-
 	p_j2k->m_cp.destroy();
 	memset(&(p_j2k->m_cp), 0, sizeof(CodingParams));
 
@@ -1079,12 +1072,8 @@ bool j2k_set_decompress_area(grk_j2k *p_j2k, grk_image *output_image,
 
 grk_j2k* j2k_create_decompress(void) {
 	grk_j2k *j2k = (grk_j2k*) grk_calloc(1, sizeof(grk_j2k));
-	if (!j2k) {
+	if (!j2k)
 		return nullptr;
-	}
-
-	j2k->m_is_decoder = true;
-	j2k->m_cp.m_is_decoder = true;
 
 #ifdef GRK_DISABLE_TPSOT_FIX
     j2k->m_coding_params.m_decoder.m_nb_tile_parts_correction_checked = 1;
@@ -1446,12 +1435,8 @@ bool j2k_get_tile(grk_j2k *p_j2k, BufferedStream *stream, grk_image *p_image,
 
 grk_j2k* j2k_create_compress(void) {
 	grk_j2k *j2k = (grk_j2k*) grk_calloc(1, sizeof(grk_j2k));
-	if (!j2k) {
+	if (!j2k)
 		return nullptr;
-	}
-
-	j2k->m_is_decoder = false;
-	j2k->m_cp.m_is_decoder = false;
 
 	/* validation list creation*/
 	j2k->m_validation_list = new std::vector<j2k_procedure>();

@@ -251,13 +251,11 @@ int main(int argc, char *argv[]) {
 	rc = EXIT_SUCCESS;
 	grk_deinitialize();
 
-	beach: free(data);
-	if (stream)
-		grk_stream_destroy(stream);
-	if (codec)
-		grk_destroy_codec(codec);
-	if (image)
-		grk_image_destroy(image);
+	beach:
+	free(data);
+	grk_stream_destroy(stream);
+	grk_destroy_codec(codec);
+	grk_image_destroy(image);
 
 	return rc;
 }

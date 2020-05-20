@@ -165,10 +165,6 @@ struct grk_j2k {
 	bool decodingTilePartHeader() ;
 	TileCodingParams* get_current_decode_tcp();
 
-
-	/* J2K code stream is decoded*/
-	bool m_is_decoder;
-
 	/* FIXME DOC*/
 	union {
 		DecoderState m_decoder;
