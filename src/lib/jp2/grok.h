@@ -675,16 +675,8 @@ typedef struct _grk_header_info {
 	uint32_t t_grid_height;
 	/** number of layers */
 	uint32_t tcp_numlayers;
-	/*
-	 Colour space enumeration:
-	 12	CMYK
-	 14  CIE LAB
-	 16	sRGB
-	 17	Grayscale
-	 18	SYCC
-	 19	EYCC
-	 */
-	uint32_t enumcs;
+
+	GRK_ENUM_COLOUR_SPACE enumcs;
 	// ICC profile information
 	// note: the contents of this struct will remain valid
 	// until the codec is destroyed

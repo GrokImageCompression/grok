@@ -1748,13 +1748,15 @@ static bool jp2_read_colr(grk_jp2 *jp2, uint8_t *p_colr_header_data,
 	++p_colr_header_data;
 
 	if (jp2->meth == 1) {
+        uint32_t temp;
 		if (colr_header_size < 7) {
 			GROK_ERROR("Bad COLR header box (bad size: %d)", colr_header_size);
 			return false;
 		}
-		grk_read<uint32_t>(p_colr_header_data, &jp2->enumcs, 4); /* EnumCS */
+		grk_read<uint32_t>(p_colr_header_data, &temp); /* EnumCS */
 		p_colr_header_data += 4;
 
+		jp2->enumcs = (GRK_ENUM_COLOUR_SPACE)temp;
 		if ((colr_header_size > 7) && (jp2->enumcs != GRK_ENUM_CLRSPC_CIE)) { /* handled below for CIELab) */
 			/* testcase Altona_Technical_v20_x4.pdf */
 			GROK_WARN("Bad COLR header box (bad size: %d)", colr_header_size);

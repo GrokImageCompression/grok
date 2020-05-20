@@ -180,7 +180,7 @@ struct grk_jp2 {
 	uint32_t IPR;
 	uint32_t meth;
 	uint32_t approx;
-	uint32_t enumcs;
+	GRK_ENUM_COLOUR_SPACE enumcs;
 	uint32_t precedence;
 	uint32_t brand;
 	uint32_t minversion;
