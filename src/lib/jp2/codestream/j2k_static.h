@@ -940,7 +940,7 @@ static bool j2k_check_poc_val(const  grk_poc  *p_pocs, uint32_t nb_pocs,
  *
  * @return              the number of tile parts.
  */
-static uint32_t j2k_get_num_tp(CodingParams *cp, uint32_t pino, uint16_t tileno);
+static uint8_t j2k_get_num_tp(CodingParams *cp, uint32_t pino, uint16_t tileno);
 
 /**
  * Calculates the total number of tile parts needed by the encoder to
@@ -953,7 +953,7 @@ static uint32_t j2k_get_num_tp(CodingParams *cp, uint32_t pino, uint16_t tileno)
  *
  * @return true if the function was successful, false else.
  */
-static bool j2k_calculate_tp(CodingParams *cp, uint32_t *p_nb_tile_parts, grk_image *image);
+static bool j2k_calculate_tp(CodingParams *cp, uint16_t *p_nb_tile_parts, grk_image *image);
 
 /**
  * Checks for invalid number of tile-parts in SOT marker (TPsot==TNsot). See issue 254.

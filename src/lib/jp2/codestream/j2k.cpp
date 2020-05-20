@@ -2107,7 +2107,7 @@ static bool j2k_post_write_tile(CodeStream *p_j2k, BufferedStream *stream) {
 		return false;
 
 	//2. write the other tile parts
-	uint32_t tot_num_tp;
+	uint8_t tot_num_tp;
 	uint32_t pino;
 
 	auto cp = &(p_j2k->m_cp);
@@ -2115,12 +2115,6 @@ static bool j2k_post_write_tile(CodeStream *p_j2k, BufferedStream *stream) {
 
 	// write tile parts for first progression order
 	tot_num_tp = j2k_get_num_tp(cp, 0, tileProcessor->m_current_tile_number);
-	if (tot_num_tp > 255) {
-		GROK_ERROR("Tile %d contains more than 255 tile parts,"
-				" which is not permitted by the JPEG 2000 standard.",
-				tileProcessor->m_current_tile_number);
-		return false;
-	}
 	for (uint8_t tilepartno = 1; tilepartno < tot_num_tp; ++tilepartno) {
 		tileProcessor->m_current_poc_tile_part_number = tilepartno;
 		if (!j2k_write_tile_part(p_j2k, false, stream))
@@ -2133,13 +2127,6 @@ static bool j2k_post_write_tile(CodeStream *p_j2k, BufferedStream *stream) {
 
 		tot_num_tp = j2k_get_num_tp(cp, pino,
 				tileProcessor->m_current_tile_number);
-		if (tot_num_tp > 255) {
-			GROK_ERROR("Tile %d contains more than 255 tile parts, "
-					"which is not permitted by the JPEG 2000 standard.",
-					tileProcessor->m_current_tile_number);
-			return false;
-		}
-
 		for (uint8_t tilepartno = 0; tilepartno < tot_num_tp; ++tilepartno) {
 			tileProcessor->m_current_poc_tile_part_number = tilepartno;
 			if (!j2k_write_tile_part(p_j2k, false, stream))
@@ -2768,10 +2755,10 @@ static bool j2k_update_rates(CodeStream *p_j2k, BufferedStream *stream) {
 	return true;
 }
 
-static uint32_t j2k_get_num_tp(CodingParams *cp, uint32_t pino,
+static uint8_t j2k_get_num_tp(CodingParams *cp, uint32_t pino,
 		uint16_t tileno) {
 	const char *prog = nullptr;
-	uint32_t tpnum = 1;
+	uint32_t num_tp = 1;
 
 	/*  preconditions */
 	assert(tileno < (cp->t_grid_width * cp->t_grid_height));
@@ -2793,19 +2780,19 @@ static uint32_t j2k_get_num_tp(CodingParams *cp, uint32_t pino,
 			switch (prog[i]) {
 			/* component wise */
 			case 'C':
-				tpnum *= current_poc->compE;
+				num_tp *= current_poc->compE;
 				break;
 				/* resolution wise */
 			case 'R':
-				tpnum *= current_poc->resE;
+				num_tp *= current_poc->resE;
 				break;
 				/* precinct wise */
 			case 'P':
-				tpnum *= current_poc->prcE;
+				num_tp *= current_poc->prcE;
 				break;
 				/* layer wise */
 			case 'L':
-				tpnum *= current_poc->layE;
+				num_tp *= current_poc->layE;
 				break;
 			}
 			//we start a new tile part with every progression change
@@ -2815,9 +2802,10 @@ static uint32_t j2k_get_num_tp(CodingParams *cp, uint32_t pino,
 			}
 		}
 	} else {
-		tpnum = 1;
+		num_tp = 1;
 	}
-	return tpnum;
+	assert(num_tp <= 255);
+	return (uint8_t)num_tp;
 }
 
 char* j2k_convert_progression_order(GRK_PROG_ORDER prg_order) {
@@ -2831,17 +2819,17 @@ char* j2k_convert_progression_order(GRK_PROG_ORDER prg_order) {
 }
 
 static bool j2k_calculate_tp(CodingParams *cp,
-		uint32_t *p_nb_tile_parts, grk_image *image) {
+		uint16_t *p_nb_tile_parts, grk_image *image) {
 	uint32_t pino;
 	uint16_t tileno;
-	uint32_t nb_tiles;
+	uint16_t nb_tiles;
 	TileCodingParams *tcp;
 
 	assert(p_nb_tile_parts != nullptr);
 	assert(cp != nullptr);
 	assert(image != nullptr);
 
-	nb_tiles = cp->t_grid_width * cp->t_grid_height;
+	nb_tiles = (uint16_t)(cp->t_grid_width * cp->t_grid_height);
 	*p_nb_tile_parts = 0;
 	tcp = cp->tcps;
 
@@ -2874,13 +2862,8 @@ static bool j2k_calculate_tp(CodingParams *cp,
 			uint8_t cur_totnum_tp = 0;
 			pi_update_encoding_parameters(image, cp, tileno);
 			for (pino = 0; pino <= tcp->numpocs; ++pino) {
-				uint32_t tp_num = j2k_get_num_tp(cp, pino, tileno);
-				if (tp_num > 255) {
-					GROK_ERROR(
-							"Tile %d contains more than 255 tile parts, which is not permitted by the JPEG 2000 standard.",
-							tileno);
-					return false;
-				}
+				uint8_t tp_num = j2k_get_num_tp(cp, pino, tileno);
+
 				*p_nb_tile_parts += tp_num;
 				cur_totnum_tp = (uint8_t) (cur_totnum_tp + tp_num);
 			}

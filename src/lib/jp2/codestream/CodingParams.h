@@ -371,7 +371,7 @@ struct EncoderState {
 
 	/** Total num of tile parts in whole image = num tiles* num tileparts in each tile*/
 	/** used in TLMmarker*/
-	uint32_t m_total_tile_parts; /* totnum_tp */
+	uint16_t m_total_tile_parts; /* totnum_tp */
 
 };
 

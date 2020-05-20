@@ -68,7 +68,7 @@ bool SIZMarker::read(CodeStream *p_j2k, uint8_t *p_header_data,
 	uint32_t nb_comp;
 	uint32_t nb_comp_remain;
 	uint32_t remaining_size;
-	uint32_t nb_tiles;
+	uint16_t nb_tiles;
 	uint32_t tmp, tx1, ty1;
 	grk_image_comp *img_comp = nullptr;
 	TileCodingParams *current_tile_param = nullptr;
@@ -250,7 +250,7 @@ bool SIZMarker::read(CodeStream *p_j2k, uint8_t *p_header_data,
 				max_num_tiles, cp->t_grid_width, cp->t_grid_height);
 		return false;
 	}
-	nb_tiles = cp->t_grid_width * cp->t_grid_height;
+	nb_tiles = (uint16_t)(cp->t_grid_width * cp->t_grid_height);
 
 	/* Define the tiles which will be decoded */
 	if (decoder->m_discard_tiles) {
