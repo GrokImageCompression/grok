@@ -104,7 +104,7 @@ TileCodingParams::TileCodingParams() :
 		csty(0), prg(GRK_PROG_UNKNOWN), numlayers(0), num_layers_to_decode(0), mct(
 				0), numpocs(0), ppt_markers_count(0), ppt_markers(nullptr), ppt_data(
 				nullptr), ppt_buffer(nullptr), ppt_data_size(0), ppt_len(0), main_qcd_qntsty(
-				0), main_qcd_numStepSizes(0), tccps(nullptr), m_current_tile_part_number(
+				0), main_qcd_numStepSizes(0), tccps(nullptr), m_current_tile_part_index(
 				-1), m_nb_tile_parts(0), m_tile_data(nullptr), mct_norms(
 				nullptr), m_mct_decoding_matrix(nullptr), m_mct_coding_matrix(
 				nullptr), m_mct_records(nullptr), m_nb_mct_records(0), m_nb_max_mct_records(

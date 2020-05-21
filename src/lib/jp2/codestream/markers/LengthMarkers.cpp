@@ -172,7 +172,7 @@ bool TileLengthMarkers::write(CodeStream *p_j2k) {
 void TileLengthMarkers::update(CodeStream *p_j2k, uint32_t tile_part_size) {
 	/* PSOT */
 	grk_write<uint32_t>(p_j2k->m_tileProcessor->m_tlm_sot_offsets_current,
-			p_j2k->m_tileProcessor->m_current_tile_number, 1);
+			p_j2k->m_tileProcessor->m_current_tile_index, 1);
 	++p_j2k->m_tileProcessor->m_tlm_sot_offsets_current;
 
 	/* PSOT */

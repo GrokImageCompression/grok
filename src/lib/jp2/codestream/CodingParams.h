@@ -202,7 +202,7 @@ struct TileCodingParams {
 	/** tile-component coding parameters */
 	TileComponentCodingParams *tccps;
 	// current tile part number (-1 if not yet initialized
-	int16_t m_current_tile_part_number;
+	int16_t m_current_tile_part_index;
 
 	/** number of tile parts for the tile. */
 	uint8_t m_nb_tile_parts;
@@ -361,9 +361,9 @@ struct DecoderState {
 	 */
 	bool m_last_tile_part;
 	// Indicates that a tile's data can be decoded
-	uint32_t ready_to_decode_tile_part_data :1;
-	uint32_t m_discard_tiles :1;
-	uint32_t m_skip_data :1;
+	bool ready_to_decode_tile_part_data;
+	bool m_discard_tiles;
+	bool m_skip_data;
 
 };
 

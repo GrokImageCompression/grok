@@ -416,27 +416,28 @@ struct TileProcessor {
 
 	bool read_marker(BufferedStream *stream, uint16_t *val);
 
-	/** Index of the tile to decompress (used in get_tile); initialized to -1 */
+	/** index of the tile to decompress (used in get_tile);
+	 *  !!! initialized to -1 !!! */
 	int32_t m_tile_ind_to_dec;
 
-	/** tile number being currently coded/decoded */
-	uint16_t m_current_tile_number;
+	/** index of tile being currently coded/decoded */
+	uint16_t m_current_tile_index;
 
-	/** Position of the tile part flag in progression order*/
+	/** position of the tile part flag in progression order*/
 	uint32_t tp_pos;
 
-	/** Tile part number, regardless of poc.
+	/** tile part index, regardless of poc.
 	 *  for each new poc, tp is reset to 0*/
-	uint8_t m_current_poc_tile_part_number;
+	uint8_t m_current_poc_tile_part_index;
 
-	/** Tile part number currently coding, taking into account POC.
-	 *  m_current_tile_part_number holds the total number of tile parts
+	/** index of tile part being currently coding, taking into account POC.
+	 *  m_current_tile_part_index holds the total number of tile parts
 	 *   while encoding the last tile part.*/
-	uint8_t m_current_tile_part_number;
+	uint8_t m_current_tile_part_index;
 
 	/** TNsot correction : see issue 254 **/
-	uint32_t m_nb_tile_parts_correction_checked :1;
-	uint8_t m_nb_tile_parts_correction :1;
+	bool m_nb_tile_parts_correction_checked;
+	bool m_nb_tile_parts_correction;
 
 	uint32_t tile_part_data_length;
 

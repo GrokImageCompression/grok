@@ -66,9 +66,9 @@ using namespace std;
 namespace grk {
 
 TileProcessor::TileProcessor(bool isDecoder) :
-		m_tile_ind_to_dec(-1), m_current_tile_number(0), tp_pos(0), m_current_poc_tile_part_number(
-				0), m_current_tile_part_number(0), m_nb_tile_parts_correction_checked(
-				0), m_nb_tile_parts_correction(0), tile_part_data_length(0), m_tlm_start(
+		m_tile_ind_to_dec(-1), m_current_tile_index(0), tp_pos(0), m_current_poc_tile_part_index(
+				0), m_current_tile_part_index(0), m_nb_tile_parts_correction_checked(
+				false), m_nb_tile_parts_correction(false), tile_part_data_length(0), m_tlm_start(
 				0), m_tlm_sot_offsets_buffer(nullptr), m_tlm_sot_offsets_current(
 				nullptr), cur_totnum_tp(0), cur_pino(0), tile(nullptr), image(
 				nullptr), current_plugin_tile(nullptr), whole_tile_decoding(
@@ -196,7 +196,7 @@ bool TileProcessor::set_decompress_area(CodeStream *p_j2k, grk_image *output_ima
 	}
 	/* ----- */
 
-	decoder->m_discard_tiles = 1;
+	decoder->m_discard_tiles = true;
 	whole_tile_decoding = false;
 	if (!update_image_dimensions(output_image,
 			cp->m_coding_params.m_dec.m_reduce))
@@ -917,7 +917,7 @@ bool TileProcessor::compress_tile_part(uint16_t tile_no, BufferedStream *stream,
 		uint64_t *tile_bytes_written, grk_codestream_info *p_cstr_info) {
 	uint32_t state = grk_plugin_get_debug_state();
 
-	if (m_current_tile_part_number == 0) {
+	if (m_current_tile_part_index == 0) {
 		m_tileno = tile_no;
 		m_tcp = &m_cp->tcps[tile_no];
 		if (p_cstr_info) {
@@ -985,7 +985,7 @@ bool TileProcessor::compress_tile_part(uint16_t tile_no, BufferedStream *stream,
 	}
 
 	//4 write PLT
-	if (m_current_tile_part_number == 0 && plt_markers){
+	if (m_current_tile_part_index == 0 && plt_markers){
 		size_t written = plt_markers->write();
 		*tile_bytes_written += written;
 	}
@@ -1560,7 +1560,7 @@ bool TileProcessor::t2_encode(BufferedStream *stream, uint64_t *all_packet_bytes
 
 	if (!l_t2->encode_packets(m_tileno, m_tcp->numlayers, stream,
 			all_packet_bytes_written, p_cstr_info,
-			m_current_poc_tile_part_number, tp_pos, cur_pino)) {
+			m_current_poc_tile_part_index, tp_pos, cur_pino)) {
 		delete l_t2;
 		return false;
 	}

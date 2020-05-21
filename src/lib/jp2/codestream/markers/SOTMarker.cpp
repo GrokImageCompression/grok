@@ -92,7 +92,7 @@ bool SOTMarker::write(CodeStream *p_j2k, uint64_t *p_data_written){
 		return false;
 	/* Isot */
 	if (!m_stream->write_short(
-			(uint16_t) p_j2k->m_tileProcessor->m_current_tile_number))
+			(uint16_t) p_j2k->m_tileProcessor->m_current_tile_index))
 		return false;
 
 	/* Psot  */
@@ -101,12 +101,12 @@ bool SOTMarker::write(CodeStream *p_j2k, uint64_t *p_data_written){
 		return false;
 
 	/* TPsot */
-	if (!m_stream->write_byte(p_j2k->m_tileProcessor->m_current_tile_part_number))
+	if (!m_stream->write_byte(p_j2k->m_tileProcessor->m_current_tile_part_index))
 		return false;
 
 	/* TNsot */
 	if (!m_stream->write_byte(
-			p_j2k->m_cp.tcps[p_j2k->m_tileProcessor->m_current_tile_number].m_nb_tile_parts))
+			p_j2k->m_cp.tcps[p_j2k->m_tileProcessor->m_current_tile_index].m_nb_tile_parts))
 		return false;
 
 	*p_data_written += sot_marker_segment_len;
@@ -154,12 +154,12 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	assert(p_j2k != nullptr);
 
 	if (!get_sot_values(p_header_data, header_size,
-			&p_j2k->m_tileProcessor->m_current_tile_number, &tot_len,
+			&p_j2k->m_tileProcessor->m_current_tile_index, &tot_len,
 			&current_part, &num_parts)) {
 		GROK_ERROR("Error reading SOT marker");
 		return false;
 	}
-	auto tile_number = p_j2k->m_tileProcessor->m_current_tile_number;
+	auto tile_number = p_j2k->m_tileProcessor->m_current_tile_index;
 
 	auto cp = &(p_j2k->m_cp);
 
@@ -179,13 +179,13 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	/* to avoid various issues, like grk_j2k_merge_ppt being called several times. */
 	/* ISO 15444-1 A.4.2 Start of tile-part (SOT) mandates that tile parts */
 	/* should appear in increasing order. */
-	if (tcp->m_current_tile_part_number + 1 != (int32_t) current_part) {
+	if (tcp->m_current_tile_part_index + 1 != (int32_t) current_part) {
 		GROK_ERROR("Invalid tile part index for tile number %d. "
 				"Got %d, expected %d", tile_number, current_part,
-				tcp->m_current_tile_part_number + 1);
+				tcp->m_current_tile_part_index + 1);
 		return false;
 	}
-	++tcp->m_current_tile_part_number;
+	++tcp->m_current_tile_part_index;
 	/* PSot should be equal to zero or >=14 or <= 2^32-1 */
 	if ((tot_len != 0) && (tot_len < 14)) {
 		if (tot_len == sot_marker_segment_len) {
@@ -250,7 +250,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	if (tcp->m_nb_tile_parts) {
 		if (tcp->m_nb_tile_parts == (current_part + 1)) {
 			p_j2k->m_specific_param.m_decoder.ready_to_decode_tile_part_data =
-					1; /* Process the last tile-part header*/
+					true; /* Process the last tile-part header*/
 		}
 	}
 
