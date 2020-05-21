@@ -116,7 +116,7 @@ struct PacketIter {
 	/** resolution that identify the packet */
 	uint32_t resno;
 	/** precinct that identify the packet */
-	uint32_t precno;
+	uint64_t precno;
 	/** layer that identify the packet */
 	uint32_t layno;
 	/** 0 if the first packet */

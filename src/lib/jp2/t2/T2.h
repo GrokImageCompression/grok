@@ -87,7 +87,7 @@ struct T2 {
 	 @param pino             FIXME DOC
 	 */
 	bool encode_packets(uint16_t tileno, uint32_t maxlayers,
-			BufferedStream *stream, uint64_t *p_data_written,
+			BufferedStream *stream, uint32_t *p_data_written,
 			grk_codestream_info *cstr_info, uint32_t tpnum, uint32_t tppos,
 			uint32_t pino);
 
@@ -100,7 +100,7 @@ struct T2 {
 	 @param tppos            The position of the tile part flag in the progression order
 	 */
 	bool encode_packets_simulate(uint16_t tileno, uint32_t maxlayers,
-			uint64_t *p_data_written, uint64_t max_len, uint32_t tppos,
+			uint32_t *p_data_written, uint32_t max_len, uint32_t tppos,
 			PacketLengthMarkers *markers);
 
 	/**
@@ -127,7 +127,7 @@ private:
 	 @return
 	 */
 	bool encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
-			BufferedStream *stream, uint64_t *p_data_written,
+			BufferedStream *stream, uint32_t *p_data_written,
 			grk_codestream_info *cstr_info);
 
 	/**
@@ -139,7 +139,7 @@ private:
 	 @return
 	 */
 	bool encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
-			uint64_t *p_data_written, uint64_t len,
+			uint32_t *p_data_written, uint32_t len,
 			PacketLengthMarkers *markers);
 
 	/**

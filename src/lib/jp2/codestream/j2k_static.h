@@ -519,16 +519,7 @@ static uint16_t getPocSize(uint32_t l_nb_comp, uint32_t l_nb_poc);
 
  */
 static bool j2k_write_poc(CodeStream *p_j2k, BufferedStream *stream);
-/**
- * Writes the POC marker (Progression Order Change)
- *
- * @param       p_j2k          J2K codec.
- * @param       stream       the stream to write data to.
- * @param       p_data_written number of bytes written
 
- */
-static bool j2k_write_poc(CodeStream *p_j2k, BufferedStream *stream,
-		uint64_t *p_data_written);
 
 /**
  * Reads a POC marker (Progression Order Change)

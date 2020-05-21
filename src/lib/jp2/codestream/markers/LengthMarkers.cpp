@@ -260,7 +260,7 @@ void PacketLengthMarkers::writeNext(uint32_t len) {
 	assert(len);
 	m_curr_vec->push_back(len);
 }
-void PacketLengthMarkers::write_increment(size_t bytes) {
+void PacketLengthMarkers::write_increment(uint32_t bytes) {
 	m_marker_bytes_written += bytes;
 	m_total_bytes_written += bytes;
 }
@@ -296,7 +296,7 @@ void PacketLengthMarkers::write_marker_header() {
 		write_increment(2);
 	}
 }
-size_t PacketLengthMarkers::write() {
+uint32_t PacketLengthMarkers::write() {
 	write_marker_header();
 	for (auto map_iter = m_markers->begin(); map_iter != m_markers->end();
 			++map_iter) {
@@ -330,7 +330,7 @@ size_t PacketLengthMarkers::write() {
 				val = (uint32_t) (val >> 7);
 			}
 			assert(counter == -1);
-			size_t written = m_stream->write_bytes(temp, numbytes);
+			uint32_t written = (uint32_t)m_stream->write_bytes(temp, numbytes);
 			assert(written == numbytes);
 			(void)written;
 			write_increment(numbytes);

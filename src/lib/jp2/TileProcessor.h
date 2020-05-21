@@ -251,7 +251,7 @@ struct grk_tcd_band {
 	// 0 for first band of lowest resolution, otherwise equal to 1,2 or 3
 	uint8_t bandno;
 	grk_tcd_precinct *precincts; /* precinct information */
-	size_t numPrecincts;
+	uint64_t numPrecincts;
 	size_t numAllocatedPrecincts;
 	uint32_t numbps;
 	float stepsize;
@@ -382,7 +382,7 @@ struct TileProcessor {
 	 * @return  true if the coding is successful.
 	 */
 	bool compress_tile_part(uint16_t tile_no, BufferedStream *stream,
-			uint64_t *tile_bytes_written, grk_codestream_info  *p_cstr_info);
+			uint32_t *tile_bytes_written, grk_codestream_info  *p_cstr_info);
 
 	/**
 	 Decode a tile from a buffer
@@ -503,7 +503,7 @@ private:
 	 bool t1_encode();
 
 	 bool t2_encode(BufferedStream *stream,
-			uint64_t *packet_bytes_written,
+			uint32_t *packet_bytes_written,
 			 grk_codestream_info  *p_cstr_info);
 
 	 bool rate_allocate( grk_codestream_info  *p_cstr_info);
@@ -514,12 +514,12 @@ private:
 
 	 void makelayer_final(uint32_t layno);
 
-	 bool pcrd_bisect_simple(uint64_t *p_data_written);
+	 bool pcrd_bisect_simple(uint32_t *p_data_written);
 
 	 void make_layer_simple(uint32_t layno, double thresh,
 			bool final);
 
-	 bool pcrd_bisect_feasible(uint64_t *p_data_written);
+	 bool pcrd_bisect_feasible(uint32_t *p_data_written);
 
 	 void makelayer_feasible(uint32_t layno, uint16_t thresh,
 			bool final);

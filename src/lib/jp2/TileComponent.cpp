@@ -594,10 +594,10 @@ void TileComponent::alloc_sparse_array(uint32_t numres){
         for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
             auto band = &res->bands[bandno];
 
-            for (uint32_t precno = 0; precno < res->pw * res->ph; ++precno) {
+            for (uint64_t precno = 0; precno < res->pw * res->ph; ++precno) {
                 auto precinct = &band->precincts[precno];
 
-                for (uint32_t cblkno = 0; cblkno < precinct->cw * precinct->ch; ++cblkno) {
+                for (uint64_t cblkno = 0; cblkno < (uint64_t)precinct->cw * precinct->ch; ++cblkno) {
                     auto cblk = &precinct->cblks.dec[cblkno];
 					uint32_t x = cblk->x0;
 					uint32_t y = cblk->y0;

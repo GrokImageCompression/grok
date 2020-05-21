@@ -1240,7 +1240,7 @@ typedef struct _grk_plugin_code_block {
 	uint32_t x0, y0, x1, y1;
 	unsigned int *contextStream;
 	///////////////////////////
-	size_t numPix;
+	uint32_t numPix;
 	uint8_t *compressedData;
 	size_t compressedDataLength;
 	size_t numBitPlanes;
@@ -1253,7 +1253,7 @@ typedef struct _grk_plugin_code_block {
  * Plugin precinct
  */
 typedef struct _grk_plugin_precinct {
-	size_t numBlocks;
+	uint64_t numBlocks;
 	grk_plugin_code_block **blocks;
 } grk_plugin_precinct;
 
@@ -1262,7 +1262,7 @@ typedef struct _grk_plugin_precinct {
  */
 typedef struct _grk_plugin_band {
 	size_t orient;
-	size_t numPrecincts;
+	uint64_t numPrecincts;
 	grk_plugin_precinct **precincts;
 	float stepsize;
 } grk_plugin_band;

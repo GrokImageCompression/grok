@@ -249,7 +249,7 @@ static void update_pi_dxy(PacketIter *pi) {
 static bool pi_next_lrcp(PacketIter *pi) {
 	grk_pi_comp *comp = nullptr;
 	grk_pi_resolution *res = nullptr;
-	uint32_t index = 0;
+	uint64_t index = 0;
 
 	if (!pi->first) {
 		comp = &pi->comps[pi->compno];
@@ -300,7 +300,7 @@ static bool pi_next_lrcp(PacketIter *pi) {
 static bool pi_next_rlcp(PacketIter *pi) {
 	grk_pi_comp *comp = nullptr;
 	grk_pi_resolution *res = nullptr;
-	uint32_t index = 0;
+	uint64_t index = 0;
 
 	if (!pi->first) {
 		comp = &pi->comps[pi->compno];
@@ -344,7 +344,7 @@ static bool pi_next_rlcp(PacketIter *pi) {
 static bool pi_next_rpcl(PacketIter *pi) {
 	grk_pi_comp *comp = nullptr;
 	grk_pi_resolution *res = nullptr;
-	uint32_t index = 0;
+	uint64_t index = 0;
 
 	if (!pi->first) {
 		goto LABEL_SKIP;
@@ -441,7 +441,7 @@ static bool pi_next_rpcl(PacketIter *pi) {
 static bool pi_next_pcrl(PacketIter *pi) {
 	grk_pi_comp *comp = nullptr;
 	grk_pi_resolution *res = nullptr;
-	uint32_t index = 0;
+	uint64_t index = 0;
 
 	if (!pi->first) {
 		comp = &pi->comps[pi->compno];
@@ -539,7 +539,7 @@ static bool pi_next_pcrl(PacketIter *pi) {
 static bool pi_next_cprl(PacketIter *pi) {
 	grk_pi_comp *comp = nullptr;
 	grk_pi_resolution *res = nullptr;
-	uint32_t index = 0;
+	uint64_t index = 0;
 
 	if (!pi->first) {
 		comp = &pi->comps[pi->compno];

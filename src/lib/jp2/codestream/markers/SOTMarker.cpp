@@ -70,7 +70,7 @@ SOTMarker::SOTMarker(void) : m_stream(nullptr),
 		m_psot_location(0){
 }
 
-bool SOTMarker::write_psot(uint64_t tile_part_bytes_written) {
+bool SOTMarker::write_psot(uint32_t tile_part_bytes_written) {
 	auto currentLocation = m_stream->tell();
 	m_stream->seek(m_psot_location);
 	if (!m_stream->write_int(tile_part_bytes_written))
@@ -80,7 +80,7 @@ bool SOTMarker::write_psot(uint64_t tile_part_bytes_written) {
 	return true;
 }
 
-bool SOTMarker::write(CodeStream *p_j2k, uint64_t *p_data_written){
+bool SOTMarker::write(CodeStream *p_j2k){
 	assert(p_j2k != nullptr);
 
 	/* SOT */
@@ -108,8 +108,6 @@ bool SOTMarker::write(CodeStream *p_j2k, uint64_t *p_data_written){
 	if (!m_stream->write_byte(
 			p_j2k->m_cp.tcps[p_j2k->m_tileProcessor->m_current_tile_index].m_nb_tile_parts))
 		return false;
-
-	*p_data_written += sot_marker_segment_len;
 
 	return true;
 }

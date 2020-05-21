@@ -35,14 +35,14 @@ void decode_synch_plugin_with_host(TileProcessor *tcd) {
 				for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
 					auto band = &res->bands[bandno];
 					auto plugin_band = plugin_res->bands[bandno];
-					assert(plugin_band->numPrecincts == res->pw * res->ph);
+					assert(plugin_band->numPrecincts == (uint64_t)res->pw * res->ph);
 					plugin_band->stepsize = band->stepsize;
-					for (uint32_t precno = 0; precno < res->pw * res->ph;
+					for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph;
 							precno++) {
 						auto prc = &band->precincts[precno];
 						auto plugin_prc = plugin_band->precincts[precno];
 						assert(plugin_prc->numBlocks == prc->cw * prc->ch);
-						for (uint32_t cblkno = 0; cblkno < prc->cw * prc->ch;
+						for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch;
 								cblkno++) {
 							auto cblk = &prc->cblks.dec[cblkno];
 							if (!cblk->numSegments)
@@ -119,12 +119,12 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tcd_tile *p_tile) {
 					grk_tcd_precinct *precinct = band->precincts + precno;
 					grk_plugin_precinct *plugin_precinct =
 							plugin_band->precincts[precno];
-					if (precinct->ch * precinct->cw
+					if ((uint64_t)precinct->ch * precinct->cw
 							!= plugin_precinct->numBlocks) {
 						return false;
 					}
-					for (uint32_t cblkno = 0;
-							cblkno < precinct->ch * precinct->cw; ++cblkno) {
+					for (uint64_t cblkno = 0;
+							cblkno < (uint64_t)precinct->ch * precinct->cw; ++cblkno) {
 						grk_tcd_cblk_dec *cblk = precinct->cblks.dec + cblkno;
 						grk_plugin_code_block *plugin_cblk =
 								plugin_precinct->blocks[cblkno];
@@ -142,7 +142,7 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tcd_tile *p_tile) {
 }
 
 void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resno,
-		uint32_t bandno, uint32_t precno, uint32_t cblkno, grk_tcd_band *band,
+		uint32_t bandno, uint64_t precno, uint64_t cblkno, grk_tcd_band *band,
 		grk_tcd_cblk_enc *cblk, uint32_t *numPix) {
 
 	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
@@ -169,11 +169,11 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 		*numPix = (uint32_t) plugin_cblk->numPix;
 
 		if (state & GRK_PLUGIN_STATE_DEBUG) {
-			uint32_t grkNumPix = ((cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0));
+			uint32_t grkNumPix = (cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0);
 			if (plugin_cblk->numPix != grkNumPix)
 				printf(
 						"[WARNING]  ojp numPix %d differs from plugin numPix %d\n",
-						grkNumPix, (uint32_t) plugin_cblk->numPix);
+						grkNumPix, plugin_cblk->numPix);
 		}
 
 		bool goodData = true;
@@ -269,11 +269,11 @@ void set_context_stream(TileProcessor *p_tileProcessor) {
 			for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
 				grk_tcd_band *band = &res->bands[bandno];
 
-				for (uint32_t precno = 0; precno < res->pw * res->ph;
+				for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph;
 						precno++) {
 					grk_tcd_precinct *prc = &band->precincts[precno];
 
-					for (uint32_t cblkno = 0; cblkno < prc->cw * prc->ch;
+					for (uint64_t cblkno = 0; (uint64_t)cblkno < prc->cw * prc->ch;
 							cblkno++) {
 						grk_tcd_cblk_enc *cblk = &prc->cblks.enc[cblkno];
 

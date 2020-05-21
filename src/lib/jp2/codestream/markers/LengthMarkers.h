@@ -97,7 +97,7 @@ struct PacketLengthMarkers {
 	void writeInit(void);
 	void writeNext(uint32_t len);
 	// write marker to stream
-	size_t write();
+	uint32_t write();
 
 private:
 	PL_MAP *m_markers;
@@ -111,9 +111,9 @@ private:
 
 	void write_marker_header(void);
 	void write_marker_length();
-	void write_increment(size_t bytes);
-	size_t m_marker_bytes_written;
-	size_t m_total_bytes_written;
+	void write_increment(uint32_t bytes);
+	uint32_t m_marker_bytes_written;
+	uint32_t m_total_bytes_written;
 	uint64_t m_marker_len_cache;
 	BufferedStream *m_stream;
 };

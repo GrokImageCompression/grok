@@ -246,7 +246,8 @@ bool TileProcessor::make_single_lossless_layer() {
 
 void TileProcessor::makelayer_feasible(uint32_t layno, uint16_t thresh,
 		bool final) {
-	uint32_t compno, resno, bandno, precno, cblkno;
+	uint32_t compno, resno, bandno;
+	uint64_t precno, cblkno;
 	uint32_t passno;
 	tile->distolayer[layno] = 0;
 	for (compno = 0; compno < tile->numcomps; compno++) {
@@ -256,17 +257,16 @@ void TileProcessor::makelayer_feasible(uint32_t layno, uint16_t thresh,
 			for (bandno = 0; bandno < res->numbands; bandno++) {
 				auto band = res->bands + bandno;
 
-				for (precno = 0; precno < res->pw * res->ph; precno++) {
+				for (precno = 0; precno < (uint64_t)res->pw * res->ph; precno++) {
 					auto prc = band->precincts + precno;
 
-					for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
+					for (cblkno = 0; (uint64_t)cblkno < prc->cw * prc->ch; cblkno++) {
 						auto cblk = prc->cblks.enc + cblkno;
 						auto layer = cblk->layers + layno;
 						uint32_t cumulative_included_passes_in_block;
 
-						if (layno == 0) {
+						if (layno == 0)
 							cblk->num_passes_included_in_previous_layers = 0;
-						}
 
 						cumulative_included_passes_in_block =
 								cblk->num_passes_included_in_previous_layers;
@@ -333,7 +333,7 @@ void TileProcessor::makelayer_feasible(uint32_t layno, uint16_t thresh,
 /*
  Hybrid rate control using bisect algorithm with optimal truncation points
  */
-bool TileProcessor::pcrd_bisect_feasible(uint64_t *all_packets_len) {
+bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 
 	bool single_lossless = make_single_lossless_layer();
 	double cumdisto[100];
@@ -355,10 +355,10 @@ bool TileProcessor::pcrd_bisect_feasible(uint64_t *all_packets_len) {
 			for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
 				auto band = &res->bands[bandno];
 
-				for (uint32_t precno = 0; precno < res->pw * res->ph;
+				for (uint64_t precno = 0; (uint64_t)precno < res->pw * res->ph;
 						precno++) {
 					auto prc = &band->precincts[precno];
-					for (uint32_t cblkno = 0; cblkno < prc->cw * prc->ch;
+					for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch;
 							cblkno++) {
 						auto cblk = &prc->cblks.enc[cblkno];
 						uint32_t numPix = ((cblk->x1 - cblk->x0)
@@ -393,7 +393,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint64_t *all_packets_len) {
 		makelayer_final(0);
 		if (plt_markers) {
 			auto t2 = new T2(this);
-			uint64_t all_packets_len = 0;
+			uint32_t all_packets_len = 0;
 			t2->encode_packets_simulate(m_tileno,
 										0 + 1, &all_packets_len, UINT_MAX,
 										tp_pos, plt_markers);
@@ -408,9 +408,9 @@ bool TileProcessor::pcrd_bisect_feasible(uint64_t *all_packets_len) {
 	uint32_t upperBound = max_slope;
 	for (uint32_t layno = 0; layno < tcd_tcp->numlayers; layno++) {
 		uint32_t lowerBound = min_slope;
-		uint64_t maxlen =
+		uint32_t maxlen =
 				tcd_tcp->rates[layno] > 0.0f ?
-						((uint64_t) ceil(tcd_tcp->rates[layno])) : UINT64_MAX;
+						((uint32_t) ceil(tcd_tcp->rates[layno])) : UINT_MAX;
 
 		/* Threshold for Marcela Index */
 		// start by including everything in this layer
@@ -474,8 +474,9 @@ bool TileProcessor::pcrd_bisect_feasible(uint64_t *all_packets_len) {
 /*
  Simple bisect algorithm to calculate optimal layer truncation points
  */
-bool TileProcessor::pcrd_bisect_simple(uint64_t *all_packets_len) {
-	uint32_t compno, resno, bandno, precno, cblkno, layno;
+bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
+	uint32_t compno, resno, bandno,layno;
+	uint64_t precno, cblkno;
 	uint32_t passno;
 	double cumdisto[100];
 	const double K = 1;
@@ -496,9 +497,9 @@ bool TileProcessor::pcrd_bisect_simple(uint64_t *all_packets_len) {
 			auto res = &tilec->resolutions[resno];
 			for (bandno = 0; bandno < res->numbands; bandno++) {
 				auto band = &res->bands[bandno];
-				for (precno = 0; precno < res->pw * res->ph; precno++) {
+				for (precno = 0; precno < (uint64_t)res->pw * res->ph; precno++) {
 					auto prc = &band->precincts[precno];
-					for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
+					for (cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch; cblkno++) {
 						auto cblk = &prc->cblks.enc[cblkno];
 						uint32_t numPix = ((cblk->x1 - cblk->x0)
 								* (cblk->y1 - cblk->y0));
@@ -553,7 +554,7 @@ bool TileProcessor::pcrd_bisect_simple(uint64_t *all_packets_len) {
 	if (single_lossless){
 		if (plt_markers) {
 			auto t2 = new T2(this);
-			uint64_t all_packets_len = 0;
+			uint32_t all_packets_len = 0;
 			t2->encode_packets_simulate(m_tileno,
 										0 + 1, &all_packets_len, UINT_MAX,
 										tp_pos, plt_markers);
@@ -568,9 +569,9 @@ bool TileProcessor::pcrd_bisect_simple(uint64_t *all_packets_len) {
 	for (layno = 0; layno < m_tcp->numlayers; layno++) {
 		if (layer_needs_rate_control(layno)) {
 			double lowerBound = min_slope;
-			uint64_t maxlen =
+			uint32_t maxlen =
 					m_tcp->rates[layno] > 0.0f ?
-							(uint64_t) ceil(m_tcp->rates[layno]) :	UINT64_MAX;
+							(uint32_t) ceil(m_tcp->rates[layno]) :	UINT_MAX;
 
 			/* Threshold for Marcela Index */
 			// start by including everything in this layer
@@ -914,7 +915,7 @@ bool TileProcessor::init_tile(uint16_t tile_no, grk_image *output_image,
 }
 
 bool TileProcessor::compress_tile_part(uint16_t tile_no, BufferedStream *stream,
-		uint64_t *tile_bytes_written, grk_codestream_info *p_cstr_info) {
+		uint32_t *tile_bytes_written, grk_codestream_info *p_cstr_info) {
 	uint32_t state = grk_plugin_get_debug_state();
 
 	if (m_current_tile_part_index == 0) {
@@ -986,7 +987,7 @@ bool TileProcessor::compress_tile_part(uint16_t tile_no, BufferedStream *stream,
 
 	//4 write PLT
 	if (m_current_tile_part_index == 0 && plt_markers){
-		size_t written = plt_markers->write();
+		uint32_t written = plt_markers->write();
 		*tile_bytes_written += written;
 	}
 
@@ -1502,7 +1503,7 @@ bool TileProcessor::t1_encode() {
 			needs_rate_control());
 }
 
-bool TileProcessor::t2_encode(BufferedStream *stream, uint64_t *all_packet_bytes_written,
+bool TileProcessor::t2_encode(BufferedStream *stream, uint32_t *all_packet_bytes_written,
 		grk_codestream_info *p_cstr_info) {
 
 	auto l_t2 = new T2(this);
@@ -1592,7 +1593,7 @@ bool TileProcessor::t2_encode(BufferedStream *stream, uint64_t *all_packet_bytes
 }
 
 bool TileProcessor::rate_allocate(grk_codestream_info *p_cstr_info) {
-	uint64_t all_packets_len = 0;
+	uint32_t all_packets_len = 0;
 	if (p_cstr_info)
 		p_cstr_info->index_write = 0;
 

@@ -72,12 +72,10 @@ public:
 	 * Writes the SOT marker (Start of tile-part)
 	 *
 	 * @param       p_j2k            J2K codec.
-	 * @param       p_data_written   number of bytes written
-
 	 */
-	bool write(CodeStream *p_j2k, uint64_t *p_data_written);
+	bool write(CodeStream *p_j2k);
 
-	bool write_psot(uint64_t tile_part_bytes_written);
+	bool write_psot(uint32_t tile_part_bytes_written);
 
 	/**
 	 * Decode a SOT marker (Start of tile-part)

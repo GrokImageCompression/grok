@@ -2048,21 +2048,22 @@ static bool j2k_write_tile_part(CodeStream *p_j2k, bool writePOC,
 	auto cp = &p_j2k->m_cp;
 
 	//1. write SOT
-	uint64_t temp_bytes_written = 0;
 	SOTMarker sot(stream);
 
-	if (!sot.write(p_j2k, &temp_bytes_written))
+	if (!sot.write(p_j2k))
 		return false;
-	uint64_t tile_part_bytes_written = temp_bytes_written;
+	uint32_t tile_part_bytes_written = sot_marker_segment_len;
 
 	//2. write POC (only in first tile part)
 	if (writePOC) {
 		if (!GRK_IS_CINEMA(cp->rsiz)) {
 			if (cp->tcps[currentTileNumber].numpocs) {
-				temp_bytes_written = 0;
-				if (!j2k_write_poc(p_j2k, stream, &temp_bytes_written))
+				auto tcp = &p_j2k->m_cp.tcps[p_j2k->m_tileProcessor->m_current_tile_index];
+				auto image = p_j2k->m_private_image;
+				uint32_t nb_comp = image->numcomps;
+				if (!j2k_write_poc(p_j2k, stream))
 					return false;
-				tile_part_bytes_written += temp_bytes_written;
+				tile_part_bytes_written += getPocSize(nb_comp, 1 + tcp->numpocs);
 			}
 		}
 	}
@@ -3590,15 +3591,6 @@ static uint16_t getPocSize(uint32_t nb_comp, uint32_t nb_poc) {
 
 static bool j2k_write_poc(CodeStream *p_j2k, BufferedStream *stream) {
 	assert(p_j2k != nullptr);
-	assert(stream != nullptr);
-
-	uint64_t data_written = 0;
-	return j2k_write_poc(p_j2k, stream, &data_written);
-}
-
-static bool j2k_write_poc(CodeStream *p_j2k, BufferedStream *stream,
-		uint64_t *p_data_written) {
-	assert(p_j2k != nullptr);
 
 	auto tcp = &p_j2k->m_cp.tcps[p_j2k->m_tileProcessor->m_current_tile_index];
 	auto tccp = &tcp->tccps[0];
@@ -3608,6 +3600,7 @@ static bool j2k_write_poc(CodeStream *p_j2k, BufferedStream *stream,
 	uint32_t poc_room = (nb_comp <= 256) ? 1 : 2;
 
 	auto poc_size = getPocSize(nb_comp, 1 + tcp->numpocs);
+
 	/* POC  */
 	if (!stream->write_short(J2K_MS_POC))
 		return false;
@@ -3652,7 +3645,7 @@ static bool j2k_write_poc(CodeStream *p_j2k, BufferedStream *stream,
 
 		++current_poc;
 	}
-	*p_data_written = poc_size;
+
 	return true;
 }
 
