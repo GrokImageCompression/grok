@@ -200,6 +200,7 @@ static inline long grok_lrintf(float f) {
 #include "PPMMarker.h"
 #include "SOTMarker.h"
 #include "j2k.h"
+#include "markers.h"
 #include "j2k_dump.h"
 #include "jp2.h"
 #include "BitIO.h"
