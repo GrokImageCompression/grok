@@ -22,11 +22,11 @@ namespace grk {
 const uint32_t tlm_marker_start_bytes = 6;
 
 TileLengthMarkers::TileLengthMarkers() :
-		markers(new TL_MAP()), m_stream(nullptr) {
+		markers(new TL_MAP()), m_stream(nullptr), m_index(0) {
 }
 
 TileLengthMarkers::TileLengthMarkers(BufferedStream *stream):
-		markers(new TL_MAP()), m_stream(stream) {
+		markers(new TL_MAP()), m_stream(stream), m_index(0) {
 
 }
 
@@ -58,7 +58,6 @@ bool TileLengthMarkers::read(uint8_t *p_header_data, uint16_t header_size){
 		GROK_ERROR("Illegal L value in TLM marker");
 		return false;
 	}
-
 	/*
 	 * 0 <= L_LTP <= 1
 	 *
@@ -67,7 +66,6 @@ bool TileLengthMarkers::read(uint8_t *p_header_data, uint16_t header_size){
 	 */
 	L_LTP = (L >> 6) & 0x1;
 	uint32_t bytes_per_tile_part_length = L_LTP ? 4U : 2U;
-
 	/*
 	* 0 <= L_iT <= 2
 	*
@@ -119,9 +117,12 @@ void TileLengthMarkers::push(uint8_t i_TLM, grk_tl_info info) {
 
 bool TileLengthMarkers::write_updated(CodeStream *p_j2k) {
 	assert(p_j2k != nullptr);
+    assert(p_j2k->m_specific_param.m_encoder.m_total_tile_parts >= 1);
+    uint16_t totalTileParts = p_j2k->m_specific_param.m_encoder.m_total_tile_parts;
+    uint32_t tlm_size = tlm_len_per_tile_part	* totalTileParts;
 
-	uint32_t tlm_size = tlm_len_per_tile_part
-			* p_j2k->m_specific_param.m_encoder.m_total_tile_parts;
+    push(m_index, grk_tl_info(totalTileParts-1, tlm_size));
+
 	uint64_t tlm_position =
 			p_j2k->m_tileProcessor->m_tlm_start + tlm_marker_start_bytes;
 	uint64_t current_position = m_stream->tell();

@@ -2049,8 +2049,9 @@ static bool j2k_write_tile_part(CodeStream *p_j2k, bool writePOC,
 
 	//1. write SOT
 	uint64_t temp_bytes_written = 0;
-	uint64_t psot_location = 0;
-	if (!j2k_write_sot(p_j2k, stream, &psot_location, &temp_bytes_written))
+	SOTMarker sot(stream);
+
+	if (!sot.write(p_j2k, &temp_bytes_written))
 		return false;
 	uint64_t tile_part_bytes_written = temp_bytes_written;
 
@@ -2080,11 +2081,8 @@ static bool j2k_write_tile_part(CodeStream *p_j2k, bool writePOC,
 	}
 
 	/* 4. write Psot in SOT marker */
-	auto currentLocation = stream->tell();
-	stream->seek(psot_location);
-	if (!stream->write_int((uint32_t) tile_part_bytes_written))
+	if (!sot.write_psot(tile_part_bytes_written))
 		return false;
-	stream->seek(currentLocation);
 
 	// 5. update TLM
 	if (GRK_IS_CINEMA(cp->rsiz) ||
@@ -3961,14 +3959,6 @@ static bool j2k_merge_ppt(TileCodingParams *p_tcp) {
 	p_tcp->ppt_data = p_tcp->ppt_buffer;
 	p_tcp->ppt_data_size = p_tcp->ppt_len;
 	return true;
-}
-
-
-static bool j2k_write_sot(CodeStream *p_j2k, BufferedStream *stream,
-		uint64_t *psot_location, uint64_t *p_data_written) {
-	SOTMarker sot;
-
-	return sot.write(p_j2k, stream,psot_location, p_data_written);
 }
 
 static bool j2k_read_sot(CodeStream *p_j2k, uint8_t *p_header_data,

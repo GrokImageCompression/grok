@@ -63,6 +63,7 @@ private:
 	void push(uint8_t i_TLM, grk_tl_info curr_vec);
 	TL_MAP *markers;
 	BufferedStream *m_stream;
+	uint8_t m_index;
 
 };
 

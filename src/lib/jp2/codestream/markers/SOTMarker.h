@@ -65,17 +65,19 @@ namespace grk {
 class SOTMarker {
 public:
 
+	SOTMarker(BufferedStream *stream);
+	SOTMarker(void);
+
 	/**
 	 * Writes the SOT marker (Start of tile-part)
 	 *
 	 * @param       p_j2k            J2K codec.
-	 * @param       stream         the stream to write data to.
-	 * @param       psot_location    PSOT location
 	 * @param       p_data_written   number of bytes written
 
 	 */
-	bool write(CodeStream *p_j2k, BufferedStream *stream,
-			uint64_t *psot_location, uint64_t *p_data_written);
+	bool write(CodeStream *p_j2k, uint64_t *p_data_written);
+
+	bool write_psot(uint64_t tile_part_bytes_written);
 
 	/**
 	 * Decode a SOT marker (Start of tile-part)
@@ -105,6 +107,10 @@ public:
 	 bool get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	 		uint16_t *tile_no, uint32_t *p_tot_len, uint8_t *p_current_part,
 	 		uint8_t *p_num_parts);
+private:
+	 BufferedStream *m_stream;
+	 uint64_t m_psot_location;
+
 };
 
 } /* namespace grk */

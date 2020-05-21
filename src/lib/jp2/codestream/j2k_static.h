@@ -641,19 +641,6 @@ static bool j2k_merge_ppt(TileCodingParams *p_tcp);
 static bool j2k_write_tlm(CodeStream *p_j2k, BufferedStream *stream);
 
 /**
- * Writes the SOT marker (Start of tile-part)
- *
- * @param       p_j2k            J2K codec.
- * @param       stream         the stream to write data to.
- * @param       psot_location    PSOT location
- * @param       p_data_written   number of bytes written
-
- */
-static bool j2k_write_sot(CodeStream *p_j2k, BufferedStream *stream,
-		uint64_t *psot_location, uint64_t *p_data_written);
-
-
-/**
  * Reads a SOT marker (Start of tile-part)
  *
  * @param       p_j2k           JPEG 2000 codec

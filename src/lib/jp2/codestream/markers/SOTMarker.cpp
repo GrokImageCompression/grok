@@ -62,34 +62,50 @@
 
 namespace grk {
 
+SOTMarker::SOTMarker(BufferedStream *stream) : m_stream(stream),
+		m_psot_location(0) {
 
-bool SOTMarker::write(CodeStream *p_j2k, BufferedStream *stream,
-		uint64_t *psot_location, uint64_t *p_data_written){
+}
+SOTMarker::SOTMarker(void) : m_stream(nullptr),
+		m_psot_location(0){
+}
+
+bool SOTMarker::write_psot(uint64_t tile_part_bytes_written) {
+	auto currentLocation = m_stream->tell();
+	m_stream->seek(m_psot_location);
+	if (!m_stream->write_int(tile_part_bytes_written))
+		return false;
+	m_stream->seek(currentLocation);
+
+	return true;
+}
+
+bool SOTMarker::write(CodeStream *p_j2k, uint64_t *p_data_written){
 	assert(p_j2k != nullptr);
 
 	/* SOT */
-	if (!stream->write_short(J2K_MS_SOT))
+	if (!m_stream->write_short(J2K_MS_SOT))
 		return false;
 
 	/* Lsot */
-	if (!stream->write_short(10))
+	if (!m_stream->write_short(10))
 		return false;
 	/* Isot */
-	if (!stream->write_short(
+	if (!m_stream->write_short(
 			(uint16_t) p_j2k->m_tileProcessor->m_current_tile_number))
 		return false;
 
 	/* Psot  */
-	*psot_location = stream->tell();
-	if (!stream->skip(4))
+	m_psot_location = m_stream->tell();
+	if (!m_stream->skip(4))
 		return false;
 
 	/* TPsot */
-	if (!stream->write_byte(p_j2k->m_tileProcessor->m_current_tile_part_number))
+	if (!m_stream->write_byte(p_j2k->m_tileProcessor->m_current_tile_part_number))
 		return false;
 
 	/* TNsot */
-	if (!stream->write_byte(
+	if (!m_stream->write_byte(
 			p_j2k->m_cp.tcps[p_j2k->m_tileProcessor->m_current_tile_number].m_nb_tile_parts))
 		return false;
 
