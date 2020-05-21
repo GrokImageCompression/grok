@@ -656,9 +656,9 @@ void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 			auto res = tilec->resolutions + resno;
 			for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
 				auto band = res->bands + bandno;
-				for (uint32_t precno = 0; precno < res->pw * res->ph; precno++) {
+				for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph; precno++) {
 					auto prc = band->precincts + precno;
-					for (uint32_t cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
+					for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch; cblkno++) {
 						auto cblk = prc->cblks.enc + cblkno;
 						auto layer = cblk->layers + layno;
 						uint32_t cumulative_included_passes_in_block;
@@ -759,9 +759,9 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 			auto res = tilec->resolutions + resno;
 			for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
 				auto band = res->bands + bandno;
-				for (uint32_t precno = 0; precno < res->pw * res->ph; precno++) {
+				for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph; precno++) {
 					auto prc = band->precincts + precno;
-					for (uint32_t cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
+					for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch; cblkno++) {
 						auto cblk = prc->cblks.enc + cblkno;
 						auto layer = cblk->layers + layno;
 						if (layno == 0)
@@ -894,7 +894,7 @@ bool TileProcessor::init_tile(uint16_t tile_no, grk_image *output_image,
 	tile->packno = 0;
 
 	if (isEncoder) {
-        size_t max_precincts=0;
+        uint64_t max_precincts=0;
 		for (uint32_t compno = 0; compno < image->numcomps; ++compno) {
 			TileComponent *tilec = &tile->comps[compno];
 			for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
@@ -902,7 +902,7 @@ bool TileProcessor::init_tile(uint16_t tile_no, grk_image *output_image,
 				for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
 					auto band = res->bands + bandno;
 
-					max_precincts = max<size_t>(max_precincts, band->numPrecincts);
+					max_precincts = max<uint64_t>(max_precincts, band->numPrecincts);
 				}
 			}
 		}
@@ -1542,8 +1542,8 @@ bool TileProcessor::t2_encode(BufferedStream *stream, uint32_t *all_packet_bytes
 					decodePrec->ch = prec->ch;
 					if (prec->cblks.enc && prec->cw && prec->ch) {
 						decodePrec->initTagTrees();
-						decodePrec->cblks.dec = new grk_tcd_cblk_dec[decodePrec->cw * decodePrec->ch];
-						for (uint32_t cblkno = 0; cblkno < decodePrec->cw * decodePrec->ch; ++cblkno) {
+						decodePrec->cblks.dec = new grk_tcd_cblk_dec[(uint64_t)decodePrec->cw * decodePrec->ch];
+						for (uint64_t cblkno = 0; cblkno < decodePrec->cw * decodePrec->ch; ++cblkno) {
 							auto cblk = prec->cblks.enc + cblkno;
 							auto decodeCblk = decodePrec->cblks.dec + cblkno;
 							decodeCblk->x0 = cblk->x0;
@@ -1921,14 +1921,14 @@ PacketTracker::~PacketTracker(){
 
 void PacketTracker::init(uint32_t numcomps,
 		uint32_t numres,
-		size_t numprec,
+		uint64_t numprec,
 		uint32_t numlayers){
 
-	size_t len = get_buffer_len(numcomps,numres,numprec,numlayers);
+	uint64_t len = get_buffer_len(numcomps,numres,numprec,numlayers);
 	if (!bits)
   	   bits = new uint8_t[len];
 	else {
-		size_t currentLen =
+		uint64_t currentLen =
 				get_buffer_len(m_numcomps,m_numres,m_numprec,m_numlayers);
         if (len > currentLen) {
      	   delete[] bits;
@@ -1944,22 +1944,22 @@ void PacketTracker::init(uint32_t numcomps,
 }
 
 void PacketTracker::clear(void){
-	size_t currentLen =
+	uint64_t currentLen =
 			get_buffer_len(m_numcomps,m_numres,m_numprec,m_numlayers);
 	memset(bits, 0, currentLen);
 }
 
-size_t PacketTracker::get_buffer_len(uint32_t numcomps,
+uint64_t PacketTracker::get_buffer_len(uint32_t numcomps,
 		uint32_t numres,
-		size_t numprec,
+		uint64_t numprec,
 		uint32_t numlayers){
-	size_t len = numcomps*numres*numprec*numlayers;
+	uint64_t len = numcomps*numres*numprec*numlayers;
 
 	return ((len + 7)>>3) << 3;
 }
 void PacketTracker::packet_encoded(uint32_t comps,
 		uint32_t res,
-		size_t prec,
+		uint64_t prec,
 		uint32_t layer){
 
 	if (comps >= m_numcomps ||
@@ -1969,16 +1969,16 @@ void PacketTracker::packet_encoded(uint32_t comps,
 			return;
 	}
 
-	size_t ind = index(comps,res,prec,layer);
-	size_t ind_maj = ind >> 3;
-	size_t ind_min = ind & 7;
+	uint64_t ind = index(comps,res,prec,layer);
+	uint64_t ind_maj = ind >> 3;
+	uint64_t ind_min = ind & 7;
 
 	bits[ind_maj] = (uint8_t)(bits[ind_maj] | (1 << ind_min));
 
 }
 bool PacketTracker::is_packet_encoded(uint32_t comps,
 		uint32_t res,
-		size_t prec,
+		uint64_t prec,
 		uint32_t layer){
 
 	if (comps >= m_numcomps ||
@@ -1988,16 +1988,16 @@ bool PacketTracker::is_packet_encoded(uint32_t comps,
 			return true;
 	}
 
-	size_t ind = index(comps,res,prec,layer);
-	size_t ind_maj = ind >> 3;
-	size_t ind_min = ind & 7;
+	uint64_t ind = index(comps,res,prec,layer);
+	uint64_t ind_maj = ind >> 3;
+	uint64_t ind_min = ind & 7;
 
 	return  ((bits[ind_maj] >> ind_min) & 1);
 }
 
-size_t PacketTracker::index(uint32_t comps,
+uint64_t PacketTracker::index(uint32_t comps,
 		uint32_t res,
-		size_t prec,
+		uint64_t prec,
 		uint32_t layer){
 
 	return layer +
@@ -2133,7 +2133,8 @@ void grk_tcd_precinct::deleteTagTrees() {
 
 void grk_tcd_precinct::initTagTrees() {
 
-	// if l_current_precinct->cw == 0 or l_current_precinct->ch == 0, then the precinct has no code blocks, therefore
+	// if cw == 0 or ch == 0,
+	// then the precinct has no code blocks, therefore
 	// no need for inclusion and msb tag trees
 	if (cw > 0 && ch > 0) {
 		if (!incltree) {

@@ -1713,14 +1713,14 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 	if (parameters->precision != nullptr) {
 		uint32_t compno;
 		for (compno = 0; compno < image->numcomps; ++compno) {
-			uint32_t precno = compno;
-			if (precno >= parameters->nb_precision)
-				precno = parameters->nb_precision - 1U;
-			uint32_t prec = parameters->precision[precno].prec;
+			uint32_t precisionno = compno;
+			if (precisionno >= parameters->nb_precision)
+				precisionno = parameters->nb_precision - 1U;
+			uint32_t prec = parameters->precision[precisionno].prec;
 			if (prec == 0)
 				prec = image->comps[compno].prec;
 
-			switch (parameters->precision[precno].mode) {
+			switch (parameters->precision[precisionno].mode) {
 			case GRK_PREC_MODE_CLIP:
 				clip_component(&(image->comps[compno]), prec);
 				break;

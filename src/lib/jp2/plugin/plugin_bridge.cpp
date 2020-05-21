@@ -41,7 +41,7 @@ void decode_synch_plugin_with_host(TileProcessor *tcd) {
 							precno++) {
 						auto prc = &band->precincts[precno];
 						auto plugin_prc = plugin_band->precincts[precno];
-						assert(plugin_prc->numBlocks == prc->cw * prc->ch);
+						assert(plugin_prc->numBlocks == (uint64_t)prc->cw * prc->ch);
 						for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch;
 								cblkno++) {
 							auto cblk = &prc->cblks.dec[cblkno];
@@ -273,7 +273,7 @@ void set_context_stream(TileProcessor *p_tileProcessor) {
 						precno++) {
 					grk_tcd_precinct *prc = &band->precincts[precno];
 
-					for (uint64_t cblkno = 0; (uint64_t)cblkno < prc->cw * prc->ch;
+					for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch;
 							cblkno++) {
 						grk_tcd_cblk_enc *cblk = &prc->cblks.enc[cblkno];
 

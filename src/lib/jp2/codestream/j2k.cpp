@@ -2757,7 +2757,7 @@ static bool j2k_update_rates(CodeStream *p_j2k, BufferedStream *stream) {
 static uint8_t j2k_get_num_tp(CodingParams *cp, uint32_t pino,
 		uint16_t tileno) {
 	const char *prog = nullptr;
-	uint32_t num_tp = 1;
+	uint64_t num_tp = 1;
 
 	/*  preconditions */
 	assert(tileno < (cp->t_grid_width * cp->t_grid_height));

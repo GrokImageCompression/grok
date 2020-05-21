@@ -43,11 +43,11 @@ bool Tier1::encodeCodeblocks(TileCodingParams *tcp,
 				auto band = &res->bands[bandno];
 				for (precno = 0; precno < res->pw * res->ph; ++precno) {
 					grk_tcd_precinct *prc = &band->precincts[precno];
-					int32_t cblkno;
+					int64_t cblkno;
 					int32_t bandOdd = band->bandno & 1;
 					int32_t bandModTwo = band->bandno & 2;
 
-					for (cblkno = 0; cblkno < (int32_t) (prc->cw * prc->ch);
+					for (cblkno = 0; cblkno < (int64_t) (prc->cw * prc->ch);
 							++cblkno) {
 						grk_tcd_cblk_enc *cblk = prc->cblks.enc + cblkno;
 						int32_t x = (int32_t)(cblk->x0 - band->x0);
@@ -97,19 +97,18 @@ bool Tier1::encodeCodeblocks(TileCodingParams *tcp,
 
 bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, TileComponentCodingParams *tccp,
 		std::vector<decodeBlockInfo*> *blocks) {
-	uint32_t resno, bandno, precno;
 	if (!tilec->buf->alloc_component_data_decode()) {
 		GROK_ERROR( "Not enough memory for tile data");
 		return false;
 	}
 
-	for (resno = 0; resno < tilec->minimum_num_resolutions; ++resno) {
+	for (uint32_t resno = 0; resno < tilec->minimum_num_resolutions; ++resno) {
 		grk_tcd_resolution *res = &tilec->resolutions[resno];
 
-		for (bandno = 0; bandno < res->numbands; ++bandno) {
+		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
 			grk_tcd_band *GRK_RESTRICT band = &res->bands[bandno];
 
-			for (precno = 0; precno < res->pw * res->ph; ++precno) {
+			for (uint64_t precno = 0; precno < res->pw * res->ph; ++precno) {
 				grk_tcd_precinct *precinct = &band->precincts[precno];
 
 				if (!tilec->is_subband_area_of_interest(resno,
@@ -122,9 +121,8 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, TileComponentCodingPar
 					continue;
 				}
 
-				int32_t cblkno;
-				for (cblkno = 0;
-						cblkno < (int32_t) (precinct->cw * precinct->ch);
+				for (uint64_t cblkno = 0;
+						cblkno < (int64_t) precinct->cw * precinct->ch;
 						++cblkno) {
 					grk_rect cblk_rect;
 					grk_tcd_cblk_dec *cblk = &precinct->cblks.dec[cblkno];

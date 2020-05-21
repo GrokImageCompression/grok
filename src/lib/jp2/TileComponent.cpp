@@ -181,7 +181,7 @@ bool TileComponent::init(bool isEncoder,
 	/* extent of precincts , top left, bottom right**/
 	uint32_t tprc_x_start, tprc_y_start, br_prc_x_end, br_prc_y_end;
 	/* number of precinct for a resolution */
-	uint32_t nb_precincts;
+	uint64_t nb_precincts;
 	/* number of code blocks for a precinct*/
 	uint64_t nb_code_blocks, cblkno;
 	/* room needed to store nb_code_blocks code blocks for a precinct*/
@@ -270,12 +270,10 @@ bool TileComponent::init(bool isEncoder,
 					"nb_precincts calculation would overflow ");
 			return false;
 		}
-		nb_precincts = res->pw * res->ph;
+		nb_precincts = (uint64_t)res->pw * res->ph;
 
-		if (mult_will_overflow(nb_precincts,
-				(uint32_t) sizeof(grk_tcd_precinct))) {
-			GROK_ERROR(
-					"nb_precinct_size calculation would overflow ");
+		if (mult64_will_overflow(nb_precincts, sizeof(grk_tcd_precinct))) {
+			GROK_ERROR(	"nb_precinct_size calculation would overflow ");
 			return false;
 		}
 		if (resno == 0) {
@@ -341,24 +339,21 @@ bool TileComponent::init(bool isEncoder,
 				band->precincts = new grk_tcd_precinct[nb_precincts];
 				band->numAllocatedPrecincts = nb_precincts;
 			} else if (band->numAllocatedPrecincts < nb_precincts) {
-				grk_tcd_precinct *new_precincts =
-						new grk_tcd_precinct[nb_precincts];
-				for (size_t i = 0; i < band->numAllocatedPrecincts; ++i) {
+				auto new_precincts = new grk_tcd_precinct[nb_precincts];
+				for (size_t i = 0; i < band->numAllocatedPrecincts; ++i)
 					new_precincts[i] = band->precincts[i];
-				}
-				if (band->precincts)
-					delete[] band->precincts;
+				delete[] band->precincts;
 				band->precincts = new_precincts;
 				band->numAllocatedPrecincts = nb_precincts;
 			}
 			band->numPrecincts = nb_precincts;
-			for (uint32_t precno = 0; precno < nb_precincts; ++precno) {
+			for (uint64_t precno = 0; precno < nb_precincts; ++precno) {
 				auto current_precinct = band->precincts + precno;
 				uint32_t tlcblkxstart, tlcblkystart, brcblkxend, brcblkyend;
 				uint32_t cbgxstart = tlcbgxstart
-						+ (precno % res->pw) * (1 << cbgwidthexpn);
+						+ (uint32_t)(precno % res->pw) * (1 << cbgwidthexpn);
 				uint32_t cbgystart = tlcbgystart
-						+ (precno / res->pw) * (1 << cbgheightexpn);
+						+ (uint32_t)(precno / res->pw) * (1 << cbgheightexpn);
 				uint32_t cbgxend = cbgxstart + (1 << cbgwidthexpn);
 				uint32_t cbgyend = cbgystart + (1 << cbgheightexpn);
 				/*fprintf(stderr, "\t precno=%d; bandno=%d, resno=%d; compno=%d\n", precno, bandno , resno, compno);*/
@@ -594,7 +589,7 @@ void TileComponent::alloc_sparse_array(uint32_t numres){
         for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
             auto band = &res->bands[bandno];
 
-            for (uint64_t precno = 0; precno < res->pw * res->ph; ++precno) {
+            for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph; ++precno) {
                 auto precinct = &band->precincts[precno];
 
                 for (uint64_t cblkno = 0; cblkno < (uint64_t)precinct->cw * precinct->ch; ++cblkno) {

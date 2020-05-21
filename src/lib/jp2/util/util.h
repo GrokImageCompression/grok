@@ -27,6 +27,9 @@ namespace grk {
 inline bool mult_will_overflow(uint32_t a, uint32_t b) {
 	return (b && (a > UINT_MAX / b));
 }
+inline bool mult64_will_overflow(uint64_t a, uint64_t b) {
+	return (b && (a > UINT64_MAX / b));
+}
 
 struct grk_pt {
     int64_t x;

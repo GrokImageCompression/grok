@@ -104,13 +104,13 @@ static bool pi_next_cprl(PacketIter *pi);
  * @param	tx1		X1 parameter for the tile
  * @param	ty0		Y0 parameter for the tile
  * @param	ty1		Y1 parameter for the tile
- * @param	max_prec	the maximum precision for all the bands of the tile
+ * @param	max_precincts	the maximum number of precincts for all the bands of the tile
  * @param	dx_min		the minimum dx of all the components of all the resolutions for the tile.
  * @param	dy_min		the minimum dy of all the components of all the resolutions for the tile.
  */
 static void pi_update_encode_poc_and_final(CodingParams *p_cp,
 		uint16_t tileno, uint32_t tx0, uint32_t tx1, uint32_t ty0, uint32_t ty1,
-		uint32_t max_prec, uint32_t dx_min, uint32_t dy_min);
+		uint64_t max_precincts, uint32_t dx_min, uint32_t dy_min);
 
 /**
  * Updates the coding parameters if the encoding is not used with Progression order changes and final (and cinema parameters are used).
@@ -122,34 +122,34 @@ static void pi_update_encode_poc_and_final(CodingParams *p_cp,
  * @param	tx1		X1 parameter for the tile
  * @param	ty0		Y0 parameter for the tile
  * @param	ty1		Y1 parameter for the tile
- * @param	max_prec	the maximum precision for all the bands of the tile
+ * @param	max_precincts	the maximum number of precincts for all the bands of the tile
  * @param	max_res	the maximum number of resolutions for all the poc inside the tile.
  * @param	dx_min		the minimum dx of all the components of all the resolutions for the tile.
  * @param	dy_min		the minimum dy of all the components of all the resolutions for the tile.
  */
 static void pi_update_encode_no_poc(CodingParams *p_cp,
 		uint32_t num_comps, uint16_t tileno, uint32_t tx0, uint32_t tx1,
-		uint32_t ty0, uint32_t ty1, uint32_t max_prec, uint32_t max_res,
+		uint32_t ty0, uint32_t ty1, uint64_t max_precincts, uint32_t max_res,
 		uint32_t dx_min, uint32_t dy_min);
 /**
  * Gets the encoding parameters needed to update the coding parameters and all the pocs.
  *
- * @param	p_image			the image being encoded.
- * @param	p_cp			the coding parameters.
- * @param	tileno			the tile index of the tile being encoded.
- * @param	tx0			pointer that will hold the X0 parameter for the tile
- * @param	tx1			pointer that will hold the X1 parameter for the tile
- * @param	ty0			pointer that will hold the Y0 parameter for the tile
- * @param	ty1			pointer that will hold the Y1 parameter for the tile
- * @param	max_prec		pointer that will hold the maximum precision for all the bands of the tile
- * @param	max_res		pointer that will hold the maximum number of resolutions for all the poc inside the tile.
- * @param	dx_min			pointer that will hold the minimum dx of all the components of all the resolutions for the tile.
- * @param	dy_min			pointer that will hold the minimum dy of all the components of all the resolutions for the tile.
+ * @param	p_image		the image being encoded.
+ * @param	p_cp		the coding parameters.
+ * @param	tileno		the tile index of the tile being encoded.
+ * @param	tx0			X0 parameter for the tile
+ * @param	tx1			X1 parameter for the tile
+ * @param	ty0			Y0 parameter for the tile
+ * @param	ty1			Y1 parameter for the tile
+ * @param	max_precincts	maximum number of precincts for all the bands of the tile
+ * @param	max_res		maximum number of resolutions for all the poc inside the tile.
+ * @param	dx_min		minimum dx of all the components of all the resolutions for the tile.
+ * @param	dy_min		minimum dy of all the components of all the resolutions for the tile.
  */
 static void grk_get_encoding_parameters(const grk_image *p_image,
 		const CodingParams *p_cp, uint16_t tileno, uint32_t *tx0,
 		uint32_t *tx1, uint32_t *ty0, uint32_t *ty1, uint32_t *dx_min,
-		uint32_t *dy_min, uint32_t *max_prec, uint32_t *max_res);
+		uint32_t *dy_min, uint64_t *max_precincts, uint32_t *max_res);
 
 /**
  * Gets the encoding parameters needed to update the coding parameters and all the pocs.
@@ -158,23 +158,23 @@ static void grk_get_encoding_parameters(const grk_image *p_image,
  * to an area of size 4 * max_res. The data is stored inside this area with the following pattern :
  * dx_compi_res0 , dy_compi_res0 , w_compi_res0, h_compi_res0 , dx_compi_res1 , dy_compi_res1 , w_compi_res1, h_compi_res1 , ...
  *
- * @param	p_image			the image being encoded.
- * @param	p_cp			the coding parameters.
- * @param	tileno			the tile index of the tile being encoded.
- * @param	tx0			pointer that will hold the X0 parameter for the tile
- * @param	tx1			pointer that will hold the X1 parameter for the tile
- * @param	ty0			pointer that will hold the Y0 parameter for the tile
- * @param	ty1			pointer that will hold the Y1 parameter for the tile
- * @param	max_prec		pointer that will hold the maximum precision for all the bands of the tile
- * @param	max_res		pointer that will hold the maximum number of resolutions for all the poc inside the tile.
- * @param	dx_min		pointer that will hold the minimum dx of all the components of all the resolutions for the tile.
- * @param	dy_min		pointer that will hold the minimum dy of all the components of all the resolutions for the tile.
+ * @param	p_image		the image being encoded.
+ * @param	p_cp		the coding parameters.
+ * @param	tileno		the tile index of the tile being encoded.
+ * @param	tx0			X0 parameter for the tile
+ * @param	tx1			X1 parameter for the tile
+ * @param	ty0			Y0 parameter for the tile
+ * @param	ty1			Y1 parameter for the tile
+ * @param	max_precincts	maximum number of precincts for all the bands of the tile
+ * @param	max_res		maximum number of resolutions for all the poc inside the tile.
+ * @param	dx_min		minimum dx of all the components of all the resolutions for the tile.
+ * @param	dy_min		minimum dy of all the components of all the resolutions for the tile.
  * @param	p_resolutions	pointer to an area corresponding to the one described above.
  */
 static void grk_get_all_encoding_parameters(const grk_image *p_image,
 		const CodingParams *p_cp, uint16_t tileno, uint32_t *tx0,
 		uint32_t *tx1, uint32_t *ty0, uint32_t *ty1, uint32_t *dx_min,
-		uint32_t *dy_min, uint32_t *max_prec, uint32_t *max_res,
+		uint32_t *dy_min, uint64_t *max_precincts, uint32_t *max_res,
 		uint32_t **p_resolutions);
 /**
  * Allocates memory for a packet iterator. Data and data sizes are set by this operation.
@@ -190,12 +190,12 @@ static PacketIter* pi_create(const grk_image *p_image,
  * FIXME DOC
  */
 static void pi_update_decode_no_poc(PacketIter *p_pi, TileCodingParams *p_tcp,
-		uint32_t max_precision, uint32_t max_res);
+		uint64_t max_precincts, uint32_t max_res);
 /**
  * FIXME DOC
  */
 static void pi_update_decode_poc(PacketIter *p_pi, TileCodingParams *p_tcp,
-		uint32_t max_precision);
+		uint64_t max_precincts);
 
 /**
  * FIXME DOC
@@ -272,7 +272,7 @@ static bool pi_next_lrcp(PacketIter *pi) {
 					continue;
 				res = &comp->resolutions[pi->resno];
 				if (!pi->tp_on)
-					pi->poc.precno1 = res->pw * res->ph;
+					pi->poc.precno1 = (uint64_t)res->pw * res->ph;
 
 				for (pi->precno = pi->poc.precno0; pi->precno < pi->poc.precno1;
 						pi->precno++) {
@@ -655,7 +655,7 @@ static bool pi_next_cprl(PacketIter *pi) {
 static void grk_get_encoding_parameters(const grk_image *p_image,
 		const CodingParams *p_cp, uint16_t tileno, uint32_t *tx0,
 		uint32_t *tx1, uint32_t *ty0, uint32_t *ty1, uint32_t *dx_min,
-		uint32_t *dy_min, uint32_t *max_prec, uint32_t *max_res) {
+		uint32_t *dy_min, uint64_t *max_precincts, uint32_t *max_res) {
 	assert(p_cp != nullptr);
 	assert(p_image != nullptr);
 	assert(tileno < p_cp->t_grid_width * p_cp->t_grid_height);
@@ -671,7 +671,7 @@ static void grk_get_encoding_parameters(const grk_image *p_image,
 	*ty1 = std::min<uint32_t>(p_cp->ty0 + (q + 1) * p_cp->t_height,
 			p_image->y1);
 
-	*max_prec = 0;
+	*max_precincts = 0;
 	*max_res = 0;
 	*dx_min = UINT_MAX;
 	*dy_min = UINT_MAX;
@@ -722,9 +722,9 @@ static void grk_get_encoding_parameters(const grk_image *p_image,
 			uint32_t py1 = uint_ceildivpow2(ry1, pdy) << pdy;
 			uint32_t pw = (rx0 == rx1) ? 0 : ((px1 - px0) >> pdx);
 			uint32_t ph = (ry0 == ry1) ? 0 : ((py1 - py0) >> pdy);
-			uint32_t product = pw * ph;
-			if (product > *max_prec)
-				*max_prec = product;
+			uint64_t product = (uint64_t)pw * ph;
+			if (product > *max_precincts)
+				*max_precincts = product;
 		}
 	}
 }
@@ -732,7 +732,7 @@ static void grk_get_encoding_parameters(const grk_image *p_image,
 static void grk_get_all_encoding_parameters(const grk_image *p_image,
 		const CodingParams *p_cp, uint16_t tileno, uint32_t *tx0,
 		uint32_t *tx1, uint32_t *ty0, uint32_t *ty1, uint32_t *dx_min,
-		uint32_t *dy_min, uint32_t *max_prec, uint32_t *max_res,
+		uint32_t *dy_min, uint64_t *max_precincts, uint32_t *max_res,
 		uint32_t **p_resolutions) {
 	assert(p_cp != nullptr);
 	assert(p_image != nullptr);
@@ -755,7 +755,7 @@ static void grk_get_all_encoding_parameters(const grk_image *p_image,
 	*ty1 = std::min<uint32_t>(uint_adds(uncorrected_ty0, p_cp->t_height),
 			p_image->y1);
 
-	*max_prec = 0;
+	*max_precincts = 0;
 	*max_res = 0;
 	*dx_min = UINT_MAX;
 	*dy_min = UINT_MAX;
@@ -802,9 +802,9 @@ static void grk_get_all_encoding_parameters(const grk_image *p_image,
 			uint32_t ph = (ry0 == ry1) ? 0 : ((py1 - py0) >> pdy);
 			*lResolutionPtr++ = pw;
 			*lResolutionPtr++ = ph;
-			uint32_t product = pw * ph;
-			if (product > *max_prec)
-				*max_prec = product;
+			uint64_t product = (uint64_t)pw * ph;
+			if (product > *max_precincts)
+				*max_precincts = product;
 			--level_no;
 		}
 	}
@@ -850,7 +850,7 @@ static PacketIter* pi_create(const grk_image *image,
 
 static void pi_update_encode_poc_and_final(CodingParams *p_cp,
 		uint16_t tileno, uint32_t tx0, uint32_t tx1, uint32_t ty0, uint32_t ty1,
-		uint32_t max_prec, uint32_t dx_min, uint32_t dy_min) {
+		uint64_t max_precincts, uint32_t dx_min, uint32_t dy_min) {
 	assert(p_cp != nullptr);
 	assert(tileno < p_cp->t_grid_width * p_cp->t_grid_height);
 
@@ -867,7 +867,7 @@ static void pi_update_encode_poc_and_final(CodingParams *p_cp,
 		current_poc->resE = current_poc->resno1;
 		current_poc->layE = current_poc->layno1;
 		current_poc->prg = current_poc->prg1;
-		current_poc->prcE = max_prec;
+		current_poc->prcE = max_precincts;
 		current_poc->txS = tx0;
 		current_poc->txE = tx1;
 		current_poc->tyS = ty0;
@@ -879,7 +879,7 @@ static void pi_update_encode_poc_and_final(CodingParams *p_cp,
 
 static void pi_update_encode_no_poc(CodingParams *p_cp,
 		uint32_t num_comps, uint16_t tileno, uint32_t tx0, uint32_t tx1,
-		uint32_t ty0, uint32_t ty1, uint32_t max_prec, uint32_t max_res,
+		uint32_t ty0, uint32_t ty1, uint64_t max_precincts, uint32_t max_res,
 		uint32_t dx_min, uint32_t dy_min) {
 	assert(p_cp != nullptr);
 	assert(tileno < p_cp->t_grid_width * p_cp->t_grid_height);
@@ -898,7 +898,7 @@ static void pi_update_encode_no_poc(CodingParams *p_cp,
 		current_poc->resE = max_res;
 		current_poc->layE = tcp->numlayers;
 		current_poc->prg = tcp->prg;
-		current_poc->prcE = max_prec;
+		current_poc->prcE = max_precincts;
 		current_poc->txS = tx0;
 		current_poc->txE = tx1;
 		current_poc->tyS = ty0;
@@ -909,7 +909,7 @@ static void pi_update_encode_no_poc(CodingParams *p_cp,
 }
 
 static void pi_update_decode_poc(PacketIter *p_pi, TileCodingParams *p_tcp,
-		uint32_t max_precision) {
+		uint64_t max_precincts) {
 	assert(p_pi != nullptr);
 	assert(p_tcp != nullptr);
 
@@ -929,12 +929,12 @@ static void pi_update_decode_poc(PacketIter *p_pi, TileCodingParams *p_tcp,
 		current_pi->poc.compno1 = current_poc->compno1; /* Component Index #0 (End) */
 		current_pi->poc.layno1 = std::min<uint32_t>(current_poc->layno1,
 				p_tcp->numlayers); /* Layer Index #0 (End) */
-		current_pi->poc.precno1 = max_precision;
+		current_pi->poc.precno1 = max_precincts;
 	}
 }
 
 static void pi_update_decode_no_poc(PacketIter *p_pi, TileCodingParams *p_tcp,
-		uint32_t max_precision, uint32_t max_res) {
+		uint64_t max_precincts, uint32_t max_res) {
 	assert(p_tcp != nullptr);
 	assert(p_pi != nullptr);
 
@@ -952,7 +952,7 @@ static void pi_update_decode_no_poc(PacketIter *p_pi, TileCodingParams *p_tcp,
 		current_pi->poc.resno1 = max_res;
 		current_pi->poc.compno1 = current_pi->numcomps;
 		current_pi->poc.layno1 = p_tcp->numlayers;
-		current_pi->poc.precno1 = max_precision;
+		current_pi->poc.precno1 = max_precincts;
 	}
 }
 
@@ -1078,17 +1078,17 @@ PacketIter* pi_create_decode(grk_image *p_image, CodingParams *p_cp,
 	}
 
 	uint32_t max_res;
-	uint32_t max_prec;
+	uint64_t max_precincts;
 	uint32_t tx0, tx1, ty0, ty1;
 	uint32_t dx_min, dy_min;
 	grk_get_all_encoding_parameters(p_image, p_cp, tile_no, &tx0, &tx1, &ty0,
-			&ty1, &dx_min, &dy_min, &max_prec, &max_res, tmp_ptr);
+			&ty1, &dx_min, &dy_min, &max_precincts, &max_res, tmp_ptr);
 
 	/* step calculations */
 	uint32_t step_p = 1;
-	uint32_t step_c = max_prec * step_p;
-	uint32_t step_r = p_image->numcomps * step_c;
-	uint32_t step_l = max_res * step_r;
+	uint64_t step_c = max_precincts * step_p;
+	uint64_t step_r = p_image->numcomps * step_c;
+	uint64_t step_l = max_res * step_r;
 
 	/* set values for first packet iterator */
 	auto current_pi = pi;
@@ -1176,9 +1176,9 @@ PacketIter* pi_create_decode(grk_image *p_image, CodingParams *p_cp,
 	grok_free(tmp_data);
 	grok_free(tmp_ptr);
 	if (tcp->POC)
-		pi_update_decode_poc(pi, tcp, max_prec);
+		pi_update_decode_poc(pi, tcp, max_precincts);
 	else
-		pi_update_decode_no_poc(pi, tcp, max_prec, max_res);
+		pi_update_decode_no_poc(pi, tcp, max_precincts, max_res);
 
 	return pi;
 }
@@ -1219,16 +1219,16 @@ PacketIter* pi_initialise_encode(const grk_image *p_image,
 	}
 
 	uint32_t max_res;
-	uint32_t max_prec;
+	uint64_t max_precincts;
 	uint32_t tx0, tx1, ty0, ty1;
 	uint32_t dx_min, dy_min;
 	grk_get_all_encoding_parameters(p_image, p_cp, tile_no, &tx0, &tx1, &ty0,
-			&ty1, &dx_min, &dy_min, &max_prec, &max_res, tmp_ptr);
+			&ty1, &dx_min, &dy_min, &max_precincts, &max_res, tmp_ptr);
 
 	uint32_t step_p = 1;
-	uint32_t step_c = max_prec * step_p;
-	uint32_t step_r = p_image->numcomps * step_c;
-	uint32_t step_l = max_res * step_r;
+	uint64_t step_c = max_precincts * step_p;
+	uint64_t step_r = p_image->numcomps * step_c;
+	uint64_t step_l = max_res * step_r;
 
 	/* set values for first packet iterator*/
 	pi->tp_on = p_cp->m_coding_params.m_enc.m_tp_on;
@@ -1321,10 +1321,10 @@ PacketIter* pi_initialise_encode(const grk_image *p_image,
 
 	if (tcp->POC && (GRK_IS_CINEMA(p_cp->rsiz) || p_t2_mode == FINAL_PASS))
 		pi_update_encode_poc_and_final(p_cp, tile_no, tx0, tx1, ty0, ty1,
-				max_prec, dx_min, dy_min);
+				max_precincts, dx_min, dy_min);
 	else
 		pi_update_encode_no_poc(p_cp, p_image->numcomps, tile_no, tx0, tx1,
-				ty0, ty1, max_prec, max_res, dx_min, dy_min);
+				ty0, ty1, max_precincts, max_res, dx_min, dy_min);
 
 	return pi;
 }
@@ -1627,18 +1627,18 @@ void pi_update_encoding_parameters(const grk_image *p_image,
 
 	auto tcp = &(p_cp->tcps[tile_no]);
 	uint32_t max_res;
-	uint32_t max_prec;
+	uint64_t max_precincts;
 	uint32_t tx0, tx1, ty0, ty1;
 	uint32_t dx_min, dy_min;
 	grk_get_encoding_parameters(p_image, p_cp, tile_no, &tx0, &tx1, &ty0, &ty1,
-			&dx_min, &dy_min, &max_prec, &max_res);
+			&dx_min, &dy_min, &max_precincts, &max_res);
 
 	if (tcp->POC) {
 		pi_update_encode_poc_and_final(p_cp, tile_no, tx0, tx1, ty0, ty1,
-				max_prec, dx_min, dy_min);
+				max_precincts, dx_min, dy_min);
 	} else {
 		pi_update_encode_no_poc(p_cp, p_image->numcomps, tile_no, tx0, tx1,
-				ty0, ty1, max_prec, max_res, dx_min, dy_min);
+				ty0, ty1, max_precincts, max_res, dx_min, dy_min);
 	}
 }
 

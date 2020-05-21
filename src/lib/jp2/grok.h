@@ -411,7 +411,8 @@ typedef struct _grk_poc {
 	/** Layer num end, resolution num end, component num end, given by POC */
 	uint32_t layno1, resno1, compno1;
 	/** Layer num start,precinct num start, precinct num end */
-	uint32_t layno0, precno0, precno1;
+	uint32_t layno0;
+	uint64_t precno0, precno1;
 	/** Progression order enum*/
 	GRK_PROG_ORDER prg1, prg;
 	/** Progression order string*/
@@ -423,11 +424,13 @@ typedef struct _grk_poc {
 	/** Start value, initialized in pi_initialise_encode*/
 	uint32_t resS, compS;
 	/** End value, initialized in pi_initialise_encode */
-	uint32_t layE, resE, compE, prcE;
+	uint32_t layE, resE, compE;
+	uint64_t prcE;
 	/** Start and end values of tile width and height, initialized in pi_initialise_encode*/
 	uint32_t txS, txE, tyS, tyE, dx, dy;
 	/** Temporary values for Tile parts, initialized in pi_create_encode */
-	uint32_t lay_t, res_t, comp_t, prc_t, tx0_t, ty0_t;
+	uint32_t lay_t, res_t, comp_t, tx0_t, ty0_t;
+	uint64_t prc_t;
 } grk_poc;
 
 /**@name RAW component compress parameters */

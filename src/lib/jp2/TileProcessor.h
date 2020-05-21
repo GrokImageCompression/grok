@@ -307,20 +307,20 @@ struct grk_tcd_tile {
 struct PacketTracker{
 	PacketTracker();
 	~PacketTracker();
-	void init(uint32_t numcomps, uint32_t numres, size_t numprec, uint32_t numlayers);
+	void init(uint32_t numcomps, uint32_t numres, uint64_t numprec, uint32_t numlayers);
 	void clear(void);
-	void packet_encoded(uint32_t comps, uint32_t res, size_t prec, uint32_t layer);
-	bool is_packet_encoded(uint32_t comps, uint32_t res, size_t prec, uint32_t layer);
+	void packet_encoded(uint32_t comps, uint32_t res, uint64_t prec, uint32_t layer);
+	bool is_packet_encoded(uint32_t comps, uint32_t res, uint64_t prec, uint32_t layer);
 private:
 	uint8_t *bits;
 
 	uint32_t m_numcomps;
 	uint32_t m_numres;
-	size_t   m_numprec;
+	uint64_t m_numprec;
 	uint32_t m_numlayers;
 
-	size_t get_buffer_len(uint32_t numcomps, uint32_t numres, size_t numprec, uint32_t numlayers);
-	size_t index(uint32_t comps, uint32_t res, size_t prec, uint32_t layer);
+	size_t get_buffer_len(uint32_t numcomps, uint32_t numres, uint64_t numprec, uint32_t numlayers);
+	uint64_t index(uint32_t comps, uint32_t res, uint64_t prec, uint32_t layer);
 };
 
 /**

@@ -104,11 +104,11 @@ struct PacketIter {
 	/** precise if the packet has been already used (useful for progression order change) */
 	int16_t *include;
 	/** layer step used to localize the packet in the include vector */
-	uint32_t step_l;
+	uint64_t step_l;
 	/** resolution step used to localize the packet in the include vector */
-	uint32_t step_r;
+	uint64_t step_r;
 	/** component step used to localize the packet in the include vector */
-	uint32_t step_c;
+	uint64_t step_c;
 	/** precinct step used to localize the packet in the include vector */
 	uint32_t step_p;
 	/** component that identify the packet */

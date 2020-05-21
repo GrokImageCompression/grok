@@ -228,7 +228,7 @@ void T1HT::postDecode(decodeBlockInfo *block) {
 		for (auto j = 0U; j < cblk_h; ++j) {
 			float *GRK_RESTRICT tile_row_data = (float*)tile_data;
 			for (auto i = 0U; i < cblk_w; ++i) {
-		       float val = (((*src & 0x7FFFFFFF) * block->stepsize));
+		       float val = (float)(*src & 0x7FFFFFFF) * block->stepsize;
 		       tile_row_data[i] = (*src & 0x80000000) ? -val : val;
 			   src++;
 			}
