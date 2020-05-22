@@ -99,13 +99,13 @@ public:
 								float fraction);
 
 
-	uint32_t get_SQcd_SQcc_size(CodeStream *p_j2k, uint16_t tile_no,
+	uint32_t get_SQcd_SQcc_size(CodeStream *codeStream, uint16_t tile_no,
 			uint32_t comp_no);
-	bool compare_SQcd_SQcc(CodeStream *p_j2k, uint16_t tile_no,
+	bool compare_SQcd_SQcc(CodeStream *codeStream, uint16_t tile_no,
 			uint32_t first_comp_no, uint32_t second_comp_no);
-	bool read_SQcd_SQcc(bool fromQCC, CodeStream *p_j2k, uint32_t comp_no,
+	bool read_SQcd_SQcc(bool fromQCC, CodeStream *codeStream, uint32_t comp_no,
 			uint8_t *p_header_data, uint16_t *header_size);
-	bool write_SQcd_SQcc(CodeStream *p_j2k, uint16_t tile_no,
+	bool write_SQcd_SQcc(CodeStream *codeStream, uint16_t tile_no,
 			uint32_t comp_no, BufferedStream *stream);
 	void apply_quant(TileComponentCodingParams *src, TileComponentCodingParams *dest);
 };

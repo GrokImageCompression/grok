@@ -61,13 +61,13 @@
 
 namespace grk {
 
-bool PPMMarker::read(CodeStream *p_j2k, uint8_t *p_header_data,
+bool PPMMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size){
 	CodingParams *cp = nullptr;
 	uint32_t Z_ppm;
 
 	assert(p_header_data != nullptr);
-	assert(p_j2k != nullptr);
+	assert(codeStream != nullptr);
 
 	/* We need to have the Z_ppm element + 1 byte of Nppm/Ippm at minimum */
 	if (header_size < 2) {
@@ -75,7 +75,7 @@ bool PPMMarker::read(CodeStream *p_j2k, uint8_t *p_header_data,
 		return false;
 	}
 
-	cp = &(p_j2k->m_cp);
+	cp = &(codeStream->m_cp);
 	cp->ppm = true;
 
 	/* Z_ppm */

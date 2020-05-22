@@ -62,7 +62,7 @@
 
 namespace grk {
 
-bool SIZMarker::read(CodeStream *p_j2k, uint8_t *p_header_data,
+bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size){
 	uint32_t i;
 	uint32_t nb_comp;
@@ -72,13 +72,13 @@ bool SIZMarker::read(CodeStream *p_j2k, uint8_t *p_header_data,
 	uint32_t tmp, tx1, ty1;
 	grk_image_comp *img_comp = nullptr;
 	TileCodingParams *current_tile_param = nullptr;
-	DecoderState  *decoder = &p_j2k->m_specific_param.m_decoder;
+	DecoderState  *decoder = &codeStream->m_specific_param.m_decoder;
 
-	assert(p_j2k != nullptr);
+	assert(codeStream != nullptr);
 	assert(p_header_data != nullptr);
 
-	auto image = p_j2k->m_private_image;
-	auto cp = &(p_j2k->m_cp);
+	auto image = codeStream->m_private_image;
+	auto cp = &(codeStream->m_cp);
 
 	/* minimum size == 39 - 3 (= minimum component parameter) */
 	if (header_size < 36) {
@@ -335,15 +335,15 @@ bool SIZMarker::read(CodeStream *p_j2k, uint8_t *p_header_data,
 
 }
 
-bool SIZMarker::write(CodeStream *p_j2k, BufferedStream *stream){
+bool SIZMarker::write(CodeStream *codeStream, BufferedStream *stream){
 	uint32_t i;
 	uint32_t size_len;
 
 	assert(stream != nullptr);
-	assert(p_j2k != nullptr);
+	assert(codeStream != nullptr);
 
-	auto image = p_j2k->m_private_image;
-	auto cp = &(p_j2k->m_cp);
+	auto image = codeStream->m_private_image;
+	auto cp = &(codeStream->m_cp);
 	size_len = 40 + 3 * image->numcomps;
 	auto img_comp = image->comps;
 

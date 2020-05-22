@@ -45,9 +45,9 @@ struct TileLengthMarkers {
 	~TileLengthMarkers();
 
 	bool read(uint8_t *p_header_data, uint16_t header_size);
-	bool write_updated(CodeStream *p_j2k);
-	bool write(CodeStream *p_j2k);
-	void update(CodeStream *p_j2k, uint32_t tile_part_size);
+	bool write_updated(CodeStream *codeStream);
+	bool write(CodeStream *codeStream);
+	void update(CodeStream *codeStream, uint32_t tile_part_size);
 
 	/**
 	 Add tile header marker information

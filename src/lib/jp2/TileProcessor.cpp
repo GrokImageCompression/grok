@@ -94,12 +94,12 @@ TileProcessor::~TileProcessor() {
 	delete plt_markers;
 }
 
-bool TileProcessor::set_decompress_area(CodeStream *p_j2k, grk_image *output_image,
+bool TileProcessor::set_decompress_area(CodeStream *codeStream, grk_image *output_image,
 		uint32_t start_x, uint32_t start_y, uint32_t end_x, uint32_t end_y) {
 
-	auto cp = &(p_j2k->m_cp);
-	auto image = p_j2k->m_private_image;
-	auto decoder = &p_j2k->m_specific_param.m_decoder;
+	auto cp = &(codeStream->m_cp);
+	auto image = codeStream->m_private_image;
+	auto decoder = &codeStream->m_specific_param.m_decoder;
 
 	/* Check if we have read the main header */
 	if (decoder->m_state != J2K_DEC_STATE_TPHSOT) {

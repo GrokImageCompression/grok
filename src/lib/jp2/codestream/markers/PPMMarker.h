@@ -68,12 +68,12 @@ public:
 	/**
 	 * Read a PPM marker (Packed headers, main header)
 	 *
-	 * @param       p_j2k                   JPEG 2000 codec
+	 * @param       codeStream                   JPEG 2000 code stream
 	 * @param       p_header_data   the data contained in the POC box.
 	 * @param       header_size   the size of the data contained in the POC marker.
 
 	 */
-	bool read(CodeStream *p_j2k, uint8_t *p_header_data,
+	bool read(CodeStream *codeStream, uint8_t *p_header_data,
 			uint16_t header_size);
 
 	/**

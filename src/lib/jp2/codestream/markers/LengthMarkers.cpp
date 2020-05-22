@@ -115,35 +115,35 @@ void TileLengthMarkers::push(uint8_t i_TLM, grk_tl_info info) {
 	}
 }
 
-bool TileLengthMarkers::write_updated(CodeStream *p_j2k) {
-	assert(p_j2k != nullptr);
-    assert(p_j2k->m_specific_param.m_encoder.m_total_tile_parts >= 1);
-    uint16_t totalTileParts = p_j2k->m_specific_param.m_encoder.m_total_tile_parts;
+bool TileLengthMarkers::write_updated(CodeStream *codeStream) {
+	assert(codeStream != nullptr);
+    assert(codeStream->m_specific_param.m_encoder.m_total_tile_parts >= 1);
+    uint16_t totalTileParts = codeStream->m_specific_param.m_encoder.m_total_tile_parts;
     uint32_t tlm_size = tlm_len_per_tile_part	* totalTileParts;
 
     push(m_index, grk_tl_info(totalTileParts-1, tlm_size));
 
 	uint64_t tlm_position =
-			p_j2k->m_tileProcessor->m_tlm_start + tlm_marker_start_bytes;
+			codeStream->m_tileProcessor->m_tlm_start + tlm_marker_start_bytes;
 	uint64_t current_position = m_stream->tell();
 
 	if (!m_stream->seek(tlm_position))
 		return false;
-	if (m_stream->write_bytes(p_j2k->m_tileProcessor->m_tlm_sot_offsets_buffer,
+	if (m_stream->write_bytes(codeStream->m_tileProcessor->m_tlm_sot_offsets_buffer,
 			tlm_size) != tlm_size)
 		return false;
 
 	return m_stream->seek(current_position);
 }
 
-bool TileLengthMarkers::write(CodeStream *p_j2k) {
-	assert(p_j2k != nullptr);
+bool TileLengthMarkers::write(CodeStream *codeStream) {
+	assert(codeStream != nullptr);
 
 	uint32_t tlm_size = tlm_marker_start_bytes
 			+ (tlm_len_per_tile_part
-					* p_j2k->m_specific_param.m_encoder.m_total_tile_parts);
+					* codeStream->m_specific_param.m_encoder.m_total_tile_parts);
 
-	p_j2k->m_tileProcessor->m_tlm_start = m_stream->tell();
+	codeStream->m_tileProcessor->m_tlm_start = m_stream->tell();
 
 	/* TLM */
 	if (!m_stream->write_short(J2K_MS_TLM))
@@ -166,19 +166,19 @@ bool TileLengthMarkers::write(CodeStream *p_j2k) {
 	 * remaining data */
 	return m_stream->skip(
 			(tlm_len_per_tile_part
-					* p_j2k->m_specific_param.m_encoder.m_total_tile_parts));
+					* codeStream->m_specific_param.m_encoder.m_total_tile_parts));
 }
 
-void TileLengthMarkers::update(CodeStream *p_j2k, uint32_t tile_part_size) {
+void TileLengthMarkers::update(CodeStream *codeStream, uint32_t tile_part_size) {
 	/* PSOT */
-	grk_write<uint32_t>(p_j2k->m_tileProcessor->m_tlm_sot_offsets_current,
-			p_j2k->m_tileProcessor->m_current_tile_index, 1);
-	++p_j2k->m_tileProcessor->m_tlm_sot_offsets_current;
+	grk_write<uint32_t>(codeStream->m_tileProcessor->m_tlm_sot_offsets_current,
+			codeStream->m_tileProcessor->m_current_tile_index, 1);
+	++codeStream->m_tileProcessor->m_tlm_sot_offsets_current;
 
 	/* PSOT */
-	grk_write<uint32_t>(p_j2k->m_tileProcessor->m_tlm_sot_offsets_current,
+	grk_write<uint32_t>(codeStream->m_tileProcessor->m_tlm_sot_offsets_current,
 			tile_part_size, 4);
-	p_j2k->m_tileProcessor->m_tlm_sot_offsets_current += 4;
+	codeStream->m_tileProcessor->m_tlm_sot_offsets_current += 4;
 }
 
 bool TileLengthMarkers::add_to_index(uint16_t tileno, grk_codestream_index *cstr_index,

@@ -68,7 +68,7 @@ namespace grk {
 static const uint16_t tabMaxSubLevelFromMainLevel[] = { 15, /* unspecified */
 1, 1, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 
-int J2KProfile::get_imf_max_NL(grk_cparameters *parameters, grk_image *image) {
+int Profile::get_imf_max_NL(grk_cparameters *parameters, grk_image *image) {
 	/* Decomposition levels */
 	const uint16_t rsiz = parameters->rsiz;
 	const uint16_t profile = GRK_GET_IMF_OR_BROADCAST_PROFILE(rsiz);
@@ -115,7 +115,7 @@ int J2KProfile::get_imf_max_NL(grk_cparameters *parameters, grk_image *image) {
 	return -1;
 }
 
-void J2KProfile::set_imf_parameters(grk_cparameters *parameters,
+void Profile::set_imf_parameters(grk_cparameters *parameters,
 		grk_image *image) {
 	const uint16_t rsiz = parameters->rsiz;
 	const uint16_t profile = GRK_GET_IMF_OR_BROADCAST_PROFILE(rsiz);
@@ -144,7 +144,7 @@ void J2KProfile::set_imf_parameters(grk_cparameters *parameters,
 	/* Adjust the number of resolutions if set to its defaults */
 	if (parameters->numresolution == GRK_COMP_PARAM_DEFAULT_NUMRESOLUTION
 			&& image->x0 == 0 && image->y0 == 0) {
-		const int max_NL = J2KProfile::get_imf_max_NL(parameters, image);
+		const int max_NL = Profile::get_imf_max_NL(parameters, image);
 		if (max_NL >= 0 && parameters->numresolution > (uint32_t) max_NL)
 			parameters->numresolution = (uint32_t) (max_NL + 1);
 
@@ -183,7 +183,7 @@ void J2KProfile::set_imf_parameters(grk_cparameters *parameters,
 	}
 }
 
-bool J2KProfile::is_imf_compliant(grk_cparameters *parameters,
+bool Profile::is_imf_compliant(grk_cparameters *parameters,
 		grk_image *image) {
 	assert(parameters->numresolution > 0);
 	if (parameters->numresolution == 0)
@@ -585,7 +585,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters,
 
 //////////////////////////////////////////////////////////////
 
-int J2KProfile::get_broadcast_max_NL(grk_cparameters *parameters,
+int Profile::get_broadcast_max_NL(grk_cparameters *parameters,
 		grk_image *image) {
 	/* Decomposition levels */
 	const uint16_t rsiz = parameters->rsiz;
@@ -633,7 +633,7 @@ int J2KProfile::get_broadcast_max_NL(grk_cparameters *parameters,
 	return -1;
 }
 
-void J2KProfile::set_broadcast_parameters(grk_cparameters *parameters) {
+void Profile::set_broadcast_parameters(grk_cparameters *parameters) {
 	const uint16_t rsiz = parameters->rsiz;
 	const uint16_t profile = GRK_GET_IMF_OR_BROADCAST_PROFILE(rsiz);
 
@@ -674,7 +674,7 @@ void J2KProfile::set_broadcast_parameters(grk_cparameters *parameters) {
 	}
 }
 
-bool J2KProfile::is_broadcast_compliant(grk_cparameters *parameters,
+bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 		grk_image *image) {
 	assert(parameters->numresolution > 0);
 	if (parameters->numresolution == 0 || image->numcomps == 0)
@@ -917,7 +917,7 @@ bool J2KProfile::is_broadcast_compliant(grk_cparameters *parameters,
  * Cinema Profile
  *****************/
 
-void J2KProfile::initialise_4K_poc(grk_poc *POC, uint32_t numres) {
+void Profile::initialise_4K_poc(grk_poc *POC, uint32_t numres) {
 	assert(numres > 0);
 	POC[0].tile = 1;
 	POC[0].resno0 = 0;
@@ -935,7 +935,7 @@ void J2KProfile::initialise_4K_poc(grk_poc *POC, uint32_t numres) {
 	POC[1].prg1 = GRK_CPRL;
 }
 
-void J2KProfile::set_cinema_parameters(grk_cparameters *parameters,
+void Profile::set_cinema_parameters(grk_cparameters *parameters,
 		grk_image *image) {
 	/* No tiling */
 	parameters->tile_size_on = false;
@@ -1029,7 +1029,7 @@ void J2KProfile::set_cinema_parameters(grk_cparameters *parameters,
 
 	/* Progression order changes for 4K, disallowed for 2K */
 	if (parameters->rsiz == GRK_PROFILE_CINEMA_4K) {
-		 J2KProfile::initialise_4K_poc(parameters->POC,
+		 Profile::initialise_4K_poc(parameters->POC,
 				parameters->numresolution);
 		 parameters->numpocs = 2;
 	} else {
@@ -1075,7 +1075,7 @@ void J2KProfile::set_cinema_parameters(grk_cparameters *parameters,
 
 }
 
-bool J2KProfile::is_cinema_compliant(grk_image *image, uint16_t rsiz) {
+bool Profile::is_cinema_compliant(grk_image *image, uint16_t rsiz) {
 	/* Number of components */
 	if (image->numcomps != 3) {
 		GROK_WARN("JPEG 2000 profile 3 (2k digital cinema) requires:\n"

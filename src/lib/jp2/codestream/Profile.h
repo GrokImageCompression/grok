@@ -29,11 +29,11 @@
  * Copyright (c) 2003-2007, Francois-Olivier Devaux
  * Copyright (c) 2003-2014, Antonin Descampe
  * Copyright (c) 2005, Herve Drolon, FreeImage Team
- * Copyright (c) 2006-2007, Parvatha Elangovan
  * Copyright (c) 2008, Jerome Fimes, Communications & Systemes <jerome.fimes@c-s.fr>
+ * Copyright (c) 2006-2007, Parvatha Elangovan
+ * Copyright (c) 2010-2011, Kaori Hagihara
  * Copyright (c) 2011-2012, Centre National d'Etudes Spatiales (CNES), France
  * Copyright (c) 2012, CS Systemes d'Information, France
- *
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -58,102 +58,22 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
-
-#include <vector>
-#include <map>
+#include "grok_includes.h"
 
 namespace grk {
 
-struct grk_jp2;
-
-
-/**
- * Dump some elements from the J2K decompression structure .
- *
- *@param p_j2k				JPEG 2000 codec
- *@param flag				flag to describe what elements are dumped.
- *@param out_stream			output stream where dump the elements.
- *
- */
-void j2k_dump(CodeStream *p_j2k, int32_t flag, FILE *out_stream);
-
-/**
- * Dump an image header structure.
- *
- *@param image			the image header to dump.
- *@param dev_dump_flag		flag to describe if we are in the case of this function is use outside j2k_dump function
- *@param out_stream			output stream where dump the elements.
- */
-void j2k_dump_image_header(grk_image *image, bool dev_dump_flag,
-		FILE *out_stream);
-
-/**
- * Dump a component image header structure.
- *
- *@param comp		the component image header to dump.
- *@param dev_dump_flag		flag to describe if we are in the case of this function is use outside j2k_dump function
- *@param out_stream			output stream where dump the elements.
- */
-void j2k_dump_image_comp_header( grk_image_comp  *comp, bool dev_dump_flag,
-		FILE *out_stream);
-
-/**
- * Get the code stream info from a JPEG2000 codec.
- *
- *@param	p_j2k				the component image header to dump.
- *
- *@return	the code stream information extract from the jpg2000 codec
- */
- grk_codestream_info_v2  *  j2k_get_cstr_info(CodeStream *p_j2k);
-
-/**
- * Get the code stream index from a JPEG2000 codec.
- *
- *@param	p_j2k				the component image header to dump.
- *
- *@return	the code stream index extract from the jpg2000 codec
- */
- grk_codestream_index  *  j2k_get_cstr_index(CodeStream *p_j2k);
-
- grk_codestream_index  *  j2k_create_cstr_index(void);
-
- bool j2k_allocate_tile_element_cstr_index(CodeStream *p_j2k);
-
- /**
-  * Destroys a code stream index structure.
-  *
-  * @param	p_cstr_ind	the code stream index parameter to destroy.
-  */
- void j2k_destroy_cstr_index( grk_codestream_index  *p_cstr_ind);
-
- /**
-  * Dump some elements from the JP2 decompression structure .
-  *
-  *@param p_jp2        the jp2 codec.
-  *@param flag        flag to describe what elements are dump.
-  *@param out_stream      output stream where dump the elements.
-  *
-  */
- void jp2_dump(grk_jp2 *p_jp2, int32_t flag, FILE *out_stream);
-
- /**
-  * Get the code stream info from a JPEG2000 codec.
-  *
-  *@param  p_jp2        jp2 codec.
-  *
-  *@return  the code stream information extract from the jpg2000 codec
-  */
-  grk_codestream_info_v2  *  jp2_get_cstr_info(grk_jp2 *p_jp2);
-
- /**
-  * Get the code stream index from a JPEG2000 codec.
-  *
-  *@param  p_jp2        jp2 codec.
-  *
-  *@return  the code stream index extract from the jpg2000 codec
-  */
-  grk_codestream_index  *  jp2_get_cstr_index(grk_jp2 *p_jp2);
-
+class Profile {
+public:
+	static void initialise_4K_poc(grk_poc *POC, uint32_t numres);
+	static void set_cinema_parameters(grk_cparameters *parameters, grk_image *image);
+	static bool is_cinema_compliant(grk_image *image, uint16_t rsiz);
+	static void set_imf_parameters(grk_cparameters *parameters, grk_image *image);
+	static bool is_imf_compliant(grk_cparameters *parameters, grk_image *image);
+	static void set_broadcast_parameters(grk_cparameters *parameters);
+	static bool is_broadcast_compliant(grk_cparameters *parameters, grk_image *image);
+private:
+static int get_imf_max_NL(grk_cparameters *parameters, grk_image *image);
+static int get_broadcast_max_NL(grk_cparameters *parameters, grk_image *image);
+};
 
 }

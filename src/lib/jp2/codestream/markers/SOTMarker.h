@@ -71,21 +71,21 @@ public:
 	/**
 	 * Writes the SOT marker (Start of tile-part)
 	 *
-	 * @param       p_j2k            J2K codec.
+	 * @param       codeStream            JPEG 2000 code stream
 	 */
-	bool write(CodeStream *p_j2k);
+	bool write(CodeStream *codeStream);
 
 	bool write_psot(uint32_t tile_part_bytes_written);
 
 	/**
 	 * Decode a SOT marker (Start of tile-part)
 	 *
-	 * @param       p_j2k           JPEG 2000 codec
+	 * @param       codeStream           JPEG 2000 code stream
 	 * @param       p_header_data   the data contained in the SOT marker.
 	 * @param       header_size   the size of the data contained in the PPT marker.
 
 	 */
-	 bool read(CodeStream *p_j2k, uint8_t *p_header_data,
+	 bool read(CodeStream *codeStream, uint8_t *p_header_data,
 			uint16_t header_size);
 
 	 /**

@@ -74,53 +74,53 @@ namespace grk {
  * Reads a IHDR box - Image Header box
  *
  * @param	p_image_header_data			pointer to actual data (already read from file)
- * @param	jp2							the JPEG 2000 file codec.
+ * @param	fileFormat							the JPEG 2000 file codec.
  * @param	image_header_size			the size of the image header
  
  *
  * @return	true if the image header is valid, false else.
  */
-static bool jp2_read_ihdr(grk_jp2 *jp2, uint8_t *p_image_header_data,
+static bool jp2_read_ihdr(FileFormat *fileFormat, uint8_t *p_image_header_data,
 		uint32_t image_header_size);
 
 /**
  * Writes the Image Header box - Image Header box.
  *
- * @param jp2					JPEG 2000 file codec.
+ * @param fileFormat					JPEG 2000 file codec.
  * @param p_nb_bytes_written	pointer to store the nb of bytes written by the function.
  *
  * @return	the data being copied.
  */
-static uint8_t* jp2_write_ihdr(grk_jp2 *jp2, uint32_t *p_nb_bytes_written);
+static uint8_t* jp2_write_ihdr(FileFormat *fileFormat, uint32_t *p_nb_bytes_written);
 
 /**
  * Read XML box
  *
- * @param	jp2					JPEG 2000 file codec.
+ * @param	fileFormat					JPEG 2000 file codec.
  * @param	p_xml_data			pointer to actual data (already read from file)
  * @param	xml_size			size of the xml data
  
  *
  * @return	true if the image header is valid, false else.
  */
-static bool jp2_read_xml(grk_jp2 *jp2, uint8_t *p_xml_data, uint32_t xml_size);
+static bool jp2_read_xml(FileFormat *fileFormat, uint8_t *p_xml_data, uint32_t xml_size);
 
 /**
  * Write XML box
  *
- * @param jp2					JPEG 2000 file codec.
+ * @param fileFormat					JPEG 2000 file codec.
  * @param p_nb_bytes_written		pointer to store the nb of bytes written by the function.
  *
  * @return	the data being copied.
  */
-static uint8_t* jp2_write_xml(grk_jp2 *jp2, uint32_t *p_nb_bytes_written);
+static uint8_t* jp2_write_xml(FileFormat *fileFormat, uint32_t *p_nb_bytes_written);
 
 /**
  * Write buffer box
  *
  * @param boxId					box id.
  * @param buffer					buffer with data
- * @param jp2					JPEG 2000 file codec.
+ * @param fileFormat					JPEG 2000 file codec.
  * @param p_nb_bytes_written		pointer to store the nb of bytes written by the function.
  *
  * @return	the data being copied.
@@ -131,63 +131,63 @@ static uint8_t* jp2_write_buffer(uint32_t boxId, grk_jp2_buffer *buffer,
 /**
  * Read a UUID box
  *
- * @param	jp2					JPEG 2000 file codec.
+ * @param	fileFormat					JPEG 2000 file codec.
  * @param	p_header_data		pointer to actual data (already read from file)
  * @param	p_header_data_size	size of data
  
  *
  * @return	true if the image header is valid, false else.
  */
-static bool jp2_read_uuid(grk_jp2 *jp2, uint8_t *p_header_data,
+static bool jp2_read_uuid(FileFormat *fileFormat, uint8_t *p_header_data,
 		uint32_t header_data_size);
 
 /**
  * Reads a Resolution box
  *
  * @param	p_resolution_data			pointer to actual data (already read from file)
- * @param	jp2							the JPEG 2000 file codec.
+ * @param	fileFormat							the JPEG 2000 file codec.
  * @param	resolution_size			the size of the image header
  
  *
  * @return	true if the image header is valid, false else.
  */
-static bool jp2_read_res(grk_jp2 *jp2, uint8_t *p_resolution_data,
+static bool jp2_read_res(FileFormat *fileFormat, uint8_t *p_resolution_data,
 		uint32_t resolution_size);
 
 /**
  * Writes the Resolution box
  *
- * @param jp2					JPEG 2000 file codec.
+ * @param fileFormat					JPEG 2000 file codec.
  * @param p_nb_bytes_written	pointer to store the nb of bytes written by the function.
  *
  * @return	the data being copied.
  */
-static uint8_t* jp2_write_res(grk_jp2 *jp2, uint32_t *p_nb_bytes_written);
+static uint8_t* jp2_write_res(FileFormat *fileFormat, uint32_t *p_nb_bytes_written);
 
 /**
  * Writes the Bit per Component box.
  *
- * @param	jp2						JPEG 2000 file codec.
+ * @param	fileFormat						JPEG 2000 file codec.
  * @param	p_nb_bytes_written		pointer to store the nb of bytes written by the function.
  *
  * @return	the data being copied.
  */
-static uint8_t* jp2_write_bpcc(grk_jp2 *jp2, uint32_t *p_nb_bytes_written);
+static uint8_t* jp2_write_bpcc(FileFormat *fileFormat, uint32_t *p_nb_bytes_written);
 
 /**
  * Reads a Bit per Component box.
  *
  * @param	p_bpc_header_data			pointer to actual data (already read from file)
- * @param	jp2							the JPEG 2000 file codec.
+ * @param	fileFormat							the JPEG 2000 file codec.
  * @param	bpc_header_size			the size of the bpc header
  
  *
  * @return	true if the bpc header is valid, false else.
  */
-static bool jp2_read_bpcc(grk_jp2 *jp2, uint8_t *p_bpc_header_data,
+static bool jp2_read_bpcc(FileFormat *fileFormat, uint8_t *p_bpc_header_data,
 		uint32_t bpc_header_size);
 
-static bool jp2_read_cdef(grk_jp2 *jp2, uint8_t *p_cdef_header_data,
+static bool jp2_read_cdef(FileFormat *fileFormat, uint8_t *p_cdef_header_data,
 		uint32_t cdef_header_size);
 
 static void jp2_apply_cdef(grk_image *image, grk_jp2_color *color);
@@ -195,109 +195,109 @@ static void jp2_apply_cdef(grk_image *image, grk_jp2_color *color);
 /**
  * Writes the Channel Definition box.
  *
- * @param jp2					JPEG 2000 file codec.
+ * @param fileFormat					JPEG 2000 file codec.
  * @param p_nb_bytes_written	pointer to store the nb of bytes written by the function.
  *
  * @return	the data being copied.
  */
-static uint8_t* jp2_write_cdef(grk_jp2 *jp2, uint32_t *p_nb_bytes_written);
+static uint8_t* jp2_write_cdef(FileFormat *fileFormat, uint32_t *p_nb_bytes_written);
 
 /**
  * Writes the Colour Specification box.
  *
- * @param jp2					JPEG 2000 file codec.
+ * @param fileFormat					JPEG 2000 file codec.
  * @param p_nb_bytes_written	pointer to store the nb of bytes written by the function.
  *
  * @return	the data being copied.
  */
-static uint8_t* jp2_write_colr(grk_jp2 *jp2, uint32_t *p_nb_bytes_written);
+static uint8_t* jp2_write_colr(FileFormat *fileFormat, uint32_t *p_nb_bytes_written);
 
 /**
  * Writes a FTYP box - File type box
  *
  * @param	stream			the stream to write data to.
- * @param	jp2			the JPEG 2000 file codec.
+ * @param	fileFormat			the JPEG 2000 file codec.
  
  *
  * @return	true if writing was successful.
  */
-static bool jp2_write_ftyp(grk_jp2 *jp2, BufferedStream *stream);
+static bool jp2_write_ftyp(FileFormat *fileFormat, BufferedStream *stream);
 
 /**
  * Reads a a FTYP box - File type box
  *
  * @param	p_header_data	the data contained in the FTYP box.
- * @param	jp2				the JPEG 2000 file codec.
+ * @param	fileFormat				the JPEG 2000 file codec.
  * @param	header_size	the size of the data contained in the FTYP box.
  .
  *
  * @return true if the FTYP box is valid.
  */
-static bool jp2_read_ftyp(grk_jp2 *jp2, uint8_t *p_header_data,
+static bool jp2_read_ftyp(FileFormat *fileFormat, uint8_t *p_header_data,
 		uint32_t header_size);
 
-static bool jp2_skip_jp2c(grk_jp2 *jp2, BufferedStream *stream);
+static bool jp2_skip_jp2c(FileFormat *fileFormat, BufferedStream *stream);
 
 /**
  * Reads the Jpeg2000 file Header box - JP2 Header box (warning, this is a super box).
  *
  * @param	p_header_data	the data contained in the file header box.
- * @param	jp2				the JPEG 2000 file codec.
+ * @param	fileFormat				the JPEG 2000 file codec.
  * @param	header_size	the size of the data contained in the file header box.
  .
  *
  * @return true if the JP2 Header box was successfully recognized.
  */
-static bool jp2_read_jp2h(grk_jp2 *jp2, uint8_t *p_header_data,
+static bool jp2_read_jp2h(FileFormat *fileFormat, uint8_t *p_header_data,
 		uint32_t header_size);
 
 /**
  * Writes the Jpeg2000 file Header box - JP2 Header box (warning, this is a super box).
  *
- * @param  jp2      the JPEG 2000 file codec.
+ * @param  fileFormat      the JPEG 2000 file codec.
  * @param  stream      the stream to write data to.
  
  *
  * @return true if writing was successful.
  */
-static bool jp2_write_jp2h(grk_jp2 *jp2, BufferedStream *stream);
+static bool jp2_write_jp2h(FileFormat *fileFormat, BufferedStream *stream);
 
-static bool jp2_write_uuids(grk_jp2 *jp2, BufferedStream *stream);
+static bool jp2_write_uuids(FileFormat *fileFormat, BufferedStream *stream);
 
 /**
  * Writes the Jpeg2000 code stream Header box - JP2C Header box. This function must be called AFTER the coding has been done.
  *
  * @param	stream			the stream to write data to.
- * @param	jp2			the JPEG 2000 file codec.
+ * @param	fileFormat			the JPEG 2000 file codec.
  
  *
  * @return true if writing was successful.
  */
-static bool jp2_write_jp2c(grk_jp2 *jp2, BufferedStream *stream);
+static bool jp2_write_jp2c(FileFormat *fileFormat, BufferedStream *stream);
 
 /**
  * Reads a JPEG 2000 file signature box.
  *
  * @param	p_header_data	the data contained in the signature box.
- * @param	jp2				the JPEG 2000 file codec.
+ * @param	fileFormat				the JPEG 2000 file codec.
  * @param	header_size	the size of the data contained in the signature box.
  .
  *
  * @return true if the file signature box is valid.
  */
-static bool jp2_read_jp(grk_jp2 *jp2, uint8_t *p_header_data,
+static bool jp2_read_jp(FileFormat *fileFormat, uint8_t *p_header_data,
 		uint32_t header_size);
 
 /**
  * Writes a JPEG 2000 file signature box.
  *
  * @param stream the stream to write data to.
- * @param	jp2			the JPEG 2000 file codec.
+ * @param	fileFormat			the JPEG 2000 file codec.
  
  *
  * @return true if writing was successful.
  */
-static bool jp2_write_jp(grk_jp2 *jp2, BufferedStream *stream);
+static bool jp2_write_jp(FileFormat *fileFormat, BufferedStream *stream);
 
 /**
  Apply collected palette data
@@ -311,19 +311,19 @@ static void jp2_free_pclr(grk_jp2_color *color);
 /**
  * Collect palette data
  *
- * @param jp2 JP2 handle
+ * @param fileFormat JP2 handle
  * @param p_pclr_header_data    FIXME DOC
  * @param pclr_header_size    FIXME DOC
  *
  * @return true if successful, returns false otherwise
  */
-static bool jp2_read_pclr(grk_jp2 *jp2, uint8_t *p_pclr_header_data,
+static bool jp2_read_pclr(FileFormat *fileFormat, uint8_t *p_pclr_header_data,
 		uint32_t pclr_header_size);
 
 /**
  * Collect component mapping data
  *
- * @param jp2                 JP2 handle
+ * @param fileFormat                 JP2 handle
  * @param p_cmap_header_data  FIXME DOC
  * @param cmap_header_size  FIXME DOC
 
@@ -331,20 +331,20 @@ static bool jp2_read_pclr(grk_jp2 *jp2, uint8_t *p_pclr_header_data,
  * @return true if successful, returns false otherwise
  */
 
-static bool jp2_read_cmap(grk_jp2 *jp2, uint8_t *p_cmap_header_data,
+static bool jp2_read_cmap(FileFormat *fileFormat, uint8_t *p_cmap_header_data,
 		uint32_t cmap_header_size);
 
 /**
  * Reads the Color Specification box.
  *
  * @param	p_colr_header_data			pointer to actual data (already read from file)
- * @param	jp2							the JPEG 2000 file codec.
+ * @param	fileFormat							the JPEG 2000 file codec.
  * @param	colr_header_size			the size of the color header
  
  *
  * @return	true if the bpc header is valid, false else.
  */
-static bool jp2_read_colr(grk_jp2 *jp2, uint8_t *p_colr_header_data,
+static bool jp2_read_colr(FileFormat *fileFormat, uint8_t *p_colr_header_data,
 		uint32_t colr_header_size);
 
 /*@}*/
@@ -355,35 +355,35 @@ static bool jp2_read_colr(grk_jp2 *jp2, uint8_t *p_colr_header_data,
  * Sets up the procedures to do on writing header after the code stream.
  * Developers wanting to extend the library can add their own writing procedures.
  */
-static bool jp2_init_end_header_writing(grk_jp2 *jp2);
+static bool jp2_init_end_header_writing(FileFormat *fileFormat);
 
 /**
  * Sets up the procedures to do on reading header after the code stream.
  * Developers wanting to extend the library can add their own writing procedures.
  */
-static bool jp2_init_end_header_reading(grk_jp2 *jp2);
+static bool jp2_init_end_header_reading(FileFormat *fileFormat);
 
 /**
  * Reads a JPEG 2000 file header structure.
  *
- * @param jp2 the JPEG 2000 file header structure.
+ * @param fileFormat the JPEG 2000 file header structure.
  * @param stream the stream to read data from.
  
  *
  * @return true if the box is valid.
  */
-static bool jp2_read_header_procedure(grk_jp2 *jp2, BufferedStream *stream);
+static bool jp2_read_header_procedure(FileFormat *fileFormat, BufferedStream *stream);
 
 /**
  * Executes the given procedures on the given codec.
  *
  * @param	p_procedure_list	the list of procedures to execute
- * @param	jp2					the JPEG 2000 file codec to execute the procedures on.
+ * @param	fileFormat					the JPEG 2000 file codec to execute the procedures on.
  * @param	stream					the stream to execute the procedures on.
  *
  * @return	true				if all the procedures were successfully executed.
  */
-static bool jp2_exec(grk_jp2 *jp2, std::vector<jp2_procedure> *p_procedure_list,
+static bool jp2_exec(FileFormat *fileFormat, std::vector<jp2_procedure> *p_procedure_list,
 		BufferedStream *stream);
 
 /**
@@ -403,14 +403,14 @@ static bool jp2_read_box_hdr(grk_jp2_box *box, uint32_t *p_number_bytes_read,
  * Sets up the validation ,i.e. adds the procedures to launch to make sure the codec parameters
  * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
-static bool jp2_init_compress_validation(grk_jp2 *jp2);
+static bool jp2_init_compress_validation(FileFormat *fileFormat);
 
 /**
  * Sets up the procedures to do on writing header. Developers wanting to extend the library can add their own writing procedures.
  */
-static bool jp2_init_header_writing(grk_jp2 *jp2);
+static bool jp2_init_header_writing(FileFormat *fileFormat);
 
-static bool jp2_default_validation(grk_jp2 *jp2, BufferedStream *stream);
+static bool jp2_default_validation(FileFormat *fileFormat, BufferedStream *stream);
 
 /**
  * Finds the image execution function related to the given box id.
@@ -459,13 +459,13 @@ static bool jp2_read_box(grk_jp2_box *box, uint8_t *p_data,
  * Sets up the validation ,i.e. adds the procedures to launch to make sure the codec parameters
  * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
-static bool jp2_init_decompress_validation(grk_jp2 *jp2);
+static bool jp2_init_decompress_validation(FileFormat *fileFormat);
 
 /**
  * Sets up the procedures to do on reading header.
  * Developers wanting to extend the library can add their own writing procedures.
  */
-static bool jp2_init_header_reading(grk_jp2 *jp2);
+static bool jp2_init_header_reading(FileFormat *fileFormat);
 
 /***
  * Read box length and type only
@@ -544,13 +544,13 @@ static void jp2_write_url( grk_cio  *stream, char *Idx_file)
 }
 #endif
 
-static bool jp2_read_ihdr(grk_jp2 *jp2, uint8_t *p_image_header_data,
+static bool jp2_read_ihdr(FileFormat *fileFormat, uint8_t *p_image_header_data,
 		uint32_t image_header_size) {
 
 	assert(p_image_header_data != nullptr);
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 
-	if (jp2->comps != nullptr) {
+	if (fileFormat->comps != nullptr) {
 		GROK_WARN("Ignoring ihdr box. First ihdr box already read");
 		return true;
 	}
@@ -560,29 +560,29 @@ static bool jp2_read_ihdr(grk_jp2 *jp2, uint8_t *p_image_header_data,
 		return false;
 	}
 
-	grk_read<uint32_t>(p_image_header_data, &(jp2->h), 4); /* HEIGHT */
+	grk_read<uint32_t>(p_image_header_data, &(fileFormat->h), 4); /* HEIGHT */
 	p_image_header_data += 4;
-	grk_read<uint32_t>(p_image_header_data, &(jp2->w), 4); /* WIDTH */
+	grk_read<uint32_t>(p_image_header_data, &(fileFormat->w), 4); /* WIDTH */
 	p_image_header_data += 4;
-	grk_read<uint32_t>(p_image_header_data, &(jp2->numcomps), 2); /* NC */
+	grk_read<uint32_t>(p_image_header_data, &(fileFormat->numcomps), 2); /* NC */
 	p_image_header_data += 2;
 
-	if ((jp2->numcomps == 0) || (jp2->numcomps > max_num_components)) {
+	if ((fileFormat->numcomps == 0) || (fileFormat->numcomps > max_num_components)) {
 		GROK_ERROR(
 				"JP2 IHDR box: num components=%d does not conform to standard",
-				jp2->numcomps);
+				fileFormat->numcomps);
 		return false;
 	}
 
 	/* allocate memory for components */
-	jp2->comps = (grk_jp2_comps*) grk_calloc(jp2->numcomps,
+	fileFormat->comps = (grk_jp2_comps*) grk_calloc(fileFormat->numcomps,
 			sizeof(grk_jp2_comps));
-	if (jp2->comps == 0) {
+	if (fileFormat->comps == 0) {
 		GROK_ERROR("Not enough memory to handle image header (ihdr)");
 		return false;
 	}
 
-	grk_read<uint32_t>(p_image_header_data, &(jp2->bpc), 1); /* BPC */
+	grk_read<uint32_t>(p_image_header_data, &(fileFormat->bpc), 1); /* BPC */
 	++p_image_header_data;
 
 	///////////////////////////////////////////////////
@@ -593,49 +593,49 @@ static bool jp2_read_ihdr(grk_jp2 *jp2, uint8_t *p_image_header_data,
 	// Otherwise, low 7 bits of bpc determine bits per component,
 	// and high bit set indicates signed data,
 	// unset indicates unsigned data
-	if (((jp2->bpc != 0xFF)
-			&& ((jp2->bpc & 0x7F) > (max_supported_precision - 1)))) {
-		GROK_ERROR("JP2 IHDR box: bpc=%d not supported.", jp2->bpc);
+	if (((fileFormat->bpc != 0xFF)
+			&& ((fileFormat->bpc & 0x7F) > (max_supported_precision - 1)))) {
+		GROK_ERROR("JP2 IHDR box: bpc=%d not supported.", fileFormat->bpc);
 		return false;
 	}
 
-	grk_read<uint32_t>(p_image_header_data, &(jp2->C), 1); /* C */
+	grk_read<uint32_t>(p_image_header_data, &(fileFormat->C), 1); /* C */
 	++p_image_header_data;
 
 	/* Should be equal to 7 cf. chapter about image header box of the norm */
-	if (jp2->C != 7) {
+	if (fileFormat->C != 7) {
 		GROK_WARN(
 				"JP2 IHDR box: compression type indicate that the file is not a conforming JP2 file (%d) ",
-				jp2->C);
+				fileFormat->C);
 	}
 
-	grk_read<uint32_t>(p_image_header_data, &(jp2->UnkC), 1); /* UnkC */
+	grk_read<uint32_t>(p_image_header_data, &(fileFormat->UnkC), 1); /* UnkC */
 	++p_image_header_data;
 
 	// UnkC must be binary : {0,1}
-	if ((jp2->UnkC > 1)) {
+	if ((fileFormat->UnkC > 1)) {
 		GROK_ERROR("JP2 IHDR box: UnkC=%d does not conform to standard",
-				jp2->UnkC);
+				fileFormat->UnkC);
 		return false;
 	}
 
-	grk_read<uint32_t>(p_image_header_data, &(jp2->IPR), 1); /* IPR */
+	grk_read<uint32_t>(p_image_header_data, &(fileFormat->IPR), 1); /* IPR */
 	++p_image_header_data;
 
 	// IPR must be binary : {0,1}
-	if ((jp2->IPR > 1)) {
+	if ((fileFormat->IPR > 1)) {
 		GROK_ERROR("JP2 IHDR box: IPR=%d does not conform to standard",
-				jp2->IPR);
+				fileFormat->IPR);
 		return false;
 	}
 
 	return true;
 }
 
-static uint8_t* jp2_write_ihdr(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
+static uint8_t* jp2_write_ihdr(FileFormat *fileFormat, uint32_t *p_nb_bytes_written) {
 	uint8_t *ihdr_data, *current_ihdr_ptr;
 
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 	assert(p_nb_bytes_written != nullptr);
 
 	/* default image header is 22 bytes wide */
@@ -655,31 +655,31 @@ static uint8_t* jp2_write_ihdr(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
 	current_ihdr_ptr += 4;
 
 	/* HEIGHT */
-	grk_write<uint32_t>(current_ihdr_ptr, jp2->h, 4);
+	grk_write<uint32_t>(current_ihdr_ptr, fileFormat->h, 4);
 	current_ihdr_ptr += 4;
 
 	/* WIDTH */
-	grk_write<uint32_t>(current_ihdr_ptr, jp2->w, 4);
+	grk_write<uint32_t>(current_ihdr_ptr, fileFormat->w, 4);
 	current_ihdr_ptr += 4;
 
 	/* NC */
-	grk_write<uint32_t>(current_ihdr_ptr, jp2->numcomps, 2);
+	grk_write<uint32_t>(current_ihdr_ptr, fileFormat->numcomps, 2);
 	current_ihdr_ptr += 2;
 
 	/* BPC */
-	grk_write<uint32_t>(current_ihdr_ptr, jp2->bpc, 1);
+	grk_write<uint32_t>(current_ihdr_ptr, fileFormat->bpc, 1);
 	++current_ihdr_ptr;
 
 	/* C : Always 7 */
-	grk_write<uint32_t>(current_ihdr_ptr, jp2->C, 1);
+	grk_write<uint32_t>(current_ihdr_ptr, fileFormat->C, 1);
 	++current_ihdr_ptr;
 
 	/* UnkC, colorspace unknown */
-	grk_write<uint32_t>(current_ihdr_ptr, jp2->UnkC, 1);
+	grk_write<uint32_t>(current_ihdr_ptr, fileFormat->UnkC, 1);
 	++current_ihdr_ptr;
 
 	/* IPR, no intellectual property */
-	grk_write<uint32_t>(current_ihdr_ptr, jp2->IPR, 1);
+	grk_write<uint32_t>(current_ihdr_ptr, fileFormat->IPR, 1);
 	++current_ihdr_ptr;
 
 	*p_nb_bytes_written = 22;
@@ -716,43 +716,43 @@ static uint8_t* jp2_write_buffer(uint32_t boxId, grk_jp2_buffer *buffer,
 	return data;
 }
 
-static bool jp2_read_xml(grk_jp2 *jp2, uint8_t *p_xml_data, uint32_t xml_size) {
+static bool jp2_read_xml(FileFormat *fileFormat, uint8_t *p_xml_data, uint32_t xml_size) {
 
 	if (!p_xml_data || !xml_size) {
 		return false;
 	}
-	jp2->xml.alloc(xml_size);
-	if (!jp2->xml.buffer) {
-		jp2->xml.len = 0;
+	fileFormat->xml.alloc(xml_size);
+	if (!fileFormat->xml.buffer) {
+		fileFormat->xml.len = 0;
 		return false;
 	}
-	memcpy(jp2->xml.buffer, p_xml_data, xml_size);
+	memcpy(fileFormat->xml.buffer, p_xml_data, xml_size);
 	return true;
 }
 
-static uint8_t* jp2_write_xml(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
-	assert(jp2 != nullptr);
-	return jp2_write_buffer(JP2_XML, &jp2->xml, p_nb_bytes_written);
+static uint8_t* jp2_write_xml(FileFormat *fileFormat, uint32_t *p_nb_bytes_written) {
+	assert(fileFormat != nullptr);
+	return jp2_write_buffer(JP2_XML, &fileFormat->xml, p_nb_bytes_written);
 }
 
-static bool jp2_read_uuid(grk_jp2 *jp2, uint8_t *p_header_data,
+static bool jp2_read_uuid(FileFormat *fileFormat, uint8_t *p_header_data,
 		uint32_t header_size) {
 	if (!p_header_data || !header_size || header_size < 16) {
 		return false;
 	}
 
-	if (jp2->numUuids == JP2_MAX_NUM_UUIDS) {
+	if (fileFormat->numUuids == JP2_MAX_NUM_UUIDS) {
 		GROK_WARN(
 				"Reached maximum (%d) number of UUID boxes read - ignoring UUID box",
 				JP2_MAX_NUM_UUIDS);
 		return false;
 	}
-	auto uuid = jp2->uuids + jp2->numUuids;
+	auto uuid = fileFormat->uuids + fileFormat->numUuids;
 	memcpy(uuid->uuid, p_header_data, 16);
 	p_header_data += 16;
 	uuid->alloc(header_size - 16);
 	memcpy(uuid->buffer, p_header_data, uuid->len);
-	jp2->numUuids++;
+	fileFormat->numUuids++;
 
 	return true;
 
@@ -800,10 +800,10 @@ static bool jp2_read_res_box(uint32_t *id, uint32_t *num, uint32_t *den,
 
 }
 
-static bool jp2_read_res(grk_jp2 *jp2, uint8_t *p_resolution_data,
+static bool jp2_read_res(FileFormat *fileFormat, uint8_t *p_resolution_data,
 		uint32_t resolution_size) {
 	assert(p_resolution_data != nullptr);
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 
 	uint32_t num_boxes = resolution_size / GRK_RESOLUTION_BOX_SIZE;
 	if (num_boxes == 0 || num_boxes > 2
@@ -826,12 +826,12 @@ static bool jp2_read_res(grk_jp2 *jp2, uint8_t *p_resolution_data,
 		double *res;
 		switch (id) {
 		case JP2_CAPTURE_RES:
-			res = jp2->capture_resolution;
-			jp2->has_capture_resolution = true;
+			res = fileFormat->capture_resolution;
+			fileFormat->has_capture_resolution = true;
 			break;
 		case JP2_DISPLAY_RES:
-			res = jp2->display_resolution;
-			jp2->has_display_resolution = true;
+			res = fileFormat->display_resolution;
+			fileFormat->has_display_resolution = true;
 			break;
 		default:
 			return false;
@@ -915,16 +915,16 @@ static void jp2_write_res_box(double resx, double resy, uint32_t box_id,
 	}
 }
 
-static uint8_t* jp2_write_res(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
+static uint8_t* jp2_write_res(FileFormat *fileFormat, uint32_t *p_nb_bytes_written) {
 	uint8_t *res_data = nullptr, *current_res_ptr = nullptr;
-	assert(jp2);
+	assert(fileFormat);
 	assert(p_nb_bytes_written);
 
-	bool storeCapture = jp2->capture_resolution[0] > 0
-			&& jp2->capture_resolution[1] > 0;
+	bool storeCapture = fileFormat->capture_resolution[0] > 0
+			&& fileFormat->capture_resolution[1] > 0;
 
-	bool storeDisplay = jp2->display_resolution[0] > 0
-			&& jp2->display_resolution[1] > 0;
+	bool storeDisplay = fileFormat->display_resolution[0] > 0
+			&& fileFormat->display_resolution[1] > 0;
 
 	uint32_t size = (4 + 4) + GRK_RESOLUTION_BOX_SIZE;
 	if (storeCapture && storeDisplay) {
@@ -947,26 +947,26 @@ static uint8_t* jp2_write_res(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
 	current_res_ptr += 4;
 
 	if (storeCapture) {
-		jp2_write_res_box(jp2->capture_resolution[0],
-				jp2->capture_resolution[1],
+		jp2_write_res_box(fileFormat->capture_resolution[0],
+				fileFormat->capture_resolution[1],
 				JP2_CAPTURE_RES, &current_res_ptr);
 	}
 	if (storeDisplay) {
-		jp2_write_res_box(jp2->display_resolution[0],
-				jp2->display_resolution[1],
+		jp2_write_res_box(fileFormat->display_resolution[0],
+				fileFormat->display_resolution[1],
 				JP2_DISPLAY_RES, &current_res_ptr);
 	}
 	*p_nb_bytes_written = size;
 	return res_data;
 }
 
-static uint8_t* jp2_write_bpcc(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
+static uint8_t* jp2_write_bpcc(FileFormat *fileFormat, uint32_t *p_nb_bytes_written) {
 	uint32_t i;
 	/* room for 8 bytes for box and 1 byte for each component */
-	uint32_t bpcc_size = 8 + jp2->numcomps;
+	uint32_t bpcc_size = 8 + fileFormat->numcomps;
 	uint8_t *bpcc_data, *current_bpcc_ptr;
 
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 	assert(p_nb_bytes_written != nullptr);
 
 	bpcc_data = (uint8_t*) grk_calloc(1, bpcc_size);
@@ -984,9 +984,9 @@ static uint8_t* jp2_write_bpcc(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
 	grk_write<uint32_t>(current_bpcc_ptr, JP2_BPCC, 4);
 	current_bpcc_ptr += 4;
 
-	for (i = 0; i < jp2->numcomps; ++i) {
+	for (i = 0; i < fileFormat->numcomps; ++i) {
 		/* write each component information */
-		grk_write<uint32_t>(current_bpcc_ptr, jp2->comps[i].bpcc, 1);
+		grk_write<uint32_t>(current_bpcc_ptr, fileFormat->comps[i].bpcc, 1);
 		++current_bpcc_ptr;
 	}
 
@@ -995,47 +995,47 @@ static uint8_t* jp2_write_bpcc(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
 	return bpcc_data;
 }
 
-static bool jp2_read_bpcc(grk_jp2 *jp2, uint8_t *p_bpc_header_data,
+static bool jp2_read_bpcc(FileFormat *fileFormat, uint8_t *p_bpc_header_data,
 		uint32_t bpc_header_size) {
 	uint32_t i;
 
 	assert(p_bpc_header_data != nullptr);
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 
-	if (jp2->bpc != 255) {
+	if (fileFormat->bpc != 255) {
 		GROK_WARN(
 				"A BPCC header box is available although BPC given by the IHDR box (%d) indicate components bit depth is constant",
-				jp2->bpc);
+				fileFormat->bpc);
 	}
 
 	/* and length is relevant */
-	if (bpc_header_size != jp2->numcomps) {
+	if (bpc_header_size != fileFormat->numcomps) {
 		GROK_ERROR("Bad BPCC header box (bad size)");
 		return false;
 	}
 
 	/* read info for each component */
-	for (i = 0; i < jp2->numcomps; ++i) {
-		grk_read<uint32_t>(p_bpc_header_data, &jp2->comps[i].bpcc, 1); /* read each BPCC component */
+	for (i = 0; i < fileFormat->numcomps; ++i) {
+		grk_read<uint32_t>(p_bpc_header_data, &fileFormat->comps[i].bpcc, 1); /* read each BPCC component */
 		++p_bpc_header_data;
 	}
 
 	return true;
 }
-static uint8_t* jp2_write_cdef(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
+static uint8_t* jp2_write_cdef(FileFormat *fileFormat, uint32_t *p_nb_bytes_written) {
 	/* room for 8 bytes for box, 2 for n */
 	uint32_t cdef_size = 10;
 	uint8_t *cdef_data, *current_cdef_ptr;
 	uint32_t value;
 	uint16_t i;
 
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 	assert(p_nb_bytes_written != nullptr);
-	assert(jp2->color.jp2_cdef != nullptr);
-	assert(jp2->color.jp2_cdef->info != nullptr);
-	assert(jp2->color.jp2_cdef->n > 0U);
+	assert(fileFormat->color.jp2_cdef != nullptr);
+	assert(fileFormat->color.jp2_cdef->info != nullptr);
+	assert(fileFormat->color.jp2_cdef->n > 0U);
 
-	cdef_size += 6U * jp2->color.jp2_cdef->n;
+	cdef_size += 6U * fileFormat->color.jp2_cdef->n;
 
 	cdef_data = (uint8_t*) grk_malloc(cdef_size);
 	if (cdef_data == nullptr) {
@@ -1052,21 +1052,21 @@ static uint8_t* jp2_write_cdef(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
 	grk_write<uint32_t>(current_cdef_ptr, JP2_CDEF, 4);
 	current_cdef_ptr += 4;
 
-	value = jp2->color.jp2_cdef->n;
+	value = fileFormat->color.jp2_cdef->n;
 	/* N */
 	grk_write<uint32_t>(current_cdef_ptr, value, 2);
 	current_cdef_ptr += 2;
 
-	for (i = 0U; i < jp2->color.jp2_cdef->n; ++i) {
-		value = jp2->color.jp2_cdef->info[i].cn;
+	for (i = 0U; i < fileFormat->color.jp2_cdef->n; ++i) {
+		value = fileFormat->color.jp2_cdef->info[i].cn;
 		/* Cni */
 		grk_write<uint32_t>(current_cdef_ptr, value, 2);
 		current_cdef_ptr += 2;
-		value = jp2->color.jp2_cdef->info[i].typ;
+		value = fileFormat->color.jp2_cdef->info[i].typ;
 		/* Typi */
 		grk_write<uint32_t>(current_cdef_ptr, value, 2);
 		current_cdef_ptr += 2;
-		value = jp2->color.jp2_cdef->info[i].asoc;
+		value = fileFormat->color.jp2_cdef->info[i].asoc;
 		/* Asoci */
 		grk_write<uint32_t>(current_cdef_ptr, value, 2);
 		current_cdef_ptr += 2;
@@ -1076,22 +1076,22 @@ static uint8_t* jp2_write_cdef(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
 	return cdef_data;
 }
 
-static uint8_t* jp2_write_colr(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
+static uint8_t* jp2_write_colr(FileFormat *fileFormat, uint32_t *p_nb_bytes_written) {
 	/* room for 8 bytes for box 3 for common data and variable upon profile*/
 	uint32_t colr_size = 11;
 	uint8_t *colr_data, *current_colr_ptr;
 
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 	assert(p_nb_bytes_written != nullptr);
-	assert(jp2->meth == 1 || jp2->meth == 2);
+	assert(fileFormat->meth == 1 || fileFormat->meth == 2);
 
-	switch (jp2->meth) {
+	switch (fileFormat->meth) {
 	case 1:
 		colr_size += 4; /* EnumCS */
 		break;
 	case 2:
-		assert(jp2->color.icc_profile_len); /* ICC profile */
-		colr_size += jp2->color.icc_profile_len;
+		assert(fileFormat->color.icc_profile_len); /* ICC profile */
+		colr_size += fileFormat->color.icc_profile_len;
 		break;
 	default:
 		return nullptr;
@@ -1113,27 +1113,27 @@ static uint8_t* jp2_write_colr(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
 	current_colr_ptr += 4;
 
 	/* METH */
-	grk_write<uint32_t>(current_colr_ptr, jp2->meth, 1);
+	grk_write<uint32_t>(current_colr_ptr, fileFormat->meth, 1);
 	++current_colr_ptr;
 
 	/* PRECEDENCE */
-	grk_write<uint32_t>(current_colr_ptr, jp2->precedence, 1);
+	grk_write<uint32_t>(current_colr_ptr, fileFormat->precedence, 1);
 	++current_colr_ptr;
 
 	/* APPROX */
-	grk_write<uint32_t>(current_colr_ptr, jp2->approx, 1);
+	grk_write<uint32_t>(current_colr_ptr, fileFormat->approx, 1);
 	++current_colr_ptr;
 
 	/* Meth value is restricted to 1 or 2 (Table I.9 of part 1) */
-	if (jp2->meth == 1) {
+	if (fileFormat->meth == 1) {
 		/* EnumCS */
-		grk_write<uint32_t>(current_colr_ptr, jp2->enumcs, 4);
+		grk_write<uint32_t>(current_colr_ptr, fileFormat->enumcs, 4);
 	} else {
 		/* ICC profile */
-		if (jp2->meth == 2) {
-			memcpy(current_colr_ptr, jp2->color.icc_profile_buf,
-					jp2->color.icc_profile_len);
-			current_colr_ptr += jp2->color.icc_profile_len;
+		if (fileFormat->meth == 2) {
+			memcpy(current_colr_ptr, fileFormat->color.icc_profile_buf,
+					fileFormat->color.icc_profile_len);
+			current_colr_ptr += fileFormat->color.icc_profile_len;
 		}
 	}
 
@@ -1161,7 +1161,7 @@ static bool jp2_check_color(grk_image *image, grk_jp2_color *color) {
 	if (color->jp2_cdef) {
 		grk_jp2_cdef_info *info = color->jp2_cdef->info;
 		uint16_t n = color->jp2_cdef->n;
-		uint32_t nr_channels = image->numcomps; /* FIXME image->numcomps == jp2->numcomps before color is applied ??? */
+		uint32_t nr_channels = image->numcomps; /* FIXME image->numcomps == fileFormat->numcomps before color is applied ??? */
 
 		/* cdef applies to cmap channels if any */
 		if (color->jp2_pclr && color->jp2_pclr->cmap) {
@@ -1396,7 +1396,7 @@ static bool jp2_apply_pclr(grk_image *image, grk_jp2_color *color) {
 
 }/* apply_pclr() */
 
-static bool jp2_read_pclr(grk_jp2 *jp2, uint8_t *p_pclr_header_data,
+static bool jp2_read_pclr(FileFormat *fileFormat, uint8_t *p_pclr_header_data,
 		uint32_t pclr_header_size) {
 	grk_jp2_pclr *jp2_pclr;
 	uint8_t *channel_size, *channel_sign;
@@ -1407,11 +1407,11 @@ static bool jp2_read_pclr(grk_jp2 *jp2, uint8_t *p_pclr_header_data,
 	uint8_t *orig_header_data = p_pclr_header_data;
 
 	assert(p_pclr_header_data != nullptr);
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 
 	(void) pclr_header_size;
 
-	if (jp2->color.jp2_pclr)
+	if (fileFormat->color.jp2_pclr)
 		return false;
 
 	if (pclr_header_size < 3)
@@ -1467,7 +1467,7 @@ static bool jp2_read_pclr(grk_jp2 *jp2, uint8_t *p_pclr_header_data,
 	jp2_pclr->nr_channels = (uint8_t) value;
 	jp2_pclr->cmap = nullptr;
 
-	jp2->color.jp2_pclr = jp2_pclr;
+	fileFormat->color.jp2_pclr = jp2_pclr;
 
 	for (i = 0; i < nr_channels; ++i) {
 		grk_read<uint32_t>(p_pclr_header_data, &value, 1); /* Bi */
@@ -1498,17 +1498,17 @@ static bool jp2_read_pclr(grk_jp2 *jp2, uint8_t *p_pclr_header_data,
 	return true;
 }
 
-static bool jp2_read_cmap(grk_jp2 *jp2, uint8_t *p_cmap_header_data,
+static bool jp2_read_cmap(FileFormat *fileFormat, uint8_t *p_cmap_header_data,
 		uint32_t cmap_header_size) {
 	grk_jp2_cmap_comp *cmap;
 	uint8_t i, nr_channels;
 	uint32_t value;
 
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 	assert(p_cmap_header_data != nullptr);
 
 	/* Need nr_channels: */
-	if (jp2->color.jp2_pclr == nullptr) {
+	if (fileFormat->color.jp2_pclr == nullptr) {
 		GROK_ERROR("Need to read a PCLR box before the CMAP box.");
 		return false;
 	}
@@ -1516,12 +1516,12 @@ static bool jp2_read_cmap(grk_jp2 *jp2, uint8_t *p_cmap_header_data,
 	/* Part 1, I.5.3.5: 'There shall be at most one Component Mapping box
 	 * inside a JP2 Header box' :
 	 */
-	if (jp2->color.jp2_pclr->cmap) {
+	if (fileFormat->color.jp2_pclr->cmap) {
 		GROK_ERROR("Only one CMAP box is allowed.");
 		return false;
 	}
 
-	nr_channels = jp2->color.jp2_pclr->nr_channels;
+	nr_channels = fileFormat->color.jp2_pclr->nr_channels;
 	if (cmap_header_size < (uint32_t) nr_channels * 4) {
 		GROK_ERROR("Insufficient data for CMAP box.");
 		return false;
@@ -1546,7 +1546,7 @@ static bool jp2_read_cmap(grk_jp2 *jp2, uint8_t *p_cmap_header_data,
 		cmap[i].pcol = (uint8_t) value;
 	}
 
-	jp2->color.jp2_pclr->cmap = cmap;
+	fileFormat->color.jp2_pclr->cmap = cmap;
 
 	return true;
 }
@@ -1610,20 +1610,20 @@ static void jp2_apply_cdef(grk_image *image, grk_jp2_color *color) {
 
 }/* jp2_apply_cdef() */
 
-static bool jp2_read_cdef(grk_jp2 *jp2, uint8_t *p_cdef_header_data,
+static bool jp2_read_cdef(FileFormat *fileFormat, uint8_t *p_cdef_header_data,
 		uint32_t cdef_header_size) {
 	grk_jp2_cdef_info *cdef_info;
 	uint16_t i;
 	uint32_t value;
 
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 	assert(p_cdef_header_data != nullptr);
 
 	(void) cdef_header_size;
 
 	/* Part 1, I.5.3.6: 'The shall be at most one Channel Definition box
 	 * inside a JP2 Header box.'*/
-	if (jp2->color.jp2_cdef)
+	if (fileFormat->color.jp2_cdef)
 		return false;
 
 	if (cdef_header_size < 2) {
@@ -1649,15 +1649,15 @@ static bool jp2_read_cdef(grk_jp2 *jp2, uint8_t *p_cdef_header_data,
 	if (!cdef_info)
 		return false;
 
-	jp2->color.jp2_cdef = (grk_jp2_cdef*) grk_malloc(sizeof(grk_jp2_cdef));
-	if (!jp2->color.jp2_cdef) {
+	fileFormat->color.jp2_cdef = (grk_jp2_cdef*) grk_malloc(sizeof(grk_jp2_cdef));
+	if (!fileFormat->color.jp2_cdef) {
 		grok_free(cdef_info);
 		return false;
 	}
-	jp2->color.jp2_cdef->info = cdef_info;
-	jp2->color.jp2_cdef->n = (uint16_t) value;
+	fileFormat->color.jp2_cdef->info = cdef_info;
+	fileFormat->color.jp2_cdef->n = (uint16_t) value;
 
-	for (i = 0; i < jp2->color.jp2_cdef->n; ++i) {
+	for (i = 0; i < fileFormat->color.jp2_cdef->n; ++i) {
 		grk_read<uint32_t>(p_cdef_header_data, &value, 2); /* Cn^i */
 		p_cdef_header_data += 2;
 		cdef_info[i].cn = (uint16_t) value;
@@ -1683,9 +1683,9 @@ static bool jp2_read_cdef(grk_jp2 *jp2, uint8_t *p_cdef_header_data,
 
 	// cdef sanity check
 	// 1. check for multiple descriptions of the same component with different types
-	for (i = 0; i < jp2->color.jp2_cdef->n; ++i) {
+	for (i = 0; i < fileFormat->color.jp2_cdef->n; ++i) {
 		auto infoi = cdef_info[i];
-		for (uint16_t j = 0; j < jp2->color.jp2_cdef->n; ++j) {
+		for (uint16_t j = 0; j < fileFormat->color.jp2_cdef->n; ++j) {
 			auto infoj = cdef_info[j];
 			if (i != j && infoi.cn == infoj.cn && infoi.typ != infoj.typ) {
 				GROK_ERROR(
@@ -1697,9 +1697,9 @@ static bool jp2_read_cdef(grk_jp2 *jp2, uint8_t *p_cdef_header_data,
 	}
 
 	// 2. check that type/association pairs are unique
-	for (i = 0; i < jp2->color.jp2_cdef->n; ++i) {
+	for (i = 0; i < fileFormat->color.jp2_cdef->n; ++i) {
 		auto infoi = cdef_info[i];
-		for (uint16_t j = 0; j < jp2->color.jp2_cdef->n; ++j) {
+		for (uint16_t j = 0; j < fileFormat->color.jp2_cdef->n; ++j) {
 			auto infoj = cdef_info[j];
 			if (i != j &&
 				infoi.cn != infoj.cn &&
@@ -1718,9 +1718,9 @@ static bool jp2_read_cdef(grk_jp2 *jp2, uint8_t *p_cdef_header_data,
 	return true;
 }
 
-static bool jp2_read_colr(grk_jp2 *jp2, uint8_t *p_colr_header_data,
+static bool jp2_read_colr(FileFormat *fileFormat, uint8_t *p_colr_header_data,
 		uint32_t colr_header_size) {
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 	assert(p_colr_header_data != nullptr);
 
 	if (colr_header_size < 3) {
@@ -1731,23 +1731,23 @@ static bool jp2_read_colr(grk_jp2 *jp2, uint8_t *p_colr_header_data,
 	/* Part 1, I.5.3.3 : 'A conforming JP2 reader shall ignore all colour
 	 * specification boxes after the first.'
 	 */
-	if (jp2->color.jp2_has_colour_specification_box) {
+	if (fileFormat->color.jp2_has_colour_specification_box) {
 		GROK_WARN(
 				"A conforming JP2 reader shall ignore all colour specification boxes after the first, so we ignore this one.");
 		p_colr_header_data += colr_header_size;
 		return true;
 	}
 
-	grk_read<uint32_t>(p_colr_header_data, &jp2->meth, 1); /* METH */
+	grk_read<uint32_t>(p_colr_header_data, &fileFormat->meth, 1); /* METH */
 	++p_colr_header_data;
 
-	grk_read<uint32_t>(p_colr_header_data, &jp2->precedence, 1); /* PRECEDENCE */
+	grk_read<uint32_t>(p_colr_header_data, &fileFormat->precedence, 1); /* PRECEDENCE */
 	++p_colr_header_data;
 
-	grk_read<uint32_t>(p_colr_header_data, &jp2->approx, 1); /* APPROX */
+	grk_read<uint32_t>(p_colr_header_data, &fileFormat->approx, 1); /* APPROX */
 	++p_colr_header_data;
 
-	if (jp2->meth == 1) {
+	if (fileFormat->meth == 1) {
         uint32_t temp;
 		if (colr_header_size < 7) {
 			GROK_ERROR("Bad COLR header box (bad size: %d)", colr_header_size);
@@ -1756,13 +1756,13 @@ static bool jp2_read_colr(grk_jp2 *jp2, uint8_t *p_colr_header_data,
 		grk_read<uint32_t>(p_colr_header_data, &temp); /* EnumCS */
 		p_colr_header_data += 4;
 
-		jp2->enumcs = (GRK_ENUM_COLOUR_SPACE)temp;
-		if ((colr_header_size > 7) && (jp2->enumcs != GRK_ENUM_CLRSPC_CIE)) { /* handled below for CIELab) */
+		fileFormat->enumcs = (GRK_ENUM_COLOUR_SPACE)temp;
+		if ((colr_header_size > 7) && (fileFormat->enumcs != GRK_ENUM_CLRSPC_CIE)) { /* handled below for CIELab) */
 			/* testcase Altona_Technical_v20_x4.pdf */
 			GROK_WARN("Bad COLR header box (bad size: %d)", colr_header_size);
 		}
 
-		if (jp2->enumcs == GRK_ENUM_CLRSPC_CIE) {
+		if (fileFormat->enumcs == GRK_ENUM_CLRSPC_CIE) {
 			uint32_t *cielab;
 			bool nonDefaultLab = colr_header_size == 35;
 			// only two ints are needed for default CIELab space
@@ -1804,54 +1804,54 @@ static bool jp2_read_colr(grk_jp2 *jp2, uint8_t *p_colr_header_data,
 				GROK_WARN("Bad COLR header box (CIELab, bad size: %d)",
 						colr_header_size);
 			}
-			jp2->color.icc_profile_buf = (uint8_t*) cielab;
-			jp2->color.icc_profile_len = 0;
+			fileFormat->color.icc_profile_buf = (uint8_t*) cielab;
+			fileFormat->color.icc_profile_len = 0;
 		}
-		jp2->color.jp2_has_colour_specification_box = 1;
-	} else if (jp2->meth == 2) {
+		fileFormat->color.jp2_has_colour_specification_box = 1;
+	} else if (fileFormat->meth == 2) {
 		/* ICC profile */
 		uint32_t icc_len = (uint32_t) (colr_header_size - 3);
 		if (icc_len == 0) {
 			GROK_ERROR("ICC profile buffer length equals zero");
 			return false;
 		}
-		jp2->color.icc_profile_buf = grk_buffer_new((size_t) icc_len);
-		memcpy(jp2->color.icc_profile_buf, p_colr_header_data, icc_len);
-		jp2->color.icc_profile_len = icc_len;
-		jp2->color.jp2_has_colour_specification_box = 1;
-	} else if (jp2->meth > 2) {
+		fileFormat->color.icc_profile_buf = grk_buffer_new((size_t) icc_len);
+		memcpy(fileFormat->color.icc_profile_buf, p_colr_header_data, icc_len);
+		fileFormat->color.icc_profile_len = icc_len;
+		fileFormat->color.jp2_has_colour_specification_box = 1;
+	} else if (fileFormat->meth > 2) {
 		/*	ISO/IEC 15444-1:2004 (E), Table I.9 Legal METH values:
 		 conforming JP2 reader shall ignore the entire Colour Specification box.*/
 		GROK_WARN("COLR BOX meth value is not a regular value (%d), "
 				"so we will ignore the entire Colour Specification box. ",
-				jp2->meth);
+				fileFormat->meth);
 	}
 	return true;
 }
 
-bool jp2_decompress(grk_jp2 *jp2, grk_plugin_tile *tile, BufferedStream *stream,
+bool jp2_decompress(FileFormat *fileFormat, grk_plugin_tile *tile, BufferedStream *stream,
 		grk_image *p_image) {
 	if (!p_image)
 		return false;
 
 	/* J2K decoding */
-	if (!j2k_decompress(jp2->j2k, tile, stream, p_image)) {
+	if (!j2k_decompress(fileFormat->j2k, tile, stream, p_image)) {
 		GROK_ERROR("Failed to decompress the code stream in the JP2 file");
 		return false;
 	}
 
-	if (!jp2_check_color(p_image, &(jp2->color))) {
+	if (!jp2_check_color(p_image, &(fileFormat->color))) {
 		return false;
 	}
 
 	/* Set Image Color Space */
-	switch (jp2->enumcs) {
+	switch (fileFormat->enumcs) {
 	case GRK_ENUM_CLRSPC_CMYK:
 		p_image->color_space = GRK_CLRSPC_CMYK;
 		break;
 	case GRK_ENUM_CLRSPC_CIE:
-		if (jp2->color.icc_profile_buf) {
-			if (((uint32_t*) jp2->color.icc_profile_buf)[1]
+		if (fileFormat->color.icc_profile_buf) {
+			if (((uint32_t*) fileFormat->color.icc_profile_buf)[1]
 					== GRK_DEFAULT_CIELAB_SPACE)
 				p_image->color_space = GRK_CLRSPC_DEFAULT_CIE;
 			else
@@ -1877,36 +1877,36 @@ bool jp2_decompress(grk_jp2 *jp2, grk_plugin_tile *tile, BufferedStream *stream,
 		p_image->color_space = GRK_CLRSPC_UNKNOWN;
 		break;
 	}
-	if (jp2->meth == 2 && jp2->color.icc_profile_buf) {
+	if (fileFormat->meth == 2 && fileFormat->color.icc_profile_buf) {
 		p_image->color_space = GRK_CLRSPC_ICC;
 	}
 
-	if (jp2->color.jp2_pclr) {
+	if (fileFormat->color.jp2_pclr) {
 		/* Part 1, I.5.3.4: Either both or none : */
-		if (!jp2->color.jp2_pclr->cmap)
-			jp2_free_pclr(&(jp2->color));
+		if (!fileFormat->color.jp2_pclr->cmap)
+			jp2_free_pclr(&(fileFormat->color));
 		else {
-			if (!jp2_apply_pclr(p_image, &(jp2->color)))
+			if (!jp2_apply_pclr(p_image, &(fileFormat->color)))
 				return false;
 		}
 	}
 
 	/* Apply channel definitions if needed */
-	if (jp2->color.jp2_cdef) {
-		jp2_apply_cdef(p_image, &(jp2->color));
+	if (fileFormat->color.jp2_cdef) {
+		jp2_apply_cdef(p_image, &(fileFormat->color));
 	}
 
 	// retrieve icc profile
-	if (jp2->color.icc_profile_buf) {
-		p_image->icc_profile_buf = jp2->color.icc_profile_buf;
-		p_image->icc_profile_len = jp2->color.icc_profile_len;
-		jp2->color.icc_profile_buf = nullptr;
-		jp2->color.icc_profile_len = 0;
+	if (fileFormat->color.icc_profile_buf) {
+		p_image->icc_profile_buf = fileFormat->color.icc_profile_buf;
+		p_image->icc_profile_len = fileFormat->color.icc_profile_len;
+		fileFormat->color.icc_profile_buf = nullptr;
+		fileFormat->color.icc_profile_len = 0;
 	}
 
 	// retrieve special uuids
-	for (uint32_t i = 0; i < jp2->numUuids; ++i) {
-		auto uuid = jp2->uuids + i;
+	for (uint32_t i = 0; i < fileFormat->numUuids; ++i) {
+		auto uuid = fileFormat->uuids + i;
 		if (memcmp(uuid->uuid, IPTC_UUID, 16) == 0) {
 			p_image->iptc_buf = uuid->buffer;
 			p_image->iptc_len = uuid->len;
@@ -1923,7 +1923,7 @@ bool jp2_decompress(grk_jp2 *jp2, grk_plugin_tile *tile, BufferedStream *stream,
 	return true;
 }
 
-static bool jp2_write_jp2h(grk_jp2 *jp2, BufferedStream *stream) {
+static bool jp2_write_jp2h(FileFormat *fileFormat, BufferedStream *stream) {
 	grk_jp2_img_header_writer_handler writers[32];
 	grk_jp2_img_header_writer_handler *current_writer;
 
@@ -1933,30 +1933,30 @@ static bool jp2_write_jp2h(grk_jp2 *jp2, BufferedStream *stream) {
 	bool result = true;
 
 	assert(stream != nullptr);
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 
 	memset(writers, 0, sizeof(writers));
 
 	writers[nb_writers++].handler = jp2_write_ihdr;
-	if (jp2->bpc == 255)
+	if (fileFormat->bpc == 255)
 		writers[nb_writers++].handler = jp2_write_bpcc;
 	writers[nb_writers++].handler = jp2_write_colr;
-	if (jp2->color.jp2_cdef) {
+	if (fileFormat->color.jp2_cdef) {
 		writers[nb_writers++].handler = jp2_write_cdef;
 	}
-	if (jp2->has_display_resolution || jp2->has_capture_resolution) {
-		bool storeCapture = jp2->capture_resolution[0] > 0
-				&& jp2->capture_resolution[1] > 0;
-		bool storeDisplay = jp2->display_resolution[0] > 0
-				&& jp2->display_resolution[1] > 0;
+	if (fileFormat->has_display_resolution || fileFormat->has_capture_resolution) {
+		bool storeCapture = fileFormat->capture_resolution[0] > 0
+				&& fileFormat->capture_resolution[1] > 0;
+		bool storeDisplay = fileFormat->display_resolution[0] > 0
+				&& fileFormat->display_resolution[1] > 0;
 		if (storeCapture || storeDisplay)
 			writers[nb_writers++].handler = jp2_write_res;
 	}
-	if (jp2->xml.buffer && jp2->xml.len)
+	if (fileFormat->xml.buffer && fileFormat->xml.len)
 		writers[nb_writers++].handler = jp2_write_xml;
 	current_writer = writers;
 	for (i = 0; i < nb_writers; ++i) {
-		current_writer->m_data = current_writer->handler(jp2,
+		current_writer->m_data = current_writer->handler(fileFormat,
 				&(current_writer->m_size));
 		if (current_writer->m_data == nullptr) {
 			GROK_ERROR("Not enough memory to hold JP2 Header data");
@@ -2012,12 +2012,12 @@ static bool jp2_write_jp2h(grk_jp2 *jp2, BufferedStream *stream) {
 	return result;
 }
 
-static bool jp2_write_uuids(grk_jp2 *jp2, BufferedStream *stream) {
-	assert(jp2 != nullptr);
+static bool jp2_write_uuids(FileFormat *fileFormat, BufferedStream *stream) {
+	assert(fileFormat != nullptr);
 
 	// write the uuids
-	for (size_t i = 0; i < jp2->numUuids; ++i) {
-		auto uuid = jp2->uuids + i;
+	for (size_t i = 0; i < fileFormat->numUuids; ++i) {
+		auto uuid = fileFormat->uuids + i;
 		if (uuid->buffer && uuid->len) {
 			/* write box size */
 			stream->write_int((uint32_t) (8 + 16 + uuid->len));
@@ -2035,13 +2035,13 @@ static bool jp2_write_uuids(grk_jp2 *jp2, BufferedStream *stream) {
 	return true;
 }
 
-static bool jp2_write_ftyp(grk_jp2 *jp2, BufferedStream *stream) {
+static bool jp2_write_ftyp(FileFormat *fileFormat, BufferedStream *stream) {
 	uint32_t i;
-	uint32_t ftyp_size = 16 + 4 * jp2->numcl;
+	uint32_t ftyp_size = 16 + 4 * fileFormat->numcl;
 	bool result = true;
 
 	assert(stream != nullptr);
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 
 	if (!stream->write_int(ftyp_size)) {
 		result = false;
@@ -2051,19 +2051,19 @@ static bool jp2_write_ftyp(grk_jp2 *jp2, BufferedStream *stream) {
 		result = false;
 		goto end;
 	}
-	if (!stream->write_int(jp2->brand)) {
+	if (!stream->write_int(fileFormat->brand)) {
 		result = false;
 		goto end;
 	}
 	/* MinV */
-	if (!stream->write_int(jp2->minversion)) {
+	if (!stream->write_int(fileFormat->minversion)) {
 		result = false;
 		goto end;
 	}
 
 	/* CL */
-	for (i = 0; i < jp2->numcl; i++) {
-		if (!stream->write_int(jp2->cl[i])) {
+	for (i = 0; i < fileFormat->numcl; i++) {
+		if (!stream->write_int(fileFormat->cl[i])) {
 			result = false;
 			goto end;
 		}
@@ -2074,24 +2074,24 @@ static bool jp2_write_ftyp(grk_jp2 *jp2, BufferedStream *stream) {
 	return result;
 }
 
-static bool jp2_write_jp2c(grk_jp2 *jp2, BufferedStream *stream) {
-	assert(jp2 != nullptr);
+static bool jp2_write_jp2c(FileFormat *fileFormat, BufferedStream *stream) {
+	assert(fileFormat != nullptr);
 	assert(stream != nullptr);
 
 	assert(stream->has_seek());
 
 	uint64_t j2k_codestream_exit = stream->tell();
-	if (!stream->seek(jp2->j2k_codestream_offset)) {
+	if (!stream->seek(fileFormat->j2k_codestream_offset)) {
 		GROK_ERROR("Failed to seek in the stream.");
 		return false;
 	}
 
 	/* size of code stream */
-	uint64_t actualLength = j2k_codestream_exit - jp2->j2k_codestream_offset;
+	uint64_t actualLength = j2k_codestream_exit - fileFormat->j2k_codestream_offset;
 	// initialize signalledLength to 0, indicating length was not known
 	// when file was written
 	uint32_t signaledLength = 0;
-	if (jp2->needs_xl_jp2c_box_length)
+	if (fileFormat->needs_xl_jp2c_box_length)
 		signaledLength = 1;
 	else {
 		if (actualLength < (uint64_t) 1 << 32)
@@ -2117,10 +2117,10 @@ static bool jp2_write_jp2c(grk_jp2 *jp2, BufferedStream *stream) {
 	return true;
 }
 
-static bool jp2_write_jp(grk_jp2 *jp2, BufferedStream *stream) {
-	(void) jp2;
+static bool jp2_write_jp(FileFormat *fileFormat, BufferedStream *stream) {
+	(void) fileFormat;
 	assert(stream != nullptr);
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 
 	/* write box length */
 	if (!stream->write_int(12))
@@ -2139,12 +2139,12 @@ static bool jp2_write_jp(grk_jp2 *jp2, BufferedStream *stream) {
 /* ----------------------------------------------------------------------- */
 
 void jp2_init_decompress(void *jp2_void, grk_dparameters *parameters) {
-	grk_jp2 *jp2 = (grk_jp2*) jp2_void;
+	FileFormat *fileFormat = (FileFormat*) jp2_void;
 	/* set up the J2K codec */
-	j2k_init_decompressor(jp2->j2k, parameters);
+	j2k_init_decompressor(fileFormat->j2k, parameters);
 
 	/* further JP2 initializations go here */
-	jp2->color.jp2_has_colour_specification_box = 0;
+	fileFormat->color.jp2_has_colour_specification_box = 0;
 
 }
 
@@ -2152,7 +2152,7 @@ void jp2_init_decompress(void *jp2_void, grk_dparameters *parameters) {
 /* JP2 compress interface                                             */
 /* ----------------------------------------------------------------------- */
 
-bool jp2_init_compress(grk_jp2 *jp2, grk_cparameters *parameters,
+bool jp2_init_compress(FileFormat *fileFormat, grk_cparameters *parameters,
 		grk_image *image) {
 	uint32_t i;
 	uint32_t depth_0;
@@ -2160,12 +2160,12 @@ bool jp2_init_compress(grk_jp2 *jp2, grk_cparameters *parameters,
 	uint32_t alpha_count = 0;
 	uint32_t color_channels = 0U;
 
-	if (!jp2 || !parameters || !image)
+	if (!fileFormat || !parameters || !image)
 		return false;
 
 	/* set up the J2K codec */
 	/* ------------------- */
-	if (j2k_init_compress(jp2->j2k, parameters, image) == false) {
+	if (j2k_init_compress(fileFormat->j2k, parameters, image) == false) {
 		return false;
 	}
 
@@ -2174,83 +2174,83 @@ bool jp2_init_compress(grk_jp2 *jp2, grk_cparameters *parameters,
 
 	/* Profile box */
 
-	jp2->brand = JP2_JP2; /* BR */
-	jp2->minversion = 0; /* MinV */
-	jp2->numcl = 1;
-	jp2->cl = (uint32_t*) grk_malloc(jp2->numcl * sizeof(uint32_t));
-	if (!jp2->cl) {
+	fileFormat->brand = JP2_JP2; /* BR */
+	fileFormat->minversion = 0; /* MinV */
+	fileFormat->numcl = 1;
+	fileFormat->cl = (uint32_t*) grk_malloc(fileFormat->numcl * sizeof(uint32_t));
+	if (!fileFormat->cl) {
 		GROK_ERROR("Not enough memory when set up the JP2 encoder");
 		return false;
 	}
-	jp2->cl[0] = JP2_JP2; /* CL0 : JP2 */
+	fileFormat->cl[0] = JP2_JP2; /* CL0 : JP2 */
 
 	/* Image Header box */
-	jp2->numcomps = image->numcomps; /* NC */
-	jp2->comps = (grk_jp2_comps*) grk_malloc(
-			jp2->numcomps * sizeof(grk_jp2_comps));
-	if (!jp2->comps) {
+	fileFormat->numcomps = image->numcomps; /* NC */
+	fileFormat->comps = (grk_jp2_comps*) grk_malloc(
+			fileFormat->numcomps * sizeof(grk_jp2_comps));
+	if (!fileFormat->comps) {
 		GROK_ERROR("Not enough memory when set up the JP2 encoder");
-		/* Memory of jp2->cl will be freed by jp2_destroy */
+		/* Memory of fileFormat->cl will be freed by jp2_destroy */
 		return false;
 	}
 
-	jp2->h = image->y1 - image->y0; /* HEIGHT */
-	jp2->w = image->x1 - image->x0; /* WIDTH */
+	fileFormat->h = image->y1 - image->y0; /* HEIGHT */
+	fileFormat->w = image->x1 - image->x0; /* WIDTH */
 	depth_0 = image->comps[0].prec - 1;
 	sign = image->comps[0].sgnd;
-	jp2->bpc = depth_0 + (sign << 7);
+	fileFormat->bpc = depth_0 + (sign << 7);
 	for (i = 1; i < image->numcomps; i++) {
 		uint32_t depth = image->comps[i].prec - 1;
 		sign = image->comps[i].sgnd;
 		if (depth_0 != depth)
-			jp2->bpc = 255;
+			fileFormat->bpc = 255;
 	}
-	jp2->C = 7; /* C : Always 7 */
-	jp2->UnkC = 0; /* UnkC, colorspace specified in colr box */
-	jp2->IPR = 0; /* IPR, no intellectual property */
+	fileFormat->C = 7; /* C : Always 7 */
+	fileFormat->UnkC = 0; /* UnkC, colorspace specified in colr box */
+	fileFormat->IPR = 0; /* IPR, no intellectual property */
 
 	/* BitsPerComponent box */
 	for (i = 0; i < image->numcomps; i++) {
-		jp2->comps[i].bpcc = image->comps[i].prec - 1
+		fileFormat->comps[i].bpcc = image->comps[i].prec - 1
 				+ (image->comps[i].sgnd << 7);
 	}
 
 	/* Colour Specification box */
 	if (image->color_space == GRK_CLRSPC_ICC) {
-		jp2->meth = 2;
-		jp2->enumcs = GRK_ENUM_CLRSPC_UNKNOWN;
+		fileFormat->meth = 2;
+		fileFormat->enumcs = GRK_ENUM_CLRSPC_UNKNOWN;
 		if (image->icc_profile_buf) {
-			// clean up existing icc profile in jp2 struct
-			if (jp2->color.icc_profile_buf) {
-				grk_buffer_delete(jp2->color.icc_profile_buf);
-				jp2->color.icc_profile_buf = nullptr;
+			// clean up existing icc profile in fileFormat struct
+			if (fileFormat->color.icc_profile_buf) {
+				grk_buffer_delete(fileFormat->color.icc_profile_buf);
+				fileFormat->color.icc_profile_buf = nullptr;
 			}
-			// copy icc profile from image to jp2 struct
-			jp2->color.icc_profile_len = image->icc_profile_len;
-			jp2->color.icc_profile_buf = grk_buffer_new(
-					jp2->color.icc_profile_len);
-			memcpy(jp2->color.icc_profile_buf, image->icc_profile_buf,
-					jp2->color.icc_profile_len);
+			// copy icc profile from image to fileFormat struct
+			fileFormat->color.icc_profile_len = image->icc_profile_len;
+			fileFormat->color.icc_profile_buf = grk_buffer_new(
+					fileFormat->color.icc_profile_len);
+			memcpy(fileFormat->color.icc_profile_buf, image->icc_profile_buf,
+					fileFormat->color.icc_profile_len);
 		}
 	} else {
-		jp2->meth = 1;
+		fileFormat->meth = 1;
 		if (image->color_space == GRK_CLRSPC_CMYK)
-			jp2->enumcs = GRK_ENUM_CLRSPC_CMYK;
+			fileFormat->enumcs = GRK_ENUM_CLRSPC_CMYK;
 		else if (image->color_space == GRK_CLRSPC_DEFAULT_CIE)
-			jp2->enumcs = GRK_ENUM_CLRSPC_CIE;
+			fileFormat->enumcs = GRK_ENUM_CLRSPC_CIE;
 		else if (image->color_space == GRK_CLRSPC_SRGB)
-			jp2->enumcs = GRK_ENUM_CLRSPC_SRGB; /* sRGB as defined by IEC 61966-2-1 */
+			fileFormat->enumcs = GRK_ENUM_CLRSPC_SRGB; /* sRGB as defined by IEC 61966-2-1 */
 		else if (image->color_space == GRK_CLRSPC_GRAY)
-			jp2->enumcs = GRK_ENUM_CLRSPC_GRAY; /* greyscale */
+			fileFormat->enumcs = GRK_ENUM_CLRSPC_GRAY; /* greyscale */
 		else if (image->color_space == GRK_CLRSPC_SYCC)
-			jp2->enumcs = GRK_ENUM_CLRSPC_SYCC; /* YUV */
+			fileFormat->enumcs = GRK_ENUM_CLRSPC_SYCC; /* YUV */
 		else if (image->color_space == GRK_CLRSPC_EYCC)
-			jp2->enumcs = GRK_ENUM_CLRSPC_EYCC; /* YUV */
+			fileFormat->enumcs = GRK_ENUM_CLRSPC_EYCC; /* YUV */
 	}
 
 	//transfer buffer to uuid
 	if (image->iptc_len && image->iptc_buf) {
-		jp2->uuids[jp2->numUuids++] = grk_jp2_uuid(IPTC_UUID, image->iptc_buf,
+		fileFormat->uuids[fileFormat->numUuids++] = grk_jp2_uuid(IPTC_UUID, image->iptc_buf,
 				image->iptc_len, true);
 		image->iptc_buf = nullptr;
 		image->iptc_len = 0;
@@ -2258,7 +2258,7 @@ bool jp2_init_compress(grk_jp2 *jp2, grk_cparameters *parameters,
 
 	//transfer buffer to uuid
 	if (image->xmp_len && image->xmp_buf) {
-		jp2->uuids[jp2->numUuids++] = grk_jp2_uuid(XMP_UUID, image->xmp_buf,
+		fileFormat->uuids[fileFormat->numUuids++] = grk_jp2_uuid(XMP_UUID, image->xmp_buf,
 				image->xmp_len, true);
 		image->xmp_buf = nullptr;
 		image->xmp_len = 0;
@@ -2274,7 +2274,7 @@ bool jp2_init_compress(grk_jp2 *jp2, grk_cparameters *parameters,
 		}
 	}
 
-	switch (jp2->enumcs) {
+	switch (fileFormat->enumcs) {
 	case GRK_ENUM_CLRSPC_CMYK:
 		color_channels = 4;
 		break;
@@ -2301,175 +2301,175 @@ bool jp2_init_compress(grk_jp2 *jp2, grk_cparameters *parameters,
 		break;
 	}
 	if (alpha_count) {
-		jp2->color.jp2_cdef = (grk_jp2_cdef*) grk_malloc(sizeof(grk_jp2_cdef));
-		if (!jp2->color.jp2_cdef) {
+		fileFormat->color.jp2_cdef = (grk_jp2_cdef*) grk_malloc(sizeof(grk_jp2_cdef));
+		if (!fileFormat->color.jp2_cdef) {
 			GROK_ERROR("Not enough memory to set up the JP2 encoder");
 			return false;
 		}
 		/* no memset needed, all values will be overwritten except if
-		 * jp2->color.jp2_cdef->info allocation fails, */
-		/* in which case jp2->color.jp2_cdef->info will be nullptr => valid for destruction */
-		jp2->color.jp2_cdef->info = (grk_jp2_cdef_info*) grk_malloc(
+		 * fileFormat->color.jp2_cdef->info allocation fails, */
+		/* in which case fileFormat->color.jp2_cdef->info will be nullptr => valid for destruction */
+		fileFormat->color.jp2_cdef->info = (grk_jp2_cdef_info*) grk_malloc(
 				image->numcomps * sizeof(grk_jp2_cdef_info));
-		if (!jp2->color.jp2_cdef->info) {
+		if (!fileFormat->color.jp2_cdef->info) {
 			/* memory will be freed by jp2_destroy */
 			GROK_ERROR("Not enough memory to set up the JP2 encoder");
 			return false;
 		}
-		jp2->color.jp2_cdef->n = (uint16_t) image->numcomps; /* cast is valid : image->numcomps [1,16384] */
+		fileFormat->color.jp2_cdef->n = (uint16_t) image->numcomps; /* cast is valid : image->numcomps [1,16384] */
 		for (i = 0U; i < color_channels; i++) {
-			jp2->color.jp2_cdef->info[i].cn = (uint16_t) i; /* cast is valid : image->numcomps [1,16384] */
-			jp2->color.jp2_cdef->info[i].typ = GRK_COMPONENT_TYPE_COLOUR;
-			jp2->color.jp2_cdef->info[i].asoc = (uint16_t) (i + 1U); /* No overflow + cast is valid : image->numcomps [1,16384] */
+			fileFormat->color.jp2_cdef->info[i].cn = (uint16_t) i; /* cast is valid : image->numcomps [1,16384] */
+			fileFormat->color.jp2_cdef->info[i].typ = GRK_COMPONENT_TYPE_COLOUR;
+			fileFormat->color.jp2_cdef->info[i].asoc = (uint16_t) (i + 1U); /* No overflow + cast is valid : image->numcomps [1,16384] */
 		}
 		for (; i < image->numcomps; i++) {
-			jp2->color.jp2_cdef->info[i].cn = (uint16_t) i; /* cast is valid : image->numcomps [1,16384] */
-			jp2->color.jp2_cdef->info[i].typ = image->comps[i].type;
-			jp2->color.jp2_cdef->info[i].asoc = image->comps[i].association;
+			fileFormat->color.jp2_cdef->info[i].cn = (uint16_t) i; /* cast is valid : image->numcomps [1,16384] */
+			fileFormat->color.jp2_cdef->info[i].typ = image->comps[i].type;
+			fileFormat->color.jp2_cdef->info[i].asoc = image->comps[i].association;
 		}
 	}
     /*********************************************/
 
-	jp2->precedence = 0; /* PRECEDENCE */
-	jp2->approx = 0; /* APPROX */
+	fileFormat->precedence = 0; /* PRECEDENCE */
+	fileFormat->approx = 0; /* APPROX */
 
 	if (parameters->write_capture_resolution) {
-		jp2->has_capture_resolution = true;
+		fileFormat->has_capture_resolution = true;
 		for (i = 0; i < 2; ++i) {
-			jp2->capture_resolution[i] = parameters->capture_resolution[i];
+			fileFormat->capture_resolution[i] = parameters->capture_resolution[i];
 		}
 	} else if (parameters->write_capture_resolution_from_file) {
-		jp2->has_capture_resolution = true;
+		fileFormat->has_capture_resolution = true;
 		for (i = 0; i < 2; ++i) {
-			jp2->capture_resolution[i] =
+			fileFormat->capture_resolution[i] =
 					parameters->capture_resolution_from_file[i];
 		}
 	}
 	if (parameters->write_display_resolution) {
-		jp2->has_display_resolution = true;
+		fileFormat->has_display_resolution = true;
 		double resX = parameters->display_resolution[0];
 		double resY = parameters->display_resolution[1];
 		//if display resolution equals (0,0), then use capture resolution
 		//if available
 		if (resX == 0 && resY == 0) {
-			if (jp2->has_capture_resolution) {
+			if (fileFormat->has_capture_resolution) {
 				resX = parameters->capture_resolution[0];
 				resY = parameters->capture_resolution[1];
 			} else {
-				jp2->has_display_resolution = false;
+				fileFormat->has_display_resolution = false;
 			}
 		}
-		if (jp2->has_display_resolution) {
-			jp2->display_resolution[0] = resX;
-			jp2->display_resolution[1] = resY;
+		if (fileFormat->has_display_resolution) {
+			fileFormat->display_resolution[0] = resX;
+			fileFormat->display_resolution[1] = resY;
 		}
 	}
 
 	if (parameters->write_display_resolution) {
-		jp2->has_display_resolution = true;
+		fileFormat->has_display_resolution = true;
 		for (i = 0; i < 2; ++i) {
-			jp2->display_resolution[i] = parameters->display_resolution[i];
+			fileFormat->display_resolution[i] = parameters->display_resolution[i];
 		}
 	}
 	return true;
 }
 
-bool jp2_compress(grk_jp2 *jp2, grk_plugin_tile *tile, BufferedStream *stream) {
-	return j2k_compress(jp2->j2k, tile, stream);
+bool jp2_compress(FileFormat *fileFormat, grk_plugin_tile *tile, BufferedStream *stream) {
+	return j2k_compress(fileFormat->j2k, tile, stream);
 }
 
-bool jp2_end_decompress(grk_jp2 *jp2, BufferedStream *stream) {
+bool jp2_end_decompress(FileFormat *fileFormat, BufferedStream *stream) {
 
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 	assert(stream != nullptr);
 
 	/* customization of the end encoding */
-	if (!jp2_init_end_header_reading(jp2)) {
+	if (!jp2_init_end_header_reading(fileFormat)) {
 		return false;
 	}
 
 	/* write header */
-	if (!jp2_exec(jp2, jp2->m_procedure_list, stream)) {
+	if (!jp2_exec(fileFormat, fileFormat->m_procedure_list, stream)) {
 		return false;
 	}
 
-	return j2k_end_decompress(jp2->j2k, stream);
+	return j2k_end_decompress(fileFormat->j2k, stream);
 }
 
-bool jp2_end_compress(grk_jp2 *jp2, BufferedStream *stream) {
+bool jp2_end_compress(FileFormat *fileFormat, BufferedStream *stream) {
 
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 	assert(stream != nullptr);
 
 	/* customization of the end encoding */
-	if (!jp2_init_end_header_writing(jp2)) {
+	if (!jp2_init_end_header_writing(fileFormat)) {
 		return false;
 	}
 
-	if (!j2k_end_compress(jp2->j2k, stream)) {
+	if (!j2k_end_compress(fileFormat->j2k, stream)) {
 		return false;
 	}
 
 	/* write header */
-	return jp2_exec(jp2, jp2->m_procedure_list, stream);
+	return jp2_exec(fileFormat, fileFormat->m_procedure_list, stream);
 }
 
-static bool jp2_init_end_header_writing(grk_jp2 *jp2) {
+static bool jp2_init_end_header_writing(FileFormat *fileFormat) {
 
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 
-	jp2->m_procedure_list->push_back((jp2_procedure) jp2_write_jp2c);
+	fileFormat->m_procedure_list->push_back((jp2_procedure) jp2_write_jp2c);
 	//custom procedures here
 
 	return true;
 }
 
-static bool jp2_init_end_header_reading(grk_jp2 *jp2) {
+static bool jp2_init_end_header_reading(FileFormat *fileFormat) {
 
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 
-	jp2->m_procedure_list->push_back((jp2_procedure) jp2_read_header_procedure);
+	fileFormat->m_procedure_list->push_back((jp2_procedure) jp2_read_header_procedure);
 	//custom procedures here
 
 	return true;
 }
 
-static bool jp2_default_validation(grk_jp2 *jp2, BufferedStream *stream) {
+static bool jp2_default_validation(FileFormat *fileFormat, BufferedStream *stream) {
 
 	bool is_valid = true;
 	uint32_t i;
 
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 	assert(stream != nullptr);
 
 	/* JPEG2000 codec validation */
 
 	/* STATE checking */
 	/* make sure the state is at 0 */
-	is_valid &= (jp2->jp2_state == JP2_STATE_NONE);
+	is_valid &= (fileFormat->jp2_state == JP2_STATE_NONE);
 
 	/* make sure not reading a jp2h ???? WEIRD */
-	is_valid &= (jp2->jp2_img_state == JP2_IMG_STATE_NONE);
+	is_valid &= (fileFormat->jp2_img_state == JP2_IMG_STATE_NONE);
 
 	/* POINTER validation */
 	/* make sure a j2k codec is present */
-	is_valid &= (jp2->j2k != nullptr);
+	is_valid &= (fileFormat->j2k != nullptr);
 
 	/* make sure a procedure list is present */
-	is_valid &= (jp2->m_procedure_list != nullptr);
+	is_valid &= (fileFormat->m_procedure_list != nullptr);
 
 	/* make sure a validation list is present */
-	is_valid &= (jp2->m_validation_list != nullptr);
+	is_valid &= (fileFormat->m_validation_list != nullptr);
 
 	/* PARAMETER VALIDATION */
 	/* number of components */
 	/* precision */
-	for (i = 0; i < jp2->numcomps; ++i) {
-		is_valid &= ((jp2->comps[i].bpcc & 0x7FU) < 38U); /* 0 is valid, ignore sign for check */
+	for (i = 0; i < fileFormat->numcomps; ++i) {
+		is_valid &= ((fileFormat->comps[i].bpcc & 0x7FU) < 38U); /* 0 is valid, ignore sign for check */
 	}
 
 	/* METH */
-	is_valid &= ((jp2->meth > 0) && (jp2->meth < 3));
+	is_valid &= ((fileFormat->meth > 0) && (fileFormat->meth < 3));
 
 	/* stream validation */
 	/* back and forth is needed */
@@ -2478,7 +2478,7 @@ static bool jp2_default_validation(grk_jp2 *jp2, BufferedStream *stream) {
 	return is_valid;
 }
 
-static bool jp2_read_header_procedure(grk_jp2 *jp2, BufferedStream *stream) {
+static bool jp2_read_header_procedure(FileFormat *fileFormat, BufferedStream *stream) {
 	grk_jp2_box box;
 	uint32_t nb_bytes_read;
 	const grk_jp2_header_handler *current_handler;
@@ -2488,7 +2488,7 @@ static bool jp2_read_header_procedure(grk_jp2 *jp2, BufferedStream *stream) {
 	uint8_t *current_data = nullptr;
 
 	assert(stream != nullptr);
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 	bool rc = true;
 
 	current_data = (uint8_t*) grk_calloc(1, last_data_size);
@@ -2501,8 +2501,8 @@ static bool jp2_read_header_procedure(grk_jp2 *jp2, BufferedStream *stream) {
 		while (jp2_read_box_hdr(&box, &nb_bytes_read, stream)) {
 			/* is it the code stream box ? */
 			if (box.type == JP2_JP2C) {
-				if (jp2->jp2_state & JP2_STATE_HEADER) {
-					jp2->jp2_state |= JP2_STATE_CODESTREAM;
+				if (fileFormat->jp2_state & JP2_STATE_HEADER) {
+					fileFormat->jp2_state |= JP2_STATE_CODESTREAM;
 					rc = true;
 					goto cleanup;
 				} else {
@@ -2525,7 +2525,7 @@ static bool jp2_read_header_procedure(grk_jp2 *jp2, BufferedStream *stream) {
 							(uint8_t) (box.type >> 16),
 							(uint8_t) (box.type >> 8),
 							(uint8_t) (box.type >> 0));
-					if (jp2->jp2_state & JP2_STATE_HEADER) {
+					if (fileFormat->jp2_state & JP2_STATE_HEADER) {
 						/* read anyway, we already have jp2h */
 						current_handler = current_handler_misplaced;
 					} else {
@@ -2535,13 +2535,13 @@ static bool jp2_read_header_procedure(grk_jp2 *jp2, BufferedStream *stream) {
 								(uint8_t) (box.type >> 16),
 								(uint8_t) (box.type >> 8),
 								(uint8_t) (box.type >> 0));
-						jp2->jp2_state |= JP2_STATE_UNKNOWN;
+						fileFormat->jp2_state |= JP2_STATE_UNKNOWN;
 						if (!stream->skip(current_data_size)) {
 							GROK_WARN(
 									"Problem with skipping JPEG2000 box, stream error");
 							// ignore error and return true if code stream box has already been read
 							// (we don't worry about any boxes after code stream)
-							rc = jp2->jp2_state & JP2_STATE_CODESTREAM ?
+							rc = fileFormat->jp2_state & JP2_STATE_CODESTREAM ?
 									true : false;
 							goto cleanup;
 						}
@@ -2581,32 +2581,32 @@ static bool jp2_read_header_procedure(grk_jp2 *jp2, BufferedStream *stream) {
 					goto cleanup;
 				}
 
-				if (!current_handler->handler(jp2, current_data,
+				if (!current_handler->handler(fileFormat, current_data,
 						current_data_size)) {
 					rc = false;
 					goto cleanup;
 				}
 			} else {
-				if (!(jp2->jp2_state & JP2_STATE_SIGNATURE)) {
+				if (!(fileFormat->jp2_state & JP2_STATE_SIGNATURE)) {
 					GROK_ERROR(
 							"Malformed JP2 file format: first box must be JPEG 2000 signature box");
 					rc = false;
 					goto cleanup;
 				}
-				if (!(jp2->jp2_state & JP2_STATE_FILE_TYPE)) {
+				if (!(fileFormat->jp2_state & JP2_STATE_FILE_TYPE)) {
 					GROK_ERROR(
 							"Malformed JP2 file format: second box must be file type box");
 					rc = false;
 					goto cleanup;
 
 				}
-				jp2->jp2_state |= JP2_STATE_UNKNOWN;
+				fileFormat->jp2_state |= JP2_STATE_UNKNOWN;
 				if (!stream->skip(current_data_size)) {
 					GROK_WARN(
 							"Problem with skipping JPEG2000 box, stream error");
 					// ignore error and return true if code stream box has already been read
 					// (we don't worry about any boxes after code stream)
-					rc = jp2->jp2_state & JP2_STATE_CODESTREAM ? true : false;
+					rc = fileFormat->jp2_state & JP2_STATE_CODESTREAM ? true : false;
 					goto cleanup;
 				}
 			}
@@ -2622,62 +2622,62 @@ static bool jp2_read_header_procedure(grk_jp2 *jp2, BufferedStream *stream) {
  * Executes the given procedures on the given codec.
  *
  * @param	procs	the list of procedures to execute
- * @param	jp2					the JPEG 2000 file codec to execute the procedures on.
+ * @param	fileFormat					the JPEG 2000 file codec to execute the procedures on.
  * @param	stream					the stream to execute the procedures on.
  *
  * @return	true				if all the procedures were successfully executed.
  */
-static bool jp2_exec(grk_jp2 *jp2, std::vector<jp2_procedure> *procs,
+static bool jp2_exec(FileFormat *fileFormat, std::vector<jp2_procedure> *procs,
 		BufferedStream *stream) {
 	bool result = true;
 
 	assert(procs);
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 	assert(stream != nullptr);
 
 	for (auto it = procs->begin(); it != procs->end(); ++it) {
 		auto p = (jp2_procedure) *it;
-		result = result && (p)(jp2, stream);
+		result = result && (p)(fileFormat, stream);
 	}
 	procs->clear();
 
 	return result;
 }
 
-bool jp2_start_compress(grk_jp2 *jp2, BufferedStream *stream) {
-	assert(jp2 != nullptr);
+bool jp2_start_compress(FileFormat *fileFormat, BufferedStream *stream) {
+	assert(fileFormat != nullptr);
 	assert(stream != nullptr);
 
 	/* customization of the validation */
-	if (!jp2_init_compress_validation(jp2)) {
+	if (!jp2_init_compress_validation(fileFormat)) {
 		return false;
 	}
 
 	/* validation of the parameters codec */
-	if (!jp2_exec(jp2, jp2->m_validation_list, stream)) {
+	if (!jp2_exec(fileFormat, fileFormat->m_validation_list, stream)) {
 		return false;
 	}
 
 	/* customization of the encoding */
-	if (!jp2_init_header_writing(jp2)) {
+	if (!jp2_init_header_writing(fileFormat)) {
 		return false;
 	}
 
 	// estimate if codec stream may be larger than 2^32 bytes
-	auto p_image = jp2->j2k->m_private_image;
+	auto p_image = fileFormat->j2k->m_private_image;
 	uint64_t image_size = 0;
 	for (auto i = 0U; i < p_image->numcomps; ++i) {
 		auto comp = p_image->comps + i;
 		image_size += (uint64_t) comp->w * comp->h * ((comp->prec + 7) / 8);
 	}
-	jp2->needs_xl_jp2c_box_length =
+	fileFormat->needs_xl_jp2c_box_length =
 			(image_size > (uint64_t) 1 << 30) ? true : false;
 
 	/* write header */
-	if (!jp2_exec(jp2, jp2->m_procedure_list, stream)) {
+	if (!jp2_exec(fileFormat, fileFormat->m_procedure_list, stream)) {
 		return false;
 	}
-	return j2k_start_compress(jp2->j2k, stream);
+	return j2k_start_compress(fileFormat->j2k, stream);
 }
 
 static const grk_jp2_header_handler* jp2_find_handler(uint32_t id) {
@@ -2712,22 +2712,22 @@ static const grk_jp2_header_handler* jp2_img_find_handler(uint32_t id) {
  * Reads a JPEG 2000 file signature box.
  *
  * @param	p_header_data	the data contained in the signature box.
- * @param	jp2				the JPEG 2000 file codec.
+ * @param	fileFormat				the JPEG 2000 file codec.
  * @param	header_size	the size of the data contained in the signature box.
  .
  *
  * @return true if the file signature box is valid.
  */
-static bool jp2_read_jp(grk_jp2 *jp2, uint8_t *p_header_data,
+static bool jp2_read_jp(FileFormat *fileFormat, uint8_t *p_header_data,
 		uint32_t header_size)
 
 		{
 	uint32_t magic_number;
 
 	assert(p_header_data != nullptr);
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 
-	if (jp2->jp2_state != JP2_STATE_NONE) {
+	if (fileFormat->jp2_state != JP2_STATE_NONE) {
 		GROK_ERROR("The signature box must be the first box in the file.");
 		return false;
 	}
@@ -2745,7 +2745,7 @@ static bool jp2_read_jp(grk_jp2 *jp2, uint8_t *p_header_data,
 		return false;
 	}
 
-	jp2->jp2_state |= JP2_STATE_SIGNATURE;
+	fileFormat->jp2_state |= JP2_STATE_SIGNATURE;
 
 	return true;
 }
@@ -2754,20 +2754,20 @@ static bool jp2_read_jp(grk_jp2 *jp2, uint8_t *p_header_data,
  * Reads a a FTYP box - File type box
  *
  * @param	p_header_data	the data contained in the FTYP box.
- * @param	jp2				the JPEG 2000 file codec.
+ * @param	fileFormat				the JPEG 2000 file codec.
  * @param	header_size	the size of the data contained in the FTYP box.
  .
  *
  * @return true if the FTYP box is valid.
  */
-static bool jp2_read_ftyp(grk_jp2 *jp2, uint8_t *p_header_data,
+static bool jp2_read_ftyp(FileFormat *fileFormat, uint8_t *p_header_data,
 		uint32_t header_size) {
 	uint32_t i, remaining_bytes;
 
 	assert(p_header_data != nullptr);
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 
-	if (jp2->jp2_state != JP2_STATE_SIGNATURE) {
+	if (fileFormat->jp2_state != JP2_STATE_SIGNATURE) {
 		GROK_ERROR("The ftyp box must be the second box in the file.");
 		return false;
 	}
@@ -2778,10 +2778,10 @@ static bool jp2_read_ftyp(grk_jp2 *jp2, uint8_t *p_header_data,
 		return false;
 	}
 
-	grk_read<uint32_t>(p_header_data, &jp2->brand, 4); /* BR */
+	grk_read<uint32_t>(p_header_data, &fileFormat->brand, 4); /* BR */
 	p_header_data += 4;
 
-	grk_read<uint32_t>(p_header_data, &jp2->minversion, 4); /* MinV */
+	grk_read<uint32_t>(p_header_data, &fileFormat->minversion, 4); /* MinV */
 	p_header_data += 4;
 
 	remaining_bytes = header_size - 8;
@@ -2793,33 +2793,33 @@ static bool jp2_read_ftyp(grk_jp2 *jp2, uint8_t *p_header_data,
 	}
 
 	/* div by 4 */
-	jp2->numcl = remaining_bytes >> 2;
-	if (jp2->numcl) {
-		jp2->cl = (uint32_t*) grk_calloc(jp2->numcl, sizeof(uint32_t));
-		if (jp2->cl == nullptr) {
+	fileFormat->numcl = remaining_bytes >> 2;
+	if (fileFormat->numcl) {
+		fileFormat->cl = (uint32_t*) grk_calloc(fileFormat->numcl, sizeof(uint32_t));
+		if (fileFormat->cl == nullptr) {
 			GROK_ERROR("Not enough memory with FTYP Box");
 			return false;
 		}
 	}
 
-	for (i = 0; i < jp2->numcl; ++i) {
-		grk_read<uint32_t>(p_header_data, &jp2->cl[i], 4); /* CLi */
+	for (i = 0; i < fileFormat->numcl; ++i) {
+		grk_read<uint32_t>(p_header_data, &fileFormat->cl[i], 4); /* CLi */
 		p_header_data += 4;
 	}
 
-	jp2->jp2_state |= JP2_STATE_FILE_TYPE;
+	fileFormat->jp2_state |= JP2_STATE_FILE_TYPE;
 
 	return true;
 }
 
-static bool jp2_skip_jp2c(grk_jp2 *jp2, BufferedStream *stream) {
+static bool jp2_skip_jp2c(FileFormat *fileFormat, BufferedStream *stream) {
 
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 	assert(stream != nullptr);
 
-	jp2->j2k_codestream_offset = stream->tell();
+	fileFormat->j2k_codestream_offset = stream->tell();
 
-	int64_t skip_bytes = jp2->needs_xl_jp2c_box_length ? 16 : 8;
+	int64_t skip_bytes = fileFormat->needs_xl_jp2c_box_length ? 16 : 8;
 	if (!stream->skip(skip_bytes)) {
 		return false;
 	}
@@ -2831,13 +2831,13 @@ static bool jp2_skip_jp2c(grk_jp2 *jp2, BufferedStream *stream) {
  * Reads the Jpeg2000 file Header box - JP2 Header box (warning, this is a super box).
  *
  * @param	p_header_data	the data contained in the file header box.
- * @param	jp2				the JPEG 2000 file codec.
+ * @param	fileFormat				the JPEG 2000 file codec.
  * @param	header_size	the size of the data contained in the file header box.
  .
  *
  * @return true if the JP2 Header box was successfully recognized.
  */
-static bool jp2_read_jp2h(grk_jp2 *jp2, uint8_t *p_header_data,
+static bool jp2_read_jp2h(FileFormat *fileFormat, uint8_t *p_header_data,
 		uint32_t hdr_size) {
 	uint32_t box_size = 0, current_data_size = 0;
 	grk_jp2_box box;
@@ -2845,15 +2845,15 @@ static bool jp2_read_jp2h(grk_jp2 *jp2, uint8_t *p_header_data,
 	bool has_ihdr = 0;
 
 	assert(p_header_data != nullptr);
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 
 	/* make sure the box is well placed */
-	if ((jp2->jp2_state & JP2_STATE_FILE_TYPE) != JP2_STATE_FILE_TYPE) {
+	if ((fileFormat->jp2_state & JP2_STATE_FILE_TYPE) != JP2_STATE_FILE_TYPE) {
 		GROK_ERROR("The  box must be the first box in the file.");
 		return false;
 	}
 
-	jp2->jp2_img_state = JP2_IMG_STATE_NONE;
+	fileFormat->jp2_img_state = JP2_IMG_STATE_NONE;
 
 	int64_t header_size = (int64_t)hdr_size;
 
@@ -2870,12 +2870,12 @@ static bool jp2_read_jp2h(grk_jp2 *jp2, uint8_t *p_header_data,
 		p_header_data += box_size;
 
 		if (current_handler != nullptr) {
-			if (!current_handler->handler(jp2, p_header_data,
+			if (!current_handler->handler(fileFormat, p_header_data,
 					current_data_size)) {
 				return false;
 			}
 		} else {
-			jp2->jp2_img_state |= JP2_IMG_STATE_UNKNOWN;
+			fileFormat->jp2_img_state |= JP2_IMG_STATE_UNKNOWN;
 		}
 
 		if (box.type == JP2_IHDR) {
@@ -2895,7 +2895,7 @@ static bool jp2_read_jp2h(grk_jp2 *jp2, uint8_t *p_header_data,
 		return false;
 	}
 
-	jp2->jp2_state |= JP2_STATE_HEADER;
+	fileFormat->jp2_state |= JP2_STATE_HEADER;
 
 	return true;
 }
@@ -2953,124 +2953,124 @@ static bool jp2_read_box(grk_jp2_box *box, uint8_t *p_data,
 	return true;
 }
 
-bool jp2_read_header(BufferedStream *stream, grk_jp2 *jp2,
+bool jp2_read_header(BufferedStream *stream, FileFormat *fileFormat,
 		grk_header_info *header_info, grk_image **p_image) {
 
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 	assert(stream != nullptr);
 
 	/* customization of the validation */
-	if (!jp2_init_decompress_validation(jp2)) {
+	if (!jp2_init_decompress_validation(fileFormat)) {
 		return false;
 	}
 
 	/* customization of the encoding */
-	if (!jp2_init_header_reading(jp2)) {
+	if (!jp2_init_header_reading(fileFormat)) {
 		return false;
 	}
 
 	/* validation of the parameters codec */
-	if (!jp2_exec(jp2, jp2->m_validation_list, stream)) {
+	if (!jp2_exec(fileFormat, fileFormat->m_validation_list, stream)) {
 		return false;
 	}
 
 	/* read header */
-	if (!jp2_exec(jp2, jp2->m_procedure_list, stream)) {
+	if (!jp2_exec(fileFormat, fileFormat->m_procedure_list, stream)) {
 		return false;
 	}
 
 	if (header_info) {
-		header_info->enumcs = jp2->enumcs;
-		header_info->color = jp2->color;
+		header_info->enumcs = fileFormat->enumcs;
+		header_info->color = fileFormat->color;
 
-		header_info->xml_data = jp2->xml.buffer;
-		header_info->xml_data_len = jp2->xml.len;
+		header_info->xml_data = fileFormat->xml.buffer;
+		header_info->xml_data_len = fileFormat->xml.len;
 
-		if (jp2->has_capture_resolution) {
+		if (fileFormat->has_capture_resolution) {
 			header_info->has_capture_resolution = true;
 			for (int i = 0; i < 2; ++i)
-				header_info->capture_resolution[i] = jp2->capture_resolution[i];
+				header_info->capture_resolution[i] = fileFormat->capture_resolution[i];
 		}
 
-		if (jp2->has_display_resolution) {
+		if (fileFormat->has_display_resolution) {
 			header_info->has_display_resolution = true;
 			for (int i = 0; i < 2; ++i)
-				header_info->display_resolution[i] = jp2->display_resolution[i];
+				header_info->display_resolution[i] = fileFormat->display_resolution[i];
 		}
 	}
 
-	bool rc = j2k_read_header(stream, jp2->j2k, header_info, p_image);
+	bool rc = j2k_read_header(stream, fileFormat->j2k, header_info, p_image);
 
 	if (*p_image) {
 		for (int i = 0; i < 2; ++i) {
-			(*p_image)->capture_resolution[i] = jp2->capture_resolution[i];
-			(*p_image)->display_resolution[i] = jp2->display_resolution[i];
+			(*p_image)->capture_resolution[i] = fileFormat->capture_resolution[i];
+			(*p_image)->display_resolution[i] = fileFormat->display_resolution[i];
 		}
 	}
 	return rc;
 }
 
-static bool jp2_init_compress_validation(grk_jp2 *jp2) {
+static bool jp2_init_compress_validation(FileFormat *fileFormat) {
 
-	assert(jp2 != nullptr);
-	jp2->m_validation_list->push_back((jp2_procedure) jp2_default_validation);
+	assert(fileFormat != nullptr);
+	fileFormat->m_validation_list->push_back((jp2_procedure) jp2_default_validation);
 
 	return true;
 }
 
-static bool jp2_init_decompress_validation(grk_jp2 *jp2) {
-	(void) jp2;
+static bool jp2_init_decompress_validation(FileFormat *fileFormat) {
+	(void) fileFormat;
 
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 
 	/* add your custom validation procedure */
 
 	return true;
 }
 
-static bool jp2_init_header_writing(grk_jp2 *jp2) {
+static bool jp2_init_header_writing(FileFormat *fileFormat) {
 
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 
-	jp2->m_procedure_list->push_back((jp2_procedure) jp2_write_jp);
-	jp2->m_procedure_list->push_back((jp2_procedure) jp2_write_ftyp);
-	jp2->m_procedure_list->push_back((jp2_procedure) jp2_write_jp2h);
-	jp2->m_procedure_list->push_back((jp2_procedure) jp2_write_uuids);
-	jp2->m_procedure_list->push_back((jp2_procedure) jp2_skip_jp2c);
+	fileFormat->m_procedure_list->push_back((jp2_procedure) jp2_write_jp);
+	fileFormat->m_procedure_list->push_back((jp2_procedure) jp2_write_ftyp);
+	fileFormat->m_procedure_list->push_back((jp2_procedure) jp2_write_jp2h);
+	fileFormat->m_procedure_list->push_back((jp2_procedure) jp2_write_uuids);
+	fileFormat->m_procedure_list->push_back((jp2_procedure) jp2_skip_jp2c);
 	//custom procedures here
 
 	return true;
 }
 
-static bool jp2_init_header_reading(grk_jp2 *jp2) {
+static bool jp2_init_header_reading(FileFormat *fileFormat) {
 
-	assert(jp2 != nullptr);
+	assert(fileFormat != nullptr);
 
-	jp2->m_procedure_list->push_back((jp2_procedure) jp2_read_header_procedure);
+	fileFormat->m_procedure_list->push_back((jp2_procedure) jp2_read_header_procedure);
 	//custom procedures here
 
 	return true;
 }
 
-bool jp2_read_tile_header(grk_jp2 *p_jp2, uint16_t *tile_index,
+bool jp2_read_tile_header(FileFormat *fileFormat, uint16_t *tile_index,
 		uint64_t *data_size, uint32_t *p_tile_x0, uint32_t *p_tile_y0,
 		uint32_t *p_tile_x1, uint32_t *p_tile_y1, uint32_t *p_nb_comps,
 		bool *p_go_on, BufferedStream *stream) {
-	return j2k_read_tile_header(p_jp2->j2k, tile_index, data_size, p_tile_x0,
+	return j2k_read_tile_header(fileFormat->j2k, tile_index, data_size, p_tile_x0,
 			p_tile_y0, p_tile_x1, p_tile_y1, p_nb_comps, p_go_on, stream);
 }
 
-bool jp2_compress_tile(grk_jp2 *p_jp2, uint16_t tile_index, uint8_t *p_data,
+bool jp2_compress_tile(FileFormat *fileFormat, uint16_t tile_index, uint8_t *p_data,
 		uint64_t uncompressed_data_size, BufferedStream *stream)	{
-	return j2k_compress_tile(p_jp2->j2k, tile_index, p_data, uncompressed_data_size, stream);
+	return j2k_compress_tile(fileFormat->j2k, tile_index, p_data, uncompressed_data_size, stream);
 }
 
-bool jp2_decompress_tile(grk_jp2 *p_jp2, uint16_t tile_index, uint8_t *p_data,
+bool jp2_decompress_tile(FileFormat *fileFormat, uint16_t tile_index, uint8_t *p_data,
 		uint64_t data_size, BufferedStream *stream) {
 	bool rc = false;
 
 	try {
-		rc = j2k_decompress_tile(p_jp2->j2k, tile_index, p_data, data_size,
+		rc = j2k_decompress_tile(fileFormat->j2k, tile_index, p_data, data_size,
 				stream);
 	} catch (DecodeUnknownMarkerAtEndOfTileException &e) {
 		//suppress exception
@@ -3079,79 +3079,79 @@ bool jp2_decompress_tile(grk_jp2 *p_jp2, uint16_t tile_index, uint8_t *p_data,
 	return rc;
 }
 
-void jp2_destroy(grk_jp2 *jp2) {
-	if (jp2) {
-		j2k_destroy(jp2->j2k);
-		grok_free(jp2->comps);
-		grok_free(jp2->cl);
-		grk_buffer_delete(jp2->color.icc_profile_buf);
-		if (jp2->color.jp2_cdef) {
-			grok_free(jp2->color.jp2_cdef->info);
-			grok_free(jp2->color.jp2_cdef);
+void jp2_destroy(FileFormat *fileFormat) {
+	if (fileFormat) {
+		j2k_destroy(fileFormat->j2k);
+		grok_free(fileFormat->comps);
+		grok_free(fileFormat->cl);
+		grk_buffer_delete(fileFormat->color.icc_profile_buf);
+		if (fileFormat->color.jp2_cdef) {
+			grok_free(fileFormat->color.jp2_cdef->info);
+			grok_free(fileFormat->color.jp2_cdef);
 		}
-		jp2_free_pclr(&jp2->color);
-		delete jp2->m_validation_list;
-		delete jp2->m_procedure_list;
-		jp2->xml.dealloc();
-		for (uint32_t i = 0; i < jp2->numUuids; ++i)
-			(jp2->uuids + i)->dealloc();
-		jp2->numUuids = 0;
-		grok_free(jp2);
+		jp2_free_pclr(&fileFormat->color);
+		delete fileFormat->m_validation_list;
+		delete fileFormat->m_procedure_list;
+		fileFormat->xml.dealloc();
+		for (uint32_t i = 0; i < fileFormat->numUuids; ++i)
+			(fileFormat->uuids + i)->dealloc();
+		fileFormat->numUuids = 0;
+		grok_free(fileFormat);
 	}
 }
 
-bool jp2_set_decompress_area(grk_jp2 *p_jp2, grk_image *p_image, uint32_t start_x,
+bool jp2_set_decompress_area(FileFormat *fileFormat, grk_image *p_image, uint32_t start_x,
 		uint32_t start_y, uint32_t end_x, uint32_t end_y) {
-	return j2k_set_decompress_area(p_jp2->j2k, p_image, start_x, start_y, end_x,
+	return j2k_set_decompress_area(fileFormat->j2k, p_image, start_x, start_y, end_x,
 			end_y);
 }
 
-bool jp2_get_tile(grk_jp2 *p_jp2, BufferedStream *stream, grk_image *p_image,
+bool jp2_get_tile(FileFormat *fileFormat, BufferedStream *stream, grk_image *p_image,
 		uint16_t tile_index) {
 	if (!p_image)
 		return false;
 
-	if (!j2k_get_tile(p_jp2->j2k, stream, p_image, tile_index)) {
+	if (!j2k_get_tile(fileFormat->j2k, stream, p_image, tile_index)) {
 		GROK_ERROR("Failed to decompress the code stream in the JP2 file");
 		return false;
 	}
 
-	if (!jp2_check_color(p_image, &(p_jp2->color)))
+	if (!jp2_check_color(p_image, &(fileFormat->color)))
 		return false;
 
 	/* Set Image Color Space */
-	if (p_jp2->enumcs == GRK_ENUM_CLRSPC_CMYK)
+	if (fileFormat->enumcs == GRK_ENUM_CLRSPC_CMYK)
 		p_image->color_space = GRK_CLRSPC_CMYK;
-	if (p_jp2->enumcs == GRK_ENUM_CLRSPC_SRGB)
+	if (fileFormat->enumcs == GRK_ENUM_CLRSPC_SRGB)
 		p_image->color_space = GRK_CLRSPC_SRGB;
-	else if (p_jp2->enumcs == GRK_ENUM_CLRSPC_GRAY)
+	else if (fileFormat->enumcs == GRK_ENUM_CLRSPC_GRAY)
 		p_image->color_space = GRK_CLRSPC_GRAY;
-	else if (p_jp2->enumcs == GRK_ENUM_CLRSPC_SYCC)
+	else if (fileFormat->enumcs == GRK_ENUM_CLRSPC_SYCC)
 		p_image->color_space = GRK_CLRSPC_SYCC;
-	else if (p_jp2->enumcs == GRK_ENUM_CLRSPC_EYCC)
+	else if (fileFormat->enumcs == GRK_ENUM_CLRSPC_EYCC)
 		p_image->color_space = GRK_CLRSPC_EYCC;
 	else
 		p_image->color_space = GRK_CLRSPC_UNKNOWN;
 
-	if (p_jp2->color.jp2_pclr) {
+	if (fileFormat->color.jp2_pclr) {
 		/* Part 1, I.5.3.4: Either both or none : */
-		if (!p_jp2->color.jp2_pclr->cmap)
-			jp2_free_pclr(&(p_jp2->color));
+		if (!fileFormat->color.jp2_pclr->cmap)
+			jp2_free_pclr(&(fileFormat->color));
 		else {
-			if (!jp2_apply_pclr(p_image, &(p_jp2->color)))
+			if (!jp2_apply_pclr(p_image, &(fileFormat->color)))
 				return false;
 		}
 	}
 
 	/* Apply channel definitions if needed */
-	if (p_jp2->color.jp2_cdef)
-		jp2_apply_cdef(p_image, &(p_jp2->color));
+	if (fileFormat->color.jp2_cdef)
+		jp2_apply_cdef(p_image, &(fileFormat->color));
 
-	if (p_jp2->color.icc_profile_buf) {
-		p_image->icc_profile_buf = p_jp2->color.icc_profile_buf;
-		p_image->icc_profile_len = p_jp2->color.icc_profile_len;
-		p_jp2->color.icc_profile_buf = nullptr;
-		p_jp2->color.icc_profile_len = 0;
+	if (fileFormat->color.icc_profile_buf) {
+		p_image->icc_profile_buf = fileFormat->color.icc_profile_buf;
+		p_image->icc_profile_len = fileFormat->color.icc_profile_len;
+		fileFormat->color.icc_profile_buf = nullptr;
+		fileFormat->color.icc_profile_len = 0;
 		p_image->color_space = GRK_CLRSPC_ICC;
 	}
 
@@ -3162,34 +3162,34 @@ bool jp2_get_tile(grk_jp2 *p_jp2, BufferedStream *stream, grk_image *p_image,
 /* JP2 encoder interface                                             */
 /* ----------------------------------------------------------------------- */
 
-grk_jp2* jp2_create(bool p_is_decoder) {
-	grk_jp2 *jp2 = (grk_jp2*) grk_calloc(1, sizeof(grk_jp2));
-	if (jp2) {
+FileFormat* jp2_create(bool p_is_decoder) {
+	FileFormat *fileFormat = (FileFormat*) grk_calloc(1, sizeof(FileFormat));
+	if (fileFormat) {
 
 		/* create the J2K codec */
 		if (!p_is_decoder) {
-			jp2->j2k = j2k_create_compress();
+			fileFormat->j2k = j2k_create_compress();
 		} else {
-			jp2->j2k = j2k_create_decompress();
+			fileFormat->j2k = j2k_create_decompress();
 		}
 
-		if (jp2->j2k == nullptr) {
-			jp2_destroy(jp2);
+		if (fileFormat->j2k == nullptr) {
+			jp2_destroy(fileFormat);
 			return nullptr;
 		}
 
 		/* Color structure */
-		jp2->color.icc_profile_buf = nullptr;
-		jp2->color.icc_profile_len = 0;
-		jp2->color.jp2_cdef = nullptr;
-		jp2->color.jp2_pclr = nullptr;
-		jp2->color.jp2_has_colour_specification_box = 0;
+		fileFormat->color.icc_profile_buf = nullptr;
+		fileFormat->color.icc_profile_len = 0;
+		fileFormat->color.jp2_cdef = nullptr;
+		fileFormat->color.jp2_pclr = nullptr;
+		fileFormat->color.jp2_has_colour_specification_box = 0;
 
-		jp2->m_validation_list = new std::vector<jp2_procedure>();
-		jp2->m_procedure_list = new std::vector<jp2_procedure>();
+		fileFormat->m_validation_list = new std::vector<jp2_procedure>();
+		fileFormat->m_procedure_list = new std::vector<jp2_procedure>();
 	}
 
-	return jp2;
+	return fileFormat;
 }
 
 }

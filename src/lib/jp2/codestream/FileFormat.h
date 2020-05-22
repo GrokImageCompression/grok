@@ -154,13 +154,13 @@ struct grk_jp2_uuid: public grk_jp2_buffer {
 	uint8_t uuid[16];
 };
 
-struct grk_jp2;
-typedef bool (*jp2_procedure)(grk_jp2 *jp2, BufferedStream*);
+struct FileFormat;
+typedef bool (*jp2_procedure)(FileFormat *fileFormat, BufferedStream*);
 
 /**
  JPEG 2000 file format reader/writer
  */
-struct grk_jp2 {
+struct FileFormat {
 	/** handle to the J2K codec  */
 	CodeStream *j2k;
 	/** list of validation procedures */
@@ -221,12 +221,12 @@ struct grk_jp2_header_handler {
 	/* marker value */
 	uint32_t id;
 	/* action linked to the marker */
-	bool (*handler)(grk_jp2 *jp2, uint8_t *p_header_data, uint32_t header_size);
+	bool (*handler)(FileFormat *fileFormat, uint8_t *p_header_data, uint32_t header_size);
 };
 
 struct grk_jp2_img_header_writer_handler {
 	/* action to perform */
-	uint8_t* (*handler)(grk_jp2 *jp2, uint32_t *data_size);
+	uint8_t* (*handler)(FileFormat *fileFormat, uint32_t *data_size);
 	/* result of the action : data */
 	uint8_t *m_data;
 	/* size of data */
@@ -243,111 +243,111 @@ struct grk_jp2_img_header_writer_handler {
  *
  * @return  an empty JPEG 2000 file codec.
  */
-grk_jp2* jp2_create(bool p_is_decoder);
+FileFormat* jp2_create(bool p_is_decoder);
 
 /**
  Destroy a JP2 decompressor handle
- @param jp2 JP2 decompressor handle to destroy
+ @param fileFormat JP2 decompressor handle to destroy
  */
-void jp2_destroy(grk_jp2 *jp2);
+void jp2_destroy(FileFormat *fileFormat);
 
 
 /**
  * Set up compress parameters using the current image and using user parameters.
- * Coding parameters are returned in jp2->j2k->cp.
+ * Coding parameters are returned in fileFormat->j2k->cp.
  *
- * @param jp2 JP2 compressor handle
+ * @param fileFormat JP2 compressor handle
  * @param parameters compression parameters
  * @param image input filled image
 
  * @return true if successful, false otherwise
  */
-bool jp2_init_compress(grk_jp2 *jp2,  grk_cparameters  *parameters,
+bool jp2_init_compress(FileFormat *fileFormat,  grk_cparameters  *parameters,
 		grk_image *image);
 
 /**
  * Starts a compression scheme, i.e. validates the codec parameters, writes the header.
- * @param  jp2    	 JPEG 2000 file codec.
+ * @param  fileFormat    	 JPEG 2000 file codec.
  * @param  stream    the stream object.
  * @return true if the codec is valid.
  */
-bool jp2_start_compress(grk_jp2 *jp2, BufferedStream *stream);
+bool jp2_start_compress(FileFormat *fileFormat, BufferedStream *stream);
 
 /**
  Encode an image into a JPEG 2000 file stream
 
- @param jp2       JP2 compressor handle
+ @param fileFormat       JP2 compressor handle
  @param tile	  plugin tile
  @param stream    Output buffer stream
 
  @return true if successful, returns false otherwise
  */
-bool jp2_compress(grk_jp2 *jp2, grk_plugin_tile *tile, BufferedStream *stream);
+bool jp2_compress(FileFormat *fileFormat, grk_plugin_tile *tile, BufferedStream *stream);
 
 
 /**
  * Compress tile
  *
- * @param  p_jp2    JPEG 2000 codec
+ * @param  fileFormat    JPEG 2000 code stream
  * @param tile_index  FIXME DOC
  * @param p_data        FIXME DOC
  * @param uncompressed_data_size   FIXME DOC
  * @param  stream      the stream to write data to.
 
  */
-bool jp2_compress_tile(grk_jp2 *p_jp2, uint16_t tile_index, uint8_t *p_data,
+bool jp2_compress_tile(FileFormat *fileFormat, uint16_t tile_index, uint8_t *p_data,
 		uint64_t uncompressed_data_size, BufferedStream *stream);
 
 /**
  * Ends the compression procedures and possibly add data to be read after the
  * code stream.
  */
-bool jp2_end_compress(grk_jp2 *jp2, BufferedStream *stream);
+bool jp2_end_compress(FileFormat *fileFormat, BufferedStream *stream);
 
 /* ----------------------------------------------------------------------- */
 
 /**
  Set up the decompress parameters using user parameters.
- Decoding parameters are returned in jp2->j2k->cp.
+ Decoding parameters are returned in fileFormat->j2k->cp.
 
- @param jp2 JP2 decompressor handle
+ @param fileFormat JP2 decompressor handle
  @param parameters decompression parameters
  */
-void jp2_init_decompress(void *jp2,  grk_dparameters  *parameters);
+void jp2_init_decompress(void *fileFormat,  grk_dparameters  *parameters);
 
 /**
  * Decompress an image from a JPEG 2000 file stream
  *
- * @param jp2 JP2 decompressor handle
+ * @param fileFormat JP2 decompressor handle
  * @param tile	  plugin tile
  * @param stream  stream
  * @param p_image image
  *
  * @return a decoded image if successful, otherwise nullptr
  */
-bool jp2_decompress(grk_jp2 *jp2, grk_plugin_tile *tile, BufferedStream *stream,
+bool jp2_decompress(FileFormat *fileFormat, grk_plugin_tile *tile, BufferedStream *stream,
 		grk_image *p_image);
 
 /**
  * Ends the decompression procedures and possibly add data to be read after the
  * code stream.
  */
-bool jp2_end_decompress(grk_jp2 *jp2, BufferedStream *stream);
+bool jp2_end_decompress(FileFormat *fileFormat, BufferedStream *stream);
 
 /**
  * Read a JPEG 2000 file header.
  * @param stream 	stream to read data from.
- * @param jp2    	JPEG 2000 file header structure.
+ * @param fileFormat    	JPEG 2000 file header structure.
  * @param header_info    	header structure to store header info
  * @param p_image   FIXME DOC
  * @return true if the box is valid.
  */
-bool jp2_read_header(BufferedStream *stream, grk_jp2 *jp2,
+bool jp2_read_header(BufferedStream *stream, FileFormat *fileFormat,
 		 grk_header_info  *header_info, grk_image **p_image);
 
 /**
  * Reads a tile header.
- * @param  p_jp2         JPEG 2000 codec
+ * @param  fileFormat         JPEG 2000 code stream
  * @param  tile_index  FIXME DOC
  * @param  data_size   FIXME DOC
  * @param  p_tile_x0     FIXME DOC
@@ -359,7 +359,7 @@ bool jp2_read_header(BufferedStream *stream, grk_jp2 *jp2,
  * @param  stream      the stream to write data to.
  
  */
-bool jp2_read_tile_header(grk_jp2 *p_jp2, uint16_t *tile_index,
+bool jp2_read_tile_header(FileFormat *fileFormat, uint16_t *tile_index,
 		uint64_t *data_size, uint32_t *p_tile_x0, uint32_t *p_tile_y0,
 		uint32_t *p_tile_x1, uint32_t *p_tile_y1, uint32_t *p_nb_comps,
 		bool *p_go_on, BufferedStream *stream);
@@ -367,7 +367,7 @@ bool jp2_read_tile_header(grk_jp2 *p_jp2, uint16_t *tile_index,
 
 /**
  * Decompress tile.
- * @param  p_jp2      JPEG 2000 codec.
+ * @param  fileFormat      JPEG 2000 code stream.
  * @param  tile_index index of tile to decompress
  * @param  p_data
  * @param  data_size  FIXME DOC
@@ -376,13 +376,13 @@ bool jp2_read_tile_header(grk_jp2 *p_jp2, uint16_t *tile_index,
  *
  * @return true if successful
  */
-bool jp2_decompress_tile(grk_jp2 *p_jp2, uint16_t tile_index, uint8_t *p_data,
+bool jp2_decompress_tile(FileFormat *fileFormat, uint16_t tile_index, uint8_t *p_data,
 		uint64_t data_size, BufferedStream *stream);
 /**
  * Sets the given area to be decompressed. This function should be called
  * right after grk_read_header and before any tile header reading.
  *
- * @param  p_jp2     JPEG 2000 codec
+ * @param  fileFormat     JPEG 2000 code stream
  * @param  image     FIXME DOC
  * @param  start_x   the left position of the rectangle to decompress (in image coordinates).
  * @param  start_y   the up position of the rectangle to decompress (in image coordinates).
@@ -391,13 +391,13 @@ bool jp2_decompress_tile(grk_jp2 *p_jp2, uint16_t tile_index, uint8_t *p_data,
  *
  * @return  true      if the area could be set.
  */
-bool jp2_set_decompress_area(grk_jp2 *p_jp2, grk_image *image, uint32_t start_x,
+bool jp2_set_decompress_area(FileFormat *fileFormat, grk_image *image, uint32_t start_x,
 		uint32_t start_y, uint32_t end_x, uint32_t end_y);
 
 /**
  *
  */
-bool jp2_get_tile(grk_jp2 *p_jp2, BufferedStream *stream, grk_image *p_image, uint16_t tile_index);
+bool jp2_get_tile(FileFormat *fileFormat, BufferedStream *stream, grk_image *p_image, uint16_t tile_index);
 
 
 /*@}*/

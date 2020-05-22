@@ -92,14 +92,14 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/BitIO.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/BitIO.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/IBitIO.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/j2kprofile.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/j2kprofile.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/dump.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/dump.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/j2k.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/j2k.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/jp2.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/jp2.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Profile.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Profile.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Dump.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Dump.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodeStream.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodeStream.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/FileFormat.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/FileFormat.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodingParams.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodingParams.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/PacketIter.cpp

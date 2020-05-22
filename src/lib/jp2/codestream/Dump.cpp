@@ -63,9 +63,9 @@
 namespace grk {
 
 
-static void j2k_dump_MH_info(CodeStream *p_j2k, FILE *out_stream);
+static void j2k_dump_MH_info(CodeStream *codeStream, FILE *out_stream);
 
-static void j2k_dump_MH_index(CodeStream *p_j2k, FILE *out_stream);
+static void j2k_dump_MH_index(CodeStream *codeStream, FILE *out_stream);
 
 static void j2k_dump_tile_info(TileCodingParams *default_tile, uint32_t numcomps,
 		FILE *out_stream) {
@@ -124,7 +124,7 @@ static void j2k_dump_tile_info(TileCodingParams *default_tile, uint32_t numcomps
 	}
 }
 
-void j2k_dump(CodeStream *p_j2k, int32_t flag, FILE *out_stream) {
+void j2k_dump(CodeStream *codeStream, int32_t flag, FILE *out_stream) {
 	/* Check if the flag is compatible with j2k file*/
 	if ((flag & GRK_JP2_INFO) || (flag & GRK_JP2_IND)) {
 		fprintf(out_stream, "Wrong flag\n");
@@ -133,23 +133,23 @@ void j2k_dump(CodeStream *p_j2k, int32_t flag, FILE *out_stream) {
 
 	/* Dump the image_header */
 	if (flag & GRK_IMG_INFO) {
-		if (p_j2k->m_private_image)
-			j2k_dump_image_header(p_j2k->m_private_image, 0, out_stream);
+		if (codeStream->m_private_image)
+			j2k_dump_image_header(codeStream->m_private_image, 0, out_stream);
 	}
 
 	/* Dump the code stream info from main header */
 	if (flag & GRK_J2K_MH_INFO) {
-		if (p_j2k->m_private_image)
-			j2k_dump_MH_info(p_j2k, out_stream);
+		if (codeStream->m_private_image)
+			j2k_dump_MH_info(codeStream, out_stream);
 	}
 	/* Dump all tile/code stream info */
 	if (flag & GRK_J2K_TCH_INFO) {
-		uint32_t nb_tiles = p_j2k->m_cp.t_grid_height * p_j2k->m_cp.t_grid_width;
+		uint32_t nb_tiles = codeStream->m_cp.t_grid_height * codeStream->m_cp.t_grid_width;
 		uint32_t i;
-		TileCodingParams *tcp = p_j2k->m_cp.tcps;
-		if (p_j2k->m_private_image) {
+		TileCodingParams *tcp = codeStream->m_cp.tcps;
+		if (codeStream->m_private_image) {
 			for (i = 0; i < nb_tiles; ++i) {
-				j2k_dump_tile_info(tcp, p_j2k->m_private_image->numcomps,
+				j2k_dump_tile_info(tcp, codeStream->m_private_image->numcomps,
 						out_stream);
 				++tcp;
 			}
@@ -163,7 +163,7 @@ void j2k_dump(CodeStream *p_j2k, int32_t flag, FILE *out_stream) {
 
 	/* Dump the code stream index from main header */
 	if (flag & GRK_J2K_MH_IND) {
-		j2k_dump_MH_index(p_j2k, out_stream);
+		j2k_dump_MH_index(codeStream, out_stream);
 	}
 
 	/* Dump the code stream index of the current tile */
@@ -173,8 +173,8 @@ void j2k_dump(CodeStream *p_j2k, int32_t flag, FILE *out_stream) {
 
 }
 
-static void j2k_dump_MH_index(CodeStream *p_j2k, FILE *out_stream) {
-	 grk_codestream_index  *cstr_index = p_j2k->cstr_index;
+static void j2k_dump_MH_index(CodeStream *codeStream, FILE *out_stream) {
+	 grk_codestream_index  *cstr_index = codeStream->cstr_index;
 	uint32_t it_marker, it_tile, it_tile_part;
 
 	fprintf(out_stream, "Codestream index from main header: {\n");
@@ -255,17 +255,17 @@ static void j2k_dump_MH_index(CodeStream *p_j2k, FILE *out_stream) {
 	fprintf(out_stream, "}\n");
 }
 
-static void j2k_dump_MH_info(CodeStream *p_j2k, FILE *out_stream) {
+static void j2k_dump_MH_info(CodeStream *codeStream, FILE *out_stream) {
 
 	fprintf(out_stream, "Codestream info from main header: {\n");
 
-	fprintf(out_stream, "\t tx0=%d, ty0=%d\n", p_j2k->m_cp.tx0,
-			p_j2k->m_cp.ty0);
-	fprintf(out_stream, "\t tdx=%d, tdy=%d\n", p_j2k->m_cp.t_width,
-			p_j2k->m_cp.t_height);
-	fprintf(out_stream, "\t tw=%d, th=%d\n", p_j2k->m_cp.t_grid_width, p_j2k->m_cp.t_grid_height);
-	j2k_dump_tile_info(p_j2k->m_specific_param.m_decoder.m_default_tcp,
-			p_j2k->m_private_image->numcomps, out_stream);
+	fprintf(out_stream, "\t tx0=%d, ty0=%d\n", codeStream->m_cp.tx0,
+			codeStream->m_cp.ty0);
+	fprintf(out_stream, "\t tdx=%d, tdy=%d\n", codeStream->m_cp.t_width,
+			codeStream->m_cp.t_height);
+	fprintf(out_stream, "\t tw=%d, th=%d\n", codeStream->m_cp.t_grid_width, codeStream->m_cp.t_grid_height);
+	j2k_dump_tile_info(codeStream->m_specific_param.m_decoder.m_default_tcp,
+			codeStream->m_private_image->numcomps, out_stream);
 	fprintf(out_stream, "}\n");
 }
 
@@ -323,9 +323,9 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 		fprintf(out_stream, "}\n");
 }
 
- grk_codestream_info_v2  *  j2k_get_cstr_info(CodeStream *p_j2k) {
+ grk_codestream_info_v2  *  j2k_get_cstr_info(CodeStream *codeStream) {
 	uint32_t compno;
-	uint32_t numcomps = p_j2k->m_private_image->numcomps;
+	uint32_t numcomps = codeStream->m_private_image->numcomps;
 	TileCodingParams *default_tile;
 	 grk_codestream_info_v2  *cstr_info =
 			( grk_codestream_info_v2  * ) grk_calloc(1,
@@ -333,18 +333,18 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 	if (!cstr_info)
 		return nullptr;
 
-	cstr_info->nbcomps = p_j2k->m_private_image->numcomps;
+	cstr_info->nbcomps = codeStream->m_private_image->numcomps;
 
-	cstr_info->tx0 = p_j2k->m_cp.tx0;
-	cstr_info->ty0 = p_j2k->m_cp.ty0;
-	cstr_info->t_width = p_j2k->m_cp.t_width;
-	cstr_info->t_height = p_j2k->m_cp.t_height;
-	cstr_info->t_grid_width = p_j2k->m_cp.t_grid_width;
-	cstr_info->t_grid_height = p_j2k->m_cp.t_grid_height;
+	cstr_info->tx0 = codeStream->m_cp.tx0;
+	cstr_info->ty0 = codeStream->m_cp.ty0;
+	cstr_info->t_width = codeStream->m_cp.t_width;
+	cstr_info->t_height = codeStream->m_cp.t_height;
+	cstr_info->t_grid_width = codeStream->m_cp.t_grid_width;
+	cstr_info->t_grid_height = codeStream->m_cp.t_grid_height;
 
 	cstr_info->tile_info = nullptr; /* Not fill from the main header*/
 
- default_tile = p_j2k->m_specific_param.m_decoder.m_default_tcp;
+ default_tile = codeStream->m_specific_param.m_decoder.m_default_tcp;
 
 	cstr_info->m_default_tile_info.csty = default_tile->csty;
 	cstr_info->m_default_tile_info.prg = default_tile->prg;
@@ -399,18 +399,18 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 	return cstr_info;
 }
 
- grk_codestream_index  *  j2k_get_cstr_index(CodeStream *p_j2k) {
+ grk_codestream_index  *  j2k_get_cstr_index(CodeStream *codeStream) {
 	 grk_codestream_index  *cstr_index =
 			( grk_codestream_index  * ) grk_calloc(1,
 					sizeof( grk_codestream_index) );
 	if (!cstr_index)
 		return nullptr;
 
- cstr_index->main_head_start = p_j2k->cstr_index->main_head_start;
- cstr_index->main_head_end = p_j2k->cstr_index->main_head_end;
- cstr_index->codestream_size = p_j2k->cstr_index->codestream_size;
+ cstr_index->main_head_start = codeStream->cstr_index->main_head_start;
+ cstr_index->main_head_end = codeStream->cstr_index->main_head_end;
+ cstr_index->codestream_size = codeStream->cstr_index->codestream_size;
 
- cstr_index->marknum = p_j2k->cstr_index->marknum;
+ cstr_index->marknum = codeStream->cstr_index->marknum;
  cstr_index->marker = ( grk_marker_info  * ) grk_malloc(
 		 cstr_index->marknum * sizeof( grk_marker_info) );
 	if (!cstr_index->marker) {
@@ -418,15 +418,15 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 		return nullptr;
 	}
 
-	if (p_j2k->cstr_index->marker)
-		memcpy(cstr_index->marker, p_j2k->cstr_index->marker,
+	if (codeStream->cstr_index->marker)
+		memcpy(cstr_index->marker, codeStream->cstr_index->marker,
 			 cstr_index->marknum * sizeof( grk_marker_info) );
 	else {
 		grok_free(cstr_index->marker);
 	 cstr_index->marker = nullptr;
 	}
 
- cstr_index->nb_of_tiles = p_j2k->cstr_index->nb_of_tiles;
+ cstr_index->nb_of_tiles = codeStream->cstr_index->nb_of_tiles;
  cstr_index->tile_index = ( grk_tile_index  * ) grk_calloc(
 		 cstr_index->nb_of_tiles, sizeof( grk_tile_index) );
 	if (!cstr_index->tile_index) {
@@ -435,7 +435,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 		return nullptr;
 	}
 
-	if (!p_j2k->cstr_index->tile_index) {
+	if (!codeStream->cstr_index->tile_index) {
 		grok_free(cstr_index->tile_index);
 	 cstr_index->tile_index = nullptr;
 	} else {
@@ -444,7 +444,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 
 			/* Tile Marker*/
 		 cstr_index->tile_index[it_tile].marknum =
-					p_j2k->cstr_index->tile_index[it_tile].marknum;
+					codeStream->cstr_index->tile_index[it_tile].marknum;
 
 		 cstr_index->tile_index[it_tile].marker =
 					( grk_marker_info  * ) grk_malloc(
@@ -464,9 +464,9 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 				return nullptr;
 			}
 
-			if (p_j2k->cstr_index->tile_index[it_tile].marker)
+			if (codeStream->cstr_index->tile_index[it_tile].marker)
 				memcpy(cstr_index->tile_index[it_tile].marker,
-						p_j2k->cstr_index->tile_index[it_tile].marker,
+						codeStream->cstr_index->tile_index[it_tile].marker,
 					 cstr_index->tile_index[it_tile].marknum
 								* sizeof( grk_marker_info) );
 			else {
@@ -476,7 +476,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 
 			/* Tile part index*/
 		 cstr_index->tile_index[it_tile].nb_tps =
-					p_j2k->cstr_index->tile_index[it_tile].nb_tps;
+					codeStream->cstr_index->tile_index[it_tile].nb_tps;
 
 		 cstr_index->tile_index[it_tile].tp_index =
 					( grk_tp_index  * ) grk_malloc(
@@ -497,9 +497,9 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 				return nullptr;
 			}
 
-			if (p_j2k->cstr_index->tile_index[it_tile].tp_index) {
+			if (codeStream->cstr_index->tile_index[it_tile].tp_index) {
 				memcpy(cstr_index->tile_index[it_tile].tp_index,
-						p_j2k->cstr_index->tile_index[it_tile].tp_index,
+						codeStream->cstr_index->tile_index[it_tile].tp_index,
 					 cstr_index->tile_index[it_tile].nb_tps
 								* sizeof( grk_tp_index) );
 			} else {
@@ -516,22 +516,22 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 	return cstr_index;
 }
 
-bool j2k_allocate_tile_element_cstr_index(CodeStream *p_j2k) {
+bool j2k_allocate_tile_element_cstr_index(CodeStream *codeStream) {
 	uint32_t it_tile = 0;
 
-	p_j2k->cstr_index->nb_of_tiles = p_j2k->m_cp.t_grid_width * p_j2k->m_cp.t_grid_height;
-	p_j2k->cstr_index->tile_index = ( grk_tile_index  * ) grk_calloc(
-			p_j2k->cstr_index->nb_of_tiles, sizeof( grk_tile_index) );
-	if (!p_j2k->cstr_index->tile_index)
+	codeStream->cstr_index->nb_of_tiles = codeStream->m_cp.t_grid_width * codeStream->m_cp.t_grid_height;
+	codeStream->cstr_index->tile_index = ( grk_tile_index  * ) grk_calloc(
+			codeStream->cstr_index->nb_of_tiles, sizeof( grk_tile_index) );
+	if (!codeStream->cstr_index->tile_index)
 		return false;
 
-	for (it_tile = 0; it_tile < p_j2k->cstr_index->nb_of_tiles; it_tile++) {
-		p_j2k->cstr_index->tile_index[it_tile].maxmarknum = 100;
-		p_j2k->cstr_index->tile_index[it_tile].marknum = 0;
-		p_j2k->cstr_index->tile_index[it_tile].marker =
-				( grk_marker_info  * ) grk_calloc(p_j2k->cstr_index->tile_index[it_tile].maxmarknum,
+	for (it_tile = 0; it_tile < codeStream->cstr_index->nb_of_tiles; it_tile++) {
+		codeStream->cstr_index->tile_index[it_tile].maxmarknum = 100;
+		codeStream->cstr_index->tile_index[it_tile].marknum = 0;
+		codeStream->cstr_index->tile_index[it_tile].marker =
+				( grk_marker_info  * ) grk_calloc(codeStream->cstr_index->tile_index[it_tile].maxmarknum,
 						sizeof( grk_marker_info) );
-		if (!p_j2k->cstr_index->tile_index[it_tile].marker)
+		if (!codeStream->cstr_index->tile_index[it_tile].marker)
 			return false;
 	}
 	return true;
@@ -575,19 +575,19 @@ void j2k_destroy_cstr_index( grk_codestream_index  *p_cstr_ind) {
 	}
 }
 
-void jp2_dump(grk_jp2 *p_jp2, int32_t flag, FILE *out_stream) {
+void jp2_dump(FileFormat *fileFormat, int32_t flag, FILE *out_stream) {
 
-	assert(p_jp2 != nullptr);
+	assert(fileFormat != nullptr);
 
-	j2k_dump(p_jp2->j2k, flag, out_stream);
+	j2k_dump(fileFormat->j2k, flag, out_stream);
 }
 
-grk_codestream_index* jp2_get_cstr_index(grk_jp2 *p_jp2) {
-	return j2k_get_cstr_index(p_jp2->j2k);
+grk_codestream_index* jp2_get_cstr_index(FileFormat *fileFormat) {
+	return j2k_get_cstr_index(fileFormat->j2k);
 }
 
-grk_codestream_info_v2* jp2_get_cstr_info(grk_jp2 *p_jp2) {
-	return j2k_get_cstr_info(p_jp2->j2k);
+grk_codestream_info_v2* jp2_get_cstr_info(FileFormat *fileFormat) {
+	return j2k_get_cstr_info(fileFormat->j2k);
 }
 
 }

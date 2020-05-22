@@ -67,22 +67,22 @@ public:
 
 	/**
 	 * Decode a SIZ marker (image and tile size)
-	 * @param       p_j2k           the JPEG 2000 file codec.
+	 * @param       codeStream           the JPEG 2000 file codec.
 	 * @param       p_header_data   the data contained in the SIZ box.
 	 * @param       header_size   the size of the data contained in the SIZ marker.
 
 	 */
-	bool read(CodeStream *p_j2k, uint8_t *p_header_data,
+	bool read(CodeStream *codeStream, uint8_t *p_header_data,
 			uint16_t header_size);
 
 	/**
 	 * Write the SIZ marker (image and tile size)
 	 *
-	 * @param       p_j2k           J2K codec.
+	 * @param       codeStream           JPEG 2000 code stream
 	 * @param       stream        the stream to write data to.
 
 	 */
-	bool write(CodeStream *p_j2k, BufferedStream *stream);
+	bool write(CodeStream *codeStream, BufferedStream *stream);
 
 };
 

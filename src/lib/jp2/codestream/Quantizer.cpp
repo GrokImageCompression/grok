@@ -125,16 +125,16 @@ void Quantizer::apply_quant(TileComponentCodingParams *src, TileComponentCodingP
 }
 
 
-bool Quantizer::write_SQcd_SQcc(CodeStream *p_j2k, uint16_t tile_no,
+bool Quantizer::write_SQcd_SQcc(CodeStream *codeStream, uint16_t tile_no,
 		uint32_t comp_no, BufferedStream *stream) {
-	assert(p_j2k != nullptr);
+	assert(codeStream != nullptr);
 
-	auto cp = &(p_j2k->m_cp);
+	auto cp = &(codeStream->m_cp);
 	auto tcp = &cp->tcps[tile_no];
 	auto tccp = &tcp->tccps[comp_no];
 
 	assert(tile_no < cp->t_grid_width * cp->t_grid_height);
-	assert(comp_no < p_j2k->m_private_image->numcomps);
+	assert(comp_no < codeStream->m_private_image->numcomps);
 
 	uint32_t num_bands =
 			(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
@@ -163,16 +163,16 @@ bool Quantizer::write_SQcd_SQcc(CodeStream *p_j2k, uint16_t tile_no,
 }
 
 
-uint32_t Quantizer::get_SQcd_SQcc_size(CodeStream *p_j2k, uint16_t tile_no,
+uint32_t Quantizer::get_SQcd_SQcc_size(CodeStream *codeStream, uint16_t tile_no,
 		uint32_t comp_no) {
-	assert(p_j2k != nullptr);
+	assert(codeStream != nullptr);
 
-	auto cp = &(p_j2k->m_cp);
+	auto cp = &(codeStream->m_cp);
 	auto tcp = &cp->tcps[tile_no];
 	auto tccp = &tcp->tccps[comp_no];
 
 	assert(tile_no < cp->t_grid_width * cp->t_grid_height);
-	assert(comp_no < p_j2k->m_private_image->numcomps);
+	assert(comp_no < codeStream->m_private_image->numcomps);
 
 	uint32_t num_bands =
 			(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
@@ -185,11 +185,11 @@ uint32_t Quantizer::get_SQcd_SQcc_size(CodeStream *p_j2k, uint16_t tile_no,
 	}
 }
 
-bool Quantizer::compare_SQcd_SQcc(CodeStream *p_j2k, uint16_t tile_no,
+bool Quantizer::compare_SQcd_SQcc(CodeStream *codeStream, uint16_t tile_no,
 		uint32_t first_comp_no, uint32_t second_comp_no) {
-	assert(p_j2k != nullptr);
+	assert(codeStream != nullptr);
 
-	auto cp = &(p_j2k->m_cp);
+	auto cp = &(codeStream->m_cp);
 	auto tcp = &cp->tcps[tile_no];
 	auto tccp0 = &tcp->tccps[first_comp_no];
 	auto tccp1 = &tcp->tccps[second_comp_no];
@@ -226,11 +226,11 @@ bool Quantizer::compare_SQcd_SQcc(CodeStream *p_j2k, uint16_t tile_no,
 	return true;
 }
 
-bool Quantizer::read_SQcd_SQcc(bool fromQCC, CodeStream *p_j2k, uint32_t comp_no,
+bool Quantizer::read_SQcd_SQcc(bool fromQCC, CodeStream *codeStream, uint32_t comp_no,
 		uint8_t *p_header_data, uint16_t *header_size) {
-	assert(p_j2k != nullptr);
+	assert(codeStream != nullptr);
 	assert(p_header_data != nullptr);
-	assert(comp_no < p_j2k->m_private_image->numcomps);
+	assert(comp_no < codeStream->m_private_image->numcomps);
 	if (*header_size < 1) {
 		GROK_ERROR( "Error reading SQcd or SQcc element");
 		return false;
@@ -243,10 +243,10 @@ bool Quantizer::read_SQcd_SQcc(bool fromQCC, CodeStream *p_j2k, uint32_t comp_no
 	*header_size = (uint16_t)(*header_size - 1);
 
 	// scoping rules
-	auto tcp = p_j2k->get_current_decode_tcp();
+	auto tcp = codeStream->get_current_decode_tcp();
 	auto tccp = tcp->tccps + comp_no;
 	bool ignore = false;
-	bool fromTileHeader = p_j2k->isDecodingTilePartHeader();
+	bool fromTileHeader = codeStream->isDecodingTilePartHeader();
 	bool mainQCD = !fromQCC && !fromTileHeader;
 
 	if ((!fromTileHeader && !fromQCC) && tccp->fromQCC)

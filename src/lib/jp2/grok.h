@@ -1543,7 +1543,7 @@ GRK_API bool GRK_CALLCONV grk_set_error_handler(grk_msg_callback p_callback,
 /**
  * Destroy codec
  *
- * @param	codec			JPEG 2000 codec
+ * @param	codec			JPEG 2000 code stream
  */
 GRK_API void GRK_CALLCONV grk_destroy_codec(grk_codec *codec);
 
@@ -1561,7 +1561,7 @@ GRK_API grk_codec* GRK_CALLCONV grk_create_decompress(GRK_CODEC_FORMAT format,
 /**
  * End decompression
  *
- * @param	codec			JPEG 2000 codec
+ * @param	codec			JPEG 2000 code stream
  */
 GRK_API bool GRK_CALLCONV grk_end_decompress(grk_codec *codec);
 
@@ -1587,7 +1587,7 @@ GRK_API bool GRK_CALLCONV grk_init_decompress(grk_codec *codec,
 /**
  * Decode JPEG 2000 header
  *
- * @param	codec				JPEG 2000 codec to read.
+ * @param	codec				JPEG 2000 code stream to read.
  * @param	header_info			information read from JPEG 2000 header.
  * @param	image				the image structure initialized with the characteristics
  *								of encoded image.
@@ -1601,7 +1601,7 @@ GRK_API bool GRK_CALLCONV grk_read_header(grk_codec *codec,
  * Set the given area to be decompressed. This function should be called
  *  right after grk_read_header and before any tile header reading.
  *
- * @param	codec			JPEG 2000 codec.
+ * @param	codec			JPEG 2000 code stream.
  * @param	image         decoded image previously set by grk_read_header
  * @param	start_x		    left position of the rectangle to decompress (in image coordinates).
  * @param	end_x			the right position of the rectangle to decompress (in image coordinates).
@@ -1628,7 +1628,7 @@ GRK_API bool GRK_CALLCONV grk_decompress(grk_codec *p_decompressor,
 /**
  * Decompress a specific tile
  *
- * @param	codec			JPEG 2000 codec
+ * @param	codec			JPEG 2000 code stream
  * @param	image			output image
  * @param	tile_index		index of the tile to be decompressed
  *
@@ -1643,7 +1643,7 @@ GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_codec *codec,
  * The user may need to refer to the image returned by grk_read_header
  * to understand the size being taken by the tile.
  *
- * @param	codec			JPEG 2000 codec.
+ * @param	codec			JPEG 2000 code stream.
  * @param	tile_index		pointer to a value that will hold the index
  *  						of the tile being decoded, in case of success.
  * @param	data_size		pointer to a value that will hold
@@ -1674,7 +1674,7 @@ GRK_API bool GRK_CALLCONV grk_read_tile_header(grk_codec *codec,
  * this method is called. The user may need to refer to the image returned
  * by grk_read_header to calculate the size of the decompressed tile.
  *
- * @param	codec			JPEG 2000 codec.
+ * @param	codec			JPEG 2000 code stream.
  * @param	tile_index		index of the tile being decoded. This should be the value
  * 						 	set by grk_read_tile_header.
  * @param	data			pointer to a memory block that will hold the decoded data.
@@ -1725,7 +1725,7 @@ GRK_API void GRK_CALLCONV grk_set_default_compress_params(
 /**
  * Setup the encoder parameters using the current image and user parameters.
  *
- * @param codec 		JPEG 2000 codec
+ * @param codec 		JPEG 2000 code stream
  * @param parameters 	compression parameters
  * @param image 		input image
  */
@@ -1753,7 +1753,7 @@ GRK_API bool GRK_CALLCONV grk_compress(grk_codec *codec);
  * This method should be called right after grk_start_compress,
  * and before grk_end_compress.
  *
- * @param	codec		    JPEG 2000 codec
+ * @param	codec		    JPEG 2000 code stream
  * @param	tile_index		the index of the tile to write. At the moment,
  * 							the tiles must be written from 0 to n-1 in sequence.
  * @param	data			pointer to the data to write. Data is arranged in planar
@@ -1800,7 +1800,7 @@ GRK_API void GRK_CALLCONV grk_destroy_cstr_info(
 /**
  * Dump codec information to file
  *
- * @param	codec			JPEG 2000 codec.
+ * @param	codec			JPEG 2000 code stream.
  * @param	info_flag		type of information dump.
  * @param	output_stream	output stream where dump the information get from the codec.
  *
@@ -1811,7 +1811,7 @@ GRK_API void GRK_CALLCONV grk_dump_codec(grk_codec *codec, int32_t info_flag,
 /**
  * Get code stream information from codec
  *
- * @param	codec			JPEG 2000 codec
+ * @param	codec			JPEG 2000 code stream
  *
  * @return					pointer to a code stream information structure.
  *
@@ -1822,7 +1822,7 @@ GRK_API grk_codestream_info_v2* GRK_CALLCONV grk_get_cstr_info(
 /**
  * Get the code stream index from the codec
  *
- * @param	codec			JPEG 2000 codec.
+ * @param	codec			JPEG 2000 code stream.
  *
  * @return					pointer to a code stream index structure.
  *
