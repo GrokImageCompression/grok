@@ -319,7 +319,7 @@ private:
 	uint64_t m_numprec;
 	uint32_t m_numlayers;
 
-	size_t get_buffer_len(uint32_t numcomps, uint32_t numres, uint64_t numprec, uint32_t numlayers);
+	uint64_t get_buffer_len(uint32_t numcomps, uint32_t numres, uint64_t numprec, uint32_t numlayers);
 	uint64_t index(uint32_t comps, uint32_t res, uint64_t prec, uint32_t layer);
 };
 
