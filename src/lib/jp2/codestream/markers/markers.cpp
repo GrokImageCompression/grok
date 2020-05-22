@@ -2057,7 +2057,7 @@ bool j2k_read_mco(CodeStream *p_j2k, uint8_t *p_header_data,
 bool j2k_add_mct(TileCodingParams *p_tcp, grk_image *p_image, uint32_t index) {
 	uint32_t i;
 	uint32_t data_size, mct_size, offset_size;
-	uint64_t nb_elem;
+	uint32_t nb_elem;
 	TileComponentCodingParams *tccp;
 
 	assert(p_tcp != nullptr);
@@ -2226,7 +2226,7 @@ bool j2k_read_tlm(CodeStream *p_j2k, uint8_t *p_header_data,
 
 bool j2k_write_updated_tlm(CodeStream *p_j2k, BufferedStream *stream) {
 	assert(p_j2k != nullptr);
-	assert(stream != nullptr);
+	(void)stream;
 
 	return p_j2k->m_cp.tlm_markers->write_updated(p_j2k);
 }

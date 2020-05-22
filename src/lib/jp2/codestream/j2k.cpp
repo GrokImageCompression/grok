@@ -2457,7 +2457,7 @@ static bool j2k_get_end_header(CodeStream *p_j2k, BufferedStream *stream) {
 }
 
 bool j2k_compress_tile(CodeStream *p_j2k, uint16_t tile_index, uint8_t *p_data,
-		uint64_t data_size, BufferedStream *stream) {
+		uint64_t uncompressed_data_size, BufferedStream *stream) {
 	if (!j2k_pre_write_tile(p_j2k, tile_index)) {
 		GROK_ERROR("Error while j2k_pre_write_tile with tile index = %d",
 				tile_index);
@@ -2475,7 +2475,7 @@ bool j2k_compress_tile(CodeStream *p_j2k, uint16_t tile_index, uint8_t *p_data,
 
 		/* now copy data into the tile component */
 		if (!p_j2k->m_tileProcessor->copy_image_data_to_tile(p_data,
-				data_size)) {
+				uncompressed_data_size)) {
 			GROK_ERROR("Size mismatch between tile data and sent data.");
 			return false;
 		}

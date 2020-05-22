@@ -3061,8 +3061,8 @@ bool jp2_read_tile_header(grk_jp2 *p_jp2, uint16_t *tile_index,
 }
 
 bool jp2_compress_tile(grk_jp2 *p_jp2, uint16_t tile_index, uint8_t *p_data,
-		uint64_t data_size, BufferedStream *stream)	{
-	return j2k_compress_tile(p_jp2->j2k, tile_index, p_data, data_size, stream);
+		uint64_t uncompressed_data_size, BufferedStream *stream)	{
+	return j2k_compress_tile(p_jp2->j2k, tile_index, p_data, uncompressed_data_size, stream);
 }
 
 bool jp2_decompress_tile(grk_jp2 *p_jp2, uint16_t tile_index, uint8_t *p_data,
@@ -3190,21 +3190,6 @@ grk_jp2* jp2_create(bool p_is_decoder) {
 	}
 
 	return jp2;
-}
-
-void jp2_dump(grk_jp2 *p_jp2, int32_t flag, FILE *out_stream) {
-
-	assert(p_jp2 != nullptr);
-
-	j2k_dump(p_jp2->j2k, flag, out_stream);
-}
-
-grk_codestream_index* jp2_get_cstr_index(grk_jp2 *p_jp2) {
-	return j2k_get_cstr_index(p_jp2->j2k);
-}
-
-grk_codestream_info_v2* jp2_get_cstr_info(grk_jp2 *p_jp2) {
-	return j2k_get_cstr_info(p_jp2->j2k);
 }
 
 }

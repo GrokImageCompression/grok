@@ -201,7 +201,7 @@ static inline long grok_lrintf(float f) {
 #include "SOTMarker.h"
 #include "j2k.h"
 #include "markers.h"
-#include "j2k_dump.h"
+#include <dump.h>
 #include "jp2.h"
 #include "BitIO.h"
 #include "TileBuffer.h"

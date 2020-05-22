@@ -575,4 +575,19 @@ void j2k_destroy_cstr_index( grk_codestream_index  *p_cstr_ind) {
 	}
 }
 
+void jp2_dump(grk_jp2 *p_jp2, int32_t flag, FILE *out_stream) {
+
+	assert(p_jp2 != nullptr);
+
+	j2k_dump(p_jp2->j2k, flag, out_stream);
+}
+
+grk_codestream_index* jp2_get_cstr_index(grk_jp2 *p_jp2) {
+	return j2k_get_cstr_index(p_jp2->j2k);
+}
+
+grk_codestream_info_v2* jp2_get_cstr_info(grk_jp2 *p_jp2) {
+	return j2k_get_cstr_info(p_jp2->j2k);
+}
+
 }

@@ -320,13 +320,13 @@ bool j2k_get_tile(CodeStream *p_j2k, BufferedStream *stream, grk_image *p_image,
  * Writes a tile.
  * @param	p_j2k		JPEG 2000 codec
  * @param tile_index FIXME DOC
- * @param p_data FIXME DOC
+ * @param uncompressed_data_size FIXME DOC
  * @param data_size FIXME DOC
  * @param	stream			the stream to write data to.
  
  */
 bool j2k_compress_tile(CodeStream *p_j2k, uint16_t tile_index, uint8_t *p_data,
-		uint64_t data_size, BufferedStream *stream);
+		uint64_t uncompressed_data_size, BufferedStream *stream);
 
 /**
  * Encodes an image into a JPEG 2000 code stream

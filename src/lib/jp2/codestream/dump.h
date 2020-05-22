@@ -65,6 +65,8 @@
 
 namespace grk {
 
+struct grk_jp2;
+
 
 /**
  * Dump some elements from the J2K decompression structure .
@@ -124,6 +126,34 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp, bool dev_dump_flag,
   * @param	p_cstr_ind	the code stream index parameter to destroy.
   */
  void j2k_destroy_cstr_index( grk_codestream_index  *p_cstr_ind);
+
+ /**
+  * Dump some elements from the JP2 decompression structure .
+  *
+  *@param p_jp2        the jp2 codec.
+  *@param flag        flag to describe what elements are dump.
+  *@param out_stream      output stream where dump the elements.
+  *
+  */
+ void jp2_dump(grk_jp2 *p_jp2, int32_t flag, FILE *out_stream);
+
+ /**
+  * Get the code stream info from a JPEG2000 codec.
+  *
+  *@param  p_jp2        jp2 codec.
+  *
+  *@return  the code stream information extract from the jpg2000 codec
+  */
+  grk_codestream_info_v2  *  jp2_get_cstr_info(grk_jp2 *p_jp2);
+
+ /**
+  * Get the code stream index from a JPEG2000 codec.
+  *
+  *@param  p_jp2        jp2 codec.
+  *
+  *@return  the code stream index extract from the jpg2000 codec
+  */
+  grk_codestream_index  *  jp2_get_cstr_index(grk_jp2 *p_jp2);
 
 
 }
