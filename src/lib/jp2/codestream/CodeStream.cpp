@@ -1908,18 +1908,10 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 		tcp->numlayers = parameters->tcp_numlayers;
 
 		for (j = 0; j < tcp->numlayers; j++) {
-			if (GRK_IS_CINEMA(
-					cp->rsiz) || GRK_IS_BROADCAST(cp->rsiz) || GRK_IS_IMF(cp->rsiz)) {
-				if (cp->m_coding_params.m_enc.m_fixed_quality)
-					tcp->distoratio[j] = parameters->tcp_distoratio[j];
+			if (cp->m_coding_params.m_enc.m_fixed_quality)
+				tcp->distoratio[j] = parameters->tcp_distoratio[j];
+			else
 				tcp->rates[j] = parameters->tcp_rates[j];
-			} else {
-				/* add fixed_quality */
-				if (cp->m_coding_params.m_enc.m_fixed_quality)
-					tcp->distoratio[j] = parameters->tcp_distoratio[j];
-				else
-					tcp->rates[j] = parameters->tcp_rates[j];
-			}
 		}
 
 		tcp->csty = parameters->csty;

@@ -965,66 +965,40 @@ static bool pi_check_next_level(int32_t pos, CodingParams *cp,
 		for (int32_t i = pos; pos >= 0; i--) {
 			switch (prog[i]) {
 			case 'R':
-				if (tcp->res_t == tcp->resE) {
-					if (pi_check_next_level(pos - 1, cp, tileno, pino, prog)) {
-						return true;
-					} else {
-						return false;
-					}
-				} else {
+				if (tcp->res_t == tcp->resE)
+					return pi_check_next_level(pos - 1, cp, tileno, pino, prog);
+				else
 					return true;
-				}
 				break;
 			case 'C':
-				if (tcp->comp_t == tcp->compE) {
-					if (pi_check_next_level(pos - 1, cp, tileno, pino, prog)) {
-						return true;
-					} else {
-						return false;
-					}
-				} else {
+				if (tcp->comp_t == tcp->compE)
+					return pi_check_next_level(pos - 1, cp, tileno, pino, prog);
+				else
 					return true;
-				}
 				break;
 			case 'L':
-				if (tcp->lay_t == tcp->layE) {
-					if (pi_check_next_level(pos - 1, cp, tileno, pino, prog)) {
-						return true;
-					} else {
-						return false;
-					}
-				} else {
+				if (tcp->lay_t == tcp->layE)
+					return pi_check_next_level(pos - 1, cp, tileno, pino, prog);
+				else
 					return true;
-				}
 				break;
 			case 'P':
 				switch (tcp->prg) {
 				case GRK_LRCP: /* fall through */
 				case GRK_RLCP:
-					if (tcp->prc_t == tcp->prcE) {
-						if (pi_check_next_level(i - 1, cp, tileno, pino,
-								prog)) {
-							return true;
-						} else {
-							return false;
-						}
-					} else {
+					if (tcp->prc_t == tcp->prcE)
+						return pi_check_next_level(i - 1, cp, tileno, pino,	prog);
+					else
 						return true;
-					}
 					break;
 				default:
 					if (tcp->tx0_t == tcp->txE) {
 						/*TY*/
-						if (tcp->ty0_t == tcp->tyE) {
-							if (pi_check_next_level(i - 1, cp, tileno, pino,
-									prog)) {
-								return true;
-							} else {
-								return false;
-							}
-						} else {
+						if (tcp->ty0_t == tcp->tyE)
+							return pi_check_next_level(i - 1, cp, tileno, pino,	prog);
+						else
 							return true;
-						}/*TY*/
+						/*TY*/
 					} else {
 						return true;
 					}
@@ -1633,13 +1607,12 @@ void pi_update_encoding_parameters(const grk_image *p_image,
 	grk_get_encoding_parameters(p_image, p_cp, tile_no, &tx0, &tx1, &ty0, &ty1,
 			&dx_min, &dy_min, &max_precincts, &max_res);
 
-	if (tcp->POC) {
+	if (tcp->POC)
 		pi_update_encode_poc_and_final(p_cp, tile_no, tx0, tx1, ty0, ty1,
 				max_precincts, dx_min, dy_min);
-	} else {
+	else
 		pi_update_encode_no_poc(p_cp, p_image->numcomps, tile_no, tx0, tx1,
 				ty0, ty1, max_precincts, max_res, dx_min, dy_min);
-	}
 }
 
 bool pi_next(PacketIter *pi) {
