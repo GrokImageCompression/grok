@@ -4,7 +4,6 @@ Maintainer: Aaron Boxer <boxerab@gmail.com>
 Homepage: https://github.com/GrokImageCompression/grok
 Build-Depends: cmake (>= 3.16.0),
                debhelper-compat (= 13),
-               doxygen,
                help2man,
                liblcms2-dev,
                libpng-dev,
@@ -12,6 +11,7 @@ Build-Depends: cmake (>= 3.16.0),
                libtiff-dev,
                libturbojpeg0-dev,
                zlib1g-dev
+Build-Depends-Indep: doxygen
 Standards-Version: 4.5.0
 Section: libs
 Vcs-Browser: https://github.com/GrokImageCompression/grok
@@ -35,6 +35,7 @@ Package: libgrokj2k1-dev
 Section: libdevel
 Architecture: any
 Depends: libgrokj2k1 (= ${binary:Version}), ${misc:Depends}
+Recommends: libgrokj2k1-doc (= ${source:Version})
 Description: development files for Grok, a JPEG 2000 image library
  Grok is a library for handling the JPEG 2000 image compression format.
  JPEG 2000 is a wavelet-based image compression standard that permits
@@ -57,3 +58,15 @@ Description: command-line tools for the Grok JPEG 2000 library
   - grk_compress: encode pnm, pgm, pgx, bmp, or ppm file to j2k
                   or jp2 file.
   - grk_dump: dump information contained in a j2k or jp2 file.
+
+Package: libgrokj2k1-doc
+Section: doc
+Architecture: all
+Depends: ${misc:Depends}
+Description: documentation for the Grok JPEG 2000 library
+ Grok is a library for handling the JPEG 2000 image compression format.
+ JPEG 2000 is a wavelet-based image compression standard that permits
+ progressive decoding by pixel and resolution accuracy.
+ It supports lossless and lossy compression and is resilient to image errors.
+ .
+ This package contains the documentation for Grok.
