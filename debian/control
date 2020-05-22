@@ -29,7 +29,7 @@ Description: JPEG 2000 image compression/decompression library
  progressive decoding by pixel and resolution accuracy.
  It supports lossless and lossy compression and is resilient to image errors.
  .
- This package contains the runtime files for Grok
+ This package contains the runtime files for Grok.
 
 Package: libgrokj2k1-dev
 Section: libdevel
@@ -41,7 +41,7 @@ Description: development files for Grok, a JPEG 2000 image library
  progressive decoding by pixel and resolution accuracy.
  It supports lossless and lossy compression and is resilient to image errors.
  .
- This package contains the development files for Grok
+ This package contains the development files for Grok.
 
 Package: grokj2k-tools
 Section: graphics
