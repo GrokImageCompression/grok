@@ -209,13 +209,11 @@ static bool j2k_get_end_header(CodeStream *codeStream, BufferedStream *stream);
 /**
  * Write a tile part
  *
- * @param       codeStream                    JPEG 2000 code stream
- * @param       writePOC                 write POC
- * @param       stream                   the stream to write data to.
+ * @param       codeStream              JPEG 2000 code stream
+ * @param       stream                  the stream to write data to.
 
  */
 static bool j2k_write_tile_part(CodeStream *codeStream,
-		bool writePOC,
 		BufferedStream *stream);
 
 /**
@@ -309,14 +307,14 @@ static const j2k_mct_function j2k_mct_write_functions_from_float[] = {
 		j2k_write_float_to_float, j2k_write_float_to_float64 };
 
 static const grk_dec_memory_marker_handler j2k_memory_marker_handler_tab[] = { {
-J2K_MS_SOT, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPHSOT, j2k_read_sot }, {
+J2K_MS_SOT, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH_SOT, j2k_read_sot }, {
 J2K_MS_COD, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_cod }, {
 J2K_MS_COC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_coc }, {
 J2K_MS_RGN, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_rgn }, {
 J2K_MS_QCD, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_qcd }, {
 J2K_MS_QCC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_qcc }, {
 J2K_MS_POC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_poc }, {
-J2K_MS_SIZ, J2K_DEC_STATE_MHSIZ, j2k_read_siz }, { J2K_MS_CAP, J2K_DEC_STATE_MH,
+J2K_MS_SIZ, J2K_DEC_STATE_MH_SIZ, j2k_read_siz }, { J2K_MS_CAP, J2K_DEC_STATE_MH,
 		j2k_read_cap }, { J2K_MS_TLM, J2K_DEC_STATE_MH, j2k_read_tlm }, {
 J2K_MS_PLM, J2K_DEC_STATE_MH, j2k_read_plm }, {
 J2K_MS_PLT, J2K_DEC_STATE_TPH, j2k_read_plt }, { J2K_MS_PPM, J2K_DEC_STATE_MH,
@@ -446,7 +444,7 @@ static bool j2k_read_header_procedure(CodeStream *codeStream,
 	assert(codeStream != nullptr);
 
 	/*  We enter in the main header */
-	codeStream->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_MHSOC;
+	codeStream->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_MH_SOC;
 
 	/* Try to read the SOC marker, the code stream must begin with SOC marker */
 	if (!j2k_read_soc(codeStream, stream)) {
@@ -567,7 +565,7 @@ static bool j2k_read_header_procedure(CodeStream *codeStream,
 	if (codeStream->cstr_index)
 		codeStream->cstr_index->main_head_end = (uint32_t) stream->tell() - 2;
 	/* Next step: read a tile-part header */
-	codeStream->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_TPHSOT;
+	codeStream->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_TPH_SOT;
 
 	return true;
 }
@@ -839,23 +837,24 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 	if (decoder->m_state == J2K_DEC_STATE_EOC)
 		current_marker = J2K_MS_EOC;
 	/* We need to encounter a SOT marker (a new tile-part header) */
-	else if (decoder->m_state != J2K_DEC_STATE_TPHSOT)
+	else if (decoder->m_state != J2K_DEC_STATE_TPH_SOT)
 		return false;
 
-	/* Read into the code stream until reach the EOC or we run out of data */
+	/* Seek in code stream for SOT marker specifying desired tile index.
+	 * If we don't find it, we stop when we read the EOC or run out of data */
 	while ((!decoder->ready_to_decode_tile_part_data)
 			&& (current_marker != J2K_MS_EOC)) {
 
-		/* Try to read until the Start Of Data is detected */
+		/* read until SOD is detected */
 		while (current_marker != J2K_MS_SOD) {
+			// end of stream with no EOC
 			if (stream->get_number_byte_left() == 0) {
-				decoder->m_state = J2K_DEC_STATE_NEOC;
+				decoder->m_state = J2K_DEC_STATE_NO_EOC;
 				GROK_WARN("Missing EOC marker");
 				break;
 			}
 			if (!tileProcessor->read_marker(stream, &marker_size))
 				return false;
-			/* Check marker size (does not include marker ID but includes marker size) */
 			if (marker_size < 2) {
 				GROK_ERROR("Inconsistent marker size");
 				return false;
@@ -867,22 +866,15 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 
 			marker_size -= 2; /* Subtract the size of the marker ID already read */
 
-			/* Get the marker handler from the marker ID */
 			auto marker_handler = j2k_get_marker_handler(current_marker);
-
-			/* Check if the marker is known and if it is the right place
-			 * to find it */
 			if (!(decoder->m_state & marker_handler->states)) {
 				GROK_ERROR("Marker is not compliant with its position");
 				return false;
 			}
 
-			/* Check if the marker size is compatible with the header data size */
+			// need more scratch memory
 			if (marker_size > tileProcessor->m_marker_scratch_size) {
 				uint8_t *new_header_data = nullptr;
-				/* If we are here, this means we consider
-				 * this marker as known and we will read it */
-				/* Check enough bytes left in stream before allocation */
 				if (marker_size > stream->get_number_byte_left()) {
 					GROK_ERROR("Marker size inconsistent with stream length");
 					return false;
@@ -900,7 +892,6 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 				tileProcessor->m_marker_scratch_size = marker_size;
 			}
 
-			/* Read the rest of the marker segment from stream */
 			if (stream->read(tileProcessor->m_marker_scratch, marker_size)
 					!= marker_size) {
 				GROK_ERROR("Stream too short");
@@ -970,7 +961,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 
 		// no bytes left and no EOC marker : we're done!
 		if (!stream->get_number_byte_left()
-				&& decoder->m_state == J2K_DEC_STATE_NEOC)
+				&& decoder->m_state == J2K_DEC_STATE_NO_EOC)
 			break;
 
 		/* If we didn't skip data before, we need to read the SOD marker*/
@@ -1015,7 +1006,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 			/* Indicate we will try to read a new tile-part header*/
 			decoder->m_skip_data = false;
 			decoder->ready_to_decode_tile_part_data = false;
-			decoder->m_state = J2K_DEC_STATE_TPHSOT;
+			decoder->m_state = J2K_DEC_STATE_TPH_SOT;
 			if (!tileProcessor->read_marker(stream, &current_marker))
 				return false;
 		}
@@ -1143,9 +1134,17 @@ bool j2k_decompress_tile(CodeStream *codeStream, uint16_t tile_index,
 	auto tileProcessor = codeStream->m_tileProcessor;
 	auto decoder = &codeStream->m_specific_param.m_decoder;
 
-	if (!(decoder->m_state & J2K_DEC_STATE_DATA)
-			|| (tile_index != tileProcessor->m_current_tile_index))
+	if (!(decoder->m_state & J2K_DEC_STATE_DATA)){
+	   GROK_ERROR("j2k_decompress_tile: no data.");
+	   return false;
+	}
+	if (tile_index != tileProcessor->m_current_tile_index){
+		   GROK_ERROR("j2k_decompress_tile: desired tile index %d "
+				   "does not match current tile index %d.",
+				   tile_index,
+				   tileProcessor->m_current_tile_index);
 		return false;
+	}
 
 	auto tcp = codeStream->m_cp.tcps + tile_index;
 	if (!tcp->m_tile_data) {
@@ -1156,7 +1155,7 @@ bool j2k_decompress_tile(CodeStream *codeStream, uint16_t tile_index,
 	if (!tileProcessor->decompress_tile(tcp->m_tile_data, tile_index)) {
 		tcp->destroy();
 		decoder->m_state |= J2K_DEC_STATE_ERR;
-		GROK_ERROR("Failed to decompress.");
+		GROK_ERROR("j2k_decompress_tile: failed to decompress.");
 		return false;
 	}
 
@@ -1200,7 +1199,7 @@ bool j2k_decompress_tile(CodeStream *codeStream, uint16_t tile_index,
 
 		// if there is no EOC marker and there is also no data left, then simply return true
 		if (stream->get_number_byte_left() == 0
-				&& decoder->m_state == J2K_DEC_STATE_NEOC) {
+				&& decoder->m_state == J2K_DEC_STATE_NO_EOC) {
 			return true;
 		}
 		// if EOC marker has not been read yet, then try to read the next marker
@@ -1236,11 +1235,11 @@ bool j2k_decompress_tile(CodeStream *codeStream, uint16_t tile_index,
 				auto bytesLeft = stream->get_number_byte_left();
 				// no bytes left - file ends without EOC marker
 				if (bytesLeft == 0) {
-					decoder->m_state = J2K_DEC_STATE_NEOC;
-					GROK_WARN("Stream does not end with EOC");
+					decoder->m_state = J2K_DEC_STATE_NO_EOC;
+					GROK_WARN("j2k_decompress_tile: stream does not end with EOC");
 					return true;
 				}
-				GROK_WARN("Decode tile: expected EOC or SOT "
+				GROK_WARN("j2k_decompress_tile: expected EOC or SOT "
 						"but found unknown \"marker\" %x. ", current_marker);
 				throw DecodeUnknownMarkerAtEndOfTileException();
 			}
@@ -1374,7 +1373,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 		num_tiles_decoded++;
 		if (stream->get_number_byte_left() == 0
 				&& codeStream->m_specific_param.m_decoder.m_state
-						== J2K_DEC_STATE_NEOC)
+						== J2K_DEC_STATE_NO_EOC)
 			break;
 	}
 	grok_free(tile_compositing_buff);
@@ -1394,29 +1393,29 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
  */
 static bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream) {
 	bool go_on = true;
-	uint16_t current_tile_no;
+	uint16_t current_tile_index;
 	uint64_t uncompressed_tile_size;
 	uint32_t tile_x0, tile_y0, tile_x1, tile_y1;
 	uint32_t nb_comps;
 	bool rc = false;
+	auto tileProcessor = codeStream->m_tileProcessor;
 
 	/*Allocate and initialize some elements of code stream index if not already done*/
 	if (!codeStream->cstr_index->tile_index) {
 		if (!j2k_allocate_tile_element_cstr_index(codeStream))
 			return false;
 	}
-	if (codeStream->m_tileProcessor->m_tile_ind_to_dec == -1) {
+	if (tileProcessor->m_tile_ind_to_dec == -1) {
 		GROK_ERROR("j2k_decompress_tile: Unable to decompress tile "
 				"since first tile SOT has not been detected");
 		return false;
 	}
 
 	/* Move into the code stream to the first SOT used to decompress the desired tile */
-	uint32_t tile_no_to_dec =
-			(uint32_t) (codeStream->m_tileProcessor->m_tile_ind_to_dec);
+	uint16_t tile_index_to_decode =	(uint16_t) (tileProcessor->m_tile_ind_to_dec);
 	if (codeStream->cstr_index->tile_index) {
 		if (codeStream->cstr_index->tile_index->tp_index) {
-			if (!codeStream->cstr_index->tile_index[tile_no_to_dec].nb_tps) {
+			if (!codeStream->cstr_index->tile_index[tile_index_to_decode].nb_tps) {
 				/* the index for this tile has not been built,
 				 *  so move to the last SOT read */
 				if (!(stream->seek(
@@ -1427,7 +1426,7 @@ static bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream) 
 				}
 			} else {
 				if (!(stream->seek(
-						codeStream->cstr_index->tile_index[tile_no_to_dec].tp_index[0].start_pos
+						codeStream->cstr_index->tile_index[tile_index_to_decode].tp_index[0].start_pos
 								+ 2))) {
 					GROK_ERROR("Problem with seek function");
 					return false;
@@ -1436,22 +1435,45 @@ static bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream) 
 			/* Special case if we have previously read the EOC marker (if the previous tile decoded is the last ) */
 			if (codeStream->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_EOC)
 				codeStream->m_specific_param.m_decoder.m_state =
-						J2K_DEC_STATE_TPHSOT;
+						J2K_DEC_STATE_TPH_SOT;
 		}
 	}
 
-	if (!j2k_read_tile_header(codeStream, &current_tile_no, &uncompressed_tile_size,
+	// if we have a TLM marker, then we can skip tiles until
+	// we get to desired tile
+	if (codeStream->m_cp.tlm_markers){
+		codeStream->m_cp.tlm_markers->getInit();
+	    auto tl = codeStream->m_cp.tlm_markers->getNext();
+	    //GROK_INFO("TLM : index: %d, length : %d", tl.tile_number, tl.length);
+	    uint16_t tileNumber = 0;
+	    while (stream->get_number_byte_left() != 0 &&
+	    		tileNumber != tileProcessor->m_tile_ind_to_dec){
+	    	stream->skip(tl.length);
+	    	tl = codeStream->m_cp.tlm_markers->getNext();
+	    	if (tl.length == 0){
+	    		GROK_ERROR("j2k_decompress_tile: corrupt TLM marker");
+	    		return false;
+	    	}
+	    	if (tl.has_tile_number)
+	    		tileNumber = tl.tile_number;
+	    	else
+	    		tileNumber++;
+	    }
+	}
+
+
+	if (!j2k_read_tile_header(codeStream, &current_tile_index, &uncompressed_tile_size,
 			&tile_x0, &tile_y0, &tile_x1, &tile_y1, &nb_comps, &go_on, stream))
 		goto cleanup;
 
 	try {
-		if (!j2k_decompress_tile(codeStream, current_tile_no, nullptr, 0, stream)) {
+		if (!j2k_decompress_tile(codeStream, current_tile_index, nullptr, 0, stream)) {
 			goto cleanup;
 		}
 	} catch (DecodeUnknownMarkerAtEndOfTileException &e) {
 		// suppress exception
 	}
-	if (current_tile_no == tile_no_to_dec) {
+	if (current_tile_index == tile_index_to_decode) {
 		/* move into the code stream to the first SOT (FIXME or not move?)*/
 		if (!(stream->seek(codeStream->cstr_index->main_head_end + 2))) {
 			GROK_ERROR("Problem with seek function");
@@ -1460,7 +1482,7 @@ static bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream) 
 	} else {
 		GROK_ERROR(
 				"Tile read, decoded and updated is not the desired one (%d vs %d).",
-				current_tile_no + 1, tile_no_to_dec + 1);
+				current_tile_index + 1, tile_index_to_decode + 1);
 		goto cleanup;
 	}
 	rc = true;
@@ -2284,14 +2306,14 @@ static bool j2k_pre_write_tile(CodeStream *codeStream, uint16_t tile_index) {
 
 	return true;
 }
-static bool j2k_write_tile_part(CodeStream *codeStream, bool writePOC,
-		BufferedStream *stream) {
+static bool j2k_write_tile_part(CodeStream *codeStream,	BufferedStream *stream) {
 	grk_codestream_info *cstr_info = nullptr;
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
 	auto tileProcessor = codeStream->m_tileProcessor;
 	uint16_t currentTileNumber = tileProcessor->m_current_tile_index;
 	auto cp = &codeStream->m_cp;
+	bool firstTilePart = tileProcessor->m_current_tile_part_index == 0;
 
 	//1. write SOT
 	SOTMarker sot(stream);
@@ -2301,11 +2323,10 @@ static bool j2k_write_tile_part(CodeStream *codeStream, bool writePOC,
 	uint32_t tile_part_bytes_written = sot_marker_segment_len;
 
 	//2. write POC (only in first tile part)
-	if (writePOC) {
+	if (firstTilePart) {
 		if (!GRK_IS_CINEMA(cp->rsiz)) {
 			if (cp->tcps[currentTileNumber].numpocs) {
-				auto tcp =
-						&codeStream->m_cp.tcps[codeStream->m_tileProcessor->m_current_tile_index];
+				auto tcp = codeStream->m_cp.tcps + currentTileNumber;
 				auto image = codeStream->m_private_image;
 				uint32_t nb_comp = image->numcomps;
 				if (!j2k_write_poc(codeStream, stream))
@@ -2317,8 +2338,10 @@ static bool j2k_write_tile_part(CodeStream *codeStream, bool writePOC,
 	}
 
 	// 3. compress tile part
-	/* set packno to zero when writing the first tile part */
-	if (currentTileNumber == 0) {
+	/* set packno to zero when writing the first tile part
+	 * (packno is used for SOP markers)
+	 */
+	if (firstTilePart) {
 		tileProcessor->tile->packno = 0;
 		if (cstr_info)
 			cstr_info->packno = 0;
@@ -2334,10 +2357,8 @@ static bool j2k_write_tile_part(CodeStream *codeStream, bool writePOC,
 		return false;
 
 	// 5. update TLM
-	if (GRK_IS_CINEMA(cp->rsiz) ||
-	GRK_IS_BROADCAST(cp->rsiz) || GRK_IS_IMF(cp->rsiz))
-		j2k_update_tlm(codeStream, (uint32_t) tile_part_bytes_written);
-
+	if (codeStream->m_cp.tlm_markers)
+		j2k_update_tlm(codeStream, tile_part_bytes_written);
 	++tileProcessor->m_current_tile_part_index;
 
 	return true;
@@ -2350,7 +2371,7 @@ static bool j2k_post_write_tile(CodeStream *codeStream, BufferedStream *stream) 
 	//1. write first tile part
 	tileProcessor->cur_pino = 0;
 	tileProcessor->m_current_poc_tile_part_index = 0;
-	if (!j2k_write_tile_part(codeStream, true, stream))
+	if (!j2k_write_tile_part(codeStream, stream))
 		return false;
 
 	//2. write the other tile parts
@@ -2364,7 +2385,7 @@ static bool j2k_post_write_tile(CodeStream *codeStream, BufferedStream *stream) 
 	tot_num_tp = j2k_get_num_tp(cp, 0, tileProcessor->m_current_tile_index);
 	for (uint8_t tilepartno = 1; tilepartno < tot_num_tp; ++tilepartno) {
 		tileProcessor->m_current_poc_tile_part_index = tilepartno;
-		if (!j2k_write_tile_part(codeStream, false, stream))
+		if (!j2k_write_tile_part(codeStream, stream))
 			return false;
 	}
 
@@ -2376,7 +2397,7 @@ static bool j2k_post_write_tile(CodeStream *codeStream, BufferedStream *stream) 
 				tileProcessor->m_current_tile_index);
 		for (uint8_t tilepartno = 0; tilepartno < tot_num_tp; ++tilepartno) {
 			tileProcessor->m_current_poc_tile_part_index = tilepartno;
-			if (!j2k_write_tile_part(codeStream, false, stream))
+			if (!j2k_write_tile_part(codeStream, stream))
 				return false;
 		}
 	}
@@ -2392,7 +2413,7 @@ static bool j2k_init_end_compress(CodeStream *codeStream) {
 	if (GRK_IS_CINEMA(
 			codeStream->m_cp.rsiz) || GRK_IS_BROADCAST(codeStream->m_cp.rsiz) || GRK_IS_IMF(codeStream->m_cp.rsiz))
 		codeStream->m_procedure_list->push_back(
-				(j2k_procedure) j2k_write_updated_tlm);
+				(j2k_procedure) j2k_write_tlm_end);
 	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_epc);
 	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_end_encoding);
 	//custom procedures here
@@ -2505,7 +2526,7 @@ static bool j2k_init_header_writing(CodeStream *codeStream) {
 
 	if (GRK_IS_CINEMA(
 			codeStream->m_cp.rsiz) || GRK_IS_BROADCAST(codeStream->m_cp.rsiz) || GRK_IS_IMF(codeStream->m_cp.rsiz)) {
-		codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_tlm);
+		codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_tlm_begin);
 		if (codeStream->m_cp.rsiz == GRK_PROFILE_CINEMA_4K)
 			codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_poc);
 	}
@@ -2959,18 +2980,6 @@ static bool j2k_update_rates(CodeStream *codeStream, BufferedStream *stream) {
 			}
 			++tcp;
 		}
-	}
-
-	if (GRK_IS_CINEMA(cp->rsiz) || GRK_IS_BROADCAST(cp->rsiz) ||
-	GRK_IS_IMF(cp->rsiz)) {
-		codeStream->m_tileProcessor->m_tlm_sot_offsets_buffer =
-				(uint8_t*) grk_malloc(
-						tlm_len_per_tile_part
-								* codeStream->m_specific_param.m_encoder.m_total_tile_parts);
-		if (!codeStream->m_tileProcessor->m_tlm_sot_offsets_buffer)
-			return false;
-		codeStream->m_tileProcessor->m_tlm_sot_offsets_current =
-				codeStream->m_tileProcessor->m_tlm_sot_offsets_buffer;
 	}
 
 	return true;

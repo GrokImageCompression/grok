@@ -68,9 +68,8 @@ namespace grk {
 TileProcessor::TileProcessor(bool isDecoder) :
 		m_tile_ind_to_dec(-1), m_current_tile_index(0), tp_pos(0), m_current_poc_tile_part_index(
 				0), m_current_tile_part_index(0), m_nb_tile_parts_correction_checked(
-				false), m_nb_tile_parts_correction(false), tile_part_data_length(0), m_tlm_start(
-				0), m_tlm_sot_offsets_buffer(nullptr), m_tlm_sot_offsets_current(
-				nullptr), cur_totnum_tp(0), cur_pino(0), tile(nullptr), image(
+				false), m_nb_tile_parts_correction(false), tile_part_data_length(0),
+				cur_totnum_tp(0), cur_pino(0), tile(nullptr), image(
 				nullptr), current_plugin_tile(nullptr), whole_tile_decoding(
 				true), m_marker_scratch(nullptr), m_marker_scratch_size(0), plt_markers(
 				nullptr), m_cp(nullptr), m_tcp(nullptr), m_tileno(0) {
@@ -89,7 +88,6 @@ TileProcessor::~TileProcessor() {
 	tile->comps = nullptr;
 	grok_free(tile);
 	tile = nullptr;
-	grok_free(m_tlm_sot_offsets_buffer);
 	grok_free(m_marker_scratch);
 	delete plt_markers;
 }
@@ -102,7 +100,7 @@ bool TileProcessor::set_decompress_area(CodeStream *codeStream, grk_image *outpu
 	auto decoder = &codeStream->m_specific_param.m_decoder;
 
 	/* Check if we have read the main header */
-	if (decoder->m_state != J2K_DEC_STATE_TPHSOT) {
+	if (decoder->m_state != J2K_DEC_STATE_TPH_SOT) {
 		GROK_ERROR(
 				"Need to decompress the main header before setting decompress area");
 		return false;
@@ -985,7 +983,7 @@ bool TileProcessor::compress_tile_part(uint16_t tile_no, BufferedStream *stream,
 		m_packetTracker.clear();
 	}
 
-	//4 write PLT
+	//4 write PLT for first tile part
 	if (m_current_tile_part_index == 0 && plt_markers){
 		uint32_t written = plt_markers->write();
 		*tile_bytes_written += written;

@@ -330,13 +330,24 @@ bool j2k_read_tlm(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
- * Writes the updated tlm.
+ * End writing the updated tlm.
  *
  * @param       codeStream                   JPEG 2000 code stream
  * @param       stream                the stream to write data to.
 
  */
-bool j2k_write_updated_tlm(CodeStream *codeStream, BufferedStream *stream);
+bool j2k_write_tlm_end(CodeStream *codeStream, BufferedStream *stream);
+
+
+/**
+ * Begin writing the TLM marker (Tile Length Marker)
+ *
+ * @param       codeStream                   JPEG 2000 code stream
+ * @param       stream                the stream to write data to.
+
+ */
+bool j2k_write_tlm_begin(CodeStream *codeStream, BufferedStream *stream);
+
 
 /**
  * Reads a PLM marker (Packet length, main header marker)
@@ -397,15 +408,6 @@ bool j2k_read_ppt(CodeStream *codeStream, uint8_t *p_header_data,
 
  */
 bool j2k_merge_ppt(TileCodingParams *p_tcp);
-
-/**
- * Writes the TLM marker (Tile Length Marker)
- *
- * @param       codeStream                   JPEG 2000 code stream
- * @param       stream                the stream to write data to.
-
- */
-bool j2k_write_tlm(CodeStream *codeStream, BufferedStream *stream);
 
 /**
  * Reads a SOT marker (Start of tile-part)

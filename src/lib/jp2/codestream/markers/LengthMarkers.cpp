@@ -22,20 +22,26 @@ namespace grk {
 const uint32_t tlm_marker_start_bytes = 6;
 
 TileLengthMarkers::TileLengthMarkers() :
-		markers(new TL_MAP()), m_stream(nullptr), m_index(0) {
+		m_markers(new TL_MAP()),
+		m_markerIndex(0),
+		m_tilePartIndex(0),
+		m_curr_vec(nullptr),
+		m_stream(nullptr),
+		m_tlm_start_stream_position(0)
+{
 }
 
-TileLengthMarkers::TileLengthMarkers(BufferedStream *stream):
-		markers(new TL_MAP()), m_stream(stream), m_index(0) {
-
+TileLengthMarkers::TileLengthMarkers(BufferedStream *stream): TileLengthMarkers()
+{
+	m_stream = stream;
 }
 
 TileLengthMarkers::~TileLengthMarkers() {
-	if (markers) {
-		for (auto it = markers->begin(); it != markers->end(); it++) {
+	if (m_markers) {
+		for (auto it = m_markers->begin(); it != m_markers->end(); it++) {
 			delete it->second;
 		}
-		delete markers;
+		delete m_markers;
 	}
 }
 bool TileLengthMarkers::read(uint8_t *p_header_data, uint16_t header_size){
@@ -86,7 +92,7 @@ bool TileLengthMarkers::read(uint8_t *p_header_data, uint16_t header_size){
 
 	uint32_t Ttlm_i = 0, Ptlm_i = 0;
 	for (size_t i = 0; i < num_tp; ++i) {
-		// read tile part index
+		// read (global) tile part index
 		if (L_iT) {
 			grk_read<uint32_t>(p_header_data, &Ttlm_i, L_iT);
 			p_header_data += L_iT;
@@ -104,46 +110,50 @@ bool TileLengthMarkers::read(uint8_t *p_header_data, uint16_t header_size){
 }
 
 void TileLengthMarkers::push(uint8_t i_TLM, grk_tl_info info) {
-	auto pair = markers->find(i_TLM);
+	auto pair = m_markers->find(i_TLM);
 
-	if (pair != markers->end()) {
+	if (pair != m_markers->end()) {
 		pair->second->push_back(info);
 	} else {
 		auto vec = new TL_INFO_VEC();
 		vec->push_back(info);
-		markers->operator[](i_TLM) = vec;
+		m_markers->operator[](i_TLM) = vec;
 	}
 }
 
-bool TileLengthMarkers::write_updated(CodeStream *codeStream) {
-	assert(codeStream != nullptr);
-    assert(codeStream->m_specific_param.m_encoder.m_total_tile_parts >= 1);
-    uint16_t totalTileParts = codeStream->m_specific_param.m_encoder.m_total_tile_parts;
-    uint32_t tlm_size = tlm_len_per_tile_part	* totalTileParts;
-
-    push(m_index, grk_tl_info(totalTileParts-1, tlm_size));
-
-	uint64_t tlm_position =
-			codeStream->m_tileProcessor->m_tlm_start + tlm_marker_start_bytes;
-	uint64_t current_position = m_stream->tell();
-
-	if (!m_stream->seek(tlm_position))
-		return false;
-	if (m_stream->write_bytes(codeStream->m_tileProcessor->m_tlm_sot_offsets_buffer,
-			tlm_size) != tlm_size)
-		return false;
-
-	return m_stream->seek(current_position);
+void TileLengthMarkers::getInit(void){
+	m_markerIndex = 0;
+	m_tilePartIndex = 0;
+	m_curr_vec = nullptr;
+	if (m_markers) {
+		auto pair = m_markers->find(0);
+		if (pair != m_markers->end())
+			m_curr_vec = pair->second;
+	}
+}
+grk_tl_info TileLengthMarkers::getNext(void){
+	if (!m_markers)
+		return 0;
+	if (m_curr_vec) {
+		if (m_tilePartIndex == m_curr_vec->size()) {
+			m_markerIndex++;
+			if (m_markerIndex < m_markers->size()) {
+				m_curr_vec = m_markers->operator[](m_markerIndex);
+				m_tilePartIndex = 0;
+			} else {
+				m_curr_vec = nullptr;
+			}
+		}
+		if (m_curr_vec)
+			return m_curr_vec->operator[](m_tilePartIndex++);
+	}
+	return 0;
 }
 
-bool TileLengthMarkers::write(CodeStream *codeStream) {
-	assert(codeStream != nullptr);
+bool TileLengthMarkers::write_begin(uint16_t totalTileParts) {
+	uint32_t tlm_size = tlm_marker_start_bytes 	+ tlm_len_per_tile_part * totalTileParts;
 
-	uint32_t tlm_size = tlm_marker_start_bytes
-			+ (tlm_len_per_tile_part
-					* codeStream->m_specific_param.m_encoder.m_total_tile_parts);
-
-	codeStream->m_tileProcessor->m_tlm_start = m_stream->tell();
+	m_tlm_start_stream_position = m_stream->tell();
 
 	/* TLM */
 	if (!m_stream->write_short(J2K_MS_TLM))
@@ -161,25 +171,36 @@ bool TileLengthMarkers::write(CodeStream *codeStream) {
 	if (!m_stream->write_byte(0x50))
 		return false;
 
-	/* do nothing on the
-	 * tlm_len_per_tile_part * j2k->m_specific_param.m_encoder.m_total_tile_parts
-	 * remaining data */
-	return m_stream->skip(
-			(tlm_len_per_tile_part
-					* codeStream->m_specific_param.m_encoder.m_total_tile_parts));
+	/* make room for tile part lengths */
+	return m_stream->skip(tlm_len_per_tile_part	* totalTileParts);
 }
 
-void TileLengthMarkers::update(CodeStream *codeStream, uint32_t tile_part_size) {
-	/* PSOT */
-	grk_write<uint32_t>(codeStream->m_tileProcessor->m_tlm_sot_offsets_current,
-			codeStream->m_tileProcessor->m_current_tile_index, 1);
-	++codeStream->m_tileProcessor->m_tlm_sot_offsets_current;
-
-	/* PSOT */
-	grk_write<uint32_t>(codeStream->m_tileProcessor->m_tlm_sot_offsets_current,
-			tile_part_size, 4);
-	codeStream->m_tileProcessor->m_tlm_sot_offsets_current += 4;
+void TileLengthMarkers::write_update(uint16_t tileIndex, uint32_t tile_part_size) {
+	assert(tileIndex <= 255);
+    push(m_markerIndex,	grk_tl_info((uint8_t)tileIndex,	tile_part_size));
 }
+
+bool TileLengthMarkers::write_end(void) {
+    uint64_t tlm_position = m_tlm_start_stream_position+ tlm_marker_start_bytes;
+	uint64_t current_position = m_stream->tell();
+
+	if (!m_stream->seek(tlm_position))
+		return false;
+
+	for (auto it = m_markers->begin(); it != m_markers->end(); it++) {
+		auto lengths = it->second;
+		for (auto info = lengths->begin(); info != lengths->end(); ++info ){
+			if (info->has_tile_number) {
+				assert(info->tile_number <= 255);
+				m_stream->write_byte((uint8_t)info->tile_number);
+			}
+			m_stream->write_int(info->length);
+		}
+	}
+
+	return m_stream->seek(current_position);
+}
+
 
 bool TileLengthMarkers::add_to_index(uint16_t tileno, grk_codestream_index *cstr_index,
 		uint32_t type, uint64_t pos, uint32_t len) {
@@ -230,9 +251,15 @@ bool TileLengthMarkers::add_to_index(uint16_t tileno, grk_codestream_index *cstr
 
 
 PacketLengthMarkers::PacketLengthMarkers() :
-		m_markers(new PL_MAP()), m_Zpl(0), m_curr_vec(nullptr), m_packet_len(0), m_read_index(
-				0U), m_marker_bytes_written(0), m_total_bytes_written(0),
-				m_marker_len_cache(0), m_stream(nullptr)
+		m_markers(new PL_MAP()),
+		m_markerIndex(0),
+		m_curr_vec(nullptr),
+		m_packetIndex(0),
+		m_packet_len(0),
+		m_marker_bytes_written(0),
+		m_total_bytes_written(0),
+		m_marker_len_cache(0),
+		m_stream(nullptr)
 { }
 PacketLengthMarkers::PacketLengthMarkers(BufferedStream *strm) : PacketLengthMarkers()
 {
@@ -397,14 +424,14 @@ bool PacketLengthMarkers::readPLT(uint8_t *p_header_data, uint16_t header_size){
 }
 
 void PacketLengthMarkers::readInitIndex(uint8_t index) {
-	m_Zpl = index;
+	m_markerIndex = index;
 	m_packet_len = 0;
-	auto pair = m_markers->find(m_Zpl);
+	auto pair = m_markers->find(m_markerIndex);
 	if (pair != m_markers->end()) {
 		m_curr_vec = pair->second;
 	} else {
 		m_curr_vec = new PL_INFO_VEC();
-		m_markers->operator[](m_Zpl) = m_curr_vec;
+		m_markers->operator[](m_markerIndex) = m_curr_vec;
 	}
 }
 
@@ -422,11 +449,11 @@ void PacketLengthMarkers::readNext(uint8_t Iplm) {
 }
 
 void PacketLengthMarkers::getInit(void) {
-	m_read_index = 0;
-	m_Zpl = 0;
+	m_packetIndex = 0;
+	m_markerIndex = 0;
 	m_curr_vec = nullptr;
 	if (m_markers) {
-		auto pair = m_markers->find(m_Zpl);
+		auto pair = m_markers->find(0);
 		if (pair != m_markers->end()) {
 			m_curr_vec = pair->second;
 		}
@@ -439,17 +466,17 @@ uint32_t PacketLengthMarkers::getNext(void) {
 	if (!m_markers)
 		return 0;
 	if (m_curr_vec) {
-		if (m_read_index == m_curr_vec->size()) {
-			m_Zpl++;
-			if (m_Zpl < m_markers->size()) {
-				m_curr_vec = m_markers->operator[](m_Zpl);
-				m_read_index = 0;
+		if (m_packetIndex == m_curr_vec->size()) {
+			m_markerIndex++;
+			if (m_markerIndex < m_markers->size()) {
+				m_curr_vec = m_markers->operator[](m_markerIndex);
+				m_packetIndex = 0;
 			} else {
 				m_curr_vec = nullptr;
 			}
 		}
 		if (m_curr_vec)
-			return m_curr_vec->operator[](m_read_index++);
+			return m_curr_vec->operator[](m_packetIndex++);
 	}
 	return 0;
 }

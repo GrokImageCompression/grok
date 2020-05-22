@@ -441,21 +441,6 @@ struct TileProcessor {
 
 	uint32_t tile_part_data_length;
 
-	/**
-	 locate the start position of the TLM marker
-	 after encoding the tilepart, a jump (in j2k_write_sod) is done
-	 to the TLM marker to store the value of its length.
-	 */
-	uint64_t m_tlm_start;
-	/**
-	 * Stores the sizes of the tlm.
-	 */
-	uint8_t *m_tlm_sot_offsets_buffer;
-	/**
-	 * The current offset of the tlm buffer.
-	 */
-	uint8_t *m_tlm_sot_offsets_current;
-
 	/** Total number of tile parts of the current tile*/
 	uint8_t cur_totnum_tp;
 	/** Current packet iterator number */

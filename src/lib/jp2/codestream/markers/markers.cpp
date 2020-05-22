@@ -202,7 +202,7 @@ bool j2k_read_soc(CodeStream *codeStream, BufferedStream *stream) {
 		return false;
 
 	/* Next marker should be a SIZ marker in the main header */
-	codeStream->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_MHSIZ;
+	codeStream->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_MH_SIZ;
 
 	if (codeStream->cstr_index) {
 		/* FIXME move it in a index structure included in codeStream*/
@@ -1292,9 +1292,9 @@ bool j2k_read_sod(CodeStream *codeStream, BufferedStream *stream) {
 
 	}
 	if (current_read_size != codeStream->m_tileProcessor->tile_part_data_length)
-		codeStream->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_NEOC;
+		codeStream->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_NO_EOC;
 	else
-		codeStream->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_TPHSOT;
+		codeStream->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_TPH_SOT;
 
 	return true;
 }
@@ -2224,27 +2224,30 @@ bool j2k_read_tlm(CodeStream *codeStream, uint8_t *p_header_data,
 	return codeStream->m_cp.tlm_markers->read(p_header_data, header_size);
 }
 
-bool j2k_write_updated_tlm(CodeStream *codeStream, BufferedStream *stream) {
-	assert(codeStream != nullptr);
-	(void)stream;
-
-	return codeStream->m_cp.tlm_markers->write_updated(codeStream);
-}
-
-bool j2k_write_tlm(CodeStream *codeStream, BufferedStream *stream) {
+bool j2k_write_tlm_begin(CodeStream *codeStream, BufferedStream *stream) {
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
 
 	if (!codeStream->m_cp.tlm_markers)
 		codeStream->m_cp.tlm_markers = new TileLengthMarkers(stream);
 
-	return codeStream->m_cp.tlm_markers->write(codeStream);
+	return codeStream->m_cp.tlm_markers->write_begin(
+			codeStream->m_specific_param.m_encoder.m_total_tile_parts);
 }
 
 void j2k_update_tlm(CodeStream *codeStream, uint32_t tile_part_size) {
 	assert(codeStream->m_cp.tlm_markers);
-	codeStream->m_cp.tlm_markers->update(codeStream, tile_part_size);
+	codeStream->m_cp.tlm_markers->write_update(
+			codeStream->m_tileProcessor->m_current_tile_index, tile_part_size);
 }
+
+bool j2k_write_tlm_end(CodeStream *codeStream, BufferedStream *stream) {
+	assert(codeStream);
+	(void)stream;
+
+	return codeStream->m_cp.tlm_markers->write_end();
+}
+
 uint32_t j2k_get_SPCod_SPCoc_size(CodeStream *codeStream, uint16_t tile_no,
 		uint32_t comp_no) {
 	assert(codeStream != nullptr);

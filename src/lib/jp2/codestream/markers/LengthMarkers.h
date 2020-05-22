@@ -45,10 +45,12 @@ struct TileLengthMarkers {
 	~TileLengthMarkers();
 
 	bool read(uint8_t *p_header_data, uint16_t header_size);
-	bool write_updated(CodeStream *codeStream);
-	bool write(CodeStream *codeStream);
-	void update(CodeStream *codeStream, uint32_t tile_part_size);
+	void getInit(void);
+	grk_tl_info getNext(void);
 
+	bool write_begin(uint16_t totalTileParts);
+	void write_update(uint16_t tileIndex, uint32_t tile_part_size);
+	bool write_end(void);
 	/**
 	 Add tile header marker information
 	 @param tileno       tile index number
@@ -61,9 +63,12 @@ struct TileLengthMarkers {
 			uint32_t type, uint64_t pos, uint32_t len);
 private:
 	void push(uint8_t i_TLM, grk_tl_info curr_vec);
-	TL_MAP *markers;
+	TL_MAP *m_markers;
+	uint8_t m_markerIndex;
+	uint8_t m_tilePartIndex;
+	TL_INFO_VEC *m_curr_vec;
 	BufferedStream *m_stream;
-	uint8_t m_index;
+	uint64_t m_tlm_start_stream_position;
 
 };
 
@@ -101,10 +106,10 @@ struct PacketLengthMarkers {
 
 private:
 	PL_MAP *m_markers;
-	uint8_t m_Zpl;
+	uint8_t m_markerIndex;
 	PL_INFO_VEC *m_curr_vec;
+	size_t m_packetIndex;
 	uint32_t m_packet_len;
-	size_t m_read_index;
 
 	void readInitIndex(uint8_t index);
 	void readNext(uint8_t Iplm);
