@@ -1448,19 +1448,18 @@ static bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream) 
 	    uint16_t tileNumber = 0;
 	    while (stream->get_number_byte_left() != 0 &&
 	    		tileNumber != tileProcessor->m_tile_ind_to_dec){
-	    	stream->skip(tl.length);
-	    	tl = codeStream->m_cp.tlm_markers->getNext();
 	    	if (tl.length == 0){
 	    		GROK_ERROR("j2k_decompress_tile: corrupt TLM marker");
 	    		return false;
 	    	}
+	    	stream->skip(tl.length);
+	    	tl = codeStream->m_cp.tlm_markers->getNext();
 	    	if (tl.has_tile_number)
 	    		tileNumber = tl.tile_number;
 	    	else
 	    		tileNumber++;
 	    }
 	}
-
 
 	if (!j2k_read_tile_header(codeStream, &current_tile_index, &uncompressed_tile_size,
 			&tile_x0, &tile_y0, &tile_x1, &tile_y1, &nb_comps, &go_on, stream))
@@ -1820,7 +1819,8 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 	cp->rsiz = parameters->rsiz;
 	cp->m_coding_params.m_enc.m_disto_alloc = parameters->cp_disto_alloc;
 	cp->m_coding_params.m_enc.m_fixed_quality = parameters->cp_fixed_quality;
-	cp->m_coding_params.m_enc.writePlt = parameters->writePlt;
+	cp->m_coding_params.m_enc.writePLT = parameters->writePLT;
+	cp->m_coding_params.m_enc.writeTLM = parameters->writeTLM;
 	cp->m_coding_params.m_enc.rateControlAlgorithm =
 			parameters->rateControlAlgorithm;
 
@@ -2408,12 +2408,9 @@ static bool j2k_post_write_tile(CodeStream *codeStream, BufferedStream *stream) 
 
 static bool j2k_init_end_compress(CodeStream *codeStream) {
 	assert(codeStream != nullptr);
-
 	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_eoc);
-	if (GRK_IS_CINEMA(
-			codeStream->m_cp.rsiz) || GRK_IS_BROADCAST(codeStream->m_cp.rsiz) || GRK_IS_IMF(codeStream->m_cp.rsiz))
-		codeStream->m_procedure_list->push_back(
-				(j2k_procedure) j2k_write_tlm_end);
+	if (codeStream->m_cp.m_coding_params.m_enc.writeTLM)
+		codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_tlm_end);
 	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_epc);
 	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_end_encoding);
 	//custom procedures here
@@ -2524,22 +2521,21 @@ static bool j2k_init_header_writing(CodeStream *codeStream) {
 	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_all_coc);
 	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_all_qcc);
 
-	if (GRK_IS_CINEMA(
-			codeStream->m_cp.rsiz) || GRK_IS_BROADCAST(codeStream->m_cp.rsiz) || GRK_IS_IMF(codeStream->m_cp.rsiz)) {
+	if (codeStream->m_cp.m_coding_params.m_enc.writeTLM)
 		codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_tlm_begin);
-		if (codeStream->m_cp.rsiz == GRK_PROFILE_CINEMA_4K)
-			codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_poc);
-	}
+	if (codeStream->m_cp.rsiz == GRK_PROFILE_CINEMA_4K)
+		codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_poc);
+
 	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_regions);
 	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_com);
 	//begin custom procedures
-
 	if ((codeStream->m_cp.rsiz & (GRK_PROFILE_PART2 | GRK_EXTENSION_MCT))
 			== (GRK_PROFILE_PART2 | GRK_EXTENSION_MCT)) {
 		codeStream->m_procedure_list->push_back(
 				(j2k_procedure) j2k_write_mct_data_group);
 	}
 	//end custom procedures
+
 	if (codeStream->cstr_index)
 		codeStream->m_procedure_list->push_back((j2k_procedure) j2k_get_end_header);
 	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_update_rates);

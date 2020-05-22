@@ -254,7 +254,9 @@ struct EncodingParams {
 	/** Enabling Tile part generation*/
 	bool m_tp_on;
 	/* write plt marker */
-	bool writePlt;
+	bool writePLT;
+
+	bool writeTLM;
 	/* rate control algorithm */
 	uint32_t rateControlAlgorithm;
 };

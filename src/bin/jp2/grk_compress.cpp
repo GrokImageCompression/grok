@@ -685,6 +685,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		SwitchArg irreversibleArg("I", "Irreversible", "Irreversible", cmd);
 
 		SwitchArg pltArg("L", "PLT", "PLT marker", cmd);
+		SwitchArg tlmArg("X", "TLM", "TLM marker", cmd);
 
 		ValueArg<string> customMCTArg("m", "CustomMCT", "MCT input file", false,
 				"", "string", cmd);
@@ -703,7 +704,10 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		parameters->raw_cp.width = 0;
 
 		if (pltArg.isSet())
-			parameters->writePlt = true;
+			parameters->writePLT = true;
+
+		if (tlmArg.isSet())
+			parameters->writeTLM = true;
 
 		if (verboseArg.isSet())
 			parameters->verbose = true;
@@ -1154,18 +1158,20 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 						parameters)) {
 					return 1;
 				}
+				parameters->writeTLM = true;
 				spdlog::warn("CINEMA 2K profile activated\n"
 							"Other options specified may be overridden");
 			}
-			if (cinema4KArg.isSet()) {
+			else if (cinema4KArg.isSet()) {
 				if (!checkCinema(&cinema4KArg, GRK_PROFILE_CINEMA_4K,
 						parameters)) {
 					return 1;
 				}
 				spdlog::warn(" CINEMA 4K profile activated\n"
 							"Other options specified may be overridden");
+				parameters->writeTLM = true;
 			}
-			if (BroadcastArg.isSet()) {
+			else if (BroadcastArg.isSet()) {
 				int mainlevel = 0;
 				int profile = 0;
 				int framerate = 0;
@@ -1233,6 +1239,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 									* (1000.0 * 1000 / 8) / framerate);
 					spdlog::info("Setting max code stream size to {} bytes.",
 								parameters->max_cs_size);
+					parameters->writeTLM = true;
 				}
 			}
 			if (IMFArg.isSet()) {
@@ -1322,6 +1329,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 					spdlog::info("Setting max code stream size to {} bytes.",
 								parameters->max_cs_size);
 				}
+				parameters->writeTLM = true;
 			}
 
 

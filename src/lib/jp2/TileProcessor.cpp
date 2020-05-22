@@ -971,7 +971,7 @@ bool TileProcessor::compress_tile_part(uint16_t tile_no, BufferedStream *stream,
 		}
 		// 1. create PLT marker if required
 		delete plt_markers;
-		if (m_cp->m_coding_params.m_enc.writePlt){
+		if (m_cp->m_coding_params.m_enc.writePLT){
 			if (!needs_rate_control())
 				plt_markers = new PacketLengthMarkers(stream);
 			else
