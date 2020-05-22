@@ -1,0 +1,9 @@
+Document: libgrokj2k1
+Title: libgrokj2k1 API Manual
+Author: libgrokj2k1 project
+Abstract: This manual describes the API of Grok, a JPEG 2000 library.
+Section: Programming
+
+Format: HTML
+Index: /usr/share/doc/libgrokj2k1/html/index.html
+Files: /usr/share/doc/libgrokj2k1/html/*.html
