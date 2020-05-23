@@ -1219,28 +1219,31 @@ bool j2k_read_sot(CodeStream *codeStream, uint8_t *p_header_data,
 bool j2k_read_sod(CodeStream *codeStream, BufferedStream *stream) {
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
+	auto tileProcessor = codeStream->m_tileProcessor;
 
 	// note: we subtract 2 to account for SOD marker
 	TileCodingParams *tcp = codeStream->get_current_decode_tcp();
 	if (codeStream->m_specific_param.m_decoder.m_last_tile_part) {
-		codeStream->m_tileProcessor->tile_part_data_length =
+		tileProcessor->tile_part_data_length =
 				(uint32_t) (stream->get_number_byte_left() - 2);
 	} else {
-		if (codeStream->m_tileProcessor->tile_part_data_length >= 2)
-			codeStream->m_tileProcessor->tile_part_data_length -= 2;
+		if (tileProcessor->tile_part_data_length >= 2)
+			tileProcessor->tile_part_data_length -= 2;
 	}
-	if (codeStream->m_tileProcessor->tile_part_data_length) {
+	if (tileProcessor->tile_part_data_length) {
 		auto bytesLeftInStream = stream->get_number_byte_left();
 		// check that there are enough bytes in stream to fill tile data
 		if (codeStream->m_tileProcessor->tile_part_data_length > bytesLeftInStream) {
-			GROK_WARN(
-					"Tile part length size %lld inconsistent with stream length %lld",
-					codeStream->m_tileProcessor->tile_part_data_length,
-					stream->get_number_byte_left());
+			GROK_WARN("Tile part length %lld greater than "
+					"stream length %lld\n"
+					"(tile: %d, tile part: %d). Tile may be truncated.",
+					tileProcessor->tile_part_data_length,
+					stream->get_number_byte_left(),
+					tileProcessor->m_current_tile_index,
+					tileProcessor->m_current_tile_part_index);
 
 			// sanitize tile_part_data_length
-			codeStream->m_tileProcessor->tile_part_data_length =
-					(uint32_t) bytesLeftInStream;
+			tileProcessor->tile_part_data_length =	(uint32_t) bytesLeftInStream;
 		}
 	}
 	/* Index */
@@ -1254,14 +1257,14 @@ bool j2k_read_sod(CodeStream *codeStream, BufferedStream *stream) {
 		current_pos = (uint64_t) (current_pos - 2);
 
 		uint32_t current_tile_part =
-				cstr_index->tile_index[codeStream->m_tileProcessor->m_current_tile_index].current_tpsno;
-		cstr_index->tile_index[codeStream->m_tileProcessor->m_current_tile_index].tp_index[current_tile_part].end_header =
+				cstr_index->tile_index[tileProcessor->m_current_tile_index].current_tpsno;
+		cstr_index->tile_index[tileProcessor->m_current_tile_index].tp_index[current_tile_part].end_header =
 				current_pos;
-		cstr_index->tile_index[codeStream->m_tileProcessor->m_current_tile_index].tp_index[current_tile_part].end_pos =
-				current_pos + codeStream->m_tileProcessor->tile_part_data_length + 2;
+		cstr_index->tile_index[tileProcessor->m_current_tile_index].tp_index[current_tile_part].end_pos =
+				current_pos + tileProcessor->tile_part_data_length + 2;
 
 		if (!TileLengthMarkers::add_to_index(
-				codeStream->m_tileProcessor->m_current_tile_index, cstr_index,
+				tileProcessor->m_current_tile_index, cstr_index,
 				J2K_MS_SOD, current_pos, 0)) {
 			GROK_ERROR("Not enough memory to add tl marker");
 			return false;
@@ -1270,11 +1273,11 @@ bool j2k_read_sod(CodeStream *codeStream, BufferedStream *stream) {
 		/*cstr_index->packno = 0;*/
 	}
 	size_t current_read_size = 0;
-	if (codeStream->m_tileProcessor->tile_part_data_length) {
+	if (tileProcessor->tile_part_data_length) {
 		if (!tcp->m_tile_data)
 			tcp->m_tile_data = new ChunkBuffer();
 
-		auto len = codeStream->m_tileProcessor->tile_part_data_length;
+		auto len = tileProcessor->tile_part_data_length;
 		uint8_t *buff = nullptr;
 		auto zeroCopy = stream->supportsZeroCopy();
 		if (!zeroCopy) {
@@ -1291,7 +1294,7 @@ bool j2k_read_sod(CodeStream *codeStream, BufferedStream *stream) {
 		tcp->m_tile_data->add_chunk(buff, len, !zeroCopy);
 
 	}
-	if (current_read_size != codeStream->m_tileProcessor->tile_part_data_length)
+	if (current_read_size != tileProcessor->tile_part_data_length)
 		codeStream->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_NO_EOC;
 	else
 		codeStream->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_TPH_SOT;

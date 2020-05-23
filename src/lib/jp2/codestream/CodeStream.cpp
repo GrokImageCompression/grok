@@ -1210,8 +1210,8 @@ bool j2k_decompress_tile(CodeStream *codeStream, uint16_t tile_index,
 			// not enough data for another marker
 			if (stream->read(data, 2) != 2) {
 				GROK_WARN(
-						"j2k_decompress_tile: Not enough data to read another marker."
-								" Tile may be truncated.");
+						"j2k_decompress_tile: Not enough data to read another marker.\n"
+								"Tile may be truncated.");
 				return true;
 			}
 
@@ -2135,7 +2135,7 @@ bool j2k_compress(CodeStream *codeStream, grk_plugin_tile *tile,
 	uint32_t nb_tiles = (uint32_t) codeStream->m_cp.t_grid_height
 			* codeStream->m_cp.t_grid_width;
 	if (nb_tiles > max_num_tiles) {
-		GROK_ERROR("Number of tiles %d is greater the %d max tiles "
+		GROK_ERROR("Number of tiles %d is greater than %d max tiles "
 				"allowed by the standard.", nb_tiles, max_num_tiles);
 		return false;
 	}

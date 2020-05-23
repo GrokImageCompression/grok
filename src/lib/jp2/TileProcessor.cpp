@@ -1225,7 +1225,7 @@ void TileProcessor::copy_image_to_tile() {
 
 bool TileProcessor::read_marker(BufferedStream *stream, uint16_t *val){
 	if (stream->read(m_marker_scratch, 2) != 2) {
-		GROK_ERROR("read marker: stream too short");
+		GROK_WARN("read marker: stream too short");
 		return false;
 	}
 	grk_read<uint16_t>(m_marker_scratch, val);

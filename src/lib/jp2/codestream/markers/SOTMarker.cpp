@@ -208,7 +208,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	if (tcp->m_nb_tile_parts != 0 && current_part >= tcp->m_nb_tile_parts) {
 		/* Fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=2851 */
 		GROK_ERROR(
-				"Current tile part number (%d) read from SOT marker is greater than total "
+				"Current tile part number (%d) read from SOT marker is greater\n than total "
 						"number of tile-parts (%d).", current_part,
 				tcp->m_nb_tile_parts);
 		codeStream->m_specific_param.m_decoder.m_last_tile_part = 1;

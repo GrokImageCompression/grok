@@ -243,7 +243,7 @@ bool T2::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 
 			/*
 			 GROK_INFO(
-			 "packet prg=%d cmptno=%02d rlvlno=%02d prcno=%03d lyrno=%02d\n",
+			 "packet prg=%d cmptno=%02d rlvlno=%02d prcno=%03d layrno=%02d\n",
 			 current_pi->poc.prg1, current_pi->compno,
 			 current_pi->resno, current_pi->precno,
 			 current_pi->layno);
@@ -267,7 +267,7 @@ bool T2::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			uint64_t nb_bytes_read = 0;
 			if (!skip_the_packet) {
 				/*
-				 printf("packet cmptno=%02d rlvlno=%02d prcno=%03d lyrno=%02d -> %s\n",
+				 printf("packet cmptno=%02d rlvlno=%02d prcno=%03d layrno=%02d -> %s\n",
 				 current_pi->compno, current_pi->resno,
 				 current_pi->precno, current_pi->layno, skip_the_packet ? "skipped" : "kept");
 				 */
@@ -321,7 +321,8 @@ bool T2::decode_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuffer *s
 	uint64_t max_length = src_buf->data_len - src_buf->get_global_offset();
 	if (max_length == 0) {
 		GROK_WARN("decode_packet: No data for either packet header\n"
-				"or packet body for packet prg=%d cmptno=%02d rlvlno=%02d prcno=%03d lyrno=%02d\n",
+				"or packet body for packet prg=%d "
+				"cmptno=%02d reslvlno=%02d prcno=%03d layrno=%02d",
 		 p_pi->poc.prg1, p_pi->compno,
 		 p_pi->resno, p_pi->precno,
 		 p_pi->layno);
@@ -724,10 +725,11 @@ bool T2::read_packet_data(grk_tcd_resolution *res, PacketIter *p_pi,
 				// Check possible overflow on segment length
 				if (((offset + seg->numBytesInPacket) > len)) {
 					GROK_WARN(
-							"read packet data: segment offset (%u) plus segment length %u is greater than "
-									"total length \nof all segments (%u) for codeblock "
-									"%d (layer=%d, prec=%d, band=%d, res=%d, comp=%d)."
-									"Truncating packet data.", offset,
+							"read packet data: segment offset (%u) plus segment length %u\n"
+							"is greater than total length \n"
+							"of all segments (%u) for codeblock "
+							"%d (layer=%d, prec=%d, band=%d, res=%d, comp=%d)."
+							" Truncating packet data.", offset,
 							seg->numBytesInPacket, len, cblkno, p_pi->layno,
 							p_pi->precno, bandno, p_pi->resno, p_pi->compno);
 					seg->numBytesInPacket = (uint32_t) (len - offset);
