@@ -27,7 +27,8 @@ bool Tier1::encodeCodeblocks(TileCodingParams *tcp,
 							uint32_t mct_numcomps,
 							bool doRateControl) {
 
-	uint32_t compno, resno, bandno, precno;
+	uint32_t compno, resno, bandno;
+	uint64_t precno;
 	tile->distotile = 0;
 	std::vector<encodeBlockInfo*> blocks;
 	uint32_t maxCblkW = 0;

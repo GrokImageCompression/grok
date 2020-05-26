@@ -115,7 +115,7 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tcd_tile *p_tile) {
 				size_t num_precincts = band->numPrecincts;
 				if (num_precincts != plugin_band->numPrecincts)
 					return false;
-				for (size_t precno = 0; precno < num_precincts; ++precno) {
+				for (uint64_t precno = 0; precno < num_precincts; ++precno) {
 					grk_tcd_precinct *precinct = band->precincts + precno;
 					grk_plugin_precinct *plugin_precinct =
 							plugin_band->precincts[precno];

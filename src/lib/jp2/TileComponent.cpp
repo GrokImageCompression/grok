@@ -91,7 +91,7 @@ void TileComponent::release_mem(){
 			for (uint32_t bandno = 0; bandno < 3; ++bandno) {
 				auto precinct = band->precincts;
 				if (precinct) {
-					for (uint32_t precno = 0; precno < band->numAllocatedPrecincts;
+					for (uint64_t precno = 0; precno < band->numAllocatedPrecincts;
 							++precno) {
 						precinct->deleteTagTrees();
 						if (m_is_encoder)

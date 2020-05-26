@@ -1177,7 +1177,7 @@ bool T2::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
 				auto roundTripBand = roundRes->bands + bandno;
 				if (!band->precincts)
 					continue;
-				for (size_t precno = 0; precno < band->numPrecincts; ++precno) {
+				for (uint64_t precno = 0; precno < band->numPrecincts; ++precno) {
 					auto prec = band->precincts + precno;
 					auto roundTripPrec = roundTripBand->precincts + precno;
 					for (uint64_t cblkno = 0; cblkno < (uint64_t)prec->cw * prec->ch; ++cblkno) {
@@ -1271,7 +1271,7 @@ bool T2::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
 						auto roundTripBand = roundRes->bands + bandno;
 						if (!band->precincts)
 							continue;
-						for (size_t precno = 0; precno < band->numPrecincts; ++precno) {
+						for (uint64_t precno = 0; precno < band->numPrecincts; ++precno) {
 							auto prec = band->precincts + precno;
 							auto roundTripPrec = roundTripBand->precincts + precno;
 							for (uint32_t cblkno = 0; cblkno < (uint64_t)prec->cw * prec->ch; ++cblkno) {

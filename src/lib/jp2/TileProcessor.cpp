@@ -1533,7 +1533,7 @@ bool TileProcessor::t2_encode(BufferedStream *stream, uint32_t *all_packet_bytes
 					continue;
 				decodeBand->precincts = new grk_tcd_precinct[band->numPrecincts];
 				decodeBand->precincts_data_size = (uint32_t)(band->numPrecincts * sizeof(grk_tcd_precinct));
-				for (size_t precno = 0; precno < band->numPrecincts; ++precno) {
+				for (uint64_t precno = 0; precno < band->numPrecincts; ++precno) {
 					auto prec = band->precincts + precno;
 					auto decodePrec = decodeBand->precincts + precno;
 					decodePrec->cw = prec->cw;
@@ -1574,7 +1574,7 @@ bool TileProcessor::t2_encode(BufferedStream *stream, uint32_t *all_packet_bytes
 			for (uint32_t bandno = 0; bandno < roundRes->numbands; ++bandno) {
 				auto decodeBand = roundRes->bands + bandno;
 				if (decodeBand->precincts) {
-					for (size_t precno = 0; precno < decodeBand->numPrecincts; ++precno) {
+					for (uint64_t precno = 0; precno < decodeBand->numPrecincts; ++precno) {
 						auto decodePrec = decodeBand->precincts + precno;
 						decodePrec->cleanupDecodeBlocks();
 					}
