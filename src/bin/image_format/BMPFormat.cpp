@@ -78,7 +78,7 @@ typedef struct {
 	uint32_t biWidth; /* Width of the image in pixels */
 	uint32_t biHeight; /* Height of the image in pixels */
 	uint16_t biPlanes; /* 1 */
-	uint16_t biBitCount; /* Number of color bits by pixels */
+	uint16_t biBitCount; /* Number of color bits per pixels */
 	uint32_t biCompression; /* Type of encoding 0: none 1: RLE8 2: RLE4 */
 	uint32_t biSizeImage; /* Size of the image in bytes */
 	uint32_t biXpelsPerMeter; /* Horizontal (X) resolution in pixels/meter */
@@ -194,7 +194,6 @@ static void bmpmask32toimage(const uint8_t *pData, uint32_t stride,
 	int index;
 	uint32_t width, height;
 	uint32_t x, y;
-	const uint8_t *pSrc = nullptr;
 	bool hasAlpha = false;
 	uint32_t redShift, redPrec;
 	uint32_t greenShift, greenPrec;
@@ -211,11 +210,10 @@ static void bmpmask32toimage(const uint8_t *pData, uint32_t stride,
 	image->comps[0].prec = redPrec;
 	image->comps[1].prec = greenPrec;
 	image->comps[2].prec = bluePrec;
-	if (hasAlpha) {
+	if (hasAlpha)
 		image->comps[3].prec = alphaPrec;
-	}
 	index = 0;
-	pSrc = pData + (height - 1U) * stride;
+	auto pSrc = pData + (height - 1U) * stride;
 	for (y = 0; y < height; y++) {
 		size_t src_index = 0;
 		for (x = 0; x < width; x++) {
@@ -247,7 +245,6 @@ static void bmpmask16toimage(const uint8_t *pData, uint32_t stride,
 	int index;
 	uint32_t width, height;
 	uint32_t x, y;
-	const uint8_t *pSrc = nullptr;
 	bool hasAlpha = false;
 	uint32_t redShift, redPrec;
 	uint32_t greenShift, greenPrec;
@@ -264,11 +261,10 @@ static void bmpmask16toimage(const uint8_t *pData, uint32_t stride,
 	image->comps[0].prec = redPrec;
 	image->comps[1].prec = greenPrec;
 	image->comps[2].prec = bluePrec;
-	if (hasAlpha) {
+	if (hasAlpha)
 		image->comps[3].prec = alphaPrec;
-	}
 	index = 0;
-	pSrc = pData + (height - 1U) * stride;
+	auto pSrc = pData + (height - 1U) * stride;
 	for (y = 0; y < height; y++) {
 		size_t src_index = 0;
 		for (x = 0; x < width; x++) {
@@ -293,12 +289,9 @@ static void bmpmask16toimage(const uint8_t *pData, uint32_t stride,
 }
 static grk_image* bmp8toimage(const uint8_t *pData, uint32_t stride,
 		grk_image *image, uint8_t const *const*pLUT) {
-	uint32_t width, height;
-	const uint8_t *pSrc = nullptr;
-
-	width = image->comps[0].w;
-	height = image->comps[0].h;
-	pSrc = pData + (height - 1U) * stride;
+	uint32_t width = image->comps[0].w;
+	uint32_t height = image->comps[0].h;
+	auto pSrc = pData + (height - 1U) * stride;
 	if (image->numcomps == 1U) {
 		grk_applyLUT8u_8u32s_C1R(pSrc, -(int32_t) stride, image->comps[0].data,
 				(int32_t) width, pLUT[0], width, height);
@@ -361,6 +354,11 @@ static bool bmp_read_info_header(FILE *INPUT, GRK_BITMAPINFOHEADER *header) {
 		return false;
 	if (!get_int(INPUT, &header->biBitCount))
 		return false;
+	// sanity check
+	if (header->biBitCount > 32){
+		spdlog::error("Bit count {} not supported.",header->biBitCount);
+		return false;
+	}
 	if (header->biSize >= 40U) {
 		if (!get_int(INPUT, &header->biCompression))
 			return false;
@@ -770,13 +768,59 @@ static grk_image* bmptoimage(const char *filename,
 	} else if (Info_h.biBitCount == 32 && Info_h.biCompression == 0) { /* RGBX */
 		bmpmask32toimage(pData, stride, image, 0x00FF0000U, 0x0000FF00U,
 				0x000000FFU, 0x00000000U);
-	} else if (Info_h.biBitCount == 32 && Info_h.biCompression == 3) { /* bitmask */
+	} else if (Info_h.biBitCount == 32 && Info_h.biCompression == 3) { /* BITFIELDS bit mask */
+		bool fail = false;
+		bool hasAlpha = image->numcomps > 3;
+		// sanity check on bit masks
+		uint32_t m[4] = {Info_h.biRedMask,
+							Info_h.biGreenMask,
+								Info_h.biBlueMask,
+									Info_h.biAlphaMask};
+		for (uint32_t i = 0; i < image->numcomps; ++i){
+			int lead = grk::count_leading_zeros(m[i]);
+			int trail = grk::count_trailing_zeros(m[i]);
+			int cnt = grk::population_count(m[i]);
+			// check contiguous
+			if (lead + trail + cnt != 32){
+				spdlog::error("RGB(A) bit masks must be contiguous");
+				fail = true;
+				break;
+			}
+			// check supported precision
+			if (cnt > 16){
+				spdlog::error("RGB(A) bit mask with precision ({0:d}) greater than 16 is not supported",cnt);
+				fail = true;
+			}
+		}
+		// check overlap
+		if ( (m[0]&m[1]) || (m[0]&m[2]) || 	(m[1]&m[2]) )	{
+			spdlog::error("RGB(A) bit masks must not overlap");
+			fail = true;
+		}
+		if (hasAlpha && !fail){
+			if ( (m[0]&m[3]) || (m[1]&m[3]) || (m[2]&m[3]) )	{
+				spdlog::error("RGB(A) bit masks must not overlap");
+				fail = true;
+			}
+		}
+
+		if (fail){
+			spdlog::error("RGB(A) bit masks:\n"
+					"{0:b}\n"
+					"{0:b}\n"
+					"{0:b}\n"
+					"{0:b}",m[0],m[1],m[2],m[3]);
+			grk_image_destroy(image);
+			image = nullptr;
+			goto cleanup;
+		}
+
 		bmpmask32toimage(pData, stride, image, Info_h.biRedMask,
 				Info_h.biGreenMask, Info_h.biBlueMask, Info_h.biAlphaMask);
 	} else if (Info_h.biBitCount == 16 && Info_h.biCompression == 0) { /* RGBX */
 		bmpmask16toimage(pData, stride, image, 0x7C00U, 0x03E0U, 0x001FU,
 				0x0000U);
-	} else if (Info_h.biBitCount == 16 && Info_h.biCompression == 3) { /* bitmask */
+	} else if (Info_h.biBitCount == 16 && Info_h.biCompression == 3) { /* BITFIELDS bit mask*/
 		if ((Info_h.biRedMask == 0U) && (Info_h.biGreenMask == 0U)
 				&& (Info_h.biBlueMask == 0U)) {
 			Info_h.biRedMask = 0xF800U;
@@ -789,11 +833,12 @@ static grk_image* bmptoimage(const char *filename,
 		grk_image_destroy(image);
 		image = nullptr;
 		spdlog::error(
-				"Other system than 24 bits/pixels or 8 bits (no RLE coding) is not yet implemented [{}]",
+				"Precision [{}] does not match supported precision: "
+				"24 bit RGB, 8 bit RGB, 4/8 bit RLE and 16/32 bit BITFIELD",
 				Info_h.biBitCount);
 	}
-	cleanup: if (pData)
-		free(pData);
+	cleanup:
+	free(pData);
 	if (!readFromStdin && INPUT) {
 		if (!grk::safe_fclose(INPUT)) {
 			grk_image_destroy(image);
@@ -919,7 +964,7 @@ static int imagetobmp(grk_image *image, const char *outfile, bool verbose) {
 			adjustB = 0;
 		uint32_t sz = w * h;
 		size_t padW = ((3 * w + 3) >> 2) << 2;
-		uint8_t *destBuff = new uint8_t[padW];
+		auto destBuff = new uint8_t[padW];
 		for (uint32_t j = 0; j < h; j++) {
 			uint32_t destInd = 0;
 			for (uint32_t i = 0; i < w; i++) {
@@ -1032,7 +1077,7 @@ static int imagetobmp(grk_image *image, const char *outfile, bool verbose) {
 
 		uint32_t sz = w * h;
 		size_t padW = ((w + 3) >> 2) << 2;
-		uint8_t *destBuff = new uint8_t[padW];
+		auto destBuff = new uint8_t[padW];
 		for (uint32_t j = 0; j < h; j++) {
 			uint32_t destInd = 0;
 			for (uint32_t i = 0; i < w; i++) {
@@ -1058,7 +1103,8 @@ static int imagetobmp(grk_image *image, const char *outfile, bool verbose) {
 	}
 	// success
 	rc = 0;
-	cleanup: delete[] destBuff;
+	cleanup:
+	delete[] destBuff;
 	if (!writeToStdout && fdest) {
 		if (!grk::safe_fclose(fdest)) {
 			rc = 1;

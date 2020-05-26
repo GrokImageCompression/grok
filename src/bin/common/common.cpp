@@ -78,6 +78,10 @@
 #include <condition_variable>
 using namespace std::chrono_literals;
 
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
+
 namespace grk {
 
 std::condition_variable sleep_cv;
@@ -339,5 +343,64 @@ bool isSubsampled(grk_image *image) {
 	}
 	return false;
 }
+
+int population_count(uint32_t val)
+{
+#ifdef _MSC_VER
+  return __popcnt(val);
+#elif (defined(__GNUC__) || defined(__clang__))
+  return __builtin_popcount(val);
+#else
+  val -= ((val >> 1) & 0x55555555);
+  val = (((val >> 2) & 0x33333333) + (val & 0x33333333));
+  val = (((val >> 4) + val) & 0x0f0f0f0f);
+  val += (val >> 8);
+  val += (val >> 16);
+  return (int)(val & 0x0000003f);
+#endif
+}
+
+#ifdef _MSC_VER
+#pragma intrinsic(_BitScanReverse)
+#endif
+int count_leading_zeros(uint32_t val)
+{
+#ifdef _MSC_VER
+  unsigned long result = 0;
+  _BitScanReverse(&result, val);
+  return 31 ^ (int)result;
+#elif (defined(__GNUC__) || defined(__clang__))
+  return __builtin_clz(val);
+#else
+  val |= (val >> 1);
+  val |= (val >> 2);
+  val |= (val >> 4);
+  val |= (val >> 8);
+  val |= (val >> 16);
+  return 32 - population_count(val);
+#endif
+}
+
+#ifdef _MSC_VER
+#pragma intrinsic(_BitScanForward)
+#endif
+int count_trailing_zeros(uint32_t val)
+{
+#ifdef _MSC_VER
+  unsigned long result = 0;
+  _BitScanForward(&result, val);
+  return 31 ^ (int)result;
+#elif (defined(__GNUC__) || defined(__clang__))
+  return __builtin_ctz(val);
+#else
+  val |= (val << 1);
+  val |= (val << 2);
+  val |= (val << 4);
+  val |= (val << 8);
+  val |= (val << 16);
+  return 32 - population_count(val);
+#endif
+}
+
 
 }
