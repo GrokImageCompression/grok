@@ -164,6 +164,8 @@ int main(int argc, char** argv)
 	SwitchArg lossyArg("I", "irreversible", "irreversible dwt", cmd);
 	SwitchArg forwardArg("F", "forward", "forward dwt", cmd);
 
+	SwitchArg threadScalingArg("S", "ThreadScaling", "Thread scaling", cmd);
+
 	cmd.parse(argc, argv);
 
 	if (displayArg.isSet()){
@@ -176,8 +178,11 @@ int main(int argc, char** argv)
 		lossy = true;
 	if (sizeArg.isSet())
 		size = sizeArg.getValue();
-	if (numThreadsArg.isSet())
+	if (numThreadsArg.isSet()){
 		num_threads = numThreadsArg.getValue();
+	}
+    if (num_threads == 0)
+    	num_threads = ThreadPool::hardware_concurrency();
 	if (numResolutionsArg.isSet()){
 		num_resolutions = numResolutionsArg.getValue();
 		 if (num_resolutions == 0 || num_resolutions > 32) {
@@ -189,98 +194,109 @@ int main(int argc, char** argv)
 	if (forwardArg.isSet())
 		forward = forwardArg.getValue();
 
-   TileProcessor tcd(!forward);
-   grk_initialize(nullptr,num_threads);
-   init_tilec(&tilec, offset_x, offset_y,
-               offset_x + size, offset_y + size,
-               num_resolutions);
+	size_t begin = num_threads;
+	size_t end = num_threads;
+	if (threadScalingArg.isSet())
+		begin = 1;
 
-    if (display) {
-    	spdlog::info("Before");
-        k = 0;
-        for (j = 0; j < (int32_t)(tilec.y1 - tilec.y0); j++) {
-            for (i = 0; i < (int32_t)(tilec.x1 - tilec.x0); i++) {
-                printf("%d ", tilec.buf->data[k]);
-                k ++;
-            }
-            printf("\n");
-        }
-    }
-    tcd.image = &tcd_image;
-    memset(&tcd_image, 0, sizeof(tcd_image));
-    memset(&tcd_tile, 0, sizeof(tcd_tile));
-    tcd_tile.x0 = tilec.x0;
-    tcd_tile.y0 = tilec.y0;
-    tcd_tile.x1 = tilec.x1;
-    tcd_tile.y1 = tilec.y1;
-    tcd_tile.numcomps = 1;
-    tcd_tile.comps = &tilec;
-    tcd.image = &image;
-    memset(&image, 0, sizeof(image));
-    image.numcomps = 1;
-    image.comps = &image_comp;
-    memset(&image_comp, 0, sizeof(image_comp));
-    image_comp.dx = 1;
-    image_comp.dy = 1;
+   for (size_t k = begin; k <= end; ++k) {
+	   std::unique_ptr<TileProcessor> tileProcessor(new TileProcessor(!forward));
+	   grk_initialize(nullptr,k);
+	   init_tilec(&tilec, offset_x, offset_y,
+				   offset_x + size, offset_y + size,
+				   num_resolutions);
 
-	std::chrono::time_point<std::chrono::high_resolution_clock> start, finish;
-	std::chrono::duration<double> elapsed;
+		if (display) {
+			spdlog::info("Before");
+			k = 0;
+			for (j = 0; j < (int32_t)(tilec.y1 - tilec.y0); j++) {
+				for (i = 0; i < (int32_t)(tilec.x1 - tilec.x0); i++) {
+					printf("%d ", tilec.buf->data[k]);
+					k ++;
+				}
+				printf("\n");
+			}
+		}
+		tileProcessor->image = &tcd_image;
+		memset(&tcd_image, 0, sizeof(tcd_image));
+		memset(&tcd_tile, 0, sizeof(tcd_tile));
+		tcd_tile.x0 = tilec.x0;
+		tcd_tile.y0 = tilec.y0;
+		tcd_tile.x1 = tilec.x1;
+		tcd_tile.y1 = tilec.y1;
+		tcd_tile.numcomps = 1;
+		tcd_tile.comps = &tilec;
+		tileProcessor->image = &image;
+		memset(&image, 0, sizeof(image));
+		image.numcomps = 1;
+		image.comps = &image_comp;
+		memset(&image_comp, 0, sizeof(image_comp));
+		image_comp.dx = 1;
+		image_comp.dy = 1;
 
-	start = std::chrono::high_resolution_clock::now();
-	bool rc = false;
-	if (forward){
-		Wavelet w;
-		rc = w.compress(&tilec,lossy ? 0 : 1 );
-	} else {
-		if (lossy)
-			rc = decode_97(&tcd, &tilec, tilec.numresolutions);
-		else
-			rc = decode_53(&tcd, &tilec, tilec.numresolutions);
-	}
-	assert(rc);
-	finish = std::chrono::high_resolution_clock::now();
-	elapsed = finish - start;
-	spdlog::info("time for dwt_decode: {} ms\n", elapsed.count()*1000);
+		std::chrono::time_point<std::chrono::high_resolution_clock> start, finish;
+		std::chrono::duration<double> elapsed;
 
-    if (display || check) {
-        if (display) {
-        	spdlog::info("After IDWT\n");
-            k = 0;
-            for (j = 0; j < (int32_t)(tilec.y1 - tilec.y0); j++) {
-                for (i = 0; i < (int32_t)(tilec.x1 - tilec.x0); i++) {
-                    printf("%d ", tilec.buf->data[k]);
-                    k ++;
-                }
-                printf("\n");
-            }
-        }
+		start = std::chrono::high_resolution_clock::now();
+		bool rc = false;
+		if (forward){
+			Wavelet w;
+			rc = w.compress(&tilec,lossy ? 0 : 1 );
+		} else {
+			if (lossy)
+				rc = decode_97(tileProcessor.get(), &tilec, tilec.numresolutions);
+			else
+				rc = decode_53(tileProcessor.get(), &tilec, tilec.numresolutions);
+		}
+		assert(rc);
+		finish = std::chrono::high_resolution_clock::now();
+		elapsed = finish - start;
+		spdlog::info("{} dwt {} with {:02d} threads: {} ms",
+				lossy ? "lossy" : "lossless",
+				forward ? "encode" : "decode",
+				k,
+				(uint32_t)(elapsed.count()*1000));
 
-        Wavelet::compress(&tilec, 1);
-        if (display) {
-        	spdlog::info("After FDWT\n");
-            k = 0;
-            for (j = 0; j < (int32_t)(tilec.y1 - tilec.y0); j++) {
-                for (i = 0; i < (int32_t)(tilec.x1 - tilec.x0); i++) {
-                    printf("%d ", tilec.buf->data[k]);
-                    k ++;
-                }
-                printf("\n");
-            }
-        }
+		if (display || check) {
+			if (display) {
+				spdlog::info("After IDWT\n");
+				k = 0;
+				for (j = 0; j < (int32_t)(tilec.y1 - tilec.y0); j++) {
+					for (i = 0; i < (int32_t)(tilec.x1 - tilec.x0); i++) {
+						printf("%d ", tilec.buf->data[k]);
+						k ++;
+					}
+					printf("\n");
+				}
+			}
 
-        if (check) {
-            size_t idx;
-            size_t nValues = (size_t)(tilec.x1 - tilec.x0) *
-                             (size_t)(tilec.y1 - tilec.y0);
-            for (idx = 0; idx < nValues; idx++) {
-                if (tilec.buf->data[idx] != getValue((uint32_t)idx)) {
-                    printf("Difference found at idx = %u\n", (uint32_t)idx);
-                    return 1;
-                }
-            }
-        }
-    }
-    grk_deinitialize();
+			Wavelet::compress(&tilec, 1);
+			if (display) {
+				spdlog::info("After FDWT\n");
+				k = 0;
+				for (j = 0; j < (int32_t)(tilec.y1 - tilec.y0); j++) {
+					for (i = 0; i < (int32_t)(tilec.x1 - tilec.x0); i++) {
+						printf("%d ", tilec.buf->data[k]);
+						k ++;
+					}
+					printf("\n");
+				}
+			}
+
+			if (check) {
+				size_t idx;
+				size_t nValues = (size_t)(tilec.x1 - tilec.x0) *
+								 (size_t)(tilec.y1 - tilec.y0);
+				for (idx = 0; idx < nValues; idx++) {
+					if (tilec.buf->data[idx] != getValue((uint32_t)idx)) {
+						printf("Difference found at idx = %u\n", (uint32_t)idx);
+						return 1;
+					}
+				}
+			}
+		}
+		grk_deinitialize();
+   }
 
     return 0;
 }
