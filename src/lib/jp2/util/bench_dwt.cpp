@@ -46,8 +46,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
 #include "grok_includes.h"
+#include "spdlog/spdlog.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -58,13 +58,15 @@
 #endif /* _WIN32 */
 
 #include <chrono>  // for high_resolution_clock
+#define TCLAP_NAMESTARTSTRING "-"
+#include "tclap/CmdLine.h"
+using namespace TCLAP;
 
 using namespace grk;
 
 namespace grk {
 
-int32_t getValue(uint32_t i)
-{
+int32_t getValue(uint32_t i){
     return ((int32_t)i % 511) - 256;
 }
 
@@ -73,8 +75,7 @@ void init_tilec(TileComponent * tilec,
                 uint32_t y0,
                 uint32_t x1,
                 uint32_t y1,
-                uint32_t numresolutions)
-{
+                uint32_t numresolutions){
     tilec->x0 = x0;
     tilec->y0 = y0;
     tilec->x1 = x1;
@@ -99,7 +100,6 @@ void init_tilec(TileComponent * tilec,
 
     /* Adapted from grk_tcd_init_tile() */
     for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
-
         --leveno;
 
         /* border for each resolution level (global) */
@@ -107,7 +107,6 @@ void init_tilec(TileComponent * tilec,
         res->y0 = uint_ceildivpow2(tilec->y0, leveno);
         res->x1 = uint_ceildivpow2(tilec->x1, leveno);
         res->y1 = uint_ceildivpow2(tilec->y1, leveno);
-
         ++res;
     }
 }
@@ -120,9 +119,15 @@ void usage(void)
         "          [-offset x y] [-num_threads val]\n");
 }
 
+class GrokOutput: public StdOutput {
+public:
+	virtual void usage(CmdLineInterface &c) {
+		(void) c;
+		::usage();
+	}
+};
+
 }
-
-
 
 int main(int argc, char** argv)
 {
@@ -137,52 +142,57 @@ int main(int argc, char** argv)
     bool display = false;
     bool check = false;
     bool lossy = false;
-    uint32_t size = 256 - 1;
+    uint32_t size = 16385 - 1;
     uint32_t offset_x = (uint32_t)((size + 1) / 2 - 1);
     uint32_t offset_y = (uint32_t)((size + 1) / 2 - 1);
     uint32_t num_resolutions = 6;
 
-    for (i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-display") == 0) {
-            display = true;
-            check = true;
-        } else if (strcmp(argv[i], "-check") == 0) {
-            check = true;
-        } else if (strcmp(argv[i], "-size") == 0 && i + 1 < argc) {
-            size = (uint32_t)atoi(argv[i + 1]);
-            i ++;
-        } else if (strcmp(argv[i], "-lossy") == 0) {
-            lossy = true;
-            i ++;
-        } else if (strcmp(argv[i], "-num_threads") == 0 && i + 1 < argc) {
-            num_threads = (uint32_t)atoi(argv[i + 1]);
-            i ++;
-        } else if (strcmp(argv[i], "-num_resolutions") == 0 && i + 1 < argc) {
-            num_resolutions = (uint32_t)atoi(argv[i + 1]);
-            if (num_resolutions == 0 || num_resolutions > 32) {
-                fprintf(stderr,
-                        "Invalid value for num_resolutions. Should be >= 1 and <= 32\n");
-                exit(1);
-            }
-            i ++;
-        } else if (strcmp(argv[i], "-offset") == 0 && i + 2 < argc) {
-            offset_x = (uint32_t)atoi(argv[i + 1]);
-            offset_y = (uint32_t)atoi(argv[i + 2]);
-            i += 2;
-        } else {
-            usage();
-            return 1;
-        }
-    }
+	CmdLine cmd("bench_dwt command line", ' ', grk_version());
+
+	// set the output
+	GrokOutput output;
+	cmd.setOutput(&output);
+
+	SwitchArg displayArg("d", "display", "display", cmd);
+	SwitchArg checkArg("c", "check", "check", cmd);
+	ValueArg<uint32_t> sizeArg("s", "size",
+			"Size of image", false, 0, "unsigned integer", cmd);
+	ValueArg<uint32_t> numThreadsArg("H", "num_threads",
+			"Number of threads", false, 0, "unsigned integer", cmd);
+	ValueArg<uint32_t> numResolutionsArg("n", "Resolutions",
+			"Number of resolutions", false, 0, "unsigned integer", cmd);
+	SwitchArg lossyArg("I", "irreversible", "irreversible dwt", cmd);
+
+	cmd.parse(argc, argv);
+
+	if (displayArg.isSet()){
+        display = true;
+        check = true;
+	}
+	if (checkArg.isSet())
+        check = true;
+	if (lossyArg.isSet())
+		lossy = true;
+	if (sizeArg.isSet())
+		size = sizeArg.getValue();
+	if (numThreadsArg.isSet())
+		num_threads = numThreadsArg.getValue();
+	if (numResolutionsArg.isSet()){
+		num_resolutions = numResolutionsArg.getValue();
+		 if (num_resolutions == 0 || num_resolutions > 32) {
+			spdlog::error("Invalid value for num_resolutions. "
+					"Should be >= 1 and <= 32");
+			exit(1);
+		}
+	}
 
    grk_initialize(nullptr,num_threads);
-
    init_tilec(&tilec, offset_x, offset_y,
                offset_x + size, offset_y + size,
                num_resolutions);
 
     if (display) {
-        printf("Before\n");
+    	spdlog::info("Before");
         k = 0;
         for (j = 0; j < (int32_t)(tilec.y1 - tilec.y0); j++) {
             for (i = 0; i < (int32_t)(tilec.x1 - tilec.x0); i++) {
@@ -192,7 +202,6 @@ int main(int argc, char** argv)
             printf("\n");
         }
     }
-
     tcd.image = &tcd_image;
     memset(&tcd_image, 0, sizeof(tcd_image));
     memset(&tcd_tile, 0, sizeof(tcd_tile));
@@ -210,7 +219,6 @@ int main(int argc, char** argv)
     image_comp.dx = 1;
     image_comp.dy = 1;
 
-
 	std::chrono::time_point<std::chrono::high_resolution_clock> start, finish;
 	std::chrono::duration<double> elapsed;
 
@@ -221,11 +229,11 @@ int main(int argc, char** argv)
 		decode_53(&tcd, &tilec, tilec.numresolutions);
 	finish = std::chrono::high_resolution_clock::now();
 	elapsed = finish - start;
-    printf("time for dwt_decode: %.03f ms\n", elapsed.count()*1000);
+	spdlog::info("time for dwt_decode: {} ms\n", elapsed.count()*1000);
 
     if (display || check) {
         if (display) {
-            printf("After IDWT\n");
+        	spdlog::info("After IDWT\n");
             k = 0;
             for (j = 0; j < (int32_t)(tilec.y1 - tilec.y0); j++) {
                 for (i = 0; i < (int32_t)(tilec.x1 - tilec.x0); i++) {
@@ -238,7 +246,7 @@ int main(int argc, char** argv)
 
         Wavelet::compress(&tilec, 1);
         if (display) {
-            printf("After FDWT\n");
+        	spdlog::info("After FDWT\n");
             k = 0;
             for (j = 0; j < (int32_t)(tilec.y1 - tilec.y0); j++) {
                 for (i = 0; i < (int32_t)(tilec.x1 - tilec.x0); i++) {

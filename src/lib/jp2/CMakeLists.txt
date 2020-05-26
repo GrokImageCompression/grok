@@ -294,7 +294,14 @@ if(GROK_USE_DSYMUTIL)
 endif()
 
 if(BUILD_UNIT_TESTS)
-    add_executable(bench_dwt util/bench_dwt.cpp)
+    add_executable(bench_dwt 
+				    util/bench_dwt.cpp
+				    ${GROK_SOURCE_DIR}/src/bin/common/spdlog/spdlog.cpp
+				    ${GROK_SOURCE_DIR}/src/bin/common/spdlog/color_sinks.cpp
+				    ${GROK_SOURCE_DIR}/src/bin/common/spdlog/stdout_sinks.cpp
+				    ${GROK_SOURCE_DIR}/src/bin/common/spdlog/fmt.cpp
+				    ${GROK_SOURCE_DIR}/src/bin/common/spdlog/async.cpp     
+				    ${GROK_SOURCE_DIR}/src/bin/common/spdlog/file_sinks.cpp )
     if(UNIX)
         target_link_libraries(bench_dwt m ${GROK_LIBRARY_NAME})
     endif()
