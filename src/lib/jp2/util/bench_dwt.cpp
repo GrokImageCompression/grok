@@ -68,58 +68,48 @@ int32_t getValue(uint32_t i)
     return ((int32_t)i % 511) - 256;
 }
 
-void init_tilec(TileComponent * l_tilec,
+void init_tilec(TileComponent * tilec,
                 uint32_t x0,
                 uint32_t y0,
                 uint32_t x1,
                 uint32_t y1,
                 uint32_t numresolutions)
 {
-    grk_tcd_resolution* l_res;
-    uint32_t resno, l_level_no;
-    size_t i, nValues;
+    tilec->x0 = x0;
+    tilec->y0 = y0;
+    tilec->x1 = x1;
+    tilec->y1 = y1;
+    tilec->m_is_encoder = false;
+    tilec->numresolutions = numresolutions;
+    tilec->minimum_num_resolutions = numresolutions;
+    tilec->resolutions = new grk_tcd_resolution[tilec->numresolutions];
+    for (auto i = 0; i < tilec->numresolutions; ++i)
+    	memset(tilec->resolutions+i,0,sizeof(grk_tcd_resolution));
+    tilec->create_buffer(nullptr,1,1);
 
-    l_tilec->x0 = x0;
-    l_tilec->y0 = y0;
-    l_tilec->x1 = x1;
-    l_tilec->y1 = y1;
-    l_tilec->m_is_encoder = false;
-    l_tilec->create_buffer(nullptr,1,1);
+    size_t nValues = (size_t)(tilec->x1 - tilec->x0) *
+    		(tilec->y1 - tilec->y0);
+    tilec->buf->data = (int32_t*) grk_malloc(sizeof(int32_t) * nValues);
+    tilec->buf->owns_data = true;
+    for (size_t i = 0; i < nValues; i++)
+        tilec->buf->data[i] = getValue((uint32_t)i);
 
-    nValues = (size_t)(l_tilec->x1 - l_tilec->x0) *
-              (size_t)(l_tilec->y1 - l_tilec->y0);
-    l_tilec->buf->data = (int32_t*) grk_malloc(sizeof(int32_t) * nValues);
-    for (i = 0; i < nValues; i++) {
-        l_tilec->buf->data[i] = getValue((uint32_t)i);
-    }
-    l_tilec->numresolutions = numresolutions;
-    l_tilec->minimum_num_resolutions = numresolutions;
-    l_tilec->resolutions = (grk_tcd_resolution*) grk_calloc(
-                               l_tilec->numresolutions,
-                               sizeof(grk_tcd_resolution));
-
-    l_level_no = l_tilec->numresolutions;
-    l_res = l_tilec->resolutions;
+    uint32_t leveno = tilec->numresolutions;
+    auto res = tilec->resolutions;
 
     /* Adapted from grk_tcd_init_tile() */
-    for (resno = 0; resno < l_tilec->numresolutions; ++resno) {
+    for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
 
-        --l_level_no;
+        --leveno;
 
         /* border for each resolution level (global) */
-        l_res->x0 = uint_ceildivpow2(l_tilec->x0, l_level_no);
-        l_res->y0 = uint_ceildivpow2(l_tilec->y0, l_level_no);
-        l_res->x1 = uint_ceildivpow2(l_tilec->x1, l_level_no);
-        l_res->y1 = uint_ceildivpow2(l_tilec->y1, l_level_no);
+        res->x0 = uint_ceildivpow2(tilec->x0, leveno);
+        res->y0 = uint_ceildivpow2(tilec->y0, leveno);
+        res->x1 = uint_ceildivpow2(tilec->x1, leveno);
+        res->y1 = uint_ceildivpow2(tilec->y1, leveno);
 
-        ++l_res;
+        ++res;
     }
-}
-
-void free_tilec(TileComponent * l_tilec)
-{
-    grok_free(l_tilec->buf->data);
-    grok_free(l_tilec->resolutions);
 }
 
 void usage(void)
@@ -147,7 +137,7 @@ int main(int argc, char** argv)
     bool display = false;
     bool check = false;
     bool lossy = false;
-    uint32_t size = 16384 - 1;
+    uint32_t size = 256 - 1;
     uint32_t offset_x = (uint32_t)((size + 1) / 2 - 1);
     uint32_t offset_y = (uint32_t)((size + 1) / 2 - 1);
     uint32_t num_resolutions = 6;
@@ -271,7 +261,6 @@ int main(int argc, char** argv)
             }
         }
     }
-    free_tilec(&tilec);
     grk_deinitialize();
 
     return 0;
