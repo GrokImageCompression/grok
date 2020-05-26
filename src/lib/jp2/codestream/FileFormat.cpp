@@ -986,7 +986,7 @@ static uint8_t* jp2_write_bpcc(FileFormat *fileFormat, uint32_t *p_nb_bytes_writ
 
 	for (i = 0; i < fileFormat->numcomps; ++i) {
 		/* write each component information */
-		grk_write<uint32_t>(current_bpcc_ptr, fileFormat->comps[i].bpcc, 1);
+		grk_write(current_bpcc_ptr, fileFormat->comps[i].bpcc);
 		++current_bpcc_ptr;
 	}
 
@@ -1016,7 +1016,7 @@ static bool jp2_read_bpcc(FileFormat *fileFormat, uint8_t *p_bpc_header_data,
 
 	/* read info for each component */
 	for (i = 0; i < fileFormat->numcomps; ++i) {
-		grk_read<uint32_t>(p_bpc_header_data, &fileFormat->comps[i].bpcc, 1); /* read each BPCC component */
+		grk_read(p_bpc_header_data, &fileFormat->comps[i].bpcc); /* read each BPCC component */
 		++p_bpc_header_data;
 	}
 
@@ -2211,8 +2211,9 @@ bool jp2_init_compress(FileFormat *fileFormat, grk_cparameters *parameters,
 
 	/* BitsPerComponent box */
 	for (i = 0; i < image->numcomps; i++) {
-		fileFormat->comps[i].bpcc = image->comps[i].prec - 1
-				+ (image->comps[i].sgnd << 7);
+		fileFormat->comps[i].bpcc = (uint8_t)(image->comps[i].prec - 1);
+		if (image->comps[i].sgnd)
+			fileFormat->comps[i].bpcc += (1 << 7);
 	}
 
 	/* Colour Specification box */

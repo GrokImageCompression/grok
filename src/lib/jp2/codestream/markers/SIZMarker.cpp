@@ -345,8 +345,6 @@ bool SIZMarker::write(CodeStream *codeStream, BufferedStream *stream){
 	auto image = codeStream->m_private_image;
 	auto cp = &(codeStream->m_cp);
 	size_len = 40 + 3 * image->numcomps;
-	auto img_comp = image->comps;
-
 	/* write SOC identifier */
 
 	/* SIZ */
@@ -387,17 +385,19 @@ bool SIZMarker::write(CodeStream *codeStream, BufferedStream *stream){
 	if (!stream->write_short((uint16_t) image->numcomps))
 		return false;
 	for (i = 0; i < image->numcomps; ++i) {
+		auto comp = image->comps + i;
 		/* TODO here with MCT ? */
-		if (!stream->write_byte(
-				(uint8_t) (img_comp->prec - 1 + (img_comp->sgnd << 7))))
+		uint8_t bpcc = (uint8_t) (comp->prec - 1);
+		if (comp->sgnd)
+			bpcc += (uint8_t)(1 << 7);
+		if (!stream->write_byte(bpcc))
 			return false;
 		/* XRsiz_i */
-		if (!stream->write_byte((uint8_t) img_comp->dx))
+		if (!stream->write_byte((uint8_t) comp->dx))
 			return false;
 		/* YRsiz_i */
-		if (!stream->write_byte((uint8_t) img_comp->dy))
+		if (!stream->write_byte((uint8_t) comp->dy))
 			return false;
-		++img_comp;
 	}
 
 	return true;
