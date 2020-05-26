@@ -132,7 +132,6 @@ public:
 int main(int argc, char** argv)
 {
     uint32_t num_threads = 0;
-    TileProcessor tcd(true);
     grk_image tcd_image;
     grk_tcd_tile tcd_tile;
     TileComponent tilec;
@@ -142,6 +141,7 @@ int main(int argc, char** argv)
     bool display = false;
     bool check = false;
     bool lossy = false;
+    bool forward = false;
     uint32_t size = 16385 - 1;
     uint32_t offset_x = (uint32_t)((size + 1) / 2 - 1);
     uint32_t offset_y = (uint32_t)((size + 1) / 2 - 1);
@@ -162,6 +162,7 @@ int main(int argc, char** argv)
 	ValueArg<uint32_t> numResolutionsArg("n", "Resolutions",
 			"Number of resolutions", false, 0, "unsigned integer", cmd);
 	SwitchArg lossyArg("I", "irreversible", "irreversible dwt", cmd);
+	SwitchArg forwardArg("F", "forward", "forward dwt", cmd);
 
 	cmd.parse(argc, argv);
 
@@ -185,7 +186,10 @@ int main(int argc, char** argv)
 			exit(1);
 		}
 	}
+	if (forwardArg.isSet())
+		forward = forwardArg.getValue();
 
+   TileProcessor tcd(!forward);
    grk_initialize(nullptr,num_threads);
    init_tilec(&tilec, offset_x, offset_y,
                offset_x + size, offset_y + size,
@@ -223,10 +227,17 @@ int main(int argc, char** argv)
 	std::chrono::duration<double> elapsed;
 
 	start = std::chrono::high_resolution_clock::now();
-	if (lossy)
-		decode_97(&tcd, &tilec, tilec.numresolutions);
-	else
-		decode_53(&tcd, &tilec, tilec.numresolutions);
+	bool rc = false;
+	if (forward){
+		Wavelet w;
+		rc = w.compress(&tilec,lossy ? 0 : 1 );
+	} else {
+		if (lossy)
+			rc = decode_97(&tcd, &tilec, tilec.numresolutions);
+		else
+			rc = decode_53(&tcd, &tilec, tilec.numresolutions);
+	}
+	assert(rc);
 	finish = std::chrono::high_resolution_clock::now();
 	elapsed = finish - start;
 	spdlog::info("time for dwt_decode: {} ms\n", elapsed.count()*1000);
