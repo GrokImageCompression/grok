@@ -138,7 +138,7 @@ struct grk_codec_private {
 	 grk_stream  *m_stream;
 	/** Flag to indicate if the codec is used to decompress or compress*/
 	bool is_decompressor;
-	void (*grk_dump_codec)(void *p_codec, int32_t info_flag,
+	void (*grk_dump_codec)(void *p_codec, uint32_t info_flag,
 			FILE *output_stream);
 	 grk_codestream_info_v2  *  (*get_codec_info)(void *p_codec);
 	 grk_codestream_index  *  (*grk_get_codec_index)(void *p_codec);
@@ -252,7 +252,7 @@ const char* GRK_CALLCONV grk_version(void) {
 
 	switch (p_format) {
 	case GRK_CODEC_J2K:
-		l_codec->grk_dump_codec = (void (*)(void*, int32_t, FILE*)) j2k_dump;
+		l_codec->grk_dump_codec = (void (*)(void*, uint32_t, FILE*)) j2k_dump;
 
 		l_codec->get_codec_info =
 				( grk_codestream_info_v2  *  (*)(void*)) j2k_get_cstr_info;
@@ -298,7 +298,7 @@ const char* GRK_CALLCONV grk_version(void) {
 		break;
 	case GRK_CODEC_JP2:
 		/* get a JP2 decoder handle */
-		l_codec->grk_dump_codec = (void (*)(void*, int32_t, FILE*)) jp2_dump;
+		l_codec->grk_dump_codec = (void (*)(void*, uint32_t, FILE*)) jp2_dump;
 		l_codec->get_codec_info =
 				( grk_codestream_info_v2  *  (*)(void*)) jp2_get_cstr_info;
 		l_codec->grk_get_codec_index =
@@ -660,7 +660,7 @@ void GRK_CALLCONV grk_destroy_codec( grk_codec  *p_codec) {
 
 /* ---------------------------------------------------------------------- */
 
-void GRK_CALLCONV grk_dump_codec( grk_codec  *p_codec, int32_t info_flag,
+void GRK_CALLCONV grk_dump_codec( grk_codec  *p_codec, uint32_t info_flag,
 		FILE *output_stream) {
 	if (p_codec) {
 		grk_codec_private *l_codec = (grk_codec_private*) p_codec;

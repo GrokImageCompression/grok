@@ -346,7 +346,7 @@ uint32_t PacketLengthMarkers::write() {
 
 			// write period
 			uint8_t temp[5];
-			int32_t counter = numbytes - 1;
+			int32_t counter = (int32_t)(numbytes - 1);
 			temp[counter--] = (val & 0x7F);
 			val = (uint32_t) (val >> 7);
 

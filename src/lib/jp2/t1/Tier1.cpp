@@ -123,7 +123,7 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, TileComponentCodingPar
 				}
 
 				for (uint64_t cblkno = 0;
-						cblkno < (int64_t) precinct->cw * precinct->ch;
+						cblkno < (uint64_t) precinct->cw * precinct->ch;
 						++cblkno) {
 					grk_rect cblk_rect;
 					grk_tcd_cblk_dec *cblk = &precinct->cblks.dec[cblkno];

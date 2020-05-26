@@ -99,7 +99,7 @@ typedef struct _img_folder {
 	/** Enable Cod Format for output*/
 	bool set_out_format;
 
-	int flag;
+	uint32_t flag;
 } img_fol;
 
 

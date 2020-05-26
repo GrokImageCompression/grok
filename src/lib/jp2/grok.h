@@ -1806,7 +1806,7 @@ GRK_API void GRK_CALLCONV grk_destroy_cstr_info(
  * @param	output_stream	output stream where dump the information get from the codec.
  *
  */
-GRK_API void GRK_CALLCONV grk_dump_codec(grk_codec *codec, int32_t info_flag,
+GRK_API void GRK_CALLCONV grk_dump_codec(grk_codec *codec, uint32_t info_flag,
 		FILE *output_stream);
 
 /**

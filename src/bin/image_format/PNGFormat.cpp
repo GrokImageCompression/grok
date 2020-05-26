@@ -582,7 +582,7 @@ static int imagetopng(grk_image *image, const char *write_idf,
 	}
 
 	png_set_IHDR(local_info.png, info, image->comps[0].w, image->comps[0].h,
-			prec, color_type,
+			(int32_t)prec, (int32_t)color_type,
 			PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE,
 			PNG_FILTER_TYPE_BASE);
 

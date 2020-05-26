@@ -180,7 +180,7 @@ static inline uint16_t swap16(uint16_t x)
 
 #endif
 
-static int tga_writeheader(FILE *fp, int bits_per_pixel, int width, int height,
+static int tga_writeheader(FILE *fp, uint32_t bits_per_pixel, uint32_t width, uint32_t height,
 		bool flip_image) {
 	uint16_t image_w, image_h, us0;
 	uint8_t uc0, image_type;
@@ -228,8 +228,8 @@ static int tga_writeheader(FILE *fp, int bits_per_pixel, int width, int height,
 		goto fails;
 	/* y_origin */
 
-	image_w = (unsigned short) width;
-	image_h = (unsigned short) height;
+	image_w = (uint16_t) width;
+	image_h = (uint16_t) height;
 
 #ifndef GROK_BIG_ENDIAN
 	if (fwrite(&image_w, 2, 1, fp) != 1)

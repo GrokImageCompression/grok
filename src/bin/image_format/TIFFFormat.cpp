@@ -1363,7 +1363,7 @@ static bool readTiffPixelsUnsigned(TIFF *tif,
         // each coded row will be padded to fill unit
         size_t padding = (units * chroma_subsample_x - comp->w);
         if (subsampled){
-        	rowStride = units * unitSize;
+        	rowStride = (tsize_t)(units * unitSize);
         }
 		size_t xpos = 0;
 		for (; (height <comp->h) && (strip < TIFFNumberOfStrips(tif)); strip++) {
@@ -1478,7 +1478,7 @@ template<typename T> bool readTiffPixelsSigned(TIFF *tif, grk_image_comp *comps,
 				cvtToPlanar(buffer32s, planes, (size_t) comp->w);
 				for (uint32_t k = 0; k < numcomps; ++k)
 					planes[k] += comp->w;
-				data += rowStride/sizeof(T);
+				data += (size_t)rowStride/sizeof(T);
 				ssize -= rowStride;
 				height--;
 			}
@@ -1980,7 +1980,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 	for (uint32_t i = 0U; i < numcomps; ++i) {
 		if (image->comps[i].type != GRK_COMPONENT_TYPE_COLOUR) {
 			if (firstExtraChannel == -1)
-				firstExtraChannel = i;
+				firstExtraChannel = (int32_t)i;
 			numExtraChannels++;
 		}
 		planes[i] = image->comps[i].data;
