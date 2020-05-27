@@ -828,7 +828,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 }/* imagetopnm() */
 
 bool PNMFormat::encode(grk_image *image, const std::string &filename,
-		int32_t compressionParam) {
+		uint32_t compressionParam) {
 	(void) compressionParam;
 	return imagetopnm(image, filename.c_str(), forceSplit) ? false : true;
 }

@@ -69,7 +69,7 @@ struct imageToJpegInfo {
 };
 
 static int imagetojpeg(grk_image *image, const char *filename,
-		int32_t compressionParam) {
+		uint32_t compressionParam) {
 	if (!image)
 		return 1;
 	imageToJpegInfo info;
@@ -275,8 +275,8 @@ static int imagetojpeg(grk_image *image, const char *filename,
 	 * Here we just illustrate the use of quality (quantization table) scaling:
 	 */
 	jpeg_set_quality(&cinfo,
-			(compressionParam == GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT) ?
-					90 : compressionParam,
+			(int)((compressionParam == GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT) ?
+					90 : compressionParam),
 			(boolean) TRUE /* limit to baseline-JPEG values */);
 
 	/* Step 4: Start compressor */
@@ -614,7 +614,7 @@ static grk_image* jpegtoimage(const char *filename,
 }/* jpegtoimage() */
 
 bool JPEGFormat::encode(grk_image *image, const std::string &filename,
-		int32_t compressionParam) {
+		uint32_t compressionParam) {
 	return imagetojpeg(image, filename.c_str(), compressionParam) ?
 			false : true;
 }

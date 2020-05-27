@@ -22,7 +22,7 @@ class RAWFormat : IImageFormat {
 public:
 	RAWFormat(bool isBig) : bigEndian(isBig) {}
 	virtual ~RAWFormat() {}
-	bool encode(grk_image *  image, const std::string &filename, int32_t compressionParam);
+	bool encode(grk_image *  image, const std::string &filename, uint32_t compressionParam);
 	grk_image *  decode(const std::string &filename,  grk_cparameters  *parameters);
 private:
 	bool bigEndian;

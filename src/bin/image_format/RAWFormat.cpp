@@ -63,7 +63,7 @@
 #include "common.h"
 
 bool RAWFormat::encode(grk_image *image, const std::string &filename,
-		int32_t compressionParam) {
+		uint32_t compressionParam) {
 	(void) compressionParam;
 	return imagetoraw(image, filename.c_str(), bigEndian) ? true : false;
 }

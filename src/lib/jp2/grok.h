@@ -761,7 +761,7 @@ typedef struct _grk_prec {
 	grk_precision_mode mode;
 } grk_precision;
 
-#define GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT (-USHRT_MAX)
+#define GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT (UINT_MAX)
 
 /**
  * Decompress parameters
@@ -806,7 +806,7 @@ typedef struct _grk_decompress_params {
 	uint32_t compression;
 	// compression "quality". Meaning of "quality" depends
 	// on file format we are writing to
-	int32_t compressionLevel;
+	uint32_t compressionLevel;
 	int32_t deviceId;
 	uint32_t duration; //seconds
 	uint32_t kernelBuildOptions;

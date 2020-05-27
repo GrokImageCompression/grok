@@ -547,7 +547,7 @@ static int imagetotga(grk_image *image, const char *outfile) {
 }
 
 bool TGAFormat::encode(grk_image *image, const std::string &filename,
-		int32_t compressionParam) {
+		uint32_t compressionParam) {
 	(void) compressionParam;
 	return imagetotga(image, filename.c_str()) ? false : true;
 }

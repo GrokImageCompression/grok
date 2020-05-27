@@ -437,7 +437,7 @@ struct imageToPngInfo {
 };
 
 static int imagetopng(grk_image *image, const char *write_idf,
-		int32_t compressionLevel) {
+		uint32_t compressionLevel) {
 	imageToPngInfo local_info;
 	local_info.writeToStdout = grk::useStdio(write_idf);
 	png_infop info = nullptr;
@@ -566,8 +566,8 @@ static int imagetopng(grk_image *image, const char *write_idf,
 	 *
 	 */
 	png_set_compression_level(local_info.png,
-			(compressionLevel == GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT) ?
-					3 : compressionLevel);
+			(int)((compressionLevel == GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT) ?
+					3 : compressionLevel));
 
 	if (nr_comp >= 3) { /* RGB(A) */
 		color_type = PNG_COLOR_TYPE_RGB;
@@ -732,7 +732,7 @@ static int imagetopng(grk_image *image, const char *write_idf,
 }/* imagetopng() */
 
 bool PNGFormat::encode(grk_image *image, const std::string &filename,
-		int32_t compressionParam) {
+		uint32_t compressionParam) {
 	return imagetopng(image, filename.c_str(), compressionParam) ? false : true;
 }
 grk_image* PNGFormat::decode(const std::string &filename,

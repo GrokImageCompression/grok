@@ -438,7 +438,7 @@ public:
 /**
  * Convert compression string to compression code. (use TIFF codes)
  */
-static int32_t getCompressionCode(std::string compressionString){
+static uint32_t getCompressionCode(std::string compressionString){
 	if (compressionString == "NONE")
 		return 0;
 	else if (compressionString == "LZW")
@@ -456,7 +456,7 @@ static int32_t getCompressionCode(std::string compressionString){
 	else if (compressionString == "WEBP")
 		return 50001;
 	else
-		return -1;
+		return UINT_MAX;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -504,8 +504,8 @@ int parse_cmdline_decoder(int argc, char **argv,
 				false, "", "string", cmd);
 		ValueArg<string> compressionArg("c", "Compression",
 				"Compression Type", false, "", "string", cmd);
-		ValueArg<int32_t> compressionLevelArg("L", "CompressionLevel",
-				"Compression Level", false, -65535, "int", cmd);
+		ValueArg<uint32_t> compressionLevelArg("L", "CompressionLevel",
+				"Compression Level", false, UINT_MAX, "unsigned integer", cmd);
 		ValueArg<uint32_t> durationArg("z", "Duration", "Duration in seconds",
 				false, 0, "unsigned integer", cmd);
 
@@ -548,11 +548,11 @@ int parse_cmdline_decoder(int argc, char **argv,
 			parameters->split_pnm = true;
 		}
 		if (compressionArg.isSet()) {
-			int32_t comp = getCompressionCode(compressionArg.getValue());
-			if (comp == -1)
+			uint32_t comp = getCompressionCode(compressionArg.getValue());
+			if (comp == UINT_MAX)
 				spdlog::warn("Unrecognized compression {}. Ignoring", compressionArg.getValue());
 			else
-				parameters->compression = (uint32_t)comp;
+				parameters->compression = comp;
 		}
 		if (compressionLevelArg.isSet()) {
 			parameters->compressionLevel = compressionLevelArg.getValue();

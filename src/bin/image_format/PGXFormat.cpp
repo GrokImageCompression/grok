@@ -345,7 +345,7 @@ static int imagetopgx(grk_image *image, const char *outfile) {
 }
 
 bool PGXFormat::encode(grk_image *image, const std::string &filename,
-		int32_t compressionParam) {
+		uint32_t compressionParam) {
 	(void) compressionParam;
 	return imagetopgx(image, filename.c_str()) ? false : true;
 }

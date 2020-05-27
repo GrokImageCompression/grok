@@ -2182,7 +2182,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 }/* imagetotif() */
 
 bool TIFFFormat::encode(grk_image *image, const std::string &filename,
-		int32_t compressionParam) {
+		uint32_t compressionParam) {
 	return imagetotif(image, filename.c_str(), compressionParam) ? false : true;
 }
 grk_image* TIFFFormat::decode(const std::string &filename,
