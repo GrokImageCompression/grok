@@ -83,29 +83,24 @@ TileComponent::~TileComponent(){
 	delete buf;
 }
 void TileComponent::release_mem(){
-	auto res = resolutions;
-	if (res) {
+	if (resolutions) {
 		auto nb_resolutions = numAllocatedResolutions;
 		for (uint32_t resno = 0; resno < nb_resolutions; ++resno) {
-			auto band = res->bands;
+			auto res = resolutions + resno;
 			for (uint32_t bandno = 0; bandno < 3; ++bandno) {
-				auto precinct = band->precincts;
-				if (precinct) {
-					for (uint64_t precno = 0; precno < band->numAllocatedPrecincts;
-							++precno) {
-						precinct->deleteTagTrees();
-						if (m_is_encoder)
-							code_block_enc_deallocate(precinct);
-						else
-							code_block_dec_deallocate(precinct);
-						++precinct;
-					}
-					delete[] band->precincts;
-					band->precincts = nullptr;
+				auto band = res->bands + bandno;
+				for (uint64_t precno = 0; precno < band->numAllocatedPrecincts;
+						++precno) {
+					auto precinct = band->precincts + precno;
+					precinct->deleteTagTrees();
+					if (m_is_encoder)
+						code_block_enc_deallocate(precinct);
+					else
+						code_block_dec_deallocate(precinct);
 				}
-				++band;
+				delete[] band->precincts;
+				band->precincts = nullptr;
 			} /* for (resno */
-			++res;
 		}
 		delete[] resolutions;
 		resolutions = nullptr;

@@ -211,11 +211,13 @@ struct grk_tcd_precinct {
 		for (uint64_t i = 0; i < (uint64_t) cw * ch; ++i)
 			(cblks.enc + i)->cleanup();
 		grok_free(cblks.blocks);
+		cblks.enc = nullptr;
 	}
 	void cleanupDecodeBlocks() {
 		if (!cblks.dec)
 			return;
 		grok_free(cblks.blocks);
+		cblks.dec = nullptr;
 	}
 
 	uint32_t x0, y0, x1, y1; /* dimension of the precinct : left upper corner (x0, y0) right low corner (x1,y1) */
