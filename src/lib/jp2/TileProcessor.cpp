@@ -868,12 +868,10 @@ bool TileProcessor::init_tile(uint16_t tile_no, grk_image *output_image,
 
 	for (uint32_t compno = 0; compno < tile->numcomps; ++compno) {
 		auto image_comp = image->comps + compno;
-
 		/*fprintf(stderr, "compno = %d/%d\n", compno, tile->numcomps);*/
 		if (image_comp->dx == 0 || image_comp->dy == 0)
 			return false;
 		image_comp->resno_decoded = 0;
-
 		auto tilec = tile->comps + compno;
 		if (!tilec->init(isEncoder, whole_tile_decoding, output_image, m_cp,
 				tcp, tile, image_comp, tcp->tccps + compno,
@@ -899,7 +897,6 @@ bool TileProcessor::init_tile(uint16_t tile_no, grk_image *output_image,
 				auto res = tilec->resolutions + resno;
 				for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
 					auto band = res->bands + bandno;
-
 					max_precincts = max<uint64_t>(max_precincts, band->numPrecincts);
 				}
 			}
@@ -920,7 +917,7 @@ bool TileProcessor::compress_tile_part(uint16_t tile_no, BufferedStream *stream,
 		m_tileno = tile_no;
 		m_tcp = &m_cp->tcps[tile_no];
 		if (p_cstr_info) {
-			uint32_t num_packs = 0;
+			uint64_t num_packs = 0;
 			uint32_t i;
 			auto tilec_idx = &tile->comps[0]; /* based on component 0 */
 			auto tccp = m_tcp->tccps; /* based on component 0 */
@@ -931,7 +928,7 @@ bool TileProcessor::compress_tile_part(uint16_t tile_no, BufferedStream *stream,
 				p_cstr_info->tile[tile_no].pw[i] = res_idx->pw;
 				p_cstr_info->tile[tile_no].ph[i] = res_idx->ph;
 
-				num_packs += res_idx->pw * res_idx->ph;
+				num_packs += (uint64_t)res_idx->pw * res_idx->ph;
 				p_cstr_info->tile[tile_no].pdx[i] = tccp->prcw[i];
 				p_cstr_info->tile[tile_no].pdy[i] = tccp->prch[i];
 			}

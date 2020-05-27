@@ -35,22 +35,21 @@ bool Tier1::encodeCodeblocks(TileCodingParams *tcp,
 	uint32_t maxCblkH = 0;
 
 	for (compno = 0; compno < tile->numcomps; ++compno) {
-		TileComponent *tilec = &tile->comps[compno];
-		TileComponentCodingParams *tccp = &tcp->tccps[compno];
+		auto tilec = tile->comps + compno;
+		auto tccp = tcp->tccps + compno;
 		for (resno = 0; resno < tilec->numresolutions; ++resno) {
-			grk_tcd_resolution *res = &tilec->resolutions[resno];
-
+			auto res = &tilec->resolutions[resno];
 			for (bandno = 0; bandno < res->numbands; ++bandno) {
 				auto band = &res->bands[bandno];
-				for (precno = 0; precno < res->pw * res->ph; ++precno) {
-					grk_tcd_precinct *prc = &band->precincts[precno];
+				for (precno = 0; precno < (uint64_t)res->pw * res->ph; ++precno) {
+					auto prc = &band->precincts[precno];
 					int64_t cblkno;
 					int32_t bandOdd = band->bandno & 1;
 					int32_t bandModTwo = band->bandno & 2;
 
-					for (cblkno = 0; cblkno < (int64_t) (prc->cw * prc->ch);
+					for (cblkno = 0; cblkno < (int64_t) prc->cw * prc->ch;
 							++cblkno) {
-						grk_tcd_cblk_enc *cblk = prc->cblks.enc + cblkno;
+						auto cblk = prc->cblks.enc + cblkno;
 						int32_t x = (int32_t)(cblk->x0 - band->x0);
 						int32_t y = (int32_t)(cblk->y0 - band->y0);
 						if (bandOdd) {
@@ -102,16 +101,12 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, TileComponentCodingPar
 		GROK_ERROR( "Not enough memory for tile data");
 		return false;
 	}
-
 	for (uint32_t resno = 0; resno < tilec->minimum_num_resolutions; ++resno) {
 		grk_tcd_resolution *res = &tilec->resolutions[resno];
-
 		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
-			grk_tcd_band *GRK_RESTRICT band = &res->bands[bandno];
-
-			for (uint64_t precno = 0; precno < res->pw * res->ph; ++precno) {
-				grk_tcd_precinct *precinct = &band->precincts[precno];
-
+			grk_tcd_band *GRK_RESTRICT band = res->bands + bandno;
+			for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph; ++precno) {
+				auto precinct = band->precincts + precno;
 				if (!tilec->is_subband_area_of_interest(resno,
 												bandno,
 												precinct->x0,
@@ -121,12 +116,11 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, TileComponentCodingPar
 
 					continue;
 				}
-
 				for (uint64_t cblkno = 0;
 						cblkno < (uint64_t) precinct->cw * precinct->ch;
 						++cblkno) {
 					grk_rect cblk_rect;
-					grk_tcd_cblk_dec *cblk = &precinct->cblks.dec[cblkno];
+					auto cblk = precinct->cblks.dec + cblkno;
 					if (tilec->is_subband_area_of_interest(resno,
 													bandno,
 													cblk->x0,
@@ -141,17 +135,15 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, TileComponentCodingPar
 
 						/* add band offset relative to previous resolution */
 						if (band->bandno & 1) {
-							grk_tcd_resolution *pres = &tilec->resolutions[resno - 1];
+							auto pres = &tilec->resolutions[resno - 1];
 							x += pres->x1 - pres->x0;
 						}
 						if (band->bandno & 2) {
-							grk_tcd_resolution *pres = &tilec->resolutions[resno - 1];
+							auto pres = &tilec->resolutions[resno - 1];
 							y += pres->y1 - pres->y0;
 						}
-
 						assert(x >= 0);
 						assert(y >= 0);
-
 
 						auto block = new decodeBlockInfo();
 						block->bandno = band->bandno;
