@@ -61,6 +61,7 @@
 #include "WaveletForward.h"
 #include <algorithm>
 #include <exception>
+#include "t1_common.h"
 using namespace std;
 
 namespace grk {
@@ -2035,11 +2036,11 @@ bool grk_tcd_cblk_enc::alloc_data(size_t nominalBlockSize) {
 	if (l_data_size > data_size) {
 		if (owns_data && actualData)
 			delete[] actualData;
-		actualData = new uint8_t[l_data_size + cblk_compressed_data_pad_left];
+		actualData = new uint8_t[l_data_size + grk_cblk_compressed_data_pad_right];
 		actualData[0] = 0;
 		actualData[1] = 0;
 
-		data = actualData + cblk_compressed_data_pad_left;
+		data = actualData + grk_cblk_compressed_data_pad_right;
 		data_size = l_data_size;
 		owns_data = true;
 	}

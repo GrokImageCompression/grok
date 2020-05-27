@@ -96,7 +96,7 @@ struct mqcoder {
     /* lut_ctxno_zc shifted by (1 << 9) * bandno */
     const uint8_t* lut_ctxno_zc_orient;
     /** Original value of the 2 bytes at end[0] and end[1] */
-    uint8_t backup[GRK_FAKE_MARKER_BYTES];
+    uint8_t backup[grk_cblk_compressed_data_pad_right];
 } ;
 
 const uint32_t A_MIN = 0x8000;

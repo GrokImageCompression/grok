@@ -14,15 +14,10 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
 */
-
-
 #pragma once
 
-
-#define GRK_FAKE_MARKER_BYTES   2    /**< Margin for a fake FFFF marker */
-
 #include "grok.h"
-#include <stdbool.h>
+#include <cstdint>
 
 #ifndef INLINE
 #if defined(_MSC_VER)
@@ -34,6 +29,9 @@
 #endif /* defined(<Compiler>) */
 #endif /* INLINE */
 
+/**< Space for a fake FFFF marker */
+const uint8_t grk_cblk_compressed_data_pad_right = 2;
+
 #include <math.h>
 #include <assert.h>
 #include <string.h>
@@ -42,6 +40,7 @@
 #include "mqc.h"
 
 namespace grk {
+
 
 #define T1_NMSEDEC_BITS 7
 #define T1_NMSEDEC_FRACBITS (T1_NMSEDEC_BITS-1)

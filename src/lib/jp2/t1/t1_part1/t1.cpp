@@ -1073,10 +1073,10 @@ bool t1_decode_cblk(t1_info *t1, tcd_cblk_dec_t *cblk, uint32_t orient,
 
 		if (type == T1_TYPE_RAW) {
 			mqc_raw_init_dec(mqc, cblkdata + cblkdataindex, seg->len,
-			GRK_FAKE_MARKER_BYTES);
+			grk_cblk_compressed_data_pad_right);
 		} else {
 			mqc_init_dec(mqc, cblkdata + cblkdataindex, seg->len,
-			GRK_FAKE_MARKER_BYTES);
+			grk_cblk_compressed_data_pad_right);
 		}
 		cblkdataindex += seg->len;
 
