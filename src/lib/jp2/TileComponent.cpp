@@ -208,11 +208,10 @@ bool TileComponent::init(bool isEncoder,
 		resolutions = new grk_tcd_resolution[numresolutions];
 		numAllocatedResolutions = numresolutions;
 	} else if (numresolutions > numAllocatedResolutions) {
-		grk_tcd_resolution *new_resolutions =
+		auto new_resolutions =
 				new grk_tcd_resolution[numresolutions];
-		for (uint32_t i = 0; i < numresolutions; ++i) {
+		for (uint32_t i = 0; i < numresolutions; ++i)
 			new_resolutions[i] = resolutions[i];
-		}
 		delete[] resolutions;
 		resolutions = new_resolutions;
 		numAllocatedResolutions = numresolutions;

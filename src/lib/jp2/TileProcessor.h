@@ -234,15 +234,16 @@ struct grk_tcd_precinct {
 struct grk_tcd_band {
 	grk_tcd_band() :
 			x0(0), y0(0), x1(0), y1(0), bandno(0), precincts(nullptr), numPrecincts(
-					0), numAllocatedPrecincts(0), numbps(0), stepsize(0), inv_step(0) {
-	}
+					0), numAllocatedPrecincts(0), numbps(0), stepsize(0), inv_step(0)
+	{}
+	virtual ~grk_tcd_band(){}
 
+	//note: don't copy precinct array
 	grk_tcd_band(const grk_tcd_band &rhs) :
 			x0(rhs.x0), y0(rhs.y0), x1(rhs.x1), y1(rhs.y1), bandno(rhs.bandno), precincts(
 					nullptr), numPrecincts(rhs.numPrecincts), numAllocatedPrecincts(
 					rhs.numAllocatedPrecincts), numbps(rhs.numbps), stepsize(
-					rhs.stepsize), inv_step(rhs.inv_step) {
-	}
+					rhs.stepsize), inv_step(rhs.inv_step) {}
 	bool isEmpty() {
 		return ((x1 - x0 == 0) || (y1 - y0 == 0));
 	}
@@ -275,6 +276,22 @@ struct grk_tcd_resolution {
 			win_x1(0),
 			win_y1(0)
 	{}
+	virtual ~grk_tcd_resolution(){}
+	grk_tcd_resolution(const grk_tcd_resolution &rhs) :
+	  x0(rhs.x0),
+	  y0(rhs.y0),
+	  x1(rhs.x1),
+	  y1(rhs.y1),
+	  pw(rhs.pw),
+	  ph(rhs.ph),
+	  numbands(rhs.numbands),
+	  win_x0(rhs.win_x0),
+	  win_y0(rhs.win_y0),
+	  win_x1(rhs.win_x1),
+	  win_y1(rhs.win_y1){
+		for (uint32_t i = 0; i < 3; ++i)
+			bands[i] = rhs.bands[i];
+	}
 
 	/* dimension of the resolution level in tile coordinates */
 	uint32_t x0, y0, x1, y1;
