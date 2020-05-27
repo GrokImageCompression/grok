@@ -389,7 +389,7 @@ int count_trailing_zeros(uint32_t val)
 #ifdef _MSC_VER
   unsigned long result = 0;
   _BitScanForward(&result, val);
-  return 31 ^ (int)result;
+  return (int)result;
 #elif (defined(__GNUC__) || defined(__clang__))
   return __builtin_ctz(val);
 #else
