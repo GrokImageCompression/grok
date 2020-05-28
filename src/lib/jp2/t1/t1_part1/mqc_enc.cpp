@@ -167,7 +167,7 @@ static const mqc_state mqc_states[47 * 2] = {
 
 static void mqc_byteout_enc(mqcoder *mqc){
     /* bp is initialized to start - 1 in mqc_init_enc() */
-    /* but this is safe, see tcd_code_block_enc_allocate_data() */
+    /* but this is safe, see code_block_enc_allocate_data() */
     assert(mqc->bp >= mqc->start - 1);
     if (*mqc->bp == 0xff) {
         mqc->bp++;
@@ -252,7 +252,7 @@ void mqc_init_enc(mqcoder *mqc, uint8_t *bp){
     mqc->a = 0x8000;
     mqc->c = 0;
     /* Yes, we point before the start of the buffer, but this is safe */
-    /* given tcd_code_block_enc_allocate_data() */
+    /* given code_block_enc_allocate_data() */
     mqc->bp = bp - 1;
     mqc->ct = 12;
     /* At this point we should test *(mqc->bp) against 0xFF, but this is not */

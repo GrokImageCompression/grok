@@ -666,25 +666,25 @@ bool TileComponent::create_buffer(grk_image *output_image,
 		TileBufferResolution *prev_res = nullptr;
 		for (int32_t resno = (int32_t) (numresolutions - 1); resno >= 0; --resno) {
 			uint32_t bandno;
-			grk_resolution *tcd_res = resolutions + resno;
-			TileBufferResolution *res = (TileBufferResolution*) grk_calloc(1,
+			auto res = resolutions + resno;
+			auto tile_buffer_res = (TileBufferResolution*) grk_calloc(1,
 					sizeof(TileBufferResolution));
-			if (!res) {
+			if (!tile_buffer_res) {
 				delete new_buffer;
 				return false;
 			}
 
-			res->bounds.x = tcd_res->x1 - tcd_res->x0;
-			res->bounds.y = tcd_res->y1 - tcd_res->y0;
-			res->origin.x = tcd_res->x0;
-			res->origin.y = tcd_res->y0;
+			tile_buffer_res->bounds.x = res->x1 - res->x0;
+			tile_buffer_res->bounds.y = res->y1 - res->y0;
+			tile_buffer_res->origin.x = res->x0;
+			tile_buffer_res->origin.y = res->y0;
 
-			for (bandno = 0; bandno < tcd_res->numbands; ++bandno) {
-				grk_band *band = tcd_res->bands + bandno;
+			for (bandno = 0; bandno < res->numbands; ++bandno) {
+				auto band = res->bands + bandno;
 				grk_rect band_rect;
 				band_rect = grk_rect(band->x0, band->y0, band->x1, band->y1);
 
-				res->band_region[bandno] =
+				tile_buffer_res->band_region[bandno] =
 						prev_res ? prev_res->band_region[bandno] : max_image_dim;
 				if (resno > 0) {
 
@@ -695,18 +695,17 @@ bool TileComponent::create_buffer(grk_image *output_image,
 					shift.x = -(int64_t)(band->bandno & 1);
 					shift.y = -(int64_t)(band->bandno >> 1);
 
-					res->band_region[bandno].pan(&shift);
-					res->band_region[bandno].ceildivpow2(1);
+					tile_buffer_res->band_region[bandno].pan(&shift);
+					tile_buffer_res->band_region[bandno].ceildivpow2(1);
 
 					// boundary padding. This number is slightly larger than it should be theoretically,
 					// but we want to make sure that we don't have bugs at the region boundaries
-					res->band_region[bandno].grow(4);
-
+					tile_buffer_res->band_region[bandno].grow(4);
 				}
 			}
-			res->num_bands = tcd_res->numbands;
-			new_buffer->resolutions.push_back(res);
-			prev_res = res;
+			tile_buffer_res->num_bands = res->numbands;
+			new_buffer->resolutions.push_back(tile_buffer_res);
+			prev_res = tile_buffer_res;
 		}
 	}
 	delete buf;

@@ -339,7 +339,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 	const double K = 1;
 	double maxSE = 0;
 
-	auto tcd_tcp = m_tcp;
+	auto tcp = m_tcp;
 
 	tile->numpix = 0;
 	uint32_t state = grk_plugin_get_debug_state();
@@ -405,11 +405,11 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 	uint32_t max_slope = USHRT_MAX;
 
 	uint32_t upperBound = max_slope;
-	for (uint32_t layno = 0; layno < tcd_tcp->numlayers; layno++) {
+	for (uint32_t layno = 0; layno < tcp->numlayers; layno++) {
 		uint32_t lowerBound = min_slope;
 		uint32_t maxlen =
-				tcd_tcp->rates[layno] > 0.0f ?
-						((uint32_t) ceil(tcd_tcp->rates[layno])) : UINT_MAX;
+				tcp->rates[layno] > 0.0f ?
+						((uint32_t) ceil(tcp->rates[layno])) : UINT_MAX;
 
 		/* Threshold for Marcela Index */
 		// start by including everything in this layer
@@ -421,7 +421,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 			auto t2 = new T2(this);
 			double distotarget = tile->distotile
 					- ((K * maxSE)
-							/ pow(10.0, tcd_tcp->distoratio[layno] / 10.0));
+							/ pow(10.0, tcp->distoratio[layno] / 10.0));
 
 			for (uint32_t i = 0; i < 128; ++i) {
 				uint32_t thresh = (lowerBound + upperBound) >> 1;
@@ -939,7 +939,7 @@ bool TileProcessor::compress_tile_part(uint16_t tile_no, BufferedStream *stream,
 					sizeof(grk_packet_info));
 			if (!p_cstr_info->tile[tile_no].packet) {
 				GROK_ERROR(
-						"tcd_encode_tile: Out of memory error when allocating packet memory");
+						"encode_tile: Out of memory error when allocating packet memory");
 				return false;
 			}
 		}

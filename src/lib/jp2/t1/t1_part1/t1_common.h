@@ -52,30 +52,30 @@ typedef unsigned int GRK_BITFIELD;
 /**
 FIXME DOC
 */
-typedef struct tcd_pass {
+typedef struct pass {
     uint32_t rate;
     double distortiondec;
     uint32_t len;
     GRK_BITFIELD term : 1;
-} tcd_pass_t;
+} pass_t;
 
 /**
 FIXME DOC
 */
-typedef struct tcd_layer {
+typedef struct layer {
     uint32_t numpasses;       /* Number of passes in the layer */
     uint32_t len;             /* len of information */
     double disto;          /* add for index (Cfr. Marcela) */
     uint8_t *data;             /* data */
-} tcd_layer_t;
+} layer_t;
 
 /**
 FIXME DOC
 */
-typedef struct tcd_cblk_enc {
+typedef struct cblk_enc {
     uint8_t* data;               /* Data */
-    tcd_layer_t* layers;      /* layer information */
-    tcd_pass_t* passes;       /* information about the passes */
+    layer_t* layers;      /* layer information */
+    pass_t* passes;       /* information about the passes */
     uint32_t x0, y0, x1,
               y1;     /* dimension of the code-blocks : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t numbps;
@@ -85,22 +85,22 @@ typedef struct tcd_cblk_enc {
     numpasses;         /* number of pass already done for the code-blocks */
     uint32_t numpassesinlayers; /* number of passes in the layer */
     uint32_t totalpasses;       /* total number of passes */
-} tcd_cblk_enc_t;
+} cblk_enc_t;
 
 
 /** Chunk of code stream data that is part of a code block */
-typedef struct tcd_seg_data_chunk {
+typedef struct seg_data_chunk {
     /* Point to tilepart buffer. We don't make a copy !
        So the tilepart buffer must be kept alive
        as long as we need to decompress the codeblocks */
     uint8_t * data;
     uint32_t len;                 /* Usable length of data */
-} tcd_seg_data_chunk_t;
+} seg_data_chunk_t;
 
 /** Segment of a code-block.
  * A segment represent a number of consecutive coding passes, without termination
  * of MQC or RAW between them. */
-typedef struct tcd_seg {
+typedef struct seg {
     uint32_t len;      /* Size of data related to this segment */
     /* Number of passes decoded. Including those that we skip */
     uint32_t numpasses;
@@ -108,12 +108,12 @@ typedef struct tcd_seg {
     uint32_t real_num_passes;
     /* Maximum number of passes for this segment */
     uint32_t maxpasses;
-} tcd_seg_t;
+} seg_t;
 
 /** Code-block for decoding */
-typedef struct tcd_cblk_dec {
-    tcd_seg_t* segs;            /* segments information */
-    tcd_seg_data_chunk_t* chunks; /* Array of chunks */
+typedef struct cblk_dec {
+    seg_t* segs;            /* segments information */
+    seg_data_chunk_t* chunks; /* Array of chunks */
     /* position of the code-blocks : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t x0, y0, x1, y1;
     uint32_t numbps;
@@ -124,7 +124,7 @@ typedef struct tcd_cblk_dec {
     uint32_t m_current_max_segs;  /* allocated number of segs[] items */
     uint32_t numchunks;           /* Number of valid chunks items */
     uint32_t numchunksalloc;      /* Number of chunks item allocated */
-} tcd_cblk_dec_t;
+} cblk_dec_t;
 
 }
 

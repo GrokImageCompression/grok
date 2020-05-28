@@ -23,9 +23,9 @@ namespace grk {
 // note: only support single segment at the moment
 void decode_synch_plugin_with_host(TileProcessor *tcd) {
 	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
-		auto tcd_tile = tcd->tile;
-		for (uint32_t compno = 0; compno < tcd_tile->numcomps; compno++) {
-			auto tilec = &tcd_tile->comps[compno];
+		auto tile = tcd->tile;
+		for (uint32_t compno = 0; compno < tile->numcomps; compno++) {
+			auto tilec = &tile->comps[compno];
 			auto plugin_tilec = tcd->current_plugin_tile->tileComponents[compno];
 			assert(tilec->numresolutions == plugin_tilec->numResolutions);
 			for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {

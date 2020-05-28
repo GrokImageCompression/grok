@@ -96,8 +96,8 @@ void T1Part1::preEncode(encodeBlockInfo *block, grk_tile *tile,
 double T1Part1::compress(encodeBlockInfo *block, grk_tile *tile,
 		uint32_t max, bool doRateControl) {
 	auto cblk = block->cblk;
-	tcd_cblk_enc_t cblkopj;
-	memset(&cblkopj, 0, sizeof(tcd_cblk_enc_t));
+	cblk_enc_t cblkopj;
+	memset(&cblkopj, 0, sizeof(cblk_enc_t));
 
 	cblkopj.x0 = block->x;
 	cblkopj.y0 = block->y;
@@ -156,12 +156,12 @@ bool T1Part1::decompress(decodeBlockInfo *block) {
 		memcpy(t1->cblkdatabuffer + offset, seg->buf, seg->len);
 		offset += seg->len;
 	}
-	tcd_seg_data_chunk_t chunk;
+	seg_data_chunk_t chunk;
 	chunk.len = t1->cblkdatabuffersize;
 	chunk.data = t1->cblkdatabuffer;
 
-	tcd_cblk_dec_t cblkopj;
-	memset(&cblkopj, 0, sizeof(tcd_cblk_dec_t));
+	cblk_dec_t cblkopj;
+	memset(&cblkopj, 0, sizeof(cblk_dec_t));
 	cblkopj.numchunks = 1;
 	cblkopj.chunks = &chunk;
 	cblkopj.x0 = block->x;
@@ -171,10 +171,10 @@ bool T1Part1::decompress(decodeBlockInfo *block) {
 	assert(cblk->x1 - cblk->x0 > 0);
 	assert(cblk->y1 - cblk->y0 > 0);
 	cblkopj.real_num_segs = cblk->numSegments;
-	auto segs = new tcd_seg_t[cblk->numSegments];
+	auto segs = new seg_t[cblk->numSegments];
 	for (uint32_t i = 0; i < cblk->numSegments; ++i){
 		auto sopj = segs + i;
-		memset(sopj, 0, sizeof(tcd_seg_t));
+		memset(sopj, 0, sizeof(seg_t));
 		auto sgrk = cblk->segs + i;
 		sopj->len = sgrk->len;
 		assert(sopj->len <= total_seg_len);
@@ -202,8 +202,8 @@ void T1Part1::postDecode(decodeBlockInfo *block) {
 	if (!cblk->seg_buffers.get_len())
 		return;
 
-	tcd_cblk_dec_t cblkopj;
-	memset(&cblkopj, 0, sizeof(tcd_cblk_dec_t));
+	cblk_dec_t cblkopj;
+	memset(&cblkopj, 0, sizeof(cblk_dec_t));
 	cblkopj.x0 = block->x;
 	cblkopj.y0 = block->y;
 	cblkopj.x1 = block->x + cblk->x1 - cblk->x0;
@@ -214,7 +214,7 @@ void T1Part1::postDecode(decodeBlockInfo *block) {
 }
 
 void T1Part1::post_decode(t1_info *t1,
-						tcd_cblk_dec_t *cblk,
+						cblk_dec_t *cblk,
 						decodeBlockInfo *block) {
 	uint32_t roishift = block->roishift;
 	uint32_t qmfbid = block->qmfbid;

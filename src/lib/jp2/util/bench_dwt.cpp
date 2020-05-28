@@ -98,7 +98,7 @@ void init_tilec(TileComponent * tilec,
     uint32_t leveno = tilec->numresolutions;
     auto res = tilec->resolutions;
 
-    /* Adapted from grk_tcd_init_tile() */
+    /* Adapted from grk_init_tile() */
     for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
         --leveno;
 
@@ -132,8 +132,8 @@ public:
 int main(int argc, char** argv)
 {
     uint32_t num_threads = 0;
-    grk_image tcd_image;
-    grk_tile tcd_tile;
+    grk_image image;
+    grk_tile tile;
     TileComponent tilec;
     grk_image image;
     grk_image_comp image_comp;
@@ -217,15 +217,15 @@ int main(int argc, char** argv)
 				printf("\n");
 			}
 		}
-		tileProcessor->image = &tcd_image;
-		memset(&tcd_image, 0, sizeof(tcd_image));
-		memset(&tcd_tile, 0, sizeof(tcd_tile));
-		tcd_tile.x0 = tilec.x0;
-		tcd_tile.y0 = tilec.y0;
-		tcd_tile.x1 = tilec.x1;
-		tcd_tile.y1 = tilec.y1;
-		tcd_tile.numcomps = 1;
-		tcd_tile.comps = &tilec;
+		tileProcessor->image = &image;
+		memset(&image, 0, sizeof(image));
+		memset(&tile, 0, sizeof(tile));
+		tile.x0 = tilec.x0;
+		tile.y0 = tilec.y0;
+		tile.x1 = tilec.x1;
+		tile.y1 = tilec.y1;
+		tile.numcomps = 1;
+		tile.comps = &tilec;
 		tileProcessor->image = &image;
 		memset(&image, 0, sizeof(image));
 		image.numcomps = 1;
