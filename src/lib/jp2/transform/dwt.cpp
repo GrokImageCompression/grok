@@ -577,7 +577,6 @@ static void decode_v_cas0_53(int32_t* tmp,
 
     /* Performs lifting in one single iteration. Saves memory */
     /* accesses and explicit interleaving. */
-
     s1n = tiledp_col[0];
     d1n = tiledp_col[(size_t)sn * stride];
     s0n = s1n - ((d1n + 1) >> 1);
@@ -585,18 +584,13 @@ static void decode_v_cas0_53(int32_t* tmp,
     for (i = 0, j = 0; i < (len - 3); i += 2, j++) {
         d1c = d1n;
         s0c = s0n;
-
         s1n = tiledp_col[(size_t)(j + 1) * stride];
         d1n = tiledp_col[(size_t)(sn + j + 1) * stride];
-
         s0n = s1n - ((d1c + d1n + 2) >> 2);
-
         tmp[i  ] = s0c;
         tmp[i + 1] = d1c + ((s0c + s0n) >> 1);
     }
-
     tmp[i] = s0n;
-
     if (len & 1) {
         tmp[len - 1] =
             tiledp_col[(size_t)((len - 1) / 2) * stride] -
@@ -605,10 +599,8 @@ static void decode_v_cas0_53(int32_t* tmp,
     } else {
         tmp[len - 1] = d1n + s0n;
     }
-
-    for (i = 0; i < len; ++i) {
+    for (i = 0; i < len; ++i)
         tiledp_col[(size_t)i * stride] = tmp[i];
-    }
 }
 
 
@@ -627,18 +619,15 @@ static void decode_v_cas1_53(int32_t* tmp,
 
     /* Performs lifting in one single iteration. Saves memory */
     /* accesses and explicit interleaving. */
-
     int32_t s1 = in_even[stride];
     int32_t dc = in_odd[0] - ((in_even[0] + s1 + 2) >> 2);
     tmp[0] = in_even[0] + dc;
     for (i = 1, j = 1; i < (len - 2 - !(len & 1)); i += 2, j++) {
-
     	int32_t s2 = in_even[(size_t)(j + 1) * stride];
-
     	int32_t dn = in_odd[(size_t)j * stride] - ((s1 + s2 + 2) >> 2);
+
         tmp[i  ] = dc;
         tmp[i + 1] = s1 + ((dn + dc) >> 1);
-
         dc = dn;
         s1 = s2;
     }
@@ -665,7 +654,7 @@ static void decode_v_53(const dwt_data<int32_t> *dwt,
     const int32_t sn = dwt->sn;
     const int32_t len = sn + dwt->dn;
     if (dwt->cas == 0) {
-        /* If len == 1, unmodified value */
+    /* If len == 1, unmodified value */
 
 #if (defined(__SSE2__) || defined(__AVX2__))
         if (len > 1 && nb_cols == PLL_COLS_53) {
@@ -687,14 +676,13 @@ static void decode_v_53(const dwt_data<int32_t> *dwt,
             return;
         }
         else if (len == 2) {
-            int32_t* out = dwt->mem;
+            auto out = dwt->mem;
             for (int32_t c = 0; c < nb_cols; c++, tiledp_col++) {
                 const int32_t* in_even = &tiledp_col[(size_t)sn * stride];
                 const int32_t* in_odd = &tiledp_col[0];
 
                 out[1] = in_odd[0] - ((in_even[0] + 1) >> 1);
                 out[0] = in_even[0] + out[1];
-
                 for (int32_t i = 0; i < len; ++i)
                     tiledp_col[(size_t)i * stride] = out[i];
             }
@@ -726,12 +714,10 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
         return true;
 
     auto tr = tilec->resolutions;
-
     /* width of the resolution level computed */
     uint32_t rw = (uint32_t)(tr->x1 - tr->x0);
     /* height of the resolution level computed */
     uint32_t rh = (uint32_t)(tr->y1 - tr->y0);
-
     uint32_t w = (uint32_t)(tilec->resolutions[tilec->minimum_num_resolutions - 1].x1 -
                                 tilec->resolutions[tilec->minimum_num_resolutions - 1].x0);
 
@@ -754,10 +740,8 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
         ++tr;
         horiz.sn = (int32_t)rw;
         vert.sn = (int32_t)rh;
-
         rw = (uint32_t)(tr->x1 - tr->x0);
         rh = (uint32_t)(tr->y1 - tr->y0);
-
         horiz.dn = (int32_t)(rw - (uint32_t)horiz.sn);
         horiz.cas = tr->x0 % 2;
 
@@ -801,7 +785,6 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 			for(auto && result: results)
 				result.get();
         }
-
         vert.dn = (int32_t)(rh - (uint32_t)vert.sn);
         vert.cas = tr->y0 % 2;
 
@@ -860,7 +843,6 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 static void interleave_partial_h_53(dwt_data<int32_t> *dwt,
 									sparse_array* sa,
 									uint32_t sa_line)	{
-
 	int32_t *dest = dwt->mem;
 	int32_t cas = dwt->cas;
 	uint32_t sn = (uint32_t)dwt->sn;
@@ -868,7 +850,6 @@ static void interleave_partial_h_53(dwt_data<int32_t> *dwt,
 	uint32_t win_l_x1 = dwt->win_l_x1;
 	uint32_t win_h_x0 = dwt->win_h_x0;
 	uint32_t win_h_x1 = dwt->win_h_x1;
-
     bool ret = sa->read( win_l_x0, sa_line,
 					  win_l_x1, sa_line + 1,
 					  dest + cas + 2 * win_l_x0,
@@ -921,7 +902,6 @@ static void decode_partial_h_53(dwt_data<int32_t> *horiz){
 
     if (!cas) {
         if ((dn > 0) || (sn > 1)) { /* NEW :  CASE ONE ELEMENT */
-
             /* Naive version is :
             for (i = win_l_x0; i < i_max; i++) {
                 GRK_S(i) -= (GRK_D_(i - 1) + GRK_D_(i) + 2) >> 2;
@@ -942,9 +922,8 @@ static void decode_partial_h_53(dwt_data<int32_t> *horiz){
                 i ++;
 
                 i_max = win_l_x1;
-                if (i_max > dn) {
+                if (i_max > dn)
                     i_max = dn;
-                }
                 for (; i < i_max; i++) {
                     /* No bound checking */
                     GRK_S(i) -= (GRK_D(i - 1) + GRK_D(i) + 2) >> 2;
@@ -958,9 +937,8 @@ static void decode_partial_h_53(dwt_data<int32_t> *horiz){
             i = win_h_x0;
             if (i < win_h_x1) {
                 int32_t i_max = win_h_x1;
-                if (i_max >= sn) {
+                if (i_max >= sn)
                     i_max = sn - 1;
-                }
                 for (; i < i_max; i++) {
                     /* No bound checking */
                     GRK_D(i) += (GRK_S(i) + GRK_S(i + 1)) >> 1;
@@ -975,12 +953,10 @@ static void decode_partial_h_53(dwt_data<int32_t> *horiz){
         if (!sn  && dn == 1) {        /* NEW :  CASE ONE ELEMENT */
             GRK_S(0) /= 2;
         } else {
-            for (i = win_l_x0; i < win_l_x1; i++) {
+            for (i = win_l_x0; i < win_l_x1; i++)
                 GRK_D(i) -= (GRK_SS_(i) + GRK_SS_(i + 1) + 2) >> 2;
-            }
-            for (i = win_h_x0; i < win_h_x1; i++) {
+            for (i = win_h_x0; i < win_h_x1; i++)
                 GRK_S(i) += (GRK_DD_(i) + GRK_DD_(i - 1)) >> 1;
-            }
         }
     }
 }
@@ -1004,10 +980,8 @@ static void decode_partial_v_53(dwt_data<int32_t> *vert){
 	int32_t win_h_x0 = (int32_t)vert->win_h_x0;
 	int32_t win_h_x1 = (int32_t)vert->win_h_x1;
 
-
     if (!cas) {
         if ((dn > 0) || (sn > 1)) { /* NEW :  CASE ONE ELEMENT */
-
             /* Naive version is :
             for (i = win_l_x0; i < i_max; i++) {
                 GRK_S(i) -= (GRK_D_(i - 1) + GRK_D_(i) + 2) >> 2;
@@ -1018,22 +992,18 @@ static void decode_partial_v_53(dwt_data<int32_t> *vert){
             but the compiler doesn't manage to unroll it to avoid bound
             checking in GRK_S_ and GRK_D_ macros
             */
-
             i = win_l_x0;
             if (i < win_l_x1) {
                 int32_t i_max;
 
                 /* Left-most case */
-                for (off = 0; off < 4; off++) {
+                for (off = 0; off < 4; off++)
                     GRK_S_off(i, off) -= (GRK_D__off(i - 1, off) + GRK_D__off(i, off) + 2) >> 2;
-                }
                 i ++;
 
                 i_max = win_l_x1;
-                if (i_max > dn) {
+                if (i_max > dn)
                     i_max = dn;
-                }
-
 #ifdef __SSE2__
                 if (i + 1 < i_max) {
                     const __m128i two = _mm_set1_epi32(2);
@@ -1054,28 +1024,22 @@ static void decode_partial_v_53(dwt_data<int32_t> *vert){
                     }
                 }
 #endif
-
                 for (; i < i_max; i++) {
                     /* No bound checking */
-                    for (off = 0; off < 4; off++) {
+                    for (off = 0; off < 4; off++)
                         GRK_S_off(i, off) -= (GRK_D_off(i - 1, off) + GRK_D_off(i, off) + 2) >> 2;
-                    }
                 }
                 for (; i < win_l_x1; i++) {
                     /* Right-most case */
-                    for (off = 0; off < 4; off++) {
+                    for (off = 0; off < 4; off++)
                         GRK_S_off(i, off) -= (GRK_D__off(i - 1, off) + GRK_D__off(i, off) + 2) >> 2;
-                    }
                 }
             }
-
             i = win_h_x0;
             if (i < win_h_x1) {
                 int32_t i_max = win_h_x1;
-                if (i_max >= sn) {
+                if (i_max >= sn)
                     i_max = sn - 1;
-                }
-
 #ifdef __SSE2__
                 if (i + 1 < i_max) {
                     __m128i S =  _mm_load_si128((__m128i *)(a + i * 8));
@@ -1093,36 +1057,32 @@ static void decode_partial_v_53(dwt_data<int32_t> *vert){
                     }
                 }
 #endif
-
                 for (; i < i_max; i++) {
                     /* No bound checking */
-                    for (off = 0; off < 4; off++) {
+                    for (off = 0; off < 4; off++)
                         GRK_D_off(i, off) += (GRK_S_off(i, off) + GRK_S_off(i + 1, off)) >> 1;
-                    }
                 }
                 for (; i < win_h_x1; i++) {
                     /* Right-most case */
-                    for (off = 0; off < 4; off++) {
+                    for (off = 0; off < 4; off++)
                         GRK_D_off(i, off) += (GRK_S__off(i, off) + GRK_S__off(i + 1, off)) >> 1;
-                    }
                 }
             }
         }
     } else {
         if (!sn  && dn == 1) {        /* NEW :  CASE ONE ELEMENT */
-            for (off = 0; off < 4; off++) {
+            for (off = 0; off < 4; off++)
                 GRK_S_off(0, off) /= 2;
-            }
         } else {
             for (i = win_l_x0; i < win_l_x1; i++) {
-                for (off = 0; off < 4; off++) {
-                    GRK_D_off(i, off) -= (GRK_SS__off(i, off) + GRK_SS__off(i + 1, off) + 2) >> 2;
-                }
+                for (off = 0; off < 4; off++)
+                    GRK_D_off(i, off) -=
+                    		(GRK_SS__off(i, off) + GRK_SS__off(i + 1, off) + 2) >> 2;
             }
             for (i = win_h_x0; i < win_h_x1; i++) {
-                for (off = 0; off < 4; off++) {
-                    GRK_S_off(i, off) += (GRK_DD__off(i, off) + GRK_DD__off(i - 1, off)) >> 1;
-                }
+                for (off = 0; off < 4; off++)
+                    GRK_S_off(i, off) +=
+                    		(GRK_DD__off(i, off) + GRK_DD__off(i - 1, off)) >> 1;
             }
         }
     }
@@ -1178,7 +1138,6 @@ static void segment_grow(uint32_t filter_width,
     *end = min<uint32_t>(*end, max_size);
 }
 
-
 class Partial53 {
 public:
 	void interleave_partial_h(dwt_data<int32_t>* dwt,
@@ -1208,13 +1167,11 @@ public:
 bool decode_53(TileProcessor *p_tcd, TileComponent* tilec,
                         uint32_t numres)
 {
-    if (p_tcd->whole_tile_decoding) {
+    if (p_tcd->whole_tile_decoding)
         return decode_tile_53(tilec,numres);
-    } else {
+    else
         return decode_partial_tile<int32_t, 1, 4,2, Partial53>(tilec, numres, tilec->m_sa);
-    }
 }
-
 
 static void interleave_h_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
                                    float* GRK_RESTRICT a,
@@ -1352,9 +1309,8 @@ static void decode_step1_sse_97(v4_data* w,
         vw[4] = xmm4;
         vw[6] = xmm6;
     }
-    for (; i < end; ++i, vw += 2) {
+    for (; i < end; ++i, vw += 2)
         vw[0] = _mm_mul_ps(vw[0], c);
-    }
 }
 
 static void decode_step2_sse_97(v4_data* l, v4_data* w,
@@ -1479,15 +1435,13 @@ static void decode_step_97(dwt_data<v4_data>* GRK_RESTRICT dwt)
     int32_t a, b;
 
     if (dwt->cas == 0) {
-        if (!((dwt->dn > 0) || (dwt->sn > 1))) {
+        if (!((dwt->dn > 0) || (dwt->sn > 1)))
             return;
-        }
         a = 0;
         b = 1;
     } else {
-        if (!((dwt->sn > 0) || (dwt->dn > 1))) {
+        if (!((dwt->sn > 0) || (dwt->dn > 1)))
             return;
-        }
         a = 1;
         b = 0;
     }
@@ -1908,18 +1862,15 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
         if (!sa->alloc(win_tr_x0,
 					  win_tr_y0,
 					  win_tr_x1,
-					  win_tr_y1)) {
+					  win_tr_y1))
 			 return false;
-		 }
 		for (uint32_t k = 0; k < 2; ++k) {
 			 if (!sa->alloc(win_tr_x0,
 						  bounds[k][0],
 						  win_tr_x1,
-						  bounds[k][1])) {
+						  bounds[k][1]))
 				 return false;
-			 }
 		}
-
         horiz.win_l_x0 = win_ll_x0;
         horiz.win_l_x1 = win_ll_x1;
         horiz.win_h_x0 = win_hl_x0;
@@ -2031,7 +1982,6 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 				result.get();
 		   }
         }
-
 		vert.win_l_x0 = win_ll_y0;
         vert.win_l_x1 = win_ll_y1;
         vert.win_h_x0 = win_lh_y0;
@@ -2134,7 +2084,6 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 				result.get();
 		}
     }
-
     //final read into tile buffer
 	bool ret = sa->read(	   tr_max->win_x0 - (uint32_t)tr_max->x0,
 							   tr_max->win_y0 - (uint32_t)tr_max->y0,
@@ -2154,11 +2103,10 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 bool decode_97(TileProcessor *p_tcd,
                 TileComponent* GRK_RESTRICT tilec,
                 uint32_t numres){
-    if (p_tcd->whole_tile_decoding) {
+    if (p_tcd->whole_tile_decoding)
         return decode_tile_97(tilec, numres);
-    } else {
+    else
         return decode_partial_tile<v4_data,4,4,4, Partial97>(tilec, numres, tilec->m_sa);
-    }
 }
 
 }
