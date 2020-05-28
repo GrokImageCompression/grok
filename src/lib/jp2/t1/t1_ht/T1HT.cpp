@@ -53,7 +53,7 @@ T1HT::~T1HT() {
    delete allocator;
    delete elastic_alloc;
 }
-void T1HT::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
+void T1HT::preEncode(encodeBlockInfo *block, grk_tile *tile,
 		uint32_t &maximum) {
 	(void)block;
 	(void)tile;
@@ -101,7 +101,7 @@ void T1HT::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 		}
 	}
 }
-double T1HT::compress(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t maximum,
+double T1HT::compress(encodeBlockInfo *block, grk_tile *tile, uint32_t maximum,
 		bool doRateControl) {
 	(void)doRateControl;
 	(void)tile;

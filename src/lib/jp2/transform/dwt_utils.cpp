@@ -65,7 +65,7 @@ namespace grk {
 /* <summary>                             */
 /* Determine maximum computed resolution level for inverse wavelet transform */
 /* </summary>                            */
-uint32_t dwt_utils::max_resolution(grk_tcd_resolution *GRK_RESTRICT r, uint32_t i) {
+uint32_t dwt_utils::max_resolution(grk_resolution *GRK_RESTRICT r, uint32_t i) {
 	uint32_t mr = 0;
 	uint32_t w;
 	while (--i) {

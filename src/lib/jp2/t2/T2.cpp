@@ -472,7 +472,7 @@ bool T2::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 			continue;
 		}
 
-		grk_tcd_precinct *prc = band->precincts + p_pi->precno;
+		grk_precinct *prc = band->precincts + p_pi->precno;
 		nb_code_blocks = (uint64_t) prc->cw * prc->ch;
 		for (uint64_t cblkno = 0; cblkno < nb_code_blocks; cblkno++) {
 			uint32_t included = 0, increment = 0;
@@ -688,7 +688,7 @@ bool T2::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 	return true;
 }
 
-bool T2::read_packet_data(grk_tcd_resolution *res, PacketIter *p_pi,
+bool T2::read_packet_data(grk_resolution *res, PacketIter *p_pi,
 		ChunkBuffer *src_buf, uint64_t *p_data_read) {
 	uint32_t bandno;
 	uint64_t cblkno;
@@ -699,7 +699,7 @@ bool T2::read_packet_data(grk_tcd_resolution *res, PacketIter *p_pi,
 		auto cblk = prc->cblks.dec;
 
 		for (cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
-			grk_tcd_seg *seg = nullptr;
+			grk_seg *seg = nullptr;
 
 			if (!cblk->numPassesInPacket) {
 				++cblk;
@@ -794,7 +794,7 @@ bool T2::skip_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuffer *src
 	return true;
 }
 
-bool T2::skip_packet_data(grk_tcd_resolution *res, PacketIter *p_pi,
+bool T2::skip_packet_data(grk_resolution *res, PacketIter *p_pi,
 		uint64_t *p_data_read, uint64_t max_length) {
 	uint32_t bandno;
 	uint64_t nb_code_blocks, cblkno;
@@ -809,7 +809,7 @@ bool T2::skip_packet_data(grk_tcd_resolution *res, PacketIter *p_pi,
 		nb_code_blocks = (uint64_t) prc->cw * prc->ch;
 		auto cblk = prc->cblks.dec;
 		for (cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
-			grk_tcd_seg *seg = nullptr;
+			grk_seg *seg = nullptr;
 
 			if (!cblk->numPassesInPacket) {
 				/* nothing to do */
@@ -857,12 +857,12 @@ bool T2::skip_packet_data(grk_tcd_resolution *res, PacketIter *p_pi,
 	return true;
 }
 
-bool T2::init_seg(grk_tcd_cblk_dec *cblk, uint32_t index, uint8_t cblk_sty,
+bool T2::init_seg(grk_cblk_dec *cblk, uint32_t index, uint8_t cblk_sty,
 		bool first) {
 	uint32_t nb_segs = index + 1;
 
 	if (nb_segs > cblk->numSegmentsAllocated) {
-		auto new_segs = new grk_tcd_seg[cblk->numSegmentsAllocated
+		auto new_segs = new grk_seg[cblk->numSegmentsAllocated
 				+ cblk->numSegmentsAllocated];
 		for (uint32_t i = 0; i < cblk->numSegmentsAllocated; ++i)
 			new_segs[i] = cblk->segs[i];
@@ -1182,7 +1182,7 @@ bool T2::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
 					auto roundTripPrec = roundTripBand->precincts + precno;
 					for (uint64_t cblkno = 0; cblkno < (uint64_t)prec->cw * prec->ch; ++cblkno) {
 						auto originalCblk = prec->cblks.enc + cblkno;
-						grk_tcd_layer *layer = originalCblk->layers + layno;
+						grk_layer *layer = originalCblk->layers + layno;
 						if (!layer->numpasses)
 							continue;
 
@@ -1276,7 +1276,7 @@ bool T2::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
 							auto roundTripPrec = roundTripBand->precincts + precno;
 							for (uint32_t cblkno = 0; cblkno < (uint64_t)prec->cw * prec->ch; ++cblkno) {
 								auto originalCblk = prec->cblks.enc + cblkno;
-								grk_tcd_layer *layer = originalCblk->layers + layno;
+								grk_layer *layer = originalCblk->layers + layno;
 								if (!layer->numpasses)
 									continue;
 

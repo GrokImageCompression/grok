@@ -83,9 +83,9 @@ void init_tilec(TileComponent * tilec,
     tilec->m_is_encoder = false;
     tilec->numresolutions = numresolutions;
     tilec->minimum_num_resolutions = numresolutions;
-    tilec->resolutions = new grk_tcd_resolution[tilec->numresolutions];
+    tilec->resolutions = new grk_resolution[tilec->numresolutions];
     for (auto i = 0; i < tilec->numresolutions; ++i)
-    	memset(tilec->resolutions+i,0,sizeof(grk_tcd_resolution));
+    	memset(tilec->resolutions+i,0,sizeof(grk_resolution));
     tilec->create_buffer(nullptr,1,1);
 
     size_t nValues = (size_t)(tilec->x1 - tilec->x0) *
@@ -133,7 +133,7 @@ int main(int argc, char** argv)
 {
     uint32_t num_threads = 0;
     grk_image tcd_image;
-    grk_tcd_tile tcd_tile;
+    grk_tile tcd_tile;
     TileComponent tilec;
     grk_image image;
     grk_image_comp image_comp;

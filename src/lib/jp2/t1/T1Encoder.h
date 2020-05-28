@@ -23,7 +23,7 @@ namespace grk {
 
 class T1Encoder {
 public:
-	T1Encoder(TileCodingParams *tcp, grk_tcd_tile *tile, uint32_t encodeMaxCblkW,
+	T1Encoder(TileCodingParams *tcp, grk_tile *tile, uint32_t encodeMaxCblkW,
 			uint32_t encodeMaxCblkH, bool needsRateControl);
 	~T1Encoder();
 	bool compress(std::vector<encodeBlockInfo*> *blocks);
@@ -31,7 +31,7 @@ public:
 private:
 	bool compress(size_t threadId, uint64_t maxBlocks);
 
-	grk_tcd_tile *tile;
+	grk_tile *tile;
 	std::vector<T1Interface*> threadStructs;
 	mutable std::mutex distortion_mutex;
 	bool needsRateControl;

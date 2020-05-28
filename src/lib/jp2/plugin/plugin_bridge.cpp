@@ -86,7 +86,7 @@ void decode_synch_plugin_with_host(TileProcessor *tcd) {
 	}
 }
 
-bool tile_equals(grk_plugin_tile *plugin_tile, grk_tcd_tile *p_tile) {
+bool tile_equals(grk_plugin_tile *plugin_tile, grk_tile *p_tile) {
 	uint32_t state = grk_plugin_get_debug_state();
 	if (!(state & GRK_PLUGIN_STATE_DEBUG))
 		return true;
@@ -103,20 +103,20 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tcd_tile *p_tile) {
 		if (tilecomp->numresolutions != plugin_tilecomp->numResolutions)
 			return false;
 		for (uint32_t resno = 0; resno < tilecomp->numresolutions; ++resno) {
-			grk_tcd_resolution *resolution = tilecomp->resolutions + resno;
+			grk_resolution *resolution = tilecomp->resolutions + resno;
 			grk_plugin_resolution *plugin_resolution =
 					plugin_tilecomp->resolutions[resno];
 			if (resolution->numbands != plugin_resolution->numBands)
 				return false;
 			for (uint32_t bandno = 0; bandno < resolution->numbands; ++bandno) {
-				grk_tcd_band *band = resolution->bands + bandno;
+				grk_band *band = resolution->bands + bandno;
 				grk_plugin_band *plugin_band =
 						plugin_resolution->bands[bandno];
 				size_t num_precincts = band->numPrecincts;
 				if (num_precincts != plugin_band->numPrecincts)
 					return false;
 				for (uint64_t precno = 0; precno < num_precincts; ++precno) {
-					grk_tcd_precinct *precinct = band->precincts + precno;
+					grk_precinct *precinct = band->precincts + precno;
 					grk_plugin_precinct *plugin_precinct =
 							plugin_band->precincts[precno];
 					if ((uint64_t)precinct->ch * precinct->cw
@@ -125,7 +125,7 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tcd_tile *p_tile) {
 					}
 					for (uint64_t cblkno = 0;
 							cblkno < (uint64_t)precinct->ch * precinct->cw; ++cblkno) {
-						grk_tcd_cblk_dec *cblk = precinct->cblks.dec + cblkno;
+						grk_cblk_dec *cblk = precinct->cblks.dec + cblkno;
 						grk_plugin_code_block *plugin_cblk =
 								plugin_precinct->blocks[cblkno];
 						if (cblk->x0 != plugin_cblk->x0
@@ -142,8 +142,8 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tcd_tile *p_tile) {
 }
 
 void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resno,
-		uint32_t bandno, uint64_t precno, uint64_t cblkno, grk_tcd_band *band,
-		grk_tcd_cblk_enc *cblk, uint32_t *numPix) {
+		uint32_t bandno, uint64_t precno, uint64_t cblkno, grk_band *band,
+		grk_cblk_enc *cblk, uint32_t *numPix) {
 
 	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
 		grk_plugin_band *plugin_band =
@@ -216,7 +216,7 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 
 		uint32_t lastRate = 0;
 		for (uint32_t passno = 0; passno < cblk->num_passes_encoded; passno++) {
-			grk_tcd_pass *pass = cblk->passes + passno;
+			grk_pass *pass = cblk->passes + passno;
 			grk_plugin_pass *pluginPass = plugin_cblk->passes + passno;
 
 			// synch distortion, if applicable
@@ -264,18 +264,18 @@ void set_context_stream(TileProcessor *p_tileProcessor) {
 		tilec->numpix = 0;
 
 		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
-			grk_tcd_resolution *res = &tilec->resolutions[resno];
+			grk_resolution *res = &tilec->resolutions[resno];
 
 			for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
-				grk_tcd_band *band = &res->bands[bandno];
+				grk_band *band = &res->bands[bandno];
 
 				for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph;
 						precno++) {
-					grk_tcd_precinct *prc = &band->precincts[precno];
+					grk_precinct *prc = &band->precincts[precno];
 
 					for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch;
 							cblkno++) {
-						grk_tcd_cblk_enc *cblk = &prc->cblks.enc[cblkno];
+						grk_cblk_enc *cblk = &prc->cblks.enc[cblkno];
 
 						if (p_tileProcessor->current_plugin_tile
 								&& p_tileProcessor->current_plugin_tile->tileComponents) {

@@ -85,7 +85,7 @@ public:
 	static double getnorm_97(uint32_t level, uint8_t orient);
 
 
-	static uint32_t max_resolution(grk_tcd_resolution* GRK_RESTRICT r, uint32_t i);
+	static uint32_t max_resolution(grk_resolution* GRK_RESTRICT r, uint32_t i);
 	static void deinterleave_v(int32_t *a, int32_t *b, uint32_t d_n, uint32_t s_n,
 			uint32_t stride, int32_t cas);
 	static void deinterleave_h(int32_t *a, int32_t *b, uint32_t d_n, uint32_t s_n,

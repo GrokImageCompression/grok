@@ -83,7 +83,7 @@ struct TileComponent {
 			grk_image *output_image,
 			CodingParams *cp,
 			TileCodingParams *tcp,
-			grk_tcd_tile *tile,
+			grk_tile *tile,
 			grk_image_comp* image_comp,
 			TileComponentCodingParams* tccp,
 			grk_plugin_tile *current_plugin_tile);
@@ -101,9 +101,9 @@ struct TileComponent {
 	uint32_t numresolutions; /* number of resolutions level */
 	uint32_t numAllocatedResolutions;
 	uint32_t minimum_num_resolutions; /* number of resolutions level to decompress (at max)*/
-	grk_tcd_resolution *resolutions; /* resolutions information */
+	grk_resolution *resolutions; /* resolutions information */
 #ifdef DEBUG_LOSSLESS_T2
-	grk_tcd_resolution* round_trip_resolutions;  /* round trip resolution information */
+	grk_resolution* round_trip_resolutions;  /* round trip resolution information */
 #endif
 	uint64_t numpix;
 	TileBuffer *buf;
@@ -121,12 +121,12 @@ private:
 	/**
 	 * Deallocates the decoding data of the given precinct.
 	 */
-	 void code_block_dec_deallocate(grk_tcd_precinct *p_precinct);
+	 void code_block_dec_deallocate(grk_precinct *p_precinct);
 
 	/**
 	 * Deallocates the encoding data of the given precinct.
 	 */
-	 void code_block_enc_deallocate(grk_tcd_precinct *p_precinct);
+	 void code_block_enc_deallocate(grk_precinct *p_precinct);
 
 };
 

@@ -26,9 +26,9 @@ RateInfo::RateInfo() :
 /*
  Synchronize with code block
  */
-void RateInfo::synch(grk_tcd_cblk_enc *cblk) {
+void RateInfo::synch(grk_cblk_enc *cblk) {
 	for (auto passno = 0U; passno < cblk->num_passes_encoded; passno++) {
-		grk_tcd_pass *pass = &cblk->passes[passno];
+		grk_pass *pass = &cblk->passes[passno];
 
 		//2. only process feasible truncation points
 		if (pass->slope == 0)

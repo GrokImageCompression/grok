@@ -511,7 +511,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 						if (!single_lossless) {
 							for (passno = 0; passno < cblk->num_passes_encoded;
 									passno++) {
-								grk_tcd_pass *pass = &cblk->passes[passno];
+								grk_pass *pass = &cblk->passes[passno];
 								int32_t dr;
 								double dd, rdslope;
 
@@ -637,7 +637,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 	}
 	return true;
 }
-static void prepareBlockForFirstLayer(grk_tcd_cblk_enc *cblk) {
+static void prepareBlockForFirstLayer(grk_cblk_enc *cblk) {
 	cblk->num_passes_included_in_previous_layers = 0;
 	cblk->num_passes_included_in_current_layer = 0;
 	cblk->numlenbits = 0;
@@ -676,7 +676,7 @@ void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 									passno++) {
 								uint32_t dr;
 								double dd;
-								grk_tcd_pass *pass = &cblk->passes[passno];
+								grk_pass *pass = &cblk->passes[passno];
 								if (cumulative_included_passes_in_block == 0) {
 									dr = pass->rate;
 									dd = pass->distortiondec;
@@ -820,7 +820,7 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 bool TileProcessor::init(grk_image *p_image, CodingParams *p_cp) {
 	image = p_image;
 	m_cp = p_cp;
-	tile = (grk_tcd_tile*) grk_calloc(1, sizeof(grk_tcd_tile));
+	tile = (grk_tile*) grk_calloc(1, sizeof(grk_tile));
 	if (!tile)
 		return false;
 
@@ -1506,7 +1506,7 @@ bool TileProcessor::t2_encode(BufferedStream *stream, uint32_t *all_packet_bytes
 #ifdef DEBUG_LOSSLESS_T2
 	for (uint32_t compno = 0; compno < p_image->m_numcomps; ++compno) {
 		TileComponent *tilec = &p_tile->comps[compno];
-		tilec->round_trip_resolutions = new grk_tcd_resolution[tilec->numresolutions];
+		tilec->round_trip_resolutions = new grk_resolution[tilec->numresolutions];
 		for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
 			auto res = tilec->resolutions + resno;
 			auto roundRes = tilec->round_trip_resolutions + resno;
@@ -1529,8 +1529,8 @@ bool TileProcessor::t2_encode(BufferedStream *stream, uint32_t *all_packet_bytes
 				auto decodeBand = roundRes->bands + bandno;
 				if (!band->numPrecincts)
 					continue;
-				decodeBand->precincts = new grk_tcd_precinct[band->numPrecincts];
-				decodeBand->precincts_data_size = (uint32_t)(band->numPrecincts * sizeof(grk_tcd_precinct));
+				decodeBand->precincts = new grk_precinct[band->numPrecincts];
+				decodeBand->precincts_data_size = (uint32_t)(band->numPrecincts * sizeof(grk_precinct));
 				for (uint64_t precno = 0; precno < band->numPrecincts; ++precno) {
 					auto prec = band->precincts + precno;
 					auto decodePrec = decodeBand->precincts + precno;
@@ -1538,7 +1538,7 @@ bool TileProcessor::t2_encode(BufferedStream *stream, uint32_t *all_packet_bytes
 					decodePrec->ch = prec->ch;
 					if (prec->cblks.enc && prec->cw && prec->ch) {
 						decodePrec->initTagTrees();
-						decodePrec->cblks.dec = new grk_tcd_cblk_dec[(uint64_t)decodePrec->cw * decodePrec->ch];
+						decodePrec->cblks.dec = new grk_cblk_dec[(uint64_t)decodePrec->cw * decodePrec->ch];
 						for (uint64_t cblkno = 0; cblkno < decodePrec->cw * decodePrec->ch; ++cblkno) {
 							auto cblk = prec->cblks.enc + cblkno;
 							auto decodeCblk = decodePrec->cblks.dec + cblkno;
@@ -2002,19 +2002,84 @@ uint64_t PacketTracker::index(uint32_t comps,
 			comps * m_numres * m_numprec * m_numlayers;
 }
 
-grk_tcd_cblk_enc::~grk_tcd_cblk_enc() {
+grk_seg::grk_seg() {
+	clear();
+}
+void grk_seg::clear() {
+	dataindex = 0;
+	numpasses = 0;
+	len = 0;
+	maxpasses = 0;
+	numPassesInPacket = 0;
+	numBytesInPacket = 0;
+}
+
+grk_packet_length_info::grk_packet_length_info(uint32_t mylength, uint32_t bits) :
+		len(mylength), len_bits(bits) {
+}
+grk_packet_length_info::grk_packet_length_info() :
+		len(0), len_bits(0) {
+}
+bool grk_packet_length_info::operator==(grk_packet_length_info &rhs) const {
+	return (rhs.len == len && rhs.len_bits == len_bits);
+}
+
+grk_pass::grk_pass() :
+		rate(0), distortiondec(0), len(0), term(0), slope(0) {
+}
+grk_layer::grk_layer() :
+		numpasses(0), len(0), disto(0), data(nullptr) {
+}
+
+grk_precinct::grk_precinct() :
+		x0(0), y0(0), x1(0), y1(0), cw(0), ch(0), block_size(0), incltree(
+				nullptr), imsbtree(nullptr) {
+	cblks.blocks = nullptr;
+}
+
+void grk_precinct::cleanupEncodeBlocks() {
+	if (!cblks.enc)
+		return;
+	for (uint64_t i = 0; i < (uint64_t) cw * ch; ++i)
+		(cblks.enc + i)->cleanup();
+	grok_free(cblks.blocks);
+	cblks.enc = nullptr;
+}
+void grk_precinct::cleanupDecodeBlocks() {
+	if (!cblks.dec)
+		return;
+	for (uint64_t i = 0; i < (uint64_t) cw * ch; ++i)
+		(cblks.dec + i)->cleanup();
+	grok_free(cblks.blocks);
+	cblks.dec = nullptr;
+}
+
+
+grk_cblk_enc::grk_cblk_enc() :
+		actualData(nullptr), data(nullptr), data_size(0), owns_data(false), layers(
+				nullptr), passes(nullptr), x0(0), y0(0), x1(0), y1(0), numbps(
+				0), numlenbits(0), num_passes_included_in_current_layer(0), num_passes_included_in_previous_layers(
+				0), num_passes_encoded(0),
+#ifdef DEBUG_LOSSLESS_T2
+						included(0),
+						packet_length_info(nullptr),
+#endif
+				contextStream(nullptr) {
+}
+
+grk_cblk_enc::~grk_cblk_enc() {
 	cleanup();
 }
-bool grk_tcd_cblk_enc::alloc() {
+bool grk_cblk_enc::alloc() {
 	if (!layers) {
 		/* no memset since data */
-		layers = (grk_tcd_layer*) grk_calloc(100, sizeof(grk_tcd_layer));
+		layers = (grk_layer*) grk_calloc(100, sizeof(grk_layer));
 		if (!layers) {
 			return false;
 		}
 	}
 	if (!passes) {
-		passes = (grk_tcd_pass*) grk_calloc(100, sizeof(grk_tcd_pass));
+		passes = (grk_pass*) grk_calloc(100, sizeof(grk_pass));
 		if (!passes)
 			return false;
 	}
@@ -2031,7 +2096,7 @@ bool grk_tcd_cblk_enc::alloc() {
  * This is done so that we can safely initialize the MQ coder pointer to data-1,
  * without risk of accessing uninitialized memory.
  */
-bool grk_tcd_cblk_enc::alloc_data(size_t nominalBlockSize) {
+bool grk_cblk_enc::alloc_data(size_t nominalBlockSize) {
 	uint32_t l_data_size = (uint32_t) (nominalBlockSize * sizeof(uint32_t));
 	if (l_data_size > data_size) {
 		if (owns_data && actualData)
@@ -2047,7 +2112,7 @@ bool grk_tcd_cblk_enc::alloc_data(size_t nominalBlockSize) {
 	return true;
 }
 
-void grk_tcd_cblk_enc::cleanup() {
+void grk_cblk_enc::cleanup() {
 	if (owns_data && actualData) {
 		delete[] actualData;
 		actualData = nullptr;
@@ -2065,10 +2130,29 @@ void grk_tcd_cblk_enc::cleanup() {
 #endif
 }
 
-bool grk_tcd_cblk_dec::alloc() {
+grk_cblk_dec::grk_cblk_dec() {
+	init();
+}
+
+grk_cblk_dec::~grk_cblk_dec(){
+    cleanup();
+}
+
+grk_cblk_dec::grk_cblk_dec(const grk_cblk_dec &rhs) :
+				segs(nullptr), x0(rhs.x0), y0(rhs.y0), x1(
+				rhs.x1), y1(rhs.y1), numbps(rhs.numbps), numlenbits(
+				rhs.numlenbits), numPassesInPacket(0), numSegments(0),
+#ifdef DEBUG_LOSSLESS_T2
+													 included(false),
+													packet_length_info(nullptr),
+#endif
+				numSegmentsAllocated(0){
+}
+
+bool grk_cblk_dec::alloc() {
 	if (!segs) {
-		segs = new grk_tcd_seg[default_numbers_segments];
-		/*fprintf(stderr, "Allocate %d elements of code_block->data\n", default_numbers_segments * sizeof(grk_tcd_seg));*/
+		segs = new grk_seg[default_numbers_segments];
+		/*fprintf(stderr, "Allocate %d elements of code_block->data\n", default_numbers_segments * sizeof(grk_seg));*/
 
 		numSegmentsAllocated = default_numbers_segments;
 
@@ -2093,7 +2177,7 @@ bool grk_tcd_cblk_dec::alloc() {
 	return true;
 }
 
-void grk_tcd_cblk_dec::init() {
+void grk_cblk_dec::init() {
 	compressedData = grk_buf();
 	segs = nullptr;
 	x0 = 0;
@@ -2110,7 +2194,7 @@ void grk_tcd_cblk_dec::init() {
 	numSegmentsAllocated = 0;
 }
 
-void grk_tcd_cblk_dec::cleanup() {
+void grk_cblk_dec::cleanup() {
 	seg_buffers.cleanup();
 	delete[] segs;
 	segs = nullptr;
@@ -2120,14 +2204,29 @@ void grk_tcd_cblk_dec::cleanup() {
 #endif
 }
 
-void grk_tcd_precinct::deleteTagTrees() {
+grk_band::grk_band() :
+		x0(0), y0(0), x1(0), y1(0), bandno(0), precincts(nullptr), numPrecincts(
+				0), numAllocatedPrecincts(0), numbps(0), stepsize(0), inv_step(0) {
+}
+
+//note: don't copy precinct array
+grk_band::grk_band(const grk_band &rhs) :
+		x0(rhs.x0), y0(rhs.y0), x1(rhs.x1), y1(rhs.y1), bandno(rhs.bandno), precincts(
+				nullptr), numPrecincts(rhs.numPrecincts), numAllocatedPrecincts(
+				rhs.numAllocatedPrecincts), numbps(rhs.numbps), stepsize(
+				rhs.stepsize), inv_step(rhs.inv_step) {}
+bool grk_band::isEmpty() {
+	return ((x1 - x0 == 0) || (y1 - y0 == 0));
+}
+
+void grk_precinct::deleteTagTrees() {
 	delete incltree;
 	incltree = nullptr;
 	delete imsbtree;
 	imsbtree = nullptr;
 }
 
-void grk_tcd_precinct::initTagTrees() {
+void grk_precinct::initTagTrees() {
 
 	// if cw == 0 or ch == 0,
 	// then the precinct has no code blocks, therefore
@@ -2162,6 +2261,20 @@ void grk_tcd_precinct::initTagTrees() {
 		}
 	}
 }
+
+grk_resolution::grk_resolution() :
+		x0(0),
+		y0(0),
+		x1(0),
+		y1(0),
+		pw(0),
+		ph(0),
+		numbands(0),
+		win_x0(0),
+		win_y0(0),
+		win_x1(0),
+		win_y1(0)
+{}
 
 }
 

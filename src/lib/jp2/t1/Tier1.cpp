@@ -22,7 +22,7 @@
 namespace grk {
 
 bool Tier1::encodeCodeblocks(TileCodingParams *tcp,
-							grk_tcd_tile *tile,
+							grk_tile *tile,
 							const double *mct_norms,
 							uint32_t mct_numcomps,
 							bool doRateControl) {
@@ -53,12 +53,12 @@ bool Tier1::encodeCodeblocks(TileCodingParams *tcp,
 						int32_t x = (int32_t)(cblk->x0 - band->x0);
 						int32_t y = (int32_t)(cblk->y0 - band->y0);
 						if (bandOdd) {
-							grk_tcd_resolution *pres = &tilec->resolutions[resno
+							grk_resolution *pres = &tilec->resolutions[resno
 									- 1];
 							x += pres->x1 - pres->x0;
 						}
 						if (bandModTwo) {
-							grk_tcd_resolution *pres = &tilec->resolutions[resno
+							grk_resolution *pres = &tilec->resolutions[resno
 									- 1];
 							y += pres->y1 - pres->y0;
 						}
@@ -102,9 +102,9 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, TileComponentCodingPar
 		return false;
 	}
 	for (uint32_t resno = 0; resno < tilec->minimum_num_resolutions; ++resno) {
-		grk_tcd_resolution *res = &tilec->resolutions[resno];
+		grk_resolution *res = &tilec->resolutions[resno];
 		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
-			grk_tcd_band *GRK_RESTRICT band = res->bands + bandno;
+			grk_band *GRK_RESTRICT band = res->bands + bandno;
 			for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph; ++precno) {
 				auto precinct = band->precincts + precno;
 				if (!tilec->is_subband_area_of_interest(resno,

@@ -160,10 +160,10 @@ private:
 			bool *p_is_data_present, ChunkBuffer *src_buf,
 			uint64_t *p_data_read);
 
-	bool read_packet_data(grk_tcd_resolution *l_res, PacketIter *p_pi,
+	bool read_packet_data(grk_resolution *l_res, PacketIter *p_pi,
 			ChunkBuffer *src_buf, uint64_t *p_data_read);
 
-	bool skip_packet_data(grk_tcd_resolution *l_res, PacketIter *p_pi,
+	bool skip_packet_data(grk_resolution *l_res, PacketIter *p_pi,
 			uint64_t *p_data_read, uint64_t max_length);
 
 	/**
@@ -172,7 +172,7 @@ private:
 	 @param cblk_sty
 	 @param first
 	 */
-	bool init_seg(grk_tcd_cblk_dec *cblk, uint32_t index, uint8_t cblk_sty,
+	bool init_seg(grk_cblk_dec *cblk, uint32_t index, uint8_t cblk_sty,
 			bool first);
 
 };

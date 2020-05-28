@@ -36,8 +36,8 @@ public:
 	T1HT(bool isEncoder, TileCodingParams *tcp, uint32_t maxCblkW, uint32_t maxCblkH);
 	virtual ~T1HT();
 
-	void preEncode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t &max);
-	double compress(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t max,
+	void preEncode(encodeBlockInfo *block, grk_tile *tile, uint32_t &max);
+	double compress(encodeBlockInfo *block, grk_tile *tile, uint32_t max,
 			bool doRateControl);
 
 	bool decompress(decodeBlockInfo *block);

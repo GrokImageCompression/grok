@@ -55,7 +55,7 @@ static inline int32_t int_fix_mul_t1(int32_t a, int32_t b) {
 	return (int32_t) (temp >> (13 + 11 - T1_NMSEDEC_FRACBITS));
 }
 
-void T1Part1::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
+void T1Part1::preEncode(encodeBlockInfo *block, grk_tile *tile,
 		uint32_t &maximum) {
 	auto cblk = block->cblk;
 	auto w = cblk->x1 - cblk->x0;
@@ -93,7 +93,7 @@ void T1Part1::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 		}
 	}
 }
-double T1Part1::compress(encodeBlockInfo *block, grk_tcd_tile *tile,
+double T1Part1::compress(encodeBlockInfo *block, grk_tile *tile,
 		uint32_t max, bool doRateControl) {
 	auto cblk = block->cblk;
 	tcd_cblk_enc_t cblkopj;

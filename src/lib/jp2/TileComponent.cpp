@@ -163,7 +163,7 @@ bool TileComponent::init(bool isEncoder,
 						grk_image *output_image,
 						CodingParams *cp,
 						TileCodingParams *tcp,
-						grk_tcd_tile* tile,
+						grk_tile* tile,
 						grk_image_comp* image_comp,
 						TileComponentCodingParams* tccp,
 						grk_plugin_tile *current_plugin_tile){
@@ -172,7 +172,7 @@ bool TileComponent::init(bool isEncoder,
 	whole_tile_decoding = whole_tile;
 	m_tccp = tccp;
 
-	size_t sizeof_block = m_is_encoder ? sizeof(grk_tcd_cblk_enc) : sizeof(grk_tcd_cblk_dec);
+	size_t sizeof_block = m_is_encoder ? sizeof(grk_cblk_enc) : sizeof(grk_cblk_dec);
 	/* extent of precincts , top left, bottom right**/
 	uint32_t tprc_x_start, tprc_y_start, br_prc_x_end, br_prc_y_end;
 	/* number of precinct for a resolution */
@@ -200,11 +200,11 @@ bool TileComponent::init(bool isEncoder,
 				- cp->m_coding_params.m_dec.m_reduce;
 	}
 	if (!resolutions) {
-		resolutions = new grk_tcd_resolution[numresolutions];
+		resolutions = new grk_resolution[numresolutions];
 		numAllocatedResolutions = numresolutions;
 	} else if (numresolutions > numAllocatedResolutions) {
 		auto new_resolutions =
-				new grk_tcd_resolution[numresolutions];
+				new grk_resolution[numresolutions];
 		for (uint32_t i = 0; i < numresolutions; ++i)
 			new_resolutions[i] = resolutions[i];
 		delete[] resolutions;
@@ -266,7 +266,7 @@ bool TileComponent::init(bool isEncoder,
 		}
 		nb_precincts = (uint64_t)res->pw * res->ph;
 
-		if (mult64_will_overflow(nb_precincts, sizeof(grk_tcd_precinct))) {
+		if (mult64_will_overflow(nb_precincts, sizeof(grk_precinct))) {
 			GROK_ERROR(	"nb_precinct_size calculation would overflow ");
 			return false;
 		}
@@ -330,10 +330,10 @@ bool TileComponent::init(bool isEncoder,
 												m_is_encoder ? 1.0f : 0.5f);
 
 			if (!band->precincts && (nb_precincts > 0U)) {
-				band->precincts = new grk_tcd_precinct[nb_precincts];
+				band->precincts = new grk_precinct[nb_precincts];
 				band->numAllocatedPrecincts = nb_precincts;
 			} else if (band->numAllocatedPrecincts < nb_precincts) {
-				auto new_precincts = new grk_tcd_precinct[nb_precincts];
+				auto new_precincts = new grk_precinct[nb_precincts];
 				for (size_t i = 0; i < band->numAllocatedPrecincts; ++i)
 					new_precincts[i] = band->precincts[i];
 				delete[] band->precincts;
@@ -395,7 +395,7 @@ bool TileComponent::init(bool isEncoder,
 					if (!current_precinct->cblks.blocks) {
 						return false;
 					}
-					/*fprintf(stderr, "\t\t\t\tAllocate cblks of a precinct (grk_tcd_cblk_dec): %d\n",nb_code_blocks_size);*/
+					/*fprintf(stderr, "\t\t\t\tAllocate cblks of a precinct (grk_cblk_dec): %d\n",nb_code_blocks_size);*/
 					memset(current_precinct->cblks.blocks, 0,
 							nb_code_blocks_size);
 
@@ -414,7 +414,7 @@ bool TileComponent::init(bool isEncoder,
 						return false;
 					}
 					current_precinct->cblks.blocks = new_blocks;
-					/*fprintf(stderr, "\t\t\t\tReallocate cblks of a precinct (grk_tcd_cblk_dec): from %d to %d\n",current_precinct->block_size, nb_code_blocks_size);     */
+					/*fprintf(stderr, "\t\t\t\tReallocate cblks of a precinct (grk_cblk_dec): from %d to %d\n",current_precinct->block_size, nb_code_blocks_size);     */
 
 					memset(	((uint8_t*) current_precinct->cblks.blocks)
 									+ current_precinct->block_size, 0,
@@ -436,7 +436,7 @@ bool TileComponent::init(bool isEncoder,
 					uint32_t cblkyend = cblkystart + (1 << cblkheightexpn);
 
 					if (m_is_encoder) {
-						grk_tcd_cblk_enc *code_block =
+						grk_cblk_enc *code_block =
 								current_precinct->cblks.enc + cblkno;
 
 						if (!code_block->alloc()) {
@@ -460,7 +460,7 @@ bool TileComponent::init(bool isEncoder,
 							}
 						}
 					} else {
-						grk_tcd_cblk_dec *code_block =
+						grk_cblk_dec *code_block =
 								current_precinct->cblks.dec + cblkno;
 						if (!current_plugin_tile
 								|| (state & GRK_PLUGIN_STATE_DEBUG)) {
@@ -606,11 +606,11 @@ void TileComponent::alloc_sparse_array(uint32_t numres){
 
 						/* add band offset relative to previous resolution */
 						if (band->bandno & 1) {
-							grk_tcd_resolution *pres = &resolutions[resno - 1];
+							grk_resolution *pres = &resolutions[resno - 1];
 							x += pres->x1 - pres->x0;
 						}
 						if (band->bandno & 2) {
-							grk_tcd_resolution *pres = &resolutions[resno - 1];
+							grk_resolution *pres = &resolutions[resno - 1];
 							y += pres->y1 - pres->y0;
 						}
 
@@ -666,7 +666,7 @@ bool TileComponent::create_buffer(grk_image *output_image,
 		TileBufferResolution *prev_res = nullptr;
 		for (int32_t resno = (int32_t) (numresolutions - 1); resno >= 0; --resno) {
 			uint32_t bandno;
-			grk_tcd_resolution *tcd_res = resolutions + resno;
+			grk_resolution *tcd_res = resolutions + resno;
 			TileBufferResolution *res = (TileBufferResolution*) grk_calloc(1,
 					sizeof(TileBufferResolution));
 			if (!res) {
@@ -680,7 +680,7 @@ bool TileComponent::create_buffer(grk_image *output_image,
 			res->origin.y = tcd_res->y0;
 
 			for (bandno = 0; bandno < tcd_res->numbands; ++bandno) {
-				grk_tcd_band *band = tcd_res->bands + bandno;
+				grk_band *band = tcd_res->bands + bandno;
 				grk_rect band_rect;
 				band_rect = grk_rect(band->x0, band->y0, band->x1, band->y1);
 
@@ -718,7 +718,7 @@ bool TileComponent::create_buffer(grk_image *output_image,
 /**
  * Deallocates the encoding data of the given precinct.
  */
-void TileComponent::code_block_dec_deallocate(grk_tcd_precinct *p_precinct) {
+void TileComponent::code_block_dec_deallocate(grk_precinct *p_precinct) {
 	uint64_t cblkno, nb_code_blocks;
 	auto code_block = p_precinct->cblks.dec;
 	if (code_block) {
@@ -727,7 +727,7 @@ void TileComponent::code_block_dec_deallocate(grk_tcd_precinct *p_precinct) {
 		/*fprintf(stderr,"\t numbps=%d, numlenbits=%d, len=%d, numPassesInPacket=%d, reanum_segs=%d, numSegmentsAllocated=%d\n ",
 		 code_block->numbps, code_block->numlenbits, code_block->len, code_block->numPassesInPacket, code_block->numSegments, code_block->numSegmentsAllocated );*/
 
-		nb_code_blocks = p_precinct->block_size / sizeof(grk_tcd_cblk_dec);
+		nb_code_blocks = p_precinct->block_size / sizeof(grk_cblk_dec);
 		/*fprintf(stderr,"nb_code_blocks =%d\t}\n", nb_code_blocks);*/
 
 		for (cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
@@ -742,11 +742,11 @@ void TileComponent::code_block_dec_deallocate(grk_tcd_precinct *p_precinct) {
 /**
  * Deallocates the encoding data of the given precinct.
  */
-void TileComponent::code_block_enc_deallocate(grk_tcd_precinct *p_precinct) {
+void TileComponent::code_block_enc_deallocate(grk_precinct *p_precinct) {
 	uint64_t cblkno, nb_code_blocks;
 	auto code_block = p_precinct->cblks.enc;
 	if (code_block) {
-		nb_code_blocks = p_precinct->block_size / sizeof(grk_tcd_cblk_enc);
+		nb_code_blocks = p_precinct->block_size / sizeof(grk_cblk_enc);
 		for (cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
 			code_block->cleanup();
 			++code_block;

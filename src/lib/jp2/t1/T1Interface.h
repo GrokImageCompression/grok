@@ -39,7 +39,7 @@ struct decodeBlockInfo {
 	{	}
 	TileComponent *tilec;
 	int32_t *tiledp;
-	grk_tcd_cblk_dec *cblk;
+	grk_cblk_dec *cblk;
 	uint32_t resno;
 	uint32_t bandno;
 	float stepsize;
@@ -76,7 +76,7 @@ struct encodeBlockInfo {
 	{
 	}
 	int32_t *tiledp;
-	grk_tcd_cblk_enc *cblk;
+	grk_cblk_enc *cblk;
 	uint32_t compno;
 	uint32_t resno;
 	uint8_t bandno;
@@ -102,9 +102,9 @@ public:
 	virtual ~T1Interface() {
 	}
 
-	virtual void preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
+	virtual void preEncode(encodeBlockInfo *block, grk_tile *tile,
 			uint32_t &max) = 0;
-	virtual double compress(encodeBlockInfo *block, grk_tcd_tile *tile,
+	virtual double compress(encodeBlockInfo *block, grk_tile *tile,
 			uint32_t max, bool doRateControl)=0;
 
 	virtual bool decompress(decodeBlockInfo *block)=0;

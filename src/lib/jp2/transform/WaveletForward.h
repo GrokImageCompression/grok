@@ -57,8 +57,8 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 	uint32_t stride = tilec->width();
 	int32_t num_decomps = (int32_t) tilec->numresolutions - 1;
 	int32_t *a = tilec->buf->get_ptr( 0, 0, 0, 0);
-	grk_tcd_resolution *cur_res = tilec->resolutions + num_decomps;
-	grk_tcd_resolution *next_res = cur_res - 1;
+	grk_resolution *cur_res = tilec->resolutions + num_decomps;
+	grk_resolution *next_res = cur_res - 1;
 
 	int32_t **bj_array = new int32_t*[ThreadPool::hardware_concurrency()];
 	for (uint32_t i = 0; i < ThreadPool::hardware_concurrency(); ++i){

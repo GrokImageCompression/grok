@@ -27,7 +27,7 @@ class Tier1 {
 public:
 
 	bool encodeCodeblocks(	TileCodingParams *tcp,
-							grk_tcd_tile *tile,
+							grk_tile *tile,
 							const double *mct_norms,
 			uint32_t mct_numcomps, bool doRateControl);
 
