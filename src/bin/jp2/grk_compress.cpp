@@ -2095,7 +2095,7 @@ static bool plugin_compress_callback(
 
 	if ((GRK_IS_BROADCAST(parameters->rsiz) ||
 			GRK_IS_IMF(parameters->rsiz)) &&
-			parameters->framerate > 0) {
+				parameters->framerate > 0) {
 		uint32_t avgcomponents = image->numcomps;
 		if (image->numcomps == 3 && image->comps[1].dx == 2
 				&& image->comps[1].dy == 2) {

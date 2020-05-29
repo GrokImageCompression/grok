@@ -160,29 +160,25 @@ static const mqc_state mqc_states[47 * 2] = {
 
 static void mqc_init_dec_common(mqcoder *mqc,
                                     uint8_t *bp,
-                                    uint32_t len,
-                                    uint32_t extra_writable_bytes){
-    (void)extra_writable_bytes;
-    assert(extra_writable_bytes >= grk_cblk_compressed_data_pad_right);
+                                    uint32_t len){
     mqc->start = bp;
     mqc->end = bp + len;
     /* Insert an artificial 0xFF 0xFF marker at end of the code block */
     /* data so that the bytein routines stop on it. This saves us comparing */
     /* the bp and end pointers */
     /* But before inserting it, backup the bytes we will overwrite */
-    memcpy(mqc->backup, mqc->end, grk_cblk_compressed_data_pad_right);
+    memcpy(mqc->backup, mqc->end, grk_cblk_dec_compressed_data_pad_right);
     mqc->end[0] = 0xFF;
     mqc->end[1] = 0xFF;
     mqc->bp = bp;
 }
-void mqc_init_dec(mqcoder *mqc, uint8_t *bp, uint32_t len,
-                      uint32_t extra_writable_bytes){
+void mqc_init_dec(mqcoder *mqc, uint8_t *bp, uint32_t len){
     /* Implements ISO 15444-1 C.3.5 Initialization of the decoder (INITDEC) */
     /* Note: alternate "J.1 - Initialization of the software-conventions */
     /* decoder" has been tried, but does */
     /* not bring any improvement. */
     /* See https://github.com/uclouvain/openjpeg/issues/921 */
-    mqc_init_dec_common(mqc, bp, len, extra_writable_bytes);
+    mqc_init_dec_common(mqc, bp, len);
     mqc_setcurctx(mqc, 0);
     mqc->end_of_byte_stream_counter = 0;
     mqc->c = (uint32_t)(((len==0) ? 0xff : *mqc->bp) << 16);
@@ -192,16 +188,15 @@ void mqc_init_dec(mqcoder *mqc, uint8_t *bp, uint32_t len,
     mqc->a = A_MIN;
 }
 
-void mqc_raw_init_dec(mqcoder *mqc, uint8_t *bp, uint32_t len,
-                          uint32_t extra_writable_bytes){
-    mqc_init_dec_common(mqc, bp, len, extra_writable_bytes);
+void mqc_raw_init_dec(mqcoder *mqc, uint8_t *bp, uint32_t len){
+    mqc_init_dec_common(mqc, bp, len);
     mqc->c = 0;
     mqc->ct = 0;
 }
 
 void opq_mqc_finish_dec(mqcoder *mqc){
     /* Restore the bytes overwritten by mqc_init_dec_common() */
-    memcpy(mqc->end, mqc->backup, grk_cblk_compressed_data_pad_right);
+    memcpy(mqc->end, mqc->backup, grk_cblk_dec_compressed_data_pad_right);
 }
 
 void mqc_resetstates(mqcoder *mqc){

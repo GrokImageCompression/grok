@@ -2097,16 +2097,20 @@ bool grk_cblk_enc::alloc() {
  * without risk of accessing uninitialized memory.
  */
 bool grk_cblk_enc::alloc_data(size_t nominalBlockSize) {
-	uint32_t l_data_size = (uint32_t) (nominalBlockSize * sizeof(uint32_t));
-	if (l_data_size > data_size) {
+	uint32_t desired_data_size = (uint32_t) (nominalBlockSize * sizeof(uint32_t));
+	if (desired_data_size > data_size) {
 		if (owns_data && actualData)
 			delete[] actualData;
-		actualData = new uint8_t[l_data_size + grk_cblk_compressed_data_pad_right];
+
+		// we add two fake zero bytes at beginning of buffer, so that mq coder
+		//can be initialized to data[-1] == actualData[1], and still point
+		//to a valid memory location
+		actualData = new uint8_t[desired_data_size + grk_cblk_enc_compressed_data_pad_left];
 		actualData[0] = 0;
 		actualData[1] = 0;
 
-		data = actualData + grk_cblk_compressed_data_pad_right;
-		data_size = l_data_size;
+		data = actualData + grk_cblk_enc_compressed_data_pad_left;
+		data_size = desired_data_size;
 		owns_data = true;
 	}
 	return true;

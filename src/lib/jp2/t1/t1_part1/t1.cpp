@@ -1072,11 +1072,9 @@ bool t1_decode_cblk(t1_info *t1, cblk_dec_t *cblk, uint32_t orient,
 				T1_TYPE_RAW : T1_TYPE_MQ;
 
 		if (type == T1_TYPE_RAW) {
-			mqc_raw_init_dec(mqc, cblkdata + cblkdataindex, seg->len,
-			grk_cblk_compressed_data_pad_right);
+			mqc_raw_init_dec(mqc, cblkdata + cblkdataindex, seg->len);
 		} else {
-			mqc_init_dec(mqc, cblkdata + cblkdataindex, seg->len,
-			grk_cblk_compressed_data_pad_right);
+			mqc_init_dec(mqc, cblkdata + cblkdataindex, seg->len);
 		}
 		cblkdataindex += seg->len;
 

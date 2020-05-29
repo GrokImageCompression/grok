@@ -29,6 +29,8 @@ using namespace ojph::local;
 #include <algorithm>
 using namespace std;
 
+const uint8_t grk_cblk_dec_compressed_data_pad_left_ht = 8;
+
 
 namespace grk {
 namespace t1_ht {
@@ -140,7 +142,7 @@ bool T1HT::decompress(decodeBlockInfo *block) {
 		return true;
 
 	auto min_buf_vec = &cblk->seg_buffers;
-	size_t total_seg_len = (min_buf_vec->get_len());
+	size_t total_seg_len = grk_cblk_dec_compressed_data_pad_left_ht + min_buf_vec->get_len();
 	if (coded_data_size < total_seg_len) {
 		delete[] coded_data;
 		coded_data = new uint8_t[total_seg_len];

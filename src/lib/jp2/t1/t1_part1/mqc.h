@@ -96,7 +96,7 @@ struct mqcoder {
     /* lut_ctxno_zc shifted by (1 << 9) * bandno */
     const uint8_t* lut_ctxno_zc_orient;
     /** Original value of the 2 bytes at end[0] and end[1] */
-    uint8_t backup[grk_cblk_compressed_data_pad_right];
+    uint8_t backup[grk_cblk_dec_compressed_data_pad_right];
 } ;
 
 const uint32_t A_MIN = 0x8000;
@@ -137,12 +137,8 @@ passes, so as to restore the bytes temporarily overwritten.
           So bp must be at least len + OPJ_COMMON_CBLK_DATA_EXTRA large, and
           writable.
 @param len Length of the input buffer
-@param extra_writable_bytes Indicate how many bytes after len are writable.
-                            This is to indicate your consent that bp must be
-                            large enough.
 */
-void mqc_init_dec(mqcoder *mqc, uint8_t *bp, uint32_t len,
-                      uint32_t extra_writable_bytes);
+void mqc_init_dec(mqcoder *mqc, uint8_t *bp, uint32_t len);
 
 /**
 Initialize the decoder for RAW decoding.
@@ -158,12 +154,8 @@ passes, so as to restore the bytes temporarily overwritten.
           So bp must be at least len + OPJ_COMMON_CBLK_DATA_EXTRA large, and
           writable.
 @param len Length of the input buffer
-@param extra_writable_bytes Indicate how many bytes after len are writable.
-                            This is to indicate your consent that bp must be
-                            large enough.
 */
-void mqc_raw_init_dec(mqcoder *mqc, uint8_t *bp, uint32_t len,
-                          uint32_t extra_writable_bytes);
+void mqc_raw_init_dec(mqcoder *mqc, uint8_t *bp, uint32_t len);
 
 
 /**

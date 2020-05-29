@@ -29,8 +29,16 @@
 #endif /* defined(<Compiler>) */
 #endif /* INLINE */
 
+/////////////////
+// buffer padding
+
+// decode
 /**< Space for a fake FFFF marker */
-const uint8_t grk_cblk_compressed_data_pad_right = 2;
+const uint8_t grk_cblk_dec_compressed_data_pad_right = 2;
+
+// encode
+const uint8_t grk_cblk_enc_compressed_data_pad_left = 2;
+////////////////////////////////////////////////////////
 
 #include <math.h>
 #include <assert.h>

@@ -140,7 +140,7 @@ bool T1Part1::decompress(decodeBlockInfo *block) {
 		return true;
 
 	auto min_buf_vec = &cblk->seg_buffers;
-	size_t total_seg_len = min_buf_vec->get_len() + grk_cblk_compressed_data_pad_right;
+	size_t total_seg_len = min_buf_vec->get_len() + grk_cblk_dec_compressed_data_pad_right;
 	if (t1->cblkdatabuffersize < total_seg_len) {
 		uint8_t *new_block = (uint8_t*) grk_realloc(t1->cblkdatabuffer,
 				total_seg_len);
