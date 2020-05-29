@@ -88,8 +88,6 @@ struct grk_dwt97 {
 	uint8_t odd_top_left_bit;
 };
 
-struct TileComponent;
-
 class dwt97 {
 public:
 

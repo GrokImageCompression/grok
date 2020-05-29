@@ -59,9 +59,6 @@
 
 namespace grk {
 
-struct TileComponent;
-class dwt_utils;
-
 struct grk_dwt53 {
 	int32_t *data;
 	int64_t d_n;
@@ -75,8 +72,6 @@ struct grk_dwt53 {
 class dwt53 {
 public:
 	void encode_line(int32_t* GRK_RESTRICT a, int32_t d_n, int32_t s_n, uint8_t cas);
-
-
 };
 
 }
