@@ -214,19 +214,21 @@ bool T2::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 	if (usePlt)
 		packetLengths->getInit();
 	for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
-		/* if the resolution needed is too low, one dim of the tilec could be equal to zero
+		/* if the resolution needed is too low, one dim of the tilec
+		 * could be equal to zero
 		 * and no packets are used to decode this resolution and
-		 * l_current_pi->resno is always >= p_tile->comps[l_current_pi->compno].minimum_num_resolutions
+		 * current_pi->resno is always >=
+		 * tile->comps[current_pi->compno].minimum_num_resolutions
 		 * and no l_img_comp->resno_decoded are computed
 		 */
 		bool *first_pass_failed = new bool[image->numcomps];
-		for (size_t k = 0; k < image->numcomps; ++k) {
+		for (size_t k = 0; k < image->numcomps; ++k)
 			first_pass_failed[k] = true;
-		}
 
 		auto current_pi = pi + pino;
 		if (current_pi->poc.prg == GRK_PROG_UNKNOWN) {
 			pi_destroy(pi, nb_pocs);
+			delete[] first_pass_failed;
 			GROK_ERROR("decode_packets: Unknown progression order");
 			return false;
 		}
@@ -302,7 +304,6 @@ bool T2::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 									- 1;
 				}
 			}
-
 			//GROK_INFO("T2 Packet length: %d", nb_bytes_read);
 			*p_data_read += nb_bytes_read;
 		}
