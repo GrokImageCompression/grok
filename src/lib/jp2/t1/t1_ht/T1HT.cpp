@@ -46,8 +46,9 @@ T1HT::T1HT(bool isEncoder,
 				allocator( new mem_fixed_allocator),
 				elastic_alloc(new mem_elastic_allocator(1048576))
 {
-	(void) isEncoder;
 	(void) tcp;
+	if (!isEncoder)
+		memset(coded_data,0,grk_cblk_dec_compressed_data_pad_left_ht);
 }
 T1HT::~T1HT() {
    delete[] coded_data;
@@ -147,12 +148,15 @@ bool T1HT::decompress(decodeBlockInfo *block) {
 		delete[] coded_data;
 		coded_data = new uint8_t[total_seg_len];
 		coded_data_size = (uint32_t)total_seg_len;
+		memset(coded_data,0,grk_cblk_dec_compressed_data_pad_left_ht);
 	}
+	uint8_t *actual_coded_data =
+			coded_data + grk_cblk_dec_compressed_data_pad_left_ht;
 	size_t offset = 0;
 	// note: min_buf_vec only contains segments of non-zero length
 	for (size_t i = 0; i < min_buf_vec->size(); ++i) {
 		grk_buf *seg = (grk_buf*) min_buf_vec->get(i);
-		memcpy(coded_data + offset, seg->buf, seg->len);
+		memcpy(actual_coded_data + offset, seg->buf, seg->len);
 		offset += seg->len;
 	}
 
@@ -163,14 +167,15 @@ bool T1HT::decompress(decodeBlockInfo *block) {
 	}
 
    if (num_passes)
-	   ojph_decode_codeblock(coded_data, unencoded_data,
-									   block->k_msbs,
-									   (int)num_passes,
-									   (int)offset,
-									   0,
-									   (int)(cblk->x1 - cblk->x0),
-									   (int)(cblk->y1 - cblk->y0),
-									   (int)(cblk->x1 - cblk->x0));
+	   ojph_decode_codeblock(actual_coded_data,
+							   unencoded_data,
+							   block->k_msbs,
+							   (int)num_passes,
+							   (int)offset,
+							   0,
+							   (int)(cblk->x1 - cblk->x0),
+							   (int)(cblk->y1 - cblk->y0),
+							   (int)(cblk->x1 - cblk->x0));
    else
 	   memset(unencoded_data, 0, (cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0) * sizeof(int32_t));
    return true;
