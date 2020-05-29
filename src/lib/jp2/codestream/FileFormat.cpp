@@ -602,11 +602,13 @@ static bool jp2_read_ihdr(FileFormat *fileFormat, uint8_t *p_image_header_data,
 	grk_read<uint32_t>(p_image_header_data, &(fileFormat->C), 1); /* C */
 	++p_image_header_data;
 
-	/* Should be equal to 7 cf. chapter about image header box of the norm */
+	/* Should be equal to 7 cf. chapter about image header box */
 	if (fileFormat->C != 7) {
-		GROK_WARN(
-				"JP2 IHDR box: compression type indicate that the file is not a conforming JP2 file (%d) ",
+		GROK_ERROR(
+				"JP2 IHDR box: compression type: %d indicates"
+				" a non-conformant JP2 file.",
 				fileFormat->C);
+		return false;
 	}
 
 	grk_read<uint32_t>(p_image_header_data, &(fileFormat->UnkC), 1); /* UnkC */
