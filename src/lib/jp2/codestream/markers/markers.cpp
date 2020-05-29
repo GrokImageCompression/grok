@@ -794,13 +794,11 @@ bool j2k_compare_qcc(CodeStream *codeStream, uint32_t first_comp_no,
  */
 bool j2k_read_qcc(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size) {
-	uint32_t num_comp, comp_no;
-
 	assert(p_header_data != nullptr);
 	assert(codeStream != nullptr);
 
-	num_comp = codeStream->m_private_image->numcomps;
-
+	uint32_t comp_no;
+	uint32_t num_comp = codeStream->m_private_image->numcomps;
 	if (num_comp <= 256) {
 		if (header_size < 1) {
 			GROK_ERROR("Error reading QCC marker");
@@ -820,8 +818,8 @@ bool j2k_read_qcc(CodeStream *codeStream, uint8_t *p_header_data,
 	}
 
 	if (comp_no >= codeStream->m_private_image->numcomps) {
-		GROK_ERROR(
-				"Invalid component number: %d, regarding the number of components %d",
+		GROK_ERROR("QCC component: component number: %d must be less than"
+				" total number of components: %d",
 				comp_no, codeStream->m_private_image->numcomps);
 		return false;
 	}
