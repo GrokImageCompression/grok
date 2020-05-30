@@ -68,8 +68,6 @@ namespace grk {
 /** @name Local static functions */
 /*@{*/
 
-/*static void jp2_write_url( grk_cio  *stream, char *Idx_file);*/
-
 /**
  * Reads a IHDR box - Image Header box
  *
@@ -516,31 +514,6 @@ static bool jp2_read_box_hdr(grk_jp2_box *box, uint32_t *p_number_bytes_read,
 	}
 	return true;
 }
-
-#if 0
-static void jp2_write_url( grk_cio  *stream, char *Idx_file)
-{
-    uint32_t i;
-    grk_jp2_box box;
-
-    box.init_pos = cio_tell(stream);
-    cio_skip(stream, 4);
-    cio_write(stream, JP2_URL, 4);	/* DBTL */
-    cio_write(stream, 0, 1);		/* VERS */
-    cio_write(stream, 0, 3);		/* FLAG */
-
-    if(Idx_file) {
-        for (i = 0; i < strlen(Idx_file); i++) {
-            cio_write(stream, Idx_file[i], 1);
-        }
-    }
-
-    box.length = cio_tell(stream) - box.init_pos;
-    cio_seek(stream, box.init_pos);
-    cio_write(stream, box.length, 4);	/* L */
-    cio_seek(stream, box.init_pos + box.length);
-}
-#endif
 
 static bool jp2_read_ihdr(FileFormat *fileFormat, uint8_t *p_image_header_data,
 		uint32_t image_header_size) {
@@ -993,7 +966,7 @@ static bool jp2_read_bpcc(FileFormat *fileFormat, uint8_t *p_bpc_header_data,
 	return true;
 }
 static uint8_t* jp2_write_cdef(FileFormat *fileFormat, uint32_t *p_nb_bytes_written) {
-	/* room for 8 bytes for box, 2 for n */
+	/* 8 bytes for box, 2 for n */
 	uint32_t cdef_size = 10;
 	uint32_t value;
 	uint16_t i;

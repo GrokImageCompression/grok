@@ -70,7 +70,6 @@ namespace grk {
 #define     JP2_IHDR 0x69686472    /**< Image header box */
 #define     JP2_COLR 0x636f6c72    /**< Colour specification box */
 #define     JP2_JP2C 0x6a703263    /**< Contiguous code stream box */
-#define     JP2_URL  0x75726c20    /**< Data entry URL box */
 #define     JP2_PCLR 0x70636c72    /**< Palette box */
 #define     JP2_CMAP 0x636d6170    /**< Component Mapping box */
 #define     JP2_CDEF 0x63646566    /**< Channel Definition box */
@@ -87,6 +86,7 @@ namespace grk {
 #define JP2_UUID 0x75756964   /**< UUID box */
 #define JP2_UINF 0x75696e66   /**< UUID info box (super-box) */
 #define JP2_ULST 0x756c7374   /**< UUID list box */
+#define JP2_URL  0x75726c20   /**< Data entry URL box */
 
 /* ----------------------------------------------------------------------- */
 
@@ -187,11 +187,6 @@ struct FileFormat {
 	uint32_t numcl;
 	uint32_t *cl;
 	grk_jp2_comps *comps;
-	/* FIXME: The following two variables are used to save offset
-	 as we write out a JP2 file to disk. This mechanism is not flexible
-	 as codec writers will need to extend those fields as new part
-	 of the standard are implemented.
-	 */
 	uint64_t j2k_codestream_offset;
 	bool needs_xl_jp2c_box_length;
 	uint32_t jp2_state;
