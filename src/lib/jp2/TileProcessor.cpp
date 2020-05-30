@@ -83,12 +83,10 @@ TileProcessor::TileProcessor(bool isDecoder) :
 }
 
 TileProcessor::~TileProcessor() {
-	if (!tile)
-		return;
-	delete[] tile->comps;
-	tile->comps = nullptr;
-	grok_free(tile);
-	tile = nullptr;
+	if (tile) {
+		delete[] tile->comps;
+		grok_free(tile);
+	}
 	grok_free(m_marker_scratch);
 	delete plt_markers;
 }
