@@ -65,9 +65,6 @@ TagTree::TagTree(uint64_t mynumleafsh, uint64_t mynumleafsv) :
 				nullptr), nodes_size(0) {
 	int64_t nplh[32];
 	int64_t nplv[32];
-	TagTreeNode *node = nullptr;
-	TagTreeNode *parent_node = nullptr;
-	TagTreeNode *parent_node0 = nullptr;
 	uint64_t i;
 	int64_t j, k;
 	uint64_t numlvls;
@@ -86,17 +83,16 @@ TagTree::TagTree(uint64_t mynumleafsh, uint64_t mynumleafsv) :
 	} while (n > 1);
 
 	if (numnodes == 0) {
-		GROK_WARN(
-				"tgt_create numnodes == 0, no tree created.");
+		GROK_WARN("tgt_create numnodes == 0, no tree created.");
 		throw std::runtime_error("tgt_create numnodes == 0, no tree created");
 	}
 
 	nodes = new TagTreeNode[numnodes];
 	nodes_size = numnodes * sizeof(TagTreeNode);
 
-	node = nodes;
- parent_node = &nodes[numleafsh * numleafsv];
- parent_node0 = parent_node;
+	auto node = nodes;
+	auto parent_node = &nodes[numleafsh * numleafsv];
+	auto parent_node0 = parent_node;
 
 	for (i = 0; i < numlvls - 1; ++i) {
 		for (j = 0; j < nplv[i]; ++j) {
@@ -111,10 +107,10 @@ TagTree::TagTree(uint64_t mynumleafsh, uint64_t mynumleafsv) :
 				++parent_node;
 			}
 			if ((j & 1) || j == nplv[i] - 1) {
-			 parent_node0 = parent_node;
+				parent_node0 = parent_node;
 			} else {
-			 parent_node = parent_node0;
-			 parent_node0 += nplh[i];
+				parent_node = parent_node0;
+				parent_node0 += nplh[i];
 			}
 		}
 	}
@@ -127,19 +123,16 @@ TagTree::~TagTree() {
 }
 
 /**
- * Reinitialises a tag tree from an existing one.
+ * Reinitialise a tag tree from an existing one.
  *
  * @param       num_leafs_h           the width of the array of leafs of the tree
  * @param       num_leafs_v           the height of the array of leafs of the tree
  * @return      a new tag tree if successful, nullptr otherwise
  */
 bool TagTree::init(uint64_t num_leafs_h, uint64_t num_leafs_v) {
-	
+
 	int64_t nplh[32];
 	int64_t nplv[32];
-	TagTreeNode *node = nullptr;
-	TagTreeNode *parent_node = nullptr;
-	TagTreeNode *parent_node0 = nullptr;
 	uint64_t i;
 	int64_t j, k;
 	uint64_t num_levels;
@@ -150,14 +143,14 @@ bool TagTree::init(uint64_t num_leafs_h, uint64_t num_leafs_v) {
 		numleafsh = num_leafs_h;
 		numleafsv = num_leafs_v;
 
-	 num_levels = 0;
-	 nplh[0] = (int64_t) num_leafs_h;
-	 nplv[0] = (int64_t) num_leafs_v;
+		num_levels = 0;
+		nplh[0] = (int64_t) num_leafs_h;
+		nplv[0] = (int64_t) num_leafs_v;
 		numnodes = 0;
 		do {
 			n = (uint64_t) (nplh[num_levels] * nplv[num_levels]);
-		 nplh[num_levels + 1] = (nplh[num_levels] + 1) / 2;
-		 nplv[num_levels + 1] = (nplv[num_levels] + 1) / 2;
+			nplh[num_levels + 1] = (nplh[num_levels] + 1) / 2;
+			nplv[num_levels + 1] = (nplv[num_levels] + 1) / 2;
 			numnodes += n;
 			++num_levels;
 		} while (n > 1);
@@ -165,61 +158,57 @@ bool TagTree::init(uint64_t num_leafs_h, uint64_t num_leafs_v) {
 		if (numnodes == 0) {
 			return false;
 		}
-	 node_size = numnodes * sizeof(TagTreeNode);
+		node_size = numnodes * sizeof(TagTreeNode);
 
 		if (node_size > nodes_size) {
-			TagTreeNode *new_nodes = new TagTreeNode[numnodes];
+			auto new_nodes = new TagTreeNode[numnodes];
 			for (i = 0; i < nodes_size / sizeof(TagTreeNode); ++i)
 				new_nodes[i] = nodes[i];
 			delete[] nodes;
 			nodes = new_nodes;
 			nodes_size = node_size;
 		}
-	 node = nodes;
-	 parent_node = &nodes[numleafsh * numleafsv];
-	 parent_node0 = parent_node;
+		auto node = nodes;
+		auto parent_node = &nodes[numleafsh * numleafsv];
+		auto parent_node0 = parent_node;
 
 		for (i = 0; i < num_levels - 1; ++i) {
 			for (j = 0; j < nplv[i]; ++j) {
 				k = nplh[i];
 				while (--k >= 0) {
-				 node->parent = parent_node;
+					node->parent = parent_node;
 					++node;
 					if (--k >= 0) {
-					 node->parent = parent_node;
+						node->parent = parent_node;
 						++node;
 					}
 					++parent_node;
 				}
 				if ((j & 1) || j == nplv[i] - 1) {
-				 parent_node0 = parent_node;
+					parent_node0 = parent_node;
 				} else {
-				 parent_node = parent_node0;
-				 parent_node0 += nplh[i];
+					parent_node = parent_node0;
+					parent_node0 += nplh[i];
 				}
 			}
 		}
-	 node->parent = 0;
+		node->parent = 0;
 	}
 	reset();
 	return true;
 }
 
 void TagTree::reset() {
-	uint64_t i;
-	auto current_node = nodes;
-
-	for (i = 0; i < numnodes; ++i) {
-	 current_node->value = tag_tree_uninitialized_node_value;
-	 current_node->low = 0;
-	 current_node->known = 0;
-		++current_node;
+	for (uint64_t i = 0; i < numnodes; ++i) {
+		auto current_node = nodes + i;
+		current_node->value = tag_tree_uninitialized_node_value;
+		current_node->low = 0;
+		current_node->known = 0;
 	}
 }
 
 void TagTree::setvalue(uint64_t leafno, int64_t value) {
-	TagTreeNode *node;
-	node = &nodes[leafno];
+	auto node = &nodes[leafno];
 
 	while (node && node->value > value) {
 		node->value = value;
@@ -230,23 +219,21 @@ void TagTree::setvalue(uint64_t leafno, int64_t value) {
 bool TagTree::compress(BitIO *bio, uint64_t leafno, int64_t threshold) {
 	TagTreeNode *stk[31];
 	TagTreeNode **stkptr;
-	TagTreeNode *node;
 	int64_t low;
 
 	stkptr = stk;
-	node = &nodes[leafno];
+	auto node = &nodes[leafno];
 	while (node->parent) {
 		*stkptr++ = node;
 		node = node->parent;
 	}
 
 	low = 0;
-	for (;;) {
-		if (low > node->low) {
+	while (true) {
+		if (low > node->low)
 			node->low = low;
-		} else {
+		else
 			low = node->low;
-		}
 
 		while (low < threshold) {
 			if (low >= node->value) {
@@ -277,6 +264,7 @@ bool TagTree::decompress(BitIO *bio, uint64_t leafno, int64_t threshold,
 	if (!decodeValue(bio, leafno, threshold, &value))
 		return false;
 	*decoded = (value < (uint32_t) threshold) ? 1 : 0;
+
 	return true;
 }
 
@@ -284,40 +272,37 @@ bool TagTree::decodeValue(BitIO *bio, uint64_t leafno, int64_t threshold,
 		uint64_t *value) {
 	TagTreeNode *stk[31];
 	TagTreeNode **stkptr;
-	TagTreeNode *node;
 	int64_t low;
 
 	*value = tag_tree_uninitialized_node_value;
 	stkptr = stk;
-	node = &nodes[leafno];
+	auto node = &nodes[leafno];
 	while (node->parent) {
 		*stkptr++ = node;
 		node = node->parent;
 	}
 	low = 0;
 	for (;;) {
-		if (low > node->low) {
+		if (low > node->low)
 			node->low = low;
-		} else {
+		else
 			low = node->low;
-		}
 		while (low < threshold && low < node->value) {
 			uint32_t temp = 0;
 			if (!bio->read(&temp, 1))
 				return false;
-			if (temp) {
+			if (temp)
 				node->value = low;
-			} else {
+			else
 				++low;
-			}
 		}
 		node->low = low;
-		if (stkptr == stk) {
+		if (stkptr == stk)
 			break;
-		}
 		node = *--stkptr;
 	}
-	*value = (uint64_t)node->value;
+	*value = (uint64_t) node->value;
+
 	return true;
 }
 
