@@ -49,6 +49,7 @@ struct decodeBlockInfo {
 	/* relative code block offset */
 	uint32_t x;
 	uint32_t y;
+	// missing bit planes for all blocks in band
 	uint8_t k_msbs;
 };
 
