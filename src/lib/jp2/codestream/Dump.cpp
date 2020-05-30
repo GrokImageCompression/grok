@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2020 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2020 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -62,13 +62,12 @@
 
 namespace grk {
 
-
 static void j2k_dump_MH_info(CodeStream *codeStream, FILE *out_stream);
 
 static void j2k_dump_MH_index(CodeStream *codeStream, FILE *out_stream);
 
-static void j2k_dump_tile_info(TileCodingParams *default_tile, uint32_t numcomps,
-		FILE *out_stream) {
+static void j2k_dump_tile_info(TileCodingParams *default_tile,
+		uint32_t numcomps, FILE *out_stream) {
 	if (default_tile) {
 		uint32_t compno;
 
@@ -79,7 +78,7 @@ static void j2k_dump_tile_info(TileCodingParams *default_tile, uint32_t numcomps
 		fprintf(out_stream, "\t\t mct=%x\n", default_tile->mct);
 
 		for (compno = 0; compno < numcomps; compno++) {
-			TileComponentCodingParams *tccp = &(default_tile->tccps[compno]);
+			auto tccp = &(default_tile->tccps[compno]);
 			uint32_t resno;
 			uint32_t bandno, numbands;
 
@@ -89,7 +88,7 @@ static void j2k_dump_tile_info(TileCodingParams *default_tile, uint32_t numcomps
 			fprintf(out_stream, "\t\t comp %d {\n", compno);
 			fprintf(out_stream, "\t\t\t csty=%#x\n", tccp->csty);
 			fprintf(out_stream, "\t\t\t numresolutions=%d\n",
-				 tccp->numresolutions);
+					tccp->numresolutions);
 			fprintf(out_stream, "\t\t\t cblkw=2^%d\n", tccp->cblkw);
 			fprintf(out_stream, "\t\t\t cblkh=2^%d\n", tccp->cblkh);
 			fprintf(out_stream, "\t\t\t cblksty=%#x\n", tccp->cblk_sty);
@@ -98,7 +97,7 @@ static void j2k_dump_tile_info(TileCodingParams *default_tile, uint32_t numcomps
 			fprintf(out_stream, "\t\t\t preccintsize (w,h)=");
 			for (resno = 0; resno < tccp->numresolutions; resno++) {
 				fprintf(out_stream, "(%d,%d) ", tccp->prcw[resno],
-					 tccp->prch[resno]);
+						tccp->prch[resno]);
 			}
 			fprintf(out_stream, "\n");
 
@@ -111,7 +110,7 @@ static void j2k_dump_tile_info(TileCodingParams *default_tile, uint32_t numcomps
 							1 : (uint32_t) (tccp->numresolutions * 3 - 2);
 			for (bandno = 0; bandno < numbands; bandno++) {
 				fprintf(out_stream, "(%d,%d) ", tccp->stepsizes[bandno].mant,
-					 tccp->stepsizes[bandno].expn);
+						tccp->stepsizes[bandno].expn);
 			}
 			fprintf(out_stream, "\n");
 
@@ -144,14 +143,13 @@ void j2k_dump(CodeStream *codeStream, int32_t flag, FILE *out_stream) {
 	}
 	/* Dump all tile/code stream info */
 	if (flag & GRK_J2K_TCH_INFO) {
-		uint32_t nb_tiles = codeStream->m_cp.t_grid_height * codeStream->m_cp.t_grid_width;
-		uint32_t i;
-		TileCodingParams *tcp = codeStream->m_cp.tcps;
+		uint32_t nb_tiles = codeStream->m_cp.t_grid_height
+				* codeStream->m_cp.t_grid_width;
 		if (codeStream->m_private_image) {
-			for (i = 0; i < nb_tiles; ++i) {
+			for (uint32_t i = 0; i < nb_tiles; ++i) {
+				auto tcp = codeStream->m_cp.tcps + i;
 				j2k_dump_tile_info(tcp, codeStream->m_private_image->numcomps,
 						out_stream);
-				++tcp;
 			}
 		}
 	}
@@ -162,9 +160,8 @@ void j2k_dump(CodeStream *codeStream, int32_t flag, FILE *out_stream) {
 	}
 
 	/* Dump the code stream index from main header */
-	if (flag & GRK_J2K_MH_IND) {
+	if (flag & GRK_J2K_MH_IND)
 		j2k_dump_MH_index(codeStream, out_stream);
-	}
 
 	/* Dump the code stream index of the current tile */
 	if (flag & GRK_J2K_TH_IND) {
@@ -174,8 +171,8 @@ void j2k_dump(CodeStream *codeStream, int32_t flag, FILE *out_stream) {
 }
 
 static void j2k_dump_MH_index(CodeStream *codeStream, FILE *out_stream) {
-	 grk_codestream_index  *cstr_index = codeStream->cstr_index;
-	uint32_t it_marker, it_tile, it_tile_part;
+	auto cstr_index = codeStream->cstr_index;
+	uint32_t it_marker, i, it_tile_part;
 
 	fprintf(out_stream, "Codestream index from main header: {\n");
 
@@ -203,47 +200,46 @@ static void j2k_dump_MH_index(CodeStream *codeStream, FILE *out_stream) {
 
 		/* Simple test to avoid to write empty information*/
 		uint32_t acc_nb_of_tile_part = 0;
-		for (it_tile = 0; it_tile < cstr_index->nb_of_tiles; it_tile++) {
-		 acc_nb_of_tile_part += cstr_index->tile_index[it_tile].nb_tps;
-		}
+		for (i = 0; i < cstr_index->nb_of_tiles; i++)
+			acc_nb_of_tile_part += cstr_index->tile_index[i].nb_tps;
 
 		if (acc_nb_of_tile_part) {
 			fprintf(out_stream, "\t Tile index: {\n");
 
-			for (it_tile = 0; it_tile < cstr_index->nb_of_tiles; it_tile++) {
+			for (i = 0; i < cstr_index->nb_of_tiles; i++) {
 				uint32_t nb_of_tile_part =
-						cstr_index->tile_index[it_tile].nb_tps;
+						cstr_index->tile_index[i].nb_tps;
 
 				fprintf(out_stream, "\t\t nb of tile-part in tile [%d]=%d\n",
-						it_tile, nb_of_tile_part);
+						i, nb_of_tile_part);
 
-				if (cstr_index->tile_index[it_tile].tp_index) {
+				if (cstr_index->tile_index[i].tp_index) {
 					for (it_tile_part = 0; it_tile_part < nb_of_tile_part;
 							it_tile_part++) {
 						ss.clear();
 						ss << "\t\t\t tile-part[" << it_tile_part << "]:"
 								<< " star_pos="
-								<< cstr_index->tile_index[it_tile].tp_index[it_tile_part].start_pos
+								<< cstr_index->tile_index[i].tp_index[it_tile_part].start_pos
 								<< "," << " end_header="
-								<< cstr_index->tile_index[it_tile].tp_index[it_tile_part].end_header
+								<< cstr_index->tile_index[i].tp_index[it_tile_part].end_header
 								<< "," << " end_pos="
-								<< cstr_index->tile_index[it_tile].tp_index[it_tile_part].end_pos
+								<< cstr_index->tile_index[i].tp_index[it_tile_part].end_pos
 								<< std::endl;
 						fprintf(out_stream, "%s", ss.str().c_str());
 					}
 				}
 
-				if (cstr_index->tile_index[it_tile].marker) {
+				if (cstr_index->tile_index[i].marker) {
 					for (it_marker = 0;
-							it_marker < cstr_index->tile_index[it_tile].marknum;
+							it_marker < cstr_index->tile_index[i].marknum;
 							it_marker++) {
 						ss.clear();
 						ss << "\t\t type="
-								<< cstr_index->tile_index[it_tile].marker[it_marker].type
+								<< cstr_index->tile_index[i].marker[it_marker].type
 								<< "," << " pos="
-								<< cstr_index->tile_index[it_tile].marker[it_marker].pos
+								<< cstr_index->tile_index[i].marker[it_marker].pos
 								<< "," << " len="
-								<< cstr_index->tile_index[it_tile].marker[it_marker].len
+								<< cstr_index->tile_index[i].marker[it_marker].len
 								<< std::endl;
 						fprintf(out_stream, "%s", ss.str().c_str());
 					}
@@ -256,14 +252,14 @@ static void j2k_dump_MH_index(CodeStream *codeStream, FILE *out_stream) {
 }
 
 static void j2k_dump_MH_info(CodeStream *codeStream, FILE *out_stream) {
-
 	fprintf(out_stream, "Codestream info from main header: {\n");
 
 	fprintf(out_stream, "\t tx0=%d, ty0=%d\n", codeStream->m_cp.tx0,
 			codeStream->m_cp.ty0);
 	fprintf(out_stream, "\t tdx=%d, tdy=%d\n", codeStream->m_cp.t_width,
 			codeStream->m_cp.t_height);
-	fprintf(out_stream, "\t tw=%d, th=%d\n", codeStream->m_cp.t_grid_width, codeStream->m_cp.t_grid_height);
+	fprintf(out_stream, "\t tw=%d, th=%d\n", codeStream->m_cp.t_grid_width,
+			codeStream->m_cp.t_grid_height);
 	j2k_dump_tile_info(codeStream->m_specific_param.m_decoder.m_default_tcp,
 			codeStream->m_private_image->numcomps, out_stream);
 	fprintf(out_stream, "}\n");
@@ -301,8 +297,8 @@ void j2k_dump_image_header(grk_image *img_header, bool dev_dump_flag,
 	fprintf(out_stream, "}\n");
 }
 
-void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
-		bool dev_dump_flag, FILE *out_stream) {
+void j2k_dump_image_comp_header(grk_image_comp *comp_header, bool dev_dump_flag,
+		FILE *out_stream) {
 	char tab[3];
 
 	if (dev_dump_flag) {
@@ -323,13 +319,11 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 		fprintf(out_stream, "}\n");
 }
 
- grk_codestream_info_v2  *  j2k_get_cstr_info(CodeStream *codeStream) {
+grk_codestream_info_v2* j2k_get_cstr_info(CodeStream *codeStream) {
 	uint32_t compno;
 	uint32_t numcomps = codeStream->m_private_image->numcomps;
-	TileCodingParams *default_tile;
-	 grk_codestream_info_v2  *cstr_info =
-			( grk_codestream_info_v2  * ) grk_calloc(1,
-					sizeof( grk_codestream_info_v2) );
+	auto cstr_info = (grk_codestream_info_v2*) grk_calloc(1,
+			sizeof(grk_codestream_info_v2));
 	if (!cstr_info)
 		return nullptr;
 
@@ -344,75 +338,73 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 
 	cstr_info->tile_info = nullptr; /* Not fill from the main header*/
 
- default_tile = codeStream->m_specific_param.m_decoder.m_default_tcp;
+	auto default_tile = codeStream->m_specific_param.m_decoder.m_default_tcp;
 
 	cstr_info->m_default_tile_info.csty = default_tile->csty;
 	cstr_info->m_default_tile_info.prg = default_tile->prg;
 	cstr_info->m_default_tile_info.numlayers = default_tile->numlayers;
 	cstr_info->m_default_tile_info.mct = default_tile->mct;
 
-	cstr_info->m_default_tile_info.tccp_info = ( grk_tccp_info  * ) grk_calloc(
-			cstr_info->nbcomps, sizeof( grk_tccp_info) );
+	cstr_info->m_default_tile_info.tccp_info = (grk_tccp_info*) grk_calloc(
+			cstr_info->nbcomps, sizeof(grk_tccp_info));
 	if (!cstr_info->m_default_tile_info.tccp_info) {
 		grk_destroy_cstr_info(&cstr_info);
 		return nullptr;
 	}
 
 	for (compno = 0; compno < numcomps; compno++) {
-		TileComponentCodingParams *tccp = &(default_tile->tccps[compno]);
-		 grk_tccp_info  *tccp_info =
-				&(cstr_info->m_default_tile_info.tccp_info[compno]);
+		auto tccp = &(default_tile->tccps[compno]);
+		auto tccp_info = &(cstr_info->m_default_tile_info.tccp_info[compno]);
 		uint32_t bandno, numbands;
 
 		/* coding style*/
-	 tccp_info->csty = tccp->csty;
-	 tccp_info->numresolutions = tccp->numresolutions;
-	 tccp_info->cblkw = tccp->cblkw;
-	 tccp_info->cblkh = tccp->cblkh;
-	 tccp_info->cblk_sty = tccp->cblk_sty;
-	 tccp_info->qmfbid = tccp->qmfbid;
+		tccp_info->csty = tccp->csty;
+		tccp_info->numresolutions = tccp->numresolutions;
+		tccp_info->cblkw = tccp->cblkw;
+		tccp_info->cblkh = tccp->cblkh;
+		tccp_info->cblk_sty = tccp->cblk_sty;
+		tccp_info->qmfbid = tccp->qmfbid;
 		if (tccp->numresolutions < GRK_J2K_MAXRLVLS) {
 			memcpy(tccp_info->prch, tccp->prch, tccp->numresolutions);
 			memcpy(tccp_info->prcw, tccp->prcw, tccp->numresolutions);
 		}
 
 		/* quantization style*/
-	 tccp_info->qntsty = tccp->qntsty;
-	 tccp_info->numgbits = tccp->numgbits;
+		tccp_info->qntsty = tccp->qntsty;
+		tccp_info->numgbits = tccp->numgbits;
 
 		numbands =
 				(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
 						1 : (tccp->numresolutions * 3 - 2);
 		if (numbands < GRK_J2K_MAXBANDS) {
 			for (bandno = 0; bandno < numbands; bandno++) {
-			 tccp_info->stepsizes_mant[bandno] =
-					 tccp->stepsizes[bandno].mant;
-			 tccp_info->stepsizes_expn[bandno] =
-					 tccp->stepsizes[bandno].expn;
+				tccp_info->stepsizes_mant[bandno] =
+						tccp->stepsizes[bandno].mant;
+				tccp_info->stepsizes_expn[bandno] =
+						tccp->stepsizes[bandno].expn;
 			}
 		}
 
 		/* RGN value*/
-	 tccp_info->roishift = tccp->roishift;
+		tccp_info->roishift = tccp->roishift;
 	}
 
 	return cstr_info;
 }
 
- grk_codestream_index  *  j2k_get_cstr_index(CodeStream *codeStream) {
-	 grk_codestream_index  *cstr_index =
-			( grk_codestream_index  * ) grk_calloc(1,
-					sizeof( grk_codestream_index) );
+grk_codestream_index* j2k_get_cstr_index(CodeStream *codeStream) {
+	auto cstr_index = (grk_codestream_index*) grk_calloc(1,
+			sizeof(grk_codestream_index));
 	if (!cstr_index)
 		return nullptr;
 
- cstr_index->main_head_start = codeStream->cstr_index->main_head_start;
- cstr_index->main_head_end = codeStream->cstr_index->main_head_end;
- cstr_index->codestream_size = codeStream->cstr_index->codestream_size;
+	cstr_index->main_head_start = codeStream->cstr_index->main_head_start;
+	cstr_index->main_head_end = codeStream->cstr_index->main_head_end;
+	cstr_index->codestream_size = codeStream->cstr_index->codestream_size;
 
- cstr_index->marknum = codeStream->cstr_index->marknum;
- cstr_index->marker = ( grk_marker_info  * ) grk_malloc(
-		 cstr_index->marknum * sizeof( grk_marker_info) );
+	cstr_index->marknum = codeStream->cstr_index->marknum;
+	cstr_index->marker = (grk_marker_info*) grk_malloc(
+			cstr_index->marknum * sizeof(grk_marker_info));
 	if (!cstr_index->marker) {
 		grok_free(cstr_index);
 		return nullptr;
@@ -420,15 +412,15 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 
 	if (codeStream->cstr_index->marker)
 		memcpy(cstr_index->marker, codeStream->cstr_index->marker,
-			 cstr_index->marknum * sizeof( grk_marker_info) );
+				cstr_index->marknum * sizeof(grk_marker_info));
 	else {
 		grok_free(cstr_index->marker);
-	 cstr_index->marker = nullptr;
+		cstr_index->marker = nullptr;
 	}
 
- cstr_index->nb_of_tiles = codeStream->cstr_index->nb_of_tiles;
- cstr_index->tile_index = ( grk_tile_index  * ) grk_calloc(
-		 cstr_index->nb_of_tiles, sizeof( grk_tile_index) );
+	cstr_index->nb_of_tiles = codeStream->cstr_index->nb_of_tiles;
+	cstr_index->tile_index = (grk_tile_index*) grk_calloc(
+			cstr_index->nb_of_tiles, sizeof(grk_tile_index));
 	if (!cstr_index->tile_index) {
 		grok_free(cstr_index->marker);
 		grok_free(cstr_index);
@@ -437,56 +429,54 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 
 	if (!codeStream->cstr_index->tile_index) {
 		grok_free(cstr_index->tile_index);
-	 cstr_index->tile_index = nullptr;
+		cstr_index->tile_index = nullptr;
 	} else {
-		uint32_t it_tile = 0;
-		for (it_tile = 0; it_tile < cstr_index->nb_of_tiles; it_tile++) {
+		for (uint32_t i = 0; i < cstr_index->nb_of_tiles; i++) {
 
 			/* Tile Marker*/
-		 cstr_index->tile_index[it_tile].marknum =
-					codeStream->cstr_index->tile_index[it_tile].marknum;
+			cstr_index->tile_index[i].marknum =
+					codeStream->cstr_index->tile_index[i].marknum;
 
-		 cstr_index->tile_index[it_tile].marker =
-					( grk_marker_info  * ) grk_malloc(
-						 cstr_index->tile_index[it_tile].marknum
-									* sizeof( grk_marker_info) );
+			cstr_index->tile_index[i].marker =
+					(grk_marker_info*) grk_malloc(
+							cstr_index->tile_index[i].marknum
+									* sizeof(grk_marker_info));
 
-			if (!cstr_index->tile_index[it_tile].marker) {
-				uint32_t it_tile_free;
-
-				for (it_tile_free = 0; it_tile_free < it_tile; it_tile_free++) {
+			if (!cstr_index->tile_index[i].marker) {
+				for (uint32_t it_tile_free = 0;
+						it_tile_free < i; it_tile_free++)
 					grok_free(cstr_index->tile_index[it_tile_free].marker);
-				}
 
 				grok_free(cstr_index->tile_index);
 				grok_free(cstr_index->marker);
 				grok_free(cstr_index);
+
 				return nullptr;
 			}
 
-			if (codeStream->cstr_index->tile_index[it_tile].marker)
-				memcpy(cstr_index->tile_index[it_tile].marker,
-						codeStream->cstr_index->tile_index[it_tile].marker,
-					 cstr_index->tile_index[it_tile].marknum
-								* sizeof( grk_marker_info) );
+			if (codeStream->cstr_index->tile_index[i].marker)
+				memcpy(cstr_index->tile_index[i].marker,
+						codeStream->cstr_index->tile_index[i].marker,
+						cstr_index->tile_index[i].marknum
+								* sizeof(grk_marker_info));
 			else {
-				grok_free(cstr_index->tile_index[it_tile].marker);
-			 cstr_index->tile_index[it_tile].marker = nullptr;
+				grok_free(cstr_index->tile_index[i].marker);
+				cstr_index->tile_index[i].marker = nullptr;
 			}
 
 			/* Tile part index*/
-		 cstr_index->tile_index[it_tile].nb_tps =
-					codeStream->cstr_index->tile_index[it_tile].nb_tps;
+			cstr_index->tile_index[i].nb_tps =
+					codeStream->cstr_index->tile_index[i].nb_tps;
 
-		 cstr_index->tile_index[it_tile].tp_index =
-					( grk_tp_index  * ) grk_malloc(
-						 cstr_index->tile_index[it_tile].nb_tps
-									* sizeof( grk_tp_index) );
+			cstr_index->tile_index[i].tp_index =
+					(grk_tp_index*) grk_malloc(
+							cstr_index->tile_index[i].nb_tps
+									* sizeof(grk_tp_index));
 
-			if (!cstr_index->tile_index[it_tile].tp_index) {
+			if (!cstr_index->tile_index[i].tp_index) {
 				uint32_t it_tile_free;
 
-				for (it_tile_free = 0; it_tile_free < it_tile; it_tile_free++) {
+				for (it_tile_free = 0; it_tile_free < i; it_tile_free++) {
 					grok_free(cstr_index->tile_index[it_tile_free].marker);
 					grok_free(cstr_index->tile_index[it_tile_free].tp_index);
 				}
@@ -497,19 +487,19 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 				return nullptr;
 			}
 
-			if (codeStream->cstr_index->tile_index[it_tile].tp_index) {
-				memcpy(cstr_index->tile_index[it_tile].tp_index,
-						codeStream->cstr_index->tile_index[it_tile].tp_index,
-					 cstr_index->tile_index[it_tile].nb_tps
-								* sizeof( grk_tp_index) );
+			if (codeStream->cstr_index->tile_index[i].tp_index) {
+				memcpy(cstr_index->tile_index[i].tp_index,
+						codeStream->cstr_index->tile_index[i].tp_index,
+						cstr_index->tile_index[i].nb_tps
+								* sizeof(grk_tp_index));
 			} else {
-				grok_free(cstr_index->tile_index[it_tile].tp_index);
-			 cstr_index->tile_index[it_tile].tp_index = nullptr;
+				grok_free(cstr_index->tile_index[i].tp_index);
+				cstr_index->tile_index[i].tp_index = nullptr;
 			}
 
 			/* Packet index (NOT USED)*/
-		 cstr_index->tile_index[it_tile].nb_packet = 0;
-		 cstr_index->tile_index[it_tile].packet_index = nullptr;
+			cstr_index->tile_index[i].nb_packet = 0;
+			cstr_index->tile_index[i].packet_index = nullptr;
 
 		}
 	}
@@ -517,57 +507,54 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 }
 
 bool j2k_allocate_tile_element_cstr_index(CodeStream *codeStream) {
-	uint32_t it_tile = 0;
-
-	codeStream->cstr_index->nb_of_tiles = codeStream->m_cp.t_grid_width * codeStream->m_cp.t_grid_height;
-	codeStream->cstr_index->tile_index = ( grk_tile_index  * ) grk_calloc(
-			codeStream->cstr_index->nb_of_tiles, sizeof( grk_tile_index) );
+	codeStream->cstr_index->nb_of_tiles = codeStream->m_cp.t_grid_width
+			* codeStream->m_cp.t_grid_height;
+	codeStream->cstr_index->tile_index = (grk_tile_index*) grk_calloc(
+			codeStream->cstr_index->nb_of_tiles, sizeof(grk_tile_index));
 	if (!codeStream->cstr_index->tile_index)
 		return false;
 
-	for (it_tile = 0; it_tile < codeStream->cstr_index->nb_of_tiles; it_tile++) {
-		codeStream->cstr_index->tile_index[it_tile].maxmarknum = 100;
-		codeStream->cstr_index->tile_index[it_tile].marknum = 0;
-		codeStream->cstr_index->tile_index[it_tile].marker =
-				( grk_marker_info  * ) grk_calloc(codeStream->cstr_index->tile_index[it_tile].maxmarknum,
-						sizeof( grk_marker_info) );
-		if (!codeStream->cstr_index->tile_index[it_tile].marker)
+	for (uint32_t i = 0; i < codeStream->cstr_index->nb_of_tiles;
+			i++) {
+		codeStream->cstr_index->tile_index[i].maxmarknum = 100;
+		codeStream->cstr_index->tile_index[i].marknum = 0;
+		codeStream->cstr_index->tile_index[i].marker =
+				(grk_marker_info*) grk_calloc(
+						codeStream->cstr_index->tile_index[i].maxmarknum,
+						sizeof(grk_marker_info));
+		if (!codeStream->cstr_index->tile_index[i].marker)
 			return false;
 	}
 	return true;
 }
 
-
-grk_codestream_index  *  j2k_create_cstr_index(void) {
-	 grk_codestream_index  *cstr_index = ( grk_codestream_index  * ) grk_calloc(
-			1, sizeof( grk_codestream_index) );
+grk_codestream_index* j2k_create_cstr_index(void) {
+	auto cstr_index = (grk_codestream_index*) grk_calloc(1,
+			sizeof(grk_codestream_index));
 	if (!cstr_index)
 		return nullptr;
 
 	cstr_index->maxmarknum = 100;
 	cstr_index->marknum = 0;
-	cstr_index->marker = ( grk_marker_info  * ) grk_calloc(
-			cstr_index->maxmarknum, sizeof( grk_marker_info) );
+	cstr_index->marker = (grk_marker_info*) grk_calloc(cstr_index->maxmarknum,
+			sizeof(grk_marker_info));
 	if (!cstr_index->marker) {
 		grok_free(cstr_index);
 		return nullptr;
 	}
-
 	cstr_index->tile_index = nullptr;
 
 	return cstr_index;
 }
 
-void j2k_destroy_cstr_index( grk_codestream_index  *p_cstr_ind) {
+void j2k_destroy_cstr_index(grk_codestream_index *p_cstr_ind) {
 	if (p_cstr_ind) {
 		grok_free(p_cstr_ind->marker);
 		if (p_cstr_ind->tile_index) {
-			uint32_t it_tile = 0;
-
-			for (it_tile = 0; it_tile < p_cstr_ind->nb_of_tiles; it_tile++) {
-				grok_free(p_cstr_ind->tile_index[it_tile].packet_index);
-				grok_free(p_cstr_ind->tile_index[it_tile].tp_index);
-				grok_free(p_cstr_ind->tile_index[it_tile].marker);
+			for (uint32_t i = 0; i < p_cstr_ind->nb_of_tiles; i++) {
+				grok_free(p_cstr_ind->tile_index[i].packet_index);
+				grok_free(p_cstr_ind->tile_index[i].tp_index);
+				grok_free(p_cstr_ind->tile_index[i].marker);
 			}
 			grok_free(p_cstr_ind->tile_index);
 		}
@@ -576,9 +563,7 @@ void j2k_destroy_cstr_index( grk_codestream_index  *p_cstr_ind) {
 }
 
 void jp2_dump(FileFormat *fileFormat, int32_t flag, FILE *out_stream) {
-
 	assert(fileFormat != nullptr);
-
 	j2k_dump(fileFormat->j2k, flag, out_stream);
 }
 
