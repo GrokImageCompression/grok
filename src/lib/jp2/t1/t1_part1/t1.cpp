@@ -1119,7 +1119,7 @@ bool t1_decode_cblk(t1_info *t1, cblk_dec_t *cblk, uint32_t orient,
 					(int) (mqc->end - mqc->start));
 		} else if (mqc->end_of_byte_stream_counter > 2) {
 			grk::GROK_WARN(
-					"PTERM check failure: %d synthetized 0xFF markers read",
+					"PTERM check failure: %d synthesized 0xFF markers read",
 					mqc->end_of_byte_stream_counter);
 		}
 	}
@@ -1149,7 +1149,7 @@ static int t1_enc_is_term_pass(cblk_enc_t *cblk, uint32_t cblksty,
 }
 
 /**
- * Deallocates the encoding data of the given precinct.
+ * Deallocate the encoding data of the given precinct.
  */
 void t1_code_block_enc_deallocate(cblk_enc_t *code_block) {
 	grk::grok_free(code_block->layers);

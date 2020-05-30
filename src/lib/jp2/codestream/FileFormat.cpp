@@ -774,8 +774,11 @@ static bool jp2_read_res_box(uint32_t *id, uint32_t *num, uint32_t *den,
 	grk_read<uint32_t>(*p_resolution_data, den, 2);
 	*p_resolution_data += 2;
 
-	grk_read<uint32_t>(*p_resolution_data++, exponent + 1, 1);
-	grk_read<uint32_t>(*p_resolution_data++, exponent, 1);
+	grk_read<uint32_t>(*p_resolution_data, exponent + 1, 1);
+	*p_resolution_data += 1;
+
+	grk_read<uint32_t>(*p_resolution_data, exponent, 1);
+	*p_resolution_data += 1;
 
 	return true;
 
