@@ -2963,24 +2963,20 @@ bool jp2_read_header(BufferedStream *stream, FileFormat *fileFormat,
 	assert(stream != nullptr);
 
 	/* customization of the validation */
-	if (!jp2_init_decompress_validation(fileFormat)) {
+	if (!jp2_init_decompress_validation(fileFormat))
 		return false;
-	}
 
 	/* customization of the encoding */
-	if (!jp2_init_header_reading(fileFormat)) {
+	if (!jp2_init_header_reading(fileFormat))
 		return false;
-	}
 
 	/* validation of the parameters codec */
-	if (!jp2_exec(fileFormat, fileFormat->m_validation_list, stream)) {
+	if (!jp2_exec(fileFormat, fileFormat->m_validation_list, stream))
 		return false;
-	}
 
 	/* read header */
-	if (!jp2_exec(fileFormat, fileFormat->m_procedure_list, stream)) {
+	if (!jp2_exec(fileFormat, fileFormat->m_procedure_list, stream))
 		return false;
-	}
 
 	if (header_info) {
 		header_info->enumcs = fileFormat->enumcs;
@@ -3003,6 +2999,8 @@ bool jp2_read_header(BufferedStream *stream, FileFormat *fileFormat,
 	}
 
 	bool rc = j2k_read_header(stream, fileFormat->j2k, header_info, p_image);
+	if (!rc)
+		return false;
 
 	if (*p_image) {
 		for (int i = 0; i < 2; ++i) {
@@ -3010,7 +3008,7 @@ bool jp2_read_header(BufferedStream *stream, FileFormat *fileFormat,
 			(*p_image)->display_resolution[i] = fileFormat->display_resolution[i];
 		}
 	}
-	return rc;
+	return true;
 }
 
 static bool jp2_init_compress_validation(FileFormat *fileFormat) {
