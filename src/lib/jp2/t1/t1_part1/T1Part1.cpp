@@ -218,7 +218,7 @@ void T1Part1::post_decode(t1_info *t1,
 						decodeBlockInfo *block) {
 	uint32_t roishift = block->roishift;
 	uint32_t qmfbid = block->qmfbid;
-	float stepsize = block->stepsize;
+	float stepsize_over_two = block->stepsize/2.0;
 	int32_t *tilec_data = block->tiledp;
 	uint32_t tile_w = block->tilec->width();
 	bool whole_tile_decoding = block->tilec->whole_tile_decoding;
@@ -267,7 +267,7 @@ void T1Part1::post_decode(t1_info *t1,
 			for (uint32_t j = 0; j < cblk_h; ++j) {
 				float *GRK_RESTRICT tiledp2 = tiledp;
 				for (uint32_t i = 0; i < cblk_w; ++i) {
-					float tmp = (float) (*src) * stepsize;
+					float tmp = (float) (*src) * stepsize_over_two;
 					*tiledp2 = tmp;
 					src++;
 					tiledp2++;
@@ -316,7 +316,7 @@ void T1Part1::post_decode(t1_info *t1,
 			for (uint32_t j = 0; j < cblk_h; ++j) {
 				float *GRK_RESTRICT tiledp2 = tiledp;
 				for (uint32_t i = 0; i < cblk_w; ++i) {
-					float tmp = (float) (*src) * stepsize;
+					float tmp = (float) (*src) * stepsize_over_two;
 					*tiledp2 = tmp;
 					src++;
 					tiledp2++;

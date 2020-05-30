@@ -68,7 +68,7 @@ void Quantizer::setBandStepSizeAndBps(TileCodingParams *tcp,
 						   uint8_t bandno,
 							TileComponentCodingParams *tccp,
 							uint32_t image_precision,
-							float fraction){
+							bool encode){
 
 	uint32_t gain = 0;
 	if (tccp->qmfbid == 1) {
@@ -83,8 +83,7 @@ void Quantizer::setBandStepSizeAndBps(TileCodingParams *tcp,
 	auto offset = (resno == 0) ? 0 : 3*resno - 2;
 	auto step_size = tccp->stepsizes + offset + bandno;
 	band->stepsize = (float) (((1.0 + step_size->mant / 2048.0)
-			* pow(2.0, (int32_t) (numbps - step_size->expn))))
-			* fraction;
+			* pow(2.0, (int32_t) (numbps - step_size->expn))));
 
 	// see Taubman + Marcellin - Equation 10.22
 	band->numbps = tccp->roishift
@@ -98,12 +97,9 @@ void Quantizer::setBandStepSizeAndBps(TileCodingParams *tcp,
 	band->inv_step = (uint32_t)((8192.0/band->stepsize) + 0.5f);
 
 	if (tcp->isHT){
-		 // decompress
-		 if (fraction == 0.5 && tccp->qmfbid == 0) {
-			 // HT uses (K_max+1) rather than K_max
-			 // 31 - (K_max + 1) == 30 - band->numbps
-			 band->stepsize /=(float)(1u << (30 - band->numbps));
-		 }
+		// lossy decode
+		 if (!encode && tccp->qmfbid == 0)
+			 band->stepsize /=(float)(1u << (31 - band->numbps));
 	}
 }
 

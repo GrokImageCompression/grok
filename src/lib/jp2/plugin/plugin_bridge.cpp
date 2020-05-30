@@ -36,7 +36,8 @@ void decode_synch_plugin_with_host(TileProcessor *tcd) {
 					auto band = &res->bands[bandno];
 					auto plugin_band = plugin_res->bands[bandno];
 					assert(plugin_band->numPrecincts == (uint64_t)res->pw * res->ph);
-					plugin_band->stepsize = band->stepsize;
+					//!!!! plugin still uses stepsize/2
+					plugin_band->stepsize = band->stepsize/2;
 					for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph;
 							precno++) {
 						auto prc = &band->precincts[precno];

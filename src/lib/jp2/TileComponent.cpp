@@ -327,7 +327,7 @@ bool TileComponent::init(bool isEncoder,
 												(uint8_t)bandno,
 												tccp,
 												image_comp->prec,
-												m_is_encoder ? 1.0f : 0.5f);
+												m_is_encoder);
 
 			if (!band->precincts && (nb_precincts > 0U)) {
 				band->precincts = new grk_precinct[nb_precincts];

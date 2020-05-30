@@ -96,7 +96,7 @@ public:
 								 uint8_t bandno,
 								TileComponentCodingParams *tccp,
 								uint32_t image_precision,
-								float fraction);
+								bool encode);
 
 
 	uint32_t get_SQcd_SQcc_size(CodeStream *codeStream, uint16_t tile_no,
