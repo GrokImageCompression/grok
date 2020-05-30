@@ -493,9 +493,7 @@ bool j2k_read_cod(CodeStream *codeStream, uint8_t *p_header_data,
 		GROK_ERROR("Error reading COD marker");
 		return false;
 	}
-
-	grk_read<uint32_t>(p_header_data, &tcp->csty, 1); /* Scod */
-	++p_header_data;
+	grk_read<uint32_t>(p_header_data++, &tcp->csty, 1); /* Scod */
 	/* Make sure we know how to decompress this */
 	if ((tcp->csty
 			& ~(uint32_t) (J2K_CP_CSTY_PRT | J2K_CP_CSTY_SOP | J2K_CP_CSTY_EPH))
@@ -503,8 +501,7 @@ bool j2k_read_cod(CodeStream *codeStream, uint8_t *p_header_data,
 		GROK_ERROR("Unknown Scod value in COD marker");
 		return false;
 	}
-	grk_read<uint32_t>(p_header_data, &tmp, 1); /* SGcod (A) */
-	++p_header_data;
+	grk_read<uint32_t>(p_header_data++, &tmp, 1); /* SGcod (A) */
 	tcp->prg = (GRK_PROG_ORDER) tmp;
 	/* Make sure progression order is valid */
 	if (tcp->prg > GRK_CPRL) {
@@ -528,8 +525,7 @@ bool j2k_read_cod(CodeStream *codeStream, uint8_t *p_header_data,
 		tcp->num_layers_to_decode = tcp->numlayers;
 	}
 
-	grk_read<uint32_t>(p_header_data, &tcp->mct, 1); /* SGcod (C) */
-	++p_header_data;
+	grk_read<uint32_t>(p_header_data++, &tcp->mct, 1); /* SGcod (C) */
 	if (tcp->mct > 1) {
 		GROK_ERROR("Invalid MCT value : %d. Should be either 0 or 1", tcp->mct);
 		return false;
@@ -548,7 +544,6 @@ bool j2k_read_cod(CodeStream *codeStream, uint8_t *p_header_data,
 		GROK_ERROR("Error reading COD marker");
 		return false;
 	}
-
 	/* Apply the coding style to other components of the current tile or the m_default_tcp*/
 	j2k_copy_tile_component_parameters(codeStream);
 
@@ -564,10 +559,11 @@ static void j2k_copy_tile_component_parameters(CodeStream *codeStream) {
 
 	auto tcp = codeStream->get_current_decode_tcp();
 	auto ref_tccp = &tcp->tccps[0];
-	auto copied_tccp = ref_tccp + 1;
 	prc_size = ref_tccp->numresolutions * (uint32_t) sizeof(uint32_t);
 
 	for (i = 1; i < codeStream->m_private_image->numcomps; ++i) {
+		auto copied_tccp = ref_tccp + i;
+
 		copied_tccp->numresolutions = ref_tccp->numresolutions;
 		copied_tccp->cblkw = ref_tccp->cblkw;
 		copied_tccp->cblkh = ref_tccp->cblkh;
@@ -575,7 +571,6 @@ static void j2k_copy_tile_component_parameters(CodeStream *codeStream) {
 		copied_tccp->qmfbid = ref_tccp->qmfbid;
 		memcpy(copied_tccp->prcw, ref_tccp->prcw, prc_size);
 		memcpy(copied_tccp->prch, ref_tccp->prch, prc_size);
-		++copied_tccp;
 	}
 }
 
@@ -622,17 +617,14 @@ bool j2k_write_coc(CodeStream *codeStream, uint32_t comp_no,
 
 bool j2k_compare_coc(CodeStream *codeStream, uint32_t first_comp_no,
 		uint32_t second_comp_no) {
-	CodingParams *cp = nullptr;
-	TileCodingParams *tcp = nullptr;
-
 	assert(codeStream != nullptr);
 
-	cp = &(codeStream->m_cp);
-	tcp = &cp->tcps[codeStream->m_tileProcessor->m_current_tile_index];
+	auto cp = &(codeStream->m_cp);
+	auto tcp = &cp->tcps[codeStream->m_tileProcessor->m_current_tile_index];
 
-	if (tcp->tccps[first_comp_no].csty != tcp->tccps[second_comp_no].csty) {
+	if (tcp->tccps[first_comp_no].csty != tcp->tccps[second_comp_no].csty)
 		return false;
-	}
+
 	return j2k_compare_SPCod_SPCoc(codeStream,
 			codeStream->m_tileProcessor->m_current_tile_index, first_comp_no,
 			second_comp_no);
@@ -804,8 +796,7 @@ bool j2k_read_qcc(CodeStream *codeStream, uint8_t *p_header_data,
 			GROK_ERROR("Error reading QCC marker");
 			return false;
 		}
-		grk_read<uint32_t>(p_header_data, &comp_no, 1);
-		++p_header_data;
+		grk_read<uint32_t>(p_header_data++, &comp_no, 1);
 		--header_size;
 	} else {
 		if (header_size < 2) {
@@ -864,8 +855,8 @@ bool j2k_write_poc(CodeStream *codeStream, BufferedStream *stream) {
 	if (!stream->write_short((uint16_t) (poc_size - 2)))
 		return false;
 
-	auto current_poc = tcp->pocs;
 	for (uint32_t i = 0; i < nb_poc; ++i) {
+		auto current_poc = tcp->pocs + i;
 		/* RSpoc_i */
 		if (!stream->write_byte((uint8_t) current_poc->resno0))
 			return false;
@@ -897,8 +888,6 @@ bool j2k_write_poc(CodeStream *codeStream, BufferedStream *stream) {
 				tccp->numresolutions);
 		current_poc->compno1 = std::min<uint32_t>(current_poc->compno1,
 				nb_comp);
-
-		++current_poc;
 	}
 
 	return true;
@@ -967,8 +956,7 @@ bool j2k_read_poc(CodeStream *codeStream, uint8_t *p_header_data,
 		grk_read<uint32_t>(p_header_data, &(current_poc->compno1), comp_room);
 		p_header_data += comp_room;
 		/* Ppoc_i */
-		grk_read<uint32_t>(p_header_data, &tmp, 1);
-		++p_header_data;
+		grk_read<uint32_t>(p_header_data++, &tmp, 1);
 		current_poc->prg = (GRK_PROG_ORDER) tmp;
 		/* make sure comp is in acceptable bounds */
 		current_poc->compno1 = std::min<uint32_t>(current_poc->compno1,
@@ -1108,8 +1096,7 @@ bool j2k_read_ppt(CodeStream *codeStream, uint8_t *p_header_data,
 	tcp->ppt = true;
 
 	/* Z_ppt */
-	grk_read<uint32_t>(p_header_data, &Z_ppt, 1);
-	++p_header_data;
+	grk_read<uint32_t>(p_header_data++, &Z_ppt, 1);
 	--header_size;
 
 	/* check allocation needed */
@@ -1125,9 +1112,9 @@ bool j2k_read_ppt(CodeStream *codeStream, uint8_t *p_header_data,
 		tcp->ppt_markers_count = newCount;
 	} else if (tcp->ppt_markers_count <= Z_ppt) {
 		uint32_t newCount = Z_ppt + 1U; /* can't overflow, Z_ppt is UINT8 */
-		grk_ppx *new_ppt_markers;
-		new_ppt_markers = (grk_ppx*) grk_realloc(tcp->ppt_markers,
+		auto new_ppt_markers = (grk_ppx*) grk_realloc(tcp->ppt_markers,
 				newCount * sizeof(grk_ppx));
+
 		if (new_ppt_markers == nullptr) {
 			/* clean up to be done on tcp destruction */
 			GROK_ERROR("Not enough memory to read PPT marker");
@@ -1205,12 +1192,14 @@ bool j2k_merge_ppt(TileCodingParams *p_tcp) {
 
 	p_tcp->ppt_data = p_tcp->ppt_buffer;
 	p_tcp->ppt_data_size = p_tcp->ppt_len;
+
 	return true;
 }
 
 bool j2k_read_sot(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size) {
 	SOTMarker sot;
+
 	return sot.read(codeStream, p_header_data, header_size);
 }
 
@@ -1220,7 +1209,7 @@ bool j2k_read_sod(CodeStream *codeStream, BufferedStream *stream) {
 	auto tileProcessor = codeStream->m_tileProcessor;
 
 	// note: we subtract 2 to account for SOD marker
-	TileCodingParams *tcp = codeStream->get_current_decode_tcp();
+	auto tcp = codeStream->get_current_decode_tcp();
 	if (codeStream->m_specific_param.m_decoder.m_last_tile_part) {
 		tileProcessor->tile_part_data_length =
 				(uint32_t) (stream->get_number_byte_left() - 2);
@@ -1375,13 +1364,12 @@ bool j2k_read_rgn(CodeStream *codeStream, uint8_t *p_header_data,
 	grk_read<uint32_t>(p_header_data, &comp_no, comp_room);
 	p_header_data += comp_room;
 	/* Srgn */
-	grk_read<uint32_t>(p_header_data, &roi_sty, 1);
+	grk_read<uint32_t>(p_header_data++, &roi_sty, 1);
 	if (roi_sty != 0) {
 		GROK_WARN(
 				"RGN marker RS value of %d is not supported by JPEG 2000 Part 1",
 				roi_sty);
 	}
-	++p_header_data;
 
 	/* testcase 3635.pdf.asan.77.2930 */
 	if (comp_no >= nb_comp) {
@@ -1460,14 +1448,13 @@ bool j2k_write_regions(CodeStream *codeStream, BufferedStream *stream) {
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
 
-	auto tccp = codeStream->m_cp.tcps->tccps;
 	for (compno = 0; compno < codeStream->m_private_image->numcomps; ++compno) {
+		auto tccp = codeStream->m_cp.tcps->tccps + compno;
 		if (tccp->roishift) {
 			if (!j2k_write_rgn(codeStream, 0, compno,
 					codeStream->m_private_image->numcomps, stream))
 				return false;
 		}
-		++tccp;
 	}
 
 	return true;
@@ -1769,7 +1756,6 @@ bool j2k_read_mcc(CodeStream *codeStream, uint8_t *p_header_data,
 		GROK_WARN("Cannot take in charge multiple data spanning");
 		return true;
 	}
-
 	if (header_size < 7) {
 		GROK_ERROR("Error reading MCC marker");
 		return false;
@@ -1842,16 +1828,13 @@ bool j2k_read_mcc(CodeStream *codeStream, uint8_t *p_header_data,
 			GROK_ERROR("Error reading MCC marker");
 			return false;
 		}
-
-		grk_read<uint32_t>(p_header_data, &tmp, 1); /* Xmcci type of component transformation -> array based decorrelation */
-		++p_header_data;
+		grk_read<uint32_t>(p_header_data++, &tmp, 1); /* Xmcci type of component transformation -> array based decorrelation */
 
 		if (tmp != 1) {
 			GROK_WARN(
 					"Cannot take in charge collections other than array decorrelation");
 			return true;
 		}
-
 		grk_read<uint32_t>(p_header_data, &nb_comps, 2);
 
 		p_header_data += 2;
@@ -1921,13 +1904,12 @@ bool j2k_read_mcc(CodeStream *codeStream, uint8_t *p_header_data,
 
 		indix = tmp & 0xff;
 		if (indix != 0) {
-			auto mct_data = tcp->m_mct_records;
 			for (j = 0; j < tcp->m_nb_mct_records; ++j) {
+				auto mct_data = tcp->m_mct_records + j;
 				if (mct_data->m_index == indix) {
 					mcc_record->m_decorrelation_array = mct_data;
 					break;
 				}
-				++mct_data;
 			}
 
 			if (mcc_record->m_decorrelation_array == nullptr) {
@@ -1938,13 +1920,12 @@ bool j2k_read_mcc(CodeStream *codeStream, uint8_t *p_header_data,
 
 		indix = (tmp >> 8) & 0xff;
 		if (indix != 0) {
-			auto mct_data = tcp->m_mct_records;
 			for (j = 0; j < tcp->m_nb_mct_records; ++j) {
+				auto mct_data = tcp->m_mct_records + j;
 				if (mct_data->m_index == indix) {
 					mcc_record->m_offset_array = mct_data;
 					break;
 				}
-				++mct_data;
 			}
 
 			if (mcc_record->m_offset_array == nullptr) {
@@ -2034,12 +2015,9 @@ bool j2k_read_mco(CodeStream *codeStream, uint8_t *p_header_data,
 		GROK_WARN("Error reading MCO marker");
 		return false;
 	}
-
-	auto tccp = tcp->tccps;
-
 	for (i = 0; i < image->numcomps; ++i) {
+		auto tccp = tcp->tccps + i;
 		tccp->m_dc_level_shift = 0;
-		++tccp;
 	}
 	grok_free(tcp->m_mct_decoding_matrix);
 	tcp->m_mct_decoding_matrix = nullptr;
@@ -2059,7 +2037,6 @@ bool j2k_add_mct(TileCodingParams *p_tcp, grk_image *p_image, uint32_t index) {
 	uint32_t i;
 	uint32_t data_size, mct_size, offset_size;
 	uint32_t nb_elem;
-	TileComponentCodingParams *tccp;
 
 	assert(p_tcp != nullptr);
 
@@ -2117,14 +2094,12 @@ bool j2k_add_mct(TileCodingParams *p_tcp, grk_image *p_image, uint32_t index) {
 		j2k_mct_read_functions_to_int32[offset_array->m_element_type](
 				offset_array->m_data, offset_data, nb_elem);
 
-		tccp = p_tcp->tccps;
 		auto current_offset_data = offset_data;
 
 		for (i = 0; i < p_image->numcomps; ++i) {
+			auto tccp = p_tcp->tccps + i;
 			tccp->m_dc_level_shift = (int32_t) *(current_offset_data++);
-			++tccp;
 		}
-
 		grok_free(offset_data);
 	}
 
@@ -2157,9 +2132,8 @@ bool j2k_write_cbd(CodeStream *codeStream, BufferedStream *stream) {
 		uint8_t bpcc = (uint8_t) (comp->prec - 1);
 		if (comp->sgnd)
 			bpcc += (uint8_t)(1 << 7);
-		if (!stream->write_byte(bpcc)) {
+		if (!stream->write_byte(bpcc))
 			return false;
-		}
 	}
 	return true;
 }
@@ -2359,7 +2333,7 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno,
 		return false;
 	}
 	/* SPcox (D) */
-	grk_read<uint32_t>(current_ptr, &tccp->numresolutions, 1);
+	grk_read<uint32_t>(current_ptr++, &tccp->numresolutions, 1);
 	++tccp->numresolutions;
 	if (tccp->numresolutions > GRK_J2K_MAXRLVLS) {
 		GROK_ERROR("Number of resolutions %d is greater than"
@@ -2367,7 +2341,6 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno,
 		GRK_J2K_MAXRLVLS);
 		return false;
 	}
-	++current_ptr;
 	if (codeStream->m_cp.ccap && !tcp->isHT) {
 		tcp->isHT = true;
 		tcp->qcd.generate(tccp->numgbits, tccp->numresolutions - 1,
@@ -2386,12 +2359,10 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno,
 		return false;
 	}
 	/* SPcoc (E) */
-	grk_read<uint32_t>(current_ptr, &tccp->cblkw, 1);
-	++current_ptr;
+	grk_read<uint32_t>(current_ptr++, &tccp->cblkw, 1);
 	tccp->cblkw += 2;
 	/* SPcoc (F) */
-	grk_read<uint32_t>(current_ptr, &tccp->cblkh, 1);
-	++current_ptr;
+	grk_read<uint32_t>(current_ptr++, &tccp->cblkh, 1);
 	tccp->cblkh += 2;
 
 	if ((tccp->cblkw > 10) || (tccp->cblkh > 10)
@@ -2474,6 +2445,7 @@ bool j2k_write_SQcd_SQcc(CodeStream *codeStream, uint16_t tile_no, uint32_t comp
 	auto cp = &(codeStream->m_cp);
 	auto tcp = &cp->tcps[tile_no];
 	auto tccp = &tcp->tccps[comp_no];
+
 	return tccp->quant.write_SQcd_SQcc(codeStream, tile_no, comp_no, stream);
 }
 
@@ -2484,6 +2456,7 @@ bool j2k_read_SQcd_SQcc(bool fromQCC, CodeStream *codeStream, uint32_t comp_no,
 	assert(comp_no < codeStream->m_private_image->numcomps);
 	auto tcp = codeStream->get_current_decode_tcp();
 	auto tccp = tcp->tccps + comp_no;
+
 	return tccp->quant.read_SQcd_SQcc(fromQCC, codeStream, comp_no, p_header_data,
 			header_size);
 }

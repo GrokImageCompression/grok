@@ -63,7 +63,6 @@ namespace grk {
 
 bool PPMMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size){
-	CodingParams *cp = nullptr;
 	uint32_t Z_ppm;
 
 	assert(p_header_data != nullptr);
@@ -75,16 +74,15 @@ bool PPMMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		return false;
 	}
 
-	cp = &(codeStream->m_cp);
+	auto cp = &(codeStream->m_cp);
 	cp->ppm = true;
 
 	/* Z_ppm */
-	grk_read<uint32_t>(p_header_data, &Z_ppm, 1);
-	++p_header_data;
+	grk_read<uint32_t>(p_header_data++, &Z_ppm, 1);
 	--header_size;
 
 	/* check allocation needed */
-	if (cp->ppm_markers == nullptr) { /* first PPM marker */
+	if (!cp->ppm_markers) { /* first PPM marker */
 		uint32_t newCount = Z_ppm + 1U; /* can't overflow, Z_ppm is UINT8 */
 		assert(cp->ppm_markers_count == 0U);
 
@@ -96,8 +94,7 @@ bool PPMMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		cp->ppm_markers_count = newCount;
 	} else if (cp->ppm_markers_count <= Z_ppm) {
 		uint32_t newCount = Z_ppm + 1U; /* can't overflow, Z_ppm is UINT8 */
-		grk_ppx *new_ppm_markers;
-		new_ppm_markers = (grk_ppx*) grk_realloc(cp->ppm_markers,
+		auto new_ppm_markers = (grk_ppx*) grk_realloc(cp->ppm_markers,
 				newCount * sizeof(grk_ppx));
 		if (new_ppm_markers == nullptr) {
 			/* clean up to be done on cp destruction */
@@ -152,7 +149,6 @@ bool PPMMarker::merge(CodingParams *p_cp){
 				data_size -= N_ppm_remaining;
 				N_ppm_remaining = 0U;
 			}
-
 			if (data_size > 0U) {
 				do {
 					/* read Nppm */
@@ -177,13 +173,11 @@ bool PPMMarker::merge(CodingParams *p_cp){
 			}
 		}
 	}
-
 	if (N_ppm_remaining != 0U) {
 		/* clean up to be done on cp destruction */
 		GROK_ERROR("Corrupted PPM markers");
 		return false;
 	}
-
 	p_cp->ppm_buffer = (uint8_t*) grk_malloc(ppm_data_size);
 	if (p_cp->ppm_buffer == nullptr) {
 		GROK_ERROR("Not enough memory to read PPM marker");

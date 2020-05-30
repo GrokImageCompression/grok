@@ -64,7 +64,6 @@ namespace grk {
 
 SOTMarker::SOTMarker(BufferedStream *stream) : m_stream(stream),
 		m_psot_location(0) {
-
 }
 SOTMarker::SOTMarker(void) : m_stream(nullptr),
 		m_psot_location(0){
@@ -132,19 +131,18 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	grk_read<uint32_t>(p_header_data, p_tot_len, 4);
 	p_header_data += 4;
 	/* TPsot */
-	grk_read<uint32_t>(p_header_data, &temp, 1);
+	grk_read<uint32_t>(p_header_data++, &temp, 1);
 	*p_current_part = (uint8_t) temp;
-	++p_header_data;
 	/* TNsot */
-	grk_read<uint32_t>(p_header_data, &temp, 1);
+	grk_read<uint32_t>(p_header_data++, &temp, 1);
 	*p_num_parts = (uint8_t) temp;
-	++p_header_data;
+
 	return true;
 }
 
  bool SOTMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size){
-	 uint32_t tot_len = 0;
+	uint32_t tot_len = 0;
 	uint8_t num_parts = 0;
 	uint8_t current_part;
 	uint32_t tile_x, tile_y;
@@ -302,7 +300,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 					return false;
 				}
 			} else {
-				grk_tp_index *new_tp_index = (grk_tp_index*) grk_realloc(
+				auto new_tp_index = (grk_tp_index*) grk_realloc(
 						codeStream->cstr_index->tile_index[tile_number].tp_index,
 						num_parts * sizeof(grk_tp_index));
 				if (!new_tp_index) {
@@ -360,8 +358,8 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 		}
 
 	}
-	return true;
 
+	return true;
  }
 
 

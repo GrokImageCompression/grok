@@ -70,9 +70,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 	uint32_t remaining_size;
 	uint16_t nb_tiles;
 	uint32_t tmp, tx1, ty1;
-	grk_image_comp *img_comp = nullptr;
-	TileCodingParams *current_tile_param = nullptr;
-	DecoderState  *decoder = &codeStream->m_specific_param.m_decoder;
+	auto decoder = &codeStream->m_specific_param.m_decoder;
 
 	assert(codeStream != nullptr);
 	assert(p_header_data != nullptr);
@@ -200,20 +198,18 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		return false;
 	}
 
-	img_comp = image->comps;
+	auto img_comp = image->comps;
 
 	/* Read the component information */
 	for (i = 0; i < image->numcomps; ++i) {
 		uint32_t tmp;
-		grk_read<uint32_t>(p_header_data, &tmp, 1); /* Ssiz_i */
-		++p_header_data;
+
+		grk_read<uint32_t>(p_header_data++, &tmp, 1); /* Ssiz_i */
 		img_comp->prec = (tmp & 0x7f) + 1;
 		img_comp->sgnd = tmp >> 7;
-		grk_read<uint32_t>(p_header_data, &tmp, 1); /* XRsiz_i */
-		++p_header_data;
+		grk_read<uint32_t>(p_header_data++, &tmp, 1); /* XRsiz_i */
 		img_comp->dx = tmp; /* should be between 1 and 255 */
-		grk_read<uint32_t>(p_header_data, &tmp, 1); /* YRsiz_i */
-		++p_header_data;
+		grk_read<uint32_t>(p_header_data++, &tmp, 1); /* YRsiz_i */
 		img_comp->dy = tmp; /* should be between 1 and 255 */
 		if (img_comp->dx < 1 || img_comp->dx > 255 || img_comp->dy < 1
 				|| img_comp->dy > 255) {
@@ -316,18 +312,15 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		}
 	}
 
-	current_tile_param = cp->tcps;
 	for (i = 0; i < nb_tiles; ++i) {
+		auto current_tile_param = cp->tcps + i;
 		current_tile_param->tccps = (TileComponentCodingParams*) grk_calloc(image->numcomps,
 				sizeof(TileComponentCodingParams));
 		if (current_tile_param->tccps == nullptr) {
 			GROK_ERROR("Not enough memory to take in charge SIZ marker");
 			return false;
 		}
-
-		++current_tile_param;
 	}
-
 	decoder->m_state = J2K_DEC_STATE_MH;
 	grk_image_comp_header_update(image, cp);
 
