@@ -216,15 +216,18 @@ bool jpeg2000_file_format(const char *fname, GRK_SUPPORTED_FILE_FMT *fmt) {
 
 	memset(buf, 0, 12);
 	l_nb_read = fread(buf, 1, 12, reader);
-	if (!grk::safe_fclose(reader)) {
+	if (!grk::safe_fclose(reader))
 		return false;
-	}
+
 	if (l_nb_read != 12)
 		return false;
 
 	int temp = get_file_format(fname);
 	if (temp > GRK_UNK_FMT)
 		ext_format = (GRK_SUPPORTED_FILE_FMT) temp;
+	else
+		spdlog::warn("Unable to recognize file format from file extension \n"
+				"for {}.",fname);
 
 	if (memcmp(buf, JP2_RFC3745_MAGIC, 12) == 0) {
 		magic_format = GRK_JP2_FMT;
@@ -233,8 +236,9 @@ bool jpeg2000_file_format(const char *fname, GRK_SUPPORTED_FILE_FMT *fmt) {
 		magic_format = GRK_J2K_FMT;
 		magic_s = ".j2k or .jpc or .j2c";
 	} else {
+		spdlog::error("{} does not contain a JPEG 2000 code stream",fname);
 		*fmt = GRK_UNK_FMT;
-		return true;
+		return false;
 	}
 
 	if (magic_format == ext_format) {
@@ -242,10 +246,12 @@ bool jpeg2000_file_format(const char *fname, GRK_SUPPORTED_FILE_FMT *fmt) {
 		return true;
 	}
 
-	s = fname + (strlen(fname) > 4 ? strlen(fname) - 4 : 0);
-	spdlog::warn(
-			"The extension of this file is incorrect.\n Found {}. Should be {}",
-			s, magic_s);
+	if (strlen(fname) >= 4){
+		s = fname + strlen(fname) - 4;
+		if (s[0] == '.')
+			spdlog::warn("The extension {} of this file is incorrect. "
+					"Should be {}",s, magic_s);
+	}
 	*fmt = magic_format;
 	return true;
 }
