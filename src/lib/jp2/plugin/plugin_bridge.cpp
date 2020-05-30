@@ -64,7 +64,7 @@ void decode_synch_plugin_with_host(TileProcessor *tcd) {
 								throw PluginDecodeUnsupportedException();
 							}
 
-							grk_plugin_code_block *plugin_cblk =
+							auto plugin_cblk =
 									plugin_prc->blocks[cblkno];
 
 							// copy segments into plugin codeblock buffer, and point host code block data
@@ -98,27 +98,27 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tile *p_tile) {
 	if (plugin_tile->numComponents != p_tile->numcomps)
 		return false;
 	for (uint32_t compno = 0; compno < p_tile->numcomps; ++compno) {
-		TileComponent *tilecomp = p_tile->comps + compno;
-		grk_plugin_tile_component *plugin_tilecomp =
+		auto tilecomp = p_tile->comps + compno;
+		auto plugin_tilecomp =
 				plugin_tile->tileComponents[compno];
 		if (tilecomp->numresolutions != plugin_tilecomp->numResolutions)
 			return false;
 		for (uint32_t resno = 0; resno < tilecomp->numresolutions; ++resno) {
-			grk_resolution *resolution = tilecomp->resolutions + resno;
-			grk_plugin_resolution *plugin_resolution =
+			auto resolution = tilecomp->resolutions + resno;
+			auto plugin_resolution =
 					plugin_tilecomp->resolutions[resno];
 			if (resolution->numbands != plugin_resolution->numBands)
 				return false;
 			for (uint32_t bandno = 0; bandno < resolution->numbands; ++bandno) {
-				grk_band *band = resolution->bands + bandno;
-				grk_plugin_band *plugin_band =
+				auto band = resolution->bands + bandno;
+				auto plugin_band =
 						plugin_resolution->bands[bandno];
 				size_t num_precincts = band->numPrecincts;
 				if (num_precincts != plugin_band->numPrecincts)
 					return false;
 				for (uint64_t precno = 0; precno < num_precincts; ++precno) {
-					grk_precinct *precinct = band->precincts + precno;
-					grk_plugin_precinct *plugin_precinct =
+					auto precinct = band->precincts + precno;
+					auto plugin_precinct =
 							plugin_band->precincts[precno];
 					if ((uint64_t)precinct->ch * precinct->cw
 							!= plugin_precinct->numBlocks) {
@@ -126,8 +126,8 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tile *p_tile) {
 					}
 					for (uint64_t cblkno = 0;
 							cblkno < (uint64_t)precinct->ch * precinct->cw; ++cblkno) {
-						grk_cblk_dec *cblk = precinct->cblks.dec + cblkno;
-						grk_plugin_code_block *plugin_cblk =
+						auto cblk = precinct->cblks.dec + cblkno;
+						auto plugin_cblk =
 								plugin_precinct->blocks[cblkno];
 						if (cblk->x0 != plugin_cblk->x0
 								|| cblk->x1 != plugin_cblk->x1
@@ -147,10 +147,10 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 		grk_cblk_enc *cblk, uint32_t *numPix) {
 
 	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
-		grk_plugin_band *plugin_band =
+		auto plugin_band =
 				tcd->current_plugin_tile->tileComponents[compno]->resolutions[resno]->bands[bandno];
-		grk_plugin_precinct *precinct = plugin_band->precincts[precno];
-		grk_plugin_code_block *plugin_cblk = precinct->blocks[cblkno];
+		auto precinct = plugin_band->precincts[precno];
+		auto plugin_cblk = precinct->blocks[cblkno];
 		uint32_t state = grk_plugin_get_debug_state();
 
 		if (state & GRK_PLUGIN_STATE_DEBUG) {
@@ -217,8 +217,8 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 
 		uint32_t lastRate = 0;
 		for (uint32_t passno = 0; passno < cblk->num_passes_encoded; passno++) {
-			grk_pass *pass = cblk->passes + passno;
-			grk_plugin_pass *pluginPass = plugin_cblk->passes + passno;
+			auto pass = cblk->passes + passno;
+			auto pluginPass = plugin_cblk->passes + passno;
 
 			// synch distortion, if applicable
 			if (tcd->needs_rate_control()) {
@@ -261,33 +261,28 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 // set context stream for debugging purposes
 void set_context_stream(TileProcessor *p_tileProcessor) {
 	for (uint32_t compno = 0; compno < p_tileProcessor->tile->numcomps; compno++) {
-		TileComponent *tilec = p_tileProcessor->tile->comps + compno;
+		auto tilec = p_tileProcessor->tile->comps + compno;
 		tilec->numpix = 0;
-
 		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
-			grk_resolution *res = &tilec->resolutions[resno];
-
+			auto res = &tilec->resolutions[resno];
 			for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
-				grk_band *band = &res->bands[bandno];
-
+				auto band = &res->bands[bandno];
 				for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph;
 						precno++) {
-					grk_precinct *prc = &band->precincts[precno];
-
+					auto prc = &band->precincts[precno];
 					for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch;
 							cblkno++) {
-						grk_cblk_enc *cblk = &prc->cblks.enc[cblkno];
-
+						auto cblk = &prc->cblks.enc[cblkno];
 						if (p_tileProcessor->current_plugin_tile
 								&& p_tileProcessor->current_plugin_tile->tileComponents) {
-							grk_plugin_tile_component *comp =
+							auto comp =
 									p_tileProcessor->current_plugin_tile->tileComponents[compno];
 							if (resno < comp->numResolutions) {
-								grk_plugin_band *plugin_band =
+								auto plugin_band =
 										comp->resolutions[resno]->bands[bandno];
-								grk_plugin_precinct *precinct =
+								auto precinct =
 										plugin_band->precincts[precno];
-								grk_plugin_code_block *plugin_cblk =
+								auto plugin_cblk =
 										precinct->blocks[cblkno];
 								cblk->contextStream =
 										plugin_cblk->contextStream;
@@ -307,30 +302,23 @@ static const char *plugin_debug_mqc_next_plane_method_name =
 
 // Debug: these methods wrap plugin methods for parsing a context stream
 void mqc_next_plane(grk_plugin_debug_mqc *mqc) {
-	minpf_plugin_manager *mgr = nullptr;
-	PLUGIN_DEBUG_MQC_NEXT_PLANE func = nullptr;
-	mgr = minpf_get_plugin_manager();
+	auto mgr = minpf_get_plugin_manager();
 	if (mgr && mgr->num_libraries > 0) {
-		func = (PLUGIN_DEBUG_MQC_NEXT_PLANE) minpf_get_symbol(
+		auto func = (PLUGIN_DEBUG_MQC_NEXT_PLANE) minpf_get_symbol(
 				mgr->dynamic_libraries[0],
 				plugin_debug_mqc_next_plane_method_name);
-		if (func) {
+		if (func)
 			func(mqc);
-		}
 	}
 }
-
 void nextCXD(grk_plugin_debug_mqc *mqc, uint32_t d) {
-	minpf_plugin_manager *mgr = nullptr;
-	PLUGIN_DEBUG_MQC_NEXT_CXD func = nullptr;
-	mgr = minpf_get_plugin_manager();
+	auto mgr = minpf_get_plugin_manager();
 	if (mgr && mgr->num_libraries > 0) {
-		func = (PLUGIN_DEBUG_MQC_NEXT_CXD) minpf_get_symbol(
+		auto func = (PLUGIN_DEBUG_MQC_NEXT_CXD) minpf_get_symbol(
 				mgr->dynamic_libraries[0],
 				plugin_debug_mqc_next_cxd_method_name);
-		if (func) {
+		if (func)
 			func(mqc, d);
-		}
 	}
 }
 
