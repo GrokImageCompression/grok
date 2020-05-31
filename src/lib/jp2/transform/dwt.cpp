@@ -843,7 +843,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 static void interleave_partial_h_53(dwt_data<int32_t> *dwt,
 									sparse_array* sa,
 									uint32_t sa_line)	{
-	int32_t *dest = dwt->mem;
+	auto dest = dwt->mem;
 	int32_t cas = dwt->cas;
 	uint32_t sn = (uint32_t)dwt->sn;
 	uint32_t win_l_x0 = dwt->win_l_x0;
@@ -868,7 +868,7 @@ static void interleave_partial_v_53(dwt_data<int32_t> *vert,
 									sparse_array* sa,
 									uint32_t sa_col,
 									uint32_t nb_cols){
-	int32_t *dest = vert->mem;
+	auto dest = vert->mem;
 	int32_t cas = vert->cas;
 	uint32_t sn = (uint32_t)vert->sn;
 	uint32_t win_l_y0 = vert->win_l_x0;
@@ -1202,19 +1202,16 @@ static void interleave_h_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
                 uint32_t j = i;
                 bi[i * 8    ] = a[j];
                 j += width;
-                if (remaining_height == 1) {
+                if (remaining_height == 1)
                     continue;
-                }
                 bi[i * 8 + 1] = a[j];
                 j += width;
-                if (remaining_height == 2) {
+                if (remaining_height == 2)
                     continue;
-                }
-                bi[i * 8 + 2] = a[j];
+                 bi[i * 8 + 2] = a[j];
                 j += width;
-                if (remaining_height == 3) {
+                if (remaining_height == 3)
                     continue;
-                }
                 bi[i * 8 + 3] = a[j]; /* This one*/
             }
         }

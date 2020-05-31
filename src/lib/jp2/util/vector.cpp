@@ -37,9 +37,9 @@ void* grk_vec::get(size_t index) {
 	if (!data)
 		return nullptr;
 	assert(index < data->size());
-	if (index >= data->size()) {
+	if (index >= data->size())
 		return nullptr;
-	}
+
 	return data->operator[](index);
 }
 size_t grk_vec::size() {
@@ -56,8 +56,7 @@ void grk_vec::cleanup() {
 	if (!data)
 		return;
 	for (auto it = data->begin(); it != data->end(); ++it) {
-		if (*it)
-			delete (*it);
+		delete (*it);
 	}
 	delete data;
 	data = nullptr;
@@ -69,7 +68,7 @@ bool grk_vec::copy_to_contiguous_buffer(uint8_t *buffer) {
 	}
 	size_t offset = 0;
 	for (size_t i = 0; i < size(); ++i) {
-		grk_buf *seg = (grk_buf*) get(i);
+		auto seg = (grk_buf*) get(i);
 		if (seg->len)
 			memcpy(buffer + offset, seg->buf, seg->len);
 		offset += seg->len;
@@ -79,11 +78,10 @@ bool grk_vec::copy_to_contiguous_buffer(uint8_t *buffer) {
 bool grk_vec::push_back(uint8_t *buf, size_t len) {
 	if (!buf || !len)
 		return false;
-
-	if (!data) {
+	if (!data)
 		init();
-	}
-	grk_buf *seg = new grk_buf(buf, len, false);
+
+	auto seg = new grk_buf(buf, len, false);
 	if (!push_back(seg)) {
 		delete seg;
 		return false;
@@ -96,12 +94,11 @@ size_t grk_vec::get_len(void) {
 	if (!data)
 		return 0;
 	for (size_t i = 0; i < size(); ++i) {
-		grk_buf *seg = (grk_buf*) get(i);
+		auto seg = (grk_buf*) get(i);
 		if (seg)
 			len += seg->len;
 	}
 	return len;
-
 }
 
 }

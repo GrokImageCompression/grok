@@ -56,7 +56,8 @@ size_t ChunkBuffer::read(void *p_buffer, size_t nb_bytes) {
 	size_t bytes_left_to_read = nb_bytes;
 	while (bytes_left_to_read > 0 && cur_chunk_id < chunks.size()) {
 		auto cur_chunk = chunks[cur_chunk_id];
-		size_t bytes_in_current_chunk = (cur_chunk->len - (size_t) cur_chunk->offset);
+		size_t bytes_in_current_chunk = (cur_chunk->len
+				- (size_t) cur_chunk->offset);
 
 		size_t bytes_to_read =
 				(bytes_left_to_read < bytes_in_current_chunk) ?
@@ -79,7 +80,7 @@ size_t ChunkBuffer::skip(size_t nb_bytes) {
 	size_t bytes_remaining;
 
 	if (nb_bytes + get_global_offset() > data_len) {
-#ifdef DEBUG_SEG_BUF
+#ifdef DEBUG_CHUNK_BUF
         GROK_WARN("attempt to skip past end of chunk buffer");
 #endif
 		return nb_bytes;

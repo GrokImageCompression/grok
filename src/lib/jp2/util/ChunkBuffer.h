@@ -77,7 +77,7 @@ struct ChunkBuffer {
 	size_t read(void *p_buffer, size_t nb_bytes);
 
 	grk_buf* add_chunk(uint8_t *buf, size_t len, bool ownsData);
-	void add_chunk(grk_buf *seg);
+	void add_chunk(grk_buf *chunk);
 
 	/*
 	 Copy all chunks, in sequence, into contiguous array
