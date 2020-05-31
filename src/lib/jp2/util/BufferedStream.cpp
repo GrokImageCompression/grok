@@ -65,11 +65,11 @@ template<typename TYPE> void grk_read(const uint8_t *p_buffer, TYPE *value,
 
 // buffered stream
 BufferedStream::BufferedStream(uint8_t *buffer, size_t buffer_size,
-		bool l_is_input) :
+		bool is_input) :
 		m_user_data(nullptr), m_free_user_data_fn(nullptr), m_user_data_length(
 				0), m_read_fn(nullptr), m_zero_copy_read_fn(nullptr), m_write_fn(
 				nullptr), m_seek_fn(nullptr), m_status(
-				l_is_input ?
+				is_input ?
 				GROK_STREAM_STATUS_INPUT :
 								GROK_STREAM_STATUS_OUTPUT), m_buf(nullptr), m_buffered_bytes(
 				0), m_read_bytes_seekable(0), m_stream_offset(0) {
@@ -80,9 +80,8 @@ BufferedStream::BufferedStream(uint8_t *buffer, size_t buffer_size,
 }
 
 BufferedStream::~BufferedStream() {
-	if (m_free_user_data_fn) {
+	if (m_free_user_data_fn)
 		m_free_user_data_fn(m_user_data);
-	}
 	delete m_buf;
 }
 //note: passing in nullptr for p_buffer will execute a zero-copy read
@@ -93,7 +92,7 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
 	assert(p_size);
 	if (!p_size)
 		return 0;
-	size_t l_read_nb_bytes = 0;
+	size_t read_nb_bytes = 0;
 
 	//1. if stream is at end, then return immediately
 	if (m_status & GROK_STREAM_STATUS_END)
@@ -110,13 +109,13 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
 		m_buf->incr_offset((ptrdiff_t) p_size);
 		m_buffered_bytes -= p_size;
 		assert(m_buffered_bytes <= m_read_bytes_seekable);
-		l_read_nb_bytes += p_size;
+		read_nb_bytes += p_size;
 		m_stream_offset += p_size;
-		return l_read_nb_bytes;
+		return read_nb_bytes;
 	}
 	//3. if stream is at end, then read remaining bytes in buffer and return
 	if (m_status & GROK_STREAM_STATUS_END) {
-		l_read_nb_bytes += m_buffered_bytes;
+		read_nb_bytes += m_buffered_bytes;
 		if (p_buffer && m_buffered_bytes) {
 			assert(m_buf->curr_ptr() >= m_buf->buf);
 			assert(
@@ -127,11 +126,11 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
 		}
 		m_stream_offset += m_buffered_bytes;
 		invalidate_buffer();
-		return l_read_nb_bytes;
+		return read_nb_bytes;
 	}
 	// 4. read remaining bytes in buffer
 	if (m_buffered_bytes) {
-		l_read_nb_bytes += m_buffered_bytes;
+		read_nb_bytes += m_buffered_bytes;
 		if (p_buffer) {
 			assert(m_buf->curr_ptr() >= m_buf->buf);
 			assert(
@@ -162,11 +161,11 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
 		if (m_buffered_bytes == 0 || m_buffered_bytes > m_buf->len) {
 			invalidate_buffer();
 			m_status |= GROK_STREAM_STATUS_END;
-			return l_read_nb_bytes;
+			return read_nb_bytes;
 		}
 		// ii) or not enough data
 		else if (m_buffered_bytes < p_size) {
-			l_read_nb_bytes += m_buffered_bytes;
+			read_nb_bytes += m_buffered_bytes;
 			if (p_buffer) {
 				assert(m_buf->curr_ptr() >= m_buf->buf);
 				assert(
@@ -182,7 +181,7 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
 		}
 		// iii) or we have read the exact amount requested
 		else {
-			l_read_nb_bytes += p_size;
+			read_nb_bytes += p_size;
 			if (p_buffer && p_size) {
 				assert(m_buf->curr_ptr() >= m_buf->buf);
 				assert(
@@ -194,22 +193,22 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
 			m_buffered_bytes -= p_size;
 			assert(m_buffered_bytes <= m_read_bytes_seekable);
 			m_stream_offset += p_size;
-			return l_read_nb_bytes;
+			return read_nb_bytes;
 		}
 	}
 	return 0;
 }
 size_t BufferedStream::read_data_zero_copy(uint8_t **p_buffer, size_t p_size) {
 
-	size_t l_read_nb_bytes = m_zero_copy_read_fn((void**) p_buffer, p_size,
+	size_t read_nb_bytes = m_zero_copy_read_fn((void**) p_buffer, p_size,
 			m_user_data);
 
-	if (l_read_nb_bytes == 0) {
+	if (read_nb_bytes == 0) {
 		m_status |= GROK_STREAM_STATUS_END;
 		return 0;
 	} else {
-		m_stream_offset += l_read_nb_bytes;
-		return l_read_nb_bytes;
+		m_stream_offset += read_nb_bytes;
+		return read_nb_bytes;
 	}
 }
 bool BufferedStream::write_byte(uint8_t value) {
@@ -243,11 +242,10 @@ template<typename TYPE> bool BufferedStream::write(TYPE value,
 		write_increment(numBytes);
 		return true;
 	}
-	size_t l_remaining_bytes = m_buf->len - m_buffered_bytes;
-	if (l_remaining_bytes < numBytes) {
-		if (!flush()) {
+	size_t remaining_bytes = m_buf->len - m_buffered_bytes;
+	if (remaining_bytes < numBytes) {
+		if (!flush())
 			return false;
-		}
 	}
 	grk_write(m_buf->curr_ptr(), value, numBytes);
 	write_increment(numBytes);
@@ -264,39 +262,39 @@ size_t BufferedStream::write_bytes(const uint8_t *p_buffer, size_t p_size) {
 	// handle case where there is no internal buffer (buffer stream)
 	if (isMemStream()) {
 		/* we should do an actual write on the media */
-		auto l_current_write_nb_bytes = m_write_fn((uint8_t*) p_buffer, p_size,
+		auto current_write_nb_bytes = m_write_fn((uint8_t*) p_buffer, p_size,
 				m_user_data);
-		write_increment(l_current_write_nb_bytes);
+		write_increment(current_write_nb_bytes);
 
-		return l_current_write_nb_bytes;
+		return current_write_nb_bytes;
 	}
-	size_t l_write_nb_bytes = 0;
-	for (;;) {
-		size_t l_remaining_bytes = m_buf->len - m_buffered_bytes;
+	size_t write_nb_bytes = 0;
+	while (true) {
+		size_t remaining_bytes = m_buf->len - m_buffered_bytes;
 
 		/* we have more memory than required */
-		if (l_remaining_bytes >= p_size) {
-			l_write_nb_bytes += p_size;
+		if (remaining_bytes >= p_size) {
+			write_nb_bytes += p_size;
 			memcpy(m_buf->curr_ptr(), p_buffer, p_size);
 			write_increment(p_size);
-			return l_write_nb_bytes;
+			return write_nb_bytes;
 		}
 
 		/* we copy part of data (if possible) and flush the stream */
-		if (l_remaining_bytes) {
-			l_write_nb_bytes += l_remaining_bytes;
-			memcpy(m_buf->curr_ptr(), p_buffer, l_remaining_bytes);
+		if (remaining_bytes) {
+			write_nb_bytes += remaining_bytes;
+			memcpy(m_buf->curr_ptr(), p_buffer, remaining_bytes);
 			m_buf->offset = 0;
-			m_buffered_bytes += l_remaining_bytes;
-			m_stream_offset += l_remaining_bytes;
-			p_buffer += l_remaining_bytes;
-			p_size -= l_remaining_bytes;
+			m_buffered_bytes += remaining_bytes;
+			m_stream_offset += remaining_bytes;
+			p_buffer += remaining_bytes;
+			p_size -= remaining_bytes;
 		}
 		if (!flush())
 			return 0;
 	}
 
-	return l_write_nb_bytes;
+	return write_nb_bytes;
 }
 void BufferedStream::write_increment(size_t p_size) {
 	m_buf->incr_offset((ptrdiff_t) p_size);
@@ -309,28 +307,28 @@ void BufferedStream::write_increment(size_t p_size) {
 
 // force write of any remaining bytes from double buffer
 bool BufferedStream::flush() {
-	if (isMemStream()) {
+	if (isMemStream())
 		return true;
-	}
 	/* the number of bytes written on the media. */
-	size_t l_current_write_nb_bytes = 0;
+	size_t current_write_nb_bytes = 0;
 	m_buf->offset = 0;
 	while (m_buffered_bytes) {
 		/* we should do an actual write on the media */
-		l_current_write_nb_bytes = m_write_fn(m_buf->curr_ptr(),
+		current_write_nb_bytes = m_write_fn(m_buf->curr_ptr(),
 				m_buffered_bytes, m_user_data);
 
-		if (l_current_write_nb_bytes != m_buffered_bytes) {
+		if (current_write_nb_bytes != m_buffered_bytes) {
 			m_status |= GROK_STREAM_STATUS_ERROR;
 			GROK_ERROR("Error on writing stream.");
 			return false;
 		}
-		m_buf->incr_offset((ptrdiff_t) l_current_write_nb_bytes);
+		m_buf->incr_offset((ptrdiff_t) current_write_nb_bytes);
 		assert(m_buf->curr_ptr() >= m_buf->buf);
-		m_buffered_bytes -= l_current_write_nb_bytes;
+		m_buffered_bytes -= current_write_nb_bytes;
 		assert(m_buffered_bytes <= m_read_bytes_seekable);
 	}
 	m_buf->offset = 0;
+
 	return true;
 }
 
@@ -340,11 +338,19 @@ void BufferedStream::invalidate_buffer() {
 	if (m_status & GROK_STREAM_STATUS_INPUT)
 		m_read_bytes_seekable = 0;
 }
+bool BufferedStream::supportsZeroCopy() {
+	return isMemStream() && (m_status & GROK_STREAM_STATUS_INPUT);
+}
+uint8_t* BufferedStream::getCurrentPtr() {
+	return m_buf->curr_ptr();
+}
 
 bool BufferedStream::read_skip(int64_t p_size) {
 	int64_t offset = (int64_t) m_stream_offset + p_size;
+
 	if (offset < 0)
 		return false;
+
 	return read_seek((uint64_t) offset);
 }
 
@@ -445,9 +451,9 @@ bool BufferedStream::isMemStream() {
 
 }
 grk_stream* GRK_CALLCONV grk_stream_create(size_t buffer_size,
-		bool l_is_input) {
+		bool is_input) {
 	return (grk_stream*) (new grk::BufferedStream(nullptr, buffer_size,
-			l_is_input));
+			is_input));
 }
 void GRK_CALLCONV grk_stream_destroy(grk_stream *stream) {
 	delete (grk::BufferedStream*) (stream);
@@ -475,8 +481,7 @@ void GRK_CALLCONV grk_stream_set_seek_function(grk_stream *stream,
 void GRK_CALLCONV grk_stream_set_write_function(grk_stream *stream,
 		grk_stream_write_fn p_function) {
 	auto streamImpl = (grk::BufferedStream*) stream;
-	if ((!streamImpl)
-			|| (!(streamImpl->m_status & GROK_STREAM_STATUS_OUTPUT)))
+	if ((!streamImpl) || (!(streamImpl->m_status & GROK_STREAM_STATUS_OUTPUT)))
 		return;
 
 	streamImpl->m_write_fn = p_function;

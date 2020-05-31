@@ -23,88 +23,60 @@ struct IBufferedStream {
 	virtual ~IBufferedStream() {
 	}
 
+	// low level write methods
 	virtual bool write_byte(uint8_t value)=0;
 	virtual bool write_short(uint16_t value) = 0;
 	virtual bool write_24(uint32_t value)=0;
 	virtual bool write_int(uint32_t value) = 0;
 
 	/**
-	 * Writes some bytes to the stream.
-	 * @param		p_buffer	pointer to the data buffer holds the data to be written.
+	 * Write bytes to the stream.
+	 * @param		p_buffer	pointer to the data buffer to be written.
 	 * @param		p_size		number of bytes to write.
-
+     *
 	 * @return		the number of bytes written, or -1 if an error occurred.
 	 */
 	virtual size_t write_bytes(const uint8_t *p_buffer, size_t p_size)= 0;
 
 	/**
-	 * Writes the content of the stream buffer to the stream.
-	 * @return		true if the data could be flushed, false else.
+	 * Flush write stream to disk
+	 * @return		true if the data could be flushed, otherwise false.
 	 */
 	virtual bool flush()= 0;
 
 	/**
-	 * Skips a number of bytes from the stream.
+	 * Skip bytes in stream, forward or reverse
 	 * @param		p_size		the number of bytes to skip.
-
-	 * @return		the number of bytes skipped, or -1 if an error occurred.
+     *
+	 * @return		true if successful, otherwise false.
 	 */
 	virtual bool skip(int64_t p_size)= 0;
 
 	/**
-	 * Tells the byte offset on the stream (similar to ftell).
-	 * @return		the current position o fthe stream.
+	 * Tell byte offset in stream (similar to ftell).
+	 * @return		current position of the stream.
 	 */
 	virtual uint64_t tell(void)= 0;
 
 	/**
-	 * Get the number of bytes left before the end of the stream
-	 * @return		Number of bytes left before the end of the stream.
+	 * Get number of bytes left before end of the stream
+	 * @return		Number of bytes left.
 	 */
 	virtual uint64_t get_number_byte_left(void)= 0;
 
 	/**
-	 * Skips a number of bytes from the stream.
-	 * @param		p_size		the number of bytes to skip.
-
-	 * @return		the number of bytes skipped, or -1 if an error occurred.
-	 */
-	virtual bool write_skip(int64_t p_size)= 0;
-
-	/**
-	 * Skips a number of bytes from the stream.
-	 * @param		p_size		the number of bytes to skip.
-
-	 * @return		the number of bytes skipped, or -1 if an error occurred.
-	 */
-	virtual bool read_skip(int64_t p_size)= 0;
-
-	/**
-	 * Seeks to absolute offset in stream.
-	 * @param		offset		absolute stream offset
-
-	 * @return		true if success, or false if an error occurred.
-	 */
-	virtual bool read_seek(uint64_t offset)= 0;
-
-	/**
-	 * Seeks to absolute offset in stream.
+	 * Seek to absolute offset in stream.
 	 * @param		offset		absolute offset in stream
 
-	 * @return		the number of bytes skipped, or -1 if an error occurred.
-	 */
-	virtual bool write_seek(uint64_t offset)= 0;
-
-	/**
-	 * Seeks to absolute offset in stream.
-	 * @param		offset		absolute offset in stream
-
-	 * @return		true if the stream is seekable.
+	 * @return		true if successful, otherwise false.
 	 */
 	virtual bool seek(uint64_t offset)= 0;
 
 	/**
-	 * Tells if the given stream is seekable.
+	 * Check if stream is seekable. (A stdin/stdout stream
+	 * is not seekable).
+	 *
+	 * @return	 true if stream is seekable, otherwise false
 	 */
 	virtual bool has_seek()= 0;
 

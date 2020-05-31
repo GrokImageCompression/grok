@@ -76,20 +76,21 @@ struct BufferedStream: public IBufferedStream {
 	~BufferedStream();
 
 	/**
-	 * user-supplied data
+	 * user data
 	 */
 	void *m_user_data;
 
 	/**
 	 * Pointer to function to free m_user_data (nullptr at initialization)
 	 * when destroying the stream. If pointer is nullptr the function is not
-	 * called and the m_user_data is not freed (even if non-nullptr).
+	 * called and the m_user_data is not freed (even if it isn't nullptr).
 	 */
 	grk_stream_free_user_data_fn m_free_user_data_fn;
 
 	/**
 	 * User data length.
-	 * Currently set to size of file for file read stream, and size of buffer for buffer read/write stream
+	 * Currently set to size of file for file read stream,
+	 * and size of buffer for buffer read/write stream
 	 */
 	uint64_t m_user_data_length;
 
@@ -114,17 +115,17 @@ struct BufferedStream: public IBufferedStream {
 	grk_stream_seek_fn m_seek_fn;
 
 	/**
-	 * Flags to tell the status of the stream.
-	 * Used with GROK_STREAM_STATUS_* defines.
+	 * Stream status flags
 	 */
 	uint32_t m_status;
 
 	/**
 	 * Reads some bytes from the stream.
-	 * @param		p_buffer	pointer to the data buffer that will receive the data.
+	 * @param		p_buffer	pointer to the data buffer
+	 * 							that will receive the data.
 	 * @param		p_size		number of bytes to read.
 	 
-	 * @return		the number of bytes read, or -1 if an error occurred or if the stream is at the end.
+	 * @return		the number of bytes read
 	 */
 	size_t read(uint8_t *p_buffer, size_t p_size);
 
@@ -132,15 +133,16 @@ struct BufferedStream: public IBufferedStream {
 
 	bool write_byte(uint8_t value);
 
-	// write methods that take endian into account
+	// low-level write methods that take endian into account
 	bool write_short(uint16_t value);
 	bool write_24(uint32_t value);
 	bool write_int(uint32_t value);
 	bool write_64(uint64_t value);
 
 	/**
-	 * Writes some bytes to the stream (no correction for endian!).
-	 * @param		p_buffer	pointer to the data buffer holds the data to be written.
+	 * Write bytes to stream (no correction for endian!).
+	 * @param		p_buffer	pointer to the data buffer holds the data
+	 * 							to be written.
 	 * @param		p_size		number of bytes to write.
 	 
 	 * @return		the number of bytes written
@@ -148,84 +150,80 @@ struct BufferedStream: public IBufferedStream {
 	size_t write_bytes(const uint8_t *p_buffer, size_t p_size);
 
 	/**
-	 * Writes the content of the stream buffer to the stream.
+	 * Flush stream to disk
 	 
-	 * @return		true if the data could be flushed, false else.
+	 * @return		true if the data could be flushed, otherwise false.
 	 */
 	bool flush();
 
 	/**
-	 * Skips a number of bytes from the stream.
+	 * Skip bytes in stream.
 	 * @param		p_size		the number of bytes to skip.
 	 
-	 * @return		true if success, or false if an error occurred.
+	 * @return		true if success, otherwise false
 	 */
 	bool skip(int64_t p_size);
 
 	/**
-	 * Tells the byte offset on the stream (similar to ftell).
+	 * Tells byte offset of stream (similar to ftell).
 	 *
 	 * @return		the current position of the stream.
 	 */
 	uint64_t tell(void);
 
 	/**
-	 * Get the number of bytes left before the end of the stream
+	 * Get the number of bytes left before end of stream
 	 *
 	 * @return		Number of bytes left before the end of the stream.
 	 */
 	uint64_t get_number_byte_left(void);
 
 	/**
-	 * Seeks a number of bytes from the stream (absolute)
+	 * Seek bytes from the stream (absolute)
 	 * @param		offset		the number of bytes to skip.
 	 *
-	 * @return		true if the stream is seekable.
+	 * @return		true if successful, otherwise false
 	 */
 	bool seek(uint64_t offset);
 
 	/**
-	 * Tells if the given stream is seekable.
+	 * Check if stream is seekable.
 	 */
 	bool has_seek();
 
-	bool supportsZeroCopy() {
-		return isMemStream() && (m_status & GROK_STREAM_STATUS_INPUT);
-	}
-	uint8_t* getCurrentPtr() {
-		return m_buf->curr_ptr();
-	}
+	bool supportsZeroCopy() ;
+	uint8_t* getCurrentPtr();
 
 private:
 
 	/**
-	 * Skips a number of bytes from the stream.
+	 * Skip bytes in write stream.
 	 * @param		p_size		the number of bytes to skip.
 	 
-	 * @return		true if success, or false if an error occurred.
+	 * @return		true if success, otherwise false
 	 */
 	bool write_skip(int64_t p_size);
 
 	/**
-	 * Skips a number of bytes from the stream.
+	 * Skip bytes in read stream.
 	 * @param		p_size		the number of bytes to skip.
 	 
-	 * @return		true if success, or false if an error occurred.
+	 * @return		true if success, otherwise false
 	 */
 	bool read_skip(int64_t p_size);
 
 	/**
-	 * Absolute seek in stream.
+	 * Absolute seek in read stream.
 	 * @param		offset		absolute offset
 	 
-	 * @return		true if success, or false if an error occurred.
+	 * @return		true if success, otherwise false
 	 */
 	bool read_seek(uint64_t offset);
 
 	/**
-	 * Absolute seek in stream.
+	 * Absolute seek in write stream.
 	 * @param		offset		absolute offset
-	 * @return		true if success, or false if an error occurred.
+	 * @return		true if success, otherwise false
 	 */
 	bool write_seek(uint64_t offset);
 
@@ -235,13 +233,13 @@ private:
 
 	bool isMemStream();
 
-	///////////////////////////////////////////////////////////////////
 	grk_buf *m_buf;
 
 	// number of bytes read in, or slated for write
 	size_t m_buffered_bytes;
 
-	// number of seekable bytes in buffer. This will equal the number of bytes
+	// number of seekable bytes in buffer. This will equal
+	// the number of bytes
 	// read in the last media read.
 	// We always have m_buffered_bytes <= m_read_bytes_seekable
 	size_t m_read_bytes_seekable;
