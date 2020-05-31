@@ -56,7 +56,6 @@
  */
 
 #include "CPUArch.h"
-#include "simd.h"
 #include "grok_includes.h"
 
 namespace grk {

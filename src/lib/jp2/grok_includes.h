@@ -141,6 +141,8 @@
 #define GROK_NOSANITIZE(kind)
 #endif
 
+#include "simd.h"
+
 /* MSVC before 2013 and Borland C do not have lrintf */
 #if defined(_MSC_VER)
 #include <intrin.h>
