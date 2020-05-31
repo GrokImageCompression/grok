@@ -28,6 +28,9 @@
 #include <functional>
 #include <stdexcept>
 #include <map>
+#ifdef __linux__
+#include "pthread.h"
+#endif
 
 
 class ThreadPool {
@@ -83,7 +86,6 @@ private:
     bool stop;
 
     std::map<std::thread::id, int> id_map;
-    std::atomic<int> thread_count;
     size_t m_num_threads;
 
 	static ThreadPool* singleton;
@@ -94,17 +96,12 @@ private:
  
 // the constructor just launches some amount of workers
 inline ThreadPool::ThreadPool(size_t threads)
-    :   stop(false), thread_count(-1), m_num_threads(threads)
+    :   stop(false), m_num_threads(threads)
 {
     for(size_t i = 0;i<threads;++i)
         workers.emplace_back(
             [this]
             {
-    			{
-    			std::unique_lock<std::mutex> lock(this->queue_mutex);
-    			auto thread_num = ++thread_count;
-    			id_map[std::this_thread::get_id()] = thread_num;
-    			}
                 for(;;)
                 {
                     std::function<void()> task;
@@ -123,6 +120,26 @@ inline ThreadPool::ThreadPool(size_t threads)
                 }
             }
         );
+    int thread_count = 0;
+    for(std::thread &worker: workers){
+    	id_map[worker.get_id()] = thread_count;
+#ifdef __linux__
+	    // Create a cpu_set_t object representing a set of CPUs. Clear it and mark
+	    // only CPU i as set.
+    	// Note: we assume that the second half of the logical cores
+    	// are hyper-threaded siblings to the first half
+	    cpu_set_t cpuset;
+	    CPU_ZERO(&cpuset);
+	    CPU_SET(thread_count, &cpuset);
+	    int rc = pthread_setaffinity_np(worker.native_handle(),
+	                                    sizeof(cpu_set_t), &cpuset);
+	    if (rc != 0) {
+	      std::cerr << "Error calling pthread_setaffinity_np: " << rc << "\n";
+	    }
+#endif
+	    thread_count++;
+    }
+
 }
 
 // add new work item to the pool
