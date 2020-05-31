@@ -95,28 +95,25 @@ void init_tilec(TileComponent * tilec,
     for (size_t i = 0; i < nValues; i++)
         tilec->buf->data[i] = getValue((uint32_t)i);
 
-    uint32_t leveno = tilec->numresolutions;
+    uint32_t leveno = tilec->numresolutions-1;
     auto res = tilec->resolutions;
 
     /* Adapted from grk_init_tile() */
     for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
-        --leveno;
-
         /* border for each resolution level (global) */
         res->x0 = uint_ceildivpow2(tilec->x0, leveno);
         res->y0 = uint_ceildivpow2(tilec->y0, leveno);
         res->x1 = uint_ceildivpow2(tilec->x1, leveno);
         res->y1 = uint_ceildivpow2(tilec->y1, leveno);
         ++res;
+        --leveno;
     }
 }
 
 void usage(void)
 {
-    printf(
-        "bench_dwt [-size value] [-check] [-display] [-num_resolutions val] [-lossy]\n");
-    printf(
-        "          [-offset x y] [-num_threads val]\n");
+    printf("bench_dwt [-size value] [-check] [-display] [-num_resolutions val] [-lossy]\n");
+    printf("[-offset x y] [-num_threads val]\n");
 }
 
 class GrokOutput: public StdOutput {
@@ -126,7 +123,6 @@ public:
 		::usage();
 	}
 };
-
 }
 
 int main(int argc, char** argv)
@@ -135,7 +131,6 @@ int main(int argc, char** argv)
     grk_image image;
     grk_tile tile;
     TileComponent tilec;
-    grk_image image;
     grk_image_comp image_comp;
     int32_t i, j, k;
     bool display = false;
@@ -178,9 +173,8 @@ int main(int argc, char** argv)
 		lossy = true;
 	if (sizeArg.isSet())
 		size = sizeArg.getValue();
-	if (numThreadsArg.isSet()){
+	if (numThreadsArg.isSet())
 		num_threads = numThreadsArg.getValue();
-	}
     if (num_threads == 0)
     	num_threads = ThreadPool::hardware_concurrency();
 	if (numResolutionsArg.isSet()){
@@ -297,8 +291,7 @@ int main(int argc, char** argv)
 		}
 		grk_deinitialize();
    }
-
-    return 0;
+   return 0;
 }
 
 
