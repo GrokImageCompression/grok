@@ -138,21 +138,25 @@ void from16to16(void* dst, const void* src)
     *(cmsUInt16Number*)dst = CHANGE_ENDIAN(n);
 }
 
+static
 void from16toFLT(void* dst, const void* src)
 {
        *(cmsFloat32Number*)dst = (*(cmsUInt16Number*)src) / 65535.0f;
 }
 
+static
 void from16SEtoFLT(void* dst, const void* src)
 {
     *(cmsFloat32Number*)dst = (CHANGE_ENDIAN(*(cmsUInt16Number*)src)) / 65535.0f;
 }
 
+static
 void from16toDBL(void* dst, const void* src)
 {
        *(cmsFloat64Number*)dst = (*(cmsUInt16Number*)src) / 65535.0f;
 }
 
+static
 void from16SEtoDBL(void* dst, const void* src)
 {
     *(cmsFloat64Number*)dst = (CHANGE_ENDIAN(*(cmsUInt16Number*)src)) / 65535.0f;
@@ -271,6 +275,7 @@ void fromHLFto16SE(void* dst, const void* src)
     cmsUNUSED_PARAMETER(src);
 #endif
 }
+
 static
 void fromHLFtoFLT(void* dst, const void* src)
 {
@@ -315,6 +320,7 @@ void fromDBLto16SE(void* dst, const void* src)
     cmsUInt16Number  i = _cmsQuickSaturateWord(n * 65535.0f);
     *(cmsUInt16Number*)dst = CHANGE_ENDIAN(i);
 }
+
 static
 void fromDBLtoFLT(void* dst, const void* src)
 {
@@ -356,15 +362,18 @@ int FormatterPos(cmsUInt32Number frm)
     if (b == 4 && T_FLOAT(frm))
         return 4; // FLT
     if (b == 2 && !T_FLOAT(frm))
-        return 1; // 16
+    {
+        if (T_ENDIAN16(frm))
+            return 2; // 16SE
+        else
+            return 1; // 16
+    }
     if (b == 1 && !T_FLOAT(frm))
         return 0; // 8
-    if (b == 2 && T_ENDIAN16(frm))
-        return 3;
     return -1; // not recognized
 }
 
-// Obtains a alpha-to-alpha funmction formatter
+// Obtains an alpha-to-alpha function formatter
 static
 cmsFormatterAlphaFn _cmsGetFormatterAlpha(cmsContext id, cmsUInt32Number in, cmsUInt32Number out)
 {
