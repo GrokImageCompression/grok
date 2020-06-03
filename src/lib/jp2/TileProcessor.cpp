@@ -263,14 +263,14 @@ void TileProcessor::makelayer_feasible(uint32_t layno, uint16_t thresh,
 						uint32_t cumulative_included_passes_in_block;
 
 						if (layno == 0)
-							cblk->num_passes_included_in_previous_layers = 0;
+							cblk->numPassesInPreviousPackets = 0;
 
 						cumulative_included_passes_in_block =
-								cblk->num_passes_included_in_previous_layers;
+								cblk->numPassesInPreviousPackets;
 
 						for (passno =
-								cblk->num_passes_included_in_previous_layers;
-								passno < cblk->num_passes_encoded; passno++) {
+								cblk->numPassesInPreviousPackets;
+								passno < cblk->numPassesTotal; passno++) {
 							auto pass = &cblk->passes[passno];
 
 							//truncate or include feasible, otherwise ignore
@@ -283,7 +283,7 @@ void TileProcessor::makelayer_feasible(uint32_t layno, uint16_t thresh,
 						}
 
 						layer->numpasses = cumulative_included_passes_in_block
-								- cblk->num_passes_included_in_previous_layers;
+								- cblk->numPassesInPreviousPackets;
 
 						if (!layer->numpasses) {
 							layer->disto = 0;
@@ -291,11 +291,11 @@ void TileProcessor::makelayer_feasible(uint32_t layno, uint16_t thresh,
 						}
 
 						// update layer
-						if (cblk->num_passes_included_in_previous_layers == 0) {
+						if (cblk->numPassesInPreviousPackets == 0) {
 							layer->len =
 									cblk->passes[cumulative_included_passes_in_block
 											- 1].rate;
-							layer->data = cblk->data;
+							layer->data = cblk->paddedCompressedData;
 							layer->disto =
 									cblk->passes[cumulative_included_passes_in_block
 											- 1].distortiondec;
@@ -303,22 +303,22 @@ void TileProcessor::makelayer_feasible(uint32_t layno, uint16_t thresh,
 							layer->len =
 									cblk->passes[cumulative_included_passes_in_block
 											- 1].rate
-											- cblk->passes[cblk->num_passes_included_in_previous_layers
+											- cblk->passes[cblk->numPassesInPreviousPackets
 													- 1].rate;
 							layer->data =
-									cblk->data
-											+ cblk->passes[cblk->num_passes_included_in_previous_layers
+									cblk->paddedCompressedData
+											+ cblk->passes[cblk->numPassesInPreviousPackets
 													- 1].rate;
 							layer->disto =
 									cblk->passes[cumulative_included_passes_in_block
 											- 1].distortiondec
-											- cblk->passes[cblk->num_passes_included_in_previous_layers
+											- cblk->passes[cblk->numPassesInPreviousPackets
 													- 1].distortiondec;
 						}
 
 						tile->distolayer[layno] += layer->disto;
 						if (final)
-							cblk->num_passes_included_in_previous_layers =
+							cblk->numPassesInPreviousPackets =
 									cumulative_included_passes_in_block;
 					}
 				}
@@ -368,7 +368,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 
 						if (!single_lossless) {
 							RateControl::convexHull(cblk->passes,
-									cblk->num_passes_encoded);
+									cblk->numPassesTotal);
 							rateInfo.synch(cblk);
 
 							tile->numpix += numPix;
@@ -507,7 +507,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 						}
 
 						if (!single_lossless) {
-							for (passno = 0; passno < cblk->num_passes_encoded;
+							for (passno = 0; passno < cblk->numPassesTotal;
 									passno++) {
 								grk_pass *pass = &cblk->passes[passno];
 								int32_t dr;
@@ -636,8 +636,8 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 	return true;
 }
 static void prepareBlockForFirstLayer(grk_cblk_enc *cblk) {
-	cblk->num_passes_included_in_previous_layers = 0;
-	cblk->num_passes_included_in_current_layer = 0;
+	cblk->numPassesInPreviousPackets = 0;
+	cblk->numPassesInPacket = 0;
 	cblk->numlenbits = 0;
 }
 
@@ -664,13 +664,13 @@ void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 						}
 						if (thresh == 0) {
 							cumulative_included_passes_in_block =
-									cblk->num_passes_encoded;
+									cblk->numPassesTotal;
 						} else {
 							cumulative_included_passes_in_block =
-									cblk->num_passes_included_in_previous_layers;
+									cblk->numPassesInPreviousPackets;
 							for (uint32_t passno =
-									cblk->num_passes_included_in_previous_layers;
-									passno < cblk->num_passes_encoded;
+									cblk->numPassesInPreviousPackets;
+									passno < cblk->numPassesTotal;
 									passno++) {
 								uint32_t dr;
 								double dd;
@@ -704,18 +704,18 @@ void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 						}
 
 						layer->numpasses = cumulative_included_passes_in_block
-								- cblk->num_passes_included_in_previous_layers;
+								- cblk->numPassesInPreviousPackets;
 						if (!layer->numpasses) {
 							layer->disto = 0;
 							continue;
 						}
 
 						// update layer
-						if (cblk->num_passes_included_in_previous_layers == 0) {
+						if (cblk->numPassesInPreviousPackets == 0) {
 							layer->len =
 									cblk->passes[cumulative_included_passes_in_block
 											- 1].rate;
-							layer->data = cblk->data;
+							layer->data = cblk->paddedCompressedData;
 							layer->disto =
 									cblk->passes[cumulative_included_passes_in_block
 											- 1].distortiondec;
@@ -723,22 +723,22 @@ void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 							layer->len =
 									cblk->passes[cumulative_included_passes_in_block
 											- 1].rate
-											- cblk->passes[cblk->num_passes_included_in_previous_layers
+											- cblk->passes[cblk->numPassesInPreviousPackets
 													- 1].rate;
 							layer->data =
-									cblk->data
-											+ cblk->passes[cblk->num_passes_included_in_previous_layers
+									cblk->paddedCompressedData
+											+ cblk->passes[cblk->numPassesInPreviousPackets
 													- 1].rate;
 							layer->disto =
 									cblk->passes[cumulative_included_passes_in_block
 											- 1].distortiondec
-											- cblk->passes[cblk->num_passes_included_in_previous_layers
+											- cblk->passes[cblk->numPassesInPreviousPackets
 													- 1].distortiondec;
 						}
 
 						tile->distolayer[layno] += layer->disto;
 						if (final)
-							cblk->num_passes_included_in_previous_layers =
+							cblk->numPassesInPreviousPackets =
 									cumulative_included_passes_in_block;
 					}
 				}
@@ -764,14 +764,14 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 						if (layno == 0)
 							prepareBlockForFirstLayer(cblk);
 						uint32_t cumulative_included_passes_in_block =
-								cblk->num_passes_included_in_previous_layers;
-						if (cblk->num_passes_encoded
-								> cblk->num_passes_included_in_previous_layers)
+								cblk->numPassesInPreviousPackets;
+						if (cblk->numPassesTotal
+								> cblk->numPassesInPreviousPackets)
 							cumulative_included_passes_in_block =
-									cblk->num_passes_encoded;
+									cblk->numPassesTotal;
 
 						layer->numpasses = cumulative_included_passes_in_block
-								- cblk->num_passes_included_in_previous_layers;
+								- cblk->numPassesInPreviousPackets;
 
 						if (!layer->numpasses) {
 							layer->disto = 0;
@@ -779,11 +779,11 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 						}
 
 						// update layer
-						if (cblk->num_passes_included_in_previous_layers == 0) {
+						if (cblk->numPassesInPreviousPackets == 0) {
 							layer->len =
 									cblk->passes[cumulative_included_passes_in_block
 											- 1].rate;
-							layer->data = cblk->data;
+							layer->data = cblk->paddedCompressedData;
 							layer->disto =
 									cblk->passes[cumulative_included_passes_in_block
 											- 1].distortiondec;
@@ -791,24 +791,24 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 							layer->len =
 									cblk->passes[cumulative_included_passes_in_block
 											- 1].rate
-											- cblk->passes[cblk->num_passes_included_in_previous_layers
+											- cblk->passes[cblk->numPassesInPreviousPackets
 													- 1].rate;
 							layer->data =
-									cblk->data
-											+ cblk->passes[cblk->num_passes_included_in_previous_layers
+									cblk->paddedCompressedData
+											+ cblk->passes[cblk->numPassesInPreviousPackets
 													- 1].rate;
 							layer->disto =
 									cblk->passes[cumulative_included_passes_in_block
 											- 1].distortiondec
-											- cblk->passes[cblk->num_passes_included_in_previous_layers
+											- cblk->passes[cblk->numPassesInPreviousPackets
 													- 1].distortiondec;
 						}
 						tile->distolayer[layno] += layer->disto;
-						cblk->num_passes_included_in_previous_layers =
+						cblk->numPassesInPreviousPackets =
 								cumulative_included_passes_in_block;
 						assert(
-								cblk->num_passes_included_in_previous_layers
-										== cblk->num_passes_encoded);
+								cblk->numPassesInPreviousPackets
+										== cblk->numPassesTotal);
 					}
 				}
 			}
@@ -2052,17 +2052,34 @@ void grk_precinct::cleanupDecodeBlocks() {
 	cblks.dec = nullptr;
 }
 
+grk_cblk::grk_cblk(): x0(0), y0(0), x1(0), y1(0),
+		compressedData(nullptr),
+		compressedDataSize(0),
+		owns_data(false),
+		numbps(0),
+		numlenbits(0),
+		numPassesInPacket(0)
+#ifdef DEBUG_LOSSLESS_T2
+				,included(false),
+				packet_length_info(nullptr),
+#endif
+{
+}
+
+grk_cblk::grk_cblk(const grk_cblk &rhs): x0(rhs.x0), y0(rhs.y0), x1(rhs.x1), y1(rhs.y1),
+		compressedData(nullptr), compressedDataSize(0), owns_data(false),
+		numbps(rhs.numbps), numlenbits(rhs.numlenbits), numPassesInPacket(0)
+{
+}
 
 grk_cblk_enc::grk_cblk_enc() :
-		actualData(nullptr), data(nullptr), data_size(0), owns_data(false), layers(
-				nullptr), passes(nullptr), x0(0), y0(0), x1(0), y1(0), numbps(
-				0), numlenbits(0), num_passes_included_in_current_layer(0), num_passes_included_in_previous_layers(
-				0), num_passes_encoded(0),
-#ifdef DEBUG_LOSSLESS_T2
-						included(0),
-						packet_length_info(nullptr),
-#endif
-				contextStream(nullptr) {
+				paddedCompressedData(nullptr),
+				layers(	nullptr),
+				passes(nullptr),
+				numPassesInPreviousPackets(0),
+				numPassesTotal(0),
+				contextStream(nullptr)
+{
 }
 
 grk_cblk_enc::~grk_cblk_enc() {
@@ -2096,29 +2113,29 @@ bool grk_cblk_enc::alloc() {
  */
 bool grk_cblk_enc::alloc_data(size_t nominalBlockSize) {
 	uint32_t desired_data_size = (uint32_t) (nominalBlockSize * sizeof(uint32_t));
-	if (desired_data_size > data_size) {
-		if (owns_data && actualData)
-			delete[] actualData;
+	if (desired_data_size > compressedDataSize) {
+		if (owns_data && compressedData)
+			delete[] compressedData;
 
 		// we add two fake zero bytes at beginning of buffer, so that mq coder
 		//can be initialized to data[-1] == actualData[1], and still point
 		//to a valid memory location
-		actualData = new uint8_t[desired_data_size + grk_cblk_enc_compressed_data_pad_left];
-		actualData[0] = 0;
-		actualData[1] = 0;
+		compressedData = new uint8_t[desired_data_size + grk_cblk_enc_compressed_data_pad_left];
+		compressedData[0] = 0;
+		compressedData[1] = 0;
 
-		data = actualData + grk_cblk_enc_compressed_data_pad_left;
-		data_size = desired_data_size;
+		paddedCompressedData = compressedData + grk_cblk_enc_compressed_data_pad_left;
+		compressedDataSize = desired_data_size;
 		owns_data = true;
 	}
 	return true;
 }
 
 void grk_cblk_enc::cleanup() {
-	if (owns_data && actualData) {
-		delete[] actualData;
-		actualData = nullptr;
-		data = nullptr;
+	if (owns_data && compressedData) {
+		delete[] compressedData;
+		compressedData = nullptr;
+		paddedCompressedData = nullptr;
 		owns_data = false;
 	}
 
@@ -2140,15 +2157,10 @@ grk_cblk_dec::~grk_cblk_dec(){
     cleanup();
 }
 
-grk_cblk_dec::grk_cblk_dec(const grk_cblk_dec &rhs) :
-				segs(nullptr), x0(rhs.x0), y0(rhs.y0), x1(
-				rhs.x1), y1(rhs.y1), numbps(rhs.numbps), numlenbits(
-				rhs.numlenbits), numPassesInPacket(0), numSegments(0),
-#ifdef DEBUG_LOSSLESS_T2
-													 included(false),
-													packet_length_info(nullptr),
-#endif
-				numSegmentsAllocated(0){
+grk_cblk_dec::grk_cblk_dec(const grk_cblk_dec &rhs) : grk_cblk(rhs),
+				segs(nullptr), numSegments(0),
+				numSegmentsAllocated(0)
+{
 }
 
 bool grk_cblk_dec::alloc() {
@@ -2180,7 +2192,9 @@ bool grk_cblk_dec::alloc() {
 }
 
 void grk_cblk_dec::init() {
-	compressedData = grk_buf();
+	compressedData = nullptr;
+	compressedDataSize = 0;
+	owns_data = false;
 	segs = nullptr;
 	x0 = 0;
 	y0 = 0;

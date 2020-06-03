@@ -73,11 +73,10 @@ void decode_synch_plugin_with_host(TileProcessor *tcd) {
 									cblk->seg_buffers.get_len();
 							cblk->seg_buffers.copy_to_contiguous_buffer(
 									plugin_cblk->compressedData);
-							cblk->compressedData =
-									grk_buf(plugin_cblk->compressedData,
-											(size_t) plugin_cblk->compressedDataLength,
-											false);
-								plugin_cblk->numBitPlanes = cblk->numbps;
+							cblk->compressedData = plugin_cblk->compressedData;
+							cblk->compressedDataSize = plugin_cblk->compressedDataLength;
+							cblk->owns_data = false;
+							plugin_cblk->numBitPlanes = cblk->numbps;
 							plugin_cblk->numPasses = cblk->segs[0].numpasses;
 						}
 					}
@@ -158,15 +157,15 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 				GROK_WARN("ojp band step size {} differs from plugin step size {}",
 						band->stepsize, plugin_band->stepsize);
 			}
-			if (cblk->num_passes_encoded != plugin_cblk->numPasses)
+			if (cblk->numPassesTotal != plugin_cblk->numPasses)
 				GROK_WARN("OPJ total number of passes ({}) differs from "
 						"plugin total number of passes ({}) : component={}, res={}, band={}, block={}",
-						cblk->num_passes_encoded,
+						cblk->numPassesTotal,
 						(uint32_t) plugin_cblk->numPasses, compno, resno,
 						bandno, cblkno);
 		}
 
-		cblk->num_passes_encoded = (uint32_t) plugin_cblk->numPasses;
+		cblk->numPassesTotal = (uint32_t) plugin_cblk->numPasses;
 		*numPix = (uint32_t) plugin_cblk->numPix;
 
 		if (state & GRK_PLUGIN_STATE_DEBUG) {
@@ -183,8 +182,8 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 		//check data
 		if (state & GRK_PLUGIN_STATE_DEBUG) {
 			uint32_t totalRate = 0;
-			if (cblk->num_passes_encoded > 0) {
-				totalRate = (cblk->passes + cblk->num_passes_encoded - 1)->rate;
+			if (cblk->numPassesTotal > 0) {
+				totalRate = (cblk->passes + cblk->numPassesTotal - 1)->rate;
 				if (totalRatePlugin != totalRate) {
 					GROK_WARN("opj rate {} differs from plugin rate {}",
 							totalRate, totalRatePlugin);
@@ -192,7 +191,7 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 			}
 
 			for (uint32_t p = 0; p < totalRate; ++p) {
-				if (cblk->data[p] != plugin_cblk->compressedData[p]) {
+				if (cblk->paddedCompressedData[p] != plugin_cblk->compressedData[p]) {
 					GROK_WARN("data differs at position={}, component={}, res={}, band={}, block={}, opj rate ={}, plugin rate={}",
 							p, compno, resno, bandno, cblkno, totalRate,
 							totalRatePlugin);
@@ -203,8 +202,8 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 		}
 
 		if (goodData)
-			cblk->data = plugin_cblk->compressedData;
-		cblk->data_size = (uint32_t) (plugin_cblk->compressedDataLength);
+			cblk->paddedCompressedData = plugin_cblk->compressedData;
+		cblk->compressedDataSize = (uint32_t) (plugin_cblk->compressedDataLength);
 		cblk->owns_data = false;
 		cblk->numbps = (uint32_t) plugin_cblk->numBitPlanes;
 		if (state & GRK_PLUGIN_STATE_DEBUG) {
@@ -216,7 +215,7 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 		}
 
 		uint32_t lastRate = 0;
-		for (uint32_t passno = 0; passno < cblk->num_passes_encoded; passno++) {
+		for (uint32_t passno = 0; passno < cblk->numPassesTotal; passno++) {
 			auto pass = cblk->passes + passno;
 			auto pluginPass = plugin_cblk->passes + passno;
 

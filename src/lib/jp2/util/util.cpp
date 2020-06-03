@@ -136,8 +136,16 @@ void grk_rect::grow2(int64_t boundaryx, int64_t boundaryy) {
 
 
 grk_buf::~grk_buf() {
+	dealloc();
+}
+
+void grk_buf::dealloc(){
 	if (buf && owns_data)
 		delete[] buf;
+	buf = nullptr;
+	owns_data = false;
+	offset = 0;
+	len = 0;
 }
 
 void grk_buf::incr_offset(ptrdiff_t off) {

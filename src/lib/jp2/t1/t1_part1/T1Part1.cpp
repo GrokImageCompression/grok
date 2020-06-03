@@ -106,8 +106,8 @@ double T1Part1::compress(encodeBlockInfo *block, grk_tile *tile,
 	assert(cblk->x1 - cblk->x0 > 0);
 	assert(cblk->y1 - cblk->y0 > 0);
 
-	cblkopj.data = cblk->data;
-	cblkopj.data_size = cblk->data_size;
+	cblkopj.data = cblk->paddedCompressedData;
+	cblkopj.data_size = cblk->compressedDataSize;
 
 	auto disto = t1_encode_cblk(t1, &cblkopj, max, block->bandno,
 			block->compno,
@@ -115,9 +115,9 @@ double T1Part1::compress(encodeBlockInfo *block, grk_tile *tile,
 			block->qmfbid, block->stepsize, block->cblk_sty,
 			block->mct_norms, block->mct_numcomps, doRateControl);
 
-	cblk->num_passes_encoded = cblkopj.totalpasses;
+	cblk->numPassesTotal = cblkopj.totalpasses;
 	cblk->numbps = cblkopj.numbps;
-	for (uint32_t i = 0; i < cblk->num_passes_encoded; ++i) {
+	for (uint32_t i = 0; i < cblk->numPassesTotal; ++i) {
 		auto passopj = cblkopj.passes + i;
 		auto passgrk = cblk->passes + i;
 		passgrk->distortiondec = passopj->distortiondec;

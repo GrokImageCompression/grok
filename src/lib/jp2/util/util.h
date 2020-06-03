@@ -85,6 +85,7 @@ struct grk_buf {
 		offset(0),
 		len(length),
 		owns_data(ownsData) {}
+	void dealloc();
 	~grk_buf();
 	void incr_offset(ptrdiff_t off);
 	uint8_t* curr_ptr();

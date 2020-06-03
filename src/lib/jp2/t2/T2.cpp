@@ -710,7 +710,7 @@ bool T2::read_packet_data(grk_resolution *res, PacketIter *p_pi,
 			if (!cblk->numSegments) {
 				seg = cblk->segs;
 				++cblk->numSegments;
-				cblk->compressedData.len = 0;
+				cblk->compressedDataSize = 0;
 			} else {
 				seg = &cblk->segs[cblk->numSegments - 1];
 				if (seg->numpasses == seg->maxpasses) {
@@ -737,7 +737,7 @@ bool T2::read_packet_data(grk_resolution *res, PacketIter *p_pi,
 				}
 				//initialize dataindex to current contiguous size of code block
 				if (seg->numpasses == 0)
-					seg->dataindex = (uint32_t) cblk->compressedData.len;
+					seg->dataindex = (uint32_t) cblk->compressedDataSize;
 
 				// only add segment to seg_buffers if length is greater than zero
 				if (seg->numBytesInPacket) {
@@ -745,7 +745,7 @@ bool T2::read_packet_data(grk_resolution *res, PacketIter *p_pi,
 							seg->numBytesInPacket);
 					*(p_data_read) += seg->numBytesInPacket;
 					src_buf->incr_cur_chunk_offset(seg->numBytesInPacket);
-					cblk->compressedData.len += seg->numBytesInPacket;
+					cblk->compressedDataSize += seg->numBytesInPacket;
 					seg->len += seg->numBytesInPacket;
 				}
 				seg->numpasses += seg->numPassesInPacket;
@@ -821,7 +821,7 @@ bool T2::skip_packet_data(grk_resolution *res, PacketIter *p_pi,
 			if (!cblk->numSegments) {
 				seg = cblk->segs;
 				++cblk->numSegments;
-				cblk->compressedData.len = 0;
+				cblk->compressedDataSize = 0;
 			} else {
 				seg = &cblk->segs[cblk->numSegments - 1];
 				if (seg->numpasses == seg->maxpasses) {
@@ -953,7 +953,7 @@ bool T2::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
 				prc->imsbtree->reset();
 			for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 				auto cblk = prc->cblks.enc + cblkno;
-				cblk->num_passes_included_in_current_layer = 0;
+				cblk->numPassesInPacket = 0;
 				assert(band->numbps >= cblk->numbps);
 				if (band->numbps < cblk->numbps) {
 					GROK_WARN(
@@ -988,7 +988,7 @@ bool T2::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
 		auto cblk = prc->cblks.enc;
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 			auto layer = cblk->layers + layno;
-			if (!cblk->num_passes_included_in_current_layer
+			if (!cblk->numPassesInPacket
 					&& layer->numpasses) {
 				prc->incltree->setvalue(cblkno, (int32_t) layno);
 			}
@@ -1003,7 +1003,7 @@ bool T2::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
 			uint32_t len = 0;
 
 			/* cblk inclusion bits */
-			if (!cblk->num_passes_included_in_current_layer) {
+			if (!cblk->numPassesInPacket) {
 				bool rc = prc->incltree->compress(bio.get(), cblkno,
 						(int32_t) (layno + 1));
 				assert(rc);
@@ -1027,7 +1027,7 @@ bool T2::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
 			}
 
 			/* if first instance of cblk --> zero bit-planes information */
-			if (!cblk->num_passes_included_in_current_layer) {
+			if (!cblk->numPassesInPacket) {
 				cblk->numlenbits = 3;
 				bool rc = prc->imsbtree->compress(bio.get(), cblkno,
 						tag_tree_uninitialized_node_value);
@@ -1037,13 +1037,13 @@ bool T2::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
 			}
 			/* number of coding passes included */
 			bio->putnumpasses(layer->numpasses);
-			uint32_t nb_passes = cblk->num_passes_included_in_current_layer
+			uint32_t nb_passes = cblk->numPassesInPacket
 					+ layer->numpasses;
 			auto pass = cblk->passes
-					+ cblk->num_passes_included_in_current_layer;
+					+ cblk->numPassesInPacket;
 
 			/* computation of the increase of the length indicator and insertion in the header     */
-			for (uint32_t passno = cblk->num_passes_included_in_current_layer;
+			for (uint32_t passno = cblk->numPassesInPacket;
 					passno < nb_passes; ++passno) {
 				++nump;
 				len += pass->len;
@@ -1064,9 +1064,9 @@ bool T2::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
 			/* computation of the new Length indicator */
 			cblk->numlenbits += increment;
 
-			pass = cblk->passes + cblk->num_passes_included_in_current_layer;
+			pass = cblk->passes + cblk->numPassesInPacket;
 			/* insertion of the codeword segment length */
-			for (uint32_t passno = cblk->num_passes_included_in_current_layer;
+			for (uint32_t passno = cblk->numPassesInPacket;
 					passno < nb_passes; ++passno) {
 				nump++;
 				len += pass->len;
@@ -1134,7 +1134,7 @@ bool T2::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
 				if (!stream->write_bytes(cblk_layer->data, cblk_layer->len))
 					return false;
 			}
-			cblk->num_passes_included_in_current_layer += cblk_layer->numpasses;
+			cblk->numPassesInPacket += cblk_layer->numpasses;
 			if (cstr_info && cstr_info->index_write) {
 				grk_packet_info *info_PK =
 						&cstr_info->tile[tileno].packet[cstr_info->packno];
@@ -1373,7 +1373,7 @@ bool T2::encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 			nb_blocks = (uint64_t)prc->cw * prc->ch;
 			for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 				auto cblk = prc->cblks.enc + cblkno;
-				cblk->num_passes_included_in_current_layer = 0;
+				cblk->numPassesInPacket = 0;
 				if (band->numbps < cblk->numbps) {
 					GROK_WARN(
 							"Code block %d bps greater than band bps. Skipping.",
@@ -1401,7 +1401,7 @@ bool T2::encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 			auto cblk = prc->cblks.enc + cblkno;
 			auto layer = cblk->layers + layno;
-			if (!cblk->num_passes_included_in_current_layer
+			if (!cblk->numPassesInPacket
 					&& layer->numpasses) {
 				prc->incltree->setvalue(cblkno, (int32_t) layno);
 			}
@@ -1415,7 +1415,7 @@ bool T2::encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 			uint32_t nb_passes;
 
 			/* cblk inclusion bits */
-			if (!cblk->num_passes_included_in_current_layer) {
+			if (!cblk->numPassesInPacket) {
 				if (!prc->incltree->compress(bio.get(), cblkno,
 						(int32_t) (layno + 1)))
 					return false;
@@ -1429,7 +1429,7 @@ bool T2::encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 				continue;
 
 			/* if first instance of cblk --> zero bit-planes information */
-			if (!cblk->num_passes_included_in_current_layer) {
+			if (!cblk->numPassesInPacket) {
 				cblk->numlenbits = 3;
 				if (!prc->imsbtree->compress(bio.get(), cblkno,
 						tag_tree_uninitialized_node_value))
@@ -1438,19 +1438,19 @@ bool T2::encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 
 			/* number of coding passes included */
 			bio->putnumpasses(layer->numpasses);
-			nb_passes = cblk->num_passes_included_in_current_layer
+			nb_passes = cblk->numPassesInPacket
 					+ layer->numpasses;
 			/* computation of the increase of the length indicator and insertion in the header     */
-			for (passno = cblk->num_passes_included_in_current_layer;
+			for (passno = cblk->numPassesInPacket;
 					passno < nb_passes; ++passno) {
 				auto pass =
-						cblk->passes + cblk->num_passes_included_in_current_layer + passno;
+						cblk->passes + cblk->numPassesInPacket + passno;
 				++nump;
 				len += pass->len;
 
 				if (pass->term
 						|| passno
-								== (cblk->num_passes_included_in_current_layer
+								== (cblk->numPassesInPacket
 										+ layer->numpasses) - 1) {
 					increment = (uint32_t) std::max<int32_t>(
 							(int32_t) increment,
@@ -1466,15 +1466,15 @@ bool T2::encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 			/* computation of the new Length indicator */
 			cblk->numlenbits += increment;
 			/* insertion of the codeword segment length */
-			for (passno = cblk->num_passes_included_in_current_layer;
+			for (passno = cblk->numPassesInPacket;
 					passno < nb_passes; ++passno) {
 				auto pass =
-						cblk->passes + cblk->num_passes_included_in_current_layer + passno;
+						cblk->passes + cblk->numPassesInPacket + passno;
 				nump++;
 				len += pass->len;
 				if (pass->term
 						|| passno
-								== (cblk->num_passes_included_in_current_layer
+								== (cblk->numPassesInPacket
 										+ layer->numpasses) - 1) {
 					if (!bio->write(len,
 							cblk->numlenbits + (uint32_t) int_floorlog2(nump)))
@@ -1515,7 +1515,7 @@ bool T2::encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 			if (layer->len > max_bytes_available)
 				return false;
 
-			cblk->num_passes_included_in_current_layer += layer->numpasses;
+			cblk->numPassesInPacket += layer->numpasses;
 			*packet_bytes_written += layer->len;
 			max_bytes_available -= layer->len;
 		}

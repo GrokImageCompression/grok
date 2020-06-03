@@ -101,7 +101,20 @@ struct grk_layer {
 };
 
 struct grk_cblk {
+    grk_cblk(const grk_cblk &rhs);
+    grk_cblk();
     virtual ~grk_cblk(){}
+	uint32_t x0, y0, x1, y1; /* dimension of the code block : left upper corner (x0, y0) right low corner (x1,y1) */
+	uint8_t *compressedData; /* data buffer*/
+	uint32_t compressedDataSize; /* size of allocated data buffer */
+	bool owns_data;	// true if code block manages data buffer, otherwise false
+	uint32_t numbps;
+	uint32_t numlenbits;
+	uint32_t numPassesInPacket; /* number of passes encoded in current packet */
+#ifdef DEBUG_LOSSLESS_T2
+	uint32_t included;
+	std::vector<grk_packet_length_info>* packet_length_info;
+#endif
 };
 
 // encoder code block
@@ -111,23 +124,12 @@ struct grk_cblk_enc : public grk_cblk {
 	bool alloc();
 	bool alloc_data(size_t nominalBlockSize);
 	void cleanup();
-	uint8_t *actualData;
-	uint8_t *data; /* data buffer*/
-	uint32_t data_size; /* size of allocated data buffer */
-	bool owns_data;	// true if code block manages data buffer, otherwise false
+	uint8_t *paddedCompressedData; /* data buffer*/
 	grk_layer *layers;
 	grk_pass *passes;
-	uint32_t x0, y0, x1, y1; /* dimension of the code block : left upper corner (x0, y0) right low corner (x1,y1) */
-	uint32_t numbps;
-	uint32_t numlenbits;
-	uint32_t num_passes_included_in_current_layer; /* number of passes encoded in current layer */
-	uint32_t num_passes_included_in_previous_layers; /* number of passes in previous layers */
-	uint32_t num_passes_encoded; /* number of passes encoded */
+	uint32_t numPassesInPreviousPackets; /* number of passes in previous packetss */
+	uint32_t numPassesTotal; /* total number of passes in all layers */
 	uint32_t *contextStream;
-#ifdef DEBUG_LOSSLESS_T2
-	uint32_t included;
-	std::vector<grk_packet_length_info>* packet_length_info;
-#endif
 };
 
 //decoder code block
@@ -135,25 +137,13 @@ struct grk_cblk_dec: public grk_cblk {
 	grk_cblk_dec();
 	~grk_cblk_dec();
 	grk_cblk_dec(const grk_cblk_dec &rhs);
-	/**
-	 * Allocates memory for a decoding code block (but not data)
-	 */
 	void init();
 	bool alloc();
 	void cleanup();
-	grk_buf compressedData;
 	grk_vec seg_buffers;
 	grk_seg *segs; /* information on segments */
-	uint32_t x0, y0, x1, y1; /* position: left upper corner (x0, y0) right low corner (x1,y1) */
-	uint32_t numbps;
-	uint32_t numlenbits;
-	uint32_t numPassesInPacket; /* number of passes added by current packet */
 	uint32_t numSegments; /* number of segment in block*/
 	uint32_t numSegmentsAllocated; // number of segments allocated for segs array
-#ifdef DEBUG_LOSSLESS_T2
-	uint32_t included;
-	std::vector<grk_packet_length_info>* packet_length_info;
-#endif
 
 };
 

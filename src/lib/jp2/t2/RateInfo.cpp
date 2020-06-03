@@ -27,7 +27,7 @@ RateInfo::RateInfo() :
  Synchronize with code block
  */
 void RateInfo::synch(grk_cblk_enc *cblk) {
-	for (auto passno = 0U; passno < cblk->num_passes_encoded; passno++) {
+	for (auto passno = 0U; passno < cblk->numPassesTotal; passno++) {
 		grk_pass *pass = &cblk->passes[passno];
 
 		//2. only process feasible truncation points
