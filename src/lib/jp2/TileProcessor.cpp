@@ -2135,10 +2135,10 @@ void grk_cblk_enc::cleanup() {
 	if (owns_data && compressedData) {
 		delete[] compressedData;
 		compressedData = nullptr;
-		paddedCompressedData = nullptr;
 		owns_data = false;
 	}
 
+	paddedCompressedData = nullptr;
 	grok_free(layers);
 	layers = nullptr;
 	grok_free(passes);
@@ -2211,6 +2211,11 @@ void grk_cblk_dec::init() {
 }
 
 void grk_cblk_dec::cleanup() {
+	if (owns_data && compressedData) {
+		delete[] compressedData;
+		compressedData = nullptr;
+		owns_data = false;
+	}
 	seg_buffers.cleanup();
 	delete[] segs;
 	segs = nullptr;
