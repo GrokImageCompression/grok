@@ -21,7 +21,7 @@
 
 namespace grk {
 
-bool Tier1::encodeCodeblocks(TileCodingParams *tcp,
+void Tier1::encodeCodeblocks(TileCodingParams *tcp,
 							grk_tile *tile,
 							const double *mct_norms,
 							uint32_t mct_numcomps,
@@ -92,7 +92,7 @@ bool Tier1::encodeCodeblocks(TileCodingParams *tcp,
 		}
 	}
 	T1Encoder encoder(tcp, tile, maxCblkW, maxCblkH, doRateControl);
-	return encoder.compress(&blocks);
+	encoder.compress(&blocks);
 }
 
 bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, TileComponentCodingParams *tccp,

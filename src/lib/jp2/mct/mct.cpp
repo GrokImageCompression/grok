@@ -86,39 +86,43 @@ void mct::encode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 	size_t i = 0;
 
 #if (defined(__SSE2__) || defined(__AVX2__))
-    size_t chunkSize = n / ThreadPool::get()->num_threads();
+	size_t num_threads = ThreadPool::get()->num_threads();
+    size_t chunkSize = n / num_threads;
     //ensure it is divisible by VREG_INT_COUNT
     chunkSize = (chunkSize/VREG_INT_COUNT) * VREG_INT_COUNT;
 	if (chunkSize > VREG_INT_COUNT) {
-	    std::vector< std::future<int> > results;
-	    for(uint64_t i = 0; i < ThreadPool::get()->num_threads(); ++i) {
+		std::vector< std::future<int> > results;
+	    for(uint64_t i = 0; i < num_threads; ++i) {
 	    	uint64_t index = i;
-	        results.emplace_back(
-	            ThreadPool::get()->enqueue([index, chunkSize, chan0,chan1,chan2] {
-	        		uint64_t begin = (uint64_t)index * chunkSize;
-					for (auto j = begin; j < begin+chunkSize; j+=VREG_INT_COUNT ){
-						VREG y, u, v;
-						VREG r = LOAD((const VREG*) &chan0[j]);
-						VREG g = LOAD((const VREG*) &chan1[j]);
-						VREG b = LOAD((const VREG*) &chan2[j]);
-						y = ADD(g, g);
-						y = ADD(y, b);
-						y = ADD(y, r);
-						y = SAR(y, 2);
-						u = SUB(b, g);
-						v = SUB(r, g);
-						STORE((VREG*) &chan0[j], y);
-						STORE((VREG*) &chan1[j], u);
-						STORE((VREG*) &chan2[j], v);
-					}
-	                return 0;
-	            })
-	        );
+			auto encoder = [index, chunkSize, chan0,chan1,chan2]()	{
+				uint64_t begin = (uint64_t)index * chunkSize;
+				for (auto j = begin; j < begin+chunkSize; j+=VREG_INT_COUNT ){
+					VREG y, u, v;
+					VREG r = LOAD((const VREG*) &chan0[j]);
+					VREG g = LOAD((const VREG*) &chan1[j]);
+					VREG b = LOAD((const VREG*) &chan2[j]);
+					y = ADD(g, g);
+					y = ADD(y, b);
+					y = ADD(y, r);
+					y = SAR(y, 2);
+					u = SUB(b, g);
+					v = SUB(r, g);
+					STORE((VREG*) &chan0[j], y);
+					STORE((VREG*) &chan1[j], u);
+					STORE((VREG*) &chan2[j], v);
+				}
+				return 0;
+			};
+
+			if (num_threads > 1)
+				results.emplace_back(ThreadPool::get()->enqueue(encoder));
+			else
+				encoder();
 	    }
 	    for(auto && result: results){
 	        result.get();
 	    }
-		i = chunkSize * ThreadPool::get()->num_threads();
+		i = chunkSize * num_threads;
 	}
 #endif
 	for (; i < n; ++i) {
@@ -143,37 +147,42 @@ void mct::decode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 		int32_t *GRK_RESTRICT chan2, uint64_t n) {
 	size_t i = 0;
 #if (defined(__SSE2__) || defined(__AVX2__))
-    size_t chunkSize = n / ThreadPool::get()->num_threads();
+	size_t num_threads = ThreadPool::get()->num_threads();
+    size_t chunkSize = n / num_threads;
     //ensure it is divisible by VREG_INT_COUNT
     chunkSize = (chunkSize/VREG_INT_COUNT) * VREG_INT_COUNT;
 	if (chunkSize > VREG_INT_COUNT) {
 	    std::vector< std::future<int> > results;
-	    for(uint64_t i = 0; i < ThreadPool::get()->num_threads(); ++i) {
+	    for(uint64_t i = 0; i < num_threads; ++i) {
 	    	uint64_t index = i;
-	        results.emplace_back(
-	            ThreadPool::get()->enqueue([index, chunkSize,chan0,chan1,chan2] {
-					uint64_t begin = (uint64_t)index * chunkSize;
-					for (auto j = begin; j < begin+chunkSize; j+=VREG_INT_COUNT ){
-						VREG r, g, b;
-						VREG y = LOAD((const VREG*) &(chan0[j]));
-						VREG u = LOAD((const VREG*) &(chan1[j]));
-						VREG v = LOAD((const VREG*) &(chan2[j]));
-						g = y;
-						g = SUB(g, SAR(ADD(u, v), 2));
-						r = ADD(v, g);
-						b = ADD(u, g);
-						STORE((VREG*) &(chan0[j]), r);
-						STORE((VREG*) &(chan1[j]), g);
-						STORE((VREG*) &(chan2[j]), b);
-					}
-					return 0;
-	            })
-	        );
+	    	auto decoder = [index, chunkSize,chan0,chan1,chan2](){
+	    		uint64_t begin = (uint64_t)index * chunkSize;
+				for (auto j = begin; j < begin+chunkSize; j+=VREG_INT_COUNT ){
+					VREG r, g, b;
+					VREG y = LOAD((const VREG*) &(chan0[j]));
+					VREG u = LOAD((const VREG*) &(chan1[j]));
+					VREG v = LOAD((const VREG*) &(chan2[j]));
+					g = y;
+					g = SUB(g, SAR(ADD(u, v), 2));
+					r = ADD(v, g);
+					b = ADD(u, g);
+					STORE((VREG*) &(chan0[j]), r);
+					STORE((VREG*) &(chan1[j]), g);
+					STORE((VREG*) &(chan2[j]), b);
+				}
+				return 0;
+	    	};
+
+	    	if (num_threads > 1)
+	    		results.emplace_back(ThreadPool::get()->enqueue(decoder));
+	    	else
+	    		decoder();
+
 	    }
 	    for(auto && result: results){
 	        result.get();
 	    }
-		i = chunkSize * ThreadPool::get()->num_threads();
+		i = chunkSize * num_threads;
 	}
 #endif
 	for (; i < n; ++i) {
@@ -198,6 +207,7 @@ void mct::encode_irrev( int32_t* GRK_RESTRICT chan0,
 {
     size_t i = 0;
 #ifdef __SSE4_1__
+	size_t num_threads = ThreadPool::get()->num_threads();
     const __m128i ry = _mm_set1_epi32(2449);
     const __m128i gy = _mm_set1_epi32(4809);
     const __m128i by = _mm_set1_epi32(934);
@@ -207,19 +217,17 @@ void mct::encode_irrev( int32_t* GRK_RESTRICT chan0,
     const __m128i bv = _mm_set1_epi32(666);
     const __m128i mulround = _mm_shuffle_epi32(_mm_cvtsi32_si128(4096), _MM_SHUFFLE(1, 0, 1, 0));
 
-    size_t chunkSize = n / ThreadPool::get()->num_threads();
+    size_t chunkSize = n / num_threads;
     //ensure it is divisible by 4
     chunkSize = (chunkSize/4) * 4;
 	if (chunkSize > 4) {
 
 		std::vector< std::future<int> > results;
-		for(size_t k = 0; k < ThreadPool::get()->num_threads(); ++k) {
+		for(size_t k = 0; k < num_threads; ++k) {
 			uint64_t index = k;
-			results.emplace_back(
-				ThreadPool::get()->enqueue([index, chunkSize, chan0,chan1,chan2,
-											 ry,gy,by,ru,gu,gv,bv,
-											 mulround] {
-
+			auto encoder = [index, chunkSize, chan0,chan1,chan2,
+							 ry,gy,by,ru,gu,gv,bv,
+							 mulround](){
 				uint64_t begin = (uint64_t)index * chunkSize;
 				for (auto j = begin; j < begin+chunkSize; j+=4 ){
 					__m128i lo, hi;
@@ -323,13 +331,17 @@ void mct::encode_irrev( int32_t* GRK_RESTRICT chan0,
 
 				}
 				return 0;
-				})
-			);
+			};
+
+			if (num_threads > 1)
+				results.emplace_back(ThreadPool::get()->enqueue(encoder));
+			else
+				encoder();
 		}
 		for(auto && result: results){
 			result.get();
 		}
-		i = ThreadPool::get()->num_threads() * chunkSize;
+		i = num_threads * chunkSize;
 	}
 #endif
     for(; i < n; ++i) {
@@ -352,15 +364,15 @@ void mct::decode_irrev(float *GRK_RESTRICT c0, float *GRK_RESTRICT c1, float *GR
 		uint64_t n) {
 	uint64_t i = 0;
 #if (defined(__SSE2__) || defined(__AVX2__))
-	size_t chunkSize = n / ThreadPool::get()->num_threads();
+	size_t num_threads = ThreadPool::get()->num_threads();
+	size_t chunkSize = n / num_threads;
 	//ensure it is divisible by VREG_INT_COUNT
 	chunkSize = (chunkSize/VREG_INT_COUNT) * VREG_INT_COUNT;
 	if (chunkSize > VREG_INT_COUNT) {
 		std::vector< std::future<int> > results;
-		for(uint64_t i = 0; i < ThreadPool::get()->num_threads(); ++i) {
+		for(uint64_t i = 0; i < num_threads; ++i) {
 			uint64_t index = i;
-			results.emplace_back(
-				ThreadPool::get()->enqueue([index, chunkSize, c0,c1,c2] {
+			auto decoder = [index, chunkSize, c0,c1,c2]() {
 				const VREGF vrv = LOAD_CST_F(1.402f);
 				const VREGF vgu = LOAD_CST_F(0.34413f);
 				const VREGF vgv = LOAD_CST_F(0.71414f);
@@ -381,13 +393,16 @@ void mct::decode_irrev(float *GRK_RESTRICT c0, float *GRK_RESTRICT c1, float *GR
 					STOREF(c2 + j, vb);
 				}
 				return 0;
-				})
-			);
+			};
+			if (num_threads > 1)
+				results.emplace_back(ThreadPool::get()->enqueue(decoder));
+			else
+				decoder();
 		}
 		for(auto && result: results){
 			result.get();
 		}
-		i = chunkSize * ThreadPool::get()->num_threads();
+		i = chunkSize * num_threads;
 	}
 #endif
 	for (; i < n; ++i) {

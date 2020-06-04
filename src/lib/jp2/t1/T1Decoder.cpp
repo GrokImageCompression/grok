@@ -42,16 +42,34 @@ T1Decoder::~T1Decoder() {
 
 bool T1Decoder::decompress(std::vector<decodeBlockInfo*> *blocks) {
 	if (!blocks || !blocks->size())
-		return true;;
+		return true;
+	size_t num_threads = ThreadPool::get()->num_threads();
+	success = true;
+	if (num_threads == 1){
+		size_t i;
+		for (i = 0; i < blocks->size(); ++i){
+			auto block = blocks->operator[](i);
+			auto impl = threadStructs[(size_t)0];
+			if (!impl->decompress(block)) {
+				success = false;
+				delete block;
+				break;
+			}
+			impl->postDecode(block);
+			delete block;
+		}
+		for (; i < blocks->size(); ++i )
+			delete blocks->operator[](i);
+		return success;
+	}
+
 	auto maxBlocks = blocks->size();
 	decodeBlocks = new decodeBlockInfo*[maxBlocks];
-	for (uint64_t i = 0; i < maxBlocks; ++i) {
+	for (uint64_t i = 0; i < maxBlocks; ++i)
 		decodeBlocks[i] = blocks->operator[](i);
-	}
 	std::atomic<int> blockCount(-1);
-	success = true;
     std::vector< std::future<int> > results;
-    for(size_t i = 0; i < ThreadPool::get()->num_threads(); ++i) {
+    for(size_t i = 0; i < num_threads; ++i) {
         results.emplace_back(
             ThreadPool::get()->enqueue([this, maxBlocks, &blockCount] {
                 auto threadnum =  ThreadPool::get()->thread_number(std::this_thread::get_id());

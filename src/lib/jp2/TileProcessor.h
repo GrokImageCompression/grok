@@ -400,7 +400,7 @@ private:
 
 	 bool dwt_encode();
 
-	 bool t1_encode();
+	 void t1_encode();
 
 	 bool t2_encode(BufferedStream *stream,
 			uint32_t *packet_bytes_written,

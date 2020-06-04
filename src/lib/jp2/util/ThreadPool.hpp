@@ -98,6 +98,9 @@ private:
 inline ThreadPool::ThreadPool(size_t threads)
     :   stop(false), m_num_threads(threads)
 {
+	if (threads == 1)
+		return;
+
     for(size_t i = 0;i<threads;++i)
         workers.emplace_back(
             [this]

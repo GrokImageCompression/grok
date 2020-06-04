@@ -962,8 +962,7 @@ bool TileProcessor::compress_tile_part(uint16_t tile_no, BufferedStream *stream,
 				if (!dwt_encode())
 					return false;
 			}
-			if (!t1_encode())
-				return false;
+			t1_encode();
 		}
 		// 1. create PLT marker if required
 		delete plt_markers;
@@ -1474,7 +1473,7 @@ bool TileProcessor::dwt_encode() {
 	return rc;
 }
 
-bool TileProcessor::t1_encode() {
+void TileProcessor::t1_encode() {
 	const double *mct_norms;
 	uint32_t mct_numcomps = 0U;
 	auto tcp = m_tcp;
@@ -1493,7 +1492,7 @@ bool TileProcessor::t1_encode() {
 
 	auto t1_wrap = std::unique_ptr<Tier1>(new Tier1());
 
-	return t1_wrap->encodeCodeblocks(tcp, tile, mct_norms, mct_numcomps,
+	t1_wrap->encodeCodeblocks(tcp, tile, mct_norms, mct_numcomps,
 			needs_rate_control());
 }
 
