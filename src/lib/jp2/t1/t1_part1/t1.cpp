@@ -101,7 +101,7 @@ static void 			t1_dec_clnpass_step(t1_info *t1, grk_flag *flagsp, int32_t *datap
 											int32_t oneplushalf, uint32_t ciorig, uint32_t ci, uint32_t vsc);
 static void 			t1_enc_clnpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,
 										uint32_t cblksty);
-static bool 			t1_code_block_enc_allocate(cblk_enc_t *p_code_block);
+static bool 			t1_code_block_enc_allocate(cblk_enc *p_code_block);
 static double 			t1_getwmsedec(int32_t nmsedec, uint32_t compno, uint32_t level,
 										uint8_t orient, int32_t bpno,
 										uint32_t qmfbid, double stepsize,
@@ -1035,7 +1035,7 @@ void t1_destroy(t1_info *p_t1) {
 	grk::grok_free(p_t1);
 }
 
-bool t1_decode_cblk(t1_info *t1, cblk_dec_t *cblk, uint32_t orient,
+bool t1_decode_cblk(t1_info *t1, cblk_dec *cblk, uint32_t orient,
 		uint32_t roishift, uint32_t cblksty, bool check_pterm) {
 	auto mqc = &(t1->mqc);
 	int32_t bpno_plus_one;
@@ -1126,7 +1126,7 @@ bool t1_decode_cblk(t1_info *t1, cblk_dec_t *cblk, uint32_t orient,
 
 	return true;
 }
-static int t1_enc_is_term_pass(cblk_enc_t *cblk, uint32_t cblksty,
+static int t1_enc_is_term_pass(cblk_enc *cblk, uint32_t cblksty,
 								int32_t bpno, uint32_t passtype) {
 	/* Is it the last cleanup pass ? */
 	if (passtype == 2 && bpno == 0)
@@ -1151,29 +1151,21 @@ static int t1_enc_is_term_pass(cblk_enc_t *cblk, uint32_t cblksty,
 /**
  * Deallocate the encoding data of the given precinct.
  */
-void t1_code_block_enc_deallocate(cblk_enc_t *code_block) {
-	grk::grok_free(code_block->layers);
-	code_block->layers = nullptr;
+void t1_code_block_enc_deallocate(cblk_enc *code_block) {
 	grk::grok_free(code_block->passes);
 	code_block->passes = nullptr;
 }
-static bool t1_code_block_enc_allocate(cblk_enc_t *p_code_block) {
-	if (!p_code_block->layers) {
-		p_code_block->layers = (layer_t*) grk::grk_calloc(100,
-				sizeof(layer_t));
-		if (!p_code_block->layers)
-			return false;
-	}
+static bool t1_code_block_enc_allocate(cblk_enc *p_code_block) {
 	if (!p_code_block->passes) {
-		p_code_block->passes = (pass_t*) grk::grk_calloc(100,
-				sizeof(pass_t));
+		p_code_block->passes = (pass_enc*) grk::grk_calloc(100,
+				sizeof(pass_enc));
 		if (!p_code_block->passes)
 			return false;
 	}
 	return true;
 }
 
-double t1_encode_cblk(t1_info *t1, cblk_enc_t *cblk, uint32_t max,
+double t1_encode_cblk(t1_info *t1, cblk_enc *cblk, uint32_t max,
 					uint8_t orient, uint32_t compno, uint32_t level, uint32_t qmfbid,
 					double stepsize, uint32_t cblksty,
 					const double *mct_norms, uint32_t mct_numcomps, bool doRateControl) {
@@ -1213,7 +1205,7 @@ double t1_encode_cblk(t1_info *t1, cblk_enc_t *cblk, uint32_t max,
 
 	double cumwmsedec = 0.0;
 	for (passno = 0; bpno >= 0; ++passno) {
-		pass_t *pass = &cblk->passes[passno];
+		auto *pass = &cblk->passes[passno];
 		type = ((bpno < ((int32_t) (cblk->numbps) - 4)) &&
 				(passtype < 2)	&&
 				(cblksty & GRK_CBLKSTY_LAZY)) ? T1_TYPE_RAW : T1_TYPE_MQ;
@@ -1257,7 +1249,7 @@ double t1_encode_cblk(t1_info *t1, cblk_enc_t *cblk, uint32_t max,
 				else
 					mqc_flush_enc(mqc);
 			}
-			pass->term = 1;
+			pass->term = true;
 			pass->rate = mqc_numbytes_enc(mqc);
 		} else {
 			/* Non terminated pass */
@@ -1278,7 +1270,7 @@ double t1_encode_cblk(t1_info *t1, cblk_enc_t *cblk, uint32_t max,
 				if (mqc->ct < 5)
 					rate_extra_bytes++;
 			}
-			pass->term = 0;
+			pass->term = false;
 			pass->rate = mqc_numbytes_enc(mqc) + rate_extra_bytes;
 		}
 
@@ -1298,7 +1290,7 @@ double t1_encode_cblk(t1_info *t1, cblk_enc_t *cblk, uint32_t max,
 		/* Make sure that pass rates are increasing */
 		uint32_t last_pass_rate = mqc_numbytes_enc(mqc);
 		for (passno = cblk->totalpasses; passno > 0;) {
-			pass_t *pass = &cblk->passes[--passno];
+			auto *pass = &cblk->passes[--passno];
 			if (pass->rate > last_pass_rate)
 				pass->rate = last_pass_rate;
 			else

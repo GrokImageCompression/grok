@@ -45,7 +45,7 @@ public:
 private:
 	t1_info *t1;
 
-	void post_decode(t1_info *t1, cblk_dec_t *cblk,decodeBlockInfo *block);
+	void post_decode(t1_info *t1, cblk_dec *cblk,decodeBlockInfo *block);
 };
 }
 }

@@ -49,90 +49,42 @@ const uint8_t grk_cblk_enc_compressed_data_pad_left = 2;
 
 namespace grk {
 
-
 #define T1_NMSEDEC_BITS 7
 #define T1_NMSEDEC_FRACBITS (T1_NMSEDEC_BITS-1)
 
-/* Type to use for bit-fields in internal headers */
-typedef unsigned int GRK_BITFIELD;
-
-
-/**
-FIXME DOC
-*/
-typedef struct pass {
+struct pass_enc {
     uint32_t rate;
     double distortiondec;
     uint32_t len;
-    GRK_BITFIELD term : 1;
-} pass_t;
+    bool term;
+};
 
-/**
-FIXME DOC
-*/
-typedef struct layer {
-    uint32_t numpasses;       /* Number of passes in the layer */
-    uint32_t len;             /* len of information */
-    double disto;          /* add for index (Cfr. Marcela) */
-    uint8_t *data;             /* data */
-} layer_t;
-
-/**
-FIXME DOC
-*/
-typedef struct cblk_enc {
-    uint8_t* data;               /* Data */
-    layer_t* layers;      /* layer information */
-    pass_t* passes;       /* information about the passes */
-    uint32_t x0, y0, x1,
-              y1;     /* dimension of the code-blocks : left upper corner (x0, y0) right low corner (x1,y1) */
-    uint32_t numbps;
-    uint32_t numlenbits;
-    uint32_t data_size;         /* Size of allocated data buffer */
-    uint32_t
-    numpasses;         /* number of pass already done for the code-blocks */
-    uint32_t numpassesinlayers; /* number of passes in the layer */
-    uint32_t totalpasses;       /* total number of passes */
-} cblk_enc_t;
-
-
-/** Chunk of code stream data that is part of a code block */
-typedef struct seg_data_chunk {
-    /* Point to tilepart buffer. We don't make a copy !
-       So the tilepart buffer must be kept alive
-       as long as we need to decompress the codeblocks */
-    uint8_t * data;
-    uint32_t len;                 /* Usable length of data */
-} seg_data_chunk_t;
-
-/** Segment of a code-block.
- * A segment represent a number of consecutive coding passes, without termination
- * of MQC or RAW between them. */
-typedef struct seg {
-    uint32_t len;      /* Size of data related to this segment */
-    /* Number of passes decoded. Including those that we skip */
-    uint32_t numpasses;
-    /* Number of passes actually to be decoded. To be used for code-block decoding */
-    uint32_t real_num_passes;
-    /* Maximum number of passes for this segment */
-    uint32_t maxpasses;
-} seg_t;
-
-/** Code-block for decoding */
-typedef struct cblk_dec {
-    seg_t* segs;            /* segments information */
-    seg_data_chunk_t* chunks; /* Array of chunks */
-    /* position of the code-blocks : left upper corner (x0, y0) right low corner (x1,y1) */
+struct cblk_enc {
+    uint8_t* data;
+    uint32_t data_size;
+    pass_enc* passes;
     uint32_t x0, y0, x1, y1;
     uint32_t numbps;
-    /* number of segments, including those of packet we skip */
-    uint32_t numsegs;
-    /* number of segments, to be used for code block decoding */
+    uint32_t totalpasses;
+};
+
+struct seg_data_chunk {
+    uint8_t * data;
+    uint32_t len;
+};
+
+struct seg {
+    uint32_t len;
+    uint32_t real_num_passes;
+};
+
+struct cblk_dec {
+    seg* segs;
+    seg_data_chunk* chunks;
+    uint32_t x0, y0, x1, y1;
+    uint32_t numbps;
     uint32_t real_num_segs;
-    uint32_t m_current_max_segs;  /* allocated number of segs[] items */
-    uint32_t numchunks;           /* Number of valid chunks items */
-    uint32_t numchunksalloc;      /* Number of chunks item allocated */
-} cblk_dec_t;
+};
 
 }
 

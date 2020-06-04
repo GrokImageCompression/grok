@@ -185,14 +185,14 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 			if (cblk->numPassesTotal > 0) {
 				totalRate = (cblk->passes + cblk->numPassesTotal - 1)->rate;
 				if (totalRatePlugin != totalRate) {
-					GROK_WARN("opj rate {} differs from plugin rate {}",
+					GROK_WARN("CPU rate {} differs from plugin rate {}",
 							totalRate, totalRatePlugin);
 				}
 			}
 
 			for (uint32_t p = 0; p < totalRate; ++p) {
 				if (cblk->paddedCompressedData[p] != plugin_cblk->compressedData[p]) {
-					GROK_WARN("data differs at position={}, component={}, res={}, band={}, block={}, opj rate ={}, plugin rate={}",
+					GROK_WARN("data differs at position={}, component={}, res={}, band={}, block={}, CPU rate ={}, plugin rate={}",
 							p, compno, resno, bandno, cblkno, totalRate,
 							totalRatePlugin);
 					goodData = false;

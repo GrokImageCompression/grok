@@ -195,17 +195,17 @@ struct t1_info {
 	uint32_t cblkdatabuffersize;
 };
 
-bool t1_decode_cblk(t1_info *t1, cblk_dec_t *cblk,
+bool t1_decode_cblk(t1_info *t1, cblk_dec *cblk,
 		uint32_t orient, uint32_t roishift, uint32_t cblksty,
 		bool check_pterm);
 
-void t1_code_block_enc_deallocate(cblk_enc_t *
+void t1_code_block_enc_deallocate(cblk_enc *
         p_code_block);
 
 bool t1_allocate_buffers(t1_info *t1, uint32_t w,
 		uint32_t h);
 
-double t1_encode_cblk(t1_info *t1, cblk_enc_t *cblk,
+double t1_encode_cblk(t1_info *t1, cblk_enc *cblk,
 		uint32_t max,
 		uint8_t orient, uint32_t compno, uint32_t level,
 		uint32_t qmfbid, double stepsize, uint32_t cblksty,

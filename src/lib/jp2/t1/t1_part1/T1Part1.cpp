@@ -96,38 +96,38 @@ void T1Part1::preEncode(encodeBlockInfo *block, grk_tile *tile,
 double T1Part1::compress(encodeBlockInfo *block, grk_tile *tile,
 		uint32_t max, bool doRateControl) {
 	auto cblk = block->cblk;
-	cblk_enc_t cblkopj;
-	memset(&cblkopj, 0, sizeof(cblk_enc_t));
+	cblk_enc cblkexp;
+	memset(&cblkexp, 0, sizeof(cblk_enc));
 
-	cblkopj.x0 = block->x;
-	cblkopj.y0 = block->y;
-	cblkopj.x1 = block->x + cblk->x1 - cblk->x0;
-	cblkopj.y1 = block->y + cblk->y1 - cblk->y0;
+	cblkexp.x0 = block->x;
+	cblkexp.y0 = block->y;
+	cblkexp.x1 = block->x + cblk->x1 - cblk->x0;
+	cblkexp.y1 = block->y + cblk->y1 - cblk->y0;
 	assert(cblk->x1 - cblk->x0 > 0);
 	assert(cblk->y1 - cblk->y0 > 0);
 
-	cblkopj.data = cblk->paddedCompressedData;
-	cblkopj.data_size = cblk->compressedDataSize;
+	cblkexp.data = cblk->paddedCompressedData;
+	cblkexp.data_size = cblk->compressedDataSize;
 
-	auto disto = t1_encode_cblk(t1, &cblkopj, max, block->bandno,
+	auto disto = t1_encode_cblk(t1, &cblkexp, max, block->bandno,
 			block->compno,
 			(tile->comps + block->compno)->numresolutions - 1 - block->resno,
 			block->qmfbid, block->stepsize, block->cblk_sty,
 			block->mct_norms, block->mct_numcomps, doRateControl);
 
-	cblk->numPassesTotal = cblkopj.totalpasses;
-	cblk->numbps = cblkopj.numbps;
+	cblk->numPassesTotal = cblkexp.totalpasses;
+	cblk->numbps = cblkexp.numbps;
 	for (uint32_t i = 0; i < cblk->numPassesTotal; ++i) {
-		auto passopj = cblkopj.passes + i;
+		auto passexp = cblkexp.passes + i;
 		auto passgrk = cblk->passes + i;
-		passgrk->distortiondec = passopj->distortiondec;
-		passgrk->len = passopj->len;
-		passgrk->rate = passopj->rate;
-		passgrk->term = passopj->term;
+		passgrk->distortiondec = passexp->distortiondec;
+		passgrk->len = passexp->len;
+		passgrk->rate = passexp->rate;
+		passgrk->term = passexp->term;
 	}
 
-	t1_code_block_enc_deallocate(&cblkopj);
-	cblkopj.data = nullptr;
+	t1_code_block_enc_deallocate(&cblkexp);
+	cblkexp.data = nullptr;
 
  	return disto;
 }
@@ -156,37 +156,36 @@ bool T1Part1::decompress(decodeBlockInfo *block) {
 		memcpy(t1->cblkdatabuffer + offset, seg->buf, seg->len);
 		offset += seg->len;
 	}
-	seg_data_chunk_t chunk;
+	seg_data_chunk chunk;
 	chunk.len = t1->cblkdatabuffersize;
 	chunk.data = t1->cblkdatabuffer;
 
-	cblk_dec_t cblkopj;
-	memset(&cblkopj, 0, sizeof(cblk_dec_t));
-	cblkopj.numchunks = 1;
-	cblkopj.chunks = &chunk;
-	cblkopj.x0 = block->x;
-	cblkopj.y0 = block->y;
-	cblkopj.x1 = block->x + cblk->x1 - cblk->x0;
-	cblkopj.y1 = block->y + cblk->y1 - cblk->y0;
+	cblk_dec cblkexp;
+	memset(&cblkexp, 0, sizeof(cblk_dec));
+	cblkexp.chunks = &chunk;
+	cblkexp.x0 = block->x;
+	cblkexp.y0 = block->y;
+	cblkexp.x1 = block->x + cblk->x1 - cblk->x0;
+	cblkexp.y1 = block->y + cblk->y1 - cblk->y0;
 	assert(cblk->x1 - cblk->x0 > 0);
 	assert(cblk->y1 - cblk->y0 > 0);
-	cblkopj.real_num_segs = cblk->numSegments;
-	auto segs = new seg_t[cblk->numSegments];
+	cblkexp.real_num_segs = cblk->numSegments;
+	auto segs = new seg[cblk->numSegments];
 	for (uint32_t i = 0; i < cblk->numSegments; ++i){
-		auto sopj = segs + i;
-		memset(sopj, 0, sizeof(seg_t));
+		auto segp = segs + i;
+		memset(segp, 0, sizeof(seg));
 		auto sgrk = cblk->segs + i;
-		sopj->len = sgrk->len;
-		assert(sopj->len <= total_seg_len);
-		sopj->real_num_passes = sgrk->numpasses;
+		segp->len = sgrk->len;
+		assert(segp->len <= total_seg_len);
+		segp->real_num_passes = sgrk->numpasses;
 	}
-	cblkopj.segs = segs;
+	cblkexp.segs = segs;
 	// subtract roishift as it was added when packet was parsed
-	// and opj uses subtracted value
-	cblkopj.numbps = cblk->numbps - block->roishift;
+	// and exp uses subtracted value
+	cblkexp.numbps = cblk->numbps - block->roishift;
 
     ret =t1_decode_cblk(t1,
-    				&cblkopj,
+    				&cblkexp,
     				block->bandno,
 					block->roishift,
 					block->cblk_sty,
@@ -202,19 +201,19 @@ void T1Part1::postDecode(decodeBlockInfo *block) {
 	if (!cblk->seg_buffers.get_len())
 		return;
 
-	cblk_dec_t cblkopj;
-	memset(&cblkopj, 0, sizeof(cblk_dec_t));
-	cblkopj.x0 = block->x;
-	cblkopj.y0 = block->y;
-	cblkopj.x1 = block->x + cblk->x1 - cblk->x0;
-	cblkopj.y1 = block->y + cblk->y1 - cblk->y0;
+	cblk_dec cblkexp;
+	memset(&cblkexp, 0, sizeof(cblk_dec));
+	cblkexp.x0 = block->x;
+	cblkexp.y0 = block->y;
+	cblkexp.x1 = block->x + cblk->x1 - cblk->x0;
+	cblkexp.y1 = block->y + cblk->y1 - cblk->y0;
     post_decode(t1,
-    		&cblkopj,
+    		&cblkexp,
 			block);
 }
 
 void T1Part1::post_decode(t1_info *t1,
-						cblk_dec_t *cblk,
+						cblk_dec *cblk,
 						decodeBlockInfo *block) {
 	uint32_t roishift = block->roishift;
 	uint32_t qmfbid = block->qmfbid;
