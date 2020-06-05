@@ -62,7 +62,6 @@ bool T1Decoder::decompress(std::vector<decodeBlockInfo*> *blocks) {
 			delete blocks->operator[](i);
 		return success;
 	}
-
 	auto maxBlocks = blocks->size();
 	decodeBlocks = new decodeBlockInfo*[maxBlocks];
 	for (uint64_t i = 0; i < maxBlocks; ++i)
@@ -76,18 +75,20 @@ bool T1Decoder::decompress(std::vector<decodeBlockInfo*> *blocks) {
                 assert(threadnum >= 0);
                 while (true) {
                 	uint64_t index = (uint64_t)++blockCount;
+                	//note: even after failure, we continue to read and delete
+                	//blocks unil index is out of bounds. Otherwise, we leak blocks.
                 	if (index >= maxBlocks)
-                		break;
-					decodeBlockInfo *block = decodeBlocks[index];
+                		return 0;
+					auto block = decodeBlocks[index];
 					if (!success){
 						delete block;
-						return 0;
+						continue;
 					}
 					auto impl = threadStructs[(size_t)threadnum];
 					if (!impl->decompress(block)) {
 						success = false;
 						delete block;
-						return 0;
+						continue;
 					}
 					impl->postDecode(block);
 					delete block;
@@ -100,6 +101,7 @@ bool T1Decoder::decompress(std::vector<decodeBlockInfo*> *blocks) {
         result.get();
     }
 	delete[] decodeBlocks;
+
 	return success;
 }
 
