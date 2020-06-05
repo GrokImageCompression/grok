@@ -60,8 +60,6 @@
 
 namespace grk {
 
-#define T1_NMSEDEC_BITS 7
-
 #define T1_NUMCTXS_ZC  9
 #define T1_NUMCTXS_SC  5
 #define T1_NUMCTXS_MAG 3
@@ -74,8 +72,6 @@ namespace grk {
 #define T1_CTXNO_AGG (T1_CTXNO_MAG+T1_NUMCTXS_MAG)
 #define T1_CTXNO_UNI (T1_CTXNO_AGG+T1_NUMCTXS_AGG)
 #define T1_NUMCTXS   (T1_CTXNO_UNI+T1_NUMCTXS_UNI)
-
-#define T1_NMSEDEC_FRACBITS (T1_NMSEDEC_BITS-1)
 
 
 /** Flags for 4 consecutive rows of a column */

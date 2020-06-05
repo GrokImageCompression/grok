@@ -89,11 +89,7 @@ void Quantizer::setBandStepSizeAndBps(TileCodingParams *tcp,
 	band->numbps = tccp->roishift
 			+ (uint32_t)std::max<int32_t>(0,
 					step_size->expn + tccp->numgbits - 1);
-	// We can have a maximum 31 bits in each 32 bit wavelet coefficient
-	// as the most significant bit is reserved for the sign.
-	// Since we need 6 fractional bits for rate control,
-	// we can only support a maximum of 25 bit planes
-	assert(band->numbps <= 25);
+	assert(band->numbps <= k_max_bit_planes);
 	band->inv_step = (uint32_t)((8192.0/band->stepsize) + 0.5f);
 
 	if (tcp->isHT){

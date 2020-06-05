@@ -1053,9 +1053,9 @@ bool t1_decode_cblk(t1_info *t1, cblk_dec *cblk, uint32_t orient,
 
 
 	bpno_plus_one = (int32_t) (roishift + cblk->numbps);
-	if (bpno_plus_one >= 31) {
-		grk::GROK_ERROR("unsupported bpno_plus_one = %d >= 31",
-				bpno_plus_one);
+	if (bpno_plus_one >= k_max_bit_planes) {
+		grk::GROK_ERROR("unsupported number of bit planes: %d > %d",
+				bpno_plus_one, k_max_bit_planes);
 		return false;
 	}
 	passtype = 2;
