@@ -2268,7 +2268,6 @@ static bool j2k_pre_write_tile(CodeStream *codeStream, uint16_t tile_index) {
 		GROK_ERROR("The given tile index does not match.");
 		return false;
 	}
-	//event_msg( EVT_INFO, "tile number %d / %d", codeStream->m_tileProcessor->m_current_tile_index + 1, codeStream->m_cp.tw * codeStream->m_cp.t_grid_height);
 	codeStream->m_tileProcessor->m_current_tile_part_index = 0;
 	codeStream->m_tileProcessor->cur_totnum_tp =
 			codeStream->m_cp.tcps[tile_index].m_nb_tile_parts;

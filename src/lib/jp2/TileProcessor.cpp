@@ -106,8 +106,6 @@ bool TileProcessor::set_decompress_area(CodeStream *codeStream, grk_image *outpu
 	}
 
 	if (!start_x && !start_y && !end_x && !end_y) {
-		//event_msg( EVT_INFO, "No decoded area parameters, set the decoded area to the whole image");
-
 		decoder->m_start_tile_x_index = 0;
 		decoder->m_start_tile_y_index = 0;
 		decoder->m_end_tile_x_index = cp->t_grid_width;
@@ -116,7 +114,6 @@ bool TileProcessor::set_decompress_area(CodeStream *codeStream, grk_image *outpu
 		return true;
 	}
 
-	/* ----- */
 	/* Check if the positions provided by the user are correct */
 
 	/* Left */
@@ -191,8 +188,6 @@ bool TileProcessor::set_decompress_area(CodeStream *codeStream, grk_image *outpu
 				cp->t_height);
 		output_image->y1 = end_y;
 	}
-	/* ----- */
-
 	decoder->m_discard_tiles = true;
 	whole_tile_decoding = false;
 	if (!update_image_dimensions(output_image,
@@ -212,7 +207,7 @@ bool TileProcessor::set_decompress_area(CodeStream *codeStream, grk_image *outpu
 
  then don't try to find an optimal threshold but rather take everything not included yet.
 
- It is possible to have some lossy layers and the last layer for sure lossless
+ It is possible to have some lossy layers and the last layer always lossless
 
  */
 bool TileProcessor::layer_needs_rate_control(uint32_t layno) {
@@ -253,10 +248,8 @@ void TileProcessor::makelayer_feasible(uint32_t layno, uint16_t thresh,
 			auto res = tilec->resolutions + resno;
 			for (bandno = 0; bandno < res->numbands; bandno++) {
 				auto band = res->bands + bandno;
-
 				for (precno = 0; precno < (uint64_t)res->pw * res->ph; precno++) {
 					auto prc = band->precincts + precno;
-
 					for (cblkno = 0; (uint64_t)cblkno < prc->cw * prc->ch; cblkno++) {
 						auto cblk = prc->cblks.enc + cblkno;
 						auto layer = cblk->layers + layno;
@@ -348,10 +341,8 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 		tilec->numpix = 0;
 		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
 			auto res = &tilec->resolutions[resno];
-
 			for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
 				auto band = &res->bands[bandno];
-
 				for (uint64_t precno = 0; (uint64_t)precno < res->pw * res->ph;
 						precno++) {
 					auto prc = &band->precincts[precno];
@@ -505,7 +496,6 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 									bandno, precno, cblkno, band, cblk,
 									&numPix);
 						}
-
 						if (!single_lossless) {
 							for (passno = 0; passno < cblk->numPassesTotal;
 									passno++) {
@@ -557,8 +547,8 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 										tp_pos, plt_markers);
 			delete t2;
 		}
-		return true;
 
+		return true;
 	}
 
 
@@ -633,6 +623,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 			return true;
 		}
 	}
+
 	return true;
 }
 static void prepareBlockForFirstLayer(grk_cblk_enc *cblk) {
@@ -659,9 +650,8 @@ void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 						auto cblk = prc->cblks.enc + cblkno;
 						auto layer = cblk->layers + layno;
 						uint32_t cumulative_included_passes_in_block;
-						if (layno == 0) {
+						if (layno == 0)
 							prepareBlockForFirstLayer(cblk);
-						}
 						if (thresh == 0) {
 							cumulative_included_passes_in_block =
 									cblk->numPassesTotal;
@@ -777,7 +767,6 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 							layer->disto = 0;
 							continue;
 						}
-
 						// update layer
 						if (cblk->numPassesInPreviousPackets == 0) {
 							layer->len =
@@ -806,8 +795,7 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 						tile->distolayer[layno] += layer->disto;
 						cblk->numPassesInPreviousPackets =
 								cumulative_included_passes_in_block;
-						assert(
-								cblk->numPassesInPreviousPackets
+						assert(cblk->numPassesInPreviousPackets
 										== cblk->numPassesTotal);
 					}
 				}

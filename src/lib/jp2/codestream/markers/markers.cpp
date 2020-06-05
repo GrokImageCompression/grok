@@ -207,9 +207,6 @@ bool j2k_read_soc(CodeStream *codeStream, BufferedStream *stream) {
 	if (codeStream->cstr_index) {
 		/* FIXME move it in a index structure included in codeStream*/
 		codeStream->cstr_index->main_head_start = stream->tell() - 2;
-
-		//event_msg( EVT_INFO, "Start to read j2k main header (%d).", codeStream->cstr_index->main_head_start);
-
 		/* Add the marker to the code stream index*/
 		if (!j2k_add_mhmarker(codeStream->cstr_index, J2K_MS_SOC,
 				codeStream->cstr_index->main_head_start, 2)) {
