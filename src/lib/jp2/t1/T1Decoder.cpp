@@ -46,20 +46,16 @@ bool T1Decoder::decompress(std::vector<decodeBlockInfo*> *blocks) {
 	size_t num_threads = ThreadPool::get()->num_threads();
 	success = true;
 	if (num_threads == 1){
-		size_t i;
-		for (i = 0; i < blocks->size(); ++i){
+		for (size_t i = 0; i < blocks->size(); ++i){
 			auto block = blocks->operator[](i);
 			auto impl = threadStructs[(size_t)0];
-			if (!impl->decompress(block)) {
+			if (!success || !impl->decompress(block)) {
 				success = false;
 				delete block;
-				break;
 			}
 			impl->postDecode(block);
 			delete block;
 		}
-		for (; i < blocks->size(); ++i )
-			delete blocks->operator[](i);
 		return success;
 	}
 	auto maxBlocks = blocks->size();
