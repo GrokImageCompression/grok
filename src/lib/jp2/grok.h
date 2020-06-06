@@ -1246,7 +1246,7 @@ typedef struct _grk_plugin_code_block {
 	///////////////////////////
 	uint32_t numPix;
 	uint8_t *compressedData;
-	size_t compressedDataLength;
+	uint32_t compressedDataLength;
 	size_t numBitPlanes;
 	size_t numPasses;
 	grk_plugin_pass passes[67];

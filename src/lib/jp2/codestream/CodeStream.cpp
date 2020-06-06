@@ -1181,11 +1181,7 @@ bool j2k_decompress_tile(CodeStream *codeStream, uint16_t tile_index,
 				auto comp = codeStream->m_output_image->comps + compno;
 
 				//transfer memory from tile component to output image
-				comp->data = tilec->buf->get_ptr(0, 0, 0, 0);
-				comp->owns_data = tilec->buf->owns_data;
-				tilec->buf->data = nullptr;
-				tilec->buf->owns_data = false;
-
+				tilec->buf->transferData(&comp->data, &comp->owns_data);
 				comp->resno_decoded =
 						tileProcessor->image->comps[compno].resno_decoded;
 			}
@@ -2159,8 +2155,7 @@ bool j2k_compress(CodeStream *codeStream, grk_plugin_tile *tile,
 		for (j = 0; j < codeStream->m_tileProcessor->image->numcomps; ++j) {
 			auto tilec = p_tcd->tile->comps + j;
 			if (transfer_image_to_tile) {
-				tilec->buf->data = (p_tcd->image->comps + j)->data;
-				tilec->buf->owns_data = false;
+				tilec->buf->setData((p_tcd->image->comps + j)->data);
 			} else {
 				if (!tilec->buf->alloc_component_data_encode()) {
 					GROK_ERROR("Error allocating tile component data.");

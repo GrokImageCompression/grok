@@ -90,10 +90,10 @@ void init_tilec(TileComponent * tilec,
 
     size_t nValues = (size_t)(tilec->x1 - tilec->x0) *
     		(tilec->y1 - tilec->y0);
-    tilec->buf->data = (int32_t*) grk_malloc(sizeof(int32_t) * nValues);
-    tilec->buf->owns_data = true;
+	auto data = (int32_t*) grk_aligned_malloc(sizeof(int32_t) * nValues);
+    tilec->buf->transferData(data);
     for (size_t i = 0; i < nValues; i++)
-        tilec->buf->data[i] = getValue((uint32_t)i);
+        data[i] = getValue((uint32_t)i);
 
     uint32_t leveno = tilec->numresolutions-1;
     auto res = tilec->resolutions;
@@ -199,13 +199,14 @@ int main(int argc, char** argv)
 	   init_tilec(&tilec, offset_x, offset_y,
 				   offset_x + size, offset_y + size,
 				   num_resolutions);
+		auto data = tilec.buf->get_ptr(0,0,0,0);
 
 		if (display) {
 			spdlog::info("Before");
 			k = 0;
 			for (j = 0; j < (int32_t)(tilec.y1 - tilec.y0); j++) {
 				for (i = 0; i < (int32_t)(tilec.x1 - tilec.x0); i++) {
-					printf("%d ", tilec.buf->data[k]);
+					printf("%d ", data[k]);
 					k ++;
 				}
 				printf("\n");
@@ -257,7 +258,7 @@ int main(int argc, char** argv)
 				k = 0;
 				for (j = 0; j < (int32_t)(tilec.y1 - tilec.y0); j++) {
 					for (i = 0; i < (int32_t)(tilec.x1 - tilec.x0); i++) {
-						printf("%d ", tilec.buf->data[k]);
+						printf("%d ", data[k]);
 						k ++;
 					}
 					printf("\n");
@@ -270,19 +271,18 @@ int main(int argc, char** argv)
 				k = 0;
 				for (j = 0; j < (int32_t)(tilec.y1 - tilec.y0); j++) {
 					for (i = 0; i < (int32_t)(tilec.x1 - tilec.x0); i++) {
-						printf("%d ", tilec.buf->data[k]);
+						printf("%d ", data[k]);
 						k ++;
 					}
 					printf("\n");
 				}
 			}
-
 			if (check) {
 				size_t idx;
 				size_t nValues = (size_t)(tilec.x1 - tilec.x0) *
 								 (size_t)(tilec.y1 - tilec.y0);
 				for (idx = 0; idx < nValues; idx++) {
-					if (tilec.buf->data[idx] != getValue((uint32_t)idx)) {
+					if (data[idx] != getValue((uint32_t)idx)) {
 						printf("Difference found at idx = %u\n", (uint32_t)idx);
 						return 1;
 					}

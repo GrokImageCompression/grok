@@ -636,12 +636,11 @@ void TileComponent::alloc_sparse_array(uint32_t numres){
 bool TileComponent::create_buffer(grk_image *output_image,
 									uint32_t dx,
 									uint32_t dy) {
-	auto new_buffer = new TileBuffer();
-	new_buffer->data = nullptr;
+	auto new_buffer = new TileBuffer<int32_t>();
 	new_buffer->reduced_tile_dim = grk_rect(x0, y0, x1, y1);
 	new_buffer->reduced_region_dim = new_buffer->reduced_tile_dim;
 	new_buffer->unreduced_tile_dim = unreduced_tile_dim;
-	grk_rect max_image_dim = unreduced_tile_dim ;
+    grk_rect max_image_dim = unreduced_tile_dim ;
 
 	if (output_image) {
 		// tile component coordinates

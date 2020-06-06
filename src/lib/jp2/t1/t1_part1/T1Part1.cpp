@@ -217,7 +217,7 @@ void T1Part1::post_decode(t1_info *t1,
 						decodeBlockInfo *block) {
 	uint32_t roishift = block->roishift;
 	uint32_t qmfbid = block->qmfbid;
-	float stepsize_over_two = block->stepsize/2.0;
+	float stepsize_over_two = block->stepsize/2;
 	int32_t *tilec_data = block->tiledp;
 	uint32_t tile_w = block->tilec->width();
 	bool whole_tile_decoding = block->tilec->whole_tile_decoding;

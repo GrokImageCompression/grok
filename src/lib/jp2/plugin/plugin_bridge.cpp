@@ -70,7 +70,7 @@ void decode_synch_plugin_with_host(TileProcessor *tcd) {
 							// copy segments into plugin codeblock buffer, and point host code block data
 							// to plugin data buffer
 							plugin_cblk->compressedDataLength =
-									cblk->seg_buffers.get_len();
+									(uint32_t)cblk->seg_buffers.get_len();
 							cblk->seg_buffers.copy_to_contiguous_buffer(
 									plugin_cblk->compressedData);
 							cblk->compressedData = plugin_cblk->compressedData;

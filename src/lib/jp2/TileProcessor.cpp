@@ -1195,7 +1195,7 @@ void TileProcessor::copy_image_to_tile() {
 		tilec->get_dimensions(image, img_comp, &size_comp, &width, &height,
 				&offset_x, &offset_y, &image_width, &stride, &tile_offset);
 		auto src_ptr = img_comp->data + tile_offset;
-		auto dest_ptr = tilec->buf->data;
+		auto dest_ptr = tilec->buf->get_ptr(0,0,0,0);
 
 		for (uint32_t j = 0; j < height; ++j) {
 			memcpy(dest_ptr, src_ptr, width * sizeof(int32_t));
@@ -1855,7 +1855,7 @@ bool TileProcessor::copy_image_data_to_tile(uint8_t *p_src,
 		nb_elem = tilec->area();
 		switch (size_comp) {
 		case 1: {
-			auto dest_ptr = tilec->buf->data;
+			auto dest_ptr = tilec->buf->get_ptr(0,0,0,0);
 			if (img_comp->sgnd) {
 				auto src_ptr = (int8_t*) p_src;
 				for (j = 0; j < nb_elem; ++j)
@@ -1870,7 +1870,7 @@ bool TileProcessor::copy_image_data_to_tile(uint8_t *p_src,
 		}
 			break;
 		case 2: {
-			int32_t *dest_ptr = tilec->buf->data;
+			int32_t *dest_ptr = tilec->buf->get_ptr(0,0,0,0);
 			if (img_comp->sgnd) {
 				auto src_ptr = (int16_t*) p_src;
 				for (j = 0; j < nb_elem; ++j)
