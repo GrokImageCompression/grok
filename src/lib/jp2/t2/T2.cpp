@@ -469,11 +469,9 @@ bool T2::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 	}
 	for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
 		auto band = res->bands + bandno;
-		if (band->isEmpty()) {
+		if (band->isEmpty())
 			continue;
-		}
-
-		grk_precinct *prc = band->precincts + p_pi->precno;
+		auto prc = band->precincts + p_pi->precno;
 		nb_code_blocks = (uint64_t) prc->cw * prc->ch;
 		for (uint64_t cblkno = 0; cblkno < nb_code_blocks; cblkno++) {
 			uint32_t included = 0, increment = 0;
@@ -681,7 +679,6 @@ bool T2::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 	//GROK_INFO("packet body\n");
 	*modified_length_ptr -= header_length;
 	*header_data_start += header_length;
-
 	*p_is_data_present = true;
 	*p_data_read = (uint32_t) (active_src - p_src_data);
 	src_buf->incr_cur_chunk_offset(*p_data_read);
@@ -691,22 +688,17 @@ bool T2::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 
 bool T2::read_packet_data(grk_resolution *res, PacketIter *p_pi,
 		ChunkBuffer *src_buf, uint64_t *p_data_read) {
-	uint32_t bandno;
-	uint64_t cblkno;
-	auto band = res->bands;
-	for (bandno = 0; bandno < res->numbands; ++bandno) {
+	for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
+		auto band = res->bands + bandno;
 		auto prc = &band->precincts[p_pi->precno];
 		uint64_t nb_code_blocks = (uint64_t) prc->cw * prc->ch;
-		auto cblk = prc->cblks.dec;
-
-		for (cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
-			grk_seg *seg = nullptr;
-
+		for (uint64_t cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
+			auto cblk = prc->cblks.dec + cblkno;
 			if (!cblk->numPassesInPacket) {
 				++cblk;
 				continue;
 			}
-
+			grk_seg *seg = nullptr;
 			if (!cblk->numSegments) {
 				seg = cblk->segs;
 				++cblk->numSegments;
@@ -755,11 +747,9 @@ bool T2::read_packet_data(grk_resolution *res, PacketIter *p_pi,
 					++cblk->numSegments;
 				}
 			} while (numPassesInPacket > 0);
-			++cblk;
 		} /* next code_block */
-
-		++band;
 	}
+
 	return true;
 }
 bool T2::skip_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuffer *src_buf,
@@ -771,17 +761,14 @@ bool T2::skip_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuffer *src
 	auto p_tile = tileProcessor->tile;
 
 	*p_data_read = 0;
-	if (!read_packet_header(p_tcp, p_pi, &read_data, src_buf, &nb_bytes_read)) {
+	if (!read_packet_header(p_tcp, p_pi, &read_data, src_buf, &nb_bytes_read))
 		return false;
-	}
-
 	nb_totabytes_read += nb_bytes_read;
 	max_length -= nb_bytes_read;
 
 	/* we should read data for the packet */
 	if (read_data) {
 		nb_bytes_read = 0;
-
 		if (!skip_packet_data(
 				&p_tile->comps[p_pi->compno].resolutions[p_pi->resno], p_pi,
 				&nb_bytes_read, max_length)) {
@@ -797,27 +784,22 @@ bool T2::skip_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuffer *src
 
 bool T2::skip_packet_data(grk_resolution *res, PacketIter *p_pi,
 		uint64_t *p_data_read, uint64_t max_length) {
-	uint32_t bandno;
-	uint64_t nb_code_blocks, cblkno;
-
 	*p_data_read = 0;
-	for (bandno = 0; bandno < res->numbands; ++bandno) {
+	for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
 		auto band = res->bands + bandno;
 		if (band->isEmpty())
 			continue;
 
 		auto prc = &band->precincts[p_pi->precno];
-		nb_code_blocks = (uint64_t) prc->cw * prc->ch;
-		auto cblk = prc->cblks.dec;
-		for (cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
-			grk_seg *seg = nullptr;
-
+		uint64_t nb_code_blocks = (uint64_t) prc->cw * prc->ch;
+		for (uint64_t cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
+			auto cblk = prc->cblks.dec + cblkno;
 			if (!cblk->numPassesInPacket) {
 				/* nothing to do */
 				++cblk;
 				continue;
 			}
-
+			grk_seg *seg = nullptr;
 			if (!cblk->numSegments) {
 				seg = cblk->segs;
 				++cblk->numSegments;
@@ -851,8 +833,6 @@ bool T2::skip_packet_data(grk_resolution *res, PacketIter *p_pi,
 					++cblk->numSegments;
 				}
 			} while (numPassesInPacket > 0);
-
-			++cblk;
 		}
 	}
 	return true;
@@ -938,8 +918,8 @@ bool T2::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
 
 	// initialize precinct and code blocks if this is the first layer
 	if (!layno) {
-		auto band = res->bands;
 		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
+			auto band = res->bands + bandno;
 			auto prc = band->precincts + precno;
 			uint64_t nb_blocks = (uint64_t)prc->cw * prc->ch;
 
@@ -964,7 +944,6 @@ bool T2::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
 							(int64_t) (band->numbps - cblk->numbps));
 				}
 			}
-			++band;
 		}
 	}
 
@@ -975,8 +954,8 @@ bool T2::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
 		return false;
 
 	/* Writing Packet header */
-	auto band = res->bands;
 	for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
+		auto band = res->bands + bandno;
 		auto prc = band->precincts + precno;
 		uint64_t nb_blocks = (uint64_t)prc->cw * prc->ch;
 
@@ -985,17 +964,17 @@ bool T2::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
 			continue;
 		}
 
-		auto cblk = prc->cblks.enc;
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
+			auto cblk = prc->cblks.enc + cblkno;
 			auto layer = cblk->layers + layno;
+
 			if (!cblk->numPassesInPacket
 					&& layer->numpasses) {
 				prc->incltree->setvalue(cblkno, (int32_t) layno);
 			}
-			++cblk;
 		}
 
-		cblk = prc->cblks.enc;
+		auto cblk = prc->cblks.enc;
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; cblkno++) {
 			auto layer = cblk->layers + layno;
 			uint32_t increment = 0;
@@ -1085,7 +1064,6 @@ bool T2::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
 			}
 			++cblk;
 		}
-		++band;
 	}
 
 	if (!bio->flush()) {
@@ -1111,8 +1089,8 @@ bool T2::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
 	/* INDEX >> */
 
 	/* Writing the packet body */
-	band = res->bands;
 	for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
+		auto band = res->bands + bandno;
 		auto prc = band->precincts + precno;
 		uint64_t nb_blocks = (uint64_t)prc->cw * prc->ch;
 
@@ -1122,7 +1100,6 @@ bool T2::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
 		}
 
 		auto cblk = prc->cblks.enc;
-
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 			auto cblk_layer = cblk->layers + layno;
 			if (!cblk_layer->numpasses) {
@@ -1145,7 +1122,6 @@ bool T2::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
 			}
 			++cblk;
 		}
-		++band;
 	}
 	*packet_bytes_written += (uint32_t)(stream->tell() - stream_start);
 
