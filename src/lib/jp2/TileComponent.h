@@ -68,10 +68,14 @@ struct TileComponent {
 	~TileComponent();
 	uint32_t width();
 	uint32_t height();
+	uint32_t X0();
+	uint32_t Y0();
+	uint32_t X1();
+	uint32_t Y1();
 	uint64_t area();
 	uint64_t size();
 
-	bool create_buffer(	grk_image *output_image,uint32_t dx,uint32_t dy);
+	void create_buffer(	grk_image *output_image,uint32_t dx,uint32_t dy);
 
 	void get_dimensions(grk_image *l_image, grk_image_comp  *l_img_comp,
 			uint32_t *l_size_comp, uint32_t *l_width,
@@ -108,16 +112,14 @@ struct TileComponent {
 	uint64_t numpix;
 	TileComponentBuffer<int32_t> *buf;
     bool   whole_tile_decoding;
-
-    /* reduced tile component coordinates */
-	uint32_t x0, y0, x1, y1;
-	grk_rect unreduced_tile_dim;
 	bool m_is_encoder;
 	sparse_array *m_sa;
+private:
+    /* reduced tile component coordinates */
+	uint32_t x0, y0, x1, y1;
+
 	TileComponentCodingParams *m_tccp;
 
-private:
-	void finalizeCoordinates();
 	/**
 	 * Deallocates the decoding data of the given precinct.
 	 */

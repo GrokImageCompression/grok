@@ -69,12 +69,12 @@ TileComponent::TileComponent() :numresolutions(0),
 							   numpix(0),
 							   buf(nullptr),
 							   whole_tile_decoding(true),
+							   m_is_encoder(false),
+							   m_sa(nullptr),
 							   x0(0),
 							   y0(0),
 							   x1(0),
 							   y1(0),
-							   m_is_encoder(false),
-							   m_sa(nullptr),
 							   m_tccp(nullptr)
 {}
 
@@ -108,7 +108,18 @@ void TileComponent::release_mem(){
 	delete m_sa;
 	m_sa = nullptr;
 }
-
+uint32_t TileComponent::X0(){
+	return x0;
+}
+uint32_t TileComponent::Y0(){
+	return y0;
+}
+uint32_t TileComponent::X1(){
+	return x1;
+}
+uint32_t TileComponent::Y1(){
+	return y1;
+}
 uint32_t TileComponent::width(){
 	return (uint32_t) (x1 - x0);
 }
@@ -121,21 +132,6 @@ uint64_t TileComponent::size(){
 uint64_t TileComponent::area(){
 	return (uint64_t)width() * height() ;
 }
-void TileComponent::finalizeCoordinates(){
-	auto highestRes =
-			(!m_is_encoder) ? minimum_num_resolutions : numresolutions;
-	auto res =  resolutions + highestRes - 1;
-	x0 = res->x0;
-	x1 = res->x1;
-	y0 = res->y0;
-	y1 = res->y1;
-
-	res = resolutions + numresolutions - 1;
-	unreduced_tile_dim = grk_rect(res->x0, res->y0, res->x1, res->y1);
-
-}
-
-
 void TileComponent::get_dimensions(grk_image *image,
 		 	 	 	 	 	 	 grk_image_comp  *img_comp,
 								 uint32_t *size_comp,
@@ -436,12 +432,10 @@ bool TileComponent::init(bool isEncoder,
 					uint32_t cblkyend = cblkystart + (1 << cblkheightexpn);
 
 					if (m_is_encoder) {
-						grk_cblk_enc *code_block =
-								current_precinct->cblks.enc + cblkno;
+						auto code_block = current_precinct->cblks.enc + cblkno;
 
-						if (!code_block->alloc()) {
+						if (!code_block->alloc())
 							return false;
-						}
 						/* code-block size (global) */
 						code_block->x0 = std::max<uint32_t>(cblkxstart,
 								current_precinct->x0);
@@ -455,18 +449,16 @@ bool TileComponent::init(bool isEncoder,
 						if (!current_plugin_tile
 								|| (state & GRK_PLUGIN_STATE_DEBUG)) {
 							if (!code_block->alloc_data(
-									nominalBlockSize)) {
+									nominalBlockSize))
 								return false;
-							}
 						}
 					} else {
-						grk_cblk_dec *code_block =
+						auto code_block =
 								current_precinct->cblks.dec + cblkno;
 						if (!current_plugin_tile
 								|| (state & GRK_PLUGIN_STATE_DEBUG)) {
-							if (!code_block->alloc()) {
+							if (!code_block->alloc())
 								return false;
-							}
 						}
 
 						/* code-block size (global) */
@@ -484,13 +476,9 @@ bool TileComponent::init(bool isEncoder,
 		} /* bandno */
 		++res;
 	} /* resno */
-	finalizeCoordinates();
-	if (!create_buffer(output_image,
-								image_comp->dx,
-								image_comp->dy)) {
-		return false;
-	}
-	buf->data_size_needed = size();
+	create_buffer(output_image,
+					image_comp->dx,
+					image_comp->dy);
 
 	return true;
 }
@@ -633,79 +621,26 @@ void TileComponent::alloc_sparse_array(uint32_t numres){
 }
 
 
-bool TileComponent::create_buffer(grk_image *output_image,
+void TileComponent::create_buffer(grk_image *output_image,
 									uint32_t dx,
 									uint32_t dy) {
-	auto new_buffer = new TileComponentBuffer<int32_t>();
-	new_buffer->reduced_tile_dim = grk_rect(x0, y0, x1, y1);
-	new_buffer->reduced_region_dim = new_buffer->reduced_tile_dim;
-	new_buffer->unreduced_tile_dim = unreduced_tile_dim;
-    grk_rect max_image_dim = unreduced_tile_dim ;
 
-	if (output_image) {
-		// tile component coordinates
-		new_buffer->unreduced_region_dim = grk_rect(ceildiv<uint32_t>(output_image->x0, dx),
-									ceildiv<uint32_t>(output_image->y0, dy),
-									ceildiv<uint32_t>(output_image->x1, dx),
-									ceildiv<uint32_t>(output_image->y1, dy));
+	auto highestRes =
+			(!m_is_encoder) ? minimum_num_resolutions : numresolutions;
+	auto res =  resolutions + highestRes - 1;
+	x0 = res->x0;
+	x1 = res->x1;
+	y0 = res->y0;
+	y1 = res->y1;
+	res = resolutions + numresolutions - 1;
 
-		new_buffer->reduced_region_dim 	= new_buffer->unreduced_region_dim;
-		max_image_dim 					= new_buffer->reduced_region_dim;
-		new_buffer->reduced_region_dim.ceildivpow2(numresolutions - minimum_num_resolutions);
-
-		/* clip output image to tile */
-		new_buffer->reduced_tile_dim.clip(new_buffer->reduced_region_dim, &new_buffer->reduced_region_dim);
-		new_buffer->unreduced_tile_dim.clip(new_buffer->unreduced_region_dim, &new_buffer->unreduced_region_dim);
-	}
-
-	/* for compress, we don't need to allocate resolutions */
-	if (!m_is_encoder) {
-		/* fill resolutions vector */
-        assert(numresolutions>0);
-		TileComponentBufferResolution *prev_res = nullptr;
-		for (int32_t resno = (int32_t) (numresolutions - 1); resno >= 0; --resno) {
-			auto res = resolutions + resno;
-			auto tile_buffer_res = (TileComponentBufferResolution*) grk_calloc(1,
-					sizeof(TileComponentBufferResolution));
-			if (!tile_buffer_res) {
-				delete new_buffer;
-				return false;
-			}
-
-			tile_buffer_res->bounds.x = res->x1 - res->x0;
-			tile_buffer_res->bounds.y = res->y1 - res->y0;
-			tile_buffer_res->origin.x = res->x0;
-			tile_buffer_res->origin.y = res->y0;
-
-			for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
-				auto band = res->bands + bandno;
-				grk_rect band_rect;
-				band_rect = grk_rect(band->x0, band->y0, band->x1, band->y1);
-
-				tile_buffer_res->band_region[bandno] =
-						prev_res ? prev_res->band_region[bandno] : max_image_dim;
-				if (resno > 0) {
-
-					/*For next level down, E' = ceil((E-b)/2) where b in {0,1} identifies band
-					 * see Chapter 11 of Taubman and Marcellin for more details
-					 * */
-					grk_pt shift;
-					shift.x = -(int64_t)(band->bandno & 1);
-					shift.y = -(int64_t)(band->bandno >> 1);
-
-					tile_buffer_res->band_region[bandno].pan(&shift);
-					tile_buffer_res->band_region[bandno].ceildivpow2(1);
-				}
-			}
-			tile_buffer_res->num_bands = res->numbands;
-			new_buffer->resolutions.push_back(tile_buffer_res);
-			prev_res = tile_buffer_res;
-		}
-	}
 	delete buf;
-	buf = new_buffer;
-
-	return true;
+	buf = new TileComponentBuffer<int32_t>(output_image, dx,dy,
+											grk_rect(res->x0, res->y0, res->x1, res->y1),
+											grk_rect(x0, y0, x1, y1),
+											minimum_num_resolutions,
+											numresolutions,
+											resolutions);
 }
 
 /**

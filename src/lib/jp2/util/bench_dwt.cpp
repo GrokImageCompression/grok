@@ -70,44 +70,42 @@ int32_t getValue(uint32_t i){
     return ((int32_t)i % 511) - 256;
 }
 
-void init_tilec(TileComponent * tilec,
+bool init_tilec(TileComponent * tilec,
                 uint32_t x0,
                 uint32_t y0,
                 uint32_t x1,
                 uint32_t y1,
                 uint32_t numresolutions){
-    tilec->x0 = x0;
-    tilec->y0 = y0;
-    tilec->x1 = x1;
-    tilec->y1 = y1;
-    tilec->m_is_encoder = false;
+	tilec->m_is_encoder = false;
     tilec->numresolutions = numresolutions;
     tilec->minimum_num_resolutions = numresolutions;
     tilec->resolutions = new grk_resolution[tilec->numresolutions];
     for (auto i = 0; i < tilec->numresolutions; ++i)
     	memset(tilec->resolutions+i,0,sizeof(grk_resolution));
-    tilec->create_buffer(nullptr,1,1);
-
-    size_t nValues = (size_t)(tilec->x1 - tilec->x0) *
-    		(tilec->y1 - tilec->y0);
-	auto data = (int32_t*) grk_aligned_malloc(sizeof(int32_t) * nValues);
-    tilec->buf->transferData(data);
-    for (size_t i = 0; i < nValues; i++)
-        data[i] = getValue((uint32_t)i);
-
     uint32_t leveno = tilec->numresolutions-1;
     auto res = tilec->resolutions;
 
     /* Adapted from grk_init_tile() */
     for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
         /* border for each resolution level (global) */
-        res->x0 = uint_ceildivpow2(tilec->x0, leveno);
-        res->y0 = uint_ceildivpow2(tilec->y0, leveno);
-        res->x1 = uint_ceildivpow2(tilec->x1, leveno);
-        res->y1 = uint_ceildivpow2(tilec->y1, leveno);
+        res->x0 = uint_ceildivpow2(x0, leveno);
+        res->y0 = uint_ceildivpow2(y0, leveno);
+        res->x1 = uint_ceildivpow2(x1, leveno);
+        res->y1 = uint_ceildivpow2(y1, leveno);
         ++res;
         --leveno;
     }
+    tilec->create_buffer(nullptr,1,1);
+    size_t nValues = (size_t)tilec->area();
+	auto data = (int32_t*) grk_aligned_malloc(sizeof(int32_t) * nValues);
+	if (!data)
+		return false;
+    tilec->buf->acquire(data);
+    for (size_t i = 0; i < nValues; i++)
+        data[i] = getValue((uint32_t)i);
+    return true;
+
+
 }
 
 void usage(void)
@@ -204,8 +202,8 @@ int main(int argc, char** argv)
 		if (display) {
 			spdlog::info("Before");
 			k = 0;
-			for (j = 0; j < (int32_t)(tilec.y1 - tilec.y0); j++) {
-				for (i = 0; i < (int32_t)(tilec.x1 - tilec.x0); i++) {
+			for (j = 0; j < (int32_t)(tilec.height()); j++) {
+				for (i = 0; i < (int32_t)(tilec.width()); i++) {
 					printf("%d ", data[k]);
 					k ++;
 				}
@@ -215,10 +213,10 @@ int main(int argc, char** argv)
 		tileProcessor->image = &image;
 		memset(&image, 0, sizeof(image));
 		memset(&tile, 0, sizeof(tile));
-		tile.x0 = tilec.x0;
-		tile.y0 = tilec.y0;
-		tile.x1 = tilec.x1;
-		tile.y1 = tilec.y1;
+		tile.x0 = tilec.X0();
+		tile.y0 = tilec.Y0();
+		tile.x1 = tilec.X1();
+		tile.y1 = tilec.Y1();
 		tile.numcomps = 1;
 		tile.comps = &tilec;
 		tileProcessor->image = &image;
@@ -256,8 +254,8 @@ int main(int argc, char** argv)
 			if (display) {
 				spdlog::info("After IDWT\n");
 				k = 0;
-				for (j = 0; j < (int32_t)(tilec.y1 - tilec.y0); j++) {
-					for (i = 0; i < (int32_t)(tilec.x1 - tilec.x0); i++) {
+				for (j = 0; j < (int32_t)(tilec.height()); j++) {
+					for (i = 0; i < (int32_t)(tilec.width()); i++) {
 						printf("%d ", data[k]);
 						k ++;
 					}
@@ -269,8 +267,8 @@ int main(int argc, char** argv)
 			if (display) {
 				spdlog::info("After FDWT\n");
 				k = 0;
-				for (j = 0; j < (int32_t)(tilec.y1 - tilec.y0); j++) {
-					for (i = 0; i < (int32_t)(tilec.x1 - tilec.x0); i++) {
+				for (j = 0; j < (int32_t)(tilec.height()); j++) {
+					for (i = 0; i < (int32_t)(tilec.width()); i++) {
 						printf("%d ", data[k]);
 						k ++;
 					}
@@ -279,8 +277,7 @@ int main(int argc, char** argv)
 			}
 			if (check) {
 				size_t idx;
-				size_t nValues = (size_t)(tilec.x1 - tilec.x0) *
-								 (size_t)(tilec.y1 - tilec.y0);
+				size_t nValues = (size_t)tilec.area();
 				for (idx = 0; idx < nValues; idx++) {
 					if (data[idx] != getValue((uint32_t)idx)) {
 						printf("Difference found at idx = %u\n", (uint32_t)idx);

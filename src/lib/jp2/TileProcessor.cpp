@@ -1004,13 +1004,13 @@ bool TileProcessor::is_whole_tilecomp_decoding(uint32_t compno) {
 	uint32_t shift = tilec->numresolutions - tilec->minimum_num_resolutions;
 	/* Tolerate small margin within the reduced resolution factor to consider if */
 	/* the whole tile path must be taken */
-	return (tcx0 >= (uint32_t) tilec->x0 && tcy0 >= (uint32_t) tilec->y0
-			&& tcx1 <= (uint32_t) tilec->x1 && tcy1 <= (uint32_t) tilec->y1
+	return (tcx0 >= (uint32_t) tilec->X0() && tcy0 >= (uint32_t) tilec->Y0()
+			&& tcx1 <= (uint32_t) tilec->X1() && tcy1 <= (uint32_t) tilec->Y1()
 			&& (shift >= 32
-					|| (((tcx0 - (uint32_t) tilec->x0) >> shift) == 0
-							&& ((tcy0 - (uint32_t) tilec->y0) >> shift) == 0
-							&& (((uint32_t) tilec->x1 - tcx1) >> shift) == 0
-							&& (((uint32_t) tilec->y1 - tcy1) >> shift) == 0)));
+					|| (((tcx0 - (uint32_t) tilec->X0()) >> shift) == 0
+							&& ((tcy0 - (uint32_t) tilec->Y0()) >> shift) == 0
+							&& (((uint32_t) tilec->X1() - tcx1) >> shift) == 0
+							&& (((uint32_t) tilec->Y1() - tcy1) >> shift) == 0)));
 
 }
 
@@ -1035,10 +1035,10 @@ bool TileProcessor::decompress_tile(ChunkBuffer *src_buf, uint16_t tile_no) {
 			/* Compute the intersection of the area of interest, expressed in tile coordinates */
 			/* with the tile coordinates */
 			auto dims = tilec->buf->reduced_region_dim;
-			uint32_t win_x0 = max<uint32_t>(tilec->x0, (uint32_t) dims.x0);
-			uint32_t win_y0 = max<uint32_t>(tilec->y0, (uint32_t) dims.y0);
-			uint32_t win_x1 = min<uint32_t>(tilec->x1, (uint32_t) dims.x1);
-			uint32_t win_y1 = min<uint32_t>(tilec->y1, (uint32_t) dims.y1);
+			uint32_t win_x0 = max<uint32_t>(tilec->X0(), (uint32_t) dims.x0);
+			uint32_t win_y0 = max<uint32_t>(tilec->Y0(), (uint32_t) dims.y0);
+			uint32_t win_x1 = min<uint32_t>(tilec->X1(), (uint32_t) dims.x1);
+			uint32_t win_y1 = min<uint32_t>(tilec->Y1(), (uint32_t) dims.y1);
 			if (win_x1 < win_x0 || win_y1 < win_y0) {
 				/* We should not normally go there. The circumstance is when */
 				/* the tile coordinates do not intersect the area of interest */
