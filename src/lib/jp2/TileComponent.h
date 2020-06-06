@@ -106,7 +106,7 @@ struct TileComponent {
 	grk_resolution* round_trip_resolutions;  /* round trip resolution information */
 #endif
 	uint64_t numpix;
-	TileBuffer<int32_t> *buf;
+	TileComponentBuffer<int32_t> *buf;
     bool   whole_tile_decoding;
 
     /* reduced tile component coordinates */

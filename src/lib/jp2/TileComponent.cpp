@@ -636,7 +636,7 @@ void TileComponent::alloc_sparse_array(uint32_t numres){
 bool TileComponent::create_buffer(grk_image *output_image,
 									uint32_t dx,
 									uint32_t dy) {
-	auto new_buffer = new TileBuffer<int32_t>();
+	auto new_buffer = new TileComponentBuffer<int32_t>();
 	new_buffer->reduced_tile_dim = grk_rect(x0, y0, x1, y1);
 	new_buffer->reduced_region_dim = new_buffer->reduced_tile_dim;
 	new_buffer->unreduced_tile_dim = unreduced_tile_dim;
@@ -662,11 +662,11 @@ bool TileComponent::create_buffer(grk_image *output_image,
 	if (!m_is_encoder) {
 		/* fill resolutions vector */
         assert(numresolutions>0);
-		TileBufferResolution *prev_res = nullptr;
+		TileComponentBufferResolution *prev_res = nullptr;
 		for (int32_t resno = (int32_t) (numresolutions - 1); resno >= 0; --resno) {
 			auto res = resolutions + resno;
-			auto tile_buffer_res = (TileBufferResolution*) grk_calloc(1,
-					sizeof(TileBufferResolution));
+			auto tile_buffer_res = (TileComponentBufferResolution*) grk_calloc(1,
+					sizeof(TileComponentBufferResolution));
 			if (!tile_buffer_res) {
 				delete new_buffer;
 				return false;

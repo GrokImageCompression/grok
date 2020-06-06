@@ -206,7 +206,7 @@ static inline long grok_lrintf(float f) {
 #include <Dump.h>
 #include "FileFormat.h"
 #include "BitIO.h"
-#include "TileBuffer.h"
+#include "TileComponentBuffer.h"
 #include "PacketIter.h"
 #include "TagTree.h"
 #include "sparse_array.h"

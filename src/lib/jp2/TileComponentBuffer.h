@@ -32,17 +32,17 @@ namespace grk {
 
  */
 
-struct TileBufferResolution {
+struct TileComponentBufferResolution {
 	grk_rect band_region[3]; // tile coordinates
 	uint32_t num_bands;
 	grk_pt origin; /* resolution origin, in tile coordinates */
 	grk_pt bounds; /* width and height of resolution in tile coordinates */
 };
 
-template<typename T> struct TileBuffer {
-	TileBuffer() : data(nullptr), data_size(0), owns_data(false)
+template<typename T> struct TileComponentBuffer {
+	TileComponentBuffer() : data(nullptr), data_size(0), owns_data(false)
 	{}
-	~TileBuffer(){
+	~TileComponentBuffer(){
 		if (owns_data)
 			grk_aligned_free(data);
 		for (auto &res : resolutions) {
@@ -130,7 +130,7 @@ template<typename T> struct TileBuffer {
 	/* unreduced coordinates of tile */
 	grk_rect unreduced_tile_dim;
 
-	std::vector<TileBufferResolution*> resolutions;
+	std::vector<TileComponentBufferResolution*> resolutions;
 
 	/* we may either need to allocate this amount of data,
 	 or re-use image data and ignore this value */
