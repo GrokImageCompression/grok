@@ -525,18 +525,14 @@ int parse_cmdline_decoder(int argc, char **argv,
 				false, 0, "unsigned integer", cmd);
 
 		SwitchArg verboseArg("v", "verbose", "Verbose", cmd);
-
 		cmd.parse(argc, argv);
 
+		parameters->verbose = verboseArg.isSet();
+		if (!parameters->verbose)
+			spdlog::set_level(spdlog::level::level_enum::err);
+
 		parameters->serialize_xml = xmlArg.isSet();
-
-		if (verboseArg.isSet()) {
-			parameters->verbose = verboseArg.getValue();
-		}
-
-		if (forceRgbArg.isSet()) {
-			parameters->force_rgb = true;
-		}
+		parameters->force_rgb = forceRgbArg.isSet();
 		if (upsampleArg.isSet()) {
 			if (reduceArg.isSet())
 				spdlog::warn(
@@ -544,9 +540,7 @@ int parse_cmdline_decoder(int argc, char **argv,
 			else
 				parameters->upsample = true;
 		}
-		if (splitPnmArg.isSet()) {
-			parameters->split_pnm = true;
-		}
+		parameters->split_pnm = splitPnmArg.isSet();
 		if (compressionArg.isSet()) {
 			uint32_t comp = getCompressionCode(compressionArg.getValue());
 			if (comp == UINT_MAX)
@@ -1231,8 +1225,6 @@ int plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
 		return EXIT_FAILURE;
 	}
 
-	if (!initParams->parameters.verbose)
-		spdlog::set_level(spdlog::level::level_enum::err);
 
 #ifdef GROK_HAVE_LIBTIFF
 	tiffSetErrorAndWarningHandlers(initParams->parameters.verbose);
