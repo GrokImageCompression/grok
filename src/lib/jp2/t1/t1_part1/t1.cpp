@@ -1053,7 +1053,7 @@ bool t1_decode_cblk(t1_info *t1, cblk_dec *cblk, uint32_t orient,
 
 
 	bpno_plus_one = (int32_t) (roishift + cblk->numbps);
-	if (bpno_plus_one >= k_max_bit_planes) {
+	if (bpno_plus_one >= (int32_t)k_max_bit_planes) {
 		grk::GROK_ERROR("unsupported number of bit planes: %d > %d",
 				bpno_plus_one, k_max_bit_planes);
 		return false;

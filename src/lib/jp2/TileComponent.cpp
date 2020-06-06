@@ -665,7 +665,6 @@ bool TileComponent::create_buffer(grk_image *output_image,
         assert(numresolutions>0);
 		TileBufferResolution *prev_res = nullptr;
 		for (int32_t resno = (int32_t) (numresolutions - 1); resno >= 0; --resno) {
-			uint32_t bandno;
 			auto res = resolutions + resno;
 			auto tile_buffer_res = (TileBufferResolution*) grk_calloc(1,
 					sizeof(TileBufferResolution));
@@ -679,7 +678,7 @@ bool TileComponent::create_buffer(grk_image *output_image,
 			tile_buffer_res->origin.x = res->x0;
 			tile_buffer_res->origin.y = res->y0;
 
-			for (bandno = 0; bandno < res->numbands; ++bandno) {
+			for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
 				auto band = res->bands + bandno;
 				grk_rect band_rect;
 				band_rect = grk_rect(band->x0, band->y0, band->x1, band->y1);
@@ -697,10 +696,6 @@ bool TileComponent::create_buffer(grk_image *output_image,
 
 					tile_buffer_res->band_region[bandno].pan(&shift);
 					tile_buffer_res->band_region[bandno].ceildivpow2(1);
-
-					// boundary padding. This number is slightly larger than it should be theoretically,
-					// but we want to make sure that we don't have bugs at the region boundaries
-					tile_buffer_res->band_region[bandno].grow(4);
 				}
 			}
 			tile_buffer_res->num_bands = res->numbands;
