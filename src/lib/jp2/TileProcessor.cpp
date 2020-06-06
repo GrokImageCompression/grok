@@ -380,7 +380,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 	if (single_lossless) {
 		makelayer_final(0);
 		if (plt_markers) {
-			auto t2 = new T2(this);
+			auto t2 = new T2Encode(this);
 			uint32_t all_packets_len = 0;
 			t2->encode_packets_simulate(m_tileno,
 										0 + 1, &all_packets_len, UINT_MAX,
@@ -407,7 +407,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 		// used to bail out if difference with current thresh is small enough
 		uint32_t prevthresh = 0;
 		if (layer_needs_rate_control(layno)) {
-			auto t2 = new T2(this);
+			auto t2 = new T2Encode(this);
 			double distotarget = tile->distotile
 					- ((K * maxSE)
 							/ pow(10.0, tcp->distoratio[layno] / 10.0));
@@ -540,7 +540,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 	} /* compno */
 	if (single_lossless){
 		if (plt_markers) {
-			auto t2 = new T2(this);
+			auto t2 = new T2Encode(this);
 			uint32_t all_packets_len = 0;
 			t2->encode_packets_simulate(m_tileno,
 										0 + 1, &all_packets_len, UINT_MAX,
@@ -572,7 +572,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 							- ((K * maxSE)
 									/ pow(10.0, m_tcp->distoratio[layno] / 10.0));
 
-			auto t2 = new T2(this);
+			auto t2 = new T2Encode(this);
 			double thresh;
 			for (uint32_t i = 0; i < 128; ++i) {
 				thresh =
@@ -1218,7 +1218,7 @@ bool TileProcessor::read_marker(BufferedStream *stream, uint16_t *val){
 }
 bool TileProcessor::t2_decode(uint16_t tile_no, ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
-	auto t2 = new T2(this);
+	auto t2 = new T2Decode(this);
 
 	if (!t2->decode_packets(tile_no, src_buf, p_data_read)) {
 		delete t2;
@@ -1487,7 +1487,7 @@ void TileProcessor::t1_encode() {
 bool TileProcessor::t2_encode(BufferedStream *stream, uint32_t *all_packet_bytes_written,
 		grk_codestream_info *p_cstr_info) {
 
-	auto l_t2 = new T2(this);
+	auto l_t2 = new T2Encode(this);
 #ifdef DEBUG_LOSSLESS_T2
 	for (uint32_t compno = 0; compno < p_image->m_numcomps; ++compno) {
 		TileComponent *tilec = &p_tile->comps[compno];
