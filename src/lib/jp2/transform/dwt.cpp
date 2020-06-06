@@ -744,7 +744,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
         horiz.dn = (int32_t)(rw - (uint32_t)horiz.sn);
         horiz.cas = tr->x0 % 2;
 
-        if (num_threads <= 1 || rh <= 1) {
+        if (num_threads == 1 || rh <= 1) {
         	if (!horiz.mem){
         	    if (! horiz.alloc(h_mem_size)) {
         	        GROK_ERROR("Out of memory");
@@ -787,7 +787,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
         vert.dn = (int32_t)(rh - (uint32_t)vert.sn);
         vert.cas = tr->y0 % 2;
 
-        if (num_threads <= 1 || rw <= 1) {
+        if (num_threads == 1 || rw <= 1) {
         	if (!horiz.mem){
         	    if (! horiz.alloc(h_mem_size)) {
         	        GROK_ERROR("Out of memory");
@@ -1532,7 +1532,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         if (rh < num_jobs)
             num_jobs = rh;
         uint32_t step_j = num_jobs ? (rh / num_jobs) : 0;
-        if (step_j < 4) {
+        if (num_threads == 1 || step_j < 4) {
 			for (j = 0; j + 3 < rh; j += 4) {
 				interleave_h_97(&horiz, tiledp, w, rh - j);
 				decode_step_97(&horiz);
@@ -1625,7 +1625,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         if (rw < num_jobs)
             num_jobs = rw;
         step_j = num_jobs ? (rw / num_jobs) : 0;
-        if (step_j < 4) {
+        if (num_threads == 1 || step_j < 4) {
 			for (j = 0; j + 3 < rw; j += 4) {
 				interleave_v_97(&vert, tiledp, w, 4);
 				decode_step_97(&vert);
@@ -1887,7 +1887,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 			if (num_cols < num_jobs)
 				num_jobs = num_cols;
 			uint32_t step_j = num_jobs ? ( num_cols / num_jobs) : 0;
-			if (step_j < HORIZ_STEP){
+			if (num_threads == 1 ||step_j < HORIZ_STEP){
 			 for (j = bounds[k][0]; j + HORIZ_STEP-1 < bounds[k][1]; j += HORIZ_STEP) {
 				 decoder.interleave_partial_h(&horiz, sa, j,HORIZ_STEP);
 				 decoder.decode_h(&horiz);
@@ -1988,7 +1988,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 		if (num_cols < num_jobs)
 			num_jobs = num_cols;
 		uint32_t step_j = num_jobs ? ( num_cols / num_jobs) : 0;
-		if (step_j < VERT_STEP){
+		if (num_threads == 1 || step_j < VERT_STEP){
 			for (j = win_tr_x0; j + VERT_STEP < win_tr_x1; j += VERT_STEP) {
 				decoder.interleave_partial_v(&vert, sa, j, VERT_STEP);
 				decoder.decode_v(&vert);
