@@ -122,8 +122,8 @@ template <typename T> struct dwt_data {
 		mem = nullptr;
 	}
     T* mem;
-    int32_t dn;   /* number of elements in high pass band */
-    int32_t sn;   /* number of elements in low pass band */
+    uint32_t dn;   /* number of elements in high pass band */
+    uint32_t sn;   /* number of elements in low pass band */
     int32_t cas;  /* 0 = start on even coord, 1 = start on odd coord */
     uint32_t      win_l_x0; /* start coord in low pass band */
     uint32_t      win_l_x1; /* end coord in low pass band */
@@ -184,7 +184,7 @@ static const float c13318 = 1.625732422f;
 /**
 Inverse wavelet transform in 2-D.
 */
-static bool decode_tile_53(TileComponent* tilec, uint32_t i);
+static bool decode_tile_53(TileComponent* tilec, uint32_t numres);
 
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 1-D. */
@@ -253,8 +253,8 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 */
 
 static void  decode_h_cas0_53(int32_t* tmp,
-                               const int32_t sn,
-                               const int32_t len,
+                               const uint32_t sn,
+                               const uint32_t len,
                                int32_t* tiledp){
     assert(len > 1);
 
@@ -267,34 +267,34 @@ static void  decode_h_cas0_53(int32_t* tmp,
     int32_t d1n = in_odd[0];
     int32_t s0n = s1n - ((d1n + 1) >> 1);
 
-    int32_t i, j;
-    for (i = 0, j = 1; i < (len - 3); i += 2, j++) {
-    	int32_t d1c = d1n;
-    	int32_t s0c = s0n;
+    uint32_t i = 0;
 
-        s1n = in_even[j];
-        d1n = in_odd[j];
+    if (len > 2) {
+		for (uint32_t j = 1; i < (len - 3); i += 2, j++) {
+			int32_t d1c = d1n;
+			int32_t s0c = s0n;
 
-        s0n = s1n - ((d1c + d1n + 2) >> 2);
-
-        tmp[i  ] = s0c;
-        tmp[i + 1] = d1c + ((s0c + s0n) >> 1);
+			s1n = in_even[j];
+			d1n = in_odd[j];
+			s0n = s1n - ((d1c + d1n + 2) >> 2);
+			tmp[i  ] = s0c;
+			tmp[i + 1] = d1c + ((s0c + s0n) >> 1);
+		}
     }
 
     tmp[i] = s0n;
-
     if (len & 1) {
         tmp[len - 1] = in_even[(len - 1) >> 1] - ((d1n + 1) >> 1);
         tmp[len - 2] = d1n + ((s0n + tmp[len - 1]) >> 1);
     } else {
         tmp[len - 1] = d1n + s0n;
     }
-    memcpy(tiledp, tmp, (uint32_t)len * sizeof(int32_t));
+    memcpy(tiledp, tmp, (uint64_t)len * sizeof(int32_t));
 }
 
 static void  decode_h_cas1_53(int32_t* tmp,
-                               const int32_t sn,
-                               const int32_t len,
+                               const uint32_t sn,
+                               const uint32_t len,
                                int32_t* tiledp){
     assert(len > 2);
 
@@ -306,14 +306,13 @@ static void  decode_h_cas1_53(int32_t* tmp,
     int32_t s1 = in_even[1];
     int32_t dc = in_odd[0] - ((in_even[0] + s1 + 2) >> 2);
     tmp[0] = in_even[0] + dc;
-    int32_t i, j;
+    uint32_t i, j;
     for (i = 1, j = 1; i < (len - 2 - !(len & 1)); i += 2, j++) {
     	int32_t s2 = in_even[j + 1];
     	int32_t dn = in_odd[j] - ((s1 + s2 + 2) >> 2);
 
         tmp[i  ] = dc;
         tmp[i + 1] = s1 + ((dn + dc) >> 1);
-
         dc = dn;
         s1 = s2;
     }
@@ -327,7 +326,7 @@ static void  decode_h_cas1_53(int32_t* tmp,
     } else {
         tmp[len - 1] = s1 + dc;
     }
-    memcpy(tiledp, tmp, (uint32_t)len * sizeof(int32_t));
+    memcpy(tiledp, tmp, (uint64_t)len * sizeof(int32_t));
 }
 
 /* <summary>                            */
@@ -337,8 +336,8 @@ static void  decode_h_cas1_53(int32_t* tmp,
 static void decode_h_53(const dwt_data<int32_t> *dwt,
                          int32_t* tiledp)
 {
-    const int32_t sn = dwt->sn;
-    const int32_t len = sn + dwt->dn;
+    const uint32_t sn = dwt->sn;
+    const uint32_t len = sn + dwt->dn;
     if (dwt->cas == 0) { /* Left-most sample is on even coordinate */
         if (len > 1) {
             decode_h_cas0_53(dwt->mem, sn, len, tiledp);
@@ -354,7 +353,7 @@ static void decode_h_53(const dwt_data<int32_t> *dwt,
             const int32_t* in_odd = &tiledp[0];
             out[1] = in_odd[0] - ((in_even[0] + 1) >> 1);
             out[0] = in_even[0] + out[1];
-            memcpy(tiledp, dwt->mem, (uint32_t)len * sizeof(int32_t));
+            memcpy(tiledp, dwt->mem, (uint64_t)len * sizeof(int32_t));
         } else if (len > 2) {
             decode_h_cas1_53(dwt->mem, sn, len, tiledp);
         }
@@ -363,15 +362,12 @@ static void decode_h_53(const dwt_data<int32_t> *dwt,
 
 #if (defined(__SSE2__) || defined(__AVX2__))
 
-#define ADD3(x,y,z) ADD(ADD(x,y),z)
-
 static
 void decode_v_final_memcpy_53(int32_t* tiledp_col,
                                const int32_t* tmp,
-                               int32_t len,
+                               uint32_t len,
                                size_t stride){
-    int32_t i;
-    for (i = 0; i < len; ++i) {
+    for (uint32_t i = 0; i < len; ++i) {
         /* A memcpy(&tiledp_col[i * stride + 0],
                     &tmp[PARALLEL_COLS_53 * i + 0],
                     PARALLEL_COLS_53 * sizeof(int32_t))
@@ -385,22 +381,15 @@ void decode_v_final_memcpy_53(int32_t* tiledp_col,
 /** Vertical inverse 5x3 wavelet transform for 8 columns in SSE2, or
  * 16 in AVX2, when top-most pixel is on even coordinate */
 static void decode_v_cas0_mcols_SSE2_OR_AVX2_53(int32_t* tmp,
-												const int32_t sn,
-												const int32_t len,
+												const uint32_t sn,
+												const uint32_t len,
 												int32_t* tiledp_col,
 												const size_t stride){
-    int32_t i;
+    uint32_t i;
     size_t j;
     const VREG two = LOAD_CST(2);
 
     assert(len > 1);
-#if __AVX2__
-    assert(PLL_COLS_53 == 16);
-    assert(VREG_INT_COUNT == 8);
-#else
-    assert(PLL_COLS_53 == 8);
-    assert(VREG_INT_COUNT == 4);
-#endif
 
     /* Note: loads of input even/odd values must be done in a unaligned */
     /* fashion. But stores in tmp can be done with aligned store, since */
@@ -419,27 +408,30 @@ static void decode_v_cas0_mcols_SSE2_OR_AVX2_53(int32_t* tmp,
     VREG s0n_0 = SUB(s1n_0, SAR(ADD3(d1n_0, d1n_0, two), 2));
     VREG s0n_1 = SUB(s1n_1, SAR(ADD3(d1n_1, d1n_1, two), 2));
 
-    for (i = 0, j = 1; i < (len - 3); i += 2, j++) {
-    	VREG d1c_0 = d1n_0;
-    	VREG s0c_0 = s0n_0;
-    	VREG d1c_1 = d1n_1;
-    	VREG s0c_1 = s0n_1;
+    i = 0;
+    if (len > 3) {
+		for (i = 0, j = 1; i < (len - 3); i += 2, j++) {
+			VREG d1c_0 = d1n_0;
+			VREG s0c_0 = s0n_0;
+			VREG d1c_1 = d1n_1;
+			VREG s0c_1 = s0n_1;
 
-        s1n_0 = LOADU(in_even + j * stride);
-        s1n_1 = LOADU(in_even + j * stride + VREG_INT_COUNT);
-        d1n_0 = LOADU(in_odd + j * stride);
-        d1n_1 = LOADU(in_odd + j * stride + VREG_INT_COUNT);
+			s1n_0 = LOADU(in_even + j * stride);
+			s1n_1 = LOADU(in_even + j * stride + VREG_INT_COUNT);
+			d1n_0 = LOADU(in_odd + j * stride);
+			d1n_1 = LOADU(in_odd + j * stride + VREG_INT_COUNT);
 
-        /*s0n = s1n - ((d1c + d1n + 2) >> 2);*/
-        s0n_0 = SUB(s1n_0, SAR(ADD3(d1c_0, d1n_0, two), 2));
-        s0n_1 = SUB(s1n_1, SAR(ADD3(d1c_1, d1n_1, two), 2));
+			/*s0n = s1n - ((d1c + d1n + 2) >> 2);*/
+			s0n_0 = SUB(s1n_0, SAR(ADD3(d1c_0, d1n_0, two), 2));
+			s0n_1 = SUB(s1n_1, SAR(ADD3(d1c_1, d1n_1, two), 2));
 
-        STORE(tmp + PLL_COLS_53 * (i + 0), s0c_0);
-        STORE(tmp + PLL_COLS_53 * (i + 0) + VREG_INT_COUNT, s0c_1);
+			STORE(tmp + PLL_COLS_53 * (i + 0), s0c_0);
+			STORE(tmp + PLL_COLS_53 * (i + 0) + VREG_INT_COUNT, s0c_1);
 
-        /* d1c + ((s0c + s0n) >> 1) */
-        STORE(tmp + PLL_COLS_53 * (i + 1) + 0,              ADD(d1c_0, SAR(ADD(s0c_0, s0n_0), 1)));
-        STORE(tmp + PLL_COLS_53 * (i + 1) + VREG_INT_COUNT, ADD(d1c_1, SAR(ADD(s0c_1, s0n_1), 1)));
+			/* d1c + ((s0c + s0n) >> 1) */
+			STORE(tmp + PLL_COLS_53 * (i + 1) + 0,              ADD(d1c_0, SAR(ADD(s0c_0, s0n_0), 1)));
+			STORE(tmp + PLL_COLS_53 * (i + 1) + VREG_INT_COUNT, ADD(d1c_1, SAR(ADD(s0c_1, s0n_1), 1)));
+		}
     }
 
     STORE(tmp + PLL_COLS_53 * (i + 0) + 0, s0n_0);
@@ -472,24 +464,16 @@ static void decode_v_cas0_mcols_SSE2_OR_AVX2_53(int32_t* tmp,
 /** Vertical inverse 5x3 wavelet transform for 8 columns in SSE2, or
  * 16 in AVX2, when top-most pixel is on odd coordinate */
 static void decode_v_cas1_mcols_SSE2_OR_AVX2_53(int32_t* tmp,
-												const int32_t sn,
-												const int32_t len,
+												const uint32_t sn,
+												const uint32_t len,
 												int32_t* tiledp_col,
 												const size_t stride){
-    int32_t i;
+    uint32_t i;
     size_t j;
 
     const VREG two = LOAD_CST(2);
 
     assert(len > 2);
-#if __AVX2__
-    assert(PLL_COLS_53 == 16);
-    assert(VREG_INT_COUNT == 8);
-#else
-    assert(PLL_COLS_53 == 8);
-    assert(VREG_INT_COUNT == 4);
-#endif
-
     /* Note: loads of input even/odd values must be done in a unaligned */
     /* fashion. But stores in tmp can be done with aligned store, since */
     /* the temporary buffer is properly aligned */
@@ -565,11 +549,11 @@ static void decode_v_cas1_mcols_SSE2_OR_AVX2_53(int32_t* tmp,
 /** Vertical inverse 5x3 wavelet transform for one column, when top-most
  * pixel is on even coordinate */
 static void decode_v_cas0_53(int32_t* tmp,
-                             const int32_t sn,
-                             const int32_t len,
+                             const uint32_t sn,
+                             const uint32_t len,
                              int32_t* tiledp_col,
                              const size_t stride){
-    int32_t i, j;
+    uint32_t i = 0, j;
     int32_t d1c, d1n, s1n, s0c, s0n;
 
     assert(len > 1);
@@ -580,14 +564,16 @@ static void decode_v_cas0_53(int32_t* tmp,
     d1n = tiledp_col[(size_t)sn * stride];
     s0n = s1n - ((d1n + 1) >> 1);
 
-    for (i = 0, j = 0; i < (len - 3); i += 2, j++) {
-        d1c = d1n;
-        s0c = s0n;
-        s1n = tiledp_col[(size_t)(j + 1) * stride];
-        d1n = tiledp_col[(size_t)(sn + j + 1) * stride];
-        s0n = s1n - ((d1c + d1n + 2) >> 2);
-        tmp[i  ] = s0c;
-        tmp[i + 1] = d1c + ((s0c + s0n) >> 1);
+    if (len > 2) {
+		for (j = 0; i < (len - 3); i += 2, j++) {
+			d1c = d1n;
+			s0c = s0n;
+			s1n = tiledp_col[(size_t)(j + 1) * stride];
+			d1n = tiledp_col[(size_t)(sn + j + 1) * stride];
+			s0n = s1n - ((d1c + d1n + 2) >> 2);
+			tmp[i  ] = s0c;
+			tmp[i + 1] = d1c + ((s0c + s0n) >> 1);
+		}
     }
     tmp[i] = s0n;
     if (len & 1) {
@@ -606,11 +592,11 @@ static void decode_v_cas0_53(int32_t* tmp,
 /** Vertical inverse 5x3 wavelet transform for one column, when top-most
  * pixel is on odd coordinate */
 static void decode_v_cas1_53(int32_t* tmp,
-                             const int32_t sn,
-                             const int32_t len,
+                             const uint32_t sn,
+                             const uint32_t len,
                              int32_t* tiledp_col,
                              const size_t stride){
-    int32_t i, j;
+    uint32_t i, j;
     const int32_t* in_even = &tiledp_col[(size_t)sn * stride];
     const int32_t* in_odd = &tiledp_col[0];
 
@@ -649,9 +635,9 @@ static void decode_v_cas1_53(int32_t* tmp,
 static void decode_v_53(const dwt_data<int32_t> *dwt,
                          int32_t* tiledp_col,
                          size_t stride,
-                         int32_t nb_cols){
-    const int32_t sn = dwt->sn;
-    const int32_t len = sn + dwt->dn;
+                         uint32_t nb_cols){
+    const uint32_t sn = dwt->sn;
+    const uint32_t len = sn + dwt->dn;
     if (dwt->cas == 0) {
     /* If len == 1, unmodified value */
 
@@ -664,25 +650,25 @@ static void decode_v_53(const dwt_data<int32_t> *dwt,
         }
 #endif
         if (len > 1) {
-            for (int32_t c = 0; c < nb_cols; c++, tiledp_col++)
+            for (uint32_t c = 0; c < nb_cols; c++, tiledp_col++)
                 decode_v_cas0_53(dwt->mem, sn, len, tiledp_col, stride);
             return;
         }
     } else {
         if (len == 1) {
-            for (int32_t c = 0; c < nb_cols; c++, tiledp_col++)
+            for (uint32_t c = 0; c < nb_cols; c++, tiledp_col++)
                 tiledp_col[0] /= 2;
             return;
         }
         else if (len == 2) {
             auto out = dwt->mem;
-            for (int32_t c = 0; c < nb_cols; c++, tiledp_col++) {
+            for (uint32_t c = 0; c < nb_cols; c++, tiledp_col++) {
                 const int32_t* in_even = &tiledp_col[(size_t)sn * stride];
                 const int32_t* in_odd = &tiledp_col[0];
 
                 out[1] = in_odd[0] - ((in_even[0] + 1) >> 1);
                 out[0] = in_even[0] + out[1];
-                for (int32_t i = 0; i < len; ++i)
+                for (uint32_t i = 0; i < len; ++i)
                     tiledp_col[(size_t)i * stride] = out[i];
             }
             return;
@@ -697,7 +683,7 @@ static void decode_v_53(const dwt_data<int32_t> *dwt,
         }
 #endif
         if (len > 2) {
-            for (int32_t c = 0; c < nb_cols; c++, tiledp_col++)
+            for (uint32_t c = 0; c < nb_cols; c++, tiledp_col++)
                 decode_v_cas1_53(dwt->mem, sn, len, tiledp_col, stride);
             return;
         }

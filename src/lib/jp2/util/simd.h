@@ -125,4 +125,6 @@
 #define STOREF(x,y)  _mm_store_ps((float*)(x),(y))
 #endif
 
+#define ADD3(x,y,z) ADD(ADD(x,y),z)
+
 #endif
