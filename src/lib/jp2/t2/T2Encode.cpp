@@ -260,7 +260,7 @@ bool T2Encode::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter 
 			if (prc->imsbtree)
 				prc->imsbtree->reset();
 			for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
-				auto cblk = prc->cblks.enc + cblkno;
+				auto cblk = prc->enc + cblkno;
 				cblk->numPassesInPacket = 0;
 				assert(band->numbps >= cblk->numbps);
 				if (band->numbps < cblk->numbps) {
@@ -293,7 +293,7 @@ bool T2Encode::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter 
 		}
 
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
-			auto cblk = prc->cblks.enc + cblkno;
+			auto cblk = prc->enc + cblkno;
 			auto layer = cblk->layers + layno;
 
 			if (!cblk->numPassesInPacket
@@ -302,7 +302,7 @@ bool T2Encode::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter 
 			}
 		}
 
-		auto cblk = prc->cblks.enc;
+		auto cblk = prc->enc;
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; cblkno++) {
 			auto layer = cblk->layers + layno;
 			uint32_t increment = 0;
@@ -427,7 +427,7 @@ bool T2Encode::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter 
 			continue;
 		}
 
-		auto cblk = prc->cblks.enc;
+		auto cblk = prc->enc;
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 			auto cblk_layer = cblk->layers + layno;
 			if (!cblk_layer->numpasses) {
@@ -486,13 +486,13 @@ bool T2Encode::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter 
 					auto prec = band->precincts + precno;
 					auto roundTripPrec = roundTripBand->precincts + precno;
 					for (uint64_t cblkno = 0; cblkno < (uint64_t)prec->cw * prec->ch; ++cblkno) {
-						auto originalCblk = prec->cblks.enc + cblkno;
+						auto originalCblk = prec->enc + cblkno;
 						grk_layer *layer = originalCblk->layers + layno;
 						if (!layer->numpasses)
 							continue;
 
 						// compare number of passes
-						auto roundTripCblk = roundTripPrec->cblks.dec + cblkno;
+						auto roundTripCblk = roundTripPrec->dec + cblkno;
 						if (roundTripCblk->numPassesInPacket != layer->numpasses) {
 							printf("encode_packet: round trip layer numpasses %d differs from original num passes %d at layer %d, component %d, band %d, precinct %d, resolution %d\n",
 								roundTripCblk->numPassesInPacket,
@@ -580,7 +580,7 @@ bool T2Encode::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter 
 							auto prec = band->precincts + precno;
 							auto roundTripPrec = roundTripBand->precincts + precno;
 							for (uint32_t cblkno = 0; cblkno < (uint64_t)prec->cw * prec->ch; ++cblkno) {
-								auto originalCblk = prec->cblks.enc + cblkno;
+								auto originalCblk = prec->enc + cblkno;
 								grk_layer *layer = originalCblk->layers + layno;
 								if (!layer->numpasses)
 									continue;
@@ -592,7 +592,7 @@ bool T2Encode::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter 
 									if (lay->numpasses)
 										originalCumulativeLayerLength += lay->len;
 								}
-								auto roundTripCblk = roundTripPrec->cblks.dec + cblkno;
+								auto roundTripCblk = roundTripPrec->dec + cblkno;
 								uint16_t roundTripTotalSegLen = min_buf_vec_get_len(&roundTripCblk->seg_buffers);
 								if (roundTripTotalSegLen != originalCumulativeLayerLength) {
 									printf("encode_packet: layer %d: round trip segment length %d differs from original %d\n", layno, roundTripTotalSegLen, originalCumulativeLayerLength);
@@ -676,7 +676,7 @@ bool T2Encode::encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 
 			nb_blocks = (uint64_t)prc->cw * prc->ch;
 			for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
-				auto cblk = prc->cblks.enc + cblkno;
+				auto cblk = prc->enc + cblkno;
 				cblk->numPassesInPacket = 0;
 				if (band->numbps < cblk->numbps) {
 					GROK_WARN(
@@ -703,7 +703,7 @@ bool T2Encode::encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 
 		nb_blocks = (uint64_t)prc->cw * prc->ch;
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
-			auto cblk = prc->cblks.enc + cblkno;
+			auto cblk = prc->enc + cblkno;
 			auto layer = cblk->layers + layno;
 			if (!cblk->numPassesInPacket
 					&& layer->numpasses) {
@@ -711,7 +711,7 @@ bool T2Encode::encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 			}
 		}
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; cblkno++) {
-			auto cblk = prc->cblks.enc + cblkno;
+			auto cblk = prc->enc + cblkno;
 			auto layer = cblk->layers + layno;
 			uint32_t increment = 0;
 			uint32_t nump = 0;
@@ -810,7 +810,7 @@ bool T2Encode::encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 
 		nb_blocks = (uint64_t)prc->cw * prc->ch;
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
-			auto cblk = prc->cblks.enc + cblkno;
+			auto cblk = prc->enc + cblkno;
 			auto layer = cblk->layers + layno;
 
 			if (!layer->numpasses)

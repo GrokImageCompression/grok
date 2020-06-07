@@ -251,7 +251,7 @@ void TileProcessor::makelayer_feasible(uint32_t layno, uint16_t thresh,
 				for (precno = 0; precno < (uint64_t)res->pw * res->ph; precno++) {
 					auto prc = band->precincts + precno;
 					for (cblkno = 0; (uint64_t)cblkno < prc->cw * prc->ch; cblkno++) {
-						auto cblk = prc->cblks.enc + cblkno;
+						auto cblk = prc->enc + cblkno;
 						auto layer = cblk->layers + layno;
 						uint32_t cumulative_included_passes_in_block;
 
@@ -348,7 +348,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 					auto prc = &band->precincts[precno];
 					for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch;
 							cblkno++) {
-						auto cblk = &prc->cblks.enc[cblkno];
+						auto cblk = &prc->enc[cblkno];
 						uint32_t numPix = ((cblk->x1 - cblk->x0)
 								* (cblk->y1 - cblk->y0));
 						if (!(state & GRK_PLUGIN_STATE_PRE_TR1)) {
@@ -488,7 +488,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 				for (precno = 0; precno < (uint64_t)res->pw * res->ph; precno++) {
 					auto prc = &band->precincts[precno];
 					for (cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch; cblkno++) {
-						auto cblk = &prc->cblks.enc[cblkno];
+						auto cblk = &prc->enc[cblkno];
 						uint32_t numPix = ((cblk->x1 - cblk->x0)
 								* (cblk->y1 - cblk->y0));
 						if (!(state & GRK_PLUGIN_STATE_PRE_TR1)) {
@@ -647,7 +647,7 @@ void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 				for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph; precno++) {
 					auto prc = band->precincts + precno;
 					for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch; cblkno++) {
-						auto cblk = prc->cblks.enc + cblkno;
+						auto cblk = prc->enc + cblkno;
 						auto layer = cblk->layers + layno;
 						uint32_t cumulative_included_passes_in_block;
 						if (layno == 0)
@@ -749,7 +749,7 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 				for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph; precno++) {
 					auto prc = band->precincts + precno;
 					for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch; cblkno++) {
-						auto cblk = prc->cblks.enc + cblkno;
+						auto cblk = prc->enc + cblkno;
 						auto layer = cblk->layers + layno;
 						if (layno == 0)
 							prepareBlockForFirstLayer(cblk);
@@ -1521,12 +1521,12 @@ bool TileProcessor::t2_encode(BufferedStream *stream, uint32_t *all_packet_bytes
 					auto decodePrec = decodeBand->precincts + precno;
 					decodePrec->cw = prec->cw;
 					decodePrec->ch = prec->ch;
-					if (prec->cblks.enc && prec->cw && prec->ch) {
+					if (prec->enc && prec->cw && prec->ch) {
 						decodePrec->initTagTrees();
-						decodePrec->cblks.dec = new grk_cblk_dec[(uint64_t)decodePrec->cw * decodePrec->ch];
+						decodePrec->dec = new grk_cblk_dec[(uint64_t)decodePrec->cw * decodePrec->ch];
 						for (uint64_t cblkno = 0; cblkno < decodePrec->cw * decodePrec->ch; ++cblkno) {
-							auto cblk = prec->cblks.enc + cblkno;
-							auto decodeCblk = decodePrec->cblks.dec + cblkno;
+							auto cblk = prec->enc + cblkno;
+							auto decodeCblk = decodePrec->dec + cblkno;
 							decodeCblk->x0 = cblk->x0;
 							decodeCblk->y0 = cblk->y0;
 							decodeCblk->x1 = cblk->x1;
@@ -2017,26 +2017,10 @@ grk_layer::grk_layer() :
 }
 
 grk_precinct::grk_precinct() :
-		x0(0), y0(0), x1(0), y1(0), cw(0), ch(0), block_size(0), incltree(
-				nullptr), imsbtree(nullptr) {
-	cblks.blocks = nullptr;
-}
-
-void grk_precinct::cleanupEncodeBlocks() {
-	if (!cblks.enc)
-		return;
-	for (uint64_t i = 0; i < (uint64_t) cw * ch; ++i)
-		(cblks.enc + i)->cleanup();
-	grok_free(cblks.blocks);
-	cblks.enc = nullptr;
-}
-void grk_precinct::cleanupDecodeBlocks() {
-	if (!cblks.dec)
-		return;
-	for (uint64_t i = 0; i < (uint64_t) cw * ch; ++i)
-		(cblks.dec + i)->cleanup();
-	grok_free(cblks.blocks);
-	cblks.dec = nullptr;
+		x0(0), y0(0), x1(0), y1(0), cw(0), ch(0),
+		enc(nullptr), dec(nullptr),
+		num_code_blocks(0),
+		incltree(nullptr), imsbtree(nullptr) {
 }
 
 grk_cblk::grk_cblk(): x0(0), y0(0), x1(0), y1(0),
@@ -2054,9 +2038,29 @@ grk_cblk::grk_cblk(): x0(0), y0(0), x1(0), y1(0),
 }
 
 grk_cblk::grk_cblk(const grk_cblk &rhs): x0(rhs.x0), y0(rhs.y0), x1(rhs.x1), y1(rhs.y1),
-		compressedData(nullptr), compressedDataSize(0), owns_data(false),
-		numbps(rhs.numbps), numlenbits(rhs.numlenbits), numPassesInPacket(0)
+		compressedData(rhs.compressedData), compressedDataSize(rhs.compressedDataSize), owns_data(rhs.owns_data),
+		numbps(rhs.numbps), numlenbits(rhs.numlenbits), numPassesInPacket(rhs.numPassesInPacket)
 {
+}
+grk_cblk& grk_cblk::operator=(const grk_cblk& rhs){
+	if (this != &rhs) { // self-assignment check expected
+		x0 = rhs.x0;
+		y0 = rhs.y0;
+		x1 = rhs.x1;
+		y1 = rhs.y1;
+		compressedData = rhs.compressedData;
+		compressedDataSize = rhs.compressedDataSize;
+		owns_data = rhs.owns_data;
+		numbps = rhs.numbps;
+		numlenbits = rhs.numlenbits;
+		numPassesInPacket = rhs.numPassesInPacket;
+	}
+	return *this;
+}
+void grk_cblk::clear(){
+	compressedData = nullptr;
+	owns_data = false;
+
 }
 
 grk_cblk_enc::grk_cblk_enc() :
@@ -2068,17 +2072,51 @@ grk_cblk_enc::grk_cblk_enc() :
 				contextStream(nullptr)
 {
 }
+grk_cblk_enc::grk_cblk_enc(const grk_cblk_enc &rhs) :
+						grk_cblk(rhs),
+						paddedCompressedData(rhs.paddedCompressedData),
+						layers(	rhs.layers),
+						passes(rhs.passes),
+						numPassesInPreviousPackets(rhs.numPassesInPreviousPackets),
+						numPassesTotal(rhs.numPassesTotal),
+						contextStream(rhs.contextStream)
+{}
+
+grk_cblk_enc& grk_cblk_enc::operator=(const grk_cblk_enc& rhs){
+	if (this != &rhs) { // self-assignment check expected
+		grk_cblk::operator = (rhs);
+		paddedCompressedData = rhs.paddedCompressedData;
+		layers = rhs.layers;
+		passes = rhs.passes;
+		numPassesInPreviousPackets = rhs.numPassesInPreviousPackets;
+		numPassesTotal = rhs.numPassesTotal;
+		contextStream = rhs.contextStream;
+#ifdef DEBUG_LOSSLESS_T2
+		packet_length_info = rhs.packet_length_info;
+#endif
+
+	}
+	return *this;
+}
 
 grk_cblk_enc::~grk_cblk_enc() {
 	cleanup();
+}
+void grk_cblk_enc::clear(){
+	grk_cblk::clear();
+	layers = nullptr;
+	passes = nullptr;
+	contextStream = nullptr;
+#ifdef DEBUG_LOSSLESS_T2
+	packet_length_info = nullptr;;
+#endif
 }
 bool grk_cblk_enc::alloc() {
 	if (!layers) {
 		/* no memset since data */
 		layers = (grk_layer*) grk_calloc(100, sizeof(grk_layer));
-		if (!layers) {
+		if (!layers)
 			return false;
-		}
 	}
 	if (!passes) {
 		passes = (grk_pass*) grk_calloc(100, sizeof(grk_pass));
@@ -2101,7 +2139,7 @@ bool grk_cblk_enc::alloc() {
 bool grk_cblk_enc::alloc_data(size_t nominalBlockSize) {
 	uint32_t desired_data_size = (uint32_t) (nominalBlockSize * sizeof(uint32_t));
 	if (desired_data_size > compressedDataSize) {
-		if (owns_data && compressedData)
+		if (owns_data)
 			delete[] compressedData;
 
 		// we add two fake zero bytes at beginning of buffer, so that mq coder
@@ -2119,12 +2157,11 @@ bool grk_cblk_enc::alloc_data(size_t nominalBlockSize) {
 }
 
 void grk_cblk_enc::cleanup() {
-	if (owns_data && compressedData) {
+	if (owns_data) {
 		delete[] compressedData;
 		compressedData = nullptr;
 		owns_data = false;
 	}
-
 	paddedCompressedData = nullptr;
 	grok_free(layers);
 	layers = nullptr;
@@ -2144,10 +2181,26 @@ grk_cblk_dec::~grk_cblk_dec(){
     cleanup();
 }
 
-grk_cblk_dec::grk_cblk_dec(const grk_cblk_dec &rhs) : grk_cblk(rhs),
-				segs(nullptr), numSegments(0),
-				numSegmentsAllocated(0)
-{
+void grk_cblk_dec::clear(){
+	grk_cblk::clear();
+	segs = nullptr;
+	seg_buffers.clear();
+}
+
+grk_cblk_dec::grk_cblk_dec(const grk_cblk_dec &rhs) :
+				grk_cblk(rhs),
+				segs(rhs.segs), numSegments(rhs.numSegments),
+				numSegmentsAllocated(rhs.numSegmentsAllocated)
+{}
+
+grk_cblk_dec& grk_cblk_dec::operator=(const grk_cblk_dec& rhs){
+	if (this != &rhs) { // self-assignment check expected
+		grk_cblk::operator = (rhs);
+		segs = rhs.segs;
+		numSegments = rhs.numSegments;
+		numSegmentsAllocated = rhs.numSegmentsAllocated;
+	}
+	return *this;
 }
 
 bool grk_cblk_dec::alloc() {
@@ -2198,7 +2251,7 @@ void grk_cblk_dec::init() {
 }
 
 void grk_cblk_dec::cleanup() {
-	if (owns_data && compressedData) {
+	if (owns_data) {
 		delete[] compressedData;
 		compressedData = nullptr;
 		owns_data = false;

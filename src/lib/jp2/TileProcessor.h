@@ -103,7 +103,9 @@ struct grk_layer {
 struct grk_cblk {
     grk_cblk(const grk_cblk &rhs);
     grk_cblk();
+    grk_cblk& operator=(const grk_cblk& other);
     virtual ~grk_cblk(){}
+    virtual void clear();
 	uint32_t x0, y0, x1, y1; /* dimension of the code block : left upper corner (x0, y0) right low corner (x1,y1) */
 	uint8_t *compressedData; /* data buffer*/
 	uint32_t compressedDataSize; /* size of allocated data buffer */
@@ -121,6 +123,9 @@ struct grk_cblk {
 struct grk_cblk_enc : public grk_cblk {
 	grk_cblk_enc();
 	~grk_cblk_enc();
+	grk_cblk_enc(const grk_cblk_enc &rhs);
+	grk_cblk_enc& operator=(const grk_cblk_enc& other);
+	void clear();
 	bool alloc();
 	bool alloc_data(size_t nominalBlockSize);
 	void cleanup();
@@ -137,6 +142,8 @@ struct grk_cblk_dec: public grk_cblk {
 	grk_cblk_dec();
 	~grk_cblk_dec();
 	grk_cblk_dec(const grk_cblk_dec &rhs);
+	grk_cblk_dec& operator=(const grk_cblk_dec& other);
+	void clear();
 	void init();
 	bool alloc();
 	void cleanup();
@@ -152,17 +159,12 @@ struct grk_precinct {
 	grk_precinct();
 	void initTagTrees();
 	void deleteTagTrees();
-	void cleanupEncodeBlocks() ;
-	void cleanupDecodeBlocks();
 
 	uint32_t x0, y0, x1, y1; /* dimension of the precinct : left upper corner (x0, y0) right low corner (x1,y1) */
 	uint32_t cw, ch; /* number of precinct in width and height */
-	union { /* code-blocks information */
-		grk_cblk_enc *enc;
-		grk_cblk_dec *dec;
-		void *blocks;
-	} cblks;
-	uint64_t block_size; /* size taken by cblks (in bytes) */
+	grk_cblk_enc *enc;
+	grk_cblk_dec *dec;
+	uint64_t num_code_blocks;
 	TagTree *incltree; /* inclusion tree */
 	TagTree *imsbtree; /* IMSB tree */
 };

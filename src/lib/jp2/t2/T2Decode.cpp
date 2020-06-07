@@ -246,7 +246,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 				prc->imsbtree->reset();
 			nb_code_blocks = (uint64_t) prc->cw * prc->ch;
 			for (uint64_t cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
-				auto cblk = prc->cblks.dec + cblkno;
+				auto cblk = prc->dec + cblkno;
 				cblk->numSegments = 0;
 			}
 		}
@@ -343,7 +343,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 		nb_code_blocks = (uint64_t) prc->cw * prc->ch;
 		for (uint64_t cblkno = 0; cblkno < nb_code_blocks; cblkno++) {
 			uint32_t included = 0, increment = 0;
-			auto cblk = prc->cblks.dec + cblkno;
+			auto cblk = prc->dec + cblkno;
 
 			/* if cblk not yet included before --> inclusion tagtree */
 			if (!cblk->numSegments) {
@@ -561,7 +561,7 @@ bool T2Decode::read_packet_data(grk_resolution *res, PacketIter *p_pi,
 		auto prc = &band->precincts[p_pi->precno];
 		uint64_t nb_code_blocks = (uint64_t) prc->cw * prc->ch;
 		for (uint64_t cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
-			auto cblk = prc->cblks.dec + cblkno;
+			auto cblk = prc->dec + cblkno;
 			if (!cblk->numPassesInPacket) {
 				++cblk;
 				continue;
@@ -661,7 +661,7 @@ bool T2Decode::skip_packet_data(grk_resolution *res, PacketIter *p_pi,
 		auto prc = &band->precincts[p_pi->precno];
 		uint64_t nb_code_blocks = (uint64_t) prc->cw * prc->ch;
 		for (uint64_t cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
-			auto cblk = prc->cblks.dec + cblkno;
+			auto cblk = prc->dec + cblkno;
 			if (!cblk->numPassesInPacket) {
 				/* nothing to do */
 				++cblk;

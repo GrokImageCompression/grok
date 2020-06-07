@@ -29,6 +29,11 @@ bool grk_vec::init() {
 	data = new std::vector<grk_buf*>();
 	return data ? true : false;
 }
+void grk_vec::clear(){
+	if (data)
+		data->clear();
+	data = nullptr;
+}
 bool grk_vec::push_back(grk_buf *value) {
 	data->push_back(value);
 	return true;

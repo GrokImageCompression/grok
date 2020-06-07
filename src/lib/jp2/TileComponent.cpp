@@ -94,9 +94,9 @@ void TileComponent::release_mem(){
 					auto precinct = band->precincts + precno;
 					precinct->deleteTagTrees();
 					if (m_is_encoder)
-						code_block_enc_deallocate(precinct);
+						delete[] precinct->enc;
 					else
-						code_block_dec_deallocate(precinct);
+						delete[] precinct->dec;
 				}
 				delete[] band->precincts;
 				band->precincts = nullptr;
@@ -168,15 +168,12 @@ bool TileComponent::init(bool isEncoder,
 	whole_tile_decoding = whole_tile;
 	m_tccp = tccp;
 
-	size_t sizeof_block = m_is_encoder ? sizeof(grk_cblk_enc) : sizeof(grk_cblk_dec);
 	/* extent of precincts , top left, bottom right**/
 	uint32_t tprc_x_start, tprc_y_start, br_prc_x_end, br_prc_y_end;
 	/* number of precinct for a resolution */
 	uint64_t nb_precincts;
 	/* number of code blocks for a precinct*/
 	uint64_t nb_code_blocks, cblkno;
-	/* room needed to store nb_code_blocks code blocks for a precinct*/
-	uint64_t nb_code_blocks_size;
 	uint32_t leveno;
 	uint32_t pdx, pdy;
 	uint32_t x0b, y0b;
@@ -382,43 +379,34 @@ bool TileComponent::init(bool isEncoder,
 				nb_code_blocks = (uint64_t) current_precinct->cw
 						* current_precinct->ch;
 				/*fprintf(stderr, "\t\t\t\t precinct_cw = %d x recinct_ch = %d\n",current_precinct->cw, current_precinct->ch);      */
-				nb_code_blocks_size = nb_code_blocks * sizeof_block;
-
-				if (!current_precinct->cblks.blocks
-						&& (nb_code_blocks > 0U)) {
-					current_precinct->cblks.blocks = grk_malloc(
-							nb_code_blocks_size);
-					if (!current_precinct->cblks.blocks) {
-						return false;
+				if (nb_code_blocks > 0) {
+					if (isEncoder){
+						if (!current_precinct->enc){
+							current_precinct->enc = new grk_cblk_enc[nb_code_blocks];
+						} else if (nb_code_blocks > current_precinct->num_code_blocks){
+							auto new_blocks = new grk_cblk_enc[nb_code_blocks];
+							for (uint64_t i = 0; i < current_precinct->num_code_blocks; ++i){
+								new_blocks[i] = current_precinct->enc[i];
+								current_precinct->enc[i].clear();
+							}
+							delete[] current_precinct->enc;
+							current_precinct->enc = new_blocks;
+						}
+					} else {
+						if (!current_precinct->dec){
+							current_precinct->dec = new grk_cblk_dec[nb_code_blocks];
+						} else if (nb_code_blocks > current_precinct->num_code_blocks){
+							auto new_blocks = new grk_cblk_dec[nb_code_blocks];
+							for (uint64_t i = 0; i < current_precinct->num_code_blocks; ++i){
+								new_blocks[i] = current_precinct->dec[i];
+								current_precinct->dec[i].clear();
+							}
+							delete[] current_precinct->dec;
+							current_precinct->dec = new_blocks;
+						}
 					}
-					/*fprintf(stderr, "\t\t\t\tAllocate cblks of a precinct (grk_cblk_dec): %d\n",nb_code_blocks_size);*/
-					memset(current_precinct->cblks.blocks, 0,
-							nb_code_blocks_size);
-
-					current_precinct->block_size = nb_code_blocks_size;
-				} else if (nb_code_blocks_size
-						> current_precinct->block_size) {
-					void *new_blocks = grk_realloc(
-							current_precinct->cblks.blocks,
-							nb_code_blocks_size);
-					if (!new_blocks) {
-						grok_free(current_precinct->cblks.blocks);
-						current_precinct->cblks.blocks = nullptr;
-						current_precinct->block_size = 0;
-						GROK_ERROR(
-								"Not enough memory for current precinct codeblock element");
-						return false;
-					}
-					current_precinct->cblks.blocks = new_blocks;
-					/*fprintf(stderr, "\t\t\t\tReallocate cblks of a precinct (grk_cblk_dec): from %d to %d\n",current_precinct->block_size, nb_code_blocks_size);     */
-
-					memset(	((uint8_t*) current_precinct->cblks.blocks)
-									+ current_precinct->block_size, 0,
-							nb_code_blocks_size
-									- current_precinct->block_size);
-					current_precinct->block_size = nb_code_blocks_size;
+				    current_precinct->num_code_blocks = nb_code_blocks;
 				}
-
 				current_precinct->initTagTrees();
 
 				for (cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
@@ -432,7 +420,7 @@ bool TileComponent::init(bool isEncoder,
 					uint32_t cblkyend = cblkystart + (1 << cblkheightexpn);
 
 					if (m_is_encoder) {
-						auto code_block = current_precinct->cblks.enc + cblkno;
+						auto code_block = current_precinct->enc + cblkno;
 
 						if (!code_block->alloc())
 							return false;
@@ -454,7 +442,7 @@ bool TileComponent::init(bool isEncoder,
 						}
 					} else {
 						auto code_block =
-								current_precinct->cblks.dec + cblkno;
+								current_precinct->dec + cblkno;
 						if (!current_plugin_tile
 								|| (state & GRK_PLUGIN_STATE_DEBUG)) {
 							if (!code_block->alloc())
@@ -575,7 +563,7 @@ void TileComponent::alloc_sparse_array(uint32_t numres){
                 auto precinct = &band->precincts[precno];
 
                 for (uint64_t cblkno = 0; cblkno < (uint64_t)precinct->cw * precinct->ch; ++cblkno) {
-                    auto cblk = &precinct->cblks.dec[cblkno];
+                    auto cblk = &precinct->dec[cblkno];
 					uint32_t x = cblk->x0;
 					uint32_t y = cblk->y0;
 					uint32_t cblk_w = (uint32_t)(cblk->x1 - cblk->x0);
@@ -642,48 +630,6 @@ void TileComponent::create_buffer(grk_image *output_image,
 											numresolutions,
 											resolutions);
 }
-
-/**
- * Deallocates the encoding data of the given precinct.
- */
-void TileComponent::code_block_dec_deallocate(grk_precinct *p_precinct) {
-	uint64_t cblkno, nb_code_blocks;
-	auto code_block = p_precinct->cblks.dec;
-	if (code_block) {
-		/*fprintf(stderr,"deallocate codeblock:{\n");*/
-		/*fprintf(stderr,"\t x0=%d, y0=%d, x1=%d, y1=%d\n",code_block->x0, code_block->y0, code_block->x1, code_block->y1);*/
-		/*fprintf(stderr,"\t numbps=%d, numlenbits=%d, len=%d, numPassesInPacket=%d, reanum_segs=%d, numSegmentsAllocated=%d\n ",
-		 code_block->numbps, code_block->numlenbits, code_block->len, code_block->numPassesInPacket, code_block->numSegments, code_block->numSegmentsAllocated );*/
-
-		nb_code_blocks = p_precinct->block_size / sizeof(grk_cblk_dec);
-		/*fprintf(stderr,"nb_code_blocks =%d\t}\n", nb_code_blocks);*/
-
-		for (cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
-			code_block->cleanup();
-			++code_block;
-		}
-		grok_free(p_precinct->cblks.dec);
-		p_precinct->cblks.dec = nullptr;
-	}
-}
-
-/**
- * Deallocates the encoding data of the given precinct.
- */
-void TileComponent::code_block_enc_deallocate(grk_precinct *p_precinct) {
-	uint64_t cblkno, nb_code_blocks;
-	auto code_block = p_precinct->cblks.enc;
-	if (code_block) {
-		nb_code_blocks = p_precinct->block_size / sizeof(grk_cblk_enc);
-		for (cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
-			code_block->cleanup();
-			++code_block;
-		}
-		grok_free(p_precinct->cblks.enc);
-		p_precinct->cblks.enc = nullptr;
-	}
-}
-
 
 }
 

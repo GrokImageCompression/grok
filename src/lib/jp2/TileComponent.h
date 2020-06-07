@@ -120,16 +120,6 @@ private:
 
 	TileComponentCodingParams *m_tccp;
 
-	/**
-	 * Deallocates the decoding data of the given precinct.
-	 */
-	 void code_block_dec_deallocate(grk_precinct *p_precinct);
-
-	/**
-	 * Deallocates the encoding data of the given precinct.
-	 */
-	 void code_block_enc_deallocate(grk_precinct *p_precinct);
-
 };
 
 }

@@ -49,7 +49,7 @@ void Tier1::encodeCodeblocks(TileCodingParams *tcp,
 
 					for (cblkno = 0; cblkno < (int64_t) prc->cw * prc->ch;
 							++cblkno) {
-						auto cblk = prc->cblks.enc + cblkno;
+						auto cblk = prc->enc + cblkno;
 						int32_t x = (int32_t)(cblk->x0 - band->x0);
 						int32_t y = (int32_t)(cblk->y0 - band->y0);
 						if (bandOdd) {
@@ -120,7 +120,7 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, TileComponentCodingPar
 						cblkno < (uint64_t) precinct->cw * precinct->ch;
 						++cblkno) {
 					grk_rect cblk_rect;
-					auto cblk = precinct->cblks.dec + cblkno;
+					auto cblk = precinct->dec + cblkno;
 					if (tilec->is_subband_area_of_interest(resno,
 													bandno,
 													cblk->x0,
