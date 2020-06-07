@@ -66,8 +66,8 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/mem_stream.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/mem_stream.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/grok_intmath.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/util/grok_malloc.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/util/grok_malloc.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/MemManager.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/MemManager.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/util.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/util.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/vector.h

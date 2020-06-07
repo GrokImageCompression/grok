@@ -53,19 +53,10 @@
 #include <stddef.h>
 
 namespace grk {
-/**
- @file grok_malloc.h
- @brief Internal functions
 
- The functions in grk_malloc.h are internal utilities used for memory management.
- */
 
-/** @defgroup MISC MISC - Miscellaneous internal functions */
-/*@{*/
 
-/** @name Exported functions */
-/*@{*/
-/* ----------------------------------------------------------------------- */
+
 
 /**
  Allocate an uninitialized memory block

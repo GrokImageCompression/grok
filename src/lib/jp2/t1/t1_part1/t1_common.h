@@ -43,7 +43,7 @@ const uint8_t grk_cblk_enc_compressed_data_pad_left = 2;
 #include <math.h>
 #include <assert.h>
 #include <string.h>
-#include "grok_malloc.h"
+#include "MemManager.h"
 #include "mqc.h"
 
 namespace grk {
