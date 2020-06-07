@@ -55,10 +55,10 @@ template<typename T> struct TileComponentBuffer {
 						grk_rect reduced_dim,
 						uint32_t minimum_num_resolutions,
 						uint32_t numresolutions,
-						grk_resolution *tile_resolutions) :
+						grk_resolution *tile_comp_resolutions) :
 							reduced_region_dim(reduced_dim),
-							unreduced_tile_dim(unreduced_dim),
-							reduced_tile_dim(reduced_dim),
+							unreduced_tile_comp_dim(unreduced_dim),
+							reduced_tile_comp_dim(reduced_dim),
 							data(nullptr),
 							data_size(0),
 							owns_data(false)
@@ -75,14 +75,14 @@ template<typename T> struct TileComponentBuffer {
 			reduced_region_dim.ceildivpow2(numresolutions - minimum_num_resolutions);
 
 			/* clip output image to tile */
-			reduced_tile_dim.clip(reduced_region_dim, &reduced_region_dim);
-			unreduced_tile_dim.clip(unreduced_region_dim, &unreduced_region_dim);
+			reduced_tile_comp_dim.clip(reduced_region_dim, &reduced_region_dim);
+			unreduced_tile_comp_dim.clip(unreduced_region_dim, &unreduced_region_dim);
 
 			/* fill resolutions vector */
 	        assert(numresolutions>0);
 			TileComponentBufferResolution *prev_res = nullptr;
 			for (int32_t resno = (int32_t) (numresolutions - 1); resno >= 0; --resno) {
-				auto res = tile_resolutions + resno;
+				auto res = tile_comp_resolutions + resno;
 				auto tile_buffer_res = (TileComponentBufferResolution*) grk_calloc(1,
 						sizeof(TileComponentBufferResolution));
 				if (!tile_buffer_res)
@@ -94,7 +94,7 @@ template<typename T> struct TileComponentBuffer {
 				tile_buffer_res->origin.y = res->y0;
 
 				// we don't reduce resolutions when encoding
-				grk_rect max_image_dim = unreduced_tile_dim ;
+				grk_rect max_image_dim = unreduced_tile_comp_dim ;
 				for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
 					auto band = res->bands + bandno;
 					grk_rect band_rect;
@@ -139,7 +139,7 @@ template<typename T> struct TileComponentBuffer {
 				+ offsety * (uint64_t) (dims.x1 - dims.x0);
 	}
 	bool alloc_component_data_encode(){
-		uint64_t data_size_needed = unreduced_tile_dim.area() * sizeof(T);
+		uint64_t data_size_needed = unreduced_tile_comp_dim.area() * sizeof(T);
 		if (!data 	|| (data_size_needed > data_size)) {
 			if (owns_data)
 				grk_aligned_free(data);
@@ -196,10 +196,10 @@ template<typename T> struct TileComponentBuffer {
 private:
 
 	/* unreduced tile component coordinates of tile */
-	grk_rect unreduced_tile_dim;
+	grk_rect unreduced_tile_comp_dim;
 
 	/* reduced tile component coordinates of tile */
-	grk_rect reduced_tile_dim;
+	grk_rect reduced_tile_comp_dim;
 
 
 	std::vector<TileComponentBufferResolution*> resolutions;
