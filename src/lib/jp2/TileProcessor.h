@@ -295,11 +295,10 @@ struct TileProcessor {
 	 * @param	tile_no		Index of the tile to compress.
 	 * @param	stream		stream
 	 * @param	tile_bytes_written	number of bytes written to stream
-	 * @param	p_cstr_info		Code stream information structure
 	 * @return  true if the coding is successful.
 	 */
 	bool compress_tile_part(uint16_t tile_no, BufferedStream *stream,
-			uint32_t *tile_bytes_written, grk_codestream_info  *p_cstr_info);
+			uint32_t *tile_bytes_written);
 
 	/**
 	 Decode a tile from a buffer
@@ -405,10 +404,9 @@ private:
 	 void t1_encode();
 
 	 bool t2_encode(BufferedStream *stream,
-			uint32_t *packet_bytes_written,
-			 grk_codestream_info  *p_cstr_info);
+			uint32_t *packet_bytes_written);
 
-	 bool rate_allocate( grk_codestream_info  *p_cstr_info);
+	 bool rate_allocate(void);
 
 	 bool layer_needs_rate_control(uint32_t layno);
 

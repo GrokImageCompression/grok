@@ -2273,7 +2273,6 @@ static bool j2k_pre_write_tile(CodeStream *codeStream, uint16_t tile_index) {
 			codeStream->m_tileProcessor->m_current_tile_index, nullptr, true);
 }
 static bool j2k_write_tile_part(CodeStream *codeStream,	BufferedStream *stream) {
-	grk_codestream_info *cstr_info = nullptr;
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
 	auto tileProcessor = codeStream->m_tileProcessor;
@@ -2309,11 +2308,9 @@ static bool j2k_write_tile_part(CodeStream *codeStream,	BufferedStream *stream) 
 	 */
 	if (firstTilePart) {
 		tileProcessor->tile->packno = 0;
-		if (cstr_info)
-			cstr_info->packno = 0;
 	}
 	if (!tileProcessor->compress_tile_part(currentTileNumber, stream,
-			&tile_part_bytes_written, cstr_info)) {
+			&tile_part_bytes_written)) {
 		GROK_ERROR("Cannot compress tile");
 		return false;
 	}

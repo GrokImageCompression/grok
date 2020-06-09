@@ -70,7 +70,7 @@ T2Encode::T2Encode(TileProcessor *tileProc) :
 
 bool T2Encode::encode_packets(uint16_t tile_no, uint32_t max_layers,
 		BufferedStream *stream, uint32_t *p_data_written,
-		grk_codestream_info *cstr_info, uint32_t tp_num, uint32_t tp_pos,
+		uint32_t tp_num, uint32_t tp_pos,
 		uint32_t pino) {
 
 	uint32_t nb_bytes = 0;
@@ -95,36 +95,11 @@ bool T2Encode::encode_packets(uint16_t tile_no, uint32_t max_layers,
 	while (pi_next(current_pi)) {
 		if (current_pi->layno < max_layers) {
 			nb_bytes = 0;
-
-			if (!encode_packet(tile_no, tcp, current_pi, stream, &nb_bytes,
-					cstr_info)) {
+			if (!encode_packet(tcp, current_pi, stream, &nb_bytes)) {
 				pi_destroy(pi, nb_pocs);
 				return false;
 			}
 			*p_data_written += nb_bytes;
-
-			/* INDEX >> */
-			if (cstr_info) {
-				if (cstr_info->index_write) {
-					auto info_TL = &cstr_info->tile[tile_no];
-					auto info_PK = &info_TL->packet[cstr_info->packno];
-					if (!cstr_info->packno) {
-						info_PK->start_pos = info_TL->end_header + 1;
-					} else {
-						info_PK->start_pos =
-								((cp->m_coding_params.m_enc.m_tp_on | tcp->POC)
-										&& info_PK->start_pos) ?
-										info_PK->start_pos :
-										info_TL->packet[cstr_info->packno - 1].end_pos
-												+ 1;
-					}
-					info_PK->end_pos = info_PK->start_pos + nb_bytes - 1;
-					info_PK->end_ph_pos += info_PK->start_pos - 1; /* End of packet header which now only represents the distance
-					 to start of packet is incremented by value of start of packet*/
-				}
-
-				cstr_info->packno++;
-			}
 			/* << INDEX */
 			++p_tile->packno;
 		}
@@ -203,9 +178,8 @@ bool T2Encode::encode_packets_simulate(uint16_t tile_no, uint32_t max_layers,
 }
 
 //--------------------------------------------------------------------------------------------------
-bool T2Encode::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter *pi,
-		BufferedStream *stream, uint32_t *packet_bytes_written,
-		grk_codestream_info *cstr_info) {
+bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
+		BufferedStream *stream, uint32_t *packet_bytes_written) {
 	assert(stream);
 	uint32_t compno = pi->compno;
 	uint32_t resno = pi->resno;
@@ -406,16 +380,6 @@ bool T2Encode::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter 
 		if (!stream->write_byte(146))
 			return false;
 	}
-
-	/* << INDEX */
-	/* End of packet header position. Currently only represents the distance to start of packet
-	 Will be updated later by incrementing with packet start value*/
-	//if (cstr_info && cstr_info->index_write) {
-	//	 grk_packet_info  *info_PK = &cstr_info->tile[tileno].packet[cstr_info->packno];
-	//	info_PK->end_ph_pos = (int64_t)(active_dest - dest);
-	//}
-	/* INDEX >> */
-
 	/* Writing the packet body */
 	for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
 		auto band = res->bands + bandno;
@@ -440,14 +404,6 @@ bool T2Encode::encode_packet(uint16_t tileno, TileCodingParams *tcp, PacketIter 
 					return false;
 			}
 			cblk->numPassesInPacket += cblk_layer->numpasses;
-			if (cstr_info && cstr_info->index_write) {
-				grk_packet_info *info_PK =
-						&cstr_info->tile[tileno].packet[cstr_info->packno];
-				info_PK->disto += cblk_layer->disto;
-				if (cstr_info->D_max < info_PK->disto) {
-					cstr_info->D_max = info_PK->disto;
-				}
-			}
 			++cblk;
 		}
 	}
