@@ -68,9 +68,8 @@ sparse_array::sparse_array(uint32_t width,
 									block_width(block_width),
 									block_height(block_height)
 {
-    if (width == 0 || height == 0 || block_width == 0 || block_height == 0) {
+    if (width == 0 || height == 0 || block_width == 0 || block_height == 0)
     	throw std::runtime_error("invalid region for sparse array");
-    }
     block_count_hor = ceildiv<uint32_t>(width, block_width);
     block_count_ver = ceildiv<uint32_t>(height, block_height);
     data_blocks = (int32_t**) grk_calloc((uint64_t)block_count_hor * block_count_ver,sizeof(int32_t*));
@@ -82,7 +81,7 @@ sparse_array::sparse_array(uint32_t width,
 
 sparse_array::~sparse_array()
 {
-	for (uint32_t i = 0; i < (uint64_t)block_count_hor * block_count_ver; i++)
+	for (uint64_t i = 0; i < (uint64_t)block_count_hor * block_count_ver; i++)
 		grok_free(data_blocks[i]);
 	grok_free(data_blocks);
 }
@@ -100,26 +99,25 @@ bool sparse_array::alloc(             uint32_t x0,
                                       uint32_t y0,
                                       uint32_t x1,
                                       uint32_t y1){
-    uint32_t y_incr = 0;
     if (!sparse_array::is_region_valid(x0, y0, x1, y1))
         return true;
 
+    uint32_t y_incr = 0;
     uint32_t block_y = y0 / block_height;
     for (uint32_t y = y0; y < y1; block_y ++, y += y_incr) {
-        uint32_t x, block_x;
-        uint32_t x_incr = 0;
         y_incr = (y == y0) ? block_height - (y0 % block_height) :
                  block_height;
         y_incr = min<uint32_t>(y_incr, y1 - y);
-        block_x = x0 / block_width;
-        for (x = x0; x < x1; block_x ++, x += x_incr) {
+        uint32_t block_x = x0 / block_width;
+        uint32_t x_incr = 0;
+        for (uint32_t x = x0; x < x1; block_x ++, x += x_incr) {
             x_incr = (x == x0) ? block_width - (x0 % block_width) : block_width;
             x_incr = min<uint32_t>(x_incr, x1 - x);
             auto src_block = data_blocks[(uint64_t)block_y * block_count_hor + block_x];
 			if (src_block == NULL) {
 				src_block = (int32_t*) grk_calloc((uint64_t)block_width * block_height,
 													 sizeof(int32_t));
-				if (src_block == NULL) {
+				if (!src_block) {
 					GROK_ERROR("Out of memory");
 					return false;
 				}
@@ -140,20 +138,19 @@ bool sparse_array::read_or_write(uint32_t x0,
 										uint32_t buf_line_stride,
 										bool forgiving,
 										bool is_read_op){
-    uint32_t y_incr = 0;
     if (!is_region_valid(x0, y0, x1, y1))
         return forgiving;
 
     uint32_t block_y = y0 / block_height;
+    uint32_t y_incr = 0;
     for (uint32_t y = y0; y < y1; block_y ++, y += y_incr) {
-        uint32_t x, block_x;
-        uint32_t x_incr = 0;
         y_incr = (y == y0) ? block_height - (y0 % block_height) :
                  block_height;
         uint32_t block_y_offset = block_height - y_incr;
         y_incr = min<uint32_t>(y_incr, y1 - y);
-        block_x = x0 / block_width;
-        for (x = x0; x < x1; block_x ++, x += x_incr) {
+        uint32_t block_x = x0 / block_width;
+        uint32_t x_incr = 0;
+        for (uint32_t x = x0; x < x1; block_x ++, x += x_incr) {
             x_incr = (x == x0) ? block_width - (x0 % block_width) : block_width;
             uint32_t block_x_offset = block_width - x_incr;
             x_incr = min<uint32_t>(x_incr, x1 - x);
@@ -247,16 +244,6 @@ bool sparse_array::read_or_write(uint32_t x0,
             } else {
             	//all blocks should be allocated first before read/write is called
                 assert(src_block);
-                if (src_block == NULL) {
-                    src_block = (int32_t*) grk_calloc((uint64_t)block_width * block_height,
-                                                         sizeof(int32_t));
-                    if (src_block == NULL) {
-                    	GROK_ERROR("Out of memory");
-                        return false;
-                    }
-                    data_blocks[(uint64_t)block_y * block_count_hor + block_x] = src_block;
-                }
-
                 if (buf_col_stride == 1) {
                     int32_t* GRK_RESTRICT dest_ptr = src_block + (uint64_t)block_y_offset *
                                                        	   	   	   block_width + block_x_offset;
