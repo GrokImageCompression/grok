@@ -534,6 +534,13 @@ static bool jp2_read_ihdr(FileFormat *fileFormat, uint8_t *p_image_header_data,
 	p_image_header_data += 4;
 	grk_read<uint32_t>(p_image_header_data, &(fileFormat->w), 4); /* WIDTH */
 	p_image_header_data += 4;
+
+	if ((fileFormat->w == 0) || (fileFormat->h == 0)) {
+		GROK_ERROR(
+				"JP2 IHDR box: invalid dimensions: (%d,%d)",fileFormat->w,fileFormat->h);
+		return false;
+	}
+
 	grk_read<uint32_t>(p_image_header_data, &(fileFormat->numcomps), 2); /* NC */
 	p_image_header_data += 2;
 
