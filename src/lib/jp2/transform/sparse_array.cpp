@@ -134,13 +134,15 @@ bool sparse_array::read_or_write(uint32_t x0,
 										uint32_t x1,
 										uint32_t y1,
 										int32_t* buf,
-										uint32_t buf_col_stride,
-										uint32_t buf_line_stride,
+										const uint32_t buf_col_stride,
+										const uint32_t buf_line_stride,
 										bool forgiving,
 										bool is_read_op){
     if (!is_region_valid(x0, y0, x1, y1))
         return forgiving;
 
+    const uint64_t line_stride = buf_line_stride;
+    const uint64_t col_stride = buf_col_stride;
     uint32_t block_y = y0 / block_height;
     uint32_t y_incr = 0;
     for (uint32_t y = y0; y < y1; block_y ++, y += y_incr) {
@@ -157,85 +159,85 @@ bool sparse_array::read_or_write(uint32_t x0,
             auto src_block = data_blocks[(uint64_t)block_y * block_count_hor + block_x];
             if (is_read_op) {
                 if (src_block == NULL) { // if block is NULL, then zero out destination
-                    if (buf_col_stride == 1) {
-                        auto dest_ptr = buf + (y - y0) * (size_t)buf_line_stride +
-                                              (x - x0) * buf_col_stride;
+                    if (col_stride == 1) {
+                        auto dest_ptr = buf + (y - y0) * line_stride +
+                                              (x - x0) * col_stride;
                         for (uint32_t j = 0; j < y_incr; j++) {
                             memset(dest_ptr, 0, sizeof(int32_t) * x_incr);
-                            dest_ptr += buf_line_stride;
+                            dest_ptr += line_stride;
                         }
                     } else {
-                        auto dest_ptr = buf + (y - y0) * (size_t)buf_line_stride +
-                                              (x - x0) * buf_col_stride;
+                        auto dest_ptr = buf + (y - y0) * line_stride +
+                                              (x - x0) * col_stride;
                         for (uint32_t j = 0; j < y_incr; j++) {
                             for (uint32_t k = 0; k < x_incr; k++)
-                                dest_ptr[k * buf_col_stride] = 0;
-                            dest_ptr += buf_line_stride;
+                                dest_ptr[k * col_stride] = 0;
+                            dest_ptr += line_stride;
                         }
                     }
                 } else {
                     const int32_t* GRK_RESTRICT src_ptr = src_block + (uint64_t)block_y_offset *
                                                             block_width + block_x_offset;
-                    if (buf_col_stride == 1) {
-                        int32_t* GRK_RESTRICT dest_ptr = buf + (y - y0) * (size_t)buf_line_stride
+                    if (col_stride == 1) {
+                        int32_t* GRK_RESTRICT dest_ptr = buf + (y - y0) * line_stride
                                                            +
-                                                           (x - x0) * buf_col_stride;
+                                                           (x - x0) * col_stride;
                         if (x_incr == 4) {
                             /* Same code as general branch, but the compiler */
                             /* can have an efficient memcpy() */
                             (void)(x_incr); /* trick to silent cppcheck duplicateBranch warning */
                             for (uint32_t j = 0; j < y_incr; j++) {
                                 memcpy(dest_ptr, src_ptr, sizeof(int32_t) * x_incr);
-                                dest_ptr += buf_line_stride;
+                                dest_ptr += line_stride;
                                 src_ptr  += block_width;
                             }
                         } else {
                             for (uint32_t j = 0; j < y_incr; j++) {
                                 memcpy(dest_ptr, src_ptr, sizeof(int32_t) * x_incr);
-                                dest_ptr += buf_line_stride;
+                                dest_ptr += line_stride;
                                 src_ptr  += block_width;
                             }
                         }
                     } else {
-                        int32_t* GRK_RESTRICT dest_ptr = buf + (y - y0) * (size_t)buf_line_stride
+                        int32_t* GRK_RESTRICT dest_ptr = buf + (y - y0) * (size_t)line_stride
                                                            +
-                                                           (x - x0) * buf_col_stride;
+                                                           (x - x0) * col_stride;
                         if (x_incr == 1) {
                             for (uint32_t j = 0; j < y_incr; j++) {
                                 *dest_ptr = *src_ptr;
-                                dest_ptr += buf_line_stride;
+                                dest_ptr += line_stride;
                                 src_ptr  += block_width;
                             }
-                        } else if (y_incr == 1 && buf_col_stride == 2) {
+                        } else if (y_incr == 1 && col_stride == 2) {
                             uint32_t k;
                             for (k = 0; k < (x_incr & ~3U); k += 4) {
-                                dest_ptr[k * buf_col_stride] = src_ptr[k];
-                                dest_ptr[(k + 1) * buf_col_stride] = src_ptr[k + 1];
-                                dest_ptr[(k + 2) * buf_col_stride] = src_ptr[k + 2];
-                                dest_ptr[(k + 3) * buf_col_stride] = src_ptr[k + 3];
+                                dest_ptr[k * col_stride] = src_ptr[k];
+                                dest_ptr[(k + 1) * col_stride] = src_ptr[k + 1];
+                                dest_ptr[(k + 2) * col_stride] = src_ptr[k + 2];
+                                dest_ptr[(k + 3) * col_stride] = src_ptr[k + 3];
                             }
                             for (; k < x_incr; k++)
-                                dest_ptr[k * buf_col_stride] = src_ptr[k];
-                        } else if (x_incr >= 8 && buf_col_stride == 8) {
+                                dest_ptr[k * col_stride] = src_ptr[k];
+                        } else if (x_incr >= 8 && col_stride == 8) {
                             for (uint32_t j = 0; j < y_incr; j++) {
                                 uint32_t k;
                                 for (k = 0; k < (x_incr & ~3U); k += 4) {
-                                    dest_ptr[k * buf_col_stride] = src_ptr[k];
-                                    dest_ptr[(k + 1) * buf_col_stride] = src_ptr[k + 1];
-                                    dest_ptr[(k + 2) * buf_col_stride] = src_ptr[k + 2];
-                                    dest_ptr[(k + 3) * buf_col_stride] = src_ptr[k + 3];
+                                    dest_ptr[k * col_stride] = src_ptr[k];
+                                    dest_ptr[(k + 1) * col_stride] = src_ptr[k + 1];
+                                    dest_ptr[(k + 2) * col_stride] = src_ptr[k + 2];
+                                    dest_ptr[(k + 3) * col_stride] = src_ptr[k + 3];
                                 }
                                 for (; k < x_incr; k++)
-                                    dest_ptr[k * buf_col_stride] = src_ptr[k];
-                                dest_ptr += buf_line_stride;
+                                    dest_ptr[k * col_stride] = src_ptr[k];
+                                dest_ptr += line_stride;
                                 src_ptr  += block_width;
                             }
                         } else {
                             /* General case */
                             for (uint32_t j = 0; j < y_incr; j++) {
                                 for (uint32_t k = 0; k < x_incr; k++)
-                                    dest_ptr[k * buf_col_stride] = src_ptr[k];
-                                dest_ptr += buf_line_stride;
+                                    dest_ptr[k * col_stride] = src_ptr[k];
+                                dest_ptr += line_stride;
                                 src_ptr  += block_width;
                             }
                         }
@@ -244,11 +246,11 @@ bool sparse_array::read_or_write(uint32_t x0,
             } else {
             	//all blocks should be allocated first before read/write is called
                 assert(src_block);
-                if (buf_col_stride == 1) {
+                if (col_stride == 1) {
                     int32_t* GRK_RESTRICT dest_ptr = src_block + (uint64_t)block_y_offset *
                                                        	   	   	   block_width + block_x_offset;
                     const int32_t* GRK_RESTRICT src_ptr = buf + (y - y0) *
-                                                            (size_t)buf_line_stride + (x - x0) * buf_col_stride;
+                                                            line_stride + (x - x0) * col_stride;
                     if (x_incr == 4) {
                         /* Same code as general branch, but the compiler */
                         /* can have an efficient memcpy() */
@@ -256,46 +258,46 @@ bool sparse_array::read_or_write(uint32_t x0,
                         for (uint32_t j = 0; j < y_incr; j++) {
                             memcpy(dest_ptr, src_ptr, sizeof(int32_t) * x_incr);
                             dest_ptr += block_width;
-                            src_ptr  += buf_line_stride;
+                            src_ptr  += line_stride;
                         }
                     } else {
                         for (uint32_t j = 0; j < y_incr; j++) {
                             memcpy(dest_ptr, src_ptr, sizeof(int32_t) * x_incr);
                             dest_ptr += block_width;
-                            src_ptr  += buf_line_stride;
+                            src_ptr  += line_stride;
                         }
                     }
                 } else {
                     int32_t* GRK_RESTRICT dest_ptr = src_block + (uint64_t)block_y_offset *
                                                                   block_width + block_x_offset;
                     const int32_t* GRK_RESTRICT src_ptr = buf + (y - y0) *
-                                                            (size_t)buf_line_stride + (x - x0) * buf_col_stride;
+                                                            line_stride + (x - x0) * col_stride;
                     if (x_incr == 1) {
                         for (uint32_t j = 0; j < y_incr; j++) {
                             *dest_ptr = *src_ptr;
-                            src_ptr  += buf_line_stride;
+                            src_ptr  += line_stride;
                             dest_ptr += block_width;
                         }
-                    } else if (x_incr >= 8 && buf_col_stride == 8) {
+                    } else if (x_incr >= 8 && col_stride == 8) {
                         for (uint32_t j = 0; j < y_incr; j++) {
                             uint32_t k;
                             for (k = 0; k < (x_incr & ~3U); k += 4) {
-                                dest_ptr[k] = src_ptr[k * buf_col_stride];
-                                dest_ptr[k + 1] = src_ptr[(k + 1) * buf_col_stride];
-                                dest_ptr[k + 2] = src_ptr[(k + 2) * buf_col_stride];
-                                dest_ptr[k + 3] = src_ptr[(k + 3) * buf_col_stride];
+                                dest_ptr[k] = src_ptr[k * col_stride];
+                                dest_ptr[k + 1] = src_ptr[(k + 1) * col_stride];
+                                dest_ptr[k + 2] = src_ptr[(k + 2) * col_stride];
+                                dest_ptr[k + 3] = src_ptr[(k + 3) * col_stride];
                             }
                             for (; k < x_incr; k++)
-                                dest_ptr[k] = src_ptr[k * buf_col_stride];
-                            src_ptr  += buf_line_stride;
+                                dest_ptr[k] = src_ptr[k * col_stride];
+                            src_ptr  += line_stride;
                             dest_ptr += block_width;
                         }
                     } else {
                         /* General case */
                         for (uint32_t j = 0; j < y_incr; j++) {
                             for (uint32_t k = 0; k < x_incr; k++)
-                                dest_ptr[k] = src_ptr[k * buf_col_stride];
-                            src_ptr  += buf_line_stride;
+                                dest_ptr[k] = src_ptr[k * col_stride];
+                            src_ptr  += line_stride;
                             dest_ptr += block_width;
                         }
                     }
@@ -312,8 +314,8 @@ bool sparse_array::read(uint32_t x0,
 						 uint32_t x1,
 						 uint32_t y1,
 						 int32_t* dest,
-						 uint32_t dest_col_stride,
-						 uint32_t dest_line_stride,
+						 const uint32_t dest_col_stride,
+						 const uint32_t dest_line_stride,
 						 bool forgiving)
 {
     return read_or_write( x0, y0, x1, y1,
@@ -329,8 +331,8 @@ bool sparse_array::write(uint32_t x0,
 					  uint32_t x1,
 					  uint32_t y1,
 					  const int32_t* src,
-					  uint32_t src_col_stride,
-					  uint32_t src_line_stride,
+					  const uint32_t src_col_stride,
+					  const uint32_t src_line_stride,
 					  bool forgiving)
 {
     return read_or_write(x0, y0, x1, y1,

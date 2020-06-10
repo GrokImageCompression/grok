@@ -103,14 +103,14 @@ public:
 	 * @param forgiving if set to TRUE and the region is invalid, true will still be returned.
 	 * @return true in case of success.
 	 */
-	bool read(              uint32_t x0,
-							 uint32_t y0,
-							 uint32_t x1,
-							 uint32_t y1,
-							 int32_t* dest,
-							 uint32_t dest_col_stride,
-							 uint32_t dest_line_stride,
-							 bool forgiving);
+	bool read(uint32_t x0,
+			 uint32_t y0,
+			 uint32_t x1,
+			 uint32_t y1,
+			 int32_t* dest,
+			 const uint32_t dest_col_stride,
+			 const uint32_t dest_line_stride,
+			 bool forgiving);
 
 
 	/** Write the content of a rectangular region into the sparse array from a
@@ -128,14 +128,14 @@ public:
 	 * @param forgiving if set to TRUE and the region is invalid, true will still be returned.
 	 * @return true in case of success.
 	 */
-	bool write(              uint32_t x0,
-							  uint32_t y0,
-							  uint32_t x1,
-							  uint32_t y1,
-							  const int32_t* src,
-							  uint32_t src_col_stride,
-							  uint32_t src_line_stride,
-							  bool forgiving);
+	bool write(uint32_t x0,
+			  uint32_t y0,
+			  uint32_t x1,
+			  uint32_t y1,
+			  const int32_t* src,
+			  const uint32_t src_col_stride,
+			  const uint32_t src_line_stride,
+			  bool forgiving);
 
 	/** Allocate all blocks for a rectangular region into the sparse array from a
 	 * user buffer.
@@ -172,8 +172,8 @@ private:
 						uint32_t x1,
 						uint32_t y1,
 						int32_t* buf,
-						uint32_t buf_col_stride,
-						uint32_t buf_line_stride,
+						const uint32_t buf_col_stride,
+						const uint32_t buf_line_stride,
 						bool forgiving,
 						bool is_read_op);
 
