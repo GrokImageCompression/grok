@@ -2151,7 +2151,7 @@ grk_cblk_dec::~grk_cblk_dec(){
 void grk_cblk_dec::clear(){
 	grk_cblk::clear();
 	segs = nullptr;
-	seg_buffers.clear();
+	cleanup_seg_buffers();
 }
 
 grk_cblk_dec::grk_cblk_dec(const grk_cblk_dec &rhs) :
@@ -2189,8 +2189,8 @@ bool grk_cblk_dec::alloc() {
 		uint32_t l_current_max_segs = numSegmentsAllocated;
 
 		/* Note: since seg_buffers simply holds references to another data buffer,
-		 we do not need to copy it  to the sanitized block  */
-		seg_buffers.cleanup();
+		 we do not need to copy it to the sanitized block  */
+		cleanup_seg_buffers();
 		init();
 		segs = l_segs;
 		numSegmentsAllocated = l_current_max_segs;
@@ -2223,13 +2223,41 @@ void grk_cblk_dec::cleanup() {
 		compressedData = nullptr;
 		owns_data = false;
 	}
-	seg_buffers.cleanup();
+	cleanup_seg_buffers();
 	delete[] segs;
 	segs = nullptr;
 #ifdef DEBUG_LOSSLESS_T2
 	delete packet_length_info;
 	packet_length_info = nullptr;
 #endif
+}
+
+void grk_cblk_dec::cleanup_seg_buffers(){
+
+	for (auto& b : seg_buffers)
+		delete b;
+	seg_buffers.clear();
+
+}
+
+size_t grk_cblk_dec::getSegBuffersLen(){
+	size_t len = 0;
+	for (auto& buf : seg_buffers)
+		len += buf->len;
+	return len;
+}
+
+bool grk_cblk_dec::copy_to_contiguous_buffer(uint8_t *buffer) {
+	if (!buffer)
+		return false;
+	size_t offset = 0;
+	for (auto& buf : seg_buffers){
+		if (buf->len){
+			memcpy(buffer + offset, buf->buf, buf->len);
+			offset += buf->len;
+		}
+	}
+	return true;
 }
 
 grk_band::grk_band() :

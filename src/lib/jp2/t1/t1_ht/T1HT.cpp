@@ -139,11 +139,10 @@ double T1HT::compress(encodeBlockInfo *block, grk_tile *tile, uint32_t maximum,
 }
 bool T1HT::decompress(decodeBlockInfo *block) {
 	auto cblk = block->cblk;
-	if (!cblk->seg_buffers.get_len())
+	if (cblk->seg_buffers.empty())
 		return true;
 
-	auto min_buf_vec = &cblk->seg_buffers;
-	size_t total_seg_len = grk_cblk_dec_compressed_data_pad_left_ht + min_buf_vec->get_len();
+	size_t total_seg_len = grk_cblk_dec_compressed_data_pad_left_ht + cblk->getSegBuffersLen();
 	if (coded_data_size < total_seg_len) {
 		delete[] coded_data;
 		coded_data = new uint8_t[total_seg_len];
@@ -153,11 +152,9 @@ bool T1HT::decompress(decodeBlockInfo *block) {
 	uint8_t *actual_coded_data =
 			coded_data + grk_cblk_dec_compressed_data_pad_left_ht;
 	size_t offset = 0;
-	// note: min_buf_vec only contains segments of non-zero length
-	for (size_t i = 0; i < min_buf_vec->size(); ++i) {
-		grk_buf *seg = (grk_buf*) min_buf_vec->get(i);
-		memcpy(actual_coded_data + offset, seg->buf, seg->len);
-		offset += seg->len;
+	for (auto& b : cblk->seg_buffers) {
+		memcpy(actual_coded_data + offset, b->buf, b->len);
+		offset += b->len;
 	}
 
 	size_t num_passes = 0;

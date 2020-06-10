@@ -147,7 +147,10 @@ struct grk_cblk_dec: public grk_cblk {
 	void init();
 	bool alloc();
 	void cleanup();
-	grk_vec seg_buffers;
+	void cleanup_seg_buffers();
+	size_t getSegBuffersLen();
+	bool copy_to_contiguous_buffer(uint8_t *buffer);
+	std::vector<grk_buf*> seg_buffers;
 	grk_seg *segs; /* information on segments */
 	uint32_t numSegments; /* number of segment in block*/
 	uint32_t numSegmentsAllocated; // number of segments allocated for segs array

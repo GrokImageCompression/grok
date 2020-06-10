@@ -136,13 +136,12 @@ bool T1Part1::decompress(decodeBlockInfo *block) {
 	auto cblk = block->cblk;
 	bool ret;
 
-  	if (!cblk->seg_buffers.get_len())
+  	if (cblk->seg_buffers.empty())
 		return true;
 
-	auto min_buf_vec = &cblk->seg_buffers;
-	size_t total_seg_len = min_buf_vec->get_len() + grk_cblk_dec_compressed_data_pad_right;
+	size_t total_seg_len = cblk->getSegBuffersLen() + grk_cblk_dec_compressed_data_pad_right;
 	if (t1->cblkdatabuffersize < total_seg_len) {
-		uint8_t *new_block = (uint8_t*) grk_realloc(t1->cblkdatabuffer,
+		auto new_block = (uint8_t*) grk_realloc(t1->cblkdatabuffer,
 				total_seg_len);
 		if (!new_block)
 			return false;
@@ -150,11 +149,9 @@ bool T1Part1::decompress(decodeBlockInfo *block) {
 		t1->cblkdatabuffersize = (uint32_t)total_seg_len;
 	}
 	size_t offset = 0;
-	// note: min_buf_vec only contains segments of non-zero length
-	for (size_t i = 0; i < min_buf_vec->size(); ++i) {
-		grk_buf *seg = (grk_buf*) min_buf_vec->get(i);
-		memcpy(t1->cblkdatabuffer + offset, seg->buf, seg->len);
-		offset += seg->len;
+	for (auto& b : cblk->seg_buffers) {
+		memcpy(t1->cblkdatabuffer + offset, b->buf, b->len);
+		offset += b->len;
 	}
 	seg_data_chunk chunk;
 	chunk.len = t1->cblkdatabuffersize;
@@ -198,7 +195,7 @@ bool T1Part1::decompress(decodeBlockInfo *block) {
 void T1Part1::postDecode(decodeBlockInfo *block) {
 
 	auto cblk = block->cblk;
-	if (!cblk->seg_buffers.get_len())
+	if (cblk->seg_buffers.empty())
 		return;
 
 	cblk_dec cblkexp;

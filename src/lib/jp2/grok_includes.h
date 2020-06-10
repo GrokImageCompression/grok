@@ -187,7 +187,6 @@ static inline long grok_lrintf(float f) {
 #include "mem_stream.h"
 #include "MemManager.h"
 #include "logger.h"
-#include "vector.h"
 #include "util.h"
 #include "grok_exceptions.h"
 #include "ChunkBuffer.h"
