@@ -23,11 +23,9 @@ grk_vec::grk_vec() :
 		data(nullptr) {
 }
 
-bool grk_vec::init() {
-	if (data)
-		return true;
-	data = new std::vector<grk_buf*>();
-	return data ? true : false;
+void grk_vec::init() {
+	if (!data)
+		data = new std::vector<grk_buf*>();
 }
 void grk_vec::clear(){
 	if (data)
@@ -35,6 +33,8 @@ void grk_vec::clear(){
 	data = nullptr;
 }
 bool grk_vec::push_back(grk_buf *value) {
+	if (!data)
+		return false;
 	data->push_back(value);
 	return true;
 }
@@ -60,17 +60,15 @@ void* grk_vec::back() {
 void grk_vec::cleanup() {
 	if (!data)
 		return;
-	for (auto it = data->begin(); it != data->end(); ++it) {
+	for (auto it = data->begin(); it != data->end(); ++it)
 		delete (*it);
-	}
 	delete data;
 	data = nullptr;
 }
 
 bool grk_vec::copy_to_contiguous_buffer(uint8_t *buffer) {
-	if (!buffer) {
+	if (!buffer)
 		return false;
-	}
 	size_t offset = 0;
 	for (size_t i = 0; i < size(); ++i) {
 		auto seg = (grk_buf*) get(i);

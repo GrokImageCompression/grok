@@ -24,7 +24,7 @@ struct grk_buf;
 
 struct grk_vec {
 	grk_vec();
-	bool init();
+	void init();
 	bool push_back(grk_buf* value);
 	void* get(size_t index);
 	size_t size();

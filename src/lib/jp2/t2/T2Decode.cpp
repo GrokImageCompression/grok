@@ -601,8 +601,9 @@ bool T2Decode::read_packet_data(grk_resolution *res, PacketIter *p_pi,
 
 				// only add segment to seg_buffers if length is greater than zero
 				if (seg->numBytesInPacket) {
-					cblk->seg_buffers.push_back(src_buf->get_global_ptr(),
-							seg->numBytesInPacket);
+					if (!cblk->seg_buffers.push_back(src_buf->get_global_ptr(),
+							seg->numBytesInPacket))
+						return false;
 					*(p_data_read) += seg->numBytesInPacket;
 					src_buf->incr_cur_chunk_offset(seg->numBytesInPacket);
 					cblk->compressedDataSize += seg->numBytesInPacket;
