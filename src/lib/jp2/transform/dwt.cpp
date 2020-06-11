@@ -561,15 +561,15 @@ static void decode_v_cas0_53(int32_t* tmp,
     /* Performs lifting in one single iteration. Saves memory */
     /* accesses and explicit interleaving. */
     s1n = tiledp_col[0];
-    d1n = tiledp_col[(size_t)sn * stride];
+    d1n = tiledp_col[sn * stride];
     s0n = s1n - ((d1n + 1) >> 1);
 
     if (len > 2) {
 		for (j = 0; i < (len - 3); i += 2, j++) {
 			d1c = d1n;
 			s0c = s0n;
-			s1n = tiledp_col[(size_t)(j + 1) * stride];
-			d1n = tiledp_col[(size_t)(sn + j + 1) * stride];
+			s1n = tiledp_col[(j + 1) * stride];
+			d1n = tiledp_col[(sn + j + 1) * stride];
 			s0n = s1n - ((d1c + d1n + 2) >> 2);
 			tmp[i  ] = s0c;
 			tmp[i + 1] = d1c + ((s0c + s0n) >> 1);
@@ -578,14 +578,14 @@ static void decode_v_cas0_53(int32_t* tmp,
     tmp[i] = s0n;
     if (len & 1) {
         tmp[len - 1] =
-            tiledp_col[(size_t)((len - 1) / 2) * stride] -
+            tiledp_col[((len - 1) / 2) * stride] -
             ((d1n + 1) >> 1);
         tmp[len - 2] = d1n + ((s0n + tmp[len - 1]) >> 1);
     } else {
         tmp[len - 1] = d1n + s0n;
     }
     for (i = 0; i < len; ++i)
-        tiledp_col[(size_t)i * stride] = tmp[i];
+        tiledp_col[i * stride] = tmp[i];
 }
 
 
@@ -597,7 +597,7 @@ static void decode_v_cas1_53(int32_t* tmp,
                              int32_t* tiledp_col,
                              const size_t stride){
     uint32_t i, j;
-    const int32_t* in_even = &tiledp_col[(size_t)sn * stride];
+    const int32_t* in_even = &tiledp_col[sn * stride];
     const int32_t* in_odd = &tiledp_col[0];
 
     assert(len > 2);
@@ -608,8 +608,8 @@ static void decode_v_cas1_53(int32_t* tmp,
     int32_t dc = in_odd[0] - ((in_even[0] + s1 + 2) >> 2);
     tmp[0] = in_even[0] + dc;
     for (i = 1, j = 1; i < (len - 2 - !(len & 1)); i += 2, j++) {
-    	int32_t s2 = in_even[(size_t)(j + 1) * stride];
-    	int32_t dn = in_odd[(size_t)j * stride] - ((s1 + s2 + 2) >> 2);
+    	int32_t s2 = in_even[(j + 1) * stride];
+    	int32_t dn = in_odd[j * stride] - ((s1 + s2 + 2) >> 2);
 
         tmp[i  ] = dc;
         tmp[i + 1] = s1 + ((dn + dc) >> 1);
@@ -618,14 +618,14 @@ static void decode_v_cas1_53(int32_t* tmp,
     }
     tmp[i] = dc;
     if (!(len & 1)) {
-    	int32_t dn = in_odd[(size_t)(len / 2 - 1) * stride] - ((s1 + 1) >> 1);
+    	int32_t dn = in_odd[(len / 2 - 1) * stride] - ((s1 + 1) >> 1);
         tmp[len - 2] = s1 + ((dn + dc) >> 1);
         tmp[len - 1] = dn;
     } else {
         tmp[len - 1] = s1 + dc;
     }
     for (i = 0; i < len; ++i)
-        tiledp_col[(size_t)i * stride] = tmp[i];
+        tiledp_col[i * stride] = tmp[i];
 }
 
 /* <summary>                            */
@@ -669,7 +669,7 @@ static void decode_v_53(const dwt_data<int32_t> *dwt,
                 out[1] = in_odd[0] - ((in_even[0] + 1) >> 1);
                 out[0] = in_even[0] + out[1];
                 for (uint32_t i = 0; i < len; ++i)
-                    tiledp_col[(size_t)i * stride] = out[i];
+                    tiledp_col[i * stride] = out[i];
             }
             return;
         }
@@ -727,7 +727,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
         vert.sn = (int32_t)rh;
         rw = (uint32_t)(tr->x1 - tr->x0);
         rh = (uint32_t)(tr->y1 - tr->y0);
-        horiz.dn = (int32_t)(rw - (uint32_t)horiz.sn);
+        horiz.dn = (int32_t)(rw - horiz.sn);
         horiz.cas = tr->x0 % 2;
 
         if (num_threads == 1 || rh <= 1) {
@@ -830,7 +830,7 @@ static void interleave_partial_h_53(dwt_data<int32_t> *dwt,
 									uint32_t sa_line)	{
 	auto dest = dwt->mem;
 	int32_t cas = dwt->cas;
-	uint32_t sn = (uint32_t)dwt->sn;
+	uint32_t sn = dwt->sn;
 	uint32_t win_l_x0 = dwt->win_l_x0;
 	uint32_t win_l_x1 = dwt->win_l_x1;
 	uint32_t win_h_x0 = dwt->win_h_x0;
@@ -855,7 +855,7 @@ static void interleave_partial_v_53(dwt_data<int32_t> *vert,
 									uint32_t nb_cols){
 	auto dest = vert->mem;
 	int32_t cas = vert->cas;
-	uint32_t sn = (uint32_t)vert->sn;
+	uint32_t sn = vert->sn;
 	uint32_t win_l_y0 = vert->win_l_x0;
 	uint32_t win_l_y1 = vert->win_l_x1;
 	uint32_t win_h_y0 = vert->win_h_x0;
@@ -1509,9 +1509,9 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         horiz.dn = (int32_t)(rw - (uint32_t)horiz.sn);
         horiz.cas = res->x0 % 2;
         horiz.win_l_x0 = 0;
-        horiz.win_l_x1 = (uint32_t)horiz.sn;
+        horiz.win_l_x1 = horiz.sn;
         horiz.win_h_x0 = 0;
-        horiz.win_h_x1 = (uint32_t)horiz.dn;
+        horiz.win_h_x1 = horiz.dn;
         uint32_t j;
         float * GRK_RESTRICT tiledp = (float*) tilec->buf->get_ptr( 0, 0, 0, 0);
         uint32_t num_jobs = (uint32_t)num_threads;
@@ -1603,9 +1603,9 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         vert.dn = (int32_t)rh - vert.sn;
         vert.cas = res->y0 % 2;
         vert.win_l_x0 = 0;
-        vert.win_l_x1 = (uint32_t)vert.sn;
+        vert.win_l_x1 = vert.sn;
         vert.win_h_x0 = 0;
-        vert.win_h_x1 = (uint32_t)vert.dn;
+        vert.win_h_x1 = vert.dn;
         tiledp = (float*) tilec->buf->get_ptr( 0, 0, 0, 0);
         num_jobs = (uint32_t)num_threads;
         if (rw < num_jobs)
