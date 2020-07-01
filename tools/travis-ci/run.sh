@@ -111,19 +111,13 @@ elif [ "${TRAVIS_OS_NAME}" == "linux" ]; then
 	fi
 elif [ "${TRAVIS_OS_NAME}" == "windows" ]; then
 	GROK_OS_NAME=windows
+	TRAVIS_CPU_ARCH=x64
 	if which cl > /dev/null; then
 		GROK_CXX_VERSION=msvc$(cl 2>&1 | grep Version | sed -nre 's/^[^0-9]*(([0-9]+\.)*[0-9]+).*/\1/p')
 	fi
 else
 	echo "OS not supported: ${TRAVIS_OS_NAME}"; exit 1
 fi
-
-if [ "${GROK_CI_ARCH:-}" == "" ]; then
-	echo "Guessing build architecture"
-	GROK_CI_ARCH=$(uname -m)
-	echo "${GROK_CI_ARCH}"
-fi
-
 if [ "${TRAVIS_BRANCH:-}" == "" ]; then
 	if [ "${APPVEYOR_REPO_BRANCH:-}" != "" ]; then
 		TRAVIS_BRANCH=${APPVEYOR_REPO_BRANCH}
@@ -133,8 +127,8 @@ if [ "${TRAVIS_BRANCH:-}" == "" ]; then
 	fi
 fi
 
-GROK_BUILDNAME=${GROK_OS_NAME}-${GROK_CXX_VERSION}-${GROK_CI_ARCH}-${TRAVIS_BRANCH}
-GROK_BUILDNAME_TEST=${GROK_OS_NAME}-${GROK_CXX_VERSION}-${GROK_CI_ARCH}
+GROK_BUILDNAME=${GROK_OS_NAME}-${GROK_CXX_VERSION}-${TRAVIS_CPU_ARCH}-${TRAVIS_BRANCH}
+GROK_BUILDNAME_TEST=${GROK_OS_NAME}-${GROK_CXX_VERSION}-${TRAVIS_CPU_ARCH}
 if [ "${TRAVIS_PULL_REQUEST:-}" != "false" ] && [ "${TRAVIS_PULL_REQUEST:-}" != "" ]; then
 	GROK_BUILDNAME=${GROK_BUILDNAME}-pr${TRAVIS_PULL_REQUEST}
 elif [ "${APPVEYOR_PULL_REQUEST_NUMBER:-}" != "" ]; then
@@ -207,7 +201,7 @@ if [ "${GROK_CI_INCLUDE_IF_DEPLOY:-}" == "1" ] && [ "${GROK_TAG_NAME:-}" != "" ]
 	else
 		GROK_PACK_GENERATOR="ZIP"
 	fi
-	GROK_PACK_NAME="grok-${GROK_TAG_NAME}-${TRAVIS_OS_NAME}-${GROK_CI_ARCH}"
+	GROK_PACK_NAME="grok-${GROK_TAG_NAME}-${TRAVIS_OS_NAME}-${TRAVIS_CPU_ARCH}"
 	cd ${GROK_BINARY_DIR}
 	cmake -D CPACK_GENERATOR:STRING=${GROK_PACK_GENERATOR} -D CPACK_PACKAGE_FILE_NAME:STRING=${GROK_PACK_NAME} ${GROK_SOURCE_DIR}
 	cd ${GROK_CUR_DIR}
