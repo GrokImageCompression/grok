@@ -95,7 +95,7 @@ if [ "${GROK_CI_SKIP_TESTS:-}" != "1" ]; then
                         install_name_tool -id ${PWD}/libkdu_v80R.dylib libkdu_v80R.dylib 
 			install_name_tool -change /usr/local/lib/libkdu_v80R.dylib ${PWD}/libkdu_v80R.dylib kdu_compress
 			install_name_tool -change /usr/local/lib/libkdu_v80R.dylib ${PWD}/libkdu_v80R.dylib kdu_expand
-		elif [ "${APPVEYOR:-}" == "True" ] || uname -s | grep -i MINGW &> /dev/null || uname -s | grep -i CYGWIN &> /dev/null; then
+		elif [ "${APPVEYOR:-}" == "True" ]; then
 			echo "Retrieving Kakadu"
 			wget -q https://kakadusoftware.com/wp-content/uploads/2014/06/KDU802_Demo_Apps_for_Win64_200113.msi_.zip
 			cmake -E tar -xzf KDU802_Demo_Apps_for_Win64_200113.msi_.zip
