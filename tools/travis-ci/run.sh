@@ -66,10 +66,6 @@ if [ "${TRAVIS_OS_NAME:-}" == "" ]; then
 			# default to g++
 			export CXX=g++
 		fi
-	elif uname -s | grep -i CYGWIN &> /dev/null; then
-		TRAVIS_OS_NAME=windows
-	elif uname -s | grep -i MINGW &> /dev/null; then
-		TRAVIS_OS_NAME=windows
 	elif [ "${APPVEYOR:-}" == "True" ]; then
 		TRAVIS_OS_NAME=windows
 	else
