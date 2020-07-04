@@ -81,14 +81,14 @@ void CodingParams::destroy() {
 		uint32_t i;
 		for (i = 0U; i < ppm_markers_count; ++i) {
 			if (ppm_markers[i].m_data != nullptr) {
-				grok_free(ppm_markers[i].m_data);
+				grk_free(ppm_markers[i].m_data);
 			}
 		}
 		ppm_markers_count = 0U;
-		grok_free(ppm_markers);
+		grk_free(ppm_markers);
 		ppm_markers = nullptr;
 	}
-	grok_free(ppm_buffer);
+	grk_free(ppm_buffer);
 	ppm_buffer = nullptr;
 	ppm_data = nullptr; /* ppm_data belongs to the allocated buffer pointed by ppm_buffer */
 	for (size_t i = 0; i < num_comments; ++i) {
@@ -125,23 +125,23 @@ TileCodingParams::~TileCodingParams(){
 void TileCodingParams::destroy() {
 	if (ppt_markers != nullptr) {
 		for (uint32_t i = 0U; i < ppt_markers_count; ++i)
-			grok_free(ppt_markers[i].m_data);
+			grk_free(ppt_markers[i].m_data);
 		ppt_markers_count = 0U;
-		grok_free(ppt_markers);
+		grk_free(ppt_markers);
 		ppt_markers = nullptr;
 	}
 
-	grok_free(ppt_buffer);
+	grk_free(ppt_buffer);
 	ppt_buffer = nullptr;
-	grok_free(tccps);
+	grk_free(tccps);
 	tccps = nullptr;
-	grok_free(m_mct_coding_matrix);
+	grk_free(m_mct_coding_matrix);
 	m_mct_coding_matrix = nullptr;
-	grok_free(m_mct_decoding_matrix);
+	grk_free(m_mct_decoding_matrix);
 	m_mct_decoding_matrix = nullptr;
 
 	if (m_mcc_records) {
-		grok_free(m_mcc_records);
+		grk_free(m_mcc_records);
 		m_mcc_records = nullptr;
 		m_nb_max_mcc_records = 0;
 		m_nb_mcc_records = 0;
@@ -150,13 +150,13 @@ void TileCodingParams::destroy() {
 	if (m_mct_records) {
 		auto mct_data = m_mct_records;
 		for (uint32_t i = 0; i < m_nb_mct_records; ++i) {
-			grok_free(mct_data->m_data);
+			grk_free(mct_data->m_data);
 			++mct_data;
 		}
-		grok_free(m_mct_records);
+		grk_free(m_mct_records);
 		m_mct_records = nullptr;
 	}
-	grok_free(mct_norms);
+	grk_free(mct_norms);
 	mct_norms = nullptr;
 	delete m_tile_data;
 	m_tile_data = nullptr;

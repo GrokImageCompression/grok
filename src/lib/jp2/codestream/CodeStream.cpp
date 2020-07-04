@@ -412,7 +412,7 @@ void j2k_destroy(CodeStream *codeStream) {
 	grk_image_destroy(codeStream->m_output_image);
 	codeStream->m_output_image = nullptr;
 
-	grok_free(codeStream);
+	grk_free(codeStream);
 }
 
 static bool j2k_exec(CodeStream *codeStream, std::vector<j2k_procedure> *procs,
@@ -511,7 +511,7 @@ static bool j2k_read_header_procedure(CodeStream *codeStream,
 			uint8_t *new_header_data = (uint8_t*) grk_realloc(
 					codeStream->m_tileProcessor->m_marker_scratch, marker_size);
 			if (!new_header_data) {
-				grok_free(codeStream->m_tileProcessor->m_marker_scratch);
+				grk_free(codeStream->m_tileProcessor->m_marker_scratch);
 				codeStream->m_tileProcessor->m_marker_scratch = nullptr;
 				codeStream->m_tileProcessor->m_marker_scratch_size = 0;
 				GROK_ERROR("Not enough memory to read header");
@@ -882,7 +882,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 				new_header_data = (uint8_t*) grk_realloc(
 						tileProcessor->m_marker_scratch, marker_size);
 				if (!new_header_data) {
-					grok_free(tileProcessor->m_marker_scratch);
+					grk_free(tileProcessor->m_marker_scratch);
 					tileProcessor->m_marker_scratch = nullptr;
 					tileProcessor->m_marker_scratch_size = 0;
 					GROK_ERROR("Not enough memory to read header");
@@ -1319,7 +1319,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 				&tile_x0, &tile_y0, &tile_x1, &tile_y1, &nb_comps, &go_on,
 				stream)) {
 			if (tile_compositing_buff)
-				grok_free(tile_compositing_buff);
+				grk_free(tile_compositing_buff);
 			return false;
 		}
 
@@ -1331,7 +1331,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 			uint8_t *new_compositing_buff = (uint8_t*) grk_realloc(
 					tile_compositing_buff, all_tile_data_len);
 			if (!new_compositing_buff) {
-				grok_free(tile_compositing_buff);
+				grk_free(tile_compositing_buff);
 				GROK_ERROR("Not enough memory to decompress tile %d/%d",
 						current_tile_no + 1, num_tiles_to_decode);
 				return false;
@@ -1343,7 +1343,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 		try {
 			if (!j2k_decompress_tile(codeStream, current_tile_no,
 					tile_compositing_buff, all_tile_data_len, stream)) {
-				grok_free(tile_compositing_buff);
+				grk_free(tile_compositing_buff);
 				GROK_ERROR("Failed to decompress tile %d/%d",
 						current_tile_no + 1, num_tiles_to_decode);
 				return false;
@@ -1352,7 +1352,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 			// only worry about exception if we have more tiles to decompress
 			if (tileno < num_tiles_to_decode - 1) {
 				GROK_ERROR("Stream too short, expected SOT");
-				grok_free(tile_compositing_buff);
+				grk_free(tile_compositing_buff);
 				GROK_ERROR("Failed to decompress tile %d/%d",
 						current_tile_no + 1, num_tiles_to_decode);
 				return false;
@@ -1362,7 +1362,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 			if (!codeStream->m_tileProcessor->copy_decompressed_tile_to_output_image(
 					tile_compositing_buff, codeStream->m_output_image,
 					clearOutputOnInit)) {
-				grok_free(tile_compositing_buff);
+				grk_free(tile_compositing_buff);
 				return false;
 			}
 		}
@@ -1372,7 +1372,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 						== J2K_DEC_STATE_NO_EOC)
 			break;
 	}
-	grok_free(tile_compositing_buff);
+	grk_free(tile_compositing_buff);
 
 	if (num_tiles_decoded == 0) {
 		GROK_ERROR("No tiles were decoded. Exiting");
@@ -1967,7 +1967,7 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 			tcp->mct = 2;
 			tcp->m_mct_coding_matrix = (float*) grk_malloc(lMctSize);
 			if (!tcp->m_mct_coding_matrix) {
-				grok_free(lTmpBuf);
+				grk_free(lTmpBuf);
 				lTmpBuf = nullptr;
 				GROK_ERROR(
 						"Not enough memory to allocate encoder MCT coding matrix ");
@@ -1978,7 +1978,7 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 
 			tcp->m_mct_decoding_matrix = (float*) grk_malloc(lMctSize);
 			if (!tcp->m_mct_decoding_matrix) {
-				grok_free(lTmpBuf);
+				grk_free(lTmpBuf);
 				lTmpBuf = nullptr;
 				GROK_ERROR(
 						"Not enough memory to allocate encoder MCT decoding matrix ");
@@ -1986,7 +1986,7 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 			}
 			if (matrix_inversion_f(lTmpBuf, (tcp->m_mct_decoding_matrix),
 					image->numcomps) == false) {
-				grok_free(lTmpBuf);
+				grk_free(lTmpBuf);
 				lTmpBuf = nullptr;
 				GROK_ERROR("Failed to inverse encoder MCT decoding matrix ");
 				return false;
@@ -1995,14 +1995,14 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 			tcp->mct_norms = (double*) grk_malloc(
 					image->numcomps * sizeof(double));
 			if (!tcp->mct_norms) {
-				grok_free(lTmpBuf);
+				grk_free(lTmpBuf);
 				lTmpBuf = nullptr;
 				GROK_ERROR("Not enough memory to allocate encoder MCT norms ");
 				return false;
 			}
 			mct::calculate_norms(tcp->mct_norms, image->numcomps,
 					tcp->m_mct_decoding_matrix);
-			grok_free(lTmpBuf);
+			grk_free(lTmpBuf);
 
 			for (i = 0; i < image->numcomps; i++) {
 				auto tccp = &tcp->tccps[i];
@@ -2109,7 +2109,7 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 			tcp->qcd.pull(tccp->stepsizes, !parameters->irreversible);
 		}
 	}
-	grok_free(parameters->mct_data);
+	grk_free(parameters->mct_data);
 	parameters->mct_data = nullptr;
 
 	return true;
@@ -2527,7 +2527,7 @@ bool j2k_init_mct_encoding(TileCodingParams *p_tcp, grk_image *p_image) {
 			auto new_mct_records = (grk_mct_data*) grk_realloc(p_tcp->m_mct_records,
 					p_tcp->m_nb_max_mct_records * sizeof(grk_mct_data));
 			if (!new_mct_records) {
-				grok_free(p_tcp->m_mct_records);
+				grk_free(p_tcp->m_mct_records);
 				p_tcp->m_mct_records = nullptr;
 				p_tcp->m_nb_max_mct_records = 0;
 				p_tcp->m_nb_mct_records = 0;
@@ -2542,7 +2542,7 @@ bool j2k_init_mct_encoding(TileCodingParams *p_tcp, grk_image *p_image) {
 							* sizeof(grk_mct_data));
 		}
 		mct_deco_data = p_tcp->m_mct_records + p_tcp->m_nb_mct_records;
-		grok_free(mct_deco_data->m_data);
+		grk_free(mct_deco_data->m_data);
 		mct_deco_data->m_data = nullptr;
 
 		mct_deco_data->m_index = indix++;
@@ -2568,7 +2568,7 @@ bool j2k_init_mct_encoding(TileCodingParams *p_tcp, grk_image *p_image) {
 		new_mct_records = (grk_mct_data*) grk_realloc(p_tcp->m_mct_records,
 				p_tcp->m_nb_max_mct_records * sizeof(grk_mct_data));
 		if (!new_mct_records) {
-			grok_free(p_tcp->m_mct_records);
+			grk_free(p_tcp->m_mct_records);
 			p_tcp->m_mct_records = nullptr;
 			p_tcp->m_nb_max_mct_records = 0;
 			p_tcp->m_nb_mct_records = 0;
@@ -2586,7 +2586,7 @@ bool j2k_init_mct_encoding(TileCodingParams *p_tcp, grk_image *p_image) {
 	}
 	mct_offset_data = p_tcp->m_mct_records + p_tcp->m_nb_mct_records;
 	if (mct_offset_data->m_data) {
-		grok_free(mct_offset_data->m_data);
+		grk_free(mct_offset_data->m_data);
 		mct_offset_data->m_data = nullptr;
 	}
 	mct_offset_data->m_index = indix++;
@@ -2600,7 +2600,7 @@ bool j2k_init_mct_encoding(TileCodingParams *p_tcp, grk_image *p_image) {
 
 	data = (float*) grk_malloc(nb_elem * sizeof(float));
 	if (!data) {
-		grok_free(mct_offset_data->m_data);
+		grk_free(mct_offset_data->m_data);
 		mct_offset_data->m_data = nullptr;
 		return false;
 	}
@@ -2613,7 +2613,7 @@ bool j2k_init_mct_encoding(TileCodingParams *p_tcp, grk_image *p_image) {
 	}
 	j2k_mct_write_functions_from_float[mct_offset_data->m_element_type](data,
 			mct_offset_data->m_data, nb_elem);
-	grok_free(data);
+	grk_free(data);
 	mct_offset_data->m_data_size = mct_size;
 	++p_tcp->m_nb_mct_records;
 
@@ -2625,7 +2625,7 @@ bool j2k_init_mct_encoding(TileCodingParams *p_tcp, grk_image *p_image) {
 				p_tcp->m_nb_max_mcc_records
 						* sizeof(grk_simple_mcc_decorrelation_data));
 		if (!new_mcc_records) {
-			grok_free(p_tcp->m_mcc_records);
+			grk_free(p_tcp->m_mcc_records);
 			p_tcp->m_mcc_records = nullptr;
 			p_tcp->m_nb_max_mcc_records = 0;
 			p_tcp->m_nb_mcc_records = 0;

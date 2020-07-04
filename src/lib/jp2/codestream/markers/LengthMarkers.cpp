@@ -218,7 +218,7 @@ bool TileLengthMarkers::add_to_index(uint16_t tileno, grk_codestream_index *cstr
 				cstr_index->tile_index[tileno].maxmarknum
 						* sizeof(grk_marker_info));
 		if (!new_marker) {
-			grok_free(cstr_index->tile_index[tileno].marker);
+			grk_free(cstr_index->tile_index[tileno].marker);
 			cstr_index->tile_index[tileno].marker = nullptr;
 			cstr_index->tile_index[tileno].maxmarknum = 0;
 			cstr_index->tile_index[tileno].marknum = 0;

@@ -82,8 +82,8 @@ sparse_array::sparse_array(uint32_t width,
 sparse_array::~sparse_array()
 {
 	for (uint64_t i = 0; i < (uint64_t)block_count_hor * block_count_ver; i++)
-		grok_free(data_blocks[i]);
-	grok_free(data_blocks);
+		grk_free(data_blocks[i]);
+	grk_free(data_blocks);
 }
 
 bool sparse_array::is_region_valid(

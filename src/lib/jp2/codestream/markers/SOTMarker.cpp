@@ -304,7 +304,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 						codeStream->cstr_index->tile_index[tile_number].tp_index,
 						num_parts * sizeof(grk_tp_index));
 				if (!new_tp_index) {
-					grok_free(
+					grk_free(
 							codeStream->cstr_index->tile_index[tile_number].tp_index);
 					codeStream->cstr_index->tile_index[tile_number].tp_index =
 							nullptr;
@@ -342,7 +342,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 								codeStream->cstr_index->tile_index[tile_number].current_nb_tps
 										* sizeof(grk_tp_index));
 				if (!new_tp_index) {
-					grok_free(
+					grk_free(
 							codeStream->cstr_index->tile_index[tile_number].tp_index);
 					codeStream->cstr_index->tile_index[tile_number].tp_index =
 							nullptr;

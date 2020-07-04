@@ -231,7 +231,7 @@ bool PPMMarker::merge(CodingParams *p_cp){
 					}
 				} while (data_size > 0U);
 			}
-			grok_free(p_cp->ppm_markers[i].m_data);
+			grk_free(p_cp->ppm_markers[i].m_data);
 			p_cp->ppm_markers[i].m_data = nullptr;
 			p_cp->ppm_markers[i].m_data_size = 0U;
 		}
@@ -241,7 +241,7 @@ bool PPMMarker::merge(CodingParams *p_cp){
 	p_cp->ppm_data_size = p_cp->ppm_len;
 
 	p_cp->ppm_markers_count = 0U;
-	grok_free(p_cp->ppm_markers);
+	grk_free(p_cp->ppm_markers);
 	p_cp->ppm_markers = nullptr;
 
 	return true;

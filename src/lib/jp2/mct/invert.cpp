@@ -93,13 +93,13 @@ bool matrix_inversion_f(float *pSrcMatrix, float *pDestMatrix,
 	memset(lPermutations, 0, permutation_size);
 
 	if (!lupDecompose(pSrcMatrix, lPermutations, double_data, nb_compo)) {
-		grok_free(data);
+		grk_free(data);
 		return false;
 	}
 
 	lupInvert(pSrcMatrix, pDestMatrix, nb_compo, lPermutations, double_data,
 		 double_data + nb_compo, double_data + 2 * nb_compo);
-	grok_free(data);
+	grk_free(data);
 
 	return true;
 }

@@ -155,7 +155,7 @@ bool j2k_add_mhmarker(grk_codestream_index *cstr_index, uint32_t type,
 		new_marker = (grk_marker_info*) grk_realloc(cstr_index->marker,
 				cstr_index->maxmarknum * sizeof(grk_marker_info));
 		if (!new_marker) {
-			grok_free(cstr_index->marker);
+			grk_free(cstr_index->marker);
 			cstr_index->marker = nullptr;
 			cstr_index->maxmarknum = 0;
 			cstr_index->marknum = 0;
@@ -1177,14 +1177,14 @@ bool j2k_merge_ppt(TileCodingParams *p_tcp) {
 					p_tcp->ppt_markers[i].m_data_size);
 			ppt_data_size += p_tcp->ppt_markers[i].m_data_size; /* can't overflow, max 256 markers of max 65536 bytes */
 
-			grok_free(p_tcp->ppt_markers[i].m_data);
+			grk_free(p_tcp->ppt_markers[i].m_data);
 			p_tcp->ppt_markers[i].m_data = nullptr;
 			p_tcp->ppt_markers[i].m_data_size = 0U;
 		}
 	}
 
 	p_tcp->ppt_markers_count = 0U;
-	grok_free(p_tcp->ppt_markers);
+	grk_free(p_tcp->ppt_markers);
 	p_tcp->ppt_markers = nullptr;
 
 	p_tcp->ppt_data = p_tcp->ppt_buffer;
@@ -1567,7 +1567,7 @@ bool j2k_read_mct(CodeStream *codeStream, uint8_t *p_header_data,
 			new_mct_records = (grk_mct_data*) grk_realloc(tcp->m_mct_records,
 					tcp->m_nb_max_mct_records * sizeof(grk_mct_data));
 			if (!new_mct_records) {
-				grok_free(tcp->m_mct_records);
+				grk_free(tcp->m_mct_records);
 				tcp->m_mct_records = nullptr;
 				tcp->m_nb_max_mct_records = 0;
 				tcp->m_nb_mct_records = 0;
@@ -1606,7 +1606,7 @@ bool j2k_read_mct(CodeStream *codeStream, uint8_t *p_header_data,
 	}
 
 	if (mct_data->m_data) {
-		grok_free(mct_data->m_data);
+		grk_free(mct_data->m_data);
 		mct_data->m_data = nullptr;
 		mct_data->m_data_size = 0;
 	}
@@ -1782,7 +1782,7 @@ bool j2k_read_mcc(CodeStream *codeStream, uint8_t *p_header_data,
 					tcp->m_nb_max_mcc_records
 							* sizeof(grk_simple_mcc_decorrelation_data));
 			if (!new_mcc_records) {
-				grok_free(tcp->m_mcc_records);
+				grk_free(tcp->m_mcc_records);
 				tcp->m_mcc_records = nullptr;
 				tcp->m_nb_max_mcc_records = 0;
 				tcp->m_nb_mcc_records = 0;
@@ -2016,7 +2016,7 @@ bool j2k_read_mco(CodeStream *codeStream, uint8_t *p_header_data,
 		auto tccp = tcp->tccps + i;
 		tccp->m_dc_level_shift = 0;
 	}
-	grok_free(tcp->m_mct_decoding_matrix);
+	grk_free(tcp->m_mct_decoding_matrix);
 	tcp->m_mct_decoding_matrix = nullptr;
 
 	for (i = 0; i < nb_stages; ++i) {
@@ -2097,7 +2097,7 @@ bool j2k_add_mct(TileCodingParams *p_tcp, grk_image *p_image, uint32_t index) {
 			auto tccp = p_tcp->tccps + i;
 			tccp->m_dc_level_shift = (int32_t) *(current_offset_data++);
 		}
-		grok_free(offset_data);
+		grk_free(offset_data);
 	}
 
 	return true;

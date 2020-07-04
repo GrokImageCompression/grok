@@ -406,7 +406,7 @@ grk_codestream_index* j2k_get_cstr_index(CodeStream *codeStream) {
 	cstr_index->marker = (grk_marker_info*) grk_malloc(
 			cstr_index->marknum * sizeof(grk_marker_info));
 	if (!cstr_index->marker) {
-		grok_free(cstr_index);
+		grk_free(cstr_index);
 		return nullptr;
 	}
 
@@ -414,7 +414,7 @@ grk_codestream_index* j2k_get_cstr_index(CodeStream *codeStream) {
 		memcpy(cstr_index->marker, codeStream->cstr_index->marker,
 				cstr_index->marknum * sizeof(grk_marker_info));
 	else {
-		grok_free(cstr_index->marker);
+		grk_free(cstr_index->marker);
 		cstr_index->marker = nullptr;
 	}
 
@@ -422,13 +422,13 @@ grk_codestream_index* j2k_get_cstr_index(CodeStream *codeStream) {
 	cstr_index->tile_index = (grk_tile_index*) grk_calloc(
 			cstr_index->nb_of_tiles, sizeof(grk_tile_index));
 	if (!cstr_index->tile_index) {
-		grok_free(cstr_index->marker);
-		grok_free(cstr_index);
+		grk_free(cstr_index->marker);
+		grk_free(cstr_index);
 		return nullptr;
 	}
 
 	if (!codeStream->cstr_index->tile_index) {
-		grok_free(cstr_index->tile_index);
+		grk_free(cstr_index->tile_index);
 		cstr_index->tile_index = nullptr;
 	} else {
 		for (uint32_t i = 0; i < cstr_index->nb_of_tiles; i++) {
@@ -445,11 +445,11 @@ grk_codestream_index* j2k_get_cstr_index(CodeStream *codeStream) {
 			if (!cstr_index->tile_index[i].marker) {
 				for (uint32_t it_tile_free = 0;
 						it_tile_free < i; it_tile_free++)
-					grok_free(cstr_index->tile_index[it_tile_free].marker);
+					grk_free(cstr_index->tile_index[it_tile_free].marker);
 
-				grok_free(cstr_index->tile_index);
-				grok_free(cstr_index->marker);
-				grok_free(cstr_index);
+				grk_free(cstr_index->tile_index);
+				grk_free(cstr_index->marker);
+				grk_free(cstr_index);
 
 				return nullptr;
 			}
@@ -460,7 +460,7 @@ grk_codestream_index* j2k_get_cstr_index(CodeStream *codeStream) {
 						cstr_index->tile_index[i].marknum
 								* sizeof(grk_marker_info));
 			else {
-				grok_free(cstr_index->tile_index[i].marker);
+				grk_free(cstr_index->tile_index[i].marker);
 				cstr_index->tile_index[i].marker = nullptr;
 			}
 
@@ -477,13 +477,13 @@ grk_codestream_index* j2k_get_cstr_index(CodeStream *codeStream) {
 				uint32_t it_tile_free;
 
 				for (it_tile_free = 0; it_tile_free < i; it_tile_free++) {
-					grok_free(cstr_index->tile_index[it_tile_free].marker);
-					grok_free(cstr_index->tile_index[it_tile_free].tp_index);
+					grk_free(cstr_index->tile_index[it_tile_free].marker);
+					grk_free(cstr_index->tile_index[it_tile_free].tp_index);
 				}
 
-				grok_free(cstr_index->tile_index);
-				grok_free(cstr_index->marker);
-				grok_free(cstr_index);
+				grk_free(cstr_index->tile_index);
+				grk_free(cstr_index->marker);
+				grk_free(cstr_index);
 				return nullptr;
 			}
 
@@ -493,7 +493,7 @@ grk_codestream_index* j2k_get_cstr_index(CodeStream *codeStream) {
 						cstr_index->tile_index[i].nb_tps
 								* sizeof(grk_tp_index));
 			} else {
-				grok_free(cstr_index->tile_index[i].tp_index);
+				grk_free(cstr_index->tile_index[i].tp_index);
 				cstr_index->tile_index[i].tp_index = nullptr;
 			}
 
@@ -539,7 +539,7 @@ grk_codestream_index* j2k_create_cstr_index(void) {
 	cstr_index->marker = (grk_marker_info*) grk_calloc(cstr_index->maxmarknum,
 			sizeof(grk_marker_info));
 	if (!cstr_index->marker) {
-		grok_free(cstr_index);
+		grk_free(cstr_index);
 		return nullptr;
 	}
 	cstr_index->tile_index = nullptr;
@@ -549,16 +549,16 @@ grk_codestream_index* j2k_create_cstr_index(void) {
 
 void j2k_destroy_cstr_index(grk_codestream_index *p_cstr_ind) {
 	if (p_cstr_ind) {
-		grok_free(p_cstr_ind->marker);
+		grk_free(p_cstr_ind->marker);
 		if (p_cstr_ind->tile_index) {
 			for (uint32_t i = 0; i < p_cstr_ind->nb_of_tiles; i++) {
-				grok_free(p_cstr_ind->tile_index[i].packet_index);
-				grok_free(p_cstr_ind->tile_index[i].tp_index);
-				grok_free(p_cstr_ind->tile_index[i].marker);
+				grk_free(p_cstr_ind->tile_index[i].packet_index);
+				grk_free(p_cstr_ind->tile_index[i].tp_index);
+				grk_free(p_cstr_ind->tile_index[i].marker);
 			}
-			grok_free(p_cstr_ind->tile_index);
+			grk_free(p_cstr_ind->tile_index);
 		}
-		grok_free(p_cstr_ind);
+		grk_free(p_cstr_ind);
 	}
 }
 

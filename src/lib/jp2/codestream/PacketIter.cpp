@@ -1032,15 +1032,15 @@ PacketIter* pi_create_decode(grk_image *p_image, CodingParams *p_cp,
 	auto tmp_ptr = (uint32_t**) grk_malloc(
 			p_image->numcomps * sizeof(uint32_t*));
 	if (!tmp_ptr) {
-		grok_free(tmp_data);
+		grk_free(tmp_data);
 		return nullptr;
 	}
 
 	/* memory allocation for pi */
 	auto pi = pi_create(p_image, p_cp, tile_no);
 	if (!pi) {
-		grok_free(tmp_data);
-		grok_free(tmp_ptr);
+		grk_free(tmp_data);
+		grk_free(tmp_ptr);
 		return nullptr;
 	}
 
@@ -1075,8 +1075,8 @@ PacketIter* pi_create_decode(grk_image *p_image, CodingParams *p_cp,
 	}
 
 	if (!current_pi->include) {
-		grok_free(tmp_data);
-		grok_free(tmp_ptr);
+		grk_free(tmp_data);
+		grk_free(tmp_ptr);
 		pi_destroy(pi, bound);
 		return nullptr;
 	}
@@ -1147,8 +1147,8 @@ PacketIter* pi_create_decode(grk_image *p_image, CodingParams *p_cp,
 		/* special treatment*/
 		current_pi->include = (current_pi - 1)->include;
 	}
-	grok_free(tmp_data);
-	grok_free(tmp_ptr);
+	grk_free(tmp_data);
+	grk_free(tmp_ptr);
 	if (tcp->POC)
 		pi_update_decode_poc(pi, tcp, max_precincts);
 	else
@@ -1175,14 +1175,14 @@ PacketIter* pi_initialise_encode(const grk_image *p_image,
 	auto tmp_ptr = (uint32_t**) grk_malloc(
 			p_image->numcomps * sizeof(uint32_t*));
 	if (!tmp_ptr) {
-		grok_free(tmp_data);
+		grk_free(tmp_data);
 		return nullptr;
 	}
 
 	auto pi = pi_create(p_image, p_cp, tile_no);
 	if (!pi) {
-		grok_free(tmp_data);
-		grok_free(tmp_ptr);
+		grk_free(tmp_data);
+		grk_free(tmp_ptr);
 		return nullptr;
 	}
 
@@ -1210,8 +1210,8 @@ PacketIter* pi_initialise_encode(const grk_image *p_image,
 	current_pi->include = (int16_t*) grk_calloc(
 			(size_t) tcp->numlayers * step_l, sizeof(int16_t));
 	if (!current_pi->include) {
-		grok_free(tmp_data);
-		grok_free(tmp_ptr);
+		grk_free(tmp_data);
+		grk_free(tmp_ptr);
 		pi_destroy(pi, bound);
 		return nullptr;
 	}
@@ -1288,9 +1288,9 @@ PacketIter* pi_initialise_encode(const grk_image *p_image,
 		current_pi->include = (current_pi - 1)->include;
 	}
 
-	grok_free(tmp_data);
+	grk_free(tmp_data);
 	tmp_data = nullptr;
-	grok_free(tmp_ptr);
+	grk_free(tmp_ptr);
 	tmp_ptr = nullptr;
 
 	if (tcp->POC && (GRK_IS_CINEMA(p_cp->rsiz) || p_t2_mode == FINAL_PASS))
@@ -1575,7 +1575,7 @@ void pi_init_encode(PacketIter *pi, CodingParams *cp, uint16_t tileno,
 
 void pi_destroy(PacketIter *p_pi, uint32_t nb_elements) {
 	if (p_pi) {
-		grok_free(p_pi->include);
+		grk_free(p_pi->include);
 		for (uint32_t pino = 0; pino < nb_elements; ++pino) {
 			auto current_pi = p_pi + pino;
 
@@ -1584,12 +1584,12 @@ void pi_destroy(PacketIter *p_pi, uint32_t nb_elements) {
 						compno++) {
 					auto current_component = current_pi->comps + compno;
 
-					grok_free(current_component->resolutions);
+					grk_free(current_component->resolutions);
 				}
-				grok_free(current_pi->comps);
+				grk_free(current_pi->comps);
 			}
 		}
-		grok_free(p_pi);
+		grk_free(p_pi);
 	}
 }
 

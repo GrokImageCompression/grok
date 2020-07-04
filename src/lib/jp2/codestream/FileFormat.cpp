@@ -1091,11 +1091,11 @@ static uint8_t* jp2_write_colr(FileFormat *fileFormat, uint32_t *p_nb_bytes_writ
 static void jp2_free_pclr(grk_jp2_color *color) {
 	if (color) {
 		if (color->jp2_pclr) {
-			grok_free(color->jp2_pclr->channel_sign);
-			grok_free(color->jp2_pclr->channel_size);
-			grok_free(color->jp2_pclr->entries);
-			grok_free(color->jp2_pclr->cmap);
-			grok_free(color->jp2_pclr);
+			grk_free(color->jp2_pclr->channel_sign);
+			grk_free(color->jp2_pclr->channel_size);
+			grk_free(color->jp2_pclr->entries);
+			grk_free(color->jp2_pclr->cmap);
+			grk_free(color->jp2_pclr);
 			color->jp2_pclr = nullptr;
 		}
 	}
@@ -1225,7 +1225,7 @@ static bool jp2_check_color(grk_image *image, grk_jp2_color *color) {
 			}
 		}
 		cleanup:
-		grok_free(pcol_usage);
+		grk_free(pcol_usage);
 		if (!is_sane)
 			return false;
 	}
@@ -1283,7 +1283,7 @@ static bool jp2_apply_pclr(grk_image *image, grk_jp2_color *color) {
 				--i;
 				grk_aligned_free(new_comps[i].data);
 			}
-			grok_free(new_comps);
+			grk_free(new_comps);
 			GROK_ERROR("Memory allocation failure in grk_jp2_apply_pclr().");
 			return false;
 		}
@@ -1329,7 +1329,7 @@ static bool jp2_apply_pclr(grk_image *image, grk_jp2_color *color) {
 	max = image->numcomps;
 	for (i = 0; i < max; ++i)
 		grk_image_single_component_data_free(old_comps + i);
-	grok_free(old_comps);
+	grk_free(old_comps);
 	image->comps = new_comps;
 	image->numcomps = nr_channels;
 
@@ -1380,21 +1380,21 @@ static bool jp2_read_pclr(FileFormat *fileFormat, uint8_t *p_pclr_header_data,
 		return false;
 	auto channel_size = (uint8_t*) grk_malloc(nr_channels);
 	if (!channel_size) {
-		grok_free(entries);
+		grk_free(entries);
 		return false;
 	}
 	auto channel_sign = (uint8_t*) grk_malloc(nr_channels);
 	if (!channel_sign) {
-		grok_free(entries);
-		grok_free(channel_size);
+		grk_free(entries);
+		grk_free(channel_size);
 		return false;
 	}
 
 	auto jp2_pclr = (grk_jp2_pclr*) grk_malloc(sizeof(grk_jp2_pclr));
 	if (!jp2_pclr) {
-		grok_free(entries);
-		grok_free(channel_size);
-		grok_free(channel_sign);
+		grk_free(entries);
+		grk_free(channel_size);
+		grk_free(channel_sign);
 		return false;
 	}
 
@@ -1537,8 +1537,8 @@ static void jp2_apply_cdef(grk_image *image, grk_jp2_color *color) {
 		}
 	}
 
-	grok_free(color->jp2_cdef->info);
-	grok_free(color->jp2_cdef);
+	grk_free(color->jp2_cdef->info);
+	grk_free(color->jp2_cdef);
 	color->jp2_cdef = nullptr;
 
 }/* jp2_apply_cdef() */
@@ -1583,7 +1583,7 @@ static bool jp2_read_cdef(FileFormat *fileFormat, uint8_t *p_cdef_header_data,
 
 	fileFormat->color.jp2_cdef = (grk_jp2_cdef*) grk_malloc(sizeof(grk_jp2_cdef));
 	if (!fileFormat->color.jp2_cdef) {
-		grok_free(cdef_info);
+		grk_free(cdef_info);
 		return false;
 	}
 	fileFormat->color.jp2_cdef->info = cdef_info;
@@ -1892,7 +1892,7 @@ static bool jp2_write_jp2h(FileFormat *fileFormat, BufferedStream *stream) {
 		for (i = 0; i < nb_writers; ++i) {
 			auto current_writer = writers + i;
 			if (current_writer->m_data != nullptr) {
-				grok_free(current_writer->m_data);
+				grk_free(current_writer->m_data);
 			}
 		}
 		return false;
@@ -1922,7 +1922,7 @@ static bool jp2_write_jp2h(FileFormat *fileFormat, BufferedStream *stream) {
 	/* cleanup */
 	for (i = 0; i < nb_writers; ++i) {
 		auto current_writer = writers + i;
-		grok_free(current_writer->m_data);
+		grk_free(current_writer->m_data);
 	}
 
 	return result;
@@ -2514,7 +2514,7 @@ static bool jp2_read_header_procedure(FileFormat *fileFormat, BufferedStream *st
 	} catch (CorruptJP2BoxException &ex) {
 		rc = false;
 	}
-	cleanup: grok_free(current_data);
+	cleanup: grk_free(current_data);
 	return rc;
 }
 
@@ -2961,12 +2961,12 @@ bool jp2_decompress_tile(FileFormat *fileFormat, uint16_t tile_index, uint8_t *p
 void jp2_destroy(FileFormat *fileFormat) {
 	if (fileFormat) {
 		j2k_destroy(fileFormat->j2k);
-		grok_free(fileFormat->comps);
-		grok_free(fileFormat->cl);
+		grk_free(fileFormat->comps);
+		grk_free(fileFormat->cl);
 		grk_buffer_delete(fileFormat->color.icc_profile_buf);
 		if (fileFormat->color.jp2_cdef) {
-			grok_free(fileFormat->color.jp2_cdef->info);
-			grok_free(fileFormat->color.jp2_cdef);
+			grk_free(fileFormat->color.jp2_cdef->info);
+			grk_free(fileFormat->color.jp2_cdef);
 		}
 		jp2_free_pclr(&fileFormat->color);
 		delete fileFormat->m_validation_list;
@@ -2975,7 +2975,7 @@ void jp2_destroy(FileFormat *fileFormat) {
 		for (uint32_t i = 0; i < fileFormat->numUuids; ++i)
 			(fileFormat->uuids + i)->dealloc();
 		fileFormat->numUuids = 0;
-		grok_free(fileFormat);
+		grk_free(fileFormat);
 	}
 }
 

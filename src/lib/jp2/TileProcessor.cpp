@@ -85,9 +85,9 @@ TileProcessor::TileProcessor(bool isDecoder) :
 TileProcessor::~TileProcessor() {
 	if (tile) {
 		delete[] tile->comps;
-		grok_free(tile);
+		grk_free(tile);
 	}
-	grok_free(m_marker_scratch);
+	grk_free(m_marker_scratch);
 	delete plt_markers;
 }
 
@@ -1246,11 +1246,11 @@ bool TileProcessor::mct_decode() {
 			tile->numcomps,
 			/* tells if the data is signed */
 			image->comps->sgnd)) {
-				grok_free(data);
+				grk_free(data);
 				return false;
 			}
 
-			grok_free(data);
+			grk_free(data);
 		} else {
 			if (m_tcp->tccps->qmfbid == 1) {
 				mct::decode_rev(tile->comps[0].buf->get_ptr(0, 0, 0, 0),
@@ -1400,11 +1400,11 @@ bool TileProcessor::mct_encode() {
 		tile->numcomps,
 		/* tells if the data is signed */
 		image->comps->sgnd)) {
-			grok_free(data);
+			grk_free(data);
 			return false;
 		}
 
-		grok_free(data);
+		grk_free(data);
 	} else if (m_tcp->tccps->qmfbid == 0) {
 		mct::encode_irrev(tile->comps[0].buf->get_ptr(0, 0, 0, 0),
 				tile->comps[1].buf->get_ptr(0, 0, 0, 0),
@@ -2130,9 +2130,9 @@ void grk_cblk_enc::cleanup() {
 		owns_data = false;
 	}
 	paddedCompressedData = nullptr;
-	grok_free(layers);
+	grk_free(layers);
 	layers = nullptr;
-	grok_free(passes);
+	grk_free(passes);
 	passes = nullptr;
 #ifdef DEBUG_LOSSLESS_T2
 	delete packet_length_info;

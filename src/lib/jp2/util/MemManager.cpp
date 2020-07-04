@@ -73,9 +73,8 @@ static inline void* grk_aligned_alloc_n(size_t alignment, size_t size) {
 	/* alignment shall be at least sizeof(void*) */
 	assert(alignment >= sizeof(void*));
 
-	if (size == 0U) { /* prevent implementation defined behavior of realloc */
+	if (size == 0U)  /* prevent implementation defined behavior of realloc */
 		return nullptr;
-	}
 
 	// make new_size a multiple of alignment
 	size = ((size + alignment - 1)/alignment) * alignment;
@@ -87,9 +86,8 @@ static inline void* grk_aligned_alloc_n(size_t alignment, size_t size) {
      * This function was introduced in POSIX 1003.1d. Although this function is
      * superseded by aligned_alloc, it is more portable to older POSIX systems
      * that do not support ISO C11.  */
-    if (posix_memalign (&ptr, alignment, size)) {
+    if (posix_memalign (&ptr, alignment, size))
         ptr = nullptr;
-    }
     /* older linux */
 #elif defined(GROK_HAVE_MEMALIGN)
     ptr = memalign( alignment, size );
@@ -105,9 +103,6 @@ static inline void* grk_aligned_alloc_n(size_t alignment, size_t size) {
      */
     alignment--;
     {
-        size_t offset;
-        uint8_t *mem;
-
         /* Room for padding and extra pointer stored in front of allocated area */
         size_t overhead = alignment + sizeof(void *);
 
@@ -115,17 +110,15 @@ static inline void* grk_aligned_alloc_n(size_t alignment, size_t size) {
         assert(alignment <= (SIZE_MAX - sizeof(void *)));
 
         /* Avoid integer overflow */
-        if (size > (SIZE_MAX - overhead)) {
+        if (size > (SIZE_MAX - overhead))
             return nullptr;
-        }
 
-        mem = (uint8_t*)malloc(size + overhead);
-        if (mem == nullptr) {
+        uint8_t *mem = (uint8_t*)malloc(size + overhead);
+        if (mem == nullptr)
             return mem;
-        }
         /* offset = ((alignment + 1U) - ((size_t)(mem + sizeof(void*)) & alignment)) & alignment; */
         /* Use the fact that alignment + 1U is a power of 2 */
-        offset = ((alignment ^ ((size_t)(mem + sizeof(void*)) & alignment)) + 1U) & alignment;
+        size_t offset = ((alignment ^ ((size_t)(mem + sizeof(void*)) & alignment)) + 1U) & alignment;
         ptr = (void *)(mem + sizeof(void*) + offset);
         ((void**) ptr)[-1] = mem;
     }
@@ -141,9 +134,8 @@ static inline void* grk_aligned_realloc_n(void *ptr, size_t alignment,
 	/* alignment shall be at least sizeof(void*) */
 	assert(alignment >= sizeof(void*));
 
-	if (new_size == 0U) { /* prevent implementation defined behavior of realloc */
+	if (new_size == 0U)  /* prevent implementation defined behavior of realloc */
 		return nullptr;
-	}
 
 	// make new_size a multiple of alignment
 	new_size = ((new_size + alignment - 1)/alignment) * alignment;
@@ -160,9 +152,8 @@ static inline void* grk_aligned_realloc_n(void *ptr, size_t alignment,
 		 * allocated array (eg. _msize on Windows, malloc_size on MacOS,
 		 * malloc_usable_size on systems with glibc) */
 		void *a_ptr = grk_aligned_alloc_n(alignment, new_size);
-		if (a_ptr != nullptr) {
+		if (a_ptr != nullptr)
 			memcpy(a_ptr, r_ptr, new_size);
-		}
 		free(r_ptr);
 		r_ptr = a_ptr;
 	}
@@ -170,47 +161,38 @@ static inline void* grk_aligned_realloc_n(void *ptr, size_t alignment,
 #elif defined(GROK_HAVE__ALIGNED_MALLOC)
     r_ptr = _aligned_realloc( ptr, new_size, alignment );
 #else
-    if (ptr == nullptr) {
+    if (ptr == nullptr)
         return grk_aligned_alloc_n(alignment, new_size);
-    }
     alignment--;
     {
-        void *oldmem;
-        uint8_t *newmem;
         size_t overhead = alignment + sizeof(void *);
 
         /* let's be extra careful */
         assert(alignment <= (SIZE_MAX - sizeof(void *)));
 
         /* Avoid integer overflow */
-        if (new_size > SIZE_MAX - overhead) {
+        if (new_size > SIZE_MAX - overhead)
             return nullptr;
-        }
 
-        oldmem = ((void**) ptr)[-1];
-        newmem = (uint8_t*)realloc(oldmem, new_size + overhead);
-        if (newmem == nullptr) {
+        void *oldmem = ((void**) ptr)[-1];
+        uint8_t *newmem = (uint8_t*)realloc(oldmem, new_size + overhead);
+        if (newmem == nullptr)
             return newmem;
-        }
 
         if (newmem == oldmem) {
             r_ptr = ptr;
         } else {
-            size_t old_offset;
-            size_t new_offset;
-
             /* realloc created a new copy, realign the copied memory block */
-            old_offset = (size_t)((uint8_t*)ptr - (uint8_t*)oldmem);
+            size_t old_offset = (size_t)((uint8_t*)ptr - (uint8_t*)oldmem);
 
             /* offset = ((alignment + 1U) - ((size_t)(mem + sizeof(void*)) & alignment)) & alignment; */
             /* Use the fact that alignment + 1U is a power of 2 */
-            new_offset  = ((alignment ^ ((size_t)(newmem + sizeof(void*)) & alignment)) + 1U) & alignment;
+            size_t new_offset  = ((alignment ^ ((size_t)(newmem + sizeof(void*)) & alignment)) + 1U) & alignment;
             new_offset += sizeof(void*);
             r_ptr = (void *)(newmem + new_offset);
 
-            if (new_offset != old_offset) {
+            if (new_offset != old_offset)
                 memmove(newmem + new_offset, newmem + old_offset, new_size);
-            }
             ((void**) r_ptr)[-1] = newmem;
         }
     }
@@ -218,16 +200,16 @@ static inline void* grk_aligned_realloc_n(void *ptr, size_t alignment,
 	return r_ptr;
 }
 void* grk_malloc(size_t size) {
-	if (size == 0U) { /* prevent implementation defined behavior of realloc */
+	if (size == 0U) /* prevent implementation defined behavior of realloc */
 		return nullptr;
-	}
+
 	return malloc(size);
 }
 void* grk_calloc(size_t num, size_t size) {
-	if (num == 0 || size == 0) {
+	if (num == 0 || size == 0)
 		/* prevent implementation defined behavior of realloc */
 		return nullptr;
-	}
+
 	return calloc(num, size);
 }
 
@@ -246,19 +228,18 @@ void grk_aligned_free(void *ptr) {
     _aligned_free( ptr );
 #else
     /* Generic implementation has malloced pointer stored in front of used area */
-    if (ptr != nullptr) {
+    if (ptr != nullptr)
         free(((void**) ptr)[-1]);
-    }
 #endif
 }
 
 void* grk_realloc(void *ptr, size_t new_size) {
-	if (new_size == 0U) { /* prevent implementation defined behavior of realloc */
+	if (new_size == 0U)/* prevent implementation defined behavior of realloc */
 		return nullptr;
-	}
+
 	return realloc(ptr, new_size);
 }
-void grok_free(void *ptr) {
+void grk_free(void *ptr) {
 	if (ptr)
 		free(ptr);
 }

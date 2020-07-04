@@ -127,7 +127,7 @@ template<typename T> struct TileComponentBuffer {
 		if (owns_data)
 			grk_aligned_free(data);
 		for (auto &res : resolutions) {
-			grok_free(res);
+			grk_free(res);
 		}
 	}
 

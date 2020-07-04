@@ -483,7 +483,7 @@ bool mct::encode_custom(uint8_t *pCodingdata, uint64_t n, uint8_t **pData,
 			++lData[j];
 		}
 	}
-	grok_free(lCurrentData);
+	grk_free(lCurrentData);
 
 	return true;
 }
@@ -520,7 +520,7 @@ bool mct::decode_custom(uint8_t *pDecodingData, uint64_t n, uint8_t **pData,
 			*(lData[j]++) = (float) (lCurrentResult[j]);
 		}
 	}
-	grok_free(lCurrentData);
+	grk_free(lCurrentData);
 	return true;
 }
 

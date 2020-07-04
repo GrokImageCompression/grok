@@ -54,10 +54,6 @@
 
 namespace grk {
 
-
-
-
-
 /**
  Allocate an uninitialized memory block
  @param size Bytes to allocate
@@ -94,7 +90,7 @@ void* grk_realloc(void *m, size_t s);
  Deallocates or frees a memory block.
  @param m Previously allocated memory block to be freed
  */
-void grok_free(void *m);
+void grk_free(void *m);
 
 #if defined(__GNUC__) && !defined(GROK_SKIP_POISON)
 #pragma GCC poison malloc calloc realloc free

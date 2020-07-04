@@ -1031,8 +1031,8 @@ void t1_destroy(t1_info *p_t1) {
 		p_t1->flags = 00;
 	}
 
-	grk::grok_free(p_t1->cblkdatabuffer);
-	grk::grok_free(p_t1);
+	grk::grk_free(p_t1->cblkdatabuffer);
+	grk::grk_free(p_t1);
 }
 
 bool t1_decode_cblk(t1_info *t1, cblk_dec *cblk, uint32_t orient,
@@ -1152,7 +1152,7 @@ static int t1_enc_is_term_pass(cblk_enc *cblk, uint32_t cblksty,
  * Deallocate the encoding data of the given precinct.
  */
 void t1_code_block_enc_deallocate(cblk_enc *code_block) {
-	grk::grok_free(code_block->passes);
+	grk::grk_free(code_block->passes);
 	code_block->passes = nullptr;
 }
 static bool t1_code_block_enc_allocate(cblk_enc *p_code_block) {

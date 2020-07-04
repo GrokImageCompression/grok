@@ -107,12 +107,12 @@ void GRK_CALLCONV grk_image_destroy(grk_image *image) {
 	if (image) {
 		if (image->comps) {
 			grk_image_all_components_data_free(image);
-			grk::grok_free(image->comps);
+			grk::grk_free(image->comps);
 		}
 		grk_buffer_delete(image->icc_profile_buf);
 		grk_buffer_delete(image->iptc_buf);
 		grk_buffer_delete(image->xmp_buf);
-		grk::grok_free(image);
+		grk::grk_free(image);
 	}
 }
 
@@ -180,7 +180,7 @@ void grk_copy_image_header(const grk_image *image_src,grk_image *image_dest) {
 
 	if (image_dest->comps) {
 		grk_image_all_components_data_free(image_dest);
-		grok_free(image_dest->comps);
+		grk_free(image_dest->comps);
 		image_dest->comps = nullptr;
 	}
 	image_dest->numcomps = image_src->numcomps;

@@ -291,7 +291,7 @@ const char* GRK_CALLCONV grk_version(void) {
 		codec->m_codec = j2k_create_decompress();
 
 		if (!codec->m_codec) {
-			grok_free(codec);
+			grk_free(codec);
 			return nullptr;
 		}
 		break;
@@ -326,13 +326,13 @@ const char* GRK_CALLCONV grk_version(void) {
 				void *p_codec, BufferedStream *p_cio, grk_image *p_image, uint16_t tile_index)) jp2_get_tile;
 		codec->m_codec = jp2_create(true);
 		if (!codec->m_codec) {
-			grok_free(codec);
+			grk_free(codec);
 			return nullptr;
 		}
 		break;
 	case GRK_CODEC_UNKNOWN:
 	default:
-		grok_free(codec);
+		grk_free(codec);
 		return nullptr;
 	}
 	return ( grk_codec  * ) codec;
@@ -478,7 +478,7 @@ bool GRK_CALLCONV grk_decompress_tile( grk_codec  *p_codec,
 				(bool (*)(void*,  grk_cparameters  * , grk_image * )) j2k_init_compress;
 		codec->m_codec = j2k_create_compress();
 		if (!codec->m_codec) {
-			grok_free(codec);
+			grk_free(codec);
 			return nullptr;
 		}
 		break;
@@ -499,13 +499,13 @@ bool GRK_CALLCONV grk_decompress_tile( grk_codec  *p_codec,
 
 		codec->m_codec = jp2_create(false);
 		if (!codec->m_codec) {
-			grok_free(codec);
+			grk_free(codec);
 			return nullptr;
 		}
 		break;
 	case GRK_CODEC_UNKNOWN:
 	default:
-		grok_free(codec);
+		grk_free(codec);
 		return nullptr;
 	}
 	return ( grk_codec  * ) codec;
@@ -648,7 +648,7 @@ void GRK_CALLCONV grk_destroy_codec( grk_codec  *p_codec) {
 		else
 			codec->m_codec_data.m_compression.destroy(codec->m_codec);
 		codec->m_codec = nullptr;
-		grok_free(codec);
+		grk_free(codec);
 	}
 }
 
@@ -675,11 +675,11 @@ void GRK_CALLCONV grk_dump_codec( grk_codec  *p_codec, uint32_t info_flag,
 void GRK_CALLCONV grk_destroy_cstr_info( grk_codestream_info_v2  **cstr_info) {
 	if (cstr_info) {
 		if ((*cstr_info)->m_default_tile_info.tccp_info)
-			grok_free((*cstr_info)->m_default_tile_info.tccp_info);
+			grk_free((*cstr_info)->m_default_tile_info.tccp_info);
 		if ((*cstr_info)->tile_info) {
 			/* FIXME not used for the moment*/
 		}
-		grok_free((*cstr_info));
+		grk_free((*cstr_info));
 		(*cstr_info) = nullptr;
 	}
 }
