@@ -14,7 +14,6 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 #pragma once
 
 #include "util.h"
@@ -24,8 +23,6 @@
 #include <stdexcept>
 
 namespace grk {
-
-
 
 /*
  Note: various coordinate systems are used to describe regions in the tile buffer.
@@ -120,8 +117,6 @@ template<typename T> struct TileComponentBuffer {
 				prev_res = tile_buffer_res;
 			}
 		}
-
-
 	}
 	~TileComponentBuffer(){
 		if (owns_data)
@@ -168,17 +163,19 @@ template<typename T> struct TileComponentBuffer {
 		}
 		return true;
 	}
-
+	// set data to buf without owning it
 	void attach(T* buf){
 		data = buf;
 		owns_data = false;
 	}
+	// set data to buf and own it
 	void acquire(T* buf){
 		if (owns_data)
 			grk_aligned_free(data);
 		data = buf;
 		owns_data = true;
 	}
+	// transfer data to buf, and cease owning it
 	void transfer(T** buf, bool* owns){
 		if (buf && owns){
 			*buf = data;
