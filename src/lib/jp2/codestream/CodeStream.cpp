@@ -2117,10 +2117,6 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 
 bool j2k_compress(CodeStream *codeStream, grk_plugin_tile *tile,
 		BufferedStream *stream) {
-	uint16_t i;
-	uint32_t j;
-	bool transfer_image_to_tile = false;
-
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
 
@@ -2134,25 +2130,14 @@ bool j2k_compress(CodeStream *codeStream, grk_plugin_tile *tile,
 				"allowed by the standard.", nb_tiles, max_num_tiles);
 		return false;
 	}
-	if (nb_tiles == 1) {
-		transfer_image_to_tile = true;
-#ifdef __SSE__
-		for (j = 0; j < codeStream->m_tileProcessor->image->numcomps; ++j) {
-			auto img_comp = p_tcd->image->comps + j;
-			/* tile data shall be aligned on 16 bytes */
-			if (((size_t) img_comp->data & 0xFU) != 0U)
-				transfer_image_to_tile = false;
-		}
-#endif
-	}
-	for (i = 0; i < nb_tiles; ++i) {
-		if (!j2k_pre_write_tile(codeStream, i)) {
+	bool transfer_image_to_tile = (nb_tiles == 1);
+	for (uint16_t i = 0; i < nb_tiles; ++i) {
+		if (!j2k_pre_write_tile(codeStream, i))
 			return false;
-		}
 
 		/* if we only have one tile, then simply set tile component data equal to
 		 * image component data. Otherwise, allocate tile data and copy */
-		for (j = 0; j < codeStream->m_tileProcessor->image->numcomps; ++j) {
+		for (uint32_t j = 0; j < codeStream->m_tileProcessor->image->numcomps; ++j) {
 			auto tilec = p_tcd->tile->comps + j;
 			if (transfer_image_to_tile) {
 				tilec->buf->attach((p_tcd->image->comps + j)->data);
