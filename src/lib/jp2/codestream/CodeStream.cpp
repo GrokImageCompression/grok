@@ -2142,7 +2142,7 @@ bool j2k_compress(CodeStream *codeStream, grk_plugin_tile *tile,
 			if (transfer_image_to_tile) {
 				tilec->buf->attach((p_tcd->image->comps + j)->data);
 			} else {
-				if (!tilec->buf->alloc_component_data_encode()) {
+				if (!tilec->buf->alloc()) {
 					GROK_ERROR("Error allocating tile component data.");
 					return false;
 				}
@@ -2671,9 +2671,9 @@ bool j2k_compress_tile(CodeStream *codeStream, uint16_t tile_index, uint8_t *p_d
 	} else {
 		/* Allocate data */
 		for (uint32_t j = 0; j < codeStream->m_tileProcessor->image->numcomps; ++j) {
-			TileComponent *tilec = codeStream->m_tileProcessor->tile->comps + j;
+			auto tilec = codeStream->m_tileProcessor->tile->comps + j;
 
-			if (!tilec->buf->alloc_component_data_encode()) {
+			if (!tilec->buf->alloc()) {
 				GROK_ERROR("Error allocating tile component data.");
 				return false;
 			}

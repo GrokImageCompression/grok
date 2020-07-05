@@ -58,7 +58,8 @@ template<typename T> struct TileComponentBuffer {
 							reduced_tile_comp_dim(reduced_dim),
 							data(nullptr),
 							data_size(0),
-							owns_data(false)
+							owns_data(false),
+							m_encode(output_image==nullptr)
 	{
 		//note: only decoder has output image
 		if (output_image) {
@@ -133,9 +134,14 @@ template<typename T> struct TileComponentBuffer {
 		return data + (uint64_t) offsetx
 				+ offsety * (uint64_t) (dims.x1 - dims.x0);
 	}
-	bool alloc_component_data_encode(){
-		uint64_t data_size_needed = unreduced_tile_comp_dim.area() * sizeof(T);
-		if (!data 	|| (data_size_needed > data_size)) {
+	bool alloc(){
+		uint64_t data_size_needed =
+				m_encode ? unreduced_tile_comp_dim.area() * sizeof(T) :
+						reduced_region_dim.area() * sizeof(T);
+		if (!data && !data_size_needed)
+			return true;
+
+		if (!data) {
 			if (owns_data)
 				grk_aligned_free(data);
 			data_size = 0;
@@ -143,25 +149,14 @@ template<typename T> struct TileComponentBuffer {
 			data = (T*) grk_aligned_malloc(data_size_needed);
 			if (!data)
 				return false;
+			if (!m_encode)
+				memset(data, 0, data_size_needed);
 			data_size = data_size_needed;
 			owns_data = true;
 		}
 
 		return true;
-	}
-	bool alloc_component_data_decode(){
-		if (!data) {
-			uint64_t data_size_needed = reduced_region_dim.area() * sizeof(T);
-			if (data_size_needed) {
-				data = (T*) grk_aligned_malloc(data_size_needed);
-				if (!data)
-					return false;
-				memset(data, 0, data_size_needed);
-				data_size = data_size_needed;
-				owns_data = true;
-			}
-		}
-		return true;
+
 	}
 	// set data to buf without owning it
 	void attach(T* buf){
@@ -204,6 +199,7 @@ private:
 	T *data;
 	uint64_t data_size; /* size of the data of the component */
 	bool owns_data; /* true if tile buffer manages its data array, false otherwise */
+	bool m_encode;
 };
 
 
