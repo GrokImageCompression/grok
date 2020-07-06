@@ -39,10 +39,10 @@ namespace grk {
  */
 
 struct TileComponentBufferResolution {
-	grk_rect band_region[3]; // tile coordinates
-	uint32_t num_bands;
 	grk_pt origin; /* resolution origin, in tile coordinates */
 	grk_pt bounds; /* width and height of resolution in tile coordinates */
+	uint32_t num_bands;
+	grk_rect bands[3]; // tile coordinates
 };
 
 template<typename T> struct TileComponentBuffer {
@@ -50,7 +50,7 @@ template<typename T> struct TileComponentBuffer {
 						uint32_t dx,uint32_t dy,
 						grk_rect unreduced_dim,
 						grk_rect reduced_dim,
-						uint32_t minimum_num_resolutions,
+						uint32_t reduced_num_resolutions,
 						uint32_t numresolutions,
 						grk_resolution *tile_comp_resolutions) :
 							reduced_region_dim(reduced_dim),
@@ -70,69 +70,29 @@ template<typename T> struct TileComponentBuffer {
 										ceildiv<uint32_t>(output_image->y1, dy));
 
 			reduced_region_dim 	= unreduced_region_dim;
-			reduced_region_dim.ceildivpow2(numresolutions - minimum_num_resolutions);
+			reduced_region_dim.ceildivpow2(numresolutions - reduced_num_resolutions);
 
 			/* clip output image to tile */
 			reduced_tile_comp_dim.clip(reduced_region_dim, &reduced_region_dim);
 			unreduced_tile_comp_dim.clip(unreduced_region_dim, &unreduced_region_dim);
 
 			/* fill resolutions vector */
-	        assert(numresolutions>0);
-			TileComponentBufferResolution *prev_res = nullptr;
-			for (int32_t resno = (int32_t) (numresolutions - 1); resno >= 0; --resno) {
-				auto res = tile_comp_resolutions + resno;
-				auto tile_buffer_res = (TileComponentBufferResolution*) grk_calloc(1,
-						sizeof(TileComponentBufferResolution));
-				if (!tile_buffer_res)
-					throw new std::runtime_error("Out of memory");
+	        assert(reduced_num_resolutions>0);
 
-				tile_buffer_res->bounds.x = res->x1 - res->x0;
-				tile_buffer_res->bounds.y = res->y1 - res->y0;
-				tile_buffer_res->origin.x = res->x0;
-				tile_buffer_res->origin.y = res->y0;
-
-				// we don't reduce resolutions when encoding
-				grk_rect max_image_dim = unreduced_tile_comp_dim ;
-				for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
-					auto band = res->bands + bandno;
-					grk_rect band_rect;
-					band_rect = grk_rect(band->x0, band->y0, band->x1, band->y1);
-
-					tile_buffer_res->band_region[bandno] =
-							prev_res ? prev_res->band_region[bandno] : max_image_dim;
-					if (resno > 0) {
-
-						/*For next level down, E' = ceil((E-b)/2) where b in {0,1} identifies band
-						 * see Chapter 11 of Taubman and Marcellin for more details
-						 * */
-						grk_pt shift;
-						shift.x = -(int64_t)(band->bandno & 1);
-						shift.y = -(int64_t)(band->bandno >> 1);
-
-						tile_buffer_res->band_region[bandno].pan(&shift);
-						tile_buffer_res->band_region[bandno].ceildivpow2(1);
-					}
-				}
-				tile_buffer_res->num_bands = res->numbands;
-				resolutions.push_back(tile_buffer_res);
-				prev_res = tile_buffer_res;
-			}
+	        for (uint32_t resno = 0; resno < reduced_num_resolutions; ++resno)
+	        	resolutions.push_back(tile_comp_resolutions+resno);
 		}
 	}
 	~TileComponentBuffer(){
 		if (owns_data)
 			grk_aligned_free(data);
-		for (auto &res : resolutions) {
-			grk_free(res);
-		}
 	}
 
 	T* get_ptr(uint32_t resno,uint32_t bandno, uint32_t offsetx, uint32_t offsety) const {
 		(void) resno;
 		(void) bandno;
-		auto dims = reduced_region_dim;
 		return data + (uint64_t) offsetx
-				+ offsety * (uint64_t) (dims.x1 - dims.x0);
+				+ offsety * (uint64_t) (reduced_region_dim.x1 - reduced_region_dim.x0);
 	}
 	bool alloc(){
 		uint64_t data_size_needed =
@@ -194,7 +154,7 @@ private:
 	grk_rect reduced_tile_comp_dim;
 
 
-	std::vector<TileComponentBufferResolution*> resolutions;
+	std::vector<grk_resolution*> resolutions;
 
 	T *data;
 	uint64_t data_size; /* size of the data of the component */

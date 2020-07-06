@@ -462,7 +462,6 @@ bool TileComponent::init(bool isEncoder,
 				}
 			} /* precno */
 		} /* bandno */
-		++res;
 	} /* resno */
 	create_buffer(output_image,
 					image_comp->dx,
@@ -620,11 +619,11 @@ void TileComponent::create_buffer(grk_image *output_image,
 	x1 = res->x1;
 	y0 = res->y0;
 	y1 = res->y1;
-	res = resolutions + numresolutions - 1;
+	auto maxRes = resolutions + numresolutions - 1;
 
 	delete buf;
 	buf = new TileComponentBuffer<int32_t>(output_image, dx,dy,
-											grk_rect(res->x0, res->y0, res->x1, res->y1),
+											grk_rect(maxRes->x0, maxRes->y0, maxRes->x1, maxRes->y1),
 											grk_rect(x0, y0, x1, y1),
 											minimum_num_resolutions,
 											numresolutions,
