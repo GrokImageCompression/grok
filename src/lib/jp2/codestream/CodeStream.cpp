@@ -144,7 +144,7 @@ static bool j2k_mct_validation(CodeStream *codeStream, BufferedStream *stream);
  *
  * @return      true                            if all the procedures were successfully executed.
  */
-static bool j2k_exec(CodeStream *codeStream, std::vector<j2k_procedure> *p_procedure_list,
+static bool j2k_exec(CodeStream *codeStream, std::vector<j2k_procedure> &p_procedure_list,
 		BufferedStream *stream);
 
 /**
@@ -380,17 +380,16 @@ void j2k_destroy(CodeStream *codeStream) {
    delete codeStream;
 }
 
-static bool j2k_exec(CodeStream *codeStream, std::vector<j2k_procedure> *procs,
+static bool j2k_exec(CodeStream *codeStream, std::vector<j2k_procedure> &procs,
 		BufferedStream *stream) {
 	bool result = true;
 
-	assert(procs != nullptr);
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
 
-	for (auto it = procs->begin(); it != procs->end() && result; ++it)
-		result = result && (*it)(codeStream, stream);
-	procs->clear();
+	for (auto proc : procs)
+		result = result && (proc)(codeStream, stream);
+	procs.clear();
 
 	return result;
 }
@@ -619,13 +618,6 @@ static bool j2k_decompress_validation(CodeStream *codeStream,
 	is_valid &=
 			(codeStream->m_decoder.m_state == J2K_DEC_STATE_NONE);
 
-	/* POINTER validation */
-	/* make sure a codeStream codec is present */
-	/* make sure a procedure list is present */
-	is_valid &= (codeStream->m_procedure_list != nullptr);
-	/* make sure a validation list is present */
-	is_valid &= (codeStream->m_validation_list != nullptr);
-
 	/* PARAMETER VALIDATION */
 	return is_valid;
 }
@@ -646,7 +638,7 @@ static bool j2k_init_decompress(CodeStream *codeStream) {
 	/* preconditions*/
 	assert(codeStream != nullptr);
 
-	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_decompress_tiles);
+	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_decompress_tiles);
 	// custom procedures here
 
 	return true;
@@ -666,10 +658,10 @@ static bool j2k_init_header_reading(CodeStream *codeStream) {
 	/* Create the current tile decoder*/
 	codeStream->m_tileProcessor = new TileProcessor(true);
 
-	codeStream->m_procedure_list->push_back(
+	codeStream->m_procedure_list.push_back(
 			(j2k_procedure) j2k_read_header_procedure);
 	// custom procedures here
-	codeStream->m_procedure_list->push_back(
+	codeStream->m_procedure_list.push_back(
 			(j2k_procedure) j2k_copy_default_tcp_and_create_tcd);
 
 	return true;
@@ -679,7 +671,7 @@ static bool j2k_init_decompress_validation(CodeStream *codeStream) {
 	/* preconditions*/
 	assert(codeStream != nullptr);
 
-	codeStream->m_validation_list->push_back(
+	codeStream->m_validation_list.push_back(
 			(j2k_procedure) j2k_decompress_validation);
 
 	return true;
@@ -1180,13 +1172,6 @@ CodeStream* j2k_create_decompress(void) {
 		j2k_destroy(j2k);
 		return nullptr;
 	}
-
-	/* validation list creation */
-	j2k->m_validation_list = new std::vector<j2k_procedure>();
-
-	/* execution list creation */
-	j2k->m_procedure_list = new std::vector<j2k_procedure>();
-
 	return j2k;
 }
 
@@ -1395,7 +1380,7 @@ static bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream) 
  */
 static bool j2k_init_decompress_tile(CodeStream *codeStream) {
 	assert(codeStream != nullptr);
-	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_decompress_tile);
+	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_decompress_tile);
 	//custom procedures here
 
 	return true;
@@ -2251,11 +2236,11 @@ static bool j2k_post_write_tile(CodeStream *codeStream, BufferedStream *stream) 
 
 static bool j2k_init_end_compress(CodeStream *codeStream) {
 	assert(codeStream != nullptr);
-	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_eoc);
+	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_write_eoc);
 	if (codeStream->m_cp.m_coding_params.m_enc.writeTLM)
-		codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_tlm_end);
-	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_epc);
-	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_end_encoding);
+		codeStream->m_procedure_list.push_back((j2k_procedure) j2k_write_tlm_end);
+	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_write_epc);
+	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_end_encoding);
 	//custom procedures here
 
 	return true;
@@ -2304,12 +2289,6 @@ static bool j2k_compress_validation(CodeStream *codeStream, BufferedStream *stre
 	is_valid &=
 			(codeStream->m_decoder.m_state == J2K_DEC_STATE_NONE);
 
-	/* POINTER validation */
-	/* make sure a codeStream codec is present */
-	is_valid &= (codeStream->m_procedure_list != nullptr);
-	/* make sure a validation list is present */
-	is_valid &= (codeStream->m_validation_list != nullptr);
-
 	/* ISO 15444-1:2004 states between 1 & 33 (decomposition levels between 0 -> 32) */
 	if ((codeStream->m_cp.tcps->tccps->numresolutions == 0)
 			|| (codeStream->m_cp.tcps->tccps->numresolutions > GRK_J2K_MAXRLVLS)) {
@@ -2335,10 +2314,10 @@ static bool j2k_compress_validation(CodeStream *codeStream, BufferedStream *stre
 static bool j2k_init_compress_validation(CodeStream *codeStream) {
 	assert(codeStream != nullptr);
 
-	codeStream->m_validation_list->push_back(
+	codeStream->m_validation_list.push_back(
 			(j2k_procedure) j2k_compress_validation);
 	//custom validation here
-	codeStream->m_validation_list->push_back((j2k_procedure) j2k_mct_validation);
+	codeStream->m_validation_list.push_back((j2k_procedure) j2k_mct_validation);
 
 	return true;
 }
@@ -2354,34 +2333,34 @@ static bool j2k_init_header_writing(CodeStream *codeStream) {
 		return false;
 	}
 
-	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_init_info);
-	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_soc);
-	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_siz);
+	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_init_info);
+	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_write_soc);
+	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_write_siz);
 	if (codeStream->m_cp.tcps[0].isHT)
-		codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_cap);
-	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_cod);
-	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_qcd);
-	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_all_coc);
-	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_all_qcc);
+		codeStream->m_procedure_list.push_back((j2k_procedure) j2k_write_cap);
+	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_write_cod);
+	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_write_qcd);
+	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_write_all_coc);
+	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_write_all_qcc);
 
 	if (codeStream->m_cp.m_coding_params.m_enc.writeTLM)
-		codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_tlm_begin);
+		codeStream->m_procedure_list.push_back((j2k_procedure) j2k_write_tlm_begin);
 	if (codeStream->m_cp.rsiz == GRK_PROFILE_CINEMA_4K)
-		codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_poc);
+		codeStream->m_procedure_list.push_back((j2k_procedure) j2k_write_poc);
 
-	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_regions);
-	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_write_com);
+	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_write_regions);
+	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_write_com);
 	//begin custom procedures
 	if ((codeStream->m_cp.rsiz & (GRK_PROFILE_PART2 | GRK_EXTENSION_MCT))
 			== (GRK_PROFILE_PART2 | GRK_EXTENSION_MCT)) {
-		codeStream->m_procedure_list->push_back(
+		codeStream->m_procedure_list.push_back(
 				(j2k_procedure) j2k_write_mct_data_group);
 	}
 	//end custom procedures
 
 	if (codeStream->cstr_index)
-		codeStream->m_procedure_list->push_back((j2k_procedure) j2k_get_end_header);
-	codeStream->m_procedure_list->push_back((j2k_procedure) j2k_update_rates);
+		codeStream->m_procedure_list.push_back((j2k_procedure) j2k_get_end_header);
+	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_update_rates);
 
 	return true;
 }
@@ -2930,8 +2909,6 @@ static bool j2k_calculate_tp(CodingParams *cp, uint16_t *p_nb_tile_parts,
 
 CodeStream::CodeStream() : m_private_image(nullptr),
 							m_output_image(nullptr),
-							m_procedure_list(new std::vector<j2k_procedure>()),
-							m_validation_list(new std::vector<j2k_procedure>()),
 							cstr_index(nullptr),
 							m_tileProcessor(nullptr)
 {
@@ -2941,8 +2918,6 @@ CodeStream::~CodeStream(){
 	delete m_decoder.m_default_tcp;
 	delete m_tileProcessor;
 	m_cp.destroy();
-	delete m_procedure_list;
-	delete m_validation_list;
 	j2k_destroy_cstr_index(cstr_index);
 	grk_image_destroy(m_private_image);
 	grk_image_destroy(m_output_image);

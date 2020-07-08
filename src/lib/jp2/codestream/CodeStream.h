@@ -187,10 +187,10 @@ struct CodeStream {
 	CodingParams m_cp;
 
 	/** the list of procedures to exec **/
-	std::vector<j2k_procedure> *m_procedure_list;
+	std::vector<j2k_procedure> m_procedure_list;
 
 	/** the list of validation procedures to follow to make sure the code is valid **/
-	std::vector<j2k_procedure> *m_validation_list;
+	std::vector<j2k_procedure> m_validation_list;
 
 	/** helper used to write the index file */
 	 grk_codestream_index  *cstr_index;
