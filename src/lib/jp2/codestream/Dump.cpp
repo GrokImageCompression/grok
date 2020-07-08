@@ -335,9 +335,6 @@ grk_codestream_info_v2* j2k_get_cstr_info(CodeStream *codeStream) {
 	cstr_info->t_height = codeStream->m_cp.t_height;
 	cstr_info->t_grid_width = codeStream->m_cp.t_grid_width;
 	cstr_info->t_grid_height = codeStream->m_cp.t_grid_height;
-
-	cstr_info->tile_info = nullptr; /* Not fill from the main header*/
-
 	auto default_tile = codeStream->m_decoder.m_default_tcp;
 
 	cstr_info->m_default_tile_info.csty = default_tile->csty;
@@ -496,11 +493,6 @@ grk_codestream_index* j2k_get_cstr_index(CodeStream *codeStream) {
 				grk_free(cstr_index->tile_index[i].tp_index);
 				cstr_index->tile_index[i].tp_index = nullptr;
 			}
-
-			/* Packet index (NOT USED)*/
-			cstr_index->tile_index[i].nb_packet = 0;
-			cstr_index->tile_index[i].packet_index = nullptr;
-
 		}
 	}
 	return cstr_index;
@@ -552,7 +544,6 @@ void j2k_destroy_cstr_index(grk_codestream_index *p_cstr_ind) {
 		grk_free(p_cstr_ind->marker);
 		if (p_cstr_ind->tile_index) {
 			for (uint32_t i = 0; i < p_cstr_ind->nb_of_tiles; i++) {
-				grk_free(p_cstr_ind->tile_index[i].packet_index);
 				grk_free(p_cstr_ind->tile_index[i].tp_index);
 				grk_free(p_cstr_ind->tile_index[i].marker);
 			}

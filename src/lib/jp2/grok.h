@@ -1000,21 +1000,6 @@ typedef struct _grk_marker_info {
 	uint32_t len;
 } grk_marker_info;
 
-/**
- * Tile part info
- */
-typedef struct _grk_tp_info {
-	/** start position of tile part */
-	uint64_t tp_start_pos;
-	/** end position of tile part header */
-	uint64_t tp_end_header;
-	/** end position of tile part */
-	uint64_t tp_end_pos;
-	/** start packet of tile part */
-	uint32_t tp_start_pack;
-	/** number of packets of tile part */
-	uint32_t tp_numpacks;
-} grk_tp_info;
 
 /**
  * Tile info
@@ -1050,8 +1035,6 @@ typedef struct _grk_tile_info {
 	uint32_t maxmarknum;
 	/** number of tile parts */
 	uint32_t num_tps;
-	/** information concerning tile parts */
-	grk_tp_info *tp;
 } grk_tile_info;
 
 /**
@@ -1160,8 +1143,6 @@ typedef struct _grk_codestream_info_v2 {
 	uint32_t nbcomps;
 	/** Default information regarding tiles inside image */
 	grk_tile_info_v2 m_default_tile_info;
-	/** information regarding tiles inside image */
-	grk_tile_info_v2 *tile_info; /* FIXME not used for the moment */
 } grk_codestream_info_v2;
 
 /**
@@ -1196,10 +1177,6 @@ typedef struct _grk_tile_index {
 	grk_marker_info *marker;
 	/** actual size of markers array */
 	uint32_t maxmarknum;
-	/** packet number */
-	uint32_t nb_packet;
-	/** information concerning packets inside tile */
-	grk_packet_info *packet_index;
 } grk_tile_index;
 
 /**
