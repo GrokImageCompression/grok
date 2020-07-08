@@ -24,7 +24,7 @@ void pngSetVerboseFlag(bool verbose);
 class PNGFormat : public IImageFormat {
 public:
 	virtual ~PNGFormat() {}
-	bool encode(grk_image *  image, const std::string &filename, uint32_t compressionParam);
-	grk_image *  decode(const std::string &filename,  grk_cparameters  *parameters);
+	bool encode(grk_image *  image, const std::string &filename, uint32_t compressionParam) override;
+	grk_image *  decode(const std::string &filename,  grk_cparameters  *parameters) override;
 };
 

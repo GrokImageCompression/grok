@@ -438,7 +438,7 @@ public:
 /**
  * Convert compression string to compression code. (use TIFF codes)
  */
-static uint32_t getCompressionCode(std::string compressionString){
+static uint32_t getCompressionCode(const std::string &compressionString){
 	if (compressionString == "NONE")
 		return 0;
 	else if (compressionString == "LZW")
@@ -1281,7 +1281,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
 		/* Initialize reading of directory */
 		if (initParams->img_fol.set_imgdir) {
 			num_images = get_num_images(initParams->img_fol.imgdirpath);
-			if (num_images <= 0) {
+			if (num_images == 0) {
 				spdlog::error("Folder is empty");
 				success = 1;
 				goto cleanup;
@@ -1391,7 +1391,7 @@ enum grk_stream_type {
 int pre_decode(grk_plugin_decode_callback_info *info) {
 	if (!info)
 		return 1;
-	int failed = 0;
+	bool failed = true;
 	bool useMemoryBuffer = false;
 	auto parameters = info->decoder_parameters;
 	if (!parameters)
@@ -1411,7 +1411,6 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 				long int sz = ftell(in);
 				if (sz == -1){
 					spdlog::error("grk_decompress: ftell error from file {}", sz, infile);
-					failed = 1;
 					goto cleanup;
 				}
 				rewind(in);
@@ -1419,13 +1418,11 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 				size_t ret = fread(memoryBuffer, 1, (size_t)sz, in);
 				if (ret != (size_t)sz){
 					spdlog::error("grk_decompress: error reading {} bytes from file {}", sz, infile);
-					failed = 1;
 					goto cleanup;
 				}
 				int rc = fclose(in);
 				if (rc){
 					spdlog::error("grk_decompress: error closing file {}", infile);
-					failed = 1;
 					goto cleanup;
 				}
 				if (ret == (size_t)sz)
@@ -1433,11 +1430,9 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 							(size_t)sz, true, true);
 				else {
 					spdlog::error("grk_decompress: failed to create memory stream for file {}", infile);
-					failed = 1;
 					goto cleanup;
 				}
 			} else {
-				failed = 1;
 				goto cleanup;
 			}
 		} else {
@@ -1446,7 +1441,6 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 	}
 	if (!info->l_stream) {
 		spdlog::error("grk_decompress: failed to create the stream from the file {}", infile);
-		failed = 1;
 		goto cleanup;
 	}
 
@@ -1464,7 +1458,6 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 		}
 		default:
 			spdlog::error("grk_decompress: unknown decode format {}", decod_format);
-			failed = 1;
 			goto cleanup;
 		}
 		/* catch events using our callbacks and give a local context */
@@ -1476,7 +1469,6 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 
 		if (!grk_init_decompress(info->l_codec, &(parameters->core))) {
 			spdlog::error("grk_decompress: failed to set up the decoder");
-			failed = 1;
 			goto cleanup;
 		}
 	}
@@ -1486,7 +1478,6 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 		// Read the main header of the code stream (j2k) and also JP2 boxes (jp2)
 		if (!grk_read_header(info->l_codec, &info->header_info, &info->image)) {
 			spdlog::error("grk_decompress: failed to read the header");
-			failed = 1;
 			goto cleanup;
 		}
 
@@ -1499,7 +1490,6 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 				spdlog::error(
 						"grk_decompress: unable to open file {} for writing xml to",
 						xmlFile.c_str());
-				failed = 1;
 				goto cleanup;
 			}
 			if (fwrite(info->header_info.xml_data, 1,
@@ -1509,12 +1499,10 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 						"grk_decompress: unable to write all xml data to file {}",
 						xmlFile.c_str());
 				fclose(fp);
-				failed = 1;
 				goto cleanup;
 			}
 			if (!grk::safe_fclose(fp)) {
 				spdlog::error("grk_decompress: error closing file {}",infile);
-				failed = 1;
 				goto cleanup;
 			}
 		}
@@ -1535,7 +1523,6 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 		if (info->image->comps[i].prec > 16) {
 			spdlog::error("grk_decompress: Precision = {} not supported:",
 					info->image->comps[i].prec);
-			failed = 1;
 			goto cleanup;
 		}
 	}
@@ -1543,7 +1530,6 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 	if (!grk_set_decompress_area(info->l_codec, info->image, parameters->DA_x0,
 			parameters->DA_y0, parameters->DA_x1, parameters->DA_y1)) {
 		spdlog::error("grk_decompress: failed to set the decoded area");
-		failed = 1;
 		goto cleanup;
 	}
 
@@ -1552,7 +1538,6 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 		if (!(grk_decompress(info->l_codec, info->tile, info->image)
 				&& grk_end_decompress(info->l_codec))) {
 			spdlog::error("grk_decompress: failed to decompress image.");
-			failed = 1;
 			goto cleanup;
 		}
 	}
@@ -1561,12 +1546,11 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 		if (!grk_decompress_tile(info->l_codec, info->image,
 				parameters->tile_index)) {
 			spdlog::error("grk_decompress: failed to decompress tile");
-			failed = 1;
 			goto cleanup;
 		}
 		spdlog::info("Tile {} was decoded.", parameters->tile_index);
 	}
-
+	failed = false;
 	cleanup:
 	grk_stream_destroy(info->l_stream);
 	info->l_stream = nullptr;
@@ -1577,7 +1561,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 		info->image = nullptr;
 	}
 
-	return failed;
+	return failed ? 1 : 0;
 }
 
 /*
@@ -1776,7 +1760,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		case GRK_BMP_FMT:
 		{
 			BMPFormat bmp;
-			if (!bmp.encode(image, outfile, 0, parameters->verbose)) {
+			if (!bmp.encode(image, outfile, 0)) {
 				spdlog::error("Outfile {} not generated", outfile);
 				goto cleanup;
 			}
@@ -1874,6 +1858,6 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			(void) remove(actual_path(outfile)); /* ignore return value */
 	}
 
-	return failed;
+	return failed ? 1 : 0;
 }
 

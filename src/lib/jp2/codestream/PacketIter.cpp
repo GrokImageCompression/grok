@@ -1409,7 +1409,6 @@ void pi_init_encode(PacketIter *pi, CodingParams *cp, uint16_t tileno,
 					break;
 				}
 			}
-			incr_top = 1;
 		} else {
 			for (int32_t i = (int32_t) tppos; i >= 0; i--) {
 				switch (prog[i]) {

@@ -106,9 +106,7 @@ void Quantizer::apply_quant(TileComponentCodingParams *src, TileComponentCodingP
 	// respect the QCD/QCC scoping rules
 	bool ignore = false;
 	if (dest->fromQCC) {
-		if (!src->fromTileHeader
-				|| (src->fromTileHeader
-						&& dest->fromTileHeader))
+		if (!src->fromTileHeader || dest->fromTileHeader)
 			ignore = true;
 	}
 	if (!ignore) {

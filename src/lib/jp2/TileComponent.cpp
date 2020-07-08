@@ -108,28 +108,28 @@ void TileComponent::release_mem(){
 	delete m_sa;
 	m_sa = nullptr;
 }
-uint32_t TileComponent::X0(){
+uint32_t TileComponent::X0() const{
 	return x0;
 }
-uint32_t TileComponent::Y0(){
+uint32_t TileComponent::Y0() const{
 	return y0;
 }
-uint32_t TileComponent::X1(){
+uint32_t TileComponent::X1() const{
 	return x1;
 }
-uint32_t TileComponent::Y1(){
+uint32_t TileComponent::Y1() const{
 	return y1;
 }
-uint32_t TileComponent::width(){
+uint32_t TileComponent::width() const{
 	return (uint32_t) (x1 - x0);
 }
-uint32_t TileComponent::height(){
+uint32_t TileComponent::height() const{
 	return (uint32_t) (y1 - y0);
 }
-uint64_t TileComponent::size(){
+uint64_t TileComponent::size() const{
 	return  area() * sizeof(int32_t);
 }
-uint64_t TileComponent::area(){
+uint64_t TileComponent::area() const{
 	return (uint64_t)width() * height() ;
 }
 void TileComponent::get_dimensions(grk_image *image,
@@ -169,7 +169,6 @@ bool TileComponent::init(bool isEncoder,
 	m_tccp = tccp;
 
 	/* extent of precincts , top left, bottom right**/
-	uint32_t tprc_x_start, tprc_y_start, br_prc_x_end, br_prc_y_end;
 	/* number of precinct for a resolution */
 	uint64_t nb_precincts;
 	/* number of code blocks for a precinct*/
@@ -227,20 +226,20 @@ bool TileComponent::init(bool isEncoder,
 		pdy = m_tccp->prch[resno];
 		/*fprintf(stderr, "\t\t\tpdx=%d, pdy=%d\n", pdx, pdy);*/
 		/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
-		tprc_x_start = uint_floordivpow2(res->x0, pdx) << pdx;
-		tprc_y_start = uint_floordivpow2(res->y0, pdy) << pdy;
+		uint32_t tprc_x_start = uint_floordivpow2(res->x0, pdx) << pdx;
+		uint32_t tprc_y_start = uint_floordivpow2(res->y0, pdy) << pdy;
 		uint64_t temp = (uint64_t)uint_ceildivpow2(res->x1, pdx) << pdx;
 		if (temp > UINT_MAX){
 			GROK_ERROR("Resolution x1 value %d must be less than 2^32", temp);
 			return false;
 		}
-		br_prc_x_end = (uint32_t)temp;
+		uint32_t br_prc_x_end = (uint32_t)temp;
 		temp = (uint64_t)uint_ceildivpow2(res->y1, pdy) << pdy;
 		if (temp > UINT_MAX){
 			GROK_ERROR("Resolution y1 value %d must be less than 2^32", temp);
 			return false;
 		}
-		br_prc_y_end = (uint32_t)temp;
+		uint32_t br_prc_y_end = (uint32_t)temp;
 
 		/*fprintf(stderr, "\t\t\tprc_x_start=%d, prc_y_start=%d, br_prc_x_end=%d, br_prc_y_end=%d \n", tprc_x_start, tprc_y_start, br_prc_x_end ,br_prc_y_end );*/
 
@@ -476,7 +475,7 @@ bool TileComponent::is_subband_area_of_interest(uint32_t resno,
 								uint32_t aoi_x0,
 								uint32_t aoi_y0,
 								uint32_t aoi_x1,
-								uint32_t aoi_y1)
+								uint32_t aoi_y1) const
 {
 	if (whole_tile_decoding)
 		return true;

@@ -914,7 +914,7 @@ bool j2k_read_poc(CodeStream *codeStream, uint8_t *p_header_data,
 	current_poc_nb = header_size / chunk_size;
 	current_poc_remaining = header_size % chunk_size;
 
-	if ((current_poc_nb <= 0) || (current_poc_remaining != 0)) {
+	if ((current_poc_nb == 0) || (current_poc_remaining != 0)) {
 		GROK_ERROR("Error reading POC marker");
 		return false;
 	}

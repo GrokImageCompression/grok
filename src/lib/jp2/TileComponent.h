@@ -66,14 +66,14 @@ namespace grk {
 struct TileComponent {
 	TileComponent();
 	~TileComponent();
-	uint32_t width();
-	uint32_t height();
-	uint32_t X0();
-	uint32_t Y0();
-	uint32_t X1();
-	uint32_t Y1();
-	uint64_t area();
-	uint64_t size();
+	uint32_t width() const;
+	uint32_t height() const;
+	uint32_t X0() const;
+	uint32_t Y0() const;
+	uint32_t X1() const;
+	uint32_t Y1() const;
+	uint64_t area() const;
+	uint64_t size() const;
 
 	void create_buffer(	grk_image *output_image,uint32_t dx,uint32_t dy);
 
@@ -100,7 +100,7 @@ struct TileComponent {
 	 								uint32_t aoi_x0,
 	 								uint32_t aoi_y0,
 	 								uint32_t aoi_x1,
-	 								uint32_t aoi_y1);
+	 								uint32_t aoi_y1) const;
 
 	uint32_t numresolutions; /* number of resolutions level */
 	uint32_t numAllocatedResolutions;

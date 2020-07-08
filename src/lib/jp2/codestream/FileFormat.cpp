@@ -704,7 +704,7 @@ static uint8_t* jp2_write_xml(FileFormat *fileFormat, uint32_t *p_nb_bytes_writt
 
 static bool jp2_read_uuid(FileFormat *fileFormat, uint8_t *p_header_data,
 		uint32_t header_size) {
-	if (!p_header_data || !header_size || header_size < 16)
+	if (!p_header_data || header_size < 16)
 		return false;
 
 	if (fileFormat->numUuids == JP2_MAX_NUM_UUIDS) {
@@ -1667,7 +1667,6 @@ static bool jp2_read_colr(FileFormat *fileFormat, uint8_t *p_colr_header_data,
 	if (fileFormat->color.jp2_has_colour_specification_box) {
 		GROK_WARN(
 				"A conforming JP2 reader shall ignore all colour specification boxes after the first, so we ignore this one.");
-		p_colr_header_data += colr_header_size;
 		return true;
 	}
 	grk_read<uint32_t>(p_colr_header_data++, &fileFormat->meth, 1); /* METH */
@@ -2442,7 +2441,7 @@ static bool jp2_read_header_procedure(FileFormat *fileFormat, BufferedStream *st
 									"Problem with skipping JPEG2000 box, stream error");
 							// ignore error and return true if code stream box has already been read
 							// (we don't worry about any boxes after code stream)
-							rc = fileFormat->jp2_state & JP2_STATE_CODESTREAM ?
+							rc = (fileFormat->jp2_state & JP2_STATE_CODESTREAM) ?
 									true : false;
 							goto cleanup;
 						}
@@ -2507,7 +2506,7 @@ static bool jp2_read_header_procedure(FileFormat *fileFormat, BufferedStream *st
 							"Problem with skipping JPEG2000 box, stream error");
 					// ignore error and return true if code stream box has already been read
 					// (we don't worry about any boxes after code stream)
-					rc = fileFormat->jp2_state & JP2_STATE_CODESTREAM ? true : false;
+					rc = (fileFormat->jp2_state & JP2_STATE_CODESTREAM) ? true : false;
 					goto cleanup;
 				}
 			}

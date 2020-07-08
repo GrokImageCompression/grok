@@ -856,7 +856,7 @@ static bool write_short(FILE *fdest, uint16_t val) {
 	int rc = fprintf(fdest, "%c%c", val & 0xff, (val >> 8) & 0xff);
 	return (rc == sizeof(val));
 }
-static int imagetobmp(grk_image *image, const char *outfile, bool verbose) {
+static int imagetobmp(grk_image *image, const char *outfile) {
 	bool writeToStdout = grk::useStdio(outfile);
 	uint32_t w, h;
 	int32_t pad;
@@ -940,24 +940,21 @@ static int imagetobmp(grk_image *image, const char *outfile, bool verbose) {
 			goto cleanup;
 		if (image->comps[0].prec > 8) {
 			adjustR = (int) image->comps[0].prec - 8;
-			if (verbose)
-				spdlog::warn(
+			spdlog::warn(
 						"BMP CONVERSION: Truncating component 0 from {} bits to 8 bits",
 						image->comps[0].prec);
 		} else
 			adjustR = 0;
 		if (image->comps[1].prec > 8) {
 			adjustG = (int) image->comps[1].prec - 8;
-			if (verbose)
-				spdlog::warn(
+			spdlog::warn(
 						"BMP CONVERSION: Truncating component 1 from {} bits to 8 bits",
 						image->comps[1].prec);
 		} else
 			adjustG = 0;
 		if (image->comps[2].prec > 8) {
 			adjustB = (int) image->comps[2].prec - 8;
-			if (verbose)
-				spdlog::warn(
+			spdlog::warn(
 						"BMP CONVERSION: Truncating component 2 from {} bits to 8 bits",
 						image->comps[2].prec);
 		} else
@@ -1063,8 +1060,7 @@ static int imagetobmp(grk_image *image, const char *outfile, bool verbose) {
 			goto cleanup;
 		if (image->comps[0].prec > 8) {
 			adjustR = (int) image->comps[0].prec - 8;
-			if (verbose)
-				spdlog::warn(
+			spdlog::warn(
 						"BMP CONVERSION: Truncating component 0 from {} bits to 8 bits",
 						image->comps[0].prec);
 		} else
@@ -1113,12 +1109,10 @@ static int imagetobmp(grk_image *image, const char *outfile, bool verbose) {
 	return rc;
 }
 
-bool BMPFormat::encode(grk_image *image, const char *filename,
-		int32_t compressionParam, bool verbose) {
+bool BMPFormat::encode(grk_image *  image, const std::string &filename, uint32_t compressionParam){
 	(void) compressionParam;
-	return imagetobmp(image, filename, verbose) ? false : true;
+	return imagetobmp(image, filename.c_str()) ? false : true;
 }
-grk_image* BMPFormat::decode(const char *filename,
-		grk_cparameters *parameters) {
-	return bmptoimage(filename, parameters);
+grk_image *  BMPFormat::decode(const std::string &filename,  grk_cparameters  *parameters){
+	return bmptoimage(filename.c_str(), parameters);
 }

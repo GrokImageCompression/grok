@@ -729,7 +729,7 @@ static bool j2k_need_nb_tile_parts_correction(CodeStream *codeStream,
 		if (read_tile_no == tile_no)
 			break;
 
-		if ((tot_len == 0U) || (tot_len < 14U)) {
+		if (tot_len < 14U) {
 			/* last SOT until EOC or invalid Psot value */
 			/* assume all is OK */
 			return stream->seek(stream_pos_backup);
@@ -751,6 +751,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 		uint64_t *uncompressed_tile_size, uint32_t *p_tile_x0,
 		uint32_t *p_tile_y0, uint32_t *p_tile_x1, uint32_t *p_tile_y1,
 		uint32_t *p_nb_comps, bool *p_go_on, BufferedStream *stream) {
+	assert(codeStream);
 
 	auto tileProcessor = codeStream->m_tileProcessor;
 	auto decoder = &codeStream->m_decoder;

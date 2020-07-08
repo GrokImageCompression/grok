@@ -2323,22 +2323,20 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 				success = 1;
 				goto cleanup;
 			}
-			if (dirptr) {
-				dirptr->filename_buf = (char*) malloc(
-						num_images * GRK_PATH_LEN * sizeof(char));
-				if (!dirptr->filename_buf) {
-					success = 1;
-					goto cleanup;
-				}
-				dirptr->filename = (char**) malloc(num_images * sizeof(char*));
-				if (!dirptr->filename) {
-					success = 1;
-					goto cleanup;
-				}
-				for (uint32_t i = 0; i < num_images; i++) {
-					dirptr->filename[i] = dirptr->filename_buf
-							+ i * GRK_PATH_LEN;
-				}
+			dirptr->filename_buf = (char*) malloc(
+					num_images * GRK_PATH_LEN * sizeof(char));
+			if (!dirptr->filename_buf) {
+				success = 1;
+				goto cleanup;
+			}
+			dirptr->filename = (char**) malloc(num_images * sizeof(char*));
+			if (!dirptr->filename) {
+				success = 1;
+				goto cleanup;
+			}
+			for (uint32_t i = 0; i < num_images; i++) {
+				dirptr->filename[i] = dirptr->filename_buf
+						+ i * GRK_PATH_LEN;
 			}
 			if (load_images(dirptr, initParams->img_fol.imgdirpath) == 1) {
 				goto cleanup;
