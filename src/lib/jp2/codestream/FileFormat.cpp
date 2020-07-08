@@ -3003,7 +3003,7 @@ bool jp2_get_tile(FileFormat *fileFormat, BufferedStream *stream, grk_image *p_i
 	/* Set Image Color Space */
 	if (fileFormat->enumcs == GRK_ENUM_CLRSPC_CMYK)
 		p_image->color_space = GRK_CLRSPC_CMYK;
-	if (fileFormat->enumcs == GRK_ENUM_CLRSPC_SRGB)
+	else if (fileFormat->enumcs == GRK_ENUM_CLRSPC_SRGB)
 		p_image->color_space = GRK_CLRSPC_SRGB;
 	else if (fileFormat->enumcs == GRK_ENUM_CLRSPC_GRAY)
 		p_image->color_space = GRK_CLRSPC_GRAY;
