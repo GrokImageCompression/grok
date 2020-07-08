@@ -72,8 +72,10 @@ TileProcessor::TileProcessor(bool isDecoder) :
 				false), m_nb_tile_parts_correction(false), tile_part_data_length(0),
 				cur_totnum_tp(0), cur_pino(0), tile(nullptr), image(
 				nullptr), current_plugin_tile(nullptr), whole_tile_decoding(
-				true), m_marker_scratch(nullptr), m_marker_scratch_size(0), plt_markers(
-				nullptr), m_cp(nullptr), tp_pos(0), m_tcp(nullptr), m_tileno(0) {
+				true), plt_markers(
+				nullptr), m_cp(nullptr),
+				m_marker_scratch(nullptr), m_marker_scratch_size(0),
+				tp_pos(0), m_tcp(nullptr), m_tileno(0) {
 	if (isDecoder) {
 		m_marker_scratch = (uint8_t*) grk_calloc(1, default_header_size);
 		if (!m_marker_scratch)
@@ -90,6 +92,54 @@ TileProcessor::~TileProcessor() {
 	grk_free(m_marker_scratch);
 	delete plt_markers;
 }
+
+bool TileProcessor::process_marker(CodeStream *codeStream,
+		const grk_dec_memory_marker_handler* marker_handler,
+		uint16_t current_marker, uint16_t marker_size,
+		BufferedStream *stream){
+
+	// need more scratch memory
+	if (marker_size > m_marker_scratch_size) {
+		uint8_t *new_header_data = nullptr;
+		if (marker_size > stream->get_number_byte_left()) {
+			GROK_ERROR("Marker size inconsistent with stream length");
+			return false;
+		}
+		new_header_data = (uint8_t*) grk_realloc(
+				m_marker_scratch, marker_size);
+		if (!new_header_data) {
+			grk_free(m_marker_scratch);
+			m_marker_scratch = nullptr;
+			m_marker_scratch_size = 0;
+			GROK_ERROR("Not enough memory to read header");
+			return false;
+		}
+		m_marker_scratch = new_header_data;
+		m_marker_scratch_size = marker_size;
+	}
+
+	if (stream->read(m_marker_scratch, marker_size)
+			!= marker_size) {
+		GROK_ERROR("Stream too short");
+		return false;
+	}
+
+	/* Handle the marker */
+	if (!marker_handler->handler) {
+		/* See issue #175 */
+		GROK_ERROR("Not sure how that happened.");
+		return false;
+	}
+	if (!(*(marker_handler->handler))(codeStream,
+			m_marker_scratch, marker_size)) {
+		GROK_ERROR("Fail to read the current marker segment (%#x)",
+				current_marker);
+		return false;
+	}
+
+	return true;
+}
+
 
 bool TileProcessor::set_decompress_area(CodeStream *codeStream, grk_image *output_image,
 		uint32_t start_x, uint32_t start_y, uint32_t end_x, uint32_t end_y) {

@@ -63,16 +63,6 @@
 namespace grk {
 
 
-struct  grk_dec_memory_marker_handler  {
-	/** marker value */
-	uint16_t id;
-	/** value of the state when the marker can appear */
-	uint32_t states;
-	/** action linked to the marker */
-	bool (*handler)(CodeStream *codeStream, uint8_t *p_header_data,
-			uint16_t header_size);
-} ;
-
 
 struct j2k_prog_order {
 	GRK_PROG_ORDER enum_prog;
@@ -481,35 +471,10 @@ static bool j2k_read_header_procedure(CodeStream *codeStream,
 
 		marker_size -= 2; /* Subtract the size of the marker ID already read */
 
-		/* Check if the marker size is compatible with the header data size */
-		if (marker_size > codeStream->m_tileProcessor->m_marker_scratch_size) {
-			uint8_t *new_header_data = (uint8_t*) grk_realloc(
-					codeStream->m_tileProcessor->m_marker_scratch, marker_size);
-			if (!new_header_data) {
-				grk_free(codeStream->m_tileProcessor->m_marker_scratch);
-				codeStream->m_tileProcessor->m_marker_scratch = nullptr;
-				codeStream->m_tileProcessor->m_marker_scratch_size = 0;
-				GROK_ERROR("Not enough memory to read header");
-				return false;
-			}
-			codeStream->m_tileProcessor->m_marker_scratch = new_header_data;
-			codeStream->m_tileProcessor->m_marker_scratch_size = marker_size;
-		}
-
-		/* Try to read the rest of the marker segment from stream and copy them into the buffer */
-		if (stream->read(codeStream->m_tileProcessor->m_marker_scratch, marker_size)
-				!= marker_size) {
-			GROK_ERROR("Stream too short");
+		if (!tileProcessor->process_marker(codeStream,
+											marker_handler, current_marker, marker_size,
+											stream))
 			return false;
-		}
-
-		/* Read the marker segment with the correct marker handler */
-		if (!(*(marker_handler->handler))(codeStream,
-				codeStream->m_tileProcessor->m_marker_scratch, marker_size)) {
-			GROK_ERROR(
-					"Marker handler function failed to read the marker segment");
-			return false;
-		}
 
 		if (codeStream->cstr_index) {
 			/* Add the marker to the code stream index*/
@@ -847,44 +812,10 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 				return false;
 			}
 
-			// need more scratch memory
-			if (marker_size > tileProcessor->m_marker_scratch_size) {
-				uint8_t *new_header_data = nullptr;
-				if (marker_size > stream->get_number_byte_left()) {
-					GROK_ERROR("Marker size inconsistent with stream length");
-					return false;
-				}
-				new_header_data = (uint8_t*) grk_realloc(
-						tileProcessor->m_marker_scratch, marker_size);
-				if (!new_header_data) {
-					grk_free(tileProcessor->m_marker_scratch);
-					tileProcessor->m_marker_scratch = nullptr;
-					tileProcessor->m_marker_scratch_size = 0;
-					GROK_ERROR("Not enough memory to read header");
-					return false;
-				}
-				tileProcessor->m_marker_scratch = new_header_data;
-				tileProcessor->m_marker_scratch_size = marker_size;
-			}
-
-			if (stream->read(tileProcessor->m_marker_scratch, marker_size)
-					!= marker_size) {
-				GROK_ERROR("Stream too short");
+			if (!tileProcessor->process_marker(codeStream,
+												marker_handler, current_marker, marker_size,
+												stream))
 				return false;
-			}
-
-			/* Handle the marker */
-			if (!marker_handler->handler) {
-				/* See issue #175 */
-				GROK_ERROR("Not sure how that happened.");
-				return false;
-			}
-			if (!(*(marker_handler->handler))(codeStream,
-					tileProcessor->m_marker_scratch, marker_size)) {
-				GROK_ERROR("Fail to read the current marker segment (%#x)",
-						current_marker);
-				return false;
-			}
 
 			/* Add the marker to the code stream index*/
 			if (codeStream->cstr_index) {

@@ -155,6 +155,16 @@ enum J2K_STATUS {
 typedef bool (*j2k_procedure)(CodeStream *j2k, BufferedStream*);
 struct TileProcessor;
 
+struct  grk_dec_memory_marker_handler  {
+	/** marker value */
+	uint16_t id;
+	/** value of the state when the marker can appear */
+	uint32_t states;
+	/** action linked to the marker */
+	bool (*handler)(CodeStream *codeStream, uint8_t *p_header_data,
+			uint16_t header_size);
+} ;
+
 struct CodeStream {
 
 	CodeStream();

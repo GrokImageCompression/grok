@@ -335,6 +335,11 @@ struct TileProcessor {
 
 	bool read_marker(BufferedStream *stream, uint16_t *val);
 
+	bool process_marker(CodeStream *codeStream,
+						const grk_dec_memory_marker_handler* marker_handler,
+						uint16_t current_marker, uint16_t marker_size,
+						BufferedStream *stream);
+
 	/** index of the tile to decompress (used in get_tile);
 	 *  !!! initialized to -1 !!! */
 	int32_t m_tile_ind_to_dec;
@@ -370,8 +375,6 @@ struct TileProcessor {
     /** Only valid for decoding. Whether the whole tile is decoded, or just the region in win_x0/win_y0/win_x1/win_y1 */
     bool   whole_tile_decoding;
 
-	uint8_t *m_marker_scratch;
-	uint16_t m_marker_scratch_size;
 
 	PacketLengthMarkers *plt_markers;
 
@@ -380,6 +383,9 @@ struct TileProcessor {
 
 	PacketTracker m_packetTracker;
 private:
+	uint8_t *m_marker_scratch;
+	uint16_t m_marker_scratch_size;
+
 	/** position of the tile part flag in progression order*/
 	uint32_t tp_pos;
 
