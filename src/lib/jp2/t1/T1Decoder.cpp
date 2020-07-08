@@ -26,6 +26,7 @@ T1Decoder::T1Decoder(TileCodingParams *tcp,
 					uint16_t blockh) :
 		codeblock_width((uint16_t) (blockw ? (uint32_t) 1 << blockw : 0)),
 		codeblock_height((uint16_t) (blockh ? (uint32_t) 1 << blockh : 0)),
+		success(true),
 		decodeBlocks(nullptr){
 	for (auto i = 0U; i < ThreadPool::get()->num_threads(); ++i) {
 		threadStructs.push_back(

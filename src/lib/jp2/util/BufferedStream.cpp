@@ -310,11 +310,10 @@ bool BufferedStream::flush() {
 	if (isMemStream())
 		return true;
 	/* the number of bytes written on the media. */
-	size_t current_write_nb_bytes = 0;
 	m_buf->offset = 0;
 	while (m_buffered_bytes) {
 		/* we should do an actual write on the media */
-		current_write_nb_bytes = m_write_fn(m_buf->curr_ptr(),
+		size_t current_write_nb_bytes = m_write_fn(m_buf->curr_ptr(),
 				m_buffered_bytes, m_user_data);
 
 		if (current_write_nb_bytes != m_buffered_bytes) {

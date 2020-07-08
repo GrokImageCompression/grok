@@ -76,7 +76,7 @@ struct grk_seg {
 struct grk_packet_length_info {
 	grk_packet_length_info(uint32_t mylength, uint32_t bits);
 	grk_packet_length_info();
-	bool operator==(grk_packet_length_info &rhs) const;
+	bool operator==(const grk_packet_length_info &rhs) const;
 	uint32_t len;
 	uint32_t len_bits;
 };
@@ -115,7 +115,7 @@ struct grk_cblk {
 	uint32_t numPassesInPacket; /* number of passes encoded in current packet */
 #ifdef DEBUG_LOSSLESS_T2
 	uint32_t included;
-	std::vector<grk_packet_length_info>* packet_length_info;
+	std::vector<grk_packet_length_info> packet_length_info;
 #endif
 };
 
@@ -248,7 +248,7 @@ private:
  */
 struct TileProcessor {
 
-	TileProcessor(bool isDecoder) ;
+	explicit TileProcessor(bool isDecoder) ;
 	~TileProcessor();
 
 	/**

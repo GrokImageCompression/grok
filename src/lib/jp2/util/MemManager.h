@@ -75,7 +75,6 @@ void* grk_calloc(size_t numOfElements, size_t sizeOfElements);
  @return a void pointer to the allocated space, or nullptr if there is insufficient memory available
  */
 void* grk_aligned_malloc(size_t size);
-void* grk_aligned_realloc(void *ptr, size_t size);
 void grk_aligned_free(void *ptr);
 
 /**

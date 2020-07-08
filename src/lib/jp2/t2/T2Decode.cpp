@@ -502,7 +502,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 							"read_packet_header: failed to read segment length ");
 				}
 #ifdef DEBUG_LOSSLESS_T2
-			 cblk->packet_length_info->push_back(grk_packet_length_info(seg->numBytesInPacket,
+			 cblk->packet_length_info.push_back(grk_packet_length_info(seg->numBytesInPacket,
 							 cblk->numlenbits + uint_floorlog2(seg->numPassesInPacket)));
 #endif
 				/*

@@ -130,7 +130,7 @@ int main(int argc, char** argv)
     grk_tile tile;
     TileComponent tilec;
     grk_image_comp image_comp;
-    int32_t i, j, k;
+    int32_t i, j;
     bool display = false;
     bool check = false;
     bool lossy = false;

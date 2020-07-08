@@ -329,9 +329,7 @@ static void mem_map_free(void *user_data) {
  Currently, only read streams are supported for memory mapped files.
  */
 grk_stream* create_mapped_file_read_stream(const char *fname) {
-	bool is_read_stream = true;
-
-	grk_handle fd = open_fd(fname, is_read_stream ? "r" : "w");
+	grk_handle fd = open_fd(fname, "r");
 	if (fd == (grk_handle) -1){
 		GROK_ERROR("Unable to open memory mapped file %s", fname);
 		return nullptr;
@@ -351,10 +349,10 @@ grk_stream* create_mapped_file_read_stream(const char *fname) {
 
 	// now treat mapped file like any other memory stream
 	auto l_stream = (grk_stream*) (new BufferedStream(buffer_info->buf,
-			buffer_info->len, is_read_stream));
+			buffer_info->len, true));
 	grk_stream_set_user_data(l_stream, buffer_info,
 			(grk_stream_free_user_data_fn) mem_map_free);
-	set_up_mem_stream(l_stream, buffer_info->len, is_read_stream);
+	set_up_mem_stream(l_stream, buffer_info->len, true);
 
 	return l_stream;
 }

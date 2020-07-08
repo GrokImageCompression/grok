@@ -139,7 +139,7 @@ struct  v4_data {
 		f[2]=0;
 		f[3]=0;
 	}
-	v4_data(float m){
+	explicit v4_data(float m){
 		f[0]=m;
 		f[1]=m;
 		f[2]=m;
@@ -1751,7 +1751,6 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
     size_t num_threads = ThreadPool::get()->num_threads();
 
     for (resno = 1; resno < numres; resno ++) {
-        uint32_t j;
         /* Window of interest sub-band-based coordinates */
         uint32_t win_ll_x0, win_ll_y0;
         uint32_t win_ll_x1, win_ll_y1;
@@ -1864,9 +1863,9 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 	        /* This is less extreme than memsetting the whole buffer to 0 */
 	        /* although we could potentially do better with better handling of edge conditions */
 	        if (win_tr_x1 >= 1 && win_tr_x1 < rw)
-	            horiz.mem[win_tr_x1 - 1] = 0;
+	            horiz.mem[win_tr_x1 - 1] = T(0);
 	        if (win_tr_x1 < rw)
-	            horiz.mem[win_tr_x1] = 0;
+	            horiz.mem[win_tr_x1] = T(0);
 
 			uint32_t num_jobs = (uint32_t)num_threads;
 			uint32_t num_cols = bounds[k][1] - bounds[k][0] + 1;
@@ -1874,6 +1873,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 				num_jobs = num_cols;
 			uint32_t step_j = num_jobs ? ( num_cols / num_jobs) : 0;
 			if (num_threads == 1 ||step_j < HORIZ_STEP){
+		     uint32_t j;
 			 for (j = bounds[k][0]; j + HORIZ_STEP-1 < bounds[k][1]; j += HORIZ_STEP) {
 				 decoder.interleave_partial_h(&horiz, sa, j,HORIZ_STEP);
 				 decoder.decode_h(&horiz);
@@ -1975,6 +1975,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 			num_jobs = num_cols;
 		uint32_t step_j = num_jobs ? ( num_cols / num_jobs) : 0;
 		if (num_threads == 1 || step_j < VERT_STEP){
+	        uint32_t j;
 			for (j = win_tr_x0; j + VERT_STEP < win_tr_x1; j += VERT_STEP) {
 				decoder.interleave_partial_v(&vert, sa, j, VERT_STEP);
 				decoder.decode_v(&vert);

@@ -918,12 +918,13 @@ static uint8_t* jp2_write_res(FileFormat *fileFormat, uint32_t *p_nb_bytes_writt
 }
 
 static uint8_t* jp2_write_bpcc(FileFormat *fileFormat, uint32_t *p_nb_bytes_written) {
+	assert(fileFormat != nullptr);
+	assert(p_nb_bytes_written != nullptr);
+
 	uint32_t i;
 	/* room for 8 bytes for box and 1 byte for each component */
 	uint32_t bpcc_size = 8 + fileFormat->numcomps;
 
-	assert(fileFormat != nullptr);
-	assert(p_nb_bytes_written != nullptr);
 
 	auto bpcc_data = (uint8_t*) grk_calloc(1, bpcc_size);
 	if (!bpcc_data)

@@ -2023,7 +2023,7 @@ grk_packet_length_info::grk_packet_length_info(uint32_t mylength, uint32_t bits)
 grk_packet_length_info::grk_packet_length_info() :
 		len(0), len_bits(0) {
 }
-bool grk_packet_length_info::operator==(grk_packet_length_info &rhs) const {
+bool grk_packet_length_info::operator==(const grk_packet_length_info &rhs) const {
 	return (rhs.len == len && rhs.len_bits == len_bits);
 }
 
@@ -2049,8 +2049,7 @@ grk_cblk::grk_cblk(): x0(0), y0(0), x1(0), y1(0),
 		numlenbits(0),
 		numPassesInPacket(0)
 #ifdef DEBUG_LOSSLESS_T2
-				,included(false),
-				packet_length_info(nullptr),
+		,included(false),
 #endif
 {
 }
@@ -2072,6 +2071,10 @@ grk_cblk& grk_cblk::operator=(const grk_cblk& rhs){
 		numbps = rhs.numbps;
 		numlenbits = rhs.numlenbits;
 		numPassesInPacket = rhs.numPassesInPacket;
+#ifdef DEBUG_LOSSLESS_T2
+		included = rhs.included;
+		packet_length_info = rhs.packet_length_info;
+#endif
 	}
 	return *this;
 }
@@ -2126,7 +2129,7 @@ void grk_cblk_enc::clear(){
 	passes = nullptr;
 	contextStream = nullptr;
 #ifdef DEBUG_LOSSLESS_T2
-	packet_length_info = nullptr;;
+	packet_length_info.clear();
 #endif
 }
 bool grk_cblk_enc::alloc() {
@@ -2141,9 +2144,6 @@ bool grk_cblk_enc::alloc() {
 		if (!passes)
 			return false;
 	}
-#ifdef DEBUG_LOSSLESS_T2
-	packet_length_info = new std::vector<grk_packet_length_info>();
-#endif
 
 	return true;
 }
@@ -2185,10 +2185,6 @@ void grk_cblk_enc::cleanup() {
 	layers = nullptr;
 	grk_free(passes);
 	passes = nullptr;
-#ifdef DEBUG_LOSSLESS_T2
-	delete packet_length_info;
-	packet_length_info = nullptr;
-#endif
 }
 
 grk_cblk_dec::grk_cblk_dec() {
@@ -2231,9 +2227,6 @@ bool grk_cblk_dec::alloc() {
 		/*fprintf(stderr, "Allocate 8192 elements of code_block->data\n");*/
 		/*fprintf(stderr, "numSegmentsAllocated of code_block->data = %d\n", p_code_block->numSegmentsAllocated);*/
 
-#ifdef DEBUG_LOSSLESS_T2
-		packet_length_info = new std::vector<grk_packet_length_info>();
-#endif
 	} else {
 		/* sanitize */
 		auto l_segs = segs;
@@ -2277,10 +2270,6 @@ void grk_cblk_dec::cleanup() {
 	cleanup_seg_buffers();
 	delete[] segs;
 	segs = nullptr;
-#ifdef DEBUG_LOSSLESS_T2
-	delete packet_length_info;
-	packet_length_info = nullptr;
-#endif
 }
 
 void grk_cblk_dec::cleanup_seg_buffers(){

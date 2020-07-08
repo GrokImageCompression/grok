@@ -2031,8 +2031,7 @@ static bool plugin_compress_callback(
 		if (rc == -1) {
 			spdlog::error("grk_compress: unable to seek on file {}",
 					info->input_file_name);
-			if (fp)
-				fclose(fp);
+			fclose(fp);
 			bSuccess = false;
 			goto cleanup;
 		}
@@ -2040,13 +2039,11 @@ static bool plugin_compress_callback(
 		if (fileLength == -1) {
 			spdlog::error("grk_compress: unable to ftell on file {}",
 					info->input_file_name);
-			if (fp)
-				fclose(fp);
+			fclose(fp);
 			bSuccess = false;
 			goto cleanup;
 		}
-		if (fp)
-			fclose(fp);
+		fclose(fp);
 
 		if (fileLength) {
 			//  option to write to buffer, assuming one knows how large compressed stream will be 
@@ -2218,11 +2215,11 @@ static bool plugin_compress_callback(
 						len, written);
 				bSuccess = false;
 			}
-			if (fp)
-				fclose(fp);
+			fclose(fp);
 		}
 	}
-	cleanup: if (stream)
+	cleanup:
+	if (stream)
 		grk_stream_destroy(stream);
 	if (codec)
 		grk_destroy_codec(codec);

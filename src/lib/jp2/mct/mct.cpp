@@ -92,8 +92,8 @@ void mct::encode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
     chunkSize = (chunkSize/VREG_INT_COUNT) * VREG_INT_COUNT;
 	if (chunkSize > VREG_INT_COUNT) {
 		std::vector< std::future<int> > results;
-	    for(uint64_t i = 0; i < num_threads; ++i) {
-	    	uint64_t index = i;
+	    for(uint64_t tr = 0; tr < num_threads; ++tr) {
+	    	uint64_t index = tr;
 			auto encoder = [index, chunkSize, chan0,chan1,chan2]()	{
 				uint64_t begin = (uint64_t)index * chunkSize;
 				for (auto j = begin; j < begin+chunkSize; j+=VREG_INT_COUNT ){

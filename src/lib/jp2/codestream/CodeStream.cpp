@@ -396,6 +396,9 @@ static bool j2k_exec(CodeStream *codeStream, std::vector<j2k_procedure> &procs,
 
 static bool j2k_read_header_procedure(CodeStream *codeStream,
 		BufferedStream *stream) {
+	assert(stream != nullptr);
+	assert(codeStream != nullptr);
+
 	uint16_t current_marker;
 	uint16_t marker_size;
 	const grk_dec_memory_marker_handler *marker_handler = nullptr;
@@ -403,9 +406,6 @@ static bool j2k_read_header_procedure(CodeStream *codeStream,
 	bool has_cod = false;
 	bool has_qcd = false;
 	auto tileProcessor = codeStream->m_tileProcessor;
-
-	assert(stream != nullptr);
-	assert(codeStream != nullptr);
 
 	/*  We enter in the main header */
 	codeStream->m_decoder.m_state = J2K_DEC_STATE_MH_SOC;

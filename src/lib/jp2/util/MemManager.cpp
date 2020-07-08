@@ -216,10 +216,6 @@ void* grk_calloc(size_t num, size_t size) {
 void* grk_aligned_malloc(size_t size) {
 	return grk_aligned_alloc_n(default_align, size);
 }
-void* grk_aligned_realloc(void *ptr, size_t size) {
-	return grk_aligned_realloc_n(ptr, default_align, size);
-}
-
 
 void grk_aligned_free(void *ptr) {
 #if defined(GROK_HAVE_POSIX_MEMALIGN) || defined(GROK_HAVE_ALIGNED_ALLOC) ||  defined(GROK_HAVE_MEMALIGN)

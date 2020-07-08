@@ -72,8 +72,6 @@ bool T2Encode::encode_packets(uint16_t tile_no, uint32_t max_layers,
 		BufferedStream *stream, uint32_t *p_data_written,
 		uint32_t tp_num, uint32_t tp_pos,
 		uint32_t pino) {
-
-	uint32_t nb_bytes = 0;
 	auto cp = tileProcessor->m_cp;
 	auto image = tileProcessor->image;
 	auto p_tile = tileProcessor->tile;
@@ -94,7 +92,7 @@ bool T2Encode::encode_packets(uint16_t tile_no, uint32_t max_layers,
 	}
 	while (pi_next(current_pi)) {
 		if (current_pi->layno < max_layers) {
-			nb_bytes = 0;
+			uint32_t nb_bytes = 0;
 			if (!encode_packet(tcp, current_pi, stream, &nb_bytes)) {
 				pi_destroy(pi, nb_pocs);
 				return false;
@@ -127,7 +125,6 @@ bool T2Encode::encode_packets_simulate(uint16_t tile_no, uint32_t max_layers,
 		return false;
 
 	*all_packets_len = 0;
-	auto current_pi = pi;
 
 	tileProcessor->m_packetTracker.clear();
 #ifdef DEBUG_ENCODE_PACKETS
@@ -135,9 +132,8 @@ bool T2Encode::encode_packets_simulate(uint16_t tile_no, uint32_t max_layers,
 #endif
 	for (uint32_t compno = 0; compno < max_comp; ++compno) {
 		uint64_t comp_len = 0;
-		current_pi = pi;
-
 		for (uint32_t poc = 0; poc < pocno; ++poc) {
+			auto current_pi = pi + poc;
 			uint32_t tp_num = compno;
 			pi_init_encode(pi, cp, tile_no, poc, tp_num, tp_pos, THRESH_CALC);
 
@@ -169,8 +165,6 @@ bool T2Encode::encode_packets_simulate(uint16_t tile_no, uint32_t max_layers,
 					return false;
 				}
 			}
-
-			++current_pi;
 		}
 	}
 	pi_destroy(pi, nb_pocs);
@@ -354,7 +348,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 
 				if (pass->term || passno == nb_passes - 1) {
 #ifdef DEBUG_LOSSLESS_T2
-						cblk->packet_length_info->push_back(grk_packet_length_info(len, cblk->numlenbits + (uint32_t)int_floorlog2((int32_t)nump)));
+						cblk->packet_length_info.push_back(grk_packet_length_info(len, cblk->numlenbits + (uint32_t)int_floorlog2((int32_t)nump)));
 #endif
 					if (!bio->write(len,
 							cblk->numlenbits + (uint32_t) int_floorlog2(nump)))
@@ -483,19 +477,19 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 						}
 
 						// compare lengths
-						if (roundTripCblk->packet_length_info->size() != originalCblk->packet_length_info->size()) {
+						if (roundTripCblk->packet_length_info.size() != originalCblk->packet_length_info.size()) {
 							printf("encode_packet: round trip length size %d differs from original %d at layer %d, component %d, band %d, precinct %d, resolution %d\n",
-								(uint32_t)roundTripCblk->packet_length_info->size(),
-								(uint32_t)originalCblk->packet_length_info->size(),
+								(uint32_t)roundTripCblk->packet_length_info.size(),
+								(uint32_t)originalCblk->packet_length_info.size(),
 								layno,
 								compno,
 								bandno,
 								(uint32_t)precno,
 								pi->resno);
 						} else {
-							for (uint32_t i = 0; i < roundTripCblk->packet_length_info->size(); ++i) {
-								auto roundTrip = roundTripCblk->packet_length_info->operator[](i);
-								auto original = originalCblk->packet_length_info->operator[](i);
+							for (uint32_t i = 0; i < roundTripCblk->packet_length_info.size(); ++i) {
+								auto roundTrip = roundTripCblk->packet_length_info.operator[](i);
+								auto original = originalCblk->packet_length_info.operator[](i);
 								if (!(roundTrip ==original)) {
 									printf("encode_packet: round trip length size %d differs from original %d at layer %d, component %d, band %d, precinct %d, resolution %d\n",
 										roundTrip.len,

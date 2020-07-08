@@ -1502,7 +1502,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 				failed = 1;
 				goto cleanup;
 			}
-			if (fp && fwrite(info->header_info.xml_data, 1,
+			if (fwrite(info->header_info.xml_data, 1,
 							info->header_info.xml_data_len, fp)
 							!= info->header_info.xml_data_len) {
 				spdlog::error(
