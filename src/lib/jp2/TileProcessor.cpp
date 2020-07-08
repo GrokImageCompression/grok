@@ -75,7 +75,7 @@ TileProcessor::TileProcessor(bool isDecoder) :
 				true), plt_markers(
 				nullptr), m_cp(nullptr),
 				m_marker_scratch(nullptr), m_marker_scratch_size(0),
-				tp_pos(0), m_tcp(nullptr), m_tileno(0) {
+				tp_pos(0), m_tcp(nullptr) {
 	if (isDecoder) {
 		m_marker_scratch = (uint8_t*) grk_calloc(1, default_header_size);
 		if (!m_marker_scratch)
@@ -432,7 +432,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 		if (plt_markers) {
 			auto t2 = new T2Encode(this);
 			uint32_t all_packets_len = 0;
-			t2->encode_packets_simulate(m_tileno,
+			t2->encode_packets_simulate(m_current_tile_index,
 										0 + 1, &all_packets_len, UINT_MAX,
 										tp_pos, plt_markers);
 			delete t2;
@@ -481,7 +481,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 					}
 					lowerBound = thresh;
 				} else {
-					if (!t2->encode_packets_simulate(m_tileno,
+					if (!t2->encode_packets_simulate(m_current_tile_index,
 							layno + 1, all_packets_len, maxlen,
 							tp_pos, nullptr)) {
 						lowerBound = thresh;
@@ -592,7 +592,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 		if (plt_markers) {
 			auto t2 = new T2Encode(this);
 			uint32_t all_packets_len = 0;
-			t2->encode_packets_simulate(m_tileno,
+			t2->encode_packets_simulate(m_current_tile_index,
 										0 + 1, &all_packets_len, UINT_MAX,
 										tp_pos, plt_markers);
 			delete t2;
@@ -645,7 +645,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 					}
 					lowerBound = thresh;
 				} else {
-					if (!t2->encode_packets_simulate(m_tileno, layno + 1,
+					if (!t2->encode_packets_simulate(m_current_tile_index, layno + 1,
 							all_packets_len, maxlen,
 							tp_pos, nullptr)) {
 						lowerBound = thresh;
@@ -951,7 +951,7 @@ bool TileProcessor::compress_tile_part(uint16_t tile_no, BufferedStream *stream,
 	uint32_t state = grk_plugin_get_debug_state();
 
 	if (m_current_tile_part_index == 0) {
-		m_tileno = tile_no;
+		m_current_tile_index = tile_no;
 		m_tcp = &m_cp->tcps[tile_no];
 
 		if (state & GRK_PLUGIN_STATE_DEBUG)
@@ -1562,7 +1562,7 @@ bool TileProcessor::t2_encode(BufferedStream *stream, uint32_t *all_packet_bytes
 	}
 #endif
 
-	if (!l_t2->encode_packets(m_tileno, m_tcp->numlayers, stream,
+	if (!l_t2->encode_packets(m_current_tile_index, m_tcp->numlayers, stream,
 			all_packet_bytes_written, m_current_poc_tile_part_index, tp_pos, cur_pino)) {
 		delete l_t2;
 		return false;

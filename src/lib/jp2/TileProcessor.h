@@ -391,8 +391,6 @@ private:
 
 	/** coding/decoding parameters common to all tiles */
 	TileCodingParams *m_tcp;
-	/** current encoded tile (not used for decompress) */
-	uint16_t m_tileno;
 
 	 bool t2_decode(uint16_t tile_no, ChunkBuffer *src_buf,
 			uint64_t *p_data_read);
