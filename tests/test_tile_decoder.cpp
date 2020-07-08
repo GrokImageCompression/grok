@@ -74,21 +74,21 @@
  */
 static void error_callback(const char *msg, void *client_data) {
 	(void) client_data;
-	spdlog::error("%s", msg);
+	spdlog::error("{}", msg);
 }
 /**
  sample warning debug callback expecting no client object
  */
 static void warning_callback(const char *msg, void *client_data) {
 	(void) client_data;
-	spdlog::warn("%s", msg);
+	spdlog::warn("{}", msg);
 }
 /**
  sample debug callback expecting no client object
  */
 static void info_callback(const char *msg, void *client_data) {
 	(void) client_data;
-	spdlog::info("%s", msg);
+	spdlog::info("{}", msg);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
 	if (argc == 6) {
 		int temp = atoi(argv[1]);
 		if (temp < 0) {
-			fprintf(stderr, "Error -> invalid decode region\n");
+			spdlog::error("invalid decode region");
 			goto beach;
 		} else {
 			da_x0 = (uint32_t) temp;
@@ -125,7 +125,7 @@ int main(int argc, char *argv[]) {
 
 		temp = atoi(argv[2]);
 		if (temp < 0) {
-			fprintf(stderr, "Error -> invalid decode region\n");
+			spdlog::error("invalid decode region");
 			goto beach;
 		} else {
 			da_y0 = (uint32_t) temp;
@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
 
 		temp = atoi(argv[3]);
 		if (temp < 0) {
-			fprintf(stderr, "Error -> invalid decode region\n");
+			spdlog::error("invalid decode region");
 			goto beach;
 		} else {
 			da_x1 = (uint32_t) temp;
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
 
 		temp = atoi(argv[4]);
 		if (temp < 0) {
-			fprintf(stderr, "Error -> invalid decode region\n");
+			spdlog::error("invalid decode region");
 			goto beach;
 		} else {
 			da_y1 = (uint32_t) temp;
@@ -219,8 +219,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	if (!grk_set_decompress_area(codec, image, da_x0, da_y0, da_x1, da_y1)) {
-		fprintf(stderr,
-				"[ERROR] j2k_to_image: failed to set the decoded area\n");
+		spdlog::error("j2k_to_image: failed to set the decoded area\n");
 		goto beach;
 	}
 

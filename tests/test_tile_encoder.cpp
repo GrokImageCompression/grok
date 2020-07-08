@@ -57,21 +57,21 @@
  */
 static void error_callback(const char *msg, void *client_data) {
 	(void) client_data;
-	spdlog::error("%s", msg);
+	spdlog::error("{}", msg);
 }
 /**
  sample warning debug callback expecting no client object
  */
 static void warning_callback(const char *msg, void *client_data) {
 	(void) client_data;
-	spdlog::warn("%s", msg);
+	spdlog::warn("{}", msg);
 }
 /**
  sample debug callback expecting no client object
  */
 static void info_callback(const char *msg, void *client_data) {
 	(void) client_data;
-	spdlog::info("%s", msg);
+	spdlog::info("{}", msg);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -152,8 +152,8 @@ int main(int argc, char *argv[]) {
 		goto cleanup;
 	}
 
-	fprintf(stdout,
-			"Encoding random values -> keep in mind that this is very hard to compress\n");
+	spdlog::info(
+			"Encoding random values -> keep in mind that this is very hard to compress");
 	for (i = 0; i < data_size; ++i)
 		data[i] = (uint8_t) i;
 
@@ -247,7 +247,7 @@ int main(int argc, char *argv[]) {
 	stream = grk_stream_create_file_stream(output_file, 1024 * 1024, false);
 	if (!stream) {
 		spdlog::error(
-				"test_tile_encoder: failed to create the stream from the output file %s !\n",
+				"test_tile_encoder: failed to create the stream from the output file {}",
 				output_file);
 		rc = 1;
 		goto cleanup;
@@ -283,19 +283,19 @@ int main(int argc, char *argv[]) {
 	image->color_space = GRK_CLRSPC_SRGB;
 
 	if (!grk_init_compress(codec, &param, image)) {
-		spdlog::error("test_tile_encoder: failed to setup the codec!\n");
+		spdlog::error("test_tile_encoder: failed to setup the codec");
 		rc = 1;
 		goto cleanup;
 	}
 	if (!grk_start_compress(codec)) {
-		spdlog::error("test_tile_encoder: failed to start compress!\n");
+		spdlog::error("test_tile_encoder: failed to start compress");
 		rc = 1;
 		goto cleanup;
 	}
 
 	for (i = 0; i < nb_tiles; ++i) {
 		if (!grk_compress_tile(codec, (uint16_t) i, data, data_size)) {
-			spdlog::error("test_tile_encoder: failed to write the tile %d!\n",
+			spdlog::error("test_tile_encoder: failed to write the tile {}",
 					i);
 			rc = 1;
 			goto cleanup;
@@ -303,7 +303,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	if (!grk_end_compress(codec)) {
-		spdlog::error("test_tile_encoder: failed to end compress!\n");
+		spdlog::error("test_tile_encoder: failed to end compress");
 		rc = 1;
 		goto cleanup;
 	}
