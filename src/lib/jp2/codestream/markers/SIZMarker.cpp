@@ -70,7 +70,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 	uint32_t remaining_size;
 	uint16_t nb_tiles;
 	uint32_t tmp, tx1, ty1;
-	auto decoder = &codeStream->m_specific_param.m_decoder;
+	auto decoder = &codeStream->m_decoder;
 
 	assert(codeStream != nullptr);
 	assert(p_header_data != nullptr);

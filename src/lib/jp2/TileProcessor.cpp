@@ -67,13 +67,13 @@ using namespace std;
 namespace grk {
 
 TileProcessor::TileProcessor(bool isDecoder) :
-		m_tile_ind_to_dec(-1), m_current_tile_index(0), tp_pos(0), m_current_poc_tile_part_index(
+		m_tile_ind_to_dec(-1), m_current_tile_index(0), m_current_poc_tile_part_index(
 				0), m_current_tile_part_index(0), m_nb_tile_parts_correction_checked(
 				false), m_nb_tile_parts_correction(false), tile_part_data_length(0),
 				cur_totnum_tp(0), cur_pino(0), tile(nullptr), image(
 				nullptr), current_plugin_tile(nullptr), whole_tile_decoding(
 				true), m_marker_scratch(nullptr), m_marker_scratch_size(0), plt_markers(
-				nullptr), m_cp(nullptr), m_tcp(nullptr), m_tileno(0) {
+				nullptr), m_cp(nullptr), tp_pos(0), m_tcp(nullptr), m_tileno(0) {
 	if (isDecoder) {
 		m_marker_scratch = (uint8_t*) grk_calloc(1, default_header_size);
 		if (!m_marker_scratch)
@@ -96,7 +96,7 @@ bool TileProcessor::set_decompress_area(CodeStream *codeStream, grk_image *outpu
 
 	auto cp = &(codeStream->m_cp);
 	auto image = codeStream->m_private_image;
-	auto decoder = &codeStream->m_specific_param.m_decoder;
+	auto decoder = &codeStream->m_decoder;
 
 	/* Check if we have read the main header */
 	if (decoder->m_state != J2K_DEC_STATE_TPH_SOT) {
@@ -1179,11 +1179,12 @@ void TileProcessor::copy_image_to_tile() {
 
 
 bool TileProcessor::read_marker(BufferedStream *stream, uint16_t *val){
-	if (stream->read(m_marker_scratch, 2) != 2) {
+	uint8_t temp[2];
+	if (stream->read(temp, 2) != 2) {
 		GROK_WARN("read marker: stream too short");
 		return false;
 	}
-	grk_read<uint16_t>(m_marker_scratch, val);
+	grk_read<uint16_t>(temp, val);
 
 	return true;
 

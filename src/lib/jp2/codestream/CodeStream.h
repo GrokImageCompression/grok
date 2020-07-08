@@ -157,14 +157,15 @@ struct TileProcessor;
 
 struct CodeStream {
 
+	CodeStream();
+	~CodeStream();
+
 	bool isDecodingTilePartHeader() ;
 	TileCodingParams* get_current_decode_tcp();
 
 	// state of decoder/encoder
-	union {
-		DecoderState m_decoder;
-		EncoderState m_encoder;
-	} m_specific_param;
+	DecoderState m_decoder;
+	EncoderState m_encoder;
 
 	/** internal/private encoded / decoded image */
 	grk_image *m_private_image;

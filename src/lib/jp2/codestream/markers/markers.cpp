@@ -202,7 +202,7 @@ bool j2k_read_soc(CodeStream *codeStream, BufferedStream *stream) {
 		return false;
 
 	/* Next marker should be a SIZ marker in the main header */
-	codeStream->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_MH_SIZ;
+	codeStream->m_decoder.m_state = J2K_DEC_STATE_MH_SIZ;
 
 	if (codeStream->cstr_index) {
 		/* FIXME move it in a index structure included in codeStream*/
@@ -1207,7 +1207,7 @@ bool j2k_read_sod(CodeStream *codeStream, BufferedStream *stream) {
 
 	// note: we subtract 2 to account for SOD marker
 	auto tcp = codeStream->get_current_decode_tcp();
-	if (codeStream->m_specific_param.m_decoder.m_last_tile_part) {
+	if (codeStream->m_decoder.m_last_tile_part) {
 		tileProcessor->tile_part_data_length =
 				(uint32_t) (stream->get_number_byte_left() - 2);
 	} else {
@@ -1279,9 +1279,9 @@ bool j2k_read_sod(CodeStream *codeStream, BufferedStream *stream) {
 
 	}
 	if (current_read_size != tileProcessor->tile_part_data_length)
-		codeStream->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_NO_EOC;
+		codeStream->m_decoder.m_state = J2K_DEC_STATE_NO_EOC;
 	else
-		codeStream->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_TPH_SOT;
+		codeStream->m_decoder.m_state = J2K_DEC_STATE_TPH_SOT;
 
 	return true;
 }
@@ -2204,7 +2204,7 @@ bool j2k_write_tlm_begin(CodeStream *codeStream, BufferedStream *stream) {
 		codeStream->m_cp.tlm_markers = new TileLengthMarkers(stream);
 
 	return codeStream->m_cp.tlm_markers->write_begin(
-			codeStream->m_specific_param.m_encoder.m_total_tile_parts);
+			codeStream->m_encoder.m_total_tile_parts);
 }
 
 void j2k_update_tlm(CodeStream *codeStream, uint32_t tile_part_size) {
@@ -2352,7 +2352,7 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno,
 				" to remove is higher than the number "
 				"of resolutions of this component\n"
 				"Modify the cp_reduce parameter.\n", compno);
-		codeStream->m_specific_param.m_decoder.m_state |= 0x8000;/* FIXME J2K_DEC_STATE_ERR;*/
+		codeStream->m_decoder.m_state |= 0x8000;/* FIXME J2K_DEC_STATE_ERR;*/
 		return false;
 	}
 	/* SPcoc (E) */

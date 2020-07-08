@@ -342,9 +342,6 @@ struct TileProcessor {
 	/** index of tile being currently coded/decoded */
 	uint16_t m_current_tile_index;
 
-	/** position of the tile part flag in progression order*/
-	uint32_t tp_pos;
-
 	/** tile part index, regardless of poc.
 	 *  for each new poc, tp is reset to 0*/
 	uint8_t m_current_poc_tile_part_index;
@@ -383,6 +380,8 @@ struct TileProcessor {
 
 	PacketTracker m_packetTracker;
 private:
+	/** position of the tile part flag in progression order*/
+	uint32_t tp_pos;
 
 	/** coding/decoding parameters common to all tiles */
 	TileCodingParams *m_tcp;

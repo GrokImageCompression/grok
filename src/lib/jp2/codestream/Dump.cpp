@@ -260,7 +260,7 @@ static void j2k_dump_MH_info(CodeStream *codeStream, FILE *out_stream) {
 			codeStream->m_cp.t_height);
 	fprintf(out_stream, "\t tw=%d, th=%d\n", codeStream->m_cp.t_grid_width,
 			codeStream->m_cp.t_grid_height);
-	j2k_dump_tile_info(codeStream->m_specific_param.m_decoder.m_default_tcp,
+	j2k_dump_tile_info(codeStream->m_decoder.m_default_tcp,
 			codeStream->m_private_image->numcomps, out_stream);
 	fprintf(out_stream, "}\n");
 }
@@ -338,7 +338,7 @@ grk_codestream_info_v2* j2k_get_cstr_info(CodeStream *codeStream) {
 
 	cstr_info->tile_info = nullptr; /* Not fill from the main header*/
 
-	auto default_tile = codeStream->m_specific_param.m_decoder.m_default_tcp;
+	auto default_tile = codeStream->m_decoder.m_default_tcp;
 
 	cstr_info->m_default_tile_info.csty = default_tile->csty;
 	cstr_info->m_default_tile_info.prg = default_tile->prg;

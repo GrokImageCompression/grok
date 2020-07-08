@@ -2960,7 +2960,8 @@ bool jp2_decompress_tile(FileFormat *fileFormat, uint16_t tile_index, uint8_t *p
 
 void jp2_destroy(FileFormat *fileFormat) {
 	if (fileFormat) {
-		j2k_destroy(fileFormat->j2k);
+		delete fileFormat->j2k;
+		fileFormat->j2k = nullptr;
 		grk_free(fileFormat->comps);
 		grk_free(fileFormat->cl);
 		grk_buffer_delete(fileFormat->color.icc_profile_buf);

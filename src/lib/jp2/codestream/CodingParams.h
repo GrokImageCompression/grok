@@ -340,6 +340,21 @@ struct CodingParams {
 };
 
 struct DecoderState {
+	DecoderState() : m_state(0),
+					m_default_tcp(nullptr),
+					m_start_tile_x_index(0),
+					m_start_tile_y_index(0),
+					m_end_tile_x_index(0),
+					m_end_tile_y_index(0),
+					m_last_sot_read_pos(0),
+					m_last_tile_part(false),
+					ready_to_decode_tile_part_data(false),
+					m_discard_tiles(false),
+					m_skip_data(false)
+	{}
+
+
+
 	/** Decoder state: used to indicate in which part of the code stream
 	 *  the decoder is (main header, tile header, end) */
 	uint32_t m_state;
@@ -370,6 +385,8 @@ struct DecoderState {
 };
 
 struct EncoderState {
+
+	EncoderState() : m_total_tile_parts(0) {}
 
 	/** Total num of tile parts in whole image = num tiles* num tileparts in each tile*/
 	/** used in TLMmarker*/
