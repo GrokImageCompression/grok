@@ -1586,7 +1586,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 int post_decode(grk_plugin_decode_callback_info *info) {
 	if (!info)
 		return -1;
-	int failed = 1;
+	bool failed = true;
 	bool canStoreICC = false;
 	bool isTiff = info->decoder_parameters->cod_format == GRK_TIF_FMT;
 	grk_decompress_parameters *parameters = info->decoder_parameters;
@@ -1760,7 +1760,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			PNMFormat pnm(parameters->split_pnm);
 			if (!pnm.encode(image, outfile, 0)) {
 				spdlog::error("Outfile {} not generated", outfile);
-				failed = 1;
+				goto cleanup;
 			}
 		}
 			break;
@@ -1859,7 +1859,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			break;
 		}
 	}
-	failed = 0;
+	failed = false;
 	cleanup:
 	grk_stream_destroy(info->l_stream);
 	info->l_stream = nullptr;
