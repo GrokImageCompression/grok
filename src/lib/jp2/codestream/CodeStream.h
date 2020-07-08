@@ -198,6 +198,11 @@ struct CodeStream {
 	/** current TileProcessor **/
 	TileProcessor *m_tileProcessor;
 
+
+	/** index of the tile to decompress (used in get_tile);
+	 *  !!! initialized to -1 !!! */
+	int32_t m_tile_ind_to_dec;
+
 };
 
 /** @name Exported functions */

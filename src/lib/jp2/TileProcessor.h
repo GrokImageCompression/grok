@@ -340,10 +340,6 @@ struct TileProcessor {
 						uint16_t current_marker, uint16_t marker_size,
 						BufferedStream *stream);
 
-	/** index of the tile to decompress (used in get_tile);
-	 *  !!! initialized to -1 !!! */
-	int32_t m_tile_ind_to_dec;
-
 	/** index of tile being currently coded/decoded */
 	uint16_t m_current_tile_index;
 

@@ -67,7 +67,7 @@ using namespace std;
 namespace grk {
 
 TileProcessor::TileProcessor(bool isDecoder) :
-		m_tile_ind_to_dec(-1), m_current_tile_index(0), m_current_poc_tile_part_index(
+		 m_current_tile_index(0), m_current_poc_tile_part_index(
 				0), m_current_tile_part_index(0), m_nb_tile_parts_correction_checked(
 				false), m_nb_tile_parts_correction(false), tile_part_data_length(0),
 				cur_totnum_tp(0), cur_pino(0), tile(nullptr), image(

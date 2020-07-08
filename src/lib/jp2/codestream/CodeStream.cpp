@@ -1283,21 +1283,20 @@ static bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream) 
 	uint32_t tile_x0, tile_y0, tile_x1, tile_y1;
 	uint32_t nb_comps;
 	bool rc = false;
-	auto tileProcessor = codeStream->m_tileProcessor;
 
 	/*Allocate and initialize some elements of code stream index if not already done*/
 	if (!codeStream->cstr_index->tile_index) {
 		if (!j2k_allocate_tile_element_cstr_index(codeStream))
 			return false;
 	}
-	if (tileProcessor->m_tile_ind_to_dec == -1) {
+	if (codeStream->m_tile_ind_to_dec == -1) {
 		GROK_ERROR("j2k_decompress_tile: Unable to decompress tile "
 				"since first tile SOT has not been detected");
 		return false;
 	}
 
 	/* Move into the code stream to the first SOT used to decompress the desired tile */
-	uint16_t tile_index_to_decode =	(uint16_t) (tileProcessor->m_tile_ind_to_dec);
+	uint16_t tile_index_to_decode =	(uint16_t) (codeStream->m_tile_ind_to_dec);
 	if (codeStream->cstr_index->tile_index) {
 		if (codeStream->cstr_index->tile_index->tp_index) {
 			if (!codeStream->cstr_index->tile_index[tile_index_to_decode].nb_tps) {
@@ -1332,7 +1331,7 @@ static bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream) 
 	    //GROK_INFO("TLM : index: %d, length : %d", tl.tile_number, tl.length);
 	    uint16_t tileNumber = 0;
 	    while (stream->get_number_byte_left() != 0 &&
-	    		tileNumber != tileProcessor->m_tile_ind_to_dec){
+	    		tileNumber != codeStream->m_tile_ind_to_dec){
 	    	if (tl.length == 0){
 	    		GROK_ERROR("j2k_decompress_tile: corrupt TLM marker");
 	    		return false;
@@ -1497,7 +1496,7 @@ bool j2k_get_tile(CodeStream *codeStream, BufferedStream *stream, grk_image *p_i
 	if (!(codeStream->m_output_image))
 		return false;
 	grk_copy_image_header(p_image, codeStream->m_output_image);
-	codeStream->m_tileProcessor->m_tile_ind_to_dec = (int32_t) tile_index;
+	codeStream->m_tile_ind_to_dec = (int32_t) tile_index;
 
 	// reset tile part numbers, in case we are re-using the same codec object
 	// from previous decompress
@@ -2910,7 +2909,8 @@ static bool j2k_calculate_tp(CodingParams *cp, uint16_t *p_nb_tile_parts,
 CodeStream::CodeStream() : m_private_image(nullptr),
 							m_output_image(nullptr),
 							cstr_index(nullptr),
-							m_tileProcessor(nullptr)
+							m_tileProcessor(nullptr),
+							m_tile_ind_to_dec(-1)
 {
     memset(&m_cp, 0 , sizeof(CodingParams));
 }
