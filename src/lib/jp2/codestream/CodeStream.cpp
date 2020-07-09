@@ -2163,15 +2163,13 @@ static bool j2k_write_tile_part(CodeStream *codeStream,	BufferedStream *stream) 
 						1 + tcp->numpocs);
 			}
 		}
+		/* set packno to zero when writing the first tile part
+		 * (packno is used for SOP markers)
+		 */
+		tileProcessor->tile->packno = 0;
 	}
 
 	// 3. compress tile part
-	/* set packno to zero when writing the first tile part
-	 * (packno is used for SOP markers)
-	 */
-	if (firstTilePart) {
-		tileProcessor->tile->packno = 0;
-	}
 	if (!tileProcessor->compress_tile_part(currentTileNumber, stream,
 			&tile_part_bytes_written)) {
 		GROK_ERROR("Cannot compress tile");
