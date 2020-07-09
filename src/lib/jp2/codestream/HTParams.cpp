@@ -269,30 +269,6 @@ uint32_t param_qcd::get_MAGBp() const
 }
 
 //////////////////////////////////////////////////////////////////////////
-uint32_t param_qcd::rev_get_num_bits(uint32_t resolution, uint32_t subband) const
-{
-  assert((resolution == 0 && subband == 0) ||
-		 (resolution <= num_decomps && subband > 0 && subband < 4));
-  assert((Sqcd & 0x1F) == 0);
-  uint32_t idx = max((resolution - 1), 0U) * 3 + subband;
-  return u8_SPqcd[idx] >> 3;
-}
-
-//////////////////////////////////////////////////////////////////////////
-float param_qcd::irrev_get_delta(uint32_t resolution, uint32_t subband) const
-{
-  assert((resolution == 0 && subband == 0) ||
-		 (resolution <= num_decomps && subband > 0 && subband<4));
-  assert((Sqcd & 0x1F) == 2);
-  float gain[] = { 1.0f, 2.0f, 2.0f, 4.0f };
-  uint32_t idx = max((uint32_t)(resolution - 1), 0U) * 3 + subband;
-  uint32_t exp = u16_SPqcd[idx] >> 11;
-
-  return (float) (((1.0 + (u16_SPqcd[idx] & 0x7FF)/ 2048.0)
-			* pow(2.0, (int32_t) (gain[subband] - (float)exp))));
-}
-
-//////////////////////////////////////////////////////////////////////////
 uint32_t param_qcd::get_num_guard_bits() const
 {
   return (Sqcd >> 5);
