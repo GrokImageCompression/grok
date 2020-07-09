@@ -745,6 +745,9 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 		uint32_t *p_nb_comps, bool *p_go_on, BufferedStream *stream) {
 	assert(codeStream);
 
+
+	if (!codeStream->m_tileProcessor)
+		codeStream->m_tileProcessor = new TileProcessor(codeStream->m_private_image, &codeStream->m_cp);
 	auto tileProcessor = codeStream->m_tileProcessor;
 	auto decoder = &codeStream->m_decoder;
 
@@ -1139,6 +1142,8 @@ bool j2k_decompress_tile(CodeStream *codeStream, uint16_t tile_index,
 
 bool j2k_set_decompress_area(CodeStream *codeStream, grk_image *output_image,
 		uint32_t start_x, uint32_t start_y, uint32_t end_x, uint32_t end_y) {
+	if (!codeStream->m_tileProcessor)
+		codeStream->m_tileProcessor = new TileProcessor(codeStream->m_private_image, &codeStream->m_cp);
 	return codeStream->m_tileProcessor->set_decompress_area(codeStream, output_image,
 			start_x, start_y, end_x, end_y);
 }
@@ -1391,6 +1396,10 @@ bool j2k_decompress(CodeStream *codeStream, grk_plugin_tile *tile,
 	/* customization of the decoding */
 	if (!j2k_init_decompress(codeStream))
 		return false;
+
+	/* Create the current tile decoder*/
+	if (!codeStream->m_tileProcessor)
+		codeStream->m_tileProcessor = new TileProcessor(codeStream->m_private_image, &codeStream->m_cp);
 	codeStream->m_tileProcessor->current_plugin_tile = tile;
 
 	/* Decode the code stream */
@@ -2667,9 +2676,6 @@ static bool j2k_copy_default_tcp_and_create_tcd(CodeStream *codeStream,
 		/* Move to next tile cp*/
 		++tcp;
 	}
-
-	/* Create the current tile decoder*/
-	codeStream->m_tileProcessor = new TileProcessor(codeStream->m_private_image, &codeStream->m_cp);
 
 	return true;
 }
