@@ -651,9 +651,6 @@ static bool j2k_init_header_reading(CodeStream *codeStream) {
 	/* preconditions*/
 	assert(codeStream != nullptr);
 
-	/* Create the current tile decoder*/
-	codeStream->m_tileProcessor = new TileProcessor();
-
 	codeStream->m_procedure_list.push_back(
 			(j2k_procedure) j2k_read_header_procedure);
 	// custom procedures here
@@ -2318,13 +2315,7 @@ static bool j2k_init_header_writing(CodeStream *codeStream) {
 	assert(codeStream != nullptr);
 
 	assert(!codeStream->m_tileProcessor);
-	codeStream->m_tileProcessor = new TileProcessor();
-	if (!codeStream->m_tileProcessor->init(codeStream->m_private_image, &codeStream->m_cp)) {
-		delete codeStream->m_tileProcessor;
-		codeStream->m_tileProcessor = nullptr;
-		return false;
-	}
-
+	codeStream->m_tileProcessor = new TileProcessor(codeStream->m_private_image, &codeStream->m_cp);
 	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_init_info);
 	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_write_soc);
 	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_write_siz);
@@ -2677,13 +2668,8 @@ static bool j2k_copy_default_tcp_and_create_tcd(CodeStream *codeStream,
 		++tcp;
 	}
 
-	if (!codeStream->m_tileProcessor->init(image, &(codeStream->m_cp))) {
-		delete codeStream->m_tileProcessor;
-		codeStream->m_tileProcessor = nullptr;
-		GROK_ERROR("Cannot decompress tile, memory error");
-
-		return false;
-	}
+	/* Create the current tile decoder*/
+	codeStream->m_tileProcessor = new TileProcessor(codeStream->m_private_image, &codeStream->m_cp);
 
 	return true;
 }

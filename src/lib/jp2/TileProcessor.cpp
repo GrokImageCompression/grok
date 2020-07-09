@@ -66,15 +66,24 @@ using namespace std;
 
 namespace grk {
 
-TileProcessor::TileProcessor() :
+TileProcessor::TileProcessor(grk_image *p_image, CodingParams *p_cp) :
 		 m_current_tile_index(0), m_current_poc_tile_part_index(
 				0), m_current_tile_part_index(0), m_nb_tile_parts_correction_checked(
 				false), m_nb_tile_parts_correction(false), tile_part_data_length(0),
 				cur_totnum_tp(0), cur_pino(0), tile(nullptr), image(
-				nullptr), current_plugin_tile(nullptr), whole_tile_decoding(
+						p_image), current_plugin_tile(nullptr), whole_tile_decoding(
 				true), plt_markers(
-				nullptr), m_cp(nullptr),
+				nullptr), m_cp(p_cp),
 				tp_pos(0), m_tcp(nullptr) {
+
+	tile = (grk_tile*) grk_calloc(1, sizeof(grk_tile));
+	if (!tile)
+		throw new std::runtime_error("out of memory");
+
+	tile->comps = new TileComponent[p_image->numcomps];
+	tile->numcomps = p_image->numcomps;
+
+	tp_pos = p_cp->m_coding_params.m_enc.m_tp_pos;
 }
 
 TileProcessor::~TileProcessor() {
@@ -797,19 +806,7 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 		}
 	}
 }
-bool TileProcessor::init(grk_image *p_image, CodingParams *p_cp) {
-	image = p_image;
-	m_cp = p_cp;
-	tile = (grk_tile*) grk_calloc(1, sizeof(grk_tile));
-	if (!tile)
-		return false;
 
-	tile->comps = new TileComponent[p_image->numcomps];
-	tile->numcomps = p_image->numcomps;
-	tp_pos = p_cp->m_coding_params.m_enc.m_tp_pos;
-
-	return true;
-}
 bool TileProcessor::init_tile(uint16_t tile_no, grk_image *output_image,
 		bool isEncoder) {
 	uint32_t state = grk_plugin_get_debug_state();

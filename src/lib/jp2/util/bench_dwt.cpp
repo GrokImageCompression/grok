@@ -127,6 +127,7 @@ int main(int argc, char** argv)
 {
     uint32_t num_threads = 0;
     grk_image image;
+    CodingParams params;
     grk_tile tile;
     TileComponent tilec;
     grk_image_comp image_comp;
@@ -192,7 +193,14 @@ int main(int argc, char** argv)
 		begin = 1;
 
    for (size_t k = begin; k <= end; ++k) {
-	   std::unique_ptr<TileProcessor> tileProcessor(new TileProcessor());
+		memset(&image, 0, sizeof(image));
+		image.numcomps = 1;
+		image.comps = &image_comp;
+		memset(&image_comp, 0, sizeof(image_comp));
+		image_comp.dx = 1;
+		image_comp.dy = 1;
+
+	   std::unique_ptr<TileProcessor> tileProcessor(new TileProcessor(&image,&params));
 	   grk_initialize(nullptr,k);
 	   init_tilec(&tilec, offset_x, offset_y,
 				   offset_x + size, offset_y + size,
@@ -210,8 +218,6 @@ int main(int argc, char** argv)
 				printf("\n");
 			}
 		}
-		tileProcessor->image = &image;
-		memset(&image, 0, sizeof(image));
 		memset(&tile, 0, sizeof(tile));
 		tile.x0 = tilec.X0();
 		tile.y0 = tilec.Y0();
@@ -219,13 +225,6 @@ int main(int argc, char** argv)
 		tile.y1 = tilec.Y1();
 		tile.numcomps = 1;
 		tile.comps = &tilec;
-		tileProcessor->image = &image;
-		memset(&image, 0, sizeof(image));
-		image.numcomps = 1;
-		image.comps = &image_comp;
-		memset(&image_comp, 0, sizeof(image_comp));
-		image_comp.dx = 1;
-		image_comp.dy = 1;
 
 		std::chrono::time_point<std::chrono::high_resolution_clock> start, finish;
 		std::chrono::duration<double> elapsed;

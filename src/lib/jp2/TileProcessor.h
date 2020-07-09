@@ -248,17 +248,8 @@ private:
  */
 struct TileProcessor {
 
-	explicit TileProcessor() ;
+	TileProcessor(grk_image *p_image, CodingParams *p_cp) ;
 	~TileProcessor();
-
-	/**
-	 * Initialize the tile coder
-	 * @param	p_image		image
-	 * @param	p_cp		coding parameters
-	 *
-	 * @return true if the encoding values could be set (false otherwise).
-	 */
-	bool init(grk_image *p_image, CodingParams *p_cp);
 
 	/**
 	 * Allocates memory for decoding a specific tile.
