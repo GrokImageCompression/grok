@@ -382,13 +382,11 @@ void j2k_destroy(CodeStream *codeStream) {
 
 static bool j2k_exec(CodeStream *codeStream, std::vector<j2k_procedure> &procs,
 		BufferedStream *stream) {
-	bool result = true;
-
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
 
-	for (auto proc : procs)
-		result = result && (proc)(codeStream, stream);
+    bool result = std::all_of(procs.begin(), procs.end(),
+		   [&](j2k_procedure &proc){ return proc(codeStream, stream); });
 	procs.clear();
 
 	return result;
