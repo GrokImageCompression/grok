@@ -66,24 +66,32 @@ using namespace std;
 
 namespace grk {
 
-TileProcessor::TileProcessor(grk_image *p_image, CodingParams *p_cp) :
-		 m_current_tile_index(0), m_current_poc_tile_part_index(
-				0), m_current_tile_part_index(0), m_nb_tile_parts_correction_checked(
-				false), m_nb_tile_parts_correction(false), tile_part_data_length(0),
-				cur_totnum_tp(0), cur_pino(0), tile(nullptr), image(
-						p_image), current_plugin_tile(nullptr), whole_tile_decoding(
-				true), plt_markers(
-				nullptr), m_cp(p_cp),
-				tp_pos(0), m_tcp(nullptr) {
+TileProcessor::TileProcessor(CodeStream *codeStream) :
+				 m_current_tile_index(0),
+				 m_current_poc_tile_part_index(0),
+				 m_current_tile_part_index(0),
+				 m_nb_tile_parts_correction_checked(false),
+				 m_nb_tile_parts_correction(false),
+				 tile_part_data_length(0),
+				cur_totnum_tp(0),
+				cur_pino(0),
+				tile(nullptr),
+				image(codeStream->m_private_image),
+				current_plugin_tile(nullptr),
+				whole_tile_decoding(codeStream->whole_tile_decoding),
+				plt_markers(nullptr),
+				m_cp(&codeStream->m_cp),
+				tp_pos(0),
+				m_tcp(nullptr) {
 
 	tile = (grk_tile*) grk_calloc(1, sizeof(grk_tile));
 	if (!tile)
 		throw new std::runtime_error("out of memory");
 
-	tile->comps = new TileComponent[p_image->numcomps];
-	tile->numcomps = p_image->numcomps;
+	tile->comps = new TileComponent[image->numcomps];
+	tile->numcomps = image->numcomps;
 
-	tp_pos = p_cp->m_coding_params.m_enc.m_tp_pos;
+	tp_pos = m_cp->m_coding_params.m_enc.m_tp_pos;
 }
 
 TileProcessor::~TileProcessor() {
@@ -92,114 +100,6 @@ TileProcessor::~TileProcessor() {
 		grk_free(tile);
 	}
 	delete plt_markers;
-}
-
-bool TileProcessor::set_decompress_area(CodeStream *codeStream, grk_image *output_image,
-		uint32_t start_x, uint32_t start_y, uint32_t end_x, uint32_t end_y) {
-
-	auto cp = &(codeStream->m_cp);
-	auto image = codeStream->m_private_image;
-	auto decoder = &codeStream->m_decoder;
-
-	/* Check if we have read the main header */
-	if (decoder->m_state != J2K_DEC_STATE_TPH_SOT) {
-		GROK_ERROR(
-				"Need to decompress the main header before setting decompress area");
-		return false;
-	}
-
-	if (!start_x && !start_y && !end_x && !end_y) {
-		decoder->m_start_tile_x_index = 0;
-		decoder->m_start_tile_y_index = 0;
-		decoder->m_end_tile_x_index = cp->t_grid_width;
-		decoder->m_end_tile_y_index = cp->t_grid_height;
-
-		return true;
-	}
-
-	/* Check if the positions provided by the user are correct */
-
-	/* Left */
-	if (start_x > image->x1) {
-		GROK_ERROR("Left position of the decoded area (region_x0=%u)"
-				" is outside the image area (Xsiz=%u).", start_x, image->x1);
-		return false;
-	} else if (start_x < image->x0) {
-		GROK_WARN("Left position of the decoded area (region_x0=%u)"
-				" is outside the image area (XOsiz=%u).", start_x, image->x0);
-		decoder->m_start_tile_x_index = 0;
-		output_image->x0 = image->x0;
-	} else {
-		decoder->m_start_tile_x_index = (start_x - cp->tx0) / cp->t_width;
-		output_image->x0 = start_x;
-	}
-
-	/* Up */
-	if (start_y > image->y1) {
-		GROK_ERROR("Up position of the decoded area (region_y0=%u)"
-				" is outside the image area (Ysiz=%u).", start_y, image->y1);
-		return false;
-	} else if (start_y < image->y0) {
-		GROK_WARN("Up position of the decoded area (region_y0=%u)"
-				" is outside the image area (YOsiz=%u).", start_y, image->y0);
-		decoder->m_start_tile_y_index = 0;
-		output_image->y0 = image->y0;
-	} else {
-		decoder->m_start_tile_y_index = (start_y - cp->ty0) / cp->t_height;
-		output_image->y0 = start_y;
-	}
-
-	/* Right */
-	assert(end_x > 0);
-	assert(end_y > 0);
-	if (end_x < image->x0) {
-		GROK_ERROR("Right position of the decoded area (region_x1=%u)"
-				" is outside the image area (XOsiz=%u).", end_x, image->x0);
-		return false;
-	} else if (end_x > image->x1) {
-		GROK_WARN("Right position of the decoded area (region_x1=%u)"
-				" is outside the image area (Xsiz=%u).", end_x, image->x1);
-		decoder->m_end_tile_x_index = cp->t_grid_width;
-		output_image->x1 = image->x1;
-	} else {
-		// avoid divide by zero
-		if (cp->t_width == 0) {
-			return false;
-		}
-		decoder->m_end_tile_x_index = ceildiv<uint32_t>(end_x - cp->tx0,
-				cp->t_width);
-		output_image->x1 = end_x;
-	}
-
-	/* Bottom */
-	if (end_y < image->y0) {
-		GROK_ERROR("Bottom position of the decoded area (region_y1=%u)"
-				" is outside the image area (YOsiz=%u).", end_y, image->y0);
-		return false;
-	}
-	if (end_y > image->y1) {
-		GROK_WARN("Bottom position of the decoded area (region_y1=%u)"
-				" is outside the image area (Ysiz=%u).", end_y, image->y1);
-		decoder->m_end_tile_y_index = cp->t_grid_height;
-		output_image->y1 = image->y1;
-	} else {
-		// avoid divide by zero
-		if (cp->t_height == 0) {
-			return false;
-		}
-		decoder->m_end_tile_y_index = ceildiv<uint32_t>(end_y - cp->ty0,
-				cp->t_height);
-		output_image->y1 = end_y;
-	}
-	decoder->m_discard_tiles = true;
-	whole_tile_decoding = false;
-	if (!update_image_dimensions(output_image,
-			cp->m_coding_params.m_dec.m_reduce))
-		return false;
-
-	GROK_INFO("Setting decoding area to %u,%u,%u,%u", output_image->x0,
-			output_image->y0, output_image->x1, output_image->y1);
-	return true;
 }
 
 /*

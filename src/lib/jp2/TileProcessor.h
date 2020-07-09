@@ -247,8 +247,7 @@ private:
  Tile coder/decoder
  */
 struct TileProcessor {
-
-	TileProcessor(grk_image *p_image, CodingParams *p_cp) ;
+	TileProcessor(CodeStream *codeStream) ;
 	~TileProcessor();
 
 	/**
@@ -263,26 +262,6 @@ struct TileProcessor {
 	 bool init_tile(uint16_t tile_no,
 			grk_image *output_image, bool isEncoder);
 
-	/**
-	 * Sets the given area to be decoded. This function should be called right after grk_read_header
-	 * and before any tile header reading.
-	 *
-	 * @param	codeStream		JPEG 2000 code stream
-	 * @param	p_image     FIXME DOC
-	 * @param	start_x		the left position of the rectangle to decompress (in image coordinates).
-	 * @param	start_y		the up position of the rectangle to decompress (in image coordinates).
-	 * @param	end_x		the right position of the rectangle to decompress (in image coordinates).
-	 * @param	end_y		the bottom position of the rectangle to decompress (in image coordinates).
-
-	 *
-	 * @return	true			if the area could be set.
-	 */
-	bool set_decompress_area(CodeStream *codeStream,
-						grk_image *p_image,
-						uint32_t start_x,
-						uint32_t start_y,
-						uint32_t end_x,
-						uint32_t end_y);
 
 	/**
 	 * Compress a tile from a raw image into stream.

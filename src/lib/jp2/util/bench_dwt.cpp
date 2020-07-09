@@ -192,6 +192,10 @@ int main(int argc, char** argv)
 	if (threadScalingArg.isSet())
 		begin = 1;
 
+	CodeStream codeStream;
+	codeStream.m_cp = params;
+	codeStream.m_private_image = &image;
+
    for (size_t k = begin; k <= end; ++k) {
 		memset(&image, 0, sizeof(image));
 		image.numcomps = 1;
@@ -200,7 +204,7 @@ int main(int argc, char** argv)
 		image_comp.dx = 1;
 		image_comp.dy = 1;
 
-	   std::unique_ptr<TileProcessor> tileProcessor(new TileProcessor(&image,&params));
+	   std::unique_ptr<TileProcessor> tileProcessor(new TileProcessor(&codeStream));
 	   grk_initialize(nullptr,k);
 	   init_tilec(&tilec, offset_x, offset_y,
 				   offset_x + size, offset_y + size,

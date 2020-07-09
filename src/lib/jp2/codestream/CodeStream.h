@@ -179,6 +179,26 @@ struct CodeStream {
 						uint16_t current_marker, uint16_t marker_size,
 						BufferedStream *stream);
 
+	/**
+	 * Sets the given area to be decoded. This function should be called right after grk_read_header
+	 * and before any tile header reading.
+	 *
+	 * @param	p_image     FIXME DOC
+	 * @param	start_x		the left position of the rectangle to decompress (in image coordinates).
+	 * @param	start_y		the up position of the rectangle to decompress (in image coordinates).
+	 * @param	end_x		the right position of the rectangle to decompress (in image coordinates).
+	 * @param	end_y		the bottom position of the rectangle to decompress (in image coordinates).
+
+	 *
+	 * @return	true			if the area could be set.
+	 */
+	bool set_decompress_area(grk_image *p_image,
+						uint32_t start_x,
+						uint32_t start_y,
+						uint32_t end_x,
+						uint32_t end_y);
+
+
 	// state of decoder/encoder
 	DecoderState m_decoder;
 	EncoderState m_encoder;
@@ -213,6 +233,11 @@ private:
 
 	uint8_t *m_marker_scratch;
 	uint16_t m_marker_scratch_size;
+    /** Only valid for decoding. Whether the whole tile is decoded, or just the region in win_x0/win_y0/win_x1/win_y1 */
+
+public:
+    bool   whole_tile_decoding;
+
 
 };
 

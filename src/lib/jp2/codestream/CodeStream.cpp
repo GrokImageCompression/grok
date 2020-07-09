@@ -747,7 +747,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 
 
 	if (!codeStream->m_tileProcessor)
-		codeStream->m_tileProcessor = new TileProcessor(codeStream->m_private_image, &codeStream->m_cp);
+		codeStream->m_tileProcessor = new TileProcessor(codeStream);
 	auto tileProcessor = codeStream->m_tileProcessor;
 	auto decoder = &codeStream->m_decoder;
 
@@ -1142,10 +1142,11 @@ bool j2k_decompress_tile(CodeStream *codeStream, uint16_t tile_index,
 
 bool j2k_set_decompress_area(CodeStream *codeStream, grk_image *output_image,
 		uint32_t start_x, uint32_t start_y, uint32_t end_x, uint32_t end_y) {
-	if (!codeStream->m_tileProcessor)
-		codeStream->m_tileProcessor = new TileProcessor(codeStream->m_private_image, &codeStream->m_cp);
-	return codeStream->m_tileProcessor->set_decompress_area(codeStream, output_image,
-			start_x, start_y, end_x, end_y);
+	return codeStream->set_decompress_area(output_image,
+											start_x,
+											start_y,
+											end_x,
+											end_y);
 }
 
 CodeStream* j2k_create_decompress(void) {
@@ -1399,7 +1400,7 @@ bool j2k_decompress(CodeStream *codeStream, grk_plugin_tile *tile,
 
 	/* Create the current tile decoder*/
 	if (!codeStream->m_tileProcessor)
-		codeStream->m_tileProcessor = new TileProcessor(codeStream->m_private_image, &codeStream->m_cp);
+		codeStream->m_tileProcessor = new TileProcessor(codeStream);
 	codeStream->m_tileProcessor->current_plugin_tile = tile;
 
 	/* Decode the code stream */
@@ -2324,7 +2325,7 @@ static bool j2k_init_header_writing(CodeStream *codeStream) {
 	assert(codeStream != nullptr);
 
 	assert(!codeStream->m_tileProcessor);
-	codeStream->m_tileProcessor = new TileProcessor(codeStream->m_private_image, &codeStream->m_cp);
+	codeStream->m_tileProcessor = new TileProcessor(codeStream);
 	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_init_info);
 	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_write_soc);
 	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_write_siz);
@@ -2896,7 +2897,10 @@ CodeStream::CodeStream() : m_private_image(nullptr),
 							cstr_index(nullptr),
 							m_tileProcessor(nullptr),
 							m_tile_ind_to_dec(-1),
-							m_marker_scratch(nullptr), m_marker_scratch_size(0)
+							m_marker_scratch(nullptr),
+							m_marker_scratch_size(0),
+						    whole_tile_decoding(true)
+
 {
     memset(&m_cp, 0 , sizeof(CodingParams));
 }
@@ -2909,6 +2913,116 @@ CodeStream::~CodeStream(){
 	grk_image_destroy(m_output_image);
 	grk_free(m_marker_scratch);
 }
+
+
+bool CodeStream::set_decompress_area(grk_image *output_image,
+		uint32_t start_x, uint32_t start_y, uint32_t end_x, uint32_t end_y) {
+
+	auto cp = &(m_cp);
+	auto image = m_private_image;
+	auto decoder = &m_decoder;
+
+	/* Check if we have read the main header */
+	if (decoder->m_state != J2K_DEC_STATE_TPH_SOT) {
+		GROK_ERROR(
+				"Need to decompress the main header before setting decompress area");
+		return false;
+	}
+
+	if (!start_x && !start_y && !end_x && !end_y) {
+		decoder->m_start_tile_x_index = 0;
+		decoder->m_start_tile_y_index = 0;
+		decoder->m_end_tile_x_index = cp->t_grid_width;
+		decoder->m_end_tile_y_index = cp->t_grid_height;
+
+		return true;
+	}
+
+	/* Check if the positions provided by the user are correct */
+
+	/* Left */
+	if (start_x > image->x1) {
+		GROK_ERROR("Left position of the decoded area (region_x0=%u)"
+				" is outside the image area (Xsiz=%u).", start_x, image->x1);
+		return false;
+	} else if (start_x < image->x0) {
+		GROK_WARN("Left position of the decoded area (region_x0=%u)"
+				" is outside the image area (XOsiz=%u).", start_x, image->x0);
+		decoder->m_start_tile_x_index = 0;
+		output_image->x0 = image->x0;
+	} else {
+		decoder->m_start_tile_x_index = (start_x - cp->tx0) / cp->t_width;
+		output_image->x0 = start_x;
+	}
+
+	/* Up */
+	if (start_y > image->y1) {
+		GROK_ERROR("Up position of the decoded area (region_y0=%u)"
+				" is outside the image area (Ysiz=%u).", start_y, image->y1);
+		return false;
+	} else if (start_y < image->y0) {
+		GROK_WARN("Up position of the decoded area (region_y0=%u)"
+				" is outside the image area (YOsiz=%u).", start_y, image->y0);
+		decoder->m_start_tile_y_index = 0;
+		output_image->y0 = image->y0;
+	} else {
+		decoder->m_start_tile_y_index = (start_y - cp->ty0) / cp->t_height;
+		output_image->y0 = start_y;
+	}
+
+	/* Right */
+	assert(end_x > 0);
+	assert(end_y > 0);
+	if (end_x < image->x0) {
+		GROK_ERROR("Right position of the decoded area (region_x1=%u)"
+				" is outside the image area (XOsiz=%u).", end_x, image->x0);
+		return false;
+	} else if (end_x > image->x1) {
+		GROK_WARN("Right position of the decoded area (region_x1=%u)"
+				" is outside the image area (Xsiz=%u).", end_x, image->x1);
+		decoder->m_end_tile_x_index = cp->t_grid_width;
+		output_image->x1 = image->x1;
+	} else {
+		// avoid divide by zero
+		if (cp->t_width == 0) {
+			return false;
+		}
+		decoder->m_end_tile_x_index = ceildiv<uint32_t>(end_x - cp->tx0,
+				cp->t_width);
+		output_image->x1 = end_x;
+	}
+
+	/* Bottom */
+	if (end_y < image->y0) {
+		GROK_ERROR("Bottom position of the decoded area (region_y1=%u)"
+				" is outside the image area (YOsiz=%u).", end_y, image->y0);
+		return false;
+	}
+	if (end_y > image->y1) {
+		GROK_WARN("Bottom position of the decoded area (region_y1=%u)"
+				" is outside the image area (Ysiz=%u).", end_y, image->y1);
+		decoder->m_end_tile_y_index = cp->t_grid_height;
+		output_image->y1 = image->y1;
+	} else {
+		// avoid divide by zero
+		if (cp->t_height == 0) {
+			return false;
+		}
+		decoder->m_end_tile_y_index = ceildiv<uint32_t>(end_y - cp->ty0,
+				cp->t_height);
+		output_image->y1 = end_y;
+	}
+	decoder->m_discard_tiles = true;
+	whole_tile_decoding = false;
+	if (!update_image_dimensions(output_image,
+			cp->m_coding_params.m_dec.m_reduce))
+		return false;
+
+	GROK_INFO("Setting decoding area to %u,%u,%u,%u", output_image->x0,
+			output_image->y0, output_image->x1, output_image->y1);
+	return true;
+}
+
 
 bool CodeStream::process_marker(const grk_dec_memory_marker_handler* marker_handler,
 		uint16_t current_marker, uint16_t marker_size,
