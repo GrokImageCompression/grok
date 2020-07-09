@@ -333,11 +333,6 @@ struct TileProcessor {
 
 	void copy_image_to_tile();
 
-	bool process_marker(CodeStream *codeStream,
-						const grk_dec_memory_marker_handler* marker_handler,
-						uint16_t current_marker, uint16_t marker_size,
-						BufferedStream *stream);
-
 	/** index of tile being currently coded/decoded */
 	uint16_t m_current_tile_index;
 
@@ -377,8 +372,6 @@ struct TileProcessor {
 
 	PacketTracker m_packetTracker;
 private:
-	uint8_t *m_marker_scratch;
-	uint16_t m_marker_scratch_size;
 
 	/** position of the tile part flag in progression order*/
 	uint32_t tp_pos;

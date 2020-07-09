@@ -175,6 +175,9 @@ struct CodeStream {
 
 	bool read_marker(BufferedStream *stream, uint16_t *val);
 
+	bool process_marker(const grk_dec_memory_marker_handler* marker_handler,
+						uint16_t current_marker, uint16_t marker_size,
+						BufferedStream *stream);
 
 	// state of decoder/encoder
 	DecoderState m_decoder;
@@ -205,6 +208,11 @@ struct CodeStream {
 	/** index of the tile to decompress (used in get_tile);
 	 *  !!! initialized to -1 !!! */
 	int32_t m_tile_ind_to_dec;
+
+private:
+
+	uint8_t *m_marker_scratch;
+	uint16_t m_marker_scratch_size;
 
 };
 

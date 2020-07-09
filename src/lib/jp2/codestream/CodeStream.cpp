@@ -403,7 +403,6 @@ static bool j2k_read_header_procedure(CodeStream *codeStream,
 	bool has_siz = false;
 	bool has_cod = false;
 	bool has_qcd = false;
-	auto tileProcessor = codeStream->m_tileProcessor;
 
 	/*  We enter in the main header */
 	codeStream->m_decoder.m_state = J2K_DEC_STATE_MH_SOC;
@@ -468,8 +467,7 @@ static bool j2k_read_header_procedure(CodeStream *codeStream,
 
 		marker_size -= 2; /* Subtract the size of the marker ID already read */
 
-		if (!tileProcessor->process_marker(codeStream,
-											marker_handler, current_marker, marker_size,
+		if (!codeStream->process_marker(marker_handler, current_marker, marker_size,
 											stream))
 			return false;
 
@@ -802,8 +800,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 				return false;
 			}
 
-			if (!tileProcessor->process_marker(codeStream,
-												marker_handler, current_marker, marker_size,
+			if (!codeStream->process_marker(marker_handler, current_marker, marker_size,
 												stream))
 				return false;
 
@@ -2906,7 +2903,8 @@ CodeStream::CodeStream() : m_private_image(nullptr),
 							m_output_image(nullptr),
 							cstr_index(nullptr),
 							m_tileProcessor(nullptr),
-							m_tile_ind_to_dec(-1)
+							m_tile_ind_to_dec(-1),
+							m_marker_scratch(nullptr), m_marker_scratch_size(0)
 {
     memset(&m_cp, 0 , sizeof(CodingParams));
 }
@@ -2917,7 +2915,62 @@ CodeStream::~CodeStream(){
 	j2k_destroy_cstr_index(cstr_index);
 	grk_image_destroy(m_private_image);
 	grk_image_destroy(m_output_image);
+	grk_free(m_marker_scratch);
 }
+
+bool CodeStream::process_marker(const grk_dec_memory_marker_handler* marker_handler,
+		uint16_t current_marker, uint16_t marker_size,
+		BufferedStream *stream){
+
+	if (!m_marker_scratch) {
+		m_marker_scratch = (uint8_t*) grk_calloc(1, default_header_size);
+		if (!m_marker_scratch)
+			return false;
+		m_marker_scratch_size = default_header_size;
+	}
+
+	// need more scratch memory
+	if (marker_size > m_marker_scratch_size) {
+		uint8_t *new_header_data = nullptr;
+		if (marker_size > stream->get_number_byte_left()) {
+			GROK_ERROR("Marker size inconsistent with stream length");
+			return false;
+		}
+		new_header_data = (uint8_t*) grk_realloc(
+				m_marker_scratch, marker_size);
+		if (!new_header_data) {
+			grk_free(m_marker_scratch);
+			m_marker_scratch = nullptr;
+			m_marker_scratch_size = 0;
+			GROK_ERROR("Not enough memory to read header");
+			return false;
+		}
+		m_marker_scratch = new_header_data;
+		m_marker_scratch_size = marker_size;
+	}
+
+	if (stream->read(m_marker_scratch, marker_size)
+			!= marker_size) {
+		GROK_ERROR("Stream too short");
+		return false;
+	}
+
+	/* Handle the marker */
+	if (!marker_handler->handler) {
+		/* See issue #175 */
+		GROK_ERROR("Not sure how that happened.");
+		return false;
+	}
+	if (!(*(marker_handler->handler))(this,
+			m_marker_scratch, marker_size)) {
+		GROK_ERROR("Fail to read the current marker segment (%#x)",
+				current_marker);
+		return false;
+	}
+
+	return true;
+}
+
 
 bool CodeStream::isDecodingTilePartHeader() {
 	return (m_decoder.m_state & J2K_DEC_STATE_TPH);
