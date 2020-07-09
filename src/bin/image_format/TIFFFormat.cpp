@@ -1690,7 +1690,7 @@ static grk_image* tiftoimage(const char *filename,
 	}
 	if (numcomps > maxNumComponents){
 		spdlog::error("tiftoimage: number of components "
-				"{} must be <= %d", numcomps,maxNumComponents);
+				"{} must be <= %u", numcomps,maxNumComponents);
 		goto cleanup;
 	}
 
@@ -1924,7 +1924,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 
 	if (numcomps > maxNumComponents){
 		spdlog::error(
-				"imagetotif: number of components {} must be <= %d", numcomps,maxNumComponents);
+				"imagetotif: number of components {} must be <= %u", numcomps,maxNumComponents);
 		goto cleanup;
 	}
 

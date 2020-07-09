@@ -59,7 +59,7 @@ void decode_synch_plugin_with_host(TileProcessor *tcd) {
 											+ BIBO_EXTRA_BITS) - 2;
 							if (cblk->segs[0].numpasses > maxPasses) {
 								GROK_INFO(
-										"Number of passes %d in segment exceeds BIBO maximum %d. Image will be decoded on CPU.",
+										"Number of passes %u in segment exceeds BIBO maximum %u. Image will be decoded on CPU.",
 										cblk->segs[0].numpasses, maxPasses);
 								throw PluginDecodeUnsupportedException();
 							}
@@ -172,7 +172,7 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 			uint32_t grkNumPix = (cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0);
 			if (plugin_cblk->numPix != grkNumPix)
 				printf(
-						"[WARNING]  ojp numPix %d differs from plugin numPix %d\n",
+						"[WARNING]  ojp numPix %u differs from plugin numPix %u\n",
 						grkNumPix, plugin_cblk->numPix);
 		}
 

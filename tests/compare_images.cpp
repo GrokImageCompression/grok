@@ -176,7 +176,7 @@ static char* createMultiComponentsFilename(const char *inFilename,
 	strncpy(outFilename, inFilename, posToken);
 	outFilename[posToken] = '\0';
 	strcat(outFilename, separator);
-	sprintf(s, "%d", (uint32_t)indexF);
+	sprintf(s, "%u", (uint32_t)indexF);
 	strcat(outFilename, s);
 
 	decod_format = get_decod_format_from_string(inFilename);
@@ -592,7 +592,7 @@ static int parse_cmdline_cmp(int argc, char **argv,
 			if (!param->base_filename)
 				return 1;
 			strcpy(param->base_filename, baseImageArg.getValue().c_str());
-			/*spdlog::info("param->base_filename = %s [%d / %d]", param->base_filename, strlen(param->base_filename), sizemembasefile );*/
+			/*spdlog::info("param->base_filename = %s [%u / %u]", param->base_filename, strlen(param->base_filename), sizemembasefile );*/
 		}
 		if (testImageArg.isSet()) {
 			param->test_filename = (char*) malloc(
@@ -600,7 +600,7 @@ static int parse_cmdline_cmp(int argc, char **argv,
 			if (!param->test_filename)
 				return 1;
 			strcpy(param->test_filename, testImageArg.getValue().c_str());
-			/*spdlog::info("param->test_filename = %s [%d / %d]", param->test_filename, strlen(param->test_filename), sizememtestfile);*/
+			/*spdlog::info("param->test_filename = %s [%u / %u]", param->test_filename, strlen(param->test_filename), sizememtestfile);*/
 		}
 		if (numComponentsArg.isSet()) {
 			param->nbcomp = numComponentsArg.getValue();
@@ -658,7 +658,7 @@ static int parse_cmdline_cmp(int argc, char **argv,
 				size_t sizeseplist = strlen(separatorList) + 1;
 				char *separatorList2 = (char*) malloc(sizeseplist);
 				strcpy(separatorList2, separatorList);
-				/*spdlog::info("separatorList2 = %s [%d / %d]", separatorList2, strlen(separatorList2), sizeseplist);*/
+				/*spdlog::info("separatorList2 = %s [%u / %u]", separatorList2, strlen(separatorList2), sizeseplist);*/
 
 				if (strlen(separatorList) == 2) { /* one separator behind b or t*/
 					char *resultT = nullptr;
@@ -679,7 +679,7 @@ static int parse_cmdline_cmp(int argc, char **argv,
 						param->separator_test[0] = separatorList[1];
 						param->separator_test[1] = 0;
 					}
-					/*spdlog::info("sep b = %s [%d] and sep t = %s [%d]",param->separator_base, strlen(param->separator_base), param->separator_test, strlen(param->separator_test) );*/
+					/*spdlog::info("sep b = %s [%u] and sep t = %s [%u]",param->separator_base, strlen(param->separator_base), param->separator_test, strlen(param->separator_test) );*/
 				} else { /* == 4 characters we must found t and b*/
 					char *resultT = nullptr;
 					resultT = strtok(separatorList2, "t");
@@ -839,7 +839,7 @@ int main(int argc, char **argv) {
 	filenamePNGbase = (char*) malloc(memsizebasefilename);
 	strcpy(filenamePNGbase, inParam.test_filename);
 	strcat(filenamePNGbase, ".base");
-	/*spdlog::info("filenamePNGbase = %s [%d / %d octets]",filenamePNGbase, strlen(filenamePNGbase),memsizebasefilename );*/
+	/*spdlog::info("filenamePNGbase = %s [%u / %u octets]",filenamePNGbase, strlen(filenamePNGbase),memsizebasefilename );*/
 
 	/*----------TEST IMAGE--------*/
 
@@ -863,7 +863,7 @@ int main(int argc, char **argv) {
 	filenamePNGtest = (char*) malloc(memsizetestfilename);
 	strcpy(filenamePNGtest, inParam.test_filename);
 	strcat(filenamePNGtest, ".test");
-	/*spdlog::info("filenamePNGtest = %s [%d / %d octets]",filenamePNGtest, strlen(filenamePNGtest),memsizetestfilename );*/
+	/*spdlog::info("filenamePNGtest = %s [%u / %u octets]",filenamePNGtest, strlen(filenamePNGtest),memsizetestfilename );*/
 
 	/*----------DIFF IMAGE--------*/
 
@@ -947,7 +947,7 @@ int main(int argc, char **argv) {
 	filenamePNGdiff = (char*) malloc(memsizedifffilename);
 	strcpy(filenamePNGdiff, inParam.test_filename);
 	strcat(filenamePNGdiff, ".diff");
-	/*spdlog::info("filenamePNGdiff = %s [%d / %d octets]",filenamePNGdiff, strlen(filenamePNGdiff),memsizedifffilename );*/
+	/*spdlog::info("filenamePNGdiff = %s [%u / %u octets]",filenamePNGdiff, strlen(filenamePNGdiff),memsizedifffilename );*/
 
 	/* Compute pixel diff*/
 	for (it_comp = 0; it_comp < imageDiff->numcomps; it_comp++) {
@@ -1055,11 +1055,11 @@ int main(int argc, char **argv) {
 					sprintf(it_compc, "_%i", (uint32_t)it_comp);
 					strcat(it_compc, ".png");
 					strcat(filenamePNGbase_it_comp, it_compc);
-					/*spdlog::info("filenamePNGbase_it = %s [%d / %d octets]",filenamePNGbase_it_comp, strlen(filenamePNGbase_it_comp),memsizebasefilename );*/
+					/*spdlog::info("filenamePNGbase_it = %s [%u / %u octets]",filenamePNGbase_it_comp, strlen(filenamePNGbase_it_comp),memsizebasefilename );*/
 					strcat(filenamePNGtest_it_comp, it_compc);
-					/*spdlog::info("filenamePNGtest_it = %s [%d / %d octets]",filenamePNGtest_it_comp, strlen(filenamePNGtest_it_comp),memsizetestfilename );*/
+					/*spdlog::info("filenamePNGtest_it = %s [%u / %u octets]",filenamePNGtest_it_comp, strlen(filenamePNGtest_it_comp),memsizetestfilename );*/
 					strcat(filenamePNGdiff_it_comp, it_compc);
-					/*spdlog::info("filenamePNGdiff_it = %s [%d / %d octets]",filenamePNGdiff_it_comp, strlen(filenamePNGdiff_it_comp),memsizedifffilename );*/
+					/*spdlog::info("filenamePNGdiff_it = %s [%u / %u octets]",filenamePNGdiff_it_comp, strlen(filenamePNGdiff_it_comp),memsizedifffilename );*/
 
 					if (imageToPNG(imageBase, filenamePNGbase_it_comp,
 							it_comp) == EXIT_SUCCESS) {

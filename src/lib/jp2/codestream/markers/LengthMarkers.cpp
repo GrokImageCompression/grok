@@ -443,7 +443,7 @@ void PacketLengthMarkers::readNext(uint8_t Iplm) {
 	} else {
 		assert(m_curr_vec);
 		m_curr_vec->push_back(m_packet_len);
-		//GROK_INFO("Packet length: (%d, %d)", Zpl, packet_len);
+		//GROK_INFO("Packet length: (%u, %u)", Zpl, packet_len);
 		m_packet_len = 0;
 	}
 }

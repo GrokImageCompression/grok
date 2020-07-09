@@ -116,7 +116,7 @@ bool T2Decode::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 
 			/*
 			 GROK_INFO(
-			 "packet prg=%d cmptno=%02d rlvlno=%02d prcno=%03d layrno=%02d\n",
+			 "packet prg=%u cmptno=%02d rlvlno=%02d prcno=%03d layrno=%02d\n",
 			 current_pi->poc.prg1, current_pi->compno,
 			 current_pi->resno, current_pi->precno,
 			 current_pi->layno);
@@ -175,7 +175,7 @@ bool T2Decode::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 									- 1;
 				}
 			}
-			//GROK_INFO("T2Decode Packet length: %d", nb_bytes_read);
+			//GROK_INFO("T2Decode Packet length: %u", nb_bytes_read);
 			*p_data_read += nb_bytes_read;
 		}
 		delete[] first_pass_failed;
@@ -190,7 +190,7 @@ bool T2Decode::decode_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuf
 	uint64_t max_length = src_buf->data_len - src_buf->get_global_offset();
 	if (max_length == 0) {
 		GROK_WARN("decode_packet: No data for either packet header\n"
-				"or packet body for packet prg=%d "
+				"or packet body for packet prg=%u "
 				"cmptno=%02d reslvlno=%02d prcno=%03d layrno=%02d",
 		 p_pi->poc.prg1, p_pi->compno,
 		 p_pi->resno, p_pi->precno,
@@ -263,7 +263,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 					| active_src[5]);
 			if (packno != (p_tile->packno % 0x10000)) {
 				GROK_ERROR(
-						"SOP marker packet counter %d does not match expected counter %d",
+						"SOP marker packet counter %u does not match expected counter %u",
 						packno, p_tile->packno);
 				return false;
 			}
@@ -308,7 +308,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 			return false;
 		}
 	}
-	//GROK_INFO("present=%d ", present);
+	//GROK_INFO("present=%u ", present);
 	if (!present) {
 		if (!bio->inalign())
 			return false;
@@ -393,7 +393,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 			/* if cblk not included */
 			if (!included) {
 				cblk->numPassesInPacket = 0;
-				//GROK_INFO("included=%d ", included);
+				//GROK_INFO("included=%u ", included);
 				continue;
 			}
 
@@ -419,7 +419,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 
 				if (K_msbs > band->numbps) {
 					GROK_WARN(
-							"More missing bit planes (%d) than band bit planes (%d).",
+							"More missing bit planes (%u) than band bit planes (%u).",
 							K_msbs, band->numbps);
 					cblk->numbps = band->numbps;
 				} else {
@@ -474,7 +474,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 					if (blockPassesInPacket
 							> (int32_t) max_passes_per_segment) {
 						GROK_WARN(
-								"Number of code block passes (%d) in packet is suspiciously large.",
+								"Number of code block passes (%u) in packet is suspiciously large.",
 								blockPassesInPacket);
 						// ToDO - we are truncating the number of passes at an arbitrary value of
 						// max_passes_per_segment. We should probably either skip the rest of this
@@ -507,7 +507,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 #endif
 				/*
 				 GROK_INFO(
-				 "included=%d numPassesInPacket=%d increment=%d len=%d ",
+				 "included=%u numPassesInPacket=%u increment=%u len=%u ",
 				 included, seg->numPassesInPacket, increment,
 				 seg->newlen);
 				 */
@@ -543,7 +543,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 	}
 
 	auto header_length = (size_t) (header_data - *header_data_start);
-	//GROK_INFO("hdrlen=%d ", header_length);
+	//GROK_INFO("hdrlen=%u ", header_length);
 	//GROK_INFO("packet body\n");
 	*modified_length_ptr -= header_length;
 	*header_data_start += header_length;
@@ -589,7 +589,7 @@ bool T2Decode::read_packet_data(grk_resolution *res, PacketIter *p_pi,
 							"read packet data: segment offset (%u) plus segment length %u\n"
 							"is greater than total length \n"
 							"of all segments (%u) for codeblock "
-							"%d (layer=%d, prec=%d, band=%d, res=%d, comp=%d)."
+							"%u (layer=%u, prec=%u, band=%u, res=%u, comp=%u)."
 							" Truncating packet data.", offset,
 							seg->numBytesInPacket, len, cblkno, p_pi->layno,
 							p_pi->precno, bandno, p_pi->resno, p_pi->compno);
@@ -685,13 +685,13 @@ bool T2Decode::skip_packet_data(grk_resolution *res, PacketIter *p_pi,
 				if (((*p_data_read + seg->numBytesInPacket) < (*p_data_read))
 						|| ((*p_data_read + seg->numBytesInPacket) > max_length)) {
 					GROK_ERROR(
-							"skip: segment too long (%d) with max (%d) for codeblock %d (p=%d, b=%d, r=%d, c=%d)",
+							"skip: segment too long (%u) with max (%u) for codeblock %u (p=%u, b=%u, r=%u, c=%u)",
 							seg->numBytesInPacket, max_length, cblkno,
 							p_pi->precno, bandno, p_pi->resno, p_pi->compno);
 					return false;
 				}
 
-				//GROK_INFO( "skip packet: p_data_read = %d, bytes in packet =  %d ",
+				//GROK_INFO( "skip packet: p_data_read = %u, bytes in packet =  %u ",
 				//		*p_data_read, seg->numBytesInPacket);
 				*(p_data_read) += seg->numBytesInPacket;
 				seg->numpasses += seg->numPassesInPacket;

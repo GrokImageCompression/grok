@@ -931,9 +931,9 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 		}
 		if ((tcp->main_qcd_numStepSizes < 3 * maxTileDecompositions + 1)) {
 			GROK_ERROR("From Main QCD marker, "
-					"number of step sizes (%d) is less than "
+					"number of step sizes (%u) is less than "
 					"3* (tile decompositions) + 1, "
-					"where tile decompositions = %d ",
+					"where tile decompositions = %u ",
 					tcp->main_qcd_numStepSizes, maxTileDecompositions);
 			return false;
 		}
@@ -965,9 +965,9 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 			}
 			if ((qcd_comp->numStepSizes < 3 * maxTileDecompositions + 1)) {
 				GROK_ERROR("From Tile QCD marker, "
-						"number of step sizes (%d) is less than"
+						"number of step sizes (%u) is less than"
 						" 3* (tile decompositions) + 1, "
-						"where tile decompositions = %d ",
+						"where tile decompositions = %u ",
 						qcd_comp->numStepSizes, maxTileDecompositions);
 
 				return false;
@@ -1005,7 +1005,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 	}
 	if (!tileProcessor->init_tile(tileProcessor->m_current_tile_index,
 			codeStream->m_output_image, false)) {
-		GROK_ERROR("Cannot decompress tile %d",
+		GROK_ERROR("Cannot decompress tile %u",
 				tileProcessor->m_current_tile_index);
 		return false;
 	}
@@ -1036,8 +1036,8 @@ bool j2k_decompress_tile(CodeStream *codeStream, uint16_t tile_index,
 	   return false;
 	}
 	if (tile_index != tileProcessor->m_current_tile_index){
-		   GROK_ERROR("j2k_decompress_tile: desired tile index %d "
-				   "does not match current tile index %d.",
+		   GROK_ERROR("j2k_decompress_tile: desired tile index %u "
+				   "does not match current tile index %u.",
 				   tile_index,
 				   tileProcessor->m_current_tile_index);
 		return false;
@@ -1220,7 +1220,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 					tile_compositing_buff, all_tile_data_len);
 			if (!new_compositing_buff) {
 				grk_free(tile_compositing_buff);
-				GROK_ERROR("Not enough memory to decompress tile %d/%d",
+				GROK_ERROR("Not enough memory to decompress tile %u/%u",
 						current_tile_no + 1, num_tiles_to_decode);
 				return false;
 			}
@@ -1232,7 +1232,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 			if (!j2k_decompress_tile(codeStream, current_tile_no,
 					tile_compositing_buff, all_tile_data_len, stream)) {
 				grk_free(tile_compositing_buff);
-				GROK_ERROR("Failed to decompress tile %d/%d",
+				GROK_ERROR("Failed to decompress tile %u/%u",
 						current_tile_no + 1, num_tiles_to_decode);
 				return false;
 			}
@@ -1241,7 +1241,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 			if (tileno < num_tiles_to_decode - 1) {
 				GROK_ERROR("Stream too short, expected SOT");
 				grk_free(tile_compositing_buff);
-				GROK_ERROR("Failed to decompress tile %d/%d",
+				GROK_ERROR("Failed to decompress tile %u/%u",
 						current_tile_no + 1, num_tiles_to_decode);
 				return false;
 			}
@@ -1266,7 +1266,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 		GROK_ERROR("No tiles were decoded. Exiting");
 		return false;
 	} else if (num_tiles_decoded < num_tiles_to_decode) {
-		GROK_WARN("Only %d out of %d tiles were decoded", num_tiles_decoded,
+		GROK_WARN("Only %u out of %u tiles were decoded", num_tiles_decoded,
 				num_tiles_to_decode);
 	}
 	return true;
@@ -1327,7 +1327,7 @@ static bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream) 
 	if (codeStream->m_cp.tlm_markers){
 		codeStream->m_cp.tlm_markers->getInit();
 	    auto tl = codeStream->m_cp.tlm_markers->getNext();
-	    //GROK_INFO("TLM : index: %d, length : %d", tl.tile_number, tl.length);
+	    //GROK_INFO("TLM : index: %u, length : %u", tl.tile_number, tl.length);
 	    uint16_t tileNumber = 0;
 	    while (stream->get_number_byte_left() != 0 &&
 	    		tileNumber != codeStream->m_tile_ind_to_dec){
@@ -1363,7 +1363,7 @@ static bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream) 
 		}
 	} else {
 		GROK_ERROR(
-				"Tile read, decoded and updated is not the desired one (%d vs %d).",
+				"Tile read, decoded and updated is not the desired one (%u vs %u).",
 				current_tile_index + 1, tile_index_to_decode + 1);
 		goto cleanup;
 	}
@@ -1426,7 +1426,7 @@ bool j2k_get_tile(CodeStream *codeStream, BufferedStream *stream, grk_image *p_i
 
 	if (tile_index >= codeStream->m_cp.t_grid_width * codeStream->m_cp.t_grid_height) {
 		GROK_ERROR(
-				"Tile index provided by the user is incorrect %d (max = %d) ",
+				"Tile index provided by the user is incorrect %u (max = %u) ",
 				tile_index,
 				(codeStream->m_cp.t_grid_width * codeStream->m_cp.t_grid_height) - 1);
 		return false;
@@ -1467,7 +1467,7 @@ bool j2k_get_tile(CodeStream *codeStream, BufferedStream *stream, grk_image *p_i
 		p_image->y1 = (uint32_t) overlap_rect.y1;
 	} else {
 		GROK_WARN(
-				"Decode region <%d,%d,%d,%d> does not overlap requested tile %d. Ignoring.",
+				"Decode region <%u,%u,%u,%u> does not overlap requested tile %u. Ignoring.",
 				original_image_rect.x0, original_image_rect.y0,
 				original_image_rect.x1, original_image_rect.y1, tile_index);
 	}
@@ -1578,7 +1578,7 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 
 	if ((parameters->numresolution == 0)
 			|| (parameters->numresolution > GRK_J2K_MAXRLVLS)) {
-		GROK_ERROR("Invalid number of resolutions : %d not in range [1,%d]",
+		GROK_ERROR("Invalid number of resolutions : %u not in range [1,%u]",
 				parameters->numresolution, GRK_J2K_MAXRLVLS);
 		return false;
 	}
@@ -1716,7 +1716,7 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 			}
 			if (cp->comment_len[i] > GRK_MAX_COMMENT_LENGTH) {
 				GROK_WARN(
-						"Comment length %s is greater than maximum comment length %d. Ignoring",
+						"Comment length %s is greater than maximum comment length %u. Ignoring",
 						cp->comment_len[i], GRK_MAX_COMMENT_LENGTH);
 				continue;
 			}
@@ -1755,7 +1755,7 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 	if (parameters->tile_size_on) {
 		// avoid divide by zero
 		if (cp->t_width == 0 || cp->t_height == 0) {
-			GROK_ERROR("Invalid tile dimensions (%d,%d)",cp->t_width, cp->t_height);
+			GROK_ERROR("Invalid tile dimensions (%u,%u)",cp->t_width, cp->t_height);
 			return false;
 		}
 		cp->t_grid_width = ceildiv<uint32_t>((image->x1 - cp->tx0),
@@ -1976,7 +1976,7 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 						}
 					}
 					p++;
-					/*printf("\nsize precinct for level %d : %d,%d\n", it_res,tccp->prcw[it_res], tccp->prch[it_res]); */
+					/*printf("\nsize precinct for level %u : %u,%u\n", it_res,tccp->prcw[it_res], tccp->prch[it_res]); */
 				} /*end for*/
 			} else {
 				for (j = 0; j < tccp->numresolutions; j++) {
@@ -2004,7 +2004,7 @@ bool j2k_compress(CodeStream *codeStream, grk_plugin_tile *tile,
 	uint32_t nb_tiles = (uint32_t) codeStream->m_cp.t_grid_height
 			* codeStream->m_cp.t_grid_width;
 	if (nb_tiles > max_num_tiles) {
-		GROK_ERROR("Number of tiles %d is greater than %d max tiles "
+		GROK_ERROR("Number of tiles %u is greater than %u max tiles "
 				"allowed by the standard.", nb_tiles, max_num_tiles);
 		return false;
 	}
@@ -2288,7 +2288,7 @@ static bool j2k_compress_validation(CodeStream *codeStream, BufferedStream *stre
 	/* ISO 15444-1:2004 states between 1 & 33 (decomposition levels between 0 -> 32) */
 	if ((codeStream->m_cp.tcps->tccps->numresolutions == 0)
 			|| (codeStream->m_cp.tcps->tccps->numresolutions > GRK_J2K_MAXRLVLS)) {
-		GROK_ERROR("Invalid number of resolutions : %d not in range [1,%d]",
+		GROK_ERROR("Invalid number of resolutions : %u not in range [1,%u]",
 				codeStream->m_cp.tcps->tccps->numresolutions, GRK_J2K_MAXRLVLS);
 		return false;
 	}
@@ -2535,7 +2535,7 @@ static bool j2k_get_end_header(CodeStream *codeStream, BufferedStream *stream) {
 bool j2k_compress_tile(CodeStream *codeStream, uint16_t tile_index, uint8_t *p_data,
 		uint64_t uncompressed_data_size, BufferedStream *stream) {
 	if (!j2k_pre_write_tile(codeStream, tile_index)) {
-		GROK_ERROR("Error while j2k_pre_write_tile with tile index = %d",
+		GROK_ERROR("Error while j2k_pre_write_tile with tile index = %u",
 				tile_index);
 		return false;
 	} else {
@@ -2556,7 +2556,7 @@ bool j2k_compress_tile(CodeStream *codeStream, uint16_t tile_index, uint8_t *p_d
 			return false;
 		}
 		if (!j2k_post_write_tile(codeStream, stream)) {
-			GROK_ERROR("Error while j2k_post_write_tile with tile index = %d",
+			GROK_ERROR("Error while j2k_post_write_tile with tile index = %u",
 					tile_index);
 			return false;
 		}

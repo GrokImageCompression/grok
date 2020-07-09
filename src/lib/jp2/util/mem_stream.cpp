@@ -317,10 +317,10 @@ static void mem_map_free(void *user_data) {
 		buf_info *buffer_info = (buf_info*) user_data;
 		int32_t rc = unmap(buffer_info->buf, buffer_info->len);
 		if (rc)
-			GROK_ERROR("Unmapping memory mapped file failed with error %d", rc);
+			GROK_ERROR("Unmapping memory mapped file failed with error %u", rc);
 		rc = close_fd(buffer_info->fd);
 		if (rc)
-			GROK_ERROR("Closing memory mapped file failed with error %d", rc);
+			GROK_ERROR("Closing memory mapped file failed with error %u", rc);
 		delete buffer_info;
 	}
 }

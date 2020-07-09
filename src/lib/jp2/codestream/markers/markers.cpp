@@ -338,7 +338,7 @@ bool j2k_write_com(CodeStream *codeStream, BufferedStream *stream) {
 		}
 		if (comment_size > GRK_MAX_COMMENT_LENGTH) {
 			GROK_WARN(
-					"Comment length %s is greater than maximum comment length %d. Ignoring",
+					"Comment length %s is greater than maximum comment length %u. Ignoring",
 					comment_size, GRK_MAX_COMMENT_LENGTH);
 			continue;
 		}
@@ -380,7 +380,7 @@ bool j2k_read_com(CodeStream *codeStream, uint8_t *p_header_data,
 		return true;
 	}
 	if (codeStream->m_cp.num_comments == GRK_NUM_COMMENTS_SUPPORTED) {
-		GROK_WARN("j2k_read_com: Only %d comments are supported. Ignoring",
+		GROK_WARN("j2k_read_com: Only %u comments are supported. Ignoring",
 		GRK_NUM_COMMENTS_SUPPORTED);
 		return true;
 	}
@@ -480,7 +480,7 @@ bool j2k_read_cod(CodeStream *codeStream, uint8_t *p_header_data,
 	/* Only one COD per tile */
 	if (tcp->cod) {
 		GROK_WARN(
-				"Multiple COD markers detected for tile part %d. The JPEG 2000 standard does not allow more than one COD marker per tile.",
+				"Multiple COD markers detected for tile part %u. The JPEG 2000 standard does not allow more than one COD marker per tile.",
 				tcp->m_current_tile_part_index);
 	}
 	tcp->cod = true;
@@ -510,7 +510,7 @@ bool j2k_read_cod(CodeStream *codeStream, uint8_t *p_header_data,
 
 	if ((tcp->numlayers < 1U) || (tcp->numlayers > USHRT_MAX)) {
 		GROK_ERROR(
-				"Invalid number of layers in COD marker : %d not in range [1-65535]",
+				"Invalid number of layers in COD marker : %u not in range [1-65535]",
 				tcp->numlayers);
 		return false;
 	}
@@ -524,7 +524,7 @@ bool j2k_read_cod(CodeStream *codeStream, uint8_t *p_header_data,
 
 	grk_read<uint32_t>(p_header_data++, &tcp->mct, 1); /* SGcod (C) */
 	if (tcp->mct > 1) {
-		GROK_ERROR("Invalid MCT value : %d. Should be either 0 or 1", tcp->mct);
+		GROK_ERROR("Invalid MCT value : %u. Should be either 0 or 1", tcp->mct);
 		return false;
 	}
 	header_size = (uint16_t) (header_size - cod_coc_len);
@@ -806,8 +806,8 @@ bool j2k_read_qcc(CodeStream *codeStream, uint8_t *p_header_data,
 	}
 
 	if (comp_no >= codeStream->m_private_image->numcomps) {
-		GROK_ERROR("QCC component: component number: %d must be less than"
-				" total number of components: %d",
+		GROK_ERROR("QCC component: component number: %u must be less than"
+				" total number of components: %u",
 				comp_no, codeStream->m_private_image->numcomps);
 		return false;
 	}
@@ -924,7 +924,7 @@ bool j2k_read_poc(CodeStream *codeStream, uint8_t *p_header_data,
 	current_poc_nb += old_poc_nb;
 
 	if (current_poc_nb >= 32) {
-		GROK_ERROR("Too many POCs %d", current_poc_nb);
+		GROK_ERROR("Too many POCs %u", current_poc_nb);
 		return false;
 	}
 	assert(current_poc_nb < 32);
@@ -1220,7 +1220,7 @@ bool j2k_read_sod(CodeStream *codeStream, BufferedStream *stream) {
 		if (codeStream->m_tileProcessor->tile_part_data_length > bytesLeftInStream) {
 			GROK_WARN("Tile part length %lld greater than "
 					"stream length %lld\n"
-					"(tile: %d, tile part: %d). Tile may be truncated.",
+					"(tile: %u, tile part: %u). Tile may be truncated.",
 					tileProcessor->tile_part_data_length,
 					stream->get_number_byte_left(),
 					tileProcessor->m_current_tile_index,
@@ -1364,13 +1364,13 @@ bool j2k_read_rgn(CodeStream *codeStream, uint8_t *p_header_data,
 	grk_read<uint32_t>(p_header_data++, &roi_sty, 1);
 	if (roi_sty != 0) {
 		GROK_WARN(
-				"RGN marker RS value of %d is not supported by JPEG 2000 Part 1",
+				"RGN marker RS value of %u is not supported by JPEG 2000 Part 1",
 				roi_sty);
 	}
 
 	/* testcase 3635.pdf.asan.77.2930 */
 	if (comp_no >= nb_comp) {
-		GROK_ERROR("bad component number in RGN (%d when there are only %d)",
+		GROK_ERROR("bad component number in RGN (%u when there are only %u)",
 				comp_no, nb_comp);
 		return false;
 	}
@@ -2333,8 +2333,8 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno,
 	grk_read<uint32_t>(current_ptr++, &tccp->numresolutions, 1);
 	++tccp->numresolutions;
 	if (tccp->numresolutions > GRK_J2K_MAXRLVLS) {
-		GROK_ERROR("Number of resolutions %d is greater than"
-				" maximum allowed number %d", tccp->numresolutions,
+		GROK_ERROR("Number of resolutions %u is greater than"
+				" maximum allowed number %u", tccp->numresolutions,
 		GRK_J2K_MAXRLVLS);
 		return false;
 	}
@@ -2348,7 +2348,7 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno,
 
 	/* If user wants to remove more resolutions than the code stream contains, return error */
 	if (cp->m_coding_params.m_dec.m_reduce >= tccp->numresolutions) {
-		GROK_ERROR("Error decoding component %d.\nThe number of resolutions"
+		GROK_ERROR("Error decoding component %u.\nThe number of resolutions"
 				" to remove is higher than the number "
 				"of resolutions of this component\n"
 				"Modify the cp_reduce parameter.\n", compno);
@@ -2374,7 +2374,7 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno,
 	/* SPcoc (H) */
 	tccp->qmfbid = *current_ptr++;
 	if (tccp->qmfbid > 1) {
-		GROK_ERROR("Invalid qmfbid : %d. "
+		GROK_ERROR("Invalid qmfbid : %u. "
 				"Should be either 0 or 1", tccp->qmfbid);
 		return false;
 	}

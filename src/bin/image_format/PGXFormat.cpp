@@ -130,7 +130,7 @@ static grk_image* pgxtoimage(const char *filename,
 
 	if (fseek(f, 0, SEEK_SET))
 		goto cleanup;
-	if (fscanf(f, "PG%31[ \t]%c%c%31[ \t+-]%d%31[ \t]%d%31[ \t]%d", temp,
+	if (fscanf(f, "PG%31[ \t]%c%c%31[ \t+-]%u%31[ \t]%u%31[ \t]%u", temp,
 			&endian1, &endian2, signtmp, &prec, temp, &w, temp, &h) != 9) {
 		spdlog::error(
 				" Failed to read the right number of element from the fscanf() function.");
@@ -282,7 +282,7 @@ static int imagetopgx(grk_image *image, const char *outfile) {
 		uint32_t w = image->comps[compno].w;
 		uint32_t h = image->comps[compno].h;
 
-		fprintf(fdest, "PG ML %c %d %d %d\n", comp->sgnd ? '-' : '+',
+		fprintf(fdest, "PG ML %c %u %u %u\n", comp->sgnd ? '-' : '+',
 				comp->prec, w, h);
 
 		if (comp->prec <= 8)

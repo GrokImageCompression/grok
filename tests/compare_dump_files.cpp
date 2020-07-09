@@ -108,7 +108,7 @@ static int parse_cmdline_cmp(int argc, char **argv,
 				return 1;
 			}
 			strcpy(param->base_filename, baseArg.getValue().c_str());
-			/*printf("param->base_filename = %s [%d / %d]\n", param->base_filename, strlen(param->base_filename), sizemembasefile );*/
+			/*printf("param->base_filename = %s [%u / %u]\n", param->base_filename, strlen(param->base_filename), sizemembasefile );*/
 			index++;
 		}
 
@@ -120,7 +120,7 @@ static int parse_cmdline_cmp(int argc, char **argv,
 				return 1;
 			}
 			strcpy(param->test_filename, testArg.getValue().c_str());
-			/*printf("param->test_filename = %s [%d / %d]\n", param->test_filename, strlen(param->test_filename), sizememtestfile);*/
+			/*printf("param->test_filename = %s [%u / %u]\n", param->test_filename, strlen(param->test_filename), sizememtestfile);*/
 			index++;
 		}
 

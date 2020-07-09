@@ -134,14 +134,14 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 	if (tmp <= max_num_components)
 		image->numcomps = (uint16_t) tmp;
 	else {
-		GROK_ERROR("Error in SIZ marker: number of component is illegal -> %d",
+		GROK_ERROR("Error in SIZ marker: number of component is illegal -> %u",
 				tmp);
 		return false;
 	}
 
 	if (image->numcomps != nb_comp) {
 		GROK_ERROR(
-				"Error in SIZ marker: number of component is not compatible with the remaining number of parameters ( %d vs %d)",
+				"Error in SIZ marker: number of component is not compatible with the remaining number of parameters ( %u vs %u)",
 				image->numcomps, nb_comp);
 		return false;
 	}
@@ -158,7 +158,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 	}
 	/* testcase 2539.pdf.SIGFPE.706.1712 (also 3622.pdf.SIGFPE.706.2916 and 4008.pdf.SIGFPE.706.3345 and maybe more) */
 	if ((cp->t_width == 0U) || (cp->t_height == 0U)) {
-		GROK_ERROR("Error in SIZ marker: invalid tile size (%d, %d)",
+		GROK_ERROR("Error in SIZ marker: invalid tile size (%u, %u)",
 				cp->t_width, cp->t_height);
 		return false;
 	}
@@ -166,16 +166,16 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 	/* testcase issue427-illegal-tile-offset.jp2 */
 	if (cp->tx0 > image->x0 || cp->ty0 > image->y0) {
 		GROK_ERROR(
-				"Error in SIZ marker: tile origin (%d,%d) cannot lie in the region"
-						" to the right and bottom of image origin (%d,%d)",
+				"Error in SIZ marker: tile origin (%u,%u) cannot lie in the region"
+						" to the right and bottom of image origin (%u,%u)",
 				cp->tx0, cp->ty0, image->x0, image->y0);
 		return false;
 	}
 	tx1 = uint_adds(cp->tx0, cp->t_width); /* manage overflow */
 	ty1 = uint_adds(cp->ty0, cp->t_height); /* manage overflow */
 	if (tx1 <= image->x0 || ty1 <= image->y0) {
-		GROK_ERROR("Error in SIZ marker: first tile (%d,%d,%d,%d) must overlap"
-				" image (%d,%d,%d,%d)", cp->tx0, cp->ty0, tx1, ty1, image->x0,
+		GROK_ERROR("Error in SIZ marker: first tile (%u,%u,%u,%u) must overlap"
+				" image (%u,%u,%u,%u)", cp->tx0, cp->ty0, tx1, ty1, image->x0,
 				image->y0, image->x1, image->y1);
 		return false;
 	}
@@ -214,14 +214,14 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		if (img_comp->dx < 1 || img_comp->dx > 255 || img_comp->dy < 1
 				|| img_comp->dy > 255) {
 			GROK_ERROR(
-					"Invalid values for comp = %d : dx=%u dy=%u\n (should be between 1 and 255 according to the JPEG2000 standard)",
+					"Invalid values for comp = %u : dx=%u dy=%u\n (should be between 1 and 255 according to the JPEG2000 standard)",
 					i, img_comp->dx, img_comp->dy);
 			return false;
 		}
 
 		if (img_comp->prec == 0 || img_comp->prec > max_supported_precision) {
 			GROK_ERROR(
-					"Unsupported precision for comp = %d : prec=%u (Grok only supportes precision between 1 and %d)",
+					"Unsupported precision for comp = %u : prec=%u (Grok only supportes precision between 1 and %u)",
 					i, img_comp->prec, max_supported_precision);
 			return false;
 		}
@@ -242,7 +242,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 	}
 	if (cp->t_grid_width * cp->t_grid_height > max_num_tiles) {
 		GROK_ERROR(
-				"Invalid grid of tiles : %u x %u.  JPEG 2000 standard specifies maximum of %d tiles",
+				"Invalid grid of tiles : %u x %u.  JPEG 2000 standard specifies maximum of %u tiles",
 				max_num_tiles, cp->t_grid_width, cp->t_grid_height);
 		return false;
 	}

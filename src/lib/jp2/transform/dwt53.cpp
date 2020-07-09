@@ -134,7 +134,7 @@ namespace grk {
 			auto expected = a[m + p * rw_full];
 			auto actual = before[m + p * rw_full];
 			if (expected != actual) {
-				GRK_INFO("(%d, %d); expected %d, got %d", m, p, expected, actual);
+				GRK_INFO("(%u, %u); expected %u, got %u", m, p, expected, actual);
 			}
 		}
 	}

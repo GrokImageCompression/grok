@@ -65,7 +65,7 @@ static size_t ReadCallback(void* pBuffer, size_t nBytes,
                                void *pUserData)
 {
     MemFile* memFile = (MemFile*)pUserData;
-    //printf("want to read %d bytes at %d\n", (int)memFile->nCurPos, (int)nBytes);
+    //printf("want to read %u bytes at %u\n", (int)memFile->nCurPos, (int)nBytes);
     if (memFile->nCurPos >= memFile->nLength) {
         return 0;
     }
@@ -86,7 +86,7 @@ static size_t ReadCallback(void* pBuffer, size_t nBytes,
 static bool SeekCallback(size_t nBytes, void * pUserData)
 {
     MemFile* memFile = (MemFile*)pUserData;
-    //printf("seek to %d\n", (int)nBytes);
+    //printf("seek to %u\n", (int)nBytes);
     memFile->nCurPos = nBytes;
     return true;
 }

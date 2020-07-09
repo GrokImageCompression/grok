@@ -162,7 +162,7 @@ int main(int argc, char *argv[]) {
 		r = fgets(buffer, sizeof(buffer), f);
 		assert(r);
 		/*fprintf( stderr, "DEBUG: %s", r );*/
-		s = sscanf(r, "JPXDecode/Length  %d/", &len);
+		s = sscanf(r, "JPXDecode/Length  %u/", &len);
 		if (s == 0) {
 			// try again harder
 			const int ret = fseek(f, offsets[i] - 40, SEEK_SET); // 40 is magic number
@@ -172,7 +172,7 @@ int main(int argc, char *argv[]) {
 			const char needle2[] = "/Length";
 			char *s2 = strstr(buffer, needle2);
 			if (s2)
-				s = sscanf(s2, "/Length  %d/", &len);
+				s = sscanf(s2, "/Length  %u/", &len);
 		}
 		if (s == 1) {
 			const int ret = fseek(f, offsets[i], SEEK_SET);
@@ -188,7 +188,7 @@ int main(int argc, char *argv[]) {
 				// now read len bytes into file - this is the jp2 image
 				FILE *jp2;
 				char jp2fn[512];
-				sprintf(jp2fn, "%s.%d.jp2", filename, i);
+				sprintf(jp2fn, "%s.%u.jp2", filename, i);
 				jp2 = fopen(jp2fn, "wb");
 				for (int j = 0; j < len; ++j) {
 					char v = fgetc(f);

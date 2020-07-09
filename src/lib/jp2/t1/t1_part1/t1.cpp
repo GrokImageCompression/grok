@@ -1054,7 +1054,7 @@ bool t1_decode_cblk(t1_info *t1, cblk_dec *cblk, uint32_t orient,
 
 	bpno_plus_one = (int32_t) (roishift + cblk->numbps);
 	if (bpno_plus_one >= (int32_t)k_max_bit_planes) {
-		grk::GROK_ERROR("unsupported number of bit planes: %d > %d",
+		grk::GROK_ERROR("unsupported number of bit planes: %u > %u",
 				bpno_plus_one, k_max_bit_planes);
 		return false;
 	}
@@ -1113,13 +1113,13 @@ bool t1_decode_cblk(t1_info *t1, cblk_dec *cblk, uint32_t orient,
 	if (check_pterm) {
 		if (mqc->bp + 2 < mqc->end) {
 			grk::GROK_WARN(
-					"PTERM check failure: %d remaining bytes in code block (%d used / %d)",
+					"PTERM check failure: %u remaining bytes in code block (%u used / %u)",
 					(int) (mqc->end - mqc->bp) - 2,
 					(int) (mqc->bp - mqc->start),
 					(int) (mqc->end - mqc->start));
 		} else if (mqc->end_of_byte_stream_counter > 2) {
 			grk::GROK_WARN(
-					"PTERM check failure: %d synthesized 0xFF markers read",
+					"PTERM check failure: %u synthesized 0xFF markers read",
 					mqc->end_of_byte_stream_counter);
 		}
 	}

@@ -75,13 +75,13 @@ static int readheader(FILE *ppm, int *X, int *Y, int *bpp) {
 	/* skip comments */
 	while (fgets(buffer, sizeof(buffer), ppm) && *buffer == '#') {
 	}
-	n = sscanf(buffer, "%d %d", X, Y);
+	n = sscanf(buffer, "%u %u", X, Y);
 	if (n != 2)
 		return 0;
 	line = fgets(buffer, sizeof(buffer), ppm);
 	if (!line)
 		return 0;
-	n = sscanf(buffer, "%d", bpp);
+	n = sscanf(buffer, "%u", bpp);
 	if (n != 1)
 		return 0;
 	if (*bpp != 255)
@@ -111,8 +111,8 @@ static int writeoutput(const char *fn, FILE *ppm, int X, int Y, int bpp) {
 			goto cleanup;
 		/* write header */
 		fprintf(outf[i], "P5\n");
-		fprintf(outf[i], "%d %d\n", X, Y);
-		fprintf(outf[i], "%d\n", bpp);
+		fprintf(outf[i], "%u %u\n", X, Y);
+		fprintf(outf[i], "%u\n", bpp);
 	}
 
 	/* write pixel data */

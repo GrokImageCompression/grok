@@ -99,7 +99,7 @@ for i in range(len(ref_lines)):
     else:
         display = '%s, %s iterations, %s threads, %s' % \
             (filename_ref, num_iterations_ref, num_threads_ref, command_ref)
-    display += ': ref_time %d ms, new_time %d ms' % (time_ms_ref, time_ms_new)
+    display += ': ref_time %u ms, new_time %u ms' % (time_ms_ref, time_ms_new)
     var_pct = 100.0 * (time_ms_new - time_ms_ref) / time_ms_ref
     if abs(var_pct) <= noise_threshold:
         display += ', (stable) %0.1f %%' % var_pct

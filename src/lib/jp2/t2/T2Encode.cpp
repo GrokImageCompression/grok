@@ -128,7 +128,7 @@ bool T2Encode::encode_packets_simulate(uint16_t tile_no, uint32_t max_layers,
 
 	tileProcessor->m_packetTracker.clear();
 #ifdef DEBUG_ENCODE_PACKETS
-    GROK_INFO("simulate encode packets for layers below layno %d", max_layers);
+    GROK_INFO("simulate encode packets for layers below layno %u", max_layers);
 #endif
 	for (uint32_t compno = 0; compno < max_comp; ++compno) {
 		uint64_t comp_len = 0;
@@ -190,7 +190,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 	tileProcessor->m_packetTracker.packet_encoded(compno, resno, precno, layno);
 
 #ifdef DEBUG_ENCODE_PACKETS
-    GROK_INFO("encode packet compono=%d, resno=%d, precno=%d, layno=%d",
+    GROK_INFO("encode packet compono=%u, resno=%u, precno=%u, layno=%u",
              compno, resno, precno, layno);
 #endif
 
@@ -233,7 +233,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 				assert(band->numbps >= cblk->numbps);
 				if (band->numbps < cblk->numbps) {
 					GROK_WARN(
-							"Code block %d bps greater than band bps. Skipping.",
+							"Code block %u bps greater than band bps. Skipping.",
 							cblkno);
 				} else {
 					prc->imsbtree->setvalue(cblkno,
@@ -444,7 +444,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 						// compare number of passes
 						auto roundTripCblk = roundTripPrec->dec + cblkno;
 						if (roundTripCblk->numPassesInPacket != layer->numpasses) {
-							printf("encode_packet: round trip layer numpasses %d differs from original num passes %d at layer %d, component %d, band %d, precinct %d, resolution %d\n",
+							printf("encode_packet: round trip layer numpasses %u differs from original num passes %u at layer %u, component %u, band %u, precinct %u, resolution %u\n",
 								roundTripCblk->numPassesInPacket,
 								layer->numpasses,
 								layno,
@@ -456,7 +456,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 						}
 						// compare number of bit planes
 						if (roundTripCblk->numbps != originalCblk->numbps) {
-							printf("encode_packet: round trip numbps %d differs from original %d\n", roundTripCblk->numbps, originalCblk->numbps);
+							printf("encode_packet: round trip numbps %u differs from original %u\n", roundTripCblk->numbps, originalCblk->numbps);
 						}
 
 						// compare number of length bits
@@ -466,7 +466,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 
 						// compare inclusion
 						if (roundTripCblk->included != originalCblk->included) {
-							printf("encode_packet: round trip inclusion %d differs from original inclusion %d at layer %d, component %d, band %d, precinct %d, resolution %d\n",
+							printf("encode_packet: round trip inclusion %u differs from original inclusion %u at layer %u, component %u, band %u, precinct %u, resolution %u\n",
 								roundTripCblk->included,
 								originalCblk->included,
 								layno,
@@ -478,7 +478,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 
 						// compare lengths
 						if (roundTripCblk->packet_length_info.size() != originalCblk->packet_length_info.size()) {
-							printf("encode_packet: round trip length size %d differs from original %d at layer %d, component %d, band %d, precinct %d, resolution %d\n",
+							printf("encode_packet: round trip length size %u differs from original %u at layer %u, component %u, band %u, precinct %u, resolution %u\n",
 								(uint32_t)roundTripCblk->packet_length_info.size(),
 								(uint32_t)originalCblk->packet_length_info.size(),
 								layno,
@@ -491,7 +491,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 								auto roundTrip = roundTripCblk->packet_length_info.operator[](i);
 								auto original = originalCblk->packet_length_info.operator[](i);
 								if (!(roundTrip ==original)) {
-									printf("encode_packet: round trip length size %d differs from original %d at layer %d, component %d, band %d, precinct %d, resolution %d\n",
+									printf("encode_packet: round trip length size %u differs from original %u at layer %u, component %u, band %u, precinct %u, resolution %u\n",
 										roundTrip.len,
 										original.len,
 										layno,
@@ -545,7 +545,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 								auto roundTripCblk = roundTripPrec->dec + cblkno;
 								uint16_t roundTripTotalSegLen = min_buf_vec_get_len(&roundTripCblk->seg_buffers);
 								if (roundTripTotalSegLen != originalCumulativeLayerLength) {
-									printf("encode_packet: layer %d: round trip segment length %d differs from original %d\n", layno, roundTripTotalSegLen, originalCumulativeLayerLength);
+									printf("encode_packet: layer %u: round trip segment length %u differs from original %u\n", layno, roundTripTotalSegLen, originalCumulativeLayerLength);
 								}
 
 								// compare individual data points
@@ -563,7 +563,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 									}
 									for (uint32_t i = 0; i < originalCumulativeLayerLength; ++i) {
 										if (roundTripData[i] != originalCblk->data[i]) {
-											printf("encode_packet: layer %d: round trip data %x differs from original %x\n", layno, roundTripData[i], originalCblk->data[i]);
+											printf("encode_packet: layer %u: round trip data %x differs from original %x\n", layno, roundTripData[i], originalCblk->data[i]);
 										}
 									}
 									if (needs_delete)
@@ -603,7 +603,7 @@ bool T2Encode::encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 	tileProcessor->m_packetTracker.packet_encoded(compno, resno, precno, layno);
 
 #ifdef DEBUG_ENCODE_PACKETS
-    GROK_INFO("simulate encode packet compono=%d, resno=%d, precno=%d, layno=%d",
+    GROK_INFO("simulate encode packet compono=%u, resno=%u, precno=%u, layno=%u",
              compno, resno, precno, layno);
 #endif
 
@@ -630,7 +630,7 @@ bool T2Encode::encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 				cblk->numPassesInPacket = 0;
 				if (band->numbps < cblk->numbps) {
 					GROK_WARN(
-							"Code block %d bps greater than band bps. Skipping.",
+							"Code block %u bps greater than band bps. Skipping.",
 							cblkno);
 				} else {
 					prc->imsbtree->setvalue(cblkno,

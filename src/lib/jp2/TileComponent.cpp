@@ -182,7 +182,7 @@ bool TileComponent::init(bool isEncoder,
 	auto y0 = ceildiv<uint32_t>(tile->y0, image_comp->dy);
 	auto x1 = ceildiv<uint32_t>(tile->x1, image_comp->dx);
 	auto y1 = ceildiv<uint32_t>(tile->y1, image_comp->dy);
-	/*fprintf(stderr, "\tTile compo border = %d,%d,%d,%d\n", X0(), Y0(),x1,y1);*/
+	/*fprintf(stderr, "\tTile compo border = %u,%u,%u,%u\n", X0(), Y0(),x1,y1);*/
 
 	numresolutions = m_tccp->numresolutions;
 	if (numresolutions < cp->m_coding_params.m_dec.m_reduce) {
@@ -204,11 +204,11 @@ bool TileComponent::init(bool isEncoder,
 		numAllocatedResolutions = numresolutions;
 	}
 	leveno = numresolutions;
-	/*fprintf(stderr, "\tleveno=%d\n",leveno);*/
+	/*fprintf(stderr, "\tleveno=%u\n",leveno);*/
 
 	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
-		/*fprintf(stderr, "\t\tresno = %d/%d\n", resno, numresolutions);*/
+		/*fprintf(stderr, "\t\tresno = %u/%u\n", resno, numresolutions);*/
 		uint32_t tlcbgxstart, tlcbgystart;
 		uint32_t cbgwidthexpn, cbgheightexpn;
 		uint32_t cblkwidthexpn, cblkheightexpn;
@@ -220,28 +220,28 @@ bool TileComponent::init(bool isEncoder,
 		res->y0 = uint_ceildivpow2(y0, leveno);
 		res->x1 = uint_ceildivpow2(x1, leveno);
 		res->y1 = uint_ceildivpow2(y1, leveno);
-		/*fprintf(stderr, "\t\t\tres_x0= %d, res_y0 =%d, res_x1=%d, res_y1=%d\n", res->x0, res->y0, res->x1, res->y1);*/
+		/*fprintf(stderr, "\t\t\tres_x0= %u, res_y0 =%u, res_x1=%u, res_y1=%u\n", res->x0, res->y0, res->x1, res->y1);*/
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
 		pdx = m_tccp->prcw[resno];
 		pdy = m_tccp->prch[resno];
-		/*fprintf(stderr, "\t\t\tpdx=%d, pdy=%d\n", pdx, pdy);*/
+		/*fprintf(stderr, "\t\t\tpdx=%u, pdy=%u\n", pdx, pdy);*/
 		/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
 		uint32_t tprc_x_start = uint_floordivpow2(res->x0, pdx) << pdx;
 		uint32_t tprc_y_start = uint_floordivpow2(res->y0, pdy) << pdy;
 		uint64_t temp = (uint64_t)uint_ceildivpow2(res->x1, pdx) << pdx;
 		if (temp > UINT_MAX){
-			GROK_ERROR("Resolution x1 value %d must be less than 2^32", temp);
+			GROK_ERROR("Resolution x1 value %u must be less than 2^32", temp);
 			return false;
 		}
 		uint32_t br_prc_x_end = (uint32_t)temp;
 		temp = (uint64_t)uint_ceildivpow2(res->y1, pdy) << pdy;
 		if (temp > UINT_MAX){
-			GROK_ERROR("Resolution y1 value %d must be less than 2^32", temp);
+			GROK_ERROR("Resolution y1 value %u must be less than 2^32", temp);
 			return false;
 		}
 		uint32_t br_prc_y_end = (uint32_t)temp;
 
-		/*fprintf(stderr, "\t\t\tprc_x_start=%d, prc_y_start=%d, br_prc_x_end=%d, br_prc_y_end=%d \n", tprc_x_start, tprc_y_start, br_prc_x_end ,br_prc_y_end );*/
+		/*fprintf(stderr, "\t\t\tprc_x_start=%u, prc_y_start=%u, br_prc_x_end=%u, br_prc_y_end=%u \n", tprc_x_start, tprc_y_start, br_prc_x_end ,br_prc_y_end );*/
 
 		res->pw =
 				(res->x0 == res->x1) ?
@@ -249,7 +249,7 @@ bool TileComponent::init(bool isEncoder,
 		res->ph =
 				(res->y0 == res->y1) ?
 						0 : ((br_prc_y_end - tprc_y_start) >> pdy);
-		/*fprintf(stderr, "\t\t\tres_pw=%d, res_ph=%d\n", res->pw, res->ph );*/
+		/*fprintf(stderr, "\t\t\tres_pw=%u, res_ph=%u\n", res->pw, res->ph );*/
 
 		if (mult_will_overflow(res->pw, res->ph)) {
 			GROK_ERROR(
@@ -284,7 +284,7 @@ bool TileComponent::init(bool isEncoder,
 		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
 			auto band = res->bands + bandno;
 
-			/*fprintf(stderr, "\t\t\tband_no=%d/%d\n", bandno, res->numbands );*/
+			/*fprintf(stderr, "\t\t\tband_no=%u/%u\n", bandno, res->numbands );*/
 
 			if (resno == 0) {
 				band->bandno = 0;
@@ -342,11 +342,11 @@ bool TileComponent::init(bool isEncoder,
 						+ (uint32_t)(precno / res->pw) * (1 << cbgheightexpn);
 				uint32_t cbgxend = cbgxstart + (1 << cbgwidthexpn);
 				uint32_t cbgyend = cbgystart + (1 << cbgheightexpn);
-				/*fprintf(stderr, "\t precno=%d; bandno=%d, resno=%d; compno=%d\n", precno, bandno , resno, compno);*/
-				/*fprintf(stderr, "\t tlcbgxstart(=%d) + (precno(=%d) percent res->pw(=%d)) * (1 << cbgwidthexpn(=%d)) \n",tlcbgxstart,precno,res->pw,cbgwidthexpn);*/
+				/*fprintf(stderr, "\t precno=%u; bandno=%u, resno=%u; compno=%u\n", precno, bandno , resno, compno);*/
+				/*fprintf(stderr, "\t tlcbgxstart(=%u) + (precno(=%u) percent res->pw(=%u)) * (1 << cbgwidthexpn(=%u)) \n",tlcbgxstart,precno,res->pw,cbgwidthexpn);*/
 
 				/* precinct size (global) */
-				/*fprintf(stderr, "\t cbgxstart=%d, band->x0 = %d \n",cbgxstart, band->x0);*/
+				/*fprintf(stderr, "\t cbgxstart=%u, band->x0 = %u \n",cbgxstart, band->x0);*/
 
 				current_precinct->x0 = std::max<uint32_t>(cbgxstart,
 						band->x0);
@@ -356,20 +356,20 @@ bool TileComponent::init(bool isEncoder,
 						band->x1);
 				current_precinct->y1 = std::min<uint32_t>(cbgyend,
 						band->y1);
-				/*fprintf(stderr, "\t prc_x0=%d; prc_y0=%d, prc_x1=%d; prc_y1=%d\n",current_precinct->x0, current_precinct->y0 ,current_precinct->x1, current_precinct->y1);*/
+				/*fprintf(stderr, "\t prc_x0=%u; prc_y0=%u, prc_x1=%u; prc_y1=%u\n",current_precinct->x0, current_precinct->y0 ,current_precinct->x1, current_precinct->y1);*/
 
 				tlcblkxstart = uint_floordivpow2(current_precinct->x0,
 						cblkwidthexpn) << cblkwidthexpn;
-				/*fprintf(stderr, "\t tlcblkxstart =%d\n",tlcblkxstart );*/
+				/*fprintf(stderr, "\t tlcblkxstart =%u\n",tlcblkxstart );*/
 				tlcblkystart = uint_floordivpow2(current_precinct->y0,
 						cblkheightexpn) << cblkheightexpn;
-				/*fprintf(stderr, "\t tlcblkystart =%d\n",tlcblkystart );*/
+				/*fprintf(stderr, "\t tlcblkystart =%u\n",tlcblkystart );*/
 				brcblkxend = uint_ceildivpow2(current_precinct->x1,
 						cblkwidthexpn) << cblkwidthexpn;
-				/*fprintf(stderr, "\t brcblkxend =%d\n",brcblkxend );*/
+				/*fprintf(stderr, "\t brcblkxend =%u\n",brcblkxend );*/
 				brcblkyend = uint_ceildivpow2(current_precinct->y1,
 						cblkheightexpn) << cblkheightexpn;
-				/*fprintf(stderr, "\t brcblkyend =%d\n",brcblkyend );*/
+				/*fprintf(stderr, "\t brcblkyend =%u\n",brcblkyend );*/
 				current_precinct->cw = ((brcblkxend - tlcblkxstart)
 						>> cblkwidthexpn);
 				current_precinct->ch = ((brcblkyend - tlcblkystart)
@@ -377,7 +377,7 @@ bool TileComponent::init(bool isEncoder,
 
 				nb_code_blocks = (uint64_t) current_precinct->cw
 						* current_precinct->ch;
-				/*fprintf(stderr, "\t\t\t\t precinct_cw = %d x recinct_ch = %d\n",current_precinct->cw, current_precinct->ch);      */
+				/*fprintf(stderr, "\t\t\t\t precinct_cw = %u x recinct_ch = %u\n",current_precinct->cw, current_precinct->ch);      */
 				if (nb_code_blocks > 0) {
 					if (isEncoder){
 						if (!current_precinct->enc){

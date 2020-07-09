@@ -161,7 +161,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 
 	/* testcase 2.pdf.SIGFPE.706.1112 */
 	if (tile_number >= cp->t_grid_width * cp->t_grid_height) {
-		GROK_ERROR("Invalid tile number %d", tile_number);
+		GROK_ERROR("Invalid tile number %u", tile_number);
 		return false;
 	}
 
@@ -176,8 +176,8 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	/* ISO 15444-1 A.4.2 Start of tile-part (SOT) mandates that tile parts */
 	/* should appear in increasing order. */
 	if (tcp->m_current_tile_part_index + 1 != (int32_t) current_part) {
-		GROK_ERROR("Invalid tile part index for tile number %d. "
-				"Got %d, expected %d", tile_number, current_part,
+		GROK_ERROR("Invalid tile part index for tile number %u. "
+				"Got %u, expected %u", tile_number, current_part,
 				tcp->m_current_tile_part_index + 1);
 		return false;
 	}
@@ -185,10 +185,10 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	/* PSot should be equal to zero or >=14 or <= 2^32-1 */
 	if ((tot_len != 0) && (tot_len < 14)) {
 		if (tot_len == sot_marker_segment_len) {
-			GROK_WARN("Empty SOT marker detected: Psot=%d.", tot_len);
+			GROK_WARN("Empty SOT marker detected: Psot=%u.", tot_len);
 		} else {
 			GROK_ERROR(
-					"Psot value is not correct regards to the JPEG2000 norm: %d.",
+					"Psot value is not correct regards to the JPEG2000 norm: %u.",
 					tot_len);
 			return false;
 		}
@@ -206,8 +206,8 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	if (tcp->m_nb_tile_parts != 0 && current_part >= tcp->m_nb_tile_parts) {
 		/* Fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=2851 */
 		GROK_ERROR(
-				"Current tile part number (%d) read from SOT marker is greater\n than total "
-						"number of tile-parts (%d).", current_part,
+				"Current tile part number (%u) read from SOT marker is greater\n than total "
+						"number of tile-parts (%u).", current_part,
 				tcp->m_nb_tile_parts);
 		codeStream->m_decoder.m_last_tile_part = 1;
 		return false;
@@ -223,8 +223,8 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 		if (tcp->m_nb_tile_parts) {
 			if (current_part >= tcp->m_nb_tile_parts) {
 				GROK_ERROR(
-						"In SOT marker, TPSot (%d) is not valid regards to the current "
-								"number of tile-part (%d), giving up",
+						"In SOT marker, TPSot (%u) is not valid regards to the current "
+								"number of tile-part (%u), giving up",
 						current_part, tcp->m_nb_tile_parts);
 				codeStream->m_decoder.m_last_tile_part = 1;
 				return false;
@@ -233,8 +233,8 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 		if (current_part >= num_parts) {
 			/* testcase 451.pdf.SIGSEGV.ce9.3723 */
 			GROK_ERROR(
-					"In SOT marker, TPSot (%d) is not valid regards to the current "
-							"number of tile-part (header) (%d), giving up",
+					"In SOT marker, TPSot (%u) is not valid regards to the current "
+							"number of tile-part (header) (%u), giving up",
 					current_part, num_parts);
 			codeStream->m_decoder.m_last_tile_part = 1;
 			return false;

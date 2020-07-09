@@ -168,12 +168,12 @@ bool TileProcessor::set_decompress_area(CodeStream *codeStream, grk_image *outpu
 
 	/* Left */
 	if (start_x > image->x1) {
-		GROK_ERROR("Left position of the decoded area (region_x0=%d)"
-				" is outside the image area (Xsiz=%d).", start_x, image->x1);
+		GROK_ERROR("Left position of the decoded area (region_x0=%u)"
+				" is outside the image area (Xsiz=%u).", start_x, image->x1);
 		return false;
 	} else if (start_x < image->x0) {
-		GROK_WARN("Left position of the decoded area (region_x0=%d)"
-				" is outside the image area (XOsiz=%d).", start_x, image->x0);
+		GROK_WARN("Left position of the decoded area (region_x0=%u)"
+				" is outside the image area (XOsiz=%u).", start_x, image->x0);
 		decoder->m_start_tile_x_index = 0;
 		output_image->x0 = image->x0;
 	} else {
@@ -183,12 +183,12 @@ bool TileProcessor::set_decompress_area(CodeStream *codeStream, grk_image *outpu
 
 	/* Up */
 	if (start_y > image->y1) {
-		GROK_ERROR("Up position of the decoded area (region_y0=%d)"
-				" is outside the image area (Ysiz=%d).", start_y, image->y1);
+		GROK_ERROR("Up position of the decoded area (region_y0=%u)"
+				" is outside the image area (Ysiz=%u).", start_y, image->y1);
 		return false;
 	} else if (start_y < image->y0) {
-		GROK_WARN("Up position of the decoded area (region_y0=%d)"
-				" is outside the image area (YOsiz=%d).", start_y, image->y0);
+		GROK_WARN("Up position of the decoded area (region_y0=%u)"
+				" is outside the image area (YOsiz=%u).", start_y, image->y0);
 		decoder->m_start_tile_y_index = 0;
 		output_image->y0 = image->y0;
 	} else {
@@ -200,12 +200,12 @@ bool TileProcessor::set_decompress_area(CodeStream *codeStream, grk_image *outpu
 	assert(end_x > 0);
 	assert(end_y > 0);
 	if (end_x < image->x0) {
-		GROK_ERROR("Right position of the decoded area (region_x1=%d)"
-				" is outside the image area (XOsiz=%d).", end_x, image->x0);
+		GROK_ERROR("Right position of the decoded area (region_x1=%u)"
+				" is outside the image area (XOsiz=%u).", end_x, image->x0);
 		return false;
 	} else if (end_x > image->x1) {
-		GROK_WARN("Right position of the decoded area (region_x1=%d)"
-				" is outside the image area (Xsiz=%d).", end_x, image->x1);
+		GROK_WARN("Right position of the decoded area (region_x1=%u)"
+				" is outside the image area (Xsiz=%u).", end_x, image->x1);
 		decoder->m_end_tile_x_index = cp->t_grid_width;
 		output_image->x1 = image->x1;
 	} else {
@@ -220,13 +220,13 @@ bool TileProcessor::set_decompress_area(CodeStream *codeStream, grk_image *outpu
 
 	/* Bottom */
 	if (end_y < image->y0) {
-		GROK_ERROR("Bottom position of the decoded area (region_y1=%d)"
-				" is outside the image area (YOsiz=%d).", end_y, image->y0);
+		GROK_ERROR("Bottom position of the decoded area (region_y1=%u)"
+				" is outside the image area (YOsiz=%u).", end_y, image->y0);
 		return false;
 	}
 	if (end_y > image->y1) {
-		GROK_WARN("Bottom position of the decoded area (region_y1=%d)"
-				" is outside the image area (Ysiz=%d).", end_y, image->y1);
+		GROK_WARN("Bottom position of the decoded area (region_y1=%u)"
+				" is outside the image area (Ysiz=%u).", end_y, image->y1);
 		decoder->m_end_tile_y_index = cp->t_grid_height;
 		output_image->y1 = image->y1;
 	} else {
@@ -244,7 +244,7 @@ bool TileProcessor::set_decompress_area(CodeStream *codeStream, grk_image *outpu
 			cp->m_coding_params.m_dec.m_reduce))
 		return false;
 
-	GROK_INFO("Setting decoding area to %d,%d,%d,%d", output_image->x0,
+	GROK_INFO("Setting decoding area to %u,%u,%u,%u", output_image->x0,
 			output_image->y0, output_image->x1, output_image->y1);
 	return true;
 }
@@ -876,26 +876,26 @@ bool TileProcessor::init_tile(uint16_t tile_no, grk_image *output_image,
 
 	uint32_t p = tile_no % m_cp->t_grid_width; /* tile coordinates */
 	uint32_t q = tile_no / m_cp->t_grid_width;
-	/*fprintf(stderr, "Tile coordinate = %d,%d\n", p, q);*/
+	/*fprintf(stderr, "Tile coordinate = %u,%u\n", p, q);*/
 
 	/* 4 borders of the tile rescale on the image if necessary */
 	uint32_t tx0 = m_cp->tx0 + p * m_cp->t_width; /* can't be greater than image->x1 so won't overflow */
 	tile->x0 = std::max<uint32_t>(tx0, image->x0);
 	tile->x1 = std::min<uint32_t>(uint_adds(tx0, m_cp->t_width), image->x1);
 	if (tile->x1 <= tile->x0) {
-		GROK_ERROR("Tile x0 coordinate %d must be "
-				"<= tile x1 coordinate %d", tile->x0, tile->x1);
+		GROK_ERROR("Tile x0 coordinate %u must be "
+				"<= tile x1 coordinate %u", tile->x0, tile->x1);
 		return false;
 	}
 	uint32_t ty0 = m_cp->ty0 + q * m_cp->t_height; /* can't be greater than image->y1 so won't overflow */
 	tile->y0 = std::max<uint32_t>(ty0, image->y0);
 	tile->y1 = std::min<uint32_t>(uint_adds(ty0, m_cp->t_height), image->y1);
 	if (tile->y1 <= tile->y0) {
-		GROK_ERROR("Tile y0 coordinate %d must be "
-				"<= tile y1 coordinate %d", tile->y0, tile->y1);
+		GROK_ERROR("Tile y0 coordinate %u must be "
+				"<= tile y1 coordinate %u", tile->y0, tile->y1);
 		return false;
 	}
-	/*fprintf(stderr, "Tile border = %d,%d,%d,%d\n", tile->x0, tile->y0,tile->x1,tile->y1);*/
+	/*fprintf(stderr, "Tile border = %u,%u,%u,%u\n", tile->x0, tile->y0,tile->x1,tile->y1);*/
 
 	/* testcase 1888.pdf.asan.35.988 */
 	if (tcp->tccps->numresolutions == 0) {
@@ -905,7 +905,7 @@ bool TileProcessor::init_tile(uint16_t tile_no, grk_image *output_image,
 
 	for (uint32_t compno = 0; compno < tile->numcomps; ++compno) {
 		auto image_comp = image->comps + compno;
-		/*fprintf(stderr, "compno = %d/%d\n", compno, tile->numcomps);*/
+		/*fprintf(stderr, "compno = %u/%u\n", compno, tile->numcomps);*/
 		if (image_comp->dx == 0 || image_comp->dy == 0)
 			return false;
 		image_comp->resno_decoded = 0;
@@ -1317,7 +1317,7 @@ bool TileProcessor::mct_decode() {
 		}
 	} else {
 		GROK_ERROR(
-				"Number of components (%d) is inconsistent with a MCT. Skip the MCT step.",
+				"Number of components (%u) is inconsistent with a MCT. Skip the MCT step.",
 				tile->numcomps);
 	}
 
@@ -1641,7 +1641,7 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(uint8_t *tile_data,
 		auto comp_dest = p_output_image->comps + i;
 
 		if (comp_dest->w * comp_dest->h == 0) {
-			GROK_ERROR("Output image has invalid dimensions %d x %d",
+			GROK_ERROR("Output image has invalid dimensions %u x %u",
 					comp_dest->w, comp_dest->h);
 			return false;
 		}
@@ -1676,7 +1676,7 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(uint8_t *tile_data,
 
 		/* Current tile component size*/
 		/*if (i == 0) {
-		 fprintf(stdout, "SRC: res_x0=%d, res_x1=%d, res_y0=%d, res_y1=%d\n",
+		 fprintf(stdout, "SRC: res_x0=%u, res_x1=%u, res_y0=%u, res_y1=%u\n",
 		 res->x0, res->x1, res->y0, res->y1);
 		 }*/
 
@@ -1686,7 +1686,7 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(uint8_t *tile_data,
 		uint32_t height_src = (uint32_t) src_dim.height();
 
 		/*if (i == 0) {
-		 fprintf(stdout, "DEST: x0_dest=%d, x1_dest=%d, y0_dest=%d, y1_dest=%d (%d)\n",
+		 fprintf(stdout, "DEST: x0_dest=%u, x1_dest=%u, y0_dest=%u, y1_dest=%u (%u)\n",
 		 x0_dest, x1_dest, y0_dest, y1_dest, reduce );
 		 }*/
 
@@ -1784,16 +1784,16 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(uint8_t *tile_data,
 		auto src_ind = start_offset_src;
 
 		/*if (i == 0) {
-		 fprintf(stdout, "COMPO[%d]:\n",i);
-		 fprintf(stdout, "SRC: start_x_src=%d, start_y_src=%d, width_src=%d, height_src=%d\n"
-		 "\t tile offset:%d, %d, %d, %d\n"
-		 "\t buffer offset: %d; %d, %d\n",
+		 fprintf(stdout, "COMPO[%u]:\n",i);
+		 fprintf(stdout, "SRC: start_x_src=%u, start_y_src=%u, width_src=%u, height_src=%u\n"
+		 "\t tile offset:%u, %u, %u, %u\n"
+		 "\t buffer offset: %u; %u, %u\n",
 		 res->x0, res->y0, width_src, height_src,
 		 offset_x0_src, offset_y0_src, offset_x1_src, offset_y1_src,
 		 start_offset_src, line_offset_src, end_offset_src);
 
-		 fprintf(stdout, "DEST: offset_x0_dest=%d, offset_y0_dest=%d, width_dest=%d, height_dest=%d\n"
-		 "\t start offset: %d, line offset= %d\n",
+		 fprintf(stdout, "DEST: offset_x0_dest=%u, offset_y0_dest=%u, width_dest=%u, height_dest=%u\n"
+		 "\t start offset: %u, line offset= %u\n",
 		 offset_x0_dest, offset_y0_dest, width_dest, height_dest, start_offset_dest, line_offset_dest);
 		 }*/
 
@@ -2220,12 +2220,12 @@ grk_cblk_dec& grk_cblk_dec::operator=(const grk_cblk_dec& rhs){
 bool grk_cblk_dec::alloc() {
 	if (!segs) {
 		segs = new grk_seg[default_numbers_segments];
-		/*fprintf(stderr, "Allocate %d elements of code_block->data\n", default_numbers_segments * sizeof(grk_seg));*/
+		/*fprintf(stderr, "Allocate %u elements of code_block->data\n", default_numbers_segments * sizeof(grk_seg));*/
 
 		numSegmentsAllocated = default_numbers_segments;
 
 		/*fprintf(stderr, "Allocate 8192 elements of code_block->data\n");*/
-		/*fprintf(stderr, "numSegmentsAllocated of code_block->data = %d\n", p_code_block->numSegmentsAllocated);*/
+		/*fprintf(stderr, "numSegmentsAllocated of code_block->data = %u\n", p_code_block->numSegmentsAllocated);*/
 
 	} else {
 		/* sanitize */

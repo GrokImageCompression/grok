@@ -605,15 +605,15 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 		if (has_alpha) {
 			const char *tt = (triple ? "RGB_ALPHA" : "GRAYSCALE_ALPHA");
 
-			fprintf(fdest, "P7\n# Grok-%s\nWIDTH %d\nHEIGHT %d\nDEPTH %u\n"
-					"MAXVAL %d\nTUPLTYPE %s\nENDHDR\n", grk_version(), wr, hr,
+			fprintf(fdest, "P7\n# Grok-%s\nWIDTH %u\nHEIGHT %u\nDEPTH %u\n"
+					"MAXVAL %u\nTUPLTYPE %s\nENDHDR\n", grk_version(), wr, hr,
 					ncomp, max, tt);
 			alpha = image->comps[ncomp - 1].data;
 			adjustA = (
 					image->comps[ncomp - 1].sgnd ?
 							1 << (image->comps[ncomp - 1].prec - 1) : 0);
 		} else {
-			fprintf(fdest, "P6\n# Grok-%s\n%d %d\n%d\n", grk_version(), wr, hr,
+			fprintf(fdest, "P6\n# Grok-%s\n%u %u\n%u\n", grk_version(), wr, hr,
 					max);
 			adjustA = 0;
 		}
@@ -755,7 +755,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 		prec = image->comps[compno].prec;
 		max = (1 << prec) - 1;
 
-		fprintf(fdest, "P5\n#Grok-%s\n%d %d\n%d\n", grk_version(), wr, hr, max);
+		fprintf(fdest, "P5\n#Grok-%s\n%u %u\n%u\n", grk_version(), wr, hr, max);
 
 		red = image->comps[compno].data;
 		if (!red) {

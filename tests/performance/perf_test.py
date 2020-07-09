@@ -127,18 +127,18 @@ for line in open(in_filename, 'rt').readlines()[1:]:
     total_time += spent_time
     if not quiet:
         if len(comment) != 0:
-            print('%s (%s), %d iterations, %d threads, %s: %.02f s' %
+            print('%s (%s), %u iterations, %u threads, %s: %.02f s' %
                   (filename, comment, num_iterations, num_threads,
                    command, spent_time))
         else:
-            print('%s, %d iterations, %d threads, %s: %.02f s' %
+            print('%s, %u iterations, %u threads, %s: %.02f s' %
                   (filename, num_iterations, num_threads, command, spent_time))
     if out_file is not None:
-        out_file.write('%s,%d,%d,%s,%s,%d\n' %
+        out_file.write('%s,%u,%u,%s,%s,%u\n' %
                        (filename, num_iterations, num_threads, command,
                         comment, spent_time * 1000))
 
 if not quiet:
     print('Total time: %.02f s' % total_time)
 if out_file is not None:
-    out_file.write('%s,,,,,%d\n' % ('TOTAL', total_time * 1000))
+    out_file.write('%s,,,,,%u\n' % ('TOTAL', total_time * 1000))

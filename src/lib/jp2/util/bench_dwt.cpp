@@ -204,7 +204,7 @@ int main(int argc, char** argv)
 			k = 0;
 			for (j = 0; j < (int32_t)(tilec.height()); j++) {
 				for (i = 0; i < (int32_t)(tilec.width()); i++) {
-					printf("%d ", data[k]);
+					printf("%u ", data[k]);
 					k ++;
 				}
 				printf("\n");
@@ -256,7 +256,7 @@ int main(int argc, char** argv)
 				k = 0;
 				for (j = 0; j < (int32_t)(tilec.height()); j++) {
 					for (i = 0; i < (int32_t)(tilec.width()); i++) {
-						printf("%d ", data[k]);
+						printf("%u ", data[k]);
 						k ++;
 					}
 					printf("\n");
@@ -269,7 +269,7 @@ int main(int argc, char** argv)
 				k = 0;
 				for (j = 0; j < (int32_t)(tilec.height()); j++) {
 					for (i = 0; i < (int32_t)(tilec.width()); i++) {
-						printf("%d ", data[k]);
+						printf("%u ", data[k]);
 						k ++;
 					}
 					printf("\n");

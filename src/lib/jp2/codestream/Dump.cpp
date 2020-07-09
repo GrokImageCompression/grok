@@ -85,7 +85,7 @@ static void j2k_dump_tile_info(TileCodingParams *default_tile,
 			assert(tccp->numresolutions > 0);
 
 			/* coding style*/
-			fprintf(out_stream, "\t\t comp %d {\n", compno);
+			fprintf(out_stream, "\t\t comp %u {\n", compno);
 			fprintf(out_stream, "\t\t\t csty=%#x\n", tccp->csty);
 			fprintf(out_stream, "\t\t\t numresolutions=%d\n",
 					tccp->numresolutions);
@@ -210,7 +210,7 @@ static void j2k_dump_MH_index(CodeStream *codeStream, FILE *out_stream) {
 				uint32_t nb_of_tile_part =
 						cstr_index->tile_index[i].nb_tps;
 
-				fprintf(out_stream, "\t\t nb of tile-part in tile [%d]=%d\n",
+				fprintf(out_stream, "\t\t nb of tile-part in tile [%u]=%u\n",
 						i, nb_of_tile_part);
 
 				if (cstr_index->tile_index[i].tp_index) {
@@ -287,7 +287,7 @@ void j2k_dump_image_header(grk_image *img_header, bool dev_dump_flag,
 	if (img_header->comps) {
 		uint32_t compno;
 		for (compno = 0; compno < img_header->numcomps; compno++) {
-			fprintf(out_stream, "%s\t component %d {\n", tab, compno);
+			fprintf(out_stream, "%s\t component %u {\n", tab, compno);
 			j2k_dump_image_comp_header(&(img_header->comps[compno]),
 					dev_dump_flag, out_stream);
 			fprintf(out_stream, "%s}\n", tab);

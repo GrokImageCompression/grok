@@ -109,7 +109,7 @@ static int parse_cmdline_cmp(int argc, char **argv,
 				return 1;
 			}
 			strcpy(param->base_filename, baseArg.getValue().c_str());
-			/*printf("param->base_filename = %s [%d / %d]\n", param->base_filename, strlen(param->base_filename), sizemembasefile );*/
+			/*printf("param->base_filename = %s [%u / %u]\n", param->base_filename, strlen(param->base_filename), sizemembasefile );*/
 			index++;
 		}
 
@@ -121,7 +121,7 @@ static int parse_cmdline_cmp(int argc, char **argv,
 				return 1;
 			}
 			strcpy(param->test_filename, testArg.getValue().c_str());
-			/*printf("param->test_filename = %s [%d / %d]\n", param->test_filename, strlen(param->test_filename), sizememtestfile);*/
+			/*printf("param->test_filename = %s [%u / %u]\n", param->test_filename, strlen(param->test_filename), sizememtestfile);*/
 			index++;
 		}
 
@@ -207,7 +207,7 @@ int main(int argc, char **argv) {
 		/* Binary values are equal?*/
 		if (value_test != value_base) {
 			fprintf(stdout,
-					"Binary values read in the file are different %x vs %x at position %d.\n",
+					"Binary values read in the file are different %x vs %x at position %u.\n",
 					value_test, value_base, pos);
 			equal = 0;
 		}
