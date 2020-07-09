@@ -331,7 +331,7 @@ static bool j2k_read_unk(CodeStream *codeStream, BufferedStream *stream,
 	GROK_WARN("Unknown marker 0x%02x", *output_marker);
 
 	while (true) {
-		if (!codeStream->m_tileProcessor->read_marker(stream, &unknown_marker))
+		if (!codeStream->read_marker(stream, &unknown_marker))
 			return false;
 		if (!(unknown_marker < 0xff00)) {
 
@@ -413,7 +413,7 @@ static bool j2k_read_header_procedure(CodeStream *codeStream,
 		GROK_ERROR("Expected a SOC marker ");
 		return false;
 	}
-	if (!tileProcessor->read_marker(stream, &current_marker))
+	if (!codeStream->read_marker(stream, &current_marker))
 		return false;
 
 	/* Try to read until the SOT is detected */
@@ -457,7 +457,7 @@ static bool j2k_read_header_procedure(CodeStream *codeStream,
 			GROK_ERROR("Marker is not compliant with its position");
 			return false;
 		}
-		if (!tileProcessor->read_marker(stream, &marker_size))
+		if (!codeStream->read_marker(stream, &marker_size))
 			return false;
 
 		/* Check marker size (does not include marker ID but includes marker size) */
@@ -481,7 +481,7 @@ static bool j2k_read_header_procedure(CodeStream *codeStream,
 				return false;
 			}
 		}
-		if (!tileProcessor->read_marker(stream, &current_marker))
+		if (!codeStream->read_marker(stream, &current_marker))
 			return false;
 	}
 	if (!has_siz) {
@@ -654,7 +654,7 @@ static bool j2k_init_header_reading(CodeStream *codeStream) {
 	assert(codeStream != nullptr);
 
 	/* Create the current tile decoder*/
-	codeStream->m_tileProcessor = new TileProcessor(true);
+	codeStream->m_tileProcessor = new TileProcessor();
 
 	codeStream->m_procedure_list.push_back(
 			(j2k_procedure) j2k_read_header_procedure);
@@ -683,7 +683,6 @@ static bool j2k_need_nb_tile_parts_correction(CodeStream *codeStream,
 	uint16_t read_tile_no;
 	uint8_t current_part, num_parts;
 	uint32_t tot_len;
-	auto tileProcessor = codeStream->m_tileProcessor;
 	SOTMarker sotMarker;
 
 	/* initialize to no correction needed */
@@ -695,7 +694,7 @@ static bool j2k_need_nb_tile_parts_correction(CodeStream *codeStream,
 
 	uint64_t stream_pos_backup = stream->tell();
 	while (true) {
-		if (!tileProcessor->read_marker(stream, &current_marker))
+		if (!codeStream->read_marker(stream, &current_marker))
 			/* assume all is OK */
 			return stream->seek(stream_pos_backup);
 
@@ -703,7 +702,7 @@ static bool j2k_need_nb_tile_parts_correction(CodeStream *codeStream,
 			/* assume all is OK */
 			return stream->seek(stream_pos_backup);
 
-		if (!tileProcessor->read_marker(stream, &marker_size)) {
+		if (!codeStream->read_marker(stream, &marker_size)) {
 			GROK_ERROR("Stream too short");
 			return false;
 		}
@@ -784,7 +783,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 				GROK_WARN("Missing EOC marker");
 				break;
 			}
-			if (!tileProcessor->read_marker(stream, &marker_size))
+			if (!codeStream->read_marker(stream, &marker_size))
 				return false;
 			if (marker_size < 2) {
 				GROK_ERROR("Inconsistent marker size");
@@ -837,7 +836,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 			} else {
 				while (true) {
 					// read next marker id
-					if (!tileProcessor->read_marker(stream, &current_marker))
+					if (!codeStream->read_marker(stream, &current_marker))
 						return false;
 
 					/* handle unknown marker */
@@ -896,7 +895,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 				}
 			}
 			if (!decoder->ready_to_decode_tile_part_data) {
-				if (!tileProcessor->read_marker(stream, &current_marker))
+				if (!codeStream->read_marker(stream, &current_marker))
 					return false;
 			}
 		} else {
@@ -904,7 +903,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 			decoder->m_skip_data = false;
 			decoder->ready_to_decode_tile_part_data = false;
 			decoder->m_state = J2K_DEC_STATE_TPH_SOT;
-			if (!tileProcessor->read_marker(stream, &current_marker))
+			if (!codeStream->read_marker(stream, &current_marker))
 				return false;
 		}
 	}
@@ -2322,7 +2321,7 @@ static bool j2k_init_header_writing(CodeStream *codeStream) {
 	assert(codeStream != nullptr);
 
 	assert(!codeStream->m_tileProcessor);
-	codeStream->m_tileProcessor = new TileProcessor(false);
+	codeStream->m_tileProcessor = new TileProcessor();
 	if (!codeStream->m_tileProcessor->init(codeStream->m_private_image, &codeStream->m_cp)) {
 		delete codeStream->m_tileProcessor;
 		codeStream->m_tileProcessor = nullptr;
@@ -2929,4 +2928,15 @@ TileCodingParams* CodeStream::get_current_decode_tcp() {
 			m_decoder.m_default_tcp;
 }
 
+bool CodeStream::read_marker(BufferedStream *stream, uint16_t *val){
+	uint8_t temp[2];
+	if (stream->read(temp, 2) != 2) {
+		GROK_WARN("read marker: stream too short");
+		return false;
+	}
+	grk_read<uint16_t>(temp, val);
+
+	return true;
+
+}
 }

@@ -248,7 +248,7 @@ private:
  */
 struct TileProcessor {
 
-	explicit TileProcessor(bool isDecoder) ;
+	explicit TileProcessor() ;
 	~TileProcessor();
 
 	/**
@@ -332,8 +332,6 @@ struct TileProcessor {
 			grk_image *p_output_image, bool clearOutputOnInit);
 
 	void copy_image_to_tile();
-
-	bool read_marker(BufferedStream *stream, uint16_t *val);
 
 	bool process_marker(CodeStream *codeStream,
 						const grk_dec_memory_marker_handler* marker_handler,

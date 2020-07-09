@@ -173,6 +173,9 @@ struct CodeStream {
 	bool isDecodingTilePartHeader() ;
 	TileCodingParams* get_current_decode_tcp();
 
+	bool read_marker(BufferedStream *stream, uint16_t *val);
+
+
 	// state of decoder/encoder
 	DecoderState m_decoder;
 	EncoderState m_encoder;

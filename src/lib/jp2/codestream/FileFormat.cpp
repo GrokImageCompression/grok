@@ -1952,12 +1952,12 @@ static bool jp2_write_uuids(FileFormat *fileFormat, BufferedStream *stream) {
 }
 
 static bool jp2_write_ftyp(FileFormat *fileFormat, BufferedStream *stream) {
+	assert(stream != nullptr);
+	assert(fileFormat != nullptr);
+
 	uint32_t i;
 	uint32_t ftyp_size = 16 + 4 * fileFormat->numcl;
 	bool result = true;
-
-	assert(stream != nullptr);
-	assert(fileFormat != nullptr);
 
 	if (!stream->write_int(ftyp_size)) {
 		result = false;

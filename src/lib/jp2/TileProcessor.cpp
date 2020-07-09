@@ -66,7 +66,7 @@ using namespace std;
 
 namespace grk {
 
-TileProcessor::TileProcessor(bool isDecoder) :
+TileProcessor::TileProcessor() :
 		 m_current_tile_index(0), m_current_poc_tile_part_index(
 				0), m_current_tile_part_index(0), m_nb_tile_parts_correction_checked(
 				false), m_nb_tile_parts_correction(false), tile_part_data_length(0),
@@ -76,12 +76,6 @@ TileProcessor::TileProcessor(bool isDecoder) :
 				nullptr), m_cp(nullptr),
 				m_marker_scratch(nullptr), m_marker_scratch_size(0),
 				tp_pos(0), m_tcp(nullptr) {
-	if (isDecoder) {
-		m_marker_scratch = (uint8_t*) grk_calloc(1, default_header_size);
-		if (!m_marker_scratch)
-			throw std::runtime_error("Out of memory");
-		m_marker_scratch_size = default_header_size;
-	}
 }
 
 TileProcessor::~TileProcessor() {
@@ -97,6 +91,13 @@ bool TileProcessor::process_marker(CodeStream *codeStream,
 		const grk_dec_memory_marker_handler* marker_handler,
 		uint16_t current_marker, uint16_t marker_size,
 		BufferedStream *stream){
+
+	if (!m_marker_scratch) {
+		m_marker_scratch = (uint8_t*) grk_calloc(1, default_header_size);
+		if (!m_marker_scratch)
+			return false;
+		m_marker_scratch_size = default_header_size;
+	}
 
 	// need more scratch memory
 	if (marker_size > m_marker_scratch_size) {
@@ -1227,18 +1228,6 @@ void TileProcessor::copy_image_to_tile() {
 	}
 }
 
-
-bool TileProcessor::read_marker(BufferedStream *stream, uint16_t *val){
-	uint8_t temp[2];
-	if (stream->read(temp, 2) != 2) {
-		GROK_WARN("read marker: stream too short");
-		return false;
-	}
-	grk_read<uint16_t>(temp, val);
-
-	return true;
-
-}
 bool TileProcessor::t2_decode(uint16_t tile_no, ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
 	auto t2 = new T2Decode(this);

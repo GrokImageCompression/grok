@@ -192,7 +192,7 @@ int main(int argc, char** argv)
 		begin = 1;
 
    for (size_t k = begin; k <= end; ++k) {
-	   std::unique_ptr<TileProcessor> tileProcessor(new TileProcessor(!forward));
+	   std::unique_ptr<TileProcessor> tileProcessor(new TileProcessor());
 	   grk_initialize(nullptr,k);
 	   init_tilec(&tilec, offset_x, offset_y,
 				   offset_x + size, offset_y + size,
