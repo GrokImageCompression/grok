@@ -1458,7 +1458,7 @@ bool TileProcessor::rate_allocate() {
  * @return:
  */
 bool TileProcessor::copy_decompressed_tile_to_output_image(uint8_t *tile_data,
-		grk_image *p_output_image, bool clearOutputOnInit) {
+		grk_image *p_output_image) {
 	uint32_t i = 0, j = 0, k = 0;
 	auto image_src = image;
 	for (i = 0; i < image_src->numcomps; i++) {
@@ -1477,11 +1477,8 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(uint8_t *tile_data,
 		if (!comp_dest->data) {
 			if (!grk_image_single_component_data_alloc(comp_dest))
 				return false;
-
-			if (clearOutputOnInit) {
-				memset(comp_dest->data, 0,
+			memset(comp_dest->data, 0,
 						(uint64_t)comp_dest->w * comp_dest->h * sizeof(int32_t));
-			}
 		}
 
 		/* Copy info from decoded comp image to output image */

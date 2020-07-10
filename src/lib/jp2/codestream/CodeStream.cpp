@@ -745,15 +745,10 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 		uint32_t *p_nb_comps, bool *p_go_on, BufferedStream *stream) {
 	assert(codeStream);
 
-
-	delete codeStream->m_tileProcessor;
 	codeStream->m_tileProcessor = new TileProcessor(codeStream);
+	codeStream->m_tileProcessors.push_back(codeStream->m_tileProcessor);
 	auto tileProcessor = codeStream->m_tileProcessor;
 	auto decoder = &codeStream->m_decoder;
-
-	// clean up markers from previous tile
-	delete tileProcessor->plt_markers;
-	tileProcessor->plt_markers = nullptr;
 
 	uint16_t current_marker = J2K_MS_SOT;
 	uint16_t marker_size = 0;
@@ -1185,7 +1180,6 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 	uint32_t num_tiles_to_decode = codeStream->m_cp.t_grid_height
 			* codeStream->m_cp.t_grid_width;
 	bool multi_tile = num_tiles_to_decode > 1;
-	bool clearOutputOnInit = false;
 
 	// if number of tiles is greater than 1, then we need to copy tile data
 	if (multi_tile) {
@@ -1195,7 +1189,6 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 			return false;
 		}
 		tile_compositing_buff_len = 1;
-		clearOutputOnInit = true;
 	}
 	uint32_t num_tiles_decoded = 0;
 
@@ -1247,8 +1240,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 		}
 		if (multi_tile) {
 			if (!codeStream->m_tileProcessor->copy_decompressed_tile_to_output_image(
-					tile_compositing_buff, codeStream->m_output_image,
-					clearOutputOnInit)) {
+					tile_compositing_buff, codeStream->m_output_image)) {
 				grk_free(tile_compositing_buff);
 				return false;
 			}
@@ -2501,8 +2493,6 @@ bool j2k_init_mct_encoding(TileCodingParams *p_tcp, grk_image *p_image) {
 static bool j2k_end_encoding(CodeStream *codeStream, BufferedStream *stream) {
 	(void) stream;
 	assert(codeStream);
-	delete codeStream->m_tileProcessor;
-	codeStream->m_tileProcessor = nullptr;
 
 	return true;
 }
@@ -2904,12 +2894,13 @@ CodeStream::CodeStream() : m_private_image(nullptr),
 }
 CodeStream::~CodeStream(){
 	delete m_decoder.m_default_tcp;
-	delete m_tileProcessor;
 	m_cp.destroy();
 	j2k_destroy_cstr_index(cstr_index);
 	grk_image_destroy(m_private_image);
 	grk_image_destroy(m_output_image);
 	grk_free(m_marker_scratch);
+	for (auto &proc : m_tileProcessors)
+		delete proc;
 }
 
 
