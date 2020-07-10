@@ -315,10 +315,6 @@ struct TileProcessor {
 	 *   while encoding the last tile part.*/
 	uint8_t m_current_tile_part_index;
 
-	/** TNsot correction : see issue 254 **/
-	bool m_nb_tile_parts_correction_checked;
-	bool m_nb_tile_parts_correction;
-
 	uint32_t tile_part_data_length;
 
 	/** Total number of tile parts of the current tile*/

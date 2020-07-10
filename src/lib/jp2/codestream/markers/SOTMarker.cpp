@@ -216,15 +216,15 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	if (num_parts != 0) { /* Number of tile-part header is provided
 	 by this tile-part header */
 		num_parts = (uint8_t) (num_parts
-				+ codeStream->m_tileProcessor->m_nb_tile_parts_correction);
+				+ codeStream->m_nb_tile_parts_correction);
 		/* Useful to manage the case of textGBR.jp2 file because two values
 		 *  of TNSot are allowed: the correct numbers of
 		 * tile-parts for that tile and zero (A.4.2 of 15444-1 : 2002). */
 		if (tcp->m_nb_tile_parts) {
 			if (current_part >= tcp->m_nb_tile_parts) {
 				GROK_ERROR(
-						"In SOT marker, TPSot (%u) is not valid regards to the current "
-								"number of tile-part (%u), giving up",
+						"In SOT marker, TPSot (%u) is not valid with regards to the current "
+								"number of tile-part (%u)",
 						current_part, tcp->m_nb_tile_parts);
 				codeStream->m_decoder.m_last_tile_part = 1;
 				return false;
@@ -233,8 +233,8 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 		if (current_part >= num_parts) {
 			/* testcase 451.pdf.SIGSEGV.ce9.3723 */
 			GROK_ERROR(
-					"In SOT marker, TPSot (%u) is not valid regards to the current "
-							"number of tile-part (header) (%u), giving up",
+					"In SOT marker, TPSot (%u) is not valid with regards to the current "
+							"number of tile-part (header) (%u)",
 					current_part, num_parts);
 			codeStream->m_decoder.m_last_tile_part = 1;
 			return false;

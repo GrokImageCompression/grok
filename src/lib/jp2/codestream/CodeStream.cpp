@@ -746,8 +746,8 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 	assert(codeStream);
 
 
-	if (!codeStream->m_tileProcessor)
-		codeStream->m_tileProcessor = new TileProcessor(codeStream);
+	delete codeStream->m_tileProcessor;
+	codeStream->m_tileProcessor = new TileProcessor(codeStream);
 	auto tileProcessor = codeStream->m_tileProcessor;
 	auto decoder = &codeStream->m_decoder;
 
@@ -863,11 +863,11 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 			if (!j2k_read_sod(codeStream, stream))
 				return false;
 			if (decoder->ready_to_decode_tile_part_data
-					&& !tileProcessor->m_nb_tile_parts_correction_checked) {
+					&& !codeStream->m_nb_tile_parts_correction_checked) {
 				/* Issue 254 */
 				bool correction_needed;
 
-				tileProcessor->m_nb_tile_parts_correction_checked = true;
+				codeStream->m_nb_tile_parts_correction_checked = true;
 				if (!j2k_need_nb_tile_parts_correction(codeStream, stream,
 						tileProcessor->m_current_tile_index,
 						&correction_needed)) {
@@ -879,7 +879,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 							* codeStream->m_cp.t_grid_height;
 
 					decoder->ready_to_decode_tile_part_data = false;
-					tileProcessor->m_nb_tile_parts_correction = true;
+					codeStream->m_nb_tile_parts_correction = true;
 					/* correct tiles */
 					for (uint32_t tile_no = 0U; tile_no < nb_tiles; ++tile_no) {
 						if (codeStream->m_cp.tcps[tile_no].m_nb_tile_parts != 0U) {
@@ -2896,8 +2896,9 @@ CodeStream::CodeStream() : m_private_image(nullptr),
 							m_marker_scratch(nullptr),
 							m_marker_scratch_size(0),
 						    whole_tile_decoding(true),
-							current_plugin_tile(nullptr)
-
+							current_plugin_tile(nullptr),
+							 m_nb_tile_parts_correction_checked(false),
+							 m_nb_tile_parts_correction(false)
 {
     memset(&m_cp, 0 , sizeof(CodingParams));
 }

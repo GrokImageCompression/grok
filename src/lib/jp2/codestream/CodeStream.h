@@ -238,6 +238,9 @@ private:
 public:
     bool   whole_tile_decoding;
 	grk_plugin_tile *current_plugin_tile;
+	/** TNsot correction : see issue 254 **/
+	bool m_nb_tile_parts_correction_checked;
+	bool m_nb_tile_parts_correction;
 
 
 };
