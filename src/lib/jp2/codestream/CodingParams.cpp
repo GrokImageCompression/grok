@@ -162,5 +162,61 @@ void TileCodingParams::destroy() {
 	m_tile_data = nullptr;
 }
 
+bool DecoderState::findNextTile(BufferedStream *stream){
+	ready_to_decode_tile_part_data = false;
+	m_state &= (uint32_t) (~J2K_DEC_STATE_DATA);
+
+	// if there is no EOC marker and there is also no data left, then simply return true
+	if (stream->get_number_byte_left() == 0
+			&& m_state == J2K_DEC_STATE_NO_EOC) {
+		return true;
+	}
+	// if EOC marker has not been read yet, then try to read the next marker
+	// (should be EOC or SOT)
+	if (m_state != J2K_DEC_STATE_EOC) {
+
+		uint8_t data[2];
+		// not enough data for another marker
+		if (stream->read(data, 2) != 2) {
+			GROK_WARN(
+					"j2k_decompress_tile: Not enough data to read another marker.\n"
+							"Tile may be truncated.");
+			return true;
+		}
+
+		uint32_t current_marker = 0;
+		// read marker
+		grk_read<uint32_t>(data, &current_marker, 2);
+
+		switch (current_marker) {
+		// we found the EOC marker - set state accordingly and return true;
+		// we can ignore all data after EOC
+		case J2K_MS_EOC:
+			m_state = J2K_DEC_STATE_EOC;
+			return true;
+			break;
+			// start of another tile
+		case J2K_MS_SOT:
+			return true;
+			break;
+		default: {
+			auto bytesLeft = stream->get_number_byte_left();
+			// no bytes left - file ends without EOC marker
+			if (bytesLeft == 0) {
+				m_state = J2K_DEC_STATE_NO_EOC;
+				GROK_WARN("j2k_decompress_tile: stream does not end with EOC");
+				return true;
+			}
+			GROK_WARN("j2k_decompress_tile: expected EOC or SOT "
+					"but found unknown \"marker\" %x. ", current_marker);
+			throw DecodeUnknownMarkerAtEndOfTileException();
+		}
+			break;
+		}
+	}
+
+	return true;
+}
+
 
 }

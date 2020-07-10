@@ -875,7 +875,7 @@ bool TileProcessor::is_whole_tilecomp_decoding(uint32_t compno) {
 
 }
 
-bool TileProcessor::decompress_tile(ChunkBuffer *src_buf, uint16_t tile_no) {
+bool TileProcessor::decompress_tile_t2(ChunkBuffer *src_buf, uint16_t tile_no) {
 	m_tcp = m_cp->tcps + tile_no;
 
 	// optimization for regions that are close to largest decoded resolution
@@ -926,10 +926,6 @@ bool TileProcessor::decompress_tile(ChunkBuffer *src_buf, uint16_t tile_no) {
 
 	bool doT2 = !current_plugin_tile
 			|| (current_plugin_tile->decode_flags & GRK_DECODE_T2);
-	bool doT1 = !current_plugin_tile
-			|| (current_plugin_tile->decode_flags & GRK_DECODE_T1);
-	bool doPostT1 = !current_plugin_tile
-			|| (current_plugin_tile->decode_flags & GRK_DECODE_POST_T1);
 
 	if (doT2) {
 		uint64_t l_data_read = 0;
@@ -940,6 +936,15 @@ bool TileProcessor::decompress_tile(ChunkBuffer *src_buf, uint16_t tile_no) {
 		decode_synch_plugin_with_host(this);
 	}
 
+	return true;
+}
+
+
+bool TileProcessor::decompress_tile_t1(void) {
+	bool doT1 = !current_plugin_tile
+			|| (current_plugin_tile->decode_flags & GRK_DECODE_T1);
+	bool doPostT1 = !current_plugin_tile
+			|| (current_plugin_tile->decode_flags & GRK_DECODE_POST_T1);
 	if (doT1) {
 		for (uint32_t compno = 0; compno < tile->numcomps; ++compno) {
 			auto tilec = tile->comps + compno;

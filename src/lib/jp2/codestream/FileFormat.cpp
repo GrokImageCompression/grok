@@ -2946,16 +2946,8 @@ bool jp2_compress_tile(FileFormat *fileFormat, uint16_t tile_index, uint8_t *p_d
 
 bool jp2_decompress_tile(FileFormat *fileFormat, uint16_t tile_index, uint8_t *p_data,
 		uint64_t data_size, BufferedStream *stream) {
-	bool rc = false;
-
-	try {
-		rc = j2k_decompress_tile(fileFormat->j2k, tile_index, p_data, data_size,
+	return j2k_decompress_tile(fileFormat->j2k, tile_index, p_data, data_size,
 				stream);
-	} catch (DecodeUnknownMarkerAtEndOfTileException &e) {
-		//suppress exception
-	}
-
-	return rc;
 }
 
 void jp2_destroy(FileFormat *fileFormat) {

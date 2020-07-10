@@ -192,7 +192,7 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE; \
         } \
   } \
-	spdlog::info("Tile {} is decoded successfully", tile_index);
+	spdlog::info("Tile {} decoded successfully", tile_index);
 
 	TEST_TILE(tile_ul)
 	TEST_TILE(tile_lr)

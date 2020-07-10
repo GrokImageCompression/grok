@@ -274,12 +274,18 @@ struct TileProcessor {
 			uint32_t *tile_bytes_written);
 
 	/**
-	 Decode a tile from a buffer
+	 T1 Decode a tile from a buffer
+	 @return true if successful
+	 */
+	bool decompress_tile_t1(void);
+
+	/**
+	 T2 Decode a tile from a buffer
 	 @param src_buf Source buffer
 	 @param tileno Number that identifies one of the tiles to be decoded
 	 @return true if successful
 	 */
-	bool decompress_tile(ChunkBuffer *src_buf, uint16_t tileno);
+	bool decompress_tile_t2(ChunkBuffer *src_buf, uint16_t tile_no);
 
 	/**
 	 * Copies tile data from the system onto the given memory block.
