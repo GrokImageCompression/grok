@@ -77,7 +77,7 @@ TileProcessor::TileProcessor(CodeStream *codeStream) :
 				cur_pino(0),
 				tile(nullptr),
 				image(codeStream->m_private_image),
-				current_plugin_tile(nullptr),
+				current_plugin_tile(codeStream->current_plugin_tile),
 				whole_tile_decoding(codeStream->whole_tile_decoding),
 				plt_markers(nullptr),
 				m_cp(&codeStream->m_cp),

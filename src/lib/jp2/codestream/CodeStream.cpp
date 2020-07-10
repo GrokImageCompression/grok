@@ -1389,19 +1389,15 @@ bool j2k_decompress(CodeStream *codeStream, grk_plugin_tile *tile,
 		return false;
 
 	codeStream->m_output_image = grk_image_create0();
-	if (!(codeStream->m_output_image)) {
+	if (!(codeStream->m_output_image))
 		return false;
-	}
 	grk_copy_image_header(p_image, codeStream->m_output_image);
 
 	/* customization of the decoding */
 	if (!j2k_init_decompress(codeStream))
 		return false;
 
-	/* Create the current tile decoder*/
-	if (!codeStream->m_tileProcessor)
-		codeStream->m_tileProcessor = new TileProcessor(codeStream);
-	codeStream->m_tileProcessor->current_plugin_tile = tile;
+	codeStream->current_plugin_tile = tile;
 
 	/* Decode the code stream */
 	if (!j2k_exec(codeStream, codeStream->m_procedure_list, stream)) {
@@ -2899,7 +2895,8 @@ CodeStream::CodeStream() : m_private_image(nullptr),
 							m_tile_ind_to_dec(-1),
 							m_marker_scratch(nullptr),
 							m_marker_scratch_size(0),
-						    whole_tile_decoding(true)
+						    whole_tile_decoding(true),
+							current_plugin_tile(nullptr)
 
 {
     memset(&m_cp, 0 , sizeof(CodingParams));

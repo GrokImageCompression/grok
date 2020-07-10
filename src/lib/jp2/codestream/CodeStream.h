@@ -237,6 +237,7 @@ private:
 
 public:
     bool   whole_tile_decoding;
+	grk_plugin_tile *current_plugin_tile;
 
 
 };
