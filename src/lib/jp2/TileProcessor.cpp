@@ -1449,6 +1449,29 @@ bool TileProcessor::rate_allocate() {
 	return true;
 }
 
+bool TileProcessor::alloc_output_data(grk_image *p_output_image){
+	auto image_src = image;
+	for (uint32_t i = 0; i < image_src->numcomps; i++) {
+		auto comp_dest = p_output_image->comps + i;
+
+		if (comp_dest->w * comp_dest->h == 0) {
+			GROK_ERROR("Output image has invalid dimensions %u x %u",
+					comp_dest->w, comp_dest->h);
+			return false;
+		}
+
+		/* Allocate output component buffer if necessary */
+		if (!comp_dest->data) {
+			if (!grk_image_single_component_data_alloc(comp_dest))
+				return false;
+			memset(comp_dest->data, 0,
+						(uint64_t)comp_dest->w * comp_dest->h * sizeof(int32_t));
+		}
+	}
+
+	return true;
+
+}
 
 /**
  * tile_data stores only the decoded resolutions, in the actual precision
@@ -1475,14 +1498,6 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(uint8_t *tile_data,
 			GROK_ERROR("Output image has invalid dimensions %u x %u",
 					comp_dest->w, comp_dest->h);
 			return false;
-		}
-
-		/* Allocate output component buffer if necessary */
-		if (!comp_dest->data) {
-			if (!grk_image_single_component_data_alloc(comp_dest))
-				return false;
-			memset(comp_dest->data, 0,
-						(uint64_t)comp_dest->w * comp_dest->h * sizeof(int32_t));
 		}
 
 		/* Copy info from decoded comp image to output image */

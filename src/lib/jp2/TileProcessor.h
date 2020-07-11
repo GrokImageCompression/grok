@@ -304,6 +304,8 @@ struct TileProcessor {
 
 	bool needs_rate_control();
 
+	bool alloc_output_data(grk_image *p_output_image);
+
 	bool copy_decompressed_tile_to_output_image(uint8_t *p_data,
 			grk_image *p_output_image);
 

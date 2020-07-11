@@ -1121,12 +1121,11 @@ bool j2k_decompress_tile_t1(CodeStream *codeStream, TileProcessor *tileProcessor
 					tile_compositing_buff_len)) {
 				return false;
 			}
-			if (codeStream->m_output_image && tile_compositing_buff) {
+			if (codeStream->m_output_image) {
 				if (!tileProcessor->copy_decompressed_tile_to_output_image(
-						tile_compositing_buff, codeStream->m_output_image)) {
+						tile_compositing_buff, codeStream->m_output_image))
 					return false;
 				}
-			}
 		} else {
 			/* transfer data from tile component to output image */
 			uint32_t compno = 0;
@@ -1243,6 +1242,11 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 				|| codeStream->m_decoder.m_state
 						== J2K_DEC_STATE_NO_EOC)
 			break;
+	}
+
+	if (multi_tile && codeStream->m_output_image) {
+		if (!codeStream->m_tileProcessor->alloc_output_data(codeStream->m_output_image))
+			return false;
 	}
 
 	//T1 and post T1
