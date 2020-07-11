@@ -306,8 +306,7 @@ struct TileProcessor {
 
 	bool alloc_output_data(grk_image *p_output_image);
 
-	bool copy_decompressed_tile_to_output_image(uint8_t *p_data,
-			grk_image *p_output_image);
+	bool copy_decompressed_tile_to_output_image(grk_image *p_output_image);
 
 	void copy_image_to_tile();
 

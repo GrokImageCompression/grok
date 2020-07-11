@@ -1486,14 +1486,15 @@ bool TileProcessor::composite_tile(uint8_t *tile_compositing_buff,
  *
  * @return:
  */
-bool TileProcessor::copy_decompressed_tile_to_output_image(uint8_t *tile_data,
-		grk_image *p_output_image) {
+bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_image) {
 	uint32_t i = 0, j = 0, k = 0;
 	auto image_src = image;
 	for (i = 0; i < image_src->numcomps; i++) {
 		auto tilec = tile->comps + i;
 		auto comp_src = image_src->comps + i;
 		auto comp_dest = p_output_image->comps + i;
+
+		auto tile_data = (uint8_t*)tilec->buf->get_ptr(0, 0, 0, 0);
 
 		/* Copy info from decoded comp image to output image */
 		comp_dest->resno_decoded = comp_src->resno_decoded;
@@ -1584,7 +1585,7 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(uint8_t *tile_data,
 		size_t src_ind = 0;
 		switch (size_comp) {
 		case 1: {
-			auto src_ptr = (int8_t*) tile_data;
+			auto src_ptr = (uint32_t*) tile_data;
 			if (comp_src->sgnd) {
 				for (j = 0; j < height_dest; ++j) {
 					for (k = 0; k < width_dest; ++k)
@@ -1608,7 +1609,7 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(uint8_t *tile_data,
 			}
 			break;
 		case 2: {
-			auto src_ptr = (int16_t*) tile_data;
+			auto src_ptr = (uint32_t*) tile_data;
 			if (comp_src->sgnd) {
 				for (j = 0; j < height_dest; ++j) {
 					for (k = 0; k < width_dest; ++k)

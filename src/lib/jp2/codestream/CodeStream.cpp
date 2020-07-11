@@ -1021,7 +1021,7 @@ bool j2k_decompress_tile(CodeStream *codeStream, uint16_t tile_index,
 	if (!j2k_decompress_tile_t2(codeStream, tile_index, stream))
 		return false;
 
-	return j2k_decompress_tile_t1(codeStream, codeStream->m_tileProcessor,
+	return j2k_decompress_tile_t1(codeStream, codeStream->m_tileProcessor, false,
 			tile_compositing_buff, tile_compositing_buff_len, stream);
 
 }
@@ -1074,7 +1074,7 @@ bool j2k_decompress_tile_t2(CodeStream *codeStream, uint16_t tile_index,
 	return rc;
 }
 
-bool j2k_decompress_tile_t1(CodeStream *codeStream, TileProcessor *tileProcessor,
+bool j2k_decompress_tile_t1(CodeStream *codeStream, TileProcessor *tileProcessor, bool multi_tile,
 		uint8_t *tile_compositing_buff, uint64_t tile_compositing_buff_len,
 		BufferedStream *stream) {
 	assert(stream != nullptr);
@@ -1121,23 +1121,24 @@ bool j2k_decompress_tile_t1(CodeStream *codeStream, TileProcessor *tileProcessor
 					tile_compositing_buff_len)) {
 				return false;
 			}
-			if (codeStream->m_output_image) {
-				if (!tileProcessor->copy_decompressed_tile_to_output_image(
-						tile_compositing_buff, codeStream->m_output_image))
+		}
+		if (codeStream->m_output_image) {
+			if (multi_tile) {
+				if (!tileProcessor->copy_decompressed_tile_to_output_image(codeStream->m_output_image))
 					return false;
-				}
-		} else {
-			/* transfer data from tile component to output image */
-			uint32_t compno = 0;
-			for (compno = 0; compno < codeStream->m_output_image->numcomps;
-					compno++) {
-				auto tilec = tileProcessor->tile->comps + compno;
-				auto comp = codeStream->m_output_image->comps + compno;
+			} else {
+				/* transfer data from tile component to output image */
+				uint32_t compno = 0;
+				for (compno = 0; compno < codeStream->m_output_image->numcomps;
+						compno++) {
+					auto tilec = tileProcessor->tile->comps + compno;
+					auto comp = codeStream->m_output_image->comps + compno;
 
-				//transfer memory from tile component to output image
-				tilec->buf->transfer(&comp->data, &comp->owns_data);
-				comp->resno_decoded =
-						tileProcessor->image->comps[compno].resno_decoded;
+					//transfer memory from tile component to output image
+					tilec->buf->transfer(&comp->data, &comp->owns_data);
+					comp->resno_decoded =
+							tileProcessor->image->comps[compno].resno_decoded;
+				}
 			}
 		}
 		/* we only destroy the data, which will be re-read in read_tile_header*/
@@ -1188,9 +1189,8 @@ CodeStream* j2k_create_decompress(void) {
 static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream) {
 	bool go_on = true;
 	uint16_t current_tile_no = 0;
-	uint64_t all_tile_data_len = 0, tile_compositing_buff_len = 0;
+	uint64_t all_tile_data_len = 0;
 	uint32_t nb_comps = 0;
-	uint8_t *tile_compositing_buff = nullptr;
 	uint32_t num_tiles_to_decode = codeStream->m_cp.t_grid_height
 			* codeStream->m_cp.t_grid_width;
 	bool multi_tile = num_tiles_to_decode > 1;
@@ -1204,7 +1204,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 		if (!j2k_read_tile_header(codeStream, &current_tile_no, &all_tile_data_len,
 				&tile_x0, &tile_y0, &tile_x1, &tile_y1, &nb_comps, &go_on,
 				stream))
-			goto fail;
+			return false;
 
 		if (!go_on)
 			break;
@@ -1213,30 +1213,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 		if (!j2k_decompress_tile_t2(codeStream, current_tile_no, stream)){
 				GROK_ERROR("Failed to decompress tile %u/%u",
 						current_tile_no + 1, num_tiles_to_decode);
-				goto fail;
-		}
-
-		//3. manage compositing buffer
-		if (multi_tile
-				&& all_tile_data_len > tile_compositing_buff_len) {
-			if (!tile_compositing_buff) {
-				tile_compositing_buff = (uint8_t*) grk_malloc(all_tile_data_len);
-				if (!tile_compositing_buff) {
-					GROK_ERROR("Not enough memory to decompress tiles");
-					return false;
-				}
-				tile_compositing_buff_len = all_tile_data_len;
-			} else {
-				uint8_t *new_compositing_buff = (uint8_t*) grk_realloc(
-						tile_compositing_buff, all_tile_data_len);
-				if (!new_compositing_buff) {
-					GROK_ERROR("Not enough memory to decompress tile %u/%u",
-							current_tile_no + 1, num_tiles_to_decode);
-					goto fail;
-				}
-				tile_compositing_buff = new_compositing_buff;
-				tile_compositing_buff_len = all_tile_data_len;
-			}
+				return false;
 		}
 		if (stream->get_number_byte_left() == 0
 				|| codeStream->m_decoder.m_state
@@ -1254,16 +1231,15 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 		codeStream->m_tileProcessor = tp;
 		if (tp->m_corrupt_packet)
 			continue;
-		if (!j2k_decompress_tile_t1(codeStream, tp,
-				tile_compositing_buff, tile_compositing_buff_len, stream)){
+		if (!j2k_decompress_tile_t1(codeStream, tp,multi_tile,
+				nullptr, 0, stream)){
 			GROK_ERROR("Failed to decompress tile %u/%u",
 					tp->m_current_tile_index + 1,num_tiles_to_decode);
-			goto fail;
+			return false;
 		}
 
 		num_tiles_decoded++;
 	}
-	grk_free(tile_compositing_buff);
 
 	// sanity checks
 	if (num_tiles_decoded == 0) {
@@ -1274,10 +1250,6 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 				num_tiles_to_decode);
 	}
 	return true;
-
-fail:
-	grk_free(tile_compositing_buff);
-	return false;
 }
 
 /*
