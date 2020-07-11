@@ -1515,21 +1515,18 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(uint8_t *tile_data,
 		uint32_t width_src = (uint32_t) src_dim.width();
 		uint32_t height_src = (uint32_t) src_dim.height();
 
-		/* Compute the area (offset_x0_src, offset_y0_src,
-		 * offset_x1_src, offset_y1_src)
+		/* Compute the area (0, 0, offset_x1_src, offset_y1_src)
 		 * of the input buffer (decoded tile component) which will be moved
 		 * to the output buffer. Compute the area of the output buffer (offset_x0_dest,
 		 * offset_y0_dest, width_dest, height_dest)  which will be modified
 		 * by this input area.
 		 * */
-		uint32_t offset_x0_src = 0, offset_y0_src = 0, offset_x1_src = 0,
-				offset_y1_src = 0;
+		uint32_t offset_x1_src = 0,	offset_y1_src = 0;
 		uint32_t offset_x0_dest = 0, offset_y0_dest = 0;
 		uint32_t width_dest = 0, height_dest = 0;
 		if (x0_dest < src_dim.x0) {
 			offset_x0_dest = (uint32_t) (src_dim.x0 - x0_dest);
-			offset_x0_src = 0;
-			if (x1_dest >= src_dim.x1) {
+				if (x1_dest >= src_dim.x1) {
 				width_dest = width_src;
 				offset_x1_src = 0;
 			} else {
@@ -1538,9 +1535,8 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(uint8_t *tile_data,
 			}
 		} else {
 			offset_x0_dest = 0U;
-			offset_x0_src = (uint32_t) (x0_dest - src_dim.x0);
 			if (x1_dest >= src_dim.x1) {
-				width_dest = (uint32_t) (width_src - offset_x0_src);
+				width_dest = (uint32_t) (width_src);
 				offset_x1_src = 0;
 			} else {
 				width_dest = comp_dest->w;
@@ -1549,7 +1545,6 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(uint8_t *tile_data,
 		}
 		if (y0_dest < src_dim.y0) {
 			offset_y0_dest = (uint32_t) (src_dim.y0 - y0_dest);
-			offset_y0_src = 0;
 			if (y1_dest >= src_dim.y1) {
 				height_dest = height_src;
 				offset_y1_src = 0;
@@ -1559,18 +1554,15 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(uint8_t *tile_data,
 			}
 		} else {
 			offset_y0_dest = 0U;
-			offset_y0_src = (uint32_t) (y0_dest - src_dim.y0);
 			if (y1_dest >= src_dim.y1) {
-				height_dest = (uint32_t) (height_src - offset_y0_src);
+				height_dest = (uint32_t) (height_src);
 				offset_y1_src = 0;
 			} else {
 				height_dest = comp_dest->h;
 				offset_y1_src = (uint32_t) (src_dim.y1 - y1_dest);
 			}
 		}
-		if ((offset_x0_src > width_src) || (offset_y0_src > height_src)
-				|| (offset_x1_src > width_src)
-				|| (offset_y1_src > height_src)) {
+		if ((offset_x1_src > width_src)	|| (offset_y1_src > height_src)) {
 			return false;
 		}
 		if (width_dest > comp_dest->w || height_dest > comp_dest->h)
@@ -1579,12 +1571,8 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(uint8_t *tile_data,
 			return false;
 
 		/* Compute the input buffer offset */
-		size_t start_offset_src = (size_t) offset_x0_src
-				+ (size_t) offset_y0_src * (size_t) width_src;
-		size_t line_offset_src = (size_t) offset_x1_src
-				+ (size_t) offset_x0_src;
-		size_t end_offset_src = (size_t) offset_y1_src * (size_t) width_src
-				- (size_t) offset_x0_src;
+		size_t line_offset_src = (size_t) offset_x1_src;
+		size_t end_offset_src = (size_t) offset_y1_src * (size_t) width_src;
 
 		/* Compute the output buffer offset */
 		size_t start_offset_dest = (size_t) offset_x0_dest
@@ -1593,7 +1581,7 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(uint8_t *tile_data,
 				- (size_t) width_dest;
 
 		auto dest_ind = start_offset_dest;
-		auto src_ind = start_offset_src;
+		size_t src_ind = 0;
 		switch (size_comp) {
 		case 1: {
 			auto src_ptr = (int8_t*) tile_data;
