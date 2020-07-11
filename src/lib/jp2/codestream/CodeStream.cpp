@@ -1082,15 +1082,6 @@ bool j2k_decompress_tile_t1(CodeStream *codeStream, TileProcessor *tileProcessor
 
 	auto decoder = &codeStream->m_decoder;
 	uint16_t tile_index = tileProcessor->m_current_tile_index;
-
-	if (tile_index != tileProcessor->m_current_tile_index){
-		   GROK_ERROR("j2k_decompress_tile: desired tile index %u "
-				   "does not match current tile index %u.",
-				   tile_index,
-				   tileProcessor->m_current_tile_index);
-		return false;
-	}
-
 	auto tcp = codeStream->m_cp.tcps + tile_index;
 	if (!tcp->m_tile_data) {
 		tcp->destroy();
@@ -1194,7 +1185,8 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 	uint32_t num_tiles_to_decode = codeStream->m_cp.t_grid_height
 			* codeStream->m_cp.t_grid_width;
 	bool multi_tile = num_tiles_to_decode > 1;
-	uint32_t num_tiles_decoded = 0;
+	std::atomic<bool> success(true);
+	std::atomic<uint32_t> num_tiles_decoded(0);
 
 	// read header and perform T2
 	for (uint32_t tileno = 0; tileno < num_tiles_to_decode; tileno++) {
@@ -1227,18 +1219,50 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 	}
 
 	//T1 and post T1
-	for (auto &tp : codeStream->m_tileProcessors) {
-		codeStream->m_tileProcessor = tp;
-		if (tp->m_corrupt_packet)
-			continue;
+	if (codeStream->m_tileProcessors.size() == 1){
+		for (auto &tp : codeStream->m_tileProcessors) {
+			codeStream->m_tileProcessor = tp;
+			if (tp->m_corrupt_packet)
+				continue;
 		if (!j2k_decompress_tile_t1(codeStream, tp,multi_tile,
 				nullptr, 0, stream)){
-			GROK_ERROR("Failed to decompress tile %u/%u",
-					tp->m_current_tile_index + 1,num_tiles_to_decode);
+				GROK_ERROR("Failed to decompress tile %u/%u",
+						tp->m_current_tile_index + 1,num_tiles_to_decode);
 			return false;
+			} else {
+				num_tiles_decoded++;
+			}
 		}
+	} else 	{
+		ThreadPool pool(ThreadPool::get()->num_threads());
+		std::vector< std::future<int> > results;
 
-		num_tiles_decoded++;
+		for (auto &tp : codeStream->m_tileProcessors) {
+			codeStream->m_tileProcessor = tp;
+			if (tp->m_corrupt_packet)
+				continue;
+			results.emplace_back(
+				pool.enqueue([codeStream,tp,
+							  num_tiles_to_decode,
+							  multi_tile,
+							  stream, &num_tiles_decoded, &success] {
+					if (success) {
+						if (!j2k_decompress_tile_t1(codeStream, tp,multi_tile,
+								nullptr, 0, stream)){
+							GROK_ERROR("Failed to decompress tile %u/%u",
+									tp->m_current_tile_index + 1,num_tiles_to_decode);
+							success = false;
+						} else {
+							num_tiles_decoded++;
+						}
+					}
+					return 0;
+				})
+			);
+		}
+		for(auto && result: results){
+			result.get();
+		}
 	}
 
 	// sanity checks
@@ -1246,10 +1270,11 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 		GROK_ERROR("No tiles were decoded. Exiting");
 		return false;
 	} else if (num_tiles_decoded < num_tiles_to_decode) {
-		GROK_WARN("Only %u out of %u tiles were decoded", num_tiles_decoded,
+		uint32_t decoded = num_tiles_decoded;
+		GROK_WARN("Only %u out of %u tiles were decoded", decoded,
 				num_tiles_to_decode);
 	}
-	return true;
+	return success;
 }
 
 /*
