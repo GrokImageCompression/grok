@@ -1219,7 +1219,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 	}
 
 	//T1 and post T1
-	if (codeStream->m_tileProcessors.size() == 1){
+	if (codeStream->m_tileProcessors.size() == 1 || ThreadPool::get()->num_threads()== 1){
 		for (auto &tp : codeStream->m_tileProcessors) {
 			codeStream->m_tileProcessor = tp;
 			if (tp->m_corrupt_packet)
