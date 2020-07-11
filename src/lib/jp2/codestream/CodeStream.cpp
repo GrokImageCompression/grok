@@ -1021,7 +1021,7 @@ bool j2k_decompress_tile(CodeStream *codeStream, uint16_t tile_index,
 	if (!j2k_decompress_tile_t2(codeStream, tile_index, stream))
 		return false;
 
-	return j2k_decompress_tile_t1(codeStream, tile_index,
+	return j2k_decompress_tile_t1(codeStream, codeStream->m_tileProcessor,
 			tile_compositing_buff, tile_compositing_buff_len, stream);
 
 }
@@ -1074,14 +1074,14 @@ bool j2k_decompress_tile_t2(CodeStream *codeStream, uint16_t tile_index,
 	return rc;
 }
 
-bool j2k_decompress_tile_t1(CodeStream *codeStream, uint16_t tile_index,
+bool j2k_decompress_tile_t1(CodeStream *codeStream, TileProcessor *tileProcessor,
 		uint8_t *tile_compositing_buff, uint64_t tile_compositing_buff_len,
 		BufferedStream *stream) {
 	assert(stream != nullptr);
 	assert(codeStream != nullptr);
 
-	auto tileProcessor = codeStream->m_tileProcessor;
 	auto decoder = &codeStream->m_decoder;
+	uint16_t tile_index = tileProcessor->m_current_tile_index;
 
 	if (tile_index != tileProcessor->m_current_tile_index){
 		   GROK_ERROR("j2k_decompress_tile: desired tile index %u "
@@ -1122,7 +1122,7 @@ bool j2k_decompress_tile_t1(CodeStream *codeStream, uint16_t tile_index,
 				return false;
 			}
 			if (codeStream->m_output_image && tile_compositing_buff) {
-				if (!codeStream->m_tileProcessor->copy_decompressed_tile_to_output_image(
+				if (!tileProcessor->copy_decompressed_tile_to_output_image(
 						tile_compositing_buff, codeStream->m_output_image)) {
 					return false;
 				}
@@ -1250,7 +1250,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 		codeStream->m_tileProcessor = tp;
 		if (tp->m_corrupt_packet)
 			continue;
-		if (!j2k_decompress_tile_t1(codeStream, tp->m_current_tile_index,
+		if (!j2k_decompress_tile_t1(codeStream, tp,
 				tile_compositing_buff, tile_compositing_buff_len, stream)){
 			GROK_ERROR("Failed to decompress tile %u/%u",
 					tp->m_current_tile_index + 1,num_tiles_to_decode);

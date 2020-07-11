@@ -317,8 +317,8 @@ bool j2k_decompress_tile(CodeStream *codeStream, uint16_t tile_index, uint8_t *p
 
 bool j2k_decompress_tile_t2(CodeStream *codeStream, uint16_t tile_index, BufferedStream *stream);
 
-bool j2k_decompress_tile_t1(CodeStream *codeStream, uint16_t tile_index, uint8_t *p_data,
-		uint64_t data_size, BufferedStream *stream);
+bool j2k_decompress_tile_t1(CodeStream *codeStream, TileProcessor *tileProcessor,
+		uint8_t *p_data, uint64_t data_size, BufferedStream *stream);
 /**
  * Reads a tile header.
  * @param	codeStream		JPEG 2000 code stream
