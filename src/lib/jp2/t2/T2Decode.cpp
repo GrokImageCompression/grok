@@ -356,6 +356,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 				}
 				if (value != tag_tree_uninitialized_node_value
 						&& value != p_pi->layno) {
+					GROK_WARN("Tile number: %u",tileProcessor->m_current_tile_index+1);
 					std::string msg =
 							"Illegal inclusion tag tree found when decoding packet header.\n";
 					msg +=
@@ -368,8 +369,9 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 							"makes its first contribution.  Such an error may occur from a\n";
 					msg +=
 							"mis-interpretation of the standard.  The problem may also occur as a result of\n";
-					msg += "a corrupted code-stream\n";
+					msg += "a corrupted code-stream";
 					GROK_WARN("%s", msg.c_str());
+					tileProcessor->m_corrupt_packet = true;
 
 				}
 #ifdef DEBUG_LOSSLESS_T2

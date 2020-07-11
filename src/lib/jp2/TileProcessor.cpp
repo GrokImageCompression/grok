@@ -80,7 +80,9 @@ TileProcessor::TileProcessor(CodeStream *codeStream) :
 				plt_markers(nullptr),
 				m_cp(&codeStream->m_cp),
 				tp_pos(0),
-				m_tcp(nullptr) {
+				m_tcp(nullptr),
+				m_corrupt_packet(false)
+{
 
 	tile = (grk_tile*) grk_calloc(1, sizeof(grk_tile));
 	if (!tile)
@@ -1074,14 +1076,11 @@ void TileProcessor::copy_image_to_tile() {
 bool TileProcessor::t2_decode(uint16_t tile_no, ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
 	auto t2 = new T2Decode(this);
+	bool rc = t2->decode_packets(tile_no, src_buf, p_data_read);
 
-	if (!t2->decode_packets(tile_no, src_buf, p_data_read)) {
-		delete t2;
-		return false;
-	}
 	delete t2;
 
-	return true;
+	return rc;
 }
 
 bool TileProcessor::mct_decode() {

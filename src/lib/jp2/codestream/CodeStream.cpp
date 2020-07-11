@@ -1197,9 +1197,11 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 	bool multi_tile = num_tiles_to_decode > 1;
 	uint32_t num_tiles_decoded = 0;
 
+	// read header and perform T2
 	for (uint32_t tileno = 0; tileno < num_tiles_to_decode; tileno++) {
 		uint32_t tile_x0 = 0, tile_y0 = 0, tile_x1 = 0, tile_y1 = 0;
 
+		//1. read header
 		if (!j2k_read_tile_header(codeStream, &current_tile_no, &all_tile_data_len,
 				&tile_x0, &tile_y0, &tile_x1, &tile_y1, &nb_comps, &go_on,
 				stream))
@@ -1208,12 +1210,14 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 		if (!go_on)
 			break;
 
+		//2. T2 decode
 		if (!j2k_decompress_tile_t2(codeStream, current_tile_no, stream)){
 				GROK_ERROR("Failed to decompress tile %u/%u",
 						current_tile_no + 1, num_tiles_to_decode);
 				goto fail;
 		}
 
+		//3. manage compositing buffer
 		if (multi_tile
 				&& all_tile_data_len > tile_compositing_buff_len) {
 			if (!tile_compositing_buff) {
@@ -1235,22 +1239,29 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 				tile_compositing_buff_len = all_tile_data_len;
 			}
 		}
+		if (stream->get_number_byte_left() == 0
+				|| codeStream->m_decoder.m_state
+						== J2K_DEC_STATE_NO_EOC)
+			break;
+	}
 
-		if (!j2k_decompress_tile_t1(codeStream, current_tile_no,
+	//T1 and post T1
+	for (auto &tp : codeStream->m_tileProcessors) {
+		codeStream->m_tileProcessor = tp;
+		if (tp->m_corrupt_packet)
+			continue;
+		if (!j2k_decompress_tile_t1(codeStream, tp->m_current_tile_index,
 				tile_compositing_buff, tile_compositing_buff_len, stream)){
 			GROK_ERROR("Failed to decompress tile %u/%u",
-					current_tile_no + 1, num_tiles_to_decode);
+					tp->m_current_tile_index + 1,num_tiles_to_decode);
 			goto fail;
 		}
 
 		num_tiles_decoded++;
-		if (stream->get_number_byte_left() == 0
-				&& codeStream->m_decoder.m_state
-						== J2K_DEC_STATE_NO_EOC)
-			break;
 	}
 	grk_free(tile_compositing_buff);
 
+	// sanity checks
 	if (num_tiles_decoded == 0) {
 		GROK_ERROR("No tiles were decoded. Exiting");
 		return false;
