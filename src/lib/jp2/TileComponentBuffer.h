@@ -55,7 +55,6 @@ template<typename T> struct TileComponentBuffer {
 						grk_resolution *tile_comp_resolutions) :
 							reduced_region_dim(reduced_dim),
 							unreduced_tile_comp_dim(unreduced_dim),
-							reduced_tile_comp_dim(reduced_dim),
 							data(nullptr),
 							data_size(0),
 							owns_data(false),
@@ -72,8 +71,8 @@ template<typename T> struct TileComponentBuffer {
 			reduced_region_dim 	= unreduced_region_dim;
 			reduced_region_dim.ceildivpow2(numresolutions - reduced_num_resolutions);
 
-			/* clip output image to tile */
-			reduced_tile_comp_dim.clip(reduced_region_dim, &reduced_region_dim);
+			/* clip region dimensions against tile */
+			reduced_dim.clip(reduced_region_dim, &reduced_region_dim);
 			unreduced_tile_comp_dim.clip(unreduced_region_dim, &unreduced_region_dim);
 
 			/* fill resolutions vector */
@@ -95,12 +94,9 @@ template<typename T> struct TileComponentBuffer {
 				+ offsety * (uint64_t) (reduced_region_dim.x1 - reduced_region_dim.x0);
 	}
 	bool alloc(){
-		uint64_t data_size_needed =
-				m_encode ? unreduced_tile_comp_dim.area() * sizeof(T) :
-						reduced_region_dim.area() * sizeof(T);
+		uint64_t data_size_needed = data_dim().area() * sizeof(T);
 		if (!data && !data_size_needed)
 			return true;
-
 		if (!data) {
 			if (owns_data)
 				grk_aligned_free(data);
@@ -116,7 +112,10 @@ template<typename T> struct TileComponentBuffer {
 		}
 
 		return true;
+	}
 
+	grk_rect data_dim(){
+		return m_encode ? unreduced_tile_comp_dim : reduced_region_dim;
 	}
 	// set data to buf without owning it
 	void attach(T* buf){
@@ -146,13 +145,8 @@ template<typename T> struct TileComponentBuffer {
 	grk_rect reduced_region_dim;
 
 private:
-
 	/* unreduced tile component coordinates of tile */
 	grk_rect unreduced_tile_comp_dim;
-
-	/* reduced tile component coordinates of tile */
-	grk_rect reduced_tile_comp_dim;
-
 
 	std::vector<grk_resolution*> resolutions;
 

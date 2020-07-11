@@ -988,69 +988,6 @@ bool TileProcessor::decompress_tile_t1(void) {
 	return true;
 }
 
-/*
- For each component, copy decoded resolutions from the tile data buffer
- into tile_compositing_buff.
-
- So, tile_compositing_buff stores a sub-region of the tcd data,
- based on the number of resolutions decoded.
-
- Note: tile_compositing_buff stores data in the actual precision
- of the decompressed image vs. tile data buffer which is always 32 bits.
- */
-bool TileProcessor::composite_tile(uint8_t *tile_compositing_buff,
-		uint64_t tile_compositing_buff_len) {
-	if (get_uncompressed_tile_size(true) > tile_compositing_buff_len)
-		return false;
-
-	for (uint32_t i = 0; i < image->numcomps; ++i) {
-		auto tilec = tile->comps + i;
-		auto img_comp = image->comps + i;
-		uint32_t size_comp = (img_comp->prec + 7) >> 3;
-		uint32_t width = (uint32_t) tilec->buf->reduced_region_dim.width();
-		uint32_t height = (uint32_t) tilec->buf->reduced_region_dim.height();
-		const int32_t *src_ptr = tilec->buf->get_ptr(0, 0, 0, 0);
-
-		switch (size_comp) {
-		case 1: {
-			auto dest_ptr = (int8_t*) tile_compositing_buff;
-			if (img_comp->sgnd) {
-				for (uint32_t j = 0; j < height; ++j) {
-					for (uint32_t k = 0; k < width; ++k)
-						*(dest_ptr++) = (int8_t) (*(src_ptr++));
-				}
-			} else {
-				for (uint32_t j = 0; j < height; ++j) {
-					for (uint32_t k = 0; k < width; ++k)
-						*(dest_ptr++) = (int8_t) ((*(src_ptr++)) & 0xff);
-				}
-			}
-			tile_compositing_buff = (uint8_t*) dest_ptr;
-		}
-			break;
-		case 2:
-		{
-			auto dest_ptr = (int16_t*) tile_compositing_buff;
-			if (img_comp->sgnd) {
-				for (uint32_t j = 0; j < height; ++j) {
-					for (uint32_t k = 0; k < width; ++k)
-						*(dest_ptr++) = (int16_t) (*(src_ptr++));
-				}
-			} else {
-				for (uint32_t j = 0; j < height; ++j) {
-					for (uint32_t k = 0; k < width; ++k)
-						//cast and mask to avoid sign extension
-						*(dest_ptr++) = (int16_t) ((*(src_ptr++)) & 0xffff);
-				}
-			}
-			tile_compositing_buff = (uint8_t*) dest_ptr;
-		}
-			break;
-		}
-	}
-
-	return true;
-}
 
 void TileProcessor::copy_image_to_tile() {
 	for (uint32_t i = 0; i < image->numcomps; ++i) {
@@ -1473,6 +1410,71 @@ bool TileProcessor::alloc_output_data(grk_image *p_output_image){
 
 }
 
+/*
+ For each component, copy decoded resolutions from the tile data buffer
+ into tile_compositing_buff.
+
+ So, tile_compositing_buff stores a sub-region of the tcd data,
+ based on the number of resolutions decoded.
+
+ Note: tile_compositing_buff stores data in the actual precision
+ of the decompressed image vs. tile data buffer which is always 32 bits.
+ */
+bool TileProcessor::composite_tile(uint8_t *tile_compositing_buff,
+		uint64_t tile_compositing_buff_len) {
+	if (get_uncompressed_tile_size(true) > tile_compositing_buff_len)
+		return false;
+
+	for (uint32_t i = 0; i < image->numcomps; ++i) {
+		auto tilec = tile->comps + i;
+		auto img_comp = image->comps + i;
+		uint32_t size_comp = (img_comp->prec + 7) >> 3;
+		uint32_t width = (uint32_t) tilec->buf->reduced_region_dim.width();
+		uint32_t height = (uint32_t) tilec->buf->reduced_region_dim.height();
+		const int32_t *src_ptr = tilec->buf->get_ptr(0, 0, 0, 0);
+
+		switch (size_comp) {
+		case 1: {
+			auto dest_ptr = (int8_t*) tile_compositing_buff;
+			if (img_comp->sgnd) {
+				for (uint32_t j = 0; j < height; ++j) {
+					for (uint32_t k = 0; k < width; ++k)
+						*(dest_ptr++) = (int8_t) (*(src_ptr++));
+				}
+			} else {
+				for (uint32_t j = 0; j < height; ++j) {
+					for (uint32_t k = 0; k < width; ++k)
+						*(dest_ptr++) = (int8_t) ((*(src_ptr++)) & 0xff);
+				}
+			}
+			tile_compositing_buff = (uint8_t*) dest_ptr;
+		}
+			break;
+		case 2:
+		{
+			auto dest_ptr = (int16_t*) tile_compositing_buff;
+			if (img_comp->sgnd) {
+				for (uint32_t j = 0; j < height; ++j) {
+					for (uint32_t k = 0; k < width; ++k)
+						*(dest_ptr++) = (int16_t) (*(src_ptr++));
+				}
+			} else {
+				for (uint32_t j = 0; j < height; ++j) {
+					for (uint32_t k = 0; k < width; ++k)
+						//cast and mask to avoid sign extension
+						*(dest_ptr++) = (int16_t) ((*(src_ptr++)) & 0xffff);
+				}
+			}
+			tile_compositing_buff = (uint8_t*) dest_ptr;
+		}
+			break;
+		}
+	}
+
+	return true;
+}
+
+
 /**
  * tile_data stores only the decoded resolutions, in the actual precision
  * of the decoded image. This method copies a sub-region of this region
@@ -1509,7 +1511,7 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(uint8_t *tile_data,
 		uint32_t x1_dest = x0_dest + comp_dest->w;
 		uint32_t y1_dest = y0_dest + comp_dest->h;
 
-		grk_rect src_dim = tilec->buf->reduced_region_dim;
+		grk_rect src_dim = tilec->buf->data_dim();
 		uint32_t width_src = (uint32_t) src_dim.width();
 		uint32_t height_src = (uint32_t) src_dim.height();
 
