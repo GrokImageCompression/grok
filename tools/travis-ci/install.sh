@@ -48,7 +48,7 @@ if [ "${GROK_CI_SKIP_TESTS:-}" != "1" ]; then
 	fi
 	if [ "${TRAVIS_OS_NAME:-}" == "osx" ] || uname -s | grep -i Darwin &> /dev/null; then
 		GROK_DATA_BRANCH=osx
-		brew reinstall python
+
 		pip install --user six
 	fi
 	echo "Cloning grok-test-data from ${GROK_DATA_BRANCH} branch"
