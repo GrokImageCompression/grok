@@ -342,21 +342,13 @@ bool jp2_read_header(BufferedStream *stream, FileFormat *fileFormat,
 
 /**
  * Reads a tile header.
- * @param  fileFormat         JPEG 2000 code stream
- * @param  tile_index  FIXME DOC
- * @param  data_size   FIXME DOC
- * @param  p_tile_x0     FIXME DOC
- * @param  p_tile_y0     FIXME DOC
- * @param  p_tile_x1     FIXME DOC
- * @param  p_tile_y1     FIXME DOC
- * @param  p_nb_comps    FIXME DOC
- * @param  p_go_on       FIXME DOC
+ * @param  fileFormat   JPEG 2000 code stream
+ * @param  tile_index   tile index
+ * @param  p_go_on      FIXME DOC
  * @param  stream      the stream to write data to.
  
  */
 bool jp2_read_tile_header(FileFormat *fileFormat, uint16_t *tile_index,
-		uint64_t *data_size, uint32_t *p_tile_x0, uint32_t *p_tile_y0,
-		uint32_t *p_tile_x1, uint32_t *p_tile_y1, uint32_t *p_nb_comps,
 		bool *p_go_on, BufferedStream *stream);
 
 

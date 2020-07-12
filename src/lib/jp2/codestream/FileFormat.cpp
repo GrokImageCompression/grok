@@ -2932,11 +2932,8 @@ static bool jp2_init_header_reading(FileFormat *fileFormat) {
 }
 
 bool jp2_read_tile_header(FileFormat *fileFormat, uint16_t *tile_index,
-		uint64_t *data_size, uint32_t *p_tile_x0, uint32_t *p_tile_y0,
-		uint32_t *p_tile_x1, uint32_t *p_tile_y1, uint32_t *p_nb_comps,
 		bool *p_go_on, BufferedStream *stream) {
-	return j2k_read_tile_header(fileFormat->j2k, tile_index, data_size, p_tile_x0,
-			p_tile_y0, p_tile_x1, p_tile_y1, p_nb_comps, p_go_on, stream);
+	return j2k_read_tile_header(fileFormat->j2k, tile_index, p_go_on, stream);
 }
 
 bool jp2_compress_tile(FileFormat *fileFormat, uint16_t tile_index, uint8_t *p_data,

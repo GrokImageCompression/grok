@@ -262,7 +262,6 @@ struct TileProcessor {
 	 bool init_tile(uint16_t tile_no,
 			grk_image *output_image, bool isEncoder);
 
-
 	/**
 	 * Compress a tile from a raw image into stream.
 	 * @param	tile_no		Index of the tile to compress.
@@ -287,20 +286,12 @@ struct TileProcessor {
 	 */
 	bool decompress_tile_t2(ChunkBuffer *src_buf, uint16_t tile_no);
 
-	/**
-	 * Copies tile data from the system onto the given memory block.
-	 */
-	bool composite_tile(uint8_t *p_dest,
-			uint64_t dest_length);
-
-
 	uint64_t get_uncompressed_tile_size(bool reduced);
 
 	/**
 	 * Copies tile data from the given memory block onto the system.
 	 */
 	bool copy_image_data_to_tile(uint8_t *p_src, uint64_t src_length);
-
 
 	bool needs_rate_control();
 
@@ -336,7 +327,6 @@ struct TileProcessor {
 
     /** Only valid for decoding. Whether the whole tile is decoded, or just the region in win_x0/win_y0/win_x1/win_y1 */
     bool   whole_tile_decoding;
-
 
 	PacketLengthMarkers *plt_markers;
 

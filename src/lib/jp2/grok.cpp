@@ -83,9 +83,6 @@ struct grk_codec_private {
 
 			/** FIXME DOC */
 			bool (*read_tile_header)(void *p_codec, uint16_t *tile_index,
-					uint64_t *data_size, uint32_t *p_tile_x0,
-					uint32_t *p_tile_y0, uint32_t *p_tile_x1,
-					uint32_t *p_tile_y1, uint32_t *p_nb_comps,
 					bool *p_should_go_on, BufferedStream *p_cio);
 
 
@@ -273,8 +270,7 @@ const char* GRK_CALLCONV grk_version(void) {
 				 grk_dparameters  * )) j2k_init_decompressor;
 
 		codec->m_codec_data.m_decompression.read_tile_header =
-				(bool (*)(void*, uint16_t*, uint64_t*, uint32_t*, uint32_t*,
-						uint32_t*, uint32_t*, uint32_t*, bool*, BufferedStream*)) j2k_read_tile_header;
+				(bool (*)(void*, uint16_t*, bool*, BufferedStream*)) j2k_read_tile_header;
 
 
 		codec->m_codec_data.m_decompression.set_decompress_area = (bool (*)(void*,
@@ -305,8 +301,7 @@ const char* GRK_CALLCONV grk_version(void) {
 				BufferedStream*, void*,  grk_header_info  *header_info,
 				grk_image **)) jp2_read_header;
 		codec->m_codec_data.m_decompression.read_tile_header =
-				(bool (*)(void*, uint16_t*, uint64_t*, uint32_t*, uint32_t*,
-						uint32_t*, uint32_t*, uint32_t*, bool*, BufferedStream*)) jp2_read_tile_header;
+				(bool (*)(void*, uint16_t*, bool*, BufferedStream*)) jp2_read_tile_header;
 
 		codec->m_codec_data.m_decompression.destroy =
 				(void (*)(void*)) jp2_destroy;
@@ -391,22 +386,6 @@ bool GRK_CALLCONV grk_set_decompress_area( grk_codec  *p_codec,
 		return codec->m_codec_data.m_decompression.set_decompress_area(
 				codec->m_codec, p_image, start_x, start_y, end_x,
 				end_y);
-	}
-	return false;
-}
-bool GRK_CALLCONV grk_read_tile_header( grk_codec  *p_codec,
-		 uint16_t *tile_index, uint64_t *data_size,
-		uint32_t *p_tile_x0, uint32_t *p_tile_y0, uint32_t *p_tile_x1,
-		uint32_t *p_tile_y1, uint32_t *p_nb_comps, bool *p_should_go_on) {
-	if (p_codec && data_size && tile_index) {
-		auto codec = (grk_codec_private*) p_codec;
-		auto stream = (BufferedStream*) codec->m_stream;
-		if (!codec->is_decompressor)
-			return false;
-		return codec->m_codec_data.m_decompression.read_tile_header(
-				codec->m_codec, tile_index, data_size, p_tile_x0,
-				p_tile_y0, p_tile_x1, p_tile_y1, p_nb_comps, p_should_go_on,
-				stream);
 	}
 	return false;
 }

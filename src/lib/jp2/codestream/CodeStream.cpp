@@ -740,9 +740,7 @@ static bool j2k_need_nb_tile_parts_correction(CodeStream *codeStream,
 }
 
 bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
-		uint64_t *uncompressed_tile_size, uint32_t *p_tile_x0,
-		uint32_t *p_tile_y0, uint32_t *p_tile_x1, uint32_t *p_tile_y1,
-		uint32_t *p_nb_comps, bool *p_go_on, BufferedStream *stream) {
+				bool *p_go_on, BufferedStream *stream) {
 	assert(codeStream);
 
 	codeStream->m_tileProcessor = new TileProcessor(codeStream);
@@ -966,11 +964,9 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 		}
 	}
 	/* Current marker is the EOC marker ?*/
-	if (current_marker == J2K_MS_EOC) {
-		if (decoder->m_state != J2K_DEC_STATE_EOC) {
-			decoder->m_state = J2K_DEC_STATE_EOC;
-		}
-	}
+	if (current_marker == J2K_MS_EOC && decoder->m_state != J2K_DEC_STATE_EOC)
+		decoder->m_state = J2K_DEC_STATE_EOC;
+
 	//if we are not ready to decompress tile part data,
     // then skip tiles with no tile data i.e. no SOD marker
 	if (!decoder->ready_to_decode_tile_part_data) {
@@ -995,12 +991,6 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 	codeStream->m_tileProcessors.push_back(codeStream->m_tileProcessor);
 	*tile_index = tileProcessor->m_current_tile_index;
 	*p_go_on = true;
-	*uncompressed_tile_size = tileProcessor->get_uncompressed_tile_size(true);
-	*p_tile_x0 = tileProcessor->tile->x0;
-	*p_tile_y0 = tileProcessor->tile->y0;
-	*p_tile_x1 = tileProcessor->tile->x1;
-	*p_tile_y1 = tileProcessor->tile->y1;
-	*p_nb_comps = tileProcessor->tile->numcomps;
 	decoder->m_state |= J2K_DEC_STATE_DATA;
 
 	return true;
@@ -1167,8 +1157,6 @@ CodeStream* j2k_create_decompress(void) {
 static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream) {
 	bool go_on = true;
 	uint16_t current_tile_no = 0;
-	uint64_t all_tile_data_len = 0;
-	uint32_t nb_comps = 0;
 	uint32_t num_tiles_to_decode = codeStream->m_cp.t_grid_height
 			* codeStream->m_cp.t_grid_width;
 	bool multi_tile = num_tiles_to_decode > 1;
@@ -1177,11 +1165,8 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 
 	// read header and perform T2
 	for (uint32_t tileno = 0; tileno < num_tiles_to_decode; tileno++) {
-		uint32_t tile_x0 = 0, tile_y0 = 0, tile_x1 = 0, tile_y1 = 0;
-
 		//1. read header
-		if (!j2k_read_tile_header(codeStream, &current_tile_no, &all_tile_data_len,
-				&tile_x0, &tile_y0, &tile_x1, &tile_y1, &nb_comps, &go_on,
+		if (!j2k_read_tile_header(codeStream, &current_tile_no,&go_on,
 				stream))
 			return false;
 
@@ -1268,9 +1253,6 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 static bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream) {
 	bool go_on = true;
 	uint16_t current_tile_index;
-	uint64_t uncompressed_tile_size;
-	uint32_t tile_x0, tile_y0, tile_x1, tile_y1;
-	uint32_t nb_comps;
 	bool rc = false;
 
 	/*Allocate and initialize some elements of code stream index if not already done*/
@@ -1334,8 +1316,7 @@ static bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream) 
 	    }
 	}
 
-	if (!j2k_read_tile_header(codeStream, &current_tile_index, &uncompressed_tile_size,
-			&tile_x0, &tile_y0, &tile_x1, &tile_y1, &nb_comps, &go_on, stream))
+	if (!j2k_read_tile_header(codeStream, &current_tile_index, &go_on, stream))
 		goto cleanup;
 
 	if (!j2k_decompress_tile(codeStream, current_tile_index, stream)) {

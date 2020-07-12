@@ -1615,39 +1615,6 @@ GRK_API bool GRK_CALLCONV grk_decompress(grk_codec *p_decompressor,
 GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_codec *codec,
 		grk_image *image, uint16_t tile_index);
 
-/**
- * Read tile header. This function allows one
- * to know the size of the tile that will be decoded.
- * The user may need to refer to the image returned by grk_read_header
- * to understand the size being taken by the tile.
- *
- * @param	codec			JPEG 2000 code stream.
- * @param	tile_index		pointer to a value that will hold the index
- *  						of the tile being decoded, in case of success.
- * @param	data_size		pointer to a value that will hold
- * 							the maximum size of the decoded data, in case of success. In case
- *							of truncated codestreams, the actual number of bytes decoded
- *							may be lower. The computation of the size is the same
- *							as depicted in grk_write_tile.
- * @param	p_tile_x0		pointer to a value that will hold the x0 pos of the tile (in the image).
- * @param	p_tile_y0		pointer to a value that will hold the y0 pos of the tile (in the image).
- * @param	p_tile_x1		pointer to a value that will hold the x1 pos of the tile (in the image).
- * @param	p_tile_y1		pointer to a value that will hold the y1 pos of the tile (in the image).
- * @param	p_nb_comps		pointer to a value that will hold the number of components in the tile.
- * @param	p_should_go_on	pointer to a boolean that specifies whether the decoding should go on.
- * 							In case the code stream is over at the time of the call, the value
- * 							will be set to false. The user should then stop decoding.
- * @return	true			if the tile header could be decoded. In case the decoding
- * 							should end, the returned value is still true.
- *							returning false may be the result of a shortage of memory
- *							or an internal error.
- */
-GRK_API bool GRK_CALLCONV grk_read_tile_header(grk_codec *codec,
-		uint16_t *tile_index, uint64_t *data_size, uint32_t *p_tile_x0,
-		uint32_t *p_tile_y0, uint32_t *p_tile_x1, uint32_t *p_tile_y1,
-		uint32_t *p_nb_comps, bool *p_should_go_on);
-
-
 /* COMPRESSION FUNCTIONS*/
 
 /**

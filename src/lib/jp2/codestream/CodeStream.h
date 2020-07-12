@@ -322,20 +322,12 @@ bool j2k_decompress_tile_t1(CodeStream *codeStream, TileProcessor *tileProcessor
  * Reads a tile header.
  * @param	codeStream		JPEG 2000 code stream
  * @param	tile_index 	index of tile
- * @param	data_size FIXME DOC
- * @param	p_tile_x0 tile x0 coordinate
- * @param	p_tile_y0 tile y0 coordinate
- * @param	p_tile_x1 tile x1 coordinate
- * @param	p_tile_y1 tile y1 coordinate
- * @param	p_nb_comps number of componets
  * @param	p_go_on FIXME DOC
  * @param	stream			the stream to write data to.
  
  */
 bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
-		uint64_t *data_size, uint32_t *p_tile_x0, uint32_t *p_tile_y0,
-		uint32_t *p_tile_x1, uint32_t *p_tile_y1, uint32_t *p_nb_comps,
-		bool *p_go_on, BufferedStream *stream);
+							bool *p_go_on, BufferedStream *stream);
 
 /**
  * Set the given area to be decoded. This function should be called
