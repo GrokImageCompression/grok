@@ -1010,8 +1010,7 @@ bool j2k_decompress_tile(CodeStream *codeStream, uint16_t tile_index,
 	if (!j2k_decompress_tile_t2(codeStream, tile_index, stream))
 		return false;
 
-	return j2k_decompress_tile_t1(codeStream, codeStream->m_tileProcessor, false,
-			stream);
+	return j2k_decompress_tile_t1(codeStream, codeStream->m_tileProcessor, false);
 
 }
 
@@ -1063,9 +1062,7 @@ bool j2k_decompress_tile_t2(CodeStream *codeStream, uint16_t tile_index,
 	return rc;
 }
 
-bool j2k_decompress_tile_t1(CodeStream *codeStream, TileProcessor *tileProcessor, bool multi_tile,
-		BufferedStream *stream) {
-	assert(stream != nullptr);
+bool j2k_decompress_tile_t1(CodeStream *codeStream, TileProcessor *tileProcessor, bool multi_tile) {
 	assert(codeStream != nullptr);
 
 	auto decoder = &codeStream->m_decoder;
@@ -1196,7 +1193,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 			codeStream->m_tileProcessor = tp;
 			if (tp->m_corrupt_packet)
 				continue;
-		if (!j2k_decompress_tile_t1(codeStream, tp,multi_tile,stream)){
+		if (!j2k_decompress_tile_t1(codeStream, tp,multi_tile)){
 				GROK_ERROR("Failed to decompress tile %u/%u",
 						tp->m_current_tile_index + 1,num_tiles_to_decode);
 			return false;
@@ -1216,9 +1213,9 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 				pool.enqueue([codeStream,tp,
 							  num_tiles_to_decode,
 							  multi_tile,
-							  stream, &num_tiles_decoded, &success] {
+							  &num_tiles_decoded, &success] {
 					if (success) {
-						if (!j2k_decompress_tile_t1(codeStream, tp,multi_tile,stream)){
+						if (!j2k_decompress_tile_t1(codeStream, tp,multi_tile)){
 							GROK_ERROR("Failed to decompress tile %u/%u",
 									tp->m_current_tile_index + 1,num_tiles_to_decode);
 							success = false;
@@ -2291,6 +2288,7 @@ static bool j2k_init_header_writing(CodeStream *codeStream) {
 
 	assert(!codeStream->m_tileProcessor);
 	codeStream->m_tileProcessor = new TileProcessor(codeStream);
+	codeStream->m_tileProcessors.push_back(codeStream->m_tileProcessor);
 	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_init_info);
 	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_write_soc);
 	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_write_siz);
@@ -2469,6 +2467,7 @@ bool j2k_init_mct_encoding(TileCodingParams *p_tcp, grk_image *p_image) {
 
 static bool j2k_end_encoding(CodeStream *codeStream, BufferedStream *stream) {
 	(void) stream;
+	(void) codeStream;
 	assert(codeStream);
 
 	return true;

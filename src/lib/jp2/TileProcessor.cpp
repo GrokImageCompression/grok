@@ -1434,10 +1434,6 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_
 		/* Copy info from decoded comp image to output image */
 		comp_dest->resno_decoded = comp_src->resno_decoded;
 
-		/* Compute the precision of the output buffer */
-		uint32_t size_comp = (comp_src->prec + 7) >> 3;
-		assert(size_comp <= 2);
-
 		/* Border of the current output component. (x0_dest,y0_dest)
 		 * corresponds to origin of dest buffer */
 		auto reduce = m_cp->m_coding_params.m_dec.m_reduce;
