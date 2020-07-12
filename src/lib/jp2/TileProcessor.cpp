@@ -1487,7 +1487,7 @@ bool TileProcessor::composite_tile(uint8_t *tile_compositing_buff,
  * @return:
  */
 bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_image) {
-	uint32_t i = 0, j = 0, k = 0;
+	uint32_t i = 0, j = 0;
 	auto image_src = image;
 	for (i = 0; i < image_src->numcomps; i++) {
 		auto tilec = tile->comps + i;
@@ -1527,7 +1527,7 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_
 		uint32_t width_dest = 0, height_dest = 0;
 		if (x0_dest < src_dim.x0) {
 			offset_x0_dest = (uint32_t) (src_dim.x0 - x0_dest);
-				if (x1_dest >= src_dim.x1) {
+			if (x1_dest >= src_dim.x1) {
 				width_dest = width_src;
 				offset_x1_src = 0;
 			} else {
@@ -1563,9 +1563,8 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_
 				offset_y1_src = (uint32_t) (src_dim.y1 - y1_dest);
 			}
 		}
-		if ((offset_x1_src > width_src)	|| (offset_y1_src > height_src)) {
+		if ((offset_x1_src > width_src)	|| (offset_y1_src > height_src))
 			return false;
-		}
 		if (width_dest > comp_dest->w || height_dest > comp_dest->h)
 			return false;
 		if (width_src > comp_src->w || height_src > comp_src->h)
@@ -1573,8 +1572,6 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_
 
 		/* Compute the input buffer offset */
 		size_t line_offset_src = (size_t) offset_x1_src;
-		size_t end_offset_src = (size_t) offset_y1_src * (size_t) width_src;
-
 		/* Compute the output buffer offset */
 		size_t start_offset_dest = (size_t) offset_x0_dest
 				+ (size_t) offset_y0_dest * (size_t) comp_dest->w;
@@ -1583,53 +1580,13 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_
 
 		auto dest_ind = start_offset_dest;
 		size_t src_ind = 0;
-		switch (size_comp) {
-		case 1: {
-			auto src_ptr = (uint32_t*) tile_data;
-			if (comp_src->sgnd) {
-				for (j = 0; j < height_dest; ++j) {
-					for (k = 0; k < width_dest; ++k)
-						comp_dest->data[dest_ind++] =
-								(int32_t) src_ptr[src_ind++];
-					dest_ind += line_offset_dest;
-					src_ind += line_offset_src;
-				}
-			} else {
-				for (j = 0; j < height_dest; ++j) {
-					for (k = 0; k < width_dest; ++k)
-						comp_dest->data[dest_ind++] =
-								(int32_t) (src_ptr[src_ind++] & 0xff);
-					dest_ind += line_offset_dest;
-					src_ind += line_offset_src;
-				}
-			}
-
-			src_ind += end_offset_src;
-			tile_data = (uint8_t*) (src_ptr + src_ind);
-			}
-			break;
-		case 2: {
-			auto src_ptr = (uint32_t*) tile_data;
-			if (comp_src->sgnd) {
-				for (j = 0; j < height_dest; ++j) {
-					for (k = 0; k < width_dest; ++k)
-						comp_dest->data[dest_ind++] = src_ptr[src_ind++];
-					dest_ind += line_offset_dest;
-					src_ind += line_offset_src;
-				}
-			} else {
-				for (j = 0; j < height_dest; ++j) {
-					for (k = 0; k < width_dest; ++k)
-						comp_dest->data[dest_ind++] = src_ptr[src_ind++]
-								& 0xffff;
-					dest_ind += line_offset_dest;
-					src_ind += line_offset_src;
-				}
-			}
-			src_ind += end_offset_src;
-			tile_data = (uint8_t*) (src_ptr + src_ind);
-			}
-			break;
+		auto src_ptr = (uint32_t*) tile_data;
+		for (j = 0; j < height_dest; ++j) {
+			memcpy(comp_dest->data + dest_ind,
+					src_ptr + src_ind,
+						width_dest * sizeof(int32_t));
+			dest_ind += width_dest + line_offset_dest;
+			src_ind  += width_dest + line_offset_src;
 		}
 	}
 
