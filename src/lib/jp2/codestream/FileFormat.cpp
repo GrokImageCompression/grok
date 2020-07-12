@@ -2944,10 +2944,8 @@ bool jp2_compress_tile(FileFormat *fileFormat, uint16_t tile_index, uint8_t *p_d
 	return j2k_compress_tile(fileFormat->j2k, tile_index, p_data, uncompressed_data_size, stream);
 }
 
-bool jp2_decompress_tile(FileFormat *fileFormat, uint16_t tile_index, uint8_t *p_data,
-		uint64_t data_size, BufferedStream *stream) {
-	return j2k_decompress_tile(fileFormat->j2k, tile_index, p_data, data_size,
-				stream);
+bool jp2_decompress_tile(FileFormat *fileFormat, uint16_t tile_index, BufferedStream *stream) {
+	return j2k_decompress_tile(fileFormat->j2k, tile_index,stream);
 }
 
 void jp2_destroy(FileFormat *fileFormat) {

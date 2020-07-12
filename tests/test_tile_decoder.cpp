@@ -101,7 +101,6 @@ int main(int argc, char *argv[]) {
 	uint64_t data_size = 0;
 	uint64_t max_data_size = 1000;
 	uint16_t tile_index;
-	uint8_t *data = nullptr;
 	bool go_on = true;
 	uint32_t nb_comps = 0;
 	uint32_t current_tile_x0, current_tile_y0, current_tile_x1, current_tile_y1;
@@ -155,10 +154,6 @@ int main(int argc, char *argv[]) {
 		da_y1 = 1000;
 		input_file = "test.j2k";
 	}
-
-	data = (uint8_t*) malloc(1000);
-	if (!data)
-		goto beach;
 
 	grk_initialize(nullptr, 0);
 	stream = grk_stream_create_file_stream(input_file, 1024 * 1024, true);
@@ -223,26 +218,9 @@ int main(int argc, char *argv[]) {
 		goto beach;
 	}
 
-	while (go_on) {
-		if (!grk_read_tile_header(codec, &tile_index, &data_size,
-				&current_tile_x0, &current_tile_y0, &current_tile_x1,
-				&current_tile_y1, &nb_comps, &go_on))
-			goto beach;
-
-		if (go_on) {
-			if (data_size > max_data_size) {
-				uint8_t *new_data = (uint8_t*) realloc(data, data_size);
-				if (!new_data)
-					goto beach;
-				data = new_data;
-				max_data_size = data_size;
-			}
-
-			if (!grk_decompress_tile_to_buffer(codec, tile_index, data, data_size))
-				goto beach;
-			/** now should inspect image to know the reduction factor and then how to behave with data */
-		}
-	}
+	if (!grk_decompress_tile(codec, image, tile_index))
+		goto beach;
+	/** now should inspect image to know the reduction factor and then how to behave with data */
 
 	if (!grk_end_decompress(codec))
 		goto beach;
@@ -251,7 +229,6 @@ int main(int argc, char *argv[]) {
 	grk_deinitialize();
 
 	beach:
-	free(data);
 	grk_stream_destroy(stream);
 	grk_destroy_codec(codec);
 	grk_image_destroy(image);

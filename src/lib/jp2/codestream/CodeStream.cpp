@@ -1013,7 +1013,6 @@ fail:
 }
 
 bool j2k_decompress_tile(CodeStream *codeStream, uint16_t tile_index,
-		uint8_t *tile_compositing_buff, uint64_t tile_compositing_buff_len,
 		BufferedStream *stream) {
 	assert(stream != nullptr);
 	assert(codeStream != nullptr);
@@ -1022,7 +1021,7 @@ bool j2k_decompress_tile(CodeStream *codeStream, uint16_t tile_index,
 		return false;
 
 	return j2k_decompress_tile_t1(codeStream, codeStream->m_tileProcessor, false,
-			tile_compositing_buff, tile_compositing_buff_len, stream);
+			stream);
 
 }
 
@@ -1075,7 +1074,6 @@ bool j2k_decompress_tile_t2(CodeStream *codeStream, uint16_t tile_index,
 }
 
 bool j2k_decompress_tile_t1(CodeStream *codeStream, TileProcessor *tileProcessor, bool multi_tile,
-		uint8_t *tile_compositing_buff, uint64_t tile_compositing_buff_len,
 		BufferedStream *stream) {
 	assert(stream != nullptr);
 	assert(codeStream != nullptr);
@@ -1102,17 +1100,6 @@ bool j2k_decompress_tile_t1(CodeStream *codeStream, TileProcessor *tileProcessor
 	}
 
 	if (doPost) {
-
-		/* if tile_compositing_buff is not null, copy decoded resolutions from tile data
-		 * into tile_compositing_buff. Otherwise, simply copy tile data pointer
-		 * to output image
-		 */
-		if (tile_compositing_buff) {
-			if (!tileProcessor->composite_tile(tile_compositing_buff,
-					tile_compositing_buff_len)) {
-				return false;
-			}
-		}
 		if (codeStream->m_output_image) {
 			if (multi_tile) {
 				if (!tileProcessor->copy_decompressed_tile_to_output_image(codeStream->m_output_image))
@@ -1224,8 +1211,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 			codeStream->m_tileProcessor = tp;
 			if (tp->m_corrupt_packet)
 				continue;
-		if (!j2k_decompress_tile_t1(codeStream, tp,multi_tile,
-				nullptr, 0, stream)){
+		if (!j2k_decompress_tile_t1(codeStream, tp,multi_tile,stream)){
 				GROK_ERROR("Failed to decompress tile %u/%u",
 						tp->m_current_tile_index + 1,num_tiles_to_decode);
 			return false;
@@ -1247,8 +1233,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 							  multi_tile,
 							  stream, &num_tiles_decoded, &success] {
 					if (success) {
-						if (!j2k_decompress_tile_t1(codeStream, tp,multi_tile,
-								nullptr, 0, stream)){
+						if (!j2k_decompress_tile_t1(codeStream, tp,multi_tile,stream)){
 							GROK_ERROR("Failed to decompress tile %u/%u",
 									tp->m_current_tile_index + 1,num_tiles_to_decode);
 							success = false;
@@ -1353,7 +1338,7 @@ static bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream) 
 			&tile_x0, &tile_y0, &tile_x1, &tile_y1, &nb_comps, &go_on, stream))
 		goto cleanup;
 
-	if (!j2k_decompress_tile(codeStream, current_tile_index, nullptr, 0, stream)) {
+	if (!j2k_decompress_tile(codeStream, current_tile_index, stream)) {
 		goto cleanup;
 	}
 

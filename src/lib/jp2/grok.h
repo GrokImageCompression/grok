@@ -1647,22 +1647,6 @@ GRK_API bool GRK_CALLCONV grk_read_tile_header(grk_codec *codec,
 		uint32_t *p_tile_y0, uint32_t *p_tile_x1, uint32_t *p_tile_y1,
 		uint32_t *p_nb_comps, bool *p_should_go_on);
 
-/**
- * Decompress tile data into buffer. grk_read_tile_header should be called before
- * this method is called. The user may need to refer to the image returned
- * by grk_read_header to calculate the size of the decompressed tile.
- *
- * @param	codec			JPEG 2000 code stream.
- * @param	tile_index		index of the tile being decoded. This should be the value
- * 						 	set by grk_read_tile_header.
- * @param	data			pointer to a memory block that will hold the decoded data.
- * @param	data_size		size of data. data_size should be greater than or equal to
- * 							the value set by grk_read_tile_header.
- *
- * @return	true			if the data could be decoompressed, otherwise false
- */
-GRK_API bool GRK_CALLCONV grk_decompress_tile_to_buffer(grk_codec *codec,
-		uint16_t tile_index, uint8_t *data, uint64_t data_size);
 
 /* COMPRESSION FUNCTIONS*/
 
