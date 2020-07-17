@@ -23,15 +23,15 @@
 #else
 #define SPDLOG_API __declspec(dllimport)
 #endif
-#else
+#else // !defined(_WIN32) || !defined(SPDLOG_SHARED_LIB)
 #define SPDLOG_API
 #endif
 #define SPDLOG_INLINE
-#else
+#else // !defined(SPDLOG_COMPILED_LIB)
 #define SPDLOG_API
 #define SPDLOG_HEADER_ONLY
 #define SPDLOG_INLINE inline
-#endif
+#endif // #ifdef SPDLOG_COMPILED_LIB
 
 #include <spdlog/fmt/fmt.h>
 
@@ -204,8 +204,8 @@ private:
     std::string msg_;
 };
 
-void throw_spdlog_ex(const std::string &msg, int last_errno);
-void throw_spdlog_ex(std::string msg);
+SPDLOG_API void throw_spdlog_ex(const std::string &msg, int last_errno);
+SPDLOG_API void throw_spdlog_ex(std::string msg);
 
 struct source_loc
 {
