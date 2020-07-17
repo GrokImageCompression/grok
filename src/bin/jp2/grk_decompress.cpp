@@ -99,7 +99,9 @@ using namespace grk;
 #include <string>
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
-#include <chrono>  // for high_resolution_clock
+#include <chrono>
+#include "spdlog/sinks/basic_file_sink.h"
+
 
 using namespace TCLAP;
 
@@ -250,6 +252,9 @@ static void decode_help_display(void) {
 	fprintf(stdout,
 			"  [-X | -XML]\n"
 					"    Store XML metadata to file. File name will be set to \"output file name\" + \".xml\"\n");
+	fprintf(stdout,
+			"  [-W | -logfile]\n"
+					"    log to file. File name will be set to \"log file name\"\n");
 	fprintf(stdout, "\n");
 }
 
@@ -474,6 +479,9 @@ int parse_cmdline_decoder(int argc, char **argv,
 		GrokOutput output;
 		cmd.setOutput(&output);
 
+		ValueArg<string> logfileArg("W", "logfile", "Log file",
+				false, "", "string", cmd);
+
 		ValueArg<string> imgDirArg("y", "ImgDir", "Image Directory", false, "",
 				"string", cmd);
 		ValueArg<string> outDirArg("a", "OutDir", "Output Directory", false, "",
@@ -530,6 +538,11 @@ int parse_cmdline_decoder(int argc, char **argv,
 		parameters->verbose = verboseArg.isSet();
 		if (!parameters->verbose)
 			spdlog::set_level(spdlog::level::level_enum::err);
+
+		if (logfileArg.isSet()){
+		    auto file_logger = spdlog::basic_logger_mt("basic_logger", logfileArg.getValue());
+		    spdlog::set_default_logger(file_logger);
+		}
 
 		parameters->serialize_xml = xmlArg.isSet();
 		parameters->force_rgb = forceRgbArg.isSet();

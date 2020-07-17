@@ -100,7 +100,8 @@ using namespace grk;
 #include <sstream>
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
-#include <chrono>  // for high_resolution_clock
+#include <chrono>
+#include "spdlog/sinks/basic_file_sink.h"
 
 using namespace TCLAP;
 
@@ -425,6 +426,9 @@ static void encode_help_display(void) {
 	fprintf(stdout,
 			"    (GPU) Specify which GPU accelerator to run codec on.\n");
 	fprintf(stdout, "    A value of -1 will specify all devices.\n");
+	fprintf(stdout,
+			"  [-W | -logfile]\n"
+					"    log to file. File name will be set to \"log file name\"\n");
 	fprintf(stdout, "\n");
 }
 
@@ -569,6 +573,9 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		GrokOutput output;
 		cmd.setOutput(&output);
 
+		ValueArg<string> logfileArg("W", "logfile", "Log file",
+				false, "", "string", cmd);
+
 		// Kernel build flags:
 		// 1 indicates build binary, otherwise load binary
 		// 2 indicates generate binaries
@@ -699,6 +706,11 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		SwitchArg verboseArg("v", "verbose", "Verbose", cmd);
 
 		cmd.parse(argc, argv);
+
+		if (logfileArg.isSet()){
+		    auto file_logger = spdlog::basic_logger_mt("basic_logger", logfileArg.getValue());
+		    spdlog::set_default_logger(file_logger);
+		}
 
 		img_fol->set_out_format = false;
 		parameters->raw_cp.width = 0;
