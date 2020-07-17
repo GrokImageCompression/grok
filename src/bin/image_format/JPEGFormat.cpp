@@ -266,11 +266,13 @@ static int imagetojpeg(grk_image *image, const char *filename,
 	cinfo.image_height = image_height;
 	cinfo.input_components = (int)numcomps; /* # of color components per pixel */
 	cinfo.in_color_space = info.color_space; /* colorspace of input image */
+
 	/* Now use the library's routine to set default compression parameters.
 	 * (You must set at least cinfo.in_color_space before calling this,
 	 * since the defaults depend on the source color space.)
 	 */
 	jpeg_set_defaults(&cinfo);
+
 	/* Now you can set any non-default parameters you wish to.
 	 * Here we just illustrate the use of quality (quantization table) scaling:
 	 */
@@ -278,6 +280,13 @@ static int imagetojpeg(grk_image *image, const char *filename,
 			(int)((compressionParam == GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT) ?
 					90 : compressionParam),
 			(boolean) TRUE /* limit to baseline-JPEG values */);
+
+	// set resolution
+	if (image->capture_resolution[0] > 0 && image->capture_resolution[1] > 0) {
+		cinfo.density_unit = 2; // dots per cm
+		cinfo.X_density = (uint16_t)(image->capture_resolution[0]/100.0 + 0.5);
+		cinfo.Y_density = (uint16_t)(image->capture_resolution[1]/100.0 + 0.5);
+	}
 
 	/* Step 4: Start compressor */
 
