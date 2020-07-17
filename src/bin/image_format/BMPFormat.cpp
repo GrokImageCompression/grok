@@ -861,7 +861,8 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 	uint32_t w, h;
 	int32_t pad;
 	FILE *fdest = nullptr;
-	int adjustR, adjustG, adjustB;
+	int truncR = 0, truncG = 0, truncB = 0;
+	float scaleR = 1.0f, scaleG = 1.0f, scaleB = 1.0f;
 	int rc = -1;
 	uint8_t *destBuff = nullptr;
 	uint64_t sz = 0;
@@ -878,9 +879,8 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 		goto cleanup;
 	}
 	for (uint32_t i = 0; i < image->numcomps; ++i) {
-		if (image->comps[i].prec < 8) {
-			spdlog::error("Unsupported precision: {} for component {}",
-					image->comps[i].prec, i);
+		if (image->comps[i].prec == 0) {
+			spdlog::error("Unsupported precision: 0 for component {}",i);
 			goto cleanup;
 		}
 	}
@@ -941,26 +941,38 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 		if (!write_int(fdest, 0))
 			goto cleanup;
 		if (image->comps[0].prec > 8) {
-			adjustR = (int) image->comps[0].prec - 8;
+			truncR = (int) image->comps[0].prec - 8;
 			spdlog::warn(
 						"BMP CONVERSION: Truncating component 0 from {} bits to 8 bits",
 						image->comps[0].prec);
-		} else
-			adjustR = 0;
+		} else if (image->comps[0].prec < 8) {
+			scaleR = 255.0f/(1U << image->comps[0].prec);
+			spdlog::warn(
+						"BMP CONVERSION: Scaling component 0 from {} bits to 8 bits",
+						image->comps[0].prec);
+		}
 		if (image->comps[1].prec > 8) {
-			adjustG = (int) image->comps[1].prec - 8;
+			truncG = (int) image->comps[1].prec - 8;
 			spdlog::warn(
 						"BMP CONVERSION: Truncating component 1 from {} bits to 8 bits",
 						image->comps[1].prec);
-		} else
-			adjustG = 0;
+		} else if (image->comps[1].prec < 8) {
+			scaleG = 255.0f/(1U << image->comps[1].prec);
+			spdlog::warn(
+						"BMP CONVERSION: Scaling component 1 from {} bits to 8 bits",
+						image->comps[1].prec);
+		}
 		if (image->comps[2].prec > 8) {
-			adjustB = (int) image->comps[2].prec - 8;
+			truncB = (int) image->comps[2].prec - 8;
 			spdlog::warn(
 						"BMP CONVERSION: Truncating component 2 from {} bits to 8 bits",
 						image->comps[2].prec);
-		} else
-			adjustB = 0;
+		} else if (image->comps[2].prec < 8) {
+			scaleB = 255.0f/(1U << image->comps[2].prec);
+			spdlog::warn(
+						"BMP CONVERSION: Scaling component 2 from {} bits to 8 bits",
+						image->comps[2].prec);
+		}
 		size_t padW = ((3 * w + 3) >> 2) << 2;
 		auto destBuff = new uint8_t[padW];
 		for (uint32_t j = 0; j < h; j++) {
@@ -972,8 +984,10 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 				r = image->comps[0].data[sz + i];
 				r += (image->comps[0].sgnd ?
 								1 << (image->comps[0].prec - 1) : 0);
-				if (adjustR > 0)
-					r = ((r >> adjustR) + ((r >> (adjustR - 1)) % 2));
+				if (truncR != 0)
+					r = ((r >> truncR) + ((r >> (truncR - 1)) % 2));
+				else if (scaleR != 1.0f)
+					r = (int32_t)(((float)r * scaleR) + 0.5f);
 				if (r > 255)
 					r = 255;
 				else if (r < 0)
@@ -983,19 +997,23 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 				g = image->comps[1].data[sz + i];
 				g += (image->comps[1].sgnd ?
 								1 << (image->comps[1].prec - 1) : 0);
-				if (adjustG > 0)
-					g = ((g >> adjustG) + ((g >> (adjustG - 1)) % 2));
+				if (truncG > 0)
+					g = ((g >> truncG) + ((g >> (truncG - 1)) % 2));
+				else if (scaleG != 1.0f)
+					g = (int32_t)(((float)g * scaleG) + 0.5f);
 				if (g > 255)
 					g = 255;
 				else if (g < 0)
 					g = 0;
 				gc = (uint8_t) g;
 
-				b = image->comps[2].data[sz - j * w + i];
+				b = image->comps[2].data[sz + i];
 				b += (image->comps[2].sgnd ?
 								1 << (image->comps[2].prec - 1) : 0);
-				if (adjustB > 0)
-					b = ((b >> adjustB) + ((b >> (adjustB - 1)) % 2));
+				if (truncB > 0)
+					b = ((b >> truncB) + ((b >> (truncB - 1)) % 2));
+				else if (scaleB != 1.0f)
+					b = (int32_t)(((float)b * scaleB) + 0.5f);
 				if (b > 255)
 					b = 255;
 				else if (b < 0)
@@ -1055,12 +1073,12 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 		if (!write_int(fdest, 256))
 			goto cleanup;
 		if (image->comps[0].prec > 8) {
-			adjustR = (int) image->comps[0].prec - 8;
+			truncR = (int) image->comps[0].prec - 8;
 			spdlog::warn(
 						"BMP CONVERSION: Truncating component 0 from {} bits to 8 bits",
 						image->comps[0].prec);
-		} else
-			adjustR = 0;
+		} else if (image->comps[0].prec < 8)
+			scaleR = 255.0f/(1U << image->comps[0].prec);
 
 		for (uint32_t i = 0; i < 256; i++) {
 			if (fprintf(fdest, "%c%c%c%c", i, i, i, 0) != 4)
@@ -1075,8 +1093,10 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 				int32_t r = image->comps[0].data[sz + i];
 				r +=(image->comps[0].sgnd ?
 								1 << (image->comps[0].prec - 1) : 0);
-				if (adjustR > 0)
-					r = ((r >> adjustR) + ((r >> (adjustR - 1)) % 2));
+				if (truncR > 0)
+					r = ((r >> truncR) + ((r >> (truncR - 1)) % 2));
+				else if (scaleR != 1.0f)
+					r = (int32_t)(((float)r * scaleR) + 0.5f);
 				if (r > 255)
 					r = 255;
 				else if (r < 0)
