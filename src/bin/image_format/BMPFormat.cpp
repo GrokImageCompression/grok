@@ -864,6 +864,7 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 	int adjustR, adjustG, adjustB;
 	int rc = -1;
 	uint8_t *destBuff = nullptr;
+	uint64_t sz = 0;
 
 	if (!grk::all_components_sanity_check(image))
 		goto cleanup;
@@ -894,13 +895,14 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 			goto cleanup;
 		}
 	}
+	w = image->comps[0].w;
+	h = image->comps[0].h;
+	sz = w * (h - 1);
 
 	if (image->numcomps == 3) {
 		/* -->> -->> -->> -->>
 		 24 bits color
 		 <<-- <<-- <<-- <<-- */
-		w = image->comps[0].w;
-		h = image->comps[0].h;
 
 		if (fprintf(fdest, "BM") != 2)
 			goto cleanup;
@@ -959,18 +961,16 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 						image->comps[2].prec);
 		} else
 			adjustB = 0;
-		uint32_t sz = w * h;
 		size_t padW = ((3 * w + 3) >> 2) << 2;
 		auto destBuff = new uint8_t[padW];
 		for (uint32_t j = 0; j < h; j++) {
-			uint32_t destInd = 0;
+			uint64_t destInd = 0;
 			for (uint32_t i = 0; i < w; i++) {
 				uint8_t rc, gc, bc;
 				int32_t r, g, b;
 
-				r = image->comps[0].data[sz - (j + 1) * w + i];
-				r +=
-						(image->comps[0].sgnd ?
+				r = image->comps[0].data[sz + i];
+				r += (image->comps[0].sgnd ?
 								1 << (image->comps[0].prec - 1) : 0);
 				if (adjustR > 0)
 					r = ((r >> adjustR) + ((r >> (adjustR - 1)) % 2));
@@ -980,9 +980,8 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 					r = 0;
 				rc = (uint8_t) r;
 
-				g = image->comps[1].data[sz - (j + 1) * w + i];
-				g +=
-						(image->comps[1].sgnd ?
+				g = image->comps[1].data[sz + i];
+				g += (image->comps[1].sgnd ?
 								1 << (image->comps[1].prec - 1) : 0);
 				if (adjustG > 0)
 					g = ((g >> adjustG) + ((g >> (adjustG - 1)) % 2));
@@ -992,9 +991,8 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 					g = 0;
 				gc = (uint8_t) g;
 
-				b = image->comps[2].data[sz - (j + 1) * w + i];
-				b +=
-						(image->comps[2].sgnd ?
+				b = image->comps[2].data[sz - j * w + i];
+				b += (image->comps[2].sgnd ?
 								1 << (image->comps[2].prec - 1) : 0);
 				if (adjustB > 0)
 					b = ((b >> adjustB) + ((b >> (adjustB - 1)) % 2));
@@ -1008,19 +1006,17 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 				destBuff[destInd++] = rc;
 			}
 			// pad at end of row to ensure that width is divisible by 4
-			for (pad = (3 * w) % 4 ? 4 - (3 * w) % 4 : 0; pad > 0; pad--) { /* ADD */
+			for (pad = (3 * w) % 4 ? 4 - (3 * w) % 4 : 0; pad > 0; pad--)
 				destBuff[destInd++] = 0;
-			}
 			if (fwrite(destBuff, 1, destInd, fdest) != destInd)
 				goto cleanup;
+			sz -= w;
 		}
 	} else { /* Gray-scale */
 
 		/* -->> -->> -->> -->>
 		 8 bits non code (Gray scale)
 		 <<-- <<-- <<-- <<-- */
-		w = image->comps[0].w;
-		h = image->comps[0].h;
 
 		if (fprintf(fdest, "BM") != 2)
 			goto cleanup;
@@ -1071,15 +1067,13 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 				goto cleanup;
 		}
 
-		uint32_t sz = w * h;
 		size_t padW = ((w + 3) >> 2) << 2;
 		auto destBuff = new uint8_t[padW];
 		for (uint32_t j = 0; j < h; j++) {
-			uint32_t destInd = 0;
+			uint64_t destInd = 0;
 			for (uint32_t i = 0; i < w; i++) {
-				int32_t r = image->comps[0].data[sz - (j + 1) * w + i];
-				r +=
-						(image->comps[0].sgnd ?
+				int32_t r = image->comps[0].data[sz + i];
+				r +=(image->comps[0].sgnd ?
 								1 << (image->comps[0].prec - 1) : 0);
 				if (adjustR > 0)
 					r = ((r >> adjustR) + ((r >> (adjustR - 1)) % 2));
@@ -1090,10 +1084,11 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 				destBuff[destInd++] = (uint8_t) r;
 			}
 			// pad at end of row to ensure that width is divisible by 4
-			for (pad = w % 4 ? 4 - w % 4 : 0; pad > 0; pad--) /* ADD */
+			for (pad = w % 4 ? 4 - w % 4 : 0; pad > 0; pad--)
 				destBuff[destInd++] = 0;
 			if (fwrite(destBuff, 1, destInd, fdest) != destInd)
 				goto cleanup;
+			sz -= w;
 		}
 
 	}
@@ -1102,9 +1097,8 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 	cleanup:
 	delete[] destBuff;
 	if (!writeToStdout && fdest) {
-		if (!grk::safe_fclose(fdest)) {
+		if (!grk::safe_fclose(fdest))
 			rc = 1;
-		}
 	}
 	return rc;
 }
