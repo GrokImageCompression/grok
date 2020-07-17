@@ -352,7 +352,7 @@ const cvtTo32 cvtTo32_LUT[9] = {
 };
 
 /**
- * 32 bit to 1 bit
+ * convert 1 bpp to 8 bit
  */
 static void convert_32s1u_C1R(const int32_t *pSrc, uint8_t *pDst,
 		size_t length) {
@@ -405,7 +405,7 @@ static void convert_32s1u_C1R(const int32_t *pSrc, uint8_t *pDst,
 }
 
 /**
- * 32 bit to 2 bit
+ * convert 2 bpp to 8 bit
  */
 static void convert_32s2u_C1R(const int32_t *pSrc, uint8_t *pDst,
 		size_t length) {
@@ -436,7 +436,7 @@ static void convert_32s2u_C1R(const int32_t *pSrc, uint8_t *pDst,
 }
 
 /**
- * 32 bit to 4 bit
+ * convert 4 bpp to 8 bit
  */
 static void convert_32s4u_C1R(const int32_t *pSrc, uint8_t *pDst,
 		size_t length) {
@@ -455,7 +455,7 @@ static void convert_32s4u_C1R(const int32_t *pSrc, uint8_t *pDst,
 }
 
 /**
- * 32 bit to 6 bit
+ * convert 6 bpp to 8 bit
  */
 static void convert_32s6u_C1R(const int32_t *pSrc, uint8_t *pDst,
 		size_t length) {
@@ -493,7 +493,7 @@ static void convert_32s6u_C1R(const int32_t *pSrc, uint8_t *pDst,
 	}
 }
 /**
- * 32 bit to 8 bit
+ * convert 8 bpp to 8 bit
  */
 static void convert_32s8u_C1R(const int32_t *pSrc, uint8_t *pDst,
 		size_t length) {

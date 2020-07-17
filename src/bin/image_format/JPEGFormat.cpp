@@ -75,7 +75,7 @@ static int imagetojpeg(grk_image *image, const char *filename,
 	imageToJpegInfo info;
 	info.writeToStdout = grk::useStdio(filename);
 	cvtPlanarToInterleaved cvtPxToCx = nullptr;
-	cvtFrom32 cvt32sToTif = nullptr;
+	cvtFrom32 cvtTo8bpp = nullptr;
 	int32_t const *planes[3];
 	int32_t firstAlpha = -1;
 	size_t numAlphaChannels = 0;
@@ -85,7 +85,7 @@ static int imagetojpeg(grk_image *image, const char *filename,
 	uint32_t width = image->comps[0].w;
 
 	// actual bits per sample
-	uint32_t bps = image->comps[0].prec;
+	uint32_t prec = image->comps[0].prec;
 	uint32_t i = 0;
 
 	struct my_error_mgr jerr;
@@ -155,7 +155,7 @@ static int imagetojpeg(grk_image *image, const char *filename,
 	}
 
 	planes[0] = image->comps[0].data;
-	if (bps == 0) {
+	if (prec == 0) {
 		spdlog::error("imagetojpeg: image precision is zero.");
 		info.success = false;
 		goto cleanup;
@@ -184,25 +184,32 @@ static int imagetojpeg(grk_image *image, const char *filename,
 	if (i != numcomps) {
 		spdlog::error(
 				"imagetojpeg: All components shall have the same subsampling, same bit depth.");
-		
 		info.success = false;
 		goto cleanup;
 	}
+
+	if (prec < 8 && numcomps > 1) { /* GRAY_ALPHA, RGB, RGB_ALPHA */
+		for (i = 0; i < numcomps; ++i)
+			scale_component(&(image->comps[i]), 8);
+		prec = 8;
+	} else if ((prec > 1) && (prec < 8) && ((prec == 6) || ((prec & 1) == 1))) { /* GRAY with non native precision */
+		if ((prec == 5) || (prec == 6))
+			prec = 8;
+		else
+			prec++;
+		for (i = 0; i < numcomps; ++i)
+			scale_component(&(image->comps[i]), (uint32_t) prec);
+	}
+
+	if (prec != 1 && prec != 2 && prec != 4 && prec != 8) {
+		spdlog::error("imagetojpeg: can not create {}\n\twrong bit_depth {}",
+				filename, prec);
+		info.success = false;
+		goto cleanup;;
+	}
+
 	cvtPxToCx = cvtPlanarToInterleaved_LUT[numcomps];
-	switch (bps) {
-	case 1:
-	case 2:
-	case 4:
-	case 6:
-	case 8:
-		cvt32sToTif = cvtFrom32_LUT[bps];
-		break;
-	default:
-		spdlog::error("imagetojpeg: Unsupported precision {}.", bps);
-		info.success = false;
-		goto cleanup;
-		break;
-	}
+	cvtTo8bpp = cvtFrom32_LUT[prec];
 
 	// Alpha channels
 	for (i = 0U; i < numcomps; ++i) {
@@ -314,7 +321,7 @@ static int imagetojpeg(grk_image *image, const char *filename,
 		 * more than one scanline at a time if that's more convenient.
 		 */
 		cvtPxToCx(planes, info.buffer32s, (size_t) width, info.adjust);
-		cvt32sToTif(info.buffer32s, (uint8_t*) info.buffer,
+		cvtTo8bpp(info.buffer32s, (uint8_t*) info.buffer,
 				(size_t) width * numcomps);
 		row_pointer[0] = info.buffer;
 		planes[0] += width;
