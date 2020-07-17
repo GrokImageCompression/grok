@@ -350,9 +350,8 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 				uint64_t value;
 				if (!prc->incltree->decodeValue(bio.get(), cblkno,
 						p_pi->layno + 1, &value)) {
-					GROK_ERROR(
-							"read_packet_header: failed to read `inclusion` bit ");
-					return false;
+					GROK_WARN("read_packet_header: failed to read tag tree inclusion bit. Ignoring.");
+					break;
 				}
 				if (value != tag_tree_uninitialized_node_value
 						&& value != p_pi->layno) {
@@ -382,9 +381,8 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 			/* else one bit */
 			else {
 				if (!bio->read(&included, 1)) {
-					GROK_ERROR(
-							"read_packet_header: failed to read `inclusion` bit ");
-					return false;
+					GROK_WARN("read_packet_header: failed to read tag tree inclusion bit. Ignoring.");
+					break;
 				}
 
 #ifdef DEBUG_LOSSLESS_T2

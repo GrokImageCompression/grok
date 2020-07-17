@@ -93,10 +93,8 @@ bool BitIO::byteout_stream() {
 }
 
 bool BitIO::bytein() {
-	if (offset == buf_len) {
-		assert(false);
+	if (offset == buf_len)
 		return false;
-	}
 	ct = buf == 0xff ? 7 : 8;
 	buf = start[offset];
 	offset++;
