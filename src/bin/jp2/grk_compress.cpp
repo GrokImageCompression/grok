@@ -708,7 +708,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		cmd.parse(argc, argv);
 
 		if (logfileArg.isSet()){
-		    auto file_logger = spdlog::basic_logger_mt("basic_logger", logfileArg.getValue());
+		    auto file_logger = spdlog::basic_logger_mt("grk_compress", logfileArg.getValue());
 		    spdlog::set_default_logger(file_logger);
 		}
 

@@ -540,7 +540,7 @@ int parse_cmdline_decoder(int argc, char **argv,
 			spdlog::set_level(spdlog::level::level_enum::err);
 
 		if (logfileArg.isSet()){
-		    auto file_logger = spdlog::basic_logger_mt("basic_logger", logfileArg.getValue());
+		    auto file_logger = spdlog::basic_logger_mt("grk_decompress", logfileArg.getValue());
 		    spdlog::set_default_logger(file_logger);
 		}
 
