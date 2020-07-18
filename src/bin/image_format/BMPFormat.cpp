@@ -974,7 +974,7 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 						image->comps[2].prec);
 		}
 		size_t padW = ((3 * w + 3) >> 2) << 2;
-		auto destBuff = new uint8_t[padW];
+		destBuff = new uint8_t[padW];
 		for (uint32_t j = 0; j < h; j++) {
 			uint64_t destInd = 0;
 			for (uint32_t i = 0; i < w; i++) {
@@ -1086,7 +1086,7 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 		}
 
 		size_t padW = ((w + 3) >> 2) << 2;
-		auto destBuff = new uint8_t[padW];
+		destBuff = new uint8_t[padW];
 		for (uint32_t j = 0; j < h; j++) {
 			uint64_t destInd = 0;
 			for (uint32_t i = 0; i < w; i++) {
