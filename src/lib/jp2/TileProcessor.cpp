@@ -1013,13 +1013,7 @@ void TileProcessor::copy_image_to_tile() {
 bool TileProcessor::t2_decode(uint16_t tile_no, ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
 	auto t2 = new T2Decode(this);
-	bool rc = false;
-	try {
-		rc = t2->decode_packets(tile_no, src_buf, p_data_read);
-	} catch (TruncatedStreamException &tex){
-		GROK_WARN("T2 decode: tile %d truncated.", tile_no);
-		rc = true;
-	}
+	bool rc = t2->decode_packets(tile_no, src_buf, p_data_read);
 	delete t2;
 
 	return rc;

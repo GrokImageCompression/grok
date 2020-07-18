@@ -138,40 +138,39 @@ bool T2Decode::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			}
 
 			uint64_t nb_bytes_read = 0;
-			if (!skip_the_packet) {
-				/*
-				 printf("packet cmptno=%02d rlvlno=%02d prcno=%03d layrno=%02d -> %s\n",
-				 current_pi->compno, current_pi->resno,
-				 current_pi->precno, current_pi->layno, skip_the_packet ? "skipped" : "kept");
-				 */
-				first_pass_failed[current_pi->compno] = false;
+			try {
+				if (!skip_the_packet) {
+					/*
+					 printf("packet cmptno=%02d rlvlno=%02d prcno=%03d layrno=%02d -> %s\n",
+					 current_pi->compno, current_pi->resno,
+					 current_pi->precno, current_pi->layno, skip_the_packet ? "skipped" : "kept");
+					 */
+					first_pass_failed[current_pi->compno] = false;
 
-				try {
 					if (!decode_packet(tcp, current_pi, src_buf, &nb_bytes_read)) {
 						pi_destroy(pi, nb_pocs);
 						delete[] first_pass_failed;
 						return false;
 					}
-				} catch (TruncatedStreamException &tex){
-					pi_destroy(pi, nb_pocs);
-					delete[] first_pass_failed;
-					throw tex;
-				}
-				img_comp->resno_decoded = std::max<uint32_t>(current_pi->resno,
-						img_comp->resno_decoded);
+					img_comp->resno_decoded = std::max<uint32_t>(current_pi->resno,
+							img_comp->resno_decoded);
 
-			} else {
-				if (pltMarkerLen) {
-					nb_bytes_read = pltMarkerLen;
-					src_buf->incr_cur_chunk_offset(nb_bytes_read);
-				} else if (!skip_packet(tcp, current_pi, src_buf,
-						&nb_bytes_read)) {
-					pi_destroy(pi, nb_pocs);
-					delete[] first_pass_failed;
-					return false;
+				} else {
+					if (pltMarkerLen) {
+						nb_bytes_read = pltMarkerLen;
+						src_buf->incr_cur_chunk_offset(nb_bytes_read);
+					} else if (!skip_packet(tcp, current_pi, src_buf,
+							&nb_bytes_read)) {
+						pi_destroy(pi, nb_pocs);
+						delete[] first_pass_failed;
+						return false;
+					}
 				}
+			} 	catch (TruncatedStreamException &tex){
+				GROK_WARN("Truncated packet: tile=%d component=%02d resolution=%02d precinct=%03d layer=%02d",
+				 tile_no, current_pi->compno, current_pi->resno,
+				 current_pi->precno, current_pi->layno);
 			}
-
 			if (first_pass_failed[current_pi->compno]) {
 				img_comp = image->comps + current_pi->compno;
 				if (img_comp->resno_decoded == 0) {
