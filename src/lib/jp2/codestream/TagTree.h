@@ -126,9 +126,8 @@ public:
 	 @param leafno Number that identifies the leaf to decompress
 	 @param threshold Threshold to use when decoding value of the leaf
 	 @param decoded 1 if the node's value < threshold, 0 otherwise
-	 @return true if successful, otherwise false
 	 */
-	bool decompress(BitIO *bio, uint64_t leafno, int64_t threshold,
+	void decompress(BitIO *bio, uint64_t leafno, int64_t threshold,
 			uint8_t *decoded);
 
 	/**
@@ -137,9 +136,8 @@ public:
 	 @param leafno Number that identifies the leaf to decompress
 	 @param threshold Threshold to use when decoding value of the leaf
 	 @param value the node's value
-	 @return true if succsssful
 	 */
-	bool decodeValue(BitIO *bio, uint64_t leafno, int64_t threshold,
+	void decodeValue(BitIO *bio, uint64_t leafno, int64_t threshold,
 			uint64_t *value);
 
 private:

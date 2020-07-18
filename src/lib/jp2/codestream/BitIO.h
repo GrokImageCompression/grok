@@ -85,9 +85,8 @@ public:
 	/*
 	 Read bits
 	 @param n Number of bits to read
-	 @return the corresponding read number
 	 */
-	bool read(uint32_t *bits, uint32_t n);
+	void read(uint32_t *bits, uint32_t n);
 	/*
 	 Flush bits
 	 @return true if successful, returns false otherwise
@@ -95,18 +94,17 @@ public:
 	bool flush();
 	/*
 	 Passes the ending bits (coming from flushing)
-	 @return true if successful, returns false otherwise
 	 */
-	bool inalign();
+	void inalign();
 
 	void simulateOutput(bool doSimulate) {
 		sim_out = doSimulate;
 	}
 
 	void putcommacode(int32_t n);
-	bool getcommacode(uint32_t *n);
+	void getcommacode(uint32_t *n);
 	void putnumpasses(uint32_t n);
-	bool getnumpasses(uint32_t *numpasses);
+	void getnumpasses(uint32_t *numpasses);
 
 private:
 
@@ -136,9 +134,8 @@ private:
 	/*
 	 Read a bit
 	 @param bio BIO handle
-	 @return the read bit
 	 */
-	bool getbit(uint32_t *bits, uint8_t pos);
+	void getbit(uint32_t *bits, uint8_t pos);
 	/*
 	 Write a byte
 	 @param bio BIO handle
@@ -155,9 +152,8 @@ private:
 	/*
 	 Read a byte
 	 @param bio BIO handle
-	 @return true if successful, returns false otherwise
 	 */
-	bool bytein();
+	void bytein();
 
 };
 

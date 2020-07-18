@@ -146,12 +146,17 @@ bool T2Decode::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 				 */
 				first_pass_failed[current_pi->compno] = false;
 
-				if (!decode_packet(tcp, current_pi, src_buf, &nb_bytes_read)) {
+				try {
+					if (!decode_packet(tcp, current_pi, src_buf, &nb_bytes_read)) {
+						pi_destroy(pi, nb_pocs);
+						delete[] first_pass_failed;
+						return false;
+					}
+				} catch (TruncatedStreamException &tex){
 					pi_destroy(pi, nb_pocs);
 					delete[] first_pass_failed;
-					return false;
+					throw tex;
 				}
-
 				img_comp->resno_decoded = std::max<uint32_t>(current_pi->resno,
 						img_comp->resno_decoded);
 
@@ -303,15 +308,11 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 	std::unique_ptr<BitIO> bio(
 			new BitIO(header_data, *modified_length_ptr, false));
 	if (*modified_length_ptr) {
-		if (!bio->read(&present, 1)) {
-			GROK_ERROR("read_packet_header: failed to read `present` bit ");
-			return false;
-		}
+		bio->read(&present, 1);
 	}
 	//GROK_INFO("present=%u ", present);
 	if (!present) {
-		if (!bio->inalign())
-			return false;
+		bio->inalign();
 		header_data += bio->numbytes();
 
 		/* EPH markers */
@@ -348,11 +349,9 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 			/* if cblk not yet included before --> inclusion tagtree */
 			if (!cblk->numSegments) {
 				uint64_t value;
-				if (!prc->incltree->decodeValue(bio.get(), cblkno,
-						p_pi->layno + 1, &value)) {
-					GROK_WARN("read_packet_header: failed to read tag tree inclusion bit. Ignoring.");
-					break;
-				}
+				prc->incltree->decodeValue(bio.get(), cblkno,
+						p_pi->layno + 1, &value);
+
 				if (value != tag_tree_uninitialized_node_value
 						&& value != p_pi->layno) {
 					GROK_WARN("Tile number: %u",tileProcessor->m_current_tile_index+1);
@@ -380,11 +379,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 			}
 			/* else one bit */
 			else {
-				if (!bio->read(&included, 1)) {
-					GROK_WARN("read_packet_header: failed to read tag tree inclusion bit. Ignoring.");
-					break;
-				}
-
+				bio->read(&included, 1);
 #ifdef DEBUG_LOSSLESS_T2
 				 cblk->included = included;
 #endif
@@ -401,21 +396,18 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 			if (!cblk->numSegments) {
 				uint32_t K_msbs = 0;
 				uint8_t value;
-				bool rc = true;
 
 				// see Taubman + Marcellin page 388
 				// loop below stops at (# of missing bit planes  + 1)
-				while ((rc = prc->imsbtree->decompress(bio.get(), cblkno,
-						K_msbs, &value)) && !value) {
+				prc->imsbtree->decompress(bio.get(), cblkno,
+										K_msbs, &value);
+				while (!value) {
 					++K_msbs;
+					prc->imsbtree->decompress(bio.get(), cblkno,
+											K_msbs, &value);
 				}
 				assert(K_msbs >= 1);
 				K_msbs--;
-
-				if (!rc) {
-					GROK_ERROR("Failed to decompress zero-bitplane tag tree ");
-					return false;
-				}
 
 				if (K_msbs > band->numbps) {
 					GROK_WARN(
@@ -436,15 +428,8 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 			}
 
 			/* number of coding passes */
-			if (!bio->getnumpasses(&cblk->numPassesInPacket)) {
-				GROK_ERROR("read_packet_header: failed to read numpasses.");
-				return false;
-			}
-			if (!bio->getcommacode(&increment)) {
-				GROK_ERROR(
-						"read_packet_header: failed to read length indicator increment.");
-				return false;
-			}
+			bio->getnumpasses(&cblk->numPassesInPacket);
+			bio->getcommacode(&increment);
 
 			/* length indicator increment */
 			cblk->numlenbits += increment;
@@ -497,10 +482,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 							"read_packet_header: too many bits in segment length ");
 					return false;
 				}
-				if (!bio->read(&seg->numBytesInPacket, bits_to_read)) {
-					GROK_WARN(
-							"read_packet_header: failed to read segment length ");
-				}
+				bio->read(&seg->numBytesInPacket, bits_to_read);
 #ifdef DEBUG_LOSSLESS_T2
 			 cblk->packet_length_info.push_back(grk_packet_length_info(seg->numBytesInPacket,
 							 cblk->numlenbits + uint_floorlog2(seg->numPassesInPacket)));
@@ -523,10 +505,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 		}
 	}
 
-	if (!bio->inalign()) {
-		GROK_ERROR("Unable to read packet header");
-		return false;
-	}
+	bio->inalign();
 
 	header_data += bio->numbytes();
 

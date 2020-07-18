@@ -92,13 +92,12 @@ bool BitIO::byteout_stream() {
 	return true;
 }
 
-bool BitIO::bytein() {
+void BitIO::bytein() {
 	if (offset == buf_len)
-		return false;
+		throw TruncatedStreamException();
 	ct = buf == 0xff ? 7 : 8;
 	buf = start[offset];
 	offset++;
-	return true;
 }
 
 bool BitIO::putbit(uint8_t b) {
@@ -111,15 +110,12 @@ bool BitIO::putbit(uint8_t b) {
 	return true;
 }
 
-bool BitIO::getbit(uint32_t *bits, uint8_t pos) {
-	if (ct == 0) {
-		if (!bytein())
-			return false;
-	}
+void BitIO::getbit(uint32_t *bits, uint8_t pos) {
+	if (ct == 0)
+		bytein();
 	assert(ct > 0);
 	ct = (uint8_t)(ct-1);
 	*bits |= (uint32_t)(((buf >> ct) & 1) << pos);
-	return true;
 }
 
 size_t BitIO::numbytes() {
@@ -135,7 +131,7 @@ bool BitIO::write(uint32_t v, uint32_t n) {
 	return true;
 }
 
-bool BitIO::read(uint32_t *bits, uint32_t n) {
+void BitIO::read(uint32_t *bits, uint32_t n) {
 	assert(n != 0 && n <= 32U);
 #ifdef GRK_UBSAN_BUILD
 	/* This assert fails for some corrupted images which are gracefully rejected */
@@ -144,11 +140,8 @@ bool BitIO::read(uint32_t *bits, uint32_t n) {
 	assert(n <= 32U);
 #endif
 	*bits = 0U;
-	for (int32_t i = (int32_t)(n - 1); i >= 0; i--) {
-		if (!getbit(bits, static_cast<uint8_t>(i)))
-			return false;
-	}
-	return true;
+	for (int32_t i = (int32_t)(n - 1); i >= 0; i--)
+		getbit(bits, static_cast<uint8_t>(i));
 }
 
 bool BitIO::flush() {
@@ -161,13 +154,10 @@ bool BitIO::flush() {
 	return true;
 }
 
-bool BitIO::inalign() {
-	if (buf == 0xff) {
-		if (!bytein())
-			return false;
-	}
+void BitIO::inalign() {
+	if (buf == 0xff)
+		bytein();
 	ct = 0;
-	return true;
 }
 
 void BitIO::putcommacode(int32_t n) {
@@ -176,14 +166,14 @@ void BitIO::putcommacode(int32_t n) {
 	write(0, 1);
 }
 
-bool BitIO::getcommacode(uint32_t *n) {
+void BitIO::getcommacode(uint32_t *n) {
 	*n = 0;
 	uint32_t temp;
-	bool rc = true;
-	while ((rc = read(&temp, 1)) && temp)
+	read(&temp, 1);
+	while (temp){
 		++*n;
-
-	return rc;
+		read(&temp, 1);
+	}
 }
 
 void BitIO::putnumpasses(uint32_t n) {
@@ -199,36 +189,30 @@ void BitIO::putnumpasses(uint32_t n) {
 		write(0xff80 | (n - 37), 16);
 }
 
-bool BitIO::getnumpasses(uint32_t *numpasses) {
+void BitIO::getnumpasses(uint32_t *numpasses) {
 	uint32_t n = 0;
-	if (!read(&n, 1))
-		return false;
+	read(&n, 1);
 	if (!n) {
 		*numpasses = 1;
-		return true;
+		return;
 	}
-	if (!read(&n, 1))
-		return false;
+	read(&n, 1);
 	if (!n) {
 		*numpasses = 2;
-		return true;
+		return;
 	}
-	if (!read(&n, 2))
-		return false;
+	read(&n, 2);
 	if (n != 3) {
 		*numpasses = n + 3;
-		return true;
+		return;
 	}
-	if (!read(&n, 5))
-		return false;
+	read(&n, 5);
 	if (n != 31) {
 		*numpasses = n + 6;
-		return true;
+		return;
 	}
-	if (!read(&n, 7))
-		return false;
+	read(&n, 7);
 	*numpasses = n + 37;
-	return true;
 }
 
 

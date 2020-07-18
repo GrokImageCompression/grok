@@ -307,4 +307,4 @@ c12abf323bfdb7e53c87be3138df5643  p0_14_tif-3.tif
 60a010d72521eab69e194884fe20ab00  p0_14_tif-9.tif
 1438eeda860a4dce8d16a4074ea5dd41  random-issue-0005.tif.j2k.lossless.tif
 5e59d77971a42c57218670a25b1539bf  4bpp.bmp
-86a39cdb8f5ff27badf59112c9db1d9b  truncated.bmp
+dc4f61d85db7583163fb95d6c3e07fd3  truncated.bmp

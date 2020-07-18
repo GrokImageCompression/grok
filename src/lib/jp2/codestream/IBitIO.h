@@ -45,9 +45,8 @@ public:
 	 Read bits
 	 @param bits pointer to bits buffer
 	 @param n Number of bits to read
-	 @return the corresponding read number
 	 */
-	virtual bool read(uint32_t *bits, uint32_t n)= 0;
+	virtual void read(uint32_t *bits, uint32_t n)= 0;
 	/**
 	 Flush bits
 	 @return true if successful, returns false otherwise
@@ -55,9 +54,8 @@ public:
 	virtual bool flush()= 0;
 	/**
 	 Passes the ending bits (coming from flushing)
-	 @return true if successful, returns false otherwise
 	 */
-	virtual bool inalign()= 0;
+	virtual void inalign()= 0;
 
 };
 
