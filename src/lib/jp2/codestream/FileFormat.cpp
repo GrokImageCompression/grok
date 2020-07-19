@@ -2561,7 +2561,7 @@ bool jp2_start_compress(FileFormat *fileFormat, BufferedStream *stream) {
 		return false;
 
 	// estimate if codec stream may be larger than 2^32 bytes
-	auto p_image = fileFormat->j2k->m_private_image;
+	auto p_image = fileFormat->j2k->m_input_image;
 	uint64_t image_size = 0;
 	for (auto i = 0U; i < p_image->numcomps; ++i) {
 		auto comp = p_image->comps + i;

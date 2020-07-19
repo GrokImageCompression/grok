@@ -194,7 +194,7 @@ int main(int argc, char** argv)
 
 	CodeStream codeStream;
 	codeStream.m_cp = params;
-	codeStream.m_private_image = &image;
+	codeStream.m_input_image = &image;
 
    for (size_t k = begin; k <= end; ++k) {
 		memset(&image, 0, sizeof(image));

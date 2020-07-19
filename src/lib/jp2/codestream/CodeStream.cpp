@@ -533,38 +533,27 @@ bool j2k_read_header(BufferedStream *stream, CodeStream *codeStream,
 	assert(stream != nullptr);
 
 	/* create an empty image header */
-	codeStream->m_private_image = grk_image_create0();
-	if (!codeStream->m_private_image) {
+	codeStream->m_input_image = grk_image_create0();
+	if (!codeStream->m_input_image) {
 		return false;
 	}
 
 	/* customization of the validation */
-	if (!j2k_init_decompress_validation(codeStream)) {
-		grk_image_destroy(codeStream->m_private_image);
-		codeStream->m_private_image = nullptr;
+	if (!j2k_init_decompress_validation(codeStream))
 		return false;
-	}
 
 	/* validation of the parameters codec */
-	if (!j2k_exec(codeStream, codeStream->m_validation_list, stream)) {
-		grk_image_destroy(codeStream->m_private_image);
-		codeStream->m_private_image = nullptr;
+	if (!j2k_exec(codeStream, codeStream->m_validation_list, stream))
 		return false;
-	}
 
 	/* customization of the encoding */
-	if (!j2k_init_header_reading(codeStream)) {
-		grk_image_destroy(codeStream->m_private_image);
-		codeStream->m_private_image = nullptr;
+	if (!j2k_init_header_reading(codeStream))
 		return false;
-	}
+
 
 	/* read header */
-	if (!j2k_exec(codeStream, codeStream->m_procedure_list, stream)) {
-		grk_image_destroy(codeStream->m_private_image);
-		codeStream->m_private_image = nullptr;
+	if (!j2k_exec(codeStream, codeStream->m_procedure_list, stream))
 		return false;
-	}
 
 	if (header_info) {
 		CodingParams *cp = nullptr;
@@ -612,7 +601,7 @@ bool j2k_read_header(BufferedStream *stream, CodeStream *codeStream,
 		return false;
 	}
 	/* Copy code stream image information to the output image */
-	grk_copy_image_header(codeStream->m_private_image, *p_image);
+	grk_copy_image_header(codeStream->m_input_image, *p_image);
 	if (codeStream->cstr_index) {
 		/*Allocate and initialize some elements of codestrem index*/
 		if (!j2k_allocate_tile_element_cstr_index(codeStream)) {
@@ -923,7 +912,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 	// see page 553 of Taubman and Marcellin for more details on this check
 	tcp = codeStream->get_current_decode_tcp(tileProcessor);
 	if (tcp->main_qcd_qntsty != J2K_CCP_QNTSTY_SIQNT) {
-		auto numComps = codeStream->m_private_image->numcomps;
+		auto numComps = codeStream->m_input_image->numcomps;
 		//1. Check main QCD
 		uint32_t maxTileDecompositions = 0;
 		for (uint32_t k = 0; k < numComps; ++k) {
@@ -1390,11 +1379,8 @@ bool j2k_decompress(CodeStream *codeStream, grk_plugin_tile *tile,
 	codeStream->current_plugin_tile = tile;
 
 	/* Decode the code stream */
-	if (!j2k_exec(codeStream, codeStream->m_procedure_list, stream)) {
-		grk_image_destroy(codeStream->m_private_image);
-		codeStream->m_private_image = nullptr;
+	if (!j2k_exec(codeStream, codeStream->m_procedure_list, stream))
 		return false;
-	}
 
 	/* Move data and information from codec output image to user output image*/
 	transfer_image_data(codeStream->m_output_image, p_image);
@@ -1429,18 +1415,18 @@ bool j2k_get_tile(CodeStream *codeStream, BufferedStream *stream, grk_image *p_i
 			p_image->y1);
 
 	p_image->x0 = tile_x * codeStream->m_cp.t_width + codeStream->m_cp.tx0;
-	if (p_image->x0 < codeStream->m_private_image->x0)
-		p_image->x0 = codeStream->m_private_image->x0;
+	if (p_image->x0 < codeStream->m_input_image->x0)
+		p_image->x0 = codeStream->m_input_image->x0;
 	p_image->x1 = (tile_x + 1) * codeStream->m_cp.t_width + codeStream->m_cp.tx0;
-	if (p_image->x1 > codeStream->m_private_image->x1)
-		p_image->x1 = codeStream->m_private_image->x1;
+	if (p_image->x1 > codeStream->m_input_image->x1)
+		p_image->x1 = codeStream->m_input_image->x1;
 
 	p_image->y0 = tile_y * codeStream->m_cp.t_height + codeStream->m_cp.ty0;
-	if (p_image->y0 < codeStream->m_private_image->y0)
-		p_image->y0 = codeStream->m_private_image->y0;
+	if (p_image->y0 < codeStream->m_input_image->y0)
+		p_image->y0 = codeStream->m_input_image->y0;
 	p_image->y1 = (tile_y + 1) * codeStream->m_cp.t_height + codeStream->m_cp.ty0;
-	if (p_image->y1 > codeStream->m_private_image->y1)
-		p_image->y1 = codeStream->m_private_image->y1;
+	if (p_image->y1 > codeStream->m_input_image->y1)
+		p_image->y1 = codeStream->m_input_image->y1;
 
 	tile_rect.x0 = p_image->x0;
 	tile_rect.y0 = p_image->y0;
@@ -1497,11 +1483,9 @@ bool j2k_get_tile(CodeStream *codeStream, BufferedStream *stream, grk_image *p_i
 		return false;
 
 	/* Decode the code stream */
-	if (!j2k_exec(codeStream, codeStream->m_procedure_list, stream)) {
-		grk_image_destroy(codeStream->m_private_image);
-		codeStream->m_private_image = nullptr;
+	if (!j2k_exec(codeStream, codeStream->m_procedure_list, stream))
 		return false;
-	}
+
 
 	/* Move data from codec output image to user output image*/
 	transfer_image_data(codeStream->m_output_image, p_image);
@@ -1548,16 +1532,16 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 	}
 
 	// create private sanitized copy of imagte
-	codeStream->m_private_image = grk_image_create0();
-	if (!codeStream->m_private_image) {
+	codeStream->m_input_image = grk_image_create0();
+	if (!codeStream->m_input_image) {
 		GROK_ERROR("Failed to allocate image header.");
 		return false;
 	}
-	grk_copy_image_header(image, codeStream->m_private_image);
+	grk_copy_image_header(image, codeStream->m_input_image);
 	if (image->comps) {
 		for (uint32_t compno = 0; compno < image->numcomps; compno++) {
 			if (image->comps[compno].data) {
-				codeStream->m_private_image->comps[compno].data =
+				codeStream->m_input_image->comps[compno].data =
 						image->comps[compno].data;
 				image->comps[compno].data = nullptr;
 
@@ -2143,7 +2127,7 @@ static bool j2k_write_tile_part(CodeStream *codeStream,	TileProcessor *tileProce
 		if (!GRK_IS_CINEMA(cp->rsiz)) {
 			if (cp->tcps[currentTileNumber].numpocs) {
 				auto tcp = codeStream->m_cp.tcps + currentTileNumber;
-				auto image = codeStream->m_private_image;
+				auto image = codeStream->m_input_image;
 				uint32_t nb_comp = image->numcomps;
 				if (!j2k_write_poc(codeStream, tileProcessor, stream))
 					return false;
@@ -2249,7 +2233,7 @@ static bool j2k_mct_validation(CodeStream *codeStream,TileProcessor *tileProcess
 				auto tccp = tcp->tccps;
 				is_valid &= (tcp->m_mct_coding_matrix != nullptr);
 
-				for (j = 0; j < codeStream->m_private_image->numcomps; ++j) {
+				for (j = 0; j < codeStream->m_input_image->numcomps; ++j) {
 					is_valid &= !(tccp->qmfbid & 1);
 					++tccp;
 				}
@@ -2505,7 +2489,7 @@ static bool j2k_init_info(CodeStream *codeStream, TileProcessor *tileProcessor, 
 
 	return j2k_calculate_tp(&codeStream->m_cp,
 			&codeStream->m_encoder.m_total_tile_parts,
-			codeStream->m_private_image);
+			codeStream->m_input_image);
 }
 
 static bool j2k_get_end_header(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
@@ -2569,7 +2553,7 @@ static bool j2k_copy_default_tcp_and_create_tcd(CodeStream *codeStream,TileProce
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
 
-	auto image = codeStream->m_private_image;
+	auto image = codeStream->m_input_image;
 	nb_tiles = codeStream->m_cp.t_grid_height * codeStream->m_cp.t_grid_width;
 	auto tcp = codeStream->m_cp.tcps;
 	tccp_size = image->numcomps * (uint32_t) sizeof(TileComponentCodingParams);
@@ -2682,7 +2666,7 @@ static bool j2k_update_rates(CodeStream *codeStream, TileProcessor *tileProcesso
 	assert(stream != nullptr);
 
 	auto cp = &(codeStream->m_cp);
-	auto image = codeStream->m_private_image;
+	auto image = codeStream->m_input_image;
 	auto tcp = cp->tcps;
 
 	auto width = image->x1 - image->x0;
@@ -2884,7 +2868,7 @@ static bool j2k_calculate_tp(CodingParams *cp, uint16_t *p_nb_tile_parts,
 	return true;
 }
 
-CodeStream::CodeStream() : m_private_image(nullptr),
+CodeStream::CodeStream() : m_input_image(nullptr),
 							m_output_image(nullptr),
 							cstr_index(nullptr),
 							m_tileProcessor(nullptr),
@@ -2902,7 +2886,7 @@ CodeStream::~CodeStream(){
 	delete m_decoder.m_default_tcp;
 	m_cp.destroy();
 	j2k_destroy_cstr_index(cstr_index);
-	grk_image_destroy(m_private_image);
+	grk_image_destroy(m_input_image);
 	grk_image_destroy(m_output_image);
 	grk_free(m_marker_scratch);
 	for (auto &proc : m_tileProcessors)
@@ -2914,7 +2898,7 @@ bool CodeStream::set_decompress_area(grk_image *output_image,
 		uint32_t start_x, uint32_t start_y, uint32_t end_x, uint32_t end_y) {
 
 	auto cp = &(m_cp);
-	auto image = m_private_image;
+	auto image = m_input_image;
 	auto decoder = &m_decoder;
 
 	/* Check if we have read the main header */
@@ -3095,7 +3079,7 @@ bool CodeStream::read_marker(BufferedStream *stream, uint16_t *val){
 }
 
 bool CodeStream::alloc_output_data(grk_image *p_output_image){
-	auto image_src = m_private_image;
+	auto image_src = m_input_image;
 	for (uint32_t i = 0; i < image_src->numcomps; i++) {
 		auto comp_dest = p_output_image->comps + i;
 

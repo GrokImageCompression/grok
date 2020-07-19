@@ -207,7 +207,7 @@ struct CodeStream {
 	EncoderState m_encoder;
 
 	/** internal/private encoded / decoded image */
-	grk_image *m_private_image;
+	grk_image *m_input_image;
 
 	/* output image (for decompress) */
 	grk_image *m_output_image;

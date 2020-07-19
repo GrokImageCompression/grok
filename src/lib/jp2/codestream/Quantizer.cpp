@@ -127,7 +127,7 @@ bool Quantizer::write_SQcd_SQcc(CodeStream *codeStream, uint16_t tile_no,
 	auto tccp = &tcp->tccps[comp_no];
 
 	assert(tile_no < cp->t_grid_width * cp->t_grid_height);
-	assert(comp_no < codeStream->m_private_image->numcomps);
+	assert(comp_no < codeStream->m_input_image->numcomps);
 
 	uint32_t num_bands =
 			(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
@@ -165,7 +165,7 @@ uint32_t Quantizer::get_SQcd_SQcc_size(CodeStream *codeStream, uint16_t tile_no,
 	auto tccp = &tcp->tccps[comp_no];
 
 	assert(tile_no < cp->t_grid_width * cp->t_grid_height);
-	assert(comp_no < codeStream->m_private_image->numcomps);
+	assert(comp_no < codeStream->m_input_image->numcomps);
 
 	uint32_t num_bands =
 			(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
@@ -224,7 +224,7 @@ bool Quantizer::read_SQcd_SQcc(CodeStream *codeStream, TileProcessor *tileProces
 		uint8_t *p_header_data, uint16_t *header_size) {
 	assert(codeStream != nullptr);
 	assert(p_header_data != nullptr);
-	assert(comp_no < codeStream->m_private_image->numcomps);
+	assert(comp_no < codeStream->m_input_image->numcomps);
 	if (*header_size < 1) {
 		GROK_ERROR( "Error reading SQcd or SQcc element");
 		return false;

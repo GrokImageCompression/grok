@@ -74,7 +74,7 @@ TileProcessor::TileProcessor(CodeStream *codeStream) :
 				cur_totnum_tp(0),
 				cur_pino(0),
 				tile(nullptr),
-				image(codeStream->m_private_image),
+				image(codeStream->m_input_image),
 				current_plugin_tile(codeStream->current_plugin_tile),
 				whole_tile_decoding(codeStream->whole_tile_decoding),
 				plt_markers(nullptr),
@@ -957,6 +957,7 @@ bool TileProcessor::decompress_tile_t1(void) {
 				try {
 					tilec->alloc_sparse_array(img_comp->resno_decoded + 1);
 				} catch (runtime_error &ex) {
+					GROK_ERROR("decompress_tile_t1: %s", ex.what());
 					return false;
 				}
 			}
