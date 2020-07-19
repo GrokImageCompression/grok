@@ -152,8 +152,9 @@ enum J2K_STATUS {
 	J2K_DEC_STATE_ERR = 0x0100 /**< the decoding process has encountered an error */
 };
 
-typedef bool (*j2k_procedure)(CodeStream *j2k, BufferedStream*);
 struct TileProcessor;
+typedef bool (*j2k_procedure)(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream);
+
 
 struct  grk_dec_memory_marker_handler  {
 	/** marker value */
@@ -307,8 +308,6 @@ void j2k_destroy(CodeStream *codeStream);
  * Decode tile data.
  * @param	codeStream		JPEG 2000 code stream
  * @param	tile_index
- * @param p_data       FIXME DOC
- * @param data_size  FIXME DOC
  * @param	stream			the stream to write data to.
  
  */

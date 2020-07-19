@@ -173,7 +173,7 @@ bool j2k_add_mhmarker(grk_codestream_index *cstr_index, uint32_t type,
 	return true;
 }
 
-bool j2k_write_soc(CodeStream *codeStream, BufferedStream *stream) {
+bool j2k_write_soc(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	assert(stream != nullptr);
 	assert(codeStream != nullptr);
 
@@ -217,7 +217,7 @@ bool j2k_read_soc(CodeStream *codeStream, BufferedStream *stream) {
 	return true;
 }
 
-bool j2k_write_siz(CodeStream *codeStream, BufferedStream *stream) {
+bool j2k_write_siz(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	SIZMarker siz;
 
 	return siz.write(codeStream, stream);
@@ -259,7 +259,7 @@ bool j2k_read_cap(CodeStream *codeStream, uint8_t *p_header_data,
 	return true;
 }
 
-bool j2k_write_cap(CodeStream *codeStream, BufferedStream *stream) {
+bool j2k_write_cap(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
 
@@ -325,7 +325,7 @@ bool j2k_read_siz(CodeStream *codeStream, uint8_t *p_header_data,
 	return siz.read(codeStream, p_header_data, header_size);
 }
 
-bool j2k_write_com(CodeStream *codeStream, BufferedStream *stream) {
+bool j2k_write_com(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
 
@@ -417,17 +417,17 @@ bool j2k_read_com(CodeStream *codeStream, uint8_t *p_header_data,
 	return true;
 }
 
-bool j2k_write_cod(CodeStream *codeStream, BufferedStream *stream) {
+bool j2k_write_cod(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	uint32_t code_size;
 
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
 
 	auto cp = &(codeStream->m_cp);
-	auto tcp = &cp->tcps[codeStream->m_tileProcessor->m_current_tile_index];
+	auto tcp = &cp->tcps[tileProcessor->m_current_tile_index];
 	code_size = 9
 			+ j2k_get_SPCod_SPCoc_size(codeStream,
-					codeStream->m_tileProcessor->m_current_tile_index, 0);
+					tileProcessor->m_current_tile_index, 0);
 
 	/* COD */
 	if (!stream->write_short(J2K_MS_COD))
@@ -448,7 +448,7 @@ bool j2k_write_cod(CodeStream *codeStream, BufferedStream *stream) {
 	if (!stream->write_byte((uint8_t) tcp->mct))
 		return false;
 	if (!j2k_write_SPCod_SPCoc(codeStream,
-			codeStream->m_tileProcessor->m_current_tile_index, 0, stream)) {
+			tileProcessor->m_current_tile_index, 0, stream)) {
 		GROK_ERROR("Error writing COD marker");
 		return false;
 	}
@@ -675,7 +675,7 @@ bool j2k_read_coc(CodeStream *codeStream, uint8_t *p_header_data,
 	return true;
 }
 
-bool j2k_write_qcd(CodeStream *codeStream, BufferedStream *stream) {
+bool j2k_write_qcd(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	uint32_t qcd_size;
 
 	assert(codeStream != nullptr);
@@ -683,7 +683,7 @@ bool j2k_write_qcd(CodeStream *codeStream, BufferedStream *stream) {
 
 	qcd_size = 4
 			+ j2k_get_SQcd_SQcc_size(codeStream,
-					codeStream->m_tileProcessor->m_current_tile_index, 0);
+					tileProcessor->m_current_tile_index, 0);
 
 	/* QCD */
 	if (!stream->write_short(J2K_MS_QCD))
@@ -692,7 +692,7 @@ bool j2k_write_qcd(CodeStream *codeStream, BufferedStream *stream) {
 	if (!stream->write_short((uint16_t) (qcd_size - 2)))
 		return false;
 	if (!j2k_write_SQcd_SQcc(codeStream,
-			codeStream->m_tileProcessor->m_current_tile_index, 0, stream)) {
+			tileProcessor->m_current_tile_index, 0, stream)) {
 		GROK_ERROR("Error writing QCD marker");
 		return false;
 	}
@@ -832,10 +832,10 @@ uint16_t getPocSize(uint32_t nb_comp, uint32_t nb_poc) {
 	return (uint16_t) (4 + (5 + 2 * poc_room) * nb_poc);
 }
 
-bool j2k_write_poc(CodeStream *codeStream, BufferedStream *stream) {
+bool j2k_write_poc(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	assert(codeStream != nullptr);
 
-	auto tcp = &codeStream->m_cp.tcps[codeStream->m_tileProcessor->m_current_tile_index];
+	auto tcp = &codeStream->m_cp.tcps[tileProcessor->m_current_tile_index];
 	auto tccp = &tcp->tccps[0];
 	auto image = codeStream->m_private_image;
 	uint32_t nb_comp = image->numcomps;
@@ -1321,7 +1321,7 @@ bool j2k_write_rgn(CodeStream *codeStream, uint16_t tile_no, uint32_t comp_no,
 	return stream->write_byte((uint8_t) tccp->roishift);
 }
 
-bool j2k_write_eoc(CodeStream *codeStream, BufferedStream *stream) {
+bool j2k_write_eoc(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
 	(void) codeStream;
@@ -1383,14 +1383,14 @@ bool j2k_read_rgn(CodeStream *codeStream, uint8_t *p_header_data,
 	return true;
 }
 
-bool j2k_write_mct_data_group(CodeStream *codeStream, BufferedStream *stream) {
+bool j2k_write_mct_data_group(CodeStream *codeStream,TileProcessor *tileProcessor,  BufferedStream *stream) {
 	uint32_t i;
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
 	if (!j2k_write_cbd(codeStream, stream))
 		return false;
 
-	auto tcp = &(codeStream->m_cp.tcps[codeStream->m_tileProcessor->m_current_tile_index]);
+	auto tcp = &(codeStream->m_cp.tcps[tileProcessor->m_current_tile_index]);
 	auto mct_record = tcp->m_mct_records;
 
 	for (i = 0; i < tcp->m_nb_mct_records; ++i) {
@@ -1409,7 +1409,7 @@ bool j2k_write_mct_data_group(CodeStream *codeStream, BufferedStream *stream) {
 	return j2k_write_mco(codeStream, stream);
 }
 
-bool j2k_write_all_coc(CodeStream *codeStream, BufferedStream *stream) {
+bool j2k_write_all_coc(CodeStream *codeStream,TileProcessor *tileProcessor,  BufferedStream *stream) {
 	uint32_t compno;
 
 	assert(codeStream != nullptr);
@@ -1425,7 +1425,7 @@ bool j2k_write_all_coc(CodeStream *codeStream, BufferedStream *stream) {
 	return true;
 }
 
-bool j2k_write_all_qcc(CodeStream *codeStream, BufferedStream *stream) {
+bool j2k_write_all_qcc(CodeStream *codeStream,TileProcessor *tileProcessor,  BufferedStream *stream) {
 	uint32_t compno;
 
 	assert(codeStream != nullptr);
@@ -1440,7 +1440,7 @@ bool j2k_write_all_qcc(CodeStream *codeStream, BufferedStream *stream) {
 	return true;
 }
 
-bool j2k_write_regions(CodeStream *codeStream, BufferedStream *stream) {
+bool j2k_write_regions(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	uint32_t compno;
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
@@ -1457,7 +1457,7 @@ bool j2k_write_regions(CodeStream *codeStream, BufferedStream *stream) {
 	return true;
 }
 
-bool j2k_write_epc(CodeStream *codeStream, BufferedStream *stream) {
+bool j2k_write_epc(CodeStream *codeStream,TileProcessor *tileProcessor,  BufferedStream *stream) {
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
 
@@ -2196,7 +2196,7 @@ bool j2k_read_tlm(CodeStream *codeStream, uint8_t *p_header_data,
 	return codeStream->m_cp.tlm_markers->read(p_header_data, header_size);
 }
 
-bool j2k_write_tlm_begin(CodeStream *codeStream, BufferedStream *stream) {
+bool j2k_write_tlm_begin(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
 
@@ -2213,7 +2213,7 @@ void j2k_update_tlm(CodeStream *codeStream, uint32_t tile_part_size) {
 			codeStream->m_tileProcessor->m_current_tile_index, tile_part_size);
 }
 
-bool j2k_write_tlm_end(CodeStream *codeStream, BufferedStream *stream) {
+bool j2k_write_tlm_end(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	assert(codeStream);
 	(void)stream;
 

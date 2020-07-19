@@ -81,30 +81,37 @@ static bool j2k_init_header_reading(CodeStream *codeStream);
 
 /**
  * The read header procedure.
+ *
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream to read
+ *
  */
-static bool j2k_read_header_procedure(CodeStream *codeStream, BufferedStream *stream);
+static bool j2k_read_header_procedure(CodeStream *codeStream,  TileProcessor *tileProcessor,BufferedStream *stream);
 
 /**
  * The default encoding validation procedure without any extension.
  *
- * @param       codeStream                   the JPEG 2000 code stream to validate.
- * @param       stream                the input stream to validate.
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream to validate.
 
  *
  * @return true if the parameters are correct.
  */
-static bool j2k_compress_validation(CodeStream *codeStream, BufferedStream *stream);
+static bool j2k_compress_validation(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
 
 /**
  * The default decoding validation procedure without any extension.
  *
- * @param       codeStream                   the JPEG 2000 code stream to validate.
- * @param       stream                                the input stream to validate.
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream to validate.
 
  *
  * @return true if the parameters are correct.
  */
-static bool j2k_decompress_validation(CodeStream *codeStream, BufferedStream *stream);
+static bool j2k_decompress_validation(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
 
 /**
  * Sets up the validation ,i.e. adds the procedures to launch to make sure the codec parameters
@@ -127,13 +134,14 @@ static bool j2k_init_end_compress(CodeStream *codeStream);
 /**
  * The mct encoding validation procedure.
  *
- * @param       codeStream                   the JPEG 2000 code stream to validate.
- * @param       stream                                the input stream to validate.
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream to validate.
 
  *
  * @return true if the parameters are correct.
  */
-static bool j2k_mct_validation(CodeStream *codeStream, BufferedStream *stream);
+static bool j2k_mct_validation(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
 
 /**
  * Executes the given procedures on the given codec.
@@ -150,21 +158,23 @@ static bool j2k_exec(CodeStream *codeStream, std::vector<j2k_procedure> &p_proce
 /**
  * Updates the rates of the tcp.
  *
- * @param       codeStream                   JPEG 2000 code stream
- * @param       stream                the stream to write data to.
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream to write data to.
 
  */
-static bool j2k_update_rates(CodeStream *codeStream, BufferedStream *stream);
+static bool j2k_update_rates(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream);
 
 /**
  * Copies the decoding tile parameters onto all the tile parameters.
  * Creates also the tile decoder.
  *
- * @param       codeStream                   JPEG 2000 code stream
- * @param       stream                the stream to write data to.
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream.
 
  */
-static bool j2k_copy_default_tcp_and_create_tcd(CodeStream *codeStream,
+static bool j2k_copy_default_tcp_and_create_tcd(CodeStream *codeStream, TileProcessor *tileProcessor,
 		BufferedStream *stream);
 
 /**
@@ -179,22 +189,29 @@ static const  grk_dec_memory_marker_handler  *  j2k_get_marker_handler(
 
 /**
  * Read the tiles.
+ *
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream to read
+ *
  */
-static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream);
+static bool j2k_decompress_tiles(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
+static bool j2k_decompress_tile(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
 
 static bool j2k_init_header_writing(CodeStream *codeStream);
 static bool j2k_pre_write_tile(CodeStream *codeStream, uint16_t tile_index);
-static bool j2k_post_write_tile(CodeStream *codeStream, BufferedStream *stream);
+static bool j2k_post_write_tile(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream);
 
 
 /**
  * Gets the offset of the header.
  *
- * @param       codeStream                   JPEG 2000 code stream
- * @param       stream                the stream to write data to.
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream to write data to.
 
  */
-static bool j2k_get_end_header(CodeStream *codeStream, BufferedStream *stream);
+static bool j2k_get_end_header(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
 
 /**
  * Write a tile part
@@ -203,26 +220,28 @@ static bool j2k_get_end_header(CodeStream *codeStream, BufferedStream *stream);
  * @param       stream                  the stream to write data to.
 
  */
-static bool j2k_write_tile_part(CodeStream *codeStream,
+static bool j2k_write_tile_part(CodeStream *codeStream, TileProcessor *tileProcessor,
 		BufferedStream *stream);
 
 /**
  * Ends the encoding, i.e. frees memory.
  *
- * @param       codeStream            JPEG 2000 code stream
- * @param       stream                the stream to write data to.
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream to write data to.
 
  */
-static bool j2k_end_encoding(CodeStream *codeStream, BufferedStream *stream);
+static bool j2k_end_encoding(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream);
 
 /**
  * Inits the Info
  *
- * @param       codeStream                   JPEG 2000 code stream
- * @param       stream                the stream to write data to.
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              stream.
 
  */
-static bool j2k_init_info(CodeStream *codeStream, BufferedStream *stream);
+static bool j2k_init_info(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
 
 /**
  * Reads an unknown marker
@@ -386,13 +405,13 @@ static bool j2k_exec(CodeStream *codeStream, std::vector<j2k_procedure> &procs,
 	assert(stream != nullptr);
 
     bool result = std::all_of(procs.begin(), procs.end(),
-		   [&](j2k_procedure &proc){ return proc(codeStream, stream); });
+		   [&](j2k_procedure &proc){ return proc(codeStream, codeStream->m_tileProcessor, stream); });
 	procs.clear();
 
 	return result;
 }
 
-static bool j2k_read_header_procedure(CodeStream *codeStream,
+static bool j2k_read_header_procedure(CodeStream *codeStream,TileProcessor *tileProcessor,
 		BufferedStream *stream) {
 	assert(stream != nullptr);
 	assert(codeStream != nullptr);
@@ -599,7 +618,7 @@ bool j2k_read_header(BufferedStream *stream, CodeStream *codeStream,
 	}
 	return true;
 }
-static bool j2k_decompress_validation(CodeStream *codeStream,
+static bool j2k_decompress_validation(CodeStream *codeStream,TileProcessor *tileProcessor,
 		BufferedStream *stream) {
 
 	(void) stream;
@@ -1151,7 +1170,7 @@ CodeStream* j2k_create_decompress(void) {
 /**
  *
  */
-static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream) {
+static bool j2k_decompress_tiles(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	bool go_on = true;
 	uint16_t current_tile_no = 0;
 	uint32_t num_tiles_to_decode = codeStream->m_cp.t_grid_height
@@ -1247,7 +1266,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, BufferedStream *stream)
 /*
  * Read and decompress one tile.
  */
-static bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream) {
+static bool j2k_decompress_tile(CodeStream *codeStream,TileProcessor *tileProcessor, BufferedStream *stream) {
 	bool go_on = true;
 	uint16_t current_tile_index;
 	bool rc = false;
@@ -1993,7 +2012,7 @@ bool j2k_compress(CodeStream *codeStream, grk_plugin_tile *tile,
 		}
 		if (!transfer_image_to_tile)
 			codeStream->m_tileProcessor->copy_image_to_tile();
-		if (!j2k_post_write_tile(codeStream, stream))
+		if (!j2k_post_write_tile(codeStream, codeStream->m_tileProcessor, stream))
 			return false;
 	}
 	return true;
@@ -2100,10 +2119,9 @@ static bool j2k_pre_write_tile(CodeStream *codeStream, uint16_t tile_index) {
 	return codeStream->m_tileProcessor->init_tile(
 			codeStream->m_tileProcessor->m_current_tile_index, nullptr, true);
 }
-static bool j2k_write_tile_part(CodeStream *codeStream,	BufferedStream *stream) {
+static bool j2k_write_tile_part(CodeStream *codeStream,	TileProcessor *tileProcessor, BufferedStream *stream) {
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
-	auto tileProcessor = codeStream->m_tileProcessor;
 	uint16_t currentTileNumber = tileProcessor->m_current_tile_index;
 	auto cp = &codeStream->m_cp;
 	bool firstTilePart = tileProcessor->m_current_tile_part_index == 0;
@@ -2122,7 +2140,7 @@ static bool j2k_write_tile_part(CodeStream *codeStream,	BufferedStream *stream) 
 				auto tcp = codeStream->m_cp.tcps + currentTileNumber;
 				auto image = codeStream->m_private_image;
 				uint32_t nb_comp = image->numcomps;
-				if (!j2k_write_poc(codeStream, stream))
+				if (!j2k_write_poc(codeStream, tileProcessor, stream))
 					return false;
 				tile_part_bytes_written += getPocSize(nb_comp,
 						1 + tcp->numpocs);
@@ -2153,14 +2171,13 @@ static bool j2k_write_tile_part(CodeStream *codeStream,	BufferedStream *stream) 
 	return true;
 }
 
-static bool j2k_post_write_tile(CodeStream *codeStream, BufferedStream *stream) {
-	auto tileProcessor = codeStream->m_tileProcessor;
+static bool j2k_post_write_tile(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	assert(tileProcessor->m_current_tile_part_index == 0);
 
 	//1. write first tile part
 	tileProcessor->cur_pino = 0;
 	tileProcessor->m_current_poc_tile_part_index = 0;
-	if (!j2k_write_tile_part(codeStream, stream))
+	if (!j2k_write_tile_part(codeStream, tileProcessor, stream))
 		return false;
 
 	//2. write the other tile parts
@@ -2174,7 +2191,7 @@ static bool j2k_post_write_tile(CodeStream *codeStream, BufferedStream *stream) 
 	tot_num_tp = j2k_get_num_tp(cp, 0, tileProcessor->m_current_tile_index);
 	for (uint8_t tilepartno = 1; tilepartno < tot_num_tp; ++tilepartno) {
 		tileProcessor->m_current_poc_tile_part_index = tilepartno;
-		if (!j2k_write_tile_part(codeStream, stream))
+		if (!j2k_write_tile_part(codeStream, tileProcessor, stream))
 			return false;
 	}
 
@@ -2186,7 +2203,7 @@ static bool j2k_post_write_tile(CodeStream *codeStream, BufferedStream *stream) 
 				tileProcessor->m_current_tile_index);
 		for (uint8_t tilepartno = 0; tilepartno < tot_num_tp; ++tilepartno) {
 			tileProcessor->m_current_poc_tile_part_index = tilepartno;
-			if (!j2k_write_tile_part(codeStream, stream))
+			if (!j2k_write_tile_part(codeStream, tileProcessor, stream))
 				return false;
 		}
 	}
@@ -2207,7 +2224,7 @@ static bool j2k_init_end_compress(CodeStream *codeStream) {
 	return true;
 }
 
-static bool j2k_mct_validation(CodeStream *codeStream, BufferedStream *stream) {
+static bool j2k_mct_validation(CodeStream *codeStream,TileProcessor *tileProcessor, BufferedStream *stream) {
 	(void) stream;
 
 	bool is_valid = true;
@@ -2238,7 +2255,7 @@ static bool j2k_mct_validation(CodeStream *codeStream, BufferedStream *stream) {
 	return is_valid;
 }
 
-static bool j2k_compress_validation(CodeStream *codeStream, BufferedStream *stream) {
+static bool j2k_compress_validation(CodeStream *codeStream,TileProcessor *tileProcessor,  BufferedStream *stream) {
 	(void) stream;
 	bool is_valid = true;
 
@@ -2465,7 +2482,7 @@ bool j2k_init_mct_encoding(TileCodingParams *p_tcp, grk_image *p_image) {
 	return true;
 }
 
-static bool j2k_end_encoding(CodeStream *codeStream, BufferedStream *stream) {
+static bool j2k_end_encoding(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	(void) stream;
 	(void) codeStream;
 	assert(codeStream);
@@ -2473,7 +2490,7 @@ static bool j2k_end_encoding(CodeStream *codeStream, BufferedStream *stream) {
 	return true;
 }
 
-static bool j2k_init_info(CodeStream *codeStream, BufferedStream *stream) {
+static bool j2k_init_info(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	(void) stream;
 	assert(codeStream);
 
@@ -2482,7 +2499,7 @@ static bool j2k_init_info(CodeStream *codeStream, BufferedStream *stream) {
 			codeStream->m_private_image);
 }
 
-static bool j2k_get_end_header(CodeStream *codeStream, BufferedStream *stream) {
+static bool j2k_get_end_header(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
 
@@ -2514,7 +2531,7 @@ bool j2k_compress_tile(CodeStream *codeStream, uint16_t tile_index, uint8_t *p_d
 			GROK_ERROR("Size mismatch between tile data and sent data.");
 			return false;
 		}
-		if (!j2k_post_write_tile(codeStream, stream)) {
+		if (!j2k_post_write_tile(codeStream, codeStream->m_tileProcessor, stream)) {
 			GROK_ERROR("Error while j2k_post_write_tile with tile index = %u",
 					tile_index);
 			return false;
@@ -2525,7 +2542,7 @@ bool j2k_compress_tile(CodeStream *codeStream, uint16_t tile_index, uint8_t *p_d
 }
 
 /* FIXME DOC*/
-static bool j2k_copy_default_tcp_and_create_tcd(CodeStream *codeStream,
+static bool j2k_copy_default_tcp_and_create_tcd(CodeStream *codeStream,TileProcessor *tileProcessor,
 		BufferedStream *stream) {
 	(void) stream;
 	uint32_t nb_tiles;
@@ -2643,7 +2660,7 @@ static bool j2k_copy_default_tcp_and_create_tcd(CodeStream *codeStream,
 	return true;
 }
 
-static bool j2k_update_rates(CodeStream *codeStream, BufferedStream *stream) {
+static bool j2k_update_rates(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	uint32_t i, j, k;
 	double *rates = 0;
 	uint32_t bits_empty, size_pixel;

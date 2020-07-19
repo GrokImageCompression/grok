@@ -109,11 +109,12 @@ bool j2k_add_mhmarker( grk_codestream_index  *cstr_index, uint32_t type,
 /**
  * Writes the SOC marker (Start Of Codestream)
  *
- * @param       codeStream                   JPEG 2000 code stream
- * @param       stream                        the stream to write data to.
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream to write data to.
 
  */
-bool j2k_write_soc(CodeStream *codeStream, BufferedStream *stream);
+bool j2k_write_soc(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream);
 
 /**
  * Reads a SOC marker (Start of Codestream)
@@ -126,11 +127,12 @@ bool j2k_read_soc(CodeStream *codeStream, BufferedStream *stream);
 /**
  * Writes the SIZ marker (image and tile size)
  *
- * @param       codeStream           JPEG 2000 code stream
- * @param       stream        the stream to write data to.
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream to write data to.
 
  */
-bool j2k_write_siz(CodeStream *codeStream, BufferedStream *stream);
+bool j2k_write_siz(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
 
 /**
  * Reads a SIZ marker (image and tile size)
@@ -155,11 +157,12 @@ bool j2k_read_cap(CodeStream *codeStream, uint8_t *p_header_data,
 /**
  * Writes the CAP marker
  *
- * @param       codeStream           JPEG 2000 code stream
- * @param       stream        the stream to write data to.
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream to write data to.
 
  */
-bool j2k_write_cap(CodeStream *codeStream, BufferedStream *stream);
+bool j2k_write_cap(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
 
 /**
  * Writes the COM marker (comment)
@@ -168,7 +171,7 @@ bool j2k_write_cap(CodeStream *codeStream, BufferedStream *stream);
  * @param       stream        the stream to write data to.
 
  */
-bool j2k_write_com(CodeStream *codeStream, BufferedStream *stream);
+bool j2k_write_com(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
 
 /**
  * Reads a COM marker (comments)
@@ -182,11 +185,12 @@ bool j2k_read_com(CodeStream *codeStream, uint8_t *p_header_data,
 /**
  * Writes the COD marker (Coding style default)
  *
- * @param       codeStream           JPEG 2000 code stream
- * @param       stream        the stream to write data to.
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream to write data to.
 
  */
-bool j2k_write_cod(CodeStream *codeStream, BufferedStream *stream);
+bool j2k_write_cod(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
 
 /**
  * Reads a COD marker (Coding Style defaults)
@@ -236,11 +240,12 @@ bool j2k_read_coc(CodeStream *codeStream, uint8_t *p_header_data,
 /**
  * Writes the QCD marker (quantization default)
  *
- * @param       codeStream                   JPEG 2000 code stream
- * @param       stream                the stream to write data to.
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream to write data to.
 
  */
-bool j2k_write_qcd(CodeStream *codeStream, BufferedStream *stream);
+bool j2k_write_qcd(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
 
 /**
  * Reads a QCD marker (Quantization defaults)
@@ -290,11 +295,12 @@ uint16_t getPocSize(uint32_t l_nb_comp, uint32_t l_nb_poc);
 /**
  * Writes the POC marker (Progression Order Change)
  *
- * @param       codeStream                   JPEG 2000 code stream
- * @param       stream                the stream to write data to.
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream to write data to.
 
  */
-bool j2k_write_poc(CodeStream *codeStream, BufferedStream *stream);
+bool j2k_write_poc(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
 
 
 /**
@@ -332,21 +338,23 @@ bool j2k_read_tlm(CodeStream *codeStream, uint8_t *p_header_data,
 /**
  * End writing the updated tlm.
  *
- * @param       codeStream                   JPEG 2000 code stream
- * @param       stream                the stream to write data to.
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream to write data to.
 
  */
-bool j2k_write_tlm_end(CodeStream *codeStream, BufferedStream *stream);
+bool j2k_write_tlm_end(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
 
 
 /**
  * Begin writing the TLM marker (Tile Length Marker)
  *
- * @param       codeStream                   JPEG 2000 code stream
- * @param       stream                the stream to write data to.
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream to write data to.
 
  */
-bool j2k_write_tlm_begin(CodeStream *codeStream, BufferedStream *stream);
+bool j2k_write_tlm_begin(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
 
 
 /**
@@ -616,38 +624,42 @@ bool j2k_read_cbd(CodeStream *codeStream, uint8_t *p_header_data,
 /**
  * Writes COC marker for each component.
  *
- * @param       codeStream                   JPEG 2000 code stream
- * @param       stream                the stream to write data to.
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream to write data to.
 
  */
-bool j2k_write_all_coc(CodeStream *codeStream, BufferedStream *stream);
+bool j2k_write_all_coc(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
 
 /**
  * Writes QCC marker for each component.
  *
- * @param       codeStream                   JPEG 2000 code stream
- * @param       stream                the stream to write data to.
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream to write data to.
 
  */
-bool j2k_write_all_qcc(CodeStream *codeStream, BufferedStream *stream);
+bool j2k_write_all_qcc(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
 
 /**
  * Writes regions of interests.
  *
- * @param       codeStream                   JPEG 2000 code stream
- * @param       stream                the stream to write data to.
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream to write data to.
 
  */
-bool j2k_write_regions(CodeStream *codeStream, BufferedStream *stream);
+bool j2k_write_regions(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
 
 /**
  * Writes EPC ????
  *
- * @param       codeStream                   JPEG 2000 code stream
- * @param       stream                the stream to write data to.
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream to write data to.
 
  */
-bool j2k_write_epc(CodeStream *codeStream, BufferedStream *stream);
+bool j2k_write_epc(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream);
 
 
 
@@ -689,20 +701,22 @@ bool j2k_read_rgn(CodeStream *codeStream, uint8_t *p_header_data,
 /**
  * Writes the EOC marker (End of Codestream)
  *
- * @param       codeStream                   JPEG 2000 code stream
- * @param       stream                the stream to write data to.
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream to write data to.
 
  */
-bool j2k_write_eoc(CodeStream *codeStream, BufferedStream *stream);
+bool j2k_write_eoc(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
 
 /**
  * Writes the CBD-MCT-MCC-MCO markers (Multi components transform)
  *
- * @param       codeStream                   JPEG 2000 code stream
- * @param       stream                        the stream to write data to.
+ * @param       codeStream          JPEG 2000 code stream
+ * @param 		tileProcessor		tile processor
+ * @param       stream              the stream to write data to.
 
  */
-bool j2k_write_mct_data_group(CodeStream *codeStream, BufferedStream *stream);
+bool j2k_write_mct_data_group(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
 
 }
 
