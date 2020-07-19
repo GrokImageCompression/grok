@@ -172,7 +172,7 @@ struct CodeStream {
 	~CodeStream();
 
 	bool isDecodingTilePartHeader() ;
-	TileCodingParams* get_current_decode_tcp();
+	TileCodingParams* get_current_decode_tcp(TileProcessor *tileProcessor);
 
 	bool read_marker(BufferedStream *stream, uint16_t *val);
 
@@ -198,6 +198,8 @@ struct CodeStream {
 						uint32_t start_y,
 						uint32_t end_x,
 						uint32_t end_y);
+
+	bool alloc_output_data(grk_image *p_output_image);
 
 
 	// state of decoder/encoder
@@ -319,13 +321,13 @@ bool j2k_decompress_tile_t1(CodeStream *codeStream, TileProcessor *tileProcessor
 /**
  * Reads a tile header.
  * @param	codeStream		JPEG 2000 code stream
- * @param	tile_index 	index of tile
+ * @param   tileProcessor 	tile processor
  * @param	p_go_on FIXME DOC
  * @param	stream			the stream to write data to.
  
  */
-bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
-							bool *p_go_on, BufferedStream *stream);
+bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
+		bool *p_go_on, BufferedStream *stream);
 
 /**
  * Set the given area to be decoded. This function should be called

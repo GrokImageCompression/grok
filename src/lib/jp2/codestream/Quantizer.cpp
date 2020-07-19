@@ -219,7 +219,8 @@ bool Quantizer::compare_SQcd_SQcc(CodeStream *codeStream, uint16_t tile_no,
 	return true;
 }
 
-bool Quantizer::read_SQcd_SQcc(bool fromQCC, CodeStream *codeStream, uint32_t comp_no,
+bool Quantizer::read_SQcd_SQcc(CodeStream *codeStream, TileProcessor *tileProcessor,
+		bool fromQCC, uint32_t comp_no,
 		uint8_t *p_header_data, uint16_t *header_size) {
 	assert(codeStream != nullptr);
 	assert(p_header_data != nullptr);
@@ -236,7 +237,7 @@ bool Quantizer::read_SQcd_SQcc(bool fromQCC, CodeStream *codeStream, uint32_t co
 	*header_size = (uint16_t)(*header_size - 1);
 
 	// scoping rules
-	auto tcp = codeStream->get_current_decode_tcp();
+	auto tcp = codeStream->get_current_decode_tcp(tileProcessor);
 	auto tccp = tcp->tccps + comp_no;
 	bool ignore = false;
 	bool fromTileHeader = codeStream->isDecodingTilePartHeader();

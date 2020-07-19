@@ -85,6 +85,7 @@ struct TileComponentCodingParams;
 struct BufferedStream;
 struct grk_band;
 struct TileCodingParams;
+struct TileProcessor;
 
 
 class Quantizer {
@@ -103,7 +104,7 @@ public:
 			uint32_t comp_no);
 	bool compare_SQcd_SQcc(CodeStream *codeStream, uint16_t tile_no,
 			uint32_t first_comp_no, uint32_t second_comp_no);
-	bool read_SQcd_SQcc(bool fromQCC, CodeStream *codeStream, uint32_t comp_no,
+	bool read_SQcd_SQcc(CodeStream *codeStream, TileProcessor *tileProcessor, bool fromQCC, uint32_t comp_no,
 			uint8_t *p_header_data, uint16_t *header_size);
 	bool write_SQcd_SQcc(CodeStream *codeStream, uint16_t tile_no,
 			uint32_t comp_no, BufferedStream *stream);

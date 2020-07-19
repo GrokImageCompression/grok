@@ -62,6 +62,8 @@
 
 namespace grk {
 
+struct TileProcessor;
+
 class SOTMarker {
 public:
 
@@ -71,21 +73,23 @@ public:
 	/**
 	 * Writes the SOT marker (Start of tile-part)
 	 *
-	 * @param       codeStream            JPEG 2000 code stream
+	 * @param       codeStream      JPEG 2000 code stream
+	 * @param		tileProcess		tile processor
 	 */
-	bool write(CodeStream *codeStream);
+	bool write(CodeStream *codeStream, TileProcessor *tileProcessor);
 
 	bool write_psot(uint32_t tile_part_bytes_written);
 
 	/**
 	 * Decode a SOT marker (Start of tile-part)
 	 *
-	 * @param       codeStream           JPEG 2000 code stream
+	 * @param       codeStream      JPEG 2000 code stream
+	 * @param		tileProcess		tile processor
 	 * @param       p_header_data   the data contained in the SOT marker.
-	 * @param       header_size   the size of the data contained in the PPT marker.
+	 * @param       header_size     the size of the data contained in the PPT marker.
 
 	 */
-	 bool read(CodeStream *codeStream, uint8_t *p_header_data,
+	 bool read(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
 			uint16_t header_size);
 
 	 /**

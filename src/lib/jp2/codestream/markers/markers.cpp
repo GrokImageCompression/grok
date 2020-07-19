@@ -66,9 +66,10 @@ namespace grk {
  * Copies the tile component parameters of all the component
  * from the first tile component.
  *
- * @param               codeStream           the J2k codec.
+ * @param       codeStream           the J2k codec.
+ * @param		tileProcessor	tile processor
  */
-static void j2k_copy_tile_component_parameters(CodeStream *codeStream);
+static void j2k_copy_tile_component_parameters(CodeStream *codeStream, TileProcessor *tileProcessor);
 
 static const j2k_mct_function j2k_mct_read_functions_to_float[] = {
 		j2k_read_int16_to_float, j2k_read_int32_to_float,
@@ -178,6 +179,7 @@ bool j2k_write_soc(CodeStream *codeStream, TileProcessor *tileProcessor, Buffere
 	assert(codeStream != nullptr);
 
 	(void) codeStream;
+	GRK_UNUSED(tileProcessor);
 	return stream->write_short(J2K_MS_SOC);
 }
 
@@ -219,6 +221,7 @@ bool j2k_read_soc(CodeStream *codeStream, BufferedStream *stream) {
 
 bool j2k_write_siz(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	SIZMarker siz;
+	GRK_UNUSED(tileProcessor);
 
 	return siz.write(codeStream, stream);
 }
@@ -234,6 +237,7 @@ bool j2k_write_siz(CodeStream *codeStream, TileProcessor *tileProcessor, Buffere
  */
 bool j2k_read_cap(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
 		uint16_t header_size) {
+	GRK_UNUSED(tileProcessor);
 	CodingParams *cp = &(codeStream->m_cp);
 
 	if (header_size < 6) {
@@ -264,6 +268,7 @@ bool j2k_read_cap(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 bool j2k_write_cap(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
+	GRK_UNUSED(tileProcessor);
 
 	auto cp = &(codeStream->m_cp);
 	auto tcp = &cp->tcps[0];
@@ -324,6 +329,7 @@ bool j2k_write_cap(CodeStream *codeStream, TileProcessor *tileProcessor, Buffere
 bool j2k_read_siz(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
 		uint16_t header_size) {
 	SIZMarker siz;
+	GRK_UNUSED(tileProcessor);
 
 	return siz.read(codeStream, p_header_data, header_size);
 }
@@ -331,6 +337,7 @@ bool j2k_read_siz(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 bool j2k_write_com(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
+	GRK_UNUSED(tileProcessor);
 
 	for (uint32_t i = 0; i < codeStream->m_cp.num_comments; ++i) {
 		const char *comment = codeStream->m_cp.comment[i];
@@ -376,6 +383,7 @@ bool j2k_read_com(CodeStream *codeStream,TileProcessor *tileProcessor,  uint8_t 
 	assert(codeStream != nullptr);
 	assert(p_header_data != nullptr);
 	assert(header_size != 0);
+	GRK_UNUSED(tileProcessor);
 
 	if (header_size < 2) {
 		GROK_ERROR("j2k_read_com: Corrupt COM segment ");
@@ -483,7 +491,7 @@ bool j2k_read_cod(CodeStream *codeStream,TileProcessor *tileProcessor,  uint8_t 
 	auto cp = &(codeStream->m_cp);
 
 	/* If we are in the first tile-part header of the current tile */
-	auto tcp = codeStream->get_current_decode_tcp();
+	auto tcp = codeStream->get_current_decode_tcp(tileProcessor);
 
 	/* Only one COD per tile */
 	if (tcp->cod) {
@@ -540,7 +548,7 @@ bool j2k_read_cod(CodeStream *codeStream,TileProcessor *tileProcessor,  uint8_t 
 		tcp->tccps[i].csty = tcp->csty & J2K_CCP_CSTY_PRT;
 	}
 
-	if (!j2k_read_SPCod_SPCoc(codeStream, 0, p_header_data, &header_size)) {
+	if (!j2k_read_SPCod_SPCoc(codeStream, tileProcessor, 0, p_header_data, &header_size)) {
 		GROK_ERROR("Error reading COD marker");
 		return false;
 	}
@@ -550,19 +558,19 @@ bool j2k_read_cod(CodeStream *codeStream,TileProcessor *tileProcessor,  uint8_t 
 		return false;
 	}
 	/* Apply the coding style to other components of the current tile or the m_default_tcp*/
-	j2k_copy_tile_component_parameters(codeStream);
+	j2k_copy_tile_component_parameters(codeStream, tileProcessor);
 
 	return true;
 }
 
-static void j2k_copy_tile_component_parameters(CodeStream *codeStream) {
+static void j2k_copy_tile_component_parameters(CodeStream *codeStream, TileProcessor *tileProcessor) {
 	/* loop */
 	uint32_t i;
 	uint32_t prc_size;
 
 	assert(codeStream != nullptr);
 
-	auto tcp = codeStream->get_current_decode_tcp();
+	auto tcp = codeStream->get_current_decode_tcp(tileProcessor);
 	auto ref_tccp = &tcp->tccps[0];
 	prc_size = ref_tccp->numresolutions * (uint32_t) sizeof(uint32_t);
 
@@ -579,7 +587,7 @@ static void j2k_copy_tile_component_parameters(CodeStream *codeStream) {
 	}
 }
 
-bool j2k_write_coc(CodeStream *codeStream, uint32_t comp_no,
+bool j2k_write_coc(CodeStream *codeStream, uint16_t tile_index, uint32_t comp_no,
 		BufferedStream *stream) {
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
@@ -589,12 +597,11 @@ bool j2k_write_coc(CodeStream *codeStream, uint32_t comp_no,
 	assert(codeStream != nullptr);
 
 	auto cp = &(codeStream->m_cp);
-	auto tcp = &cp->tcps[codeStream->m_tileProcessor->m_current_tile_index];
+	auto tcp = &cp->tcps[tile_index];
 	auto image = codeStream->m_private_image;
 	comp_room = (image->numcomps <= 256) ? 1 : 2;
 	coc_size = cod_coc_len + comp_room
-			+ j2k_get_SPCod_SPCoc_size(codeStream,
-					codeStream->m_tileProcessor->m_current_tile_index, comp_no);
+			+ j2k_get_SPCod_SPCoc_size(codeStream,	tile_index, comp_no);
 
 	/* COC */
 	if (!stream->write_short(J2K_MS_COC))
@@ -615,23 +622,22 @@ bool j2k_write_coc(CodeStream *codeStream, uint32_t comp_no,
 	if (!stream->write_byte((uint8_t) tcp->tccps[comp_no].csty))
 		return false;
 
-	return j2k_write_SPCod_SPCoc(codeStream,
-			codeStream->m_tileProcessor->m_current_tile_index, 0, stream);
+	return j2k_write_SPCod_SPCoc(codeStream,tile_index, 0, stream);
 
 }
 
-bool j2k_compare_coc(CodeStream *codeStream, uint32_t first_comp_no,
+bool j2k_compare_coc(CodeStream *codeStream, uint16_t tile_index, uint32_t first_comp_no,
 		uint32_t second_comp_no) {
 	assert(codeStream != nullptr);
 
 	auto cp = &(codeStream->m_cp);
-	auto tcp = &cp->tcps[codeStream->m_tileProcessor->m_current_tile_index];
+	auto tcp = &cp->tcps[tile_index];
 
 	if (tcp->tccps[first_comp_no].csty != tcp->tccps[second_comp_no].csty)
 		return false;
 
 	return j2k_compare_SPCod_SPCoc(codeStream,
-			codeStream->m_tileProcessor->m_current_tile_index, first_comp_no,
+			tile_index, first_comp_no,
 			second_comp_no);
 }
 
@@ -652,7 +658,7 @@ bool j2k_read_coc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	assert(p_header_data != nullptr);
 	assert(codeStream != nullptr);
 
-	auto tcp = codeStream->get_current_decode_tcp();
+	auto tcp = codeStream->get_current_decode_tcp(tileProcessor);
 	auto image = codeStream->m_private_image;
 
 	comp_room = image->numcomps <= 256 ? 1 : 2;
@@ -673,7 +679,7 @@ bool j2k_read_coc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 
 	tcp->tccps[comp_no].csty = *p_header_data++; /* Scoc */
 
-	if (!j2k_read_SPCod_SPCoc(codeStream, comp_no, p_header_data, &header_size)) {
+	if (!j2k_read_SPCod_SPCoc(codeStream, tileProcessor, comp_no, p_header_data, &header_size)) {
 		GROK_ERROR("Error reading COC marker");
 		return false;
 	}
@@ -723,7 +729,7 @@ bool j2k_read_qcd(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	assert(p_header_data != nullptr);
 	assert(codeStream != nullptr);
 
-	if (!j2k_read_SQcd_SQcc(false, codeStream, 0, p_header_data, &header_size)) {
+	if (!j2k_read_SQcd_SQcc(codeStream, tileProcessor, false, 0, p_header_data, &header_size)) {
 		GROK_ERROR("Error reading QCD marker");
 		return false;
 	}
@@ -734,7 +740,7 @@ bool j2k_read_qcd(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 
 	// Apply the quantization parameters to the other components
 	// of the current tile or m_default_tcp
-	auto tcp = codeStream->get_current_decode_tcp();
+	auto tcp = codeStream->get_current_decode_tcp(tileProcessor);
 	auto ref_tccp = tcp->tccps;
 	for (uint32_t i = 1; i < codeStream->m_private_image->numcomps; ++i) {
 		auto target_tccp = ref_tccp + i;
@@ -743,13 +749,12 @@ bool j2k_read_qcd(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	return true;
 }
 
-bool j2k_write_qcc(CodeStream *codeStream, uint32_t comp_no,
+bool j2k_write_qcc(CodeStream *codeStream, uint16_t tile_index, uint32_t comp_no,
 		BufferedStream *stream) {
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
 	uint32_t qcc_size = 6
-			+ j2k_get_SQcd_SQcc_size(codeStream,
-					codeStream->m_tileProcessor->m_current_tile_index, comp_no);
+			+ j2k_get_SQcd_SQcc_size(codeStream,	tile_index, comp_no);
 
 	/* QCC */
 	if (!stream->write_short(J2K_MS_QCC)) {
@@ -775,13 +780,12 @@ bool j2k_write_qcc(CodeStream *codeStream, uint32_t comp_no,
 	}
 
 	return j2k_write_SQcd_SQcc(codeStream,
-			codeStream->m_tileProcessor->m_current_tile_index, comp_no, stream);
+			tile_index, comp_no, stream);
 }
 
-bool j2k_compare_qcc(CodeStream *codeStream, uint32_t first_comp_no,
+bool j2k_compare_qcc(CodeStream *codeStream, uint16_t tile_index, uint32_t first_comp_no,
 		uint32_t second_comp_no) {
-	return j2k_compare_SQcd_SQcc(codeStream,
-			codeStream->m_tileProcessor->m_current_tile_index, first_comp_no,
+	return j2k_compare_SQcd_SQcc(codeStream,tile_index, first_comp_no,
 			second_comp_no);
 }
 
@@ -824,7 +828,7 @@ bool j2k_read_qcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 		return false;
 	}
 
-	if (!j2k_read_SQcd_SQcc(true, codeStream, comp_no, p_header_data,
+	if (!j2k_read_SQcd_SQcc(codeStream, tileProcessor, true, comp_no, p_header_data,
 			&header_size)) {
 		GROK_ERROR("Error reading QCC marker");
 		return false;
@@ -931,7 +935,7 @@ bool j2k_read_poc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 		return false;
 	}
 
-	auto tcp = codeStream->get_current_decode_tcp();
+	auto tcp = codeStream->get_current_decode_tcp(tileProcessor);
 	old_poc_nb = tcp->POC ? tcp->numpocs + 1 : 0;
 	current_poc_nb += old_poc_nb;
 
@@ -989,6 +993,7 @@ bool j2k_read_crg(CodeStream *codeStream,TileProcessor *tileProcessor,  uint8_t 
 		uint16_t header_size) {
 	assert(p_header_data != nullptr);
 	assert(codeStream != nullptr);
+	GRK_UNUSED(tileProcessor);
 
 	uint32_t nb_comp = codeStream->m_private_image->numcomps;
 
@@ -1021,6 +1026,7 @@ bool j2k_read_plm(CodeStream *codeStream,TileProcessor *tileProcessor, uint8_t *
 		uint16_t hdr_size) {
 	assert(p_header_data != nullptr);
 	assert(codeStream != nullptr);
+	GRK_UNUSED(tileProcessor);
 
 	if (!codeStream->m_cp.plm_markers)
 		codeStream->m_cp.plm_markers = new PacketLengthMarkers();
@@ -1040,11 +1046,10 @@ bool j2k_read_plt(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 		uint16_t header_size) {
 	assert(p_header_data != nullptr);
 	assert(codeStream != nullptr);
-	if (!codeStream->m_tileProcessor->plt_markers)
-		codeStream->m_tileProcessor->plt_markers = new PacketLengthMarkers();
+	if (!tileProcessor->plt_markers)
+		tileProcessor->plt_markers = new PacketLengthMarkers();
 
-	return codeStream->m_tileProcessor->plt_markers->readPLT(p_header_data,
-			header_size);
+	return tileProcessor->plt_markers->readPLT(p_header_data,header_size);
 }
 
 /**
@@ -1060,6 +1065,7 @@ bool j2k_read_plt(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 bool j2k_read_ppm(CodeStream *codeStream,TileProcessor *tileProcessor,  uint8_t *p_header_data,
 		uint16_t header_size) {
 	PPMMarker ppm;
+	GRK_UNUSED(tileProcessor);
 
 	return ppm.read(codeStream, p_header_data, header_size);
 }
@@ -1105,7 +1111,7 @@ bool j2k_read_ppt(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 		return false;
 	}
 
-	auto tcp = &(cp->tcps[codeStream->m_tileProcessor->m_current_tile_index]);
+	auto tcp = &(cp->tcps[tileProcessor->m_current_tile_index]);
 	tcp->ppt = true;
 
 	/* Z_ppt */
@@ -1222,16 +1228,15 @@ bool j2k_read_sot(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 		uint16_t header_size) {
 	SOTMarker sot;
 
-	return sot.read(codeStream, p_header_data, header_size);
+	return sot.read(codeStream, tileProcessor, p_header_data, header_size);
 }
 
-bool j2k_read_sod(CodeStream *codeStream, BufferedStream *stream) {
+bool j2k_read_sod(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
-	auto tileProcessor = codeStream->m_tileProcessor;
 
 	// note: we subtract 2 to account for SOD marker
-	auto tcp = codeStream->get_current_decode_tcp();
+	auto tcp = codeStream->get_current_decode_tcp(tileProcessor);
 	if (codeStream->m_decoder.m_last_tile_part) {
 		tileProcessor->tile_part_data_length =
 				(uint32_t) (stream->get_number_byte_left() - 2);
@@ -1242,7 +1247,7 @@ bool j2k_read_sod(CodeStream *codeStream, BufferedStream *stream) {
 	if (tileProcessor->tile_part_data_length) {
 		auto bytesLeftInStream = stream->get_number_byte_left();
 		// check that there are enough bytes in stream to fill tile data
-		if (codeStream->m_tileProcessor->tile_part_data_length > bytesLeftInStream) {
+		if (tileProcessor->tile_part_data_length > bytesLeftInStream) {
 			GROK_WARN("Tile part length %lld greater than "
 					"stream length %lld\n"
 					"(tile: %u, tile part: %u). Tile may be truncated.",
@@ -1350,6 +1355,8 @@ bool j2k_write_eoc(CodeStream *codeStream, TileProcessor *tileProcessor, Buffere
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
 	(void) codeStream;
+	GRK_UNUSED(tileProcessor);
+
 	if (!stream->write_short(J2K_MS_EOC))
 		return false;
 
@@ -1380,7 +1387,7 @@ bool j2k_read_rgn(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 		return false;
 	}
 
-	auto tcp = codeStream->get_current_decode_tcp();
+	auto tcp = codeStream->get_current_decode_tcp(tileProcessor);
 
 	/* Crgn */
 	grk_read<uint32_t>(p_header_data, &comp_no, comp_room);
@@ -1431,7 +1438,7 @@ bool j2k_write_mct_data_group(CodeStream *codeStream,TileProcessor *tileProcesso
 		++mcc_record;
 	}
 
-	return j2k_write_mco(codeStream, stream);
+	return j2k_write_mco(codeStream, tileProcessor->m_current_tile_index, stream);
 }
 
 bool j2k_write_all_coc(CodeStream *codeStream,TileProcessor *tileProcessor,  BufferedStream *stream) {
@@ -1441,8 +1448,8 @@ bool j2k_write_all_coc(CodeStream *codeStream,TileProcessor *tileProcessor,  Buf
 	assert(stream != nullptr);
 	for (compno = 1; compno < codeStream->m_private_image->numcomps; ++compno) {
 		/* cod is first component of first tile */
-		if (!j2k_compare_coc(codeStream, 0, compno)) {
-			if (!j2k_write_coc(codeStream, compno, stream))
+		if (!j2k_compare_coc(codeStream, tileProcessor->m_current_tile_index, 0, compno)) {
+			if (!j2k_write_coc(codeStream, tileProcessor->m_current_tile_index, compno, stream))
 				return false;
 		}
 	}
@@ -1457,8 +1464,8 @@ bool j2k_write_all_qcc(CodeStream *codeStream,TileProcessor *tileProcessor,  Buf
 	assert(stream != nullptr);
 	for (compno = 1; compno < codeStream->m_private_image->numcomps; ++compno) {
 		/* qcd is first component of first tile */
-		if (!j2k_compare_qcc(codeStream, 0, compno)) {
-			if (!j2k_write_qcc(codeStream, compno, stream))
+		if (!j2k_compare_qcc(codeStream, tileProcessor->m_current_tile_index, 0, compno)) {
+			if (!j2k_write_qcc(codeStream, tileProcessor->m_current_tile_index, compno, stream))
 				return false;
 		}
 	}
@@ -1469,6 +1476,7 @@ bool j2k_write_regions(CodeStream *codeStream, TileProcessor *tileProcessor, Buf
 	uint32_t compno;
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
+	GRK_UNUSED(tileProcessor);
 
 	for (compno = 0; compno < codeStream->m_private_image->numcomps; ++compno) {
 		auto tccp = codeStream->m_cp.tcps->tccps + compno;
@@ -1485,6 +1493,7 @@ bool j2k_write_regions(CodeStream *codeStream, TileProcessor *tileProcessor, Buf
 bool j2k_write_epc(CodeStream *codeStream,TileProcessor *tileProcessor,  BufferedStream *stream) {
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
+	GRK_UNUSED(tileProcessor);
 
 	auto cstr_index = codeStream->cstr_index;
 	if (cstr_index) {
@@ -1548,7 +1557,7 @@ bool j2k_read_mct(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	assert(p_header_data != nullptr);
 	assert(codeStream != nullptr);
 
-	auto tcp = codeStream->get_current_decode_tcp();
+	auto tcp = codeStream->get_current_decode_tcp(tileProcessor);
 
 	if (header_size < 2) {
 		GROK_ERROR("Error reading MCT marker");
@@ -1773,7 +1782,7 @@ bool j2k_read_mcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	assert(p_header_data != nullptr);
 	assert(codeStream != nullptr);
 
-	auto tcp = codeStream->get_current_decode_tcp();
+	auto tcp = codeStream->get_current_decode_tcp(tileProcessor);
 
 	if (header_size < 2) {
 		GROK_ERROR("Error reading MCC marker");
@@ -1980,14 +1989,14 @@ bool j2k_read_mcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	return true;
 }
 
-bool j2k_write_mco(CodeStream *codeStream, BufferedStream *stream) {
+bool j2k_write_mco(CodeStream *codeStream, uint16_t tile_index, BufferedStream *stream) {
 	uint32_t mco_size;
 	uint32_t i;
 
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
 
-	auto tcp = &(codeStream->m_cp.tcps[codeStream->m_tileProcessor->m_current_tile_index]);
+	auto tcp = &(codeStream->m_cp.tcps[tile_index]);
 	mco_size = 5 + tcp->m_nb_mcc_records;
 
 	/* MCO */
@@ -2029,7 +2038,7 @@ bool j2k_read_mco(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	assert(codeStream != nullptr);
 
 	auto image = codeStream->m_private_image;
-	auto tcp = codeStream->get_current_decode_tcp();
+	auto tcp = codeStream->get_current_decode_tcp(tileProcessor);
 
 	if (header_size < 1) {
 		GROK_ERROR("Error reading MCO marker");
@@ -2187,6 +2196,7 @@ bool j2k_read_cbd(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	uint32_t i;
 	assert(p_header_data != nullptr);
 	assert(codeStream != nullptr);
+	GRK_UNUSED(tileProcessor);
 
 	num_comp = codeStream->m_private_image->numcomps;
 
@@ -2228,6 +2238,8 @@ bool j2k_read_cbd(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 bool j2k_read_tlm(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
 		uint16_t header_size) {
 	assert(codeStream);
+	GRK_UNUSED(tileProcessor);
+
 	if (!codeStream->m_cp.tlm_markers)
 		codeStream->m_cp.tlm_markers = new TileLengthMarkers();
 
@@ -2237,6 +2249,7 @@ bool j2k_read_tlm(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 bool j2k_write_tlm_begin(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
+	GRK_UNUSED(tileProcessor);
 
 	if (!codeStream->m_cp.tlm_markers)
 		codeStream->m_cp.tlm_markers = new TileLengthMarkers(stream);
@@ -2245,15 +2258,15 @@ bool j2k_write_tlm_begin(CodeStream *codeStream, TileProcessor *tileProcessor, B
 			codeStream->m_encoder.m_total_tile_parts);
 }
 
-void j2k_update_tlm(CodeStream *codeStream, uint32_t tile_part_size) {
+void j2k_update_tlm(CodeStream *codeStream, uint16_t tile_index, uint32_t tile_part_size) {
 	assert(codeStream->m_cp.tlm_markers);
-	codeStream->m_cp.tlm_markers->write_update(
-			codeStream->m_tileProcessor->m_current_tile_index, tile_part_size);
+	codeStream->m_cp.tlm_markers->write_update(	tile_index, tile_part_size);
 }
 
 bool j2k_write_tlm_end(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	assert(codeStream);
 	(void)stream;
+	GRK_UNUSED(tileProcessor);
 
 	return codeStream->m_cp.tlm_markers->write_end();
 }
@@ -2347,8 +2360,8 @@ bool j2k_write_SPCod_SPCoc(CodeStream *codeStream, uint16_t tile_no,
 	return true;
 }
 
-bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno,
-		uint8_t *p_header_data, uint16_t *header_size) {
+bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, TileProcessor *tileProcessor,
+		uint32_t compno, uint8_t *p_header_data, uint16_t *header_size) {
 	uint32_t i, tmp;
 	assert(codeStream != nullptr);
 	assert(p_header_data != nullptr);
@@ -2358,7 +2371,7 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno,
 		return false;
 
 	auto cp = &(codeStream->m_cp);
-	auto tcp = codeStream->get_current_decode_tcp();
+	auto tcp = codeStream->get_current_decode_tcp(tileProcessor);
 	auto tccp = &tcp->tccps[compno];
 	auto current_ptr = p_header_data;
 
@@ -2484,15 +2497,16 @@ bool j2k_write_SQcd_SQcc(CodeStream *codeStream, uint16_t tile_no, uint32_t comp
 	return tccp->quant.write_SQcd_SQcc(codeStream, tile_no, comp_no, stream);
 }
 
-bool j2k_read_SQcd_SQcc(bool fromQCC, CodeStream *codeStream, uint32_t comp_no,
+bool j2k_read_SQcd_SQcc(CodeStream *codeStream, TileProcessor *tileProcessor,
+		bool fromQCC,uint32_t comp_no,
 		uint8_t *p_header_data, uint16_t *header_size) {
 	assert(codeStream != nullptr);
 	assert(p_header_data != nullptr);
 	assert(comp_no < codeStream->m_private_image->numcomps);
-	auto tcp = codeStream->get_current_decode_tcp();
+	auto tcp = codeStream->get_current_decode_tcp(tileProcessor);
 	auto tccp = tcp->tccps + comp_no;
 
-	return tccp->quant.read_SQcd_SQcc(fromQCC, codeStream, comp_no, p_header_data,
+	return tccp->quant.read_SQcd_SQcc(codeStream, tileProcessor, fromQCC, comp_no, p_header_data,
 			header_size);
 }
 

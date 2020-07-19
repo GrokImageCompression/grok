@@ -2933,7 +2933,10 @@ static bool jp2_init_header_reading(FileFormat *fileFormat) {
 
 bool jp2_read_tile_header(FileFormat *fileFormat, uint16_t *tile_index,
 		bool *p_go_on, BufferedStream *stream) {
-	return j2k_read_tile_header(fileFormat->j2k, tile_index, p_go_on, stream);
+	auto tileProcessor = new TileProcessor(fileFormat->j2k);
+	bool rc =  j2k_read_tile_header(fileFormat->j2k, tileProcessor, p_go_on, stream);
+	*tile_index = fileFormat->j2k->m_tileProcessor->m_current_tile_index;
+	return rc;
 }
 
 bool jp2_compress_tile(FileFormat *fileFormat, uint16_t tile_index, uint8_t *p_data,

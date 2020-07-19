@@ -212,23 +212,25 @@ bool j2k_read_cod(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
  * Compares 2 COC markers (Coding style component)
  *
  * @param       codeStream            JPEG 2000 code stream
+ * @param 		tile_index current tile index
  * @param       first_comp_no  the index of the first component to compare.
  * @param       second_comp_no the index of the second component to compare.
  *
  * @return      true if equals
  */
-bool j2k_compare_coc(CodeStream *codeStream, uint32_t first_comp_no,
+bool j2k_compare_coc(CodeStream *codeStream, uint16_t tile_index, uint32_t first_comp_no,
 		uint32_t second_comp_no);
 
 /**
  * Writes the COC marker (Coding style component)
  *
- * @param       codeStream       JPEG 2000 code stream
+ * @param       codeStream  JPEG 2000 code stream
+ * @param 		tile_index current tile index
  * @param       comp_no   the index of the component to output.
  * @param       stream    the stream to write data to.
 
  */
-bool j2k_write_coc(CodeStream *codeStream, uint32_t comp_no,
+bool j2k_write_coc(CodeStream *codeStream, uint16_t tile_index, uint32_t comp_no,
 		BufferedStream *stream);
 
 /**
@@ -268,23 +270,25 @@ bool j2k_read_qcd(CodeStream *codeStream, TileProcessor *tileProcessor,uint8_t *
  * Compare QCC markers (quantization component)
  *
  * @param       codeStream                 JPEG 2000 code stream
+ * @param 		tile_index 	current tile index
  * @param       first_comp_no       the index of the first component to compare.
  * @param       second_comp_no      the index of the second component to compare.
  *
  * @return true if equals.
  */
-bool j2k_compare_qcc(CodeStream *codeStream, uint32_t first_comp_no,
+bool j2k_compare_qcc(CodeStream *codeStream, uint16_t tile_index, uint32_t first_comp_no,
 		uint32_t second_comp_no);
 
 /**
  * Writes the QCC marker (quantization component)
  *
- * @param       codeStream                   JPEG 2000 code stream
- * @param       comp_no       the index of the component to output.
- * @param       stream                the stream to write data to.
+ * @param       codeStream  JPEG 2000 code stream
+ * @param 		tile_index 	current tile index
+ * @param       comp_no     the index of the component to output.
+ * @param       stream      the stream to write data to.
 
  */
-bool j2k_write_qcc(CodeStream *codeStream, uint32_t comp_no,
+bool j2k_write_qcc(CodeStream *codeStream, uint16_t tile_index, uint32_t comp_no,
 		BufferedStream *stream);
 /**
  * Reads a QCC marker (Quantization component)
@@ -485,20 +489,21 @@ uint32_t j2k_get_SPCod_SPCoc_size(CodeStream *codeStream, uint16_t tile_no,
 /**
  * Reads a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
  * @param       codeStream           JPEG 2000 code stream
- * @param       compno          FIXME DOC
+ * @param		tileProcessor	tile processor
+ * @param       compno          component number
  * @param       p_header_data   the data contained in the COM box.
  * @param       header_size   the size of the data contained in the COM marker.
 
  */
-bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno,
-		uint8_t *p_header_data, uint16_t *header_size);
+bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, TileProcessor *tileProcessor,
+		uint32_t compno, uint8_t *p_header_data, uint16_t *header_size);
 
 /**
  * Gets the size taken by writing SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
  *
  * @param       codeStream                   the JPEG 2000 code stream
  * @param       tile_no               the tile index.
- * @param       comp_no               the component being outputted.
+ * @param       comp_no               the component being output.
  *
  * @return      the number of bytes taken by the SPCod element.
  */
@@ -534,21 +539,22 @@ bool j2k_write_SQcd_SQcc(CodeStream *codeStream, uint16_t tile_no,
 /**
  * Updates the Tile Length Marker.
  */
-void j2k_update_tlm(CodeStream *codeStream, uint32_t tile_part_size);
+void j2k_update_tlm(CodeStream *codeStream, uint16_t tile_index, uint32_t tile_part_size);
 
 /**
  * Reads a SQcd or SQcc element, i.e. the quantization values of a band
  * in the QCD or QCC.
  *
- * @param		fromQCC			true if reading QCC, otherwise false (reading QCD)
  * @param       codeStream           JPEG 2000 code stream
+ * @param 		tileProcessor	tile processor
+ * @param		fromQCC			true if reading QCC, otherwise false (reading QCD)
  * @param       compno          the component number to output.
  * @param       p_header_data   the data buffer.
  * @param       header_size   pointer to the size of the data buffer,
  *              it is changed by the function.
  *
  */
-bool j2k_read_SQcd_SQcc(bool fromQCC, CodeStream *codeStream, uint32_t compno,
+bool j2k_read_SQcd_SQcc(CodeStream *codeStream, TileProcessor *tileProcessor, bool fromQCC,uint32_t compno,
 		uint8_t *p_header_data, uint16_t *header_size);
 
 /**
@@ -597,11 +603,12 @@ bool j2k_read_mcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 /**
  * Writes the MCO marker (Multiple component transformation ordering)
  *
- * @param       codeStream                           JPEG 2000 code stream
- * @param       stream                                the stream to write data to.
+ * @param       codeStream      JPEG 2000 code stream
+ * @param		tile_index		tile index
+ * @param       stream          the stream to write data to.
 
  */
-bool j2k_write_mco(CodeStream *codeStream, BufferedStream *stream);
+bool j2k_write_mco(CodeStream *codeStream, uint16_t tile_index, BufferedStream *stream);
 
 /**
  * Reads a MCO marker (Multiple Component Transform Ordering)
@@ -684,13 +691,14 @@ bool j2k_write_epc(CodeStream *codeStream, TileProcessor *tileProcessor, Buffere
 /**
  * Reads a SOD marker (Start Of Data)
  *
- * @param       codeStream                   JPEG 2000 code stream
- * @param       stream                FIXME DOC
+ * @param       codeStream           JPEG 2000 code stream
+ * @param 		tileProcessor	tile processor
+ * @param       stream               stream to read from
 
  */
-bool j2k_read_sod(CodeStream *codeStream, BufferedStream *stream);
+bool j2k_read_sod(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream);
 
-void j2k_update_tlm(CodeStream *codeStream, uint32_t tile_part_size) ;
+void j2k_update_tlm(CodeStream *codeStream, uint16_t tile_index, uint32_t tile_part_size) ;
 
 /**
  * Writes the RGN marker (Region Of Interest)

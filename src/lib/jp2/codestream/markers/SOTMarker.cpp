@@ -79,7 +79,7 @@ bool SOTMarker::write_psot(uint32_t tile_part_bytes_written) {
 	return true;
 }
 
-bool SOTMarker::write(CodeStream *codeStream){
+bool SOTMarker::write(CodeStream *codeStream, TileProcessor *tileProcessor){
 	assert(codeStream != nullptr);
 
 	/* SOT */
@@ -91,7 +91,7 @@ bool SOTMarker::write(CodeStream *codeStream){
 		return false;
 	/* Isot */
 	if (!m_stream->write_short(
-			(uint16_t) codeStream->m_tileProcessor->m_current_tile_index))
+			(uint16_t) tileProcessor->m_current_tile_index))
 		return false;
 
 	/* Psot  */
@@ -100,12 +100,12 @@ bool SOTMarker::write(CodeStream *codeStream){
 		return false;
 
 	/* TPsot */
-	if (!m_stream->write_byte(codeStream->m_tileProcessor->m_current_tile_part_index))
+	if (!m_stream->write_byte(tileProcessor->m_current_tile_part_index))
 		return false;
 
 	/* TNsot */
 	if (!m_stream->write_byte(
-			codeStream->m_cp.tcps[codeStream->m_tileProcessor->m_current_tile_index].m_nb_tile_parts))
+			codeStream->m_cp.tcps[tileProcessor->m_current_tile_index].m_nb_tile_parts))
 		return false;
 
 	return true;
@@ -140,7 +140,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	return true;
 }
 
- bool SOTMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
+ bool SOTMarker::read(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
 		uint16_t header_size){
 	uint32_t tot_len = 0;
 	uint8_t num_parts = 0;
@@ -150,12 +150,12 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	assert(codeStream != nullptr);
 
 	if (!get_sot_values(p_header_data, header_size,
-			&codeStream->m_tileProcessor->m_current_tile_index, &tot_len,
+			&tileProcessor->m_current_tile_index, &tot_len,
 			&current_part, &num_parts)) {
 		GROK_ERROR("Error reading SOT marker");
 		return false;
 	}
-	auto tile_number = codeStream->m_tileProcessor->m_current_tile_index;
+	auto tile_number = tileProcessor->m_current_tile_index;
 
 	auto cp = &(codeStream->m_cp);
 
@@ -252,12 +252,12 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 
 	if (!codeStream->m_decoder.m_last_tile_part) {
 		/* Keep the size of data to skip after this marker */
-		codeStream->m_tileProcessor->tile_part_data_length = tot_len
+		tileProcessor->tile_part_data_length = tot_len
 				- sot_marker_segment_len;
 	} else {
 		/* FIXME: need to be computed from the number of bytes
 		 *  remaining in the code stream */
-		codeStream->m_tileProcessor->tile_part_data_length = 0;
+		tileProcessor->tile_part_data_length = 0;
 	}
 
 	codeStream->m_decoder.m_state = J2K_DEC_STATE_TPH;
