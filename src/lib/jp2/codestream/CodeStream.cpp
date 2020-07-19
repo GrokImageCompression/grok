@@ -315,26 +315,29 @@ static const j2k_mct_function j2k_mct_write_functions_from_float[] = {
 		j2k_write_float_to_int16, j2k_write_float_to_int32,
 		j2k_write_float_to_float, j2k_write_float_to_float64 };
 
-static const grk_dec_memory_marker_handler j2k_memory_marker_handler_tab[] = { {
-J2K_MS_SOT, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH_SOT, j2k_read_sot }, {
-J2K_MS_COD, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_cod }, {
-J2K_MS_COC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_coc }, {
-J2K_MS_RGN, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_rgn }, {
-J2K_MS_QCD, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_qcd }, {
-J2K_MS_QCC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_qcc }, {
-J2K_MS_POC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_poc }, {
-J2K_MS_SIZ, J2K_DEC_STATE_MH_SIZ, j2k_read_siz }, { J2K_MS_CAP, J2K_DEC_STATE_MH,
-		j2k_read_cap }, { J2K_MS_TLM, J2K_DEC_STATE_MH, j2k_read_tlm }, {
-J2K_MS_PLM, J2K_DEC_STATE_MH, j2k_read_plm }, {
-J2K_MS_PLT, J2K_DEC_STATE_TPH, j2k_read_plt }, { J2K_MS_PPM, J2K_DEC_STATE_MH,
-		j2k_read_ppm }, { J2K_MS_PPT, J2K_DEC_STATE_TPH, j2k_read_ppt }, {
-J2K_MS_SOP, 0, 0 }, { J2K_MS_CRG, J2K_DEC_STATE_MH, j2k_read_crg }, {
-J2K_MS_COM, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_com }, {
-J2K_MS_MCT, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mct }, {
-J2K_MS_CBD, J2K_DEC_STATE_MH, j2k_read_cbd }, {
-J2K_MS_MCC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mcc }, {
-J2K_MS_MCO, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mco }, {
-J2K_MS_UNK, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, 0 }/*j2k_read_unk is directly used*/
+static const grk_dec_memory_marker_handler j2k_memory_marker_handler_tab[] = {
+{J2K_MS_SOT, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH_SOT, j2k_read_sot },
+{J2K_MS_COD, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_cod },
+{J2K_MS_COC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_coc },
+{J2K_MS_RGN, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_rgn },
+{J2K_MS_QCD, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_qcd },
+{J2K_MS_QCC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_qcc },
+{J2K_MS_POC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_poc },
+{J2K_MS_SIZ, J2K_DEC_STATE_MH_SIZ, j2k_read_siz },
+{J2K_MS_CAP, J2K_DEC_STATE_MH,j2k_read_cap },
+{J2K_MS_TLM, J2K_DEC_STATE_MH, j2k_read_tlm },
+{J2K_MS_PLM, J2K_DEC_STATE_MH, j2k_read_plm },
+{J2K_MS_PLT, J2K_DEC_STATE_TPH, j2k_read_plt },
+{J2K_MS_PPM, J2K_DEC_STATE_MH,	j2k_read_ppm },
+{J2K_MS_PPT, J2K_DEC_STATE_TPH, j2k_read_ppt },
+{J2K_MS_SOP, 0, 0 },
+{J2K_MS_CRG, J2K_DEC_STATE_MH, j2k_read_crg },
+{J2K_MS_COM, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_com },
+{J2K_MS_MCT, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mct },
+{J2K_MS_CBD, J2K_DEC_STATE_MH, j2k_read_cbd },
+{J2K_MS_MCC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mcc },
+{J2K_MS_MCO, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mco },
+{J2K_MS_UNK, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, 0 }/*j2k_read_unk is directly used*/
 };
 
 static bool j2k_read_unk(CodeStream *codeStream, BufferedStream *stream,
@@ -487,7 +490,7 @@ static bool j2k_read_header_procedure(CodeStream *codeStream,TileProcessor *tile
 		marker_size -= 2; /* Subtract the size of the marker ID already read */
 
 		if (!codeStream->process_marker(marker_handler, current_marker, marker_size,
-											stream))
+											tileProcessor, stream))
 			return false;
 
 		if (codeStream->cstr_index) {
@@ -813,7 +816,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, uint16_t *tile_index,
 			}
 
 			if (!codeStream->process_marker(marker_handler, current_marker, marker_size,
-												stream))
+											tileProcessor,stream))
 				goto fail;
 
 			/* Add the marker to the code stream index*/
@@ -3007,7 +3010,7 @@ bool CodeStream::set_decompress_area(grk_image *output_image,
 
 
 bool CodeStream::process_marker(const grk_dec_memory_marker_handler* marker_handler,
-		uint16_t current_marker, uint16_t marker_size,
+		uint16_t current_marker, uint16_t marker_size, TileProcessor *tileProcessor,
 		BufferedStream *stream){
 
 	if (!m_marker_scratch) {
@@ -3049,7 +3052,7 @@ bool CodeStream::process_marker(const grk_dec_memory_marker_handler* marker_hand
 		GROK_ERROR("Not sure how that happened.");
 		return false;
 	}
-	if (!(*(marker_handler->handler))(this,
+	if (!(*(marker_handler->handler))(this,tileProcessor,
 			m_marker_scratch, marker_size)) {
 		GROK_ERROR("Fail to read the current marker segment (%#x)",
 				current_marker);

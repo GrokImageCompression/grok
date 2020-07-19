@@ -162,8 +162,8 @@ struct  grk_dec_memory_marker_handler  {
 	/** value of the state when the marker can appear */
 	uint32_t states;
 	/** action linked to the marker */
-	bool (*handler)(CodeStream *codeStream, uint8_t *p_header_data,
-			uint16_t header_size);
+	bool (*handler)(CodeStream *codeStream, TileProcessor *tileProcessor,
+			uint8_t *p_header_data, uint16_t header_size);
 } ;
 
 struct CodeStream {
@@ -178,7 +178,7 @@ struct CodeStream {
 
 	bool process_marker(const grk_dec_memory_marker_handler* marker_handler,
 						uint16_t current_marker, uint16_t marker_size,
-						BufferedStream *stream);
+						TileProcessor *tileProcessor,	BufferedStream *stream);
 
 	/**
 	 * Sets the given area to be decoded. This function should be called right after grk_read_header
