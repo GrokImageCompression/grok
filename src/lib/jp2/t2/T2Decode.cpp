@@ -152,8 +152,8 @@ bool T2Decode::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 						delete[] first_pass_failed;
 						return false;
 					}
-					img_comp->resno_decoded = std::max<uint32_t>(current_pi->resno,
-							img_comp->resno_decoded);
+					tileProcessor->m_resno_decoded[current_pi->compno] = std::max<uint32_t>(current_pi->resno,
+							tileProcessor->m_resno_decoded[current_pi->compno]);
 
 				} else {
 					if (pltMarkerLen) {
@@ -173,8 +173,8 @@ bool T2Decode::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			}
 			if (first_pass_failed[current_pi->compno]) {
 				img_comp = image->comps + current_pi->compno;
-				if (img_comp->resno_decoded == 0) {
-					img_comp->resno_decoded =
+				if (tileProcessor->m_resno_decoded[current_pi->compno]  == 0) {
+					tileProcessor->m_resno_decoded[current_pi->compno] =
 							p_tile->comps[current_pi->compno].minimum_num_resolutions
 									- 1;
 				}

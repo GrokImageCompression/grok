@@ -225,7 +225,6 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 					i, img_comp->prec, max_supported_precision);
 			return false;
 		}
-		img_comp->resno_decoded = 0; /* number of resolution decoded */
 		++img_comp;
 	}
 

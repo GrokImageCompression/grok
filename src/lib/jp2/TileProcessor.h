@@ -332,6 +332,8 @@ struct TileProcessor {
 	CodingParams *m_cp;
 
 	PacketTracker m_packetTracker;
+
+	uint32_t* m_resno_decoded;
 private:
 
 	/** position of the tile part flag in progression order*/

@@ -266,7 +266,6 @@ void transfer_image_data(grk_image *src, grk_image *dest) {
 		auto src_comp = src->comps + compno;
 		auto dest_comp = dest->comps + compno;
 
-		dest_comp->resno_decoded = src_comp->resno_decoded;
 		grk_image_single_component_data_free(dest_comp);
 		dest_comp->data = src_comp->data;
 		dest_comp->owns_data = src_comp->owns_data;

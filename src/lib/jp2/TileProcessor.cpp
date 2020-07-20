@@ -79,6 +79,7 @@ TileProcessor::TileProcessor(CodeStream *codeStream) :
 				whole_tile_decoding(codeStream->whole_tile_decoding),
 				plt_markers(nullptr),
 				m_cp(&codeStream->m_cp),
+				m_resno_decoded(nullptr),
 				tp_pos(0),
 				m_tcp(nullptr),
 				m_corrupt_packet(false)
@@ -89,6 +90,8 @@ TileProcessor::TileProcessor(CodeStream *codeStream) :
 		throw new std::runtime_error("out of memory");
 
 	tile->comps = new TileComponent[image->numcomps];
+	m_resno_decoded = new uint32_t[image->numcomps];
+	memset(m_resno_decoded,0, image->numcomps * sizeof(uint32_t));
 	tile->numcomps = image->numcomps;
 
 	tp_pos = m_cp->m_coding_params.m_enc.m_tp_pos;
@@ -100,6 +103,7 @@ TileProcessor::~TileProcessor() {
 		grk_free(tile);
 	}
 	delete plt_markers;
+	delete[] m_resno_decoded;
 }
 
 /*
@@ -749,7 +753,6 @@ bool TileProcessor::init_tile(uint16_t tile_no, grk_image *output_image,
 		/*fprintf(stderr, "compno = %u/%u\n", compno, tile->numcomps);*/
 		if (image_comp->dx == 0 || image_comp->dy == 0)
 			return false;
-		image_comp->resno_decoded = 0;
 		auto tilec = tile->comps + compno;
 		if (!tilec->init(isEncoder, whole_tile_decoding, output_image, m_cp,
 				tcp, tile, image_comp, tcp->tccps + compno,
@@ -950,12 +953,11 @@ bool TileProcessor::decompress_tile_t1(void) {
 	if (doT1) {
 		for (uint32_t compno = 0; compno < tile->numcomps; ++compno) {
 			auto tilec = tile->comps + compno;
-			auto img_comp = image->comps + compno;
 			auto tccp = m_tcp->tccps + compno;
 
 			if (!whole_tile_decoding) {
 				try {
-					tilec->alloc_sparse_array(img_comp->resno_decoded + 1);
+					tilec->alloc_sparse_array(m_resno_decoded[compno] + 1);
 				} catch (runtime_error &ex) {
 					GROK_ERROR("decompress_tile_t1: %s", ex.what());
 					return false;
@@ -973,7 +975,7 @@ bool TileProcessor::decompress_tile_t1(void) {
 
 			if (doPostT1)
 				if (!Wavelet::decompress(this, tilec,
-						img_comp->resno_decoded + 1, tccp->qmfbid))
+						m_resno_decoded[compno] + 1, tccp->qmfbid))
 					return false;
 
 			tilec->release_mem();
@@ -1408,7 +1410,6 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_
 		auto tile_data = (uint8_t*)tilec->buf->get_ptr(0, 0, 0, 0);
 
 		/* Copy info from decoded comp image to output image */
-		comp_dest->resno_decoded = comp_src->resno_decoded;
 
 		/* Border of the current output component. (x0_dest,y0_dest)
 		 * corresponds to origin of dest buffer */

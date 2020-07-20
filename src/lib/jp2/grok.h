@@ -903,8 +903,6 @@ typedef struct _grk_image_comp {
 	/** precision */
 	uint32_t prec;
 	bool sgnd;
-	/** number of decoded resolution */
-	uint32_t resno_decoded;
 	/** image component data */
 	int32_t *data;
 	// if true, then image will manage data, otherwise up to caller

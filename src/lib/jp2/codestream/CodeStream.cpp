@@ -1111,8 +1111,6 @@ bool j2k_decompress_tile_t1(CodeStream *codeStream, TileProcessor *tileProcessor
 
 					//transfer memory from tile component to output image
 					tilec->buf->transfer(&comp->data, &comp->owns_data);
-					comp->resno_decoded =
-							tileProcessor->image->comps[compno].resno_decoded;
 				}
 			}
 		}
