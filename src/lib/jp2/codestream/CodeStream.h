@@ -244,8 +244,6 @@ public:
 	/** TNsot correction : see issue 254 **/
 	bool m_nb_tile_parts_correction_checked;
 	bool m_nb_tile_parts_correction;
-	std::vector<TileProcessor*> m_tileProcessors;
-
 
 };
 

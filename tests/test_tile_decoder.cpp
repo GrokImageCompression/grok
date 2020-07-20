@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
 	grk_stream *stream = nullptr;
 	uint64_t data_size = 0;
 	uint64_t max_data_size = 1000;
-	uint16_t tile_index;
+	uint16_t tile_index=0;
 	bool go_on = true;
 	uint32_t nb_comps = 0;
 	uint32_t current_tile_x0, current_tile_y0, current_tile_x1, current_tile_y1;

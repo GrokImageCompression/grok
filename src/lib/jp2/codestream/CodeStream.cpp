@@ -999,7 +999,6 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 				tileProcessor->m_current_tile_index);
 		goto fail;
 	}
-	codeStream->m_tileProcessors.push_back(tileProcessor);
 	*p_go_on = true;
 	decoder->m_state |= J2K_DEC_STATE_DATA;
 
@@ -1167,6 +1166,8 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, TileProcessor *tileProc
 	bool multi_tile = num_tiles_to_decode > 1;
 	std::atomic<bool> success(true);
 	std::atomic<uint32_t> num_tiles_decoded(0);
+	ThreadPool pool(std::min<uint32_t>((uint32_t)ThreadPool::get()->num_threads(), num_tiles_to_decode));
+	std::vector< std::future<int> > results;
 
 	if (multi_tile && codeStream->m_output_image) {
 		if (!codeStream->alloc_output_data(codeStream->m_output_image))
@@ -1177,12 +1178,14 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, TileProcessor *tileProc
 	for (uint32_t tileno = 0; tileno < num_tiles_to_decode; tileno++) {
 		//1. read header
 		auto processor = new TileProcessor(codeStream);
-		if (!j2k_read_tile_header(codeStream,processor, &go_on,
-				stream))
+		if (!j2k_read_tile_header(codeStream,processor, &go_on,stream))
 			return false;
 
-		if (!go_on)
+		if (!go_on){
+			delete processor;
+			codeStream->m_tileProcessor = nullptr;
 			break;
+		}
 
 		//2. T2 decode
 		if (!j2k_decompress_tile_t2(codeStream,
@@ -1190,57 +1193,57 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, TileProcessor *tileProc
 				GROK_ERROR("Failed to decompress tile %u/%u",
 						processor->m_current_tile_index + 1,
 						num_tiles_to_decode);
+				delete processor;
+				codeStream->m_tileProcessor = nullptr;
 				return false;
 		}
+
+		if (!processor->m_corrupt_packet) {
+			if (pool.num_threads() > 1) {
+				results.emplace_back(
+					pool.enqueue([codeStream,processor,
+								  num_tiles_to_decode,
+								  multi_tile,
+								  &num_tiles_decoded, &success] {
+						if (success) {
+							if (!j2k_decompress_tile_t1(codeStream, processor,multi_tile)){
+								GROK_ERROR("Failed to decompress tile %u/%u",
+										processor->m_current_tile_index + 1,num_tiles_to_decode);
+								success = false;
+							} else {
+								num_tiles_decoded++;
+							}
+						}
+						delete processor;
+						return 0;
+					})
+				);
+			} else {
+				if (!j2k_decompress_tile_t1(codeStream, processor,multi_tile)){
+						GROK_ERROR("Failed to decompress tile %u/%u",
+								processor->m_current_tile_index + 1,num_tiles_to_decode);
+						delete processor;
+						codeStream->m_tileProcessor = nullptr;
+						return false;
+				} else {
+					num_tiles_decoded++;
+				}
+				delete processor;
+			}
+		} else {
+			delete processor;
+		}
+
 		if (stream->get_number_byte_left() == 0
 				|| codeStream->m_decoder.m_state
 						== J2K_DEC_STATE_NO_EOC)
 			break;
+
 	}
 
-	//T1 and post T1
-	if (codeStream->m_tileProcessors.size() == 1 || ThreadPool::get()->num_threads()== 1){
-		for (auto &tp : codeStream->m_tileProcessors) {
-			if (tp->m_corrupt_packet)
-				continue;
-		if (!j2k_decompress_tile_t1(codeStream, tp,multi_tile)){
-				GROK_ERROR("Failed to decompress tile %u/%u",
-						tp->m_current_tile_index + 1,num_tiles_to_decode);
-			return false;
-			} else {
-				num_tiles_decoded++;
-			}
-		}
-	} else 	{
-		ThreadPool pool(ThreadPool::get()->num_threads());
-		std::vector< std::future<int> > results;
-
-		for (auto &tp : codeStream->m_tileProcessors) {
-			if (tp->m_corrupt_packet)
-				continue;
-			results.emplace_back(
-				pool.enqueue([codeStream,tp,
-							  num_tiles_to_decode,
-							  multi_tile,
-							  &num_tiles_decoded, &success] {
-					if (success) {
-						if (!j2k_decompress_tile_t1(codeStream, tp,multi_tile)){
-							GROK_ERROR("Failed to decompress tile %u/%u",
-									tp->m_current_tile_index + 1,num_tiles_to_decode);
-							success = false;
-						} else {
-							num_tiles_decoded++;
-						}
-					}
-					return 0;
-				})
-			);
-		}
-		for(auto && result: results){
-			result.get();
-		}
+	for(auto && result: results){
+		result.get();
 	}
-
 	// sanity checks
 	if (num_tiles_decoded == 0) {
 		GROK_ERROR("No tiles were decoded. Exiting");
@@ -1250,6 +1253,8 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, TileProcessor *tileProc
 		GROK_WARN("Only %u out of %u tiles were decoded", decoded,
 				num_tiles_to_decode);
 	}
+	codeStream->m_tileProcessor = nullptr;
+
 	return success;
 }
 
@@ -1327,9 +1332,8 @@ static bool j2k_decompress_tile(CodeStream *codeStream,TileProcessor *tileProces
 	if (!j2k_read_tile_header(codeStream, tileProcessor, &go_on, stream))
 		goto cleanup;
 
-	if (!j2k_decompress_tile(codeStream, tileProcessor->m_current_tile_index, stream)) {
+	if (!j2k_decompress_tile(codeStream, tileProcessor->m_current_tile_index, stream))
 		goto cleanup;
-	}
 
 	if (tileProcessor->m_current_tile_index == tile_index_to_decode) {
 		/* move into the code stream to the first SOT (FIXME or not move?)*/
@@ -1345,6 +1349,7 @@ static bool j2k_decompress_tile(CodeStream *codeStream,TileProcessor *tileProces
 	}
 	rc = true;
 	cleanup:
+	delete tileProcessor;
 
 	return rc;
 }
@@ -2010,7 +2015,10 @@ bool j2k_end_compress(CodeStream *codeStream, BufferedStream *stream) {
 	if (!j2k_init_end_compress(codeStream))
 		return false;
 
-	return j2k_exec(codeStream, codeStream->m_procedure_list, stream);
+	bool rc =  j2k_exec(codeStream, codeStream->m_procedure_list, stream);
+	delete codeStream->m_tileProcessor;
+	codeStream = nullptr;
+	return rc;
 }
 
 bool j2k_start_compress(CodeStream *codeStream, BufferedStream *stream) {
@@ -2294,7 +2302,6 @@ static bool j2k_init_header_writing(CodeStream *codeStream) {
 
 	assert(!codeStream->m_tileProcessor);
 	codeStream->m_tileProcessor = new TileProcessor(codeStream);
-	codeStream->m_tileProcessors.push_back(codeStream->m_tileProcessor);
 	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_init_info);
 	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_write_soc);
 	codeStream->m_procedure_list.push_back((j2k_procedure) j2k_write_siz);
@@ -2887,8 +2894,6 @@ CodeStream::~CodeStream(){
 	grk_image_destroy(m_input_image);
 	grk_image_destroy(m_output_image);
 	grk_free(m_marker_scratch);
-	for (auto &proc : m_tileProcessors)
-		delete proc;
 }
 
 
