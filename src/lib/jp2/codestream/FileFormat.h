@@ -283,14 +283,16 @@ bool jp2_compress(FileFormat *fileFormat, grk_plugin_tile *tile, BufferedStream 
 /**
  * Compress tile
  *
- * @param  fileFormat    JPEG 2000 code stream
- * @param tile_index  FIXME DOC
- * @param p_data        FIXME DOC
- * @param uncompressed_data_size   FIXME DOC
+ * @param  fileFormat    			JPEG 2000 file format
+ * @param  tileProcessor			tile processor
+ * @param tile_index  				tile index
+ * @param p_data        			uncompressed data
+ * @param uncompressed_data_size   	uncompressed data size
  * @param  stream      the stream to write data to.
 
  */
-bool jp2_compress_tile(FileFormat *fileFormat, uint16_t tile_index, uint8_t *p_data,
+bool jp2_compress_tile(FileFormat *fileFormat, TileProcessor *tileProcessor,
+		uint16_t tile_index, uint8_t *p_data,
 		uint64_t uncompressed_data_size, BufferedStream *stream);
 
 /**
@@ -352,16 +354,6 @@ bool jp2_read_tile_header(FileFormat *fileFormat, uint16_t *tile_index,
 		bool *p_go_on, BufferedStream *stream);
 
 
-/**
- * Decompress tile.
- * @param  fileFormat      JPEG 2000 code stream.
- * @param  tile_index index of tile to decompress
- * @param  stream      the stream to write data to.
- 
- *
- * @return true if successful
- */
-bool jp2_decompress_tile(FileFormat *fileFormat, uint16_t tile_index,BufferedStream *stream);
 /**
  * Sets the given area to be decompressed. This function should be called
  * right after grk_read_header and before any tile header reading.

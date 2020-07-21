@@ -1501,6 +1501,20 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_
 	return true;
 }
 
+bool TileProcessor::pre_write_tile(uint16_t tile_index) {
+	if (tile_index != m_current_tile_index) {
+		GROK_ERROR("pre_write_tile: The given tile index %d "
+				"does not match current tile index %d", tile_index, m_current_tile_index);
+		return false;
+	}
+	m_current_tile_part_index = 0;
+	cur_totnum_tp =	m_cp->tcps[tile_index].m_nb_tile_parts;
+	m_current_poc_tile_part_index = 0;
+
+	/* initialisation before tile encoding  */
+	return init_tile(tile_index, nullptr, true);
+}
+
 bool TileProcessor::copy_image_data_to_tile(uint8_t *p_src,
 		uint64_t src_length) {
 	uint64_t i, j;

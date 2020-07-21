@@ -304,18 +304,7 @@ bool j2k_read_header(BufferedStream *stream, CodeStream *codeStream,
  */
 void j2k_destroy(CodeStream *codeStream);
 
-/**
- * Decode tile data.
- * @param	codeStream		JPEG 2000 code stream
- * @param	tile_index
- * @param	stream			the stream to write data to.
- 
- */
-bool j2k_decompress_tile(CodeStream *codeStream, uint16_t tile_index, BufferedStream *stream);
 
-bool j2k_decompress_tile_t2(CodeStream *codeStream, uint16_t tile_index, BufferedStream *stream);
-
-bool j2k_decompress_tile_t1(CodeStream *codeStream, TileProcessor *tileProcessor,bool multi_tile);
 /**
  * Reads a tile header.
  * @param	codeStream		JPEG 2000 code stream
@@ -367,14 +356,16 @@ bool j2k_get_tile(CodeStream *codeStream, BufferedStream *stream, grk_image *p_i
 
 /**
  * Writes a tile.
- * @param	codeStream		JPEG 2000 code stream
- * @param tile_index FIXME DOC
- * @param uncompressed_data_size FIXME DOC
- * @param data_size FIXME DOC
- * @param	stream			the stream to write data to.
+ * @param	codeStream				JPEG 2000 code stream
+ * @param	tileProcessor			tile processor
+ * @param tile_index 				tile index
+ * @param data						uncompressed data
+ * @param uncompressed_data_size 	uncompressed data size
+ * @param	stream					the stream to write data to.
  
  */
-bool j2k_compress_tile(CodeStream *codeStream, uint16_t tile_index, uint8_t *p_data,
+bool j2k_compress_tile(CodeStream *codeStream, TileProcessor *tileProcessor,
+		uint16_t tile_index, uint8_t *p_data,
 		uint64_t uncompressed_data_size, BufferedStream *stream);
 
 /**

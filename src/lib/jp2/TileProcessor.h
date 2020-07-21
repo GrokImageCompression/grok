@@ -262,6 +262,8 @@ struct TileProcessor {
 	 bool init_tile(uint16_t tile_no,
 			grk_image *output_image, bool isEncoder);
 
+	 bool pre_write_tile(uint16_t tile_index);
+
 	/**
 	 * Compress a tile from a raw image into stream.
 	 * @param	tile_no		Index of the tile to compress.

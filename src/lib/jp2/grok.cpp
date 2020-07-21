@@ -79,11 +79,11 @@ struct grk_codec_private {
 
 			/** Decoding function */
 			bool (*decompress)(void *p_codec, grk_plugin_tile *tile,
-					BufferedStream *p_cio, grk_image *p_image);
+					BufferedStream *stream, grk_image *p_image);
 
 			/** FIXME DOC */
 			bool (*read_tile_header)(void *p_codec, uint16_t *tile_index,
-					bool *p_should_go_on, BufferedStream *p_cio);
+					bool *p_should_go_on, BufferedStream *stream);
 
 
 			/** Reading function used after code stream if necessary */
@@ -101,7 +101,7 @@ struct grk_codec_private {
 					uint32_t end_y);
 
 			/** Get tile function */
-			bool (*get_decoded_tile)(void *p_codec, BufferedStream *p_cio,
+			bool (*get_decoded_tile)(void *p_codec, BufferedStream *stream,
 					grk_image *p_image,
 					uint16_t tile_index);
 
@@ -114,12 +114,12 @@ struct grk_codec_private {
 			bool (*start_compress)(void *p_codec, BufferedStream *stream);
 
 			bool (*compress)(void *p_codec, grk_plugin_tile*,
-					BufferedStream *p_cio);
+					BufferedStream *stream);
 
-			bool (*write_tile)(void *p_codec, uint16_t tile_index,
-					uint8_t *p_data, uint64_t data_size, BufferedStream *p_cio);
+			bool (*write_tile)(void *p_codec, TileProcessor *tileProcessor,
+					uint16_t tile_index, uint8_t *p_data, uint64_t data_size, BufferedStream *stream);
 
-			bool (*end_compress)(void *p_codec, BufferedStream *p_cio);
+			bool (*end_compress)(void *p_codec, BufferedStream *stream);
 
 			void (*destroy)(void *p_codec);
 
@@ -277,7 +277,7 @@ const char* GRK_CALLCONV grk_version(void) {
 				grk_image * , uint32_t, uint32_t, uint32_t, uint32_t)) j2k_set_decompress_area;
 
 		codec->m_codec_data.m_decompression.get_decoded_tile = (bool (*)(
-				void *p_codec, BufferedStream *p_cio, grk_image *p_image, uint16_t tile_index)) j2k_get_tile;
+				void *p_codec, BufferedStream *stream, grk_image *p_image, uint16_t tile_index)) j2k_get_tile;
 
 		codec->m_codec = j2k_create_decompress();
 
@@ -311,7 +311,7 @@ const char* GRK_CALLCONV grk_version(void) {
 				grk_image * , uint32_t, uint32_t, uint32_t, uint32_t)) jp2_set_decompress_area;
 
 		codec->m_codec_data.m_decompression.get_decoded_tile = (bool (*)(
-				void *p_codec, BufferedStream *p_cio, grk_image *p_image, uint16_t tile_index)) jp2_get_tile;
+				void *p_codec, BufferedStream *stream, grk_image *p_image, uint16_t tile_index)) jp2_get_tile;
 		codec->m_codec = jp2_create(true);
 		if (!codec->m_codec) {
 			grk_free(codec);
@@ -428,7 +428,7 @@ bool GRK_CALLCONV grk_decompress_tile( grk_codec  *p_codec,
 		codec->m_codec_data.m_compression.start_compress =
 				(bool (*)(void*, BufferedStream*)) j2k_start_compress;
 		codec->m_codec_data.m_compression.write_tile =
-				(bool (*)(void*, uint16_t, uint8_t*, uint64_t, BufferedStream*)) j2k_compress_tile;
+				(bool (*)(void*, TileProcessor*, uint16_t, uint8_t*, uint64_t, BufferedStream*)) j2k_compress_tile;
 		codec->m_codec_data.m_compression.destroy =
 				(void (*)(void*)) j2k_destroy;
 		codec->m_codec_data.m_compression.init_compress =
@@ -448,7 +448,7 @@ bool GRK_CALLCONV grk_decompress_tile( grk_codec  *p_codec,
 		codec->m_codec_data.m_compression.start_compress = (bool (*)(void*,
 				BufferedStream*)) jp2_start_compress;
 		codec->m_codec_data.m_compression.write_tile =
-				(bool (*)(void*, uint16_t, uint8_t*, uint64_t, BufferedStream*)) jp2_compress_tile;
+				(bool (*)(void*, TileProcessor*, uint16_t, uint8_t*, uint64_t, BufferedStream*)) jp2_compress_tile;
 		codec->m_codec_data.m_compression.destroy =
 				(void (*)(void*)) jp2_destroy;
 		codec->m_codec_data.m_compression.init_compress =
@@ -590,7 +590,7 @@ bool GRK_CALLCONV grk_compress_tile( grk_codec  *p_codec, uint16_t tile_index,
 		if (codec->is_decompressor)
 			return false;
 		return codec->m_codec_data.m_compression.write_tile(codec->m_codec,
-				tile_index, p_data, data_size, stream	);
+				nullptr, tile_index, p_data, data_size, stream	);
 	}
 	return false;
 }
