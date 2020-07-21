@@ -2000,36 +2000,24 @@ bool j2k_compress(CodeStream *codeStream, grk_plugin_tile *tile,
 				"allowed by the standard.", nb_tiles, max_num_tiles);
 		return false;
 	}
-	bool transfer_image_to_tile = (nb_tiles == 1);
+
 	for (uint16_t i = 0; i < nb_tiles; ++i) {
 		if (!tileProcessor->pre_write_tile(i))
 			return false;
-
-		/* if we only have one tile, then simply set tile component data equal to
-		 * image component data. Otherwise, allocate tile data and copy */
-		for (uint32_t j = 0; j < tileProcessor->image->numcomps; ++j) {
-			auto tilec = tileProcessor->tile->comps + j;
-			if (transfer_image_to_tile) {
-				tilec->buf->attach((tileProcessor->image->comps + j)->data);
-			} else {
-				if (!tilec->buf->alloc()) {
-					GROK_ERROR("Error allocating tile component data.");
-					return false;
-				}
-			}
-		}
-		if (!transfer_image_to_tile)
-			tileProcessor->copy_image_to_tile();
 		if (!j2k_post_write_tile(codeStream, tileProcessor, stream))
 			return false;
 	}
+
 	return true;
 }
 
 bool j2k_compress_tile(CodeStream *codeStream, TileProcessor *tp,
 		uint16_t tile_index, uint8_t *p_data,
 		uint64_t uncompressed_data_size, BufferedStream *stream) {
-	TileProcessor *tileProcessor = tp;
+	if (!p_data)
+		return false;
+
+	auto tileProcessor = tp;
 	if (!tileProcessor) {
 		codeStream->m_tileProcessor = new TileProcessor(codeStream);
 		tileProcessor = codeStream->m_tileProcessor;
@@ -2039,28 +2027,16 @@ bool j2k_compress_tile(CodeStream *codeStream, TileProcessor *tp,
 		GROK_ERROR("Error while pre_write_tile with tile index = %u",
 				tile_index);
 		return false;
-	} else {
-		/* Allocate data */
-		for (uint32_t j = 0; j < tileProcessor->image->numcomps; ++j) {
-			auto tilec = tileProcessor->tile->comps + j;
-
-			if (!tilec->buf->alloc()) {
-				GROK_ERROR("Error allocating tile component data.");
-				return false;
-			}
-		}
-
-		/* now copy data into the tile component */
-		if (!tileProcessor->copy_image_data_to_tile(p_data,
-				uncompressed_data_size)) {
-			GROK_ERROR("Size mismatch between tile data and sent data.");
-			return false;
-		}
-		if (!j2k_post_write_tile(codeStream, tileProcessor, stream)) {
-			GROK_ERROR("Error while j2k_post_write_tile with tile index = %u",
-					tile_index);
-			return false;
-		}
+	}
+	/* now copy data into the tile component */
+	if (!tileProcessor->copy_image_data_to_tile(p_data,	uncompressed_data_size)) {
+		GROK_ERROR("Size mismatch between tile data and sent data.");
+		return false;
+	}
+	if (!j2k_post_write_tile(codeStream, tileProcessor, stream)) {
+		GROK_ERROR("Error while j2k_post_write_tile with tile index = %u",
+				tile_index);
+		return false;
 	}
 
 	return true;

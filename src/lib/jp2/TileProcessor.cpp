@@ -1512,7 +1512,31 @@ bool TileProcessor::pre_write_tile(uint16_t tile_index) {
 	m_current_poc_tile_part_index = 0;
 
 	/* initialisation before tile encoding  */
-	return init_tile(tile_index, nullptr, true);
+	bool rc =  init_tile(tile_index, nullptr, true);
+	if (rc){
+		uint32_t nb_tiles = (uint32_t) m_cp->t_grid_height
+				* m_cp->t_grid_width;
+		bool transfer_image_to_tile = (nb_tiles == 1);
+
+		/* if we only have one tile, then simply set tile component data equal to
+		 * image component data. Otherwise, allocate tile data and copy */
+		for (uint32_t j = 0; j < image->numcomps; ++j) {
+			auto tilec = tile->comps + j;
+			auto imagec = image->comps + j;
+			if (transfer_image_to_tile && imagec->data) {
+				tilec->buf->attach(imagec->data);
+			} else {
+				if (!tilec->buf->alloc()) {
+					GROK_ERROR("Error allocating tile component data.");
+					return false;
+				}
+			}
+		}
+		if (!transfer_image_to_tile)
+			copy_image_to_tile();
+	}
+
+	return rc;
 }
 
 bool TileProcessor::copy_image_data_to_tile(uint8_t *p_src,
