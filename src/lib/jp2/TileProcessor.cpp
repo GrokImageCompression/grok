@@ -711,16 +711,16 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 	}
 }
 
-bool TileProcessor::init_tile(uint16_t tile_no, grk_image *output_image,
+bool TileProcessor::init_tile(grk_image *output_image,
 		bool isEncoder) {
 	uint32_t state = grk_plugin_get_debug_state();
-	auto tcp = &(m_cp->tcps[tile_no]);
+	auto tcp = &(m_cp->tcps[m_current_tile_index]);
 
 	if (tcp->m_tile_data)
 		tcp->m_tile_data->rewind();
 
-	uint32_t p = tile_no % m_cp->t_grid_width; /* tile coordinates */
-	uint32_t q = tile_no / m_cp->t_grid_width;
+	uint32_t p = m_current_tile_index % m_cp->t_grid_width; /* tile coordinates */
+	uint32_t q = m_current_tile_index / m_cp->t_grid_width;
 	/*fprintf(stderr, "Tile coordinate = %u,%u\n", p, q);*/
 
 	/* 4 borders of the tile rescale on the image if necessary */
@@ -790,37 +790,41 @@ bool TileProcessor::init_tile(uint16_t tile_no, grk_image *output_image,
 	return true;
 }
 
-bool TileProcessor::compress_tile_part(uint16_t tile_no, BufferedStream *stream,
-		uint32_t *tile_bytes_written) {
+bool TileProcessor::do_encode(void){
 	uint32_t state = grk_plugin_get_debug_state();
+	if (state & GRK_PLUGIN_STATE_DEBUG)
+		set_context_stream(this);
 
-	if (m_current_tile_part_index == 0) {
-		m_current_tile_index = tile_no;
-		m_tcp = &m_cp->tcps[tile_no];
+	m_tcp = &m_cp->tcps[m_current_tile_index];
 
-		if (state & GRK_PLUGIN_STATE_DEBUG)
-			set_context_stream(this);
+	// When debugging the encoder, we do all of T1 up to and including DWT
+	// in the plugin, and pass this in as image data.
+	// This way, both Grok and plugin start with same inputs for
+	// context formation and MQ coding.
+	bool debugEncode = state & GRK_PLUGIN_STATE_DEBUG;
+	bool debugMCT = (state & GRK_PLUGIN_STATE_MCT_ONLY) ? true : false;
 
-		// When debugging the encoder, we do all of T1 up to and including DWT
-		// in the plugin, and pass this in as image data.
-		// This way, both Grok and plugin start with same inputs for
-		// context formation and MQ coding.
-		bool debugEncode = state & GRK_PLUGIN_STATE_DEBUG;
-		bool debugMCT = (state & GRK_PLUGIN_STATE_MCT_ONLY) ? true : false;
-
-		if (!current_plugin_tile || debugEncode) {
-			if (!debugEncode) {
-				if (!dc_level_shift_encode())
-					return false;
-				if (!mct_encode())
-					return false;
-			}
-			if (!debugEncode || debugMCT) {
-				if (!dwt_encode())
-					return false;
-			}
-			t1_encode();
+	if (!current_plugin_tile || debugEncode) {
+		if (!debugEncode) {
+			if (!dc_level_shift_encode())
+				return false;
+			if (!mct_encode())
+				return false;
 		}
+		if (!debugEncode || debugMCT) {
+			if (!dwt_encode())
+				return false;
+		}
+		t1_encode();
+	}
+
+	return true;
+}
+
+bool TileProcessor::compress_tile_part(BufferedStream *stream,
+		uint32_t *tile_bytes_written) {
+	if (m_current_tile_part_index == 0) {
+
 		// 1. create PLT marker if required
 		delete plt_markers;
 		if (m_cp->m_coding_params.m_enc.writePLT){
@@ -1501,18 +1505,13 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_
 	return true;
 }
 
-bool TileProcessor::pre_write_tile(uint16_t tile_index) {
-	if (tile_index != m_current_tile_index) {
-		GROK_ERROR("pre_write_tile: The given tile index %d "
-				"does not match current tile index %d", tile_index, m_current_tile_index);
-		return false;
-	}
+bool TileProcessor::pre_write_tile() {
 	m_current_tile_part_index = 0;
-	cur_totnum_tp =	m_cp->tcps[tile_index].m_nb_tile_parts;
+	cur_totnum_tp =	m_cp->tcps[m_current_tile_index].m_nb_tile_parts;
 	m_current_poc_tile_part_index = 0;
 
 	/* initialisation before tile encoding  */
-	bool rc =  init_tile(tile_index, nullptr, true);
+	bool rc =  init_tile(nullptr, true);
 	if (rc){
 		uint32_t nb_tiles = (uint32_t) m_cp->t_grid_height
 				* m_cp->t_grid_width;

@@ -994,8 +994,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 		GROK_ERROR("Failed to merge PPT data");
 		goto fail;
 	}
-	if (!tileProcessor->init_tile(tileProcessor->m_current_tile_index,
-			codeStream->m_output_image, false)) {
+	if (!tileProcessor->init_tile(codeStream->m_output_image, false)) {
 		GROK_ERROR("Cannot decompress tile %u",
 				tileProcessor->m_current_tile_index);
 		goto fail;
@@ -1989,10 +1988,6 @@ bool j2k_compress(CodeStream *codeStream, grk_plugin_tile *tile,
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
 
-	codeStream->m_tileProcessor = new TileProcessor(codeStream);
-	auto tileProcessor = codeStream->m_tileProcessor;
-	tileProcessor->current_plugin_tile = tile;
-
 	uint32_t nb_tiles = (uint32_t) codeStream->m_cp.t_grid_height
 			* codeStream->m_cp.t_grid_width;
 	if (nb_tiles > max_num_tiles) {
@@ -2002,11 +1997,21 @@ bool j2k_compress(CodeStream *codeStream, grk_plugin_tile *tile,
 	}
 
 	for (uint16_t i = 0; i < nb_tiles; ++i) {
-		if (!tileProcessor->pre_write_tile(i))
+		auto tileProcessor = new TileProcessor(codeStream);
+		codeStream->m_tileProcessor = tileProcessor;
+		tileProcessor->m_current_tile_index = i;
+		tileProcessor->current_plugin_tile = tile;
+		if (!tileProcessor->pre_write_tile())
 			return false;
+		if (!tileProcessor->do_encode())
+			return false;
+
 		if (!j2k_post_write_tile(codeStream, tileProcessor, stream))
 			return false;
+
+		delete tileProcessor;
 	}
+	codeStream->m_tileProcessor = nullptr;
 
 	return true;
 }
@@ -2023,7 +2028,7 @@ bool j2k_compress_tile(CodeStream *codeStream, TileProcessor *tp,
 		tileProcessor = codeStream->m_tileProcessor;
 		tileProcessor->m_current_tile_index = tile_index;
 	}
-	if (!tileProcessor->pre_write_tile(tile_index)) {
+	if (!tileProcessor->pre_write_tile()) {
 		GROK_ERROR("Error while pre_write_tile with tile index = %u",
 				tile_index);
 		return false;
@@ -2033,6 +2038,8 @@ bool j2k_compress_tile(CodeStream *codeStream, TileProcessor *tp,
 		GROK_ERROR("Size mismatch between tile data and sent data.");
 		return false;
 	}
+	if (!tileProcessor->do_encode())
+		return false;
 	if (!j2k_post_write_tile(codeStream, tileProcessor, stream)) {
 		GROK_ERROR("Error while j2k_post_write_tile with tile index = %u",
 				tile_index);
@@ -2146,7 +2153,7 @@ static bool j2k_write_tile_part(CodeStream *codeStream,	TileProcessor *tileProce
 	}
 
 	// 3. compress tile part
-	if (!tileProcessor->compress_tile_part(currentTileNumber, stream,
+	if (!tileProcessor->compress_tile_part(stream,
 			&tile_part_bytes_written)) {
 		GROK_ERROR("Cannot compress tile");
 		return false;
@@ -2158,7 +2165,7 @@ static bool j2k_write_tile_part(CodeStream *codeStream,	TileProcessor *tileProce
 
 	// 5. update TLM
 	if (codeStream->m_cp.tlm_markers)
-		j2k_update_tlm(codeStream, tileProcessor->m_current_tile_index, tile_part_bytes_written);
+		j2k_update_tlm(codeStream, currentTileNumber, tile_part_bytes_written);
 	++tileProcessor->m_current_tile_part_index;
 
 	return true;

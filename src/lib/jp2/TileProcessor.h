@@ -254,25 +254,28 @@ struct TileProcessor {
 	 * Allocates memory for decoding a specific tile.
 	 *
 	 * @param	output_image output image - stores the decompress region of interest
-	 * @param	tile_no	the index of the tile received in sequence. This not necessarily lead to the
-	 * tile at index tile_no.
 	 *
 	 * @return	true if the remaining data is sufficient.
 	 */
-	 bool init_tile(uint16_t tile_no,
-			grk_image *output_image, bool isEncoder);
+	 bool init_tile(grk_image *output_image, bool isEncoder);
 
-	 bool pre_write_tile(uint16_t tile_index);
+	 bool pre_write_tile(void);
 
 	/**
 	 * Compress a tile from a raw image into stream.
-	 * @param	tile_no		Index of the tile to compress.
 	 * @param	stream		stream
 	 * @param	tile_bytes_written	number of bytes written to stream
 	 * @return  true if the coding is successful.
 	 */
-	bool compress_tile_part(uint16_t tile_no, BufferedStream *stream,
+	bool compress_tile_part(BufferedStream *stream,
 			uint32_t *tile_bytes_written);
+
+	/**
+	 * Compress a tile from a raw image into stream.
+	 * @return  true if the coding is successful.
+	 */
+	bool do_encode(void);
+
 
 	/**
 	 T1 Decode a tile from a buffer
