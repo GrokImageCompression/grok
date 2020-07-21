@@ -1987,7 +1987,6 @@ bool j2k_compress(CodeStream *codeStream, grk_plugin_tile *tile,
 		BufferedStream *stream) {
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
-
 	uint32_t nb_tiles = (uint32_t) codeStream->m_cp.t_grid_height
 			* codeStream->m_cp.t_grid_width;
 	if (nb_tiles > max_num_tiles) {
@@ -1995,25 +1994,68 @@ bool j2k_compress(CodeStream *codeStream, grk_plugin_tile *tile,
 				"allowed by the standard.", nb_tiles, max_num_tiles);
 		return false;
 	}
+	auto pool_size = std::min<uint32_t>((uint32_t)ThreadPool::get()->num_threads(), nb_tiles);
+	if (pool_size > 2)
+		pool_size = 2;
+	ThreadPool pool(pool_size);
+	std::vector< std::future<int> > results;
+	std::unique_ptr<TileProcessor*[]> procs = std::make_unique<TileProcessor*[]>(nb_tiles);
+	std::atomic<bool> success(true);
+	bool rc = false;
+
+	for (uint16_t i = 0; i < nb_tiles; ++i)
+		procs[i] = nullptr;
 
 	for (uint16_t i = 0; i < nb_tiles; ++i) {
 		auto tileProcessor = new TileProcessor(codeStream);
-		codeStream->m_tileProcessor = tileProcessor;
+
 		tileProcessor->m_current_tile_index = i;
 		tileProcessor->current_plugin_tile = tile;
 		if (!tileProcessor->pre_write_tile())
-			return false;
-		if (!tileProcessor->do_encode())
-			return false;
+			goto cleanup;
+		procs[i] = tileProcessor;
+	}
+	if (pool.num_threads() > 1){
+		for (uint16_t i = 0; i < nb_tiles; ++i) {
+			auto processor = procs[i];
+			results.emplace_back(
+					pool.enqueue([codeStream,
+								  processor,
+								  &success] {
+						if (success) {
+							if (!processor->do_encode())
+								success = false;
+						}
+						return 0;
+					})
+				);
+		}
+	} else {
+		for (uint16_t i = 0; i < nb_tiles; ++i) {
+			if (!procs[i]->do_encode())
+				goto cleanup;
+		}
+	}
 
-		if (!j2k_post_write_tile(codeStream, tileProcessor, stream))
-			return false;
+	for(auto && result: results){
+		result.get();
+	}
+	if (!success)
+		goto cleanup;
 
-		delete tileProcessor;
+	for (uint16_t i = 0; i < nb_tiles; ++i) {
+		if (!j2k_post_write_tile(codeStream, procs[i], stream))
+			goto cleanup;
+		delete procs[i];
+		procs[i] = nullptr;
 	}
 	codeStream->m_tileProcessor = nullptr;
+	rc = true;
+cleanup:
+	for (uint16_t i = 0; i < nb_tiles; ++i)
+		delete procs[i];
 
-	return true;
+	return rc;
 }
 
 bool j2k_compress_tile(CodeStream *codeStream, TileProcessor *tp,
