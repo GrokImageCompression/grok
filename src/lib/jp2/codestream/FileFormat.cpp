@@ -2935,7 +2935,7 @@ bool jp2_read_tile_header(FileFormat *fileFormat, uint16_t *tile_index,
 		bool *p_go_on, BufferedStream *stream) {
 	auto tileProcessor = new TileProcessor(fileFormat->j2k);
 	bool rc =  j2k_read_tile_header(fileFormat->j2k, tileProcessor, p_go_on, stream);
-	*tile_index = fileFormat->j2k->m_tileProcessor->m_current_tile_index;
+	*tile_index = tileProcessor->m_current_tile_index;
 	return rc;
 }
 
