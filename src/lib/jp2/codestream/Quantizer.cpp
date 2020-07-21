@@ -118,15 +118,14 @@ void Quantizer::apply_quant(TileComponentCodingParams *src, TileComponentCodingP
 }
 
 
-bool Quantizer::write_SQcd_SQcc(CodeStream *codeStream, uint16_t tile_no,
+bool Quantizer::write_SQcd_SQcc(CodeStream *codeStream,
 		uint32_t comp_no, BufferedStream *stream) {
 	assert(codeStream != nullptr);
 
 	auto cp = &(codeStream->m_cp);
-	auto tcp = &cp->tcps[tile_no];
+	auto tcp = &cp->tcps[0];
 	auto tccp = &tcp->tccps[comp_no];
 
-	assert(tile_no < cp->t_grid_width * cp->t_grid_height);
 	assert(comp_no < codeStream->m_input_image->numcomps);
 
 	uint32_t num_bands =
@@ -156,15 +155,14 @@ bool Quantizer::write_SQcd_SQcc(CodeStream *codeStream, uint16_t tile_no,
 }
 
 
-uint32_t Quantizer::get_SQcd_SQcc_size(CodeStream *codeStream, uint16_t tile_no,
+uint32_t Quantizer::get_SQcd_SQcc_size(CodeStream *codeStream,
 		uint32_t comp_no) {
 	assert(codeStream != nullptr);
 
 	auto cp = &(codeStream->m_cp);
-	auto tcp = &cp->tcps[tile_no];
+	auto tcp = &cp->tcps[0];
 	auto tccp = &tcp->tccps[comp_no];
 
-	assert(tile_no < cp->t_grid_width * cp->t_grid_height);
 	assert(comp_no < codeStream->m_input_image->numcomps);
 
 	uint32_t num_bands =
@@ -178,12 +176,12 @@ uint32_t Quantizer::get_SQcd_SQcc_size(CodeStream *codeStream, uint16_t tile_no,
 	}
 }
 
-bool Quantizer::compare_SQcd_SQcc(CodeStream *codeStream, uint16_t tile_no,
+bool Quantizer::compare_SQcd_SQcc(CodeStream *codeStream,
 		uint32_t first_comp_no, uint32_t second_comp_no) {
 	assert(codeStream != nullptr);
 
 	auto cp = &(codeStream->m_cp);
-	auto tcp = &cp->tcps[tile_no];
+	auto tcp = &cp->tcps[0];
 	auto tccp0 = &tcp->tccps[first_comp_no];
 	auto tccp1 = &tcp->tccps[second_comp_no];
 

@@ -212,25 +212,23 @@ bool j2k_read_cod(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
  * Compares 2 COC markers (Coding style component)
  *
  * @param       codeStream            JPEG 2000 code stream
- * @param 		tile_index current tile index
  * @param       first_comp_no  the index of the first component to compare.
  * @param       second_comp_no the index of the second component to compare.
  *
  * @return      true if equals
  */
-bool j2k_compare_coc(CodeStream *codeStream, uint16_t tile_index, uint32_t first_comp_no,
+bool j2k_compare_coc(CodeStream *codeStream,  uint32_t first_comp_no,
 		uint32_t second_comp_no);
 
 /**
  * Writes the COC marker (Coding style component)
  *
  * @param       codeStream  JPEG 2000 code stream
- * @param 		tile_index current tile index
  * @param       comp_no   the index of the component to output.
  * @param       stream    the stream to write data to.
 
  */
-bool j2k_write_coc(CodeStream *codeStream, uint16_t tile_index, uint32_t comp_no,
+bool j2k_write_coc(CodeStream *codeStream, uint32_t comp_no,
 		BufferedStream *stream);
 
 /**
@@ -270,13 +268,12 @@ bool j2k_read_qcd(CodeStream *codeStream, TileProcessor *tileProcessor,uint8_t *
  * Compare QCC markers (quantization component)
  *
  * @param       codeStream                 JPEG 2000 code stream
- * @param 		tile_index 	current tile index
  * @param       first_comp_no       the index of the first component to compare.
  * @param       second_comp_no      the index of the second component to compare.
  *
  * @return true if equals.
  */
-bool j2k_compare_qcc(CodeStream *codeStream, uint16_t tile_index, uint32_t first_comp_no,
+bool j2k_compare_qcc(CodeStream *codeStream, uint32_t first_comp_no,
 		uint32_t second_comp_no);
 
 /**
@@ -451,40 +448,35 @@ bool j2k_read_sot(CodeStream *codeStream, TileProcessor *tileProcessor,
  * Compare 2 a SPCod/ SPCoc elements, i.e. the coding style of a given component of a tile.
  *
  * @param       codeStream            JPEG 2000 code stream
- * @param       tile_no        Tile number
  * @param       first_comp_no  The 1st component number to compare.
  * @param       second_comp_no The 1st component number to compare.
  *
  * @return true if SPCdod are equals.
  */
-bool j2k_compare_SPCod_SPCoc(CodeStream *codeStream, uint16_t tile_no,
+bool j2k_compare_SPCod_SPCoc(CodeStream *codeStream,
 		uint32_t first_comp_no, uint32_t second_comp_no);
 
 /**
  * Writes a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
  *
  * @param       codeStream           JPEG 2000 code stream
- * @param       tile_no       tile index
  * @param       comp_no       the component number to output.
  * @param       stream        the stream to write data to.
 
  *
  * @return FIXME DOC
  */
-bool j2k_write_SPCod_SPCoc(CodeStream *codeStream, uint16_t tile_no,
-		uint32_t comp_no, BufferedStream *stream);
+bool j2k_write_SPCod_SPCoc(CodeStream *codeStream, 	uint32_t comp_no, BufferedStream *stream);
 
 /**
  * Gets the size taken by writing a SPCod or SPCoc for the given tile and component.
  *
  * @param       codeStream                   the JPEG 2000 code stream
- * @param       tile_no               the tile index.
  * @param       comp_no               the component being outputted.
  *
  * @return      the number of bytes taken by the SPCod element.
  */
-uint32_t j2k_get_SPCod_SPCoc_size(CodeStream *codeStream, uint16_t tile_no,
-		uint32_t comp_no);
+uint32_t j2k_get_SPCod_SPCoc_size(CodeStream *codeStream, uint32_t comp_no);
 
 /**
  * Reads a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
@@ -502,39 +494,34 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, TileProcessor *tileProcessor,
  * Gets the size taken by writing SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
  *
  * @param       codeStream                   the JPEG 2000 code stream
- * @param       tile_no               the tile index.
  * @param       comp_no               the component being output.
  *
  * @return      the number of bytes taken by the SPCod element.
  */
-uint32_t j2k_get_SQcd_SQcc_size(CodeStream *codeStream, uint16_t tile_no,
-		uint32_t comp_no);
+uint32_t j2k_get_SQcd_SQcc_size(CodeStream *codeStream,	uint32_t comp_no);
 
 /**
  * Compares 2 SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
  *
  * @param       codeStream                   JPEG 2000 code stream
- * @param       tile_no               the tile to output.
  * @param       first_comp_no         the first component number to compare.
  * @param       second_comp_no        the second component number to compare.
  *
  * @return true if equals.
  */
-bool j2k_compare_SQcd_SQcc(CodeStream *codeStream, uint16_t tile_no,
+bool j2k_compare_SQcd_SQcc(CodeStream *codeStream,
 		uint32_t first_comp_no, uint32_t second_comp_no);
 
 /**
  * Writes a SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
  *
  * @param       codeStream                   JPEG 2000 code stream
- * @param       tile_no               the tile to output.
  * @param       comp_no               the component number to output.
  * @param       stream                the stream to write data to.
 
  *
  */
-bool j2k_write_SQcd_SQcc(CodeStream *codeStream, uint16_t tile_no,
-		uint32_t comp_no, BufferedStream *stream);
+bool j2k_write_SQcd_SQcc(CodeStream *codeStream,uint32_t comp_no, BufferedStream *stream);
 
 /**
  * Updates the Tile Length Marker.
@@ -604,11 +591,10 @@ bool j2k_read_mcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
  * Writes the MCO marker (Multiple component transformation ordering)
  *
  * @param       codeStream      JPEG 2000 code stream
- * @param		tile_index		tile index
  * @param       stream          the stream to write data to.
 
  */
-bool j2k_write_mco(CodeStream *codeStream, uint16_t tile_index, BufferedStream *stream);
+bool j2k_write_mco(CodeStream *codeStream, BufferedStream *stream);
 
 /**
  * Reads a MCO marker (Multiple Component Transform Ordering)
