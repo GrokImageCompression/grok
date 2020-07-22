@@ -55,6 +55,7 @@ static inline int32_t int_fix_mul_t1(int32_t a, int32_t b) {
 	return (int32_t) (temp >> (13 + 11 - T1_NMSEDEC_FRACBITS));
 }
 
+
 void T1Part1::preEncode(encodeBlockInfo *block, grk_tile *tile,
 		uint32_t &maximum) {
 	auto cblk = block->cblk;
@@ -73,7 +74,8 @@ void T1Part1::preEncode(encodeBlockInfo *block, grk_tile *tile,
 		for (auto j = 0U; j < h; ++j) {
 			for (auto i = 0U; i < w; ++i) {
 				int32_t temp = (block->tiledp[tileIndex] *= (1<< T1_NMSEDEC_FRACBITS));
-				maximum = max((uint32_t)abs(temp), maximum);
+				temp = to_smr(temp);
+				maximum = max((uint32_t)smr_abs(temp), maximum);
 				t1->data[cblk_index] = temp;
 				tileIndex++;
 				cblk_index++;
@@ -84,7 +86,8 @@ void T1Part1::preEncode(encodeBlockInfo *block, grk_tile *tile,
 		for (auto j = 0U; j < h; ++j) {
 			for (auto i = 0U; i < w; ++i) {
 				int32_t temp = int_fix_mul_t1(tiledp[tileIndex], block->inv_step);
-				maximum = max((uint32_t)abs(temp), maximum);
+				temp = to_smr(temp);
+				maximum = max((uint32_t)smr_abs(temp), maximum);
 				t1->data[cblk_index] = temp;
 				tileIndex++;
 				cblk_index++;

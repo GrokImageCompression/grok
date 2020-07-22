@@ -182,7 +182,7 @@ void mqc_init_dec(mqcoder *mqc, uint8_t *bp, uint32_t len){
     mqc_setcurctx(mqc, 0);
     mqc->end_of_byte_stream_counter = 0;
     mqc->c = (uint32_t)(((len==0) ? 0xff : *mqc->bp) << 16);
-    mqc_bytein_dec(mqc);
+    mqc_bytein(mqc);
     mqc->c <<= 7;
     mqc->ct -= 7;
     mqc->a = A_MIN;

@@ -60,7 +60,7 @@
 
 namespace grk {
 
-static void mqc_byteout_enc(mqcoder *mqc);
+void mqc_byteout(mqcoder *mqc);
 static void mqc_renorm_enc(mqcoder *mqc);
 static void mqc_codemps_enc(mqcoder *mqc);
 static void mqc_codelps_enc(mqcoder *mqc);
@@ -165,7 +165,7 @@ static const mqc_state mqc_states[47 * 2] = {
 
 /* ENCODE */
 
-static void mqc_byteout_enc(mqcoder *mqc){
+void mqc_byteout(mqcoder *mqc){
     /* bp is initialized to start - 1 in mqc_init_enc() */
     /* but this is safe, see code_block_enc_allocate_data() */
     assert(mqc->bp >= mqc->start - 1);
@@ -204,7 +204,7 @@ static void mqc_renorm_enc(mqcoder *mqc){
         mqc->c <<= 1;
         mqc->ct--;
         if (mqc->ct == 0)
-            mqc_byteout_enc(mqc);
+            mqc_byteout(mqc);
     } while ((mqc->a & 0x8000) == 0);
 }
 
@@ -276,9 +276,9 @@ void mqc_flush_enc(mqcoder *mqc){
     /* Figure C.11 – FLUSH procedure */
     mqc_setbits_enc(mqc);
     mqc->c <<= mqc->ct;
-    mqc_byteout_enc(mqc);
+    mqc_byteout(mqc);
     mqc->c <<= mqc->ct;
-    mqc_byteout_enc(mqc);
+    mqc_byteout(mqc);
 
     /* Advance pointer if current byte != 0xff */
     /* (it is forbidden that a coding pass ends with 0xff) */
@@ -385,11 +385,11 @@ void mqc_erterm_enc(mqcoder *mqc){
     while (k > 0) {
         mqc->c <<= mqc->ct;
         mqc->ct = 0;
-        mqc_byteout_enc(mqc);
+        mqc_byteout(mqc);
         k -= (int32_t)mqc->ct;
     }
     if (*mqc->bp != 0xff)
-        mqc_byteout_enc(mqc);
+        mqc_byteout(mqc);
 }
 
 void mqc_segmark_enc(mqcoder *mqc){

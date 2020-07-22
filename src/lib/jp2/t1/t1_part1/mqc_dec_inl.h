@@ -168,7 +168,7 @@ static INLINE uint32_t mqc_raw_decode(mqcoder *mqc){
 Input a byte
 @param mqc MQC handle
 */
-static INLINE void mqc_bytein_dec(mqcoder *const mqc){
+static INLINE void mqc_bytein(mqcoder *const mqc){
     bytein_dec_macro(mqc, mqc->c, mqc->ct);
 }
 

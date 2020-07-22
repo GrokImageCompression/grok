@@ -1037,6 +1037,7 @@ bool j2k_read_plm(CodeStream *codeStream,TileProcessor *tileProcessor, uint8_t *
  */
 bool j2k_read_plt(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
 		uint16_t header_size) {
+	GRK_UNUSED(codeStream);
 	assert(p_header_data != nullptr);
 	assert(codeStream != nullptr);
 	if (!tileProcessor->plt_markers)

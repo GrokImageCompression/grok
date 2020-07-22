@@ -58,5 +58,88 @@
 
 
 
+/**
+Output a byte, doing bit-stuffing if necessary.
+After a 0xff byte, the next byte must be smaller than 0x90.
+@param mqc MQC handle
+*/
+void mqc_byteout(mqcoder *mqc);
+
+/**
+Renormalize mqc->a and mqc->c while encoding, so that mqc->a stays between 0x8000 and 0x10000
+@param mqc MQC handle
+@param a_ value of mqc->a
+@param c_ value of mqc->c_
+@param ct_ value of mqc->ct_
+*/
+#define mqc_renorme_macro(mqc, a_, c_, ct_) \
+{ \
+    do { \
+        a_ <<= 1; \
+        c_ <<= 1; \
+        ct_--; \
+        if (ct_ == 0) { \
+            mqc->c = c_; \
+            mqc_byteout(mqc); \
+            c_ = mqc->c; \
+            ct_ = mqc->ct; \
+        } \
+    } while( (a_ & 0x8000) == 0); \
+}
+
+#define mqc_codemps_macro(mqc, curctx, a, c, ct) \
+{ \
+    a -= (*curctx)->qeval; \
+    if ((a & 0x8000) == 0) { \
+        if (a < (*curctx)->qeval) { \
+            a = (*curctx)->qeval; \
+        } else { \
+            c += (*curctx)->qeval; \
+        } \
+        *curctx = (*curctx)->nmps; \
+        mqc_renorme_macro(mqc, a, c, ct); \
+    } else { \
+        c += (*curctx)->qeval; \
+    } \
+}
+
+#define mqc_codelps_macro(mqc, curctx, a, c, ct) \
+{ \
+    a -= (*curctx)->qeval; \
+    if (a < (*curctx)->qeval) { \
+        c += (*curctx)->qeval; \
+    } else { \
+        a = (*curctx)->qeval; \
+    } \
+    *curctx = (*curctx)->nlps; \
+    mqc_renorme_macro(mqc, a, c, ct); \
+}
+
+#define mqc_encode_macro(mqc, curctx, a, c, ct, d) \
+{ \
+    if ((*curctx)->mps == (d)) { \
+        mqc_codemps_macro(mqc, curctx, a, c, ct); \
+    } else { \
+        mqc_codelps_macro(mqc, curctx, a, c, ct); \
+    } \
+}
 
 
+#define mqc_bypass_enc_macro(mqc, c, ct, d) \
+{\
+    if (ct == BYPASS_CT_INIT) {\
+        ct = 8;\
+    }\
+    ct--;\
+    c = c + ((d) << ct);\
+    if (ct == 0) {\
+        *mqc->bp = (uint8_t)c;\
+        ct = 8;\
+        /* If the previous byte was 0xff, make sure that the next msb is 0 */ \
+        if (*mqc->bp == 0xff) {\
+            ct = 7;\
+        }\
+        mqc->bp++;\
+        c = 0;\
+    }\
+}

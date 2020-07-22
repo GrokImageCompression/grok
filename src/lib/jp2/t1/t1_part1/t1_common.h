@@ -91,6 +91,12 @@ struct cblk_dec {
     uint32_t real_num_segs;
 };
 
+/* Macros to deal with signed integer with just MSB bit set for
+ * negative values (smr = signed magnitude representation) */
+#define smr_abs(x)  (((uint32_t)(x)) & 0x7FFFFFFFU)
+#define smr_sign(x) (((uint32_t)(x)) >> 31)
+#define to_smr(x)   ((x) >= 0 ? (uint32_t)(x) : ((uint32_t)(-x) | 0x80000000U))
+
 }
 
 #include "t1.h"
