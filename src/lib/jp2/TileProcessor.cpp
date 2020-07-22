@@ -884,8 +884,8 @@ bool TileProcessor::is_whole_tilecomp_decoding(uint32_t compno) {
 
 }
 
-bool TileProcessor::decompress_tile_t2(ChunkBuffer *src_buf, uint16_t tile_no) {
-	m_tcp = m_cp->tcps + tile_no;
+bool TileProcessor::decompress_tile_t2(ChunkBuffer *src_buf) {
+	m_tcp = m_cp->tcps + m_current_tile_index;
 
 	// optimization for regions that are close to largest decoded resolution
 	// (currently breaks tests, so disabled)
@@ -939,7 +939,7 @@ bool TileProcessor::decompress_tile_t2(ChunkBuffer *src_buf, uint16_t tile_no) {
 	if (doT2) {
 		uint64_t l_data_read = 0;
 
-		if (!t2_decode(tile_no, src_buf, &l_data_read))
+		if (!t2_decode(src_buf, &l_data_read))
 			return false;
 		// synch plugin with T2 data
 		decode_synch_plugin_with_host(this);
@@ -1017,10 +1017,10 @@ void TileProcessor::copy_image_to_tile() {
 	}
 }
 
-bool TileProcessor::t2_decode(uint16_t tile_no, ChunkBuffer *src_buf,
+bool TileProcessor::t2_decode(ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
 	auto t2 = new T2Decode(this);
-	bool rc = t2->decode_packets(tile_no, src_buf, p_data_read);
+	bool rc = t2->decode_packets(m_current_tile_index, src_buf, p_data_read);
 	delete t2;
 
 	return rc;

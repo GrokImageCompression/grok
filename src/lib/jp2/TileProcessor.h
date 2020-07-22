@@ -286,10 +286,9 @@ struct TileProcessor {
 	/**
 	 T2 Decode a tile from a buffer
 	 @param src_buf Source buffer
-	 @param tileno Number that identifies one of the tiles to be decoded
 	 @return true if successful
 	 */
-	bool decompress_tile_t2(ChunkBuffer *src_buf, uint16_t tile_no);
+	bool decompress_tile_t2(ChunkBuffer *src_buf);
 
 	uint64_t get_uncompressed_tile_size(bool reduced);
 
@@ -347,8 +346,7 @@ private:
 	/** coding/decoding parameters common to all tiles */
 	TileCodingParams *m_tcp;
 
-	 bool t2_decode(uint16_t tile_no, ChunkBuffer *src_buf,
-			uint64_t *p_data_read);
+	 bool t2_decode(ChunkBuffer *src_buf,	uint64_t *p_data_read);
 
 	 bool is_whole_tilecomp_decoding( uint32_t compno);
 
