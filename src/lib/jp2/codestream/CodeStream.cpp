@@ -1981,8 +1981,6 @@ bool j2k_compress(CodeStream *codeStream, grk_plugin_tile *tile,
 		return false;
 	}
 	auto pool_size = std::min<uint32_t>((uint32_t)ThreadPool::get()->num_threads(), nb_tiles);
-	if (pool_size > 2)
-		pool_size = 2;
 	ThreadPool pool(pool_size);
 	std::vector< std::future<int> > results;
 	std::unique_ptr<TileProcessor*[]> procs = std::make_unique<TileProcessor*[]>(nb_tiles);
@@ -1992,25 +1990,27 @@ bool j2k_compress(CodeStream *codeStream, grk_plugin_tile *tile,
 	for (uint16_t i = 0; i < nb_tiles; ++i)
 		procs[i] = nullptr;
 
-	for (uint16_t i = 0; i < nb_tiles; ++i) {
-		auto tileProcessor = new TileProcessor(codeStream);
-
-		tileProcessor->m_current_tile_index = i;
-		tileProcessor->current_plugin_tile = tile;
-		if (!tileProcessor->pre_write_tile())
-			goto cleanup;
-		procs[i] = tileProcessor;
-	}
-	if (pool.num_threads() > 1){
+	if (pool_size > 1){
 		for (uint16_t i = 0; i < nb_tiles; ++i) {
-			auto processor = procs[i];
+			uint16_t tile_ind = i;
 			results.emplace_back(
 					pool.enqueue([codeStream,
-								  processor,
+								  &procs,
+								  tile,
+								  tile_ind,
 								  &success] {
 						if (success) {
-							if (!processor->do_encode())
+							auto tileProcessor = new TileProcessor(codeStream);
+
+							tileProcessor->m_current_tile_index = tile_ind;
+							tileProcessor->current_plugin_tile = tile;
+							if (!tileProcessor->pre_write_tile())
 								success = false;
+							else {
+								procs[tile_ind] = tileProcessor;
+								if (!tileProcessor->do_encode())
+									success = false;
+							}
 						}
 						return 0;
 					})
@@ -2018,22 +2018,37 @@ bool j2k_compress(CodeStream *codeStream, grk_plugin_tile *tile,
 		}
 	} else {
 		for (uint16_t i = 0; i < nb_tiles; ++i) {
-			if (!procs[i]->do_encode())
+			auto tileProcessor = new TileProcessor(codeStream);
+
+			tileProcessor->m_current_tile_index = i;
+			tileProcessor->current_plugin_tile = tile;
+			if (!tileProcessor->pre_write_tile()){
+				delete tileProcessor;
 				goto cleanup;
+			}
+			if (!tileProcessor->do_encode()){
+				delete tileProcessor;
+				goto cleanup;
+			}
+			if (!j2k_post_write_tile(codeStream, tileProcessor, stream)){
+				delete tileProcessor;
+				goto cleanup;
+			}
+			delete tileProcessor;
 		}
 	}
-
-	for(auto && result: results){
-		result.get();
-	}
-	if (!success)
-		goto cleanup;
-
-	for (uint16_t i = 0; i < nb_tiles; ++i) {
-		if (!j2k_post_write_tile(codeStream, procs[i], stream))
+	if (pool_size > 1) {
+		for(auto && result: results){
+			result.get();
+		}
+		if (!success)
 			goto cleanup;
-		delete procs[i];
-		procs[i] = nullptr;
+		for (uint16_t i = 0; i < nb_tiles; ++i) {
+			if (!j2k_post_write_tile(codeStream, procs[i], stream))
+				goto cleanup;
+			delete procs[i];
+			procs[i] = nullptr;
+		}
 	}
 	codeStream->m_tileProcessor = nullptr;
 	rc = true;
