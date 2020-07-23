@@ -56,7 +56,9 @@
 
 #pragma once
 
-#define DOWNLOAD_MQC_VARIABLES(mqc, curctx) \
+#define BYPASS_CT_INIT  0xDEADBEEF
+
+#define DOWNLOAD_MQC_VARIABLES(mqc) \
          const mqc_state **curctx = mqc->curctx; \
          uint32_t c = mqc->c; \
          uint32_t a = mqc->a; \

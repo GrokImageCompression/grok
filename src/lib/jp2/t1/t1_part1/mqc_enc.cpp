@@ -286,7 +286,7 @@ void mqc_flush_enc(mqcoder *mqc){
         mqc->bp++;
 }
 
-#define BYPASS_CT_INIT  0xDEADBEEF
+
 
 void mqc_bypass_init_enc(mqcoder *mqc){
     /* This function is normally called after at least one mqc_flush() */
