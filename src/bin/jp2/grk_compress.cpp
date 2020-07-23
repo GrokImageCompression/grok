@@ -1808,33 +1808,34 @@ int main(int argc, char **argv) {
 		auto tcp_mct = initParams.parameters.tcp_mct;
 		auto rateControlAlgorithm = initParams.parameters.rateControlAlgorithm;
 		auto start = std::chrono::high_resolution_clock::now();
-
-		if (!initParams.img_fol.set_imgdir) {
-			auto rc = compress("", &initParams, tcp_mct, rateControlAlgorithm);
-			if (rc == 0) {
-				success = 1;
-				goto cleanup;
+		for (uint32_t i = 0; i < initParams.parameters.repeats; ++i) {
+			if (!initParams.img_fol.set_imgdir) {
+				auto rc = compress("", &initParams, tcp_mct, rateControlAlgorithm);
+				if (rc == 0) {
+					success = 1;
+					goto cleanup;
+				}
+				num_compressed_files++;
+			} else {
+				auto dir = opendir(initParams.img_fol.imgdirpath);
+				if (!dir) {
+					spdlog::error("Could not open Folder {}",
+							initParams.img_fol.imgdirpath);
+					success = 1;
+					goto cleanup;
+				}
+				struct dirent *content = nullptr;
+				while ((content = readdir(dir)) != nullptr) {
+					if (strcmp(".", content->d_name) == 0
+							|| strcmp("..", content->d_name) == 0)
+						continue;
+					auto rc = compress(content->d_name, &initParams, tcp_mct,
+							rateControlAlgorithm);
+					if (rc == 1)
+						num_compressed_files++;
+				}
+				closedir(dir);
 			}
-			num_compressed_files++;
-		} else {
-			auto dir = opendir(initParams.img_fol.imgdirpath);
-			if (!dir) {
-				spdlog::error("Could not open Folder {}",
-						initParams.img_fol.imgdirpath);
-				success = 1;
-				goto cleanup;
-			}
-			struct dirent *content = nullptr;
-			while ((content = readdir(dir)) != nullptr) {
-				if (strcmp(".", content->d_name) == 0
-						|| strcmp("..", content->d_name) == 0)
-					continue;
-				auto rc = compress(content->d_name, &initParams, tcp_mct,
-						rateControlAlgorithm);
-				if (rc == 1)
-					num_compressed_files++;
-			}
-			closedir(dir);
 		}
 		auto finish = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> elapsed = finish - start;
