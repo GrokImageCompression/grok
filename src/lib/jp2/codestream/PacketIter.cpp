@@ -285,7 +285,7 @@ static bool pi_next_lrcp(PacketIter *pi) {
 					index = pi->layno * pi->step_l + pi->resno * pi->step_r
 							+ pi->compno * pi->step_c + pi->precno * pi->step_p;
 					if (!pi->include[index]) {
-						pi->include[index] = 1;
+						pi->include[index] = true;
 						return true;
 					}
 					LABEL_SKIP: ;
@@ -330,7 +330,7 @@ static bool pi_next_rlcp(PacketIter *pi) {
 					index = pi->layno * pi->step_l + pi->resno * pi->step_r
 							+ pi->compno * pi->step_c + pi->precno * pi->step_p;
 					if (!pi->include[index]) {
-						pi->include[index] = 1;
+						pi->include[index] = true;
 						return true;
 					}
 					LABEL_SKIP: ;
@@ -425,7 +425,7 @@ static bool pi_next_rpcl(PacketIter *pi) {
 								+ pi->compno * pi->step_c
 								+ pi->precno * pi->step_p;
 						if (!pi->include[index]) {
-							pi->include[index] = 1;
+							pi->include[index] = true;
 							return true;
 						}
 						LABEL_SKIP: ;
@@ -523,7 +523,7 @@ static bool pi_next_pcrl(PacketIter *pi) {
 								+ pi->compno * pi->step_c
 								+ pi->precno * pi->step_p;
 						if (!pi->include[index]) {
-							pi->include[index] = 1;
+							pi->include[index] = true;
 							return true;
 						}
 						LABEL_SKIP: ;
@@ -639,7 +639,7 @@ static bool pi_next_cprl(PacketIter *pi) {
 								+ pi->compno * pi->step_c
 								+ pi->precno * pi->step_p;
 						if (!pi->include[index]) {
-							pi->include[index] = 1;
+							pi->include[index] = true;
 							return true;
 						}
 						LABEL_SKIP: ;
@@ -1070,15 +1070,9 @@ PacketIter* pi_create_decode(grk_image *p_image, CodingParams *p_cp,
 	/* memory allocation for include */
 	current_pi->include = nullptr;
 	if (step_l && (tcp->numlayers < (SIZE_MAX / step_l) - 1)) {
-		current_pi->include = (int16_t*) grk_calloc(
-				((size_t) tcp->numlayers + 1) * step_l, sizeof(int16_t));
-	}
-
-	if (!current_pi->include) {
-		grk_free(tmp_data);
-		grk_free(tmp_ptr);
-		pi_destroy(pi, bound);
-		return nullptr;
+		current_pi->include = new bool[((size_t) tcp->numlayers + 1) * step_l];
+		for (size_t i = 0; i < ((size_t) tcp->numlayers + 1) * step_l; ++i)
+			current_pi->include[i] = false;
 	}
 
 	/* special treatment for the first packet iterator */
@@ -1207,13 +1201,11 @@ PacketIter* pi_initialise_encode(const grk_image *p_image,
 	/* set values for first packet iterator*/
 	pi->tp_on = p_cp->m_coding_params.m_enc.m_tp_on;
 	auto current_pi = pi;
-	current_pi->include = (int16_t*) grk_calloc(
-			(size_t) tcp->numlayers * step_l, sizeof(int16_t));
-	if (!current_pi->include) {
-		grk_free(tmp_data);
-		grk_free(tmp_ptr);
-		pi_destroy(pi, bound);
-		return nullptr;
+	current_pi->include = nullptr;
+	if (step_l && (tcp->numlayers < (SIZE_MAX / step_l))) {
+		current_pi->include = new bool[(size_t) tcp->numlayers * step_l];
+		for (size_t i = 0; i < (size_t) tcp->numlayers * step_l; ++i)
+			current_pi->include[i] = false;
 	}
 
 	/* special treatment for the first packet iterator*/
@@ -1574,7 +1566,7 @@ void pi_init_encode(PacketIter *pi, CodingParams *cp, uint16_t tileno,
 
 void pi_destroy(PacketIter *p_pi, uint32_t nb_elements) {
 	if (p_pi) {
-		grk_free(p_pi->include);
+		delete[] p_pi->include;
 		for (uint32_t pino = 0; pino < nb_elements; ++pino) {
 			auto current_pi = p_pi + pino;
 

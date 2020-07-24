@@ -101,8 +101,8 @@ struct grk_pi_comp {
 struct PacketIter {
 	/** Enabling Tile part generation*/
 	bool  tp_on;
-	/** precise if the packet has been already included (useful for progression order change) */
-	int16_t *include;
+	/** specify if the packet has already been included in a previous layer */
+	bool *include;
 	/** layer step used to localize the packet in the include vector */
 	uint64_t step_l;
 	/** resolution step used to localize the packet in the include vector */
@@ -131,7 +131,7 @@ struct PacketIter {
 	uint32_t tx0, ty0, tx1, ty1;
 	/** packet coordinates */
 	uint32_t x, y;
-	/** packet subsampliing factors */
+	/** packet subsampling factors */
 	uint32_t dx, dy;
 };
 
