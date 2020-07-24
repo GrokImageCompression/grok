@@ -1221,6 +1221,8 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, TileProcessor *tileProc
 	for(auto && result: results){
 		result.get();
 	}
+	codeStream->m_tileProcessor = nullptr;
+
 	// sanity checks
 	if (num_tiles_decoded == 0) {
 		GROK_ERROR("No tiles were decoded. Exiting");
@@ -1230,7 +1232,6 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, TileProcessor *tileProc
 		GROK_WARN("Only %u out of %u tiles were decoded", decoded,
 				num_tiles_to_decode);
 	}
-	codeStream->m_tileProcessor = nullptr;
 
 	return success;
 }
