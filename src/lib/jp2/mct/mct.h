@@ -94,7 +94,7 @@ public:
 	static void decode_rev(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
 
 	/**
-	 FIXME DOC
+	 Get wavelet norms for reversible transform
 	 */
 	static const double* get_norms_rev(void);
 
@@ -117,7 +117,7 @@ public:
 	static void decode_irrev(float *c0, float *c1, float *c2, uint64_t n);
 
 	/**
-	 FIXME DOC
+	 Get wavelet norms for irreversible transform
 	 */
 	static const double* get_norms_irrev(void);
 
@@ -133,7 +133,7 @@ public:
 	static bool encode_custom(uint8_t *p_coding_data, uint64_t n, uint8_t **p_data,
 			uint32_t nb_comp, uint32_t is_signed);
 	/**
-	 FIXME DOC
+	 Custom MCT decode
 	 @param pDecodingData    MCT data
 	 @param n                size of components
 	 @param pData            components

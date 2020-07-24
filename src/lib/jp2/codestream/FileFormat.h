@@ -362,7 +362,7 @@ bool jp2_read_tile_header(FileFormat *fileFormat, uint16_t *tile_index,
  * right after grk_read_header and before any tile header reading.
  *
  * @param  fileFormat     JPEG 2000 code stream
- * @param  image     FIXME DOC
+ * @param  image     output image
  * @param  start_x   the left position of the rectangle to decompress (in image coordinates).
  * @param  start_y   the up position of the rectangle to decompress (in image coordinates).
  * @param  end_x     the right position of the rectangle to decompress (in image coordinates).

@@ -67,7 +67,6 @@ using namespace grk;
  * Main codec handler used for compression or decompression.
  */
 struct grk_codec_private {
-	/** FIXME DOC */
 	union {
 		/**
 		 * Decompression handler.
@@ -108,7 +107,7 @@ struct grk_codec_private {
 		} m_decompression;
 
 		/**
-		 * Compression handler. FIXME DOC
+		 * Compression handler
 		 */
 		struct compression {
 			bool (*start_compress)(void *p_codec, BufferedStream *stream);
@@ -127,7 +126,7 @@ struct grk_codec_private {
 					grk_image *p_image);
 		} m_compression;
 	} m_codec_data;
-	/** FIXME DOC*/
+	/** opaque code struct*/
 	void *m_codec;
 	 grk_stream  *m_stream;
 	/** Flag to indicate if the codec is used to decompress or compress*/

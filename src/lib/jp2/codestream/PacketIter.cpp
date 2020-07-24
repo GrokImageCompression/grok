@@ -187,18 +187,18 @@ static void grk_get_all_encoding_parameters(const grk_image *p_image,
 static PacketIter* pi_create(const grk_image *p_image,
 		const CodingParams *p_cp, uint16_t tileno);
 /**
- * FIXME DOC
+ * Update decode packet iterator with no POC
  */
 static void pi_update_decode_no_poc(PacketIter *p_pi, TileCodingParams *p_tcp,
 		uint64_t max_precincts, uint32_t max_res);
 /**
- * FIXME DOC
+ * Upgrade decode packet iterator with POC
  */
 static void pi_update_decode_poc(PacketIter *p_pi, TileCodingParams *p_tcp,
 		uint64_t max_precincts);
 
 /**
- * FIXME DOC
+ * Check packet iterator's nexxt level
  */
 static bool pi_check_next_level(int32_t pos, CodingParams *cp,
 		uint16_t tileno, uint32_t pino, const char *prog);

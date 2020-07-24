@@ -80,8 +80,8 @@ struct T2Decode : public T2 {
 	/**
 	 Decode the packets of a tile from a source buffer
 	 @param tileno 		number that identifies the tile for which to decompress the packets
-	 @param src_buf     FIXME DOC
-	 @param data_read  the source buffer
+	 @param src_buf     source buffer
+	 @param data_read   amount of data read
 	 @return true if successful
 	 */
 	bool decode_packets(uint16_t tileno, ChunkBuffer *src_buf,
@@ -91,10 +91,10 @@ private:
 	TileProcessor *tileProcessor;
 	/**
 	 Decode a packet of a tile from a source buffer
-	 @param tcp Tile coding parameters
-	 @param pi Packet identity
-	 @param src_buf source buffer
-	 @param data_read   FIXME DOC
+	 @param tcp 		Tile coding parameters
+	 @param pi 			Packet iterator
+	 @param src_buf 	source buffer
+	 @param data_read   amount of data read
 	 @return  true if packet was successfully decoded
 	 */
 	bool decode_packet(TileCodingParams *tcp, PacketIter *pi, ChunkBuffer *src_buf,

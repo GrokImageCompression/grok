@@ -82,10 +82,10 @@ struct T2Encode : public T2 {
 	 @param tileno           number of the tile encoded
 	 @param maxlayers        maximum number of layers
 	 @param dest             the destination buffer
-	 @param p_data_written   FIXME DOC
+	 @param p_data_written   amount of data written
 	 @param tpnum            Tile part number of the current tile
 	 @param tppos            The position of the tile part flag in the progression order
-	 @param pino             FIXME DOC
+	 @param pino             packet iterator number
 	 */
 	bool encode_packets(uint16_t tileno, uint32_t maxlayers,
 			BufferedStream *stream, uint32_t *p_data_written,
@@ -96,7 +96,7 @@ struct T2Encode : public T2 {
 	 Simulate encoding packets of a tile to a destination buffer
 	 @param tileno           number of the tile encoded
 	 @param maxlayers        maximum number of layers
-	 @param p_data_written   FIXME DOC
+	 @param p_data_written   amount of data written
 	 @param max_             the max length of the destination buffer
 	 @param tppos            The position of the tile part flag in the progression order
 	 */
@@ -109,10 +109,10 @@ private:
 
 	/**
 	 Encode a packet of a tile to a destination buffer
-	 @param tcp Tile coding parameters
-	 @param pi Packet identity
-	 @param stream stream
-	 @param p_data_written   FIXME DOC
+	 @param tcp 			Tile coding parameters
+	 @param pi 				packet iterator
+	 @param stream 			stream
+	 @param p_data_written  amount of data written
 	 @param cstr_info Codestream information structure
 	 @return
 	 */
@@ -121,9 +121,9 @@ private:
 
 	/**
 	 Encode a packet of a tile to a destination buffer
-	 @param tcp Tile coding parameters
-	 @param pi Packet identity
-	 @param p_data_written   FIXME DOC
+	 @param tcp 			Tile coding parameters
+	 @param pi 				packet iterator
+	 @param p_data_written  amount of data written
 	 @param len Length of the destination buffer
 	 @return
 	 */
