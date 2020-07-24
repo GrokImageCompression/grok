@@ -185,8 +185,8 @@ bool j2k_write_soc(CodeStream *codeStream, TileProcessor *tileProcessor, Buffere
 
 /**
  * Reads a SOC marker (Start of Codestream)
- * @param       codeStream           the JPEG 2000 file codec.
- * @param       stream        FIXME DOC
+ * @param       codeStream    JPEG 2000 code stream.
+ * @param       stream        buffered stream
 
  */
 bool j2k_read_soc(CodeStream *codeStream, BufferedStream *stream) {

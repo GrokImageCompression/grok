@@ -184,7 +184,7 @@ struct CodeStream {
 	 * Sets the given area to be decoded. This function should be called right after grk_read_header
 	 * and before any tile header reading.
 	 *
-	 * @param	p_image     FIXME DOC
+	 * @param	p_image     image
 	 * @param	start_x		the left position of the rectangle to decompress (in image coordinates).
 	 * @param	start_y		the up position of the rectangle to decompress (in image coordinates).
 	 * @param	end_x		the right position of the rectangle to decompress (in image coordinates).
@@ -309,12 +309,13 @@ void j2k_destroy(CodeStream *codeStream);
  * Reads a tile header.
  * @param	codeStream		JPEG 2000 code stream
  * @param   tileProcessor 	tile processor
- * @param	p_go_on FIXME DOC
- * @param	stream			the stream to write data to.
- 
+ * @param	can_decode_tile_data 		set to true if tile data is ready to be decoded
+ * @param	stream			buffered stream.
+ *
+  * @return	true			if tile header could be read
  */
 bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
-		bool *p_go_on, BufferedStream *stream);
+		bool *can_decode_tile_data, BufferedStream *stream);
 
 /**
  * Set the given area to be decoded. This function should be called
@@ -326,7 +327,6 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
  * @param	start_y		top position of the rectangle to decompress (in image coordinates).
  * @param	end_x		right position of the rectangle to decompress (in image coordinates).
  * @param	end_y		bottom position of the rectangle to decompress (in image coordinates).
- 
  *
  * @return	true			if the area could be set.
  */
@@ -342,13 +342,14 @@ CodeStream* j2k_create_decompress(void);
 
 /**
  * Decode an image from a JPEG 2000 code stream
- * @param j2k J2K decompressor handle
- * @param tile    plugin tile
- * @param stream  stream
- * @param image   image
- * @return FIXME DOC
+ * @param codeStream    code stream
+ * @param tile    		plugin tile
+ * @param stream  		stream
+ * @param image   		image
+ *
+ * @return true if decompression is successful
  */
-bool j2k_decompress(CodeStream *j2k, grk_plugin_tile *tile, BufferedStream *stream,
+bool j2k_decompress(CodeStream *codeStream, grk_plugin_tile *tile, BufferedStream *stream,
 		grk_image *image);
 
 bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream, grk_image *p_image, uint16_t tile_index);
@@ -361,7 +362,7 @@ bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream, grk_ima
  * @param tile_index 				tile index
  * @param data						uncompressed data
  * @param uncompressed_data_size 	uncompressed data size
- * @param	stream					the stream to write data to.
+ * @param	stream					buffered stream.
  
  */
 bool j2k_compress_tile(CodeStream *codeStream, TileProcessor *tileProcessor,

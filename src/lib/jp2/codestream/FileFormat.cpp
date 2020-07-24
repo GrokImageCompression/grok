@@ -72,7 +72,7 @@ namespace grk {
  * Reads a IHDR box - Image Header box
  *
  * @param	p_image_header_data			pointer to actual data (already read from file)
- * @param	fileFormat							the JPEG 2000 file codec.
+ * @param	fileFormat							JPEG 2000 code stream.
  * @param	image_header_size			the size of the image header
  
  *
@@ -143,7 +143,7 @@ static bool jp2_read_uuid(FileFormat *fileFormat, uint8_t *p_header_data,
  * Reads a Resolution box
  *
  * @param	p_resolution_data			pointer to actual data (already read from file)
- * @param	fileFormat							the JPEG 2000 file codec.
+ * @param	fileFormat							JPEG 2000 code stream.
  * @param	resolution_size			the size of the image header
  
  *
@@ -176,7 +176,7 @@ static uint8_t* jp2_write_bpcc(FileFormat *fileFormat, uint32_t *p_nb_bytes_writ
  * Reads a Bit per Component box.
  *
  * @param	p_bpc_header_data			pointer to actual data (already read from file)
- * @param	fileFormat							the JPEG 2000 file codec.
+ * @param	fileFormat							JPEG 2000 code stream.
  * @param	bpc_header_size			the size of the bpc header
  
  *
@@ -213,8 +213,8 @@ static uint8_t* jp2_write_colr(FileFormat *fileFormat, uint32_t *p_nb_bytes_writ
 /**
  * Writes a FTYP box - File type box
  *
- * @param	stream			the stream to write data to.
- * @param	fileFormat			the JPEG 2000 file codec.
+ * @param	stream			buffered stream.
+ * @param	fileFormat			JPEG 2000 code stream.
  
  *
  * @return	true if writing was successful.
@@ -225,7 +225,7 @@ static bool jp2_write_ftyp(FileFormat *fileFormat, BufferedStream *stream);
  * Reads a a FTYP box - File type box
  *
  * @param	p_header_data	the data contained in the FTYP box.
- * @param	fileFormat				the JPEG 2000 file codec.
+ * @param	fileFormat				JPEG 2000 code stream.
  * @param	header_size	the size of the data contained in the FTYP box.
  .
  *
@@ -240,7 +240,7 @@ static bool jp2_skip_jp2c(FileFormat *fileFormat, BufferedStream *stream);
  * Reads the Jpeg2000 file Header box - JP2 Header box (warning, this is a super box).
  *
  * @param	p_header_data	the data contained in the file header box.
- * @param	fileFormat				the JPEG 2000 file codec.
+ * @param	fileFormat				JPEG 2000 code stream.
  * @param	header_size	the size of the data contained in the file header box.
  .
  *
@@ -252,8 +252,8 @@ static bool jp2_read_jp2h(FileFormat *fileFormat, uint8_t *p_header_data,
 /**
  * Writes the Jpeg2000 file Header box - JP2 Header box (warning, this is a super box).
  *
- * @param  fileFormat      the JPEG 2000 file codec.
- * @param  stream      the stream to write data to.
+ * @param  fileFormat      JPEG 2000 code stream.
+ * @param  stream      buffered stream.
  
  *
  * @return true if writing was successful.
@@ -265,8 +265,8 @@ static bool jp2_write_uuids(FileFormat *fileFormat, BufferedStream *stream);
 /**
  * Writes the Jpeg2000 code stream Header box - JP2C Header box. This function must be called AFTER the coding has been done.
  *
- * @param	stream			the stream to write data to.
- * @param	fileFormat			the JPEG 2000 file codec.
+ * @param	stream			buffered stream.
+ * @param	fileFormat			JPEG 2000 code stream.
  
  *
  * @return true if writing was successful.
@@ -277,7 +277,7 @@ static bool jp2_write_jp2c(FileFormat *fileFormat, BufferedStream *stream);
  * Reads a JPEG 2000 file signature box.
  *
  * @param	p_header_data	the data contained in the signature box.
- * @param	fileFormat				the JPEG 2000 file codec.
+ * @param	fileFormat				JPEG 2000 code stream.
  * @param	header_size	the size of the data contained in the signature box.
  .
  *
@@ -289,8 +289,8 @@ static bool jp2_read_jp(FileFormat *fileFormat, uint8_t *p_header_data,
 /**
  * Writes a JPEG 2000 file signature box.
  *
- * @param stream the stream to write data to.
- * @param	fileFormat			the JPEG 2000 file codec.
+ * @param stream buffered stream.
+ * @param	fileFormat			JPEG 2000 code stream.
  
  *
  * @return true if writing was successful.
@@ -309,11 +309,11 @@ static void jp2_free_pclr(grk_jp2_color *color);
 /**
  * Collect palette data
  *
- * @param fileFormat JP2 handle
- * @param p_pclr_header_data    FIXME DOC
- * @param pclr_header_size    FIXME DOC
+ * @param fileFormat 			JP2 file format
+ * @param p_pclr_header_data    pclr header data
+ * @param pclr_header_size    	pclr header data size
  *
- * @return true if successful, returns false otherwise
+ * @return true if successful
  */
 static bool jp2_read_pclr(FileFormat *fileFormat, uint8_t *p_pclr_header_data,
 		uint32_t pclr_header_size);
@@ -321,12 +321,12 @@ static bool jp2_read_pclr(FileFormat *fileFormat, uint8_t *p_pclr_header_data,
 /**
  * Collect component mapping data
  *
- * @param fileFormat                 JP2 handle
- * @param p_cmap_header_data  FIXME DOC
- * @param cmap_header_size  FIXME DOC
+ * @param fileFormat          JP2 file format
+ * @param p_cmap_header_data  cmap header data
+ * @param cmap_header_size 	  cmap header data size
 
  *
- * @return true if successful, returns false otherwise
+ * @return true if successful
  */
 
 static bool jp2_read_cmap(FileFormat *fileFormat, uint8_t *p_cmap_header_data,
@@ -336,7 +336,7 @@ static bool jp2_read_cmap(FileFormat *fileFormat, uint8_t *p_cmap_header_data,
  * Reads the Color Specification box.
  *
  * @param	p_colr_header_data			pointer to actual data (already read from file)
- * @param	fileFormat							the JPEG 2000 file codec.
+ * @param	fileFormat							JPEG 2000 code stream.
  * @param	colr_header_size			the size of the color header
  
  *
@@ -376,7 +376,7 @@ static bool jp2_read_header_procedure(FileFormat *fileFormat, BufferedStream *st
  * Executes the given procedures on the given codec.
  *
  * @param	p_procedure_list	the list of procedures to execute
- * @param	fileFormat					the JPEG 2000 file codec to execute the procedures on.
+ * @param	fileFormat					JPEG 2000 code stream to execute the procedures on.
  * @param	stream					the stream to execute the procedures on.
  *
  * @return	true				if all the procedures were successfully executed.
@@ -2522,7 +2522,7 @@ static bool jp2_read_header_procedure(FileFormat *fileFormat, BufferedStream *st
  * Executes the given procedures on the given codec.
  *
  * @param	procs	the list of procedures to execute
- * @param	fileFormat					the JPEG 2000 file codec to execute the procedures on.
+ * @param	fileFormat					JPEG 2000 code stream to execute the procedures on.
  * @param	stream					the stream to execute the procedures on.
  *
  * @return	true				if all the procedures were successfully executed.
@@ -2612,7 +2612,7 @@ static const grk_jp2_header_handler* jp2_img_find_handler(uint32_t id) {
  * Reads a JPEG 2000 file signature box.
  *
  * @param	p_header_data	the data contained in the signature box.
- * @param	fileFormat				the JPEG 2000 file codec.
+ * @param	fileFormat				JPEG 2000 code stream.
  * @param	header_size	the size of the data contained in the signature box.
  .
  *
@@ -2651,7 +2651,7 @@ static bool jp2_read_jp(FileFormat *fileFormat, uint8_t *p_header_data,
  * Reads a a FTYP box - File type box
  *
  * @param	p_header_data	the data contained in the FTYP box.
- * @param	fileFormat				the JPEG 2000 file codec.
+ * @param	fileFormat				JPEG 2000 code stream.
  * @param	header_size	the size of the data contained in the FTYP box.
  .
  *
@@ -2721,7 +2721,7 @@ static bool jp2_skip_jp2c(FileFormat *fileFormat, BufferedStream *stream) {
  * Reads the Jpeg2000 file Header box - JP2 Header box (warning, this is a super box).
  *
  * @param	p_header_data	the data contained in the file header box.
- * @param	fileFormat				the JPEG 2000 file codec.
+ * @param	fileFormat				JPEG 2000 code stream.
  * @param	header_size	the size of the data contained in the file header box.
  .
  *
@@ -2931,9 +2931,9 @@ static bool jp2_init_header_reading(FileFormat *fileFormat) {
 }
 
 bool jp2_read_tile_header(FileFormat *fileFormat, uint16_t *tile_index,
-		bool *p_go_on, BufferedStream *stream) {
+		bool *can_decode_tile_data, BufferedStream *stream) {
 	auto tileProcessor = new TileProcessor(fileFormat->j2k);
-	bool rc =  j2k_read_tile_header(fileFormat->j2k, tileProcessor, p_go_on, stream);
+	bool rc =  j2k_read_tile_header(fileFormat->j2k, tileProcessor, can_decode_tile_data, stream);
 	*tile_index = tileProcessor->m_current_tile_index;
 	return rc;
 }

@@ -77,8 +77,8 @@ enum J2K_T2_MODE {
 };
 
 
-/**
- FIXME DOC
+/***
+ * Packet iterator resolution
  */
 struct grk_pi_resolution {
 	uint32_t pdx, pdy;
@@ -86,7 +86,7 @@ struct grk_pi_resolution {
 };
 
 /**
- FIXME DOC
+ * Packet iterator component
  */
 struct grk_pi_comp {
 	uint32_t dx, dy;
@@ -101,7 +101,7 @@ struct grk_pi_comp {
 struct PacketIter {
 	/** Enabling Tile part generation*/
 	bool  tp_on;
-	/** precise if the packet has been already used (useful for progression order change) */
+	/** precise if the packet has been already included (useful for progression order change) */
 	int16_t *include;
 	/** layer step used to localize the packet in the include vector */
 	uint64_t step_l;
@@ -127,11 +127,11 @@ struct PacketIter {
 	uint32_t numcomps;
 	/** Components*/
 	grk_pi_comp *comps;
-	/** FIXME DOC*/
+	/** tile coordinates*/
 	uint32_t tx0, ty0, tx1, ty1;
-	/** FIXME DOC*/
+	/** packet coordinates */
 	uint32_t x, y;
-	/** FIXME DOC*/
+	/** packet subsampliing factors */
 	uint32_t dx, dy;
 };
 

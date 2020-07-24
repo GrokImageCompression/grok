@@ -126,7 +126,7 @@ struct TileComponentCodingParams {
 
 
 /**
- * FIXME DOC
+ * MCT data
  */
 struct grk_mct_data {
 	J2K_MCT_ELEMENT_TYPE m_element_type;
@@ -137,7 +137,7 @@ struct grk_mct_data {
 };
 
 /**
- * FIXME DOC
+ * MCC decorrelation data
  */
 struct grk_simple_mcc_decorrelation_data {
 	uint32_t m_index;

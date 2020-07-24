@@ -288,7 +288,7 @@ bool jp2_compress(FileFormat *fileFormat, grk_plugin_tile *tile, BufferedStream 
  * @param tile_index  				tile index
  * @param p_data        			uncompressed data
  * @param uncompressed_data_size   	uncompressed data size
- * @param  stream      the stream to write data to.
+ * @param  stream      buffered stream.
 
  */
 bool jp2_compress_tile(FileFormat *fileFormat, TileProcessor *tileProcessor,
@@ -333,10 +333,11 @@ bool jp2_end_decompress(FileFormat *fileFormat, BufferedStream *stream);
 
 /**
  * Read a JPEG 2000 file header.
- * @param stream 	stream to read data from.
- * @param fileFormat    	JPEG 2000 file header structure.
- * @param header_info    	header structure to store header info
- * @param p_image   FIXME DOC
+ * @param stream 		stream to read data from.
+ * @param fileFormat    JPEG 2000 file format
+ * @param header_info   header structure to store header info
+ * @param p_image   	input image
+ *
  * @return true if the box is valid.
  */
 bool jp2_read_header(BufferedStream *stream, FileFormat *fileFormat,
@@ -344,14 +345,16 @@ bool jp2_read_header(BufferedStream *stream, FileFormat *fileFormat,
 
 /**
  * Reads a tile header.
- * @param  fileFormat   JPEG 2000 code stream
- * @param  tile_index   tile index
- * @param  p_go_on      FIXME DOC
- * @param  stream      the stream to write data to.
+ * @param  fileFormat   			JPEG 2000 file format
+ * @param  tile_index   			tile index
+ * @param  can_decode_tile_data 	set to true if ready to decode tile data
+ * @param  stream      				buffered stream.
+ *
+ * @return true if successful
  
  */
 bool jp2_read_tile_header(FileFormat *fileFormat, uint16_t *tile_index,
-		bool *p_go_on, BufferedStream *stream);
+		bool *can_decode_tile_data, BufferedStream *stream);
 
 
 /**
