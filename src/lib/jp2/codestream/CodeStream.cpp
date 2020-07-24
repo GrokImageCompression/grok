@@ -1368,7 +1368,7 @@ bool j2k_decompress(CodeStream *codeStream, grk_plugin_tile *tile,
 	return true;
 }
 
-bool j2k_get_tile(CodeStream *codeStream, BufferedStream *stream, grk_image *p_image,
+bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream, grk_image *p_image,
 		uint16_t tile_index) {
 	uint32_t compno;
 	uint32_t tile_x, tile_y;

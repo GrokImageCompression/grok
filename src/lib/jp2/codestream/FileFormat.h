@@ -373,7 +373,7 @@ bool jp2_set_decompress_area(FileFormat *fileFormat, grk_image *image, uint32_t 
 /**
  *
  */
-bool jp2_get_tile(FileFormat *fileFormat, BufferedStream *stream, grk_image *p_image, uint16_t tile_index);
+bool jp2_decompress_tile(FileFormat *fileFormat, BufferedStream *stream, grk_image *p_image, uint16_t tile_index);
 
 
 /*@}*/

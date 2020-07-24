@@ -351,7 +351,7 @@ CodeStream* j2k_create_decompress(void);
 bool j2k_decompress(CodeStream *j2k, grk_plugin_tile *tile, BufferedStream *stream,
 		grk_image *image);
 
-bool j2k_get_tile(CodeStream *codeStream, BufferedStream *stream, grk_image *p_image, uint16_t tile_index);
+bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream, grk_image *p_image, uint16_t tile_index);
 
 
 /**

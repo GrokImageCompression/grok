@@ -2712,7 +2712,6 @@ static bool jp2_skip_jp2c(FileFormat *fileFormat, BufferedStream *stream) {
 	assert(stream != nullptr);
 
 	fileFormat->j2k_codestream_offset = stream->tell();
-
 	int64_t skip_bytes = fileFormat->needs_xl_jp2c_box_length ? 16 : 8;
 
 	return stream->skip(skip_bytes);
@@ -2974,12 +2973,12 @@ bool jp2_set_decompress_area(FileFormat *fileFormat, grk_image *p_image, uint32_
 			end_y);
 }
 
-bool jp2_get_tile(FileFormat *fileFormat, BufferedStream *stream, grk_image *p_image,
+bool jp2_decompress_tile(FileFormat *fileFormat, BufferedStream *stream, grk_image *p_image,
 		uint16_t tile_index) {
 	if (!p_image)
 		return false;
 
-	if (!j2k_get_tile(fileFormat->j2k, stream, p_image, tile_index)) {
+	if (!j2k_decompress_tile(fileFormat->j2k, stream, p_image, tile_index)) {
 		GROK_ERROR("Failed to decompress the code stream in the JP2 file");
 		return false;
 	}
@@ -3033,14 +3032,9 @@ bool jp2_get_tile(FileFormat *fileFormat, BufferedStream *stream, grk_image *p_i
 FileFormat* jp2_create(bool p_is_decoder) {
 	FileFormat *fileFormat = (FileFormat*) grk_calloc(1, sizeof(FileFormat));
 	if (fileFormat) {
-
-		/* create the J2K codec */
-		if (!p_is_decoder) {
-			fileFormat->j2k = j2k_create_compress();
-		} else {
-			fileFormat->j2k = j2k_create_decompress();
-		}
-
+		fileFormat->j2k = p_is_decoder ?
+							j2k_create_decompress() :
+									j2k_create_compress();
 		if (fileFormat->j2k == nullptr) {
 			jp2_destroy(fileFormat);
 			return nullptr;
