@@ -305,22 +305,6 @@ void mqc_bypass_init_enc(mqcoder *mqc){
     assert(mqc->bp[-1] != 0xff);
 }
 
-void mqc_bypass_enc(mqcoder *mqc, uint32_t d){
-    if (mqc->ct == BYPASS_CT_INIT)
-        mqc->ct = 8;
-    mqc->ct--;
-    mqc->c = mqc->c + (d << mqc->ct);
-    if (mqc->ct == 0) {
-        *mqc->bp = (uint8_t)mqc->c;
-        mqc->ct = 8;
-        /* If the previous byte was 0xff, make sure that the next msb is 0 */
-        if (*mqc->bp == 0xff)
-            mqc->ct = 7;
-        mqc->bp++;
-        mqc->c = 0;
-    }
-}
-
 uint32_t mqc_bypass_get_extra_bytes_enc(mqcoder *mqc, bool erterm){
     return (mqc->ct < 7 ||
             (mqc->ct == 7 && (erterm || mqc->bp[-1] != 0xff))) ? (1 + 1) : (0 + 1);

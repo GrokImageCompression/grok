@@ -215,51 +215,52 @@ void T1Part1::postDecode(decodeBlockInfo *block) {
 void T1Part1::post_decode(t1_info *t1,
 						cblk_dec *cblk,
 						decodeBlockInfo *block) {
-	uint32_t roishift = block->roishift;
 	uint32_t qmfbid = block->qmfbid;
 	float stepsize_over_two = block->stepsize/2;
-	int32_t *tilec_data = block->tiledp;
+	auto tilec_data = block->tiledp;
 	uint32_t tile_w = block->tilec->width();
-	bool whole_tile_decoding = block->tilec->whole_tile_decoding;
-	auto src = t1->data;
-	uint32_t dest_width = tile_w;
 	uint32_t cblk_w = (uint32_t) (cblk->x1 - cblk->x0);
 	uint32_t cblk_h = (uint32_t) (cblk->y1 - cblk->y0);
 
+	auto src = t1->data;
+	uint32_t roishift = block->roishift;
 	if (roishift) {
 		if (roishift >= 31) {
 			for (uint16_t j = 0; j < cblk_h; ++j) {
-				for (uint16_t i = 0; i < cblk_w; ++i) {
-					src[(j * cblk_w) + i] = 0;
-				}
+				for (uint16_t i = 0; i < cblk_w; ++i)
+					src[i] = 0;
+				src += cblk_w;
 			}
 		} else {
 			int32_t thresh = 1 << roishift;
 			for (uint32_t j = 0; j < cblk_h; ++j) {
 				for (uint32_t i = 0; i < cblk_w; ++i) {
-					int32_t val = src[(j * cblk_w) + i];
+					int32_t val = src[i];
 					int32_t mag = abs(val);
 					if (mag >= thresh) {
 						mag >>= roishift;
-						src[(j * cblk_w) + i] = val < 0 ? -mag : mag;
+						src[i] = val < 0 ? -mag : mag;
 					}
 				}
+				src += cblk_w;
 			}
 		}
+		src = t1->data;
 	}
 
-	if (!whole_tile_decoding) {
+	if (!block->tilec->whole_tile_decoding) {
     	if (qmfbid == 1) {
     		for (uint32_t j = 0; j < cblk_h; ++j) {
     			uint32_t i = 0;
     			for (; i < (cblk_w & ~(uint32_t) 3U); i += 4U) {
-    				src[(j * cblk_w) + i + 0U] /= 2;
-    				src[(j * cblk_w) + i + 1U] /= 2;
-    				src[(j * cblk_w) + i + 2U] /= 2;
-    				src[(j * cblk_w) + i + 3U] /= 2;
+    				src[i + 0U] /= 2;
+    				src[i + 1U] /= 2;
+    				src[i + 2U] /= 2;
+    				src[i + 3U] /= 2;
     			}
     			for (; i < cblk_w; ++i)
-    				src[(j * cblk_w) + i] /= 2;
+    				src[i] /= 2;
+    			src += cblk_w;
      		}
     	} else {
 			float *GRK_RESTRICT tiledp = (float*) src;
@@ -292,23 +293,19 @@ void T1Part1::post_decode(t1_info *t1,
 			for (uint32_t j = 0; j < cblk_h; ++j) {
 				uint32_t i = 0;
 				for (; i < (cblk_w & ~(uint32_t) 3U); i += 4U) {
-					int32_t tmp0 = src[(j * cblk_w) + i + 0U];
-					int32_t tmp1 = src[(j * cblk_w) + i + 1U];
-					int32_t tmp2 = src[(j * cblk_w) + i + 2U];
-					int32_t tmp3 = src[(j * cblk_w) + i + 3U];
-					((int32_t*) tiledp)[(j * (size_t) dest_width) + i + 0U] = tmp0
-							/ 2;
-					((int32_t*) tiledp)[(j * (size_t) dest_width) + i + 1U] = tmp1
-							/ 2;
-					((int32_t*) tiledp)[(j * (size_t) dest_width) + i + 2U] = tmp2
-							/ 2;
-					((int32_t*) tiledp)[(j * (size_t) dest_width) + i + 3U] = tmp3
-							/ 2;
+					int32_t tmp0 = src[i + 0U];
+					int32_t tmp1 = src[i + 1U];
+					int32_t tmp2 = src[i + 2U];
+					int32_t tmp3 = src[i + 3U];
+					((int32_t*) tiledp)[i + 0U] = tmp0/ 2;
+					((int32_t*) tiledp)[i + 1U] = tmp1/ 2;
+					((int32_t*) tiledp)[i + 2U] = tmp2/ 2;
+					((int32_t*) tiledp)[i + 3U] = tmp3/ 2;
 				}
-				for (; i < cblk_w; ++i) {
-					int32_t tmp = src[(j * cblk_w) + i];
-					((int32_t*) tiledp)[(j * (size_t) dest_width) + i] = tmp / 2;
-				}
+				for (; i < cblk_w; ++i)
+					((int32_t*) tiledp)[i] =  src[i] / 2;
+				src += (size_t) cblk_w;
+				tiledp += (size_t)tile_w;
 			}
 		} else {
 			float *GRK_RESTRICT tiledp = (float*) dest;
@@ -320,7 +317,7 @@ void T1Part1::post_decode(t1_info *t1,
 					src++;
 					tiledp2++;
 				}
-				tiledp += dest_width;
+				tiledp += tile_w;
 			}
 		}
 
