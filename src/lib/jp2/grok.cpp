@@ -612,14 +612,11 @@ void GRK_CALLCONV grk_destroy_codec( grk_codec  *p_codec) {
 
 void GRK_CALLCONV grk_dump_codec( grk_codec  *p_codec, uint32_t info_flag,
 		FILE *output_stream) {
+	assert(p_codec);
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
 		codec->grk_dump_codec(codec->m_codec, info_flag, output_stream);
-		return;
 	}
-	/* TODO return error */
-	GROK_ERROR("Input parameter of the dump_codec function are incorrect.");
-	return;
 }
  grk_codestream_info_v2  *  GRK_CALLCONV grk_get_cstr_info( grk_codec  *p_codec) {
 	if (p_codec) {

@@ -3,9 +3,6 @@
 namespace grk {
 
 class T2 {
-public:
-	T2();
-	virtual ~T2();
 protected:
 	/**
 	 @param cblk
@@ -17,5 +14,5 @@ protected:
 			bool first);
 };
 
-} /* namespace grk */
+}
 

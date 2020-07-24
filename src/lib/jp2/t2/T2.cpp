@@ -3,16 +3,6 @@
 
 namespace grk {
 
-T2::T2() {
-	// TODO Auto-generated constructor stub
-
-}
-
-T2::~T2() {
-	// TODO Auto-generated destructor stub
-}
-
-
 bool T2::init_seg(grk_cblk_dec *cblk, uint32_t index, uint8_t cblk_sty,
 		bool first) {
 	uint32_t nb_segs = index + 1;
