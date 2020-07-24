@@ -864,7 +864,6 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 
 		/* If we didn't skip data before, we need to read the SOD marker*/
 		if (!decoder->m_skip_data) {
-			/* Read the SOD marker and skip data ? FIXME */
 			if (!j2k_read_sod(codeStream, tileProcessor, stream))
 				return false;
 			if (decoder->ready_to_decode_tile_part_data

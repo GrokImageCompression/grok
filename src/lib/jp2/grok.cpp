@@ -80,7 +80,7 @@ struct grk_codec_private {
 			bool (*decompress)(void *p_codec, grk_plugin_tile *tile,
 					BufferedStream *stream, grk_image *p_image);
 
-			/** FIXME DOC */
+			/** Read tile header */
 			bool (*read_tile_header)(void *p_codec, uint16_t *tile_index,
 					bool *p_should_go_on, BufferedStream *stream);
 

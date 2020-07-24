@@ -235,7 +235,7 @@ bool t1_allocate_buffers(t1_info *t1, uint32_t w, uint32_t h) {
 		t1->flags = (grk_flag*) grk::grk_aligned_malloc(
 				flagssize * sizeof(grk_flag));
 		if (!t1->flags) {
-			/* FIXME event manager error callback */
+			GROK_ERROR("Out of memory");
 			return false;
 		}
 	}
