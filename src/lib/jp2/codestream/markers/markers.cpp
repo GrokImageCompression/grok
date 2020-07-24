@@ -2396,7 +2396,7 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, TileProcessor *tileProcessor,
 				" to remove is higher than the number "
 				"of resolutions of this component\n"
 				"Modify the cp_reduce parameter.\n", compno);
-		codeStream->m_decoder.m_state |= 0x8000;/* FIXME J2K_DEC_STATE_ERR;*/
+		codeStream->m_decoder.m_state |= J2K_DEC_STATE_ERR;
 		return false;
 	}
 	/* SPcoc (E) */
