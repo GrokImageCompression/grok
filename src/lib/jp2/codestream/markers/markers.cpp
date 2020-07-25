@@ -1772,7 +1772,6 @@ bool j2k_read_mcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	uint32_t indix;
 	uint32_t nb_collections;
 	uint32_t nb_comps;
-	uint32_t nb_bytes_by_comp;
 
 	assert(p_header_data != nullptr);
 	assert(codeStream != nullptr);
@@ -1876,7 +1875,7 @@ bool j2k_read_mcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 		p_header_data += 2;
 		header_size = (uint16_t) (header_size - 3);
 
-		nb_bytes_by_comp = 1 + (nb_comps >> 15);
+		uint32_t nb_bytes_by_comp = 1 + (nb_comps >> 15);
 		mcc_record->m_nb_comps = nb_comps & 0x7fff;
 
 		if (header_size < (nb_bytes_by_comp * mcc_record->m_nb_comps + 2)) {
@@ -2072,11 +2071,7 @@ bool j2k_read_mco(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 
 bool j2k_add_mct(TileCodingParams *p_tcp, grk_image *p_image, uint32_t index) {
 	uint32_t i;
-	uint32_t data_size, mct_size, offset_size;
-	uint32_t nb_elem;
-
 	assert(p_tcp != nullptr);
-
 	auto mcc_record = p_tcp->m_mcc_records;
 
 	for (i = 0; i < p_tcp->m_nb_mcc_records; ++i) {
@@ -2093,17 +2088,15 @@ bool j2k_add_mct(TileCodingParams *p_tcp, grk_image *p_image, uint32_t index) {
 		/** do not support number of comps != image */
 		return true;
 	}
-
 	auto deco_array = mcc_record->m_decorrelation_array;
-
 	if (deco_array) {
-		data_size = MCT_ELEMENT_SIZE[deco_array->m_element_type]
+		uint32_t data_size = MCT_ELEMENT_SIZE[deco_array->m_element_type]
 				* p_image->numcomps * p_image->numcomps;
 		if (deco_array->m_data_size != data_size)
 			return false;
 
-		nb_elem = p_image->numcomps * p_image->numcomps;
-		mct_size = nb_elem * (uint32_t) sizeof(float);
+		uint32_t nb_elem = p_image->numcomps * p_image->numcomps;
+		uint32_t mct_size = nb_elem * (uint32_t) sizeof(float);
 		p_tcp->m_mct_decoding_matrix = (float*) grk_malloc(mct_size);
 
 		if (!p_tcp->m_mct_decoding_matrix)
@@ -2116,13 +2109,13 @@ bool j2k_add_mct(TileCodingParams *p_tcp, grk_image *p_image, uint32_t index) {
 	auto offset_array = mcc_record->m_offset_array;
 
 	if (offset_array) {
-		data_size = MCT_ELEMENT_SIZE[offset_array->m_element_type]
+		uint32_t data_size = MCT_ELEMENT_SIZE[offset_array->m_element_type]
 				* p_image->numcomps;
 		if (offset_array->m_data_size != data_size)
 			return false;
 
-		nb_elem = p_image->numcomps;
-		offset_size = nb_elem * (uint32_t) sizeof(uint32_t);
+		uint32_t nb_elem = p_image->numcomps;
+		uint32_t offset_size = nb_elem * (uint32_t) sizeof(uint32_t);
 		auto offset_data = (uint32_t*) grk_malloc(offset_size);
 
 		if (!offset_data)

@@ -62,6 +62,8 @@
 #include <algorithm>
 #include <exception>
 #include "t1_common.h"
+#include <numeric>
+
 using namespace std;
 
 namespace grk {
@@ -1958,10 +1960,9 @@ void grk_cblk_dec::cleanup_seg_buffers(){
 }
 
 size_t grk_cblk_dec::getSegBuffersLen(){
-	size_t len = 0;
-	for (auto& buf : seg_buffers)
-		len += buf->len;
-	return len;
+	return std::accumulate(seg_buffers.begin(), seg_buffers.end(), 0, [](const size_t s, grk_buf *a){
+	   return s + a->len;
+	});
 }
 
 bool grk_cblk_dec::copy_to_contiguous_buffer(uint8_t *buffer) {
