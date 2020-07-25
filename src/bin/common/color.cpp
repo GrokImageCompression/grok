@@ -259,11 +259,8 @@ static bool sycc422_to_rgb(grk_image *img) {
 }/* sycc422_to_rgb() */
 
 static bool sycc420_to_rgb(grk_image *img) {
-	int32_t *d0, *d1, *d2, *r, *g, *b, *nr, *ng, *nb;
-	const int32_t *y, *cb, *cr, *ny;
 	size_t maxw, maxh, offx, loopmaxw, offy, loopmaxh;
 	int32_t offset, upb;
-	size_t i;
 	auto new_image = image_create(3, img->comps[0].w, img->comps[0].h,
 			img->comps[0].prec);
 	if (!new_image)
@@ -276,13 +273,17 @@ static bool sycc420_to_rgb(grk_image *img) {
 	maxw = (size_t) img->comps[0].w;
 	maxh = (size_t) img->comps[0].h;
 
-	y = img->comps[0].data;
-	cb = img->comps[1].data;
-	cr = img->comps[2].data;
+	auto y = img->comps[0].data;
+	auto cb = img->comps[1].data;
+	auto cr = img->comps[2].data;
 
-	d0 = r = new_image->comps[0].data;
-	d1 = g = new_image->comps[1].data;
-	d2 = b = new_image->comps[2].data;
+	auto d0 = new_image->comps[0].data;
+	auto d1 = new_image->comps[1].data;
+	auto d2 = new_image->comps[2].data;
+	auto r  = new_image->comps[0].data;
+	auto g  = new_image->comps[1].data;
+	auto b  = new_image->comps[2].data;
+
 
 	new_image->comps[0].data = nullptr;
 	new_image->comps[1].data = nullptr;
@@ -302,14 +303,14 @@ static bool sycc420_to_rgb(grk_image *img) {
 		for (size_t j = 0U; j < maxw; ++j)
 			sycc_to_rgb(offset, upb, *y++, 0, 0, r++, g++, b++);
 	}
-
+	size_t i;
 	for (i = 0U; i < (loopmaxh & ~(size_t) 1U); i += 2U) {
 		size_t j;
 
-		ny = y + maxw;
-		nr = r + maxw;
-		ng = g + maxw;
-		nb = b + maxw;
+		auto ny = y + maxw;
+		auto nr = r + maxw;
+		auto ng = g + maxw;
+		auto nb = b + maxw;
 
 		if (offx > 0U) {
 			sycc_to_rgb(offset, upb, *y++, 0, 0, r++, g++, b++);
@@ -408,7 +409,7 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB) {
 	cmsHPROFILE out_prof = nullptr;
 	cmsUInt32Number in_type, out_type;
 	size_t nr_samples, max;
-	uint32_t prec, i, max_w, max_h;
+	uint32_t prec, max_w, max_h;
 	GRK_COLOR_SPACE oldspace;
 	grk_image *new_image = nullptr;
 	if (image->numcomps == 0 || !grk::all_components_sanity_check(image))
@@ -531,7 +532,6 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB) {
 	}
 	if (image->numcomps > 2) { /* RGB, RGBA */
 		if (prec <= 8) {
-			int32_t *r = nullptr, *g = nullptr, *b = nullptr;
 			uint8_t *in = nullptr, *inbuf = nullptr, *out = nullptr, *outbuf =
 					nullptr;
 			max = (size_t) max_w * max_h;
@@ -546,11 +546,11 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB) {
 				goto cleanup;
 			}
 
-			r = image->comps[0].data;
-			g = image->comps[1].data;
-			b = image->comps[2].data;
+			auto r = image->comps[0].data;
+			auto g = image->comps[1].data;
+			auto b = image->comps[2].data;
 
-			for (i = 0; i < max; ++i) {
+			for (uint32_t i = 0; i < max; ++i) {
 				*in++ = (uint8_t) *r++;
 				*in++ = (uint8_t) *g++;
 				*in++ = (uint8_t) *b++;
@@ -562,7 +562,7 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB) {
 			g = image->comps[1].data;
 			b = image->comps[2].data;
 
-			for (i = 0; i < max; ++i) {
+			for (uint32_t i = 0; i < max; ++i) {
 				*r++ = (int32_t) *out++;
 				*g++ = (int32_t) *out++;
 				*b++ = (int32_t) *out++;
@@ -570,7 +570,6 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB) {
 			free(inbuf);
 			free(outbuf);
 		} else {
-			int32_t *r = nullptr, *g = nullptr, *b = nullptr;
 			uint16_t *in = nullptr, *inbuf = nullptr, *out = nullptr,
 					*outbuf = nullptr;
 			max = max_w * max_h;
@@ -584,11 +583,11 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB) {
 				goto cleanup;
 			}
 
-			r = image->comps[0].data;
-			g = image->comps[1].data;
-			b = image->comps[2].data;
+			auto r = image->comps[0].data;
+			auto g = image->comps[1].data;
+			auto b = image->comps[2].data;
 
-			for (i = 0; i < max; ++i) {
+			for (uint32_t i = 0; i < max; ++i) {
 				*in++ = (uint16_t) *r++;
 				*in++ = (uint16_t) *g++;
 				*in++ = (uint16_t) *b++;
@@ -600,7 +599,7 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB) {
 			g = image->comps[1].data;
 			b = image->comps[2].data;
 
-			for (i = 0; i < max; ++i) {
+			for (uint32_t i = 0; i < max; ++i) {
 				*r++ = (int32_t) *out++;
 				*g++ = (int32_t) *out++;
 				*b++ = (int32_t) *out++;
@@ -609,9 +608,6 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB) {
 			free(outbuf);
 		}
 	} else { /* GRAY, GRAYA */
-		int32_t *r = nullptr;
-		int32_t *g = nullptr;
-		int32_t *b = nullptr;
 		uint8_t *in = nullptr, *inbuf = nullptr, *out = nullptr, *outbuf =
 				nullptr;
 
@@ -660,17 +656,17 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB) {
 		if (forceRGB)
 			image->numcomps += 2;
 
-		r = image->comps[0].data;
-		for (i = 0; i < max; ++i) {
+		auto r = image->comps[0].data;
+		for (uint32_t i = 0; i < max; ++i) {
 			*in++ = (uint8_t) *r++;
 		}
 		cmsDoTransform(transform, inbuf, outbuf, (cmsUInt32Number) max);
 
 		r = image->comps[0].data;
-		g = image->comps[1].data;
-		b = image->comps[2].data;
+		auto g = image->comps[1].data;
+		auto b = image->comps[2].data;
 
-		for (i = 0; i < max; ++i) {
+		for (uint32_t i = 0; i < max; ++i) {
 			*r++ = (int32_t) *out++;
 			if (forceRGB) {
 				*g++ = (int32_t) *out++;
@@ -859,30 +855,25 @@ bool color_cielab_to_rgb(grk_image *image) {
 #endif /* GROK_HAVE_LIBLCMS */
 
 bool color_cmyk_to_rgb(grk_image *image) {
-	float C, M, Y, K;
-	float sC, sM, sY, sK;
-	uint32_t w, h;
-	uint64_t i, area;
-
-	w = image->comps[0].w;
-	h = image->comps[0].h;
+	uint32_t w = image->comps[0].w;
+	uint32_t h = image->comps[0].h;
 
 	if ((image->numcomps < 4) || !grk::all_components_sanity_check(image))
 		return false;
 
-	area = (uint64_t) w * h;
+	uint64_t area = (uint64_t) w * h;
 
-	sC = 1.0F / (float) ((1 << image->comps[0].prec) - 1);
-	sM = 1.0F / (float) ((1 << image->comps[1].prec) - 1);
-	sY = 1.0F / (float) ((1 << image->comps[2].prec) - 1);
-	sK = 1.0F / (float) ((1 << image->comps[3].prec) - 1);
+	float sC = 1.0F / (float) ((1 << image->comps[0].prec) - 1);
+	float sM = 1.0F / (float) ((1 << image->comps[1].prec) - 1);
+	float sY = 1.0F / (float) ((1 << image->comps[2].prec) - 1);
+	float sK = 1.0F / (float) ((1 << image->comps[3].prec) - 1);
 
-	for (i = 0; i < area; ++i) {
+	for (uint64_t i = 0; i < area; ++i) {
 		/* CMYK values from 0 to 1 */
-		C = (float) (image->comps[0].data[i]) * sC;
-		M = (float) (image->comps[1].data[i]) * sM;
-		Y = (float) (image->comps[2].data[i]) * sY;
-		K = (float) (image->comps[3].data[i]) * sK;
+		float C = (float) (image->comps[0].data[i]) * sC;
+		float M = (float) (image->comps[1].data[i]) * sM;
+		float Y = (float) (image->comps[2].data[i]) * sY;
+		float K = (float) (image->comps[3].data[i]) * sK;
 
 		/* Invert all CMYK values */
 		C = 1.0F - C;
@@ -903,7 +894,7 @@ bool color_cmyk_to_rgb(grk_image *image) {
 	image->numcomps -= 1;
 	image->color_space = GRK_CLRSPC_SRGB;
 
-	for (i = 3; i < image->numcomps; ++i) {
+	for (uint32_t i = 3; i < image->numcomps; ++i) {
 		memcpy(&(image->comps[i]), &(image->comps[i + 1]),
 				sizeof(image->comps[i]));
 	}
@@ -914,35 +905,32 @@ bool color_cmyk_to_rgb(grk_image *image) {
 
 // assuming unsigned data !
 bool color_esycc_to_rgb(grk_image *image) {
-	int32_t y, cb, cr, sign1, sign2, val;
-	uint32_t w, h;
-	uint64_t area, i;
 	int32_t flip_value = (1 << (image->comps[0].prec - 1));
 	int32_t max_value = (1 << image->comps[0].prec) - 1;
 
 	if ((image->numcomps < 3) || !grk::all_components_sanity_check(image))
 		return false;
 
-	w = image->comps[0].w;
-	h = image->comps[0].h;
+	uint32_t w = image->comps[0].w;
+	uint32_t h = image->comps[0].h;
 
-	sign1 = (int32_t) image->comps[1].sgnd;
-	sign2 = (int32_t) image->comps[2].sgnd;
+	int32_t sign1 = (int32_t) image->comps[1].sgnd;
+	int32_t sign2 = (int32_t) image->comps[2].sgnd;
 
-	area = (uint64_t) w * h;
+	uint64_t area = (uint64_t) w * h;
 
-	for (i = 0; i < area; ++i) {
+	for (uint64_t i = 0; i < area; ++i) {
 
-		y = image->comps[0].data[i];
-		cb = image->comps[1].data[i];
-		cr = image->comps[2].data[i];
+		int32_t y = image->comps[0].data[i];
+		int32_t cb = image->comps[1].data[i];
+		int32_t cr = image->comps[2].data[i];
 
 		if (!sign1)
 			cb -= flip_value;
 		if (!sign2)
 			cr -= flip_value;
 
-		val = (int32_t) (y - 0.0000368 * cb
+		int32_t val = (int32_t) (y - 0.0000368 * cb
 				+ 1.40199 * cr +  0.5);
 
 		if (val > max_value)

@@ -69,7 +69,6 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 	uint32_t nb_comp_remain;
 	uint32_t remaining_size;
 	uint16_t nb_tiles;
-	uint32_t tmp, tx1, ty1;
 	auto decoder = &codeStream->m_decoder;
 
 	assert(codeStream != nullptr);
@@ -92,19 +91,17 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		return false;
 	}
 
+	uint32_t tmp;
 	grk_read<uint32_t>(p_header_data, &tmp, 2); /* Rsiz (capabilities) */
 	p_header_data += 2;
 
 	// sanity check on RSIZ
-	uint16_t profile = 0;
-	uint16_t part2_extensions = 0;
-	// check for Part 2
 	if (tmp & GRK_PROFILE_PART2) {
-		profile = GRK_PROFILE_PART2;
-		part2_extensions = tmp & GRK_PROFILE_PART2_EXTENSIONS_MASK;
-		(void) part2_extensions;
+		// no sanity check on part 2 profile at the moment
+		//profile = GRK_PROFILE_PART2;
+		//uint16_t part2_extensions = tmp & GRK_PROFILE_PART2_EXTENSIONS_MASK;
 	} else {
-		profile = tmp & GRK_PROFILE_MASK;
+		uint16_t profile = tmp & GRK_PROFILE_MASK;
 		if ((profile > GRK_PROFILE_CINEMA_LTS)
 				&& !GRK_IS_BROADCAST(profile) && !GRK_IS_IMF(profile)) {
 			GROK_ERROR("Non-compliant Rsiz value 0x%x in SIZ marker", tmp);
@@ -171,8 +168,8 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 				cp->tx0, cp->ty0, image->x0, image->y0);
 		return false;
 	}
-	tx1 = uint_adds(cp->tx0, cp->t_width); /* manage overflow */
-	ty1 = uint_adds(cp->ty0, cp->t_height); /* manage overflow */
+	uint32_t tx1 = uint_adds(cp->tx0, cp->t_width); /* manage overflow */
+	uint32_t ty1 = uint_adds(cp->ty0, cp->t_height); /* manage overflow */
 	if (tx1 <= image->x0 || ty1 <= image->y0) {
 		GROK_ERROR("Error in SIZ marker: first tile (%u,%u,%u,%u) must overlap"
 				" image (%u,%u,%u,%u)", cp->tx0, cp->ty0, tx1, ty1, image->x0,
@@ -202,8 +199,6 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 
 	/* Read the component information */
 	for (i = 0; i < image->numcomps; ++i) {
-		uint32_t tmp;
-
 		grk_read<uint32_t>(p_header_data++, &tmp, 1); /* Ssiz_i */
 		img_comp->prec = (tmp & 0x7f) + 1;
 		img_comp->sgnd = tmp >> 7;

@@ -118,7 +118,6 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 	pngToImageInfo local_info;
 	png_infop info = nullptr;
 	int bit_depth, interlace_type, compression_type, filter_type;
-	uint32_t i;
 	png_uint_32 width = 0U, height = 0U;
 	int color_type;
 	local_info.readFromStdin = grk::useStdio(read_idf);
@@ -263,7 +262,7 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 		spdlog::error("pngtoimage: out of memory");
 		goto beach;
 	}
-	for (i = 0; i < height; ++i) {
+	for (uint32_t i = 0; i < height; ++i) {
 		local_info.rows[i] = (uint8_t*) malloc(
 				png_get_rowbytes(local_info.png, info));
 		if (!local_info.rows[i]) {
@@ -276,7 +275,7 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 
 	/* Create image */
 	memset(cmptparm, 0, sizeof(cmptparm));
-	for (i = 0; i < nr_comp; ++i) {
+	for (uint32_t i = 0; i < nr_comp; ++i) {
 		cmptparm[i].prec = (uint32_t)bit_depth;
 		cmptparm[i].sgnd = false;
 		cmptparm[i].dx = params->subsampling_dx;
@@ -301,7 +300,7 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 		local_info.image->comps[nr_comp - 1U].type = GRK_COMPONENT_TYPE_OPACITY;
 		local_info.image->comps[nr_comp - 1U].association = GRK_COMPONENT_ASSOC_WHOLE_IMAGE;
 	}
-	for (i = 0; i < nr_comp; i++)
+	for (uint32_t i = 0; i < nr_comp; i++)
 		planes[i] = local_info.image->comps[i].data;
 
 
@@ -382,7 +381,7 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 	if (local_info.row32s == nullptr)
 		goto beach;
 
-	for (i = 0; i < height; ++i) {
+	for (uint32_t i = 0; i < height; ++i) {
 		cvtXXTo32s(local_info.rows[i], local_info.row32s,
 				(size_t) width * nr_comp, false);
 		cvtToPlanar(local_info.row32s, planes, width);
@@ -392,7 +391,7 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 		planes[3] += width;
 	}
 	beach: if (local_info.rows) {
-		for (i = 0; i < height; ++i) {
+		for (uint32_t i = 0; i < height; ++i) {
 			if (local_info.rows[i])
 				free(local_info.rows[i]);
 		}

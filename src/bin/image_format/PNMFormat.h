@@ -20,7 +20,7 @@
 
 class PNMFormat : public IImageFormat {
 public:
-	PNMFormat(bool split) : forceSplit(split) {}
+	explicit PNMFormat(bool split) : forceSplit(split) {}
 	virtual ~PNMFormat()  {}
 	bool encode(grk_image *  image, const std::string &filename, uint32_t compressionParam) override;
 	grk_image *  decode(const std::string &filename,  grk_cparameters  *parameters) override;

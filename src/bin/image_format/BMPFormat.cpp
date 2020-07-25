@@ -582,7 +582,7 @@ static grk_image* bmptoimage(const char *filename,
 	FILE *INPUT = nullptr;
 	GRK_BITMAPFILEHEADER File_h;
 	GRK_BITMAPINFOHEADER Info_h;
-	uint32_t i, palette_len, numcmpts = 1U;
+	uint32_t palette_len, numcmpts = 1U;
 	bool l_result = false;
 	uint8_t *pData = nullptr;
 	uint32_t stride;
@@ -626,7 +626,7 @@ static grk_image* bmptoimage(const char *filename,
 		}
 		if (palette_len > 0U) {
 			uint8_t has_color = 0U;
-			for (i = 0U; i < palette_len; i++) {
+			for (uint32_t i = 0U; i < palette_len; i++) {
 				int temp = getc(INPUT);
 				if (temp == EOF)
 					goto cleanup;
@@ -706,7 +706,7 @@ static grk_image* bmptoimage(const char *filename,
 
 	/* create the image */
 	memset(&cmptparm[0], 0, sizeof(cmptparm));
-	for (i = 0; i < 4U; i++) {
+	for (uint32_t i = 0; i < 4U; i++) {
 		cmptparm[i].prec = 8;
 		cmptparm[i].sgnd = false;
 		cmptparm[i].dx = parameters->subsampling_dx;
@@ -863,7 +863,7 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 	FILE *fdest = nullptr;
 	int truncR = 0, truncG = 0, truncB = 0;
 	float scaleR = 1.0f, scaleG = 1.0f, scaleB = 1.0f;
-	int rc = -1;
+	int ret = -1;
 	uint8_t *destBuff = nullptr;
 	uint64_t sz = 0;
 
@@ -1024,7 +1024,7 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 				destBuff[destInd++] = rc;
 			}
 			// pad at end of row to ensure that width is divisible by 4
-			for (pad = (3 * w) % 4 ? 4 - (3 * w) % 4 : 0; pad > 0; pad--)
+			for (pad = ((3 * w) % 4) ? (4 - (3 * w) % 4) : 0; pad > 0; pad--)
 				destBuff[destInd++] = 0;
 			if (fwrite(destBuff, 1, destInd, fdest) != destInd)
 				goto cleanup;
@@ -1104,7 +1104,7 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 				destBuff[destInd++] = (uint8_t) r;
 			}
 			// pad at end of row to ensure that width is divisible by 4
-			for (pad = w % 4 ? 4 - w % 4 : 0; pad > 0; pad--)
+			for (pad = (w % 4) ? (4 - w % 4) : 0; pad > 0; pad--)
 				destBuff[destInd++] = 0;
 			if (fwrite(destBuff, 1, destInd, fdest) != destInd)
 				goto cleanup;
@@ -1113,14 +1113,14 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 
 	}
 	// success
-	rc = 0;
+	ret = 0;
 	cleanup:
 	delete[] destBuff;
 	if (!writeToStdout && fdest) {
 		if (!grk::safe_fclose(fdest))
-			rc = 1;
+			ret = 1;
 	}
-	return rc;
+	return ret;
 }
 
 bool BMPFormat::encode(grk_image *  image, const std::string &filename, uint32_t compressionParam){

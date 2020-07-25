@@ -409,7 +409,7 @@ static bool j2k_exec(CodeStream *codeStream, std::vector<j2k_procedure> &procs,
 	assert(stream != nullptr);
 
     bool result = std::all_of(procs.begin(), procs.end(),
-		   [&](j2k_procedure &proc){ return proc(codeStream, codeStream->m_tileProcessor, stream); });
+		   [&](const j2k_procedure &proc){ return proc(codeStream, codeStream->m_tileProcessor, stream); });
 	procs.clear();
 
 	return result;
@@ -755,16 +755,13 @@ static bool j2k_need_nb_tile_parts_correction(CodeStream *codeStream,
 bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 	bool *can_decode_tile_data, BufferedStream *stream) {
 	assert(codeStream);
+	assert(stream);
 
-	codeStream->m_tileProcessor = tileProcessor;
 	auto decoder = &codeStream->m_decoder;
 	TileCodingParams *tcp = nullptr;
-
 	uint16_t current_marker = J2K_MS_SOT;
 	uint16_t marker_size = 0;
-
-	assert(stream != nullptr);
-	assert(codeStream != nullptr);
+	codeStream->m_tileProcessor = tileProcessor;
 
 	/* Reach the End Of Codestream ?*/
 	if (decoder->m_state == J2K_DEC_STATE_EOC)
@@ -914,7 +911,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 	if (tcp->main_qcd_qntsty != J2K_CCP_QNTSTY_SIQNT) {
 		auto numComps = codeStream->m_input_image->numcomps;
 		//1. Check main QCD
-		uint32_t maxTileDecompositions = 0;
+		uint32_t maxDecompositions = 0;
 		for (uint32_t k = 0; k < numComps; ++k) {
 			auto tccp = tcp->tccps + k;
 			if (tccp->numresolutions == 0)
@@ -926,15 +923,15 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 			if (tccp->fromQCC || tccp->fromTileHeader)
 				continue;
 			auto decomps = tccp->numresolutions - 1;
-			if (maxTileDecompositions < decomps)
-				maxTileDecompositions = decomps;
+			if (maxDecompositions < decomps)
+				maxDecompositions = decomps;
 		}
-		if ((tcp->main_qcd_numStepSizes < 3 * maxTileDecompositions + 1)) {
+		if ((tcp->main_qcd_numStepSizes < 3 * maxDecompositions + 1)) {
 			GROK_ERROR("From Main QCD marker, "
 					"number of step sizes (%u) is less than "
-					"3* (tile decompositions) + 1, "
-					"where tile decompositions = %u ",
-					tcp->main_qcd_numStepSizes, maxTileDecompositions);
+					"3* (maximum decompositions) + 1, "
+					"where maximum decompositions = %u ",
+					tcp->main_qcd_numStepSizes, maxDecompositions);
 			goto fail;
 		}
 
@@ -966,8 +963,8 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 			if ((qcd_comp->numStepSizes < 3 * maxTileDecompositions + 1)) {
 				GROK_ERROR("From Tile QCD marker, "
 						"number of step sizes (%u) is less than"
-						" 3* (tile decompositions) + 1, "
-						"where tile decompositions = %u ",
+						" 3* (maximum tile decompositions) + 1, "
+						"where maximum tile decompositions = %u ",
 						qcd_comp->numStepSizes, maxTileDecompositions);
 
 				goto fail;
@@ -1452,7 +1449,6 @@ bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream, grk_ima
 
 bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 		grk_image *image) {
-	uint32_t i, j, tileno, numpocs_tile;
 	CodingParams *cp = nullptr;
 
 	if (!codeStream || !parameters || !image) {
@@ -1469,7 +1465,7 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 				"Invalid input image dimensions found while setting up JP2 encoder");
 		return false;
 	}
-	for (i = 0; i < image->numcomps; ++i) {
+	for (uint32_t i = 0; i < image->numcomps; ++i) {
 		auto comp = image->comps + i;
 		if (comp->w == 0 || comp->h == 0) {
 			GROK_ERROR(
@@ -1539,7 +1535,7 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 	} else {
 		bool cap = false;
 		auto min_rate = image_bytes / (double) parameters->max_cs_size;
-		for (i = 0; i < parameters->tcp_numlayers; i++) {
+		for (uint32_t i = 0; i < parameters->tcp_numlayers; i++) {
 			if (parameters->tcp_rates[i] < min_rate) {
 				parameters->tcp_rates[i] = min_rate;
 				cap = true;
@@ -1699,7 +1695,7 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 
 	uint8_t numgbits = parameters->isHT ? 1 : 2;
 	cp->tcps = new TileCodingParams[cp->t_grid_width * cp->t_grid_height];
-	for (tileno = 0; tileno < cp->t_grid_width * cp->t_grid_height; tileno++) {
+	for (uint32_t tileno = 0; tileno < cp->t_grid_width * cp->t_grid_height; tileno++) {
 		TileCodingParams *tcp = cp->tcps + tileno;
 		tcp->isHT = parameters->isHT;
 		tcp->qcd.generate(numgbits, (uint32_t) (parameters->numresolution - 1),
@@ -1707,7 +1703,7 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 				image->comps[0].sgnd);
 		tcp->numlayers = parameters->tcp_numlayers;
 
-		for (j = 0; j < tcp->numlayers; j++) {
+		for (uint32_t j = 0; j < tcp->numlayers; j++) {
 			if (cp->m_coding_params.m_enc.m_fixed_quality)
 				tcp->distoratio[j] = parameters->tcp_distoratio[j];
 			else
@@ -1717,14 +1713,13 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 		tcp->csty = parameters->csty;
 		tcp->prg = parameters->prog_order;
 		tcp->mct = parameters->tcp_mct;
-
-		numpocs_tile = 0;
 		tcp->POC = false;
 
 		if (parameters->numpocs) {
 			/* initialisation of POC */
 			tcp->POC = true;
-			for (i = 0; i < parameters->numpocs; i++) {
+			uint32_t numpocs_tile = 0;
+			for (uint32_t i = 0; i < parameters->numpocs; i++) {
 				if (tileno + 1 == parameters->POC[i].tile) {
 					auto tcp_poc = &tcp->pocs[numpocs_tile];
 
@@ -1807,7 +1802,7 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 					tcp->m_mct_decoding_matrix);
 			grk_free(lTmpBuf);
 
-			for (i = 0; i < image->numcomps; i++) {
+			for (uint32_t i = 0; i < image->numcomps; i++) {
 				auto tccp = &tcp->tccps[i];
 				tccp->m_dc_level_shift = dc_shift[i];
 			}
@@ -1834,7 +1829,7 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 					}
 				}
 			}
-			for (i = 0; i < image->numcomps; i++) {
+			for (uint32_t i = 0; i < image->numcomps; i++) {
 				auto tccp = tcp->tccps + i;
 				auto comp = image->comps + i;
 				if (!comp->sgnd) {
@@ -1843,7 +1838,7 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 			}
 		}
 
-		for (i = 0; i < image->numcomps; i++) {
+		for (uint32_t i = 0; i < image->numcomps; i++) {
 			auto tccp = &tcp->tccps[i];
 
 			/* 0 => one precinct || 1 => custom precinct  */
@@ -1904,7 +1899,7 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 					/*printf("\nsize precinct for level %u : %u,%u\n", it_res,tccp->prcw[it_res], tccp->prch[it_res]); */
 				} /*end for*/
 			} else {
-				for (j = 0; j < tccp->numresolutions; j++) {
+				for (uint32_t j = 0; j < tccp->numresolutions; j++) {
 					tccp->prcw[j] = 15;
 					tccp->prch[j] = 15;
 				}
@@ -2241,27 +2236,21 @@ static bool j2k_mct_validation(CodeStream *codeStream,TileProcessor *tileProcess
 	GRK_UNUSED(tileProcessor);
 
 	bool is_valid = true;
-	uint32_t i, j;
-
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
 
 	if ((codeStream->m_cp.rsiz & 0x8200) == 0x8200) {
 		uint32_t nb_tiles = codeStream->m_cp.t_grid_height
 				* codeStream->m_cp.t_grid_width;
-		auto tcp = codeStream->m_cp.tcps;
-
-		for (i = 0; i < nb_tiles; ++i) {
+		for (uint32_t i = 0; i < nb_tiles; ++i) {
+			auto tcp = codeStream->m_cp.tcps + i;
 			if (tcp->mct == 2) {
-				auto tccp = tcp->tccps;
 				is_valid &= (tcp->m_mct_coding_matrix != nullptr);
-
-				for (j = 0; j < codeStream->m_input_image->numcomps; ++j) {
+				for (uint32_t j = 0; j < codeStream->m_input_image->numcomps; ++j) {
+					auto tccp = tcp->tccps + j;
 					is_valid &= !(tccp->qmfbid & 1);
-					++tccp;
 				}
 			}
-			++tcp;
 		}
 	}
 
@@ -2535,27 +2524,18 @@ static bool j2k_copy_default_tcp(CodeStream *codeStream,TileProcessor *tileProce
 	(void) stream;
 	GRK_UNUSED(tileProcessor);
 
-	uint32_t nb_tiles;
-	uint32_t i, j;
-	uint32_t tccp_size;
-	uint32_t mct_size;
-	uint32_t mcc_records_size, mct_records_size;
-	grk_mct_data *src_mct_rec, *dest_mct_rec;
-	grk_simple_mcc_decorrelation_data *src_mcc_rec, *dest_mcc_rec;
-	uint32_t offset;
-
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);
 
 	auto image = codeStream->m_input_image;
-	nb_tiles = codeStream->m_cp.t_grid_height * codeStream->m_cp.t_grid_width;
-	auto tcp = codeStream->m_cp.tcps;
-	tccp_size = image->numcomps * (uint32_t) sizeof(TileComponentCodingParams);
+	uint32_t nb_tiles = codeStream->m_cp.t_grid_height * codeStream->m_cp.t_grid_width;
+	uint32_t tccp_size = image->numcomps * (uint32_t) sizeof(TileComponentCodingParams);
 	auto default_tcp = codeStream->m_decoder.m_default_tcp;
-	mct_size = image->numcomps * image->numcomps * (uint32_t) sizeof(float);
+	uint32_t mct_size = image->numcomps * image->numcomps * (uint32_t) sizeof(float);
 
 	/* For each tile */
-	for (i = 0; i < nb_tiles; ++i) {
+	for (uint32_t i = 0; i < nb_tiles; ++i) {
+		auto tcp = codeStream->m_cp.tcps + i;
 		/* keep the tile-compo coding parameters pointer of the current tile coding parameters*/
 		auto current_tccp = tcp->tccps;
 		/*Copy default coding parameters into the current tile coding parameters*/
@@ -2583,7 +2563,7 @@ static bool j2k_copy_default_tcp(CodeStream *codeStream,TileProcessor *tileProce
 		}
 
 		/* Get the mct_record of the dflt_tile_cp and copy them into the current tile cp*/
-		mct_records_size = default_tcp->m_nb_max_mct_records
+		uint32_t mct_records_size = default_tcp->m_nb_max_mct_records
 				* (uint32_t) sizeof(grk_mct_data);
 		tcp->m_mct_records = (grk_mct_data*) grk_malloc(mct_records_size);
 		if (!tcp->m_mct_records)
@@ -2592,10 +2572,10 @@ static bool j2k_copy_default_tcp(CodeStream *codeStream,TileProcessor *tileProce
 				mct_records_size);
 
 		/* Copy the mct record data from dflt_tile_cp to the current tile*/
-		src_mct_rec = default_tcp->m_mct_records;
-		dest_mct_rec = tcp->m_mct_records;
+		auto src_mct_rec = default_tcp->m_mct_records;
+		auto dest_mct_rec = tcp->m_mct_records;
 
-		for (j = 0; j < default_tcp->m_nb_mct_records; ++j) {
+		for (uint32_t j = 0; j < default_tcp->m_nb_mct_records; ++j) {
 			if (src_mct_rec->m_data) {
 				dest_mct_rec->m_data = (uint8_t*) grk_malloc(
 						src_mct_rec->m_data_size);
@@ -2611,7 +2591,7 @@ static bool j2k_copy_default_tcp(CodeStream *codeStream,TileProcessor *tileProce
 		}
 
 		/* Get the mcc_record of the dflt_tile_cp and copy them into the current tile cp*/
-		mcc_records_size = default_tcp->m_nb_max_mcc_records
+		uint32_t mcc_records_size = default_tcp->m_nb_max_mcc_records
 				* (uint32_t) sizeof(grk_simple_mcc_decorrelation_data);
 		tcp->m_mcc_records = (grk_simple_mcc_decorrelation_data*) grk_malloc(
 				mcc_records_size);
@@ -2622,29 +2602,24 @@ static bool j2k_copy_default_tcp(CodeStream *codeStream,TileProcessor *tileProce
 		tcp->m_nb_max_mcc_records = default_tcp->m_nb_max_mcc_records;
 
 		/* Copy the mcc record data from dflt_tile_cp to the current tile*/
-		src_mcc_rec = default_tcp->m_mcc_records;
-		dest_mcc_rec = tcp->m_mcc_records;
-		for (j = 0; j < default_tcp->m_nb_max_mcc_records; ++j) {
+		for (uint32_t j = 0; j < default_tcp->m_nb_max_mcc_records; ++j) {
+			auto src_mcc_rec = default_tcp->m_mcc_records + j;
+			auto dest_mcc_rec = tcp->m_mcc_records + j;
 			if (src_mcc_rec->m_decorrelation_array) {
-				offset = (uint32_t) (src_mcc_rec->m_decorrelation_array
+				uint32_t offset = (uint32_t) (src_mcc_rec->m_decorrelation_array
 						- default_tcp->m_mct_records);
 				dest_mcc_rec->m_decorrelation_array = tcp->m_mct_records
 						+ offset;
 			}
 			if (src_mcc_rec->m_offset_array) {
-				offset = (uint32_t) (src_mcc_rec->m_offset_array
+				uint32_t offset = (uint32_t) (src_mcc_rec->m_offset_array
 						- default_tcp->m_mct_records);
 				dest_mcc_rec->m_offset_array = tcp->m_mct_records + offset;
 			}
-			++src_mcc_rec;
-			++dest_mcc_rec;
 		}
 
 		/* Copy all the dflt_tile_compo_cp to the current tile cp */
 		memcpy(current_tccp, default_tcp->tccps, tccp_size);
-
-		/* Move to next tile cp*/
-		++tcp;
 	}
 
 	return true;
@@ -2653,7 +2628,6 @@ static bool j2k_copy_default_tcp(CodeStream *codeStream,TileProcessor *tileProce
 static bool j2k_update_rates(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream) {
 	GRK_UNUSED(tileProcessor);
 	uint32_t i, j, k;
-	double *rates = 0;
 	uint32_t bits_empty, size_pixel;
 	uint32_t last_res;
 	assert(codeStream != nullptr);
@@ -2692,7 +2666,7 @@ static bool j2k_update_rates(CodeStream *codeStream, TileProcessor *tileProcesso
 			uint64_t numTilePixels = (uint64_t) (x1 - x0) * (y1 - y0);
 
 			for (k = 0; k < tcp->numlayers; ++k) {
-				rates = tcp->rates + k;
+				double *rates = tcp->rates + k;
 				if (*rates > 0.0f)
 					*rates = ((((double) size_pixel * (double) numTilePixels))
 							/ ((double) *rates * (double) bits_empty)) - offset;
@@ -2704,7 +2678,7 @@ static bool j2k_update_rates(CodeStream *codeStream, TileProcessor *tileProcesso
 
 	for (i = 0; i < cp->t_grid_height; ++i) {
 		for (j = 0; j < cp->t_grid_width; ++j) {
-			rates = tcp->rates;
+			double *rates = tcp->rates;
 			/* 4 borders of the tile rescale on the image if necessary */
 			uint32_t x0 = std::max<uint32_t>((cp->tx0 + j * cp->t_width),
 					image->x0);
@@ -2809,15 +2783,11 @@ static uint8_t j2k_get_num_tp(CodingParams *cp, uint32_t pino,
 
 static bool j2k_calculate_tp(CodingParams *cp, uint16_t *p_nb_tile_parts,
 		grk_image *image) {
-	uint32_t pino;
-	uint16_t tileno;
-	uint16_t nb_tiles;
-
 	assert(p_nb_tile_parts != nullptr);
 	assert(cp != nullptr);
 	assert(image != nullptr);
 
-	nb_tiles = (uint16_t) (cp->t_grid_width * cp->t_grid_height);
+	uint32_t nb_tiles = (uint16_t) (cp->t_grid_width * cp->t_grid_height);
 	*p_nb_tile_parts = 0;
 	auto tcp = cp->tcps;
 
@@ -2846,10 +2816,10 @@ static bool j2k_calculate_tp(CodingParams *cp, uint16_t *p_nb_tile_parts,
 	 }
 	 }
 	 else */{
-		for (tileno = 0; tileno < nb_tiles; ++tileno) {
+		for (uint16_t tileno = 0; tileno < nb_tiles; ++tileno) {
 			uint8_t cur_totnum_tp = 0;
 			pi_update_encoding_parameters(image, cp, tileno);
-			for (pino = 0; pino <= tcp->numpocs; ++pino) {
+			for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
 				uint8_t tp_num = j2k_get_num_tp(cp, pino, tileno);
 
 				*p_nb_tile_parts += tp_num;
