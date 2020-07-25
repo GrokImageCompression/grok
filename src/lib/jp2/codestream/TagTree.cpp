@@ -133,20 +133,16 @@ bool TagTree::init(uint64_t num_leafs_h, uint64_t num_leafs_v) {
 
 	int64_t nplh[32];
 	int64_t nplv[32];
-	uint64_t i;
-	int64_t j, k;
-	uint64_t num_levels;
-	uint64_t n;
-	uint64_t node_size;
 
 	if ((numleafsh != num_leafs_h) || (numleafsv != num_leafs_v)) {
 		numleafsh = num_leafs_h;
 		numleafsv = num_leafs_v;
 
-		num_levels = 0;
+		uint64_t num_levels = 0;
 		nplh[0] = (int64_t) num_leafs_h;
 		nplv[0] = (int64_t) num_leafs_v;
 		numnodes = 0;
+		uint64_t n;
 		do {
 			n = (uint64_t) (nplh[num_levels] * nplv[num_levels]);
 			nplh[num_levels + 1] = (nplh[num_levels] + 1) / 2;
@@ -158,11 +154,11 @@ bool TagTree::init(uint64_t num_leafs_h, uint64_t num_leafs_v) {
 		if (numnodes == 0) {
 			return false;
 		}
-		node_size = numnodes * sizeof(TagTreeNode);
+		uint64_t node_size = numnodes * sizeof(TagTreeNode);
 
 		if (node_size > nodes_size) {
 			auto new_nodes = new TagTreeNode[numnodes];
-			for (i = 0; i < nodes_size / sizeof(TagTreeNode); ++i)
+			for (uint64_t i = 0; i < nodes_size / sizeof(TagTreeNode); ++i)
 				new_nodes[i] = nodes[i];
 			delete[] nodes;
 			nodes = new_nodes;
@@ -172,9 +168,9 @@ bool TagTree::init(uint64_t num_leafs_h, uint64_t num_leafs_v) {
 		auto parent_node = &nodes[numleafsh * numleafsv];
 		auto parent_node0 = parent_node;
 
-		for (i = 0; i < num_levels - 1; ++i) {
-			for (j = 0; j < nplv[i]; ++j) {
-				k = nplh[i];
+		for (uint64_t i = 0; i < num_levels - 1; ++i) {
+			for (int64_t j = 0; j < nplv[i]; ++j) {
+				int64_t k = nplh[i];
 				while (--k >= 0) {
 					node->parent = parent_node;
 					++node;

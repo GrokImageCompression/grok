@@ -172,7 +172,6 @@ void j2k_dump(CodeStream *codeStream, int32_t flag, FILE *out_stream) {
 
 static void j2k_dump_MH_index(CodeStream *codeStream, FILE *out_stream) {
 	auto cstr_index = codeStream->cstr_index;
-	uint32_t it_marker, i, it_tile_part;
 
 	fprintf(out_stream, "Codestream index from main header: {\n");
 
@@ -185,7 +184,7 @@ static void j2k_dump_MH_index(CodeStream *codeStream, FILE *out_stream) {
 	fprintf(out_stream, "\t Marker list: {\n");
 
 	if (cstr_index->marker) {
-		for (it_marker = 0; it_marker < cstr_index->marknum; it_marker++) {
+		for (uint32_t it_marker = 0; it_marker < cstr_index->marknum; it_marker++) {
 			fprintf(out_stream, "\t\t type=%#x, pos=%" PRIu64", len=%d\n",
 					cstr_index->marker[it_marker].type,
 					cstr_index->marker[it_marker].pos,
@@ -200,13 +199,13 @@ static void j2k_dump_MH_index(CodeStream *codeStream, FILE *out_stream) {
 
 		/* Simple test to avoid to write empty information*/
 		uint32_t acc_nb_of_tile_part = 0;
-		for (i = 0; i < cstr_index->nb_of_tiles; i++)
+		for (uint32_t i = 0; i < cstr_index->nb_of_tiles; i++)
 			acc_nb_of_tile_part += cstr_index->tile_index[i].nb_tps;
 
 		if (acc_nb_of_tile_part) {
 			fprintf(out_stream, "\t Tile index: {\n");
 
-			for (i = 0; i < cstr_index->nb_of_tiles; i++) {
+			for (uint32_t i = 0; i < cstr_index->nb_of_tiles; i++) {
 				uint32_t nb_of_tile_part =
 						cstr_index->tile_index[i].nb_tps;
 
@@ -214,7 +213,7 @@ static void j2k_dump_MH_index(CodeStream *codeStream, FILE *out_stream) {
 						i, nb_of_tile_part);
 
 				if (cstr_index->tile_index[i].tp_index) {
-					for (it_tile_part = 0; it_tile_part < nb_of_tile_part;
+					for (uint32_t it_tile_part = 0; it_tile_part < nb_of_tile_part;
 							it_tile_part++) {
 						ss.clear();
 						ss << "\t\t\t tile-part[" << it_tile_part << "]:"
@@ -230,7 +229,7 @@ static void j2k_dump_MH_index(CodeStream *codeStream, FILE *out_stream) {
 				}
 
 				if (cstr_index->tile_index[i].marker) {
-					for (it_marker = 0;
+					for (uint32_t it_marker = 0;
 							it_marker < cstr_index->tile_index[i].marknum;
 							it_marker++) {
 						ss.clear();
@@ -352,7 +351,7 @@ grk_codestream_info_v2* j2k_get_cstr_info(CodeStream *codeStream) {
 	for (compno = 0; compno < numcomps; compno++) {
 		auto tccp = &(default_tile->tccps[compno]);
 		auto tccp_info = &(cstr_info->m_default_tile_info.tccp_info[compno]);
-		uint32_t bandno, numbands;
+		uint32_t numbands;
 
 		/* coding style*/
 		tccp_info->csty = tccp->csty;
@@ -374,7 +373,7 @@ grk_codestream_info_v2* j2k_get_cstr_info(CodeStream *codeStream) {
 				(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
 						1 : (tccp->numresolutions * 3 - 2);
 		if (numbands < GRK_J2K_MAXBANDS) {
-			for (bandno = 0; bandno < numbands; bandno++) {
+			for (uint32_t bandno = 0; bandno < numbands; bandno++) {
 				tccp_info->stepsizes_mant[bandno] =
 						tccp->stepsizes[bandno].mant;
 				tccp_info->stepsizes_expn[bandno] =

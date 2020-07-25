@@ -1297,8 +1297,6 @@ PacketIter* pi_initialise_encode(const grk_image *p_image,
 
 void pi_init_encode(PacketIter *pi, CodingParams *cp, uint16_t tileno,
 		uint32_t pino, uint32_t tpnum, uint32_t tppos, J2K_T2_MODE t2_mode) {
-
-	uint32_t incr_top = 1, resetX = 0;
 	auto tcps = &cp->tcps[tileno];
 	auto tcp = &tcps->pocs[pino];
 	auto prog = j2k_convert_progression_order(tcp->prg);
@@ -1402,6 +1400,8 @@ void pi_init_encode(PacketIter *pi, CodingParams *cp, uint16_t tileno,
 				}
 			}
 		} else {
+			uint32_t incr_top = 1;
+			uint32_t resetX = 0;
 			for (int32_t i = (int32_t) tppos; i >= 0; i--) {
 				switch (prog[i]) {
 				case 'C':

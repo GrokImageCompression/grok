@@ -76,7 +76,6 @@ size_t ChunkBuffer::read(void *p_buffer, size_t nb_bytes) {
 }
 
 size_t ChunkBuffer::skip(size_t nb_bytes) {
-	size_t bytes_in_current_chunk;
 	size_t bytes_remaining;
 
 	if (nb_bytes + get_global_offset() > data_len) {
@@ -93,7 +92,7 @@ size_t ChunkBuffer::skip(size_t nb_bytes) {
 	while (cur_chunk_id < chunks.size() && bytes_remaining > 0) {
 
 		grk_buf *cur_chunk = chunks[cur_chunk_id];
-		bytes_in_current_chunk = (size_t) (cur_chunk->len - cur_chunk->offset);
+		size_t bytes_in_current_chunk = (size_t) (cur_chunk->len - cur_chunk->offset);
 
 		/* hoover up all the bytes in this chunk, and move to the next one */
 		if (bytes_in_current_chunk > bytes_remaining) {

@@ -83,10 +83,8 @@ template<typename S, typename D> void j2k_write(const void *p_src_data,
 		void *p_dest_data, uint64_t nb_elem) {
 	uint8_t *dest_data = (uint8_t*) p_dest_data;
 	S *src_data = (S*) p_src_data;
-	uint32_t i;
-	D temp;
-	for (i = 0; i < nb_elem; ++i) {
-		temp = (D) *(src_data++);
+	for (uint32_t i = 0; i < nb_elem; ++i) {
+		D temp = (D) *(src_data++);
 		grk_write<D>(dest_data, temp, sizeof(D));
 		dest_data += sizeof(D);
 	}

@@ -67,9 +67,9 @@ namespace grk {
 /* </summary>                            */
 uint32_t dwt_utils::max_resolution(grk_resolution *GRK_RESTRICT r, uint32_t i) {
 	uint32_t mr = 0;
-	uint32_t w;
 	while (--i) {
 		++r;
+		uint32_t w;
 		if (mr < (w = r->x1 - r->x0))
 			mr = w;
 		if (mr < (w = r->y1 - r->y0))

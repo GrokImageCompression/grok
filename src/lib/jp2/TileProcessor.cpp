@@ -1401,9 +1401,8 @@ bool TileProcessor::rate_allocate() {
  * @return:
  */
 bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_image) {
-	uint32_t i = 0, j = 0;
 	auto image_src = image;
-	for (i = 0; i < image_src->numcomps; i++) {
+	for (uint32_t i = 0; i < image_src->numcomps; i++) {
 		auto tilec = tile->comps + i;
 		auto comp_src = image_src->comps + i;
 		auto comp_dest = p_output_image->comps + i;
@@ -1490,7 +1489,7 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_
 		auto dest_ind = start_offset_dest;
 		size_t src_ind = 0;
 		auto src_ptr = (uint32_t*) tile_data;
-		for (j = 0; j < height_dest; ++j) {
+		for (uint32_t j = 0; j < height_dest; ++j) {
 			memcpy(comp_dest->data + dest_ind,
 					src_ptr + src_ind,
 						width_dest * sizeof(int32_t));
