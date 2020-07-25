@@ -591,7 +591,6 @@ static void t1_enc_clnpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,	uint32_t
 		}
 	}
 	if (k < t1->h) {
-		uint32_t agg = 0;
 		uint32_t runlen = 0;
 		for (uint32_t i = 0; i < t1->w; ++i,++f) {
 			auto datap = &t1->data[((k + runlen) * t1->data_stride) + i];
@@ -621,12 +620,9 @@ static void t1_enc_clnpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,	uint32_t
 			for (uint32_t ci = 3*runlen; ci < lim && stage_2; ci+=3) {
 				bool goto_PARTIAL = false;
 				grk_flag flags;
-				uint32_t ctxt1;
 				flags = *f;
-				if ((agg != 0) && (ci == 3*runlen))
-					goto_PARTIAL = true;
-				else if (!(flags & ((T1_SIGMA_THIS | T1_PI_THIS) << (ci)))) {
-					ctxt1 = t1_getctxno_zc(mqc, flags >> (ci));
+				if (!(flags & ((T1_SIGMA_THIS | T1_PI_THIS) << (ci)))) {
+					uint32_t ctxt1 = t1_getctxno_zc(mqc, flags >> (ci));
 					curctx = mqc->ctxs + ctxt1;
 					uint32_t v = !!(smr_abs(*datap) & one);
 					mqc_encode_macro(mqc,curctx,a,c, ct, v);
@@ -671,7 +667,6 @@ double t1_encode_cblk(t1_info *t1, cblk_enc *cblk, uint32_t max,
 	uint32_t passtype;
 	int32_t nmsedec = 0;
 	int32_t *p_nmsdedec = doRateControl ? &nmsedec : nullptr;
-	uint8_t type = T1_TYPE_MQ;
 	double tempwmsedec;
 
 	mqc->lut_ctxno_zc_orient = lut_ctxno_zc + (orient << 9);
@@ -697,7 +692,7 @@ double t1_encode_cblk(t1_info *t1, cblk_enc *cblk, uint32_t max,
 	double cumwmsedec = 0.0;
 	for (passno = 0; bpno >= 0; ++passno) {
 		auto *pass = &cblk->passes[passno];
-		type = ((bpno < ((int32_t) (cblk->numbps) - 4)) &&
+		uint8_t type = ((bpno < ((int32_t) (cblk->numbps) - 4)) &&
 				(passtype < 2)	&&
 				(cblksty & GRK_CBLKSTY_LAZY)) ? T1_TYPE_RAW : T1_TYPE_MQ;
 
@@ -974,14 +969,13 @@ static void t1_dec_clnpass(t1_info *t1, int32_t bpno, int32_t cblksty) {
 
 static INLINE void t1_dec_sigpass_step_raw(t1_info *t1, grk_flag *flagsp,
 		int32_t *datap, int32_t oneplushalf, uint32_t vsc, uint32_t ci) {
-	uint32_t v;
 	auto mqc = &(t1->mqc);
 	uint32_t const flags = *flagsp;
 
 	if ((flags & ((T1_SIGMA_THIS | T1_PI_THIS) << (ci))) == 0U
 			&& (flags & (T1_SIGMA_NEIGHBOURS << (ci))) != 0U) {
 		if (mqc_raw_decode(mqc)) {
-			v = mqc_raw_decode(mqc);
+			uint32_t v = mqc_raw_decode(mqc);
 			*datap = v ? -oneplushalf : oneplushalf;
 			t1_update_flags(flagsp, ci, v, t1->w + 2, vsc);
 		}
@@ -1029,7 +1023,6 @@ static INLINE void t1_dec_sigpass_step_mqc(t1_info *t1, grk_flag *flagsp,
 
 static void t1_dec_sigpass_raw(t1_info *t1, int32_t bpno, int32_t cblksty) {
 	int32_t one, half, oneplushalf;
-	uint32_t i, j, k;
 	auto data = t1->data;
 	auto flagsp = &T1_FLAGS(0, 0);
 	const uint32_t l_w = t1->w;
@@ -1038,8 +1031,9 @@ static void t1_dec_sigpass_raw(t1_info *t1, int32_t bpno, int32_t cblksty) {
 	half = one >> 1;
 	oneplushalf = one | half;
 
+	uint32_t k;
 	for (k = 0; k < (t1->h & ~3U); k += 4, flagsp += 2, data += 3 * l_w) {
-		for (i = 0; i < l_w; ++i, ++flagsp, ++data) {
+		for (uint32_t i = 0; i < l_w; ++i, ++flagsp, ++data) {
 			grk_flag flags = *flagsp;
 			if (flags != 0) {
 				t1_dec_sigpass_step_raw(t1, flagsp, data, oneplushalf,
@@ -1058,8 +1052,8 @@ static void t1_dec_sigpass_raw(t1_info *t1, int32_t bpno, int32_t cblksty) {
 		}
 	}
 	if (k < t1->h) {
-		for (i = 0; i < l_w; ++i, ++flagsp, ++data) {
-			for (j = 0; j < t1->h - k; ++j) {
+		for (uint32_t i = 0; i < l_w; ++i, ++flagsp, ++data) {
+			for (uint32_t j = 0; j < t1->h - k; ++j) {
 				t1_dec_sigpass_step_raw(t1, flagsp, data + j * l_w, oneplushalf,
 						cblksty & GRK_CBLKSTY_VSC, /* vsc */
 						3*j);
@@ -1166,15 +1160,15 @@ static INLINE void t1_dec_refpass_step_mqc(t1_info *t1, grk_flag *flagsp,
 
 static void t1_dec_refpass_raw(t1_info *t1, int32_t bpno) {
 	int32_t one, poshalf;
-	uint32_t i, j, k;
 	auto data = t1->data;
 	auto flagsp = &T1_FLAGS(0, 0);
 	const uint32_t l_w = t1->w;
 
 	one = 1 << bpno;
 	poshalf = one >> 1;
+	uint32_t k;
 	for (k = 0; k < (t1->h & ~3U); k += 4, flagsp += 2, data += 3 * l_w) {
-		for (i = 0; i < l_w; ++i, ++flagsp, ++data) {
+		for (uint32_t i = 0; i < l_w; ++i, ++flagsp, ++data) {
 			grk_flag flags = *flagsp;
 			if (flags != 0) {
 				t1_dec_refpass_step_raw(t1, flagsp, data, poshalf, 0U);
@@ -1187,10 +1181,9 @@ static void t1_dec_refpass_raw(t1_info *t1, int32_t bpno) {
 		}
 	}
 	if (k < t1->h) {
-		for (i = 0; i < l_w; ++i, ++flagsp, ++data) {
-			for (j = 0; j < t1->h - k; ++j) {
+		for (uint32_t i = 0; i < l_w; ++i, ++flagsp, ++data) {
+			for (uint32_t j = 0; j < t1->h - k; ++j)
 				t1_dec_refpass_step_raw(t1, flagsp, data + j * l_w, poshalf, 3*j);
-			}
 		}
 	}
 }
@@ -1249,12 +1242,7 @@ static void t1_dec_refpass_mqc(t1_info *t1, int32_t bpno) {
 bool t1_decode_cblk(t1_info *t1, cblk_dec *cblk, uint32_t orient,
 		uint32_t roishift, uint32_t cblksty, bool check_pterm) {
 	auto mqc = &(t1->mqc);
-	int32_t bpno_plus_one;
-	uint32_t passtype;
-	uint32_t segno, passno;
-	uint8_t *cblkdata = nullptr;
 	uint32_t cblkdataindex = 0;
-	uint8_t type = T1_TYPE_MQ;
 
 	mqc->lut_ctxno_zc_orient = lut_ctxno_zc + (orient << 9);
 
@@ -1263,22 +1251,22 @@ bool t1_decode_cblk(t1_info *t1, cblk_dec *cblk, uint32_t orient,
 		return false;
 
 
-	bpno_plus_one = (int32_t) (roishift + cblk->numbps);
+	int32_t bpno_plus_one = (int32_t) (roishift + cblk->numbps);
 	if (bpno_plus_one >= (int32_t)k_max_bit_planes) {
 		grk::GROK_ERROR("unsupported number of bit planes: %u > %u",
 				bpno_plus_one, k_max_bit_planes);
 		return false;
 	}
-	passtype = 2;
+	uint32_t passtype = 2;
 
 	mqc_resetstates(mqc);
-	cblkdata = cblk->chunks[0].data;
+	auto cblkdata = cblk->chunks[0].data;
 
-	for (segno = 0; segno < cblk->real_num_segs; ++segno) {
+	for (uint32_t segno = 0; segno < cblk->real_num_segs; ++segno) {
 		auto seg = cblk->segs + segno;
 
 		/* BYPASS mode */
-		type = ((bpno_plus_one <= ((int32_t) (cblk->numbps)) - 4)
+		uint8_t type = ((bpno_plus_one <= ((int32_t) (cblk->numbps)) - 4)
 				&& (passtype < 2) && (cblksty & GRK_CBLKSTY_LAZY)) ?
 				T1_TYPE_RAW : T1_TYPE_MQ;
 
@@ -1289,7 +1277,7 @@ bool t1_decode_cblk(t1_info *t1, cblk_dec *cblk, uint32_t orient,
 		}
 		cblkdataindex += seg->len;
 
-		for (passno = 0;
+		for (uint32_t passno = 0;
 				(passno < seg->real_num_passes) && (bpno_plus_one >= 1);
 				++passno) {
 			switch (passtype) {
@@ -1317,8 +1305,7 @@ bool t1_decode_cblk(t1_info *t1, cblk_dec *cblk, uint32_t orient,
 				bpno_plus_one--;
 			}
 		}
-
-		opq_mqc_finish_dec(mqc);
+		mqc_finish_dec(mqc);
 	}
 
 	if (check_pterm) {

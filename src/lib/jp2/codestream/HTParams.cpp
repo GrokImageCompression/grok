@@ -195,7 +195,7 @@ void param_qcd::set_rev_quant(uint32_t bit_depth,
   u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
   for (int d = (int32_t)num_decomps - 1; d >= 0; --d)
   {
-	float bibo_l = bibo_gains::get_bibo_gain_l((uint32_t)(d + 1), true);
+	bibo_l = bibo_gains::get_bibo_gain_l((uint32_t)(d + 1), true);
 	float bibo_h = bibo_gains::get_bibo_gain_h((uint32_t)d, true);
 	X = (int) ceil(log(bibo_h*bibo_l * 1.1f) / M_LN2);
 	u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
@@ -224,14 +224,14 @@ void param_qcd::set_irrev_quant()
   u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
   for (int d = (int32_t)num_decomps - 1; d >= 0; --d)
   {
-	float gain_l = sqrt_energy_gains::get_gain_l((uint32_t)(d + 1), false);
+	gain_l = sqrt_energy_gains::get_gain_l((uint32_t)(d + 1), false);
 	float gain_h = sqrt_energy_gains::get_gain_h((uint32_t)d, false);
-
 	delta_b = base_delta / (gain_l * gain_h);
-
-	uint32_t exp = 0, mantissa;
-	while (delta_b < 1.0f)
-	{ exp++; delta_b *= 2.0f; }
+	exp = 0;
+	while (delta_b < 1.0f){
+		exp++;
+		delta_b *= 2.0f;
+	}
 	mantissa = (uint32_t)round(delta_b * (float)(1<<11)) - (1<<11);
 	mantissa = mantissa < (1<<11) ? mantissa : 0x7FF;
 	u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
@@ -241,7 +241,10 @@ void param_qcd::set_irrev_quant()
 
 	exp = 0;
 	while (delta_b < 1)
-	{ exp++; delta_b *= 2.0f; }
+	{
+		exp++;
+		delta_b *= 2.0f;
+	}
 	mantissa = (uint32_t)round(delta_b * (float)(1<<11)) - (1<<11);
 	mantissa = mantissa < (1<<11) ? mantissa : 0x7FF;
 	u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);

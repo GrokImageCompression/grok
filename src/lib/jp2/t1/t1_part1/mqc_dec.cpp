@@ -194,7 +194,7 @@ void mqc_raw_init_dec(mqcoder *mqc, uint8_t *bp, uint32_t len){
     mqc->ct = 0;
 }
 
-void opq_mqc_finish_dec(mqcoder *mqc){
+void mqc_finish_dec(mqcoder *mqc){
     /* Restore the bytes overwritten by mqc_init_dec_common() */
     memcpy(mqc->end, mqc->backup, grk_cblk_dec_compressed_data_pad_right);
 }

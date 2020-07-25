@@ -386,7 +386,6 @@ static void decode_v_cas0_mcols_SSE2_OR_AVX2_53(int32_t* tmp,
 												int32_t* tiledp_col,
 												const size_t stride){
     uint32_t i;
-    size_t j;
     const VREG two = LOAD_CST(2);
 
     assert(len > 1);
@@ -410,6 +409,7 @@ static void decode_v_cas0_mcols_SSE2_OR_AVX2_53(int32_t* tmp,
 
     i = 0;
     if (len > 3) {
+        uint32_t j;
 		for (i = 0, j = 1; i < (len - 3); i += 2, j++) {
 			VREG d1c_0 = d1n_0;
 			VREG s0c_0 = s0n_0;
@@ -553,8 +553,7 @@ static void decode_v_cas0_53(int32_t* tmp,
                              const uint32_t len,
                              int32_t* tiledp_col,
                              const size_t stride){
-    uint32_t i = 0, j;
-    int32_t d1c, d1n, s1n, s0c, s0n;
+    int32_t d1n, s1n, s0n;
 
     assert(len > 1);
 
@@ -564,10 +563,11 @@ static void decode_v_cas0_53(int32_t* tmp,
     d1n = tiledp_col[sn * stride];
     s0n = s1n - ((d1n + 1) >> 1);
 
+    uint32_t i = 0;
     if (len > 2) {
-		for (j = 0; i < (len - 3); i += 2, j++) {
-			d1c = d1n;
-			s0c = s0n;
+		for (uint32_t j = 0; i < (len - 3); i += 2, j++) {
+			int32_t d1c = d1n;
+			int32_t s0c = s0n;
 			s1n = tiledp_col[(j + 1) * stride];
 			d1n = tiledp_col[(sn + j + 1) * stride];
 			s0n = s1n - ((d1c + d1n + 2) >> 2);
@@ -1512,13 +1512,13 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         horiz.win_l_x1 = horiz.sn;
         horiz.win_h_x0 = 0;
         horiz.win_h_x1 = horiz.dn;
-        uint32_t j;
         float * GRK_RESTRICT tiledp = (float*) tilec->buf->get_ptr( 0, 0, 0, 0);
         uint32_t num_jobs = (uint32_t)num_threads;
         if (rh < num_jobs)
             num_jobs = rh;
         uint32_t step_j = num_jobs ? (rh / num_jobs) : 0;
         if (num_threads == 1 || step_j < 4) {
+            uint32_t j;
 			for (j = 0; j + 3 < rh; j += 4) {
 				interleave_h_97(&horiz, tiledp, w, rh - j);
 				decode_step_97(&horiz);
@@ -1612,6 +1612,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
             num_jobs = rw;
         step_j = num_jobs ? (rw / num_jobs) : 0;
         if (num_threads == 1 || step_j < 4) {
+            uint32_t j;
 			for (j = 0; j + 3 < rw; j += 4) {
 				interleave_v_97(&vert, tiledp, w, 4);
 				decode_step_97(&vert);

@@ -153,8 +153,8 @@ void mct::decode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
     chunkSize = (chunkSize/VREG_INT_COUNT) * VREG_INT_COUNT;
 	if (chunkSize > VREG_INT_COUNT) {
 	    std::vector< std::future<int> > results;
-	    for(uint64_t i = 0; i < num_threads; ++i) {
-	    	uint64_t index = i;
+	    for(uint64_t threadid = 0; threadid < num_threads; ++threadid) {
+	    	uint64_t index = threadid;
 	    	auto decoder = [index, chunkSize,chan0,chan1,chan2](){
 	    		uint64_t begin = (uint64_t)index * chunkSize;
 				for (auto j = begin; j < begin+chunkSize; j+=VREG_INT_COUNT ){
@@ -370,8 +370,8 @@ void mct::decode_irrev(float *GRK_RESTRICT c0, float *GRK_RESTRICT c1, float *GR
 	chunkSize = (chunkSize/VREG_INT_COUNT) * VREG_INT_COUNT;
 	if (chunkSize > VREG_INT_COUNT) {
 		std::vector< std::future<int> > results;
-		for(uint64_t i = 0; i < num_threads; ++i) {
-			uint64_t index = i;
+		for(uint64_t threadid = 0; threadid < num_threads; ++threadid) {
+			uint64_t index = threadid;
 			auto decoder = [index, chunkSize, c0,c1,c2]() {
 				const VREGF vrv = LOAD_CST_F(1.402f);
 				const VREGF vgu = LOAD_CST_F(0.34413f);
@@ -422,15 +422,15 @@ void mct::decode_irrev(float *GRK_RESTRICT c0, float *GRK_RESTRICT c1, float *GR
 
 
 void mct::calculate_norms(double *pNorms, uint32_t pNbComps, float *pMatrix) {
-	uint32_t i, j, lIndex;
 	float lCurrentValue;
 	double *lNorms = (double*) pNorms;
 	float *lMatrix = (float*) pMatrix;
 
+	uint32_t i;
 	for (i = 0; i < pNbComps; ++i) {
 		lNorms[i] = 0;
-		lIndex = i;
-
+		uint32_t lIndex = i;
+		uint32_t j;
 		for (j = 0; j < pNbComps; ++j) {
 			lCurrentValue = lMatrix[lIndex];
 			lIndex += pNbComps;
@@ -442,44 +442,32 @@ void mct::calculate_norms(double *pNorms, uint32_t pNbComps, float *pMatrix) {
 
 bool mct::encode_custom(uint8_t *pCodingdata, uint64_t n, uint8_t **pData,
 		uint32_t pNbComp, uint32_t isSigned) {
-	float *lMct = (float*) pCodingdata;
-	uint64_t i;
-	uint32_t j;
-	uint32_t k;
+	auto lMct = (float*) pCodingdata;
 	uint32_t lNbMatCoeff = pNbComp * pNbComp;
-	int32_t *lCurrentData = nullptr;
-	int32_t *lCurrentMatrix = nullptr;
-	int32_t **lData = (int32_t**) pData;
+	auto lData = (int32_t**) pData;
 	uint32_t lMultiplicator = 1 << 13;
-	int32_t *lMctPtr;
-
 	ARG_NOT_USED(isSigned);
 
-	lCurrentData = (int32_t*) grk_malloc(
+	auto lCurrentData = (int32_t*) grk_malloc(
 			(pNbComp + lNbMatCoeff) * sizeof(int32_t));
-	if (!lCurrentData) {
+	if (!lCurrentData)
 		return false;
-	}
 
-	lCurrentMatrix = lCurrentData + pNbComp;
+	auto lCurrentMatrix = lCurrentData + pNbComp;
 
-	for (i = 0; i < lNbMatCoeff; ++i) {
+	for (uint64_t i = 0; i < lNbMatCoeff; ++i)
 		lCurrentMatrix[i] = (int32_t) (*(lMct++) * (float) lMultiplicator);
-	}
 
-	for (i = 0; i < n; ++i) {
-		lMctPtr = lCurrentMatrix;
-		for (j = 0; j < pNbComp; ++j) {
+	for (uint64_t i = 0; i < n; ++i) {
+		for (uint32_t j = 0; j < pNbComp; ++j)
 			lCurrentData[j] = (*(lData[j]));
-		}
-
-		for (j = 0; j < pNbComp; ++j) {
+		for (uint32_t j = 0; j < pNbComp; ++j) {
+			auto lMctPtr = lCurrentMatrix;
 			*(lData[j]) = 0;
-			for (k = 0; k < pNbComp; ++k) {
+			for (uint32_t k = 0; k < pNbComp; ++k) {
 				*(lData[j]) += int_fix_mul(*lMctPtr, lCurrentData[k]);
 				++lMctPtr;
 			}
-
 			++lData[j];
 		}
 	}
@@ -490,33 +478,25 @@ bool mct::encode_custom(uint8_t *pCodingdata, uint64_t n, uint8_t **pData,
 
 bool mct::decode_custom(uint8_t *pDecodingData, uint64_t n, uint8_t **pData,
 		uint32_t pNbComp, uint32_t isSigned) {
-	float *lMct;
-	uint64_t i;
-	uint32_t j;
-	uint32_t k;
-
-	float *lCurrentData = nullptr;
-	float *lCurrentResult = nullptr;
-	float **lData = (float**) pData;
+	auto lData = (float**) pData;
 
 	ARG_NOT_USED(isSigned);
 
-	lCurrentData = (float*) grk_malloc(2 * pNbComp * sizeof(float));
-	if (!lCurrentData) {
+	auto lCurrentData = (float*) grk_malloc(2 * pNbComp * sizeof(float));
+	if (!lCurrentData)
 		return false;
-	}
-	lCurrentResult = lCurrentData + pNbComp;
 
-	for (i = 0; i < n; ++i) {
-		lMct = (float*) pDecodingData;
-		for (j = 0; j < pNbComp; ++j) {
+	auto lCurrentResult = lCurrentData + pNbComp;
+
+	for (uint64_t i = 0; i < n; ++i) {
+		auto lMct = (float*) pDecodingData;
+		for (uint32_t j = 0; j < pNbComp; ++j) {
 			lCurrentData[j] = (float) (*(lData[j]));
 		}
-		for (j = 0; j < pNbComp; ++j) {
+		for (uint32_t j = 0; j < pNbComp; ++j) {
 			lCurrentResult[j] = 0;
-			for (k = 0; k < pNbComp; ++k) {
+			for (uint32_t k = 0; k < pNbComp; ++k)
 				lCurrentResult[j] += *(lMct++) * lCurrentData[k];
-			}
 			*(lData[j]++) = (float) (lCurrentResult[j]);
 		}
 	}

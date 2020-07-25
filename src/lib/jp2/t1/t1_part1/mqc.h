@@ -166,6 +166,6 @@ mqc_raw_init_dec()
 
 @param mqc MQC handle
 */
-void opq_mqc_finish_dec(mqcoder *mqc);
+void mqc_finish_dec(mqcoder *mqc);
 
 }
