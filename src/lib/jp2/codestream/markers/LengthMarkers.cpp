@@ -409,11 +409,10 @@ bool PacketLengthMarkers::readPLT(uint8_t *p_header_data, uint16_t header_size){
 	Zpl = *p_header_data++;
 	--header_size;
 
-	uint8_t tmp;
 	readInitIndex(Zpl);
 	for (uint32_t i = 0; i < header_size; ++i) {
 		/* Iplt_ij */
-		tmp = *p_header_data++;
+		uint8_t tmp = *p_header_data++;
 		readNext(tmp);
 	}
 	if (m_packet_len != 0) {

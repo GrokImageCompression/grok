@@ -125,7 +125,7 @@ struct grk_cblk_enc : public grk_cblk {
 	~grk_cblk_enc();
 	grk_cblk_enc(const grk_cblk_enc &rhs);
 	grk_cblk_enc& operator=(const grk_cblk_enc& other);
-	void clear();
+	void clear() override;
 	bool alloc();
 	bool alloc_data(size_t nominalBlockSize);
 	void cleanup();
@@ -143,7 +143,7 @@ struct grk_cblk_dec: public grk_cblk {
 	~grk_cblk_dec();
 	grk_cblk_dec(const grk_cblk_dec &rhs);
 	grk_cblk_dec& operator=(const grk_cblk_dec& other);
-	void clear();
+	void clear() override;
 	void init();
 	bool alloc();
 	void cleanup();
@@ -247,7 +247,7 @@ private:
  Tile coder/decoder
  */
 struct TileProcessor {
-	TileProcessor(CodeStream *codeStream) ;
+	explicit TileProcessor(CodeStream *codeStream) ;
 	~TileProcessor();
 
 	/**

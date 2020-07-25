@@ -169,12 +169,9 @@ bool TileComponent::init(bool isEncoder,
 	m_tccp = tccp;
 
 	/* extent of precincts , top left, bottom right**/
-	/* number of precinct for a resolution */
-	uint64_t nb_precincts;
 	/* number of code blocks for a precinct*/
 	uint64_t nb_code_blocks, cblkno;
 	uint32_t leveno;
-	uint32_t pdx, pdy;
 	uint32_t x0b, y0b;
 
 	/* border of each tile component in tile component coordinates */
@@ -222,8 +219,8 @@ bool TileComponent::init(bool isEncoder,
 		res->y1 = uint_ceildivpow2(y1, leveno);
 		/*fprintf(stderr, "\t\t\tres_x0= %u, res_y0 =%u, res_x1=%u, res_y1=%u\n", res->x0, res->y0, res->x1, res->y1);*/
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
-		pdx = m_tccp->prcw[resno];
-		pdy = m_tccp->prch[resno];
+		uint32_t pdx = m_tccp->prcw[resno];
+		uint32_t pdy = m_tccp->prch[resno];
 		/*fprintf(stderr, "\t\t\tpdx=%u, pdy=%u\n", pdx, pdy);*/
 		/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
 		uint32_t tprc_x_start = uint_floordivpow2(res->x0, pdx) << pdx;
@@ -256,7 +253,8 @@ bool TileComponent::init(bool isEncoder,
 					"nb_precincts calculation would overflow ");
 			return false;
 		}
-		nb_precincts = (uint64_t)res->pw * res->ph;
+		/* number of precinct for a resolution */
+		uint64_t nb_precincts = (uint64_t)res->pw * res->ph;
 
 		if (mult64_will_overflow(nb_precincts, sizeof(grk_precinct))) {
 			GROK_ERROR(	"nb_precinct_size calculation would overflow ");

@@ -2063,14 +2063,14 @@ static int imagetotif(grk_image *image, const char *outfile,
 		auto iptc_len = image->iptc_len;
 
 		// length must be multiple of 4
-		uint8_t *buf = nullptr;
+		uint8_t *new_iptf_buf = nullptr;
 		iptc_len += (4 - (iptc_len & 0x03));
 		if (iptc_len != image->iptc_len) {
-			buf = (uint8_t*) calloc(iptc_len, 1);
-			if (!buf)
+			new_iptf_buf = (uint8_t*) calloc(iptc_len, 1);
+			if (!new_iptf_buf)
 				goto cleanup;
-			memcpy(buf, image->iptc_buf, image->iptc_len);
-			iptc_buf = buf;
+			memcpy(new_iptf_buf, image->iptc_buf, image->iptc_len);
+			iptc_buf = new_iptf_buf;
 		}
 
 		// Tag is of type TIFF_LONG, so byte length is divided by four
@@ -2115,6 +2115,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 	if (buf == nullptr)
 		goto cleanup;
 
+
     if (subsampled){
     	auto bufptr = (int8_t*)buf;
     	for (uint32_t h = 0; h < height; h+=chroma_subsample_y) {
@@ -2147,7 +2148,6 @@ static int imagetotif(grk_image *image, const char *outfile,
     } else {
     	tmsize_t h = 0;
     	tmsize_t h_start = 0;
-    	uint32_t strip = 0;
     	while (h < height){
     		tmsize_t byesToWrite = 0;
 			for (h = h_start; h < h_start + rowsPerStrip && (h < height); h++) {

@@ -288,9 +288,9 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 		makelayer_final(0);
 		if (plt_markers) {
 			auto t2 = new T2Encode(this);
-			uint32_t all_packets_len = 0;
+			uint32_t sim_all_packets_len = 0;
 			t2->encode_packets_simulate(m_current_tile_index,
-										0 + 1, &all_packets_len, UINT_MAX,
+										0 + 1, &sim_all_packets_len, UINT_MAX,
 										tp_pos, plt_markers);
 			delete t2;
 		}
@@ -307,14 +307,12 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 				tcp->rates[layno] > 0.0f ?
 						((uint32_t) ceil(tcp->rates[layno])) : UINT_MAX;
 
-		/* Threshold for Marcela Index */
-		// start by including everything in this layer
-		uint32_t goodthresh = 0;
-		// thresh from previous iteration - starts off uninitialized
-		// used to bail out if difference with current thresh is small enough
-		uint32_t prevthresh = 0;
+
 		if (layer_needs_rate_control(layno)) {
 			auto t2 = new T2Encode(this);
+			// thresh from previous iteration - starts off uninitialized
+			// used to bail out if difference with current thresh is small enough
+			uint32_t prevthresh = 0;
 			double distotarget = tile->distotile
 					- ((K * maxSE)
 							/ pow(10.0, tcp->distoratio[layno] / 10.0));
@@ -348,7 +346,9 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 				}
 			}
 			// choose conservative value for goodthresh
-			goodthresh = upperBound;
+			/* Threshold for Marcela Index */
+			// start by including everything in this layer
+			uint32_t goodthresh = upperBound;
 			delete t2;
 
 			makelayer_feasible(layno, (uint16_t) goodthresh, true);
@@ -448,9 +448,9 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 	if (single_lossless){
 		if (plt_markers) {
 			auto t2 = new T2Encode(this);
-			uint32_t all_packets_len = 0;
+			uint32_t sim_all_packets_len = 0;
 			t2->encode_packets_simulate(m_current_tile_index,
-										0 + 1, &all_packets_len, UINT_MAX,
+										0 + 1, &sim_all_packets_len, UINT_MAX,
 										tp_pos, plt_markers);
 			delete t2;
 		}
@@ -1028,7 +1028,6 @@ bool TileProcessor::t2_decode(ChunkBuffer *src_buf,
 
 bool TileProcessor::mct_decode() {
 	auto tile_comp = tile->comps;
-	uint64_t i;
 
 	if (!m_tcp->mct)
 		return true;
@@ -1056,7 +1055,7 @@ bool TileProcessor::mct_decode() {
 			if (!data)
 				return false;
 
-			for (i = 0; i < tile->numcomps; ++i) {
+			for (uint32_t i = 0; i < tile->numcomps; ++i) {
 				data[i] = (uint8_t*) tile_comp->buf->get_ptr(0, 0, 0, 0);
 				++tile_comp;
 			}
@@ -1116,8 +1115,6 @@ bool TileProcessor::dc_level_shift_decode() {
 		y0 = 0;
 		x1 = (uint32_t) (tile_comp->buf->reduced_region_dim.width());
 		y1 = (uint32_t) (tile_comp->buf->reduced_region_dim.height());
-
-		assert(x1 >= x0);
 		assert(tile_comp->width() >= (x1 - x0));
 
 		if (img_comp->sgnd) {
@@ -1200,7 +1197,6 @@ bool TileProcessor::dc_level_shift_encode() {
 bool TileProcessor::mct_encode() {
 	auto tile_comp = tile->comps;
 	uint64_t samples = tile_comp->area();
-	uint32_t i;
 
 	if (!m_tcp->mct)
 		return true;
@@ -1210,7 +1206,7 @@ bool TileProcessor::mct_encode() {
 		auto data = (uint8_t**) grk_malloc(tile->numcomps * sizeof(uint8_t*));
 		if (!data)
 			return false;
-		for (i = 0; i < tile->numcomps; ++i) {
+		for (uint32_t i = 0; i < tile->numcomps; ++i) {
 			data[i] = (uint8_t*) tile_comp->buf->get_ptr(0, 0, 0, 0);
 			++tile_comp;
 		}
@@ -1369,9 +1365,10 @@ bool TileProcessor::t2_encode(BufferedStream *stream, uint32_t *all_packet_bytes
 }
 
 bool TileProcessor::rate_allocate() {
-	uint32_t all_packets_len = 0;
 	if (m_cp->m_coding_params.m_enc.m_disto_alloc
 			|| m_cp->m_coding_params.m_enc.m_fixed_quality) {
+		uint32_t all_packets_len = 0;
+
 		// rate control by rate/distortion or fixed quality
 		switch (m_cp->m_coding_params.m_enc.rateControlAlgorithm) {
 		case 0:
@@ -1540,30 +1537,27 @@ bool TileProcessor::pre_write_tile() {
 
 bool TileProcessor::copy_image_data_to_tile(uint8_t *p_src,
 		uint64_t src_length) {
-	uint64_t i, j;
-	uint32_t size_comp;
-	uint64_t nb_elem;
 	uint64_t data_size = get_uncompressed_tile_size(false);
 
 	if (!p_src || (data_size != src_length))
 		return false;
-	for (i = 0; i < image->numcomps; ++i) {
+	for (uint32_t i = 0; i < image->numcomps; ++i) {
 		auto tilec = tile->comps + i;
 		auto img_comp = image->comps + i;
 
-		size_comp = (img_comp->prec + 7) >> 3;
-		nb_elem = tilec->area();
+		uint32_t size_comp = (img_comp->prec + 7) >> 3;
+		uint64_t nb_elem = tilec->area();
 		auto dest_ptr = tilec->buf->get_ptr(0,0,0,0);
 		switch (size_comp) {
 		case 1: {
 			if (img_comp->sgnd) {
 				auto src_ptr = (int8_t*) p_src;
-				for (j = 0; j < nb_elem; ++j)
+				for (uint64_t j = 0; j < nb_elem; ++j)
 					*dest_ptr++ = *src_ptr++;
 				p_src = (uint8_t*) src_ptr;
 			} else {
 				auto src_ptr = (uint8_t*) p_src;
-				for (j = 0; j < nb_elem; ++j)
+				for (uint64_t j = 0; j < nb_elem; ++j)
 					*dest_ptr++ = *src_ptr++;
 				p_src = src_ptr;
 			}
@@ -1572,12 +1566,12 @@ bool TileProcessor::copy_image_data_to_tile(uint8_t *p_src,
 		case 2: {
 			if (img_comp->sgnd) {
 				auto src_ptr = (int16_t*) p_src;
-				for (j = 0; j < nb_elem; ++j)
+				for (uint64_t j = 0; j < nb_elem; ++j)
 					*dest_ptr++ = *src_ptr++;
 				p_src = (uint8_t*) src_ptr;
 			} else {
 				auto src_ptr = (uint16_t*) p_src;
-				for (j = 0; j < nb_elem; ++j)
+				for (uint64_t j = 0; j < nb_elem; ++j)
 					*dest_ptr++ = *src_ptr++;
 				p_src = (uint8_t*) src_ptr;
 			}
@@ -1738,6 +1732,9 @@ grk_cblk::grk_cblk(): x0(0), y0(0), x1(0), y1(0),
 grk_cblk::grk_cblk(const grk_cblk &rhs): x0(rhs.x0), y0(rhs.y0), x1(rhs.x1), y1(rhs.y1),
 		compressedData(rhs.compressedData), compressedDataSize(rhs.compressedDataSize), owns_data(rhs.owns_data),
 		numbps(rhs.numbps), numlenbits(rhs.numlenbits), numPassesInPacket(rhs.numPassesInPacket)
+#ifdef DEBUG_LOSSLESS_T2
+	,included(0)
+#endif
 {
 }
 grk_cblk& grk_cblk::operator=(const grk_cblk& rhs){

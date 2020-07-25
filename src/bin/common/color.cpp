@@ -824,7 +824,7 @@ bool color_cielab_to_rgb(grk_image *image) {
 	minb = -(r_b * o_b) / (pow(2, prec_b) - 1);
 	maxb = minb + r_b;
 
-	for (uint64_t i = 0; i < area; ++i) {
+	for (i = 0; i < area; ++i) {
 		cmsCIELab Lab;
 		Lab.L = minL + (double) (*L) * (maxL - minL) / (pow(2, prec_L) - 1);
 		++L;
@@ -840,7 +840,7 @@ bool color_cielab_to_rgb(grk_image *image) {
 		*blue++ = RGB[2];
 	}
 	cmsDeleteTransform(transform);
-	for (size_t i = 0; i < 3; ++i){
+	for (i = 0; i < 3; ++i){
 		auto comp = image->comps + i;
 		grk_image_single_component_data_free(comp);
 		comp->data = dst[i];

@@ -903,26 +903,23 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 
 		if (rawFormatArg.isSet()) {
 			bool wrong = false;
-			char *substr1;
-			char *substr2;
-			char *sep;
-			char signo;
 			int width, height, bitdepth, ncomp;
 			uint32_t len;
 			bool raw_signed = false;
-			substr2 = (char*) strchr(rawFormatArg.getValue().c_str(), '@');
+			char *substr2 = (char*) strchr(rawFormatArg.getValue().c_str(), '@');
 			if (substr2 == nullptr) {
 				len = (uint32_t) rawFormatArg.getValue().length();
 			} else {
 				len = (uint32_t) (substr2 - rawFormatArg.getValue().c_str());
 				substr2++; /* skip '@' character */
 			}
-			substr1 = (char*) malloc((len + 1) * sizeof(char));
+			char *substr1 = (char*) malloc((len + 1) * sizeof(char));
 			if (substr1 == nullptr) {
 				return 1;
 			}
 			memcpy(substr1, rawFormatArg.getValue().c_str(), len);
 			substr1[len] = '\0';
+			char signo;
 			if (sscanf(substr1, "%d,%d,%d,%d,%c", &width, &height, &ncomp,
 					&bitdepth, &signo) == 5) {
 				if (signo == 's') {
@@ -958,7 +955,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 						raw_cp->comps[compno].dy = (uint32_t) lastdy;
 					} else {
 						int dx, dy;
-						sep = strchr(substr2, ':');
+						char *sep = strchr(substr2, ':');
 						if (sep == nullptr) {
 							if (sscanf(substr2, "%dx%d", &dx, &dy) == 2) {
 								lastdx = dx;
@@ -1005,10 +1002,9 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 			int res_spec = 0;
 
 			char *s = (char*) precinctDimArg.getValue().c_str();
-			int ret;
 			do {
 				sep = 0;
-				ret = sscanf(s, "[%d,%d]%c", &parameters->prcw_init[res_spec],
+				int ret = sscanf(s, "[%d,%d]%c", &parameters->prcw_init[res_spec],
 						&parameters->prch_init[res_spec], &sep);
 				if (!(ret == 2 && sep == 0) && !(ret == 3 && sep == ',')) {
 					spdlog::error(
@@ -1752,7 +1748,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams);
 
 // returns 0 if failed, 1 if succeeded, 
 // and 2 if file is not suitable for compression
-static int compress(std::string image_filename, CompressInitParams *initParams,
+static int compress(const std::string &image_filename, CompressInitParams *initParams,
 		uint8_t tcp_mct, uint32_t rateControlAlgorithm) {
 	//clear for next file compress
 	initParams->parameters.write_capture_resolution_from_file = false;
@@ -1810,8 +1806,7 @@ int main(int argc, char **argv) {
 		auto start = std::chrono::high_resolution_clock::now();
 		for (uint32_t i = 0; i < initParams.parameters.repeats; ++i) {
 			if (!initParams.img_fol.set_imgdir) {
-				auto rc = compress("", &initParams, tcp_mct, rateControlAlgorithm);
-				if (rc == 0) {
+				if (compress("", &initParams, tcp_mct, rateControlAlgorithm) == 0) {
 					success = 1;
 					goto cleanup;
 				}
@@ -1829,10 +1824,10 @@ int main(int argc, char **argv) {
 					if (strcmp(".", content->d_name) == 0
 							|| strcmp("..", content->d_name) == 0)
 						continue;
-					auto rc = compress(content->d_name, &initParams, tcp_mct,
-							rateControlAlgorithm);
-					if (rc == 1)
+					if (compress(content->d_name, &initParams,
+								tcp_mct,rateControlAlgorithm) == 1){
 						num_compressed_files++;
+					}
 				}
 				closedir(dir);
 			}
@@ -2329,8 +2324,10 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 		/* Read directory if necessary */
 		if (initParams->img_fol.set_imgdir) {
 			num_images = get_num_images(initParams->img_fol.imgdirpath);
-			if (!num_images)
+			if (num_images == 0) {
+				spdlog::error("Folder is empty");
 				goto cleanup;
+			}
 			dirptr = (grk_dircnt*) malloc(sizeof(grk_dircnt));
 			if (!dirptr) {
 				success = 1;
@@ -2352,10 +2349,6 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 						+ i * GRK_PATH_LEN;
 			}
 			if (load_images(dirptr, initParams->img_fol.imgdirpath) == 1) {
-				goto cleanup;
-			}
-			if (num_images == 0) {
-				spdlog::error("Folder is empty");
 				goto cleanup;
 			}
 		} else {

@@ -201,7 +201,7 @@ static int load_images(dircnt *dirptr, char *imgdirpath) {
 static char get_next_file(size_t imageno, dircnt *dirptr, img_fol *img_fol,
 		grk_dparameters *parameters) {
 	char image_filename[GRK_PATH_LEN], infilename[3 * GRK_PATH_LEN],
-			outfilename[3 * GRK_PATH_LEN], temp_ofname[GRK_PATH_LEN];
+			temp_ofname[GRK_PATH_LEN];
 	char *temp_p, temp1[GRK_PATH_LEN] = "";
 
 	strcpy(image_filename, dirptr->filename[imageno]);
@@ -221,6 +221,7 @@ static char get_next_file(size_t imageno, dircnt *dirptr, img_fol *img_fol,
 		sprintf(temp1, ".%s", temp_p);
 	}
 	if (img_fol->set_out_format) {
+		char outfilename[3 * GRK_PATH_LEN];
 		sprintf(outfilename, "%s/%s.%s", img_fol->imgdirpath, temp_ofname,
 				img_fol->out_format);
 		if (grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile),

@@ -460,8 +460,8 @@ static grk_image* jpegtoimage(const char *filename,
 	 */
 
 	// read ICC profile
-	if (read_icc_profile(&cinfo, &icc_data_ptr, &icc_data_len)) {
-
+	if (!read_icc_profile(&cinfo, &icc_data_ptr, &icc_data_len)) {
+		spdlog::warn("jpegtoimage: Failed to read ICC profile");
 	}
 
 	/* Step 4: set parameters for decompression */

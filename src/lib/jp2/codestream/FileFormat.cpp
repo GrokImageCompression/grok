@@ -2089,7 +2089,7 @@ bool jp2_init_compress(FileFormat *fileFormat, grk_cparameters *parameters,
 	fileFormat->brand = JP2_JP2; /* BR */
 	fileFormat->minversion = 0; /* MinV */
 	fileFormat->numcl = 1;
-	fileFormat->cl = (uint32_t*) grk_malloc(fileFormat->numcl * sizeof(uint32_t));
+	fileFormat->cl = (uint32_t*) grk_malloc(sizeof(uint32_t));
 	if (!fileFormat->cl) {
 		GROK_ERROR("Not enough memory when set up the JP2 encoder");
 		return false;
@@ -2102,7 +2102,6 @@ bool jp2_init_compress(FileFormat *fileFormat, grk_cparameters *parameters,
 			fileFormat->numcomps * sizeof(grk_jp2_comps));
 	if (!fileFormat->comps) {
 		GROK_ERROR("Not enough memory when set up the JP2 encoder");
-		/* Memory of fileFormat->cl will be freed by jp2_destroy */
 		return false;
 	}
 
@@ -2246,13 +2245,13 @@ bool jp2_init_compress(FileFormat *fileFormat, grk_cparameters *parameters,
 	fileFormat->precedence = 0; /* PRECEDENCE */
 	fileFormat->approx = 0; /* APPROX */
 
+	fileFormat->has_capture_resolution = parameters->write_capture_resolution ||
+											parameters->write_capture_resolution_from_file;
 	if (parameters->write_capture_resolution) {
-		fileFormat->has_capture_resolution = true;
 		for (i = 0; i < 2; ++i) {
 			fileFormat->capture_resolution[i] = parameters->capture_resolution[i];
 		}
 	} else if (parameters->write_capture_resolution_from_file) {
-		fileFormat->has_capture_resolution = true;
 		for (i = 0; i < 2; ++i) {
 			fileFormat->capture_resolution[i] =
 					parameters->capture_resolution_from_file[i];
@@ -2260,29 +2259,21 @@ bool jp2_init_compress(FileFormat *fileFormat, grk_cparameters *parameters,
 	}
 	if (parameters->write_display_resolution) {
 		fileFormat->has_display_resolution = true;
-		double resX = parameters->display_resolution[0];
-		double resY = parameters->display_resolution[1];
+		fileFormat->display_resolution[0] = parameters->display_resolution[0];
+		fileFormat->display_resolution[1] = parameters->display_resolution[1];
 		//if display resolution equals (0,0), then use capture resolution
 		//if available
-		if (resX == 0 && resY == 0) {
+		if (parameters->display_resolution[0] == 0 &&
+				parameters->display_resolution[1] == 0) {
 			if (fileFormat->has_capture_resolution) {
-				resX = parameters->capture_resolution[0];
-				resY = parameters->capture_resolution[1];
+				fileFormat->display_resolution[0] = parameters->capture_resolution[0];
+				fileFormat->display_resolution[1] = parameters->capture_resolution[1];
 			} else {
 				fileFormat->has_display_resolution = false;
 			}
 		}
-		if (fileFormat->has_display_resolution) {
-			fileFormat->display_resolution[0] = resX;
-			fileFormat->display_resolution[1] = resY;
-		}
 	}
 
-	if (parameters->write_display_resolution) {
-		fileFormat->has_display_resolution = true;
-		for (i = 0; i < 2; ++i)
-			fileFormat->display_resolution[i] = parameters->display_resolution[i];
-	}
 	return true;
 }
 
@@ -2729,7 +2720,7 @@ static bool jp2_skip_jp2c(FileFormat *fileFormat, BufferedStream *stream) {
  */
 static bool jp2_read_jp2h(FileFormat *fileFormat, uint8_t *p_header_data,
 		uint32_t hdr_size) {
-	uint32_t box_size = 0, current_data_size = 0;
+	uint32_t box_size = 0;
 	grk_jp2_box box;
 	bool has_ihdr = 0;
 
@@ -2754,7 +2745,7 @@ static bool jp2_read_jp2h(FileFormat *fileFormat, uint8_t *p_header_data,
 		}
 
 		auto current_handler = jp2_img_find_handler(box.type);
-		current_data_size = (uint32_t) (box.length - box_size);
+		uint32_t current_data_size = (uint32_t) (box.length - box_size);
 		p_header_data += box_size;
 
 		if (current_handler != nullptr) {

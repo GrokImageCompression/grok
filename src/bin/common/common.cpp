@@ -177,24 +177,22 @@ bool grok_set_binary_mode(FILE *file) {
 }
 
 int get_file_format(const char *filename) {
-	unsigned int i;
-	static const char *extension[] = { "pgx", "pam", "pnm", "pgm", "ppm", "pbm",
-			"bmp", "tif", "tiff", "jpg", "jpeg", "raw", "rawl", "tga", "png",
-			"j2k", "jp2", "j2c", "jpc" };
-	static const GRK_SUPPORTED_FILE_FMT format[] = { GRK_PGX_FMT, GRK_PXM_FMT,
-			GRK_PXM_FMT, GRK_PXM_FMT, GRK_PXM_FMT, GRK_PXM_FMT, GRK_BMP_FMT,
-			GRK_TIF_FMT, GRK_TIF_FMT, GRK_JPG_FMT, GRK_JPG_FMT, GRK_RAW_FMT,
-			GRK_RAWL_FMT, GRK_TGA_FMT, GRK_PNG_FMT, GRK_J2K_FMT, GRK_JP2_FMT,
-			GRK_J2K_FMT, GRK_J2K_FMT };
 	const char *ext = strrchr(filename, '.');
 	if (ext == nullptr)
 		return -1;
 	ext++;
 	if (*ext) {
-		for (i = 0; i < sizeof(format) / sizeof(*format); i++) {
-			if (strcasecmp(ext, extension[i]) == 0) {
+		static const char *extension[] = { "pgx", "pam", "pnm", "pgm", "ppm", "pbm",
+				"bmp", "tif", "tiff", "jpg", "jpeg", "raw", "rawl", "tga", "png",
+				"j2k", "jp2", "j2c", "jpc" };
+		static const GRK_SUPPORTED_FILE_FMT format[] = { GRK_PGX_FMT, GRK_PXM_FMT,
+				GRK_PXM_FMT, GRK_PXM_FMT, GRK_PXM_FMT, GRK_PXM_FMT, GRK_BMP_FMT,
+				GRK_TIF_FMT, GRK_TIF_FMT, GRK_JPG_FMT, GRK_JPG_FMT, GRK_RAW_FMT,
+				GRK_RAWL_FMT, GRK_TGA_FMT, GRK_PNG_FMT, GRK_J2K_FMT, GRK_JP2_FMT,
+				GRK_J2K_FMT, GRK_J2K_FMT };
+		for (uint32_t i = 0; i < sizeof(format) / sizeof(*format); i++) {
+			if (strcasecmp(ext, extension[i]) == 0)
 				return format[i];
-			}
 		}
 	}
 
@@ -205,7 +203,7 @@ int get_file_format(const char *filename) {
 #define J2K_CODESTREAM_MAGIC "\xff\x4f\xff\x51"
 bool jpeg2000_file_format(const char *fname, GRK_SUPPORTED_FILE_FMT *fmt) {
 	FILE *reader;
-	const char *s, *magic_s;
+	const char *magic_s;
 	GRK_SUPPORTED_FILE_FMT ext_format = GRK_UNK_FMT, magic_format = GRK_UNK_FMT;
 	uint8_t buf[12];
 	size_t l_nb_read;
@@ -247,7 +245,7 @@ bool jpeg2000_file_format(const char *fname, GRK_SUPPORTED_FILE_FMT *fmt) {
 	}
 
 	if (strlen(fname) >= 4){
-		s = fname + strlen(fname) - 4;
+		const char *s = fname + strlen(fname) - 4;
 		if (s[0] == '.')
 			spdlog::warn("The extension {} of this file is incorrect. "
 					"Should be {}",s, magic_s);
