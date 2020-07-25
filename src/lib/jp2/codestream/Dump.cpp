@@ -555,15 +555,15 @@ void j2k_destroy_cstr_index(grk_codestream_index *p_cstr_ind) {
 
 void jp2_dump(FileFormat *fileFormat, int32_t flag, FILE *out_stream) {
 	assert(fileFormat != nullptr);
-	j2k_dump(fileFormat->j2k, flag, out_stream);
+	j2k_dump(fileFormat->codeStream, flag, out_stream);
 }
 
 grk_codestream_index* jp2_get_cstr_index(FileFormat *fileFormat) {
-	return j2k_get_cstr_index(fileFormat->j2k);
+	return j2k_get_cstr_index(fileFormat->codeStream);
 }
 
 grk_codestream_info_v2* jp2_get_cstr_info(FileFormat *fileFormat) {
-	return j2k_get_cstr_info(fileFormat->j2k);
+	return j2k_get_cstr_info(fileFormat->codeStream);
 }
 
 }

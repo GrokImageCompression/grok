@@ -192,7 +192,7 @@ int main(int argc, char** argv)
 	if (threadScalingArg.isSet())
 		begin = 1;
 
-	CodeStream codeStream;
+	CodeStream codeStream(!forwardArg.isSet());
 	codeStream.m_cp = params;
 	codeStream.m_input_image = &image;
 

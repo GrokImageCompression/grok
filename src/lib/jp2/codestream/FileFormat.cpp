@@ -1761,7 +1761,7 @@ bool jp2_decompress(FileFormat *fileFormat, grk_plugin_tile *tile, BufferedStrea
 		return false;
 
 	/* J2K decoding */
-	if (!j2k_decompress(fileFormat->j2k, tile, stream, p_image)) {
+	if (!j2k_decompress(fileFormat->codeStream, tile, stream, p_image)) {
 		GROK_ERROR("Failed to decompress the code stream in the JP2 file");
 		return false;
 	}
@@ -2054,7 +2054,7 @@ static bool jp2_write_jp(FileFormat *fileFormat, BufferedStream *stream) {
 void jp2_init_decompress(void *jp2_void, grk_dparameters *parameters) {
 	auto fileFormat = (FileFormat*) jp2_void;
 	/* set up the J2K codec */
-	j2k_init_decompressor(fileFormat->j2k, parameters);
+	j2k_init_decompressor(fileFormat->codeStream, parameters);
 
 	/* further JP2 initializations go here */
 	fileFormat->color.jp2_has_colour_specification_box = 0;
@@ -2078,7 +2078,7 @@ bool jp2_init_compress(FileFormat *fileFormat, grk_cparameters *parameters,
 
 	/* set up the J2K codec */
 	/* ------------------- */
-	if (j2k_init_compress(fileFormat->j2k, parameters, image) == false)
+	if (j2k_init_compress(fileFormat->codeStream, parameters, image) == false)
 		return false;
 
 	/* set up the JP2 codec */
@@ -2287,7 +2287,7 @@ bool jp2_init_compress(FileFormat *fileFormat, grk_cparameters *parameters,
 }
 
 bool jp2_compress(FileFormat *fileFormat, grk_plugin_tile *tile, BufferedStream *stream) {
-	return j2k_compress(fileFormat->j2k, tile, stream);
+	return j2k_compress(fileFormat->codeStream, tile, stream);
 }
 
 bool jp2_end_decompress(FileFormat *fileFormat, BufferedStream *stream) {
@@ -2303,7 +2303,7 @@ bool jp2_end_decompress(FileFormat *fileFormat, BufferedStream *stream) {
 	if (!jp2_exec(fileFormat, fileFormat->m_procedure_list, stream))
 		return false;
 
-	return j2k_end_decompress(fileFormat->j2k, stream);
+	return j2k_end_decompress(fileFormat->codeStream, stream);
 }
 
 bool jp2_end_compress(FileFormat *fileFormat, BufferedStream *stream) {
@@ -2314,7 +2314,7 @@ bool jp2_end_compress(FileFormat *fileFormat, BufferedStream *stream) {
 	/* customization of the end encoding */
 	if (!jp2_init_end_header_writing(fileFormat))
 		return false;
-	if (!j2k_end_compress(fileFormat->j2k, stream))
+	if (!j2k_end_compress(fileFormat->codeStream, stream))
 		return false;
 
 	/* write header */
@@ -2357,7 +2357,7 @@ static bool jp2_default_validation(FileFormat *fileFormat, BufferedStream *strea
 
 	/* POINTER validation */
 	/* make sure a j2k codec is present */
-	is_valid &= (fileFormat->j2k != nullptr);
+	is_valid &= (fileFormat->codeStream != nullptr);
 
 	/* make sure a procedure list is present */
 	is_valid &= (fileFormat->m_procedure_list != nullptr);
@@ -2561,7 +2561,7 @@ bool jp2_start_compress(FileFormat *fileFormat, BufferedStream *stream) {
 		return false;
 
 	// estimate if codec stream may be larger than 2^32 bytes
-	auto p_image = fileFormat->j2k->m_input_image;
+	auto p_image = fileFormat->codeStream->m_input_image;
 	uint64_t image_size = 0;
 	for (auto i = 0U; i < p_image->numcomps; ++i) {
 		auto comp = p_image->comps + i;
@@ -2574,7 +2574,7 @@ bool jp2_start_compress(FileFormat *fileFormat, BufferedStream *stream) {
 	if (!jp2_exec(fileFormat, fileFormat->m_procedure_list, stream))
 		return false;
 
-	return j2k_start_compress(fileFormat->j2k, stream);
+	return j2k_start_compress(fileFormat->codeStream, stream);
 }
 
 static const grk_jp2_header_handler* jp2_find_handler(uint32_t id) {
@@ -2878,7 +2878,7 @@ bool jp2_read_header(BufferedStream *stream, FileFormat *fileFormat,
 				header_info->display_resolution[i] = fileFormat->display_resolution[i];
 		}
 	}
-	bool rc = j2k_read_header(stream, fileFormat->j2k, header_info, p_image);
+	bool rc = j2k_read_header(stream, fileFormat->codeStream, header_info, p_image);
 	if (!rc)
 		return false;
 
@@ -2932,8 +2932,8 @@ static bool jp2_init_header_reading(FileFormat *fileFormat) {
 
 bool jp2_read_tile_header(FileFormat *fileFormat, uint16_t *tile_index,
 		bool *can_decode_tile_data, BufferedStream *stream) {
-	auto tileProcessor = new TileProcessor(fileFormat->j2k);
-	bool rc =  j2k_read_tile_header(fileFormat->j2k, tileProcessor, can_decode_tile_data, stream);
+	auto tileProcessor = new TileProcessor(fileFormat->codeStream);
+	bool rc =  j2k_read_tile_header(fileFormat->codeStream, tileProcessor, can_decode_tile_data, stream);
 	*tile_index = tileProcessor->m_current_tile_index;
 	return rc;
 }
@@ -2941,117 +2941,135 @@ bool jp2_read_tile_header(FileFormat *fileFormat, uint16_t *tile_index,
 bool jp2_compress_tile(FileFormat *fileFormat, TileProcessor *tileProcessor,
 		uint16_t tile_index, uint8_t *p_data,
 		uint64_t uncompressed_data_size, BufferedStream *stream)	{
-	return j2k_compress_tile(fileFormat->j2k, tileProcessor,
+	return j2k_compress_tile(fileFormat->codeStream, tileProcessor,
 								tile_index, p_data, uncompressed_data_size, stream);
 }
 
 void jp2_destroy(FileFormat *fileFormat) {
-	if (fileFormat) {
-		delete fileFormat->j2k;
-		fileFormat->j2k = nullptr;
-		grk_free(fileFormat->comps);
-		grk_free(fileFormat->cl);
-		grk_buffer_delete(fileFormat->color.icc_profile_buf);
-		if (fileFormat->color.jp2_cdef) {
-			grk_free(fileFormat->color.jp2_cdef->info);
-			grk_free(fileFormat->color.jp2_cdef);
-		}
-		jp2_free_pclr(&fileFormat->color);
-		delete fileFormat->m_validation_list;
-		delete fileFormat->m_procedure_list;
-		fileFormat->xml.dealloc();
-		for (uint32_t i = 0; i < fileFormat->numUuids; ++i)
-			(fileFormat->uuids + i)->dealloc();
-		fileFormat->numUuids = 0;
-		grk_free(fileFormat);
-	}
+	delete fileFormat;
 }
 
 bool jp2_set_decompress_area(FileFormat *fileFormat, grk_image *p_image, uint32_t start_x,
 		uint32_t start_y, uint32_t end_x, uint32_t end_y) {
-	return j2k_set_decompress_area(fileFormat->j2k, p_image, start_x, start_y, end_x,
+	return j2k_set_decompress_area(fileFormat->codeStream, p_image, start_x, start_y, end_x,
 			end_y);
 }
 
-bool jp2_decompress_tile(FileFormat *fileFormat, BufferedStream *stream, grk_image *p_image,
+bool jp2_decompress_tile(FileFormat *fileFormat,
+							BufferedStream *stream, grk_image *p_image, uint16_t tile_index){
+	return (fileFormat ? fileFormat->decompress_tile(stream,p_image,tile_index) : false);
+}
+
+FileFormat::FileFormat(bool isDecoder) : codeStream(new CodeStream(isDecoder)),
+										m_validation_list(new std::vector<jp2_procedure>()),
+										m_procedure_list(new std::vector<jp2_procedure>()),
+										w(0),
+										h(0),
+										numcomps(0),
+										bpc(0),
+										C(0),
+										UnkC(0),
+										IPR(0),
+										meth(0),
+										approx(0),
+										enumcs(GRK_ENUM_CLRSPC_UNKNOWN),
+										precedence(0),
+										brand(0),
+										minversion(0),
+										numcl(0),
+										cl(nullptr),
+										comps(nullptr),
+										j2k_codestream_offset(0),
+										needs_xl_jp2c_box_length(false),
+										jp2_state(0),
+										jp2_img_state(0),
+										has_capture_resolution(false),
+										has_display_resolution(false),
+										numUuids(0)
+{
+	for (uint32_t i = 0; i < 2; ++i) {
+		capture_resolution[i] = 0;
+		display_resolution[i] = 0;
+	}
+
+	/* Color structure */
+	color.icc_profile_buf = nullptr;
+	color.icc_profile_len = 0;
+	color.jp2_cdef = nullptr;
+	color.jp2_pclr = nullptr;
+	color.jp2_has_colour_specification_box = 0;
+
+}
+
+FileFormat::~FileFormat() {
+	delete codeStream;
+	grk_free(comps);
+	grk_free(cl);
+	grk_buffer_delete(color.icc_profile_buf);
+	if (color.jp2_cdef) {
+		grk_free(color.jp2_cdef->info);
+		grk_free(color.jp2_cdef);
+	}
+	jp2_free_pclr(&color);
+	delete m_validation_list;
+	delete m_procedure_list;
+	xml.dealloc();
+	for (uint32_t i = 0; i < numUuids; ++i)
+		(uuids + i)->dealloc();
+}
+
+bool FileFormat::decompress_tile(BufferedStream *stream, grk_image *p_image,
 		uint16_t tile_index) {
 	if (!p_image)
 		return false;
 
-	if (!j2k_decompress_tile(fileFormat->j2k, stream, p_image, tile_index)) {
+	if (!j2k_decompress_tile(codeStream, stream, p_image, tile_index)) {
 		GROK_ERROR("Failed to decompress the code stream in the JP2 file");
 		return false;
 	}
 
-	if (!jp2_check_color(p_image, &(fileFormat->color)))
+	if (!jp2_check_color(p_image, &(color)))
 		return false;
 
 	/* Set Image Color Space */
-	if (fileFormat->enumcs == GRK_ENUM_CLRSPC_CMYK)
+	if (enumcs == GRK_ENUM_CLRSPC_CMYK)
 		p_image->color_space = GRK_CLRSPC_CMYK;
-	else if (fileFormat->enumcs == GRK_ENUM_CLRSPC_SRGB)
+	else if (enumcs == GRK_ENUM_CLRSPC_SRGB)
 		p_image->color_space = GRK_CLRSPC_SRGB;
-	else if (fileFormat->enumcs == GRK_ENUM_CLRSPC_GRAY)
+	else if (enumcs == GRK_ENUM_CLRSPC_GRAY)
 		p_image->color_space = GRK_CLRSPC_GRAY;
-	else if (fileFormat->enumcs == GRK_ENUM_CLRSPC_SYCC)
+	else if (enumcs == GRK_ENUM_CLRSPC_SYCC)
 		p_image->color_space = GRK_CLRSPC_SYCC;
-	else if (fileFormat->enumcs == GRK_ENUM_CLRSPC_EYCC)
+	else if (enumcs == GRK_ENUM_CLRSPC_EYCC)
 		p_image->color_space = GRK_CLRSPC_EYCC;
 	else
 		p_image->color_space = GRK_CLRSPC_UNKNOWN;
 
-	if (fileFormat->color.jp2_pclr) {
+	if (color.jp2_pclr) {
 		/* Part 1, I.5.3.4: Either both or none : */
-		if (!fileFormat->color.jp2_pclr->cmap)
-			jp2_free_pclr(&(fileFormat->color));
+		if (!color.jp2_pclr->cmap)
+			jp2_free_pclr(&(color));
 		else {
-			if (!jp2_apply_pclr(p_image, &(fileFormat->color)))
+			if (!jp2_apply_pclr(p_image, &(color)))
 				return false;
 		}
 	}
 
 	/* Apply channel definitions if needed */
-	if (fileFormat->color.jp2_cdef)
-		jp2_apply_cdef(p_image, &(fileFormat->color));
+	if (color.jp2_cdef)
+		jp2_apply_cdef(p_image, &(color));
 
-	if (fileFormat->color.icc_profile_buf) {
-		p_image->icc_profile_buf = fileFormat->color.icc_profile_buf;
-		p_image->icc_profile_len = fileFormat->color.icc_profile_len;
-		fileFormat->color.icc_profile_buf = nullptr;
-		fileFormat->color.icc_profile_len = 0;
+	if (color.icc_profile_buf) {
+		p_image->icc_profile_buf = color.icc_profile_buf;
+		p_image->icc_profile_len = color.icc_profile_len;
+		color.icc_profile_buf = nullptr;
+		color.icc_profile_len = 0;
 		p_image->color_space = GRK_CLRSPC_ICC;
 	}
 
 	return true;
 }
 
-/* ----------------------------------------------------------------------- */
-/* JP2 encoder interface                                             */
-/* ----------------------------------------------------------------------- */
 
-FileFormat* jp2_create(bool p_is_decoder) {
-	FileFormat *fileFormat = (FileFormat*) grk_calloc(1, sizeof(FileFormat));
-	if (fileFormat) {
-		fileFormat->j2k = p_is_decoder ?
-							j2k_create_decompress() :
-									j2k_create_compress();
-		if (fileFormat->j2k == nullptr) {
-			jp2_destroy(fileFormat);
-			return nullptr;
-		}
-
-		/* Color structure */
-		fileFormat->color.icc_profile_buf = nullptr;
-		fileFormat->color.icc_profile_len = 0;
-		fileFormat->color.jp2_cdef = nullptr;
-		fileFormat->color.jp2_pclr = nullptr;
-		fileFormat->color.jp2_has_colour_specification_box = 0;
-
-		fileFormat->m_validation_list = new std::vector<jp2_procedure>();
-		fileFormat->m_procedure_list = new std::vector<jp2_procedure>();
-	}
-
-	return fileFormat;
-}
 
 }

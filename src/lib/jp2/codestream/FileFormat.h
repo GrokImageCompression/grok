@@ -146,6 +146,7 @@ struct grk_jp2_buffer {
 };
 
 struct grk_jp2_uuid: public grk_jp2_buffer {
+	grk_jp2_uuid() : grk_jp2_buffer() {}
 	grk_jp2_uuid(const uint8_t myuuid[16], uint8_t *buf, size_t size, bool owns) :
 			grk_jp2_buffer(buf, size, owns) {
 		for (int i = 0; i < 16; ++i)
@@ -161,8 +162,16 @@ typedef bool (*jp2_procedure)(FileFormat *fileFormat, BufferedStream*);
  JPEG 2000 file format reader/writer
  */
 struct FileFormat {
+	FileFormat(bool isDecoder);
+	~FileFormat();
+
+	bool decompress_tile(BufferedStream *stream, grk_image *p_image,
+			uint16_t tile_index);
+
+
+
 	/** handle to the J2K codec  */
-	CodeStream *j2k;
+	CodeStream *codeStream;
 	/** list of validation procedures */
 	std::vector<jp2_procedure> *m_validation_list;
 	/** list of execution procedures */
@@ -232,13 +241,6 @@ struct grk_jp2_img_header_writer_handler {
 /*@{*/
 /* ----------------------------------------------------------------------- */
 
-
-/**
- * Creates a JPEG 2000 file decompressor.
- *
- * @return  an empty JPEG 2000 file codec.
- */
-FileFormat* jp2_create(bool p_is_decoder);
 
 /**
  Destroy a JP2 decompressor handle

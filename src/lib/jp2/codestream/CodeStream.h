@@ -168,7 +168,7 @@ struct  grk_dec_memory_marker_handler  {
 
 struct CodeStream {
 
-	CodeStream();
+	CodeStream(bool decode);
 	~CodeStream();
 
 	bool isDecodingTilePartHeader() ;
@@ -259,13 +259,6 @@ public:
  */
 void j2k_init_decompressor(void *j2k,  grk_dparameters  *parameters);
 
-/**
- * Creates a J2K compression structure
- *
- * @return a handle to a J2K compressor if successful, returns nullptr otherwise
- */
-CodeStream* j2k_create_compress(void);
-
 bool j2k_init_compress(CodeStream *codeStream,  grk_cparameters  *parameters,
 		grk_image *image);
 
@@ -332,13 +325,6 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
  */
 bool j2k_set_decompress_area(CodeStream *codeStream, grk_image *image, uint32_t start_x,
 		uint32_t start_y, uint32_t end_x, uint32_t end_y);
-
-/**
- * Creates a J2K decompression structure.
- *
- * @return a handle to a J2K decompressor if successful, nullptr otherwise.
- */
-CodeStream* j2k_create_decompress(void);
 
 /**
  * Decode an image from a JPEG 2000 code stream

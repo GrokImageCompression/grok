@@ -1109,30 +1109,6 @@ bool j2k_set_decompress_area(CodeStream *codeStream, grk_image *output_image,
 											end_y);
 }
 
-CodeStream* j2k_create_decompress(void) {
-	CodeStream *j2k = new CodeStream();
-
-#ifdef GRK_DISABLE_TPSOT_FIX
-    j2k->m_coding_params.m_decoder.m_nb_tile_parts_correction_checked = 1;
-#endif
-
-	j2k->m_decoder.m_default_tcp = new TileCodingParams();
-	if (!j2k->m_decoder.m_default_tcp) {
-		j2k_destroy(j2k);
-		return nullptr;
-	}
-
-	j2k->m_decoder.m_last_sot_read_pos = 0;
-
-	/* code stream index creation */
-	j2k->cstr_index = j2k_create_cstr_index();
-	if (!j2k->cstr_index) {
-		j2k_destroy(j2k);
-		return nullptr;
-	}
-	return j2k;
-}
-
 /**
  *
  */
@@ -1472,11 +1448,6 @@ bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream, grk_ima
 	transfer_image_data(codeStream->m_output_image, p_image);
 
 	return true;
-}
-
-CodeStream* j2k_create_compress(void) {
-	CodeStream *j2k = new CodeStream();
-	return j2k;
 }
 
 bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
@@ -2891,7 +2862,7 @@ static bool j2k_calculate_tp(CodingParams *cp, uint16_t *p_nb_tile_parts,
 	return true;
 }
 
-CodeStream::CodeStream() : m_input_image(nullptr),
+CodeStream::CodeStream(bool decode) : m_input_image(nullptr),
 							m_output_image(nullptr),
 							cstr_index(nullptr),
 							m_tileProcessor(nullptr),
@@ -2904,6 +2875,21 @@ CodeStream::CodeStream() : m_input_image(nullptr),
 							 m_nb_tile_parts_correction(false)
 {
     memset(&m_cp, 0 , sizeof(CodingParams));
+    if (decode){
+#ifdef GRK_DISABLE_TPSOT_FIX
+		m_coding_params.m_decoder.m_nb_tile_parts_correction_checked = 1;
+#endif
+
+		m_decoder.m_default_tcp = new TileCodingParams();
+		m_decoder.m_last_sot_read_pos = 0;
+
+		/* code stream index creation */
+		cstr_index = j2k_create_cstr_index();
+		if (!cstr_index) {
+			delete m_decoder.m_default_tcp;
+			throw std::runtime_error("Out of memory");
+		}
+    }
 }
 CodeStream::~CodeStream(){
 	delete m_decoder.m_default_tcp;

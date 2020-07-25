@@ -278,7 +278,7 @@ const char* GRK_CALLCONV grk_version(void) {
 		codec->m_codec_data.m_decompression.decompress_tile = (bool (*)(
 				void *p_codec, BufferedStream *stream, grk_image *p_image, uint16_t tile_index)) j2k_decompress_tile;
 
-		codec->m_codec = j2k_create_decompress();
+		codec->m_codec = new CodeStream(true);
 
 		if (!codec->m_codec) {
 			grk_free(codec);
@@ -311,7 +311,7 @@ const char* GRK_CALLCONV grk_version(void) {
 
 		codec->m_codec_data.m_decompression.decompress_tile = (bool (*)(
 				void *p_codec, BufferedStream *stream, grk_image *p_image, uint16_t tile_index)) jp2_decompress_tile;
-		codec->m_codec = jp2_create(true);
+		codec->m_codec = new FileFormat(true);
 		if (!codec->m_codec) {
 			grk_free(codec);
 			return nullptr;
@@ -432,7 +432,7 @@ bool GRK_CALLCONV grk_decompress_tile( grk_codec  *p_codec,
 				(void (*)(void*)) j2k_destroy;
 		codec->m_codec_data.m_compression.init_compress =
 				(bool (*)(void*,  grk_cparameters  * , grk_image * )) j2k_init_compress;
-		codec->m_codec = j2k_create_compress();
+		codec->m_codec = new CodeStream(false);
 		if (!codec->m_codec) {
 			grk_free(codec);
 			return nullptr;
@@ -453,11 +453,7 @@ bool GRK_CALLCONV grk_decompress_tile( grk_codec  *p_codec,
 		codec->m_codec_data.m_compression.init_compress =
 				(bool (*)(void*,  grk_cparameters  * , grk_image * )) jp2_init_compress;
 
-		codec->m_codec = jp2_create(false);
-		if (!codec->m_codec) {
-			grk_free(codec);
-			return nullptr;
-		}
+		codec->m_codec = new FileFormat(false);
 		break;
 	case GRK_CODEC_UNKNOWN:
 	default:
