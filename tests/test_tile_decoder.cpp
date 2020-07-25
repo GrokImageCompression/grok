@@ -95,7 +95,7 @@ static void info_callback(const char *msg, void *client_data) {
 
 int main(int argc, char *argv[]) {
 	grk_dparameters param;
-	grk_codec *codec = nullptr;
+	grk_codec codec = nullptr;
 	grk_image *image = nullptr;
 	grk_stream *stream = nullptr;
 	uint64_t data_size = 0;

@@ -1521,7 +1521,7 @@ GRK_API bool GRK_CALLCONV grk_set_error_handler(grk_msg_callback p_callback,
  *
  * @param	codec			JPEG 2000 code stream
  */
-GRK_API void GRK_CALLCONV grk_destroy_codec(grk_codec *codec);
+GRK_API void GRK_CALLCONV grk_destroy_codec(grk_codec codec);
 
 /**
  * Create J2K/JP2 decompression structure
@@ -1531,7 +1531,7 @@ GRK_API void GRK_CALLCONV grk_destroy_codec(grk_codec *codec);
  *
  * @return a handle to a decompressor if successful, otherwise nullptr
  * */
-GRK_API grk_codec* GRK_CALLCONV grk_create_decompress(GRK_CODEC_FORMAT format,
+GRK_API grk_codec GRK_CALLCONV grk_create_decompress(GRK_CODEC_FORMAT format,
 		grk_stream *stream);
 
 /**
@@ -1539,7 +1539,7 @@ GRK_API grk_codec* GRK_CALLCONV grk_create_decompress(GRK_CODEC_FORMAT format,
  *
  * @param	codec			JPEG 2000 code stream
  */
-GRK_API bool GRK_CALLCONV grk_end_decompress(grk_codec *codec);
+GRK_API bool GRK_CALLCONV grk_end_decompress(grk_codec codec);
 
 /**
  * Initialize decompress parameters with default values
@@ -1557,7 +1557,7 @@ GRK_API void GRK_CALLCONV grk_set_default_decompress_params(
  *
  * @return true			if the decoder is correctly set
  */
-GRK_API bool GRK_CALLCONV grk_init_decompress(grk_codec *codec,
+GRK_API bool GRK_CALLCONV grk_init_decompress(grk_codec codec,
 		grk_dparameters *parameters);
 
 /**
@@ -1570,7 +1570,7 @@ GRK_API bool GRK_CALLCONV grk_init_decompress(grk_codec *codec,
  * @return true				if the main header of the code stream and the JP2 header
  * 							 is correctly read.
  */
-GRK_API bool GRK_CALLCONV grk_read_header(grk_codec *codec,
+GRK_API bool GRK_CALLCONV grk_read_header(grk_codec codec,
 		grk_header_info *header_info, grk_image **image);
 
 /**
@@ -1586,7 +1586,7 @@ GRK_API bool GRK_CALLCONV grk_read_header(grk_codec *codec,
  *
  * @return	true			if the area could be set.
  */
-GRK_API bool GRK_CALLCONV grk_set_decompress_area(grk_codec *codec,
+GRK_API bool GRK_CALLCONV grk_set_decompress_area(grk_codec codec,
 		grk_image *image, uint32_t start_x, uint32_t start_y, uint32_t end_x,
 		uint32_t end_y);
 
@@ -1598,7 +1598,7 @@ GRK_API bool GRK_CALLCONV grk_set_decompress_area(grk_codec *codec,
  * @param image 			the decoded image
  * @return 					true if success, otherwise false
  * */
-GRK_API bool GRK_CALLCONV grk_decompress(grk_codec *p_decompressor,
+GRK_API bool GRK_CALLCONV grk_decompress(grk_codec p_decompressor,
 		grk_plugin_tile *tile, grk_image *image);
 
 /**
@@ -1610,7 +1610,7 @@ GRK_API bool GRK_CALLCONV grk_decompress(grk_codec *p_decompressor,
  *
  * @return					true if success, otherwise false
  */
-GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_codec *codec,
+GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_codec codec,
 		grk_image *image, uint16_t tile_index);
 
 /* COMPRESSION FUNCTIONS*/
@@ -1622,7 +1622,7 @@ GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_codec *codec,
  * @return 				Returns a handle to a compressor if successful,
  * 						returns nullptr otherwise
  */
-GRK_API grk_codec* GRK_CALLCONV grk_create_compress(GRK_CODEC_FORMAT format,
+GRK_API grk_codec GRK_CALLCONV grk_create_compress(GRK_CODEC_FORMAT format,
 		grk_stream *stream);
 
 /**
@@ -1656,7 +1656,7 @@ GRK_API void GRK_CALLCONV grk_set_default_compress_params(
  * @param parameters 	compression parameters
  * @param image 		input image
  */
-GRK_API bool GRK_CALLCONV grk_init_compress(grk_codec *codec,
+GRK_API bool GRK_CALLCONV grk_init_compress(grk_codec codec,
 		grk_cparameters *parameters, grk_image *image);
 
 /**
@@ -1665,7 +1665,7 @@ GRK_API bool GRK_CALLCONV grk_init_compress(grk_codec *codec,
  * @param codec 		Compressor handle
  *
  */
-GRK_API bool GRK_CALLCONV grk_start_compress(grk_codec *codec);
+GRK_API bool GRK_CALLCONV grk_start_compress(grk_codec codec);
 
 /**
  * Encode an image into a JPEG 2000 code stream
@@ -1673,7 +1673,7 @@ GRK_API bool GRK_CALLCONV grk_start_compress(grk_codec *codec);
  *
  * @return 				Returns true if successful, returns false otherwise
  */
-GRK_API bool GRK_CALLCONV grk_compress(grk_codec *codec);
+GRK_API bool GRK_CALLCONV grk_compress(grk_codec codec);
 
 /**
  * Compress uncompressed data stored in a buffer.
@@ -1695,7 +1695,7 @@ GRK_API bool GRK_CALLCONV grk_compress(grk_codec *codec);
  *
  * @return	true if the data could be written.
  */
-GRK_API bool GRK_CALLCONV grk_compress_tile(grk_codec *codec,
+GRK_API bool GRK_CALLCONV grk_compress_tile(grk_codec codec,
 		uint16_t tile_index, uint8_t *data, uint64_t data_size);
 
 
@@ -1706,7 +1706,7 @@ GRK_API bool GRK_CALLCONV grk_compress_tile(grk_codec *codec,
  *
  * @return 				Returns true if successful, returns false otherwise
  */
-GRK_API bool GRK_CALLCONV grk_compress_with_plugin(grk_codec *codec,
+GRK_API bool GRK_CALLCONV grk_compress_with_plugin(grk_codec codec,
 		grk_plugin_tile *tile);
 
 
@@ -1714,7 +1714,7 @@ GRK_API bool GRK_CALLCONV grk_compress_with_plugin(grk_codec *codec,
  * End to compress the current image.
  * @param codec 		Compressor handle
  */
-GRK_API bool GRK_CALLCONV grk_end_compress(grk_codec *codec);
+GRK_API bool GRK_CALLCONV grk_end_compress(grk_codec codec);
 
 
 /**
@@ -1732,7 +1732,7 @@ GRK_API void GRK_CALLCONV grk_destroy_cstr_info(
  * @param	output_stream	output stream where dump the information get from the codec.
  *
  */
-GRK_API void GRK_CALLCONV grk_dump_codec(grk_codec *codec, uint32_t info_flag,
+GRK_API void GRK_CALLCONV grk_dump_codec(grk_codec codec, uint32_t info_flag,
 		FILE *output_stream);
 
 /**
@@ -1744,7 +1744,7 @@ GRK_API void GRK_CALLCONV grk_dump_codec(grk_codec *codec, uint32_t info_flag,
  *
  */
 GRK_API grk_codestream_info_v2* GRK_CALLCONV grk_get_cstr_info(
-		grk_codec *codec);
+		grk_codec codec);
 
 /**
  * Get the code stream index from the codec
@@ -1754,7 +1754,7 @@ GRK_API grk_codestream_info_v2* GRK_CALLCONV grk_get_cstr_info(
  * @return					pointer to a code stream index structure.
  *
  */
-GRK_API grk_codestream_index* GRK_CALLCONV grk_get_cstr_index(grk_codec *codec);
+GRK_API grk_codestream_index* GRK_CALLCONV grk_get_cstr_index(grk_codec codec);
 
 /**
  * Destroy code stream index
@@ -1909,7 +1909,7 @@ typedef struct _grk_plugin_decode_callback_info {
 	// output file format 0: PGX, 1: PxM, 2: BMP etc 
 	uint32_t cod_format;
 	grk_stream *l_stream;
-	grk_codec *l_codec;
+	grk_codec l_codec;
 	grk_header_info header_info;
 	grk_decompress_parameters *decoder_parameters;
 	grk_image *image;

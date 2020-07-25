@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
 
      grk_image_cmptparm  cmptparm;
     grk_image *image;
-     grk_codec  *  l_codec = nullptr;
+     grk_codec   l_codec = nullptr;
     bool bSuccess;
      grk_stream  *l_stream = nullptr;
     (void)argc;

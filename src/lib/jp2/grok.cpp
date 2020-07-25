@@ -232,7 +232,7 @@ const char* GRK_CALLCONV grk_version(void) {
 /* ---------------------------------------------------------------------- */
 /* DECOMPRESSION FUNCTIONS*/
 
- grk_codec  *  GRK_CALLCONV grk_create_decompress(GRK_CODEC_FORMAT p_format,
+ grk_codec   GRK_CALLCONV grk_create_decompress(GRK_CODEC_FORMAT p_format,
 		 grk_stream  *stream) {
 	auto codec =
 			(grk_codec_private*) grk_calloc(1, sizeof(grk_codec_private));
@@ -322,7 +322,7 @@ const char* GRK_CALLCONV grk_version(void) {
 		grk_free(codec);
 		return nullptr;
 	}
-	return ( grk_codec  * ) codec;
+	return ( grk_codec  ) codec;
 }
 void GRK_CALLCONV grk_set_default_decompress_params(
 		 grk_dparameters  *parameters) {
@@ -330,7 +330,7 @@ void GRK_CALLCONV grk_set_default_decompress_params(
 		memset(parameters, 0, sizeof( grk_dparameters) );
 	}
 }
-bool GRK_CALLCONV grk_init_decompress( grk_codec  *p_codec,
+bool GRK_CALLCONV grk_init_decompress( grk_codec p_codec,
 		 grk_dparameters  *parameters) {
 	if (p_codec && parameters) {
 		auto codec = (grk_codec_private*) p_codec;
@@ -346,7 +346,7 @@ bool GRK_CALLCONV grk_init_decompress( grk_codec  *p_codec,
 	return false;
 }
 bool GRK_CALLCONV grk_read_header(
-		 grk_codec  *p_codec,  grk_header_info  *header_info,
+		 grk_codec p_codec,  grk_header_info  *header_info,
 		grk_image **p_image) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
@@ -363,7 +363,7 @@ bool GRK_CALLCONV grk_read_header(
 	return false;
 }
 
-bool GRK_CALLCONV grk_decompress( grk_codec  *p_codec, grk_plugin_tile *tile,
+bool GRK_CALLCONV grk_decompress( grk_codec p_codec, grk_plugin_tile *tile,
 		 grk_image *p_image) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
@@ -375,7 +375,7 @@ bool GRK_CALLCONV grk_decompress( grk_codec  *p_codec, grk_plugin_tile *tile,
 	}
 	return false;
 }
-bool GRK_CALLCONV grk_set_decompress_area( grk_codec  *p_codec,
+bool GRK_CALLCONV grk_set_decompress_area( grk_codec p_codec,
 		grk_image *p_image, uint32_t start_x, uint32_t start_y,
 		uint32_t end_x, uint32_t end_y) {
 	if (p_codec) {
@@ -388,7 +388,7 @@ bool GRK_CALLCONV grk_set_decompress_area( grk_codec  *p_codec,
 	}
 	return false;
 }
-bool GRK_CALLCONV grk_decompress_tile( grk_codec  *p_codec,
+bool GRK_CALLCONV grk_decompress_tile( grk_codec p_codec,
 		 grk_image *p_image, uint16_t tile_index) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
@@ -408,7 +408,7 @@ bool GRK_CALLCONV grk_decompress_tile( grk_codec  *p_codec,
 /* ---------------------------------------------------------------------- */
 /* COMPRESSION FUNCTIONS*/
 
- grk_codec  *  GRK_CALLCONV grk_create_compress(GRK_CODEC_FORMAT p_format,
+ grk_codec   GRK_CALLCONV grk_create_compress(GRK_CODEC_FORMAT p_format,
 		 grk_stream  *stream) {
 	auto codec =
 			(grk_codec_private*) grk_calloc(1, sizeof(grk_codec_private));
@@ -460,7 +460,7 @@ bool GRK_CALLCONV grk_decompress_tile( grk_codec  *p_codec,
 		grk_free(codec);
 		return nullptr;
 	}
-	return ( grk_codec  * ) codec;
+	return ( grk_codec  ) codec;
 }
 void GRK_CALLCONV grk_set_default_compress_params(
 		 grk_cparameters  *parameters) {
@@ -491,7 +491,7 @@ void GRK_CALLCONV grk_set_default_compress_params(
 		parameters->repeats = 1;
 	}
 }
-bool GRK_CALLCONV grk_init_compress( grk_codec  *p_codec,
+bool GRK_CALLCONV grk_init_compress( grk_codec p_codec,
 		 grk_cparameters  *parameters, grk_image *p_image) {
 	if (p_codec && parameters && p_image) {
 		auto codec = (grk_codec_private*) p_codec;
@@ -502,7 +502,7 @@ bool GRK_CALLCONV grk_init_compress( grk_codec  *p_codec,
 	}
 	return false;
 }
-bool GRK_CALLCONV grk_start_compress( grk_codec  *p_codec) {
+bool GRK_CALLCONV grk_start_compress( grk_codec p_codec) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
 		auto stream = (BufferedStream*) codec->m_stream;
@@ -513,10 +513,10 @@ bool GRK_CALLCONV grk_start_compress( grk_codec  *p_codec) {
 	}
 	return false;
 }
-bool GRK_CALLCONV grk_compress( grk_codec  *p_codec) {
+bool GRK_CALLCONV grk_compress( grk_codec p_codec) {
 	return grk_compress_with_plugin(p_codec, nullptr);
 }
-bool GRK_CALLCONV grk_compress_with_plugin( grk_codec  *p_info,
+bool GRK_CALLCONV grk_compress_with_plugin( grk_codec p_info,
 		grk_plugin_tile *tile) {
 	if (p_info) {
 		auto codec = (grk_codec_private*) p_info;
@@ -528,7 +528,7 @@ bool GRK_CALLCONV grk_compress_with_plugin( grk_codec  *p_info,
 	}
 	return false;
 }
-bool GRK_CALLCONV grk_end_compress( grk_codec  *p_codec) {
+bool GRK_CALLCONV grk_end_compress( grk_codec p_codec) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
 		auto stream = (BufferedStream*) codec->m_stream;
@@ -539,7 +539,7 @@ bool GRK_CALLCONV grk_end_compress( grk_codec  *p_codec) {
 	}
 	return false;
 }
-bool GRK_CALLCONV grk_end_decompress( grk_codec  *p_codec) {
+bool GRK_CALLCONV grk_end_decompress( grk_codec p_codec) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
 		auto stream = (BufferedStream*) codec->m_stream;
@@ -577,7 +577,7 @@ bool GRK_CALLCONV grk_set_MCT( grk_cparameters  *parameters,
 			l_dc_shift_size);
 	return true;
 }
-bool GRK_CALLCONV grk_compress_tile( grk_codec  *p_codec, uint16_t tile_index,
+bool GRK_CALLCONV grk_compress_tile( grk_codec p_codec, uint16_t tile_index,
 		uint8_t *p_data, uint64_t data_size) {
 	if (p_codec && p_data) {
 		auto codec = (grk_codec_private*) p_codec;
@@ -592,7 +592,7 @@ bool GRK_CALLCONV grk_compress_tile( grk_codec  *p_codec, uint16_t tile_index,
 
 /* ---------------------------------------------------------------------- */
 
-void GRK_CALLCONV grk_destroy_codec( grk_codec  *p_codec) {
+void GRK_CALLCONV grk_destroy_codec( grk_codec p_codec) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
 		if (codec->is_decompressor)
@@ -606,7 +606,7 @@ void GRK_CALLCONV grk_destroy_codec( grk_codec  *p_codec) {
 
 /* ---------------------------------------------------------------------- */
 
-void GRK_CALLCONV grk_dump_codec( grk_codec  *p_codec, uint32_t info_flag,
+void GRK_CALLCONV grk_dump_codec( grk_codec p_codec, uint32_t info_flag,
 		FILE *output_stream) {
 	assert(p_codec);
 	if (p_codec) {
@@ -614,7 +614,7 @@ void GRK_CALLCONV grk_dump_codec( grk_codec  *p_codec, uint32_t info_flag,
 		codec->grk_dump_codec(codec->m_codec, info_flag, output_stream);
 	}
 }
- grk_codestream_info_v2  *  GRK_CALLCONV grk_get_cstr_info( grk_codec  *p_codec) {
+ grk_codestream_info_v2  *  GRK_CALLCONV grk_get_cstr_info( grk_codec p_codec) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
 		return codec->get_codec_info(codec->m_codec);
@@ -630,7 +630,7 @@ void GRK_CALLCONV grk_destroy_cstr_info( grk_codestream_info_v2  **cstr_info) {
 	}
 }
 
- grk_codestream_index  *  GRK_CALLCONV grk_get_cstr_index( grk_codec  *p_codec) {
+ grk_codestream_index  *  GRK_CALLCONV grk_get_cstr_index( grk_codec p_codec) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
 		return codec->grk_get_codec_index(codec->m_codec);

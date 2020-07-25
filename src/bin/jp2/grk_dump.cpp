@@ -374,7 +374,7 @@ int main(int argc, char *argv[]) {
 
 	grk_dparameters parameters; /* Decompression parameters */
 	grk_image *image = nullptr; /* Image structure */
-	grk_codec *l_codec = nullptr; /* Handle to a decompressor */
+	grk_codec l_codec = nullptr; /* Handle to a decompressor */
 	grk_stream *l_stream = nullptr; /* Stream */
 	grk_codestream_info_v2 *cstr_info = nullptr;
 	grk_codestream_index *cstr_index = nullptr;

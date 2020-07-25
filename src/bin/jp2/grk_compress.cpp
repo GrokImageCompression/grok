@@ -1856,7 +1856,7 @@ static bool plugin_compress_callback(
 	grk_cparameters *parameters = info->encoder_parameters;
 	bool bSuccess = true;
 	grk_stream *stream = nullptr;
-	grk_codec *codec = nullptr;
+	grk_codec codec = nullptr;
 	grk_image *image = info->image;
 	char outfile[3 * GRK_PATH_LEN];
 	char temp_ofname[GRK_PATH_LEN];

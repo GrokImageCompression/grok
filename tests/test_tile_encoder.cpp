@@ -79,7 +79,7 @@ static void info_callback(const char *msg, void *client_data) {
 #define NUM_COMPS_MAX 4
 int main(int argc, char *argv[]) {
 	grk_cparameters param;
-	grk_codec *codec = nullptr;
+	grk_codec codec = nullptr;
 	grk_image *image = nullptr;
 	grk_stream *stream = nullptr;
 	grk_image_cmptparm params[NUM_COMPS_MAX];
