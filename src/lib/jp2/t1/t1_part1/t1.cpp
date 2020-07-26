@@ -1240,9 +1240,10 @@ static void t1_dec_refpass_mqc(t1_info *t1, int32_t bpno) {
 }
 
 bool t1_decode_cblk(t1_info *t1, cblk_dec *cblk, uint32_t orient,
-		uint32_t roishift, uint32_t cblksty, bool check_pterm) {
+		uint32_t roishift, uint32_t cblksty) {
 	auto mqc = &(t1->mqc);
 	uint32_t cblkdataindex = 0;
+	bool check_pterm = cblksty & GRK_CBLKSTY_PTERM;
 
 	mqc->lut_ctxno_zc_orient = lut_ctxno_zc + (orient << 9);
 

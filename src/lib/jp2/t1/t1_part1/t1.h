@@ -192,8 +192,7 @@ struct t1_info {
 };
 
 bool t1_decode_cblk(t1_info *t1, cblk_dec *cblk,
-		uint32_t orient, uint32_t roishift, uint32_t cblksty,
-		bool check_pterm);
+		uint32_t orient, uint32_t roishift, uint32_t cblksty);
 
 void t1_code_block_enc_deallocate(cblk_enc *
         p_code_block);

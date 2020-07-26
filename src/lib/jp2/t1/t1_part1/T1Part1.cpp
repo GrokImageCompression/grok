@@ -188,8 +188,7 @@ bool T1Part1::decompress(decodeBlockInfo *block) {
     				&cblkexp,
     				block->bandno,
 					block->roishift,
-					block->cblk_sty,
-					false);
+					block->cblk_sty);
 
 	delete[] segs;
 	return ret;
