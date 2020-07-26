@@ -285,10 +285,10 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 	size_t *modified_length_ptr = nullptr;
 	size_t remaining_length = 0;
 	auto cp = tileProcessor->m_cp;
-	if (cp->ppm) { /* PPM */
-		header_data_start = &cp->ppm_data;
+	if (cp->ppm_marker) { /* PPM */
+		header_data_start = &cp->ppm_marker->ppm_data;
 		header_data = *header_data_start;
-		modified_length_ptr = &(cp->ppm_len);
+		modified_length_ptr = &(cp->ppm_marker->ppm_len);
 
 	} else if (p_tcp->ppt) { /* PPT */
 		header_data_start = &(p_tcp->ppt_data);

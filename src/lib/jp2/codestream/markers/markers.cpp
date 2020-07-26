@@ -1056,10 +1056,11 @@ bool j2k_read_plt(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 
 bool j2k_read_ppm(CodeStream *codeStream,TileProcessor *tileProcessor,  uint8_t *p_header_data,
 		uint16_t header_size) {
-	PPMMarker ppm;
 	GRK_UNUSED(tileProcessor);
-
-	return ppm.read(codeStream, p_header_data, header_size);
+    if (!codeStream->m_cp.ppm_marker) {
+    	codeStream->m_cp.ppm_marker = new PPMMarker();
+    }
+	return codeStream->m_cp.ppm_marker->read(p_header_data, header_size);
 }
 
 /**
@@ -1069,9 +1070,7 @@ bool j2k_read_ppm(CodeStream *codeStream,TileProcessor *tileProcessor,  uint8_t 
 
  */
 bool j2k_merge_ppm(CodingParams *p_cp) {
-	PPMMarker ppm;
-
-	return ppm.merge(p_cp);
+	return p_cp->ppm_marker ? p_cp->ppm_marker->merge() : true;
 }
 
 /**
@@ -1097,7 +1096,7 @@ bool j2k_read_ppt(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	}
 
 	auto cp = &(codeStream->m_cp);
-	if (cp->ppm) {
+	if (cp->ppm_marker) {
 		GROK_ERROR(
 				"Error reading PPT marker: packet header have been previously found in the main header (PPM marker).");
 		return false;

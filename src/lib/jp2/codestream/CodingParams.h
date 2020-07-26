@@ -148,11 +148,6 @@ struct grk_simple_mcc_decorrelation_data {
 }
 ;
 
-struct grk_ppx {
-	uint8_t *m_data; /* m_data == nullptr => Zppx not read yet */
-	uint32_t m_data_size;
-};
-
 /**
  Tile coding parameters :
  this structure is used to store coding/decoding parameters common to all
@@ -296,30 +291,7 @@ struct CodingParams {
 	/** number of tiles in height */
 	uint32_t t_grid_height;
 
-	/** number of ppm markers (reserved size) */
-	uint32_t ppm_markers_count;
-	/** ppm markers data (table indexed by Zppm) */
-	grk_ppx *ppm_markers;
-
-	/** packet header store there for future use in t2_decode_packet */
-	uint8_t *ppm_data;
-	/** size of the ppm_data*/
-	size_t ppm_len;
-	/** size of the ppm_data*/
-	size_t ppm_data_read;
-
-	uint8_t *ppm_data_current;
-
-	/** packet header storage original buffer */
-	uint8_t *ppm_buffer;
-	/** pointer remaining on the first byte of the first header if ppm is used */
-	uint8_t *ppm_data_first;
-	/** Number of bytes actually stored inside the ppm_data */
-	size_t ppm_data_size;
-	/** use in case of multiple marker PPM (number of info already store) */
-	int32_t ppm_store;
-	/** use in case of multiple marker PPM (case on non-finished previous info) */
-	int32_t ppm_previous;
+	PPMMarker *ppm_marker;
 
 	/** tile coding parameters */
 	TileCodingParams *tcps;
@@ -328,9 +300,6 @@ struct CodingParams {
 		DecodingParams m_dec;
 		EncodingParams m_enc;
 	} m_coding_params;
-
-	/** if ppm is true --> there was a PPM marker*/
-	bool ppm;
 
 	TileLengthMarkers *tlm_markers;
 	PacketLengthMarkers *plm_markers;

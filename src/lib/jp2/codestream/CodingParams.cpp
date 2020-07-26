@@ -63,30 +63,16 @@
 namespace grk {
 
 void CodingParams::destroy() {
-	TileCodingParams *current_tile = nullptr;
 	if (tcps != nullptr) {
 		uint32_t nb_tiles = t_grid_height * t_grid_width;
 
 		for (uint32_t i = 0U; i < nb_tiles; ++i) {
-			current_tile = tcps + i;
+			auto current_tile = tcps + i;
 			current_tile->destroy();
 		}
 		delete[] tcps;
 		tcps = nullptr;
 	}
-	if (ppm_markers != nullptr) {
-		for (uint32_t i = 0U; i < ppm_markers_count; ++i) {
-			if (ppm_markers[i].m_data != nullptr) {
-				grk_free(ppm_markers[i].m_data);
-			}
-		}
-		ppm_markers_count = 0U;
-		grk_free(ppm_markers);
-		ppm_markers = nullptr;
-	}
-	grk_free(ppm_buffer);
-	ppm_buffer = nullptr;
-	ppm_data = nullptr; /* ppm_data belongs to the allocated buffer pointed by ppm_buffer */
 	for (uint32_t i = 0; i < num_comments; ++i) {
 		grk_buffer_delete((uint8_t*) comment[i]);
 		comment[i] = nullptr;
@@ -94,6 +80,7 @@ void CodingParams::destroy() {
 	num_comments = 0;
 	delete plm_markers;
 	delete tlm_markers;
+	delete ppm_marker;
 }
 
 TileCodingParams::TileCodingParams() :
