@@ -1701,29 +1701,9 @@ public:
 /* F.2 and F.3 of the standard. Note: in TileComponent::is_subband_area_of_interest() */
 /* we currently use 3. */
 template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_WIDTH, typename D>
-   bool decode_partial_tile(TileComponent* GRK_RESTRICT tilec, uint32_t numres, sparse_array *sa)
-{
-	dwt_data<T> horiz;
-	dwt_data<T> vert;
-    uint32_t resno;
-
+   bool decode_partial_tile(TileComponent* GRK_RESTRICT tilec, uint32_t numres, sparse_array *sa) {
     auto tr = tilec->resolutions;
     auto tr_max = &(tilec->resolutions[numres - 1]);
-
-    /* width of the resolution level computed */
-    uint32_t rw = (uint32_t)(tr->x1 - tr->x0);
-    /* height of the resolution level computed */
-    uint32_t rh = (uint32_t)(tr->y1 - tr->y0);
-
-    /* Compute the intersection of the area of interest, expressed in tile coordinates */
-    /* with the tile coordinates */
-    auto dim = tilec->buf->unreduced_region_dim;
-
-    uint32_t win_tcx0 = (uint32_t)dim.x0;
-    uint32_t win_tcy0 = (uint32_t)dim.y0;
-    uint32_t win_tcx1 = (uint32_t)dim.x1;
-    uint32_t win_tcy1 = (uint32_t)dim.y1;
-
     if (tr_max->x0 == tr_max->x1 || tr_max->y0 == tr_max->y1)
         return true;
 
@@ -1740,28 +1720,34 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
         return true;
     }
 
+    /* width of the resolution level computed */
+    uint32_t rw = (uint32_t)(tr->x1 - tr->x0);
+    /* height of the resolution level computed */
+    uint32_t rh = (uint32_t)(tr->y1 - tr->y0);
+
+    /* Compute the intersection of the area of interest, expressed in tile coordinates */
+    /* with the tile coordinates */
+    auto dim = tilec->buf->unreduced_region_dim;
+
+    uint32_t win_tcx0 = (uint32_t)dim.x0;
+    uint32_t win_tcy0 = (uint32_t)dim.y0;
+    uint32_t win_tcx1 = (uint32_t)dim.x1;
+    uint32_t win_tcy1 = (uint32_t)dim.y1;
+
     // in 53 vertical pass, we process 4 vertical columns at a time
     const uint32_t data_multiplier = (sizeof(T) == 4) ? 4 : 1;
     size_t data_size = dwt_utils::max_resolution(tr, numres) * data_multiplier;
+	dwt_data<T> horiz;
     if (!horiz.alloc(data_size)) {
         GROK_ERROR("Out of memory");
         return false;
     }
+	dwt_data<T> vert;
     vert.mem = horiz.mem;
     D decoder;
     size_t num_threads = ThreadPool::get()->num_threads();
 
-    for (resno = 1; resno < numres; resno ++) {
-        /* Window of interest sub-band-based coordinates */
-        uint32_t win_ll_x0, win_ll_y0;
-        uint32_t win_ll_x1, win_ll_y1;
-        uint32_t win_hl_x0, win_hl_x1;
-        uint32_t win_lh_y0, win_lh_y1;
-        /* Window of interest tile-resolution-based coordinates */
-        uint32_t win_tr_x0, win_tr_x1, win_tr_y0, win_tr_y1;
-        /* Tile-resolution sub-band-based coordinates */
-        uint32_t tr_ll_x0, tr_ll_y0, tr_hl_x0, tr_lh_y0;
-
+    for (uint32_t resno = 1; resno < numres; resno ++) {
         horiz.sn = (int32_t)rw;
         vert.sn = (int32_t)rh;
 
@@ -1777,28 +1763,32 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 
         /* Get the sub-band coordinates for the window of interest */
         /* LL band */
+        /* Window of interest sub-band-based coordinates */
+        uint32_t win_ll_x0, win_ll_y0;
+        uint32_t win_ll_x1, win_ll_y1;
         get_band_coordinates(tilec, resno, 0,
                                      win_tcx0, win_tcy0, win_tcx1, win_tcy1,
                                      &win_ll_x0, &win_ll_y0,
                                      &win_ll_x1, &win_ll_y1);
         /* HL band */
+        uint32_t win_hl_x0, win_hl_x1;
         get_band_coordinates(tilec, resno, 1,
                                      win_tcx0, win_tcy0, win_tcx1, win_tcy1,
                                      &win_hl_x0, nullptr, &win_hl_x1, nullptr);
         /* LH band */
+        uint32_t win_lh_y0, win_lh_y1;
         get_band_coordinates(tilec, resno, 2,
                                      win_tcx0, win_tcy0, win_tcx1, win_tcy1,
                                      nullptr, &win_lh_y0, nullptr, &win_lh_y1);
 
+        /* band coordinates */
         /* Beware: band index for non-LL0 resolution are 0=HL, 1=LH and 2=HH */
-        tr_ll_x0 = (uint32_t)tr->bands[1].x0;
-        tr_ll_y0 = (uint32_t)tr->bands[0].y0;
-        tr_hl_x0 = (uint32_t)tr->bands[0].x0;
-        tr_lh_y0 = (uint32_t)tr->bands[1].y0;
+        uint32_t tr_ll_x0 = (uint32_t)tr->bands[1].x0;
+        uint32_t tr_ll_y0 = (uint32_t)tr->bands[0].y0;
+        uint32_t tr_hl_x0 = (uint32_t)tr->bands[0].x0;
+        uint32_t tr_lh_y0 = (uint32_t)tr->bands[1].y0;
 
-        /* Subtract the origin of the bands for this tile, to the sub-window */
-        /* of interest band coordinates, so as to get them relative to the */
-        /* tile */
+        /* Transform window of interest relative to band*/
         win_ll_x0 = uint_subs(win_ll_x0, tr_ll_x0);
         win_ll_y0 = uint_subs(win_ll_y0, tr_ll_y0);
         win_ll_x1 = uint_subs(win_ll_x1, tr_ll_x0);
@@ -1810,11 +1800,11 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 
         segment_grow(FILTER_WIDTH, (uint32_t)horiz.sn, &win_ll_x0, &win_ll_x1);
         segment_grow(FILTER_WIDTH, (uint32_t)horiz.dn, &win_hl_x0, &win_hl_x1);
-
         segment_grow(FILTER_WIDTH, (uint32_t)vert.sn, &win_ll_y0, &win_ll_y1);
         segment_grow(FILTER_WIDTH, (uint32_t)vert.dn, &win_lh_y0, &win_lh_y1);
 
-        /* Compute the tile-resolution-based coordinates for the window of interest */
+        /* Compute resolution coordinates for window of interest */
+        uint32_t win_tr_x0, win_tr_x1;
         if (horiz.cas == 0) {
             win_tr_x0 = min<uint32_t>(2 * win_ll_x0, 2 * win_hl_x0 + 1);
             win_tr_x1 = min<uint32_t>(max<uint32_t>(2 * win_ll_x1, 2 * win_hl_x1 + 1), rw);
@@ -1822,6 +1812,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
             win_tr_x0 = min<uint32_t>(2 * win_hl_x0, 2 * win_ll_x0 + 1);
             win_tr_x1 = min<uint32_t>(max<uint32_t>(2 * win_hl_x1, 2 * win_ll_x1 + 1), rw);
         }
+        uint32_t win_tr_y0, win_tr_y1;
         if (vert.cas == 0) {
             win_tr_y0 = min<uint32_t>(2 * win_ll_y0, 2 * win_lh_y0 + 1);
             win_tr_y1 = min<uint32_t>(max<uint32_t>(2 * win_ll_y1, 2 * win_lh_y1 + 1), rh);
