@@ -91,7 +91,7 @@ bool SOTMarker::write(CodeStream *codeStream, TileProcessor *tileProcessor){
 		return false;
 	/* Isot */
 	if (!m_stream->write_short(
-			(uint16_t) tileProcessor->m_current_tile_index))
+			(uint16_t) tileProcessor->m_tile_index))
 		return false;
 
 	/* Psot  */
@@ -100,12 +100,12 @@ bool SOTMarker::write(CodeStream *codeStream, TileProcessor *tileProcessor){
 		return false;
 
 	/* TPsot */
-	if (!m_stream->write_byte(tileProcessor->m_current_tile_part_index))
+	if (!m_stream->write_byte(tileProcessor->m_tile_part_index))
 		return false;
 
 	/* TNsot */
 	if (!m_stream->write_byte(
-			codeStream->m_cp.tcps[tileProcessor->m_current_tile_index].m_nb_tile_parts))
+			codeStream->m_cp.tcps[tileProcessor->m_tile_index].m_nb_tile_parts))
 		return false;
 
 	return true;
@@ -150,12 +150,12 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	assert(codeStream != nullptr);
 
 	if (!get_sot_values(p_header_data, header_size,
-			&tileProcessor->m_current_tile_index, &tot_len,
+			&tileProcessor->m_tile_index, &tot_len,
 			&current_part, &num_parts)) {
 		GROK_ERROR("Error reading SOT marker");
 		return false;
 	}
-	auto tile_number = tileProcessor->m_current_tile_index;
+	auto tile_number = tileProcessor->m_tile_index;
 
 	auto cp = &(codeStream->m_cp);
 
@@ -175,13 +175,13 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	/* to avoid various issues, like grk_j2k_merge_ppt being called several times. */
 	/* ISO 15444-1 A.4.2 Start of tile-part (SOT) mandates that tile parts */
 	/* should appear in increasing order. */
-	if (tcp->m_current_tile_part_index + 1 != (int32_t) current_part) {
+	if (tcp->m_tile_part_index + 1 != (int32_t) current_part) {
 		GROK_ERROR("Invalid tile part index for tile number %u. "
 				"Got %u, expected %u", tile_number, current_part,
-				tcp->m_current_tile_part_index + 1);
+				tcp->m_tile_part_index + 1);
 		return false;
 	}
-	++tcp->m_current_tile_part_index;
+	++tcp->m_tile_part_index;
 	/* PSot should be equal to zero or >=14 or <= 2^32-1 */
 	if ((tot_len != 0) && (tot_len < 14)) {
 		if (tot_len == sot_marker_segment_len) {

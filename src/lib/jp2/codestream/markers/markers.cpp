@@ -493,7 +493,7 @@ bool j2k_read_cod(CodeStream *codeStream,TileProcessor *tileProcessor,  uint8_t 
 	if (tcp->cod) {
 		GROK_WARN(
 				"Multiple COD markers detected for tile part %u. The JPEG 2000 standard does not allow more than one COD marker per tile.",
-				tcp->m_current_tile_part_index);
+				tcp->m_tile_part_index);
 	}
 	tcp->cod = true;
 
@@ -1102,7 +1102,7 @@ bool j2k_read_ppt(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 		return false;
 	}
 
-	auto tcp = &(cp->tcps[tileProcessor->m_current_tile_index]);
+	auto tcp = &(cp->tcps[tileProcessor->m_tile_index]);
 	tcp->ppt = true;
 
 	/* Z_ppt */
@@ -1244,8 +1244,8 @@ bool j2k_read_sod(CodeStream *codeStream, TileProcessor *tileProcessor, Buffered
 					"(tile: %u, tile part: %u). Tile may be truncated.",
 					tileProcessor->tile_part_data_length,
 					stream->get_number_byte_left(),
-					tileProcessor->m_current_tile_index,
-					tileProcessor->m_current_tile_part_index);
+					tileProcessor->m_tile_index,
+					tileProcessor->m_tile_part_index);
 
 			// sanitize tile_part_data_length
 			tileProcessor->tile_part_data_length =	(uint32_t) bytesLeftInStream;
@@ -1262,14 +1262,14 @@ bool j2k_read_sod(CodeStream *codeStream, TileProcessor *tileProcessor, Buffered
 		current_pos = (uint64_t) (current_pos - 2);
 
 		uint32_t current_tile_part =
-				cstr_index->tile_index[tileProcessor->m_current_tile_index].current_tpsno;
-		cstr_index->tile_index[tileProcessor->m_current_tile_index].tp_index[current_tile_part].end_header =
+				cstr_index->tile_index[tileProcessor->m_tile_index].current_tpsno;
+		cstr_index->tile_index[tileProcessor->m_tile_index].tp_index[current_tile_part].end_header =
 				current_pos;
-		cstr_index->tile_index[tileProcessor->m_current_tile_index].tp_index[current_tile_part].end_pos =
+		cstr_index->tile_index[tileProcessor->m_tile_index].tp_index[current_tile_part].end_pos =
 				current_pos + tileProcessor->tile_part_data_length + 2;
 
 		if (!TileLengthMarkers::add_to_index(
-				tileProcessor->m_current_tile_index, cstr_index,
+				tileProcessor->m_tile_index, cstr_index,
 				J2K_MS_SOD, current_pos, 0)) {
 			GROK_ERROR("Not enough memory to add tl marker");
 			return false;

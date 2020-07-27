@@ -154,7 +154,6 @@ bool PPMMarker::merge(){
 	N_ppm_remaining = 0U;
 	for (i = 0U; i < markers_count; ++i) {
 		if (markers[i].m_data != nullptr) { /* standard doesn't seem to require contiguous Zppm */
-			uint32_t N_ppm;
 			uint32_t data_size = markers[i].m_data_size;
 			const uint8_t *data = markers[i].m_data;
 
@@ -174,6 +173,7 @@ bool PPMMarker::merge(){
 						GROK_ERROR("Not enough bytes to read Nppm");
 						return false;
 					}
+					uint32_t N_ppm;
 					grk_read<uint32_t>(data, &N_ppm, 4);
 					data += 4;
 					data_size -= 4;
@@ -210,7 +210,6 @@ bool PPMMarker::merge(){
 	N_ppm_remaining = 0U;
 	for (i = 0U; i < markers_count; ++i) {
 		if (markers[i].m_data != nullptr) { /* standard doesn't seem to require contiguous Zppm */
-			uint32_t N_ppm;
 			uint32_t data_size = markers[i].m_data_size;
 			const uint8_t *data = markers[i].m_data;
 
@@ -235,6 +234,7 @@ bool PPMMarker::merge(){
 						GROK_ERROR("Not enough bytes to read Nppm");
 						return false;
 					}
+					uint32_t N_ppm;
 					grk_read<uint32_t>(data, &N_ppm, 4);
 					data += 4;
 					data_size -= 4;

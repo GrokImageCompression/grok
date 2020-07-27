@@ -306,23 +306,23 @@ struct TileProcessor {
 	void copy_image_to_tile();
 
 	/** index of tile being currently coded/decoded */
-	uint16_t m_current_tile_index;
+	uint16_t m_tile_index;
 
 	/** tile part index, regardless of poc.
 	 *  for each new poc, tp is reset to 0*/
-	uint8_t m_current_poc_tile_part_index;
+	uint8_t m_poc_tile_part_index;
 
 	/** index of tile part being currently coding, taking into account POC.
-	 *  m_current_tile_part_index holds the total number of tile parts
+	 *  m_tile_part_index holds the total number of tile parts
 	 *   while encoding the last tile part.*/
-	uint8_t m_current_tile_part_index;
+	uint8_t m_tile_part_index;
 
 	uint32_t tile_part_data_length;
 
-	/** Total number of tile parts of the current tile*/
-	uint8_t cur_totnum_tp;
+	/** Total number of tile parts of the tile*/
+	uint8_t totnum_tp;
 	/** Current packet iterator number */
-	uint32_t cur_pino;
+	uint32_t pino;
 	/** info on image tile */
 	grk_tile *tile;
 	/** image header */

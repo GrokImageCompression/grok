@@ -287,7 +287,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 	auto cp = tileProcessor->m_cp;
 	if (cp->ppm_marker) { /* PPM */
 		auto tile_packet_header =
-				&cp->ppm_marker->m_tile_packet_headers[tileProcessor->m_current_tile_index];
+				&cp->ppm_marker->m_tile_packet_headers[tileProcessor->m_tile_index];
 		header_data_start = &tile_packet_header->buf;
 		header_data = *header_data_start;
 		remaining_length = tile_packet_header->len;
@@ -354,7 +354,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 
 				if (value != tag_tree_uninitialized_node_value
 						&& value != p_pi->layno) {
-					GROK_WARN("Tile number: %u",tileProcessor->m_current_tile_index+1);
+					GROK_WARN("Tile number: %u",tileProcessor->m_tile_index+1);
 					std::string msg =
 							"Illegal inclusion tag tree found when decoding packet header.\n";
 					msg +=

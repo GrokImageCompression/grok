@@ -69,12 +69,12 @@ using namespace std;
 namespace grk {
 
 TileProcessor::TileProcessor(CodeStream *codeStream) :
-				 m_current_tile_index(0),
-				 m_current_poc_tile_part_index(0),
-				 m_current_tile_part_index(0),
+				 m_tile_index(0),
+				 m_poc_tile_part_index(0),
+				 m_tile_part_index(0),
 				 tile_part_data_length(0),
-				cur_totnum_tp(0),
-				cur_pino(0),
+				totnum_tp(0),
+				pino(0),
 				tile(nullptr),
 				image(codeStream->m_input_image),
 				current_plugin_tile(codeStream->current_plugin_tile),
@@ -291,7 +291,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 		if (plt_markers) {
 			auto t2 = new T2Encode(this);
 			uint32_t sim_all_packets_len = 0;
-			t2->encode_packets_simulate(m_current_tile_index,
+			t2->encode_packets_simulate(m_tile_index,
 										0 + 1, &sim_all_packets_len, UINT_MAX,
 										tp_pos, plt_markers);
 			delete t2;
@@ -338,7 +338,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 					}
 					lowerBound = thresh;
 				} else {
-					if (!t2->encode_packets_simulate(m_current_tile_index,
+					if (!t2->encode_packets_simulate(m_tile_index,
 							layno + 1, all_packets_len, maxlen,
 							tp_pos, nullptr)) {
 						lowerBound = thresh;
@@ -451,7 +451,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 		if (plt_markers) {
 			auto t2 = new T2Encode(this);
 			uint32_t sim_all_packets_len = 0;
-			t2->encode_packets_simulate(m_current_tile_index,
+			t2->encode_packets_simulate(m_tile_index,
 										0 + 1, &sim_all_packets_len, UINT_MAX,
 										tp_pos, plt_markers);
 			delete t2;
@@ -504,7 +504,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 					}
 					lowerBound = thresh;
 				} else {
-					if (!t2->encode_packets_simulate(m_current_tile_index, layno + 1,
+					if (!t2->encode_packets_simulate(m_tile_index, layno + 1,
 							all_packets_len, maxlen,
 							tp_pos, nullptr)) {
 						lowerBound = thresh;
@@ -716,13 +716,13 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 bool TileProcessor::init_tile(grk_image *output_image,
 		bool isEncoder) {
 	uint32_t state = grk_plugin_get_debug_state();
-	auto tcp = &(m_cp->tcps[m_current_tile_index]);
+	auto tcp = &(m_cp->tcps[m_tile_index]);
 
 	if (tcp->m_tile_data)
 		tcp->m_tile_data->rewind();
 
-	uint32_t p = m_current_tile_index % m_cp->t_grid_width; /* tile coordinates */
-	uint32_t q = m_current_tile_index / m_cp->t_grid_width;
+	uint32_t p = m_tile_index % m_cp->t_grid_width; /* tile coordinates */
+	uint32_t q = m_tile_index / m_cp->t_grid_width;
 	/*fprintf(stderr, "Tile coordinate = %u,%u\n", p, q);*/
 
 	/* 4 borders of the tile rescale on the image if necessary */
@@ -797,7 +797,7 @@ bool TileProcessor::do_encode(BufferedStream *stream){
 	if (state & GRK_PLUGIN_STATE_DEBUG)
 		set_context_stream(this);
 
-	m_tcp = &m_cp->tcps[m_current_tile_index];
+	m_tcp = &m_cp->tcps[m_tile_index];
 
 	// When debugging the encoder, we do all of T1 up to and including DWT
 	// in the plugin, and pass this in as image data.
@@ -829,7 +829,7 @@ bool TileProcessor::do_encode(BufferedStream *stream){
 }
 
 bool TileProcessor::pre_compress_first_tile_part(BufferedStream *stream) {
-	if (m_current_tile_part_index == 0) {
+	if (m_tile_part_index == 0) {
 
 		// 1. create PLT marker if required
 		delete plt_markers;
@@ -852,7 +852,7 @@ bool TileProcessor::compress_tile_part(BufferedStream *stream,
 		uint32_t *tile_bytes_written) {
 
 	//4 write PLT for first tile part
-	if (m_current_tile_part_index == 0 && plt_markers){
+	if (m_tile_part_index == 0 && plt_markers){
 		uint32_t written = plt_markers->write();
 		*tile_bytes_written += written;
 	}
@@ -897,7 +897,7 @@ bool TileProcessor::is_whole_tilecomp_decoding(uint32_t compno) {
 }
 
 bool TileProcessor::decompress_tile_t2(ChunkBuffer *src_buf) {
-	m_tcp = m_cp->tcps + m_current_tile_index;
+	m_tcp = m_cp->tcps + m_tile_index;
 
 	// optimization for regions that are close to largest decoded resolution
 	// (currently breaks tests, so disabled)
@@ -1032,7 +1032,7 @@ void TileProcessor::copy_image_to_tile() {
 bool TileProcessor::t2_decode(ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
 	auto t2 = new T2Decode(this);
-	bool rc = t2->decode_packets(m_current_tile_index, src_buf, p_data_read);
+	bool rc = t2->decode_packets(m_tile_index, src_buf, p_data_read);
 	delete t2;
 
 	return rc;
@@ -1344,8 +1344,8 @@ bool TileProcessor::t2_encode(BufferedStream *stream, uint32_t *all_packet_bytes
 	}
 #endif
 
-	if (!l_t2->encode_packets(m_current_tile_index, m_tcp->numlayers, stream,
-			all_packet_bytes_written, m_current_poc_tile_part_index, tp_pos, cur_pino)) {
+	if (!l_t2->encode_packets(m_tile_index, m_tcp->numlayers, stream,
+			all_packet_bytes_written, m_poc_tile_part_index, tp_pos, pino)) {
 		delete l_t2;
 		return false;
 	}
@@ -1514,9 +1514,9 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_
 }
 
 bool TileProcessor::pre_write_tile() {
-	m_current_tile_part_index = 0;
-	cur_totnum_tp =	m_cp->tcps[m_current_tile_index].m_nb_tile_parts;
-	m_current_poc_tile_part_index = 0;
+	m_tile_part_index = 0;
+	totnum_tp =	m_cp->tcps[m_tile_index].m_nb_tile_parts;
+	m_poc_tile_part_index = 0;
 
 	/* initialisation before tile encoding  */
 	bool rc =  init_tile(nullptr, true);
