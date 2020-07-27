@@ -65,9 +65,8 @@ using namespace std;
 
 namespace grk {
 
-#define T1_TYPE_MQ 0    /**< Normal coding using entropy coder */
-#define T1_TYPE_RAW 1   /**< No encoding the information is store under raw format
-							in code stream (mode switch RAW)*/
+#define T1_TYPE_MQ 0    /** Normal coding using entropy coder */
+#define T1_TYPE_RAW 1   /** Raw encoding*/
 
 #include "t1_luts.h"
 #define T1_FLAGS(x, y) (t1->flags[x + 1 + ((y>>2) + 1) * (t1->w+2)])
@@ -352,7 +351,7 @@ static int t1_enc_is_term_pass(cblk_enc *cblk, uint32_t cblksty,
 		return true;
 
 	if ((cblksty & GRK_CBLKSTY_LAZY)) {
-		/* For bypass arithmetic bypass, terminate the 4th cleanup pass */
+		/* For arithmetic bypass, terminate the 4th cleanup pass */
 		if ((bpno == ((int32_t) cblk->numbps - 4)) && (passtype == 2))
 			return true;
 		/* and beyond terminate all the magnitude refinement passes (in raw) */
@@ -726,7 +725,6 @@ double t1_encode_cblk(t1_info *t1, cblk_enc *cblk, uint32_t max,
 		}
 
 		if (t1_enc_is_term_pass(cblk, cblksty, bpno, passtype)) {
-			/* If it is a terminated pass, terminate it */
 			if (type == T1_TYPE_RAW) {
 				mqc_bypass_flush_enc(mqc, cblksty & GRK_CBLKSTY_PTERM);
 			} else {
@@ -759,13 +757,10 @@ double t1_encode_cblk(t1_info *t1, cblk_enc *cblk, uint32_t max,
 			pass->term = false;
 			pass->rate = mqc_numbytes_enc(mqc) + rate_extra_bytes;
 		}
-
 		if (++passtype == 3) {
 			passtype = 0;
 			bpno--;
 		}
-
-		/* Code-switch "RESET" */
 		if (cblksty & GRK_CBLKSTY_RESET)
 			mqc_resetstates(mqc);
 	}
@@ -1032,16 +1027,16 @@ static void t1_dec_sigpass_raw(t1_info *t1, int32_t bpno, int32_t cblksty) {
 			grk_flag flags = *flagsp;
 			if (flags != 0) {
 				t1_dec_sigpass_step_raw(t1, flagsp, data, oneplushalf,
-						cblksty & GRK_CBLKSTY_VSC, /* vsc */
+						cblksty & GRK_CBLKSTY_VSC,
 						0U);
 				t1_dec_sigpass_step_raw(t1, flagsp, data + l_w, oneplushalf,
-						false, /* vsc */
+						false,
 						3U);
 				t1_dec_sigpass_step_raw(t1, flagsp, data + 2 * l_w, oneplushalf,
-						false, /* vsc */
+						false,
 						6U);
 				t1_dec_sigpass_step_raw(t1, flagsp, data + 3 * l_w, oneplushalf,
-						false, /* vsc */
+						false,
 						9U);
 			}
 		}
@@ -1050,7 +1045,7 @@ static void t1_dec_sigpass_raw(t1_info *t1, int32_t bpno, int32_t cblksty) {
 		for (uint32_t i = 0; i < l_w; ++i, ++flagsp, ++data) {
 			for (uint32_t j = 0; j < t1->h - k; ++j) {
 				t1_dec_sigpass_step_raw(t1, flagsp, data + j * l_w, oneplushalf,
-						cblksty & GRK_CBLKSTY_VSC, /* vsc */
+						cblksty & GRK_CBLKSTY_VSC,
 						3*j);
 			}
 		}
