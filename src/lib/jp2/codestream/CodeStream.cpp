@@ -198,7 +198,7 @@ static const  grk_dec_memory_marker_handler  *  j2k_get_marker_handler(
 static bool j2k_decompress_tiles(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
 static bool j2k_decompress_tile(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
 static bool j2k_decompress_tile_t2(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream);
-static bool j2k_decompress_tile_t1(CodeStream *codeStream, TileProcessor *tileProcessor,bool multi_tile);
+static bool j2k_decompress_tile_t2t1(CodeStream *codeStream, TileProcessor *tileProcessor,bool multi_tile);
 
 static bool j2k_init_header_writing(CodeStream *codeStream);
 static bool j2k_post_write_tile(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream);
@@ -1024,13 +1024,6 @@ static bool j2k_decompress_tile_t2(CodeStream *codeStream, TileProcessor *tilePr
 		return false;
 	}
 
-	if (!tileProcessor->decompress_tile_t2(tcp->m_tile_data)) {
-		tcp->destroy();
-		decoder->m_state |= J2K_DEC_STATE_ERR;
-		GROK_ERROR("j2k_decompress_tile: failed to decompress.");
-		return false;
-	}
-
 	// find next tile
 	bool rc = true;
 	bool doPost = !tileProcessor->current_plugin_tile
@@ -1042,11 +1035,10 @@ static bool j2k_decompress_tile_t2(CodeStream *codeStream, TileProcessor *tilePr
 		} catch (DecodeUnknownMarkerAtEndOfTileException &e) {
 		}
 	}
-
 	return rc;
 }
 
-static bool j2k_decompress_tile_t1(CodeStream *codeStream, TileProcessor *tileProcessor, bool multi_tile) {
+static bool j2k_decompress_tile_t2t1(CodeStream *codeStream, TileProcessor *tileProcessor, bool multi_tile) {
 	assert(codeStream != nullptr);
 
 	auto decoder = &codeStream->m_decoder;
@@ -1055,6 +1047,19 @@ static bool j2k_decompress_tile_t1(CodeStream *codeStream, TileProcessor *tilePr
 	if (!tcp->m_tile_data) {
 		tcp->destroy();
 		return false;
+	}
+
+	if (!tileProcessor->decompress_tile_t2(tcp->m_tile_data)) {
+		tcp->destroy();
+		decoder->m_state |= J2K_DEC_STATE_ERR;
+		GROK_ERROR("j2k_decompress_tile: failed to decompress.");
+		return false;
+	}
+
+
+	if (tileProcessor->m_corrupt_packet){
+		GROK_WARN("Tile %d was not decoded", tileProcessor->m_current_tile_index+1);
+		return true;
 	}
 
 	bool rc = true;
@@ -1148,41 +1153,38 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, TileProcessor *tileProc
 				return false;
 		}
 
-		if (!processor->m_corrupt_packet) {
-			if (pool.num_threads() > 1) {
-				results.emplace_back(
-					pool.enqueue([codeStream,processor,
-								  num_tiles_to_decode,
-								  multi_tile,
-								  &num_tiles_decoded, &success] {
-						if (success) {
-							if (!j2k_decompress_tile_t1(codeStream, processor,multi_tile)){
-								GROK_ERROR("Failed to decompress tile %u/%u",
-										processor->m_current_tile_index + 1,num_tiles_to_decode);
-								success = false;
-							} else {
-								num_tiles_decoded++;
-							}
+		if (pool.num_threads() > 1) {
+			results.emplace_back(
+				pool.enqueue([codeStream,processor,
+							  num_tiles_to_decode,
+							  multi_tile,
+							  &num_tiles_decoded, &success] {
+					if (success) {
+						if (!j2k_decompress_tile_t2t1(codeStream, processor,multi_tile)){
+							GROK_ERROR("Failed to decompress tile %u/%u",
+									processor->m_current_tile_index + 1,num_tiles_to_decode);
+							success = false;
+						} else {
+							num_tiles_decoded++;
 						}
-						delete processor;
-						return 0;
-					})
-				);
-			} else {
-				if (!j2k_decompress_tile_t1(codeStream, processor,multi_tile)){
-						GROK_ERROR("Failed to decompress tile %u/%u",
-								processor->m_current_tile_index + 1,num_tiles_to_decode);
-						delete processor;
-						codeStream->m_tileProcessor = nullptr;
-						return false;
-				} else {
-					num_tiles_decoded++;
-				}
-				delete processor;
-			}
+					}
+					delete processor;
+					return 0;
+				})
+			);
 		} else {
+			if (!j2k_decompress_tile_t2t1(codeStream, processor,multi_tile)){
+					GROK_ERROR("Failed to decompress tile %u/%u",
+							processor->m_current_tile_index + 1,num_tiles_to_decode);
+					delete processor;
+					codeStream->m_tileProcessor = nullptr;
+					return false;
+			} else {
+				num_tiles_decoded++;
+			}
 			delete processor;
 		}
+
 
 		if (stream->get_number_byte_left() == 0
 				|| codeStream->m_decoder.m_state
@@ -1285,7 +1287,7 @@ static bool j2k_decompress_tile(CodeStream *codeStream,TileProcessor *tileProces
 	if (!j2k_decompress_tile_t2(codeStream, tileProcessor, stream))
 		return false;
 
-	if (!j2k_decompress_tile_t1(codeStream, tileProcessor, false))
+	if (!j2k_decompress_tile_t2t1(codeStream, tileProcessor, false))
 		return false;
 
 
