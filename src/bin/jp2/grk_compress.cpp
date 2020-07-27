@@ -1803,8 +1803,10 @@ int main(int argc, char **argv) {
 		//cache certain settings
 		auto tcp_mct = initParams.parameters.tcp_mct;
 		auto rateControlAlgorithm = initParams.parameters.rateControlAlgorithm;
+		uint64_t max_cs_size = initParams.parameters.max_cs_size;
 		auto start = std::chrono::high_resolution_clock::now();
 		for (uint32_t i = 0; i < initParams.parameters.repeats; ++i) {
+			initParams.parameters.max_cs_size = max_cs_size;
 			if (!initParams.img_fol.set_imgdir) {
 				if (compress("", &initParams, tcp_mct, rateControlAlgorithm) == 0) {
 					success = 1;
