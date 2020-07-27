@@ -792,7 +792,7 @@ bool TileProcessor::init_tile(grk_image *output_image,
 	return true;
 }
 
-bool TileProcessor::do_encode(void){
+bool TileProcessor::do_encode(BufferedStream *stream){
 	uint32_t state = grk_plugin_get_debug_state();
 	if (state & GRK_PLUGIN_STATE_DEBUG)
 		set_context_stream(this);
@@ -820,11 +820,15 @@ bool TileProcessor::do_encode(void){
 		t1_encode();
 	}
 
+	if (!pre_compress_first_tile_part(stream)) {
+		GROK_ERROR("Cannot compress tile");
+		return false;
+	}
+
 	return true;
 }
 
-bool TileProcessor::compress_tile_part(BufferedStream *stream,
-		uint32_t *tile_bytes_written) {
+bool TileProcessor::pre_compress_first_tile_part(BufferedStream *stream) {
 	if (m_current_tile_part_index == 0) {
 
 		// 1. create PLT marker if required
@@ -840,6 +844,12 @@ bool TileProcessor::compress_tile_part(BufferedStream *stream,
 			return false;
 		m_packetTracker.clear();
 	}
+
+	return true;
+}
+
+bool TileProcessor::compress_tile_part(BufferedStream *stream,
+		uint32_t *tile_bytes_written) {
 
 	//4 write PLT for first tile part
 	if (m_current_tile_part_index == 0 && plt_markers){

@@ -270,11 +270,13 @@ struct TileProcessor {
 	bool compress_tile_part(BufferedStream *stream,
 			uint32_t *tile_bytes_written);
 
+	bool pre_compress_first_tile_part(BufferedStream *stream);
+
 	/**
 	 * Compress a tile from a raw image into stream.
 	 * @return  true if the coding is successful.
 	 */
-	bool do_encode(void);
+	bool do_encode(BufferedStream *stream);
 
 
 	/**

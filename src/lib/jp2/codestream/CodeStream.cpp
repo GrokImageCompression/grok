@@ -1966,6 +1966,7 @@ bool j2k_compress(CodeStream *codeStream, grk_plugin_tile *tile,
 								  &procs,
 								  tile,
 								  tile_ind,
+								  stream,
 								  &success] {
 						if (success) {
 							auto tileProcessor = new TileProcessor(codeStream);
@@ -1976,7 +1977,7 @@ bool j2k_compress(CodeStream *codeStream, grk_plugin_tile *tile,
 								success = false;
 							else {
 								procs[tile_ind] = tileProcessor;
-								if (!tileProcessor->do_encode())
+								if (!tileProcessor->do_encode(stream))
 									success = false;
 							}
 						}
@@ -1994,7 +1995,7 @@ bool j2k_compress(CodeStream *codeStream, grk_plugin_tile *tile,
 				delete tileProcessor;
 				goto cleanup;
 			}
-			if (!tileProcessor->do_encode()){
+			if (!tileProcessor->do_encode(stream)){
 				delete tileProcessor;
 				goto cleanup;
 			}
@@ -2049,7 +2050,7 @@ bool j2k_compress_tile(CodeStream *codeStream, TileProcessor *tp,
 		GROK_ERROR("Size mismatch between tile data and sent data.");
 		return false;
 	}
-	if (!tileProcessor->do_encode())
+	if (!tileProcessor->do_encode(stream))
 		return false;
 	if (!j2k_post_write_tile(codeStream, tileProcessor, stream)) {
 		GROK_ERROR("Error while j2k_post_write_tile with tile index = %u",
