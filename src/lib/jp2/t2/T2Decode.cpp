@@ -286,6 +286,11 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 	size_t remaining_length = 0;
 	auto cp = tileProcessor->m_cp;
 	if (cp->ppm_marker) { /* PPM */
+		if (tileProcessor->m_tile_index >= cp->ppm_marker->m_tile_packet_headers.size()){
+			GROK_ERROR("PPM marker has no packed packet header data for tile %d",
+					tileProcessor->m_tile_index+1);
+			return false;
+		}
 		auto tile_packet_header =
 				&cp->ppm_marker->m_tile_packet_headers[tileProcessor->m_tile_index];
 		header_data_start = &tile_packet_header->buf;

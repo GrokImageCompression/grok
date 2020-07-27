@@ -1558,8 +1558,8 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 					bandL[k + (size_t)w * 2] 	= horiz.mem[k].f[2];
 					bandL[k + (size_t)w * 3] 	= horiz.mem[k].f[3];
 				}
-				bandL += w * 4;
-				bandH += w * 4;
+				bandL += w << 2;
+				bandH += w << 2;
 			}
 			if (j < rh) {
 				interleave_h_97(&horiz, bandL,bandH, w, rh - j);
@@ -1605,8 +1605,8 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 								bandL[k + (size_t)w * 2] 	= job->data.mem[k].f[2];
 								bandL[k + (size_t)w * 3] 	= job->data.mem[k].f[3];
 							}
-							bandL += 4 * job->w;
-							bandH += 4 * job->w;
+							bandL += job->w << 2;
+							bandH += job->w << 2;
 						}
 						if (j < job->max_j) {
 							interleave_h_97(&job->data, bandL,bandH, w, job->max_j - j);
