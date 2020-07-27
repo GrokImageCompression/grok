@@ -81,10 +81,13 @@ struct grk_rect {
 
 struct grk_buf {
 	grk_buf() : grk_buf(nullptr,0,false) {}
-	grk_buf(uint8_t *buffer, size_t length, bool ownsData) : buf(buffer),
-		offset(0),
+	grk_buf(uint8_t *buffer, size_t off, size_t length, bool ownsData) : buf(buffer),
+		offset(off),
 		len(length),
-		owns_data(ownsData) {}
+		owns_data(ownsData)
+	{}
+	grk_buf(uint8_t *buffer, size_t length, bool ownsData) :grk_buf(buffer,0,length,ownsData)
+	{}
 	void dealloc();
 	~grk_buf();
 	void incr_offset(ptrdiff_t off);

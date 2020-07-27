@@ -60,6 +60,8 @@
 
 #pragma once
 
+#include <vector>
+
 namespace grk {
 
 struct grk_ppx {
@@ -105,14 +107,10 @@ public:
 
 	/** packet header storage original buffer */
 	uint8_t *ppm_buffer;
-	/** pointer remaining on the first byte of the first header if ppm is used */
-	uint8_t *ppm_data_first;
 	/** Number of bytes actually stored inside the ppm_data */
 	size_t ppm_data_size;
-	/** use in case of multiple marker PPM (number of info already store) */
-	int32_t ppm_store;
-	/** use in case of multiple marker PPM (case on non-finished previous info) */
-	int32_t ppm_previous;
+
+	std::vector<grk_buf> m_tile_ppt;
 
 
 };

@@ -69,10 +69,7 @@ PPMMarker::PPMMarker() : ppm_markers_count(0),
 		ppm_data_read(0),
 		ppm_data_current(0),
 		ppm_buffer(nullptr),
-		ppm_data_first(0),
-		ppm_data_size(0),
-		ppm_store(0),
-		ppm_previous(0)
+		ppm_data_size(0)
 {}
 
 PPMMarker::~PPMMarker(){
@@ -185,6 +182,7 @@ bool PPMMarker::merge(){
 					grk_read<uint32_t>(data, &N_ppm, 4);
 					data += 4;
 					data_size -= 4;
+					m_tile_ppt.push_back(grk_buf(nullptr,ppm_data_size, N_ppm,false));
 					ppm_data_size += N_ppm; /* can't overflow, max 256 markers of max 65536 bytes, that is when PPM markers are not corrupted which is checked elsewhere */
 
 					if (data_size >= N_ppm) {
@@ -207,6 +205,10 @@ bool PPMMarker::merge(){
 	if (ppm_buffer == nullptr) {
 		GROK_ERROR("Not enough memory to read PPM marker");
 		return false;
+	}
+	for (auto &b : m_tile_ppt){
+		b.buf = ppm_buffer + b.offset;
+		b.offset = 0;
 	}
 	ppm_len = ppm_data_size;
 	ppm_data_size = 0U;
