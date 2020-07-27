@@ -956,12 +956,7 @@ static void t1_dec_clnpass(t1_info *t1, int32_t bpno, int32_t cblksty) {
 		else
 			t1_dec_clnpass<64,64,false>(t1, bpno);
 	} else {
-		if (cblksty & GRK_CBLKSTY_VSC){
-			t1_dec_clnpass_internal(t1, bpno, true,t1->w,t1->h,t1->w+2);
-		}
-		else {
-			t1_dec_clnpass_internal(t1, bpno, false,t1->w,t1->h,t1->w+2);
-		}
+		t1_dec_clnpass_internal(t1, bpno, cblksty & GRK_CBLKSTY_VSC,t1->w,t1->h,t1->w+2);
 	}
 	t1_dec_clnpass_check_segsym(t1, cblksty);
 }
@@ -1116,11 +1111,7 @@ static void t1_dec_sigpass_mqc(t1_info *t1, int32_t bpno, int32_t cblksty) {
 			t1_dec_sigpass_mqc_internal(t1, bpno, false, 64, 64, 66);
 		}
 	} else {
-		if (cblksty & GRK_CBLKSTY_VSC) {
-			t1_dec_sigpass_mqc_internal(t1, bpno, true, t1->w, t1->h, t1->w + 2U);
-		} else {
-			t1_dec_sigpass_mqc_internal(t1, bpno, false, t1->w, t1->h, t1->w + 2U);
-		}
+		t1_dec_sigpass_mqc_internal(t1, bpno, cblksty & GRK_CBLKSTY_VSC, t1->w, t1->h, t1->w + 2U);
 	}
 }
 
