@@ -286,10 +286,11 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 	size_t remaining_length = 0;
 	auto cp = tileProcessor->m_cp;
 	if (cp->ppm_marker) { /* PPM */
-		auto tile_ppt = &cp->ppm_marker->m_tile_ppt[tileProcessor->m_current_tile_index];
-		header_data_start = &tile_ppt->buf;
+		auto tile_packet_header =
+				&cp->ppm_marker->m_tile_packet_headers[tileProcessor->m_current_tile_index];
+		header_data_start = &tile_packet_header->buf;
 		header_data = *header_data_start;
-		remaining_length = tile_ppt->len;
+		remaining_length = tile_packet_header->len;
 		modified_length_ptr = &(remaining_length);
 
 	} else if (p_tcp->ppt) { /* PPT */

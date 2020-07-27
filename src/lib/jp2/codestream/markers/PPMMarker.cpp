@@ -62,30 +62,25 @@
 namespace grk {
 
 
-PPMMarker::PPMMarker() : ppm_markers_count(0),
-		ppm_markers(nullptr),
-		ppm_data(nullptr),
-		ppm_len(0),
-		ppm_data_read(0),
-		ppm_data_current(0),
-		ppm_buffer(nullptr),
-		ppm_data_size(0)
+PPMMarker::PPMMarker() : markers_count(0),
+		markers(nullptr),
+		buffer(nullptr)
 {}
 
 PPMMarker::~PPMMarker(){
-	if (ppm_markers != nullptr) {
-			for (uint32_t i = 0U; i < ppm_markers_count; ++i) {
-				if (ppm_markers[i].m_data != nullptr) {
-					grk_free(ppm_markers[i].m_data);
+	if (markers != nullptr) {
+			for (uint32_t i = 0U; i < markers_count; ++i) {
+				if (markers[i].m_data != nullptr) {
+					grk_free(markers[i].m_data);
 				}
 			}
-			ppm_markers_count = 0U;
-			grk_free(ppm_markers);
-			ppm_markers = nullptr;
+			markers_count = 0U;
+			grk_free(markers);
+			markers = nullptr;
 		}
-		grk_free(ppm_buffer);
-		ppm_buffer = nullptr;
-		ppm_data = nullptr; /* ppm_data belongs to the allocated buffer pointed by ppm_buffer */
+		grk_free(buffer);
+		buffer = nullptr;
+
 }
 
 bool PPMMarker::read(uint8_t *p_header_data,
@@ -106,62 +101,62 @@ bool PPMMarker::read(uint8_t *p_header_data,
 	--header_size;
 
 	/* check allocation needed */
-	if (!ppm_markers) { /* first PPM marker */
+	if (!markers) { /* first PPM marker */
 		uint32_t newCount = i_ppm + 1U;
-		assert(ppm_markers_count == 0U);
+		assert(markers_count == 0U);
 
-		ppm_markers = (grk_ppx*) grk_calloc(newCount, sizeof(grk_ppx));
-		if (ppm_markers == nullptr) {
+		markers = (grk_ppx*) grk_calloc(newCount, sizeof(grk_ppx));
+		if (markers == nullptr) {
 			GROK_ERROR("Not enough memory to read PPM marker");
 			return false;
 		}
-		ppm_markers_count = newCount;
-	} else if (ppm_markers_count <= i_ppm) {
+		markers_count = newCount;
+	} else if (markers_count <= i_ppm) {
 		uint32_t newCount = i_ppm + 1U;
-		auto new_ppm_markers = (grk_ppx*) grk_realloc(ppm_markers,
+		auto new_ppm_markers = (grk_ppx*) grk_realloc(markers,
 				newCount * sizeof(grk_ppx));
 		if (new_ppm_markers == nullptr) {
 			/* clean up to be done on cp destruction */
 			GROK_ERROR("Not enough memory to read PPM marker");
 			return false;
 		}
-		ppm_markers = new_ppm_markers;
-		memset(ppm_markers + ppm_markers_count, 0,
-				(newCount - ppm_markers_count) * sizeof(grk_ppx));
-		ppm_markers_count = newCount;
+		markers = new_ppm_markers;
+		memset(markers + markers_count, 0,
+				(newCount - markers_count) * sizeof(grk_ppx));
+		markers_count = newCount;
 	}
 
-	if (ppm_markers[i_ppm].m_data != nullptr) {
+	if (markers[i_ppm].m_data != nullptr) {
 		/* clean up to be done on cp destruction */
 		GROK_ERROR("ippm %u already read", i_ppm);
 		return false;
 	}
 
-	ppm_markers[i_ppm].m_data = (uint8_t*) grk_malloc(header_size);
-	if (ppm_markers[i_ppm].m_data == nullptr) {
+	markers[i_ppm].m_data = (uint8_t*) grk_malloc(header_size);
+	if (markers[i_ppm].m_data == nullptr) {
 		/* clean up to be done on cp destruction */
 		GROK_ERROR("Not enough memory to read PPM marker");
 		return false;
 	}
-	ppm_markers[i_ppm].m_data_size = header_size;
-	memcpy(ppm_markers[i_ppm].m_data, p_header_data, header_size);
+	markers[i_ppm].m_data_size = header_size;
+	memcpy(markers[i_ppm].m_data, p_header_data, header_size);
 
 	return true;
 }
 bool PPMMarker::merge(){
-	uint32_t i, ppm_data_size, N_ppm_remaining;
-	assert(ppm_buffer == nullptr);
+	uint32_t i, total_data_size, N_ppm_remaining;
+	assert(buffer == nullptr);
 
-	if (!ppm_markers)
+	if (!markers)
 		return true;
 
-	ppm_data_size = 0U;
+	total_data_size = 0U;
 	N_ppm_remaining = 0U;
-	for (i = 0U; i < ppm_markers_count; ++i) {
-		if (ppm_markers[i].m_data != nullptr) { /* standard doesn't seem to require contiguous Zppm */
+	for (i = 0U; i < markers_count; ++i) {
+		if (markers[i].m_data != nullptr) { /* standard doesn't seem to require contiguous Zppm */
 			uint32_t N_ppm;
-			uint32_t data_size = ppm_markers[i].m_data_size;
-			const uint8_t *data = ppm_markers[i].m_data;
+			uint32_t data_size = markers[i].m_data_size;
+			const uint8_t *data = markers[i].m_data;
 
 			if (N_ppm_remaining >= data_size) {
 				N_ppm_remaining -= data_size;
@@ -182,8 +177,8 @@ bool PPMMarker::merge(){
 					grk_read<uint32_t>(data, &N_ppm, 4);
 					data += 4;
 					data_size -= 4;
-					m_tile_ppt.push_back(grk_buf(nullptr,ppm_data_size, N_ppm,false));
-					ppm_data_size += N_ppm; /* can't overflow, max 256 markers of max 65536 bytes, that is when PPM markers are not corrupted which is checked elsewhere */
+					m_tile_packet_headers.push_back(grk_buf(nullptr,total_data_size, N_ppm,false));
+					total_data_size += N_ppm; /* can't overflow, max 256 markers of max 65536 bytes, that is when PPM markers are not corrupted which is checked elsewhere */
 
 					if (data_size >= N_ppm) {
 						data_size -= N_ppm;
@@ -201,32 +196,32 @@ bool PPMMarker::merge(){
 		GROK_ERROR("Corrupted PPM markers");
 		return false;
 	}
-	ppm_buffer = (uint8_t*) grk_malloc(ppm_data_size);
-	if (ppm_buffer == nullptr) {
+	buffer = (uint8_t*) grk_malloc(total_data_size);
+	if (buffer == nullptr) {
 		GROK_ERROR("Not enough memory to read PPM marker");
 		return false;
 	}
-	for (auto &b : m_tile_ppt){
-		b.buf = ppm_buffer + b.offset;
+	for (auto &b : m_tile_packet_headers){
+		b.buf = buffer + b.offset;
 		b.offset = 0;
 	}
-	ppm_len = ppm_data_size;
-	ppm_data_size = 0U;
+
+	total_data_size = 0U;
 	N_ppm_remaining = 0U;
-	for (i = 0U; i < ppm_markers_count; ++i) {
-		if (ppm_markers[i].m_data != nullptr) { /* standard doesn't seem to require contiguous Zppm */
+	for (i = 0U; i < markers_count; ++i) {
+		if (markers[i].m_data != nullptr) { /* standard doesn't seem to require contiguous Zppm */
 			uint32_t N_ppm;
-			uint32_t data_size = ppm_markers[i].m_data_size;
-			const uint8_t *data = ppm_markers[i].m_data;
+			uint32_t data_size = markers[i].m_data_size;
+			const uint8_t *data = markers[i].m_data;
 
 			if (N_ppm_remaining >= data_size) {
-				memcpy(ppm_buffer + ppm_data_size, data, data_size);
-				ppm_data_size += data_size;
+				memcpy(buffer + total_data_size, data, data_size);
+				total_data_size += data_size;
 				N_ppm_remaining -= data_size;
 				data_size = 0U;
 			} else {
-				memcpy(ppm_buffer + ppm_data_size, data, N_ppm_remaining);
-				ppm_data_size += N_ppm_remaining;
+				memcpy(buffer + total_data_size, data, N_ppm_remaining);
+				total_data_size += N_ppm_remaining;
 				data += N_ppm_remaining;
 				data_size -= N_ppm_remaining;
 				N_ppm_remaining = 0U;
@@ -245,31 +240,27 @@ bool PPMMarker::merge(){
 					data_size -= 4;
 
 					if (data_size >= N_ppm) {
-						memcpy(ppm_buffer + ppm_data_size, data, N_ppm);
-						ppm_data_size += N_ppm;
+						memcpy(buffer + total_data_size, data, N_ppm);
+						total_data_size += N_ppm;
 						data_size -= N_ppm;
 						data += N_ppm;
 					} else {
-						memcpy(ppm_buffer + ppm_data_size, data,
+						memcpy(buffer + total_data_size, data,
 								data_size);
-						ppm_data_size += data_size;
+						total_data_size += data_size;
 						N_ppm_remaining = N_ppm - data_size;
 						data_size = 0U;
 					}
 				} while (data_size > 0U);
 			}
-			grk_free(ppm_markers[i].m_data);
-			ppm_markers[i].m_data = nullptr;
-			ppm_markers[i].m_data_size = 0U;
+			grk_free(markers[i].m_data);
+			markers[i].m_data = nullptr;
+			markers[i].m_data_size = 0U;
 		}
 	}
-
-	ppm_data = ppm_buffer;
-	ppm_data_size = (uint32_t)ppm_len;
-
-	ppm_markers_count = 0U;
-	grk_free(ppm_markers);
-	ppm_markers = nullptr;
+	markers_count = 0U;
+	grk_free(markers);
+	markers = nullptr;
 
 	return true;
 }

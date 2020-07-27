@@ -90,29 +90,17 @@ public:
 	 */
 	bool merge(void);
 
+	std::vector<grk_buf> m_tile_packet_headers;
+
+private:
 
 	/** number of ppm markers (reserved size) */
-	uint32_t ppm_markers_count;
+	uint32_t markers_count;
 	/** ppm markers data (table indexed by Zppm) */
-	grk_ppx *ppm_markers;
-
-	/** packet header store there for future use in t2_decode_packet */
-	uint8_t *ppm_data;
-	/** size of the ppm_data*/
-	size_t ppm_len;
-	/** size of the ppm_data*/
-	size_t ppm_data_read;
-
-	uint8_t *ppm_data_current;
+	grk_ppx *markers;
 
 	/** packet header storage original buffer */
-	uint8_t *ppm_buffer;
-	/** Number of bytes actually stored inside the ppm_data */
-	size_t ppm_data_size;
-
-	std::vector<grk_buf> m_tile_ppt;
-
-
+	uint8_t *buffer;
 };
 
 } /* namespace grk */
