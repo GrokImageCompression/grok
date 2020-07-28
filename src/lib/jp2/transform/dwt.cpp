@@ -151,22 +151,46 @@ struct  v4_data {
 
 template <typename T, typename S> struct decode_job{
 	decode_job( S data,
-				uint32_t w,
-				T * GRK_RESTRICT low,
-				T * GRK_RESTRICT high,
+				T * GRK_RESTRICT LL,
+				uint32_t sLL,
+				T * GRK_RESTRICT HL,
+				uint32_t sHL,
+				T * GRK_RESTRICT LH,
+				uint32_t sLH,
+				T * GRK_RESTRICT HH,
+				uint32_t sHH,
 				uint32_t min_j,
 				uint32_t max_j) : data(data),
-								w(w),
-								bandL(low),
-								bandH(high),
+								bandLL(LL),
+								strideLL(sLL),
+								bandHL(HL),
+								strideHL(sHL),
+								bandLH(LH),
+								strideLH(sLH),
+								bandHH(HH),
+								strideHH(sHH),
 								min_j(min_j),
 								max_j(max_j)
 	{}
 
+	decode_job( S data,
+				uint32_t min_j,
+				uint32_t max_j) :
+					decode_job(data,nullptr,0,nullptr,0,nullptr,0,nullptr,0,min_j, max_j)
+	{}
+
+
     S data;
-    uint32_t w;
-    T * GRK_RESTRICT bandL;
-    T * GRK_RESTRICT bandH;
+    T * GRK_RESTRICT bandLL;
+    uint32_t strideLL;
+    T * GRK_RESTRICT bandHL;
+    uint32_t strideHL;
+    T * GRK_RESTRICT bandLH;
+    uint32_t strideLH;
+    T * GRK_RESTRICT bandHH;
+    uint32_t strideHH;
+
+
     uint32_t min_j;
     uint32_t max_j;
 } ;
@@ -734,7 +758,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
         rw = (uint32_t)(tr->x1 - tr->x0);
         rh = (uint32_t)(tr->y1 - tr->y0);
         horiz.dn = (int32_t)(rw - horiz.sn);
-        horiz.cas = tr->x0 % 2;
+        horiz.cas = tr->x0 & 1;
     	auto bandL = tiledp;
     	auto bandH = bandL + horiz.sn;
 
@@ -759,9 +783,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 			std::vector< std::future<int> > results;
 			for(uint32_t j = 0; j < num_jobs; ++j) {
                auto job = new decode_job<int32_t, dwt_data<int32_t>>(horiz,
-											w,
-											bandL,
-											bandH,
+											bandL,w,bandH,w,nullptr,0,nullptr,0,
 											j * step_j,
 											j < (num_jobs - 1U) ? (j + 1U) * step_j : rh);
                 if (!job->data.alloc(h_mem_size)) {
@@ -771,12 +793,12 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
                 }
 				results.emplace_back(
 					ThreadPool::get()->enqueue([job] {
-						auto bandL = job->bandL + job->min_j * job->w;
-						auto bandH = job->bandH + job->min_j * job->w;
+						auto bandLL = job->bandLL + job->min_j * job->strideLL;
+						auto bandHL = job->bandHL + job->min_j * job->strideHL;
 					    for (uint32_t j = job->min_j; j < job->max_j; j++){
-					        decode_h_53(&job->data,bandL,bandH);
-					        bandL += job->w;
-					        bandH += job->w;
+					        decode_h_53(&job->data,bandLL,bandHL);
+					        bandLL += job->strideLL;
+					        bandHL += job->strideHL;
 						}
 					    grk_aligned_free(job->data.mem);
 					    delete job;
@@ -788,7 +810,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 				result.get();
         }
         vert.dn = (int32_t)(rh - (uint32_t)vert.sn);
-        vert.cas = tr->y0 % 2;
+        vert.cas = tr->y0 & 1;
     	bandL = tiledp;
     	bandH = bandL + vert.sn * w;
 
@@ -817,9 +839,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 			std::vector< std::future<int> > results;
             for (uint32_t j = 0; j < num_jobs; j++) {
                 auto job = new decode_job<int32_t, dwt_data<int32_t>>(vert,
-											w,
-											bandL,
-											bandH,
+											bandL,w,nullptr,0,bandH,w,nullptr,0,
 											j * step_j,
 											j < (num_jobs - 1U) ? (j + 1U) * step_j : rw);
                 if (!job->data.alloc(h_mem_size)) {
@@ -830,15 +850,15 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 				results.emplace_back(
 					ThreadPool::get()->enqueue([job] {
 						uint32_t j=job->min_j;
-						auto bandL = job->bandL + job->min_j;
-						auto bandH = job->bandH + job->min_j;
+						auto bandLL = job->bandLL + job->min_j;
+						auto bandLH = job->bandLH + job->min_j;
 						for (; j + PLL_COLS_53 <= job->max_j; j += PLL_COLS_53) {
-							decode_v_53(&job->data, bandL, bandH, (size_t)job->w, PLL_COLS_53);
-							bandL += PLL_COLS_53;
-							bandH += PLL_COLS_53;
+							decode_v_53(&job->data, bandLL, bandLH, (size_t)job->strideLL, PLL_COLS_53);
+							bandLL += PLL_COLS_53;
+							bandLH += PLL_COLS_53;
 						}
 						if (j < job->max_j) {
-							decode_v_53(&job->data, bandL, bandH, (size_t)job->w, (int32_t)(job->max_j - j));
+							decode_v_53(&job->data, bandLL, bandLH, (size_t)job->strideLL, (int32_t)(job->max_j - j));
 						}
 						grk_aligned_free(job->data.mem);
 						delete job;
@@ -1536,7 +1556,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         /* height of the resolution level computed */
         rh = (uint32_t)(res->y1 -  res->y0);
         horiz.dn = (int32_t)(rw - (uint32_t)horiz.sn);
-        horiz.cas = res->x0 % 2;
+        horiz.cas = res->x0 & 1;
         horiz.win_l_x0 = 0;
         horiz.win_l_x1 = horiz.sn;
         horiz.win_h_x0 = 0;
@@ -1581,9 +1601,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 			std::vector< std::future<int> > results;
 			for(uint32_t j = 0; j < num_jobs; ++j) {
 			   auto job = new decode_job<float, dwt_data<v4_data>>(horiz,
-											w,
-											bandL,
-											bandH,
+											bandL,w,bandH,w,nullptr,0,nullptr,0,
 											j * step_j,
 											j < (num_jobs - 1U) ? (j + 1U) * step_j : rh);
 				if (!job->data.alloc(data_size)) {
@@ -1592,35 +1610,35 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 					return false;
 				}
 				results.emplace_back(
-					ThreadPool::get()->enqueue([job,w,rw] {
+					ThreadPool::get()->enqueue([job,rw] {
 					    uint32_t j;
-					    auto bandL = job->bandL + job->min_j * job->w;
-					    auto bandH = job->bandH + job->min_j * job->w;
+					    auto bandLL = job->bandLL + job->min_j * job->strideLL;
+					    auto bandHL = job->bandHL + job->min_j * job->strideHL;
 						for (j = job->min_j; j + 3 < job->max_j; j+=4){
-							interleave_h_97(&job->data, bandL, bandH,w, job->max_j - j);
+							interleave_h_97(&job->data, bandLL, bandHL,job->strideLL, job->max_j - j);
 							decode_step_97(&job->data);
 							for (uint32_t k = 0; k < rw; k++) {
-								bandL[k      ] 			= job->data.mem[k].f[0];
-								bandL[k + (size_t)w  ] 	= job->data.mem[k].f[1];
-								bandL[k + (size_t)w * 2] 	= job->data.mem[k].f[2];
-								bandL[k + (size_t)w * 3] 	= job->data.mem[k].f[3];
+								bandLL[k      ] 			= job->data.mem[k].f[0];
+								bandLL[k + (size_t)job->strideLL  ] 	= job->data.mem[k].f[1];
+								bandLL[k + (size_t)job->strideLL * 2] 	= job->data.mem[k].f[2];
+								bandLL[k + (size_t)job->strideLL * 3] 	= job->data.mem[k].f[3];
 							}
-							bandL += job->w << 2;
-							bandH += job->w << 2;
+							bandLL += job->strideLL << 2;
+							bandHL += job->strideHL << 2;
 						}
 						if (j < job->max_j) {
-							interleave_h_97(&job->data, bandL,bandH, w, job->max_j - j);
+							interleave_h_97(&job->data, bandLL,bandHL, job->strideLL, job->max_j - j);
 							decode_step_97(&job->data);
 							for (uint32_t k = 0; k < rw; k++) {
 								switch (job->max_j - j) {
 								case 3:
-									bandL[k + (size_t)w * 2] = job->data.mem[k].f[2];
+									bandLL[k + (size_t)job->strideLL * 2] = job->data.mem[k].f[2];
 								/* FALLTHRU */
 								case 2:
-									bandL[k + (size_t)w  ] = job->data.mem[k].f[1];
+									bandLL[k + (size_t)job->strideLL  ] = job->data.mem[k].f[1];
 								/* FALLTHRU */
 								case 1:
-									bandL[k] = job->data.mem[k].f[0];
+									bandLL[k] = job->data.mem[k].f[0];
 								}
 							}
 						}
@@ -1634,7 +1652,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 				result.get();
         }
         vert.dn = (int32_t)rh - vert.sn;
-        vert.cas = res->y0 % 2;
+        vert.cas = res->y0 & 1;
         vert.win_l_x0 = 0;
         vert.win_l_x1 = vert.sn;
         vert.win_h_x0 = 0;
@@ -1672,9 +1690,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 			std::vector< std::future<int> > results;
             for (uint32_t j = 0; j < num_jobs; j++) {
             	auto job = new decode_job<float, dwt_data<v4_data>>(vert,
-            												w,
-															bandL,
-															bandH,
+            												bandL,w,nullptr,0, bandH,w,nullptr,0,
             												j * step_j,
             												j < (num_jobs - 1U) ? (j + 1U) * step_j : rw);
 				if (!job->data.alloc(data_size)) {
@@ -1684,29 +1700,28 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 				}
 				results.emplace_back(
 					ThreadPool::get()->enqueue([job,rh] {
-						auto bandL = job->bandL + job->min_j;
-						auto bandH = job->bandH + job->min_j;
-						uint32_t w = job->w;
+						auto bandLL = job->bandLL + job->min_j;
+						auto bandLH = job->bandLH + job->min_j;
 						uint32_t j;
 						for (j = job->min_j; j + 3 < job->max_j; j+=4){
-							interleave_v_97(&job->data, bandL,bandH, w, 4);
+							interleave_v_97(&job->data, bandLL,bandLH, job->strideLL, 4);
 							decode_step_97(&job->data);
-							auto dest = bandL;
+							auto dest = bandLL;
 							for (uint32_t k = 0; k < rh; ++k) {
 								memcpy(dest, job->data.mem+k, 4 * sizeof(float));
-								dest += job->w;
+								dest += job->strideLL;
 							}
-							bandL += 4;
-							bandH += 4;
+							bandLL += 4;
+							bandLH += 4;
 						}
 						if (j < job->max_j) {
 							j = job->max_j - j;
-							interleave_v_97(&job->data, bandL, bandH,w, j);
+							interleave_v_97(&job->data, bandLL, bandLH,job->strideLL, j);
 							decode_step_97(&job->data);
-							auto dest = bandL;
+							auto dest = bandLL;
 							for (uint32_t k = 0; k < rh; ++k) {
 								memcpy(dest, job->data.mem+k,(size_t)j * sizeof(float));
-								dest += job->w;
+								dest += job->strideLL;
 							}
 						}
 						job->data.release();
@@ -1806,10 +1821,10 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
         rh = (uint32_t)(tr->y1 - tr->y0);
 
         horiz.dn = (int32_t)(rw - (uint32_t)horiz.sn);
-        horiz.cas = tr->x0 % 2;
+        horiz.cas = tr->x0 & 1;
 
         vert.dn = (int32_t)(rh - (uint32_t)vert.sn);
-        vert.cas = tr->y0 % 2;
+        vert.cas = tr->y0 & 1;
 
         /* Get the sub-band coordinates for the window of interest */
         /* LL band */
@@ -1952,9 +1967,6 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 			std::vector< std::future<int> > results;
 			for(uint32_t j = 0; j < num_jobs; ++j) {
 			   auto job = new decode_job<float, dwt_data<T>>(horiz,
-											0,
-											nullptr,
-											nullptr,
 											bounds[k][0] + j * step_j,
 											j < (num_jobs - 1U) ? bounds[k][0] + (j + 1U) * step_j : bounds[k][1]);
 				if (!job->data.alloc(data_size)) {
@@ -2055,9 +2067,6 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 			std::vector< std::future<int> > results;
 			for(uint32_t j = 0; j < num_jobs; ++j) {
 			   auto job = new decode_job<float, dwt_data<T>>(vert,
-											0,
-											nullptr,
-											nullptr,
 											win_tr_x0 + j * step_j,
 											j < (num_jobs - 1U) ? win_tr_x0 + (j + 1U) * step_j : win_tr_x1);
 				if (!job->data.alloc(data_size)) {
