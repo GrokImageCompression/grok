@@ -594,11 +594,15 @@ static void decode_v_cas0_53(int32_t* tmp,
 
     uint32_t i = 0;
     if (len > 2) {
+    	auto bL = bandL + stride;
+    	auto bH = bandH + stride;
 		for (uint32_t j = 0; i < (len - 3); i += 2, j++) {
 			int32_t d1c = d1n;
 			int32_t s0c = s0n;
-			s1n = bandL[(j + 1) * stride];
-			d1n = bandH[(j + 1) * stride];
+			s1n = *bL;
+			bL += stride;
+			d1n = *bH;
+			bH += stride;
 			s0n = s1n - ((d1c + d1n + 2) >> 2);
 			tmp[i  ] = s0c;
 			tmp[i + 1] = d1c + ((s0c + s0n) >> 1);
@@ -613,8 +617,11 @@ static void decode_v_cas0_53(int32_t* tmp,
     } else {
         tmp[len - 1] = d1n + s0n;
     }
-    for (i = 0; i < len; ++i)
-        bandL[i * stride] = tmp[i];
+    auto band = bandL;
+    for (i = 0; i < len; ++i) {
+        *band = tmp[i];
+        band += stride;
+    }
 }
 
 
@@ -636,9 +643,14 @@ static void decode_v_cas1_53(int32_t* tmp,
     int32_t s1 = in_even[stride];
     int32_t dc = in_odd[0] - ((in_even[0] + s1 + 2) >> 2);
     tmp[0] = in_even[0] + dc;
+    auto s2_ptr = in_even + (stride << 1);
+    auto dn_ptr = in_odd + stride;
     for (i = 1, j = 1; i < (len - 2 - !(len & 1)); i += 2, j++) {
-    	int32_t s2 = in_even[(j + 1) * stride];
-    	int32_t dn = in_odd[j * stride] - ((s1 + s2 + 2) >> 2);
+    	int32_t s2 = *s2_ptr;
+    	s2_ptr += stride;
+
+    	int32_t dn = *dn_ptr - ((s1 + s2 + 2) >> 2);
+    	dn_ptr += stride;
 
         tmp[i  ] = dc;
         tmp[i + 1] = s1 + ((dn + dc) >> 1);
@@ -653,8 +665,11 @@ static void decode_v_cas1_53(int32_t* tmp,
     } else {
         tmp[len - 1] = s1 + dc;
     }
-    for (i = 0; i < len; ++i)
-        bandL[i * stride] = tmp[i];
+    auto band = bandL;
+    for (i = 0; i < len; ++i) {
+        *band = tmp[i];
+        band += stride;
+    }
 }
 
 /* <summary>                            */
@@ -698,8 +713,11 @@ static void decode_v_53(const dwt_data<int32_t> *dwt,
 
                 out[1] = in_odd[0] - ((in_even[0] + 1) >> 1);
                 out[0] = in_even[0] + out[1];
-                for (uint32_t i = 0; i < len; ++i)
-                	bandL[i * stride] = out[i];
+                auto band = bandL;
+                for (uint32_t i = 0; i < len; ++i){
+                	*band = out[i];
+                	band += stride;
+                }
             }
             return;
         }
@@ -729,12 +747,9 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
         return true;
 
     auto tr = tilec->resolutions;
-    /* width of the resolution level computed */
-    uint32_t rw = (uint32_t)(tr->x1 - tr->x0);
-    /* height of the resolution level computed */
-    uint32_t rh = (uint32_t)(tr->y1 - tr->y0);
-    uint32_t w = (uint32_t)(tilec->resolutions[tilec->minimum_num_resolutions - 1].x1 -
-                                tilec->resolutions[tilec->minimum_num_resolutions - 1].x0);
+    uint32_t rw = tr->width();
+    uint32_t rh = tr->height();
+    uint32_t w = (uint32_t)tilec->buf->reduced_region_dim.width();
 
     size_t num_threads = ThreadPool::get()->num_threads();
     size_t h_mem_size = dwt_utils::max_resolution(tr, numres);
@@ -755,8 +770,8 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
         ++tr;
         horiz.sn = (int32_t)rw;
         vert.sn = (int32_t)rh;
-        rw = (uint32_t)(tr->x1 - tr->x0);
-        rh = (uint32_t)(tr->y1 - tr->y0);
+        rw = tr->width();
+        rh = tr->height();
         horiz.dn = (int32_t)(rw - horiz.sn);
         horiz.cas = tr->x0 & 1;
     	auto bandL = tiledp;
@@ -929,11 +944,11 @@ static void decode_partial_h_53(dwt_data<int32_t> *horiz){
     int32_t *a = horiz->mem;
 	int32_t dn = horiz->dn;
 	int32_t sn = horiz->sn;
-	 int32_t cas = horiz->cas;
-	 int32_t win_l_x0 = (int32_t)horiz->win_l_x0;
-	 int32_t win_l_x1 = (int32_t)horiz->win_l_x1;
-	 int32_t win_h_x0 = (int32_t)horiz->win_h_x0;
-	 int32_t win_h_x1 = (int32_t)horiz->win_h_x1;
+	int32_t cas = horiz->cas;
+	int32_t win_l_x0 = (int32_t)horiz->win_l_x0;
+	int32_t win_l_x1 = (int32_t)horiz->win_l_x1;
+	int32_t win_h_x0 = (int32_t)horiz->win_h_x0;
+	int32_t win_h_x1 = (int32_t)horiz->win_h_x1;
 
     if (!cas) {
         if ((dn > 0) || (sn > 1)) { /* NEW :  CASE ONE ELEMENT */
@@ -1290,16 +1305,17 @@ static void interleave_v_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
                                    uint32_t nb_elts_read){
     v4_data* GRK_RESTRICT bi = dwt->mem + dwt->cas;
 
+    auto band = bandL + dwt->win_l_x0 * width;
     for (uint32_t i = dwt->win_l_x0; i < dwt->win_l_x1; ++i, bi+=2) {
-        memcpy((float*)bi, &bandL[i * (size_t)width],
-               (size_t)nb_elts_read * sizeof(float));
+        memcpy((float*)bi, band, (size_t)nb_elts_read * sizeof(float));
+        band +=width;
     }
 
     bi = dwt->mem + 1 - dwt->cas;
-
+    band = bandH + dwt->win_h_x0 * width;
     for (uint32_t i = dwt->win_h_x0; i < dwt->win_h_x1; ++i, bi+=2) {
-        memcpy((float*)bi, &bandH[i * (size_t)width],
-               (size_t)nb_elts_read * sizeof(float));
+        memcpy((float*)bi, band,(size_t)nb_elts_read * sizeof(float));
+        band += width;
     }
 }
 
@@ -1531,12 +1547,9 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         return true;
 
     auto res = tilec->resolutions;
-    /* width of the resolution level computed */
-    uint32_t rw = (uint32_t)(res->x1 - res->x0);
-    /* height of the resolution level computed */
-    uint32_t rh = (uint32_t)(res->y1 - res->y0);
-    uint32_t w = (uint32_t)(tilec->resolutions[tilec->minimum_num_resolutions - 1].x1 -
-                            tilec->resolutions[tilec->minimum_num_resolutions - 1].x0);
+    uint32_t rw = res->width();
+    uint32_t rh = res->height();
+    uint32_t w = (uint32_t)tilec->buf->reduced_region_dim.width();
 
     size_t data_size = dwt_utils::max_resolution(res, numres);
     dwt_data<v4_data> horiz;
@@ -1551,10 +1564,8 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         horiz.sn = (int32_t)rw;
         vert.sn = (int32_t)rh;
         ++res;
-        /* width of the resolution level computed */
-        rw = (uint32_t)(res->x1 -  res->x0);
-        /* height of the resolution level computed */
-        rh = (uint32_t)(res->y1 -  res->y0);
+        rw = res->width();
+        rh = res->height();
         horiz.dn = (int32_t)(rw - (uint32_t)horiz.sn);
         horiz.cas = res->x0 & 1;
         horiz.win_l_x0 = 0;

@@ -101,7 +101,7 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, TileComponentCodingPar
 		GROK_ERROR( "Not enough memory for tile data");
 		return false;
 	}
-	for (uint32_t resno = 0; resno < tilec->minimum_num_resolutions; ++resno) {
+	for (uint32_t resno = 0; resno < tilec->resolutions_to_decompress; ++resno) {
 		auto res = &tilec->resolutions[resno];
 		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
 			grk_band *GRK_RESTRICT band = res->bands + bandno;

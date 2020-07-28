@@ -89,7 +89,7 @@ bool T2Decode::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 		 * could be equal to zero
 		 * and no packets are used to decode this resolution and
 		 * current_pi->resno is always >=
-		 * tile->comps[current_pi->compno].minimum_num_resolutions
+		 * tile->comps[current_pi->compno].resolutions_to_decompress
 		 * and no l_img_comp->resno_decoded are computed
 		 */
 		bool *first_pass_failed = new bool[image->numcomps];
@@ -107,7 +107,7 @@ bool T2Decode::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			auto tilec = p_tile->comps + current_pi->compno;
 			auto skip_the_packet = current_pi->layno
 					>= tcp->num_layers_to_decode
-					|| current_pi->resno >= tilec->minimum_num_resolutions;
+					|| current_pi->resno >= tilec->resolutions_to_decompress;
 
 			uint32_t pltMarkerLen = 0;
 			if (usePlt)
@@ -173,7 +173,7 @@ bool T2Decode::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			if (first_pass_failed[current_pi->compno]) {
 				if (tileProcessor->m_resno_decoded[current_pi->compno]  == 0) {
 					tileProcessor->m_resno_decoded[current_pi->compno] =
-							p_tile->comps[current_pi->compno].minimum_num_resolutions
+							p_tile->comps[current_pi->compno].resolutions_to_decompress
 									- 1;
 				}
 			}

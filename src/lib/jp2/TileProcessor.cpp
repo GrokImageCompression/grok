@@ -883,7 +883,7 @@ bool TileProcessor::is_whole_tilecomp_decoding(uint32_t compno) {
 	uint32_t tcx1 = (uint32_t)dims.x1;
 	uint32_t tcy1 = (uint32_t)dims.y1;
 
-	uint32_t shift = tilec->numresolutions - tilec->minimum_num_resolutions;
+	uint32_t shift = tilec->numresolutions - tilec->resolutions_to_decompress;
 	/* Tolerate small margin within the reduced resolution factor to consider if */
 	/* the whole tile path must be taken */
 	return (tcx0 >= (uint32_t) tilec->X0() && tcy0 >= (uint32_t) tilec->Y0()
@@ -929,18 +929,18 @@ bool TileProcessor::decompress_tile_t2(ChunkBuffer *src_buf) {
 				return false;
 			}
 
-			for (uint32_t resno = 0; resno < tilec->minimum_num_resolutions;
+			for (uint32_t resno = 0; resno < tilec->resolutions_to_decompress;
 					++resno) {
 				auto res = tilec->resolutions + resno;
 
 				res->win_x0 = uint_ceildivpow2(win_x0,
-						tilec->minimum_num_resolutions - 1 - resno);
+						tilec->resolutions_to_decompress - 1 - resno);
 				res->win_y0 = uint_ceildivpow2(win_y0,
-						tilec->minimum_num_resolutions - 1 - resno);
+						tilec->resolutions_to_decompress - 1 - resno);
 				res->win_x1 = uint_ceildivpow2(win_x1,
-						tilec->minimum_num_resolutions - 1 - resno);
+						tilec->resolutions_to_decompress - 1 - resno);
 				res->win_y1 = uint_ceildivpow2(win_y1,
-						tilec->minimum_num_resolutions - 1 - resno);
+						tilec->resolutions_to_decompress - 1 - resno);
 			}
 		}
 	}
@@ -2059,6 +2059,13 @@ grk_resolution::grk_resolution() :
 		win_x1(0),
 		win_y1(0)
 {}
+
+uint32_t grk_resolution::width(){
+	return (uint32_t)(x1-x0);
+}
+uint32_t grk_resolution::height(){
+	return (uint32_t)(y1-y0);
+}
 
 }
 

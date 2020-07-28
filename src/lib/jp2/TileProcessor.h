@@ -196,6 +196,9 @@ struct grk_band {
 struct grk_resolution {
 	grk_resolution();
 
+	uint32_t width();
+	uint32_t height();
+
 	/* dimension of the resolution level in tile coordinates */
 	uint32_t x0, y0, x1, y1;
 	uint32_t pw, ph;

@@ -93,6 +93,11 @@ template<typename T> struct TileComponentBuffer {
 		return data + (uint64_t) offsetx
 				+ offsety * (uint64_t) (reduced_region_dim.x1 - reduced_region_dim.x0);
 	}
+
+	uint32_t getStride(uint32_t resno,uint32_t bandno){
+		return (uint32_t)(reduced_region_dim.x1 - reduced_region_dim.x0);
+	}
+
 	bool alloc(){
 		uint64_t data_size_needed = data_dim().area() * sizeof(T);
 		if (!data && !data_size_needed)

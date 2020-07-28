@@ -78,7 +78,7 @@ bool init_tilec(TileComponent * tilec,
                 uint32_t numresolutions){
 	tilec->m_is_encoder = false;
     tilec->numresolutions = numresolutions;
-    tilec->minimum_num_resolutions = numresolutions;
+    tilec->resolutions_to_decompress = numresolutions;
     tilec->resolutions = new grk_resolution[tilec->numresolutions];
     for (auto i = 0; i < tilec->numresolutions; ++i)
     	memset(tilec->resolutions+i,0,sizeof(grk_resolution));

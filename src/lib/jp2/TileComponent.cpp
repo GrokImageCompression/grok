@@ -61,7 +61,7 @@ namespace grk {
 
 TileComponent::TileComponent() :numresolutions(0),
 								numAllocatedResolutions(0),
-								minimum_num_resolutions(0),
+								resolutions_to_decompress(0),
 								resolutions(nullptr),
 						#ifdef DEBUG_LOSSLESS_T2
 								round_trip_resolutions(nullptr),
@@ -183,9 +183,9 @@ bool TileComponent::init(bool isEncoder,
 
 	numresolutions = m_tccp->numresolutions;
 	if (numresolutions < cp->m_coding_params.m_dec.m_reduce) {
-		minimum_num_resolutions = 1;
+		resolutions_to_decompress = 1;
 	} else {
-		minimum_num_resolutions = numresolutions
+		resolutions_to_decompress = numresolutions
 				- cp->m_coding_params.m_dec.m_reduce;
 	}
 	if (!resolutions) {
@@ -610,7 +610,7 @@ void TileComponent::create_buffer(grk_image *output_image,
 									uint32_t dy) {
 
 	auto highestRes =
-			(!m_is_encoder) ? minimum_num_resolutions : numresolutions;
+			(!m_is_encoder) ? resolutions_to_decompress : numresolutions;
 	auto res =  resolutions + highestRes - 1;
 	x0 = res->x0;
 	x1 = res->x1;
@@ -622,7 +622,7 @@ void TileComponent::create_buffer(grk_image *output_image,
 	buf = new TileComponentBuffer<int32_t>(output_image, dx,dy,
 											grk_rect(maxRes->x0, maxRes->y0, maxRes->x1, maxRes->y1),
 											grk_rect(x0, y0, x1, y1),
-											minimum_num_resolutions,
+											resolutions_to_decompress,
 											numresolutions,
 											resolutions);
 }
