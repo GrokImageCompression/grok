@@ -55,7 +55,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
 #include <assert.h>
 #include "grok_includes.h"
 #include "dwt.h"
@@ -66,15 +65,51 @@ using namespace std;
 namespace grk {
 
 
-#define GRK_WS(i) v->mem[(i)<<1]
-#define GRK_WD(i) v->mem[(1+((i)<<1)]
+template <typename T, typename S> struct decode_job{
+	decode_job( S data,
+				T * GRK_RESTRICT LL,
+				uint32_t sLL,
+				T * GRK_RESTRICT HL,
+				uint32_t sHL,
+				T * GRK_RESTRICT LH,
+				uint32_t sLH,
+				T * GRK_RESTRICT HH,
+				uint32_t sHH,
+				uint32_t min_j,
+				uint32_t max_j) : data(data),
+								bandLL(LL),
+								strideLL(sLL),
+								bandHL(HL),
+								strideHL(sHL),
+								bandLH(LH),
+								strideLH(sLH),
+								bandHH(HH),
+								strideHH(sHH),
+								min_j(min_j),
+								max_j(max_j)
+	{}
+	decode_job( S data,
+				uint32_t min_j,
+				uint32_t max_j) :
+					decode_job(data,nullptr,0,nullptr,0,nullptr,0,nullptr,0,min_j, max_j)
+	{}
+    S data;
+    T * GRK_RESTRICT bandLL;
+    uint32_t strideLL;
+    T * GRK_RESTRICT bandHL;
+    uint32_t strideHL;
+    T * GRK_RESTRICT bandLH;
+    uint32_t strideLH;
+    T * GRK_RESTRICT bandHH;
+    uint32_t strideHH;
+
+    uint32_t min_j;
+    uint32_t max_j;
+} ;
+
 
 /** Number of columns that we can process in parallel in the vertical pass */
 #define PLL_COLS_53     (2*VREG_INT_COUNT)
-
-/** @name Local data structures */
-/*@{*/
-
 template <typename T> struct dwt_data {
 	dwt_data() : mem(nullptr),
 		         dn(0),
@@ -131,7 +166,6 @@ template <typename T> struct dwt_data {
     uint32_t      win_h_x1; /* end coord in high pass band */
 };
 
-
 struct  v4_data {
 	v4_data() {
 		f[0]=0;
@@ -149,52 +183,6 @@ struct  v4_data {
 };
 
 
-template <typename T, typename S> struct decode_job{
-	decode_job( S data,
-				T * GRK_RESTRICT LL,
-				uint32_t sLL,
-				T * GRK_RESTRICT HL,
-				uint32_t sHL,
-				T * GRK_RESTRICT LH,
-				uint32_t sLH,
-				T * GRK_RESTRICT HH,
-				uint32_t sHH,
-				uint32_t min_j,
-				uint32_t max_j) : data(data),
-								bandLL(LL),
-								strideLL(sLL),
-								bandHL(HL),
-								strideHL(sHL),
-								bandLH(LH),
-								strideLH(sLH),
-								bandHH(HH),
-								strideHH(sHH),
-								min_j(min_j),
-								max_j(max_j)
-	{}
-
-	decode_job( S data,
-				uint32_t min_j,
-				uint32_t max_j) :
-					decode_job(data,nullptr,0,nullptr,0,nullptr,0,nullptr,0,min_j, max_j)
-	{}
-
-
-    S data;
-    T * GRK_RESTRICT bandLL;
-    uint32_t strideLL;
-    T * GRK_RESTRICT bandHL;
-    uint32_t strideHL;
-    T * GRK_RESTRICT bandLH;
-    uint32_t strideLH;
-    T * GRK_RESTRICT bandHH;
-    uint32_t strideHH;
-
-
-    uint32_t min_j;
-    uint32_t max_j;
-} ;
-
 static const float dwt_alpha =  1.586134342f; /*  12994 */
 static const float dwt_beta  =  0.052980118f; /*    434 */
 static const float dwt_gamma = -0.882911075f; /*  -7233 */
@@ -202,11 +190,6 @@ static const float dwt_delta = -0.443506852f; /*  -3633 */
 
 static const float K      = 1.230174105f; /*  10078 */
 static const float c13318 = 1.625732422f;
-
-/*@}*/
-
-/** @name Local static functions */
-/*@{*/
 
 /**
 Inverse wavelet transform in 2-D.
@@ -220,14 +203,16 @@ static void decode_step_97(dwt_data<v4_data>* GRK_RESTRICT dwt);
 
 static void interleave_h_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
                                    float* GRK_RESTRICT bandL,
+								   const uint32_t strideL,
 								   float* GRK_RESTRICT bandH,
-                                   uint32_t width,
+								   const uint32_t strideH,
                                    uint32_t remaining_height);
 
 static void interleave_v_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
                                    float* GRK_RESTRICT bandL,
+								   const uint32_t strideL,
 								   float* GRK_RESTRICT bandH,
-                                   uint32_t width,
+								   const uint32_t strideH,
                                    uint32_t nb_elts_read);
 
 #ifdef __SSE__
@@ -262,100 +247,77 @@ static void decode_step2_97(v4_data* l, v4_data* w,
 template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_WIDTH, typename D>
    bool decode_partial_tile(TileComponent* GRK_RESTRICT tilec, uint32_t numres, sparse_array *sa);
 
-/*@}*/
-
-/*@}*/
-
-#define GRK_S(i) a[(i)<<1]
-#define GRK_D(i) a[(1+((i)<<1))]
-#define GRK_S_(i) ((i)<0?GRK_S(0):((i)>=sn?GRK_S(sn-1):GRK_S(i)))
-#define GRK_D_(i) ((i)<0?GRK_D(0):((i)>=dn?GRK_D(dn-1):GRK_D(i)))
-/* new */
-#define GRK_SS_(i) ((i)<0?GRK_S(0):((i)>=dn?GRK_S(dn-1):GRK_S(i)))
-#define GRK_DD_(i) ((i)<0?GRK_D(0):((i)>=sn?GRK_D(sn-1):GRK_D(i)))
-
-
-/*
-==========================================================
-   local functions
-==========================================================
-*/
-
-static void  decode_h_cas0_53(int32_t* tmp,
-                                const uint32_t len,
-                               int32_t* bandL,
-							   int32_t* bandH){
-    assert(len > 1);
+static void  decode_h_cas0_53(int32_t* buf,
+                                const uint32_t total_width,
+                               int32_t* bandL, /* even */
+							   int32_t* bandH){ /* odd */
+    assert(total_width > 1);
 
     /* Improved version of the TWO_PASS_VERSION: */
     /* Performs lifting in one single iteration. Saves memory */
     /* accesses and explicit interleaving. */
-    const int32_t* in_even = bandL;
-    const int32_t* in_odd = bandH;
-    int32_t s1n = in_even[0];
-    int32_t d1n = in_odd[0];
+    int32_t s1n = bandL[0];
+    int32_t d1n = bandH[0];
     int32_t s0n = s1n - ((d1n + 1) >> 1);
 
     uint32_t i = 0;
 
-    if (len > 2) {
-		for (uint32_t j = 1; i < (len - 3); i += 2, j++) {
+    if (total_width > 2) {
+		for (uint32_t j = 1; i < (total_width - 3); i += 2, j++) {
 			int32_t d1c = d1n;
 			int32_t s0c = s0n;
 
-			s1n = in_even[j];
-			d1n = in_odd[j];
+			s1n = bandL[j];
+			d1n = bandH[j];
 			s0n = s1n - ((d1c + d1n + 2) >> 2);
-			tmp[i  ] = s0c;
-			tmp[i + 1] = d1c + ((s0c + s0n) >> 1);
+			buf[i  ] = s0c;
+			buf[i + 1] = d1c + ((s0c + s0n) >> 1);
 		}
     }
 
-    tmp[i] = s0n;
-    if (len & 1) {
-        tmp[len - 1] = in_even[(len - 1) >> 1] - ((d1n + 1) >> 1);
-        tmp[len - 2] = d1n + ((s0n + tmp[len - 1]) >> 1);
+    buf[i] = s0n;
+    if (total_width & 1) {
+        buf[total_width - 1] = bandL[(total_width - 1) >> 1] - ((d1n + 1) >> 1);
+        buf[total_width - 2] = d1n + ((s0n + buf[total_width - 1]) >> 1);
     } else {
-        tmp[len - 1] = d1n + s0n;
+        buf[total_width - 1] = d1n + s0n;
     }
-    memcpy(bandL, tmp, (uint64_t)len * sizeof(int32_t));
+    memcpy(bandL, buf, (uint64_t)total_width * sizeof(int32_t));
 }
 
-static void  decode_h_cas1_53(int32_t* tmp,
-                               const uint32_t len,
-							   int32_t* bandL,
-							   int32_t* bandH){
-    assert(len > 2);
+static void  decode_h_cas1_53(int32_t* buf,
+                               const uint32_t total_width,
+							   int32_t* bandL, /* odd */
+							   int32_t* bandH){ /* even */
+    assert(total_width > 2);
 
     /* Improved version of the TWO_PASS_VERSION:
        Performs lifting in one single iteration. Saves memory
        accesses and explicit interleaving. */
-    const int32_t* in_even = bandH;
-    const int32_t* in_odd = bandL;
-    int32_t s1 = in_even[1];
-    int32_t dc = in_odd[0] - ((in_even[0] + s1 + 2) >> 2);
-    tmp[0] = in_even[0] + dc;
+    int32_t s1 = bandH[1];
+    int32_t dc = bandL[0] - ((bandH[0] + s1 + 2) >> 2);
+    buf[0] = bandH[0] + dc;
     uint32_t i, j;
-    for (i = 1, j = 1; i < (len - 2 - !(len & 1)); i += 2, j++) {
-    	int32_t s2 = in_even[j + 1];
-    	int32_t dn = in_odd[j] - ((s1 + s2 + 2) >> 2);
+    for (i = 1, j = 1; i < (total_width - 2 - !(total_width & 1)); i += 2, j++) {
+    	int32_t s2 = bandH[j + 1];
+    	int32_t dn = bandL[j] - ((s1 + s2 + 2) >> 2);
 
-        tmp[i  ] = dc;
-        tmp[i + 1] = s1 + ((dn + dc) >> 1);
+        buf[i  ] = dc;
+        buf[i + 1] = s1 + ((dn + dc) >> 1);
         dc = dn;
         s1 = s2;
     }
 
-    tmp[i] = dc;
+    buf[i] = dc;
 
-    if (!(len & 1)) {
-    	int32_t dn = in_odd[len / 2 - 1] - ((s1 + 1) >> 1);
-        tmp[len - 2] = s1 + ((dn + dc) >> 1);
-        tmp[len - 1] = dn;
+    if (!(total_width & 1)) {
+    	int32_t dn = bandL[total_width / 2 - 1] - ((s1 + 1) >> 1);
+        buf[total_width - 2] = s1 + ((dn + dc) >> 1);
+        buf[total_width - 1] = dn;
     } else {
-        tmp[len - 1] = s1 + dc;
+        buf[total_width - 1] = s1 + dc;
     }
-    memcpy(bandL, tmp, (uint64_t)len * sizeof(int32_t));
+    memcpy(bandL, buf, (uint64_t)total_width * sizeof(int32_t));
 }
 
 /* <summary>                            */
@@ -366,25 +328,23 @@ static void decode_h_53(const dwt_data<int32_t> *dwt,
                          int32_t *bandL,
 						 int32_t *bandH)
 {
-    const uint32_t len = dwt->sn + dwt->dn;
+    const uint32_t total_width = dwt->sn + dwt->dn;
     if (dwt->cas == 0) { /* Left-most sample is on even coordinate */
-        if (len > 1) {
-            decode_h_cas0_53(dwt->mem, len, bandL,bandH);
+        if (total_width > 1) {
+            decode_h_cas0_53(dwt->mem, total_width, bandL,bandH);
         } else {
             /* Unmodified value */
         }
     } else { /* Left-most sample is on odd coordinate */
-        if (len == 1) {
+        if (total_width == 1) {
         	bandL[0] /= 2;
-        } else if (len == 2) {
+        } else if (total_width == 2) {
             auto out = dwt->mem;
-            const int32_t* in_even =bandH;
-            const int32_t* in_odd = bandL;
-            out[1] = in_odd[0] - ((in_even[0] + 1) >> 1);
-            out[0] = in_even[0] + out[1];
-            memcpy(bandL, dwt->mem, (uint64_t)len * sizeof(int32_t));
-        } else if (len > 2) {
-            decode_h_cas1_53(dwt->mem, len, bandL, bandH);
+            out[1] = bandL[0] - ((bandH[0] + 1) >> 1);
+            out[0] = bandH[0] + out[1];
+            memcpy(bandL, dwt->mem, (uint64_t)total_width * sizeof(int32_t));
+        } else if (total_width > 2) {
+            decode_h_cas1_53(dwt->mem, total_width, bandL, bandH);
         }
     }
 }
@@ -392,174 +352,172 @@ static void decode_h_53(const dwt_data<int32_t> *dwt,
 #if (defined(__SSE2__) || defined(__AVX2__))
 
 static
-void decode_v_final_memcpy_53(int32_t* tiledp_col,
-                               const int32_t* tmp,
-                               uint32_t len,
-                               size_t stride){
-    for (uint32_t i = 0; i < len; ++i) {
+void decode_v_final_memcpy_53( const int32_t* buf,
+                               uint32_t total_height,
+							   int32_t* bandL,
+                               size_t strideL){
+    for (uint32_t i = 0; i < total_height; ++i) {
         /* A memcpy(&tiledp_col[i * stride + 0],
                     &tmp[PARALLEL_COLS_53 * i + 0],
                     PARALLEL_COLS_53 * sizeof(int32_t))
            would do but would be a tiny bit slower.
            We can take here advantage of our knowledge of alignment */
-        STOREU(&tiledp_col[(size_t)i * stride + 0],              LOAD(&tmp[PLL_COLS_53 * i + 0]));
-        STOREU(&tiledp_col[(size_t)i * stride + VREG_INT_COUNT], LOAD(&tmp[PLL_COLS_53 * i + VREG_INT_COUNT]));
+        STOREU(&bandL[(size_t)i * strideL + 0],              LOAD(&buf[PLL_COLS_53 * i + 0]));
+        STOREU(&bandL[(size_t)i * strideL + VREG_INT_COUNT], LOAD(&buf[PLL_COLS_53 * i + VREG_INT_COUNT]));
     }
 }
 
 /** Vertical inverse 5x3 wavelet transform for 8 columns in SSE2, or
  * 16 in AVX2, when top-most pixel is on even coordinate */
-static void decode_v_cas0_mcols_SSE2_OR_AVX2_53(int32_t* tmp,
-												const uint32_t len,
-												int32_t* bandL,
-												int32_t *bandH,
-												const size_t stride){
-    uint32_t i;
+static void decode_v_cas0_mcols_SSE2_OR_AVX2_53(int32_t* buf,
+												const uint32_t total_height,
+												int32_t* bandL, /* even */
+												const size_t strideL,
+												int32_t *bandH, /* odd */
+												const size_t strideH){
     const VREG two = LOAD_CST(2);
 
-    assert(len > 1);
+    assert(total_height > 1);
 
     /* Note: loads of input even/odd values must be done in a unaligned */
     /* fashion. But stores in tmp can be done with aligned store, since */
     /* the temporary buffer is properly aligned */
-    assert((size_t)tmp % (sizeof(int32_t) * VREG_INT_COUNT) == 0);
+    assert((size_t)buf % (sizeof(int32_t) * VREG_INT_COUNT) == 0);
 
-    const int32_t* in_even = bandL;
-    const int32_t* in_odd =  bandH;
-    VREG s1n_0 = LOADU(in_even + 0);
-    VREG s1n_1 = LOADU(in_even + VREG_INT_COUNT);
-    VREG d1n_0 = LOADU(in_odd);
-    VREG d1n_1 = LOADU(in_odd + VREG_INT_COUNT);
+    VREG s1n_0 = LOADU(bandL + 0);
+    VREG s1n_1 = LOADU(bandL + VREG_INT_COUNT);
+    VREG d1n_0 = LOADU(bandH);
+    VREG d1n_1 = LOADU(bandH + VREG_INT_COUNT);
 
     /* s0n = s1n - ((d1n + 1) >> 1); <==> */
     /* s0n = s1n - ((d1n + d1n + 2) >> 2); */
     VREG s0n_0 = SUB(s1n_0, SAR(ADD3(d1n_0, d1n_0, two), 2));
     VREG s0n_1 = SUB(s1n_1, SAR(ADD3(d1n_1, d1n_1, two), 2));
 
-    i = 0;
-    if (len > 3) {
+    uint32_t i = 0;
+    if (total_height > 3) {
         uint32_t j;
-		for (i = 0, j = 1; i < (len - 3); i += 2, j++) {
+		for (i = 0, j = 1; i < (total_height - 3); i += 2, j++) {
 			VREG d1c_0 = d1n_0;
 			VREG s0c_0 = s0n_0;
 			VREG d1c_1 = d1n_1;
 			VREG s0c_1 = s0n_1;
 
-			s1n_0 = LOADU(in_even + j * stride);
-			s1n_1 = LOADU(in_even + j * stride + VREG_INT_COUNT);
-			d1n_0 = LOADU(in_odd + j * stride);
-			d1n_1 = LOADU(in_odd + j * stride + VREG_INT_COUNT);
+			s1n_0 = LOADU(bandL + j * strideL);
+			s1n_1 = LOADU(bandL + j * strideL + VREG_INT_COUNT);
+			d1n_0 = LOADU(bandH + j * strideH);
+			d1n_1 = LOADU(bandH + j * strideH + VREG_INT_COUNT);
 
 			/*s0n = s1n - ((d1c + d1n + 2) >> 2);*/
 			s0n_0 = SUB(s1n_0, SAR(ADD3(d1c_0, d1n_0, two), 2));
 			s0n_1 = SUB(s1n_1, SAR(ADD3(d1c_1, d1n_1, two), 2));
 
-			STORE(tmp + PLL_COLS_53 * (i + 0), s0c_0);
-			STORE(tmp + PLL_COLS_53 * (i + 0) + VREG_INT_COUNT, s0c_1);
+			STORE(buf + PLL_COLS_53 * (i + 0), s0c_0);
+			STORE(buf + PLL_COLS_53 * (i + 0) + VREG_INT_COUNT, s0c_1);
 
 			/* d1c + ((s0c + s0n) >> 1) */
-			STORE(tmp + PLL_COLS_53 * (i + 1) + 0,              ADD(d1c_0, SAR(ADD(s0c_0, s0n_0), 1)));
-			STORE(tmp + PLL_COLS_53 * (i + 1) + VREG_INT_COUNT, ADD(d1c_1, SAR(ADD(s0c_1, s0n_1), 1)));
+			STORE(buf + PLL_COLS_53 * (i + 1) + 0,              ADD(d1c_0, SAR(ADD(s0c_0, s0n_0), 1)));
+			STORE(buf + PLL_COLS_53 * (i + 1) + VREG_INT_COUNT, ADD(d1c_1, SAR(ADD(s0c_1, s0n_1), 1)));
 		}
     }
 
-    STORE(tmp + PLL_COLS_53 * (i + 0) + 0, s0n_0);
-    STORE(tmp + PLL_COLS_53 * (i + 0) + VREG_INT_COUNT, s0n_1);
+    STORE(buf + PLL_COLS_53 * (i + 0) + 0, s0n_0);
+    STORE(buf + PLL_COLS_53 * (i + 0) + VREG_INT_COUNT, s0n_1);
 
-    if (len & 1) {
+    if (total_height & 1) {
         VREG tmp_len_minus_1;
-        s1n_0 = LOADU(in_even + (size_t)((len - 1) / 2) * stride);
+        s1n_0 = LOADU(bandL + (size_t)((total_height - 1) / 2) * strideL);
         /* tmp_len_minus_1 = s1n - ((d1n + 1) >> 1); */
         tmp_len_minus_1 = SUB(s1n_0, SAR(ADD3(d1n_0, d1n_0, two), 2));
-        STORE(tmp + PLL_COLS_53 * (len - 1), tmp_len_minus_1);
+        STORE(buf + PLL_COLS_53 * (total_height - 1), tmp_len_minus_1);
         /* d1n + ((s0n + tmp_len_minus_1) >> 1) */
-        STORE(tmp + PLL_COLS_53 * (len - 2), ADD(d1n_0, SAR(ADD(s0n_0, tmp_len_minus_1), 1)));
+        STORE(buf + PLL_COLS_53 * (total_height - 2), ADD(d1n_0, SAR(ADD(s0n_0, tmp_len_minus_1), 1)));
 
-        s1n_1 = LOADU(in_even + (size_t)((len - 1) / 2) * stride + VREG_INT_COUNT);
+        s1n_1 = LOADU(bandL + (size_t)((total_height - 1) / 2) * strideL + VREG_INT_COUNT);
         /* tmp_len_minus_1 = s1n - ((d1n + 1) >> 1); */
         tmp_len_minus_1 = SUB(s1n_1, SAR(ADD3(d1n_1, d1n_1, two), 2));
-        STORE(tmp + PLL_COLS_53 * (len - 1) + VREG_INT_COUNT, tmp_len_minus_1);
+        STORE(buf + PLL_COLS_53 * (total_height - 1) + VREG_INT_COUNT, tmp_len_minus_1);
         /* d1n + ((s0n + tmp_len_minus_1) >> 1) */
-        STORE(tmp + PLL_COLS_53 * (len - 2) + VREG_INT_COUNT, ADD(d1n_1, SAR(ADD(s0n_1, tmp_len_minus_1), 1)));
+        STORE(buf + PLL_COLS_53 * (total_height - 2) + VREG_INT_COUNT, ADD(d1n_1, SAR(ADD(s0n_1, tmp_len_minus_1), 1)));
 
     } else {
-        STORE(tmp + PLL_COLS_53 * (len - 1) + 0,              ADD(d1n_0, s0n_0));
-        STORE(tmp + PLL_COLS_53 * (len - 1) + VREG_INT_COUNT, ADD(d1n_1, s0n_1));
+        STORE(buf + PLL_COLS_53 * (total_height - 1) + 0,              ADD(d1n_0, s0n_0));
+        STORE(buf + PLL_COLS_53 * (total_height - 1) + VREG_INT_COUNT, ADD(d1n_1, s0n_1));
     }
-    decode_v_final_memcpy_53(bandL, tmp, len, stride);
+    decode_v_final_memcpy_53(buf, total_height, bandL, strideL);
 }
 
 
 /** Vertical inverse 5x3 wavelet transform for 8 columns in SSE2, or
  * 16 in AVX2, when top-most pixel is on odd coordinate */
-static void decode_v_cas1_mcols_SSE2_OR_AVX2_53(int32_t* tmp,
-												const uint32_t len,
+static void decode_v_cas1_mcols_SSE2_OR_AVX2_53(int32_t* buf,
+												const uint32_t total_height,
 												int32_t* bandL,
+												const uint32_t strideL,
 												int32_t *bandH,
-												const size_t stride){
-    uint32_t i;
-    size_t j;
-
+												const uint32_t strideH){
     const VREG two = LOAD_CST(2);
 
-    assert(len > 2);
+    assert(total_height > 2);
     /* Note: loads of input even/odd values must be done in a unaligned */
     /* fashion. But stores in tmp can be done with aligned store, since */
     /* the temporary buffer is properly aligned */
-    assert((size_t)tmp % (sizeof(int32_t) * VREG_INT_COUNT) == 0);
+    assert((size_t)buf % (sizeof(int32_t) * VREG_INT_COUNT) == 0);
 
     const int32_t* in_even = bandH;
     const int32_t* in_odd = bandL;
-    VREG s1_0 = LOADU(in_even + stride);
+    VREG s1_0 = LOADU(in_even + strideH);
     /* in_odd[0] - ((in_even[0] + s1 + 2) >> 2); */
     VREG dc_0 = SUB(LOADU(in_odd + 0), SAR(ADD3(LOADU(in_even + 0), s1_0, two), 2));
-    STORE(tmp + PLL_COLS_53 * 0, ADD(LOADU(in_even + 0), dc_0));
+    STORE(buf + PLL_COLS_53 * 0, ADD(LOADU(in_even + 0), dc_0));
 
-    VREG s1_1 = LOADU(in_even + stride + VREG_INT_COUNT);
+    VREG s1_1 = LOADU(in_even + strideH + VREG_INT_COUNT);
     /* in_odd[0] - ((in_even[0] + s1 + 2) >> 2); */
     VREG dc_1 = SUB(LOADU(in_odd + VREG_INT_COUNT), SAR(ADD3(LOADU(in_even + VREG_INT_COUNT), s1_1, two), 2));
-    STORE(tmp + PLL_COLS_53 * 0 + VREG_INT_COUNT,   ADD(LOADU(in_even + VREG_INT_COUNT), dc_1));
+    STORE(buf + PLL_COLS_53 * 0 + VREG_INT_COUNT,   ADD(LOADU(in_even + VREG_INT_COUNT), dc_1));
 
-    for (i = 1, j = 1; i < (len - 2 - !(len & 1)); i += 2, j++) {
+    uint32_t i;
+    size_t j;
+    for (i = 1, j = 1; i < (total_height - 2 - !(total_height & 1)); i += 2, j++) {
 
-    	VREG s2_0 = LOADU(in_even + (j + 1) * stride);
-    	VREG s2_1 = LOADU(in_even + (j + 1) * stride + VREG_INT_COUNT);
+    	VREG s2_0 = LOADU(in_even + (j + 1) * strideH);
+    	VREG s2_1 = LOADU(in_even + (j + 1) * strideH + VREG_INT_COUNT);
 
         /* dn = in_odd[j * stride] - ((s1 + s2 + 2) >> 2); */
-    	VREG dn_0 = SUB(LOADU(in_odd + j * stride),                 SAR(ADD3(s1_0, s2_0, two), 2));
-    	VREG dn_1 = SUB(LOADU(in_odd + j * stride + VREG_INT_COUNT),SAR(ADD3(s1_1, s2_1, two), 2));
+    	VREG dn_0 = SUB(LOADU(in_odd + j * strideL),                 SAR(ADD3(s1_0, s2_0, two), 2));
+    	VREG dn_1 = SUB(LOADU(in_odd + j * strideL + VREG_INT_COUNT),SAR(ADD3(s1_1, s2_1, two), 2));
 
-        STORE(tmp + PLL_COLS_53 * i, dc_0);
-        STORE(tmp + PLL_COLS_53 * i + VREG_INT_COUNT, dc_1);
+        STORE(buf + PLL_COLS_53 * i, dc_0);
+        STORE(buf + PLL_COLS_53 * i + VREG_INT_COUNT, dc_1);
 
         /* tmp[i + 1] = s1 + ((dn + dc) >> 1); */
-        STORE(tmp + PLL_COLS_53 * (i + 1) + 0,             ADD(s1_0, SAR(ADD(dn_0, dc_0), 1)));
-        STORE(tmp + PLL_COLS_53 * (i + 1) + VREG_INT_COUNT,ADD(s1_1, SAR(ADD(dn_1, dc_1), 1)));
+        STORE(buf + PLL_COLS_53 * (i + 1) + 0,             ADD(s1_0, SAR(ADD(dn_0, dc_0), 1)));
+        STORE(buf + PLL_COLS_53 * (i + 1) + VREG_INT_COUNT,ADD(s1_1, SAR(ADD(dn_1, dc_1), 1)));
 
         dc_0 = dn_0;
         s1_0 = s2_0;
         dc_1 = dn_1;
         s1_1 = s2_1;
     }
-    STORE(tmp + PLL_COLS_53 * i, dc_0);
-    STORE(tmp + PLL_COLS_53 * i + VREG_INT_COUNT, dc_1);
+    STORE(buf + PLL_COLS_53 * i, dc_0);
+    STORE(buf + PLL_COLS_53 * i + VREG_INT_COUNT, dc_1);
 
-    if (!(len & 1)) {
+    if (!(total_height & 1)) {
         /*dn = in_odd[(len / 2 - 1) * stride] - ((s1 + 1) >> 1); */
-    	VREG dn_0 = SUB(LOADU(in_odd + (size_t)(len / 2 - 1) * stride),SAR(ADD3(s1_0, s1_0, two), 2));
-    	VREG dn_1 = SUB(LOADU(in_odd + (size_t)(len / 2 - 1) * stride + VREG_INT_COUNT), SAR(ADD3(s1_1, s1_1, two), 2));
+    	VREG dn_0 = SUB(LOADU(in_odd + (size_t)(total_height / 2 - 1) * strideL),SAR(ADD3(s1_0, s1_0, two), 2));
+    	VREG dn_1 = SUB(LOADU(in_odd + (size_t)(total_height / 2 - 1) * strideL + VREG_INT_COUNT), SAR(ADD3(s1_1, s1_1, two), 2));
 
         /* tmp[len - 2] = s1 + ((dn + dc) >> 1); */
-        STORE(tmp + PLL_COLS_53 * (len - 2) + 0, ADD(s1_0, SAR(ADD(dn_0, dc_0), 1)));
-        STORE(tmp + PLL_COLS_53 * (len - 2) + VREG_INT_COUNT, ADD(s1_1, SAR(ADD(dn_1, dc_1), 1)));
+        STORE(buf + PLL_COLS_53 * (total_height - 2) + 0, ADD(s1_0, SAR(ADD(dn_0, dc_0), 1)));
+        STORE(buf + PLL_COLS_53 * (total_height - 2) + VREG_INT_COUNT, ADD(s1_1, SAR(ADD(dn_1, dc_1), 1)));
 
-        STORE(tmp + PLL_COLS_53 * (len - 1) + 0, dn_0);
-        STORE(tmp + PLL_COLS_53 * (len - 1) + VREG_INT_COUNT, dn_1);
+        STORE(buf + PLL_COLS_53 * (total_height - 1) + 0, dn_0);
+        STORE(buf + PLL_COLS_53 * (total_height - 1) + VREG_INT_COUNT, dn_1);
     } else {
-        STORE(tmp + PLL_COLS_53 * (len - 1) + 0, ADD(s1_0, dc_0));
-        STORE(tmp + PLL_COLS_53 * (len - 1) + VREG_INT_COUNT,ADD(s1_1, dc_1));
+        STORE(buf + PLL_COLS_53 * (total_height - 1) + 0, ADD(s1_0, dc_0));
+        STORE(buf + PLL_COLS_53 * (total_height - 1) + VREG_INT_COUNT,ADD(s1_1, dc_1));
     }
-    decode_v_final_memcpy_53(bandL, tmp, len, stride);
+    decode_v_final_memcpy_53(buf, total_height, bandL, strideL);
 }
 
 #undef VREG
@@ -577,14 +535,15 @@ static void decode_v_cas1_mcols_SSE2_OR_AVX2_53(int32_t* tmp,
 
 /** Vertical inverse 5x3 wavelet transform for one column, when top-most
  * pixel is on even coordinate */
-static void decode_v_cas0_53(int32_t* tmp,
-                             const uint32_t len,
+static void decode_v_cas0_53(int32_t* buf,
+                             const uint32_t total_height,
                              int32_t* bandL,
+							 const uint32_t strideL,
 							 int32_t *bandH,
-                             const size_t stride){
+                             const uint32_t strideH){
     int32_t d1n, s1n, s0n;
 
-    assert(len > 1);
+    assert(total_height > 1);
 
     /* Performs lifting in one single iteration. Saves memory */
     /* accesses and explicit interleaving. */
@@ -593,82 +552,79 @@ static void decode_v_cas0_53(int32_t* tmp,
     s0n = s1n - ((d1n + 1) >> 1);
 
     uint32_t i = 0;
-    if (len > 2) {
-    	auto bL = bandL + stride;
-    	auto bH = bandH + stride;
-		for (uint32_t j = 0; i < (len - 3); i += 2, j++) {
+    if (total_height > 2) {
+    	auto bL = bandL + strideL;
+    	auto bH = bandH + strideH;
+		for (uint32_t j = 0; i < (total_height - 3); i += 2, j++) {
 			int32_t d1c = d1n;
 			int32_t s0c = s0n;
 			s1n = *bL;
-			bL += stride;
+			bL += strideL;
 			d1n = *bH;
-			bH += stride;
+			bH += strideH;
 			s0n = s1n - ((d1c + d1n + 2) >> 2);
-			tmp[i  ] = s0c;
-			tmp[i + 1] = d1c + ((s0c + s0n) >> 1);
+			buf[i  ] = s0c;
+			buf[i + 1] = d1c + ((s0c + s0n) >> 1);
 		}
     }
-    tmp[i] = s0n;
-    if (len & 1) {
-        tmp[len - 1] =
-            bandL[((len - 1) / 2) * stride] -
+    buf[i] = s0n;
+    if (total_height & 1) {
+        buf[total_height - 1] =
+            bandL[((total_height - 1) / 2) * strideL] -
             ((d1n + 1) >> 1);
-        tmp[len - 2] = d1n + ((s0n + tmp[len - 1]) >> 1);
+        buf[total_height - 2] = d1n + ((s0n + buf[total_height - 1]) >> 1);
     } else {
-        tmp[len - 1] = d1n + s0n;
+        buf[total_height - 1] = d1n + s0n;
     }
     auto band = bandL;
-    for (i = 0; i < len; ++i) {
-        *band = tmp[i];
-        band += stride;
+    for (i = 0; i < total_height; ++i) {
+        *band = buf[i];
+        band += strideL;
     }
 }
 
-
 /** Vertical inverse 5x3 wavelet transform for one column, when top-most
  * pixel is on odd coordinate */
-static void decode_v_cas1_53(int32_t* tmp,
-                             const uint32_t len,
+static void decode_v_cas1_53(int32_t* buf,
+                             const uint32_t total_height,
                              int32_t *bandL,
+							 const uint32_t strideL,
 							 int32_t *bandH,
-                             const size_t stride){
-    uint32_t i, j;
-    const int32_t* in_even = bandH;
-    const int32_t* in_odd =  bandL;
-
-    assert(len > 2);
+                             const uint32_t strideH){
+    assert(total_height > 2);
 
     /* Performs lifting in one single iteration. Saves memory */
     /* accesses and explicit interleaving. */
-    int32_t s1 = in_even[stride];
-    int32_t dc = in_odd[0] - ((in_even[0] + s1 + 2) >> 2);
-    tmp[0] = in_even[0] + dc;
-    auto s2_ptr = in_even + (stride << 1);
-    auto dn_ptr = in_odd + stride;
-    for (i = 1, j = 1; i < (len - 2 - !(len & 1)); i += 2, j++) {
+    int32_t s1 = bandH[strideH];
+    int32_t dc = bandL[0] - ((bandH[0] + s1 + 2) >> 2);
+    buf[0] = bandH[0] + dc;
+    auto s2_ptr = bandH + (strideH << 1);
+    auto dn_ptr = bandL + strideL;
+    uint32_t i, j;
+    for (i = 1, j = 1; i < (total_height - 2 - !(total_height & 1)); i += 2, j++) {
     	int32_t s2 = *s2_ptr;
-    	s2_ptr += stride;
+    	s2_ptr += strideH;
 
     	int32_t dn = *dn_ptr - ((s1 + s2 + 2) >> 2);
-    	dn_ptr += stride;
+    	dn_ptr += strideL;
 
-        tmp[i  ] = dc;
-        tmp[i + 1] = s1 + ((dn + dc) >> 1);
+        buf[i  ] = dc;
+        buf[i + 1] = s1 + ((dn + dc) >> 1);
         dc = dn;
         s1 = s2;
     }
-    tmp[i] = dc;
-    if (!(len & 1)) {
-    	int32_t dn = in_odd[(len / 2 - 1) * stride] - ((s1 + 1) >> 1);
-        tmp[len - 2] = s1 + ((dn + dc) >> 1);
-        tmp[len - 1] = dn;
+    buf[i] = dc;
+    if (!(total_height & 1)) {
+    	int32_t dn = bandL[((total_height>>1) - 1) * strideL] - ((s1 + 1) >> 1);
+        buf[total_height - 2] = s1 + ((dn + dc) >> 1);
+        buf[total_height - 1] = dn;
     } else {
-        tmp[len - 1] = s1 + dc;
+        buf[total_height - 1] = s1 + dc;
     }
     auto band = bandL;
-    for (i = 0; i < len; ++i) {
-        *band = tmp[i];
-        band += stride;
+    for (i = 0; i < total_height; ++i) {
+        *band = buf[i];
+        band += strideL;
     }
 }
 
@@ -678,8 +634,9 @@ static void decode_v_cas1_53(int32_t* tmp,
 /* Performs interleave, inverse wavelet transform and copy back to buffer */
 static void decode_v_53(const dwt_data<int32_t> *dwt,
                          int32_t *bandL,
+						 const uint32_t strideL,
 						 int32_t *bandH,
-                         size_t stride,
+						 const uint32_t strideH,
                          uint32_t nb_cols){
     const uint32_t sn = dwt->sn;
     const uint32_t len = sn + dwt->dn;
@@ -690,54 +647,47 @@ static void decode_v_53(const dwt_data<int32_t> *dwt,
         if (len > 1 && nb_cols == PLL_COLS_53) {
             /* Same as below general case, except that thanks to SSE2/AVX2 */
             /* we can efficiently process 8/16 columns in parallel */
-            decode_v_cas0_mcols_SSE2_OR_AVX2_53(dwt->mem, len, bandL,bandH, stride);
+            decode_v_cas0_mcols_SSE2_OR_AVX2_53(dwt->mem, len, bandL, strideL, bandH, strideH);
             return;
         }
 #endif
         if (len > 1) {
             for (uint32_t c = 0; c < nb_cols; c++, bandL++, bandH++)
-                decode_v_cas0_53(dwt->mem, len, bandL, bandH, stride);
+                decode_v_cas0_53(dwt->mem, len, bandL, strideL,bandH, strideH);
             return;
         }
     } else {
         if (len == 1) {
             for (uint32_t c = 0; c < nb_cols; c++, bandL++)
-                bandL[0] /= 2;
+                bandL[0] = bandL[0] >> 1;
             return;
         }
         else if (len == 2) {
             auto out = dwt->mem;
             for (uint32_t c = 0; c < nb_cols; c++, bandL++) {
-                const int32_t* in_even = bandH;
-                const int32_t* in_odd = bandL;
-
-                out[1] = in_odd[0] - ((in_even[0] + 1) >> 1);
-                out[0] = in_even[0] + out[1];
+                out[1] = bandL[0] - ((bandH[0] + 1) >> 1);
+                out[0] = bandH[0] + out[1];
                 auto band = bandL;
                 for (uint32_t i = 0; i < len; ++i){
                 	*band = out[i];
-                	band += stride;
+                	band += strideL;
                 }
             }
             return;
         }
 
 #if (defined(__SSE2__) || defined(__AVX2__))
-        if (len > 2 && nb_cols == PLL_COLS_53) {
+        if (nb_cols == PLL_COLS_53) {
             /* Same as below general case, except that thanks to SSE2/AVX2 */
             /* we can efficiently process 8/16 columns in parallel */
-            decode_v_cas1_mcols_SSE2_OR_AVX2_53(dwt->mem, len, bandL, bandH, stride);
+            decode_v_cas1_mcols_SSE2_OR_AVX2_53(dwt->mem, len, bandL, strideL,bandH, strideH);
             return;
         }
 #endif
-        if (len > 2) {
-            for (uint32_t c = 0; c < nb_cols; c++, bandL++,bandH++)
-                decode_v_cas1_53(dwt->mem, len, bandL,bandH, stride);
-            return;
-        }
+		for (uint32_t c = 0; c < nb_cols; c++, bandL++,bandH++)
+			decode_v_cas1_53(dwt->mem, len, bandL,strideL,bandH, strideH);
     }
 }
-
 
 /* <summary>                            */
 /* Inverse wavelet transform in 2-D.    */
@@ -749,7 +699,6 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
     auto tr = tilec->resolutions;
     uint32_t rw = tr->width();
     uint32_t rh = tr->height();
-    uint32_t w = (uint32_t)tilec->buf->reduced_region_dim.width();
 
     size_t num_threads = ThreadPool::get()->num_threads();
     size_t h_mem_size = dwt_utils::max_resolution(tr, numres);
@@ -767,6 +716,11 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
     bool rc = true;
     int32_t * GRK_RESTRICT tiledp = tilec->buf->get_ptr( 0, 0, 0, 0);
     while (--numres) {
+        uint32_t strideLL = (uint32_t)tilec->buf->reduced_region_dim.width();
+        uint32_t strideHL = (uint32_t)tilec->buf->reduced_region_dim.width();
+        uint32_t strideLH = (uint32_t)tilec->buf->reduced_region_dim.width();
+        uint32_t strideHH = (uint32_t)tilec->buf->reduced_region_dim.width();
+
         ++tr;
         horiz.sn = (int32_t)rw;
         vert.sn = (int32_t)rh;
@@ -774,8 +728,8 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
         rh = tr->height();
         horiz.dn = (int32_t)(rw - horiz.sn);
         horiz.cas = tr->x0 & 1;
-    	auto bandL = tiledp;
-    	auto bandH = bandL + horiz.sn;
+    	auto bandLL = tiledp;
+    	auto bandHL = bandLL + horiz.sn;
 
         if (num_threads == 1 || rh <= 1) {
         	if (!horiz.mem){
@@ -786,9 +740,9 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
         	    vert.mem = horiz.mem;
         	}
             for (uint32_t j = 0; j < rh; ++j){
-                decode_h_53(&horiz, bandL, bandH);
-                bandL += w;
-                bandH += w;
+                decode_h_53(&horiz, bandLL, bandHL);
+                bandLL += strideLL;
+                bandHL += strideHL;
             }
         } else {
             uint32_t num_jobs = (uint32_t)num_threads;
@@ -797,8 +751,13 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
             uint32_t step_j = (rh / num_jobs);
 			std::vector< std::future<int> > results;
 			for(uint32_t j = 0; j < num_jobs; ++j) {
+			   auto min_j = j * step_j;
                auto job = new decode_job<int32_t, dwt_data<int32_t>>(horiz,
-											bandL,w,bandH,w,nullptr,0,nullptr,0,
+											bandLL + min_j * strideLL,
+											strideLL,
+											bandHL + min_j * strideHL,
+											strideHL,
+											nullptr,0,nullptr,0,
 											j * step_j,
 											j < (num_jobs - 1U) ? (j + 1U) * step_j : rh);
                 if (!job->data.alloc(h_mem_size)) {
@@ -808,12 +767,10 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
                 }
 				results.emplace_back(
 					ThreadPool::get()->enqueue([job] {
-						auto bandLL = job->bandLL + job->min_j * job->strideLL;
-						auto bandHL = job->bandHL + job->min_j * job->strideHL;
 					    for (uint32_t j = job->min_j; j < job->max_j; j++){
-					        decode_h_53(&job->data,bandLL,bandHL);
-					        bandLL += job->strideLL;
-					        bandHL += job->strideHL;
+					        decode_h_53(&job->data,job->bandLL,job->bandHL);
+					        job->bandLL += job->strideLL;
+					        job->bandHL += job->strideHL;
 						}
 					    grk_aligned_free(job->data.mem);
 					    delete job;
@@ -826,8 +783,8 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
         }
         vert.dn = (int32_t)(rh - (uint32_t)vert.sn);
         vert.cas = tr->y0 & 1;
-    	bandL = tiledp;
-    	bandH = bandL + vert.sn * w;
+    	bandLL = tiledp;
+    	bandHL = bandLL + vert.sn * strideLL;
 
         if (num_threads == 1 || rw <= 1) {
         	if (!horiz.mem){
@@ -839,13 +796,12 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
         	}
             uint32_t j;
             for (j = 0; j + PLL_COLS_53 <= rw; j += PLL_COLS_53){
-                decode_v_53(&vert, bandL, bandH, + (size_t)w, PLL_COLS_53);
-				bandL += PLL_COLS_53;
-				bandH += PLL_COLS_53;
+                decode_v_53(&vert, bandLL, strideLL, bandHL, strideLL, PLL_COLS_53);
+				bandLL += PLL_COLS_53;
+				bandHL += PLL_COLS_53;
             }
-            if (j < rw) {
-                decode_v_53(&vert, bandL, bandH, (size_t)w, (int32_t)(rw - j));
-            }
+            if (j < rw)
+                decode_v_53(&vert, bandLL, strideLL, bandHL, strideLL, (int32_t)(rw - j));
         } else {
             uint32_t num_jobs = (uint32_t)num_threads;
             if (rw < num_jobs)
@@ -853,8 +809,14 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
             uint32_t step_j = (rw / num_jobs);
 			std::vector< std::future<int> > results;
             for (uint32_t j = 0; j < num_jobs; j++) {
+ 			    auto min_j = j * step_j;
                 auto job = new decode_job<int32_t, dwt_data<int32_t>>(vert,
-											bandL,w,nullptr,0,bandH,w,nullptr,0,
+											bandLL + min_j,
+											strideLL,
+											nullptr,0,
+											bandHL + min_j,
+											strideHL,
+											nullptr,0,
 											j * step_j,
 											j < (num_jobs - 1U) ? (j + 1U) * step_j : rw);
                 if (!job->data.alloc(h_mem_size)) {
@@ -865,16 +827,13 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 				results.emplace_back(
 					ThreadPool::get()->enqueue([job] {
 						uint32_t j=job->min_j;
-						auto bandLL = job->bandLL + job->min_j;
-						auto bandLH = job->bandLH + job->min_j;
 						for (; j + PLL_COLS_53 <= job->max_j; j += PLL_COLS_53) {
-							decode_v_53(&job->data, bandLL, bandLH, (size_t)job->strideLL, PLL_COLS_53);
-							bandLL += PLL_COLS_53;
-							bandLH += PLL_COLS_53;
+							decode_v_53(&job->data, job->bandLL, job->strideLL, job->bandLH, job->strideLH, PLL_COLS_53);
+							job->bandLL += PLL_COLS_53;
+							job->bandLH += PLL_COLS_53;
 						}
-						if (j < job->max_j) {
-							decode_v_53(&job->data, bandLL, bandLH, (size_t)job->strideLL, (int32_t)(job->max_j - j));
-						}
+						if (j < job->max_j)
+							decode_v_53(&job->data, job->bandLL,job->strideLL, job->bandLH, job->strideLH, (int32_t)(job->max_j - j));
 						grk_aligned_free(job->data.mem);
 						delete job;
 					return 0;
@@ -890,361 +849,30 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
     return rc;
 }
 
-static void interleave_partial_h_53(dwt_data<int32_t> *dwt,
-									sparse_array* sa,
-									uint32_t sa_line)	{
-	auto dest = dwt->mem;
-	int32_t cas = dwt->cas;
-	uint32_t sn = dwt->sn;
-	uint32_t win_l_x0 = dwt->win_l_x0;
-	uint32_t win_l_x1 = dwt->win_l_x1;
-	uint32_t win_h_x0 = dwt->win_h_x0;
-	uint32_t win_h_x1 = dwt->win_h_x1;
-    bool ret = sa->read( win_l_x0, sa_line,
-					  win_l_x1, sa_line + 1,
-					  dest + cas + 2 * win_l_x0,
-					  2, 0, true);
-    assert(ret);
-    ret = sa->read(sn + win_h_x0, sa_line,
-				  sn + win_h_x1, sa_line + 1,
-				  dest + 1 - cas + 2 * win_h_x0,
-				  2, 0, true);
-    assert(ret);
-    GRK_UNUSED(ret);
-}
-
-
-static void interleave_partial_v_53(dwt_data<int32_t> *vert,
-									sparse_array* sa,
-									uint32_t sa_col,
-									uint32_t nb_cols){
-	auto dest = vert->mem;
-	int32_t cas = vert->cas;
-	uint32_t sn = vert->sn;
-	uint32_t win_l_y0 = vert->win_l_x0;
-	uint32_t win_l_y1 = vert->win_l_x1;
-	uint32_t win_h_y0 = vert->win_h_x0;
-	uint32_t win_h_y1 = vert->win_h_x1;
-
-    bool ret = sa->read(sa_col, win_l_y0,
-					   sa_col + nb_cols, win_l_y1,
-					   dest + cas * 4 + 2 * 4 * win_l_y0,
-					   1, 2 * 4, true);
-    assert(ret);
-    ret = sa->read( sa_col, sn + win_h_y0,
-					  sa_col + nb_cols, sn + win_h_y1,
-					  dest + (1 - cas) * 4 + 2 * 4 * win_h_y0,
-					  1, 2 * 4, true);
-    assert(ret);
-    GRK_UNUSED(ret);
-}
-
-static void decode_partial_h_53(dwt_data<int32_t> *horiz){
-    int32_t i;
-    int32_t *a = horiz->mem;
-	int32_t dn = horiz->dn;
-	int32_t sn = horiz->sn;
-	int32_t cas = horiz->cas;
-	int32_t win_l_x0 = (int32_t)horiz->win_l_x0;
-	int32_t win_l_x1 = (int32_t)horiz->win_l_x1;
-	int32_t win_h_x0 = (int32_t)horiz->win_h_x0;
-	int32_t win_h_x1 = (int32_t)horiz->win_h_x1;
-
-    if (!cas) {
-        if ((dn > 0) || (sn > 1)) { /* NEW :  CASE ONE ELEMENT */
-            /* Naive version is :
-            for (i = win_l_x0; i < i_max; i++) {
-                GRK_S(i) -= (GRK_D_(i - 1) + GRK_D_(i) + 2) >> 2;
-            }
-            for (i = win_h_x0; i < win_h_x1; i++) {
-                GRK_D(i) += (GRK_S_(i) + GRK_S_(i + 1)) >> 1;
-            }
-            but the compiler doesn't manage to unroll it to avoid bound
-            checking in GRK_S_ and GRK_D_ macros
-            */
-
-            i = win_l_x0;
-            if (i < win_l_x1) {
-                int32_t i_max;
-
-                /* Left-most case */
-                GRK_S(i) -= (GRK_D_(i - 1) + GRK_D_(i) + 2) >> 2;
-                i ++;
-
-                i_max = win_l_x1;
-                if (i_max > dn)
-                    i_max = dn;
-                for (; i < i_max; i++) {
-                    /* No bound checking */
-                    GRK_S(i) -= (GRK_D(i - 1) + GRK_D(i) + 2) >> 2;
-                }
-                for (; i < win_l_x1; i++) {
-                    /* Right-most case */
-                    GRK_S(i) -= (GRK_D_(i - 1) + GRK_D_(i) + 2) >> 2;
-                }
-            }
-
-            i = win_h_x0;
-            if (i < win_h_x1) {
-                int32_t i_max = win_h_x1;
-                if (i_max >= sn)
-                    i_max = sn - 1;
-                for (; i < i_max; i++) {
-                    /* No bound checking */
-                    GRK_D(i) += (GRK_S(i) + GRK_S(i + 1)) >> 1;
-                }
-                for (; i < win_h_x1; i++) {
-                    /* Right-most case */
-                    GRK_D(i) += (GRK_S_(i) + GRK_S_(i + 1)) >> 1;
-                }
-            }
-        }
-    } else {
-        if (!sn  && dn == 1) {        /* NEW :  CASE ONE ELEMENT */
-            GRK_S(0) /= 2;
-        } else {
-            for (i = win_l_x0; i < win_l_x1; i++)
-                GRK_D(i) -= (GRK_SS_(i) + GRK_SS_(i + 1) + 2) >> 2;
-            for (i = win_h_x0; i < win_h_x1; i++)
-                GRK_S(i) += (GRK_DD_(i) + GRK_DD_(i - 1)) >> 1;
-        }
-    }
-}
-
-#define GRK_S_off(i,off) a[(uint32_t)(i)*2*4+off]
-#define GRK_D_off(i,off) a[(1+(uint32_t)(i)*2)*4+off]
-#define GRK_S__off(i,off) ((i)<0?GRK_S_off(0,off):((i)>=sn?GRK_S_off(sn-1,off):GRK_S_off(i,off)))
-#define GRK_D__off(i,off) ((i)<0?GRK_D_off(0,off):((i)>=dn?GRK_D_off(dn-1,off):GRK_D_off(i,off)))
-#define GRK_SS__off(i,off) ((i)<0?GRK_S_off(0,off):((i)>=dn?GRK_S_off(dn-1,off):GRK_S_off(i,off)))
-#define GRK_DD__off(i,off) ((i)<0?GRK_D_off(0,off):((i)>=sn?GRK_D_off(sn-1,off):GRK_D_off(i,off)))
-
-static void decode_partial_v_53(dwt_data<int32_t> *vert){
-    int32_t i;
-    uint32_t off;
-    int32_t *a = vert->mem;
-	int32_t dn = vert->dn;
-	int32_t sn = vert->sn;
-	int32_t cas = vert->cas;
-	int32_t win_l_x0 = (int32_t)vert->win_l_x0;
-	int32_t win_l_x1 = (int32_t)vert->win_l_x1;
-	int32_t win_h_x0 = (int32_t)vert->win_h_x0;
-	int32_t win_h_x1 = (int32_t)vert->win_h_x1;
-
-    if (!cas) {
-        if ((dn > 0) || (sn > 1)) { /* NEW :  CASE ONE ELEMENT */
-            /* Naive version is :
-            for (i = win_l_x0; i < i_max; i++) {
-                GRK_S(i) -= (GRK_D_(i - 1) + GRK_D_(i) + 2) >> 2;
-            }
-            for (i = win_h_x0; i < win_h_x1; i++) {
-                GRK_D(i) += (GRK_S_(i) + GRK_S_(i + 1)) >> 1;
-            }
-            but the compiler doesn't manage to unroll it to avoid bound
-            checking in GRK_S_ and GRK_D_ macros
-            */
-            i = win_l_x0;
-            if (i < win_l_x1) {
-                int32_t i_max;
-
-                /* Left-most case */
-                for (off = 0; off < 4; off++)
-                    GRK_S_off(i, off) -= (GRK_D__off(i - 1, off) + GRK_D__off(i, off) + 2) >> 2;
-                i ++;
-
-                i_max = win_l_x1;
-                if (i_max > dn)
-                    i_max = dn;
-#ifdef __SSE2__
-                if (i + 1 < i_max) {
-                    const __m128i two = _mm_set1_epi32(2);
-                    __m128i Dm1 = _mm_load_si128((__m128i *)(a + 4 + (i - 1) * 8));
-                    for (; i + 1 < i_max; i += 2) {
-                        /* No bound checking */
-                        __m128i S = _mm_load_si128((__m128i *)(a + i * 8));
-                        __m128i D = _mm_load_si128((__m128i *)(a + 4 + i * 8));
-                        __m128i S1 = _mm_load_si128((__m128i *)(a + (i + 1) * 8));
-                        __m128i D1 = _mm_load_si128((__m128i *)(a + 4 + (i + 1) * 8));
-                        S = _mm_sub_epi32(S,
-                                          _mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(Dm1, D), two), 2));
-                        S1 = _mm_sub_epi32(S1,
-                                           _mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(D, D1), two), 2));
-                        _mm_store_si128((__m128i*)(a + i * 8), S);
-                        _mm_store_si128((__m128i*)(a + (i + 1) * 8), S1);
-                        Dm1 = D1;
-                    }
-                }
-#endif
-                for (; i < i_max; i++) {
-                    /* No bound checking */
-                    for (off = 0; off < 4; off++)
-                        GRK_S_off(i, off) -= (GRK_D_off(i - 1, off) + GRK_D_off(i, off) + 2) >> 2;
-                }
-                for (; i < win_l_x1; i++) {
-                    /* Right-most case */
-                    for (off = 0; off < 4; off++)
-                        GRK_S_off(i, off) -= (GRK_D__off(i - 1, off) + GRK_D__off(i, off) + 2) >> 2;
-                }
-            }
-            i = win_h_x0;
-            if (i < win_h_x1) {
-                int32_t i_max = win_h_x1;
-                if (i_max >= sn)
-                    i_max = sn - 1;
-#ifdef __SSE2__
-                if (i + 1 < i_max) {
-                    __m128i S =  _mm_load_si128((__m128i *)(a + i * 8));
-                    for (; i + 1 < i_max; i += 2) {
-                        /* No bound checking */
-                        __m128i D = _mm_load_si128((__m128i *)(a + 4 + i * 8));
-                        __m128i S1 = _mm_load_si128((__m128i *)(a + (i + 1) * 8));
-                        __m128i D1 = _mm_load_si128((__m128i *)(a + 4 + (i + 1) * 8));
-                        __m128i S2 = _mm_load_si128((__m128i *)(a + (i + 2) * 8));
-                        D = _mm_add_epi32(D, _mm_srai_epi32(_mm_add_epi32(S, S1), 1));
-                        D1 = _mm_add_epi32(D1, _mm_srai_epi32(_mm_add_epi32(S1, S2), 1));
-                        _mm_store_si128((__m128i*)(a + 4 + i * 8), D);
-                        _mm_store_si128((__m128i*)(a + 4 + (i + 1) * 8), D1);
-                        S = S2;
-                    }
-                }
-#endif
-                for (; i < i_max; i++) {
-                    /* No bound checking */
-                    for (off = 0; off < 4; off++)
-                        GRK_D_off(i, off) += (GRK_S_off(i, off) + GRK_S_off(i + 1, off)) >> 1;
-                }
-                for (; i < win_h_x1; i++) {
-                    /* Right-most case */
-                    for (off = 0; off < 4; off++)
-                        GRK_D_off(i, off) += (GRK_S__off(i, off) + GRK_S__off(i + 1, off)) >> 1;
-                }
-            }
-        }
-    } else {
-        if (!sn  && dn == 1) {        /* NEW :  CASE ONE ELEMENT */
-            for (off = 0; off < 4; off++)
-                GRK_S_off(0, off) /= 2;
-        } else {
-            for (i = win_l_x0; i < win_l_x1; i++) {
-                for (off = 0; off < 4; off++)
-                    GRK_D_off(i, off) -=
-                    		(GRK_SS__off(i, off) + GRK_SS__off(i + 1, off) + 2) >> 2;
-            }
-            for (i = win_h_x0; i < win_h_x1; i++) {
-                for (off = 0; off < 4; off++)
-                    GRK_S_off(i, off) +=
-                    		(GRK_DD__off(i, off) + GRK_DD__off(i - 1, off)) >> 1;
-            }
-        }
-    }
-}
-
-static void get_band_coordinates(TileComponent* tilec,
-								uint32_t resno,
-								uint32_t bandno,
-								uint32_t tcx0,
-								uint32_t tcy0,
-								uint32_t tcx1,
-								uint32_t tcy1,
-								uint32_t* tbx0,
-								uint32_t* tby0,
-								uint32_t* tbx1,
-								uint32_t* tby1){
-    /* Compute number of decomposition for this band. See table F-1 */
-    uint32_t nb = (resno == 0) ?
-                    tilec->numresolutions - 1 :
-                    tilec->numresolutions - resno;
-    /* Map above tile-based coordinates to sub-band-based coordinates per */
-    /* equation B-15 of the standard */
-    uint32_t x0b = bandno & 1;
-    uint32_t y0b = bandno >> 1;
-    if (tbx0) {
-        *tbx0 = (nb == 0) ? tcx0 :
-                (tcx0 <= (1U << (nb - 1)) * x0b) ? 0 :
-                uint_ceildivpow2(tcx0 - (1U << (nb - 1)) * x0b, nb);
-    }
-    if (tby0) {
-        *tby0 = (nb == 0) ? tcy0 :
-                (tcy0 <= (1U << (nb - 1)) * y0b) ? 0 :
-                uint_ceildivpow2(tcy0 - (1U << (nb - 1)) * y0b, nb);
-    }
-    if (tbx1) {
-        *tbx1 = (nb == 0) ? tcx1 :
-                (tcx1 <= (1U << (nb - 1)) * x0b) ? 0 :
-                uint_ceildivpow2(tcx1 - (1U << (nb - 1)) * x0b, nb);
-    }
-    if (tby1) {
-        *tby1 = (nb == 0) ? tcy1 :
-                (tcy1 <= (1U << (nb - 1)) * y0b) ? 0 :
-                uint_ceildivpow2(tcy1 - (1U << (nb - 1)) * y0b, nb);
-    }
-}
-
-static void segment_grow(uint32_t filter_width,
-						 uint32_t max_size,
-						 uint32_t* start,
-						 uint32_t* end){
-    *start = uint_subs(*start, filter_width);
-    *end = uint_adds(*end, filter_width);
-    *end = min<uint32_t>(*end, max_size);
-}
-
-class Partial53 {
-public:
-	void interleave_partial_h(dwt_data<int32_t>* dwt,
-								sparse_array* sa,
-								uint32_t sa_line,
-								uint32_t num_rows){
-		(void)num_rows;
-		interleave_partial_h_53(dwt,sa,sa_line);
-	}
-	void decode_h(dwt_data<int32_t>* dwt){
-		decode_partial_h_53(dwt);
-	}
-	void interleave_partial_v(dwt_data<int32_t>* GRK_RESTRICT dwt,
-								sparse_array* sa,
-								uint32_t sa_col,
-								uint32_t nb_elts_read){
-		interleave_partial_v_53(dwt,sa,sa_col,nb_elts_read);
-	}
-	void decode_v(dwt_data<int32_t>* dwt){
-		decode_partial_v_53(dwt);
-	}
-};
-
-/* <summary>                            */
-/* Inverse 5-3 wavelet transform in 2-D. */
-/* </summary>                           */
-bool decode_53(TileProcessor *p_tcd, TileComponent* tilec,
-                        uint32_t numres)
-{
-    if (p_tcd->whole_tile_decoding)
-        return decode_tile_53(tilec,numres);
-    else
-        return decode_partial_tile<int32_t, 1, 4,2, Partial53>(tilec, numres, tilec->m_sa);
-}
-
 static void interleave_h_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
-                                   float* GRK_RESTRICT bandL,
-								   float* GRK_RESTRICT bandH,
-                                   uint32_t width,
+                                   float* GRK_RESTRICT bandLL,
+								   const uint32_t strideLL,
+								   float* GRK_RESTRICT bandHL,
+                                   const uint32_t strideHL,
                                    uint32_t remaining_height){
     float* GRK_RESTRICT bi = (float*)(dwt->mem + dwt->cas);
     uint32_t x0 = dwt->win_l_x0;
     uint32_t x1 = dwt->win_l_x1;
 
     for (uint32_t k = 0; k < 2; ++k) {
-    	auto band = (k == 0) ? bandL : bandH;
+    	auto band = (k == 0) ? bandLL : bandHL;
+    	uint32_t stride = (k == 0) ? strideLL : strideHL;
         if (remaining_height >= 4 && ((size_t) band & 0x0f) == 0 &&
-                ((size_t) bi & 0x0f) == 0 && (width & 0x0f) == 0) {
+                ((size_t) bi & 0x0f) == 0 && (stride & 0x0f) == 0) {
             /* Fast code path */
             for (uint32_t i = x0; i < x1; ++i, bi+=8) {
                 uint32_t j = i;
                 bi[0] = band[j];
-                j += width;
+                j += stride;
                 bi[1] = band[j];
-                j += width;
+                j += stride;
                 bi[2] = band[j];
-                j += width;
+                j += stride;
                 bi[3] = band[j];
              }
         } else {
@@ -1252,15 +880,15 @@ static void interleave_h_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
             for (uint32_t i = x0; i < x1; ++i, bi+=8) {
                 uint32_t j = i;
                 bi[0] = band[j];
-                j += width;
+                j += stride;
                 if (remaining_height == 1)
                     continue;
                 bi[1] = band[j];
-                j += width;
+                j += stride;
                 if (remaining_height == 2)
                     continue;
                  bi[2] = band[j];
-                j += width;
+                j += stride;
                 if (remaining_height == 3)
                     continue;
                 bi[3] = band[j];
@@ -1272,69 +900,27 @@ static void interleave_h_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
         x1 = dwt->win_h_x1;
     }
 }
-static void interleave_partial_h_97(dwt_data<v4_data>* dwt,
-									sparse_array* sa,
-									uint32_t sa_line,
-									uint32_t num_rows){
-    for (uint32_t i = 0; i < num_rows; i++) {
-        bool ret;
-        ret = sa->read(dwt->win_l_x0,
-					  sa_line + i,
-					  dwt->win_l_x1,
-					  sa_line + i + 1,
-					  /* Nasty cast from float* to int32* */
-					  (int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_x0) + i,
-					  8, 0, true);
-        assert(ret);
-        ret = sa->read((uint32_t)dwt->sn + dwt->win_h_x0,
-					  sa_line + i,
-					  (uint32_t)dwt->sn + dwt->win_h_x1,
-					  sa_line + i + 1,
-					  /* Nasty cast from float* to int32* */
-					  (int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_x0) + i,
-					  8, 0, true);
-        assert(ret);
-        GRK_UNUSED(ret);
-    }
-}
 
 static void interleave_v_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
                                    float* GRK_RESTRICT bandL,
+								   const uint32_t strideL,
 								   float* GRK_RESTRICT bandH,
-                                   uint32_t width,
+                                   const uint32_t strideH,
                                    uint32_t nb_elts_read){
     v4_data* GRK_RESTRICT bi = dwt->mem + dwt->cas;
 
-    auto band = bandL + dwt->win_l_x0 * width;
+    auto band = bandL + dwt->win_l_x0 * strideL;
     for (uint32_t i = dwt->win_l_x0; i < dwt->win_l_x1; ++i, bi+=2) {
         memcpy((float*)bi, band, (size_t)nb_elts_read * sizeof(float));
-        band +=width;
+        band +=strideL;
     }
 
     bi = dwt->mem + 1 - dwt->cas;
-    band = bandH + dwt->win_h_x0 * width;
+    band = bandH + dwt->win_h_x0 * strideH;
     for (uint32_t i = dwt->win_h_x0; i < dwt->win_h_x1; ++i, bi+=2) {
         memcpy((float*)bi, band,(size_t)nb_elts_read * sizeof(float));
-        band += width;
+        band += strideH;
     }
-}
-
-static void interleave_partial_v_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
-									sparse_array* sa,
-									uint32_t sa_col,
-									uint32_t nb_elts_read){
-    bool ret;
-    ret = sa->read(sa_col, dwt->win_l_x0,
-				  sa_col + nb_elts_read, dwt->win_l_x1,
-				  (int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_x0),
-				  1, 8, true);
-    assert(ret);
-    ret = sa->read(sa_col, (uint32_t)dwt->sn + dwt->win_h_x0,
-				  sa_col + nb_elts_read, (uint32_t)dwt->sn + dwt->win_h_x1,
-				  (int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_x0),
-				  1, 8, true);
-    assert(ret);
-    GRK_UNUSED(ret);
 }
 
 #ifdef __SSE__
@@ -1537,7 +1123,6 @@ static void decode_step_97(dwt_data<v4_data>* GRK_RESTRICT dwt)
 #endif
 }
 
-
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 2-D. */
 /* </summary>                            */
@@ -1549,7 +1134,6 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
     auto res = tilec->resolutions;
     uint32_t rw = res->width();
     uint32_t rh = res->height();
-    uint32_t w = (uint32_t)tilec->buf->reduced_region_dim.width();
 
     size_t data_size = dwt_utils::max_resolution(res, numres);
     dwt_data<v4_data> horiz;
@@ -1563,6 +1147,10 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
     while (--numres) {
         horiz.sn = (int32_t)rw;
         vert.sn = (int32_t)rh;
+        uint32_t strideLL = (uint32_t)tilec->buf->reduced_region_dim.width();
+        uint32_t strideHL = (uint32_t)tilec->buf->reduced_region_dim.width();
+        uint32_t strideLH = (uint32_t)tilec->buf->reduced_region_dim.width();
+        uint32_t strideHH = (uint32_t)tilec->buf->reduced_region_dim.width();
         ++res;
         rw = res->width();
         rh = res->height();
@@ -1572,8 +1160,8 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         horiz.win_l_x1 = horiz.sn;
         horiz.win_h_x0 = 0;
         horiz.win_h_x1 = horiz.dn;
-        float * GRK_RESTRICT bandL = (float*) tilec->buf->get_ptr( 0, 0, 0, 0);
-        float * GRK_RESTRICT bandH = bandL + horiz.sn;
+        float * GRK_RESTRICT bandLL = (float*) tilec->buf->get_ptr( 0, 0, 0, 0);
+        float * GRK_RESTRICT bandHL = bandLL + horiz.sn;
         uint32_t num_jobs = (uint32_t)num_threads;
         if (rh < num_jobs)
             num_jobs = rh;
@@ -1581,40 +1169,44 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         if (num_threads == 1 || step_j < 4) {
             uint32_t j;
 			for (j = 0; j + 3 < rh; j += 4) {
-				interleave_h_97(&horiz, bandL,bandH, w, rh - j);
+				interleave_h_97(&horiz, bandLL,strideLL, bandHL, strideHL, rh - j);
 				decode_step_97(&horiz);
 				for (uint32_t k = 0; k < rw; k++) {
-					bandL[k      ] 			= horiz.mem[k].f[0];
-					bandL[k + (size_t)w  ] 	= horiz.mem[k].f[1];
-					bandL[k + (size_t)w * 2] 	= horiz.mem[k].f[2];
-					bandL[k + (size_t)w * 3] 	= horiz.mem[k].f[3];
+					bandLL[k      ] 			= horiz.mem[k].f[0];
+					bandLL[k + (size_t)strideLL  ] 	= horiz.mem[k].f[1];
+					bandLL[k + (size_t)strideLL * 2] 	= horiz.mem[k].f[2];
+					bandLL[k + (size_t)strideLL * 3] 	= horiz.mem[k].f[3];
 				}
-				bandL += w << 2;
-				bandH += w << 2;
+				bandLL += strideLL << 2;
+				bandHL += strideHL << 2;
 			}
 			if (j < rh) {
-				interleave_h_97(&horiz, bandL,bandH, w, rh - j);
+				interleave_h_97(&horiz, bandLL,strideLL,bandHL, strideHL, rh - j);
 				decode_step_97(&horiz);
 				for (uint32_t k = 0; k < rw; k++) {
 					switch (rh - j) {
 					case 3:
-						bandL[k + (size_t)w * 2] = horiz.mem[k].f[2];
+						bandLL[k + (size_t)strideLL * 2] = horiz.mem[k].f[2];
 					/* FALLTHRU */
 					case 2:
-						bandL[k + (size_t)w  ] = horiz.mem[k].f[1];
+						bandLL[k + (size_t)strideLL  ] = horiz.mem[k].f[1];
 					/* FALLTHRU */
 					case 1:
-						bandL[k] = horiz.mem[k].f[0];
+						bandLL[k] = horiz.mem[k].f[0];
 					}
 				}
 			}
         } else {
 			std::vector< std::future<int> > results;
 			for(uint32_t j = 0; j < num_jobs; ++j) {
+			   auto min_j = j * step_j;
 			   auto job = new decode_job<float, dwt_data<v4_data>>(horiz,
-											bandL,w,bandH,w,nullptr,0,nullptr,0,
-											j * step_j,
-											j < (num_jobs - 1U) ? (j + 1U) * step_j : rh);
+											bandLL + min_j * strideLL,
+											strideLL,
+											bandHL + min_j * strideHL,
+											strideHL,nullptr,0,nullptr,0,
+											0,
+											(j < (num_jobs - 1U) ? (j + 1U) * step_j : rh) - min_j);
 				if (!job->data.alloc(data_size)) {
 					GROK_ERROR("Out of memory");
 					horiz.release();
@@ -1623,33 +1215,31 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 				results.emplace_back(
 					ThreadPool::get()->enqueue([job,rw] {
 					    uint32_t j;
-					    auto bandLL = job->bandLL + job->min_j * job->strideLL;
-					    auto bandHL = job->bandHL + job->min_j * job->strideHL;
-						for (j = job->min_j; j + 3 < job->max_j; j+=4){
-							interleave_h_97(&job->data, bandLL, bandHL,job->strideLL, job->max_j - j);
+						for (j = 0; j + 3 < job->max_j; j+=4){
+							interleave_h_97(&job->data, job->bandLL, job->strideLL, job->bandHL,job->strideHL, job->max_j - j);
 							decode_step_97(&job->data);
 							for (uint32_t k = 0; k < rw; k++) {
-								bandLL[k      ] 			= job->data.mem[k].f[0];
-								bandLL[k + (size_t)job->strideLL  ] 	= job->data.mem[k].f[1];
-								bandLL[k + (size_t)job->strideLL * 2] 	= job->data.mem[k].f[2];
-								bandLL[k + (size_t)job->strideLL * 3] 	= job->data.mem[k].f[3];
+								job->bandLL[k      ] 			= job->data.mem[k].f[0];
+								job->bandLL[k + (size_t)job->strideLL  ] 	= job->data.mem[k].f[1];
+								job->bandLL[k + (size_t)job->strideLL * 2] 	= job->data.mem[k].f[2];
+								job->bandLL[k + (size_t)job->strideLL * 3] 	= job->data.mem[k].f[3];
 							}
-							bandLL += job->strideLL << 2;
-							bandHL += job->strideHL << 2;
+							job->bandLL += job->strideLL << 2;
+							job->bandHL += job->strideHL << 2;
 						}
 						if (j < job->max_j) {
-							interleave_h_97(&job->data, bandLL,bandHL, job->strideLL, job->max_j - j);
+							interleave_h_97(&job->data, job->bandLL, job->strideLL, job->bandHL,job->strideHL, job->max_j - j);
 							decode_step_97(&job->data);
 							for (uint32_t k = 0; k < rw; k++) {
 								switch (job->max_j - j) {
 								case 3:
-									bandLL[k + (size_t)job->strideLL * 2] = job->data.mem[k].f[2];
+									job->bandLL[k + (size_t)job->strideLL * 2] = job->data.mem[k].f[2];
 								/* FALLTHRU */
 								case 2:
-									bandLL[k + (size_t)job->strideLL  ] = job->data.mem[k].f[1];
+									job->bandLL[k + (size_t)job->strideLL  ] = job->data.mem[k].f[1];
 								/* FALLTHRU */
 								case 1:
-									bandLL[k] = job->data.mem[k].f[0];
+									job->bandLL[k] = job->data.mem[k].f[0];
 								}
 							}
 						}
@@ -1668,8 +1258,8 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         vert.win_l_x1 = vert.sn;
         vert.win_h_x0 = 0;
         vert.win_h_x1 = vert.dn;
-        bandL = (float*) tilec->buf->get_ptr( 0, 0, 0, 0);
-        bandH = bandL + vert.sn * w;
+        bandLL = (float*) tilec->buf->get_ptr( 0, 0, 0, 0);
+        auto bandLH = bandLL + vert.sn * strideLL;
         num_jobs = (uint32_t)num_threads;
         if (rw < num_jobs)
             num_jobs = rw;
@@ -1677,33 +1267,39 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         if (num_threads == 1 || step_j < 4) {
             uint32_t j;
 			for (j = 0; j + 3 < rw; j += 4) {
-				interleave_v_97(&vert, bandL, bandH,w, 4);
+				interleave_v_97(&vert, bandLL,strideLL, bandLH,strideLH, 4);
 				decode_step_97(&vert);
-				auto dest = bandL;
+				auto dest = bandLL;
 				for (uint32_t k = 0; k < rh; ++k){
 					memcpy(dest, vert.mem+k, 4 * sizeof(float));
-					dest += w;
+					dest += strideLL;
 				}
-				bandL += 4;
-				bandH += 4;
+				bandLL += 4;
+				bandLH += 4;
 			}
 			if (j < rw) {
 				j = rw & 0x03;
-				interleave_v_97(&vert, bandL,bandH, w, j);
+				interleave_v_97(&vert, bandLL, strideLL,bandLH, strideLH, j);
 				decode_step_97(&vert);
-				auto dest = bandL;
+				auto dest = bandLL;
 				for (uint32_t k = 0; k < rh; ++k) {
 					memcpy(dest, vert.mem+k,(size_t)j * sizeof(float));
-					dest += w;
+					dest += strideLL;
 				}
 			}
         } else {
 			std::vector< std::future<int> > results;
             for (uint32_t j = 0; j < num_jobs; j++) {
+            	auto min_j = j * step_j;
             	auto job = new decode_job<float, dwt_data<v4_data>>(vert,
-            												bandL,w,nullptr,0, bandH,w,nullptr,0,
-            												j * step_j,
-            												j < (num_jobs - 1U) ? (j + 1U) * step_j : rw);
+            												bandLL + min_j,
+															strideLL,
+															nullptr,0,
+															bandLH + min_j,
+															strideLH,
+															nullptr,0,
+            												0,
+            												(j < (num_jobs - 1U) ? (j + 1U) * step_j : rw) - min_j);
 				if (!job->data.alloc(data_size)) {
 					GROK_ERROR("Out of memory");
 					horiz.release();
@@ -1711,25 +1307,23 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 				}
 				results.emplace_back(
 					ThreadPool::get()->enqueue([job,rh] {
-						auto bandLL = job->bandLL + job->min_j;
-						auto bandLH = job->bandLH + job->min_j;
 						uint32_t j;
-						for (j = job->min_j; j + 3 < job->max_j; j+=4){
-							interleave_v_97(&job->data, bandLL,bandLH, job->strideLL, 4);
+						for (j = 0; j + 3 < job->max_j; j+=4){
+							interleave_v_97(&job->data, job->bandLL, job->strideLL, job->bandLH, job->strideLH, 4);
 							decode_step_97(&job->data);
-							auto dest = bandLL;
+							auto dest = job->bandLL;
 							for (uint32_t k = 0; k < rh; ++k) {
 								memcpy(dest, job->data.mem+k, 4 * sizeof(float));
 								dest += job->strideLL;
 							}
-							bandLL += 4;
-							bandLH += 4;
+							job->bandLL += 4;
+							job->bandLH += 4;
 						}
 						if (j < job->max_j) {
 							j = job->max_j - j;
-							interleave_v_97(&job->data, bandLL, bandLH,job->strideLL, j);
+							interleave_v_97(&job->data, job->bandLL, job->strideLL, job->bandLH,job->strideLH, j);
 							decode_step_97(&job->data);
-							auto dest = bandLL;
+							auto dest = job->bandLL;
 							for (uint32_t k = 0; k < rh; ++k) {
 								memcpy(dest, job->data.mem+k,(size_t)j * sizeof(float));
 								dest += job->strideLL;
@@ -1748,6 +1342,339 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
     horiz.release();
 
     return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////
+
+
+static void interleave_partial_h_53(dwt_data<int32_t> *dwt,
+									sparse_array* sa,
+									uint32_t sa_line)	{
+	auto dest = dwt->mem;
+	int32_t cas = dwt->cas;
+	uint32_t sn = dwt->sn;
+	uint32_t win_l_x0 = dwt->win_l_x0;
+	uint32_t win_l_x1 = dwt->win_l_x1;
+	uint32_t win_h_x0 = dwt->win_h_x0;
+	uint32_t win_h_x1 = dwt->win_h_x1;
+    bool ret = sa->read( win_l_x0, sa_line,
+					  win_l_x1, sa_line + 1,
+					  dest + cas + 2 * win_l_x0,
+					  2, 0, true);
+    assert(ret);
+    ret = sa->read(sn + win_h_x0, sa_line,
+				  sn + win_h_x1, sa_line + 1,
+				  dest + 1 - cas + 2 * win_h_x0,
+				  2, 0, true);
+    assert(ret);
+    GRK_UNUSED(ret);
+}
+
+
+static void interleave_partial_v_53(dwt_data<int32_t> *vert,
+									sparse_array* sa,
+									uint32_t sa_col,
+									uint32_t nb_cols){
+	auto dest = vert->mem;
+	int32_t cas = vert->cas;
+	uint32_t sn = vert->sn;
+	uint32_t win_l_y0 = vert->win_l_x0;
+	uint32_t win_l_y1 = vert->win_l_x1;
+	uint32_t win_h_y0 = vert->win_h_x0;
+	uint32_t win_h_y1 = vert->win_h_x1;
+
+    bool ret = sa->read(sa_col, win_l_y0,
+					   sa_col + nb_cols, win_l_y1,
+					   dest + cas * 4 + 2 * 4 * win_l_y0,
+					   1, 2 * 4, true);
+    assert(ret);
+    ret = sa->read( sa_col, sn + win_h_y0,
+					  sa_col + nb_cols, sn + win_h_y1,
+					  dest + (1 - cas) * 4 + 2 * 4 * win_h_y0,
+					  1, 2 * 4, true);
+    assert(ret);
+    GRK_UNUSED(ret);
+}
+
+#define GRK_S(i) a[(i)<<1]
+#define GRK_D(i) a[(1+((i)<<1))]
+#define GRK_S_(i) ((i)<0?GRK_S(0):((i)>=sn?GRK_S(sn-1):GRK_S(i)))
+#define GRK_D_(i) ((i)<0?GRK_D(0):((i)>=dn?GRK_D(dn-1):GRK_D(i)))
+#define GRK_SS_(i) ((i)<0?GRK_S(0):((i)>=dn?GRK_S(dn-1):GRK_S(i)))
+#define GRK_DD_(i) ((i)<0?GRK_D(0):((i)>=sn?GRK_D(sn-1):GRK_D(i)))
+
+static void decode_partial_h_53(dwt_data<int32_t> *horiz){
+    int32_t i;
+    int32_t *a = horiz->mem;
+	int32_t dn = horiz->dn;
+	int32_t sn = horiz->sn;
+	int32_t cas = horiz->cas;
+	int32_t win_l_x0 = (int32_t)horiz->win_l_x0;
+	int32_t win_l_x1 = (int32_t)horiz->win_l_x1;
+	int32_t win_h_x0 = (int32_t)horiz->win_h_x0;
+	int32_t win_h_x1 = (int32_t)horiz->win_h_x1;
+
+    if (!cas) {
+        if ((dn > 0) || (sn > 1)) { /* NEW :  CASE ONE ELEMENT */
+            /* Naive version is :
+            for (i = win_l_x0; i < i_max; i++) {
+                GRK_S(i) -= (GRK_D_(i - 1) + GRK_D_(i) + 2) >> 2;
+            }
+            for (i = win_h_x0; i < win_h_x1; i++) {
+                GRK_D(i) += (GRK_S_(i) + GRK_S_(i + 1)) >> 1;
+            }
+            but the compiler doesn't manage to unroll it to avoid bound
+            checking in GRK_S_ and GRK_D_ macros
+            */
+
+            i = win_l_x0;
+            if (i < win_l_x1) {
+                int32_t i_max;
+
+                /* Left-most case */
+                GRK_S(i) -= (GRK_D_(i - 1) + GRK_D_(i) + 2) >> 2;
+                i ++;
+
+                i_max = win_l_x1;
+                if (i_max > dn)
+                    i_max = dn;
+                for (; i < i_max; i++) {
+                    /* No bound checking */
+                    GRK_S(i) -= (GRK_D(i - 1) + GRK_D(i) + 2) >> 2;
+                }
+                for (; i < win_l_x1; i++) {
+                    /* Right-most case */
+                    GRK_S(i) -= (GRK_D_(i - 1) + GRK_D_(i) + 2) >> 2;
+                }
+            }
+
+            i = win_h_x0;
+            if (i < win_h_x1) {
+                int32_t i_max = win_h_x1;
+                if (i_max >= sn)
+                    i_max = sn - 1;
+                for (; i < i_max; i++) {
+                    /* No bound checking */
+                    GRK_D(i) += (GRK_S(i) + GRK_S(i + 1)) >> 1;
+                }
+                for (; i < win_h_x1; i++) {
+                    /* Right-most case */
+                    GRK_D(i) += (GRK_S_(i) + GRK_S_(i + 1)) >> 1;
+                }
+            }
+        }
+    } else {
+        if (!sn  && dn == 1) {        /* NEW :  CASE ONE ELEMENT */
+            GRK_S(0) /= 2;
+        } else {
+            for (i = win_l_x0; i < win_l_x1; i++)
+                GRK_D(i) -= (GRK_SS_(i) + GRK_SS_(i + 1) + 2) >> 2;
+            for (i = win_h_x0; i < win_h_x1; i++)
+                GRK_S(i) += (GRK_DD_(i) + GRK_DD_(i - 1)) >> 1;
+        }
+    }
+}
+
+#define GRK_S_off(i,off) a[(uint32_t)(i)*2*4+off]
+#define GRK_D_off(i,off) a[(1+(uint32_t)(i)*2)*4+off]
+#define GRK_S__off(i,off) ((i)<0?GRK_S_off(0,off):((i)>=sn?GRK_S_off(sn-1,off):GRK_S_off(i,off)))
+#define GRK_D__off(i,off) ((i)<0?GRK_D_off(0,off):((i)>=dn?GRK_D_off(dn-1,off):GRK_D_off(i,off)))
+#define GRK_SS__off(i,off) ((i)<0?GRK_S_off(0,off):((i)>=dn?GRK_S_off(dn-1,off):GRK_S_off(i,off)))
+#define GRK_DD__off(i,off) ((i)<0?GRK_D_off(0,off):((i)>=sn?GRK_D_off(sn-1,off):GRK_D_off(i,off)))
+
+static void decode_partial_v_53(dwt_data<int32_t> *vert){
+    int32_t i;
+    uint32_t off;
+    int32_t *a = vert->mem;
+	int32_t dn = vert->dn;
+	int32_t sn = vert->sn;
+	int32_t cas = vert->cas;
+	int32_t win_l_x0 = (int32_t)vert->win_l_x0;
+	int32_t win_l_x1 = (int32_t)vert->win_l_x1;
+	int32_t win_h_x0 = (int32_t)vert->win_h_x0;
+	int32_t win_h_x1 = (int32_t)vert->win_h_x1;
+
+    if (!cas) {
+        if ((dn > 0) || (sn > 1)) { /* NEW :  CASE ONE ELEMENT */
+            /* Naive version is :
+            for (i = win_l_x0; i < i_max; i++) {
+                GRK_S(i) -= (GRK_D_(i - 1) + GRK_D_(i) + 2) >> 2;
+            }
+            for (i = win_h_x0; i < win_h_x1; i++) {
+                GRK_D(i) += (GRK_S_(i) + GRK_S_(i + 1)) >> 1;
+            }
+            but the compiler doesn't manage to unroll it to avoid bound
+            checking in GRK_S_ and GRK_D_ macros
+            */
+            i = win_l_x0;
+            if (i < win_l_x1) {
+                int32_t i_max;
+
+                /* Left-most case */
+                for (off = 0; off < 4; off++)
+                    GRK_S_off(i, off) -= (GRK_D__off(i - 1, off) + GRK_D__off(i, off) + 2) >> 2;
+                i ++;
+
+                i_max = win_l_x1;
+                if (i_max > dn)
+                    i_max = dn;
+#ifdef __SSE2__
+                if (i + 1 < i_max) {
+                    const __m128i two = _mm_set1_epi32(2);
+                    __m128i Dm1 = _mm_load_si128((__m128i *)(a + 4 + (i - 1) * 8));
+                    for (; i + 1 < i_max; i += 2) {
+                        /* No bound checking */
+                        __m128i S = _mm_load_si128((__m128i *)(a + i * 8));
+                        __m128i D = _mm_load_si128((__m128i *)(a + 4 + i * 8));
+                        __m128i S1 = _mm_load_si128((__m128i *)(a + (i + 1) * 8));
+                        __m128i D1 = _mm_load_si128((__m128i *)(a + 4 + (i + 1) * 8));
+                        S = _mm_sub_epi32(S,
+                                          _mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(Dm1, D), two), 2));
+                        S1 = _mm_sub_epi32(S1,
+                                           _mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(D, D1), two), 2));
+                        _mm_store_si128((__m128i*)(a + i * 8), S);
+                        _mm_store_si128((__m128i*)(a + (i + 1) * 8), S1);
+                        Dm1 = D1;
+                    }
+                }
+#endif
+                for (; i < i_max; i++) {
+                    /* No bound checking */
+                    for (off = 0; off < 4; off++)
+                        GRK_S_off(i, off) -= (GRK_D_off(i - 1, off) + GRK_D_off(i, off) + 2) >> 2;
+                }
+                for (; i < win_l_x1; i++) {
+                    /* Right-most case */
+                    for (off = 0; off < 4; off++)
+                        GRK_S_off(i, off) -= (GRK_D__off(i - 1, off) + GRK_D__off(i, off) + 2) >> 2;
+                }
+            }
+            i = win_h_x0;
+            if (i < win_h_x1) {
+                int32_t i_max = win_h_x1;
+                if (i_max >= sn)
+                    i_max = sn - 1;
+#ifdef __SSE2__
+                if (i + 1 < i_max) {
+                    __m128i S =  _mm_load_si128((__m128i *)(a + i * 8));
+                    for (; i + 1 < i_max; i += 2) {
+                        /* No bound checking */
+                        __m128i D = _mm_load_si128((__m128i *)(a + 4 + i * 8));
+                        __m128i S1 = _mm_load_si128((__m128i *)(a + (i + 1) * 8));
+                        __m128i D1 = _mm_load_si128((__m128i *)(a + 4 + (i + 1) * 8));
+                        __m128i S2 = _mm_load_si128((__m128i *)(a + (i + 2) * 8));
+                        D = _mm_add_epi32(D, _mm_srai_epi32(_mm_add_epi32(S, S1), 1));
+                        D1 = _mm_add_epi32(D1, _mm_srai_epi32(_mm_add_epi32(S1, S2), 1));
+                        _mm_store_si128((__m128i*)(a + 4 + i * 8), D);
+                        _mm_store_si128((__m128i*)(a + 4 + (i + 1) * 8), D1);
+                        S = S2;
+                    }
+                }
+#endif
+                for (; i < i_max; i++) {
+                    /* No bound checking */
+                    for (off = 0; off < 4; off++)
+                        GRK_D_off(i, off) += (GRK_S_off(i, off) + GRK_S_off(i + 1, off)) >> 1;
+                }
+                for (; i < win_h_x1; i++) {
+                    /* Right-most case */
+                    for (off = 0; off < 4; off++)
+                        GRK_D_off(i, off) += (GRK_S__off(i, off) + GRK_S__off(i + 1, off)) >> 1;
+                }
+            }
+        }
+    } else {
+        if (!sn  && dn == 1) {        /* NEW :  CASE ONE ELEMENT */
+            for (off = 0; off < 4; off++)
+                GRK_S_off(0, off) /= 2;
+        } else {
+            for (i = win_l_x0; i < win_l_x1; i++) {
+                for (off = 0; off < 4; off++)
+                    GRK_D_off(i, off) -=
+                    		(GRK_SS__off(i, off) + GRK_SS__off(i + 1, off) + 2) >> 2;
+            }
+            for (i = win_h_x0; i < win_h_x1; i++) {
+                for (off = 0; off < 4; off++)
+                    GRK_S_off(i, off) +=
+                    		(GRK_DD__off(i, off) + GRK_DD__off(i - 1, off)) >> 1;
+            }
+        }
+    }
+}
+
+static void segment_grow(uint32_t filter_width,
+						 uint32_t max_size,
+						 uint32_t* start,
+						 uint32_t* end){
+    *start = uint_subs(*start, filter_width);
+    *end = uint_adds(*end, filter_width);
+    *end = min<uint32_t>(*end, max_size);
+}
+
+class Partial53 {
+public:
+	void interleave_partial_h(dwt_data<int32_t>* dwt,
+								sparse_array* sa,
+								uint32_t sa_line,
+								uint32_t num_rows){
+		(void)num_rows;
+		interleave_partial_h_53(dwt,sa,sa_line);
+	}
+	void decode_h(dwt_data<int32_t>* dwt){
+		decode_partial_h_53(dwt);
+	}
+	void interleave_partial_v(dwt_data<int32_t>* GRK_RESTRICT dwt,
+								sparse_array* sa,
+								uint32_t sa_col,
+								uint32_t nb_elts_read){
+		interleave_partial_v_53(dwt,sa,sa_col,nb_elts_read);
+	}
+	void decode_v(dwt_data<int32_t>* dwt){
+		decode_partial_v_53(dwt);
+	}
+};
+
+static void interleave_partial_h_97(dwt_data<v4_data>* dwt,
+									sparse_array* sa,
+									uint32_t sa_line,
+									uint32_t num_rows){
+    for (uint32_t i = 0; i < num_rows; i++) {
+        bool ret = sa->read(dwt->win_l_x0,
+					  sa_line + i,
+					  dwt->win_l_x1,
+					  sa_line + i + 1,
+					  /* Nasty cast from float* to int32* */
+					  (int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_x0) + i,
+					  8, 0, true);
+        assert(ret);
+        ret = sa->read((uint32_t)dwt->sn + dwt->win_h_x0,
+					  sa_line + i,
+					  (uint32_t)dwt->sn + dwt->win_h_x1,
+					  sa_line + i + 1,
+					  /* Nasty cast from float* to int32* */
+					  (int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_x0) + i,
+					  8, 0, true);
+        assert(ret);
+        GRK_UNUSED(ret);
+    }
+}
+
+
+static void interleave_partial_v_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
+									sparse_array* sa,
+									uint32_t sa_col,
+									uint32_t nb_elts_read){
+    bool ret = sa->read(sa_col, dwt->win_l_x0,
+				  sa_col + nb_elts_read, dwt->win_l_x1,
+				  (int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_x0),
+				  1, 8, true);
+    assert(ret);
+    ret = sa->read(sa_col, (uint32_t)dwt->sn + dwt->win_h_x0,
+				  sa_col + nb_elts_read, (uint32_t)dwt->sn + dwt->win_h_x1,
+				  (int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_x0),
+				  1, 8, true);
+    assert(ret);
+    GRK_UNUSED(ret);
 }
 
 class Partial97 {
@@ -1772,6 +1699,47 @@ public:
 	}
 };
 
+
+static void get_band_coordinates(TileComponent* tilec,
+								uint32_t resno,
+								uint32_t bandno,
+								uint32_t tcx0,
+								uint32_t tcy0,
+								uint32_t tcx1,
+								uint32_t tcy1,
+								uint32_t* tbx0,
+								uint32_t* tby0,
+								uint32_t* tbx1,
+								uint32_t* tby1){
+    /* Compute number of decomposition for this band. See table F-1 */
+    uint32_t nb = (resno == 0) ?
+                    tilec->numresolutions - 1 :
+                    tilec->numresolutions - resno;
+    /* Map above tile-based coordinates to sub-band-based coordinates per */
+    /* equation B-15 of the standard */
+    uint32_t x0b = bandno & 1;
+    uint32_t y0b = bandno >> 1;
+    if (tbx0) {
+        *tbx0 = (nb == 0) ? tcx0 :
+                (tcx0 <= (1U << (nb - 1)) * x0b) ? 0 :
+                uint_ceildivpow2(tcx0 - (1U << (nb - 1)) * x0b, nb);
+    }
+    if (tby0) {
+        *tby0 = (nb == 0) ? tcy0 :
+                (tcy0 <= (1U << (nb - 1)) * y0b) ? 0 :
+                uint_ceildivpow2(tcy0 - (1U << (nb - 1)) * y0b, nb);
+    }
+    if (tbx1) {
+        *tbx1 = (nb == 0) ? tcx1 :
+                (tcx1 <= (1U << (nb - 1)) * x0b) ? 0 :
+                uint_ceildivpow2(tcx1 - (1U << (nb - 1)) * x0b, nb);
+    }
+    if (tby1) {
+        *tby1 = (nb == 0) ? tcy1 :
+                (tcy1 <= (1U << (nb - 1)) * y0b) ? 0 :
+                uint_ceildivpow2(tcy1 - (1U << (nb - 1)) * y0b, nb);
+    }
+}
 
 /* FILTER_WIDTH value matches the maximum left/right extension given in tables */
 /* F.2 and F.3 of the standard. Note: in TileComponent::is_subband_area_of_interest() */
@@ -2145,6 +2113,18 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
     horiz.release();
 
     return true;
+}
+
+/* <summary>                            */
+/* Inverse 5-3 wavelet transform in 2-D. */
+/* </summary>                           */
+bool decode_53(TileProcessor *p_tcd, TileComponent* tilec,
+                        uint32_t numres)
+{
+    if (p_tcd->whole_tile_decoding)
+        return decode_tile_53(tilec,numres);
+    else
+        return decode_partial_tile<int32_t, 1, 4,2, Partial53>(tilec, numres, tilec->m_sa);
 }
 
 bool decode_97(TileProcessor *p_tcd,

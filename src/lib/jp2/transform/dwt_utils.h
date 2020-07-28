@@ -57,14 +57,6 @@
 
 namespace grk {
 
-struct TileComponent;
-
-struct grk_dwt {
-	int32_t *mem;
-	uint32_t d_n;
-	uint32_t s_n;
-	uint8_t cas;
-};
 
 class dwt_utils {
 public:
