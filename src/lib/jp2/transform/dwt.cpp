@@ -282,7 +282,7 @@ static void  decode_h_cas0_53(int32_t* buf,
     } else {
         buf[total_width - 1] = d1n + s0n;
     }
-    memcpy(bandL, buf, (uint64_t)total_width * sizeof(int32_t));
+    memcpy(bandL, buf, total_width * sizeof(int32_t));
 }
 
 static void  decode_h_cas1_53(int32_t* buf,
@@ -317,7 +317,7 @@ static void  decode_h_cas1_53(int32_t* buf,
     } else {
         buf[total_width - 1] = s1 + dc;
     }
-    memcpy(bandL, buf, (uint64_t)total_width * sizeof(int32_t));
+    memcpy(bandL, buf, total_width * sizeof(int32_t));
 }
 
 /* <summary>                            */
@@ -342,7 +342,7 @@ static void decode_h_53(const dwt_data<int32_t> *dwt,
             auto out = dwt->mem;
             out[1] = bandL[0] - ((bandH[0] + 1) >> 1);
             out[0] = bandH[0] + out[1];
-            memcpy(bandL, dwt->mem, (uint64_t)total_width * sizeof(int32_t));
+            memcpy(bandL, dwt->mem, total_width * sizeof(int32_t));
         } else if (total_width > 2) {
             decode_h_cas1_53(dwt->mem, total_width, bandL, bandH);
         }
@@ -718,15 +718,13 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
     while (--numres) {
         uint32_t strideLL = (uint32_t)tilec->buf->reduced_region_dim.width();
         uint32_t strideHL = (uint32_t)tilec->buf->reduced_region_dim.width();
-        uint32_t strideLH = (uint32_t)tilec->buf->reduced_region_dim.width();
-        uint32_t strideHH = (uint32_t)tilec->buf->reduced_region_dim.width();
 
         ++tr;
-        horiz.sn = (int32_t)rw;
-        vert.sn = (int32_t)rh;
+        horiz.sn = rw;
+        vert.sn = rh;
         rw = tr->width();
         rh = tr->height();
-        horiz.dn = (int32_t)(rw - horiz.sn);
+        horiz.dn = rw - horiz.sn;
         horiz.cas = tr->x0 & 1;
     	auto bandLL = tiledp;
     	auto bandHL = bandLL + horiz.sn;
@@ -781,7 +779,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 			for(auto && result: results)
 				result.get();
         }
-        vert.dn = (int32_t)(rh - (uint32_t)vert.sn);
+        vert.dn = rh - vert.sn;
         vert.cas = tr->y0 & 1;
     	bandLL = tiledp;
     	bandHL = bandLL + vert.sn * strideLL;
@@ -801,7 +799,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 				bandHL += PLL_COLS_53;
             }
             if (j < rw)
-                decode_v_53(&vert, bandLL, strideLL, bandHL, strideLL, (int32_t)(rw - j));
+                decode_v_53(&vert, bandLL, strideLL, bandHL, strideLL, rw - j);
         } else {
             uint32_t num_jobs = (uint32_t)num_threads;
             if (rw < num_jobs)
@@ -833,7 +831,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 							job->bandLH += PLL_COLS_53;
 						}
 						if (j < job->max_j)
-							decode_v_53(&job->data, job->bandLL,job->strideLL, job->bandLH, job->strideLH, (int32_t)(job->max_j - j));
+							decode_v_53(&job->data, job->bandLL,job->strideLL, job->bandLH, job->strideLH, job->max_j - j);
 						grk_aligned_free(job->data.mem);
 						delete job;
 					return 0;
@@ -908,17 +906,16 @@ static void interleave_v_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
                                    const uint32_t strideH,
                                    uint32_t nb_elts_read){
     v4_data* GRK_RESTRICT bi = dwt->mem + dwt->cas;
-
     auto band = bandL + dwt->win_l_x0 * strideL;
     for (uint32_t i = dwt->win_l_x0; i < dwt->win_l_x1; ++i, bi+=2) {
-        memcpy((float*)bi, band, (size_t)nb_elts_read * sizeof(float));
+        memcpy((float*)bi, band, nb_elts_read * sizeof(float));
         band +=strideL;
     }
 
     bi = dwt->mem + 1 - dwt->cas;
     band = bandH + dwt->win_h_x0 * strideH;
     for (uint32_t i = dwt->win_h_x0; i < dwt->win_h_x1; ++i, bi+=2) {
-        memcpy((float*)bi, band,(size_t)nb_elts_read * sizeof(float));
+        memcpy((float*)bi, band, nb_elts_read * sizeof(float));
         band += strideH;
     }
 }
@@ -1145,16 +1142,15 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
     vert.mem = horiz.mem;
     size_t num_threads = ThreadPool::get()->num_threads();
     while (--numres) {
-        horiz.sn = (int32_t)rw;
-        vert.sn = (int32_t)rh;
+        horiz.sn = rw;
+        vert.sn = rh;
         uint32_t strideLL = (uint32_t)tilec->buf->reduced_region_dim.width();
         uint32_t strideHL = (uint32_t)tilec->buf->reduced_region_dim.width();
         uint32_t strideLH = (uint32_t)tilec->buf->reduced_region_dim.width();
-        uint32_t strideHH = (uint32_t)tilec->buf->reduced_region_dim.width();
         ++res;
         rw = res->width();
         rh = res->height();
-        horiz.dn = (int32_t)(rw - (uint32_t)horiz.sn);
+        horiz.dn = rw - horiz.sn;
         horiz.cas = res->x0 & 1;
         horiz.win_l_x0 = 0;
         horiz.win_l_x1 = horiz.sn;
@@ -1172,8 +1168,8 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 				interleave_h_97(&horiz, bandLL,strideLL, bandHL, strideHL, rh - j);
 				decode_step_97(&horiz);
 				for (uint32_t k = 0; k < rw; k++) {
-					bandLL[k      ] 			= horiz.mem[k].f[0];
-					bandLL[k + (size_t)strideLL  ] 	= horiz.mem[k].f[1];
+					bandLL[k      ] 					= horiz.mem[k].f[0];
+					bandLL[k + (size_t)strideLL  ] 		= horiz.mem[k].f[1];
 					bandLL[k + (size_t)strideLL * 2] 	= horiz.mem[k].f[2];
 					bandLL[k + (size_t)strideLL * 3] 	= horiz.mem[k].f[3];
 				}
@@ -1186,10 +1182,10 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 				for (uint32_t k = 0; k < rw; k++) {
 					switch (rh - j) {
 					case 3:
-						bandLL[k + (size_t)strideLL * 2] = horiz.mem[k].f[2];
+						bandLL[k + strideLL * 2] = horiz.mem[k].f[2];
 					/* FALLTHRU */
 					case 2:
-						bandLL[k + (size_t)strideLL  ] = horiz.mem[k].f[1];
+						bandLL[k + strideLL  ] = horiz.mem[k].f[1];
 					/* FALLTHRU */
 					case 1:
 						bandLL[k] = horiz.mem[k].f[0];
@@ -1204,7 +1200,8 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 											bandLL + min_j * strideLL,
 											strideLL,
 											bandHL + min_j * strideHL,
-											strideHL,nullptr,0,nullptr,0,
+											strideHL,
+											nullptr,0,nullptr,0,
 											0,
 											(j < (num_jobs - 1U) ? (j + 1U) * step_j : rh) - min_j);
 				if (!job->data.alloc(data_size)) {
@@ -1215,31 +1212,33 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 				results.emplace_back(
 					ThreadPool::get()->enqueue([job,rw] {
 					    uint32_t j;
+					    auto bandLL = job->bandLL;
+					    auto bandHL = job->bandHL;
 						for (j = 0; j + 3 < job->max_j; j+=4){
-							interleave_h_97(&job->data, job->bandLL, job->strideLL, job->bandHL,job->strideHL, job->max_j - j);
+							interleave_h_97(&job->data, bandLL, job->strideLL, bandHL,job->strideHL, job->max_j - j);
 							decode_step_97(&job->data);
 							for (uint32_t k = 0; k < rw; k++) {
-								job->bandLL[k      ] 			= job->data.mem[k].f[0];
-								job->bandLL[k + (size_t)job->strideLL  ] 	= job->data.mem[k].f[1];
-								job->bandLL[k + (size_t)job->strideLL * 2] 	= job->data.mem[k].f[2];
-								job->bandLL[k + (size_t)job->strideLL * 3] 	= job->data.mem[k].f[3];
+								bandLL[k      ] 						= job->data.mem[k].f[0];
+								bandLL[k + (size_t)job->strideLL  ] 	= job->data.mem[k].f[1];
+								bandLL[k + (size_t)job->strideLL * 2] 	= job->data.mem[k].f[2];
+								bandLL[k + (size_t)job->strideLL * 3] 	= job->data.mem[k].f[3];
 							}
-							job->bandLL += job->strideLL << 2;
-							job->bandHL += job->strideHL << 2;
+							bandLL += job->strideLL << 2;
+							bandHL += job->strideHL << 2;
 						}
 						if (j < job->max_j) {
-							interleave_h_97(&job->data, job->bandLL, job->strideLL, job->bandHL,job->strideHL, job->max_j - j);
+							interleave_h_97(&job->data, bandLL, job->strideLL, bandHL,job->strideHL, job->max_j - j);
 							decode_step_97(&job->data);
 							for (uint32_t k = 0; k < rw; k++) {
 								switch (job->max_j - j) {
 								case 3:
-									job->bandLL[k + (size_t)job->strideLL * 2] = job->data.mem[k].f[2];
+									bandLL[k + (size_t)job->strideLL * 2] = job->data.mem[k].f[2];
 								/* FALLTHRU */
 								case 2:
-									job->bandLL[k + (size_t)job->strideLL  ] = job->data.mem[k].f[1];
+									bandLL[k + job->strideLL  ] = job->data.mem[k].f[1];
 								/* FALLTHRU */
 								case 1:
-									job->bandLL[k] = job->data.mem[k].f[0];
+									bandLL[k] = job->data.mem[k].f[0];
 								}
 							}
 						}
@@ -1252,7 +1251,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 			for(auto && result: results)
 				result.get();
         }
-        vert.dn = (int32_t)rh - vert.sn;
+        vert.dn = rh - vert.sn;
         vert.cas = res->y0 & 1;
         vert.win_l_x0 = 0;
         vert.win_l_x1 = vert.sn;
@@ -1283,7 +1282,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 				decode_step_97(&vert);
 				auto dest = bandLL;
 				for (uint32_t k = 0; k < rh; ++k) {
-					memcpy(dest, vert.mem+k,(size_t)j * sizeof(float));
+					memcpy(dest, vert.mem+k,j * sizeof(float));
 					dest += strideLL;
 				}
 			}
@@ -1308,24 +1307,26 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 				results.emplace_back(
 					ThreadPool::get()->enqueue([job,rh] {
 						uint32_t j;
+					    auto bandLL = job->bandLL;
+					    auto bandLH = job->bandLH;
 						for (j = 0; j + 3 < job->max_j; j+=4){
-							interleave_v_97(&job->data, job->bandLL, job->strideLL, job->bandLH, job->strideLH, 4);
+							interleave_v_97(&job->data, bandLL, job->strideLL, bandLH, job->strideLH, 4);
 							decode_step_97(&job->data);
-							auto dest = job->bandLL;
+							auto dest = bandLL;
 							for (uint32_t k = 0; k < rh; ++k) {
 								memcpy(dest, job->data.mem+k, 4 * sizeof(float));
 								dest += job->strideLL;
 							}
-							job->bandLL += 4;
-							job->bandLH += 4;
+							bandLL += 4;
+							bandLH += 4;
 						}
 						if (j < job->max_j) {
 							j = job->max_j - j;
-							interleave_v_97(&job->data, job->bandLL, job->strideLL, job->bandLH,job->strideLH, j);
+							interleave_v_97(&job->data, bandLL, job->strideLL, bandLH,job->strideLH, j);
 							decode_step_97(&job->data);
-							auto dest = job->bandLL;
+							auto dest = bandLL;
 							for (uint32_t k = 0; k < rh; ++k) {
-								memcpy(dest, job->data.mem+k,(size_t)j * sizeof(float));
+								memcpy(dest, job->data.mem+k,j * sizeof(float));
 								dest += job->strideLL;
 							}
 						}
@@ -1352,20 +1353,25 @@ static void interleave_partial_h_53(dwt_data<int32_t> *dwt,
 									uint32_t sa_line)	{
 	auto dest = dwt->mem;
 	int32_t cas = dwt->cas;
-	uint32_t sn = dwt->sn;
 	uint32_t win_l_x0 = dwt->win_l_x0;
 	uint32_t win_l_x1 = dwt->win_l_x1;
+    bool ret = sa->read( win_l_x0,
+    					sa_line,
+						win_l_x1,
+						sa_line + 1,
+						dest + cas + 2 * win_l_x0,
+						2, 0, true);
+    assert(ret);
+
+	uint32_t sn = dwt->sn;
 	uint32_t win_h_x0 = dwt->win_h_x0;
 	uint32_t win_h_x1 = dwt->win_h_x1;
-    bool ret = sa->read( win_l_x0, sa_line,
-					  win_l_x1, sa_line + 1,
-					  dest + cas + 2 * win_l_x0,
-					  2, 0, true);
-    assert(ret);
-    ret = sa->read(sn + win_h_x0, sa_line,
-				  sn + win_h_x1, sa_line + 1,
-				  dest + 1 - cas + 2 * win_h_x0,
-				  2, 0, true);
+    ret = sa->read(sn + win_h_x0,
+    				sa_line,
+					sn + win_h_x1,
+					sa_line + 1,
+					dest + 1 - cas + 2 * win_h_x0,
+					2, 0, true);
     assert(ret);
     GRK_UNUSED(ret);
 }
@@ -1377,18 +1383,18 @@ static void interleave_partial_v_53(dwt_data<int32_t> *vert,
 									uint32_t nb_cols){
 	auto dest = vert->mem;
 	int32_t cas = vert->cas;
-	uint32_t sn = vert->sn;
 	uint32_t win_l_y0 = vert->win_l_x0;
 	uint32_t win_l_y1 = vert->win_l_x1;
-	uint32_t win_h_y0 = vert->win_h_x0;
-	uint32_t win_h_y1 = vert->win_h_x1;
-
     bool ret = sa->read(sa_col, win_l_y0,
 					   sa_col + nb_cols, win_l_y1,
 					   dest + cas * 4 + 2 * 4 * win_l_y0,
 					   1, 2 * 4, true);
     assert(ret);
-    ret = sa->read( sa_col, sn + win_h_y0,
+
+	uint32_t sn = vert->sn;
+	uint32_t win_h_y0 = vert->win_h_x0;
+	uint32_t win_h_y1 = vert->win_h_x1;
+	ret = sa->read( sa_col, sn + win_h_y0,
 					  sa_col + nb_cols, sn + win_h_y1,
 					  dest + (1 - cas) * 4 + 2 * 4 * win_h_y0,
 					  1, 2 * 4, true);
@@ -1640,20 +1646,20 @@ static void interleave_partial_h_97(dwt_data<v4_data>* dwt,
 									uint32_t num_rows){
     for (uint32_t i = 0; i < num_rows; i++) {
         bool ret = sa->read(dwt->win_l_x0,
-					  sa_line + i,
-					  dwt->win_l_x1,
-					  sa_line + i + 1,
-					  /* Nasty cast from float* to int32* */
-					  (int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_x0) + i,
-					  8, 0, true);
+						  sa_line + i,
+						  dwt->win_l_x1,
+						  sa_line + i + 1,
+						  /* Nasty cast from float* to int32* */
+						  (int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_x0) + i,
+						  8, 0, true);
         assert(ret);
-        ret = sa->read((uint32_t)dwt->sn + dwt->win_h_x0,
-					  sa_line + i,
-					  (uint32_t)dwt->sn + dwt->win_h_x1,
-					  sa_line + i + 1,
-					  /* Nasty cast from float* to int32* */
-					  (int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_x0) + i,
-					  8, 0, true);
+        ret = sa->read(dwt->sn + dwt->win_h_x0,
+						  sa_line + i,
+						  dwt->sn + dwt->win_h_x1,
+						  sa_line + i + 1,
+						  /* Nasty cast from float* to int32* */
+						  (int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_x0) + i,
+						  8, 0, true);
         assert(ret);
         GRK_UNUSED(ret);
     }
@@ -1664,15 +1670,18 @@ static void interleave_partial_v_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
 									sparse_array* sa,
 									uint32_t sa_col,
 									uint32_t nb_elts_read){
-    bool ret = sa->read(sa_col, dwt->win_l_x0,
-				  sa_col + nb_elts_read, dwt->win_l_x1,
-				  (int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_x0),
-				  1, 8, true);
+    bool ret = sa->read(sa_col,
+    					dwt->win_l_x0,
+						sa_col + nb_elts_read, dwt->win_l_x1,
+						(int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_x0),
+						1, 8, true);
     assert(ret);
-    ret = sa->read(sa_col, (uint32_t)dwt->sn + dwt->win_h_x0,
-				  sa_col + nb_elts_read, (uint32_t)dwt->sn + dwt->win_h_x1,
-				  (int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_x0),
-				  1, 8, true);
+    ret = sa->read(sa_col,
+    				dwt->sn + dwt->win_h_x0,
+					sa_col + nb_elts_read,
+					dwt->sn + dwt->win_h_x1,
+					(int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_x0),
+					1, 8, true);
     assert(ret);
     GRK_UNUSED(ret);
 }
@@ -1748,16 +1757,15 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
    bool decode_partial_tile(TileComponent* GRK_RESTRICT tilec, uint32_t numres, sparse_array *sa) {
     auto tr = tilec->resolutions;
     auto tr_max = &(tilec->resolutions[numres - 1]);
-    if (tr_max->x0 == tr_max->x1 || tr_max->y0 == tr_max->y1)
+    if (tr_max->width() == 0 || tr_max->height() == 0)
         return true;
 
     if (numres == 1U) {
-        bool ret = sa->read(tr_max->win_x0 - (uint32_t)tr_max->x0,
-                       tr_max->win_y0 - (uint32_t)tr_max->y0,
-                       tr_max->win_x1 - (uint32_t)tr_max->x0,
-                       tr_max->win_y1 - (uint32_t)tr_max->y0,
+        auto win_bounds = tr_max->win_bounds().pan(-tr_max->x0,-tr_max->y0);
+    	bool ret = sa->read(win_bounds,
 					   tilec->buf->get_ptr(0,0,0,0),
-                       1, tr_max->win_x1 - tr_max->win_x0,
+                       1,
+					   win_bounds.width(),
                        true);
         assert(ret);
         GRK_UNUSED(ret);
@@ -1765,9 +1773,9 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
     }
 
     /* width of the resolution level computed */
-    uint32_t rw = (uint32_t)(tr->x1 - tr->x0);
+    uint32_t rw = tr->width();
     /* height of the resolution level computed */
-    uint32_t rh = (uint32_t)(tr->y1 - tr->y0);
+    uint32_t rh = tr->height();
 
     /* Compute the intersection of the area of interest, expressed in tile coordinates */
     /* with the tile coordinates */
@@ -1796,8 +1804,8 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
         vert.sn = (int32_t)rh;
 
         ++tr;
-        rw = (uint32_t)(tr->x1 - tr->x0);
-        rh = (uint32_t)(tr->y1 - tr->y0);
+        rw = tr->width();
+        rh = tr->height();
 
         horiz.dn = (int32_t)(rw - (uint32_t)horiz.sn);
         horiz.cas = tr->x0 & 1;
@@ -2100,15 +2108,13 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 		}
     }
     //final read into tile buffer
-	bool ret = sa->read(	   tr_max->win_x0 - (uint32_t)tr_max->x0,
-							   tr_max->win_y0 - (uint32_t)tr_max->y0,
-							   tr_max->win_x1 - (uint32_t)tr_max->x0,
-							   tr_max->win_y1 - (uint32_t)tr_max->y0,
-							   tilec->buf->get_ptr(0,0,0,0),
-							   1,
-							   tr_max->win_x1 - tr_max->win_x0,
-							   true);
-	assert(ret);
+    auto win_bounds = tr_max->win_bounds().pan(-tr_max->x0,-tr_max->y0);
+	bool ret = sa->read(win_bounds,
+					   tilec->buf->get_ptr(0,0,0,0),
+					   1,
+					   win_bounds.width(),
+					   true);
+assert(ret);
 	GRK_UNUSED(ret);
     horiz.release();
 

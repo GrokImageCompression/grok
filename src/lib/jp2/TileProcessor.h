@@ -199,6 +199,9 @@ struct grk_resolution {
 	uint32_t width();
 	uint32_t height();
 
+	grk_rect_u32 bounds();
+	grk_rect_u32 win_bounds();
+
 	/* dimension of the resolution level in tile coordinates */
 	uint32_t x0, y0, x1, y1;
 	uint32_t pw, ph;

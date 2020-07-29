@@ -56,7 +56,7 @@
 
 using namespace std;
 
-using namespace grk;
+namespace grk {
 
 
 sparse_array::sparse_array(uint32_t width,
@@ -309,6 +309,23 @@ bool sparse_array::read_or_write(uint32_t x0,
     return true;
 }
 
+bool sparse_array::read(grk_rect_u32 region,
+						 int32_t* dest,
+						 const uint32_t dest_col_stride,
+						 const uint32_t dest_line_stride,
+						 bool forgiving)
+{
+	return read(region.x0,
+			region.y0,
+			region.x1,
+			region.y1,
+			dest,
+			dest_col_stride,
+			dest_line_stride,
+			forgiving);
+}
+
+
 bool sparse_array::read(uint32_t x0,
 						 uint32_t y0,
 						 uint32_t x1,
@@ -341,4 +358,7 @@ bool sparse_array::write(uint32_t x0,
             src_line_stride,
             forgiving,
             false);
+}
+
+
 }

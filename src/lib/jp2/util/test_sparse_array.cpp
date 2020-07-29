@@ -52,6 +52,8 @@
 
 #include "grok_includes.h"
 
+using namespace grk;
+
 int main()
 {
     uint32_t i, j, w, h;

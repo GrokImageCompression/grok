@@ -33,6 +33,8 @@ inline bool mult64_will_overflow(uint64_t a, uint64_t b) {
 }
 
 struct grk_pt {
+	grk_pt() : x(0), y(0){}
+	grk_pt(int64_t _x, int64_t _y) : x(_x), y(_y){}
     int64_t x;
     int64_t y;
 
@@ -116,21 +118,42 @@ template<typename T> struct grk_rectangle {
     	return rc;
     }
 
-    void ceildivpow2(uint32_t power) {
+    grk_rectangle<T>& operator- (const grk_rectangle<T> &rhs)
+    {
+        x0 -= rhs.x0;
+        y0 -= rhs.y0;
+        x1 -= rhs.x1;
+        y1 -= rhs.y1;
+
+        return *this;
+    }
+    grk_rectangle<T>& operator-= (const grk_rectangle<T> &rhs)
+    {
+        x0 -= rhs.x0;
+        y0 -= rhs.y0;
+        x1 -= rhs.x1;
+        y1 -= rhs.y1;
+
+        return *this;
+    }
+
+    grk_rectangle<T>&  ceildivpow2(uint32_t power) {
     	x0 = ceildivpow2(x0, power);
     	y0 = ceildivpow2(y0, power);
     	x1 = ceildivpow2(x1, power);
     	y1 = ceildivpow2(y1, power);
 
+    	return *this;
+
     }
 
-    void mulpow2(uint32_t power) {
-    	if (power == 0)
-    		return;
-    	x0 *= 1 << power;
-    	y0 *= 1 << power;
-    	x1 *= 1 << power;
-    	y1 *= 1 << power;
+    grk_rectangle<T>&  mulpow2(uint32_t power) {
+		x0 *= 1 << power;
+		y0 *= 1 << power;
+		x1 *= 1 << power;
+		y1 *= 1 << power;
+
+    	return *this;
 
     }
 
@@ -145,35 +168,40 @@ template<typename T> struct grk_rectangle {
     	return y1 - y0;
     }
 
-    void pan(grk_pt *shift) {
-    	x0 += shift->x;
-    	y0 += shift->y;
-    	x1 += shift->x;
-    	y1 += shift->y;
-    }
 
-    void subsample(uint32_t dx, uint32_t dy) {
+    grk_rectangle<T>& pan(T x, T y) {
+    	x0 += x;
+    	y0 += y;
+    	x1 += x;
+    	y1 += y;
+
+    	return *this;
+    }
+    grk_rectangle<T>& subsample(uint32_t dx, uint32_t dy) {
     	x0 = ceildiv(x0, (T) dx);
     	y0 = ceildiv(y0, (T) dy);
     	x1 = ceildiv(x1, (T) dx);
     	y1 = ceildiv(y1, (T) dy);
     }
 
-    void grow(T boundary) {
-    	grow2(boundary, boundary);
+    grk_rectangle<T>& grow(T boundary) {
+    	return grow(boundary, boundary);
     }
 
-    void grow2(T boundaryx, T boundaryy) {
+    grk_rectangle<T>& grow(T boundaryx, T boundaryy) {
 
     	x0 -= boundaryx;
     	y0 -= boundaryy;
     	x1 += boundaryx;
     	y1 += boundaryy;
+
+    	return *this;
     }
 
 };
 
 using grk_rect = grk_rectangle<int64_t>;
+using grk_rect_u32 = grk_rectangle<uint32_t>;
 
 struct grk_buf {
 	grk_buf() : grk_buf(nullptr,0,false) {}

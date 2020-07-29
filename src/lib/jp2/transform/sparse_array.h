@@ -65,6 +65,8 @@ be used. If blocks are too small, the book-keeping costs of blocks will rise.
 /** @defgroup SPARSE_ARRAY SPARSE ARRAYS - Sparse arrays */
 /*@{*/
 
+namespace grk {
+
 class sparse_array {
 
 public:
@@ -107,6 +109,24 @@ public:
 			 uint32_t y0,
 			 uint32_t x1,
 			 uint32_t y1,
+			 int32_t* dest,
+			 const uint32_t dest_col_stride,
+			 const uint32_t dest_line_stride,
+			 bool forgiving);
+
+	/** Read the content of a rectangular region of the sparse array into a
+	 * user buffer.
+	 *
+	 * Regions not written with write() are read as 0.
+	 *
+	 * @param region region to read in the sparse array.
+	 * @param dest user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * dest_line_stride + (x1 - x0 - 1) * dest_col_stride + 1) bytes large.
+	 * @param dest_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
+	 * @param dest_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
+	 * @param forgiving if set to TRUE and the region is invalid, true will still be returned.
+	 * @return true in case of success.
+	 */
+	bool read(grk_rect_u32 region,
 			 int32_t* dest,
 			 const uint32_t dest_col_stride,
 			 const uint32_t dest_line_stride,
@@ -186,7 +206,7 @@ private:
     int32_t** data_blocks;
 };
 
-
+}
 
 /*@}*/
 

@@ -2067,5 +2067,13 @@ uint32_t grk_resolution::height(){
 	return (uint32_t)(y1-y0);
 }
 
+grk_rect_u32 grk_resolution::bounds(){
+	return grk_rect_u32(x0,y0,x1,y1);
+}
+grk_rect_u32 grk_resolution::win_bounds(){
+	return grk_rect_u32(win_x0,win_y0,win_x1,win_y1);
+}
+
+
 }
 
