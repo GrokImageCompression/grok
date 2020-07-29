@@ -21,6 +21,7 @@
 #include <thread>
 #include <climits>
 #include <stdint.h>
+#include "grok_intmath.h"
 
 namespace grk {
 
@@ -37,47 +38,142 @@ struct grk_pt {
 
 };
 
-struct grk_rect {
-	int64_t x0;
-    int64_t y0;
-    int64_t x1;
-    int64_t y1;
-
-	grk_rect();
-	grk_rect(int64_t x0, int64_t y0, int64_t x1, int64_t y1);
+template<typename T> struct grk_rectangle {
+	T x0;
+    T y0;
+    T x1;
+    T y1;
 
 
-	/* valid if x0 <= x1 && y0 <= y1. Can include degenerate rectangles: line and point*/
-	bool is_valid(void);
+	inline T _max(T x, T y){
+		return (x) > (y) ? (x) : (y);
+	}
+	inline T _min(T x, T y){
+		return (x) < (y) ? (x) : (y);
+	}
 
-	int64_t area(void);
+	inline T ceildivpow2(T a, uint32_t b) {
+		return (T)((a + ((T) 1 << b) - 1) >> b);
+	}
 
-	int64_t width();
-	int64_t height();
 
-	bool is_non_degenerate(void);
+    /**
+     Divide an integer and round upwards
+     @return a divided by b
+     */
+    inline T ceildiv(T a, T b) {
+    	assert(b);
+    	return (a + b - 1) / b;
+    }
 
-	bool are_equal(grk_rect* r2);
 
-	bool clip( grk_rect& r2, grk_rect* result);
+    void print(void) {
+    	std::cout << "[" << x0 << "," << y0 << "," << x1 << "," << y1 << "]"
+    			<< std::endl;
+    }
 
-	void ceildivpow2( uint32_t power);
+    grk_rectangle(void) :
+    		x0(0), y0(0), x1(0), y1(0) {
+    }
 
-	void mulpow2(uint32_t power);
+    grk_rectangle(T x0, T y0, T x1, T y1) :
+    		x0(x0), y0(y0), x1(x1), y1(y1) {
+    }
 
-	void grow(int64_t boundary);
+    bool is_valid(void) {
+    	return x0 <= x1 && y0 <= y1;
+    }
 
-	void grow2(int64_t boundaryx, int64_t boundaryy);
+    bool is_non_degenerate(void) {
+    	return x0 < x1 && y0 < y1;
+    }
 
-	void subsample(uint32_t dx, uint32_t dy);
+    bool are_equal(grk_rectangle<T> *r2) {
 
-	void pan(grk_pt* shift);
+    	if (!r2)
+    		return false;
 
-	void print(void);
+    	return x0 == r2->x0 && y0 == r2->y0 && x1 == r2->x1 && y1 == r2->y1;
+    }
 
+    bool clip(grk_rectangle<T> &r2, grk_rectangle<T> *result) {
+    	bool rc;
+    	grk_rectangle<T> temp;
+
+    	if (!result)
+    		return false;
+
+    	temp.x0 = _max(x0, r2.x0);
+    	temp.y0 = _max(y0, r2.y0);
+
+    	temp.x1 = _min(x1, r2.x1);
+    	temp.y1 = _min(y1, r2.y1);
+
+    	rc = temp.is_valid();
+
+    	if (rc)
+    		*result = temp;
+    	return rc;
+    }
+
+    void ceildivpow2(uint32_t power) {
+    	x0 = ceildivpow2(x0, power);
+    	y0 = ceildivpow2(y0, power);
+    	x1 = ceildivpow2(x1, power);
+    	y1 = ceildivpow2(y1, power);
+
+    }
+
+    void mulpow2(uint32_t power) {
+    	if (power == 0)
+    		return;
+    	x0 *= 1 << power;
+    	y0 *= 1 << power;
+    	x1 *= 1 << power;
+    	y1 *= 1 << power;
+
+    }
+
+    uint64_t area(void) {
+    	return (uint64_t)(x1 - x0) * (y1 - y0);
+    }
+
+    T width(){
+    	return x1 - x0;
+    }
+    T height(){
+    	return y1 - y0;
+    }
+
+    void pan(grk_pt *shift) {
+    	x0 += shift->x;
+    	y0 += shift->y;
+    	x1 += shift->x;
+    	y1 += shift->y;
+    }
+
+    void subsample(uint32_t dx, uint32_t dy) {
+    	x0 = ceildiv(x0, (T) dx);
+    	y0 = ceildiv(y0, (T) dy);
+    	x1 = ceildiv(x1, (T) dx);
+    	y1 = ceildiv(y1, (T) dy);
+    }
+
+    void grow(T boundary) {
+    	grow2(boundary, boundary);
+    }
+
+    void grow2(T boundaryx, T boundaryy) {
+
+    	x0 -= boundaryx;
+    	y0 -= boundaryy;
+    	x1 += boundaryx;
+    	y1 += boundaryy;
+    }
 
 };
 
+using grk_rect = grk_rectangle<int64_t>;
 
 struct grk_buf {
 	grk_buf() : grk_buf(nullptr,0,false) {}
