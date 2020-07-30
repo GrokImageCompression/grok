@@ -1019,7 +1019,7 @@ void TileProcessor::copy_image_to_tile() {
 		tilec->get_dimensions(image, img_comp, &size_comp, &width, &height,
 				&offset_x, &offset_y, &image_width, &stride, &tile_offset);
 		auto src_ptr = img_comp->data + tile_offset;
-		auto dest_ptr = tilec->buf->get_ptr(0,0,0,0);
+		auto dest_ptr = tilec->buf->ptr(0,0,0,0);
 
 		for (uint32_t j = 0; j < height; ++j) {
 			memcpy(dest_ptr, src_ptr, width * sizeof(int32_t));
@@ -1068,7 +1068,7 @@ bool TileProcessor::mct_decode() {
 				return false;
 
 			for (uint32_t i = 0; i < tile->numcomps; ++i) {
-				data[i] = (uint8_t*) tile_comp->buf->get_ptr(0, 0, 0, 0);
+				data[i] = (uint8_t*) tile_comp->buf->ptr();
 				++tile_comp;
 			}
 
@@ -1089,14 +1089,14 @@ bool TileProcessor::mct_decode() {
 			grk_free(data);
 		} else {
 			if (m_tcp->tccps->qmfbid == 1) {
-				mct::decode_rev(tile->comps[0].buf->get_ptr(0, 0, 0, 0),
-						tile->comps[1].buf->get_ptr(0, 0, 0, 0),
-						tile->comps[2].buf->get_ptr(0, 0, 0, 0), samples);
+				mct::decode_rev(tile->comps[0].buf->ptr(),
+						tile->comps[1].buf->ptr(),
+						tile->comps[2].buf->ptr(), samples);
 			} else {
 				mct::decode_irrev(
-						(float*) tile->comps[0].buf->get_ptr(0, 0, 0, 0),
-						(float*) tile->comps[1].buf->get_ptr(0, 0, 0, 0),
-						(float*) tile->comps[2].buf->get_ptr(0, 0, 0, 0),
+						(float*) tile->comps[0].buf->ptr(),
+						(float*) tile->comps[1].buf->ptr(),
+						(float*) tile->comps[2].buf->ptr(),
 						samples);
 			}
 		}
@@ -1121,7 +1121,7 @@ bool TileProcessor::dc_level_shift_decode() {
 		auto tccp = m_tcp->tccps + compno;
 		auto img_comp = image->comps + compno;
 		uint32_t stride = 0;
-		auto current_ptr = tile_comp->buf->get_ptr(0, 0, 0, 0);
+		auto current_ptr = tile_comp->buf->ptr();
 
 		x0 = 0;
 		y0 = 0;
@@ -1184,7 +1184,7 @@ bool TileProcessor::dc_level_shift_encode() {
 	for (uint32_t compno = 0; compno < tile->numcomps; compno++) {
 		auto tile_comp = tile->comps + compno;
 		auto tccp = m_tcp->tccps + compno;
-		auto current_ptr = tile_comp->buf->get_ptr(0, 0, 0, 0);
+		auto current_ptr = tile_comp->buf->ptr();
 		uint64_t nb_elem = tile_comp->area();
 
 		if (tccp->qmfbid == 1) {
@@ -1219,7 +1219,7 @@ bool TileProcessor::mct_encode() {
 		if (!data)
 			return false;
 		for (uint32_t i = 0; i < tile->numcomps; ++i) {
-			data[i] = (uint8_t*) tile_comp->buf->get_ptr(0, 0, 0, 0);
+			data[i] = (uint8_t*) tile_comp->buf->ptr();
 			++tile_comp;
 		}
 
@@ -1239,13 +1239,13 @@ bool TileProcessor::mct_encode() {
 
 		grk_free(data);
 	} else if (m_tcp->tccps->qmfbid == 0) {
-		mct::encode_irrev(tile->comps[0].buf->get_ptr(0, 0, 0, 0),
-				tile->comps[1].buf->get_ptr(0, 0, 0, 0),
-				tile->comps[2].buf->get_ptr(0, 0, 0, 0), samples);
+		mct::encode_irrev(tile->comps[0].buf->ptr(),
+				tile->comps[1].buf->ptr(),
+				tile->comps[2].buf->ptr(), samples);
 	} else {
-		mct::encode_rev(tile->comps[0].buf->get_ptr(0, 0, 0, 0),
-				tile->comps[1].buf->get_ptr(0, 0, 0, 0),
-				tile->comps[2].buf->get_ptr(0, 0, 0, 0), samples);
+		mct::encode_rev(tile->comps[0].buf->ptr(),
+				tile->comps[1].buf->ptr(),
+				tile->comps[2].buf->ptr(), samples);
 	}
 
 	return true;
@@ -1419,7 +1419,7 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_
 		auto comp_src = image_src->comps + i;
 		auto comp_dest = p_output_image->comps + i;
 
-		auto tile_data = (uint8_t*)tilec->buf->get_ptr(0, 0, 0, 0);
+		auto tile_data = (uint8_t*)tilec->buf->ptr();
 
 		/* Copy info from decoded comp image to output image */
 
@@ -1432,7 +1432,7 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_
 		uint32_t x1_dest = x0_dest + comp_dest->w;
 		uint32_t y1_dest = y0_dest + comp_dest->h;
 
-		grk_rect src_dim = tilec->buf->data_dim();
+		grk_rect src_dim = tilec->buf->bounds();
 		uint32_t width_src = (uint32_t) src_dim.width();
 		uint32_t height_src = (uint32_t) src_dim.height();
 
@@ -1558,7 +1558,7 @@ bool TileProcessor::copy_image_data_to_tile(uint8_t *p_src,
 
 		uint32_t size_comp = (img_comp->prec + 7) >> 3;
 		uint64_t nb_elem = tilec->area();
-		auto dest_ptr = tilec->buf->get_ptr(0,0,0,0);
+		auto dest_ptr = tilec->buf->ptr(0,0,0,0);
 		switch (size_comp) {
 		case 1: {
 			if (img_comp->sgnd) {

@@ -209,7 +209,7 @@ int main(int argc, char** argv)
 	   init_tilec(&tilec, offset_x, offset_y,
 				   offset_x + size, offset_y + size,
 				   num_resolutions);
-		auto data = tilec.buf->get_ptr(0,0,0,0);
+		auto data = tilec.buf->ptr();
 
 		if (display) {
 			spdlog::info("Before");

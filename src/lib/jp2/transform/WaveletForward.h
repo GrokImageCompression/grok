@@ -56,7 +56,7 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 	uint8_t cas_row,cas_col;
 	uint32_t stride = tilec->width();
 	uint32_t num_decomps = (uint32_t) (tilec->numresolutions - 1);
-	int32_t *a = tilec->buf->get_ptr( 0, 0, 0, 0);
+	int32_t *a = tilec->buf->ptr();
 	grk_resolution *cur_res = tilec->resolutions + num_decomps;
 	grk_resolution *next_res = cur_res - 1;
 

@@ -38,13 +38,6 @@ namespace grk {
 
  */
 
-struct TileComponentBufferResolution {
-	grk_pt origin; /* resolution origin, in tile coordinates */
-	grk_pt bounds; /* width and height of resolution in tile coordinates */
-	uint32_t num_bands;
-	grk_rect bands[3]; // tile coordinates
-};
-
 template<typename T> struct TileComponentBuffer {
 	TileComponentBuffer(grk_image *output_image,
 						uint32_t dx,uint32_t dy,
@@ -86,20 +79,79 @@ template<typename T> struct TileComponentBuffer {
 		if (owns_data)
 			grk_aligned_free(data);
 	}
-
-	T* get_ptr(uint32_t resno,uint32_t bandno, uint32_t offsetx, uint32_t offsety) const {
+	/**
+	 * Get pointer to band buffer
+	 *
+	 * @param resno resolution number
+	 * @param bandno band number (0 for LL band of 0th resolution, otherwise
+	 * 0,1,2 for HL,LH,HH bands
+	 * @param offsetx x offset into buffer
+	 * @param offsety y offset into buffer
+	 *
+	 */
+	T* ptr(uint32_t resno,uint32_t bandno, uint32_t offsetx, uint32_t offsety) const {
 		(void) resno;
 		(void) bandno;
 		return data + (uint64_t) offsetx
 				+ offsety * (uint64_t) (reduced_region_dim.x1 - reduced_region_dim.x0);
 	}
-
-	uint32_t getStride(uint32_t resno,uint32_t bandno){
+	/**
+	 * Get pointer to band buffer
+	 *
+	 * @param resno resolution number
+	 * @param bandno band number (0 for LL band of 0th resolution, otherwise
+	 * 0,1,2 for HL,LH,HH bands
+	 *
+	 */
+	T* ptr(uint32_t resno,uint32_t bandno){
+		return ptr(resno, bandno, 0,0);
+	}
+	/**
+	 * Get pointer to resolution buffer (LL band of next resolution)
+	 *
+	 * @param resno resolution number
+	 *
+	 */
+	T* ptr(uint32_t resno){
+		return ptr(resno, 0, 0,0);
+	}
+	/**
+	 * Get pointer to tile buffer
+	 *
+	 *
+	 */
+	T* ptr(void){
+		return ptr(0, 0, 0,0);
+	}
+	/**
+	 * Get stride of band buffer
+	 *
+	 * @param resno resolution number
+	 * @param bandno band number (0 for LL band of 0th resolution, otherwise
+	 * 0,1,2 for HL,LH,HH bands
+	 */
+	uint32_t stride(uint32_t resno,uint32_t bandno){
+		(void)resno;
+		(void)bandno;
 		return (uint32_t)(reduced_region_dim.x1 - reduced_region_dim.x0);
 	}
-
+	/**
+	 * Get stride of resolution buffer (LL band of next resolution)
+	 *
+	 * @resno resolution number
+	 */
+	uint32_t stride(uint32_t resno){
+		(void)resno;
+		return (uint32_t)(reduced_region_dim.x1 - reduced_region_dim.x0);
+	}
+	/**
+	 * Get stride of tile buffer (highest resolution)
+	 */
+	uint32_t stride(void){
+		return (uint32_t)(reduced_region_dim.x1 - reduced_region_dim.x0);
+	}
 	bool alloc(){
-		uint64_t data_size_needed = data_dim().area() * sizeof(T);
+		uint64_t data_size_needed = bounds().area() * sizeof(T);
 		if (!data && !data_size_needed)
 			return true;
 		if (!data) {
@@ -119,7 +171,7 @@ template<typename T> struct TileComponentBuffer {
 		return true;
 	}
 
-	grk_rect data_dim(){
+	grk_rect bounds(){
 		return m_encode ? unreduced_tile_comp_dim : reduced_region_dim;
 	}
 	// set data to buf without owning it

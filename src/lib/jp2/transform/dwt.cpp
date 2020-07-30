@@ -714,20 +714,19 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
     dwt_data<int32_t> vert;
     h_mem_size *= PLL_COLS_53 * sizeof(int32_t);
     bool rc = true;
-    int32_t * GRK_RESTRICT tiledp = tilec->buf->get_ptr( 0, 0, 0, 0);
+    uint32_t res = 1;
     while (--numres) {
-        uint32_t strideLL = (uint32_t)tilec->buf->reduced_region_dim.width();
-        uint32_t strideHL = (uint32_t)tilec->buf->reduced_region_dim.width();
-
-        ++tr;
+        uint32_t strideLL = tilec->buf->stride(res-1);
+        uint32_t strideHL = tilec->buf->stride(res,0);
         horiz.sn = rw;
         vert.sn = rh;
+        ++tr;
         rw = tr->width();
         rh = tr->height();
         horiz.dn = rw - horiz.sn;
         horiz.cas = tr->x0 & 1;
-    	auto bandLL = tiledp;
-    	auto bandHL = bandLL + horiz.sn;
+    	auto bandLL = tilec->buf->ptr( res-1);
+    	auto bandHL = tilec->buf->ptr( res, 0) + horiz.sn;
 
         if (num_threads == 1 || rh <= 1) {
         	if (!horiz.mem){
@@ -781,8 +780,9 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
         }
         vert.dn = rh - vert.sn;
         vert.cas = tr->y0 & 1;
-    	bandLL = tiledp;
-    	bandHL = bandLL + vert.sn * strideLL;
+    	bandLL = tilec->buf->ptr(res-1);
+    	auto bandLH = tilec->buf->ptr( res, 1) + vert.sn * strideLL;
+    	uint32_t strideLH = tilec->buf->stride(res,1);
 
         if (num_threads == 1 || rw <= 1) {
         	if (!horiz.mem){
@@ -794,12 +794,12 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
         	}
             uint32_t j;
             for (j = 0; j + PLL_COLS_53 <= rw; j += PLL_COLS_53){
-                decode_v_53(&vert, bandLL, strideLL, bandHL, strideLL, PLL_COLS_53);
+                decode_v_53(&vert, bandLL, strideLL, bandLH, strideLH, PLL_COLS_53);
 				bandLL += PLL_COLS_53;
 				bandHL += PLL_COLS_53;
             }
             if (j < rw)
-                decode_v_53(&vert, bandLL, strideLL, bandHL, strideLL, rw - j);
+                decode_v_53(&vert, bandLL, strideLL, bandLH, strideLH, rw - j);
         } else {
             uint32_t num_jobs = (uint32_t)num_threads;
             if (rw < num_jobs)
@@ -812,8 +812,8 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 											bandLL + min_j,
 											strideLL,
 											nullptr,0,
-											bandHL + min_j,
-											strideHL,
+											bandLH + min_j,
+											strideLH,
 											nullptr,0,
 											j * step_j,
 											j < (num_jobs - 1U) ? (j + 1U) * step_j : rw);
@@ -841,6 +841,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 			for(auto && result: results)
 				result.get();
         }
+        res++;
     }
     grk_aligned_free(horiz.mem);
 
@@ -1128,11 +1129,11 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
     if (numres == 1U)
         return true;
 
-    auto res = tilec->resolutions;
-    uint32_t rw = res->width();
-    uint32_t rh = res->height();
+    auto tr = tilec->resolutions;
+    uint32_t rw = tr->width();
+    uint32_t rh = tr->height();
 
-    size_t data_size = dwt_utils::max_resolution(res, numres);
+    size_t data_size = dwt_utils::max_resolution(tr, numres);
     dwt_data<v4_data> horiz;
     dwt_data<v4_data> vert;
     if (!horiz.alloc(data_size)) {
@@ -1141,23 +1142,23 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
     }
     vert.mem = horiz.mem;
     size_t num_threads = ThreadPool::get()->num_threads();
+    uint32_t res = 1;
     while (--numres) {
         horiz.sn = rw;
         vert.sn = rh;
-        uint32_t strideLL = (uint32_t)tilec->buf->reduced_region_dim.width();
-        uint32_t strideHL = (uint32_t)tilec->buf->reduced_region_dim.width();
-        uint32_t strideLH = (uint32_t)tilec->buf->reduced_region_dim.width();
-        ++res;
-        rw = res->width();
-        rh = res->height();
+        uint32_t strideLL = tilec->buf->stride(res-1);
+        uint32_t strideHL = tilec->buf->stride(res,0);
+        ++tr;
+        rw = tr->width();
+        rh = tr->height();
         horiz.dn = rw - horiz.sn;
-        horiz.cas = res->x0 & 1;
+        horiz.cas = tr->x0 & 1;
         horiz.win_l_x0 = 0;
         horiz.win_l_x1 = horiz.sn;
         horiz.win_h_x0 = 0;
         horiz.win_h_x1 = horiz.dn;
-        float * GRK_RESTRICT bandLL = (float*) tilec->buf->get_ptr( 0, 0, 0, 0);
-        float * GRK_RESTRICT bandHL = bandLL + horiz.sn;
+        float * GRK_RESTRICT bandLL = (float*) tilec->buf->ptr( res, 0);
+        float * GRK_RESTRICT bandHL = (float*) tilec->buf->ptr( res, 0) + horiz.sn;
         uint32_t num_jobs = (uint32_t)num_threads;
         if (rh < num_jobs)
             num_jobs = rh;
@@ -1252,13 +1253,14 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 				result.get();
         }
         vert.dn = rh - vert.sn;
-        vert.cas = res->y0 & 1;
+        vert.cas = tr->y0 & 1;
         vert.win_l_x0 = 0;
         vert.win_l_x1 = vert.sn;
         vert.win_h_x0 = 0;
         vert.win_h_x1 = vert.dn;
-        bandLL = (float*) tilec->buf->get_ptr( 0, 0, 0, 0);
-        auto bandLH = bandLL + vert.sn * strideLL;
+        bandLL = (float*) tilec->buf->ptr( res-1);
+        auto bandLH = (float*) tilec->buf->ptr( res, 1) + vert.sn * strideLL;
+        uint32_t strideLH = tilec->buf->stride(res,1);
         num_jobs = (uint32_t)num_threads;
         if (rw < num_jobs)
             num_jobs = rw;
@@ -1763,7 +1765,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
     if (numres == 1U) {
         auto win_bounds = tr_max->win_bounds().pan(-tr_max->x0,-tr_max->y0);
     	bool ret = sa->read(win_bounds,
-					   tilec->buf->get_ptr(0,0,0,0),
+					   tilec->buf->ptr(0,0),
                        1,
 					   win_bounds.width(),
                        true);
@@ -2110,7 +2112,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
     //final read into tile buffer
     auto win_bounds = tr_max->win_bounds().pan(-tr_max->x0,-tr_max->y0);
 	bool ret = sa->read(win_bounds,
-					   tilec->buf->get_ptr(0,0,0,0),
+					   tilec->buf->ptr(0,0),
 					   1,
 					   win_bounds.width(),
 					   true);

@@ -81,7 +81,7 @@ void Tier1::encodeCodeblocks(TileCodingParams *tcp,
 						block->y = (uint32_t)y;
 						block->mct_norms = mct_norms;
 						block->mct_numcomps = mct_numcomps;
-						block->tiledp = tilec->buf->get_ptr( resno,
+						block->tiledp = tilec->buf->ptr( resno,
 								bandno, (uint32_t) x, (uint32_t) y);
 						block->k_msbs = (uint8_t)(band->numbps - cblk->numbps);
 						blocks.push_back(block);
@@ -156,7 +156,7 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, TileComponentCodingPar
 						block->tilec = tilec;
 						block->x = (uint32_t)x;
 						block->y = (uint32_t)y;
-						block->tiledp = tilec->buf->get_ptr( resno, bandno,
+						block->tiledp = tilec->buf->ptr( resno, bandno,
 								(uint32_t) x, (uint32_t) y);
 						block->k_msbs = (uint8_t)(band->numbps - cblk->numbps);
 						blocks->push_back(block);
