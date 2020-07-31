@@ -90,8 +90,10 @@ template<typename T> struct TileComponentBuffer {
 	 *
 	 */
 	T* ptr(uint32_t resno,uint32_t bandno, uint32_t offsetx, uint32_t offsety) const {
-		(void) resno;
-		(void) bandno;
+		if (resno==0)
+			assert(bandno==0);
+		else
+			assert(bandno < 3);
 		return data + (uint64_t) offsetx
 				+ offsety * (uint64_t) (reduced_region_dim.x1 - reduced_region_dim.x0);
 	}
@@ -104,7 +106,25 @@ template<typename T> struct TileComponentBuffer {
 	 *
 	 */
 	T* ptr(uint32_t resno,uint32_t bandno){
-		return ptr(resno, bandno, 0,0);
+		if (resno==0)
+			return data;
+		auto lower_res = resolutions[resno-1];
+		switch(bandno){
+		case 0:
+			return data + lower_res->width();
+			break;
+		case 1:
+			return data + lower_res->height() * stride(resno,bandno);
+			break;
+		case 2:
+			return data + lower_res->width() +
+					lower_res->height() * stride(resno,bandno);
+			break;
+		default:
+			assert(0);
+			break;
+		}
+		return nullptr;
 	}
 	/**
 	 * Get pointer to resolution buffer (LL band of next resolution)

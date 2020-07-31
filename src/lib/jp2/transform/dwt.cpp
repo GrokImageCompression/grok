@@ -726,7 +726,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
         horiz.dn = rw - horiz.sn;
         horiz.cas = tr->x0 & 1;
     	auto bandLL = tilec->buf->ptr( res-1);
-    	auto bandHL = tilec->buf->ptr( res, 0) + horiz.sn;
+    	auto bandHL = tilec->buf->ptr( res, 0);
 
         if (num_threads == 1 || rh <= 1) {
         	if (!horiz.mem){
@@ -781,7 +781,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
         vert.dn = rh - vert.sn;
         vert.cas = tr->y0 & 1;
     	bandLL = tilec->buf->ptr(res-1);
-    	auto bandLH = tilec->buf->ptr( res, 1) + vert.sn * strideLL;
+    	auto bandLH = tilec->buf->ptr( res, 1);
     	uint32_t strideLH = tilec->buf->stride(res,1);
 
         if (num_threads == 1 || rw <= 1) {
@@ -1157,8 +1157,8 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         horiz.win_l_x1 = horiz.sn;
         horiz.win_h_x0 = 0;
         horiz.win_h_x1 = horiz.dn;
-        float * GRK_RESTRICT bandLL = (float*) tilec->buf->ptr( res, 0);
-        float * GRK_RESTRICT bandHL = (float*) tilec->buf->ptr( res, 0) + horiz.sn;
+        float * GRK_RESTRICT bandLL = (float*) tilec->buf->ptr( res-1);
+        float * GRK_RESTRICT bandHL = (float*) tilec->buf->ptr( res, 0);
         uint32_t num_jobs = (uint32_t)num_threads;
         if (rh < num_jobs)
             num_jobs = rh;
@@ -1259,7 +1259,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         vert.win_h_x0 = 0;
         vert.win_h_x1 = vert.dn;
         bandLL = (float*) tilec->buf->ptr( res-1);
-        auto bandLH = (float*) tilec->buf->ptr( res, 1) + vert.sn * strideLL;
+        auto bandLH = (float*) tilec->buf->ptr( res, 1) ;
         uint32_t strideLH = tilec->buf->stride(res,1);
         num_jobs = (uint32_t)num_threads;
         if (rw < num_jobs)
@@ -1341,6 +1341,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 			for(auto && result: results)
 				result.get();
         }
+        res++;
     }
     horiz.release();
 
@@ -1765,7 +1766,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
     if (numres == 1U) {
         auto win_bounds = tr_max->win_bounds().pan(-tr_max->x0,-tr_max->y0);
     	bool ret = sa->read(win_bounds,
-					   tilec->buf->ptr(0,0),
+					   tilec->buf->ptr(),
                        1,
 					   win_bounds.width(),
                        true);
@@ -2112,7 +2113,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
     //final read into tile buffer
     auto win_bounds = tr_max->win_bounds().pan(-tr_max->x0,-tr_max->y0);
 	bool ret = sa->read(win_bounds,
-					   tilec->buf->ptr(0,0),
+					   tilec->buf->ptr(),
 					   1,
 					   win_bounds.width(),
 					   true);
