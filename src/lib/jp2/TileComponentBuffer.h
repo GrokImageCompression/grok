@@ -48,9 +48,6 @@ template<typename T> struct TileComponentBuffer {
 						grk_resolution *tile_comp_resolutions) :
 							reduced_region_dim(reduced_dim),
 							unreduced_tile_comp_dim(unreduced_dim),
-							data(nullptr),
-							data_size(0),
-							owns_data(false),
 							m_encode(output_image==nullptr)
 	{
 		//note: only decoder has output image
@@ -74,10 +71,10 @@ template<typename T> struct TileComponentBuffer {
 	        for (uint32_t resno = 0; resno < reduced_num_resolutions; ++resno)
 	        	resolutions.push_back(tile_comp_resolutions+resno);
 		}
+		grk_rect b = bounds();
+		buf = grk_buffer_2d<T>((uint32_t)b.width(), (uint32_t)b.height());
 	}
 	~TileComponentBuffer(){
-		if (owns_data)
-			grk_aligned_free(data);
 	}
 	/**
 	 * Get pointer to band buffer
@@ -94,7 +91,7 @@ template<typename T> struct TileComponentBuffer {
 			assert(bandno==0);
 		else
 			assert(bandno < 3);
-		return data + (uint64_t) offsetx
+		return buf.buf + (uint64_t) offsetx
 				+ offsety * (uint64_t) (reduced_region_dim.x1 - reduced_region_dim.x0);
 	}
 	/**
@@ -107,17 +104,17 @@ template<typename T> struct TileComponentBuffer {
 	 */
 	T* ptr(uint32_t resno,uint32_t bandno){
 		if (resno==0)
-			return data;
+			return buf.buf;
 		auto lower_res = resolutions[resno-1];
 		switch(bandno){
 		case 0:
-			return data + lower_res->width();
+			return buf.buf + lower_res->width();
 			break;
 		case 1:
-			return data + lower_res->height() * stride(resno,bandno);
+			return buf.buf + lower_res->height() * stride(resno,bandno);
 			break;
 		case 2:
-			return data + lower_res->width() +
+			return buf.buf + lower_res->width() +
 					lower_res->height() * stride(resno,bandno);
 			break;
 		default:
@@ -153,7 +150,7 @@ template<typename T> struct TileComponentBuffer {
 	uint32_t stride(uint32_t resno,uint32_t bandno){
 		(void)resno;
 		(void)bandno;
-		return (uint32_t)(reduced_region_dim.x1 - reduced_region_dim.x0);
+		return buf.stride;
 	}
 	/**
 	 * Get stride of resolution buffer (LL band of next resolution)
@@ -162,58 +159,32 @@ template<typename T> struct TileComponentBuffer {
 	 */
 	uint32_t stride(uint32_t resno){
 		(void)resno;
-		return (uint32_t)(reduced_region_dim.x1 - reduced_region_dim.x0);
+		return buf.stride;
 	}
 	/**
 	 * Get stride of tile buffer (highest resolution)
 	 */
 	uint32_t stride(void){
-		return (uint32_t)(reduced_region_dim.x1 - reduced_region_dim.x0);
+		return buf.stride;
 	}
 	bool alloc(){
-		uint64_t data_size_needed = bounds().area() * sizeof(T);
-		if (!data && !data_size_needed)
-			return true;
-		if (!data) {
-			if (owns_data)
-				grk_aligned_free(data);
-			data_size = 0;
-			owns_data = false;
-			data = (T*) grk_aligned_malloc(data_size_needed);
-			if (!data)
-				return false;
-			if (!m_encode)
-				memset(data, 0, data_size_needed);
-			data_size = data_size_needed;
-			owns_data = true;
-		}
-
-		return true;
+		return buf.alloc(!m_encode);
 	}
 
 	grk_rect bounds(){
 		return m_encode ? unreduced_tile_comp_dim : reduced_region_dim;
 	}
 	// set data to buf without owning it
-	void attach(T* buf){
-		data = buf;
-		owns_data = false;
+	void attach(T* buffer){
+		buf.attach(buffer);
 	}
 	// set data to buf and own it
-	void acquire(T* buf){
-		if (owns_data)
-			grk_aligned_free(data);
-		data = buf;
-		owns_data = true;
+	void acquire(T* buffer){
+		buf.acquire(buffer);
 	}
 	// transfer data to buf, and cease owning it
-	void transfer(T** buf, bool* owns){
-		if (buf && owns){
-			*buf = data;
-			data = nullptr;
-			*owns = owns_data;
-			owns_data = false;
-		}
+	void transfer(T** buffer, bool* owns){
+		buf.transfer(buffer,owns);
 	}
 	// unreduced tile component coordinates of region
 	grk_rect unreduced_region_dim;
@@ -227,9 +198,7 @@ private:
 
 	std::vector<grk_resolution*> resolutions;
 
-	T *data;
-	uint64_t data_size; /* size of the data of the component */
-	bool owns_data; /* true if tile buffer manages its data array, false otherwise */
+	grk_buffer_2d<T> buf;
 	bool m_encode;
 };
 
