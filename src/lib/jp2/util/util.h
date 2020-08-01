@@ -46,6 +46,13 @@ template<typename T> struct grk_rectangle {
     T x1;
     T y1;
 
+    grk_rectangle(T x0, T y0, T x1, T y1) :
+    		x0(x0), y0(y0), x1(x1), y1(y1) {
+    }
+
+    grk_rectangle(const grk_rectangle &rhs){
+    	*this = rhs;
+    }
 
 	inline T _max(T x, T y){
 		return (x) > (y) ? (x) : (y);
@@ -78,24 +85,12 @@ template<typename T> struct grk_rectangle {
     		x0(0), y0(0), x1(0), y1(0) {
     }
 
-    grk_rectangle(T x0, T y0, T x1, T y1) :
-    		x0(x0), y0(y0), x1(x1), y1(y1) {
-    }
-
     bool is_valid(void) {
     	return x0 <= x1 && y0 <= y1;
     }
 
     bool is_non_degenerate(void) {
     	return x0 < x1 && y0 < y1;
-    }
-
-    bool are_equal(grk_rectangle<T> *r2) {
-
-    	if (!r2)
-    		return false;
-
-    	return x0 == r2->x0 && y0 == r2->y0 && x1 == r2->x1 && y1 == r2->y1;
     }
 
     bool clip(grk_rectangle<T> &r2, grk_rectangle<T> *result) {
@@ -117,6 +112,19 @@ template<typename T> struct grk_rectangle {
     		*result = temp;
     	return rc;
     }
+
+    grk_rectangle<T>& operator= (const grk_rectangle<T> &rhs)
+    {
+    	if (this != &rhs) { // self-assignment check expected
+			x0 = rhs.x0;
+			y0 = rhs.y0;
+			x1 = rhs.x1;
+			y1 = rhs.y1;
+    	}
+
+    	return *this;
+    }
+
 
     grk_rectangle<T>& operator- (const grk_rectangle<T> &rhs)
     {
@@ -155,6 +163,13 @@ template<typename T> struct grk_rectangle {
 
     	return *this;
 
+    }
+
+    grk_rectangle<T> intersection(const grk_rectangle<T> &rhs){
+    	return grk_rectangle<T>( std::max<T>(x0,rhs.x0),
+								std::max<T>(y0,rhs.y0),
+								std::min<T>(x1,rhs.x1),
+								std::min<T>(y1,rhs.y1));
     }
 
     uint64_t area(void) {
@@ -267,7 +282,7 @@ using grk_buf = grk_buffer<uint8_t>;
 template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 
 	grk_buffer_2d(T *buffer,bool ownsData, uint32_t w, uint32_t strd, uint32_t h) : grk_rect_u32(0,0,w,h),
-																					buf(buffer),
+																					data(buffer),
 																					owns_data(ownsData),
 																					stride(strd)
 	{}
@@ -281,19 +296,19 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 	{}
 	virtual ~grk_buffer_2d() {
 		if (owns_data)
-			grk_aligned_free(buf);
+			grk_aligned_free(data);
 	}
 
 	bool alloc(bool clear){
-		if (!buf) {
+		if (!data) {
 			uint64_t data_size_needed = area() * sizeof(T);
 			if (!data_size_needed)
 			  return true;
-			buf = (T*) grk_aligned_malloc(data_size_needed);
-			if (!buf)
+			data = (T*) grk_aligned_malloc(data_size_needed);
+			if (!data)
 				return false;
 			if (clear)
-				memset(buf, 0, data_size_needed);
+				memset(data, 0, data_size_needed);
 			owns_data = true;
 		}
 
@@ -302,31 +317,30 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 
 	// set data to buf without owning it
 	void attach(T* buffer){
-		buf = buffer;
+		data = buffer;
 		owns_data = false;
 	}
 	// set data to buf and own it
 	void acquire(T* buffer){
 		if (owns_data)
-			grk_aligned_free(buf);
-		buffer = buf;
+			grk_aligned_free(data);
+		buffer = data;
 		owns_data = true;
 	}
 	// transfer data to buf, and cease owning it
 	void transfer(T** buffer, bool* owns){
 		if (buffer && owns){
-			*buffer = buf;
-			buf = nullptr;
+			*buffer = data;
+			data = nullptr;
 			*owns = owns_data;
 			owns_data = false;
 		}
 	}
 
-	T *buf;		/* internal array*/
+	T *data;		/* internal array*/
     bool owns_data;	/* true if buffer manages the buf array */
     uint32_t stride;
 } ;
-using grk_buf_2d = grk_buffer_2d<uint8_t>;
 
 }
 

@@ -716,8 +716,8 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
     bool rc = true;
     uint32_t res = 1;
     while (--numres) {
-        uint32_t strideLL = tilec->buf->stride(res-1);
-        uint32_t strideHL = tilec->buf->stride(res,0);
+        uint32_t strideLL = tilec->buf->stride(res,0);
+        uint32_t strideHL = tilec->buf->stride(res,1);
         horiz.sn = rw;
         vert.sn = rh;
         ++tr;
@@ -725,8 +725,8 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
         rh = tr->height();
         horiz.dn = rw - horiz.sn;
         horiz.cas = tr->x0 & 1;
-    	auto bandLL = tilec->buf->ptr( res-1);
-    	auto bandHL = tilec->buf->ptr( res, 0);
+    	auto bandLL = tilec->buf->ptr( res, 0);
+    	auto bandHL = tilec->buf->ptr( res, 1);
 
         if (num_threads == 1 || rh <= 1) {
         	if (!horiz.mem){
@@ -780,9 +780,9 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
         }
         vert.dn = rh - vert.sn;
         vert.cas = tr->y0 & 1;
-    	bandLL = tilec->buf->ptr(res-1);
-    	auto bandLH = tilec->buf->ptr( res, 1);
-    	uint32_t strideLH = tilec->buf->stride(res,1);
+    	bandLL = tilec->buf->ptr(res, 0);
+    	auto bandLH = tilec->buf->ptr( res, 2);
+    	uint32_t strideLH = tilec->buf->stride(res,2);
 
         if (num_threads == 1 || rw <= 1) {
         	if (!horiz.mem){
@@ -1146,8 +1146,8 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
     while (--numres) {
         horiz.sn = rw;
         vert.sn = rh;
-        uint32_t strideLL = tilec->buf->stride(res-1);
-        uint32_t strideHL = tilec->buf->stride(res,0);
+        uint32_t strideLL = tilec->buf->stride(res,0);
+        uint32_t strideHL = tilec->buf->stride(res,1);
         ++tr;
         rw = tr->width();
         rh = tr->height();
@@ -1157,8 +1157,8 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         horiz.win_l_x1 = horiz.sn;
         horiz.win_h_x0 = 0;
         horiz.win_h_x1 = horiz.dn;
-        float * GRK_RESTRICT bandLL = (float*) tilec->buf->ptr( res-1);
-        float * GRK_RESTRICT bandHL = (float*) tilec->buf->ptr( res, 0);
+        float * GRK_RESTRICT bandLL = (float*) tilec->buf->ptr( res, 0);
+        float * GRK_RESTRICT bandHL = (float*) tilec->buf->ptr( res, 1);
         uint32_t num_jobs = (uint32_t)num_threads;
         if (rh < num_jobs)
             num_jobs = rh;
@@ -1258,9 +1258,9 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         vert.win_l_x1 = vert.sn;
         vert.win_h_x0 = 0;
         vert.win_h_x1 = vert.dn;
-        bandLL = (float*) tilec->buf->ptr( res-1);
-        auto bandLH = (float*) tilec->buf->ptr( res, 1) ;
-        uint32_t strideLH = tilec->buf->stride(res,1);
+        bandLL = (float*) tilec->buf->ptr( res, 0);
+        auto bandLH = (float*) tilec->buf->ptr( res, 2) ;
+        uint32_t strideLH = tilec->buf->stride(res,2);
         num_jobs = (uint32_t)num_threads;
         if (rw < num_jobs)
             num_jobs = rw;
@@ -1711,48 +1711,6 @@ public:
 	}
 };
 
-
-static void get_band_coordinates(TileComponent* tilec,
-								uint32_t resno,
-								uint32_t bandno,
-								uint32_t tcx0,
-								uint32_t tcy0,
-								uint32_t tcx1,
-								uint32_t tcy1,
-								uint32_t* tbx0,
-								uint32_t* tby0,
-								uint32_t* tbx1,
-								uint32_t* tby1){
-    /* Compute number of decomposition for this band. See table F-1 */
-    uint32_t nb = (resno == 0) ?
-                    tilec->numresolutions - 1 :
-                    tilec->numresolutions - resno;
-    /* Map above tile-based coordinates to sub-band-based coordinates per */
-    /* equation B-15 of the standard */
-    uint32_t x0b = bandno & 1;
-    uint32_t y0b = bandno >> 1;
-    if (tbx0) {
-        *tbx0 = (nb == 0) ? tcx0 :
-                (tcx0 <= (1U << (nb - 1)) * x0b) ? 0 :
-                uint_ceildivpow2(tcx0 - (1U << (nb - 1)) * x0b, nb);
-    }
-    if (tby0) {
-        *tby0 = (nb == 0) ? tcy0 :
-                (tcy0 <= (1U << (nb - 1)) * y0b) ? 0 :
-                uint_ceildivpow2(tcy0 - (1U << (nb - 1)) * y0b, nb);
-    }
-    if (tbx1) {
-        *tbx1 = (nb == 0) ? tcx1 :
-                (tcx1 <= (1U << (nb - 1)) * x0b) ? 0 :
-                uint_ceildivpow2(tcx1 - (1U << (nb - 1)) * x0b, nb);
-    }
-    if (tby1) {
-        *tby1 = (nb == 0) ? tcy1 :
-                (tcy1 <= (1U << (nb - 1)) * y0b) ? 0 :
-                uint_ceildivpow2(tcy1 - (1U << (nb - 1)) * y0b, nb);
-    }
-}
-
 /* FILTER_WIDTH value matches the maximum left/right extension given in tables */
 /* F.2 and F.3 of the standard. Note: in TileComponent::is_subband_area_of_interest() */
 /* we currently use 3. */
@@ -1764,7 +1722,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
         return true;
 
     if (numres == 1U) {
-        auto win_bounds = tr_max->win_bounds().pan(-tr_max->x0,-tr_max->y0);
+        auto win_bounds = tr_max->win_bounds.pan(-tr_max->x0,-tr_max->y0);
     	bool ret = sa->read(win_bounds,
 					   tilec->buf->ptr(),
                        1,
@@ -1779,15 +1737,6 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
     uint32_t rw = tr->width();
     /* height of the resolution level computed */
     uint32_t rh = tr->height();
-
-    /* Compute the intersection of the area of interest, expressed in tile coordinates */
-    /* with the tile coordinates */
-    auto dim = tilec->buf->unreduced_region_dim;
-
-    uint32_t win_tcx0 = (uint32_t)dim.x0;
-    uint32_t win_tcy0 = (uint32_t)dim.y0;
-    uint32_t win_tcx1 = (uint32_t)dim.x1;
-    uint32_t win_tcy1 = (uint32_t)dim.y1;
 
     // in 53 vertical pass, we process 4 vertical columns at a time
     const uint32_t data_multiplier = (sizeof(T) == 4) ? 4 : 1;
@@ -1821,19 +1770,16 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
         /* Window of interest sub-band-based coordinates */
         uint32_t win_ll_x0, win_ll_y0;
         uint32_t win_ll_x1, win_ll_y1;
-        get_band_coordinates(tilec, resno, 0,
-                                     win_tcx0, win_tcy0, win_tcx1, win_tcy1,
+        tilec->buf->get_region_band_coordinates(resno, 0,
                                      &win_ll_x0, &win_ll_y0,
                                      &win_ll_x1, &win_ll_y1);
         /* HL band */
         uint32_t win_hl_x0, win_hl_x1;
-        get_band_coordinates(tilec, resno, 1,
-                                     win_tcx0, win_tcy0, win_tcx1, win_tcy1,
-                                     &win_hl_x0, nullptr, &win_hl_x1, nullptr);
+        tilec->buf->get_region_band_coordinates(resno, 1,
+                                      &win_hl_x0, nullptr, &win_hl_x1, nullptr);
         /* LH band */
         uint32_t win_lh_y0, win_lh_y1;
-        get_band_coordinates(tilec, resno, 2,
-                                     win_tcx0, win_tcy0, win_tcx1, win_tcy1,
+        tilec->buf->get_region_band_coordinates(resno, 2,
                                      nullptr, &win_lh_y0, nullptr, &win_lh_y1);
 
         /* band coordinates */
@@ -2111,7 +2057,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 		}
     }
     //final read into tile buffer
-    auto win_bounds = tr_max->win_bounds().pan(-tr_max->x0,-tr_max->y0);
+    auto win_bounds = tr_max->win_bounds.pan(-tr_max->x0,-tr_max->y0);
 	bool ret = sa->read(win_bounds,
 					   tilec->buf->ptr(),
 					   1,

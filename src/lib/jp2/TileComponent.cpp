@@ -516,22 +516,20 @@ bool TileComponent::is_subband_area_of_interest(uint32_t resno,
     uint32_t tby1 = (nb == 0) ? tcy1 :
                       (tcy1 <= (1U << (nb - 1)) * y0b) ? 0 :
                       uint_ceildivpow2(tcy1 - (1U << (nb - 1)) * y0b, nb);
-    bool intersects;
 
-    if (tbx0 < filter_margin) {
+    if (tbx0 < filter_margin)
         tbx0 = 0;
-    } else {
+    else
         tbx0 -= filter_margin;
-    }
-    if (tby0 < filter_margin) {
+    if (tby0 < filter_margin)
         tby0 = 0;
-    } else {
+    else
         tby0 -= filter_margin;
-    }
+
     tbx1 = uint_adds(tbx1, filter_margin);
     tby1 = uint_adds(tby1, filter_margin);
 
-    intersects = aoi_x0 < tbx1 && aoi_y0 < tby1 && aoi_x1 > tbx0 &&
+    bool intersects = aoi_x0 < tbx1 && aoi_y0 < tby1 && aoi_x1 > tbx0 &&
                  aoi_y1 > tby0;
 
 #ifdef DEBUG_VERBOSE

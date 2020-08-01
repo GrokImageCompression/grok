@@ -158,12 +158,11 @@ struct grk_cblk_dec: public grk_cblk {
 };
 
 // precinct
-struct grk_precinct {
+struct grk_precinct : public grk_rect_u32 {
 	grk_precinct();
 	void initTagTrees();
 	void deleteTagTrees();
 
-	uint32_t x0, y0, x1, y1; /* dimension of the precinct : left upper corner (x0, y0) right low corner (x1,y1) */
 	uint32_t cw, ch; /* number of precinct in width and height */
 	grk_cblk_enc *enc;
 	grk_cblk_dec *dec;
@@ -173,13 +172,14 @@ struct grk_precinct {
 };
 
 // band
-struct grk_band {
+struct grk_band : public grk_rect_u32 {
 	grk_band();
 	grk_band(const grk_band &rhs);
 
+	grk_band& operator= (const grk_band &rhs);
+
+
 	bool isEmpty() ;
-	/* dimension of the subband : left upper corner (x0, y0) right low corner (x1,y1) */
-	uint32_t x0, y0, x1, y1;
 	// 0 for first band of lowest resolution, otherwise equal to 1,2 or 3
 	uint8_t bandno;
 	grk_precinct *precincts; /* precinct information */
@@ -193,35 +193,23 @@ struct grk_band {
 };
 
 // resolution
-struct grk_resolution {
+struct grk_resolution : public grk_rect_u32 {
 	grk_resolution();
 
-	uint32_t width();
-	uint32_t height();
-
-	grk_rect_u32 bounds();
-	grk_rect_u32 win_bounds();
-
 	/* dimension of the resolution level in tile coordinates */
-	uint32_t x0, y0, x1, y1;
 	uint32_t pw, ph;
 	uint32_t numbands; /* number sub-band for the resolution level */
 	grk_band bands[3]; /* subband information */
 
     /* dimension of the resolution limited to window of interest.
      *  Only valid if tcd->whole_tile_decoding is set */
-	uint32_t win_x0;
-	uint32_t win_y0;
-	uint32_t win_x1;
-	uint32_t win_y1;
-
+	grk_rect_u32 win_bounds;
 };
 
 struct TileComponent;
 
 // tile
-struct grk_tile {
-	uint32_t x0, y0, x1, y1; /* dimension of the tile : left upper corner (x0, y0) right low corner (x1,y1) */
+struct grk_tile : public grk_rect_u32 {
 	uint32_t numcomps; /* number of components in tile */
 	TileComponent *comps; /* Components information */
 	uint64_t numpix;

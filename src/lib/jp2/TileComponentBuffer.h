@@ -46,8 +46,10 @@ template<typename T> struct TileComponentBuffer {
 						uint32_t reduced_num_resolutions,
 						uint32_t numresolutions,
 						grk_resolution *tile_comp_resolutions) :
-							reduced_region_dim(reduced_dim),
+							unreduced_region_dim(unreduced_dim),
+							m_bounds(reduced_dim),
 							unreduced_tile_comp_dim(unreduced_dim),
+							num_resolutions(numresolutions),
 							m_encode(output_image==nullptr)
 	{
 		//note: only decoder has output image
@@ -58,11 +60,11 @@ template<typename T> struct TileComponentBuffer {
 										ceildiv<uint32_t>(output_image->x1, dx),
 										ceildiv<uint32_t>(output_image->y1, dy));
 
-			reduced_region_dim 	= unreduced_region_dim;
-			reduced_region_dim.ceildivpow2(numresolutions - reduced_num_resolutions);
+			m_bounds 	= unreduced_region_dim;
+			m_bounds.ceildivpow2(num_resolutions - reduced_num_resolutions);
 
 			/* clip region dimensions against tile */
-			reduced_dim.clip(reduced_region_dim, &reduced_region_dim);
+			reduced_dim.clip(m_bounds, &m_bounds);
 			unreduced_tile_comp_dim.clip(unreduced_region_dim, &unreduced_region_dim);
 
 			/* fill resolutions vector */
@@ -91,30 +93,29 @@ template<typename T> struct TileComponentBuffer {
 			assert(bandno==0);
 		else
 			assert(bandno < 3);
-		return buf.buf + (uint64_t) offsetx
-				+ offsety * (uint64_t) (reduced_region_dim.x1 - reduced_region_dim.x0);
+		return buf.data + (uint64_t) offsetx
+				+ offsety * (uint64_t) (m_bounds.x1 - m_bounds.x0);
 	}
 	/**
 	 * Get pointer to band buffer
 	 *
 	 * @param resno resolution number
-	 * @param bandno band number (0 for LL band of 0th resolution, otherwise
-	 * 0,1,2 for HL,LH,HH bands
+	 * @param bandno band number {0,1,2,3} for LL HL,LH and HH bands
 	 *
 	 */
 	T* ptr(uint32_t resno,uint32_t bandno){
-		if (resno==0)
-			return buf.buf;
+		if (bandno==0)
+			return buf.data;
 		auto lower_res = resolutions[resno-1];
 		switch(bandno){
-		case 0:
-			return buf.buf + lower_res->width();
-			break;
 		case 1:
-			return buf.buf + lower_res->height() * stride(resno,bandno);
+			return buf.data + lower_res->width();
 			break;
 		case 2:
-			return buf.buf + lower_res->width() +
+			return buf.data + lower_res->height() * stride(resno,bandno);
+			break;
+		case 3:
+			return buf.data + lower_res->width() +
 					lower_res->height() * stride(resno,bandno);
 			break;
 		default:
@@ -122,15 +123,6 @@ template<typename T> struct TileComponentBuffer {
 			break;
 		}
 		return nullptr;
-	}
-	/**
-	 * Get pointer to resolution buffer (LL band of next resolution)
-	 *
-	 * @param resno resolution number
-	 *
-	 */
-	T* ptr(uint32_t resno){
-		return ptr(resno, 0, 0,0);
 	}
 	/**
 	 * Get pointer to tile buffer
@@ -144,35 +136,95 @@ template<typename T> struct TileComponentBuffer {
 	 * Get stride of band buffer
 	 *
 	 * @param resno resolution number
-	 * @param bandno band number (0 for LL band of 0th resolution, otherwise
-	 * 0,1,2 for HL,LH,HH bands
+	 * @param bandno band number {0,1,2,3} for LL HL,LH and HH bands
 	 */
 	uint32_t stride(uint32_t resno,uint32_t bandno){
 		(void)resno;
 		(void)bandno;
 		return buf.stride;
 	}
-	/**
-	 * Get stride of resolution buffer (LL band of next resolution)
-	 *
-	 * @resno resolution number
-	 */
-	uint32_t stride(uint32_t resno){
-		(void)resno;
-		return buf.stride;
-	}
-	/**
-	 * Get stride of tile buffer (highest resolution)
-	 */
-	uint32_t stride(void){
-		return buf.stride;
-	}
+
 	bool alloc(){
 		return buf.alloc(!m_encode);
 	}
 
+	/**
+	 * Get reduced coordinates of sub-band region
+	 *
+	 * @param resno resolution number
+	 * @param bandno band number {0,1,2,3} for LL HL,LH and HH bands
+	 * @param tbx0	x0 coordinate of region
+	 * @param tby0	y0 coordinate of region
+	 * @param tbx1	x1 coordinate of region
+	 * @param tby1	y1 coordinate of region
+	 *
+	 *
+	 */
+	void get_region_band_coordinates(uint32_t resno,
+							uint32_t bandno,
+							uint32_t* tbx0,
+							uint32_t* tby0,
+							uint32_t* tbx1,
+							uint32_t* tby1){
+	    /* Compute number of decomposition for this band. See table F-1 */
+	    uint32_t nb = (resno == 0) ?
+	                    num_resolutions - 1 :
+	                    num_resolutions - resno;
+
+		uint32_t tcx0 = (uint32_t)unreduced_region_dim.x0;
+		uint32_t tcy0 = (uint32_t)unreduced_region_dim.y0;
+		uint32_t tcx1 = (uint32_t)unreduced_region_dim.x1;
+		uint32_t tcy1 = (uint32_t)unreduced_region_dim.y1;
+	    /* Map above tile-based coordinates to sub-band-based coordinates per */
+	    /* equation B-15 of the standard */
+	    uint32_t x0b = bandno & 1;
+	    uint32_t y0b = bandno >> 1;
+	    if (tbx0) {
+	        *tbx0 = (nb == 0) ? tcx0 :
+	                (tcx0 <= (1U << (nb - 1)) * x0b) ? 0 :
+	                uint_ceildivpow2(tcx0 - (1U << (nb - 1)) * x0b, nb);
+	    }
+	    if (tby0) {
+	        *tby0 = (nb == 0) ? tcy0 :
+	                (tcy0 <= (1U << (nb - 1)) * y0b) ? 0 :
+	                uint_ceildivpow2(tcy0 - (1U << (nb - 1)) * y0b, nb);
+	    }
+	    if (tbx1) {
+	        *tbx1 = (nb == 0) ? tcx1 :
+	                (tcx1 <= (1U << (nb - 1)) * x0b) ? 0 :
+	                uint_ceildivpow2(tcx1 - (1U << (nb - 1)) * x0b, nb);
+	    }
+	    if (tby1) {
+	        *tby1 = (nb == 0) ? tcy1 :
+	                (tcy1 <= (1U << (nb - 1)) * y0b) ? 0 :
+	                uint_ceildivpow2(tcy1 - (1U << (nb - 1)) * y0b, nb);
+	    }
+	}
+
+	/**
+	 * Get bounds of subband
+	 *
+	 * @param resno resolution number
+	 * @param bandno band number {0,1,2,3} for LL HL,LH and HH bands
+	 */
+	grk_rect_u32 bounds(uint32_t resno,uint32_t bandno){
+		assert(resno < resolutions.size() && bandno < 4);
+		if (bandno == 0){
+			if (resno == 0)
+				return resolutions[0]->bands[0];
+			else
+				return *resolutions[resno-1];
+		}
+		return resolutions[resno]->bands[bandno-1];
+	}
+
+	/**
+	 * Get bounds of tile component
+	 * decode: reduced tile component coordinates of region
+	 * encode: unreduced tile component coordinates of entire tile
+	 */
 	grk_rect bounds(){
-		return m_encode ? unreduced_tile_comp_dim : reduced_region_dim;
+		return m_bounds;
 	}
 	// set data to buf without owning it
 	void attach(T* buffer){
@@ -186,17 +238,20 @@ template<typename T> struct TileComponentBuffer {
 	void transfer(T** buffer, bool* owns){
 		buf.transfer(buffer,owns);
 	}
-	// unreduced tile component coordinates of region
+
 	grk_rect unreduced_region_dim;
 
-	 /* reduced tile component coordinates of region  */
-	grk_rect reduced_region_dim;
-
 private:
-	/* unreduced tile component coordinates of tile */
+	/* decode: reduced tile component coordinates of region  */
+	/* encode: unreduced tile component coordinates of entire tile */
+	grk_rect m_bounds;
+
+	/* unreduced tile component coordinates of entire tile */
 	grk_rect unreduced_tile_comp_dim;
 
 	std::vector<grk_resolution*> resolutions;
+
+	uint32_t num_resolutions;
 
 	grk_buffer_2d<T> buf;
 	bool m_encode;

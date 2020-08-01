@@ -877,7 +877,7 @@ bool TileProcessor::is_whole_tilecomp_decoding(uint32_t compno) {
 	/* Compute the intersection of the area of interest, expressed in tile component coordinates */
 	/* with the tile coordinates */
 
-	auto dims = tilec->buf->reduced_region_dim;
+	auto dims = tilec->buf->bounds();
 	uint32_t tcx0 = (uint32_t)dims.x0;
 	uint32_t tcy0 = (uint32_t)dims.y0;
 	uint32_t tcx1 = (uint32_t)dims.x1;
@@ -916,7 +916,7 @@ bool TileProcessor::decompress_tile_t2(ChunkBuffer *src_buf) {
 
 			/* Compute the intersection of the area of interest, expressed in tile coordinates */
 			/* with the tile coordinates */
-			auto dims = tilec->buf->reduced_region_dim;
+			auto dims = tilec->buf->bounds();
 			uint32_t win_x0 = max<uint32_t>(tilec->X0(), (uint32_t) dims.x0);
 			uint32_t win_y0 = max<uint32_t>(tilec->Y0(), (uint32_t) dims.y0);
 			uint32_t win_x1 = min<uint32_t>(tilec->X1(), (uint32_t) dims.x1);
@@ -933,14 +933,16 @@ bool TileProcessor::decompress_tile_t2(ChunkBuffer *src_buf) {
 					++resno) {
 				auto res = tilec->resolutions + resno;
 
-				res->win_x0 = uint_ceildivpow2(win_x0,
-						tilec->resolutions_to_decompress - 1 - resno);
-				res->win_y0 = uint_ceildivpow2(win_y0,
-						tilec->resolutions_to_decompress - 1 - resno);
-				res->win_x1 = uint_ceildivpow2(win_x1,
-						tilec->resolutions_to_decompress - 1 - resno);
-				res->win_y1 = uint_ceildivpow2(win_y1,
-						tilec->resolutions_to_decompress - 1 - resno);
+				res->win_bounds =
+						grk_rect_u32(
+								uint_ceildivpow2(win_x0,
+										tilec->resolutions_to_decompress - 1 - resno),
+								uint_ceildivpow2(win_y0,
+										tilec->resolutions_to_decompress - 1 - resno),
+								uint_ceildivpow2(win_x1,
+										tilec->resolutions_to_decompress - 1 - resno),
+								uint_ceildivpow2(win_y1,
+										tilec->resolutions_to_decompress - 1 - resno));
 			}
 		}
 	}
@@ -1045,16 +1047,16 @@ bool TileProcessor::mct_decode() {
 		return true;
 
 	uint64_t image_samples =
-			(uint64_t) tile_comp->buf->reduced_region_dim.area();
+			(uint64_t) tile_comp->buf->bounds().area();
 	uint64_t samples = image_samples;
 
 	if (tile->numcomps >= 3) {
 		/* testcase 1336.pdf.asan.47.376 */
-		if ((uint64_t) tile->comps[0].buf->reduced_region_dim.area()
+		if ((uint64_t) tile->comps[0].buf->bounds().area()
 				< image_samples
-				|| (uint64_t) tile->comps[1].buf->reduced_region_dim.area()
+				|| (uint64_t) tile->comps[1].buf->bounds().area()
 						< image_samples
-				|| (uint64_t) tile->comps[2].buf->reduced_region_dim.area()
+				|| (uint64_t) tile->comps[2].buf->bounds().area()
 						< image_samples) {
 			GROK_ERROR(
 					"Tiles don't all have the same dimension. Skip the MCT step.");
@@ -1125,8 +1127,8 @@ bool TileProcessor::dc_level_shift_decode() {
 
 		x0 = 0;
 		y0 = 0;
-		x1 = (uint32_t) (tile_comp->buf->reduced_region_dim.width());
-		y1 = (uint32_t) (tile_comp->buf->reduced_region_dim.height());
+		x1 = (uint32_t) (tile_comp->buf->bounds().width());
+		y1 = (uint32_t) (tile_comp->buf->bounds().height());
 		assert(tile_comp->width() >= (x1 - x0));
 
 		if (img_comp->sgnd) {
@@ -1173,7 +1175,7 @@ uint64_t TileProcessor::get_uncompressed_tile_size(bool reduced) {
 
 		tile_size += size_comp
 				* (reduced ?
-						(uint64_t) tilec->buf->reduced_region_dim.area() :
+						(uint64_t) tilec->buf->bounds().area() :
 						tilec->area());
 	}
 
@@ -1721,7 +1723,6 @@ grk_layer::grk_layer() :
 }
 
 grk_precinct::grk_precinct() :
-		x0(0), y0(0), x1(0), y1(0), cw(0), ch(0),
 		enc(nullptr), dec(nullptr),
 		num_code_blocks(0),
 		incltree(nullptr), imsbtree(nullptr) {
@@ -1898,10 +1899,7 @@ grk_cblk_dec::grk_cblk_dec(const grk_cblk_dec &rhs) :
 
 grk_cblk_dec& grk_cblk_dec::operator=(const grk_cblk_dec& rhs){
 	if (this != &rhs) { // self-assignment check expected
-		grk_cblk::operator = (rhs);
-		segs = rhs.segs;
-		numSegments = rhs.numSegments;
-		numSegmentsAllocated = rhs.numSegmentsAllocated;
+		*this = grk_cblk_dec(rhs);
 	}
 	return *this;
 }
@@ -1989,16 +1987,35 @@ bool grk_cblk_dec::copy_to_contiguous_buffer(uint8_t *buffer) {
 }
 
 grk_band::grk_band() :
-		x0(0), y0(0), x1(0), y1(0), bandno(0), precincts(nullptr), numPrecincts(
-				0), numAllocatedPrecincts(0), numbps(0), stepsize(0), inv_step(0) {
+				bandno(0),
+				precincts(nullptr),
+				numPrecincts(0),
+				numAllocatedPrecincts(0),
+				numbps(0),
+				stepsize(0),
+				inv_step(0) {
 }
 
 //note: don't copy precinct array
-grk_band::grk_band(const grk_band &rhs) :
-		x0(rhs.x0), y0(rhs.y0), x1(rhs.x1), y1(rhs.y1), bandno(rhs.bandno), precincts(
-				nullptr), numPrecincts(rhs.numPrecincts), numAllocatedPrecincts(
-				rhs.numAllocatedPrecincts), numbps(rhs.numbps), stepsize(
-				rhs.stepsize), inv_step(rhs.inv_step) {}
+grk_band::grk_band(const grk_band &rhs) : grk_rect_u32(rhs),
+										bandno(rhs.bandno),
+										precincts(nullptr),
+										numPrecincts(0),
+										numAllocatedPrecincts(0),
+										numbps(rhs.numbps),
+										stepsize(rhs.stepsize),
+										inv_step(rhs.inv_step)
+{
+}
+
+grk_band& grk_band::operator= (const grk_band &rhs){
+	if (this != &rhs) { // self-assignment check expected
+		*this = grk_band(rhs);
+	}
+	return *this;
+}
+
+
 bool grk_band::isEmpty() {
 	return ((x1 - x0 == 0) || (y1 - y0 == 0));
 }
@@ -2047,32 +2064,10 @@ void grk_precinct::initTagTrees() {
 }
 
 grk_resolution::grk_resolution() :
-		x0(0),
-		y0(0),
-		x1(0),
-		y1(0),
 		pw(0),
 		ph(0),
-		numbands(0),
-		win_x0(0),
-		win_y0(0),
-		win_x1(0),
-		win_y1(0)
+		numbands(0)
 {}
-
-uint32_t grk_resolution::width(){
-	return (uint32_t)(x1-x0);
-}
-uint32_t grk_resolution::height(){
-	return (uint32_t)(y1-y0);
-}
-
-grk_rect_u32 grk_resolution::bounds(){
-	return grk_rect_u32(x0,y0,x1,y1);
-}
-grk_rect_u32 grk_resolution::win_bounds(){
-	return grk_rect_u32(win_x0,win_y0,win_x1,win_y1);
-}
 
 
 }
