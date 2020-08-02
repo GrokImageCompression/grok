@@ -267,7 +267,7 @@ static grk_image* readImageFromFilePPM(const char *filename, size_t nbFilenamePG
 			goto cleanup;
 		}
 		memcpy(data[it_file], image_read->comps->data,
-				image_read->comps->h * image_read->comps->w * sizeof(int));
+				image_read->comps->h * image_read->comps->stride * sizeof(int));
 
 		/* Free memory*/
 		grk_image_destroy(image_read);
@@ -281,7 +281,7 @@ static grk_image* readImageFromFilePPM(const char *filename, size_t nbFilenamePG
 	for (it_file = 0; it_file < nbFilenamePGX; it_file++) {
 		if ((image->comps + it_file) && data[it_file]) {
 			memcpy(image->comps[it_file].data, data[it_file],
-					image->comps[it_file].h * image->comps[it_file].w
+					image->comps[it_file].h * image->comps[it_file].stride
 							* sizeof(int32_t));
 			free(data[it_file]);
 			data[it_file] = nullptr;
@@ -422,17 +422,18 @@ static grk_image* readImageFromFilePGX(const char *filename, size_t nbFilenamePG
 		param_image_read[it_file].dy = 0;
 		param_image_read[it_file].h = image_read->comps->h;
 		param_image_read[it_file].w = image_read->comps->w;
+		param_image_read[it_file].stride = image_read->comps->stride;
 		param_image_read[it_file].prec = image_read->comps->prec;
 		param_image_read[it_file].sgnd = image_read->comps->sgnd;
 
 		/* Copy data*/
-		data[it_file] = (int*) malloc(
-				param_image_read[it_file].h * param_image_read[it_file].w
-						* sizeof(int));
+		data[it_file] = (int32_t*) malloc(
+				param_image_read[it_file].h * param_image_read[it_file].stride
+						* sizeof(int32_t));
 		if (!data[it_file])
 			goto cleanup;
 		memcpy(data[it_file], image_read->comps->data,
-				image_read->comps->h * image_read->comps->w * sizeof(int));
+				image_read->comps->h * image_read->comps->stride * sizeof(int));
 
 		/* Free memory*/
 		grk_image_destroy(image_read);
@@ -446,7 +447,7 @@ static grk_image* readImageFromFilePGX(const char *filename, size_t nbFilenamePG
 	for (it_file = 0; it_file < nbFilenamePGX; it_file++) {
 		if ((image->comps + it_file) && data[it_file]) {
 			memcpy(image->comps[it_file].data, data[it_file],
-					image->comps[it_file].h * image->comps[it_file].w
+					image->comps[it_file].h * image->comps[it_file].stride
 							* sizeof(int));
 			free(data[it_file]);
 			data[it_file] = nullptr;
@@ -966,8 +967,8 @@ int main(int argc, char **argv) {
 		}
 		for (uint32_t j = y0; j < y1; ++j) {
 			for (uint32_t i = x0; i < x1; ++i) {
-				auto baseIndex = i + j * baseComp->w;
-				auto testIndex = (i - x0) + (j - y0) * testComp->w;
+				auto baseIndex = i + j * baseComp->stride;
+				auto testIndex = (i - x0) + (j - y0) * testComp->stride;
 				auto basePixel = baseComp->data[baseIndex];
 				auto testPixel = testComp->data[testIndex];
 				int64_t diff = basePixel - testPixel;
@@ -984,7 +985,7 @@ int main(int argc, char **argv) {
 
 			}
 		}
-		MSE = SE / (diffComp->w * diffComp->h);
+		MSE = SE / ((uint64_t) diffComp->w * diffComp->h);
 
 		if (!inParam.nr_flag && (inParam.tabMSEvalues != nullptr)
 				&& (inParam.tabPEAKvalues != nullptr)) {

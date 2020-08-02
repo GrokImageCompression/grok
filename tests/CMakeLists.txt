@@ -24,6 +24,7 @@ include_directories(
   )
 
  if(WIN32)
+  add_definitions(-DNOMINMAX)
   if(BUILD_SHARED_LIBS)
     add_definitions(-DGRK_EXPORTS)
   else()

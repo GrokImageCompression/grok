@@ -199,7 +199,14 @@ struct CodeStream {
 						uint32_t end_x,
 						uint32_t end_y);
 
-	bool alloc_output_data(grk_image *p_output_image);
+	/**
+	 * Allocate output buffer for multiple tile decode
+	 *
+	 * @param p_output_image output image
+	 *
+	 * @return true if successful
+	 */
+	bool alloc_multi_tile_output_data(grk_image *p_output_image);
 
 
 	// state of decoder/encoder

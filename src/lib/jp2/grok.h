@@ -957,6 +957,8 @@ typedef struct _grk_image_comptparm {
 	uint32_t dy;
 	/** data width */
 	uint32_t w;
+	/* data stride */
+	uint32_t stride;
 	/** data height */
 	uint32_t h;
 	/** x component offset compared to the whole image */

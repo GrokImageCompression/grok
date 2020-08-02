@@ -62,28 +62,36 @@
 #include "grok.h"
 #include "convert.h"
 #include "common.h"
+#include <algorithm>
+#include <limits>
 
-/* Component precision scaling */
+/* Component clipping */
 void clip_component(grk_image_comp *component, uint32_t precision) {
-	size_t len = (size_t) component->w * component->h;
-	uint32_t umax = (1U << precision) - 1U;
+	uint32_t stride_diff = component->stride - component->w;
 	assert(precision <= 16);
 
 	if (component->sgnd) {
 		auto data = component->data;
-		int32_t max = (int32_t) (umax / 2U);
-		int32_t min = -max - 1;
-		for (size_t i = 0; i < len; ++i) {
-			if (data[i] > max)
-				data[i] = max;
-			else if (data[i] < min)
-				data[i] = min;
+		int32_t max = std::numeric_limits<int32_t>::max();
+		int32_t min = std::numeric_limits<int32_t>::min();
+		size_t index = 0;
+		for (uint32_t j = 0; j < component->h; ++j){
+			for (uint32_t i = 0; i < component->w; ++i){
+				data[index] = std::clamp<int32_t>(data[index], min, max);
+				index++;
+			}
+			index+= stride_diff;
 		}
 	} else {
 		auto data = (uint32_t*) component->data;
-		for (size_t i = 0; i < len; ++i) {
-			if (data[i] > umax)
-				data[i] = umax;
+		size_t index = 0;
+		uint32_t max = std::numeric_limits<uint32_t>::max();
+		for (uint32_t j = 0; j < component->h; ++j){
+			for (uint32_t i = 0; i < component->w; ++i){
+				data[index] = std::min<uint32_t>(data[index], max);
+				index++;
+			}
+			index += stride_diff;
 		}
 	}
 	component->prec = precision;
@@ -91,20 +99,31 @@ void clip_component(grk_image_comp *component, uint32_t precision) {
 
 /* Component precision scaling */
 static void scale_component_up(grk_image_comp *component, uint32_t precision) {
-	size_t len = (size_t) component->w * component->h;
-
+	uint32_t stride_diff = component->stride - component->w;
 	if (component->sgnd) {
 		int64_t newMax = (int64_t) 1U << (precision - 1);
 		int64_t oldMax = (int64_t) 1U << (component->prec - 1);
 		auto data = component->data;
-		for (size_t i = 0; i < len; ++i)
-			data[i] = (int32_t) (((int64_t) data[i] * newMax) / oldMax);
+		size_t index = 0;
+		for (uint32_t j = 0; j < component->h; ++j){
+			for (uint32_t i = 0; i < component->w; ++i){
+				data[index] = (int32_t) (((int64_t) data[index] * newMax) / oldMax);
+				index++;
+			}
+			index += stride_diff;
+		}
 	} else {
 		uint64_t newMax = ((uint64_t) 1U << precision) - 1U;
 		uint64_t oldMax = ((uint64_t) 1U << component->prec) - 1U;
 		auto data = (uint32_t*) component->data;
-		for (size_t i = 0; i < len; ++i)
-			data[i] = (uint32_t) (((uint64_t) data[i] * newMax) / oldMax);
+		size_t index = 0;
+		for (uint32_t j = 0; j < component->h; ++j){
+			for (uint32_t i = 0; i < component->w; ++i){
+				data[index] = (uint32_t) (((uint64_t) data[index] * newMax) / oldMax);
+				index++;
+			}
+			index += stride_diff;
+		}
 	}
 	component->prec = precision;
 }
@@ -116,15 +135,27 @@ void scale_component(grk_image_comp *component, uint32_t precision) {
 		return;
 	}
 	uint32_t shift = (uint32_t) (component->prec - precision);
-	size_t len = (size_t) component->w * component->h;
+	uint32_t stride_diff = component->stride - component->w;
 	if (component->sgnd) {
 		auto data = component->data;
-		for (size_t i = 0; i < len; ++i)
-			data[i] >>= shift;
+		size_t index = 0;
+		for (uint32_t j = 0; j < component->h; ++j){
+			for (uint32_t i = 0; i < component->w; ++i){
+				data[index] >>= shift;
+				index++;
+			}
+			index += stride_diff;
+		}
 	} else {
 		auto data = (uint32_t*) component->data;
-		for (size_t i = 0; i < len; ++i)
-			data[i] >>= shift;
+		size_t index = 0;
+		for (uint32_t j = 0; j < component->h; ++j){
+			for (uint32_t i = 0; i < component->w; ++i){
+				data[index] >>= shift;
+				index++;
+			}
+			index += stride_diff;
+		}
 	}
 	component->prec = precision;
 }

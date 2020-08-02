@@ -1089,7 +1089,7 @@ static bool j2k_decompress_tile_t2t1(CodeStream *codeStream, TileProcessor *tile
 					auto comp = codeStream->m_output_image->comps + compno;
 
 					//transfer memory from tile component to output image
-					tilec->buf->transfer(&comp->data, &comp->owns_data);
+					tilec->buf->transfer(&comp->data, &comp->owns_data, &comp->stride);
 				}
 			}
 		}
@@ -1126,7 +1126,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, TileProcessor *tileProc
 	std::vector< std::future<int> > results;
 
 	if (multi_tile && codeStream->m_output_image) {
-		if (!codeStream->alloc_output_data(codeStream->m_output_image))
+		if (!codeStream->alloc_multi_tile_output_data(codeStream->m_output_image))
 			return false;
 	}
 
@@ -3058,8 +3058,14 @@ bool CodeStream::read_marker(BufferedStream *stream, uint16_t *val){
 	return true;
 
 }
-
-bool CodeStream::alloc_output_data(grk_image *p_output_image){
+/**
+ * Allocate output buffer for multiple tile decode
+ *
+ * @param p_output_image output image
+ *
+ * @return true if successful
+ */
+bool CodeStream::alloc_multi_tile_output_data(grk_image *p_output_image){
 	auto image_src = m_input_image;
 	for (uint32_t i = 0; i < image_src->numcomps; i++) {
 		auto comp_dest = p_output_image->comps + i;
@@ -3075,7 +3081,7 @@ bool CodeStream::alloc_output_data(grk_image *p_output_image){
 			if (!grk_image_single_component_data_alloc(comp_dest))
 				return false;
 			memset(comp_dest->data, 0,
-						(uint64_t)comp_dest->w * comp_dest->h * sizeof(int32_t));
+						(uint64_t)comp_dest->stride * comp_dest->h * sizeof(int32_t));
 		}
 	}
 

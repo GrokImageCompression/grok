@@ -83,6 +83,7 @@ static int imagetojpeg(grk_image *image, const char *filename,
 	uint32_t sgnd = image->comps[0].sgnd;
 	info.adjust = sgnd ? 1 << (image->comps[0].prec - 1) : 0;
 	uint32_t width = image->comps[0].w;
+	uint32_t stride = image->comps[0].stride;
 
 	// actual bits per sample
 	uint32_t prec = image->comps[0].prec;
@@ -324,9 +325,9 @@ static int imagetojpeg(grk_image *image, const char *filename,
 		cvtTo8bpp(info.buffer32s, (uint8_t*) info.buffer,
 				(size_t) width * numcomps);
 		row_pointer[0] = info.buffer;
-		planes[0] += width;
-		planes[1] += width;
-		planes[2] += width;
+		planes[0] += stride;
+		planes[1] += stride;
+		planes[2] += stride;
 		(void) jpeg_write_scanlines(&cinfo, row_pointer, 1);
 	}
 	/* Step 6: Finish compression */

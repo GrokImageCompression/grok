@@ -149,7 +149,7 @@ static void grk_applyLUT8u_8u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
 		pB += pDstStride[2];
 	}
 }
-static void bmp24toimage(const uint8_t *pData, uint32_t stride,
+static void bmp24toimage(const uint8_t *pData, uint32_t srcStride,
 		grk_image *image) {
 	int index;
 	uint32_t width, height;
@@ -157,7 +157,8 @@ static void bmp24toimage(const uint8_t *pData, uint32_t stride,
 	width = image->comps[0].w;
 	height = image->comps[0].h;
 	index = 0;
-	pSrc = pData + (height - 1U) * stride;
+	pSrc = pData + (height - 1U) * srcStride;
+	uint32_t stride_diff = image->comps[0].stride - image->comps[0].w;
 	for (uint32_t y = 0; y < height; y++) {
 		size_t src_index = 0;
 		for (uint32_t x = 0; x < width; x++) {
@@ -167,7 +168,8 @@ static void bmp24toimage(const uint8_t *pData, uint32_t stride,
 			index++;
 			src_index += 3;
 		}
-		pSrc -= stride;
+		index+= stride_diff;
+		pSrc -= srcStride;
 	}
 }
 
@@ -188,21 +190,18 @@ static void bmp_mask_get_shift_and_prec(uint32_t mask, uint32_t *shift,
 	*shift = l_shift;
 	*prec = l_prec;
 }
-static void bmpmask32toimage(const uint8_t *pData, uint32_t stride,
+static void bmpmask32toimage(const uint8_t *pData, uint32_t srcStride,
 		grk_image *image, uint32_t redMask, uint32_t greenMask,
 		uint32_t blueMask, uint32_t alphaMask) {
-	int index;
-	uint32_t width, height;
-	uint32_t x, y;
-	bool hasAlpha = false;
 	uint32_t redShift, redPrec;
 	uint32_t greenShift, greenPrec;
 	uint32_t blueShift, bluePrec;
 	uint32_t alphaShift, alphaPrec;
 
-	width = image->comps[0].w;
-	height = image->comps[0].h;
-	hasAlpha = image->numcomps > 3U;
+	uint32_t width = image->comps[0].w;
+	uint32_t stride_diff = image->comps[0].stride - width;
+	uint32_t height = image->comps[0].h;
+	bool hasAlpha = image->numcomps > 3U;
 	bmp_mask_get_shift_and_prec(redMask, &redShift, &redPrec);
 	bmp_mask_get_shift_and_prec(greenMask, &greenShift, &greenPrec);
 	bmp_mask_get_shift_and_prec(blueMask, &blueShift, &bluePrec);
@@ -212,8 +211,9 @@ static void bmpmask32toimage(const uint8_t *pData, uint32_t stride,
 	image->comps[2].prec = bluePrec;
 	if (hasAlpha)
 		image->comps[3].prec = alphaPrec;
-	index = 0;
-	auto pSrc = pData + (height - 1U) * stride;
+	int index=0;
+	uint32_t x, y;
+	auto pSrc = pData + (height - 1U) * srcStride;
 	for (y = 0; y < height; y++) {
 		size_t src_index = 0;
 		for (x = 0; x < width; x++) {
@@ -236,24 +236,22 @@ static void bmpmask32toimage(const uint8_t *pData, uint32_t stride,
 			index++;
 			src_index += 4;
 		}
-		pSrc -= stride;
+		index += stride_diff;
+		pSrc -= srcStride;
 	}
 }
-static void bmpmask16toimage(const uint8_t *pData, uint32_t stride,
+static void bmpmask16toimage(const uint8_t *pData, uint32_t srcStride,
 		grk_image *image, uint32_t redMask, uint32_t greenMask,
 		uint32_t blueMask, uint32_t alphaMask) {
-	int index;
-	uint32_t width, height;
-	uint32_t x, y;
-	bool hasAlpha = false;
 	uint32_t redShift, redPrec;
 	uint32_t greenShift, greenPrec;
 	uint32_t blueShift, bluePrec;
 	uint32_t alphaShift, alphaPrec;
 
-	width = image->comps[0].w;
-	height = image->comps[0].h;
-	hasAlpha = image->numcomps > 3U;
+	uint32_t width = image->comps[0].w;
+	uint32_t stride_diff = image->comps[0].stride - width;
+	uint32_t height = image->comps[0].h;
+	bool hasAlpha = image->numcomps > 3U;
 	bmp_mask_get_shift_and_prec(redMask, &redShift, &redPrec);
 	bmp_mask_get_shift_and_prec(greenMask, &greenShift, &greenPrec);
 	bmp_mask_get_shift_and_prec(blueMask, &blueShift, &bluePrec);
@@ -263,8 +261,9 @@ static void bmpmask16toimage(const uint8_t *pData, uint32_t stride,
 	image->comps[2].prec = bluePrec;
 	if (hasAlpha)
 		image->comps[3].prec = alphaPrec;
-	index = 0;
-	auto pSrc = pData + (height - 1U) * stride;
+	int index=0;
+	uint32_t x, y;
+	auto pSrc = pData + (height - 1U) * srcStride;
 	for (y = 0; y < height; y++) {
 		size_t src_index = 0;
 		for (x = 0; x < width; x++) {
@@ -284,17 +283,18 @@ static void bmpmask16toimage(const uint8_t *pData, uint32_t stride,
 			index++;
 			src_index += 2;
 		}
-		pSrc -= stride;
+		index += stride_diff;
+		pSrc -= srcStride;
 	}
 }
-static grk_image* bmp8toimage(const uint8_t *pData, uint32_t stride,
+static grk_image* bmp8toimage(const uint8_t *pData, uint32_t srcStride,
 		grk_image *image, uint8_t const *const*pLUT) {
 	uint32_t width = image->comps[0].w;
 	uint32_t height = image->comps[0].h;
-	auto pSrc = pData + (height - 1U) * stride;
+	auto pSrc = pData + (height - 1U) * srcStride;
 	if (image->numcomps == 1U) {
-		grk_applyLUT8u_8u32s_C1R(pSrc, -(int32_t) stride, image->comps[0].data,
-				(int32_t) width, pLUT[0], width, height);
+		grk_applyLUT8u_8u32s_C1R(pSrc, -(int32_t) srcStride, image->comps[0].data,
+				(int32_t) image->comps[0].stride, pLUT[0], width, height);
 	} else {
 		int32_t *pDst[3];
 		int32_t pDstStride[3];
@@ -302,10 +302,10 @@ static grk_image* bmp8toimage(const uint8_t *pData, uint32_t stride,
 		pDst[0] = image->comps[0].data;
 		pDst[1] = image->comps[1].data;
 		pDst[2] = image->comps[2].data;
-		pDstStride[0] = (int32_t) width;
-		pDstStride[1] = (int32_t) width;
-		pDstStride[2] = (int32_t) width;
-		grk_applyLUT8u_8u32s_C1P3R(pSrc, -(int32_t) stride, pDst, pDstStride,
+		pDstStride[0] = (int32_t) image->comps[0].stride;
+		pDstStride[1] = (int32_t) image->comps[0].stride;
+		pDstStride[2] = (int32_t) image->comps[0].stride;
+		grk_applyLUT8u_8u32s_C1P3R(pSrc, -(int32_t) srcStride, pDst, pDstStride,
 				pLUT, width, height);
 	}
 	return image;
@@ -585,7 +585,7 @@ static grk_image* bmptoimage(const char *filename,
 	uint32_t palette_len, numcmpts = 1U;
 	bool l_result = false;
 	uint8_t *pData = nullptr;
-	uint32_t stride;
+	uint32_t bmpStride;
 	long beginningOfInfoHeader = -1;
 	pLUT[0] = lut_R;
 	pLUT[1] = lut_G;
@@ -660,16 +660,16 @@ static grk_image* bmptoimage(const char *filename,
 	if (Info_h.biBitCount > (((uint32_t) -1) - 31) / Info_h.biWidth)
 		goto cleanup;
 
-	stride = ((Info_h.biWidth * Info_h.biBitCount + 31U) / 32U) * 4U; /* rows are aligned on 32bits */
+	bmpStride = ((Info_h.biWidth * Info_h.biBitCount + 31U) / 32U) * 4U; /* rows are aligned on 32bits */
 	if (Info_h.biBitCount == 4 && Info_h.biCompression == 2) { /* RLE 4 gets decoded as 8 bits data for now... */
 		if (8 > (((uint32_t) -1) - 31) / Info_h.biWidth)
 			goto cleanup;
-		stride = ((Info_h.biWidth * 8U + 31U) / 32U) * 4U;
+		bmpStride = ((Info_h.biWidth * 8U + 31U) / 32U) * 4U;
 	}
 
-	if (stride > ((uint32_t) -1) / sizeof(uint8_t) / Info_h.biHeight)
+	if (bmpStride > ((uint32_t) -1) / sizeof(uint8_t) / Info_h.biHeight)
 		goto cleanup;
-	pData = (uint8_t*) calloc(1, stride * Info_h.biHeight * sizeof(uint8_t));
+	pData = (uint8_t*) calloc(1, bmpStride * Info_h.biHeight * sizeof(uint8_t));
 	if (pData == nullptr)
 		goto cleanup;
 	/* Place the cursor at the beginning of the image information */
@@ -682,17 +682,17 @@ static grk_image* bmptoimage(const char *filename,
 	case 0:
 	case 3:
 		/* read raw data */
-		l_result = bmp_read_raw_data(INPUT, pData, stride, Info_h.biWidth,
+		l_result = bmp_read_raw_data(INPUT, pData, bmpStride, Info_h.biWidth,
 				Info_h.biHeight);
 		break;
 	case 1:
 		/* read rle8 data */
-		l_result = bmp_read_rle8_data(INPUT, pData, stride, Info_h.biWidth,
+		l_result = bmp_read_rle8_data(INPUT, pData, bmpStride, Info_h.biWidth,
 				Info_h.biHeight);
 		break;
 	case 2:
 		/* read rle4 data */
-		l_result = bmp_read_rle4_data(INPUT, pData, stride, Info_h.biWidth,
+		l_result = bmp_read_rle4_data(INPUT, pData, bmpStride, Info_h.biWidth,
 				Info_h.biHeight);
 		break;
 	default:
@@ -758,15 +758,15 @@ static grk_image* bmptoimage(const char *filename,
 
 	/* Read the data */
 	if (Info_h.biBitCount == 24 && Info_h.biCompression == 0) { /*RGB */
-		bmp24toimage(pData, stride, image);
+		bmp24toimage(pData, bmpStride, image);
 	} else if (Info_h.biBitCount == 8 && Info_h.biCompression == 0) { /* RGB 8bpp Indexed */
-		bmp8toimage(pData, stride, image, pLUT);
+		bmp8toimage(pData, bmpStride, image, pLUT);
 	} else if (Info_h.biBitCount == 8 && Info_h.biCompression == 1) { /*RLE8*/
-		bmp8toimage(pData, stride, image, pLUT);
+		bmp8toimage(pData, bmpStride, image, pLUT);
 	} else if (Info_h.biBitCount == 4 && Info_h.biCompression == 2) { /*RLE4*/
-		bmp8toimage(pData, stride, image, pLUT); /* RLE 4 gets decoded as 8 bits data for now */
+		bmp8toimage(pData, bmpStride, image, pLUT); /* RLE 4 gets decoded as 8 bits data for now */
 	} else if (Info_h.biBitCount == 32 && Info_h.biCompression == 0) { /* RGBX */
-		bmpmask32toimage(pData, stride, image, 0x00FF0000U, 0x0000FF00U,
+		bmpmask32toimage(pData, bmpStride, image, 0x00FF0000U, 0x0000FF00U,
 				0x000000FFU, 0x00000000U);
 	} else if (Info_h.biBitCount == 32 && Info_h.biCompression == 3) { /* BITFIELDS bit mask */
 		bool fail = false;
@@ -815,10 +815,10 @@ static grk_image* bmptoimage(const char *filename,
 			goto cleanup;
 		}
 
-		bmpmask32toimage(pData, stride, image, Info_h.biRedMask,
+		bmpmask32toimage(pData, bmpStride, image, Info_h.biRedMask,
 				Info_h.biGreenMask, Info_h.biBlueMask, Info_h.biAlphaMask);
 	} else if (Info_h.biBitCount == 16 && Info_h.biCompression == 0) { /* RGBX */
-		bmpmask16toimage(pData, stride, image, 0x7C00U, 0x03E0U, 0x001FU,
+		bmpmask16toimage(pData, bmpStride, image, 0x7C00U, 0x03E0U, 0x001FU,
 				0x0000U);
 	} else if (Info_h.biBitCount == 16 && Info_h.biCompression == 3) { /* BITFIELDS bit mask*/
 		if ((Info_h.biRedMask == 0U) && (Info_h.biGreenMask == 0U)
@@ -827,7 +827,7 @@ static grk_image* bmptoimage(const char *filename,
 			Info_h.biGreenMask = 0x07E0U;
 			Info_h.biBlueMask = 0x001FU;
 		}
-		bmpmask16toimage(pData, stride, image, Info_h.biRedMask,
+		bmpmask16toimage(pData, bmpStride, image, Info_h.biRedMask,
 				Info_h.biGreenMask, Info_h.biBlueMask, Info_h.biAlphaMask);
 	} else {
 		grk_image_destroy(image);
@@ -858,7 +858,6 @@ static bool write_short(FILE *fdest, uint16_t val) {
 }
 static int imagetobmp(grk_image *image, const char *outfile) {
 	bool writeToStdout = grk::useStdio(outfile);
-	uint32_t w, h;
 	int32_t pad;
 	FILE *fdest = nullptr;
 	int truncR = 0, truncG = 0, truncB = 0;
@@ -866,6 +865,7 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 	int ret = -1;
 	uint8_t *destBuff = nullptr;
 	uint64_t sz = 0;
+	uint32_t w,stride,h;
 
 	if (!grk::all_components_sanity_check(image))
 		goto cleanup;
@@ -897,7 +897,8 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 	}
 	w = image->comps[0].w;
 	h = image->comps[0].h;
-	sz = w * (h - 1);
+	stride = image->comps[0].stride;
+	sz = stride * (h - 1);
 
 	if (image->numcomps == 3) {
 		/* -->> -->> -->> -->>
@@ -1028,7 +1029,7 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 				destBuff[destInd++] = 0;
 			if (fwrite(destBuff, 1, destInd, fdest) != destInd)
 				goto cleanup;
-			sz -= w;
+			sz -= stride;
 		}
 	} else { /* Gray-scale */
 
@@ -1108,7 +1109,7 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 				destBuff[destInd++] = 0;
 			if (fwrite(destBuff, 1, destInd, fdest) != destInd)
 				goto cleanup;
-			sz -= w;
+			sz -= stride;
 		}
 
 	}

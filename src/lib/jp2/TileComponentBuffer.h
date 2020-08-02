@@ -235,8 +235,9 @@ template<typename T> struct TileComponentBuffer {
 		buf.acquire(buffer);
 	}
 	// transfer data to buf, and cease owning it
-	void transfer(T** buffer, bool* owns){
+	void transfer(T** buffer, bool* owns, uint32_t *stride){
 		buf.transfer(buffer,owns);
+		*stride = buf.stride;
 	}
 
 	grk_rect unreduced_region_dim;

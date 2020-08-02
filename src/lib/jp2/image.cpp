@@ -269,6 +269,7 @@ void transfer_image_data(grk_image *src, grk_image *dest) {
 		grk_image_single_component_data_free(dest_comp);
 		dest_comp->data = src_comp->data;
 		dest_comp->owns_data = src_comp->owns_data;
+		dest_comp->stride = src_comp->stride;
 		src_comp->data = nullptr;
 	}
 }
