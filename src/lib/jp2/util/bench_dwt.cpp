@@ -88,10 +88,10 @@ bool init_tilec(TileComponent * tilec,
     /* Adapted from grk_init_tile() */
     for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
         /* border for each resolution level (global) */
-        res->x0 = uint_ceildivpow2(x0, leveno);
-        res->y0 = uint_ceildivpow2(y0, leveno);
-        res->x1 = uint_ceildivpow2(x1, leveno);
-        res->y1 = uint_ceildivpow2(y1, leveno);
+        res->x0 = ceildivpow2<uint32_t>(x0, leveno);
+        res->y0 = ceildivpow2<uint32_t>(y0, leveno);
+        res->x1 = ceildivpow2<uint32_t>(x1, leveno);
+        res->y1 = ceildivpow2<uint32_t>(y1, leveno);
         ++res;
         --leveno;
     }
@@ -223,10 +223,10 @@ int main(int argc, char** argv)
 			}
 		}
 		memset(&tile, 0, sizeof(tile));
-		tile.x0 = tilec.X0();
-		tile.y0 = tilec.Y0();
-		tile.x1 = tilec.X1();
-		tile.y1 = tilec.Y1();
+		tile.x0 = tilec.x0;
+		tile.y0 = tilec.y0;
+		tile.x1 = tilec.x1;
+		tile.y1 = tilec.y1;
 		tile.numcomps = 1;
 		tile.comps = &tilec;
 

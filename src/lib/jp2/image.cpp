@@ -152,8 +152,8 @@ void grk_image_comp_header_update(grk_image *image_header,
 		uint32_t comp_y0 = ceildiv<uint32_t>(y0, img_comp->dy);
 		uint32_t comp_x1 = ceildiv<uint32_t>(x1, img_comp->dx);
 		uint32_t comp_y1 = ceildiv<uint32_t>(y1, img_comp->dy);
-		uint32_t width = uint_ceildivpow2(comp_x1 - comp_x0,reduce);
-		uint32_t height = uint_ceildivpow2(comp_y1 - comp_y0,reduce);
+		uint32_t width = ceildivpow2<uint32_t>(comp_x1 - comp_x0,reduce);
+		uint32_t height = ceildivpow2<uint32_t>(comp_y1 - comp_y0,reduce);
 		img_comp->w = width;
 		img_comp->h = height;
 		img_comp->x0 = comp_x0;
@@ -230,8 +230,8 @@ bool update_image_dimensions(grk_image* image, uint32_t reduce)
         uint32_t comp_x1 = ceildiv<uint32_t>(image->x1, img_comp->dx);
         uint32_t comp_y1 = ceildiv<uint32_t>(image->y1, img_comp->dy);
 
-        temp1 = uint_ceildivpow2(comp_x1, reduce);
-        temp2 = uint_ceildivpow2(img_comp->x0, reduce);
+        temp1 = ceildivpow2<uint32_t>(comp_x1, reduce);
+        temp2 = ceildivpow2<uint32_t>(img_comp->x0, reduce);
         if (temp1 < temp2) {
             GROK_ERROR("Size x of the decoded component image is incorrect (comp[%u].w=%u).",
                           compno, (int32_t)temp1 - (int32_t)temp2);
@@ -239,8 +239,8 @@ bool update_image_dimensions(grk_image* image, uint32_t reduce)
         }
         img_comp->w  = (uint32_t)(temp1 - temp2);
 
-        temp1 = uint_ceildivpow2(comp_y1, reduce);
-        temp2 = uint_ceildivpow2(img_comp->y0, reduce);
+        temp1 = ceildivpow2<uint32_t>(comp_y1, reduce);
+        temp2 = ceildivpow2<uint32_t>(img_comp->y0, reduce);
          if (temp1 < temp2) {
             GROK_ERROR("Size y of the decoded component image is incorrect (comp[%u].h=%u).",
                           compno, (int32_t)temp1 - (int32_t)temp2);

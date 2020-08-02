@@ -54,28 +54,6 @@ template<typename T> struct grk_rectangle {
     	*this = rhs;
     }
 
-	inline T _max(T x, T y){
-		return (x) > (y) ? (x) : (y);
-	}
-	inline T _min(T x, T y){
-		return (x) < (y) ? (x) : (y);
-	}
-
-	inline T ceildivpow2(T a, uint32_t b) {
-		return (T)((a + ((T) 1 << b) - 1) >> b);
-	}
-
-
-    /**
-     Divide an integer and round upwards
-     @return a divided by b
-     */
-    inline T ceildiv(T a, T b) {
-    	assert(b);
-    	return (a + b - 1) / b;
-    }
-
-
     void print(void) {
     	std::cout << "[" << x0 << "," << y0 << "," << x1 << "," << y1 << "]"
     			<< std::endl;
@@ -100,11 +78,11 @@ template<typename T> struct grk_rectangle {
     	if (!result)
     		return false;
 
-    	temp.x0 = _max(x0, r2.x0);
-    	temp.y0 = _max(y0, r2.y0);
+    	temp.x0 = std::max<T>(x0, r2.x0);
+    	temp.y0 = std::max<T>(y0, r2.y0);
 
-    	temp.x1 = _min(x1, r2.x1);
-    	temp.y1 = _min(y1, r2.y1);
+    	temp.x1 = std::min<T>(x1, r2.x1);
+    	temp.y1 = std::min<T>(y1, r2.y1);
 
     	rc = temp.is_valid();
 
@@ -145,7 +123,7 @@ template<typename T> struct grk_rectangle {
         return *this;
     }
 
-    grk_rectangle<T>&  ceildivpow2(uint32_t power) {
+    grk_rectangle<T>&  rectceildivpow2(uint32_t power) {
     	x0 = ceildivpow2(x0, power);
     	y0 = ceildivpow2(y0, power);
     	x1 = ceildivpow2(x1, power);

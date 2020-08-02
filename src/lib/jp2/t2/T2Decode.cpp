@@ -481,7 +481,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 							blockPassesInPacket);
 				}
 				uint32_t bits_to_read = cblk->numlenbits
-						+ uint_floorlog2(seg->numPassesInPacket);
+						+ floorlog2<uint32_t>(seg->numPassesInPacket);
 				if (bits_to_read > 32) {
 					GROK_ERROR(
 							"read_packet_header: too many bits in segment length ");
@@ -490,7 +490,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 				bio->read(&seg->numBytesInPacket, bits_to_read);
 #ifdef DEBUG_LOSSLESS_T2
 			 cblk->packet_length_info.push_back(grk_packet_length_info(seg->numBytesInPacket,
-							 cblk->numlenbits + uint_floorlog2(seg->numPassesInPacket)));
+							 cblk->numlenbits + floorlog2<uint32_t>(seg->numPassesInPacket)));
 #endif
 				/*
 				 GROK_INFO(

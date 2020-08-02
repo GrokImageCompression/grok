@@ -61,7 +61,7 @@ template<typename T> struct TileComponentBuffer {
 										ceildiv<uint32_t>(output_image->y1, dy));
 
 			m_bounds 	= unreduced_region_dim;
-			m_bounds.ceildivpow2(num_resolutions - reduced_num_resolutions);
+			m_bounds.rectceildivpow2(num_resolutions - reduced_num_resolutions);
 
 			/* clip region dimensions against tile */
 			reduced_dim.clip(m_bounds, &m_bounds);
@@ -89,6 +89,7 @@ template<typename T> struct TileComponentBuffer {
 	 *
 	 */
 	T* ptr(uint32_t resno,uint32_t bandno, uint32_t offsetx, uint32_t offsety) const {
+		(void)bandno;
 		if (resno==0)
 			assert(bandno==0);
 		else
@@ -182,22 +183,22 @@ template<typename T> struct TileComponentBuffer {
 	    if (tbx0) {
 	        *tbx0 = (nb == 0) ? tcx0 :
 	                (tcx0 <= (1U << (nb - 1)) * x0b) ? 0 :
-	                uint_ceildivpow2(tcx0 - (1U << (nb - 1)) * x0b, nb);
+	                ceildivpow2<uint32_t>(tcx0 - (1U << (nb - 1)) * x0b, nb);
 	    }
 	    if (tby0) {
 	        *tby0 = (nb == 0) ? tcy0 :
 	                (tcy0 <= (1U << (nb - 1)) * y0b) ? 0 :
-	                uint_ceildivpow2(tcy0 - (1U << (nb - 1)) * y0b, nb);
+	                ceildivpow2<uint32_t>(tcy0 - (1U << (nb - 1)) * y0b, nb);
 	    }
 	    if (tbx1) {
 	        *tbx1 = (nb == 0) ? tcx1 :
 	                (tcx1 <= (1U << (nb - 1)) * x0b) ? 0 :
-	                uint_ceildivpow2(tcx1 - (1U << (nb - 1)) * x0b, nb);
+	                ceildivpow2<uint32_t>(tcx1 - (1U << (nb - 1)) * x0b, nb);
 	    }
 	    if (tby1) {
 	        *tby1 = (nb == 0) ? tcy1 :
 	                (tcy1 <= (1U << (nb - 1)) * y0b) ? 0 :
-	                uint_ceildivpow2(tcy1 - (1U << (nb - 1)) * y0b, nb);
+	                ceildivpow2<uint32_t>(tcy1 - (1U << (nb - 1)) * y0b, nb);
 	    }
 	}
 

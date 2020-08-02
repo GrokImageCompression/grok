@@ -76,45 +76,6 @@ static inline uint32_t uint_adds(uint32_t a, uint32_t b) {
 	uint64_t sum = (uint64_t) a + (uint64_t) b;
 	return (uint32_t)(-(int32_t)(sum >> 32)) | (uint32_t) sum;
 }
-/**
- Clamp an integer inside an interval
-
- @param  a integer
- @param  min clamp min
- @param  max clamp max
-
- @return a if (min < a < max), max if (a > max) or  min if (a < min)
- */
-static inline int32_t int_clamp(int32_t a, int32_t min, int32_t max) {
-	if (a < min)
-		return min;
-	if (a > max)
-		return max;
-	return a;
-}
-
-/**
-Clamp an integer inside an interval
-@return
-<ul>
-<li>Returns a if (min < a < max)
-<li>Returns max if (a > max)
-<li>Returns min if (a < min)
-</ul>
-*/
-static inline int64_t int64_clamp(int64_t a, int64_t min,
-		int64_t max)
-{
-    if (a < min) {
-        return min;
-    }
-    if (a > max) {
-        return max;
-    }
-    return a;
-}
-
-
 
 /**
  Divide an integer by another integer and round upwards
@@ -126,15 +87,11 @@ template<typename T> uint32_t ceildiv(T a, T b) {
 	assert(b);
 	return (uint32_t)((a + (uint64_t) b - 1) / b);
 }
-/**
- Divide a 64-bit integer by a power of 2 and round upwards
- @param  a 64-bit integer
- @param  b power of two
- @return a divided by 2^b
- */
-static inline int64_t int64_ceildivpow2(int64_t a, uint32_t b) {
-	return (int64_t)((a + ((int64_t) 1 << b) - 1) >> b);
+
+template<typename T> T ceildivpow2(T a, uint32_t b) {
+	return (T)((a + ((uint64_t) 1 << b) - 1) >> b);
 }
+
 /**
  Divide a 64-bit integer by a power of 2 and round upwards
  @param  a 64-bit integer
@@ -144,33 +101,7 @@ static inline int64_t int64_ceildivpow2(int64_t a, uint32_t b) {
 static inline uint32_t uint64_ceildivpow2(uint64_t a, uint32_t b) {
 	return (uint32_t)((a + ((uint64_t) 1 << b) - 1) >> b);
 }
-/**
- Divide an integer by a power of 2 and round upwards
- @param  a unsigned integer
- @param  b power of two
- @return a divided by 2^b
- */
-static inline uint32_t uint_ceildivpow2(uint32_t a, uint32_t b) {
-	return (uint32_t)((a + ((uint64_t) 1U << b) - 1U) >> b);
-}
-/**
- Divide an integer by a power of 2 and round upwards
- @param  a unsigned integer
- @param  b power of two
- @return a divided by 2^b
- */
-static inline int32_t int_ceildivpow2(int32_t a, int32_t b) {
-	return (int32_t)((a + ((int64_t) 1 << b) - 1) >> b);
-}
-/**
- Divide an integer by a power of 2 and round downwards
- @param  a integer
- @param  b power of two
- @return a divided by 2^b
- */
-static inline int32_t int_floordivpow2(int32_t a, int32_t b) {
-	return a >> b;
-}
+
 /**
  Divide an unsigned integer by a power of 2 and round downwards
  @return a divided by 2^b
@@ -183,25 +114,14 @@ static inline uint32_t uint_floordivpow2(uint32_t a, uint32_t b) {
  @param  a 32 bit integer
  @return log2(a)
  */
-static inline int32_t int_floorlog2(uint32_t a) {
-	int32_t l;
+template<typename T> T floorlog2(uint32_t a) {
+	T l;
 	for (l = 0; a > 1; l++) {
 		a >>= 1;
 	}
 	return l;
 }
-/**
- Get logarithm of an integer and round downwards
- @param  a 32 bit integer
- @return log2(a)
- */
-static inline uint32_t uint_floorlog2(uint32_t a) {
-	uint32_t l;
-	for (l = 0; a > 1; ++l) {
-		a >>= 1;
-	}
-	return l;
-}
+
 /**
  Multiply two fixed-point numbers.
  @param  a N-bit precision fixed point number

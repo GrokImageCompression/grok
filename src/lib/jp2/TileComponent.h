@@ -63,17 +63,9 @@
 namespace grk {
 
 // tile component
-struct TileComponent {
+struct TileComponent : public grk_rect_u32 {
 	TileComponent();
 	~TileComponent();
-	uint32_t width() const;
-	uint32_t height() const;
-	uint32_t X0() const;
-	uint32_t Y0() const;
-	uint32_t X1() const;
-	uint32_t Y1() const;
-	uint64_t area() const;
-	uint64_t size() const;
 
 	void create_buffer(	grk_image *output_image,uint32_t dx,uint32_t dy);
 
@@ -114,10 +106,8 @@ struct TileComponent {
     bool   whole_tile_decoding;
 	bool m_is_encoder;
 	sparse_array *m_sa;
-private:
-    /* reduced tile component coordinates */
-	uint32_t x0, y0, x1, y1;
 
+private:
 	TileComponentCodingParams *m_tccp;
 
 };

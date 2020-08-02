@@ -326,9 +326,9 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 				if (pass->term || passno == nb_passes - 1) {
 					increment = (uint32_t) std::max<int32_t>(
 							(int32_t) increment,
-							int_floorlog2(len) + 1
+							floorlog2<int32_t>(len) + 1
 									- ((int32_t) cblk->numlenbits
-											+ int_floorlog2(nump)));
+											+ floorlog2<int32_t>(nump)));
 					len = 0;
 					nump = 0;
 				}
@@ -348,10 +348,10 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 
 				if (pass->term || passno == nb_passes - 1) {
 #ifdef DEBUG_LOSSLESS_T2
-						cblk->packet_length_info.push_back(grk_packet_length_info(len, cblk->numlenbits + (uint32_t)int_floorlog2((int32_t)nump)));
+						cblk->packet_length_info.push_back(grk_packet_length_info(len, cblk->numlenbits + (uint32_t)floorlog2<int32_t>((int32_t)nump)));
 #endif
 					if (!bio->write(len,
-							cblk->numlenbits + (uint32_t) int_floorlog2(nump)))
+							cblk->numlenbits + (uint32_t) floorlog2<int32_t>(nump)))
 						return false;
 					len = 0;
 					nump = 0;
@@ -708,9 +708,9 @@ bool T2Encode::encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 										+ layer->numpasses) - 1) {
 					increment = (uint32_t) std::max<int32_t>(
 							(int32_t) increment,
-							int_floorlog2(len) + 1
+							floorlog2<int32_t>(len) + 1
 									- ((int32_t) cblk->numlenbits
-											+ int_floorlog2(nump)));
+											+ floorlog2<int32_t>(nump)));
 					len = 0;
 					nump = 0;
 				}
@@ -731,7 +731,7 @@ bool T2Encode::encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 								== (cblk->numPassesInPacket
 										+ layer->numpasses) - 1) {
 					if (!bio->write(len,
-							cblk->numlenbits + (uint32_t) int_floorlog2(nump)))
+							cblk->numlenbits + (uint32_t) floorlog2<int32_t>(nump)))
 						return false;
 					len = 0;
 					nump = 0;

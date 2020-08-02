@@ -886,13 +886,13 @@ bool TileProcessor::is_whole_tilecomp_decoding(uint32_t compno) {
 	uint32_t shift = tilec->numresolutions - tilec->resolutions_to_decompress;
 	/* Tolerate small margin within the reduced resolution factor to consider if */
 	/* the whole tile path must be taken */
-	return (tcx0 >= (uint32_t) tilec->X0() && tcy0 >= (uint32_t) tilec->Y0()
-			&& tcx1 <= (uint32_t) tilec->X1() && tcy1 <= (uint32_t) tilec->Y1()
+	return (tcx0 >= (uint32_t) tilec->x0 && tcy0 >= (uint32_t) tilec->y0
+			&& tcx1 <= (uint32_t) tilec->x1 && tcy1 <= (uint32_t) tilec->y1
 			&& (shift >= 32
-					|| (((tcx0 - (uint32_t) tilec->X0()) >> shift) == 0
-							&& ((tcy0 - (uint32_t) tilec->Y0()) >> shift) == 0
-							&& (((uint32_t) tilec->X1() - tcx1) >> shift) == 0
-							&& (((uint32_t) tilec->Y1() - tcy1) >> shift) == 0)));
+					|| (((tcx0 - (uint32_t) tilec->x0) >> shift) == 0
+							&& ((tcy0 - (uint32_t) tilec->y0) >> shift) == 0
+							&& (((uint32_t) tilec->x1 - tcx1) >> shift) == 0
+							&& (((uint32_t) tilec->y1 - tcy1) >> shift) == 0)));
 
 }
 
@@ -917,10 +917,10 @@ bool TileProcessor::decompress_tile_t2(ChunkBuffer *src_buf) {
 			/* Compute the intersection of the area of interest, expressed in tile coordinates */
 			/* with the tile coordinates */
 			auto dims = tilec->buf->bounds();
-			uint32_t win_x0 = max<uint32_t>(tilec->X0(), (uint32_t) dims.x0);
-			uint32_t win_y0 = max<uint32_t>(tilec->Y0(), (uint32_t) dims.y0);
-			uint32_t win_x1 = min<uint32_t>(tilec->X1(), (uint32_t) dims.x1);
-			uint32_t win_y1 = min<uint32_t>(tilec->Y1(), (uint32_t) dims.y1);
+			uint32_t win_x0 = max<uint32_t>(tilec->x0, (uint32_t) dims.x0);
+			uint32_t win_y0 = max<uint32_t>(tilec->y0, (uint32_t) dims.y0);
+			uint32_t win_x1 = min<uint32_t>(tilec->x1, (uint32_t) dims.x1);
+			uint32_t win_y1 = min<uint32_t>(tilec->y1, (uint32_t) dims.y1);
 			if (win_x1 < win_x0 || win_y1 < win_y0) {
 				/* We should not normally go there. The circumstance is when */
 				/* the tile coordinates do not intersect the area of interest */
@@ -935,13 +935,13 @@ bool TileProcessor::decompress_tile_t2(ChunkBuffer *src_buf) {
 
 				res->win_bounds =
 						grk_rect_u32(
-								uint_ceildivpow2(win_x0,
+								ceildivpow2<uint32_t>(win_x0,
 										tilec->resolutions_to_decompress - 1 - resno),
-								uint_ceildivpow2(win_y0,
+								ceildivpow2<uint32_t>(win_y0,
 										tilec->resolutions_to_decompress - 1 - resno),
-								uint_ceildivpow2(win_x1,
+								ceildivpow2<uint32_t>(win_x1,
 										tilec->resolutions_to_decompress - 1 - resno),
-								uint_ceildivpow2(win_y1,
+								ceildivpow2<uint32_t>(win_y1,
 										tilec->resolutions_to_decompress - 1 - resno));
 			}
 		}
@@ -1142,7 +1142,7 @@ bool TileProcessor::dc_level_shift_decode() {
 		if (tccp->qmfbid == 1) {
 			for (uint32_t j = y0; j < y1; ++j) {
 				for (uint32_t i = x0; i < x1; ++i) {
-					*current_ptr = int_clamp(
+					*current_ptr = std::clamp<int32_t>(
 							*current_ptr + tccp->m_dc_level_shift, min, max);
 					current_ptr++;
 				}
@@ -1152,7 +1152,7 @@ bool TileProcessor::dc_level_shift_decode() {
 			for (uint32_t j = y0; j < y1; ++j) {
 				for (uint32_t i = x0; i < x1; ++i) {
 					float value = *((float*) current_ptr);
-					*current_ptr = int_clamp(
+					*current_ptr = std::clamp<int32_t>(
 							(int32_t) grok_lrintf(value)
 									+ tccp->m_dc_level_shift, min, max);
 					current_ptr++;
@@ -1428,8 +1428,8 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_
 		/* Border of the current output component. (x0_dest,y0_dest)
 		 * corresponds to origin of dest buffer */
 		auto reduce = m_cp->m_coding_params.m_dec.m_reduce;
-		uint32_t x0_dest = uint_ceildivpow2(comp_dest->x0, reduce);
-		uint32_t y0_dest = uint_ceildivpow2(comp_dest->y0, reduce);
+		uint32_t x0_dest = ceildivpow2<uint32_t>(comp_dest->x0, reduce);
+		uint32_t y0_dest = ceildivpow2<uint32_t>(comp_dest->y0, reduce);
 		/* can't overflow given that image->x1 is uint32 */
 		uint32_t x1_dest = x0_dest + comp_dest->w;
 		uint32_t y1_dest = y0_dest + comp_dest->h;

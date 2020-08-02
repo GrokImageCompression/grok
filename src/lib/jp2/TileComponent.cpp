@@ -71,10 +71,6 @@ TileComponent::TileComponent() :numresolutions(0),
 							   whole_tile_decoding(true),
 							   m_is_encoder(false),
 							   m_sa(nullptr),
-							   x0(0),
-							   y0(0),
-							   x1(0),
-							   y1(0),
 							   m_tccp(nullptr)
 {}
 
@@ -108,30 +104,7 @@ void TileComponent::release_mem(){
 	delete m_sa;
 	m_sa = nullptr;
 }
-uint32_t TileComponent::X0() const{
-	return x0;
-}
-uint32_t TileComponent::Y0() const{
-	return y0;
-}
-uint32_t TileComponent::X1() const{
-	return x1;
-}
-uint32_t TileComponent::Y1() const{
-	return y1;
-}
-uint32_t TileComponent::width() const{
-	return (uint32_t) (x1 - x0);
-}
-uint32_t TileComponent::height() const{
-	return (uint32_t) (y1 - y0);
-}
-uint64_t TileComponent::size() const{
-	return  area() * sizeof(int32_t);
-}
-uint64_t TileComponent::area() const{
-	return (uint64_t)width() * height() ;
-}
+
 void TileComponent::get_dimensions(grk_image *image,
 		 	 	 	 	 	 	 grk_image_comp  *img_comp,
 								 uint32_t *size_comp,
@@ -179,7 +152,7 @@ bool TileComponent::init(bool isEncoder,
 	auto y0 = ceildiv<uint32_t>(tile->y0, image_comp->dy);
 	auto x1 = ceildiv<uint32_t>(tile->x1, image_comp->dx);
 	auto y1 = ceildiv<uint32_t>(tile->y1, image_comp->dy);
-	/*fprintf(stderr, "\tTile compo border = %u,%u,%u,%u\n", X0(), Y0(),x1,y1);*/
+	/*fprintf(stderr, "\tTile compo border = %u,%u,%u,%u\n", x0, y0,x1,y1);*/
 
 	numresolutions = m_tccp->numresolutions;
 	if (numresolutions < cp->m_coding_params.m_dec.m_reduce) {
@@ -213,10 +186,10 @@ bool TileComponent::init(bool isEncoder,
 		--leveno;
 
 		/* border for each resolution level (global) */
-		res->x0 = uint_ceildivpow2(x0, leveno);
-		res->y0 = uint_ceildivpow2(y0, leveno);
-		res->x1 = uint_ceildivpow2(x1, leveno);
-		res->y1 = uint_ceildivpow2(y1, leveno);
+		res->x0 = ceildivpow2<uint32_t>(x0, leveno);
+		res->y0 = ceildivpow2<uint32_t>(y0, leveno);
+		res->x1 = ceildivpow2<uint32_t>(x1, leveno);
+		res->y1 = ceildivpow2<uint32_t>(y1, leveno);
 		/*fprintf(stderr, "\t\t\tres_x0= %u, res_y0 =%u, res_x1=%u, res_y1=%u\n", res->x0, res->y0, res->x1, res->y1);*/
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
 		uint32_t pdx = m_tccp->prcw[resno];
@@ -225,13 +198,13 @@ bool TileComponent::init(bool isEncoder,
 		/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
 		uint32_t tprc_x_start = uint_floordivpow2(res->x0, pdx) << pdx;
 		uint32_t tprc_y_start = uint_floordivpow2(res->y0, pdy) << pdy;
-		uint64_t temp = (uint64_t)uint_ceildivpow2(res->x1, pdx) << pdx;
+		uint64_t temp = (uint64_t)ceildivpow2<uint32_t>(res->x1, pdx) << pdx;
 		if (temp > UINT_MAX){
 			GROK_ERROR("Resolution x1 value %u must be less than 2^32", temp);
 			return false;
 		}
 		uint32_t br_prc_x_end = (uint32_t)temp;
-		temp = (uint64_t)uint_ceildivpow2(res->y1, pdy) << pdy;
+		temp = (uint64_t)ceildivpow2<uint32_t>(res->y1, pdy) << pdy;
 		if (temp > UINT_MAX){
 			GROK_ERROR("Resolution y1 value %u must be less than 2^32", temp);
 			return false;
@@ -267,8 +240,8 @@ bool TileComponent::init(bool isEncoder,
 			cbgheightexpn = pdy;
 			res->numbands = 1;
 		} else {
-			tlcbgxstart = uint_ceildivpow2(tprc_x_start, 1);
-			tlcbgystart = uint_ceildivpow2(tprc_y_start, 1);
+			tlcbgxstart = ceildivpow2<uint32_t>(tprc_x_start, 1);
+			tlcbgystart = ceildivpow2<uint32_t>(tprc_y_start, 1);
 			cbgwidthexpn = pdx - 1;
 			cbgheightexpn = pdy - 1;
 			res->numbands = 3;
@@ -286,10 +259,10 @@ bool TileComponent::init(bool isEncoder,
 
 			if (resno == 0) {
 				band->bandno = 0;
-				band->x0 = uint_ceildivpow2(x0, leveno);
-				band->y0 = uint_ceildivpow2(y0, leveno);
-				band->x1 = uint_ceildivpow2(x1, leveno);
-				band->y1 = uint_ceildivpow2(y1, leveno);
+				band->x0 = ceildivpow2<uint32_t>(x0, leveno);
+				band->y0 = ceildivpow2<uint32_t>(y0, leveno);
+				band->x1 = ceildivpow2<uint32_t>(x1, leveno);
+				band->y1 = ceildivpow2<uint32_t>(y1, leveno);
 			} else {
 				band->bandno = (uint8_t)(bandno + 1);
 				/* x0b = 1 if bandno = 1 or 3 */
@@ -362,10 +335,10 @@ bool TileComponent::init(bool isEncoder,
 				tlcblkystart = uint_floordivpow2(current_precinct->y0,
 						cblkheightexpn) << cblkheightexpn;
 				/*fprintf(stderr, "\t tlcblkystart =%u\n",tlcblkystart );*/
-				brcblkxend = uint_ceildivpow2(current_precinct->x1,
+				brcblkxend = ceildivpow2<uint32_t>(current_precinct->x1,
 						cblkwidthexpn) << cblkwidthexpn;
 				/*fprintf(stderr, "\t brcblkxend =%u\n",brcblkxend );*/
-				brcblkyend = uint_ceildivpow2(current_precinct->y1,
+				brcblkyend = ceildivpow2<uint32_t>(current_precinct->y1,
 						cblkheightexpn) << cblkheightexpn;
 				/*fprintf(stderr, "\t brcblkyend =%u\n",brcblkyend );*/
 				current_precinct->cw = ((brcblkxend - tlcblkxstart)
@@ -506,16 +479,16 @@ bool TileComponent::is_subband_area_of_interest(uint32_t resno,
     uint32_t y0b = bandno >> 1;
     uint32_t tbx0 = (nb == 0) ? tcx0 :
                       (tcx0 <= (1U << (nb - 1)) * x0b) ? 0 :
-                      uint_ceildivpow2(tcx0 - (1U << (nb - 1)) * x0b, nb);
+                      ceildivpow2<uint32_t>(tcx0 - (1U << (nb - 1)) * x0b, nb);
     uint32_t tby0 = (nb == 0) ? tcy0 :
                       (tcy0 <= (1U << (nb - 1)) * y0b) ? 0 :
-                      uint_ceildivpow2(tcy0 - (1U << (nb - 1)) * y0b, nb);
+                      ceildivpow2<uint32_t>(tcy0 - (1U << (nb - 1)) * y0b, nb);
     uint32_t tbx1 = (nb == 0) ? tcx1 :
                       (tcx1 <= (1U << (nb - 1)) * x0b) ? 0 :
-                      uint_ceildivpow2(tcx1 - (1U << (nb - 1)) * x0b, nb);
+                      ceildivpow2<uint32_t>(tcx1 - (1U << (nb - 1)) * x0b, nb);
     uint32_t tby1 = (nb == 0) ? tcy1 :
                       (tcy1 <= (1U << (nb - 1)) * y0b) ? 0 :
-                      uint_ceildivpow2(tcy1 - (1U << (nb - 1)) * y0b, nb);
+                      ceildivpow2<uint32_t>(tcy1 - (1U << (nb - 1)) * y0b, nb);
 
     if (tbx0 < filter_margin)
         tbx0 = 0;

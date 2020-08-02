@@ -712,14 +712,14 @@ static void grk_get_encoding_parameters(const grk_image *p_image,
 				*dy_min = std::min<uint32_t>(*dy_min, (uint32_t) dy);
 
 			uint32_t level_no = tccp->numresolutions - 1 - resno;
-			uint32_t rx0 = uint_ceildivpow2(tcx0, level_no);
-			uint32_t ry0 = uint_ceildivpow2(tcy0, level_no);
-			uint32_t rx1 = uint_ceildivpow2(tcx1, level_no);
-			uint32_t ry1 = uint_ceildivpow2(tcy1, level_no);
+			uint32_t rx0 = ceildivpow2<uint32_t>(tcx0, level_no);
+			uint32_t ry0 = ceildivpow2<uint32_t>(tcy0, level_no);
+			uint32_t rx1 = ceildivpow2<uint32_t>(tcx1, level_no);
+			uint32_t ry1 = ceildivpow2<uint32_t>(tcy1, level_no);
 			uint32_t px0 = uint_floordivpow2(rx0, pdx) << pdx;
 			uint32_t py0 = uint_floordivpow2(ry0, pdy) << pdy;
-			uint32_t px1 = uint_ceildivpow2(rx1, pdx) << pdx;
-			uint32_t py1 = uint_ceildivpow2(ry1, pdy) << pdy;
+			uint32_t px1 = ceildivpow2<uint32_t>(rx1, pdx) << pdx;
+			uint32_t py1 = ceildivpow2<uint32_t>(ry1, pdy) << pdy;
 			uint32_t pw = (rx0 == rx1) ? 0 : ((px1 - px0) >> pdx);
 			uint32_t ph = (ry0 == ry1) ? 0 : ((py1 - py0) >> pdy);
 			uint64_t product = (uint64_t)pw * ph;
@@ -790,14 +790,14 @@ static void grk_get_all_encoding_parameters(const grk_image *p_image,
 				*dx_min = std::min<uint32_t>(*dx_min, (uint32_t) dx);
 			if (dy < UINT_MAX)
 				*dy_min = std::min<uint32_t>(*dy_min, (uint32_t) dy);
-			uint32_t rx0 = uint_ceildivpow2(tcx0, level_no);
-			uint32_t ry0 = uint_ceildivpow2(tcy0, level_no);
-			uint32_t rx1 = uint_ceildivpow2(tcx1, level_no);
-			uint32_t ry1 = uint_ceildivpow2(tcy1, level_no);
+			uint32_t rx0 = ceildivpow2<uint32_t>(tcx0, level_no);
+			uint32_t ry0 = ceildivpow2<uint32_t>(tcy0, level_no);
+			uint32_t rx1 = ceildivpow2<uint32_t>(tcx1, level_no);
+			uint32_t ry1 = ceildivpow2<uint32_t>(tcy1, level_no);
 			uint32_t px0 = uint_floordivpow2(rx0, pdx) << pdx;
 			uint32_t py0 = uint_floordivpow2(ry0, pdy) << pdy;
-			uint32_t px1 = uint_ceildivpow2(rx1, pdx) << pdx;
-			uint32_t py1 = uint_ceildivpow2(ry1, pdy) << pdy;
+			uint32_t px1 = ceildivpow2<uint32_t>(rx1, pdx) << pdx;
+			uint32_t py1 = ceildivpow2<uint32_t>(ry1, pdy) << pdy;
 			uint32_t pw = (rx0 == rx1) ? 0 : ((px1 - px0) >> pdx);
 			uint32_t ph = (ry0 == ry1) ? 0 : ((py1 - py0) >> pdy);
 			*lResolutionPtr++ = pw;

@@ -1413,10 +1413,10 @@ bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream, grk_ima
 		comp_x1 = ceildiv<uint32_t>(p_image->x1, img_comp->dx);
 		comp_y1 = ceildiv<uint32_t>(p_image->y1, img_comp->dy);
 
-		img_comp->w = (uint_ceildivpow2(comp_x1, reduce)
-				- uint_ceildivpow2(img_comp->x0, reduce));
-		img_comp->h = (uint_ceildivpow2(comp_y1, reduce)
-				- uint_ceildivpow2(img_comp->y0, reduce));
+		img_comp->w = (ceildivpow2<uint32_t>(comp_x1, reduce)
+				- ceildivpow2<uint32_t>(img_comp->x0, reduce));
+		img_comp->h = (ceildivpow2<uint32_t>(comp_y1, reduce)
+				- ceildivpow2<uint32_t>(img_comp->y0, reduce));
 
 		img_comp++;
 	}
@@ -1846,8 +1846,8 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 			/* 0 => one precinct || 1 => custom precinct  */
 			tccp->csty = parameters->csty & J2K_CP_CSTY_PRT;
 			tccp->numresolutions = parameters->numresolution;
-			tccp->cblkw = uint_floorlog2(parameters->cblockw_init);
-			tccp->cblkh = uint_floorlog2(parameters->cblockh_init);
+			tccp->cblkw = floorlog2<uint32_t>(parameters->cblockw_init);
+			tccp->cblkh = floorlog2<uint32_t>(parameters->cblockh_init);
 			tccp->cblk_sty = parameters->cblk_sty;
 			tccp->qmfbid = parameters->irreversible ? 0 : 1;
 			tccp->qntsty = parameters->irreversible ?
@@ -1869,13 +1869,13 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 						if (parameters->prcw_init[p] < 1) {
 							tccp->prcw[it_res] = 1;
 						} else {
-							tccp->prcw[it_res] = uint_floorlog2(
+							tccp->prcw[it_res] = floorlog2<uint32_t>(
 									parameters->prcw_init[p]);
 						}
 						if (parameters->prch_init[p] < 1) {
 							tccp->prch[it_res] = 1;
 						} else {
-							tccp->prch[it_res] = uint_floorlog2(
+							tccp->prch[it_res] = floorlog2<uint32_t>(
 									parameters->prch_init[p]);
 						}
 					} else {
@@ -1889,12 +1889,12 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 						if (size_prcw < 1) {
 							tccp->prcw[it_res] = 1;
 						} else {
-							tccp->prcw[it_res] = uint_floorlog2(size_prcw);
+							tccp->prcw[it_res] = floorlog2<uint32_t>(size_prcw);
 						}
 						if (size_prch < 1) {
 							tccp->prch[it_res] = 1;
 						} else {
-							tccp->prch[it_res] = uint_floorlog2(size_prch);
+							tccp->prch[it_res] = floorlog2<uint32_t>(size_prch);
 						}
 					}
 					p++;
