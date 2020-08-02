@@ -94,7 +94,7 @@ bool T1Decoder::decompress(std::vector<decodeBlockInfo*> *blocks) {
             })
         );
     }
-    for(auto && result: results){
+    for(auto &result: results){
         result.get();
     }
 	delete[] decodeBlocks;

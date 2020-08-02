@@ -280,7 +280,8 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 	bool alloc(bool clear){
 		if (!data) {
 			// set stride aligned value
-			stride =width();
+			stride = width();
+			//stride = ((width() + 63)/64) * 64;
 			uint64_t data_size_needed = stride * height() * sizeof(T);
 			if (!data_size_needed)
 			  return true;
@@ -296,24 +297,27 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 	}
 
 	// set data to buf without owning it
-	void attach(T* buffer){
+	void attach(T* buffer, uint32_t strd){
 		data = buffer;
 		owns_data = false;
+		stride = strd;
 	}
 	// set data to buf and own it
-	void acquire(T* buffer){
+	void acquire(T* buffer, uint32_t strd){
 		if (owns_data)
 			grk_aligned_free(data);
 		buffer = data;
 		owns_data = true;
+		stride = strd;
 	}
 	// transfer data to buf, and cease owning it
-	void transfer(T** buffer, bool* owns){
+	void transfer(T** buffer, bool* owns, uint32_t *strd){
 		if (buffer && owns){
 			*buffer = data;
 			data = nullptr;
 			*owns = owns_data;
 			owns_data = false;
+			*strd = stride;
 		}
 	}
 

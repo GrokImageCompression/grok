@@ -68,7 +68,7 @@ void T1Encoder::compress(std::vector<encodeBlockInfo*> *blocks) {
             })
         );
     }
-    for(auto && result: results){
+    for(auto &result: results){
         result.get();
     }
 	delete[] encodeBlocks;

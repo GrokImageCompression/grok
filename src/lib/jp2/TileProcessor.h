@@ -286,12 +286,10 @@ struct TileProcessor {
 	 */
 	bool decompress_tile_t2(ChunkBuffer *src_buf);
 
-	uint64_t get_uncompressed_tile_size(bool reduced);
-
 	/**
 	 * Copies tile data from the given memory block onto the system.
 	 */
-	bool copy_image_data_to_tile(uint8_t *p_src, uint64_t src_length);
+	bool copy_uncompressed_data_to_tile(uint8_t *p_src, uint64_t src_length);
 
 	bool needs_rate_control();
 

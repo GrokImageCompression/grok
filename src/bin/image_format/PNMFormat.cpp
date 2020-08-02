@@ -346,7 +346,7 @@ static grk_image* pnmtoimage(const char *filename,
 	uint32_t subsampling_dx = parameters->subsampling_dx;
 	uint32_t subsampling_dy = parameters->subsampling_dy;
 	FILE *fp = nullptr;
-	uint32_t compno, numcomps, w, h, prec, format;
+	uint32_t compno, numcomps, w, stride_diff,width,counter, h, prec, format;
 	GRK_COLOR_SPACE color_space;
 	grk_image_cmptparm cmptparm[4]; /* RGBA: max. 4 components */
 	grk_image *image = nullptr;
@@ -423,10 +423,15 @@ static grk_image* pnmtoimage(const char *filename,
 	image->x1 = (parameters->image_offset_x0 + (w - 1) * subsampling_dx + 1);
 	image->y1 = (parameters->image_offset_y0 + (h - 1) * subsampling_dy + 1);
 
+	width = image->comps[0].w;
+	stride_diff =  image->comps[0].stride - width;
+	counter = 0;
+
 	if (format == 1) { /* ascii bitmap */
 		const size_t chunkSize = 4096;
 		uint8_t chunk[chunkSize];
 		uint64_t i = 0;
+		area = (uint64_t)image->comps[0].stride * h;
 		while (i < area) {
 			size_t bytesRead = fread(chunk, 1, chunkSize, fp);
 			if (!bytesRead)
@@ -434,8 +439,14 @@ static grk_image* pnmtoimage(const char *filename,
 			uint8_t *chunkPtr = (uint8_t*) chunk;
 			for (size_t ct = 0; ct < bytesRead; ++ct) {
 				uint8_t c = *chunkPtr++;
-				if (c != '\n' && c != ' ')
+				if (c != '\n' && c != ' '){
 					image->comps[0].data[i++] = (c & 1) ^ 1;
+					counter++;
+					if (counter == w){
+						counter = 0;
+						i += stride_diff;
+					}
+				}
 			}
 		}
 		if (i != area) {
@@ -444,6 +455,7 @@ static grk_image* pnmtoimage(const char *filename,
 		}
 	} else if (format == 2 || format == 3) { /* ascii pixmap */
 		uint32_t index;
+		area = (uint64_t)image->comps[0].stride * h;
 		for (uint64_t i = 0; i < area; i++) {
 			for (compno = 0; compno < numcomps; compno++) {
 				index = 0;
@@ -452,6 +464,11 @@ static grk_image* pnmtoimage(const char *filename,
 							" different from expected.");
 				}
 				image->comps[compno].data[i] = (int32_t)index;
+				counter++;
+				if (counter == w){
+					counter = 0;
+					i += stride_diff;
+				}
 			}
 		}
 	} else if (format == 5 || format == 6
@@ -506,11 +523,21 @@ static grk_image* pnmtoimage(const char *filename,
 				if (packed) {
 					for (int32_t j = 7; j >= 0; --j){
 						image->comps[0].data[index++] = ((c >> j) & 1) ^ 1;
+						counter++;
+						if (counter == w){
+							counter = 0;
+							index += stride_diff;
+						}
 						if ((index % w) == 0)
 							break;
 					}
 				} else {
 					image->comps[0].data[index++] = c & 1;
+					counter++;
+					if (counter == w){
+						counter = 0;
+						index += stride_diff;
+					}
 				}
 				i++;
 			}
@@ -533,8 +560,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 	int *green = nullptr;
 	int *blue = nullptr;
 	int *alpha = nullptr;
-	uint32_t wr, hr, max;
-	uint64_t i;
+	uint32_t width, height,stride_diff, max;
 	uint32_t compno, ncomp, prec;
 	int adjustR, adjustG, adjustB, adjustA;
 	int two, want_gray, has_alpha, triple;
@@ -589,8 +615,9 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 		}
 		two = (prec > 8);
 		triple = (ncomp > 2);
-		wr = image->comps[0].w;
-		hr = image->comps[0].h;
+		width = image->comps[0].w;
+		stride_diff = image->comps[0].stride - width;
+		height = image->comps[0].h;
 		max = (1 << prec) - 1;
 		has_alpha = (ncomp == 4 || ncomp == 2);
 
@@ -606,14 +633,14 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 			const char *tt = (triple ? "RGB_ALPHA" : "GRAYSCALE_ALPHA");
 
 			fprintf(fdest, "P7\n# Grok-%s\nWIDTH %u\nHEIGHT %u\nDEPTH %u\n"
-					"MAXVAL %u\nTUPLTYPE %s\nENDHDR\n", grk_version(), wr, hr,
+					"MAXVAL %u\nTUPLTYPE %s\nENDHDR\n", grk_version(), width, height,
 					ncomp, max, tt);
 			alpha = image->comps[ncomp - 1].data;
 			adjustA = (
 					image->comps[ncomp - 1].sgnd ?
 							1 << (image->comps[ncomp - 1].prec - 1) : 0);
 		} else {
-			fprintf(fdest, "P6\n# Grok-%s\n%u %u\n%u\n", grk_version(), wr, hr,
+			fprintf(fdest, "P6\n# Grok-%s\n%u %u\n%u\n", grk_version(), width, height,
 					max);
 			adjustA = 0;
 		}
@@ -633,36 +660,45 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 			uint16_t *outPtr = buf;
 			size_t outCount = 0;
 
-			for (i = 0; i < (uint64_t) wr * hr; i++) {
-				v = *red++ + adjustR;
-				if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
-						&outCount, bufSize, true, fdest)) {
-					rc = 1;
-					goto cleanup;
-				}
-				if (triple) {
-					v = *green++ + adjustG;
+			for (uint32_t j = 0; j < height; ++j){
+				for (uint32_t i = 0; i < width; ++i){
+					v = *red++ + adjustR;
 					if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
 							&outCount, bufSize, true, fdest)) {
 						rc = 1;
 						goto cleanup;
 					}
-					v = *blue++ + adjustB;
-					if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
-							&outCount, bufSize, true, fdest)) {
-						rc = 1;
-						goto cleanup;
-					}
-				}/* if(triple) */
+					if (triple) {
+						v = *green++ + adjustG;
+						if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
+								&outCount, bufSize, true, fdest)) {
+							rc = 1;
+							goto cleanup;
+						}
+						v = *blue++ + adjustB;
+						if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
+								&outCount, bufSize, true, fdest)) {
+							rc = 1;
+							goto cleanup;
+						}
+					}/* if(triple) */
 
-				if (has_alpha) {
-					v = *alpha++ + adjustA;
-					if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
-							&outCount, bufSize, true, fdest)) {
-						rc = 1;
-						goto cleanup;
+					if (has_alpha) {
+						v = *alpha++ + adjustA;
+						if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
+								&outCount, bufSize, true, fdest)) {
+							rc = 1;
+							goto cleanup;
+						}
 					}
 				}
+				red += stride_diff;
+				if (triple) {
+					green += stride_diff;
+					blue += stride_diff;
+				}
+				if (has_alpha)
+					alpha += stride_diff;
 			}
 			if (outCount) {
 				size_t res = fwrite(buf, sizeof(uint16_t), outCount, fdest);
@@ -676,35 +712,44 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 			uint8_t buf[bufSize];
 			uint8_t *outPtr = buf;
 			size_t outCount = 0;
-			for (i = 0; i < (uint64_t) wr * hr; i++) {
-				v = *red++;
-				if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
-						&outCount, bufSize, true, fdest)) {
-					rc = 1;
-					goto cleanup;
+			for (uint32_t j = 0; j < height; ++j){
+				for (uint32_t i = 0; i < width; ++i){
+					v = *red++;
+					if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
+							&outCount, bufSize, true, fdest)) {
+						rc = 1;
+						goto cleanup;
+					}
+					if (triple) {
+						v = *green++;
+						if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
+								&outCount, bufSize, true, fdest)) {
+							rc = 1;
+							goto cleanup;
+						}
+						v = *blue++;
+						if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
+								&outCount, bufSize, true, fdest)) {
+							rc = 1;
+							goto cleanup;
+						}
+					}
+					if (has_alpha) {
+						v = *alpha++;
+						if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
+								&outCount, bufSize, true, fdest)) {
+							rc = 1;
+							goto cleanup;
+						}
+					}
 				}
+				red += stride_diff;
 				if (triple) {
-					v = *green++;
-					if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
-							&outCount, bufSize, true, fdest)) {
-						rc = 1;
-						goto cleanup;
-					}
-					v = *blue++;
-					if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
-							&outCount, bufSize, true, fdest)) {
-						rc = 1;
-						goto cleanup;
-					}
+					green += stride_diff;
+					blue += stride_diff;
 				}
-				if (has_alpha) {
-					v = *alpha++;
-					if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
-							&outCount, bufSize, true, fdest)) {
-						rc = 1;
-						goto cleanup;
-					}
-				}
+				if (has_alpha)
+					alpha += stride_diff;
 			}
 			if (outCount) {
 				size_t res = fwrite(buf, sizeof(uint8_t), outCount, fdest);
@@ -750,12 +795,13 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 			rc = 1;
 			goto cleanup;
 		}
-		wr = image->comps[compno].w;
-		hr = image->comps[compno].h;
+		width = image->comps[compno].w;
+		stride_diff = image->comps[compno].stride - width;
+		height = image->comps[compno].h;
 		prec = image->comps[compno].prec;
 		max = (1 << prec) - 1;
 
-		fprintf(fdest, "P5\n#Grok-%s\n%u %u\n%u\n", grk_version(), wr, hr, max);
+		fprintf(fdest, "P5\n#Grok-%s\n%u %u\n%u\n", grk_version(), width, height, max);
 
 		red = image->comps[compno].data;
 		if (!red) {
@@ -772,22 +818,27 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 			uint16_t *outPtr = buf;
 			size_t outCount = 0;
 
-			for (i = 0; i < (uint64_t) wr * hr; i++) {
-				v = *red++ + adjustR;
-				if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
-						&outCount, bufSize, true, fdest)) {
-					rc = 1;
-					goto cleanup;
-				}
-				if (has_alpha) {
-					v = *alpha++;
+			for (uint32_t j = 0; j < height; ++j){
+				for (uint32_t i = 0; i < width; ++i){
+					v = *red++ + adjustR;
 					if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
 							&outCount, bufSize, true, fdest)) {
 						rc = 1;
 						goto cleanup;
 					}
+					if (has_alpha) {
+						v = *alpha++;
+						if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
+								&outCount, bufSize, true, fdest)) {
+							rc = 1;
+							goto cleanup;
+						}
+					}
 				}
-			}/* for(i */
+				red += stride_diff;
+				if (has_alpha)
+					alpha += stride_diff;
+			}
 			//flush
 			if (outCount) {
 				size_t res = fwrite(buf, sizeof(uint16_t), outCount, fdest);
@@ -799,13 +850,18 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 			uint8_t buf[bufSize];
 			uint8_t *outPtr = buf;
 			size_t outCount = 0;
-			for (i = 0; i < (uint64_t) wr * hr; i++) {
-				v = *red++ + adjustR;
-				if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
-						&outCount, bufSize, true, fdest)) {
-					rc = 1;
-					goto cleanup;
+			for (uint32_t j = 0; j < height; ++j){
+				for (uint32_t i = 0; i < width; ++i){
+					v = *red++ + adjustR;
+					if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
+							&outCount, bufSize, true, fdest)) {
+						rc = 1;
+						goto cleanup;
+					}
 				}
+				red += stride_diff;
+				if (has_alpha)
+					alpha += stride_diff;
 			}
 			if (outCount) {
 				size_t res = fwrite(buf, sizeof(uint8_t), outCount, fdest);

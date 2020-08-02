@@ -195,12 +195,12 @@ static char* createMultiComponentsFilename(const char *inFilename,
  *******************************************************************************/
 static grk_image* readImageFromFilePPM(const char *filename, size_t nbFilenamePGX,
 		const char *separator) {
-	size_t it_file = 0;
-	grk_image *image_read = nullptr;
-	grk_image *image = nullptr;
+	size_t fileno = 0;
+	grk_image *src = nullptr;
+	grk_image *dest = nullptr;
 	grk_cparameters parameters;
-	grk_image_cmptparm *param_image_read = nullptr;
-	int **data = nullptr;
+	grk_image_cmptparm *src_param = nullptr;
+	int **dest_data = nullptr;
 
 	/* If separator is empty => nb file to read is equal to one*/
 	if (strlen(separator) == 0)
@@ -215,15 +215,15 @@ static grk_image* readImageFromFilePPM(const char *filename, size_t nbFilenamePG
 	strcpy(parameters.infile, filename);
 
 	/* Allocate memory*/
-	param_image_read = (grk_image_cmptparm*) malloc(
+	src_param = (grk_image_cmptparm*) malloc(
 			(size_t) nbFilenamePGX * sizeof(grk_image_cmptparm));
-	if (!param_image_read)
+	if (!src_param)
 		goto cleanup;
-	data = (int**) calloc((size_t) nbFilenamePGX, sizeof(*data));
-	if (!data)
+	dest_data = (int**) calloc((size_t) nbFilenamePGX, sizeof(*dest_data));
+	if (!dest_data)
 		goto cleanup;
 
-	for (it_file = 0; it_file < nbFilenamePGX; it_file++) {
+	for (fileno = 0; fileno < nbFilenamePGX; fileno++) {
 		/* Create the right filename*/
 		char *filenameComponentPGX = nullptr;
 		if (strlen(separator) == 0) {
@@ -234,13 +234,13 @@ static grk_image* readImageFromFilePPM(const char *filename, size_t nbFilenamePG
 			strcpy(filenameComponentPGX, filename);
 		} else
 			filenameComponentPGX = createMultiComponentsFilename(filename,
-					it_file, separator);
+					fileno, separator);
 
 		/* Read the file corresponding to the component */
 		PNMFormat pnm(false);
-		image_read = pnm.decode(filenameComponentPGX, &parameters);
-		if (!image_read || !image_read->comps || !image_read->comps->h
-				|| !image_read->comps->w) {
+		src = pnm.decode(filenameComponentPGX, &parameters);
+		if (!src || !src->comps || !src->comps->h
+				|| !src->comps->w) {
 			spdlog::error("Unable to load ppm file: {}",
 					filenameComponentPGX);
 			free(filenameComponentPGX);
@@ -248,55 +248,55 @@ static grk_image* readImageFromFilePPM(const char *filename, size_t nbFilenamePG
 		}
 
 		/* Set the image_read parameters*/
-		param_image_read[it_file].x0 = 0;
-		param_image_read[it_file].y0 = 0;
-		param_image_read[it_file].dx = 0;
-		param_image_read[it_file].dy = 0;
-		param_image_read[it_file].h = image_read->comps->h;
-		param_image_read[it_file].w = image_read->comps->w;
-		param_image_read[it_file].prec = image_read->comps->prec;
-		param_image_read[it_file].sgnd = image_read->comps->sgnd;
+		src_param[fileno].x0 = 0;
+		src_param[fileno].y0 = 0;
+		src_param[fileno].dx = 0;
+		src_param[fileno].dy = 0;
+		src_param[fileno].h = src->comps->h;
+		src_param[fileno].w = src->comps->w;
+		src_param[fileno].stride = src->comps->stride;
+		src_param[fileno].prec = src->comps->prec;
+		src_param[fileno].sgnd = src->comps->sgnd;
 
 		/* Copy data*/
-		data[it_file] = (int*) malloc(
-				param_image_read[it_file].h * param_image_read[it_file].w
-						* sizeof(int));
-		if (!data[it_file]) {
-			grk_image_destroy(image_read);
+		dest_data[fileno] = (int32_t*) malloc(src_param[fileno].h * src_param[fileno].stride
+												* sizeof(int32_t));
+		if (!dest_data[fileno]) {
+			grk_image_destroy(src);
 			free(filenameComponentPGX);
 			goto cleanup;
 		}
-		memcpy(data[it_file], image_read->comps->data,
-				image_read->comps->h * image_read->comps->stride * sizeof(int));
+		memcpy(dest_data[fileno], src->comps->data,
+				src->comps->h * src->comps->stride * sizeof(int));
 
 		/* Free memory*/
-		grk_image_destroy(image_read);
+		grk_image_destroy(src);
 		free(filenameComponentPGX);
 	}
 
-	image = grk_image_create((uint32_t) nbFilenamePGX, param_image_read,
+	dest = grk_image_create((uint32_t) nbFilenamePGX, src_param,
 			GRK_CLRSPC_UNKNOWN);
-	if (!image || !image->comps)
+	if (!dest || !dest->comps)
 		goto cleanup;
-	for (it_file = 0; it_file < nbFilenamePGX; it_file++) {
-		if ((image->comps + it_file) && data[it_file]) {
-			memcpy(image->comps[it_file].data, data[it_file],
-					image->comps[it_file].h * image->comps[it_file].stride
+	for (fileno = 0; fileno < nbFilenamePGX; fileno++) {
+		auto dest_comp = dest->comps + fileno;
+		if (dest_comp && dest_data[fileno]) {
+			memcpy(dest_comp->data, dest_data[fileno], 	dest_comp->h * dest_comp->stride
 							* sizeof(int32_t));
-			free(data[it_file]);
-			data[it_file] = nullptr;
+			free(dest_data[fileno]);
+			dest_data[fileno] = nullptr;
 		}
 	}
 
 	cleanup:
-	free(param_image_read);
-	if (data) {
-		for (size_t it_free_data = 0; it_free_data < it_file; it_free_data++)
-			free(data[it_free_data]);
-		free(data);
+	free(src_param);
+	if (dest_data) {
+		for (size_t it_free_data = 0; it_free_data < fileno; it_free_data++)
+			free(dest_data[it_free_data]);
+		free(dest_data);
 	}
 
-	return image;
+	return dest;
 }
 
 static grk_image* readImageFromFilePNG(const char *filename, size_t nbFilenamePGX,
@@ -360,12 +360,12 @@ static grk_image* readImageFromFileTIF(const char *filename, size_t nbFilenamePG
 
 static grk_image* readImageFromFilePGX(const char *filename, size_t nbFilenamePGX,
 		const char *separator) {
-	size_t it_file;
-	grk_image *image_read = nullptr;
-	grk_image *image = nullptr;
+	size_t fileno;
+	grk_image *src = nullptr;
+	grk_image *dest = nullptr;
 	grk_cparameters parameters;
-	grk_image_cmptparm *param_image_read = nullptr;
-	int **data = nullptr;
+	grk_image_cmptparm *dest_param = nullptr;
+	int **dest_data = nullptr;
 
 	/* If separator is empty => nb file to read is equal to one*/
 	if (strlen(separator) == 0)
@@ -380,15 +380,15 @@ static grk_image* readImageFromFilePGX(const char *filename, size_t nbFilenamePG
 	strcpy(parameters.infile, filename);
 
 	/* Allocate memory*/
-	param_image_read = (grk_image_cmptparm*) malloc(
+	dest_param = (grk_image_cmptparm*) malloc(
 			nbFilenamePGX * sizeof(grk_image_cmptparm));
-	if (!param_image_read)
+	if (!dest_param)
 		goto cleanup;
-	data = (int**) calloc(nbFilenamePGX, sizeof(*data));
-	if (!data)
+	dest_data = (int**) calloc(nbFilenamePGX, sizeof(*dest_data));
+	if (!dest_data)
 		goto cleanup;
 
-	for (it_file = 0; it_file < nbFilenamePGX; it_file++) {
+	for (fileno = 0; fileno < nbFilenamePGX; fileno++) {
 		/* Create the right filename*/
 		char *filenameComponentPGX = nullptr;
 		if (strlen(separator) == 0) {
@@ -399,16 +399,16 @@ static grk_image* readImageFromFilePGX(const char *filename, size_t nbFilenamePG
 			strcpy(filenameComponentPGX, filename);
 		} else {
 			filenameComponentPGX = createMultiComponentsFilename(filename,
-					it_file, separator);
+					fileno, separator);
 			if (!filenameComponentPGX)
 				goto cleanup;
 		}
 
 		/* Read the pgx file corresponding to the component */
 		PGXFormat pgx;
-		image_read = pgx.decode(filenameComponentPGX, &parameters);
-		if (!image_read || !image_read->comps || !image_read->comps->h
-				|| !image_read->comps->w) {
+		src = pgx.decode(filenameComponentPGX, &parameters);
+		if (!src || !src->comps || !src->comps->h
+				|| !src->comps->w) {
 			spdlog::error("Unable to load pgx file");
 			if (filenameComponentPGX)
 				free(filenameComponentPGX);
@@ -416,79 +416,84 @@ static grk_image* readImageFromFilePGX(const char *filename, size_t nbFilenamePG
 		}
 
 		/* Set the image_read parameters*/
-		param_image_read[it_file].x0 = 0;
-		param_image_read[it_file].y0 = 0;
-		param_image_read[it_file].dx = 0;
-		param_image_read[it_file].dy = 0;
-		param_image_read[it_file].h = image_read->comps->h;
-		param_image_read[it_file].w = image_read->comps->w;
-		param_image_read[it_file].stride = image_read->comps->stride;
-		param_image_read[it_file].prec = image_read->comps->prec;
-		param_image_read[it_file].sgnd = image_read->comps->sgnd;
+		dest_param[fileno].x0 = 0;
+		dest_param[fileno].y0 = 0;
+		dest_param[fileno].dx = 0;
+		dest_param[fileno].dy = 0;
+		dest_param[fileno].h = src->comps->h;
+		dest_param[fileno].w = src->comps->w;
+		dest_param[fileno].stride = src->comps->stride;
+		dest_param[fileno].prec = src->comps->prec;
+		dest_param[fileno].sgnd = src->comps->sgnd;
 
 		/* Copy data*/
-		data[it_file] = (int32_t*) malloc(
-				param_image_read[it_file].h * param_image_read[it_file].stride
+		dest_data[fileno] = (int32_t*) malloc(
+				dest_param[fileno].h * dest_param[fileno].stride
 						* sizeof(int32_t));
-		if (!data[it_file])
+		if (!dest_data[fileno])
 			goto cleanup;
-		memcpy(data[it_file], image_read->comps->data,
-				image_read->comps->h * image_read->comps->stride * sizeof(int));
+		memcpy(dest_data[fileno], src->comps->data,
+				src->comps->h * src->comps->stride * sizeof(int));
 
 		/* Free memory*/
-		grk_image_destroy(image_read);
+		grk_image_destroy(src);
 		free(filenameComponentPGX);
 	}
 
-	image = grk_image_create((uint32_t) nbFilenamePGX, param_image_read,
+	dest = grk_image_create((uint32_t) nbFilenamePGX, dest_param,
 			GRK_CLRSPC_UNKNOWN);
-	if (!image || !image->comps)
+	if (!dest || !dest->comps)
 		goto cleanup;
-	for (it_file = 0; it_file < nbFilenamePGX; it_file++) {
-		if ((image->comps + it_file) && data[it_file]) {
-			memcpy(image->comps[it_file].data, data[it_file],
-					image->comps[it_file].h * image->comps[it_file].stride
-							* sizeof(int));
-			free(data[it_file]);
-			data[it_file] = nullptr;
+	for (fileno = 0; fileno < nbFilenamePGX; fileno++) {
+		if ((dest->comps + fileno) && dest_data[fileno]) {
+			auto dest_comp = dest->comps + fileno;
+			memcpy(dest_comp->data, dest_data[fileno], dest_comp->h * dest_comp->stride
+							* sizeof(int32_t));
+			free(dest_data[fileno]);
+			dest_data[fileno] = nullptr;
 		}
 	}
 
 	cleanup:
-	free(param_image_read);
-	if (data) {
-		for (size_t i = 0; i < it_file; i++)
-			free(data[i]);
-		free(data);
+	free(dest_param);
+	if (dest_data) {
+		for (size_t i = 0; i < fileno; i++)
+			free(dest_data[i]);
+		free(dest_data);
 	}
-	return image;
+	return dest;
 }
 
 #if defined(GROK_HAVE_LIBPNG)
 /*******************************************************************************
  *
  *******************************************************************************/
-static int imageToPNG(const grk_image *image, const char *filename,
-		size_t num_comp_select) {
-	grk_image_cmptparm param_image_write;
-	grk_image *image_write = nullptr;
+static int imageToPNG(const grk_image *src, const char *filename, size_t compno) {
+	grk_image_cmptparm dest_param;
+	auto src_comp = src->comps + compno;
+	dest_param.x0 = 0;
+	dest_param.y0 = 0;
+	dest_param.dx = 0;
+	dest_param.dy = 0;
+	dest_param.h = src_comp->h;
+	dest_param.w = src_comp->w;
+	dest_param.prec = src_comp->prec;
+	dest_param.sgnd = src_comp->sgnd;
 
-	param_image_write.x0 = 0;
-	param_image_write.y0 = 0;
-	param_image_write.dx = 0;
-	param_image_write.dy = 0;
-	param_image_write.h = image->comps[num_comp_select].h;
-	param_image_write.w = image->comps[num_comp_select].w;
-	param_image_write.prec = image->comps[num_comp_select].prec;
-	param_image_write.sgnd = image->comps[num_comp_select].sgnd;
-
-	image_write = grk_image_create(1u, &param_image_write, GRK_CLRSPC_GRAY);
-	memcpy(image_write->comps->data, image->comps[num_comp_select].data,
-			param_image_write.h * param_image_write.w * sizeof(int));
+	auto dest = grk_image_create(1u, &dest_param, GRK_CLRSPC_GRAY);
+	auto dest_comp = dest->comps;
+	uint32_t src_diff = src_comp->stride - src_comp->w;
+	uint32_t dest_diff = dest_comp->stride - dest_comp->w;
+	size_t src_ind = 0, dest_ind=0;
+	for (uint32_t j = 0; j < dest_param.h; ++j) {
+		memcpy(dest_comp->data + dest_ind, src_comp->data + src_ind, dest_param.w);
+		src_ind += src_diff;
+		dest_ind += dest_diff;
+	}
 	PNGFormat png;
-	png.encode(image_write, filename, GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT);
+	png.encode(dest, filename, GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT);
 
-	grk_image_destroy(image_write);
+	grk_image_destroy(dest);
 
 	return EXIT_SUCCESS;
 }

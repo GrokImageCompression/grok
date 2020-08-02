@@ -270,6 +270,7 @@ void transfer_image_data(grk_image *src, grk_image *dest) {
 		dest_comp->data = src_comp->data;
 		dest_comp->owns_data = src_comp->owns_data;
 		dest_comp->stride = src_comp->stride;
+		assert(dest_comp->stride >= dest_comp->w);
 		src_comp->data = nullptr;
 	}
 }

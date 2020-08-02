@@ -104,29 +104,6 @@ void TileComponent::release_mem(){
 	delete m_sa;
 	m_sa = nullptr;
 }
-
-void TileComponent::get_dimensions(grk_image *image,
-		 	 	 	 	 	 	 grk_image_comp  *img_comp,
-								 uint32_t *size_comp,
-								 uint32_t *w,
-								 uint32_t *h,
-								 uint32_t *offset_x,
-								 uint32_t *offset_y,
-								 uint32_t *image_width,
-								 uint32_t *stride,
-								 uint64_t *tile_offset) {
-	*size_comp = (img_comp->prec + 7) >> 3; /* (/8) */
-	*w = width();
-	*h = height();
-	*offset_x = ceildiv<uint32_t>(image->x0, img_comp->dx);
-	*offset_y = ceildiv<uint32_t>(image->y0, img_comp->dy);
-	*image_width = ceildiv<uint32_t>(image->x1 - image->x0,
-			img_comp->dx);
-	*stride = *image_width - *w;
-	*tile_offset = (x0 - *offset_x)
-			+ (uint64_t) (y0 - *offset_y) * *image_width;
-}
-
 bool TileComponent::init(bool isEncoder,
 						bool whole_tile,
 						grk_image *output_image,

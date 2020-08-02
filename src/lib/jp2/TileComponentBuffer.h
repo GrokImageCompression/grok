@@ -94,8 +94,7 @@ template<typename T> struct TileComponentBuffer {
 			assert(bandno==0);
 		else
 			assert(bandno < 3);
-		return buf.data + (uint64_t) offsetx
-				+ offsety * (uint64_t) (m_bounds.x1 - m_bounds.x0);
+		return buf.data + (uint64_t) offsetx + offsety * (uint64_t) buf.stride;
 	}
 	/**
 	 * Get pointer to band buffer
@@ -144,6 +143,11 @@ template<typename T> struct TileComponentBuffer {
 		(void)bandno;
 		return buf.stride;
 	}
+
+	uint32_t stride(void){
+		return buf.stride;
+	}
+
 
 	bool alloc(){
 		return buf.alloc(!m_encode);
@@ -227,18 +231,22 @@ template<typename T> struct TileComponentBuffer {
 	grk_rect bounds(){
 		return m_bounds;
 	}
+
+	uint64_t full_area(void){
+		return stride() * m_bounds.height();
+	}
+
 	// set data to buf without owning it
-	void attach(T* buffer){
-		buf.attach(buffer);
+	void attach(T* buffer,uint32_t stride){
+		buf.attach(buffer,stride);
 	}
 	// set data to buf and own it
-	void acquire(T* buffer){
-		buf.acquire(buffer);
+	void acquire(T* buffer, uint32_t stride){
+		buf.acquire(buffer,stride);
 	}
 	// transfer data to buf, and cease owning it
 	void transfer(T** buffer, bool* owns, uint32_t *stride){
-		buf.transfer(buffer,owns);
-		*stride = buf.stride;
+		buf.transfer(buffer,owns,stride);
 	}
 
 	grk_rect unreduced_region_dim;

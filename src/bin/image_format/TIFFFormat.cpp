@@ -1383,7 +1383,7 @@ static bool readTiffPixelsUnsigned(TIFF *tif,
 							invert);
 					cvtToPlanar(buffer32s, planes, (size_t) comp->w);
 					for (uint32_t k = 0; k < numcomps; ++k)
-						planes[k] += comp->w ;
+						planes[k] += comp->stride ;
 					datau8 += rowStride;
 					ssize -= rowStride;
 					height++;
@@ -1396,7 +1396,7 @@ static bool readTiffPixelsUnsigned(TIFF *tif,
 							for (size_t j =0; j < chroma_subsample_x; ++j){
 								bool accept = height+k< comp->h && xpos+j < comp->w;
 								if (accept)
-									planes[0][xpos + j + k * comp->w] = datau8[j];
+									planes[0][xpos + j + k * comp->stride] = datau8[j];
 							}
 							datau8 += chroma_subsample_x;
 						}
@@ -1409,7 +1409,7 @@ static bool readTiffPixelsUnsigned(TIFF *tif,
                     	if (xpos >= comp->w){
                     		datau8 += padding;
                     		xpos = 0;
-                    		planes[0] += comp->w * chroma_subsample_y;
+                    		planes[0] += comp->stride * chroma_subsample_y;
                     		height+= chroma_subsample_y;
                     	}
 					}
@@ -1477,7 +1477,7 @@ template<typename T> bool readTiffPixelsSigned(TIFF *tif, grk_image_comp *comps,
 					buffer32s[i] = data[i];
 				cvtToPlanar(buffer32s, planes, (size_t) comp->w);
 				for (uint32_t k = 0; k < numcomps; ++k)
-					planes[k] += comp->w;
+					planes[k] += comp->stride;
 				data += (size_t)rowStride/sizeof(T);
 				ssize -= rowStride;
 				height--;
@@ -2133,7 +2133,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 					size_t sub_x;
 					for (sub_x =0; sub_x < chroma_subsample_x; ++sub_x){
 						bool accept = h+sub_h<height && xpos+sub_x < width;
-                		*bufptr++ = accept ? (int8_t)planes[0][xpos + sub_x + sub_h * width] : 0;
+                		*bufptr++ = accept ? (int8_t)planes[0][xpos + sub_x + sub_h * image->comps[0].stride] : 0;
                 		bytesToWrite++;
 					}
 				}
@@ -2143,7 +2143,9 @@ static int imagetotif(grk_image *image, const char *outfile,
 				bytesToWrite += 2;
             	xpos+=chroma_subsample_x;
     		}
-    		planes[0] += width * chroma_subsample_y;
+    		planes[0] += image->comps[0].stride * chroma_subsample_y;
+    		planes[1] += image->comps[1].stride - image->comps[1].w;
+    		planes[2] += image->comps[2].stride - image->comps[2].w;
     	}
     } else {
     	tmsize_t h = 0;
@@ -2154,7 +2156,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 				cvtPxToCx(planes, buffer32s, (size_t) width, adjust);
 				cvt32sToTif(buffer32s, (uint8_t*) buf + byesToWrite, (size_t) width * numcomps);
 				for (uint32_t k = 0; k < numcomps; ++k)
-					planes[k] += width;
+					planes[k] += image->comps[k].stride;
 				byesToWrite +=  stride;
 			}
 			tmsize_t written =  TIFFWriteEncodedStrip(tif, strip++,(void*) buf, byesToWrite);

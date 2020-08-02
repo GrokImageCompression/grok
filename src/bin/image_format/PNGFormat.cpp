@@ -119,6 +119,7 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 	png_infop info = nullptr;
 	int bit_depth, interlace_type, compression_type, filter_type;
 	png_uint_32 width = 0U, height = 0U;
+	uint32_t stride;
 	int color_type;
 	local_info.readFromStdin = grk::useStdio(read_idf);
 	grk_image_cmptparm cmptparm[4];
@@ -376,6 +377,7 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 		}
 	}
 
+	stride = local_info.image->comps[0].stride;
 	local_info.row32s = (int32_t*) malloc(
 			(size_t) width * nr_comp * sizeof(int32_t));
 	if (local_info.row32s == nullptr)
@@ -385,10 +387,10 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 		cvtXXTo32s(local_info.rows[i], local_info.row32s,
 				(size_t) width * nr_comp, false);
 		cvtToPlanar(local_info.row32s, planes, width);
-		planes[0] += width;
-		planes[1] += width;
-		planes[2] += width;
-		planes[3] += width;
+		planes[0] += stride;
+		planes[1] += stride;
+		planes[2] += stride;
+		planes[3] += stride;
 	}
 	beach: if (local_info.rows) {
 		for (uint32_t i = 0; i < height; ++i) {
@@ -445,6 +447,7 @@ static int imagetopng(grk_image *image, const char *write_idf,
 	png_color_8 sig_bit;
 	int32_t const *planes[4];
 	uint32_t i;
+	uint32_t stride = image->comps[0].stride;
 
 	memset(&sig_bit, 0, sizeof(sig_bit));
 	prec =  image->comps[0].prec;
@@ -699,10 +702,10 @@ static int imagetopng(grk_image *image, const char *write_idf,
 			cvtPxToCx(planes, buffer32s_cpy, width, adjust);
 			cvt32sToPack(buffer32s_cpy, row_buf_cpy, width * (size_t) nr_comp);
 			png_write_row(local_info.png, row_buf_cpy);
-			planes[0] += width;
-			planes[1] += width;
-			planes[2] += width;
-			planes[3] += width;
+			planes[0] += stride;
+			planes[1] += stride;
+			planes[2] += stride;
+			planes[3] += stride;
 		}
 	}
 

@@ -896,16 +896,16 @@ static grk_image* convert_gray_to_rgb(grk_image *original) {
 	new_image->comps[0].type = new_image->comps[1].type =
 			new_image->comps[2].type = original->comps[0].type;
 	memcpy(new_image->comps[0].data, original->comps[0].data,
-			original->comps[0].w * original->comps[0].h * sizeof(int32_t));
+			original->comps[0].stride * original->comps[0].h * sizeof(int32_t));
 	memcpy(new_image->comps[1].data, original->comps[0].data,
-			original->comps[0].w * original->comps[0].h * sizeof(int32_t));
+			original->comps[0].stride * original->comps[0].h * sizeof(int32_t));
 	memcpy(new_image->comps[2].data, original->comps[0].data,
-			original->comps[0].w * original->comps[0].h * sizeof(int32_t));
+			original->comps[0].stride * original->comps[0].h * sizeof(int32_t));
 
 	for (compno = 1U; compno < original->numcomps; ++compno) {
 		new_image->comps[compno + 2U].type = original->comps[compno].type;
 		memcpy(new_image->comps[compno + 2U].data, original->comps[compno].data,
-				original->comps[compno].w * original->comps[compno].h
+				original->comps[compno].stride * original->comps[compno].h
 						* sizeof(int32_t));
 	}
 	grk_image_destroy(original);
@@ -946,8 +946,8 @@ static grk_image* upsample_image_components(grk_image *original) {
 	}
 
 	for (compno = 0U; compno < original->numcomps; ++compno) {
-		grk_image_cmptparm *new_cmp = &(new_components[compno]);
-		grk_image_comp *org_cmp = &(original->comps[compno]);
+		auto new_cmp = &(new_components[compno]);
+		auto org_cmp = &(original->comps[compno]);
 
 		new_cmp->prec = org_cmp->prec;
 		new_cmp->sgnd = org_cmp->sgnd;
@@ -958,13 +958,10 @@ static grk_image* upsample_image_components(grk_image *original) {
 		new_cmp->w = org_cmp->w; /* should be original->x1 - original->x0 for dx==1 */
 		new_cmp->h = org_cmp->h; /* should be original->y1 - original->y0 for dy==0 */
 
-		if (org_cmp->dx > 1U) {
+		if (org_cmp->dx > 1U)
 			new_cmp->w = original->x1 - original->x0;
-		}
-
-		if (org_cmp->dy > 1U) {
+		if (org_cmp->dy > 1U)
 			new_cmp->h = original->y1 - original->y0;
-		}
 	}
 
 	new_image = grk_image_create(original->numcomps, new_components,
@@ -989,14 +986,12 @@ static grk_image* upsample_image_components(grk_image *original) {
 		new_cmp->type = org_cmp->type;
 
 		if ((org_cmp->dx > 1U) || (org_cmp->dy > 1U)) {
-			const int32_t *src = org_cmp->data;
-			int32_t *dst = new_cmp->data;
-			uint32_t y;
-			uint32_t xoff, yoff;
+			auto src = org_cmp->data;
+			auto dst = new_cmp->data;
 
 			/* need to take into account dx & dy */
-			xoff = org_cmp->dx * org_cmp->x0 - original->x0;
-			yoff = org_cmp->dy * org_cmp->y0 - original->y0;
+			uint32_t xoff = org_cmp->dx * org_cmp->x0 - original->x0;
+			uint32_t yoff = org_cmp->dy * org_cmp->y0 - original->y0;
 			if ((xoff >= org_cmp->dx) || (yoff >= org_cmp->dy)) {
 				spdlog::error(
 						"grk_decompress: Invalid image/component parameters found when upsampling");
@@ -1005,40 +1000,34 @@ static grk_image* upsample_image_components(grk_image *original) {
 				return nullptr;
 			}
 
+			uint32_t y;
 			for (y = 0U; y < yoff; ++y) {
 				memset(dst, 0U, new_cmp->w * sizeof(int32_t));
-				dst += new_cmp->w;
+				dst += new_cmp->stride;
 			}
 
 			if (new_cmp->h > (org_cmp->dy - 1U)) { /* check subtraction overflow for really small images */
 				for (; y < new_cmp->h - (org_cmp->dy - 1U); y += org_cmp->dy) {
 					uint32_t x, dy;
-					uint32_t xorg;
-
-					xorg = 0U;
-					for (x = 0U; x < xoff; ++x) {
+					uint32_t xorg = 0;
+					for (x = 0U; x < xoff; ++x)
 						dst[x] = 0;
-					}
+
 					if (new_cmp->w > (org_cmp->dx - 1U)) { /* check subtraction overflow for really small images */
-						for (; x < new_cmp->w - (org_cmp->dx - 1U);
-								x += org_cmp->dx, ++xorg) {
-							uint32_t dx;
-							for (dx = 0U; dx < org_cmp->dx; ++dx) {
+						for (; x < new_cmp->w - (org_cmp->dx - 1U);	x += org_cmp->dx, ++xorg) {
+							for (uint32_t dx = 0U; dx < org_cmp->dx; ++dx)
 								dst[x + dx] = src[xorg];
-							}
 						}
 					}
-					for (; x < new_cmp->w; ++x) {
+					for (; x < new_cmp->w; ++x)
 						dst[x] = src[xorg];
-					}
-					dst += new_cmp->w;
+					dst += new_cmp->stride;
 
 					for (dy = 1U; dy < org_cmp->dy; ++dy) {
-						memcpy(dst, dst - new_cmp->w,
-								new_cmp->w * sizeof(int32_t));
-						dst += new_cmp->w;
+						memcpy(dst, dst - new_cmp->stride, new_cmp->w * sizeof(int32_t));
+						dst += new_cmp->stride;
 					}
-					src += org_cmp->w;
+					src += org_cmp->stride;
 				}
 			}
 			if (y < new_cmp->h) {
@@ -1046,31 +1035,26 @@ static grk_image* upsample_image_components(grk_image *original) {
 				uint32_t xorg;
 
 				xorg = 0U;
-				for (x = 0U; x < xoff; ++x) {
+				for (x = 0U; x < xoff; ++x)
 					dst[x] = 0;
-				}
+
 				if (new_cmp->w > (org_cmp->dx - 1U)) { /* check subtraction overflow for really small images */
-					for (; x < new_cmp->w - (org_cmp->dx - 1U); x +=
-							org_cmp->dx, ++xorg) {
-						uint32_t dx;
-						for (dx = 0U; dx < org_cmp->dx; ++dx) {
+					for (; x < new_cmp->w - (org_cmp->dx - 1U); x += org_cmp->dx, ++xorg) {
+						for (uint32_t dx = 0U; dx < org_cmp->dx; ++dx)
 							dst[x + dx] = src[xorg];
-						}
 					}
 				}
-				for (; x < new_cmp->w; ++x) {
+				for (; x < new_cmp->w; ++x)
 					dst[x] = src[xorg];
-				}
-				dst += new_cmp->w;
+				dst += new_cmp->stride;
 				++y;
 				for (; y < new_cmp->h; ++y) {
-					memcpy(dst, dst - new_cmp->w, new_cmp->w * sizeof(int32_t));
-					dst += new_cmp->w;
+					memcpy(dst, dst - new_cmp->stride, new_cmp->w * sizeof(int32_t));
+					dst += new_cmp->stride;
 				}
 			}
 		} else {
-			memcpy(new_cmp->data, org_cmp->data,
-					org_cmp->w * org_cmp->h * sizeof(int32_t));
+			memcpy(new_cmp->data, org_cmp->data, org_cmp->stride * org_cmp->h * sizeof(int32_t));
 		}
 	}
 	grk_image_destroy(original);

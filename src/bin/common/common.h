@@ -172,6 +172,9 @@ template<typename T> inline bool readBytes(FILE *fp, grk_image *image,
 	uint64_t totalSize = area * image->numcomps;
 	const uint64_t chunkSize = 4096 * 4;
 	T chunk[chunkSize];
+	uint32_t width = image->comps[0].w;
+	uint32_t stride_diff =  image->comps[0].stride - width;
+	uint32_t counter = 0;
 	while (i < totalSize) {
 		uint64_t toRead = min(chunkSize, (uint64_t) (totalSize - i));
 		size_t bytesRead = fread(chunk, sizeof(T), toRead, fp);
@@ -184,6 +187,11 @@ template<typename T> inline bool readBytes(FILE *fp, grk_image *image,
 			if (compno == image->numcomps) {
 				compno = 0;
 				index++;
+				counter++;
+				if (counter == width){
+					index+= stride_diff;
+					counter=0;
+				}
 			}
 		}
 		i += bytesRead;

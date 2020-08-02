@@ -1090,6 +1090,7 @@ static bool j2k_decompress_tile_t2t1(CodeStream *codeStream, TileProcessor *tile
 
 					//transfer memory from tile component to output image
 					tilec->buf->transfer(&comp->data, &comp->owns_data, &comp->stride);
+					assert(comp->stride >= comp->w);
 				}
 			}
 		}
@@ -1193,7 +1194,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, TileProcessor *tileProc
 
 	}
 
-	for(auto && result: results){
+	for(auto &result: results){
 		result.get();
 	}
 	codeStream->m_tileProcessor = nullptr;
@@ -2007,7 +2008,7 @@ bool j2k_compress(CodeStream *codeStream, grk_plugin_tile *tile,
 		}
 	}
 	if (pool_size > 1) {
-		for(auto && result: results){
+		for(auto &result: results){
 			result.get();
 		}
 		if (!success)
@@ -2046,7 +2047,7 @@ bool j2k_compress_tile(CodeStream *codeStream, TileProcessor *tp,
 		return false;
 	}
 	/* now copy data into the tile component */
-	if (!tileProcessor->copy_image_data_to_tile(p_data,	uncompressed_data_size)) {
+	if (!tileProcessor->copy_uncompressed_data_to_tile(p_data,	uncompressed_data_size)) {
 		GROK_ERROR("Size mismatch between tile data and sent data.");
 		return false;
 	}

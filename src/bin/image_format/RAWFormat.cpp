@@ -157,6 +157,12 @@ grk_image* RAWFormat::rawtoimage(const char *filename,
 		cmptparm[i].dy = subsampling_dy * raw_cp->comps[i].dy;
 		cmptparm[i].w = w;
 		cmptparm[i].h = h;
+
+		if (raw_cp->comps[i].dx * raw_cp->comps[i].dy != 1){
+			spdlog::error("Subsampled raw images are not currently supported");
+			success = false;
+			goto cleanup;
+		}
 	}
 	/* create the image */
 	image = grk_image_create(numcomps, &cmptparm[0], color_space);
@@ -174,35 +180,38 @@ grk_image* RAWFormat::rawtoimage(const char *filename,
 	if (raw_cp->prec <= 8) {
 		for (compno = 0; compno < numcomps; compno++) {
 			int32_t *ptr = image->comps[compno].data;
-			uint64_t nloop = ((uint64_t) w * h)
-					/ (raw_cp->comps[compno].dx * raw_cp->comps[compno].dy);
-			bool rc;
-			if (raw_cp->sgnd)
-				rc = read<int8_t>(f, big_endian, ptr, nloop);
-			else
-				rc = read<uint8_t>(f, big_endian, ptr, nloop);
-			if (!rc) {
-				spdlog::error(
-						"Error reading raw file. End of file probably reached.");
-				success = false;
-				goto cleanup;
+			for (uint32_t j = 0; j < h; ++j){
+				bool rc;
+				if (raw_cp->sgnd)
+					rc = read<int8_t>(f, big_endian, ptr, w);
+				else
+					rc = read<uint8_t>(f, big_endian, ptr, w);
+				if (!rc) {
+					spdlog::error(
+							"Error reading raw file. End of file probably reached.");
+					success = false;
+					goto cleanup;
+				}
+				ptr += image->comps[compno].stride ;
+
 			}
 		}
 	} else if (raw_cp->prec <= 16) {
 		for (compno = 0; compno < numcomps; compno++) {
 			auto ptr = image->comps[compno].data;
-			uint64_t nloop = ((uint64_t) w * h)
-					/ (raw_cp->comps[compno].dx * raw_cp->comps[compno].dy);
-			bool rc;
-			if (raw_cp->sgnd)
-				rc = read<int16_t>(f, big_endian, ptr, nloop);
-			else
-				rc = read<uint16_t>(f, big_endian, ptr, nloop);
-			if (!rc) {
-				spdlog::error(
-						"Error reading raw file. End of file probably reached.");
-				success = false;
-				goto cleanup;
+			for (uint32_t j = 0; j < h; ++j){
+				bool rc;
+				if (raw_cp->sgnd)
+					rc = read<int16_t>(f, big_endian, ptr, w);
+				else
+					rc = read<uint16_t>(f, big_endian, ptr, w);
+				if (!rc) {
+					spdlog::error(
+							"Error reading raw file. End of file probably reached.");
+					success = false;
+					goto cleanup;
+				}
+				ptr += image->comps[compno].stride ;
 			}
 		}
 	} else {
@@ -229,21 +238,24 @@ grk_image* RAWFormat::rawtoimage(const char *filename,
 }
 
 template<typename T> static bool write(FILE *rawFile, bool big_endian,
-		int32_t *ptr, uint32_t w, uint32_t h, int32_t lower, int32_t upper) {
+		int32_t *ptr, uint32_t w, uint32_t stride, uint32_t h, int32_t lower, int32_t upper) {
 	const size_t bufSize = 4096;
 	T buf[bufSize];
 	T *outPtr = buf;
 	size_t outCount = 0;
-
-	for (uint64_t i = 0; i < (uint64_t) w * h; ++i) {
-		int32_t curr = *ptr++;
-		if (curr > upper)
-			curr = upper;
-		else if (curr < lower)
-			curr = lower;
-		if (!grk::writeBytes<T>((T) curr, buf, &outPtr, &outCount, bufSize,
-				big_endian, rawFile))
-			return false;
+	auto stride_diff = stride - w;
+	for (uint32_t j = 0; j < h; ++j) {
+		for (uint32_t i = 0; i <  w; ++i) {
+			int32_t curr = *ptr++;
+			if (curr > upper)
+				curr = upper;
+			else if (curr < lower)
+				curr = lower;
+			if (!grk::writeBytes<T>((T) curr, buf, &outPtr, &outCount, bufSize,
+					big_endian, rawFile))
+				return false;
+		}
+		ptr += stride_diff;
 	}
 	//flush
 	if (outCount) {
@@ -305,54 +317,56 @@ int RAWFormat::imagetoraw(grk_image *image, const char *outfile,
 				image->numcomps);
 
 	for (compno = 0; compno < image->numcomps; compno++) {
+		auto comp = image->comps + compno;
 		spdlog::info("Component %u characteristics: {}x{}x{} {}", compno,
-					image->comps[compno].w, image->comps[compno].h,
-					image->comps[compno].prec,
-					image->comps[compno].sgnd == 1 ? "signed" : "unsigned");
+					comp->w, comp->h,
+					comp->prec,
+					comp->sgnd == 1 ? "signed" : "unsigned");
 
-		if (!image->comps[compno].data) {
+		if (!comp->data) {
 			spdlog::error("imagetotif: component {} is null.", compno);
 			
 			goto beach;
 		}
-		auto w = image->comps[compno].w;
-		auto h = image->comps[compno].h;
-		bool sgnd = image->comps[compno].sgnd;
-		auto prec = image->comps[compno].prec;
+		auto w = comp->w;
+		auto h = comp->h;
+		auto stride = comp->stride;
+		bool sgnd = comp->sgnd;
+		auto prec = comp->prec;
 
 		int32_t lower = sgnd ? -(1 << (prec - 1)) : 0;
 		int32_t upper =
-				sgnd ? -lower - 1 : (1 << image->comps[compno].prec) - 1;
-		int32_t *ptr = image->comps[compno].data;
+				sgnd ? -lower - 1 : (1 << comp->prec) - 1;
+		int32_t *ptr = comp->data;
 
 		bool rc;
 		if (prec <= 8) {
 			if (sgnd)
-				rc = write<int8_t>(rawFile, big_endian, ptr, w, h, lower,
+				rc = write<int8_t>(rawFile, big_endian, ptr, w, stride, h, lower,
 						upper);
 			else
-				rc = write<uint8_t>(rawFile, big_endian, ptr, w, h, lower,
+				rc = write<uint8_t>(rawFile, big_endian, ptr, w, stride, h, lower,
 						upper);
 			if (!rc)
 				spdlog::error("imagetoraw: failed to write bytes for {}",
 						outfile);
 		} else if (prec <= 16) {
 			if (sgnd)
-				rc = write<int16_t>(rawFile, big_endian, ptr, w, h, lower,
+				rc = write<int16_t>(rawFile, big_endian, ptr, w, stride, h, lower,
 						upper);
 			else
-				rc = write<uint16_t>(rawFile, big_endian, ptr, w, h, lower,
+				rc = write<uint16_t>(rawFile, big_endian, ptr, w, stride, h, lower,
 						upper);
 			if (!rc)
 				spdlog::error("fimagetoraw: ailed to write bytes for {}",
 						outfile);
-		} else if (image->comps[compno].prec <= 32) {
+		} else if (comp->prec <= 32) {
 			spdlog::error(
 					"imagetoraw: more than 16 bits per component no handled yet");
 			goto beach;
 		} else {
 			spdlog::error("imagetoraw: invalid precision: {}",
-					image->comps[compno].prec);
+					comp->prec);
 			goto beach;
 		}
 	}

@@ -396,6 +396,7 @@ static grk_image* jpegtoimage(const char *filename,
 
 	int32_t *planes[3];
 	JDIMENSION w = 0, h = 0;
+	uint32_t dest_stride;
 	int bps = 0, numcomps = 0;
 	cvtTo32 cvtJpegTo32s;
 	GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
@@ -573,6 +574,7 @@ static grk_image* jpegtoimage(const char *filename,
 	/* Here we use the library's state variable cinfo.output_scanline as the
 	 * loop counter, so that we don't have to keep track ourselves.
 	 */
+	dest_stride = imageInfo.image->comps[0].stride;
 	while (cinfo.output_scanline < cinfo.output_height) {
 		/* jpeg_read_scanlines expects an array of pointers to scanlines.
 		 * Here the array is only one element long, but you could ask for
@@ -587,9 +589,9 @@ static grk_image* jpegtoimage(const char *filename,
 		// convert to planar
 		cvtToPlanar(imageInfo.buffer32s, planes, (size_t) w);
 
-		planes[0] += w;
-		planes[1] += w;
-		planes[2] += w;
+		planes[0] += dest_stride;
+		planes[1] += dest_stride;
+		planes[2] += dest_stride;
 	}
 
 	/* Step 7: Finish decompression */

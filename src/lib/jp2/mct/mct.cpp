@@ -119,7 +119,7 @@ void mct::encode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 			else
 				encoder();
 	    }
-	    for(auto && result: results){
+	    for(auto &result: results){
 	        result.get();
 	    }
 		i = chunkSize * num_threads;
@@ -179,7 +179,7 @@ void mct::decode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 	    		decoder();
 
 	    }
-	    for(auto && result: results){
+	    for(auto &result: results){
 	        result.get();
 	    }
 		i = chunkSize * num_threads;
@@ -338,7 +338,7 @@ void mct::encode_irrev( int32_t* GRK_RESTRICT chan0,
 			else
 				encoder();
 		}
-		for(auto && result: results){
+		for(auto &result: results){
 			result.get();
 		}
 		i = num_threads * chunkSize;
@@ -399,7 +399,7 @@ void mct::decode_irrev(float *GRK_RESTRICT c0, float *GRK_RESTRICT c1, float *GR
 			else
 				decoder();
 		}
-		for(auto && result: results){
+		for(auto &result: results){
 			result.get();
 		}
 		i = chunkSize * num_threads;
@@ -422,85 +422,85 @@ void mct::decode_irrev(float *GRK_RESTRICT c0, float *GRK_RESTRICT c1, float *GR
 
 
 void mct::calculate_norms(double *pNorms, uint32_t pNbComps, float *pMatrix) {
-	float lCurrentValue;
-	double *lNorms = (double*) pNorms;
-	float *lMatrix = (float*) pMatrix;
+	float CurrentValue;
+	double *Norms = (double*) pNorms;
+	float *Matrix = (float*) pMatrix;
 
 	uint32_t i;
 	for (i = 0; i < pNbComps; ++i) {
-		lNorms[i] = 0;
-		uint32_t lIndex = i;
+	 Norms[i] = 0;
+		uint32_t Index = i;
 		uint32_t j;
 		for (j = 0; j < pNbComps; ++j) {
-			lCurrentValue = lMatrix[lIndex];
-			lIndex += pNbComps;
-			lNorms[i] += lCurrentValue * lCurrentValue;
+		 CurrentValue = Matrix[Index];
+		 Index += pNbComps;
+		 Norms[i] += CurrentValue * CurrentValue;
 		}
-		lNorms[i] = sqrt(lNorms[i]);
+	 Norms[i] = sqrt(Norms[i]);
 	}
 }
 
 bool mct::encode_custom(uint8_t *pCodingdata, uint64_t n, uint8_t **pData,
 		uint32_t pNbComp, uint32_t isSigned) {
-	auto lMct = (float*) pCodingdata;
-	uint32_t lNbMatCoeff = pNbComp * pNbComp;
-	auto lData = (int32_t**) pData;
-	uint32_t lMultiplicator = 1 << 13;
+	auto Mct = (float*) pCodingdata;
+	uint32_t NbMatCoeff = pNbComp * pNbComp;
+	auto Data = (int32_t**) pData;
+	uint32_t Multiplicator = 1 << 13;
 	ARG_NOT_USED(isSigned);
 
-	auto lCurrentData = (int32_t*) grk_malloc(
-			(pNbComp + lNbMatCoeff) * sizeof(int32_t));
-	if (!lCurrentData)
+	auto CurrentData = (int32_t*) grk_malloc(
+			(pNbComp + NbMatCoeff) * sizeof(int32_t));
+	if (!CurrentData)
 		return false;
 
-	auto lCurrentMatrix = lCurrentData + pNbComp;
+	auto CurrentMatrix = CurrentData + pNbComp;
 
-	for (uint64_t i = 0; i < lNbMatCoeff; ++i)
-		lCurrentMatrix[i] = (int32_t) (*(lMct++) * (float) lMultiplicator);
+	for (uint64_t i = 0; i < NbMatCoeff; ++i)
+	 CurrentMatrix[i] = (int32_t) (*(Mct++) * (float) Multiplicator);
 
 	for (uint64_t i = 0; i < n; ++i) {
 		for (uint32_t j = 0; j < pNbComp; ++j)
-			lCurrentData[j] = (*(lData[j]));
+		 CurrentData[j] = (*(Data[j]));
 		for (uint32_t j = 0; j < pNbComp; ++j) {
-			auto lMctPtr = lCurrentMatrix;
-			*(lData[j]) = 0;
+			auto MctPtr = CurrentMatrix;
+			*(Data[j]) = 0;
 			for (uint32_t k = 0; k < pNbComp; ++k) {
-				*(lData[j]) += int_fix_mul(*lMctPtr, lCurrentData[k]);
-				++lMctPtr;
+				*(Data[j]) += int_fix_mul(*MctPtr, CurrentData[k]);
+				++MctPtr;
 			}
-			++lData[j];
+			++Data[j];
 		}
 	}
-	grk_free(lCurrentData);
+	grk_free(CurrentData);
 
 	return true;
 }
 
 bool mct::decode_custom(uint8_t *pDecodingData, uint64_t n, uint8_t **pData,
 		uint32_t pNbComp, uint32_t isSigned) {
-	auto lData = (float**) pData;
+	auto Data = (float**) pData;
 
 	ARG_NOT_USED(isSigned);
 
-	auto lCurrentData = (float*) grk_malloc(2 * pNbComp * sizeof(float));
-	if (!lCurrentData)
+	auto CurrentData = (float*) grk_malloc(2 * pNbComp * sizeof(float));
+	if (!CurrentData)
 		return false;
 
-	auto lCurrentResult = lCurrentData + pNbComp;
+	auto CurrentResult = CurrentData + pNbComp;
 
 	for (uint64_t i = 0; i < n; ++i) {
-		auto lMct = (float*) pDecodingData;
+		auto Mct = (float*) pDecodingData;
 		for (uint32_t j = 0; j < pNbComp; ++j) {
-			lCurrentData[j] = (float) (*(lData[j]));
+		 CurrentData[j] = (float) (*(Data[j]));
 		}
 		for (uint32_t j = 0; j < pNbComp; ++j) {
-			lCurrentResult[j] = 0;
+		 CurrentResult[j] = 0;
 			for (uint32_t k = 0; k < pNbComp; ++k)
-				lCurrentResult[j] += *(lMct++) * lCurrentData[k];
-			*(lData[j]++) = (float) (lCurrentResult[j]);
+			 CurrentResult[j] += *(Mct++) * CurrentData[k];
+			*(Data[j]++) = (float) (CurrentResult[j]);
 		}
 	}
-	grk_free(lCurrentData);
+	grk_free(CurrentData);
 	return true;
 }
 

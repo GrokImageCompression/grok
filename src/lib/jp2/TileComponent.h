@@ -69,11 +69,6 @@ struct TileComponent : public grk_rect_u32 {
 
 	void create_buffer(	grk_image *output_image,uint32_t dx,uint32_t dy);
 
-	void get_dimensions(grk_image *l_image, grk_image_comp  *l_img_comp,
-			uint32_t *l_size_comp, uint32_t *l_width,
-			uint32_t *l_height, uint32_t *l_offset_x, uint32_t *l_offset_y,
-			uint32_t *l_image_width, uint32_t *l_stride, uint64_t *l_tile_offset);
-
 	bool init(bool isEncoder,
 			bool whole_tile,
 			grk_image *output_image,

@@ -101,9 +101,9 @@ static unsigned short readushort(FILE *f, int bigendian) {
 static grk_image* pgxtoimage(const char *filename,
 		grk_cparameters *parameters) {
 	FILE *f = nullptr;
-	uint32_t w, h, prec, numcomps;
+	uint32_t w, stride_diff,h, prec, numcomps;
 	int32_t max;
-	uint64_t i, area;
+	uint64_t i, index;
 	GRK_COLOR_SPACE color_space;
 	grk_image_cmptparm cmptparm; /* maximum of 1 component  */
 	grk_image *image = nullptr;
@@ -212,30 +212,34 @@ static grk_image* pgxtoimage(const char *filename,
 
 	/* set image data */
 	comp = &image->comps[0];
-	area = (uint64_t) w * h;
-	for (i = 0; i < area; i++) {
-		int32_t v = 0;
-		if (force8) {
-			v = readuchar(f) + adjustS;
-			v = (v << ushift) + (v >> dshift);
-		} else  {
-			if (comp->prec == 8) {
-				if (!comp->sgnd) {
-					v = readuchar(f);
+	index = 0;
+	stride_diff = comp->stride - w;
+	for (uint32_t j = 0; j < h; ++j) {
+		for (uint32_t i = 0; i <  w; ++i) {
+			int32_t v = 0;
+			if (force8) {
+				v = readuchar(f) + adjustS;
+				v = (v << ushift) + (v >> dshift);
+			} else  {
+				if (comp->prec == 8) {
+					if (!comp->sgnd) {
+						v = readuchar(f);
+					} else {
+						v = readuchar(f);
+					}
 				} else {
-					v = readuchar(f);
-				}
-			} else {
-				if (!comp->sgnd) {
-					v = readushort(f, bigendian);
-				} else {
-					v = readushort(f, bigendian);
+					if (!comp->sgnd) {
+						v = readushort(f, bigendian);
+					} else {
+						v = readushort(f, bigendian);
+					}
 				}
 			}
+			if (v > max)
+				max = v;
+			comp->data[index++] = v;
 		}
-		if (v > max)
-			max = v;
-		comp->data[i] = v;
+		index +=stride_diff;
 	}
 	cleanup: if (!grk::safe_fclose(f)) {
 		grk_image_destroy(image);
@@ -248,7 +252,7 @@ static int imagetopgx(grk_image *image, const char *outfile) {
 	int fails = 1;
 	FILE *fdest = nullptr;
 	for (uint32_t compno = 0; compno < image->numcomps; compno++) {
-		grk_image_comp *comp = &image->comps[compno];
+		auto comp = &image->comps[compno];
 		char bname[4096]; /* buffer for name */
 		bname[4095] = '\0';
 		int nbytes = 0;
@@ -279,8 +283,8 @@ static int imagetopgx(grk_image *image, const char *outfile) {
 			goto beach;
 		}
 
-		uint32_t w = image->comps[compno].w;
-		uint32_t h = image->comps[compno].h;
+		uint32_t w = comp->w;
+		uint32_t h = comp->h;
 
 		fprintf(fdest, "PG ML %c %u %u %u\n", comp->sgnd ? '-' : '+',
 				comp->prec, w, h);
@@ -291,18 +295,22 @@ static int imagetopgx(grk_image *image, const char *outfile) {
 			nbytes = 2;
 
 		const size_t bufSize = 4096;
-		uint64_t area = (uint64_t) w * h;
 		size_t outCount = 0;
+		size_t index = 0;
+		uint32_t stride_diff = comp->stride - w;
 		if (nbytes == 1){
 			uint8_t buf[bufSize];
 			uint8_t *outPtr = buf;
-			for (uint64_t i = 0; i < area; i++) {
-				const int val = image->comps[compno].data[i];
-				if (!grk::writeBytes<uint8_t>((uint8_t) val, buf, &outPtr,
-						&outCount, bufSize, true, fdest)) {
-					spdlog::error("failed to write bytes for {}", bname);
-					goto beach;
+			for (uint32_t j = 0; j < h; ++j) {
+				for (uint32_t i = 0; i <  w; ++i) {
+					const int val = comp->data[index++];
+					if (!grk::writeBytes<uint8_t>((uint8_t) val, buf, &outPtr,
+							&outCount, bufSize, true, fdest)) {
+						spdlog::error("failed to write bytes for {}", bname);
+						goto beach;
+					}
 				}
+				index += stride_diff;
 			}
 			if (outCount) {
 				size_t res = fwrite(buf, sizeof(uint8_t), outCount, fdest);
@@ -315,13 +323,16 @@ static int imagetopgx(grk_image *image, const char *outfile) {
 		} else {
 			uint16_t buf[bufSize];
 			uint16_t *outPtr = buf;
-			for (uint64_t i = 0; i < area; i++) {
-				const int val = image->comps[compno].data[i];
-				if (!grk::writeBytes<uint16_t>((uint16_t) val, buf, &outPtr,
-						&outCount, bufSize, true, fdest)) {
-					spdlog::error("failed to write bytes for {}", bname);
-					goto beach;
+			for (uint32_t j = 0; j < h; ++j) {
+				for (uint32_t i = 0; i <  w; ++i) {
+					const int val = image->comps[compno].data[index++];
+					if (!grk::writeBytes<uint16_t>((uint16_t) val, buf, &outPtr,
+							&outCount, bufSize, true, fdest)) {
+						spdlog::error("failed to write bytes for {}", bname);
+						goto beach;
+					}
 				}
+				index += stride_diff;
 			}
 			if (outCount) {
 				size_t res = fwrite(buf, sizeof(uint16_t), outCount, fdest);

@@ -64,7 +64,7 @@ void T1Part1::preEncode(encodeBlockInfo *block, grk_tile *tile,
 	if (!t1_allocate_buffers(t1, w,h))
 		return;
 	t1->data_stride = w;
-	uint32_t tile_width = (tile->comps + block->compno)->width();
+	uint32_t tile_width = (tile->comps + block->compno)->buf->stride();
 	auto tileLineAdvance = tile_width - w;
 	auto tiledp = block->tiledp;
 	uint32_t tileIndex = 0;
@@ -217,7 +217,7 @@ void T1Part1::post_decode(t1_info *t1,
 	uint32_t qmfbid = block->qmfbid;
 	float stepsize_over_two = block->stepsize/2;
 	auto tilec_data = block->tiledp;
-	uint32_t tile_w = block->tilec->width();
+	uint32_t tile_w = block->tilec->buf->stride();
 	uint32_t cblk_w = (uint32_t) (cblk->x1 - cblk->x0);
 	uint32_t cblk_h = (uint32_t) (cblk->y1 - cblk->y0);
 
@@ -304,7 +304,7 @@ void T1Part1::post_decode(t1_info *t1,
 				for (; i < cblk_w; ++i)
 					((int32_t*) tiledp)[i] =  src[i] / 2;
 				src += (size_t) cblk_w;
-				tiledp += (size_t)tile_w;
+				tiledp += tile_w;
 			}
 		} else {
 			float *GRK_RESTRICT tiledp = (float*) dest;

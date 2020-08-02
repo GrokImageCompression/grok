@@ -1014,19 +1014,22 @@ void TileProcessor::copy_image_to_tile() {
 	for (uint32_t i = 0; i < image->numcomps; ++i) {
 		auto tilec = tile->comps + i;
 		auto img_comp = image->comps + i;
-		uint32_t size_comp, width, height, offset_x, offset_y, image_width,
-				stride;
-		uint64_t tile_offset;
 
-		tilec->get_dimensions(image, img_comp, &size_comp, &width, &height,
-				&offset_x, &offset_y, &image_width, &stride, &tile_offset);
-		auto src_ptr = img_comp->data + tile_offset;
-		auto dest_ptr = tilec->buf->ptr(0,0,0,0);
+		uint32_t width = tilec->width();
+		uint32_t height = tilec->height();
+		uint32_t offset_x = ceildiv<uint32_t>(image->x0, img_comp->dx);
+		uint32_t offset_y = ceildiv<uint32_t>(image->y0, img_comp->dy);
+		uint32_t image_width = ceildiv<uint32_t>(image->x1 - image->x0,
+				img_comp->dx);
+		uint64_t image_offset = (tilec->x0 - offset_x)
+				+ (uint64_t) (tilec->y0 - offset_y) * image_width;
+		auto src = img_comp->data + image_offset;
+		auto dest = tilec->buf->ptr(0,0,0,0);
 
 		for (uint32_t j = 0; j < height; ++j) {
-			memcpy(dest_ptr, src_ptr, width * sizeof(int32_t));
-			src_ptr += stride + width;
-			dest_ptr += width;
+			memcpy(dest, src, width * sizeof(int32_t));
+			src += img_comp->stride;
+			dest += tilec->buf->stride();
 		}
 	}
 }
@@ -1046,18 +1049,12 @@ bool TileProcessor::mct_decode() {
 	if (!m_tcp->mct)
 		return true;
 
-	uint64_t image_samples =
-			(uint64_t) tile_comp->buf->bounds().area();
-	uint64_t samples = image_samples;
+	uint64_t samples = tile_comp->buf->full_area();
 
 	if (tile->numcomps >= 3) {
 		/* testcase 1336.pdf.asan.47.376 */
-		if ((uint64_t) tile->comps[0].buf->bounds().area()
-				< image_samples
-				|| (uint64_t) tile->comps[1].buf->bounds().area()
-						< image_samples
-				|| (uint64_t) tile->comps[2].buf->bounds().area()
-						< image_samples) {
+		if (tile->comps[1].buf->full_area()	!= samples
+				|| tile->comps[2].buf->full_area()	!= samples) {
 			GROK_ERROR(
 					"Tiles don't all have the same dimension. Skip the MCT step.");
 			return false;
@@ -1115,21 +1112,16 @@ bool TileProcessor::dc_level_shift_decode() {
 	uint32_t compno = 0;
 	for (compno = 0; compno < tile->numcomps; compno++) {
 		int32_t min = INT32_MAX, max = INT32_MIN;
-		uint32_t x0;
-		uint32_t y0;
 		uint32_t x1;
 		uint32_t y1;
 		auto tile_comp = tile->comps + compno;
 		auto tccp = m_tcp->tccps + compno;
 		auto img_comp = image->comps + compno;
-		uint32_t stride = 0;
+		uint32_t stride_diff = tile_comp->buf->stride() - (uint32_t)tile_comp->buf->bounds().width();
 		auto current_ptr = tile_comp->buf->ptr();
 
-		x0 = 0;
-		y0 = 0;
-		x1 = (uint32_t) (tile_comp->buf->bounds().width());
-		y1 = (uint32_t) (tile_comp->buf->bounds().height());
-		assert(tile_comp->width() >= (x1 - x0));
+		x1 = (uint32_t) tile_comp->buf->bounds().width();
+		y1 = (uint32_t) tile_comp->buf->bounds().height();
 
 		if (img_comp->sgnd) {
 			min = -(1 << (img_comp->prec - 1));
@@ -1140,46 +1132,28 @@ bool TileProcessor::dc_level_shift_decode() {
 		}
 
 		if (tccp->qmfbid == 1) {
-			for (uint32_t j = y0; j < y1; ++j) {
-				for (uint32_t i = x0; i < x1; ++i) {
+			for (uint32_t j = 0; j < y1; ++j) {
+				for (uint32_t i = 0; i < x1; ++i) {
 					*current_ptr = std::clamp<int32_t>(
 							*current_ptr + tccp->m_dc_level_shift, min, max);
 					current_ptr++;
 				}
-				current_ptr += stride;
+				current_ptr += stride_diff;
 			}
 		} else {
-			for (uint32_t j = y0; j < y1; ++j) {
-				for (uint32_t i = x0; i < x1; ++i) {
+			for (uint32_t j = 0; j < y1; ++j) {
+				for (uint32_t i = 0; i < x1; ++i) {
 					float value = *((float*) current_ptr);
 					*current_ptr = std::clamp<int32_t>(
 							(int32_t) grok_lrintf(value)
 									+ tccp->m_dc_level_shift, min, max);
 					current_ptr++;
 				}
-				current_ptr += stride;
+				current_ptr += stride_diff;
 			}
 		}
 	}
 	return true;
-}
-
-
-uint64_t TileProcessor::get_uncompressed_tile_size(bool reduced) {
-	uint64_t tile_size = 0;
-
-	for (uint32_t i = 0; i < image->numcomps; ++i) {
-		auto tilec = tile->comps + i;
-		auto img_comp = image->comps + i;
-		uint32_t size_comp = (img_comp->prec + 7) >> 3;
-
-		tile_size += size_comp
-				* (reduced ?
-						(uint64_t) tilec->buf->bounds().area() :
-						tilec->area());
-	}
-
-	return tile_size;
 }
 
 bool TileProcessor::dc_level_shift_encode() {
@@ -1187,17 +1161,17 @@ bool TileProcessor::dc_level_shift_encode() {
 		auto tile_comp = tile->comps + compno;
 		auto tccp = m_tcp->tccps + compno;
 		auto current_ptr = tile_comp->buf->ptr();
-		uint64_t nb_elem = tile_comp->area();
+		uint64_t samples = tile_comp->buf->full_area();
 
 		if (tccp->qmfbid == 1) {
 			if (tccp->m_dc_level_shift == 0)
 				continue;
-			for (uint64_t i = 0; i < nb_elem; ++i) {
+			for (uint64_t i = 0; i < samples; ++i) {
 				*current_ptr -= tccp->m_dc_level_shift;
 				++current_ptr;
 			}
 		} else {
-			for (uint64_t i = 0; i < nb_elem; ++i) {
+			for (uint64_t i = 0; i < samples; ++i) {
 				*current_ptr = (*current_ptr - tccp->m_dc_level_shift)
 						* (1 << 11);
 				++current_ptr;
@@ -1210,7 +1184,7 @@ bool TileProcessor::dc_level_shift_encode() {
 
 bool TileProcessor::mct_encode() {
 	auto tile_comp = tile->comps;
-	uint64_t samples = tile_comp->area();
+	uint64_t samples = tile_comp->buf->full_area();
 
 	if (!m_tcp->mct)
 		return true;
@@ -1408,9 +1382,7 @@ bool TileProcessor::rate_allocate() {
  * of the decoded image. This method copies a sub-region of this region
  * into p_output_image (which stores data in 32 bit precision)
  *
- * @param tile_data:
  * @param p_output_image:
- * @param clearOutputOnInit
  *
  * @return:
  */
@@ -1420,10 +1392,6 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_
 		auto tilec = tile->comps + i;
 		auto comp_src = image_src->comps + i;
 		auto comp_dest = p_output_image->comps + i;
-
-		auto tile_data = (uint8_t*)tilec->buf->ptr();
-
-		/* Copy info from decoded comp image to output image */
 
 		/* Border of the current output component. (x0_dest,y0_dest)
 		 * corresponds to origin of dest buffer */
@@ -1436,79 +1404,67 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_
 
 		grk_rect src_dim = tilec->buf->bounds();
 		uint32_t width_src = (uint32_t) src_dim.width();
+		uint32_t stride_src = tilec->buf->stride();
 		uint32_t height_src = (uint32_t) src_dim.height();
 
-		/* Compute the area (0, 0, offset_x1_src, offset_y1_src)
+		/* Compute the area (0, 0, off_x1_src, off_y1_src)
 		 * of the input buffer (decoded tile component) which will be moved
-		 * to the output buffer. Compute the area of the output buffer (offset_x0_dest,
-		 * offset_y0_dest, width_dest, height_dest)  which will be modified
+		 * to the output buffer. Compute the area of the output buffer (off_x0_dest,
+		 * off_y0_dest, width_dest, height_dest)  which will be modified
 		 * by this input area.
 		 * */
-		uint32_t offset_x1_src = 0,	offset_y1_src = 0;
-		uint32_t offset_x0_dest = 0, offset_y0_dest = 0;
-		uint32_t width_dest = 0, height_dest = 0;
+		uint32_t life_off_src = stride_src - width_src;
+		uint32_t off_x0_dest = 0;
+		uint32_t width_dest = 0;
 		if (x0_dest < src_dim.x0) {
-			offset_x0_dest = (uint32_t) (src_dim.x0 - x0_dest);
+			off_x0_dest = (uint32_t) (src_dim.x0 - x0_dest);
 			if (x1_dest >= src_dim.x1) {
 				width_dest = width_src;
-				offset_x1_src = 0;
 			} else {
 				width_dest = (uint32_t) (x1_dest - src_dim.x0);
-				offset_x1_src = (width_src - width_dest);
+				life_off_src = stride_src - width_dest;
 			}
 		} else {
-			offset_x0_dest = 0U;
+			off_x0_dest = 0U;
 			if (x1_dest >= src_dim.x1) {
-				width_dest = (uint32_t) (width_src);
-				offset_x1_src = 0;
+				width_dest = width_src;
 			} else {
 				width_dest = comp_dest->w;
-				offset_x1_src = (uint32_t) (src_dim.x1 - x1_dest);
+				life_off_src = (uint32_t) (src_dim.x1 - x1_dest);
 			}
 		}
+
+		uint32_t off_y0_dest = 0;
+		uint32_t height_dest = 0;
 		if (y0_dest < src_dim.y0) {
-			offset_y0_dest = (uint32_t) (src_dim.y0 - y0_dest);
+			off_y0_dest = (uint32_t) (src_dim.y0 - y0_dest);
 			if (y1_dest >= src_dim.y1) {
 				height_dest = height_src;
-				offset_y1_src = 0;
 			} else {
 				height_dest = (uint32_t) (y1_dest - src_dim.y0);
-				offset_y1_src = (height_src - height_dest);
 			}
 		} else {
-			offset_y0_dest = 0U;
+			off_y0_dest = 0;
 			if (y1_dest >= src_dim.y1) {
-				height_dest = (uint32_t) (height_src);
-				offset_y1_src = 0;
+				height_dest = height_src;
 			} else {
 				height_dest = comp_dest->h;
-				offset_y1_src = (uint32_t) (src_dim.y1 - y1_dest);
 			}
 		}
-		if ((offset_x1_src > width_src)	|| (offset_y1_src > height_src))
-			return false;
 		if (width_dest > comp_dest->w || height_dest > comp_dest->h)
 			return false;
 		if (width_src > comp_src->w || height_src > comp_src->h)
 			return false;
 
-		/* Compute the input buffer offset */
-		size_t line_offset_src = (size_t) offset_x1_src;
-		/* Compute the output buffer offset */
-		size_t start_offset_dest = (size_t) offset_x0_dest
-				+ (size_t) offset_y0_dest * (size_t) comp_dest->w;
-		size_t line_offset_dest = (size_t) comp_dest->w
-				- (size_t) width_dest;
-
-		auto dest_ind = start_offset_dest;
 		size_t src_ind = 0;
-		auto src_ptr = (uint32_t*) tile_data;
+		auto dest_ind = (size_t) off_x0_dest
+				  	  + (size_t) off_y0_dest * comp_dest->stride;
+		size_t line_off_dest =  (size_t) comp_dest->stride - (size_t) width_dest;
+		auto src_ptr = tilec->buf->ptr();
 		for (uint32_t j = 0; j < height_dest; ++j) {
-			memcpy(comp_dest->data + dest_ind,
-					src_ptr + src_ind,
-						width_dest * sizeof(int32_t));
-			dest_ind += width_dest + line_offset_dest;
-			src_ind  += width_dest + line_offset_src;
+			memcpy(comp_dest->data + dest_ind, src_ptr + src_ind,width_dest * sizeof(int32_t));
+			dest_ind += width_dest + line_off_dest;
+			src_ind  += width_dest + life_off_src;
 		}
 	}
 
@@ -1533,7 +1489,7 @@ bool TileProcessor::pre_write_tile() {
 			auto tilec = tile->comps + j;
 			auto imagec = image->comps + j;
 			if (transfer_image_to_tile && imagec->data) {
-				tilec->buf->attach(imagec->data);
+				tilec->buf->attach(imagec->data, imagec->stride);
 			} else {
 				if (!tilec->buf->alloc()) {
 					GROK_ERROR("Error allocating tile component data.");
@@ -1548,46 +1504,68 @@ bool TileProcessor::pre_write_tile() {
 	return rc;
 }
 
-bool TileProcessor::copy_image_data_to_tile(uint8_t *p_src,
-		uint64_t src_length) {
-	uint64_t data_size = get_uncompressed_tile_size(false);
+/**
+ * Assume that source stride  == source width == destination width
+ */
+template<typename T> void grk_copy_strided(uint32_t w, uint32_t stride, uint32_t h, T *src, int32_t *dest){
+	assert(stride >= w);
+	uint32_t stride_diff = stride-w;
+	size_t src_ind =0, dest_ind = 0;
+	for (uint32_t j = 0; j < h; ++j) {
+		for (uint32_t i = 0; i < w; ++i){
+			dest[dest_ind++] = src[src_ind++];
+		}
+		dest_ind += stride_diff;
+	}
+}
 
-	if (!p_src || (data_size != src_length))
+bool TileProcessor::copy_uncompressed_data_to_tile(uint8_t *p_src,
+		uint64_t src_length) {
+	 uint64_t tile_size = 0;
+	for (uint32_t i = 0; i < image->numcomps; ++i) {
+		auto tilec = tile->comps + i;
+		auto img_comp = image->comps + i;
+		uint32_t size_comp = (img_comp->prec + 7) >> 3;
+		tile_size += size_comp *tilec->area();
+	}
+
+
+	if (!p_src || (tile_size != src_length))
 		return false;
+	size_t length_per_component = src_length / image->numcomps;
 	for (uint32_t i = 0; i < image->numcomps; ++i) {
 		auto tilec = tile->comps + i;
 		auto img_comp = image->comps + i;
 
 		uint32_t size_comp = (img_comp->prec + 7) >> 3;
-		uint64_t nb_elem = tilec->area();
 		auto dest_ptr = tilec->buf->ptr(0,0,0,0);
+		uint32_t w = (uint32_t)tilec->buf->bounds().width();
+		uint32_t h = (uint32_t)tilec->buf->bounds().height();
+		uint32_t stride = tilec->buf->stride();
 		switch (size_comp) {
-		case 1: {
+		case 1:
 			if (img_comp->sgnd) {
-				auto src_ptr = (int8_t*) p_src;
-				for (uint64_t j = 0; j < nb_elem; ++j)
-					*dest_ptr++ = *src_ptr++;
-				p_src = (uint8_t*) src_ptr;
-			} else {
-				auto src_ptr = (uint8_t*) p_src;
-				for (uint64_t j = 0; j < nb_elem; ++j)
-					*dest_ptr++ = *src_ptr++;
-				p_src = src_ptr;
+				auto src =  (int8_t*)p_src;
+				grk_copy_strided<int8_t>(w, stride,h, src, dest_ptr);
+				p_src = (uint8_t*)(src + length_per_component);
 			}
+			else {
+				auto src =  (uint8_t*)p_src;
+				grk_copy_strided<uint8_t>(w, stride,h, src, dest_ptr);
+				p_src = (uint8_t*)(src + length_per_component);
+
 			}
 			break;
-		case 2: {
+		case 2:
 			if (img_comp->sgnd) {
-				auto src_ptr = (int16_t*) p_src;
-				for (uint64_t j = 0; j < nb_elem; ++j)
-					*dest_ptr++ = *src_ptr++;
-				p_src = (uint8_t*) src_ptr;
-			} else {
-				auto src_ptr = (uint16_t*) p_src;
-				for (uint64_t j = 0; j < nb_elem; ++j)
-					*dest_ptr++ = *src_ptr++;
-				p_src = (uint8_t*) src_ptr;
+				auto src =  (int16_t*)p_src;
+				grk_copy_strided<int16_t>(w, stride,h, (int16_t*)p_src, dest_ptr);
+				p_src = (uint8_t*)(src + length_per_component);
 			}
+			else {
+				auto src =  (uint16_t*)p_src;
+				grk_copy_strided<uint16_t>(w, stride,h, (uint16_t*)p_src, dest_ptr);
+				p_src = (uint8_t*)(src + length_per_component);
 			}
 			break;
 		}

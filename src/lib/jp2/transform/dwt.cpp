@@ -775,7 +775,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 					})
 				);
 			}
-			for(auto && result: results)
+			for(auto &result: results)
 				result.get();
         }
         vert.dn = rh - vert.sn;
@@ -838,7 +838,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 					})
 				);
             }
-			for(auto && result: results)
+			for(auto &result: results)
 				result.get();
         }
         res++;
@@ -1249,7 +1249,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 					})
 				);
 			}
-			for(auto && result: results)
+			for(auto &result: results)
 				result.get();
         }
         vert.dn = rh - vert.sn;
@@ -1338,7 +1338,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 					})
 				);
             }
-			for(auto && result: results)
+			for(auto &result: results)
 				result.get();
         }
         res++;
@@ -1951,7 +1951,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 					})
 				);
 			}
-			for(auto && result: results)
+			for(auto &result: results)
 				result.get();
 		   }
         }
@@ -2052,7 +2052,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 				})
 				);
 			}
-			for(auto && result: results)
+			for(auto &result: results)
 				result.get();
 		}
     }

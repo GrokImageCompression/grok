@@ -54,13 +54,13 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 	bool rc = true;
 	uint32_t rw,rh,rw_next,rh_next;
 	uint8_t cas_row,cas_col;
-	uint32_t stride = tilec->width();
+	uint32_t stride = tilec->buf->stride();
 	uint32_t num_decomps = (uint32_t) (tilec->numresolutions - 1);
-	int32_t *a = tilec->buf->ptr();
-	grk_resolution *cur_res = tilec->resolutions + num_decomps;
-	grk_resolution *next_res = cur_res - 1;
+	auto a = tilec->buf->ptr();
+	auto cur_res = tilec->resolutions + num_decomps;
+	auto next_res = cur_res - 1;
 
-	int32_t **bj_array = new int32_t*[ThreadPool::get()->num_threads()];
+	auto bj_array = new int32_t*[ThreadPool::get()->num_threads()];
 	for (uint32_t i = 0; i < ThreadPool::get()->num_threads(); ++i){
 		bj_array[i] = nullptr;
 	}
@@ -96,8 +96,8 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 			if (ThreadPool::get()->num_threads() == 1){
 				DWT wavelet;
 				for (auto m = 0U;m < std::min<uint32_t>(linesPerThreadV, rw); ++m) {
-					int32_t *bj = bj_array[0];
-					int32_t *aj = a + m;
+					auto bj = bj_array[0];
+					auto aj = a + m;
 					for (uint32_t k = 0; k < rh; ++k)
 						bj[k] = aj[k * stride];
 					wavelet.encode_line(bj, (int32_t)d_n, (int32_t)s_n, cas_col);
@@ -115,8 +115,8 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 							DWT wavelet;
 							for (uint32_t m = index * linesPerThreadV;
 									m < std::min<uint32_t>((index+1)*linesPerThreadV, rw); ++m) {
-								int32_t *bj = bj_array[index];
-								int32_t *aj = a + m;
+								auto bj = bj_array[index];
+								auto aj = a + m;
 								for (uint32_t k = 0; k < rh; ++k)
 									bj[k] = aj[k * stride];
 								wavelet.encode_line(bj, (int32_t)d_n, (int32_t)s_n, cas_col);
@@ -126,9 +126,8 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 						})
 					);
 				}
-				for(auto && result: results){
+				for(auto &result: results)
 					result.get();
-				}
 			}
 		}
 
@@ -140,8 +139,8 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 			if (ThreadPool::get()->num_threads() == 1){
 				DWT wavelet;
 				for (auto m = 0U;m < std::min<uint32_t>(linesPerThreadH, rh); ++m) {
-					int32_t *bj = bj_array[0];
-					int32_t *aj = a + m * stride;
+					auto bj = bj_array[0];
+					auto aj = a + m * stride;
 					memcpy(bj,aj,rw << 2);
 					wavelet.encode_line(bj, (int32_t)d_n, (int32_t)s_n, cas_row);
 					dwt_utils::deinterleave_h(bj, aj, d_n, s_n, cas_row);
@@ -169,9 +168,8 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 						})
 					);
 				}
-				for(auto && result: results){
+				for(auto &result: results)
 					result.get();
-				}
 			}
 		}
 		cur_res = next_res;
