@@ -796,7 +796,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
             for (j = 0; j + PLL_COLS_53 <= rw; j += PLL_COLS_53){
                 decode_v_53(&vert, bandLL, strideLL, bandLH, strideLH, PLL_COLS_53);
 				bandLL += PLL_COLS_53;
-				bandHL += PLL_COLS_53;
+				bandLH += PLL_COLS_53;
             }
             if (j < rw)
                 decode_v_53(&vert, bandLL, strideLL, bandLH, strideLH, rw - j);
