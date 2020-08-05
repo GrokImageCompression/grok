@@ -1015,19 +1015,15 @@ void TileProcessor::copy_image_to_tile() {
 		auto tilec = tile->comps + i;
 		auto img_comp = image->comps + i;
 
-		uint32_t width = tilec->width();
-		uint32_t height = tilec->height();
 		uint32_t offset_x = ceildiv<uint32_t>(image->x0, img_comp->dx);
 		uint32_t offset_y = ceildiv<uint32_t>(image->y0, img_comp->dy);
-		uint32_t image_width = ceildiv<uint32_t>(image->x1 - image->x0,
-				img_comp->dx);
 		uint64_t image_offset = (tilec->x0 - offset_x)
-				+ (uint64_t) (tilec->y0 - offset_y) * image_width;
+				+ (uint64_t) (tilec->y0 - offset_y) * img_comp->stride;
 		auto src = img_comp->data + image_offset;
 		auto dest = tilec->buf->ptr(0,0,0,0);
 
-		for (uint32_t j = 0; j < height; ++j) {
-			memcpy(dest, src, width * sizeof(int32_t));
+		for (uint32_t j = 0; j < tilec->height(); ++j) {
+			memcpy(dest, src, tilec->width() * sizeof(int32_t));
 			src += img_comp->stride;
 			dest += tilec->buf->stride();
 		}

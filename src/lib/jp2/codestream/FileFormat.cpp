@@ -1300,7 +1300,7 @@ static bool jp2_apply_pclr(grk_image *image, grk_jp2_color *color) {
 		pcol = cmap[i].pcol;
 		auto src = old_comps[cmp].data;
 		assert(src);
-		max = new_comps[pcol].w * new_comps[pcol].h;
+		max = new_comps[pcol].stride * new_comps[pcol].h;
 
 		/* Direct use: */
 		if (cmap[i].mtyp == 0) {
@@ -1762,7 +1762,7 @@ bool jp2_decompress(FileFormat *fileFormat, grk_plugin_tile *tile, BufferedStrea
 
 	/* J2K decoding */
 	if (!j2k_decompress(fileFormat->codeStream, tile, stream, p_image)) {
-		GROK_ERROR("Failed to decompress the code stream in the JP2 file");
+		GROK_ERROR("Failed to decompress JP2 file");
 		return false;
 	}
 
@@ -3015,7 +3015,7 @@ bool FileFormat::decompress_tile(BufferedStream *stream, grk_image *p_image,
 		return false;
 
 	if (!j2k_decompress_tile(codeStream, stream, p_image, tile_index)) {
-		GROK_ERROR("Failed to decompress the code stream in the JP2 file");
+		GROK_ERROR("Failed to decompress JP2 file");
 		return false;
 	}
 

@@ -1726,7 +1726,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
     	bool ret = sa->read(win_bounds,
 					   tilec->buf->ptr(),
                        1,
-					   win_bounds.width(),
+					   tilec->buf->stride(),
                        true);
         assert(ret);
         GRK_UNUSED(ret);
@@ -2061,7 +2061,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 	bool ret = sa->read(win_bounds,
 					   tilec->buf->ptr(),
 					   1,
-					   win_bounds.width(),
+					   tilec->buf->stride(),
 					   true);
 assert(ret);
 	GRK_UNUSED(ret);

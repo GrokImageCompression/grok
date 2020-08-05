@@ -758,7 +758,7 @@ int main(int argc, char **argv) {
 #endif
 
 	test_cmp_parameters inParam;
-	size_t it_comp;
+	size_t compno;
 	int failed = 1;
 	uint32_t nbFilenamePGXbase = 0, nbFilenamePGXtest = 0;
 	char *filenamePNGtest = nullptr, *filenamePNGbase = nullptr,
@@ -887,13 +887,13 @@ int main(int argc, char **argv) {
 		goto cleanup;
 	}
 
-	for (it_comp = 0; it_comp < imageBase->numcomps; it_comp++) {
+	for (compno = 0; compno < imageBase->numcomps; compno++) {
 
-		auto baseComp = imageBase->comps + it_comp;
-		auto testComp = imageTest->comps + it_comp;
+		auto baseComp = imageBase->comps + compno;
+		auto testComp = imageTest->comps + compno;
 		if (baseComp->sgnd != testComp->sgnd) {
 			spdlog::error("sign mismatch [comp {}] ({}><{})",
-					(uint32_t)it_comp, baseComp->sgnd, testComp->sgnd);
+					(uint32_t)compno, baseComp->sgnd, testComp->sgnd);
 			goto cleanup;
 		}
 
@@ -912,31 +912,31 @@ int main(int argc, char **argv) {
 
 			if (baseComp->h != testComp->h) {
 				spdlog::error("height mismatch [comp {}] ({}><{})",
-						(uint32_t)it_comp, baseComp->h, testComp->h);
+						(uint32_t)compno, baseComp->h, testComp->h);
 				goto cleanup;
 			}
 
 			if (baseComp->w != testComp->w) {
 				spdlog::error("width mismatch [comp {}] ({}><{})",
-						(uint32_t)it_comp, baseComp->w, testComp->w);
+						(uint32_t)compno, baseComp->w, testComp->w);
 				goto cleanup;
 			}
 		}
 
 		if (baseComp->prec != testComp->prec) {
 			spdlog::error("precision mismatch [comp {}] ({}><{})",
-					(uint32_t)it_comp, baseComp->prec, testComp->prec);
+					(uint32_t)compno, baseComp->prec, testComp->prec);
 			goto cleanup;
 		}
 
-		param_image_diff[it_comp].x0 = 0;
-		param_image_diff[it_comp].y0 = 0;
-		param_image_diff[it_comp].dx = 0;
-		param_image_diff[it_comp].dy = 0;
-		param_image_diff[it_comp].sgnd = testComp->sgnd;
-		param_image_diff[it_comp].prec = testComp->prec;
-		param_image_diff[it_comp].h = testComp->h;
-		param_image_diff[it_comp].w = testComp->w;
+		param_image_diff[compno].x0 = 0;
+		param_image_diff[compno].y0 = 0;
+		param_image_diff[compno].dx = 0;
+		param_image_diff[compno].dy = 0;
+		param_image_diff[compno].sgnd = testComp->sgnd;
+		param_image_diff[compno].prec = testComp->prec;
+		param_image_diff[compno].h = testComp->h;
+		param_image_diff[compno].w = testComp->w;
 
 	}
 
@@ -956,12 +956,12 @@ int main(int argc, char **argv) {
 	/*spdlog::info("filenamePNGdiff = %s [%u / %u octets]",filenamePNGdiff, strlen(filenamePNGdiff),memsizedifffilename );*/
 
 	/* Compute pixel diff*/
-	for (it_comp = 0; it_comp < imageDiff->numcomps; it_comp++) {
+	for (compno = 0; compno < imageDiff->numcomps; compno++) {
 		double SE = 0, PEAK = 0;
 		double MSE = 0;
-		auto diffComp = imageDiff->comps + it_comp;
-		auto baseComp = imageBase->comps + it_comp;
-		auto testComp = imageTest->comps + it_comp;
+		auto diffComp = imageDiff->comps + compno;
+		auto baseComp = imageBase->comps + compno;
+		auto testComp = imageTest->comps + compno;
 		uint32_t x0 = 0, y0 = 0, x1 = diffComp->w, y1 = diffComp->h;
 		// one region for all components
 		if (inParam.regionSet) {
@@ -997,17 +997,17 @@ int main(int argc, char **argv) {
 			/* Conformance test*/
 			spdlog::info(
 					"<DartMeasurement name=\"PEAK_{}\" type=\"numeric/double\"> {} </DartMeasurement>",
-					(uint32_t)it_comp, PEAK);
+					(uint32_t)compno, PEAK);
 			spdlog::info(
 					"<DartMeasurement name=\"MSE_{}\" type=\"numeric/double\"> {} </DartMeasurement>",
-					(uint32_t)it_comp, MSE);
+					(uint32_t)compno, MSE);
 
-			if ((MSE > inParam.tabMSEvalues[it_comp])
-					|| (PEAK > inParam.tabPEAKvalues[it_comp])) {
+			if ((MSE > inParam.tabMSEvalues[compno])
+					|| (PEAK > inParam.tabPEAKvalues[compno])) {
 				spdlog::error("MSE ({}) or PEAK ({}) values produced by the decoded file are greater "
 								"than the allowable error (respectively {} and {})",
-						MSE, PEAK, inParam.tabMSEvalues[it_comp],
-						inParam.tabPEAKvalues[it_comp]);
+						MSE, PEAK, inParam.tabMSEvalues[compno],
+						inParam.tabPEAKvalues[compno]);
 				goto cleanup;
 			}
 		} else { /* Non regression-test */
@@ -1017,16 +1017,16 @@ int main(int argc, char **argv) {
 
 				spdlog::info(
 						"<DartMeasurement name=\"NumberOfPixelsWithDifferences_{}\" type=\"numeric/int\"> {} </DartMeasurement>",
-						(uint32_t)it_comp, nbPixelDiff);
+						(uint32_t)compno, nbPixelDiff);
 				spdlog::info(
 						"<DartMeasurement name=\"ComponentError_{}\" type=\"numeric/double\"> {} </DartMeasurement>",
-						(uint32_t)it_comp, sumDiff);
+						(uint32_t)compno, sumDiff);
 				spdlog::info(
 						"<DartMeasurement name=\"PEAK_{}\" type=\"numeric/double\"> {} </DartMeasurement>",
-						(uint32_t)it_comp, PEAK);
+						(uint32_t)compno, PEAK);
 				spdlog::info(
 						"<DartMeasurement name=\"MSE_{}\" type=\"numeric/double\"> {} </DartMeasurement>",
-						(uint32_t)it_comp, MSE);
+						(uint32_t)compno, MSE);
 
 #ifdef GROK_HAVE_LIBPNG
 				{
@@ -1058,7 +1058,7 @@ int main(int argc, char **argv) {
 					}
 					strcpy(filenamePNGdiff_it_comp, filenamePNGdiff);
 
-					sprintf(it_compc, "_%i", (uint32_t)it_comp);
+					sprintf(it_compc, "_%i", (uint32_t)compno);
 					strcat(it_compc, ".png");
 					strcat(filenamePNGbase_it_comp, it_compc);
 					/*spdlog::info("filenamePNGbase_it = %s [%u / %u octets]",filenamePNGbase_it_comp, strlen(filenamePNGbase_it_comp),memsizebasefilename );*/
@@ -1068,24 +1068,24 @@ int main(int argc, char **argv) {
 					/*spdlog::info("filenamePNGdiff_it = %s [%u / %u octets]",filenamePNGdiff_it_comp, strlen(filenamePNGdiff_it_comp),memsizedifffilename );*/
 
 					if (imageToPNG(imageBase, filenamePNGbase_it_comp,
-							it_comp) == EXIT_SUCCESS) {
+							compno) == EXIT_SUCCESS) {
 						spdlog::info(
 								"<DartMeasurementFile name=\"BaselineImage_{}\" type=\"image/png\"> {} </DartMeasurementFile>",
-								(uint32_t)it_comp, filenamePNGbase_it_comp);
+								(uint32_t)compno, filenamePNGbase_it_comp);
 					}
 
 					if (imageToPNG(imageTest, filenamePNGtest_it_comp,
-							it_comp) == EXIT_SUCCESS) {
+							compno) == EXIT_SUCCESS) {
 						spdlog::info(
 								"<DartMeasurementFile name=\"TestImage_{}\" type=\"image/png\"> {} </DartMeasurementFile>",
-								(uint32_t)it_comp, filenamePNGtest_it_comp);
+								(uint32_t)compno, filenamePNGtest_it_comp);
 					}
 
 					if (imageToPNG(imageDiff, filenamePNGdiff_it_comp,
-							it_comp) == EXIT_SUCCESS) {
+							compno) == EXIT_SUCCESS) {
 						spdlog::info(
 								"<DartMeasurementFile name=\"DiffferenceImage_{}\" type=\"image/png\"> {} </DartMeasurementFile>",
-								(uint32_t)it_comp, filenamePNGdiff_it_comp);
+								(uint32_t)compno, filenamePNGdiff_it_comp);
 					}
 
 					free(filenamePNGbase_it_comp);

@@ -454,21 +454,18 @@ static grk_image* pnmtoimage(const char *filename,
 			goto cleanup;
 		}
 	} else if (format == 2 || format == 3) { /* ascii pixmap */
-		uint32_t index;
 		area = (uint64_t)image->comps[0].stride * h;
 		for (uint64_t i = 0; i < area; i++) {
 			for (compno = 0; compno < numcomps; compno++) {
-				index = 0;
-				if (fscanf(fp, "%u", &index) != 1) {
-					spdlog::warn("fscanf returned a number of elements"
-							" different from expected.");
-				}
-				image->comps[compno].data[i] = (int32_t)index;
-				counter++;
-				if (counter == w){
-					counter = 0;
-					i += stride_diff;
-				}
+				uint32_t val = 0;
+				if (fscanf(fp, "%u", &val) != 1)
+					spdlog::warn("fscanf error");
+				image->comps[compno].data[i] = (int32_t)val;
+			}
+			counter++;
+			if (counter == w){
+				counter = 0;
+				i += stride_diff;
 			}
 		}
 	} else if (format == 5 || format == 6

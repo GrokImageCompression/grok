@@ -1357,10 +1357,8 @@ bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream, grk_ima
 	}
 
 	if (tile_index >= codeStream->m_cp.t_grid_width * codeStream->m_cp.t_grid_height) {
-		GROK_ERROR(
-				"Tile index provided by the user is incorrect %u (max = %u) ",
-				tile_index,
-				(codeStream->m_cp.t_grid_width * codeStream->m_cp.t_grid_height) - 1);
+		GROK_ERROR(	"Tile index %u is greater than maximum tile index %u",	tile_index,
+				      codeStream->m_cp.t_grid_width * codeStream->m_cp.t_grid_height - 1);
 		return false;
 	}
 
