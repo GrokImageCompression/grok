@@ -318,7 +318,7 @@ int RAWFormat::imagetoraw(grk_image *image, const char *outfile,
 
 	for (compno = 0; compno < image->numcomps; compno++) {
 		auto comp = image->comps + compno;
-		spdlog::info("Component %u characteristics: {}x{}x{} {}", compno,
+		spdlog::info("Component {} characteristics: {}x{}x{} {}", compno,
 					comp->w, comp->h,
 					comp->prec,
 					comp->sgnd == 1 ? "signed" : "unsigned");

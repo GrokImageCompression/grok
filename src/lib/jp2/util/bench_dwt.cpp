@@ -96,11 +96,11 @@ bool init_tilec(TileComponent * tilec,
         --leveno;
     }
     tilec->create_buffer(nullptr,1,1);
-    size_t nValues = (size_t)tilec->area();
+    size_t nValues = (size_t)tilec->buf->bounds().area();
 	auto data = (int32_t*) grk_aligned_malloc(sizeof(int32_t) * nValues);
 	if (!data)
 		return false;
-    tilec->buf->acquire(data);
+    tilec->buf->acquire(data, tilec->width());
     for (size_t i = 0; i < nValues; i++)
         data[i] = getValue((uint32_t)i);
     return true;
