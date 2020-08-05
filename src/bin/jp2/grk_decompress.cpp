@@ -83,7 +83,6 @@ using namespace grk;
 #include "RAWFormat.h"
 #include "PNMFormat.h"
 #include "PGXFormat.h"
-#include "TGAFormat.h"
 #include "BMPFormat.h"
 #include "JPEGFormat.h"
 #include "TIFFFormat.h"
@@ -185,7 +184,7 @@ static void decode_help_display(void) {
 					"\n"
 					"  [-y | -ImgDir] <directory> \n"
 					"	Image file directory path \n"
-					"  [-O | -OutFor] <PBM|PGM|PPM|PNM|PAM|PGX|PNG|BMP|TIF|RAW|RAWL|TGA>\n"
+					"  [-O | -OutFor] <PBM|PGM|PPM|PNM|PAM|PGX|PNG|BMP|TIF|RAW|RAWL>\n"
 					"    REQUIRED only if -ImgDir is used\n"
 					"	Output format for decompressed images.\n");
 	fprintf(stdout, "  [-i | -InputFile] <compressed file>\n"
@@ -635,15 +634,12 @@ int parse_cmdline_decoder(int argc, char **argv,
 			case GRK_RAWL_FMT:
 				img_fol->out_format = "rawl";
 				break;
-			case GRK_TGA_FMT:
-				img_fol->out_format = "raw";
-				break;
 			case GRK_PNG_FMT:
 				img_fol->out_format = "png";
 				break;
 			default:
 				spdlog::error(
-						"Unknown output format image {} [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.jpg, *.jpeg, *.raw, *.rawl or *.tga]",
+						"Unknown output format image {} [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.jpg, *.jpeg, *.raw or *.rawl]",
 						outformat);
 				return 1;
 			}
@@ -660,13 +656,12 @@ int parse_cmdline_decoder(int argc, char **argv,
 			case GRK_TIF_FMT:
 			case GRK_RAW_FMT:
 			case GRK_RAWL_FMT:
-			case GRK_TGA_FMT:
 			case GRK_PNG_FMT:
 			case GRK_JPG_FMT:
 				break;
 			default:
 				spdlog::error(
-						"Unknown output format image {} [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.tiff, *jpg, *jpeg, *.raw, *rawl or *.tga]",
+						"Unknown output format image {} [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.tiff, *jpg, *jpeg, *.raw or *rawl]",
 						outfile);
 				return 1;
 			}
@@ -787,7 +782,7 @@ int parse_cmdline_decoder(int argc, char **argv,
 					"When -ImgDir is used, -OutFor <FORMAT> must be used.");
 			spdlog::error(
 					"Only one format allowed.\n"
-							"Valid format are PGM, PPM, PNM, PGX, BMP, TIF, RAW and TGA.");
+							"Valid format are PGM, PPM, PNM, PGX, BMP, TIF and RAW.");
 			return 1;
 		}
 		if (!((parameters->outfile[0] == 0))) {
@@ -1784,17 +1779,6 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			if (raw.encode(image, outfile, 0)) {
 				spdlog::error(
 						"Error generating rawl file. Outfile {} not generated",
-						outfile);
-				goto cleanup;
-			}
-		}
-			break;
-		case GRK_TGA_FMT:
-		{
-			TGAFormat tga;
-			if (!tga.encode(image, outfile, 0)) {
-				spdlog::error(
-						"Error generating tga file. Outfile {} not generated",
 						outfile);
 				goto cleanup;
 			}

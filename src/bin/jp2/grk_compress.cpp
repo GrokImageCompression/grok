@@ -82,7 +82,6 @@ using namespace grk;
 #include "RAWFormat.h"
 #include "PNMFormat.h"
 #include "PGXFormat.h"
-#include "TGAFormat.h"
 #include "BMPFormat.h"
 #include "JPEGFormat.h"
 #include "TIFFFormat.h"
@@ -212,7 +211,7 @@ static void encode_help_display(void) {
 	fprintf(stdout, "[-i|-InputFile] <file>\n");
 	fprintf(stdout, "    Input file\n");
 	fprintf(stdout,
-			"    Known extensions are <PBM|PGM|PPM|PNM|PAM|PGX|PNG|BMP|TIF|RAW|RAWL|TGA>\n");
+			"    Known extensions are <PBM|PGM|PPM|PNM|PAM|PGX|PNG|BMP|TIF|RAW|RAWL>\n");
 	fprintf(stdout, "    If used, '-o <file>' must be provided\n");
 	fprintf(stdout, "[-o|-OutputFile] <compressed file>\n");
 	fprintf(stdout, "    Output file (accepted extensions are j2k or jp2).\n");
@@ -223,7 +222,7 @@ static void encode_help_display(void) {
 	fprintf(stdout, "    Output format for compressed files.\n");
 	fprintf(stdout, "    Required only if -ImgDir is used\n");
 	fprintf(stdout,
-			"[-K|-InFor] <pbm|pgm|ppm|pnm|pam|pgx|png|bmp|tif|raw|rawl|tga>\n");
+			"[-K|-InFor] <pbm|pgm|ppm|pnm|pam|pgx|png|bmp|tif|raw|rawl>\n");
 	fprintf(stdout, "    Input format. Will override file tag.\n");
 	fprintf(stdout,
 			"[-F|-Raw] <width>,<height>,<ncomp>,<bitdepth>,{s,u}@<dx1>x<dy1>:...:<dxn>x<dyn>\n");
@@ -518,7 +517,6 @@ static bool isDecodedFormatSupported(GRK_SUPPORTED_FILE_FMT format) {
 	case GRK_TIF_FMT:
 	case GRK_RAW_FMT:
 	case GRK_RAWL_FMT:
-	case GRK_TGA_FMT:
 	case GRK_PNG_FMT:
 	case GRK_JPG_FMT:
 		break;
@@ -752,8 +750,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 			if (!isDecodedFormatSupported(parameters->decod_format)) {
 				spdlog::warn(" Ignoring unknown input file format: %s \n"
 								"Known file formats are *.pnm, *.pgm, "
-								"*.ppm, *.pgx, *png, *.bmp, *.tif, *.jpg,"
-								" *.raw or *.tga",	infile);
+								"*.ppm, *.pgx, *png, *.bmp, *.tif, *.jpg"
+								" or *.raw",	infile);
 			}
 		}
 
@@ -765,7 +763,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				if (!isDecodedFormatSupported(parameters->decod_format)) {
 					spdlog::error(
 							"Unknown input file format: {} \n"
-									"        Known file formats are *.pnm, *.pgm, *.ppm, *.pgx, *png, *.bmp, *.tif, *.jpg, *.raw or *.tga",
+									"        Known file formats are *.pnm, *.pgm, *.ppm, *.pgx, *png, *.bmp, *.tif, *.jpg or *.raw",
 							infile);
 					return 1;
 				}
@@ -1965,17 +1963,6 @@ static bool plugin_compress_callback(
 			image = raw.decode(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				spdlog::error("Unable to load raw file");
-				bSuccess = false;
-				goto cleanup;
-			}
-		}
-			break;
-
-		case GRK_TGA_FMT: {
-			TGAFormat tga;
-			image = tga.decode(info->input_file_name, info->encoder_parameters);
-			if (!image) {
-				spdlog::error("Unable to load tga file");
 				bSuccess = false;
 				goto cleanup;
 			}

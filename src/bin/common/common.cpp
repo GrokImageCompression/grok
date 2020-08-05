@@ -183,12 +183,12 @@ int get_file_format(const char *filename) {
 	ext++;
 	if (*ext) {
 		static const char *extension[] = { "pgx", "pam", "pnm", "pgm", "ppm", "pbm",
-				"bmp", "tif", "tiff", "jpg", "jpeg", "raw", "rawl", "tga", "png",
+				"bmp", "tif", "tiff", "jpg", "jpeg", "raw", "rawl", "png",
 				"j2k", "jp2", "j2c", "jpc" };
 		static const GRK_SUPPORTED_FILE_FMT format[] = { GRK_PGX_FMT, GRK_PXM_FMT,
 				GRK_PXM_FMT, GRK_PXM_FMT, GRK_PXM_FMT, GRK_PXM_FMT, GRK_BMP_FMT,
 				GRK_TIF_FMT, GRK_TIF_FMT, GRK_JPG_FMT, GRK_JPG_FMT, GRK_RAW_FMT,
-				GRK_RAWL_FMT, GRK_TGA_FMT, GRK_PNG_FMT, GRK_J2K_FMT, GRK_JP2_FMT,
+				GRK_RAWL_FMT, GRK_PNG_FMT, GRK_J2K_FMT, GRK_JP2_FMT,
 				GRK_J2K_FMT, GRK_J2K_FMT };
 		for (uint32_t i = 0; i < sizeof(format) / sizeof(*format); i++) {
 			if (strcasecmp(ext, extension[i]) == 0)

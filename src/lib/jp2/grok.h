@@ -104,7 +104,6 @@ enum GRK_SUPPORTED_FILE_FMT {
 	GRK_BMP_FMT,
 	GRK_TIF_FMT,
 	GRK_RAW_FMT, /* MSB / Big Endian */
-	GRK_TGA_FMT,
 	GRK_PNG_FMT,
 	GRK_RAWL_FMT, /* LSB / Little Endian */
 	GRK_JPG_FMT

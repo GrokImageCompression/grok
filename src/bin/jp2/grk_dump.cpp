@@ -321,7 +321,7 @@ static int parse_cmdline_decoder(int argc, char **argv,
 					"When -ImgDir is used, -OutFor <FORMAT> must be used.");
 			spdlog::error(
 					"Only one format allowed.\n"
-							"Valid format are PGM, PPM, PNM, PGX, BMP, TIF, RAW and TGA.");
+							"Valid format are PGM, PPM, PNM, PGX, BMP, TIF and RAW.");
 			return 1;
 		}
 		if (!(parameters->outfile[0] == 0)) {

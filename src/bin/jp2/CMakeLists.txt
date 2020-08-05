@@ -18,8 +18,6 @@ set(common_SRCS
   ${GROK_SOURCE_DIR}/src/bin/image_format/PGXFormat.h
   ${GROK_SOURCE_DIR}/src/bin/image_format/BMPFormat.cpp
   ${GROK_SOURCE_DIR}/src/bin/image_format/BMPFormat.h
-  ${GROK_SOURCE_DIR}/src/bin/image_format/TGAFormat.cpp
-  ${GROK_SOURCE_DIR}/src/bin/image_format/TGAFormat.h
   ${GROK_SOURCE_DIR}/src/bin/image_format/RAWFormat.cpp
   ${GROK_SOURCE_DIR}/src/bin/image_format/RAWFormat.h
   ${GROK_SOURCE_DIR}/src/bin/image_format/TIFFFormat.h
