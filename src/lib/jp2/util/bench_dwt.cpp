@@ -97,12 +97,9 @@ bool init_tilec(TileComponent * tilec,
         --leveno;
     }
     tilec->create_buffer(output_image,1,1);
-    size_t nValues = (size_t)tilec->buf->bounds().area();
-	auto data = (int32_t*) grk_aligned_malloc(sizeof(int32_t) * nValues);
-	if (!data)
-		return false;
-    tilec->buf->acquire(data, tilec->width());
-    for (size_t i = 0; i < nValues; i++)
+    tilec->buf->alloc();
+	auto data = tilec->buf->ptr();
+    for (size_t i = 0; i < tilec->buf->full_area(); i++)
         data[i] = getValue((uint32_t)i);
     return true;
 
@@ -235,7 +232,6 @@ int main(int argc, char** argv)
 				   offset_x + size, offset_y + size,
 				   num_resolutions,
 				   &image);
-	    tilec.buf->alloc();
 		auto data = tilec.buf->ptr();
 
 		if (display) {

@@ -296,6 +296,8 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 
 	// set data to buf without owning it
 	void attach(T* buffer, uint32_t strd){
+		if (owns_data)
+			grk_aligned_free(data);
 		data = buffer;
 		owns_data = false;
 		stride = strd;
