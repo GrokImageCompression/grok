@@ -215,7 +215,7 @@ static grk_image* pgxtoimage(const char *filename,
 	index = 0;
 	stride_diff = comp->stride - w;
 	for (uint32_t j = 0; j < h; ++j) {
-		for (uint32_t i = 0; i <  w; ++i) {
+		for (uint32_t k = 0; k <  w; ++k) {
 			int32_t v = 0;
 			if (force8) {
 				v = readuchar(f) + adjustS;

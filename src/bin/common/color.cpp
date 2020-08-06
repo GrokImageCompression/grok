@@ -343,8 +343,8 @@ static bool sycc420_to_rgb(grk_image *src_img) {
 		src[0] += stride_src_diff[0] + stride_src[0];
 		src[1] += stride_src_diff[1];
 		src[2] += stride_src_diff[2];
-		for (uint32_t i = 0; i < 3; ++i)
-			dest_ptr[i]  += stride_dest_diff + stride_dest;
+		for (uint32_t k = 0; k < 3; ++k)
+			dest_ptr[k]  += stride_dest_diff + stride_dest;
 	}
 	// last row has no sub-sampling
 	if (i < loopmaxh) {
@@ -358,10 +358,10 @@ static bool sycc420_to_rgb(grk_image *src_img) {
 	}
 
 	grk_image_all_components_data_free(src_img);
-	for (uint32_t i = 0; i < 3; ++i){
-		src_img->comps[i].data = dest[i];
-		src_img->comps[i].owns_data = true;
-		src_img->comps[i].stride = dest_img->comps[i].stride;
+	for (uint32_t k = 0; k < 3; ++k){
+		src_img->comps[k].data = dest[k];
+		src_img->comps[k].owns_data = true;
+		src_img->comps[k].stride = dest_img->comps[k].stride;
 	}
 
 	src_img->comps[1].w = src_img->comps[2].w = src_img->comps[0].w;
@@ -873,7 +873,7 @@ bool color_cielab_to_rgb(grk_image *src_img) {
 	uint32_t stride_diff = src_img->comps[0].stride - src_img->comps[0].w;
 	size_t dest_index = 0;
 	for (uint32_t j = 0; j < src_img->comps[0].h; ++j){
-		for (uint32_t i = 0; i < src_img->comps[0].w; ++i){
+		for (uint32_t k = 0; k < src_img->comps[0].w; ++k){
 			cmsCIELab Lab;
 			Lab.L = minL + (double) (*L) * (maxL - minL) / (pow(2, prec_L) - 1);
 			++L;

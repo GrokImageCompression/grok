@@ -1697,6 +1697,7 @@ grk_layer::grk_layer() :
 }
 
 grk_precinct::grk_precinct() :
+		cw(0), ch(0),
 		enc(nullptr), dec(nullptr),
 		num_code_blocks(0),
 		incltree(nullptr), imsbtree(nullptr) {
