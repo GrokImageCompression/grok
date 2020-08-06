@@ -75,7 +75,8 @@ bool init_tilec(TileComponent * tilec,
                 uint32_t y0,
                 uint32_t x1,
                 uint32_t y1,
-                uint32_t numresolutions){
+                uint32_t numresolutions,
+				grk_image *output_image){
 	tilec->m_is_encoder = false;
     tilec->numresolutions = numresolutions;
     tilec->resolutions_to_decompress = numresolutions;
@@ -95,7 +96,7 @@ bool init_tilec(TileComponent * tilec,
         ++res;
         --leveno;
     }
-    tilec->create_buffer(nullptr,1,1);
+    tilec->create_buffer(output_image,1,1);
     size_t nValues = (size_t)tilec->buf->bounds().area();
 	auto data = (int32_t*) grk_aligned_malloc(sizeof(int32_t) * nValues);
 	if (!data)
@@ -127,10 +128,11 @@ int main(int argc, char** argv)
 {
     uint32_t num_threads = 0;
     grk_image image;
-    CodingParams params;
+    grk_image output_image;
     grk_tile tile;
     TileComponent tilec;
     grk_image_comp image_comp;
+    grk_image_comp output_image_comp;
     int32_t i, j;
     bool display = false;
     bool check = false;
@@ -170,8 +172,11 @@ int main(int argc, char** argv)
         check = true;
 	if (lossyArg.isSet())
 		lossy = true;
-	if (sizeArg.isSet())
+	if (sizeArg.isSet()){
 		size = sizeArg.getValue();
+	    offset_x = (uint32_t)((size + 1) / 2 - 1);
+	    offset_y = (uint32_t)((size + 1) / 2 - 1);
+	}
 	if (numThreadsArg.isSet())
 		num_threads = numThreadsArg.getValue();
     if (num_threads == 0)
@@ -193,22 +198,44 @@ int main(int argc, char** argv)
 		begin = 1;
 
 	CodeStream codeStream(!forwardArg.isSet());
-	codeStream.m_cp = params;
 	codeStream.m_input_image = &image;
 
    for (size_t k = begin; k <= end; ++k) {
 		memset(&image, 0, sizeof(image));
 		image.numcomps = 1;
+		image.x0 = offset_x;
+		image.y0 = offset_y;
+		image.x1 = offset_x + size;
+		image.y1 = offset_y + size;
 		image.comps = &image_comp;
 		memset(&image_comp, 0, sizeof(image_comp));
 		image_comp.dx = 1;
 		image_comp.dy = 1;
+		image_comp.w = size;
+		image_comp.stride = size;
+		image_comp.h = size;
 
-	   std::unique_ptr<TileProcessor> tileProcessor(new TileProcessor(&codeStream));
-	   grk_initialize(nullptr,k);
-	   init_tilec(&tilec, offset_x, offset_y,
+		memset(&output_image, 0, sizeof(output_image));
+		output_image.numcomps = 1;
+		output_image.x0 = offset_x;
+		output_image.y0 = offset_y;
+		output_image.x1 = offset_x + size;
+		output_image.y1 = offset_y + size;
+		output_image.comps = &output_image_comp;
+		memset(&output_image_comp, 0, sizeof(output_image_comp));
+		output_image_comp.dx = 1;
+		output_image_comp.dy = 1;
+		output_image_comp.w = size;
+		output_image_comp.stride = size;
+		output_image_comp.h = size;
+
+	    std::unique_ptr<TileProcessor> tileProcessor(new TileProcessor(&codeStream));
+	    grk_initialize(nullptr,k);
+	    init_tilec(&tilec, offset_x, offset_y,
 				   offset_x + size, offset_y + size,
-				   num_resolutions);
+				   num_resolutions,
+				   &image);
+	    tilec.buf->alloc();
 		auto data = tilec.buf->ptr();
 
 		if (display) {
@@ -291,6 +318,8 @@ int main(int argc, char** argv)
 		}
 		grk_deinitialize();
    }
+
+   codeStream.m_input_image = nullptr;
    return 0;
 }
 
