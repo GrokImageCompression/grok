@@ -80,32 +80,44 @@ static void info_callback(const char *msg, void *client_data) {
 	spdlog::info("{}", msg);
 }
 
+
+static uint32_t test_tile( uint16_t tile_index, grk_image *image, grk_stream *stream,
+								grk_codec codec) {
+	spdlog::info("Decoding tile {} ...", tile_index);
+	if(!grk_decompress_tile(codec, image, tile_index )){
+		spdlog::error("j2k_to_image: failed to decode tile {}", tile_index);
+		return EXIT_FAILURE;
+	}
+  for(uint32_t index = 0; index < image->numcomps; ++index) {
+    if( image->comps[index].data == nullptr ){
+    	spdlog::error("j2k_to_image: failed to decode tile {}", tile_index);
+        return EXIT_FAILURE;
+        }
+  }
+  spdlog::info("Tile {} decoded successfully", tile_index);
+  return EXIT_SUCCESS;
+}
+
+
 int main(int argc, char **argv) {
 	uint32_t index;
 	grk_dparameters parameters; /* decompression parameters */
-	grk_image *image = nullptr;
-	grk_stream *l_stream = nullptr; /* Stream */
-	grk_codec l_codec = nullptr; /* Handle to a decompressor */
-	grk_codestream_info_v2 *cstr_info = nullptr;
-
-	/* Index of corner tiles */
-	uint16_t tile_ul = 0;
-	uint16_t tile_ur = 0;
-	uint16_t tile_lr = 0;
-	uint16_t tile_ll = 0;
+	uint32_t ret = EXIT_FAILURE, rc;
 
 	if (argc != 2) {
 		spdlog::error("Usage: {} <input_file>", argv[0]);
 		return EXIT_FAILURE;
 	}
 
-	/* Set decoding parameters to default values */
+	grk_initialize(nullptr, 0);
+	grk_set_info_handler(info_callback, nullptr);
+	grk_set_warning_handler(warning_callback, nullptr);
+	grk_set_error_handler(error_callback, nullptr);
+
 	grk_set_default_decompress_params(&parameters);
 
 	strncpy(parameters.infile, argv[1], GRK_PATH_LEN - 1);
 
-	/* decode the JPEG2000 stream */
-	/* -------------------------- */
 	if (!grk::jpeg2000_file_format(parameters.infile,
 			&parameters.decod_format)) {
 		spdlog::error("Failed to detect JPEG 2000 file format for file {}",
@@ -113,109 +125,84 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 
-	l_stream = grk_stream_create_file_stream(parameters.infile, 1024 * 1024, 1);
-	if (!l_stream) {
-		spdlog::error("failed to create the stream from the file {}",
-				parameters.infile);
-		return EXIT_FAILURE;
-	}
+	for (uint32_t i = 0; i < 4; ++i){
+		grk_codec codec = nullptr; /* Handle to a decompressor */
+		grk_codestream_info_v2 *cstr_info = nullptr;
+		grk_image *image = nullptr;
 
-	switch (parameters.decod_format) {
-	case GRK_J2K_FMT: { /* JPEG-2000 codestream */
-		/* Get a decoder handle */
-		l_codec = grk_create_decompress(GRK_CODEC_J2K, l_stream);
-		break;
-	}
-	case GRK_JP2_FMT: { /* JPEG 2000 compressed image data */
-		/* Get a decoder handle */
-		l_codec = grk_create_decompress(GRK_CODEC_JP2, l_stream);
-		break;
-	}
-	default:
-		spdlog::error(
-				"Unrecognized format for input {} [accept only *.j2k, *.jp2 or *.jpc]",
-				parameters.infile);
-		return EXIT_FAILURE;
-	}
-	grk_initialize(nullptr, 0);
+		/* Index of corner tiles */
+		uint16_t tile[4];
 
-	/* catch events using our callbacks and give a local context */
-	grk_set_info_handler(info_callback, nullptr);
-	grk_set_warning_handler(warning_callback, nullptr);
-	grk_set_error_handler(error_callback, nullptr);
+		auto stream = grk_stream_create_file_stream(parameters.infile, 1024 * 1024, 1);
+		if (!stream) {
+			spdlog::error("failed to create the stream from the file {}",
+					parameters.infile);
+			return EXIT_FAILURE;
+		}
+		switch (parameters.decod_format) {
+		case GRK_J2K_FMT: { /* JPEG-2000 codestream */
+			codec = grk_create_decompress(GRK_CODEC_J2K, stream);
+			break;
+		}
+		case GRK_JP2_FMT: { /* JPEG 2000 compressed image data */
+			codec = grk_create_decompress(GRK_CODEC_JP2, stream);
+			break;
+		}
+		default:
+			spdlog::error(
+					"Unrecognized format for input {} [accept only *.j2k, *.jp2 or *.jpc]",
+					parameters.infile);
+			return EXIT_FAILURE;
+		}
 
-	/* Setup the decoder decoding parameters using user parameters */
-	if (!grk_init_decompress(l_codec, &parameters)) {
-		spdlog::error("j2k_dump: failed to setup the decoder");
-		grk_stream_destroy(l_stream);
-		grk_destroy_codec(l_codec);
-		return EXIT_FAILURE;
-	}
+		/* Setup the decoder decoding parameters using user parameters */
+		if (!grk_init_decompress(codec, &parameters)) {
+			spdlog::error("j2k_dump: failed to setup the decoder");
+			goto cleanup;
+		}
 
-	/* Read the main header of the codestream and if necessary the JP2 boxes*/
-	if (!grk_read_header(l_codec, nullptr, &image)) {
-		spdlog::error("j2k_to_image: failed to read the header");
-		grk_stream_destroy(l_stream);
-		grk_destroy_codec(l_codec);
+		/* Read the main header of the codestream and if necessary the JP2 boxes*/
+		if (!grk_read_header(codec, nullptr, &image)) {
+			spdlog::error("j2k_to_image: failed to read the header");
+			goto cleanup;
+		}
+
+		/* Extract some info from the code stream */
+		cstr_info = grk_get_cstr_info(codec);
+
+		spdlog::info("The file contains {}x{} tiles", cstr_info->t_grid_width,
+				cstr_info->t_grid_height);
+
+		tile[0] = 0;
+		tile[1] = (uint16_t) (cstr_info->t_grid_width - 1);
+		tile[2] = (uint16_t) (cstr_info->t_grid_width * cstr_info->t_grid_height - 1);
+		tile[3] = (uint16_t) (tile[2] - cstr_info->t_grid_width);
+
+		rc = test_tile(tile[i], image, stream, codec);
+
+		/* Destroy code stream info */
+		grk_destroy_cstr_info(&cstr_info);
+
+		/* Free remaining structures */
+		grk_destroy_codec(codec);
+
+		/* Close the byte stream */
+		grk_stream_destroy(stream);
+
+		/* Free image data structure */
 		grk_image_destroy(image);
-		return EXIT_FAILURE;
+
+		if (rc)
+			goto cleanup;
 	}
 
-	/* Extract some info from the code stream */
-	cstr_info = grk_get_cstr_info(l_codec);
+	ret = EXIT_SUCCESS;
 
-	spdlog::info("The file contains {}x{} tiles", cstr_info->t_grid_width,
-			cstr_info->t_grid_height);
-
-	tile_ul = 0;
-	tile_ur = (uint16_t) (cstr_info->t_grid_width - 1);
-	tile_lr = (uint16_t) (cstr_info->t_grid_width * cstr_info->t_grid_height - 1);
-	tile_ll = (uint16_t) (tile_lr - cstr_info->t_grid_width);
-
-#define TEST_TILE( tile_index ) \
-	spdlog::info("Decoding tile {} ...", tile_index); \
-	if(!grk_decompress_tile(l_codec, image, tile_index )){ \
-		spdlog::error("j2k_to_image: failed to decode tile {}", tile_index); \
-		grk_stream_destroy(l_stream); \
-		grk_destroy_cstr_info(&cstr_info); \
-		grk_destroy_codec(l_codec); \
-		grk_image_destroy(image); \
-		return EXIT_FAILURE; \
-	} \
-  for(index = 0; index < image->numcomps; ++index) { \
-    if( image->comps[index].data == nullptr ){ \
-    	spdlog::error("j2k_to_image: failed to decode tile {}", tile_index); \
-		grk_stream_destroy(l_stream); \
-		grk_destroy_cstr_info(&cstr_info); \
-		grk_destroy_codec(l_codec); \
-		grk_image_destroy(image); \
-        return EXIT_FAILURE; \
-        } \
-  } \
-	spdlog::info("Tile {} decoded successfully", tile_index);
-
-	TEST_TILE(tile_ul)
-	TEST_TILE(tile_lr)
-	TEST_TILE(tile_ul)
-	TEST_TILE(tile_ll)
-	TEST_TILE(tile_ur)
-	TEST_TILE(tile_lr)
-
-	/* Close the byte stream */
-	grk_stream_destroy(l_stream);
-
-	/* Destroy code stream info */
-	grk_destroy_cstr_info(&cstr_info);
-
-	/* Free remaining structures */
-	grk_destroy_codec(l_codec);
-
-	/* Free image data structure */
-	grk_image_destroy(image);
+cleanup:
 
 	grk_deinitialize();
 
-	return EXIT_SUCCESS;
+	return ret;
 }
 /*end main*/
 
