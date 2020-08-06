@@ -54,6 +54,8 @@
 
 namespace grk {
 
+uint32_t grk_make_aligned_width(uint32_t width);
+
 /**
  Allocate an uninitialized memory block
  @param size Bytes to allocate

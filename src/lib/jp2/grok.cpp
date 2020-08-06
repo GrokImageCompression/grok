@@ -714,8 +714,7 @@ bool GRK_CALLCONV grk_image_single_component_data_alloc(
 		 grk_image_comp  *comp) {
 	if (!comp)
 		return false;
-	// set stride to aligned value
-	comp->stride = comp->w;
+	comp->stride = grk_make_aligned_width(comp->w);
 	auto data = (int32_t*) grk_aligned_malloc(
 			(uint64_t) comp->stride * comp->h * sizeof(uint32_t));
 	if (!data)

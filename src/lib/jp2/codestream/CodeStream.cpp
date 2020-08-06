@@ -760,7 +760,6 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 	auto decoder = &codeStream->m_decoder;
 	TileCodingParams *tcp = nullptr;
 	uint16_t current_marker = J2K_MS_SOT;
-	uint16_t marker_size = 0;
 	codeStream->m_tileProcessor = tileProcessor;
 
 	/* Reach the End Of Codestream ?*/
@@ -783,6 +782,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 				GROK_WARN("Missing EOC marker");
 				break;
 			}
+			uint16_t marker_size;
 			if (!codeStream->read_marker(stream, &marker_size))
 				goto fail;
 			if (marker_size < 2) {

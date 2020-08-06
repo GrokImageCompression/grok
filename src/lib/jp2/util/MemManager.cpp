@@ -65,6 +65,12 @@ const size_t default_align = 64;
 
 namespace grk {
 
+const uint32_t grk_alignment = 32;
+
+uint32_t grk_make_aligned_width(uint32_t width){
+	return (uint32_t)((((size_t)width + grk_alignment - 1)/grk_alignment) * grk_alignment);
+}
+
 static inline void* grk_aligned_alloc_n(size_t alignment, size_t size) {
 	void *ptr;
 
