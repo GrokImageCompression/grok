@@ -48,7 +48,6 @@ template<typename T> struct TileComponentBuffer {
 						grk_resolution *tile_comp_resolutions) :
 							unreduced_region_dim(unreduced_dim),
 							m_bounds(reduced_dim),
-							unreduced_tile_comp_dim(unreduced_dim),
 							num_resolutions(numresolutions),
 							m_encode(output_image==nullptr)
 	{
@@ -65,7 +64,7 @@ template<typename T> struct TileComponentBuffer {
 
 			/* clip region dimensions against tile */
 			reduced_dim.clip(m_bounds, &m_bounds);
-			unreduced_tile_comp_dim.clip(unreduced_region_dim, &unreduced_region_dim);
+			unreduced_dim.clip(unreduced_region_dim, &unreduced_region_dim);
 
 			/* fill resolutions vector */
 	        assert(reduced_num_resolutions>0);
@@ -255,9 +254,6 @@ private:
 	/* decode: reduced tile component coordinates of region  */
 	/* encode: unreduced tile component coordinates of entire tile */
 	grk_rect m_bounds;
-
-	/* unreduced tile component coordinates of entire tile */
-	grk_rect unreduced_tile_comp_dim;
 
 	std::vector<grk_resolution*> resolutions;
 
