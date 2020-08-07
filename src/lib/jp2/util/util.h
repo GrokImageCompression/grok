@@ -32,16 +32,16 @@ inline bool mult64_will_overflow(uint64_t a, uint64_t b) {
 	return (b && (a > UINT64_MAX / b));
 }
 
-struct grk_pt {
-	grk_pt() : x(0), y(0){}
-	grk_pt(int64_t _x, int64_t _y) : x(_x), y(_y){}
-    int64_t x;
-    int64_t y;
-
+template<typename T> struct grk_point {
+	grk_point() : x(0), y(0){}
+	grk_point(T _x, T _y) : x(_x), y(_y){}
+    T x;
+    T y;
 };
+using grk_pt = grk_point<int64_t>;
+
 
 template<typename T> struct grk_rectangle;
-
 using grk_rect = grk_rectangle<int64_t>;
 using grk_rect_u32 = grk_rectangle<uint32_t>;
 
