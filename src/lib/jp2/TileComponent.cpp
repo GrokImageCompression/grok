@@ -572,7 +572,8 @@ void TileComponent::create_buffer(grk_image *output_image,
 											grk_rect(x0, y0, x1, y1),
 											resolutions_to_decompress,
 											numresolutions,
-											resolutions);
+											resolutions,
+											whole_tile_decoding);
 }
 
 }

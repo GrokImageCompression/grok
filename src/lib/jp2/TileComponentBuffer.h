@@ -36,6 +36,15 @@ template<typename T> struct res_buf {
 		for (uint32_t i = 0; i < 3; ++i)
 			delete bands[i];
 	}
+	bool alloc(bool clear){
+		if (!res->alloc(clear))
+			return false;
+		for (uint32_t i = 0; i < 3; ++i){
+			if (bands[i] && !bands[i]->alloc(clear))
+				return false;
+		}
+		return true;
+	}
 
 	grk_buffer_2d<T> *res;
 	grk_buffer_2d<T> *bands[3];
@@ -63,11 +72,13 @@ template<typename T> struct TileComponentBuffer {
 						grk_rect reduced_dim,
 						uint32_t reduced_num_resolutions,
 						uint32_t numresolutions,
-						grk_resolution *tile_comp_resolutions) :
+						grk_resolution *tile_comp_resolutions,
+						bool whole_tile) :
 							m_unreduced_bounds(unreduced_dim),
 							m_bounds(reduced_dim),
 							num_resolutions(numresolutions),
-							m_encode(output_image==nullptr)
+							m_encode(output_image==nullptr),
+							whole_tile_decoding(whole_tile)
 	{
 		//note: only decoder has output image
 		if (output_image) {
@@ -83,14 +94,24 @@ template<typename T> struct TileComponentBuffer {
 			/* clip region dimensions against tile */
 			reduced_dim.clip(m_bounds, &m_bounds);
 			unreduced_dim.clip(m_unreduced_bounds, &m_unreduced_bounds);
-
-			/* fill resolutions vector */
-	        assert(reduced_num_resolutions>0);
-
-	        for (uint32_t resno = 0; resno < reduced_num_resolutions; ++resno)
-	        	resolutions.push_back(tile_comp_resolutions+resno);
 		}
-		res_buffers.push_back(new res_buf<T>( nullptr, m_bounds.to_u32()) );
+
+		/* fill resolutions vector */
+        assert(reduced_num_resolutions>0);
+
+        for (uint32_t resno = 0; resno < reduced_num_resolutions; ++resno)
+        	resolutions.push_back(tile_comp_resolutions+resno);
+
+        if (m_encode || !whole_tile_decoding) {
+        	res_buffers.push_back(new res_buf<T>( nullptr, m_bounds.to_u32()) );
+        }
+        else {
+        	// lowest resolution equals 0th band
+        	 res_buffers.push_back(new res_buf<T>(nullptr, tile_comp_resolutions->bands[0].to_u32()) );
+
+        	 for (uint32_t resno = 1; resno < reduced_num_resolutions; ++resno)
+        		 res_buffers.push_back(new res_buf<T>( tile_comp_resolutions+resno, m_bounds.to_u32()) );
+        }
 	}
 	~TileComponentBuffer(){
 		for (auto& b : res_buffers)
@@ -122,6 +143,7 @@ template<typename T> struct TileComponentBuffer {
 	 *
 	 */
 	T* ptr(uint32_t resno,uint32_t bandno){
+		assert((resno > 0 && bandno <=4) || (resno==0 && bandno==0));
 		if (bandno==0)
 			return tile_buf()->data;
 		auto lower_res = resolutions[resno-1];
@@ -168,7 +190,11 @@ template<typename T> struct TileComponentBuffer {
 
 
 	bool alloc(){
-		return tile_buf()->alloc(!m_encode);
+		for (auto& b : res_buffers) {
+			if (!b->alloc(!m_encode))
+				return false;
+		}
+		return true;
 	}
 
 	/**
@@ -288,6 +314,7 @@ private:
 	uint32_t num_resolutions;
 
 	bool m_encode;
+	bool whole_tile_decoding;
 };
 
 
