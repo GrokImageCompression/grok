@@ -440,7 +440,7 @@ bool TileComponent::is_subband_area_of_interest(uint32_t resno,
 
     /* Compute the intersection of the area of interest, expressed in tile component coordinates */
     /* with the tile coordinates */
-	auto dims = buf->unreduced_region_dim;
+	auto dims = buf->unreduced_bounds();
 	uint32_t tcx0 = (uint32_t)dims.x0;
 	uint32_t tcy0 = (uint32_t)dims.y0;
 	uint32_t tcx1 = (uint32_t)dims.x1;

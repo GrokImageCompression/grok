@@ -40,6 +40,11 @@ struct grk_pt {
 
 };
 
+template<typename T> struct grk_rectangle;
+
+using grk_rect = grk_rectangle<int64_t>;
+using grk_rect_u32 = grk_rectangle<uint32_t>;
+
 template<typename T> struct grk_rectangle {
 	T x0;
     T y0;
@@ -53,6 +58,11 @@ template<typename T> struct grk_rectangle {
     grk_rectangle(const grk_rectangle &rhs){
     	*this = rhs;
     }
+
+    grk_rect_u32 to_u32(){
+		return grk_rect_u32((uint32_t)x0,(uint32_t)y0,(uint32_t)x1,(uint32_t)y1);
+	}
+
 
     void print(void) {
     	std::cout << "[" << x0 << "," << y0 << "," << x1 << "," << y1 << "]"
@@ -269,6 +279,8 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 	grk_buffer_2d(uint32_t w, uint32_t strd, uint32_t h) : grk_buffer_2d(nullptr,false,w,strd,h)
 	{}
 	grk_buffer_2d(uint32_t w, uint32_t h) : grk_buffer_2d(w,w,h)
+	{}
+	explicit grk_buffer_2d(grk_rect_u32 b) : grk_buffer_2d(b.width(),b.width(),b.height())
 	{}
 	grk_buffer_2d(void) : grk_buffer_2d(nullptr,0,0,0,false)
 	{}
