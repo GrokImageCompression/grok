@@ -60,10 +60,7 @@
 #include "dwt.h"
 #include <algorithm>
 
-using namespace std;
-
 namespace grk {
-
 
 template <typename T, typename S> struct decode_job{
 	decode_job( S data,
@@ -121,17 +118,15 @@ template <typename T> struct dwt_data {
 				 win_h_x1(0)
 	{}
 
-	dwt_data(const dwt_data& rhs)
-	{
-		mem = nullptr;
-	    dn = rhs.dn;
-	    sn = rhs.sn;
-	    cas = rhs.cas;
-	    win_l_x0 = rhs.win_l_x0;
-	    win_l_x1 = rhs.win_l_x1;
-	    win_h_x0 = rhs.win_h_x0;
-	    win_h_x1 = rhs.win_h_x1;
-	}
+	dwt_data(const dwt_data& rhs) : mem(nullptr),
+									dn ( rhs.dn),
+									sn ( rhs.sn),
+									cas ( rhs.cas),
+									win_l_x0 ( rhs.win_l_x0),
+									win_l_x1 ( rhs.win_l_x1),
+									win_h_x0 ( rhs.win_h_x0),
+									win_h_x1 ( rhs.win_h_x1)
+	{}
 
 	bool alloc(size_t len) {
 		release();
@@ -166,22 +161,13 @@ template <typename T> struct dwt_data {
     uint32_t      win_h_x1; /* end coord in high pass band */
 };
 
-struct  v4_data {
-	v4_data() {
-		f[0]=0;
-		f[1]=0;
-		f[2]=0;
-		f[3]=0;
-	}
-	explicit v4_data(float m){
-		f[0]=m;
-		f[1]=m;
-		f[2]=m;
-		f[3]=m;
-	}
+struct  vec4f {
+	vec4f() : f{0}
+	{}
+	explicit vec4f(float m) : f{m,m,m,m}
+	{}
     float f[4];
 };
-
 
 static const float dwt_alpha =  1.586134342f; /*  12994 */
 static const float dwt_beta  =  0.052980118f; /*    434 */
@@ -191,66 +177,12 @@ static const float dwt_delta = -0.443506852f; /*  -3633 */
 static const float K      = 1.230174105f; /*  10078 */
 static const float c13318 = 1.625732422f;
 
-/**
-Inverse wavelet transform in 2-D.
-*/
-static bool decode_tile_53(TileComponent* tilec, uint32_t numres);
-
-/* <summary>                             */
-/* Inverse 9-7 wavelet transform in 1-D. */
-/* </summary>                            */
-static void decode_step_97(dwt_data<v4_data>* GRK_RESTRICT dwt);
-
-static void interleave_h_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
-                                   float* GRK_RESTRICT bandL,
-								   const uint32_t strideL,
-								   float* GRK_RESTRICT bandH,
-								   const uint32_t strideH,
-                                   uint32_t remaining_height);
-
-static void interleave_v_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
-                                   float* GRK_RESTRICT bandL,
-								   const uint32_t strideL,
-								   float* GRK_RESTRICT bandH,
-								   const uint32_t strideH,
-                                   uint32_t nb_elts_read);
-
-#ifdef __SSE__
-static void decode_step1_sse_97(v4_data* w,
-                                       uint32_t start,
-                                       uint32_t end,
-                                       const __m128 c);
-
-static void decode_step2_sse_97(v4_data* l, v4_data* w,
-                                       uint32_t start,
-                                       uint32_t end,
-                                       uint32_t m, __m128 c);
-
-#else
-static void decode_step1_97(v4_data* w,
-                                   uint32_t start,
-                                   uint32_t end,
-                                   const float c);
-
-static void decode_step2_97(v4_data* l, v4_data* w,
-                                   uint32_t start,
-                                   uint32_t end,
-                                   uint32_t m,
-                                   float c);
-
-#endif
-
-
-/* FILTER_WIDTH value matches the maximum left/right extension given in tables */
-/* F.2 and F.3 of the standard. Note: in TileComponent::is_subband_area_of_interest() */
-/* we currently use 3. */
-template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_WIDTH, typename D>
-   bool decode_partial_tile(TileComponent* GRK_RESTRICT tilec, uint32_t numres, sparse_array *sa);
-
 static void  decode_h_cas0_53(int32_t* buf,
-                                const uint32_t total_width,
                                int32_t* bandL, /* even */
-							   int32_t* bandH){ /* odd */
+								const uint32_t wL,
+							   int32_t* bandH,
+								const uint32_t wH){ /* odd */
+	const uint32_t total_width = wL + wH;
     assert(total_width > 1);
 
     /* Improved version of the TWO_PASS_VERSION: */
@@ -282,13 +214,16 @@ static void  decode_h_cas0_53(int32_t* buf,
     } else {
         buf[total_width - 1] = d1n + s0n;
     }
-    memcpy(bandL, buf, total_width * sizeof(int32_t));
+    memcpy(bandL, buf, wL * sizeof(int32_t));
+    memcpy(bandH, buf + wL, wH * sizeof(int32_t));
 }
 
 static void  decode_h_cas1_53(int32_t* buf,
-                               const uint32_t total_width,
 							   int32_t* bandL, /* odd */
-							   int32_t* bandH){ /* even */
+                               const uint32_t wL,
+							   int32_t* bandH,
+                               const uint32_t wH){ /* even */
+	const uint32_t total_width = wL + wH;
     assert(total_width > 2);
 
     /* Improved version of the TWO_PASS_VERSION:
@@ -317,7 +252,8 @@ static void  decode_h_cas1_53(int32_t* buf,
     } else {
         buf[total_width - 1] = s1 + dc;
     }
-    memcpy(bandL, buf, total_width * sizeof(int32_t));
+    memcpy(bandL, buf, wL * sizeof(int32_t));
+    memcpy(bandH, buf + wL, wH * sizeof(int32_t));
 }
 
 /* <summary>                            */
@@ -331,7 +267,7 @@ static void decode_h_53(const dwt_data<int32_t> *dwt,
     const uint32_t total_width = dwt->sn + dwt->dn;
     if (dwt->cas == 0) { /* Left-most sample is on even coordinate */
         if (total_width > 1) {
-            decode_h_cas0_53(dwt->mem, total_width, bandL,bandH);
+            decode_h_cas0_53(dwt->mem,bandL,dwt->sn, bandH, dwt->dn);
         } else {
             /* Unmodified value */
         }
@@ -339,12 +275,11 @@ static void decode_h_53(const dwt_data<int32_t> *dwt,
         if (total_width == 1) {
         	bandL[0] /= 2;
         } else if (total_width == 2) {
-            auto out = dwt->mem;
-            out[1] = bandL[0] - ((bandH[0] + 1) >> 1);
-            out[0] = bandH[0] + out[1];
-            memcpy(bandL, dwt->mem, total_width * sizeof(int32_t));
+            dwt->mem[1] = bandL[0] - ((bandH[0] + 1) >> 1);
+            bandL[0] = bandH[0] + dwt->mem[1];
+            bandH[0] = dwt->mem[1];
         } else if (total_width > 2) {
-            decode_h_cas1_53(dwt->mem, total_width, bandL, bandH);
+            decode_h_cas1_53(dwt->mem, bandL, dwt->sn, bandH,dwt->dn);
         }
     }
 }
@@ -370,13 +305,15 @@ void decode_v_final_memcpy_53( const int32_t* buf,
 /** Vertical inverse 5x3 wavelet transform for 8 columns in SSE2, or
  * 16 in AVX2, when top-most pixel is on even coordinate */
 static void decode_v_cas0_mcols_SSE2_OR_AVX2_53(int32_t* buf,
-												const uint32_t total_height,
 												int32_t* bandL, /* even */
+												const uint32_t hL,
 												const size_t strideL,
 												int32_t *bandH, /* odd */
+												const uint32_t hH,
 												const size_t strideH){
     const VREG two = LOAD_CST(2);
 
+	const uint32_t total_height = hL + hH;
     assert(total_height > 1);
 
     /* Note: loads of input even/odd values must be done in a unaligned */
@@ -451,13 +388,15 @@ static void decode_v_cas0_mcols_SSE2_OR_AVX2_53(int32_t* buf,
 /** Vertical inverse 5x3 wavelet transform for 8 columns in SSE2, or
  * 16 in AVX2, when top-most pixel is on odd coordinate */
 static void decode_v_cas1_mcols_SSE2_OR_AVX2_53(int32_t* buf,
-												const uint32_t total_height,
 												int32_t* bandL,
+												const uint32_t hL,
 												const uint32_t strideL,
 												int32_t *bandH,
+												const uint32_t hH,
 												const uint32_t strideH){
     const VREG two = LOAD_CST(2);
 
+    const uint32_t total_height = hL + hH;
     assert(total_height > 2);
     /* Note: loads of input even/odd values must be done in a unaligned */
     /* fashion. But stores in tmp can be done with aligned store, since */
@@ -536,20 +475,21 @@ static void decode_v_cas1_mcols_SSE2_OR_AVX2_53(int32_t* buf,
 /** Vertical inverse 5x3 wavelet transform for one column, when top-most
  * pixel is on even coordinate */
 static void decode_v_cas0_53(int32_t* buf,
-                             const uint32_t total_height,
                              int32_t* bandL,
+							 const uint32_t hL,
 							 const uint32_t strideL,
 							 int32_t *bandH,
+							 const uint32_t hH,
                              const uint32_t strideH){
-    int32_t d1n, s1n, s0n;
 
+    const uint32_t total_height = hL + hH;
     assert(total_height > 1);
 
     /* Performs lifting in one single iteration. Saves memory */
     /* accesses and explicit interleaving. */
-    s1n = bandL[0];
-    d1n = bandH[0];
-    s0n = s1n - ((d1n + 1) >> 1);
+    int32_t s1n = bandL[0];
+    int32_t d1n = bandH[0];
+    int32_t s0n = s1n - ((d1n + 1) >> 1);
 
     uint32_t i = 0;
     if (total_height > 2) {
@@ -576,21 +516,27 @@ static void decode_v_cas0_53(int32_t* buf,
     } else {
         buf[total_height - 1] = d1n + s0n;
     }
-    auto band = bandL;
-    for (i = 0; i < total_height; ++i) {
-        *band = buf[i];
-        band += strideL;
+    for (i = 0; i < hL; ++i) {
+        *bandL = buf[i];
+        bandL += strideL;
+    }
+    for (i = hL; i < total_height; ++i) {
+        *bandH = buf[i];
+        bandH += strideH;
     }
 }
 
 /** Vertical inverse 5x3 wavelet transform for one column, when top-most
  * pixel is on odd coordinate */
 static void decode_v_cas1_53(int32_t* buf,
-                             const uint32_t total_height,
                              int32_t *bandL,
+							 const uint32_t hL,
 							 const uint32_t strideL,
 							 int32_t *bandH,
+							 const uint32_t hH,
                              const uint32_t strideH){
+
+    const uint32_t total_height = hL + hH;
     assert(total_height > 2);
 
     /* Performs lifting in one single iteration. Saves memory */
@@ -621,10 +567,13 @@ static void decode_v_cas1_53(int32_t* buf,
     } else {
         buf[total_height - 1] = s1 + dc;
     }
-    auto band = bandL;
-    for (i = 0; i < total_height; ++i) {
-        *band = buf[i];
-        band += strideL;
+    for (i = 0; i < hL; ++i) {
+        *bandL = buf[i];
+        bandL += strideL;
+    }
+    for (i = hL; i < total_height; ++i) {
+        *bandH = buf[i];
+        bandH += strideH;
     }
 }
 
@@ -647,13 +596,13 @@ static void decode_v_53(const dwt_data<int32_t> *dwt,
         if (len > 1 && nb_cols == PLL_COLS_53) {
             /* Same as below general case, except that thanks to SSE2/AVX2 */
             /* we can efficiently process 8/16 columns in parallel */
-            decode_v_cas0_mcols_SSE2_OR_AVX2_53(dwt->mem, len, bandL, strideL, bandH, strideH);
+            decode_v_cas0_mcols_SSE2_OR_AVX2_53(dwt->mem, bandL,sn, strideL, bandH, dwt->dn, strideH);
             return;
         }
 #endif
         if (len > 1) {
             for (uint32_t c = 0; c < nb_cols; c++, bandL++, bandH++)
-                decode_v_cas0_53(dwt->mem, len, bandL, strideL,bandH, strideH);
+                decode_v_cas0_53(dwt->mem, bandL,sn, strideL,bandH,dwt->dn, strideH);
             return;
         }
     } else {
@@ -666,12 +615,8 @@ static void decode_v_53(const dwt_data<int32_t> *dwt,
             auto out = dwt->mem;
             for (uint32_t c = 0; c < nb_cols; c++, bandL++) {
                 out[1] = bandL[0] - ((bandH[0] + 1) >> 1);
-                out[0] = bandH[0] + out[1];
-                auto band = bandL;
-                for (uint32_t i = 0; i < len; ++i){
-                	*band = out[i];
-                	band += strideL;
-                }
+                bandL[0] = bandH[0] + out[1];
+                bandH[0] = out[1];
             }
             return;
         }
@@ -680,12 +625,12 @@ static void decode_v_53(const dwt_data<int32_t> *dwt,
         if (nb_cols == PLL_COLS_53) {
             /* Same as below general case, except that thanks to SSE2/AVX2 */
             /* we can efficiently process 8/16 columns in parallel */
-            decode_v_cas1_mcols_SSE2_OR_AVX2_53(dwt->mem, len, bandL, strideL,bandH, strideH);
+            decode_v_cas1_mcols_SSE2_OR_AVX2_53(dwt->mem, bandL,sn, strideL,bandH,dwt->dn, strideH);
             return;
         }
 #endif
 		for (uint32_t c = 0; c < nb_cols; c++, bandL++,bandH++)
-			decode_v_cas1_53(dwt->mem, len, bandL,strideL,bandH, strideH);
+			decode_v_cas1_53(dwt->mem, bandL,sn,strideL,bandH, dwt->dn, strideH);
     }
 }
 
@@ -848,7 +793,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
     return rc;
 }
 
-static void interleave_h_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
+static void interleave_h_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
                                    float* GRK_RESTRICT bandLL,
 								   const uint32_t strideLL,
 								   float* GRK_RESTRICT bandHL,
@@ -900,13 +845,13 @@ static void interleave_h_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
     }
 }
 
-static void interleave_v_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
+static void interleave_v_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
                                    float* GRK_RESTRICT bandL,
 								   const uint32_t strideL,
 								   float* GRK_RESTRICT bandH,
                                    const uint32_t strideH,
                                    uint32_t nb_elts_read){
-    v4_data* GRK_RESTRICT bi = dwt->mem + dwt->cas;
+    vec4f* GRK_RESTRICT bi = dwt->mem + dwt->cas;
     auto band = bandL + dwt->win_l_x0 * strideL;
     for (uint32_t i = dwt->win_l_x0; i < dwt->win_l_x1; ++i, bi+=2) {
         memcpy((float*)bi, band, nb_elts_read * sizeof(float));
@@ -922,7 +867,7 @@ static void interleave_v_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
 }
 
 #ifdef __SSE__
-static void decode_step1_sse_97(v4_data* w,
+static void decode_step1_sse_97(vec4f* w,
                                        uint32_t start,
                                        uint32_t end,
                                        const __m128 c){
@@ -944,7 +889,7 @@ static void decode_step1_sse_97(v4_data* w,
         vw[0] = _mm_mul_ps(vw[0], c);
 }
 
-static void decode_step2_sse_97(v4_data* l, v4_data* w,
+static void decode_step2_sse_97(vec4f* l, vec4f* w,
                                        uint32_t start,
                                        uint32_t end,
                                        uint32_t m,
@@ -997,7 +942,7 @@ static void decode_step2_sse_97(v4_data* l, v4_data* w,
     }
 }
 #else
-static void decode_step1_97(v4_data* w,
+static void decode_step1_97(vec4f* w,
                                    uint32_t start,
                                    uint32_t end,
                                    const float c){
@@ -1014,7 +959,7 @@ static void decode_step1_97(v4_data* w,
         fw[i * 8 + 3] = tmp4 * c;
     }
 }
-static void decode_step2_97(v4_data* l, v4_data* w,
+static void decode_step2_97(vec4f* l, vec4f* w,
                                    uint32_t start,
                                    uint32_t end,
                                    uint32_t m,
@@ -1061,7 +1006,7 @@ static void decode_step2_97(v4_data* l, v4_data* w,
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
-static void decode_step_97(dwt_data<v4_data>* GRK_RESTRICT dwt)
+static void decode_step_97(dwt_data<vec4f>* GRK_RESTRICT dwt)
 {
     int32_t a, b;
 
@@ -1134,8 +1079,8 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
     uint32_t rh = tr->height();
 
     size_t data_size = dwt_utils::max_resolution(tr, numres);
-    dwt_data<v4_data> horiz;
-    dwt_data<v4_data> vert;
+    dwt_data<vec4f> horiz;
+    dwt_data<vec4f> vert;
     if (!horiz.alloc(data_size)) {
         GROK_ERROR("Out of memory");
         return false;
@@ -1197,7 +1142,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 			std::vector< std::future<int> > results;
 			for(uint32_t j = 0; j < num_jobs; ++j) {
 			   auto min_j = j * step_j;
-			   auto job = new decode_job<float, dwt_data<v4_data>>(horiz,
+			   auto job = new decode_job<float, dwt_data<vec4f>>(horiz,
 											bandLL + min_j * strideLL,
 											strideLL,
 											bandHL + min_j * strideHL,
@@ -1292,7 +1237,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 			std::vector< std::future<int> > results;
             for (uint32_t j = 0; j < num_jobs; j++) {
             	auto min_j = j * step_j;
-            	auto job = new decode_job<float, dwt_data<v4_data>>(vert,
+            	auto job = new decode_job<float, dwt_data<vec4f>>(vert,
             												bandLL + min_j,
 															strideLL,
 															nullptr,0,
@@ -1643,7 +1588,7 @@ public:
 	}
 };
 
-static void interleave_partial_h_97(dwt_data<v4_data>* dwt,
+static void interleave_partial_h_97(dwt_data<vec4f>* dwt,
 									sparse_array* sa,
 									uint32_t sa_line,
 									uint32_t num_rows){
@@ -1669,7 +1614,7 @@ static void interleave_partial_h_97(dwt_data<v4_data>* dwt,
 }
 
 
-static void interleave_partial_v_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
+static void interleave_partial_v_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
 									sparse_array* sa,
 									uint32_t sa_col,
 									uint32_t nb_elts_read){
@@ -1691,22 +1636,22 @@ static void interleave_partial_v_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
 
 class Partial97 {
 public:
-	void interleave_partial_h(dwt_data<v4_data>* dwt,
+	void interleave_partial_h(dwt_data<vec4f>* dwt,
 								sparse_array* sa,
 								uint32_t sa_line,
 								uint32_t num_rows){
 		interleave_partial_h_97(dwt,sa,sa_line,num_rows);
 	}
-	void decode_h(dwt_data<v4_data>* dwt){
+	void decode_h(dwt_data<vec4f>* dwt){
 		decode_step_97(dwt);
 	}
-	void interleave_partial_v(dwt_data<v4_data>* GRK_RESTRICT dwt,
+	void interleave_partial_v(dwt_data<vec4f>* GRK_RESTRICT dwt,
 								sparse_array* sa,
 								uint32_t sa_col,
 								uint32_t nb_elts_read){
 		interleave_partial_v_97(dwt,sa,sa_col,nb_elts_read);
 	}
-	void decode_v(dwt_data<v4_data>* dwt){
+	void decode_v(dwt_data<vec4f>* dwt){
 		decode_step_97(dwt);
 	}
 };
@@ -2088,7 +2033,7 @@ bool decode_97(TileProcessor *p_tcd,
     if (p_tcd->whole_tile_decoding)
         return decode_tile_97(tilec, numres);
     else
-        return decode_partial_tile<v4_data,4,4,4, Partial97>(tilec, numres, tilec->m_sa);
+        return decode_partial_tile<vec4f,4,4,4, Partial97>(tilec, numres, tilec->m_sa);
 }
 
 }
