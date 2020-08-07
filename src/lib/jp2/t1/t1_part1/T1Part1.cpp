@@ -59,8 +59,8 @@ static inline int32_t int_fix_mul_t1(int32_t a, int32_t b) {
 void T1Part1::preEncode(encodeBlockInfo *block, grk_tile *tile,
 		uint32_t &maximum) {
 	auto cblk = block->cblk;
-	auto w = cblk->x1 - cblk->x0;
-	auto h = cblk->y1 - cblk->y0;
+	auto w = cblk->width();
+	auto h = cblk->height();
 	if (!t1_allocate_buffers(t1, w,h))
 		return;
 	t1->data_stride = w;
@@ -104,10 +104,10 @@ double T1Part1::compress(encodeBlockInfo *block, grk_tile *tile,
 
 	cblkexp.x0 = block->x;
 	cblkexp.y0 = block->y;
-	cblkexp.x1 = block->x + cblk->x1 - cblk->x0;
-	cblkexp.y1 = block->y + cblk->y1 - cblk->y0;
-	assert(cblk->x1 - cblk->x0 > 0);
-	assert(cblk->y1 - cblk->y0 > 0);
+	cblkexp.x1 = block->x + cblk->width();
+	cblkexp.y1 = block->y + cblk->height();
+	assert(cblk->width() > 0);
+	assert(cblk->height() > 0);
 
 	cblkexp.data = cblk->paddedCompressedData;
 	cblkexp.data_size = cblk->compressedDataSize;
@@ -165,10 +165,10 @@ bool T1Part1::decompress(decodeBlockInfo *block) {
 	cblkexp.chunks = &chunk;
 	cblkexp.x0 = block->x;
 	cblkexp.y0 = block->y;
-	cblkexp.x1 = block->x + cblk->x1 - cblk->x0;
-	cblkexp.y1 = block->y + cblk->y1 - cblk->y0;
-	assert(cblk->x1 - cblk->x0 > 0);
-	assert(cblk->y1 - cblk->y0 > 0);
+	cblkexp.x1 = block->x + cblk->width();
+	cblkexp.y1 = block->y + cblk->height();
+	assert(cblk->width() > 0);
+	assert(cblk->height() > 0);
 	cblkexp.real_num_segs = cblk->numSegments;
 	auto segs = new seg[cblk->numSegments];
 	for (uint32_t i = 0; i < cblk->numSegments; ++i){
@@ -204,8 +204,8 @@ void T1Part1::postDecode(decodeBlockInfo *block) {
 	memset(&cblkexp, 0, sizeof(cblk_dec));
 	cblkexp.x0 = block->x;
 	cblkexp.y0 = block->y;
-	cblkexp.x1 = block->x + cblk->x1 - cblk->x0;
-	cblkexp.y1 = block->y + cblk->y1 - cblk->y0;
+	cblkexp.x1 = block->x + cblk->width();
+	cblkexp.y1 = block->y + cblk->height();
     post_decode(t1,
     		&cblkexp,
 			block);

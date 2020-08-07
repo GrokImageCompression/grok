@@ -276,6 +276,10 @@ template<typename T> struct TileComponentBuffer {
 		return m_bounds;
 	}
 
+	grk_rect unreduced_bounds(){
+		return m_unreduced_bounds;
+	}
+
 	uint64_t full_area(void){
 		return stride() * m_bounds.height();
 	}
@@ -292,11 +296,6 @@ template<typename T> struct TileComponentBuffer {
 	void transfer(T** buffer, bool* owns, uint32_t *stride){
 		tile_buf()->transfer(buffer,owns,stride);
 	}
-
-	grk_rect unreduced_bounds(){
-		return m_unreduced_bounds;
-	}
-
 private:
 
 	grk_buffer_2d<T>* tile_buf() const{

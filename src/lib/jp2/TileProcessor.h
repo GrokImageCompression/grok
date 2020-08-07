@@ -106,6 +106,9 @@ struct grk_cblk {
     grk_cblk& operator=(const grk_cblk& other);
     virtual ~grk_cblk(){}
     virtual void clear();
+    uint32_t width();
+    uint32_t height();
+    uint32_t area();
 	uint32_t x0, y0, x1, y1; /* dimension of the code block : left upper corner (x0, y0) right low corner (x1,y1) */
 	uint8_t *compressedData; /* data buffer*/
 	uint32_t compressedDataSize; /* size of allocated data buffer */

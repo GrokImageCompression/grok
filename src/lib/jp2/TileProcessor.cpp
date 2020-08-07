@@ -258,8 +258,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 					for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch;
 							cblkno++) {
 						auto cblk = &prc->enc[cblkno];
-						uint32_t numPix = ((cblk->x1 - cblk->x0)
-								* (cblk->y1 - cblk->y0));
+						uint32_t numPix = cblk->area();
 						if (!(state & GRK_PLUGIN_STATE_PRE_TR1)) {
 							encode_synch_with_plugin(this, compno, resno,
 									bandno, precno, cblkno, band, cblk,
@@ -398,8 +397,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 					auto prc = &band->precincts[precno];
 					for (cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch; cblkno++) {
 						auto cblk = &prc->enc[cblkno];
-						uint32_t numPix = ((cblk->x1 - cblk->x0)
-								* (cblk->y1 - cblk->y0));
+						uint32_t numPix = cblk->area();
 						if (!(state & GRK_PLUGIN_STATE_PRE_TR1)) {
 							encode_synch_with_plugin(this, compno, resno,
 									bandno, precno, cblkno, band, cblk,
@@ -1746,7 +1744,17 @@ grk_cblk& grk_cblk::operator=(const grk_cblk& rhs){
 void grk_cblk::clear(){
 	compressedData = nullptr;
 	owns_data = false;
+}
 
+uint32_t grk_cblk::width(){
+	return (uint32_t)(x1-x0);
+}
+uint32_t grk_cblk::height(){
+	return (uint32_t)(y1-y0);
+}
+
+uint32_t grk_cblk::area(){
+	return width() * height();
 }
 
 grk_cblk_enc::grk_cblk_enc() :

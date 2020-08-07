@@ -510,8 +510,8 @@ void TileComponent::alloc_sparse_array(uint32_t numres){
                     auto cblk = &precinct->dec[cblkno];
 					uint32_t x = cblk->x0;
 					uint32_t y = cblk->y0;
-					uint32_t cblk_w = (uint32_t)(cblk->x1 - cblk->x0);
-					uint32_t cblk_h = (uint32_t)(cblk->y1 - cblk->y0);
+					uint32_t cblk_w = cblk->width();
+					uint32_t cblk_h = cblk->height();
 
 					// check overlap in absolute coordinates
 					if (is_subband_area_of_interest(resno,
