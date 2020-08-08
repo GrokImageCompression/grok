@@ -64,8 +64,7 @@ void T1Part1::preEncode(encodeBlockInfo *block, grk_tile *tile,
 	if (!t1_allocate_buffers(t1, w,h))
 		return;
 	t1->data_stride = w;
-	uint32_t tile_width = (tile->comps + block->compno)->buf->stride();
-	auto tileLineAdvance = tile_width - w;
+	auto tileLineAdvance = (tile->comps + block->compno)->buf->stride() - w;
 	auto tiledp = block->tiledp;
 	uint32_t tileIndex = 0;
 	uint32_t cblk_index = 0;

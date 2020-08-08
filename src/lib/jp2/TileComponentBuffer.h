@@ -118,22 +118,41 @@ template<typename T> struct TileComponentBuffer {
 			delete b;
 	}
 	/**
-	 * Get pointer to band buffer
+	 * Get pointer to code block region in tile buffer
 	 *
 	 * @param resno resolution number
 	 * @param bandno band number (0 for LL band of 0th resolution, otherwise
-	 * 0,1,2 for HL,LH,HH bands
-	 * @param offsetx x offset into buffer
-	 * @param offsety y offset into buffer
+	 * 0 for LL band of 0th resolution, or {0,1,2} for {HL,LH,HH} bands
+	 * @param offsetx x offset of code block
+	 * @param offsety y offset of code block
 	 *
 	 */
-	T* ptr(uint32_t resno,uint32_t bandno, uint32_t offsetx, uint32_t offsety) const {
+	T* cblk_ptr(uint32_t resno,uint32_t bandno, uint32_t &offsetx, uint32_t &offsety) const {
 		(void)bandno;
 		if (resno==0)
 			assert(bandno==0);
 		else
 			assert(bandno < 3);
-		return tile_buf()->data + (uint64_t) offsetx + offsety * (uint64_t) tile_buf()->stride;
+
+		auto res = resolutions[resno];
+		auto pres = resno == 0 ? nullptr : resolutions[ resno - 1];
+		auto band = res->bands + bandno;
+		uint32_t x = offsetx;
+		uint32_t y = offsety;
+
+		// get code block offset relative to band
+		x -= band->x0;
+		y -= band->y0;
+
+		// add band offset relative to previous resolution
+		if (band->bandno & 1)
+			x += pres->width();
+		if (band->bandno & 2)
+			y += pres->height();
+		offsetx = x;
+		offsety = y;
+
+		return tile_buf()->data + (uint64_t) x + y * (uint64_t) tile_buf()->stride;
 	}
 	/**
 	 * Get pointer to band buffer
@@ -170,7 +189,7 @@ template<typename T> struct TileComponentBuffer {
 	 *
 	 */
 	T* ptr(void){
-		return ptr(0, 0, 0,0);
+		return tile_buf()->data;
 	}
 	/**
 	 * Get stride of band buffer

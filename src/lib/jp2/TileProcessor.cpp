@@ -1018,7 +1018,7 @@ void TileProcessor::copy_image_to_tile() {
 		uint64_t image_offset = (tilec->x0 - offset_x)
 				+ (uint64_t) (tilec->y0 - offset_y) * img_comp->stride;
 		auto src = img_comp->data + image_offset;
-		auto dest = tilec->buf->ptr(0,0,0,0);
+		auto dest = tilec->buf->ptr();
 
 		for (uint32_t j = 0; j < tilec->height(); ++j) {
 			memcpy(dest, src, tilec->width() * sizeof(int32_t));
@@ -1532,7 +1532,7 @@ bool TileProcessor::copy_uncompressed_data_to_tile(uint8_t *p_src,
 		auto img_comp = image->comps + i;
 
 		uint32_t size_comp = (img_comp->prec + 7) >> 3;
-		auto dest_ptr = tilec->buf->ptr(0,0,0,0);
+		auto dest_ptr = tilec->buf->ptr();
 		uint32_t w = (uint32_t)tilec->buf->bounds().width();
 		uint32_t h = (uint32_t)tilec->buf->bounds().height();
 		uint32_t stride = tilec->buf->stride();

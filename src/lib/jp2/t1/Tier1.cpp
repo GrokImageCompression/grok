@@ -43,31 +43,18 @@ void Tier1::encodeCodeblocks(TileCodingParams *tcp,
 				auto band = &res->bands[bandno];
 				for (precno = 0; precno < (uint64_t)res->pw * res->ph; ++precno) {
 					auto prc = &band->precincts[precno];
-					int64_t cblkno;
-					int32_t bandOdd = band->bandno & 1;
-					int32_t bandModTwo = band->bandno & 2;
-
-					for (cblkno = 0; cblkno < (int64_t) prc->cw * prc->ch;
+					for (uint64_t cblkno = 0; cblkno < (int64_t) prc->cw * prc->ch;
 							++cblkno) {
 						auto cblk = prc->enc + cblkno;
-						int32_t x = (int32_t)(cblk->x0 - band->x0);
-						int32_t y = (int32_t)(cblk->y0 - band->y0);
-						if (bandOdd) {
-							grk_resolution *pres = &tilec->resolutions[resno
-									- 1];
-							x += pres->x1 - pres->x0;
-						}
-						if (bandModTwo) {
-							grk_resolution *pres = &tilec->resolutions[resno
-									- 1];
-							y += pres->y1 - pres->y0;
-						}
-
+						auto block = new encodeBlockInfo();
+						block->x = cblk->x0;
+						block->y = cblk->y0;
+						block->tiledp = tilec->buf->cblk_ptr( resno, bandno,
+								block->x, block->y);
 						maxCblkW = std::max<uint32_t>(maxCblkW,
 								(uint32_t) (1 << tccp->cblkw));
 						maxCblkH = std::max<uint32_t>(maxCblkH,
 								(uint32_t) (1 << tccp->cblkh));
-						auto block = new encodeBlockInfo();
 						block->compno = compno;
 						block->bandno = band->bandno;
 						block->cblk = cblk;
@@ -77,12 +64,8 @@ void Tier1::encodeCodeblocks(TileCodingParams *tcp,
 						block->inv_step = (int32_t)band->inv_step;
 						block->inv_step_ht = 1.0f/band->stepsize;
 						block->stepsize = band->stepsize;
-						block->x = (uint32_t)x;
-						block->y = (uint32_t)y;
 						block->mct_norms = mct_norms;
 						block->mct_numcomps = mct_numcomps;
-						block->tiledp = tilec->buf->ptr( resno,
-								bandno, (uint32_t) x, (uint32_t) y);
 						block->k_msbs = (uint8_t)(band->numbps - cblk->numbps);
 						blocks.push_back(block);
 
@@ -119,7 +102,6 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, TileComponentCodingPar
 				for (uint64_t cblkno = 0;
 						cblkno < (uint64_t) precinct->cw * precinct->ch;
 						++cblkno) {
-					grk_rect cblk_rect;
 					auto cblk = precinct->dec + cblkno;
 					if (tilec->is_subband_area_of_interest(resno,
 													bandno,
@@ -128,24 +110,11 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, TileComponentCodingPar
 													cblk->x1,
 													cblk->y1)){
 
-
-						/* get code block offset relative to band*/
-						int32_t x = (int32_t)cblk->x0 - (int32_t)band->x0;
-						int32_t y = (int32_t)cblk->y0 - (int32_t)band->y0;
-
-						/* add band offset relative to previous resolution */
-						if (band->bandno & 1) {
-							auto pres = &tilec->resolutions[resno - 1];
-							x += pres->x1 - pres->x0;
-						}
-						if (band->bandno & 2) {
-							auto pres = &tilec->resolutions[resno - 1];
-							y += pres->y1 - pres->y0;
-						}
-						assert(x >= 0);
-						assert(y >= 0);
-
 						auto block = new decodeBlockInfo();
+						block->x = cblk->x0;
+						block->y = cblk->y0;
+						block->tiledp = tilec->buf->cblk_ptr( resno, bandno,
+								block->x, block->y);
 						block->bandno = band->bandno;
 						block->cblk = cblk;
 						block->cblk_sty = tccp->cblk_sty;
@@ -154,10 +123,6 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, TileComponentCodingPar
 						block->roishift = tccp->roishift;
 						block->stepsize = band->stepsize;
 						block->tilec = tilec;
-						block->x = (uint32_t)x;
-						block->y = (uint32_t)y;
-						block->tiledp = tilec->buf->ptr( resno, bandno,
-								(uint32_t) x, (uint32_t) y);
 						block->k_msbs = (uint8_t)(band->numbps - cblk->numbps);
 						blocks->push_back(block);
 					}
