@@ -256,33 +256,6 @@ static void  decode_h_cas1_53(int32_t* buf,
     memcpy(bandH, buf + wL, wH * sizeof(int32_t));
 }
 
-/* <summary>                            */
-/* Inverse 5-3 wavelet transform in 1-D for one row. */
-/* </summary>                           */
-/* Performs interleave, inverse wavelet transform and copy back to buffer */
-static void decode_h_53(const dwt_data<int32_t> *dwt,
-                         int32_t *bandL,
-						 int32_t *bandH)
-{
-    const uint32_t total_width = dwt->sn + dwt->dn;
-    if (dwt->cas == 0) { /* Left-most sample is on even coordinate */
-        if (total_width > 1) {
-            decode_h_cas0_53(dwt->mem,bandL,dwt->sn, bandH, dwt->dn);
-        } else {
-            /* Unmodified value */
-        }
-    } else { /* Left-most sample is on odd coordinate */
-        if (total_width == 1) {
-        	bandL[0] /= 2;
-        } else if (total_width == 2) {
-            dwt->mem[1] = bandL[0] - ((bandH[0] + 1) >> 1);
-            bandL[0] = bandH[0] + dwt->mem[1];
-            bandH[0] = dwt->mem[1];
-        } else if (total_width > 2) {
-            decode_h_cas1_53(dwt->mem, bandL, dwt->sn, bandH,dwt->dn);
-        }
-    }
-}
 
 #if (defined(__SSE2__) || defined(__AVX2__))
 
@@ -592,6 +565,34 @@ static void decode_v_cas1_53(int32_t* buf,
 }
 
 /* <summary>                            */
+/* Inverse 5-3 wavelet transform in 1-D for one row. */
+/* </summary>                           */
+/* Performs interleave, inverse wavelet transform and copy back to buffer */
+static void decode_h_53(const dwt_data<int32_t> *dwt,
+                         int32_t *bandL,
+						 int32_t *bandH)
+{
+    const uint32_t total_width = dwt->sn + dwt->dn;
+    if (dwt->cas == 0) { /* Left-most sample is on even coordinate */
+        if (total_width > 1) {
+            decode_h_cas0_53(dwt->mem,bandL,dwt->sn, bandH, dwt->dn);
+        } else {
+            /* Unmodified value */
+        }
+    } else { /* Left-most sample is on odd coordinate */
+        if (total_width == 1) {
+        	bandL[0] /= 2;
+        } else if (total_width == 2) {
+            dwt->mem[1] = bandL[0] - ((bandH[0] + 1) >> 1);
+            bandL[0] = bandH[0] + dwt->mem[1];
+            bandH[0] = dwt->mem[1];
+        } else if (total_width > 2) {
+            decode_h_cas1_53(dwt->mem, bandL, dwt->sn, bandH,dwt->dn);
+        }
+    }
+}
+
+/* <summary>                            */
 /* Inverse vertical 5-3 wavelet transform in 1-D for several columns. */
 /* </summary>                           */
 /* Performs interleave, inverse wavelet transform and copy back to buffer */
@@ -648,6 +649,149 @@ static void decode_v_53(const dwt_data<int32_t> *dwt,
     }
 }
 
+static void decode_h_strip_53(const dwt_data<int32_t> *horiz,
+						 uint32_t hMin,
+						 uint32_t hMax,
+                         int32_t *bandL,
+						 const uint32_t strideL,
+						 int32_t *bandH,
+						 const uint32_t strideH) {
+    for (uint32_t j = hMin; j < hMax; ++j){
+        decode_h_53(horiz, bandL, bandH);
+        bandL += strideL;
+        bandH += strideH;
+    }
+}
+
+static bool decode_h_mt_53(uint32_t num_threads,
+						size_t data_size,
+						 dwt_data<int32_t> &horiz,
+		 	 	 	 	 dwt_data<int32_t> &vert,
+						 uint32_t rh,
+                         int32_t *bandL,
+						 const uint32_t strideL,
+						 int32_t *bandH,
+						 const uint32_t strideH) {
+    if (num_threads == 1 || rh <= 1) {
+    	if (!horiz.mem){
+    	    if (! horiz.alloc(data_size)) {
+    	        GROK_ERROR("Out of memory");
+    	        return false;
+    	    }
+    	    vert.mem = horiz.mem;
+    	}
+    	decode_h_strip_53(&horiz,0,rh,bandL,strideL,bandH,strideH);
+    } else {
+        uint32_t num_jobs = (uint32_t)num_threads;
+        if (rh < num_jobs)
+            num_jobs = rh;
+        uint32_t step_j = (rh / num_jobs);
+		std::vector< std::future<int> > results;
+		for(uint32_t j = 0; j < num_jobs; ++j) {
+		   auto min_j = j * step_j;
+           auto job = new decode_job<int32_t, dwt_data<int32_t>>(horiz,
+										bandL + min_j * strideL,
+										strideL,
+										bandH + min_j * strideH,
+										strideH,
+										nullptr,0,nullptr,0,
+										j * step_j,
+										j < (num_jobs - 1U) ? (j + 1U) * step_j : rh);
+            if (!job->data.alloc(data_size)) {
+                GROK_ERROR("Out of memory");
+                horiz.release();
+                return false;
+            }
+			results.emplace_back(
+				ThreadPool::get()->enqueue([job] {
+					decode_h_strip_53(&job->data,job->min_j,job->max_j,job->bandLL,job->strideLL,job->bandHL,job->strideHL);
+				    grk_aligned_free(job->data.mem);
+				    delete job;
+					return 0;
+				})
+			);
+		}
+		for(auto &result: results)
+			result.get();
+    }
+    return true;
+}
+
+static void decode_v_strip_53(const dwt_data<int32_t> *vert,
+						 uint32_t wMin,
+						 uint32_t wMax,
+                         int32_t *bandL,
+						 const uint32_t strideL,
+						 int32_t *bandH,
+						 const uint32_t strideH) {
+
+
+    uint32_t j;
+    for (j = wMin; j + PLL_COLS_53 <= wMax; j += PLL_COLS_53){
+        decode_v_53(vert, bandL, strideL, bandH, strideH, PLL_COLS_53);
+		bandL += PLL_COLS_53;
+		bandH += PLL_COLS_53;
+    }
+    if (j < wMax)
+        decode_v_53(vert, bandL, strideL, bandH, strideH, wMax - j);
+}
+
+static bool decode_v_mt_53(uint32_t num_threads,
+						size_t data_size,
+						 dwt_data<int32_t> &horiz,
+		 	 	 	 	 dwt_data<int32_t> &vert,
+						 uint32_t rw,
+                         int32_t *bandL,
+						 const uint32_t strideL,
+						 int32_t *bandH,
+						 const uint32_t strideH) {
+    if (num_threads == 1 || rw <= 1) {
+    	if (!horiz.mem){
+    	    if (! horiz.alloc(data_size)) {
+    	        GROK_ERROR("Out of memory");
+    	        return false;
+    	    }
+    	    vert.mem = horiz.mem;
+    	}
+    	decode_v_strip_53(&vert, 0, rw, bandL, strideL, bandH, strideH);
+    } else {
+        uint32_t num_jobs = (uint32_t)num_threads;
+        if (rw < num_jobs)
+            num_jobs = rw;
+        uint32_t step_j = (rw / num_jobs);
+		std::vector< std::future<int> > results;
+        for (uint32_t j = 0; j < num_jobs; j++) {
+			    auto min_j = j * step_j;
+            auto job = new decode_job<int32_t, dwt_data<int32_t>>(vert,
+										bandL + min_j,
+										strideL,
+										nullptr,0,
+										bandH + min_j,
+										strideH,
+										nullptr,0,
+										j * step_j,
+										j < (num_jobs - 1U) ? (j + 1U) * step_j : rw);
+            if (!job->data.alloc(data_size)) {
+                GROK_ERROR("Out of memory");
+                vert.release();
+                return false;
+            }
+			results.emplace_back(
+				ThreadPool::get()->enqueue([job] {
+					decode_v_strip_53(&job->data, job->min_j, job->max_j, job->bandLL, job->strideLL, job->bandLH, job->strideLH);
+					grk_aligned_free(job->data.mem);
+					delete job;
+				return 0;
+				})
+			);
+        }
+		for(auto &result: results)
+			result.get();
+    }
+    return true;
+}
+
+
 /* <summary>                            */
 /* Inverse wavelet transform in 2-D.    */
 /* </summary>                           */
@@ -659,10 +803,10 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
     uint32_t rw = tr->width();
     uint32_t rh = tr->height();
 
-    size_t num_threads = ThreadPool::get()->num_threads();
-    size_t h_mem_size = dwt_utils::max_resolution(tr, numres);
+    uint32_t num_threads = (uint32_t)ThreadPool::get()->num_threads();
+    size_t data_size = dwt_utils::max_resolution(tr, numres);
     /* overflow check */
-    if (h_mem_size > (SIZE_MAX / PLL_COLS_53 / sizeof(int32_t))) {
+    if (data_size > (SIZE_MAX / PLL_COLS_53 / sizeof(int32_t))) {
         GROK_ERROR("Overflow");
         return false;
     }
@@ -671,12 +815,10 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
     /* we process PLL_COLS_53 columns at a time */
     dwt_data<int32_t> horiz;
     dwt_data<int32_t> vert;
-    h_mem_size *= PLL_COLS_53 * sizeof(int32_t);
+    data_size *= PLL_COLS_53 * sizeof(int32_t);
     bool rc = true;
     uint32_t res = 1;
     while (--numres) {
-        uint32_t strideLL = tilec->buf->stride(res,0);
-        uint32_t strideHL = tilec->buf->stride(res,1);
         horiz.sn = rw;
         vert.sn = rh;
         ++tr;
@@ -684,200 +826,42 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
         rh = tr->height();
         horiz.dn = rw - horiz.sn;
         horiz.cas = tr->x0 & 1;
-    	auto bandLL = tilec->buf->ptr( res, 0);
-    	auto bandHL = tilec->buf->ptr( res, 1);
-
-        if (num_threads == 1 || rh <= 1) {
-        	if (!horiz.mem){
-        	    if (! horiz.alloc(h_mem_size)) {
-        	        GROK_ERROR("Out of memory");
-        	        return false;
-        	    }
-        	    vert.mem = horiz.mem;
-        	}
-            for (uint32_t j = 0; j < rh; ++j){
-                decode_h_53(&horiz, bandLL, bandHL);
-                bandLL += strideLL;
-                bandHL += strideHL;
-            }
-        } else {
-            uint32_t num_jobs = (uint32_t)num_threads;
-            if (rh < num_jobs)
-                num_jobs = rh;
-            uint32_t step_j = (rh / num_jobs);
-			std::vector< std::future<int> > results;
-			for(uint32_t j = 0; j < num_jobs; ++j) {
-			   auto min_j = j * step_j;
-               auto job = new decode_job<int32_t, dwt_data<int32_t>>(horiz,
-											bandLL + min_j * strideLL,
-											strideLL,
-											bandHL + min_j * strideHL,
-											strideHL,
-											nullptr,0,nullptr,0,
-											j * step_j,
-											j < (num_jobs - 1U) ? (j + 1U) * step_j : rh);
-                if (!job->data.alloc(h_mem_size)) {
-                    GROK_ERROR("Out of memory");
-                    grk_aligned_free(horiz.mem);
-                    return false;
-                }
-				results.emplace_back(
-					ThreadPool::get()->enqueue([job] {
-					    for (uint32_t j = job->min_j; j < job->max_j; j++){
-					        decode_h_53(&job->data,job->bandLL,job->bandHL);
-					        job->bandLL += job->strideLL;
-					        job->bandHL += job->strideHL;
-						}
-					    grk_aligned_free(job->data.mem);
-					    delete job;
-						return 0;
-					})
-				);
-			}
-			for(auto &result: results)
-				result.get();
-        }
+    	if (!decode_h_mt_53(num_threads,
+    						data_size,
+							horiz,
+							vert,
+							vert.sn,
+							tilec->buf->ptr(res, 0),
+							tilec->buf->stride(res,0),
+							tilec->buf->ptr(res, 1),
+							tilec->buf->stride(res,1)))
+    		return false;
+    	if (!decode_h_mt_53(num_threads,
+    						data_size,
+							horiz,
+							vert,
+							rh -  vert.sn,
+							tilec->buf->ptr(res, 2),
+							tilec->buf->stride(res,2),
+							tilec->buf->ptr(res, 3),
+							tilec->buf->stride(res,3)))
+    		return false;
         vert.dn = rh - vert.sn;
         vert.cas = tr->y0 & 1;
-    	bandLL = tilec->buf->ptr(res, 0);
-    	auto bandLH = tilec->buf->ptr( res, 2);
-    	uint32_t strideLH = tilec->buf->stride(res,2);
-
-        if (num_threads == 1 || rw <= 1) {
-        	if (!horiz.mem){
-        	    if (! horiz.alloc(h_mem_size)) {
-        	        GROK_ERROR("Out of memory");
-        	        return false;
-        	    }
-        	    vert.mem = horiz.mem;
-        	}
-            uint32_t j;
-            for (j = 0; j + PLL_COLS_53 <= rw; j += PLL_COLS_53){
-                decode_v_53(&vert, bandLL, strideLL, bandLH, strideLH, PLL_COLS_53);
-				bandLL += PLL_COLS_53;
-				bandLH += PLL_COLS_53;
-            }
-            if (j < rw)
-                decode_v_53(&vert, bandLL, strideLL, bandLH, strideLH, rw - j);
-        } else {
-            uint32_t num_jobs = (uint32_t)num_threads;
-            if (rw < num_jobs)
-                num_jobs = rw;
-            uint32_t step_j = (rw / num_jobs);
-			std::vector< std::future<int> > results;
-            for (uint32_t j = 0; j < num_jobs; j++) {
- 			    auto min_j = j * step_j;
-                auto job = new decode_job<int32_t, dwt_data<int32_t>>(vert,
-											bandLL + min_j,
-											strideLL,
-											nullptr,0,
-											bandLH + min_j,
-											strideLH,
-											nullptr,0,
-											j * step_j,
-											j < (num_jobs - 1U) ? (j + 1U) * step_j : rw);
-                if (!job->data.alloc(h_mem_size)) {
-                    GROK_ERROR("Out of memory");
-                    grk_aligned_free(vert.mem);
-                    return false;
-                }
-				results.emplace_back(
-					ThreadPool::get()->enqueue([job] {
-						uint32_t j=job->min_j;
-						for (; j + PLL_COLS_53 <= job->max_j; j += PLL_COLS_53) {
-							decode_v_53(&job->data, job->bandLL, job->strideLL, job->bandLH, job->strideLH, PLL_COLS_53);
-							job->bandLL += PLL_COLS_53;
-							job->bandLH += PLL_COLS_53;
-						}
-						if (j < job->max_j)
-							decode_v_53(&job->data, job->bandLL,job->strideLL, job->bandLH, job->strideLH, job->max_j - j);
-						grk_aligned_free(job->data.mem);
-						delete job;
-					return 0;
-					})
-				);
-            }
-			for(auto &result: results)
-				result.get();
-        }
+    	if (!decode_v_mt_53(num_threads,
+    						data_size,
+							horiz,
+							vert,
+							rw,
+							tilec->buf->ptr(res, 0),
+							tilec->buf->stride(res,0),
+							tilec->buf->ptr(res, 2),
+							tilec->buf->stride(res,2)))
+    		return false;
         res++;
     }
     grk_aligned_free(horiz.mem);
-
     return rc;
-}
-
-static void interleave_h_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
-                                   float* GRK_RESTRICT bandLL,
-								   const uint32_t strideLL,
-								   float* GRK_RESTRICT bandHL,
-                                   const uint32_t strideHL,
-                                   uint32_t remaining_height){
-    float* GRK_RESTRICT bi = (float*)(dwt->mem + dwt->cas);
-    uint32_t x0 = dwt->win_l_x0;
-    uint32_t x1 = dwt->win_l_x1;
-
-    for (uint32_t k = 0; k < 2; ++k) {
-    	auto band = (k == 0) ? bandLL : bandHL;
-    	uint32_t stride = (k == 0) ? strideLL : strideHL;
-        if (remaining_height >= 4 && ((size_t) band & 0x0f) == 0 &&
-                ((size_t) bi & 0x0f) == 0 && (stride & 0x0f) == 0) {
-            /* Fast code path */
-            for (uint32_t i = x0; i < x1; ++i, bi+=8) {
-                uint32_t j = i;
-                bi[0] = band[j];
-                j += stride;
-                bi[1] = band[j];
-                j += stride;
-                bi[2] = band[j];
-                j += stride;
-                bi[3] = band[j];
-             }
-        } else {
-            /* Slow code path */
-            for (uint32_t i = x0; i < x1; ++i, bi+=8) {
-                uint32_t j = i;
-                bi[0] = band[j];
-                j += stride;
-                if (remaining_height == 1)
-                    continue;
-                bi[1] = band[j];
-                j += stride;
-                if (remaining_height == 2)
-                    continue;
-                 bi[2] = band[j];
-                j += stride;
-                if (remaining_height == 3)
-                    continue;
-                bi[3] = band[j];
-            }
-        }
-
-        bi = (float*)(dwt->mem + 1 - dwt->cas);
-        x0 = dwt->win_h_x0;
-        x1 = dwt->win_h_x1;
-    }
-}
-
-static void interleave_v_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
-                                   float* GRK_RESTRICT bandL,
-								   const uint32_t strideL,
-								   float* GRK_RESTRICT bandH,
-                                   const uint32_t strideH,
-                                   uint32_t nb_elts_read){
-    vec4f* GRK_RESTRICT bi = dwt->mem + dwt->cas;
-    auto band = bandL + dwt->win_l_x0 * strideL;
-    for (uint32_t i = dwt->win_l_x0; i < dwt->win_l_x1; ++i, bi+=2) {
-        memcpy((float*)bi, band, nb_elts_read * sizeof(float));
-        band +=strideL;
-    }
-
-    bi = dwt->mem + 1 - dwt->cas;
-    band = bandH + dwt->win_h_x0 * strideH;
-    for (uint32_t i = dwt->win_h_x0; i < dwt->win_h_x1; ++i, bi+=2) {
-        memcpy((float*)bi, band, nb_elts_read * sizeof(float));
-        band += strideH;
-    }
 }
 
 #ifdef __SSE__
@@ -1080,6 +1064,259 @@ static void decode_step_97(dwt_data<vec4f>* GRK_RESTRICT dwt)
 #endif
 }
 
+
+static void interleave_h_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
+                                   float* GRK_RESTRICT bandL,
+								   const uint32_t strideL,
+								   float* GRK_RESTRICT bandH,
+                                   const uint32_t strideH,
+                                   uint32_t remaining_height){
+    float* GRK_RESTRICT bi = (float*)(dwt->mem + dwt->cas);
+    uint32_t x0 = dwt->win_l_x0;
+    uint32_t x1 = dwt->win_l_x1;
+
+    for (uint32_t k = 0; k < 2; ++k) {
+    	auto band = (k == 0) ? bandL : bandH;
+    	uint32_t stride = (k == 0) ? strideL : strideH;
+        if (remaining_height >= 4 && ((size_t) band & 0x0f) == 0 &&
+                ((size_t) bi & 0x0f) == 0 && (stride & 0x0f) == 0) {
+            /* Fast code path */
+            for (uint32_t i = x0; i < x1; ++i, bi+=8) {
+                uint32_t j = i;
+                bi[0] = band[j];
+                j += stride;
+                bi[1] = band[j];
+                j += stride;
+                bi[2] = band[j];
+                j += stride;
+                bi[3] = band[j];
+             }
+        } else {
+            /* Slow code path */
+            for (uint32_t i = x0; i < x1; ++i, bi+=8) {
+                uint32_t j = i;
+                bi[0] = band[j];
+                j += stride;
+                if (remaining_height == 1)
+                    continue;
+                bi[1] = band[j];
+                j += stride;
+                if (remaining_height == 2)
+                    continue;
+                 bi[2] = band[j];
+                j += stride;
+                if (remaining_height == 3)
+                    continue;
+                bi[3] = band[j];
+            }
+        }
+
+        bi = (float*)(dwt->mem + 1 - dwt->cas);
+        x0 = dwt->win_h_x0;
+        x1 = dwt->win_h_x1;
+    }
+}
+
+static void decode_h_strip_97(dwt_data<vec4f>* GRK_RESTRICT horiz,
+								   const uint32_t rh,
+                                   float* GRK_RESTRICT bandL,
+								   const uint32_t strideL,
+								   float* GRK_RESTRICT bandH,
+                                   const uint32_t strideH){
+	 uint32_t j;
+	for (j = 0; j + 3 < rh; j += 4) {
+		interleave_h_97(horiz, bandL,strideL, bandH, strideH, rh - j);
+		decode_step_97(horiz);
+		for (uint32_t k = 0; k <  horiz->sn; k++) {
+			bandL[k      ] 					= horiz->mem[k].f[0];
+			bandL[k + (size_t)strideL  ] 		= horiz->mem[k].f[1];
+			bandL[k + (size_t)strideL * 2] 	= horiz->mem[k].f[2];
+			bandL[k + (size_t)strideL * 3] 	= horiz->mem[k].f[3];
+		}
+		for (uint32_t k = 0, kk=horiz->sn; k <  horiz->dn; k++,kk++) {
+			bandH[k      ] 					= horiz->mem[kk].f[0];
+			bandH[k + (size_t)strideH  ] 		= horiz->mem[kk].f[1];
+			bandH[k + (size_t)strideH * 2] 	= horiz->mem[kk].f[2];
+			bandH[k + (size_t)strideH * 3] 	= horiz->mem[kk].f[3];
+		}
+		bandL += strideL << 2;
+		bandH += strideH << 2;
+	}
+	if (j < rh) {
+		interleave_h_97(horiz, bandL,strideL,bandH, strideH, rh - j);
+		decode_step_97(horiz);
+		for (uint32_t k = 0; k < horiz->sn; k++) {
+			switch (rh - j) {
+			case 3:
+				bandL[k + strideL * 2] = horiz->mem[k].f[2];
+			/* FALLTHRU */
+			case 2:
+				bandL[k + strideL  ] = horiz->mem[k].f[1];
+			/* FALLTHRU */
+			case 1:
+				bandL[k] = horiz->mem[k].f[0];
+			}
+		}
+		for (uint32_t k = 0, kk=horiz->sn; k <  horiz->dn; k++,kk++) {
+			switch (rh - j) {
+			case 3:
+				bandH[k + strideH * 2] = horiz->mem[kk].f[2];
+			/* FALLTHRU */
+			case 2:
+				bandH[k + strideH  ] = horiz->mem[kk].f[1];
+			/* FALLTHRU */
+			case 1:
+				bandH[k] = horiz->mem[kk].f[0];
+			}
+		}
+	}
+}
+static bool decode_h_mt_97(uint32_t num_threads,
+							size_t data_size,
+							dwt_data<vec4f> &GRK_RESTRICT horiz,
+						   const uint32_t rh,
+						   float* GRK_RESTRICT bandL,
+						   const uint32_t strideL,
+						   float* GRK_RESTRICT bandH,
+						   const uint32_t strideH){
+	uint32_t num_jobs = num_threads;
+    if (rh < num_jobs)
+        num_jobs = rh;
+    uint32_t step_j = num_jobs ? (rh / num_jobs) : 0;
+    if (num_threads == 1 || step_j < 4) {
+    	decode_h_strip_97(&horiz, rh, bandL,strideL, bandH, strideH);
+    } else {
+		std::vector< std::future<int> > results;
+		for(uint32_t j = 0; j < num_jobs; ++j) {
+		   auto min_j = j * step_j;
+		   auto job = new decode_job<float, dwt_data<vec4f>>(horiz,
+										bandL + min_j * strideL,
+										strideL,
+										bandH + min_j * strideH,
+										strideH,
+										nullptr,0,nullptr,0,
+										0,
+										(j < (num_jobs - 1U) ? (j + 1U) * step_j : rh) - min_j);
+			if (!job->data.alloc(data_size)) {
+				GROK_ERROR("Out of memory");
+				horiz.release();
+				return false;
+			}
+			results.emplace_back(
+				ThreadPool::get()->enqueue([job] {
+	        		decode_h_strip_97(&job->data, job->max_j, job->bandLL,job->strideLL, job->bandHL, job->strideHL);
+					job->data.release();
+					delete job;
+					return 0;
+				})
+			);
+		}
+		for(auto &result: results)
+			result.get();
+    }
+    return true;
+}
+
+static void interleave_v_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
+                                   float* GRK_RESTRICT bandL,
+								   const uint32_t strideL,
+								   float* GRK_RESTRICT bandH,
+                                   const uint32_t strideH,
+                                   uint32_t nb_elts_read){
+    vec4f* GRK_RESTRICT bi = dwt->mem + dwt->cas;
+    auto band = bandL + dwt->win_l_x0 * strideL;
+    for (uint32_t i = dwt->win_l_x0; i < dwt->win_l_x1; ++i, bi+=2) {
+        memcpy((float*)bi, band, nb_elts_read * sizeof(float));
+        band +=strideL;
+    }
+
+    bi = dwt->mem + 1 - dwt->cas;
+    band = bandH + dwt->win_h_x0 * strideH;
+    for (uint32_t i = dwt->win_h_x0; i < dwt->win_h_x1; ++i, bi+=2) {
+        memcpy((float*)bi, band, nb_elts_read * sizeof(float));
+        band += strideH;
+    }
+}
+static void decode_v_strip_97(dwt_data<vec4f>* GRK_RESTRICT vert,
+								   const uint32_t rw,
+								   const uint32_t rh,
+                                   float* GRK_RESTRICT bandL,
+								   const uint32_t strideL,
+								   float* GRK_RESTRICT bandH,
+                                   const uint32_t strideH){
+    uint32_t j;
+	for (j = 0; j + 3 < rw; j += 4) {
+		interleave_v_97(vert, bandL,strideL, bandH,strideH, 4);
+		decode_step_97(vert);
+		auto dest = bandL;
+		for (uint32_t k = 0; k < rh; ++k){
+			memcpy(dest, vert->mem+k, 4 * sizeof(float));
+			dest += strideL;
+		}
+		bandL += 4;
+		bandH += 4;
+	}
+	if (j < rw) {
+		j = rw & 0x03;
+		interleave_v_97(vert, bandL, strideL,bandH, strideH, j);
+		decode_step_97(vert);
+		auto dest = bandL;
+		for (uint32_t k = 0; k < rh; ++k) {
+			memcpy(dest, vert->mem+k,j * sizeof(float));
+			dest += strideL;
+		}
+	}
+}
+
+static bool decode_v_mt_97(uint32_t num_threads,
+							size_t data_size,
+							dwt_data<vec4f> &GRK_RESTRICT vert,
+							const uint32_t rw,
+						   const uint32_t rh,
+						   float* GRK_RESTRICT bandL,
+						   const uint32_t strideL,
+						   float* GRK_RESTRICT bandH,
+						   const uint32_t strideH){
+	auto num_jobs = (uint32_t)num_threads;
+	if (rw < num_jobs)
+		num_jobs = rw;
+	auto step_j = num_jobs ? (rw / num_jobs) : 0;
+	if (num_threads == 1 || step_j < 4) {
+		decode_v_strip_97(&vert,rw,rh, bandL,strideL, bandH,strideH);
+	} else {
+		std::vector< std::future<int> > results;
+		for (uint32_t j = 0; j < num_jobs; j++) {
+			auto min_j = j * step_j;
+			auto job = new decode_job<float, dwt_data<vec4f>>(vert,
+														bandL + min_j,
+														strideL,
+														nullptr,0,
+														bandH + min_j,
+														strideH,
+														nullptr,0,
+														0,
+														(j < (num_jobs - 1U) ? (j + 1U) * step_j : rw) - min_j);
+			if (!job->data.alloc(data_size)) {
+				GROK_ERROR("Out of memory");
+				vert.release();
+				return false;
+			}
+			results.emplace_back(
+				ThreadPool::get()->enqueue([job,rh] {
+					decode_v_strip_97(&job->data,job->max_j,rh, job->bandLL,job->strideLL, job->bandLH,job->strideLH);
+					job->data.release();
+					delete job;
+					return 0;
+				})
+			);
+		}
+		for(auto &result: results)
+			result.get();
+	}
+
+	return true;
+}
+
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 2-D. */
 /* </summary>                            */
@@ -1100,13 +1337,11 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         return false;
     }
     vert.mem = horiz.mem;
-    size_t num_threads = ThreadPool::get()->num_threads();
+    uint32_t num_threads = (uint32_t)ThreadPool::get()->num_threads();
     uint32_t res = 1;
     while (--numres) {
         horiz.sn = rw;
         vert.sn = rh;
-        uint32_t strideLL = tilec->buf->stride(res,0);
-        uint32_t strideHL = tilec->buf->stride(res,1);
         ++tr;
         rw = tr->width();
         rh = tr->height();
@@ -1116,217 +1351,45 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         horiz.win_l_x1 = horiz.sn;
         horiz.win_h_x0 = 0;
         horiz.win_h_x1 = horiz.dn;
-        float * GRK_RESTRICT bandLL = (float*) tilec->buf->ptr( res, 0);
-        float * GRK_RESTRICT bandHL = (float*) tilec->buf->ptr( res, 1);
-        uint32_t num_jobs = (uint32_t)num_threads;
-        if (rh < num_jobs)
-            num_jobs = rh;
-        uint32_t step_j = num_jobs ? (rh / num_jobs) : 0;
-        if (num_threads == 1 || step_j < 4) {
-            uint32_t j;
-			for (j = 0; j + 3 < rh; j += 4) {
-				interleave_h_97(&horiz, bandLL,strideLL, bandHL, strideHL, rh - j);
-				decode_step_97(&horiz);
-				for (uint32_t k = 0; k <  horiz.sn; k++) {
-					bandLL[k      ] 					= horiz.mem[k].f[0];
-					bandLL[k + (size_t)strideLL  ] 		= horiz.mem[k].f[1];
-					bandLL[k + (size_t)strideLL * 2] 	= horiz.mem[k].f[2];
-					bandLL[k + (size_t)strideLL * 3] 	= horiz.mem[k].f[3];
-				}
-				for (uint32_t k = 0, kk=horiz.sn; k <  horiz.dn; k++,kk++) {
-					bandHL[k      ] 					= horiz.mem[kk].f[0];
-					bandHL[k + (size_t)strideHL  ] 		= horiz.mem[kk].f[1];
-					bandHL[k + (size_t)strideHL * 2] 	= horiz.mem[kk].f[2];
-					bandHL[k + (size_t)strideHL * 3] 	= horiz.mem[kk].f[3];
-				}
-				bandLL += strideLL << 2;
-				bandHL += strideHL << 2;
-			}
-			if (j < rh) {
-				interleave_h_97(&horiz, bandLL,strideLL,bandHL, strideHL, rh - j);
-				decode_step_97(&horiz);
-				for (uint32_t k = 0; k < horiz.sn; k++) {
-					switch (rh - j) {
-					case 3:
-						bandLL[k + strideLL * 2] = horiz.mem[k].f[2];
-					/* FALLTHRU */
-					case 2:
-						bandLL[k + strideLL  ] = horiz.mem[k].f[1];
-					/* FALLTHRU */
-					case 1:
-						bandLL[k] = horiz.mem[k].f[0];
-					}
-				}
-				for (uint32_t k = 0, kk=horiz.sn; k <  horiz.dn; k++,kk++) {
-					switch (rh - j) {
-					case 3:
-						bandHL[k + strideHL * 2] = horiz.mem[kk].f[2];
-					/* FALLTHRU */
-					case 2:
-						bandHL[k + strideHL  ] = horiz.mem[kk].f[1];
-					/* FALLTHRU */
-					case 1:
-						bandHL[k] = horiz.mem[kk].f[0];
-					}
-				}
-			}
-        } else {
-			std::vector< std::future<int> > results;
-			for(uint32_t j = 0; j < num_jobs; ++j) {
-			   auto min_j = j * step_j;
-			   auto job = new decode_job<float, dwt_data<vec4f>>(horiz,
-											bandLL + min_j * strideLL,
-											strideLL,
-											bandHL + min_j * strideHL,
-											strideHL,
-											nullptr,0,nullptr,0,
-											0,
-											(j < (num_jobs - 1U) ? (j + 1U) * step_j : rh) - min_j);
-				if (!job->data.alloc(data_size)) {
-					GROK_ERROR("Out of memory");
-					horiz.release();
-					return false;
-				}
-				results.emplace_back(
-					ThreadPool::get()->enqueue([job,rw] {
-					    uint32_t j;
-					    auto bandLL = job->bandLL;
-					    auto bandHL = job->bandHL;
-						for (j = 0; j + 3 < job->max_j; j+=4){
-							interleave_h_97(&job->data, bandLL, job->strideLL, bandHL,job->strideHL, job->max_j - j);
-							decode_step_97(&job->data);
-							for (uint32_t k = 0; k < rw; k++) {
-								bandLL[k      ] 						= job->data.mem[k].f[0];
-								bandLL[k + (size_t)job->strideLL  ] 	= job->data.mem[k].f[1];
-								bandLL[k + (size_t)job->strideLL * 2] 	= job->data.mem[k].f[2];
-								bandLL[k + (size_t)job->strideLL * 3] 	= job->data.mem[k].f[3];
-							}
-							bandLL += job->strideLL << 2;
-							bandHL += job->strideHL << 2;
-						}
-						if (j < job->max_j) {
-							interleave_h_97(&job->data, bandLL, job->strideLL, bandHL,job->strideHL, job->max_j - j);
-							decode_step_97(&job->data);
-							for (uint32_t k = 0; k < rw; k++) {
-								switch (job->max_j - j) {
-								case 3:
-									bandLL[k + (size_t)job->strideLL * 2] = job->data.mem[k].f[2];
-								/* FALLTHRU */
-								case 2:
-									bandLL[k + job->strideLL  ] = job->data.mem[k].f[1];
-								/* FALLTHRU */
-								case 1:
-									bandLL[k] = job->data.mem[k].f[0];
-								}
-							}
-						}
-						job->data.release();
-						delete job;
-						return 0;
-					})
-				);
-			}
-			for(auto &result: results)
-				result.get();
-        }
+        if (!decode_h_mt_97(num_threads,
+        					data_size,
+							horiz,
+							vert.sn,
+							(float*) tilec->buf->ptr(res, 0),
+							tilec->buf->stride(res,0),
+							(float*) tilec->buf->ptr(res, 1),
+							tilec->buf->stride(res,1)))
+        	return false;
+        if (!decode_h_mt_97(num_threads,
+        					data_size,
+							horiz,
+							rh-vert.sn,
+							(float*) tilec->buf->ptr(res, 2),
+							tilec->buf->stride(res,2),
+							(float*) tilec->buf->ptr(res, 3),
+							tilec->buf->stride(res,3)))
+        	return false;
         vert.dn = rh - vert.sn;
         vert.cas = tr->y0 & 1;
         vert.win_l_x0 = 0;
         vert.win_l_x1 = vert.sn;
         vert.win_h_x0 = 0;
         vert.win_h_x1 = vert.dn;
-        bandLL = (float*) tilec->buf->ptr( res, 0);
-        auto bandLH = (float*) tilec->buf->ptr( res, 2) ;
-        uint32_t strideLH = tilec->buf->stride(res,2);
-        num_jobs = (uint32_t)num_threads;
-        if (rw < num_jobs)
-            num_jobs = rw;
-        step_j = num_jobs ? (rw / num_jobs) : 0;
-        if (num_threads == 1 || step_j < 4) {
-            uint32_t j;
-			for (j = 0; j + 3 < rw; j += 4) {
-				interleave_v_97(&vert, bandLL,strideLL, bandLH,strideLH, 4);
-				decode_step_97(&vert);
-				auto dest = bandLL;
-				for (uint32_t k = 0; k < rh; ++k){
-					memcpy(dest, vert.mem+k, 4 * sizeof(float));
-					dest += strideLL;
-				}
-				bandLL += 4;
-				bandLH += 4;
-			}
-			if (j < rw) {
-				j = rw & 0x03;
-				interleave_v_97(&vert, bandLL, strideLL,bandLH, strideLH, j);
-				decode_step_97(&vert);
-				auto dest = bandLL;
-				for (uint32_t k = 0; k < rh; ++k) {
-					memcpy(dest, vert.mem+k,j * sizeof(float));
-					dest += strideLL;
-				}
-			}
-        } else {
-			std::vector< std::future<int> > results;
-            for (uint32_t j = 0; j < num_jobs; j++) {
-            	auto min_j = j * step_j;
-            	auto job = new decode_job<float, dwt_data<vec4f>>(vert,
-            												bandLL + min_j,
-															strideLL,
-															nullptr,0,
-															bandLH + min_j,
-															strideLH,
-															nullptr,0,
-            												0,
-            												(j < (num_jobs - 1U) ? (j + 1U) * step_j : rw) - min_j);
-				if (!job->data.alloc(data_size)) {
-					GROK_ERROR("Out of memory");
-					horiz.release();
-					return false;
-				}
-				results.emplace_back(
-					ThreadPool::get()->enqueue([job,rh] {
-						uint32_t j;
-					    auto bandLL = job->bandLL;
-					    auto bandLH = job->bandLH;
-						for (j = 0; j + 3 < job->max_j; j+=4){
-							interleave_v_97(&job->data, bandLL, job->strideLL, bandLH, job->strideLH, 4);
-							decode_step_97(&job->data);
-							auto dest = bandLL;
-							for (uint32_t k = 0; k < rh; ++k) {
-								memcpy(dest, job->data.mem+k, 4 * sizeof(float));
-								dest += job->strideLL;
-							}
-							bandLL += 4;
-							bandLH += 4;
-						}
-						if (j < job->max_j) {
-							j = job->max_j - j;
-							interleave_v_97(&job->data, bandLL, job->strideLL, bandLH,job->strideLH, j);
-							decode_step_97(&job->data);
-							auto dest = bandLL;
-							for (uint32_t k = 0; k < rh; ++k) {
-								memcpy(dest, job->data.mem+k,j * sizeof(float));
-								dest += job->strideLL;
-							}
-						}
-						job->data.release();
-						delete job;
-						return 0;
-					})
-				);
-            }
-			for(auto &result: results)
-				result.get();
-        }
+        if (!decode_v_mt_97(num_threads,
+        					data_size,
+							vert,
+							rw,
+							rh,
+							(float*) tilec->buf->ptr(res, 0),
+							tilec->buf->stride(res,0),
+							(float*) tilec->buf->ptr(res, 2),
+							tilec->buf->stride(res,2)))
+        	return false;
         res++;
     }
     horiz.release();
-
     return true;
 }
-
-/////////////////////////////////////////////////////////////////////////////////////////
-
 
 static void interleave_partial_h_53(dwt_data<int32_t> *dwt,
 									sparse_array* sa,
