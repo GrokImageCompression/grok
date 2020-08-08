@@ -288,10 +288,13 @@ static void decode_h_53(const dwt_data<int32_t> *dwt,
 
 static
 void decode_v_final_memcpy_53( const int32_t* buf,
-                               uint32_t total_height,
-							   int32_t* bandL,
-                               size_t strideL){
-    for (uint32_t i = 0; i < total_height; ++i) {
+							int32_t* bandL, /* even */
+							const uint32_t hL,
+							const size_t strideL,
+							int32_t *bandH, /* odd */
+							const uint32_t hH,
+							const size_t strideH){
+	for (uint32_t i = 0; i < hL; ++i) {
         /* A memcpy(&tiledp_col[i * stride + 0],
                     &tmp[PARALLEL_COLS_53 * i + 0],
                     PARALLEL_COLS_53 * sizeof(int32_t))
@@ -300,6 +303,17 @@ void decode_v_final_memcpy_53( const int32_t* buf,
         STOREU(&bandL[(size_t)i * strideL + 0],              LOAD(&buf[PLL_COLS_53 * i + 0]));
         STOREU(&bandL[(size_t)i * strideL + VREG_INT_COUNT], LOAD(&buf[PLL_COLS_53 * i + VREG_INT_COUNT]));
     }
+
+	for (uint32_t i = 0; i < hH; ++i) {
+        /* A memcpy(&tiledp_col[i * stride + 0],
+                    &tmp[PARALLEL_COLS_53 * i + 0],
+                    PARALLEL_COLS_53 * sizeof(int32_t))
+           would do but would be a tiny bit slower.
+           We can take here advantage of our knowledge of alignment */
+        STOREU(&bandH[(size_t)i * strideH + 0],              LOAD(&buf[PLL_COLS_53 * (i+hL) + 0]));
+        STOREU(&bandH[(size_t)i * strideH + VREG_INT_COUNT], LOAD(&buf[PLL_COLS_53 * (i+hL) + VREG_INT_COUNT]));
+    }
+
 }
 
 /** Vertical inverse 5x3 wavelet transform for 8 columns in SSE2, or
@@ -381,7 +395,7 @@ static void decode_v_cas0_mcols_SSE2_OR_AVX2_53(int32_t* buf,
         STORE(buf + PLL_COLS_53 * (total_height - 1) + 0,              ADD(d1n_0, s0n_0));
         STORE(buf + PLL_COLS_53 * (total_height - 1) + VREG_INT_COUNT, ADD(d1n_1, s0n_1));
     }
-    decode_v_final_memcpy_53(buf, total_height, bandL, strideL);
+    decode_v_final_memcpy_53(buf, bandL, hL, strideL, bandH, hH, strideH);
 }
 
 
@@ -456,7 +470,7 @@ static void decode_v_cas1_mcols_SSE2_OR_AVX2_53(int32_t* buf,
         STORE(buf + PLL_COLS_53 * (total_height - 1) + 0, ADD(s1_0, dc_0));
         STORE(buf + PLL_COLS_53 * (total_height - 1) + VREG_INT_COUNT,ADD(s1_1, dc_1));
     }
-    decode_v_final_memcpy_53(buf, total_height, bandL, strideL);
+    decode_v_final_memcpy_53(buf, bandL, hL, strideL, bandH, hH, strideH);
 }
 
 #undef VREG
@@ -1113,11 +1127,17 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 			for (j = 0; j + 3 < rh; j += 4) {
 				interleave_h_97(&horiz, bandLL,strideLL, bandHL, strideHL, rh - j);
 				decode_step_97(&horiz);
-				for (uint32_t k = 0; k < rw; k++) {
+				for (uint32_t k = 0; k <  horiz.sn; k++) {
 					bandLL[k      ] 					= horiz.mem[k].f[0];
 					bandLL[k + (size_t)strideLL  ] 		= horiz.mem[k].f[1];
 					bandLL[k + (size_t)strideLL * 2] 	= horiz.mem[k].f[2];
 					bandLL[k + (size_t)strideLL * 3] 	= horiz.mem[k].f[3];
+				}
+				for (uint32_t k = 0, kk=horiz.sn; k <  horiz.dn; k++,kk++) {
+					bandHL[k      ] 					= horiz.mem[kk].f[0];
+					bandHL[k + (size_t)strideHL  ] 		= horiz.mem[kk].f[1];
+					bandHL[k + (size_t)strideHL * 2] 	= horiz.mem[kk].f[2];
+					bandHL[k + (size_t)strideHL * 3] 	= horiz.mem[kk].f[3];
 				}
 				bandLL += strideLL << 2;
 				bandHL += strideHL << 2;
@@ -1125,7 +1145,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 			if (j < rh) {
 				interleave_h_97(&horiz, bandLL,strideLL,bandHL, strideHL, rh - j);
 				decode_step_97(&horiz);
-				for (uint32_t k = 0; k < rw; k++) {
+				for (uint32_t k = 0; k < horiz.sn; k++) {
 					switch (rh - j) {
 					case 3:
 						bandLL[k + strideLL * 2] = horiz.mem[k].f[2];
@@ -1135,6 +1155,18 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 					/* FALLTHRU */
 					case 1:
 						bandLL[k] = horiz.mem[k].f[0];
+					}
+				}
+				for (uint32_t k = 0, kk=horiz.sn; k <  horiz.dn; k++,kk++) {
+					switch (rh - j) {
+					case 3:
+						bandHL[k + strideHL * 2] = horiz.mem[kk].f[2];
+					/* FALLTHRU */
+					case 2:
+						bandHL[k + strideHL  ] = horiz.mem[kk].f[1];
+					/* FALLTHRU */
+					case 1:
+						bandHL[k] = horiz.mem[kk].f[0];
 					}
 				}
 			}
