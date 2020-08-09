@@ -158,22 +158,20 @@ template<typename T> struct TileComponentBuffer {
 	 * Get pointer to band buffer
 	 *
 	 * @param resno resolution number
-	 * @param bandno band number {0,1,2,3} for LL HL,LH and HH bands
+	 * @param bandno band number {0,1,2} for HL,LH and HH bands
 	 *
 	 */
 	T* ptr(uint32_t resno,uint32_t bandno){
-		assert((resno > 0 && bandno <=4) || (resno==0 && bandno==0));
-		if (bandno==0)
-			return tile_buf()->data;
+		assert(bandno <=3);
 		auto lower_res = resolutions[resno-1];
 		switch(bandno){
-		case 1:
+		case 0:
 			return tile_buf()->data + lower_res->width();
 			break;
-		case 2:
+		case 1:
 			return tile_buf()->data + lower_res->height() * stride(resno,bandno);
 			break;
-		case 3:
+		case 2:
 			return tile_buf()->data + lower_res->width() +
 					lower_res->height() * stride(resno,bandno);
 			break;
@@ -183,6 +181,18 @@ template<typename T> struct TileComponentBuffer {
 		}
 		return nullptr;
 	}
+
+	/**
+	 * Get pointer to resolution buffer
+	 *
+	 * @param resno resolution number
+	 *
+	 */
+	T* ptr(uint32_t resno){
+		(void)resno;
+		return tile_buf()->data;
+	}
+
 	/**
 	 * Get pointer to tile buffer
 	 *
@@ -200,6 +210,11 @@ template<typename T> struct TileComponentBuffer {
 	uint32_t stride(uint32_t resno,uint32_t bandno){
 		(void)resno;
 		(void)bandno;
+		return tile_buf()->stride;
+	}
+
+	uint32_t stride(uint32_t resno){
+		(void)resno;
 		return tile_buf()->stride;
 	}
 

@@ -164,7 +164,7 @@ template <typename T> struct dwt_data {
 struct  vec4f {
 	vec4f() : f{0}
 	{}
-	explicit vec4f(float m) : f{m,m,m,m}
+	explicit vec4f(float m) : f{m}
 	{}
     float f[4];
 };
@@ -214,8 +214,7 @@ static void  decode_h_cas0_53(int32_t* buf,
     } else {
         buf[total_width - 1] = d1n + s0n;
     }
-    memcpy(bandL, buf, wL * sizeof(int32_t));
-    memcpy(bandH, buf + wL, wH * sizeof(int32_t));
+    memcpy(bandL, buf, total_width * sizeof(int32_t));
 }
 
 static void  decode_h_cas1_53(int32_t* buf,
@@ -252,8 +251,7 @@ static void  decode_h_cas1_53(int32_t* buf,
     } else {
         buf[total_width - 1] = s1 + dc;
     }
-    memcpy(bandL, buf, wL * sizeof(int32_t));
-    memcpy(bandH, buf + wL, wH * sizeof(int32_t));
+    memcpy(bandL, buf, total_width * sizeof(int32_t));
 }
 
 
@@ -261,13 +259,10 @@ static void  decode_h_cas1_53(int32_t* buf,
 
 static
 void decode_v_final_memcpy_53( const int32_t* buf,
+							const uint32_t height,
 							int32_t* bandL, /* even */
-							const uint32_t hL,
-							const size_t strideL,
-							int32_t *bandH, /* odd */
-							const uint32_t hH,
-							const size_t strideH){
-	for (uint32_t i = 0; i < hL; ++i) {
+							const size_t strideL){
+	for (uint32_t i = 0; i < height; ++i) {
         /* A memcpy(&tiledp_col[i * stride + 0],
                     &tmp[PARALLEL_COLS_53 * i + 0],
                     PARALLEL_COLS_53 * sizeof(int32_t))
@@ -276,17 +271,6 @@ void decode_v_final_memcpy_53( const int32_t* buf,
         STOREU(&bandL[(size_t)i * strideL + 0],              LOAD(&buf[PLL_COLS_53 * i + 0]));
         STOREU(&bandL[(size_t)i * strideL + VREG_INT_COUNT], LOAD(&buf[PLL_COLS_53 * i + VREG_INT_COUNT]));
     }
-
-	for (uint32_t i = 0; i < hH; ++i) {
-        /* A memcpy(&tiledp_col[i * stride + 0],
-                    &tmp[PARALLEL_COLS_53 * i + 0],
-                    PARALLEL_COLS_53 * sizeof(int32_t))
-           would do but would be a tiny bit slower.
-           We can take here advantage of our knowledge of alignment */
-        STOREU(&bandH[(size_t)i * strideH + 0],              LOAD(&buf[PLL_COLS_53 * (i+hL) + 0]));
-        STOREU(&bandH[(size_t)i * strideH + VREG_INT_COUNT], LOAD(&buf[PLL_COLS_53 * (i+hL) + VREG_INT_COUNT]));
-    }
-
 }
 
 /** Vertical inverse 5x3 wavelet transform for 8 columns in SSE2, or
@@ -368,7 +352,7 @@ static void decode_v_cas0_mcols_SSE2_OR_AVX2_53(int32_t* buf,
         STORE(buf + PLL_COLS_53 * (total_height - 1) + 0,              ADD(d1n_0, s0n_0));
         STORE(buf + PLL_COLS_53 * (total_height - 1) + VREG_INT_COUNT, ADD(d1n_1, s0n_1));
     }
-    decode_v_final_memcpy_53(buf, bandL, hL, strideL, bandH, hH, strideH);
+    decode_v_final_memcpy_53(buf,total_height, bandL, strideL);
 }
 
 
@@ -443,7 +427,7 @@ static void decode_v_cas1_mcols_SSE2_OR_AVX2_53(int32_t* buf,
         STORE(buf + PLL_COLS_53 * (total_height - 1) + 0, ADD(s1_0, dc_0));
         STORE(buf + PLL_COLS_53 * (total_height - 1) + VREG_INT_COUNT,ADD(s1_1, dc_1));
     }
-    decode_v_final_memcpy_53(buf, bandL, hL, strideL, bandH, hH, strideH);
+    decode_v_final_memcpy_53(buf, total_height, bandL, strideL);
 }
 
 #undef VREG
@@ -503,13 +487,9 @@ static void decode_v_cas0_53(int32_t* buf,
     } else {
         buf[total_height - 1] = d1n + s0n;
     }
-    for (i = 0; i < hL; ++i) {
+    for (i = 0; i < total_height; ++i) {
         *bandL = buf[i];
         bandL += strideL;
-    }
-    for (i = hL; i < total_height; ++i) {
-        *bandH = buf[i];
-        bandH += strideH;
     }
 }
 
@@ -554,13 +534,9 @@ static void decode_v_cas1_53(int32_t* buf,
     } else {
         buf[total_height - 1] = s1 + dc;
     }
-    for (i = 0; i < hL; ++i) {
+    for (i = 0; i < total_height; ++i) {
         *bandL = buf[i];
         bandL += strideL;
-    }
-    for (i = hL; i < total_height; ++i) {
-        *bandH = buf[i];
-        bandH += strideH;
     }
 }
 
@@ -585,7 +561,7 @@ static void decode_h_53(const dwt_data<int32_t> *dwt,
         } else if (total_width == 2) {
             dwt->mem[1] = bandL[0] - ((bandH[0] + 1) >> 1);
             bandL[0] = bandH[0] + dwt->mem[1];
-            bandH[0] = dwt->mem[1];
+            bandL[1] = dwt->mem[1];
         } else if (total_width > 2) {
             decode_h_cas1_53(dwt->mem, bandL, dwt->sn, bandH,dwt->dn);
         }
@@ -705,7 +681,7 @@ static bool decode_h_mt_53(uint32_t num_threads,
 			results.emplace_back(
 				ThreadPool::get()->enqueue([job] {
 					decode_h_strip_53(&job->data,job->min_j,job->max_j,job->bandLL,job->strideLL,job->bandHL,job->strideHL);
-				    grk_aligned_free(job->data.mem);
+				    job->data.release();
 				    delete job;
 					return 0;
 				})
@@ -779,7 +755,7 @@ static bool decode_v_mt_53(uint32_t num_threads,
 			results.emplace_back(
 				ThreadPool::get()->enqueue([job] {
 					decode_v_strip_53(&job->data, job->min_j, job->max_j, job->bandLL, job->strideLL, job->bandLH, job->strideLH);
-					grk_aligned_free(job->data.mem);
+					job->data.release();
 					delete job;
 				return 0;
 				})
@@ -831,20 +807,20 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 							horiz,
 							vert,
 							vert.sn,
+							tilec->buf->ptr(res-1),
+							tilec->buf->stride(res-1),
 							tilec->buf->ptr(res, 0),
-							tilec->buf->stride(res,0),
-							tilec->buf->ptr(res, 1),
-							tilec->buf->stride(res,1)))
+							tilec->buf->stride(res,0)))
     		return false;
     	if (!decode_h_mt_53(num_threads,
     						data_size,
 							horiz,
 							vert,
 							rh -  vert.sn,
+							tilec->buf->ptr(res, 1),
+							tilec->buf->stride(res,1),
 							tilec->buf->ptr(res, 2),
-							tilec->buf->stride(res,2),
-							tilec->buf->ptr(res, 3),
-							tilec->buf->stride(res,3)))
+							tilec->buf->stride(res,2)))
     		return false;
         vert.dn = rh - vert.sn;
         vert.cas = tr->y0 & 1;
@@ -853,14 +829,14 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 							horiz,
 							vert,
 							rw,
-							tilec->buf->ptr(res, 0),
-							tilec->buf->stride(res,0),
-							tilec->buf->ptr(res, 2),
-							tilec->buf->stride(res,2)))
+							tilec->buf->ptr(res-1),
+							tilec->buf->stride(res-1),
+							tilec->buf->ptr(res, 1),
+							tilec->buf->stride(res,1)))
     		return false;
         res++;
     }
-    grk_aligned_free(horiz.mem);
+    horiz.release();
     return rc;
 }
 
@@ -1123,21 +1099,15 @@ static void decode_h_strip_97(dwt_data<vec4f>* GRK_RESTRICT horiz,
 								   const uint32_t strideL,
 								   float* GRK_RESTRICT bandH,
                                    const uint32_t strideH){
-	 uint32_t j;
-	for (j = 0; j + 3 < rh; j += 4) {
+	uint32_t j;
+	for (j = 0; j< (rh & ~3); j += 4) {
 		interleave_h_97(horiz, bandL,strideL, bandH, strideH, rh - j);
 		decode_step_97(horiz);
-		for (uint32_t k = 0; k <  horiz->sn; k++) {
+		for (uint32_t k = 0; k <  horiz->sn + horiz->dn; k++) {
 			bandL[k      ] 					= horiz->mem[k].f[0];
-			bandL[k + (size_t)strideL  ] 		= horiz->mem[k].f[1];
+			bandL[k + (size_t)strideL  ] 	= horiz->mem[k].f[1];
 			bandL[k + (size_t)strideL * 2] 	= horiz->mem[k].f[2];
 			bandL[k + (size_t)strideL * 3] 	= horiz->mem[k].f[3];
-		}
-		for (uint32_t k = 0, kk=horiz->sn; k <  horiz->dn; k++,kk++) {
-			bandH[k      ] 					= horiz->mem[kk].f[0];
-			bandH[k + (size_t)strideH  ] 		= horiz->mem[kk].f[1];
-			bandH[k + (size_t)strideH * 2] 	= horiz->mem[kk].f[2];
-			bandH[k + (size_t)strideH * 3] 	= horiz->mem[kk].f[3];
 		}
 		bandL += strideL << 2;
 		bandH += strideH << 2;
@@ -1145,7 +1115,7 @@ static void decode_h_strip_97(dwt_data<vec4f>* GRK_RESTRICT horiz,
 	if (j < rh) {
 		interleave_h_97(horiz, bandL,strideL,bandH, strideH, rh - j);
 		decode_step_97(horiz);
-		for (uint32_t k = 0; k < horiz->sn; k++) {
+		for (uint32_t k = 0; k < horiz->sn + horiz->dn; k++) {
 			switch (rh - j) {
 			case 3:
 				bandL[k + strideL * 2] = horiz->mem[k].f[2];
@@ -1155,18 +1125,6 @@ static void decode_h_strip_97(dwt_data<vec4f>* GRK_RESTRICT horiz,
 			/* FALLTHRU */
 			case 1:
 				bandL[k] = horiz->mem[k].f[0];
-			}
-		}
-		for (uint32_t k = 0, kk=horiz->sn; k <  horiz->dn; k++,kk++) {
-			switch (rh - j) {
-			case 3:
-				bandH[k + strideH * 2] = horiz->mem[kk].f[2];
-			/* FALLTHRU */
-			case 2:
-				bandH[k + strideH  ] = horiz->mem[kk].f[1];
-			/* FALLTHRU */
-			case 1:
-				bandH[k] = horiz->mem[kk].f[0];
 			}
 		}
 	}
@@ -1245,7 +1203,7 @@ static void decode_v_strip_97(dwt_data<vec4f>* GRK_RESTRICT vert,
 								   float* GRK_RESTRICT bandH,
                                    const uint32_t strideH){
     uint32_t j;
-	for (j = 0; j + 3 < rw; j += 4) {
+	for (j = 0; j < (rw & ~3); j += 4) {
 		interleave_v_97(vert, bandL,strideL, bandH,strideH, 4);
 		decode_step_97(vert);
 		auto dest = bandL;
@@ -1257,7 +1215,7 @@ static void decode_v_strip_97(dwt_data<vec4f>* GRK_RESTRICT vert,
 		bandH += 4;
 	}
 	if (j < rw) {
-		j = rw & 0x03;
+		j = rw & 3;
 		interleave_v_97(vert, bandL, strideL,bandH, strideH, j);
 		decode_step_97(vert);
 		auto dest = bandL;
@@ -1355,19 +1313,19 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         					data_size,
 							horiz,
 							vert.sn,
+							(float*) tilec->buf->ptr(res-1),
+							tilec->buf->stride(res-1),
 							(float*) tilec->buf->ptr(res, 0),
-							tilec->buf->stride(res,0),
-							(float*) tilec->buf->ptr(res, 1),
-							tilec->buf->stride(res,1)))
+							tilec->buf->stride(res,0)))
         	return false;
         if (!decode_h_mt_97(num_threads,
         					data_size,
 							horiz,
 							rh-vert.sn,
+							(float*) tilec->buf->ptr(res, 1),
+							tilec->buf->stride(res,1),
 							(float*) tilec->buf->ptr(res, 2),
-							tilec->buf->stride(res,2),
-							(float*) tilec->buf->ptr(res, 3),
-							tilec->buf->stride(res,3)))
+							tilec->buf->stride(res,2)))
         	return false;
         vert.dn = rh - vert.sn;
         vert.cas = tr->y0 & 1;
@@ -1380,10 +1338,10 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 							vert,
 							rw,
 							rh,
-							(float*) tilec->buf->ptr(res, 0),
-							tilec->buf->stride(res,0),
-							(float*) tilec->buf->ptr(res, 2),
-							tilec->buf->stride(res,2)))
+							(float*) tilec->buf->ptr(res-1),
+							tilec->buf->stride(res-1),
+							(float*) tilec->buf->ptr(res, 1),
+							tilec->buf->stride(res,1)))
         	return false;
         res++;
     }
