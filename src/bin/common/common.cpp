@@ -156,9 +156,7 @@ bool useStdio(const char *filename) {
 }
 
 bool supportedStdioFormat(GRK_SUPPORTED_FILE_FMT format) {
-	for (size_t i = 0;
-			i
-					< sizeof(supportedStdoutFileFormats)
+	for (size_t i = 0;	i	< sizeof(supportedStdoutFileFormats)
 							/ sizeof(GRK_SUPPORTED_FILE_FMT); ++i) {
 		if (supportedStdoutFileFormats[i] == format) {
 			return true;

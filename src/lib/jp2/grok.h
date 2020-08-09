@@ -775,7 +775,7 @@ typedef struct _grk_decompress_params {
 	/** input file format 0: J2K, 1: JP2*/
 	GRK_SUPPORTED_FILE_FMT decod_format;
 	/** output file format 0: PGX, 1: PxM, 2: BMP */
-	uint32_t cod_format;
+	GRK_SUPPORTED_FILE_FMT cod_format;
 	/** index file name */
 	char indexfilename[GRK_PATH_LEN];
 	/** Decoding area left boundary */
@@ -1911,7 +1911,7 @@ typedef struct _grk_plugin_decode_callback_info {
 	// input file format 0: J2K, 1: JP2
 	GRK_SUPPORTED_FILE_FMT decod_format;
 	// output file format 0: PGX, 1: PxM, 2: BMP etc 
-	uint32_t cod_format;
+	GRK_SUPPORTED_FILE_FMT cod_format;
 	grk_stream *l_stream;
 	grk_codec l_codec;
 	grk_header_info header_info;
