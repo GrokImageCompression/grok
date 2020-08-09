@@ -565,21 +565,20 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 	FILE *fdest = nullptr;
 	const char *tmp = outfile;
 	char *destname = nullptr;
-	int rc = 0;
+	int rc = 1;
+	bool writeToStdout = grk::useStdio(outfile);
 
 	alpha = nullptr;
 
 	if ((prec = image->comps[0].prec) > 16) {
 		spdlog::error("{}:{}:imagetopnm\n\tprecision {} is larger than 16"
 				"\n\t: refused.", __FILE__, __LINE__, prec);
-		rc = 1;
 		goto cleanup;
 	}
 	two = has_alpha = 0;
 	ncomp = image->numcomps;
 
 	if (!grk::all_components_sanity_check(image)) {
-		rc = 1;
 		goto cleanup;
 	}
 
@@ -591,6 +590,13 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 	if (want_gray)
 		ncomp = 1;
 
+	if (writeToStdout){
+		if (force_split) {
+			spdlog::error("Unable to write split file to stdout");
+			goto cleanup;
+		}
+	}
+
 	if ((!force_split)
 			&& (ncomp == 2 /* GRAYA */
 					|| (ncomp > 2 /* RGB, RGBA */
@@ -598,18 +604,11 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 							&& image->comps[1].dx == image->comps[2].dx
 							&& image->comps[0].dy == image->comps[1].dy
 							&& image->comps[1].dy == image->comps[2].dy
-							&& image->comps[0].prec == image->comps[1].prec
-							&& image->comps[1].prec == image->comps[2].prec
-							&& image->comps[0].sgnd == image->comps[1].sgnd
-							&& image->comps[1].sgnd == image->comps[2].sgnd
-
 					))) {
-		fdest = fopen(outfile, "wb");
-		if (!fdest) {
-			spdlog::error("failed to open {} for writing", outfile);
-			rc = 1;
+
+		if (!grk::grk_open_for_output(&fdest, outfile,writeToStdout))
 			goto cleanup;
-		}
+
 		two = (prec > 8);
 		triple = (ncomp > 2);
 		width = image->comps[0].w;
@@ -662,20 +661,17 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 					v = *red++ + adjustR;
 					if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
 							&outCount, bufSize, true, fdest)) {
-						rc = 1;
 						goto cleanup;
 					}
 					if (triple) {
 						v = *green++ + adjustG;
 						if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
 								&outCount, bufSize, true, fdest)) {
-							rc = 1;
 							goto cleanup;
 						}
 						v = *blue++ + adjustB;
 						if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
 								&outCount, bufSize, true, fdest)) {
-							rc = 1;
 							goto cleanup;
 						}
 					}/* if(triple) */
@@ -684,7 +680,6 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 						v = *alpha++ + adjustA;
 						if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
 								&outCount, bufSize, true, fdest)) {
-							rc = 1;
 							goto cleanup;
 						}
 					}
@@ -700,7 +695,6 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 			if (outCount) {
 				size_t res = fwrite(buf, sizeof(uint16_t), outCount, fdest);
 				if (res != outCount) {
-					rc = 1;
 					goto cleanup;
 				}
 			}
@@ -714,20 +708,17 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 					v = *red++;
 					if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
 							&outCount, bufSize, true, fdest)) {
-						rc = 1;
 						goto cleanup;
 					}
 					if (triple) {
 						v = *green++;
 						if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
 								&outCount, bufSize, true, fdest)) {
-							rc = 1;
 							goto cleanup;
 						}
 						v = *blue++;
 						if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
 								&outCount, bufSize, true, fdest)) {
-							rc = 1;
 							goto cleanup;
 						}
 					}
@@ -735,7 +726,6 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 						v = *alpha++;
 						if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
 								&outCount, bufSize, true, fdest)) {
-							rc = 1;
 							goto cleanup;
 						}
 					}
@@ -751,22 +741,27 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 			if (outCount) {
 				size_t res = fwrite(buf, sizeof(uint8_t), outCount, fdest);
 				if (res != outCount) {
-					rc = 1;
 					goto cleanup;
 				}
 			}
 		}
+		if (writeToStdout) {
+			rc = 0;
+			goto cleanup;
+		}
 	}
+
+	if (writeToStdout)
+		ncomp = 1;
 
 	/* YUV or MONO: */
 	if (image->numcomps > ncomp) {
-		spdlog::warn("-> [PGM file] Only the first component"
-					" is written to the file");
+		spdlog::warn("[PGM file] Only the first component"
+					" is written out");
 	}
 	destname = (char*) malloc(strlen(outfile) + 8);
 	if (!destname) {
 		spdlog::error("imagetopnm: out of memory");
-		rc = 1;
 		goto cleanup;
 	}
 
@@ -785,13 +780,11 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 		} else
 			sprintf(destname, "%s", outfile);
 
-		if (!fdest)
-			fdest = fopen(destname, "wb");
 		if (!fdest) {
-			spdlog::error("failed to open {} for writing", destname);
-			rc = 1;
-			goto cleanup;
+			if (!grk::grk_open_for_output(&fdest, destname,writeToStdout))
+				goto cleanup;
 		}
+
 		width = image->comps[compno].w;
 		stride_diff = image->comps[compno].stride - width;
 		height = image->comps[compno].h;
@@ -802,7 +795,6 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 
 		red = image->comps[compno].data;
 		if (!red) {
-			rc = 1;
 			goto cleanup;
 		}
 		adjustR = (
@@ -820,14 +812,12 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 					v = *red++ + adjustR;
 					if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
 							&outCount, bufSize, true, fdest)) {
-						rc = 1;
 						goto cleanup;
 					}
 					if (has_alpha) {
 						v = *alpha++;
 						if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
 								&outCount, bufSize, true, fdest)) {
-							rc = 1;
 							goto cleanup;
 						}
 					}
@@ -839,8 +829,9 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 			//flush
 			if (outCount) {
 				size_t res = fwrite(buf, sizeof(uint16_t), outCount, fdest);
-				if (res != outCount)
-					rc = 1;
+				if (res != outCount){
+					goto cleanup;
+				}
 			}
 		} else { /* prec <= 8 */
 			const size_t bufSize = 4096;
@@ -852,7 +843,6 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 					v = *red++ + adjustR;
 					if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
 							&outCount, bufSize, true, fdest)) {
-						rc = 1;
 						goto cleanup;
 					}
 				}
@@ -862,21 +852,27 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 			}
 			if (outCount) {
 				size_t res = fwrite(buf, sizeof(uint8_t), outCount, fdest);
-				if (res != outCount)
-					rc = 1;
+				if (res != outCount){
+					goto cleanup;
+				}
 			}
 		}
-		if (!grk::safe_fclose(fdest)) {
-			fdest = nullptr;
-			rc = 1;
-			goto cleanup;
+		if (!writeToStdout && fdest) {
+			if (!grk::safe_fclose(fdest)){
+				goto cleanup;
+			}
 		}
 		fdest = nullptr;
 	} /* for (compno */
-	cleanup: if (destname)
+
+	rc = 0;
+cleanup:
+	if (destname)
 		free(destname);
-	if (!grk::safe_fclose(fdest))
-		rc = -1;
+	if (!writeToStdout && fdest) {
+		if (!grk::safe_fclose(fdest))
+			rc = 1;
+	}
 	return rc;
 }/* imagetopnm() */
 

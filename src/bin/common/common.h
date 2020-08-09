@@ -81,7 +81,7 @@ void log(grk_msg_callback msg_handler, void *l_data, char const * const format, 
 
 
 const GRK_SUPPORTED_FILE_FMT supportedStdoutFileFormats[] = { GRK_BMP_FMT,
-		GRK_PNG_FMT, GRK_RAW_FMT, GRK_RAWL_FMT, GRK_JPG_FMT };
+		GRK_PNG_FMT, GRK_PXM_FMT,GRK_RAW_FMT, GRK_RAWL_FMT, GRK_JPG_FMT };
 
 const size_t maxICCProfileBufferLen = 10000000;
 
@@ -105,6 +105,7 @@ int parse_DA_values(char *inArg, uint32_t *DA_x0, uint32_t *DA_y0,
 bool safe_fclose(FILE *fd);
 bool useStdio(const char *filename);
 bool supportedStdioFormat(GRK_SUPPORTED_FILE_FMT format);
+bool grk_open_for_output(FILE **fdest, const char* outfile, bool writeToStdout);
 bool grok_set_binary_mode(FILE* file);
 bool jpeg2000_file_format(const char *fname, GRK_SUPPORTED_FILE_FMT *fmt);
 int get_file_format(const char *filename);

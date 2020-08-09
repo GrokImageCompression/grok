@@ -174,6 +174,22 @@ bool grok_set_binary_mode(FILE *file) {
 #endif
 }
 
+bool grk_open_for_output(FILE **fdest, const char* outfile, bool writeToStdout){
+	assert(fdest);
+	if (writeToStdout) {
+		if (!grk::grok_set_binary_mode(stdout))
+			return false;
+		*fdest = stdout;
+	} else {
+		*fdest = fopen(outfile, "wb");
+		if (!fdest) {
+			spdlog::error("failed to open {} for writing", outfile);
+			return false;
+		}
+	}
+	return true;
+}
+
 int get_file_format(const char *filename) {
 	const char *ext = strrchr(filename, '.');
 	if (ext == nullptr)
