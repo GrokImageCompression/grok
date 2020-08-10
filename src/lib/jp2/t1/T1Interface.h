@@ -26,6 +26,7 @@ struct decodeBlockInfo {
 	decodeBlockInfo() :
 			tilec(nullptr),
 			tiledp(nullptr),
+			stride(0),
 			cblk(nullptr),
 			resno(0),
 			bandno(0),
@@ -39,6 +40,7 @@ struct decodeBlockInfo {
 	{	}
 	TileComponent *tilec;
 	int32_t *tiledp;
+	uint32_t stride;
 	grk_cblk_dec *cblk;
 	uint32_t resno;
 	uint32_t bandno;

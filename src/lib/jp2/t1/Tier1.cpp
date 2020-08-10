@@ -115,6 +115,7 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, TileComponentCodingPar
 						block->y = cblk->y0;
 						block->tiledp = tilec->buf->cblk_ptr( resno, bandno,
 								block->x, block->y);
+						block->stride = tilec->buf->stride(resno,bandno);
 						block->bandno = band->bandno;
 						block->cblk = cblk;
 						block->cblk_sty = tccp->cblk_sty;

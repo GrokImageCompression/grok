@@ -99,7 +99,7 @@ bool init_tilec(TileComponent * tilec,
     tilec->create_buffer(output_image,1,1);
     tilec->buf->alloc();
 	auto data = tilec->buf->ptr();
-    for (size_t i = 0; i < tilec->buf->full_area(); i++)
+    for (size_t i = 0; i < tilec->buf->strided_area(); i++)
         data[i] = getValue((uint32_t)i);
     return true;
 

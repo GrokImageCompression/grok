@@ -569,12 +569,14 @@ static void decode_h_53(const dwt_data<int32_t> *dwt,
     if (dwt->cas == 0) { /* Left-most sample is on even coordinate */
         if (total_width > 1) {
             decode_h_cas0_53(dwt->mem,bandL,dwt->sn, bandH, dwt->dn, dest);
-        } else {
-            /* Unmodified value */
+        } else if (total_width == 1) {
+        	//FIXME - validate this calculation
+        	dest[0] = bandL[0];
         }
     } else { /* Left-most sample is on odd coordinate */
         if (total_width == 1) {
-        	dest[0] /= 2;
+        	//FIXME - validate this calculation
+        	dest[0] = bandH[0]/2;
         } else if (total_width == 2) {
             dwt->mem[1] = bandL[0] - ((bandH[0] + 1) >> 1);
             dest[0] = bandH[0] + dwt->mem[1];
@@ -600,7 +602,11 @@ static void decode_v_53(const dwt_data<int32_t> *dwt,
     const uint32_t sn = dwt->sn;
     const uint32_t len = sn + dwt->dn;
     if (dwt->cas == 0) {
-    /* If len == 1, unmodified value */
+        if (len == 1) {
+            for (uint32_t c = 0; c < nb_cols; c++, bandL++,dest++)
+                dest[0] = bandL[0];
+            return;
+        }
 
 #if (defined(__SSE2__) || defined(__AVX2__))
         if (len > 1 && nb_cols == PLL_COLS_53) {
@@ -696,8 +702,8 @@ static bool decode_h_mt_53(uint32_t num_threads,
 										strideH,
 										nullptr,0,
 										nullptr,0,
-										bandL + min_j * strideL,
-										strideL,
+										dest + min_j * strideDest,
+										strideDest,
 										j * step_j,
 										j < (num_jobs - 1U) ? (j + 1U) * step_j : rh);
             if (!job->data.alloc(data_size)) {
@@ -787,8 +793,8 @@ static bool decode_v_mt_53(uint32_t num_threads,
 										strideH,
 										nullptr,
 										0,
-										bandL + min_j,
-										strideL,
+										dest + min_j,
+										strideDest,
 										j * step_j,
 										j < (num_jobs - 1U) ? (j + 1U) * step_j : rw);
             if (!job->data.alloc(data_size)) {
@@ -863,8 +869,8 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 							tilec->buf->stride(res-1),
 							tilec->buf->ptr(res, 0),
 							tilec->buf->stride(res,0),
-							tilec->buf->ptr(res-1),
-							tilec->buf->stride(res-1)))
+							tilec->buf->ptr(res),
+							tilec->buf->stride(res)))
     		return false;
     	if (!decode_h_mt_53(num_threads,
     						data_size,
@@ -875,8 +881,8 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 							tilec->buf->stride(res,1),
 							tilec->buf->ptr(res, 2),
 							tilec->buf->stride(res,2),
-    						tilec->buf->ptr(res, 1),
-    						tilec->buf->stride(res,1)))
+    						tilec->buf->ptr(res) + vert.sn *tilec->buf->stride(res) ,
+    						tilec->buf->stride(res) ))
     		return false;
         vert.dn = rh - vert.sn;
         vert.cas = tr->y0 & 1;
@@ -885,12 +891,12 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 							horiz,
 							vert,
 							rw,
-							tilec->buf->ptr(res-1),
-							tilec->buf->stride(res-1),
-							tilec->buf->ptr(res, 1),
-							tilec->buf->stride(res,1),
-							tilec->buf->ptr(res-1),
-							tilec->buf->stride(res-1)))
+							tilec->buf->ptr(res),
+							tilec->buf->stride(res),
+							tilec->buf->ptr(res)+ vert.sn *tilec->buf->stride(res) ,
+							tilec->buf->stride(res),
+							tilec->buf->ptr(res),
+							tilec->buf->stride(res)))
     		return false;
         res++;
     }
@@ -1219,7 +1225,7 @@ static bool decode_h_mt_97(uint32_t num_threads,
 										0,
 										nullptr,
 										0,
-										dest + min_j * strideL,
+										dest + min_j * strideDest,
 										strideDest,
 										0,
 										(j < (num_jobs - 1U) ? (j + 1U) * step_j : rh) - min_j);
@@ -1417,8 +1423,8 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 							tilec->buf->stride(res-1),
 							(float*) tilec->buf->ptr(res, 0),
 							tilec->buf->stride(res,0),
-							(float*) tilec->buf->ptr(res-1),
-							tilec->buf->stride(res-1)))
+							(float*) tilec->buf->ptr(res),
+							tilec->buf->stride(res)))
         	return false;
         if (!decode_h_mt_97(num_threads,
         					data_size,
@@ -1428,8 +1434,8 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 							tilec->buf->stride(res,1),
 							(float*) tilec->buf->ptr(res, 2),
 							tilec->buf->stride(res,2),
-							(float*) tilec->buf->ptr(res, 1),
-							tilec->buf->stride(res,1) ))
+							(float*) tilec->buf->ptr(res) +  + vert.sn *tilec->buf->stride(res),
+							tilec->buf->stride(res) ))
         	return false;
         vert.dn = rh - vert.sn;
         vert.cas = tr->y0 & 1;
@@ -1442,12 +1448,12 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 							vert,
 							rw,
 							rh,
-							(float*) tilec->buf->ptr(res-1),
-							tilec->buf->stride(res-1),
-							(float*) tilec->buf->ptr(res, 1),
-							tilec->buf->stride(res,1),
-							(float*) tilec->buf->ptr(res-1),
-							tilec->buf->stride(res-1)))
+							(float*) tilec->buf->ptr(res),
+							tilec->buf->stride(res),
+							(float*) tilec->buf->ptr(res) +  + vert.sn *tilec->buf->stride(res),
+							tilec->buf->stride(res),
+							(float*) tilec->buf->ptr(res),
+							tilec->buf->stride(res)))
         	return false;
         res++;
     }

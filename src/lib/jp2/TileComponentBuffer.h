@@ -102,15 +102,14 @@ template<typename T> struct TileComponentBuffer {
         for (uint32_t resno = 0; resno < reduced_num_resolutions; ++resno)
         	resolutions.push_back(tile_comp_resolutions+resno);
 
-        if (m_encode || !whole_tile_decoding) {
-        	res_buffers.push_back(new res_buf<T>( nullptr, m_bounds.to_u32()) );
-        }
-        else {
+        if ( use_band_buffers()) {
         	// lowest resolution equals 0th band
         	 res_buffers.push_back(new res_buf<T>(nullptr, tile_comp_resolutions->bands[0].to_u32()) );
 
         	 for (uint32_t resno = 1; resno < reduced_num_resolutions; ++resno)
         		 res_buffers.push_back(new res_buf<T>( tile_comp_resolutions+resno, m_bounds.to_u32()) );
+        } else {
+        	res_buffers.push_back(new res_buf<T>( nullptr, m_bounds.to_u32()) );
         }
 	}
 	~TileComponentBuffer(){
@@ -128,14 +127,13 @@ template<typename T> struct TileComponentBuffer {
 	 *
 	 */
 	T* cblk_ptr(uint32_t resno,uint32_t bandno, uint32_t &offsetx, uint32_t &offsety) const {
-		(void)bandno;
+		assert(bandno < 3 && resno < resolutions.size());
 		if (resno==0)
 			assert(bandno==0);
 		else
 			assert(bandno < 3);
 
 		auto res = resolutions[resno];
-		auto pres = resno == 0 ? nullptr : resolutions[ resno - 1];
 		auto band = res->bands + bandno;
 		uint32_t x = offsetx;
 		uint32_t y = offsety;
@@ -144,15 +142,23 @@ template<typename T> struct TileComponentBuffer {
 		x -= band->x0;
 		y -= band->y0;
 
-		// add band offset relative to previous resolution
-		if (band->bandno & 1)
-			x += pres->width();
-		if (band->bandno & 2)
-			y += pres->height();
+		if (!use_band_buffers()){
+			auto pres = resno == 0 ? nullptr : resolutions[ resno - 1];
+			// add band offset relative to previous resolution
+			if (band->bandno & 1)
+				x += pres->width();
+			if (band->bandno & 2)
+				y += pres->height();
+		}
 		offsetx = x;
 		offsety = y;
 
-		return tile_buf()->data + (uint64_t) x + y * (uint64_t) tile_buf()->stride;
+		if (use_band_buffers()) {
+			auto dest = band_buf(resno,bandno);
+			return dest->data + (uint64_t) x + y * (uint64_t) dest->stride;
+		}
+		auto dest = tile_buf();;
+		return dest->data + (uint64_t) x + y * (uint64_t) dest->stride;
 	}
 	/**
 	 * Get pointer to band buffer
@@ -161,8 +167,11 @@ template<typename T> struct TileComponentBuffer {
 	 * @param bandno band number {0,1,2} for HL,LH and HH bands
 	 *
 	 */
-	T* ptr(uint32_t resno,uint32_t bandno){
-		assert(bandno <=3);
+	T* ptr(uint32_t resno,uint32_t bandno) const{
+		assert(bandno < 3 && resno < resolutions.size());
+		if (use_band_buffers()){
+			return band_buf(resno,bandno)->data;
+		}
 		auto lower_res = resolutions[resno-1];
 		switch(bandno){
 		case 0:
@@ -188,8 +197,10 @@ template<typename T> struct TileComponentBuffer {
 	 * @param resno resolution number
 	 *
 	 */
-	T* ptr(uint32_t resno){
-		(void)resno;
+	T* ptr(uint32_t resno) const{
+		if (use_band_buffers()){
+			return res_buffers[resno]->res->data;
+		}
 		return tile_buf()->data;
 	}
 
@@ -198,27 +209,31 @@ template<typename T> struct TileComponentBuffer {
 	 *
 	 *
 	 */
-	T* ptr(void){
+	T* ptr(void) const{
 		return tile_buf()->data;
 	}
 	/**
 	 * Get stride of band buffer
 	 *
 	 * @param resno resolution number
-	 * @param bandno band number {0,1,2,3} for LL HL,LH and HH bands
+	 * @param bandno band number 0 for resno==0 LL band, or {0,1,2} for {HL,LH,HH} bands
 	 */
-	uint32_t stride(uint32_t resno,uint32_t bandno){
-		(void)resno;
-		(void)bandno;
+	uint32_t stride(uint32_t resno,uint32_t bandno) const{
+		assert(bandno < 3 && resno < resolutions.size());
+		if (use_band_buffers()){
+			return band_buf(resno,bandno)->stride;
+		}
 		return tile_buf()->stride;
 	}
 
-	uint32_t stride(uint32_t resno){
-		(void)resno;
+	uint32_t stride(uint32_t resno) const{
+		if (use_band_buffers()){
+			return res_buffers[resno]->res->stride;
+		}
 		return tile_buf()->stride;
 	}
 
-	uint32_t stride(void){
+	uint32_t stride(void) const{
 		return tile_buf()->stride;
 	}
 
@@ -227,6 +242,15 @@ template<typename T> struct TileComponentBuffer {
 		for (auto& b : res_buffers) {
 			if (!b->alloc(!m_encode))
 				return false;
+		}
+		// sanity check
+		for (uint32_t i = 1; i < res_buffers.size(); ++i){
+			auto b = res_buffers[i];
+			auto b_prev = res_buffers[i-1];
+			if (!b_prev->res->data)
+				b_prev->res->data = b->bands[0]->data;
+			if (!b->bands[1]->data)
+				b->bands[1]->data = b->bands[2]->data;
 		}
 		return true;
 	}
@@ -248,7 +272,7 @@ template<typename T> struct TileComponentBuffer {
 							uint32_t* tbx0,
 							uint32_t* tby0,
 							uint32_t* tbx1,
-							uint32_t* tby1){
+							uint32_t* tby1) const{
 	    /* Compute number of decomposition for this band. See table F-1 */
 	    uint32_t nb = (resno == 0) ?
 	                    num_resolutions - 1 :
@@ -285,36 +309,19 @@ template<typename T> struct TileComponentBuffer {
 	}
 
 	/**
-	 * Get bounds of subband
-	 *
-	 * @param resno resolution number
-	 * @param bandno band number {0,1,2,3} for LL HL,LH and HH bands
-	 */
-	grk_rect_u32 bounds(uint32_t resno,uint32_t bandno){
-		assert(resno < resolutions.size() && bandno < 4);
-		if (bandno == 0){
-			if (resno == 0)
-				return resolutions[0]->bands[0];
-			else
-				return *resolutions[resno-1];
-		}
-		return resolutions[resno]->bands[bandno-1];
-	}
-
-	/**
 	 * Get bounds of tile component
 	 * decode: reduced tile component coordinates of region
 	 * encode: unreduced tile component coordinates of entire tile
 	 */
-	grk_rect bounds(){
+	grk_rect bounds() const{
 		return m_bounds;
 	}
 
-	grk_rect unreduced_bounds(){
+	grk_rect unreduced_bounds() const{
 		return m_unreduced_bounds;
 	}
 
-	uint64_t full_area(void){
+	uint64_t strided_area(void){
 		return stride() * m_bounds.height();
 	}
 
@@ -330,7 +337,18 @@ template<typename T> struct TileComponentBuffer {
 	void transfer(T** buffer, bool* owns, uint32_t *stride){
 		tile_buf()->transfer(buffer,owns,stride);
 	}
+
 private:
+
+	bool use_band_buffers() const{
+		//return !m_encode && whole_tile_decoding && resolutions.size() > 1;
+		return false;
+	}
+
+	grk_buffer_2d<T>* band_buf(uint32_t resno,uint32_t bandno) const{
+		assert(bandno < 3 && resno < resolutions.size());
+		return resno > 0 ? res_buffers[resno]->bands[bandno] : res_buffers[resno]->res;
+	}
 
 	grk_buffer_2d<T>* tile_buf() const{
 		return res_buffers.back()->res;

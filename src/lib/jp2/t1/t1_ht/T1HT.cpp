@@ -207,7 +207,7 @@ void T1HT::postDecode(decodeBlockInfo *block) {
 		src = unencoded_data;
 	}
 
-	uint32_t dest_width = tilec->buf->stride();
+	uint32_t dest_width = block->stride;
 	int32_t *dest = block->tiledp;
 	if (!whole_tile_decoding){
        dest_width = cblk_w;

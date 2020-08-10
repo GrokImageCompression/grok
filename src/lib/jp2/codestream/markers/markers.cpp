@@ -2382,10 +2382,11 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, TileProcessor *tileProcessor,
 
 	/* If user wants to remove more resolutions than the code stream contains, return error */
 	if (cp->m_coding_params.m_dec.m_reduce >= tccp->numresolutions) {
-		GROK_ERROR("Error decoding component %u.\nThe number of resolutions"
-				" to remove is higher than the number "
-				"of resolutions of this component\n"
-				"Modify the cp_reduce parameter.\n", compno);
+		GROK_ERROR("Error decoding component %u.\nThe number of resolutions "
+				" to remove (%d) is higher than the number "
+				"of resolutions (%d) of this component\n"
+				"Please decrease the cp_reduce parameter.",
+				compno,cp->m_coding_params.m_dec.m_reduce,tccp->numresolutions);
 		codeStream->m_decoder.m_state |= J2K_DEC_STATE_ERR;
 		return false;
 	}

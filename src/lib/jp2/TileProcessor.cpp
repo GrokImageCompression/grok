@@ -1043,12 +1043,12 @@ bool TileProcessor::mct_decode() {
 	if (!m_tcp->mct)
 		return true;
 
-	uint64_t samples = tile_comp->buf->full_area();
+	uint64_t samples = tile_comp->buf->strided_area();
 
 	if (tile->numcomps >= 3) {
 		/* testcase 1336.pdf.asan.47.376 */
-		if (tile->comps[1].buf->full_area()	!= samples
-				|| tile->comps[2].buf->full_area()	!= samples) {
+		if (tile->comps[1].buf->strided_area()	!= samples
+				|| tile->comps[2].buf->strided_area()	!= samples) {
 			GROK_ERROR(
 					"Tiles don't all have the same dimension. Skip the MCT step.");
 			return false;
@@ -1155,7 +1155,7 @@ bool TileProcessor::dc_level_shift_encode() {
 		auto tile_comp = tile->comps + compno;
 		auto tccp = m_tcp->tccps + compno;
 		auto current_ptr = tile_comp->buf->ptr();
-		uint64_t samples = tile_comp->buf->full_area();
+		uint64_t samples = tile_comp->buf->strided_area();
 
 		if (tccp->qmfbid == 1) {
 			if (tccp->m_dc_level_shift == 0)
@@ -1178,7 +1178,7 @@ bool TileProcessor::dc_level_shift_encode() {
 
 bool TileProcessor::mct_encode() {
 	auto tile_comp = tile->comps;
-	uint64_t samples = tile_comp->buf->full_area();
+	uint64_t samples = tile_comp->buf->strided_area();
 
 	if (!m_tcp->mct)
 		return true;
