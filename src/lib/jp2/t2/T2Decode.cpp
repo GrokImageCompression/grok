@@ -569,14 +569,11 @@ bool T2Decode::read_packet_data(grk_resolution *res, PacketIter *p_pi,
 				size_t len = src_buf->data_len;
 				// Check possible overflow on segment length
 				if (((offset + seg->numBytesInPacket) > len)) {
-					GROK_WARN(
-							"read packet data: segment offset (%u) plus segment length %u\n"
-							"is greater than total length \n"
-							"of all segments (%u) for codeblock "
-							"%u (layer=%u, prec=%u, band=%u, res=%u, comp=%u)."
-							" Truncating packet data.", offset,
-							seg->numBytesInPacket, len, cblkno, p_pi->layno,
-							p_pi->precno, bandno, p_pi->resno, p_pi->compno);
+					GROK_WARN("read packet data:\nSegment offset (%u) plus segment length %u\n"
+							"is greater than total length of all segments (%u)\n"
+							"for codeblock %u (layer=%u, prec=%u, band=%u, res=%u, comp=%u).\n"
+							"Truncating packet data.", offset,	seg->numBytesInPacket,
+							len, cblkno, p_pi->layno, p_pi->precno, bandno, p_pi->resno, p_pi->compno);
 					seg->numBytesInPacket = (uint32_t) (len - offset);
 				}
 				//initialize dataindex to current contiguous size of code block
