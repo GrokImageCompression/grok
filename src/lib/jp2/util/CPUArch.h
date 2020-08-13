@@ -20,13 +20,12 @@
 
 #include "grok_includes.h"
 
-#ifndef __aarch64__
 #ifdef WIN32
 	#include <intrin.h>
-#else
+#elif defined(__x86_64__) || defined(__i386__)
 	#include <x86intrin.h>
 #endif
-#endif
+
 
 #if defined(__GNUC__)
 #pragma GCC poison malloc calloc realloc free
