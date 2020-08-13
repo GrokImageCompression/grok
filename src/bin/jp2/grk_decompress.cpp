@@ -402,7 +402,7 @@ int load_images(grk_dircnt *dirptr, char *imgdirpath) {
 /* -------------------------------------------------------------------------- */
 char get_next_file(std::string image_filename, grk_img_fol *img_fol,
 		grk_img_fol *out_fol, grk_decompress_parameters *parameters) {
-	spdlog::info("File Number \"{}\"", image_filename.c_str());
+	spdlog::info("File: \"{}\"", image_filename.c_str());
 	std::string infilename = img_fol->imgdirpath
 			+ std::string(get_path_separator()) + image_filename;
 	if (!grk::jpeg2000_file_format(infilename.c_str(),
