@@ -637,6 +637,11 @@ bool JPEGFormat::encode(grk_image *image, const std::string &filename,
 	return imagetojpeg(image, filename.c_str(), compressionParam) ?
 			false : true;
 }
+bool JPEGFormat::finish_encode(void){
+
+	return true;
+}
+
 grk_image* JPEGFormat::decode(const std::string &filename,
 		grk_cparameters *parameters) {
 	return jpegtoimage(filename.c_str(), parameters);

@@ -56,3 +56,8 @@
 #include "grk_apps_config.h"
 #include "grok.h"
 #include "convert.h"
+#include "ImageFormat.h"
+
+ImageFormat::ImageFormat() : m_image(nullptr)
+{}
+

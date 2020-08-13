@@ -59,6 +59,9 @@
 
 class ImageFormat : public IImageFormat {
 public:
+	ImageFormat();
 	virtual ~ImageFormat() {}
+protected:
+	grk_image *m_image;
 
 };

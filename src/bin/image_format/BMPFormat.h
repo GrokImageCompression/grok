@@ -19,11 +19,12 @@
 #pragma once
 #include "ImageFormat.h"
 
-class BMPFormat  : public IImageFormat{
+class BMPFormat  : public ImageFormat{
 public:
-	virtual ~BMPFormat() {}
 	bool encode(grk_image *  image, const std::string &filename, uint32_t compressionParam) override;
+	bool finish_encode(void) override;
 	grk_image *  decode(const std::string &filename,  grk_cparameters  *parameters) override;
+
 };
 
 

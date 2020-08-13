@@ -61,5 +61,7 @@ class IImageFormat {
 public:
 	virtual ~IImageFormat() {}
 	virtual bool encode(grk_image *image, const std::string &filename , uint32_t compressionParam)=0;
+	virtual bool finish_encode(void) = 0;
 	virtual grk_image*  decode(const std::string &filename ,  grk_cparameters  *parameters)=0;
+
 };

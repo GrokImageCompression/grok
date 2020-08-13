@@ -881,6 +881,10 @@ bool PNMFormat::encode(grk_image *image, const std::string &filename,
 	(void) compressionParam;
 	return imagetopnm(image, filename.c_str(), forceSplit) ? false : true;
 }
+bool PNMFormat::finish_encode(void){
+
+	return true;
+}
 grk_image* PNMFormat::decode(const std::string &filename,
 		grk_cparameters *parameters) {
 	return pnmtoimage(filename.c_str(), parameters);

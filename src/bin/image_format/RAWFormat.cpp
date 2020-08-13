@@ -67,6 +67,10 @@ bool RAWFormat::encode(grk_image *image, const std::string &filename,
 	(void) compressionParam;
 	return imagetoraw(image, filename.c_str(), bigEndian) ? true : false;
 }
+bool RAWFormat::finish_encode(void){
+
+	return true;
+}
 grk_image* RAWFormat::decode(const std::string &filename,
 		grk_cparameters *parameters) {
 	return rawtoimage(filename.c_str(), parameters, bigEndian);
@@ -300,19 +304,9 @@ int RAWFormat::imagetoraw(grk_image *image, const char *outfile,
 				"imagetoraw: All components shall have the same subsampling, same bit depth, same sign.");
 		goto beach;
 	}
+	if (!grk::grk_open_for_output(&rawFile, outfile,writeToStdout))
+		goto beach;
 
-	if (writeToStdout) {
-		if (!grk::grok_set_binary_mode(stdout))
-			goto beach;
-		rawFile = stdout;
-	} else {
-		rawFile = fopen(outfile, "wb");
-		if (!rawFile) {
-			spdlog::error("imagetoraw: Failed to open {} for writing",
-					outfile);
-			goto beach;
-		}
-	}
 	spdlog::info("imagetoraw: raw image characteristics: {} components",
 				image->numcomps);
 

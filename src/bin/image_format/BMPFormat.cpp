@@ -884,17 +884,8 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 			goto cleanup;
 		}
 	}
-	if (writeToStdout) {
-		if (!grk::grok_set_binary_mode(stdout))
-			goto cleanup;
-		fdest = stdout;
-	} else {
-		fdest = fopen(outfile, "wb");
-		if (!fdest) {
-			spdlog::error("failed to open {} for writing", outfile);
-			goto cleanup;
-		}
-	}
+	if (!grk::grk_open_for_output(&fdest, outfile,writeToStdout))
+		goto cleanup;
 	w = image->comps[0].w;
 	h = image->comps[0].h;
 	stride = image->comps[0].stride;
@@ -1128,6 +1119,11 @@ bool BMPFormat::encode(grk_image *  image, const std::string &filename, uint32_t
 	(void) compressionParam;
 	return imagetobmp(image, filename.c_str()) ? false : true;
 }
+bool BMPFormat::finish_encode(void){
+
+	return true;
+}
+
 grk_image *  BMPFormat::decode(const std::string &filename,  grk_cparameters  *parameters){
 	return bmptoimage(filename.c_str(), parameters);
 }

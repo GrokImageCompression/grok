@@ -16,15 +16,15 @@
  */
 #pragma once
 
-#include "IImageFormat.h"
+#include "ImageFormat.h"
 
 
 void pngSetVerboseFlag(bool verbose);
 
-class PNGFormat : public IImageFormat {
+class PNGFormat : public ImageFormat {
 public:
-	virtual ~PNGFormat() {}
 	bool encode(grk_image *  image, const std::string &filename, uint32_t compressionParam) override;
+	bool finish_encode(void) override;
 	grk_image *  decode(const std::string &filename,  grk_cparameters  *parameters) override;
 };
 

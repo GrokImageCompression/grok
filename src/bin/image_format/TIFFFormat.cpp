@@ -2187,6 +2187,10 @@ bool TIFFFormat::encode(grk_image *image, const std::string &filename,
 		uint32_t compressionParam) {
 	return imagetotif(image, filename.c_str(), compressionParam) ? false : true;
 }
+bool TIFFFormat::finish_encode(void){
+
+	return true;
+}
 grk_image* TIFFFormat::decode(const std::string &filename,
 		grk_cparameters *parameters) {
 	return tiftoimage(filename.c_str(), parameters);

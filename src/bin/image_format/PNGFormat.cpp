@@ -504,15 +504,8 @@ static int imagetopng(grk_image *image, const char *write_idf,
 				write_idf, prec);
 		return local_info.fails;
 	}
-	if (local_info.writeToStdout) {
-		if (!grk::grok_set_binary_mode(stdout))
-			return 1;
-		local_info.writer = stdout;
-	} else {
-		local_info.writer = fopen(write_idf, "wb");
-		if (local_info.writer == nullptr)
-			return local_info.fails;
-	}
+	if (!grk::grk_open_for_output(&local_info.writer, write_idf,local_info.writeToStdout))
+		return local_info.fails;
 
 	/* Create and initialize the png_struct with the desired error handler
 	 * functions.  If you want to use the default stderr and longjump method,
@@ -736,6 +729,10 @@ static int imagetopng(grk_image *image, const char *write_idf,
 bool PNGFormat::encode(grk_image *image, const std::string &filename,
 		uint32_t compressionParam) {
 	return imagetopng(image, filename.c_str(), compressionParam) ? false : true;
+}
+bool PNGFormat::finish_encode(void){
+
+	return true;
 }
 grk_image* PNGFormat::decode(const std::string &filename,
 		grk_cparameters *parameters) {

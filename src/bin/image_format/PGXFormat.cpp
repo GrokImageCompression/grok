@@ -360,6 +360,11 @@ bool PGXFormat::encode(grk_image *image, const std::string &filename,
 	(void) compressionParam;
 	return imagetopgx(image, filename.c_str()) ? false : true;
 }
+bool PGXFormat::finish_encode(void){
+
+	return true;
+}
+
 grk_image* PGXFormat::decode(const std::string &filename,
 		grk_cparameters *parameters) {
 	return pgxtoimage(filename.c_str(), parameters);

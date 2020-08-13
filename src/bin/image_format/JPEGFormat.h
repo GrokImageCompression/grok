@@ -16,11 +16,11 @@
  */
 #pragma once
 
-#include "IImageFormat.h"
+#include "ImageFormat.h"
 
-class JPEGFormat : public IImageFormat {
+class JPEGFormat : public ImageFormat {
 public:
-	virtual ~JPEGFormat() {}
 	bool encode(grk_image *  image, const std::string &filename, uint32_t compressionParam) override;
+	bool finish_encode(void) override;
 	grk_image *  decode(const std::string &filename,  grk_cparameters  *parameters) override;
 };

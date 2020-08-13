@@ -16,13 +16,13 @@
  */
 #pragma once
 
-#include "IImageFormat.h"
+#include "ImageFormat.h"
 
-class RAWFormat : IImageFormat {
+class RAWFormat : ImageFormat {
 public:
 	explicit RAWFormat(bool isBig) : bigEndian(isBig) {}
-	virtual ~RAWFormat() {}
 	bool encode(grk_image *  image, const std::string &filename, uint32_t compressionParam) override;
+	bool finish_encode(void) override;
 	grk_image *  decode(const std::string &filename,  grk_cparameters  *parameters) override;
 private:
 	bool bigEndian;
