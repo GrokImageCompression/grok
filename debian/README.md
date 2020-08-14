@@ -44,7 +44,7 @@ or, to just check lintian errors:
 4. Symbols file
 
 ```
-$ dpkg-gensymbols -plibgrokj2k -Olibgrokj2k1.symbols
+$ dpkg-gensymbols -plibgrokj2k1 -Olibgrokj2k1.symbols
 $ sed 's/ \(_.*\) \(.*\)/ (c++)"\1" \2/' libgrokj2k1.symbols | c++filt
 ```
 
