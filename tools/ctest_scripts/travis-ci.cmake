@@ -106,7 +106,7 @@ BUILD_TESTING:BOOL=${BUILD_TESTING}
 BUILD_THIRDPARTY:BOOL=TRUE
 
 # JPEG2000 test files are available with git clone https://github.com/GrokImageCompression/grok-test-data
-GROK_DATA_ROOT:PATH=$ENV{PWD}/data
+GRK_DATA_ROOT:PATH=$ENV{PWD}/data
 
 # jpylyzer is available with on GitHub: https://github.com/openpreserve/jpylyzer
 JPYLYZER_EXECUTABLE=$ENV{PWD}/jpylyzer/${JPYLYZER_BIN}

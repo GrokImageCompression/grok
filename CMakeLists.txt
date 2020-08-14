@@ -178,9 +178,13 @@ option(BUILD_PLUGIN_LOADER "Enable loading of T1 plugin" OFF)
 mark_as_advanced(BUILD_PLUGIN_LOADER)
 
 if(BUILD_CODEC)
-  # OFF: It will only build 3rd party libs if they are not found on the system
-  # ON: 3rd party libs will ALWAYS be build, and used
+  # OFF: 3rd party libs will only be built if not found in system
+  # ON:  3rd party libs will always be built
   option(BUILD_THIRDPARTY "Build the thirdparty executables if it is needed" OFF)
+  # OFF: libjpeg library wil not be used to support JPEG file format
+  # ON:  libjpeg library will be used to support JPEG file format,
+  #      if found in system
+  option(GRK_USE_LIBJPEG "Use libjpeg library to support JPEG file format, if present in system" OFF)
   add_subdirectory(thirdparty)
   add_subdirectory(src/bin)
 endif ()
@@ -215,8 +219,8 @@ if(BUILD_TESTING)
 
     # Search for Grok test data
     # The test data can be cloned from https://github.com/GrokImageCompression/grok-test-data
-    find_path(GROK_DATA_ROOT README-GROK-TEST-DATA
-      PATHS $ENV{GROK_DATA_ROOT} ${CMAKE_SOURCE_DIR}/../grok-test-data
+    find_path(GRK_DATA_ROOT README-GROK-TEST-DATA
+      PATHS $ENV{GRK_DATA_ROOT} ${CMAKE_SOURCE_DIR}/../grok-test-data
       NO_CMAKE_FIND_ROOT_PATH
       )
 

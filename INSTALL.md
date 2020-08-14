@@ -65,12 +65,12 @@ Main available cmake flags:
 * To build the documentation: `-DBUILD_DOC:bool=on` (default: `OFF`)
 * To enable testing (and automatic result upload to http://my.cdash.org/index.php?project=grok)
 
-      $  cmake . -DBUILD_TESTING:BOOL=ON -DGROK_DATA_ROOT:PATH='path/to/the/data/directory'
+      $  cmake . -DBUILD_TESTING:BOOL=ON -DGRK_DATA_ROOT:PATH='path/to/the/data/directory'
       $  make
       $  make Experimental
   Note : JPEG2000 test files are can be cloned here `https://github.com/GrokImageCompression/grok-test-data.git`
   
-  If `-DGROK_DATA_ROOT:PATH` option is omitted, test files will be automatically searched in `${CMAKE_SOURCE_DIR}/../grok-test-data`
+  If `-DGRK_DATA_ROOT:PATH` option is omitted, test files will be automatically searched in `${CMAKE_SOURCE_DIR}/../grok-test-data`
   
   
 ### CPU Specific Optimizations

@@ -13,7 +13,7 @@
 # gracefully rejected. When adding a new test, please add a short summary of 
 # why this file should be rejected.
 #
-# You can use @INPUT_NR_PATH@ and @TEMP_PATH@ cmake variable which refers to GROK_DATA_ROOT 
+# You can use @INPUT_NR_PATH@ and @TEMP_PATH@ cmake variable which refers to GRK_DATA_ROOT 
 # repository. However you can use relative path or absolute path.
 
 # ENCODER TEST SUITE
