@@ -45,6 +45,20 @@ or, to just check lintian errors:
 
 ```
 $ dpkg-gensymbols -plibgrokj2k1 -Olibgrokj2k1.symbols
+$ mv libgrokj2k1.symbols debian
+$ vi libgroj2k1.symbols
+```
+copy
+```
+libgrokj2k.so.1 libgrokj2k1
+| libgrokj2k1 #MINVER#
+* Build-Depends-Package: libgrokj2k1-dev
+```
+to beginning of file
+
+
+`:%s/7.6.0-1/7.6.0/g` 
+
 $ sed 's/ \(_.*\) \(.*\)/ (c++)"\1" \2/' libgrokj2k1.symbols | c++filt
 ```
 
