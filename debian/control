@@ -9,7 +9,7 @@ Build-Depends: cmake (>= 3.16.0),
                libpng-dev,
                libzstd-dev,
                libtiff-dev,
-               libjpeg-turbo8-dev,
+               libjpeg-dev,
                zlib1g-dev
 Build-Depends-Indep: doxygen
 Standards-Version: 4.5.0
