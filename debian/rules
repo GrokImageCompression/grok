@@ -29,7 +29,7 @@ pkg_bin = grokj2k-tools
 
 override_dh_missing:
 	# annoying cmake-fatal-error export stuff:
-	sed -i -e "s/FATAL_ERROR/STATUS/g" debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/cmake/grok-7.3/GrokTargets*.cmake
+	sed -i -e "s/FATAL_ERROR/STATUS/g" debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/cmake/grok-7.6/GrokTargets*.cmake
 	dh_missing --list-missing
 
 VER_FULL = $(shell dpkg-parsechangelog -Sversion | cut -d - -f 1)
