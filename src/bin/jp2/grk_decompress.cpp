@@ -112,23 +112,14 @@ void setup_signal_handler() {
 #endif  
 }
 
-/**
- sample error callback expecting a FILE* client object
- */
 static void error_callback(const char *msg, void *client_data) {
 	(void) client_data;
 	spdlog::default_logger()->error(msg);
 }
-/**
- sample warning callback expecting a FILE* client object
- */
 static void warning_callback(const char *msg, void *client_data) {
 	(void) client_data;
 	spdlog::default_logger()->warn(msg);
 }
-/**
- sample debug callback expecting no client object
- */
 static void info_callback(const char *msg, void *client_data) {
 	(void) client_data;
 	spdlog::default_logger()->info(msg);
@@ -136,87 +127,88 @@ static void info_callback(const char *msg, void *client_data) {
 
 static void decode_help_display(void) {
 	fprintf(stdout,
-			"\nThis is the grk_decompress utility from the Grok project.\n"
-					"It decompresses JPEG 2000 codestreams to various image formats.\n"
-					"It has been compiled against Grok library v%s.\n\n",
+			"grk_decompress - decompress JPEG 2000 codestream to various image formats.\n"
+					"This utility has been compiled against libgrokj2k v%s.\n\n",
 			grk_version());
 
 	fprintf(stdout,
+			"-----------\n"
 			"Parameters:\n"
-					"-----------\n"
-					"\n"
-					"  [-y | -ImgDir] <directory> \n"
-					"	Image file directory path \n"
-					"  [-O | -OutFor] <PBM|PGM|PPM|PNM|PAM|PGX|PNG|BMP|TIF|RAW|RAWL>\n"
-					"    REQUIRED only if -ImgDir is used\n"
-					"	Output format for decompressed images.\n");
+			"-----------\n"
+			"\n"
+			"  [-y | -ImgDir] <directory> \n"
+			"	Compressed image file directory\n"
+			"  [-O | -OutFor] <PBM|PGM|PPM|PNM|PAM|PGX|PNG|BMP|TIF|RAW|RAWL>\n"
+			"    REQUIRED only if [ImgDir] option is used\n"
+			"	Output format for decompressed images.\n");
 	fprintf(stdout, "  [-i | -InputFile] <compressed file>\n"
-			"    REQUIRED only if an Input image directory is not specified\n"
-			"    Currently accepts J2K-files and JP2-files. The file type\n"
-			"    is identified based on its suffix.\n");
+			"    REQUIRED only if [ImgDir] option is not specified\n"
+			"    Currently accepts J2K and JP2 files. The file type\n"
+			"    is identified by parsing the beginning of the file.\n");
 	fprintf(stdout,
 			"  [-o | -OutputFile] <decompressed file>\n"
-					"    REQUIRED\n"
-					"    Currently accepts formats specified above (see OutFor option)\n"
-					"    Binary data is written to the file (not ascii). If a PGX\n"
-					"    filename is given, there will be as many output files as there are\n"
-					"    components: an indice starting from 0 will then be appended to the\n"
-					"    output filename, just before the \"pgx\" extension. If a PGM filename\n"
-					"    is given and there are more than one component, only the first component\n"
-					"    will be written to the file.\n");
+			"    REQUIRED\n"
+			"    Currently accepts formats specified above (see OutFor option)\n"
+			"    Binary data is written to the file (not ascii). If a PGX\n"
+			"    filename is given, there will be as many output files as there are\n"
+			"    components: an index starting from 0 will then be appended to the\n"
+			"    output filename, just before the \"pgx\" extension. If a PGM filename\n"
+			"    is given and there are more than one component, only the first component\n"
+			"    will be written to the file.\n");
 	fprintf(stdout, "  [-a | -OutDir] <output directory>\n"
-			"    Output directory where decompressed files are stored.\n");
+			"    Output directory where decompressed files will be stored.\n");
 	fprintf(stdout, "  [-g | -PluginPath] <plugin path>\n"
 			"    Path to T1 plugin.\n");
 	fprintf(stdout, "  [-H | -num_threads] <number of threads>\n"
-			"    Number of threads used by T1 decompress.\n");
+			"    Number of threads used by libgrokj2k library.\n");
 	fprintf(stdout,	"  [-c|-Compression] <compression method>\n"
-					"    Compress output image data. Currently, this option is only applicable when output "
-					"    format is set to TIF. Possible values are \n"
-					"    {NONE, LZW,JPEG, PACKBITS. ZIP,LZMA,ZSTD,WEBP}. Default value is NONE.\n");
+					"	Compress output image data. Currently, this option is only applicable when\n"
+					"	output format is set to TIF. Possible values are:\n"
+					"	{NONE, LZW,JPEG, PACKBITS. ZIP,LZMA,ZSTD,WEBP}. Default value is NONE.\n");
 	fprintf(stdout,
 			"   [L|-CompressionLevel] <compression level>\n"
-					"    \"Quality\" of compression. Currently only implemented for PNG format. Default - Z_BEST_COMPRESSION\n");
+			"    \"Quality\" of compression. Currently only implemented for PNG format.\n"
+			"	Default value is set to 9 (Z_BEST_COMPRESSION).\n"
+			"	Other options are 0 (Z_NO_COMPRESSION) and 1 (Z_BEST_SPEED)\n");
 	fprintf(stdout, "  [-t | -TileIndex] <tile index>\n"
 			"    Index of tile to be decoded\n");
 	fprintf(stdout,
 			"  [-d | -DecodeRegion] <x0,y0,x1,y1>\n"
-					"    Top left-hand corner and bottom right-hand corner of region to be decoded.\n");
+			"    Top left-hand corner and bottom right-hand corner of region to be decoded.\n");
 	fprintf(stdout,
 			"  [-r | -Reduce] <reduce factor>\n"
-					"    Set the number of highest resolution levels to be discarded. The\n"
-					"    image resolution is effectively divided by 2 to the power of the\n"
-					"    number of discarded levels. The reduce factor is limited by the\n"
-					"    smallest total number of decomposition levels among tiles.\n"
-					"  [-l | -Layer] <number of quality layers to decompress>\n"
-					"    Set the maximum number of quality layers to decompress. If there are\n"
-					"    fewer quality layers than the specified number, all the quality layers\n"
-					"    are decoded.\n");
+			"    Set the number of highest resolution levels to be discarded. The\n"
+			"    image resolution is effectively divided by 2 to the power of the\n"
+			"    number of discarded levels. The reduce factor is limited by the\n"
+			"    smallest total number of decomposition levels among tiles.\n"
+			"  [-l | -Layer] <number of quality layers to decompress>\n"
+			"    Set the maximum number of quality layers to decompress. If there are\n"
+			"    fewer quality layers than the specified number, all the quality layers\n"
+			"    are decoded.\n");
 	fprintf(stdout,
 			"  [-p | -Precision] <comp 0 precision>[C|S][,<comp 1 precision>[C|S][,...]]\n"
-					"    OPTIONAL\n"
-					"    Force the precision (bit depth) of components.\n");
+			"    OPTIONAL\n"
+			"    Force the precision (bit depth) of components.\n");
 	fprintf(stdout,
-			"    There shall be at least 1 value. There is no limit to the number of values (comma separated, values whose count exceeds component count will be ignored).\n"
-					"    If there are fewer values than components, the last value is used for remaining components.\n"
-					"    If 'C' is specified (default), values are clipped.\n"
-					"    If 'S' is specified, values are scaled.\n"
-					"    A 0 value can be specified (meaning original bit depth).\n");
+			"There shall be at least 1 value. There is no limit to the number of values\n"
+			"(comma separated, values whose count exceeds component count will be ignored).\n"
+			"    If there are fewer values than components, the last value is used for remaining components.\n"
+			"    If 'C' is specified (default), values are clipped.\n"
+			"    If 'S' is specified, values are scaled.\n"
+			"    A 0 value can be specified (meaning original bit depth).\n");
 	fprintf(stdout,
 			"  [-f | -force-rgb]\n"
-					"    Force output image colorspace to RGB\n"
-					"  [-u | -upsample]\n"
-					"    components will be upsampled to image size\n"
-					"  [-s | -split-pnm]\n"
-					"    Split output components to different files when writing to PNM\n"
-					"  [-c | -compression]\n"
-					"    Compression format for output file. Currently, only zip is supported for TIFF output (set parameter to 8)\n");
+			"    Force output image colorspace to RGB\n"
+			"  [-u | -upsample]\n"
+			"    components will be upsampled to image size\n"
+			"  [-s | -split-pnm]\n"
+			"    Split output components to different files when writing to PNM\n");
 	fprintf(stdout,
-			"  [-X | -XML]\n"
-					"    Store XML metadata to file. File name will be set to \"output file name\" + \".xml\"\n");
+			"  [-X | -XML] <xml file name> \n"
+			"    Store XML metadata to file. File name will be set to \"xml file name\" + \".xml\"\n");
 	fprintf(stdout,
-			"  [-W | -logfile]\n"
-					"    log to file. File name will be set to \"log file name\"\n");
+			"  [-W | -logfile] <log file name>\n"
+			"    log to file. File name will be set to \"log file name\"\n");
 	fprintf(stdout, "\n");
 }
 
