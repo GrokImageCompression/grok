@@ -134,7 +134,7 @@ grk_image* RAWFormat::rawtoimage(const char *filename,
 		}
 	}
 	/* create the image */
-	image = grk_image_create(numcomps, &cmptparm[0], color_space);
+	image = grk_image_create(numcomps, &cmptparm[0], color_space,true);
 	free(cmptparm);
 	if (!image) {
 		success = false;

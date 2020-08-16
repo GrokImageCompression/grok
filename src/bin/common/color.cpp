@@ -57,7 +57,7 @@ static grk_image* image_create(uint32_t numcmpts, uint32_t w, uint32_t h,
 		cmptparms[compno].sgnd = 0U;
 	}
 	auto img = grk_image_create(numcmpts, (grk_image_cmptparm*) cmptparms,
-			GRK_CLRSPC_SRGB);
+			GRK_CLRSPC_SRGB,true);
 	free(cmptparms);
 	return img;
 

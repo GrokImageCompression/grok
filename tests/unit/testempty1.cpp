@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
     cmptparm.w = image_width;
     cmptparm.h = image_height;
 
-    image = grk_image_create(numcomps, &cmptparm, color_space);
+    image = grk_image_create(numcomps, &cmptparm, color_space,true);
     assert( image );
 
     for (i = 0; i < image_width * image_height; i++) {

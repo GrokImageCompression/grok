@@ -506,7 +506,7 @@ static grk_image* jpegtoimage(const char *filename,
 		cmptparm[j].h = h;
 	}
 
-	imageInfo.image = grk_image_create((uint32_t)numcomps, &cmptparm[0], color_space);
+	imageInfo.image = grk_image_create((uint32_t)numcomps, &cmptparm[0], color_space,true);
 	if (!imageInfo.image) {
 		imageInfo.success = false;
 		goto cleanup;

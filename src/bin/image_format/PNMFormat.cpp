@@ -377,7 +377,7 @@ static grk_image* pnmtoimage(const char *filename,
 		cmptparm[i].w = w;
 		cmptparm[i].h = h;
 	}
-	image = grk_image_create(numcomps, &cmptparm[0], color_space);
+	image = grk_image_create(numcomps, &cmptparm[0], color_space,true);
 	if (!image) {
 		spdlog::error("pnmtoimage: Failed to create image");
 		goto cleanup;

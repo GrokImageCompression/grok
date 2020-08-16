@@ -829,7 +829,7 @@ static grk_image* convert_gray_to_rgb(grk_image *original) {
 	}
 
 	new_image = grk_image_create(original->numcomps + 2U, new_components,
-			GRK_CLRSPC_SRGB);
+			GRK_CLRSPC_SRGB,true);
 	free(new_components);
 	if (new_image == nullptr) {
 		spdlog::error(
@@ -915,7 +915,7 @@ static grk_image* upsample_image_components(grk_image *original) {
 	}
 
 	new_image = grk_image_create(original->numcomps, new_components,
-			original->color_space);
+			original->color_space,true);
 	free(new_components);
 	if (new_image == nullptr) {
 		spdlog::error(

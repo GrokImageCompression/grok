@@ -1667,7 +1667,7 @@ static grk_image* tiftoimage(const char *filename,
 		cmptparm[j].w = w;
 		cmptparm[j].h = h;
 	}
-	image = grk_image_create(numcomps, &cmptparm[0], color_space);
+	image = grk_image_create(numcomps, &cmptparm[0], color_space,true);
 	if (!image)
 		goto cleanup;
 

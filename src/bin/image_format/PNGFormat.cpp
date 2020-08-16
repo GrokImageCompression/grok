@@ -250,7 +250,7 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 	}
 
 	local_info.image = grk_image_create(nr_comp, &cmptparm[0],
-			local_info.colorSpace);
+			local_info.colorSpace,true);
 	if (local_info.image == nullptr)
 		goto beach;
 	local_info.image->x0 = params->image_offset_x0;

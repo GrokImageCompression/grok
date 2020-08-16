@@ -1276,11 +1276,12 @@ GRK_API void GRK_CALLCONV grk_deinitialize();
  * @param numcmpts      number of components
  * @param cmptparms     component parameters
  * @param clrspc        image color space
+ * @param allocData		true if data is to be allocated, otherwise false
  *
  * @return returns      a new image if successful, otherwise nullptr
  * */
 GRK_API grk_image* GRK_CALLCONV grk_image_create(uint32_t numcmpts,
-		grk_image_cmptparm *cmptparms, GRK_COLOR_SPACE clrspc);
+		grk_image_cmptparm *cmptparms, GRK_COLOR_SPACE clrspc, bool allocData);
 
 /**
  * Deallocate all resources associated with an image

@@ -165,7 +165,7 @@ static grk_image* pgxtoimage(const char *filename,
 	cmptparm.dy = parameters->subsampling_dy;
 
 	/* create the image */
-	image = grk_image_create(numcomps, &cmptparm, color_space);
+	image = grk_image_create(numcomps, &cmptparm, color_space,true);
 	if (!image) {
 		goto cleanup;
 	}

@@ -682,7 +682,7 @@ static grk_image* bmptoimage(const char *filename,
 	}
 
 	image = grk_image_create(numcmpts, &cmptparm[0],
-			(numcmpts == 1U) ? GRK_CLRSPC_GRAY : GRK_CLRSPC_SRGB);
+			(numcmpts == 1U) ? GRK_CLRSPC_GRAY : GRK_CLRSPC_SRGB,true);
 	if (!image) {
 		goto cleanup;
 	}

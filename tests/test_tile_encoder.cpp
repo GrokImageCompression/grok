@@ -270,7 +270,7 @@ int main(int argc, char *argv[]) {
 	grk_set_warning_handler(warning_callback, nullptr);
 	grk_set_error_handler(error_callback, nullptr);
 
-	image = grk_image_create(num_comps, params, GRK_CLRSPC_SRGB);
+	image = grk_image_create(num_comps, params, GRK_CLRSPC_SRGB,true);
 	if (!image) {
 		rc = 1;
 		goto cleanup;
