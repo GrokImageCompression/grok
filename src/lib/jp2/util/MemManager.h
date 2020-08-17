@@ -25,6 +25,8 @@
 
 namespace grk {
 
+const size_t default_align = 64;
+
 uint32_t grk_make_aligned_width(uint32_t width);
 
 /**

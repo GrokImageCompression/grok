@@ -3029,15 +3029,18 @@ bool CodeStream::alloc_multi_tile_output_data(grk_image *p_output_image){
 		auto comp_dest = p_output_image->comps + i;
 
 		if (comp_dest->w * comp_dest->h == 0) {
-			GROK_ERROR("Output image has invalid dimensions %u x %u",
-					comp_dest->w, comp_dest->h);
+			GROK_ERROR("Output component %d has invalid dimensions %u x %u",
+					i, comp_dest->w, comp_dest->h);
 			return false;
 		}
 
 		/* Allocate output component buffer if necessary */
 		if (!comp_dest->data) {
-			if (!grk_image_single_component_data_alloc(comp_dest))
+			if (!grk_image_single_component_data_alloc(comp_dest)){
+				GROK_ERROR("Failed to allocate pixel data for component %d, with dimensions %u x %u",
+						i, comp_dest->w, comp_dest->h);
 				return false;
+			}
 			memset(comp_dest->data, 0,
 						(uint64_t)comp_dest->stride * comp_dest->h * sizeof(int32_t));
 		}

@@ -685,10 +685,13 @@ bool GRK_CALLCONV grk_image_single_component_data_alloc(
 	if (!comp)
 		return false;
 	comp->stride = grk_make_aligned_width(comp->w);
-	auto data = (int32_t*) grk_aligned_malloc(
-			(uint64_t) comp->stride * comp->h * sizeof(uint32_t));
-	if (!data)
+	size_t dataSize = (uint64_t) comp->stride * comp->h * sizeof(uint32_t);
+	auto data = (int32_t*) grk_aligned_malloc(dataSize);
+	if (!data) {
+		grk::GROK_ERROR("Failed to allocate aligned memory of size 0x%x "
+				"@ alignment 0x%x",dataSize, grk::default_align);
 		return false;
+	}
 	grk_image_single_component_data_free(comp);
 	comp->data = data;
 	comp->owns_data = true;

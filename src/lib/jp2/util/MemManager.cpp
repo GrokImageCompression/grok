@@ -22,7 +22,6 @@
 #define GROK_SKIP_POISON
 #include "grok_includes.h"
 
-const size_t default_align = 64;
 
 // OSX is missing C++11 aligned_alloc (stdlib.h version)
 #if defined(__APPLE__)
