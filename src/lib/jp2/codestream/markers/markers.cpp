@@ -1137,11 +1137,7 @@ bool j2k_merge_ppt(TileCodingParams *p_tcp) {
 		ppt_data_size += p_tcp->ppt_markers[i].m_data_size; /* can't overflow, max 256 markers of max 65536 bytes */
 	}
 
-	p_tcp->ppt_buffer = (uint8_t*) grk_malloc(ppt_data_size);
-	if (p_tcp->ppt_buffer == nullptr) {
-		GROK_ERROR("Not enough memory to read PPT marker");
-		return false;
-	}
+	p_tcp->ppt_buffer = new uint8_t[ppt_data_size];
 	p_tcp->ppt_len = ppt_data_size;
 	ppt_data_size = 0U;
 	for (uint32_t i = 0U; i < p_tcp->ppt_markers_count; ++i) {

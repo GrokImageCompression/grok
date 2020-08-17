@@ -33,6 +33,8 @@ struct CodeStream;
  * Quantization stepsize
  */
 struct grk_stepsize {
+	grk_stepsize() : expn(0), mant(0)
+	{}
 	/** exponent - 5 bits */
 	uint8_t expn;
 	/** mantissa  -11 bits */

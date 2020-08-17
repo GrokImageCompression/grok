@@ -47,6 +47,7 @@ enum J2K_MCT_ARRAY_TYPE {
  Tile-component coding parameters
  */
 struct TileComponentCodingParams {
+	TileComponentCodingParams();
 	/** coding style */
 	uint8_t csty;
 	/** number of resolutions */

@@ -45,15 +45,37 @@ void CodingParams::destroy() {
 }
 
 TileCodingParams::TileCodingParams() :
-		csty(0), prg(GRK_PROG_UNKNOWN), numlayers(0), num_layers_to_decode(0), mct(
-				0), numpocs(0), ppt_markers_count(0), ppt_markers(nullptr), ppt_data(
-				nullptr), ppt_buffer(nullptr), ppt_data_size(0), ppt_len(0), main_qcd_qntsty(
-				0), main_qcd_numStepSizes(0), tccps(nullptr), m_tile_part_index(
-				-1), m_nb_tile_parts(0), m_tile_data(nullptr), mct_norms(
-				nullptr), m_mct_decoding_matrix(nullptr), m_mct_coding_matrix(
-				nullptr), m_mct_records(nullptr), m_nb_mct_records(0), m_nb_max_mct_records(
-				0), m_mcc_records(nullptr), m_nb_mcc_records(0), m_nb_max_mcc_records(
-				0), cod(false), ppt(false), POC(false), isHT(false) {
+								csty(0),
+								prg(GRK_PROG_UNKNOWN),
+								numlayers(0),
+								num_layers_to_decode(0),
+								mct(0),
+								numpocs(0),
+								ppt_markers_count(0),
+								ppt_markers(nullptr),
+								ppt_data(nullptr),
+								ppt_buffer(nullptr),
+								ppt_data_size(0),
+								ppt_len(0),
+								main_qcd_qntsty(0),
+								main_qcd_numStepSizes(0),
+								tccps(nullptr),
+								m_tile_part_index(-1),
+								m_nb_tile_parts(0),
+								m_tile_data(nullptr),
+								mct_norms(nullptr),
+								m_mct_decoding_matrix(nullptr),
+								m_mct_coding_matrix(nullptr),
+								m_mct_records(nullptr),
+								m_nb_mct_records(0),
+								m_nb_max_mct_records(0),
+								m_mcc_records(nullptr),
+								m_nb_mcc_records(0),
+								m_nb_max_mcc_records(0),
+								cod(false),
+								ppt(false),
+								POC(false),
+								isHT(false) {
 	for (auto i = 0; i < 100; ++i)
 		rates[i] = 0.0;
 	for (auto i = 0; i < 100; ++i)
@@ -75,9 +97,9 @@ void TileCodingParams::destroy() {
 		ppt_markers = nullptr;
 	}
 
-	grk_free(ppt_buffer);
+	delete[] ppt_buffer;
 	ppt_buffer = nullptr;
-	grk_free(tccps);
+	delete[] tccps;
 	tccps = nullptr;
 	grk_free(m_mct_coding_matrix);
 	m_mct_coding_matrix = nullptr;
@@ -104,6 +126,28 @@ void TileCodingParams::destroy() {
 	mct_norms = nullptr;
 	delete m_tile_data;
 	m_tile_data = nullptr;
+}
+
+
+
+TileComponentCodingParams::TileComponentCodingParams() : csty(0),
+														numresolutions(0),
+														cblkw(0),
+														cblkh(0),
+														cblk_sty(0),
+														qmfbid(0),
+														fromQCC(false),
+														fromTileHeader(false),
+														qntsty(0),
+														numStepSizes(0),
+														numgbits(0),
+														roishift(0),
+														m_dc_level_shift(0)
+{
+	for (uint32_t i = 0; i < GRK_J2K_MAXRLVLS; ++i){
+		prcw[i] = 0;
+		prch[i] = 0;
+	}
 }
 
 bool DecoderState::findNextTile(BufferedStream *stream){

@@ -1162,7 +1162,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, TileProcessor *tileProc
 
 	// sanity checks
 	if (num_tiles_decoded == 0) {
-		GROK_ERROR("No tiles were decoded. Exiting");
+		GROK_ERROR("No tiles were decoded.");
 		return false;
 	} else if (num_tiles_decoded < num_tiles_to_decode) {
 		uint32_t decoded = num_tiles_decoded;
@@ -1705,13 +1705,7 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 			tcp->numpocs = 0;
 		}
 
-		tcp->tccps = (TileComponentCodingParams*) grk_calloc(image->numcomps,
-				sizeof(TileComponentCodingParams));
-		if (!tcp->tccps) {
-			GROK_ERROR(
-					"Not enough memory to allocate tile component coding parameters");
-			return false;
-		}
+		tcp->tccps = new TileComponentCodingParams[image->numcomps];
 		if (parameters->mct_data) {
 
 			uint32_t lMctSize = image->numcomps * image->numcomps
@@ -2030,8 +2024,7 @@ bool j2k_end_compress(CodeStream *codeStream, BufferedStream *stream) {
 	if (!j2k_init_end_compress(codeStream))
 		return false;
 
-	bool rc =  j2k_exec(codeStream, codeStream->m_procedure_list, stream);
-	return rc;
+	return  j2k_exec(codeStream, codeStream->m_procedure_list, stream);
 }
 
 
@@ -2090,6 +2083,7 @@ bool j2k_check_poc_val(const grk_poc *p_pocs, uint32_t nb_pocs,
 	if (loss)
 		GROK_ERROR("Missing packets possible loss of data");
 	delete[] packet_array;
+
 	return !loss;
 }
 
