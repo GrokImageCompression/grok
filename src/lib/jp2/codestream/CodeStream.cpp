@@ -1280,6 +1280,21 @@ static bool j2k_init_decompress_tile(CodeStream *codeStream) {
 	return true;
 }
 
+static bool j2k_do_decompress(CodeStream *codeStream,
+								BufferedStream *stream,grk_image *p_image){
+	/* Decode the code stream */
+	if (!j2k_exec(codeStream, codeStream->m_procedure_list, stream))
+		return false;
+
+	/* Move data and information from codec output image to user output image*/
+	transfer_image_data(codeStream->m_output_image, p_image);
+
+	// do a little cleanup
+	delete codeStream->m_tileProcessor;
+	codeStream->m_tileProcessor = nullptr;
+	return true;
+}
+
 bool j2k_decompress(CodeStream *codeStream, grk_plugin_tile *tile,
 		BufferedStream *stream, grk_image *p_image) {
 	if (!p_image)
@@ -1296,13 +1311,7 @@ bool j2k_decompress(CodeStream *codeStream, grk_plugin_tile *tile,
 
 	codeStream->current_plugin_tile = tile;
 
-	/* Decode the code stream */
-	if (!j2k_exec(codeStream, codeStream->m_procedure_list, stream))
-		return false;
-
-	/* Move data and information from codec output image to user output image*/
-	transfer_image_data(codeStream->m_output_image, p_image);
-	return true;
+	return j2k_do_decompress(codeStream,stream,p_image);
 }
 
 bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream, grk_image *p_image,
@@ -1398,15 +1407,7 @@ bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream, grk_ima
 	if (!j2k_init_decompress_tile(codeStream))
 		return false;
 
-	/* Decode the code stream */
-	if (!j2k_exec(codeStream, codeStream->m_procedure_list, stream))
-		return false;
-
-
-	/* Move data from codec output image to user output image*/
-	transfer_image_data(codeStream->m_output_image, p_image);
-
-	return true;
+	return j2k_do_decompress(codeStream,stream,p_image);
 }
 
 bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
@@ -1988,37 +1989,40 @@ cleanup:
 	return rc;
 }
 
-bool j2k_compress_tile(CodeStream *codeStream, TileProcessor *tp,
+bool j2k_compress_tile(CodeStream *codeStream,
 		uint16_t tile_index, uint8_t *p_data,
 		uint64_t uncompressed_data_size, BufferedStream *stream) {
 	if (!p_data)
 		return false;
+	bool rc = false;
 
-	auto tileProcessor = tp;
-	if (!tileProcessor) {
-		codeStream->m_tileProcessor = new TileProcessor(codeStream);
-		tileProcessor = codeStream->m_tileProcessor;
-		tileProcessor->m_tile_index = tile_index;
-	}
+	codeStream->m_tileProcessor = new TileProcessor(codeStream);
+	auto tileProcessor = codeStream->m_tileProcessor;
+	tileProcessor->m_tile_index = tile_index;
+
 	if (!tileProcessor->pre_write_tile()) {
 		GROK_ERROR("Error while pre_write_tile with tile index = %u",
 				tile_index);
-		return false;
+		goto cleanup;
 	}
 	/* now copy data into the tile component */
 	if (!tileProcessor->copy_uncompressed_data_to_tile(p_data,	uncompressed_data_size)) {
 		GROK_ERROR("Size mismatch between tile data and sent data.");
-		return false;
+		goto cleanup;
 	}
 	if (!tileProcessor->do_encode(stream))
-		return false;
+		goto cleanup;
 	if (!j2k_post_write_tile(codeStream, tileProcessor, stream)) {
 		GROK_ERROR("Error while j2k_post_write_tile with tile index = %u",
 				tile_index);
-		return false;
+		goto cleanup;
 	}
+	rc = true;
+cleanup:
+	delete codeStream->m_tileProcessor;
+	codeStream->m_tileProcessor = nullptr;
 
-	return true;
+	return rc;
 }
 
 bool j2k_end_compress(CodeStream *codeStream, BufferedStream *stream) {

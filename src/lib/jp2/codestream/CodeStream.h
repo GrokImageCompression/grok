@@ -312,14 +312,13 @@ bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream, grk_ima
 /**
  * Writes a tile.
  * @param	codeStream				JPEG 2000 code stream
- * @param	tileProcessor			tile processor
  * @param tile_index 				tile index
  * @param data						uncompressed data
  * @param uncompressed_data_size 	uncompressed data size
  * @param	stream					buffered stream.
  
  */
-bool j2k_compress_tile(CodeStream *codeStream, TileProcessor *tileProcessor,
+bool j2k_compress_tile(CodeStream *codeStream,
 		uint16_t tile_index, uint8_t *p_data,
 		uint64_t uncompressed_data_size, BufferedStream *stream);
 

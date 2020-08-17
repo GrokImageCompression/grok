@@ -247,7 +247,7 @@ int main(int argc, char *argv[]) {
 	stream = grk_stream_create_file_stream(output_file, 1024 * 1024, false);
 	if (!stream) {
 		spdlog::error(
-				"test_tile_encoder: failed to create the stream from the output file {}",
+				"test_tile_encoder: failed to create a stream from file {}",
 				output_file);
 		rc = 1;
 		goto cleanup;

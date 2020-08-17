@@ -85,8 +85,8 @@ struct grk_codec_private {
 			bool (*compress)(void *p_codec, grk_plugin_tile*,
 					BufferedStream *stream);
 
-			bool (*write_tile)(void *p_codec, TileProcessor *tileProcessor,
-					uint16_t tile_index, uint8_t *p_data, uint64_t data_size, BufferedStream *stream);
+			bool (*write_tile)(void *p_codec, uint16_t tile_index,
+					uint8_t *p_data, uint64_t data_size, BufferedStream *stream);
 
 			bool (*end_compress)(void *p_codec, BufferedStream *stream);
 
@@ -397,7 +397,7 @@ bool GRK_CALLCONV grk_decompress_tile( grk_codec p_codec,
 		codec->m_codec_data.m_compression.start_compress =
 				(bool (*)(void*, BufferedStream*)) j2k_start_compress;
 		codec->m_codec_data.m_compression.write_tile =
-				(bool (*)(void*, TileProcessor*, uint16_t, uint8_t*, uint64_t, BufferedStream*)) j2k_compress_tile;
+				(bool (*)(void*, uint16_t, uint8_t*, uint64_t, BufferedStream*)) j2k_compress_tile;
 		codec->m_codec_data.m_compression.destroy =
 				(void (*)(void*)) j2k_destroy;
 		codec->m_codec_data.m_compression.init_compress =
@@ -417,7 +417,7 @@ bool GRK_CALLCONV grk_decompress_tile( grk_codec p_codec,
 		codec->m_codec_data.m_compression.start_compress = (bool (*)(void*,
 				BufferedStream*)) jp2_start_compress;
 		codec->m_codec_data.m_compression.write_tile =
-				(bool (*)(void*, TileProcessor*, uint16_t, uint8_t*, uint64_t, BufferedStream*)) jp2_compress_tile;
+				(bool (*)(void*, uint16_t, uint8_t*, uint64_t, BufferedStream*)) jp2_compress_tile;
 		codec->m_codec_data.m_compression.destroy =
 				(void (*)(void*)) jp2_destroy;
 		codec->m_codec_data.m_compression.init_compress =
@@ -555,7 +555,7 @@ bool GRK_CALLCONV grk_compress_tile( grk_codec p_codec, uint16_t tile_index,
 		if (codec->is_decompressor)
 			return false;
 		return codec->m_codec_data.m_compression.write_tile(codec->m_codec,
-				nullptr, tile_index, p_data, data_size, stream	);
+				tile_index, p_data, data_size, stream	);
 	}
 	return false;
 }

@@ -1380,7 +1380,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 		}
 	}
 	if (!info->l_stream) {
-		spdlog::error("grk_decompress: failed to create the stream from the file {}", infile);
+		spdlog::error("grk_decompress: failed to create a stream from file {}", infile);
 		goto cleanup;
 	}
 

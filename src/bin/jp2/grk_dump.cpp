@@ -434,7 +434,7 @@ int main(int argc, char *argv[]) {
 		l_stream = grk_stream_create_file_stream(parameters.infile, 1024 * 1024,
 				1);
 		if (!l_stream) {
-			spdlog::error("failed to create the stream from the file {}",
+			spdlog::error("failed to create a stream from file {}",
 					parameters.infile);
 			rc = EXIT_FAILURE;
 			goto cleanup;

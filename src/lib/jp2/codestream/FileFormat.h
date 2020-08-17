@@ -254,14 +254,13 @@ bool jp2_compress(FileFormat *fileFormat, grk_plugin_tile *tile, BufferedStream 
  * Compress tile
  *
  * @param  fileFormat    			JPEG 2000 file format
- * @param  tileProcessor			tile processor
  * @param tile_index  				tile index
  * @param p_data        			uncompressed data
  * @param uncompressed_data_size   	uncompressed data size
  * @param  stream      buffered stream.
 
  */
-bool jp2_compress_tile(FileFormat *fileFormat, TileProcessor *tileProcessor,
+bool jp2_compress_tile(FileFormat *fileFormat,
 		uint16_t tile_index, uint8_t *p_data,
 		uint64_t uncompressed_data_size, BufferedStream *stream);
 
