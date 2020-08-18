@@ -81,26 +81,6 @@ template<typename T> struct grk_rectangle {
     	return x0 < x1 && y0 < y1;
     }
 
-    bool clip(grk_rectangle<T> &r2, grk_rectangle<T> *result) {
-    	bool rc;
-    	grk_rectangle<T> temp;
-
-    	if (!result)
-    		return false;
-
-    	temp.x0 = std::max<T>(x0, r2.x0);
-    	temp.y0 = std::max<T>(y0, r2.y0);
-
-    	temp.x1 = std::min<T>(x1, r2.x1);
-    	temp.y1 = std::min<T>(y1, r2.y1);
-
-    	rc = temp.is_valid();
-
-    	if (rc)
-    		*result = temp;
-    	return rc;
-    }
-
     grk_rectangle<T>& operator= (const grk_rectangle<T> &rhs)
     {
     	if (this != &rhs) { // self-assignment check expected
@@ -153,12 +133,19 @@ template<typename T> struct grk_rectangle {
 
     }
 
-    grk_rectangle<T> intersection(const grk_rectangle<T> &rhs){
+    grk_rectangle<T> intersection(const grk_rectangle<T> rhs){
     	return grk_rectangle<T>( std::max<T>(x0,rhs.x0),
 								std::max<T>(y0,rhs.y0),
 								std::min<T>(x1,rhs.x1),
 								std::min<T>(y1,rhs.y1));
     }
+    grk_rectangle<T> r_union(const grk_rectangle<T> rhs){
+    	return grk_rectangle<T>( std::min<T>(x0,rhs.x0),
+								std::min<T>(y0,rhs.y0),
+								std::max<T>(x1,rhs.x1),
+								std::max<T>(y1,rhs.y1));
+    }
+
 
     uint64_t area(void) {
     	return (uint64_t)(x1 - x0) * (y1 - y0);
