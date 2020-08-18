@@ -2932,7 +2932,7 @@ bool CodeStream::set_decompress_area(grk_image *output_image,
 			cp->m_coding_params.m_dec.m_reduce))
 		return false;
 
-	GROK_INFO("Setting decoding area to %u,%u,%u,%u", output_image->x0,
+	GROK_INFO("Setting decoding area to ( %u,%u,%u,%u )", output_image->x0,
 			output_image->y0, output_image->x1, output_image->y1);
 	return true;
 }

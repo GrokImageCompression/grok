@@ -524,10 +524,7 @@ void TileComponent::create_buffer(grk_image *output_image,
 	auto highestRes =
 			(!m_is_encoder) ? resolutions_to_decompress : numresolutions;
 	auto res =  resolutions + highestRes - 1;
-	x0 = res->x0;
-	x1 = res->x1;
-	y0 = res->y0;
-	y1 = res->y1;
+	grk_rect_u32::operator=(*(grk_rect_u32*)res);
 	auto maxRes = resolutions + numresolutions - 1;
 
 	delete buf;
