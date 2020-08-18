@@ -283,11 +283,7 @@ bool GRK_CALLCONV grk_init_decompress( grk_codec p_codec,
 		 grk_dparameters  *parameters) {
 	if (p_codec && parameters) {
 		auto codec = (grk_codec_private*) p_codec;
-		if (!codec->is_decompressor) {
-			GROK_ERROR(
-					"Codec provided to the grk_init_decompress function is not a decompressor handler.");
-			return false;
-		}
+		assert(codec->is_decompressor);
 		codec->m_codec_data.m_decompression.setup_decoder(codec->m_codeStreamBase,
 				parameters);
 		return true;
@@ -300,11 +296,7 @@ bool GRK_CALLCONV grk_read_header(
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
 		auto stream = (BufferedStream*) codec->m_stream;
-		if (!codec->is_decompressor) {
-			GROK_ERROR(
-					"Codec provided to the grk_read_header function is not a decompressor handler.");
-			return false;
-		}
+		assert(codec->is_decompressor);
 
 		return codec->m_codec_data.m_decompression.read_header(
 				codec->m_codeStreamBase, stream, header_info, p_image);
@@ -317,8 +309,8 @@ bool GRK_CALLCONV grk_decompress( grk_codec p_codec, grk_plugin_tile *tile,
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
 		auto stream = (BufferedStream*) codec->m_stream;
-		if (!codec->is_decompressor)
-			return false;
+		assert(codec->is_decompressor);
+
 		return codec->m_codec_data.m_decompression.decompress(codec->m_codeStreamBase,
 				tile, stream, p_image);
 	}
@@ -329,8 +321,7 @@ bool GRK_CALLCONV grk_set_decompress_area( grk_codec p_codec,
 		uint32_t end_x, uint32_t end_y) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
-		if (!codec->is_decompressor)
-			return false;
+		assert(codec->is_decompressor);
 		return codec->m_codec_data.m_decompression.set_decompress_area(
 				codec->m_codeStreamBase, p_image, start_x, start_y, end_x,
 				end_y);
@@ -342,10 +333,7 @@ bool GRK_CALLCONV grk_decompress_tile( grk_codec p_codec,
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
 		auto stream = (BufferedStream*) codec->m_stream;
-
-		if (!codec->is_decompressor) {
-			return false;
-		}
+		assert(codec->is_decompressor);
 
 		return codec->m_codec_data.m_decompression.decompress_tile(
 				codec->m_codeStreamBase, stream, p_image,
@@ -444,6 +432,7 @@ bool GRK_CALLCONV grk_init_compress( grk_codec p_codec,
 		 grk_cparameters  *parameters, grk_image *p_image) {
 	if (p_codec && parameters && p_image) {
 		auto codec = (grk_codec_private*) p_codec;
+		assert(!codec->is_decompressor);
 		if (!codec->is_decompressor) {
 			return codec->m_codec_data.m_compression.init_compress(
 					codec->m_codeStreamBase, parameters, p_image);
@@ -455,6 +444,7 @@ bool GRK_CALLCONV grk_start_compress( grk_codec p_codec) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
 		auto stream = (BufferedStream*) codec->m_stream;
+		assert(!codec->is_decompressor);
 		if (!codec->is_decompressor) {
 			return codec->m_codec_data.m_compression.start_compress(
 					codec->m_codeStreamBase, stream	);
@@ -470,6 +460,7 @@ bool GRK_CALLCONV grk_compress_with_plugin( grk_codec p_info,
 	if (p_info) {
 		auto codec = (grk_codec_private*) p_info;
 		auto stream = (BufferedStream*) codec->m_stream;
+		assert(!codec->is_decompressor);
 		if (!codec->is_decompressor) {
 			return codec->m_codec_data.m_compression.compress(codec->m_codeStreamBase,
 					tile, stream);
@@ -481,6 +472,7 @@ bool GRK_CALLCONV grk_end_compress( grk_codec p_codec) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
 		auto stream = (BufferedStream*) codec->m_stream;
+		assert(!codec->is_decompressor);
 		if (!codec->is_decompressor) {
 			return codec->m_codec_data.m_compression.end_compress(
 					codec->m_codeStreamBase, stream);
@@ -492,9 +484,7 @@ bool GRK_CALLCONV grk_end_decompress( grk_codec p_codec) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
 		auto stream = (BufferedStream*) codec->m_stream;
-		if (!codec->is_decompressor) {
-			return false;
-		}
+		assert(codec->is_decompressor);
 		return codec->m_codec_data.m_decompression.end_decompress(
 				codec->m_codeStreamBase, stream);
 	}

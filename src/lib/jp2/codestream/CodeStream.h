@@ -128,7 +128,7 @@ struct  grk_dec_memory_marker_handler  {
 } ;
 
 struct CodeStreamBase {
-
+   virtual ~CodeStreamBase(){}
 };
 
 struct CodeStream : public CodeStreamBase {
