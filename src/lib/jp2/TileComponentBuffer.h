@@ -92,9 +92,9 @@ template<typename T> struct TileComponentBuffer {
 			m_bounds.rectceildivpow2(num_resolutions - reduced_num_resolutions);
 
 			/* clip region dimensions against tile */
-			m_bounds = reduced_dim.intersection(m_bounds);
+			m_bounds.intersection(reduced_dim);
 			assert(m_bounds.is_valid());
-			m_unreduced_bounds = unreduced_dim.intersection(m_unreduced_bounds);
+			m_unreduced_bounds.intersection(unreduced_dim);
 			assert(m_unreduced_bounds.is_valid());
 		}
 

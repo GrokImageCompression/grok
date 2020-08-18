@@ -1315,11 +1315,6 @@ bool j2k_decompress(CodeStream *codeStream, grk_plugin_tile *tile,
 
 bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream, grk_image *p_image,
 		uint16_t tile_index) {
-	uint32_t compno;
-	uint32_t tile_x, tile_y;
-	grk_image_comp *img_comp;
-	grk_rect original_image_rect, tile_rect, overlap_rect;
-
 	if (!p_image) {
 		GROK_ERROR("Image is null");
 		return false;
@@ -1332,10 +1327,10 @@ bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream, grk_ima
 	}
 
 	/* Compute the dimension of the desired tile*/
-	tile_x = tile_index % codeStream->m_cp.t_grid_width;
-	tile_y = tile_index / codeStream->m_cp.t_grid_width;
+	uint32_t tile_x = tile_index % codeStream->m_cp.t_grid_width;
+	uint32_t tile_y = tile_index / codeStream->m_cp.t_grid_width;
 
-	original_image_rect = grk_rect(p_image->x0, p_image->y0, p_image->x1,
+	auto original_image_rect = grk_rect(p_image->x0, p_image->y0, p_image->x1,
 			p_image->y1);
 
 	p_image->x0 = tile_x * codeStream->m_cp.t_width + codeStream->m_cp.tx0;
@@ -1352,12 +1347,13 @@ bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream, grk_ima
 	if (p_image->y1 > codeStream->m_input_image->y1)
 		p_image->y1 = codeStream->m_input_image->y1;
 
-	tile_rect.x0 = p_image->x0;
-	tile_rect.y0 = p_image->y0;
-	tile_rect.x1 = p_image->x1;
-	tile_rect.y1 = p_image->y1;
+	auto tile_rect = grk_rect(p_image->x0,
+								p_image->y0,
+								p_image->x1,
+								p_image->y1);
 
-	overlap_rect = original_image_rect.intersection(tile_rect);
+	auto overlap_rect = original_image_rect;
+	overlap_rect.intersection(tile_rect);
 	if (original_image_rect.is_non_degenerate()
 			&& tile_rect.is_non_degenerate()
 			&& overlap_rect.is_non_degenerate()) {
@@ -1372,9 +1368,9 @@ bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream, grk_ima
 				original_image_rect.x1, original_image_rect.y1, tile_index);
 	}
 
-	img_comp = p_image->comps;
+	auto img_comp = p_image->comps;
 	auto reduce = codeStream->m_cp.m_coding_params.m_dec.m_reduce;
-	for (compno = 0; compno < p_image->numcomps; ++compno) {
+	for (uint32_t compno = 0; compno < p_image->numcomps; ++compno) {
 		uint32_t comp_x1, comp_y1;
 
 		img_comp->x0 = ceildiv<uint32_t>(p_image->x0, img_comp->dx);
