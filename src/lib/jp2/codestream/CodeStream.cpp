@@ -592,8 +592,7 @@ static bool j2k_decompress_validation(CodeStream *codeStream,TileProcessor *tile
 	return is_valid;
 }
 
-void j2k_init_decompressor(void *j2k_void, grk_dparameters *parameters) {
-	CodeStream *j2k = (CodeStream*) j2k_void;
+void j2k_init_decompressor(CodeStream *j2k, grk_dparameters *parameters) {
 	if (j2k && parameters) {
 		j2k->m_cp.m_coding_params.m_dec.m_layer = parameters->cp_layer;
 		j2k->m_cp.m_coding_params.m_dec.m_reduce = parameters->cp_reduce;

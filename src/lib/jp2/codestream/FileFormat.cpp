@@ -2014,8 +2014,7 @@ static bool jp2_write_jp(FileFormat *fileFormat, BufferedStream *stream) {
 /* JP2 decompress interface                                             */
 /* ----------------------------------------------------------------------- */
 
-void jp2_init_decompress(void *jp2_void, grk_dparameters *parameters) {
-	auto fileFormat = (FileFormat*) jp2_void;
+void jp2_init_decompress(FileFormat *fileFormat, grk_dparameters *parameters) {
 	/* set up the J2K codec */
 	j2k_init_decompressor(fileFormat->codeStream, parameters);
 

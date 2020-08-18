@@ -229,7 +229,7 @@ public:
  @param j2k J2K decompressor handle
  @param parameters decompression parameters
  */
-void j2k_init_decompressor(void *j2k,  grk_dparameters  *parameters);
+void j2k_init_decompressor(CodeStream *j2k,  grk_dparameters  *parameters);
 
 bool j2k_init_compress(CodeStream *codeStream,  grk_cparameters  *parameters,
 		grk_image *image);

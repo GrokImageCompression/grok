@@ -279,7 +279,7 @@ bool jp2_end_compress(FileFormat *fileFormat, BufferedStream *stream);
  @param fileFormat JP2 decompressor handle
  @param parameters decompression parameters
  */
-void jp2_init_decompress(void *fileFormat,  grk_dparameters  *parameters);
+void jp2_init_decompress(FileFormat *fileFormat,  grk_dparameters  *parameters);
 
 /**
  * Decompress an image from a JPEG 2000 file stream
