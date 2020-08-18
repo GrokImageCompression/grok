@@ -491,7 +491,7 @@ static int imageToPNG(const grk_image *src, const char *filename, size_t compno)
 		dest_ind += dest_diff;
 	}
 	PNGFormat png;
-	png.encode(dest, filename, GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT);
+	png.encodeHeader(dest, filename, GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT);
 
 	grk_image_destroy(dest);
 

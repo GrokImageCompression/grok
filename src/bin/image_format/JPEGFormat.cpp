@@ -632,12 +632,17 @@ static grk_image* jpegtoimage(const char *filename,
 	return imageInfo.image;
 }/* jpegtoimage() */
 
-bool JPEGFormat::encode(grk_image *image, const std::string &filename,
+bool JPEGFormat::encodeHeader(grk_image *image, const std::string &filename,
 		uint32_t compressionParam) {
 	return imagetojpeg(image, filename.c_str(), compressionParam) ?
 			false : true;
 }
-bool JPEGFormat::finish_encode(void){
+bool JPEGFormat::encodeStrip(size_t rows){
+
+
+	return true;
+}
+bool JPEGFormat::encodeFinish(void){
 
 	return true;
 }

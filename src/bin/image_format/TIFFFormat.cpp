@@ -2147,11 +2147,16 @@ static int imagetotif(grk_image *image, const char *outfile,
 	return success ? 0 : 1;
 }/* imagetotif() */
 
-bool TIFFFormat::encode(grk_image *image, const std::string &filename,
+bool TIFFFormat::encodeHeader(grk_image *image, const std::string &filename,
 		uint32_t compressionParam) {
 	return imagetotif(image, filename.c_str(), compressionParam) ? false : true;
 }
-bool TIFFFormat::finish_encode(void){
+bool TIFFFormat::encodeStrip(size_t rows){
+
+
+	return true;
+}
+bool TIFFFormat::encodeFinish(void){
 
 	return true;
 }

@@ -12,7 +12,6 @@
  *
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
  *
  *    This source code incorporates work covered by the BSD 2-clause license.
  *    Please see the LICENSE file in the root directory for details.
@@ -32,38 +31,38 @@
 const uint32_t BMP_ICC_PROFILE_EMBEDDED = 0x4d424544;
 
 typedef struct {
-	uint16_t bfType; /* 'BM' for Bitmap (19776) */
-	uint32_t bfSize; /* Size of the file        */
-	uint16_t bfReserved1; /* Reserved : 0            */
-	uint16_t bfReserved2; /* Reserved : 0            */
-	uint32_t bfOffBits; /* Offset                  */
+	uint16_t bfType; 		/* 'BM' for Bitmap (19776) */
+	uint32_t bfSize; 		/* Size of the file        */
+	uint16_t bfReserved1; 	/* Reserved : 0            */
+	uint16_t bfReserved2; 	/* Reserved : 0            */
+	uint32_t bfOffBits; 	/* Offset                  */
 } GRK_BITMAPFILEHEADER;
 
 typedef struct {
-	uint32_t biSize; /* Size of the structure in bytes */
-	uint32_t biWidth; /* Width of the image in pixels */
-	uint32_t biHeight; /* Height of the image in pixels */
-	uint16_t biPlanes; /* 1 */
-	uint16_t biBitCount; /* Number of color bits per pixels */
-	uint32_t biCompression; /* Type of encoding 0: none 1: RLE8 2: RLE4 */
-	uint32_t biSizeImage; /* Size of the image in bytes */
-	uint32_t biXpelsPerMeter; /* Horizontal (X) resolution in pixels/meter */
-	uint32_t biYpelsPerMeter; /* Vertical (Y) resolution in pixels/meter */
-	uint32_t biClrUsed; /* Number of color used in the image (0: ALL) */
-	uint32_t biClrImportant; /* Number of important color (0: ALL) */
-	uint32_t biRedMask; /* Red channel bit mask */
-	uint32_t biGreenMask; /* Green channel bit mask */
-	uint32_t biBlueMask; /* Blue channel bit mask */
-	uint32_t biAlphaMask; /* Alpha channel bit mask */
-	uint32_t biColorSpaceType; /* Color space type */
+	uint32_t biSize; 			/* Size of the structure in bytes */
+	uint32_t biWidth; 			/* Width of the image in pixels */
+	uint32_t biHeight; 			/* Height of the image in pixels */
+	uint16_t biPlanes; 			/* 1 */
+	uint16_t biBitCount; 		/* Number of color bits per pixels */
+	uint32_t biCompression; 	/* Type of encoding 0: none 1: RLE8 2: RLE4 */
+	uint32_t biSizeImage; 		/* Size of the image in bytes */
+	uint32_t biXpelsPerMeter; 	/* Horizontal (X) resolution in pixels/meter */
+	uint32_t biYpelsPerMeter; 	/* Vertical (Y) resolution in pixels/meter */
+	uint32_t biClrUsed; 		/* Number of color used in the image (0: ALL) */
+	uint32_t biClrImportant; 	/* Number of important color (0: ALL) */
+	uint32_t biRedMask; 		/* Red channel bit mask */
+	uint32_t biGreenMask; 		/* Green channel bit mask */
+	uint32_t biBlueMask; 		/* Blue channel bit mask */
+	uint32_t biAlphaMask; 		/* Alpha channel bit mask */
+	uint32_t biColorSpaceType; 	/* Color space type */
 	uint8_t biColorSpaceEP[36]; /* Color space end points */
-	uint32_t biRedGamma; /* Red channel gamma */
-	uint32_t biGreenGamma; /* Green channel gamma */
-	uint32_t biBlueGamma; /* Blue channel gamma */
-	uint32_t biIntent; /* Intent */
-	uint32_t biIccProfileData; /* ICC profile data */
-	uint32_t biIccProfileSize; /* ICC profile size */
-	uint32_t biReserved; /* Reserved */
+	uint32_t biRedGamma; 		/* Red channel gamma */
+	uint32_t biGreenGamma; 		/* Green channel gamma */
+	uint32_t biBlueGamma; 		/* Blue channel gamma */
+	uint32_t biIntent; 			/* Intent */
+	uint32_t biIccProfileData; 	/* ICC profile data */
+	uint32_t biIccProfileSize; 	/* ICC profile size */
+	uint32_t biReserved; 		/* Reserved */
 } GRK_BITMAPINFOHEADER;
 
 template<typename T> bool get_int(FILE *INPUT, T *val) {
@@ -854,8 +853,6 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 		goto cleanup;
 	w = image->comps[0].w;
 	h = image->comps[0].h;
-	stride = image->comps[0].stride;
-	sz = stride * (h - 1);
 
 	if (image->numcomps == 3) {
 		/* -->> -->> -->> -->>
@@ -898,37 +895,80 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 			goto cleanup;
 		if (!write_int(fdest, 0))
 			goto cleanup;
+
+
+	} else { /* Gray-scale */
+
+		/* -->> -->> -->> -->>
+		 8 bits non code (Gray scale)
+		 <<-- <<-- <<-- <<-- */
+
+		if (fprintf(fdest, "BM") != 2)
+			goto cleanup;
+
+		/* FILE HEADER */
+		/* ------------- */
+		if (!write_int(fdest, h * w + 54 + 1024 + h * (w % 2)))
+			goto cleanup;
+		if (!write_int(fdest, 0))
+			goto cleanup;
+		if (!write_int(fdest, 54 + 1024))
+			goto cleanup;
+
+		/* INFO HEADER   */
+		/* ------------- */
+		if (!write_int(fdest, 40))
+			goto cleanup;
+		if (!write_int(fdest, w))
+			goto cleanup;
+		if (!write_int(fdest, h))
+			goto cleanup;
+		if (!write_short(fdest, 1))
+			goto cleanup;
+		if (!write_short(fdest, 8))
+			goto cleanup;
+		if (!write_int(fdest, 0))
+			goto cleanup;
+		if (!write_int(fdest, h * w + h * (w % 2)))
+			goto cleanup;
+		if (!write_int(fdest, 7834))
+			goto cleanup;
+		if (!write_int(fdest, 7834))
+			goto cleanup;
+		if (!write_int(fdest, 256))
+			goto cleanup;
+		if (!write_int(fdest, 256))
+			goto cleanup;
+	}
+
+	stride = image->comps[0].stride;
+	sz = stride * (h - 1);
+	if (image->numcomps == 3) {
 		if (image->comps[0].prec > 8) {
-			truncR = (int) image->comps[0].prec - 8;
-			spdlog::warn(
-						"BMP CONVERSION: Truncating component 0 from {} bits to 8 bits",
-						image->comps[0].prec);
+				truncR = (int) image->comps[0].prec - 8;
+				spdlog::warn("BMP CONVERSION: Truncating component 0 from {} bits to 8 bits",
+							image->comps[0].prec);
 		} else if (image->comps[0].prec < 8) {
 			scaleR = 255.0f/(1U << image->comps[0].prec);
-			spdlog::warn(
-						"BMP CONVERSION: Scaling component 0 from {} bits to 8 bits",
+			spdlog::warn("BMP CONVERSION: Scaling component 0 from {} bits to 8 bits",
 						image->comps[0].prec);
 		}
 		if (image->comps[1].prec > 8) {
 			truncG = (int) image->comps[1].prec - 8;
-			spdlog::warn(
-						"BMP CONVERSION: Truncating component 1 from {} bits to 8 bits",
+			spdlog::warn("BMP CONVERSION: Truncating component 1 from {} bits to 8 bits",
 						image->comps[1].prec);
 		} else if (image->comps[1].prec < 8) {
 			scaleG = 255.0f/(1U << image->comps[1].prec);
-			spdlog::warn(
-						"BMP CONVERSION: Scaling component 1 from {} bits to 8 bits",
+			spdlog::warn("BMP CONVERSION: Scaling component 1 from {} bits to 8 bits",
 						image->comps[1].prec);
 		}
 		if (image->comps[2].prec > 8) {
 			truncB = (int) image->comps[2].prec - 8;
-			spdlog::warn(
-						"BMP CONVERSION: Truncating component 2 from {} bits to 8 bits",
+			spdlog::warn("BMP CONVERSION: Truncating component 2 from {} bits to 8 bits",
 						image->comps[2].prec);
 		} else if (image->comps[2].prec < 8) {
 			scaleB = 255.0f/(1U << image->comps[2].prec);
-			spdlog::warn(
-						"BMP CONVERSION: Scaling component 2 from {} bits to 8 bits",
+			spdlog::warn("BMP CONVERSION: Scaling component 2 from {} bits to 8 bits",
 						image->comps[2].prec);
 		}
 		size_t padW = ((3 * w + 3) >> 2) << 2;
@@ -988,52 +1028,10 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 				goto cleanup;
 			sz -= stride;
 		}
-	} else { /* Gray-scale */
-
-		/* -->> -->> -->> -->>
-		 8 bits non code (Gray scale)
-		 <<-- <<-- <<-- <<-- */
-
-		if (fprintf(fdest, "BM") != 2)
-			goto cleanup;
-
-		/* FILE HEADER */
-		/* ------------- */
-		if (!write_int(fdest, h * w + 54 + 1024 + h * (w % 2)))
-			goto cleanup;
-		if (!write_int(fdest, 0))
-			goto cleanup;
-		if (!write_int(fdest, 54 + 1024))
-			goto cleanup;
-
-		/* INFO HEADER   */
-		/* ------------- */
-		if (!write_int(fdest, 40))
-			goto cleanup;
-		if (!write_int(fdest, w))
-			goto cleanup;
-		if (!write_int(fdest, h))
-			goto cleanup;
-		if (!write_short(fdest, 1))
-			goto cleanup;
-		if (!write_short(fdest, 8))
-			goto cleanup;
-		if (!write_int(fdest, 0))
-			goto cleanup;
-		if (!write_int(fdest, h * w + h * (w % 2)))
-			goto cleanup;
-		if (!write_int(fdest, 7834))
-			goto cleanup;
-		if (!write_int(fdest, 7834))
-			goto cleanup;
-		if (!write_int(fdest, 256))
-			goto cleanup;
-		if (!write_int(fdest, 256))
-			goto cleanup;
+	} else {
 		if (image->comps[0].prec > 8) {
 			truncR = (int) image->comps[0].prec - 8;
-			spdlog::warn(
-						"BMP CONVERSION: Truncating component 0 from {} bits to 8 bits",
+			spdlog::warn("BMP CONVERSION: Truncating component 0 from {} bits to 8 bits",
 						image->comps[0].prec);
 		} else if (image->comps[0].prec < 8)
 			scaleR = 255.0f/(1U << image->comps[0].prec);
@@ -1068,11 +1066,10 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 				goto cleanup;
 			sz -= stride;
 		}
-
 	}
-	// success
+
 	ret = 0;
-	cleanup:
+cleanup:
 	delete[] destBuff;
 	if (!writeToStdout && fdest) {
 		if (!grk::safe_fclose(fdest))
@@ -1081,11 +1078,16 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 	return ret;
 }
 
-bool BMPFormat::encode(grk_image *  image, const std::string &filename, uint32_t compressionParam){
+bool BMPFormat::encodeHeader(grk_image *  image, const std::string &filename, uint32_t compressionParam){
 	(void) compressionParam;
 	return imagetobmp(image, filename.c_str()) ? false : true;
 }
-bool BMPFormat::finish_encode(void){
+bool BMPFormat::encodeStrip(size_t rows){
+
+
+	return true;
+}
+bool BMPFormat::encodeFinish(void){
 
 	return true;
 }

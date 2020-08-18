@@ -320,12 +320,17 @@ static int imagetopgx(grk_image *image, const char *outfile) {
 	return fails;
 }
 
-bool PGXFormat::encode(grk_image *image, const std::string &filename,
+bool PGXFormat::encodeHeader(grk_image *image, const std::string &filename,
 		uint32_t compressionParam) {
 	(void) compressionParam;
 	return imagetopgx(image, filename.c_str()) ? false : true;
 }
-bool PGXFormat::finish_encode(void){
+bool PGXFormat::encodeStrip(size_t rows){
+
+
+	return true;
+}
+bool PGXFormat::encodeFinish(void){
 
 	return true;
 }

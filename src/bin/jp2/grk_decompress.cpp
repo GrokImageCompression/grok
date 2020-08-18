@@ -1683,7 +1683,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		case GRK_PXM_FMT:
 		{
 			PNMFormat pnm(parameters->split_pnm);
-			if (!pnm.encode(image, outfileStr, 0)) {
+			if (!pnm.encodeHeader(image, outfileStr, 0)) {
 				spdlog::error("Outfile {} not generated", outfileStr);
 				goto cleanup;
 			}
@@ -1692,7 +1692,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		case GRK_PGX_FMT:
 		{
 			PGXFormat pgx;
-			if (!pgx.encode(image, outfileStr, 0)) {
+			if (!pgx.encodeHeader(image, outfileStr, 0)) {
 				spdlog::error("Outfile {} not generated", outfileStr);
 				goto cleanup;
 			}
@@ -1701,7 +1701,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		case GRK_BMP_FMT:
 		{
 			BMPFormat bmp;
-			if (!bmp.encode(image, outfileStr, 0)) {
+			if (!bmp.encodeHeader(image, outfileStr, 0)) {
 				spdlog::error("Outfile {} not generated", outfileStr);
 				goto cleanup;
 			}
@@ -1711,7 +1711,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		case GRK_TIF_FMT:
 		{
 			TIFFFormat tif;
-			if (!tif.encode(image, outfileStr, parameters->compression)) {
+			if (!tif.encodeHeader(image, outfileStr, parameters->compression)) {
 				spdlog::error("Outfile {} not generated", outfileStr);
 				goto cleanup;
 			}
@@ -1721,7 +1721,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		case GRK_RAW_FMT:
 		{
 			RAWFormat raw(true);
-			if (raw.encode(image, outfileStr, 0)) {
+			if (raw.encodeHeader(image, outfileStr, 0)) {
 				spdlog::error(
 						"Error generating raw file. Outfile {} not generated",
 						outfileStr);
@@ -1732,7 +1732,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		case GRK_RAWL_FMT:
 		{
 			RAWFormat raw(false);
-			if (raw.encode(image, outfileStr, 0)) {
+			if (raw.encodeHeader(image, outfileStr, 0)) {
 				spdlog::error(
 						"Error generating rawl file. Outfile {} not generated",
 						outfileStr);
@@ -1744,7 +1744,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		case GRK_JPG_FMT:
 		{
 			JPEGFormat jpeg;
-			if (!jpeg.encode(image, outfileStr, parameters->compressionLevel)) {
+			if (!jpeg.encodeHeader(image, outfileStr, parameters->compressionLevel)) {
 				spdlog::error(
 						"Error generating jpeg file. Outfile {} not generated",
 						outfileStr);
@@ -1758,7 +1758,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		case GRK_PNG_FMT:
 		{
 			PNGFormat png;
-			if (!png.encode(image, outfileStr, parameters->compressionLevel)) {
+			if (!png.encodeHeader(image, outfileStr, parameters->compressionLevel)) {
 				spdlog::error(
 						"Error generating png file. Outfile {} not generated",
 						outfileStr);

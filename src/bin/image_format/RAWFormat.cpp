@@ -27,12 +27,17 @@
 #include "convert.h"
 #include "common.h"
 
-bool RAWFormat::encode(grk_image *image, const std::string &filename,
+bool RAWFormat::encodeHeader(grk_image *image, const std::string &filename,
 		uint32_t compressionParam) {
 	(void) compressionParam;
 	return imagetoraw(image, filename.c_str(), bigEndian) ? true : false;
 }
-bool RAWFormat::finish_encode(void){
+bool RAWFormat::encodeStrip(size_t rows){
+
+
+	return true;
+}
+bool RAWFormat::encodeFinish(void){
 
 	return true;
 }

@@ -690,11 +690,16 @@ static int imagetopng(grk_image *image, const char *write_idf,
 	return local_info.fails;
 }/* imagetopng() */
 
-bool PNGFormat::encode(grk_image *image, const std::string &filename,
+bool PNGFormat::encodeHeader(grk_image *image, const std::string &filename,
 		uint32_t compressionParam) {
 	return imagetopng(image, filename.c_str(), compressionParam) ? false : true;
 }
-bool PNGFormat::finish_encode(void){
+bool PNGFormat::encodeStrip(size_t rows){
+
+
+	return true;
+}
+bool PNGFormat::encodeFinish(void){
 
 	return true;
 }

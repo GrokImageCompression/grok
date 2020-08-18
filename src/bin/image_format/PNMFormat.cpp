@@ -842,12 +842,17 @@ cleanup:
 	return rc;
 }/* imagetopnm() */
 
-bool PNMFormat::encode(grk_image *image, const std::string &filename,
+bool PNMFormat::encodeHeader(grk_image *image, const std::string &filename,
 		uint32_t compressionParam) {
 	(void) compressionParam;
 	return imagetopnm(image, filename.c_str(), forceSplit) ? false : true;
 }
-bool PNMFormat::finish_encode(void){
+bool PNMFormat::encodeStrip(size_t rows){
+
+
+	return true;
+}
+bool PNMFormat::encodeFinish(void){
 
 	return true;
 }
