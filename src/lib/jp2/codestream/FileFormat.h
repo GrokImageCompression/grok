@@ -129,7 +129,7 @@ typedef bool (*jp2_procedure)(FileFormat *fileFormat, BufferedStream*);
 /**
  JPEG 2000 file format reader/writer
  */
-struct FileFormat {
+struct FileFormat : public CodeStreamBase {
 	FileFormat(bool isDecoder);
 	~FileFormat();
 
@@ -302,14 +302,14 @@ bool jp2_end_decompress(FileFormat *fileFormat, BufferedStream *stream);
 
 /**
  * Read a JPEG 2000 file header.
- * @param stream 		stream to read data from.
  * @param fileFormat    JPEG 2000 file format
+ * @param stream 		stream to read data from.
  * @param header_info   header structure to store header info
  * @param p_image   	input image
  *
  * @return true if the box is valid.
  */
-bool jp2_read_header(BufferedStream *stream, FileFormat *fileFormat,
+bool jp2_read_header(FileFormat *fileFormat,BufferedStream *stream,
 		 grk_header_info  *header_info, grk_image **p_image);
 
 /**

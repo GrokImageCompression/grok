@@ -489,7 +489,7 @@ static bool j2k_read_header_procedure(CodeStream *codeStream,TileProcessor *tile
 	return true;
 }
 
-bool j2k_read_header(BufferedStream *stream, CodeStream *codeStream,
+bool j2k_read_header(CodeStream *codeStream,BufferedStream *stream,
 		grk_header_info *header_info, grk_image **p_image) {
 	assert(codeStream != nullptr);
 	assert(stream != nullptr);

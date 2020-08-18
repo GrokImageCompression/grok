@@ -127,7 +127,11 @@ struct  grk_dec_memory_marker_handler  {
 			uint8_t *p_header_data, uint16_t header_size);
 } ;
 
-struct CodeStream {
+struct CodeStreamBase {
+
+};
+
+struct CodeStream : public CodeStreamBase {
 
 	CodeStream(bool decode);
 	~CodeStream();
@@ -249,13 +253,13 @@ bool j2k_end_decompress(CodeStream *j2k, BufferedStream *stream);
 /**
  * Read a JPEG 2000 code stream header.
  *
- * @param stream stream to read data from.
  * @param codeStream  JPEG 2000 code stream.
+ * @param stream stream to read data from.
  * @param header_info  header info struct to store header info
  * @param image  pointer to image
  * @return true if the box is valid.
  */
-bool j2k_read_header(BufferedStream *stream, CodeStream *codeStream,
+bool j2k_read_header(CodeStream *codeStream, BufferedStream *stream,
 		 grk_header_info  *header_info, grk_image **image);
 
 /**

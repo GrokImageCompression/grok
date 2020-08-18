@@ -2792,7 +2792,7 @@ static bool jp2_read_box(grk_jp2_box *box, uint8_t *p_data,
 	return true;
 }
 
-bool jp2_read_header(BufferedStream *stream, FileFormat *fileFormat,
+bool jp2_read_header(FileFormat *fileFormat, BufferedStream *stream,
 		grk_header_info *header_info, grk_image **p_image) {
 	assert(fileFormat != nullptr);
 	assert(stream != nullptr);
@@ -2832,8 +2832,7 @@ bool jp2_read_header(BufferedStream *stream, FileFormat *fileFormat,
 				header_info->display_resolution[i] = fileFormat->display_resolution[i];
 		}
 	}
-	bool rc = j2k_read_header(stream, fileFormat->codeStream, header_info, p_image);
-	if (!rc)
+	if (!j2k_read_header(fileFormat->codeStream, stream, header_info, p_image))
 		return false;
 
 	if (*p_image) {
