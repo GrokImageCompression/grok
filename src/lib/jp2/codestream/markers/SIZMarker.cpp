@@ -228,13 +228,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 
 	/* memory allocations */
 	cp->tcps = new TileCodingParams[nb_tiles];
-	decoder->m_default_tcp->tccps =
-			(TileComponentCodingParams*) grk_calloc(image->numcomps, sizeof(TileComponentCodingParams));
-	if (decoder->m_default_tcp->tccps == nullptr) {
-		GROK_ERROR("Not enough memory to take in charge SIZ marker");
-		return false;
-	}
-
+	decoder->m_default_tcp->tccps = new  TileComponentCodingParams[image->numcomps];
 	decoder->m_default_tcp->m_mct_records =
 			(grk_mct_data*) grk_calloc(default_number_mct_records,
 					sizeof(grk_mct_data));
@@ -268,12 +262,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 
 	for (i = 0; i < nb_tiles; ++i) {
 		auto current_tile_param = cp->tcps + i;
-		current_tile_param->tccps = (TileComponentCodingParams*) grk_calloc(image->numcomps,
-				sizeof(TileComponentCodingParams));
-		if (current_tile_param->tccps == nullptr) {
-			GROK_ERROR("Not enough memory to take in charge SIZ marker");
-			return false;
-		}
+		current_tile_param->tccps = new TileComponentCodingParams[image->numcomps];
 	}
 	decoder->m_state = J2K_DEC_STATE_MH;
 	grk_image_comp_header_update(image, cp);
