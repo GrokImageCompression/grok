@@ -30,8 +30,6 @@
 #ifdef GROK_HAVE_LIBLCMS
 #include <lcms2.h>
 #endif
-#include <zlib.h>
-#include <png.h>
 #include <memory>
 #include <iostream>
 #include <string>
@@ -62,30 +60,13 @@ void pngSetVerboseFlag(bool verbose) {
 	pngWarningHandlerVerbose = verbose;
 }
 
-struct pngToImageInfo {
-	pngToImageInfo() :
-			png(nullptr), reader(nullptr), rows(nullptr), row32s(nullptr), image(
-					nullptr), readFromStdin(false), colorSpace(
-					GRK_CLRSPC_UNKNOWN) {
-	}
 
-	png_structp png;
-	FILE *reader;
-	uint8_t **rows;
-	int32_t *row32s;
-	grk_image *image;
-	bool readFromStdin;
-	GRK_COLOR_SPACE colorSpace;
-};
-
-static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
-	pngToImageInfo local_info;
-	png_infop info = nullptr;
+grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	int bit_depth, interlace_type, compression_type, filter_type;
 	png_uint_32 width = 0U, height = 0U;
 	uint32_t stride;
 	int color_type;
-	local_info.readFromStdin = grk::useStdio(read_idf);
+	useStd = grk::useStdio(read_idf);
 	grk_image_cmptparm cmptparm[4];
 	uint32_t nr_comp;
 	uint8_t sigbuf[8];
@@ -106,46 +87,46 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 		return nullptr;
 	}
 
-	if (local_info.readFromStdin) {
+	if (useStd) {
 		if (!grk::grok_set_binary_mode(stdin))
 			return nullptr;
-		local_info.reader = stdin;
+		file = stdin;
 	} else {
-		if ((local_info.reader = fopen(read_idf, "rb")) == nullptr) {
+		if ((file = fopen(read_idf, "rb")) == nullptr) {
 			spdlog::error("pngtoimage: can not open {}", read_idf);
 			return nullptr;
 		}
 	}
 
-	if (fread(sigbuf, 1, MAGIC_SIZE, local_info.reader) != MAGIC_SIZE
+	if (fread(sigbuf, 1, MAGIC_SIZE, file) != MAGIC_SIZE
 			|| memcmp(sigbuf, PNG_MAGIC, MAGIC_SIZE) != 0) {
 		spdlog::error("pngtoimage: {} is no valid PNG file", read_idf);
 		goto beach;
 	}
 
-	if ((local_info.png = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr,
+	if ((png = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr,
 			png_error_fn, png_warning_fn)) == nullptr)
 		goto beach;
 
 	// allow Microsoft/HP 3144-byte sRGB profile, normally skipped by library 
 	// because it deems it broken. (a controversial decision)
-	png_set_option(local_info.png, PNG_SKIP_sRGB_CHECK_PROFILE, PNG_OPTION_ON);
+	png_set_option(png, PNG_SKIP_sRGB_CHECK_PROFILE, PNG_OPTION_ON);
 
 	// treat some errors as warnings
-	png_set_benign_errors(local_info.png, 1);
+	png_set_benign_errors(png, 1);
 
-	if ((info = png_create_info_struct(local_info.png)) == nullptr)
+	if ((info = png_create_info_struct(png)) == nullptr)
 		goto beach;
 
-	if (setjmp(png_jmpbuf(local_info.png)))
+	if (setjmp(png_jmpbuf(png)))
 		goto beach;
 
-	png_init_io(local_info.png, local_info.reader);
-	png_set_sig_bytes(local_info.png, MAGIC_SIZE);
+	png_init_io(png, file);
+	png_set_sig_bytes(png, MAGIC_SIZE);
 
-	png_read_info(local_info.png, info);
+	png_read_info(png, info);
 
-	if (png_get_IHDR(local_info.png, info, &width, &height, &bit_depth,
+	if (png_get_IHDR(png, info, &width, &height, &bit_depth,
 			&color_type, &interlace_type, &compression_type, &filter_type) == 0)
 		goto beach;
 
@@ -158,28 +139,28 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 	 * to alpha channels.
 	 */
 	if (color_type == PNG_COLOR_TYPE_PALETTE) {
-		png_set_expand(local_info.png);
+		png_set_expand(png);
 	}
 
-	if (png_get_valid(local_info.png, info, PNG_INFO_tRNS)) {
-		png_set_expand(local_info.png);
+	if (png_get_valid(png, info, PNG_INFO_tRNS)) {
+		png_set_expand(png);
 	}
 	/* We might want to expand background */
 	/*
-	 if(png_get_valid(local_info.png, info, PNG_INFO_bKGD)) {
+	 if(png_get_valid(png, info, PNG_INFO_bKGD)) {
 	 png_color_16p bgnd;
-	 png_get_bKGD(local_info.png, info, &bgnd);
-	 png_set_background(local_info.png, bgnd, PNG_BACKGROUND_GAMMA_FILE, 1, 1.0);
+	 png_get_bKGD(png, info, &bgnd);
+	 png_set_background(png, bgnd, PNG_BACKGROUND_GAMMA_FILE, 1, 1.0);
 	 }
 	 */
 
-	if (png_get_sRGB(local_info.png, info, &srgbIntent)) {
+	if (png_get_sRGB(png, info, &srgbIntent)) {
 		if (srgbIntent >= 0 && srgbIntent <= 3)
-			local_info.colorSpace = GRK_CLRSPC_SRGB;
+			colorSpace = GRK_CLRSPC_SRGB;
 	}
 
-	png_read_update_info(local_info.png, info);
-	color_type = png_get_color_type(local_info.png, info);
+	png_read_update_info(png, info);
+	color_type = png_get_color_type(png, info);
 
 	switch (color_type) {
 	case PNG_COLOR_TYPE_GRAY:
@@ -200,12 +181,12 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 		goto beach;
 	}
 
-	if (local_info.colorSpace == GRK_CLRSPC_UNKNOWN)
-		local_info.colorSpace =
+	if (colorSpace == GRK_CLRSPC_UNKNOWN)
+		colorSpace =
 				(nr_comp > 2U) ? GRK_CLRSPC_SRGB : GRK_CLRSPC_GRAY;
 
 	cvtToPlanar = cvtInterleavedToPlanar_LUT[nr_comp];
-	bit_depth = png_get_bit_depth(local_info.png, info);
+	bit_depth = png_get_bit_depth(png, info);
 
 	switch (bit_depth) {
 	case 1:
@@ -222,21 +203,21 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 		goto beach;
 	}
 
-	local_info.rows = (uint8_t**) calloc(height, sizeof(uint8_t*));
-	if (local_info.rows == nullptr) {
+	row_buf_array = (uint8_t**) calloc(height, sizeof(uint8_t*));
+	if (row_buf_array == nullptr) {
 		spdlog::error("pngtoimage: out of memory");
 		goto beach;
 	}
 	for (uint32_t i = 0; i < height; ++i) {
-		local_info.rows[i] = (uint8_t*) malloc(
-				png_get_rowbytes(local_info.png, info));
-		if (!local_info.rows[i]) {
+		row_buf_array[i] = (uint8_t*) malloc(
+				png_get_rowbytes(png, info));
+		if (!row_buf_array[i]) {
 			spdlog::error("pngtoimage: out of memory");
 			goto beach;
 		}
 	}
 
-	png_read_image(local_info.png, local_info.rows);
+	png_read_image(png, row_buf_array);
 
 	/* Create image */
 	memset(cmptparm, 0, sizeof(cmptparm));
@@ -249,47 +230,47 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 		cmptparm[i].h = height;
 	}
 
-	local_info.image = grk_image_create(nr_comp, &cmptparm[0],
-			local_info.colorSpace,true);
-	if (local_info.image == nullptr)
+	image = grk_image_create(nr_comp, &cmptparm[0],
+			colorSpace,true);
+	if (image == nullptr)
 		goto beach;
-	local_info.image->x0 = params->image_offset_x0;
-	local_info.image->y0 = params->image_offset_y0;
-	local_info.image->x1 = (local_info.image->x0
-			+ (width - 1) * params->subsampling_dx + 1 + local_info.image->x0);
-	local_info.image->y1 = (local_info.image->y0
-			+ (height - 1) * params->subsampling_dy + 1 + local_info.image->y0);
+	image->x0 = params->image_offset_x0;
+	image->y0 = params->image_offset_y0;
+	image->x1 = (image->x0
+			+ (width - 1) * params->subsampling_dx + 1 + image->x0);
+	image->y1 = (image->y0
+			+ (height - 1) * params->subsampling_dy + 1 + image->y0);
 
 	/* Set alpha channel. Only non-premultiplied alpha is supported */
 	if ((nr_comp & 1U) == 0){
-		local_info.image->comps[nr_comp - 1U].type = GRK_COMPONENT_TYPE_OPACITY;
-		local_info.image->comps[nr_comp - 1U].association = GRK_COMPONENT_ASSOC_WHOLE_IMAGE;
+		image->comps[nr_comp - 1U].type = GRK_COMPONENT_TYPE_OPACITY;
+		image->comps[nr_comp - 1U].association = GRK_COMPONENT_ASSOC_WHOLE_IMAGE;
 	}
 	for (uint32_t i = 0; i < nr_comp; i++)
-		planes[i] = local_info.image->comps[i].data;
+		planes[i] = image->comps[i].data;
 
 
 	// See if iCCP chunk is present
-	if (png_get_valid(local_info.png, info, PNG_INFO_iCCP)) {
+	if (png_get_valid(png, info, PNG_INFO_iCCP)) {
 		uint32_t ProfileLen = 0;
 		png_bytep ProfileData = nullptr;
 		int Compression = 0;
 		png_charp ProfileName = nullptr;
-		if (png_get_iCCP(local_info.png, info, &ProfileName, &Compression,
+		if (png_get_iCCP(png, info, &ProfileName, &Compression,
 				&ProfileData, &ProfileLen) == PNG_INFO_iCCP) {
-			local_info.image->icc_profile_buf = grk_buffer_new(ProfileLen);
-			memcpy(local_info.image->icc_profile_buf, ProfileData, ProfileLen);
-			local_info.image->icc_profile_len = ProfileLen;
-			local_info.image->color_space = GRK_CLRSPC_ICC;
+			image->icc_profile_buf = grk_buffer_new(ProfileLen);
+			memcpy(image->icc_profile_buf, ProfileData, ProfileLen);
+			image->icc_profile_len = ProfileLen;
+			image->color_space = GRK_CLRSPC_ICC;
 		}
 	}
 
-	if (png_get_valid(local_info.png, info, PNG_INFO_gAMA)) {
+	if (png_get_valid(png, info, PNG_INFO_gAMA)) {
 		spdlog::warn(
 				"input PNG contains gamma value; this will not be stored in compressed image.");
 	}
 
-	if (png_get_valid(local_info.png, info, PNG_INFO_cHRM)) {
+	if (png_get_valid(png, info, PNG_INFO_cHRM)) {
 		spdlog::warn(
 				"input PNG contains chroma information which will not be stored in compressed image.");
 	}
@@ -305,7 +286,7 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 	 }
 	 */
 
-	num_comments = png_get_text(local_info.png, info, &text_ptr, NULL);
+	num_comments = png_get_text(png, info, &text_ptr, NULL);
 	if (num_comments) {
 		for (int i = 0; i < num_comments; ++i) {
 			const char *key = text_ptr[i].key;
@@ -317,11 +298,11 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 
 			} else if (!strcmp(key, "XML:com.adobe.xmp")) {
 				if (text_ptr[i].text_length) {
-					local_info.image->xmp_len = text_ptr[i].text_length;
-					local_info.image->xmp_buf = grk_buffer_new(
-							local_info.image->xmp_len);
-					memcpy(local_info.image->xmp_buf, text_ptr[i].text,
-							local_info.image->xmp_len);
+					image->xmp_len = text_ptr[i].text_length;
+					image->xmp_buf = grk_buffer_new(
+							image->xmp_len);
+					memcpy(image->xmp_buf, text_ptr[i].text,
+							image->xmp_len);
 				}
 			}
 			// other comments
@@ -331,51 +312,60 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 		}
 	}
 
-	if (png_get_pHYs(local_info.png, info, &resx, &resy, &unit)) {
+	if (png_get_pHYs(png, info, &resx, &resy, &unit)) {
 		if (unit == PNG_RESOLUTION_METER) {
-			local_info.image->capture_resolution[0] = resx;
-			local_info.image->capture_resolution[1] = resy;
+			image->capture_resolution[0] = resx;
+			image->capture_resolution[1] = resy;
 		} else {
 			spdlog::warn("input PNG contains resolution information"
 					" in unknown units. Ignoring");
 		}
 	}
 
-	stride = local_info.image->comps[0].stride;
-	local_info.row32s = (int32_t*) malloc(
+	stride = image->comps[0].stride;
+	row32s = (int32_t*) malloc(
 			(size_t) width * nr_comp * sizeof(int32_t));
-	if (local_info.row32s == nullptr)
+	if (row32s == nullptr)
 		goto beach;
 
 	for (uint32_t i = 0; i < height; ++i) {
-		cvtXXTo32s(local_info.rows[i], local_info.row32s,
+		cvtXXTo32s(row_buf_array[i], row32s,
 				(size_t) width * nr_comp, false);
-		cvtToPlanar(local_info.row32s, planes, width);
+		cvtToPlanar(row32s, planes, width);
 		planes[0] += stride;
 		planes[1] += stride;
 		planes[2] += stride;
 		planes[3] += stride;
 	}
-	beach: if (local_info.rows) {
-		for (uint32_t i = 0; i < height; ++i) {
-			if (local_info.rows[i])
-				free(local_info.rows[i]);
-		}
-		free(local_info.rows);
+	beach: if (row_buf_array) {
+		for (uint32_t i = 0; i < height; ++i)
+			free(row_buf_array[i]);
+		free(row_buf_array);
 	}
-	if (local_info.row32s) {
-		free(local_info.row32s);
-	}
-	if (local_info.png)
-		png_destroy_read_struct(&local_info.png, &info, nullptr);
-	if (!local_info.readFromStdin && local_info.reader) {
-		if (!grk::safe_fclose(local_info.reader)) {
-			grk_image_destroy(local_info.image);
-			local_info.image = nullptr;
+	free(row32s);
+	if (png)
+		png_destroy_read_struct(&png, &info, nullptr);
+	if (!useStd && file) {
+		if (!grk::safe_fclose(file)) {
+			grk_image_destroy(image);
+			image = nullptr;
 		}
 	}
-	return local_info.image;
+	return image;
 }/* pngtoimage() */
+
+ static void
+ user_warning_fn(png_structp png_ptr, png_const_charp message)
+ {
+    spdlog::warn("libpng warning: {}", message);
+
+ }
+
+ static void
+user_error_fn(png_structp png_ptr, png_const_charp message)
+{
+    spdlog::error("libpng error: {}", message);
+}
 
 static void convert_32s16u_C1R(const int32_t *pSrc, uint8_t *pDst,
 		size_t length) {
@@ -387,36 +377,22 @@ static void convert_32s16u_C1R(const int32_t *pSrc, uint8_t *pDst,
 	}
 }
 
-struct imageToPngInfo {
-	imageToPngInfo() :
-			png(nullptr), writer(nullptr), row_buf(nullptr), buffer32s(nullptr), image(
-					nullptr), writeToStdout(false), fails(1) {
-	}
-	png_structp png;
-	FILE *writer;
-	png_bytep row_buf;
-	int32_t *buffer32s;
-	grk_image *image;
-	bool writeToStdout;
-	int fails;
-};
 
-static int imagetopng(grk_image *image, const char *write_idf,
+int PNGFormat::do_encode(grk_image *image, const char *write_idf,
 		uint32_t compressionLevel) {
-	imageToPngInfo local_info;
-	local_info.writeToStdout = grk::useStdio(write_idf);
-	png_infop info = nullptr;
-	uint32_t nr_comp, color_type;
-	uint32_t prec;
+	fileName = write_idf;
+	useStd = grk::useStdio(fileName.c_str());
+	uint32_t color_type;
 	png_color_8 sig_bit;
-	int32_t const *planes[4];
 	uint32_t i;
-	uint32_t stride = image->comps[0].stride;
 
 	memset(&sig_bit, 0, sizeof(sig_bit));
-	prec =  image->comps[0].prec;
+
+	int32_t const *planes[4];
+	uint32_t prec =  image->comps[0].prec;
 	planes[0] = image->comps[0].data;
-	nr_comp = image->numcomps;
+	uint32_t nr_comp = image->numcomps;
+	uint32_t stride = image->comps[0].stride;
 
 	if (nr_comp > 4) {
 		spdlog::warn("imagetopng: number of components {} is "
@@ -435,7 +411,6 @@ static int imagetopng(grk_image *image, const char *write_idf,
 		planes[i] = image->comps[i].data;
 		if (!planes[i]) {
 			spdlog::error("imagetopng: component {} is null.", i);
-			
 			return 1;
 		}
 	}
@@ -443,33 +418,26 @@ static int imagetopng(grk_image *image, const char *write_idf,
 		spdlog::error(
 				"imagetopng: All components shall have the same sub-sampling,"
 						" same bit depth and same sign.");
-		
 		return 1;
 	}
 	if (prec > 8 && prec < 16) {
-		for (i = 0; i < nr_comp; ++i)
-			scale_component(&(image->comps[i]), 16);
 		prec = 16;
 	} else if (prec < 8 && nr_comp > 1) { /* GRAY_ALPHA, RGB, RGB_ALPHA */
-		for (i = 0; i < nr_comp; ++i)
-			scale_component(&(image->comps[i]), 8);
 		prec = 8;
 	} else if ((prec > 1) && (prec < 8) && ((prec == 6) || ((prec & 1) == 1))) { /* GRAY with non native precision */
 		if ((prec == 5) || (prec == 6))
 			prec = 8;
 		else
 			prec++;
-		for (i = 0; i < nr_comp; ++i)
-			scale_component(&(image->comps[i]), (uint32_t) prec);
 	}
 
 	if (prec != 1 && prec != 2 && prec != 4 && prec != 8 && prec != 16) {
 		spdlog::error("imagetopng: can not create {}\n\twrong bit_depth {}",
-				write_idf, prec);
-		return local_info.fails;
+				fileName.c_str(), prec);
+		return fails;
 	}
-	if (!grk::grk_open_for_output(&local_info.writer, write_idf,local_info.writeToStdout))
-		return local_info.fails;
+	if (!grk::grk_open_for_output(&file, fileName.c_str(),useStd))
+		return fails;
 
 	/* Create and initialize the png_struct with the desired error handler
 	 * functions.  If you want to use the default stderr and longjump method,
@@ -477,22 +445,22 @@ static int imagetopng(grk_image *image, const char *write_idf,
 	 * the library version is compatible with the one used at compile time,
 	 * in case we are using dynamically linked libraries.  REQUIRED.
 	 */
-	local_info.png = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr,
-			nullptr, nullptr);
+	png = png_create_write_struct(PNG_LIBPNG_VER_STRING, this,
+			user_error_fn, user_warning_fn);
 
-	// allow Microsoft/HP 3144-byte sRGB profile, normally skipped by library 
+	// allow Microsoft/HP 3144-byte sRGB profile, normally skipped by library
 	// because it deems it broken. (a controversial decision)
-	png_set_option(local_info.png, PNG_SKIP_sRGB_CHECK_PROFILE, PNG_OPTION_ON);
+	png_set_option(png, PNG_SKIP_sRGB_CHECK_PROFILE, PNG_OPTION_ON);
 
 	// treat some errors as warnings
-	png_set_benign_errors(local_info.png, 1);
+	png_set_benign_errors(png, 1);
 
-	if (local_info.png == nullptr)
+	if (png == nullptr)
 		goto beach;
 
 	/* Allocate/initialize the image information data.  REQUIRED
 	 */
-	info = png_create_info_struct(local_info.png);
+	info = png_create_info_struct(png);
 
 	if (info == nullptr)
 		goto beach;
@@ -500,12 +468,12 @@ static int imagetopng(grk_image *image, const char *write_idf,
 	/* Set error handling.  REQUIRED if you are not supplying your own
 	 * error handling functions in the png_create_write_struct() call.
 	 */
-	if (setjmp(png_jmpbuf(local_info.png)))
+	if (setjmp(png_jmpbuf(png)))
 		goto beach;
 
 	/* I/O initialization functions is REQUIRED
 	 */
-	png_init_io(local_info.png, local_info.writer);
+	png_init_io(png, file);
 
 	/* Set the image information here.  Width and height are up to 2^31,
 	 * bit_depth is one of 1, 2, 4, 8, or 16, but valid values also depend on
@@ -524,7 +492,7 @@ static int imagetopng(grk_image *image, const char *write_idf,
 	 * color_type == PNG_COLOR_TYPE_RGB_ALPHA) && bit_depth < 8
 	 *
 	 */
-	png_set_compression_level(local_info.png,
+	png_set_compression_level(png,
 			(int)((compressionLevel == GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT) ?
 					3 : compressionLevel));
 
@@ -540,12 +508,12 @@ static int imagetopng(grk_image *image, const char *write_idf,
 		sig_bit.alpha = (png_byte) prec;
 	}
 
-	png_set_IHDR(local_info.png, info, image->comps[0].w, image->comps[0].h,
+	png_set_IHDR(png, info, image->comps[0].w, image->comps[0].h,
 			(int32_t)prec, (int32_t)color_type,
 			PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE,
 			PNG_FILTER_TYPE_BASE);
 
-	png_set_sBIT(local_info.png, info, &sig_bit);
+	png_set_sBIT(png, info, &sig_bit);
 	/* png_set_gamma(png, 2.2, 1./2.2); */
 	/* png_set_sRGB(png, info, PNG_sRGB_INTENT_PERCEPTUAL); */
 
@@ -573,7 +541,7 @@ static int imagetopng(grk_image *image, const char *write_idf,
 			cmsCloseProfile(in_prof);
 		}
 #endif
-		png_set_iCCP(local_info.png, info, profileName.c_str(),
+		png_set_iCCP(png, info, profileName.c_str(),
 		PNG_COMPRESSION_TYPE_BASE, image->icc_profile_buf,
 				image->icc_profile_len);
 	}
@@ -586,44 +554,47 @@ static int imagetopng(grk_image *image, const char *write_idf,
 		txt.text = (png_charp) image->xmp_buf;
 		txt.lang = NULL;
 		txt.lang_key = NULL;
-		png_set_text(local_info.png, info, &txt, 1);
+		png_set_text(png, info, &txt, 1);
 	}
 
 	if (image->capture_resolution[0] > 0 && image->capture_resolution[1] > 0) {
-		png_set_pHYs(local_info.png, info,
+		png_set_pHYs(png, info,
 				(png_uint_32) (image->capture_resolution[0]),
 				(png_uint_32) (image->capture_resolution[1]),
 				PNG_RESOLUTION_METER);
 	}
 
 	// handle libpng errors
-	if (setjmp(png_jmpbuf(local_info.png))) {
+	if (setjmp(png_jmpbuf(png))) {
 		goto beach;
 	}
 
-	png_write_info(local_info.png, info);
+	for (i = 0; i < nr_comp; ++i)
+		scale_component(&(image->comps[i]), prec);
+
+	png_write_info(png, info);
 
 	/* set up conversion */
 	{
 		size_t rowStride;
 		png_size_t png_row_size;
 
-		png_row_size = png_get_rowbytes(local_info.png, info);
+		png_row_size = png_get_rowbytes(png, info);
 		rowStride = ((size_t) image->comps[0].w * (size_t) nr_comp
 				* (size_t) prec + 7U) / 8U;
 		if (rowStride != (size_t) png_row_size) {
 			spdlog::error("Invalid PNG row size");
 			goto beach;
 		}
-		local_info.row_buf = (png_bytep) malloc(png_row_size);
-		if (local_info.row_buf == nullptr) {
+		row_buf = (png_bytep) malloc(png_row_size);
+		if (row_buf == nullptr) {
 			spdlog::error("Can't allocate memory for PNG row");
 			goto beach;
 		}
-		local_info.buffer32s = (int32_t*) malloc(
+		row32s = (int32_t*) malloc(
 				(size_t) image->comps[0].w * (size_t) nr_comp
 						* sizeof(int32_t));
-		if (local_info.buffer32s == nullptr) {
+		if (row32s == nullptr) {
 			spdlog::error("Can't allocate memory for interleaved 32s row");
 			goto beach;
 		}
@@ -636,8 +607,8 @@ static int imagetopng(grk_image *image, const char *write_idf,
 		cvtPlanarToInterleaved cvtPxToCx = cvtPlanarToInterleaved_LUT[nr_comp];
 		cvtFrom32 cvt32sToPack = nullptr;
 		int32_t adjust = image->comps[0].sgnd ? 1 << (prec - 1) : 0;
-		png_bytep row_buf_cpy = local_info.row_buf;
-		int32_t *buffer32s_cpy = local_info.buffer32s;
+		png_bytep row_buf_cpy = row_buf;
+		int32_t *buffer32s_cpy = row32s;
 
 		switch (prec) {
 		case 1:
@@ -651,14 +622,14 @@ static int imagetopng(grk_image *image, const char *write_idf,
 			break;
 		default:
 			/* never here */
-			return 1;
+			goto beach;
 			break;
 		}
 
 		for (y = 0; y < image->comps[0].h; ++y) {
 			cvtPxToCx(planes, buffer32s_cpy, width, adjust);
 			cvt32sToPack(buffer32s_cpy, row_buf_cpy, width * (size_t) nr_comp);
-			png_write_row(local_info.png, row_buf_cpy);
+			png_write_row(png, row_buf_cpy);
 			planes[0] += stride;
 			planes[1] += stride;
 			planes[2] += stride;
@@ -666,33 +637,27 @@ static int imagetopng(grk_image *image, const char *write_idf,
 		}
 	}
 
-	png_write_end(local_info.png, info);
+	fails = false;
 
-	local_info.fails = 0;
+beach:
+	return encodeFinish() ? 0 : 1;
+}
 
-	beach: if (local_info.png) {
-		png_destroy_write_struct(&local_info.png, &info);
-	}
-	if (local_info.row_buf) {
-		free(local_info.row_buf);
-	}
-	if (local_info.buffer32s) {
-		free(local_info.buffer32s);
-	}
-	if (!local_info.writeToStdout) {
-		if (!grk::safe_fclose(local_info.writer)) {
-			local_info.fails = 1;
-		}
-		if (local_info.fails && write_idf)
-			(void) remove(write_idf); /* ignore return value */
-	}
-
-	return local_info.fails;
-}/* imagetopng() */
+PNGFormat::PNGFormat() : info(nullptr),
+						png(nullptr),
+					file(nullptr),
+					row_buf(nullptr),
+					row_buf_array(nullptr),
+					row32s(nullptr),
+					image(nullptr),
+					useStd(false),
+					colorSpace(	GRK_CLRSPC_UNKNOWN),
+					fails(true)
+{}
 
 bool PNGFormat::encodeHeader(grk_image *image, const std::string &filename,
 		uint32_t compressionParam) {
-	return imagetopng(image, filename.c_str(), compressionParam) ? false : true;
+	return do_encode(image, filename.c_str(), compressionParam) ? false : true;
 }
 bool PNGFormat::encodeStrip(size_t rows){
 
@@ -701,9 +666,24 @@ bool PNGFormat::encodeStrip(size_t rows){
 }
 bool PNGFormat::encodeFinish(void){
 
-	return true;
+	if (setjmp(png_jmpbuf(png)))
+		return false;
+
+	if (png) {
+		png_write_end(png, info);
+		png_destroy_write_struct(&png, &info);
+	}
+	free(row_buf);
+	free(row32s);
+	if (!useStd) {
+		if (!grk::safe_fclose(file))
+			fails = true;
+		if (fails && fileName.c_str())
+			(void) remove(fileName.c_str()); /* ignore return value */
+	}
+	return !fails;
 }
 grk_image* PNGFormat::decode(const std::string &filename,
 		grk_cparameters *parameters) {
-	return pngtoimage(filename.c_str(), parameters);
+	return do_decode(filename.c_str(), parameters);
 }
