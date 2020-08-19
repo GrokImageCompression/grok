@@ -1,12 +1,12 @@
 This directory contain fuzzer main functions and scripts for the
-Google OSS Fuzz project: https://github.com/google/oss-fuzz/
+Google [OSS Fuzz project](https://github.com/google/oss-fuzz/)
 
-The main build scripts are in:
-https://github.com/google/oss-fuzz/tree/master/projects/grok
+The main build scripts are [here](https://github.com/google/oss-fuzz/tree/master/projects/grok)
 and call scripts in this directory.
 
-The list of issues is in:
-https://bugs.chromium.org/p/oss-fuzz/issues/list?q=grok
+The list of issues can be found [here](https://bugs.chromium.org/p/oss-fuzz/issues/list?q=grok)
+
+Fuzzer build logs can be found [here](https://oss-fuzz-build-logs.storage.googleapis.com/index.html#grok)
 
 
 - Simulate the build of (dummy) fuzzers like OSS Fuzz does:
@@ -52,3 +52,4 @@ How to deal with issues reported in https://bugs.chromium.org/p/oss-fuzz/issues/
     3. Commit a bug fix with log including "Credit to OSS-Fuzz" and a link to the bugs.chromium.org ticket
     4. Add in the bugs.chromium.org ticket a link to the github commit implementing the fix.
     5. Check chromium closed the bug (after one or two days typically)
+
