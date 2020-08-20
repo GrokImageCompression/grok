@@ -37,18 +37,14 @@ private:
 
 	png_infop m_info;
 	png_structp png;
-	std::string m_fileName;
-	FILE *file;
 	uint8_t *row_buf;
 	uint8_t **row_buf_array;
 	int32_t *row32s;
-	grk_image *m_image;
 	bool useStd;
 	GRK_COLOR_SPACE m_colorSpace;
 	bool fails;
 	uint32_t prec;
 	uint32_t nr_comp;
 	int32_t const *m_planes[4];
-	uint32_t m_row_count;
 };
 

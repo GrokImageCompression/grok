@@ -18,6 +18,7 @@
 #pragma once
 
 #include "IImageFormat.h"
+#include <string>
 
 class ImageFormat : public IImageFormat {
 public:
@@ -25,5 +26,10 @@ public:
 	virtual ~ImageFormat() {}
 protected:
 	grk_image *m_image;
+	std::string m_fileName;
+	FILE *m_file;
+	uint32_t m_row_count;
+
+	uint32_t maxRowCount(uint32_t rows);
 
 };

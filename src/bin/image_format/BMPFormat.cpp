@@ -821,79 +821,74 @@ static bool write_short(FILE *fdest, uint16_t val) {
 	int rc = fprintf(fdest, "%c%c", val & 0xff, (val >> 8) & 0xff);
 	return (rc == sizeof(val));
 }
-static int imagetobmp(grk_image *image, const char *outfile) {
-	bool writeToStdout = grk::useStdio(outfile);
-	int32_t pad;
-	FILE *fdest = nullptr;
-	int truncR = 0, truncG = 0, truncB = 0;
-	float scaleR = 1.0f, scaleG = 1.0f, scaleB = 1.0f;
+bool BMPFormat::encode() {
+	const char *outfile = m_fileName.c_str();
+	m_writeToStdout = grk::useStdio(outfile);
 	int ret = -1;
-	uint8_t *destBuff = nullptr;
-	uint64_t sz = 0;
-	uint32_t w,stride,h;
+	uint32_t w,h;
 
-	if (!grk::all_components_sanity_check(image))
+	if (!grk::all_components_sanity_check(m_image))
 		goto cleanup;
-	if (image->numcomps != 1 && image->numcomps != 3) {
+	if (m_image->numcomps != 1 && m_image->numcomps != 3) {
 		spdlog::error("Unsupported number of components: {}",
-				image->numcomps);
+				m_image->numcomps);
 		goto cleanup;
 	}
-	if (grk::isSubsampled(image)) {
+	if (grk::isSubsampled(m_image)) {
 		spdlog::error("Sub-sampled images not supported");
 		goto cleanup;
 	}
-	for (uint32_t i = 0; i < image->numcomps; ++i) {
-		if (image->comps[i].prec == 0) {
+	for (uint32_t i = 0; i < m_image->numcomps; ++i) {
+		if (m_image->comps[i].prec == 0) {
 			spdlog::error("Unsupported precision: 0 for component {}",i);
 			goto cleanup;
 		}
 	}
-	if (!grk::grk_open_for_output(&fdest, outfile,writeToStdout))
+	if (!grk::grk_open_for_output(&m_file, outfile,m_writeToStdout))
 		goto cleanup;
-	w = image->comps[0].w;
-	h = image->comps[0].h;
+	w = m_image->comps[0].w;
+	h = m_image->comps[0].h;
 
-	if (image->numcomps == 3) {
+	if (m_image->numcomps == 3) {
 		/* -->> -->> -->> -->>
 		 24 bits color
 		 <<-- <<-- <<-- <<-- */
 
-		if (fprintf(fdest, "BM") != 2)
+		if (fprintf(m_file, "BM") != 2)
 			goto cleanup;
 
 		/* FILE HEADER */
 		/* ------------- */
-		if (!write_int(fdest, 3 * h * w + 3 * h * (w % 2) + 54))
+		if (!write_int(m_file, 3 * h * w + 3 * h * (w % 2) + 54))
 			goto cleanup;
-		if (!write_int(fdest, 0))
+		if (!write_int(m_file, 0))
 			goto cleanup;
-		if (!write_int(fdest, 54))
+		if (!write_int(m_file, 54))
 			goto cleanup;
 
 		/* INFO HEADER   */
 		/* ------------- */
-		if (!write_int(fdest, 40))
+		if (!write_int(m_file, 40))
 			goto cleanup;
-		if (!write_int(fdest, w))
+		if (!write_int(m_file, w))
 			goto cleanup;
-		if (!write_int(fdest, h))
+		if (!write_int(m_file, h))
 			goto cleanup;
-		if (!write_short(fdest, 1))
+		if (!write_short(m_file, 1))
 			goto cleanup;
-		if (!write_short(fdest, 24))
+		if (!write_short(m_file, 24))
 			goto cleanup;
-		if (!write_int(fdest, 0))
+		if (!write_int(m_file, 0))
 			goto cleanup;
-		if (!write_int(fdest, 3 * h * w + 3 * h * (w % 2)))
+		if (!write_int(m_file, 3 * h * w + 3 * h * (w % 2)))
 			goto cleanup;
-		if (!write_int(fdest, 7834))
+		if (!write_int(m_file, 7834))
 			goto cleanup;
-		if (!write_int(fdest, 7834))
+		if (!write_int(m_file, 7834))
 			goto cleanup;
-		if (!write_int(fdest, 0))
+		if (!write_int(m_file, 0))
 			goto cleanup;
-		if (!write_int(fdest, 0))
+		if (!write_int(m_file, 0))
 			goto cleanup;
 
 
@@ -903,85 +898,114 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 		 8 bits non code (Gray scale)
 		 <<-- <<-- <<-- <<-- */
 
-		if (fprintf(fdest, "BM") != 2)
+		if (fprintf(m_file, "BM") != 2)
 			goto cleanup;
 
 		/* FILE HEADER */
 		/* ------------- */
-		if (!write_int(fdest, h * w + 54 + 1024 + h * (w % 2)))
+		if (!write_int(m_file, h * w + 54 + 1024 + h * (w % 2)))
 			goto cleanup;
-		if (!write_int(fdest, 0))
+		if (!write_int(m_file, 0))
 			goto cleanup;
-		if (!write_int(fdest, 54 + 1024))
+		if (!write_int(m_file, 54 + 1024))
 			goto cleanup;
 
 		/* INFO HEADER   */
 		/* ------------- */
-		if (!write_int(fdest, 40))
+		if (!write_int(m_file, 40))
 			goto cleanup;
-		if (!write_int(fdest, w))
+		if (!write_int(m_file, w))
 			goto cleanup;
-		if (!write_int(fdest, h))
+		if (!write_int(m_file, h))
 			goto cleanup;
-		if (!write_short(fdest, 1))
+		if (!write_short(m_file, 1))
 			goto cleanup;
-		if (!write_short(fdest, 8))
+		if (!write_short(m_file, 8))
 			goto cleanup;
-		if (!write_int(fdest, 0))
+		if (!write_int(m_file, 0))
 			goto cleanup;
-		if (!write_int(fdest, h * w + h * (w % 2)))
+		if (!write_int(m_file, h * w + h * (w % 2)))
 			goto cleanup;
-		if (!write_int(fdest, 7834))
+		if (!write_int(m_file, 7834))
 			goto cleanup;
-		if (!write_int(fdest, 7834))
+		if (!write_int(m_file, 7834))
 			goto cleanup;
-		if (!write_int(fdest, 256))
+		if (!write_int(m_file, 256))
 			goto cleanup;
-		if (!write_int(fdest, 256))
+		if (!write_int(m_file, 256))
 			goto cleanup;
 	}
+	if (!encodeStrip(0))
+		goto cleanup;
 
-	stride = image->comps[0].stride;
-	sz = stride * (h - 1);
-	if (image->numcomps == 3) {
-		if (image->comps[0].prec > 8) {
-				truncR = (int) image->comps[0].prec - 8;
+	ret = 0;
+cleanup:
+	if (!encodeFinish())
+		return false;
+
+	return (ret ? false : true);
+}
+
+BMPFormat::BMPFormat(void) : m_destBuff(nullptr),
+							m_destIndex(0),
+							m_writeToStdout(false),
+							m_row_count(0)
+{}
+
+bool BMPFormat::encodeHeader(grk_image *  image, const std::string &filename, uint32_t compressionParam){
+	(void) compressionParam;
+	m_fileName = filename;
+	m_image = image;
+	return encode();
+}
+bool BMPFormat::encodeStrip(uint32_t rows){
+
+	bool rc = false;
+	auto w = m_image->comps[0].w;
+	auto h = m_image->comps[0].h;
+	int truncR = 0, truncG = 0, truncB = 0;
+	float scaleR = 1.0f, scaleG = 1.0f, scaleB = 1.0f;
+	auto stride = m_image->comps[0].stride;
+	m_destIndex = stride * (h - 1);
+	if (m_image->numcomps == 3) {
+		if (m_image->comps[0].prec > 8) {
+				truncR = (int) m_image->comps[0].prec - 8;
 				spdlog::warn("BMP CONVERSION: Truncating component 0 from {} bits to 8 bits",
-							image->comps[0].prec);
-		} else if (image->comps[0].prec < 8) {
-			scaleR = 255.0f/(1U << image->comps[0].prec);
+							m_image->comps[0].prec);
+		} else if (m_image->comps[0].prec < 8) {
+			scaleR = 255.0f/(1U << m_image->comps[0].prec);
 			spdlog::warn("BMP CONVERSION: Scaling component 0 from {} bits to 8 bits",
-						image->comps[0].prec);
+						m_image->comps[0].prec);
 		}
-		if (image->comps[1].prec > 8) {
-			truncG = (int) image->comps[1].prec - 8;
+		if (m_image->comps[1].prec > 8) {
+			truncG = (int) m_image->comps[1].prec - 8;
 			spdlog::warn("BMP CONVERSION: Truncating component 1 from {} bits to 8 bits",
-						image->comps[1].prec);
-		} else if (image->comps[1].prec < 8) {
-			scaleG = 255.0f/(1U << image->comps[1].prec);
+						m_image->comps[1].prec);
+		} else if (m_image->comps[1].prec < 8) {
+			scaleG = 255.0f/(1U << m_image->comps[1].prec);
 			spdlog::warn("BMP CONVERSION: Scaling component 1 from {} bits to 8 bits",
-						image->comps[1].prec);
+						m_image->comps[1].prec);
 		}
-		if (image->comps[2].prec > 8) {
-			truncB = (int) image->comps[2].prec - 8;
+		if (m_image->comps[2].prec > 8) {
+			truncB = (int) m_image->comps[2].prec - 8;
 			spdlog::warn("BMP CONVERSION: Truncating component 2 from {} bits to 8 bits",
-						image->comps[2].prec);
-		} else if (image->comps[2].prec < 8) {
-			scaleB = 255.0f/(1U << image->comps[2].prec);
+						m_image->comps[2].prec);
+		} else if (m_image->comps[2].prec < 8) {
+			scaleB = 255.0f/(1U << m_image->comps[2].prec);
 			spdlog::warn("BMP CONVERSION: Scaling component 2 from {} bits to 8 bits",
-						image->comps[2].prec);
+						m_image->comps[2].prec);
 		}
 		size_t padW = ((3 * w + 3) >> 2) << 2;
-		destBuff = new uint8_t[padW];
+		m_destBuff = new uint8_t[padW];
 		for (uint32_t j = 0; j < h; j++) {
 			uint64_t destInd = 0;
 			for (uint32_t i = 0; i < w; i++) {
 				uint8_t rc, gc, bc;
 				int32_t r, g, b;
 
-				r = image->comps[0].data[sz + i];
-				r += (image->comps[0].sgnd ?
-								1 << (image->comps[0].prec - 1) : 0);
+				r = m_image->comps[0].data[m_destIndex + i];
+				r += (m_image->comps[0].sgnd ?
+								1 << (m_image->comps[0].prec - 1) : 0);
 				if (truncR != 0)
 					r = ((r >> truncR) + ((r >> (truncR - 1)) % 2));
 				else if (scaleR != 1.0f)
@@ -992,9 +1016,9 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 					r = 0;
 				rc = (uint8_t) r;
 
-				g = image->comps[1].data[sz + i];
-				g += (image->comps[1].sgnd ?
-								1 << (image->comps[1].prec - 1) : 0);
+				g = m_image->comps[1].data[m_destIndex + i];
+				g += (m_image->comps[1].sgnd ?
+								1 << (m_image->comps[1].prec - 1) : 0);
 				if (truncG > 0)
 					g = ((g >> truncG) + ((g >> (truncG - 1)) % 2));
 				else if (scaleG != 1.0f)
@@ -1005,9 +1029,9 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 					g = 0;
 				gc = (uint8_t) g;
 
-				b = image->comps[2].data[sz + i];
-				b += (image->comps[2].sgnd ?
-								1 << (image->comps[2].prec - 1) : 0);
+				b = m_image->comps[2].data[m_destIndex + i];
+				b += (m_image->comps[2].sgnd ?
+								1 << (m_image->comps[2].prec - 1) : 0);
 				if (truncB > 0)
 					b = ((b >> truncB) + ((b >> (truncB - 1)) % 2));
 				else if (scaleB != 1.0f)
@@ -1017,38 +1041,38 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 				else if (b < 0)
 					b = 0;
 				bc = (uint8_t) b;
-				destBuff[destInd++] = bc;
-				destBuff[destInd++] = gc;
-				destBuff[destInd++] = rc;
+				m_destBuff[destInd++] = bc;
+				m_destBuff[destInd++] = gc;
+				m_destBuff[destInd++] = rc;
 			}
 			// pad at end of row to ensure that width is divisible by 4
-			for (pad = ((3 * w) % 4) ? (4 - (3 * w) % 4) : 0; pad > 0; pad--)
-				destBuff[destInd++] = 0;
-			if (fwrite(destBuff, 1, destInd, fdest) != destInd)
+			for (uint32_t pad = ((3 * w) % 4) ? (4 - (3 * w) % 4) : 0; pad > 0; pad--)
+				m_destBuff[destInd++] = 0;
+			if (fwrite(m_destBuff, 1, destInd, m_file) != destInd)
 				goto cleanup;
-			sz -= stride;
+			m_destIndex -= stride;
 		}
 	} else {
-		if (image->comps[0].prec > 8) {
-			truncR = (int) image->comps[0].prec - 8;
+		if (m_image->comps[0].prec > 8) {
+			truncR = (int) m_image->comps[0].prec - 8;
 			spdlog::warn("BMP CONVERSION: Truncating component 0 from {} bits to 8 bits",
-						image->comps[0].prec);
-		} else if (image->comps[0].prec < 8)
-			scaleR = 255.0f/(1U << image->comps[0].prec);
+						m_image->comps[0].prec);
+		} else if (m_image->comps[0].prec < 8)
+			scaleR = 255.0f/(1U << m_image->comps[0].prec);
 
 		for (uint32_t i = 0; i < 256; i++) {
-			if (fprintf(fdest, "%c%c%c%c", i, i, i, 0) != 4)
+			if (fprintf(m_file, "%c%c%c%c", i, i, i, 0) != 4)
 				goto cleanup;
 		}
 
 		size_t padW = ((w + 3) >> 2) << 2;
-		destBuff = new uint8_t[padW];
+		m_destBuff = new uint8_t[padW];
 		for (uint32_t j = 0; j < h; j++) {
 			uint64_t destInd = 0;
 			for (uint32_t i = 0; i < w; i++) {
-				int32_t r = image->comps[0].data[sz + i];
-				r +=(image->comps[0].sgnd ?
-								1 << (image->comps[0].prec - 1) : 0);
+				int32_t r = m_image->comps[0].data[m_destIndex + i];
+				r +=(m_image->comps[0].sgnd ?
+								1 << (m_image->comps[0].prec - 1) : 0);
 				if (truncR > 0)
 					r = ((r >> truncR) + ((r >> (truncR - 1)) % 2));
 				else if (scaleR != 1.0f)
@@ -1057,38 +1081,28 @@ static int imagetobmp(grk_image *image, const char *outfile) {
 					r = 255;
 				else if (r < 0)
 					r = 0;
-				destBuff[destInd++] = (uint8_t) r;
+				m_destBuff[destInd++] = (uint8_t) r;
 			}
 			// pad at end of row to ensure that width is divisible by 4
-			for (pad = (w % 4) ? (4 - w % 4) : 0; pad > 0; pad--)
-				destBuff[destInd++] = 0;
-			if (fwrite(destBuff, 1, destInd, fdest) != destInd)
+			for (uint32_t pad = (w % 4) ? (4 - w % 4) : 0; pad > 0; pad--)
+				m_destBuff[destInd++] = 0;
+			if (fwrite(m_destBuff, 1, destInd, m_file) != destInd)
 				goto cleanup;
-			sz -= stride;
+			m_destIndex -= stride;
 		}
 	}
 
-	ret = 0;
+	rc = true;
 cleanup:
-	delete[] destBuff;
-	if (!writeToStdout && fdest) {
-		if (!grk::safe_fclose(fdest))
-			ret = 1;
-	}
-	return ret;
-}
 
-bool BMPFormat::encodeHeader(grk_image *  image, const std::string &filename, uint32_t compressionParam){
-	(void) compressionParam;
-	return imagetobmp(image, filename.c_str()) ? false : true;
-}
-bool BMPFormat::encodeStrip(uint32_t rows){
-
-
-	return true;
+	return rc;
 }
 bool BMPFormat::encodeFinish(void){
-
+	delete[] m_destBuff;
+	if (!m_writeToStdout && m_file) {
+		if (!grk::safe_fclose(m_file))
+			return false;
+	}
 	return true;
 }
 

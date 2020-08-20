@@ -19,6 +19,12 @@
 #include "convert.h"
 #include "ImageFormat.h"
 
-ImageFormat::ImageFormat() : m_image(nullptr)
+ImageFormat::ImageFormat() : m_image(nullptr),
+							m_file(nullptr),
+							m_row_count(0)
 {}
+
+uint32_t ImageFormat::maxRowCount(uint32_t rows){
+
+}
 
