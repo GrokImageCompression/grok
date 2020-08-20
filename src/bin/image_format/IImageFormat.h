@@ -22,7 +22,7 @@ class IImageFormat {
 public:
 	virtual ~IImageFormat() {}
 	virtual bool encodeHeader(grk_image *image, const std::string &filename , uint32_t compressionParam)=0;
-	virtual bool encodeStrip(size_t rows) = 0;
+	virtual bool encodeStrip(uint32_t rows) = 0;
 	virtual bool encodeFinish(void) = 0;
 	virtual grk_image*  decode(const std::string &filename ,  grk_cparameters  *parameters)=0;
 

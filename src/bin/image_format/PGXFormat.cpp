@@ -325,7 +325,7 @@ bool PGXFormat::encodeHeader(grk_image *image, const std::string &filename,
 	(void) compressionParam;
 	return imagetopgx(image, filename.c_str()) ? false : true;
 }
-bool PGXFormat::encodeStrip(size_t rows){
+bool PGXFormat::encodeStrip(uint32_t rows){
 
 
 	return true;

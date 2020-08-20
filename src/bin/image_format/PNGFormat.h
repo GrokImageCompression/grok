@@ -26,25 +26,29 @@ void pngSetVerboseFlag(bool verbose);
 class PNGFormat : public ImageFormat {
 public:
 	PNGFormat();
-	bool encodeHeader(grk_image *  image, const std::string &filename, uint32_t compressionParam) override;
-	bool encodeStrip(size_t rows) override;
+	bool encodeHeader(grk_image *  m_image, const std::string &filename, uint32_t compressionParam) override;
+	bool encodeStrip(uint32_t rows) override;
 	bool encodeFinish(void) override;
 	grk_image *  decode(const std::string &filename,  grk_cparameters  *parameters) override;
 
 private:
-	int do_encode(grk_image *image, const char *write_idf,	uint32_t compressionLevel);
+	int do_encode(const char *write_idf,	uint32_t compressionLevel);
 	grk_image* do_decode(const char *read_idf, grk_cparameters *params);
 
-	png_infop info;
+	png_infop m_info;
 	png_structp png;
-	std::string fileName;
+	std::string m_fileName;
 	FILE *file;
 	uint8_t *row_buf;
 	uint8_t **row_buf_array;
 	int32_t *row32s;
-	grk_image *image;
+	grk_image *m_image;
 	bool useStd;
-	GRK_COLOR_SPACE colorSpace;
+	GRK_COLOR_SPACE m_colorSpace;
 	bool fails;
+	uint32_t prec;
+	uint32_t nr_comp;
+	int32_t const *m_planes[4];
+	uint32_t m_row_count;
 };
 

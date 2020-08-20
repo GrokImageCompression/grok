@@ -1758,9 +1758,20 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		case GRK_PNG_FMT:
 		{
 			PNGFormat png;
-			if (!png.encodeHeader(image, outfileStr, parameters->compressionLevel)) {
-				spdlog::error(
-						"Error generating png file. Outfile {} not generated",
+			if (!png.encodeHeader(image, outfileStr, parameters->compressionLevel)){
+				spdlog::error("Error generating png file. Outfile {} not generated",
+						outfileStr);
+				goto cleanup;
+			}
+
+			if (!png.encodeStrip(image->comps[0].h)){
+				spdlog::error("Error generating png file. Outfile {} not generated",
+						outfileStr);
+				goto cleanup;
+			}
+
+			if (!png.encodeFinish()){
+				spdlog::error("Error generating png file. Outfile {} not generated",
 						outfileStr);
 				goto cleanup;
 			}

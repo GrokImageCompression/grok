@@ -72,7 +72,7 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	uint8_t sigbuf[8];
 	cvtTo32 cvtXXTo32s = nullptr;
 	cvtInterleavedToPlanar cvtToPlanar = nullptr;
-	int32_t *planes[4];
+	int32_t *m_planes[4];
 	int srgbIntent = -1;
 	png_textp text_ptr;
 	int num_comments = 0;
@@ -115,7 +115,7 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	// treat some errors as warnings
 	png_set_benign_errors(png, 1);
 
-	if ((info = png_create_info_struct(png)) == nullptr)
+	if ((m_info = png_create_info_struct(png)) == nullptr)
 		goto beach;
 
 	if (setjmp(png_jmpbuf(png)))
@@ -124,9 +124,9 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	png_init_io(png, file);
 	png_set_sig_bytes(png, MAGIC_SIZE);
 
-	png_read_info(png, info);
+	png_read_info(png, m_info);
 
-	if (png_get_IHDR(png, info, &width, &height, &bit_depth,
+	if (png_get_IHDR(png, m_info, &width, &height, &bit_depth,
 			&color_type, &interlace_type, &compression_type, &filter_type) == 0)
 		goto beach;
 
@@ -142,7 +142,7 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 		png_set_expand(png);
 	}
 
-	if (png_get_valid(png, info, PNG_INFO_tRNS)) {
+	if (png_get_valid(png, m_info, PNG_INFO_tRNS)) {
 		png_set_expand(png);
 	}
 	/* We might want to expand background */
@@ -154,13 +154,13 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	 }
 	 */
 
-	if (png_get_sRGB(png, info, &srgbIntent)) {
+	if (png_get_sRGB(png, m_info, &srgbIntent)) {
 		if (srgbIntent >= 0 && srgbIntent <= 3)
-			colorSpace = GRK_CLRSPC_SRGB;
+			m_colorSpace = GRK_CLRSPC_SRGB;
 	}
 
-	png_read_update_info(png, info);
-	color_type = png_get_color_type(png, info);
+	png_read_update_info(png, m_info);
+	color_type = png_get_color_type(png, m_info);
 
 	switch (color_type) {
 	case PNG_COLOR_TYPE_GRAY:
@@ -181,12 +181,12 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 		goto beach;
 	}
 
-	if (colorSpace == GRK_CLRSPC_UNKNOWN)
-		colorSpace =
+	if (m_colorSpace == GRK_CLRSPC_UNKNOWN)
+		m_colorSpace =
 				(nr_comp > 2U) ? GRK_CLRSPC_SRGB : GRK_CLRSPC_GRAY;
 
 	cvtToPlanar = cvtInterleavedToPlanar_LUT[nr_comp];
-	bit_depth = png_get_bit_depth(png, info);
+	bit_depth = png_get_bit_depth(png, m_info);
 
 	switch (bit_depth) {
 	case 1:
@@ -210,7 +210,7 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	}
 	for (uint32_t i = 0; i < height; ++i) {
 		row_buf_array[i] = (uint8_t*) malloc(
-				png_get_rowbytes(png, info));
+				png_get_rowbytes(png, m_info));
 		if (!row_buf_array[i]) {
 			spdlog::error("pngtoimage: out of memory");
 			goto beach;
@@ -230,47 +230,47 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 		cmptparm[i].h = height;
 	}
 
-	image = grk_image_create(nr_comp, &cmptparm[0],
-			colorSpace,true);
-	if (image == nullptr)
+	m_image = grk_image_create(nr_comp, &cmptparm[0],
+			m_colorSpace,true);
+	if (m_image == nullptr)
 		goto beach;
-	image->x0 = params->image_offset_x0;
-	image->y0 = params->image_offset_y0;
-	image->x1 = (image->x0
-			+ (width - 1) * params->subsampling_dx + 1 + image->x0);
-	image->y1 = (image->y0
-			+ (height - 1) * params->subsampling_dy + 1 + image->y0);
+	m_image->x0 = params->image_offset_x0;
+	m_image->y0 = params->image_offset_y0;
+	m_image->x1 = (m_image->x0
+			+ (width - 1) * params->subsampling_dx + 1 + m_image->x0);
+	m_image->y1 = (m_image->y0
+			+ (height - 1) * params->subsampling_dy + 1 + m_image->y0);
 
 	/* Set alpha channel. Only non-premultiplied alpha is supported */
 	if ((nr_comp & 1U) == 0){
-		image->comps[nr_comp - 1U].type = GRK_COMPONENT_TYPE_OPACITY;
-		image->comps[nr_comp - 1U].association = GRK_COMPONENT_ASSOC_WHOLE_IMAGE;
+		m_image->comps[nr_comp - 1U].type = GRK_COMPONENT_TYPE_OPACITY;
+		m_image->comps[nr_comp - 1U].association = GRK_COMPONENT_ASSOC_WHOLE_IMAGE;
 	}
 	for (uint32_t i = 0; i < nr_comp; i++)
-		planes[i] = image->comps[i].data;
+		m_planes[i] = m_image->comps[i].data;
 
 
 	// See if iCCP chunk is present
-	if (png_get_valid(png, info, PNG_INFO_iCCP)) {
+	if (png_get_valid(png, m_info, PNG_INFO_iCCP)) {
 		uint32_t ProfileLen = 0;
 		png_bytep ProfileData = nullptr;
 		int Compression = 0;
 		png_charp ProfileName = nullptr;
-		if (png_get_iCCP(png, info, &ProfileName, &Compression,
+		if (png_get_iCCP(png, m_info, &ProfileName, &Compression,
 				&ProfileData, &ProfileLen) == PNG_INFO_iCCP) {
-			image->icc_profile_buf = grk_buffer_new(ProfileLen);
-			memcpy(image->icc_profile_buf, ProfileData, ProfileLen);
-			image->icc_profile_len = ProfileLen;
-			image->color_space = GRK_CLRSPC_ICC;
+			m_image->icc_profile_buf = grk_buffer_new(ProfileLen);
+			memcpy(m_image->icc_profile_buf, ProfileData, ProfileLen);
+			m_image->icc_profile_len = ProfileLen;
+			m_image->color_space = GRK_CLRSPC_ICC;
 		}
 	}
 
-	if (png_get_valid(png, info, PNG_INFO_gAMA)) {
+	if (png_get_valid(png, m_info, PNG_INFO_gAMA)) {
 		spdlog::warn(
 				"input PNG contains gamma value; this will not be stored in compressed image.");
 	}
 
-	if (png_get_valid(png, info, PNG_INFO_cHRM)) {
+	if (png_get_valid(png, m_info, PNG_INFO_cHRM)) {
 		spdlog::warn(
 				"input PNG contains chroma information which will not be stored in compressed image.");
 	}
@@ -286,7 +286,7 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	 }
 	 */
 
-	num_comments = png_get_text(png, info, &text_ptr, NULL);
+	num_comments = png_get_text(png, m_info, &text_ptr, NULL);
 	if (num_comments) {
 		for (int i = 0; i < num_comments; ++i) {
 			const char *key = text_ptr[i].key;
@@ -298,11 +298,11 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 
 			} else if (!strcmp(key, "XML:com.adobe.xmp")) {
 				if (text_ptr[i].text_length) {
-					image->xmp_len = text_ptr[i].text_length;
-					image->xmp_buf = grk_buffer_new(
-							image->xmp_len);
-					memcpy(image->xmp_buf, text_ptr[i].text,
-							image->xmp_len);
+					m_image->xmp_len = text_ptr[i].text_length;
+					m_image->xmp_buf = grk_buffer_new(
+							m_image->xmp_len);
+					memcpy(m_image->xmp_buf, text_ptr[i].text,
+							m_image->xmp_len);
 				}
 			}
 			// other comments
@@ -312,17 +312,17 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 		}
 	}
 
-	if (png_get_pHYs(png, info, &resx, &resy, &unit)) {
+	if (png_get_pHYs(png, m_info, &resx, &resy, &unit)) {
 		if (unit == PNG_RESOLUTION_METER) {
-			image->capture_resolution[0] = resx;
-			image->capture_resolution[1] = resy;
+			m_image->capture_resolution[0] = resx;
+			m_image->capture_resolution[1] = resy;
 		} else {
 			spdlog::warn("input PNG contains resolution information"
 					" in unknown units. Ignoring");
 		}
 	}
 
-	stride = image->comps[0].stride;
+	stride = m_image->comps[0].stride;
 	row32s = (int32_t*) malloc(
 			(size_t) width * nr_comp * sizeof(int32_t));
 	if (row32s == nullptr)
@@ -331,11 +331,11 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	for (uint32_t i = 0; i < height; ++i) {
 		cvtXXTo32s(row_buf_array[i], row32s,
 				(size_t) width * nr_comp, false);
-		cvtToPlanar(row32s, planes, width);
-		planes[0] += stride;
-		planes[1] += stride;
-		planes[2] += stride;
-		planes[3] += stride;
+		cvtToPlanar(row32s, m_planes, width);
+		m_planes[0] += stride;
+		m_planes[1] += stride;
+		m_planes[2] += stride;
+		m_planes[3] += stride;
 	}
 	beach: if (row_buf_array) {
 		for (uint32_t i = 0; i < height; ++i)
@@ -344,19 +344,20 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	}
 	free(row32s);
 	if (png)
-		png_destroy_read_struct(&png, &info, nullptr);
+		png_destroy_read_struct(&png, &m_info, nullptr);
 	if (!useStd && file) {
 		if (!grk::safe_fclose(file)) {
-			grk_image_destroy(image);
-			image = nullptr;
+			grk_image_destroy(m_image);
+			m_image = nullptr;
 		}
 	}
-	return image;
+	return m_image;
 }/* pngtoimage() */
 
  static void
  user_warning_fn(png_structp png_ptr, png_const_charp message)
  {
+	(void)png_ptr;
     spdlog::warn("libpng warning: {}", message);
 
  }
@@ -364,6 +365,7 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
  static void
 user_error_fn(png_structp png_ptr, png_const_charp message)
 {
+		(void)png_ptr;
     spdlog::error("libpng error: {}", message);
 }
 
@@ -378,21 +380,18 @@ static void convert_32s16u_C1R(const int32_t *pSrc, uint8_t *pDst,
 }
 
 
-int PNGFormat::do_encode(grk_image *image, const char *write_idf,
+int PNGFormat::do_encode(const char *write_idf,
 		uint32_t compressionLevel) {
-	fileName = write_idf;
-	useStd = grk::useStdio(fileName.c_str());
+	m_fileName = write_idf;
+	useStd = grk::useStdio(m_fileName.c_str());
 	uint32_t color_type;
 	png_color_8 sig_bit;
 	uint32_t i;
 
 	memset(&sig_bit, 0, sizeof(sig_bit));
 
-	int32_t const *planes[4];
-	uint32_t prec =  image->comps[0].prec;
-	planes[0] = image->comps[0].data;
-	uint32_t nr_comp = image->numcomps;
-	uint32_t stride = image->comps[0].stride;
+	prec =  m_image->comps[0].prec;
+	nr_comp = m_image->numcomps;
 
 	if (nr_comp > 4) {
 		spdlog::warn("imagetopng: number of components {} is "
@@ -400,16 +399,15 @@ int PNGFormat::do_encode(grk_image *image, const char *write_idf,
 		nr_comp = 4;
 	}
 	for (i = 1; i < nr_comp; ++i) {
-		if (image->comps[0].dx != image->comps[i].dx)
+		if (m_image->comps[0].dx != m_image->comps[i].dx)
 			break;
-		if (image->comps[0].dy != image->comps[i].dy)
+		if (m_image->comps[0].dy != m_image->comps[i].dy)
 			break;
-		if (image->comps[0].prec != image->comps[i].prec)
+		if (m_image->comps[0].prec != m_image->comps[i].prec)
 			break;
-		if (image->comps[0].sgnd != image->comps[i].sgnd)
+		if (m_image->comps[0].sgnd != m_image->comps[i].sgnd)
 			break;
-		planes[i] = image->comps[i].data;
-		if (!planes[i]) {
+		if (!m_image->comps[i].data) {
 			spdlog::error("imagetopng: component {} is null.", i);
 			return 1;
 		}
@@ -433,10 +431,10 @@ int PNGFormat::do_encode(grk_image *image, const char *write_idf,
 
 	if (prec != 1 && prec != 2 && prec != 4 && prec != 8 && prec != 16) {
 		spdlog::error("imagetopng: can not create {}\n\twrong bit_depth {}",
-				fileName.c_str(), prec);
+				m_fileName.c_str(), prec);
 		return fails;
 	}
-	if (!grk::grk_open_for_output(&file, fileName.c_str(),useStd))
+	if (!grk::grk_open_for_output(&file, m_fileName.c_str(),useStd))
 		return fails;
 
 	/* Create and initialize the png_struct with the desired error handler
@@ -460,9 +458,9 @@ int PNGFormat::do_encode(grk_image *image, const char *write_idf,
 
 	/* Allocate/initialize the image information data.  REQUIRED
 	 */
-	info = png_create_info_struct(png);
+	m_info = png_create_info_struct(png);
 
-	if (info == nullptr)
+	if (m_info == nullptr)
 		goto beach;
 
 	/* Set error handling.  REQUIRED if you are not supplying your own
@@ -508,23 +506,23 @@ int PNGFormat::do_encode(grk_image *image, const char *write_idf,
 		sig_bit.alpha = (png_byte) prec;
 	}
 
-	png_set_IHDR(png, info, image->comps[0].w, image->comps[0].h,
+	png_set_IHDR(png, m_info, m_image->comps[0].w, m_image->comps[0].h,
 			(int32_t)prec, (int32_t)color_type,
 			PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE,
 			PNG_FILTER_TYPE_BASE);
 
-	png_set_sBIT(png, info, &sig_bit);
+	png_set_sBIT(png, m_info, &sig_bit);
 	/* png_set_gamma(png, 2.2, 1./2.2); */
 	/* png_set_sRGB(png, info, PNG_sRGB_INTENT_PERCEPTUAL); */
 
 	// Set iCCP chunk
-	if (image->icc_profile_buf && image->icc_profile_len) {
+	if (m_image->icc_profile_buf && m_image->icc_profile_len) {
 		std::string profileName = "Unknown";
 		// if lcms is present, try to extract the description tag from the ICC header,
 		// and use this tag as the profile name
 #if defined(GROK_HAVE_LIBLCMS)
-		auto in_prof = cmsOpenProfileFromMem(image->icc_profile_buf,
-				image->icc_profile_len);
+		auto in_prof = cmsOpenProfileFromMem(m_image->icc_profile_buf,
+				m_image->icc_profile_len);
 		if (in_prof) {
 			cmsUInt32Number bufferSize = cmsGetProfileInfoASCII(in_prof,
 					cmsInfoDescription, cmsNoLanguage, cmsNoCountry, nullptr,
@@ -541,26 +539,26 @@ int PNGFormat::do_encode(grk_image *image, const char *write_idf,
 			cmsCloseProfile(in_prof);
 		}
 #endif
-		png_set_iCCP(png, info, profileName.c_str(),
-		PNG_COMPRESSION_TYPE_BASE, image->icc_profile_buf,
-				image->icc_profile_len);
+		png_set_iCCP(png, m_info, profileName.c_str(),
+		PNG_COMPRESSION_TYPE_BASE, m_image->icc_profile_buf,
+				m_image->icc_profile_len);
 	}
 
-	if (image->xmp_buf && image->xmp_len) {
+	if (m_image->xmp_buf && m_image->xmp_len) {
 		png_text txt;
 		txt.key = (png_charp) "XML:com.adobe.xmp";
 		txt.compression = PNG_ITXT_COMPRESSION_NONE;
-		txt.text_length = image->xmp_len;
-		txt.text = (png_charp) image->xmp_buf;
+		txt.text_length = m_image->xmp_len;
+		txt.text = (png_charp) m_image->xmp_buf;
 		txt.lang = NULL;
 		txt.lang_key = NULL;
-		png_set_text(png, info, &txt, 1);
+		png_set_text(png, m_info, &txt, 1);
 	}
 
-	if (image->capture_resolution[0] > 0 && image->capture_resolution[1] > 0) {
-		png_set_pHYs(png, info,
-				(png_uint_32) (image->capture_resolution[0]),
-				(png_uint_32) (image->capture_resolution[1]),
+	if (m_image->capture_resolution[0] > 0 && m_image->capture_resolution[1] > 0) {
+		png_set_pHYs(png, m_info,
+				(png_uint_32) (m_image->capture_resolution[0]),
+				(png_uint_32) (m_image->capture_resolution[1]),
 				PNG_RESOLUTION_METER);
 	}
 
@@ -570,17 +568,17 @@ int PNGFormat::do_encode(grk_image *image, const char *write_idf,
 	}
 
 	for (i = 0; i < nr_comp; ++i)
-		scale_component(&(image->comps[i]), prec);
+		scale_component(&(m_image->comps[i]), prec);
 
-	png_write_info(png, info);
+	png_write_info(png, m_info);
 
 	/* set up conversion */
 	{
 		size_t rowStride;
 		png_size_t png_row_size;
 
-		png_row_size = png_get_rowbytes(png, info);
-		rowStride = ((size_t) image->comps[0].w * (size_t) nr_comp
+		png_row_size = png_get_rowbytes(png, m_info);
+		rowStride = ((size_t) m_image->comps[0].w * (size_t) nr_comp
 				* (size_t) prec + 7U) / 8U;
 		if (rowStride != (size_t) png_row_size) {
 			spdlog::error("Invalid PNG row size");
@@ -592,75 +590,81 @@ int PNGFormat::do_encode(grk_image *image, const char *write_idf,
 			goto beach;
 		}
 		row32s = (int32_t*) malloc(
-				(size_t) image->comps[0].w * (size_t) nr_comp
+				(size_t) m_image->comps[0].w * (size_t) nr_comp
 						* sizeof(int32_t));
 		if (row32s == nullptr) {
 			spdlog::error("Can't allocate memory for interleaved 32s row");
 			goto beach;
 		}
 	}
+	for (uint32_t i = 0; i < nr_comp; ++i)
+		m_planes[i] = m_image->comps[i].data;
 
-	/* convert */
-	{
-		size_t width = image->comps[0].w;
-		uint32_t y;
-		cvtPlanarToInterleaved cvtPxToCx = cvtPlanarToInterleaved_LUT[nr_comp];
-		cvtFrom32 cvt32sToPack = nullptr;
-		int32_t adjust = image->comps[0].sgnd ? 1 << (prec - 1) : 0;
-		png_bytep row_buf_cpy = row_buf;
-		int32_t *buffer32s_cpy = row32s;
-
-		switch (prec) {
-		case 1:
-		case 2:
-		case 4:
-		case 8:
-			cvt32sToPack = cvtFrom32_LUT[prec];
-			break;
-		case 16:
-			cvt32sToPack = convert_32s16u_C1R;
-			break;
-		default:
-			/* never here */
-			goto beach;
-			break;
-		}
-
-		for (y = 0; y < image->comps[0].h; ++y) {
-			cvtPxToCx(planes, buffer32s_cpy, width, adjust);
-			cvt32sToPack(buffer32s_cpy, row_buf_cpy, width * (size_t) nr_comp);
-			png_write_row(png, row_buf_cpy);
-			planes[0] += stride;
-			planes[1] += stride;
-			planes[2] += stride;
-			planes[3] += stride;
-		}
-	}
 
 	fails = false;
 
 beach:
-	return encodeFinish() ? 0 : 1;
+	return fails;
 }
 
-PNGFormat::PNGFormat() : info(nullptr),
+PNGFormat::PNGFormat() : m_info(nullptr),
 						png(nullptr),
 					file(nullptr),
 					row_buf(nullptr),
 					row_buf_array(nullptr),
 					row32s(nullptr),
-					image(nullptr),
+					m_image(nullptr),
 					useStd(false),
-					colorSpace(	GRK_CLRSPC_UNKNOWN),
-					fails(true)
-{}
-
-bool PNGFormat::encodeHeader(grk_image *image, const std::string &filename,
-		uint32_t compressionParam) {
-	return do_encode(image, filename.c_str(), compressionParam) ? false : true;
+					m_colorSpace(	GRK_CLRSPC_UNKNOWN),
+					fails(true),
+					prec(0),
+					nr_comp(0),
+					m_planes{nullptr},
+					m_row_count(0)
+{
 }
-bool PNGFormat::encodeStrip(size_t rows){
 
+bool PNGFormat::encodeHeader(grk_image *img, const std::string &filename,
+		uint32_t compressionParam) {
+	m_image = img;
+	return do_encode(filename.c_str(), compressionParam) ? false : true;
+}
+bool PNGFormat::encodeStrip(uint32_t rows){
+	cvtPlanarToInterleaved cvtPxToCx = cvtPlanarToInterleaved_LUT[nr_comp];
+	cvtFrom32 cvt32sToPack = nullptr;
+	png_bytep row_buf_cpy = row_buf;
+	int32_t *buffer32s_cpy = row32s;
+
+	switch (prec) {
+	case 1:
+	case 2:
+	case 4:
+	case 8:
+		cvt32sToPack = cvtFrom32_LUT[prec];
+		break;
+	case 16:
+		cvt32sToPack = convert_32s16u_C1R;
+		break;
+	default:
+		/* never here */
+		return false;
+		break;
+	}
+
+	int32_t adjust = m_image->comps[0].sgnd ? 1 << (prec - 1) : 0;
+	size_t width = m_image->comps[0].w;
+	uint32_t stride = m_image->comps[0].stride;
+	uint32_t max_rows = std::min<uint32_t>(m_row_count + rows, m_image->comps[0].h);
+	for (uint32_t y = m_row_count; y < max_rows; ++y) {
+		cvtPxToCx(m_planes, buffer32s_cpy, width, adjust);
+		cvt32sToPack(buffer32s_cpy, row_buf_cpy, width * (size_t) nr_comp);
+		png_write_row(png, row_buf_cpy);
+		m_planes[0] += stride;
+		m_planes[1] += stride;
+		m_planes[2] += stride;
+		m_planes[3] += stride;
+	}
+	m_row_count += rows;
 
 	return true;
 }
@@ -669,17 +673,20 @@ bool PNGFormat::encodeFinish(void){
 	if (setjmp(png_jmpbuf(png)))
 		return false;
 
+	if (m_row_count < m_image->comps[0].h)
+		spdlog::warn("Full image was not written");
+
 	if (png) {
-		png_write_end(png, info);
-		png_destroy_write_struct(&png, &info);
+		png_write_end(png, m_info);
+		png_destroy_write_struct(&png, &m_info);
 	}
 	free(row_buf);
 	free(row32s);
 	if (!useStd) {
 		if (!grk::safe_fclose(file))
 			fails = true;
-		if (fails && fileName.c_str())
-			(void) remove(fileName.c_str()); /* ignore return value */
+		if (fails && m_fileName.c_str())
+			(void) remove(m_fileName.c_str()); /* ignore return value */
 	}
 	return !fails;
 }

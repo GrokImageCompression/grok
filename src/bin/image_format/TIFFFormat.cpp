@@ -2151,7 +2151,7 @@ bool TIFFFormat::encodeHeader(grk_image *image, const std::string &filename,
 		uint32_t compressionParam) {
 	return imagetotif(image, filename.c_str(), compressionParam) ? false : true;
 }
-bool TIFFFormat::encodeStrip(size_t rows){
+bool TIFFFormat::encodeStrip(uint32_t rows){
 
 
 	return true;

@@ -637,7 +637,7 @@ bool JPEGFormat::encodeHeader(grk_image *image, const std::string &filename,
 	return imagetojpeg(image, filename.c_str(), compressionParam) ?
 			false : true;
 }
-bool JPEGFormat::encodeStrip(size_t rows){
+bool JPEGFormat::encodeStrip(uint32_t rows){
 
 
 	return true;

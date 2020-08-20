@@ -1082,7 +1082,7 @@ bool BMPFormat::encodeHeader(grk_image *  image, const std::string &filename, ui
 	(void) compressionParam;
 	return imagetobmp(image, filename.c_str()) ? false : true;
 }
-bool BMPFormat::encodeStrip(size_t rows){
+bool BMPFormat::encodeStrip(uint32_t rows){
 
 
 	return true;
