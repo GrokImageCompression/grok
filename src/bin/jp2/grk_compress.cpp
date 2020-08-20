@@ -45,9 +45,15 @@ using namespace grk;
 #include "PNMFormat.h"
 #include "PGXFormat.h"
 #include "BMPFormat.h"
+#ifdef GROK_HAVE_LIBJPEG
 #include "JPEGFormat.h"
+#endif
+#ifdef GROK_HAVE_LIBTIFF
 #include "TIFFFormat.h"
+#endif
+#ifdef GROK_HAVE_LIBPNG
 #include "PNGFormat.h"
+#endif
 #include "convert.h"
 #include "grok_string.h"
 #include "color.h"

@@ -18,7 +18,6 @@
 #pragma once
 
 #include "IImageFormat.h"
-#include <string>
 
 class ImageFormat : public IImageFormat {
 public:
@@ -30,6 +29,6 @@ protected:
 	FILE *m_file;
 	uint32_t m_row_count;
 
-	uint32_t maxRowCount(uint32_t rows);
+	uint32_t maxY(uint32_t rows);
 
 };

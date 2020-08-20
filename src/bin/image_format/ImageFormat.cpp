@@ -14,17 +14,16 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "grk_apps_config.h"
-#include "grok.h"
-#include "convert.h"
 #include "ImageFormat.h"
+#include "convert.h"
+#include <algorithm>
 
 ImageFormat::ImageFormat() : m_image(nullptr),
 							m_file(nullptr),
 							m_row_count(0)
 {}
 
-uint32_t ImageFormat::maxRowCount(uint32_t rows){
-
+uint32_t ImageFormat::maxY(uint32_t rows){
+	return std::min<uint32_t>(m_row_count + rows, m_image->comps[0].h);
 }
 

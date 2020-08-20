@@ -651,8 +651,8 @@ bool PNGFormat::encodeStrip(uint32_t rows){
 	int32_t adjust = m_image->comps[0].sgnd ? 1 << (prec - 1) : 0;
 	size_t width = m_image->comps[0].w;
 	uint32_t stride = m_image->comps[0].stride;
-	uint32_t max_rows = std::min<uint32_t>(m_row_count + rows, m_image->comps[0].h);
-	for (uint32_t y = m_row_count; y < max_rows; ++y) {
+	uint32_t max = maxY(rows);
+	for (uint32_t y = m_row_count; y < max; ++y) {
 		cvtPxToCx(m_planes, buffer32s_cpy, width, adjust);
 		cvt32sToPack(buffer32s_cpy, row_buf_cpy, width * (size_t) nr_comp);
 		png_write_row(png, row_buf_cpy);

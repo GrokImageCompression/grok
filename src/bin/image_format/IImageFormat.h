@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include "grk_apps_config.h"
+#include "grok.h"
 #include <string>
 
 class IImageFormat {
