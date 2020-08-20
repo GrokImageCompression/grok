@@ -78,7 +78,7 @@ int get_file_format(const char *filename);
 const char* get_path_separator();
 char* get_file_name(char *name);
 uint32_t get_num_images(char *imgdirpath);
-char* actual_path(const char *outfile);
+char* actual_path(const char *outfile, bool *mem_allocated);
 
 // swap endian for 16 bit integer
 template<typename T> inline T swap(T x) {

@@ -267,13 +267,20 @@ uint32_t get_num_images(char *imgdirpath) {
 	return num_images;
 }
 
-char* actual_path(const char *outfile) {
+char* actual_path(const char *outfile, bool *mem_allocated) {
+	if (mem_allocated)
+		*mem_allocated = false;
+	if (!outfile)
+		return nullptr;
 #ifdef _WIN32
 	return (char*)outfile;
 #else
 	char *actualpath = realpath(outfile, NULL);
-	if (actualpath != nullptr)
+	if (actualpath != nullptr){
+		if (mem_allocated)
+			*mem_allocated = true;
 		return actualpath;
+	}
 	return (char*) outfile;
 #endif
 }

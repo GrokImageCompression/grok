@@ -1801,8 +1801,13 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		info->image = nullptr;
 	}
 	if (failed) {
-		if (outfile)
-			(void) remove(actual_path(outfile)); /* ignore return value */
+		if (outfile){
+			bool allocated = false;
+			char* p = actual_path(parameters->outfile, &allocated);
+			(void)remove(p);
+			if (allocated)
+				free(p);
+		}
 	}
 
 	return failed ? 1 : 0;

@@ -2131,8 +2131,13 @@ static bool plugin_compress_callback(
 		grk_image_destroy(image);
 	if (!bSuccess) {
 		spdlog::error("failed to compress image");
-		if (parameters->outfile[0])
-			remove(actual_path(parameters->outfile));
+		if (parameters->outfile[0]){
+			bool allocated = false;
+			char* p = actual_path(parameters->outfile, &allocated);
+			(void)remove(p);
+			if (allocated)
+				free(p);
+		}
 	}
 	return bSuccess;
 }
