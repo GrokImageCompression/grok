@@ -1382,7 +1382,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 				goto cleanup;
 			}
 		} else {
-			info->l_stream = grk_stream_create_mapped_file_read_stream(infile);
+			info->l_stream = grk_stream_create_mapped_file_stream(infile, true);
 		}
 	}
 	if (!info->l_stream) {

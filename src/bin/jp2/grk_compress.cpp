@@ -2048,8 +2048,8 @@ static bool plugin_compress_callback(
 		stream = grk_stream_create_mem_stream(info->compressBuffer,
 				info->compressBufferLen, true, false);
 	} else {
-		stream = grk_stream_create_file_stream(outfile, 32 * 1024 * 1024,
-				false);
+		stream = grk_stream_create_file_stream(outfile,1024*1024,false);
+		//stream = grk_stream_create_mapped_file_stream(outfile, false);
 	}
 	if (!stream) {
 		spdlog::error("failed to create stream");

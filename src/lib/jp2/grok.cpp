@@ -637,9 +637,12 @@ GRK_API size_t GRK_CALLCONV grk_stream_get_write_mem_stream_length(
 		size_t len, bool ownsBuffer, bool is_read_stream) {
 	return create_mem_stream(buf, len, ownsBuffer, is_read_stream);
 }
- grk_stream  *  GRK_CALLCONV grk_stream_create_mapped_file_read_stream(
-		const char *fname) {
-	return create_mapped_file_read_stream(fname);
+ grk_stream  *  GRK_CALLCONV grk_stream_create_mapped_file_stream(
+		const char *fname, bool read_stream) {
+	 if (read_stream)
+		 return create_mapped_file_read_stream(fname);
+	 else
+		 return create_mapped_file_write_stream(fname);
 }
 /* ---------------------------------------------------------------------- */
 void GRK_CALLCONV grk_image_all_components_data_free(grk_image *image) {

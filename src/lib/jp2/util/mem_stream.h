@@ -19,17 +19,19 @@
 namespace grk {
 
 #ifdef _WIN32
-	typedef void* grk_handle;
+typedef void* grk_handle;
 #else
 typedef int32_t grk_handle;
 #endif
 
 struct buf_info {
-	buf_info() :
-			buf_info(nullptr, 0, 0, false) {
-	}
-	buf_info(uint8_t *buffer, size_t offset, size_t length, bool owns) :
-			buf(buffer), off(offset), len(length), fd(0), ownsBuffer(owns) {
+	buf_info(uint8_t *buffer, size_t offset, size_t length, bool owns) :	buf(buffer),
+																		off(offset),
+																		len(length),
+																		fd(0),
+																		ownsBuffer(owns)
+	{}
+	buf_info() : buf_info(nullptr, 0, 0, false) {
 	}
 	~buf_info() {
 		if (ownsBuffer)
@@ -42,10 +44,11 @@ struct buf_info {
 	bool ownsBuffer;
 };
 
- grk_stream  *  create_mem_stream(uint8_t *buf, size_t len, bool ownsBuffer,
+void set_up_mem_stream(grk_stream *l_stream, size_t len,
+		bool is_read_stream);
+grk_stream  *  create_mem_stream(uint8_t *buf, size_t len, bool ownsBuffer,
 		bool is_read_stream);
 size_t get_mem_stream_offset( grk_stream  *stream);
 
- grk_stream  *  create_mapped_file_read_stream(const char *fname);
 
 }

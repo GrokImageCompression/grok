@@ -63,6 +63,8 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/IBufferedStream.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/logger.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/logger.h  
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkMappedFile.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkMappedFile.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/mem_stream.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/mem_stream.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/grok_intmath.h

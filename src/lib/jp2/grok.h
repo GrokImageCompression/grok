@@ -1442,10 +1442,11 @@ GRK_API size_t GRK_CALLCONV grk_stream_get_write_mem_stream_length(
 /**
  * Create mapped file stream
  *
- * @param fname	file name
+ * @param fname			file name
+ * @param read_stream 	true if this is a read stream, otherwise false
  */
-GRK_API grk_stream* GRK_CALLCONV grk_stream_create_mapped_file_read_stream(
-		const char *fname);
+GRK_API grk_stream* GRK_CALLCONV grk_stream_create_mapped_file_stream(
+		const char *fname, bool read_stream);
 
 /*
  ========================================

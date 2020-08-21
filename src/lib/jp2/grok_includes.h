@@ -156,6 +156,7 @@ static inline long grok_lrintf(float f) {
 
 #include "ThreadPool.hpp"
 #include "mem_stream.h"
+#include "GrkMappedFile.h"
 #include "MemManager.h"
 #include "logger.h"
 #include "util.h"
