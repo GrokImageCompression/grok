@@ -156,11 +156,11 @@ static uint64_t grk_get_data_length_from_file(FILE *p_file) {
 	GROK_FSEEK(p_file, 0, SEEK_SET);
 	return (uint64_t) file_length;
 }
-static size_t grk_write_from_file(void *p_buffer, size_t nb_bytes,
+static size_t grk_write_to_file(void *p_buffer, size_t nb_bytes,
 		FILE *p_file) {
 	return fwrite(p_buffer, 1, nb_bytes, p_file);
 }
-static bool grok_seek_from_file(int64_t nb_bytes, FILE *p_user_data) {
+static bool grok_seek_in_file(int64_t nb_bytes, FILE *p_user_data) {
 	return GROK_FSEEK(p_user_data, nb_bytes, SEEK_SET) ? false : true;
 }
 
@@ -621,9 +621,9 @@ static void grok_free_file(void *p_user_data) {
 	grk_stream_set_read_function(stream,
 			(grk_stream_read_fn) grk_read_from_file);
 	grk_stream_set_write_function(stream,
-			(grk_stream_write_fn) grk_write_from_file);
+			(grk_stream_write_fn) grk_write_to_file);
 	grk_stream_set_seek_function(stream,
-			(grk_stream_seek_fn) grok_seek_from_file);
+			(grk_stream_seek_fn) grok_seek_in_file);
 	return stream;
 }
 /* ---------------------------------------------------------------------- */
