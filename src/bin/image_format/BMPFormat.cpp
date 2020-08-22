@@ -77,6 +77,44 @@ template<typename T> bool get_int(FILE *INPUT, T *val) {
 	return true;
 }
 
+static void grk_applyLUT8u_1u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
+		int32_t *pDst, int32_t dstStride, uint8_t const *pLUT, uint32_t destWidth,
+		uint32_t destHeight) {
+	uint32_t absSrcStride = std::abs(srcStride);
+	for (uint32_t y = destHeight; y != 0U; --y) {
+		uint32_t destIndex = 0;
+		for (uint32_t srcIndex = 0; srcIndex < absSrcStride; srcIndex++) {
+			uint8_t val = pSrc[srcIndex];
+			for (int32_t ct = 7; ct >= 0; --ct) {
+				pDst[destIndex++] = (int32_t) pLUT[(val >> (ct))&1];
+				if (destIndex == destWidth)
+					break;
+			}
+		}
+		pSrc += srcStride;
+		pDst += dstStride;
+	}
+}
+
+static void grk_applyLUT8u_4u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
+		int32_t *pDst, int32_t dstStride, uint8_t const *pLUT, uint32_t destWidth,
+		uint32_t destHeight) {
+	uint32_t absSrcStride = std::abs(srcStride);
+	for (uint32_t y = destHeight; y != 0U; --y) {
+		uint32_t destIndex = 0;
+		for (uint32_t srcIndex = 0; srcIndex < absSrcStride; srcIndex++) {
+			uint8_t val = pSrc[srcIndex];
+			for (int32_t ct = 4; ct >= 0; ct-=4) {
+				pDst[destIndex++] = (int32_t) pLUT[(val >> (ct)) & 0xF];
+				if (destIndex == destWidth)
+					break;
+			}
+		}
+		pSrc += srcStride;
+		pDst += dstStride;
+	}
+}
+
 static void grk_applyLUT8u_8u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
 		int32_t *pDst, int32_t dstStride, uint8_t const *pLUT, uint32_t width,
 		uint32_t height) {
@@ -90,9 +128,10 @@ static void grk_applyLUT8u_8u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
 	}
 }
 
-static void grk_applyLUT8u_8u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
+static void grk_applyLUT8u_4u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
 		int32_t *const*pDst, int32_t const *pDstStride,
-		uint8_t const *const*pLUT, uint32_t width, uint32_t height) {
+		uint8_t const *const*pLUT, uint32_t destWidth, uint32_t destHeight) {
+	uint32_t absSrcStride = std::abs(srcStride);
 	uint32_t y;
 	int32_t *pR = pDst[0];
 	int32_t *pG = pDst[1];
@@ -101,8 +140,40 @@ static void grk_applyLUT8u_8u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
 	uint8_t const *pLUT_G = pLUT[1];
 	uint8_t const *pLUT_B = pLUT[2];
 
-	for (y = height; y != 0U; --y) {
-		for (uint32_t x = 0; x < width; x++) {
+	for (y = destHeight; y != 0U; --y) {
+		uint32_t destIndex = 0;
+		for (uint32_t srcIndex = 0; srcIndex < absSrcStride; srcIndex++) {
+			uint8_t idx = pSrc[srcIndex];
+			for (int32_t ct = 4; ct >= 0; ct-=4) {
+				uint8_t val = (idx >> ct) & 0xF;
+				pR[destIndex] = pLUT_R[val];
+				pG[destIndex] = pLUT_G[val];
+				pB[destIndex] = pLUT_B[val];
+				destIndex++;
+				if (destIndex == destWidth)
+					break;
+			}
+		}
+		pSrc += srcStride;
+		pR += pDstStride[0];
+		pG += pDstStride[1];
+		pB += pDstStride[2];
+	}
+}
+
+static void grk_applyLUT8u_8u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
+		int32_t *const*pDst, int32_t const *pDstStride,
+		uint8_t const *const*pLUT, uint32_t destWidth, uint32_t destHeight) {
+	uint32_t y;
+	int32_t *pR = pDst[0];
+	int32_t *pG = pDst[1];
+	int32_t *pB = pDst[2];
+	uint8_t const *pLUT_R = pLUT[0];
+	uint8_t const *pLUT_G = pLUT[1];
+	uint8_t const *pLUT_B = pLUT[2];
+
+	for (y = destHeight; y != 0U; --y) {
+		for (uint32_t x = 0; x < destWidth; x++) {
 			uint8_t idx = pSrc[x];
 			pR[x] = (int32_t) pLUT_R[idx];
 			pG[x] = (int32_t) pLUT_G[idx];
@@ -272,6 +343,54 @@ static grk_image* bmp8toimage(const uint8_t *pData, uint32_t srcStride,
 		pDstStride[2] = (int32_t) image->comps[0].stride;
 		grk_applyLUT8u_8u32s_C1P3R(pSrc, -(int32_t) srcStride, pDst, pDstStride,
 				pLUT, width, height);
+	}
+	return image;
+}
+static grk_image* bmp4toimage(const uint8_t *pData, uint32_t srcStride,
+		grk_image *image, uint8_t const *const*pLUT) {
+	uint32_t width = image->comps[0].w;
+	uint32_t height = image->comps[0].h;
+	auto pSrc = pData + (height - 1U) * srcStride;
+	if (image->numcomps == 1U) {
+		grk_applyLUT8u_4u32s_C1R(pSrc, -(int32_t) srcStride, image->comps[0].data,
+				(int32_t) image->comps[0].stride, pLUT[0], width, height);
+	} else {
+		int32_t *pDst[3];
+		int32_t pDstStride[3];
+
+		pDst[0] = image->comps[0].data;
+		pDst[1] = image->comps[1].data;
+		pDst[2] = image->comps[2].data;
+		pDstStride[0] = (int32_t) image->comps[0].stride;
+		pDstStride[1] = (int32_t) image->comps[0].stride;
+		pDstStride[2] = (int32_t) image->comps[0].stride;
+		grk_applyLUT8u_4u32s_C1P3R(pSrc, -(int32_t) srcStride, pDst, pDstStride,
+				pLUT, width, height);
+	}
+	return image;
+}
+static grk_image* bmp1toimage(const uint8_t *pData, uint32_t srcStride,
+		grk_image *image, uint8_t const *const*pLUT) {
+	uint32_t width = image->comps[0].w;
+	uint32_t height = image->comps[0].h;
+	auto pSrc = pData + (height - 1U) * srcStride;
+	if (image->numcomps == 1U) {
+		grk_applyLUT8u_1u32s_C1R(pSrc, -(int32_t) srcStride, image->comps[0].data,
+				(int32_t) image->comps[0].stride, pLUT[0], width, height);
+	} else {
+		/*
+		int32_t *pDst[3];
+		int32_t pDstStride[3];
+
+		pDst[0] = image->comps[0].data;
+		pDst[1] = image->comps[1].data;
+		pDst[2] = image->comps[2].data;
+		pDstStride[0] = (int32_t) image->comps[0].stride;
+		pDstStride[1] = (int32_t) image->comps[0].stride;
+		pDstStride[2] = (int32_t) image->comps[0].stride;
+		grk_applyLUT8u_8u32s_C1P3R(pSrc, -(int32_t) srcStride, pDst, pDstStride,
+				pLUT, width, height);
+				*/
 	}
 	return image;
 }
@@ -555,6 +674,7 @@ static grk_image* bmptoimage(const char *filename,
 	pLUT[0] = lut_R;
 	pLUT[1] = lut_G;
 	pLUT[2] = lut_B;
+	bool handled = true;
 
 	if (readFromStdin) {
 		if (!grk::grok_set_binary_mode(stdin))
@@ -578,9 +698,9 @@ static grk_image* bmptoimage(const char *filename,
 		goto cleanup;
 	/* Load palette */
 	if (Info_h.biBitCount <= 8U) {
-		memset(&lut_R[0], 0, sizeof(lut_R));
-		memset(&lut_G[0], 0, sizeof(lut_G));
-		memset(&lut_B[0], 0, sizeof(lut_B));
+		memset(lut_R, 0, sizeof(lut_R));
+		memset(lut_G, 0, sizeof(lut_G));
+		memset(lut_B, 0, sizeof(lut_B));
 
 		palette_len = Info_h.biClrUsed;
 		if ((palette_len == 0U) && (Info_h.biBitCount <= 8U)) {
@@ -722,79 +842,136 @@ static grk_image* bmptoimage(const char *filename,
 			+ 1U;
 
 	/* Read the data */
-	if (Info_h.biBitCount == 24 && Info_h.biCompression == 0) { /*RGB */
-		bmp24toimage(pData, bmpStride, image);
-	} else if (Info_h.biBitCount == 8 && Info_h.biCompression == 0) { /* RGB 8bpp Indexed */
-		bmp8toimage(pData, bmpStride, image, pLUT);
-	} else if (Info_h.biBitCount == 8 && Info_h.biCompression == 1) { /*RLE8*/
-		bmp8toimage(pData, bmpStride, image, pLUT);
-	} else if (Info_h.biBitCount == 4 && Info_h.biCompression == 2) { /*RLE4*/
-		bmp8toimage(pData, bmpStride, image, pLUT); /* RLE 4 gets decoded as 8 bits data for now */
-	} else if (Info_h.biBitCount == 32 && Info_h.biCompression == 0) { /* RGBX */
-		bmpmask32toimage(pData, bmpStride, image, 0x00FF0000U, 0x0000FF00U,
-				0x000000FFU, 0x00000000U);
-	} else if (Info_h.biBitCount == 32 && Info_h.biCompression == 3) { /* BITFIELDS bit mask */
-		bool fail = false;
-		bool hasAlpha = image->numcomps > 3;
-		// sanity check on bit masks
-		uint32_t m[4] = {Info_h.biRedMask,
-							Info_h.biGreenMask,
-								Info_h.biBlueMask,
-									Info_h.biAlphaMask};
-		for (uint32_t i = 0; i < image->numcomps; ++i){
-			int lead = grk::count_leading_zeros(m[i]);
-			int trail = grk::count_trailing_zeros(m[i]);
-			int cnt = grk::population_count(m[i]);
-			// check contiguous
-			if (lead + trail + cnt != 32){
-				spdlog::error("RGB(A) bit masks must be contiguous");
-				fail = true;
+	switch(Info_h.biCompression){
+	case 0:
+		switch (Info_h.biBitCount) {
+			case 32:		/* RGBX */
+				bmpmask32toimage(pData, bmpStride, image, 0x00FF0000U, 0x0000FF00U,
+						0x000000FFU, 0x00000000U);
 				break;
-			}
-			// check supported precision
-			if (cnt > 16){
-				spdlog::error("RGB(A) bit mask with precision ({0:d}) greater than 16 is not supported",cnt);
-				fail = true;
-			}
+			case 24:  	/*RGB */
+				bmp24toimage(pData, bmpStride, image);
+				break;
+			case 16:	/*RGBX */
+				bmpmask16toimage(pData, bmpStride, image, 0x7C00U, 0x03E0U, 0x001FU,
+						0x0000U);
+				break;
+			case 8: 	/* RGB 8bpp Indexed */
+				bmp8toimage(pData, bmpStride, image, pLUT);
+				break;
+			case 4:    /* RGB 4bpp Indexed */
+				bmp4toimage(pData, bmpStride, image, pLUT);
+				break;
+			case 1: 	/* Grayscale 1bpp Indexed */
+				if (image->numcomps != 1U){
+					spdlog::error("RGB bitmap not supported");
+					handled = false;
+					break;
+				}
+				bmp1toimage(pData, bmpStride, image, pLUT);
+				break;
+			default:
+				handled = false;
+				break;
 		}
-		// check overlap
-		if ( (m[0]&m[1]) || (m[0]&m[2]) || 	(m[1]&m[2]) )	{
-			spdlog::error("RGB(A) bit masks must not overlap");
-			fail = true;
-		}
-		if (hasAlpha && !fail){
-			if ( (m[0]&m[3]) || (m[1]&m[3]) || (m[2]&m[3]) )	{
-				spdlog::error("RGB(A) bit masks must not overlap");
-				fail = true;
+		break;
+		case 1:
+			switch (Info_h.biBitCount) {
+				case 8:		/*RLE8*/
+					bmp8toimage(pData, bmpStride, image, pLUT);
+					break;
+				default:
+					handled = false;
+					break;
 			}
+		break;
+	case 2:
+		switch (Info_h.biBitCount) {
+			case 4:		 /*RLE4*/
+				bmp8toimage(pData, bmpStride, image, pLUT); /* RLE 4 gets decoded as 8 bits data for now */
+				break;
+			default:
+				handled = false;
+				break;
 		}
+		break;
+	case 3:
+		switch (Info_h.biBitCount) {
+			case 32: /* BITFIELDS bit mask */
+				{
+				bool fail = false;
+				bool hasAlpha = image->numcomps > 3;
+				// sanity check on bit masks
+				uint32_t m[4] = {Info_h.biRedMask,
+									Info_h.biGreenMask,
+										Info_h.biBlueMask,
+											Info_h.biAlphaMask};
+				for (uint32_t i = 0; i < image->numcomps; ++i){
+					int lead = grk::count_leading_zeros(m[i]);
+					int trail = grk::count_trailing_zeros(m[i]);
+					int cnt = grk::population_count(m[i]);
+					// check contiguous
+					if (lead + trail + cnt != 32){
+						spdlog::error("RGB(A) bit masks must be contiguous");
+						fail = true;
+						break;
+					}
+					// check supported precision
+					if (cnt > 16){
+						spdlog::error("RGB(A) bit mask with precision ({0:d}) greater than 16 is not supported",cnt);
+						fail = true;
+					}
+				}
+				// check overlap
+				if ( (m[0]&m[1]) || (m[0]&m[2]) || 	(m[1]&m[2]) )	{
+					spdlog::error("RGB(A) bit masks must not overlap");
+					fail = true;
+				}
+				if (hasAlpha && !fail){
+					if ( (m[0]&m[3]) || (m[1]&m[3]) || (m[2]&m[3]) )	{
+						spdlog::error("RGB(A) bit masks must not overlap");
+						fail = true;
+					}
+				}
 
-		if (fail){
-			spdlog::error("RGB(A) bit masks:\n"
-					"{0:b}\n"
-					"{0:b}\n"
-					"{0:b}\n"
-					"{0:b}",m[0],m[1],m[2],m[3]);
-			grk_image_destroy(image);
-			image = nullptr;
-			goto cleanup;
-		}
+				if (fail){
+					spdlog::error("RGB(A) bit masks:\n"
+							"{0:b}\n"
+							"{0:b}\n"
+							"{0:b}\n"
+							"{0:b}",m[0],m[1],m[2],m[3]);
+					grk_image_destroy(image);
+					image = nullptr;
+					goto cleanup;
+				}
 
-		bmpmask32toimage(pData, bmpStride, image, Info_h.biRedMask,
-				Info_h.biGreenMask, Info_h.biBlueMask, Info_h.biAlphaMask);
-	} else if (Info_h.biBitCount == 16 && Info_h.biCompression == 0) { /* RGBX */
-		bmpmask16toimage(pData, bmpStride, image, 0x7C00U, 0x03E0U, 0x001FU,
-				0x0000U);
-	} else if (Info_h.biBitCount == 16 && Info_h.biCompression == 3) { /* BITFIELDS bit mask*/
-		if ((Info_h.biRedMask == 0U) && (Info_h.biGreenMask == 0U)
-				&& (Info_h.biBlueMask == 0U)) {
-			Info_h.biRedMask = 0xF800U;
-			Info_h.biGreenMask = 0x07E0U;
-			Info_h.biBlueMask = 0x001FU;
+				bmpmask32toimage(pData, bmpStride, image, Info_h.biRedMask,
+						Info_h.biGreenMask, Info_h.biBlueMask, Info_h.biAlphaMask);
+				}
+				break;
+			case 16:  /* BITFIELDS bit mask*/
+				{
+				if ((Info_h.biRedMask == 0U) && (Info_h.biGreenMask == 0U)
+								&& (Info_h.biBlueMask == 0U)) {
+							Info_h.biRedMask = 0xF800U;
+							Info_h.biGreenMask = 0x07E0U;
+							Info_h.biBlueMask = 0x001FU;
+						}
+						bmpmask16toimage(pData, bmpStride, image, Info_h.biRedMask,
+								Info_h.biGreenMask, Info_h.biBlueMask, Info_h.biAlphaMask);
+				}
+				break;
+			default:
+				handled = false;
+				break;
 		}
-		bmpmask16toimage(pData, bmpStride, image, Info_h.biRedMask,
-				Info_h.biGreenMask, Info_h.biBlueMask, Info_h.biAlphaMask);
-	} else {
+		break;
+
+	default:
+		handled = false;
+		break;
+	}
+	if (!handled){
 		grk_image_destroy(image);
 		image = nullptr;
 		spdlog::error(
