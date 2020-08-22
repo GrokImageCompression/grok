@@ -130,6 +130,40 @@ static void grk_applyLUT8u_8u32s_C1R(uint8_t const *pSrc,
 	}
 }
 
+static void grk_applyLUT8u_1u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
+		int32_t *const*pDst, int32_t const *pDstStride,
+		uint8_t const *const*pLUT, uint32_t destWidth, uint32_t destHeight) {
+	uint32_t absSrcStride = std::abs(srcStride);
+	uint32_t y;
+	int32_t *pR = pDst[0];
+	int32_t *pG = pDst[1];
+	int32_t *pB = pDst[2];
+	uint8_t const *pLUT_R = pLUT[0];
+	uint8_t const *pLUT_G = pLUT[1];
+	uint8_t const *pLUT_B = pLUT[2];
+
+	for (y = destHeight; y != 0U; --y) {
+		uint32_t destIndex = 0;
+		for (uint32_t srcIndex = 0; srcIndex < absSrcStride; srcIndex++) {
+			uint8_t idx = pSrc[srcIndex];
+			for (int32_t ct = 7; ct >= 0; ct--) {
+				uint8_t val = (idx >> ct) & 0x1;
+				pR[destIndex] = (int32_t) pLUT_R[val];
+				pG[destIndex] = (int32_t) pLUT_G[val];
+				pB[destIndex] = (int32_t) pLUT_B[val];
+				destIndex++;
+				if (destIndex == destWidth)
+					break;
+			}
+		}
+		pSrc += srcStride;
+		pR += pDstStride[0];
+		pG += pDstStride[1];
+		pB += pDstStride[2];
+	}
+}
+
+
 static void grk_applyLUT8u_4u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
 		int32_t *const*pDst, int32_t const *pDstStride,
 		uint8_t const *const*pLUT, uint32_t destWidth, uint32_t destHeight) {
@@ -387,7 +421,6 @@ static grk_image* bmp1toimage(const uint8_t *pData, uint32_t srcStride,
 		grk_applyLUT8u_1u32s_C1R(pSrc, -(int32_t) srcStride, image->comps[0].data,
 				(int32_t) image->comps[0].stride, pLUT[0], width, height);
 	} else {
-		/*
 		int32_t *pDst[3];
 		int32_t pDstStride[3];
 
@@ -397,9 +430,8 @@ static grk_image* bmp1toimage(const uint8_t *pData, uint32_t srcStride,
 		pDstStride[0] = (int32_t) image->comps[0].stride;
 		pDstStride[1] = (int32_t) image->comps[0].stride;
 		pDstStride[2] = (int32_t) image->comps[0].stride;
-		grk_applyLUT8u_8u32s_C1P3R(pSrc, -(int32_t) srcStride, pDst, pDstStride,
+		grk_applyLUT8u_1u32s_C1P3R(pSrc, -(int32_t) srcStride, pDst, pDstStride,
 				pLUT, width, height);
-				*/
 	}
 	return image;
 }
@@ -877,11 +909,6 @@ static grk_image* bmptoimage(const char *filename,
 				bmp4toimage(pData, bmpStride, image, pLUT);
 				break;
 			case 1: 	/* Grayscale 1bpp Indexed */
-				if (image->numcomps != 1U){
-					spdlog::error("RGB bitmap not supported");
-					handled = false;
-					break;
-				}
 				bmp1toimage(pData, bmpStride, image, pLUT);
 				break;
 			default:
