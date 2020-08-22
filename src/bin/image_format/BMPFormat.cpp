@@ -460,7 +460,7 @@ static bool bmp_read_info_header(FILE *INPUT, GRK_BITMAPINFOHEADER *header) {
 		return false;
 
 	switch (header->biSize) {
-	case 12U: /* BITMAPCOREHEADER */
+	case 12U: /* OS2 BITMAPCOREHEADER */
 	case 40U: /* BITMAPINFOHEADER */
 	case 52U: /* BITMAPV2INFOHEADER */
 	case 56U: /* BITMAPV3INFOHEADER */
@@ -471,10 +471,20 @@ static bool bmp_read_info_header(FILE *INPUT, GRK_BITMAPINFOHEADER *header) {
 		spdlog::error("unknown BMP header size {}", header->biSize);
 		return false;
 	}
-	if (!get_int(INPUT, &header->biWidth))
-		return false;
-	if (!get_int(INPUT, &header->biHeight))
-		return false;
+	if (header->biSize == 12){	//OS2
+		uint16_t temp;
+		if (!get_int(INPUT, &temp))
+			return false;
+		header->biWidth = temp;
+		if (!get_int(INPUT, &temp))
+			return false;
+		header->biHeight = temp;
+	} else {
+		if (!get_int(INPUT, &header->biWidth))
+			return false;
+		if (!get_int(INPUT, &header->biHeight))
+			return false;
+	}
 	if (!get_int(INPUT, &header->biPlanes))
 		return false;
 	if (!get_int(INPUT, &header->biBitCount))
@@ -738,6 +748,10 @@ static grk_image* bmptoimage(const char *filename,
 		goto cleanup;
 	if (!bmp_read_info_header(INPUT, &Info_h))
 		goto cleanup;
+	if (Info_h.biSize == 12){
+		spdlog::error("OS2 file header not supported");
+		goto cleanup;
+	}
 	if (Info_h.biHeight < 0){
 		topDown = true;
 		Info_h.biHeight = -Info_h.biHeight;
