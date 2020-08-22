@@ -187,18 +187,18 @@ bool jpeg2000_file_format(const char *fname, GRK_SUPPORTED_FILE_FMT *fmt) {
 	const char *magic_s;
 	GRK_SUPPORTED_FILE_FMT ext_format = GRK_UNK_FMT, magic_format = GRK_UNK_FMT;
 	uint8_t buf[12];
-	size_t l_nb_read;
+	size_t nb_read;
 
 	reader = fopen(fname, "rb");
 	if (reader == nullptr)
 		return false;
 
 	memset(buf, 0, 12);
-	l_nb_read = fread(buf, 1, 12, reader);
+	nb_read = fread(buf, 1, 12, reader);
 	if (!grk::safe_fclose(reader))
 		return false;
 
-	if (l_nb_read != 12)
+	if (nb_read != 12)
 		return false;
 
 	int temp = get_file_format(fname);

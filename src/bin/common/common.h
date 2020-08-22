@@ -145,7 +145,7 @@ template<typename T> inline bool readBytes(FILE *fp, grk_image *image,
 	while (i < totalSize) {
 		uint64_t toRead = min(chunkSize, (uint64_t) (totalSize - i));
 		size_t bytesRead = fread(chunk, sizeof(T), toRead, fp);
-		if (!bytesRead)
+		if (bytesRead != toRead)
 			break;
 		T *chunkPtr = chunk;
 		for (size_t ct = 0; ct < bytesRead; ++ct) {
