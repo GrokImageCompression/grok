@@ -40,14 +40,14 @@ typedef struct {
 
 typedef struct {
 	uint32_t biSize; 			/* Size of the structure in bytes */
-	uint32_t biWidth; 			/* Width of the image in pixels */
-	uint32_t biHeight; 			/* Height of the image in pixels */
+	int32_t biWidth; 			/* Width of the image in pixels */
+	int32_t biHeight; 			/* Height of the image in pixels */
 	uint16_t biPlanes; 			/* 1 */
 	uint16_t biBitCount; 		/* Number of color bits per pixels */
 	uint32_t biCompression; 	/* Type of encoding 0: none 1: RLE8 2: RLE4 */
 	uint32_t biSizeImage; 		/* Size of the image in bytes */
-	uint32_t biXpelsPerMeter; 	/* Horizontal (X) resolution in pixels/meter */
-	uint32_t biYpelsPerMeter; 	/* Vertical (Y) resolution in pixels/meter */
+	int32_t biXpelsPerMeter; 	/* Horizontal (X) resolution in pixels/meter */
+	int32_t biYpelsPerMeter; 	/* Vertical (Y) resolution in pixels/meter */
 	uint32_t biClrUsed; 		/* Number of color used in the image (0: ALL) */
 	uint32_t biClrImportant; 	/* Number of important color (0: ALL) */
 	uint32_t biRedMask; 		/* Red channel bit mask */
@@ -115,14 +115,16 @@ static void grk_applyLUT8u_4u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
 	}
 }
 
-static void grk_applyLUT8u_8u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
-		int32_t *pDst, int32_t dstStride, uint8_t const *pLUT, uint32_t width,
-		uint32_t height) {
+static void grk_applyLUT8u_8u32s_C1R(uint8_t const *pSrc,
+									int32_t srcStride,
+									int32_t *pDst,
+									int32_t dstStride,
+									uint8_t const *pLUT,
+									uint32_t width,
+									uint32_t height) {
 	for (uint32_t y = height; y != 0U; --y) {
-		uint32_t x;
-		for (x = 0; x < width; x++) {
+		for (uint32_t x = 0; x < width; x++)
 			pDst[x] = (int32_t) pLUT[pSrc[x]];
-		}
 		pSrc += srcStride;
 		pDst += dstStride;
 	}
@@ -146,9 +148,9 @@ static void grk_applyLUT8u_4u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
 			uint8_t idx = pSrc[srcIndex];
 			for (int32_t ct = 4; ct >= 0; ct-=4) {
 				uint8_t val = (idx >> ct) & 0xF;
-				pR[destIndex] = pLUT_R[val];
-				pG[destIndex] = pLUT_G[val];
-				pB[destIndex] = pLUT_B[val];
+				pR[destIndex] = (int32_t) pLUT_R[val];
+				pG[destIndex] = (int32_t) pLUT_G[val];
+				pB[destIndex] = (int32_t) pLUT_B[val];
 				destIndex++;
 				if (destIndex == destWidth)
 					break;
@@ -324,13 +326,20 @@ static void bmpmask16toimage(const uint8_t *pData, uint32_t srcStride,
 	}
 }
 static grk_image* bmp8toimage(const uint8_t *pData, uint32_t srcStride,
-		grk_image *image, uint8_t const *const*pLUT) {
+								grk_image *image, uint8_t const *const*pLUT,
+								bool topDown) {
 	uint32_t width = image->comps[0].w;
 	uint32_t height = image->comps[0].h;
-	auto pSrc = pData + (height - 1U) * srcStride;
+	auto pSrc = topDown ? pData : (pData + (height - 1U) * srcStride);
+	int32_t s_stride = topDown ? (int32_t)srcStride : (-(int32_t)srcStride);
 	if (image->numcomps == 1U) {
-		grk_applyLUT8u_8u32s_C1R(pSrc, -(int32_t) srcStride, image->comps[0].data,
-				(int32_t) image->comps[0].stride, pLUT[0], width, height);
+		grk_applyLUT8u_8u32s_C1R(pSrc,
+								s_stride,
+								image->comps[0].data,
+								(int32_t) image->comps[0].stride,
+								pLUT[0],
+								width,
+								height);
 	} else {
 		int32_t *pDst[3];
 		int32_t pDstStride[3];
@@ -341,7 +350,7 @@ static grk_image* bmp8toimage(const uint8_t *pData, uint32_t srcStride,
 		pDstStride[0] = (int32_t) image->comps[0].stride;
 		pDstStride[1] = (int32_t) image->comps[0].stride;
 		pDstStride[2] = (int32_t) image->comps[0].stride;
-		grk_applyLUT8u_8u32s_C1P3R(pSrc, -(int32_t) srcStride, pDst, pDstStride,
+		grk_applyLUT8u_8u32s_C1P3R(pSrc, s_stride, pDst, pDstStride,
 				pLUT, width, height);
 	}
 	return image;
@@ -675,6 +684,7 @@ static grk_image* bmptoimage(const char *filename,
 	pLUT[1] = lut_G;
 	pLUT[2] = lut_B;
 	bool handled = true;
+	bool topDown = false;
 
 	if (readFromStdin) {
 		if (!grk::grok_set_binary_mode(stdin))
@@ -696,6 +706,10 @@ static grk_image* bmptoimage(const char *filename,
 		goto cleanup;
 	if (!bmp_read_info_header(INPUT, &Info_h))
 		goto cleanup;
+	if (Info_h.biHeight < 0){
+		topDown = true;
+		Info_h.biHeight = -Info_h.biHeight;
+	}
 	/* Load palette */
 	if (Info_h.biBitCount <= 8U) {
 		memset(lut_R, 0, sizeof(lut_R));
@@ -857,7 +871,7 @@ static grk_image* bmptoimage(const char *filename,
 						0x0000U);
 				break;
 			case 8: 	/* RGB 8bpp Indexed */
-				bmp8toimage(pData, bmpStride, image, pLUT);
+				bmp8toimage(pData, bmpStride, image, pLUT, topDown);
 				break;
 			case 4:    /* RGB 4bpp Indexed */
 				bmp4toimage(pData, bmpStride, image, pLUT);
@@ -878,7 +892,7 @@ static grk_image* bmptoimage(const char *filename,
 		case 1:
 			switch (Info_h.biBitCount) {
 				case 8:		/*RLE8*/
-					bmp8toimage(pData, bmpStride, image, pLUT);
+					bmp8toimage(pData, bmpStride, image, pLUT, topDown);
 					break;
 				default:
 					handled = false;
@@ -888,7 +902,7 @@ static grk_image* bmptoimage(const char *filename,
 	case 2:
 		switch (Info_h.biBitCount) {
 			case 4:		 /*RLE4*/
-				bmp8toimage(pData, bmpStride, image, pLUT); /* RLE 4 gets decoded as 8 bits data for now */
+				bmp8toimage(pData, bmpStride, image, pLUT, topDown); /* RLE 4 gets decoded as 8 bits data for now */
 				break;
 			default:
 				handled = false;
