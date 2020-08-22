@@ -551,8 +551,7 @@ static bool bmp_read_raw_data(FILE *INPUT, uint8_t *pData, uint32_t stride,
 	(void) (width);
 	if (fread(pData, sizeof(uint8_t), stride * height, INPUT)
 			!= (stride * height)) {
-		spdlog::error(
-				"fread return a number of element different from the expected.");
+		spdlog::error("fread read fewer than expected number of bytes.");
 		return false;
 	}
 	return true;
@@ -953,68 +952,69 @@ static grk_image* bmptoimage(const char *filename,
 	case 3:
 		switch (Info_h.biBitCount) {
 			case 32: /* BITFIELDS bit mask */
-				{
-				bool fail = false;
-				bool hasAlpha = image->numcomps > 3;
-				// sanity check on bit masks
-				uint32_t m[4] = {Info_h.biRedMask,
-									Info_h.biGreenMask,
-										Info_h.biBlueMask,
-											Info_h.biAlphaMask};
-				for (uint32_t i = 0; i < image->numcomps; ++i){
-					int lead = grk::count_leading_zeros(m[i]);
-					int trail = grk::count_trailing_zeros(m[i]);
-					int cnt = grk::population_count(m[i]);
-					// check contiguous
-					if (lead + trail + cnt != 32){
-						spdlog::error("RGB(A) bit masks must be contiguous");
-						fail = true;
-						break;
+				if (Info_h.biRedMask && Info_h.biGreenMask && 	Info_h.biBlueMask) {
+					bool fail = false;
+					bool hasAlpha = image->numcomps > 3;
+					// sanity check on bit masks
+					uint32_t m[4] = {Info_h.biRedMask,
+										Info_h.biGreenMask,
+											Info_h.biBlueMask,
+												Info_h.biAlphaMask};
+					for (uint32_t i = 0; i < image->numcomps; ++i){
+						int lead = grk::count_leading_zeros(m[i]);
+						int trail = grk::count_trailing_zeros(m[i]);
+						int cnt = grk::population_count(m[i]);
+						// check contiguous
+						if (lead + trail + cnt != 32){
+							spdlog::error("RGB(A) bit masks must be contiguous");
+							fail = true;
+							break;
+						}
+						// check supported precision
+						if (cnt > 16){
+							spdlog::error("RGB(A) bit mask with precision ({0:d}) greater than 16 is not supported",cnt);
+							fail = true;
+						}
 					}
-					// check supported precision
-					if (cnt > 16){
-						spdlog::error("RGB(A) bit mask with precision ({0:d}) greater than 16 is not supported",cnt);
-						fail = true;
-					}
-				}
-				// check overlap
-				if ( (m[0]&m[1]) || (m[0]&m[2]) || 	(m[1]&m[2]) )	{
-					spdlog::error("RGB(A) bit masks must not overlap");
-					fail = true;
-				}
-				if (hasAlpha && !fail){
-					if ( (m[0]&m[3]) || (m[1]&m[3]) || (m[2]&m[3]) )	{
+					// check overlap
+					if ( (m[0]&m[1]) || (m[0]&m[2]) || 	(m[1]&m[2]) )	{
 						spdlog::error("RGB(A) bit masks must not overlap");
 						fail = true;
 					}
-				}
-
-				if (fail){
-					spdlog::error("RGB(A) bit masks:\n"
-							"{0:b}\n"
-							"{0:b}\n"
-							"{0:b}\n"
-							"{0:b}",m[0],m[1],m[2],m[3]);
-					grk_image_destroy(image);
-					image = nullptr;
-					goto cleanup;
+					if (hasAlpha && !fail){
+						if ( (m[0]&m[3]) || (m[1]&m[3]) || (m[2]&m[3]) )	{
+							spdlog::error("RGB(A) bit masks must not overlap");
+							fail = true;
+						}
+					}
+					if (fail){
+						spdlog::error("RGB(A) bit masks:\n"
+								"{0:b}\n"
+								"{0:b}\n"
+								"{0:b}\n"
+								"{0:b}",m[0],m[1],m[2],m[3]);
+						grk_image_destroy(image);
+						image = nullptr;
+						goto cleanup;
+					}
+				}else {
+					spdlog::error("RGB(A) bit masks must be non-zero");
+					handled = false;
+					break;
 				}
 
 				bmpmask32toimage(pData, bmpStride, image, Info_h.biRedMask,
 						Info_h.biGreenMask, Info_h.biBlueMask, Info_h.biAlphaMask);
-				}
 				break;
 			case 16:  /* BITFIELDS bit mask*/
-				{
 				if ((Info_h.biRedMask == 0U) && (Info_h.biGreenMask == 0U)
-								&& (Info_h.biBlueMask == 0U)) {
-							Info_h.biRedMask = 0xF800U;
-							Info_h.biGreenMask = 0x07E0U;
-							Info_h.biBlueMask = 0x001FU;
-						}
-						bmpmask16toimage(pData, bmpStride, image, Info_h.biRedMask,
-								Info_h.biGreenMask, Info_h.biBlueMask, Info_h.biAlphaMask);
+						&& (Info_h.biBlueMask == 0U)) {
+					Info_h.biRedMask = 0xF800U;
+					Info_h.biGreenMask = 0x07E0U;
+					Info_h.biBlueMask = 0x001FU;
 				}
+				bmpmask16toimage(pData, bmpStride, image, Info_h.biRedMask,
+						Info_h.biGreenMask, Info_h.biBlueMask, Info_h.biAlphaMask);
 				break;
 			default:
 				handled = false;
@@ -1035,13 +1035,13 @@ static grk_image* bmptoimage(const char *filename,
 				Info_h.biBitCount);
 	}
 	cleanup:
-	free(pData);
-	if (!readFromStdin && INPUT) {
-		if (!grk::safe_fclose(INPUT)) {
-			grk_image_destroy(image);
-			image = nullptr;
+		free(pData);
+		if (!readFromStdin && INPUT) {
+			if (!grk::safe_fclose(INPUT)) {
+				grk_image_destroy(image);
+				image = nullptr;
+			}
 		}
-	}
 	return image;
 }
 static bool write_int(FILE *fdest, uint32_t val) {
