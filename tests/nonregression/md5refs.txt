@@ -309,3 +309,5 @@ c12abf323bfdb7e53c87be3138df5643  p0_14_tif-3.tif
 5e59d77971a42c57218670a25b1539bf  4bpp.bmp
 dc4f61d85db7583163fb95d6c3e07fd3  truncated.bmp
 7b0b690c2fb3abec14872e1b109b0d71  ppm_tile1.tif
+f7f00f884659eb3e34a2854e299041cd  BMP_v5_with_ICC.png
+263c6f911942f6c3a08c49124bc4f2e3  BMP_v5_with_ICC2.png

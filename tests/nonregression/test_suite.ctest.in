@@ -623,3 +623,8 @@ grk_decompress -i @INPUT_NR_PATH@/Bretagne2_ht_lossy.j2k -o @TEMP_PATH@/Bretagne
 grk_decompress -i @INPUT_NR_PATH@/4bpp.j2k   -o @TEMP_PATH@/4bpp.bmp
 grk_decompress -i @INPUT_NR_PATH@/truncated.jp2  -o @TEMP_PATH@/truncated.bmp
 grk_decompress -i @INPUT_CONF_PATH@/p1_05.j2k -o @TEMP_PATH@/ppm_tile1.tif -t 1
+
+grk_compress -i @INPUT_NR_PATH@/BMP_v5_with_ICC.bmp -o @TEMP_PATH@/BMP_v5_with_ICC.jp2
+grk_compress -i @INPUT_NR_PATH@/BMP_v5_with_ICC2.bmp -o @TEMP_PATH@/BMP_v5_with_ICC2.jp2
+grk_decompress -i @TEMP_PATH@/BMP_v5_with_ICC.jp2 -o @TEMP_PATH@/BMP_v5_with_ICC.png
+grk_decompress -i @TEMP_PATH@/BMP_v5_with_ICC2.jp2 -o @TEMP_PATH@/BMP_v5_with_ICC2.png
