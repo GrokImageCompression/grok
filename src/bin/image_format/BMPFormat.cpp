@@ -1058,6 +1058,7 @@ bool BMPFormat::encode() {
 	m_writeToStdout = grk::useStdio(outfile);
 	int ret = -1;
 	uint32_t w,h;
+	uint32_t colours_used, lut_size;
 
 	if (!grk::all_components_sanity_check(m_image))
 		goto cleanup;
@@ -1080,93 +1081,48 @@ bool BMPFormat::encode() {
 		goto cleanup;
 	w = m_image->comps[0].w;
 	h = m_image->comps[0].h;
+	colours_used = (m_image->numcomps == 3) ? 0 : 256 ;
+	lut_size = (m_image->numcomps == 3) ? 0 : 1024 ;
 
-	if (m_image->numcomps == 3) {
-		/* -->> -->> -->> -->>
-		 24 bits color
-		 <<-- <<-- <<-- <<-- */
+	if (fprintf(m_file, "BM") != 2)
+		goto cleanup;
 
-		if (fprintf(m_file, "BM") != 2)
-			goto cleanup;
+	/* FILE HEADER */
+	// total size
+	if (!write_int(m_file, 3 * (h * w +  h * (w % 2)) + 54 + lut_size))
+		goto cleanup;
+	// reserved
+	if (!write_int(m_file, 0))
+		goto cleanup;
+	if (!write_int(m_file, 54 + lut_size))
+		goto cleanup;
 
-		/* FILE HEADER */
-		/* ------------- */
-		if (!write_int(m_file, 3 * h * w + 3 * h * (w % 2) + 54))
-			goto cleanup;
-		if (!write_int(m_file, 0))
-			goto cleanup;
-		if (!write_int(m_file, 54))
-			goto cleanup;
-
-		/* INFO HEADER   */
-		/* ------------- */
-		if (!write_int(m_file, 40))
-			goto cleanup;
-		if (!write_int(m_file, w))
-			goto cleanup;
-		if (!write_int(m_file, h))
-			goto cleanup;
-		if (!write_short(m_file, 1))
-			goto cleanup;
-		if (!write_short(m_file, 24))
-			goto cleanup;
-		if (!write_int(m_file, 0))
-			goto cleanup;
-		if (!write_int(m_file, 3 * h * w + 3 * h * (w % 2)))
-			goto cleanup;
-		if (!write_int(m_file, 7834))
-			goto cleanup;
-		if (!write_int(m_file, 7834))
-			goto cleanup;
-		if (!write_int(m_file, 0))
-			goto cleanup;
-		if (!write_int(m_file, 0))
-			goto cleanup;
-
-
-	} else { /* Gray-scale */
-
-		/* -->> -->> -->> -->>
-		 8 bits non code (Gray scale)
-		 <<-- <<-- <<-- <<-- */
-
-		if (fprintf(m_file, "BM") != 2)
-			goto cleanup;
-
-		/* FILE HEADER */
-		/* ------------- */
-		if (!write_int(m_file, h * w + 54 + 1024 + h * (w % 2)))
-			goto cleanup;
-		if (!write_int(m_file, 0))
-			goto cleanup;
-		if (!write_int(m_file, 54 + 1024))
-			goto cleanup;
-
-		/* INFO HEADER   */
-		/* ------------- */
-		if (!write_int(m_file, 40))
-			goto cleanup;
-		if (!write_int(m_file, w))
-			goto cleanup;
-		if (!write_int(m_file, h))
-			goto cleanup;
-		if (!write_short(m_file, 1))
-			goto cleanup;
-		if (!write_short(m_file, 8))
-			goto cleanup;
-		if (!write_int(m_file, 0))
-			goto cleanup;
-		if (!write_int(m_file, h * w + h * (w % 2)))
-			goto cleanup;
-		if (!write_int(m_file, 7834))
-			goto cleanup;
-		if (!write_int(m_file, 7834))
-			goto cleanup;
-		if (!write_int(m_file, 256))
-			goto cleanup;
-		if (!write_int(m_file, 256))
+	/* INFO HEADER   */
+	if (!write_int(m_file, 40))
+		goto cleanup;
+	if (!write_int(m_file, w))
+		goto cleanup;
+	if (!write_int(m_file, h))
+		goto cleanup;
+	if (!write_short(m_file, 1))
+		goto cleanup;
+	if (!write_short(m_file, (uint16_t)m_image->numcomps * 8))
+		goto cleanup;
+	if (!write_int(m_file, 0))
+		goto cleanup;
+	if (!write_int(m_file, m_image->numcomps * (h * w + h * (w % 2))) )
+		goto cleanup;
+	for (uint32_t i = 0; i < 2; ++i){
+		double cap = m_image->capture_resolution[i] ?
+				m_image->capture_resolution[i] : 7834;
+		if (!write_int(m_file, (uint32_t)(cap + 0.5f)))
 			goto cleanup;
 	}
+	if (!write_int(m_file, colours_used))
+		goto cleanup;
+	if (!write_int(m_file, colours_used))
+		goto cleanup;
+
 	if (!encodeStrip(0))
 		goto cleanup;
 
@@ -1292,6 +1248,7 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 		} else if (m_image->comps[0].prec < 8)
 			scaleR = 255.0f/(1U << m_image->comps[0].prec);
 
+		// 1024-byte LUT
 		for (uint32_t i = 0; i < 256; i++) {
 			if (fprintf(m_file, "%c%c%c%c", i, i, i, 0) != 4)
 				goto cleanup;
