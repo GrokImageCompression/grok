@@ -1611,7 +1611,8 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			// Otherwise, we apply the profile
 			canStoreICC = (info->decoder_parameters->cod_format == GRK_TIF_FMT
 					|| info->decoder_parameters->cod_format == GRK_PNG_FMT
-					|| info->decoder_parameters->cod_format == GRK_JPG_FMT);
+					|| info->decoder_parameters->cod_format == GRK_JPG_FMT
+					|| info->decoder_parameters->cod_format == GRK_BMP_FMT);
 			if (info->decoder_parameters->force_rgb || !canStoreICC) {
 #if defined(GROK_HAVE_LIBLCMS)
 				if (!info->decoder_parameters->force_rgb)
