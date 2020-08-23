@@ -311,3 +311,5 @@ dc4f61d85db7583163fb95d6c3e07fd3  truncated.bmp
 7b0b690c2fb3abec14872e1b109b0d71  ppm_tile1.tif
 f7f00f884659eb3e34a2854e299041cd  BMP_v5_with_ICC.png
 263c6f911942f6c3a08c49124bc4f2e3  BMP_v5_with_ICC2.png
+a6cd67b1e9fcd8b94ba77e2e9b15e04d  BMP_v5_with_ICC.bmp
+3295911f26ee8a782dd3849256a16f26  BMP_v5_with_ICC2.bmp
