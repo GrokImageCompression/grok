@@ -46,7 +46,11 @@ typedef struct {
 	int32_t biHeight; 			/* Height of the image in pixels */
 	uint16_t biPlanes; 			/* 1 */
 	uint16_t biBitCount; 		/* Number of color bits per pixels */
-	uint32_t biCompression; 	/* Type of encoding 0: none 1: RLE8 2: RLE4 */
+	uint32_t biCompression; 	/* Type of encoding:
+	 	 	 	 	 	 	 	   0: none
+	 	 	 	 	 	 	 	   1: RLE8
+	 	 	 	 	 	 	 	   2: RLE4
+	 	 	 	 	 	 	 	   3: BITFIELD */
 	uint32_t biSizeImage; 		/* Size of the image in bytes */
 	int32_t biXpelsPerMeter; 	/* Horizontal (X) resolution in pixels/meter */
 	int32_t biYpelsPerMeter; 	/* Vertical (Y) resolution in pixels/meter */
@@ -62,7 +66,7 @@ typedef struct {
 	uint32_t biGreenGamma; 		/* Green channel gamma */
 	uint32_t biBlueGamma; 		/* Blue channel gamma */
 	uint32_t biIntent; 			/* Intent */
-	uint32_t biIccProfileData; 	/* ICC profile data */
+	uint32_t biIccProfileData; 	/* offset to ICC profile data */
 	uint32_t biIccProfileSize; 	/* ICC profile size */
 	uint32_t biReserved; 		/* Reserved */
 } GRK_BITMAPINFOHEADER;
@@ -461,7 +465,15 @@ static bool bmp_read_file_header(FILE *INPUT, GRK_BITMAPFILEHEADER *header) {
 		return false;
 	return true;
 }
-static bool bmp_read_info_header(FILE *INPUT, GRK_BITMAPINFOHEADER *header) {
+
+const uint32_t BITMAPCOREHEADER_LENGTH = 12U;
+const uint32_t BITMAPINFOHEADER_LENGTH = 40U;
+const uint32_t BITMAPV2INFOHEADER_LENGTH = 52U;
+const uint32_t BITMAPV3INFOHEADER_LENGTH = 56U;
+const uint32_t BITMAPV4HEADER_LENGTH = 108U;
+const uint32_t BITMAPV5HEADER_LENGTH = 124U;
+
+static bool bmp_read_info_header(FILE *INPUT, GRK_BITMAPFILEHEADER *file_header, GRK_BITMAPINFOHEADER *header) {
 	memset(header, 0, sizeof(*header));
 	/* INFO HEADER */
 	/* ------------- */
@@ -469,18 +481,18 @@ static bool bmp_read_info_header(FILE *INPUT, GRK_BITMAPINFOHEADER *header) {
 		return false;
 
 	switch (header->biSize) {
-	case 12U: /* OS2 BITMAPCOREHEADER */
-	case 40U: /* BITMAPINFOHEADER */
-	case 52U: /* BITMAPV2INFOHEADER */
-	case 56U: /* BITMAPV3INFOHEADER */
-	case 108U: /* BITMAPV4HEADER */
-	case 124U: /* BITMAPV5HEADER */
+	case BITMAPCOREHEADER_LENGTH:
+	case BITMAPINFOHEADER_LENGTH:
+	case BITMAPV2INFOHEADER_LENGTH:
+	case BITMAPV3INFOHEADER_LENGTH:
+	case BITMAPV4HEADER_LENGTH:
+	case BITMAPV5HEADER_LENGTH:
 		break;
 	default:
 		spdlog::error("unknown BMP header size {}", header->biSize);
 		return false;
 	}
-	if (header->biSize == 12){	//OS2
+	if (header->biSize == BITMAPCOREHEADER_LENGTH){	//OS2
 		uint16_t temp;
 		if (!get_int(INPUT, &temp))
 			return false;
@@ -503,7 +515,7 @@ static bool bmp_read_info_header(FILE *INPUT, GRK_BITMAPINFOHEADER *header) {
 		spdlog::error("Bit count {} not supported.",header->biBitCount);
 		return false;
 	}
-	if (header->biSize >= 40U) {
+	if (header->biSize >= BITMAPINFOHEADER_LENGTH) {
 		if (!get_int(INPUT, &header->biCompression))
 			return false;
 		if (!get_int(INPUT, &header->biSizeImage))
@@ -516,18 +528,26 @@ static bool bmp_read_info_header(FILE *INPUT, GRK_BITMAPINFOHEADER *header) {
 			return false;
 		if (!get_int(INPUT, &header->biClrImportant))
 			return false;
+		//re-adjust header size
+		uint32_t defacto_header_size =
+				file_header->bfSize - fileHeaderSize  -
+					header->biClrUsed * 4 - header->biSizeImage;
+		if (defacto_header_size > header->biSize)
+			header->biSize = std::min<uint32_t>(defacto_header_size,BITMAPV5HEADER_LENGTH);
 	}
-	if (header->biSize >= 56U) {
+	if (header->biSize >= BITMAPV2INFOHEADER_LENGTH) {
 		if (!get_int(INPUT, &header->biRedMask))
 			return false;
 		if (!get_int(INPUT, &header->biGreenMask))
 			return false;
 		if (!get_int(INPUT, &header->biBlueMask))
 			return false;
+	}
+	if (header->biSize >= BITMAPV3INFOHEADER_LENGTH) {
 		if (!get_int(INPUT, &header->biAlphaMask))
 			return false;
 	}
-	if (header->biSize >= 108U) {
+	if (header->biSize >= BITMAPV4HEADER_LENGTH) {
 		if (!get_int(INPUT, &header->biColorSpaceType))
 			return false;
 		if (fread(&(header->biColorSpaceEP), 1U, sizeof(header->biColorSpaceEP),
@@ -542,7 +562,7 @@ static bool bmp_read_info_header(FILE *INPUT, GRK_BITMAPINFOHEADER *header) {
 		if (!get_int(INPUT, &header->biBlueGamma))
 			return false;
 	}
-	if (header->biSize >= 124U) {
+	if (header->biSize >= BITMAPV5HEADER_LENGTH) {
 		if (!get_int(INPUT, &header->biIntent))
 			return false;
 		if (!get_int(INPUT, &header->biIccProfileData))
@@ -749,7 +769,7 @@ static grk_image* bmptoimage(const char *filename,
 
 	if (!bmp_read_file_header(INPUT, &File_h))
 		goto cleanup;
-	if (!bmp_read_info_header(INPUT, &Info_h))
+	if (!bmp_read_info_header(INPUT, &File_h, &Info_h))
 		goto cleanup;
 	if (Info_h.biSize == 12){
 		spdlog::error("OS2 file header not supported");
