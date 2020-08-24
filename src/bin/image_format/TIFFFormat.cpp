@@ -1820,7 +1820,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 	int32_t *buffer32s = nullptr;
 	cvtPlanarToInterleaved cvtPxToCx = nullptr;
 	cvtFrom32 cvt32sToTif = nullptr;
-	bool success = true;
+	bool success = false;
 	int32_t firstExtraChannel = -1;
 	uint32_t num_colour_channels = 0;
 	size_t numExtraChannels = 0;
