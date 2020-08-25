@@ -57,7 +57,7 @@ struct grk_codec_private {
 			void (*destroy)(void *p_codec);
 
 			/** Setup decoder function handler */
-			void (*setup_decoder)(CodeStreamBase *codeStreamBase,  grk_dparameters  *p_param);
+			void (*init_decompress)(CodeStreamBase *codeStreamBase,  grk_dparameters  *p_param);
 
 			/** Set decompress area function handler */
 			bool (*set_decompress_area)(void *p_codec, grk_image *p_image,
@@ -230,7 +230,7 @@ const char* GRK_CALLCONV grk_version(void) {
 		codec->m_codec_data.m_decompression.destroy =
 				(void (*)(void*)) j2k_destroy;
 
-		codec->m_codec_data.m_decompression.setup_decoder = (void (*)(CodeStreamBase*,
+		codec->m_codec_data.m_decompression.init_decompress = (void (*)(CodeStreamBase*,
 				 grk_dparameters  * )) j2k_init_decompressor;
 
 		codec->m_codec_data.m_decompression.set_decompress_area = (bool (*)(void*,
@@ -257,7 +257,7 @@ const char* GRK_CALLCONV grk_version(void) {
 				grk_image **)) jp2_read_header;
 		codec->m_codec_data.m_decompression.destroy =
 				(void (*)(void*)) jp2_destroy;
-		codec->m_codec_data.m_decompression.setup_decoder = (void (*)(CodeStreamBase*,
+		codec->m_codec_data.m_decompression.init_decompress = (void (*)(CodeStreamBase*,
 				 grk_dparameters  * )) jp2_init_decompress;
 		codec->m_codec_data.m_decompression.set_decompress_area = (bool (*)(void*,
 				grk_image * , uint32_t, uint32_t, uint32_t, uint32_t)) jp2_set_decompress_area;
@@ -284,7 +284,7 @@ bool GRK_CALLCONV grk_init_decompress( grk_codec p_codec,
 	if (p_codec && parameters) {
 		auto codec = (grk_codec_private*) p_codec;
 		assert(codec->is_decompressor);
-		codec->m_codec_data.m_decompression.setup_decoder(codec->m_codeStreamBase,
+		codec->m_codec_data.m_decompression.init_decompress(codec->m_codeStreamBase,
 				parameters);
 		return true;
 	}

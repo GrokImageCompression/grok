@@ -133,6 +133,50 @@ struct FileFormat : public CodeStreamBase {
 	FileFormat(bool isDecoder);
 	~FileFormat();
 
+
+	/** Main header reading function handler */
+   bool read_header(BufferedStream *stream, grk_header_info  *header_info, grk_image **p_image);
+
+	/** Setup decoder function handler */
+  void init_decompress(grk_dparameters  *p_param);
+
+	/**
+	 * Sets the given area to be decoded. This function should be called right after grk_read_header
+	 * and before any tile header reading.
+	 *
+	 * @param	p_image     image
+	 * @param	start_x		the left position of the rectangle to decompress (in image coordinates).
+	 * @param	start_y		the up position of the rectangle to decompress (in image coordinates).
+	 * @param	end_x		the right position of the rectangle to decompress (in image coordinates).
+	 * @param	end_y		the bottom position of the rectangle to decompress (in image coordinates).
+
+	 *
+	 * @return	true			if the area could be set.
+	 */
+	bool set_decompress_area(grk_image *p_image,
+						uint32_t start_x,
+						uint32_t start_y,
+						uint32_t end_x,
+						uint32_t end_y);
+
+
+	/** Decoding function */
+   bool decompress( grk_plugin_tile *tile,	BufferedStream *stream, grk_image *p_image);
+
+	/** Reading function used after code stream if necessary */
+   bool end_decompress(BufferedStream *stream);
+
+   bool init_compress(grk_cparameters  *p_param,grk_image *p_image);
+
+   bool start_compress(BufferedStream *stream);
+
+   bool compress(grk_plugin_tile* tile,	BufferedStream *stream);
+
+   bool compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size, BufferedStream *stream);
+
+   bool end_compress(BufferedStream *stream);
+
+
 	bool decompress_tile(BufferedStream *stream, grk_image *p_image,
 			uint16_t tile_index);
 

@@ -128,13 +128,70 @@ struct  grk_dec_memory_marker_handler  {
 } ;
 
 struct CodeStreamBase {
+
    virtual ~CodeStreamBase(){}
+
+	/** Main header reading function handler */
+   virtual bool read_header(BufferedStream *stream, grk_header_info  *header_info, grk_image **p_image) = 0;
+
+	/** Decoding function */
+   virtual bool decompress( grk_plugin_tile *tile,	BufferedStream *stream, grk_image *p_image) = 0;
+
+	/** decompress tile*/
+   virtual bool decompress_tile(BufferedStream *stream,	grk_image *p_image,	uint16_t tile_index) = 0;
+
+	/** Reading function used after code stream if necessary */
+   virtual bool end_decompress(BufferedStream *stream) = 0;
+
+	/** Setup decoder function handler */
+   virtual void init_decompress(grk_dparameters  *p_param) = 0;
+
+	/** Set decompress area function handler */
+   virtual bool set_decompress_area(grk_image *p_image,
+		   uint32_t start_x, uint32_t end_x, uint32_t start_y,	uint32_t end_y) = 0;
+
+   virtual bool start_compress(BufferedStream *stream) = 0;
+
+   virtual bool init_compress(grk_cparameters  *p_param,grk_image *p_image) = 0;
+
+   virtual bool compress(grk_plugin_tile* tile,	BufferedStream *stream) = 0;
+
+   virtual bool compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size, BufferedStream *stream) = 0;
+
+   virtual bool end_compress(BufferedStream *stream) = 0;
+
 };
 
 struct CodeStream : public CodeStreamBase {
 
 	CodeStream(bool decode);
 	~CodeStream();
+
+	/** Main header reading function handler */
+   bool read_header(BufferedStream *stream, grk_header_info  *header_info, grk_image **p_image);
+
+	/** Decoding function */
+   bool decompress( grk_plugin_tile *tile,	BufferedStream *stream, grk_image *p_image);
+
+	/** decompress tile*/
+   bool decompress_tile(BufferedStream *stream,	grk_image *p_image,	uint16_t tile_index);
+
+	/** Reading function used after code stream if necessary */
+   bool end_decompress(BufferedStream *stream);
+
+	/** Setup decoder function handler */
+   void init_decompress(grk_dparameters  *p_param);
+
+   bool start_compress(BufferedStream *stream);
+
+   bool init_compress(grk_cparameters  *p_param,grk_image *p_image);
+
+   bool compress(grk_plugin_tile* tile,	BufferedStream *stream);
+
+   bool compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size, BufferedStream *stream);
+
+   bool end_compress(BufferedStream *stream);
+
 
 	bool isDecodingTilePartHeader() ;
 	TileCodingParams* get_current_decode_tcp(TileProcessor *tileProcessor);

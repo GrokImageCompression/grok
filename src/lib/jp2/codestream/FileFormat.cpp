@@ -1717,98 +1717,6 @@ static bool jp2_read_colr(FileFormat *fileFormat, uint8_t *p_colr_header_data,
 	return true;
 }
 
-bool jp2_decompress(FileFormat *fileFormat, grk_plugin_tile *tile, BufferedStream *stream,
-		grk_image *p_image) {
-	if (!p_image)
-		return false;
-
-	/* J2K decoding */
-	if (!j2k_decompress(fileFormat->codeStream, tile, stream, p_image)) {
-		GROK_ERROR("Failed to decompress JP2 file");
-		return false;
-	}
-
-	if (!jp2_check_color(p_image, &(fileFormat->color)))
-		return false;
-
-	/* Set Image Color Space */
-	switch (fileFormat->enumcs) {
-	case GRK_ENUM_CLRSPC_CMYK:
-		p_image->color_space = GRK_CLRSPC_CMYK;
-		break;
-	case GRK_ENUM_CLRSPC_CIE:
-		if (fileFormat->color.icc_profile_buf) {
-			if (((uint32_t*) fileFormat->color.icc_profile_buf)[1]
-					== GRK_DEFAULT_CIELAB_SPACE)
-				p_image->color_space = GRK_CLRSPC_DEFAULT_CIE;
-			else
-				p_image->color_space = GRK_CLRSPC_CUSTOM_CIE;
-		} else {
-			GROK_ERROR("CIE Lab image requires ICC profile buffer set");
-			return false;
-		}
-		break;
-	case GRK_ENUM_CLRSPC_SRGB:
-		p_image->color_space = GRK_CLRSPC_SRGB;
-		break;
-	case GRK_ENUM_CLRSPC_GRAY:
-		p_image->color_space = GRK_CLRSPC_GRAY;
-		break;
-	case GRK_ENUM_CLRSPC_SYCC:
-		p_image->color_space = GRK_CLRSPC_SYCC;
-		break;
-	case GRK_ENUM_CLRSPC_EYCC:
-		p_image->color_space = GRK_CLRSPC_EYCC;
-		break;
-	default:
-		p_image->color_space = GRK_CLRSPC_UNKNOWN;
-		break;
-	}
-	if (fileFormat->meth == 2 && fileFormat->color.icc_profile_buf)
-		p_image->color_space = GRK_CLRSPC_ICC;
-
-	if (fileFormat->color.jp2_pclr) {
-		/* Part 1, I.5.3.4: Either both or none : */
-		if (!fileFormat->color.jp2_pclr->cmap)
-			jp2_free_pclr(&(fileFormat->color));
-		else {
-			if (!jp2_apply_pclr(p_image, &(fileFormat->color)))
-				return false;
-		}
-	}
-
-	/* Apply channel definitions if needed */
-	if (fileFormat->color.jp2_cdef) {
-		jp2_apply_cdef(p_image, &(fileFormat->color));
-	}
-
-	// retrieve icc profile
-	if (fileFormat->color.icc_profile_buf) {
-		p_image->icc_profile_buf = fileFormat->color.icc_profile_buf;
-		p_image->icc_profile_len = fileFormat->color.icc_profile_len;
-		fileFormat->color.icc_profile_buf = nullptr;
-		fileFormat->color.icc_profile_len = 0;
-	}
-
-	// retrieve special uuids
-	for (uint32_t i = 0; i < fileFormat->numUuids; ++i) {
-		auto uuid = fileFormat->uuids + i;
-		if (memcmp(uuid->uuid, IPTC_UUID, 16) == 0) {
-			p_image->iptc_buf = uuid->buffer;
-			p_image->iptc_len = uuid->len;
-			uuid->buffer = nullptr;
-			uuid->len = 0;
-		} else if (memcmp(uuid->uuid, XMP_UUID, 16) == 0) {
-			p_image->xmp_buf = uuid->buffer;
-			p_image->xmp_len = uuid->len;
-			uuid->buffer = nullptr;
-			uuid->len = 0;
-		}
-	}
-
-	return true;
-}
-
 static bool jp2_write_jp2h(FileFormat *fileFormat, BufferedStream *stream) {
 	grk_jp2_img_header_writer_handler writers[32];
 	int32_t i, nb_writers = 0;
@@ -2014,11 +1922,8 @@ static bool jp2_write_jp(FileFormat *fileFormat, BufferedStream *stream) {
 /* ----------------------------------------------------------------------- */
 
 void jp2_init_decompress(FileFormat *fileFormat, grk_dparameters *parameters) {
-	/* set up the J2K codec */
-	j2k_init_decompressor(fileFormat->codeStream, parameters);
 
-	/* further JP2 initializations go here */
-	fileFormat->color.jp2_has_colour_specification_box = 0;
+	return fileFormat->init_decompress(parameters);
 
 }
 
@@ -2026,235 +1931,31 @@ void jp2_init_decompress(FileFormat *fileFormat, grk_dparameters *parameters) {
 /* JP2 compress interface                                             */
 /* ----------------------------------------------------------------------- */
 
+bool jp2_decompress(FileFormat *fileFormat, grk_plugin_tile *tile, BufferedStream *stream,
+		grk_image *p_image) {
+
+	return fileFormat->decompress(tile,stream,p_image);
+
+}
+
+
 bool jp2_init_compress(FileFormat *fileFormat, grk_cparameters *parameters,
 		grk_image *image) {
-	uint32_t i;
-	uint32_t depth_0;
-	uint32_t sign = 0;
-	uint32_t alpha_count = 0;
-	uint32_t color_channels = 0U;
 
-	if (!fileFormat || !parameters || !image)
-		return false;
+	return fileFormat->init_compress(parameters,image);
 
-	/* set up the J2K codec */
-	/* ------------------- */
-	if (j2k_init_compress(fileFormat->codeStream, parameters, image) == false)
-		return false;
-
-	/* set up the JP2 codec */
-	/* ------------------- */
-
-	/* Profile box */
-
-	fileFormat->brand = JP2_JP2; /* BR */
-	fileFormat->minversion = 0; /* MinV */
-	fileFormat->numcl = 1;
-	fileFormat->cl = (uint32_t*) grk_malloc(sizeof(uint32_t));
-	if (!fileFormat->cl) {
-		GROK_ERROR("Not enough memory when set up the JP2 encoder");
-		return false;
-	}
-	fileFormat->cl[0] = JP2_JP2; /* CL0 : JP2 */
-
-	/* Image Header box */
-	fileFormat->numcomps = image->numcomps; /* NC */
-	fileFormat->comps = (grk_jp2_comps*) grk_malloc(
-			fileFormat->numcomps * sizeof(grk_jp2_comps));
-	if (!fileFormat->comps) {
-		GROK_ERROR("Not enough memory when set up the JP2 encoder");
-		return false;
-	}
-
-	fileFormat->h = image->y1 - image->y0; /* HEIGHT */
-	fileFormat->w = image->x1 - image->x0; /* WIDTH */
-	depth_0 = image->comps[0].prec - 1;
-	sign = image->comps[0].sgnd;
-	fileFormat->bpc = depth_0 + (sign << 7);
-	for (i = 1; i < image->numcomps; i++) {
-		uint32_t depth = image->comps[i].prec - 1;
-		sign = image->comps[i].sgnd;
-		if (depth_0 != depth)
-			fileFormat->bpc = 255;
-	}
-	fileFormat->C = 7; /* C : Always 7 */
-	fileFormat->UnkC = 0; /* UnkC, colorspace specified in colr box */
-	fileFormat->IPR = 0; /* IPR, no intellectual property */
-
-	/* BitsPerComponent box */
-	for (i = 0; i < image->numcomps; i++) {
-		fileFormat->comps[i].bpcc = (uint8_t)(image->comps[i].prec - 1);
-		if (image->comps[i].sgnd)
-			fileFormat->comps[i].bpcc += (1 << 7);
-	}
-
-	/* Colour Specification box */
-	if (image->color_space == GRK_CLRSPC_ICC) {
-		fileFormat->meth = 2;
-		fileFormat->enumcs = GRK_ENUM_CLRSPC_UNKNOWN;
-		if (image->icc_profile_buf) {
-			// clean up existing icc profile in fileFormat struct
-			if (fileFormat->color.icc_profile_buf) {
-				delete[] fileFormat->color.icc_profile_buf;
-				fileFormat->color.icc_profile_buf = nullptr;
-			}
-			// copy icc profile from image to fileFormat struct
-			fileFormat->color.icc_profile_len = image->icc_profile_len;
-			fileFormat->color.icc_profile_buf = new uint8_t[fileFormat->color.icc_profile_len];
-			memcpy(fileFormat->color.icc_profile_buf, image->icc_profile_buf,
-					fileFormat->color.icc_profile_len);
-		}
-	} else {
-		fileFormat->meth = 1;
-		if (image->color_space == GRK_CLRSPC_CMYK)
-			fileFormat->enumcs = GRK_ENUM_CLRSPC_CMYK;
-		else if (image->color_space == GRK_CLRSPC_DEFAULT_CIE)
-			fileFormat->enumcs = GRK_ENUM_CLRSPC_CIE;
-		else if (image->color_space == GRK_CLRSPC_SRGB)
-			fileFormat->enumcs = GRK_ENUM_CLRSPC_SRGB; /* sRGB as defined by IEC 61966-2-1 */
-		else if (image->color_space == GRK_CLRSPC_GRAY)
-			fileFormat->enumcs = GRK_ENUM_CLRSPC_GRAY; /* greyscale */
-		else if (image->color_space == GRK_CLRSPC_SYCC)
-			fileFormat->enumcs = GRK_ENUM_CLRSPC_SYCC; /* YUV */
-		else if (image->color_space == GRK_CLRSPC_EYCC)
-			fileFormat->enumcs = GRK_ENUM_CLRSPC_EYCC; /* YUV */
-	}
-
-	//transfer buffer to uuid
-	if (image->iptc_len && image->iptc_buf) {
-		fileFormat->uuids[fileFormat->numUuids++] = grk_jp2_uuid(IPTC_UUID, image->iptc_buf,
-				image->iptc_len, true);
-		image->iptc_buf = nullptr;
-		image->iptc_len = 0;
-	}
-
-	//transfer buffer to uuid
-	if (image->xmp_len && image->xmp_buf) {
-		fileFormat->uuids[fileFormat->numUuids++] = grk_jp2_uuid(XMP_UUID, image->xmp_buf,
-				image->xmp_len, true);
-		image->xmp_buf = nullptr;
-		image->xmp_len = 0;
-	}
-
-	/* Component Definition box */
-	for (i = 0; i < image->numcomps; i++) {
-		if (image->comps[i].type != GRK_COMPONENT_TYPE_COLOUR) {
-			alpha_count++;
-			// technically, this is an error, but we will let it pass
-			if (image->comps[i].sgnd)
-				GROK_WARN("signed alpha channel %u",i);
-		}
-	}
-
-	switch (fileFormat->enumcs) {
-	case GRK_ENUM_CLRSPC_CMYK:
-		color_channels = 4;
-		break;
-	case GRK_ENUM_CLRSPC_CIE:
-	case GRK_ENUM_CLRSPC_SRGB:
-	case GRK_ENUM_CLRSPC_SYCC:
-	case GRK_ENUM_CLRSPC_EYCC:
-		color_channels = 3;
-		break;
-	case GRK_ENUM_CLRSPC_GRAY:
-		color_channels = 1;
-		break;
-	default:
-		// assume that last channel is alpha
-		if (alpha_count) {
-			if (image->numcomps > 1){
-				color_channels = image->numcomps - 1;
-				alpha_count = 1U;
-			}
-			else {
-				alpha_count = 0U;
-			}
-		}
-		break;
-	}
-	if (alpha_count) {
-		fileFormat->color.jp2_cdef = (grk_jp2_cdef*) grk_malloc(sizeof(grk_jp2_cdef));
-		if (!fileFormat->color.jp2_cdef) {
-			GROK_ERROR("Not enough memory to set up the JP2 encoder");
-			return false;
-		}
-		/* no memset needed, all values will be overwritten except if
-		 * fileFormat->color.jp2_cdef->info allocation fails, */
-		/* in which case fileFormat->color.jp2_cdef->info will be nullptr => valid for destruction */
-		fileFormat->color.jp2_cdef->info = (grk_jp2_cdef_info*) grk_malloc(
-				image->numcomps * sizeof(grk_jp2_cdef_info));
-		if (!fileFormat->color.jp2_cdef->info) {
-			/* memory will be freed by jp2_destroy */
-			GROK_ERROR("Not enough memory to set up the JP2 encoder");
-			return false;
-		}
-		fileFormat->color.jp2_cdef->n = (uint16_t) image->numcomps; /* cast is valid : image->numcomps [1,16384] */
-		for (i = 0U; i < color_channels; i++) {
-			fileFormat->color.jp2_cdef->info[i].cn = (uint16_t) i; /* cast is valid : image->numcomps [1,16384] */
-			fileFormat->color.jp2_cdef->info[i].typ = GRK_COMPONENT_TYPE_COLOUR;
-			fileFormat->color.jp2_cdef->info[i].asoc = (uint16_t) (i + 1U); /* No overflow + cast is valid : image->numcomps [1,16384] */
-		}
-		for (; i < image->numcomps; i++) {
-			fileFormat->color.jp2_cdef->info[i].cn = (uint16_t) i; /* cast is valid : image->numcomps [1,16384] */
-			fileFormat->color.jp2_cdef->info[i].typ = image->comps[i].type;
-			fileFormat->color.jp2_cdef->info[i].asoc = image->comps[i].association;
-		}
-	}
-    /*********************************************/
-
-	fileFormat->precedence = 0; /* PRECEDENCE */
-	fileFormat->approx = 0; /* APPROX */
-
-	fileFormat->has_capture_resolution = parameters->write_capture_resolution ||
-											parameters->write_capture_resolution_from_file;
-	if (parameters->write_capture_resolution) {
-		for (i = 0; i < 2; ++i) {
-			fileFormat->capture_resolution[i] = parameters->capture_resolution[i];
-		}
-	} else if (parameters->write_capture_resolution_from_file) {
-		for (i = 0; i < 2; ++i) {
-			fileFormat->capture_resolution[i] =
-					parameters->capture_resolution_from_file[i];
-		}
-	}
-	if (parameters->write_display_resolution) {
-		fileFormat->has_display_resolution = true;
-		fileFormat->display_resolution[0] = parameters->display_resolution[0];
-		fileFormat->display_resolution[1] = parameters->display_resolution[1];
-		//if display resolution equals (0,0), then use capture resolution
-		//if available
-		if (parameters->display_resolution[0] == 0 &&
-				parameters->display_resolution[1] == 0) {
-			if (fileFormat->has_capture_resolution) {
-				fileFormat->display_resolution[0] = parameters->capture_resolution[0];
-				fileFormat->display_resolution[1] = parameters->capture_resolution[1];
-			} else {
-				fileFormat->has_display_resolution = false;
-			}
-		}
-	}
-
-	return true;
 }
 
 bool jp2_compress(FileFormat *fileFormat, grk_plugin_tile *tile, BufferedStream *stream) {
-	return j2k_compress(fileFormat->codeStream, tile, stream);
+	return fileFormat->compress(tile, stream);
 }
 
 bool jp2_end_decompress(FileFormat *fileFormat, BufferedStream *stream) {
 
 	assert(fileFormat != nullptr);
-	assert(stream != nullptr);
 
-	/* customization of the end encoding */
-	if (!jp2_init_end_header_reading(fileFormat))
-		return false;
+	return fileFormat->end_decompress(stream);
 
-	/* write header */
-	if (!jp2_exec(fileFormat, fileFormat->m_procedure_list, stream))
-		return false;
-
-	return j2k_end_decompress(fileFormat->codeStream, stream);
 }
 
 bool jp2_end_compress(FileFormat *fileFormat, BufferedStream *stream) {
@@ -2497,35 +2198,9 @@ static bool jp2_exec(FileFormat *fileFormat, std::vector<jp2_procedure> *procs,
 
 bool jp2_start_compress(FileFormat *fileFormat, BufferedStream *stream) {
 	assert(fileFormat != nullptr);
-	assert(stream != nullptr);
 
-	/* customization of the validation */
-	if (!jp2_init_compress_validation(fileFormat))
-		return false;
+	return fileFormat->start_compress(stream);
 
-	/* validation of the parameters codec */
-	if (!jp2_exec(fileFormat, fileFormat->m_validation_list, stream))
-		return false;
-
-	/* customization of the encoding */
-	if (!jp2_init_header_writing(fileFormat))
-		return false;
-
-	// estimate if codec stream may be larger than 2^32 bytes
-	auto p_image = fileFormat->codeStream->m_input_image;
-	uint64_t image_size = 0;
-	for (auto i = 0U; i < p_image->numcomps; ++i) {
-		auto comp = p_image->comps + i;
-		image_size += (uint64_t) comp->w * comp->h * ((comp->prec + 7) / 8);
-	}
-	fileFormat->needs_xl_jp2c_box_length =
-			(image_size > (uint64_t) 1 << 30) ? true : false;
-
-	/* write header */
-	if (!jp2_exec(fileFormat, fileFormat->m_procedure_list, stream))
-		return false;
-
-	return j2k_start_compress(fileFormat->codeStream, stream);
 }
 
 static const grk_jp2_header_handler* jp2_find_handler(uint32_t id) {
@@ -2792,53 +2467,9 @@ static bool jp2_read_box(grk_jp2_box *box, uint8_t *p_data,
 bool jp2_read_header(FileFormat *fileFormat, BufferedStream *stream,
 		grk_header_info *header_info, grk_image **p_image) {
 	assert(fileFormat != nullptr);
-	assert(stream != nullptr);
 
-	/* customization of the validation */
-	if (!jp2_init_decompress_validation(fileFormat))
-		return false;
 
-	/* customization of the encoding */
-	if (!jp2_init_header_reading(fileFormat))
-		return false;
-
-	/* validation of the parameters codec */
-	if (!jp2_exec(fileFormat, fileFormat->m_validation_list, stream))
-		return false;
-
-	/* read header */
-	if (!jp2_exec(fileFormat, fileFormat->m_procedure_list, stream))
-		return false;
-
-	if (header_info) {
-		header_info->enumcs = fileFormat->enumcs;
-		header_info->color = fileFormat->color;
-
-		header_info->xml_data = fileFormat->xml.buffer;
-		header_info->xml_data_len = fileFormat->xml.len;
-
-		if (fileFormat->has_capture_resolution) {
-			header_info->has_capture_resolution = true;
-			for (int i = 0; i < 2; ++i)
-				header_info->capture_resolution[i] = fileFormat->capture_resolution[i];
-		}
-
-		if (fileFormat->has_display_resolution) {
-			header_info->has_display_resolution = true;
-			for (int i = 0; i < 2; ++i)
-				header_info->display_resolution[i] = fileFormat->display_resolution[i];
-		}
-	}
-	if (!j2k_read_header(fileFormat->codeStream, stream, header_info, p_image))
-		return false;
-
-	if (*p_image) {
-		for (int i = 0; i < 2; ++i) {
-			(*p_image)->capture_resolution[i] = fileFormat->capture_resolution[i];
-			(*p_image)->display_resolution[i] = fileFormat->display_resolution[i];
-		}
-	}
-	return true;
+	return fileFormat->read_header(stream,header_info,p_image);
 }
 
 static bool jp2_init_compress_validation(FileFormat *fileFormat) {
@@ -2891,7 +2522,7 @@ bool jp2_read_tile_header(FileFormat *fileFormat, uint16_t *tile_index,
 bool jp2_compress_tile(FileFormat *fileFormat,
 		uint16_t tile_index, uint8_t *p_data,
 		uint64_t uncompressed_data_size, BufferedStream *stream)	{
-	return j2k_compress_tile(fileFormat->codeStream, tile_index, p_data, uncompressed_data_size, stream);
+	return fileFormat->compress_tile(tile_index, p_data, uncompressed_data_size, stream);
 }
 
 void jp2_destroy(FileFormat *fileFormat) {
@@ -2900,7 +2531,7 @@ void jp2_destroy(FileFormat *fileFormat) {
 
 bool jp2_set_decompress_area(FileFormat *fileFormat, grk_image *p_image, uint32_t start_x,
 		uint32_t start_y, uint32_t end_x, uint32_t end_y) {
-	return j2k_set_decompress_area(fileFormat->codeStream, p_image, start_x, start_y, end_x,
+	return fileFormat->set_decompress_area(p_image, start_x, start_y, end_x,
 			end_y);
 }
 
@@ -2966,6 +2597,451 @@ FileFormat::~FileFormat() {
 	for (uint32_t i = 0; i < numUuids; ++i)
 		(uuids + i)->dealloc();
 }
+
+/** Main header reading function handler */
+bool FileFormat::read_header(BufferedStream *stream, grk_header_info  *header_info, grk_image **p_image){
+	assert(stream != nullptr);
+
+	/* customization of the validation */
+	if (!jp2_init_decompress_validation(this))
+		return false;
+
+	/* customization of the encoding */
+	if (!jp2_init_header_reading(this))
+		return false;
+
+	/* validation of the parameters codec */
+	if (!jp2_exec(this, m_validation_list, stream))
+		return false;
+
+	/* read header */
+	if (!jp2_exec(this, m_procedure_list, stream))
+		return false;
+
+	if (header_info) {
+		header_info->enumcs = enumcs;
+		header_info->color = color;
+
+		header_info->xml_data = xml.buffer;
+		header_info->xml_data_len = xml.len;
+
+		if (has_capture_resolution) {
+			header_info->has_capture_resolution = true;
+			for (int i = 0; i < 2; ++i)
+				header_info->capture_resolution[i] = capture_resolution[i];
+		}
+
+		if (has_display_resolution) {
+			header_info->has_display_resolution = true;
+			for (int i = 0; i < 2; ++i)
+				header_info->display_resolution[i] = display_resolution[i];
+		}
+	}
+	if (!j2k_read_header(codeStream, stream, header_info, p_image))
+		return false;
+
+	if (*p_image) {
+		for (int i = 0; i < 2; ++i) {
+			(*p_image)->capture_resolution[i] = capture_resolution[i];
+			(*p_image)->display_resolution[i] = display_resolution[i];
+		}
+	}
+	return true;
+}
+
+/** Decoding function */
+bool FileFormat::decompress( grk_plugin_tile *tile,	BufferedStream *stream, grk_image *p_image){
+
+	if (!p_image)
+		return false;
+
+	/* J2K decoding */
+	if (!j2k_decompress(codeStream, tile, stream, p_image)) {
+		GROK_ERROR("Failed to decompress JP2 file");
+		return false;
+	}
+
+	if (!jp2_check_color(p_image, &(color)))
+		return false;
+
+	/* Set Image Color Space */
+	switch (enumcs) {
+	case GRK_ENUM_CLRSPC_CMYK:
+		p_image->color_space = GRK_CLRSPC_CMYK;
+		break;
+	case GRK_ENUM_CLRSPC_CIE:
+		if (color.icc_profile_buf) {
+			if (((uint32_t*) color.icc_profile_buf)[1]
+					== GRK_DEFAULT_CIELAB_SPACE)
+				p_image->color_space = GRK_CLRSPC_DEFAULT_CIE;
+			else
+				p_image->color_space = GRK_CLRSPC_CUSTOM_CIE;
+		} else {
+			GROK_ERROR("CIE Lab image requires ICC profile buffer set");
+			return false;
+		}
+		break;
+	case GRK_ENUM_CLRSPC_SRGB:
+		p_image->color_space = GRK_CLRSPC_SRGB;
+		break;
+	case GRK_ENUM_CLRSPC_GRAY:
+		p_image->color_space = GRK_CLRSPC_GRAY;
+		break;
+	case GRK_ENUM_CLRSPC_SYCC:
+		p_image->color_space = GRK_CLRSPC_SYCC;
+		break;
+	case GRK_ENUM_CLRSPC_EYCC:
+		p_image->color_space = GRK_CLRSPC_EYCC;
+		break;
+	default:
+		p_image->color_space = GRK_CLRSPC_UNKNOWN;
+		break;
+	}
+	if (meth == 2 && color.icc_profile_buf)
+		p_image->color_space = GRK_CLRSPC_ICC;
+
+	if (color.jp2_pclr) {
+		/* Part 1, I.5.3.4: Either both or none : */
+		if (!color.jp2_pclr->cmap)
+			jp2_free_pclr(&(color));
+		else {
+			if (!jp2_apply_pclr(p_image, &(color)))
+				return false;
+		}
+	}
+
+	/* Apply channel definitions if needed */
+	if (color.jp2_cdef) {
+		jp2_apply_cdef(p_image, &(color));
+	}
+
+	// retrieve icc profile
+	if (color.icc_profile_buf) {
+		p_image->icc_profile_buf = color.icc_profile_buf;
+		p_image->icc_profile_len = color.icc_profile_len;
+		color.icc_profile_buf = nullptr;
+		color.icc_profile_len = 0;
+	}
+
+	// retrieve special uuids
+	for (uint32_t i = 0; i < numUuids; ++i) {
+		auto uuid = uuids + i;
+		if (memcmp(uuid->uuid, IPTC_UUID, 16) == 0) {
+			p_image->iptc_buf = uuid->buffer;
+			p_image->iptc_len = uuid->len;
+			uuid->buffer = nullptr;
+			uuid->len = 0;
+		} else if (memcmp(uuid->uuid, XMP_UUID, 16) == 0) {
+			p_image->xmp_buf = uuid->buffer;
+			p_image->xmp_len = uuid->len;
+			uuid->buffer = nullptr;
+			uuid->len = 0;
+		}
+	}
+
+	return true;
+}
+
+/** Reading function used after code stream if necessary */
+bool FileFormat::end_decompress(BufferedStream *stream){
+
+	assert(stream != nullptr);
+
+	/* customization of the end encoding */
+	if (!jp2_init_end_header_reading(this))
+		return false;
+
+	/* write header */
+	if (!jp2_exec(this, m_procedure_list, stream))
+		return false;
+
+	return codeStream->end_decompress(stream);
+}
+
+/** Setup decoder function handler */
+void FileFormat::init_decompress(grk_dparameters  *parameters){
+	/* set up the J2K codec */
+	j2k_init_decompressor(codeStream, parameters);
+
+	/* further JP2 initializations go here */
+	color.jp2_has_colour_specification_box = 0;
+}
+
+bool FileFormat::set_decompress_area(grk_image *p_image,
+					uint32_t start_x,
+					uint32_t start_y,
+					uint32_t end_x,
+					uint32_t end_y){
+	return codeStream->set_decompress_area(p_image, start_x, start_y, end_x, end_y);
+}
+
+bool FileFormat::start_compress(BufferedStream *stream){
+
+	assert(stream != nullptr);
+
+	/* customization of the validation */
+	if (!jp2_init_compress_validation(this))
+		return false;
+
+	/* validation of the parameters codec */
+	if (!jp2_exec(this, m_validation_list, stream))
+		return false;
+
+	/* customization of the encoding */
+	if (!jp2_init_header_writing(this))
+		return false;
+
+	// estimate if codec stream may be larger than 2^32 bytes
+	auto p_image = codeStream->m_input_image;
+	uint64_t image_size = 0;
+	for (auto i = 0U; i < p_image->numcomps; ++i) {
+		auto comp = p_image->comps + i;
+		image_size += (uint64_t) comp->w * comp->h * ((comp->prec + 7) / 8);
+	}
+	needs_xl_jp2c_box_length =
+			(image_size > (uint64_t) 1 << 30) ? true : false;
+
+	/* write header */
+	if (!jp2_exec(this, m_procedure_list, stream))
+		return false;
+
+	return codeStream->start_compress(stream);
+}
+
+bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
+	uint32_t i;
+	uint32_t depth_0;
+	uint32_t sign = 0;
+	uint32_t alpha_count = 0;
+	uint32_t color_channels = 0U;
+
+	if (!parameters || !image)
+		return false;
+
+	/* set up the J2K codec */
+	/* ------------------- */
+	if (j2k_init_compress(codeStream, parameters, image) == false)
+		return false;
+
+	/* set up the JP2 codec */
+	/* ------------------- */
+
+	/* Profile box */
+
+	brand = JP2_JP2; /* BR */
+	minversion = 0; /* MinV */
+	numcl = 1;
+	cl = (uint32_t*) grk_malloc(sizeof(uint32_t));
+	if (!cl) {
+		GROK_ERROR("Not enough memory when set up the JP2 encoder");
+		return false;
+	}
+	cl[0] = JP2_JP2; /* CL0 : JP2 */
+
+	/* Image Header box */
+	numcomps = image->numcomps; /* NC */
+	comps = (grk_jp2_comps*) grk_malloc(
+			numcomps * sizeof(grk_jp2_comps));
+	if (!comps) {
+		GROK_ERROR("Not enough memory when set up the JP2 encoder");
+		return false;
+	}
+
+	h = image->y1 - image->y0; /* HEIGHT */
+	w = image->x1 - image->x0; /* WIDTH */
+	depth_0 = image->comps[0].prec - 1;
+	sign = image->comps[0].sgnd;
+	bpc = depth_0 + (sign << 7);
+	for (i = 1; i < image->numcomps; i++) {
+		uint32_t depth = image->comps[i].prec - 1;
+		sign = image->comps[i].sgnd;
+		if (depth_0 != depth)
+			bpc = 255;
+	}
+	C = 7; /* C : Always 7 */
+	UnkC = 0; /* UnkC, colorspace specified in colr box */
+	IPR = 0; /* IPR, no intellectual property */
+
+	/* BitsPerComponent box */
+	for (i = 0; i < image->numcomps; i++) {
+		comps[i].bpcc = (uint8_t)(image->comps[i].prec - 1);
+		if (image->comps[i].sgnd)
+			comps[i].bpcc += (1 << 7);
+	}
+
+	/* Colour Specification box */
+	if (image->color_space == GRK_CLRSPC_ICC) {
+		meth = 2;
+		enumcs = GRK_ENUM_CLRSPC_UNKNOWN;
+		if (image->icc_profile_buf) {
+			// clean up existing icc profile in this struct
+			if (color.icc_profile_buf) {
+				delete[] color.icc_profile_buf;
+				color.icc_profile_buf = nullptr;
+			}
+			// copy icc profile from image to this struct
+			color.icc_profile_len = image->icc_profile_len;
+			color.icc_profile_buf = new uint8_t[color.icc_profile_len];
+			memcpy(color.icc_profile_buf, image->icc_profile_buf,
+					color.icc_profile_len);
+		}
+	} else {
+		meth = 1;
+		if (image->color_space == GRK_CLRSPC_CMYK)
+			enumcs = GRK_ENUM_CLRSPC_CMYK;
+		else if (image->color_space == GRK_CLRSPC_DEFAULT_CIE)
+			enumcs = GRK_ENUM_CLRSPC_CIE;
+		else if (image->color_space == GRK_CLRSPC_SRGB)
+			enumcs = GRK_ENUM_CLRSPC_SRGB; /* sRGB as defined by IEC 61966-2-1 */
+		else if (image->color_space == GRK_CLRSPC_GRAY)
+			enumcs = GRK_ENUM_CLRSPC_GRAY; /* greyscale */
+		else if (image->color_space == GRK_CLRSPC_SYCC)
+			enumcs = GRK_ENUM_CLRSPC_SYCC; /* YUV */
+		else if (image->color_space == GRK_CLRSPC_EYCC)
+			enumcs = GRK_ENUM_CLRSPC_EYCC; /* YUV */
+	}
+
+	//transfer buffer to uuid
+	if (image->iptc_len && image->iptc_buf) {
+		uuids[numUuids++] = grk_jp2_uuid(IPTC_UUID, image->iptc_buf,
+				image->iptc_len, true);
+		image->iptc_buf = nullptr;
+		image->iptc_len = 0;
+	}
+
+	//transfer buffer to uuid
+	if (image->xmp_len && image->xmp_buf) {
+		uuids[numUuids++] = grk_jp2_uuid(XMP_UUID, image->xmp_buf,
+				image->xmp_len, true);
+		image->xmp_buf = nullptr;
+		image->xmp_len = 0;
+	}
+
+	/* Component Definition box */
+	for (i = 0; i < image->numcomps; i++) {
+		if (image->comps[i].type != GRK_COMPONENT_TYPE_COLOUR) {
+			alpha_count++;
+			// technically, this is an error, but we will let it pass
+			if (image->comps[i].sgnd)
+				GROK_WARN("signed alpha channel %u",i);
+		}
+	}
+
+	switch (enumcs) {
+	case GRK_ENUM_CLRSPC_CMYK:
+		color_channels = 4;
+		break;
+	case GRK_ENUM_CLRSPC_CIE:
+	case GRK_ENUM_CLRSPC_SRGB:
+	case GRK_ENUM_CLRSPC_SYCC:
+	case GRK_ENUM_CLRSPC_EYCC:
+		color_channels = 3;
+		break;
+	case GRK_ENUM_CLRSPC_GRAY:
+		color_channels = 1;
+		break;
+	default:
+		// assume that last channel is alpha
+		if (alpha_count) {
+			if (image->numcomps > 1){
+				color_channels = image->numcomps - 1;
+				alpha_count = 1U;
+			}
+			else {
+				alpha_count = 0U;
+			}
+		}
+		break;
+	}
+	if (alpha_count) {
+		color.jp2_cdef = (grk_jp2_cdef*) grk_malloc(sizeof(grk_jp2_cdef));
+		if (!color.jp2_cdef) {
+			GROK_ERROR("Not enough memory to set up the JP2 encoder");
+			return false;
+		}
+		/* no memset needed, all values will be overwritten except if
+		 * color.jp2_cdef->info allocation fails, */
+		/* in which case color.jp2_cdef->info will be nullptr => valid for destruction */
+		color.jp2_cdef->info = (grk_jp2_cdef_info*) grk_malloc(
+				image->numcomps * sizeof(grk_jp2_cdef_info));
+		if (!color.jp2_cdef->info) {
+			/* memory will be freed by jp2_destroy */
+			GROK_ERROR("Not enough memory to set up the JP2 encoder");
+			return false;
+		}
+		color.jp2_cdef->n = (uint16_t) image->numcomps; /* cast is valid : image->numcomps [1,16384] */
+		for (i = 0U; i < color_channels; i++) {
+			color.jp2_cdef->info[i].cn = (uint16_t) i; /* cast is valid : image->numcomps [1,16384] */
+			color.jp2_cdef->info[i].typ = GRK_COMPONENT_TYPE_COLOUR;
+			color.jp2_cdef->info[i].asoc = (uint16_t) (i + 1U); /* No overflow + cast is valid : image->numcomps [1,16384] */
+		}
+		for (; i < image->numcomps; i++) {
+			color.jp2_cdef->info[i].cn = (uint16_t) i; /* cast is valid : image->numcomps [1,16384] */
+			color.jp2_cdef->info[i].typ = image->comps[i].type;
+			color.jp2_cdef->info[i].asoc = image->comps[i].association;
+		}
+	}
+	/*********************************************/
+
+	precedence = 0; /* PRECEDENCE */
+	approx = 0; /* APPROX */
+
+	has_capture_resolution = parameters->write_capture_resolution ||
+											parameters->write_capture_resolution_from_file;
+	if (parameters->write_capture_resolution) {
+		for (i = 0; i < 2; ++i) {
+			capture_resolution[i] = parameters->capture_resolution[i];
+		}
+	} else if (parameters->write_capture_resolution_from_file) {
+		for (i = 0; i < 2; ++i) {
+			capture_resolution[i] =
+					parameters->capture_resolution_from_file[i];
+		}
+	}
+	if (parameters->write_display_resolution) {
+		has_display_resolution = true;
+		display_resolution[0] = parameters->display_resolution[0];
+		display_resolution[1] = parameters->display_resolution[1];
+		//if display resolution equals (0,0), then use capture resolution
+		//if available
+		if (parameters->display_resolution[0] == 0 &&
+				parameters->display_resolution[1] == 0) {
+			if (has_capture_resolution) {
+				display_resolution[0] = parameters->capture_resolution[0];
+				display_resolution[1] = parameters->capture_resolution[1];
+			} else {
+				has_display_resolution = false;
+			}
+		}
+	}
+
+	return true;
+}
+
+bool FileFormat::compress(grk_plugin_tile* tile,	BufferedStream *stream){
+
+	return codeStream->compress(tile, stream);
+}
+
+bool FileFormat::compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size, BufferedStream *stream){
+
+	return codeStream->compress_tile(tile_index, p_data, data_size, stream);
+}
+
+bool FileFormat::end_compress(BufferedStream *stream){
+	assert(stream != nullptr);
+
+	/* customization of the end encoding */
+	if (!jp2_init_end_header_writing(this))
+		return false;
+	if (!codeStream->end_compress(stream))
+		return false;
+
+	/* write header */
+	return jp2_exec(this, m_procedure_list, stream);
+}
+
+
 
 bool FileFormat::decompress_tile(BufferedStream *stream, grk_image *p_image,
 		uint16_t tile_index) {

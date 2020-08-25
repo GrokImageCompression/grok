@@ -360,9 +360,6 @@ static const grk_dec_memory_marker_handler* j2k_get_marker_handler(
 	return e;
 }
 
-void j2k_destroy(CodeStream *codeStream) {
-   delete codeStream;
-}
 
 static bool j2k_exec(CodeStream *codeStream, std::vector<j2k_procedure> &procs,
 		BufferedStream *stream) {
@@ -374,6 +371,26 @@ static bool j2k_exec(CodeStream *codeStream, std::vector<j2k_procedure> &procs,
 	procs.clear();
 
 	return result;
+}
+
+static bool j2k_decompress_validation(CodeStream *codeStream,TileProcessor *tileProcessor,
+		BufferedStream *stream) {
+
+	(void) stream;
+	GRK_UNUSED(tileProcessor);
+	bool is_valid = true;
+
+	/* preconditions*/
+	assert(codeStream != nullptr);
+	assert(stream != nullptr);
+
+	/* STATE checking */
+	/* make sure the state is at 0 */
+	is_valid &=
+			(codeStream->m_decoder.m_state == J2K_DEC_STATE_NONE);
+
+	/* PARAMETER VALIDATION */
+	return is_valid;
 }
 
 static bool j2k_read_header_procedure(CodeStream *codeStream,TileProcessor *tileProcessor,
@@ -487,116 +504,6 @@ static bool j2k_read_header_procedure(CodeStream *codeStream,TileProcessor *tile
 	codeStream->m_decoder.m_state = J2K_DEC_STATE_TPH_SOT;
 
 	return true;
-}
-
-bool j2k_read_header(CodeStream *codeStream,BufferedStream *stream,
-		grk_header_info *header_info, grk_image **p_image) {
-	assert(codeStream != nullptr);
-	assert(stream != nullptr);
-
-	/* create an empty image header */
-	codeStream->m_input_image = grk_image_create0();
-	if (!codeStream->m_input_image) {
-		return false;
-	}
-
-	/* customization of the validation */
-	if (!j2k_init_decompress_validation(codeStream))
-		return false;
-
-	/* validation of the parameters codec */
-	if (!j2k_exec(codeStream, codeStream->m_validation_list, stream))
-		return false;
-
-	/* customization of the encoding */
-	if (!j2k_init_header_reading(codeStream))
-		return false;
-
-
-	/* read header */
-	if (!j2k_exec(codeStream, codeStream->m_procedure_list, stream))
-		return false;
-
-	if (header_info) {
-		CodingParams *cp = nullptr;
-		TileCodingParams *tcp = nullptr;
-		TileComponentCodingParams *tccp = nullptr;
-
-		cp = &(codeStream->m_cp);
-		tcp = codeStream->m_decoder.m_default_tcp;
-		tccp = &tcp->tccps[0];
-
-		header_info->cblockw_init = 1 << tccp->cblkw;
-		header_info->cblockh_init = 1 << tccp->cblkh;
-		header_info->irreversible = tccp->qmfbid == 0;
-		header_info->mct = tcp->mct;
-		header_info->rsiz = cp->rsiz;
-		header_info->numresolutions = tccp->numresolutions;
-		// !!! assume that coding style is constant across all tile components
-		header_info->csty = tccp->csty;
-		// !!! assume that mode switch is constant across all tiles
-		header_info->cblk_sty = tccp->cblk_sty;
-		for (uint32_t i = 0; i < header_info->numresolutions; ++i) {
-			header_info->prcw_init[i] = 1 << tccp->prcw[i];
-			header_info->prch_init[i] = 1 << tccp->prch[i];
-		}
-		header_info->tx0 = codeStream->m_cp.tx0;
-		header_info->ty0 = codeStream->m_cp.ty0;
-
-		header_info->t_width = codeStream->m_cp.t_width;
-		header_info->t_height = codeStream->m_cp.t_height;
-
-		header_info->t_grid_width = codeStream->m_cp.t_grid_width;
-		header_info->t_grid_height = codeStream->m_cp.t_grid_height;
-
-		header_info->tcp_numlayers = tcp->numlayers;
-
-		header_info->num_comments = codeStream->m_cp.num_comments;
-		for (size_t i = 0; i < header_info->num_comments; ++i) {
-			header_info->comment[i] = codeStream->m_cp.comment[i];
-			header_info->comment_len[i] = codeStream->m_cp.comment_len[i];
-			header_info->isBinaryComment[i] = codeStream->m_cp.isBinaryComment[i];
-		}
-	}
-	*p_image = grk_image_create0();
-	if (!(*p_image)) {
-		return false;
-	}
-	/* Copy code stream image information to the output image */
-	grk_copy_image_header(codeStream->m_input_image, *p_image);
-	if (codeStream->cstr_index) {
-		/*Allocate and initialize some elements of codestrem index*/
-		if (!j2k_allocate_tile_element_cstr_index(codeStream)) {
-			return false;
-		}
-	}
-	return true;
-}
-static bool j2k_decompress_validation(CodeStream *codeStream,TileProcessor *tileProcessor,
-		BufferedStream *stream) {
-
-	(void) stream;
-	GRK_UNUSED(tileProcessor);
-	bool is_valid = true;
-
-	/* preconditions*/
-	assert(codeStream != nullptr);
-	assert(stream != nullptr);
-
-	/* STATE checking */
-	/* make sure the state is at 0 */
-	is_valid &=
-			(codeStream->m_decoder.m_state == J2K_DEC_STATE_NONE);
-
-	/* PARAMETER VALIDATION */
-	return is_valid;
-}
-
-void j2k_init_decompressor(CodeStream *j2k, grk_dparameters *parameters) {
-	if (j2k && parameters) {
-		j2k->m_cp.m_coding_params.m_dec.m_layer = parameters->cp_layer;
-		j2k->m_cp.m_coding_params.m_dec.m_reduce = parameters->cp_reduce;
-	}
 }
 
 /**
@@ -1062,16 +969,6 @@ static bool j2k_decompress_tile_t2t1(CodeStream *codeStream, TileProcessor *tile
 	return rc;
 }
 
-
-bool j2k_set_decompress_area(CodeStream *codeStream, grk_image *output_image,
-		uint32_t start_x, uint32_t start_y, uint32_t end_x, uint32_t end_y) {
-	return codeStream->set_decompress_area(output_image,
-											start_x,
-											start_y,
-											end_x,
-											end_y);
-}
-
 /**
  *
  */
@@ -1292,735 +1189,6 @@ static bool j2k_do_decompress(CodeStream *codeStream,
 	delete codeStream->m_tileProcessor;
 	codeStream->m_tileProcessor = nullptr;
 	return true;
-}
-
-bool j2k_decompress(CodeStream *codeStream, grk_plugin_tile *tile,
-		BufferedStream *stream, grk_image *p_image) {
-	if (!p_image)
-		return false;
-
-	codeStream->m_output_image = grk_image_create0();
-	if (!(codeStream->m_output_image))
-		return false;
-	grk_copy_image_header(p_image, codeStream->m_output_image);
-
-	/* customization of the decoding */
-	if (!j2k_init_decompress(codeStream))
-		return false;
-
-	codeStream->current_plugin_tile = tile;
-
-	return j2k_do_decompress(codeStream,stream,p_image);
-}
-
-bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream, grk_image *p_image,
-		uint16_t tile_index) {
-	if (!p_image) {
-		GROK_ERROR("Image is null");
-		return false;
-	}
-
-	if (tile_index >= codeStream->m_cp.t_grid_width * codeStream->m_cp.t_grid_height) {
-		GROK_ERROR(	"Tile index %u is greater than maximum tile index %u",	tile_index,
-				      codeStream->m_cp.t_grid_width * codeStream->m_cp.t_grid_height - 1);
-		return false;
-	}
-
-	/* Compute the dimension of the desired tile*/
-	uint32_t tile_x = tile_index % codeStream->m_cp.t_grid_width;
-	uint32_t tile_y = tile_index / codeStream->m_cp.t_grid_width;
-
-	auto original_image_rect = grk_rect(p_image->x0, p_image->y0, p_image->x1,
-			p_image->y1);
-
-	p_image->x0 = tile_x * codeStream->m_cp.t_width + codeStream->m_cp.tx0;
-	if (p_image->x0 < codeStream->m_input_image->x0)
-		p_image->x0 = codeStream->m_input_image->x0;
-	p_image->x1 = (tile_x + 1) * codeStream->m_cp.t_width + codeStream->m_cp.tx0;
-	if (p_image->x1 > codeStream->m_input_image->x1)
-		p_image->x1 = codeStream->m_input_image->x1;
-
-	p_image->y0 = tile_y * codeStream->m_cp.t_height + codeStream->m_cp.ty0;
-	if (p_image->y0 < codeStream->m_input_image->y0)
-		p_image->y0 = codeStream->m_input_image->y0;
-	p_image->y1 = (tile_y + 1) * codeStream->m_cp.t_height + codeStream->m_cp.ty0;
-	if (p_image->y1 > codeStream->m_input_image->y1)
-		p_image->y1 = codeStream->m_input_image->y1;
-
-	auto tile_rect = grk_rect(p_image->x0,
-								p_image->y0,
-								p_image->x1,
-								p_image->y1);
-
-	auto overlap_rect = original_image_rect;
-	overlap_rect.intersection(tile_rect);
-	if (original_image_rect.is_non_degenerate()
-			&& tile_rect.is_non_degenerate()
-			&& overlap_rect.is_non_degenerate()) {
-		p_image->x0 = (uint32_t) overlap_rect.x0;
-		p_image->y0 = (uint32_t) overlap_rect.y0;
-		p_image->x1 = (uint32_t) overlap_rect.x1;
-		p_image->y1 = (uint32_t) overlap_rect.y1;
-	} else {
-		GROK_WARN(
-				"Decode region <%u,%u,%u,%u> does not overlap requested tile %u. Ignoring.",
-				original_image_rect.x0, original_image_rect.y0,
-				original_image_rect.x1, original_image_rect.y1, tile_index);
-	}
-
-	auto img_comp = p_image->comps;
-	auto reduce = codeStream->m_cp.m_coding_params.m_dec.m_reduce;
-	for (uint32_t compno = 0; compno < p_image->numcomps; ++compno) {
-		uint32_t comp_x1, comp_y1;
-
-		img_comp->x0 = ceildiv<uint32_t>(p_image->x0, img_comp->dx);
-		img_comp->y0 = ceildiv<uint32_t>(p_image->y0, img_comp->dy);
-		comp_x1 = ceildiv<uint32_t>(p_image->x1, img_comp->dx);
-		comp_y1 = ceildiv<uint32_t>(p_image->y1, img_comp->dy);
-
-		img_comp->w = (ceildivpow2<uint32_t>(comp_x1, reduce)
-				- ceildivpow2<uint32_t>(img_comp->x0, reduce));
-		img_comp->h = (ceildivpow2<uint32_t>(comp_y1, reduce)
-				- ceildivpow2<uint32_t>(img_comp->y0, reduce));
-
-		img_comp++;
-	}
-	if (codeStream->m_output_image)
-		grk_image_destroy(codeStream->m_output_image);
-	codeStream->m_output_image = grk_image_create0();
-	if (!(codeStream->m_output_image))
-		return false;
-	grk_copy_image_header(p_image, codeStream->m_output_image);
-	codeStream->m_tile_ind_to_dec = (int32_t) tile_index;
-
-	// reset tile part numbers, in case we are re-using the same codec object
-	// from previous decompress
-	uint32_t nb_tiles = codeStream->m_cp.t_grid_width * codeStream->m_cp.t_grid_height;
-	for (uint32_t i = 0; i < nb_tiles; ++i)
-		codeStream->m_cp.tcps[i].m_tile_part_index = -1;
-
-	/* customization of the decoding */
-	if (!j2k_init_decompress_tile(codeStream))
-		return false;
-
-	return j2k_do_decompress(codeStream,stream,p_image);
-}
-
-bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
-		grk_image *image) {
-	CodingParams *cp = nullptr;
-
-	if (!codeStream || !parameters || !image) {
-		return false;
-	}
-	//sanity check on image
-	if (image->numcomps < 1 || image->numcomps > max_num_components) {
-		GROK_ERROR(
-				"Invalid number of components specified while setting up JP2 encoder");
-		return false;
-	}
-	if ((image->x1 < image->x0) || (image->y1 < image->y0)) {
-		GROK_ERROR(
-				"Invalid input image dimensions found while setting up JP2 encoder");
-		return false;
-	}
-	for (uint32_t i = 0; i < image->numcomps; ++i) {
-		auto comp = image->comps + i;
-		if (comp->w == 0 || comp->h == 0) {
-			GROK_ERROR(
-					"Invalid input image component dimensions found while setting up JP2 encoder");
-			return false;
-		}
-		if (comp->prec == 0) {
-			GROK_ERROR(
-					"Invalid component precision of 0 found while setting up JP2 encoder");
-			return false;
-		}
-	}
-
-	// create private sanitized copy of imagte
-	codeStream->m_input_image = grk_image_create0();
-	if (!codeStream->m_input_image) {
-		GROK_ERROR("Failed to allocate image header.");
-		return false;
-	}
-	grk_copy_image_header(image, codeStream->m_input_image);
-	if (image->comps) {
-		for (uint32_t compno = 0; compno < image->numcomps; compno++) {
-			if (image->comps[compno].data) {
-				codeStream->m_input_image->comps[compno].data =
-						image->comps[compno].data;
-				image->comps[compno].data = nullptr;
-
-			}
-		}
-	}
-
-	if ((parameters->numresolution == 0)
-			|| (parameters->numresolution > GRK_J2K_MAXRLVLS)) {
-		GROK_ERROR("Invalid number of resolutions : %u not in range [1,%u]",
-				parameters->numresolution, GRK_J2K_MAXRLVLS);
-		return false;
-	}
-
-	if (GRK_IS_IMF(parameters->rsiz) && parameters->max_cs_size > 0
-			&& parameters->tcp_numlayers == 1
-			&& parameters->tcp_rates[0] == 0) {
-		parameters->tcp_rates[0] = (float) (image->numcomps * image->comps[0].w
-				* image->comps[0].h * image->comps[0].prec)
-				/ (float) (((uint32_t) parameters->max_cs_size) * 8
-						* image->comps[0].dx * image->comps[0].dy);
-	}
-
-	/* if no rate entered, lossless by default */
-	if (parameters->tcp_numlayers == 0) {
-		parameters->tcp_rates[0] = 0;
-		parameters->tcp_numlayers = 1;
-		parameters->cp_disto_alloc = true;
-	}
-
-	/* see if max_codestream_size does limit input rate */
-	double image_bytes = ((double) image->numcomps * image->comps[0].w
-			* image->comps[0].h * image->comps[0].prec)
-			/ (8 * image->comps[0].dx * image->comps[0].dy);
-	if (parameters->max_cs_size == 0) {
-		if (parameters->tcp_numlayers > 0
-				&& parameters->tcp_rates[parameters->tcp_numlayers - 1] > 0) {
-			parameters->max_cs_size = (uint64_t) floor(
-					image_bytes
-							/ parameters->tcp_rates[parameters->tcp_numlayers
-									- 1]);
-		}
-	} else {
-		bool cap = false;
-		auto min_rate = image_bytes / (double) parameters->max_cs_size;
-		for (uint32_t i = 0; i < parameters->tcp_numlayers; i++) {
-			if (parameters->tcp_rates[i] < min_rate) {
-				parameters->tcp_rates[i] = min_rate;
-				cap = true;
-			}
-		}
-		if (cap) {
-			GROK_WARN("The desired maximum code stream size has limited\n"
-					"at least one of the desired quality layers");
-		}
-	}
-
-	/* Manage profiles and applications and set RSIZ */
-	/* set cinema parameters if required */
-	if (parameters->isHT) {
-		parameters->rsiz |= GRK_JPH_RSIZ_FLAG;
-	}
-	if (GRK_IS_CINEMA(parameters->rsiz)) {
-		if ((parameters->rsiz == GRK_PROFILE_CINEMA_S2K)
-				|| (parameters->rsiz == GRK_PROFILE_CINEMA_S4K)) {
-			GROK_WARN(
-					"JPEG 2000 Scalable Digital Cinema profiles not supported");
-			parameters->rsiz = GRK_PROFILE_NONE;
-		} else {
-			if (Profile::is_cinema_compliant(image, parameters->rsiz))
-				Profile::set_cinema_parameters(parameters, image);
-			else
-				parameters->rsiz = GRK_PROFILE_NONE;
-		}
-	} else if (GRK_IS_STORAGE(parameters->rsiz)) {
-		GROK_WARN("JPEG 2000 Long Term Storage profile not supported");
-		parameters->rsiz = GRK_PROFILE_NONE;
-	} else if (GRK_IS_BROADCAST(parameters->rsiz)) {
-		Profile::set_broadcast_parameters(parameters);
-		if (!Profile::is_broadcast_compliant(parameters, image))
-			parameters->rsiz = GRK_PROFILE_NONE;
-	} else if (GRK_IS_IMF(parameters->rsiz)) {
-		Profile::set_imf_parameters(parameters, image);
-		if (!Profile::is_imf_compliant(parameters, image))
-			parameters->rsiz = GRK_PROFILE_NONE;
-	} else if (GRK_IS_PART2(parameters->rsiz)) {
-		if (parameters->rsiz == ((GRK_PROFILE_PART2) | (GRK_EXTENSION_NONE))) {
-			GROK_WARN("JPEG 2000 Part-2 profile defined\n"
-					"but no Part-2 extension enabled.\n"
-					"Profile set to NONE.");
-			parameters->rsiz = GRK_PROFILE_NONE;
-		} else if (parameters->rsiz
-				!= ((GRK_PROFILE_PART2) | (GRK_EXTENSION_MCT))) {
-			GROK_WARN("Unsupported Part-2 extension enabled\n"
-					"Profile set to NONE.");
-			parameters->rsiz = GRK_PROFILE_NONE;
-		}
-	}
-
-	if (parameters->numpocs) {
-		/* initialisation of POC */
-		if (!j2k_check_poc_val(parameters->POC, parameters->numpocs,
-				parameters->numresolution, image->numcomps,
-				parameters->tcp_numlayers)) {
-			GROK_ERROR("Failed to initialize POC");
-			return false;
-		}
-	}
-
-	/*
-	 copy user encoding parameters
-	 */
-
-	/* keep a link to cp so that we can destroy it later in j2k_destroy_compress */
-	cp = &(codeStream->m_cp);
-
-	/* set default values for cp */
-	cp->t_grid_width = 1;
-	cp->t_grid_height = 1;
-
-	cp->m_coding_params.m_enc.m_max_comp_size = parameters->max_comp_size;
-	cp->rsiz = parameters->rsiz;
-	cp->m_coding_params.m_enc.m_disto_alloc = parameters->cp_disto_alloc;
-	cp->m_coding_params.m_enc.m_fixed_quality = parameters->cp_fixed_quality;
-	cp->m_coding_params.m_enc.writePLT = parameters->writePLT;
-	cp->m_coding_params.m_enc.writeTLM = parameters->writeTLM;
-	cp->m_coding_params.m_enc.rateControlAlgorithm =
-			parameters->rateControlAlgorithm;
-
-	/* tiles */
-	cp->t_width = parameters->t_width;
-	cp->t_height = parameters->t_height;
-
-	/* tile offset */
-	cp->tx0 = parameters->tx0;
-	cp->ty0 = parameters->ty0;
-
-	/* comment string */
-	if (parameters->cp_num_comments) {
-		for (size_t i = 0; i < parameters->cp_num_comments; ++i) {
-			cp->comment_len[i] = parameters->cp_comment_len[i];
-			if (!cp->comment_len[i]) {
-				GROK_WARN("Empty comment. Ignoring");
-				continue;
-			}
-			if (cp->comment_len[i] > GRK_MAX_COMMENT_LENGTH) {
-				GROK_WARN(
-						"Comment length %s is greater than maximum comment length %u. Ignoring",
-						cp->comment_len[i], GRK_MAX_COMMENT_LENGTH);
-				continue;
-			}
-			cp->comment[i] = (char*) new uint8_t[cp->comment_len[i]];
-			if (!cp->comment[i]) {
-				GROK_ERROR(
-						"Not enough memory to allocate copy of comment string");
-				return false;
-			}
-			memcpy(cp->comment[i], parameters->cp_comment[i],
-					cp->comment_len[i]);
-			cp->isBinaryComment[i] = parameters->cp_is_binary_comment[i];
-			cp->num_comments++;
-		}
-	} else {
-		/* Create default comment for code stream */
-		const char comment[] = "Created by Grok     version ";
-		const size_t clen = strlen(comment);
-		const char *version = grk_version();
-
-		cp->comment[0] = (char*) new uint8_t[clen + strlen(version) + 1];
-		if (!cp->comment[0]) {
-			GROK_ERROR("Not enough memory to allocate comment string");
-			return false;
-		}
-		sprintf(cp->comment[0], "%s%s", comment, version);
-		cp->comment_len[0] = (uint16_t) strlen(cp->comment[0]);
-		cp->num_comments = 1;
-		cp->isBinaryComment[0] = false;
-	}
-
-	/*
-	 calculate other encoding parameters
-	 */
-
-	if (parameters->tile_size_on) {
-		// avoid divide by zero
-		if (cp->t_width == 0 || cp->t_height == 0) {
-			GROK_ERROR("Invalid tile dimensions (%u,%u)",cp->t_width, cp->t_height);
-			return false;
-		}
-		cp->t_grid_width = ceildiv<uint32_t>((image->x1 - cp->tx0),
-				cp->t_width);
-		cp->t_grid_height = ceildiv<uint32_t>((image->y1 - cp->ty0),
-				cp->t_height);
-	} else {
-		cp->t_width = image->x1 - cp->tx0;
-		cp->t_height = image->y1 - cp->ty0;
-	}
-
-	if (parameters->tp_on) {
-		cp->m_coding_params.m_enc.m_tp_flag = parameters->tp_flag;
-		cp->m_coding_params.m_enc.m_tp_on = true;
-	}
-
-	uint8_t numgbits = parameters->isHT ? 1 : 2;
-	cp->tcps = new TileCodingParams[cp->t_grid_width * cp->t_grid_height];
-	for (uint32_t tileno = 0; tileno < cp->t_grid_width * cp->t_grid_height; tileno++) {
-		TileCodingParams *tcp = cp->tcps + tileno;
-		tcp->isHT = parameters->isHT;
-		tcp->qcd.generate(numgbits, (uint32_t) (parameters->numresolution - 1),
-				!parameters->irreversible, image->comps[0].prec, tcp->mct > 0,
-				image->comps[0].sgnd);
-		tcp->numlayers = parameters->tcp_numlayers;
-
-		for (uint32_t j = 0; j < tcp->numlayers; j++) {
-			if (cp->m_coding_params.m_enc.m_fixed_quality)
-				tcp->distoratio[j] = parameters->tcp_distoratio[j];
-			else
-				tcp->rates[j] = parameters->tcp_rates[j];
-		}
-
-		tcp->csty = parameters->csty;
-		tcp->prg = parameters->prog_order;
-		tcp->mct = parameters->tcp_mct;
-		tcp->POC = false;
-
-		if (parameters->numpocs) {
-			/* initialisation of POC */
-			tcp->POC = true;
-			uint32_t numpocs_tile = 0;
-			for (uint32_t i = 0; i < parameters->numpocs; i++) {
-				if (tileno + 1 == parameters->POC[i].tile) {
-					auto tcp_poc = &tcp->pocs[numpocs_tile];
-
-					tcp_poc->resno0 = parameters->POC[numpocs_tile].resno0;
-					tcp_poc->compno0 = parameters->POC[numpocs_tile].compno0;
-					tcp_poc->layno1 = parameters->POC[numpocs_tile].layno1;
-					tcp_poc->resno1 = parameters->POC[numpocs_tile].resno1;
-					tcp_poc->compno1 = parameters->POC[numpocs_tile].compno1;
-					tcp_poc->prg1 = parameters->POC[numpocs_tile].prg1;
-					tcp_poc->tile = parameters->POC[numpocs_tile].tile;
-					numpocs_tile++;
-				}
-			}
-			if (numpocs_tile == 0) {
-				GROK_ERROR("Problem with specified progression order changes");
-				return false;
-			}
-			tcp->numpocs = numpocs_tile - 1;
-		} else {
-			tcp->numpocs = 0;
-		}
-
-		tcp->tccps = new TileComponentCodingParams[image->numcomps];
-		if (parameters->mct_data) {
-
-			uint32_t lMctSize = image->numcomps * image->numcomps
-					* (uint32_t) sizeof(float);
-			auto lTmpBuf = (float*) grk_malloc(lMctSize);
-			auto dc_shift = (int32_t*) ((uint8_t*) parameters->mct_data
-					+ lMctSize);
-
-			if (!lTmpBuf) {
-				GROK_ERROR("Not enough memory to allocate temp buffer");
-				return false;
-			}
-
-			tcp->mct = 2;
-			tcp->m_mct_coding_matrix = (float*) grk_malloc(lMctSize);
-			if (!tcp->m_mct_coding_matrix) {
-				grk_free(lTmpBuf);
-				lTmpBuf = nullptr;
-				GROK_ERROR(
-						"Not enough memory to allocate encoder MCT coding matrix ");
-				return false;
-			}
-			memcpy(tcp->m_mct_coding_matrix, parameters->mct_data, lMctSize);
-			memcpy(lTmpBuf, parameters->mct_data, lMctSize);
-
-			tcp->m_mct_decoding_matrix = (float*) grk_malloc(lMctSize);
-			if (!tcp->m_mct_decoding_matrix) {
-				grk_free(lTmpBuf);
-				lTmpBuf = nullptr;
-				GROK_ERROR(
-						"Not enough memory to allocate encoder MCT decoding matrix ");
-				return false;
-			}
-			if (matrix_inversion_f(lTmpBuf, (tcp->m_mct_decoding_matrix),
-					image->numcomps) == false) {
-				grk_free(lTmpBuf);
-				lTmpBuf = nullptr;
-				GROK_ERROR("Failed to inverse encoder MCT decoding matrix ");
-				return false;
-			}
-
-			tcp->mct_norms = (double*) grk_malloc(
-					image->numcomps * sizeof(double));
-			if (!tcp->mct_norms) {
-				grk_free(lTmpBuf);
-				lTmpBuf = nullptr;
-				GROK_ERROR("Not enough memory to allocate encoder MCT norms ");
-				return false;
-			}
-			mct::calculate_norms(tcp->mct_norms, image->numcomps,
-					tcp->m_mct_decoding_matrix);
-			grk_free(lTmpBuf);
-
-			for (uint32_t i = 0; i < image->numcomps; i++) {
-				auto tccp = &tcp->tccps[i];
-				tccp->m_dc_level_shift = dc_shift[i];
-			}
-
-			if (j2k_init_mct_encoding(tcp, image) == false) {
-				/* free will be handled by j2k_destroy */
-				GROK_ERROR("Failed to set up j2k mct encoding");
-				return false;
-			}
-		} else {
-			if (tcp->mct == 1) {
-				if (image->color_space == GRK_CLRSPC_EYCC
-						|| image->color_space == GRK_CLRSPC_SYCC) {
-					GROK_WARN("Disabling MCT for sYCC/eYCC colour space");
-					tcp->mct = 0;
-				} else if (image->numcomps >= 3) {
-					if ((image->comps[0].dx != image->comps[1].dx)
-							|| (image->comps[0].dx != image->comps[2].dx)
-							|| (image->comps[0].dy != image->comps[1].dy)
-							|| (image->comps[0].dy != image->comps[2].dy)) {
-						GROK_WARN(
-								"Cannot perform MCT on components with different dimensions. Disabling MCT.");
-						tcp->mct = 0;
-					}
-				}
-			}
-			for (uint32_t i = 0; i < image->numcomps; i++) {
-				auto tccp = tcp->tccps + i;
-				auto comp = image->comps + i;
-				if (!comp->sgnd) {
-					tccp->m_dc_level_shift = 1 << (comp->prec - 1);
-				}
-			}
-		}
-
-		for (uint32_t i = 0; i < image->numcomps; i++) {
-			auto tccp = &tcp->tccps[i];
-
-			/* 0 => one precinct || 1 => custom precinct  */
-			tccp->csty = parameters->csty & J2K_CP_CSTY_PRT;
-			tccp->numresolutions = parameters->numresolution;
-			tccp->cblkw = floorlog2<uint32_t>(parameters->cblockw_init);
-			tccp->cblkh = floorlog2<uint32_t>(parameters->cblockh_init);
-			tccp->cblk_sty = parameters->cblk_sty;
-			tccp->qmfbid = parameters->irreversible ? 0 : 1;
-			tccp->qntsty = parameters->irreversible ?
-			J2K_CCP_QNTSTY_SEQNT :
-														J2K_CCP_QNTSTY_NOQNT;
-			tccp->numgbits = numgbits;
-
-			if ((int32_t) i == parameters->roi_compno)
-				tccp->roishift = parameters->roi_shift;
-			else
-				tccp->roishift = 0;
-			if ((parameters->csty & J2K_CCP_CSTY_PRT) && parameters->res_spec) {
-				uint32_t p = 0;
-				int32_t it_res;
-				assert(tccp->numresolutions > 0);
-				for (it_res = (int32_t) tccp->numresolutions - 1; it_res >= 0;
-						it_res--) {
-					if (p < parameters->res_spec) {
-						if (parameters->prcw_init[p] < 1) {
-							tccp->prcw[it_res] = 1;
-						} else {
-							tccp->prcw[it_res] = floorlog2<uint32_t>(
-									parameters->prcw_init[p]);
-						}
-						if (parameters->prch_init[p] < 1) {
-							tccp->prch[it_res] = 1;
-						} else {
-							tccp->prch[it_res] = floorlog2<uint32_t>(
-									parameters->prch_init[p]);
-						}
-					} else {
-						uint32_t res_spec = parameters->res_spec;
-						uint32_t size_prcw = 0;
-						uint32_t size_prch = 0;
-						size_prcw = parameters->prcw_init[res_spec - 1]
-								>> (p - (res_spec - 1));
-						size_prch = parameters->prch_init[res_spec - 1]
-								>> (p - (res_spec - 1));
-						if (size_prcw < 1) {
-							tccp->prcw[it_res] = 1;
-						} else {
-							tccp->prcw[it_res] = floorlog2<uint32_t>(size_prcw);
-						}
-						if (size_prch < 1) {
-							tccp->prch[it_res] = 1;
-						} else {
-							tccp->prch[it_res] = floorlog2<uint32_t>(size_prch);
-						}
-					}
-					p++;
-					/*printf("\nsize precinct for level %u : %u,%u\n", it_res,tccp->prcw[it_res], tccp->prch[it_res]); */
-				} /*end for*/
-			} else {
-				for (uint32_t j = 0; j < tccp->numresolutions; j++) {
-					tccp->prcw[j] = 15;
-					tccp->prch[j] = 15;
-				}
-			}
-			tcp->qcd.pull(tccp->stepsizes, !parameters->irreversible);
-		}
-	}
-	grk_free(parameters->mct_data);
-	parameters->mct_data = nullptr;
-
-	return true;
-}
-
-
-bool j2k_start_compress(CodeStream *codeStream, BufferedStream *stream) {
-
-	assert(codeStream != nullptr);
-	assert(stream != nullptr);
-
-	/* customization of the validation */
-	if (!j2k_init_compress_validation(codeStream))
-		return false;
-
-	/* validation of the parameters codec */
-	if (!j2k_exec(codeStream, codeStream->m_validation_list, stream))
-		return false;
-
-	/* customization of the encoding */
-	if (!j2k_init_header_writing(codeStream))
-		return false;
-
-	/* write header */
-	return j2k_exec(codeStream, codeStream->m_procedure_list, stream);
-}
-
-bool j2k_compress(CodeStream *codeStream, grk_plugin_tile *tile,
-		BufferedStream *stream) {
-	assert(codeStream != nullptr);
-	assert(stream != nullptr);
-	uint32_t nb_tiles = (uint32_t) codeStream->m_cp.t_grid_height
-			* codeStream->m_cp.t_grid_width;
-	if (nb_tiles > max_num_tiles) {
-		GROK_ERROR("Number of tiles %u is greater than %u max tiles "
-				"allowed by the standard.", nb_tiles, max_num_tiles);
-		return false;
-	}
-	auto pool_size = std::min<uint32_t>((uint32_t)ThreadPool::get()->num_threads(), nb_tiles);
-	ThreadPool pool(pool_size);
-	std::vector< std::future<int> > results;
-	std::unique_ptr<TileProcessor*[]> procs = std::make_unique<TileProcessor*[]>(nb_tiles);
-	std::atomic<bool> success(true);
-	bool rc = false;
-
-	for (uint16_t i = 0; i < nb_tiles; ++i)
-		procs[i] = nullptr;
-
-	if (pool_size > 1){
-		for (uint16_t i = 0; i < nb_tiles; ++i) {
-			uint16_t tile_ind = i;
-			results.emplace_back(
-					pool.enqueue([codeStream,
-								  &procs,
-								  tile,
-								  tile_ind,
-								  stream,
-								  &success] {
-						if (success) {
-							auto tileProcessor = new TileProcessor(codeStream);
-
-							tileProcessor->m_tile_index = tile_ind;
-							tileProcessor->current_plugin_tile = tile;
-							if (!tileProcessor->pre_write_tile())
-								success = false;
-							else {
-								procs[tile_ind] = tileProcessor;
-								if (!tileProcessor->do_encode(stream))
-									success = false;
-							}
-						}
-						return 0;
-					})
-				);
-		}
-	} else {
-		for (uint16_t i = 0; i < nb_tiles; ++i) {
-			auto tileProcessor = new TileProcessor(codeStream);
-
-			tileProcessor->m_tile_index = i;
-			tileProcessor->current_plugin_tile = tile;
-			if (!tileProcessor->pre_write_tile()){
-				delete tileProcessor;
-				goto cleanup;
-			}
-			if (!tileProcessor->do_encode(stream)){
-				delete tileProcessor;
-				goto cleanup;
-			}
-			if (!j2k_post_write_tile(codeStream, tileProcessor, stream)){
-				delete tileProcessor;
-				goto cleanup;
-			}
-			delete tileProcessor;
-		}
-	}
-	if (pool_size > 1) {
-		for(auto &result: results){
-			result.get();
-		}
-		if (!success)
-			goto cleanup;
-		for (uint16_t i = 0; i < nb_tiles; ++i) {
-			if (!j2k_post_write_tile(codeStream, procs[i], stream))
-				goto cleanup;
-			delete procs[i];
-			procs[i] = nullptr;
-		}
-	}
-	codeStream->m_tileProcessor = nullptr;
-	rc = true;
-cleanup:
-	for (uint16_t i = 0; i < nb_tiles; ++i)
-		delete procs[i];
-
-	return rc;
-}
-
-bool j2k_compress_tile(CodeStream *codeStream,
-		uint16_t tile_index, uint8_t *p_data,
-		uint64_t uncompressed_data_size, BufferedStream *stream) {
-	if (!p_data)
-		return false;
-	bool rc = false;
-
-	codeStream->m_tileProcessor = new TileProcessor(codeStream);
-	auto tileProcessor = codeStream->m_tileProcessor;
-	tileProcessor->m_tile_index = tile_index;
-
-	if (!tileProcessor->pre_write_tile()) {
-		GROK_ERROR("Error while pre_write_tile with tile index = %u",
-				tile_index);
-		goto cleanup;
-	}
-	/* now copy data into the tile component */
-	if (!tileProcessor->copy_uncompressed_data_to_tile(p_data,	uncompressed_data_size)) {
-		GROK_ERROR("Size mismatch between tile data and sent data.");
-		goto cleanup;
-	}
-	if (!tileProcessor->do_encode(stream))
-		goto cleanup;
-	if (!j2k_post_write_tile(codeStream, tileProcessor, stream)) {
-		GROK_ERROR("Error while j2k_post_write_tile with tile index = %u",
-				tile_index);
-		goto cleanup;
-	}
-	rc = true;
-cleanup:
-	delete codeStream->m_tileProcessor;
-	codeStream->m_tileProcessor = nullptr;
-
-	return rc;
-}
-
-bool j2k_end_compress(CodeStream *codeStream, BufferedStream *stream) {
-	/* customization of the encoding */
-	if (!j2k_init_end_compress(codeStream))
-		return false;
-
-	return  j2k_exec(codeStream, codeStream->m_procedure_list, stream);
 }
 
 
@@ -2789,6 +1957,80 @@ static bool j2k_calculate_tp(CodingParams *cp, uint16_t *p_nb_tile_parts,
 	return true;
 }
 
+
+
+
+void j2k_destroy(CodeStream *codeStream) {
+   delete codeStream;
+}
+
+bool j2k_set_decompress_area(CodeStream *codeStream, grk_image *output_image,
+		uint32_t start_x, uint32_t start_y, uint32_t end_x, uint32_t end_y) {
+	return codeStream->set_decompress_area(output_image,
+											start_x,
+											start_y,
+											end_x,
+											end_y);
+}
+
+
+bool j2k_read_header(CodeStream *codeStream,BufferedStream *stream,
+		grk_header_info *header_info, grk_image **p_image) {
+	assert(codeStream != nullptr);
+
+	return codeStream->read_header(stream,header_info,p_image);
+}
+
+void j2k_init_decompressor(CodeStream *j2k, grk_dparameters *parameters) {
+	if (j2k)
+		j2k->init_decompress(parameters);
+}
+
+
+bool j2k_decompress(CodeStream *codeStream, grk_plugin_tile *tile,
+		BufferedStream *stream, grk_image *p_image) {
+	return codeStream->decompress(tile,stream,p_image);
+}
+
+bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream, grk_image *p_image,
+		uint16_t tile_index) {
+	return codeStream->decompress_tile(stream,p_image,tile_index);
+}
+
+bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
+		grk_image *image) {
+	return codeStream->init_compress(parameters, image);
+}
+
+
+bool j2k_start_compress(CodeStream *codeStream, BufferedStream *stream) {
+
+	assert(codeStream != nullptr);
+
+	return codeStream->start_compress(stream);
+}
+
+bool j2k_compress(CodeStream *codeStream, grk_plugin_tile *tile,
+		BufferedStream *stream) {
+	assert(codeStream != nullptr);
+
+	return codeStream->compress(tile,stream);
+
+}
+
+bool j2k_compress_tile(CodeStream *codeStream,
+		uint16_t tile_index, uint8_t *p_data,
+		uint64_t uncompressed_data_size, BufferedStream *stream) {
+
+	return codeStream->compress_tile(tile_index, p_data, uncompressed_data_size, stream);
+}
+
+bool j2k_end_compress(CodeStream *codeStream, BufferedStream *stream) {
+
+	return codeStream->end_compress(stream);
+}
+
+
 CodeStream::CodeStream(bool decode) : m_input_image(nullptr),
 							m_output_image(nullptr),
 							cstr_index(nullptr),
@@ -2828,6 +2070,831 @@ CodeStream::~CodeStream(){
 	delete m_tileProcessor;
 }
 
+
+/** Main header reading function handler */
+bool CodeStream::read_header(BufferedStream *stream, grk_header_info  *header_info, grk_image **p_image){
+
+	assert(stream != nullptr);
+
+	/* create an empty image header */
+	m_input_image = grk_image_create0();
+	if (!m_input_image) {
+		return false;
+	}
+
+	/* customization of the validation */
+	if (!j2k_init_decompress_validation(this))
+		return false;
+
+	/* validation of the parameters codec */
+	if (!j2k_exec(this, m_validation_list, stream))
+		return false;
+
+	/* customization of the encoding */
+	if (!j2k_init_header_reading(this))
+		return false;
+
+
+	/* read header */
+	if (!j2k_exec(this, m_procedure_list, stream))
+		return false;
+
+	if (header_info) {
+		CodingParams *cp = nullptr;
+		TileCodingParams *tcp = nullptr;
+		TileComponentCodingParams *tccp = nullptr;
+
+		cp = &(m_cp);
+		tcp = m_decoder.m_default_tcp;
+		tccp = &tcp->tccps[0];
+
+		header_info->cblockw_init = 1 << tccp->cblkw;
+		header_info->cblockh_init = 1 << tccp->cblkh;
+		header_info->irreversible = tccp->qmfbid == 0;
+		header_info->mct = tcp->mct;
+		header_info->rsiz = cp->rsiz;
+		header_info->numresolutions = tccp->numresolutions;
+		// !!! assume that coding style is constant across all tile components
+		header_info->csty = tccp->csty;
+		// !!! assume that mode switch is constant across all tiles
+		header_info->cblk_sty = tccp->cblk_sty;
+		for (uint32_t i = 0; i < header_info->numresolutions; ++i) {
+			header_info->prcw_init[i] = 1 << tccp->prcw[i];
+			header_info->prch_init[i] = 1 << tccp->prch[i];
+		}
+		header_info->tx0 = m_cp.tx0;
+		header_info->ty0 = m_cp.ty0;
+
+		header_info->t_width = m_cp.t_width;
+		header_info->t_height = m_cp.t_height;
+
+		header_info->t_grid_width = m_cp.t_grid_width;
+		header_info->t_grid_height = m_cp.t_grid_height;
+
+		header_info->tcp_numlayers = tcp->numlayers;
+
+		header_info->num_comments = m_cp.num_comments;
+		for (size_t i = 0; i < header_info->num_comments; ++i) {
+			header_info->comment[i] = m_cp.comment[i];
+			header_info->comment_len[i] = m_cp.comment_len[i];
+			header_info->isBinaryComment[i] = m_cp.isBinaryComment[i];
+		}
+	}
+	*p_image = grk_image_create0();
+	if (!(*p_image)) {
+		return false;
+	}
+	/* Copy code stream image information to the output image */
+	grk_copy_image_header(m_input_image, *p_image);
+	if (cstr_index) {
+		/*Allocate and initialize some elements of codestrem index*/
+		if (!j2k_allocate_tile_element_cstr_index(this)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/** Decoding function */
+bool CodeStream::decompress( grk_plugin_tile *tile,	BufferedStream *stream, grk_image *p_image){
+
+	if (!p_image)
+		return false;
+
+	m_output_image = grk_image_create0();
+	if (!(m_output_image))
+		return false;
+	grk_copy_image_header(p_image, m_output_image);
+
+	/* customization of the decoding */
+	if (!j2k_init_decompress(this))
+		return false;
+
+	current_plugin_tile = tile;
+
+	return j2k_do_decompress(this,stream,p_image);
+}
+
+/** decompress tile*/
+bool CodeStream::decompress_tile(BufferedStream *stream,	grk_image *p_image,	uint16_t tile_index){
+
+	if (!p_image) {
+		GROK_ERROR("Image is null");
+		return false;
+	}
+
+	if (tile_index >= m_cp.t_grid_width * m_cp.t_grid_height) {
+		GROK_ERROR(	"Tile index %u is greater than maximum tile index %u",	tile_index,
+				      m_cp.t_grid_width * m_cp.t_grid_height - 1);
+		return false;
+	}
+
+	/* Compute the dimension of the desired tile*/
+	uint32_t tile_x = tile_index % m_cp.t_grid_width;
+	uint32_t tile_y = tile_index / m_cp.t_grid_width;
+
+	auto original_image_rect = grk_rect(p_image->x0, p_image->y0, p_image->x1,
+			p_image->y1);
+
+	p_image->x0 = tile_x * m_cp.t_width + m_cp.tx0;
+	if (p_image->x0 < m_input_image->x0)
+		p_image->x0 = m_input_image->x0;
+	p_image->x1 = (tile_x + 1) * m_cp.t_width + m_cp.tx0;
+	if (p_image->x1 > m_input_image->x1)
+		p_image->x1 = m_input_image->x1;
+
+	p_image->y0 = tile_y * m_cp.t_height + m_cp.ty0;
+	if (p_image->y0 < m_input_image->y0)
+		p_image->y0 = m_input_image->y0;
+	p_image->y1 = (tile_y + 1) * m_cp.t_height + m_cp.ty0;
+	if (p_image->y1 > m_input_image->y1)
+		p_image->y1 = m_input_image->y1;
+
+	auto tile_rect = grk_rect(p_image->x0,
+								p_image->y0,
+								p_image->x1,
+								p_image->y1);
+
+	auto overlap_rect = original_image_rect;
+	overlap_rect.intersection(tile_rect);
+	if (original_image_rect.is_non_degenerate()
+			&& tile_rect.is_non_degenerate()
+			&& overlap_rect.is_non_degenerate()) {
+		p_image->x0 = (uint32_t) overlap_rect.x0;
+		p_image->y0 = (uint32_t) overlap_rect.y0;
+		p_image->x1 = (uint32_t) overlap_rect.x1;
+		p_image->y1 = (uint32_t) overlap_rect.y1;
+	} else {
+		GROK_WARN(
+				"Decode region <%u,%u,%u,%u> does not overlap requested tile %u. Ignoring.",
+				original_image_rect.x0, original_image_rect.y0,
+				original_image_rect.x1, original_image_rect.y1, tile_index);
+	}
+
+	auto img_comp = p_image->comps;
+	auto reduce = m_cp.m_coding_params.m_dec.m_reduce;
+	for (uint32_t compno = 0; compno < p_image->numcomps; ++compno) {
+		uint32_t comp_x1, comp_y1;
+
+		img_comp->x0 = ceildiv<uint32_t>(p_image->x0, img_comp->dx);
+		img_comp->y0 = ceildiv<uint32_t>(p_image->y0, img_comp->dy);
+		comp_x1 = ceildiv<uint32_t>(p_image->x1, img_comp->dx);
+		comp_y1 = ceildiv<uint32_t>(p_image->y1, img_comp->dy);
+
+		img_comp->w = (ceildivpow2<uint32_t>(comp_x1, reduce)
+				- ceildivpow2<uint32_t>(img_comp->x0, reduce));
+		img_comp->h = (ceildivpow2<uint32_t>(comp_y1, reduce)
+				- ceildivpow2<uint32_t>(img_comp->y0, reduce));
+
+		img_comp++;
+	}
+	if (m_output_image)
+		grk_image_destroy(m_output_image);
+	m_output_image = grk_image_create0();
+	if (!(m_output_image))
+		return false;
+	grk_copy_image_header(p_image, m_output_image);
+	m_tile_ind_to_dec = (int32_t) tile_index;
+
+	// reset tile part numbers, in case we are re-using the same codec object
+	// from previous decompress
+	uint32_t nb_tiles = m_cp.t_grid_width * m_cp.t_grid_height;
+	for (uint32_t i = 0; i < nb_tiles; ++i)
+		m_cp.tcps[i].m_tile_part_index = -1;
+
+	/* customization of the decoding */
+	if (!j2k_init_decompress_tile(this))
+		return false;
+
+	return j2k_do_decompress(this,stream,p_image);
+}
+
+/** Reading function used after code stream if necessary */
+bool CodeStream::end_decompress(BufferedStream *stream){
+
+	return true;
+}
+
+/** Setup decoder function handler */
+void CodeStream::init_decompress(grk_dparameters  *parameters){
+	if (parameters) {
+		m_cp.m_coding_params.m_dec.m_layer = parameters->cp_layer;
+		m_cp.m_coding_params.m_dec.m_reduce = parameters->cp_reduce;
+	}
+}
+
+bool CodeStream::start_compress(BufferedStream *stream){
+	assert(stream != nullptr);
+
+	/* customization of the validation */
+	if (!j2k_init_compress_validation(this))
+		return false;
+
+	/* validation of the parameters codec */
+	if (!j2k_exec(this, m_validation_list, stream))
+		return false;
+
+	/* customization of the encoding */
+	if (!j2k_init_header_writing(this))
+		return false;
+
+	/* write header */
+	return j2k_exec(this, m_procedure_list, stream);
+}
+
+bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
+
+	CodingParams *cp = nullptr;
+
+	if (!parameters || !image) {
+		return false;
+	}
+	//sanity check on image
+	if (image->numcomps < 1 || image->numcomps > max_num_components) {
+		GROK_ERROR(
+				"Invalid number of components specified while setting up JP2 encoder");
+		return false;
+	}
+	if ((image->x1 < image->x0) || (image->y1 < image->y0)) {
+		GROK_ERROR(
+				"Invalid input image dimensions found while setting up JP2 encoder");
+		return false;
+	}
+	for (uint32_t i = 0; i < image->numcomps; ++i) {
+		auto comp = image->comps + i;
+		if (comp->w == 0 || comp->h == 0) {
+			GROK_ERROR(
+					"Invalid input image component dimensions found while setting up JP2 encoder");
+			return false;
+		}
+		if (comp->prec == 0) {
+			GROK_ERROR(
+					"Invalid component precision of 0 found while setting up JP2 encoder");
+			return false;
+		}
+	}
+
+	// create private sanitized copy of imagte
+	m_input_image = grk_image_create0();
+	if (!m_input_image) {
+		GROK_ERROR("Failed to allocate image header.");
+		return false;
+	}
+	grk_copy_image_header(image, m_input_image);
+	if (image->comps) {
+		for (uint32_t compno = 0; compno < image->numcomps; compno++) {
+			if (image->comps[compno].data) {
+				m_input_image->comps[compno].data =
+						image->comps[compno].data;
+				image->comps[compno].data = nullptr;
+
+			}
+		}
+	}
+
+	if ((parameters->numresolution == 0)
+			|| (parameters->numresolution > GRK_J2K_MAXRLVLS)) {
+		GROK_ERROR("Invalid number of resolutions : %u not in range [1,%u]",
+				parameters->numresolution, GRK_J2K_MAXRLVLS);
+		return false;
+	}
+
+	if (GRK_IS_IMF(parameters->rsiz) && parameters->max_cs_size > 0
+			&& parameters->tcp_numlayers == 1
+			&& parameters->tcp_rates[0] == 0) {
+		parameters->tcp_rates[0] = (float) (image->numcomps * image->comps[0].w
+				* image->comps[0].h * image->comps[0].prec)
+				/ (float) (((uint32_t) parameters->max_cs_size) * 8
+						* image->comps[0].dx * image->comps[0].dy);
+	}
+
+	/* if no rate entered, lossless by default */
+	if (parameters->tcp_numlayers == 0) {
+		parameters->tcp_rates[0] = 0;
+		parameters->tcp_numlayers = 1;
+		parameters->cp_disto_alloc = true;
+	}
+
+	/* see if max_codestream_size does limit input rate */
+	double image_bytes = ((double) image->numcomps * image->comps[0].w
+			* image->comps[0].h * image->comps[0].prec)
+			/ (8 * image->comps[0].dx * image->comps[0].dy);
+	if (parameters->max_cs_size == 0) {
+		if (parameters->tcp_numlayers > 0
+				&& parameters->tcp_rates[parameters->tcp_numlayers - 1] > 0) {
+			parameters->max_cs_size = (uint64_t) floor(
+					image_bytes
+							/ parameters->tcp_rates[parameters->tcp_numlayers
+									- 1]);
+		}
+	} else {
+		bool cap = false;
+		auto min_rate = image_bytes / (double) parameters->max_cs_size;
+		for (uint32_t i = 0; i < parameters->tcp_numlayers; i++) {
+			if (parameters->tcp_rates[i] < min_rate) {
+				parameters->tcp_rates[i] = min_rate;
+				cap = true;
+			}
+		}
+		if (cap) {
+			GROK_WARN("The desired maximum code stream size has limited\n"
+					"at least one of the desired quality layers");
+		}
+	}
+
+	/* Manage profiles and applications and set RSIZ */
+	/* set cinema parameters if required */
+	if (parameters->isHT) {
+		parameters->rsiz |= GRK_JPH_RSIZ_FLAG;
+	}
+	if (GRK_IS_CINEMA(parameters->rsiz)) {
+		if ((parameters->rsiz == GRK_PROFILE_CINEMA_S2K)
+				|| (parameters->rsiz == GRK_PROFILE_CINEMA_S4K)) {
+			GROK_WARN(
+					"JPEG 2000 Scalable Digital Cinema profiles not supported");
+			parameters->rsiz = GRK_PROFILE_NONE;
+		} else {
+			if (Profile::is_cinema_compliant(image, parameters->rsiz))
+				Profile::set_cinema_parameters(parameters, image);
+			else
+				parameters->rsiz = GRK_PROFILE_NONE;
+		}
+	} else if (GRK_IS_STORAGE(parameters->rsiz)) {
+		GROK_WARN("JPEG 2000 Long Term Storage profile not supported");
+		parameters->rsiz = GRK_PROFILE_NONE;
+	} else if (GRK_IS_BROADCAST(parameters->rsiz)) {
+		Profile::set_broadcast_parameters(parameters);
+		if (!Profile::is_broadcast_compliant(parameters, image))
+			parameters->rsiz = GRK_PROFILE_NONE;
+	} else if (GRK_IS_IMF(parameters->rsiz)) {
+		Profile::set_imf_parameters(parameters, image);
+		if (!Profile::is_imf_compliant(parameters, image))
+			parameters->rsiz = GRK_PROFILE_NONE;
+	} else if (GRK_IS_PART2(parameters->rsiz)) {
+		if (parameters->rsiz == ((GRK_PROFILE_PART2) | (GRK_EXTENSION_NONE))) {
+			GROK_WARN("JPEG 2000 Part-2 profile defined\n"
+					"but no Part-2 extension enabled.\n"
+					"Profile set to NONE.");
+			parameters->rsiz = GRK_PROFILE_NONE;
+		} else if (parameters->rsiz
+				!= ((GRK_PROFILE_PART2) | (GRK_EXTENSION_MCT))) {
+			GROK_WARN("Unsupported Part-2 extension enabled\n"
+					"Profile set to NONE.");
+			parameters->rsiz = GRK_PROFILE_NONE;
+		}
+	}
+
+	if (parameters->numpocs) {
+		/* initialisation of POC */
+		if (!j2k_check_poc_val(parameters->POC, parameters->numpocs,
+				parameters->numresolution, image->numcomps,
+				parameters->tcp_numlayers)) {
+			GROK_ERROR("Failed to initialize POC");
+			return false;
+		}
+	}
+
+	/*
+	 copy user encoding parameters
+	 */
+
+	/* keep a link to cp so that we can destroy it later in j2k_destroy_compress */
+	cp = &(m_cp);
+
+	/* set default values for cp */
+	cp->t_grid_width = 1;
+	cp->t_grid_height = 1;
+
+	cp->m_coding_params.m_enc.m_max_comp_size = parameters->max_comp_size;
+	cp->rsiz = parameters->rsiz;
+	cp->m_coding_params.m_enc.m_disto_alloc = parameters->cp_disto_alloc;
+	cp->m_coding_params.m_enc.m_fixed_quality = parameters->cp_fixed_quality;
+	cp->m_coding_params.m_enc.writePLT = parameters->writePLT;
+	cp->m_coding_params.m_enc.writeTLM = parameters->writeTLM;
+	cp->m_coding_params.m_enc.rateControlAlgorithm =
+			parameters->rateControlAlgorithm;
+
+	/* tiles */
+	cp->t_width = parameters->t_width;
+	cp->t_height = parameters->t_height;
+
+	/* tile offset */
+	cp->tx0 = parameters->tx0;
+	cp->ty0 = parameters->ty0;
+
+	/* comment string */
+	if (parameters->cp_num_comments) {
+		for (size_t i = 0; i < parameters->cp_num_comments; ++i) {
+			cp->comment_len[i] = parameters->cp_comment_len[i];
+			if (!cp->comment_len[i]) {
+				GROK_WARN("Empty comment. Ignoring");
+				continue;
+			}
+			if (cp->comment_len[i] > GRK_MAX_COMMENT_LENGTH) {
+				GROK_WARN(
+						"Comment length %s is greater than maximum comment length %u. Ignoring",
+						cp->comment_len[i], GRK_MAX_COMMENT_LENGTH);
+				continue;
+			}
+			cp->comment[i] = (char*) new uint8_t[cp->comment_len[i]];
+			if (!cp->comment[i]) {
+				GROK_ERROR(
+						"Not enough memory to allocate copy of comment string");
+				return false;
+			}
+			memcpy(cp->comment[i], parameters->cp_comment[i],
+					cp->comment_len[i]);
+			cp->isBinaryComment[i] = parameters->cp_is_binary_comment[i];
+			cp->num_comments++;
+		}
+	} else {
+		/* Create default comment for code stream */
+		const char comment[] = "Created by Grok     version ";
+		const size_t clen = strlen(comment);
+		const char *version = grk_version();
+
+		cp->comment[0] = (char*) new uint8_t[clen + strlen(version) + 1];
+		if (!cp->comment[0]) {
+			GROK_ERROR("Not enough memory to allocate comment string");
+			return false;
+		}
+		sprintf(cp->comment[0], "%s%s", comment, version);
+		cp->comment_len[0] = (uint16_t) strlen(cp->comment[0]);
+		cp->num_comments = 1;
+		cp->isBinaryComment[0] = false;
+	}
+
+	/*
+	 calculate other encoding parameters
+	 */
+
+	if (parameters->tile_size_on) {
+		// avoid divide by zero
+		if (cp->t_width == 0 || cp->t_height == 0) {
+			GROK_ERROR("Invalid tile dimensions (%u,%u)",cp->t_width, cp->t_height);
+			return false;
+		}
+		cp->t_grid_width = ceildiv<uint32_t>((image->x1 - cp->tx0),
+				cp->t_width);
+		cp->t_grid_height = ceildiv<uint32_t>((image->y1 - cp->ty0),
+				cp->t_height);
+	} else {
+		cp->t_width = image->x1 - cp->tx0;
+		cp->t_height = image->y1 - cp->ty0;
+	}
+
+	if (parameters->tp_on) {
+		cp->m_coding_params.m_enc.m_tp_flag = parameters->tp_flag;
+		cp->m_coding_params.m_enc.m_tp_on = true;
+	}
+
+	uint8_t numgbits = parameters->isHT ? 1 : 2;
+	cp->tcps = new TileCodingParams[cp->t_grid_width * cp->t_grid_height];
+	for (uint32_t tileno = 0; tileno < cp->t_grid_width * cp->t_grid_height; tileno++) {
+		TileCodingParams *tcp = cp->tcps + tileno;
+		tcp->isHT = parameters->isHT;
+		tcp->qcd.generate(numgbits, (uint32_t) (parameters->numresolution - 1),
+				!parameters->irreversible, image->comps[0].prec, tcp->mct > 0,
+				image->comps[0].sgnd);
+		tcp->numlayers = parameters->tcp_numlayers;
+
+		for (uint32_t j = 0; j < tcp->numlayers; j++) {
+			if (cp->m_coding_params.m_enc.m_fixed_quality)
+				tcp->distoratio[j] = parameters->tcp_distoratio[j];
+			else
+				tcp->rates[j] = parameters->tcp_rates[j];
+		}
+
+		tcp->csty = parameters->csty;
+		tcp->prg = parameters->prog_order;
+		tcp->mct = parameters->tcp_mct;
+		tcp->POC = false;
+
+		if (parameters->numpocs) {
+			/* initialisation of POC */
+			tcp->POC = true;
+			uint32_t numpocs_tile = 0;
+			for (uint32_t i = 0; i < parameters->numpocs; i++) {
+				if (tileno + 1 == parameters->POC[i].tile) {
+					auto tcp_poc = &tcp->pocs[numpocs_tile];
+
+					tcp_poc->resno0 = parameters->POC[numpocs_tile].resno0;
+					tcp_poc->compno0 = parameters->POC[numpocs_tile].compno0;
+					tcp_poc->layno1 = parameters->POC[numpocs_tile].layno1;
+					tcp_poc->resno1 = parameters->POC[numpocs_tile].resno1;
+					tcp_poc->compno1 = parameters->POC[numpocs_tile].compno1;
+					tcp_poc->prg1 = parameters->POC[numpocs_tile].prg1;
+					tcp_poc->tile = parameters->POC[numpocs_tile].tile;
+					numpocs_tile++;
+				}
+			}
+			if (numpocs_tile == 0) {
+				GROK_ERROR("Problem with specified progression order changes");
+				return false;
+			}
+			tcp->numpocs = numpocs_tile - 1;
+		} else {
+			tcp->numpocs = 0;
+		}
+
+		tcp->tccps = new TileComponentCodingParams[image->numcomps];
+		if (parameters->mct_data) {
+
+			uint32_t lMctSize = image->numcomps * image->numcomps
+					* (uint32_t) sizeof(float);
+			auto lTmpBuf = (float*) grk_malloc(lMctSize);
+			auto dc_shift = (int32_t*) ((uint8_t*) parameters->mct_data
+					+ lMctSize);
+
+			if (!lTmpBuf) {
+				GROK_ERROR("Not enough memory to allocate temp buffer");
+				return false;
+			}
+
+			tcp->mct = 2;
+			tcp->m_mct_coding_matrix = (float*) grk_malloc(lMctSize);
+			if (!tcp->m_mct_coding_matrix) {
+				grk_free(lTmpBuf);
+				lTmpBuf = nullptr;
+				GROK_ERROR(
+						"Not enough memory to allocate encoder MCT coding matrix ");
+				return false;
+			}
+			memcpy(tcp->m_mct_coding_matrix, parameters->mct_data, lMctSize);
+			memcpy(lTmpBuf, parameters->mct_data, lMctSize);
+
+			tcp->m_mct_decoding_matrix = (float*) grk_malloc(lMctSize);
+			if (!tcp->m_mct_decoding_matrix) {
+				grk_free(lTmpBuf);
+				lTmpBuf = nullptr;
+				GROK_ERROR(
+						"Not enough memory to allocate encoder MCT decoding matrix ");
+				return false;
+			}
+			if (matrix_inversion_f(lTmpBuf, (tcp->m_mct_decoding_matrix),
+					image->numcomps) == false) {
+				grk_free(lTmpBuf);
+				lTmpBuf = nullptr;
+				GROK_ERROR("Failed to inverse encoder MCT decoding matrix ");
+				return false;
+			}
+
+			tcp->mct_norms = (double*) grk_malloc(
+					image->numcomps * sizeof(double));
+			if (!tcp->mct_norms) {
+				grk_free(lTmpBuf);
+				lTmpBuf = nullptr;
+				GROK_ERROR("Not enough memory to allocate encoder MCT norms ");
+				return false;
+			}
+			mct::calculate_norms(tcp->mct_norms, image->numcomps,
+					tcp->m_mct_decoding_matrix);
+			grk_free(lTmpBuf);
+
+			for (uint32_t i = 0; i < image->numcomps; i++) {
+				auto tccp = &tcp->tccps[i];
+				tccp->m_dc_level_shift = dc_shift[i];
+			}
+
+			if (j2k_init_mct_encoding(tcp, image) == false) {
+				/* free will be handled by j2k_destroy */
+				GROK_ERROR("Failed to set up j2k mct encoding");
+				return false;
+			}
+		} else {
+			if (tcp->mct == 1) {
+				if (image->color_space == GRK_CLRSPC_EYCC
+						|| image->color_space == GRK_CLRSPC_SYCC) {
+					GROK_WARN("Disabling MCT for sYCC/eYCC colour space");
+					tcp->mct = 0;
+				} else if (image->numcomps >= 3) {
+					if ((image->comps[0].dx != image->comps[1].dx)
+							|| (image->comps[0].dx != image->comps[2].dx)
+							|| (image->comps[0].dy != image->comps[1].dy)
+							|| (image->comps[0].dy != image->comps[2].dy)) {
+						GROK_WARN(
+								"Cannot perform MCT on components with different dimensions. Disabling MCT.");
+						tcp->mct = 0;
+					}
+				}
+			}
+			for (uint32_t i = 0; i < image->numcomps; i++) {
+				auto tccp = tcp->tccps + i;
+				auto comp = image->comps + i;
+				if (!comp->sgnd) {
+					tccp->m_dc_level_shift = 1 << (comp->prec - 1);
+				}
+			}
+		}
+
+		for (uint32_t i = 0; i < image->numcomps; i++) {
+			auto tccp = &tcp->tccps[i];
+
+			/* 0 => one precinct || 1 => custom precinct  */
+			tccp->csty = parameters->csty & J2K_CP_CSTY_PRT;
+			tccp->numresolutions = parameters->numresolution;
+			tccp->cblkw = floorlog2<uint32_t>(parameters->cblockw_init);
+			tccp->cblkh = floorlog2<uint32_t>(parameters->cblockh_init);
+			tccp->cblk_sty = parameters->cblk_sty;
+			tccp->qmfbid = parameters->irreversible ? 0 : 1;
+			tccp->qntsty = parameters->irreversible ?
+			J2K_CCP_QNTSTY_SEQNT :
+														J2K_CCP_QNTSTY_NOQNT;
+			tccp->numgbits = numgbits;
+
+			if ((int32_t) i == parameters->roi_compno)
+				tccp->roishift = parameters->roi_shift;
+			else
+				tccp->roishift = 0;
+			if ((parameters->csty & J2K_CCP_CSTY_PRT) && parameters->res_spec) {
+				uint32_t p = 0;
+				int32_t it_res;
+				assert(tccp->numresolutions > 0);
+				for (it_res = (int32_t) tccp->numresolutions - 1; it_res >= 0;
+						it_res--) {
+					if (p < parameters->res_spec) {
+						if (parameters->prcw_init[p] < 1) {
+							tccp->prcw[it_res] = 1;
+						} else {
+							tccp->prcw[it_res] = floorlog2<uint32_t>(
+									parameters->prcw_init[p]);
+						}
+						if (parameters->prch_init[p] < 1) {
+							tccp->prch[it_res] = 1;
+						} else {
+							tccp->prch[it_res] = floorlog2<uint32_t>(
+									parameters->prch_init[p]);
+						}
+					} else {
+						uint32_t res_spec = parameters->res_spec;
+						uint32_t size_prcw = 0;
+						uint32_t size_prch = 0;
+						size_prcw = parameters->prcw_init[res_spec - 1]
+								>> (p - (res_spec - 1));
+						size_prch = parameters->prch_init[res_spec - 1]
+								>> (p - (res_spec - 1));
+						if (size_prcw < 1) {
+							tccp->prcw[it_res] = 1;
+						} else {
+							tccp->prcw[it_res] = floorlog2<uint32_t>(size_prcw);
+						}
+						if (size_prch < 1) {
+							tccp->prch[it_res] = 1;
+						} else {
+							tccp->prch[it_res] = floorlog2<uint32_t>(size_prch);
+						}
+					}
+					p++;
+					/*printf("\nsize precinct for level %u : %u,%u\n", it_res,tccp->prcw[it_res], tccp->prch[it_res]); */
+				} /*end for*/
+			} else {
+				for (uint32_t j = 0; j < tccp->numresolutions; j++) {
+					tccp->prcw[j] = 15;
+					tccp->prch[j] = 15;
+				}
+			}
+			tcp->qcd.pull(tccp->stepsizes, !parameters->irreversible);
+		}
+	}
+	grk_free(parameters->mct_data);
+	parameters->mct_data = nullptr;
+
+	return true;
+}
+
+bool CodeStream::compress(grk_plugin_tile* tile,	BufferedStream *stream){
+
+	assert(stream != nullptr);
+	uint32_t nb_tiles = (uint32_t) m_cp.t_grid_height
+			* m_cp.t_grid_width;
+	if (nb_tiles > max_num_tiles) {
+		GROK_ERROR("Number of tiles %u is greater than %u max tiles "
+				"allowed by the standard.", nb_tiles, max_num_tiles);
+		return false;
+	}
+	auto pool_size = std::min<uint32_t>((uint32_t)ThreadPool::get()->num_threads(), nb_tiles);
+	ThreadPool pool(pool_size);
+	std::vector< std::future<int> > results;
+	std::unique_ptr<TileProcessor*[]> procs = std::make_unique<TileProcessor*[]>(nb_tiles);
+	std::atomic<bool> success(true);
+	bool rc = false;
+
+	for (uint16_t i = 0; i < nb_tiles; ++i)
+		procs[i] = nullptr;
+
+	if (pool_size > 1){
+		for (uint16_t i = 0; i < nb_tiles; ++i) {
+			uint16_t tile_ind = i;
+			results.emplace_back(
+					pool.enqueue([this,
+								  &procs,
+								  tile,
+								  tile_ind,
+								  stream,
+								  &success] {
+						if (success) {
+							auto tileProcessor = new TileProcessor(this);
+
+							tileProcessor->m_tile_index = tile_ind;
+							tileProcessor->current_plugin_tile = tile;
+							if (!tileProcessor->pre_write_tile())
+								success = false;
+							else {
+								procs[tile_ind] = tileProcessor;
+								if (!tileProcessor->do_encode(stream))
+									success = false;
+							}
+						}
+						return 0;
+					})
+				);
+		}
+	} else {
+		for (uint16_t i = 0; i < nb_tiles; ++i) {
+			auto tileProcessor = new TileProcessor(this);
+
+			tileProcessor->m_tile_index = i;
+			tileProcessor->current_plugin_tile = tile;
+			if (!tileProcessor->pre_write_tile()){
+				delete tileProcessor;
+				goto cleanup;
+			}
+			if (!tileProcessor->do_encode(stream)){
+				delete tileProcessor;
+				goto cleanup;
+			}
+			if (!j2k_post_write_tile(this, tileProcessor, stream)){
+				delete tileProcessor;
+				goto cleanup;
+			}
+			delete tileProcessor;
+		}
+	}
+	if (pool_size > 1) {
+		for(auto &result: results){
+			result.get();
+		}
+		if (!success)
+			goto cleanup;
+		for (uint16_t i = 0; i < nb_tiles; ++i) {
+			if (!j2k_post_write_tile(this, procs[i], stream))
+				goto cleanup;
+			delete procs[i];
+			procs[i] = nullptr;
+		}
+	}
+	m_tileProcessor = nullptr;
+	rc = true;
+cleanup:
+	for (uint16_t i = 0; i < nb_tiles; ++i)
+		delete procs[i];
+
+	return rc;
+}
+
+bool CodeStream::compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t uncompressed_data_size, BufferedStream *stream){
+
+	if (!p_data)
+		return false;
+	bool rc = false;
+
+	m_tileProcessor = new TileProcessor(this);
+	auto tileProcessor = m_tileProcessor;
+	tileProcessor->m_tile_index = tile_index;
+
+	if (!tileProcessor->pre_write_tile()) {
+		GROK_ERROR("Error while pre_write_tile with tile index = %u",
+				tile_index);
+		goto cleanup;
+	}
+	/* now copy data into the tile component */
+	if (!tileProcessor->copy_uncompressed_data_to_tile(p_data,	uncompressed_data_size)) {
+		GROK_ERROR("Size mismatch between tile data and sent data.");
+		goto cleanup;
+	}
+	if (!tileProcessor->do_encode(stream))
+		goto cleanup;
+	if (!j2k_post_write_tile(this, tileProcessor, stream)) {
+		GROK_ERROR("Error while j2k_post_write_tile with tile index = %u",
+				tile_index);
+		goto cleanup;
+	}
+	rc = true;
+cleanup:
+	delete m_tileProcessor;
+	m_tileProcessor = nullptr;
+
+	return rc;
+}
+
+bool CodeStream::end_compress(BufferedStream *stream){
+
+	/* customization of the encoding */
+	if (!j2k_init_end_compress(this))
+		return false;
+
+	return  j2k_exec(this, m_procedure_list, stream);
+}
 
 bool CodeStream::set_decompress_area(grk_image *output_image,
 		uint32_t start_x, uint32_t start_y, uint32_t end_x, uint32_t end_y) {
