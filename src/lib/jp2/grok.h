@@ -1313,19 +1313,6 @@ GRK_API void GRK_CALLCONV grk_image_all_components_data_free(grk_image *image);
 GRK_API void GRK_CALLCONV grk_image_single_component_data_free(
 		grk_image_comp *image);
 
-/**
- * Allocate memory for meta data
- *
- * @param len         number of bytes to allocate
- */
-GRK_API uint8_t* GRK_CALLCONV grk_buffer_new(size_t len);
-
-/**
- * Release memory for meta data
- *
- * @param buffer         buffer to be released
- */
-GRK_API void GRK_CALLCONV grk_buffer_delete(uint8_t *buffer);
 /*
  =================================
  stream functions definitions

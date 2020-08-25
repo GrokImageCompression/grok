@@ -372,8 +372,7 @@ bool j2k_read_com(CodeStream *codeStream,TileProcessor *tileProcessor,  uint8_t 
 	size_t commentSizeToAlloc = commentSize;
 	if (!codeStream->m_cp.isBinaryComment[numComments])
 		commentSizeToAlloc++;
-	codeStream->m_cp.comment[numComments] = (char*) grk_buffer_new(
-			commentSizeToAlloc);
+	codeStream->m_cp.comment[numComments] = (char*) new uint8_t[commentSizeToAlloc];
 	if (!codeStream->m_cp.comment[numComments]) {
 		GROK_ERROR(
 				"j2k_read_com: Out of memory when allocating memory for comment ");

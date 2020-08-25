@@ -1753,7 +1753,7 @@ static grk_image* tiftoimage(const char *filename,
 	if (!isCIE) {
 		if ((TIFFGetFieldDefaulted(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1)
 				&& icclen > 0 && icclen < grk::maxICCProfileBufferLen) {
-			image->icc_profile_buf = grk_buffer_new(icclen);
+			image->icc_profile_buf = new uint8_t[icclen];
 			memcpy(image->icc_profile_buf, iccbuf, icclen);
 			image->icc_profile_len = icclen;
 			image->color_space = GRK_CLRSPC_ICC;
@@ -1766,13 +1766,13 @@ static grk_image* tiftoimage(const char *filename,
 		// since TIFFTAG_RICHTIFFIPTC is of type TIFF_LONG, we must multiply
 		// by 4 to get the length in bytes
 		image->iptc_len = iptc_len * 4;
-		image->iptc_buf = grk_buffer_new(iptc_len);
+		image->iptc_buf = new uint8_t[iptc_len];
 		memcpy(image->iptc_buf, iptc_buf, iptc_len);
 	}
 	// 8. extract XML meta-data
 	if (TIFFGetFieldDefaulted(tif, TIFFTAG_XMLPACKET, &xmp_len, &xmp_buf) == 1) {
 		image->xmp_len = xmp_len;
-		image->xmp_buf = grk_buffer_new(xmp_len);
+		image->xmp_buf = new uint8_t[xmp_len];
 		memcpy(image->xmp_buf, xmp_buf, xmp_len);
 	}
 	// 9. read pixel data

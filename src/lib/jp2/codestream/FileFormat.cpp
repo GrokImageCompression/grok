@@ -1655,8 +1655,7 @@ static bool jp2_read_colr(FileFormat *fileFormat, uint8_t *p_colr_header_data,
 			uint32_t *cielab;
 			bool nonDefaultLab = colr_header_size == 35;
 			// only two ints are needed for default CIELab space
-			cielab = (uint32_t*) grk_buffer_new(
-					(nonDefaultLab ? 9 : 2) * sizeof(uint32_t));
+			cielab = (uint32_t*) new uint8_t[(nonDefaultLab ? 9 : 2) * sizeof(uint32_t)];
 			if (cielab == nullptr) {
 				GROK_ERROR("Not enough memory for cielab");
 				return false;
@@ -1704,7 +1703,7 @@ static bool jp2_read_colr(FileFormat *fileFormat, uint8_t *p_colr_header_data,
 			GROK_ERROR("ICC profile buffer length equals zero");
 			return false;
 		}
-		fileFormat->color.icc_profile_buf = grk_buffer_new((size_t) icc_len);
+		fileFormat->color.icc_profile_buf = new uint8_t[(size_t) icc_len];
 		memcpy(fileFormat->color.icc_profile_buf, p_colr_header_data, icc_len);
 		fileFormat->color.icc_profile_len = icc_len;
 		fileFormat->color.jp2_has_colour_specification_box = 1;
@@ -2096,13 +2095,12 @@ bool jp2_init_compress(FileFormat *fileFormat, grk_cparameters *parameters,
 		if (image->icc_profile_buf) {
 			// clean up existing icc profile in fileFormat struct
 			if (fileFormat->color.icc_profile_buf) {
-				grk_buffer_delete(fileFormat->color.icc_profile_buf);
+				delete[] fileFormat->color.icc_profile_buf;
 				fileFormat->color.icc_profile_buf = nullptr;
 			}
 			// copy icc profile from image to fileFormat struct
 			fileFormat->color.icc_profile_len = image->icc_profile_len;
-			fileFormat->color.icc_profile_buf = grk_buffer_new(
-					fileFormat->color.icc_profile_len);
+			fileFormat->color.icc_profile_buf = new uint8_t[fileFormat->color.icc_profile_len];
 			memcpy(fileFormat->color.icc_profile_buf, image->icc_profile_buf,
 					fileFormat->color.icc_profile_len);
 		}
@@ -2956,7 +2954,7 @@ FileFormat::~FileFormat() {
 	delete codeStream;
 	grk_free(comps);
 	grk_free(cl);
-	grk_buffer_delete(color.icc_profile_buf);
+	delete[] color.icc_profile_buf;
 	if (color.jp2_cdef) {
 		grk_free(color.jp2_cdef->info);
 		grk_free(color.jp2_cdef);

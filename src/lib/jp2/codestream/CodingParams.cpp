@@ -35,7 +35,7 @@ void CodingParams::destroy() {
 		tcps = nullptr;
 	}
 	for (uint32_t i = 0; i < num_comments; ++i) {
-		grk_buffer_delete((uint8_t*) comment[i]);
+        delete[] ((uint8_t*) comment[i]);
 		comment[i] = nullptr;
 	}
 	num_comments = 0;

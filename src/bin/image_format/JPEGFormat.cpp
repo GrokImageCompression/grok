@@ -512,7 +512,7 @@ static grk_image* jpegtoimage(const char *filename,
 		goto cleanup;
 	}
 	if (icc_data_ptr && icc_data_len) {
-		imageInfo.image->icc_profile_buf = grk_buffer_new(icc_data_len);
+		imageInfo.image->icc_profile_buf = new uint8_t[icc_data_len];
 		memcpy(imageInfo.image->icc_profile_buf, icc_data_ptr, icc_data_len);
 		imageInfo.image->icc_profile_len = icc_data_len;
 		icc_data_len = 0;

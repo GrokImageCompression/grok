@@ -1600,7 +1600,7 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 						cp->comment_len[i], GRK_MAX_COMMENT_LENGTH);
 				continue;
 			}
-			cp->comment[i] = (char*) grk_buffer_new(cp->comment_len[i]);
+			cp->comment[i] = (char*) new uint8_t[cp->comment_len[i]];
 			if (!cp->comment[i]) {
 				GROK_ERROR(
 						"Not enough memory to allocate copy of comment string");
@@ -1617,7 +1617,7 @@ bool j2k_init_compress(CodeStream *codeStream, grk_cparameters *parameters,
 		const size_t clen = strlen(comment);
 		const char *version = grk_version();
 
-		cp->comment[0] = (char*) grk_buffer_new(clen + strlen(version) + 1);
+		cp->comment[0] = (char*) new uint8_t[clen + strlen(version) + 1];
 		if (!cp->comment[0]) {
 			GROK_ERROR("Not enough memory to allocate comment string");
 			return false;

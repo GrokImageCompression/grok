@@ -900,11 +900,11 @@ static grk_image* bmptoimage(const char *filename,
 			goto cleanup;
 		}
 		//allocate buffer
-		image->icc_profile_buf = grk_buffer_new(Info_h.biIccProfileSize);
+		image->icc_profile_buf = new uint8_t[Info_h.biIccProfileSize];
 		size_t bytesRead = fread(image->icc_profile_buf, 1,
 				Info_h.biIccProfileSize, INPUT);
 		if (bytesRead != Info_h.biIccProfileSize) {
-			grk_buffer_delete(image->icc_profile_buf);
+			delete[] image->icc_profile_buf;
 			image->icc_profile_buf = nullptr;
 			goto cleanup;
 		}

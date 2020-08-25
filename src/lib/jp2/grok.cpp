@@ -677,13 +677,6 @@ void GRK_CALLCONV grk_image_single_component_data_free( grk_image_comp  *comp) {
 	comp->owns_data = false;
 }
 
-uint8_t* GRK_CALLCONV grk_buffer_new(size_t len) {
-	return new uint8_t[len];
-}
-void GRK_CALLCONV grk_buffer_delete(uint8_t *buf) {
-	delete[] buf;
-}
-
 /**********************************************************************
  Plugin interface implementation
  ***********************************************************************/

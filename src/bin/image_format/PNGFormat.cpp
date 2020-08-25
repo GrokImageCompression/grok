@@ -258,7 +258,7 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 		png_charp ProfileName = nullptr;
 		if (png_get_iCCP(png, m_info, &ProfileName, &Compression,
 				&ProfileData, &ProfileLen) == PNG_INFO_iCCP) {
-			m_image->icc_profile_buf = grk_buffer_new(ProfileLen);
+			m_image->icc_profile_buf = new uint8_t[ProfileLen];
 			memcpy(m_image->icc_profile_buf, ProfileData, ProfileLen);
 			m_image->icc_profile_len = ProfileLen;
 			m_image->color_space = GRK_CLRSPC_ICC;
@@ -299,8 +299,7 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 			} else if (!strcmp(key, "XML:com.adobe.xmp")) {
 				if (text_ptr[i].text_length) {
 					m_image->xmp_len = text_ptr[i].text_length;
-					m_image->xmp_buf = grk_buffer_new(
-							m_image->xmp_len);
+					m_image->xmp_buf = new uint8_t[m_image->xmp_len];
 					memcpy(m_image->xmp_buf, text_ptr[i].text,
 							m_image->xmp_len);
 				}

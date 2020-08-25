@@ -81,9 +81,9 @@ void GRK_CALLCONV grk_image_destroy(grk_image *image) {
 			grk_image_all_components_data_free(image);
 			grk::grk_free(image->comps);
 		}
-		grk_buffer_delete(image->icc_profile_buf);
-		grk_buffer_delete(image->iptc_buf);
-		grk_buffer_delete(image->xmp_buf);
+		delete[] image->icc_profile_buf;
+		delete[] image->iptc_buf;
+		delete[] image->xmp_buf;
 		grk::grk_free(image);
 	}
 }
@@ -173,8 +173,7 @@ void grk_copy_image_header(const grk_image *image_src,grk_image *image_dest) {
 	image_dest->color_space = image_src->color_space;
 	image_dest->icc_profile_len = image_src->icc_profile_len;
 	if (image_dest->icc_profile_len) {
-		image_dest->icc_profile_buf = grk_buffer_new(
-				image_dest->icc_profile_len);
+		image_dest->icc_profile_buf = new uint8_t[image_dest->icc_profile_len];
 		memcpy(image_dest->icc_profile_buf, image_src->icc_profile_buf,
 				image_src->icc_profile_len);
 	} else
