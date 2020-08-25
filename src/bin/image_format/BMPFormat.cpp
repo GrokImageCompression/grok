@@ -1098,8 +1098,8 @@ bool BMPFormat::encode() {
 	w = m_image->comps[0].w;
 	h = m_image->comps[0].h;
 	colours_used = (m_image->numcomps == 3) ? 0 : 256 ;
-	lut_size = (m_image->numcomps == 3) ? 0 : 1024 ;
-	full_header_size = fileHeaderSize + 40;
+	lut_size = colours_used * 4 ;
+	full_header_size = fileHeaderSize + BITMAPINFOHEADER_LENGTH;
 	image_size = m_image->numcomps * (h * w +  h * (w % 2));
 	if (m_image->icc_profile_buf){
 		full_header_size = fileHeaderSize + sizeof(GRK_BITMAPINFOHEADER);
