@@ -1892,7 +1892,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 		goto cleanup;
 	}
 
-	if (!grk::all_components_sanity_check(image))
+	if (!grk::all_components_sanity_check(image,true))
 		goto cleanup;
 
 	cvtPxToCx = cvtPlanarToInterleaved_LUT[numcomps];

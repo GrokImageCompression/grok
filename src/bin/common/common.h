@@ -172,7 +172,7 @@ template<typename T> inline bool readBytes(FILE *fp, grk_image *image,
 }
 
 uint32_t uint_adds(uint32_t a, uint32_t b);
-bool all_components_sanity_check(grk_image *image);
+bool all_components_sanity_check(grk_image *image, bool equal_precision);
 bool isSubsampled(grk_image *  image);
 
 int population_count(uint32_t val);

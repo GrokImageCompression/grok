@@ -290,7 +290,7 @@ uint32_t uint_adds(uint32_t a, uint32_t b) {
 	return (uint32_t) (-(int32_t) (sum >> 32)) | (uint32_t) sum;
 }
 
-bool all_components_sanity_check(grk_image *image) {
+bool all_components_sanity_check(grk_image *image, bool equal_precision) {
 	if (!image || image->numcomps == 0)
 		return false;
 	auto comp0 = image->comps;
@@ -311,7 +311,7 @@ bool all_components_sanity_check(grk_image *image) {
 			spdlog::error("component {} data is null.", i);
 			return false;
 		}
-		if (comp0->prec != compi->prec){
+		if (equal_precision && comp0->prec != compi->prec){
 			spdlog::warn("precision {} of component {}"
 					" differs from precision {} of component 0.",compi->prec, i, comp0->prec);
 			return false;

@@ -1076,9 +1076,10 @@ bool BMPFormat::encode() {
 	uint32_t colours_used, lut_size;
 	uint32_t full_header_size, info_header_size, image_size, icc_size=0;
 
-	if (!grk::all_components_sanity_check(m_image))
+	if (!grk::all_components_sanity_check(m_image,false))
 		goto cleanup;
-	if (m_image->numcomps != 1 && m_image->numcomps != 3) {
+	if (m_image->numcomps != 1 &&
+			(m_image->numcomps != 3 && m_image->numcomps != 4) ) {
 		spdlog::error("Unsupported number of components: {}",
 				m_image->numcomps);
 		goto cleanup;
@@ -1201,141 +1202,78 @@ bool BMPFormat::encodeHeader(grk_image *  image, const std::string &filename, ui
 	m_image = image;
 	return encode();
 }
-bool BMPFormat::encodeStrip(uint32_t rows){
 
+bool BMPFormat::encodeStrip(uint32_t rows){
+	return encodeStripRGBX(rows);
+}
+
+bool BMPFormat::encodeStripRGBX(uint32_t rows){
 	bool rc = false;
 	auto w = m_image->comps[0].w;
 	auto h = m_image->comps[0].h;
-	int truncR = 0, truncG = 0, truncB = 0;
-	float scaleR = 1.0f, scaleG = 1.0f, scaleB = 1.0f;
 	auto stride = m_image->comps[0].stride;
 	m_destIndex = stride * (h - 1);
-	if (m_image->numcomps == 3) {
-		if (m_image->comps[0].prec > 8) {
-				truncR = (int) m_image->comps[0].prec - 8;
-				spdlog::warn("BMP CONVERSION: Truncating component 0 from {} bits to 8 bits",
-							m_image->comps[0].prec);
+	size_t padW;
+	int trunc[4] = {0,0,0,0};
+	float scale[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+
+	for (uint32_t compno = 0; compno < m_image->numcomps; ++compno){
+		if (m_image->comps[compno].prec > 8) {
+				trunc[compno] = (int) m_image->comps[compno].prec - 8;
+				spdlog::warn("BMP conversion: truncating component {} from {} bits to 8 bits",
+						compno, m_image->comps[compno].prec);
 		} else if (m_image->comps[0].prec < 8) {
-			scaleR = 255.0f/(1U << m_image->comps[0].prec);
-			spdlog::warn("BMP CONVERSION: Scaling component 0 from {} bits to 8 bits",
-						m_image->comps[0].prec);
+			scale[compno]= 255.0f/(1U << m_image->comps[compno].prec);
+			spdlog::warn("BMP conversion: scaling component {} from {} bits to 8 bits",
+					compno, m_image->comps[compno].prec);
 		}
-		if (m_image->comps[1].prec > 8) {
-			truncG = (int) m_image->comps[1].prec - 8;
-			spdlog::warn("BMP CONVERSION: Truncating component 1 from {} bits to 8 bits",
-						m_image->comps[1].prec);
-		} else if (m_image->comps[1].prec < 8) {
-			scaleG = 255.0f/(1U << m_image->comps[1].prec);
-			spdlog::warn("BMP CONVERSION: Scaling component 1 from {} bits to 8 bits",
-						m_image->comps[1].prec);
-		}
-		if (m_image->comps[2].prec > 8) {
-			truncB = (int) m_image->comps[2].prec - 8;
-			spdlog::warn("BMP CONVERSION: Truncating component 2 from {} bits to 8 bits",
-						m_image->comps[2].prec);
-		} else if (m_image->comps[2].prec < 8) {
-			scaleB = 255.0f/(1U << m_image->comps[2].prec);
-			spdlog::warn("BMP CONVERSION: Scaling component 2 from {} bits to 8 bits",
-						m_image->comps[2].prec);
-		}
-		size_t padW = ((3 * w + 3) >> 2) << 2;
-		m_destBuff = new uint8_t[padW];
-		for (uint32_t j = 0; j < h; j++) {
-			uint64_t destInd = 0;
-			for (uint32_t i = 0; i < w; i++) {
-				uint8_t rc, gc, bc;
-				int32_t r, g, b;
+	}
 
-				r = m_image->comps[0].data[m_destIndex + i];
-				r += (m_image->comps[0].sgnd ?
-								1 << (m_image->comps[0].prec - 1) : 0);
-				if (truncR != 0)
-					r = ((r >> truncR) + ((r >> (truncR - 1)) % 2));
-				else if (scaleR != 1.0f)
-					r = (int32_t)(((float)r * scaleR) + 0.5f);
-				if (r > 255)
-					r = 255;
-				else if (r < 0)
-					r = 0;
-				rc = (uint8_t) r;
-
-				g = m_image->comps[1].data[m_destIndex + i];
-				g += (m_image->comps[1].sgnd ?
-								1 << (m_image->comps[1].prec - 1) : 0);
-				if (truncG > 0)
-					g = ((g >> truncG) + ((g >> (truncG - 1)) % 2));
-				else if (scaleG != 1.0f)
-					g = (int32_t)(((float)g * scaleG) + 0.5f);
-				if (g > 255)
-					g = 255;
-				else if (g < 0)
-					g = 0;
-				gc = (uint8_t) g;
-
-				b = m_image->comps[2].data[m_destIndex + i];
-				b += (m_image->comps[2].sgnd ?
-								1 << (m_image->comps[2].prec - 1) : 0);
-				if (truncB > 0)
-					b = ((b >> truncB) + ((b >> (truncB - 1)) % 2));
-				else if (scaleB != 1.0f)
-					b = (int32_t)(((float)b * scaleB) + 0.5f);
-				if (b > 255)
-					b = 255;
-				else if (b < 0)
-					b = 0;
-				bc = (uint8_t) b;
-				m_destBuff[destInd++] = bc;
-				m_destBuff[destInd++] = gc;
-				m_destBuff[destInd++] = rc;
-			}
-			// pad at end of row to ensure that width is divisible by 4
-			for (uint32_t pad = ((3 * w) % 4) ? (4 - (3 * w) % 4) : 0; pad > 0; pad--)
-				m_destBuff[destInd++] = 0;
-			if (fwrite(m_destBuff, 1, destInd, m_file) != destInd)
-				goto cleanup;
-			m_destIndex -= stride;
-		}
-	} else {
-		if (m_image->comps[0].prec > 8) {
-			truncR = (int) m_image->comps[0].prec - 8;
-			spdlog::warn("BMP CONVERSION: Truncating component 0 from {} bits to 8 bits",
-						m_image->comps[0].prec);
-		} else if (m_image->comps[0].prec < 8)
-			scaleR = 255.0f/(1U << m_image->comps[0].prec);
-
-		// 1024-byte LUT
+	// 1024-byte LUT
+	if (m_image->numcomps ==1) {
 		for (uint32_t i = 0; i < 256; i++) {
 			if (fprintf(m_file, "%c%c%c%c", i, i, i, 0) != 4)
 				goto cleanup;
 		}
+	}
 
-		size_t padW = ((w + 3) >> 2) << 2;
-		m_destBuff = new uint8_t[padW];
-		for (uint32_t j = 0; j < h; j++) {
-			uint64_t destInd = 0;
-			for (uint32_t i = 0; i < w; i++) {
-				int32_t r = m_image->comps[0].data[m_destIndex + i];
-				r +=(m_image->comps[0].sgnd ?
-								1 << (m_image->comps[0].prec - 1) : 0);
-				if (truncR > 0)
-					r = ((r >> truncR) + ((r >> (truncR - 1)) % 2));
-				else if (scaleR != 1.0f)
-					r = (int32_t)(((float)r * scaleR) + 0.5f);
+	padW = ((m_image->numcomps * w + m_image->numcomps) >> 2) << 2;
+	m_destBuff = new uint8_t[padW];
+	for (uint32_t j = 0; j < h; j++) {
+		uint64_t destInd = 0;
+		for (uint32_t i = 0; i < w; i++) {
+			uint8_t rc[4];
+			for (uint32_t compno = 0; compno < m_image->numcomps; ++compno){
+				int32_t r = m_image->comps[compno].data[m_destIndex + i];
+				r += (m_image->comps[compno].sgnd ?
+								1 << (m_image->comps[compno].prec - 1) : 0);
+				if (trunc[compno] != 0)
+					r = ((r >> trunc[compno]) + ((r >> (trunc[compno] - 1)) % 2));
+				else if (scale[compno] != 1.0f)
+					r = (int32_t)(((float)r * scale[compno]) + 0.5f);
 				if (r > 255)
 					r = 255;
 				else if (r < 0)
 					r = 0;
-				m_destBuff[destInd++] = (uint8_t) r;
+				rc[compno] = (uint8_t)r;
 			}
-			// pad at end of row to ensure that width is divisible by 4
-			for (uint32_t pad = (w % 4) ? (4 - w % 4) : 0; pad > 0; pad--)
-				m_destBuff[destInd++] = 0;
-			if (fwrite(m_destBuff, 1, destInd, m_file) != destInd)
-				goto cleanup;
-			m_destIndex -= stride;
+			if (m_image->numcomps == 1) {
+					m_destBuff[destInd++] = rc[0];
+			} else {
+				m_destBuff[destInd++] = rc[2];
+				m_destBuff[destInd++] = rc[1];
+				m_destBuff[destInd++] = rc[0];
+				if (m_image->numcomps == 4)
+					m_destBuff[destInd++] = rc[3];
+			}
 		}
+		// pad at end of row to ensure that width is divisible by 4
+		for (uint32_t pad = ((m_image->numcomps * w) % 4) ? (4 - (m_image->numcomps * w) % 4) : 0; pad > 0; pad--)
+			m_destBuff[destInd++] = 0;
+		if (fwrite(m_destBuff, 1, destInd, m_file) != destInd)
+			goto cleanup;
+		m_destIndex -= stride;
 	}
-
 
 	if (m_image->icc_profile_buf) {
 		if (fwrite(m_image->icc_profile_buf,

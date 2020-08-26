@@ -545,7 +545,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 	two = has_alpha = 0;
 	ncomp = image->numcomps;
 
-	if (!grk::all_components_sanity_check(image)) {
+	if (!grk::all_components_sanity_check(image,true)) {
 		goto cleanup;
 	}
 
