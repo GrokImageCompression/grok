@@ -1652,17 +1652,12 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams);
 
 // returns 0 if failed, 1 if succeeded, 
 // and 2 if file is not suitable for compression
-static int compress(const std::string &image_filename, CompressInitParams *initParams,
-		uint8_t tcp_mct, uint32_t rateControlAlgorithm) {
+static int compress(const std::string &image_filename, CompressInitParams *initParams) {
 	//clear for next file compress
 	initParams->parameters.write_capture_resolution_from_file = false;
 	// don't reset format if reading from STDIN
 	if (initParams->parameters.infile[0])
 		initParams->parameters.decod_format = GRK_UNK_FMT;
-
-	//restore cached settings
-	initParams->parameters.tcp_mct = tcp_mct;
-	initParams->parameters.rateControlAlgorithm = rateControlAlgorithm;
 
 	if (initParams->img_fol.set_imgdir) {
 		if (get_next_file(image_filename, &initParams->img_fol,
@@ -1705,14 +1700,12 @@ int main(int argc, char **argv) {
 		size_t num_compressed_files = 0;
 
 		//cache certain settings
-		auto tcp_mct = initParams.parameters.tcp_mct;
-		auto rateControlAlgorithm = initParams.parameters.rateControlAlgorithm;
-		uint64_t max_cs_size = initParams.parameters.max_cs_size;
+		grk_cparameters parametersCache = initParams.parameters;
 		auto start = std::chrono::high_resolution_clock::now();
 		for (uint32_t i = 0; i < initParams.parameters.repeats; ++i) {
-			initParams.parameters.max_cs_size = max_cs_size;
 			if (!initParams.img_fol.set_imgdir) {
-				if (compress("", &initParams, tcp_mct, rateControlAlgorithm) == 0) {
+				initParams.parameters = parametersCache;
+				if (compress("", &initParams) == 0) {
 					success = 1;
 					goto cleanup;
 				}
@@ -1730,8 +1723,8 @@ int main(int argc, char **argv) {
 					if (strcmp(".", content->d_name) == 0
 							|| strcmp("..", content->d_name) == 0)
 						continue;
-					if (compress(content->d_name, &initParams,
-								tcp_mct,rateControlAlgorithm) == 1){
+					initParams.parameters = parametersCache;
+					if (compress(content->d_name, &initParams) == 1){
 						num_compressed_files++;
 					}
 				}
