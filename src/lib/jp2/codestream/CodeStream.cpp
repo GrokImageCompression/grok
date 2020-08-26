@@ -3005,6 +3005,22 @@ bool CodeStream::set_decompress_area(grk_image *output_image,
 }
 
 
+void CodeStream::dump(int32_t flag, FILE *out_stream){
+	j2k_dump(this, flag, out_stream);
+}
+
+grk_codestream_info_v2* CodeStream::get_cstr_info(void){
+
+	return j2k_get_cstr_info(this);
+}
+
+grk_codestream_index* CodeStream::get_cstr_index(void){
+
+	return j2k_get_cstr_index(this);
+}
+
+
+
 bool CodeStream::process_marker(const grk_dec_memory_marker_handler* marker_handler,
 		uint16_t current_marker, uint16_t marker_size, TileProcessor *tileProcessor,
 		BufferedStream *stream){

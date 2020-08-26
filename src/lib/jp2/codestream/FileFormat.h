@@ -129,7 +129,7 @@ typedef bool (*jp2_procedure)(FileFormat *fileFormat, BufferedStream*);
 /**
  JPEG 2000 file format reader/writer
  */
-struct FileFormat : public CodeStreamBase {
+struct FileFormat : public ICodeStream {
 	FileFormat(bool isDecoder);
 	~FileFormat();
 
@@ -176,10 +176,14 @@ struct FileFormat : public CodeStreamBase {
 
    bool end_compress(BufferedStream *stream);
 
-
 	bool decompress_tile(BufferedStream *stream, grk_image *p_image,
 			uint16_t tile_index);
 
+   void dump(int32_t flag, FILE *out_stream);
+
+   grk_codestream_info_v2* get_cstr_info(void);
+
+   grk_codestream_index* get_cstr_index(void);
 
 
 	/** handle to the J2K codec  */

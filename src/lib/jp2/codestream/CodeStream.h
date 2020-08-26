@@ -127,9 +127,9 @@ struct  grk_dec_memory_marker_handler  {
 			uint8_t *p_header_data, uint16_t header_size);
 } ;
 
-struct CodeStreamBase {
+struct ICodeStream {
 
-   virtual ~CodeStreamBase(){}
+   virtual ~ICodeStream(){}
 
 	/** Main header reading function handler */
    virtual bool read_header(BufferedStream *stream, grk_header_info  *header_info, grk_image **p_image) = 0;
@@ -160,9 +160,14 @@ struct CodeStreamBase {
 
    virtual bool end_compress(BufferedStream *stream) = 0;
 
+   virtual void dump(int32_t flag, FILE *out_stream) = 0;
+
+   virtual grk_codestream_info_v2* get_cstr_info(void) = 0;
+
+   virtual grk_codestream_index* get_cstr_index(void) = 0;
 };
 
-struct CodeStream : public CodeStreamBase {
+struct CodeStream : public ICodeStream {
 
 	CodeStream(bool decode);
 	~CodeStream();
@@ -192,8 +197,14 @@ struct CodeStream : public CodeStreamBase {
 
    bool end_compress(BufferedStream *stream);
 
+   void dump(int32_t flag, FILE *out_stream);
 
-	bool isDecodingTilePartHeader() ;
+   grk_codestream_info_v2* get_cstr_info(void);
+
+   grk_codestream_index* get_cstr_index();
+
+
+   bool isDecodingTilePartHeader() ;
 	TileCodingParams* get_current_decode_tcp(TileProcessor *tileProcessor);
 
 	bool read_marker(BufferedStream *stream, uint16_t *val);

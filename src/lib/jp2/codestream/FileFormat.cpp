@@ -3041,8 +3041,6 @@ bool FileFormat::end_compress(BufferedStream *stream){
 	return jp2_exec(this, m_procedure_list, stream);
 }
 
-
-
 bool FileFormat::decompress_tile(BufferedStream *stream, grk_image *p_image,
 		uint16_t tile_index) {
 	if (!p_image)
@@ -3094,6 +3092,22 @@ bool FileFormat::decompress_tile(BufferedStream *stream, grk_image *p_image,
 
 	return true;
 }
+
+
+void FileFormat::dump(int32_t flag, FILE *out_stream){
+	j2k_dump(codeStream, flag, out_stream);
+}
+
+grk_codestream_info_v2* FileFormat::get_cstr_info(void){
+
+	return j2k_get_cstr_info(codeStream);
+}
+
+grk_codestream_index* FileFormat::get_cstr_index(void){
+
+	return j2k_get_cstr_index(codeStream);
+}
+
 
 
 
