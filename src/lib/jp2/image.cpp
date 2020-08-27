@@ -119,9 +119,9 @@ bool grk_image_single_component_data_alloc(
  * Updates the components characteristics of the image from the coding parameters.
  *
  * @param image_header	the image header to update.
- * @param p_cp				the coding parameters from which to update the image.
+ * @param p_cp			the coding parameters from which to update the image.
  */
-void grk_image_comp_header_update(grk_image *image_header,
+void grk_update_image_comp_header_from_coding_params(grk_image *image_header,
 		const CodingParams *p_cp) {
 
 	//1. calculate canvas coordinates of image

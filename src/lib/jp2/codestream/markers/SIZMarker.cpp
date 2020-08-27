@@ -265,7 +265,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		current_tile_param->tccps = new TileComponentCodingParams[image->numcomps];
 	}
 	decoder->m_state = J2K_DEC_STATE_MH;
-	grk_image_comp_header_update(image, cp);
+	grk_update_image_comp_header_from_coding_params(image, cp);
 
 	return true;
 

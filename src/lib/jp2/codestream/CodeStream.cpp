@@ -2334,7 +2334,7 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 		}
 	}
 
-	// create private sanitized copy of imagte
+	// create private sanitized copy of image
 	m_input_image = grk_image_create0();
 	if (!m_input_image) {
 		GROK_ERROR("Failed to allocate image header.");
