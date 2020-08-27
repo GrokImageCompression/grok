@@ -50,7 +50,7 @@ grk_image *  GRK_CALLCONV grk_image_create(uint32_t numcmpts,
 			comp->y0 = cmptparms[compno].y0;
 			comp->prec = cmptparms[compno].prec;
 			comp->sgnd = cmptparms[compno].sgnd;
-			if (allocData && !grk_image_single_component_data_alloc(comp)) {
+			if (allocData && !grk::grk_image_single_component_data_alloc(comp)) {
 				grk::GROK_ERROR("Unable to allocate memory for image.");
 				grk_image_destroy(image);
 				return nullptr;
@@ -95,6 +95,25 @@ namespace grk {
 grk_image *  grk_image_create0(void) {
 	return (grk_image * ) grk_calloc(1, sizeof(grk_image));
 }
+
+bool grk_image_single_component_data_alloc(
+		 grk_image_comp  *comp) {
+	if (!comp)
+		return false;
+	comp->stride = grk_make_aligned_width(comp->w);
+	size_t dataSize = (uint64_t) comp->stride * comp->h * sizeof(uint32_t);
+	auto data = (int32_t*) grk_aligned_malloc(dataSize);
+	if (!data) {
+		grk::GROK_ERROR("Failed to allocate aligned memory of size 0x%x "
+				"@ alignment 0x%x",dataSize, grk::default_align);
+		return false;
+	}
+	grk_image_single_component_data_free(comp);
+	comp->data = data;
+	comp->owns_data = true;
+	return true;
+}
+
 
 /**
  * Updates the components characteristics of the image from the coding parameters.

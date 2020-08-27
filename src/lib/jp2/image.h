@@ -34,6 +34,16 @@ struct CodingParams;
 /** @defgroup IMAGE IMAGE - Implementation of operations on images */
 /*@{*/
 
+
+/**
+ * Allocate data for single image component
+ *
+ * @param image         image
+ */
+bool grk_image_single_component_data_alloc(
+		grk_image_comp *image);
+
+
 /**
  * Create an empty image
  *

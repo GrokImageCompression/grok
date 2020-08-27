@@ -497,23 +497,7 @@ void GRK_CALLCONV grk_image_all_components_data_free(grk_image *image) {
 	for (i = 0; i < image->numcomps; ++i)
 		grk_image_single_component_data_free(image->comps + i);
 }
-bool GRK_CALLCONV grk_image_single_component_data_alloc(
-		 grk_image_comp  *comp) {
-	if (!comp)
-		return false;
-	comp->stride = grk_make_aligned_width(comp->w);
-	size_t dataSize = (uint64_t) comp->stride * comp->h * sizeof(uint32_t);
-	auto data = (int32_t*) grk_aligned_malloc(dataSize);
-	if (!data) {
-		grk::GROK_ERROR("Failed to allocate aligned memory of size 0x%x "
-				"@ alignment 0x%x",dataSize, grk::default_align);
-		return false;
-	}
-	grk_image_single_component_data_free(comp);
-	comp->data = data;
-	comp->owns_data = true;
-	return true;
-}
+
 void GRK_CALLCONV grk_image_single_component_data_free( grk_image_comp  *comp) {
 	if (!comp || !comp->data || !comp->owns_data)
 		return;

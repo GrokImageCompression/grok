@@ -1290,13 +1290,6 @@ GRK_API grk_image* GRK_CALLCONV grk_image_create(uint32_t numcmpts,
  */
 GRK_API void GRK_CALLCONV grk_image_destroy(grk_image *image);
 
-/**
- * Allocate data for single image component
- *
- * @param image         image
- */
-GRK_API bool GRK_CALLCONV grk_image_single_component_data_alloc(
-		grk_image_comp *image);
 
 /**
  * Deallocate all component data for an image
