@@ -35,7 +35,7 @@
 
 //#define DEBUG_PROFILE
 
-static grk_image* image_create(uint32_t numcmpts, uint32_t w, uint32_t h,
+static grk_image* create_rgb_no_subsample_image(uint32_t numcmpts, uint32_t w, uint32_t h,
 		uint32_t prec) {
 	if (!numcmpts)
 		return nullptr;
@@ -107,7 +107,7 @@ static void sycc_to_rgb(int32_t offset, int32_t upb, int32_t y, int32_t cb, int3
 
 static bool sycc444_to_rgb(grk_image *src_img) {
 	int32_t *d0, *d1, *d2, *r, *g, *b;
-	auto dest_img = image_create(3, src_img->comps[0].w, src_img->comps[0].h,
+	auto dest_img = create_rgb_no_subsample_image(3, src_img->comps[0].w, src_img->comps[0].h,
 			src_img->comps[0].prec);
 	if (!dest_img)
 		return false;
@@ -161,7 +161,7 @@ static bool sycc444_to_rgb(grk_image *src_img) {
 }/* sycc444_to_rgb() */
 
 static bool sycc422_to_rgb(grk_image *src_img) {
-	auto dest_img = image_create(3, src_img->comps[0].w, src_img->comps[0].h,
+	auto dest_img = create_rgb_no_subsample_image(3, src_img->comps[0].w, src_img->comps[0].h,
 			src_img->comps[0].prec);
 	if (!dest_img)
 		return false;
@@ -237,7 +237,7 @@ static bool sycc422_to_rgb(grk_image *src_img) {
 }/* sycc422_to_rgb() */
 
 static bool sycc420_to_rgb(grk_image *src_img) {
-	auto dest_img = image_create(3, src_img->comps[0].w, src_img->comps[0].h,
+	auto dest_img = create_rgb_no_subsample_image(3, src_img->comps[0].w, src_img->comps[0].h,
 			src_img->comps[0].prec);
 	if (!dest_img)
 		return false;
@@ -625,7 +625,7 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB) {
 			goto cleanup;
 		}
 
-		new_image = image_create(2, image->comps[0].w, image->comps[0].h,
+		new_image = create_rgb_no_subsample_image(2, image->comps[0].w, image->comps[0].h,
 				image->comps[0].prec);
 		if (!new_image) {
 			free(inbuf);
@@ -738,7 +738,7 @@ bool color_cielab_to_rgb(grk_image *src_img) {
 	double r_L, o_L, r_a, o_a, r_b, o_b, prec_L, prec_a, prec_b;
 	double minL, maxL, mina, maxa, minb, maxb;
 	cmsUInt16Number RGB[3];
-	auto dest_img = image_create(3, src_img->comps[0].w, src_img->comps[0].h,
+	auto dest_img = create_rgb_no_subsample_image(3, src_img->comps[0].w, src_img->comps[0].h,
 			src_img->comps[0].prec);
 	if (!dest_img)
 		return false;
