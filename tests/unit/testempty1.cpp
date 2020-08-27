@@ -85,9 +85,6 @@ int main(int argc, char *argv[])
 
      grk_cparameters  parameters;
 
-    unsigned int subsampling_dx = 0;
-    unsigned int subsampling_dy = 0;
-
      grk_image_cmptparm  cmptparm;
     grk_image *image;
      grk_codec   l_codec = nullptr;
@@ -101,8 +98,8 @@ int main(int argc, char *argv[])
     puts(v);
     cmptparm.prec = 8;
     cmptparm.sgnd = 0;
-    cmptparm.dx = subsampling_dx;
-    cmptparm.dy = subsampling_dy;
+    cmptparm.dx = 1;
+    cmptparm.dy = 1;
     cmptparm.w = image_width;
     cmptparm.h = image_height;
 

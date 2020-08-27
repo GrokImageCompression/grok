@@ -250,8 +250,8 @@ static grk_image* readImageFromFilePPM(const char *filename, size_t nbFilenamePG
 		/* Set the image_read parameters*/
 		src_param[fileno].x0 = 0;
 		src_param[fileno].y0 = 0;
-		src_param[fileno].dx = 0;
-		src_param[fileno].dy = 0;
+		src_param[fileno].dx = 1;
+		src_param[fileno].dy = 1;
 		src_param[fileno].h = src->comps->h;
 		src_param[fileno].w = src->comps->w;
 		src_param[fileno].stride = src->comps->stride;
@@ -418,8 +418,8 @@ static grk_image* readImageFromFilePGX(const char *filename, size_t nbFilenamePG
 		/* Set the image_read parameters*/
 		dest_param[fileno].x0 = 0;
 		dest_param[fileno].y0 = 0;
-		dest_param[fileno].dx = 0;
-		dest_param[fileno].dy = 0;
+		dest_param[fileno].dx = 1;
+		dest_param[fileno].dy = 1;
 		dest_param[fileno].h = src->comps->h;
 		dest_param[fileno].w = src->comps->w;
 		dest_param[fileno].stride = src->comps->stride;
@@ -473,8 +473,8 @@ static int imageToPNG(const grk_image *src, const char *filename, size_t compno)
 	auto src_comp = src->comps + compno;
 	dest_param.x0 = 0;
 	dest_param.y0 = 0;
-	dest_param.dx = 0;
-	dest_param.dy = 0;
+	dest_param.dx = 1;
+	dest_param.dy = 1;
 	dest_param.h = src_comp->h;
 	dest_param.w = src_comp->w;
 	dest_param.prec = src_comp->prec;
@@ -936,8 +936,8 @@ int main(int argc, char **argv) {
 
 		param_image_diff[compno].x0 = 0;
 		param_image_diff[compno].y0 = 0;
-		param_image_diff[compno].dx = 0;
-		param_image_diff[compno].dy = 0;
+		param_image_diff[compno].dx = 1;
+		param_image_diff[compno].dy = 1;
 		param_image_diff[compno].sgnd = testComp->sgnd;
 		param_image_diff[compno].prec = testComp->prec;
 		param_image_diff[compno].h = testComp->h;

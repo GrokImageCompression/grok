@@ -40,6 +40,8 @@ grk_image *  GRK_CALLCONV grk_image_create(uint32_t numcmpts,
 		for (uint32_t compno = 0; compno < numcmpts; compno++) {
 			auto comp = &image->comps[compno];
 
+			assert(cmptparms[compno].dx);
+			assert(cmptparms[compno].dy);
 			comp->dx = cmptparms[compno].dx;
 			comp->dy = cmptparms[compno].dy;
 			comp->w = cmptparms[compno].w;
