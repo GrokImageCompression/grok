@@ -491,9 +491,8 @@ static grk_image* pnmtoimage(const char *filename,
 						if (counter == w){
 							counter = 0;
 							index += stride_diff;
-						}
-						if ((index % w) == 0)
 							break;
+						}
 					}
 				} else {
 					image->comps[0].data[index++] = c & 1;
