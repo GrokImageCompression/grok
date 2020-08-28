@@ -630,3 +630,7 @@ grk_decompress -i @TEMP_PATH@/BMP_v5_with_ICC.jp2 -o @TEMP_PATH@/BMP_v5_with_ICC
 grk_decompress -i @TEMP_PATH@/BMP_v5_with_ICC2.jp2 -o @TEMP_PATH@/BMP_v5_with_ICC2.bmp
 grk_decompress -i @TEMP_PATH@/BMP_v5_with_ICC.jp2 -o @TEMP_PATH@/BMP_v5_with_ICC.png
 grk_decompress -i @TEMP_PATH@/BMP_v5_with_ICC2.jp2 -o @TEMP_PATH@/BMP_v5_with_ICC2.png
+
+grk_compress -i @INPUT_NR_PATH@/ybr-cat.tif -o @TEMP_PATH@/ybr-cat.jp2
+grk_decompress -i @TEMP_PATH@/ybr-cat.jp2 -o @TEMP_PATH@/ybr-cat.tif
+
