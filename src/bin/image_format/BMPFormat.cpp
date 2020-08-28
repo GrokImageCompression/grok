@@ -875,12 +875,13 @@ static grk_image* bmptoimage(const char *filename,
 	/* create the image */
 	memset(&cmptparm[0], 0, sizeof(cmptparm));
 	for (uint32_t i = 0; i < 4U; i++) {
-		cmptparm[i].prec = 8;
-		cmptparm[i].sgnd = false;
-		cmptparm[i].dx = parameters->subsampling_dx;
-		cmptparm[i].dy = parameters->subsampling_dy;
-		cmptparm[i].w = Info_h.biWidth;
-		cmptparm[i].h = Info_h.biHeight;
+		auto img_comp = cmptparm + i;
+		img_comp->prec = 8;
+		img_comp->sgnd = false;
+		img_comp->dx = parameters->subsampling_dx;
+		img_comp->dy = parameters->subsampling_dy;
+		img_comp->w = grk::ceildiv<uint32_t>(Info_h.biWidth, img_comp->dx);
+		img_comp->h = grk::ceildiv<uint32_t>(Info_h.biHeight, img_comp->dy);
 	}
 
 	image = grk_image_create(numcmpts, &cmptparm[0],

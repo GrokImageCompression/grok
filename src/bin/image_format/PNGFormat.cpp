@@ -222,12 +222,13 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	/* Create image */
 	memset(cmptparm, 0, sizeof(cmptparm));
 	for (uint32_t i = 0; i < nr_comp; ++i) {
-		cmptparm[i].prec = (uint32_t)bit_depth;
-		cmptparm[i].sgnd = false;
-		cmptparm[i].dx = params->subsampling_dx;
-		cmptparm[i].dy = params->subsampling_dy;
-		cmptparm[i].w = width;
-		cmptparm[i].h = height;
+		auto img_comp = cmptparm + i;
+		img_comp->prec = (uint32_t)bit_depth;
+		img_comp->sgnd = false;
+		img_comp->dx = params->subsampling_dx;
+		img_comp->dy = params->subsampling_dy;
+		img_comp->w = grk::ceildiv<uint32_t>(width, img_comp->dx);
+		img_comp->h = grk::ceildiv<uint32_t>(height, img_comp->dy);
 	}
 
 	m_image = grk_image_create(nr_comp, &cmptparm[0],

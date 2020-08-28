@@ -1353,6 +1353,8 @@ static bool readTiffPixelsUnsigned(TIFF *tif,
 					height++;
 				}
 				else {
+					uint32_t strideDiffCb = comps[1].stride - comps[1].w;
+					uint32_t strideDiffCr = comps[2].stride - comps[2].w;
 					for (size_t i = 0; i < (size_t)rowStride; i+=unitSize) {
 						//process a unit
 						//1. luma
@@ -1374,6 +1376,8 @@ static bool readTiffPixelsUnsigned(TIFF *tif,
                     		datau8 += padding;
                     		xpos = 0;
                     		planes[0] += comp->stride * chroma_subsample_y;
+                    		planes[1] += strideDiffCb;
+                    		planes[2] += strideDiffCr;
                     		height+= chroma_subsample_y;
                     	}
 					}
@@ -1660,12 +1664,13 @@ static grk_image* tiftoimage(const char *filename,
 
 	// 4. create image
 	for (uint32_t j = 0; j < numcomps; j++) {
-		cmptparm[j].prec = tiBps;
+		auto img_comp = cmptparm + j;
+		img_comp->prec = tiBps;
 		bool chroma = (j==1 || j==2);
-		cmptparm[j].dx = chroma ? chroma_subsample_x : 1;
-		cmptparm[j].dy = chroma ? chroma_subsample_y : 1;
-		cmptparm[j].w = w;
-		cmptparm[j].h = h;
+		img_comp->dx = chroma ? chroma_subsample_x : 1;
+		img_comp->dy = chroma ? chroma_subsample_y : 1;
+		img_comp->w = grk::ceildiv<uint32_t>(w, img_comp->dx);
+		img_comp->h = grk::ceildiv<uint32_t>(h, img_comp->dy);
 	}
 	image = grk_image_create(numcomps, &cmptparm[0], color_space,true);
 	if (!image)

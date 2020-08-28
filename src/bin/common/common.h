@@ -109,6 +109,13 @@ template<typename T> inline T endian(T x, bool big_endian) {
 	return x;
 }
 
+template<typename T> uint32_t ceildiv(T a, T b) {
+	assert(b);
+	return (uint32_t)((a + (uint64_t) b - 1) / b);
+}
+
+
+
 template<typename T> inline bool writeBytes(T val, T *buf, T **outPtr,
 		size_t *outCount, size_t len, bool big_endian, FILE *out) {
 	if (*outCount >= len)
