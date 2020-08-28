@@ -400,7 +400,7 @@ static grk_image* pnmtoimage(const char *filename,
 		area = (uint64_t)image->comps[0].stride * h;
 		while (i < area) {
 			size_t bytesRead = fread(chunk, 1, chunkSize, fp);
-			if (bytesRead != chunkSize)
+			if (bytesRead == 0)
 				break;
 			uint8_t *chunkPtr = (uint8_t*) chunk;
 			for (size_t ct = 0; ct < bytesRead; ++ct) {
@@ -479,7 +479,7 @@ static grk_image* pnmtoimage(const char *filename,
 		while (i < area) {
 			auto toRead = min((uint64_t)chunkSize, (uint64_t)(area - i));
 			size_t bytesRead = fread(chunk, 1, toRead, fp);
-			if (bytesRead != toRead)
+			if (bytesRead == 0)
 				break;
 			auto chunkPtr = (uint8_t*) chunk;
 			for (size_t ct = 0; ct < bytesRead; ++ct) {
