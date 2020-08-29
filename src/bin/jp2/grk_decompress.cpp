@@ -1427,19 +1427,16 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 			goto cleanup;
 		}
 
-		// do not allow odd top left region coordinats for SYCC
+		// do not allow odd top left region coordinates for SYCC
 		if (info->header_info.enumcs == GRK_ENUM_CLRSPC_SYCC){
 			bool adjustX = (info->decoder_parameters->DA_x0 != info->full_image_x0) &&
 					(info->decoder_parameters->DA_x0 & 1);
 			bool adjustY = (info->decoder_parameters->DA_y0 != info->full_image_y0) &&
 						(info->decoder_parameters->DA_y0 & 1);
 			if (adjustX || adjustY){
-				spdlog::warn("grk_decompress: Top left hand region coordinates that do not coincide\n"
-						"with top left hand coordinates of image must be even. Adjusting");
-				if (adjustX)
-					info->decoder_parameters->DA_x0++;
-				if (adjustY)
-					info->decoder_parameters->DA_y0++;
+				spdlog::error("grk_decompress: Top left-hand region coordinates that do not coincide\n"
+						"with respective top left-hand image coordinates must be even");
+				goto cleanup;
 			}
 		}
 
