@@ -791,11 +791,7 @@ typedef void *grk_codec;
 typedef size_t (*grk_stream_read_fn)(void *p_buffer, size_t nb_bytes,
 		void *user_data);
 
-/*
- * Callback function prototype for zero copy read function
- */
-typedef size_t (*grk_stream_zero_copy_read_fn)(void **p_buffer, size_t nb_bytes,
-		void *user_data);
+
 
 /*
  * Callback function prototype for write function
@@ -819,9 +815,9 @@ typedef void (*grk_stream_free_user_data_fn)(void *user_data);
 typedef void *grk_stream;
 
 /*
- ==========================================================
+ ==============================
  image typedef definitions
- ==========================================================
+ ==============================
  */
 
 // component type
@@ -1246,12 +1242,12 @@ typedef struct _grk_plugin_tile {
 } grk_plugin_tile;
 
 /**
- * Grok version
+ * library version
  */
 GRK_API const char* GRK_CALLCONV grk_version(void);
 
 /**
- * Initialize Grok library
+ * Initialize library
  *
  * @param plugin_path 	path to plugin
  * @param numthreads 	number of threads to use for compress/decompress
@@ -1260,13 +1256,13 @@ GRK_API bool GRK_CALLCONV grk_initialize(const char *plugin_path,
 		uint32_t numthreads);
 
 /**
- * Deinitialize Grok library
+ * De-initialize library
  */
 GRK_API void GRK_CALLCONV grk_deinitialize();
 
 /*
  ============================
- image functions definitions
+ image function definitions
  ============================
  */
 
@@ -1308,7 +1304,7 @@ GRK_API void GRK_CALLCONV grk_image_single_component_data_free(
 
 /*
  =================================
- stream functions definitions
+ stream function definitions
  =================================
  */
 
@@ -1342,17 +1338,6 @@ GRK_API void GRK_CALLCONV grk_stream_destroy(grk_stream *stream);
  */
 GRK_API void GRK_CALLCONV grk_stream_set_read_function(grk_stream *stream,
 		grk_stream_read_fn p_function);
-
-/**
- * Set the given function to be used as a zero copy read function.
- * NOTE: this feature is only available for memory mapped and buffer backed streams,
- * not file streams
- *
- * @param		stream	stream to modify
- * @param		p_function	function to use as read function.
- */
-GRK_API void GRK_CALLCONV grk_stream_set_zero_copy_read_function(
-		grk_stream *stream, grk_stream_zero_copy_read_fn p_function);
 
 /**
  * Set the given function to be used as a write function.
@@ -1430,7 +1415,7 @@ GRK_API grk_stream* GRK_CALLCONV grk_stream_create_mapped_file_stream(
 
 /*
  ========================================
- logger functions definitions
+ logger function definitions
  ========================================
  */
 /**
@@ -1458,18 +1443,6 @@ GRK_API bool GRK_CALLCONV grk_set_warning_handler(grk_msg_callback p_callback,
 GRK_API bool GRK_CALLCONV grk_set_error_handler(grk_msg_callback p_callback,
 		void *user_data);
 
-/*
- ===============================
- codec functions definitions
- ===============================
- */
-
-/**
- * Destroy codec
- *
- * @param	codec			JPEG 2000 code stream
- */
-GRK_API void GRK_CALLCONV grk_destroy_codec(grk_codec codec);
 
 /**
  * Create J2K/JP2 decompression structure
@@ -1481,13 +1454,6 @@ GRK_API void GRK_CALLCONV grk_destroy_codec(grk_codec codec);
  * */
 GRK_API grk_codec GRK_CALLCONV grk_create_decompress(GRK_CODEC_FORMAT format,
 		grk_stream *stream);
-
-/**
- * End decompression
- *
- * @param	codec			JPEG 2000 code stream
- */
-GRK_API bool GRK_CALLCONV grk_end_decompress(grk_codec codec);
 
 /**
  * Initialize decompress parameters with default values
@@ -1515,18 +1481,18 @@ GRK_API bool GRK_CALLCONV grk_init_decompress(grk_codec codec,
  * @param	header_info			information read from JPEG 2000 header.
  * @param	image				the image structure initialized with the characteristics
  *								of encoded image.
- * @return true				if the main header of the code stream and the JP2 header
- * 							 is correctly read.
+ * @return true					if the main header of the code stream and the JP2 header
+ * 							 	is correctly read.
  */
 GRK_API bool GRK_CALLCONV grk_read_header(grk_codec codec,
 		grk_header_info *header_info, grk_image **image);
 
 /**
  * Set the given area to be decompressed. This function should be called
- *  right after grk_read_header and before any tile header reading.
+ *  right after grk_read_header is called, and before any tile header is read.
  *
  * @param	codec			JPEG 2000 code stream.
- * @param	image         decoded image previously set by grk_read_header
+ * @param	image         	image created by grk_read_header
  * @param	start_x		    left position of the rectangle to decompress (in image coordinates).
  * @param	end_x			the right position of the rectangle to decompress (in image coordinates).
  * @param	start_y		    up position of the rectangle to decompress (in image coordinates).
@@ -1560,6 +1526,14 @@ GRK_API bool GRK_CALLCONV grk_decompress(grk_codec p_decompressor,
  */
 GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_codec codec,
 		grk_image *image, uint16_t tile_index);
+
+/**
+ * End decompression
+ *
+ * @param	codec			JPEG 2000 code stream
+ */
+GRK_API bool GRK_CALLCONV grk_end_decompress(grk_codec codec);
+
 
 /* COMPRESSION FUNCTIONS*/
 
@@ -1598,7 +1572,7 @@ GRK_API void GRK_CALLCONV grk_set_default_compress_params(
 		grk_cparameters *parameters);
 
 /**
- * Setup the encoder parameters using the current image and user parameters.
+ * Set up the encoder parameters using the current image and user parameters.
  *
  * @param codec 		JPEG 2000 code stream
  * @param parameters 	compression parameters
@@ -1663,6 +1637,14 @@ GRK_API bool GRK_CALLCONV grk_compress_with_plugin(grk_codec codec,
  * @param codec 		Compressor handle
  */
 GRK_API bool GRK_CALLCONV grk_end_compress(grk_codec codec);
+
+
+/**
+ * Destroy codec
+ *
+ * @param	codec			JPEG 2000 code stream
+ */
+GRK_API void GRK_CALLCONV grk_destroy_codec(grk_codec codec);
 
 
 /**

@@ -82,6 +82,22 @@ static bool seek_from_mem(uint64_t nb_bytes, buf_info *src) {
 	return true;
 }
 
+/**
+ * Set the given function to be used as a zero copy read function.
+ * NOTE: this feature is only available for memory mapped and buffer backed streams,
+ * not file streams
+ *
+ * @param		stream	stream to modify
+ * @param		p_function	function to use as read function.
+ */
+static void grk_stream_set_zero_copy_read_function(grk_stream *stream,
+		grk_stream_zero_copy_read_fn p_function) {
+	auto streamImpl = (grk::BufferedStream*) stream;
+	if ((!streamImpl) || (!(streamImpl->m_status & GROK_STREAM_STATUS_INPUT)))
+		return;
+	streamImpl->m_zero_copy_read_fn = p_function;
+}
+
 void set_up_mem_stream(grk_stream *l_stream, size_t len, bool is_read_stream) {
 	grk_stream_set_user_data_length(l_stream, len);
 	if (is_read_stream) {

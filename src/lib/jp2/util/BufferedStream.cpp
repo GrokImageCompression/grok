@@ -18,7 +18,6 @@
  *    Please see the LICENSE file in the root directory for details.
  *
  */
-
 #include "grok_includes.h"
 namespace grk {
 
@@ -413,35 +412,29 @@ bool BufferedStream::isMemStream() {
 }
 
 }
-grk_stream* GRK_CALLCONV grk_stream_create(size_t buffer_size,
+grk_stream* grk_stream_create(size_t buffer_size,
 		bool is_input) {
 	return (grk_stream*) (new grk::BufferedStream(nullptr, buffer_size,
 			is_input));
 }
-void GRK_CALLCONV grk_stream_destroy(grk_stream *stream) {
+void grk_stream_destroy(grk_stream *stream) {
 	delete (grk::BufferedStream*) (stream);
 }
-void GRK_CALLCONV grk_stream_set_read_function(grk_stream *stream,
+void grk_stream_set_read_function(grk_stream *stream,
 		grk_stream_read_fn p_function) {
 	auto streamImpl = (grk::BufferedStream*) stream;
 	if ((!streamImpl) || (!(streamImpl->m_status & GROK_STREAM_STATUS_INPUT)))
 		return;
 	streamImpl->m_read_fn = p_function;
 }
-void GRK_CALLCONV grk_stream_set_zero_copy_read_function(grk_stream *stream,
-		grk_stream_zero_copy_read_fn p_function) {
-	auto streamImpl = (grk::BufferedStream*) stream;
-	if ((!streamImpl) || (!(streamImpl->m_status & GROK_STREAM_STATUS_INPUT)))
-		return;
-	streamImpl->m_zero_copy_read_fn = p_function;
-}
-void GRK_CALLCONV grk_stream_set_seek_function(grk_stream *stream,
+
+void grk_stream_set_seek_function(grk_stream *stream,
 		grk_stream_seek_fn p_function) {
 	auto streamImpl = (grk::BufferedStream*) stream;
 	if (streamImpl)
 		streamImpl->m_seek_fn = p_function;
 }
-void GRK_CALLCONV grk_stream_set_write_function(grk_stream *stream,
+void grk_stream_set_write_function(grk_stream *stream,
 		grk_stream_write_fn p_function) {
 	auto streamImpl = (grk::BufferedStream*) stream;
 	if ((!streamImpl) || (!(streamImpl->m_status & GROK_STREAM_STATUS_OUTPUT)))
@@ -450,7 +443,7 @@ void GRK_CALLCONV grk_stream_set_write_function(grk_stream *stream,
 	streamImpl->m_write_fn = p_function;
 }
 
-void GRK_CALLCONV grk_stream_set_user_data(grk_stream *stream, void *p_data,
+void grk_stream_set_user_data(grk_stream *stream, void *p_data,
 		grk_stream_free_user_data_fn p_function) {
 	auto streamImpl = (grk::BufferedStream*) stream;
 	if (!streamImpl)
@@ -458,7 +451,7 @@ void GRK_CALLCONV grk_stream_set_user_data(grk_stream *stream, void *p_data,
 	streamImpl->m_user_data = p_data;
 	streamImpl->m_free_user_data_fn = p_function;
 }
-void GRK_CALLCONV grk_stream_set_user_data_length(grk_stream *stream,
+void grk_stream_set_user_data_length(grk_stream *stream,
 		uint64_t data_length) {
 	auto streamImpl = (grk::BufferedStream*) stream;
 	if (streamImpl)

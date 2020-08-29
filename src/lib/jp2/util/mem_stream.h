@@ -50,5 +50,11 @@ grk_stream  *  create_mem_stream(uint8_t *buf, size_t len, bool ownsBuffer,
 		bool is_read_stream);
 size_t get_mem_stream_offset( grk_stream  *stream);
 
+/*
+ * Callback function prototype for zero copy read function
+ */
+typedef size_t (*grk_stream_zero_copy_read_fn)(void **p_buffer, size_t nb_bytes,
+		void *user_data);
+
 
 }
