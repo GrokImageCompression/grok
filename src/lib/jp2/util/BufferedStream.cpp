@@ -116,7 +116,7 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
 				m_user_data);
 		//sanity check on external read function
 		if (m_buffered_bytes > m_buf->len) {
-			GROK_ERROR(
+			GRK_ERROR(
 					"Buffered stream: read length greater than buffer length");
 			return 0;
 		}
@@ -282,7 +282,7 @@ bool BufferedStream::flush() {
 
 		if (current_write_nb_bytes != m_buffered_bytes) {
 			m_status |= GROK_STREAM_STATUS_ERROR;
-			GROK_ERROR("Error on writing stream.");
+			GRK_ERROR("Error on writing stream.");
 			return false;
 		}
 		m_buf->incr_offset((ptrdiff_t) current_write_nb_bytes);

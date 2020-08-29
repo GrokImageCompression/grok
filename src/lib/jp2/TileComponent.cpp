@@ -141,13 +141,13 @@ bool TileComponent::init(bool isEncoder,
 		uint32_t tprc_y_start = uint_floordivpow2(res->y0, pdy) << pdy;
 		uint64_t temp = (uint64_t)ceildivpow2<uint32_t>(res->x1, pdx) << pdx;
 		if (temp > UINT_MAX){
-			GROK_ERROR("Resolution x1 value %u must be less than 2^32", temp);
+			GRK_ERROR("Resolution x1 value %u must be less than 2^32", temp);
 			return false;
 		}
 		uint32_t br_prc_x_end = (uint32_t)temp;
 		temp = (uint64_t)ceildivpow2<uint32_t>(res->y1, pdy) << pdy;
 		if (temp > UINT_MAX){
-			GROK_ERROR("Resolution y1 value %u must be less than 2^32", temp);
+			GRK_ERROR("Resolution y1 value %u must be less than 2^32", temp);
 			return false;
 		}
 		uint32_t br_prc_y_end = (uint32_t)temp;
@@ -163,7 +163,7 @@ bool TileComponent::init(bool isEncoder,
 		/*fprintf(stderr, "\t\t\tres_pw=%u, res_ph=%u\n", res->pw, res->ph );*/
 
 		if (mult_will_overflow(res->pw, res->ph)) {
-			GROK_ERROR(
+			GRK_ERROR(
 					"nb_precincts calculation would overflow ");
 			return false;
 		}
@@ -171,7 +171,7 @@ bool TileComponent::init(bool isEncoder,
 		uint64_t nb_precincts = (uint64_t)res->pw * res->ph;
 
 		if (mult64_will_overflow(nb_precincts, sizeof(grk_precinct))) {
-			GROK_ERROR(	"nb_precinct_size calculation would overflow ");
+			GRK_ERROR(	"nb_precinct_size calculation would overflow ");
 			return false;
 		}
 		if (resno == 0) {

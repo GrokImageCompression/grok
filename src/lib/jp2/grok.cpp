@@ -147,7 +147,7 @@ grk_image *  GRK_CALLCONV grk_image_create(uint32_t numcmpts,
 		image->comps = ( grk_image_comp  * ) grk::grk_calloc(1,
 				image->numcomps * sizeof( grk_image_comp) );
 		if (!image->comps) {
-			grk::GROK_ERROR("Unable to allocate memory for image.");
+			grk::GRK_ERROR("Unable to allocate memory for image.");
 			grk_image_destroy(image);
 			return nullptr;
 		}
@@ -166,7 +166,7 @@ grk_image *  GRK_CALLCONV grk_image_create(uint32_t numcmpts,
 			comp->prec = cmptparms[compno].prec;
 			comp->sgnd = cmptparms[compno].sgnd;
 			if (allocData && !grk::grk_image_single_component_data_alloc(comp)) {
-				grk::GROK_ERROR("Unable to allocate memory for image.");
+				grk::GRK_ERROR("Unable to allocate memory for image.");
 				grk_image_destroy(image);
 				return nullptr;
 			}

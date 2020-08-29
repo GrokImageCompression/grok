@@ -185,7 +185,7 @@ bool Quantizer::read_SQcd_SQcc(CodeStream *codeStream, TileProcessor *tileProces
 	assert(p_header_data != nullptr);
 	assert(comp_no < codeStream->m_input_image->numcomps);
 	if (*header_size < 1) {
-		GROK_ERROR( "Error reading SQcd or SQcc element");
+		GRK_ERROR( "Error reading SQcd or SQcc element");
 		return false;
 	}
 	/* Sqcx */
@@ -221,7 +221,7 @@ bool Quantizer::read_SQcd_SQcc(CodeStream *codeStream, TileProcessor *tileProces
 					(tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) ?
 							(uint8_t)(*header_size) : (uint8_t)((*header_size) / 2);
 			if (tccp->numStepSizes > GRK_J2K_MAXBANDS) {
-				GROK_WARN(
+				GRK_WARN(
 						"While reading QCD or QCC marker segment, "
 								"number of step sizes (%u) is greater"
 								" than GRK_J2K_MAXBANDS (%u). "
@@ -236,7 +236,7 @@ bool Quantizer::read_SQcd_SQcc(CodeStream *codeStream, TileProcessor *tileProces
 	}
 	if (qntsty == J2K_CCP_QNTSTY_NOQNT) {
 		if (*header_size < tccp->numStepSizes) {
-			GROK_ERROR( "Error reading SQcd_SQcc marker");
+			GRK_ERROR( "Error reading SQcd_SQcc marker");
 			return false;
 		}
 		for (uint32_t band_no = 0; band_no < tccp->numStepSizes;
@@ -255,7 +255,7 @@ bool Quantizer::read_SQcd_SQcc(CodeStream *codeStream, TileProcessor *tileProces
 		*header_size = (uint16_t)(*header_size - tccp->numStepSizes);
 	} else {
 		if (*header_size < 2 * tccp->numStepSizes) {
-			GROK_ERROR( "Error reading SQcd_SQcc marker");
+			GRK_ERROR( "Error reading SQcd_SQcc marker");
 			return false;
 		}
 		for (uint32_t band_no = 0; band_no < tccp->numStepSizes;

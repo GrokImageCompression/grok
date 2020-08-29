@@ -38,7 +38,7 @@ void log(grk_msg_callback msg_handler, void *l_data, char const * const format, 
 	}
 }
 
-void GROK_INFO(const char *fmt,	...){
+void GRK_INFO(const char *fmt,	...){
 	if (!logger::m_logger.info_handler)
 		return;
 	va_list arg;
@@ -46,7 +46,7 @@ void GROK_INFO(const char *fmt,	...){
 	log(logger::m_logger.info_handler, logger::m_logger.m_info_data, fmt, arg);
 	va_end(arg);
 }
-void GROK_WARN(const char *fmt,	...){
+void GRK_WARN(const char *fmt,	...){
 	if (!logger::m_logger.warning_handler)
 		return;
 	va_list arg;
@@ -54,7 +54,7 @@ void GROK_WARN(const char *fmt,	...){
 	log(logger::m_logger.warning_handler, logger::m_logger.m_warning_data, fmt, arg);
 	va_end(arg);
 }
-void GROK_ERROR(const char *fmt,...){
+void GRK_ERROR(const char *fmt,...){
 	if (!logger::m_logger.error_handler)
 		return;
 	va_list arg;

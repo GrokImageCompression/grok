@@ -162,10 +162,10 @@ static grk_handle open_fd(const char *fname, const char *mode) {
 	fd = open(fname, m, 0666);
 	if (fd < 0) {
         if (errno > 0 && strerror(errno) != nullptr){
-            GROK_ERROR("%s: %s", fname, strerror(errno));
+            GRK_ERROR("%s: %s", fname, strerror(errno));
         }
         else {
-        	GROK_ERROR("%s: Cannot open", fname);
+        	GRK_ERROR("%s: Cannot open", fname);
         }
 		return (grk_handle) -1;
 	}
@@ -185,10 +185,10 @@ static void mem_map_free(void *user_data) {
 		buf_info *buffer_info = (buf_info*) user_data;
 		int32_t rc = unmap(buffer_info->buf, buffer_info->len);
 		if (rc)
-			GROK_ERROR("Unmapping memory mapped file failed with error %u", rc);
+			GRK_ERROR("Unmapping memory mapped file failed with error %u", rc);
 		rc = close_fd(buffer_info->fd);
 		if (rc)
-			GROK_ERROR("Closing memory mapped file failed with error %u", rc);
+			GRK_ERROR("Closing memory mapped file failed with error %u", rc);
 		delete buffer_info;
 	}
 }
@@ -196,7 +196,7 @@ static void mem_map_free(void *user_data) {
 grk_stream* create_mapped_file_read_stream(const char *fname) {
 	grk_handle fd = open_fd(fname, "r");
 	if (fd == (grk_handle) -1){
-		GROK_ERROR("Unable to open memory mapped file %s", fname);
+		GRK_ERROR("Unable to open memory mapped file %s", fname);
 		return nullptr;
 	}
 
@@ -205,7 +205,7 @@ grk_stream* create_mapped_file_read_stream(const char *fname) {
 	buffer_info->len = (size_t) size_proc(fd);
 	auto mapped_view = grk_map(fd, buffer_info->len, true);
 	if (!mapped_view) {
-		GROK_ERROR("Unable to map memory mapped file %s", fname);
+		GRK_ERROR("Unable to map memory mapped file %s", fname);
 		mem_map_free(buffer_info);
 		return nullptr;
 	}
@@ -223,12 +223,12 @@ grk_stream* create_mapped_file_read_stream(const char *fname) {
 }
 
 grk_stream* create_mapped_file_write_stream(const char *fname) {
-	GROK_ERROR("Memory mapped file writing not currently supported");
+	GRK_ERROR("Memory mapped file writing not currently supported");
 	return nullptr;
 
 	grk_handle fd = open_fd(fname, "w");
 	if (fd == (grk_handle) -1){
-		GROK_ERROR("Unable to open memory mapped file %s", fname);
+		GRK_ERROR("Unable to open memory mapped file %s", fname);
 		return nullptr;
 	}
 
@@ -236,7 +236,7 @@ grk_stream* create_mapped_file_write_stream(const char *fname) {
 	buffer_info->fd = fd;
 	auto mapped_view = grk_map(fd, buffer_info->len, false);
 	if (!mapped_view) {
-		GROK_ERROR("Unable to map memory mapped file %s", fname);
+		GRK_ERROR("Unable to map memory mapped file %s", fname);
 		mem_map_free(buffer_info);
 		return nullptr;
 	}

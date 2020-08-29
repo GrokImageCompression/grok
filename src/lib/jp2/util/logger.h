@@ -32,9 +32,9 @@ struct logger {
 };
 
 
-void GROK_INFO(const char *fmt,	...);
-void GROK_WARN(const char *fmt,	...);
-void GROK_ERROR(const char *fmt,...);
+void GRK_INFO(const char *fmt,	...);
+void GRK_WARN(const char *fmt,	...);
+void GRK_ERROR(const char *fmt,...);
 
 
 

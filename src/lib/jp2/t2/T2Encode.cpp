@@ -52,7 +52,7 @@ bool T2Encode::encode_packets(uint16_t tile_no, uint32_t max_layers,
 	auto current_pi = &pi[pino];
 	if (current_pi->poc.prg == GRK_PROG_UNKNOWN) {
 		pi_destroy(pi, nb_pocs);
-		GROK_ERROR("encode_packets: Unknown progression order");
+		GRK_ERROR("encode_packets: Unknown progression order");
 		return false;
 	}
 	while (pi_next(current_pi)) {
@@ -93,7 +93,7 @@ bool T2Encode::encode_packets_simulate(uint16_t tile_no, uint32_t max_layers,
 
 	tileProcessor->m_packetTracker.clear();
 #ifdef DEBUG_ENCODE_PACKETS
-    GROK_INFO("simulate encode packets for layers below layno %u", max_layers);
+    GRK_INFO("simulate encode packets for layers below layno %u", max_layers);
 #endif
 	for (uint32_t compno = 0; compno < max_comp; ++compno) {
 		uint64_t comp_len = 0;
@@ -104,7 +104,7 @@ bool T2Encode::encode_packets_simulate(uint16_t tile_no, uint32_t max_layers,
 
 			if (current_pi->poc.prg == GRK_PROG_UNKNOWN) {
 				pi_destroy(pi, nb_pocs);
-				GROK_ERROR(
+				GRK_ERROR(
 						"decode_packets_simulate: Unknown progression order");
 				return false;
 			}
@@ -155,7 +155,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 	tileProcessor->m_packetTracker.packet_encoded(compno, resno, precno, layno);
 
 #ifdef DEBUG_ENCODE_PACKETS
-    GROK_INFO("encode packet compono=%u, resno=%u, precno=%u, layno=%u",
+    GRK_INFO("encode packet compono=%u, resno=%u, precno=%u, layno=%u",
              compno, resno, precno, layno);
 #endif
 
@@ -197,7 +197,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 				cblk->numPassesInPacket = 0;
 				assert(band->numbps >= cblk->numbps);
 				if (band->numbps < cblk->numbps) {
-					GROK_WARN(
+					GRK_WARN(
 							"Code block %u bps greater than band bps. Skipping.",
 							cblkno);
 				} else {
@@ -328,7 +328,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 	}
 
 	if (!bio->flush()) {
-		GROK_ERROR("encode_packet: Bit IO flush failed while encoding packet");
+		GRK_ERROR("encode_packet: Bit IO flush failed while encoding packet");
 		return false;
 	}
 
@@ -542,7 +542,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 			}
 		}
 		else {
-			GROK_ERROR("encode_packet: decompress packet failed");
+			GRK_ERROR("encode_packet: decompress packet failed");
 		}
 #endif
 	return true;
@@ -568,7 +568,7 @@ bool T2Encode::encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 	tileProcessor->m_packetTracker.packet_encoded(compno, resno, precno, layno);
 
 #ifdef DEBUG_ENCODE_PACKETS
-    GROK_INFO("simulate encode packet compono=%u, resno=%u, precno=%u, layno=%u",
+    GRK_INFO("simulate encode packet compono=%u, resno=%u, precno=%u, layno=%u",
              compno, resno, precno, layno);
 #endif
 
@@ -594,7 +594,7 @@ bool T2Encode::encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 				auto cblk = prc->enc + cblkno;
 				cblk->numPassesInPacket = 0;
 				if (band->numbps < cblk->numbps) {
-					GROK_WARN(
+					GRK_WARN(
 							"Code block %u bps greater than band bps. Skipping.",
 							cblkno);
 				} else {

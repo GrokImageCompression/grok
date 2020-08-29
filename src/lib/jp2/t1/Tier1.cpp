@@ -81,7 +81,7 @@ void Tier1::encodeCodeblocks(TileCodingParams *tcp,
 bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, TileComponentCodingParams *tccp,
 		std::vector<decodeBlockInfo*> *blocks) {
 	if (!tilec->buf->alloc()) {
-		GROK_ERROR( "Not enough memory for tile data");
+		GRK_ERROR( "Not enough memory for tile data");
 		return false;
 	}
 	for (uint32_t resno = 0; resno < tilec->resolutions_to_decompress; ++resno) {

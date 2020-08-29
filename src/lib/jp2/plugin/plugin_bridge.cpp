@@ -50,7 +50,7 @@ void decode_synch_plugin_with_host(TileProcessor *tcd) {
 								continue;
 							// sanity check
 							if (cblk->numSegments != 1) {
-								GROK_INFO(
+								GRK_INFO(
 										"Plugin does not handle code blocks with multiple segments. Image will be decoded on CPU.");
 								throw PluginDecodeUnsupportedException();
 							}
@@ -58,7 +58,7 @@ void decode_synch_plugin_with_host(TileProcessor *tcd) {
 									* (tcd->image->comps[0].prec
 											+ BIBO_EXTRA_BITS) - 2;
 							if (cblk->segs[0].numpasses > maxPasses) {
-								GROK_INFO(
+								GRK_INFO(
 										"Number of passes %u in segment exceeds BIBO maximum %u. Image will be decoded on CPU.",
 										cblk->segs[0].numpasses, maxPasses);
 								throw PluginDecodeUnsupportedException();
@@ -154,11 +154,11 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 
 		if (state & GRK_PLUGIN_STATE_DEBUG) {
 			if (band->stepsize != plugin_band->stepsize) {
-				GROK_WARN("ojp band step size {} differs from plugin step size {}",
+				GRK_WARN("ojp band step size {} differs from plugin step size {}",
 						band->stepsize, plugin_band->stepsize);
 			}
 			if (cblk->numPassesTotal != plugin_cblk->numPasses)
-				GROK_WARN("OPJ total number of passes ({}) differs from "
+				GRK_WARN("OPJ total number of passes ({}) differs from "
 						"plugin total number of passes ({}) : component={}, res={}, band={}, block={}",
 						cblk->numPassesTotal,
 						(uint32_t) plugin_cblk->numPasses, compno, resno,
@@ -185,14 +185,14 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 			if (cblk->numPassesTotal > 0) {
 				totalRate = (cblk->passes + cblk->numPassesTotal - 1)->rate;
 				if (totalRatePlugin != totalRate) {
-					GROK_WARN("CPU rate {} differs from plugin rate {}",
+					GRK_WARN("CPU rate {} differs from plugin rate {}",
 							totalRate, totalRatePlugin);
 				}
 			}
 
 			for (uint32_t p = 0; p < totalRate; ++p) {
 				if (cblk->paddedCompressedData[p] != plugin_cblk->compressedData[p]) {
-					GROK_WARN("data differs at position={}, component={}, res={}, band={}, block={}, CPU rate ={}, plugin rate={}",
+					GRK_WARN("data differs at position={}, component={}, res={}, band={}, block={}, CPU rate ={}, plugin rate={}",
 							p, compno, resno, bandno, cblkno, totalRate,
 							totalRatePlugin);
 					goodData = false;
@@ -210,7 +210,7 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 			if (cblk->x0 != plugin_cblk->x0 || cblk->y0 != plugin_cblk->y0
 					|| cblk->x1 != plugin_cblk->x1
 					|| cblk->y1 != plugin_cblk->y1) {
-			    GROK_ERROR("plugin code block bounding box differs from OPJ code block");
+			    GRK_ERROR("plugin code block bounding box differs from OPJ code block");
 			}
 		}
 
@@ -226,7 +226,7 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 							pass->distortiondec
 									- pluginPass->distortionDecrease)
 							/ fabs(pass->distortiondec) > 0.01) {
-						GROK_WARN("distortion decrease for pass {} differs between plugin and OPJ:  plugin: {}, OPJ : {}",
+						GRK_WARN("distortion decrease for pass {} differs between plugin and OPJ:  plugin: {}, OPJ : {}",
 								passno, pluginPass->distortionDecrease,
 								pass->distortiondec);
 					}
@@ -245,7 +245,7 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 
 			if (state & GRK_PLUGIN_STATE_DEBUG) {
 				if (pluginRate != pass->rate) {
-					GROK_WARN("plugin rate {} differs from OPJ rate {}\n",
+					GRK_WARN("plugin rate {} differs from OPJ rate {}\n",
 							pluginRate, pass->rate);
 				}
 			}

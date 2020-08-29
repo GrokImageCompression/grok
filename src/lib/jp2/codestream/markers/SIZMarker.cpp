@@ -80,7 +80,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 
 	/* minimum size == 39 - 3 (= minimum component parameter) */
 	if (header_size < 36) {
-		GROK_ERROR("Error with SIZ marker size");
+		GRK_ERROR("Error with SIZ marker size");
 		return false;
 	}
 
@@ -88,7 +88,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 	nb_comp = remaining_size / 3;
 	nb_comp_remain = remaining_size % 3;
 	if (nb_comp_remain != 0) {
-		GROK_ERROR("Error with SIZ marker size");
+		GRK_ERROR("Error with SIZ marker size");
 		return false;
 	}
 
@@ -105,7 +105,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t profile = tmp & GRK_PROFILE_MASK;
 		if ((profile > GRK_PROFILE_CINEMA_LTS)
 				&& !GRK_IS_BROADCAST(profile) && !GRK_IS_IMF(profile)) {
-			GROK_ERROR("Non-compliant Rsiz value 0x%x in SIZ marker", tmp);
+			GRK_ERROR("Non-compliant Rsiz value 0x%x in SIZ marker", tmp);
 			return false;
 		}
 	}
@@ -132,13 +132,13 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 	if (tmp <= max_num_components)
 		image->numcomps = (uint16_t) tmp;
 	else {
-		GROK_ERROR("Error in SIZ marker: number of component is illegal -> %u",
+		GRK_ERROR("Error in SIZ marker: number of component is illegal -> %u",
 				tmp);
 		return false;
 	}
 
 	if (image->numcomps != nb_comp) {
-		GROK_ERROR(
+		GRK_ERROR(
 				"Error in SIZ marker: number of component is not compatible with the remaining number of parameters ( %u vs %u)",
 				image->numcomps, nb_comp);
 		return false;
@@ -151,19 +151,19 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		ss << "Error in SIZ marker: negative or zero image dimensions ("
 				<< (int64_t) image->x1 - image->x0 << " x "
 				<< (int64_t) image->y1 - image->y0 << ")" << std::endl;
-		GROK_ERROR("%s", ss.str().c_str());
+		GRK_ERROR("%s", ss.str().c_str());
 		return false;
 	}
 	/* testcase 2539.pdf.SIGFPE.706.1712 (also 3622.pdf.SIGFPE.706.2916 and 4008.pdf.SIGFPE.706.3345 and maybe more) */
 	if ((cp->t_width == 0U) || (cp->t_height == 0U)) {
-		GROK_ERROR("Error in SIZ marker: invalid tile size (%u, %u)",
+		GRK_ERROR("Error in SIZ marker: invalid tile size (%u, %u)",
 				cp->t_width, cp->t_height);
 		return false;
 	}
 
 	/* testcase issue427-illegal-tile-offset.jp2 */
 	if (cp->tx0 > image->x0 || cp->ty0 > image->y0) {
-		GROK_ERROR(
+		GRK_ERROR(
 				"Error in SIZ marker: tile origin (%u,%u) cannot lie in the region"
 						" to the right and bottom of image origin (%u,%u)",
 				cp->tx0, cp->ty0, image->x0, image->y0);
@@ -172,7 +172,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 	uint32_t tx1 = uint_adds(cp->tx0, cp->t_width); /* manage overflow */
 	uint32_t ty1 = uint_adds(cp->ty0, cp->t_height); /* manage overflow */
 	if (tx1 <= image->x0 || ty1 <= image->y0) {
-		GROK_ERROR("Error in SIZ marker: first tile (%u,%u,%u,%u) must overlap"
+		GRK_ERROR("Error in SIZ marker: first tile (%u,%u,%u,%u) must overlap"
 				" image (%u,%u,%u,%u)", cp->tx0, cp->ty0, tx1, ty1, image->x0,
 				image->y0, image->x1, image->y1);
 		return false;
@@ -180,7 +180,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 
 	uint64_t tileArea = (uint64_t) cp->t_width * cp->t_height;
 	if (tileArea > max_tile_area) {
-		GROK_ERROR(
+		GRK_ERROR(
 				"Error in SIZ marker: tile area = %llu greater than max tile area = %llu",
 				tileArea, max_tile_area);
 		return false;
@@ -192,7 +192,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 			sizeof(grk_image_comp));
 	if (image->comps == nullptr) {
 		image->numcomps = 0;
-		GROK_ERROR("Not enough memory to take in charge SIZ marker");
+		GRK_ERROR("Not enough memory to take in charge SIZ marker");
 		return false;
 	}
 
@@ -209,14 +209,14 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		img_comp->dy = tmp; /* should be between 1 and 255 */
 		if (img_comp->dx < 1 || img_comp->dx > 255 || img_comp->dy < 1
 				|| img_comp->dy > 255) {
-			GROK_ERROR(
+			GRK_ERROR(
 					"Invalid values for comp = %u : dx=%u dy=%u\n (should be between 1 and 255 according to the JPEG2000 standard)",
 					i, img_comp->dx, img_comp->dy);
 			return false;
 		}
 
 		if (img_comp->prec == 0 || img_comp->prec > max_supported_precision) {
-			GROK_ERROR(
+			GRK_ERROR(
 					"Unsupported precision for comp = %u : prec=%u (Grok only supportes precision between 1 and %u)",
 					i, img_comp->prec, max_supported_precision);
 			return false;
@@ -230,13 +230,13 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 
 	/* Check that the number of tiles is valid */
 	if (cp->t_grid_width == 0 || cp->t_grid_height == 0) {
-		GROK_ERROR(
+		GRK_ERROR(
 				"Invalid grid of tiles: %u x %u. JPEG 2000 standard requires at least one tile in grid. ",
 				cp->t_grid_width, cp->t_grid_height);
 		return false;
 	}
 	if (cp->t_grid_width * cp->t_grid_height > max_num_tiles) {
-		GROK_ERROR(
+		GRK_ERROR(
 				"Invalid grid of tiles : %u x %u.  JPEG 2000 standard specifies maximum of %u tiles",
 				max_num_tiles, cp->t_grid_width, cp->t_grid_height);
 		return false;
@@ -275,7 +275,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 					sizeof(grk_mct_data));
 
 	if (!decoder->m_default_tcp->m_mct_records) {
-		GROK_ERROR("Not enough memory to take in charge SIZ marker");
+		GRK_ERROR("Not enough memory to take in charge SIZ marker");
 		return false;
 	}
 	decoder->m_default_tcp->m_nb_max_mct_records =
@@ -287,7 +287,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 					sizeof(grk_simple_mcc_decorrelation_data));
 
 	if (!decoder->m_default_tcp->m_mcc_records) {
-		GROK_ERROR("Not enough memory to take in charge SIZ marker");
+		GRK_ERROR("Not enough memory to take in charge SIZ marker");
 		return false;
 	}
 	decoder->m_default_tcp->m_nb_max_mcc_records =

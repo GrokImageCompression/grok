@@ -47,7 +47,7 @@ TagTree::TagTree(uint64_t mynumleafsh, uint64_t mynumleafsv) :
 	} while (n > 1);
 
 	if (numnodes == 0) {
-		GROK_WARN("tgt_create numnodes == 0, no tree created.");
+		GRK_WARN("tgt_create numnodes == 0, no tree created.");
 		throw std::runtime_error("tgt_create numnodes == 0, no tree created");
 	}
 

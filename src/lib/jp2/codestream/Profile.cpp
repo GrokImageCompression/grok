@@ -161,7 +161,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 
 	/* Validate mainlevel */
 	if (mainlevel > GRK_LEVEL_MAX) {
-		GROK_WARN("IMF profile require mainlevel <= 11.\n"
+		GRK_WARN("IMF profile require mainlevel <= 11.\n"
 				"-> %u is thus not compliant\n"
 				"-> Non-IMF code stream will be generated", mainlevel);
 		ret = false;
@@ -171,7 +171,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 	assert(
 			sizeof(tabMaxSubLevelFromMainLevel) == (GRK_LEVEL_MAX + 1) * sizeof(tabMaxSubLevelFromMainLevel[0]));
 	if (sublevel > tabMaxSubLevelFromMainLevel[mainlevel]) {
-		GROK_WARN("IMF profile require sublevel <= %u for mainlevel = %u.\n"
+		GRK_WARN("IMF profile require sublevel <= %u for mainlevel = %u.\n"
 				"-> %u is thus not compliant\n"
 				"-> Non-IMF code stream will be generated",
 				tabMaxSubLevelFromMainLevel[mainlevel], mainlevel, sublevel);
@@ -179,20 +179,20 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 	}
 	int m = max((int) mainlevel - 2, 1);
 	if ((int) sublevel > m) {
-		GROK_WARN("JPEG 2000 IMF profile: invalid sub-level %u", sublevel);
+		GRK_WARN("JPEG 2000 IMF profile: invalid sub-level %u", sublevel);
 		ret = false;
 	}
 
 	/* Number of components */
 	if (image->numcomps > 3) {
-		GROK_WARN("IMF profiles require at most 3 components.\n"
+		GRK_WARN("IMF profiles require at most 3 components.\n"
 				"-> Number of components of input image (%u) is not compliant\n"
 				"-> Non-IMF code stream will be generated", image->numcomps);
 		ret = false;
 	}
 
 	if (image->x0 != 0 || image->y0 != 0) {
-		GROK_WARN("IMF profiles require image origin to be at (0,0).\n"
+		GRK_WARN("IMF profiles require image origin to be at (0,0).\n"
 				"-> (%u,%u) is not compliant\n"
 				"-> Non-IMF code stream will be generated", image->x0,
 				image->y0);
@@ -200,7 +200,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 	}
 
 	if (parameters->tx0 != 0 || parameters->ty0 != 0) {
-		GROK_WARN("IMF profiles require tile origin to be at (0,0).\n"
+		GRK_WARN("IMF profiles require tile origin to be at (0,0).\n"
 				"-> (%u,%u) is not compliant\n"
 				"-> Non-IMF code stream will be generated", parameters->tx0,
 				parameters->ty0);
@@ -212,7 +212,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 				|| profile == GRK_PROFILE_IMF_8K) {
 			if (parameters->t_width < image->x1
 					|| (uint32_t) parameters->t_height < image->y1) {
-				GROK_WARN(
+				GRK_WARN(
 						"IMF 2K/4K/8K single tile profiles require tile to be greater or equal to image size.\n"
 								"-> %u,%u is lesser than %u,%u\n"
 								"-> Non-IMF code stream will be generated",
@@ -236,7 +236,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 			profile == GRK_PROFILE_IMF_8K) {
 				/* ok */
 			} else {
-				GROK_WARN("IMF 2K_R/4K_R/8K_R single/multiple tile profiles "
+				GRK_WARN("IMF 2K_R/4K_R/8K_R single/multiple tile profiles "
 						"require tile to be greater or equal to image size,\n"
 						"or to be (1024,1024), or (2048,2048) for 4K_R/8K_R "
 						"or (4096,4096) for 8K_R.\n"
@@ -255,7 +255,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 			char signed_str[] = "signed";
 			char unsigned_str[] = "unsigned";
 			char *tmp_str = image->comps[i].sgnd ? signed_str : unsigned_str;
-			GROK_WARN(
+			GRK_WARN(
 					"IMF profiles require precision of each component to b in [8-16] bits unsigned"
 							"-> At least component %u of input image (%u bits, %s) is not compliant\n"
 							"-> Non-IMF code stream will be generated", i,
@@ -267,28 +267,28 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 	/* Sub-sampling */
 	for (uint32_t i = 0; i < image->numcomps; i++) {
 		if (i == 0 && image->comps[i].dx != 1) {
-			GROK_WARN(
+			GRK_WARN(
 					"IMF profiles require XRSiz1 == 1. Here it is set to %u.\n"
 							"-> Non-IMF code stream will be generated",
 					image->comps[i].dx);
 			ret = false;
 		}
 		if (i == 1 && image->comps[i].dx != 1 && image->comps[i].dx != 2) {
-			GROK_WARN(
+			GRK_WARN(
 					"IMF profiles require XRSiz2 == 1 or 2. Here it is set to %u.\n"
 							"-> Non-IMF code stream will be generated",
 					image->comps[i].dx);
 			ret = false;
 		}
 		if (i > 1 && image->comps[i].dx != image->comps[i - 1].dx) {
-			GROK_WARN("IMF profiles require XRSiz%u to be the same as XRSiz2. "
+			GRK_WARN("IMF profiles require XRSiz%u to be the same as XRSiz2. "
 					"Here it is set to %u instead of %u.\n"
 					"-> Non-IMF code stream will be generated", i + 1,
 					image->comps[i].dx, image->comps[i - 1].dx);
 			ret = false;
 		}
 		if (image->comps[i].dy != 1) {
-			GROK_WARN("IMF profiles require YRsiz == 1. "
+			GRK_WARN("IMF profiles require YRsiz == 1. "
 					"Here it is set to %u for component i.\n"
 					"-> Non-IMF code stream will be generated",
 					image->comps[i].dy, i);
@@ -301,7 +301,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 	case GRK_PROFILE_IMF_2K:
 	case GRK_PROFILE_IMF_2K_R:
 		if (((image->comps[0].w > 2048) | (image->comps[0].h > 1556))) {
-			GROK_WARN("IMF 2K/2K_R profile require:\n"
+			GRK_WARN("IMF 2K/2K_R profile require:\n"
 					"width <= 2048 and height <= 1556\n"
 					"-> Input image size %u x %u is not compliant\n"
 					"-> Non-IMF code stream will be generated",
@@ -312,7 +312,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 	case GRK_PROFILE_IMF_4K:
 	case GRK_PROFILE_IMF_4K_R:
 		if (((image->comps[0].w > 4096) | (image->comps[0].h > 3112))) {
-			GROK_WARN("IMF 4K/4K_R profile require:\n"
+			GRK_WARN("IMF 4K/4K_R profile require:\n"
 					"width <= 4096 and height <= 3112\n"
 					"-> Input image size %u x %u is not compliant\n"
 					"-> Non-IMF code stream will be generated",
@@ -323,7 +323,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 	case GRK_PROFILE_IMF_8K:
 	case GRK_PROFILE_IMF_8K_R:
 		if (((image->comps[0].w > 8192) | (image->comps[0].h > 6224))) {
-			GROK_WARN("IMF 8K/8K_R profile require:\n"
+			GRK_WARN("IMF 8K/8K_R profile require:\n"
 					"width <= 8192 and height <= 6224\n"
 					"-> Input image size %u x %u is not compliant\n"
 					"-> Non-IMF code stream will be generated",
@@ -337,14 +337,14 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 	}
 
 	if (parameters->roi_compno != -1) {
-		GROK_WARN("IMF profile forbid RGN / region of interest marker.\n"
+		GRK_WARN("IMF profile forbid RGN / region of interest marker.\n"
 				"-> Compression parameters specify a ROI\n"
 				"-> Non-IMF code stream will be generated");
 		ret = false;
 	}
 
 	if (parameters->cblockw_init != 32 || parameters->cblockh_init != 32) {
-		GROK_WARN("IMF profile require code block size to be 32x32.\n"
+		GRK_WARN("IMF profile require code block size to be 32x32.\n"
 				"-> Compression parameters set it to %dx%u.\n"
 				"-> Non-IMF code stream will be generated",
 				parameters->cblockw_init, parameters->cblockh_init);
@@ -352,7 +352,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 	}
 
 	if (parameters->prog_order != GRK_CPRL) {
-		GROK_WARN("IMF profile require progression order to be CPRL.\n"
+		GRK_WARN("IMF profile require progression order to be CPRL.\n"
 				"-> Compression parameters set it to %u.\n"
 				"-> Non-IMF code stream will be generated",
 				parameters->prog_order);
@@ -360,7 +360,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 	}
 
 	if (parameters->numpocs != 0) {
-		GROK_WARN("IMF profile forbid POC markers.\n"
+		GRK_WARN("IMF profile forbid POC markers.\n"
 				"-> Compression parameters set %u POC.\n"
 				"-> Non-IMF code stream will be generated", parameters->numpocs);
 		ret = false;
@@ -368,7 +368,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 
 	/* Codeblock style: no mode switch enabled */
 	if (parameters->cblk_sty != 0) {
-		GROK_WARN("IMF profile forbid mode switch in code block style.\n"
+		GRK_WARN("IMF profile forbid mode switch in code block style.\n"
 				"-> Compression parameters set code block style to %u.\n"
 				"-> Non-IMF code stream will be generated",
 				parameters->cblk_sty);
@@ -379,7 +379,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 			|| profile == GRK_PROFILE_IMF_8K) {
 		/* Expect 9-7 transform */
 		if (!parameters->irreversible) {
-			GROK_WARN(
+			GRK_WARN(
 					"IMF 2K/4K/8K profiles require 9-7 Irreversible Transform.\n"
 							"-> Compression parameters set it to reversible.\n"
 							"-> Non-IMF code stream will be generated");
@@ -388,7 +388,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 	} else {
 		/* Expect 5-3 transform */
 		if (parameters->irreversible) {
-			GROK_WARN(
+			GRK_WARN(
 					"IMF 2K/4K/8K profiles require 5-3 reversible Transform.\n"
 							"-> Compression parameters set it to irreversible.\n"
 							"-> Non-IMF code stream will be generated");
@@ -398,7 +398,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 
 	/* Number of layers */
 	if (parameters->tcp_numlayers != 1) {
-		GROK_WARN("IMF 2K/4K/8K profiles require 1 single quality layer.\n"
+		GRK_WARN("IMF 2K/4K/8K profiles require 1 single quality layer.\n"
 				"-> Number of layers is %u.\n"
 				"-> Non-IMF code stream will be generated",
 				parameters->tcp_numlayers);
@@ -409,7 +409,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 	switch (profile) {
 	case GRK_PROFILE_IMF_2K:
 		if (!(NL >= 1 && NL <= 5)) {
-			GROK_WARN("IMF 2K profile requires 1 <= NL <= 5:\n"
+			GRK_WARN("IMF 2K profile requires 1 <= NL <= 5:\n"
 					"-> Number of decomposition levels is %u.\n"
 					"-> Non-IMF code stream will be generated", NL);
 			ret = false;
@@ -417,7 +417,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 		break;
 	case GRK_PROFILE_IMF_4K:
 		if (!(NL >= 1 && NL <= 6)) {
-			GROK_WARN("IMF 4K profile requires 1 <= NL <= 6:\n"
+			GRK_WARN("IMF 4K profile requires 1 <= NL <= 6:\n"
 					"-> Number of decomposition levels is %u.\n"
 					"-> Non-IMF code stream will be generated", NL);
 			ret = false;
@@ -425,7 +425,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 		break;
 	case GRK_PROFILE_IMF_8K:
 		if (!(NL >= 1 && NL <= 7)) {
-			GROK_WARN("IMF 8K profile requires 1 <= NL <= 7:\n"
+			GRK_WARN("IMF 8K profile requires 1 <= NL <= 7:\n"
 					"-> Number of decomposition levels is %u.\n"
 					"-> Non-IMF code stream will be generated", NL);
 			ret = false;
@@ -434,7 +434,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 	case GRK_PROFILE_IMF_2K_R: {
 		if (XTsiz >= 2048) {
 			if (!(NL >= 1 && NL <= 5)) {
-				GROK_WARN(
+				GRK_WARN(
 						"IMF 2K_R profile requires 1 <= NL <= 5 for XTsiz >= 2048:\n"
 								"-> Number of decomposition levels is %u.\n"
 								"-> Non-IMF code stream will be generated", NL);
@@ -442,7 +442,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 			}
 		} else if (XTsiz >= 1024) {
 			if (!(NL >= 1 && NL <= 4)) {
-				GROK_WARN(
+				GRK_WARN(
 						"IMF 2K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n"
 								"-> Number of decomposition levels is %u.\n"
 								"-> Non-IMF code stream will be generated", NL);
@@ -454,7 +454,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 	case GRK_PROFILE_IMF_4K_R: {
 		if (XTsiz >= 4096) {
 			if (!(NL >= 1 && NL <= 6)) {
-				GROK_WARN(
+				GRK_WARN(
 						"IMF 4K_R profile requires 1 <= NL <= 6 for XTsiz >= 4096:\n"
 								"-> Number of decomposition levels is %u.\n"
 								"-> Non-IMF code stream will be generated", NL);
@@ -462,7 +462,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 			}
 		} else if (XTsiz >= 2048) {
 			if (!(NL >= 1 && NL <= 5)) {
-				GROK_WARN(
+				GRK_WARN(
 						"IMF 4K_R profile requires 1 <= NL <= 5 for XTsiz in [2048,4096[:\n"
 								"-> Number of decomposition levels is %u.\n"
 								"-> Non-IMF code stream will be generated", NL);
@@ -470,7 +470,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 			}
 		} else if (XTsiz >= 1024) {
 			if (!(NL >= 1 && NL <= 4)) {
-				GROK_WARN(
+				GRK_WARN(
 						"IMF 4K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n"
 								"-> Number of decomposition levels is %u.\n"
 								"-> Non-IMF code stream will be generated", NL);
@@ -482,7 +482,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 	case GRK_PROFILE_IMF_8K_R: {
 		if (XTsiz >= 8192) {
 			if (!(NL >= 1 && NL <= 7)) {
-				GROK_WARN(
+				GRK_WARN(
 						"IMF 4K_R profile requires 1 <= NL <= 7 for XTsiz >= 8192:\n"
 								"-> Number of decomposition levels is %u.\n"
 								"-> Non-IMF code stream will be generated", NL);
@@ -490,7 +490,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 			}
 		} else if (XTsiz >= 4096) {
 			if (!(NL >= 1 && NL <= 6)) {
-				GROK_WARN(
+				GRK_WARN(
 						"IMF 4K_R profile requires 1 <= NL <= 6 for XTsiz in [4096,8192[:\n"
 								"-> Number of decomposition levels is %u.\n"
 								"-> Non-IMF code stream will be generated", NL);
@@ -498,7 +498,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 			}
 		} else if (XTsiz >= 2048) {
 			if (!(NL >= 1 && NL <= 5)) {
-				GROK_WARN(
+				GRK_WARN(
 						"IMF 4K_R profile requires 1 <= NL <= 5 for XTsiz in [2048,4096[:\n"
 								"-> Number of decomposition levels is %u.\n"
 								"-> Non-IMF code stream will be generated", NL);
@@ -506,7 +506,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 			}
 		} else if (XTsiz >= 1024) {
 			if (!(NL >= 1 && NL <= 4)) {
-				GROK_WARN(
+				GRK_WARN(
 						"IMF 4K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n"
 								"-> Number of decomposition levels is %u.\n"
 								"-> Non-IMF code stream will be generated", NL);
@@ -522,7 +522,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 	if (parameters->numresolution == 1) {
 		if (parameters->res_spec != 1 || parameters->prcw_init[0] != 128
 				|| parameters->prch_init[0] != 128) {
-			GROK_WARN(
+			GRK_WARN(
 					"IMF profiles require PPx = PPy = 7 for NLLL band, else 8.\n"
 							"-> Supplied values are different from that.\n"
 							"-> Non-IMF code stream will be generated", NL);
@@ -532,7 +532,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 		for (uint32_t i = 0; i < parameters->res_spec; i++) {
 			if (parameters->prcw_init[i] != 256
 					|| parameters->prch_init[i] != 256) {
-				GROK_WARN(
+				GRK_WARN(
 						"IMF profiles require PPx = PPy = 7 for NLLL band, else 8.\n"
 								"-> Supplied values are different from that.\n"
 								"-> Non-IMF code stream will be generated", NL);
@@ -648,7 +648,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 
 	/* Validate mainlevel */
 	if (mainlevel > GRK_LEVEL_MAX) {
-		GROK_WARN("Broadcast profile require mainlevel <= 11.\n"
+		GRK_WARN("Broadcast profile require mainlevel <= 11.\n"
 				"-> %u is thus not compliant\n"
 				"-> Non-broadcast code stream will be generated", mainlevel);
 		ret = false;
@@ -656,7 +656,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 
 	/* Number of components */
 	if (image->numcomps > 4) {
-		GROK_WARN("Broadcast profiles require at most 4 components.\n"
+		GRK_WARN("Broadcast profiles require at most 4 components.\n"
 				"-> Number of components of input image (%u) is not compliant\n"
 				"-> Non-broadcast code stream will be generated",
 				image->numcomps);
@@ -664,7 +664,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 	}
 
 	if (image->x0 != 0 || image->y0 != 0) {
-		GROK_WARN("Broadcast profiles require image origin to be at (0,0).\n"
+		GRK_WARN("Broadcast profiles require image origin to be at (0,0).\n"
 				"-> (%u,%u) is not compliant\n"
 				"-> Non-broadcast code stream will be generated", image->x0,
 				image->y0);
@@ -672,7 +672,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 	}
 
 	if (parameters->tx0 != 0 || parameters->ty0 != 0) {
-		GROK_WARN("Broadcast profiles require tile origin to be at (0,0).\n"
+		GRK_WARN("Broadcast profiles require tile origin to be at (0,0).\n"
 				"-> (%u,%u) is not compliant\n"
 				"-> Non-broadcast code stream will be generated",
 				parameters->tx0, parameters->ty0);
@@ -681,7 +681,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 
 	if (parameters->tile_size_on) {
 		if (profile == GRK_PROFILE_BC_SINGLE) {
-			GROK_WARN("Broadcast SINGLE profile requires 1x1 tile layout.\n"
+			GRK_WARN("Broadcast SINGLE profile requires 1x1 tile layout.\n"
 					"-> Non-broadcast code stream will be generated");
 			ret = false;
 		}
@@ -698,7 +698,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 		if (!((t_grid_width == 1 && t_grid_height == 1)
 				|| (t_grid_width == 2 && t_grid_height == 2)
 				|| (t_grid_width == 1 && t_grid_height == 4))) {
-			GROK_WARN("Tiled broadcast profiles require 2x2 or 1x4 tile layout.\n"
+			GRK_WARN("Tiled broadcast profiles require 2x2 or 1x4 tile layout.\n"
 					"-> (%u,%u) layout is not compliant\n"
 					"-> Non-broadcast code stream will be generated",
 					t_grid_width, t_grid_height);
@@ -713,7 +713,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 			char signed_str[] = "signed";
 			char unsigned_str[] = "unsigned";
 			char *tmp_str = image->comps[i].sgnd ? signed_str : unsigned_str;
-			GROK_WARN(
+			GRK_WARN(
 					"Broadcast profiles require precision of each component to b in [8-12] bits unsigned"
 							"-> At least component %u of input image (%u bits, %s) is not compliant\n"
 							"-> Non-broadcast code stream will be generated", i,
@@ -725,14 +725,14 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 	/* Sub-sampling */
 	if (image->numcomps >= 3) {
 		if (image->comps[1].dx != image->comps[2].dx) {
-			GROK_WARN("Broadcast profiles require XRSiz1 == XRSiz2. "
+			GRK_WARN("Broadcast profiles require XRSiz1 == XRSiz2. "
 					"Here they are set to %u and %u respectively.\n"
 					"-> Non-broadcast code stream will be generated",
 					image->comps[1].dx, image->comps[2].dx);
 			ret = false;
 		}
 		if (image->comps[1].dy != image->comps[2].dy) {
-			GROK_WARN("Broadcast profiles require YRSiz1 == YRSiz2. "
+			GRK_WARN("Broadcast profiles require YRSiz1 == YRSiz2. "
 					"Here they are set to %u and %u respectively.\n"
 					"-> Non-broadcast code stream will be generated",
 					image->comps[1].dy, image->comps[2].dy);
@@ -742,14 +742,14 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 	for (uint32_t i = 0; i < min(image->numcomps, 4U); i++) {
 		if (i == 0 || i == 3) {
 			if (image->comps[i].dx != 1) {
-				GROK_WARN(
+				GRK_WARN(
 						"Broadcast profiles require XRSiz%u == 1. Here it is set to %u.\n"
 								"-> Non-broadcast code stream will be generated",
 						i + 1, image->comps[i].dx);
 				ret = false;
 			}
 			if (image->comps[i].dy != 1) {
-				GROK_WARN(
+				GRK_WARN(
 						"Broadcast profiles require YRSiz%u == 1. Here it is set to %u.\n"
 								"-> Non-broadcast code stream will be generated",
 						i + 1, image->comps[i].dy);
@@ -757,14 +757,14 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 			}
 		} else {
 			if (image->comps[i].dx > 2) {
-				GROK_WARN(
+				GRK_WARN(
 						"Broadcast profiles require XRSiz%u == [1,2]. Here it is set to %u.\n"
 								"-> Non-broadcast code stream will be generated",
 						i + 1, image->comps[i].dx);
 				ret = false;
 			}
 			if (image->comps[i].dy > 2) {
-				GROK_WARN(
+				GRK_WARN(
 						"Broadcast profiles require YRSiz%u == [1,2]. Here it is set to %u.\n"
 								"-> Non-broadcast code stream will be generated",
 						i + 1, image->comps[i].dy);
@@ -777,7 +777,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 			|| (parameters->cblockw_init == 64 && parameters->cblockh_init == 64)
 			|| (parameters->cblockw_init == 128
 					&& parameters->cblockh_init == 128))) {
-		GROK_WARN(
+		GRK_WARN(
 				"Broadcast profile require each code block dimension to be in [32,64,128].\n"
 						"-> %dx%u is not valid.\n"
 						"-> Non-broadcast code stream will be generated",
@@ -786,7 +786,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 	}
 
 	if (parameters->prog_order != GRK_CPRL) {
-		GROK_WARN("Broadcast profile require progression order to be CPRL.\n"
+		GRK_WARN("Broadcast profile require progression order to be CPRL.\n"
 				"-> Compression parameters set it to %u.\n"
 				"-> Non-broadcast code stream will be generated",
 				parameters->prog_order);
@@ -794,7 +794,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 	}
 
 	if (parameters->numpocs != 0) {
-		GROK_WARN("Broadcast profile forbid POC markers.\n"
+		GRK_WARN("Broadcast profile forbid POC markers.\n"
 				"-> Compression parameters set %u POC.\n"
 				"-> Non-broadcast code stream will be generated",
 				parameters->numpocs);
@@ -803,7 +803,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 
 	/* Codeblock style: no mode switch enabled */
 	if (parameters->cblk_sty != 0) {
-		GROK_WARN("Broadcast profile forbid mode switch in code block style.\n"
+		GRK_WARN("Broadcast profile forbid mode switch in code block style.\n"
 				"-> Compression parameters set code block style to %u.\n"
 				"-> Non-broadcast code stream will be generated",
 				parameters->cblk_sty);
@@ -813,7 +813,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 	if (profile == GRK_PROFILE_BC_SINGLE || profile == GRK_PROFILE_BC_MULTI) {
 		/* Expect 9-7 transform */
 		if (!parameters->irreversible) {
-			GROK_WARN(
+			GRK_WARN(
 					"Broadcast single and multi profiles require 9-7 Irreversible Transform.\n"
 							"-> Compression parameters set it to reversible.\n"
 							"-> Non-broadcast code stream will be generated");
@@ -822,7 +822,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 	} else {
 		/* Expect 5-3 transform */
 		if (parameters->irreversible) {
-			GROK_WARN(
+			GRK_WARN(
 					"Broadcast multi_r profile require 5-3 reversible Transform.\n"
 							"-> Compression parameters set it to irreversible.\n"
 							"-> Non-broadcast code stream will be generated");
@@ -832,7 +832,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 
 	/* Number of layers */
 	if (parameters->tcp_numlayers != 1) {
-		GROK_WARN("Broadcast profiles require 1 single quality layer.\n"
+		GRK_WARN("Broadcast profiles require 1 single quality layer.\n"
 				"-> Number of layers is %u.\n"
 				"-> Non-broadcast code stream will be generated",
 				parameters->tcp_numlayers);
@@ -841,7 +841,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 
 	/* Decomposition levels */
 	if (!(NL >= 1 && NL <= 5)) {
-		GROK_WARN("Broadcast profile requires 1 <= NL <= 5:\n"
+		GRK_WARN("Broadcast profile requires 1 <= NL <= 5:\n"
 				"-> Number of decomposition levels is %u.\n"
 				"-> Non-broadcast code stream will be generated", NL);
 		ret = false;
@@ -850,7 +850,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 	if (parameters->numresolution == 1) {
 		if (parameters->res_spec != 1 || parameters->prcw_init[0] != 128
 				|| parameters->prch_init[0] != 128) {
-			GROK_WARN(
+			GRK_WARN(
 					"Broadcast profiles require PPx = PPy = 7 for NLLL band, else 8.\n"
 							"-> Supplied values are different from that.\n"
 							"-> Non-broadcast code stream will be generated",
@@ -861,7 +861,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 		for (uint32_t i = 0; i < parameters->res_spec; i++) {
 			if (parameters->prcw_init[i] != 256
 					|| parameters->prch_init[i] != 256) {
-				GROK_WARN(
+				GRK_WARN(
 						"Broadcast profiles require PPx = PPy = 7 for NLLL band, otherwise 8.\n"
 								"-> Supplied values are different from this specification.\n"
 								"-> Non-broadcast code stream will be generated",
@@ -932,7 +932,7 @@ void Profile::set_cinema_parameters(grk_cparameters *parameters,
 
 	/* Number of layers */
 	if (parameters->tcp_numlayers > 1) {
-		GROK_WARN(
+		GRK_WARN(
 				"JPEG 2000 profiles 3 and 4 (2k and 4k digital cinema) require:\n"
 						"1 single quality layer"
 						"-> Number of layers forced to 1 (rather than %u)\n"
@@ -948,7 +948,7 @@ void Profile::set_cinema_parameters(grk_cparameters *parameters,
 	switch (parameters->rsiz) {
 	case GRK_PROFILE_CINEMA_2K:
 		if (parameters->numresolution > 6) {
-			GROK_WARN(
+			GRK_WARN(
 					"JPEG 2000 profile 3 (2k digital cinema) requires:\n"
 							"Number of decomposition levels <= 5\n"
 							"-> Number of decomposition levels forced to 5 (rather than %u)",
@@ -958,14 +958,14 @@ void Profile::set_cinema_parameters(grk_cparameters *parameters,
 		break;
 	case GRK_PROFILE_CINEMA_4K:
 		if (parameters->numresolution < 2) {
-			GROK_WARN(
+			GRK_WARN(
 					"JPEG 2000 profile 4 (4k digital cinema) requires:\n"
 							"Number of decomposition levels >= 1 && <= 6\n"
 							"-> Number of decomposition levels forced to 1 (rather than %u)",
 					parameters->numresolution + 1);
 			parameters->numresolution = 1;
 		} else if (parameters->numresolution > 7) {
-			GROK_WARN(
+			GRK_WARN(
 					"JPEG 2000 profile 4 (4k digital cinema) requires:\n"
 							"Number of decomposition levels >= 1 && <= 6\n"
 							"-> Number of decomposition levels forced to 6 (rather than %u)",
@@ -1002,12 +1002,12 @@ void Profile::set_cinema_parameters(grk_cparameters *parameters,
 	if (parameters->max_cs_size == 0) {
 		/* No rate has been introduced for code stream, so 24 fps is assumed */
 		parameters->max_cs_size = GRK_CINEMA_24_CS;
-		GROK_WARN(
+		GRK_WARN(
 				"JPEG 2000 profiles 3 and 4 (2k and 4k digital cinema) require:\n"
 						"Maximum 1302083 compressed bytes @ 24fps for code stream.\n"
 						"As no rate has been given for entire code stream, this limit will be used.");
 	} else if (parameters->max_cs_size > GRK_CINEMA_24_CS) {
-		GROK_WARN(
+		GRK_WARN(
 				"JPEG 2000 profiles 3 and 4 (2k and 4k digital cinema) require:\n"
 						"Maximum 1302083 compressed bytes @ 24fps for code stream.\n"
 						"The specified rate exceeds this limit, so rate will be forced to 1302083 bytes.");
@@ -1017,12 +1017,12 @@ void Profile::set_cinema_parameters(grk_cparameters *parameters,
 	if (parameters->max_comp_size == 0) {
 		/* No rate has been introduced for each component, so 24 fps is assumed */
 		parameters->max_comp_size = GRK_CINEMA_24_COMP;
-		GROK_WARN(
+		GRK_WARN(
 				"JPEG 2000 profiles 3 and 4 (2k and 4k digital cinema) require:\n"
 						"Maximum 1041666 compressed bytes @ 24fps per component.\n"
 						"As no rate has been given, this limit will be used.");
 	} else if (parameters->max_comp_size > GRK_CINEMA_24_COMP) {
-		GROK_WARN(
+		GRK_WARN(
 				"JPEG 2000 profiles 3 and 4 (2k and 4k digital cinema) require:\n"
 						"Maximum 1041666 compressed bytes @ 24fps per component.\n"
 						"The specified rate exceeds this limit, so rate will be forced to 1041666 bytes.");
@@ -1039,7 +1039,7 @@ void Profile::set_cinema_parameters(grk_cparameters *parameters,
 bool Profile::is_cinema_compliant(grk_image *image, uint16_t rsiz) {
 	/* Number of components */
 	if (image->numcomps != 3) {
-		GROK_WARN("JPEG 2000 profile 3 (2k digital cinema) requires:\n"
+		GRK_WARN("JPEG 2000 profile 3 (2k digital cinema) requires:\n"
 				"3 components"
 				"-> Number of components of input image (%u) is not compliant\n"
 				"-> Non-profile-3 code stream will be generated",
@@ -1053,7 +1053,7 @@ bool Profile::is_cinema_compliant(grk_image *image, uint16_t rsiz) {
 			char signed_str[] = "signed";
 			char unsigned_str[] = "unsigned";
 			char *tmp_str = image->comps[i].sgnd ? signed_str : unsigned_str;
-			GROK_WARN(
+			GRK_WARN(
 					"JPEG 2000 profile 3 (2k digital cinema) requires:\n"
 							"Precision of each component shall be 12 bits unsigned"
 							"-> At least component %u of input image (%u bits, %s) is not compliant\n"
@@ -1067,7 +1067,7 @@ bool Profile::is_cinema_compliant(grk_image *image, uint16_t rsiz) {
 	switch (rsiz) {
 	case GRK_PROFILE_CINEMA_2K:
 		if (((image->comps[0].w > 2048) | (image->comps[0].h > 1080))) {
-			GROK_WARN("JPEG 2000 profile 3 (2k digital cinema) requires:\n"
+			GRK_WARN("JPEG 2000 profile 3 (2k digital cinema) requires:\n"
 					"width <= 2048 and height <= 1080\n"
 					"-> Input image size %u x %u is not compliant\n"
 					"-> Non-profile-3 code stream will be generated",
@@ -1077,7 +1077,7 @@ bool Profile::is_cinema_compliant(grk_image *image, uint16_t rsiz) {
 		break;
 	case GRK_PROFILE_CINEMA_4K:
 		if (((image->comps[0].w > 4096) | (image->comps[0].h > 2160))) {
-			GROK_WARN("JPEG 2000 profile 4 (4k digital cinema) requires:\n"
+			GRK_WARN("JPEG 2000 profile 4 (4k digital cinema) requires:\n"
 					"width <= 4096 and height <= 2160\n"
 					"-> Image size %u x %u is not compliant\n"
 					"-> Non-profile-4 code stream will be generated",

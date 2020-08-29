@@ -692,7 +692,7 @@ bool TileProcessor::init_tile(grk_image *output_image,
 	tile->x0 = std::max<uint32_t>(tx0, image->x0);
 	tile->x1 = std::min<uint32_t>(uint_adds(tx0, m_cp->t_width), image->x1);
 	if (tile->x1 <= tile->x0) {
-		GROK_ERROR("Tile x0 coordinate %u must be "
+		GRK_ERROR("Tile x0 coordinate %u must be "
 				"<= tile x1 coordinate %u", tile->x0, tile->x1);
 		return false;
 	}
@@ -700,7 +700,7 @@ bool TileProcessor::init_tile(grk_image *output_image,
 	tile->y0 = std::max<uint32_t>(ty0, image->y0);
 	tile->y1 = std::min<uint32_t>(uint_adds(ty0, m_cp->t_height), image->y1);
 	if (tile->y1 <= tile->y0) {
-		GROK_ERROR("Tile y0 coordinate %u must be "
+		GRK_ERROR("Tile y0 coordinate %u must be "
 				"<= tile y1 coordinate %u", tile->y0, tile->y1);
 		return false;
 	}
@@ -708,7 +708,7 @@ bool TileProcessor::init_tile(grk_image *output_image,
 
 	/* testcase 1888.pdf.asan.35.988 */
 	if (tcp->tccps->numresolutions == 0) {
-		GROK_ERROR("tiles require at least one resolution");
+		GRK_ERROR("tiles require at least one resolution");
 		return false;
 	}
 
@@ -729,7 +729,7 @@ bool TileProcessor::init_tile(grk_image *output_image,
 	if (!isEncoder) {
 		if (state & GRK_PLUGIN_STATE_DEBUG) {
 			if (!tile_equals(current_plugin_tile, tile))
-				GROK_WARN("plugin tile differs from grok tile", nullptr);
+				GRK_WARN("plugin tile differs from grok tile", nullptr);
 		}
 	}
 	tile->packno = 0;
@@ -783,7 +783,7 @@ bool TileProcessor::do_encode(BufferedStream *stream){
 	}
 
 	if (!pre_compress_first_tile_part(stream)) {
-		GROK_ERROR("Cannot compress tile");
+		GRK_ERROR("Cannot compress tile");
 		return false;
 	}
 
@@ -799,7 +799,7 @@ bool TileProcessor::pre_compress_first_tile_part(BufferedStream *stream) {
 			if (!needs_rate_control())
 				plt_markers = new PacketLengthMarkers(stream);
 			else
-				GROK_WARN("PLT marker generation disabled due to rate control.");
+				GRK_WARN("PLT marker generation disabled due to rate control.");
 		}
 		// 2. rate control
 		if (!rate_allocate())
@@ -887,7 +887,7 @@ bool TileProcessor::decompress_tile_t2(ChunkBuffer *src_buf) {
 				/* We should not normally go there. The circumstance is when */
 				/* the tile coordinates do not intersect the area of interest */
 				/* Upper level logic should not even try to decompress that tile */
-				GROK_ERROR("Invalid tilec->win_xxx values.");
+				GRK_ERROR("Invalid tilec->win_xxx values.");
 				return false;
 			}
 
@@ -939,7 +939,7 @@ bool TileProcessor::decompress_tile_t1(void) {
 				try {
 					tilec->alloc_sparse_array(m_resno_decoded[compno] + 1);
 				} catch (runtime_error &ex) {
-					GROK_ERROR("decompress_tile_t1: %s", ex.what());
+					GRK_ERROR("decompress_tile_t1: %s", ex.what());
 					return false;
 				}
 			}
@@ -1013,7 +1013,7 @@ bool TileProcessor::mct_decode() {
 		/* testcase 1336.pdf.asan.47.376 */
 		if (tile->comps[1].buf->strided_area()	!= samples
 				|| tile->comps[2].buf->strided_area()	!= samples) {
-			GROK_WARN("Not all tiles components have the same dimension: skipping MCT.");
+			GRK_WARN("Not all tiles components have the same dimension: skipping MCT.");
 			return true;
 		} else if (m_tcp->mct == 2) {
 			if (!m_tcp->m_mct_decoding_matrix)
@@ -1057,7 +1057,7 @@ bool TileProcessor::mct_decode() {
 			}
 		}
 	} else {
-		GROK_ERROR(
+		GRK_ERROR(
 				"Number of components (%u) is inconsistent with a MCT. Skip the MCT step.",
 				tile->numcomps);
 	}
@@ -1449,7 +1449,7 @@ bool TileProcessor::pre_write_tile() {
 				tilec->buf->attach(imagec->data, imagec->stride);
 			} else {
 				if (!tilec->buf->alloc()) {
-					GROK_ERROR("Error allocating tile component data.");
+					GRK_ERROR("Error allocating tile component data.");
 					return false;
 				}
 			}
@@ -1983,11 +1983,11 @@ void grk_precinct::initTagTrees() {
 			try {
 				incltree = new TagTree(cw, ch);
 			} catch (std::exception &e) {
-				GROK_WARN("No incltree created.");
+				GRK_WARN("No incltree created.");
 			}
 		} else {
 			if (!incltree->init(cw, ch)) {
-				GROK_WARN("Failed to re-initialize incltree.");
+				GRK_WARN("Failed to re-initialize incltree.");
 				delete incltree;
 				incltree = nullptr;
 			}
@@ -1997,11 +1997,11 @@ void grk_precinct::initTagTrees() {
 			try {
 				imsbtree = new TagTree(cw, ch);
 			} catch (std::exception &e) {
-				GROK_WARN("No imsbtree created.");
+				GRK_WARN("No imsbtree created.");
 			}
 		} else {
 			if (!imsbtree->init(cw, ch)) {
-				GROK_WARN("Failed to re-initialize imsbtree.");
+				GRK_WARN("Failed to re-initialize imsbtree.");
 				delete imsbtree;
 				imsbtree = nullptr;
 			}

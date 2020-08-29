@@ -578,7 +578,7 @@ static bool pi_next_cprl(PacketIter *pi) {
 
 					temp2 = uint_floordivpow2(trx0, res->pdx);
 					if (temp2 > temp1) {
-						GROK_ERROR("Precinct index invalid");
+						GRK_ERROR("Precinct index invalid");
 						return false;
 					}
 					prci = temp1 - temp2;
@@ -589,7 +589,7 @@ static bool pi_next_cprl(PacketIter *pi) {
 							res->pdy);
 					temp2 = uint_floordivpow2(try0, res->pdy);
 					if (temp2 > temp1) {
-						GROK_ERROR("Precinct index invalid");
+						GRK_ERROR("Precinct index invalid");
 						return false;
 					}
 					prcj = temp1 - temp2;

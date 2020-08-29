@@ -177,7 +177,7 @@ bool t1_allocate_buffers(t1_info *t1, uint32_t w, uint32_t h) {
 		t1->data =
 				(int32_t*) grk::grk_aligned_malloc(datasize * sizeof(int32_t));
 		if (!t1->data) {
-			GROK_ERROR("Out of memory");
+			GRK_ERROR("Out of memory");
 			return false;
 		}
 		t1->datasize = datasize;
@@ -198,7 +198,7 @@ bool t1_allocate_buffers(t1_info *t1, uint32_t w, uint32_t h) {
 		t1->flags = (grk_flag*) grk::grk_aligned_malloc(
 				flagssize * sizeof(grk_flag));
 		if (!t1->flags) {
-			GROK_ERROR("Out of memory");
+			GRK_ERROR("Out of memory");
 			return false;
 		}
 	}
@@ -238,7 +238,7 @@ bool t1_allocate_buffers(t1_info *t1, uint32_t w, uint32_t h) {
 t1_info* t1_create(bool isEncoder) {
 	t1_info *t1 = (t1_info*) grk::grk_calloc(1, sizeof(t1_info));
 	if (!t1){
-		GROK_ERROR("Out of memory");
+		GRK_ERROR("Out of memory");
 		return nullptr;
 	}
 	t1->encoder = isEncoder;
@@ -899,7 +899,7 @@ static void t1_dec_clnpass_check_segsym(t1_info *t1, int32_t cblksty) {
 		mqc_decode(v2, mqc);
 		v = (v << 1) | v2;
 		if (v!=0xa) {
-		 GROK_WARN("Bad segmentation symbol %x", v);
+		 GRK_WARN("Bad segmentation symbol %x", v);
 		}
 	}
 }
@@ -1204,7 +1204,7 @@ bool t1_decode_cblk(t1_info *t1, cblk_dec *cblk, uint32_t orient,
 
 	int32_t bpno_plus_one = (int32_t) (roishift + cblk->numbps);
 	if (bpno_plus_one >= (int32_t)k_max_bit_planes) {
-		grk::GROK_ERROR("unsupported number of bit planes: %u > %u",
+		grk::GRK_ERROR("unsupported number of bit planes: %u > %u",
 				bpno_plus_one, k_max_bit_planes);
 		return false;
 	}
@@ -1261,13 +1261,13 @@ bool t1_decode_cblk(t1_info *t1, cblk_dec *cblk, uint32_t orient,
 
 	if (check_pterm) {
 		if (mqc->bp + 2 < mqc->end) {
-			grk::GROK_WARN(
+			grk::GRK_WARN(
 					"PTERM check failure: %u remaining bytes in code block (%u used / %u)",
 					(int) (mqc->end - mqc->bp) - 2,
 					(int) (mqc->bp - mqc->start),
 					(int) (mqc->end - mqc->start));
 		} else if (mqc->end_of_byte_stream_counter > 2) {
-			grk::GROK_WARN(
+			grk::GRK_WARN(
 					"PTERM check failure: %u synthesized 0xFF markers read",
 					mqc->end_of_byte_stream_counter);
 		}

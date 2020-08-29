@@ -119,7 +119,7 @@ bool j2k_add_mhmarker(grk_codestream_index *cstr_index, uint32_t type,
 			cstr_index->marker = nullptr;
 			cstr_index->maxmarknum = 0;
 			cstr_index->marknum = 0;
-			/* GROK_ERROR( "Not enough memory to add mh marker"); */
+			/* GRK_ERROR( "Not enough memory to add mh marker"); */
 			return false;
 		}
 		cstr_index->marker = new_marker;
@@ -171,7 +171,7 @@ bool j2k_read_soc(CodeStream *codeStream, BufferedStream *stream) {
 		/* Add the marker to the code stream index*/
 		if (!j2k_add_mhmarker(codeStream->cstr_index, J2K_MS_SOC,
 				codeStream->cstr_index->main_head_start, 2)) {
-			GROK_ERROR("Not enough memory to add mh marker");
+			GRK_ERROR("Not enough memory to add mh marker");
 			return false;
 		}
 	}
@@ -200,7 +200,7 @@ bool j2k_read_cap(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	CodingParams *cp = &(codeStream->m_cp);
 
 	if (header_size < 6) {
-		GROK_ERROR("Error with SIZ marker size");
+		GRK_ERROR("Error with SIZ marker size");
 		return false;
 	}
 
@@ -208,10 +208,10 @@ bool j2k_read_cap(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	grk_read<uint32_t>(p_header_data, &tmp, 4); /* Pcap */
 	bool validPcap = true;
 	if (tmp & 0xFFFDFFFF) {
-		GROK_WARN("Pcap in CAP marker has unsupported options.");
+		GRK_WARN("Pcap in CAP marker has unsupported options.");
 	}
 	if ((tmp & 0x00020000) == 0) {
-		GROK_WARN("Pcap in CAP marker should have its 15th MSB set. "
+		GRK_WARN("Pcap in CAP marker should have its 15th MSB set. "
 				" Ignoring CAP.");
 		validPcap = false;
 	}
@@ -302,11 +302,11 @@ bool j2k_write_com(CodeStream *codeStream, TileProcessor *tileProcessor, Buffere
 		const char *comment = codeStream->m_cp.comment[i];
 		uint16_t comment_size = codeStream->m_cp.comment_len[i];
 		if (!comment_size) {
-			GROK_WARN("Empty comment. Ignoring");
+			GRK_WARN("Empty comment. Ignoring");
 			continue;
 		}
 		if (comment_size > GRK_MAX_COMMENT_LENGTH) {
-			GROK_WARN(
+			GRK_WARN(
 					"Comment length %s is greater than maximum comment length %u. Ignoring",
 					comment_size, GRK_MAX_COMMENT_LENGTH);
 			continue;
@@ -345,14 +345,14 @@ bool j2k_read_com(CodeStream *codeStream,TileProcessor *tileProcessor,  uint8_t 
 	GRK_UNUSED(tileProcessor);
 
 	if (header_size < 2) {
-		GROK_ERROR("j2k_read_com: Corrupt COM segment ");
+		GRK_ERROR("j2k_read_com: Corrupt COM segment ");
 		return false;
 	} else if (header_size == 2) {
-		GROK_WARN("j2k_read_com: Empty COM segment. Ignoring ");
+		GRK_WARN("j2k_read_com: Empty COM segment. Ignoring ");
 		return true;
 	}
 	if (codeStream->m_cp.num_comments == GRK_NUM_COMMENTS_SUPPORTED) {
-		GROK_WARN("j2k_read_com: Only %u comments are supported. Ignoring",
+		GRK_WARN("j2k_read_com: Only %u comments are supported. Ignoring",
 		GRK_NUM_COMMENTS_SUPPORTED);
 		return true;
 	}
@@ -362,7 +362,7 @@ bool j2k_read_com(CodeStream *codeStream,TileProcessor *tileProcessor,  uint8_t 
 	auto numComments = codeStream->m_cp.num_comments;
 	codeStream->m_cp.isBinaryComment[numComments] = (commentType == 0);
 	if (commentType > 1) {
-		GROK_WARN(
+		GRK_WARN(
 				"j2k_read_com: Unrecognized comment type 0x%x. Assuming IS 8859-15:1999 (Latin) values",
 				commentType);
 	}
@@ -374,7 +374,7 @@ bool j2k_read_com(CodeStream *codeStream,TileProcessor *tileProcessor,  uint8_t 
 		commentSizeToAlloc++;
 	codeStream->m_cp.comment[numComments] = (char*) new uint8_t[commentSizeToAlloc];
 	if (!codeStream->m_cp.comment[numComments]) {
-		GROK_ERROR(
+		GRK_ERROR(
 				"j2k_read_com: Out of memory when allocating memory for comment ");
 		return false;
 	}
@@ -418,7 +418,7 @@ bool j2k_write_cod(CodeStream *codeStream, TileProcessor *tileProcessor, Buffere
 	if (!stream->write_byte((uint8_t) tcp->mct))
 		return false;
 	if (!j2k_write_SPCod_SPCoc(codeStream, 0, stream)) {
-		GROK_ERROR("Error writing COD marker");
+		GRK_ERROR("Error writing COD marker");
 		return false;
 	}
 
@@ -451,7 +451,7 @@ bool j2k_read_cod(CodeStream *codeStream,TileProcessor *tileProcessor,  uint8_t 
 
 	/* Only one COD per tile */
 	if (tcp->cod) {
-		GROK_WARN(
+		GRK_WARN(
 				"Multiple COD markers detected for tile part %u. The JPEG 2000 standard does not allow more than one COD marker per tile.",
 				tcp->m_tile_part_index);
 	}
@@ -459,7 +459,7 @@ bool j2k_read_cod(CodeStream *codeStream,TileProcessor *tileProcessor,  uint8_t 
 
 	/* Make sure room is sufficient */
 	if (header_size < cod_coc_len) {
-		GROK_ERROR("Error reading COD marker");
+		GRK_ERROR("Error reading COD marker");
 		return false;
 	}
 	grk_read<uint32_t>(p_header_data++, &tcp->csty, 1); /* Scod */
@@ -467,21 +467,21 @@ bool j2k_read_cod(CodeStream *codeStream,TileProcessor *tileProcessor,  uint8_t 
 	if ((tcp->csty
 			& ~(uint32_t) (J2K_CP_CSTY_PRT | J2K_CP_CSTY_SOP | J2K_CP_CSTY_EPH))
 			!= 0U) {
-		GROK_ERROR("Unknown Scod value in COD marker");
+		GRK_ERROR("Unknown Scod value in COD marker");
 		return false;
 	}
 	grk_read<uint32_t>(p_header_data++, &tmp, 1); /* SGcod (A) */
 	tcp->prg = (GRK_PROG_ORDER) tmp;
 	/* Make sure progression order is valid */
 	if (tcp->prg > GRK_CPRL) {
-		GROK_ERROR("Unknown progression order in COD marker");
+		GRK_ERROR("Unknown progression order in COD marker");
 		tcp->prg = GRK_PROG_UNKNOWN;
 	}
 	grk_read<uint32_t>(p_header_data, &tcp->numlayers, 2); /* SGcod (B) */
 	p_header_data += 2;
 
 	if ((tcp->numlayers < 1U) || (tcp->numlayers > USHRT_MAX)) {
-		GROK_ERROR(
+		GRK_ERROR(
 				"Invalid number of layers in COD marker : %u not in range [1-65535]",
 				tcp->numlayers);
 		return false;
@@ -496,7 +496,7 @@ bool j2k_read_cod(CodeStream *codeStream,TileProcessor *tileProcessor,  uint8_t 
 
 	grk_read<uint32_t>(p_header_data++, &tcp->mct, 1); /* SGcod (C) */
 	if (tcp->mct > 1) {
-		GROK_ERROR("Invalid MCT value : %u. Should be either 0 or 1", tcp->mct);
+		GRK_ERROR("Invalid MCT value : %u. Should be either 0 or 1", tcp->mct);
 		return false;
 	}
 	header_size = (uint16_t) (header_size - cod_coc_len);
@@ -505,12 +505,12 @@ bool j2k_read_cod(CodeStream *codeStream,TileProcessor *tileProcessor,  uint8_t 
 	}
 
 	if (!j2k_read_SPCod_SPCoc(codeStream, tileProcessor, 0, p_header_data, &header_size)) {
-		GROK_ERROR("Error reading COD marker");
+		GRK_ERROR("Error reading COD marker");
 		return false;
 	}
 
 	if (header_size != 0) {
-		GROK_ERROR("Error reading COD marker");
+		GRK_ERROR("Error reading COD marker");
 		return false;
 	}
 	/* Apply the coding style to other components of the current tile or the m_default_tcp*/
@@ -619,7 +619,7 @@ bool j2k_read_coc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 
 	/* make sure room is sufficient*/
 	if (header_size < comp_room + 1) {
-		GROK_ERROR("Error reading COC marker");
+		GRK_ERROR("Error reading COC marker");
 		return false;
 	}
 	header_size = (uint16_t) (header_size - (comp_room + 1));
@@ -627,19 +627,19 @@ bool j2k_read_coc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	grk_read<uint32_t>(p_header_data, &comp_no, comp_room); /* Ccoc */
 	p_header_data += comp_room;
 	if (comp_no >= image->numcomps) {
-		GROK_ERROR("Error reading COC marker (bad number of components)");
+		GRK_ERROR("Error reading COC marker (bad number of components)");
 		return false;
 	}
 
 	tcp->tccps[comp_no].csty = *p_header_data++; /* Scoc */
 
 	if (!j2k_read_SPCod_SPCoc(codeStream, tileProcessor, comp_no, p_header_data, &header_size)) {
-		GROK_ERROR("Error reading COC marker");
+		GRK_ERROR("Error reading COC marker");
 		return false;
 	}
 
 	if (header_size != 0) {
-		GROK_ERROR("Error reading COC marker");
+		GRK_ERROR("Error reading COC marker");
 		return false;
 	}
 	return true;
@@ -661,7 +661,7 @@ bool j2k_write_qcd(CodeStream *codeStream, TileProcessor *tileProcessor, Buffere
 	if (!stream->write_short((uint16_t) (qcd_size - 2)))
 		return false;
 	if (!j2k_write_SQcd_SQcc(codeStream, 0, stream)) {
-		GROK_ERROR("Error writing QCD marker");
+		GRK_ERROR("Error writing QCD marker");
 		return false;
 	}
 
@@ -682,11 +682,11 @@ bool j2k_read_qcd(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	assert(codeStream != nullptr);
 
 	if (!j2k_read_SQcd_SQcc(codeStream, tileProcessor, false, 0, p_header_data, &header_size)) {
-		GROK_ERROR("Error reading QCD marker");
+		GRK_ERROR("Error reading QCD marker");
 		return false;
 	}
 	if (header_size != 0) {
-		GROK_ERROR("Error reading QCD marker");
+		GRK_ERROR("Error reading QCD marker");
 		return false;
 	}
 
@@ -756,14 +756,14 @@ bool j2k_read_qcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	uint32_t num_comp = codeStream->m_input_image->numcomps;
 	if (num_comp <= 256) {
 		if (header_size < 1) {
-			GROK_ERROR("Error reading QCC marker");
+			GRK_ERROR("Error reading QCC marker");
 			return false;
 		}
 		grk_read<uint32_t>(p_header_data++, &comp_no, 1);
 		--header_size;
 	} else {
 		if (header_size < 2) {
-			GROK_ERROR("Error reading QCC marker");
+			GRK_ERROR("Error reading QCC marker");
 			return false;
 		}
 		grk_read<uint32_t>(p_header_data, &comp_no, 2);
@@ -772,7 +772,7 @@ bool j2k_read_qcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	}
 
 	if (comp_no >= codeStream->m_input_image->numcomps) {
-		GROK_ERROR("QCC component: component number: %u must be less than"
+		GRK_ERROR("QCC component: component number: %u must be less than"
 				" total number of components: %u",
 				comp_no, codeStream->m_input_image->numcomps);
 		return false;
@@ -780,12 +780,12 @@ bool j2k_read_qcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 
 	if (!j2k_read_SQcd_SQcc(codeStream, tileProcessor, true, comp_no, p_header_data,
 			&header_size)) {
-		GROK_ERROR("Error reading QCC marker");
+		GRK_ERROR("Error reading QCC marker");
 		return false;
 	}
 
 	if (header_size != 0) {
-		GROK_ERROR("Error reading QCC marker");
+		GRK_ERROR("Error reading QCC marker");
 		return false;
 	}
 
@@ -882,7 +882,7 @@ bool j2k_read_poc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	current_poc_remaining = header_size % chunk_size;
 
 	if ((current_poc_nb == 0) || (current_poc_remaining != 0)) {
-		GROK_ERROR("Error reading POC marker");
+		GRK_ERROR("Error reading POC marker");
 		return false;
 	}
 
@@ -891,7 +891,7 @@ bool j2k_read_poc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	current_poc_nb += old_poc_nb;
 
 	if (current_poc_nb >= 32) {
-		GROK_ERROR("Too many POCs %u", current_poc_nb);
+		GRK_ERROR("Too many POCs %u", current_poc_nb);
 		return false;
 	}
 	assert(current_poc_nb < 32);
@@ -949,7 +949,7 @@ bool j2k_read_crg(CodeStream *codeStream,TileProcessor *tileProcessor,  uint8_t 
 	uint32_t nb_comp = codeStream->m_input_image->numcomps;
 
 	if (header_size != nb_comp * 4) {
-		GROK_ERROR("Error reading CRG marker");
+		GRK_ERROR("Error reading CRG marker");
 		return false;
 	}
 	uint32_t Xcrg_i, Ycrg_i;
@@ -1051,13 +1051,13 @@ bool j2k_read_ppt(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 
 	/* We need to have the Z_ppt element + 1 byte of Ippt at minimum */
 	if (header_size < 2) {
-		GROK_ERROR("Error reading PPT marker");
+		GRK_ERROR("Error reading PPT marker");
 		return false;
 	}
 
 	auto cp = &(codeStream->m_cp);
 	if (cp->ppm_marker) {
-		GROK_ERROR(
+		GRK_ERROR(
 				"Error reading PPT marker: packet header have been previously found in the main header (PPM marker).");
 		return false;
 	}
@@ -1076,7 +1076,7 @@ bool j2k_read_ppt(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 
 		tcp->ppt_markers = (grk_ppx*) grk_calloc(newCount, sizeof(grk_ppx));
 		if (tcp->ppt_markers == nullptr) {
-			GROK_ERROR("Not enough memory to read PPT marker");
+			GRK_ERROR("Not enough memory to read PPT marker");
 			return false;
 		}
 		tcp->ppt_markers_count = newCount;
@@ -1087,7 +1087,7 @@ bool j2k_read_ppt(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 
 		if (new_ppt_markers == nullptr) {
 			/* clean up to be done on tcp destruction */
-			GROK_ERROR("Not enough memory to read PPT marker");
+			GRK_ERROR("Not enough memory to read PPT marker");
 			return false;
 		}
 		tcp->ppt_markers = new_ppt_markers;
@@ -1098,14 +1098,14 @@ bool j2k_read_ppt(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 
 	if (tcp->ppt_markers[Z_ppt].m_data != nullptr) {
 		/* clean up to be done on tcp destruction */
-		GROK_ERROR("Zppt %u already read", Z_ppt);
+		GRK_ERROR("Zppt %u already read", Z_ppt);
 		return false;
 	}
 
 	tcp->ppt_markers[Z_ppt].m_data = (uint8_t*) grk_malloc(header_size);
 	if (tcp->ppt_markers[Z_ppt].m_data == nullptr) {
 		/* clean up to be done on tcp destruction */
-		GROK_ERROR("Not enough memory to read PPT marker");
+		GRK_ERROR("Not enough memory to read PPT marker");
 		return false;
 	}
 	tcp->ppt_markers[Z_ppt].m_data_size = header_size;
@@ -1127,7 +1127,7 @@ bool j2k_merge_ppt(TileCodingParams *p_tcp) {
 		return true;
 
 	if (p_tcp->ppt_buffer != nullptr) {
-		GROK_ERROR("multiple calls to j2k_merge_ppt()");
+		GRK_ERROR("multiple calls to j2k_merge_ppt()");
 		return false;
 	}
 
@@ -1195,7 +1195,7 @@ bool j2k_read_sod(CodeStream *codeStream, TileProcessor *tileProcessor, Buffered
 		auto bytesLeftInStream = stream->get_number_byte_left();
 		// check that there are enough bytes in stream to fill tile data
 		if (tileProcessor->tile_part_data_length > bytesLeftInStream) {
-			GROK_WARN("Tile part length %lld greater than "
+			GRK_WARN("Tile part length %lld greater than "
 					"stream length %lld\n"
 					"(tile: %u, tile part: %u). Tile may be truncated.",
 					tileProcessor->tile_part_data_length,
@@ -1212,7 +1212,7 @@ bool j2k_read_sod(CodeStream *codeStream, TileProcessor *tileProcessor, Buffered
 	if (cstr_index) {
 		uint64_t current_pos = stream->tell();
 		if (current_pos < 2) {
-			GROK_ERROR("Stream too short");
+			GRK_ERROR("Stream too short");
 			return false;
 		}
 		current_pos = (uint64_t) (current_pos - 2);
@@ -1227,7 +1227,7 @@ bool j2k_read_sod(CodeStream *codeStream, TileProcessor *tileProcessor, Buffered
 		if (!TileLengthMarkers::add_to_index(
 				tileProcessor->m_tile_index, cstr_index,
 				J2K_MS_SOD, current_pos, 0)) {
-			GROK_ERROR("Not enough memory to add tl marker");
+			GRK_ERROR("Not enough memory to add tl marker");
 			return false;
 		}
 
@@ -1245,7 +1245,7 @@ bool j2k_read_sod(CodeStream *codeStream, TileProcessor *tileProcessor, Buffered
 			try {
 				buff = new uint8_t[len];
 			} catch (std::bad_alloc &ex) {
-				GROK_ERROR("Not enough memory to allocate segment");
+				GRK_ERROR("Not enough memory to allocate segment");
 				return false;
 			}
 		} else {
@@ -1330,7 +1330,7 @@ bool j2k_read_rgn(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	uint32_t comp_room = (nb_comp <= 256) ? 1 : 2;
 
 	if (header_size != 2 + comp_room) {
-		GROK_ERROR("Error reading RGN marker");
+		GRK_ERROR("Error reading RGN marker");
 		return false;
 	}
 
@@ -1342,14 +1342,14 @@ bool j2k_read_rgn(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	/* Srgn */
 	grk_read<uint32_t>(p_header_data++, &roi_sty, 1);
 	if (roi_sty != 0) {
-		GROK_WARN(
+		GRK_WARN(
 				"RGN marker RS value of %u is not supported by JPEG 2000 Part 1",
 				roi_sty);
 	}
 
 	/* testcase 3635.pdf.asan.77.2930 */
 	if (comp_no >= nb_comp) {
-		GROK_ERROR("bad component number in RGN (%u when there are only %u)",
+		GRK_ERROR("bad component number in RGN (%u when there are only %u)",
 				comp_no, nb_comp);
 		return false;
 	}
@@ -1510,7 +1510,7 @@ bool j2k_read_mct(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	auto tcp = codeStream->get_current_decode_tcp(tileProcessor);
 
 	if (header_size < 2) {
-		GROK_ERROR("Error reading MCT marker");
+		GRK_ERROR("Error reading MCT marker");
 		return false;
 	}
 
@@ -1519,12 +1519,12 @@ bool j2k_read_mct(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	grk_read<uint32_t>(p_header_data, &tmp, 2);
 	p_header_data += 2;
 	if (tmp != 0) {
-		GROK_WARN("Cannot take in charge mct data within multiple MCT records");
+		GRK_WARN("Cannot take in charge mct data within multiple MCT records");
 		return true;
 	}
 
 	if (header_size <= 6) {
-		GROK_ERROR("Error reading MCT marker");
+		GRK_ERROR("Error reading MCT marker");
 		return false;
 	}
 
@@ -1556,7 +1556,7 @@ bool j2k_read_mct(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 				tcp->m_mct_records = nullptr;
 				tcp->m_nb_max_mct_records = 0;
 				tcp->m_nb_mct_records = 0;
-				GROK_ERROR("Not enough memory to read MCT marker");
+				GRK_ERROR("Not enough memory to read MCT marker");
 				return false;
 			}
 
@@ -1604,18 +1604,18 @@ bool j2k_read_mct(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	grk_read<uint32_t>(p_header_data, &tmp, 2);
 	p_header_data += 2;
 	if (tmp != 0) {
-		GROK_WARN("Cannot take in charge multiple MCT markers");
+		GRK_WARN("Cannot take in charge multiple MCT markers");
 		return true;
 	}
 	if (header_size < 6) {
-		GROK_ERROR("Error reading MCT markers");
+		GRK_ERROR("Error reading MCT markers");
 		return false;
 	}
 	header_size = (uint16_t) (header_size - 6);
 
 	mct_data->m_data = (uint8_t*) grk_malloc(header_size);
 	if (!mct_data->m_data) {
-		GROK_ERROR("Error reading MCT marker");
+		GRK_ERROR("Error reading MCT marker");
 		return false;
 	}
 	memcpy(mct_data->m_data, p_header_data, header_size);
@@ -1734,7 +1734,7 @@ bool j2k_read_mcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	auto tcp = codeStream->get_current_decode_tcp(tileProcessor);
 
 	if (header_size < 2) {
-		GROK_ERROR("Error reading MCC marker");
+		GRK_ERROR("Error reading MCC marker");
 		return false;
 	}
 
@@ -1743,11 +1743,11 @@ bool j2k_read_mcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	grk_read<uint32_t>(p_header_data, &tmp, 2);
 	p_header_data += 2;
 	if (tmp != 0) {
-		GROK_WARN("Cannot take in charge multiple data spanning");
+		GRK_WARN("Cannot take in charge multiple data spanning");
 		return true;
 	}
 	if (header_size < 7) {
-		GROK_ERROR("Error reading MCC marker");
+		GRK_ERROR("Error reading MCC marker");
 		return false;
 	}
 
@@ -1779,7 +1779,7 @@ bool j2k_read_mcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 				tcp->m_mcc_records = nullptr;
 				tcp->m_nb_max_mcc_records = 0;
 				tcp->m_nb_mcc_records = 0;
-				GROK_ERROR("Not enough memory to read MCC marker");
+				GRK_ERROR("Not enough memory to read MCC marker");
 				return false;
 			}
 			tcp->m_mcc_records = new_mcc_records;
@@ -1799,7 +1799,7 @@ bool j2k_read_mcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	grk_read<uint32_t>(p_header_data, &tmp, 2);
 	p_header_data += 2;
 	if (tmp != 0) {
-		GROK_WARN("Cannot take in charge multiple data spanning");
+		GRK_WARN("Cannot take in charge multiple data spanning");
 		return true;
 	}
 
@@ -1808,20 +1808,20 @@ bool j2k_read_mcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	p_header_data += 2;
 
 	if (nb_collections > 1) {
-		GROK_WARN("Cannot take in charge multiple collections");
+		GRK_WARN("Cannot take in charge multiple collections");
 		return true;
 	}
 	header_size = (uint16_t) (header_size - 7);
 
 	for (i = 0; i < nb_collections; ++i) {
 		if (header_size < 3) {
-			GROK_ERROR("Error reading MCC marker");
+			GRK_ERROR("Error reading MCC marker");
 			return false;
 		}
 		grk_read<uint32_t>(p_header_data++, &tmp, 1); /* Xmcci type of component transformation -> array based decorrelation */
 
 		if (tmp != 1) {
-			GROK_WARN(
+			GRK_WARN(
 					"Cannot take in charge collections other than array decorrelation");
 			return true;
 		}
@@ -1834,7 +1834,7 @@ bool j2k_read_mcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 		mcc_record->m_nb_comps = nb_comps & 0x7fff;
 
 		if (header_size < (nb_bytes_by_comp * mcc_record->m_nb_comps + 2)) {
-			GROK_ERROR("Error reading MCC marker");
+			GRK_ERROR("Error reading MCC marker");
 			return false;
 		}
 
@@ -1847,7 +1847,7 @@ bool j2k_read_mcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 			p_header_data += nb_bytes_by_comp;
 
 			if (tmp != j) {
-				GROK_WARN(
+				GRK_WARN(
 						"Cannot take in charge collections with indix shuffle");
 				return true;
 			}
@@ -1860,13 +1860,13 @@ bool j2k_read_mcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 		nb_comps &= 0x7fff;
 
 		if (nb_comps != mcc_record->m_nb_comps) {
-			GROK_WARN(
+			GRK_WARN(
 					"Cannot take in charge collections without same number of indices");
 			return true;
 		}
 
 		if (header_size < (nb_bytes_by_comp * mcc_record->m_nb_comps + 3)) {
-			GROK_ERROR("Error reading MCC marker");
+			GRK_ERROR("Error reading MCC marker");
 			return false;
 		}
 
@@ -1879,7 +1879,7 @@ bool j2k_read_mcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 			p_header_data += nb_bytes_by_comp;
 
 			if (tmp != j) {
-				GROK_WARN(
+				GRK_WARN(
 						"Cannot take in charge collections with indix shuffle");
 				return true;
 			}
@@ -1903,7 +1903,7 @@ bool j2k_read_mcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 			}
 
 			if (mcc_record->m_decorrelation_array == nullptr) {
-				GROK_ERROR("Error reading MCC marker");
+				GRK_ERROR("Error reading MCC marker");
 				return false;
 			}
 		}
@@ -1919,14 +1919,14 @@ bool j2k_read_mcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 			}
 
 			if (mcc_record->m_offset_array == nullptr) {
-				GROK_ERROR("Error reading MCC marker");
+				GRK_ERROR("Error reading MCC marker");
 				return false;
 			}
 		}
 	}
 
 	if (header_size != 0) {
-		GROK_ERROR("Error reading MCC marker");
+		GRK_ERROR("Error reading MCC marker");
 		return false;
 	}
 
@@ -1990,7 +1990,7 @@ bool j2k_read_mco(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	auto tcp = codeStream->get_current_decode_tcp(tileProcessor);
 
 	if (header_size < 1) {
-		GROK_ERROR("Error reading MCO marker");
+		GRK_ERROR("Error reading MCO marker");
 		return false;
 	}
 	/* Nmco : only one transform stage*/
@@ -1998,12 +1998,12 @@ bool j2k_read_mco(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	++p_header_data;
 
 	if (nb_stages > 1) {
-		GROK_WARN("Cannot take in charge multiple transformation stages.");
+		GRK_WARN("Cannot take in charge multiple transformation stages.");
 		return true;
 	}
 
 	if (header_size != nb_stages + 1) {
-		GROK_WARN("Error reading MCO marker");
+		GRK_WARN("Error reading MCO marker");
 		return false;
 	}
 	for (i = 0; i < image->numcomps; ++i) {
@@ -2144,7 +2144,7 @@ bool j2k_read_cbd(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	num_comp = codeStream->m_input_image->numcomps;
 
 	if (header_size != (codeStream->m_input_image->numcomps + 2)) {
-		GROK_ERROR("Crror reading CBD marker");
+		GRK_ERROR("Crror reading CBD marker");
 		return false;
 	}
 	/* Ncbd */
@@ -2152,7 +2152,7 @@ bool j2k_read_cbd(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
 	p_header_data += 2;
 
 	if (nb_comp != num_comp) {
-		GROK_ERROR("Crror reading CBD marker");
+		GRK_ERROR("Crror reading CBD marker");
 		return false;
 	}
 
@@ -2316,14 +2316,14 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, TileProcessor *tileProcessor,
 
 	/* make sure room is sufficient */
 	if (*header_size < SPCod_SPCoc_len) {
-		GROK_ERROR("Error reading SPCod SPCoc element");
+		GRK_ERROR("Error reading SPCod SPCoc element");
 		return false;
 	}
 	/* SPcox (D) */
 	grk_read<uint32_t>(current_ptr++, &tccp->numresolutions, 1);
 	++tccp->numresolutions;
 	if (tccp->numresolutions > GRK_J2K_MAXRLVLS) {
-		GROK_ERROR("Number of resolutions %u is greater than"
+		GRK_ERROR("Number of resolutions %u is greater than"
 				" maximum allowed number %u", tccp->numresolutions,
 		GRK_J2K_MAXRLVLS);
 		return false;
@@ -2338,7 +2338,7 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, TileProcessor *tileProcessor,
 
 	/* If user wants to remove more resolutions than the code stream contains, return error */
 	if (cp->m_coding_params.m_dec.m_reduce >= tccp->numresolutions) {
-		GROK_ERROR("Error decoding component %u.\nThe number of resolutions "
+		GRK_ERROR("Error decoding component %u.\nThe number of resolutions "
 				" to remove (%d) is higher than the number "
 				"of resolutions (%d) of this component\n"
 				"Please decrease the cp_reduce parameter.",
@@ -2355,7 +2355,7 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, TileProcessor *tileProcessor,
 
 	if ((tccp->cblkw > 10) || (tccp->cblkh > 10)
 			|| ((tccp->cblkw + tccp->cblkh) > 12)) {
-		GROK_ERROR("Error reading SPCod SPCoc element,"
+		GRK_ERROR("Error reading SPCod SPCoc element,"
 				" Invalid cblkw/cblkh combination");
 		return false;
 	}
@@ -2365,7 +2365,7 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, TileProcessor *tileProcessor,
 	/* SPcoc (H) */
 	tccp->qmfbid = *current_ptr++;
 	if (tccp->qmfbid > 1) {
-		GROK_ERROR("Invalid qmfbid : %u. "
+		GRK_ERROR("Invalid qmfbid : %u. "
 				"Should be either 0 or 1", tccp->qmfbid);
 		return false;
 	}
@@ -2374,7 +2374,7 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, TileProcessor *tileProcessor,
 	/* use custom precinct size ? */
 	if (tccp->csty & J2K_CCP_CSTY_PRT) {
 		if (*header_size < tccp->numresolutions) {
-			GROK_ERROR("Error reading SPCod SPCoc element");
+			GRK_ERROR("Error reading SPCod SPCoc element");
 			return false;
 		}
 
@@ -2384,7 +2384,7 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, TileProcessor *tileProcessor,
 			++current_ptr;
 			/* Precinct exponent 0 is only allowed for lowest resolution level (Table A.21) */
 			if ((i != 0) && (((tmp & 0xf) == 0) || ((tmp >> 4) == 0))) {
-				GROK_ERROR("Invalid precinct size");
+				GRK_ERROR("Invalid precinct size");
 				return false;
 			}
 			tccp->prcw[i] = tmp & 0xf;

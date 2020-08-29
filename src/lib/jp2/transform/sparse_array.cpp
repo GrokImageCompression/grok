@@ -74,7 +74,7 @@ sparse_array::sparse_array(uint32_t width,
     block_count_ver = ceildiv<uint32_t>(height, block_height);
     data_blocks = (int32_t**) grk_calloc((uint64_t)block_count_hor * block_count_ver,sizeof(int32_t*));
     if (data_blocks == NULL) {
-    	GROK_ERROR("Out of memory");
+    	GRK_ERROR("Out of memory");
     	throw new std::exception();
     }
 }
@@ -118,7 +118,7 @@ bool sparse_array::alloc(             uint32_t x0,
 				src_block = (int32_t*) grk_calloc((uint64_t)block_width * block_height,
 													 sizeof(int32_t));
 				if (!src_block) {
-					GROK_ERROR("Out of memory");
+					GRK_ERROR("Out of memory");
 					return false;
 				}
 				data_blocks[(uint64_t)block_y * block_count_hor + block_x] = src_block;

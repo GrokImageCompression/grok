@@ -105,13 +105,13 @@ template <typename T> struct dwt_data {
 		// add 10 just to be sure to we are safe from
 		// segment growth overflow
 	    if (len > (SIZE_MAX - 10U)) {
-	        GROK_ERROR("data size overflow");
+	        GRK_ERROR("data size overflow");
 	        return false;
 	    }
 	    len += 10U;
 	    /* overflow check */
 	    if (len > (SIZE_MAX / sizeof(T))) {
-	        GROK_ERROR("data size overflow");
+	        GRK_ERROR("data size overflow");
 	        return false;
 	    }
 		mem = (T*)grk_aligned_malloc(len * sizeof(T));
@@ -645,7 +645,7 @@ static bool decode_h_mt_53(uint32_t num_threads,
     if (num_threads == 1 || rh <= 1) {
     	if (!horiz.mem){
     	    if (! horiz.alloc(data_size)) {
-    	        GROK_ERROR("Out of memory");
+    	        GRK_ERROR("Out of memory");
     	        return false;
     	    }
     	    vert.mem = horiz.mem;
@@ -671,7 +671,7 @@ static bool decode_h_mt_53(uint32_t num_threads,
 										j * step_j,
 										j < (num_jobs - 1U) ? (j + 1U) * step_j : rh);
             if (!job->data.alloc(data_size)) {
-                GROK_ERROR("Out of memory");
+                GRK_ERROR("Out of memory");
                 horiz.release();
                 return false;
             }
@@ -734,7 +734,7 @@ static bool decode_v_mt_53(uint32_t num_threads,
     if (num_threads == 1 || rw <= 1) {
     	if (!horiz.mem){
     	    if (! horiz.alloc(data_size)) {
-    	        GROK_ERROR("Out of memory");
+    	        GRK_ERROR("Out of memory");
     	        return false;
     	    }
     	    vert.mem = horiz.mem;
@@ -762,7 +762,7 @@ static bool decode_v_mt_53(uint32_t num_threads,
 										j * step_j,
 										j < (num_jobs - 1U) ? (j + 1U) * step_j : rw);
             if (!job->data.alloc(data_size)) {
-                GROK_ERROR("Out of memory");
+                GRK_ERROR("Out of memory");
                 vert.release();
                 return false;
             }
@@ -805,7 +805,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
     size_t data_size = dwt_utils::max_resolution(tr, numres);
     /* overflow check */
     if (data_size > (SIZE_MAX / PLL_COLS_53 / sizeof(int32_t))) {
-        GROK_ERROR("Overflow");
+        GRK_ERROR("Overflow");
         return false;
     }
     /* We need PLL_COLS_53 times the height of the array, */
@@ -1194,7 +1194,7 @@ static bool decode_h_mt_97(uint32_t num_threads,
 										0,
 										(j < (num_jobs - 1U) ? (j + 1U) * step_j : rh) - min_j);
 			if (!job->data.alloc(data_size)) {
-				GROK_ERROR("Out of memory");
+				GRK_ERROR("Out of memory");
 				horiz.release();
 				return false;
 			}
@@ -1317,7 +1317,7 @@ static bool decode_v_mt_97(uint32_t num_threads,
 														0,
 														(j < (num_jobs - 1U) ? (j + 1U) * step_j : rw) - min_j);
 			if (!job->data.alloc(data_size)) {
-				GROK_ERROR("Out of memory");
+				GRK_ERROR("Out of memory");
 				vert.release();
 				return false;
 			}
@@ -1361,7 +1361,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
     dwt_data<vec4f> horiz;
     dwt_data<vec4f> vert;
     if (!horiz.alloc(data_size)) {
-        GROK_ERROR("Out of memory");
+        GRK_ERROR("Out of memory");
         return false;
     }
     vert.mem = horiz.mem;
@@ -1817,7 +1817,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
     size_t data_size = dwt_utils::max_resolution(tr, numres) * data_multiplier;
 	dwt_data<T> horiz;
     if (!horiz.alloc(data_size)) {
-        GROK_ERROR("Out of memory");
+        GRK_ERROR("Out of memory");
         return false;
     }
 	dwt_data<T> vert;
@@ -1952,7 +1952,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 								  HORIZ_STEP,
 								  1,
 								  true)) {
-					 GROK_ERROR("sparse array write failure");
+					 GRK_ERROR("sparse array write failure");
 					 horiz.release();
 					 return false;
 				 }
@@ -1968,7 +1968,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 								  HORIZ_STEP,
 								  1,
 								  true)) {
-					 GROK_ERROR("Sparse array write failure");
+					 GRK_ERROR("Sparse array write failure");
 					 horiz.release();
 					 return false;
 				 }
@@ -1980,7 +1980,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 											bounds[k][0] + j * step_j,
 											j < (num_jobs - 1U) ? bounds[k][0] + (j + 1U) * step_j : bounds[k][1]);
 				if (!job->data.alloc(data_size)) {
-					GROK_ERROR("Out of memory");
+					GRK_ERROR("Out of memory");
 					horiz.release();
 					return false;
 				}
@@ -1998,7 +1998,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 										  HORIZ_STEP,
 										  1,
 										  true)) {
-							 GROK_ERROR("sparse array write failure");
+							 GRK_ERROR("sparse array write failure");
 							 job->data.release();
 							 return 0;
 						 }
@@ -2014,7 +2014,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 										  HORIZ_STEP,
 										  1,
 										  true)) {
-							 GROK_ERROR("Sparse array write failure");
+							 GRK_ERROR("Sparse array write failure");
 							 job->data.release();
 							 return 0;
 						 }
@@ -2052,7 +2052,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 							  1,
 							  VERT_STEP,
 							  true)) {
-					GROK_ERROR("Sparse array write failure");
+					GRK_ERROR("Sparse array write failure");
 					horiz.release();
 					return false;
 				}
@@ -2068,7 +2068,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 								  1,
 								  VERT_STEP,
 								  true)) {
-					GROK_ERROR("Sparse array write failure");
+					GRK_ERROR("Sparse array write failure");
 					horiz.release();
 					return false;
 				}
@@ -2080,7 +2080,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 											win_tr_x0 + j * step_j,
 											j < (num_jobs - 1U) ? win_tr_x0 + (j + 1U) * step_j : win_tr_x1);
 				if (!job->data.alloc(data_size)) {
-					GROK_ERROR("Out of memory");
+					GRK_ERROR("Out of memory");
 					horiz.release();
 					return false;
 				}
@@ -2098,7 +2098,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 									  1,
 									  VERT_STEP,
 									  true)) {
-							GROK_ERROR("Sparse array write failure");
+							GRK_ERROR("Sparse array write failure");
 							job->data.release();
 							return 0;
 						}
@@ -2114,7 +2114,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 												  1,
 												  VERT_STEP,
 												  true)) {
-							GROK_ERROR("Sparse array write failure");
+							GRK_ERROR("Sparse array write failure");
 							job->data.release();
 							return 0;
 						}

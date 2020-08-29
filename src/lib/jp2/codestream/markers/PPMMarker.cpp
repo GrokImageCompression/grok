@@ -53,7 +53,7 @@ bool PPMMarker::read(uint8_t *p_header_data,
 
 	/* We need to have the i_ppm element + 1 byte of Nppm/Ippm at minimum */
 	if (header_size < 2) {
-		GROK_ERROR("Error reading PPM marker");
+		GRK_ERROR("Error reading PPM marker");
 		return false;
 	}
 
@@ -69,7 +69,7 @@ bool PPMMarker::read(uint8_t *p_header_data,
 
 		markers = (grk_ppx*) grk_calloc(newCount, sizeof(grk_ppx));
 		if (markers == nullptr) {
-			GROK_ERROR("Not enough memory to read PPM marker");
+			GRK_ERROR("Not enough memory to read PPM marker");
 			return false;
 		}
 		markers_count = newCount;
@@ -79,7 +79,7 @@ bool PPMMarker::read(uint8_t *p_header_data,
 				newCount * sizeof(grk_ppx));
 		if (new_ppm_markers == nullptr) {
 			/* clean up to be done on cp destruction */
-			GROK_ERROR("Not enough memory to read PPM marker");
+			GRK_ERROR("Not enough memory to read PPM marker");
 			return false;
 		}
 		markers = new_ppm_markers;
@@ -90,14 +90,14 @@ bool PPMMarker::read(uint8_t *p_header_data,
 
 	if (markers[i_ppm].m_data != nullptr) {
 		/* clean up to be done on cp destruction */
-		GROK_ERROR("ippm %u already read", i_ppm);
+		GRK_ERROR("ippm %u already read", i_ppm);
 		return false;
 	}
 
 	markers[i_ppm].m_data = (uint8_t*) grk_malloc(header_size);
 	if (markers[i_ppm].m_data == nullptr) {
 		/* clean up to be done on cp destruction */
-		GROK_ERROR("Not enough memory to read PPM marker");
+		GRK_ERROR("Not enough memory to read PPM marker");
 		return false;
 	}
 	markers[i_ppm].m_data_size = header_size;
@@ -132,7 +132,7 @@ bool PPMMarker::merge(){
 					/* read Nppm */
 					if (data_size < 4U) {
 						/* clean up to be done on cp destruction */
-						GROK_ERROR("Not enough bytes to read Nppm");
+						GRK_ERROR("Not enough bytes to read Nppm");
 						return false;
 					}
 					uint32_t N_ppm;
@@ -155,12 +155,12 @@ bool PPMMarker::merge(){
 	}
 	if (N_ppm_remaining != 0U) {
 		/* clean up to be done on cp destruction */
-		GROK_ERROR("Corrupted PPM markers");
+		GRK_ERROR("Corrupted PPM markers");
 		return false;
 	}
 	buffer = (uint8_t*) grk_malloc(total_data_size);
 	if (buffer == nullptr) {
-		GROK_ERROR("Not enough memory to read PPM marker");
+		GRK_ERROR("Not enough memory to read PPM marker");
 		return false;
 	}
 	for (auto &b : m_tile_packet_headers){
@@ -193,7 +193,7 @@ bool PPMMarker::merge(){
 					/* read Nppm */
 					if (data_size < 4U) {
 						/* clean up to be done on cp destruction */
-						GROK_ERROR("Not enough bytes to read Nppm");
+						GRK_ERROR("Not enough bytes to read Nppm");
 						return false;
 					}
 					uint32_t N_ppm;
