@@ -260,6 +260,39 @@ static uint8_t j2k_get_num_tp(CodingParams *cp, uint32_t pino, uint16_t tileno);
  */
 static bool j2k_calculate_tp(CodingParams *cp, uint16_t *p_nb_tile_parts, grk_image *image);
 
+/**
+ * LUP decomposition
+ */
+static bool lupDecompose(float *matrix, uint32_t *permutations,
+		float *p_swap_area, uint32_t nb_compo);
+/**
+ * LUP solving
+ */
+static void lupSolve(float *pResult, float *pMatrix, float *pVector,
+		uint32_t *pPermutations, uint32_t nb_compo, float *p_intermediate_data);
+
+/**
+ *LUP inversion (call with the result of lupDecompose)
+ */
+static void lupInvert(float *pSrcMatrix, float *pDestMatrix, uint32_t nb_compo,
+		uint32_t *pPermutations, float *p_src_temp, float *p_dest_temp,
+		float *p_swap_area);
+
+
+/**
+ * Calculate a n x n double matrix inversion with a LUP method.
+ * Data is aligned, rows after rows (or columns after columns).
+ * The function does not take ownership of any memory block,
+ * data must be freed by the user.
+ *
+ * @param pSrcMatrix	the matrix to invert.
+ * @param pDestMatrix	data to store the inverted matrix.
+ * @param n size of the matrix
+ * @return true if the inversion is successful, false if the matrix is singular.
+ */
+static bool matrix_inversion_f(float *pSrcMatrix, float *pDestMatrix,
+		uint32_t n);
+
 
 
 
@@ -2441,6 +2474,220 @@ bool CodeStream::start_compress(BufferedStream *stream){
 	/* write header */
 	return j2k_exec(this, m_procedure_list, stream);
 }
+
+/*
+ ==========================================================
+ Matric inversion interface
+ ==========================================================
+ */
+/**
+ * Matrix inversion.
+ */
+static bool matrix_inversion_f(float *pSrcMatrix, float *pDestMatrix,
+		uint32_t nb_compo) {
+	uint8_t *data = nullptr;
+	uint32_t permutation_size = nb_compo * (uint32_t) sizeof(uint32_t);
+	uint32_t swap_size = nb_compo * (uint32_t) sizeof(float);
+	uint32_t total_size = permutation_size + 3 * swap_size;
+	uint32_t *lPermutations = nullptr;
+	float *double_data = nullptr;
+
+ data = (uint8_t*) grk_malloc(total_size);
+	if (data == 0) {
+		return false;
+	}
+	lPermutations = (uint32_t*) data;
+ double_data = (float*) (data + permutation_size);
+	memset(lPermutations, 0, permutation_size);
+
+	if (!lupDecompose(pSrcMatrix, lPermutations, double_data, nb_compo)) {
+		grk_free(data);
+		return false;
+	}
+
+	lupInvert(pSrcMatrix, pDestMatrix, nb_compo, lPermutations, double_data,
+		 double_data + nb_compo, double_data + 2 * nb_compo);
+	grk_free(data);
+
+	return true;
+}
+
+
+static bool lupDecompose(float *matrix, uint32_t *permutations,
+		float *p_swap_area, uint32_t nb_compo) {
+	uint32_t *tmpPermutations = permutations;
+	uint32_t *dstPermutations;
+	uint32_t k2 = 0, t;
+	float temp;
+	uint32_t i, j, k;
+	float p;
+	uint32_t lLastColum = nb_compo - 1;
+	uint32_t lSwapSize = nb_compo * (uint32_t) sizeof(float);
+	float *lTmpMatrix = matrix;
+	float *lColumnMatrix, *lDestMatrix;
+	uint32_t offset = 1;
+	uint32_t lStride = nb_compo - 1;
+
+	/*initialize permutations */
+	for (i = 0; i < nb_compo; ++i) {
+		*tmpPermutations++ = i;
+	}
+	/* now make a pivot with column switch */
+	tmpPermutations = permutations;
+	for (k = 0; k < lLastColum; ++k) {
+		p = 0.0;
+
+		/* take the middle element */
+		lColumnMatrix = lTmpMatrix + k;
+
+		/* make permutation with the biggest value in the column */
+		for (i = k; i < nb_compo; ++i) {
+			temp = ((*lColumnMatrix > 0) ? *lColumnMatrix : -(*lColumnMatrix));
+			if (temp > p) {
+				p = temp;
+				k2 = i;
+			}
+			/* next line */
+			lColumnMatrix += nb_compo;
+		}
+
+		/* a whole rest of 0 -> non singular */
+		if (p == 0.0) {
+			return false;
+		}
+
+		/* should we permute ? */
+		if (k2 != k) {
+			/*exchange of line */
+			/* k2 > k */
+			dstPermutations = tmpPermutations + k2 - k;
+			/* swap indices */
+			t = *tmpPermutations;
+			*tmpPermutations = *dstPermutations;
+			*dstPermutations = t;
+
+			/* and swap entire line. */
+			lColumnMatrix = lTmpMatrix + (k2 - k) * nb_compo;
+			memcpy(p_swap_area, lColumnMatrix, lSwapSize);
+			memcpy(lColumnMatrix, lTmpMatrix, lSwapSize);
+			memcpy(lTmpMatrix, p_swap_area, lSwapSize);
+		}
+
+		/* now update data in the rest of the line and line after */
+		lDestMatrix = lTmpMatrix + k;
+		lColumnMatrix = lDestMatrix + nb_compo;
+		/* take the middle element */
+		temp = *(lDestMatrix++);
+
+		/* now compute up data (i.e. coeff up of the diagonal). */
+		for (i = offset; i < nb_compo; ++i) {
+			/*lColumnMatrix; */
+			/* divide the lower column elements by the diagonal value */
+
+			/* matrix[i][k] /= matrix[k][k]; */
+			/* p = matrix[i][k] */
+			p = *lColumnMatrix / temp;
+			*(lColumnMatrix++) = p;
+
+			for (j = /* k + 1 */offset; j < nb_compo; ++j) {
+				/* matrix[i][j] -= matrix[i][k] * matrix[k][j]; */
+				*(lColumnMatrix++) -= p * (*(lDestMatrix++));
+			}
+			/* come back to the k+1th element */
+			lDestMatrix -= lStride;
+			/* go to kth element of the next line */
+			lColumnMatrix += k;
+		}
+
+		/* offset is now k+2 */
+		++offset;
+		/* 1 element less for stride */
+		--lStride;
+		/* next line */
+		lTmpMatrix += nb_compo;
+		/* next permutation element */
+		++tmpPermutations;
+	}
+	return true;
+}
+
+static void lupSolve(float *pResult, float *pMatrix, float *pVector,
+		uint32_t *pPermutations, uint32_t nb_compo,
+		float *p_intermediate_data) {
+	int32_t k;
+	uint32_t i, j;
+	float sum;
+	float u;
+	uint32_t lStride = nb_compo + 1;
+	float *lCurrentPtr;
+	float *lIntermediatePtr;
+	float *lDestPtr;
+	float *lTmpMatrix;
+	float *lLineMatrix = pMatrix;
+	float *lBeginPtr = pResult + nb_compo - 1;
+	float *lGeneratedData;
+	uint32_t *lCurrentPermutationPtr = pPermutations;
+
+	lIntermediatePtr = p_intermediate_data;
+	lGeneratedData = p_intermediate_data + nb_compo - 1;
+
+	for (i = 0; i < nb_compo; ++i) {
+		sum = 0.0;
+		lCurrentPtr = p_intermediate_data;
+		lTmpMatrix = lLineMatrix;
+		for (j = 1; j <= i; ++j) {
+			/* sum += matrix[i][j-1] * y[j-1]; */
+			sum += (*(lTmpMatrix++)) * (*(lCurrentPtr++));
+		}
+		/*y[i] = pVector[pPermutations[i]] - sum; */
+		*(lIntermediatePtr++) = pVector[*(lCurrentPermutationPtr++)] - sum;
+		lLineMatrix += nb_compo;
+	}
+
+	/* we take the last point of the matrix */
+	lLineMatrix = pMatrix + nb_compo * nb_compo - 1;
+
+	/* and we take after the last point of the destination vector */
+	lDestPtr = pResult + nb_compo;
+
+	assert(nb_compo != 0);
+	for (k = (int32_t) nb_compo - 1; k != -1; --k) {
+		sum = 0.0;
+		lTmpMatrix = lLineMatrix;
+		u = *(lTmpMatrix++);
+		lCurrentPtr = lDestPtr--;
+		for (j = (uint32_t) (k + 1); j < nb_compo; ++j) {
+			/* sum += matrix[k][j] * x[j] */
+			sum += (*(lTmpMatrix++)) * (*(lCurrentPtr++));
+		}
+		/*x[k] = (y[k] - sum) / u; */
+		*(lBeginPtr--) = (*(lGeneratedData--) - sum) / u;
+		lLineMatrix -= lStride;
+	}
+}
+
+static void lupInvert(float *pSrcMatrix, float *pDestMatrix, uint32_t nb_compo,
+		uint32_t *pPermutations, float *p_src_temp, float *p_dest_temp,
+		float *p_swap_area) {
+	uint32_t j, i;
+	float *lCurrentPtr;
+	float *lLineMatrix = pDestMatrix;
+	uint32_t lSwapSize = nb_compo * (uint32_t) sizeof(float);
+
+	for (j = 0; j < nb_compo; ++j) {
+		lCurrentPtr = lLineMatrix++;
+		memset(p_src_temp, 0, lSwapSize);
+		p_src_temp[j] = 1.0;
+		lupSolve(p_dest_temp, pSrcMatrix, p_src_temp, pPermutations, nb_compo,
+				p_swap_area);
+
+		for (i = 0; i < nb_compo; ++i) {
+			*(lCurrentPtr) = p_dest_temp[i];
+			lCurrentPtr += nb_compo;
+		}
+	}
+}
+
 
 bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 

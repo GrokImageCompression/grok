@@ -22,24 +22,11 @@
 #pragma once
 namespace grk {
 
+
 class mct {
 
 public:
 
-/**
- @file mct.h
- @brief Implementation of a multi-component transforms (MCT)
-
- The functions in MCT.C have for goal to realize reversible and irreversible multicomponent
- transform. The functions in MCT.C are used by some function in TCD.C.
- */
-
-/** @defgroup MCT MCT - Implementation of a multi-component transform */
-/*@{*/
-
-/** @name Exported functions */
-/*@{*/
-/* ----------------------------------------------------------------------- */
 	/**
 	 Apply a reversible multi-component transform to an image
 	 @param c0 Samples for red component

@@ -121,9 +121,6 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/markers.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/markers.cpp
 
-    
-  ${CMAKE_CURRENT_SOURCE_DIR}/mct/invert.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/mct/invert.h
   ${CMAKE_CURRENT_SOURCE_DIR}/mct/mct.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/mct/mct.h
 
