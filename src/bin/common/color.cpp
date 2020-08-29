@@ -160,7 +160,7 @@ static bool sycc444_to_rgb(grk_image *src_img) {
 	return true;
 }/* sycc444_to_rgb() */
 
-static bool sycc422_to_rgb(grk_image *src_img) {
+static bool sycc422_to_rgb(grk_image *src_img, bool oddFirstX) {
 	auto dest_img = create_rgb_no_subsample_image(3, src_img->comps[0].w, src_img->comps[0].h,
 			src_img->comps[0].prec);
 	if (!dest_img)
@@ -190,11 +190,12 @@ static bool sycc422_to_rgb(grk_image *src_img) {
 	dest_img->comps[2].data = nullptr;
 
 	/* if img->x0 is odd, then first column shall use Cb/Cr = 0 */
-	uint32_t offx = src_img->x0 & 1U;
-	uint32_t loopmaxw = w - offx;
+	uint32_t loopmaxw = w;
+	if (oddFirstX)
+		loopmaxw--;
 
 	for (uint32_t i = 0U; i < h; ++i) {
-		if (offx > 0U)
+		if (oddFirstX)
 			sycc_to_rgb(offset, upb, *y++, 0, 0, r++, g++, b++);
 
 		uint32_t j;
@@ -236,7 +237,7 @@ static bool sycc422_to_rgb(grk_image *src_img) {
 
 }/* sycc422_to_rgb() */
 
-static bool sycc420_to_rgb(grk_image *src_img) {
+static bool sycc420_to_rgb(grk_image *src_img, bool oddFirstX, bool oddFirstY) {
 	auto dest_img = create_rgb_no_subsample_image(3, src_img->comps[0].w, src_img->comps[0].h,
 			src_img->comps[0].prec);
 	if (!dest_img)
@@ -261,22 +262,26 @@ static bool sycc420_to_rgb(grk_image *src_img) {
 
 
 	for (uint32_t i = 0; i < 3; ++i){
-		src[i] = src_img->comps[i].data;
+		auto src_comp = src_img->comps + i;
+		src[i] = src_comp->data;
+		stride_src[i] = src_comp->stride;
+		stride_src_diff[i] = src_comp->stride -  src_comp->w;
+
 		dest[i] = dest_ptr[i] = dest_img->comps[i].data;
 		dest_img->comps[i].data = nullptr;
-
-		stride_src[i] = src_img->comps[i].stride;
-		stride_src_diff[i] = src_img->comps[i].stride -  src_img->comps[i].w;
 	}
 
-	/* if img->x0 is odd, then first column shall use Cb/Cr = 0 */
-	uint32_t offx = src_img->x0 & 1U;
-	uint32_t loopmaxw = w - offx;
-	/* if img->y0 is odd, then first line shall use Cb/Cr = 0 */
-	uint32_t  offy = src_img->y0 & 1U;
-	uint32_t loopmaxh = h - offy;
+	uint32_t loopmaxw = w;
+	uint32_t loopmaxh = h;
 
-	if (offy > 0U) {
+	/* if img->x0 is odd, then first column shall use Cb/Cr = 0 */
+	if (oddFirstX)
+		loopmaxw--;
+	/* if img->y0 is odd, then first line shall use Cb/Cr = 0 */
+	if (oddFirstY)
+		loopmaxh--;
+
+	if (oddFirstX) {
 		for (size_t j = 0U; j < w; ++j)
 			sycc_to_rgb(offset, upb, *src[0]++, 0, 0, dest_ptr[0]++, dest_ptr[1]++, dest_ptr[2]++);
 		src[0]  += stride_src_diff[0];
@@ -290,7 +295,7 @@ static bool sycc420_to_rgb(grk_image *src_img) {
 		auto ng = dest_ptr[1] + stride_dest;
 		auto nb = dest_ptr[2] + stride_dest;
 
-		if (offx > 0U) {
+		if (oddFirstY) {
 			sycc_to_rgb(offset, upb, *src[0]++, 0, 0, dest_ptr[0]++, dest_ptr[1]++, dest_ptr[2]++);
 			sycc_to_rgb(offset, upb, *ny++, *src[1], *src[2], nr++, ng++, nb++);
 		}
@@ -342,10 +347,9 @@ static bool sycc420_to_rgb(grk_image *src_img) {
 
 }/* sycc420_to_rgb() */
 
-bool color_sycc_to_rgb(grk_image *img) {
+bool color_sycc_to_rgb(grk_image *img, bool oddFirstX, bool oddFirstY) {
 	if (img->numcomps < 3) {
-		spdlog::warn(
-				"color_sycc_to_rgb: number of components {} is less than 3."
+		spdlog::warn("color_sycc_to_rgb: number of components {} is less than 3."
 						" Unable to convert", img->numcomps);
 		return false;
 	}
@@ -354,11 +358,11 @@ bool color_sycc_to_rgb(grk_image *img) {
 	if ((img->comps[0].dx == 1) && (img->comps[1].dx == 2)
 			&& (img->comps[2].dx == 2) && (img->comps[0].dy == 1)
 			&& (img->comps[1].dy == 2) && (img->comps[2].dy == 2)) { /* horizontal and vertical sub-sample */
-		rc = sycc420_to_rgb(img);
+		rc = sycc420_to_rgb(img,oddFirstX, oddFirstY);
 	} else if ((img->comps[0].dx == 1) && (img->comps[1].dx == 2)
 			&& (img->comps[2].dx == 2) && (img->comps[0].dy == 1)
 			&& (img->comps[1].dy == 1) && (img->comps[2].dy == 1)) { /* horizontal sub-sample only */
-		rc = sycc422_to_rgb(img);
+		rc = sycc422_to_rgb(img, oddFirstX);
 	} else if ((img->comps[0].dx == 1) && (img->comps[1].dx == 1)
 			&& (img->comps[2].dx == 1) && (img->comps[0].dy == 1)
 			&& (img->comps[1].dy == 1) && (img->comps[2].dy == 1)) { /* no sub-sample */

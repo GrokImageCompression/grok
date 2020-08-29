@@ -1865,6 +1865,8 @@ typedef struct _grk_plugin_decode_callback_info {
 	grk_plugin_tile *tile;
 	unsigned int error_code;
 	uint32_t decode_flags;
+	uint32_t full_image_x0;
+	uint32_t full_image_y0;
 } grk_plugin_decode_callback_info;
 
 typedef int32_t (*grk_plugin_decode_callback)(

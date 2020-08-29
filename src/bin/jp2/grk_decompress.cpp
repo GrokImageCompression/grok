@@ -1456,6 +1456,11 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 			return info->init_decoders_func(&info->header_info, info->image);
 	}
 
+	if (info->image){
+		info->full_image_x0 = info->image->x0;
+		info->full_image_y0 = info->image->y0;
+	}
+
 	// header-only decompress
 	if (info->decode_flags == GRK_DECODE_HEADER)
 		goto cleanup;
@@ -1516,6 +1521,19 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 int post_decode(grk_plugin_decode_callback_info *info) {
 	if (!info)
 		return -1;
+	bool oddFirstX = info->full_image_x0 & 1;
+	bool oddFirstY = info->full_image_y0 & 1;
+
+	bool regionDecode = info->decoder_parameters->DA_x1 > info->decoder_parameters->DA_x0 &&
+							info->decoder_parameters->DA_y1 > info->decoder_parameters->DA_y0;
+
+	if (regionDecode) {
+		if (info->decoder_parameters->DA_x0 != info->image->x0 )
+			oddFirstX = false;
+		if (info->decoder_parameters->DA_y0 != info->image->y0 )
+			oddFirstY = false;
+	}
+
 	bool failed = true;
 	bool canStoreICC = false;
 	bool isTiff = info->decoder_parameters->cod_format == GRK_TIF_FMT;
@@ -1551,7 +1569,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 	}
 	if (image->color_space == GRK_CLRSPC_SYCC) {
 		if (!isTiff || info->decoder_parameters->force_rgb) {
-			if (!color_sycc_to_rgb(image))
+			if (!color_sycc_to_rgb(image, oddFirstX, oddFirstY))
 				spdlog::warn("grk_decompress: sYCC to RGB colour conversion failed");
 		}
 	} else if (image->color_space == GRK_CLRSPC_EYCC) {
