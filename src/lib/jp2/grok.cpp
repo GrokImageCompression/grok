@@ -113,8 +113,8 @@ static bool grok_seek_in_file(int64_t nb_bytes, FILE *p_user_data) {
 #ifndef GRK_STATIC
 BOOL APIENTRY
 DllMain(HINSTANCE hModule, DWORD ul_reason_for_call, LPVOID lpReserved){
-    ARG_NOT_USED(lpReserved);
-    ARG_NOT_USED(hModule);
+    GRK_UNUSED(lpReserved);
+    GRK_UNUSED(hModule);
     switch (ul_reason_for_call) {
     case DLL_PROCESS_ATTACH :
         break;

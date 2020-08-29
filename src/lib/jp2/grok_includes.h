@@ -53,9 +53,6 @@
 #include <iostream>
 #include <vector>
 
-/* Avoid compile-time warning because parameter is not used */
-#define ARG_NOT_USED(x) (void)(x)
-
 /*
  Use fseeko() and ftello() if they are available since they use
  'off_t' rather than 'long'.  It is wrong to use fseeko() and
@@ -114,16 +111,12 @@
 
 #include "simd.h"
 
-/* MSVC before 2013 and Borland C do not have lrintf */
 #if defined(_MSC_VER)
 #include <intrin.h>
 static inline long grok_lrintf(float f)
 {
 #ifdef _M_X64
     return _mm_cvt_ss2si(_mm_load_ss(&f));
-
-    /* commented out line breaks many tests */
-    /* return (long)((f>0.0f) ? (f + 0.5f):(f -0.5f)); */
 #elif defined(_M_IX86)
     int i;
     _asm{

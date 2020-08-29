@@ -410,7 +410,7 @@ bool mct::encode_custom(uint8_t *pCodingdata, uint64_t n, uint8_t **pData,
 	uint32_t NbMatCoeff = pNbComp * pNbComp;
 	auto Data = (int32_t**) pData;
 	uint32_t Multiplicator = 1 << 13;
-	ARG_NOT_USED(isSigned);
+	GRK_UNUSED(isSigned);
 
 	auto CurrentData = (int32_t*) grk_malloc(
 			(pNbComp + NbMatCoeff) * sizeof(int32_t));
@@ -444,7 +444,7 @@ bool mct::decode_custom(uint8_t *pDecodingData, uint64_t n, uint8_t **pData,
 		uint32_t pNbComp, uint32_t isSigned) {
 	auto Data = (float**) pData;
 
-	ARG_NOT_USED(isSigned);
+	GRK_UNUSED(isSigned);
 
 	auto CurrentData = (float*) grk_malloc(2 * pNbComp * sizeof(float));
 	if (!CurrentData)
