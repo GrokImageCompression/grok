@@ -631,6 +631,6 @@ grk_decompress -i @TEMP_PATH@/BMP_v5_with_ICC2.jp2 -o @TEMP_PATH@/BMP_v5_with_IC
 grk_decompress -i @TEMP_PATH@/BMP_v5_with_ICC.jp2 -o @TEMP_PATH@/BMP_v5_with_ICC.png
 grk_decompress -i @TEMP_PATH@/BMP_v5_with_ICC2.jp2 -o @TEMP_PATH@/BMP_v5_with_ICC2.png
 grk_compress   -i @INPUT_NR_PATH@/ybr-cat.tif -o @TEMP_PATH@/ybr-cat.jp2
-grk_decompress -i @TEMP_PATH@/ybr-cat.jp2 -o @TEMP_PATH@/ybr-cat.tif
+grk_decompress -i @TEMP_PATH@/ybr-cat.jp2 -o @TEMP_PATH@/ybr-cat.tif   -d 3,2,201,301
 
 grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5713875855736832 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5713875855736832.pgx
