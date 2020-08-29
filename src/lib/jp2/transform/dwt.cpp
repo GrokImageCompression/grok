@@ -815,13 +815,14 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
     dwt_data<int32_t> vert;
     data_size *= PLL_COLS_53 * sizeof(int32_t);
     bool rc = true;
-    uint32_t res = 1;
-    while (--numres) {
+    for (uint32_t res = 1; res < numres; ++res){
         horiz.sn = rw;
         vert.sn = rh;
         ++tr;
         rw = tr->width();
         rh = tr->height();
+        if (rw == 0 || rh == 0)
+        	continue;
         horiz.dn = rw - horiz.sn;
         horiz.cas = tr->x0 & 1;
     	if (!decode_h_mt_53(num_threads,
@@ -862,7 +863,6 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 							tilec->buf->ptr(res),
 							tilec->buf->stride(res)))
     		return false;
-        res++;
     }
     horiz.release();
     return rc;
@@ -1366,13 +1366,14 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
     }
     vert.mem = horiz.mem;
     uint32_t num_threads = (uint32_t)ThreadPool::get()->num_threads();
-    uint32_t res = 1;
-    while (--numres) {
+    for (uint32_t res = 1; res < numres; ++res) {
         horiz.sn = rw;
         vert.sn = rh;
         ++tr;
         rw = tr->width();
         rh = tr->height();
+        if (rw == 0 || rh == 0)
+        	continue;
         horiz.dn = rw - horiz.sn;
         horiz.cas = tr->x0 & 1;
         horiz.win_l_x0 = 0;
@@ -1419,7 +1420,6 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 							(float*) tilec->buf->ptr(res),
 							tilec->buf->stride(res)))
         	return false;
-        res++;
     }
     horiz.release();
     return true;
