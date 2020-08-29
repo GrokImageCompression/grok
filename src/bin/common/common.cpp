@@ -149,7 +149,7 @@ bool grk_open_for_output(FILE **fdest, const char* outfile, bool writeToStdout){
 		*fdest = stdout;
 	} else {
 		*fdest = fopen(outfile, "wb");
-		if (!fdest) {
+		if (!*fdest) {
 			spdlog::error("failed to open {} for writing", outfile);
 			return false;
 		}
