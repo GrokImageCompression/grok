@@ -164,7 +164,6 @@ static inline long grok_lrintf(float f) {
 #include "ChunkBuffer.h"
 #include "BitIO.h"
 #include "BufferedStream.h"
-#include "image.h"
 #include "invert.h"
 #include "Quantizer.h"
 #include <Profile.h>

@@ -113,6 +113,14 @@ enum J2K_STATUS {
 	J2K_DEC_STATE_ERR = 0x0100 /**< the decoding process has encountered an error */
 };
 
+
+/**
+ * Allocate data for single image component
+ *
+ * @param image         image
+ */
+bool grk_image_single_component_data_alloc(	grk_image_comp *image);
+
 struct TileProcessor;
 typedef bool (*j2k_procedure)(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream);
 

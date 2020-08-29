@@ -22,6 +22,47 @@
 
 namespace grk {
 
+
+/**
+ * Updates the components characteristics of the image from the coding parameters.
+ *
+ * @param image_header	the image header to update.
+ * @param p_cp			the coding parameters from which to update the image.
+ */
+static void grk_update_image_comp_header_from_coding_params(grk_image *image_header,
+		const CodingParams *p_cp) {
+
+	//1. calculate canvas coordinates of image
+	uint32_t x0 = std::max<uint32_t>(p_cp->tx0, image_header->x0);
+	uint32_t y0 = std::max<uint32_t>(p_cp->ty0, image_header->y0);
+
+	/* validity of p_cp members used here checked in j2k_read_siz. Can't overflow. */
+	uint32_t x1 = p_cp->tx0 + (p_cp->t_grid_width - 1U) * p_cp->t_width;
+	uint32_t y1 = p_cp->ty0 + (p_cp->t_grid_height - 1U) * p_cp->t_height;
+
+	 /* use add saturated to prevent overflow */
+	x1 = std::min<uint32_t>(uint_adds(x1, p_cp->t_width), image_header->x1);
+	y1 = std::min<uint32_t>(uint_adds(y1, p_cp->t_height), image_header->y1);
+
+	// 2. convert from canvas to tile coordinates, taking into account
+	// resolution reduction
+	uint32_t reduce = p_cp->m_coding_params.m_dec.m_reduce;
+	for (uint32_t i = 0; i < image_header->numcomps; ++i) {
+		auto img_comp = image_header->comps + i;
+		uint32_t comp_x0 = ceildiv<uint32_t>(x0, img_comp->dx);
+		uint32_t comp_y0 = ceildiv<uint32_t>(y0, img_comp->dy);
+		uint32_t comp_x1 = ceildiv<uint32_t>(x1, img_comp->dx);
+		uint32_t comp_y1 = ceildiv<uint32_t>(y1, img_comp->dy);
+		uint32_t width = ceildivpow2<uint32_t>(comp_x1 - comp_x0,reduce);
+		uint32_t height = ceildivpow2<uint32_t>(comp_y1 - comp_y0,reduce);
+		img_comp->w = width;
+		img_comp->h = height;
+		img_comp->x0 = comp_x0;
+		img_comp->y0 = comp_y0;
+	}
+}
+
+
 bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size){
 	uint32_t i;
