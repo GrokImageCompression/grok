@@ -33,7 +33,6 @@ private:
 	uint8_t *m_destBuff;
 	uint64_t m_destIndex;
 	bool m_writeToStdout;
-	uint32_t m_row_count;
 
 };
 

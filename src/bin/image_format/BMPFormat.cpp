@@ -1193,8 +1193,7 @@ cleanup:
 
 BMPFormat::BMPFormat(void) : m_destBuff(nullptr),
 							m_destIndex(0),
-							m_writeToStdout(false),
-							m_row_count(0)
+							m_writeToStdout(false)
 {}
 
 bool BMPFormat::encodeHeader(grk_image *  image, const std::string &filename, uint32_t compressionParam){
