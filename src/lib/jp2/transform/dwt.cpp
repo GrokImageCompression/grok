@@ -20,6 +20,7 @@
  */
 
 #include <assert.h>
+#include "CPUArch.h"
 #include "grok_includes.h"
 #include "dwt.h"
 #include <algorithm>
@@ -571,15 +572,16 @@ static void decode_v_53(const dwt_data<int32_t> *dwt,
                 dest[0] = bandL[0];
             return;
         }
-
+    	if (CPUArch::SSE2() || CPUArch::AVX2() ) {
 #if (defined(__SSE2__) || defined(__AVX2__))
-        if (len > 1 && nb_cols == PLL_COLS_53) {
-            /* Same as below general case, except that thanks to SSE2/AVX2 */
-            /* we can efficiently process 8/16 columns in parallel */
-            decode_v_cas0_mcols_SSE2_OR_AVX2_53(dwt->mem, bandL,sn, strideL, bandH, dwt->dn, strideH, dest, strideDest);
-            return;
-        }
+			if (len > 1 && nb_cols == PLL_COLS_53) {
+				/* Same as below general case, except that thanks to SSE2/AVX2 */
+				/* we can efficiently process 8/16 columns in parallel */
+				decode_v_cas0_mcols_SSE2_OR_AVX2_53(dwt->mem, bandL,sn, strideL, bandH, dwt->dn, strideH, dest, strideDest);
+				return;
+			}
 #endif
+    	}
         if (len > 1) {
             for (uint32_t c = 0; c < nb_cols; c++, bandL++, bandH++,dest++)
                 decode_v_cas0_53(dwt->mem, bandL,sn, strideL,bandH,dwt->dn, strideH, dest, strideDest);
@@ -600,15 +602,16 @@ static void decode_v_53(const dwt_data<int32_t> *dwt,
             }
             return;
         }
-
+        if (CPUArch::SSE2() || CPUArch::AVX2() ) {
 #if (defined(__SSE2__) || defined(__AVX2__))
-        if (nb_cols == PLL_COLS_53) {
-            /* Same as below general case, except that thanks to SSE2/AVX2 */
-            /* we can efficiently process 8/16 columns in parallel */
-            decode_v_cas1_mcols_SSE2_OR_AVX2_53(dwt->mem, bandL,sn, strideL,bandH,dwt->dn, strideH, dest, strideDest);
-            return;
-        }
+			if (nb_cols == PLL_COLS_53) {
+				/* Same as below general case, except that thanks to SSE2/AVX2 */
+				/* we can efficiently process 8/16 columns in parallel */
+				decode_v_cas1_mcols_SSE2_OR_AVX2_53(dwt->mem, bandL,sn, strideL,bandH,dwt->dn, strideH, dest, strideDest);
+				return;
+			}
 #endif
+        }
 		for (uint32_t c = 0; c < nb_cols; c++, bandL++,bandH++,dest++)
 			decode_v_cas1_53(dwt->mem, bandL,sn,strideL,bandH, dwt->dn, strideH, dest, strideDest);
     }

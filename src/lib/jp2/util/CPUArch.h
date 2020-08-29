@@ -35,12 +35,13 @@ namespace grk {
 
 class CPUArch {
 public:
-	bool AVX2();
-	bool AVX();
-	bool SSE4_1();
-	bool SSE3();
-	bool BMI1();
-	bool BMI2();
+	static bool AVX2();
+	static bool AVX();
+	static bool SSE4_1();
+	static bool SSE3();
+	static bool SSE2();
+	static bool BMI1();
+	static bool BMI2();
 
 };
 

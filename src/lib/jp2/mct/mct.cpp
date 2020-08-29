@@ -49,6 +49,7 @@ void mct::encode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 		int32_t *GRK_RESTRICT chan2, uint64_t n) {
 	size_t i = 0;
 
+	if (CPUArch::SSE2() || CPUArch::AVX2() ) {
 #if (defined(__SSE2__) || defined(__AVX2__))
 	size_t num_threads = ThreadPool::get()->num_threads();
     size_t chunkSize = n / num_threads;
@@ -89,6 +90,7 @@ void mct::encode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 		i = chunkSize * num_threads;
 	}
 #endif
+	}
 	for (; i < n; ++i) {
 		int32_t r = chan0[i];
 		int32_t g = chan1[i];
@@ -110,6 +112,7 @@ void mct::encode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 void mct::decode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 		int32_t *GRK_RESTRICT chan2, uint64_t n) {
 	size_t i = 0;
+	if (CPUArch::SSE2() || CPUArch::AVX2() ) {
 #if (defined(__SSE2__) || defined(__AVX2__))
 	size_t num_threads = ThreadPool::get()->num_threads();
     size_t chunkSize = n / num_threads;
@@ -149,6 +152,7 @@ void mct::decode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 		i = chunkSize * num_threads;
 	}
 #endif
+	}
 	for (; i < n; ++i) {
 		int32_t y = chan0[i];
 		int32_t u = chan1[i];
@@ -170,6 +174,7 @@ void mct::encode_irrev( int32_t* GRK_RESTRICT chan0,
 						uint64_t n)
 {
     size_t i = 0;
+    if (CPUArch::SSE4_1() ) {
 #ifdef __SSE4_1__
 	size_t num_threads = ThreadPool::get()->num_threads();
     const __m128i ry = _mm_set1_epi32(2449);
@@ -308,6 +313,7 @@ void mct::encode_irrev( int32_t* GRK_RESTRICT chan0,
 		i = num_threads * chunkSize;
 	}
 #endif
+    }
     for(; i < n; ++i) {
         int32_t r = chan0[i];
         int32_t g = chan1[i];
@@ -327,6 +333,7 @@ void mct::encode_irrev( int32_t* GRK_RESTRICT chan0,
 void mct::decode_irrev(float *GRK_RESTRICT c0, float *GRK_RESTRICT c1, float *GRK_RESTRICT c2,
 		uint64_t n) {
 	uint64_t i = 0;
+	if (CPUArch::SSE2() || CPUArch::AVX2() ) {
 #if (defined(__SSE2__) || defined(__AVX2__))
 	size_t num_threads = ThreadPool::get()->num_threads();
 	size_t chunkSize = n / num_threads;
@@ -369,6 +376,7 @@ void mct::decode_irrev(float *GRK_RESTRICT c0, float *GRK_RESTRICT c1, float *GR
 		i = chunkSize * num_threads;
 	}
 #endif
+	}
 	for (; i < n; ++i) {
 		float y = c0[i];
 		float u = c1[i];
