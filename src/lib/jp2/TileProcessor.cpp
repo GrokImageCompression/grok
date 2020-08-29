@@ -1013,9 +1013,8 @@ bool TileProcessor::mct_decode() {
 		/* testcase 1336.pdf.asan.47.376 */
 		if (tile->comps[1].buf->strided_area()	!= samples
 				|| tile->comps[2].buf->strided_area()	!= samples) {
-			GROK_ERROR(
-					"Tiles don't all have the same dimension. Skip the MCT step.");
-			return false;
+			GROK_WARN("Not all tiles components have the same dimension: skipping MCT.");
+			return true;
 		} else if (m_tcp->mct == 2) {
 			if (!m_tcp->m_mct_decoding_matrix)
 				return true;
