@@ -61,8 +61,6 @@ a library for reading and writing JPEG2000 image files.
 .P
 .B  grk_dinfo  *grk_create_decompress(GRK_CODEC_FORMAT \fIformat\fB);
 .P
-.B  grk_event_mgr  *grk_set_event_mgr(grk_common_ptr \fIinfo\fB,  grk_event_mgr  *\fIevent_mgr\fB, void *\fIcontext\fB);
-.P
 .B void grk_init_decompress( grk_dinfo  *\fIdinfo\fB,  grk_dparameters  * \fIparams\fB);
 .P
 .B  grk_cio  *grk_cio_open(grk_common_ptr \fIinfo\fB, unsigned char *\fIbuf\fB, int \fIbuf_len\fB);
@@ -156,14 +154,6 @@ typedef struct grk_dparameters
     \fBint\fR decod_format;
     /* output file format */
     \fBint\fR cod_format;
-
-    /*JPWL decoding parameters */
-    /* activates the JPWL correction capabilities */
-    \fBbool\fR jpwl_correct;
-    /* expected number of components */
-    \fBint\fR jpwl_exp_comps;
-    /* maximum number of tiles */
-    \fBint\fR jpwl_max_tiles;
 
     /*
     Specify whether the decoding should be done on the entire 
@@ -264,34 +254,6 @@ typedef struct grk_cparameters
     /* output file format: see GRK_CODEC_FORMAT */
     \fBint\fR cod_format;
 
-    /*JPWL encoding parameters */
-    /* enables writing of EPC in MH, thus activating JPWL */
-    \fBbool\fR jpwl_epc_on;
-    /* error protection method for MH (0,1,16,32,37-128) */
-    \fBint\fR jpwl_hprot_MH;
-    /* tile number of header protection specification (>=0) */
-    \fBint\fR jpwl_hprot_TPH_tileno[JPWL_MAX_NO_TILESPECS];
-    /* error protection methods for TPHs (0,1,16,32,37-128) */
-    \fBint\fR jpwl_hprot_TPH[JPWL_MAX_NO_TILESPECS];
-    /* tile number of packet protection specification (>=0) */
-    \fBint\fR jpwl_pprot_tileno[JPWL_MAX_NO_PACKSPECS];
-    /* packet number of packet protection specification (>=0) */
-    \fBint\fR jpwl_pprot_packno[JPWL_MAX_NO_PACKSPECS];
-    /* error protection methods for packets (0,1,16,32,37-128) */
-    \fBint\fR jpwl_pprot[JPWL_MAX_NO_PACKSPECS];
-    /* enables writing of ESD, (0=no/1/2 bytes) */
-    \fBint\fR jpwl_sens_size;
-    /* sensitivity addressing size (0=auto/2/4 bytes) */
-    \fBint\fR jpwl_sens_addr;
-    /* sensitivity range (0-3) */
-    \fBint\fR jpwl_sens_range;
-    /* sensitivity method for MH (-1=no,0-7) */
-    \fBint\fR jpwl_sens_MH;
-    /* tile number of sensitivity specification (>=0) */
-    \fBint\fR jpwl_sens_TPH_tileno[JPWL_MAX_NO_TILESPECS];
-    /* sensitivity methods for TPHs (-1=no,0-7) */
-    \fBint\fR jpwl_sens_TPH[JPWL_MAX_NO_TILESPECS];
-
     /* Digital Cinema compliance: OFF-not compliant, 
        CINEMA2K_24, CINEMA2K_48, CINEMA4K_24 */
     \fBGRK_CINEMA_MODE\fR cp_cinema;
@@ -312,11 +274,3 @@ typedef struct grk_cparameters
 
 '\".SH OPTIONS
 '\".SH BUGS
-.P
-.SH "SEE ALSO"
-\fBimage_to_j2k\fR(1) \fBj2k_to_image\fR(1) \fBj2k_dump\fR(1)
-
-\fBJPWL_image_to_j2k\fR(1) \fBJPWL_j2k_to_image\fR(1)
-
-\fBextract_j2k_from_mj2\fR(1) \fBwrap_j2k_in_mj2\fR(1) 
-\fBframes_to_mj2\fR(1) \fBmj2_to_frames\fR(1)
