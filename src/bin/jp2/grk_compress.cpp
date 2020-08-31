@@ -1735,7 +1735,7 @@ int main(int argc, char **argv) {
 		std::chrono::duration<double> elapsed = finish - start;
 
 		if (num_compressed_files) {
-			spdlog::info("compress time: {} ms",
+			spdlog::info("compress time: {} ms/image",
 					(elapsed.count() * 1000) / (double) num_compressed_files);
 		}
 	} catch (std::bad_alloc &ba) {

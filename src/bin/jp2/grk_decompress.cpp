@@ -1134,7 +1134,7 @@ int main(int argc, char **argv) {
 		auto finish = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> elapsed = finish - start;
 		if (num_decompressed_images) {
-			spdlog::info("decompress time: {} ms",
+			spdlog::info("decompress time: {} ms/image",
 					(elapsed.count() * 1000)
 							/ (double) num_decompressed_images);
 		}
@@ -1283,7 +1283,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
 	finish = std::chrono::high_resolution_clock::now();
 	elapsed = finish - start;
 	if (num_decompressed_images && success == 0) {
-		spdlog::info("decompress time: {} ms",
+		spdlog::info("decompress time: {} ms/image",
 				(elapsed.count() * 1000) / (double) num_decompressed_images);
 	}
 	cleanup: if (dirptr) {

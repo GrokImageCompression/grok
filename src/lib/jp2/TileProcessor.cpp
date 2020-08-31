@@ -1119,20 +1119,11 @@ bool TileProcessor::dc_level_shift_encode() {
 		auto tccp = m_tcp->tccps + compno;
 		auto current_ptr = tile_comp->buf->ptr();
 		uint64_t samples = tile_comp->buf->strided_area();
-
-		if (tccp->qmfbid == 1) {
-			if (tccp->m_dc_level_shift == 0)
-				continue;
-			for (uint64_t i = 0; i < samples; ++i) {
-				*current_ptr -= tccp->m_dc_level_shift;
-				++current_ptr;
-			}
-		} else {
-			for (uint64_t i = 0; i < samples; ++i) {
-				*current_ptr = (*current_ptr - tccp->m_dc_level_shift)
-						* (1 << 11);
-				++current_ptr;
-			}
+		if (tccp->m_dc_level_shift == 0)
+			continue;
+		for (uint64_t i = 0; i < samples; ++i) {
+			*current_ptr -= tccp->m_dc_level_shift;
+			++current_ptr;
 		}
 	}
 
@@ -1157,17 +1148,17 @@ bool TileProcessor::mct_encode() {
 		}
 
 		if (!mct::encode_custom(/* MCT data */
-		(uint8_t*) m_tcp->m_mct_coding_matrix,
-		/* size of components */
-		samples,
-		/* components */
-		data,
-		/* nb of components (i.e. size of pData) */
-		tile->numcomps,
-		/* tells if the data is signed */
-		image->comps->sgnd)) {
-			grk_free(data);
-			return false;
+			(uint8_t*) m_tcp->m_mct_coding_matrix,
+			/* size of components */
+			samples,
+			/* components */
+			data,
+			/* nb of components (i.e. size of pData) */
+			tile->numcomps,
+			/* tells if the data is signed */
+			image->comps->sgnd)) {
+				grk_free(data);
+				return false;
 		}
 
 		grk_free(data);

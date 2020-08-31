@@ -62,11 +62,13 @@
 #define MUL(x,y)    _mm256_mullo_epi32((x),(y))
 #define VREGF        __m256
 #define LOADF(x)     _mm256_load_ps((float const*)(x))
+#define LOADUF(x)     _mm256_loadu_ps((float const*)(x))
 #define LOAD_CST_F(x)_mm256_set1_ps(x)
 #define ADDF(x,y)    _mm256_add_ps((x),(y))
 #define MULF(x,y)    _mm256_mul_ps((x),(y))
 #define SUBF(x,y)     _mm256_sub_ps((x),(y))
 #define STOREF(x,y)  _mm256_store_ps((float*)(x),(y))
+#define STOREUF(x,y)  _mm256_storeu_ps((float*)(x),(y))
 #else
 #define VREG        __m128i
 #define LOAD_CST(x) _mm_set1_epi32(x)
@@ -81,11 +83,13 @@
 #define SAR(x,y)    _mm_srai_epi32((x),(y))
 #define VREGF        __m128
 #define LOADF(x)     _mm_load_ps((float const*)(x))
+#define LOADUF(x)     _mm_loadu_ps((float const*)(x))
 #define LOAD_CST_F(x)      _mm_set1_ps(x)
 #define ADDF(x,y)    _mm_add_ps((x),(y))
 #define MULF(x,y)    _mm_mul_ps((x),(y))
 #define SUBF(x,y)    _mm_sub_ps((x),(y))
 #define STOREF(x,y)  _mm_store_ps((float*)(x),(y))
+#define STOREUF(x,y)  _mm_storeu_ps((float*)(x),(y))
 #endif
 
 #define ADD3(x,y,z) ADD(ADD(x,y),z)

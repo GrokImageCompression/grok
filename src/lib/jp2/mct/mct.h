@@ -57,7 +57,7 @@ public:
 	 @param c2 Samples blue component
 	 @param n Number of samples for each component
 	 */
-	static void encode_irrev(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
+	static void encode_irrev(int *c0, int *c1, int *c2, uint64_t n);
 	/**
 	 Apply an irreversible multi-component inverse transform to an image
 	 @param c0 Samples for luminance component

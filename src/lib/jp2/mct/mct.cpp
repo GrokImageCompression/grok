@@ -168,136 +168,53 @@ void mct::decode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 /* <summary> */
 /* Forward irreversible MCT. */
 /* </summary> */
-void mct::encode_irrev( int32_t* GRK_RESTRICT chan0,
-						int32_t* GRK_RESTRICT chan1,
-						int32_t* GRK_RESTRICT chan2,
+void mct::encode_irrev( int* GRK_RESTRICT chan0,
+		int* GRK_RESTRICT chan1,
+		int* GRK_RESTRICT chan2,
 						uint64_t n)
 {
     size_t i = 0;
-    if (CPUArch::SSE4_1() ) {
-#ifdef __SSE4_1__
+
+    const float a_r = 0.299f;
+    const float a_g = 0.587f;
+    const float a_b = 0.114f;
+    const float cb = 0.5f/(1.0f-a_b);
+    const float cr = 0.5f/(1.0f-a_r);
+
+	if (CPUArch::AVX2() ) {
+#if ( defined(__AVX2__))
 	size_t num_threads = ThreadPool::get()->num_threads();
-    const __m128i ry = _mm_set1_epi32(2449);
-    const __m128i gy = _mm_set1_epi32(4809);
-    const __m128i by = _mm_set1_epi32(934);
-    const __m128i ru = _mm_set1_epi32(1382);
-    const __m128i gu = _mm_set1_epi32(2714);
-    const __m128i gv = _mm_set1_epi32(3430);
-    const __m128i bv = _mm_set1_epi32(666);
-    const __m128i mulround = _mm_shuffle_epi32(_mm_cvtsi32_si128(4096), _MM_SHUFFLE(1, 0, 1, 0));
-
     size_t chunkSize = n / num_threads;
-    //ensure it is divisible by 4
-    chunkSize = (chunkSize/4) * 4;
-	if (chunkSize > 4) {
-
+    //ensure it is divisible by VREG_INT_COUNT
+    chunkSize = (chunkSize/VREG_INT_COUNT) * VREG_INT_COUNT;
+	if (chunkSize > VREG_INT_COUNT) {
 		std::vector< std::future<int> > results;
-		for(size_t k = 0; k < num_threads; ++k) {
-			uint64_t index = k;
-			auto encoder = [index, chunkSize, chan0,chan1,chan2,
-							 ry,gy,by,ru,gu,gv,bv,
-							 mulround](){
+	    for(uint64_t tr = 0; tr < num_threads; ++tr) {
+	    	uint64_t index = tr;
+			auto encoder = [index, chunkSize, chan0,chan1,chan2]()	{
+				const VREGF va_r = LOAD_CST_F(0.299f);
+				const VREGF va_g = LOAD_CST_F(0.587f);
+				const VREGF va_b = LOAD_CST_F(0.114f);
+				const VREGF vcb = LOAD_CST_F(0.5f/(1.0f-0.114f));
+				const VREGF vcr = LOAD_CST_F(0.5f/(1.0f-0.299f));
+
 				uint64_t begin = (uint64_t)index * chunkSize;
-				for (auto j = begin; j < begin+chunkSize; j+=4 ){
-					__m128i lo, hi;
-					__m128i y, u, v;
-					__m128i r = _mm_load_si128((const __m128i *)&(chan0[j]));
-					__m128i g = _mm_load_si128((const __m128i *)&(chan1[j]));
-					__m128i b = _mm_load_si128((const __m128i *)&(chan2[j]));
+				for (auto j = begin; j < begin+chunkSize; j+=VREG_INT_COUNT ){
+					VREG ri = LOAD(chan0 + j);
+					VREG gi = LOAD(chan1 + j);
+					VREG bi = LOAD(chan2 + j);
 
-					lo = r;
-					hi = _mm_shuffle_epi32(r, _MM_SHUFFLE(3, 3, 1, 1));
-					lo = _mm_mul_epi32(lo, ry);
-					hi = _mm_mul_epi32(hi, ry);
-					lo = _mm_add_epi64(lo, mulround);
-					hi = _mm_add_epi64(hi, mulround);
-					lo = _mm_srli_epi64(lo, 13);
-					hi = _mm_slli_epi64(hi, 32-13);
-					y = _mm_blend_epi16(lo, hi, 0xCC);
+					VREGF r = _mm256_cvtepi32_ps(ri);
+					VREGF g = _mm256_cvtepi32_ps(gi);
+					VREGF b = _mm256_cvtepi32_ps(bi);
 
-					lo = g;
-					hi = _mm_shuffle_epi32(g, _MM_SHUFFLE(3, 3, 1, 1));
-					lo = _mm_mul_epi32(lo, gy);
-					hi = _mm_mul_epi32(hi, gy);
-					lo = _mm_add_epi64(lo, mulround);
-					hi = _mm_add_epi64(hi, mulround);
-					lo = _mm_srli_epi64(lo, 13);
-					hi = _mm_slli_epi64(hi, 32-13);
-					y = _mm_add_epi32(y, _mm_blend_epi16(lo, hi, 0xCC));
+					VREGF y = ADDF(ADDF(MULF(r, va_r),MULF(g, va_g)),MULF(b, va_b)) ;
+					VREGF u = MULF(vcb, SUBF(b, y));
+					VREGF v = MULF(vcr, SUBF(r, y));
 
-					lo = b;
-					hi = _mm_shuffle_epi32(b, _MM_SHUFFLE(3, 3, 1, 1));
-					lo = _mm_mul_epi32(lo, by);
-					hi = _mm_mul_epi32(hi, by);
-					lo = _mm_add_epi64(lo, mulround);
-					hi = _mm_add_epi64(hi, mulround);
-					lo = _mm_srli_epi64(lo, 13);
-					hi = _mm_slli_epi64(hi, 32-13);
-					y = _mm_add_epi32(y, _mm_blend_epi16(lo, hi, 0xCC));
-					_mm_store_si128((__m128i *)&(chan0[j]), y);
-
-					lo = _mm_cvtepi32_epi64(_mm_shuffle_epi32(b, _MM_SHUFFLE(3, 2, 2, 0)));
-					hi = _mm_cvtepi32_epi64(_mm_shuffle_epi32(b, _MM_SHUFFLE(3, 2, 3, 1)));
-					lo = _mm_slli_epi64(lo, 12);
-					hi = _mm_slli_epi64(hi, 12);
-					lo = _mm_add_epi64(lo, mulround);
-					hi = _mm_add_epi64(hi, mulround);
-					lo = _mm_srli_epi64(lo, 13);
-					hi = _mm_slli_epi64(hi, 32-13);
-					u = _mm_blend_epi16(lo, hi, 0xCC);
-
-					lo = r;
-					hi = _mm_shuffle_epi32(r, _MM_SHUFFLE(3, 3, 1, 1));
-					lo = _mm_mul_epi32(lo, ru);
-					hi = _mm_mul_epi32(hi, ru);
-					lo = _mm_add_epi64(lo, mulround);
-					hi = _mm_add_epi64(hi, mulround);
-					lo = _mm_srli_epi64(lo, 13);
-					hi = _mm_slli_epi64(hi, 32-13);
-					u = _mm_sub_epi32(u, _mm_blend_epi16(lo, hi, 0xCC));
-
-					lo = g;
-					hi = _mm_shuffle_epi32(g, _MM_SHUFFLE(3, 3, 1, 1));
-					lo = _mm_mul_epi32(lo, gu);
-					hi = _mm_mul_epi32(hi, gu);
-					lo = _mm_add_epi64(lo, mulround);
-					hi = _mm_add_epi64(hi, mulround);
-					lo = _mm_srli_epi64(lo, 13);
-					hi = _mm_slli_epi64(hi, 32-13);
-					u = _mm_sub_epi32(u, _mm_blend_epi16(lo, hi, 0xCC));
-					_mm_store_si128((__m128i *)&(chan1[j]), u);
-
-					lo = _mm_cvtepi32_epi64(_mm_shuffle_epi32(r, _MM_SHUFFLE(3, 2, 2, 0)));
-					hi = _mm_cvtepi32_epi64(_mm_shuffle_epi32(r, _MM_SHUFFLE(3, 2, 3, 1)));
-					lo = _mm_slli_epi64(lo, 12);
-					hi = _mm_slli_epi64(hi, 12);
-					lo = _mm_add_epi64(lo, mulround);
-					hi = _mm_add_epi64(hi, mulround);
-					lo = _mm_srli_epi64(lo, 13);
-					hi = _mm_slli_epi64(hi, 32-13);
-					v = _mm_blend_epi16(lo, hi, 0xCC);
-
-					lo = g;
-					hi = _mm_shuffle_epi32(g, _MM_SHUFFLE(3, 3, 1, 1));
-					lo = _mm_mul_epi32(lo, gv);
-					hi = _mm_mul_epi32(hi, gv);
-					lo = _mm_add_epi64(lo, mulround);
-					hi = _mm_add_epi64(hi, mulround);
-					lo = _mm_srli_epi64(lo, 13);
-					hi = _mm_slli_epi64(hi, 32-13);
-					v = _mm_sub_epi32(v, _mm_blend_epi16(lo, hi, 0xCC));
-
-					lo = b;
-					hi = _mm_shuffle_epi32(b, _MM_SHUFFLE(3, 3, 1, 1));
-					lo = _mm_mul_epi32(lo, bv);
-					hi = _mm_mul_epi32(hi, bv);
-					lo = _mm_add_epi64(lo, mulround);
-					hi = _mm_add_epi64(hi, mulround);
-					lo = _mm_srli_epi64(lo, 13);
-					hi = _mm_slli_epi64(hi, 32-13);
-					v = _mm_sub_epi32(v, _mm_blend_epi16(lo, hi, 0xCC));
-					_mm_store_si128((__m128i *)&(chan2[j]), v);
-
+					STORE(chan0 + j, _mm256_cvttps_epi32(y * (1 << 11)));
+					STORE(chan1 + j, _mm256_cvttps_epi32(u * (1 << 11)));
+					STORE(chan2 + j, _mm256_cvttps_epi32(v * (1 << 11)));
 				}
 				return 0;
 			};
@@ -315,15 +232,17 @@ void mct::encode_irrev( int32_t* GRK_RESTRICT chan0,
 #endif
     }
     for(; i < n; ++i) {
-        int32_t r = chan0[i];
-        int32_t g = chan1[i];
-        int32_t b = chan2[i];
-        int32_t y =  int_fix_mul(r, 2449) + int_fix_mul(g, 4809) + int_fix_mul(b, 934);
-        int32_t u = -int_fix_mul(r, 1382) - int_fix_mul(g, 2714) + int_fix_mul(b, 4096);
-        int32_t v =  int_fix_mul(r, 4096) - int_fix_mul(g, 3430) - int_fix_mul(b, 666);
-        chan0[i] = y;
-        chan1[i] = u;
-        chan2[i] = v;
+        float r = (float)chan0[i];
+        float g = (float)chan1[i];
+        float b = (float)chan2[i];
+
+        float y = a_r * r + a_g * g + a_b * b;
+        float u = cb * (b - y);
+        float v = cr * (r - y);
+
+        chan0[i] = (int32_t)(y * (1 << 11));
+        chan1[i] = (int32_t)(u * (1 << 11));
+        chan2[i] = (int32_t)(v * (1 << 11));
     }
 }
 
