@@ -24,7 +24,7 @@
 namespace grk {
 
 /**
- @file jp2.h
+ @file FileFormat.h
  @brief The JPEG 2000 file format Reader/Writer (JP2)
 
  */

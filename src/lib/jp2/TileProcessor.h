@@ -215,7 +215,8 @@ struct TileProcessor {
 	/**
 	 * Allocates memory for decoding a specific tile.
 	 *
-	 * @param	output_image output image - stores the decompress region of interest
+	 * @param	output_image 	output image - stores the decompress region of interest
+	 * @param	isEncoder	 	true if tile will be encoded, otherwise false
 	 *
 	 * @return	true if the remaining data is sufficient.
 	 */

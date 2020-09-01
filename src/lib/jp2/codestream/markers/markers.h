@@ -130,8 +130,9 @@ bool j2k_write_cap(CodeStream *codeStream,  TileProcessor *tileProcessor, Buffer
 /**
  * Writes the COM marker (comment)
  *
- * @param       codeStream           JPEG 2000 code stream
- * @param       stream        buffered stream.
+ * @param       codeStream      JPEG 2000 code stream
+ * @param 		tileProcessor	tile processor
+ * @param       stream          buffered stream.
 
  */
 bool j2k_write_com(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);

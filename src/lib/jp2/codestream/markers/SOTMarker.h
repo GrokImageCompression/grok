@@ -35,7 +35,7 @@ public:
 	 * Writes the SOT marker (Start of tile-part)
 	 *
 	 * @param       codeStream      JPEG 2000 code stream
-	 * @param		tileProcess		tile processor
+	 * @param		tileProcessor		tile processor
 	 */
 	bool write(CodeStream *codeStream, TileProcessor *tileProcessor);
 
@@ -45,7 +45,7 @@ public:
 	 * Decode a SOT marker (Start of tile-part)
 	 *
 	 * @param       codeStream      JPEG 2000 code stream
-	 * @param		tileProcess		tile processor
+	 * @param		tileProcessor		tile processor
 	 * @param       p_header_data   the data contained in the SOT marker.
 	 * @param       header_size     the size of the data contained in the PPT marker.
 

@@ -62,8 +62,9 @@ struct T2Encode : public T2 {
 	 @param tileno           number of the tile encoded
 	 @param maxlayers        maximum number of layers
 	 @param p_data_written   amount of data written
-	 @param max_             the max length of the destination buffer
-	 @param tppos            The position of the tile part flag in the progression order
+	 @param max_len          the max length of the destination buffer
+	 @param tppos            position of the tile part flag in the progression order
+	 @param markers			 markers
 	 */
 	bool encode_packets_simulate(uint16_t tileno, uint32_t maxlayers,
 			uint32_t *p_data_written, uint32_t max_len, uint32_t tppos,
@@ -78,7 +79,6 @@ private:
 	 @param pi 				packet iterator
 	 @param stream 			stream
 	 @param p_data_written  amount of data written
-	 @param cstr_info Codestream information structure
 	 @return
 	 */
 	bool encode_packet(TileCodingParams *tcp, PacketIter *pi,
