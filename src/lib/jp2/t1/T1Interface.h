@@ -111,7 +111,7 @@ public:
 			uint32_t max, bool doRateControl)=0;
 
 	virtual bool decompress(decodeBlockInfo *block)=0;
-	virtual void postDecode(decodeBlockInfo *block)=0;
+	virtual bool postDecode(decodeBlockInfo *block)=0;
 };
 
 }

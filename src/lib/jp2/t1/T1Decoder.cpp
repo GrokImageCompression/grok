@@ -54,7 +54,8 @@ bool T1Decoder::decompress(std::vector<decodeBlockInfo*> *blocks) {
 				success = false;
 				delete block;
 			}
-			impl->postDecode(block);
+			if (!impl->postDecode(block))
+				success = false;
 			delete block;
 		}
 		return success;
@@ -87,7 +88,8 @@ bool T1Decoder::decompress(std::vector<decodeBlockInfo*> *blocks) {
 						delete block;
 						continue;
 					}
-					impl->postDecode(block);
+					if (!impl->postDecode(block))
+						success = false;
 					delete block;
                 }
                 return 0;

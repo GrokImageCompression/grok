@@ -193,11 +193,11 @@ bool T1Part1::decompress(decodeBlockInfo *block) {
 	return ret;
 }
 
-void T1Part1::postDecode(decodeBlockInfo *block) {
+bool T1Part1::postDecode(decodeBlockInfo *block) {
 
 	auto cblk = block->cblk;
 	if (cblk->seg_buffers.empty())
-		return;
+		return true;
 
 	cblk_dec cblkexp;
 	memset(&cblkexp, 0, sizeof(cblk_dec));
@@ -205,12 +205,10 @@ void T1Part1::postDecode(decodeBlockInfo *block) {
 	cblkexp.y0 = block->y;
 	cblkexp.x1 = block->x + cblk->width();
 	cblkexp.y1 = block->y + cblk->height();
-    post_decode(t1,
-    		&cblkexp,
-			block);
+    return post_decode(t1,&cblkexp,	block);
 }
 
-void T1Part1::post_decode(t1_info *t1,
+bool T1Part1::post_decode(t1_info *t1,
 						cblk_dec *cblk,
 						decodeBlockInfo *block) {
 	uint32_t qmfbid = block->qmfbid;
@@ -282,7 +280,7 @@ void T1Part1::post_decode(t1_info *t1,
 					  1,
 					  cblk_w,
 					  true)) {
-			  return;
+			  return false;
 		  }
 	} else {
 		auto dest = tilec_data;
@@ -320,6 +318,10 @@ void T1Part1::post_decode(t1_info *t1,
 		}
 
 	}
+
+	return true;
+
+
 }
 
 }

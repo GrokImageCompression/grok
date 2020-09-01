@@ -40,12 +40,12 @@ public:
 			bool doRateControl);
 
 	bool decompress(decodeBlockInfo *block);
-	void postDecode(decodeBlockInfo *block);
+	bool postDecode(decodeBlockInfo *block);
 
 private:
 	t1_info *t1;
 
-	void post_decode(t1_info *t1, cblk_dec *cblk,decodeBlockInfo *block);
+	bool post_decode(t1_info *t1, cblk_dec *cblk,decodeBlockInfo *block);
 };
 }
 }

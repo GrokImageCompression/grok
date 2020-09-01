@@ -41,7 +41,7 @@ public:
 			bool doRateControl);
 
 	bool decompress(decodeBlockInfo *block);
-	void postDecode(decodeBlockInfo *block);
+	bool postDecode(decodeBlockInfo *block);
 
 private:
 	uint32_t coded_data_size;

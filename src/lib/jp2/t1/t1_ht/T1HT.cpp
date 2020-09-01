@@ -179,7 +179,7 @@ bool T1HT::decompress(decodeBlockInfo *block) {
 
 }
 
-void T1HT::postDecode(decodeBlockInfo *block) {
+bool T1HT::postDecode(decodeBlockInfo *block) {
 	auto cblk = block->cblk;
 	uint16_t cblk_w =  (uint16_t)(cblk->x1 - cblk->x0);
 	uint16_t cblk_h =  (uint16_t)(cblk->y1 - cblk->y0);
@@ -249,9 +249,11 @@ void T1HT::postDecode(decodeBlockInfo *block) {
 							  1,
 							  cblk_w,
 							  true)) {
-			  return;
+			  return false;
 		}
 	}
+
+	return true;
 }
 
 }
