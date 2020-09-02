@@ -18,7 +18,7 @@
 
 #define GROK_SKIP_POISON
 
-#include "grok_includes.h"
+#include "grk_includes.h"
 
 #ifdef WIN32
 	#include <intrin.h>

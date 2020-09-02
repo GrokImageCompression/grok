@@ -15,7 +15,7 @@
  *
  */
 
-#include "grok_includes.h"
+#include "grk_includes.h"
 #include "T1Factory.h"
 #include "T1Encoder.h"
 

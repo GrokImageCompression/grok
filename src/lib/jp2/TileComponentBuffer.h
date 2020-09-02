@@ -17,7 +17,7 @@
 #pragma once
 
 #include "util.h"
-#include "grok_intmath.h"
+#include "grk_intmath.h"
 #include "TagTree.h"
 #include "TileProcessor.h"
 #include <stdexcept>

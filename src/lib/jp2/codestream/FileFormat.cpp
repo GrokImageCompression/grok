@@ -19,7 +19,7 @@
  *
  */
 
-#include "grok_includes.h"
+#include "grk_includes.h"
 namespace grk {
 
 /** @defgroup JP2 JP2 - JPEG 2000 file format reader/writer */

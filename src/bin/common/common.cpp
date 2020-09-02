@@ -132,7 +132,7 @@ bool supportedStdioFormat(GRK_SUPPORTED_FILE_FMT format) {
 	return false;
 }
 
-bool grok_set_binary_mode(FILE *file) {
+bool grk_set_binary_mode(FILE *file) {
 #ifdef _WIN32
 	return (_setmode(_fileno(file), _O_BINARY) != -1);
 #else
@@ -144,7 +144,7 @@ bool grok_set_binary_mode(FILE *file) {
 bool grk_open_for_output(FILE **fdest, const char* outfile, bool writeToStdout){
 	assert(fdest);
 	if (writeToStdout) {
-		if (!grk::grok_set_binary_mode(stdout))
+		if (!grk::grk_set_binary_mode(stdout))
 			return false;
 		*fdest = stdout;
 	} else {

@@ -19,7 +19,7 @@
  *
  */
 
-#include "grok_includes.h"
+#include "grk_includes.h"
 #include "Tier1.h"
 #include <memory>
 #include "WaveletForward.h"
@@ -1113,7 +1113,7 @@ bool TileProcessor::dc_level_shift_decode() {
 					for (uint32_t i = 0; i < x1; ++i) {
 						float value = *((float*) current_ptr);
 						*current_ptr = std::clamp<int32_t>(
-								(int32_t) grok_lrintf(value)
+								(int32_t) grk_lrintf(value)
 										+ tccp->m_dc_level_shift, min, max);
 						current_ptr++;
 					}

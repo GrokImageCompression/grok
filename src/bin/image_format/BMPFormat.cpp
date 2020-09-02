@@ -756,7 +756,7 @@ static grk_image* bmptoimage(const char *filename,
 	bool topDown = false;
 
 	if (readFromStdin) {
-		if (!grk::grok_set_binary_mode(stdin))
+		if (!grk::grk_set_binary_mode(stdin))
 			return nullptr;
 		INPUT = stdin;
 	} else {

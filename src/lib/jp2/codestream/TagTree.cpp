@@ -19,7 +19,7 @@
  *
  */
 
-#include "grok_includes.h"
+#include "grk_includes.h"
 #include  <stdexcept>
 
 namespace grk {

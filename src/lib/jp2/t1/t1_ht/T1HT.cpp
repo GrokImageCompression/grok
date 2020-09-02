@@ -23,7 +23,7 @@
 using namespace ojph;
 using namespace ojph::local;
 
-#include "grok_includes.h"
+#include "grk_includes.h"
 #include "T1HT.h"
 #include "testing.h"
 #include <algorithm>

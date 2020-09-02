@@ -93,7 +93,7 @@ grk_image* RAWFormat::rawtoimage(const char *filename,
 	}
 
 	if (readFromStdin) {
-		if (!grk::grok_set_binary_mode(stdin))
+		if (!grk::grk_set_binary_mode(stdin))
 			return nullptr;
 		f = stdin;
 	} else {

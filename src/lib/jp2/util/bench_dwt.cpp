@@ -46,7 +46,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#include "grok_includes.h"
+#include "grk_includes.h"
 #include "spdlog/spdlog.h"
 
 #ifdef _WIN32

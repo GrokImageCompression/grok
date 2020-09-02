@@ -62,7 +62,7 @@ using namespace grk;
 #include <lcms2.h>
 #endif
 #include "color.h"
-#include "grok_string.h"
+#include "grk_string.h"
 #include <climits>
 #include <string>
 #define TCLAP_NAMESTARTSTRING "-"

@@ -67,7 +67,7 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkMappedFile.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/mem_stream.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/mem_stream.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/util/grok_intmath.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/grk_intmath.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/MemManager.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/MemManager.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/util.cpp
@@ -76,7 +76,7 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/CPUArch.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/ChunkBuffer.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/ChunkBuffer.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/util/grok_exceptions.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/grk_exceptions.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/testing.h
   
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin/minpf_dynamic_library.cpp
@@ -143,7 +143,7 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/TileComponent.h
   ${CMAKE_CURRENT_SOURCE_DIR}/TileProcessor.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/TileProcessor.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/grok_includes.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/grk_includes.h
 
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/Wavelet.h
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/Wavelet.cpp

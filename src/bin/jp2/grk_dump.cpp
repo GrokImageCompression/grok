@@ -47,7 +47,7 @@ using namespace TCLAP;
 using namespace std;
 
 #include "convert.h"
-#include "grok_string.h"
+#include "grk_string.h"
 #include <string>
 
 

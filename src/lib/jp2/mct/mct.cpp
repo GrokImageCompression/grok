@@ -20,7 +20,7 @@
  */
 
 #include "CPUArch.h"
-#include "grok_includes.h"
+#include "grk_includes.h"
 
 namespace grk {
 
@@ -318,9 +318,9 @@ void mct::decode_irrev(grk_tile* tile, TileComponentCodingParams *tccps,uint64_t
 		float g = y - (u * 0.34413f) - (v * (0.71414f));
 		float b = y + (u * 1.772f);
 
-		c0_i[i] = (int32_t)grok_lrintf(r) + dcshift;
-		c1_i[i] = (int32_t)grok_lrintf(g) + dcshift;
-		c2_i[i] = (int32_t)grok_lrintf(b) + dcshift;
+		c0_i[i] = (int32_t)grk_lrintf(r) + dcshift;
+		c1_i[i] = (int32_t)grk_lrintf(g) + dcshift;
+		c2_i[i] = (int32_t)grk_lrintf(b) + dcshift;
 
 	}
 }

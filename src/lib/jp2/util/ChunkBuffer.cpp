@@ -14,7 +14,7 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#include "grok_includes.h"
+#include "grk_includes.h"
 
 namespace grk {
 

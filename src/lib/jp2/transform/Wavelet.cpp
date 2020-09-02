@@ -16,7 +16,7 @@
  */
 
 
-#include "grok_includes.h"
+#include "grk_includes.h"
 
 #include "dwt_utils.h"
 #include "dwt53.h"

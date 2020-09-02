@@ -30,7 +30,7 @@
 #include <sys/mman.h>
 #endif
 #include <fcntl.h>
-#include "grok_includes.h"
+#include "grk_includes.h"
 using namespace grk;
 
 /**
@@ -101,7 +101,7 @@ static size_t grk_write_to_file(void *p_buffer, size_t nb_bytes,
 		FILE *p_file) {
 	return fwrite(p_buffer, 1, nb_bytes, p_file);
 }
-static bool grok_seek_in_file(int64_t nb_bytes, FILE *p_user_data) {
+static bool grk_seek_in_file(int64_t nb_bytes, FILE *p_user_data) {
 	return GROK_FSEEK(p_user_data, nb_bytes, SEEK_SET) ? false : true;
 }
 
@@ -503,7 +503,7 @@ void GRK_CALLCONV grk_destroy_cstr_index(
 
 /* ---------------------------------------------------------------------- */
 
-static void grok_free_file(void *p_user_data) {
+static void grk_free_file(void *p_user_data) {
 	if (p_user_data)
 		fclose((FILE*) p_user_data);
 }
@@ -531,7 +531,7 @@ static void grok_free_file(void *p_user_data) {
 	}
 	grk_stream_set_user_data(stream, (void*) p_file,
 			(grk_stream_free_user_data_fn) (
-					stdin_stdout ? nullptr : grok_free_file));
+					stdin_stdout ? nullptr : grk_free_file));
 	if (is_read_stream)
 		grk_stream_set_user_data_length(stream,
 				grk_get_data_length_from_file(p_file));
@@ -540,7 +540,7 @@ static void grok_free_file(void *p_user_data) {
 	grk_stream_set_write_function(stream,
 			(grk_stream_write_fn) grk_write_to_file);
 	grk_stream_set_seek_function(stream,
-			(grk_stream_seek_fn) grok_seek_in_file);
+			(grk_stream_seek_fn) grk_seek_in_file);
 	return stream;
 }
 /* ---------------------------------------------------------------------- */

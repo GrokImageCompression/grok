@@ -19,7 +19,7 @@
  *
  */
 
-#include "grok_includes.h"
+#include "grk_includes.h"
 #include "grok.h"
 #include "t1_common.h"
 #include "logger.h"

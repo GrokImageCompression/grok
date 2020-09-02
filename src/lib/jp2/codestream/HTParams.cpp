@@ -54,7 +54,7 @@
 //***************************************************************************/
 
 #define _USE_MATH_DEFINES 
-#include "grok_includes.h"
+#include "grk_includes.h"
 #include "HTParams.h"
 #include <cassert>
 #include <algorithm>

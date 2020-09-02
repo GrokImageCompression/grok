@@ -18,7 +18,7 @@
  *    Please see the LICENSE file in the root directory for details.
  *
  */
-#include "grok_includes.h"
+#include "grk_includes.h"
 namespace grk {
 
 template<typename TYPE> void grk_write(uint8_t *p_buffer, TYPE value,

@@ -61,7 +61,7 @@
  */
 
 #include "CPUArch.h"
-#include "grok_includes.h"
+#include "grk_includes.h"
 #include "T1Decoder.h"
 #include <atomic>
 #include "testing.h"

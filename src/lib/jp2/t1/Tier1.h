@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "grok_includes.h"
+#include "grk_includes.h"
 #include <vector>
 #include "T1Interface.h"
 

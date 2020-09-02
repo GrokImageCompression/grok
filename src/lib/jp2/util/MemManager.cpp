@@ -20,7 +20,7 @@
  */
 
 #define GROK_SKIP_POISON
-#include "grok_includes.h"
+#include "grk_includes.h"
 
 
 // OSX is missing C++11 aligned_alloc (stdlib.h version)

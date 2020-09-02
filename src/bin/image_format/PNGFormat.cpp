@@ -88,7 +88,7 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	}
 
 	if (useStd) {
-		if (!grk::grok_set_binary_mode(stdin))
+		if (!grk::grk_set_binary_mode(stdin))
 			return nullptr;
 		m_file = stdin;
 	} else {

@@ -21,7 +21,7 @@
 
 #include <assert.h>
 #include "CPUArch.h"
-#include "grok_includes.h"
+#include "grk_includes.h"
 #include "dwt.h"
 #include <algorithm>
 

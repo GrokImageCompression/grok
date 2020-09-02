@@ -55,7 +55,7 @@ using namespace grk;
 #include "PNGFormat.h"
 #endif
 #include "convert.h"
-#include "grok_string.h"
+#include "grk_string.h"
 #include "color.h"
 
 #include <float.h>

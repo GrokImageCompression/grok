@@ -21,7 +21,7 @@
 #include <thread>
 #include <climits>
 #include <stdint.h>
-#include "grok_intmath.h"
+#include "grk_intmath.h"
 
 namespace grk {
 

@@ -113,7 +113,7 @@
 
 #if defined(_MSC_VER)
 #include <intrin.h>
-static inline long grok_lrintf(float f)
+static inline long grk_lrintf(float f)
 {
 #ifdef _M_X64
     return _mm_cvt_ss2si(_mm_load_ss(&f));
@@ -130,7 +130,7 @@ static inline long grok_lrintf(float f)
 #endif
 }
 #else
-static inline long grok_lrintf(float f) {
+static inline long grk_lrintf(float f) {
 	return lrintf(f);
 }
 #endif
@@ -153,7 +153,7 @@ static inline long grok_lrintf(float f) {
 #include "MemManager.h"
 #include "logger.h"
 #include "util.h"
-#include "grok_exceptions.h"
+#include "grk_exceptions.h"
 #include "ChunkBuffer.h"
 #include "BitIO.h"
 #include "BufferedStream.h"
@@ -182,7 +182,7 @@ static inline long grok_lrintf(float f) {
 #include "T2Encode.h"
 #include "T2Decode.h"
 #include "mct.h"
-#include "grok_intmath.h"
+#include "grk_intmath.h"
 #include "plugin_bridge.h"
 #include "RateControl.h"
 #include "RateInfo.h"

@@ -50,7 +50,7 @@
 
 #undef NDEBUG
 
-#include "grok_includes.h"
+#include "grk_includes.h"
 
 using namespace grk;
 

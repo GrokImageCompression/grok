@@ -72,7 +72,7 @@ bool safe_fclose(FILE *fd);
 bool useStdio(const char *filename);
 bool supportedStdioFormat(GRK_SUPPORTED_FILE_FMT format);
 bool grk_open_for_output(FILE **fdest, const char* outfile, bool writeToStdout);
-bool grok_set_binary_mode(FILE* file);
+bool grk_set_binary_mode(FILE* file);
 bool jpeg2000_file_format(const char *fname, GRK_SUPPORTED_FILE_FMT *fmt);
 int get_file_format(const char *filename);
 const char* get_path_separator();

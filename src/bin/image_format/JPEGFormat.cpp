@@ -253,7 +253,7 @@ static int imagetojpeg(grk_image *image, const char *filename,
 	 * requires it in order to write binary files.
 	 */
 	if (info.writeToStdout) {
-		if (!grk::grok_set_binary_mode(stdout))
+		if (!grk::grk_set_binary_mode(stdout))
 			return 1;
 		info.outfile = stdout;
 	} else {
@@ -425,7 +425,7 @@ static grk_image* jpegtoimage(const char *filename,
 	 */
 
 	if (imageInfo.readFromStdin) {
-		if (!grk::grok_set_binary_mode(stdin))
+		if (!grk::grk_set_binary_mode(stdin))
 			return nullptr;
 		imageInfo.infile = stdin;
 	} else {

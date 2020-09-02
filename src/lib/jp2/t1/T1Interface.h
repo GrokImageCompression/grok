@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "grok_includes.h"
+#include "grk_includes.h"
 #include "testing.h"
 
 namespace grk {

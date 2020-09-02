@@ -50,7 +50,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cassert>
-#include "grok_includes.h"
+#include "grk_includes.h"
 #include "sparse_array.h"
 #include <exception>
 
