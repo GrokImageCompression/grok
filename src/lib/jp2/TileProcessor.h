@@ -313,6 +313,8 @@ private:
 
 	 bool is_whole_tilecomp_decoding( uint32_t compno);
 
+	 bool need_mct_decode(uint32_t compno);
+
 	 bool mct_decode();
 
 	 bool dc_level_shift_decode();

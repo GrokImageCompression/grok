@@ -1001,73 +1001,73 @@ bool TileProcessor::t2_decode(ChunkBuffer *src_buf,
 	return rc;
 }
 
-bool TileProcessor::mct_decode() {
-	auto tile_comp = tile->comps;
-
+bool TileProcessor::need_mct_decode(uint32_t compno){
 	if (!m_tcp->mct)
-		return true;
-
-	uint64_t samples = tile_comp->buf->strided_area();
-
-	if (tile->numcomps >= 3) {
-		/* testcase 1336.pdf.asan.47.376 */
-		if (tile->comps[1].buf->strided_area()	!= samples
-				|| tile->comps[2].buf->strided_area()	!= samples) {
-			GRK_WARN("Not all tiles components have the same dimension: skipping MCT.");
-			return true;
-		} else if (m_tcp->mct == 2) {
-			if (!m_tcp->m_mct_decoding_matrix)
-				return true;
-			auto data = (uint8_t**) grk_malloc(
-					tile->numcomps * sizeof(uint8_t*));
-			if (!data)
-				return false;
-
-			for (uint32_t i = 0; i < tile->numcomps; ++i) {
-				data[i] = (uint8_t*) tile_comp->buf->ptr();
-				++tile_comp;
-			}
-
-			if (!mct::decode_custom(/* MCT data */
-			(uint8_t*) m_tcp->m_mct_decoding_matrix,
-			/* size of components */
-			samples,
-			/* components */
-			data,
-			/* nb of components (i.e. size of pData) */
-			tile->numcomps,
-			/* tells if the data is signed */
-			image->comps->sgnd)) {
-				grk_free(data);
-				return false;
-			}
-
-			grk_free(data);
-		} else {
-			if (m_tcp->tccps->qmfbid == 1) {
-				mct::decode_rev(tile->comps[0].buf->ptr(),
-						tile->comps[1].buf->ptr(),
-						tile->comps[2].buf->ptr(), samples);
-			} else {
-				mct::decode_irrev(
-						(float*) tile->comps[0].buf->ptr(),
-						(float*) tile->comps[1].buf->ptr(),
-						(float*) tile->comps[2].buf->ptr(),
-						samples);
-			}
-		}
-	} else {
-		GRK_ERROR(
-				"Number of components (%u) is inconsistent with a MCT. Skip the MCT step.",
+		return false;
+	if (tile->numcomps < 3){
+		GRK_WARN("Number of components (%u) is inconsistent with a MCT. Skip the MCT step.",
 				tile->numcomps);
+		return false;
 	}
+	/* testcase 1336.pdf.asan.47.376 */
+	uint64_t samples = tile->comps->buf->strided_area();
+	if (tile->comps[1].buf->strided_area()	!= samples
+			|| tile->comps[2].buf->strided_area()	!= samples) {
+		GRK_WARN("Not all tiles components have the same dimension: skipping MCT.");
+		return false;
+	}
+	if (m_tcp->mct == 2 && !m_tcp->m_mct_decoding_matrix)
+		return false;
+	if (compno > 2)
+		return false;
+
+	return true;
+}
+
+bool TileProcessor::mct_decode() {
+
+	if (!need_mct_decode(0))
+		return true;
+	uint64_t samples = tile->comps->buf->strided_area();
+	if (m_tcp->mct == 2) {
+		auto data = (uint8_t**) grk_malloc(
+				tile->numcomps * sizeof(uint8_t*));
+		if (!data)
+			return false;
+		for (uint32_t i = 0; i < tile->numcomps; ++i) {
+			auto tile_comp = tile->comps + i;
+			data[i] = (uint8_t*) tile_comp->buf->ptr();
+		}
+		if (!mct::decode_custom(/* MCT data */
+								(uint8_t*) m_tcp->m_mct_decoding_matrix,
+								/* size of components */
+								samples,
+								/* components */
+								data,
+								/* nb of components (i.e. size of pData) */
+								tile->numcomps,
+								/* tells if the data is signed */
+								image->comps->sgnd)) {
+			grk_free(data);
+			return false;
+		}
+		grk_free(data);
+	} else {
+		if (m_tcp->tccps->qmfbid == 1) {
+			mct::decode_rev(tile->comps[0].buf->ptr(),
+					tile->comps[1].buf->ptr(),
+					tile->comps[2].buf->ptr(), samples);
+		} else {
+			mct::decode_irrev(tile,	m_tcp->tccps, samples);
+		}
+	}
+
 
 	return true;
 }
 
 bool TileProcessor::dc_level_shift_decode() {
-	uint32_t compno = 0;
-	for (compno = 0; compno < tile->numcomps; compno++) {
+	for (uint32_t compno = 0; compno < tile->numcomps; compno++) {
 		int32_t min = INT32_MAX, max = INT32_MIN;
 		uint32_t x1;
 		uint32_t y1;
@@ -1098,15 +1098,27 @@ bool TileProcessor::dc_level_shift_decode() {
 				current_ptr += stride_diff;
 			}
 		} else {
-			for (uint32_t j = 0; j < y1; ++j) {
-				for (uint32_t i = 0; i < x1; ++i) {
-					float value = *((float*) current_ptr);
-					*current_ptr = std::clamp<int32_t>(
-							(int32_t) grok_lrintf(value)
-									+ tccp->m_dc_level_shift, min, max);
-					current_ptr++;
+			if (need_mct_decode(compno)) {
+				for (uint32_t j = 0; j < y1; ++j) {
+					for (uint32_t i = 0; i < x1; ++i) {
+						int value = *current_ptr;
+						*current_ptr = std::clamp<int32_t>(
+								value, min, max);
+						current_ptr++;
+					}
+					current_ptr += stride_diff;
 				}
-				current_ptr += stride_diff;
+			} else {
+				for (uint32_t j = 0; j < y1; ++j) {
+					for (uint32_t i = 0; i < x1; ++i) {
+						float value = *((float*) current_ptr);
+						*current_ptr = std::clamp<int32_t>(
+								(int32_t) grok_lrintf(value)
+										+ tccp->m_dc_level_shift, min, max);
+						current_ptr++;
+					}
+					current_ptr += stride_diff;
+				}
 			}
 		}
 	}
@@ -1129,6 +1141,7 @@ bool TileProcessor::dc_level_shift_encode() {
 
 	return true;
 }
+
 
 bool TileProcessor::mct_encode() {
 	auto tile_comp = tile->comps;

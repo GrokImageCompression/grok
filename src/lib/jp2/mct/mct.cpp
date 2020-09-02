@@ -125,17 +125,15 @@ void mct::decode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 	    	auto decoder = [index, chunkSize,chan0,chan1,chan2](){
 	    		uint64_t begin = (uint64_t)index * chunkSize;
 				for (auto j = begin; j < begin+chunkSize; j+=VREG_INT_COUNT ){
-					VREG r, g, b;
-					VREG y = LOAD((const VREG*) &(chan0[j]));
-					VREG u = LOAD((const VREG*) &(chan1[j]));
-					VREG v = LOAD((const VREG*) &(chan2[j]));
-					g = y;
-					g = SUB(g, SAR(ADD(u, v), 2));
-					r = ADD(v, g);
-					b = ADD(u, g);
-					STORE((VREG*) &(chan0[j]), r);
-					STORE((VREG*) &(chan1[j]), g);
-					STORE((VREG*) &(chan2[j]), b);
+					VREG y = LOAD(chan0 + j);
+					VREG u = LOAD(chan1 + j);
+					VREG v = LOAD(chan2 + j);
+					VREG g = SUB(y, SAR(ADD(u, v), 2));
+					VREG r = ADD(v, g);
+					VREG b = ADD(u, g);
+					STORE(chan0 + j, r);
+					STORE(chan1 + j, g);
+					STORE(chan2 + j, b);
 				}
 				return 0;
 	    	};
@@ -249,11 +247,24 @@ void mct::encode_irrev( int* GRK_RESTRICT chan0,
 /* <summary> */
 /* Inverse irreversible MCT. */
 /* </summary> */
-void mct::decode_irrev(float *GRK_RESTRICT c0, float *GRK_RESTRICT c1, float *GRK_RESTRICT c2,
-		uint64_t n) {
+void mct::decode_irrev(grk_tile* tile, TileComponentCodingParams *tccps,uint64_t n) {
 	uint64_t i = 0;
-	if (CPUArch::SSE2() || CPUArch::AVX2() ) {
-#if (defined(__SSE2__) || defined(__AVX2__))
+
+	float *GRK_RESTRICT c0 = (float*) tile->comps[0].buf->ptr();
+	float *GRK_RESTRICT c1 = (float*) tile->comps[1].buf->ptr();
+	float *GRK_RESTRICT c2 = (float*) tile->comps[2].buf->ptr();
+	int32_t *c0_i = (int32_t*)c0, *c1_i = (int32_t*)c1, *c2_i = (int32_t*)c2;
+
+    int32_t shift[3];
+    for (uint32_t compno =0; compno < 3; ++compno) {
+    	auto tccp = tccps + compno;
+    	shift[compno] = tccp->m_dc_level_shift;
+    }
+    assert(shift[1]==shift[0] && shift[2]==shift[1]);
+    int32_t dcshift = shift[0];
+
+	if (CPUArch::AVX2() ) {
+#if defined(__AVX2__)
 	size_t num_threads = ThreadPool::get()->num_threads();
 	size_t chunkSize = n / num_threads;
 	//ensure it is divisible by VREG_INT_COUNT
@@ -262,11 +273,13 @@ void mct::decode_irrev(float *GRK_RESTRICT c0, float *GRK_RESTRICT c1, float *GR
 		std::vector< std::future<int> > results;
 		for(uint64_t threadid = 0; threadid < num_threads; ++threadid) {
 			uint64_t index = threadid;
-			auto decoder = [index, chunkSize, c0,c1,c2]() {
+			auto decoder = [index, chunkSize, c0,c0_i,c1,c1_i,c2,c2_i, dcshift]() {
 				const VREGF vrv = LOAD_CST_F(1.402f);
 				const VREGF vgu = LOAD_CST_F(0.34413f);
 				const VREGF vgv = LOAD_CST_F(0.71414f);
 				const VREGF vbu = LOAD_CST_F(1.772f);
+				const VREG  vdc = LOAD_CST(dcshift);
+
 				uint64_t begin = (uint64_t)index * chunkSize;
 				for (auto j = begin; j < begin+chunkSize; j +=VREG_INT_COUNT){
 					VREGF vy, vu, vv;
@@ -278,9 +291,10 @@ void mct::decode_irrev(float *GRK_RESTRICT c0, float *GRK_RESTRICT c1, float *GR
 					vr = ADDF(vy, MULF(vv, vrv));
 					vg = SUBF(SUBF(vy, MULF(vu, vgu)),MULF(vv, vgv));
 					vb = ADDF(vy, MULF(vu, vbu));
-					STOREF(c0 + j, vr);
-					STOREF(c1 + j, vg);
-					STOREF(c2 + j, vb);
+
+					STORE(c0_i + j, ADD(_mm256_cvtps_epi32(vr),vdc));
+					STORE(c1_i + j, ADD(_mm256_cvtps_epi32(vg),vdc));
+					STORE(c2_i + j, ADD(_mm256_cvtps_epi32(vb),vdc));
 				}
 				return 0;
 			};
@@ -303,9 +317,11 @@ void mct::decode_irrev(float *GRK_RESTRICT c0, float *GRK_RESTRICT c1, float *GR
 		float r = y + (v * 1.402f);
 		float g = y - (u * 0.34413f) - (v * (0.71414f));
 		float b = y + (u * 1.772f);
-		c0[i] = r;
-		c1[i] = g;
-		c2[i] = b;
+
+		c0_i[i] = (int32_t)grok_lrintf(r) + dcshift;
+		c1_i[i] = (int32_t)grok_lrintf(g) + dcshift;
+		c2_i[i] = (int32_t)grok_lrintf(b) + dcshift;
+
 	}
 }
 
