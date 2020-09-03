@@ -64,7 +64,7 @@ public:
 	 @param tccps tile component coding parameters
 	 @param n Number of samples for each component
 	 */
-	static void decode_irrev(grk_tile *tile, TileComponentCodingParams *tccps, uint64_t n);
+	static void decode_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint64_t n);
 
 	/**
 	 Get wavelet norms for irreversible transform

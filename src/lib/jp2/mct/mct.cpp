@@ -247,7 +247,7 @@ void mct::encode_irrev( int* GRK_RESTRICT chan0,
 /* <summary> */
 /* Inverse irreversible MCT. */
 /* </summary> */
-void mct::decode_irrev(grk_tile* tile, TileComponentCodingParams *tccps,uint64_t n) {
+void mct::decode_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps,uint64_t n) {
 	uint64_t i = 0;
 
 	float *GRK_RESTRICT c0 = (float*) tile->comps[0].buf->ptr();
@@ -255,13 +255,24 @@ void mct::decode_irrev(grk_tile* tile, TileComponentCodingParams *tccps,uint64_t
 	float *GRK_RESTRICT c2 = (float*) tile->comps[2].buf->ptr();
 	int32_t *c0_i = (int32_t*)c0, *c1_i = (int32_t*)c1, *c2_i = (int32_t*)c2;
 
-    int32_t shift[3];
+	int32_t _min[3];
+    int32_t _max[3];
+	int32_t shift[3];
     for (uint32_t compno =0; compno < 3; ++compno) {
+    	auto img_comp = image->comps + compno;
+		if (img_comp->sgnd) {
+			_min[compno] = -(1 << (img_comp->prec - 1));
+			_max[compno] = (1 << (img_comp->prec - 1)) - 1;
+		} else {
+			_min[compno] = 0;
+			_max[compno] = (1 << img_comp->prec) - 1;
+		}
     	auto tccp = tccps + compno;
     	shift[compno] = tccp->m_dc_level_shift;
     }
     assert(shift[1]==shift[0] && shift[2]==shift[1]);
     int32_t dcshift = shift[0];
+
 
 	if (CPUArch::AVX2() ) {
 #if defined(__AVX2__)
@@ -273,12 +284,18 @@ void mct::decode_irrev(grk_tile* tile, TileComponentCodingParams *tccps,uint64_t
 		std::vector< std::future<int> > results;
 		for(uint64_t threadid = 0; threadid < num_threads; ++threadid) {
 			uint64_t index = threadid;
-			auto decoder = [index, chunkSize, c0,c0_i,c1,c1_i,c2,c2_i, dcshift]() {
+			auto decoder = [index, chunkSize, c0,c0_i,c1,c1_i,c2,c2_i, dcshift, &_min, &_max]() {
 				const VREGF vrv = LOAD_CST_F(1.402f);
 				const VREGF vgu = LOAD_CST_F(0.34413f);
 				const VREGF vgv = LOAD_CST_F(0.71414f);
 				const VREGF vbu = LOAD_CST_F(1.772f);
 				const VREG  vdc = LOAD_CST(dcshift);
+				const VREG  minr = LOAD_CST(_min[0]);
+				const VREG  ming = LOAD_CST(_min[1]);
+				const VREG  minb = LOAD_CST(_min[2]);
+				const VREG  maxr = LOAD_CST(_max[0]);
+				const VREG  maxg = LOAD_CST(_max[1]);
+				const VREG  maxb = LOAD_CST(_max[2]);
 
 				uint64_t begin = (uint64_t)index * chunkSize;
 				for (auto j = begin; j < begin+chunkSize; j +=VREG_INT_COUNT){
@@ -292,9 +309,9 @@ void mct::decode_irrev(grk_tile* tile, TileComponentCodingParams *tccps,uint64_t
 					vg = SUBF(SUBF(vy, MULF(vu, vgu)),MULF(vv, vgv));
 					vb = ADDF(vy, MULF(vu, vbu));
 
-					STORE(c0_i + j, ADD(_mm256_cvtps_epi32(vr),vdc));
-					STORE(c1_i + j, ADD(_mm256_cvtps_epi32(vg),vdc));
-					STORE(c2_i + j, ADD(_mm256_cvtps_epi32(vb),vdc));
+					STORE(c0_i + j, VMIN(VMAX(ADD(_mm256_cvtps_epi32(vr),vdc), minr), maxr));
+					STORE(c1_i + j, VMIN(VMAX(ADD(_mm256_cvtps_epi32(vg),vdc), ming), maxg));
+					STORE(c2_i + j, VMIN(VMAX(ADD(_mm256_cvtps_epi32(vb),vdc), minb), maxb));
 				}
 				return 0;
 			};
@@ -318,9 +335,9 @@ void mct::decode_irrev(grk_tile* tile, TileComponentCodingParams *tccps,uint64_t
 		float g = y - (u * 0.34413f) - (v * (0.71414f));
 		float b = y + (u * 1.772f);
 
-		c0_i[i] = (int32_t)grk_lrintf(r) + dcshift;
-		c1_i[i] = (int32_t)grk_lrintf(g) + dcshift;
-		c2_i[i] = (int32_t)grk_lrintf(b) + dcshift;
+		c0_i[i] = std::clamp<int32_t>((int32_t)grk_lrintf(r) + dcshift, _min[0], _max[0]);
+		c1_i[i] = std::clamp<int32_t>((int32_t)grk_lrintf(g) + dcshift, _min[1], _max[1]);
+		c2_i[i] = std::clamp<int32_t>((int32_t)grk_lrintf(b) + dcshift, _min[2], _max[2]);
 
 	}
 }

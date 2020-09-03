@@ -1058,7 +1058,7 @@ bool TileProcessor::mct_decode() {
 					tile->comps[1].buf->ptr(),
 					tile->comps[2].buf->ptr(), samples);
 		} else {
-			mct::decode_irrev(tile,	m_tcp->tccps, samples);
+			mct::decode_irrev(tile,	image,m_tcp->tccps, samples);
 		}
 	}
 
@@ -1098,17 +1098,7 @@ bool TileProcessor::dc_level_shift_decode() {
 				current_ptr += stride_diff;
 			}
 		} else {
-			if (need_mct_decode(compno)) {
-				for (uint32_t j = 0; j < y1; ++j) {
-					for (uint32_t i = 0; i < x1; ++i) {
-						int value = *current_ptr;
-						*current_ptr = std::clamp<int32_t>(
-								value, min, max);
-						current_ptr++;
-					}
-					current_ptr += stride_diff;
-				}
-			} else {
+			if (!need_mct_decode(compno)) {
 				for (uint32_t j = 0; j < y1; ++j) {
 					for (uint32_t i = 0; i < x1; ++i) {
 						float value = *((float*) current_ptr);

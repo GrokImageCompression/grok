@@ -50,6 +50,7 @@
 
 /* Convenience macros to improve the readability of the formulas */
 #if __AVX2__
+
 #define VREG        __m256i
 #define LOAD_CST(x) _mm256_set1_epi32(x)
 #define LOAD(x)     _mm256_load_si256((const VREG*)(x))
@@ -58,8 +59,11 @@
 #define STOREU(x,y) _mm256_storeu_si256((VREG*)(x),(y))
 #define ADD(x,y)    _mm256_add_epi32((x),(y))
 #define SUB(x,y)    _mm256_sub_epi32((x),(y))
+#define VMAX(x,y)    _mm256_max_epi32((x),(y))
+#define VMIN(x,y)    _mm256_min_epi32((x),(y))
 #define SAR(x,y)    _mm256_srai_epi32((x),(y))
 #define MUL(x,y)    _mm256_mullo_epi32((x),(y))
+
 #define VREGF        __m256
 #define LOADF(x)     _mm256_load_ps((float const*)(x))
 #define LOADUF(x)     _mm256_loadu_ps((float const*)(x))
@@ -67,9 +71,13 @@
 #define ADDF(x,y)    _mm256_add_ps((x),(y))
 #define MULF(x,y)    _mm256_mul_ps((x),(y))
 #define SUBF(x,y)     _mm256_sub_ps((x),(y))
+#define VMAXF(x,y)     _mm256_max_ps((x),(y))
+#define VMINF(x,y)     _mm256_min_ps((x),(y))
 #define STOREF(x,y)  _mm256_store_ps((float*)(x),(y))
 #define STOREUF(x,y)  _mm256_storeu_ps((float*)(x),(y))
+
 #else
+
 #define VREG        __m128i
 #define LOAD_CST(x) _mm_set1_epi32(x)
 #define LOAD(x)     _mm_load_si128((const VREG*)(x))
@@ -78,18 +86,24 @@
 #define STOREU(x,y) _mm_storeu_si128((VREG*)(x),(y))
 #define ADD(x,y)    _mm_add_epi32((x),(y))
 #define SUB(x,y)    _mm_sub_epi32((x),(y))
+#define VMAX(x,y)    _mm_max_epi32((x),(y))
+#define VMIN(x,y)    _mm_min_epi32((x),(y))
+
+#define VREGF        __m128
 // MUL is actually only valid for SSE 4.1
 #define MUL(x,y)    _mm_mullo_epi32((x),(y))
 #define SAR(x,y)    _mm_srai_epi32((x),(y))
-#define VREGF        __m128
 #define LOADF(x)     _mm_load_ps((float const*)(x))
 #define LOADUF(x)     _mm_loadu_ps((float const*)(x))
-#define LOAD_CST_F(x)      _mm_set1_ps(x)
+#define LOAD_CST_F(x) _mm_set1_ps(x)
 #define ADDF(x,y)    _mm_add_ps((x),(y))
 #define MULF(x,y)    _mm_mul_ps((x),(y))
 #define SUBF(x,y)    _mm_sub_ps((x),(y))
+#define VMAXF(x,y)   _mm_max_ps((x),(y))
+#define VMINF(x,y)   _mm_min_ps((x),(y))
 #define STOREF(x,y)  _mm_store_ps((float*)(x),(y))
 #define STOREUF(x,y)  _mm_storeu_ps((float*)(x),(y))
+
 #endif
 
 #define ADD3(x,y,z) ADD(ADD(x,y),z)
