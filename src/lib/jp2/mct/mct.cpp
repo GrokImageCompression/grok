@@ -309,9 +309,9 @@ void mct::decode_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParam
 					vg = SUBF(SUBF(vy, MULF(vu, vgu)),MULF(vv, vgv));
 					vb = ADDF(vy, MULF(vu, vbu));
 
-					STORE(c0_i + j, VMIN(VMAX(ADD(_mm256_cvtps_epi32(vr),vdc), minr), maxr));
-					STORE(c1_i + j, VMIN(VMAX(ADD(_mm256_cvtps_epi32(vg),vdc), ming), maxg));
-					STORE(c2_i + j, VMIN(VMAX(ADD(_mm256_cvtps_epi32(vb),vdc), minb), maxb));
+					STORE(c0_i + j, VCLAMP(ADD(_mm256_cvtps_epi32(vr),vdc), minr, maxr));
+					STORE(c1_i + j, VCLAMP(ADD(_mm256_cvtps_epi32(vg),vdc), ming, maxg));
+					STORE(c2_i + j, VCLAMP(ADD(_mm256_cvtps_epi32(vb),vdc), minb, maxb));
 				}
 				return 0;
 			};

@@ -106,6 +106,8 @@
 
 #endif
 
-#define ADD3(x,y,z) ADD(ADD(x,y),z)
+#define ADD3(x,y,z) 		ADD(ADD(x,y),z)
+#define VCLAMP(x,min,max) 	VMIN(VMAX(x, min), max)
+#define VCLAMPF(x,min,max) 	VMINF(VMAXF(x, min), max)
 
 #endif
