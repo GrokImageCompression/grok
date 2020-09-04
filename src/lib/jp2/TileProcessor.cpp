@@ -1016,9 +1016,9 @@ bool TileProcessor::need_mct_decode(uint32_t compno){
 		GRK_WARN("Not all tiles components have the same dimension: skipping MCT.");
 		return false;
 	}
-	if (m_tcp->mct == 2 && !m_tcp->m_mct_decoding_matrix)
-		return false;
 	if (compno > 2)
+		return false;
+	if (m_tcp->mct == 2 && !m_tcp->m_mct_decoding_matrix)
 		return false;
 
 	return true;
@@ -1030,28 +1030,18 @@ bool TileProcessor::mct_decode() {
 		return true;
 	uint64_t samples = tile->comps->buf->strided_area();
 	if (m_tcp->mct == 2) {
-		auto data = (uint8_t**) grk_malloc(
-				tile->numcomps * sizeof(uint8_t*));
-		if (!data)
-			return false;
+		auto data = new uint8_t*[tile->numcomps];
 		for (uint32_t i = 0; i < tile->numcomps; ++i) {
 			auto tile_comp = tile->comps + i;
 			data[i] = (uint8_t*) tile_comp->buf->ptr();
 		}
-		if (!mct::decode_custom(/* MCT data */
-								(uint8_t*) m_tcp->m_mct_decoding_matrix,
-								/* size of components */
-								samples,
-								/* components */
-								data,
-								/* nb of components (i.e. size of pData) */
-								tile->numcomps,
-								/* tells if the data is signed */
-								image->comps->sgnd)) {
-			grk_free(data);
-			return false;
-		}
-		grk_free(data);
+		bool rc = mct::decode_custom((uint8_t*) m_tcp->m_mct_decoding_matrix,
+									samples,
+									data,
+									tile->numcomps,
+									image->comps->sgnd);
+		delete[] data;
+		return rc;
 	} else {
 		if (m_tcp->tccps->qmfbid == 1) {
 			mct::decode_rev(tile->comps[0].buf->ptr(),
@@ -1061,7 +1051,6 @@ bool TileProcessor::mct_decode() {
 			mct::decode_irrev(tile,	image,m_tcp->tccps, samples);
 		}
 	}
-
 
 	return true;
 }
@@ -1098,7 +1087,9 @@ bool TileProcessor::dc_level_shift_decode() {
 				current_ptr += stride_diff;
 			}
 		} else {
-			if (!need_mct_decode(compno)) {
+			// for custom MCT or non-MCT channels, we need to
+			// cast, do level shift, and clamp
+			if (!need_mct_decode(compno) || m_tcp->mct == 2 ) {
 				for (uint32_t j = 0; j < y1; ++j) {
 					for (uint32_t i = 0; i < x1; ++i) {
 						float value = *((float*) current_ptr);
@@ -1134,37 +1125,25 @@ bool TileProcessor::dc_level_shift_encode() {
 
 
 bool TileProcessor::mct_encode() {
-	auto tile_comp = tile->comps;
-	uint64_t samples = tile_comp->buf->strided_area();
+	uint64_t samples = tile->comps->buf->strided_area();
 
 	if (!m_tcp->mct)
 		return true;
 	if (m_tcp->mct == 2) {
 		if (!m_tcp->m_mct_coding_matrix)
 			return true;
-		auto data = (uint8_t**) grk_malloc(tile->numcomps * sizeof(uint8_t*));
-		if (!data)
-			return false;
+		auto data = new uint8_t*[tile->numcomps];
 		for (uint32_t i = 0; i < tile->numcomps; ++i) {
+			auto tile_comp = tile->comps + i;
 			data[i] = (uint8_t*) tile_comp->buf->ptr();
-			++tile_comp;
 		}
-
-		if (!mct::encode_custom(/* MCT data */
-			(uint8_t*) m_tcp->m_mct_coding_matrix,
-			/* size of components */
-			samples,
-			/* components */
-			data,
-			/* nb of components (i.e. size of pData) */
-			tile->numcomps,
-			/* tells if the data is signed */
-			image->comps->sgnd)) {
-				grk_free(data);
-				return false;
-		}
-
-		grk_free(data);
+		bool rc = mct::encode_custom((uint8_t*) m_tcp->m_mct_coding_matrix,
+								samples,
+								data,
+								tile->numcomps,
+								image->comps->sgnd);
+		delete[] data;
+		return rc;
 	} else if (m_tcp->tccps->qmfbid == 0) {
 		mct::encode_irrev(tile->comps[0].buf->ptr(),
 				tile->comps[1].buf->ptr(),

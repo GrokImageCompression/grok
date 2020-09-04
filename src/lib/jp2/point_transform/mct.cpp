@@ -364,11 +364,11 @@ void mct::calculate_norms(double *pNorms, uint32_t pNbComps, float *pMatrix) {
 	}
 }
 
-bool mct::encode_custom(uint8_t *pCodingdata, uint64_t n, uint8_t **pData,
+bool mct::encode_custom(uint8_t *mct_matrix, uint64_t n, uint8_t **pData,
 		uint32_t pNbComp, uint32_t isSigned) {
-	auto Mct = (float*) pCodingdata;
+	auto Mct = (float*) mct_matrix;
 	uint32_t NbMatCoeff = pNbComp * pNbComp;
-	auto Data = (int32_t**) pData;
+	auto data = (int32_t**) pData;
 	uint32_t Multiplicator = 1 << 13;
 	GRK_UNUSED(isSigned);
 
@@ -384,15 +384,15 @@ bool mct::encode_custom(uint8_t *pCodingdata, uint64_t n, uint8_t **pData,
 
 	for (uint64_t i = 0; i < n; ++i) {
 		for (uint32_t j = 0; j < pNbComp; ++j)
-		 CurrentData[j] = (*(Data[j]));
+		 CurrentData[j] = (*(data[j]));
 		for (uint32_t j = 0; j < pNbComp; ++j) {
 			auto MctPtr = CurrentMatrix;
-			*(Data[j]) = 0;
+			*(data[j]) = 0;
 			for (uint32_t k = 0; k < pNbComp; ++k) {
-				*(Data[j]) += int_fix_mul(*MctPtr, CurrentData[k]);
+				*(data[j]) += int_fix_mul(*MctPtr, CurrentData[k]);
 				++MctPtr;
 			}
-			++Data[j];
+			++data[j];
 		}
 	}
 	grk_free(CurrentData);
@@ -400,25 +400,25 @@ bool mct::encode_custom(uint8_t *pCodingdata, uint64_t n, uint8_t **pData,
 	return true;
 }
 
-bool mct::decode_custom(uint8_t *pDecodingData, uint64_t n, uint8_t **pData,
-		uint32_t pNbComp, uint32_t isSigned) {
-	auto Data = (float**) pData;
+bool mct::decode_custom(uint8_t *mct_matrix, uint64_t n, uint8_t **pData,
+		uint32_t num_comps, uint32_t is_signed) {
+	auto data = (float**) pData;
 
-	GRK_UNUSED(isSigned);
+	GRK_UNUSED(is_signed);
 
-	auto pixel = new float[2 * pNbComp];
-	auto CurrentResult = pixel + pNbComp;
+	auto pixel = new float[2 * num_comps];
+	auto current_pixel = pixel + num_comps;
 
 	for (uint64_t i = 0; i < n; ++i) {
-		auto Mct = (float*) pDecodingData;
-		for (uint32_t j = 0; j < pNbComp; ++j) {
-		 pixel[j] = (float) (*(Data[j]));
+		auto Mct = (float*) mct_matrix;
+		for (uint32_t j = 0; j < num_comps; ++j) {
+		 pixel[j] = (float) (*(data[j]));
 		}
-		for (uint32_t j = 0; j < pNbComp; ++j) {
-			CurrentResult[j] = 0;
-			for (uint32_t k = 0; k < pNbComp; ++k)
-			 CurrentResult[j] += *(Mct++) * pixel[k];
-			*(Data[j]++) = (float) (CurrentResult[j]);
+		for (uint32_t j = 0; j < num_comps; ++j) {
+			current_pixel[j] = 0;
+			for (uint32_t k = 0; k < num_comps; ++k)
+			 current_pixel[j] += *(Mct++) * pixel[k];
+			*(data[j]++) = (float) (current_pixel[j]);
 		}
 	}
 	delete[] pixel;
