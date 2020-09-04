@@ -58,6 +58,7 @@
 #define STORE(x,y)  _mm256_store_si256((VREG*)(x),(y))
 #define STOREU(x,y) _mm256_storeu_si256((VREG*)(x),(y))
 #define ADD(x,y)    _mm256_add_epi32((x),(y))
+#define AND(x,y)	_mm256_and_si256((x),(y));
 #define SUB(x,y)    _mm256_sub_epi32((x),(y))
 #define VMAX(x,y)    _mm256_max_epi32((x),(y))
 #define VMIN(x,y)    _mm256_min_epi32((x),(y))
@@ -85,6 +86,7 @@
 #define STORE(x,y)  _mm_store_si128((VREG*)(x),(y))
 #define STOREU(x,y) _mm_storeu_si128((VREG*)(x),(y))
 #define ADD(x,y)    _mm_add_epi32((x),(y))
+#define AND(x,y)	_mm_and_si128((x),(y));
 #define SUB(x,y)    _mm_sub_epi32((x),(y))
 #define VMAX(x,y)    _mm_max_epi32((x),(y))
 #define VMIN(x,y)    _mm_min_epi32((x),(y))
