@@ -270,9 +270,6 @@ void mct::decode_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParam
     	auto tccp = tccps + compno;
     	shift[compno] = tccp->m_dc_level_shift;
     }
-    assert(shift[1]==shift[0] && shift[2]==shift[1]);
-    int32_t dcshift = shift[0];
-
 
 	if (CPUArch::AVX2() ) {
 #if defined(__AVX2__)
@@ -284,12 +281,14 @@ void mct::decode_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParam
 		std::vector< std::future<int> > results;
 		for(uint64_t threadid = 0; threadid < num_threads; ++threadid) {
 			uint64_t index = threadid;
-			auto decoder = [index, chunkSize, c0,c0_i,c1,c1_i,c2,c2_i, dcshift, &_min, &_max]() {
+			auto decoder = [index, chunkSize, c0,c0_i,c1,c1_i,c2,c2_i, &shift, &_min, &_max]() {
 				const VREGF vrv = LOAD_CST_F(1.402f);
 				const VREGF vgu = LOAD_CST_F(0.34413f);
 				const VREGF vgv = LOAD_CST_F(0.71414f);
 				const VREGF vbu = LOAD_CST_F(1.772f);
-				const VREG  vdc = LOAD_CST(dcshift);
+				const VREG  vdcr = LOAD_CST(shift[0]);
+				const VREG  vdcg = LOAD_CST(shift[1]);
+				const VREG  vdcb = LOAD_CST(shift[2]);
 				const VREG  minr = LOAD_CST(_min[0]);
 				const VREG  ming = LOAD_CST(_min[1]);
 				const VREG  minb = LOAD_CST(_min[2]);
@@ -309,9 +308,9 @@ void mct::decode_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParam
 					vg = SUBF(SUBF(vy, MULF(vu, vgu)),MULF(vv, vgv));
 					vb = ADDF(vy, MULF(vu, vbu));
 
-					STORE(c0_i + j, VCLAMP(ADD(_mm256_cvtps_epi32(vr),vdc), minr, maxr));
-					STORE(c1_i + j, VCLAMP(ADD(_mm256_cvtps_epi32(vg),vdc), ming, maxg));
-					STORE(c2_i + j, VCLAMP(ADD(_mm256_cvtps_epi32(vb),vdc), minb, maxb));
+					STORE(c0_i + j, VCLAMP(ADD(_mm256_cvtps_epi32(vr),vdcr), minr, maxr));
+					STORE(c1_i + j, VCLAMP(ADD(_mm256_cvtps_epi32(vg),vdcg), ming, maxg));
+					STORE(c2_i + j, VCLAMP(ADD(_mm256_cvtps_epi32(vb),vdcb), minb, maxb));
 				}
 				return 0;
 			};
@@ -335,9 +334,9 @@ void mct::decode_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParam
 		float g = y - (u * 0.34413f) - (v * (0.71414f));
 		float b = y + (u * 1.772f);
 
-		c0_i[i] = std::clamp<int32_t>((int32_t)grk_lrintf(r) + dcshift, _min[0], _max[0]);
-		c1_i[i] = std::clamp<int32_t>((int32_t)grk_lrintf(g) + dcshift, _min[1], _max[1]);
-		c2_i[i] = std::clamp<int32_t>((int32_t)grk_lrintf(b) + dcshift, _min[2], _max[2]);
+		c0_i[i] = std::clamp<int32_t>((int32_t)grk_lrintf(r) + shift[0], _min[0], _max[0]);
+		c1_i[i] = std::clamp<int32_t>((int32_t)grk_lrintf(g) + shift[1], _min[1], _max[1]);
+		c2_i[i] = std::clamp<int32_t>((int32_t)grk_lrintf(b) + shift[2], _min[2], _max[2]);
 
 	}
 }
