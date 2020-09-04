@@ -37,12 +37,12 @@ public:
 	static void encode_rev(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
 	/**
 	 Apply a reversible multi-component inverse transform to an image
-	 @param c0 Samples for luminance component
-	 @param c1 Samples for red chrominance component
-	 @param c2 Samples for blue chrominance component
-	 @param n Number of samples for each component
+	 @param tile tile
+	 @param image image
+	 @param tccps tile component coding parameters
 	 */
-	static void decode_rev(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
+	static void decode_rev(grk_tile *tile, grk_image *image,
+			TileComponentCodingParams *tccps);
 
 	/**
 	 Get wavelet norms for reversible transform
@@ -61,10 +61,11 @@ public:
 	/**
 	 Apply an irreversible multi-component inverse transform to an image
 	 @param tile tile
+	 @param image image
 	 @param tccps tile component coding parameters
-	 @param n Number of samples for each component
 	 */
-	static void decode_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint64_t n);
+	static void decode_irrev(grk_tile *tile, grk_image *image,
+			TileComponentCodingParams *tccps);
 
 	/**
 	 Get wavelet norms for irreversible transform

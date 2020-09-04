@@ -109,9 +109,30 @@ void mct::encode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 /* <summary> */
 /* Inverse reversible MCT. */
 /* </summary> */
-void mct::decode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
-		int32_t *GRK_RESTRICT chan2, uint64_t n) {
+void mct::decode_rev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps) {
 	size_t i = 0;
+	int32_t *GRK_RESTRICT chan0 = tile->comps[0].buf->ptr();
+	int32_t *GRK_RESTRICT chan1 = tile->comps[1].buf->ptr();
+	int32_t *GRK_RESTRICT chan2 = tile->comps[2].buf->ptr();
+
+	int32_t _min[3];
+    int32_t _max[3];
+	int32_t shift[3];
+    for (uint32_t compno =0; compno < 3; ++compno) {
+    	auto img_comp = image->comps + compno;
+		if (img_comp->sgnd) {
+			_min[compno] = -(1 << (img_comp->prec - 1));
+			_max[compno] = (1 << (img_comp->prec - 1)) - 1;
+		} else {
+			_min[compno] = 0;
+			_max[compno] = (1 << img_comp->prec) - 1;
+		}
+    	auto tccp = tccps + compno;
+    	shift[compno] = tccp->m_dc_level_shift;
+    }
+
+	uint64_t n = tile->comps->buf->strided_area();
+
 	if (CPUArch::SSE2() || CPUArch::AVX2() ) {
 #if (defined(__SSE2__) || defined(__AVX2__))
 	size_t num_threads = ThreadPool::get()->num_threads();
@@ -247,8 +268,9 @@ void mct::encode_irrev( int* GRK_RESTRICT chan0,
 /* <summary> */
 /* Inverse irreversible MCT. */
 /* </summary> */
-void mct::decode_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps,uint64_t n) {
+void mct::decode_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps) {
 	uint64_t i = 0;
+	uint64_t n = tile->comps->buf->strided_area();
 
 	float *GRK_RESTRICT c0 = (float*) tile->comps[0].buf->ptr();
 	float *GRK_RESTRICT c1 = (float*) tile->comps[1].buf->ptr();

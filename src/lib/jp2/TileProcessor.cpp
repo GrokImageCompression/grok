@@ -1028,13 +1028,13 @@ bool TileProcessor::mct_decode() {
 
 	if (!need_mct_decode(0))
 		return true;
-	uint64_t samples = tile->comps->buf->strided_area();
 	if (m_tcp->mct == 2) {
 		auto data = new uint8_t*[tile->numcomps];
 		for (uint32_t i = 0; i < tile->numcomps; ++i) {
 			auto tile_comp = tile->comps + i;
 			data[i] = (uint8_t*) tile_comp->buf->ptr();
 		}
+		uint64_t samples = tile->comps->buf->strided_area();
 		bool rc = mct::decode_custom((uint8_t*) m_tcp->m_mct_decoding_matrix,
 									samples,
 									data,
@@ -1044,11 +1044,9 @@ bool TileProcessor::mct_decode() {
 		return rc;
 	} else {
 		if (m_tcp->tccps->qmfbid == 1) {
-			mct::decode_rev(tile->comps[0].buf->ptr(),
-					tile->comps[1].buf->ptr(),
-					tile->comps[2].buf->ptr(), samples);
+			mct::decode_rev(tile,image,m_tcp->tccps);
 		} else {
-			mct::decode_irrev(tile,	image,m_tcp->tccps, samples);
+			mct::decode_irrev(tile,	image,m_tcp->tccps);
 		}
 	}
 
@@ -1078,8 +1076,9 @@ bool TileProcessor::dc_level_shift_decode() {
 		if (tccp->qmfbid == 1) {
 			for (uint32_t j = 0; j < y1; ++j) {
 				for (uint32_t i = 0; i < x1; ++i) {
-					*current_ptr++ = std::clamp<int32_t>(
+					*current_ptr = std::clamp<int32_t>(
 							*current_ptr + tccp->m_dc_level_shift, min, max);
+					current_ptr++;
 				}
 				current_ptr += stride_diff;
 			}
@@ -1090,9 +1089,10 @@ bool TileProcessor::dc_level_shift_decode() {
 				for (uint32_t j = 0; j < y1; ++j) {
 					for (uint32_t i = 0; i < x1; ++i) {
 						float value = *((float*) current_ptr);
-						*current_ptr++ = std::clamp<int32_t>(
+						*current_ptr = std::clamp<int32_t>(
 								(int32_t) grk_lrintf(value)
 										+ tccp->m_dc_level_shift, min, max);
+						current_ptr++;
 					}
 					current_ptr += stride_diff;
 				}
