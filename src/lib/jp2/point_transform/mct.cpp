@@ -406,25 +406,22 @@ bool mct::decode_custom(uint8_t *pDecodingData, uint64_t n, uint8_t **pData,
 
 	GRK_UNUSED(isSigned);
 
-	auto CurrentData = (float*) grk_malloc(2 * pNbComp * sizeof(float));
-	if (!CurrentData)
-		return false;
-
-	auto CurrentResult = CurrentData + pNbComp;
+	auto pixel = new float[2 * pNbComp];
+	auto CurrentResult = pixel + pNbComp;
 
 	for (uint64_t i = 0; i < n; ++i) {
 		auto Mct = (float*) pDecodingData;
 		for (uint32_t j = 0; j < pNbComp; ++j) {
-		 CurrentData[j] = (float) (*(Data[j]));
+		 pixel[j] = (float) (*(Data[j]));
 		}
 		for (uint32_t j = 0; j < pNbComp; ++j) {
-		 CurrentResult[j] = 0;
+			CurrentResult[j] = 0;
 			for (uint32_t k = 0; k < pNbComp; ++k)
-			 CurrentResult[j] += *(Mct++) * CurrentData[k];
+			 CurrentResult[j] += *(Mct++) * pixel[k];
 			*(Data[j]++) = (float) (CurrentResult[j]);
 		}
 	}
-	grk_free(CurrentData);
+	delete[] pixel;
 	return true;
 }
 

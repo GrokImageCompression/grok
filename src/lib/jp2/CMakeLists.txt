@@ -45,7 +45,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/util
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers
-  ${CMAKE_CURRENT_SOURCE_DIR}/mct
+  ${CMAKE_CURRENT_SOURCE_DIR}/point_transform
   ${CMAKE_CURRENT_SOURCE_DIR}/t2
 )
 
@@ -121,8 +121,8 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/markers.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/markers.cpp
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/mct/mct.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/mct/mct.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/point_transform/mct.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/point_transform/mct.h
 
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/T2.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/T2.h  
