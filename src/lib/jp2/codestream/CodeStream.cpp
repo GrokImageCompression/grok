@@ -871,7 +871,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 					GRK_ERROR("Stream too short");
 					goto fail;
 				}
-				current_marker = J2K_MS_SOD; //We force current marker to equal SOD
+				break;
 			} else {
 				while (true) {
 					// read next marker id
