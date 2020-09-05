@@ -207,28 +207,22 @@ bool T1Part1::postDecode(decodeBlockInfo *block) {
 
 	auto src = t1->data;
 	uint32_t roishift = block->roishift;
+
+	//1. ROI
 	if (roishift) {
-		if (roishift >= 31) {
-			for (uint16_t j = 0; j < cblk_h; ++j) {
-				for (uint16_t i = 0; i < cblk_w; ++i)
-					src[i] = 0;
-				src += cblk_w;
-			}
-		} else {
-			int32_t thresh = 1 << roishift;
-			for (uint32_t j = 0; j < cblk_h; ++j) {
-				for (uint32_t i = 0; i < cblk_w; ++i) {
-					int32_t val = src[i];
-					int32_t mag = abs(val);
-					if (mag >= thresh) {
-						mag >>= roishift;
-						src[i] = val < 0 ? -mag : mag;
-					}
+		auto src_roi = src;
+		int32_t thresh = 1 << roishift;
+		for (uint32_t j = 0; j < cblk_h; ++j) {
+			for (uint32_t i = 0; i < cblk_w; ++i) {
+				int32_t val = src_roi[i];
+				int32_t mag = abs(val);
+				if (mag >= thresh) {
+					mag >>= roishift;
+					src_roi[i] = val < 0 ? -mag : mag;
 				}
-				src += cblk_w;
 			}
+			src_roi += cblk_w;
 		}
-		src = t1->data;
 	}
 
 	if (!block->tilec->whole_tile_decoding) {
@@ -305,6 +299,8 @@ bool T1Part1::postDecode(decodeBlockInfo *block) {
 		}
 
 	}
+
+	// note: if no MCT, then we could do dc shift and clamp here
 
 	return true;
 }

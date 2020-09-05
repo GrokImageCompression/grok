@@ -32,7 +32,7 @@ using namespace std;
 
 namespace grk {
 
-TileProcessor::TileProcessor(CodeStream *codeStream) :
+TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream) :
 				 m_tile_index(0),
 				 m_poc_tile_part_index(0),
 				 m_tile_part_index(0),
@@ -46,6 +46,7 @@ TileProcessor::TileProcessor(CodeStream *codeStream) :
 				plt_markers(nullptr),
 				m_cp(&codeStream->m_cp),
 				m_resno_decoded(nullptr),
+				m_stream(stream),
 				tp_pos(0),
 				m_tcp(nullptr),
 				m_corrupt_packet(false)
@@ -754,7 +755,7 @@ bool TileProcessor::init_tile(grk_image *output_image,
 	return true;
 }
 
-bool TileProcessor::do_encode(BufferedStream *stream){
+bool TileProcessor::do_encode(void){
 	uint32_t state = grk_plugin_get_debug_state();
 	if (state & GRK_PLUGIN_STATE_DEBUG)
 		set_context_stream(this);
@@ -782,7 +783,7 @@ bool TileProcessor::do_encode(BufferedStream *stream){
 		t1_encode();
 	}
 
-	if (!pre_compress_first_tile_part(stream)) {
+	if (!pre_compress_first_tile_part()) {
 		GRK_ERROR("Cannot compress tile");
 		return false;
 	}
@@ -790,14 +791,14 @@ bool TileProcessor::do_encode(BufferedStream *stream){
 	return true;
 }
 
-bool TileProcessor::pre_compress_first_tile_part(BufferedStream *stream) {
+bool TileProcessor::pre_compress_first_tile_part(void) {
 	if (m_tile_part_index == 0) {
 
 		// 1. create PLT marker if required
 		delete plt_markers;
 		if (m_cp->m_coding_params.m_enc.writePLT){
 			if (!needs_rate_control())
-				plt_markers = new PacketLengthMarkers(stream);
+				plt_markers = new PacketLengthMarkers(m_stream);
 			else
 				GRK_WARN("PLT marker generation disabled due to rate control.");
 		}
@@ -810,8 +811,7 @@ bool TileProcessor::pre_compress_first_tile_part(BufferedStream *stream) {
 	return true;
 }
 
-bool TileProcessor::compress_tile_part(BufferedStream *stream,
-		uint32_t *tile_bytes_written) {
+bool TileProcessor::compress_tile_part(	uint32_t *tile_bytes_written) {
 
 	//4 write PLT for first tile part
 	if (m_tile_part_index == 0 && plt_markers){
@@ -820,12 +820,12 @@ bool TileProcessor::compress_tile_part(BufferedStream *stream,
 	}
 
 	//3 write SOD
-	if (!stream->write_short(J2K_MS_SOD))
+	if (!m_stream->write_short(J2K_MS_SOD))
 		return false;
 
 	*tile_bytes_written += 2;
 
-	return t2_encode(stream, tile_bytes_written);
+	return t2_encode(tile_bytes_written);
 }
 
 /** Returns whether a tile component should be fully decoded,
@@ -1155,7 +1155,7 @@ void TileProcessor::t1_encode() {
 			needs_rate_control());
 }
 
-bool TileProcessor::t2_encode(BufferedStream *stream, uint32_t *all_packet_bytes_written) {
+bool TileProcessor::t2_encode(uint32_t *all_packet_bytes_written) {
 
 	auto l_t2 = new T2Encode(this);
 #ifdef DEBUG_LOSSLESS_T2
@@ -1210,7 +1210,7 @@ bool TileProcessor::t2_encode(BufferedStream *stream, uint32_t *all_packet_bytes
 	}
 #endif
 
-	if (!l_t2->encode_packets(m_tile_index, m_tcp->numlayers, stream,
+	if (!l_t2->encode_packets(m_tile_index, m_tcp->numlayers, m_stream,
 			all_packet_bytes_written, m_poc_tile_part_index, tp_pos, pino)) {
 		delete l_t2;
 		return false;

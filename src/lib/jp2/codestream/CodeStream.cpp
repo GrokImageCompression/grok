@@ -1164,7 +1164,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, TileProcessor *tileProc
 	// read header and perform T2
 	for (uint32_t tileno = 0; tileno < num_tiles_to_decode; tileno++) {
 		//1. read header
-		auto processor = new TileProcessor(codeStream);
+		auto processor = new TileProcessor(codeStream,stream);
 		if (!j2k_read_tile_header(codeStream,processor, &go_on,stream))
 			return false;
 
@@ -1311,7 +1311,7 @@ static bool j2k_decompress_tile(CodeStream *codeStream,TileProcessor *tileProces
 	    }
 	}
 
-	tileProcessor = new TileProcessor(codeStream);
+	tileProcessor = new TileProcessor(codeStream,stream);
 	if (!j2k_read_tile_header(codeStream, tileProcessor, &go_on, stream))
 		return false;
 
@@ -1458,8 +1458,7 @@ static bool j2k_write_tile_part(CodeStream *codeStream,	TileProcessor *tileProce
 	}
 
 	// 3. compress tile part
-	if (!tileProcessor->compress_tile_part(stream,
-			&tile_part_bytes_written)) {
+	if (!tileProcessor->compress_tile_part(&tile_part_bytes_written)) {
 		GRK_ERROR("Cannot compress tile");
 		return false;
 	}
@@ -3180,7 +3179,7 @@ bool CodeStream::compress(grk_plugin_tile* tile,	BufferedStream *stream){
 								  stream,
 								  &success] {
 						if (success) {
-							auto tileProcessor = new TileProcessor(this);
+							auto tileProcessor = new TileProcessor(this,stream);
 
 							tileProcessor->m_tile_index = tile_ind;
 							tileProcessor->current_plugin_tile = tile;
@@ -3188,7 +3187,7 @@ bool CodeStream::compress(grk_plugin_tile* tile,	BufferedStream *stream){
 								success = false;
 							else {
 								procs[tile_ind] = tileProcessor;
-								if (!tileProcessor->do_encode(stream))
+								if (!tileProcessor->do_encode())
 									success = false;
 							}
 						}
@@ -3198,7 +3197,7 @@ bool CodeStream::compress(grk_plugin_tile* tile,	BufferedStream *stream){
 		}
 	} else {
 		for (uint16_t i = 0; i < nb_tiles; ++i) {
-			auto tileProcessor = new TileProcessor(this);
+			auto tileProcessor = new TileProcessor(this,stream);
 
 			tileProcessor->m_tile_index = i;
 			tileProcessor->current_plugin_tile = tile;
@@ -3206,7 +3205,7 @@ bool CodeStream::compress(grk_plugin_tile* tile,	BufferedStream *stream){
 				delete tileProcessor;
 				goto cleanup;
 			}
-			if (!tileProcessor->do_encode(stream)){
+			if (!tileProcessor->do_encode()){
 				delete tileProcessor;
 				goto cleanup;
 			}
@@ -3245,7 +3244,7 @@ bool CodeStream::compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t un
 		return false;
 	bool rc = false;
 
-	m_tileProcessor = new TileProcessor(this);
+	m_tileProcessor = new TileProcessor(this,stream);
 	auto tileProcessor = m_tileProcessor;
 	tileProcessor->m_tile_index = tile_index;
 
@@ -3259,7 +3258,7 @@ bool CodeStream::compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t un
 		GRK_ERROR("Size mismatch between tile data and sent data.");
 		goto cleanup;
 	}
-	if (!tileProcessor->do_encode(stream))
+	if (!tileProcessor->do_encode())
 		goto cleanup;
 	if (!j2k_post_write_tile(this, tileProcessor, stream)) {
 		GRK_ERROR("Error while j2k_post_write_tile with tile index = %u",

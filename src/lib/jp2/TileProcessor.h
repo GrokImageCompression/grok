@@ -209,7 +209,7 @@ private:
  Tile coder/decoder
  */
 struct TileProcessor {
-	explicit TileProcessor(CodeStream *codeStream) ;
+	explicit TileProcessor(CodeStream *codeStream, BufferedStream *stream) ;
 	~TileProcessor();
 
 	/**
@@ -226,20 +226,18 @@ struct TileProcessor {
 
 	/**
 	 * Compress a tile from a raw image into stream.
-	 * @param	stream		stream
 	 * @param	tile_bytes_written	number of bytes written to stream
 	 * @return  true if the coding is successful.
 	 */
-	bool compress_tile_part(BufferedStream *stream,
-			uint32_t *tile_bytes_written);
+	bool compress_tile_part(uint32_t *tile_bytes_written);
 
-	bool pre_compress_first_tile_part(BufferedStream *stream);
+	bool pre_compress_first_tile_part(void);
 
 	/**
 	 * Compress a tile from a raw image into stream.
 	 * @return  true if the coding is successful.
 	 */
-	bool do_encode(BufferedStream *stream);
+	bool do_encode(void);
 
 
 	/**
@@ -301,6 +299,7 @@ struct TileProcessor {
 	PacketTracker m_packetTracker;
 
 	uint32_t* m_resno_decoded;
+	BufferedStream *m_stream;
 private:
 
 	/** position of the tile part flag in progression order*/
@@ -327,8 +326,7 @@ private:
 
 	 void t1_encode();
 
-	 bool t2_encode(BufferedStream *stream,
-			uint32_t *packet_bytes_written);
+	 bool t2_encode(uint32_t *packet_bytes_written);
 
 	 bool rate_allocate(void);
 

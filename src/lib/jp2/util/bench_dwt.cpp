@@ -226,7 +226,7 @@ int main(int argc, char** argv)
 		output_image_comp.stride = size;
 		output_image_comp.h = size;
 
-	    std::unique_ptr<TileProcessor> tileProcessor(new TileProcessor(&codeStream));
+	    std::unique_ptr<TileProcessor> tileProcessor(new TileProcessor(&codeStream,nullptr));
 	    grk_initialize(nullptr,k);
 	    init_tilec(&tilec, offset_x, offset_y,
 				   offset_x + size, offset_y + size,
