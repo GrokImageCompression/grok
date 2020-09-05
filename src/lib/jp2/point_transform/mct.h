@@ -102,6 +102,9 @@ public:
 	 */
 	static void calculate_norms(double *pNorms, uint32_t nb_comps, float *pMatrix);
 
+	static void decode_rev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno);
+	static void decode_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno) ;
+
 };
 
 /* ----------------------------------------------------------------------- */

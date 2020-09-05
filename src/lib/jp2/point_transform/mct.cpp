@@ -104,7 +104,71 @@ void mct::encode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 	}
 }
 
-////////////////////////////////////////////////////////////////////////////////
+
+
+void mct::decode_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno) {
+	size_t i = 0;
+	float *GRK_RESTRICT c0 = (float*) tile->comps[compno].buf->ptr();
+	int32_t *c0_i = (int32_t*)c0;
+
+	int32_t _min;
+    int32_t _max;
+	int32_t shift;
+	auto img_comp = image->comps + compno;
+	if (img_comp->sgnd) {
+		_min= -(1 << (img_comp->prec - 1));
+		_max = (1 << (img_comp->prec - 1)) - 1;
+	} else {
+		_min = 0;
+		_max = (1 << img_comp->prec) - 1;
+	}
+	auto tccp = tccps + compno;
+	shift = tccp->m_dc_level_shift;
+
+	uint64_t n = (tile->comps+compno)->buf->strided_area();
+
+	if (CPUArch::SSE2() || CPUArch::AVX2() ) {
+#if (defined(__SSE2__) || defined(__AVX2__))
+	size_t num_threads = ThreadPool::get()->num_threads();
+    size_t chunkSize = n / num_threads;
+    //ensure it is divisible by VREG_INT_COUNT
+    chunkSize = (chunkSize/VREG_INT_COUNT) * VREG_INT_COUNT;
+	if (chunkSize > VREG_INT_COUNT) {
+	    std::vector< std::future<int> > results;
+	    for(uint64_t threadid = 0; threadid < num_threads; ++threadid) {
+	    	uint64_t index = threadid;
+	    	auto decoder = [index, chunkSize,c0, shift, _min, _max,n](){
+	    		uint64_t begin = (uint64_t)index * chunkSize;
+				const VREG  vdc = LOAD_CST(shift);
+				const VREG  vmin = LOAD_CST(_min);
+				const VREG  vmax = LOAD_CST(_max);
+				for (auto j = begin; j < begin+chunkSize; j+=VREG_INT_COUNT ){
+					VREGF r = LOADF(c0 + j);
+					STORE(c0 + j, VCLAMP(ADD(_mm256_cvtps_epi32(r),vdc), vmin, vmax));
+				}
+				return 0;
+	    	};
+
+	    	if (num_threads > 1)
+	    		results.emplace_back(ThreadPool::get()->enqueue(decoder));
+	    	else
+	    		decoder();
+
+	    }
+	    for(auto &result: results){
+	        result.get();
+	    }
+		i = chunkSize * num_threads;
+	}
+#endif
+	}
+	for (; i < n; ++i) {
+		c0_i[i] = std::clamp<int32_t>((int32_t)grk_lrintf(c0[i]) + shift, _min, _max);
+	}
+}
+
+
+
 
 
 /* <summary> */
@@ -206,6 +270,66 @@ void mct::decode_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParam
 }
 
 
+void mct::decode_rev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno) {
+	size_t i = 0;
+	int32_t *GRK_RESTRICT c0 = tile->comps[compno].buf->ptr();
+
+	int32_t _min;
+    int32_t _max;
+	int32_t shift;
+	auto img_comp = image->comps + compno;
+	if (img_comp->sgnd) {
+		_min= -(1 << (img_comp->prec - 1));
+		_max = (1 << (img_comp->prec - 1)) - 1;
+	} else {
+		_min = 0;
+		_max = (1 << img_comp->prec) - 1;
+	}
+	auto tccp = tccps + compno;
+	shift = tccp->m_dc_level_shift;
+
+	uint64_t n = (tile->comps+compno)->buf->strided_area();
+
+	if (CPUArch::SSE2() || CPUArch::AVX2() ) {
+#if (defined(__SSE2__) || defined(__AVX2__))
+	size_t num_threads = ThreadPool::get()->num_threads();
+    size_t chunkSize = n / num_threads;
+    //ensure it is divisible by VREG_INT_COUNT
+    chunkSize = (chunkSize/VREG_INT_COUNT) * VREG_INT_COUNT;
+	if (chunkSize > VREG_INT_COUNT) {
+	    std::vector< std::future<int> > results;
+	    for(uint64_t threadid = 0; threadid < num_threads; ++threadid) {
+	    	uint64_t index = threadid;
+	    	auto decoder = [index, chunkSize,c0, shift, _min, _max,n](){
+	    		uint64_t begin = (uint64_t)index * chunkSize;
+				const VREG  vdc = LOAD_CST(shift);
+				const VREG  vmin = LOAD_CST(_min);
+				const VREG  vmax = LOAD_CST(_max);
+				for (auto j = begin; j < begin+chunkSize; j+=VREG_INT_COUNT ){
+					VREG r = LOAD(c0 + j);
+					assert(j < n);
+					STORE(c0 + j, VCLAMP(ADD(r,vdc), vmin, vmax));
+				}
+				return 0;
+	    	};
+
+	    	if (num_threads > 1)
+	    		results.emplace_back(ThreadPool::get()->enqueue(decoder));
+	    	else
+	    		decoder();
+
+	    }
+	    for(auto &result: results){
+	        result.get();
+	    }
+		i = chunkSize * num_threads;
+	}
+#endif
+	}
+	for (; i < n; ++i) {
+		c0[i] = std::clamp<int32_t>(c0[i] + shift, _min, _max);
+	}
+}
 
 /* <summary> */
 /* Inverse reversible MCT. */

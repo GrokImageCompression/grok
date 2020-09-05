@@ -1053,51 +1053,14 @@ bool TileProcessor::mct_decode() {
 	return true;
 }
 
-// for custom MCT or non-MCT channels, we need to
-// cast, do level shift, and clamp
 bool TileProcessor::dc_level_shift_decode() {
 	for (uint32_t compno = 0; compno < tile->numcomps; compno++) {
 		if (!need_mct_decode(compno) || m_tcp->mct == 2 ) {
-			auto tile_comp = tile->comps + compno;
 			auto tccp = m_tcp->tccps + compno;
-			auto img_comp = image->comps + compno;
-
-			uint32_t stride_diff = tile_comp->buf->stride() - (uint32_t)tile_comp->buf->bounds().width();
-			auto current_ptr = tile_comp->buf->ptr();
-
-			uint32_t x1 = (uint32_t) tile_comp->buf->bounds().width();
-			uint32_t y1 = (uint32_t) tile_comp->buf->bounds().height();
-
-			int32_t min, max;
-			if (img_comp->sgnd) {
-				min = -(1 << (img_comp->prec - 1));
-				max = (1 << (img_comp->prec - 1)) - 1;
-			} else {
-				min = 0;
-				max = (1 << img_comp->prec) - 1;
-			}
-
-			if (tccp->qmfbid == 1) {
-				for (uint32_t j = 0; j < y1; ++j) {
-					for (uint32_t i = 0; i < x1; ++i) {
-						*current_ptr = std::clamp<int32_t>(
-								*current_ptr + tccp->m_dc_level_shift, min, max);
-						current_ptr++;
-					}
-					current_ptr += stride_diff;
-				}
-			} else {
-				for (uint32_t j = 0; j < y1; ++j) {
-					for (uint32_t i = 0; i < x1; ++i) {
-						float value = *((float*) current_ptr);
-						*current_ptr = std::clamp<int32_t>(
-								(int32_t) grk_lrintf(value)
-										+ tccp->m_dc_level_shift, min, max);
-						current_ptr++;
-					}
-					current_ptr += stride_diff;
-				}
-			}
+			if (tccp->qmfbid == 1)
+				mct::decode_rev(tile,image,m_tcp->tccps,compno);
+			else
+				mct::decode_irrev(tile,image,m_tcp->tccps,compno);
 		}
 	}
 	return true;
