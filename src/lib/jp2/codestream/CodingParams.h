@@ -279,7 +279,7 @@ struct DecoderState {
 					m_end_tile_y_index(0),
 					m_last_sot_read_pos(0),
 					m_last_tile_part(false),
-					ready_to_decode_tile_part_data(false),
+					last_tile_part_was_read(false),
 					m_skip_tile_data(false)
 	{}
 
@@ -311,7 +311,7 @@ struct DecoderState {
 
 	// Indicates that the last tile part header has been read, so that
 	// the tile's data can now be decoded
-	bool ready_to_decode_tile_part_data;
+	bool last_tile_part_was_read;
 
 	bool m_skip_tile_data;
 

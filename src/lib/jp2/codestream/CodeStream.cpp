@@ -811,7 +811,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 
 	/* Seek in code stream for SOT marker specifying desired tile index.
 	 * If we don't find it, we stop when we read the EOC or run out of data */
-	while ((!decoder->ready_to_decode_tile_part_data)
+	while ((!decoder->last_tile_part_was_read)
 			&& (current_marker != J2K_MS_EOC)) {
 
 		/* read until SOD is detected */
@@ -903,7 +903,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 		if (!decoder->m_skip_tile_data) {
 			if (!j2k_read_sod(codeStream, tileProcessor, stream))
 				return false;
-			if (decoder->ready_to_decode_tile_part_data
+			if (decoder->last_tile_part_was_read
 					&& !codeStream->m_nb_tile_parts_correction_checked) {
 				/* Issue 254 */
 				bool correction_needed;
@@ -919,7 +919,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 					uint32_t nb_tiles = codeStream->m_cp.t_grid_width
 							* codeStream->m_cp.t_grid_height;
 
-					decoder->ready_to_decode_tile_part_data = false;
+					decoder->last_tile_part_was_read = false;
 					codeStream->m_nb_tile_parts_correction = true;
 					/* correct tiles */
 					for (uint32_t tile_no = 0U; tile_no < nb_tiles; ++tile_no) {
@@ -932,14 +932,14 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 					GRK_WARN("Non conformant code stream TPsot==TNsot.");
 				}
 			}
-			if (!decoder->ready_to_decode_tile_part_data) {
+			if (!decoder->last_tile_part_was_read) {
 				if (!codeStream->read_marker(stream, &current_marker))
 					goto fail;
 			}
 		} else {
 			/* Indicate we will try to read a new tile-part header*/
 			decoder->m_skip_tile_data = false;
-			decoder->ready_to_decode_tile_part_data = false;
+			decoder->last_tile_part_was_read = false;
 			decoder->m_state = J2K_DEC_STATE_TPH_SOT;
 			if (!codeStream->read_marker(stream, &current_marker))
 				goto fail;
@@ -1017,7 +1017,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 
 	//if we are not ready to decompress tile part data,
     // then skip tiles with no tile data i.e. no SOD marker
-	if (!decoder->ready_to_decode_tile_part_data) {
+	if (!decoder->last_tile_part_was_read) {
 		tcp = codeStream->m_cp.tcps + tileProcessor->m_tile_index;
 		if (!tcp->m_tile_data){
 			*can_decode_tile_data = false;

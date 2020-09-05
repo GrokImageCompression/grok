@@ -206,7 +206,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	/* If we know the number of tile part header we will check whether we have read the last one*/
 	if (tcp->m_nb_tile_parts && (tcp->m_nb_tile_parts == (current_part + 1))) {
 		/* Process the last tile-part header*/
-		codeStream->m_decoder.ready_to_decode_tile_part_data =	true;
+		codeStream->m_decoder.last_tile_part_was_read =	true;
 	}
 
 	if (!codeStream->m_decoder.m_last_tile_part) {
