@@ -203,12 +203,10 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 		tcp->m_nb_tile_parts = num_parts;
 	}
 
-	/* If know the number of tile part header we will check if we didn't read the last*/
-	if (tcp->m_nb_tile_parts) {
-		if (tcp->m_nb_tile_parts == (current_part + 1)) {
-			codeStream->m_decoder.ready_to_decode_tile_part_data =
-					true; /* Process the last tile-part header*/
-		}
+	/* If we know the number of tile part header we will check whether we have read the last one*/
+	if (tcp->m_nb_tile_parts && (tcp->m_nb_tile_parts == (current_part + 1))) {
+		/* Process the last tile-part header*/
+		codeStream->m_decoder.ready_to_decode_tile_part_data =	true;
 	}
 
 	if (!codeStream->m_decoder.m_last_tile_part) {
@@ -226,7 +224,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	/* Check if the current tile is outside the area we want
 	 *  decompress or not corresponding to the tile index*/
 	if (codeStream->m_tile_ind_to_dec == -1) {
-		codeStream->m_decoder.m_skip_data =
+		codeStream->m_decoder.m_skip_tile_data =
 				(tile_x < codeStream->m_decoder.m_start_tile_x_index)
 						|| (tile_x
 								>= codeStream->m_decoder.m_end_tile_x_index)
@@ -235,7 +233,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 						|| (tile_y
 								>= codeStream->m_decoder.m_end_tile_y_index);
 	} else {
-		codeStream->m_decoder.m_skip_data = (tile_number
+		codeStream->m_decoder.m_skip_tile_data = (tile_number
 				!= (uint32_t) codeStream->m_tile_ind_to_dec);
 	}
 

@@ -865,8 +865,8 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 					decoder->m_last_sot_read_pos = sot_pos;
 			}
 
-			if (decoder->m_skip_data) {
-				// Skip the rest of the tile part header
+			if (decoder->m_skip_tile_data) {
+				// Skip the rest of the tile part
 				if (!stream->skip(tileProcessor->tile_part_data_length)) {
 					GRK_ERROR("Stream too short");
 					goto fail;
@@ -900,7 +900,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 			break;
 
 		/* If we didn't skip data before, we need to read the SOD marker*/
-		if (!decoder->m_skip_data) {
+		if (!decoder->m_skip_tile_data) {
 			if (!j2k_read_sod(codeStream, tileProcessor, stream))
 				return false;
 			if (decoder->ready_to_decode_tile_part_data
@@ -938,7 +938,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 			}
 		} else {
 			/* Indicate we will try to read a new tile-part header*/
-			decoder->m_skip_data = false;
+			decoder->m_skip_tile_data = false;
 			decoder->ready_to_decode_tile_part_data = false;
 			decoder->m_state = J2K_DEC_STATE_TPH_SOT;
 			if (!codeStream->read_marker(stream, &current_marker))
@@ -3379,7 +3379,6 @@ bool CodeStream::set_decompress_area(grk_image *output_image,
 				cp->t_height);
 		output_image->y1 = end_y;
 	}
-	decoder->m_discard_tiles = true;
 	whole_tile_decoding = false;
 	if (!update_image_dimensions(output_image,
 			cp->m_coding_params.m_dec.m_reduce))
