@@ -198,19 +198,6 @@ bool T1Part1::postDecode(decodeBlockInfo *block) {
 	auto cblk = block->cblk;
 	if (cblk->seg_buffers.empty())
 		return true;
-
-	cblk_dec cblkexp;
-	memset(&cblkexp, 0, sizeof(cblk_dec));
-	cblkexp.x0 = block->x;
-	cblkexp.y0 = block->y;
-	cblkexp.x1 = block->x + cblk->width();
-	cblkexp.y1 = block->y + cblk->height();
-    return post_decode(t1,&cblkexp,	block);
-}
-
-bool T1Part1::post_decode(t1_info *t1,
-						cblk_dec *cblk,
-						decodeBlockInfo *block) {
 	uint32_t qmfbid = block->qmfbid;
 	float stepsize_over_two = block->stepsize/2;
 	auto tilec_data = block->tiledp;
@@ -320,8 +307,6 @@ bool T1Part1::post_decode(t1_info *t1,
 	}
 
 	return true;
-
-
 }
 
 }
