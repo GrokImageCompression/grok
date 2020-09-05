@@ -203,9 +203,9 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 		tcp->m_nb_tile_parts = num_parts;
 	}
 
-	/* If we know the number of tile part header we will check whether we have read the last one*/
+	/* If we know the number of tile part header we check whether we have read the last one*/
 	if (tcp->m_nb_tile_parts && (tcp->m_nb_tile_parts == (current_part + 1))) {
-		/* Process the last tile-part header*/
+		/* indicate that we are now ready to read the tile data */
 		codeStream->m_decoder.last_tile_part_was_read =	true;
 	}
 
@@ -214,8 +214,6 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 		tileProcessor->tile_part_data_length = tot_len
 				- sot_marker_segment_len;
 	} else {
-		/* FIXME: need to be computed from the number of bytes
-		 *  remaining in the code stream */
 		tileProcessor->tile_part_data_length = 0;
 	}
 

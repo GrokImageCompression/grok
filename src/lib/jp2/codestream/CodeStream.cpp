@@ -822,6 +822,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 				GRK_WARN("Missing EOC marker");
 				break;
 			}
+			//!! get size of marker - marker itself has already been read
 			uint16_t marker_size;
 			if (!codeStream->read_marker(stream, &marker_size))
 				goto fail;
@@ -933,6 +934,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 				}
 			}
 			if (!decoder->last_tile_part_was_read) {
+				// read next marker id
 				if (!codeStream->read_marker(stream, &current_marker))
 					goto fail;
 			}
