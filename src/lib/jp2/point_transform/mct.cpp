@@ -127,8 +127,8 @@ void mct::decode_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParam
 
 	uint64_t n = (tile->comps+compno)->buf->strided_area();
 
-	if (CPUArch::SSE2() || CPUArch::AVX2() ) {
-#if (defined(__SSE2__) || defined(__AVX2__))
+	if (CPUArch::AVX2() ) {
+#if defined(__AVX2__)
 	size_t num_threads = ThreadPool::get()->num_threads();
     size_t chunkSize = n / num_threads;
     //ensure it is divisible by VREG_INT_COUNT
