@@ -347,7 +347,7 @@ private:
 			bool final);
 public:
 	 bool m_corrupt_packet;
-
+	 bool m_first_sot_marker_read;
 
 };
 

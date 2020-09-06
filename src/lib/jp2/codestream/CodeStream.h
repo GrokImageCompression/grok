@@ -219,6 +219,7 @@ struct CodeStream : public ICodeStream {
 	TileCodingParams* get_current_decode_tcp(TileProcessor *tileProcessor);
 
 	bool read_marker(BufferedStream *stream, uint16_t *val);
+	bool read_short(BufferedStream *stream, uint16_t *val);
 
 	bool process_marker(const grk_dec_memory_marker_handler* marker_handler,
 						uint16_t current_marker, uint16_t marker_size,
@@ -294,7 +295,7 @@ public:
 	grk_plugin_tile *current_plugin_tile;
 	/** TNsot correction : see issue 254 **/
 	bool m_nb_tile_parts_correction_checked;
-	bool m_nb_tile_parts_correction;
+	uint32_t m_nb_tile_parts_correction;
 
 };
 

@@ -49,7 +49,8 @@ TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream) :
 				m_stream(stream),
 				tp_pos(0),
 				m_tcp(nullptr),
-				m_corrupt_packet(false)
+				m_corrupt_packet(false),
+				m_first_sot_marker_read(false)
 {
 
 	tile = (grk_tile*) grk_calloc(1, sizeof(grk_tile));

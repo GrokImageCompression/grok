@@ -28,8 +28,8 @@ struct TileProcessor;
 class SOTMarker {
 public:
 
-	SOTMarker(BufferedStream *stream);
-	SOTMarker(void);
+	SOTMarker(TileProcessor *tileProcessor,BufferedStream *stream);
+	SOTMarker(TileProcessor *tileProcessor);
 
 	/**
 	 * Writes the SOT marker (Start of tile-part)
@@ -71,6 +71,7 @@ public:
 	 		uint16_t *tile_no, uint32_t *p_tot_len, uint8_t *p_current_part,
 	 		uint8_t *p_num_parts);
 private:
+	 TileProcessor *m_tileProcessor;
 	 BufferedStream *m_stream;
 	 uint64_t m_psot_location;
 

@@ -23,11 +23,12 @@
 
 namespace grk {
 
-SOTMarker::SOTMarker(BufferedStream *stream) : m_stream(stream),
-		m_psot_location(0) {
+SOTMarker::SOTMarker(TileProcessor *processor, BufferedStream *stream) : m_tileProcessor(processor),
+																		m_stream(stream),
+																		m_psot_location(0) {
 }
-SOTMarker::SOTMarker(void) : m_stream(nullptr),
-		m_psot_location(0){
+SOTMarker::SOTMarker(TileProcessor *processor) : SOTMarker(processor,nullptr)
+{
 }
 
 bool SOTMarker::write_psot(uint32_t tile_part_bytes_written) {
@@ -83,20 +84,25 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 		GRK_ERROR("Error reading SOT marker");
 		return false;
 	}
-	/* Isot */
-	uint32_t temp;
-	grk_read<uint32_t>(p_header_data, &temp, 2);
+	uint32_t index,len,tile_index,num_tile_parts;
+	grk_read<uint32_t>(p_header_data, &index, 2);
 	p_header_data += 2;
-	*tile_no = (uint16_t) temp;
-	/* Psot */
-	grk_read<uint32_t>(p_header_data, p_tot_len, 4);
+	grk_read<uint32_t>(p_header_data, &len, 4);
 	p_header_data += 4;
-	/* TPsot */
-	grk_read<uint32_t>(p_header_data++, &temp, 1);
-	*p_current_part = (uint8_t) temp;
-	/* TNsot */
-	grk_read<uint32_t>(p_header_data++, &temp, 1);
-	*p_num_parts = (uint8_t) temp;
+	grk_read<uint32_t>(p_header_data++, &tile_index, 1);
+	grk_read<uint32_t>(p_header_data++, &num_tile_parts, 1);
+
+
+	if (m_tileProcessor->m_first_sot_marker_read &&
+			(m_tileProcessor->m_tile_index != index)){
+		//throw FoundNextTileSOTMarkerException();
+	}
+
+	m_tileProcessor->m_first_sot_marker_read = true;
+	*tile_no = (uint16_t) index;
+	*p_tot_len = len;
+	*p_current_part = (uint8_t) tile_index;
+	*p_num_parts = (uint8_t) num_tile_parts;
 
 	return true;
 }

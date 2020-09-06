@@ -2866,7 +2866,7 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
 	for (i = 0; i < image->numcomps; i++) {
 		comps[i].bpcc = (uint8_t)(image->comps[i].prec - 1);
 		if (image->comps[i].sgnd)
-			comps[i].bpcc += (1 << 7);
+			comps[i].bpcc = (uint8_t)(comps[i].bpcc + (1 << 7));
 	}
 
 	/* Colour Specification box */

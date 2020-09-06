@@ -1173,7 +1173,7 @@ bool j2k_merge_ppt(TileCodingParams *p_tcp) {
  */
 bool j2k_read_sot(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
 		uint16_t header_size) {
-	SOTMarker sot;
+	SOTMarker sot(tileProcessor);
 
 	return sot.read(codeStream, tileProcessor, p_header_data, header_size);
 }
@@ -2116,7 +2116,7 @@ bool j2k_write_cbd(CodeStream *codeStream, BufferedStream *stream) {
 		/* Component bit depth */
 		uint8_t bpcc = (uint8_t) (comp->prec - 1);
 		if (comp->sgnd)
-			bpcc += (uint8_t)(1 << 7);
+			bpcc = (uint8_t)(bpcc + (1 << 7));
 		if (!stream->write_byte(bpcc))
 			return false;
 	}

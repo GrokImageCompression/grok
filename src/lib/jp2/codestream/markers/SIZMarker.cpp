@@ -366,7 +366,7 @@ bool SIZMarker::write(CodeStream *codeStream, BufferedStream *stream){
 		/* TODO here with MCT ? */
 		uint8_t bpcc = (uint8_t) (comp->prec - 1);
 		if (comp->sgnd)
-			bpcc += (uint8_t)(1 << 7);
+			bpcc = (uint8_t)(bpcc + (1 << 7));
 		if (!stream->write_byte(bpcc))
 			return false;
 		/* XRsiz_i */
