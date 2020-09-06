@@ -254,6 +254,8 @@ struct CodeStream : public ICodeStream {
 	 */
 	bool alloc_multi_tile_output_data(grk_image *p_output_image);
 
+	bool parse_markers(bool *can_decode_tile_data);
+
 
 	// state of decoder/encoder
 	DecoderState m_decoder;

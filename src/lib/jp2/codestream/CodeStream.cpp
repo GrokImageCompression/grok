@@ -782,268 +782,6 @@ static bool j2k_need_nb_tile_parts_correction(CodeStream *codeStream,
 	return stream->seek(stream_pos_backup);
 }
 
-bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
-	bool *can_decode_tile_data, BufferedStream *stream) {
-	assert(codeStream);
-	assert(stream);
-
-	auto decoder = &codeStream->m_decoder;
-	TileCodingParams *tcp = nullptr;
-	uint16_t current_marker = J2K_MS_SOT;
-	codeStream->m_tileProcessor = tileProcessor;
-
-	/* Reach the End Of Codestream ?*/
-	if (decoder->m_state == J2K_DEC_STATE_EOC)
-		current_marker = J2K_MS_EOC;
-	/* We need to encounter a SOT marker (a new tile-part header) */
-	else if (decoder->m_state != J2K_DEC_STATE_TPH_SOT)
-		goto fail;
-
-	/* Seek in code stream for SOT marker specifying desired tile index.
-	 * If we don't find it, we stop when we read the EOC or run out of data */
-	while (!decoder->last_tile_part_was_read && (current_marker != J2K_MS_EOC)) {
-
-		/* read markers until SOD is detected */
-		while (current_marker != J2K_MS_SOD) {
-			// end of stream with no EOC
-			if (stream->get_number_byte_left() == 0) {
-				decoder->m_state = J2K_DEC_STATE_NO_EOC;
-				GRK_WARN("Missing EOC marker");
-				break;
-			}
-			uint16_t marker_size;
-			if (!codeStream->read_short(stream, &marker_size))
-				goto fail;
-			if (marker_size < 2) {
-				GRK_ERROR("Inconsistent marker size");
-				goto fail;
-			}
-
-			// subtract tile part header and header marker size
-			if (decoder->m_state & J2K_DEC_STATE_TPH)
-				tileProcessor->tile_part_data_length -= (marker_size + 2);
-
-			marker_size = (uint16_t)(marker_size - 2); /* Subtract the size of the marker ID already read */
-
-			auto marker_handler = j2k_get_marker_handler(current_marker);
-			if (!(decoder->m_state & marker_handler->states)) {
-				GRK_ERROR("Marker is not compliant with its position");
-				goto fail;
-			}
-
-			if (!codeStream->process_marker(marker_handler, current_marker, marker_size,
-											tileProcessor,stream))
-				goto fail;
-
-
-			/* Add the marker to the code stream index*/
-			if (codeStream->cstr_index) {
-				if (!TileLengthMarkers::add_to_index(
-						tileProcessor->m_tile_index, codeStream->cstr_index,
-						marker_handler->id,
-						(uint32_t) stream->tell() - marker_size - grk_marker_length,
-						marker_size + grk_marker_length)) {
-					GRK_ERROR("Not enough memory to add tl marker");
-					goto fail;
-				}
-			}
-
-			// Cache position of last SOT marker read
-			if (marker_handler->id == J2K_MS_SOT) {
-				uint64_t sot_pos = stream->tell() - marker_size - grk_marker_length;
-				if (sot_pos > decoder->m_last_sot_read_pos)
-					decoder->m_last_sot_read_pos = sot_pos;
-			}
-
-			if (decoder->m_skip_tile_data) {
-				// Skip the rest of the tile part
-				if (!stream->skip(tileProcessor->tile_part_data_length)) {
-					GRK_ERROR("Stream too short");
-					goto fail;
-				}
-				break;
-			} else {
-				while (true) {
-					// read next marker id
-					if (!codeStream->read_marker(stream, &current_marker))
-						goto fail;
-
-					/* handle unknown marker */
-					if (current_marker == J2K_MS_UNK) {
-						GRK_WARN("Unknown marker 0x%02x detected.",
-								current_marker);
-						if (!j2k_read_unk(codeStream, stream, &current_marker)) {
-							GRK_ERROR("Unable to read unknown marker 0x%02x.",
-									current_marker);
-							goto fail;
-						}
-						continue;
-					}
-					break;
-				}
-			}
-		}
-
-		// no bytes left and no EOC marker : we're done!
-		if (!stream->get_number_byte_left()
-				&& decoder->m_state == J2K_DEC_STATE_NO_EOC)
-			break;
-
-		/* If we didn't skip data before, we need to read the SOD marker*/
-		if (!decoder->m_skip_tile_data) {
-			if (!tileProcessor->prepare_sod_decoding(codeStream))
-				return false;
-			if (decoder->last_tile_part_was_read
-					&& !codeStream->m_nb_tile_parts_correction_checked) {
-				/* Issue 254 */
-				bool correction_needed;
-
-				codeStream->m_nb_tile_parts_correction_checked = true;
-				if (!j2k_need_nb_tile_parts_correction(codeStream, stream,
-						tileProcessor,	&correction_needed)) {
-					GRK_ERROR("j2k_apply_nb_tile_parts_correction error");
-					goto fail;
-				}
-				if (correction_needed) {
-					uint32_t nb_tiles = codeStream->m_cp.t_grid_width
-							* codeStream->m_cp.t_grid_height;
-
-					decoder->last_tile_part_was_read = false;
-					codeStream->m_nb_tile_parts_correction = 1;
-					/* correct tiles */
-					for (uint32_t tile_no = 0U; tile_no < nb_tiles; ++tile_no) {
-						if (codeStream->m_cp.tcps[tile_no].m_nb_tile_parts != 0U) {
-							codeStream->m_cp.tcps[tile_no].m_nb_tile_parts =
-									(uint8_t) (codeStream->m_cp.tcps[tile_no].m_nb_tile_parts
-											+ 1);
-						}
-					}
-					GRK_WARN("Non conformant code stream TPsot==TNsot.");
-				}
-			}
-			if (!decoder->last_tile_part_was_read) {
-				// read next marker id
-				if (!codeStream->read_marker(stream, &current_marker))
-					goto fail;
-
-				/* Check if the current marker ID is valid */
-				if (current_marker < 0xff00) {
-					GRK_ERROR("A marker ID was expected (0xff--) instead of %.8x",
-							current_marker);
-					return false;
-				}
-			}
-		} else {
-			/* Indicate we will try to read a new tile-part header*/
-			decoder->m_skip_tile_data = false;
-			decoder->last_tile_part_was_read = false;
-			decoder->m_state = J2K_DEC_STATE_TPH_SOT;
-			if (!codeStream->read_marker(stream, &current_marker))
-				goto fail;
-		}
-	}
-
-	// do QCD marker quantization step size sanity check
-	// see page 553 of Taubman and Marcellin for more details on this check
-	tcp = codeStream->get_current_decode_tcp(tileProcessor);
-	if (tcp->main_qcd_qntsty != J2K_CCP_QNTSTY_SIQNT) {
-		auto numComps = codeStream->m_input_image->numcomps;
-		//1. Check main QCD
-		uint32_t maxDecompositions = 0;
-		for (uint32_t k = 0; k < numComps; ++k) {
-			auto tccp = tcp->tccps + k;
-			if (tccp->numresolutions == 0)
-				continue;
-			// only consider number of resolutions from a component
-			// whose scope is covered by main QCD;
-			// ignore components that are out of scope
-			// i.e. under main QCC scope, or tile QCD/QCC scope
-			if (tccp->fromQCC || tccp->fromTileHeader)
-				continue;
-			auto decomps = tccp->numresolutions - 1;
-			if (maxDecompositions < decomps)
-				maxDecompositions = decomps;
-		}
-		if ((tcp->main_qcd_numStepSizes < 3 * maxDecompositions + 1)) {
-			GRK_ERROR("From Main QCD marker, "
-					"number of step sizes (%u) is less than "
-					"3* (maximum decompositions) + 1, "
-					"where maximum decompositions = %u ",
-					tcp->main_qcd_numStepSizes, maxDecompositions);
-			goto fail;
-		}
-
-		//2. Check Tile QCD
-		TileComponentCodingParams *qcd_comp = nullptr;
-		for (uint32_t k = 0; k < numComps; ++k) {
-			auto tccp = tcp->tccps + k;
-			if (tccp->fromTileHeader && !tccp->fromQCC) {
-				qcd_comp = tccp;
-				break;
-			}
-		}
-		if (qcd_comp && (qcd_comp->qntsty != J2K_CCP_QNTSTY_SIQNT)) {
-			uint32_t maxTileDecompositions = 0;
-			for (uint32_t k = 0; k < numComps; ++k) {
-				auto tccp = tcp->tccps + k;
-				if (tccp->numresolutions == 0)
-					continue;
-				// only consider number of resolutions from a component
-				// whose scope is covered by Tile QCD;
-				// ignore components that are out of scope
-				// i.e. under Tile QCC scope
-				if (tccp->fromQCC && tccp->fromTileHeader)
-					continue;
-				auto decomps = tccp->numresolutions - 1;
-				if (maxTileDecompositions < decomps)
-					maxTileDecompositions = decomps;
-			}
-			if ((qcd_comp->numStepSizes < 3 * maxTileDecompositions + 1)) {
-				GRK_ERROR("From Tile QCD marker, "
-						"number of step sizes (%u) is less than"
-						" 3* (maximum tile decompositions) + 1, "
-						"where maximum tile decompositions = %u ",
-						qcd_comp->numStepSizes, maxTileDecompositions);
-
-				goto fail;
-			}
-		}
-	}
-	/* Current marker is the EOC marker ?*/
-	if (current_marker == J2K_MS_EOC && decoder->m_state != J2K_DEC_STATE_EOC)
-		decoder->m_state = J2K_DEC_STATE_EOC;
-
-	//if we are not ready to decompress tile part data,
-    // then skip tiles with no tile data i.e. no SOD marker
-	if (!decoder->last_tile_part_was_read) {
-		tcp = codeStream->m_cp.tcps + tileProcessor->m_tile_index;
-		if (!tcp->m_tile_data){
-			*can_decode_tile_data = false;
-			return true;
-		}
-	}
-
-	if (!j2k_merge_ppt(
-			codeStream->m_cp.tcps + tileProcessor->m_tile_index)) {
-		GRK_ERROR("Failed to merge PPT data");
-		goto fail;
-	}
-	if (!tileProcessor->init_tile(codeStream->m_output_image, false)) {
-		GRK_ERROR("Cannot decompress tile %u",
-				tileProcessor->m_tile_index);
-		goto fail;
-	}
-	*can_decode_tile_data = true;
-	decoder->m_state |= J2K_DEC_STATE_DATA;
-
-	return true;
-
-fail:
-	delete codeStream->m_tileProcessor;
-	codeStream->m_tileProcessor = nullptr;
-
-	return false;
-}
 
 static bool j2k_decompress_tile_t2(CodeStream *codeStream, TileProcessor *tileProcessor,
 		BufferedStream *stream) {
@@ -1163,7 +901,8 @@ static bool j2k_decompress_tiles(CodeStream *codeStream, TileProcessor *tileProc
 	for (uint32_t tileno = 0; tileno < num_tiles_to_decode; tileno++) {
 		//1. read header
 		auto processor = new TileProcessor(codeStream,stream);
-		if (!j2k_read_tile_header(codeStream,processor, &go_on,stream))
+		codeStream->m_tileProcessor = processor;
+		if (!codeStream->parse_markers(&go_on))
 			return false;
 
 		if (!go_on){
@@ -1310,7 +1049,8 @@ static bool j2k_decompress_tile(CodeStream *codeStream,TileProcessor *tileProces
 	}
 
 	tileProcessor = new TileProcessor(codeStream,stream);
-	if (!j2k_read_tile_header(codeStream, tileProcessor, &go_on, stream))
+	codeStream->m_tileProcessor = tileProcessor;
+	if (!codeStream->parse_markers(&go_on))
 		return false;
 
 	if (!j2k_decompress_tile_t2(codeStream, tileProcessor, stream))
@@ -3524,4 +3264,268 @@ bool CodeStream::alloc_multi_tile_output_data(grk_image *p_output_image){
 	return true;
 
 }
+
+
+bool CodeStream::parse_markers(bool *can_decode_tile_data) {
+	assert(m_tileProcessor->m_stream);
+
+	auto decoder = &m_decoder;
+	TileCodingParams *tcp = nullptr;
+	uint16_t current_marker = J2K_MS_SOT;
+
+	/* Reach the End Of Codestream ?*/
+	if (decoder->m_state == J2K_DEC_STATE_EOC)
+		current_marker = J2K_MS_EOC;
+	/* We need to encounter a SOT marker (a new tile-part header) */
+	else if (decoder->m_state != J2K_DEC_STATE_TPH_SOT)
+		goto fail;
+
+	/* Seek in code m_tileProcessor->m_stream for SOT marker specifying desired tile index.
+	 * If we don't find it, we stop when we read the EOC or run out of data */
+	while (!decoder->last_tile_part_was_read && (current_marker != J2K_MS_EOC)) {
+
+		/* read markers until SOD is detected */
+		while (current_marker != J2K_MS_SOD) {
+			// end of m_tileProcessor->m_stream with no EOC
+			if (m_tileProcessor->m_stream->get_number_byte_left() == 0) {
+				decoder->m_state = J2K_DEC_STATE_NO_EOC;
+				GRK_WARN("Missing EOC marker");
+				break;
+			}
+			uint16_t marker_size;
+			if (!read_short(m_tileProcessor->m_stream, &marker_size))
+				goto fail;
+			if (marker_size < 2) {
+				GRK_ERROR("Inconsistent marker size");
+				goto fail;
+			}
+
+			// subtract tile part header and header marker size
+			if (decoder->m_state & J2K_DEC_STATE_TPH)
+				m_tileProcessor->tile_part_data_length -= (marker_size + 2);
+
+			marker_size = (uint16_t)(marker_size - 2); /* Subtract the size of the marker ID already read */
+
+			auto marker_handler = j2k_get_marker_handler(current_marker);
+			if (!(decoder->m_state & marker_handler->states)) {
+				GRK_ERROR("Marker is not compliant with its position");
+				goto fail;
+			}
+
+			if (!process_marker(marker_handler, current_marker, marker_size,
+											m_tileProcessor,m_tileProcessor->m_stream))
+				goto fail;
+
+
+			/* Add the marker to the code m_tileProcessor->m_stream index*/
+			if (cstr_index) {
+				if (!TileLengthMarkers::add_to_index(
+						m_tileProcessor->m_tile_index, cstr_index,
+						marker_handler->id,
+						(uint32_t) m_tileProcessor->m_stream->tell() - marker_size - grk_marker_length,
+						marker_size + grk_marker_length)) {
+					GRK_ERROR("Not enough memory to add tl marker");
+					goto fail;
+				}
+			}
+
+			// Cache position of last SOT marker read
+			if (marker_handler->id == J2K_MS_SOT) {
+				uint64_t sot_pos = m_tileProcessor->m_stream->tell() - marker_size - grk_marker_length;
+				if (sot_pos > decoder->m_last_sot_read_pos)
+					decoder->m_last_sot_read_pos = sot_pos;
+			}
+
+			if (decoder->m_skip_tile_data) {
+				// Skip the rest of the tile part
+				if (!m_tileProcessor->m_stream->skip(m_tileProcessor->tile_part_data_length)) {
+					GRK_ERROR("Stream too short");
+					goto fail;
+				}
+				break;
+			} else {
+				while (true) {
+					// read next marker id
+					if (!read_marker(m_tileProcessor->m_stream, &current_marker))
+						goto fail;
+
+					/* handle unknown marker */
+					if (current_marker == J2K_MS_UNK) {
+						GRK_WARN("Unknown marker 0x%02x detected.",
+								current_marker);
+						if (!j2k_read_unk(this, m_tileProcessor->m_stream, &current_marker)) {
+							GRK_ERROR("Unable to read unknown marker 0x%02x.",
+									current_marker);
+							goto fail;
+						}
+						continue;
+					}
+					break;
+				}
+			}
+		}
+
+		// no bytes left and no EOC marker : we're done!
+		if (!m_tileProcessor->m_stream->get_number_byte_left()
+				&& decoder->m_state == J2K_DEC_STATE_NO_EOC)
+			break;
+
+		/* If we didn't skip data before, we need to read the SOD marker*/
+		if (!decoder->m_skip_tile_data) {
+			if (!m_tileProcessor->prepare_sod_decoding(this))
+				return false;
+			if (decoder->last_tile_part_was_read
+					&& !m_nb_tile_parts_correction_checked) {
+				/* Issue 254 */
+				bool correction_needed;
+
+				m_nb_tile_parts_correction_checked = true;
+				if (!j2k_need_nb_tile_parts_correction(this, m_tileProcessor->m_stream,
+						m_tileProcessor,	&correction_needed)) {
+					GRK_ERROR("j2k_apply_nb_tile_parts_correction error");
+					goto fail;
+				}
+				if (correction_needed) {
+					uint32_t nb_tiles = m_cp.t_grid_width
+							* m_cp.t_grid_height;
+
+					decoder->last_tile_part_was_read = false;
+					m_nb_tile_parts_correction = 1;
+					/* correct tiles */
+					for (uint32_t tile_no = 0U; tile_no < nb_tiles; ++tile_no) {
+						if (m_cp.tcps[tile_no].m_nb_tile_parts != 0U) {
+							m_cp.tcps[tile_no].m_nb_tile_parts =
+									(uint8_t) (m_cp.tcps[tile_no].m_nb_tile_parts
+											+ 1);
+						}
+					}
+					GRK_WARN("Non conformant code m_tileProcessor->m_stream TPsot==TNsot.");
+				}
+			}
+			if (!decoder->last_tile_part_was_read) {
+				// read next marker id
+				if (!read_marker(m_tileProcessor->m_stream, &current_marker))
+					goto fail;
+
+				/* Check if the current marker ID is valid */
+				if (current_marker < 0xff00) {
+					GRK_ERROR("A marker ID was expected (0xff--) instead of %.8x",
+							current_marker);
+					return false;
+				}
+			}
+		} else {
+			/* Indicate we will try to read a new tile-part header*/
+			decoder->m_skip_tile_data = false;
+			decoder->last_tile_part_was_read = false;
+			decoder->m_state = J2K_DEC_STATE_TPH_SOT;
+			if (!read_marker(m_tileProcessor->m_stream, &current_marker))
+				goto fail;
+		}
+	}
+
+	// do QCD marker quantization step size sanity check
+	// see page 553 of Taubman and Marcellin for more details on this check
+	tcp = get_current_decode_tcp(m_tileProcessor);
+	if (tcp->main_qcd_qntsty != J2K_CCP_QNTSTY_SIQNT) {
+		auto numComps = m_input_image->numcomps;
+		//1. Check main QCD
+		uint32_t maxDecompositions = 0;
+		for (uint32_t k = 0; k < numComps; ++k) {
+			auto tccp = tcp->tccps + k;
+			if (tccp->numresolutions == 0)
+				continue;
+			// only consider number of resolutions from a component
+			// whose scope is covered by main QCD;
+			// ignore components that are out of scope
+			// i.e. under main QCC scope, or tile QCD/QCC scope
+			if (tccp->fromQCC || tccp->fromTileHeader)
+				continue;
+			auto decomps = tccp->numresolutions - 1;
+			if (maxDecompositions < decomps)
+				maxDecompositions = decomps;
+		}
+		if ((tcp->main_qcd_numStepSizes < 3 * maxDecompositions + 1)) {
+			GRK_ERROR("From Main QCD marker, "
+					"number of step sizes (%u) is less than "
+					"3* (maximum decompositions) + 1, "
+					"where maximum decompositions = %u ",
+					tcp->main_qcd_numStepSizes, maxDecompositions);
+			goto fail;
+		}
+
+		//2. Check Tile QCD
+		TileComponentCodingParams *qcd_comp = nullptr;
+		for (uint32_t k = 0; k < numComps; ++k) {
+			auto tccp = tcp->tccps + k;
+			if (tccp->fromTileHeader && !tccp->fromQCC) {
+				qcd_comp = tccp;
+				break;
+			}
+		}
+		if (qcd_comp && (qcd_comp->qntsty != J2K_CCP_QNTSTY_SIQNT)) {
+			uint32_t maxTileDecompositions = 0;
+			for (uint32_t k = 0; k < numComps; ++k) {
+				auto tccp = tcp->tccps + k;
+				if (tccp->numresolutions == 0)
+					continue;
+				// only consider number of resolutions from a component
+				// whose scope is covered by Tile QCD;
+				// ignore components that are out of scope
+				// i.e. under Tile QCC scope
+				if (tccp->fromQCC && tccp->fromTileHeader)
+					continue;
+				auto decomps = tccp->numresolutions - 1;
+				if (maxTileDecompositions < decomps)
+					maxTileDecompositions = decomps;
+			}
+			if ((qcd_comp->numStepSizes < 3 * maxTileDecompositions + 1)) {
+				GRK_ERROR("From Tile QCD marker, "
+						"number of step sizes (%u) is less than"
+						" 3* (maximum tile decompositions) + 1, "
+						"where maximum tile decompositions = %u ",
+						qcd_comp->numStepSizes, maxTileDecompositions);
+
+				goto fail;
+			}
+		}
+	}
+	/* Current marker is the EOC marker ?*/
+	if (current_marker == J2K_MS_EOC && decoder->m_state != J2K_DEC_STATE_EOC)
+		decoder->m_state = J2K_DEC_STATE_EOC;
+
+	//if we are not ready to decompress tile part data,
+    // then skip tiles with no tile data i.e. no SOD marker
+	if (!decoder->last_tile_part_was_read) {
+		tcp = m_cp.tcps + m_tileProcessor->m_tile_index;
+		if (!tcp->m_tile_data){
+			*can_decode_tile_data = false;
+			return true;
+		}
+	}
+
+	if (!j2k_merge_ppt(
+			m_cp.tcps + m_tileProcessor->m_tile_index)) {
+		GRK_ERROR("Failed to merge PPT data");
+		goto fail;
+	}
+	if (!m_tileProcessor->init_tile(m_output_image, false)) {
+		GRK_ERROR("Cannot decompress tile %u",
+				m_tileProcessor->m_tile_index);
+		goto fail;
+	}
+	*can_decode_tile_data = true;
+	decoder->m_state |= J2K_DEC_STATE_DATA;
+
+	return true;
+
+fail:
+	delete m_tileProcessor;
+	m_tileProcessor = nullptr;
+
+	return false;
+}
+
+
+
 }
