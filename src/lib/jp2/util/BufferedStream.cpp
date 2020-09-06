@@ -331,7 +331,6 @@ uint64_t BufferedStream::get_number_byte_left(void) {
 			(uint64_t) (m_user_data_length - m_stream_offset) : 0;
 }
 bool BufferedStream::skip(int64_t p_size) {
-	assert(p_size >= 0);
 	if (m_status & GROK_STREAM_STATUS_INPUT)
 		return read_skip(p_size);
 	else

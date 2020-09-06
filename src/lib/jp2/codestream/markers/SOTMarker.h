@@ -28,29 +28,24 @@ struct TileProcessor;
 class SOTMarker {
 public:
 
-	SOTMarker(TileProcessor *tileProcessor,BufferedStream *stream);
-	SOTMarker(TileProcessor *tileProcessor);
+	SOTMarker(CodeStream *stream, TileProcessor *tileProcessor);
 
 	/**
 	 * Writes the SOT marker (Start of tile-part)
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
-	 * @param		tileProcessor		tile processor
 	 */
-	bool write(CodeStream *codeStream, TileProcessor *tileProcessor);
+	bool write(void);
 
 	bool write_psot(uint32_t tile_part_bytes_written);
 
 	/**
 	 * Decode a SOT marker (Start of tile-part)
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
-	 * @param		tileProcessor		tile processor
 	 * @param       p_header_data   the data contained in the SOT marker.
 	 * @param       header_size     the size of the data contained in the PPT marker.
 
 	 */
-	 bool read(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
+	 bool read(uint8_t *p_header_data,
 			uint16_t header_size);
 
 	 /**
@@ -65,14 +60,15 @@ public:
 	  * @param       p_tot_len       Psot.
 	  * @param       p_current_part  TPsot.
 	  * @param       p_num_parts     TNsot.
+	  * @param		 checkIndex		 check if SOT index matches tile processor index
 
 	  */
 	 bool get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	 		uint16_t *tile_no, uint32_t *p_tot_len, uint8_t *p_current_part,
-	 		uint8_t *p_num_parts);
+	 		uint8_t *p_num_parts, bool checkIndex);
 private:
+	 CodeStream *m_codeStream;
 	 TileProcessor *m_tileProcessor;
-	 BufferedStream *m_stream;
 	 uint64_t m_psot_location;
 
 };

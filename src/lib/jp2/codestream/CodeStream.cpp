@@ -721,7 +721,7 @@ static bool j2k_need_nb_tile_parts_correction(CodeStream *codeStream,
 	uint16_t read_tile_no;
 	uint8_t current_part, num_parts;
 	uint32_t tot_len;
-	SOTMarker sotMarker(tileProcessor);
+	SOTMarker sotMarker(codeStream,tileProcessor);
 
 	/* initialize to no correction needed */
 	*p_correction_needed = false;
@@ -757,7 +757,7 @@ static bool j2k_need_nb_tile_parts_correction(CodeStream *codeStream,
 		}
 
 		if (!sotMarker.get_sot_values(header_data, marker_size, &read_tile_no,
-				&tot_len, &current_part, &num_parts))
+				&tot_len, &current_part, &num_parts, false))
 			return false;
 
 		/* we found what we were looking for */
@@ -801,10 +801,9 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 
 	/* Seek in code stream for SOT marker specifying desired tile index.
 	 * If we don't find it, we stop when we read the EOC or run out of data */
-	while ((!decoder->last_tile_part_was_read)
-			&& (current_marker != J2K_MS_EOC)) {
+	while (!decoder->last_tile_part_was_read && (current_marker != J2K_MS_EOC)) {
 
-		/* read until SOD is detected */
+		/* read markers until SOD is detected */
 		while (current_marker != J2K_MS_SOD) {
 			// end of stream with no EOC
 			if (stream->get_number_byte_left() == 0) {
@@ -1429,9 +1428,9 @@ static bool j2k_write_tile_part(CodeStream *codeStream,	TileProcessor *tileProce
 	bool firstTilePart = tileProcessor->m_tile_part_index == 0;
 
 	//1. write SOT
-	SOTMarker sot(tileProcessor,stream);
+	SOTMarker sot(codeStream,tileProcessor);
 
-	if (!sot.write(codeStream, tileProcessor))
+	if (!sot.write())
 		return false;
 	uint32_t tile_part_bytes_written = sot_marker_segment_len;
 

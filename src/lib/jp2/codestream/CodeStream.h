@@ -29,6 +29,7 @@ namespace grk {
 
 // includes marker and marker length (4 bytes)
 const uint32_t sot_marker_segment_len = 12U;
+const uint32_t grk_marker_length = 4U;
 
 const uint32_t SPCod_SPCoc_len = 5U;
 const uint32_t cod_coc_len = 5U;
