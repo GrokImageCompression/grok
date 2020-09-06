@@ -73,32 +73,24 @@ bool SOTMarker::write(void){
 
 bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 		uint16_t *tile_no, uint32_t *p_tot_len, uint8_t *p_current_part,
-		uint8_t *p_num_parts, bool checkIndex){
+		uint8_t *p_num_parts){
 
 	assert(p_header_data != nullptr);
 	if (header_size != sot_marker_segment_len - grk_marker_length) {
 		GRK_ERROR("Error reading SOT marker");
 		return false;
 	}
-	uint32_t index,len,tile_index,num_tile_parts;
-	grk_read<uint32_t>(p_header_data, &index, 2);
+	uint32_t tile_index,len,tile_part_index,num_tile_parts;
+	grk_read<uint32_t>(p_header_data, &tile_index, 2);
 	p_header_data += 2;
 	grk_read<uint32_t>(p_header_data, &len, 4);
 	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data++, &tile_index, 1);
+	grk_read<uint32_t>(p_header_data++, &tile_part_index, 1);
 	grk_read<uint32_t>(p_header_data++, &num_tile_parts, 1);
 
-
-	if (checkIndex && m_tileProcessor->m_first_sot_marker_read &&
-			(m_tileProcessor->m_tile_index != index)){
-		//m_tileProcessor->m_stream->skip(-sot_marker_segment_len);
-		//throw FoundNextTileSOTMarkerException();
-	}
-
-	m_tileProcessor->m_first_sot_marker_read = true;
-	*tile_no = (uint16_t) index;
+	*tile_no = (uint16_t) tile_index;
 	*p_tot_len = len;
-	*p_current_part = (uint8_t) tile_index;
+	*p_current_part = (uint8_t) tile_part_index;
 	*p_num_parts = (uint8_t) num_tile_parts;
 
 	return true;
@@ -115,7 +107,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 
 	if (!get_sot_values(p_header_data, header_size,
 			&m_tileProcessor->m_tile_index, &tot_len,
-			&current_part, &num_parts, true)) {
+			&current_part, &num_parts)) {
 		GRK_ERROR("Error reading SOT marker");
 		return false;
 	}
@@ -162,7 +154,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	if (!tot_len) {
 		//GRK_WARN( "Psot value of the current tile-part is equal to zero; "
 		//              "we assume it is the last tile-part of the code stream.");
-		m_codeStream->m_decoder.m_last_tile_part = 1;
+		m_codeStream->m_decoder.m_last_tile_part_in_code_stream = true;
 	}
 
 	// ensure that current tile part number read from SOT marker
@@ -173,7 +165,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 				"Current tile part number (%u) read from SOT marker is greater\n than total "
 						"number of tile-parts (%u).", current_part,
 				tcp->m_nb_tile_parts);
-		m_codeStream->m_decoder.m_last_tile_part = 1;
+		m_codeStream->m_decoder.m_last_tile_part_in_code_stream = true;
 		return false;
 	}
 
@@ -190,7 +182,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 						"In SOT marker, TPSot (%u) is not valid with regards to the current "
 								"number of tile-part (%u)",
 						current_part, tcp->m_nb_tile_parts);
-				m_codeStream->m_decoder.m_last_tile_part = 1;
+				m_codeStream->m_decoder.m_last_tile_part_in_code_stream = true;
 				return false;
 			}
 		}
@@ -200,7 +192,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 					"In SOT marker, TPSot (%u) is not valid with regards to the current "
 							"number of tile-part (header) (%u)",
 					current_part, num_parts);
-			m_codeStream->m_decoder.m_last_tile_part = 1;
+			m_codeStream->m_decoder.m_last_tile_part_in_code_stream = true;
 			return false;
 		}
 		tcp->m_nb_tile_parts = num_parts;
@@ -212,7 +204,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 		m_codeStream->m_decoder.last_tile_part_was_read =	true;
 	}
 
-	if (!m_codeStream->m_decoder.m_last_tile_part) {
+	if (!m_codeStream->m_decoder.m_last_tile_part_in_code_stream) {
 		/* Keep the size of data to skip after this marker */
 		m_tileProcessor->tile_part_data_length = tot_len
 				- sot_marker_segment_len;

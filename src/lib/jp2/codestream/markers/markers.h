@@ -634,18 +634,6 @@ bool j2k_write_regions(CodeStream *codeStream,  TileProcessor *tileProcessor, Bu
  */
 bool j2k_write_epc(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream);
 
-
-
-/**
- * Reads a SOD marker (Start Of Data)
- *
- * @param       codeStream           JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
- * @param       stream               stream to read from
-
- */
-bool j2k_read_sod(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream);
-
 void j2k_update_tlm(CodeStream *codeStream, uint16_t tile_index, uint32_t tile_part_size) ;
 
 /**

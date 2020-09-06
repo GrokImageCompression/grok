@@ -757,7 +757,7 @@ static bool j2k_need_nb_tile_parts_correction(CodeStream *codeStream,
 		}
 
 		if (!sotMarker.get_sot_values(header_data, marker_size, &read_tile_no,
-				&tot_len, &current_part, &num_parts, false))
+				&tot_len, &current_part, &num_parts))
 			return false;
 
 		/* we found what we were looking for */
@@ -835,13 +835,14 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 											tileProcessor,stream))
 				goto fail;
 
+
 			/* Add the marker to the code stream index*/
 			if (codeStream->cstr_index) {
 				if (!TileLengthMarkers::add_to_index(
 						tileProcessor->m_tile_index, codeStream->cstr_index,
 						marker_handler->id,
-						(uint32_t) stream->tell() - marker_size - 4,
-						marker_size + 4)) {
+						(uint32_t) stream->tell() - marker_size - grk_marker_length,
+						marker_size + grk_marker_length)) {
 					GRK_ERROR("Not enough memory to add tl marker");
 					goto fail;
 				}
@@ -849,7 +850,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 
 			// Cache position of last SOT marker read
 			if (marker_handler->id == J2K_MS_SOT) {
-				uint64_t sot_pos = stream->tell() - marker_size - 4;
+				uint64_t sot_pos = stream->tell() - marker_size - grk_marker_length;
 				if (sot_pos > decoder->m_last_sot_read_pos)
 					decoder->m_last_sot_read_pos = sot_pos;
 			}
@@ -890,7 +891,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 
 		/* If we didn't skip data before, we need to read the SOD marker*/
 		if (!decoder->m_skip_tile_data) {
-			if (!j2k_read_sod(codeStream, tileProcessor, stream))
+			if (!tileProcessor->prepare_sod_decoding(codeStream))
 				return false;
 			if (decoder->last_tile_part_was_read
 					&& !codeStream->m_nb_tile_parts_correction_checked) {
@@ -941,6 +942,7 @@ bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
 				goto fail;
 		}
 	}
+
 	// do QCD marker quantization step size sanity check
 	// see page 553 of Taubman and Marcellin for more details on this check
 	tcp = codeStream->get_current_decode_tcp(tileProcessor);

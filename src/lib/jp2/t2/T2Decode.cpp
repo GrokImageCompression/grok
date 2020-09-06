@@ -156,9 +156,10 @@ bool T2Decode::decode_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuf
 		uint64_t *p_data_read) {
 	uint64_t max_length = src_buf->data_len - src_buf->get_global_offset();
 	if (max_length == 0) {
-		GRK_WARN("decode_packet: No data for either packet header\n"
+		GRK_WARN("Tile %d decode_packet: No data for either packet header\n"
 				"or packet body for packet prg=%u "
 				"cmptno=%02d reslvlno=%02d prcno=%03d layrno=%02d",
+		tileProcessor->m_tile_index,
 		 p_pi->poc.prg1, p_pi->compno,
 		 p_pi->resno, p_pi->precno,
 		 p_pi->layno);

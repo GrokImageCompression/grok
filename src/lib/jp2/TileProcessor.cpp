@@ -49,8 +49,7 @@ TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream) :
 				m_stream(stream),
 				tp_pos(0),
 				m_tcp(nullptr),
-				m_corrupt_packet(false),
-				m_first_sot_marker_read(false)
+				m_corrupt_packet(false)
 {
 
 	tile = (grk_tile*) grk_calloc(1, sizeof(grk_tile));
@@ -1461,6 +1460,90 @@ bool TileProcessor::copy_uncompressed_data_to_tile(uint8_t *p_src,
 			break;
 		}
 	}
+	return true;
+}
+
+bool TileProcessor::prepare_sod_decoding(CodeStream *codeStream) {
+	assert(codeStream);
+
+	// note: we subtract 2 to account for SOD marker
+	auto tcp = codeStream->get_current_decode_tcp(this);
+	if (codeStream->m_decoder.m_last_tile_part_in_code_stream) {
+		tile_part_data_length =
+				(uint32_t) (m_stream->get_number_byte_left() - 2);
+	} else {
+		if (tile_part_data_length >= 2)
+			tile_part_data_length -= 2;
+	}
+	if (tile_part_data_length) {
+		auto bytesLeftInStream = m_stream->get_number_byte_left();
+		// check that there are enough bytes in stream to fill tile data
+		if (tile_part_data_length > bytesLeftInStream) {
+			GRK_WARN("Tile part length %lld greater than "
+					"stream length %lld\n"
+					"(tile: %u, tile part: %u). Tile may be truncated.",
+					tile_part_data_length,
+					m_stream->get_number_byte_left(),
+					m_tile_index,
+					m_tile_part_index);
+
+			// sanitize tile_part_data_length
+			tile_part_data_length =	(uint32_t) bytesLeftInStream;
+		}
+	}
+	/* Index */
+	grk_codestream_index *cstr_index = codeStream->cstr_index;
+	if (cstr_index) {
+		uint64_t current_pos = m_stream->tell();
+		if (current_pos < 2) {
+			GRK_ERROR("Stream too short");
+			return false;
+		}
+		current_pos = (uint64_t) (current_pos - 2);
+
+		uint32_t current_tile_part =
+				cstr_index->tile_index[m_tile_index].current_tpsno;
+		cstr_index->tile_index[m_tile_index].tp_index[current_tile_part].end_header =
+				current_pos;
+		cstr_index->tile_index[m_tile_index].tp_index[current_tile_part].end_pos =
+				current_pos + tile_part_data_length + 2;
+
+		if (!TileLengthMarkers::add_to_index(
+				m_tile_index, cstr_index,
+				J2K_MS_SOD, current_pos, 0)) {
+			GRK_ERROR("Not enough memory to add tl marker");
+			return false;
+		}
+
+		/*cstr_index->packno = 0;*/
+	}
+	size_t current_read_size = 0;
+	if (tile_part_data_length) {
+		if (!tcp->m_tile_data)
+			tcp->m_tile_data = new ChunkBuffer();
+
+		auto len = tile_part_data_length;
+		uint8_t *buff = nullptr;
+		auto zeroCopy = m_stream->supportsZeroCopy();
+		if (!zeroCopy) {
+			try {
+				buff = new uint8_t[len];
+			} catch (std::bad_alloc &ex) {
+				GRK_ERROR("Not enough memory to allocate segment");
+				return false;
+			}
+		} else {
+			buff = m_stream->getCurrentPtr();
+		}
+		current_read_size = m_stream->read(zeroCopy ? nullptr : buff, len);
+		tcp->m_tile_data->add_chunk(buff, len, !zeroCopy);
+
+	}
+	if (current_read_size != tile_part_data_length)
+		codeStream->m_decoder.m_state = J2K_DEC_STATE_NO_EOC;
+	else
+		codeStream->m_decoder.m_state = J2K_DEC_STATE_TPH_SOT;
+
 	return true;
 }
 

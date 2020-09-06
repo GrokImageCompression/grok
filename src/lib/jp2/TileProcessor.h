@@ -264,6 +264,8 @@ struct TileProcessor {
 
 	void copy_image_to_tile();
 
+	bool prepare_sod_decoding(CodeStream *codeStream);
+
 	/** index of tile being currently coded/decoded */
 	uint16_t m_tile_index;
 
@@ -347,7 +349,6 @@ private:
 			bool final);
 public:
 	 bool m_corrupt_packet;
-	 bool m_first_sot_marker_read;
 
 };
 

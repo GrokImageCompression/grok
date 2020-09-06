@@ -278,7 +278,7 @@ struct DecoderState {
 					m_end_tile_x_index(0),
 					m_end_tile_y_index(0),
 					m_last_sot_read_pos(0),
-					m_last_tile_part(false),
+					m_last_tile_part_in_code_stream(false),
 					last_tile_part_was_read(false),
 					m_skip_tile_data(false)
 	{}
@@ -307,7 +307,7 @@ struct DecoderState {
 	 * This is useful in the case when PSot is equal to zero. The SOT length will be computed in the
 	 * SOD reader function.
 	 */
-	bool m_last_tile_part;
+	bool m_last_tile_part_in_code_stream;
 
 	// Indicates that the last tile part header has been read, so that
 	// the tile's data can now be decoded

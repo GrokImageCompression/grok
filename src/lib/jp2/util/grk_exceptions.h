@@ -25,7 +25,4 @@ class DecodeUnknownMarkerAtEndOfTileException: public std::exception {};
 class PluginDecodeUnsupportedException: public std::exception {};
 class CorruptJP2BoxException: public std::exception {};
 class TruncatedStreamException: public std::exception {};
-// thrown if SOT marker from next tile is encountered
-// note: this will only happen if number of tile parts is set to zero for SOT markers
-class FoundNextTileSOTMarkerException: public std::exception {};
 }

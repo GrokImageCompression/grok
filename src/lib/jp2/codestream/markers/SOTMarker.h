@@ -60,12 +60,11 @@ public:
 	  * @param       p_tot_len       Psot.
 	  * @param       p_current_part  TPsot.
 	  * @param       p_num_parts     TNsot.
-	  * @param		 checkIndex		 check if SOT index matches tile processor index
 
 	  */
 	 bool get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	 		uint16_t *tile_no, uint32_t *p_tot_len, uint8_t *p_current_part,
-	 		uint8_t *p_num_parts, bool checkIndex);
+	 		uint8_t *p_num_parts);
 private:
 	 CodeStream *m_codeStream;
 	 TileProcessor *m_tileProcessor;
