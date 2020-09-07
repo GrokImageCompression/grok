@@ -476,7 +476,7 @@ static bool j2k_need_nb_tile_parts_correction(CodeStream *codeStream, bool *p_co
 	uint32_t tot_len;
 	SOTMarker sotMarker(codeStream);
 	auto stream = codeStream->getStream();
-	auto tileProcessor = codeStream->getTileProcessor();
+	auto tileProcessor = codeStream->currentProcessor();
 
 	/* initialize to no correction needed */
 	*p_correction_needed = false;
@@ -550,14 +550,14 @@ static bool j2k_decompress_tile_t2t1(CodeStream *codeStream, TileProcessor *tile
  *
  */
 static bool j2k_decompress_tiles(CodeStream *codeStream) {
-	return codeStream->decompress_tiles(codeStream->getTileProcessor());
+	return codeStream->decompress_tiles(codeStream->currentProcessor());
 }
 
 /*
  * Read and decompress one tile.
  */
 static bool j2k_decompress_tile(CodeStream *codeStream) {
-	return codeStream->decompress_tile(codeStream->getTileProcessor());
+	return codeStream->decompress_tile(codeStream->currentProcessor());
 }
 
 bool j2k_check_poc_val(const grk_poc *p_pocs, uint32_t nb_pocs,
@@ -1195,7 +1195,7 @@ int32_t CodeStream::tileIndexToDecode(){
 	return m_tile_ind_to_dec;
 }
 
-TileProcessor* CodeStream::getTileProcessor(uint16_t tile_index){
+TileProcessor* CodeStream::allocateProcessor(uint16_t tile_index){
 	if (m_processors.find(tile_index) == m_processors.end()){
 		m_tileProcessor = new TileProcessor(this,m_stream);
 		m_tileProcessor->m_tile_index = tile_index;
@@ -1205,7 +1205,7 @@ TileProcessor* CodeStream::getTileProcessor(uint16_t tile_index){
 	}
 	return m_tileProcessor;
 }
-TileProcessor* CodeStream::getTileProcessor(void){
+TileProcessor* CodeStream::currentProcessor(void){
 	return m_tileProcessor;
 }
 
@@ -2012,19 +2012,19 @@ bool CodeStream::compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t un
 	m_tileProcessor->m_tile_index = tile_index;
 
 
-	if (!getTileProcessor()->pre_write_tile()) {
+	if (!currentProcessor()->pre_write_tile()) {
 		GRK_ERROR("Error while pre_write_tile with tile index = %u",
 				tile_index);
 		goto cleanup;
 	}
 	/* now copy data into the tile component */
-	if (!getTileProcessor()->copy_uncompressed_data_to_tile(p_data,	uncompressed_data_size)) {
+	if (!currentProcessor()->copy_uncompressed_data_to_tile(p_data,	uncompressed_data_size)) {
 		GRK_ERROR("Size mismatch between tile data and sent data.");
 		goto cleanup;
 	}
-	if (!getTileProcessor()->do_encode())
+	if (!currentProcessor()->do_encode())
 		goto cleanup;
-	if (!post_write_tile(getTileProcessor())) {
+	if (!post_write_tile(currentProcessor())) {
 		GRK_ERROR("Error while j2k_post_write_tile with tile index = %u",
 				tile_index);
 		goto cleanup;
@@ -2226,7 +2226,7 @@ bool CodeStream::isDecodingTilePartHeader() {
 	return (m_decoder.m_state & J2K_DEC_STATE_TPH);
 }
 TileCodingParams* CodeStream::get_current_decode_tcp() {
-    auto tileProcessor = getTileProcessor();
+    auto tileProcessor = currentProcessor();
 
 	return (isDecodingTilePartHeader()) ?
 			m_cp.tcps + tileProcessor->m_tile_index :
@@ -2315,7 +2315,7 @@ bool CodeStream::read_marker_skip_unknown(uint16_t *current_marker){
 
 
 bool CodeStream::parse_markers(bool *can_decode_tile_data) {
-	assert(getTileProcessor()->m_stream);
+	assert(currentProcessor()->m_stream);
 
 	auto decoder = &m_decoder;
 	TileCodingParams *tcp = nullptr;
@@ -2328,14 +2328,14 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 	else if (decoder->m_state != J2K_DEC_STATE_TPH_SOT)
 		goto fail;
 
-	/* Seek in code getTileProcessor()->m_stream for SOT marker specifying desired tile index.
+	/* Seek in code currentProcessor()->m_stream for SOT marker specifying desired tile index.
 	 * If we don't find it, we stop when we read the EOC or run out of data */
 	while (!decoder->last_tile_part_was_read && (current_marker != J2K_MS_EOC)) {
 
 		/* read markers until SOD is detected */
 		while (current_marker != J2K_MS_SOD) {
-			// end of getTileProcessor()->m_stream with no EOC
-			if (getTileProcessor()->m_stream->get_number_byte_left() == 0) {
+			// end of currentProcessor()->m_stream with no EOC
+			if (currentProcessor()->m_stream->get_number_byte_left() == 0) {
 				decoder->m_state = J2K_DEC_STATE_NO_EOC;
 				GRK_WARN("Missing EOC marker");
 				break;
@@ -2350,7 +2350,7 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 
 			// subtract tile part header and header marker size
 			if (decoder->m_state & J2K_DEC_STATE_TPH)
-				getTileProcessor()->tile_part_data_length -= (marker_size + 2);
+				currentProcessor()->tile_part_data_length -= (marker_size + 2);
 
 			marker_size = (uint16_t)(marker_size - 2); /* Subtract the size of the marker ID already read */
 
@@ -2363,11 +2363,11 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 				goto fail;
 
 
-			/* Add the marker to the code getTileProcessor()->m_stream index*/
+			/* Add the marker to the code currentProcessor()->m_stream index*/
 			if (cstr_index) {
-				if (!TileLengthMarkers::add_to_index(getTileProcessor()->m_tile_index, cstr_index,
+				if (!TileLengthMarkers::add_to_index(currentProcessor()->m_tile_index, cstr_index,
 													marker_handler->id,
-													(uint32_t) getTileProcessor()->m_stream->tell() - marker_size - grk_marker_length,
+													(uint32_t) currentProcessor()->m_stream->tell() - marker_size - grk_marker_length,
 													marker_size + grk_marker_length)) {
 					GRK_ERROR("Not enough memory to add tl marker");
 					goto fail;
@@ -2376,14 +2376,14 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 
 			// Cache position of last SOT marker read
 			if (marker_handler->id == J2K_MS_SOT) {
-				uint64_t sot_pos = getTileProcessor()->m_stream->tell() - marker_size - grk_marker_length;
+				uint64_t sot_pos = currentProcessor()->m_stream->tell() - marker_size - grk_marker_length;
 				if (sot_pos > decoder->m_last_sot_read_pos)
 					decoder->m_last_sot_read_pos = sot_pos;
 			}
 
 			if (decoder->m_skip_tile_data) {
 				// Skip the rest of the tile part
-				if (!getTileProcessor()->m_stream->skip(getTileProcessor()->tile_part_data_length)) {
+				if (!currentProcessor()->m_stream->skip(currentProcessor()->tile_part_data_length)) {
 					GRK_ERROR("Stream too short");
 					goto fail;
 				}
@@ -2395,13 +2395,13 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 		}
 
 		// no bytes left and no EOC marker : we're done!
-		if (!getTileProcessor()->m_stream->get_number_byte_left()
+		if (!currentProcessor()->m_stream->get_number_byte_left()
 				&& decoder->m_state == J2K_DEC_STATE_NO_EOC)
 			break;
 
 		/* If we didn't skip data before, we need to read the SOD marker*/
 		if (!decoder->m_skip_tile_data) {
-			if (!getTileProcessor()->prepare_sod_decoding(this))
+			if (!currentProcessor()->prepare_sod_decoding(this))
 				return false;
 			if (decoder->last_tile_part_was_read
 					&& !m_nb_tile_parts_correction_checked) {
@@ -2427,7 +2427,7 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 											+ 1);
 						}
 					}
-					GRK_WARN("Non conformant code getTileProcessor()->m_stream TPsot==TNsot.");
+					GRK_WARN("Non conformant code currentProcessor()->m_stream TPsot==TNsot.");
 				}
 			}
 			if (!decoder->last_tile_part_was_read) {
@@ -2517,7 +2517,7 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 	//if we are not ready to decompress tile part data,
     // then skip tiles with no tile data i.e. no SOD marker
 	if (!decoder->last_tile_part_was_read) {
-		tcp = m_cp.tcps + getTileProcessor()->m_tile_index;
+		tcp = m_cp.tcps + currentProcessor()->m_tile_index;
 		if (!tcp->m_tile_data){
 			*can_decode_tile_data = false;
 			return true;
@@ -2525,13 +2525,13 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 	}
 
 	if (!j2k_merge_ppt(
-			m_cp.tcps + getTileProcessor()->m_tile_index)) {
+			m_cp.tcps + currentProcessor()->m_tile_index)) {
 		GRK_ERROR("Failed to merge PPT data");
 		goto fail;
 	}
-	if (!getTileProcessor()->init_tile(m_output_image, false)) {
+	if (!currentProcessor()->init_tile(m_output_image, false)) {
 		GRK_ERROR("Cannot decompress tile %u",
-				getTileProcessor()->m_tile_index);
+				currentProcessor()->m_tile_index);
 		goto fail;
 	}
 	*can_decode_tile_data = true;

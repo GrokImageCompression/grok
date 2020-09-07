@@ -968,7 +968,7 @@ bool j2k_read_plm(CodeStream *codeStream, uint8_t *p_header_data,
  */
 bool j2k_read_plt(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size) {
-	auto tileProcessor = codeStream->getTileProcessor();
+	auto tileProcessor = codeStream->currentProcessor();
 	assert(p_header_data != nullptr);
 	assert(codeStream != nullptr);
 	if (!tileProcessor->plt_markers)
@@ -1015,7 +1015,7 @@ bool j2k_merge_ppm(CodingParams *p_cp) {
 bool j2k_read_ppt(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size) {
 	uint32_t Z_ppt;
-	auto tileProcessor = codeStream->getTileProcessor();
+	auto tileProcessor = codeStream->currentProcessor();
 
 	assert(p_header_data != nullptr);
 	assert(codeStream != nullptr);
