@@ -1173,7 +1173,7 @@ bool j2k_merge_ppt(TileCodingParams *p_tcp) {
  */
 bool j2k_read_sot(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
 		uint16_t header_size) {
-	SOTMarker sot(codeStream,tileProcessor);
+	SOTMarker sot(codeStream);
 
 	return sot.read(p_header_data, header_size);
 }

@@ -502,7 +502,7 @@ static bool j2k_need_nb_tile_parts_correction(CodeStream *codeStream, TileProces
 	uint16_t read_tile_no;
 	uint8_t current_part, num_parts;
 	uint32_t tot_len;
-	SOTMarker sotMarker(codeStream,tileProcessor);
+	SOTMarker sotMarker(codeStream);
 	auto stream = codeStream->getStream();
 
 	/* initialize to no correction needed */
@@ -1991,6 +1991,7 @@ bool CodeStream::compress(grk_plugin_tile* tile){
 	} else {
 		for (uint16_t i = 0; i < nb_tiles; ++i) {
 			auto tileProcessor = new TileProcessor(this,m_stream);
+			m_tileProcessor = tileProcessor;
 
 			tileProcessor->m_tile_index = i;
 			tileProcessor->current_plugin_tile = tile;
@@ -2006,6 +2007,7 @@ bool CodeStream::compress(grk_plugin_tile* tile){
 				delete tileProcessor;
 				goto cleanup;
 			}
+			m_tileProcessor = nullptr;
 			delete tileProcessor;
 		}
 	}
@@ -2016,9 +2018,10 @@ bool CodeStream::compress(grk_plugin_tile* tile){
 		if (!success)
 			goto cleanup;
 		for (uint16_t i = 0; i < nb_tiles; ++i) {
+			setTileProcessor(procs[i], false);
 			if (!post_write_tile(procs[i]))
 				goto cleanup;
-			delete procs[i];
+			setTileProcessor(nullptr, true);
 			procs[i] = nullptr;
 		}
 	}
@@ -3018,7 +3021,7 @@ bool CodeStream::write_tile_part(TileProcessor *tileProcessor) {
 	bool firstTilePart = tileProcessor->m_tile_part_index == 0;
 
 	//1. write SOT
-	SOTMarker sot(this,tileProcessor);
+	SOTMarker sot(this);
 
 	if (!sot.write())
 		return false;

@@ -23,51 +23,51 @@
 
 namespace grk {
 
-SOTMarker::SOTMarker(CodeStream *stream, TileProcessor *processor) : m_codeStream(stream),
-																	m_tileProcessor(processor),
+SOTMarker::SOTMarker(CodeStream *stream) : m_codeStream(stream),
 																	m_psot_location(0)
 {
-	assert(processor);
 }
 
 
 bool SOTMarker::write_psot(uint32_t tile_part_bytes_written) {
-	auto currentLocation = m_tileProcessor->m_stream->tell();
-	m_tileProcessor->m_stream->seek(m_psot_location);
-	if (!m_tileProcessor->m_stream->write_int(tile_part_bytes_written))
+	auto stream = m_codeStream->getStream();
+	auto currentLocation = stream->tell();
+	stream->seek(m_psot_location);
+	if (!stream->write_int(tile_part_bytes_written))
 		return false;
-	m_tileProcessor->m_stream->seek(currentLocation);
+	stream->seek(currentLocation);
 
 	return true;
 }
 
 bool SOTMarker::write(void){
-	assert(m_codeStream != nullptr);
+	auto stream = m_codeStream->getStream();
+	auto proc = m_codeStream->getTileProcessor();
 
 	/* SOT */
-	if (!m_tileProcessor->m_stream->write_short(J2K_MS_SOT))
+	if (!stream->write_short(J2K_MS_SOT))
 		return false;
 
 	/* Lsot */
-	if (!m_tileProcessor->m_stream->write_short(10))
+	if (!stream->write_short(10))
 		return false;
 	/* Isot */
-	if (!m_tileProcessor->m_stream->write_short(
-			(uint16_t) m_tileProcessor->m_tile_index))
+	if (!stream->write_short(
+			(uint16_t) proc->m_tile_index))
 		return false;
 
 	/* Psot  */
-	m_psot_location = m_tileProcessor->m_stream->tell();
-	if (!m_tileProcessor->m_stream->skip(4))
+	m_psot_location = stream->tell();
+	if (!stream->skip(4))
 		return false;
 
 	/* TPsot */
-	if (!m_tileProcessor->m_stream->write_byte(m_tileProcessor->m_tile_part_index))
+	if (!stream->write_byte(proc->m_tile_part_index))
 		return false;
 
 	/* TNsot */
-	if (!m_tileProcessor->m_stream->write_byte(
-			m_codeStream->m_cp.tcps[m_tileProcessor->m_tile_index].m_nb_tile_parts))
+	if (!stream->write_byte(
+			m_codeStream->m_cp.tcps[proc->m_tile_index].m_nb_tile_parts))
 		return false;
 
 	return true;
@@ -104,9 +104,6 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	uint8_t num_parts = 0;
 	uint8_t current_part;
 	uint32_t tile_x, tile_y;
-
-	assert(m_codeStream != nullptr);
-	assert(m_codeStream->getTileProcessor());
 
 	if (!get_sot_values(p_header_data, header_size,
 			&m_codeStream->getTileProcessor()->m_tile_index, &tot_len,
