@@ -110,14 +110,14 @@ size_t ChunkBuffer::skip(size_t nb_bytes) {
 	return nb_bytes;
 }
 
-grk_buf* ChunkBuffer::add_chunk(uint8_t *buf, size_t len, bool ownsData) {
+grk_buf* ChunkBuffer::push_back(uint8_t *buf, size_t len, bool ownsData) {
 	auto new_chunk = new grk_buf(buf, len, ownsData);
-	add_chunk(new_chunk);
+	push_back(new_chunk);
 
 	return new_chunk;
 }
 
-void ChunkBuffer::add_chunk(grk_buf *chunk) {
+void ChunkBuffer::push_back(grk_buf *chunk) {
 	if (!chunk)
 		return;
 	chunks.push_back(chunk);
@@ -139,19 +139,12 @@ void ChunkBuffer::rewind(void) {
 	}
 	cur_chunk_id = 0;
 }
-bool ChunkBuffer::push_back(uint8_t *buf, size_t len) {
-	if (!buf || !len)
-		return false;
-	auto chunk = add_chunk(buf, len, false);
-
-	return (chunk != nullptr);
-}
 
 bool ChunkBuffer::alloc_and_push_back(size_t len) {
 	if (!len)
 		return false;
 	auto buf = new uint8_t[len];
-	auto chunk = add_chunk(buf, len, true);
+	auto chunk = push_back(buf, len, true);
 	if (!chunk) {
 		delete[] buf;
 		return false;
@@ -229,6 +222,10 @@ size_t ChunkBuffer::get_global_offset(void) {
 	}
 
 	return offset + get_cur_chunk_offset();
+}
+
+size_t ChunkBuffer::getRemainingLength(void){
+	return data_len - get_global_offset();
 }
 
 }

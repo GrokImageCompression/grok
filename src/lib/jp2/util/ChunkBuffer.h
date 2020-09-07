@@ -30,10 +30,9 @@ struct ChunkBuffer {
 	ChunkBuffer();
 	~ChunkBuffer();
 
-	/*
-	 Wrap existing array and add to the back of the chunk buffer.
-	 */
-	bool push_back(uint8_t *buf, size_t len);
+
+
+	grk_buf* push_back(uint8_t *buf, size_t len, bool ownsData);
 
 	/*
 	 Allocate array and add to the back of the chunk buffer
@@ -51,19 +50,9 @@ struct ChunkBuffer {
 	size_t get_cur_chunk_len(void);
 
 	/*
-	 Get offset of current chunk
-	 */
-	size_t get_cur_chunk_offset(void);
-
-	/*
 	 Treat segmented buffer as single contiguous buffer, and get current pointer
 	 */
 	uint8_t* get_global_ptr(void);
-
-	/*
-	 Treat segmented buffer as single contiguous buffer, and get current offset
-	 */
-	size_t get_global_offset(void);
 
 	/*
 	 Reset all offsets to zero, and set current chunk to beginning of list
@@ -76,8 +65,13 @@ struct ChunkBuffer {
 
 	size_t read(void *p_buffer, size_t nb_bytes);
 
-	grk_buf* add_chunk(uint8_t *buf, size_t len, bool ownsData);
-	void add_chunk(grk_buf *chunk);
+	size_t getRemainingLength(void);
+private:
+	/*
+	 Treat segmented buffer as single contiguous buffer, and get current offset
+	 */
+	size_t get_global_offset(void);
+
 
 	/*
 	 Copy all chunks, in sequence, into contiguous array
@@ -89,11 +83,20 @@ struct ChunkBuffer {
 	 */
 	void cleanup(void);
 
+
 	/*
 	 Return current pointer, stored in ptr variable, and advance chunk buffer
 	 offset by chunk_len
 	 */
 	bool zero_copy_read(uint8_t **ptr, size_t chunk_len);
+
+
+	/*
+	 Get offset of current chunk
+	 */
+	size_t get_cur_chunk_offset(void);
+
+	void push_back(grk_buf *chunk);
 
 	size_t data_len; /* total length of all chunks*/
 	size_t cur_chunk_id; /* current index into chunk vector */

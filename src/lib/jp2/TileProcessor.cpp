@@ -1536,7 +1536,7 @@ bool TileProcessor::prepare_sod_decoding(CodeStream *codeStream) {
 			buff = m_stream->getCurrentPtr();
 		}
 		current_read_size = m_stream->read(zeroCopy ? nullptr : buff, len);
-		tcp->m_tile_data->add_chunk(buff, len, !zeroCopy);
+		tcp->m_tile_data->push_back(buff, len, !zeroCopy);
 
 	}
 	if (current_read_size != tile_part_data_length)

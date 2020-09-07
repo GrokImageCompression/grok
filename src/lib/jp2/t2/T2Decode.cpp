@@ -154,7 +154,7 @@ bool T2Decode::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 
 bool T2Decode::decode_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
-	uint64_t max_length = src_buf->data_len - src_buf->get_global_offset();
+	uint64_t max_length = src_buf->getRemainingLength();
 	if (max_length == 0) {
 		GRK_WARN("Tile %d decode_packet: No data for either packet header\n"
 				"or packet body for packet prg=%u "
@@ -193,7 +193,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 	auto p_tile = tileProcessor->tile;
 	auto res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
 	auto p_src_data = src_buf->get_global_ptr();
-	uint64_t max_length = src_buf->data_len - src_buf->get_global_offset();
+	uint64_t max_length = src_buf->getRemainingLength();
 	uint64_t nb_code_blocks = 0;
 	auto active_src = p_src_data;
 
@@ -531,16 +531,15 @@ bool T2Decode::read_packet_data(grk_resolution *res, PacketIter *p_pi,
 
 			uint32_t numPassesInPacket = cblk->numPassesInPacket;
 			do {
-				size_t offset = (size_t) src_buf->get_global_offset();
-				size_t len = src_buf->data_len;
+				size_t maxLen = src_buf->getRemainingLength();
 				// Check possible overflow on segment length
-				if (((offset + seg->numBytesInPacket) > len)) {
-					GRK_WARN("read packet data:\nSegment offset (%u) plus segment length %u\n"
-							"is greater than total length of all segments (%u)\n"
+				if (((seg->numBytesInPacket) > maxLen)) {
+					GRK_WARN("read packet data:\nSegment segment length %u\n"
+							"is greater than remaining total length of all segments (%u)\n"
 							"for codeblock %u (layer=%u, prec=%u, band=%u, res=%u, comp=%u).\n"
-							"Truncating packet data.", offset,	seg->numBytesInPacket,
-							len, cblkno, p_pi->layno, p_pi->precno, bandno, p_pi->resno, p_pi->compno);
-					seg->numBytesInPacket = (uint32_t) (len - offset);
+							"Truncating packet data.", seg->numBytesInPacket,
+							maxLen, cblkno, p_pi->layno, p_pi->precno, bandno, p_pi->resno, p_pi->compno);
+					seg->numBytesInPacket = (uint32_t) maxLen;
 				}
 				//initialize dataindex to current contiguous size of code block
 				if (seg->numpasses == 0)
