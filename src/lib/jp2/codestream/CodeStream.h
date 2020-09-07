@@ -321,7 +321,8 @@ struct CodeStream : public ICodeStream {
 
 	int32_t tileIndexToDecode();
 
-	TileProcessor *getTileProcessor(uint16_t tile_index);
+	TileProcessor* getTileProcessor(uint16_t tile_index);
+	TileProcessor* getTileProcessor(void);
 	void setTileProcessor(TileProcessor *proc, bool deleteOld);
 
 	BufferedStream* getStream();

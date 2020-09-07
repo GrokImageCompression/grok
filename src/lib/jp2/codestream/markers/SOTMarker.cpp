@@ -25,7 +25,9 @@ namespace grk {
 
 SOTMarker::SOTMarker(CodeStream *stream, TileProcessor *processor) : m_codeStream(stream),
 																	m_tileProcessor(processor),
-																	m_psot_location(0) {
+																	m_psot_location(0)
+{
+	assert(processor);
 }
 
 
@@ -104,14 +106,15 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	uint32_t tile_x, tile_y;
 
 	assert(m_codeStream != nullptr);
+	assert(m_codeStream->getTileProcessor());
 
 	if (!get_sot_values(p_header_data, header_size,
-			&m_tileProcessor->m_tile_index, &tot_len,
+			&m_codeStream->getTileProcessor()->m_tile_index, &tot_len,
 			&current_part, &num_parts)) {
 		GRK_ERROR("Error reading SOT marker");
 		return false;
 	}
-	auto tile_number = m_tileProcessor->m_tile_index;
+	auto tile_number = m_codeStream->getTileProcessor()->m_tile_index;
 
 	auto cp = &(m_codeStream->m_cp);
 
@@ -206,10 +209,10 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 
 	if (!m_codeStream->m_decoder.m_last_tile_part_in_code_stream) {
 		/* Keep the size of data to skip after this marker */
-		m_tileProcessor->tile_part_data_length = tot_len
+		m_codeStream->getTileProcessor()->tile_part_data_length = tot_len
 				- sot_marker_segment_len;
 	} else {
-		m_tileProcessor->tile_part_data_length = 0;
+		m_codeStream->getTileProcessor()->tile_part_data_length = 0;
 	}
 
 	m_codeStream->m_decoder.m_state = J2K_DEC_STATE_TPH;

@@ -51,7 +51,7 @@ TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream) :
 				m_tcp(nullptr),
 				m_corrupt_packet(false)
 {
-
+	assert(stream);
 	tile = (grk_tile*) grk_calloc(1, sizeof(grk_tile));
 	if (!tile)
 		throw new std::runtime_error("out of memory");
