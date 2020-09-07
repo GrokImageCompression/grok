@@ -137,13 +137,6 @@ static bool j2k_decompress_tile_t2t1(CodeStream *codeStream, TileProcessor *tile
 static bool j2k_get_end_header(CodeStream *codeStream,  TileProcessor *tileProcessor);
 
 /**
- * Write a tile part
- *
- * @param       codeStream              JPEG 2000 code stream
- */
-static bool j2k_write_tile_part(CodeStream *codeStream, TileProcessor *tileProcessor);
-
-/**
  * Ends the encoding, i.e. frees memory.
  *
  * @param       codeStream          JPEG 2000 code stream
@@ -521,7 +514,7 @@ static bool j2k_need_nb_tile_parts_correction(CodeStream *codeStream, TileProces
 
 	uint64_t stream_pos_backup = stream->tell();
 	while (true) {
-		if (!codeStream->read_marker(&current_marker))
+		if (!codeStream->read_marker_skip_unknown(&current_marker))
 			/* assume all is OK */
 			return stream->seek(stream_pos_backup);
 
@@ -2325,6 +2318,28 @@ bool CodeStream::alloc_multi_tile_output_data(grk_image *p_output_image){
 
 }
 
+bool CodeStream::read_marker_skip_unknown(uint16_t *current_marker){
+	while (true) {
+		// read next marker id
+		if (!read_marker(current_marker))
+			return false;
+
+		/* handle unknown marker */
+		if (current_marker == J2K_MS_UNK) {
+			GRK_WARN("Unknown marker 0x%02x detected.",
+					current_marker);
+			if (!j2k_read_unk(this, current_marker)) {
+				GRK_ERROR("Unable to read unknown marker 0x%02x.",
+						current_marker);
+				return false;
+			}
+			continue;
+		}
+		break;
+	}
+	return true;
+}
+
 
 bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 	assert(getTileProcessor()->m_stream);
@@ -2371,18 +2386,16 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 				GRK_ERROR("Marker is not compliant with its position");
 				goto fail;
 			}
-
 			if (!process_marker(marker_handler, current_marker, marker_size,getTileProcessor()))
 				goto fail;
 
 
 			/* Add the marker to the code getTileProcessor()->m_stream index*/
 			if (cstr_index) {
-				if (!TileLengthMarkers::add_to_index(
-						getTileProcessor()->m_tile_index, cstr_index,
-						marker_handler->id,
-						(uint32_t) getTileProcessor()->m_stream->tell() - marker_size - grk_marker_length,
-						marker_size + grk_marker_length)) {
+				if (!TileLengthMarkers::add_to_index(getTileProcessor()->m_tile_index, cstr_index,
+													marker_handler->id,
+													(uint32_t) getTileProcessor()->m_stream->tell() - marker_size - grk_marker_length,
+													marker_size + grk_marker_length)) {
 					GRK_ERROR("Not enough memory to add tl marker");
 					goto fail;
 				}
@@ -2403,24 +2416,8 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 				}
 				break;
 			} else {
-				while (true) {
-					// read next marker id
-					if (!read_marker(&current_marker))
-						goto fail;
-
-					/* handle unknown marker */
-					if (current_marker == J2K_MS_UNK) {
-						GRK_WARN("Unknown marker 0x%02x detected.",
-								current_marker);
-						if (!j2k_read_unk(this, &current_marker)) {
-							GRK_ERROR("Unable to read unknown marker 0x%02x.",
-									current_marker);
-							goto fail;
-						}
-						continue;
-					}
-					break;
-				}
+				if (!read_marker_skip_unknown(&current_marker))
+					goto fail;
 			}
 		}
 
@@ -2461,23 +2458,15 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 				}
 			}
 			if (!decoder->last_tile_part_was_read) {
-				// read next marker id
-				if (!read_marker(&current_marker))
+				if (!read_marker_skip_unknown(&current_marker))
 					goto fail;
-
-				/* Check if the current marker ID is valid */
-				if (current_marker < 0xff00) {
-					GRK_ERROR("A marker ID was expected (0xff--) instead of %.8x",
-							current_marker);
-					return false;
-				}
 			}
 		} else {
 			/* Indicate we will try to read a new tile-part header*/
 			decoder->m_skip_tile_data = false;
 			decoder->last_tile_part_was_read = false;
 			decoder->m_state = J2K_DEC_STATE_TPH_SOT;
-			if (!read_marker(&current_marker))
+			if (!read_marker_skip_unknown(&current_marker))
 				goto fail;
 		}
 	}
@@ -2630,7 +2619,7 @@ bool CodeStream::read_header_procedure(TileProcessor *tileProcessor) {
 	}
 	// read next marker
 	uint16_t current_marker;
-	if (!read_marker(&current_marker))
+	if (!read_marker_skip_unknown(&current_marker))
 		return false;
 
 	/* Try to read until the SOT is detected */
