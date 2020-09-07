@@ -124,7 +124,7 @@ struct grk_jp2_uuid: public grk_jp2_buffer {
 };
 
 struct FileFormat;
-typedef bool (*jp2_procedure)(FileFormat *fileFormat, BufferedStream*);
+typedef bool (*jp2_procedure)(FileFormat *fileFormat);
 
 /**
  JPEG 2000 file format reader/writer
@@ -285,7 +285,7 @@ bool jp2_init_compress(FileFormat *fileFormat,  grk_cparameters  *parameters,
  * @param  stream    the stream object.
  * @return true if the codec is valid.
  */
-bool jp2_start_compress(FileFormat *fileFormat, BufferedStream *stream);
+bool jp2_start_compress(FileFormat *fileFormat);
 
 /**
  Encode an image into a JPEG 2000 file stream
@@ -296,7 +296,7 @@ bool jp2_start_compress(FileFormat *fileFormat, BufferedStream *stream);
 
  @return true if successful, returns false otherwise
  */
-bool jp2_compress(FileFormat *fileFormat, grk_plugin_tile *tile, BufferedStream *stream);
+bool jp2_compress(FileFormat *fileFormat, grk_plugin_tile *tile);
 
 
 /**
@@ -306,18 +306,17 @@ bool jp2_compress(FileFormat *fileFormat, grk_plugin_tile *tile, BufferedStream 
  * @param tile_index  				tile index
  * @param p_data        			uncompressed data
  * @param uncompressed_data_size   	uncompressed data size
- * @param  stream      buffered stream.
 
  */
 bool jp2_compress_tile(FileFormat *fileFormat,
 		uint16_t tile_index, uint8_t *p_data,
-		uint64_t uncompressed_data_size, BufferedStream *stream);
+		uint64_t uncompressed_data_size);
 
 /**
  * Ends the compression procedures and possibly add data to be read after the
  * code stream.
  */
-bool jp2_end_compress(FileFormat *fileFormat, BufferedStream *stream);
+bool jp2_end_compress(FileFormat *fileFormat);
 
 /* ----------------------------------------------------------------------- */
 
@@ -339,14 +338,12 @@ bool jp2_end_decompress(FileFormat *fileFormat, BufferedStream *stream);
 /**
  * Read a JPEG 2000 file header.
  * @param fileFormat    JPEG 2000 file format
- * @param stream 		stream to read data from.
  * @param header_info   header structure to store header info
  * @param p_image   	input image
  *
  * @return true if the box is valid.
  */
-bool jp2_read_header(FileFormat *fileFormat,BufferedStream *stream,
-		 grk_header_info  *header_info, grk_image **p_image);
+bool jp2_read_header(FileFormat *fileFormat, grk_header_info  *header_info, grk_image **p_image);
 
 /**
  * Reads a tile header.

@@ -176,13 +176,12 @@ static uint8_t* jp2_write_colr(FileFormat *fileFormat, uint32_t *p_nb_bytes_writ
 /**
  * Writes a FTYP box - File type box
  *
- * @param	stream			buffered stream.
  * @param	fileFormat			JPEG 2000 code stream.
  
  *
  * @return	true if writing was successful.
  */
-static bool jp2_write_ftyp(FileFormat *fileFormat, BufferedStream *stream);
+static bool jp2_write_ftyp(FileFormat *fileFormat);
 
 /**
  * Reads a a FTYP box - File type box
@@ -197,7 +196,7 @@ static bool jp2_write_ftyp(FileFormat *fileFormat, BufferedStream *stream);
 static bool jp2_read_ftyp(FileFormat *fileFormat, uint8_t *p_header_data,
 		uint32_t header_size);
 
-static bool jp2_skip_jp2c(FileFormat *fileFormat, BufferedStream *stream);
+static bool jp2_skip_jp2c(FileFormat *fileFormat);
 
 /**
  * Reads the Jpeg2000 file Header box - JP2 Header box (warning, this is a super box).
@@ -223,18 +222,17 @@ static bool jp2_read_jp2h(FileFormat *fileFormat, uint8_t *p_header_data,
  */
 static bool jp2_write_jp2h(FileFormat *fileFormat, BufferedStream *stream);
 
-static bool jp2_write_uuids(FileFormat *fileFormat, BufferedStream *stream);
+static bool jp2_write_uuids(FileFormat *fileFormat);
 
 /**
  * Writes the Jpeg2000 code stream Header box - JP2C Header box. This function must be called AFTER the coding has been done.
  *
- * @param	stream			buffered stream.
  * @param	fileFormat			JPEG 2000 code stream.
  
  *
  * @return true if writing was successful.
  */
-static bool jp2_write_jp2c(FileFormat *fileFormat, BufferedStream *stream);
+static bool jp2_write_jp2c(FileFormat *fileFormat);
 
 /**
  * Reads a JPEG 2000 file signature box.
@@ -258,7 +256,7 @@ static bool jp2_read_jp(FileFormat *fileFormat, uint8_t *p_header_data,
  *
  * @return true if writing was successful.
  */
-static bool jp2_write_jp(FileFormat *fileFormat, BufferedStream *stream);
+static bool jp2_write_jp(FileFormat *fileFormat);
 
 /**
  Apply collected palette data
@@ -333,19 +331,17 @@ static bool jp2_init_end_header_reading(FileFormat *fileFormat);
  *
  * @return true if the box is valid.
  */
-static bool jp2_read_header_procedure(FileFormat *fileFormat, BufferedStream *stream);
+static bool jp2_read_header_procedure(FileFormat *fileFormat);
 
 /**
  * Executes the given procedures on the given codec.
  *
  * @param	p_procedure_list	the list of procedures to execute
  * @param	fileFormat					JPEG 2000 code stream to execute the procedures on.
- * @param	stream					the stream to execute the procedures on.
  *
  * @return	true				if all the procedures were successfully executed.
  */
-static bool jp2_exec(FileFormat *fileFormat, std::vector<jp2_procedure> *p_procedure_list,
-		BufferedStream *stream);
+static bool jp2_exec(FileFormat *fileFormat, std::vector<jp2_procedure> *p_procedure_list);
 
 /**
  * Reads a box header.
@@ -371,7 +367,7 @@ static bool jp2_init_compress_validation(FileFormat *fileFormat);
  */
 static bool jp2_init_header_writing(FileFormat *fileFormat);
 
-static bool jp2_default_validation(FileFormat *fileFormat, BufferedStream *stream);
+static bool jp2_default_validation(FileFormat *fileFormat);
 
 /**
  * Finds the image execution function related to the given box id.
@@ -1717,12 +1713,13 @@ static bool jp2_read_colr(FileFormat *fileFormat, uint8_t *p_colr_header_data,
 	return true;
 }
 
-static bool jp2_write_jp2h(FileFormat *fileFormat, BufferedStream *stream) {
+static bool jp2_write_jp2h(FileFormat *fileFormat) {
 	grk_jp2_img_header_writer_handler writers[32];
 	int32_t i, nb_writers = 0;
 	/* size of data for super box*/
 	uint32_t jp2h_size = 8;
 	bool result = true;
+    auto stream = fileFormat->codeStream->getStream();
 
 	assert(stream != nullptr);
 	assert(fileFormat != nullptr);
@@ -1798,8 +1795,9 @@ static bool jp2_write_jp2h(FileFormat *fileFormat, BufferedStream *stream) {
 	return result;
 }
 
-static bool jp2_write_uuids(FileFormat *fileFormat, BufferedStream *stream) {
+static bool jp2_write_uuids(FileFormat *fileFormat) {
 	assert(fileFormat != nullptr);
+    auto stream = fileFormat->codeStream->getStream();
 
 	// write the uuids
 	for (size_t i = 0; i < fileFormat->numUuids; ++i) {
@@ -1821,7 +1819,8 @@ static bool jp2_write_uuids(FileFormat *fileFormat, BufferedStream *stream) {
 	return true;
 }
 
-static bool jp2_write_ftyp(FileFormat *fileFormat, BufferedStream *stream) {
+static bool jp2_write_ftyp(FileFormat *fileFormat) {
+    auto stream = fileFormat->codeStream->getStream();
 	assert(stream != nullptr);
 	assert(fileFormat != nullptr);
 
@@ -1860,9 +1859,9 @@ static bool jp2_write_ftyp(FileFormat *fileFormat, BufferedStream *stream) {
 	return result;
 }
 
-static bool jp2_write_jp2c(FileFormat *fileFormat, BufferedStream *stream) {
+static bool jp2_write_jp2c(FileFormat *fileFormat) {
 	assert(fileFormat != nullptr);
-	assert(stream != nullptr);
+	auto stream = fileFormat->codeStream->getStream();
 
 	assert(stream->has_seek());
 
@@ -1900,10 +1899,10 @@ static bool jp2_write_jp2c(FileFormat *fileFormat, BufferedStream *stream) {
 	return true;
 }
 
-static bool jp2_write_jp(FileFormat *fileFormat, BufferedStream *stream) {
+static bool jp2_write_jp(FileFormat *fileFormat) {
 	(void) fileFormat;
-	assert(stream != nullptr);
 	assert(fileFormat != nullptr);
+	auto stream = fileFormat->codeStream->getStream();
 
 	/* write box length */
 	if (!stream->write_int(12))
@@ -1940,11 +1939,11 @@ bool jp2_init_compress(FileFormat *fileFormat, grk_cparameters *parameters,
 
 }
 
-bool jp2_compress(FileFormat *fileFormat, grk_plugin_tile *tile, BufferedStream *stream) {
+bool jp2_compress(FileFormat *fileFormat, grk_plugin_tile *tile) {
 	return fileFormat->compress(tile);
 }
 
-bool jp2_end_decompress(FileFormat *fileFormat, BufferedStream *stream) {
+bool jp2_end_decompress(FileFormat *fileFormat) {
 	assert(fileFormat != nullptr);
 
 	return fileFormat->end_decompress();
@@ -1963,7 +1962,7 @@ bool jp2_end_compress(FileFormat *fileFormat, BufferedStream *stream) {
 		return false;
 
 	/* write header */
-	return jp2_exec(fileFormat, fileFormat->m_procedure_list, stream);
+	return jp2_exec(fileFormat, fileFormat->m_procedure_list);
 }
 
 static bool jp2_init_end_header_writing(FileFormat *fileFormat) {
@@ -1984,9 +1983,10 @@ static bool jp2_init_end_header_reading(FileFormat *fileFormat) {
 	return true;
 }
 
-static bool jp2_default_validation(FileFormat *fileFormat, BufferedStream *stream) {
+static bool jp2_default_validation(FileFormat *fileFormat) {
 	bool is_valid = true;
 	uint32_t i;
+    auto stream = fileFormat->codeStream->getStream();
 
 	assert(fileFormat != nullptr);
 	assert(stream != nullptr);
@@ -2026,11 +2026,12 @@ static bool jp2_default_validation(FileFormat *fileFormat, BufferedStream *strea
 	return is_valid;
 }
 
-static bool jp2_read_header_procedure(FileFormat *fileFormat, BufferedStream *stream) {
+static bool jp2_read_header_procedure(FileFormat *fileFormat) {
 	grk_jp2_box box;
 	uint32_t nb_bytes_read;
 	uint64_t last_data_size = GRK_BOX_SIZE;
 	uint32_t current_data_size;
+	auto stream = fileFormat->codeStream->getStream();
 
 	assert(stream != nullptr);
 	assert(fileFormat != nullptr);
@@ -2172,24 +2173,22 @@ static bool jp2_read_header_procedure(FileFormat *fileFormat, BufferedStream *st
  *
  * @return	true				if all the procedures were successfully executed.
  */
-static bool jp2_exec(FileFormat *fileFormat, std::vector<jp2_procedure> *procs,
-		BufferedStream *stream) {
+static bool jp2_exec(FileFormat *fileFormat, std::vector<jp2_procedure> *procs) {
 	bool result = true;
 
 	assert(procs);
 	assert(fileFormat != nullptr);
-	assert(stream != nullptr);
 
 	for (auto it = procs->begin(); it != procs->end(); ++it) {
 		auto p = (jp2_procedure) *it;
-		result = result && (p)(fileFormat, stream);
+		result = result && (p)(fileFormat);
 	}
 	procs->clear();
 
 	return result;
 }
 
-bool jp2_start_compress(FileFormat *fileFormat, BufferedStream *stream) {
+bool jp2_start_compress(FileFormat *fileFormat) {
 	assert(fileFormat != nullptr);
 
 	return fileFormat->start_compress();
@@ -2326,8 +2325,9 @@ static bool jp2_read_ftyp(FileFormat *fileFormat, uint8_t *p_header_data,
 	return true;
 }
 
-static bool jp2_skip_jp2c(FileFormat *fileFormat, BufferedStream *stream) {
+static bool jp2_skip_jp2c(FileFormat *fileFormat) {
 	assert(fileFormat != nullptr);
+    auto stream = fileFormat->codeStream->getStream();
 	assert(stream != nullptr);
 
 	fileFormat->j2k_codestream_offset = stream->tell();
@@ -2457,8 +2457,7 @@ static bool jp2_read_box(grk_jp2_box *box, uint8_t *p_data,
 	return true;
 }
 
-bool jp2_read_header(FileFormat *fileFormat, BufferedStream *stream,
-		grk_header_info *header_info, grk_image **p_image) {
+bool jp2_read_header(FileFormat *fileFormat, grk_header_info *header_info, grk_image **p_image) {
 	assert(fileFormat != nullptr);
 
 	return fileFormat->read_header(header_info,p_image);
@@ -2514,7 +2513,7 @@ bool jp2_read_tile_header(FileFormat *fileFormat, uint16_t *tile_index,
 
 bool jp2_compress_tile(FileFormat *fileFormat,
 		uint16_t tile_index, uint8_t *p_data,
-		uint64_t uncompressed_data_size, BufferedStream *stream)	{
+		uint64_t uncompressed_data_size)	{
 	return fileFormat->compress_tile(tile_index, p_data, uncompressed_data_size);
 }
 
@@ -2602,11 +2601,11 @@ bool FileFormat::read_header(grk_header_info  *header_info, grk_image **p_image)
 		return false;
 
 	/* validation of the parameters codec */
-	if (!jp2_exec(this, m_validation_list, m_stream))
+	if (!jp2_exec(this, m_validation_list))
 		return false;
 
 	/* read header */
-	if (!jp2_exec(this, m_procedure_list, m_stream))
+	if (!jp2_exec(this, m_procedure_list))
 		return false;
 
 	if (header_info) {
@@ -2740,7 +2739,7 @@ bool FileFormat::end_decompress(void){
 		return false;
 
 	/* write header */
-	if (!jp2_exec(this, m_procedure_list, m_stream))
+	if (!jp2_exec(this, m_procedure_list))
 		return false;
 
 	return codeStream->end_decompress();
@@ -2769,7 +2768,7 @@ bool FileFormat::start_compress(void){
 		return false;
 
 	/* validation of the parameters codec */
-	if (!jp2_exec(this, m_validation_list, m_stream))
+	if (!jp2_exec(this, m_validation_list))
 		return false;
 
 	/* customization of the encoding */
@@ -2787,7 +2786,7 @@ bool FileFormat::start_compress(void){
 			(image_size > (uint64_t) 1 << 30) ? true : false;
 
 	/* write header */
-	if (!jp2_exec(this, m_procedure_list, m_stream))
+	if (!jp2_exec(this, m_procedure_list))
 		return false;
 
 	return codeStream->start_compress();
@@ -3021,7 +3020,7 @@ bool FileFormat::end_compress(void){
 		return false;
 
 	/* write header */
-	return jp2_exec(this, m_procedure_list, m_stream);
+	return jp2_exec(this, m_procedure_list);
 }
 
 bool FileFormat::decompress_tile(grk_image *p_image,uint16_t tile_index) {

@@ -41,7 +41,6 @@ static j2k_prog_order j2k_prog_order_list[] = { { GRK_CPRL, "CPRL" }, {
  *
  * @param       codeStream          JPEG 2000 code stream
  * @param 		tileProcessor		tile processor
- * @param       stream              the stream to read
  *
  */
 static bool j2k_read_header_procedure(CodeStream *codeStream,  TileProcessor *tileProcessor);
@@ -51,8 +50,6 @@ static bool j2k_read_header_procedure(CodeStream *codeStream,  TileProcessor *ti
  *
  * @param       codeStream          JPEG 2000 code stream
  * @param 		tileProcessor		tile processor
- * @param       stream              the stream to validate.
-
  *
  * @return true if the parameters are correct.
  */
@@ -63,8 +60,6 @@ static bool j2k_compress_validation(CodeStream *codeStream,  TileProcessor *tile
  *
  * @param       codeStream          JPEG 2000 code stream
  * @param 		tileProcessor		tile processor
- * @param       stream              the stream to validate.
-
  *
  * @return true if the parameters are correct.
  */
@@ -75,8 +70,6 @@ static bool j2k_decompress_validation(CodeStream *codeStream,  TileProcessor *ti
  *
  * @param       codeStream          JPEG 2000 code stream
  * @param 		tileProcessor		tile processor
- * @param       stream              the stream to validate.
-
  *
  * @return true if the parameters are correct.
  */
@@ -88,8 +81,6 @@ static bool j2k_mct_validation(CodeStream *codeStream,  TileProcessor *tileProce
  *
  * @param       codeStream          JPEG 2000 code stream
  * @param 		tileProcessor		tile processor
- * @param       stream              buffered stream.
-
  */
 static bool j2k_update_rates(CodeStream *codeStream, TileProcessor *tileProcessor);
 
@@ -118,8 +109,6 @@ static const  grk_dec_memory_marker_handler  *  j2k_get_marker_handler(
  *
  * @param       codeStream          JPEG 2000 code stream
  * @param 		tileProcessor		tile processor
- * @param       stream              the stream to read
- *
  */
 static bool j2k_decompress_tiles(CodeStream *codeStream,  TileProcessor *tileProcessor);
 static bool j2k_decompress_tile_t2(CodeStream *codeStream, TileProcessor *tileProcessor);
@@ -131,8 +120,6 @@ static bool j2k_decompress_tile_t2t1(CodeStream *codeStream, TileProcessor *tile
  *
  * @param       codeStream          JPEG 2000 code stream
  * @param 		tileProcessor		tile processor
- * @param       stream              buffered stream.
-
  */
 static bool j2k_get_end_header(CodeStream *codeStream,  TileProcessor *tileProcessor);
 
@@ -141,8 +128,6 @@ static bool j2k_get_end_header(CodeStream *codeStream,  TileProcessor *tileProce
  *
  * @param       codeStream          JPEG 2000 code stream
  * @param 		tileProcessor		tile processor
- * @param       stream              buffered stream.
-
  */
 static bool j2k_end_encoding(CodeStream *codeStream, TileProcessor *tileProcessor);
 
@@ -151,8 +136,6 @@ static bool j2k_end_encoding(CodeStream *codeStream, TileProcessor *tileProcesso
  *
  * @param       codeStream          JPEG 2000 code stream
  * @param 		tileProcessor		tile processor
- * @param       stream              stream.
-
  */
 static bool j2k_init_info(CodeStream *codeStream,  TileProcessor *tileProcessor);
 
@@ -160,7 +143,6 @@ static bool j2k_init_info(CodeStream *codeStream,  TileProcessor *tileProcessor)
  * Reads an unknown marker
  *
  * @param       codeStream            JPEG 2000 code stream
- * @param       stream                buffered stream
  * @param       output_marker         marker value
 
  *
@@ -388,7 +370,6 @@ static void transfer_image_data(grk_image *src, grk_image *dest) {
  * Checks for invalid number of tile-parts in SOT marker (TPsot==TNsot). See issue 254.
  *
  * @param		codeStream							JPEG 2000 code stream
- * @param       stream            					the stream to read data from.
  * @param       tileProcessor          				tile processor
  * @param       p_correction_needed output value. 	if true, nonconformant code stream needs TNsot correction.
 

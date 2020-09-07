@@ -144,8 +144,6 @@ bool j2k_write_soc(CodeStream *codeStream, TileProcessor *tileProcessor) {
 /**
  * Reads a SOC marker (Start of Codestream)
  * @param       codeStream    JPEG 2000 code stream.
- * @param       stream        buffered stream
-
  */
 bool j2k_read_soc(CodeStream *codeStream) {
 	uint8_t data[2];
@@ -1173,6 +1171,7 @@ bool j2k_merge_ppt(TileCodingParams *p_tcp) {
  */
 bool j2k_read_sot(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
 		uint16_t header_size) {
+	GRK_UNUSED(tileProcessor);
 	SOTMarker sot(codeStream);
 
 	return sot.read(p_header_data, header_size);
