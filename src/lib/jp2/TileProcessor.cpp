@@ -1467,7 +1467,7 @@ bool TileProcessor::prepare_sod_decoding(CodeStream *codeStream) {
 	assert(codeStream);
 
 	// note: we subtract 2 to account for SOD marker
-	auto tcp = codeStream->get_current_decode_tcp(this);
+	auto tcp = codeStream->get_current_decode_tcp();
 	if (codeStream->m_decoder.m_last_tile_part_in_code_stream) {
 		tile_part_data_length =
 				(uint32_t) (m_stream->get_number_byte_left() - 2);

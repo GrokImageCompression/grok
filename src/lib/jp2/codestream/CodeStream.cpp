@@ -40,10 +40,9 @@ static j2k_prog_order j2k_prog_order_list[] = { { GRK_CPRL, "CPRL" }, {
  * The read header procedure.
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
  *
  */
-static bool j2k_read_header_procedure(CodeStream *codeStream,  TileProcessor *tileProcessor);
+static bool j2k_read_header_procedure(CodeStream *codeStream);
 
 /**
  * The default encoding validation procedure without any extension.
@@ -53,46 +52,41 @@ static bool j2k_read_header_procedure(CodeStream *codeStream,  TileProcessor *ti
  *
  * @return true if the parameters are correct.
  */
-static bool j2k_compress_validation(CodeStream *codeStream,  TileProcessor *tileProcessor);
+static bool j2k_compress_validation(CodeStream *codeStream);
 
 /**
  * The default decoding validation procedure without any extension.
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
  *
  * @return true if the parameters are correct.
  */
-static bool j2k_decompress_validation(CodeStream *codeStream,  TileProcessor *tileProcessor);
+static bool j2k_decompress_validation(CodeStream *codeStream);
 
 /**
  * The mct encoding validation procedure.
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
  *
  * @return true if the parameters are correct.
  */
-static bool j2k_mct_validation(CodeStream *codeStream,  TileProcessor *tileProcessor);
+static bool j2k_mct_validation(CodeStream *codeStream);
 
 
 /**
  * Updates the rates of the tcp.
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
  */
-static bool j2k_update_rates(CodeStream *codeStream, TileProcessor *tileProcessor);
+static bool j2k_update_rates(CodeStream *codeStream);
 
 /**
  * Copies the decoding tile parameters onto all the tile parameters.
  * Creates also the tile decoder.
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
-
  */
-static bool j2k_copy_default_tcp(CodeStream *codeStream, TileProcessor *tileProcessor);
+static bool j2k_copy_default_tcp(CodeStream *codeStream);
 
 /**
  * Reads the lookup table containing all the marker, status and action, and returns the handler associated
@@ -110,7 +104,7 @@ static const  grk_dec_memory_marker_handler  *  j2k_get_marker_handler(
  * @param       codeStream          JPEG 2000 code stream
  * @param 		tileProcessor		tile processor
  */
-static bool j2k_decompress_tiles(CodeStream *codeStream,  TileProcessor *tileProcessor);
+static bool j2k_decompress_tiles(CodeStream *codeStream);
 static bool j2k_decompress_tile_t2(CodeStream *codeStream, TileProcessor *tileProcessor);
 static bool j2k_decompress_tile_t2t1(CodeStream *codeStream, TileProcessor *tileProcessor,bool multi_tile);
 
@@ -119,25 +113,22 @@ static bool j2k_decompress_tile_t2t1(CodeStream *codeStream, TileProcessor *tile
  * Gets the offset of the header.
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
  */
-static bool j2k_get_end_header(CodeStream *codeStream,  TileProcessor *tileProcessor);
+static bool j2k_get_end_header(CodeStream *codeStream);
 
 /**
  * Ends the encoding, i.e. frees memory.
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
  */
-static bool j2k_end_encoding(CodeStream *codeStream, TileProcessor *tileProcessor);
+static bool j2k_end_encoding(CodeStream *codeStream);
 
 /**
  * Inits the Info
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
  */
-static bool j2k_init_info(CodeStream *codeStream,  TileProcessor *tileProcessor);
+static bool j2k_init_info(CodeStream *codeStream);
 
 /**
  * Reads an unknown marker
@@ -370,14 +361,12 @@ static void transfer_image_data(grk_image *src, grk_image *dest) {
  * Checks for invalid number of tile-parts in SOT marker (TPsot==TNsot). See issue 254.
  *
  * @param		codeStream							JPEG 2000 code stream
- * @param       tileProcessor          				tile processor
  * @param       p_correction_needed output value. 	if true, nonconformant code stream needs TNsot correction.
 
  *
  * @return true if the function was successful, false otherwise.
  */
-static bool j2k_need_nb_tile_parts_correction(CodeStream *codeStream,
-		TileProcessor *tileProcessor, bool *p_correction_needed);
+static bool j2k_need_nb_tile_parts_correction(CodeStream *codeStream,	bool *p_correction_needed);
 
 static const j2k_mct_function j2k_mct_write_functions_from_float[] = {
 		j2k_write_float_to_int16, j2k_write_float_to_int32,
@@ -467,16 +456,18 @@ static const grk_dec_memory_marker_handler* j2k_get_marker_handler(	uint16_t id)
 
 
 
-static bool j2k_decompress_validation(CodeStream *codeStream,TileProcessor *tileProcessor) {
+static bool j2k_decompress_validation(CodeStream *codeStream) {
 
-	return codeStream->decompress_validation(tileProcessor);
+	return codeStream->decompress_validation();
 }
 
-static bool j2k_read_header_procedure(CodeStream *codeStream,TileProcessor *tileProcessor) {
-	return codeStream->read_header_procedure(tileProcessor);
+static bool j2k_read_header_procedure(CodeStream *codeStream) {
+	GRK_UNUSED(codeStream);
+
+	return codeStream->read_header_procedure();
 }
 
-static bool j2k_need_nb_tile_parts_correction(CodeStream *codeStream, TileProcessor *tileProcessor, bool *p_correction_needed) {
+static bool j2k_need_nb_tile_parts_correction(CodeStream *codeStream, bool *p_correction_needed) {
 	uint8_t header_data[10];
 	uint16_t current_marker;
 	uint16_t marker_size;
@@ -485,6 +476,7 @@ static bool j2k_need_nb_tile_parts_correction(CodeStream *codeStream, TileProces
 	uint32_t tot_len;
 	SOTMarker sotMarker(codeStream);
 	auto stream = codeStream->getStream();
+	auto tileProcessor = codeStream->getTileProcessor();
 
 	/* initialize to no correction needed */
 	*p_correction_needed = false;
@@ -557,15 +549,15 @@ static bool j2k_decompress_tile_t2t1(CodeStream *codeStream, TileProcessor *tile
 /**
  *
  */
-static bool j2k_decompress_tiles(CodeStream *codeStream, TileProcessor *tileProcessor) {
-	return codeStream->decompress_tiles(tileProcessor);
+static bool j2k_decompress_tiles(CodeStream *codeStream) {
+	return codeStream->decompress_tiles(codeStream->getTileProcessor());
 }
 
 /*
  * Read and decompress one tile.
  */
-static bool j2k_decompress_tile(CodeStream *codeStream,TileProcessor *tileProcessor) {
-	return codeStream->decompress_tile(tileProcessor);
+static bool j2k_decompress_tile(CodeStream *codeStream) {
+	return codeStream->decompress_tile(codeStream->getTileProcessor());
 }
 
 bool j2k_check_poc_val(const grk_poc *p_pocs, uint32_t nb_pocs,
@@ -628,9 +620,7 @@ bool j2k_check_poc_val(const grk_poc *p_pocs, uint32_t nb_pocs,
 }
 
 
-static bool j2k_mct_validation(CodeStream *codeStream,TileProcessor *tileProcessor) {
-	GRK_UNUSED(tileProcessor);
-
+static bool j2k_mct_validation(CodeStream *codeStream) {
 	bool is_valid = true;
 	assert(codeStream != nullptr);
 	if ((codeStream->m_cp.rsiz & 0x8200) == 0x8200) {
@@ -651,8 +641,8 @@ static bool j2k_mct_validation(CodeStream *codeStream,TileProcessor *tileProcess
 	return is_valid;
 }
 
-static bool j2k_compress_validation(CodeStream *codeStream,TileProcessor *tileProcessor) {
-	return codeStream->compress_validation(tileProcessor);
+static bool j2k_compress_validation(CodeStream *codeStream) {
+	return codeStream->compress_validation();
 }
 
 bool j2k_init_mct_encoding(TileCodingParams *p_tcp, grk_image *p_image) {
@@ -799,25 +789,23 @@ bool j2k_init_mct_encoding(TileCodingParams *p_tcp, grk_image *p_image) {
 	return true;
 }
 
-static bool j2k_end_encoding(CodeStream *codeStream, TileProcessor *tileProcessor) {
+static bool j2k_end_encoding(CodeStream *codeStream) {
 	(void) codeStream;
 	assert(codeStream);
-	GRK_UNUSED(tileProcessor);
 
 	return true;
 }
 
-static bool j2k_init_info(CodeStream *codeStream, TileProcessor *tileProcessor) {
+static bool j2k_init_info(CodeStream *codeStream) {
 	assert(codeStream);
-	GRK_UNUSED(tileProcessor);
 
 	return j2k_calculate_tp(&codeStream->m_cp,
 			&codeStream->m_encoder.m_total_tile_parts,
 			codeStream->m_input_image);
 }
 
-static bool j2k_get_end_header(CodeStream *codeStream, TileProcessor *tileProcessor) {
-	return codeStream->get_end_header(tileProcessor);
+static bool j2k_get_end_header(CodeStream *codeStream) {
+	return codeStream->get_end_header();
 }
 
 
@@ -827,12 +815,12 @@ static bool j2k_get_end_header(CodeStream *codeStream, TileProcessor *tileProces
  *
  * @return
  */
-static bool j2k_copy_default_tcp(CodeStream *codeStream,TileProcessor *tileProcessor) {
-	return codeStream->copy_default_tcp(tileProcessor);
+static bool j2k_copy_default_tcp(CodeStream *codeStream) {
+	return codeStream->copy_default_tcp();
 }
 
-static bool j2k_update_rates(CodeStream *codeStream, TileProcessor *tileProcessor) {
-	return codeStream->update_rates(tileProcessor);
+static bool j2k_update_rates(CodeStream *codeStream) {
+	return codeStream->update_rates();
 }
 
 char* j2k_convert_progression_order(GRK_PROG_ORDER prg_order) {
@@ -2183,7 +2171,7 @@ grk_codestream_index* CodeStream::get_cstr_index(void){
 
 
 bool CodeStream::process_marker(const grk_dec_memory_marker_handler* marker_handler,
-		uint16_t current_marker, uint16_t marker_size, TileProcessor *tileProcessor){
+		uint16_t current_marker, uint16_t marker_size){
 
 	if (!m_marker_scratch) {
 		m_marker_scratch = (uint8_t*) grk_calloc(1, default_header_size);
@@ -2224,8 +2212,7 @@ bool CodeStream::process_marker(const grk_dec_memory_marker_handler* marker_hand
 		GRK_ERROR("Not sure how that happened.");
 		return false;
 	}
-	if (!(*(marker_handler->handler))(this,tileProcessor,
-			m_marker_scratch, marker_size)) {
+	if (!(*(marker_handler->handler))(this,	m_marker_scratch, marker_size)) {
 		GRK_ERROR("Fail to read the current marker segment (%#x)",
 				current_marker);
 		return false;
@@ -2238,7 +2225,9 @@ bool CodeStream::process_marker(const grk_dec_memory_marker_handler* marker_hand
 bool CodeStream::isDecodingTilePartHeader() {
 	return (m_decoder.m_state & J2K_DEC_STATE_TPH);
 }
-TileCodingParams* CodeStream::get_current_decode_tcp(TileProcessor *tileProcessor) {
+TileCodingParams* CodeStream::get_current_decode_tcp() {
+    auto tileProcessor = getTileProcessor();
+
 	return (isDecodingTilePartHeader()) ?
 			m_cp.tcps + tileProcessor->m_tile_index :
 			m_decoder.m_default_tcp;
@@ -2370,7 +2359,7 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 				GRK_ERROR("Marker is not compliant with its position");
 				goto fail;
 			}
-			if (!process_marker(marker_handler, current_marker, marker_size,getTileProcessor()))
+			if (!process_marker(marker_handler, current_marker, marker_size))
 				goto fail;
 
 
@@ -2420,7 +2409,7 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 				bool correction_needed;
 
 				m_nb_tile_parts_correction_checked = true;
-				if (!j2k_need_nb_tile_parts_correction(this, getTileProcessor(),	&correction_needed)) {
+				if (!j2k_need_nb_tile_parts_correction(this, &correction_needed)) {
 					GRK_ERROR("j2k_apply_nb_tile_parts_correction error");
 					goto fail;
 				}
@@ -2457,7 +2446,7 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 
 	// do QCD marker quantization step size sanity check
 	// see page 553 of Taubman and Marcellin for more details on this check
-	tcp = get_current_decode_tcp(getTileProcessor());
+	tcp = get_current_decode_tcp();
 	if (tcp->main_qcd_qntsty != J2K_CCP_QNTSTY_SIQNT) {
 		auto numComps = m_input_image->numcomps;
 		//1. Check main QCD
@@ -2588,7 +2577,7 @@ bool CodeStream::init_header_writing(void) {
 	return true;
 }
 
-bool CodeStream::read_header_procedure(TileProcessor *tileProcessor) {
+bool CodeStream::read_header_procedure(void) {
 	bool has_siz = false;
 	bool has_cod = false;
 	bool has_qcd = false;
@@ -2646,8 +2635,7 @@ bool CodeStream::read_header_procedure(TileProcessor *tileProcessor) {
 		}
 		marker_size = (uint16_t)(marker_size - 2); /* Subtract the size of the marker ID already read */
 
-		if (!process_marker(marker_handler, current_marker, marker_size,
-										tileProcessor))
+		if (!process_marker(marker_handler, current_marker, marker_size))
 			return false;
 
 		if (cstr_index) {
@@ -2849,7 +2837,7 @@ bool CodeStream::decompress_tile(TileProcessor *tileProcessor) {
 
 bool CodeStream::exec(std::vector<j2k_procedure> &procs) {
     bool result = std::all_of(procs.begin(), procs.end(),
-		   [&](const j2k_procedure &proc){ return proc(this, getTileProcessor()); });
+		   [&](const j2k_procedure &proc){ return proc(this); });
 	procs.clear();
 
 	return result;
@@ -2983,8 +2971,7 @@ bool CodeStream::decompress_tiles(TileProcessor *tileProcessor) {
 	return success;
 }
 
-bool CodeStream::decompress_validation(TileProcessor *tileProcessor) {
-	GRK_UNUSED(tileProcessor);
+bool CodeStream::decompress_validation(void) {
 	bool is_valid = true;
 
 	/* STATE checking */
@@ -3015,7 +3002,7 @@ bool CodeStream::write_tile_part(TileProcessor *tileProcessor) {
 				auto tcp = m_cp.tcps + currentTileNumber;
 				auto image = m_input_image;
 				uint32_t nb_comp = image->numcomps;
-				if (!j2k_write_poc(this, tileProcessor))
+				if (!j2k_write_poc(this))
 					return false;
 				tile_part_bytes_written += getPocSize(nb_comp,
 						1 + tcp->numpocs);
@@ -3086,9 +3073,7 @@ bool CodeStream::post_write_tile(TileProcessor *tileProcessor) {
 	return true;
 }
 
-bool CodeStream::get_end_header(TileProcessor *tileProcessor) {
-	GRK_UNUSED(tileProcessor);
-
+bool CodeStream::get_end_header(void) {
 	cstr_index->main_head_end = m_stream->tell();
 
 	return true;
@@ -3100,9 +3085,7 @@ bool CodeStream::get_end_header(TileProcessor *tileProcessor) {
  *
  * @return
  */
-bool CodeStream::copy_default_tcp(TileProcessor *tileProcessor) {
-	GRK_UNUSED(tileProcessor);
-
+bool CodeStream::copy_default_tcp(void) {
 	auto image = m_input_image;
 	uint32_t nb_tiles = m_cp.t_grid_height * m_cp.t_grid_width;
 	uint32_t tccp_size = image->numcomps * (uint32_t) sizeof(TileComponentCodingParams);
@@ -3202,8 +3185,7 @@ bool CodeStream::copy_default_tcp(TileProcessor *tileProcessor) {
 }
 
 
-bool CodeStream::update_rates(TileProcessor *tileProcessor) {
-	GRK_UNUSED(tileProcessor);
+bool CodeStream::update_rates(void) {
 	uint32_t i, j, k;
 	uint32_t bits_empty, size_pixel;
 	uint32_t last_res;
@@ -3295,8 +3277,7 @@ bool CodeStream::update_rates(TileProcessor *tileProcessor) {
 }
 
 
-bool CodeStream::compress_validation(TileProcessor *tileProcessor) {
-	GRK_UNUSED(tileProcessor);
+bool CodeStream::compress_validation() {
 	bool is_valid = true;
 
 	/* STATE checking */

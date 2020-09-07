@@ -211,17 +211,6 @@ static bool jp2_skip_jp2c(FileFormat *fileFormat);
 static bool jp2_read_jp2h(FileFormat *fileFormat, uint8_t *p_header_data,
 		uint32_t header_size);
 
-/**
- * Writes the Jpeg2000 file Header box - JP2 Header box (warning, this is a super box).
- *
- * @param  fileFormat      JPEG 2000 code stream.
- * @param  stream      buffered stream.
- 
- *
- * @return true if writing was successful.
- */
-static bool jp2_write_jp2h(FileFormat *fileFormat, BufferedStream *stream);
-
 static bool jp2_write_uuids(FileFormat *fileFormat);
 
 /**

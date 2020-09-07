@@ -127,7 +127,7 @@ enum J2K_STATUS {
 bool grk_image_single_component_data_alloc(	grk_image_comp *image);
 
 struct TileProcessor;
-typedef bool (*j2k_procedure)(CodeStream *codeStream, TileProcessor *tileProcessor);
+typedef bool (*j2k_procedure)(CodeStream *codeStream);
 
 
 struct  grk_dec_memory_marker_handler  {
@@ -136,8 +136,7 @@ struct  grk_dec_memory_marker_handler  {
 	/** value of the state when the marker can appear */
 	uint32_t states;
 	/** action linked to the marker */
-	bool (*handler)(CodeStream *codeStream, TileProcessor *tileProcessor,
-			uint8_t *p_header_data, uint16_t header_size);
+	bool (*handler)(CodeStream *codeStream, uint8_t *p_header_data, uint16_t header_size);
 } ;
 
 struct ICodeStream {
@@ -218,15 +217,14 @@ struct CodeStream : public ICodeStream {
 
 
    bool isDecodingTilePartHeader() ;
-	TileCodingParams* get_current_decode_tcp(TileProcessor *tileProcessor);
+	TileCodingParams* get_current_decode_tcp(void);
 
 	bool read_marker(uint16_t *val);
 	bool read_marker_skip_unknown(uint16_t *current_marker);
 	bool read_short(uint16_t *val);
 
 	bool process_marker(const grk_dec_memory_marker_handler* marker_handler,
-						uint16_t current_marker, uint16_t marker_size,
-						TileProcessor *tileProcessor);
+						uint16_t current_marker, uint16_t marker_size);
 
 	/**
 	 * Sets the given area to be decoded. This function should be called right after grk_read_header
@@ -261,7 +259,7 @@ struct CodeStream : public ICodeStream {
 
 	bool init_header_writing(void);
 
-	bool read_header_procedure(TileProcessor *tileProcessor);
+	bool read_header_procedure(void);
 
 	bool do_decompress(grk_image *p_image);
 
@@ -273,19 +271,19 @@ struct CodeStream : public ICodeStream {
 
 	bool decompress_tiles(TileProcessor *tileProcessor);
 
-	bool decompress_validation(TileProcessor *tileProcessor);
+	bool decompress_validation(void);
 
 	bool write_tile_part(TileProcessor *tileProcessor);
 
 	bool post_write_tile(TileProcessor *tileProcessor);
 
-	bool get_end_header(TileProcessor *tileProcessor);
+	bool get_end_header(void);
 
-	bool copy_default_tcp(TileProcessor *tileProcessor);
+	bool copy_default_tcp(void);
 
-	bool update_rates(TileProcessor *tileProcessor);
+	bool update_rates(void);
 
-	bool compress_validation(TileProcessor *tileProcessor);
+	bool compress_validation(void);
 	/**
 	 * Executes the given procedures on the given codec.
 	 *

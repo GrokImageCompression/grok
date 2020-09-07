@@ -71,10 +71,8 @@ bool j2k_add_mhmarker( grk_codestream_index  *cstr_index, uint32_t type,
  * Writes the SOC marker (Start Of Codestream)
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
-
  */
-bool j2k_write_soc(CodeStream *codeStream, TileProcessor *tileProcessor);
+bool j2k_write_soc(CodeStream *codeStream);
 
 /**
  * Reads a SOC marker (Start of Codestream)
@@ -86,80 +84,69 @@ bool j2k_read_soc(CodeStream *codeStream);
  * Writes the SIZ marker (image and tile size)
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
  */
-bool j2k_write_siz(CodeStream *codeStream,  TileProcessor *tileProcessor);
+bool j2k_write_siz(CodeStream *codeStream);
 
 /**
  * Reads a SIZ marker (image and tile size)
  *
  * @param       codeStream      JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
  * @param       p_header_data   header data
  * @param       header_size     size of header data
  */
-bool j2k_read_siz(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
+bool j2k_read_siz(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
  * Reads a CAP marker
  *
  * @param       codeStream      JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
  * @param       p_header_data   header data
  * @param       header_size     size of header data
  */
-bool j2k_read_cap(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
+bool j2k_read_cap(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
  * Writes the CAP marker
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
-
  */
-bool j2k_write_cap(CodeStream *codeStream,  TileProcessor *tileProcessor);
+bool j2k_write_cap(CodeStream *codeStream);
 
 /**
  * Writes the COM marker (comment)
  *
  * @param       codeStream      JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
  */
-bool j2k_write_com(CodeStream *codeStream,  TileProcessor *tileProcessor);
+bool j2k_write_com(CodeStream *codeStream);
 
 /**
  * Reads a COM marker (comments)
  *
  * @param       codeStream      JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
  * @param       p_header_data   header data
  * @param       header_size     size of header data
  *
  */
-bool j2k_read_com(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
+bool j2k_read_com(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
 /**
  * Writes the COD marker (Coding style default)
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
-
  */
-bool j2k_write_cod(CodeStream *codeStream,  TileProcessor *tileProcessor);
+bool j2k_write_cod(CodeStream *codeStream);
 
 /**
  * Reads a COD marker (Coding Style defaults)
  *
  * @param       codeStream      JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
  * @param       p_header_data   header data
  * @param       header_size     size of header data
  *
  */
-bool j2k_read_cod(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
-		uint16_t header_size);
+bool j2k_read_cod(CodeStream *codeStream, uint8_t *p_header_data,uint16_t header_size);
 
 /**
  * Compares 2 COC markers (Coding style component)
@@ -188,31 +175,28 @@ bool j2k_write_coc(CodeStream *codeStream, uint32_t comp_no,
  * Reads a COC marker (Coding Style Component)
  *
  * @param       codeStream      JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
  * @param       p_header_data   header data
  * @param       header_size     size of header data
  *
  */
-bool j2k_read_coc(CodeStream *codeStream, TileProcessor *tileProcessor,uint8_t *p_header_data,
+bool j2k_read_coc(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
  * Writes the QCD marker (quantization default)
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
  */
-bool j2k_write_qcd(CodeStream *codeStream,  TileProcessor *tileProcessor);
+bool j2k_write_qcd(CodeStream *codeStream);
 
 /**
  * Reads a QCD marker (Quantization defaults)
  *
  * @param       codeStream      JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
  * @param       p_header_data   header data
  * @param       header_size     size of header data
  */
-bool j2k_read_qcd(CodeStream *codeStream, TileProcessor *tileProcessor,uint8_t *p_header_data,
+bool j2k_read_qcd(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
@@ -242,12 +226,11 @@ bool j2k_write_qcc(CodeStream *codeStream, uint16_t tile_index, uint32_t comp_no
  * Reads a QCC marker (Quantization component)
  *
  * @param       codeStream      JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
  * @param       p_header_data   header data
  * @param       header_size     size of header data
 
  */
-bool j2k_read_qcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
+bool j2k_read_qcc(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
 
 uint16_t getPocSize(uint32_t l_nb_comp, uint32_t l_nb_poc);
@@ -256,96 +239,87 @@ uint16_t getPocSize(uint32_t l_nb_comp, uint32_t l_nb_poc);
  * Writes the POC marker (Progression Order Change)
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
  */
-bool j2k_write_poc(CodeStream *codeStream,  TileProcessor *tileProcessor);
+bool j2k_write_poc(CodeStream *codeStream);
 
 
 /**
  * Reads a POC marker (Progression Order Change)
  *
  * @param       codeStream      JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
  * @param       p_header_data   header data
  * @param       header_size     size of header data
  */
-bool j2k_read_poc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
+bool j2k_read_poc(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
  * Reads a CRG marker (Component registration)
  *
  * @param       codeStream      JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
  * @param       p_header_data   header data
  * @param       header_size     size of header data
  *
  */
-bool j2k_read_crg(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
+bool j2k_read_crg(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
 /**
  * Reads a TLM marker (Tile Length Marker)
  *
  * @param       codeStream      JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
  * @param       p_header_data   header data
  * @param       header_size     size of header data
  */
-bool j2k_read_tlm(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
+bool j2k_read_tlm(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
  * End writing the updated tlm.
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
  */
-bool j2k_write_tlm_end(CodeStream *codeStream,  TileProcessor *tileProcessor);
+bool j2k_write_tlm_end(CodeStream *codeStream);
 
 
 /**
  * Begin writing the TLM marker (Tile Length Marker)
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
  */
-bool j2k_write_tlm_begin(CodeStream *codeStream,  TileProcessor *tileProcessor);
+bool j2k_write_tlm_begin(CodeStream *codeStream);
 
 
 /**
  * Reads a PLM marker (Packet length, main header marker)
  *
  * @param       codeStream      JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
- * @param       p_header_data   header data
+  * @param       p_header_data   header data
  * @param       header_size     size of header data
  *
  */
-bool j2k_read_plm(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
+bool j2k_read_plm(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
 /**
  * Reads a PLT marker (Packet length, tile-part header)
  *
  * @param       codeStream      JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
  * @param       p_header_data   header data
  * @param       header_size     size of header data
  *
  */
-bool j2k_read_plt(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
+bool j2k_read_plt(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
  * Reads a PPM marker (Packed headers, main header)
  *
  * @param       codeStream      JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
  * @param       p_header_data   header data
  * @param       header_size     size of header data
  *
  */
 
-bool j2k_read_ppm(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
+bool j2k_read_ppm(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
@@ -360,12 +334,11 @@ bool j2k_merge_ppm(CodingParams *p_cp);
  * Reads a PPT marker (Packed packet headers, tile-part header)
  *
  * @param       codeStream      JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
  * @param       p_header_data   header data
  * @param       header_size     size of header data
  *
  */
-bool j2k_read_ppt(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
+bool j2k_read_ppt(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
@@ -380,13 +353,11 @@ bool j2k_merge_ppt(TileCodingParams *p_tcp);
  * Read SOT (Start of tile part) marker
  *
  * @param       codeStream      JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
  * @param       p_header_data   header data.
  * @param       header_size     size of header data
  *
  */
-bool j2k_read_sot(CodeStream *codeStream, TileProcessor *tileProcessor,
-		uint8_t *p_header_data, uint16_t header_size);
+bool j2k_read_sot(CodeStream *codeStream,	uint8_t *p_header_data, uint16_t header_size);
 
 
 /**
@@ -424,13 +395,12 @@ uint32_t j2k_get_SPCod_SPCoc_size(CodeStream *codeStream, uint32_t comp_no);
 /**
  * Reads a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
  * @param       codeStream           JPEG 2000 code stream
- * @param		tileProcessor	tile processor
  * @param       compno          component number
  * @param       p_header_data   the data contained in the COM box.
  * @param       header_size   the size of the data contained in the COM marker.
 
  */
-bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, TileProcessor *tileProcessor,
+bool j2k_read_SPCod_SPCoc(CodeStream *codeStream,
 		uint32_t compno, uint8_t *p_header_data, uint16_t *header_size);
 
 /**
@@ -474,7 +444,6 @@ void j2k_update_tlm(CodeStream *codeStream, uint16_t tile_index, uint32_t tile_p
  * in the QCD or QCC.
  *
  * @param       codeStream           JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
  * @param		fromQCC			true if reading QCC, otherwise false (reading QCD)
  * @param       compno          the component number to output.
  * @param       p_header_data   the data buffer.
@@ -482,7 +451,7 @@ void j2k_update_tlm(CodeStream *codeStream, uint16_t tile_index, uint32_t tile_p
  *              it is changed by the function.
  *
  */
-bool j2k_read_SQcd_SQcc(CodeStream *codeStream, TileProcessor *tileProcessor, bool fromQCC,uint32_t compno,
+bool j2k_read_SQcd_SQcc(CodeStream *codeStream, bool fromQCC,uint32_t compno,
 		uint8_t *p_header_data, uint16_t *header_size);
 
 /**
@@ -498,12 +467,11 @@ bool j2k_write_mct_record(grk_mct_data *p_mct_record, BufferedStream *stream);
  * Reads a MCT marker (Multiple Component Transform)
  *
  * @param       codeStream      JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
  * @param       p_header_data   header data
  * @param       header_size     size of header data
  *
  */
-bool j2k_read_mct(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
+bool j2k_read_mct(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
@@ -520,12 +488,11 @@ bool j2k_write_mcc_record(grk_simple_mcc_decorrelation_data *p_mcc_record,
  * Reads a MCC marker (Multiple Component Collection)
  *
  * @param       codeStream      JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
  * @param       p_header_data   header data
  * @param       header_size     size of header data
  *
  */
-bool j2k_read_mcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
+bool j2k_read_mcc(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
@@ -539,12 +506,11 @@ bool j2k_write_mco(CodeStream *codeStream);
  * Reads a MCO marker (Multiple Component Transform Ordering)
  *
  * @param       codeStream      JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
  * @param       p_header_data   header data.
  * @param       header_size     size of header data
  *
  */
-bool j2k_read_mco(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
+bool j2k_read_mco(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
 
 bool j2k_add_mct(TileCodingParams *p_tcp, grk_image *p_image, uint32_t index);
@@ -561,45 +527,40 @@ bool j2k_write_cbd(CodeStream *codeStream);
  * Reads a CBD marker (Component bit depth definition)
  *
  * @param       codeStream      JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
  * @param       p_header_data   header data
  * @param       header_size     size of header data
  *
  */
-bool j2k_read_cbd(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
+bool j2k_read_cbd(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
  * Writes COC marker for each component.
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
- */
-bool j2k_write_all_coc(CodeStream *codeStream,  TileProcessor *tileProcessor);
+  */
+bool j2k_write_all_coc(CodeStream *codeStream);
 
 /**
  * Writes QCC marker for each component.
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
  */
-bool j2k_write_all_qcc(CodeStream *codeStream,  TileProcessor *tileProcessor);
+bool j2k_write_all_qcc(CodeStream *codeStream);
 
 /**
  * Writes regions of interests.
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
  */
-bool j2k_write_regions(CodeStream *codeStream,  TileProcessor *tileProcessor);
+bool j2k_write_regions(CodeStream *codeStream);
 
 /**
  * Writes EPC ????
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
  */
-bool j2k_write_epc(CodeStream *codeStream, TileProcessor *tileProcessor);
+bool j2k_write_epc(CodeStream *codeStream);
 
 void j2k_update_tlm(CodeStream *codeStream, uint16_t tile_index, uint32_t tile_part_size) ;
 
@@ -619,29 +580,25 @@ bool j2k_write_rgn(CodeStream *codeStream, uint16_t tile_no, uint32_t comp_no,
  * Reads a RGN marker (Region Of Interest)
  *
  * @param       codeStream      JPEG 2000 code stream
- * @param 		tileProcessor	tile processor
  * @param       p_header_data   header data
  * @param       header_size     size of header data
  */
-bool j2k_read_rgn(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t *p_header_data,
+bool j2k_read_rgn(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
  * Writes the EOC marker (End of Codestream)
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
-
  */
-bool j2k_write_eoc(CodeStream *codeStream,  TileProcessor *tileProcessor);
+bool j2k_write_eoc(CodeStream *codeStream);
 
 /**
  * Writes the CBD-MCT-MCC-MCO markers (Multi components transform)
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
  */
-bool j2k_write_mct_data_group(CodeStream *codeStream,  TileProcessor *tileProcessor);
+bool j2k_write_mct_data_group(CodeStream *codeStream);
 
 }
 
