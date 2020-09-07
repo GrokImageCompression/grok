@@ -75,7 +75,7 @@ bool j2k_add_mhmarker( grk_codestream_index  *cstr_index, uint32_t type,
  * @param       stream              buffered stream.
 
  */
-bool j2k_write_soc(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream);
+bool j2k_write_soc(CodeStream *codeStream, TileProcessor *tileProcessor);
 
 /**
  * Reads a SOC marker (Start of Codestream)
@@ -83,7 +83,7 @@ bool j2k_write_soc(CodeStream *codeStream, TileProcessor *tileProcessor, Buffere
  * @param       stream        XXX needs data
 
  */
-bool j2k_read_soc(CodeStream *codeStream, BufferedStream *stream);
+bool j2k_read_soc(CodeStream *codeStream);
 
 /**
  * Writes the SIZ marker (image and tile size)
@@ -93,7 +93,7 @@ bool j2k_read_soc(CodeStream *codeStream, BufferedStream *stream);
  * @param       stream              buffered stream.
 
  */
-bool j2k_write_siz(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
+bool j2k_write_siz(CodeStream *codeStream,  TileProcessor *tileProcessor);
 
 /**
  * Reads a SIZ marker (image and tile size)
@@ -125,7 +125,7 @@ bool j2k_read_cap(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
  * @param       stream              buffered stream.
 
  */
-bool j2k_write_cap(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
+bool j2k_write_cap(CodeStream *codeStream,  TileProcessor *tileProcessor);
 
 /**
  * Writes the COM marker (comment)
@@ -135,7 +135,7 @@ bool j2k_write_cap(CodeStream *codeStream,  TileProcessor *tileProcessor, Buffer
  * @param       stream          buffered stream.
 
  */
-bool j2k_write_com(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
+bool j2k_write_com(CodeStream *codeStream,  TileProcessor *tileProcessor);
 
 /**
  * Reads a COM marker (comments)
@@ -156,7 +156,7 @@ bool j2k_read_com(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
  * @param       stream              buffered stream.
 
  */
-bool j2k_write_cod(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
+bool j2k_write_cod(CodeStream *codeStream,  TileProcessor *tileProcessor);
 
 /**
  * Reads a COD marker (Coding Style defaults)
@@ -213,7 +213,7 @@ bool j2k_read_coc(CodeStream *codeStream, TileProcessor *tileProcessor,uint8_t *
  * @param       stream              buffered stream.
 
  */
-bool j2k_write_qcd(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
+bool j2k_write_qcd(CodeStream *codeStream,  TileProcessor *tileProcessor);
 
 /**
  * Reads a QCD marker (Quantization defaults)
@@ -271,7 +271,7 @@ uint16_t getPocSize(uint32_t l_nb_comp, uint32_t l_nb_poc);
  * @param       stream              buffered stream.
 
  */
-bool j2k_write_poc(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
+bool j2k_write_poc(CodeStream *codeStream,  TileProcessor *tileProcessor);
 
 
 /**
@@ -315,7 +315,7 @@ bool j2k_read_tlm(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
  * @param       stream              buffered stream.
 
  */
-bool j2k_write_tlm_end(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
+bool j2k_write_tlm_end(CodeStream *codeStream,  TileProcessor *tileProcessor);
 
 
 /**
@@ -326,7 +326,7 @@ bool j2k_write_tlm_end(CodeStream *codeStream,  TileProcessor *tileProcessor, Bu
  * @param       stream              buffered stream.
 
  */
-bool j2k_write_tlm_begin(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
+bool j2k_write_tlm_begin(CodeStream *codeStream,  TileProcessor *tileProcessor);
 
 
 /**
@@ -428,7 +428,7 @@ bool j2k_compare_SPCod_SPCoc(CodeStream *codeStream,
  *
  * @return true if successful
  */
-bool j2k_write_SPCod_SPCoc(CodeStream *codeStream, 	uint32_t comp_no, BufferedStream *stream);
+bool j2k_write_SPCod_SPCoc(CodeStream *codeStream, 	uint32_t comp_no);
 
 /**
  * Gets the size taken by writing a SPCod or SPCoc for the given tile and component.
@@ -483,7 +483,7 @@ bool j2k_compare_SQcd_SQcc(CodeStream *codeStream,
 
  *
  */
-bool j2k_write_SQcd_SQcc(CodeStream *codeStream,uint32_t comp_no, BufferedStream *stream);
+bool j2k_write_SQcd_SQcc(CodeStream *codeStream,uint32_t comp_no);
 
 /**
  * Updates the Tile Length Marker.
@@ -556,7 +556,7 @@ bool j2k_read_mcc(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
  * @param       stream          buffered stream.
 
  */
-bool j2k_write_mco(CodeStream *codeStream, BufferedStream *stream);
+bool j2k_write_mco(CodeStream *codeStream);
 
 /**
  * Reads a MCO marker (Multiple Component Transform Ordering)
@@ -580,7 +580,7 @@ bool j2k_add_mct(TileCodingParams *p_tcp, grk_image *p_image, uint32_t index);
  * @param       stream                                buffered stream.
 
  */
-bool j2k_write_cbd(CodeStream *codeStream, BufferedStream *stream);
+bool j2k_write_cbd(CodeStream *codeStream);
 
 /**
  * Reads a CBD marker (Component bit depth definition)
@@ -602,7 +602,7 @@ bool j2k_read_cbd(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
  * @param       stream              buffered stream.
 
  */
-bool j2k_write_all_coc(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
+bool j2k_write_all_coc(CodeStream *codeStream,  TileProcessor *tileProcessor);
 
 /**
  * Writes QCC marker for each component.
@@ -612,7 +612,7 @@ bool j2k_write_all_coc(CodeStream *codeStream,  TileProcessor *tileProcessor, Bu
  * @param       stream              buffered stream.
 
  */
-bool j2k_write_all_qcc(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
+bool j2k_write_all_qcc(CodeStream *codeStream,  TileProcessor *tileProcessor);
 
 /**
  * Writes regions of interests.
@@ -622,7 +622,7 @@ bool j2k_write_all_qcc(CodeStream *codeStream,  TileProcessor *tileProcessor, Bu
  * @param       stream              buffered stream.
 
  */
-bool j2k_write_regions(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
+bool j2k_write_regions(CodeStream *codeStream,  TileProcessor *tileProcessor);
 
 /**
  * Writes EPC ????
@@ -632,7 +632,7 @@ bool j2k_write_regions(CodeStream *codeStream,  TileProcessor *tileProcessor, Bu
  * @param       stream              buffered stream.
 
  */
-bool j2k_write_epc(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream);
+bool j2k_write_epc(CodeStream *codeStream, TileProcessor *tileProcessor);
 
 void j2k_update_tlm(CodeStream *codeStream, uint16_t tile_index, uint32_t tile_part_size) ;
 
@@ -647,7 +647,7 @@ void j2k_update_tlm(CodeStream *codeStream, uint16_t tile_index, uint32_t tile_p
 
  */
 bool j2k_write_rgn(CodeStream *codeStream, uint16_t tile_no, uint32_t comp_no,
-		uint32_t nb_comps, BufferedStream *stream);
+		uint32_t nb_comps);
 
 /**
  * Reads a RGN marker (Region Of Interest)
@@ -668,7 +668,7 @@ bool j2k_read_rgn(CodeStream *codeStream, TileProcessor *tileProcessor, uint8_t 
  * @param       stream              buffered stream.
 
  */
-bool j2k_write_eoc(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
+bool j2k_write_eoc(CodeStream *codeStream,  TileProcessor *tileProcessor);
 
 /**
  * Writes the CBD-MCT-MCC-MCO markers (Multi components transform)
@@ -678,7 +678,7 @@ bool j2k_write_eoc(CodeStream *codeStream,  TileProcessor *tileProcessor, Buffer
  * @param       stream              buffered stream.
 
  */
-bool j2k_write_mct_data_group(CodeStream *codeStream,  TileProcessor *tileProcessor, BufferedStream *stream);
+bool j2k_write_mct_data_group(CodeStream *codeStream,  TileProcessor *tileProcessor);
 
 }
 

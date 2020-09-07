@@ -116,8 +116,8 @@ bool T2Decode::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 						delete[] first_pass_failed;
 						return false;
 					}
-					tileProcessor->m_resno_decoded[current_pi->compno] = std::max<uint32_t>(current_pi->resno,
-							tileProcessor->m_resno_decoded[current_pi->compno]);
+					tileProcessor->m_resno_decoded_per_component[current_pi->compno] = std::max<uint32_t>(current_pi->resno,
+							tileProcessor->m_resno_decoded_per_component[current_pi->compno]);
 
 				} else {
 					if (pltMarkerLen) {
@@ -136,8 +136,8 @@ bool T2Decode::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 				 current_pi->precno, current_pi->layno);
 			}
 			if (first_pass_failed[current_pi->compno]) {
-				if (tileProcessor->m_resno_decoded[current_pi->compno]  == 0) {
-					tileProcessor->m_resno_decoded[current_pi->compno] =
+				if (tileProcessor->m_resno_decoded_per_component[current_pi->compno]  == 0) {
+					tileProcessor->m_resno_decoded_per_component[current_pi->compno] =
 							p_tile->comps[current_pi->compno].resolutions_to_decompress
 									- 1;
 				}

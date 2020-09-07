@@ -216,7 +216,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 
 	/* Check if the current tile is outside the area we want
 	 *  decompress or not corresponding to the tile index*/
-	if (m_codeStream->m_tile_ind_to_dec == -1) {
+	if (m_codeStream->tileIndexToDecode() == -1) {
 		m_codeStream->m_decoder.m_skip_tile_data =
 				(tile_x < m_codeStream->m_decoder.m_start_tile_x_index)
 						|| (tile_x
@@ -227,7 +227,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 								>= m_codeStream->m_decoder.m_end_tile_y_index);
 	} else {
 		m_codeStream->m_decoder.m_skip_tile_data = (tile_number
-				!= (uint32_t) m_codeStream->m_tile_ind_to_dec);
+				!= (uint32_t) m_codeStream->tileIndexToDecode());
 	}
 
 	/* Index */

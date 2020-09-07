@@ -222,10 +222,10 @@ void GRK_CALLCONV grk_image_destroy(grk_image *image) {
 
 	switch (p_format) {
 	case GRK_CODEC_J2K:
-		codec->m_codeStreamBase = new CodeStream(true);
+		codec->m_codeStreamBase = new CodeStream(true,(BufferedStream*)stream);
 		break;
 	case GRK_CODEC_JP2:
-		codec->m_codeStreamBase = new FileFormat(true);
+		codec->m_codeStreamBase = new FileFormat(true,(BufferedStream*)stream);
 		break;
 	case GRK_CODEC_UNKNOWN:
 	default:
@@ -255,10 +255,8 @@ bool GRK_CALLCONV grk_read_header(
 		grk_image **p_image) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
-		auto stream = (BufferedStream*) codec->m_stream;
 		assert(codec->is_decompressor);
-
-		return codec->m_codeStreamBase->read_header(stream, header_info, p_image);
+		return codec->m_codeStreamBase->read_header( header_info, p_image);
 	}
 	return false;
 }
@@ -267,10 +265,9 @@ bool GRK_CALLCONV grk_decompress( grk_codec p_codec, grk_plugin_tile *tile,
 		 grk_image *p_image) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
-		auto stream = (BufferedStream*) codec->m_stream;
 		assert(codec->is_decompressor);
 
-		return codec->m_codeStreamBase->decompress(tile, stream, p_image);
+		return codec->m_codeStreamBase->decompress(tile, p_image);
 	}
 	return false;
 }
@@ -289,11 +286,9 @@ bool GRK_CALLCONV grk_decompress_tile( grk_codec p_codec,
 		 grk_image *p_image, uint16_t tile_index) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
-		auto stream = (BufferedStream*) codec->m_stream;
 		assert(codec->is_decompressor);
 
-		return codec->m_codeStreamBase->decompress_tile(stream, p_image,
-				tile_index);
+		return codec->m_codeStreamBase->decompress_tile(p_image,tile_index);
 	}
 	return false;
 }
@@ -313,10 +308,10 @@ bool GRK_CALLCONV grk_decompress_tile( grk_codec p_codec,
 
 	switch (p_format) {
 	case GRK_CODEC_J2K:
-		codec->m_codeStreamBase = new CodeStream(false);
+		codec->m_codeStreamBase = new CodeStream(false,(BufferedStream*)stream);
 		break;
 	case GRK_CODEC_JP2:
-		codec->m_codeStreamBase = new FileFormat(false);
+		codec->m_codeStreamBase = new FileFormat(false,(BufferedStream*)stream);
 		break;
 	case GRK_CODEC_UNKNOWN:
 	default:
@@ -368,10 +363,9 @@ bool GRK_CALLCONV grk_init_compress( grk_codec p_codec,
 bool GRK_CALLCONV grk_start_compress( grk_codec p_codec) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
-		auto stream = (BufferedStream*) codec->m_stream;
 		assert(!codec->is_decompressor);
 		if (!codec->is_decompressor) {
-			return codec->m_codeStreamBase->start_compress(stream	);
+			return codec->m_codeStreamBase->start_compress();
 		}
 	}
 	return false;
@@ -383,10 +377,9 @@ bool GRK_CALLCONV grk_compress_with_plugin( grk_codec p_info,
 		grk_plugin_tile *tile) {
 	if (p_info) {
 		auto codec = (grk_codec_private*) p_info;
-		auto stream = (BufferedStream*) codec->m_stream;
 		assert(!codec->is_decompressor);
 		if (!codec->is_decompressor) {
-			return codec->m_codeStreamBase->compress(tile, stream);
+			return codec->m_codeStreamBase->compress(tile);
 		}
 	}
 	return false;
@@ -394,10 +387,9 @@ bool GRK_CALLCONV grk_compress_with_plugin( grk_codec p_info,
 bool GRK_CALLCONV grk_end_compress( grk_codec p_codec) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
-		auto stream = (BufferedStream*) codec->m_stream;
 		assert(!codec->is_decompressor);
 		if (!codec->is_decompressor) {
-			return codec->m_codeStreamBase->end_compress(stream);
+			return codec->m_codeStreamBase->end_compress();
 		}
 	}
 	return false;
@@ -405,9 +397,8 @@ bool GRK_CALLCONV grk_end_compress( grk_codec p_codec) {
 bool GRK_CALLCONV grk_end_decompress( grk_codec p_codec) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
-		auto stream = (BufferedStream*) codec->m_stream;
 		assert(codec->is_decompressor);
-		return codec->m_codeStreamBase->end_decompress(stream);
+		return codec->m_codeStreamBase->end_decompress();
 	}
 	return false;
 }
@@ -441,10 +432,9 @@ bool GRK_CALLCONV grk_compress_tile( grk_codec p_codec, uint16_t tile_index,
 		uint8_t *p_data, uint64_t data_size) {
 	if (p_codec && p_data) {
 		auto codec = (grk_codec_private*) p_codec;
-		auto stream = (BufferedStream*) codec->m_stream;
 		if (codec->is_decompressor)
 			return false;
-		return codec->m_codeStreamBase->compress_tile(tile_index, p_data, data_size, stream	);
+		return codec->m_codeStreamBase->compress_tile(tile_index, p_data, data_size	);
 	}
 	return false;
 }

@@ -130,12 +130,12 @@ typedef bool (*jp2_procedure)(FileFormat *fileFormat, BufferedStream*);
  JPEG 2000 file format reader/writer
  */
 struct FileFormat : public ICodeStream {
-	FileFormat(bool isDecoder);
+	FileFormat(bool isDecoder, BufferedStream *stream);
 	~FileFormat();
 
 
 	/** Main header reading function handler */
-   bool read_header(BufferedStream *stream, grk_header_info  *header_info, grk_image **p_image);
+   bool read_header(grk_header_info  *header_info, grk_image **p_image);
 
 	/** Setup decoder function handler */
   void init_decompress(grk_dparameters  *p_param);
@@ -161,23 +161,22 @@ struct FileFormat : public ICodeStream {
 
 
 	/** Decoding function */
-   bool decompress( grk_plugin_tile *tile,	BufferedStream *stream, grk_image *p_image);
+   bool decompress( grk_plugin_tile *tile,	grk_image *p_image);
 
 	/** Reading function used after code stream if necessary */
-   bool end_decompress(BufferedStream *stream);
+   bool end_decompress(void);
 
    bool init_compress(grk_cparameters  *p_param,grk_image *p_image);
 
-   bool start_compress(BufferedStream *stream);
+   bool start_compress(void);
 
-   bool compress(grk_plugin_tile* tile,	BufferedStream *stream);
+   bool compress(grk_plugin_tile* tile);
 
-   bool compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size, BufferedStream *stream);
+   bool compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size);
 
-   bool end_compress(BufferedStream *stream);
+   bool end_compress(void);
 
-	bool decompress_tile(BufferedStream *stream, grk_image *p_image,
-			uint16_t tile_index);
+	bool decompress_tile(grk_image *p_image,uint16_t tile_index);
 
    void dump(int32_t flag, FILE *out_stream);
 
@@ -227,6 +226,8 @@ struct FileFormat : public ICodeStream {
 	grk_jp2_buffer xml;
 	grk_jp2_uuid uuids[JP2_MAX_NUM_UUIDS];
 	uint32_t numUuids;
+
+	BufferedStream *m_stream;
 };
 
 /**
@@ -329,20 +330,7 @@ bool jp2_end_compress(FileFormat *fileFormat, BufferedStream *stream);
  */
 void jp2_init_decompress(FileFormat *fileFormat,  grk_dparameters  *parameters);
 
-/**
- * Decompress an image from a JPEG 2000 file stream
- *
- * @param fileFormat JP2 decompressor handle
- * @param tile	  plugin tile
- * @param stream  stream
- * @param p_image image
- *
- * @return a decoded image if successful, otherwise nullptr
- */
-bool jp2_decompress(FileFormat *fileFormat, grk_plugin_tile *tile, BufferedStream *stream,
-		grk_image *p_image);
-
-/**
+/*
  * Ends the decompression procedures and possibly add data to be read after the
  * code stream.
  */

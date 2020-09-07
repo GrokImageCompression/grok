@@ -1931,12 +1931,6 @@ void jp2_init_decompress(FileFormat *fileFormat, grk_dparameters *parameters) {
 /* JP2 compress interface                                             */
 /* ----------------------------------------------------------------------- */
 
-bool jp2_decompress(FileFormat *fileFormat, grk_plugin_tile *tile, BufferedStream *stream,
-		grk_image *p_image) {
-
-	return fileFormat->decompress(tile,stream,p_image);
-
-}
 
 
 bool jp2_init_compress(FileFormat *fileFormat, grk_cparameters *parameters,
@@ -1947,14 +1941,13 @@ bool jp2_init_compress(FileFormat *fileFormat, grk_cparameters *parameters,
 }
 
 bool jp2_compress(FileFormat *fileFormat, grk_plugin_tile *tile, BufferedStream *stream) {
-	return fileFormat->compress(tile, stream);
+	return fileFormat->compress(tile);
 }
 
 bool jp2_end_decompress(FileFormat *fileFormat, BufferedStream *stream) {
-
 	assert(fileFormat != nullptr);
 
-	return fileFormat->end_decompress(stream);
+	return fileFormat->end_decompress();
 
 }
 
@@ -1966,7 +1959,7 @@ bool jp2_end_compress(FileFormat *fileFormat, BufferedStream *stream) {
 	/* customization of the end encoding */
 	if (!jp2_init_end_header_writing(fileFormat))
 		return false;
-	if (!j2k_end_compress(fileFormat->codeStream, stream))
+	if (!fileFormat->codeStream->end_compress())
 		return false;
 
 	/* write header */
@@ -2199,7 +2192,7 @@ static bool jp2_exec(FileFormat *fileFormat, std::vector<jp2_procedure> *procs,
 bool jp2_start_compress(FileFormat *fileFormat, BufferedStream *stream) {
 	assert(fileFormat != nullptr);
 
-	return fileFormat->start_compress(stream);
+	return fileFormat->start_compress();
 
 }
 
@@ -2468,8 +2461,7 @@ bool jp2_read_header(FileFormat *fileFormat, BufferedStream *stream,
 		grk_header_info *header_info, grk_image **p_image) {
 	assert(fileFormat != nullptr);
 
-
-	return fileFormat->read_header(stream,header_info,p_image);
+	return fileFormat->read_header(header_info,p_image);
 }
 
 static bool jp2_init_compress_validation(FileFormat *fileFormat) {
@@ -2514,7 +2506,7 @@ static bool jp2_init_header_reading(FileFormat *fileFormat) {
 bool jp2_read_tile_header(FileFormat *fileFormat, uint16_t *tile_index,
 		bool *can_decode_tile_data, BufferedStream *stream) {
 	auto tileProcessor = new TileProcessor(fileFormat->codeStream,stream);
-	fileFormat->codeStream->m_tileProcessor = tileProcessor;
+	fileFormat->codeStream->setTileProcessor(tileProcessor,true);
 	bool rc =  fileFormat->codeStream->parse_markers(can_decode_tile_data);
 	*tile_index = tileProcessor->m_tile_index;
 	return rc;
@@ -2523,7 +2515,7 @@ bool jp2_read_tile_header(FileFormat *fileFormat, uint16_t *tile_index,
 bool jp2_compress_tile(FileFormat *fileFormat,
 		uint16_t tile_index, uint8_t *p_data,
 		uint64_t uncompressed_data_size, BufferedStream *stream)	{
-	return fileFormat->compress_tile(tile_index, p_data, uncompressed_data_size, stream);
+	return fileFormat->compress_tile(tile_index, p_data, uncompressed_data_size);
 }
 
 void jp2_destroy(FileFormat *fileFormat) {
@@ -2536,12 +2528,11 @@ bool jp2_set_decompress_area(FileFormat *fileFormat, grk_image *p_image, uint32_
 			end_y);
 }
 
-bool jp2_decompress_tile(FileFormat *fileFormat,
-							BufferedStream *stream, grk_image *p_image, uint16_t tile_index){
-	return (fileFormat ? fileFormat->decompress_tile(stream,p_image,tile_index) : false);
+bool jp2_decompress_tile(FileFormat *fileFormat,grk_image *p_image, uint16_t tile_index){
+	return (fileFormat ? fileFormat->decompress_tile(p_image,tile_index) : false);
 }
 
-FileFormat::FileFormat(bool isDecoder) : codeStream(new CodeStream(isDecoder)),
+FileFormat::FileFormat(bool isDecoder, BufferedStream *stream) : codeStream(new CodeStream(isDecoder,stream)),
 										m_validation_list(new std::vector<jp2_procedure>()),
 										m_procedure_list(new std::vector<jp2_procedure>()),
 										w(0),
@@ -2566,7 +2557,8 @@ FileFormat::FileFormat(bool isDecoder) : codeStream(new CodeStream(isDecoder)),
 										jp2_img_state(0),
 										has_capture_resolution(false),
 										has_display_resolution(false),
-										numUuids(0)
+										numUuids(0),
+										m_stream(stream)
 {
 	for (uint32_t i = 0; i < 2; ++i) {
 		capture_resolution[i] = 0;
@@ -2600,9 +2592,7 @@ FileFormat::~FileFormat() {
 }
 
 /** Main header reading function handler */
-bool FileFormat::read_header(BufferedStream *stream, grk_header_info  *header_info, grk_image **p_image){
-	assert(stream != nullptr);
-
+bool FileFormat::read_header(grk_header_info  *header_info, grk_image **p_image){
 	/* customization of the validation */
 	if (!jp2_init_decompress_validation(this))
 		return false;
@@ -2612,11 +2602,11 @@ bool FileFormat::read_header(BufferedStream *stream, grk_header_info  *header_in
 		return false;
 
 	/* validation of the parameters codec */
-	if (!jp2_exec(this, m_validation_list, stream))
+	if (!jp2_exec(this, m_validation_list, m_stream))
 		return false;
 
 	/* read header */
-	if (!jp2_exec(this, m_procedure_list, stream))
+	if (!jp2_exec(this, m_procedure_list, m_stream))
 		return false;
 
 	if (header_info) {
@@ -2638,7 +2628,7 @@ bool FileFormat::read_header(BufferedStream *stream, grk_header_info  *header_in
 				header_info->display_resolution[i] = display_resolution[i];
 		}
 	}
-	if (!j2k_read_header(codeStream, stream, header_info, p_image))
+	if (!codeStream->read_header(header_info, p_image))
 		return false;
 
 	if (*p_image) {
@@ -2651,13 +2641,13 @@ bool FileFormat::read_header(BufferedStream *stream, grk_header_info  *header_in
 }
 
 /** Decoding function */
-bool FileFormat::decompress( grk_plugin_tile *tile,	BufferedStream *stream, grk_image *p_image){
+bool FileFormat::decompress( grk_plugin_tile *tile,	 grk_image *p_image){
 
 	if (!p_image)
 		return false;
 
 	/* J2K decoding */
-	if (!j2k_decompress(codeStream, tile, stream, p_image)) {
+	if (!codeStream->decompress(tile, p_image)) {
 		GRK_ERROR("Failed to decompress JP2 file");
 		return false;
 	}
@@ -2744,25 +2734,22 @@ bool FileFormat::decompress( grk_plugin_tile *tile,	BufferedStream *stream, grk_
 }
 
 /** Reading function used after code stream if necessary */
-bool FileFormat::end_decompress(BufferedStream *stream){
-
-	assert(stream != nullptr);
-
+bool FileFormat::end_decompress(void){
 	/* customization of the end encoding */
 	if (!jp2_init_end_header_reading(this))
 		return false;
 
 	/* write header */
-	if (!jp2_exec(this, m_procedure_list, stream))
+	if (!jp2_exec(this, m_procedure_list, m_stream))
 		return false;
 
-	return codeStream->end_decompress(stream);
+	return codeStream->end_decompress();
 }
 
 /** Setup decoder function handler */
 void FileFormat::init_decompress(grk_dparameters  *parameters){
 	/* set up the J2K codec */
-	j2k_init_decompressor(codeStream, parameters);
+	codeStream->init_decompress(parameters);
 
 	/* further JP2 initializations go here */
 	color.jp2_has_colour_specification_box = 0;
@@ -2776,16 +2763,13 @@ bool FileFormat::set_decompress_area(grk_image *p_image,
 	return codeStream->set_decompress_area(p_image, start_x, start_y, end_x, end_y);
 }
 
-bool FileFormat::start_compress(BufferedStream *stream){
-
-	assert(stream != nullptr);
-
+bool FileFormat::start_compress(void){
 	/* customization of the validation */
 	if (!jp2_init_compress_validation(this))
 		return false;
 
 	/* validation of the parameters codec */
-	if (!jp2_exec(this, m_validation_list, stream))
+	if (!jp2_exec(this, m_validation_list, m_stream))
 		return false;
 
 	/* customization of the encoding */
@@ -2803,10 +2787,10 @@ bool FileFormat::start_compress(BufferedStream *stream){
 			(image_size > (uint64_t) 1 << 30) ? true : false;
 
 	/* write header */
-	if (!jp2_exec(this, m_procedure_list, stream))
+	if (!jp2_exec(this, m_procedure_list, m_stream))
 		return false;
 
-	return codeStream->start_compress(stream);
+	return codeStream->start_compress();
 }
 
 bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
@@ -2821,7 +2805,7 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
 
 	/* set up the J2K codec */
 	/* ------------------- */
-	if (j2k_init_compress(codeStream, parameters, image) == false)
+	if (codeStream->init_compress(parameters, image) == false)
 		return false;
 
 	/* set up the JP2 codec */
@@ -3019,35 +3003,32 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
 	return true;
 }
 
-bool FileFormat::compress(grk_plugin_tile* tile,	BufferedStream *stream){
+bool FileFormat::compress(grk_plugin_tile* tile){
 
-	return codeStream->compress(tile, stream);
+	return codeStream->compress(tile);
 }
 
-bool FileFormat::compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size, BufferedStream *stream){
+bool FileFormat::compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size){
 
-	return codeStream->compress_tile(tile_index, p_data, data_size, stream);
+	return codeStream->compress_tile(tile_index, p_data, data_size);
 }
 
-bool FileFormat::end_compress(BufferedStream *stream){
-	assert(stream != nullptr);
-
+bool FileFormat::end_compress(void){
 	/* customization of the end encoding */
 	if (!jp2_init_end_header_writing(this))
 		return false;
-	if (!codeStream->end_compress(stream))
+	if (!codeStream->end_compress())
 		return false;
 
 	/* write header */
-	return jp2_exec(this, m_procedure_list, stream);
+	return jp2_exec(this, m_procedure_list, m_stream);
 }
 
-bool FileFormat::decompress_tile(BufferedStream *stream, grk_image *p_image,
-		uint16_t tile_index) {
+bool FileFormat::decompress_tile(grk_image *p_image,uint16_t tile_index) {
 	if (!p_image)
 		return false;
 
-	if (!j2k_decompress_tile(codeStream, stream, p_image, tile_index)) {
+	if (!codeStream->decompress_tile(p_image, tile_index)) {
 		GRK_ERROR("Failed to decompress JP2 file");
 		return false;
 	}

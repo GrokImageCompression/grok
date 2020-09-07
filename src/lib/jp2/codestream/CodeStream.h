@@ -24,6 +24,7 @@
 #include <vector>
 #include <map>
 #include "CodingParams.h"
+#include <map>
 
 namespace grk {
 
@@ -126,7 +127,7 @@ enum J2K_STATUS {
 bool grk_image_single_component_data_alloc(	grk_image_comp *image);
 
 struct TileProcessor;
-typedef bool (*j2k_procedure)(CodeStream *codeStream, TileProcessor *tileProcessor, BufferedStream *stream);
+typedef bool (*j2k_procedure)(CodeStream *codeStream, TileProcessor *tileProcessor);
 
 
 struct  grk_dec_memory_marker_handler  {
@@ -144,16 +145,16 @@ struct ICodeStream {
    virtual ~ICodeStream(){}
 
 	/** Main header reading function handler */
-   virtual bool read_header(BufferedStream *stream, grk_header_info  *header_info, grk_image **p_image) = 0;
+   virtual bool read_header(grk_header_info  *header_info, grk_image **p_image) = 0;
 
 	/** Decoding function */
-   virtual bool decompress( grk_plugin_tile *tile,	BufferedStream *stream, grk_image *p_image) = 0;
+   virtual bool decompress( grk_plugin_tile *tile,	grk_image *p_image) = 0;
 
 	/** decompress tile*/
-   virtual bool decompress_tile(BufferedStream *stream,	grk_image *p_image,	uint16_t tile_index) = 0;
+   virtual bool decompress_tile(grk_image *p_image,	uint16_t tile_index) = 0;
 
 	/** Reading function used after code stream if necessary */
-   virtual bool end_decompress(BufferedStream *stream) = 0;
+   virtual bool end_decompress(void) = 0;
 
 	/** Setup decoder function handler */
    virtual void init_decompress(grk_dparameters  *p_param) = 0;
@@ -162,15 +163,15 @@ struct ICodeStream {
    virtual bool set_decompress_area(grk_image *p_image,
 		   uint32_t start_x, uint32_t end_x, uint32_t start_y,	uint32_t end_y) = 0;
 
-   virtual bool start_compress(BufferedStream *stream) = 0;
+   virtual bool start_compress(void) = 0;
 
    virtual bool init_compress(grk_cparameters  *p_param,grk_image *p_image) = 0;
 
-   virtual bool compress(grk_plugin_tile* tile,	BufferedStream *stream) = 0;
+   virtual bool compress(grk_plugin_tile* tile) = 0;
 
-   virtual bool compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size, BufferedStream *stream) = 0;
+   virtual bool compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size) = 0;
 
-   virtual bool end_compress(BufferedStream *stream) = 0;
+   virtual bool end_compress(void) = 0;
 
    virtual void dump(int32_t flag, FILE *out_stream) = 0;
 
@@ -181,33 +182,33 @@ struct ICodeStream {
 
 struct CodeStream : public ICodeStream {
 
-	CodeStream(bool decode);
+	CodeStream(bool decode, BufferedStream *stream);
 	~CodeStream();
 
 	/** Main header reading function handler */
-   bool read_header(BufferedStream *stream, grk_header_info  *header_info, grk_image **p_image);
+   bool read_header(grk_header_info  *header_info, grk_image **p_image);
 
 	/** Decoding function */
-   bool decompress( grk_plugin_tile *tile,	BufferedStream *stream, grk_image *p_image);
+   bool decompress( grk_plugin_tile *tile,grk_image *p_image);
 
 	/** decompress tile*/
-   bool decompress_tile(BufferedStream *stream,	grk_image *p_image,	uint16_t tile_index);
+   bool decompress_tile(grk_image *p_image,	uint16_t tile_index);
 
 	/** Reading function used after code stream if necessary */
-   bool end_decompress(BufferedStream *stream);
+   bool end_decompress(void);
 
 	/** Setup decoder function handler */
    void init_decompress(grk_dparameters  *p_param);
 
-   bool start_compress(BufferedStream *stream);
+   bool start_compress(void);
 
    bool init_compress(grk_cparameters  *p_param,grk_image *p_image);
 
-   bool compress(grk_plugin_tile* tile,	BufferedStream *stream);
+   bool compress(grk_plugin_tile* tile);
 
-   bool compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size, BufferedStream *stream);
+   bool compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size);
 
-   bool end_compress(BufferedStream *stream);
+   bool end_compress(void);
 
    void dump(int32_t flag, FILE *out_stream);
 
@@ -219,12 +220,12 @@ struct CodeStream : public ICodeStream {
    bool isDecodingTilePartHeader() ;
 	TileCodingParams* get_current_decode_tcp(TileProcessor *tileProcessor);
 
-	bool read_marker(BufferedStream *stream, uint16_t *val);
-	bool read_short(BufferedStream *stream, uint16_t *val);
+	bool read_marker(uint16_t *val);
+	bool read_short(uint16_t *val);
 
 	bool process_marker(const grk_dec_memory_marker_handler* marker_handler,
 						uint16_t current_marker, uint16_t marker_size,
-						TileProcessor *tileProcessor,	BufferedStream *stream);
+						TileProcessor *tileProcessor);
 
 	/**
 	 * Sets the given area to be decoded. This function should be called right after grk_read_header
@@ -245,6 +246,7 @@ struct CodeStream : public ICodeStream {
 						uint32_t end_x,
 						uint32_t end_y);
 
+
 	/**
 	 * Allocate output buffer for multiple tile decode
 	 *
@@ -255,6 +257,44 @@ struct CodeStream : public ICodeStream {
 	bool alloc_multi_tile_output_data(grk_image *p_output_image);
 
 	bool parse_markers(bool *can_decode_tile_data);
+
+	bool init_header_writing(void);
+
+	bool read_header_procedure(TileProcessor *tileProcessor);
+
+	bool do_decompress(grk_image *p_image);
+
+	bool decompress_tile_t2t1(TileProcessor *tileProcessor, bool multi_tile) ;
+
+	bool decompress_tile(TileProcessor *tileProcessor);
+
+	bool decompress_tile_t2(TileProcessor *tileProcessor);
+
+	bool decompress_tiles(TileProcessor *tileProcessor);
+
+	bool decompress_validation(TileProcessor *tileProcessor);
+
+	bool write_tile_part(TileProcessor *tileProcessor);
+
+	bool post_write_tile(TileProcessor *tileProcessor);
+
+	bool get_end_header(TileProcessor *tileProcessor);
+
+	bool copy_default_tcp(TileProcessor *tileProcessor);
+
+	bool update_rates(TileProcessor *tileProcessor);
+
+	bool compress_validation(TileProcessor *tileProcessor);
+	/**
+	 * Executes the given procedures on the given codec.
+	 *
+	 * @param       p_procedure_list        the list of procedures to execute
+	 * @param       stream                the stream to execute the procedures on.
+	 *
+	 * @return      true                            if all the procedures were successfully executed.
+	 */
+	bool exec(std::vector<j2k_procedure> &p_procedure_list);
+
 
 
 	// state of decoder/encoder
@@ -279,15 +319,28 @@ struct CodeStream : public ICodeStream {
 	/** helper used to write the index file */
 	 grk_codestream_index  *cstr_index;
 
+	int32_t tileIndexToDecode();
+
+	TileProcessor *getTileProcessor(uint16_t tile_index);
+	void setTileProcessor(TileProcessor *proc, bool deleteOld);
+
+	BufferedStream* getStream();
+
+private:
+
 	/** current TileProcessor **/
 	TileProcessor *m_tileProcessor;
 
+	BufferedStream *m_stream;
 
-	/** index of the tile to decompress (used in get_tile);
+
+	std::map<uint32_t, TileProcessor*> m_processors;
+
+
+	/** index of single tile to decompress;
 	 *  !!! initialized to -1 !!! */
 	int32_t m_tile_ind_to_dec;
 
-private:
 
 	uint8_t *m_marker_scratch;
 	uint16_t m_marker_scratch_size;
@@ -296,7 +349,6 @@ private:
 public:
     bool   whole_tile_decoding;
 	grk_plugin_tile *current_plugin_tile;
-	/** TNsot correction : see issue 254 **/
 	bool m_nb_tile_parts_correction_checked;
 	uint32_t m_nb_tile_parts_correction;
 
@@ -305,17 +357,6 @@ public:
 /** @name Exported functions */
 /*@{*/
 /* ----------------------------------------------------------------------- */
-
-/**
- Setup the decoder decoding parameters using user parameters.
- Decoding parameters are returned in j2k->cp.
- @param j2k J2K decompressor handle
- @param parameters decompression parameters
- */
-void j2k_init_decompressor(CodeStream *j2k,  grk_dparameters  *parameters);
-
-bool j2k_init_compress(CodeStream *codeStream,  grk_cparameters  *parameters,
-		grk_image *image);
 
 /**
  Converts an enum type progression order to string type
@@ -328,32 +369,6 @@ char* j2k_convert_progression_order(GRK_PROG_ORDER prg_order);
 /*@}*/
 
 /**
- * Ends the decompression procedures and possibiliy add data to be read after the
- * code stream.
- */
-bool j2k_end_decompress(CodeStream *j2k, BufferedStream *stream);
-
-/**
- * Read a JPEG 2000 code stream header.
- *
- * @param codeStream  JPEG 2000 code stream.
- * @param stream stream to read data from.
- * @param header_info  header info struct to store header info
- * @param image  pointer to image
- * @return true if the box is valid.
- */
-bool j2k_read_header(CodeStream *codeStream, BufferedStream *stream,
-		 grk_header_info  *header_info, grk_image **image);
-
-/**
- * Destroys a JPEG 2000 code stream.
- *
- * @param	codeStream	the jpeg20000 structure to destroy.
- */
-void j2k_destroy(CodeStream *codeStream);
-
-
-/**
  * Reads a tile header.
  * @param	codeStream		JPEG 2000 code stream
  * @param   tileProcessor 	tile processor
@@ -363,70 +378,9 @@ void j2k_destroy(CodeStream *codeStream);
   * @return	true			if tile header could be read
  */
 bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
-		bool *can_decode_tile_data, BufferedStream *stream);
+		bool *can_decode_tile_data);
 
-/**
- * Set the given area to be decoded. This function should be called
- * right after grk_read_header and before any tile header reading.
- *
- * @param	codeStream		JPEG 2000 code stream
- * @param	image     	image
- * @param	start_x		left position of the rectangle to decompress (in image coordinates).
- * @param	start_y		top position of the rectangle to decompress (in image coordinates).
- * @param	end_x		right position of the rectangle to decompress (in image coordinates).
- * @param	end_y		bottom position of the rectangle to decompress (in image coordinates).
- *
- * @return	true			if the area could be set.
- */
-bool j2k_set_decompress_area(CodeStream *codeStream, grk_image *image, uint32_t start_x,
-		uint32_t start_y, uint32_t end_x, uint32_t end_y);
-
-/**
- * Decode an image from a JPEG 2000 code stream
- * @param codeStream    code stream
- * @param tile    		plugin tile
- * @param stream  		stream
- * @param image   		image
- *
- * @return true if decompression is successful
- */
-bool j2k_decompress(CodeStream *codeStream, grk_plugin_tile *tile, BufferedStream *stream,
-		grk_image *image);
-
-bool j2k_decompress_tile(CodeStream *codeStream, BufferedStream *stream, grk_image *p_image, uint16_t tile_index);
-
-
-/**
- * Writes a tile.
- * @param codeStream				JPEG 2000 code stream
- * @param tile_index 				tile index
- * @param data						uncompressed data
- * @param uncompressed_data_size 	uncompressed data size
- * @param stream					buffered stream.
- 
- */
-bool j2k_compress_tile(CodeStream *codeStream,
-		uint16_t tile_index, uint8_t *data,
-		uint64_t uncompressed_data_size, BufferedStream *stream);
-
-/**
- * Encodes an image into a JPEG 2000 code stream
- */
-bool j2k_compress(CodeStream *codeStream, grk_plugin_tile *tile, BufferedStream *stream);
-
-/**
- * Starts a compression scheme, i.e. validates the codec parameters, writes the header.
- * @param	codeStream		JPEG 2000 code stream
- * @param	stream			the stream object.
- * @return true if the codec is valid.
- */
-bool j2k_start_compress(CodeStream *codeStream, BufferedStream *stream);
-
-/**
- * Ends the compression procedures and possibility add data to be read after the
- * code stream.
- */
-bool j2k_end_compress(CodeStream *codeStream, BufferedStream *stream);
+bool j2k_decompress_tile(CodeStream *codeStream, grk_image *p_image, uint16_t tile_index);
 
 bool j2k_init_mct_encoding(TileCodingParams *p_tcp, grk_image *p_image);
 

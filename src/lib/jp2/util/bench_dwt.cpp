@@ -194,7 +194,7 @@ int main(int argc, char** argv)
 	if (threadScalingArg.isSet())
 		begin = 1;
 
-	CodeStream codeStream(!forwardArg.isSet());
+	CodeStream codeStream(!forwardArg.isSet(),nullptr);
 	codeStream.m_input_image = &image;
 
    for (size_t k = begin; k <= end; ++k) {

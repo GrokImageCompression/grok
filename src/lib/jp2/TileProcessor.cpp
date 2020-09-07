@@ -45,7 +45,7 @@ TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream) :
 				whole_tile_decoding(codeStream->whole_tile_decoding),
 				plt_markers(nullptr),
 				m_cp(&codeStream->m_cp),
-				m_resno_decoded(nullptr),
+				m_resno_decoded_per_component(nullptr),
 				m_stream(stream),
 				tp_pos(0),
 				m_tcp(nullptr),
@@ -57,8 +57,8 @@ TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream) :
 		throw new std::runtime_error("out of memory");
 
 	tile->comps = new TileComponent[image->numcomps];
-	m_resno_decoded = new uint32_t[image->numcomps];
-	memset(m_resno_decoded,0, image->numcomps * sizeof(uint32_t));
+	m_resno_decoded_per_component = new uint32_t[image->numcomps];
+	memset(m_resno_decoded_per_component,0, image->numcomps * sizeof(uint32_t));
 	tile->numcomps = image->numcomps;
 
 	tp_pos = m_cp->m_coding_params.m_enc.m_tp_pos;
@@ -70,7 +70,7 @@ TileProcessor::~TileProcessor() {
 		grk_free(tile);
 	}
 	delete plt_markers;
-	delete[] m_resno_decoded;
+	delete[] m_resno_decoded_per_component;
 }
 
 /*
@@ -937,7 +937,7 @@ bool TileProcessor::decompress_tile_t1(void) {
 
 			if (!whole_tile_decoding) {
 				try {
-					tilec->alloc_sparse_array(m_resno_decoded[compno] + 1);
+					tilec->alloc_sparse_array(m_resno_decoded_per_component[compno] + 1);
 				} catch (runtime_error &ex) {
 					GRK_ERROR("decompress_tile_t1: %s", ex.what());
 					return false;
@@ -955,7 +955,7 @@ bool TileProcessor::decompress_tile_t1(void) {
 
 			if (doPostT1)
 				if (!Wavelet::decompress(this, tilec,
-						m_resno_decoded[compno] + 1, tccp->qmfbid))
+						m_resno_decoded_per_component[compno] + 1, tccp->qmfbid))
 					return false;
 
 			tilec->release_mem();
@@ -1485,7 +1485,7 @@ bool TileProcessor::prepare_sod_decoding(CodeStream *codeStream) {
 					tile_part_data_length,
 					m_stream->get_number_byte_left(),
 					m_tile_index,
-					m_tile_part_index);
+					tcp->m_tile_part_index);
 
 			// sanitize tile_part_data_length
 			tile_part_data_length =	(uint32_t) bytesLeftInStream;

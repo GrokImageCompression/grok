@@ -196,11 +196,6 @@ set(GROK_LIBRARY_SRCS
 
 add_definitions(-DSPDLOG_COMPILED_LIB)
 
-option(GRK_DISABLE_TPSOT_FIX "Disable TPsot==TNsot fix. See https://github.com/uclouvain/openjpeg/issues/254." OFF)
-if(GRK_DISABLE_TPSOT_FIX)
-  add_definitions(-DGRK_DISABLE_TPSOT_FIX)
-endif()
-
 # Build the library
 if (BUILD_PLUGIN_LOADER)
     add_definitions(-DGRK_BUILD_PLUGIN_LOADER)

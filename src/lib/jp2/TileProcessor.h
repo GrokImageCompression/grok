@@ -269,21 +269,28 @@ struct TileProcessor {
 	/** index of tile being currently coded/decoded */
 	uint16_t m_tile_index;
 
-	/** tile part index, regardless of poc.
+	/** Encoding Only
+	 *  tile part index, regardless of poc.
 	 *  for each new poc, tp is reset to 0*/
 	uint8_t m_poc_tile_part_index;
 
-	/** index of tile part being currently coding, taking into account POC.
-	 *  m_tile_part_index holds the total number of tile parts
-	 *   while encoding the last tile part.*/
+	/** Encoding Only
+	 *  index of tile part being currently coding, taking into account POC.
+	 *  m_tile_part_index holds the total number of tile parts encoded thus far
+	 *  while the compressor is encoding the current tile part.*/
 	uint8_t m_tile_part_index;
 
+	// Decoding Only
 	uint32_t tile_part_data_length;
 
-	/** Total number of tile parts of the tile*/
+	/** Encoding Only
+	 * Total number of tile parts of the tile*/
 	uint8_t totnum_tp;
-	/** Current packet iterator number */
+
+	/** Encoding Only
+	 *  Current packet iterator number */
 	uint32_t pino;
+
 	/** info on image tile */
 	grk_tile *tile;
 	/** image header */
@@ -295,12 +302,14 @@ struct TileProcessor {
 
 	PacketLengthMarkers *plt_markers;
 
-	/** coding parameters */
+	/** Coding parameters */
 	CodingParams *m_cp;
 
+	// Encoding only - track which packets have been arleady written
+	// to the code stream
 	PacketTracker m_packetTracker;
 
-	uint32_t* m_resno_decoded;
+	uint32_t* m_resno_decoded_per_component;
 	BufferedStream *m_stream;
 private:
 
