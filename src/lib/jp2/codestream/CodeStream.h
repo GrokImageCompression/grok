@@ -265,11 +265,11 @@ struct CodeStream : public ICodeStream {
 
 	bool decompress_tile_t2t1(TileProcessor *tileProcessor, bool multi_tile) ;
 
-	bool decompress_tile(TileProcessor *tileProcessor);
+	bool decompress_tile();
 
-	bool decompress_tile_t2(TileProcessor *tileProcessor);
+	bool decompress_tile_t2(void);
 
-	bool decompress_tiles(TileProcessor *tileProcessor);
+	bool decompress_tiles(void);
 
 	bool decompress_validation(void);
 
@@ -293,6 +293,23 @@ struct CodeStream : public ICodeStream {
 	 * @return      true                            if all the procedures were successfully executed.
 	 */
 	bool exec(std::vector<j2k_procedure> &p_procedure_list);
+
+
+	/**
+	 * Checks for invalid number of tile-parts in SOT marker (TPsot==TNsot). See issue 254.
+	 *
+	 * @param		codeStream							JPEG 2000 code stream
+	 * @param       p_correction_needed output value. 	if true, nonconformant code stream needs TNsot correction.
+
+	 *
+	 * @return true if the function was successful, false otherwise.
+	 */
+
+	bool need_nb_tile_parts_correction(bool *p_correction_needed);
+
+	bool mct_validation(void);
+
+	bool read_unk(uint16_t *output_marker);
 
 
 
@@ -367,18 +384,6 @@ char* j2k_convert_progression_order(GRK_PROG_ORDER prg_order);
 /*@}*/
 
 /*@}*/
-
-/**
- * Reads a tile header.
- * @param	codeStream		JPEG 2000 code stream
- * @param   tileProcessor 	tile processor
- * @param	can_decode_tile_data 		set to true if tile data is ready to be decoded
- * @param	stream			buffered stream.
- *
-  * @return	true			if tile header could be read
- */
-bool j2k_read_tile_header(CodeStream *codeStream, TileProcessor *tileProcessor,
-		bool *can_decode_tile_data);
 
 bool j2k_decompress_tile(CodeStream *codeStream, grk_image *p_image, uint16_t tile_index);
 
