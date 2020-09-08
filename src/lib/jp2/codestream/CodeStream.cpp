@@ -2245,6 +2245,7 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 
 				m_nb_tile_parts_correction_checked = true;
 				auto cache = m_curr_marker;
+				auto tp = m_tileProcessor;
 				if (!need_nb_tile_parts_correction(&correction_needed)) {
 					GRK_ERROR("j2k_apply_nb_tile_parts_correction error");
 					goto fail;
@@ -2264,6 +2265,8 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 						}
 					}
 					GRK_WARN("Non conformant code stream TPsot==TNsot.");
+				} else {
+					m_tileProcessor = tp;
 				}
 				m_curr_marker = cache;
 			}
@@ -2642,15 +2645,10 @@ bool CodeStream::decompress_tile() {
 	    		tileNumber++;
 	    }
 	}
-
-	auto tileProcessor = new TileProcessor(this,m_stream);
-	setTileProcessor(tileProcessor,true);
-	m_curr_marker = J2K_MS_SOT;
 	if (!parse_markers(&go_on))
 		return false;
 
-	if (!decompress_tile_t2())
-		return false;
+	auto tileProcessor = currentProcessor();
 
 	if (!decompress_tile_t2t1(tileProcessor, false))
 		return false;
@@ -2723,23 +2721,20 @@ bool CodeStream::decompress_tiles(void) {
 			return false;
 	}
 
-	// read header and perform T2
+	// parse header and perform T2 followed by asynch T1
 	for (uint32_t tileno = 0; tileno < num_tiles_to_decode; tileno++) {
 		//1. read header
-		auto processor = new TileProcessor(this,m_stream);
-		setTileProcessor(processor,false);
-		m_curr_marker = J2K_MS_SOT;
 		if (!parse_markers(&go_on)){
-			setTileProcessor(nullptr,true);
+			setTileProcessor(nullptr,false);
 			return false;
 		}
 
 		if (!go_on){
-			setTileProcessor(nullptr,true);
 			break;
 		}
 
 		//2. T2 decode
+		auto processor = currentProcessor();
 		if (!decompress_tile_t2()){
 				GRK_ERROR("Failed to decompress tile %u/%u",
 						processor->m_tile_index + 1,
@@ -2771,7 +2766,7 @@ bool CodeStream::decompress_tiles(void) {
 			if (!decompress_tile_t2t1(processor,multi_tile)){
 					GRK_ERROR("Failed to decompress tile %u/%u",
 							processor->m_tile_index + 1,num_tiles_to_decode);
-					setTileProcessor(nullptr,true);
+					setTileProcessor(nullptr,false);
 					return false;
 			} else {
 				num_tiles_decoded++;
@@ -2791,6 +2786,12 @@ bool CodeStream::decompress_tiles(void) {
 		result.get();
 	}
 	setTileProcessor(nullptr,false);
+
+	// check if there is another tile that has TPSot problem
+	/*
+	if (m_stream->get_number_byte_left() && m_curr_marker == J2K_MS_SOT){
+		return false;
+	}*/
 
 	// sanity checks
 	if (num_tiles_decoded == 0) {
@@ -3184,14 +3185,14 @@ bool CodeStream::need_nb_tile_parts_correction(bool *p_correction_needed) {
 		uint16_t read_tile_no;
 		uint32_t tot_len;
 		SOTMarker sotMarker(this);
+		auto cachedProcessor = currentProcessor();
 		if (!sotMarker.get_sot_values(header_data, marker_size, &read_tile_no,
 				&tot_len, &current_part, &num_parts))
 			return false;
 
-		auto tileProcessor = currentProcessor();
 
 		/* we found what we were looking for */
-		if (read_tile_no == tileProcessor->m_tile_index)
+		if (read_tile_no == cachedProcessor->m_tile_index)
 			break;
 
 		if (tot_len < 14U) {
@@ -3206,7 +3207,7 @@ bool CodeStream::need_nb_tile_parts_correction(bool *p_correction_needed) {
 	}
 
 	/* check for correction */
-	if (current_part == num_parts)
+	if (num_parts && (current_part == num_parts))
 		*p_correction_needed = true;
 
 	return stream->seek(stream_pos_backup);

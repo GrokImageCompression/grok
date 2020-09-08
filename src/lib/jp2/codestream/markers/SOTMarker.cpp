@@ -90,7 +90,12 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	grk_read<uint32_t>(p_header_data++, &tile_part_index, 1);
 	grk_read<uint32_t>(p_header_data++, &num_tile_parts, 1);
 
-	*tile_no = (uint16_t) tile_index;
+	//if (num_tile_parts && (tile_part_index == num_tile_parts))
+	//	return false;
+
+	m_codeStream->allocateProcessor((uint16_t)tile_index);
+	if (tile_no)
+		*tile_no = (uint16_t) tile_index;
 	*p_tot_len = len;
 	*p_current_part = (uint8_t) tile_part_index;
 	*p_num_parts = (uint8_t) num_tile_parts;
@@ -106,7 +111,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	uint32_t tile_x, tile_y;
 
 	if (!get_sot_values(p_header_data, header_size,
-			&m_codeStream->currentProcessor()->m_tile_index, &tot_len,
+			nullptr, &tot_len,
 			&current_part, &num_parts)) {
 		GRK_ERROR("Error reading SOT marker");
 		return false;
