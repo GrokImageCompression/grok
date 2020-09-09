@@ -2152,50 +2152,45 @@ bool CodeStream::read_marker_skip_unknown(){
 
 
 bool CodeStream::parse_markers(bool *can_decode_tile_data) {
-	auto decoder = &m_decoder;
-	TileCodingParams *tcp = nullptr;
-
-
-	/* Reach the End Of Codestream ?*/
-	if (decoder->m_state == J2K_DEC_STATE_EOC)
+	if (m_decoder.m_state == J2K_DEC_STATE_EOC)
 		m_curr_marker = J2K_MS_EOC;
 	/* We need to encounter a SOT marker (a new tile-part header) */
-	else if (decoder->m_state != J2K_DEC_STATE_TPH_SOT)
-		goto fail;
+	else if (m_decoder.m_state != J2K_DEC_STATE_TPH_SOT)
+		return false;
 
 	/* Seek in code stream for SOT marker specifying desired tile index.
 	 * If we don't find it, we stop when we read the EOC or run out of data */
-	while (!decoder->last_tile_part_was_read && (m_curr_marker != J2K_MS_EOC)) {
+	while (!m_decoder.last_tile_part_was_read && (m_curr_marker != J2K_MS_EOC)) {
 
 		/* read markers until SOD is detected */
 		while (m_curr_marker != J2K_MS_SOD) {
 			// end of stream with no EOC
 			if (m_stream->get_number_byte_left() == 0) {
-				decoder->m_state = J2K_DEC_STATE_NO_EOC;
+				m_decoder.m_state = J2K_DEC_STATE_NO_EOC;
 				GRK_WARN("Missing EOC marker");
 				break;
 			}
 			uint16_t marker_size;
 			if (!read_short(&marker_size))
-				goto fail;
+				return false;
 			if (marker_size < 2) {
 				GRK_ERROR("Inconsistent marker size");
-				goto fail;
+				return false;
 			}
 
 			// subtract tile part header and header marker size
-			if (decoder->m_state & J2K_DEC_STATE_TPH)
+			if (m_decoder.m_state & J2K_DEC_STATE_TPH)
 				currentProcessor()->tile_part_data_length -= (marker_size + 2);
 
 			marker_size = (uint16_t)(marker_size - 2); /* Subtract the size of the marker ID already read */
 
 			auto marker_handler = j2k_get_marker_handler(m_curr_marker);
-			if (!(decoder->m_state & marker_handler->states)) {
+			if (!(m_decoder.m_state & marker_handler->states)) {
 				GRK_ERROR("Marker is not compliant with its position");
-				goto fail;
+				return false;
 			}
 			if (!process_marker(marker_handler, m_curr_marker, marker_size))
-				goto fail;
+				return false;
 
 
 			/* Add the marker to the code stream index*/
@@ -2205,42 +2200,44 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 													(uint32_t) m_stream->tell() - marker_size - grk_marker_length,
 													marker_size + grk_marker_length)) {
 					GRK_ERROR("Not enough memory to add tl marker");
-					goto fail;
+					return false;
 				}
 			}
 
 			// Cache position of last SOT marker read
 			if (marker_handler->id == J2K_MS_SOT) {
 				uint64_t sot_pos = m_stream->tell() - marker_size - grk_marker_length;
-				if (sot_pos > decoder->m_last_sot_read_pos)
-					decoder->m_last_sot_read_pos = sot_pos;
+				if (sot_pos > m_decoder.m_last_sot_read_pos)
+					m_decoder.m_last_sot_read_pos = sot_pos;
 			}
 
-			if (decoder->m_skip_tile_data) {
+			if (m_decoder.m_skip_tile_data) {
 				// Skip the rest of the tile part
 				if (!m_stream->skip(currentProcessor()->tile_part_data_length)) {
 					GRK_ERROR("Stream too short");
-					goto fail;
+					return false;
 				}
 				break;
 			} else {
 				if (!read_marker_skip_unknown())
-					goto fail;
+					return false;
 			}
 		}
 
 		// no bytes left and no EOC marker : we're done!
 		if (!m_stream->get_number_byte_left()
-				&& decoder->m_state == J2K_DEC_STATE_NO_EOC)
+				&& m_decoder.m_state == J2K_DEC_STATE_NO_EOC)
 			break;
 
 		/* If we didn't skip data before, we need to read the SOD marker*/
-		if (!decoder->m_skip_tile_data) {
+		if (!m_decoder.m_skip_tile_data) {
 			if (!currentProcessor()->prepare_sod_decoding(this))
 				return false;
-			if (decoder->last_tile_part_was_read
+
+/*
+			if (m_decoder.last_tile_part_was_read
 					&& !m_nb_tile_parts_correction_checked) {
-				/* Issue 254 */
+				//Issue 254
 				bool correction_needed;
 
 				m_nb_tile_parts_correction_checked = true;
@@ -2254,9 +2251,9 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 					uint32_t nb_tiles = m_cp.t_grid_width
 							* m_cp.t_grid_height;
 
-					decoder->last_tile_part_was_read = false;
+					m_decoder.last_tile_part_was_read = false;
 					m_nb_tile_parts_correction = 1;
-					/* correct tiles */
+					// correct tiles
 					for (uint32_t tile_no = 0U; tile_no < nb_tiles; ++tile_no) {
 						if (m_cp.tcps[tile_no].m_nb_tile_parts != 0U) {
 							m_cp.tcps[tile_no].m_nb_tile_parts =
@@ -2270,23 +2267,24 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 				}
 				m_curr_marker = cache;
 			}
-			if (!decoder->last_tile_part_was_read) {
+*/
+			if (!m_decoder.last_tile_part_was_read) {
 				if (!read_marker_skip_unknown())
-					goto fail;
+					return false;
 			}
 		} else {
 			/* Indicate we will try to read a new tile-part header*/
-			decoder->m_skip_tile_data = false;
-			decoder->last_tile_part_was_read = false;
-			decoder->m_state = J2K_DEC_STATE_TPH_SOT;
+			m_decoder.m_skip_tile_data = false;
+			m_decoder.last_tile_part_was_read = false;
+			m_decoder.m_state = J2K_DEC_STATE_TPH_SOT;
 			if (!read_marker_skip_unknown())
-				goto fail;
+				return false;
 		}
 	}
 
 	// do QCD marker quantization step size sanity check
 	// see page 553 of Taubman and Marcellin for more details on this check
-	tcp = get_current_decode_tcp();
+	auto tcp = get_current_decode_tcp();
 	if (tcp->main_qcd_qntsty != J2K_CCP_QNTSTY_SIQNT) {
 		auto numComps = m_input_image->numcomps;
 		//1. Check main QCD
@@ -2311,7 +2309,7 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 					"3* (maximum decompositions) + 1, "
 					"where maximum decompositions = %u ",
 					tcp->main_qcd_numStepSizes, maxDecompositions);
-			goto fail;
+			return false;
 		}
 
 		//2. Check Tile QCD
@@ -2346,17 +2344,17 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 						"where maximum tile decompositions = %u ",
 						qcd_comp->numStepSizes, maxTileDecompositions);
 
-				goto fail;
+				return false;
 			}
 		}
 	}
 	/* Current marker is the EOC marker ?*/
-	if (m_curr_marker == J2K_MS_EOC && decoder->m_state != J2K_DEC_STATE_EOC)
-		decoder->m_state = J2K_DEC_STATE_EOC;
+	if (m_curr_marker == J2K_MS_EOC && m_decoder.m_state != J2K_DEC_STATE_EOC)
+		m_decoder.m_state = J2K_DEC_STATE_EOC;
 
 	//if we are not ready to decompress tile part data,
     // then skip tiles with no tile data i.e. no SOD marker
-	if (!decoder->last_tile_part_was_read) {
+	if (!m_decoder.last_tile_part_was_read) {
 		tcp = m_cp.tcps + currentProcessor()->m_tile_index;
 		if (!tcp->m_tile_data){
 			*can_decode_tile_data = false;
@@ -2367,21 +2365,17 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 	if (!j2k_merge_ppt(
 			m_cp.tcps + currentProcessor()->m_tile_index)) {
 		GRK_ERROR("Failed to merge PPT data");
-		goto fail;
+		return false;
 	}
 	if (!currentProcessor()->init_tile(m_output_image, false)) {
 		GRK_ERROR("Cannot decompress tile %u",
 				currentProcessor()->m_tile_index);
-		goto fail;
+		return false;
 	}
 	*can_decode_tile_data = true;
-	decoder->m_state |= J2K_DEC_STATE_DATA;
+	m_decoder.m_state |= J2K_DEC_STATE_DATA;
 
 	return true;
-
-fail:
-
-	return false;
 }
 
 bool CodeStream::init_header_writing(void) {
@@ -2787,11 +2781,21 @@ bool CodeStream::decompress_tiles(void) {
 	}
 	setTileProcessor(nullptr,false);
 
-	// check if there is another tile that has TPSot problem
-	/*
-	if (m_stream->get_number_byte_left() && m_curr_marker == J2K_MS_SOT){
-		return false;
-	}*/
+	// check if there is another tile that has not been processed
+	// we will reject if it has the TPSot problem (https://github.com/uclouvain/openjpeg/issues/254)
+	if (m_curr_marker == J2K_MS_SOT && m_stream->get_number_byte_left()){
+		uint16_t marker_size;
+		if (!read_short(&marker_size))
+			return false;
+		marker_size = (uint16_t)(marker_size - 2); /* Subtract the size of the marker ID already read */
+		auto marker_handler = j2k_get_marker_handler(m_curr_marker);
+		if (!(m_decoder.m_state & marker_handler->states)) {
+			GRK_ERROR("Marker is not compliant with its position");
+			return false;
+		}
+		if (!process_marker(marker_handler, m_curr_marker, marker_size))
+			return false;
+	}
 
 	// sanity checks
 	if (num_tiles_decoded == 0) {

@@ -90,8 +90,10 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	grk_read<uint32_t>(p_header_data++, &tile_part_index, 1);
 	grk_read<uint32_t>(p_header_data++, &num_tile_parts, 1);
 
-	//if (num_tile_parts && (tile_part_index == num_tile_parts))
-	//	return false;
+	if (num_tile_parts && (tile_part_index == num_tile_parts)){
+		GRK_ERROR("Tile part index (%d) is not less than number of tile parts (%d)",tile_part_index,  num_tile_parts);
+		return false;
+	}
 
 	m_codeStream->allocateProcessor((uint16_t)tile_index);
 	if (tile_no)
