@@ -2708,7 +2708,7 @@ bool CodeStream::decompress_tile_t2(void) {
 					& GRK_DECODE_POST_T1);
 	if (doPost){
 		try {
-			rc =  decoder->findNextTile(m_stream);
+			rc =  decoder->findNextTile(this);
 		} catch (DecodeUnknownMarkerAtEndOfTileException &e) {
 		}
 	}

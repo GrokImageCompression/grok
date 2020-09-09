@@ -150,7 +150,8 @@ TileComponentCodingParams::TileComponentCodingParams() : csty(0),
 	}
 }
 
-bool DecoderState::findNextTile(BufferedStream *stream){
+bool DecoderState::findNextTile(CodeStream *codeStream){
+	auto stream = codeStream->getStream();
 	last_tile_part_was_read = false;
 	m_state &= (uint32_t) (~J2K_DEC_STATE_DATA);
 
@@ -162,20 +163,13 @@ bool DecoderState::findNextTile(BufferedStream *stream){
 	// if EOC marker has not been read yet, then try to read the next marker
 	// (should be EOC or SOT)
 	if (m_state != J2K_DEC_STATE_EOC) {
-
-		uint8_t data[2];
-		// not enough data for another marker
-		if (stream->read(data, 2) != 2) {
+		uint16_t current_marker = 0;
+		if (!codeStream->read_marker_skip_unknown(&current_marker)) {
 			GRK_WARN(
 					"findNextTile: Not enough data to read another marker.\n"
 							"Tile may be truncated.");
 			return true;
 		}
-
-		uint32_t current_marker = 0;
-		// read marker
-		grk_read<uint32_t>(data, &current_marker, 2);
-
 		switch (current_marker) {
 		// we found the EOC marker - set state accordingly and return true;
 		// we can ignore all data after EOC

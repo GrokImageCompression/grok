@@ -284,7 +284,7 @@ struct DecoderState {
 	{}
 
 
-	bool findNextTile(BufferedStream *stream);
+	bool findNextTile(CodeStream *codeStream);
 
 	/** Decoder state: used to indicate in which part of the code stream
 	 *  the decoder is (main header, tile header, end) */
