@@ -2493,10 +2493,8 @@ static bool jp2_init_header_reading(FileFormat *fileFormat) {
 
 bool jp2_read_tile_header(FileFormat *fileFormat, uint16_t *tile_index,
 		bool *can_decode_tile_data, BufferedStream *stream) {
-	auto tileProcessor = new TileProcessor(fileFormat->codeStream,stream);
-	fileFormat->codeStream->setTileProcessor(tileProcessor,true);
 	bool rc =  fileFormat->codeStream->parse_markers(can_decode_tile_data);
-	*tile_index = tileProcessor->m_tile_index;
+	*tile_index = fileFormat->codeStream->currentProcessor()->m_tile_index;
 	return rc;
 }
 

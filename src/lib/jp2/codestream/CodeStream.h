@@ -339,7 +339,6 @@ struct CodeStream : public ICodeStream {
 
 	TileProcessor* allocateProcessor(uint16_t tile_index);
 	TileProcessor* currentProcessor(void);
-	void setTileProcessor(TileProcessor *proc, bool deleteOld);
 
 	BufferedStream* getStream();
 

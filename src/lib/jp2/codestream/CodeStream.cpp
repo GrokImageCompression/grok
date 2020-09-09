@@ -1021,7 +1021,9 @@ CodeStream::~CodeStream(){
 	grk_image_destroy(m_input_image);
 	grk_image_destroy(m_output_image);
 	grk_free(m_marker_scratch);
-	delete m_tileProcessor;
+	for(auto &pr : m_processors){
+		delete pr.second;
+	}
 }
 
 BufferedStream* CodeStream::getStream(){
@@ -1046,11 +1048,6 @@ TileProcessor* CodeStream::currentProcessor(void){
 	return m_tileProcessor;
 }
 
-void CodeStream::setTileProcessor(TileProcessor *proc, bool deleteOld){
-	if (deleteOld)
-		delete m_tileProcessor;
-	m_tileProcessor = proc;
-}
 
 /** Main header reading function handler */
 bool CodeStream::read_header(grk_header_info  *header_info, grk_image **p_image){
@@ -1140,8 +1137,6 @@ bool CodeStream::do_decompress(grk_image *p_image){
 	/* Move data and information from codec output image to user output image*/
 	transfer_image_data(m_output_image, p_image);
 
-	// do a little cleanup
-	setTileProcessor(nullptr,true);
 	return true;
 }
 
@@ -1779,13 +1774,12 @@ bool CodeStream::compress(grk_plugin_tile* tile){
 								  &success] {
 						if (success) {
 							auto tileProcessor = new TileProcessor(this,m_stream);
-
+							procs[tile_ind] = tileProcessor;
 							tileProcessor->m_tile_index = tile_ind;
 							tileProcessor->current_plugin_tile = tile;
 							if (!tileProcessor->pre_write_tile())
 								success = false;
 							else {
-								procs[tile_ind] = tileProcessor;
 								if (!tileProcessor->do_encode())
 									success = false;
 							}
@@ -1797,8 +1791,6 @@ bool CodeStream::compress(grk_plugin_tile* tile){
 	} else {
 		for (uint16_t i = 0; i < nb_tiles; ++i) {
 			auto tileProcessor = new TileProcessor(this,m_stream);
-			m_tileProcessor = tileProcessor;
-
 			tileProcessor->m_tile_index = i;
 			tileProcessor->current_plugin_tile = tile;
 			if (!tileProcessor->pre_write_tile()){
@@ -1813,7 +1805,6 @@ bool CodeStream::compress(grk_plugin_tile* tile){
 				delete tileProcessor;
 				goto cleanup;
 			}
-			m_tileProcessor = nullptr;
 			delete tileProcessor;
 		}
 	}
@@ -1824,11 +1815,11 @@ bool CodeStream::compress(grk_plugin_tile* tile){
 		if (!success)
 			goto cleanup;
 		for (uint16_t i = 0; i < nb_tiles; ++i) {
-			setTileProcessor(procs[i], false);
-			if (!post_write_tile(procs[i]))
-				goto cleanup;
-			setTileProcessor(nullptr, true);
+			bool rc = post_write_tile(procs[i]);
+			delete procs[i];
 			procs[i] = nullptr;
+			if (!rc)
+				goto cleanup;
 		}
 	}
 	rc = true;
@@ -1868,6 +1859,8 @@ bool CodeStream::compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t un
 	}
 	rc = true;
 cleanup:
+	delete m_tileProcessor;
+
 	return rc;
 }
 
@@ -2578,6 +2571,7 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor, bool multi_t
  */
 bool CodeStream::decompress_tile() {
 	bool go_on = true;
+	TileProcessor *tileProcessor = nullptr;
 
 	/*Allocate and initialize some elements of code stream index if not already done*/
 	if (!cstr_index->tile_index) {
@@ -2639,29 +2633,37 @@ bool CodeStream::decompress_tile() {
 	    		tileNumber++;
 	    }
 	}
+	bool rc = false;
 	if (!parse_markers(&go_on))
-		return false;
+		goto cleanup;
 
-	auto tileProcessor = currentProcessor();
-
+	tileProcessor = currentProcessor();
 	if (!decompress_tile_t2t1(tileProcessor, false))
-		return false;
+		goto cleanup;
 
 
 	if (tileProcessor->m_tile_index == tile_index_to_decode) {
 		/* move into the code stream to the first SOT (FIXME or not move?)*/
 		if (!(m_stream->seek(cstr_index->main_head_end + 2))) {
 			GRK_ERROR("Problem with seek function");
-			return false;
+			goto cleanup;
 		}
 	} else {
 		GRK_ERROR(
 				"Tile read, decoded and updated is not the desired one (%u vs %u).",
 				tileProcessor->m_tile_index + 1, tile_index_to_decode + 1);
-		return false;
+		goto cleanup;
 	}
 
-	return true;
+	rc = true;
+
+cleanup:
+	for(auto &pr : m_processors){
+		delete pr.second;
+	}
+	m_processors.clear();
+
+	return rc;
 }
 
 bool CodeStream::exec(std::vector<j2k_procedure> &procs) {
@@ -2715,28 +2717,32 @@ bool CodeStream::decompress_tiles(void) {
 			return false;
 	}
 
+	std::vector<uint16_t> compressed_processors;
+
 	// parse header and perform T2 followed by asynch T1
 	for (uint32_t tileno = 0; tileno < num_tiles_to_decode; tileno++) {
 		//1. read header
 		if (!parse_markers(&go_on)){
-			setTileProcessor(nullptr,false);
-			return false;
+			success = false;
+			goto cleanup;
 		}
 
-		if (!go_on){
+		if (!go_on)
 			break;
-		}
 
 		//2. T2 decode
 		auto processor = currentProcessor();
+		compressed_processors.push_back(processor->m_tile_index);
 		if (!decompress_tile_t2()){
 				GRK_ERROR("Failed to decompress tile %u/%u",
 						processor->m_tile_index + 1,
 						num_tiles_to_decode);
-				setTileProcessor(nullptr,true);
-				return false;
+				success = false;
+				goto cleanup;
 		}
 
+		// once we schedule a processor for T1 compression, we will destroy it
+		// regardless of success or not
 		if (pool.num_threads() > 1) {
 			results.emplace_back(
 				pool.enqueue([this,processor,
@@ -2760,12 +2766,13 @@ bool CodeStream::decompress_tiles(void) {
 			if (!decompress_tile_t2t1(processor,multi_tile)){
 					GRK_ERROR("Failed to decompress tile %u/%u",
 							processor->m_tile_index + 1,num_tiles_to_decode);
-					setTileProcessor(nullptr,false);
-					return false;
+					success = false;
 			} else {
 				num_tiles_decoded++;
 			}
 			delete processor;
+			if (!success)
+				goto cleanup;
 		}
 
 
@@ -2779,34 +2786,47 @@ bool CodeStream::decompress_tiles(void) {
 	for(auto &result: results){
 		result.get();
 	}
-	setTileProcessor(nullptr,false);
 
 	// check if there is another tile that has not been processed
 	// we will reject if it has the TPSot problem (https://github.com/uclouvain/openjpeg/issues/254)
 	if (m_curr_marker == J2K_MS_SOT && m_stream->get_number_byte_left()){
 		uint16_t marker_size;
-		if (!read_short(&marker_size))
-			return false;
+		if (!read_short(&marker_size)){
+			success = false;
+			goto cleanup;
+		}
 		marker_size = (uint16_t)(marker_size - 2); /* Subtract the size of the marker ID already read */
 		auto marker_handler = j2k_get_marker_handler(m_curr_marker);
 		if (!(m_decoder.m_state & marker_handler->states)) {
 			GRK_ERROR("Marker is not compliant with its position");
-			return false;
+			success = false;
+			goto cleanup;
 		}
-		if (!process_marker(marker_handler, m_curr_marker, marker_size))
-			return false;
+		if (!process_marker(marker_handler, m_curr_marker, marker_size)){
+			success = false;
+			goto cleanup;
+		}
 	}
 
 	// sanity checks
 	if (num_tiles_decoded == 0) {
 		GRK_ERROR("No tiles were decoded.");
-		return false;
+		success = false;
+		goto cleanup;
 	} else if (num_tiles_decoded < num_tiles_to_decode) {
 		uint32_t decoded = num_tiles_decoded;
 		GRK_WARN("Only %u out of %u tiles were decoded", decoded,
 				num_tiles_to_decode);
 	}
 
+cleanup:
+	for( auto ind : compressed_processors){
+		m_processors.erase(ind);
+	}
+	for(auto &pr : m_processors){
+		delete pr.second;
+	}
+	m_processors.clear();
 	return success;
 }
 
@@ -2872,6 +2892,7 @@ bool CodeStream::write_tile_part(TileProcessor *tileProcessor) {
 }
 
 bool CodeStream::post_write_tile(TileProcessor *tileProcessor) {
+	m_tileProcessor = tileProcessor;
 	assert(tileProcessor->m_tile_part_index == 0);
 
 	//1. write first tile part
