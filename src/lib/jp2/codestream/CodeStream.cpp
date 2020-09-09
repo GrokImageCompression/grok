@@ -2244,6 +2244,7 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 				bool correction_needed;
 
 				m_nb_tile_parts_correction_checked = true;
+				auto cache = m_curr_marker;
 				if (!need_nb_tile_parts_correction(&correction_needed)) {
 					GRK_ERROR("j2k_apply_nb_tile_parts_correction error");
 					goto fail;
@@ -2264,6 +2265,7 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 					}
 					GRK_WARN("Non conformant code stream TPsot==TNsot.");
 				}
+				m_curr_marker = cache;
 			}
 			if (!decoder->last_tile_part_was_read) {
 				if (!read_marker_skip_unknown(&m_curr_marker))
@@ -3144,7 +3146,6 @@ bool CodeStream::need_nb_tile_parts_correction(bool *p_correction_needed) {
 	uint8_t header_data[10];
 	auto stream = getStream();
 	uint8_t current_part, num_parts;
-	uint16_t current_marker;
 
 	/* initialize to no correction needed */
 	*p_correction_needed = false;
@@ -3155,11 +3156,11 @@ bool CodeStream::need_nb_tile_parts_correction(bool *p_correction_needed) {
 
 	uint64_t stream_pos_backup = stream->tell();
 	while (true) {
-		if (!read_marker_skip_unknown(&current_marker))
+		if (!read_marker_skip_unknown(&m_curr_marker))
 			/* assume all is OK */
 			return stream->seek(stream_pos_backup);
 
-		if (current_marker != J2K_MS_SOT)
+		if (m_curr_marker != J2K_MS_SOT)
 			/* assume all is OK */
 			return stream->seek(stream_pos_backup);
 
