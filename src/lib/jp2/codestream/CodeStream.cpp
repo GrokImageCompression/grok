@@ -2165,7 +2165,7 @@ bool CodeStream::read_marker_skip_unknown(uint16_t *current_marker){
 bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 	auto decoder = &m_decoder;
 	TileCodingParams *tcp = nullptr;
-	m_curr_marker = J2K_MS_SOT;
+
 
 	/* Reach the End Of Codestream ?*/
 	if (decoder->m_state == J2K_DEC_STATE_EOC)
@@ -2654,6 +2654,7 @@ bool CodeStream::decompress_tile() {
 
 	auto tileProcessor = new TileProcessor(this,m_stream);
 	setTileProcessor(tileProcessor,true);
+	m_curr_marker = J2K_MS_SOT;
 	if (!parse_markers(&go_on))
 		return false;
 
@@ -2736,6 +2737,7 @@ bool CodeStream::decompress_tiles(void) {
 		//1. read header
 		auto processor = new TileProcessor(this,m_stream);
 		setTileProcessor(processor,false);
+		m_curr_marker = J2K_MS_SOT;
 		if (!parse_markers(&go_on)){
 			setTileProcessor(nullptr,true);
 			return false;
