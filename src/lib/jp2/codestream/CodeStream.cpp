@@ -1006,6 +1006,7 @@ CodeStream::CodeStream(bool decode, BufferedStream *stream) : m_input_image(null
 																m_tile_ind_to_dec(-1),
 																m_marker_scratch(nullptr),
 																m_marker_scratch_size(0),
+																m_curr_marker(0),
 																whole_tile_decoding(true),
 																current_plugin_tile(nullptr),
 																 m_nb_tile_parts_correction_checked(false),
@@ -2164,21 +2165,21 @@ bool CodeStream::read_marker_skip_unknown(uint16_t *current_marker){
 bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 	auto decoder = &m_decoder;
 	TileCodingParams *tcp = nullptr;
-	uint16_t current_marker = J2K_MS_SOT;
+	m_curr_marker = J2K_MS_SOT;
 
 	/* Reach the End Of Codestream ?*/
 	if (decoder->m_state == J2K_DEC_STATE_EOC)
-		current_marker = J2K_MS_EOC;
+		m_curr_marker = J2K_MS_EOC;
 	/* We need to encounter a SOT marker (a new tile-part header) */
 	else if (decoder->m_state != J2K_DEC_STATE_TPH_SOT)
 		goto fail;
 
 	/* Seek in code stream for SOT marker specifying desired tile index.
 	 * If we don't find it, we stop when we read the EOC or run out of data */
-	while (!decoder->last_tile_part_was_read && (current_marker != J2K_MS_EOC)) {
+	while (!decoder->last_tile_part_was_read && (m_curr_marker != J2K_MS_EOC)) {
 
 		/* read markers until SOD is detected */
-		while (current_marker != J2K_MS_SOD) {
+		while (m_curr_marker != J2K_MS_SOD) {
 			// end of stream with no EOC
 			if (m_stream->get_number_byte_left() == 0) {
 				decoder->m_state = J2K_DEC_STATE_NO_EOC;
@@ -2199,12 +2200,12 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 
 			marker_size = (uint16_t)(marker_size - 2); /* Subtract the size of the marker ID already read */
 
-			auto marker_handler = j2k_get_marker_handler(current_marker);
+			auto marker_handler = j2k_get_marker_handler(m_curr_marker);
 			if (!(decoder->m_state & marker_handler->states)) {
 				GRK_ERROR("Marker is not compliant with its position");
 				goto fail;
 			}
-			if (!process_marker(marker_handler, current_marker, marker_size))
+			if (!process_marker(marker_handler, m_curr_marker, marker_size))
 				goto fail;
 
 
@@ -2234,7 +2235,7 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 				}
 				break;
 			} else {
-				if (!read_marker_skip_unknown(&current_marker))
+				if (!read_marker_skip_unknown(&m_curr_marker))
 					goto fail;
 			}
 		}
@@ -2276,7 +2277,7 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 				}
 			}
 			if (!decoder->last_tile_part_was_read) {
-				if (!read_marker_skip_unknown(&current_marker))
+				if (!read_marker_skip_unknown(&m_curr_marker))
 					goto fail;
 			}
 		} else {
@@ -2284,7 +2285,7 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 			decoder->m_skip_tile_data = false;
 			decoder->last_tile_part_was_read = false;
 			decoder->m_state = J2K_DEC_STATE_TPH_SOT;
-			if (!read_marker_skip_unknown(&current_marker))
+			if (!read_marker_skip_unknown(&m_curr_marker))
 				goto fail;
 		}
 	}
@@ -2356,7 +2357,7 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 		}
 	}
 	/* Current marker is the EOC marker ?*/
-	if (current_marker == J2K_MS_EOC && decoder->m_state != J2K_DEC_STATE_EOC)
+	if (m_curr_marker == J2K_MS_EOC && decoder->m_state != J2K_DEC_STATE_EOC)
 		decoder->m_state = J2K_DEC_STATE_EOC;
 
 	//if we are not ready to decompress tile part data,

@@ -163,14 +163,13 @@ bool DecoderState::findNextTile(CodeStream *codeStream){
 	// if EOC marker has not been read yet, then try to read the next marker
 	// (should be EOC or SOT)
 	if (m_state != J2K_DEC_STATE_EOC) {
-		uint16_t current_marker = 0;
-		if (!codeStream->read_marker_skip_unknown(&current_marker)) {
+		if (!codeStream->read_marker_skip_unknown(&codeStream->m_curr_marker)) {
 			GRK_WARN(
 					"findNextTile: Not enough data to read another marker.\n"
 							"Tile may be truncated.");
 			return true;
 		}
-		switch (current_marker) {
+		switch (codeStream->m_curr_marker) {
 		// we found the EOC marker - set state accordingly and return true;
 		// we can ignore all data after EOC
 		case J2K_MS_EOC:
@@ -190,7 +189,7 @@ bool DecoderState::findNextTile(CodeStream *codeStream){
 				return true;
 			}
 			GRK_WARN("findNextTile: expected EOC or SOT "
-					"but found marker 0x%x:  ", current_marker);
+					"but found marker 0x%x:  ", codeStream->m_curr_marker);
 			GRK_WARN("ignoring %d bytes remaining in the stream.", bytesLeft+2);
 			throw DecodeUnknownMarkerAtEndOfTileException();
 		}

@@ -364,6 +364,7 @@ private:
     /** Only valid for decoding. Whether the whole tile is decoded, or just the region in win_x0/win_y0/win_x1/win_y1 */
 
 public:
+	uint16_t m_curr_marker;
     bool   whole_tile_decoding;
 	grk_plugin_tile *current_plugin_tile;
 	bool m_nb_tile_parts_correction_checked;
