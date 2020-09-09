@@ -105,9 +105,6 @@ static const  grk_dec_memory_marker_handler  *  j2k_get_marker_handler(
  * @param 		tileProcessor		tile processor
  */
 static bool j2k_decompress_tiles(CodeStream *codeStream);
-static bool j2k_decompress_tile_t2(CodeStream *codeStream);
-static bool j2k_decompress_tile_t2t1(CodeStream *codeStream, TileProcessor *tileProcessor,bool multi_tile);
-
 
 /**
  * Gets the offset of the header.
@@ -407,14 +404,6 @@ static bool j2k_decompress_validation(CodeStream *codeStream) {
 
 static bool j2k_read_header_procedure(CodeStream *codeStream) {
 	return codeStream->read_header_procedure();
-}
-
-static bool j2k_decompress_tile_t2(CodeStream *codeStream){
-	return codeStream->decompress_tile_t2();
-}
-
-static bool j2k_decompress_tile_t2t1(CodeStream *codeStream, TileProcessor *tileProcessor, bool multi_tile) {
-	return codeStream->decompress_tile_t2t1(tileProcessor, multi_tile);
 }
 
 static bool j2k_decompress_tiles(CodeStream *codeStream) {
@@ -2658,10 +2647,10 @@ bool CodeStream::decompress_tile() {
 	if (!parse_markers(&go_on))
 		return false;
 
-	if (!j2k_decompress_tile_t2(this))
+	if (!decompress_tile_t2())
 		return false;
 
-	if (!j2k_decompress_tile_t2t1(this, tileProcessor, false))
+	if (!decompress_tile_t2t1(tileProcessor, false))
 		return false;
 
 
@@ -2749,7 +2738,7 @@ bool CodeStream::decompress_tiles(void) {
 		}
 
 		//2. T2 decode
-		if (!j2k_decompress_tile_t2(this)){
+		if (!decompress_tile_t2()){
 				GRK_ERROR("Failed to decompress tile %u/%u",
 						processor->m_tile_index + 1,
 						num_tiles_to_decode);
@@ -2764,7 +2753,7 @@ bool CodeStream::decompress_tiles(void) {
 							  multi_tile,
 							  &num_tiles_decoded, &success] {
 					if (success) {
-						if (!j2k_decompress_tile_t2t1(this, processor,multi_tile)){
+						if (!decompress_tile_t2t1(processor,multi_tile)){
 							GRK_ERROR("Failed to decompress tile %u/%u",
 									processor->m_tile_index + 1,num_tiles_to_decode);
 							success = false;
@@ -2777,7 +2766,7 @@ bool CodeStream::decompress_tiles(void) {
 				})
 			);
 		} else {
-			if (!j2k_decompress_tile_t2t1(this, processor,multi_tile)){
+			if (!decompress_tile_t2t1(processor,multi_tile)){
 					GRK_ERROR("Failed to decompress tile %u/%u",
 							processor->m_tile_index + 1,num_tiles_to_decode);
 					setTileProcessor(nullptr,true);
