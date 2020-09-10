@@ -2069,9 +2069,8 @@ bool CodeStream::read_marker(){
 
 	/* Check if the current marker ID is valid */
 	if (m_curr_marker < 0xff00) {
-		GRK_ERROR("A marker ID was expected (0xff--) instead of %.8x",
+		GRK_WARN("A marker ID was expected (0xff--) instead of 0x%.4x",
 				m_curr_marker);
-		return false;
 	}
 
 	return true;
