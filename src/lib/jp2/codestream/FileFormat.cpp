@@ -1708,10 +1708,9 @@ static bool jp2_write_jp2h(FileFormat *fileFormat) {
 	/* size of data for super box*/
 	uint32_t jp2h_size = 8;
 	bool result = true;
-    auto stream = fileFormat->codeStream->getStream();
-
-	assert(stream != nullptr);
 	assert(fileFormat != nullptr);
+    auto stream = fileFormat->codeStream->getStream();
+	assert(stream != nullptr);
 
 	memset(writers, 0, sizeof(writers));
 
@@ -1787,6 +1786,7 @@ static bool jp2_write_jp2h(FileFormat *fileFormat) {
 static bool jp2_write_uuids(FileFormat *fileFormat) {
 	assert(fileFormat != nullptr);
     auto stream = fileFormat->codeStream->getStream();
+	assert(stream != nullptr);;
 
 	// write the uuids
 	for (size_t i = 0; i < fileFormat->numUuids; ++i) {
@@ -1809,9 +1809,9 @@ static bool jp2_write_uuids(FileFormat *fileFormat) {
 }
 
 static bool jp2_write_ftyp(FileFormat *fileFormat) {
+	assert(fileFormat != nullptr);
     auto stream = fileFormat->codeStream->getStream();
 	assert(stream != nullptr);
-	assert(fileFormat != nullptr);
 
 	uint32_t i;
 	uint32_t ftyp_size = 16 + 4 * fileFormat->numcl;
@@ -1850,7 +1850,8 @@ static bool jp2_write_ftyp(FileFormat *fileFormat) {
 
 static bool jp2_write_jp2c(FileFormat *fileFormat) {
 	assert(fileFormat != nullptr);
-	auto stream = fileFormat->codeStream->getStream();
+    auto stream = fileFormat->codeStream->getStream();
+	assert(stream != nullptr);
 
 	assert(stream->has_seek());
 
@@ -1889,9 +1890,9 @@ static bool jp2_write_jp2c(FileFormat *fileFormat) {
 }
 
 static bool jp2_write_jp(FileFormat *fileFormat) {
-	(void) fileFormat;
 	assert(fileFormat != nullptr);
-	auto stream = fileFormat->codeStream->getStream();
+    auto stream = fileFormat->codeStream->getStream();
+	assert(stream != nullptr);
 
 	/* write box length */
 	if (!stream->write_int(12))
@@ -1906,53 +1907,8 @@ static bool jp2_write_jp(FileFormat *fileFormat) {
 }
 
 /* ----------------------------------------------------------------------- */
-/* JP2 decompress interface                                             */
-/* ----------------------------------------------------------------------- */
-
-void jp2_init_decompress(FileFormat *fileFormat, grk_dparameters *parameters) {
-
-	return fileFormat->init_decompress(parameters);
-
-}
-
-/* ----------------------------------------------------------------------- */
 /* JP2 compress interface                                             */
 /* ----------------------------------------------------------------------- */
-
-
-
-bool jp2_init_compress(FileFormat *fileFormat, grk_cparameters *parameters,
-		grk_image *image) {
-
-	return fileFormat->init_compress(parameters,image);
-
-}
-
-bool jp2_compress(FileFormat *fileFormat, grk_plugin_tile *tile) {
-	return fileFormat->compress(tile);
-}
-
-bool jp2_end_decompress(FileFormat *fileFormat) {
-	assert(fileFormat != nullptr);
-
-	return fileFormat->end_decompress();
-
-}
-
-bool jp2_end_compress(FileFormat *fileFormat, BufferedStream *stream) {
-
-	assert(fileFormat != nullptr);
-	assert(stream != nullptr);
-
-	/* customization of the end encoding */
-	if (!jp2_init_end_header_writing(fileFormat))
-		return false;
-	if (!fileFormat->codeStream->end_compress())
-		return false;
-
-	/* write header */
-	return jp2_exec(fileFormat, fileFormat->m_procedure_list);
-}
 
 static bool jp2_init_end_header_writing(FileFormat *fileFormat) {
 	assert(fileFormat != nullptr);
@@ -1975,9 +1931,8 @@ static bool jp2_init_end_header_reading(FileFormat *fileFormat) {
 static bool jp2_default_validation(FileFormat *fileFormat) {
 	bool is_valid = true;
 	uint32_t i;
-    auto stream = fileFormat->codeStream->getStream();
-
 	assert(fileFormat != nullptr);
+    auto stream = fileFormat->codeStream->getStream();
 	assert(stream != nullptr);
 
 	/* JPEG2000 codec validation */
@@ -2020,10 +1975,9 @@ static bool jp2_read_header_procedure(FileFormat *fileFormat) {
 	uint32_t nb_bytes_read;
 	uint64_t last_data_size = GRK_BOX_SIZE;
 	uint32_t current_data_size;
-	auto stream = fileFormat->codeStream->getStream();
-
-	assert(stream != nullptr);
 	assert(fileFormat != nullptr);
+    auto stream = fileFormat->codeStream->getStream();
+	assert(stream != nullptr);
 	bool rc = true;
 
 	auto current_data = (uint8_t*) grk_calloc(1, last_data_size);
@@ -2175,13 +2129,6 @@ static bool jp2_exec(FileFormat *fileFormat, std::vector<jp2_procedure> *procs) 
 	procs->clear();
 
 	return result;
-}
-
-bool jp2_start_compress(FileFormat *fileFormat) {
-	assert(fileFormat != nullptr);
-
-	return fileFormat->start_compress();
-
 }
 
 static const grk_jp2_header_handler* jp2_find_handler(uint32_t id) {
@@ -2446,12 +2393,6 @@ static bool jp2_read_box(grk_jp2_box *box, uint8_t *p_data,
 	return true;
 }
 
-bool jp2_read_header(FileFormat *fileFormat, grk_header_info *header_info, grk_image **p_image) {
-	assert(fileFormat != nullptr);
-
-	return fileFormat->read_header(header_info,p_image);
-}
-
 static bool jp2_init_compress_validation(FileFormat *fileFormat) {
 	assert(fileFormat != nullptr);
 	fileFormat->m_validation_list->push_back((jp2_procedure) jp2_default_validation);
@@ -2489,33 +2430,6 @@ static bool jp2_init_header_reading(FileFormat *fileFormat) {
 	//custom procedures here
 
 	return true;
-}
-
-bool jp2_read_tile_header(FileFormat *fileFormat, uint16_t *tile_index,
-		bool *can_decode_tile_data, BufferedStream *stream) {
-	bool rc =  fileFormat->codeStream->parse_markers(can_decode_tile_data);
-	*tile_index = fileFormat->codeStream->currentProcessor()->m_tile_index;
-	return rc;
-}
-
-bool jp2_compress_tile(FileFormat *fileFormat,
-		uint16_t tile_index, uint8_t *p_data,
-		uint64_t uncompressed_data_size)	{
-	return fileFormat->compress_tile(tile_index, p_data, uncompressed_data_size);
-}
-
-void jp2_destroy(FileFormat *fileFormat) {
-	delete fileFormat;
-}
-
-bool jp2_set_decompress_area(FileFormat *fileFormat, grk_image *p_image, uint32_t start_x,
-		uint32_t start_y, uint32_t end_x, uint32_t end_y) {
-	return fileFormat->set_decompress_area(p_image, start_x, start_y, end_x,
-			end_y);
-}
-
-bool jp2_decompress_tile(FileFormat *fileFormat,grk_image *p_image, uint16_t tile_index){
-	return (fileFormat ? fileFormat->decompress_tile(p_image,tile_index) : false);
 }
 
 FileFormat::FileFormat(bool isDecoder, BufferedStream *stream) : codeStream(new CodeStream(isDecoder,stream)),
