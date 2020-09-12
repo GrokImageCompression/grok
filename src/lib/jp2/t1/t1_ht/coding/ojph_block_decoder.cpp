@@ -41,6 +41,7 @@
 #include "ojph_block_decoder.h"
 #include "ojph_arch.h"
 #include "ojph_message.h"
+#include <stdexcept>
 
 namespace ojph {
   namespace local {
@@ -666,7 +667,8 @@ namespace ojph {
     /////////////////////////////////////////////////////////////////////////
     inline void frwd_advance(frwd_struct *msp, int num_bits)
     {
-      assert(num_bits <= msp->bits);
+      if (num_bits > msp->bits)
+    	  throw std::runtime_error("frwd_advance: num_bits > msp->bits");
       msp->tmp >>= num_bits;
       msp->bits -= num_bits;
     }

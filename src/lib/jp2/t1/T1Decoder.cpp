@@ -83,9 +83,16 @@ bool T1Decoder::decompress(std::vector<decodeBlockInfo*> *blocks) {
 						continue;
 					}
 					auto impl = threadStructs[(size_t)threadnum];
-					if (!impl->decompress(block)) {
+					try {
+						if (!impl->decompress(block)) {
+							success = false;
+							delete block;
+							continue;
+						}
+					} catch (std::runtime_error &rerr){
 						success = false;
 						delete block;
+						GRK_ERROR(rerr.what());
 						continue;
 					}
 					if (!impl->postDecode(block))
