@@ -1218,7 +1218,16 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 	auto h = m_image->comps[0].h;
 	auto stride = m_image->comps[0].stride;
 	m_destIndex = stride * (h - 1);
-	size_t padW;
+	uint32_t padW = getPaddedWidth();
+	uint32_t strideDiff = 4 - (m_image->numcomps * w) % 4;
+	if (strideDiff == 4)
+		strideDiff = 0;
+	//auto chunkRows = (512 * 1024)/ (w * m_image->numcomps);
+	//if (chunkRows > h)
+	//	chunkRows = h;
+	//auto numChunkRows = h / chunkRows;
+
+	uint32_t j = 0;
 	int trunc[4] = {0,0,0,0};
 	float scale[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 
@@ -1241,10 +1250,8 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 				goto cleanup;
 		}
 	}
-
-	padW = getPaddedWidth();
 	m_destBuff = new uint8_t[padW];
-	for (uint32_t j = 0; j < h; j++) {
+	while ( j < h) {
 		uint64_t destInd = 0;
 		for (uint32_t i = 0; i < w; i++) {
 			uint8_t rc[4];
@@ -1272,12 +1279,13 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 					m_destBuff[destInd++] = rc[3];
 			}
 		}
-		// pad at end of row to ensure that width is divisible by 4
-		for (uint32_t pad = ((m_image->numcomps * w) % 4) ? (4 - (m_image->numcomps * w) % 4) : 0; pad > 0; pad--)
+		// zero out padding at end of line
+		for (uint32_t pad = 0; pad < strideDiff; pad++)
 			m_destBuff[destInd++] = 0;
+		m_destIndex -= stride;
 		if (fwrite(m_destBuff, 1, destInd, m_file) != destInd)
 			goto cleanup;
-		m_destIndex -= stride;
+		j++;
 	}
 
 	if (m_image->icc_profile_buf) {
