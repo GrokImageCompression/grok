@@ -1208,7 +1208,7 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 }
 
 bool BMPFormat::encodeStripRGBX(uint32_t rows){
-	bool rc = false;
+	bool ret = false;
 	auto w = m_image->comps[0].w;
 	auto h = m_image->comps[0].h;
 	auto stride = m_image->comps[0].stride;
@@ -1281,10 +1281,10 @@ bool BMPFormat::encodeStripRGBX(uint32_t rows){
 			goto cleanup;
 	}
 
-	rc = true;
+	ret = true;
 cleanup:
 
-	return rc;
+	return ret;
 }
 bool BMPFormat::encodeFinish(void){
 	delete[] m_destBuff;

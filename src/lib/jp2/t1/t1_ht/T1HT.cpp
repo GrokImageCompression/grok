@@ -111,15 +111,14 @@ double T1HT::compress(encodeBlockInfo *block, grk_tile *tile, uint32_t maximum,
 	(void)maximum;
 
 	 coded_lists *next_coded = nullptr;
-	int pass_length[2] = {0,0};
 	auto cblk = block->cblk;
 	cblk->numbps = 0;
 	// optimization below was causing errors in encoding
 	//if (maximum >= (uint32_t)1<<(31 - (block->k_msbs+1)))
-	{
 	uint16_t w =  (uint16_t)(cblk->x1 - cblk->x0);
 	uint16_t h =  (uint16_t)(cblk->y1 - cblk->y0);
 
+	int pass_length[2] = {0,0};
 	 ojph_encode_codeblock(unencoded_data, block->k_msbs,1,
 							   w, h, w,
 							   pass_length,
@@ -133,8 +132,6 @@ double T1HT::compress(encodeBlockInfo *block, grk_tile *tile, uint32_t maximum,
 	 cblk->numbps = 1;
 	 assert(cblk->paddedCompressedData);
 	 memcpy(cblk->paddedCompressedData, next_coded->buf, (size_t)pass_length[0]);
-	}
-
   return 0;
 }
 bool T1HT::decompress(decodeBlockInfo *block) {

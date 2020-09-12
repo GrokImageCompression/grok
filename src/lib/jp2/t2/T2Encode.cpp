@@ -375,7 +375,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 		auto src_buf = std::unique_ptr<ChunkBuffer>(new ChunkBuffer());
 		seg_buf_push_back(src_buf.get(), dest, *packet_bytes_written);
 
-		bool rc = true;
+		bool ret = true;
 		bool read_data;
 		if (!T2Encode::read_packet_header(p_t2,
 			roundRes,
@@ -384,7 +384,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 			&read_data,
 			src_buf.get(),
 			&nb_bytes_read)) {
-			rc = false;
+			ret = false;
 		}
 		if (rc) {
 
@@ -397,9 +397,9 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 				auto roundTripBand = roundRes->bands + bandno;
 				if (!band->precincts)
 					continue;
-				for (uint64_t precno = 0; precno < band->numPrecincts; ++precno) {
-					auto prec = band->precincts + precno;
-					auto roundTripPrec = roundTripBand->precincts + precno;
+				for (uint64_t pno = 0; pno < band->numPrecincts; ++pno) {
+					auto prec = band->precincts + pno;
+					auto roundTripPrec = roundTripBand->precincts + pno;
 					for (uint64_t cblkno = 0; cblkno < (uint64_t)prec->cw * prec->ch; ++cblkno) {
 						auto originalCblk = prec->enc + cblkno;
 						grk_layer *layer = originalCblk->layers + layno;
@@ -491,9 +491,9 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 						auto roundTripBand = roundRes->bands + bandno;
 						if (!band->precincts)
 							continue;
-						for (uint64_t precno = 0; precno < band->numPrecincts; ++precno) {
-							auto prec = band->precincts + precno;
-							auto roundTripPrec = roundTripBand->precincts + precno;
+						for (uint64_t pno = 0; pno < band->numPrecincts; ++pno) {
+							auto prec = band->precincts + pno;
+							auto roundTripPrec = roundTripBand->precincts + pno;
 							for (uint32_t cblkno = 0; cblkno < (uint64_t)prec->cw * prec->ch; ++cblkno) {
 								auto originalCblk = prec->enc + cblkno;
 								grk_layer *layer = originalCblk->layers + layno;
@@ -544,6 +544,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 		else {
 			GRK_ERROR("encode_packet: decompress packet failed");
 		}
+		return ret;
 #endif
 	return true;
 }

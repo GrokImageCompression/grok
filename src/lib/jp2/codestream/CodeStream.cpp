@@ -819,11 +819,9 @@ static bool lupDecompose(float *matrix, uint32_t *permutations,
 	uint32_t k2 = 0, t;
 	float temp;
 	uint32_t i, j, k;
-	float p;
 	uint32_t lLastColum = nb_compo - 1;
 	uint32_t lSwapSize = nb_compo * (uint32_t) sizeof(float);
-	float *lTmpMatrix = matrix;
-	float *lColumnMatrix, *lDestMatrix;
+	auto lTmpMatrix = matrix;
 	uint32_t offset = 1;
 	uint32_t lStride = nb_compo - 1;
 
@@ -834,10 +832,10 @@ static bool lupDecompose(float *matrix, uint32_t *permutations,
 	/* now make a pivot with column switch */
 	tmpPermutations = permutations;
 	for (k = 0; k < lLastColum; ++k) {
-		p = 0.0;
+		float p = 0.0;
 
 		/* take the middle element */
-		lColumnMatrix = lTmpMatrix + k;
+		auto lColumnMatrix = lTmpMatrix + k;
 
 		/* make permutation with the biggest value in the column */
 		for (i = k; i < nb_compo; ++i) {
@@ -873,7 +871,7 @@ static bool lupDecompose(float *matrix, uint32_t *permutations,
 		}
 
 		/* now update data in the rest of the line and line after */
-		lDestMatrix = lTmpMatrix + k;
+		auto lDestMatrix = lTmpMatrix + k;
 		lColumnMatrix = lDestMatrix + nb_compo;
 		/* take the middle element */
 		temp = *(lDestMatrix++);
@@ -916,7 +914,6 @@ static void lupSolve(float *pResult, float *pMatrix, float *pVector,
 	int32_t k;
 	uint32_t i, j;
 	float sum;
-	float u;
 	uint32_t lStride = nb_compo + 1;
 	float *lCurrentPtr;
 	float *lIntermediatePtr;
@@ -953,7 +950,7 @@ static void lupSolve(float *pResult, float *pMatrix, float *pVector,
 	for (k = (int32_t) nb_compo - 1; k != -1; --k) {
 		sum = 0.0;
 		lTmpMatrix = lLineMatrix;
-		u = *(lTmpMatrix++);
+		float u = *(lTmpMatrix++);
 		lCurrentPtr = lDestPtr--;
 		for (j = (uint32_t) (k + 1); j < nb_compo; ++j) {
 			/* sum += matrix[k][j] * x[j] */
@@ -969,12 +966,11 @@ static void lupInvert(float *pSrcMatrix, float *pDestMatrix, uint32_t nb_compo,
 		uint32_t *pPermutations, float *p_src_temp, float *p_dest_temp,
 		float *p_swap_area) {
 	uint32_t j, i;
-	float *lCurrentPtr;
-	float *lLineMatrix = pDestMatrix;
+	auto lLineMatrix = pDestMatrix;
 	uint32_t lSwapSize = nb_compo * (uint32_t) sizeof(float);
 
 	for (j = 0; j < nb_compo; ++j) {
-		lCurrentPtr = lLineMatrix++;
+		auto lCurrentPtr = lLineMatrix++;
 		memset(p_src_temp, 0, lSwapSize);
 		p_src_temp[j] = 1.0;
 		lupSolve(p_dest_temp, pSrcMatrix, p_src_temp, pPermutations, nb_compo,
@@ -1815,10 +1811,10 @@ bool CodeStream::compress(grk_plugin_tile* tile){
 		if (!success)
 			goto cleanup;
 		for (uint16_t i = 0; i < nb_tiles; ++i) {
-			bool rc = post_write_tile(procs[i]);
+			bool write_success = post_write_tile(procs[i]);
 			delete procs[i];
 			procs[i] = nullptr;
-			if (!rc)
+			if (!write_success)
 				goto cleanup;
 		}
 	}

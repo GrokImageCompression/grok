@@ -597,8 +597,8 @@ int PNGFormat::do_encode(const char *write_idf,
 			goto beach;
 		}
 	}
-	for (uint32_t i = 0; i < nr_comp; ++i)
-		m_planes[i] = m_image->comps[i].data;
+	for (uint32_t compno = 0; compno < nr_comp; ++compno)
+		m_planes[compno] = m_image->comps[compno].data;
 
 
 	fails = false;

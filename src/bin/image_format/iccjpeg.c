@@ -56,7 +56,6 @@ void write_icc_profile(j_compress_ptr cinfo, const JOCTET *icc_data_ptr,
 		unsigned int icc_data_len) {
 	unsigned int num_markers; /* total number of markers we'll write */
 	int cur_marker = 1; /* per spec, counting starts at 1 */
-	unsigned int length; /* number of bytes to write in this marker */
 
 	/* Calculate the number of markers we'll need, rounding up of course */
 	num_markers = icc_data_len / MAX_DATA_BYTES_IN_MARKER;
@@ -65,7 +64,7 @@ void write_icc_profile(j_compress_ptr cinfo, const JOCTET *icc_data_ptr,
 
 	while (icc_data_len > 0) {
 		/* length of profile to put in this marker */
-		length = icc_data_len;
+		uint32_t length = icc_data_len;
 		if (length > MAX_DATA_BYTES_IN_MARKER)
 			length = MAX_DATA_BYTES_IN_MARKER;
 		icc_data_len -= length;
