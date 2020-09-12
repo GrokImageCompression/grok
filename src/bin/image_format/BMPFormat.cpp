@@ -531,7 +531,7 @@ static bool bmp_read_info_header(FILE *INPUT, GRK_BITMAPFILEHEADER *file_header,
 		//re-adjust header size
 		uint32_t defacto_header_size =
 				file_header->bfSize - fileHeaderSize  -
-					header->biClrUsed * 4 - header->biSizeImage;
+					header->biClrUsed * sizeof(uint32_t) - header->biSizeImage;
 		if (defacto_header_size > header->biSize)
 			header->biSize = std::min<uint32_t>(defacto_header_size,BITMAPV5HEADER_LENGTH);
 	}
@@ -828,11 +828,11 @@ static grk_image* bmptoimage(const char *filename,
 	if (Info_h.biBitCount > (((uint32_t) -1) - 31) / Info_h.biWidth)
 		goto cleanup;
 
-	bmpStride = ((Info_h.biWidth * Info_h.biBitCount + 31U) / 32U) * 4U; /* rows are aligned on 32bits */
+	bmpStride = ((Info_h.biWidth * Info_h.biBitCount + 31U) / 32U) * sizeof(uint32_t); /* rows are aligned on 32bits */
 	if (Info_h.biBitCount == 4 && Info_h.biCompression == 2) { /* RLE 4 gets decoded as 8 bits data for now... */
 		if (8 > (((uint32_t) -1) - 31) / Info_h.biWidth)
 			goto cleanup;
-		bmpStride = ((Info_h.biWidth * 8U + 31U) / 32U) * 4U;
+		bmpStride = ((Info_h.biWidth * 8U + 31U) / 32U) * sizeof(uint32_t);
 	}
 
 	if (bmpStride > ((uint32_t) -1) / sizeof(uint8_t) / Info_h.biHeight)
@@ -1100,7 +1100,7 @@ bool BMPFormat::encode() {
 	w = m_image->comps[0].w;
 	h = m_image->comps[0].h;
 	colours_used = (m_image->numcomps == 3) ? 0 : 256 ;
-	lut_size = colours_used * 4 ;
+	lut_size = colours_used * sizeof(uint32_t) ;
 	full_header_size = fileHeaderSize + BITMAPINFOHEADER_LENGTH;
 	image_size = m_image->numcomps * (h * w +  h * (w % 2));
 	if (m_image->icc_profile_buf){
@@ -1204,10 +1204,6 @@ bool BMPFormat::encodeHeader(grk_image *  image, const std::string &filename, ui
 }
 
 bool BMPFormat::encodeStrip(uint32_t rows){
-	return encodeStripRGBX(rows);
-}
-
-bool BMPFormat::encodeStripRGBX(uint32_t rows){
 	bool ret = false;
 	auto w = m_image->comps[0].w;
 	auto h = m_image->comps[0].h;
@@ -1237,7 +1233,7 @@ bool BMPFormat::encodeStripRGBX(uint32_t rows){
 		}
 	}
 
-	padW = ((m_image->numcomps * w + m_image->numcomps) >> 2) << 2;
+	padW = ((m_image->numcomps * w + 3) >> 2) << 2;
 	m_destBuff = new uint8_t[padW];
 	for (uint32_t j = 0; j < h; j++) {
 		uint64_t destInd = 0;

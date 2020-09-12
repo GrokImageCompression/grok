@@ -29,7 +29,6 @@ public:
 
 private:
 	bool encode();
-	bool encodeStripRGBX(uint32_t rows);
 	uint8_t *m_destBuff;
 	uint64_t m_destIndex;
 	bool m_writeToStdout;
