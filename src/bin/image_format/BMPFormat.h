@@ -29,6 +29,7 @@ public:
 
 private:
 	bool encode();
+	uint32_t getPaddedWidth();
 	uint8_t *m_destBuff;
 	uint64_t m_destIndex;
 	bool m_writeToStdout;

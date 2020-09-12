@@ -531,7 +531,7 @@ static bool bmp_read_info_header(FILE *INPUT, GRK_BITMAPFILEHEADER *file_header,
 		//re-adjust header size
 		uint32_t defacto_header_size =
 				file_header->bfSize - fileHeaderSize  -
-					header->biClrUsed * sizeof(uint32_t) - header->biSizeImage;
+					header->biClrUsed * (uint32_t)sizeof(uint32_t) - header->biSizeImage;
 		if (defacto_header_size > header->biSize)
 			header->biSize = std::min<uint32_t>(defacto_header_size,BITMAPV5HEADER_LENGTH);
 	}
@@ -1069,13 +1069,23 @@ static grk_image* bmptoimage(const char *filename,
 		}
 	return image;
 }
+
+uint32_t BMPFormat::getPaddedWidth(){
+	assert(m_image);
+	return ((m_image->numcomps *  m_image->comps[0].w + 3) >> 2) << 2;
+}
+
+
 bool BMPFormat::encode() {
 	const char *outfile = m_fileName.c_str();
 	m_writeToStdout = grk::useStdio(outfile);
 	int ret = -1;
-	uint32_t w,h;
+	uint32_t w = m_image->comps[0].w;
+	uint32_t h = m_image->comps[0].h;
+	uint32_t padW = getPaddedWidth();
+	uint32_t image_size = padW * h;
 	uint32_t colours_used, lut_size;
-	uint32_t full_header_size, info_header_size, image_size, icc_size=0;
+	uint32_t full_header_size, info_header_size, icc_size=0;
 
 	if (!grk::all_components_sanity_check(m_image,false))
 		goto cleanup;
@@ -1097,12 +1107,9 @@ bool BMPFormat::encode() {
 	}
 	if (!grk::grk_open_for_output(&m_file, outfile,m_writeToStdout))
 		goto cleanup;
-	w = m_image->comps[0].w;
-	h = m_image->comps[0].h;
 	colours_used = (m_image->numcomps == 3) ? 0 : 256 ;
 	lut_size = colours_used * sizeof(uint32_t) ;
 	full_header_size = fileHeaderSize + BITMAPINFOHEADER_LENGTH;
-	image_size = m_image->numcomps * (h * w +  h * (w % 2));
 	if (m_image->icc_profile_buf){
 		full_header_size = fileHeaderSize + sizeof(GRK_BITMAPINFOHEADER);
 		icc_size = m_image->icc_profile_len;
@@ -1203,6 +1210,8 @@ bool BMPFormat::encodeHeader(grk_image *  image, const std::string &filename, ui
 	return encode();
 }
 
+
+
 bool BMPFormat::encodeStrip(uint32_t rows){
 	bool ret = false;
 	auto w = m_image->comps[0].w;
@@ -1233,7 +1242,7 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 		}
 	}
 
-	padW = ((m_image->numcomps * w + 3) >> 2) << 2;
+	padW = getPaddedWidth();
 	m_destBuff = new uint8_t[padW];
 	for (uint32_t j = 0; j < h; j++) {
 		uint64_t destInd = 0;
