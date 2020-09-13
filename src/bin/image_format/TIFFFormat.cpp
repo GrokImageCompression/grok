@@ -1980,7 +1980,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 		rowsPerStrip = (chroma_subsample_y * 8 * 1024 * 1024) / stride;
 	} else {
 	   	stride = (width * numcomps * bps + 7U) / 8U;
-	   	rowsPerStrip = (8 * 1024 * 1024) / stride;
+	   	rowsPerStrip = (16 * 1024 * 1024) / stride;
 	}
    	if (rowsPerStrip & 1)
    		rowsPerStrip++;
