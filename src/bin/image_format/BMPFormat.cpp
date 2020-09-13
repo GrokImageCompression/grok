@@ -1174,20 +1174,9 @@ bool BMPFormat::encode() {
 	if (fwrite(header_buf, 1, header_plus_lut,m_file) != header_plus_lut)
 		goto cleanup;
 
-	if (!encodeStrip(0))
-		goto cleanup;
-
-	if (m_image->icc_profile_buf) {
-		if (fwrite(m_image->icc_profile_buf,
-				1, m_image->icc_profile_len, m_file) != m_image->icc_profile_len )
-			goto cleanup;
-	}
 	ret = true;
 cleanup:
 	delete[] header_buf;
-	if (!encodeFinish())
-		return false;
-
 	return ret;
 }
 
@@ -1282,6 +1271,12 @@ cleanup:
 	return ret;
 }
 bool BMPFormat::encodeFinish(void){
+	if (m_image->icc_profile_buf) {
+		if (fwrite(m_image->icc_profile_buf,
+				1, m_image->icc_profile_len, m_file) != m_image->icc_profile_len )
+			return false;
+	}
+
 	delete[] m_destBuff;
 	if (!m_writeToStdout && m_file) {
 		if (!grk::safe_fclose(m_file))

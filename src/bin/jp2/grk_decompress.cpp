@@ -1743,6 +1743,14 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 				spdlog::error("Outfile {} not generated", outfileStr);
 				goto cleanup;
 			}
+			if (!bmp.encodeStrip(0)) {
+				spdlog::error("Outfile {} not generated", outfileStr);
+				goto cleanup;
+			}
+			if (!bmp.encodeFinish()) {
+				spdlog::error("Outfile {} not generated", outfileStr);
+				goto cleanup;
+			}
 		}
 			break;
 #ifdef GROK_HAVE_LIBTIFF
