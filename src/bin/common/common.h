@@ -97,13 +97,13 @@ template<> inline uint8_t swap(uint8_t x) {
 template<> inline int8_t swap(int8_t x) {
 	return x;
 }
-template<typename T> inline T endian(T x, bool big_endian) {
+template<typename T> inline T endian(T x, bool to_big_endian) {
 
 #ifdef GROK_BIG_ENDIAN
-	if (!big_endian)
+	if (!to_big_endian)
 	   return swap<T>(x);
 #else
-	if (big_endian)
+	if (to_big_endian)
 		return swap<T>(x);
 #endif
 	return x;
@@ -113,8 +113,6 @@ template<typename T> uint32_t ceildiv(T a, T b) {
 	assert(b);
 	return (uint32_t)((a + (uint64_t) b - 1) / b);
 }
-
-
 
 template<typename T> inline bool writeBytes(T val, T *buf, T **outPtr,
 		size_t *outCount, size_t len, bool big_endian, FILE *out) {

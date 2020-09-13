@@ -72,22 +72,17 @@ typedef struct {
 } GRK_BITMAPINFOHEADER;
 
 template<typename T> bool get_int(FILE *INPUT, T *val) {
-	T rc = 0;
-	for (size_t i = 0; i < sizeof(T) << 3; i += 8) {
-		int temp = getc(INPUT);
-		if (temp == EOF)
-			return false;
-		rc |= (T) (temp << i);
-	}
-	*val = rc;
-	return true;
+	if (fread(val, sizeof(T), 1, INPUT) != 1)
+		return false;
+   #ifdef GROK_BIG_ENDIAN
+		*val = grk::endian<T>(*val, false);
+   #endif
+   return true;
 }
 
-template<typename T> bool put_int(FILE *INPUT, T val) {
-	for (size_t i = 0; i < sizeof(T) << 3; i += 8)
-		if (putc((val >> i)&0xFF, INPUT) == EOF )
-			return false;
-	return true;
+template<typename T> bool put_int(FILE *OUTPUT, T val) {
+	val = grk::endian<T>(val, false);
+	return (fwrite(&val, sizeof(T), 1, OUTPUT) == 1);
 }
 
 static void grk_applyLUT8u_1u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
@@ -1222,10 +1217,6 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 	uint32_t strideDiff = 4 - (m_image->numcomps * w) % 4;
 	if (strideDiff == 4)
 		strideDiff = 0;
-	//auto chunkRows = (512 * 1024)/ (w * m_image->numcomps);
-	//if (chunkRows > h)
-	//	chunkRows = h;
-	//auto numChunkRows = h / chunkRows;
 
 	uint32_t j = 0;
 	int trunc[4] = {0,0,0,0};
