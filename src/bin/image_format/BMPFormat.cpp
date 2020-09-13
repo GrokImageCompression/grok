@@ -85,6 +85,11 @@ template<typename T> bool put_int(FILE *OUTPUT, T val) {
 	return (fwrite(&val, sizeof(T), 1, OUTPUT) == 1);
 }
 
+template<typename T> void put_int(T **buf, T val) {
+	*buf[0] =grk::endian<T>(val, false);
+	(*buf)++;
+}
+
 static void grk_applyLUT8u_1u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
 		int32_t *pDst, int32_t dstStride, uint8_t const *pLUT, uint32_t destWidth,
 		uint32_t destHeight) {
@@ -1074,13 +1079,15 @@ uint32_t BMPFormat::getPaddedWidth(){
 bool BMPFormat::encode() {
 	const char *outfile = m_fileName.c_str();
 	m_writeToStdout = grk::useStdio(outfile);
-	int ret = -1;
+	bool ret = false;
 	uint32_t w = m_image->comps[0].w;
 	uint32_t h = m_image->comps[0].h;
 	uint32_t padW = getPaddedWidth();
 	uint32_t image_size = padW * h;
 	uint32_t colours_used, lut_size;
 	uint32_t full_header_size, info_header_size, icc_size=0;
+	uint32_t header_plus_lut = 0;
+	uint8_t *header_buf = nullptr, *header_ptr = nullptr;
 
 	if (!grk::all_components_sanity_check(m_image,false))
 		goto cleanup;
@@ -1110,87 +1117,78 @@ bool BMPFormat::encode() {
 		icc_size = m_image->icc_profile_len;
 	}
 	info_header_size = full_header_size - fileHeaderSize;
+	header_plus_lut = full_header_size + lut_size;
 
-	if (fprintf(m_file, "BM") != 2)
-		goto cleanup;
+	header_ptr = header_buf = new uint8_t[header_plus_lut];
+	*header_ptr++ = 'B';
+	*header_ptr++ = 'M';
 
 	/* FILE HEADER */
 	// total size
-	if (!put_int(m_file, full_header_size + lut_size + image_size + icc_size))
-		goto cleanup;
+	put_int((uint32_t**)(&header_ptr), full_header_size + lut_size + image_size + icc_size);
 	// reserved
-	if (!put_int(m_file, 0U))
-		goto cleanup;
-	if (!put_int(m_file, full_header_size + lut_size))
-		goto cleanup;
-
+	put_int((uint32_t**)(&header_ptr), 0U);
+	put_int((uint32_t**)(&header_ptr), full_header_size + lut_size);
 	/* INFO HEADER   */
-	if (!put_int(m_file, info_header_size))
-		goto cleanup;
-	if (!put_int(m_file, w))
-		goto cleanup;
-	if (!put_int(m_file, h))
-		goto cleanup;
-	if (!put_int(m_file, (uint16_t)1))
-		goto cleanup;
-	if (!put_int(m_file, (uint16_t)(m_image->numcomps * 8)))
-		goto cleanup;
-	if (!put_int(m_file, 0U))
-		goto cleanup;
-	if (!put_int(m_file, image_size) )
-		goto cleanup;
+	put_int((uint32_t**)(&header_ptr), info_header_size);
+	put_int((uint32_t**)(&header_ptr), w);
+	put_int((uint32_t**)(&header_ptr), h);
+	put_int((uint16_t**)(&header_ptr), (uint16_t)1);
+	put_int((uint16_t**)(&header_ptr), (uint16_t)(m_image->numcomps * 8));
+	put_int((uint32_t**)(&header_ptr), 0U);
+	put_int((uint32_t**)(&header_ptr), image_size);
 	for (uint32_t i = 0; i < 2; ++i){
 		double cap = m_image->capture_resolution[i] ?
 				m_image->capture_resolution[i] : 7834;
-		if (!put_int(m_file, (uint32_t)(cap + 0.5f)))
-			goto cleanup;
+		put_int((uint32_t**)(&header_ptr), (uint32_t)(cap + 0.5f));
 	}
-	if (!put_int(m_file, colours_used))
-		goto cleanup;
-	if (!put_int(m_file, colours_used))
-		goto cleanup;
-
+	put_int((uint32_t**)(&header_ptr), colours_used);
+	put_int((uint32_t**)(&header_ptr), colours_used);
 	if (m_image->icc_profile_buf){
-		if (!put_int(m_file, 0U))
-			goto cleanup;
-		if (!put_int(m_file, 0U))
-			goto cleanup;
-		if (!put_int(m_file, 0U))
-			goto cleanup;
-		if (!put_int(m_file, 0U))
-			goto cleanup;
-		if (!put_int(m_file, BMP_ICC_PROFILE_EMBEDDED))
-			goto cleanup;
-		uint8_t temp[36];
-		memset(temp, 0, sizeof(temp));
-		if (fwrite(temp, 1, 36, m_file) != 36 )
-			goto cleanup;
-		if (!put_int(m_file, 0U))
-			goto cleanup;
-		if (!put_int(m_file, 0U))
-			goto cleanup;
-		if (!put_int(m_file, 0U))
-			goto cleanup;
-
-		if (!put_int(m_file, 0U))
-			goto cleanup;
-		if (!put_int(m_file, info_header_size +  lut_size + image_size))
-			goto cleanup;
-		if (!put_int(m_file, m_image->icc_profile_len))
-			goto cleanup;
-		if (!put_int(m_file, 0U))
-			goto cleanup;
+		put_int((uint32_t**)(&header_ptr), 0U);
+		put_int((uint32_t**)(&header_ptr), 0U);
+		put_int((uint32_t**)(&header_ptr), 0U);
+		put_int((uint32_t**)(&header_ptr), 0U);
+		put_int((uint32_t**)(&header_ptr), BMP_ICC_PROFILE_EMBEDDED);
+		memset(header_ptr, 0, 36);
+		header_ptr += 36;
+		put_int((uint32_t**)(&header_ptr), 0U);
+		put_int((uint32_t**)(&header_ptr), 0U);
+		put_int((uint32_t**)(&header_ptr), 0U);
+		put_int((uint32_t**)(&header_ptr), 0U);
+		put_int((uint32_t**)(&header_ptr), info_header_size +  lut_size + image_size);
+		put_int((uint32_t**)(&header_ptr), m_image->icc_profile_len);
+		put_int((uint32_t**)(&header_ptr), 0U);
 	}
+
+	// 1024-byte LUT
+	if (m_image->numcomps ==1) {
+		for (uint32_t i = 0; i < 256; i++) {
+			*header_ptr++ = (uint8_t)i;
+			*header_ptr++ = (uint8_t)i;
+			*header_ptr++ = (uint8_t)i;
+			*header_ptr++ = 0;
+		}
+	}
+
+	if (fwrite(header_buf, 1, header_plus_lut,m_file) != header_plus_lut)
+		goto cleanup;
 
 	if (!encodeStrip(0))
 		goto cleanup;
 
-	ret = 0;
+	if (m_image->icc_profile_buf) {
+		if (fwrite(m_image->icc_profile_buf,
+				1, m_image->icc_profile_len, m_file) != m_image->icc_profile_len )
+			goto cleanup;
+	}
+	ret = true;
 cleanup:
+	delete[] header_buf;
 	if (!encodeFinish())
 		return false;
 
-	return (ret ? false : true);
+	return ret;
 }
 
 BMPFormat::BMPFormat(void) : m_destBuff(nullptr),
@@ -1237,13 +1235,6 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 				1 << (m_image->comps[compno].prec - 1) : 0);
 	}
 
-	// 1024-byte LUT
-	if (m_image->numcomps ==1) {
-		for (uint32_t i = 0; i < 256; i++) {
-			if (fprintf(m_file, "%c%c%c%c", i, i, i, 0) != 4)
-				goto cleanup;
-		}
-	}
 	m_destBuff = new uint8_t[padW];
 	// zero out padding at end of line
 	if (strideDiff)
@@ -1284,11 +1275,6 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 		j++;
 	}
 
-	if (m_image->icc_profile_buf) {
-		if (fwrite(m_image->icc_profile_buf,
-				1, m_image->icc_profile_len, m_file) != m_image->icc_profile_len )
-			goto cleanup;
-	}
 
 	ret = true;
 cleanup:
