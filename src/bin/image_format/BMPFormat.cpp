@@ -1230,6 +1230,7 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 	uint32_t j = 0;
 	int trunc[4] = {0,0,0,0};
 	float scale[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+	int32_t shift[4] = {0,0,0,0};
 
 	for (uint32_t compno = 0; compno < m_image->numcomps; ++compno){
 		if (m_image->comps[compno].prec > 8) {
@@ -1241,6 +1242,8 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 			spdlog::warn("BMP conversion: scaling component {} from {} bits to 8 bits",
 					compno, m_image->comps[compno].prec);
 		}
+		shift[compno] = (m_image->comps[compno].sgnd ?
+				1 << (m_image->comps[compno].prec - 1) : 0);
 	}
 
 	// 1024-byte LUT
@@ -1251,22 +1254,26 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 		}
 	}
 	m_destBuff = new uint8_t[padW];
+	// zero out padding at end of line
+	if (strideDiff)
+		memset(m_destBuff + padW - strideDiff, 0, strideDiff);
 	while ( j < h) {
 		uint64_t destInd = 0;
 		for (uint32_t i = 0; i < w; i++) {
 			uint8_t rc[4];
 			for (uint32_t compno = 0; compno < m_image->numcomps; ++compno){
 				int32_t r = m_image->comps[compno].data[m_destIndex + i];
-				r += (m_image->comps[compno].sgnd ?
-								1 << (m_image->comps[compno].prec - 1) : 0);
-				if (trunc[compno] != 0)
-					r = ((r >> trunc[compno]) + ((r >> (trunc[compno] - 1)) % 2));
-				else if (scale[compno] != 1.0f)
-					r = (int32_t)(((float)r * scale[compno]) + 0.5f);
-				if (r > 255)
-					r = 255;
-				else if (r < 0)
-					r = 0;
+				r += shift[compno];
+				if (trunc[compno] || (scale[compno] != 1.0f) ){
+					if (trunc[compno])
+						r = ((r >> trunc[compno]) + ((r >> (trunc[compno] - 1)) % 2));
+					else
+						r = (int32_t)(((float)r * scale[compno]) + 0.5f);
+					if (r > 255)
+						r = 255;
+					else if (r < 0)
+						r = 0;
+				}
 				rc[compno] = (uint8_t)r;
 			}
 			if (m_image->numcomps == 1) {
@@ -1279,9 +1286,7 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 					m_destBuff[destInd++] = rc[3];
 			}
 		}
-		// zero out padding at end of line
-		for (uint32_t pad = 0; pad < strideDiff; pad++)
-			m_destBuff[destInd++] = 0;
+		destInd += strideDiff;
 		m_destIndex -= stride;
 		if (fwrite(m_destBuff, 1, destInd, m_file) != destInd)
 			goto cleanup;
