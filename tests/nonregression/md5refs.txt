@@ -322,3 +322,4 @@ d9a4feed1773b7b1ae5c20bdbdd37291  1336.pdf.asan.47.376.jp2_2.pgx
 4a650c4181d08128f7cc81266aafa851  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5713875855736832_0.pgx
 3cda55d9fdadd2b4462bcbc9c002c873  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5713875855736832_1.pgx
 8cef180e6ee6d2ead831cbdc9c299003  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5713875855736832_2.pgx
+d5c155592a00f695dad564cf51e602f8  cinema129x129.bmp
