@@ -26,6 +26,7 @@
 #include "convert.h"
 #include <cstring>
 #include "common.h"
+#include "ThreadPool.hpp"
 
 // `MBED` in big endian format
 const uint32_t BMP_ICC_PROFILE_EMBEDDED = 0x4d424544;
