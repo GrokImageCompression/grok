@@ -1512,7 +1512,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 			spdlog::error("grk_decompress: failed to decompress tile");
 			goto cleanup;
 		}
-		spdlog::info("Tile {} was decoded.", parameters->tile_index);
+		//spdlog::info("Tile {} was decoded.", parameters->tile_index);
 	}
 	failed = false;
 	cleanup:
