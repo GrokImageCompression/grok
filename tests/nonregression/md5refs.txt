@@ -318,8 +318,8 @@ c671d85080b52f2cd68e8a9d3a8c1ff4  ybr-cat.tif
 448afb5077225f783496cc564a3eb1c2  ybr-cat.jp2.lossless.tif
 4814ad553ec4a9e97550f61fc5223280  1336.pdf.asan.47.376.jp2_0.pgx
 f38167b983f0de0ab77e71de291bf5c0  1336.pdf.asan.47.376.jp2_1.pgx
+d5c155592a00f695dad564cf51e602f8  cinema129x129.bmp
 d9a4feed1773b7b1ae5c20bdbdd37291  1336.pdf.asan.47.376.jp2_2.pgx
 4a650c4181d08128f7cc81266aafa851  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5713875855736832_0.pgx
 3cda55d9fdadd2b4462bcbc9c002c873  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5713875855736832_1.pgx
 8cef180e6ee6d2ead831cbdc9c299003  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5713875855736832_2.pgx
-d5c155592a00f695dad564cf51e602f8  cinema129x129.bmp

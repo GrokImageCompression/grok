@@ -1181,7 +1181,7 @@ cleanup:
 }
 
 BMPFormat::BMPFormat(void) : m_destBuff(nullptr),
-							m_destIndex(0),
+							m_srcIndex(0),
 							m_writeToStdout(false)
 {}
 
@@ -1192,25 +1192,32 @@ bool BMPFormat::encodeHeader(grk_image *  image, const std::string &filename, ui
 	return encode();
 }
 
-
-
 bool BMPFormat::encodeStrip(uint32_t rows){
 	bool ret = false;
 	auto w = m_image->comps[0].w;
 	auto h = m_image->comps[0].h;
-	auto stride = m_image->comps[0].stride;
-	m_destIndex = stride * (h - 1);
-	uint32_t padW = getPaddedWidth();
-	uint32_t strideDiff = 4 - (m_image->numcomps * w) % 4;
-	if (strideDiff == 4)
-		strideDiff = 0;
+	auto numcomps = m_image->numcomps;
+	auto stride_src = m_image->comps[0].stride;
+	m_srcIndex = stride_src * (h - 1);
+	uint32_t w_dest = getPaddedWidth();
+	uint32_t pad_dest = (4 - ((numcomps * w) &3 )) &3;
+	if (pad_dest == 4)
+		pad_dest = 0;
+   	uint32_t rowsPerStrip = (16 * 1024 * 1024) / (stride_src * numcomps);
+   	if (rowsPerStrip == 0)
+   		rowsPerStrip = 2;
+	if (rowsPerStrip & 1)
+		rowsPerStrip++;
+	if (rowsPerStrip > h)
+		rowsPerStrip = h;
+
 
 	uint32_t j = 0;
 	int trunc[4] = {0,0,0,0};
 	float scale[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 	int32_t shift[4] = {0,0,0,0};
 
-	for (uint32_t compno = 0; compno < m_image->numcomps; ++compno){
+	for (uint32_t compno = 0; compno < numcomps; ++compno){
 		if (m_image->comps[compno].prec > 8) {
 				trunc[compno] = (int) m_image->comps[compno].prec - 8;
 				spdlog::warn("BMP conversion: truncating component {} from {} bits to 8 bits",
@@ -1224,44 +1231,52 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 				1 << (m_image->comps[compno].prec - 1) : 0);
 	}
 
-	m_destBuff = new uint8_t[padW];
+	m_destBuff = new uint8_t[rowsPerStrip * w_dest];
 	// zero out padding at end of line
-	if (strideDiff)
-		memset(m_destBuff + padW - strideDiff, 0, strideDiff);
+	if (pad_dest){
+		uint8_t *ptr = m_destBuff + w_dest - pad_dest;
+		for (uint32_t m=0; m < rowsPerStrip; ++m) {
+			memset(ptr, 0, pad_dest);
+			ptr += w_dest;
+		}
+	}
 	while ( j < h) {
 		uint64_t destInd = 0;
-		for (uint32_t i = 0; i < w; i++) {
-			uint8_t rc[4];
-			for (uint32_t compno = 0; compno < m_image->numcomps; ++compno){
-				int32_t r = m_image->comps[compno].data[m_destIndex + i];
-				r += shift[compno];
-				if (trunc[compno] || (scale[compno] != 1.0f) ){
-					if (trunc[compno])
-						r = ((r >> trunc[compno]) + ((r >> (trunc[compno] - 1)) % 2));
-					else
-						r = (int32_t)(((float)r * scale[compno]) + 0.5f);
-					if (r > 255)
-						r = 255;
-					else if (r < 0)
-						r = 0;
+		uint32_t k_max = std::min<uint32_t>(rowsPerStrip, (uint32_t)(h - j));
+		for (uint32_t k = 0; k < k_max; k++) {
+			for (uint32_t i = 0; i < w; i++) {
+				uint8_t rc[4];
+				for (uint32_t compno = 0; compno < numcomps; ++compno){
+					int32_t r = m_image->comps[compno].data[m_srcIndex + i];
+					r += shift[compno];
+					if (trunc[compno] || (scale[compno] != 1.0f) ){
+						if (trunc[compno])
+							r = ((r >> trunc[compno]) + ((r >> (trunc[compno] - 1)) % 2));
+						else
+							r = (int32_t)(((float)r * scale[compno]) + 0.5f);
+						if (r > 255)
+							r = 255;
+						else if (r < 0)
+							r = 0;
+					}
+					rc[compno] = (uint8_t)r;
 				}
-				rc[compno] = (uint8_t)r;
-			}
-			if (m_image->numcomps == 1) {
+				if (numcomps == 1) {
 					m_destBuff[destInd++] = rc[0];
-			} else {
-				m_destBuff[destInd++] = rc[2];
-				m_destBuff[destInd++] = rc[1];
-				m_destBuff[destInd++] = rc[0];
-				if (m_image->numcomps == 4)
-					m_destBuff[destInd++] = rc[3];
+				} else {
+					m_destBuff[destInd++] = rc[2];
+					m_destBuff[destInd++] = rc[1];
+					m_destBuff[destInd++] = rc[0];
+					if (numcomps == 4)
+						m_destBuff[destInd++] = rc[3];
+				}
 			}
+			destInd += pad_dest;
+			m_srcIndex -= stride_src;
 		}
-		destInd += strideDiff;
-		m_destIndex -= stride;
 		if (fwrite(m_destBuff, 1, destInd, m_file) != destInd)
 			goto cleanup;
-		j++;
+		j+=k_max;
 	}
 
 
