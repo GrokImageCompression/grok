@@ -81,9 +81,14 @@ template<typename T> bool get_int(FILE *INPUT, T *val) {
    return true;
 }
 
-template<typename T> bool put_int(FILE *OUTPUT, T val) {
-	val = grk::endian<T>(val, false);
-	return (fwrite(&val, sizeof(T), 1, OUTPUT) == 1);
+
+template<typename T> bool get_int(T **buf, T *val) {
+	*val = (*buf)[0];
+   #ifdef GROK_BIG_ENDIAN
+		*val = grk::endian<T>(*val, false);
+   #endif
+   *buf = *buf+1;
+   return true;
 }
 
 template<typename T> void put_int(T **buf, T val) {
@@ -449,20 +454,26 @@ static grk_image* bmp1toimage(const uint8_t *pData, uint32_t srcStride,
 	}
 	return image;
 }
+
+
 static bool bmp_read_file_header(FILE *INPUT, GRK_BITMAPFILEHEADER *header) {
-	if (!get_int(INPUT, &header->bfType))
+	uint8_t temp[fileHeaderSize];
+	uint8_t *temp_ptr = temp;
+	if (fread(temp, 1, fileHeaderSize, INPUT) != fileHeaderSize)
+		return false;
+	if (!get_int((uint16_t**)&temp_ptr, &header->bfType))
 		return false;
 	if (header->bfType != 19778) {
 		spdlog::error("Not a BMP file");
 		return false;
 	}
-	if (!get_int(INPUT, &header->bfSize))
+	if (!get_int((uint32_t**)&temp_ptr, &header->bfSize))
 		return false;
-	if (!get_int(INPUT, &header->bfReserved1))
+	if (!get_int((uint16_t**)&temp_ptr, &header->bfReserved1))
 		return false;
-	if (!get_int(INPUT, &header->bfReserved2))
+	if (!get_int((uint16_t**)&temp_ptr, &header->bfReserved2))
 		return false;
-	if (!get_int(INPUT, &header->bfOffBits))
+	if (!get_int((uint32_t**)&temp_ptr, &header->bfOffBits))
 		return false;
 	return true;
 }
@@ -579,9 +590,9 @@ static bool bmp_read_info_header(FILE *INPUT, GRK_BITMAPFILEHEADER *file_header,
 static bool bmp_read_raw_data(FILE *INPUT, uint8_t *pData, uint32_t stride,
 		uint32_t width, uint32_t height) {
 	(void) (width);
-	if (fread(pData, sizeof(uint8_t), stride * height, INPUT)
-			!= (stride * height)) {
-		spdlog::error("fread read fewer than expected number of bytes.");
+	size_t temp = fread(pData, sizeof(uint8_t), stride * height, INPUT);
+	if (temp != (stride * height)) {
+		spdlog::error("fread read fewer bytes {} than expected number of bytes {}.",temp ,stride * height);
 		return false;
 	}
 	return true;
