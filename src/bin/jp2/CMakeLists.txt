@@ -63,6 +63,7 @@ include_directories(
   ${TIFF_INCLUDE_DIRNAME}
   ${JPEG_INCLUDE_DIRNAME}
   ${GROK_SOURCE_DIR}/src/include
+  ${GROK_SOURCE_DIR}/src/include/taskflow
   )
 
 if(WIN32)
