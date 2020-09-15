@@ -67,28 +67,22 @@ typedef struct {
 	uint32_t biGreenGamma; 		/* Green channel gamma */
 	uint32_t biBlueGamma; 		/* Blue channel gamma */
 	uint32_t biIntent; 			/* Intent */
-	uint32_t biIccProfileData; 	/* offset to ICC profile data */
+	uint32_t biIccProfileOffset; 	/* offset to ICC profile data */
 	uint32_t biIccProfileSize; 	/* ICC profile size */
 	uint32_t biReserved; 		/* Reserved */
 } GRK_BITMAPINFOHEADER;
 
-template<typename T> bool get_int(FILE *INPUT, T *val) {
-	if (fread(val, sizeof(T), 1, INPUT) != 1)
-		return false;
-   #ifdef GROK_BIG_ENDIAN
-		*val = grk::endian<T>(*val, false);
-   #endif
-   return true;
-}
 
+const uint32_t BITMAPCOREHEADER_LENGTH = 12U;
+const uint32_t BITMAPINFOHEADER_LENGTH = 40U;
+const uint32_t BITMAPV2INFOHEADER_LENGTH = 52U;
+const uint32_t BITMAPV3INFOHEADER_LENGTH = 56U;
+const uint32_t BITMAPV4HEADER_LENGTH = 108U;
+const uint32_t BITMAPV5HEADER_LENGTH = 124U;
 
-template<typename T> bool get_int(T **buf, T *val) {
-	*val = (*buf)[0];
-   #ifdef GROK_BIG_ENDIAN
-		*val = grk::endian<T>(*val, false);
-   #endif
-   *buf = *buf+1;
-   return true;
+template<typename T> void get_int(T **buf, T *val) {
+	*val = grk::endian<T>((*buf)[0], false);
+	(*buf)++;
 }
 
 template<typename T> void put_int(T **buf, T val) {
@@ -456,43 +450,35 @@ static grk_image* bmp1toimage(const uint8_t *pData, uint32_t srcStride,
 }
 
 
-static bool bmp_read_file_header(FILE *INPUT, GRK_BITMAPFILEHEADER *header) {
-	uint8_t temp[fileHeaderSize];
+static bool bmp_read_file_header(FILE *INPUT, GRK_BITMAPFILEHEADER *fileHeader, GRK_BITMAPINFOHEADER *infoHeader) {
+	memset(infoHeader, 0, sizeof(*infoHeader));
+    size_t len = fileHeaderSize + sizeof(uint32_t);
+	uint8_t temp[len];
 	uint8_t *temp_ptr = temp;
-	if (fread(temp, 1, fileHeaderSize, INPUT) != fileHeaderSize)
+	if (fread(temp, 1, len, INPUT) != len)
 		return false;
-	if (!get_int((uint16_t**)&temp_ptr, &header->bfType))
-		return false;
-	if (header->bfType != 19778) {
+	get_int((uint16_t**)&temp_ptr, &fileHeader->bfType);
+	if (fileHeader->bfType != 19778) {
 		spdlog::error("Not a BMP file");
 		return false;
 	}
-	if (!get_int((uint32_t**)&temp_ptr, &header->bfSize))
-		return false;
-	if (!get_int((uint16_t**)&temp_ptr, &header->bfReserved1))
-		return false;
-	if (!get_int((uint16_t**)&temp_ptr, &header->bfReserved2))
-		return false;
-	if (!get_int((uint32_t**)&temp_ptr, &header->bfOffBits))
-		return false;
+	get_int((uint32_t**)&temp_ptr, &fileHeader->bfSize);
+	get_int((uint16_t**)&temp_ptr, &fileHeader->bfReserved1);
+	get_int((uint16_t**)&temp_ptr, &fileHeader->bfReserved2);
+	get_int((uint32_t**)&temp_ptr, &fileHeader->bfOffBits);
+	get_int((uint32_t**)&temp_ptr, &infoHeader->biSize);
+
 	return true;
 }
 
-const uint32_t BITMAPCOREHEADER_LENGTH = 12U;
-const uint32_t BITMAPINFOHEADER_LENGTH = 40U;
-const uint32_t BITMAPV2INFOHEADER_LENGTH = 52U;
-const uint32_t BITMAPV3INFOHEADER_LENGTH = 56U;
-const uint32_t BITMAPV4HEADER_LENGTH = 108U;
-const uint32_t BITMAPV5HEADER_LENGTH = 124U;
-
-static bool bmp_read_info_header(FILE *INPUT, GRK_BITMAPFILEHEADER *file_header, GRK_BITMAPINFOHEADER *header) {
-	memset(header, 0, sizeof(*header));
-	/* INFO HEADER */
-	/* ------------- */
-	if (!get_int(INPUT, &header->biSize))
+static bool bmp_read_info_header(FILE *INPUT, GRK_BITMAPFILEHEADER *fileHeader, GRK_BITMAPINFOHEADER *infoHeader) {
+    const size_t len_initial = infoHeader->biSize - sizeof(uint32_t);
+	uint8_t temp[sizeof(GRK_BITMAPINFOHEADER)];
+	uint8_t *temp_ptr = temp;
+	if (fread(temp, 1, len_initial, INPUT) != len_initial)
 		return false;
 
-	switch (header->biSize) {
+	switch (infoHeader->biSize) {
 	case BITMAPCOREHEADER_LENGTH:
 	case BITMAPINFOHEADER_LENGTH:
 	case BITMAPV2INFOHEADER_LENGTH:
@@ -501,88 +487,63 @@ static bool bmp_read_info_header(FILE *INPUT, GRK_BITMAPFILEHEADER *file_header,
 	case BITMAPV5HEADER_LENGTH:
 		break;
 	default:
-		spdlog::error("unknown BMP header size {}", header->biSize);
+		spdlog::error("unknown BMP header size {}", infoHeader->biSize);
 		return false;
 	}
-	if (header->biSize == BITMAPCOREHEADER_LENGTH){	//OS2
-		uint16_t temp;
-		if (!get_int(INPUT, &temp))
-			return false;
-		header->biWidth = temp;
-		if (!get_int(INPUT, &temp))
-			return false;
-		header->biHeight = temp;
+	if (infoHeader->biSize == BITMAPCOREHEADER_LENGTH){	//OS2
+		get_int((uint16_t**)&temp_ptr, (uint16_t*)&infoHeader->biWidth);
+		get_int((uint16_t**)&temp_ptr, (uint16_t*)&infoHeader->biHeight);
 	} else {
-		if (!get_int(INPUT, &header->biWidth))
-			return false;
-		if (!get_int(INPUT, &header->biHeight))
-			return false;
+		get_int((uint32_t**)&temp_ptr, (uint32_t*)&infoHeader->biWidth);
+		get_int((uint32_t**)&temp_ptr, (uint32_t*)&infoHeader->biHeight);
 	}
-	if (!get_int(INPUT, &header->biPlanes))
-		return false;
-	if (!get_int(INPUT, &header->biBitCount))
-		return false;
+	get_int((uint16_t**)&temp_ptr, (uint16_t*)&infoHeader->biPlanes);
+	get_int((uint16_t**)&temp_ptr, (uint16_t*)&infoHeader->biBitCount);
 	// sanity check
-	if (header->biBitCount > 32){
-		spdlog::error("Bit count {} not supported.",header->biBitCount);
+	if (infoHeader->biBitCount > 32){
+		spdlog::error("Bit count {} not supported.",infoHeader->biBitCount);
 		return false;
 	}
-	if (header->biSize >= BITMAPINFOHEADER_LENGTH) {
-		if (!get_int(INPUT, &header->biCompression))
-			return false;
-		if (!get_int(INPUT, &header->biSizeImage))
-			return false;
-		if (!get_int(INPUT, &header->biXpelsPerMeter))
-			return false;
-		if (!get_int(INPUT, &header->biYpelsPerMeter))
-			return false;
-		if (!get_int(INPUT, &header->biClrUsed))
-			return false;
-		if (!get_int(INPUT, &header->biClrImportant))
-			return false;
+	if (infoHeader->biSize >= BITMAPINFOHEADER_LENGTH) {
+		get_int((uint32_t**)&temp_ptr, (uint32_t*)&infoHeader->biCompression);
+		get_int((uint32_t**)&temp_ptr, (uint32_t*)&infoHeader->biSizeImage);
+		get_int((int32_t**)&temp_ptr, (int32_t*)&infoHeader->biXpelsPerMeter);
+		get_int((int32_t**)&temp_ptr, (int32_t*)&infoHeader->biYpelsPerMeter);
+		get_int((uint32_t**)&temp_ptr, (uint32_t*)&infoHeader->biClrUsed);
+		get_int((uint32_t**)&temp_ptr, (uint32_t*)&infoHeader->biClrImportant);
 		//re-adjust header size
 		uint32_t defacto_header_size =
-				file_header->bfSize - fileHeaderSize  -
-					header->biClrUsed * (uint32_t)sizeof(uint32_t) - header->biSizeImage;
-		if (defacto_header_size > header->biSize)
-			header->biSize = std::min<uint32_t>(defacto_header_size,BITMAPV5HEADER_LENGTH);
-	}
-	if (header->biSize >= BITMAPV2INFOHEADER_LENGTH) {
-		if (!get_int(INPUT, &header->biRedMask))
-			return false;
-		if (!get_int(INPUT, &header->biGreenMask))
-			return false;
-		if (!get_int(INPUT, &header->biBlueMask))
-			return false;
-	}
-	if (header->biSize >= BITMAPV3INFOHEADER_LENGTH) {
-		if (!get_int(INPUT, &header->biAlphaMask))
-			return false;
-	}
-	if (header->biSize >= BITMAPV4HEADER_LENGTH) {
-		if (!get_int(INPUT, &header->biColorSpaceType))
-			return false;
-		if (fread(&(header->biColorSpaceEP), 1U, sizeof(header->biColorSpaceEP),
-				INPUT) != sizeof(header->biColorSpaceEP)) {
-			spdlog::error("can't  read BMP header");
-			return false;
+				fileHeader->bfSize - fileHeaderSize  -
+					infoHeader->biClrUsed * (uint32_t)sizeof(uint32_t) - infoHeader->biSizeImage;
+		if (defacto_header_size > infoHeader->biSize) {
+			infoHeader->biSize = std::min<uint32_t>(defacto_header_size,BITMAPV5HEADER_LENGTH);
+			 const size_t len_remaining = infoHeader->biSize - (len_initial + sizeof(uint32_t));
+			 if (fread(temp + len_initial, 1, len_remaining, INPUT) != len_remaining)
+				return false;
+
 		}
-		if (!get_int(INPUT, &header->biRedGamma))
-			return false;
-		if (!get_int(INPUT, &header->biGreenGamma))
-			return false;
-		if (!get_int(INPUT, &header->biBlueGamma))
-			return false;
 	}
-	if (header->biSize >= BITMAPV5HEADER_LENGTH) {
-		if (!get_int(INPUT, &header->biIntent))
-			return false;
-		if (!get_int(INPUT, &header->biIccProfileData))
-			return false;
-		if (!get_int(INPUT, &header->biIccProfileSize))
-			return false;
-		if (!get_int(INPUT, &header->biReserved))
-			return false;
+	if (infoHeader->biSize >= BITMAPV2INFOHEADER_LENGTH) {
+		get_int((uint32_t**)&temp_ptr, (uint32_t*)&infoHeader->biRedMask);
+		get_int((uint32_t**)&temp_ptr, (uint32_t*)&infoHeader->biGreenMask);
+		get_int((uint32_t**)&temp_ptr, (uint32_t*)&infoHeader->biBlueMask);
+	}
+	if (infoHeader->biSize >= BITMAPV3INFOHEADER_LENGTH) {
+		get_int((uint32_t**)&temp_ptr, (uint32_t*)&infoHeader->biAlphaMask);
+	}
+	if (infoHeader->biSize >= BITMAPV4HEADER_LENGTH) {
+		get_int((uint32_t**)&temp_ptr, (uint32_t*)&infoHeader->biColorSpaceType);
+		memcpy(infoHeader->biColorSpaceEP, temp_ptr,sizeof(infoHeader->biColorSpaceEP) );
+		temp_ptr += sizeof(infoHeader->biColorSpaceEP);
+		get_int((uint32_t**)&temp_ptr, (uint32_t*)&infoHeader->biRedGamma);
+		get_int((uint32_t**)&temp_ptr, (uint32_t*)&infoHeader->biGreenGamma);
+		get_int((uint32_t**)&temp_ptr, (uint32_t*)&infoHeader->biBlueGamma);
+	}
+	if (infoHeader->biSize >= BITMAPV5HEADER_LENGTH) {
+		get_int((uint32_t**)&temp_ptr, (uint32_t*)&infoHeader->biIntent);
+		get_int((uint32_t**)&temp_ptr, (uint32_t*)&infoHeader->biIccProfileOffset);
+		get_int((uint32_t**)&temp_ptr, (uint32_t*)&infoHeader->biIccProfileSize);
+		get_int((uint32_t**)&temp_ptr, (uint32_t*)&infoHeader->biReserved);
 	}
 	return true;
 }
@@ -779,7 +740,7 @@ static grk_image* bmptoimage(const char *filename,
 		}
 	}
 
-	if (!bmp_read_file_header(INPUT, &File_h))
+	if (!bmp_read_file_header(INPUT, &File_h, &Info_h))
 		goto cleanup;
 	if (!bmp_read_info_header(INPUT, &File_h, &Info_h))
 		goto cleanup;
@@ -908,7 +869,7 @@ static grk_image* bmptoimage(const char *filename,
 			&& Info_h.biIccProfileSize < grk::maxICCProfileBufferLen) {
 
 		//read in ICC profile
-		if (fseek(INPUT, fileHeaderSize + Info_h.biIccProfileData,
+		if (fseek(INPUT, fileHeaderSize + Info_h.biIccProfileOffset,
 				SEEK_SET)) {
 			goto cleanup;
 		}
@@ -1172,7 +1133,6 @@ bool BMPFormat::encode() {
 		put_int((uint32_t**)(&header_ptr), m_image->icc_profile_len);
 		put_int((uint32_t**)(&header_ptr), 0U);
 	}
-
 	// 1024-byte LUT
 	if (m_image->numcomps ==1) {
 		for (uint32_t i = 0; i < 256; i++) {
@@ -1182,13 +1142,12 @@ bool BMPFormat::encode() {
 			*header_ptr++ = 0;
 		}
 	}
-
 	if (fwrite(header_buf, 1, header_plus_lut,m_file) != header_plus_lut)
 		goto cleanup;
-
 	ret = true;
 cleanup:
 	delete[] header_buf;
+
 	return ret;
 }
 
@@ -1201,6 +1160,7 @@ bool BMPFormat::encodeHeader(grk_image *  image, const std::string &filename, ui
 	(void) compressionParam;
 	m_fileName = filename;
 	m_image = image;
+
 	return encode();
 }
 
