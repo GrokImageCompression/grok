@@ -452,7 +452,7 @@ static grk_image* bmp1toimage(const uint8_t *pData, uint32_t srcStride,
 
 static bool bmp_read_file_header(FILE *INPUT, GRK_BITMAPFILEHEADER *fileHeader, GRK_BITMAPINFOHEADER *infoHeader) {
 	memset(infoHeader, 0, sizeof(*infoHeader));
-    size_t len = fileHeaderSize + sizeof(uint32_t);
+    const size_t len = fileHeaderSize + sizeof(uint32_t);
 	uint8_t temp[len];
 	uint8_t *temp_ptr = temp;
 	if (fread(temp, 1, len, INPUT) != len)

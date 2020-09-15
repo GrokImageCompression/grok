@@ -478,7 +478,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		GrokOutput output;
 		cmd.setOutput(&output);
 
-		ValueArg<string> logfileArg("W", "logfile", "Log file",
+		ValueArg<std::string> logfileArg("W", "logfile", "Log file",
 				false, "", "string", cmd);
 
 		// Kernel build flags:
@@ -500,16 +500,16 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		ValueArg<uint32_t> cinema4KArg("x", "cinema4K",
 				"Digital cinema 2K profile", false, 24, "unsigned integer",
 				cmd);
-		ValueArg<string> IMFArg("z", "IMF", "IMF profile", false, "", "string",
+		ValueArg<std::string> IMFArg("z", "IMF", "IMF profile", false, "", "string",
 				cmd);
-		ValueArg<string> BroadcastArg("U", "BROADCAST", "Broadcast profile", false, "", "string",
+		ValueArg<std::string> BroadcastArg("U", "BROADCAST", "Broadcast profile", false, "", "string",
 				cmd);
-		ValueArg<string> imgDirArg("y", "ImgDir", "Image directory", false, "",
+		ValueArg<std::string> imgDirArg("y", "ImgDir", "Image directory", false, "",
 				"string", cmd);
-		ValueArg<string> outDirArg("a", "OutDir", "Output directory", false, "",
+		ValueArg<std::string> outDirArg("a", "OutDir", "Output directory", false, "",
 				"string", cmd);
 
-		ValueArg<string> pluginPathArg("g", "PluginPath", "Plugin path", false,
+		ValueArg<std::string> pluginPathArg("g", "PluginPath", "Plugin path", false,
 				"", "string", cmd);
 		ValueArg<uint32_t> numThreadsArg("H", "num_threads",
 				"Number of threads", false, 0, "unsigned integer", cmd);
@@ -517,15 +517,15 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		ValueArg<int32_t> deviceIdArg("G", "DeviceId", "Device ID", false, 0,
 				"integer", cmd);
 
-		ValueArg<string> inputFileArg("i", "InputFile", "Input file", false, "",
+		ValueArg<std::string> inputFileArg("i", "InputFile", "Input file", false, "",
 				"string", cmd);
-		ValueArg<string> outputFileArg("o", "OutputFile", "Output file", false,
+		ValueArg<std::string> outputFileArg("o", "OutputFile", "Output file", false,
 				"", "string", cmd);
 
-		ValueArg<string> outForArg("O", "OutFor", "Output format", false, "",
+		ValueArg<std::string> outForArg("O", "OutFor", "Output format", false, "",
 				"string", cmd);
 
-		ValueArg<string> inForArg("K", "InFor", "InputFormat format", false, "",
+		ValueArg<std::string> inForArg("K", "InFor", "InputFormat format", false, "",
 				"string", cmd);
 
 		SwitchArg sopArg("S", "SOP", "Add SOP markers", cmd);
@@ -533,65 +533,65 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		SwitchArg ephArg("E", "EPH", "Add EPH markers", cmd);
 
 
-		ValueArg<string> pocArg("P", "POC", "Progression order changes", false,
+		ValueArg<std::string> pocArg("P", "POC", "Progression order changes", false,
 				"", "string", cmd);
 
-		ValueArg<string> roiArg("R", "ROI", "Region of interest", false, "",
+		ValueArg<std::string> roiArg("R", "ROI", "Region of interest", false, "",
 				"string", cmd);
 
 		ValueArg<uint32_t> mctArg("Y", "mct", "Multi component transform",
 				false, 0, "unsigned integer", cmd);
 
-		ValueArg<string> captureResArg("Q", "CaptureRes", "Capture resolution",
+		ValueArg<std::string> captureResArg("Q", "CaptureRes", "Capture resolution",
 				false, "", "string", cmd);
 
-		ValueArg<string> displayResArg("D", "DisplayRes", "Display resolution",
+		ValueArg<std::string> displayResArg("D", "DisplayRes", "Display resolution",
 				false, "", "string", cmd);
 
-		ValueArg<string> compressionRatiosArg("r", "CompressionRatios",
+		ValueArg<std::string> compressionRatiosArg("r", "CompressionRatios",
 				"Layer rates expressed as compression ratios", false, "",
 				"string", cmd);
 
-		ValueArg<string> qualityArg("q", "Quality",
+		ValueArg<std::string> qualityArg("q", "Quality",
 				"Layer rates expressed as quality", false, "", "string", cmd);
 
-		ValueArg<string> rawFormatArg("F", "Raw", "Raw image format parameters",
+		ValueArg<std::string> rawFormatArg("F", "Raw", "Raw image format parameters",
 				false, "", "string", cmd);
 
 		ValueArg<uint32_t> resolutionArg("n", "Resolutions", "Resolution",
 				false, 0, "unsigned integer", cmd);
 
-		ValueArg<string> precinctDimArg("c", "PrecinctDim",
+		ValueArg<std::string> precinctDimArg("c", "PrecinctDim",
 				"Precinct dimensions", false, "", "string", cmd);
 
-		ValueArg<string> codeBlockDimArg("b", "CodeBlockDim",
+		ValueArg<std::string> codeBlockDimArg("b", "CodeBlockDim",
 				"Code block dimension", false, "", "string", cmd);
 
-		ValueArg<string> progressionOrderArg("p", "ProgressionOrder",
+		ValueArg<std::string> progressionOrderArg("p", "ProgressionOrder",
 				"Progression order", false, "", "string", cmd);
 
 		// this flag is currently disabled 
-		ValueArg<string> subsamplingFactorArg("s", "SubsamplingFactor",
+		ValueArg<std::string> subsamplingFactorArg("s", "SubsamplingFactor",
 				"Subsampling factor", false, "", "string"/*, cmd*/);
 
 
 		ValueArg<uint8_t> tpArg("u", "TP", "Tile part generation", false, 0,
 				"uint8_t", cmd);
 
-		ValueArg<string> tileOffsetArg("T", "TileOffset", "Tile offset", false,
+		ValueArg<std::string> tileOffsetArg("T", "TileOffset", "Tile offset", false,
 				"", "string", cmd);
 
-		ValueArg<string> tilesArg("t", "TileDim", "Tile parameters", false, "",
+		ValueArg<std::string> tilesArg("t", "TileDim", "Tile parameters", false, "",
 				"string", cmd);
 
-		ValueArg<string> imageOffsetArg("d", "ImageOffset",
+		ValueArg<std::string> imageOffsetArg("d", "ImageOffset",
 				"Image offset in reference grid coordinates", false, "",
 				"string", cmd);
 
 		ValueArg<uint32_t> cblkSty("M", "Mode", "Mode", false, 0,
 				"unsigned integer", cmd);
 
-		ValueArg<string> commentArg("C", "Comment", "Add a comment", false, "",
+		ValueArg<std::string> commentArg("C", "Comment", "Add a comment", false, "",
 				"string", cmd);
 
 		SwitchArg irreversibleArg("I", "Irreversible", "Irreversible", cmd);
@@ -599,7 +599,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		SwitchArg pltArg("L", "PLT", "PLT marker", cmd);
 		SwitchArg tlmArg("X", "TLM", "TLM marker", cmd);
 
-		ValueArg<string> customMCTArg("m", "CustomMCT", "MCT input file", false,
+		ValueArg<std::string> customMCTArg("m", "CustomMCT", "MCT input file", false,
 				"", "string", cmd);
 
 		ValueArg<uint32_t> durationArg("J", "Duration", "Duration in seconds",
@@ -1473,7 +1473,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 
 		if (commentArg.isSet()) {
 			std::istringstream f(commentArg.getValue());
-			string s;
+			std::string s;
 			while (getline(f, s, '|')) {
 				if (s.empty())
 					continue;
@@ -1506,7 +1506,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		}
 	} catch (ArgException &e)  // catch any exceptions
 	{
-		cerr << "error: " << e.error() << " for arg " << e.argId() << endl;
+		std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
 		return 1;
 	}
 

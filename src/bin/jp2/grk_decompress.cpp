@@ -439,26 +439,26 @@ int parse_cmdline_decoder(int argc, char **argv,
 		GrokOutput output;
 		cmd.setOutput(&output);
 
-		ValueArg<string> logfileArg("W", "logfile", "Log file",
+		ValueArg<std::string> logfileArg("W", "logfile", "Log file",
 				false, "", "string", cmd);
 
-		ValueArg<string> imgDirArg("y", "ImgDir", "Image Directory", false, "",
+		ValueArg<std::string> imgDirArg("y", "ImgDir", "Image Directory", false, "",
 				"string", cmd);
-		ValueArg<string> outDirArg("a", "OutDir", "Output Directory", false, "",
+		ValueArg<std::string> outDirArg("a", "OutDir", "Output Directory", false, "",
 				"string", cmd);
-		ValueArg<string> outForArg("O", "OutFor", "Output Format", false, "",
+		ValueArg<std::string> outForArg("O", "OutFor", "Output Format", false, "",
 				"string", cmd);
 
 		SwitchArg forceRgbArg("f", "force-rgb", "Force RGB", cmd);
 		SwitchArg upsampleArg("u", "upsample", "Upsample", cmd);
 		SwitchArg splitPnmArg("s", "split-pnm", "Split PNM", cmd);
-		ValueArg<string> pluginPathArg("g", "PluginPath", "Plugin path", false,
+		ValueArg<std::string> pluginPathArg("g", "PluginPath", "Plugin path", false,
 				"", "string", cmd);
 		ValueArg<uint32_t> numThreadsArg("H", "num_threads",
 				"Number of threads", false, 0, "unsigned integer", cmd);
-		ValueArg<string> inputFileArg("i", "InputFile", "Input file", false, "",
+		ValueArg<std::string> inputFileArg("i", "InputFile", "Input file", false, "",
 				"string", cmd);
-		ValueArg<string> outputFileArg("o", "OutputFile", "Output file", false,
+		ValueArg<std::string> outputFileArg("o", "OutputFile", "Output file", false,
 				"", "string", cmd);
 		ValueArg<uint32_t> reduceArg("r", "Reduce", "Reduce resolutions", false,
 				0, "unsigned integer", cmd);
@@ -466,11 +466,11 @@ int parse_cmdline_decoder(int argc, char **argv,
 				"unsigned integer", cmd);
 		ValueArg<uint32_t> tileArg("t", "TileIndex", "Input tile index", false,
 				0, "unsigned integer", cmd);
-		ValueArg<string> precisionArg("p", "Precision", "Force precision",
+		ValueArg<std::string> precisionArg("p", "Precision", "Force precision",
 				false, "", "string", cmd);
-		ValueArg<string> decodeRegionArg("d", "DecodeRegion", "Decode Region",
+		ValueArg<std::string> decodeRegionArg("d", "DecodeRegion", "Decode Region",
 				false, "", "string", cmd);
-		ValueArg<string> compressionArg("c", "Compression",
+		ValueArg<std::string> compressionArg("c", "Compression",
 				"Compression Type", false, "", "string", cmd);
 		ValueArg<uint32_t> compressionLevelArg("L", "CompressionLevel",
 				"Compression Level", false, UINT_MAX, "unsigned integer", cmd);
@@ -723,7 +723,7 @@ int parse_cmdline_decoder(int argc, char **argv,
 
 	} catch (ArgException &e)  // catch any exceptions
 	{
-		cerr << "error: " << e.error() << " for arg " << e.argId() << endl;
+		std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
 		return 1;
 	}
 #if 0

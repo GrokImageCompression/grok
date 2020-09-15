@@ -29,7 +29,6 @@
 #include <cassert>
 #include "grok.h"
 #include <algorithm>
-using namespace std;
 
 namespace grk {
 
@@ -148,7 +147,7 @@ template<typename T> inline bool readBytes(FILE *fp, grk_image *image,
 	uint32_t stride_diff =  image->comps[0].stride - width;
 	uint32_t counter = 0;
 	while (i < totalSize) {
-		uint64_t toRead = min(chunkSize, (uint64_t) (totalSize - i));
+		uint64_t toRead = std::min(chunkSize, (uint64_t) (totalSize - i));
 		size_t bytesRead = fread(chunk, sizeof(T), toRead, fp);
 		if (bytesRead == 0)
 			break;
