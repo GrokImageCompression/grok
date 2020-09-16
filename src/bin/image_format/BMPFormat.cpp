@@ -714,341 +714,6 @@ static bool bmp_read_rle4_data(FILE *INPUT, uint8_t *pData, uint32_t stride,
 	} /* while(y < height) */
 	return true;
 }
-static grk_image* bmptoimage(const char *filename,
-		grk_cparameters *parameters) {
-	bool readFromStdin = grk::useStdio(filename);
-	grk_image_cmptparm cmptparm[4]; /* maximum of 4 components */
-	uint8_t lut_R[256], lut_G[256], lut_B[256];
-	uint8_t const *pLUT[3];
-	grk_image *image = nullptr;
-	FILE *INPUT = nullptr;
-	GRK_BITMAPFILEHEADER File_h;
-	GRK_BITMAPINFOHEADER Info_h;
-	uint32_t palette_len, numcmpts = 1U;
-	bool l_result = false;
-	uint8_t *pData = nullptr;
-	uint32_t bmpStride;
-	pLUT[0] = lut_R;
-	pLUT[1] = lut_G;
-	pLUT[2] = lut_B;
-	bool handled = true;
-	bool topDown = false;
-
-	if (readFromStdin) {
-		if (!grk::grk_set_binary_mode(stdin))
-			return nullptr;
-		INPUT = stdin;
-	} else {
-		INPUT = fopen(filename, "rb");
-		if (!INPUT) {
-			spdlog::error("Failed to open {} for reading", filename);
-			return nullptr;
-		}
-	}
-
-	if (!bmp_read_file_header(INPUT, &File_h, &Info_h))
-		goto cleanup;
-	if (!bmp_read_info_header(INPUT, &File_h, &Info_h))
-		goto cleanup;
-	if (Info_h.biSize == 12){
-		spdlog::error("OS2 file header not supported");
-		goto cleanup;
-	}
-	if (Info_h.biHeight < 0){
-		topDown = true;
-		Info_h.biHeight = -Info_h.biHeight;
-	}
-	/* Load palette */
-	if (Info_h.biBitCount <= 8U) {
-		memset(lut_R, 0, sizeof(lut_R));
-		memset(lut_G, 0, sizeof(lut_G));
-		memset(lut_B, 0, sizeof(lut_B));
-
-		palette_len = Info_h.biClrUsed;
-		if ((palette_len == 0U) && (Info_h.biBitCount <= 8U)) {
-			palette_len = (1U << Info_h.biBitCount);
-		}
-		if (palette_len > 256U) {
-			palette_len = 256U;
-		}
-		if (palette_len > 0U) {
-			uint8_t has_color = 0U;
-			for (uint32_t i = 0U; i < palette_len; i++) {
-				int temp = getc(INPUT);
-				if (temp == EOF)
-					goto cleanup;
-				lut_B[i] = (uint8_t) temp;
-				temp = getc(INPUT);
-				if (temp == EOF)
-					goto cleanup;
-				lut_G[i] = (uint8_t) temp;
-				temp = getc(INPUT);
-				if (temp == EOF)
-					goto cleanup;
-				lut_R[i] = (uint8_t) temp;
-				temp = getc(INPUT); /* padding */
-				if (temp == EOF)
-					goto cleanup;
-				has_color |= (lut_B[i] ^ lut_G[i]) | (lut_G[i] ^ lut_R[i]);
-			}
-			if (has_color) {
-				numcmpts = 3U;
-			}
-		}
-	} else {
-		numcmpts = 3U;
-		if ((Info_h.biCompression == 3) && (Info_h.biAlphaMask != 0U)) {
-			numcmpts++;
-		}
-	}
-
-	if (Info_h.biWidth == 0 || Info_h.biHeight == 0)
-		goto cleanup;
-	if (Info_h.biBitCount > (((uint32_t) -1) - 31) / Info_h.biWidth)
-		goto cleanup;
-
-	bmpStride = ((Info_h.biWidth * Info_h.biBitCount + 31U) / 32U) * sizeof(uint32_t); /* rows are aligned on 32bits */
-	if (Info_h.biBitCount == 4 && Info_h.biCompression == 2) { /* RLE 4 gets decoded as 8 bits data for now... */
-		if (8 > (((uint32_t) -1) - 31) / Info_h.biWidth)
-			goto cleanup;
-		bmpStride = ((Info_h.biWidth * 8U + 31U) / 32U) * sizeof(uint32_t);
-	}
-
-	if (bmpStride > ((uint32_t) -1) / sizeof(uint8_t) / Info_h.biHeight)
-		goto cleanup;
-	pData = (uint8_t*) calloc(1, bmpStride * Info_h.biHeight * sizeof(uint8_t));
-	if (pData == nullptr)
-		goto cleanup;
-	/* Place the cursor at the beginning of the image information */
-	if (fseek(INPUT, 0, SEEK_SET))
-		goto cleanup;
-	if (fseek(INPUT, (long) File_h.bfOffBits, SEEK_SET))
-		goto cleanup;
-
-	switch (Info_h.biCompression) {
-	case 0:
-	case 3:
-		/* read raw data */
-		l_result = bmp_read_raw_data(INPUT, pData, bmpStride, Info_h.biWidth,
-				Info_h.biHeight);
-		break;
-	case 1:
-		/* read rle8 data */
-		l_result = bmp_read_rle8_data(INPUT, pData, bmpStride, Info_h.biWidth,
-				Info_h.biHeight);
-		break;
-	case 2:
-		/* read rle4 data */
-		l_result = bmp_read_rle4_data(INPUT, pData, bmpStride, Info_h.biWidth,
-				Info_h.biHeight);
-		break;
-	default:
-		spdlog::error("Unsupported BMP compression");
-		l_result = false;
-		break;
-	}
-	if (!l_result) {
-		goto cleanup;
-	}
-
-	/* create the image */
-	memset(&cmptparm[0], 0, sizeof(cmptparm));
-	for (uint32_t i = 0; i < 4U; i++) {
-		auto img_comp = cmptparm + i;
-		img_comp->prec = 8;
-		img_comp->sgnd = false;
-		img_comp->dx = parameters->subsampling_dx;
-		img_comp->dy = parameters->subsampling_dy;
-		img_comp->w = grk::ceildiv<uint32_t>(Info_h.biWidth, img_comp->dx);
-		img_comp->h = grk::ceildiv<uint32_t>(Info_h.biHeight, img_comp->dy);
-	}
-
-	image = grk_image_create(numcmpts, &cmptparm[0],
-			(numcmpts == 1U) ? GRK_CLRSPC_GRAY : GRK_CLRSPC_SRGB,true);
-	if (!image) {
-		goto cleanup;
-	}
-	// ICC profile
-	if (Info_h.biSize == sizeof(GRK_BITMAPINFOHEADER)
-			&& Info_h.biColorSpaceType == BMP_ICC_PROFILE_EMBEDDED
-			&& Info_h.biIccProfileSize
-			&& Info_h.biIccProfileSize < grk::maxICCProfileBufferLen) {
-
-		//read in ICC profile
-		if (fseek(INPUT, fileHeaderSize + Info_h.biIccProfileOffset,
-				SEEK_SET)) {
-			goto cleanup;
-		}
-		//allocate buffer
-		image->icc_profile_buf = new uint8_t[Info_h.biIccProfileSize];
-		size_t bytesRead = fread(image->icc_profile_buf, 1,
-				Info_h.biIccProfileSize, INPUT);
-		if (bytesRead != Info_h.biIccProfileSize) {
-			delete[] image->icc_profile_buf;
-			image->icc_profile_buf = nullptr;
-			goto cleanup;
-		}
-		image->icc_profile_len = Info_h.biIccProfileSize;
-		image->color_space = GRK_CLRSPC_ICC;
-	}
-	if (numcmpts == 4U) {
-		image->comps[3].type = GRK_COMPONENT_TYPE_OPACITY;
-	    image->comps[3].association = GRK_COMPONENT_ASSOC_WHOLE_IMAGE;
-	}
-
-	/* set image offset and reference grid */
-	image->x0 = parameters->image_offset_x0;
-	image->y0 = parameters->image_offset_y0;
-	image->x1 = image->x0 + (Info_h.biWidth - 1U) * parameters->subsampling_dx
-			+ 1U;
-	image->y1 = image->y0 + (Info_h.biHeight - 1U) * parameters->subsampling_dy
-			+ 1U;
-
-	/* Read the data */
-	switch(Info_h.biCompression){
-	case 0:
-		switch (Info_h.biBitCount) {
-			case 32:		/* RGBX */
-				bmpmask32toimage(pData, bmpStride, image, 0x00FF0000U, 0x0000FF00U,
-						0x000000FFU, 0x00000000U);
-				break;
-			case 24:  	/*RGB */
-				bmp24toimage(pData, bmpStride, image);
-				break;
-			case 16:	/*RGBX */
-				bmpmask16toimage(pData, bmpStride, image, 0x7C00U, 0x03E0U, 0x001FU,
-						0x0000U);
-				break;
-			case 8: 	/* RGB 8bpp Indexed */
-				bmp8toimage(pData, bmpStride, image, pLUT, topDown);
-				break;
-			case 4:    /* RGB 4bpp Indexed */
-				bmp4toimage(pData, bmpStride, image, pLUT);
-				break;
-			case 1: 	/* Grayscale 1bpp Indexed */
-				bmp1toimage(pData, bmpStride, image, pLUT);
-				break;
-			default:
-				handled = false;
-				break;
-		}
-		break;
-		case 1:
-			switch (Info_h.biBitCount) {
-				case 8:		/*RLE8*/
-					bmp8toimage(pData, bmpStride, image, pLUT, topDown);
-					break;
-				default:
-					handled = false;
-					break;
-			}
-		break;
-	case 2:
-		switch (Info_h.biBitCount) {
-			case 4:		 /*RLE4*/
-				bmp8toimage(pData, bmpStride, image, pLUT, topDown); /* RLE 4 gets decoded as 8 bits data for now */
-				break;
-			default:
-				handled = false;
-				break;
-		}
-		break;
-	case 3:
-		switch (Info_h.biBitCount) {
-			case 32: /* BITFIELDS bit mask */
-				if (Info_h.biRedMask && Info_h.biGreenMask && 	Info_h.biBlueMask) {
-					bool fail = false;
-					bool hasAlpha = image->numcomps > 3;
-					// sanity check on bit masks
-					uint32_t m[4] = {Info_h.biRedMask,
-										Info_h.biGreenMask,
-											Info_h.biBlueMask,
-												Info_h.biAlphaMask};
-					for (uint32_t i = 0; i < image->numcomps; ++i){
-						int lead = grk::count_leading_zeros(m[i]);
-						int trail = grk::count_trailing_zeros(m[i]);
-						int cnt = grk::population_count(m[i]);
-						// check contiguous
-						if (lead + trail + cnt != 32){
-							spdlog::error("RGB(A) bit masks must be contiguous");
-							fail = true;
-							break;
-						}
-						// check supported precision
-						if (cnt > 16){
-							spdlog::error("RGB(A) bit mask with precision ({0:d}) greater than 16 is not supported",cnt);
-							fail = true;
-						}
-					}
-					// check overlap
-					if ( (m[0]&m[1]) || (m[0]&m[2]) || 	(m[1]&m[2]) )	{
-						spdlog::error("RGB(A) bit masks must not overlap");
-						fail = true;
-					}
-					if (hasAlpha && !fail){
-						if ( (m[0]&m[3]) || (m[1]&m[3]) || (m[2]&m[3]) )	{
-							spdlog::error("RGB(A) bit masks must not overlap");
-							fail = true;
-						}
-					}
-					if (fail){
-						spdlog::error("RGB(A) bit masks:\n"
-								"{0:b}\n"
-								"{0:b}\n"
-								"{0:b}\n"
-								"{0:b}",m[0],m[1],m[2],m[3]);
-						grk_image_destroy(image);
-						image = nullptr;
-						goto cleanup;
-					}
-				}else {
-					spdlog::error("RGB(A) bit masks must be non-zero");
-					handled = false;
-					break;
-				}
-
-				bmpmask32toimage(pData, bmpStride, image, Info_h.biRedMask,
-						Info_h.biGreenMask, Info_h.biBlueMask, Info_h.biAlphaMask);
-				break;
-			case 16:  /* BITFIELDS bit mask*/
-				if ((Info_h.biRedMask == 0U) && (Info_h.biGreenMask == 0U)
-						&& (Info_h.biBlueMask == 0U)) {
-					Info_h.biRedMask = 0xF800U;
-					Info_h.biGreenMask = 0x07E0U;
-					Info_h.biBlueMask = 0x001FU;
-				}
-				bmpmask16toimage(pData, bmpStride, image, Info_h.biRedMask,
-						Info_h.biGreenMask, Info_h.biBlueMask, Info_h.biAlphaMask);
-				break;
-			default:
-				handled = false;
-				break;
-		}
-		break;
-
-	default:
-		handled = false;
-		break;
-	}
-	if (!handled){
-		grk_image_destroy(image);
-		image = nullptr;
-		spdlog::error(
-				"Precision [{}] does not match supported precision: "
-				"24 bit RGB, 8 bit RGB, 4/8 bit RLE and 16/32 bit BITFIELD",
-				Info_h.biBitCount);
-	}
-	cleanup:
-		free(pData);
-		if (!readFromStdin && INPUT) {
-			if (!grk::safe_fclose(INPUT)) {
-				grk_image_destroy(image);
-				image = nullptr;
-			}
-		}
-	return image;
-}
-
 uint32_t BMPFormat::getPaddedWidth(){
 	assert(m_image);
 	return ((m_image->numcomps *  m_image->comps[0].w + 3) >> 2) << 2;
@@ -1288,6 +953,337 @@ bool BMPFormat::encodeFinish(void){
 	return true;
 }
 
-grk_image *  BMPFormat::decode(const std::string &filename,  grk_cparameters  *parameters){
-	return bmptoimage(filename.c_str(), parameters);
+grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *parameters){
+	bool readFromStdin = grk::useStdio(fname.c_str());
+	grk_image_cmptparm cmptparm[4]; /* maximum of 4 components */
+	uint8_t lut_R[256], lut_G[256], lut_B[256];
+	uint8_t const *pLUT[3];
+	grk_image *image = nullptr;
+	FILE *INPUT = nullptr;
+	GRK_BITMAPFILEHEADER File_h;
+	GRK_BITMAPINFOHEADER Info_h;
+	uint32_t palette_len, numcmpts = 1U;
+	bool l_result = false;
+	uint8_t *pData = nullptr;
+	uint32_t bmpStride;
+	pLUT[0] = lut_R;
+	pLUT[1] = lut_G;
+	pLUT[2] = lut_B;
+	bool handled = true;
+	bool topDown = false;
+
+	if (readFromStdin) {
+		if (!grk::grk_set_binary_mode(stdin))
+			return nullptr;
+		INPUT = stdin;
+	} else {
+		INPUT = fopen(fname.c_str(), "rb");
+		if (!INPUT) {
+			spdlog::error("Failed to open {} for reading", fname);
+			return nullptr;
+		}
+	}
+
+	if (!bmp_read_file_header(INPUT, &File_h, &Info_h))
+		goto cleanup;
+	if (!bmp_read_info_header(INPUT, &File_h, &Info_h))
+		goto cleanup;
+	if (Info_h.biSize == 12){
+		spdlog::error("OS2 file header not supported");
+		goto cleanup;
+	}
+	if (Info_h.biHeight < 0){
+		topDown = true;
+		Info_h.biHeight = -Info_h.biHeight;
+	}
+	/* Load palette */
+	if (Info_h.biBitCount <= 8U) {
+		memset(lut_R, 0, sizeof(lut_R));
+		memset(lut_G, 0, sizeof(lut_G));
+		memset(lut_B, 0, sizeof(lut_B));
+
+		palette_len = Info_h.biClrUsed;
+		if ((palette_len == 0U) && (Info_h.biBitCount <= 8U)) {
+			palette_len = (1U << Info_h.biBitCount);
+		}
+		if (palette_len > 256U) {
+			palette_len = 256U;
+		}
+		if (palette_len > 0U) {
+			uint8_t has_color = 0U;
+			for (uint32_t i = 0U; i < palette_len; i++) {
+				int temp = getc(INPUT);
+				if (temp == EOF)
+					goto cleanup;
+				lut_B[i] = (uint8_t) temp;
+				temp = getc(INPUT);
+				if (temp == EOF)
+					goto cleanup;
+				lut_G[i] = (uint8_t) temp;
+				temp = getc(INPUT);
+				if (temp == EOF)
+					goto cleanup;
+				lut_R[i] = (uint8_t) temp;
+				temp = getc(INPUT); /* padding */
+				if (temp == EOF)
+					goto cleanup;
+				has_color |= (lut_B[i] ^ lut_G[i]) | (lut_G[i] ^ lut_R[i]);
+			}
+			if (has_color) {
+				numcmpts = 3U;
+			}
+		}
+	} else {
+		numcmpts = 3U;
+		if ((Info_h.biCompression == 3) && (Info_h.biAlphaMask != 0U)) {
+			numcmpts++;
+		}
+	}
+
+	if (Info_h.biWidth == 0 || Info_h.biHeight == 0)
+		goto cleanup;
+	if (Info_h.biBitCount > (((uint32_t) -1) - 31) / Info_h.biWidth)
+		goto cleanup;
+
+	bmpStride = ((Info_h.biWidth * Info_h.biBitCount + 31U) / 32U) * sizeof(uint32_t); /* rows are aligned on 32bits */
+	if (Info_h.biBitCount == 4 && Info_h.biCompression == 2) { /* RLE 4 gets decoded as 8 bits data for now... */
+		if (8 > (((uint32_t) -1) - 31) / Info_h.biWidth)
+			goto cleanup;
+		bmpStride = ((Info_h.biWidth * 8U + 31U) / 32U) * sizeof(uint32_t);
+	}
+
+	if (bmpStride > ((uint32_t) -1) / sizeof(uint8_t) / Info_h.biHeight)
+		goto cleanup;
+	pData = (uint8_t*) calloc(1, bmpStride * Info_h.biHeight * sizeof(uint8_t));
+	if (pData == nullptr)
+		goto cleanup;
+	/* Place the cursor at the beginning of the image information */
+	if (fseek(INPUT, 0, SEEK_SET))
+		goto cleanup;
+	if (fseek(INPUT, (long) File_h.bfOffBits, SEEK_SET))
+		goto cleanup;
+
+	switch (Info_h.biCompression) {
+	case 0:
+	case 3:
+		/* read raw data */
+		l_result = bmp_read_raw_data(INPUT, pData, bmpStride, Info_h.biWidth,
+				Info_h.biHeight);
+		break;
+	case 1:
+		/* read rle8 data */
+		l_result = bmp_read_rle8_data(INPUT, pData, bmpStride, Info_h.biWidth,
+				Info_h.biHeight);
+		break;
+	case 2:
+		/* read rle4 data */
+		l_result = bmp_read_rle4_data(INPUT, pData, bmpStride, Info_h.biWidth,
+				Info_h.biHeight);
+		break;
+	default:
+		spdlog::error("Unsupported BMP compression");
+		l_result = false;
+		break;
+	}
+	if (!l_result) {
+		goto cleanup;
+	}
+
+	/* create the image */
+	memset(&cmptparm[0], 0, sizeof(cmptparm));
+	for (uint32_t i = 0; i < 4U; i++) {
+		auto img_comp = cmptparm + i;
+		img_comp->prec = 8;
+		img_comp->sgnd = false;
+		img_comp->dx = parameters->subsampling_dx;
+		img_comp->dy = parameters->subsampling_dy;
+		img_comp->w = grk::ceildiv<uint32_t>(Info_h.biWidth, img_comp->dx);
+		img_comp->h = grk::ceildiv<uint32_t>(Info_h.biHeight, img_comp->dy);
+	}
+
+	image = grk_image_create(numcmpts, &cmptparm[0],
+			(numcmpts == 1U) ? GRK_CLRSPC_GRAY : GRK_CLRSPC_SRGB,true);
+	if (!image) {
+		goto cleanup;
+	}
+	// ICC profile
+	if (Info_h.biSize == sizeof(GRK_BITMAPINFOHEADER)
+			&& Info_h.biColorSpaceType == BMP_ICC_PROFILE_EMBEDDED
+			&& Info_h.biIccProfileSize
+			&& Info_h.biIccProfileSize < grk::maxICCProfileBufferLen) {
+
+		//read in ICC profile
+		if (fseek(INPUT, fileHeaderSize + Info_h.biIccProfileOffset,
+				SEEK_SET)) {
+			goto cleanup;
+		}
+		//allocate buffer
+		image->icc_profile_buf = new uint8_t[Info_h.biIccProfileSize];
+		size_t bytesRead = fread(image->icc_profile_buf, 1,
+				Info_h.biIccProfileSize, INPUT);
+		if (bytesRead != Info_h.biIccProfileSize) {
+			spdlog::warn("Unable to read full ICC profile. Profile will be ignored.");
+			delete[] image->icc_profile_buf;
+			image->icc_profile_buf = nullptr;
+			goto cleanup;
+		}
+		image->icc_profile_len = Info_h.biIccProfileSize;
+		image->color_space = GRK_CLRSPC_ICC;
+	}
+	if (numcmpts == 4U) {
+		image->comps[3].type = GRK_COMPONENT_TYPE_OPACITY;
+	    image->comps[3].association = GRK_COMPONENT_ASSOC_WHOLE_IMAGE;
+	}
+
+	/* set image offset and reference grid */
+	image->x0 = parameters->image_offset_x0;
+	image->y0 = parameters->image_offset_y0;
+	image->x1 = image->x0 + (Info_h.biWidth - 1U) * parameters->subsampling_dx
+			+ 1U;
+	image->y1 = image->y0 + (Info_h.biHeight - 1U) * parameters->subsampling_dy
+			+ 1U;
+
+	/* Read the data */
+	switch(Info_h.biCompression){
+	case 0:
+		switch (Info_h.biBitCount) {
+			case 32:		/* RGBX */
+				bmpmask32toimage(pData, bmpStride, image, 0x00FF0000U, 0x0000FF00U,
+						0x000000FFU, 0x00000000U);
+				break;
+			case 24:  	/*RGB */
+				bmp24toimage(pData, bmpStride, image);
+				break;
+			case 16:	/*RGBX */
+				bmpmask16toimage(pData, bmpStride, image, 0x7C00U, 0x03E0U, 0x001FU,
+						0x0000U);
+				break;
+			case 8: 	/* RGB 8bpp Indexed */
+				bmp8toimage(pData, bmpStride, image, pLUT, topDown);
+				break;
+			case 4:    /* RGB 4bpp Indexed */
+				bmp4toimage(pData, bmpStride, image, pLUT);
+				break;
+			case 1: 	/* Grayscale 1bpp Indexed */
+				bmp1toimage(pData, bmpStride, image, pLUT);
+				break;
+			default:
+				handled = false;
+				break;
+		}
+		break;
+		case 1:
+			switch (Info_h.biBitCount) {
+				case 8:		/*RLE8*/
+					bmp8toimage(pData, bmpStride, image, pLUT, topDown);
+					break;
+				default:
+					handled = false;
+					break;
+			}
+		break;
+	case 2:
+		switch (Info_h.biBitCount) {
+			case 4:		 /*RLE4*/
+				bmp8toimage(pData, bmpStride, image, pLUT, topDown); /* RLE 4 gets decoded as 8 bits data for now */
+				break;
+			default:
+				handled = false;
+				break;
+		}
+		break;
+	case 3:
+		switch (Info_h.biBitCount) {
+			case 32: /* BITFIELDS bit mask */
+				if (Info_h.biRedMask && Info_h.biGreenMask && 	Info_h.biBlueMask) {
+					bool fail = false;
+					bool hasAlpha = image->numcomps > 3;
+					// sanity check on bit masks
+					uint32_t m[4] = {Info_h.biRedMask,
+										Info_h.biGreenMask,
+											Info_h.biBlueMask,
+												Info_h.biAlphaMask};
+					for (uint32_t i = 0; i < image->numcomps; ++i){
+						int lead = grk::count_leading_zeros(m[i]);
+						int trail = grk::count_trailing_zeros(m[i]);
+						int cnt = grk::population_count(m[i]);
+						// check contiguous
+						if (lead + trail + cnt != 32){
+							spdlog::error("RGB(A) bit masks must be contiguous");
+							fail = true;
+							break;
+						}
+						// check supported precision
+						if (cnt > 16){
+							spdlog::error("RGB(A) bit mask with precision ({0:d}) greater than 16 is not supported",cnt);
+							fail = true;
+						}
+					}
+					// check overlap
+					if ( (m[0]&m[1]) || (m[0]&m[2]) || 	(m[1]&m[2]) )	{
+						spdlog::error("RGB(A) bit masks must not overlap");
+						fail = true;
+					}
+					if (hasAlpha && !fail){
+						if ( (m[0]&m[3]) || (m[1]&m[3]) || (m[2]&m[3]) )	{
+							spdlog::error("RGB(A) bit masks must not overlap");
+							fail = true;
+						}
+					}
+					if (fail){
+						spdlog::error("RGB(A) bit masks:\n"
+								"{0:b}\n"
+								"{0:b}\n"
+								"{0:b}\n"
+								"{0:b}",m[0],m[1],m[2],m[3]);
+						grk_image_destroy(image);
+						image = nullptr;
+						goto cleanup;
+					}
+				}else {
+					spdlog::error("RGB(A) bit masks must be non-zero");
+					handled = false;
+					break;
+				}
+
+				bmpmask32toimage(pData, bmpStride, image, Info_h.biRedMask,
+						Info_h.biGreenMask, Info_h.biBlueMask, Info_h.biAlphaMask);
+				break;
+			case 16:  /* BITFIELDS bit mask*/
+				if ((Info_h.biRedMask == 0U) && (Info_h.biGreenMask == 0U)
+						&& (Info_h.biBlueMask == 0U)) {
+					Info_h.biRedMask = 0xF800U;
+					Info_h.biGreenMask = 0x07E0U;
+					Info_h.biBlueMask = 0x001FU;
+				}
+				bmpmask16toimage(pData, bmpStride, image, Info_h.biRedMask,
+						Info_h.biGreenMask, Info_h.biBlueMask, Info_h.biAlphaMask);
+				break;
+			default:
+				handled = false;
+				break;
+		}
+		break;
+
+	default:
+		handled = false;
+		break;
+	}
+	if (!handled){
+		grk_image_destroy(image);
+		image = nullptr;
+		spdlog::error(
+				"Precision [{}] does not match supported precision: "
+				"24 bit RGB, 8 bit RGB, 4/8 bit RLE and 16/32 bit BITFIELD",
+				Info_h.biBitCount);
+	}
+	cleanup:
+		free(pData);
+		if (!readFromStdin && INPUT) {
+			if (!grk::safe_fclose(INPUT)) {
+				grk_image_destroy(image);
+				image = nullptr;
+			}
+		}
+	return image;
 }
