@@ -1048,10 +1048,14 @@ uint32_t BMPFormat::getPaddedWidth(){
 	return ((m_image->numcomps *  m_image->comps[0].w + 3) >> 2) << 2;
 }
 
+BMPFormat::BMPFormat(void) : m_destBuff(nullptr),
+							m_srcIndex(0)
+{}
 
-bool BMPFormat::encode() {
-	const char *outfile = m_fileName.c_str();
-	m_writeToStdout = grk::useStdio(outfile);
+bool BMPFormat::encodeHeader(grk_image *image, const std::string &filename, uint32_t compressionParam){
+	(void) compressionParam;
+	if (!ImageFormat::encodeHeader(image,filename,compressionParam))
+		return false;
 	bool ret = false;
 	uint32_t w = m_image->comps[0].w;
 	uint32_t h = m_image->comps[0].h;
@@ -1061,6 +1065,7 @@ bool BMPFormat::encode() {
 	uint32_t full_header_size, info_header_size, icc_size=0;
 	uint32_t header_plus_lut = 0;
 	uint8_t *header_buf = nullptr, *header_ptr = nullptr;
+	const char *outfile = m_fileName.c_str();
 
 	if (!grk::all_components_sanity_check(m_image,false))
 		goto cleanup;
@@ -1151,21 +1156,7 @@ cleanup:
 	return ret;
 }
 
-BMPFormat::BMPFormat(void) : m_destBuff(nullptr),
-							m_srcIndex(0),
-							m_writeToStdout(false)
-{}
-
-bool BMPFormat::encodeHeader(grk_image *  image, const std::string &filename, uint32_t compressionParam){
-	(void) compressionParam;
-	m_fileName = filename;
-	m_image = image;
-
-	return encode();
-}
-
 bool BMPFormat::encodeStrip(uint32_t rows){
-
 /*
 	  tf::Executor executor;
 	  tf::Taskflow taskflow;
@@ -1184,9 +1175,6 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 	                                                     //          +---+
 	  executor.run(taskflow).wait();
 */
-
-
-
 	bool ret = false;
 	auto w = m_image->comps[0].w;
 	auto h = m_image->comps[0].h;
@@ -1205,8 +1193,6 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 	if (rowsPerStrip > h)
 		rowsPerStrip = h;
 
-
-	uint32_t j = 0;
 	int trunc[4] = {0,0,0,0};
 	float scale[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 	int32_t shift[4] = {0,0,0,0};
@@ -1234,9 +1220,9 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 			ptr += w_dest;
 		}
 	}
-	while ( j < h) {
+	while ( m_rowCount < h) {
 		uint64_t destInd = 0;
-		uint32_t k_max = std::min<uint32_t>(rowsPerStrip, (uint32_t)(h - j));
+		uint32_t k_max = std::min<uint32_t>(rowsPerStrip, (uint32_t)(h - m_rowCount));
 		for (uint32_t k = 0; k < k_max; k++) {
 			for (uint32_t i = 0; i < w; i++) {
 				uint8_t rc[4];
@@ -1270,7 +1256,7 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 		}
 		if (fwrite(m_destBuff, 1, destInd, m_file) != destInd)
 			goto cleanup;
-		j+=k_max;
+		m_rowCount+=k_max;
 	}
 
 

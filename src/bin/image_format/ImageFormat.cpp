@@ -17,13 +17,26 @@
 #include "ImageFormat.h"
 #include "convert.h"
 #include <algorithm>
+#include "common.h"
 
 ImageFormat::ImageFormat() : m_image(nullptr),
 							m_file(nullptr),
-							m_row_count(0)
+							m_rowCount(0),
+							m_rowsPerStrip(0),
+							m_numStrips(0),
+							m_writeToStdout(false)
 {}
 
+bool ImageFormat::encodeHeader(grk_image *  image, const std::string &filename, uint32_t compressionParam){
+	m_fileName = filename;
+	m_image = image;
+
+	const char *outfile = m_fileName.c_str();
+	m_writeToStdout = grk::useStdio(outfile);
+
+	return true;
+}
 uint32_t ImageFormat::maxY(uint32_t rows){
-	return std::min<uint32_t>(m_row_count + rows, m_image->comps[0].h);
+	return std::min<uint32_t>(m_rowCount + rows, m_image->comps[0].h);
 }
 

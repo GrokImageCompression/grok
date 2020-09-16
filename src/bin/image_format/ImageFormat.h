@@ -23,11 +23,15 @@ class ImageFormat : public IImageFormat {
 public:
 	ImageFormat();
 	virtual ~ImageFormat() {}
+	virtual bool encodeHeader(grk_image *image, const std::string &filename, uint32_t compressionParam);
 protected:
 	grk_image *m_image;
 	std::string m_fileName;
 	FILE *m_file;
-	uint32_t m_row_count;
+	uint32_t m_rowCount;
+	uint32_t m_rowsPerStrip;
+	uint32_t m_numStrips;
+	bool m_writeToStdout;
 
 	uint32_t maxY(uint32_t rows);
 

@@ -28,11 +28,9 @@ public:
 	grk_image *  decode(const std::string &filename,  grk_cparameters  *parameters) override;
 
 private:
-	bool encode();
 	uint32_t getPaddedWidth();
 	uint8_t *m_destBuff;
 	uint64_t m_srcIndex;
-	bool m_writeToStdout;
 
 };
 

@@ -652,7 +652,7 @@ bool PNGFormat::encodeStrip(uint32_t rows){
 	size_t width = m_image->comps[0].w;
 	uint32_t stride = m_image->comps[0].stride;
 	uint32_t max = maxY(rows);
-	for (uint32_t y = m_row_count; y < max; ++y) {
+	for (uint32_t y = m_rowCount; y < max; ++y) {
 		cvtPxToCx(m_planes, buffer32s_cpy, width, adjust);
 		cvt32sToPack(buffer32s_cpy, row_buf_cpy, width * (size_t) nr_comp);
 		png_write_row(png, row_buf_cpy);
@@ -661,7 +661,7 @@ bool PNGFormat::encodeStrip(uint32_t rows){
 		m_planes[2] += stride;
 		m_planes[3] += stride;
 	}
-	m_row_count += rows;
+	m_rowCount += rows;
 
 	return true;
 }
@@ -670,7 +670,7 @@ bool PNGFormat::encodeFinish(void){
 	if (setjmp(png_jmpbuf(png)))
 		return false;
 
-	if (m_row_count < m_image->comps[0].h)
+	if (m_rowCount < m_image->comps[0].h)
 		spdlog::warn("Full image was not written");
 
 	if (png) {
