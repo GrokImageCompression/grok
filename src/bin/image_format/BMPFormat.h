@@ -29,7 +29,6 @@ public:
 
 private:
 	uint32_t getPaddedWidth();
-	uint8_t *m_destBuff;
 	uint64_t m_srcIndex;
 
 };

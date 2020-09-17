@@ -24,14 +24,16 @@ public:
 	ImageFormat();
 	virtual ~ImageFormat() {}
 	virtual bool encodeHeader(grk_image *image, const std::string &filename, uint32_t compressionParam);
+	virtual bool encodeFinish(void);
 protected:
+	bool openFile(std::string mode);
+	bool writeToFile(uint8_t *buf, size_t len);
 	grk_image *m_image;
 	std::string m_fileName;
-	FILE *m_file;
+	FILE *m_fileHandle;
 	uint32_t m_rowCount;
 	uint32_t m_rowsPerStrip;
 	uint32_t m_numStrips;
-	bool m_writeToStdout;
 
 	uint32_t maxY(uint32_t rows);
 

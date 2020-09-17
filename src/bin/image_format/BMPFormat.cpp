@@ -719,8 +719,7 @@ uint32_t BMPFormat::getPaddedWidth(){
 	return ((m_image->numcomps *  m_image->comps[0].w + 3) >> 2) << 2;
 }
 
-BMPFormat::BMPFormat(void) : m_destBuff(nullptr),
-							m_srcIndex(0)
+BMPFormat::BMPFormat(void) : m_srcIndex(0)
 {}
 
 bool BMPFormat::encodeHeader(grk_image *image, const std::string &filename, uint32_t compressionParam){
@@ -736,9 +735,8 @@ bool BMPFormat::encodeHeader(grk_image *image, const std::string &filename, uint
 	uint32_t full_header_size, info_header_size, icc_size=0;
 	uint32_t header_plus_lut = 0;
 	uint8_t *header_buf = nullptr, *header_ptr = nullptr;
-	const char *outfile = m_fileName.c_str();
-
 	uint32_t w_dest = getPaddedWidth();
+
    	m_rowsPerStrip = (16 * 1024 * 1024) / w_dest;
    	if (m_rowsPerStrip == 0)
    		m_rowsPerStrip = 2;
@@ -765,7 +763,7 @@ bool BMPFormat::encodeHeader(grk_image *image, const std::string &filename, uint
 			goto cleanup;
 		}
 	}
-	if (!grk::grk_open_for_output(&m_file, outfile,m_writeToStdout))
+	if (!openFile("w"))
 		goto cleanup;
 	colours_used = (m_image->numcomps == 3) ? 0 : 256 ;
 	lut_size = colours_used * sizeof(uint32_t) ;
@@ -827,7 +825,7 @@ bool BMPFormat::encodeHeader(grk_image *image, const std::string &filename, uint
 			*header_ptr++ = 0;
 		}
 	}
-	if (fwrite(header_buf, 1, header_plus_lut,m_file) != header_plus_lut)
+	if (!writeToFile(header_buf, header_plus_lut))
 		goto cleanup;
 	ret = true;
 cleanup:
@@ -884,10 +882,10 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 				1 << (m_image->comps[compno].prec - 1) : 0);
 	}
 
-	m_destBuff = new uint8_t[m_rowsPerStrip * w_dest];
+	auto destBuff = new uint8_t[m_rowsPerStrip * w_dest];
 	// zero out padding at end of line
 	if (pad_dest){
-		uint8_t *ptr = m_destBuff + w_dest - pad_dest;
+		uint8_t *ptr = destBuff + w_dest - pad_dest;
 		for (uint32_t m=0; m < m_rowsPerStrip; ++m) {
 			memset(ptr, 0, pad_dest);
 			ptr += w_dest;
@@ -915,19 +913,19 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 					rc[compno] = (uint8_t)r;
 				}
 				if (numcomps == 1) {
-					m_destBuff[destInd++] = rc[0];
+					destBuff[destInd++] = rc[0];
 				} else {
-					m_destBuff[destInd++] = rc[2];
-					m_destBuff[destInd++] = rc[1];
-					m_destBuff[destInd++] = rc[0];
+					destBuff[destInd++] = rc[2];
+					destBuff[destInd++] = rc[1];
+					destBuff[destInd++] = rc[0];
 					if (numcomps == 4)
-						m_destBuff[destInd++] = rc[3];
+						destBuff[destInd++] = rc[3];
 				}
 			}
 			destInd += pad_dest;
 			m_srcIndex -= stride_src;
 		}
-		if (fwrite(m_destBuff, 1, destInd, m_file) != destInd)
+		if (!writeToFile(destBuff, destInd))
 			goto cleanup;
 		m_rowCount+=k_max;
 	}
@@ -935,22 +933,17 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 
 	ret = true;
 cleanup:
+	delete[] destBuff;
 
 	return ret;
 }
 bool BMPFormat::encodeFinish(void){
 	if (m_image->icc_profile_buf) {
-		if (fwrite(m_image->icc_profile_buf,
-				1, m_image->icc_profile_len, m_file) != m_image->icc_profile_len )
+		if (!writeToFile(m_image->icc_profile_buf,m_image->icc_profile_len))
 			return false;
 	}
 
-	delete[] m_destBuff;
-	if (!m_writeToStdout && m_file) {
-		if (!grk::safe_fclose(m_file))
-			return false;
-	}
-	return true;
+	return ImageFormat::encodeFinish();
 }
 
 grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *parameters){
@@ -959,7 +952,6 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	uint8_t lut_R[256], lut_G[256], lut_B[256];
 	uint8_t const *pLUT[3];
 	grk_image *image = nullptr;
-	FILE *INPUT = nullptr;
 	GRK_BITMAPFILEHEADER File_h;
 	GRK_BITMAPINFOHEADER Info_h;
 	uint32_t palette_len, numcmpts = 1U;
@@ -972,21 +964,14 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	bool handled = true;
 	bool topDown = false;
 
-	if (readFromStdin) {
-		if (!grk::grk_set_binary_mode(stdin))
-			return nullptr;
-		INPUT = stdin;
-	} else {
-		INPUT = fopen(fname.c_str(), "rb");
-		if (!INPUT) {
-			spdlog::error("Failed to open {} for reading", fname);
-			return nullptr;
-		}
-	}
+	m_fileName = fname;
+	m_image = image;
+	if (!openFile("r"))
+		return nullptr;
 
-	if (!bmp_read_file_header(INPUT, &File_h, &Info_h))
+	if (!bmp_read_file_header(m_fileHandle, &File_h, &Info_h))
 		goto cleanup;
-	if (!bmp_read_info_header(INPUT, &File_h, &Info_h))
+	if (!bmp_read_info_header(m_fileHandle, &File_h, &Info_h))
 		goto cleanup;
 	if (Info_h.biSize == 12){
 		spdlog::error("OS2 file header not supported");
@@ -1012,19 +997,19 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 		if (palette_len > 0U) {
 			uint8_t has_color = 0U;
 			for (uint32_t i = 0U; i < palette_len; i++) {
-				int temp = getc(INPUT);
+				int temp = getc(m_fileHandle);
 				if (temp == EOF)
 					goto cleanup;
 				lut_B[i] = (uint8_t) temp;
-				temp = getc(INPUT);
+				temp = getc(m_fileHandle);
 				if (temp == EOF)
 					goto cleanup;
 				lut_G[i] = (uint8_t) temp;
-				temp = getc(INPUT);
+				temp = getc(m_fileHandle);
 				if (temp == EOF)
 					goto cleanup;
 				lut_R[i] = (uint8_t) temp;
-				temp = getc(INPUT); /* padding */
+				temp = getc(m_fileHandle); /* padding */
 				if (temp == EOF)
 					goto cleanup;
 				has_color |= (lut_B[i] ^ lut_G[i]) | (lut_G[i] ^ lut_R[i]);
@@ -1058,26 +1043,26 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	if (pData == nullptr)
 		goto cleanup;
 	/* Place the cursor at the beginning of the image information */
-	if (fseek(INPUT, 0, SEEK_SET))
+	if (fseek(m_fileHandle, 0, SEEK_SET))
 		goto cleanup;
-	if (fseek(INPUT, (long) File_h.bfOffBits, SEEK_SET))
+	if (fseek(m_fileHandle, (long) File_h.bfOffBits, SEEK_SET))
 		goto cleanup;
 
 	switch (Info_h.biCompression) {
 	case 0:
 	case 3:
 		/* read raw data */
-		l_result = bmp_read_raw_data(INPUT, pData, bmpStride, Info_h.biWidth,
+		l_result = bmp_read_raw_data(m_fileHandle, pData, bmpStride, Info_h.biWidth,
 				Info_h.biHeight);
 		break;
 	case 1:
 		/* read rle8 data */
-		l_result = bmp_read_rle8_data(INPUT, pData, bmpStride, Info_h.biWidth,
+		l_result = bmp_read_rle8_data(m_fileHandle, pData, bmpStride, Info_h.biWidth,
 				Info_h.biHeight);
 		break;
 	case 2:
 		/* read rle4 data */
-		l_result = bmp_read_rle4_data(INPUT, pData, bmpStride, Info_h.biWidth,
+		l_result = bmp_read_rle4_data(m_fileHandle, pData, bmpStride, Info_h.biWidth,
 				Info_h.biHeight);
 		break;
 	default:
@@ -1113,14 +1098,14 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 			&& Info_h.biIccProfileSize < grk::maxICCProfileBufferLen) {
 
 		//read in ICC profile
-		if (fseek(INPUT, fileHeaderSize + Info_h.biIccProfileOffset,
+		if (fseek(m_fileHandle, fileHeaderSize + Info_h.biIccProfileOffset,
 				SEEK_SET)) {
 			goto cleanup;
 		}
 		//allocate buffer
 		image->icc_profile_buf = new uint8_t[Info_h.biIccProfileSize];
 		size_t bytesRead = fread(image->icc_profile_buf, 1,
-				Info_h.biIccProfileSize, INPUT);
+				Info_h.biIccProfileSize, m_fileHandle);
 		if (bytesRead != Info_h.biIccProfileSize) {
 			spdlog::warn("Unable to read full ICC profile. Profile will be ignored.");
 			delete[] image->icc_profile_buf;
@@ -1279,8 +1264,8 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	}
 	cleanup:
 		free(pData);
-		if (!readFromStdin && INPUT) {
-			if (!grk::safe_fclose(INPUT)) {
+		if (!readFromStdin && m_fileHandle) {
+			if (!grk::safe_fclose(m_fileHandle)) {
 				grk_image_destroy(image);
 				image = nullptr;
 			}

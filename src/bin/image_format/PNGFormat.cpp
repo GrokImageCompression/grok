@@ -15,7 +15,7 @@
 
  *
  *    This source code incorporates work covered by the BSD 2-clause license.
- *    Please see the LICENSE m_file in the root directory for details.
+ *    Please see the LICENSE m_fileHandle in the root directory for details.
  *
  */
 
@@ -90,17 +90,17 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	if (useStd) {
 		if (!grk::grk_set_binary_mode(stdin))
 			return nullptr;
-		m_file = stdin;
+		m_fileHandle = stdin;
 	} else {
-		if ((m_file = fopen(read_idf, "rb")) == nullptr) {
+		if ((m_fileHandle = fopen(read_idf, "rb")) == nullptr) {
 			spdlog::error("pngtoimage: can not open {}", read_idf);
 			return nullptr;
 		}
 	}
 
-	if (fread(sigbuf, 1, MAGIC_SIZE, m_file) != MAGIC_SIZE
+	if (fread(sigbuf, 1, MAGIC_SIZE, m_fileHandle) != MAGIC_SIZE
 			|| memcmp(sigbuf, PNG_MAGIC, MAGIC_SIZE) != 0) {
-		spdlog::error("pngtoimage: {} is no valid PNG m_file", read_idf);
+		spdlog::error("pngtoimage: {} is no valid PNG m_fileHandle", read_idf);
 		goto beach;
 	}
 
@@ -121,7 +121,7 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	if (setjmp(png_jmpbuf(png)))
 		goto beach;
 
-	png_init_io(png, m_file);
+	png_init_io(png, m_fileHandle);
 	png_set_sig_bytes(png, MAGIC_SIZE);
 
 	png_read_info(png, m_info);
@@ -345,8 +345,8 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	free(row32s);
 	if (png)
 		png_destroy_read_struct(&png, &m_info, nullptr);
-	if (!useStd && m_file) {
-		if (!grk::safe_fclose(m_file)) {
+	if (!useStd && m_fileHandle) {
+		if (!grk::safe_fclose(m_fileHandle)) {
 			grk_image_destroy(m_image);
 			m_image = nullptr;
 		}
@@ -434,7 +434,7 @@ int PNGFormat::do_encode(const char *write_idf,
 				m_fileName.c_str(), prec);
 		return fails;
 	}
-	if (!grk::grk_open_for_output(&m_file, m_fileName.c_str(),useStd))
+	if (!grk::grk_open_for_output(&m_fileHandle, m_fileName.c_str(),useStd))
 		return fails;
 
 	/* Create and initialize the png_struct with the desired error handler
@@ -471,7 +471,7 @@ int PNGFormat::do_encode(const char *write_idf,
 
 	/* I/O initialization functions is REQUIRED
 	 */
-	png_init_io(png, m_file);
+	png_init_io(png, m_fileHandle);
 
 	/* Set the image information here.  Width and height are up to 2^31,
 	 * bit_depth is one of 1, 2, 4, 8, or 16, but valid values also depend on
@@ -680,7 +680,7 @@ bool PNGFormat::encodeFinish(void){
 	free(row_buf);
 	free(row32s);
 	if (!useStd) {
-		if (!grk::safe_fclose(m_file))
+		if (!grk::safe_fclose(m_fileHandle))
 			fails = true;
 		if (fails && m_fileName.c_str())
 			(void) remove(m_fileName.c_str()); /* ignore return value */
