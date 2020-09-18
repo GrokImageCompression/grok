@@ -39,6 +39,12 @@ typedef struct {
 	uint32_t bfOffBits; 	/* Offset                  */
 } GRK_BITMAPFILEHEADER;
 
+struct {
+	uint8_t Blue;      /* Blue component */
+	uint8_t Green;     /* Green component */
+	uint8_t Red;       /* Red component */
+} GRK_OS21XPALETTEELEMENT;
+
 const uint32_t fileHeaderSize = 14;
 
 typedef struct {
@@ -490,7 +496,8 @@ static bool bmp_read_info_header(FILE *INPUT, GRK_BITMAPFILEHEADER *fileHeader, 
 		spdlog::error("unknown BMP header size {}", infoHeader->biSize);
 		return false;
 	}
-	if (infoHeader->biSize == BITMAPCOREHEADER_LENGTH){	//OS2
+	bool is_os2 = infoHeader->biSize == BITMAPCOREHEADER_LENGTH;
+	if (is_os2){	//OS2
 		int16_t temp;
 		get_int((int16_t**)&temp_ptr, &temp);
 		infoHeader->biWidth = temp;
@@ -963,6 +970,7 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	pLUT[2] = lut_B;
 	bool handled = true;
 	bool topDown = false;
+	bool is_os2 = false;
 
 	m_fileName = fname;
 	m_image = image;
@@ -973,9 +981,15 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 		goto cleanup;
 	if (!bmp_read_info_header(m_fileHandle, &File_h, &Info_h))
 		goto cleanup;
-	if (Info_h.biSize == 12){
-		spdlog::error("OS2 file header not supported");
-		goto cleanup;
+	is_os2 = Info_h.biSize == BITMAPCOREHEADER_LENGTH;
+	if (is_os2){
+		uint32_t num_entries = (File_h.bfOffBits - fileHeaderSize -
+				BITMAPCOREHEADER_LENGTH) / sizeof(GRK_OS21XPALETTEELEMENT);
+		if (num_entries !=  (uint32_t)(1 << Info_h.biBitCount)) {
+			spdlog::error("OS2: calculated number of entries %d "
+					"doesn't match bit count %d", num_entries, Info_h.biBitCount);
+			goto cleanup;
+		}
 	}
 	if (Info_h.biHeight < 0){
 		topDown = true;
@@ -1009,9 +1023,11 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 				if (temp == EOF)
 					goto cleanup;
 				lut_R[i] = (uint8_t) temp;
-				temp = getc(m_fileHandle); /* padding */
-				if (temp == EOF)
-					goto cleanup;
+				if (!is_os2) {
+					temp = getc(m_fileHandle); /* padding */
+					if (temp == EOF)
+						goto cleanup;
+				}
 				has_color |= (lut_B[i] ^ lut_G[i]) | (lut_G[i] ^ lut_R[i]);
 			}
 			if (has_color) {
@@ -1041,9 +1057,6 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 		goto cleanup;
 	pData = (uint8_t*) calloc(1, bmpStride * Info_h.biHeight * sizeof(uint8_t));
 	if (pData == nullptr)
-		goto cleanup;
-	/* Place the cursor at the beginning of the image information */
-	if (fseek(m_fileHandle, 0, SEEK_SET))
 		goto cleanup;
 	if (fseek(m_fileHandle, (long) File_h.bfOffBits, SEEK_SET))
 		goto cleanup;
