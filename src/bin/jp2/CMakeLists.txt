@@ -50,6 +50,9 @@ if(GROK_HAVE_LIBJPEG)
 	list(APPEND common_SRCS ../image_format/iccjpeg.c)
 	list(APPEND common_SRCS ../image_format/iccjpeg.h)
 endif()
+if(GROK_HAVE_URING)
+	list(APPEND common_SRCS ../image_format/FileUringIO.cpp)
+endif()
 
 # Headers file are located here:
 include_directories(

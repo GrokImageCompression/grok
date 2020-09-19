@@ -671,7 +671,7 @@ bool BMPFormat::encodeHeader(grk_image *image, const std::string &filename, uint
 	uint8_t *header_buf = nullptr, *header_ptr = nullptr;
 	uint32_t w_dest = getPaddedWidth();
 
-   	m_rowsPerStrip = (16 * 1024 * 1024) / w_dest;
+   	m_rowsPerStrip = (8 * 1024 * 1024) / w_dest;
    	if (m_rowsPerStrip == 0)
    		m_rowsPerStrip = 2;
 	if (m_rowsPerStrip & 1)

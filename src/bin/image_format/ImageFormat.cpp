@@ -19,11 +19,7 @@
 #include <algorithm>
 #include "common.h"
 #include "FileStreamIO.h"
-
-#ifdef GROK_HAVE_URING
-#include <liburing.h>
-#include <liburing/io_uring.h>
-#endif
+#include "FileUringIO.h"
 
 ImageFormat::ImageFormat() : m_image(nullptr),
 							m_rowCount(0),
@@ -31,7 +27,12 @@ ImageFormat::ImageFormat() : m_image(nullptr),
 							m_numStrips(0),
 							m_fileHandle(nullptr)
 {
+#ifdef GROK_HAVE_URING
+	//m_fileIO = new FileUringIO();
 	m_fileIO = new FileStreamIO();
+#else
+	m_fileIO = new FileStreamIO();
+#endif
 }
 
 ImageFormat::~ImageFormat() {
@@ -43,7 +44,7 @@ bool ImageFormat::encodeHeader(grk_image *  image, const std::string &filename, 
 	(void)compressionParam;
 	m_image = image;
 
-	return openFile(filename, "w");
+	return m_fileIO->open(filename, "w");
 }
 
 bool ImageFormat::encodeFinish(void){
