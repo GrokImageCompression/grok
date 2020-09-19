@@ -530,24 +530,23 @@ bool BMPFormat::bmp_read_raw_data(uint8_t *pData, uint32_t stride,
 
 bool BMPFormat::bmp_read_rle8_data(uint8_t *pData, uint32_t stride,
 		uint32_t width, uint32_t height) {
-	uint32_t x, y, written;
+	uint32_t x = 0, y = 0, written = 0;
 	uint8_t *pix;
 	const uint8_t *beyond;
-
+	uint8_t *pixels = new uint8_t[Info_h.biSizeImage];
+	if (fread(pixels, sizeof(uint8_t), Info_h.biSizeImage, m_fileHandle) != Info_h.biSizeImage){
+		delete[] pixels;
+		return false;
+	}
+	uint8_t *pixels_ptr = pixels;
 	beyond = pData + stride * height;
 	pix = pData;
 
-	x = y = written = 0U;
 	while (y < height) {
-		int c = getc(m_fileHandle);
-		if (c == EOF)
-			return false;
+		int c = *pixels_ptr++;
 		if (c) {
 			int j;
-			int temp = getc(m_fileHandle);
-			if (temp == EOF)
-				return false;
-			uint8_t c1 = (uint8_t) temp;
+			uint8_t c1 = *pixels_ptr++;
 			for (j = 0;
 					(j < c) && (x < width) && ((size_t) pix < (size_t) beyond);
 					j++, x++, pix++) {
@@ -555,9 +554,7 @@ bool BMPFormat::bmp_read_rle8_data(uint8_t *pData, uint32_t stride,
 				written++;
 			}
 		} else {
-			c = getc(m_fileHandle);
-			if (c == EOF)
-				return false;
+			c = *pixels_ptr++;
 			if (c == 0x00) { /* EOL */
 				x = 0;
 				++y;
@@ -565,13 +562,9 @@ bool BMPFormat::bmp_read_rle8_data(uint8_t *pData, uint32_t stride,
 			} else if (c == 0x01) { /* EOP */
 				break;
 			} else if (c == 0x02) { /* MOVE by dxdy */
-				c = getc(m_fileHandle);
-				if (c == EOF)
-					return false;
+				c = *pixels_ptr++;
 				x += (uint32_t) c;
-				c = getc(m_fileHandle);
-				if (c == EOF)
-					return false;
+				c = *pixels_ptr++;
 				y += (uint32_t) c;
 				pix = pData + y * stride + x;
 			} else { /* 03 .. 255 */
@@ -580,16 +573,12 @@ bool BMPFormat::bmp_read_rle8_data(uint8_t *pData, uint32_t stride,
 						(j < c) && (x < width)
 								&& ((size_t) pix < (size_t) beyond);
 						j++, x++, pix++) {
-					int temp = getc(m_fileHandle);
-					if (temp == EOF)
-						return false;
-					uint8_t c1 = (uint8_t) temp;
+					uint8_t c1 = *pixels_ptr++;
 					*pix = c1;
 					written++;
 				}
 				if ((uint32_t) c & 1U) { /* skip padding byte */
-					if (getc(m_fileHandle) == EOF)
-						return false;
+					pixels_ptr++;
 				}
 			}
 		}
@@ -603,35 +592,31 @@ bool BMPFormat::bmp_read_rle8_data(uint8_t *pData, uint32_t stride,
 }
 bool BMPFormat::bmp_read_rle4_data(uint8_t *pData, uint32_t stride,
 		uint32_t width, uint32_t height) {
-	uint32_t x, y;
+	uint32_t x = 0, y = 0, written = 0;
 	uint8_t *pix;
 	const uint8_t *beyond;
-
+	uint8_t *pixels = new uint8_t[Info_h.biSizeImage];
+	if (fread(pixels, sizeof(uint8_t), Info_h.biSizeImage, m_fileHandle) != Info_h.biSizeImage){
+		delete[] pixels;
+		return false;
+	}
+	uint8_t *pixels_ptr = pixels;
 	beyond = pData + stride * height;
 	pix = pData;
-	x = y = 0U;
 	while (y < height) {
-		int c = getc(m_fileHandle);
-		if (c == EOF)
-			return false;
-
+		int c = *pixels_ptr++;
 		if (c) {/* encoded mode */
 			int j;
-			int temp = getc(m_fileHandle);
-			if (temp == EOF)
-				return false;
-			uint8_t c1 = (uint8_t) temp;
+			uint8_t c1 = *pixels_ptr++;
 
 			for (j = 0;
 					(j < c) && (x < width) && ((size_t) pix < (size_t) beyond);
 					j++, x++, pix++) {
 				*pix = (uint8_t) ((j & 1) ? (c1 & 0x0fU) : ((c1 >> 4) & 0x0fU));
+				written++;
 			}
 		} else { /* absolute mode */
-			c = getc(m_fileHandle);
-			if (c == EOF)
-				break;
-
+			c = *pixels_ptr++;
 			if (c == 0x00) { /* EOL */
 				x = 0;
 				y++;
@@ -639,42 +624,35 @@ bool BMPFormat::bmp_read_rle4_data(uint8_t *pData, uint32_t stride,
 			} else if (c == 0x01) { /* EOP */
 				break;
 			} else if (c == 0x02) { /* MOVE by dxdy */
-				int temp = getc(m_fileHandle);
-				if (temp == EOF)
-					return false;
-				c = (uint8_t) temp;
+				c = *pixels_ptr++;
 				x += (uint32_t) c;
 
-				temp = getc(m_fileHandle);
-				if (temp == EOF)
-					return false;
-				c = (uint8_t) temp;
+				c = *pixels_ptr++;
 				y += (uint32_t) c;
 				pix = pData + y * stride + x;
 			} else { /* 03 .. 255 : absolute mode */
 				int j;
 				uint8_t c1 = 0U;
 
-				for (j = 0;
-						(j < c) && (x < width)
-								&& ((size_t) pix < (size_t) beyond);
+				for (j = 0;	(j < c) && (x < width) && ((size_t) pix < (size_t) beyond);
 						j++, x++, pix++) {
-					if ((j & 1) == 0) {
-						int temp = getc(m_fileHandle);
-						if (temp == EOF)
-							return false;
-						c1 = (uint8_t) temp;
-					}
-					*pix = (uint8_t) (
-							(j & 1) ? (c1 & 0x0fU) : ((c1 >> 4) & 0x0fU));
+					if ((j & 1) == 0)
+						c1 = *pixels_ptr++;
+					*pix = (uint8_t) ((j & 1) ? (c1 & 0x0fU) : ((c1 >> 4) & 0x0fU));
+					written++;
 				}
-				if (((c & 3) == 1) || ((c & 3) == 2)) { /* skip padding byte */
-					if (getc(m_fileHandle) == EOF)
-						return false;
-				}
+				 /* skip padding byte */
+				if (((c & 3) == 1) || ((c & 3) == 2))
+					pixels_ptr++;
 			}
 		}
 	} /* while(y < height) */
+	if (written != width * height) {
+		spdlog::error(
+				"Number of pixels written does not match specified image dimensions.");
+		return false;
+	}
+	delete[] pixels;
 	return true;
 }
 uint32_t BMPFormat::getPaddedWidth(){
@@ -915,8 +893,6 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	uint8_t lut_R[256], lut_G[256], lut_B[256];
 	uint8_t const *pLUT[3];
 	grk_image *image = nullptr;
-	GRK_BITMAPFILEHEADER File_h;
-	GRK_BITMAPINFOHEADER Info_h;
 	uint32_t palette_len, numcmpts = 1U;
 	bool l_result = false;
 	uint8_t *pData = nullptr;
@@ -927,6 +903,7 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	bool handled = true;
 	bool topDown = false;
 	bool is_os2 = false;
+	uint8_t *pal  = nullptr;
 
 	m_fileName = fname;
 	m_image = image;
@@ -966,7 +943,7 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 
 		const uint32_t palette_bytes =
 				palette_len * (is_os2 ? os2_palette_element_len : palette_element_len);
-		uint8_t pal[palette_bytes];
+		pal = new uint8_t[palette_bytes];
 		if (fread(pal, 1, palette_bytes, m_fileHandle) != palette_bytes)
 			goto cleanup;
 		uint8_t *pal_ptr = pal;
@@ -1228,6 +1205,7 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 				Info_h.biBitCount);
 	}
 	cleanup:
+		delete[] pal;
 		free(pData);
 		if (!readFromStdin && m_fileHandle) {
 			if (!grk::safe_fclose(m_fileHandle)) {

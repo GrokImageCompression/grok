@@ -118,6 +118,8 @@ private:
 
 	uint32_t getPaddedWidth();
 	uint64_t m_srcIndex;
+	GRK_BITMAPFILEHEADER File_h;
+	GRK_BITMAPINFOHEADER Info_h;
 
 };
 
