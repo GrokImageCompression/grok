@@ -67,6 +67,7 @@ set(BLACKLIST_JPEG2000
     mem-b2ace68c-1381.jp2
     1851.pdf.SIGSEGV.ce9.948.jp2
     1888.pdf.asan.35.988.jp2
+    2977.pdf.asan.67.2198.jp2
     issue362-2863.jp2 #kdu_jp2info ok
     issue362-2866.jp2
     issue362-2894.jp2

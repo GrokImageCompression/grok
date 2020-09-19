@@ -438,8 +438,8 @@ bool j2k_read_cod(CodeStream *codeStream,uint8_t *p_header_data,
 
 	/* Only one COD per tile */
 	if (tcp->cod) {
-		GRK_WARN(
-				"Multiple COD markers detected for tile part %u. The JPEG 2000 standard does not allow more than one COD marker per tile.",
+		GRK_WARN("Multiple COD markers detected for tile part %u."
+				" The JPEG 2000 standard does not allow more than one COD marker per tile.",
 				tcp->m_tile_part_index);
 	}
 	tcp->cod = true;
@@ -458,12 +458,12 @@ bool j2k_read_cod(CodeStream *codeStream,uint8_t *p_header_data,
 		return false;
 	}
 	grk_read<uint32_t>(p_header_data++, &tmp, 1); /* SGcod (A) */
-	tcp->prg = (GRK_PROG_ORDER) tmp;
 	/* Make sure progression order is valid */
-	if (tcp->prg > GRK_CPRL) {
-		GRK_ERROR("Unknown progression order in COD marker");
-		tcp->prg = GRK_PROG_UNKNOWN;
+	if (tmp > GRK_CPRL) {
+		GRK_ERROR("Unknown progression order %d in COD marker", tmp);
+		return false;
 	}
+	tcp->prg = (GRK_PROG_ORDER) tmp;
 	grk_read<uint32_t>(p_header_data, &tcp->numlayers, 2); /* SGcod (B) */
 	p_header_data += 2;
 
