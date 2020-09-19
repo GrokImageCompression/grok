@@ -417,7 +417,7 @@ bool BMPFormat::bmp_read_file_header(GRK_BITMAPFILEHEADER *fileHeader, GRK_BITMA
     const size_t len = fileHeaderSize + sizeof(uint32_t);
 	uint8_t temp[len];
 	uint32_t *temp_ptr = (uint32_t*)temp;
-	if (fread(temp, 1, len, m_fileHandle) != len)
+	if (!readFromFile(temp, len))
 		return false;
 	get_int((uint16_t**)&temp_ptr, &fileHeader->bfType);
 	if (fileHeader->bfType != 19778) {
@@ -437,7 +437,7 @@ bool BMPFormat::bmp_read_info_header(GRK_BITMAPFILEHEADER *fileHeader, GRK_BITMA
     const size_t len_initial = infoHeader->biSize - sizeof(uint32_t);
 	uint8_t temp[sizeof(GRK_BITMAPINFOHEADER)];
 	uint32_t *temp_ptr = (uint32_t*)temp;
-	if (fread(temp, 1, len_initial, m_fileHandle) != len_initial)
+	if (!readFromFile(temp, len_initial))
 		return false;
 
 	switch (infoHeader->biSize) {
@@ -487,7 +487,7 @@ bool BMPFormat::bmp_read_info_header(GRK_BITMAPFILEHEADER *fileHeader, GRK_BITMA
 		if (defacto_header_size > infoHeader->biSize) {
 			infoHeader->biSize = std::min<uint32_t>(defacto_header_size,BITMAPV5HEADER_LENGTH);
 			 const size_t len_remaining = infoHeader->biSize - (len_initial + sizeof(uint32_t));
-			 if (fread(temp + len_initial, 1, len_remaining, m_fileHandle) != len_remaining)
+			 if (!readFromFile(temp + len_initial, len_remaining))
 				return false;
 
 		}
@@ -517,15 +517,8 @@ bool BMPFormat::bmp_read_info_header(GRK_BITMAPFILEHEADER *fileHeader, GRK_BITMA
 	return true;
 }
 
-bool BMPFormat::bmp_read_raw_data(uint8_t *pData, uint32_t stride,
-		uint32_t width, uint32_t height) {
-	(void) (width);
-	size_t temp = fread(pData, sizeof(uint8_t), stride * height, m_fileHandle);
-	if (temp != (stride * height)) {
-		spdlog::error("fread read fewer bytes {} than expected number of bytes {}.",temp ,stride * height);
-		return false;
-	}
-	return true;
+bool BMPFormat::bmp_read_raw_data(uint8_t *pData, uint32_t stride, uint32_t height) {
+	return readFromFile(pData, stride * height);
 }
 
 bool BMPFormat::bmp_read_rle8_data(uint8_t *pData, uint32_t stride,
@@ -534,7 +527,7 @@ bool BMPFormat::bmp_read_rle8_data(uint8_t *pData, uint32_t stride,
 	uint8_t *pix;
 	const uint8_t *beyond;
 	uint8_t *pixels = new uint8_t[Info_h.biSizeImage];
-	if (fread(pixels, sizeof(uint8_t), Info_h.biSizeImage, m_fileHandle) != Info_h.biSizeImage){
+	if (!readFromFile(pixels, Info_h.biSizeImage)){
 		delete[] pixels;
 		return false;
 	}
@@ -596,7 +589,7 @@ bool BMPFormat::bmp_read_rle4_data(uint8_t *pData, uint32_t stride,
 	uint8_t *pix;
 	const uint8_t *beyond;
 	uint8_t *pixels = new uint8_t[Info_h.biSizeImage];
-	if (fread(pixels, sizeof(uint8_t), Info_h.biSizeImage, m_fileHandle) != Info_h.biSizeImage){
+	if (!readFromFile(pixels, Info_h.biSizeImage)){
 		delete[] pixels;
 		return false;
 	}
@@ -944,7 +937,7 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 		const uint32_t palette_bytes =
 				palette_len * (is_os2 ? os2_palette_element_len : palette_element_len);
 		pal = new uint8_t[palette_bytes];
-		if (fread(pal, 1, palette_bytes, m_fileHandle) != palette_bytes)
+		if (!readFromFile(pal, palette_bytes))
 			goto cleanup;
 		uint8_t *pal_ptr = pal;
 
@@ -994,8 +987,7 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	case 0:
 	case 3:
 		/* read raw data */
-		l_result = bmp_read_raw_data(pData, bmpStride, Info_h.biWidth,
-				Info_h.biHeight);
+		l_result = bmp_read_raw_data(pData, bmpStride, Info_h.biHeight);
 		break;
 	case 1:
 		/* read rle8 data */
@@ -1046,9 +1038,7 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 		}
 		//allocate buffer
 		image->icc_profile_buf = new uint8_t[Info_h.biIccProfileSize];
-		size_t bytesRead = fread(image->icc_profile_buf, 1,
-				Info_h.biIccProfileSize, m_fileHandle);
-		if (bytesRead != Info_h.biIccProfileSize) {
+		if (!readFromFile(image->icc_profile_buf,Info_h.biIccProfileSize)){
 			spdlog::warn("Unable to read full ICC profile. Profile will be ignored.");
 			delete[] image->icc_profile_buf;
 			image->icc_profile_buf = nullptr;

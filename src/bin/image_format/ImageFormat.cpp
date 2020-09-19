@@ -67,7 +67,18 @@ bool ImageFormat::openFile(std::string mode){
 }
 
 bool ImageFormat::writeToFile(uint8_t *buf, size_t len){
-	return (fwrite(buf, 1, len, m_fileHandle) == len);
+	auto actual = fwrite(buf, 1, len, m_fileHandle);
+	if (actual < len)
+		spdlog::error("wrote fewer bytes () than expected number of bytes {}.",actual, len);
+
+	return actual == len;
+}
+bool ImageFormat::readFromFile(uint8_t *buf, size_t len){
+	auto actual = fread(buf, 1, len, m_fileHandle);
+	if (actual < len)
+		spdlog::error("read fewer bytes () than expected number of bytes {}.",actual, len);
+
+	return actual == len;
 }
 
 

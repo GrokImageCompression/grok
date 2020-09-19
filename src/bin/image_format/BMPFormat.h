@@ -109,8 +109,7 @@ private:
 			grk_image *image, uint8_t const *const*pLUT);
 	bool bmp_read_file_header(GRK_BITMAPFILEHEADER *fileHeader, GRK_BITMAPINFOHEADER *infoHeader);
 	bool bmp_read_info_header(GRK_BITMAPFILEHEADER *fileHeader, GRK_BITMAPINFOHEADER *infoHeader);
-	bool bmp_read_raw_data(uint8_t *pData, uint32_t stride,
-			uint32_t width, uint32_t height);
+	bool bmp_read_raw_data(uint8_t *pData, uint32_t stride, uint32_t height);
 	bool bmp_read_rle8_data(uint8_t *pData, uint32_t stride,
 			uint32_t width, uint32_t height);
 	bool bmp_read_rle4_data(uint8_t *pData, uint32_t stride,
