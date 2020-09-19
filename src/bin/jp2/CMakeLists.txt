@@ -95,6 +95,11 @@ foreach(exe grk_decompress grk_compress grk_dump)
   else(ZLIB_FOUND AND APPLE)
     target_link_libraries(${exe} ${Z_LIBNAME})
   endif()
+  
+  # liburing
+  if(URING)
+	  target_link_libraries(${exe} uring)
+  endif()
 
   # Install exe
   install(TARGETS ${exe}

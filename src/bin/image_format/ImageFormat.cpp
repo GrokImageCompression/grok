@@ -19,6 +19,11 @@
 #include <algorithm>
 #include "common.h"
 
+#ifdef GROK_HAVE_URING
+#include <liburing.h>
+#include <liburing/io_uring.h>
+#endif
+
 ImageFormat::ImageFormat() : m_image(nullptr),
 							m_fileHandle(nullptr),
 							m_rowCount(0),
