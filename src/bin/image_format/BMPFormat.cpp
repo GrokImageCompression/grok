@@ -39,12 +39,6 @@ typedef struct {
 	uint32_t bfOffBits; 	/* Offset                  */
 } GRK_BITMAPFILEHEADER;
 
-struct {
-	uint8_t Blue;      /* Blue component */
-	uint8_t Green;     /* Green component */
-	uint8_t Red;       /* Red component */
-} GRK_OS21XPALETTEELEMENT;
-
 const uint32_t fileHeaderSize = 14;
 
 typedef struct {
@@ -85,6 +79,9 @@ const uint32_t BITMAPV2INFOHEADER_LENGTH = 52U;
 const uint32_t BITMAPV3INFOHEADER_LENGTH = 56U;
 const uint32_t BITMAPV4HEADER_LENGTH = 108U;
 const uint32_t BITMAPV5HEADER_LENGTH = 124U;
+
+const uint32_t os2_palette_element_len = 3;
+const uint32_t palette_element_len = 4;
 
 template<typename T> void get_int(T **buf, T *val) {
 	*val = grk::endian<T>((*buf)[0], false);
@@ -984,7 +981,7 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	is_os2 = Info_h.biSize == BITMAPCOREHEADER_LENGTH;
 	if (is_os2){
 		uint32_t num_entries = (File_h.bfOffBits - fileHeaderSize -
-				BITMAPCOREHEADER_LENGTH) / sizeof(GRK_OS21XPALETTEELEMENT);
+				BITMAPCOREHEADER_LENGTH) / sizeof(os2_palette_element_len);
 		if (num_entries !=  (uint32_t)(1 << Info_h.biBitCount)) {
 			spdlog::error("OS2: calculated number of entries %d "
 					"doesn't match bit count %d", num_entries, Info_h.biBitCount);
@@ -1005,28 +1002,24 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 		if ((palette_len == 0U) && (Info_h.biBitCount <= 8U)) {
 			palette_len = (1U << Info_h.biBitCount);
 		}
-		if (palette_len > 256U) {
+		if (palette_len > 256U)
 			palette_len = 256U;
-		}
+
+		const uint32_t palette_bytes =
+				palette_len * (is_os2 ? os2_palette_element_len : palette_element_len);
+		uint8_t pal[palette_bytes];
+		if (fread(pal, 1, palette_bytes, m_fileHandle) != palette_bytes)
+			goto cleanup;
+		uint8_t *pal_ptr = pal;
+
 		if (palette_len > 0U) {
 			uint8_t has_color = 0U;
 			for (uint32_t i = 0U; i < palette_len; i++) {
-				int temp = getc(m_fileHandle);
-				if (temp == EOF)
-					goto cleanup;
-				lut_B[i] = (uint8_t) temp;
-				temp = getc(m_fileHandle);
-				if (temp == EOF)
-					goto cleanup;
-				lut_G[i] = (uint8_t) temp;
-				temp = getc(m_fileHandle);
-				if (temp == EOF)
-					goto cleanup;
-				lut_R[i] = (uint8_t) temp;
+				lut_B[i] = *pal_ptr++;
+				lut_G[i] = *pal_ptr++;
+				lut_R[i] =  *pal_ptr++;
 				if (!is_os2) {
-					temp = getc(m_fileHandle); /* padding */
-					if (temp == EOF)
-						goto cleanup;
+					pal_ptr++;
 				}
 				has_color |= (lut_B[i] ^ lut_G[i]) | (lut_G[i] ^ lut_R[i]);
 			}
