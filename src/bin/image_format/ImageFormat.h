@@ -29,13 +29,14 @@ protected:
 	bool openFile(std::string mode);
 	bool writeToFile(uint8_t *buf, size_t len);
 	bool readFromFile(uint8_t *buf, size_t len);
+	bool seekInFile(size_t pos);
+	uint32_t maxY(uint32_t rows);
+	int getMode(const char* mode);
+
 	grk_image *m_image;
 	std::string m_fileName;
 	FILE *m_fileHandle;
 	uint32_t m_rowCount;
 	uint32_t m_rowsPerStrip;
 	uint32_t m_numStrips;
-
-	uint32_t maxY(uint32_t rows);
-
 };

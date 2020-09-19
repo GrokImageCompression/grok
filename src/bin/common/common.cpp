@@ -19,25 +19,7 @@
  *
  */
 
-#ifdef _WIN32
-#include <Windows.h>
-#include "windirent.h"
-#define strcasecmp _stricmp
-#define strncasecmp _strnicmp
-#include <io.h>
-#include <fcntl.h>
-#else
-#include <strings.h>
-#include <sys/time.h>
-#include <sys/resource.h>
-#include <sys/times.h>
-#include <unistd.h>
-#include <signal.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <dirent.h>
-#endif /* _WIN32 */
+
 #include "common.h"
 #include <cstdio>
 #include <cstdlib>

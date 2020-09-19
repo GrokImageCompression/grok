@@ -27,6 +27,7 @@ ImageFormat::ImageFormat() : m_image(nullptr),
 {}
 
 bool ImageFormat::encodeHeader(grk_image *  image, const std::string &filename, uint32_t compressionParam){
+	(void)compressionParam;
 	m_fileName = filename;
 	m_image = image;
 
@@ -69,16 +70,23 @@ bool ImageFormat::openFile(std::string mode){
 bool ImageFormat::writeToFile(uint8_t *buf, size_t len){
 	auto actual = fwrite(buf, 1, len, m_fileHandle);
 	if (actual < len)
-		spdlog::error("wrote fewer bytes () than expected number of bytes {}.",actual, len);
+		spdlog::error("wrote fewer bytes {} than expected number of bytes {}.",actual, len);
 
 	return actual == len;
 }
 bool ImageFormat::readFromFile(uint8_t *buf, size_t len){
 	auto actual = fread(buf, 1, len, m_fileHandle);
 	if (actual < len)
-		spdlog::error("read fewer bytes () than expected number of bytes {}.",actual, len);
+		spdlog::error("read fewer bytes {} than expected number of bytes {}.",actual, len);
 
 	return actual == len;
+}
+
+bool ImageFormat::seekInFile(size_t pos){
+	if (fseek(m_fileHandle, pos, SEEK_SET)){
+		return false;
+	}
+	return true;
 }
 
 
