@@ -30,48 +30,7 @@
 
 // `MBED` in big endian format
 const uint32_t BMP_ICC_PROFILE_EMBEDDED = 0x4d424544;
-
-typedef struct {
-	uint16_t bfType; 		/* 'BM' for Bitmap (19776) */
-	uint32_t bfSize; 		/* Size of the file        */
-	uint16_t bfReserved1; 	/* Reserved : 0            */
-	uint16_t bfReserved2; 	/* Reserved : 0            */
-	uint32_t bfOffBits; 	/* Offset                  */
-} GRK_BITMAPFILEHEADER;
-
 const uint32_t fileHeaderSize = 14;
-
-typedef struct {
-	uint32_t biSize; 			/* Size of the structure in bytes */
-	int32_t biWidth; 			/* Width of the image in pixels */
-	int32_t biHeight; 			/* Height of the image in pixels */
-	uint16_t biPlanes; 			/* 1 */
-	uint16_t biBitCount; 		/* Number of color bits per pixels */
-	uint32_t biCompression; 	/* Type of encoding:
-	 	 	 	 	 	 	 	   0: none
-	 	 	 	 	 	 	 	   1: RLE8
-	 	 	 	 	 	 	 	   2: RLE4
-	 	 	 	 	 	 	 	   3: BITFIELD */
-	uint32_t biSizeImage; 		/* Size of the image in bytes */
-	int32_t biXpelsPerMeter; 	/* Horizontal (X) resolution in pixels/meter */
-	int32_t biYpelsPerMeter; 	/* Vertical (Y) resolution in pixels/meter */
-	uint32_t biClrUsed; 		/* Number of color used in the image (0: ALL) */
-	uint32_t biClrImportant; 	/* Number of important color (0: ALL) */
-	uint32_t biRedMask; 		/* Red channel bit mask */
-	uint32_t biGreenMask; 		/* Green channel bit mask */
-	uint32_t biBlueMask; 		/* Blue channel bit mask */
-	uint32_t biAlphaMask; 		/* Alpha channel bit mask */
-	uint32_t biColorSpaceType; 	/* Color space type */
-	uint8_t biColorSpaceEP[36]; /* Color space end points */
-	uint32_t biRedGamma; 		/* Red channel gamma */
-	uint32_t biGreenGamma; 		/* Green channel gamma */
-	uint32_t biBlueGamma; 		/* Blue channel gamma */
-	uint32_t biIntent; 			/* Intent */
-	uint32_t biIccProfileOffset; 	/* offset to ICC profile data */
-	uint32_t biIccProfileSize; 	/* ICC profile size */
-	uint32_t biReserved; 		/* Reserved */
-} GRK_BITMAPINFOHEADER;
-
 
 const uint32_t BITMAPCOREHEADER_LENGTH = 12U;
 const uint32_t BITMAPINFOHEADER_LENGTH = 40U;
@@ -93,7 +52,7 @@ template<typename T> void put_int(T **buf, T val) {
 	(*buf)++;
 }
 
-static void grk_applyLUT8u_1u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
+void BMPFormat::applyLUT8u_1u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
 		int32_t *pDst, int32_t dstStride, uint8_t const *pLUT, uint32_t destWidth,
 		uint32_t destHeight) {
 	uint32_t absSrcStride = std::abs(srcStride);
@@ -112,7 +71,7 @@ static void grk_applyLUT8u_1u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
 	}
 }
 
-static void grk_applyLUT8u_4u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
+void BMPFormat::applyLUT8u_4u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
 		int32_t *pDst, int32_t dstStride, uint8_t const *pLUT, uint32_t destWidth,
 		uint32_t destHeight) {
 	uint32_t absSrcStride = std::abs(srcStride);
@@ -131,7 +90,7 @@ static void grk_applyLUT8u_4u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
 	}
 }
 
-static void grk_applyLUT8u_8u32s_C1R(uint8_t const *pSrc,
+void BMPFormat::applyLUT8u_8u32s_C1R(uint8_t const *pSrc,
 									int32_t srcStride,
 									int32_t *pDst,
 									int32_t dstStride,
@@ -146,7 +105,7 @@ static void grk_applyLUT8u_8u32s_C1R(uint8_t const *pSrc,
 	}
 }
 
-static void grk_applyLUT8u_1u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
+void BMPFormat::applyLUT8u_1u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
 		int32_t *const*pDst, int32_t const *pDstStride,
 		uint8_t const *const*pLUT, uint32_t destWidth, uint32_t destHeight) {
 	uint32_t absSrcStride = std::abs(srcStride);
@@ -180,7 +139,7 @@ static void grk_applyLUT8u_1u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
 }
 
 
-static void grk_applyLUT8u_4u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
+void BMPFormat::applyLUT8u_4u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
 		int32_t *const*pDst, int32_t const *pDstStride,
 		uint8_t const *const*pLUT, uint32_t destWidth, uint32_t destHeight) {
 	uint32_t absSrcStride = std::abs(srcStride);
@@ -213,7 +172,7 @@ static void grk_applyLUT8u_4u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
 	}
 }
 
-static void grk_applyLUT8u_8u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
+void BMPFormat::applyLUT8u_8u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
 		int32_t *const*pDst, int32_t const *pDstStride,
 		uint8_t const *const*pLUT, uint32_t destWidth, uint32_t destHeight) {
 	uint32_t y;
@@ -237,7 +196,7 @@ static void grk_applyLUT8u_8u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
 		pB += pDstStride[2];
 	}
 }
-static void bmp24toimage(const uint8_t *pData, uint32_t srcStride,
+void BMPFormat::bmp24toimage(const uint8_t *pData, uint32_t srcStride,
 		grk_image *image) {
 	int index;
 	uint32_t width, height;
@@ -261,7 +220,7 @@ static void bmp24toimage(const uint8_t *pData, uint32_t srcStride,
 	}
 }
 
-static void bmp_mask_get_shift_and_prec(uint32_t mask, uint32_t *shift,
+void BMPFormat::bmp_mask_get_shift_and_prec(uint32_t mask, uint32_t *shift,
 		uint32_t *prec) {
 	uint32_t l_shift, l_prec;
 	l_shift = l_prec = 0U;
@@ -278,7 +237,7 @@ static void bmp_mask_get_shift_and_prec(uint32_t mask, uint32_t *shift,
 	*shift = l_shift;
 	*prec = l_prec;
 }
-static void bmpmask32toimage(const uint8_t *pData, uint32_t srcStride,
+void BMPFormat::bmpmask32toimage(const uint8_t *pData, uint32_t srcStride,
 		grk_image *image, uint32_t redMask, uint32_t greenMask,
 		uint32_t blueMask, uint32_t alphaMask) {
 	uint32_t redShift, redPrec;
@@ -328,7 +287,7 @@ static void bmpmask32toimage(const uint8_t *pData, uint32_t srcStride,
 		pSrc -= srcStride;
 	}
 }
-static void bmpmask16toimage(const uint8_t *pData, uint32_t srcStride,
+void BMPFormat::bmpmask16toimage(const uint8_t *pData, uint32_t srcStride,
 		grk_image *image, uint32_t redMask, uint32_t greenMask,
 		uint32_t blueMask, uint32_t alphaMask) {
 	uint32_t redShift, redPrec;
@@ -375,7 +334,7 @@ static void bmpmask16toimage(const uint8_t *pData, uint32_t srcStride,
 		pSrc -= srcStride;
 	}
 }
-static grk_image* bmp8toimage(const uint8_t *pData, uint32_t srcStride,
+grk_image* BMPFormat::bmp8toimage(const uint8_t *pData, uint32_t srcStride,
 								grk_image *image, uint8_t const *const*pLUT,
 								bool topDown) {
 	uint32_t width = image->comps[0].w;
@@ -383,7 +342,7 @@ static grk_image* bmp8toimage(const uint8_t *pData, uint32_t srcStride,
 	auto pSrc = topDown ? pData : (pData + (height - 1U) * srcStride);
 	int32_t s_stride = topDown ? (int32_t)srcStride : (-(int32_t)srcStride);
 	if (image->numcomps == 1U) {
-		grk_applyLUT8u_8u32s_C1R(pSrc,
+		applyLUT8u_8u32s_C1R(pSrc,
 								s_stride,
 								image->comps[0].data,
 								(int32_t) image->comps[0].stride,
@@ -400,18 +359,18 @@ static grk_image* bmp8toimage(const uint8_t *pData, uint32_t srcStride,
 		pDstStride[0] = (int32_t) image->comps[0].stride;
 		pDstStride[1] = (int32_t) image->comps[0].stride;
 		pDstStride[2] = (int32_t) image->comps[0].stride;
-		grk_applyLUT8u_8u32s_C1P3R(pSrc, s_stride, pDst, pDstStride,
+		applyLUT8u_8u32s_C1P3R(pSrc, s_stride, pDst, pDstStride,
 				pLUT, width, height);
 	}
 	return image;
 }
-static grk_image* bmp4toimage(const uint8_t *pData, uint32_t srcStride,
+grk_image* BMPFormat::bmp4toimage(const uint8_t *pData, uint32_t srcStride,
 		grk_image *image, uint8_t const *const*pLUT) {
 	uint32_t width = image->comps[0].w;
 	uint32_t height = image->comps[0].h;
 	auto pSrc = pData + (height - 1U) * srcStride;
 	if (image->numcomps == 1U) {
-		grk_applyLUT8u_4u32s_C1R(pSrc, -(int32_t) srcStride, image->comps[0].data,
+		applyLUT8u_4u32s_C1R(pSrc, -(int32_t) srcStride, image->comps[0].data,
 				(int32_t) image->comps[0].stride, pLUT[0], width, height);
 	} else {
 		int32_t *pDst[3];
@@ -423,18 +382,18 @@ static grk_image* bmp4toimage(const uint8_t *pData, uint32_t srcStride,
 		pDstStride[0] = (int32_t) image->comps[0].stride;
 		pDstStride[1] = (int32_t) image->comps[0].stride;
 		pDstStride[2] = (int32_t) image->comps[0].stride;
-		grk_applyLUT8u_4u32s_C1P3R(pSrc, -(int32_t) srcStride, pDst, pDstStride,
+		applyLUT8u_4u32s_C1P3R(pSrc, -(int32_t) srcStride, pDst, pDstStride,
 				pLUT, width, height);
 	}
 	return image;
 }
-static grk_image* bmp1toimage(const uint8_t *pData, uint32_t srcStride,
+grk_image* BMPFormat::bmp1toimage(const uint8_t *pData, uint32_t srcStride,
 		grk_image *image, uint8_t const *const*pLUT) {
 	uint32_t width = image->comps[0].w;
 	uint32_t height = image->comps[0].h;
 	auto pSrc = pData + (height - 1U) * srcStride;
 	if (image->numcomps == 1U) {
-		grk_applyLUT8u_1u32s_C1R(pSrc, -(int32_t) srcStride, image->comps[0].data,
+		applyLUT8u_1u32s_C1R(pSrc, -(int32_t) srcStride, image->comps[0].data,
 				(int32_t) image->comps[0].stride, pLUT[0], width, height);
 	} else {
 		int32_t *pDst[3];
@@ -446,19 +405,19 @@ static grk_image* bmp1toimage(const uint8_t *pData, uint32_t srcStride,
 		pDstStride[0] = (int32_t) image->comps[0].stride;
 		pDstStride[1] = (int32_t) image->comps[0].stride;
 		pDstStride[2] = (int32_t) image->comps[0].stride;
-		grk_applyLUT8u_1u32s_C1P3R(pSrc, -(int32_t) srcStride, pDst, pDstStride,
+		applyLUT8u_1u32s_C1P3R(pSrc, -(int32_t) srcStride, pDst, pDstStride,
 				pLUT, width, height);
 	}
 	return image;
 }
 
 
-static bool bmp_read_file_header(FILE *INPUT, GRK_BITMAPFILEHEADER *fileHeader, GRK_BITMAPINFOHEADER *infoHeader) {
+bool BMPFormat::bmp_read_file_header(GRK_BITMAPFILEHEADER *fileHeader, GRK_BITMAPINFOHEADER *infoHeader) {
 	memset(infoHeader, 0, sizeof(*infoHeader));
     const size_t len = fileHeaderSize + sizeof(uint32_t);
 	uint8_t temp[len];
 	uint32_t *temp_ptr = (uint32_t*)temp;
-	if (fread(temp, 1, len, INPUT) != len)
+	if (fread(temp, 1, len, m_fileHandle) != len)
 		return false;
 	get_int((uint16_t**)&temp_ptr, &fileHeader->bfType);
 	if (fileHeader->bfType != 19778) {
@@ -474,11 +433,11 @@ static bool bmp_read_file_header(FILE *INPUT, GRK_BITMAPFILEHEADER *fileHeader, 
 	return true;
 }
 
-static bool bmp_read_info_header(FILE *INPUT, GRK_BITMAPFILEHEADER *fileHeader, GRK_BITMAPINFOHEADER *infoHeader) {
+bool BMPFormat::bmp_read_info_header(GRK_BITMAPFILEHEADER *fileHeader, GRK_BITMAPINFOHEADER *infoHeader) {
     const size_t len_initial = infoHeader->biSize - sizeof(uint32_t);
 	uint8_t temp[sizeof(GRK_BITMAPINFOHEADER)];
 	uint32_t *temp_ptr = (uint32_t*)temp;
-	if (fread(temp, 1, len_initial, INPUT) != len_initial)
+	if (fread(temp, 1, len_initial, m_fileHandle) != len_initial)
 		return false;
 
 	switch (infoHeader->biSize) {
@@ -528,7 +487,7 @@ static bool bmp_read_info_header(FILE *INPUT, GRK_BITMAPFILEHEADER *fileHeader, 
 		if (defacto_header_size > infoHeader->biSize) {
 			infoHeader->biSize = std::min<uint32_t>(defacto_header_size,BITMAPV5HEADER_LENGTH);
 			 const size_t len_remaining = infoHeader->biSize - (len_initial + sizeof(uint32_t));
-			 if (fread(temp + len_initial, 1, len_remaining, INPUT) != len_remaining)
+			 if (fread(temp + len_initial, 1, len_remaining, m_fileHandle) != len_remaining)
 				return false;
 
 		}
@@ -558,10 +517,10 @@ static bool bmp_read_info_header(FILE *INPUT, GRK_BITMAPFILEHEADER *fileHeader, 
 	return true;
 }
 
-static bool bmp_read_raw_data(FILE *INPUT, uint8_t *pData, uint32_t stride,
+bool BMPFormat::bmp_read_raw_data(uint8_t *pData, uint32_t stride,
 		uint32_t width, uint32_t height) {
 	(void) (width);
-	size_t temp = fread(pData, sizeof(uint8_t), stride * height, INPUT);
+	size_t temp = fread(pData, sizeof(uint8_t), stride * height, m_fileHandle);
 	if (temp != (stride * height)) {
 		spdlog::error("fread read fewer bytes {} than expected number of bytes {}.",temp ,stride * height);
 		return false;
@@ -569,7 +528,7 @@ static bool bmp_read_raw_data(FILE *INPUT, uint8_t *pData, uint32_t stride,
 	return true;
 }
 
-static bool bmp_read_rle8_data(FILE *INPUT, uint8_t *pData, uint32_t stride,
+bool BMPFormat::bmp_read_rle8_data(uint8_t *pData, uint32_t stride,
 		uint32_t width, uint32_t height) {
 	uint32_t x, y, written;
 	uint8_t *pix;
@@ -580,12 +539,12 @@ static bool bmp_read_rle8_data(FILE *INPUT, uint8_t *pData, uint32_t stride,
 
 	x = y = written = 0U;
 	while (y < height) {
-		int c = getc(INPUT);
+		int c = getc(m_fileHandle);
 		if (c == EOF)
 			return false;
 		if (c) {
 			int j;
-			int temp = getc(INPUT);
+			int temp = getc(m_fileHandle);
 			if (temp == EOF)
 				return false;
 			uint8_t c1 = (uint8_t) temp;
@@ -596,7 +555,7 @@ static bool bmp_read_rle8_data(FILE *INPUT, uint8_t *pData, uint32_t stride,
 				written++;
 			}
 		} else {
-			c = getc(INPUT);
+			c = getc(m_fileHandle);
 			if (c == EOF)
 				return false;
 			if (c == 0x00) { /* EOL */
@@ -606,11 +565,11 @@ static bool bmp_read_rle8_data(FILE *INPUT, uint8_t *pData, uint32_t stride,
 			} else if (c == 0x01) { /* EOP */
 				break;
 			} else if (c == 0x02) { /* MOVE by dxdy */
-				c = getc(INPUT);
+				c = getc(m_fileHandle);
 				if (c == EOF)
 					return false;
 				x += (uint32_t) c;
-				c = getc(INPUT);
+				c = getc(m_fileHandle);
 				if (c == EOF)
 					return false;
 				y += (uint32_t) c;
@@ -621,7 +580,7 @@ static bool bmp_read_rle8_data(FILE *INPUT, uint8_t *pData, uint32_t stride,
 						(j < c) && (x < width)
 								&& ((size_t) pix < (size_t) beyond);
 						j++, x++, pix++) {
-					int temp = getc(INPUT);
+					int temp = getc(m_fileHandle);
 					if (temp == EOF)
 						return false;
 					uint8_t c1 = (uint8_t) temp;
@@ -629,7 +588,7 @@ static bool bmp_read_rle8_data(FILE *INPUT, uint8_t *pData, uint32_t stride,
 					written++;
 				}
 				if ((uint32_t) c & 1U) { /* skip padding byte */
-					if (getc(INPUT) == EOF)
+					if (getc(m_fileHandle) == EOF)
 						return false;
 				}
 			}
@@ -642,7 +601,7 @@ static bool bmp_read_rle8_data(FILE *INPUT, uint8_t *pData, uint32_t stride,
 	}
 	return true;
 }
-static bool bmp_read_rle4_data(FILE *INPUT, uint8_t *pData, uint32_t stride,
+bool BMPFormat::bmp_read_rle4_data(uint8_t *pData, uint32_t stride,
 		uint32_t width, uint32_t height) {
 	uint32_t x, y;
 	uint8_t *pix;
@@ -652,13 +611,13 @@ static bool bmp_read_rle4_data(FILE *INPUT, uint8_t *pData, uint32_t stride,
 	pix = pData;
 	x = y = 0U;
 	while (y < height) {
-		int c = getc(INPUT);
+		int c = getc(m_fileHandle);
 		if (c == EOF)
 			return false;
 
 		if (c) {/* encoded mode */
 			int j;
-			int temp = getc(INPUT);
+			int temp = getc(m_fileHandle);
 			if (temp == EOF)
 				return false;
 			uint8_t c1 = (uint8_t) temp;
@@ -669,7 +628,7 @@ static bool bmp_read_rle4_data(FILE *INPUT, uint8_t *pData, uint32_t stride,
 				*pix = (uint8_t) ((j & 1) ? (c1 & 0x0fU) : ((c1 >> 4) & 0x0fU));
 			}
 		} else { /* absolute mode */
-			c = getc(INPUT);
+			c = getc(m_fileHandle);
 			if (c == EOF)
 				break;
 
@@ -680,13 +639,13 @@ static bool bmp_read_rle4_data(FILE *INPUT, uint8_t *pData, uint32_t stride,
 			} else if (c == 0x01) { /* EOP */
 				break;
 			} else if (c == 0x02) { /* MOVE by dxdy */
-				int temp = getc(INPUT);
+				int temp = getc(m_fileHandle);
 				if (temp == EOF)
 					return false;
 				c = (uint8_t) temp;
 				x += (uint32_t) c;
 
-				temp = getc(INPUT);
+				temp = getc(m_fileHandle);
 				if (temp == EOF)
 					return false;
 				c = (uint8_t) temp;
@@ -701,7 +660,7 @@ static bool bmp_read_rle4_data(FILE *INPUT, uint8_t *pData, uint32_t stride,
 								&& ((size_t) pix < (size_t) beyond);
 						j++, x++, pix++) {
 					if ((j & 1) == 0) {
-						int temp = getc(INPUT);
+						int temp = getc(m_fileHandle);
 						if (temp == EOF)
 							return false;
 						c1 = (uint8_t) temp;
@@ -710,7 +669,7 @@ static bool bmp_read_rle4_data(FILE *INPUT, uint8_t *pData, uint32_t stride,
 							(j & 1) ? (c1 & 0x0fU) : ((c1 >> 4) & 0x0fU));
 				}
 				if (((c & 3) == 1) || ((c & 3) == 2)) { /* skip padding byte */
-					if (getc(INPUT) == EOF)
+					if (getc(m_fileHandle) == EOF)
 						return false;
 				}
 			}
@@ -974,9 +933,9 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	if (!openFile("r"))
 		return nullptr;
 
-	if (!bmp_read_file_header(m_fileHandle, &File_h, &Info_h))
+	if (!bmp_read_file_header(&File_h, &Info_h))
 		goto cleanup;
-	if (!bmp_read_info_header(m_fileHandle, &File_h, &Info_h))
+	if (!bmp_read_info_header(&File_h, &Info_h))
 		goto cleanup;
 	is_os2 = Info_h.biSize == BITMAPCOREHEADER_LENGTH;
 	if (is_os2){
@@ -1058,17 +1017,17 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	case 0:
 	case 3:
 		/* read raw data */
-		l_result = bmp_read_raw_data(m_fileHandle, pData, bmpStride, Info_h.biWidth,
+		l_result = bmp_read_raw_data(pData, bmpStride, Info_h.biWidth,
 				Info_h.biHeight);
 		break;
 	case 1:
 		/* read rle8 data */
-		l_result = bmp_read_rle8_data(m_fileHandle, pData, bmpStride, Info_h.biWidth,
+		l_result = bmp_read_rle8_data(pData, bmpStride, Info_h.biWidth,
 				Info_h.biHeight);
 		break;
 	case 2:
 		/* read rle4 data */
-		l_result = bmp_read_rle4_data(m_fileHandle, pData, bmpStride, Info_h.biWidth,
+		l_result = bmp_read_rle4_data(pData, bmpStride, Info_h.biWidth,
 				Info_h.biHeight);
 		break;
 	default:
