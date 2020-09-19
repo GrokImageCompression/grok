@@ -18,15 +18,16 @@
 #pragma once
 
 #include "IImageFormat.h"
+#include "IFileIO.h"
 
 class ImageFormat : public IImageFormat {
 public:
 	ImageFormat();
-	virtual ~ImageFormat() {}
+	virtual ~ImageFormat();
 	virtual bool encodeHeader(grk_image *image, const std::string &filename, uint32_t compressionParam);
 	virtual bool encodeFinish(void);
 protected:
-	bool openFile(std::string mode);
+	bool openFile(std::string fname, std::string mode);
 	bool writeToFile(uint8_t *buf, size_t len);
 	bool readFromFile(uint8_t *buf, size_t len);
 	bool seekInFile(size_t pos);
@@ -34,9 +35,12 @@ protected:
 	int getMode(const char* mode);
 
 	grk_image *m_image;
-	std::string m_fileName;
-	FILE *m_fileHandle;
 	uint32_t m_rowCount;
 	uint32_t m_rowsPerStrip;
 	uint32_t m_numStrips;
+	IFileIO *m_fileIO;
+
+	FILE *m_fileHandle;
+	std::string m_fileName;
+
 };

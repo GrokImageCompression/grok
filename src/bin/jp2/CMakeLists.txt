@@ -11,6 +11,8 @@ set(common_SRCS
   ${GROK_SOURCE_DIR}/src/bin/common/convert.h
   ${GROK_SOURCE_DIR}/src/bin/image_format/IImageFormat.h
   ${GROK_SOURCE_DIR}/src/bin/image_format/ImageFormat.cpp
+  ${GROK_SOURCE_DIR}/src/bin/image_format/FileStreamIO.h
+  ${GROK_SOURCE_DIR}/src/bin/image_format/FileStreamIO.cpp
   ${GROK_SOURCE_DIR}/src/bin/image_format/ImageFormat.h
   ${GROK_SOURCE_DIR}/src/bin/image_format/PNMFormat.cpp
   ${GROK_SOURCE_DIR}/src/bin/image_format/PNMFormat.h

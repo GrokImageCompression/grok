@@ -697,8 +697,6 @@ bool BMPFormat::encodeHeader(grk_image *image, const std::string &filename, uint
 			goto cleanup;
 		}
 	}
-	if (!openFile("w"))
-		goto cleanup;
 	colours_used = (m_image->numcomps == 3) ? 0 : 256 ;
 	lut_size = colours_used * sizeof(uint32_t) ;
 	full_header_size = fileHeaderSize + BITMAPINFOHEADER_LENGTH;
@@ -881,7 +879,6 @@ bool BMPFormat::encodeFinish(void){
 }
 
 grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *parameters){
-	bool readFromStdin = grk::useStdio(fname.c_str());
 	grk_image_cmptparm cmptparm[4]; /* maximum of 4 components */
 	uint8_t lut_R[256], lut_G[256], lut_B[256];
 	uint8_t const *pLUT[3];
@@ -898,9 +895,8 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	bool is_os2 = false;
 	uint8_t *pal  = nullptr;
 
-	m_fileName = fname;
 	m_image = image;
-	if (!openFile("r"))
+	if (!openFile(fname, "r"))
 		return nullptr;
 
 	if (!bmp_read_file_header(&File_h, &Info_h))
@@ -1196,11 +1192,6 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	cleanup:
 		delete[] pal;
 		free(pData);
-		if (!readFromStdin && m_fileHandle) {
-			if (!grk::safe_fclose(m_fileHandle)) {
-				grk_image_destroy(image);
-				image = nullptr;
-			}
-		}
+		m_fileIO->close();
 	return image;
 }

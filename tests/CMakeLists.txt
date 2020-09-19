@@ -42,6 +42,8 @@ set(compare_images_SRCS compare_images.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/convert.cpp
   ${GROK_SOURCE_DIR}/src/bin/image_format/ImageFormat.cpp
   ${GROK_SOURCE_DIR}/src/bin/image_format/ImageFormat.h
+  ${GROK_SOURCE_DIR}/src/bin/image_format/FileStreamIO.h
+  ${GROK_SOURCE_DIR}/src/bin/image_format/FileStreamIO.cpp
   ${GROK_SOURCE_DIR}/src/bin/image_format/PNMFormat.cpp
   ${GROK_SOURCE_DIR}/src/bin/image_format/PNMFormat.h
   ${GROK_SOURCE_DIR}/src/bin/image_format/PGXFormat.cpp
