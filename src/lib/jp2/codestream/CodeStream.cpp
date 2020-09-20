@@ -2689,10 +2689,7 @@ bool CodeStream::decompress_tile_t2(void) {
 			|| (tileProcessor->current_plugin_tile->decode_flags
 					& GRK_DECODE_POST_T1);
 	if (doPost){
-		try {
-			rc =  decoder->findNextTile(this);
-		} catch (DecodeUnknownMarkerAtEndOfTileException &e) {
-		}
+		rc =  decoder->findNextTile(this);
 	}
 	return rc;
 }
@@ -2727,13 +2724,18 @@ bool CodeStream::decompress_tiles(void) {
 
 		//2. T2 decode
 		auto processor = currentProcessor();
+		bool breakAfterT1 = false;
 		compressed_processors.push_back(processor->m_tile_index);
-		if (!decompress_tile_t2()){
-				GRK_ERROR("Failed to decompress tile %u/%u",
-						processor->m_tile_index + 1,
-						num_tiles_to_decode);
-				success = false;
-				goto cleanup;
+		try {
+			if (!decompress_tile_t2()){
+					GRK_ERROR("Failed to decompress tile %u/%u",
+							processor->m_tile_index + 1,
+							num_tiles_to_decode);
+					success = false;
+					goto cleanup;
+			}
+		}  catch (DecodeUnknownMarkerAtEndOfTileException &e){
+			breakAfterT1 = true;
 		}
 
 		// once we schedule a processor for T1 compression, we will destroy it
@@ -2770,6 +2772,8 @@ bool CodeStream::decompress_tiles(void) {
 				goto cleanup;
 		}
 
+		if (breakAfterT1)
+			break;
 
 		if (m_stream->get_number_byte_left() == 0
 				|| m_decoder.m_state

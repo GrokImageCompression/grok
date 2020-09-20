@@ -159,6 +159,7 @@ struct TileCodingParams {
 	/** tile-component coding parameters */
 	TileComponentCodingParams *tccps;
 	// current tile part number (-1 if not yet initialized
+	// NOTE: tile part index <= 254
 	int16_t m_tile_part_index;
 
 	/** number of tile parts for the tile. */

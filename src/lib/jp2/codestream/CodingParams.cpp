@@ -189,8 +189,8 @@ bool DecoderState::findNextTile(CodeStream *codeStream){
 				return true;
 			}
 			GRK_WARN("findNextTile: expected EOC or SOT "
-					"but found marker 0x%x:  ", codeStream->m_curr_marker);
-			GRK_WARN("ignoring %d bytes remaining in the stream.", bytesLeft+2);
+					"but found marker 0x%x.\nIgnoring %d bytes "
+					"remaining in the stream.", codeStream->m_curr_marker, bytesLeft+2);
 			throw DecodeUnknownMarkerAtEndOfTileException();
 		}
 			break;
