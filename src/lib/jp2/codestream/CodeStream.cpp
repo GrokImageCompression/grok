@@ -2709,8 +2709,6 @@ bool CodeStream::decompress_tiles(void) {
 			return false;
 	}
 
-	std::vector<uint16_t> compressed_processors;
-
 	// parse header and perform T2 followed by asynch T1
 	for (uint32_t tileno = 0; tileno < num_tiles_to_decode; tileno++) {
 		//1. read header
@@ -2725,18 +2723,20 @@ bool CodeStream::decompress_tiles(void) {
 		//2. T2 decode
 		auto processor = currentProcessor();
 		bool breakAfterT1 = false;
-		compressed_processors.push_back(processor->m_tile_index);
 		try {
 			if (!decompress_tile_t2()){
 					GRK_ERROR("Failed to decompress tile %u/%u",
 							processor->m_tile_index + 1,
 							num_tiles_to_decode);
 					success = false;
+					delete processor;
 					goto cleanup;
 			}
 		}  catch (DecodeUnknownMarkerAtEndOfTileException &e){
 			breakAfterT1 = true;
 		}
+
+		m_processors.erase(processor->m_tile_index);
 
 		// once we schedule a processor for T1 compression, we will destroy it
 		// regardless of success or not
@@ -2819,9 +2819,6 @@ bool CodeStream::decompress_tiles(void) {
 	}
 
 cleanup:
-	for( auto ind : compressed_processors){
-		m_processors.erase(ind);
-	}
 	for(auto &pr : m_processors){
 		delete pr.second;
 	}
