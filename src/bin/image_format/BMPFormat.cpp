@@ -906,10 +906,11 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	is_os2 = Info_h.biSize == BITMAPCOREHEADER_LENGTH;
 	if (is_os2){
 		uint32_t num_entries = (File_h.bfOffBits - fileHeaderSize -
-				BITMAPCOREHEADER_LENGTH) / sizeof(os2_palette_element_len);
+				BITMAPCOREHEADER_LENGTH) / os2_palette_element_len;
 		if (num_entries !=  (uint32_t)(1 << Info_h.biBitCount)) {
-			spdlog::error("OS2: calculated number of entries %d "
-					"doesn't match bit count %d", num_entries, Info_h.biBitCount);
+			spdlog::error("OS2: calculated number of entries {} "
+					"doesn't match (1 << bit count) {}", num_entries,
+					(uint32_t)(1 << Info_h.biBitCount));
 			goto cleanup;
 		}
 	}
