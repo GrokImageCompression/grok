@@ -2270,11 +2270,27 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 		}
 	}
 
+	// ensure lossy wavelet has quantization set
+	auto tcp = get_current_decode_tcp();
+	auto numComps = m_input_image->numcomps;
+	for (uint32_t k = 0; k < numComps; ++k) {
+		auto tccp = tcp->tccps + k;
+		if (tccp->qmfbid == 0 && tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) {
+			GRK_ERROR("Tile-components compressed using the irreversible processing path\n"
+					"must have quantization parameters specified in the QCD/QCC marker segments,\n"
+					"either explicitly, or through implicit derivation from the quantization\n"
+					"parameters for the LL subband, as explained in the JPEG2000 standard, ISO/IEC\n"
+					"15444-1.  The present set of code-stream parameters is not legal.");
+			return false;
+		}
+	}
+
+
+
 	// do QCD marker quantization step size sanity check
 	// see page 553 of Taubman and Marcellin for more details on this check
-	auto tcp = get_current_decode_tcp();
 	if (tcp->main_qcd_qntsty != J2K_CCP_QNTSTY_SIQNT) {
-		auto numComps = m_input_image->numcomps;
+
 		//1. Check main QCD
 		uint32_t maxDecompositions = 0;
 		for (uint32_t k = 0; k < numComps; ++k) {
