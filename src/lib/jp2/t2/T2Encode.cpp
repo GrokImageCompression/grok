@@ -33,7 +33,7 @@ T2Encode::T2Encode(TileProcessor *tileProc) :
 }
 
 
-bool T2Encode::encode_packets(uint16_t tile_no, uint32_t max_layers,
+bool T2Encode::encode_packets(uint16_t tile_no, uint16_t max_layers,
 		BufferedStream *stream, uint32_t *p_data_written,
 		uint32_t tp_num, uint32_t tp_pos,
 		uint32_t pino) {
@@ -72,7 +72,7 @@ bool T2Encode::encode_packets(uint16_t tile_no, uint32_t max_layers,
 	return true;
 }
 
-bool T2Encode::encode_packets_simulate(uint16_t tile_no, uint32_t max_layers,
+bool T2Encode::encode_packets_simulate(uint16_t tile_no, uint16_t max_layers,
 		uint32_t *all_packets_len, uint32_t max_len, uint32_t tp_pos,
 		PacketLengthMarkers *markers) {
 

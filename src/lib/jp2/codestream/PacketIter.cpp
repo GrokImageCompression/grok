@@ -892,7 +892,7 @@ static void pi_update_decode_poc(PacketIter *p_pi, TileCodingParams *p_tcp,
 		current_pi->poc.precno0 = 0;
 		current_pi->poc.resno1 = current_poc->resno1; /* Resolution Level Index #0 (End) */
 		current_pi->poc.compno1 = current_poc->compno1; /* Component Index #0 (End) */
-		current_pi->poc.layno1 = std::min<uint32_t>(current_poc->layno1,
+		current_pi->poc.layno1 = std::min<uint16_t>(current_poc->layno1,
 				p_tcp->numlayers); /* Layer Index #0 (End) */
 		current_pi->poc.precno1 = max_precincts;
 	}

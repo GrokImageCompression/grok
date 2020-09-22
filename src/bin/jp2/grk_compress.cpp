@@ -787,7 +787,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 
 			// sanity check on quality values
 			double lastDistortion = -1;
-			for (uint32_t i = 0; i < parameters->tcp_numlayers; ++i) {
+			for (uint16_t i = 0; i < parameters->tcp_numlayers; ++i) {
 				auto distortion = parameters->tcp_distoratio[i];
 				if (distortion < 0) {
 					spdlog::error(
@@ -795,7 +795,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 					return 1;
 				}
 				if (distortion < lastDistortion
-						&& !(i == parameters->tcp_numlayers - 1
+						&& !(i == (uint16_t)(parameters->tcp_numlayers - 1)
 								&& distortion == 0)) {
 					spdlog::error(
 							"PSNR values must be listed in ascending order");
@@ -974,11 +974,13 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 
 			char *s = (char*) pocArg.getValue().c_str();
 			POC = parameters->POC;
+			uint32_t layno1;
 
 			while (sscanf(s, "T%u=%u,%u,%u,%u,%u,%4s", &POC[numpocs].tile,
 					&POC[numpocs].resno0, &POC[numpocs].compno0,
-					&POC[numpocs].layno1, &POC[numpocs].resno1,
+					&layno1, &POC[numpocs].resno1,
 					&POC[numpocs].compno1, POC[numpocs].progorder) == 7) {
+				POC[numpocs].layno1 = (uint16_t)layno1;
 				POC[numpocs].prg1 = give_progression(POC[numpocs].progorder);
 				// sanity check on layer
 				if (POC[numpocs].layno1 > parameters->tcp_numlayers){

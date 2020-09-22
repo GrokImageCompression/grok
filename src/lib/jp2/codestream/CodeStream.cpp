@@ -1537,7 +1537,7 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 				image->comps[0].sgnd);
 		tcp->numlayers = parameters->tcp_numlayers;
 
-		for (uint32_t j = 0; j < tcp->numlayers; j++) {
+		for (uint16_t j = 0; j < tcp->numlayers; j++) {
 			if (cp->m_coding_params.m_enc.m_fixed_quality)
 				tcp->distoratio[j] = parameters->tcp_distoratio[j];
 			else
@@ -3042,10 +3042,6 @@ bool CodeStream::copy_default_tcp(void) {
 
 
 bool CodeStream::update_rates(void) {
-	uint32_t i, j, k;
-	uint32_t bits_empty, size_pixel;
-	uint32_t last_res;
-
 	auto cp = &(m_cp);
 	auto image = m_input_image;
 	auto tcp = cp->tcps;
@@ -3055,12 +3051,12 @@ bool CodeStream::update_rates(void) {
 	if (width <= 0 || height <= 0)
 		return false;
 
-	bits_empty = 8 * image->comps->dx * image->comps->dy;
-	size_pixel = image->numcomps * image->comps->prec;
+	uint32_t bits_empty = 8 * image->comps->dx * image->comps->dy;
+	uint32_t size_pixel = image->numcomps * image->comps->prec;
 	auto header_size = (double) m_stream->tell();
 
-	for (i = 0; i < cp->t_grid_height; ++i) {
-		for (j = 0; j < cp->t_grid_width; ++j) {
+	for (uint32_t i = 0; i < cp->t_grid_height; ++i) {
+		for (uint32_t j = 0; j < cp->t_grid_width; ++j) {
 			double stride = 0;
 			if (cp->m_coding_params.m_enc.m_tp_on)
 				stride = (tcp->m_nb_tile_parts - 1) * 14;
@@ -3078,7 +3074,7 @@ bool CodeStream::update_rates(void) {
 					image->y1);
 			uint64_t numTilePixels = (uint64_t) (x1 - x0) * (y1 - y0);
 
-			for (k = 0; k < tcp->numlayers; ++k) {
+			for (uint16_t k = 0; k < tcp->numlayers; ++k) {
 				double *rates = tcp->rates + k;
 				if (*rates > 0.0f)
 					*rates = ((((double) size_pixel * (double) numTilePixels))
@@ -3089,8 +3085,8 @@ bool CodeStream::update_rates(void) {
 	}
 	tcp = cp->tcps;
 
-	for (i = 0; i < cp->t_grid_height; ++i) {
-		for (j = 0; j < cp->t_grid_width; ++j) {
+	for (uint32_t i = 0; i < cp->t_grid_height; ++i) {
+		for (uint32_t j = 0; j < cp->t_grid_width; ++j) {
 			double *rates = tcp->rates;
 			/* 4 borders of the tile rescale on the image if necessary */
 			uint32_t x0 = std::max<uint32_t>((cp->tx0 + j * cp->t_width),
@@ -3111,8 +3107,7 @@ bool CodeStream::update_rates(void) {
 					*rates = 30.0f;
 			}
 			++rates;
-			last_res = tcp->numlayers - 1;
-			for (k = 1; k < last_res; ++k) {
+			for (uint16_t k = 1; k < (uint16_t)(tcp->numlayers - 1); ++k) {
 				if (*rates > 0.0) {
 					*rates -= sot_adjust;
 					if (*rates < *(rates - 1) + 10.0)

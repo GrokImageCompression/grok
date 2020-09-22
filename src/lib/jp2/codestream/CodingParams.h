@@ -126,8 +126,8 @@ struct TileCodingParams {
 	/** progression order */
 	GRK_PROG_ORDER prg;
 	/** number of layers */
-	uint32_t numlayers;
-	uint32_t num_layers_to_decode;
+	uint16_t numlayers;
+	uint16_t num_layers_to_decode;
 	/** multi-component transform identifier */
 	uint32_t mct;
 	/** rates of layers */
@@ -223,7 +223,7 @@ struct DecodingParams {
 	/** if != 0, then original dimension divided by 2^(reduce); if == 0 or not used, image is decoded to the full resolution */
 	uint32_t m_reduce;
 	/** if != 0, then only the first "layer" layers are decoded; if == 0 or not used, all the quality layers are decoded */
-	uint32_t m_layer;
+	uint16_t m_layer;
 };
 
 /**

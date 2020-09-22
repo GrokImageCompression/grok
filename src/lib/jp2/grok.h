@@ -370,9 +370,10 @@ typedef struct _grk_poc {
 	/** Resolution num start, component num start, given by POC */
 	uint32_t resno0, compno0;
 	/** Layer num end, resolution num end, component num end, given by POC */
-	uint32_t layno1, resno1, compno1;
+	uint16_t layno1;
+	uint32_t resno1, compno1;
 	/** Layer num start,precinct num start, precinct num end */
-	uint32_t layno0;
+	uint16_t layno0;
 	uint64_t precno0, precno1;
 	/** Progression order enum*/
 	GRK_PROG_ORDER prg1, prg;
@@ -385,12 +386,14 @@ typedef struct _grk_poc {
 	/** Start value, initialized in pi_initialise_encode*/
 	uint32_t resS, compS;
 	/** End value, initialized in pi_initialise_encode */
-	uint32_t layE, resE, compE;
+	uint16_t layE;
+	uint32_t resE, compE;
 	uint64_t prcE;
 	/** Start and end values of tile width and height, initialized in pi_initialise_encode*/
 	uint32_t txS, txE, tyS, tyE, dx, dy;
 	/** Temporary values for Tile parts, initialized in pi_create_encode */
-	uint32_t lay_t, res_t, comp_t, tx0_t, ty0_t;
+	uint16_t lay_t;
+	uint32_t res_t, comp_t, tx0_t, ty0_t;
 	uint64_t prc_t;
 } grk_poc;
 
@@ -454,7 +457,7 @@ typedef struct _grk_cparameters {
 	/** number of progression order changes (POCs), default to 0 */
 	uint32_t numpocs;
 	/** number of layers */
-	uint32_t tcp_numlayers;
+	uint16_t tcp_numlayers;
 	/** rates of layers, expressed as compression ratios.
 	 *  They might be subsequently limited by the max_cs_size field */
 	double tcp_rates[100];
@@ -639,7 +642,7 @@ typedef struct _grk_header_info {
 	/** tile grid height  */
 	uint32_t t_grid_height;
 	/** number of layers */
-	uint32_t tcp_numlayers;
+	uint16_t tcp_numlayers;
 
 	GRK_ENUM_COLOUR_SPACE enumcs;
 	// ICC profile information
@@ -681,7 +684,7 @@ typedef struct _grk_dparameters {
 	 if != 0, then only the first "layer" layers are decoded;
 	 if == 0 or not used, all the quality layers are decoded
 	 */
-	uint32_t cp_layer;
+	uint16_t cp_layer;
 	/** input file name */
 	char infile[GRK_PATH_LEN];
 	/** output file name */
@@ -1074,7 +1077,7 @@ typedef struct _grk_tile_v2_info {
 	/** progression order */
 	GRK_PROG_ORDER prg;
 	/** number of layers */
-	uint32_t numlayers;
+	uint16_t numlayers;
 	/** multi-component transform identifier */
 	uint32_t mct;
 	/** information concerning tile component parameters*/

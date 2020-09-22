@@ -52,7 +52,7 @@ struct T2Encode : public T2 {
 	 @param tppos            The position of the tile part flag in the progression order
 	 @param pino             packet iterator number
 	 */
-	bool encode_packets(uint16_t tileno, uint32_t maxlayers,
+	bool encode_packets(uint16_t tileno, uint16_t maxlayers,
 			BufferedStream *stream, uint32_t *p_data_written,
 			uint32_t tpnum, uint32_t tppos,
 			uint32_t pino);
@@ -66,7 +66,7 @@ struct T2Encode : public T2 {
 	 @param tppos            position of the tile part flag in the progression order
 	 @param markers			 markers
 	 */
-	bool encode_packets_simulate(uint16_t tileno, uint32_t maxlayers,
+	bool encode_packets_simulate(uint16_t tileno, uint16_t maxlayers,
 			uint32_t *p_data_written, uint32_t max_len, uint32_t tppos,
 			PacketLengthMarkers *markers);
 

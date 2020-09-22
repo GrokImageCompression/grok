@@ -464,13 +464,11 @@ bool j2k_read_cod(CodeStream *codeStream,uint8_t *p_header_data,
 		return false;
 	}
 	tcp->prg = (GRK_PROG_ORDER) tmp;
-	grk_read<uint32_t>(p_header_data, &tcp->numlayers, 2); /* SGcod (B) */
+	grk_read<uint16_t>(p_header_data, &tcp->numlayers); /* SGcod (B) */
 	p_header_data += 2;
 
-	if ((tcp->numlayers < 1U) || (tcp->numlayers > USHRT_MAX)) {
-		GRK_ERROR(
-				"Invalid number of layers in COD marker : %u not in range [1-65535]",
-				tcp->numlayers);
+	if ((tcp->numlayers  == 0)) {
+		GRK_ERROR("Number of layers must be positive");
 		return false;
 	}
 
@@ -826,7 +824,7 @@ bool j2k_write_poc(CodeStream *codeStream) {
 			return false;
 
 		/* change the value of the max layer according to the actual number of layers in the file, components and resolutions*/
-		current_poc->layno1 = std::min<uint32_t>(current_poc->layno1,
+		current_poc->layno1 = std::min<uint16_t>(current_poc->layno1,
 				tcp->numlayers);
 		current_poc->resno1 = std::min<uint32_t>(current_poc->resno1,
 				tccp->numresolutions);
@@ -887,9 +885,9 @@ bool j2k_read_poc(CodeStream *codeStream, uint8_t *p_header_data,
 		grk_read<uint32_t>(p_header_data, &(current_poc->compno0), comp_room);
 		p_header_data += comp_room;
 		/* LYEpoc_i */
-		grk_read<uint32_t>(p_header_data, &(current_poc->layno1), 2);
+		grk_read<uint16_t>(p_header_data, &(current_poc->layno1));
 		/* make sure layer end is in acceptable bounds */
-		current_poc->layno1 = std::min<uint32_t>(current_poc->layno1,
+		current_poc->layno1 = std::min<uint16_t>(current_poc->layno1,
 				tcp->numlayers);
 		p_header_data += 2;
 		/* REpoc_i */

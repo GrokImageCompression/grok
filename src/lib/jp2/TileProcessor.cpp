@@ -93,7 +93,7 @@ bool TileProcessor::layer_needs_rate_control(uint32_t layno) {
 }
 
 bool TileProcessor::needs_rate_control() {
-	for (uint32_t i = 0; i < m_tcp->numlayers; ++i) {
+	for (uint16_t i = 0; i < m_tcp->numlayers; ++i) {
 		if (layer_needs_rate_control(i))
 			return true;
 	}
@@ -267,7 +267,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 	uint32_t max_slope = USHRT_MAX;
 
 	uint32_t upperBound = max_slope;
-	for (uint32_t layno = 0; layno < tcp->numlayers; layno++) {
+	for (uint16_t layno = 0; layno < tcp->numlayers; layno++) {
 		uint32_t lowerBound = min_slope;
 		uint32_t maxlen =
 				tcp->rates[layno] > 0.0f ?
@@ -336,7 +336,8 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
  Simple bisect algorithm to calculate optimal layer truncation points
  */
 bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
-	uint32_t compno, resno, bandno,layno;
+	uint32_t compno, resno, bandno;
+	uint16_t layno;
 	uint64_t precno, cblkno;
 	uint32_t passno;
 	double cumdisto[100];

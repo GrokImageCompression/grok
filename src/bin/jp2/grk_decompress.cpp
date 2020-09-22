@@ -462,7 +462,7 @@ int parse_cmdline_decoder(int argc, char **argv,
 				"", "string", cmd);
 		ValueArg<uint32_t> reduceArg("r", "Reduce", "Reduce resolutions", false,
 				0, "unsigned integer", cmd);
-		ValueArg<uint32_t> layerArg("l", "Layer", "Layer", false, 0,
+		ValueArg<uint16_t> layerArg("l", "Layer", "Layer", false, 0,
 				"unsigned integer", cmd);
 		ValueArg<uint32_t> tileArg("t", "TileIndex", "Input tile index", false,
 				0, "unsigned integer", cmd);
