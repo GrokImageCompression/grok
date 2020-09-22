@@ -2702,11 +2702,7 @@ bool CodeStream::decompress_tiles(void) {
 	std::atomic<uint32_t> num_tiles_decoded(0);
 	ThreadPool pool(std::min<uint32_t>((uint32_t)ThreadPool::get()->num_threads(), num_tiles_to_decode));
 	std::vector< std::future<int> > results;
-
-	if (multi_tile && m_output_image) {
-		if (!alloc_multi_tile_output_data(m_output_image))
-			return false;
-	}
+	bool allocatedOutputImage = false;
 
 	// parse header and perform T2 followed by asynch T1
 	for (uint32_t tileno = 0; tileno < num_tiles_to_decode; tileno++) {
@@ -2738,6 +2734,11 @@ bool CodeStream::decompress_tiles(void) {
 
 		m_processors.erase(processor->m_tile_index);
 
+		if (!allocatedOutputImage && multi_tile && m_output_image) {
+			if (!alloc_multi_tile_output_data(m_output_image))
+				return false;
+			allocatedOutputImage = true;
+		}
 		// once we schedule a processor for T1 compression, we will destroy it
 		// regardless of success or not
 		if (pool.num_threads() > 1) {
