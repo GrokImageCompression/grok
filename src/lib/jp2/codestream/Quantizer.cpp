@@ -202,12 +202,27 @@ bool Quantizer::read_SQcd_SQcc(CodeStream *codeStream,
 	bool fromTileHeader = codeStream->isDecodingTilePartHeader();
 	bool mainQCD = !fromQCC && !fromTileHeader;
 
-	if ((!fromTileHeader && !fromQCC) && tccp->fromQCC)
-		ignore = true;
-	if ((fromTileHeader && !fromQCC)
-			&& (tccp->fromTileHeader && tccp->fromQCC))
-		ignore = true;
+	if (tccp->quantizationMarkerSet) {
+		bool tileHeaderQCC = fromQCC && fromTileHeader;
+		bool setMainQCD = !tccp->fromQCC && !tccp->fromTileHeader;
+		bool setMainQCC = tccp->fromQCC && !tccp->fromTileHeader;
+		bool setTileHeaderQCD = !tccp->fromQCC && tccp->fromTileHeader;
+		bool setTileHeaderQCC = tccp->fromQCC && tccp->fromTileHeader;
+
+		if (!fromTileHeader){
+			if (setMainQCC || (mainQCD && setMainQCD))
+				ignore = true;
+		} else {
+			assert(setMainQCD);
+			if (setTileHeaderQCC)
+				ignore = true;
+			else if (setTileHeaderQCD && !tileHeaderQCC)
+				ignore = true;
+		}
+	}
+
 	if (!ignore) {
+		tccp->quantizationMarkerSet = true;
 		tccp->fromQCC = fromQCC;
 		tccp->fromTileHeader = fromTileHeader;
 		tccp->qntsty = qntsty;

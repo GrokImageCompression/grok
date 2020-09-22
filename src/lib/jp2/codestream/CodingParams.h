@@ -63,6 +63,9 @@ struct TileComponentCodingParams {
 	uint8_t cblk_sty;
 	/** discrete wavelet transform identifier */
 	uint8_t qmfbid;
+	// true if quantization marker has been read for this component,
+	// false otherwise
+	bool quantizationMarkerSet;
 	// true if quantization marker was read from QCC otherwise false
 	bool fromQCC;
 	// true if quantization marker was read from tile header
