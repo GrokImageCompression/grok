@@ -134,6 +134,7 @@ bool T2Decode::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 				GRK_WARN("Truncated packet: tile=%d component=%02d resolution=%02d precinct=%03d layer=%02d",
 				 tile_no, current_pi->compno, current_pi->resno,
 				 current_pi->precno, current_pi->layno);
+				break;
 			}
 			if (first_pass_failed[current_pi->compno]) {
 				if (tileProcessor->m_resno_decoded_per_component[current_pi->compno]  == 0) {
