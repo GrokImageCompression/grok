@@ -627,6 +627,8 @@ bool PNGFormat::encodeHeader(grk_image *img, const std::string &filename,
 	return do_encode(filename.c_str(), compressionParam) ? false : true;
 }
 bool PNGFormat::encodeStrip(uint32_t rows){
+	(void)rows;
+
 	cvtPlanarToInterleaved cvtPxToCx = cvtPlanarToInterleaved_LUT[nr_comp];
 	cvtFrom32 cvt32sToPack = nullptr;
 	png_bytep row_buf_cpy = row_buf;

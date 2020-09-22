@@ -848,7 +848,7 @@ bool PNMFormat::encodeHeader(grk_image *image, const std::string &filename,
 	return imagetopnm(image, filename.c_str(), forceSplit) ? false : true;
 }
 bool PNMFormat::encodeStrip(uint32_t rows){
-
+	(void)rows;
 
 	return true;
 }

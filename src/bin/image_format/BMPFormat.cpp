@@ -767,6 +767,7 @@ cleanup:
 }
 
 bool BMPFormat::encodeStrip(uint32_t rows){
+	(void)rows;
 /*
 	  tf::Executor executor;
 	  tf::Taskflow taskflow;

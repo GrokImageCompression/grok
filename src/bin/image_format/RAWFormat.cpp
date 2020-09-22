@@ -33,7 +33,7 @@ bool RAWFormat::encodeHeader(grk_image *image, const std::string &filename,
 	return imagetoraw(image, filename.c_str(), bigEndian) ? true : false;
 }
 bool RAWFormat::encodeStrip(uint32_t rows){
-
+	(void)rows;
 
 	return true;
 }

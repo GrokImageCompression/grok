@@ -638,7 +638,7 @@ bool JPEGFormat::encodeHeader(grk_image *image, const std::string &filename,
 			false : true;
 }
 bool JPEGFormat::encodeStrip(uint32_t rows){
-
+	(void)rows;
 
 	return true;
 }
