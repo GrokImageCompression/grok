@@ -267,7 +267,7 @@ struct CodeStream : public ICodeStream {
 
 	bool decompress_tile();
 
-	bool decompress_tile_t2(void);
+	bool decompress_tile_t2(TileProcessor *tileProcessor);
 
 	bool decompress_tiles(void);
 

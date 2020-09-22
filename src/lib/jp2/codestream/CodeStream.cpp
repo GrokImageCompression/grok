@@ -2669,9 +2669,8 @@ bool CodeStream::exec(std::vector<j2k_procedure> &procs) {
 	return result;
 }
 
-bool CodeStream::decompress_tile_t2(void) {
+bool CodeStream::decompress_tile_t2(TileProcessor *tileProcessor) {
 	auto decoder = &m_decoder;
-	auto tileProcessor = currentProcessor();
 
 	if (!(decoder->m_state & J2K_DEC_STATE_DATA)){
 	   GRK_ERROR("j2k_decompress_tile: no data.");
@@ -2722,9 +2721,10 @@ bool CodeStream::decompress_tiles(void) {
 
 		//2. T2 decode
 		auto processor = currentProcessor();
+		m_tileProcessor = nullptr;
 		bool breakAfterT1 = false;
 		try {
-			if (!decompress_tile_t2()){
+			if (!decompress_tile_t2(processor)){
 					GRK_ERROR("Failed to decompress tile %u/%u",
 							processor->m_tile_index + 1,
 							num_tiles_to_decode);
