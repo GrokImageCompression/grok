@@ -39,9 +39,9 @@
 #include <sys/stat.h>
 #endif /* _WIN32 */
 
-#include "common.h"
-using namespace grk;
+#include "grk_decompress.h"
 
+#include "common.h"
 #include "grok.h"
 #include "RAWFormat.h"
 #include "PNMFormat.h"
@@ -70,16 +70,9 @@ using namespace grk;
 #include <chrono>
 #include "spdlog/sinks/basic_file_sink.h"
 
-
 using namespace TCLAP;
 
-int load_images(grk_dircnt *dirptr, char *imgdirpath);
-static char get_next_file(std::string file_name, grk_img_fol *img_fol,
-		grk_img_fol *out_fol, grk_decompress_parameters *parameters);
-static int parse_cmdline_decoder(int argc, char **argv,
-		grk_decompress_parameters *parameters, grk_img_fol *img_fol,
-		grk_img_fol *out_fol, char *plugin_path);
-static grk_image* convert_gray_to_rgb(grk_image *original);
+namespace grk {
 
 void exit_func() {
 	grk_plugin_stop_batch_decompress();
@@ -118,6 +111,7 @@ void setup_signal_handler() {
 #endif  
 }
 
+
 static void error_callback(const char *msg, void *client_data) {
 	(void) client_data;
 	spdlog::default_logger()->error(msg);
@@ -130,6 +124,7 @@ static void info_callback(const char *msg, void *client_data) {
 	(void) client_data;
 	spdlog::default_logger()->info(msg);
 }
+
 
 static void decode_help_display(void) {
 	fprintf(stdout,
@@ -218,9 +213,7 @@ static void decode_help_display(void) {
 	fprintf(stdout, "\n");
 }
 
-/* -------------------------------------------------------------------------- */
-
-static bool parse_precision(const char *option,
+bool GrkDecompress::parse_precision(const char *option,
 		grk_decompress_parameters *parameters) {
 	const char *remaining = option;
 	bool result = true;
@@ -334,8 +327,7 @@ static bool parse_precision(const char *option,
 	return result;
 }
 
-/* -------------------------------------------------------------------------- */
-int load_images(grk_dircnt *dirptr, char *imgdirpath) {
+int GrkDecompress::load_images(grk_dircnt *dirptr, char *imgdirpath) {
 	DIR *dir;
 	struct dirent *content;
 	int i = 0;
@@ -360,8 +352,7 @@ int load_images(grk_dircnt *dirptr, char *imgdirpath) {
 	return 0;
 }
 
-/* -------------------------------------------------------------------------- */
-char get_next_file(std::string image_filename, grk_img_fol *img_fol,
+char GrkDecompress::get_next_file(std::string image_filename, grk_img_fol *img_fol,
 		grk_img_fol *out_fol, grk_decompress_parameters *parameters) {
 	spdlog::info("File: \"{}\"", image_filename.c_str());
 	std::string infilename = img_fol->imgdirpath
@@ -403,7 +394,7 @@ public:
 /**
  * Convert compression string to compression code. (use TIFF codes)
  */
-static uint32_t getCompressionCode(const std::string &compressionString){
+uint32_t GrkDecompress::getCompressionCode(const std::string &compressionString){
 	if (compressionString == "NONE")
 		return 0;
 	else if (compressionString == "LZW")
@@ -429,7 +420,7 @@ static uint32_t getCompressionCode(const std::string &compressionString){
  * Parse the command line
  */
 /* -------------------------------------------------------------------------- */
-int parse_cmdline_decoder(int argc, char **argv,
+int GrkDecompress::parse_cmdline_decoder(int argc, char **argv,
 		grk_decompress_parameters *parameters, grk_img_fol *img_fol,
 		grk_img_fol *out_fol, char *plugin_path) {
 	try {
@@ -762,7 +753,7 @@ int parse_cmdline_decoder(int argc, char **argv,
 	}
 	return 0;
 }
-static void set_default_parameters(grk_decompress_parameters *parameters) {
+void GrkDecompress::set_default_parameters(grk_decompress_parameters *parameters) {
 	if (parameters) {
 		memset(parameters, 0, sizeof(grk_decompress_parameters));
 
@@ -779,7 +770,7 @@ static void set_default_parameters(grk_decompress_parameters *parameters) {
 
 }
 
-static void destroy_parameters(grk_decompress_parameters *parameters) {
+void GrkDecompress::destroy_parameters(grk_decompress_parameters *parameters) {
 	if (parameters) {
 		if (parameters->precision) {
 			free(parameters->precision);
@@ -787,237 +778,6 @@ static void destroy_parameters(grk_decompress_parameters *parameters) {
 		}
 	}
 }
-
-/* -------------------------------------------------------------------------- */
-
-static grk_image* convert_gray_to_rgb(grk_image *original) {
-	if (original->numcomps == 0)
-		return nullptr;
-	uint32_t compno;
-	grk_image *new_image = nullptr;
-	grk_image_cmptparm *new_components = nullptr;
-
-	new_components = (grk_image_cmptparm*) malloc(
-			(original->numcomps + 2U) * sizeof(grk_image_cmptparm));
-	if (new_components == nullptr) {
-		spdlog::error(
-				"grk_decompress: failed to allocate memory for RGB image.");
-		grk_image_destroy(original);
-		return nullptr;
-	}
-
-	new_components[0].dx = new_components[1].dx = new_components[2].dx =
-			original->comps[0].dx;
-	new_components[0].dy = new_components[1].dy = new_components[2].dy =
-			original->comps[0].dy;
-	new_components[0].h = new_components[1].h = new_components[2].h =
-			original->comps[0].h;
-	new_components[0].w = new_components[1].w = new_components[2].w =
-			original->comps[0].w;
-	new_components[0].prec = new_components[1].prec = new_components[2].prec =
-			original->comps[0].prec;
-	new_components[0].sgnd = new_components[1].sgnd = new_components[2].sgnd =
-			original->comps[0].sgnd;
-	new_components[0].x0 = new_components[1].x0 = new_components[2].x0 =
-			original->comps[0].x0;
-	new_components[0].y0 = new_components[1].y0 = new_components[2].y0 =
-			original->comps[0].y0;
-
-	for (compno = 1U; compno < original->numcomps; ++compno) {
-		new_components[compno + 2U].dx = original->comps[compno].dx;
-		new_components[compno + 2U].dy = original->comps[compno].dy;
-		new_components[compno + 2U].h = original->comps[compno].h;
-		new_components[compno + 2U].w = original->comps[compno].w;
-		new_components[compno + 2U].prec = original->comps[compno].prec;
-		new_components[compno + 2U].sgnd = original->comps[compno].sgnd;
-		new_components[compno + 2U].x0 = original->comps[compno].x0;
-		new_components[compno + 2U].y0 = original->comps[compno].y0;
-	}
-
-	new_image = grk_image_create(original->numcomps + 2U, new_components,
-			GRK_CLRSPC_SRGB,true);
-	free(new_components);
-	if (new_image == nullptr) {
-		spdlog::error(
-				"grk_decompress: failed to allocate memory for RGB image.");
-		grk_image_destroy(original);
-		return nullptr;
-	}
-
-	new_image->x0 = original->x0;
-	new_image->x1 = original->x1;
-	new_image->y0 = original->y0;
-	new_image->y1 = original->y1;
-
-	new_image->comps[0].type = new_image->comps[1].type =
-			new_image->comps[2].type = original->comps[0].type;
-	memcpy(new_image->comps[0].data, original->comps[0].data,
-			original->comps[0].stride * original->comps[0].h * sizeof(int32_t));
-	memcpy(new_image->comps[1].data, original->comps[0].data,
-			original->comps[0].stride * original->comps[0].h * sizeof(int32_t));
-	memcpy(new_image->comps[2].data, original->comps[0].data,
-			original->comps[0].stride * original->comps[0].h * sizeof(int32_t));
-
-	for (compno = 1U; compno < original->numcomps; ++compno) {
-		new_image->comps[compno + 2U].type = original->comps[compno].type;
-		memcpy(new_image->comps[compno + 2U].data, original->comps[compno].data,
-				original->comps[compno].stride * original->comps[compno].h
-						* sizeof(int32_t));
-	}
-	grk_image_destroy(original);
-	return new_image;
-}
-
-/* -------------------------------------------------------------------------- */
-
-static grk_image* upsample_image_components(grk_image *original) {
-	grk_image *new_image = nullptr;
-	grk_image_cmptparm *new_components = nullptr;
-	bool upsample_need = false;
-	uint32_t compno;
-
-	if (!original || !original->comps)
-		return nullptr;
-
-	for (compno = 0U; compno < original->numcomps; ++compno) {
-		if (!(original->comps + compno))
-			return nullptr;
-		if ((original->comps[compno].dx > 1U)
-				|| (original->comps[compno].dy > 1U)) {
-			upsample_need = true;
-			break;
-		}
-	}
-	if (!upsample_need) {
-		return original;
-	}
-	/* Upsample is needed */
-	new_components = (grk_image_cmptparm*) malloc(
-			original->numcomps * sizeof(grk_image_cmptparm));
-	if (new_components == nullptr) {
-		spdlog::error(
-				"grk_decompress: failed to allocate memory for upsampled components.");
-		grk_image_destroy(original);
-		return nullptr;
-	}
-
-	for (compno = 0U; compno < original->numcomps; ++compno) {
-		auto new_cmp = &(new_components[compno]);
-		auto org_cmp = &(original->comps[compno]);
-
-		new_cmp->prec = org_cmp->prec;
-		new_cmp->sgnd = org_cmp->sgnd;
-		new_cmp->x0 = original->x0;
-		new_cmp->y0 = original->y0;
-		new_cmp->dx = 1;
-		new_cmp->dy = 1;
-		new_cmp->w = org_cmp->w; /* should be original->x1 - original->x0 for dx==1 */
-		new_cmp->h = org_cmp->h; /* should be original->y1 - original->y0 for dy==0 */
-
-		if (org_cmp->dx > 1U)
-			new_cmp->w = original->x1 - original->x0;
-		if (org_cmp->dy > 1U)
-			new_cmp->h = original->y1 - original->y0;
-	}
-
-	new_image = grk_image_create(original->numcomps, new_components,
-			original->color_space,true);
-	free(new_components);
-	if (new_image == nullptr) {
-		spdlog::error(
-				"grk_decompress: failed to allocate memory for upsampled components.");
-		grk_image_destroy(original);
-		return nullptr;
-	}
-
-	new_image->x0 = original->x0;
-	new_image->x1 = original->x1;
-	new_image->y0 = original->y0;
-	new_image->y1 = original->y1;
-
-	for (compno = 0U; compno < original->numcomps; ++compno) {
-		grk_image_comp *new_cmp = &(new_image->comps[compno]);
-		grk_image_comp *org_cmp = &(original->comps[compno]);
-
-		new_cmp->type = org_cmp->type;
-
-		if ((org_cmp->dx > 1U) || (org_cmp->dy > 1U)) {
-			auto src = org_cmp->data;
-			auto dst = new_cmp->data;
-
-			/* need to take into account dx & dy */
-			uint32_t xoff = org_cmp->dx * org_cmp->x0 - original->x0;
-			uint32_t yoff = org_cmp->dy * org_cmp->y0 - original->y0;
-			if ((xoff >= org_cmp->dx) || (yoff >= org_cmp->dy)) {
-				spdlog::error(
-						"grk_decompress: Invalid image/component parameters found when upsampling");
-				grk_image_destroy(original);
-				grk_image_destroy(new_image);
-				return nullptr;
-			}
-
-			uint32_t y;
-			for (y = 0U; y < yoff; ++y) {
-				memset(dst, 0U, new_cmp->w * sizeof(int32_t));
-				dst += new_cmp->stride;
-			}
-
-			if (new_cmp->h > (org_cmp->dy - 1U)) { /* check subtraction overflow for really small images */
-				for (; y < new_cmp->h - (org_cmp->dy - 1U); y += org_cmp->dy) {
-					uint32_t x, dy;
-					uint32_t xorg = 0;
-					for (x = 0U; x < xoff; ++x)
-						dst[x] = 0;
-
-					if (new_cmp->w > (org_cmp->dx - 1U)) { /* check subtraction overflow for really small images */
-						for (; x < new_cmp->w - (org_cmp->dx - 1U);	x += org_cmp->dx, ++xorg) {
-							for (uint32_t dx = 0U; dx < org_cmp->dx; ++dx)
-								dst[x + dx] = src[xorg];
-						}
-					}
-					for (; x < new_cmp->w; ++x)
-						dst[x] = src[xorg];
-					dst += new_cmp->stride;
-
-					for (dy = 1U; dy < org_cmp->dy; ++dy) {
-						memcpy(dst, dst - new_cmp->stride, new_cmp->w * sizeof(int32_t));
-						dst += new_cmp->stride;
-					}
-					src += org_cmp->stride;
-				}
-			}
-			if (y < new_cmp->h) {
-				uint32_t x;
-				uint32_t xorg;
-
-				xorg = 0U;
-				for (x = 0U; x < xoff; ++x)
-					dst[x] = 0;
-
-				if (new_cmp->w > (org_cmp->dx - 1U)) { /* check subtraction overflow for really small images */
-					for (; x < new_cmp->w - (org_cmp->dx - 1U); x += org_cmp->dx, ++xorg) {
-						for (uint32_t dx = 0U; dx < org_cmp->dx; ++dx)
-							dst[x + dx] = src[xorg];
-					}
-				}
-				for (; x < new_cmp->w; ++x)
-					dst[x] = src[xorg];
-				dst += new_cmp->stride;
-				++y;
-				for (; y < new_cmp->h; ++y) {
-					memcpy(dst, dst - new_cmp->stride, new_cmp->w * sizeof(int32_t));
-					dst += new_cmp->stride;
-				}
-			}
-		} else {
-			memcpy(new_cmp->data, org_cmp->data, org_cmp->stride * org_cmp->h * sizeof(int32_t));
-		}
-	}
-	grk_image_destroy(original);
-	return new_image;
-}
-
-bool store_file_to_disk = true;
 
 #ifdef GROK_HAVE_LIBLCMS
 void MycmsLogErrorHandlerFunction(cmsContext ContextID,
@@ -1028,37 +788,10 @@ void MycmsLogErrorHandlerFunction(cmsContext ContextID,
 }
 #endif
 
-struct DecompressInitParams {
-	DecompressInitParams() :
-			initialized(false) {
-		plugin_path[0] = 0;
-		memset(&img_fol, 0, sizeof(img_fol));
-		memset(&out_fol, 0, sizeof(out_fol));
-	}
-
-	~DecompressInitParams() {
-		if (img_fol.imgdirpath)
-			free(img_fol.imgdirpath);
-		if (out_fol.imgdirpath)
-			free(out_fol.imgdirpath);
-	}
-	bool initialized;
-
-	grk_decompress_parameters parameters; /* compression parameters */
-	char plugin_path[GRK_PATH_LEN];
-
-	grk_img_fol img_fol;
-	grk_img_fol out_fol;
-
-};
-
 static int decode_callback(grk_plugin_decode_callback_info *info);
-static int pre_decode(grk_plugin_decode_callback_info *info);
-static int post_decode(grk_plugin_decode_callback_info *info);
-static int plugin_main(int argc, char **argv, DecompressInitParams *initParams);
 
 // returns 0 for failure, 1 for success, and 2 if file is not suitable for decoding
-int decompress(const char *fileName, DecompressInitParams *initParams) {
+int GrkDecompress::decompress(const char *fileName, DecompressInitParams *initParams) {
 	if (initParams->img_fol.set_imgdir) {
 		if (get_next_file(fileName, &initParams->img_fol,
 				initParams->out_fol.set_imgdir ?
@@ -1084,71 +817,8 @@ int decompress(const char *fileName, DecompressInitParams *initParams) {
 	return 1;
 }
 
-int main(int argc, char **argv) {
-	int rc = EXIT_SUCCESS;
-	uint32_t num_decompressed_images = 0;
-	DecompressInitParams initParams;
-	try {
-		// try to d with plugin
-		int plugin_rc = plugin_main(argc, argv, &initParams);
 
-		// return immediately if either 
-		// initParams was not initialized (something was wrong with command line params)
-		// or
-		// plugin was successful
-		if (!initParams.initialized) {
-			rc = EXIT_FAILURE;
-			goto cleanup;
-		}
-		if (plugin_rc == EXIT_SUCCESS) {
-			rc = EXIT_SUCCESS;
-			goto cleanup;
-		}
-		auto start = std::chrono::high_resolution_clock::now();
-		for (uint32_t i = 0; i < initParams.parameters.repeats; ++i) {
-			if (!initParams.img_fol.set_imgdir) {
-				if (!decompress("", &initParams)) {
-					rc = EXIT_FAILURE;
-					goto cleanup;
-				}
-				num_decompressed_images++;
-			} else {
-				auto dir = opendir(initParams.img_fol.imgdirpath);
-				if (!dir) {
-					spdlog::error("Could not open Folder {}",
-							initParams.img_fol.imgdirpath);
-					rc = EXIT_FAILURE;
-					goto cleanup;
-				}
-				struct dirent *content = nullptr;
-				while ((content = readdir(dir)) != nullptr) {
-					if (strcmp(".", content->d_name) == 0
-							|| strcmp("..", content->d_name) == 0)
-						continue;
-					if (decompress(content->d_name, &initParams) == 1)
-						num_decompressed_images++;
-				}
-				closedir(dir);
-			}
-		}
-		auto finish = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double> elapsed = finish - start;
-		if (num_decompressed_images) {
-			spdlog::info("decompress time: {} ms/image",
-					(elapsed.count() * 1000)
-							/ (double) num_decompressed_images);
-		}
-	} catch (std::bad_alloc &ba) {
-		spdlog::error("Out of memory. Exiting.");
-		rc = 1;
-		goto cleanup;
-	}
-	cleanup: destroy_parameters(&initParams.parameters);
-	grk_deinitialize();
-	return rc;
-}
-
-int plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
+int GrkDecompress::plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
 	uint32_t num_images = 0, imageno = 0;
 	grk_dircnt *dirptr = nullptr;
 	int32_t success = 0;
@@ -1296,6 +966,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
 	return success;
 }
 
+
 int decode_callback(grk_plugin_decode_callback_info *info) {
 	int rc = -1;
 	// GRK_DECODE_T1 flag specifies full decompress on CPU, so
@@ -1319,12 +990,12 @@ int decode_callback(grk_plugin_decode_callback_info *info) {
 	if (info->decode_flags & (GRK_DECODE_HEADER |
 	GRK_DECODE_T1 |
 	GRK_DECODE_T2)) {
-		rc = pre_decode(info);
+		rc = GrkDecompress::pre_decode(info);
 		if (rc)
 			return rc;
 	}
 	if (info->decode_flags & GRK_DECODE_POST_T1) {
-		rc = post_decode(info);
+		rc = GrkDecompress::post_decode(info);
 	}
 	return rc;
 }
@@ -1334,7 +1005,7 @@ enum grk_stream_type {
 };
 
 // return: 0 for success, non-zero for failure
-int pre_decode(grk_plugin_decode_callback_info *info) {
+int GrkDecompress::pre_decode(grk_plugin_decode_callback_info *info) {
 	if (!info)
 		return 1;
 	bool failed = true;
@@ -1347,6 +1018,48 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 	int decod_format =
 			info->decod_format != GRK_UNK_FMT ?
 					info->decod_format : parameters->decod_format;
+
+	GRK_SUPPORTED_FILE_FMT cod_format = (GRK_SUPPORTED_FILE_FMT) (
+			info->cod_format != GRK_UNK_FMT ?
+					info->cod_format : parameters->cod_format);
+
+	switch (cod_format) {
+			case GRK_PXM_FMT:
+				GrkDecompress::imageFormat = new PNMFormat(parameters->split_pnm);
+				break;
+			case GRK_PGX_FMT:
+				GrkDecompress::imageFormat = new PGXFormat();
+				break;
+			case GRK_BMP_FMT:
+				GrkDecompress::imageFormat = new BMPFormat();
+				break;
+	#ifdef GROK_HAVE_LIBTIFF
+			case GRK_TIF_FMT:
+				GrkDecompress::imageFormat = new TIFFFormat();
+				break;
+	#endif
+			case GRK_RAW_FMT:
+				GrkDecompress::imageFormat = new RAWFormat(true);
+				break;
+			case GRK_RAWL_FMT:
+				GrkDecompress::imageFormat = new RAWFormat(false);
+				break;
+	#ifdef GROK_HAVE_LIBJPEG
+			case GRK_JPG_FMT:
+				GrkDecompress::imageFormat = new JPEGFormat(true);
+				break;
+	#endif
+
+	#ifdef GROK_HAVE_LIBPNG
+			case GRK_PNG_FMT:
+				GrkDecompress::imageFormat = new PNGFormat();
+				break;
+	#endif
+			default:
+				break;
+	}
+
+
 	//1. initialize
 	if (!info->l_stream) {
 		if (useMemoryBuffer) {
@@ -1478,6 +1191,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 	if (info->decode_flags == GRK_DECODE_HEADER)
 		goto cleanup;
 
+
 	//3. decompress
 	if (info->tile)
 		info->tile->decode_flags = info->decode_flags;
@@ -1515,7 +1229,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 		//spdlog::info("Tile {} was decoded.", parameters->tile_index);
 	}
 	failed = false;
-	cleanup:
+cleanup:
 	grk_stream_destroy(info->l_stream);
 	info->l_stream = nullptr;
 	grk_destroy_codec(info->l_codec);
@@ -1531,7 +1245,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 /*
  Post-process decompressed image and store in selected image format
  */
-int post_decode(grk_plugin_decode_callback_info *info) {
+int GrkDecompress::post_decode(grk_plugin_decode_callback_info *info) {
 	if (!info)
 		return -1;
 	bool oddFirstX = info->full_image_x0 & 1;
@@ -1715,7 +1429,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		}
 	}
 
-	if (store_file_to_disk) {
+	if (GrkDecompress::store_file_to_disk) {
 		std::string outfileStr = outfile ? std::string(outfile) : "";
 		switch (cod_format) {
 		case GRK_PXM_FMT:
@@ -1840,6 +1554,8 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		grk_image_destroy(image);
 		info->image = nullptr;
 	}
+	delete GrkDecompress::imageFormat;
+	GrkDecompress::imageFormat = nullptr;
 	if (failed) {
 		if (outfile){
 			bool allocated = false;
@@ -1852,4 +1568,82 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 
 	return failed ? 1 : 0;
 }
+
+bool GrkDecompress::store_file_to_disk=true;
+IImageFormat* GrkDecompress::imageFormat = nullptr;
+
+int GrkDecompress::main(int argc, char **argv) {
+	int rc = EXIT_SUCCESS;
+	uint32_t num_decompressed_images = 0;
+	DecompressInitParams initParams;
+	try {
+		// try to decompress with plugin
+		int plugin_rc = plugin_main(argc, argv, &initParams);
+
+		// return immediately if either
+		// initParams was not initialized (something was wrong with command line params)
+		// or
+		// plugin was successful
+		if (!initParams.initialized) {
+			rc = EXIT_FAILURE;
+			goto cleanup;
+		}
+		if (plugin_rc == EXIT_SUCCESS) {
+			rc = EXIT_SUCCESS;
+			goto cleanup;
+		}
+		auto start = std::chrono::high_resolution_clock::now();
+		for (uint32_t i = 0; i < initParams.parameters.repeats; ++i) {
+			if (!initParams.img_fol.set_imgdir) {
+				if (!decompress("", &initParams)) {
+					rc = EXIT_FAILURE;
+					goto cleanup;
+				}
+				num_decompressed_images++;
+			} else {
+				auto dir = opendir(initParams.img_fol.imgdirpath);
+				if (!dir) {
+					spdlog::error("Could not open Folder {}",
+							initParams.img_fol.imgdirpath);
+					rc = EXIT_FAILURE;
+					goto cleanup;
+				}
+				struct dirent *content = nullptr;
+				while ((content = readdir(dir)) != nullptr) {
+					if (strcmp(".", content->d_name) == 0
+							|| strcmp("..", content->d_name) == 0)
+						continue;
+					if (decompress(content->d_name, &initParams) == 1)
+						num_decompressed_images++;
+				}
+				closedir(dir);
+			}
+		}
+		auto finish = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double> elapsed = finish - start;
+		if (num_decompressed_images) {
+			spdlog::info("decompress time: {} ms/image",
+					(elapsed.count() * 1000)
+							/ (double) num_decompressed_images);
+		}
+	} catch (std::bad_alloc &ba) {
+		spdlog::error("Out of memory. Exiting.");
+		rc = 1;
+		goto cleanup;
+	}
+cleanup:
+	destroy_parameters(&initParams.parameters);
+	grk_deinitialize();
+	return rc;
+}
+
+}
+
+int main(int argc, char **argv) {
+   grk::GrkDecompress decomp;
+   return decomp.main(argc,argv);
+
+}
+
+
 

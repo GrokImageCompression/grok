@@ -18,7 +18,7 @@
 
 #include "ImageFormat.h"
 
-class RAWFormat : ImageFormat {
+class RAWFormat : public ImageFormat {
 public:
 	explicit RAWFormat(bool isBig) : bigEndian(isBig) {}
 	bool encodeHeader(grk_image *  image, const std::string &filename, uint32_t compressionParam) override;

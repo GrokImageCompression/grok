@@ -43,6 +43,9 @@ void clip_component( grk_image_comp  *  component, uint32_t precision);
 /* Component precision scaling */
 void scale_component( grk_image_comp  *  component, uint32_t precision);
 
+grk_image* convert_gray_to_rgb(grk_image *original);
+grk_image* upsample_image_components(grk_image *original);
+
 /* planar / interleaved conversions */
 typedef void(*cvtInterleavedToPlanar)(const int32_t* pSrc, int32_t* const* pDst, size_t length);
 extern const cvtInterleavedToPlanar cvtInterleavedToPlanar_LUT[10];
