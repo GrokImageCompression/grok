@@ -27,6 +27,7 @@
 #include <cstring>
 #include "common.h"
 #include <taskflow/taskflow.hpp>
+#include "FileUringIO.h"
 
 // `MBED` in big endian format
 const uint32_t BMP_ICC_PROFILE_EMBEDDED = 0x4d424544;
@@ -654,7 +655,12 @@ uint32_t BMPFormat::getPaddedWidth(){
 }
 
 BMPFormat::BMPFormat(void) : m_srcIndex(0)
-{}
+{
+#ifdef GROK_HAVE_URING
+	delete m_fileIO;
+	m_fileIO = new FileUringIO();
+#endif
+}
 
 bool BMPFormat::encodeHeader(grk_image *image, const std::string &filename, uint32_t compressionParam){
 	(void) compressionParam;

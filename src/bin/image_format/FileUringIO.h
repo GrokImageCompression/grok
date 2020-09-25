@@ -34,5 +34,6 @@ private:
 	int m_fd;
 	std::string m_fileName;
 	size_t m_off;
+	size_t m_writeCount;
 };
 

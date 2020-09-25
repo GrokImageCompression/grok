@@ -102,9 +102,7 @@ _getMode(const char* mode)
 	return (m);
 }
 
-
-
-FileUringIO::FileUringIO()  : m_fd(0), m_off(0)
+FileUringIO::FileUringIO()  : m_fd(0), m_off(0), m_writeCount(0)
 {
 	memset(&ring, 0, sizeof(ring));
 }
@@ -112,8 +110,6 @@ FileUringIO::FileUringIO()  : m_fd(0), m_off(0)
 FileUringIO::~FileUringIO()
 {
 	close();
-	if (ring.ring_fd)
-	  io_uring_queue_exit(&ring);
 }
 
 bool FileUringIO::open(std::string fileName, std::string mode){
@@ -143,8 +139,44 @@ bool FileUringIO::open(std::string fileName, std::string mode){
 	return true;
 
 }
+
+int process_completion(struct io_uring *ring) {
+    struct io_uring_cqe *cqe;
+    int ret = io_uring_wait_cqe(ring, &cqe);
+
+    if (ret < 0) {
+        perror("io_uring_wait_cqe");
+        return 1;
+    }
+
+    if (cqe->res < 0) {
+        /* The system call invoked asynchonously failed */
+        return 1;
+    }
+
+    /* Retrieve user data from CQE */
+    io_data *data = (io_data*)io_uring_cqe_get_data(cqe);
+    delete[] (uint8_t*)data->iov.iov_base;
+    delete data;
+    /* process this request here */
+
+    /* Mark this completion as seen */
+    io_uring_cqe_seen(ring, cqe);
+    return 0;
+}
+
 bool FileUringIO::close(void){
 	bool rc = false;
+	if (m_fd){
+		if (fsync(m_fd))
+			spdlog::error("failed to synch file");
+	}
+	if (ring.ring_fd){
+		for (uint32_t i = 0; i < m_writeCount; ++i)
+			process_completion(&ring);
+	    io_uring_queue_exit(&ring);
+		memset(&ring, 0, sizeof(ring));
+	}
 	if (!m_fd || grk::useStdio(m_fileName.c_str()))
 		rc =  true;
 	else if (::close(m_fd) == 0)
@@ -153,30 +185,23 @@ bool FileUringIO::close(void){
 	return rc;
 }
 
-bool do_uring = true;
-
 bool FileUringIO::write(uint8_t *buf, size_t len){
 
 	bool rc = true;
 	auto start = std::chrono::high_resolution_clock::now();
-
-	if (do_uring) {
-		io_data *data = new io_data();
-		data->offset = m_off;
-		m_off += len;
-		data->iov.iov_base = buf;
-		data->iov.iov_len = len;
-		queue_write(&ring, data, m_fd);
-	} else {
-		auto actual = (size_t)::write(m_fd, buf, len);
-		if (actual < len)
-			spdlog::error("wrote fewer bytes {} than expected number of bytes {}.",actual, len);
-		rc = actual == len;
-	}
+	io_data *data = new io_data();
+	auto b = new uint8_t[len];
+	memcpy(b,buf,len);
+	data->offset = m_off;
+	m_off += len;
+	data->iov.iov_base = b;
+	data->iov.iov_len = len;
+	queue_write(&ring, data, m_fd);
 
 	auto finish = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double> elapsed = finish - start;
 	//spdlog::info("write time: {} ms",	elapsed.count() * 1000);
+	m_writeCount++;
 
 
 	return rc;

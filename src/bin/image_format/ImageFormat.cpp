@@ -19,7 +19,6 @@
 #include <algorithm>
 #include "common.h"
 #include "FileStreamIO.h"
-#include "FileUringIO.h"
 
 ImageFormat::ImageFormat() : m_image(nullptr),
 							m_rowCount(0),
@@ -27,12 +26,7 @@ ImageFormat::ImageFormat() : m_image(nullptr),
 							m_numStrips(0),
 							m_fileHandle(nullptr)
 {
-#ifdef GROK_HAVE_URING
-	//m_fileIO = new FileUringIO();
 	m_fileIO = new FileStreamIO();
-#else
-	m_fileIO = new FileStreamIO();
-#endif
 }
 
 ImageFormat::~ImageFormat() {
@@ -48,7 +42,11 @@ bool ImageFormat::encodeHeader(grk_image *  image, const std::string &filename, 
 }
 
 bool ImageFormat::encodeFinish(void){
-	return m_fileIO->close();
+	bool rc =  m_fileIO->close();
+	delete m_fileIO;
+	m_fileIO = nullptr;
+
+	return rc;
 }
 bool ImageFormat::openFile(std::string fileName, std::string mode){
 	return m_fileIO->open(fileName, mode);
