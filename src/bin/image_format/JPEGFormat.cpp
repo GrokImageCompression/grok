@@ -26,11 +26,13 @@
 # error GROK_HAVE_LIBJPEG_NOT_DEFINED
 #endif /* GROK_HAVE_LIBJPEG */
 
-#include "jpeglib.h"
+
 #include <setjmp.h>
 #include <cassert>
-#include "iccjpeg.h"
+
 #include "common.h"
+#include "FileStreamIO.h"
+
 
 struct my_error_mgr {
 	struct jpeg_error_mgr pub; /* "public" fields */
@@ -50,305 +52,6 @@ METHODDEF(void) my_error_exit(j_common_ptr cinfo) {
 
 	/* Return control to the setjmp point */
 	longjmp(myerr->setjmp_buffer, 1);
-}
-
-struct imageToJpegInfo {
-	imageToJpegInfo() :
-			outfile(nullptr), success(true), buffer(nullptr), buffer32s(
-					nullptr), color_space(JCS_UNKNOWN), writeToStdout(false), adjust(
-					0) {
-	}
-
-	FILE *outfile;
-	bool success;
-	uint8_t *buffer;
-	int32_t *buffer32s;
-	J_COLOR_SPACE color_space;
-	bool writeToStdout;
-	int32_t adjust;
-};
-
-static int imagetojpeg(grk_image *image, const char *filename,
-		uint32_t compressionParam) {
-	if (!image)
-		return 1;
-	imageToJpegInfo info;
-	info.writeToStdout = grk::useStdio(filename);
-	cvtPlanarToInterleaved cvtPxToCx = nullptr;
-	cvtFrom32 cvtTo8bpp = nullptr;
-	int32_t const *planes[3];
-	int32_t firstAlpha = -1;
-	size_t numAlphaChannels = 0;
-	uint32_t numcomps = image->numcomps;
-	uint32_t sgnd = image->comps[0].sgnd;
-	info.adjust = sgnd ? 1 << (image->comps[0].prec - 1) : 0;
-	uint32_t width = image->comps[0].w;
-	uint32_t stride = image->comps[0].stride;
-
-	// actual bits per sample
-	uint32_t prec = image->comps[0].prec;
-	uint32_t i = 0;
-
-	struct my_error_mgr jerr;
-	JSAMPROW row_pointer[1]; /* pointer to JSAMPLE row[s] */
-
-	/* Step 1: allocate and initialize JPEG compression object */
-
-	/* We have to set up the error handler first, in case the initialization
-	 * step fails.  (Unlikely, but it could happen if you are out of memory.)
-	 * This routine fills in the contents of struct jerr, and returns jerr's
-	 * address which we place into the link field in cinfo.
-	 */
-
-	/* This struct contains the JPEG compression parameters and pointers to
-	 * working space (which is allocated as needed by the JPEG library).
-	 * It is possible to have several such structures, representing multiple
-	 * compression/decompression processes, in existence at once.  We refer
-	 * to any one struct (and its associated working data) as a "JPEG object".
-	 */
-	struct jpeg_compress_struct cinfo;
-	/* This struct represents a JPEG error handler.  It is declared separately
-	 * because applications often want to supply a specialized error handler
-	 * (see the second half of this file for an example).  But here we just
-	 * take the easy way out and use the standard error handler, which will
-	 * print a message on stderr and return 1 if compression fails.
-	 * Note that this struct must live as long as the main JPEG parameter
-	 * struct, to avoid dangling-pointer problems.
-	 */
-	JDIMENSION image_width = image->x1 - image->x0; /* input image width */
-	JDIMENSION image_height = image->y1 - image->y0; /* input image height */
-
-	switch (image->color_space) {
-	case GRK_CLRSPC_SRGB: /**< sRGB */
-		info.color_space = JCS_RGB;
-		break;
-	case GRK_CLRSPC_GRAY: /**< grayscale */
-		info.color_space = JCS_GRAYSCALE;
-		break;
-	case GRK_CLRSPC_SYCC: /**< YUV */
-		info.color_space = JCS_YCbCr;
-		break;
-	case GRK_CLRSPC_EYCC: /**< e-YCC */
-		info.color_space = JCS_YCCK;
-		break;
-	case GRK_CLRSPC_CMYK: /**< CMYK */
-		info.color_space = JCS_CMYK;
-		break;
-	default:
-		if (numcomps == 3)
-			info.color_space = JCS_RGB;
-		else if (numcomps == 1)
-			info.color_space = JCS_GRAYSCALE;
-		else {
-			spdlog::error("imagetojpeg: colour space must be "
-					"either RGB or Grayscale");
-			info.success = false;
-			goto cleanup;
-		}
-		break;
-	}
-
-	if (image->numcomps > 4) {
-		spdlog::error("imagetojpeg: number of components {} "
-				"is greater than 4.", image->numcomps);
-		info.success = false;
-		goto cleanup;
-	}
-
-	planes[0] = image->comps[0].data;
-	if (prec == 0) {
-		spdlog::error("imagetojpeg: image precision is zero.");
-		info.success = false;
-		goto cleanup;
-	}
-
-	//check for null image components
-	for (uint32_t i = 0; i < numcomps; ++i) {
-		auto comp = image->comps[i];
-		if (!comp.data) {
-			spdlog::error("imagetojpeg: component {} is null.", i);
-			info.success = false;
-			goto cleanup;
-		}
-	}
-	for (i = 1U; i < numcomps; ++i) {
-		if (image->comps[0].dx != image->comps[i].dx)
-			break;
-		if (image->comps[0].dy != image->comps[i].dy)
-			break;
-		if (image->comps[0].prec != image->comps[i].prec)
-			break;
-		if (image->comps[0].sgnd != image->comps[i].sgnd)
-			break;
-		planes[i] = image->comps[i].data;
-	}
-	if (i != numcomps) {
-		spdlog::error(
-				"imagetojpeg: All components shall have the same subsampling, same bit depth.");
-		info.success = false;
-		goto cleanup;
-	}
-
-	if (prec < 8 && numcomps > 1) { /* GRAY_ALPHA, RGB, RGB_ALPHA */
-		for (i = 0; i < numcomps; ++i)
-			scale_component(&(image->comps[i]), 8);
-		prec = 8;
-	} else if ((prec > 1) && (prec < 8) && ((prec == 6) || ((prec & 1) == 1))) { /* GRAY with non native precision */
-		if ((prec == 5) || (prec == 6))
-			prec = 8;
-		else
-			prec++;
-		for (i = 0; i < numcomps; ++i)
-			scale_component(&(image->comps[i]), (uint32_t) prec);
-	}
-
-	if (prec != 1 && prec != 2 && prec != 4 && prec != 8) {
-		spdlog::error("imagetojpeg: can not create {}\n\twrong bit_depth {}",
-				filename, prec);
-		info.success = false;
-		goto cleanup;;
-	}
-
-	cvtPxToCx = cvtPlanarToInterleaved_LUT[numcomps];
-	cvtTo8bpp = cvtFrom32_LUT[prec];
-
-	// Alpha channels
-	for (i = 0U; i < numcomps; ++i) {
-		if (image->comps[i].type) {
-			if (firstAlpha == -1)
-				firstAlpha = 0;
-			numAlphaChannels++;
-		}
-	}
-	// We assume that alpha channels occur as last channels in image.
-	if (numAlphaChannels && ( (uint32_t)firstAlpha + numAlphaChannels >= numcomps)) {
-		spdlog::warn("PNG requires that alpha channels occur"
-				" as last channels in image.");
-		numAlphaChannels = 0;
-	}
-	info.buffer = new uint8_t[width * numcomps];
-	info.buffer32s = new int32_t[width * numcomps];
-
-	/* We set up the normal JPEG error routines, then override error_exit. */
-	cinfo.err = jpeg_std_error(&jerr.pub);
-	jerr.pub.error_exit = my_error_exit;
-	/* Establish the setjmp return context for my_error_exit to use. */
-	if (setjmp(jerr.setjmp_buffer)) {
-		/* If we get here, the JPEG code has signaled an error.
-		 * We need to clean up the JPEG object, close the input file, and return.
-		 */
-		jpeg_destroy_compress(&cinfo);
-		info.success = false;
-		goto cleanup;
-	}
-	/* Now we can initialize the JPEG compression object. */
-	jpeg_create_compress(&cinfo);
-
-	/* Step 2: specify data destination (eg, a file) */
-	/* Note: steps 2 and 3 can be done in either order. */
-
-	/* Here we use the library-supplied code to send compressed data to a
-	 * stdio stream.  You can also write your own code to do something else.
-	 * VERY IMPORTANT: use "b" option to fopen() if you are on a machine that
-	 * requires it in order to write binary files.
-	 */
-	if (info.writeToStdout) {
-		if (!grk::grk_set_binary_mode(stdout))
-			return 1;
-		info.outfile = stdout;
-	} else {
-		if ((info.outfile = fopen(filename, "wb")) == nullptr) {
-			spdlog::error("can't open {}", filename);
-			info.success = false;
-			goto cleanup;
-		}
-	}
-	jpeg_stdio_dest(&cinfo, info.outfile);
-
-	/* Step 3: set parameters for compression */
-
-	/* First we supply a description of the input image.
-	 * Four fields of the cinfo struct must be filled in:
-	 */
-	cinfo.image_width = image_width; /* image width and height, in pixels */
-	cinfo.image_height = image_height;
-	cinfo.input_components = (int)numcomps; /* # of color components per pixel */
-	cinfo.in_color_space = info.color_space; /* colorspace of input image */
-
-	/* Now use the library's routine to set default compression parameters.
-	 * (You must set at least cinfo.in_color_space before calling this,
-	 * since the defaults depend on the source color space.)
-	 */
-	jpeg_set_defaults(&cinfo);
-
-	/* Now you can set any non-default parameters you wish to.
-	 * Here we just illustrate the use of quality (quantization table) scaling:
-	 */
-	jpeg_set_quality(&cinfo,
-			(int)((compressionParam == GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT) ?
-					90 : compressionParam),
-			(boolean) TRUE /* limit to baseline-JPEG values */);
-
-	// set resolution
-	if (image->capture_resolution[0] > 0 && image->capture_resolution[1] > 0) {
-		cinfo.density_unit = 2; // dots per cm
-		cinfo.X_density = (uint16_t)(image->capture_resolution[0]/100.0 + 0.5);
-		cinfo.Y_density = (uint16_t)(image->capture_resolution[1]/100.0 + 0.5);
-	}
-
-	/* Step 4: Start compressor */
-
-	/* TRUE ensures that we will write a complete interchange-JPEG file.
-	 * Pass TRUE unless you are very sure of what you're doing.
-	 */
-	jpeg_start_compress(&cinfo, (boolean) TRUE);
-	if (image->icc_profile_buf) {
-		write_icc_profile(&cinfo, image->icc_profile_buf,
-				image->icc_profile_len);
-	}
-
-	/* Step 5: while (scan lines remain to be written) */
-	/*           jpeg_write_scanlines(...); */
-
-	/* Here we use the library's state variable cinfo.next_scanline as the
-	 * loop counter, so that we don't have to keep track ourselves.
-	 * To keep things simple, we pass one scanline per call; you can pass
-	 * more if you wish, though.
-	 */
-
-	while (cinfo.next_scanline < cinfo.image_height) {
-		/* jpeg_write_scanlines expects an array of pointers to scanlines.
-		 * Here the array is only one element long, but you could pass
-		 * more than one scanline at a time if that's more convenient.
-		 */
-		cvtPxToCx(planes, info.buffer32s, (size_t) width, info.adjust);
-		cvtTo8bpp(info.buffer32s, (uint8_t*) info.buffer,
-				(size_t) width * numcomps);
-		row_pointer[0] = info.buffer;
-		planes[0] += stride;
-		planes[1] += stride;
-		planes[2] += stride;
-		(void) jpeg_write_scanlines(&cinfo, row_pointer, 1);
-	}
-	/* Step 6: Finish compression */
-	jpeg_finish_compress(&cinfo);
-
-	cleanup:
-	/* Step 7: release JPEG compression object */
-
-	/* This is an important step since it will release a good deal of memory. */
-	jpeg_destroy_compress(&cinfo);
-
-	delete[] info.buffer;
-	delete[] info.buffer32s;
-	/* After finish_compress, we can close the output file. */
-	if (info.outfile && !info.writeToStdout) {
-		if (!grk::safe_fclose(info.outfile)) {
-			info.success = 1;
-		}
-	}
-
-	return info.success ? 0 : 1;
 }
 
 /*
@@ -376,23 +79,10 @@ static int imagetojpeg(grk_image *image, const char *filename,
  * temporary files are deleted if the program is interrupted.  See libjpeg.txt.
  */
 
-struct jpegToImageInfo {
-	jpegToImageInfo() :
-			infile(nullptr), readFromStdin(false), image(nullptr), success(
-					true), buffer32s(nullptr) {
-	}
 
-	FILE *infile;
-	bool readFromStdin;
-	grk_image *image;
-	bool success;
-	int32_t *buffer32s;
-};
-
-static grk_image* jpegtoimage(const char *filename,
+grk_image* JPEGFormat::jpegtoimage(const char *filename,
 		grk_cparameters *parameters) {
-	jpegToImageInfo imageInfo;
-	imageInfo.readFromStdin = grk::useStdio(filename);
+	readFromStdin = grk::useStdio(filename);
 
 	int32_t *planes[3];
 	JDIMENSION w = 0, h = 0;
@@ -424,12 +114,12 @@ static grk_image* jpegtoimage(const char *filename,
 	 * requires it in order to read binary files.
 	 */
 
-	if (imageInfo.readFromStdin) {
+	if (readFromStdin) {
 		if (!grk::grk_set_binary_mode(stdin))
 			return nullptr;
-		imageInfo.infile = stdin;
+		m_fileStream = stdin;
 	} else {
-		if ((imageInfo.infile = fopen(filename, "rb")) == nullptr) {
+		if ((m_fileStream = fopen(filename, "rb")) == nullptr) {
 			spdlog::error("can't open {}", filename);
 			return 0;
 		}
@@ -442,7 +132,7 @@ static grk_image* jpegtoimage(const char *filename,
 	jerr.pub.error_exit = my_error_exit;
 	/* Establish the setjmp return context for my_error_exit to use. */
 	if (setjmp(jerr.setjmp_buffer)) {
-		imageInfo.success = false;
+		success = false;
 		goto cleanup;
 	}
 	/* Now we can initialize the JPEG decompression object. */
@@ -450,7 +140,7 @@ static grk_image* jpegtoimage(const char *filename,
 	setup_read_icc_profile(&cinfo);
 
 	/* Step 2: specify data source (eg, a file) */
-	jpeg_stdio_src(&cinfo, imageInfo.infile);
+	jpeg_stdio_src(&cinfo, m_fileStream);
 
 	/* Step 3: read file parameters with jpeg_read_header() */
 
@@ -481,8 +171,8 @@ static grk_image* jpegtoimage(const char *filename,
 
 	bps = cinfo.data_precision;
 	if (bps != 8) {
-		spdlog::error("jpegtoimage: Unsupported image precision {}", bps);
-		imageInfo.success = false;
+		spdlog::error("jpegtoimage: Unsupported m_image precision {}", bps);
+		success = false;
 		goto cleanup;
 	}
 
@@ -506,65 +196,65 @@ static grk_image* jpegtoimage(const char *filename,
 		cmptparm[j].h = h;
 	}
 
-	imageInfo.image = grk_image_create((uint32_t)numcomps, &cmptparm[0], color_space,true);
-	if (!imageInfo.image) {
-		imageInfo.success = false;
+	m_image = grk_image_create((uint32_t)numcomps, &cmptparm[0], color_space,true);
+	if (!m_image) {
+		success = false;
 		goto cleanup;
 	}
 	if (icc_data_ptr && icc_data_len) {
-		imageInfo.image->icc_profile_buf = new uint8_t[icc_data_len];
-		memcpy(imageInfo.image->icc_profile_buf, icc_data_ptr, icc_data_len);
-		imageInfo.image->icc_profile_len = icc_data_len;
+		m_image->icc_profile_buf = new uint8_t[icc_data_len];
+		memcpy(m_image->icc_profile_buf, icc_data_ptr, icc_data_len);
+		m_image->icc_profile_len = icc_data_len;
 		icc_data_len = 0;
 	}
 	if (icc_data_ptr)
 		free(icc_data_ptr);
 	icc_data_ptr = nullptr;
-	/* set image offset and reference grid */
-	imageInfo.image->x0 = parameters->image_offset_x0;
-	imageInfo.image->x1 =
-			!imageInfo.image->x0 ?
-					(w - 1) * 1 + 1 : imageInfo.image->x0 + (w - 1) * 1 + 1;
-	if (imageInfo.image->x1 <= imageInfo.image->x0) {
-		spdlog::error("jpegtoimage: Bad value for image->x1({}) vs. "
-				"image->x0({}).", imageInfo.image->x1,
-				imageInfo.image->x0);
-		imageInfo.success = false;
+	/* set m_image offset and reference grid */
+	m_image->x0 = parameters->image_offset_x0;
+	m_image->x1 =
+			!m_image->x0 ?
+					(w - 1) * 1 + 1 : m_image->x0 + (w - 1) * 1 + 1;
+	if (m_image->x1 <= m_image->x0) {
+		spdlog::error("jpegtoimage: Bad value for m_image->x1({}) vs. "
+				"m_image->x0({}).", m_image->x1,
+				m_image->x0);
+		success = false;
 		goto cleanup;
 	}
 
-	imageInfo.image->y0 = parameters->image_offset_y0;
-	imageInfo.image->y1 =
-			!imageInfo.image->y0 ?
-					(h - 1) * 1 + 1 : imageInfo.image->y0 + (h - 1) * 1 + 1;
+	m_image->y0 = parameters->image_offset_y0;
+	m_image->y1 =
+			!m_image->y0 ?
+					(h - 1) * 1 + 1 : m_image->y0 + (h - 1) * 1 + 1;
 
-	if (imageInfo.image->y1 <= imageInfo.image->y0) {
-		spdlog::error("jpegtoimage: Bad value for image->y1({}) vs. "
-				"image->y0({}).", imageInfo.image->y1,
-				imageInfo.image->y0);
-		imageInfo.success = false;
+	if (m_image->y1 <= m_image->y0) {
+		spdlog::error("jpegtoimage: Bad value for m_image->y1({}) vs. "
+				"m_image->y0({}).", m_image->y1,
+				m_image->y0);
+		success = false;
 		goto cleanup;
 	}
 
 	for (int j = 0; j < numcomps; j++) {
-		planes[j] = imageInfo.image->comps[j].data;
+		planes[j] = m_image->comps[j].data;
 	}
 
-	imageInfo.buffer32s = new int32_t[w * (size_t)numcomps];
+	buffer32s = new int32_t[w * (size_t)numcomps];
 
 	/* We may need to do some setup of our own at this point before reading
 	 * the data.  After jpeg_start_decompress() we have the correct scaled
-	 * output image dimensions available, as well as the output colormap
+	 * output m_image dimensions available, as well as the output colormap
 	 * if we asked for color quantization.
 	 * In this example, we need to make an output work buffer of the right size.
 	 */
 	/* JSAMPLEs per row in output buffer */
 	row_stride = (int)cinfo.output_width * cinfo.output_components;
-	/* Make a one-row-high sample array that will go away when done with image */
+	/* Make a one-row-high sample array that will go away when done with m_image */
 	buffer = (*cinfo.mem->alloc_sarray)((j_common_ptr) &cinfo, JPOOL_IMAGE,
 			(JDIMENSION)row_stride, 1);
 	if (!buffer) {
-		imageInfo.success = false;
+		success = false;
 		goto cleanup;
 	}
 
@@ -574,7 +264,7 @@ static grk_image* jpegtoimage(const char *filename,
 	/* Here we use the library's state variable cinfo.output_scanline as the
 	 * loop counter, so that we don't have to keep track ourselves.
 	 */
-	dest_stride = imageInfo.image->comps[0].stride;
+	dest_stride = m_image->comps[0].stride;
 	while (cinfo.output_scanline < cinfo.output_height) {
 		/* jpeg_read_scanlines expects an array of pointers to scanlines.
 		 * Here the array is only one element long, but you could ask for
@@ -583,11 +273,11 @@ static grk_image* jpegtoimage(const char *filename,
 		(void) jpeg_read_scanlines(&cinfo, buffer, 1);
 
 		// convert 8 bit buffer to 32 bit buffer
-		cvtJpegTo32s(buffer[0], imageInfo.buffer32s, (size_t) w * (size_t) numcomps,
+		cvtJpegTo32s(buffer[0], buffer32s, (size_t) w * (size_t) numcomps,
 				false);
 
 		// convert to planar
-		cvtToPlanar(imageInfo.buffer32s, planes, (size_t) w);
+		cvtToPlanar(buffer32s, planes, (size_t) w);
 
 		planes[0] += dest_stride;
 		planes[1] += dest_stride;
@@ -604,7 +294,7 @@ static grk_image* jpegtoimage(const char *filename,
 		free(icc_data_ptr);
 	jpeg_destroy_decompress(&cinfo);
 
-	delete[] imageInfo.buffer32s;
+	delete[] buffer32s;
 
 	/* At this point you may want to check to see whether any corrupt-data
 	 * warnings occurred (test whether jerr.pub.num_warnings is nonzero).
@@ -614,42 +304,295 @@ static grk_image* jpegtoimage(const char *filename,
 					(int) jerr.pub.num_warnings);
 	}
 
-	if (!imageInfo.success) {
-		grk_image_destroy(imageInfo.image);
-		imageInfo.image = nullptr;
+	if (!success) {
+		grk_image_destroy(m_image);
+		m_image = nullptr;
 	}
 	/* After finish_decompress, we can close the input file.
 	 * Here we postpone it until after no more JPEG errors are possible,
 	 * so as to simplify the setjmp error logic above.  (Actually, I don't
 	 * think that jpeg_destroy can do an error exit, but why assume anything...)
 	 */
-	if (imageInfo.infile && !imageInfo.readFromStdin) {
-		if (!grk::safe_fclose(imageInfo.infile)) {
-			grk_image_destroy(imageInfo.image);
-			imageInfo.image = nullptr;
+	if (m_fileStream && !readFromStdin) {
+		if (!grk::safe_fclose(m_fileStream)) {
+			grk_image_destroy(m_image);
+			m_image = nullptr;
 		}
 	}
-	return imageInfo.image;
+	return m_image;
 }/* jpegtoimage() */
 
-JPEGFormat::JPEGFormat(void)
+JPEGFormat::JPEGFormat(void) : success(true), buffer(nullptr), buffer32s(
+		nullptr), color_space(JCS_UNKNOWN), adjust(0),readFromStdin(false), planes{0,0,0},
+		cvtPxToCx(nullptr), 	cvtTo8bpp(nullptr)
 {
 
 }
 
 bool JPEGFormat::encodeHeader(grk_image *image, const std::string &filename,
 		uint32_t compressionParam) {
-	return imagetojpeg(image, filename.c_str(), compressionParam) ?
-			false : true;
+
+	if (!image)
+		return false;
+	m_image = image;
+	int32_t firstAlpha = -1;
+	size_t numAlphaChannels = 0;
+	uint32_t numcomps = m_image->numcomps;
+	uint32_t sgnd = m_image->comps[0].sgnd;
+	adjust = sgnd ? 1 << (m_image->comps[0].prec - 1) : 0;
+	uint32_t width = m_image->comps[0].w;
+
+	// actual bits per sample
+	uint32_t prec = m_image->comps[0].prec;
+	uint32_t i = 0;
+
+	struct my_error_mgr jerr;
+
+	/* Step 1: allocate and initialize JPEG compression object */
+
+	/* We have to set up the error handler first, in case the initialization
+	 * step fails.  (Unlikely, but it could happen if you are out of memory.)
+	 * This routine fills in the contents of struct jerr, and returns jerr's
+	 * address which we place into the link field in cinfo.
+	 */
+
+
+	/* This struct represents a JPEG error handler.  It is declared separately
+	 * because applications often want to supply a specialized error handler
+	 * (see the second half of this file for an example).  But here we just
+	 * take the easy way out and use the standard error handler, which will
+	 * print a message on stderr and return 1 if compression fails.
+	 * Note that this struct must live as long as the main JPEG parameter
+	 * struct, to avoid dangling-pointer problems.
+	 */
+	JDIMENSION image_width = m_image->x1 - m_image->x0; /* input m_image width */
+	JDIMENSION image_height = m_image->y1 - m_image->y0; /* input m_image height */
+
+	switch (m_image->color_space) {
+	case GRK_CLRSPC_SRGB: /**< sRGB */
+		color_space = JCS_RGB;
+		break;
+	case GRK_CLRSPC_GRAY: /**< grayscale */
+		color_space = JCS_GRAYSCALE;
+		break;
+	case GRK_CLRSPC_SYCC: /**< YUV */
+		color_space = JCS_YCbCr;
+		break;
+	case GRK_CLRSPC_EYCC: /**< e-YCC */
+		color_space = JCS_YCCK;
+		break;
+	case GRK_CLRSPC_CMYK: /**< CMYK */
+		color_space = JCS_CMYK;
+		break;
+	default:
+		if (numcomps == 3)
+			color_space = JCS_RGB;
+		else if (numcomps == 1)
+			color_space = JCS_GRAYSCALE;
+		else {
+			spdlog::error("imagetojpeg: colour space must be "
+					"either RGB or Grayscale");
+			return false;
+		}
+		break;
+	}
+
+	if (m_image->numcomps > 4) {
+		spdlog::error("imagetojpeg: number of components {} "
+				"is greater than 4.", m_image->numcomps);
+		return false;
+	}
+
+	planes[0] = m_image->comps[0].data;
+	if (prec == 0) {
+		spdlog::error("imagetojpeg: m_image precision is zero.");
+		return false;
+	}
+
+	//check for null m_image components
+	for (uint32_t i = 0; i < numcomps; ++i) {
+		auto comp = m_image->comps[i];
+		if (!comp.data) {
+			spdlog::error("imagetojpeg: component {} is null.", i);
+			return false;
+		}
+	}
+	for (i = 1U; i < numcomps; ++i) {
+		if (m_image->comps[0].dx != m_image->comps[i].dx)
+			break;
+		if (m_image->comps[0].dy != m_image->comps[i].dy)
+			break;
+		if (m_image->comps[0].prec != m_image->comps[i].prec)
+			break;
+		if (m_image->comps[0].sgnd != m_image->comps[i].sgnd)
+			break;
+		planes[i] = m_image->comps[i].data;
+	}
+	if (i != numcomps) {
+		spdlog::error(
+				"imagetojpeg: All components shall have the same subsampling, same bit depth.");
+		return false;
+	}
+
+	if (prec < 8 && numcomps > 1) { /* GRAY_ALPHA, RGB, RGB_ALPHA */
+		for (i = 0; i < numcomps; ++i)
+			scale_component(&(m_image->comps[i]), 8);
+		prec = 8;
+	} else if ((prec > 1) && (prec < 8) && ((prec == 6) || ((prec & 1) == 1))) { /* GRAY with non native precision */
+		if ((prec == 5) || (prec == 6))
+			prec = 8;
+		else
+			prec++;
+		for (i = 0; i < numcomps; ++i)
+			scale_component(&(m_image->comps[i]), (uint32_t) prec);
+	}
+
+	if (prec != 1 && prec != 2 && prec != 4 && prec != 8) {
+		spdlog::error("imagetojpeg: can not create {}\n\twrong bit_depth {}",
+				filename, prec);
+		return false;
+	}
+
+	cvtPxToCx = cvtPlanarToInterleaved_LUT[numcomps];
+	cvtTo8bpp = cvtFrom32_LUT[prec];
+
+	// Alpha channels
+	for (i = 0U; i < numcomps; ++i) {
+		if (m_image->comps[i].type) {
+			if (firstAlpha == -1)
+				firstAlpha = 0;
+			numAlphaChannels++;
+		}
+	}
+	// We assume that alpha channels occur as last channels in m_image.
+	if (numAlphaChannels && ( (uint32_t)firstAlpha + numAlphaChannels >= numcomps)) {
+		spdlog::warn("PNG requires that alpha channels occur"
+				" as last channels in m_image.");
+		numAlphaChannels = 0;
+	}
+	buffer = new uint8_t[width * numcomps];
+	buffer32s = new int32_t[width * numcomps];
+
+	/* We set up the normal JPEG error routines, then override error_exit. */
+	cinfo.err = jpeg_std_error(&jerr.pub);
+	jerr.pub.error_exit = my_error_exit;
+	/* Establish the setjmp return context for my_error_exit to use. */
+	if (setjmp(jerr.setjmp_buffer)) {
+		/* If we get here, the JPEG code has signaled an error.
+		 * We need to clean up the JPEG object, close the input file, and return.
+		 */
+		jpeg_destroy_compress(&cinfo);
+		return false;
+	}
+	/* Now we can initialize the JPEG compression object. */
+	jpeg_create_compress(&cinfo);
+
+	/* Step 2: specify data destination (eg, a file) */
+	/* Note: steps 2 and 3 can be done in either order. */
+
+	/* Here we use the library-supplied code to send compressed data to a
+	 * stdio stream.  You can also write your own code to do something else.
+	 * VERY IMPORTANT: use "b" option to fopen() if you are on a machine that
+	 * requires it in order to write binary files.
+	 */
+	if (!ImageFormat::encodeHeader(m_image,filename,compressionParam))
+		return false;
+
+	m_fileStream = ((FileStreamIO*)m_fileIO)->getFileStream();
+	jpeg_stdio_dest(&cinfo, m_fileStream);
+
+	/* Step 3: set parameters for compression */
+
+	/* First we supply a description of the input m_image.
+	 * Four fields of the cinfo struct must be filled in:
+	 */
+	cinfo.image_width = image_width; /* m_image width and height, in pixels */
+	cinfo.image_height = image_height;
+	cinfo.input_components = (int)numcomps; /* # of color components per pixel */
+	cinfo.in_color_space = color_space; /* colorspace of input m_image */
+
+	/* Now use the library's routine to set default compression parameters.
+	 * (You must set at least cinfo.in_color_space before calling this,
+	 * since the defaults depend on the source color space.)
+	 */
+	jpeg_set_defaults(&cinfo);
+
+	/* Now you can set any non-default parameters you wish to.
+	 * Here we just illustrate the use of quality (quantization table) scaling:
+	 */
+	jpeg_set_quality(&cinfo,
+			(int)((compressionParam == GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT) ?
+					90 : compressionParam),
+			(boolean) TRUE /* limit to baseline-JPEG values */);
+
+	// set resolution
+	if (m_image->capture_resolution[0] > 0 && m_image->capture_resolution[1] > 0) {
+		cinfo.density_unit = 2; // dots per cm
+		cinfo.X_density = (uint16_t)(m_image->capture_resolution[0]/100.0 + 0.5);
+		cinfo.Y_density = (uint16_t)(m_image->capture_resolution[1]/100.0 + 0.5);
+	}
+
+	/* Step 4: Start compressor */
+
+	/* TRUE ensures that we will write a complete interchange-JPEG file.
+	 * Pass TRUE unless you are very sure of what you're doing.
+	 */
+	jpeg_start_compress(&cinfo, (boolean) TRUE);
+	if (m_image->icc_profile_buf) {
+		write_icc_profile(&cinfo, m_image->icc_profile_buf,
+				m_image->icc_profile_len);
+	}
+
+    return true;
+
+
 }
 bool JPEGFormat::encodeStrip(uint32_t rows){
 	(void)rows;
+
+	/* Step 5: while (scan lines remain to be written) */
+	/*           jpeg_write_scanlines(...); */
+
+	/* Here we use the library's state variable cinfo.next_scanline as the
+	 * loop counter, so that we don't have to keep track ourselves.
+	 * To keep things simple, we pass one scanline per call; you can pass
+	 * more if you wish, though.
+	 */
+
+	while (cinfo.next_scanline < cinfo.image_height) {
+		/* jpeg_write_scanlines expects an array of pointers to scanlines.
+		 * Here the array is only one element long, but you could pass
+		 * more than one scanline at a time if that's more convenient.
+		 */
+		uint32_t stride = m_image->comps[0].stride;
+		cvtPxToCx(planes, buffer32s, (size_t) m_image->comps[0].w, adjust);
+		cvtTo8bpp(buffer32s, (uint8_t*) buffer,
+				(size_t) m_image->comps[0].w * m_image->numcomps);
+		JSAMPROW row_pointer[1]; /* pointer to JSAMPLE row[s] */
+		row_pointer[0] = buffer;
+		planes[0] += stride;
+		planes[1] += stride;
+		planes[2] += stride;
+		(void) jpeg_write_scanlines(&cinfo, row_pointer, 1);
+	}
 
 	return true;
 }
 bool JPEGFormat::encodeFinish(void){
 
-	return true;
+	/* Step 6: Finish compression */
+	jpeg_finish_compress(&cinfo);
+
+	/* Step 7: release JPEG compression object */
+
+	/* This is an important step since it will release a good deal of memory. */
+	jpeg_destroy_compress(&cinfo);
+
+	delete[] buffer;
+	delete[] buffer32s;
+
+	/* After finish_compress, we can close the output file. */
+	return ImageFormat::encodeFinish() && success;
 }
 
 grk_image* JPEGFormat::decode(const std::string &filename,

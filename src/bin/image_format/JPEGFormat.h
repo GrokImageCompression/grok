@@ -17,6 +17,10 @@
 #pragma once
 
 #include "ImageFormat.h"
+#include "jpeglib.h"
+#include "iccjpeg.h"
+#include "convert.h"
+
 
 class JPEGFormat : public ImageFormat {
 public:
@@ -25,4 +29,29 @@ public:
 	bool encodeStrip(uint32_t rows) override;
 	bool encodeFinish(void) override;
 	grk_image *  decode(const std::string &filename,  grk_cparameters  *parameters) override;
+
+private:
+	grk_image* jpegtoimage(const char *filename,
+			grk_cparameters *parameters);
+	bool imagetojpeg(grk_image *image, const char *filename,
+			uint32_t compressionParam);
+
+	bool success;
+	uint8_t *buffer;
+	int32_t *buffer32s;
+	J_COLOR_SPACE color_space;
+	int32_t adjust;
+	bool readFromStdin;
+
+	/* This struct contains the JPEG compression parameters and pointers to
+	 * working space (which is allocated as needed by the JPEG library).
+	 * It is possible to have several such structures, representing multiple
+	 * compression/decompression processes, in existence at once.  We refer
+	 * to any one struct (and its associated working data) as a "JPEG object".
+	 */
+	struct jpeg_compress_struct cinfo;
+	int32_t const *planes[3];
+	cvtPlanarToInterleaved cvtPxToCx;
+	cvtFrom32 cvtTo8bpp;
+
 };

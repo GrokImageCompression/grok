@@ -91,15 +91,15 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	if (useStd) {
 		if (!grk::grk_set_binary_mode(stdin))
 			return nullptr;
-		m_fileHandle = stdin;
+		m_fileStream = stdin;
 	} else {
-		if ((m_fileHandle = fopen(read_idf, "rb")) == nullptr) {
+		if ((m_fileStream = fopen(read_idf, "rb")) == nullptr) {
 			spdlog::error("pngtoimage: can not open {}", read_idf);
 			return nullptr;
 		}
 	}
 
-	if (fread(sigbuf, 1, MAGIC_SIZE, m_fileHandle) != MAGIC_SIZE
+	if (fread(sigbuf, 1, MAGIC_SIZE, m_fileStream) != MAGIC_SIZE
 			|| memcmp(sigbuf, PNG_MAGIC, MAGIC_SIZE) != 0) {
 		spdlog::error("pngtoimage: {} is no valid PNG m_fileHandle", read_idf);
 		goto beach;
@@ -122,7 +122,7 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	if (setjmp(png_jmpbuf(png)))
 		goto beach;
 
-	png_init_io(png, m_fileHandle);
+	png_init_io(png, m_fileStream);
 	png_set_sig_bytes(png, MAGIC_SIZE);
 
 	png_read_info(png, m_info);
@@ -346,8 +346,8 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	free(row32s);
 	if (png)
 		png_destroy_read_struct(&png, &m_info, nullptr);
-	if (!useStd && m_fileHandle) {
-		if (!grk::safe_fclose(m_fileHandle)) {
+	if (!useStd && m_fileStream) {
+		if (!grk::safe_fclose(m_fileStream)) {
 			grk_image_destroy(m_image);
 			m_image = nullptr;
 		}
@@ -453,7 +453,7 @@ bool PNGFormat::encodeHeader(grk_image *img, const std::string &filename,
 	if (!ImageFormat::encodeHeader(m_image,m_fileName,compressionLevel))
 		return false;
 
-	m_fileHandle = ((FileStreamIO*)m_fileIO)->getFileStream();
+	m_fileStream = ((FileStreamIO*)m_fileIO)->getFileStream();
 
 	/* Create and initialize the png_struct with the desired error handler
 	 * functions.  If you want to use the default stderr and longjump method,
@@ -489,7 +489,7 @@ bool PNGFormat::encodeHeader(grk_image *img, const std::string &filename,
 
 	/* I/O initialization functions is REQUIRED
 	 */
-	png_init_io(png, m_fileHandle);
+	png_init_io(png, m_fileStream);
 
 	/* Set the image information here.  Width and height are up to 2^31,
 	 * bit_depth is one of 1, 2, 4, 8, or 16, but valid values also depend on
@@ -680,7 +680,7 @@ bool PNGFormat::encodeFinish(void){
 	free(row_buf);
 	free(row32s);
 	bool rc =  ImageFormat::encodeFinish();
-	m_fileHandle = nullptr;
+	m_fileStream = nullptr;
 	return rc;
 }
 grk_image* PNGFormat::decode(const std::string &filename,

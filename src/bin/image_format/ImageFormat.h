@@ -40,7 +40,7 @@ protected:
 	uint32_t m_numStrips;
 	IFileIO *m_fileIO;
 
-	FILE *m_fileHandle;
+	FILE *m_fileStream;
 	std::string m_fileName;
 
 };

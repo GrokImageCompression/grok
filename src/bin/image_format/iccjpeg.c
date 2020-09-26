@@ -193,7 +193,7 @@ boolean read_icc_profile(j_decompress_ptr cinfo, JOCTET **icc_data_ptr,
 	}
 
 	if (num_markers == 0)
-		return FALSE;
+		return TRUE;
 
 	/* Check for missing markers, count total space needed,
 	 * compute offset of each marker's part of the data.

@@ -1510,6 +1510,14 @@ int GrkDecompress::post_decode(grk_plugin_decode_callback_info *info) {
 						outfileStr);
 				goto cleanup;
 			}
+			if (!jpeg.encodeStrip(0)) {
+				spdlog::error("Outfile {} not generated", outfileStr);
+				goto cleanup;
+			}
+			if (!jpeg.encodeFinish()) {
+				spdlog::error("Outfile {} not generated", outfileStr);
+				goto cleanup;
+			}
 		}
 			break;
 #endif
