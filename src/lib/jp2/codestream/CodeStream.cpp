@@ -3270,8 +3270,6 @@ bool CodeStream::mct_validation(void) {
 bool CodeStream::read_unk(uint16_t *output_marker) {
 	const grk_dec_memory_marker_handler *marker_handler;
 	uint32_t size_unk = 2;
-
-	/* preconditions*/
 	auto stream = getStream();
 
 	GRK_WARN("Unknown marker 0x%02x", *output_marker);

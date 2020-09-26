@@ -1046,7 +1046,7 @@ int GrkDecompress::pre_decode(grk_plugin_decode_callback_info *info) {
 				break;
 	#ifdef GROK_HAVE_LIBJPEG
 			case GRK_JPG_FMT:
-				GrkDecompress::imageFormat = new JPEGFormat(true);
+				GrkDecompress::imageFormat = new JPEGFormat();
 				break;
 	#endif
 

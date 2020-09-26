@@ -19,6 +19,7 @@
 
 #include "iccjpeg.h"
 #include <stdlib.h>			/* define malloc() */
+#include <stdint.h>
 
 #include "grk_apps_config.h"
 

@@ -632,6 +632,11 @@ static grk_image* jpegtoimage(const char *filename,
 	return imageInfo.image;
 }/* jpegtoimage() */
 
+JPEGFormat::JPEGFormat(void)
+{
+
+}
+
 bool JPEGFormat::encodeHeader(grk_image *image, const std::string &filename,
 		uint32_t compressionParam) {
 	return imagetojpeg(image, filename.c_str(), compressionParam) ?
