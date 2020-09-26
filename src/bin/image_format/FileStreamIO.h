@@ -29,6 +29,7 @@ public:
 	bool write(uint8_t *buf, size_t len) override;
 	bool read(uint8_t *buf, size_t len) override;
 	bool seek(size_t pos) override;
+	FILE* getFileStream(){ return m_fileHandle;}
 
 private:
 	FILE *m_fileHandle;

@@ -36,6 +36,7 @@
 #include <cassert>
 #include <locale>
 #include "common.h"
+#include "FileStreamIO.h"
 
 #define PNG_MAGIC "\x89PNG\x0d\x0a\x1a\x0a"
 #define MAGIC_SIZE 8
@@ -379,14 +380,29 @@ static void convert_32s16u_C1R(const int32_t *pSrc, uint8_t *pDst,
 	}
 }
 
+PNGFormat::PNGFormat() : m_info(nullptr),
+						png(nullptr),
+						row_buf(nullptr),
+					row_buf_array(nullptr),
+					row32s(nullptr),
+					useStd(false),
+					m_colorSpace(	GRK_CLRSPC_UNKNOWN),
+					prec(0),
+					nr_comp(0),
+					m_planes{nullptr}
+{
+}
 
-int PNGFormat::do_encode(const char *write_idf,
+
+
+bool PNGFormat::encodeHeader(grk_image *img, const std::string &filename,
 		uint32_t compressionLevel) {
-	m_fileName = write_idf;
-	useStd = grk::useStdio(m_fileName.c_str());
+	m_image = img;
+	m_fileName = filename;
 	uint32_t color_type;
 	png_color_8 sig_bit;
 	uint32_t i;
+	bool fails = true;
 
 	memset(&sig_bit, 0, sizeof(sig_bit));
 
@@ -409,14 +425,14 @@ int PNGFormat::do_encode(const char *write_idf,
 			break;
 		if (!m_image->comps[i].data) {
 			spdlog::error("imagetopng: component {} is null.", i);
-			return 1;
+			return false;
 		}
 	}
 	if (i != nr_comp) {
 		spdlog::error(
 				"imagetopng: All components shall have the same sub-sampling,"
 						" same bit depth and same sign.");
-		return 1;
+		return false;
 	}
 	if (prec > 8 && prec < 16) {
 		prec = 16;
@@ -432,10 +448,12 @@ int PNGFormat::do_encode(const char *write_idf,
 	if (prec != 1 && prec != 2 && prec != 4 && prec != 8 && prec != 16) {
 		spdlog::error("imagetopng: can not create {}\n\twrong bit_depth {}",
 				m_fileName.c_str(), prec);
-		return fails;
+		return false;
 	}
-	if (!grk::grk_open_for_output(&m_fileHandle, m_fileName.c_str(),useStd))
-		return fails;
+	if (!ImageFormat::encodeHeader(m_image,m_fileName,compressionLevel))
+		return false;
+
+	m_fileHandle = ((FileStreamIO*)m_fileIO)->getFileStream();
 
 	/* Create and initialize the png_struct with the desired error handler
 	 * functions.  If you want to use the default stderr and longjump method,
@@ -604,28 +622,9 @@ int PNGFormat::do_encode(const char *write_idf,
 	fails = false;
 
 beach:
-	return fails;
+	return !fails;
 }
 
-PNGFormat::PNGFormat() : m_info(nullptr),
-						png(nullptr),
-						row_buf(nullptr),
-					row_buf_array(nullptr),
-					row32s(nullptr),
-					useStd(false),
-					m_colorSpace(	GRK_CLRSPC_UNKNOWN),
-					fails(true),
-					prec(0),
-					nr_comp(0),
-					m_planes{nullptr}
-{
-}
-
-bool PNGFormat::encodeHeader(grk_image *img, const std::string &filename,
-		uint32_t compressionParam) {
-	m_image = img;
-	return do_encode(filename.c_str(), compressionParam) ? false : true;
-}
 bool PNGFormat::encodeStrip(uint32_t rows){
 	(void)rows;
 
@@ -668,7 +667,6 @@ bool PNGFormat::encodeStrip(uint32_t rows){
 	return true;
 }
 bool PNGFormat::encodeFinish(void){
-
 	if (setjmp(png_jmpbuf(png)))
 		return false;
 
@@ -681,13 +679,9 @@ bool PNGFormat::encodeFinish(void){
 	}
 	free(row_buf);
 	free(row32s);
-	if (!useStd) {
-		if (!grk::safe_fclose(m_fileHandle))
-			fails = true;
-		if (fails && m_fileName.c_str())
-			(void) remove(m_fileName.c_str()); /* ignore return value */
-	}
-	return !fails;
+	bool rc =  ImageFormat::encodeFinish();
+	m_fileHandle = nullptr;
+	return rc;
 }
 grk_image* PNGFormat::decode(const std::string &filename,
 		grk_cparameters *parameters) {

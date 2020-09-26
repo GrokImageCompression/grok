@@ -32,7 +32,6 @@ public:
 	grk_image *  decode(const std::string &filename,  grk_cparameters  *parameters) override;
 
 private:
-	int do_encode(const char *write_idf,	uint32_t compressionLevel);
 	grk_image* do_decode(const char *read_idf, grk_cparameters *params);
 
 	png_infop m_info;
@@ -42,7 +41,6 @@ private:
 	int32_t *row32s;
 	bool useStd;
 	GRK_COLOR_SPACE m_colorSpace;
-	bool fails;
 	uint32_t prec;
 	uint32_t nr_comp;
 	int32_t const *m_planes[4];
