@@ -2747,14 +2747,12 @@ bool CodeStream::decompress_tiles(void) {
 		}  catch (DecodeUnknownMarkerAtEndOfTileException &e){
 			breakAfterT1 = true;
 		}
-
-		m_processors.erase(processor->m_tile_index);
-
 		if (!allocatedOutputImage && multi_tile && m_output_image) {
 			if (!alloc_multi_tile_output_data(m_output_image))
 				return false;
 			allocatedOutputImage = true;
 		}
+		m_processors.erase(processor->m_tile_index);
 		// once we schedule a processor for T1 compression, we will destroy it
 		// regardless of success or not
 		if (pool.num_threads() > 1) {
