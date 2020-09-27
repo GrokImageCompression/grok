@@ -40,6 +40,21 @@ T1Decoder::~T1Decoder() {
 		delete t;
 	}
 }
+bool T1Decoder::decompressBlock(T1Interface *impl, decodeBlockInfo *block){
+	try {
+		if (!impl->decompress(block)) {
+			delete block;
+			return false;
+		}
+	} catch (std::runtime_error &rerr){
+		delete block;
+		GRK_ERROR(rerr.what());
+		return false;
+	}
+	bool rc =  impl->postDecode(block);
+	delete block;
+	return rc;
+}
 
 bool T1Decoder::decompress(std::vector<decodeBlockInfo*> *blocks) {
 	if (!blocks || !blocks->size())
@@ -50,13 +65,8 @@ bool T1Decoder::decompress(std::vector<decodeBlockInfo*> *blocks) {
 		for (size_t i = 0; i < blocks->size(); ++i){
 			auto block = blocks->operator[](i);
 			auto impl = threadStructs[(size_t)0];
-			if (!success || !impl->decompress(block)) {
+			if (!decompressBlock(impl,block))
 				success = false;
-				delete block;
-			}
-			if (!impl->postDecode(block))
-				success = false;
-			delete block;
 		}
 		return success;
 	}
@@ -83,21 +93,8 @@ bool T1Decoder::decompress(std::vector<decodeBlockInfo*> *blocks) {
 						continue;
 					}
 					auto impl = threadStructs[(size_t)threadnum];
-					try {
-						if (!impl->decompress(block)) {
-							success = false;
-							delete block;
-							continue;
-						}
-					} catch (std::runtime_error &rerr){
+					if (!decompressBlock(impl,block))
 						success = false;
-						delete block;
-						GRK_ERROR(rerr.what());
-						continue;
-					}
-					if (!impl->postDecode(block))
-						success = false;
-					delete block;
                 }
                 return 0;
             })
