@@ -1792,6 +1792,291 @@ void convert_tif_16uto32s(const uint16_t *pSrc, int32_t *pDst, size_t length,
 		pDst[i] = INV(pSrc[i], 0xFFFF, invert);
 }
 
+void bmp_applyLUT8u_1u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
+		int32_t *pDst, int32_t dstStride, uint8_t const *pLUT, uint32_t destWidth,
+		uint32_t destHeight) {
+	uint32_t absSrcStride = std::abs(srcStride);
+	for (uint32_t y = destHeight; y != 0U; --y) {
+		uint32_t destIndex = 0;
+		for (uint32_t srcIndex = 0; srcIndex < absSrcStride; srcIndex++) {
+			uint8_t val = pSrc[srcIndex];
+			for (int32_t ct = 7; ct >= 0; --ct) {
+				pDst[destIndex++] = (int32_t) pLUT[(val >> (ct))&1];
+				if (destIndex == destWidth)
+					break;
+			}
+		}
+		pSrc += srcStride;
+		pDst += dstStride;
+	}
+}
 
+void bmp_applyLUT8u_4u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
+		int32_t *pDst, int32_t dstStride, uint8_t const *pLUT, uint32_t destWidth,
+		uint32_t destHeight) {
+	uint32_t absSrcStride = std::abs(srcStride);
+	for (uint32_t y = destHeight; y != 0U; --y) {
+		uint32_t destIndex = 0;
+		for (uint32_t srcIndex = 0; srcIndex < absSrcStride; srcIndex++) {
+			uint8_t val = pSrc[srcIndex];
+			for (int32_t ct = 4; ct >= 0; ct-=4) {
+				pDst[destIndex++] = (int32_t) pLUT[(val >> (ct)) & 0xF];
+				if (destIndex == destWidth)
+					break;
+			}
+		}
+		pSrc += srcStride;
+		pDst += dstStride;
+	}
+}
+
+void bmp_applyLUT8u_8u32s_C1R(uint8_t const *pSrc,
+									int32_t srcStride,
+									int32_t *pDst,
+									int32_t dstStride,
+									uint8_t const *pLUT,
+									uint32_t width,
+									uint32_t height) {
+	for (uint32_t y = height; y != 0U; --y) {
+		for (uint32_t x = 0; x < width; x++)
+			pDst[x] = (int32_t) pLUT[pSrc[x]];
+		pSrc += srcStride;
+		pDst += dstStride;
+	}
+}
+
+void bmp_applyLUT8u_1u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
+		int32_t *const*pDst, int32_t const *pDstStride,
+		uint8_t const *const*pLUT, uint32_t destWidth, uint32_t destHeight) {
+	uint32_t absSrcStride = std::abs(srcStride);
+	uint32_t y;
+	int32_t *pR = pDst[0];
+	int32_t *pG = pDst[1];
+	int32_t *pB = pDst[2];
+	uint8_t const *pLUT_R = pLUT[0];
+	uint8_t const *pLUT_G = pLUT[1];
+	uint8_t const *pLUT_B = pLUT[2];
+
+	for (y = destHeight; y != 0U; --y) {
+		uint32_t destIndex = 0;
+		for (uint32_t srcIndex = 0; srcIndex < absSrcStride; srcIndex++) {
+			uint8_t idx = pSrc[srcIndex];
+			for (int32_t ct = 7; ct >= 0; ct--) {
+				uint8_t val = (idx >> ct) & 0x1;
+				pR[destIndex] = (int32_t) pLUT_R[val];
+				pG[destIndex] = (int32_t) pLUT_G[val];
+				pB[destIndex] = (int32_t) pLUT_B[val];
+				destIndex++;
+				if (destIndex == destWidth)
+					break;
+			}
+		}
+		pSrc += srcStride;
+		pR += pDstStride[0];
+		pG += pDstStride[1];
+		pB += pDstStride[2];
+	}
+}
+
+
+void bmp_applyLUT8u_4u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
+		int32_t *const*pDst, int32_t const *pDstStride,
+		uint8_t const *const*pLUT, uint32_t destWidth, uint32_t destHeight) {
+	uint32_t absSrcStride = std::abs(srcStride);
+	uint32_t y;
+	int32_t *pR = pDst[0];
+	int32_t *pG = pDst[1];
+	int32_t *pB = pDst[2];
+	uint8_t const *pLUT_R = pLUT[0];
+	uint8_t const *pLUT_G = pLUT[1];
+	uint8_t const *pLUT_B = pLUT[2];
+
+	for (y = destHeight; y != 0U; --y) {
+		uint32_t destIndex = 0;
+		for (uint32_t srcIndex = 0; srcIndex < absSrcStride; srcIndex++) {
+			uint8_t idx = pSrc[srcIndex];
+			for (int32_t ct = 4; ct >= 0; ct-=4) {
+				uint8_t val = (idx >> ct) & 0xF;
+				pR[destIndex] = (int32_t) pLUT_R[val];
+				pG[destIndex] = (int32_t) pLUT_G[val];
+				pB[destIndex] = (int32_t) pLUT_B[val];
+				destIndex++;
+				if (destIndex == destWidth)
+					break;
+			}
+		}
+		pSrc += srcStride;
+		pR += pDstStride[0];
+		pG += pDstStride[1];
+		pB += pDstStride[2];
+	}
+}
+
+void bmp_applyLUT8u_8u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
+		int32_t *const*pDst, int32_t const *pDstStride,
+		uint8_t const *const*pLUT, uint32_t destWidth, uint32_t destHeight) {
+	uint32_t y;
+	int32_t *pR = pDst[0];
+	int32_t *pG = pDst[1];
+	int32_t *pB = pDst[2];
+	uint8_t const *pLUT_R = pLUT[0];
+	uint8_t const *pLUT_G = pLUT[1];
+	uint8_t const *pLUT_B = pLUT[2];
+
+	for (y = destHeight; y != 0U; --y) {
+		for (uint32_t x = 0; x < destWidth; x++) {
+			uint8_t idx = pSrc[x];
+			pR[x] = (int32_t) pLUT_R[idx];
+			pG[x] = (int32_t) pLUT_G[idx];
+			pB[x] = (int32_t) pLUT_B[idx];
+		}
+		pSrc += srcStride;
+		pR += pDstStride[0];
+		pG += pDstStride[1];
+		pB += pDstStride[2];
+	}
+}
+void bmp24toimage(const uint8_t *pData, uint32_t srcStride,
+		grk_image *image) {
+	int index;
+	uint32_t width, height;
+	const uint8_t *pSrc = nullptr;
+	width = image->comps[0].w;
+	height = image->comps[0].h;
+	index = 0;
+	pSrc = pData + (height - 1U) * srcStride;
+	uint32_t stride_diff = image->comps[0].stride - image->comps[0].w;
+	for (uint32_t y = 0; y < height; y++) {
+		size_t src_index = 0;
+		for (uint32_t x = 0; x < width; x++) {
+			image->comps[0].data[index] = (int32_t) pSrc[src_index + 2]; /* R */
+			image->comps[1].data[index] = (int32_t) pSrc[src_index + 1]; /* G */
+			image->comps[2].data[index] = (int32_t) pSrc[src_index]; /* B */
+			index++;
+			src_index += 3;
+		}
+		index+= stride_diff;
+		pSrc -= srcStride;
+	}
+}
+
+static void bmp_mask_get_shift_and_prec(uint32_t mask, uint32_t *shift,
+		uint32_t *prec) {
+	uint32_t l_shift, l_prec;
+	l_shift = l_prec = 0U;
+	if (mask != 0U) {
+		while ((mask & 1U) == 0U) {
+			mask >>= 1;
+			l_shift++;
+		}
+		while (mask & 1U) {
+			mask >>= 1;
+			l_prec++;
+		}
+	}
+	*shift = l_shift;
+	*prec = l_prec;
+}
+
+
+
+void bmp_mask32toimage(const uint8_t *pData, uint32_t srcStride,
+		grk_image *image, uint32_t redMask, uint32_t greenMask,
+		uint32_t blueMask, uint32_t alphaMask) {
+	uint32_t redShift, redPrec;
+	uint32_t greenShift, greenPrec;
+	uint32_t blueShift, bluePrec;
+	uint32_t alphaShift, alphaPrec;
+
+	uint32_t width = image->comps[0].w;
+	uint32_t stride_diff = image->comps[0].stride - width;
+	uint32_t height = image->comps[0].h;
+	bool hasAlpha = image->numcomps > 3U;
+	bmp_mask_get_shift_and_prec(redMask, &redShift, &redPrec);
+	bmp_mask_get_shift_and_prec(greenMask, &greenShift, &greenPrec);
+	bmp_mask_get_shift_and_prec(blueMask, &blueShift, &bluePrec);
+	bmp_mask_get_shift_and_prec(alphaMask, &alphaShift, &alphaPrec);
+	image->comps[0].prec = redPrec;
+	image->comps[1].prec = greenPrec;
+	image->comps[2].prec = bluePrec;
+	if (hasAlpha)
+		image->comps[3].prec = alphaPrec;
+	int index=0;
+	uint32_t x, y;
+	auto pSrc = pData + (height - 1U) * srcStride;
+	for (y = 0; y < height; y++) {
+		size_t src_index = 0;
+		for (x = 0; x < width; x++) {
+			uint32_t value = 0U;
+			value |= ((uint32_t) pSrc[src_index]) << 0;
+			value |= ((uint32_t) pSrc[src_index + 1]) << 8;
+			value |= ((uint32_t) pSrc[src_index + 2]) << 16;
+			value |= ((uint32_t) pSrc[src_index + 3]) << 24;
+
+			image->comps[0].data[index] = (int32_t) ((value & redMask)
+					>> redShift); /* R */
+			image->comps[1].data[index] = (int32_t) ((value & greenMask)
+					>> greenShift); /* G */
+			image->comps[2].data[index] = (int32_t) ((value & blueMask)
+					>> blueShift); /* B */
+			if (hasAlpha) {
+				image->comps[3].data[index] = (int32_t) ((value & alphaMask)
+						>> alphaShift); /* A */
+			}
+			index++;
+			src_index += 4;
+		}
+		index += stride_diff;
+		pSrc -= srcStride;
+	}
+}
+
+void bmp_mask16toimage(const uint8_t *pData, uint32_t srcStride,
+		grk_image *image, uint32_t redMask, uint32_t greenMask,
+		uint32_t blueMask, uint32_t alphaMask) {
+	uint32_t redShift, redPrec;
+	uint32_t greenShift, greenPrec;
+	uint32_t blueShift, bluePrec;
+	uint32_t alphaShift, alphaPrec;
+
+	uint32_t width = image->comps[0].w;
+	uint32_t stride_diff = image->comps[0].stride - width;
+	uint32_t height = image->comps[0].h;
+	bool hasAlpha = image->numcomps > 3U;
+	bmp_mask_get_shift_and_prec(redMask, &redShift, &redPrec);
+	bmp_mask_get_shift_and_prec(greenMask, &greenShift, &greenPrec);
+	bmp_mask_get_shift_and_prec(blueMask, &blueShift, &bluePrec);
+	bmp_mask_get_shift_and_prec(alphaMask, &alphaShift, &alphaPrec);
+	image->comps[0].prec = redPrec;
+	image->comps[1].prec = greenPrec;
+	image->comps[2].prec = bluePrec;
+	if (hasAlpha)
+		image->comps[3].prec = alphaPrec;
+	int index=0;
+	uint32_t x, y;
+	auto pSrc = pData + (height - 1U) * srcStride;
+	for (y = 0; y < height; y++) {
+		size_t src_index = 0;
+		for (x = 0; x < width; x++) {
+			uint32_t value = ((uint32_t) pSrc[src_index + 0]) << 0;
+			value |= ((uint32_t) pSrc[src_index + 1]) << 8;
+
+			image->comps[0].data[index] = (int32_t) ((value & redMask)
+					>> redShift); /* R */
+			image->comps[1].data[index] = (int32_t) ((value & greenMask)
+					>> greenShift); /* G */
+			image->comps[2].data[index] = (int32_t) ((value & blueMask)
+					>> blueShift); /* B */
+			if (hasAlpha) {
+				image->comps[3].data[index] = (int32_t) ((value & alphaMask)
+						>> alphaShift); /* A */
+			}
+			index++;
+			src_index += 2;
+		}
+		index += stride_diff;
+		pSrc -= srcStride;
+	}
+}
 
 
