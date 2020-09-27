@@ -2734,6 +2734,7 @@ bool CodeStream::decompress_tiles(void) {
 		//2. T2 decode
 		auto processor = currentProcessor();
 		m_tileProcessor = nullptr;
+		m_processors.erase(processor->m_tile_index);
 		bool breakAfterT1 = false;
 		try {
 			if (!decompress_tile_t2(processor)){
@@ -2752,7 +2753,6 @@ bool CodeStream::decompress_tiles(void) {
 				return false;
 			allocatedOutputImage = true;
 		}
-		m_processors.erase(processor->m_tile_index);
 		// once we schedule a processor for T1 compression, we will destroy it
 		// regardless of success or not
 		if (pool.num_threads() > 1) {
