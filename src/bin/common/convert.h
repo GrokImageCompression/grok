@@ -60,3 +60,37 @@ extern const cvtFrom32 cvtFrom32_LUT[9]; /* up to 8bpp */
 
 void convert_16u32s_C1R(const uint8_t *pSrc, int32_t *pDst,
 		size_t length, bool invert);
+
+void convert_tif_32sto3u(const int32_t *pSrc, uint8_t *pDst, size_t length);
+void convert_tif_32sto5u(const int32_t *pSrc, uint8_t *pDst, size_t length);
+void convert_tif_32sto7u(const int32_t *pSrc, uint8_t *pDst, size_t length);
+void convert_tif_32sto9u(const int32_t *pSrc, uint8_t *pDst, size_t length);
+void convert_tif_32sto10u(const int32_t *pSrc, uint8_t *pDst, size_t length);
+void convert_tif_32sto11u(const int32_t *pSrc, uint8_t *pDst, size_t length);
+void convert_tif_32sto12u(const int32_t *pSrc, uint8_t *pDst, size_t length);
+void convert_tif_32sto13u(const int32_t *pSrc, uint8_t *pDst, size_t length);
+void convert_tif_32sto14u(const int32_t *pSrc, uint8_t *pDst, size_t length);
+void convert_tif_32sto15u(const int32_t *pSrc, uint8_t *pDst, size_t length);
+void convert_tif_32sto16u(const int32_t *pSrc, uint16_t *pDst, size_t length);
+void convert_tif_3uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert);
+void convert_tif_5uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert);
+void convert_tif_7uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert);
+void convert_tif_9uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert);
+void convert_tif_10uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert);
+void convert_tif_11uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert);
+void convert_tif_12uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert);
+void convert_tif_13uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert);
+void convert_tif_14uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert);
+void convert_tif_15uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert);
+void convert_tif_16uto32s(const uint16_t *pSrc, int32_t *pDst, size_t length,
+		bool invert);
