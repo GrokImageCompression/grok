@@ -526,6 +526,13 @@ bool PNMFormat::encodeHeader(grk_image *image, const std::string &filename,
 	m_fileName = filename;
 
 	(void) compressionParam;
+
+	return true;
+
+}
+bool PNMFormat::encodeStrip(uint32_t rows){
+	(void)rows;
+
 	int *red = nullptr;
 	int *green = nullptr;
 	int *blue = nullptr;
@@ -542,14 +549,14 @@ bool PNMFormat::encodeHeader(grk_image *image, const std::string &filename,
 
 	alpha = nullptr;
 
-	if ((prec = image->comps[0].prec) > 16) {
+	if ((prec = m_image->comps[0].prec) > 16) {
 		spdlog::error("{}:{}:imagetopnm\n\tprecision {} is larger than 16", __FILE__, __LINE__, prec);
 		goto cleanup;
 	}
 	two = has_alpha = 0;
-	ncomp = image->numcomps;
+	ncomp = m_image->numcomps;
 
-	if (!grk::all_components_sanity_check(image,true)) {
+	if (!grk::all_components_sanity_check(m_image,true)) {
 		goto cleanup;
 	}
 
@@ -571,10 +578,10 @@ bool PNMFormat::encodeHeader(grk_image *image, const std::string &filename,
 	if ((!forceSplit)
 			&& (ncomp == 2 /* GRAYA */
 					|| (ncomp > 2 /* RGB, RGBA */
-					&& image->comps[0].dx == image->comps[1].dx
-							&& image->comps[1].dx == image->comps[2].dx
-							&& image->comps[0].dy == image->comps[1].dy
-							&& image->comps[1].dy == image->comps[2].dy
+					&& m_image->comps[0].dx == m_image->comps[1].dx
+							&& m_image->comps[1].dx == m_image->comps[2].dx
+							&& m_image->comps[0].dy == m_image->comps[1].dy
+							&& m_image->comps[1].dy == m_image->comps[2].dy
 					))) {
 
 		if (!grk::grk_open_for_output(&m_fileStream, m_fileName.c_str(),m_useStdIO))
@@ -582,17 +589,17 @@ bool PNMFormat::encodeHeader(grk_image *image, const std::string &filename,
 
 		two = (prec > 8);
 		triple = (ncomp > 2);
-		width = image->comps[0].w;
-		stride_diff = image->comps[0].stride - width;
-		height = image->comps[0].h;
+		width = m_image->comps[0].w;
+		stride_diff = m_image->comps[0].stride - width;
+		height = m_image->comps[0].h;
 		max = (1 << prec) - 1;
 		has_alpha = (ncomp == 4 || ncomp == 2);
 
-		red = image->comps[0].data;
+		red = m_image->comps[0].data;
 
 		if (triple) {
-			green = image->comps[1].data;
-			blue = image->comps[2].data;
+			green = m_image->comps[1].data;
+			blue = m_image->comps[2].data;
 		} else
 			green = blue = nullptr;
 
@@ -602,22 +609,22 @@ bool PNMFormat::encodeHeader(grk_image *image, const std::string &filename,
 			fprintf(m_fileStream, "P7\n# Grok-%s\nWIDTH %u\nHEIGHT %u\nDEPTH %u\n"
 					"MAXVAL %u\nTUPLTYPE %s\nENDHDR\n", grk_version(), width, height,
 					ncomp, max, tt);
-			alpha = image->comps[ncomp - 1].data;
+			alpha = m_image->comps[ncomp - 1].data;
 			adjustA = (
-					image->comps[ncomp - 1].sgnd ?
-							1 << (image->comps[ncomp - 1].prec - 1) : 0);
+					m_image->comps[ncomp - 1].sgnd ?
+							1 << (m_image->comps[ncomp - 1].prec - 1) : 0);
 		} else {
 			fprintf(m_fileStream, "P6\n# Grok-%s\n%u %u\n%u\n", grk_version(), width, height,
 					max);
 			adjustA = 0;
 		}
-		adjustR = (image->comps[0].sgnd ? 1 << (image->comps[0].prec - 1) : 0);
+		adjustR = (m_image->comps[0].sgnd ? 1 << (m_image->comps[0].prec - 1) : 0);
 
 		if (triple) {
 			adjustG = (
-					image->comps[1].sgnd ? 1 << (image->comps[1].prec - 1) : 0);
+					m_image->comps[1].sgnd ? 1 << (m_image->comps[1].prec - 1) : 0);
 			adjustB = (
-					image->comps[2].sgnd ? 1 << (image->comps[2].prec - 1) : 0);
+					m_image->comps[2].sgnd ? 1 << (m_image->comps[2].prec - 1) : 0);
 		} else
 			adjustG = adjustB = 0;
 
@@ -733,7 +740,7 @@ bool PNMFormat::encodeHeader(grk_image *image, const std::string &filename,
 		ncomp = 1;
 
 	/* YUV or MONO: */
-	if (image->numcomps > ncomp) {
+	if (m_image->numcomps > ncomp) {
 		spdlog::warn("[PGM file] Only the first component"
 					" is written out");
 	}
@@ -763,21 +770,21 @@ bool PNMFormat::encodeHeader(grk_image *image, const std::string &filename,
 				goto cleanup;
 		}
 
-		width = image->comps[compno].w;
-		stride_diff = image->comps[compno].stride - width;
-		height = image->comps[compno].h;
-		prec = image->comps[compno].prec;
+		width = m_image->comps[compno].w;
+		stride_diff = m_image->comps[compno].stride - width;
+		height = m_image->comps[compno].h;
+		prec = m_image->comps[compno].prec;
 		max = (1 << prec) - 1;
 
 		fprintf(m_fileStream, "P5\n#Grok-%s\n%u %u\n%u\n", grk_version(), width, height, max);
 
-		red = image->comps[compno].data;
+		red = m_image->comps[compno].data;
 		if (!red) {
 			goto cleanup;
 		}
 		adjustR = (
-				image->comps[compno].sgnd ?
-						1 << (image->comps[compno].prec - 1) : 0);
+				m_image->comps[compno].sgnd ?
+						1 << (m_image->comps[compno].prec - 1) : 0);
 
 		if (prec > 8) {
 			const size_t bufSize = 4096;
@@ -848,18 +855,8 @@ bool PNMFormat::encodeHeader(grk_image *image, const std::string &filename,
 cleanup:
 	if (destname)
 		free(destname);
-	if (!m_useStdIO && m_fileStream) {
-		if (!grk::safe_fclose(m_fileStream))
-			return false;
-	}
 
 	return success;
-
-}
-bool PNMFormat::encodeStrip(uint32_t rows){
-	(void)rows;
-
-	return true;
 }
 bool PNMFormat::encodeFinish(void){
 	if (!m_useStdIO && m_fileStream) {

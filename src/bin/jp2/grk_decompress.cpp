@@ -1441,6 +1441,14 @@ int GrkDecompress::post_decode(grk_plugin_decode_callback_info *info) {
 				spdlog::error("Outfile {} not generated", outfileStr);
 				goto cleanup;
 			}
+			if (!fmt->encodeStrip(0)) {
+				spdlog::error("Outfile {} not generated", outfileStr);
+				goto cleanup;
+			}
+			if (!fmt->encodeFinish()) {
+				spdlog::error("Outfile {} not generated", outfileStr);
+				goto cleanup;
+			}
 		}
 			break;
 		case GRK_PGX_FMT:
