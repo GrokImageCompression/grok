@@ -723,6 +723,12 @@ bool PNMFormat::encodeHeader(grk_image *image, const std::string &filename,
 		}
 	}
 
+	if (!m_useStdIO && m_fileStream) {
+		if (!grk::safe_fclose(m_fileStream))
+			goto cleanup;
+		m_fileStream = nullptr;
+	}
+
 	if (m_useStdIO)
 		ncomp = 1;
 
