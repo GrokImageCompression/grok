@@ -17,14 +17,31 @@
 #pragma once
 #include "ImageFormat.h"
 
+#ifndef GROK_HAVE_LIBTIFF
+# error GROK_HAVE_LIBTIFF_NOT_DEFINED
+#endif /* GROK_HAVE_LIBTIFF */
+
+#include <tiffio.h>
+#include "convert.h"
+
+const size_t maxNumComponents = 10;
 
  /* TIFF conversion*/
 void tiffSetErrorAndWarningHandlers(bool verbose);
 
 class TIFFFormat: public ImageFormat {
 public:
+	TIFFFormat();
+	~TIFFFormat();
 	bool encodeHeader(grk_image *  image, const std::string &filename, uint32_t compressionParam) override;
 	bool encodeStrip(uint32_t rows) override;
 	bool encodeFinish(void) override;
 	grk_image *  decode(const std::string &filename,  grk_cparameters  *parameters) override;
+private:
+	TIFF *tif;
+	uint32_t chroma_subsample_x;
+	uint32_t chroma_subsample_y;
+	int32_t const *planes[maxNumComponents];
+	cvtPlanarToInterleaved cvtPxToCx;
+	cvtFrom32 cvt32sToTif;
 };
