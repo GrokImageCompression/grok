@@ -42,5 +42,6 @@ protected:
 
 	FILE *m_fileStream;
 	std::string m_fileName;
+	bool m_useStdIO;
 
 };

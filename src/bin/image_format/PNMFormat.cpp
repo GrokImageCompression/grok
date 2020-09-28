@@ -518,7 +518,14 @@ static grk_image* pnmtoimage(const char *filename,
 	return image;
 }/* pnmtoimage() */
 
-static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
+
+
+bool PNMFormat::encodeHeader(grk_image *image, const std::string &filename,
+		uint32_t compressionParam) {
+	m_image = image;
+	m_fileName = filename;
+
+	(void) compressionParam;
 	int *red = nullptr;
 	int *green = nullptr;
 	int *blue = nullptr;
@@ -528,17 +535,15 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 	int adjustR, adjustG, adjustB, adjustA;
 	int two, want_gray, has_alpha, triple;
 	int v;
-	FILE *fdest = nullptr;
-	const char *tmp = outfile;
+	const char *tmp = m_fileName.c_str();
 	char *destname = nullptr;
-	int rc = 1;
-	bool writeToStdout = grk::useStdio(outfile);
+	bool success = false;
+	m_useStdIO = grk::useStdio(m_fileName.c_str());
 
 	alpha = nullptr;
 
 	if ((prec = image->comps[0].prec) > 16) {
-		spdlog::error("{}:{}:imagetopnm\n\tprecision {} is larger than 16"
-				"\n\t: refused.", __FILE__, __LINE__, prec);
+		spdlog::error("{}:{}:imagetopnm\n\tprecision {} is larger than 16", __FILE__, __LINE__, prec);
 		goto cleanup;
 	}
 	two = has_alpha = 0;
@@ -556,14 +561,14 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 	if (want_gray)
 		ncomp = 1;
 
-	if (writeToStdout){
-		if (force_split) {
+	if (m_useStdIO){
+		if (forceSplit) {
 			spdlog::error("Unable to write split file to stdout");
 			goto cleanup;
 		}
 	}
 
-	if ((!force_split)
+	if ((!forceSplit)
 			&& (ncomp == 2 /* GRAYA */
 					|| (ncomp > 2 /* RGB, RGBA */
 					&& image->comps[0].dx == image->comps[1].dx
@@ -572,7 +577,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 							&& image->comps[1].dy == image->comps[2].dy
 					))) {
 
-		if (!grk::grk_open_for_output(&fdest, outfile,writeToStdout))
+		if (!grk::grk_open_for_output(&m_fileStream, m_fileName.c_str(),m_useStdIO))
 			goto cleanup;
 
 		two = (prec > 8);
@@ -594,7 +599,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 		if (has_alpha) {
 			const char *tt = (triple ? "RGB_ALPHA" : "GRAYSCALE_ALPHA");
 
-			fprintf(fdest, "P7\n# Grok-%s\nWIDTH %u\nHEIGHT %u\nDEPTH %u\n"
+			fprintf(m_fileStream, "P7\n# Grok-%s\nWIDTH %u\nHEIGHT %u\nDEPTH %u\n"
 					"MAXVAL %u\nTUPLTYPE %s\nENDHDR\n", grk_version(), width, height,
 					ncomp, max, tt);
 			alpha = image->comps[ncomp - 1].data;
@@ -602,7 +607,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 					image->comps[ncomp - 1].sgnd ?
 							1 << (image->comps[ncomp - 1].prec - 1) : 0);
 		} else {
-			fprintf(fdest, "P6\n# Grok-%s\n%u %u\n%u\n", grk_version(), width, height,
+			fprintf(m_fileStream, "P6\n# Grok-%s\n%u %u\n%u\n", grk_version(), width, height,
 					max);
 			adjustA = 0;
 		}
@@ -626,18 +631,18 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 				for (uint32_t i = 0; i < width; ++i){
 					v = *red++ + adjustR;
 					if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
-							&outCount, bufSize, true, fdest)) {
+							&outCount, bufSize, true, m_fileStream)) {
 						goto cleanup;
 					}
 					if (triple) {
 						v = *green++ + adjustG;
 						if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
-								&outCount, bufSize, true, fdest)) {
+								&outCount, bufSize, true, m_fileStream)) {
 							goto cleanup;
 						}
 						v = *blue++ + adjustB;
 						if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
-								&outCount, bufSize, true, fdest)) {
+								&outCount, bufSize, true, m_fileStream)) {
 							goto cleanup;
 						}
 					}/* if(triple) */
@@ -645,7 +650,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 					if (has_alpha) {
 						v = *alpha++ + adjustA;
 						if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
-								&outCount, bufSize, true, fdest)) {
+								&outCount, bufSize, true, m_fileStream)) {
 							goto cleanup;
 						}
 					}
@@ -659,7 +664,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 					alpha += stride_diff;
 			}
 			if (outCount) {
-				size_t res = fwrite(buf, sizeof(uint16_t), outCount, fdest);
+				size_t res = fwrite(buf, sizeof(uint16_t), outCount, m_fileStream);
 				if (res != outCount) {
 					goto cleanup;
 				}
@@ -673,25 +678,25 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 				for (uint32_t i = 0; i < width; ++i){
 					v = *red++;
 					if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
-							&outCount, bufSize, true, fdest)) {
+							&outCount, bufSize, true, m_fileStream)) {
 						goto cleanup;
 					}
 					if (triple) {
 						v = *green++;
 						if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
-								&outCount, bufSize, true, fdest)) {
+								&outCount, bufSize, true, m_fileStream)) {
 							goto cleanup;
 						}
 						v = *blue++;
 						if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
-								&outCount, bufSize, true, fdest)) {
+								&outCount, bufSize, true, m_fileStream)) {
 							goto cleanup;
 						}
 					}
 					if (has_alpha) {
 						v = *alpha++;
 						if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
-								&outCount, bufSize, true, fdest)) {
+								&outCount, bufSize, true, m_fileStream)) {
 							goto cleanup;
 						}
 					}
@@ -705,19 +710,20 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 					alpha += stride_diff;
 			}
 			if (outCount) {
-				size_t res = fwrite(buf, sizeof(uint8_t), outCount, fdest);
+				size_t res = fwrite(buf, sizeof(uint8_t), outCount, m_fileStream);
 				if (res != outCount) {
 					goto cleanup;
 				}
 			}
 		}
-		if (writeToStdout) {
-			rc = 0;
+		// we only write the first PNM file to stdout
+		if (m_useStdIO) {
+			success = true;
 			goto cleanup;
 		}
 	}
 
-	if (writeToStdout)
+	if (m_useStdIO)
 		ncomp = 1;
 
 	/* YUV or MONO: */
@@ -725,7 +731,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 		spdlog::warn("[PGM file] Only the first component"
 					" is written out");
 	}
-	destname = (char*) malloc(strlen(outfile) + 8);
+	destname = (char*) malloc(strlen(m_fileName.c_str()) + 8);
 	if (!destname) {
 		spdlog::error("imagetopnm: out of memory");
 		goto cleanup;
@@ -733,7 +739,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 
 	for (compno = 0; compno < ncomp; compno++) {
 		if (ncomp > 1) {
-			const size_t olen = strlen(outfile);
+			const size_t olen = strlen(m_fileName.c_str());
 			if (olen < 4) {
 				spdlog::error(
 						" imagetopnm: output file name size less than 4.");
@@ -741,13 +747,13 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 			}
 			const size_t dotpos = olen - 4;
 
-			strncpy(destname, outfile, dotpos);
+			strncpy(destname, m_fileName.c_str(), dotpos);
 			sprintf(destname + dotpos, "_%u.pgm", compno);
 		} else
-			sprintf(destname, "%s", outfile);
+			sprintf(destname, "%s", m_fileName.c_str());
 
-		if (!fdest) {
-			if (!grk::grk_open_for_output(&fdest, destname,writeToStdout))
+		if (!m_fileStream) {
+			if (!grk::grk_open_for_output(&m_fileStream, destname,m_useStdIO))
 				goto cleanup;
 		}
 
@@ -757,7 +763,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 		prec = image->comps[compno].prec;
 		max = (1 << prec) - 1;
 
-		fprintf(fdest, "P5\n#Grok-%s\n%u %u\n%u\n", grk_version(), width, height, max);
+		fprintf(m_fileStream, "P5\n#Grok-%s\n%u %u\n%u\n", grk_version(), width, height, max);
 
 		red = image->comps[compno].data;
 		if (!red) {
@@ -777,13 +783,13 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 				for (uint32_t i = 0; i < width; ++i){
 					v = *red++ + adjustR;
 					if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
-							&outCount, bufSize, true, fdest)) {
+							&outCount, bufSize, true, m_fileStream)) {
 						goto cleanup;
 					}
 					if (has_alpha) {
 						v = *alpha++;
 						if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
-								&outCount, bufSize, true, fdest)) {
+								&outCount, bufSize, true, m_fileStream)) {
 							goto cleanup;
 						}
 					}
@@ -794,7 +800,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 			}
 			//flush
 			if (outCount) {
-				size_t res = fwrite(buf, sizeof(uint16_t), outCount, fdest);
+				size_t res = fwrite(buf, sizeof(uint16_t), outCount, m_fileStream);
 				if (res != outCount){
 					goto cleanup;
 				}
@@ -808,7 +814,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 				for (uint32_t i = 0; i < width; ++i){
 					v = *red++ + adjustR;
 					if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
-							&outCount, bufSize, true, fdest)) {
+							&outCount, bufSize, true, m_fileStream)) {
 						goto cleanup;
 					}
 				}
@@ -817,35 +823,32 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 					alpha += stride_diff;
 			}
 			if (outCount) {
-				size_t res = fwrite(buf, sizeof(uint8_t), outCount, fdest);
+				size_t res = fwrite(buf, sizeof(uint8_t), outCount, m_fileStream);
 				if (res != outCount){
 					goto cleanup;
 				}
 			}
 		}
-		if (!writeToStdout && fdest) {
-			if (!grk::safe_fclose(fdest)){
+		if (!m_useStdIO && m_fileStream) {
+			if (!grk::safe_fclose(m_fileStream)){
 				goto cleanup;
 			}
 		}
-		fdest = nullptr;
+		m_fileStream = nullptr;
 	} /* for (compno */
 
-	rc = 0;
+	success = true;
+
 cleanup:
 	if (destname)
 		free(destname);
-	if (!writeToStdout && fdest) {
-		if (!grk::safe_fclose(fdest))
-			rc = 1;
+	if (!m_useStdIO && m_fileStream) {
+		if (!grk::safe_fclose(m_fileStream))
+			return false;
 	}
-	return rc;
-}/* imagetopnm() */
 
-bool PNMFormat::encodeHeader(grk_image *image, const std::string &filename,
-		uint32_t compressionParam) {
-	(void) compressionParam;
-	return imagetopnm(image, filename.c_str(), forceSplit) ? false : true;
+	return success;
+
 }
 bool PNMFormat::encodeStrip(uint32_t rows){
 	(void)rows;
@@ -853,6 +856,10 @@ bool PNMFormat::encodeStrip(uint32_t rows){
 	return true;
 }
 bool PNMFormat::encodeFinish(void){
+	if (!m_useStdIO && m_fileStream) {
+		if (!grk::safe_fclose(m_fileStream))
+			return false;
+	}
 
 	return true;
 }

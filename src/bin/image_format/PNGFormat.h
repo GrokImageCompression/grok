@@ -39,7 +39,6 @@ private:
 	uint8_t *row_buf;
 	uint8_t **row_buf_array;
 	int32_t *row32s;
-	bool useStd;
 	GRK_COLOR_SPACE m_colorSpace;
 	uint32_t prec;
 	uint32_t nr_comp;

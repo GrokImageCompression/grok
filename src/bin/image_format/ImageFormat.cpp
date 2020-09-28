@@ -24,7 +24,8 @@ ImageFormat::ImageFormat() : m_image(nullptr),
 							m_rowCount(0),
 							m_rowsPerStrip(0),
 							m_numStrips(0),
-							m_fileStream(nullptr)
+							m_fileStream(nullptr),
+							m_useStdIO(false)
 {
 	m_fileIO = new FileStreamIO();
 }

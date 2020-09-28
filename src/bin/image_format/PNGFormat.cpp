@@ -67,7 +67,7 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	png_uint_32 width = 0U, height = 0U;
 	uint32_t stride;
 	int color_type;
-	useStd = grk::useStdio(read_idf);
+	m_useStdIO = grk::useStdio(read_idf);
 	grk_image_cmptparm cmptparm[4];
 	uint32_t nr_comp;
 	uint8_t sigbuf[8];
@@ -88,7 +88,7 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 		return nullptr;
 	}
 
-	if (useStd) {
+	if (m_useStdIO) {
 		if (!grk::grk_set_binary_mode(stdin))
 			return nullptr;
 		m_fileStream = stdin;
@@ -346,7 +346,7 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	free(row32s);
 	if (png)
 		png_destroy_read_struct(&png, &m_info, nullptr);
-	if (!useStd && m_fileStream) {
+	if (!m_useStdIO && m_fileStream) {
 		if (!grk::safe_fclose(m_fileStream)) {
 			grk_image_destroy(m_image);
 			m_image = nullptr;
@@ -385,7 +385,6 @@ PNGFormat::PNGFormat() : m_info(nullptr),
 						row_buf(nullptr),
 					row_buf_array(nullptr),
 					row32s(nullptr),
-					useStd(false),
 					m_colorSpace(	GRK_CLRSPC_UNKNOWN),
 					prec(0),
 					nr_comp(0),
