@@ -2749,8 +2749,11 @@ bool CodeStream::decompress_tiles(void) {
 			breakAfterT1 = true;
 		}
 		if (!allocatedOutputImage && multi_tile && m_output_image) {
-			if (!alloc_multi_tile_output_data(m_output_image))
-				return false;
+			if (!alloc_multi_tile_output_data(m_output_image)){
+				success = false;
+				delete processor;
+				goto cleanup;
+			}
 			allocatedOutputImage = true;
 		}
 		// once we schedule a processor for T1 compression, we will destroy it
