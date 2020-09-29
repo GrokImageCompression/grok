@@ -1239,6 +1239,8 @@ cleanup:
 	if (failed) {
 		grk_image_destroy(info->image);
 		info->image = nullptr;
+		delete GrkDecompress::imageFormat;
+		GrkDecompress::imageFormat = nullptr;
 	}
 
 	return failed ? 1 : 0;
