@@ -28,7 +28,7 @@ public:
 private:
 	bool bigEndian;
 	grk_image *  rawtoimage(const char *filename,  grk_cparameters  *parameters, bool big_endian);
-	int imagetoraw(grk_image * image, 
+	bool imagetoraw(grk_image * image,
 					const char *outfile,
 					bool big_endian);
 

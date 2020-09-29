@@ -1056,6 +1056,8 @@ int GrkDecompress::pre_decode(grk_plugin_decode_callback_info *info) {
 				break;
 	#endif
 			default:
+				spdlog::error("Unsupported output format {}",cod_format);
+				goto cleanup;
 				break;
 	}
 
@@ -1434,144 +1436,24 @@ int GrkDecompress::post_decode(grk_plugin_decode_callback_info *info) {
 
 	if (GrkDecompress::store_file_to_disk) {
 		std::string outfileStr = outfile ? std::string(outfile) : "";
-		switch (cod_format) {
-		case GRK_PXM_FMT:
-		{
-			if (!fmt->encodeHeader(image, outfileStr, 0)) {
-				spdlog::error("Outfile {} not generated", outfileStr);
-				goto cleanup;
-			}
-			if (!fmt->encodeStrip(0)) {
-				spdlog::error("Outfile {} not generated", outfileStr);
-				goto cleanup;
-			}
-			if (!fmt->encodeFinish()) {
-				spdlog::error("Outfile {} not generated", outfileStr);
-				goto cleanup;
-			}
-		}
-			break;
-		case GRK_PGX_FMT:
-		{
-			if (!fmt->encodeHeader(image, outfileStr, 0)) {
-				spdlog::error("Outfile {} not generated", outfileStr);
-				goto cleanup;
-			}
-			if (!fmt->encodeStrip(0)) {
-				spdlog::error("Outfile {} not generated", outfileStr);
-				goto cleanup;
-			}
-			if (!fmt->encodeFinish()) {
-				spdlog::error("Outfile {} not generated", outfileStr);
-				goto cleanup;
-			}
-		}
-			break;
-		case GRK_BMP_FMT:
-		{
-			if (!fmt->encodeHeader(image, outfileStr, 0)) {
-				spdlog::error("Outfile {} not generated", outfileStr);
-				goto cleanup;
-			}
-			if (!fmt->encodeStrip(0)) {
-				spdlog::error("Outfile {} not generated", outfileStr);
-				goto cleanup;
-			}
-			if (!fmt->encodeFinish()) {
-				spdlog::error("Outfile {} not generated", outfileStr);
-				goto cleanup;
-			}
-		}
-			break;
-#ifdef GROK_HAVE_LIBTIFF
-		case GRK_TIF_FMT:
-		{
-			if (!fmt->encodeHeader(image, outfileStr, parameters->compression)) {
-				spdlog::error("Outfile {} not generated", outfileStr);
-				goto cleanup;
-			}
-			if (!fmt->encodeStrip(0)) {
-				spdlog::error("Outfile {} not generated", outfileStr);
-				goto cleanup;
-			}
-			if (!fmt->encodeFinish()) {
-				spdlog::error("Outfile {} not generated", outfileStr);
-				goto cleanup;
-			}
-
-
-		}
-			break;
-#endif
-		case GRK_RAW_FMT:
-		{
-			if (fmt->encodeHeader(image, outfileStr, 0)) {
-				spdlog::error(
-						"Error generating raw file. Outfile {} not generated",
-						outfileStr);
-				goto cleanup;
-			}
-		}
-			break;
-		case GRK_RAWL_FMT:
-		{
-			if (fmt->encodeHeader(image, outfileStr, 0)) {
-				spdlog::error(
-						"Error generating rawl file. Outfile {} not generated",
-						outfileStr);
-				goto cleanup;
-			}
-		}
-			break;
-#ifdef GROK_HAVE_LIBJPEG 
-		case GRK_JPG_FMT:
-		{
-			if (!fmt->encodeHeader(image, outfileStr, parameters->compressionLevel)) {
-				spdlog::error(
-						"Error generating jpeg file. Outfile {} not generated",
-						outfileStr);
-				goto cleanup;
-			}
-			if (!fmt->encodeStrip(0)) {
-				spdlog::error("Outfile {} not generated", outfileStr);
-				goto cleanup;
-			}
-			if (!fmt->encodeFinish()) {
-				spdlog::error("Outfile {} not generated", outfileStr);
-				goto cleanup;
-			}
-		}
-			break;
-#endif
-
-#ifdef GROK_HAVE_LIBPNG
-		case GRK_PNG_FMT:
-		{
-			if (!fmt->encodeHeader(image, outfileStr, parameters->compressionLevel)){
-				spdlog::error("Error generating png file. Outfile {} not generated",
-						outfileStr);
-				goto cleanup;
-			}
-
-			if (!fmt->encodeStrip(image->comps[0].h)){
-				spdlog::error("Error generating png file. Outfile {} not generated",
-						outfileStr);
-				goto cleanup;
-			}
-
-			if (!fmt->encodeFinish()){
-				spdlog::error("Error generating png file. Outfile {} not generated",
-						outfileStr);
-				goto cleanup;
-			}
-		}
-			break;
-#endif
-		default:
+		uint32_t compressionParam = 0;
+		if (cod_format == GRK_TIF_FMT)
+			compressionParam = parameters->compression;
+		else if (cod_format == GRK_JPG_FMT ||  cod_format == GRK_PNG_FMT)
+			compressionParam = parameters->compressionLevel;
+		if (!fmt->encodeHeader(image, outfileStr, compressionParam)) {
 			spdlog::error("Outfile {} not generated", outfileStr);
 			goto cleanup;
-			break;
 		}
+		if (!fmt->encodeStrip(image->comps[0].h)) {
+			spdlog::error("Outfile {} not generated", outfileStr);
+			goto cleanup;
+		}
+		if (!fmt->encodeFinish()) {
+			spdlog::error("Outfile {} not generated", outfileStr);
+			goto cleanup;
+		}
+
 	}
 	failed = false;
 	cleanup:
