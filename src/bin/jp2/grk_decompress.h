@@ -53,12 +53,15 @@ struct DecompressInitParams {
 
 class GrkDecompress{
 public:
+	GrkDecompress(void);
+	~GrkDecompress(void);
 	int main(int argc, char **argv);
-	static int pre_decode(grk_plugin_decode_callback_info *info);
-	static int post_decode(grk_plugin_decode_callback_info *info);
-	static bool store_file_to_disk;
-	static IImageFormat *imageFormat;
+	int pre_decode(grk_plugin_decode_callback_info *info);
+	int post_decode(grk_plugin_decode_callback_info *info);
 private:
+	bool store_file_to_disk;
+	IImageFormat *imageFormat;
+
 	int plugin_main(int argc, char **argv, DecompressInitParams *initParams);
 
 	// returns 0 for failure, 1 for success, and 2 if file is not suitable for decoding

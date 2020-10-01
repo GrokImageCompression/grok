@@ -807,6 +807,7 @@ int GrkDecompress::decompress(const char *fileName, DecompressInitParams *initPa
 	info.cod_format = GRK_UNK_FMT;
 	info.decode_flags = GRK_DECODE_ALL;
 	info.decoder_parameters = &initParams->parameters;
+	info.user_data = this;
 
 	if (pre_decode(&info)) {
 		return 0;
@@ -987,15 +988,16 @@ int decode_callback(grk_plugin_decode_callback_info *info) {
 		}
 		rc = 0;
 	}
+	auto decompressor = (GrkDecompress*)info->user_data;
 	if (info->decode_flags & (GRK_DECODE_HEADER |
-	GRK_DECODE_T1 |
-	GRK_DECODE_T2)) {
-		rc = GrkDecompress::pre_decode(info);
+									GRK_DECODE_T1 |
+									GRK_DECODE_T2)) {
+		rc = decompressor->pre_decode(info);
 		if (rc)
 			return rc;
 	}
 	if (info->decode_flags & GRK_DECODE_POST_T1) {
-		rc = GrkDecompress::post_decode(info);
+		rc = decompressor->post_decode(info);
 	}
 	return rc;
 }
@@ -1025,34 +1027,34 @@ int GrkDecompress::pre_decode(grk_plugin_decode_callback_info *info) {
 
 	switch (cod_format) {
 			case GRK_PXM_FMT:
-				GrkDecompress::imageFormat = new PNMFormat(parameters->split_pnm);
+				imageFormat = new PNMFormat(parameters->split_pnm);
 				break;
 			case GRK_PGX_FMT:
-				GrkDecompress::imageFormat = new PGXFormat();
+				imageFormat = new PGXFormat();
 				break;
 			case GRK_BMP_FMT:
-				GrkDecompress::imageFormat = new BMPFormat();
+				imageFormat = new BMPFormat();
 				break;
 	#ifdef GROK_HAVE_LIBTIFF
 			case GRK_TIF_FMT:
-				GrkDecompress::imageFormat = new TIFFFormat();
+				imageFormat = new TIFFFormat();
 				break;
 	#endif
 			case GRK_RAW_FMT:
-				GrkDecompress::imageFormat = new RAWFormat(true);
+				imageFormat = new RAWFormat(true);
 				break;
 			case GRK_RAWL_FMT:
-				GrkDecompress::imageFormat = new RAWFormat(false);
+				imageFormat = new RAWFormat(false);
 				break;
 	#ifdef GROK_HAVE_LIBJPEG
 			case GRK_JPG_FMT:
-				GrkDecompress::imageFormat = new JPEGFormat();
+				imageFormat = new JPEGFormat();
 				break;
 	#endif
 
 	#ifdef GROK_HAVE_LIBPNG
 			case GRK_PNG_FMT:
-				GrkDecompress::imageFormat = new PNGFormat();
+				imageFormat = new PNGFormat();
 				break;
 	#endif
 			default:
@@ -1239,8 +1241,8 @@ cleanup:
 	if (failed) {
 		grk_image_destroy(info->image);
 		info->image = nullptr;
-		delete GrkDecompress::imageFormat;
-		GrkDecompress::imageFormat = nullptr;
+		delete imageFormat;
+		imageFormat = nullptr;
 	}
 
 	return failed ? 1 : 0;
@@ -1265,7 +1267,7 @@ int GrkDecompress::post_decode(grk_plugin_decode_callback_info *info) {
 			oddFirstY = false;
 	}
 
-	auto fmt = GrkDecompress::imageFormat;
+	auto fmt = imageFormat;
 
 	bool failed = true;
 	bool canStoreICC = false;
@@ -1467,8 +1469,8 @@ int GrkDecompress::post_decode(grk_plugin_decode_callback_info *info) {
 		grk_image_destroy(image);
 		info->image = nullptr;
 	}
-	delete GrkDecompress::imageFormat;
-	GrkDecompress::imageFormat = nullptr;
+	delete imageFormat;
+	imageFormat = nullptr;
 	if (failed) {
 		if (outfile){
 			bool allocated = false;
@@ -1481,9 +1483,6 @@ int GrkDecompress::post_decode(grk_plugin_decode_callback_info *info) {
 
 	return failed ? 1 : 0;
 }
-
-bool GrkDecompress::store_file_to_disk=true;
-IImageFormat* GrkDecompress::imageFormat = nullptr;
 
 int GrkDecompress::main(int argc, char **argv) {
 	int rc = EXIT_SUCCESS;
@@ -1548,6 +1547,18 @@ cleanup:
 	destroy_parameters(&initParams.parameters);
 	grk_deinitialize();
 	return rc;
+}
+
+GrkDecompress::GrkDecompress() : store_file_to_disk(true),
+								 imageFormat(nullptr)
+
+{
+}
+
+GrkDecompress::~GrkDecompress(void)
+{
+	delete imageFormat;
+	imageFormat = nullptr;
 }
 
 }

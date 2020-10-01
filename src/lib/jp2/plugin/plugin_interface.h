@@ -90,11 +90,23 @@ struct PluginDecodeCallbackInfo {
 	PluginDecodeCallbackInfo(std::string input, std::string output,
 			grk_decompress_parameters *decoderParameters, GRK_SUPPORTED_FILE_FMT format,
 			uint32_t flags) :
-			deviceId(0), init_decoders_func(nullptr), inputFile(input), outputFile(
-					output), decod_format(format), cod_format(GRK_UNK_FMT), l_stream(
-					nullptr), l_codec(nullptr), decoder_parameters(
-					decoderParameters), image(nullptr), plugin_owns_image(
-					false), tile(nullptr), error_code(0), decode_flags(flags) {
+			deviceId(0),
+			init_decoders_func(nullptr),
+			inputFile(input),
+			outputFile(	output),
+			decod_format(format),
+			cod_format(GRK_UNK_FMT),
+			l_stream(nullptr),
+			l_codec(nullptr),
+			decoder_parameters(decoderParameters),
+			image(nullptr),
+			plugin_owns_image(false),
+			tile(nullptr),
+			error_code(0),
+			decode_flags(flags),
+			user_data(nullptr)
+
+	{
 		memset(&header_info, 0, sizeof(header_info));
 	}
 	size_t deviceId;
@@ -114,6 +126,7 @@ struct PluginDecodeCallbackInfo {
 	grk_plugin_tile *tile;
 	int32_t error_code;
 	uint32_t decode_flags;
+	void* user_data;
 };
 
 typedef int32_t (*PLUGIN_DECODE_USER_CALLBACK)(PluginDecodeCallbackInfo *info);
