@@ -1,6 +1,6 @@
 # option to set custom grok name space
 #set(GROK_NAMESPACE "FOO")
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.17)
 
 if(NOT GROK_NAMESPACE)
   set(GROK_NAMESPACE "GROK")
@@ -8,6 +8,11 @@ if(NOT GROK_NAMESPACE)
 endif()
 set(GROK_LIBRARY_NAME grokj2k)
 set(GROK_PLUGIN_NAME grokj2k_plugin)
+
+# Always inline
+# smmintrin.h:306:1: error: inlining failed in call to always_inline '__m128i _mm_max_epi32(__m128i, __m128i)': target specific option mismatch
+#  _mm_max_epi32 (__m128i __X, __m128i __Y)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse4.1")
 
 project(${GROK_NAMESPACE} )
 

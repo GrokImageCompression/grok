@@ -82,6 +82,7 @@ elif [ "${TRAVIS_OS_NAME}" == "linux" ]; then
 	GROK_OS_NAME=linux
 	
 	# We need a newer version of cmake than travis-ci provides
+	# 		So this should also be the minimum version used in the CMakeLists file.
 	wget --no-check-certificate -qO - https://cmake.org/files/v3.17/cmake-3.17.0-Linux-x86_64.tar.gz | tar -xz
 	# copy to a directory that will not changed every version
 	mv cmake-3.17.0-Linux-x86_64 cmake-install
