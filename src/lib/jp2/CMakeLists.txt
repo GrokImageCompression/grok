@@ -243,13 +243,6 @@ install(FILES grok.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${GROK_INSTALL_SUBDIR} COMPONENT Headers
 )
 
-if(BUILD_DOC)
-# install man page of the library
-install(
-  FILES       ${GROK_SOURCE_DIR}/doc/man/man3/libgrokj2k.3
-  DESTINATION ${CMAKE_INSTALL_MANDIR}/man3)
-endif()
-
 if(BUILD_LUTS_GENERATOR)
 # internal utility to generate t1_luts.h (part of the jp2 lib)
 # no need to install:
