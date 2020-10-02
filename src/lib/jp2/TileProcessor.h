@@ -178,6 +178,7 @@ struct TileComponent;
 
 // tile
 struct grk_tile : public grk_rect_u32 {
+	grk_tile();
 	uint32_t numcomps; /* number of components in tile */
 	TileComponent *comps; /* Components information */
 	uint64_t numpix;

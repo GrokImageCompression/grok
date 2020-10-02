@@ -52,10 +52,7 @@ TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream) :
 				m_corrupt_packet(false)
 {
 	assert(stream);
-	tile = (grk_tile*) grk_calloc(1, sizeof(grk_tile));
-	if (!tile)
-		throw new std::runtime_error("out of memory");
-
+	tile = new grk_tile();
 	tile->comps = new TileComponent[image->numcomps];
 	m_resno_decoded_per_component = new uint32_t[image->numcomps];
 	memset(m_resno_decoded_per_component,0, image->numcomps * sizeof(uint32_t));
@@ -67,7 +64,7 @@ TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream) :
 TileProcessor::~TileProcessor() {
 	if (tile) {
 		delete[] tile->comps;
-		grk_free(tile);
+		delete tile;
 	}
 	delete plt_markers;
 	delete[] m_resno_decoded_per_component;
@@ -1546,6 +1543,16 @@ bool TileProcessor::prepare_sod_decoding(CodeStream *codeStream) {
 		codeStream->m_decoder.m_state = J2K_DEC_STATE_TPH_SOT;
 
 	return true;
+}
+
+grk_tile::grk_tile() : numcomps(0),
+			comps(nullptr),
+			numpix(0),
+			distotile(0),
+			packno(0)
+{
+	for (uint32_t i = 0; i < 100; ++i)
+		distolayer[i] = 0;
 }
 
 PacketTracker::PacketTracker() : bits(nullptr),
