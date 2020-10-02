@@ -50,6 +50,12 @@ Copyright: 2003, Michael E. Smoot .
   2017, Google LLC
 License: MIT
 
+Files: src/include/taskflow/*
+Copyright: 2018-2020 T.-W. Huang, C.-X. Lin, G. Guo, and M. Wong
+University of Utah, Salt Lake City, UT, USA
+University of Illinois at Urbana-Champaign, IL, USA
+License: MIT
+
 Files: src/bin/common/spdlog/*
  src/include/spdlog/*
 Copyright: 2015-present, Gabi Melman & spdlog contributors.
