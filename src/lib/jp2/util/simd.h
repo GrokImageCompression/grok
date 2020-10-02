@@ -88,11 +88,13 @@
 #define ADD(x,y)    _mm_add_epi32((x),(y))
 #define AND(x,y)	_mm_and_si128((x),(y));
 #define SUB(x,y)    _mm_sub_epi32((x),(y))
+// !!! supported by SSE 4.1, not SSE 2
 #define VMAX(x,y)    _mm_max_epi32((x),(y))
+// !!! supported by SSE 4.1, not SSE 2
 #define VMIN(x,y)    _mm_min_epi32((x),(y))
 
 #define VREGF        __m128
-// MUL is actually only valid for SSE 4.1
+// !!! MUL is actually only valid for SSE 4.1, not SSE 2
 #define MUL(x,y)    _mm_mullo_epi32((x),(y))
 #define SAR(x,y)    _mm_srai_epi32((x),(y))
 #define LOADF(x)     _mm_load_ps((float const*)(x))
@@ -109,7 +111,9 @@
 #endif
 
 #define ADD3(x,y,z) 		ADD(ADD(x,y),z)
+// !!! supported by SSE 4.1 or AVX
 #define VCLAMP(x,min,max) 	VMIN(VMAX(x, min), max)
+// !!! supported by SSE 4.1 or AVX
 #define VCLAMPF(x,min,max) 	VMINF(VMAXF(x, min), max)
 
 #endif
