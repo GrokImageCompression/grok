@@ -37,10 +37,10 @@
 
 
 #ifdef __AVX2__
-/** Number of int32 values in a AVX2 register */
+/** Number of int32 values in an AVX2 register */
 #define VREG_INT_COUNT       8
 #else
-/** Number of int32 values in a SSE2 register */
+/** Number of int32 values in an SSE2 register */
 #define VREG_INT_COUNT       4
 #endif
 
@@ -48,7 +48,7 @@
 
 #if (defined(__SSE2__) || defined(__AVX2__))
 
-/* Convenience macros to improve the readability of the formulas */
+/* Convenience macros to improve readability */
 #if __AVX2__
 
 #define VREG        __m256i
@@ -94,7 +94,7 @@
 #define VMIN(x,y)    _mm_min_epi32((x),(y))
 
 #define VREGF        __m128
-// !!! MUL is actually only valid for SSE 4.1, not SSE 2
+// !!! MUL is only valid for SSE 4.1, not SSE 2
 #define MUL(x,y)    _mm_mullo_epi32((x),(y))
 #define SAR(x,y)    _mm_srai_epi32((x),(y))
 #define LOADF(x)     _mm_load_ps((float const*)(x))
@@ -113,7 +113,7 @@
 #define ADD3(x,y,z) 		ADD(ADD(x,y),z)
 // !!! supported by SSE 4.1 or AVX
 #define VCLAMP(x,min,max) 	VMIN(VMAX(x, min), max)
-// !!! supported by SSE 4.1 or AVX
+
 #define VCLAMPF(x,min,max) 	VMINF(VMAXF(x, min), max)
 
 #endif
