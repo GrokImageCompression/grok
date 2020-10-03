@@ -133,7 +133,7 @@ static uint8_t* jp2_write_res(FileFormat *fileFormat, uint32_t *p_nb_bytes_writt
  *
  * @return	the data being copied.
  */
-static uint8_t* jp2_write_bpcc(FileFormat *fileFormat, uint32_t *p_nb_bytes_written);
+static uint8_t* jp2_write_bpc(FileFormat *fileFormat, uint32_t *p_nb_bytes_written);
 
 /**
  * Reads a Bit per Component box.
@@ -145,13 +145,13 @@ static uint8_t* jp2_write_bpcc(FileFormat *fileFormat, uint32_t *p_nb_bytes_writ
  *
  * @return	true if the bpc header is valid, false else.
  */
-static bool jp2_read_bpcc(FileFormat *fileFormat, uint8_t *p_bpc_header_data,
+static bool jp2_read_bpc(FileFormat *fileFormat, uint8_t *p_bpc_header_data,
 		uint32_t bpc_header_size);
 
-static bool jp2_read_cdef(FileFormat *fileFormat, uint8_t *p_cdef_header_data,
+static bool jp2_read_channel_definition(FileFormat *fileFormat, uint8_t *p_cdef_header_data,
 		uint32_t cdef_header_size);
 
-static void jp2_apply_cdef(grk_image *image, grk_jp2_color *color);
+static void jp2_apply_channel_definition(grk_image *image, grk_jp2_color *color);
 
 /**
  * Writes the Channel Definition box.
@@ -161,7 +161,7 @@ static void jp2_apply_cdef(grk_image *image, grk_jp2_color *color);
  *
  * @return	the data being copied.
  */
-static uint8_t* jp2_write_cdef(FileFormat *fileFormat, uint32_t *p_nb_bytes_written);
+static uint8_t* jp2_write_channel_definition(FileFormat *fileFormat, uint32_t *p_nb_bytes_written);
 
 /**
  * Writes the Colour Specification box.
@@ -252,9 +252,9 @@ static bool jp2_write_jp(FileFormat *fileFormat);
  @param color Collector for profile, cdef and pclr data
  @param image
  */
-static bool jp2_apply_pclr(grk_image *image, grk_jp2_color *color);
+static bool jp2_apply_palette_clr(grk_image *image, grk_jp2_color *color);
 
-static void jp2_free_pclr(grk_jp2_color *color);
+static void jp2_free_palette_clr(grk_jp2_color *color);
 
 /**
  * Collect palette data
@@ -265,7 +265,7 @@ static void jp2_free_pclr(grk_jp2_color *color);
  *
  * @return true if successful
  */
-static bool jp2_read_pclr(FileFormat *fileFormat, uint8_t *p_pclr_header_data,
+static bool jp2_read_palette_clr(FileFormat *fileFormat, uint8_t *p_pclr_header_data,
 		uint32_t pclr_header_size);
 
 /**
@@ -279,7 +279,7 @@ static bool jp2_read_pclr(FileFormat *fileFormat, uint8_t *p_pclr_header_data,
  * @return true if successful
  */
 
-static bool jp2_read_cmap(FileFormat *fileFormat, uint8_t *p_cmap_header_data,
+static bool jp2_read_component_mapping(FileFormat *fileFormat, uint8_t *p_cmap_header_data,
 		uint32_t cmap_header_size);
 
 /**
@@ -376,16 +376,21 @@ static const grk_jp2_header_handler* jp2_img_find_handler(uint32_t id);
  */
 static const grk_jp2_header_handler* jp2_find_handler(uint32_t id);
 
-static const grk_jp2_header_handler jp2_header[] = { { JP2_JP, jp2_read_jp }, {
-JP2_FTYP, jp2_read_ftyp }, { JP2_JP2H, jp2_read_jp2h },
-		{ JP2_XML, jp2_read_xml }, { JP2_UUID, jp2_read_uuid } };
+static const grk_jp2_header_handler jp2_header[] = {
+		{ JP2_JP, jp2_read_jp },
+		{ JP2_FTYP, jp2_read_ftyp },
+		{ JP2_JP2H, jp2_read_jp2h },
+		{ JP2_XML, jp2_read_xml },
+		{ JP2_UUID, jp2_read_uuid } };
 
-static const grk_jp2_header_handler jp2_img_header[] = { { JP2_IHDR,
-		jp2_read_ihdr }, { JP2_COLR, jp2_read_colr },
-		{ JP2_BPCC, jp2_read_bpcc }, { JP2_PCLR, jp2_read_pclr }, { JP2_CMAP,
-				jp2_read_cmap }, { JP2_CDEF, jp2_read_cdef }, { JP2_RES,
-				jp2_read_res }
-
+static const grk_jp2_header_handler jp2_img_header[] = {
+		{ JP2_IHDR,	jp2_read_ihdr },
+		{ JP2_COLR, jp2_read_colr },
+		{ JP2_BPCC, jp2_read_bpc },
+		{ JP2_PCLR, jp2_read_palette_clr },
+		{ JP2_CMAP,	jp2_read_component_mapping },
+		{ JP2_CDEF, jp2_read_channel_definition },
+		{ JP2_RES,	jp2_read_res }
 };
 
 /**
@@ -500,13 +505,7 @@ static bool jp2_read_ihdr(FileFormat *fileFormat, uint8_t *p_image_header_data,
 	}
 
 	/* allocate memory for components */
-	fileFormat->comps = (grk_jp2_comps*) grk_calloc(fileFormat->numcomps,
-			sizeof(grk_jp2_comps));
-	if (fileFormat->comps == 0) {
-		GRK_ERROR("Not enough memory to handle image header (ihdr)");
-		return false;
-	}
-
+	fileFormat->comps = new grk_jp2_comps[fileFormat->numcomps];
 	grk_read<uint32_t>(p_image_header_data++, &(fileFormat->bpc), 1); /* BPC */
 
 	///////////////////////////////////////////////////
@@ -672,12 +671,13 @@ static bool jp2_read_uuid(FileFormat *fileFormat, uint8_t *p_header_data,
 
 }
 
+// resolution //////////////
+
 double calc_res(uint16_t num, uint16_t den, uint8_t exponent) {
 	if (den == 0)
 		return 0;
 	return ((double) num / den) * pow(10, exponent);
 }
-
 static bool jp2_read_res_box(uint32_t *id, uint32_t *num, uint32_t *den,
 		uint32_t *exponent, uint8_t **p_resolution_data) {
 	uint32_t box_size = 4 + 4 + 10;
@@ -708,7 +708,6 @@ static bool jp2_read_res_box(uint32_t *id, uint32_t *num, uint32_t *den,
 	return true;
 
 }
-
 static bool jp2_read_res(FileFormat *fileFormat, uint8_t *p_resolution_data,
 		uint32_t resolution_size) {
 	assert(p_resolution_data != nullptr);
@@ -750,7 +749,6 @@ static bool jp2_read_res(FileFormat *fileFormat, uint8_t *p_resolution_data,
 	}
 	return true;
 }
-
 void find_cf(double x, uint32_t *num, uint32_t *den) {
 	// number of terms in continued fraction.
 	// 15 is the max without precision errors for M_PI
@@ -779,7 +777,6 @@ void find_cf(double x, uint32_t *num, uint32_t *den) {
 	*num = (uint32_t) p[i - 1];
 	*den = (uint32_t) q[i - 1];
 }
-
 static void jp2_write_res_box(double resx, double resy, uint32_t box_id,
 		uint8_t **current_res_ptr) {
 	/* write box size */
@@ -819,7 +816,6 @@ static void jp2_write_res_box(double resx, double resy, uint32_t box_id,
 		*current_res_ptr += 1;
 	}
 }
-
 static uint8_t* jp2_write_res(FileFormat *fileFormat, uint32_t *p_nb_bytes_written) {
 	uint8_t *res_data = nullptr, *current_res_ptr = nullptr;
 	assert(fileFormat);
@@ -865,7 +861,9 @@ static uint8_t* jp2_write_res(FileFormat *fileFormat, uint32_t *p_nb_bytes_writt
 	return res_data;
 }
 
-static uint8_t* jp2_write_bpcc(FileFormat *fileFormat, uint32_t *p_nb_bytes_written) {
+///// Component and Colour //////
+
+static uint8_t* jp2_write_bpc(FileFormat *fileFormat, uint32_t *p_nb_bytes_written) {
 	assert(fileFormat != nullptr);
 	assert(p_nb_bytes_written != nullptr);
 
@@ -878,67 +876,62 @@ static uint8_t* jp2_write_bpcc(FileFormat *fileFormat, uint32_t *p_nb_bytes_writ
 	if (!bpcc_data)
 		return nullptr;
 
-	auto current_bpcc_ptr = bpcc_data;
+	auto current_bpc_ptr = bpcc_data;
 
 	/* write box size */
-	grk_write<uint32_t>(current_bpcc_ptr, bpcc_size, 4);
-	current_bpcc_ptr += 4;
+	grk_write<uint32_t>(current_bpc_ptr, bpcc_size, 4);
+	current_bpc_ptr += 4;
 
 	/* BPCC */
-	grk_write<uint32_t>(current_bpcc_ptr, JP2_BPCC, 4);
-	current_bpcc_ptr += 4;
+	grk_write<uint32_t>(current_bpc_ptr, JP2_BPCC, 4);
+	current_bpc_ptr += 4;
 
 	for (i = 0; i < fileFormat->numcomps; ++i)
-		grk_write(current_bpcc_ptr++, fileFormat->comps[i].bpcc);
+		grk_write(current_bpc_ptr++, fileFormat->comps[i].bpc);
 	*p_nb_bytes_written = bpcc_size;
 
 	return bpcc_data;
 }
-
-static bool jp2_read_bpcc(FileFormat *fileFormat, uint8_t *p_bpc_header_data,
+static bool jp2_read_bpc(FileFormat *fileFormat, uint8_t *p_bpc_header_data,
 		uint32_t bpc_header_size) {
-	uint32_t i;
-
 	assert(p_bpc_header_data != nullptr);
 	assert(fileFormat != nullptr);
 
-	if (fileFormat->bpc != 255) {
-		GRK_WARN(
-				"A BPCC header box is available although BPC given by the IHDR box (%u) indicate components bit depth is constant",
+	if (fileFormat->bpc != 0xFF) {
+		GRK_WARN("A BPC header box is available although BPC given by the IHDR box"
+				" (%u) indicate components bit depth is constant",
 				fileFormat->bpc);
 	}
-
-	/* and length is relevant */
 	if (bpc_header_size != fileFormat->numcomps) {
-		GRK_ERROR("Bad BPCC header box (bad size)");
+		GRK_ERROR("Bad BPC header box (bad size)");
 		return false;
 	}
 
 	/* read info for each component */
-	for (i = 0; i < fileFormat->numcomps; ++i) {
-		grk_read(p_bpc_header_data++, &fileFormat->comps[i].bpcc); /* read each BPCC component */
+	for (uint32_t i = 0; i < fileFormat->numcomps; ++i) {
+		/* read each BPC component */
+		grk_read(p_bpc_header_data++, &fileFormat->comps[i].bpc);
 	}
 
 	return true;
 }
-static uint8_t* jp2_write_cdef(FileFormat *fileFormat, uint32_t *p_nb_bytes_written) {
+
+
+static uint8_t* jp2_write_channel_definition(FileFormat *fileFormat, uint32_t *p_nb_bytes_written) {
 	/* 8 bytes for box, 2 for n */
 	uint32_t cdef_size = 10;
-	uint32_t value;
-	uint16_t i;
 
 	assert(fileFormat != nullptr);
 	assert(p_nb_bytes_written != nullptr);
-	assert(fileFormat->color.jp2_cdef != nullptr);
-	assert(fileFormat->color.jp2_cdef->info != nullptr);
-	assert(fileFormat->color.jp2_cdef->n > 0U);
+	assert(fileFormat->color.channel_definition != nullptr);
+	assert(fileFormat->color.channel_definition->info != nullptr);
+	assert(fileFormat->color.channel_definition->num_channel_definitions > 0U);
 
-	cdef_size += 6U * fileFormat->color.jp2_cdef->n;
+	cdef_size += 6U * fileFormat->color.channel_definition->num_channel_definitions;
 
 	auto cdef_data = (uint8_t*) grk_malloc(cdef_size);
 	if (!cdef_data)
 		return nullptr;
-
 
 	auto current_cdef_ptr = cdef_data;
 
@@ -950,29 +943,177 @@ static uint8_t* jp2_write_cdef(FileFormat *fileFormat, uint32_t *p_nb_bytes_writ
 	grk_write<uint32_t>(current_cdef_ptr, JP2_CDEF, 4);
 	current_cdef_ptr += 4;
 
-	value = fileFormat->color.jp2_cdef->n;
 	/* N */
-	grk_write<uint32_t>(current_cdef_ptr, value, 2);
+	grk_write<uint16_t>(current_cdef_ptr, fileFormat->color.channel_definition->num_channel_definitions);
 	current_cdef_ptr += 2;
 
-	for (i = 0U; i < fileFormat->color.jp2_cdef->n; ++i) {
-		value = fileFormat->color.jp2_cdef->info[i].cn;
+	for (uint16_t i = 0U; i < fileFormat->color.channel_definition->num_channel_definitions; ++i) {
 		/* Cni */
-		grk_write<uint32_t>(current_cdef_ptr, value, 2);
+		grk_write<uint16_t>(current_cdef_ptr, fileFormat->color.channel_definition->info[i].cn);
 		current_cdef_ptr += 2;
-		value = fileFormat->color.jp2_cdef->info[i].typ;
 		/* Typi */
-		grk_write<uint32_t>(current_cdef_ptr, value, 2);
+		grk_write<uint16_t>(current_cdef_ptr, fileFormat->color.channel_definition->info[i].typ);
 		current_cdef_ptr += 2;
-		value = fileFormat->color.jp2_cdef->info[i].asoc;
 		/* Asoci */
-		grk_write<uint32_t>(current_cdef_ptr, value, 2);
+		grk_write<uint16_t>(current_cdef_ptr, fileFormat->color.channel_definition->info[i].asoc);
 		current_cdef_ptr += 2;
 	}
 	*p_nb_bytes_written = cdef_size;
 
 	return cdef_data;
 }
+
+static void jp2_apply_channel_definition(grk_image *image, grk_jp2_color *color) {
+	auto info = color->channel_definition->info;
+	uint16_t n = color->channel_definition->num_channel_definitions;
+
+	for (uint16_t i = 0; i < n; ++i) {
+		/* WATCH: asoc_index = asoc - 1 ! */
+		uint16_t asoc = info[i].asoc;
+		uint16_t cn = info[i].cn;
+
+		if (cn >= image->numcomps) {
+			GRK_WARN("jp2_apply_channel_definition: cn=%u, numcomps=%u", cn,
+					image->numcomps);
+			continue;
+		}
+		image->comps[cn].type = (GRK_COMPONENT_TYPE)info[i].typ;
+
+		// no need to do anything further if this is not a colour channel,
+		// or if this channel is associated with the whole image
+		if ( info[i].typ != GRK_COMPONENT_TYPE_COLOUR ||
+				info[i].asoc == GRK_COMPONENT_ASSOC_WHOLE_IMAGE)
+			continue;
+
+		if (info[i].typ == GRK_COMPONENT_TYPE_COLOUR &&
+				asoc > image->numcomps) {
+			GRK_WARN("jp2_apply_channel_definition: association=%u > numcomps=%u", asoc,
+					image->numcomps);
+			continue;
+		}
+		uint16_t asoc_index = (uint16_t) (asoc - 1);
+
+		/* Swap only if color channel */
+		if ((cn != asoc_index) && (info[i].typ == GRK_COMPONENT_TYPE_COLOUR)) {
+			grk_image_comp saved;
+			uint16_t j;
+
+			memcpy(&saved, &image->comps[cn], sizeof(grk_image_comp));
+			memcpy(&image->comps[cn], &image->comps[asoc_index],
+					sizeof(grk_image_comp));
+			memcpy(&image->comps[asoc_index], &saved, sizeof(grk_image_comp));
+
+			/* Swap channels in following channel definitions, don't bother with j <= i that are already processed */
+			for (j = (uint16_t) (i + 1U); j < n; ++j) {
+				if (info[j].cn == cn) {
+					info[j].cn = asoc_index;
+				} else if (info[j].cn == asoc_index) {
+					info[j].cn = cn;
+				}
+				/* asoc is related to color index. Do not update. */
+			}
+		}
+	}
+
+	delete[] color->channel_definition->info;
+	delete color->channel_definition;
+	color->channel_definition = nullptr;
+
+}
+
+static bool jp2_read_channel_definition(FileFormat *fileFormat, uint8_t *p_cdef_header_data,
+		uint32_t cdef_header_size) {
+	uint16_t i;
+	assert(fileFormat != nullptr);
+	assert(p_cdef_header_data != nullptr);
+
+	(void) cdef_header_size;
+
+	/* Part 1, I.5.3.6: 'The shall be at most one Channel Definition box
+	 * inside a JP2 Header box.'*/
+	if (fileFormat->color.channel_definition)
+		return false;
+
+	if (cdef_header_size < 2) {
+		GRK_ERROR("CDEF box: Insufficient data.");
+		return false;
+	}
+
+	uint16_t num_channel_definitions;
+	grk_read<uint16_t>(p_cdef_header_data, &num_channel_definitions); /* N */
+	p_cdef_header_data += 2;
+
+	if (num_channel_definitions == 0U) {
+		GRK_ERROR("CDEF box: Number of channel definitions is equal to zero.");
+		return false;
+	}
+
+	if (cdef_header_size < 2 + (uint32_t) (uint16_t) num_channel_definitions * 6) {
+		GRK_ERROR("CDEF box: Insufficient data.");
+		return false;
+	}
+
+	fileFormat->color.channel_definition = new grk_jp2_channel_definition();
+	fileFormat->color.channel_definition->info = new grk_jp2_channel_definition_info[num_channel_definitions];
+	fileFormat->color.channel_definition->num_channel_definitions = (uint16_t) num_channel_definitions;
+
+	auto cdef_info = fileFormat->color.channel_definition->info;
+
+	for (i = 0; i < fileFormat->color.channel_definition->num_channel_definitions; ++i) {
+		grk_read<uint16_t>(p_cdef_header_data, &cdef_info[i].cn); /* Cn^i */
+		p_cdef_header_data += 2;
+
+		grk_read<uint16_t>(p_cdef_header_data, &cdef_info[i].typ); /* Typ^i */
+		p_cdef_header_data += 2;
+		if (cdef_info[i].typ > 2 && cdef_info[i].typ != GRK_COMPONENT_TYPE_UNSPECIFIED){
+			GRK_ERROR("CDEF box : Illegal channel type %u",cdef_info[i].typ);
+			return false;
+		}
+		grk_read<uint16_t>(p_cdef_header_data, &cdef_info[i].asoc); /* Asoc^i */
+		if (cdef_info[i].asoc > 3 && cdef_info[i].asoc != GRK_COMPONENT_ASSOC_UNASSOCIATED){
+			GRK_ERROR("CDEF box : Illegal channel association %u",cdef_info[i].asoc);
+			return false;
+		}
+		p_cdef_header_data += 2;
+	}
+
+	// cdef sanity check
+	// 1. check for multiple descriptions of the same component with different types
+	for (i = 0; i < fileFormat->color.channel_definition->num_channel_definitions; ++i) {
+		auto infoi = cdef_info[i];
+		for (uint16_t j = 0; j < fileFormat->color.channel_definition->num_channel_definitions; ++j) {
+			auto infoj = cdef_info[j];
+			if (i != j && infoi.cn == infoj.cn && infoi.typ != infoj.typ) {
+				GRK_ERROR(
+						"CDEF box : multiple descriptions of component, %u, with differing types : %u and %u.",
+						infoi.cn, infoi.typ, infoj.typ);
+				return false;
+			}
+		}
+	}
+
+	// 2. check that type/association pairs are unique
+	for (i = 0; i < fileFormat->color.channel_definition->num_channel_definitions; ++i) {
+		auto infoi = cdef_info[i];
+		for (uint16_t j = 0; j < fileFormat->color.channel_definition->num_channel_definitions; ++j) {
+			auto infoj = cdef_info[j];
+			if (i != j &&
+				infoi.cn != infoj.cn &&
+				infoi.typ == infoj.typ	&&
+				infoi.asoc == infoj.asoc &&
+				(infoi.typ != GRK_COMPONENT_TYPE_UNSPECIFIED ||
+						infoi.asoc != GRK_COMPONENT_ASSOC_UNASSOCIATED )   ) {
+				GRK_ERROR(
+						"CDEF box : components %u and %u share same type/association pair (%u,%u).",
+						infoi.cn, infoj.cn, infoj.typ, infoj.asoc);
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
+
 
 static uint8_t* jp2_write_colr(FileFormat *fileFormat, uint32_t *p_nb_bytes_written) {
 	/* room for 8 bytes for box 3 for common data and variable upon profile*/
@@ -1036,32 +1177,120 @@ static uint8_t* jp2_write_colr(FileFormat *fileFormat, uint32_t *p_nb_bytes_writ
 
 	return colr_data;
 }
+static bool jp2_read_colr(FileFormat *fileFormat, uint8_t *p_colr_header_data,
+		uint32_t colr_header_size) {
+	assert(fileFormat != nullptr);
+	assert(p_colr_header_data != nullptr);
 
-static void jp2_free_pclr(grk_jp2_color *color) {
-	if (color) {
-		if (color->jp2_pclr) {
-			grk_free(color->jp2_pclr->channel_sign);
-			grk_free(color->jp2_pclr->channel_size);
-			grk_free(color->jp2_pclr->entries);
-			grk_free(color->jp2_pclr->cmap);
-			grk_free(color->jp2_pclr);
-			color->jp2_pclr = nullptr;
-		}
+	if (colr_header_size < 3) {
+		GRK_ERROR("Bad COLR header box (bad size)");
+		return false;
 	}
-}
 
+	/* Part 1, I.5.3.3 : 'A conforming JP2 reader shall ignore all colour
+	 * specification boxes after the first.'
+	 */
+	if (fileFormat->color.has_colour_specification_box) {
+		GRK_WARN(
+				"A conforming JP2 reader shall ignore all colour specification boxes after the first, so we ignore this one.");
+		return true;
+	}
+	grk_read<uint32_t>(p_colr_header_data++, &fileFormat->meth, 1); /* METH */
+	grk_read<uint32_t>(p_colr_header_data++, &fileFormat->precedence, 1); /* PRECEDENCE */
+	grk_read<uint32_t>(p_colr_header_data++, &fileFormat->approx, 1); /* APPROX */
+
+	if (fileFormat->meth == 1) {
+        uint32_t temp;
+		if (colr_header_size < 7) {
+			GRK_ERROR("Bad COLR header box (bad size: %u)", colr_header_size);
+			return false;
+		}
+		grk_read<uint32_t>(p_colr_header_data, &temp); /* EnumCS */
+		p_colr_header_data += 4;
+
+		fileFormat->enumcs = (GRK_ENUM_COLOUR_SPACE)temp;
+		if ((colr_header_size > 7) && (fileFormat->enumcs != GRK_ENUM_CLRSPC_CIE)) { /* handled below for CIELab) */
+			/* testcase Altona_Technical_v20_x4.pdf */
+			GRK_WARN("Bad COLR header box (bad size: %u)", colr_header_size);
+		}
+
+		if (fileFormat->enumcs == GRK_ENUM_CLRSPC_CIE) {
+			uint32_t *cielab;
+			bool nonDefaultLab = colr_header_size == 35;
+			// only two ints are needed for default CIELab space
+			cielab = (uint32_t*) new uint8_t[(nonDefaultLab ? 9 : 2) * sizeof(uint32_t)];
+			if (cielab == nullptr) {
+				GRK_ERROR("Not enough memory for cielab");
+				return false;
+			}
+			cielab[0] = GRK_ENUM_CLRSPC_CIE; /* enumcs */
+			cielab[1] = GRK_DEFAULT_CIELAB_SPACE;
+
+			if (colr_header_size == 35) {
+				uint32_t rl, ol, ra, oa, rb, ob, il;
+				grk_read<uint32_t>(p_colr_header_data, &rl, 4);
+				p_colr_header_data += 4;
+				grk_read<uint32_t>(p_colr_header_data, &ol, 4);
+				p_colr_header_data += 4;
+				grk_read<uint32_t>(p_colr_header_data, &ra, 4);
+				p_colr_header_data += 4;
+				grk_read<uint32_t>(p_colr_header_data, &oa, 4);
+				p_colr_header_data += 4;
+				grk_read<uint32_t>(p_colr_header_data, &rb, 4);
+				p_colr_header_data += 4;
+				grk_read<uint32_t>(p_colr_header_data, &ob, 4);
+				p_colr_header_data += 4;
+				grk_read<uint32_t>(p_colr_header_data, &il, 4);
+				p_colr_header_data += 4;
+
+				cielab[1] = GRK_CUSTOM_CIELAB_SPACE;
+				cielab[2] = rl;
+				cielab[4] = ra;
+				cielab[6] = rb;
+				cielab[3] = ol;
+				cielab[5] = oa;
+				cielab[7] = ob;
+				cielab[8] = il;
+			} else if (colr_header_size != 7) {
+				GRK_WARN("Bad COLR header box (CIELab, bad size: %u)",
+						colr_header_size);
+			}
+			fileFormat->color.icc_profile_buf = (uint8_t*) cielab;
+			fileFormat->color.icc_profile_len = 0;
+		}
+		fileFormat->color.has_colour_specification_box = true;
+	} else if (fileFormat->meth == 2) {
+		/* ICC profile */
+		uint32_t icc_len = (uint32_t) (colr_header_size - 3);
+		if (icc_len == 0) {
+			GRK_ERROR("ICC profile buffer length equals zero");
+			return false;
+		}
+		fileFormat->color.icc_profile_buf = new uint8_t[(size_t) icc_len];
+		memcpy(fileFormat->color.icc_profile_buf, p_colr_header_data, icc_len);
+		fileFormat->color.icc_profile_len = icc_len;
+		fileFormat->color.has_colour_specification_box = true;
+	} else {
+		/*	ISO/IEC 15444-1:2004 (E), Table I.9 Legal METH values:
+		 conforming JP2 reader shall ignore the entire Colour Specification box.*/
+		GRK_WARN("COLR BOX meth value is not a regular value (%u), "
+				"so we will ignore the entire Colour Specification box. ",
+				fileFormat->meth);
+	}
+	return true;
+}
 static bool jp2_check_color(grk_image *image, grk_jp2_color *color) {
 	uint16_t i;
 
 	/* testcase 4149.pdf.SIGSEGV.cf7.3501 */
-	if (color->jp2_cdef) {
-		auto info = color->jp2_cdef->info;
-		uint16_t n = color->jp2_cdef->n;
+	if (color->channel_definition) {
+		auto info = color->channel_definition->info;
+		uint16_t n = color->channel_definition->num_channel_definitions;
 		uint32_t nr_channels = image->numcomps; /* FIXME image->numcomps == fileFormat->numcomps before color is applied ??? */
 
 		/* cdef applies to cmap channels if any */
-		if (color->jp2_pclr && color->jp2_pclr->cmap)
-			nr_channels = (uint32_t) color->jp2_pclr->nr_channels;
+		if (color->palette && color->palette->cmap)
+			nr_channels = (uint32_t) color->palette->nr_channels;
 
 
 		for (i = 0; i < n; i++) {
@@ -1098,9 +1327,9 @@ static bool jp2_check_color(grk_image *image, grk_jp2_color *color) {
 
 	/* testcases 451.pdf.SIGSEGV.f4c.3723, 451.pdf.SIGSEGV.5b5.3723 and
 	 66ea31acbb0f23a2bbc91f64d69a03f5_signal_sigsegv_13937c0_7030_5725.pdf */
-	if (color->jp2_pclr && color->jp2_pclr->cmap) {
-		uint16_t nr_channels = color->jp2_pclr->nr_channels;
-		auto cmap = color->jp2_pclr->cmap;
+	if (color->palette && color->palette->cmap) {
+		uint16_t nr_channels = color->palette->nr_channels;
+		auto cmap = color->palette->cmap;
 		bool *pcol_usage = nullptr;
 		bool is_sane = true;
 
@@ -1182,16 +1411,16 @@ static bool jp2_check_color(grk_image *image, grk_jp2_color *color) {
 	return true;
 }
 
-static bool jp2_apply_pclr(grk_image *image, grk_jp2_color *color) {
+static bool jp2_apply_palette_clr(grk_image *image, grk_jp2_color *color) {
 	uint32_t j, max;
 	uint16_t i, nr_channels, cmp, pcol;
 	int32_t k, top_k;
 
-	auto channel_size = color->jp2_pclr->channel_size;
-	auto channel_sign = color->jp2_pclr->channel_sign;
-	auto entries = color->jp2_pclr->entries;
-	auto cmap = color->jp2_pclr->cmap;
-	nr_channels = color->jp2_pclr->nr_channels;
+	auto channel_size = color->palette->channel_size;
+	auto channel_sign = color->palette->channel_sign;
+	auto entries = color->palette->entries;
+	auto cmap = color->palette->cmap;
+	nr_channels = color->palette->nr_channels;
 
 	for (i = 0; i < nr_channels; ++i) {
 		/* Palette mapping: */
@@ -1240,7 +1469,7 @@ static bool jp2_apply_pclr(grk_image *image, grk_jp2_color *color) {
 		new_comps[i].sgnd = channel_sign[i];
 	}
 
-	top_k = color->jp2_pclr->nr_entries - 1;
+	top_k = color->palette->nr_entries - 1;
 
 	for (i = 0; i < nr_channels; ++i) {
 		/* Palette mapping: */
@@ -1284,37 +1513,31 @@ static bool jp2_apply_pclr(grk_image *image, grk_jp2_color *color) {
 
 	return true;
 
-}/* apply_pclr() */
+}
 
-static bool jp2_read_pclr(FileFormat *fileFormat, uint8_t *p_pclr_header_data,
+static bool jp2_read_palette_clr(FileFormat *fileFormat, uint8_t *p_pclr_header_data,
 		uint32_t pclr_header_size) {
-	uint16_t nr_entries, nr_channels;
-	uint16_t i, j;
-	uint32_t value;
 	auto orig_header_data = p_pclr_header_data;
-
 	assert(p_pclr_header_data != nullptr);
 	assert(fileFormat != nullptr);
 
-	(void) pclr_header_size;
-
-	if (fileFormat->color.jp2_pclr)
+	if (fileFormat->color.palette)
 		return false;
 
 	if (pclr_header_size < 3)
 		return false;
 
-	grk_read<uint32_t>(p_pclr_header_data, &value, 2); /* NE */
+	uint16_t nr_entries;
+	grk_read<uint16_t>(p_pclr_header_data, &nr_entries); /* NE */
 	p_pclr_header_data += 2;
-	nr_entries = (uint16_t) value;
 	if ((nr_entries == 0U) || (nr_entries > 1024U)) {
 		GRK_ERROR("Invalid PCLR box. Reports %u entries", (int) nr_entries);
 		return false;
 	}
 
-	grk_read<uint32_t>(p_pclr_header_data, &value, 1); /* NPC */
+	uint8_t nr_channels;
+	grk_read<uint8_t>(p_pclr_header_data, &nr_channels); /* NPC */
 	++p_pclr_header_data;
-	nr_channels = (uint16_t) value;
 	if (nr_channels == 0U) {
 		GRK_ERROR("Invalid PCLR box. Reports 0 palette columns");
 		return false;
@@ -1323,49 +1546,27 @@ static bool jp2_read_pclr(FileFormat *fileFormat, uint8_t *p_pclr_header_data,
 	if (pclr_header_size < 3 + (uint32_t) nr_channels)
 		return false;
 
-	auto entries = (uint32_t*) grk_malloc(
-			(size_t) nr_channels * nr_entries * sizeof(uint32_t));
-	if (!entries)
-		return false;
-	auto channel_size = (uint8_t*) grk_malloc(nr_channels);
-	if (!channel_size) {
-		grk_free(entries);
-		return false;
-	}
-	auto channel_sign = (uint8_t*) grk_malloc(nr_channels);
-	if (!channel_sign) {
-		grk_free(entries);
-		grk_free(channel_size);
-		return false;
-	}
-
-	auto jp2_pclr = (grk_jp2_pclr*) grk_malloc(sizeof(grk_jp2_pclr));
-	if (!jp2_pclr) {
-		grk_free(entries);
-		grk_free(channel_size);
-		grk_free(channel_sign);
-		return false;
-	}
-
-	jp2_pclr->channel_sign = channel_sign;
-	jp2_pclr->channel_size = channel_size;
-	jp2_pclr->entries = entries;
+	auto jp2_pclr = new grk_jp2_palette_clr();
+	jp2_pclr->channel_sign = new uint8_t[nr_channels];
+	jp2_pclr->channel_size = new uint8_t[nr_channels];
+	jp2_pclr->entries = new uint32_t[nr_channels * nr_entries];
 	jp2_pclr->nr_entries = nr_entries;
-	jp2_pclr->nr_channels = (uint8_t) value;
+	jp2_pclr->nr_channels = nr_channels;
 	jp2_pclr->cmap = nullptr;
 
-	fileFormat->color.jp2_pclr = jp2_pclr;
+	fileFormat->color.palette = jp2_pclr;
 
-	for (i = 0; i < nr_channels; ++i) {
-		grk_read<uint32_t>(p_pclr_header_data++, &value, 1); /* Bi */
-
-		channel_size[i] = (uint8_t) ((value & 0x7f) + 1);
-		channel_sign[i] = (value & 0x80) ? 1 : 0;
+	for (uint8_t i = 0; i < nr_channels; ++i) {
+		uint8_t val;
+		grk_read<uint8_t>(p_pclr_header_data++, &val); /* Bi */
+		jp2_pclr->channel_size[i] = (uint8_t) ((val & 0x7f) + 1);
+		jp2_pclr->channel_sign[i] = (val & 0x80) ? 1 : 0;
 	}
 
-	for (j = 0; j < nr_entries; ++j) {
-		for (i = 0; i < nr_channels; ++i) {
-			uint32_t bytes_to_read = (uint32_t) ((channel_size[i] + 7) >> 3);
+	auto entries = jp2_pclr->entries;
+	for (uint16_t j = 0; j < nr_entries; ++j) {
+		for (uint8_t i = 0; i < nr_channels; ++i) {
+			uint32_t bytes_to_read = (uint32_t) ((jp2_pclr->channel_size[i] + 7) >> 3);
 
 			if (bytes_to_read > sizeof(uint32_t))
 				bytes_to_read = sizeof(uint32_t);
@@ -1374,17 +1575,31 @@ static bool jp2_read_pclr(FileFormat *fileFormat, uint8_t *p_pclr_header_data,
 							+ (ptrdiff_t) bytes_to_read)
 				return false;
 
+			uint32_t value;
 			grk_read<uint32_t>(p_pclr_header_data, &value, bytes_to_read); /* Cji */
 			p_pclr_header_data += bytes_to_read;
-			*entries = (uint32_t) value;
+			*entries = value;
 			entries++;
 		}
 	}
 
 	return true;
 }
+static void jp2_free_palette_clr(grk_jp2_color *color) {
+	if (color) {
+		if (color->palette) {
+			delete[] color->palette->channel_sign;
+			delete[] color->palette->channel_size;
+			delete[] color->palette->entries;
+			delete[] color->palette->cmap;
+			delete[] color->palette;
+			color->palette = nullptr;
+		}
+	}
+}
 
-static bool jp2_read_cmap(FileFormat *fileFormat, uint8_t *p_cmap_header_data,
+
+static bool jp2_read_component_mapping(FileFormat *fileFormat, uint8_t *p_cmap_header_data,
 		uint32_t cmap_header_size) {
 	uint8_t i, nr_channels;
 	uint32_t value;
@@ -1393,7 +1608,7 @@ static bool jp2_read_cmap(FileFormat *fileFormat, uint8_t *p_cmap_header_data,
 	assert(p_cmap_header_data != nullptr);
 
 	/* Need nr_channels: */
-	if (fileFormat->color.jp2_pclr == nullptr) {
+	if (fileFormat->color.palette == nullptr) {
 		GRK_ERROR("Need to read a PCLR box before the CMAP box.");
 		return false;
 	}
@@ -1401,22 +1616,18 @@ static bool jp2_read_cmap(FileFormat *fileFormat, uint8_t *p_cmap_header_data,
 	/* Part 1, I.5.3.5: 'There shall be at most one Component Mapping box
 	 * inside a JP2 Header box' :
 	 */
-	if (fileFormat->color.jp2_pclr->cmap) {
+	if (fileFormat->color.palette->cmap) {
 		GRK_ERROR("Only one CMAP box is allowed.");
 		return false;
 	}
 
-	nr_channels = fileFormat->color.jp2_pclr->nr_channels;
+	nr_channels = fileFormat->color.palette->nr_channels;
 	if (cmap_header_size < (uint32_t) nr_channels * 4) {
 		GRK_ERROR("Insufficient data for CMAP box.");
 		return false;
 	}
 
-	auto cmap = (grk_jp2_cmap_comp*) grk_malloc(
-			nr_channels * sizeof(grk_jp2_cmap_comp));
-	if (!cmap)
-		return false;
-
+	auto cmap = new grk_jp2_component_mapping_comp[nr_channels];
 	for (i = 0; i < nr_channels; ++i) {
 		grk_read<uint32_t>(p_cmap_header_data, &value, 2); /* CMP^i */
 		p_cmap_header_data += 2;
@@ -1429,278 +1640,11 @@ static bool jp2_read_cmap(FileFormat *fileFormat, uint8_t *p_cmap_header_data,
 		cmap[i].pcol = (uint8_t) value;
 	}
 
-	fileFormat->color.jp2_pclr->cmap = cmap;
+	fileFormat->color.palette->cmap = cmap;
 
 	return true;
 }
 
-static void jp2_apply_cdef(grk_image *image, grk_jp2_color *color) {
-	auto info = color->jp2_cdef->info;
-	uint16_t n = color->jp2_cdef->n;
-
-	for (uint16_t i = 0; i < n; ++i) {
-		/* WATCH: asoc_index = asoc - 1 ! */
-		uint16_t asoc = info[i].asoc;
-		uint16_t cn = info[i].cn;
-
-		if (cn >= image->numcomps) {
-			GRK_WARN("jp2_apply_cdef: cn=%u, numcomps=%u", cn,
-					image->numcomps);
-			continue;
-		}
-		image->comps[cn].type = (GRK_COMPONENT_TYPE)info[i].typ;
-
-		// no need to do anything further if this is not a colour channel,
-		// or if this channel is associated with the whole image
-		if ( info[i].typ != GRK_COMPONENT_TYPE_COLOUR ||
-				info[i].asoc == GRK_COMPONENT_ASSOC_WHOLE_IMAGE)
-			continue;
-
-		if (info[i].typ == GRK_COMPONENT_TYPE_COLOUR &&
-				asoc > image->numcomps) {
-			GRK_WARN("jp2_apply_cdef: association=%u > numcomps=%u", asoc,
-					image->numcomps);
-			continue;
-		}
-		uint16_t asoc_index = (uint16_t) (asoc - 1);
-
-		/* Swap only if color channel */
-		if ((cn != asoc_index) && (info[i].typ == GRK_COMPONENT_TYPE_COLOUR)) {
-			grk_image_comp saved;
-			uint16_t j;
-
-			memcpy(&saved, &image->comps[cn], sizeof(grk_image_comp));
-			memcpy(&image->comps[cn], &image->comps[asoc_index],
-					sizeof(grk_image_comp));
-			memcpy(&image->comps[asoc_index], &saved, sizeof(grk_image_comp));
-
-			/* Swap channels in following channel definitions, don't bother with j <= i that are already processed */
-			for (j = (uint16_t) (i + 1U); j < n; ++j) {
-				if (info[j].cn == cn) {
-					info[j].cn = asoc_index;
-				} else if (info[j].cn == asoc_index) {
-					info[j].cn = cn;
-				}
-				/* asoc is related to color index. Do not update. */
-			}
-		}
-	}
-
-	grk_free(color->jp2_cdef->info);
-	grk_free(color->jp2_cdef);
-	color->jp2_cdef = nullptr;
-
-}/* jp2_apply_cdef() */
-
-static bool jp2_read_cdef(FileFormat *fileFormat, uint8_t *p_cdef_header_data,
-		uint32_t cdef_header_size) {
-	uint16_t i;
-	uint32_t value;
-
-	assert(fileFormat != nullptr);
-	assert(p_cdef_header_data != nullptr);
-
-	(void) cdef_header_size;
-
-	/* Part 1, I.5.3.6: 'The shall be at most one Channel Definition box
-	 * inside a JP2 Header box.'*/
-	if (fileFormat->color.jp2_cdef)
-		return false;
-
-	if (cdef_header_size < 2) {
-		GRK_ERROR("CDEF box: Insufficient data.");
-		return false;
-	}
-
-	grk_read<uint32_t>(p_cdef_header_data, &value, 2); /* N */
-	p_cdef_header_data += 2;
-
-	if ((uint16_t) value == 0) { /* szukw000: FIXME */
-		GRK_ERROR("CDEF box: Number of channel description is equal to zero.");
-		return false;
-	}
-
-	if (cdef_header_size < 2 + (uint32_t) (uint16_t) value * 6) {
-		GRK_ERROR("CDEF box: Insufficient data.");
-		return false;
-	}
-
-	auto cdef_info = (grk_jp2_cdef_info*) grk_malloc(
-			value * sizeof(grk_jp2_cdef_info));
-	if (!cdef_info)
-		return false;
-
-	fileFormat->color.jp2_cdef = (grk_jp2_cdef*) grk_malloc(sizeof(grk_jp2_cdef));
-	if (!fileFormat->color.jp2_cdef) {
-		grk_free(cdef_info);
-		return false;
-	}
-	fileFormat->color.jp2_cdef->info = cdef_info;
-	fileFormat->color.jp2_cdef->n = (uint16_t) value;
-
-	for (i = 0; i < fileFormat->color.jp2_cdef->n; ++i) {
-		grk_read<uint32_t>(p_cdef_header_data, &value, 2); /* Cn^i */
-		p_cdef_header_data += 2;
-		cdef_info[i].cn = (uint16_t) value;
-
-		grk_read<uint32_t>(p_cdef_header_data, &value, 2); /* Typ^i */
-		p_cdef_header_data += 2;
-		if (value > 2 && value != GRK_COMPONENT_TYPE_UNSPECIFIED){
-			GRK_ERROR(
-					"CDEF box : Illegal channel type %u",value);
-			return false;
-		}
-		cdef_info[i].typ = (uint16_t) value;
-
-		grk_read<uint32_t>(p_cdef_header_data, &value, 2); /* Asoc^i */
-		if (value > 3 && value != GRK_COMPONENT_ASSOC_UNASSOCIATED){
-			GRK_ERROR(
-					"CDEF box : Illegal channel association %u",value);
-			return false;
-		}
-		p_cdef_header_data += 2;
-		cdef_info[i].asoc = (uint16_t) value;
-	}
-
-	// cdef sanity check
-	// 1. check for multiple descriptions of the same component with different types
-	for (i = 0; i < fileFormat->color.jp2_cdef->n; ++i) {
-		auto infoi = cdef_info[i];
-		for (uint16_t j = 0; j < fileFormat->color.jp2_cdef->n; ++j) {
-			auto infoj = cdef_info[j];
-			if (i != j && infoi.cn == infoj.cn && infoi.typ != infoj.typ) {
-				GRK_ERROR(
-						"CDEF box : multiple descriptions of component, %u, with differing types : %u and %u.",
-						infoi.cn, infoi.typ, infoj.typ);
-				return false;
-			}
-		}
-	}
-
-	// 2. check that type/association pairs are unique
-	for (i = 0; i < fileFormat->color.jp2_cdef->n; ++i) {
-		auto infoi = cdef_info[i];
-		for (uint16_t j = 0; j < fileFormat->color.jp2_cdef->n; ++j) {
-			auto infoj = cdef_info[j];
-			if (i != j &&
-				infoi.cn != infoj.cn &&
-				infoi.typ == infoj.typ	&&
-				infoi.asoc == infoj.asoc &&
-				(infoi.typ != GRK_COMPONENT_TYPE_UNSPECIFIED ||
-						infoi.asoc != GRK_COMPONENT_ASSOC_UNASSOCIATED )   ) {
-				GRK_ERROR(
-						"CDEF box : components %u and %u share same type/association pair (%u,%u).",
-						infoi.cn, infoj.cn, infoj.typ, infoj.asoc);
-				return false;
-			}
-		}
-	}
-
-	return true;
-}
-
-static bool jp2_read_colr(FileFormat *fileFormat, uint8_t *p_colr_header_data,
-		uint32_t colr_header_size) {
-	assert(fileFormat != nullptr);
-	assert(p_colr_header_data != nullptr);
-
-	if (colr_header_size < 3) {
-		GRK_ERROR("Bad COLR header box (bad size)");
-		return false;
-	}
-
-	/* Part 1, I.5.3.3 : 'A conforming JP2 reader shall ignore all colour
-	 * specification boxes after the first.'
-	 */
-	if (fileFormat->color.jp2_has_colour_specification_box) {
-		GRK_WARN(
-				"A conforming JP2 reader shall ignore all colour specification boxes after the first, so we ignore this one.");
-		return true;
-	}
-	grk_read<uint32_t>(p_colr_header_data++, &fileFormat->meth, 1); /* METH */
-	grk_read<uint32_t>(p_colr_header_data++, &fileFormat->precedence, 1); /* PRECEDENCE */
-	grk_read<uint32_t>(p_colr_header_data++, &fileFormat->approx, 1); /* APPROX */
-
-	if (fileFormat->meth == 1) {
-        uint32_t temp;
-		if (colr_header_size < 7) {
-			GRK_ERROR("Bad COLR header box (bad size: %u)", colr_header_size);
-			return false;
-		}
-		grk_read<uint32_t>(p_colr_header_data, &temp); /* EnumCS */
-		p_colr_header_data += 4;
-
-		fileFormat->enumcs = (GRK_ENUM_COLOUR_SPACE)temp;
-		if ((colr_header_size > 7) && (fileFormat->enumcs != GRK_ENUM_CLRSPC_CIE)) { /* handled below for CIELab) */
-			/* testcase Altona_Technical_v20_x4.pdf */
-			GRK_WARN("Bad COLR header box (bad size: %u)", colr_header_size);
-		}
-
-		if (fileFormat->enumcs == GRK_ENUM_CLRSPC_CIE) {
-			uint32_t *cielab;
-			bool nonDefaultLab = colr_header_size == 35;
-			// only two ints are needed for default CIELab space
-			cielab = (uint32_t*) new uint8_t[(nonDefaultLab ? 9 : 2) * sizeof(uint32_t)];
-			if (cielab == nullptr) {
-				GRK_ERROR("Not enough memory for cielab");
-				return false;
-			}
-			cielab[0] = GRK_ENUM_CLRSPC_CIE; /* enumcs */
-			cielab[1] = GRK_DEFAULT_CIELAB_SPACE;
-
-			if (colr_header_size == 35) {
-				uint32_t rl, ol, ra, oa, rb, ob, il;
-				grk_read<uint32_t>(p_colr_header_data, &rl, 4);
-				p_colr_header_data += 4;
-				grk_read<uint32_t>(p_colr_header_data, &ol, 4);
-				p_colr_header_data += 4;
-				grk_read<uint32_t>(p_colr_header_data, &ra, 4);
-				p_colr_header_data += 4;
-				grk_read<uint32_t>(p_colr_header_data, &oa, 4);
-				p_colr_header_data += 4;
-				grk_read<uint32_t>(p_colr_header_data, &rb, 4);
-				p_colr_header_data += 4;
-				grk_read<uint32_t>(p_colr_header_data, &ob, 4);
-				p_colr_header_data += 4;
-				grk_read<uint32_t>(p_colr_header_data, &il, 4);
-				p_colr_header_data += 4;
-
-				cielab[1] = GRK_CUSTOM_CIELAB_SPACE;
-				cielab[2] = rl;
-				cielab[4] = ra;
-				cielab[6] = rb;
-				cielab[3] = ol;
-				cielab[5] = oa;
-				cielab[7] = ob;
-				cielab[8] = il;
-			} else if (colr_header_size != 7) {
-				GRK_WARN("Bad COLR header box (CIELab, bad size: %u)",
-						colr_header_size);
-			}
-			fileFormat->color.icc_profile_buf = (uint8_t*) cielab;
-			fileFormat->color.icc_profile_len = 0;
-		}
-		fileFormat->color.jp2_has_colour_specification_box = 1;
-	} else if (fileFormat->meth == 2) {
-		/* ICC profile */
-		uint32_t icc_len = (uint32_t) (colr_header_size - 3);
-		if (icc_len == 0) {
-			GRK_ERROR("ICC profile buffer length equals zero");
-			return false;
-		}
-		fileFormat->color.icc_profile_buf = new uint8_t[(size_t) icc_len];
-		memcpy(fileFormat->color.icc_profile_buf, p_colr_header_data, icc_len);
-		fileFormat->color.icc_profile_len = icc_len;
-		fileFormat->color.jp2_has_colour_specification_box = 1;
-	} else if (fileFormat->meth > 2) {
-		/*	ISO/IEC 15444-1:2004 (E), Table I.9 Legal METH values:
-		 conforming JP2 reader shall ignore the entire Colour Specification box.*/
-		GRK_WARN("COLR BOX meth value is not a regular value (%u), "
-				"so we will ignore the entire Colour Specification box. ",
-				fileFormat->meth);
-	}
-	return true;
-}
 
 static bool jp2_write_jp2h(FileFormat *fileFormat) {
 	grk_jp2_img_header_writer_handler writers[32];
@@ -1715,12 +1659,11 @@ static bool jp2_write_jp2h(FileFormat *fileFormat) {
 	memset(writers, 0, sizeof(writers));
 
 	writers[nb_writers++].handler = jp2_write_ihdr;
-	if (fileFormat->bpc == 255)
-		writers[nb_writers++].handler = jp2_write_bpcc;
+	if (fileFormat->bpc == 0xFF)
+		writers[nb_writers++].handler = jp2_write_bpc;
 	writers[nb_writers++].handler = jp2_write_colr;
-	if (fileFormat->color.jp2_cdef) {
-		writers[nb_writers++].handler = jp2_write_cdef;
-	}
+	if (fileFormat->color.channel_definition)
+		writers[nb_writers++].handler = jp2_write_channel_definition;
 	if (fileFormat->has_display_resolution || fileFormat->has_capture_resolution) {
 		bool storeCapture = fileFormat->capture_resolution[0] > 0
 				&& fileFormat->capture_resolution[1] > 0;
@@ -1906,10 +1849,6 @@ static bool jp2_write_jp(FileFormat *fileFormat) {
 	return true;
 }
 
-/* ----------------------------------------------------------------------- */
-/* JP2 compress interface                                             */
-/* ----------------------------------------------------------------------- */
-
 static bool jp2_init_end_header_writing(FileFormat *fileFormat) {
 	assert(fileFormat != nullptr);
 
@@ -1958,7 +1897,7 @@ static bool jp2_default_validation(FileFormat *fileFormat) {
 	/* number of components */
 	/* precision */
 	for (i = 0; i < fileFormat->numcomps; ++i) {
-		is_valid &= ((fileFormat->comps[i].bpcc & 0x7FU) < 38U); /* 0 is valid, ignore sign for check */
+		is_valid &= ((fileFormat->comps[i].bpc & 0x7FU) < 38U); /* 0 is valid, ignore sign for check */
 	}
 	/* METH */
 	is_valid &= ((fileFormat->meth > 0) && (fileFormat->meth < 3));
@@ -2468,22 +2407,22 @@ FileFormat::FileFormat(bool isDecoder, BufferedStream *stream) : codeStream(new 
 	/* Color structure */
 	color.icc_profile_buf = nullptr;
 	color.icc_profile_len = 0;
-	color.jp2_cdef = nullptr;
-	color.jp2_pclr = nullptr;
-	color.jp2_has_colour_specification_box = 0;
+	color.channel_definition = nullptr;
+	color.palette = nullptr;
+	color.has_colour_specification_box = false;
 
 }
 
 FileFormat::~FileFormat() {
 	delete codeStream;
-	grk_free(comps);
+	delete[] comps;
 	grk_free(cl);
 	delete[] color.icc_profile_buf;
-	if (color.jp2_cdef) {
-		grk_free(color.jp2_cdef->info);
-		grk_free(color.jp2_cdef);
+	if (color.channel_definition) {
+		delete[] color.channel_definition->info;
+		delete color.channel_definition;
 	}
-	jp2_free_pclr(&color);
+	jp2_free_palette_clr(&color);
 	delete m_validation_list;
 	delete m_procedure_list;
 	xml.dealloc();
@@ -2591,19 +2530,19 @@ bool FileFormat::decompress( grk_plugin_tile *tile,	 grk_image *p_image){
 	if (meth == 2 && color.icc_profile_buf)
 		p_image->color_space = GRK_CLRSPC_ICC;
 
-	if (color.jp2_pclr) {
+	if (color.palette) {
 		/* Part 1, I.5.3.4: Either both or none : */
-		if (!color.jp2_pclr->cmap)
-			jp2_free_pclr(&(color));
+		if (!color.palette->cmap)
+			jp2_free_palette_clr(&(color));
 		else {
-			if (!jp2_apply_pclr(p_image, &(color)))
+			if (!jp2_apply_palette_clr(p_image, &(color)))
 				return false;
 		}
 	}
 
 	/* Apply channel definitions if needed */
-	if (color.jp2_cdef) {
-		jp2_apply_cdef(p_image, &(color));
+	if (color.channel_definition) {
+		jp2_apply_channel_definition(p_image, &(color));
 	}
 
 	// retrieve icc profile
@@ -2652,7 +2591,7 @@ void FileFormat::init_decompress(grk_dparameters  *parameters){
 	codeStream->init_decompress(parameters);
 
 	/* further JP2 initializations go here */
-	color.jp2_has_colour_specification_box = 0;
+	color.has_colour_specification_box = false;
 }
 
 bool FileFormat::set_decompress_area(grk_image *p_image,
@@ -2703,13 +2642,9 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
 	if (!parameters || !image)
 		return false;
 
-	/* set up the J2K codec */
-	/* ------------------- */
 	if (codeStream->init_compress(parameters, image) == false)
 		return false;
 
-	/* set up the JP2 codec */
-	/* ------------------- */
 
 	/* Profile box */
 
@@ -2732,8 +2667,8 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
 		return false;
 	}
 
-	h = image->y1 - image->y0; /* HEIGHT */
-	w = image->x1 - image->x0; /* WIDTH */
+	h = image->y1 - image->y0;
+	w = image->x1 - image->x0;
 	depth_0 = image->comps[0].prec - 1;
 	sign = image->comps[0].sgnd;
 	bpc = depth_0 + (sign << 7);
@@ -2741,17 +2676,17 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
 		uint32_t depth = image->comps[i].prec - 1;
 		sign = image->comps[i].sgnd;
 		if (depth_0 != depth)
-			bpc = 255;
+			bpc = 0xFF;
 	}
 	C = 7; /* C : Always 7 */
 	UnkC = 0; /* UnkC, colorspace specified in colr box */
 	IPR = 0; /* IPR, no intellectual property */
 
-	/* BitsPerComponent box */
+	/* bit per component box */
 	for (i = 0; i < image->numcomps; i++) {
-		comps[i].bpcc = (uint8_t)(image->comps[i].prec - 1);
+		comps[i].bpc = (uint8_t)(image->comps[i].prec - 1);
 		if (image->comps[i].sgnd)
-			comps[i].bpcc = (uint8_t)(comps[i].bpcc + (1 << 7));
+			comps[i].bpc = (uint8_t)(comps[i].bpc + (1 << 7));
 	}
 
 	/* Colour Specification box */
@@ -2784,6 +2719,10 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
 			enumcs = GRK_ENUM_CLRSPC_SYCC; /* YUV */
 		else if (image->color_space == GRK_CLRSPC_EYCC)
 			enumcs = GRK_ENUM_CLRSPC_EYCC; /* YUV */
+		else{
+			GRK_ERROR("Unsupported colour space enumeration %d", image->color_space);
+			return false;
+		}
 	}
 
 	//transfer buffer to uuid
@@ -2802,7 +2741,7 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
 		image->xmp_len = 0;
 	}
 
-	/* Component Definition box */
+	/* Channel Definition box */
 	for (i = 0; i < image->numcomps; i++) {
 		if (image->comps[i].type != GRK_COMPONENT_TYPE_COLOUR) {
 			alpha_count++;
@@ -2826,51 +2765,32 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
 		color_channels = 1;
 		break;
 	default:
-		// assume that last channel is alpha
-		if (alpha_count) {
-			if (image->numcomps > 1){
-				color_channels = image->numcomps - 1;
-				alpha_count = 1U;
-			}
-			else {
-				alpha_count = 0U;
-			}
-		}
 		break;
 	}
 	if (alpha_count) {
-		color.jp2_cdef = (grk_jp2_cdef*) grk_malloc(sizeof(grk_jp2_cdef));
-		if (!color.jp2_cdef) {
-			GRK_ERROR("Not enough memory to set up the JP2 encoder");
-			return false;
-		}
+		color.channel_definition = new grk_jp2_channel_definition();
 		/* no memset needed, all values will be overwritten except if
-		 * color.jp2_cdef->info allocation fails, */
-		/* in which case color.jp2_cdef->info will be nullptr => valid for destruction */
-		color.jp2_cdef->info = (grk_jp2_cdef_info*) grk_malloc(
-				image->numcomps * sizeof(grk_jp2_cdef_info));
-		if (!color.jp2_cdef->info) {
-			/* memory will be freed by jp2_destroy */
-			GRK_ERROR("Not enough memory to set up the JP2 encoder");
-			return false;
-		}
-		color.jp2_cdef->n = (uint16_t) image->numcomps; /* cast is valid : image->numcomps [1,16384] */
+		 * color.channel_definition->info allocation fails, */
+		/* in which case color.channel_definition->info will be nullptr => valid for destruction */
+		color.channel_definition->info = new grk_jp2_channel_definition_info[image->numcomps];
+		/* cast is valid : image->numcomps [1,16384] */
+		color.channel_definition->num_channel_definitions = (uint16_t) image->numcomps;
 		for (i = 0U; i < color_channels; i++) {
-			color.jp2_cdef->info[i].cn = (uint16_t) i; /* cast is valid : image->numcomps [1,16384] */
-			color.jp2_cdef->info[i].typ = GRK_COMPONENT_TYPE_COLOUR;
-			color.jp2_cdef->info[i].asoc = (uint16_t) (i + 1U); /* No overflow + cast is valid : image->numcomps [1,16384] */
+			/* cast is valid : image->numcomps [1,16384] */
+			color.channel_definition->info[i].cn = (uint16_t) i;
+			color.channel_definition->info[i].typ = GRK_COMPONENT_TYPE_COLOUR;
+			/* No overflow + cast is valid : image->numcomps [1,16384] */
+			color.channel_definition->info[i].asoc = (uint16_t) (i + 1U);
 		}
 		for (; i < image->numcomps; i++) {
-			color.jp2_cdef->info[i].cn = (uint16_t) i; /* cast is valid : image->numcomps [1,16384] */
-			color.jp2_cdef->info[i].typ = image->comps[i].type;
-			color.jp2_cdef->info[i].asoc = image->comps[i].association;
+			/* cast is valid : image->numcomps [1,16384] */
+			color.channel_definition->info[i].cn = (uint16_t) i;
+			color.channel_definition->info[i].typ = image->comps[i].type;
+			color.channel_definition->info[i].asoc = image->comps[i].association;
 		}
 	}
-	/*********************************************/
-
 	precedence = 0; /* PRECEDENCE */
 	approx = 0; /* APPROX */
-
 	has_capture_resolution = parameters->write_capture_resolution ||
 											parameters->write_capture_resolution_from_file;
 	if (parameters->write_capture_resolution) {
@@ -2950,19 +2870,19 @@ bool FileFormat::decompress_tile(grk_image *p_image,uint16_t tile_index) {
 	else
 		p_image->color_space = GRK_CLRSPC_UNKNOWN;
 
-	if (color.jp2_pclr) {
+	if (color.palette) {
 		/* Part 1, I.5.3.4: Either both or none : */
-		if (!color.jp2_pclr->cmap)
-			jp2_free_pclr(&(color));
+		if (!color.palette->cmap)
+			jp2_free_palette_clr(&(color));
 		else {
-			if (!jp2_apply_pclr(p_image, &(color)))
+			if (!jp2_apply_palette_clr(p_image, &(color)))
 				return false;
 		}
 	}
 
 	/* Apply channel definitions if needed */
-	if (color.jp2_cdef)
-		jp2_apply_cdef(p_image, &(color));
+	if (color.channel_definition)
+		jp2_apply_channel_definition(p_image, &(color));
 
 	if (color.icc_profile_buf) {
 		p_image->icc_profile_buf = color.icc_profile_buf;

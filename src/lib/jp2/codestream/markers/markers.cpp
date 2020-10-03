@@ -1982,10 +1982,10 @@ bool j2k_write_cbd(CodeStream *codeStream) {
 	for (i = 0; i < image->numcomps; ++i) {
 		auto comp = image->comps + i;
 		/* Component bit depth */
-		uint8_t bpcc = (uint8_t) (comp->prec - 1);
+		uint8_t bpc = (uint8_t) (comp->prec - 1);
 		if (comp->sgnd)
-			bpcc = (uint8_t)(bpcc + (1 << 7));
-		if (!stream->write_byte(bpcc))
+			bpc = (uint8_t)(bpc + (1 << 7));
+		if (!stream->write_byte(bpc))
 			return false;
 	}
 	return true;

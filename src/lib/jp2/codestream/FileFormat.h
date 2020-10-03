@@ -83,9 +83,9 @@ enum JP2_IMG_STATE {
  JP2 component
  */
 struct grk_jp2_comps {
-	uint32_t depth;
-	uint32_t sgnd;
-	uint8_t bpcc;
+	grk_jp2_comps() : bpc(0)
+	{}
+	uint8_t bpc;
 };
 
 struct grk_jp2_buffer {
