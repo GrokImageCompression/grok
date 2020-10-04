@@ -312,7 +312,9 @@ static grk_image* pnmtoimage(const char *filename,
 	uint32_t subsampling_dx = parameters->subsampling_dx;
 	uint32_t subsampling_dy = parameters->subsampling_dy;
 	FILE *fp = nullptr;
-	uint32_t compno, numcomps, w, stride_diff,width,counter, h, prec, format;
+	uint16_t numcomps;
+	uint32_t compno, w, stride_diff,width,counter, h, format;
+	uint8_t prec;
 	GRK_COLOR_SPACE color_space;
 	grk_image_cmptparm cmptparm[4]; /* RGBA: max. 4 components */
 	grk_image *image = nullptr;
@@ -345,7 +347,7 @@ static grk_image* pnmtoimage(const char *filename,
 		numcomps = 3;
 		break;
 	case 7: /* arbitrary map */
-		numcomps = header_info.depth;
+		numcomps = (uint16_t)header_info.depth;
 		break;
 	default:
 		goto cleanup;
@@ -355,7 +357,7 @@ static grk_image* pnmtoimage(const char *filename,
 	else
 		color_space = GRK_CLRSPC_SRGB;/* RGB, RGBA */
 
-	prec = uint_floorlog2(header_info.maxval) + 1;
+	prec = (uint8_t)(uint_floorlog2(header_info.maxval) + 1);
 	if (prec > 16) {
 		spdlog::error(
 				"Precision {} is greater than max supported precision (16)",

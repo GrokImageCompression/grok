@@ -51,7 +51,7 @@ struct TileComponentCodingParams {
 	/** coding style */
 	uint8_t csty;
 	/** number of resolutions */
-	uint32_t numresolutions;
+	uint8_t numresolutions;
 	/** log2(code-blocks width) */
 	uint32_t cblkw;
 	/** log2(code-blocks height) */
@@ -125,14 +125,14 @@ struct TileCodingParams {
 	void destroy();
 
 	/** coding style */
-	uint32_t csty;
+	uint8_t csty;
 	/** progression order */
 	GRK_PROG_ORDER prg;
 	/** number of layers */
 	uint16_t numlayers;
 	uint16_t num_layers_to_decode;
 	/** multi-component transform identifier */
-	uint32_t mct;
+	uint8_t mct;
 	/** rates of layers */
 	double rates[100];
 	/** number of progression order changes */

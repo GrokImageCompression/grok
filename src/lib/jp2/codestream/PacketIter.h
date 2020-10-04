@@ -78,9 +78,9 @@ struct PacketIter {
 	/** precinct step used to localize the packet in the include vector */
 	uint32_t step_p;
 	/** component that identify the packet */
-	uint32_t compno;
+	uint16_t compno;
 	/** resolution that identify the packet */
-	uint32_t resno;
+	uint8_t resno;
 	/** precinct that identify the packet */
 	uint64_t precno;
 	/** layer that identify the packet */
@@ -90,7 +90,7 @@ struct PacketIter {
 	/** progression order change information */
 	 grk_poc  poc;
 	/** number of components in the image */
-	uint32_t numcomps;
+	uint16_t numcomps;
 	/** Components*/
 	grk_pi_comp *comps;
 	/** tile coordinates*/

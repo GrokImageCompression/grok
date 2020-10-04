@@ -66,7 +66,9 @@ static unsigned short readushort(FILE *f, int bigendian) {
 static grk_image* pgxtoimage(const char *filename,
 		grk_cparameters *parameters) {
 	FILE *f = nullptr;
-	uint32_t w, stride_diff,h, prec, numcomps;
+	uint32_t w, stride_diff,h;
+	uint16_t numcomps;
+	uint32_t prec;
 	int32_t max;
 	uint64_t i, index;
 	GRK_COLOR_SPACE color_space;
@@ -160,7 +162,7 @@ static grk_image* pgxtoimage(const char *filename,
 		force8 = false;
 	}
 
-	cmptparm.prec = prec;
+	cmptparm.prec = (uint8_t)prec;
 	cmptparm.dx = parameters->subsampling_dx;
 	cmptparm.dy = parameters->subsampling_dy;
 

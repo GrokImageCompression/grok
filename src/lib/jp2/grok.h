@@ -368,10 +368,12 @@ typedef void (*grk_msg_callback)(const char *msg, void *client_data);
  */
 typedef struct _grk_poc {
 	/** Resolution num start, component num start, given by POC */
-	uint32_t resno0, compno0;
+	uint8_t resno0;
+	uint16_t compno0;
 	/** Layer num end, resolution num end, component num end, given by POC */
 	uint16_t layno1;
-	uint32_t resno1, compno1;
+	uint8_t resno1;
+	uint16_t compno1;
 	/** Layer num start,precinct num start, precinct num end */
 	uint16_t layno0;
 	uint64_t precno0, precno1;
@@ -384,16 +386,20 @@ typedef struct _grk_poc {
 	/** Start and end values for tile width and height*/
 	uint32_t tx0, tx1, ty0, ty1;
 	/** Start value, initialized in pi_initialise_encode*/
-	uint32_t resS, compS;
+	uint8_t resS;
+	uint16_t compS;
 	/** End value, initialized in pi_initialise_encode */
 	uint16_t layE;
-	uint32_t resE, compE;
+	uint8_t resE;
+	uint16_t compE;
 	uint64_t prcE;
 	/** Start and end values of tile width and height, initialized in pi_initialise_encode*/
 	uint32_t txS, txE, tyS, tyE, dx, dy;
 	/** Temporary values for Tile parts, initialized in pi_create_encode */
 	uint16_t lay_t;
-	uint32_t res_t, comp_t, tx0_t, ty0_t;
+	uint8_t res_t;
+	uint16_t comp_t;
+	uint32_t tx0_t, ty0_t;
 	uint64_t prc_t;
 } grk_poc;
 
@@ -417,7 +423,7 @@ typedef struct _grk_raw_cparameters {
 	/** number of components of the raw image */
 	uint16_t numcomps;
 	/** bit depth of the raw image */
-	uint32_t prec;
+	uint8_t prec;
 	/** signed/unsigned raw image */
 	bool sgnd;
 	/** raw components parameters */
@@ -464,7 +470,7 @@ typedef struct _grk_cparameters {
 	/** different psnr for successive layers */
 	double tcp_distoratio[100];
 	/** number of resolutions */
-	uint32_t numresolution;
+	uint8_t numresolution;
 	/** initial code block width  (default to 64) */
 	uint32_t cblockw_init;
 	/** initial code block height (default to 64) */
@@ -721,7 +727,7 @@ typedef enum grk_prec_mode {
  * Precision
  */
 typedef struct _grk_prec {
-	uint32_t prec;
+	uint8_t prec;
 	grk_precision_mode mode;
 } grk_precision;
 
@@ -863,7 +869,7 @@ typedef struct _grk_image_comp {
 	/** y component offset compared to the whole image */
 	uint32_t y0;
 	/** precision */
-	uint32_t prec;
+	uint8_t prec;
 	bool sgnd;
 	/** image component data */
 	int32_t *data;
@@ -888,7 +894,7 @@ typedef struct _grk_image {
 	/** Ysiz: height of the reference grid */
 	uint32_t y1;
 	/** number of components in the image */
-	uint32_t numcomps;
+	uint16_t numcomps;
 	/** color space: sRGB, Greyscale or YUV */
 	GRK_COLOR_SPACE color_space;
 	/** image components */
@@ -926,7 +932,7 @@ typedef struct _grk_image_comptparm {
 	/** y component offset compared to the whole image */
 	uint32_t y0;
 	/** precision */
-	uint32_t prec;
+	uint8_t prec;
 	/** true if data is signed */
 	bool sgnd;
 } grk_image_cmptparm;
@@ -1279,7 +1285,7 @@ GRK_API void GRK_CALLCONV grk_deinitialize();
  *
  * @return returns      a new image if successful, otherwise nullptr
  * */
-GRK_API grk_image* GRK_CALLCONV grk_image_create(uint32_t numcmpts,
+GRK_API grk_image* GRK_CALLCONV grk_image_create(uint16_t numcmpts,
 		grk_image_cmptparm *cmptparms, GRK_COLOR_SPACE clrspc, bool allocData);
 
 /**

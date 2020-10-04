@@ -207,7 +207,8 @@ grk_image* RAWFormat::rawtoimage(const char *filename,
 	uint32_t subsampling_dx = parameters->subsampling_dx;
 	uint32_t subsampling_dy = parameters->subsampling_dy;
 
-	uint32_t i, compno, numcomps, w, h;
+	uint32_t i, compno, w, h;
+	uint16_t numcomps;
 	GRK_COLOR_SPACE color_space;
 	grk_image_cmptparm *cmptparm;
 	grk_image *image = nullptr;

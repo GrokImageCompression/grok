@@ -450,7 +450,7 @@ static grk_image* tiftoimage(const char *filename,
 
 	uint32_t w = tiWidth;
 	uint32_t h = tiHeight;
-	uint32_t numcomps = 0;
+	uint16_t numcomps = 0;
 	uint32_t icclen = 0;
 	uint8_t *iccbuf = nullptr;
 	uint8_t *iptc_buf = nullptr;
@@ -606,7 +606,7 @@ static grk_image* tiftoimage(const char *filename,
 	// 4. create image
 	for (uint32_t j = 0; j < numcomps; j++) {
 		auto img_comp = cmptparm + j;
-		img_comp->prec = tiBps;
+		img_comp->prec = (uint8_t)tiBps;
 		bool chroma = (j==1 || j==2);
 		img_comp->dx = chroma ? chroma_subsample_x : 1;
 		img_comp->dy = chroma ? chroma_subsample_y : 1;
@@ -634,7 +634,7 @@ static grk_image* tiftoimage(const char *filename,
 	}
 	for (uint32_t j = 0; j < numcomps; j++) {
 		// handle non-colour channel
-		auto numColourChannels = numcomps - extrasamples;
+		uint16_t numColourChannels = numcomps - extrasamples;
 		auto comp = image->comps + j;
 
 		if (extrasamples > 0 && j >= numColourChannels) {

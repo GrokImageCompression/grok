@@ -39,9 +39,9 @@
 #define INV(val, mask,invert)  ((invert) ? ((val)^(mask)) : (val))
 
 /* Component precision clipping */
-void clip_component( grk_image_comp  *  component, uint32_t precision);
+void clip_component( grk_image_comp  *  component, uint8_t precision);
 /* Component precision scaling */
-void scale_component( grk_image_comp  *  component, uint32_t precision);
+void scale_component( grk_image_comp  *  component, uint8_t precision);
 
 grk_image* convert_gray_to_rgb(grk_image *original);
 grk_image* upsample_image_components(grk_image *original);

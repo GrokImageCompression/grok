@@ -69,7 +69,7 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	int color_type;
 	m_useStdIO = grk::useStdio(read_idf);
 	grk_image_cmptparm cmptparm[4];
-	uint32_t nr_comp;
+	uint16_t nr_comp;
 	uint8_t sigbuf[8];
 	cvtTo32 cvtXXTo32s = nullptr;
 	cvtInterleavedToPlanar cvtToPlanar = nullptr;
@@ -224,7 +224,7 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	memset(cmptparm, 0, sizeof(cmptparm));
 	for (uint32_t i = 0; i < nr_comp; ++i) {
 		auto img_comp = cmptparm + i;
-		img_comp->prec = (uint32_t)bit_depth;
+		img_comp->prec = (uint8_t)bit_depth;
 		img_comp->sgnd = false;
 		img_comp->dx = params->subsampling_dx;
 		img_comp->dy = params->subsampling_dy;

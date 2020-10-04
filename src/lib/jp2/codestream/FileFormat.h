@@ -197,15 +197,15 @@ struct FileFormat : public ICodeStream {
 	/* height of image */
 	uint32_t h;
 	/* number of components in the image */
-	uint32_t numcomps;
-	uint32_t bpc;
-	uint32_t C;
-	uint32_t UnkC;
-	uint32_t IPR;
-	uint32_t meth;
-	uint32_t approx;
+	uint16_t numcomps;
+	uint8_t bpc;
+	uint8_t C;
+	uint8_t UnkC;
+	uint8_t IPR;
+	uint8_t meth;
+	uint8_t approx;
 	GRK_ENUM_COLOUR_SPACE enumcs;
-	uint32_t precedence;
+	uint8_t precedence;
 	uint32_t brand;
 	uint32_t minversion;
 	uint32_t numcl;

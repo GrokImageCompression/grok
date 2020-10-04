@@ -54,7 +54,7 @@ void decode_synch_plugin_with_host(TileProcessor *tcd) {
 										"Plugin does not handle code blocks with multiple segments. Image will be decoded on CPU.");
 								throw PluginDecodeUnsupportedException();
 							}
-							auto maxPasses = 3
+							uint32_t maxPasses = 3
 									* (tcd->image->comps[0].prec
 											+ BIBO_EXTRA_BITS) - 2;
 							if (cblk->segs[0].numpasses > maxPasses) {

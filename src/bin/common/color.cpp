@@ -35,8 +35,8 @@
 
 //#define DEBUG_PROFILE
 
-static grk_image* create_rgb_no_subsample_image(uint32_t numcmpts, uint32_t w, uint32_t h,
-		uint32_t prec) {
+static grk_image* create_rgb_no_subsample_image(uint16_t numcmpts, uint32_t w, uint32_t h,
+		uint8_t prec) {
 	if (!numcmpts)
 		return nullptr;
 

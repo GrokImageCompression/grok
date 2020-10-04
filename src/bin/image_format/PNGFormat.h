@@ -40,8 +40,8 @@ private:
 	uint8_t **row_buf_array;
 	int32_t *row32s;
 	GRK_COLOR_SPACE m_colorSpace;
-	uint32_t prec;
-	uint32_t nr_comp;
+	uint8_t prec;
+	uint16_t nr_comp;
 	int32_t const *m_planes[4];
 };
 

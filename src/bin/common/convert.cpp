@@ -32,7 +32,7 @@
 #include <limits>
 
 /* Component clipping */
-void clip_component(grk_image_comp *component, uint32_t precision) {
+void clip_component(grk_image_comp *component, uint8_t precision) {
 	uint32_t stride_diff = component->stride - component->w;
 	assert(precision <= 16);
 
@@ -64,7 +64,7 @@ void clip_component(grk_image_comp *component, uint32_t precision) {
 }
 
 /* Component precision scaling */
-static void scale_component_up(grk_image_comp *component, uint32_t precision) {
+static void scale_component_up(grk_image_comp *component, uint8_t precision) {
 	uint32_t stride_diff = component->stride - component->w;
 	if (component->sgnd) {
 		int64_t newMax = (int64_t) 1U << (precision - 1);
@@ -93,7 +93,7 @@ static void scale_component_up(grk_image_comp *component, uint32_t precision) {
 	}
 	component->prec = precision;
 }
-void scale_component(grk_image_comp *component, uint32_t precision) {
+void scale_component(grk_image_comp *component, uint8_t precision) {
 	if (component->prec == precision)
 		return;
 	if (component->prec < precision) {
@@ -1960,9 +1960,9 @@ void bmp24toimage(const uint8_t *pData, uint32_t srcStride,
 	}
 }
 
-static void bmp_mask_get_shift_and_prec(uint32_t mask, uint32_t *shift,
-		uint32_t *prec) {
-	uint32_t l_shift, l_prec;
+static void bmp_mask_get_shift_and_prec(uint32_t mask, uint8_t *shift,
+		uint8_t *prec) {
+	uint8_t l_shift, l_prec;
 	l_shift = l_prec = 0U;
 	if (mask != 0U) {
 		while ((mask & 1U) == 0U) {
@@ -1983,10 +1983,10 @@ static void bmp_mask_get_shift_and_prec(uint32_t mask, uint32_t *shift,
 void bmp_mask32toimage(const uint8_t *pData, uint32_t srcStride,
 		grk_image *image, uint32_t redMask, uint32_t greenMask,
 		uint32_t blueMask, uint32_t alphaMask) {
-	uint32_t redShift, redPrec;
-	uint32_t greenShift, greenPrec;
-	uint32_t blueShift, bluePrec;
-	uint32_t alphaShift, alphaPrec;
+	uint8_t redShift, redPrec;
+	uint8_t greenShift, greenPrec;
+	uint8_t blueShift, bluePrec;
+	uint8_t alphaShift, alphaPrec;
 
 	uint32_t width = image->comps[0].w;
 	uint32_t stride_diff = image->comps[0].stride - width;
@@ -2034,10 +2034,10 @@ void bmp_mask32toimage(const uint8_t *pData, uint32_t srcStride,
 void bmp_mask16toimage(const uint8_t *pData, uint32_t srcStride,
 		grk_image *image, uint32_t redMask, uint32_t greenMask,
 		uint32_t blueMask, uint32_t alphaMask) {
-	uint32_t redShift, redPrec;
-	uint32_t greenShift, greenPrec;
-	uint32_t blueShift, bluePrec;
-	uint32_t alphaShift, alphaPrec;
+	uint8_t redShift, redPrec;
+	uint8_t greenShift, greenPrec;
+	uint8_t blueShift, bluePrec;
+	uint8_t alphaShift, alphaPrec;
 
 	uint32_t width = image->comps[0].w;
 	uint32_t stride_diff = image->comps[0].stride - width;

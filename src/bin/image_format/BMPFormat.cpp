@@ -610,7 +610,8 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	uint8_t lut_R[256], lut_G[256], lut_B[256];
 	uint8_t const *pLUT[3];
 	grk_image *image = nullptr;
-	uint32_t palette_len, numcmpts = 1U;
+	uint32_t palette_len;
+	uint16_t numcmpts = 1U;
 	bool l_result = false;
 	uint8_t *pData = nullptr;
 	uint32_t bmpStride;

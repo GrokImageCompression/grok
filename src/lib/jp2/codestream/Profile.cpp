@@ -107,7 +107,7 @@ void Profile::set_imf_parameters(grk_cparameters *parameters,
 			&& image->x0 == 0 && image->y0 == 0) {
 		const int max_NL = Profile::get_imf_max_NL(parameters, image);
 		if (max_NL >= 0 && parameters->numresolution > (uint32_t) max_NL)
-			parameters->numresolution = (uint32_t) (max_NL + 1);
+			parameters->numresolution = (uint8_t) (max_NL + 1);
 
 		/* Note: below is generic logic */
 		if (!parameters->tile_size_on) {
@@ -739,7 +739,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 			ret = false;
 		}
 	}
-	for (uint32_t i = 0; i < min(image->numcomps, 4U); i++) {
+	for (uint16_t i = 0; i < std::min<uint16_t>(image->numcomps, 4U); i++) {
 		if (i == 0 || i == 3) {
 			if (image->comps[i].dx != 1) {
 				GRK_WARN(
@@ -878,17 +878,17 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
  * Cinema Profile
  *****************/
 
-void Profile::initialise_4K_poc(grk_poc *POC, uint32_t numres) {
+void Profile::initialise_4K_poc(grk_poc *POC, uint8_t numres) {
 	assert(numres > 0);
 	POC[0].tile = 1;
 	POC[0].resno0 = 0;
 	POC[0].compno0 = 0;
 	POC[0].layno1 = 1;
-	POC[0].resno1 = (uint32_t) (numres - 1);
+	POC[0].resno1 = (uint8_t) (numres - 1);
 	POC[0].compno1 = 3;
 	POC[0].prg1 = GRK_CPRL;
 	POC[1].tile = 1;
-	POC[1].resno0 = (uint32_t) (numres - 1);
+	POC[1].resno0 = (uint8_t) (numres - 1);
 	POC[1].compno0 = 0;
 	POC[1].layno1 = 1;
 	POC[1].resno1 = numres;

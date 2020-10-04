@@ -147,7 +147,7 @@ bool j2k_write_soc(CodeStream *codeStream) {
  */
 bool j2k_read_soc(CodeStream *codeStream) {
 	uint8_t data[2];
-	uint32_t marker;
+	uint16_t marker;
 
 	assert(codeStream != nullptr);
 	auto stream = codeStream->getStream();
@@ -155,7 +155,7 @@ bool j2k_read_soc(CodeStream *codeStream) {
 	if (stream->read(data, 2) != 2)
 		return false;
 
-	grk_read<uint32_t>(data, &marker, 2);
+	grk_read<uint16_t>(data, &marker);
 	if (marker != J2K_MS_SOC)
 		return false;
 
@@ -210,11 +210,8 @@ bool j2k_read_cap(CodeStream *codeStream,  uint8_t *p_header_data,
 				" Ignoring CAP.");
 		validPcap = false;
 	}
-	if (validPcap) {
-		cp->pcap = tmp;
-		grk_read<uint32_t>(p_header_data, &tmp, 2); /* Ccap */
-		cp->ccap = (uint16_t) tmp;
-	}
+	if (validPcap)
+		grk_read<uint16_t>(p_header_data, &cp->ccap); /* Ccap */
 
 	return true;
 }
@@ -346,8 +343,8 @@ bool j2k_read_com(CodeStream *codeStream, uint8_t *p_header_data,
 		return true;
 	}
 
-	uint32_t commentType;
-	grk_read<uint32_t>(p_header_data, &commentType, 2);
+	uint16_t commentType;
+	grk_read<uint16_t>(p_header_data, &commentType);
 	auto numComments = codeStream->m_cp.num_comments;
 	codeStream->m_cp.isBinaryComment[numComments] = (commentType == 0);
 	if (commentType > 1) {
@@ -449,7 +446,7 @@ bool j2k_read_cod(CodeStream *codeStream,uint8_t *p_header_data,
 		GRK_ERROR("Error reading COD marker");
 		return false;
 	}
-	grk_read<uint32_t>(p_header_data++, &tcp->csty, 1); /* Scod */
+	grk_read<uint8_t>(p_header_data++, &tcp->csty); /* Scod */
 	/* Make sure we know how to decompress this */
 	if ((tcp->csty
 			& ~(uint32_t) (J2K_CP_CSTY_PRT | J2K_CP_CSTY_SOP | J2K_CP_CSTY_EPH))
@@ -479,7 +476,7 @@ bool j2k_read_cod(CodeStream *codeStream,uint8_t *p_header_data,
 		tcp->num_layers_to_decode = tcp->numlayers;
 	}
 
-	grk_read<uint32_t>(p_header_data++, &tcp->mct, 1); /* SGcod (C) */
+	grk_read<uint8_t>(p_header_data++, &tcp->mct); /* SGcod (C) */
 	if (tcp->mct > 1) {
 		GRK_ERROR("Invalid MCT value : %u. Should be either 0 or 1", tcp->mct);
 		return false;
@@ -732,7 +729,7 @@ bool j2k_read_qcc(CodeStream *codeStream, uint8_t *p_header_data,
 	assert(codeStream != nullptr);
 
 	uint32_t comp_no;
-	uint32_t num_comp = codeStream->m_input_image->numcomps;
+	uint16_t num_comp = codeStream->m_input_image->numcomps;
 	if (num_comp <= 256) {
 		if (header_size < 1) {
 			GRK_ERROR("Error reading QCC marker");
@@ -783,7 +780,7 @@ bool j2k_write_poc(CodeStream *codeStream) {
 	auto tcp = &codeStream->m_cp.tcps[0];
 	auto tccp = &tcp->tccps[0];
 	auto image = codeStream->m_input_image;
-	uint32_t nb_comp = image->numcomps;
+	uint16_t nb_comp = image->numcomps;
 	uint32_t nb_poc = tcp->numpocs + 1;
 	uint32_t poc_room = (nb_comp <= 256) ? 1 : 2;
 
@@ -826,9 +823,9 @@ bool j2k_write_poc(CodeStream *codeStream) {
 		/* change the value of the max layer according to the actual number of layers in the file, components and resolutions*/
 		current_poc->layno1 = std::min<uint16_t>(current_poc->layno1,
 				tcp->numlayers);
-		current_poc->resno1 = std::min<uint32_t>(current_poc->resno1,
+		current_poc->resno1 = std::min<uint8_t>(current_poc->resno1,
 				tccp->numresolutions);
-		current_poc->compno1 = std::min<uint32_t>(current_poc->compno1,
+		current_poc->compno1 = std::min<uint16_t>(current_poc->compno1,
 				nb_comp);
 	}
 
@@ -844,7 +841,6 @@ bool j2k_write_poc(CodeStream *codeStream) {
  */
 bool j2k_read_poc(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size) {
-	uint32_t i, nb_comp, tmp;
 	uint32_t old_poc_nb, current_poc_nb, current_poc_remaining;
 	uint32_t chunk_size, comp_room;
 
@@ -852,7 +848,7 @@ bool j2k_read_poc(CodeStream *codeStream, uint8_t *p_header_data,
 	assert(codeStream != nullptr);
 
 	auto image = codeStream->m_input_image;
-	nb_comp = image->numcomps;
+	uint16_t nb_comp = image->numcomps;
 	comp_room = (nb_comp <= 256) ? 1 : 2;
 	chunk_size = 5 + 2 * comp_room;
 	current_poc_nb = header_size / chunk_size;
@@ -877,12 +873,12 @@ bool j2k_read_poc(CodeStream *codeStream, uint8_t *p_header_data,
 	tcp->POC = true;
 
 	auto current_poc = &tcp->pocs[old_poc_nb];
-	for (i = old_poc_nb; i < current_poc_nb; ++i) {
+	for (uint32_t i = old_poc_nb; i < current_poc_nb; ++i) {
 		/* RSpoc_i */
-		grk_read<uint32_t>(p_header_data, &(current_poc->resno0), 1);
+		grk_read<uint8_t>(p_header_data, &current_poc->resno0);
 		++p_header_data;
 		/* CSpoc_i */
-		grk_read<uint32_t>(p_header_data, &(current_poc->compno0), comp_room);
+		grk_read<uint16_t>(p_header_data, &(current_poc->compno0), comp_room);
 		p_header_data += comp_room;
 		/* LYEpoc_i */
 		grk_read<uint16_t>(p_header_data, &(current_poc->layno1));
@@ -891,16 +887,17 @@ bool j2k_read_poc(CodeStream *codeStream, uint8_t *p_header_data,
 				tcp->numlayers);
 		p_header_data += 2;
 		/* REpoc_i */
-		grk_read<uint32_t>(p_header_data, &(current_poc->resno1), 1);
+		grk_read<uint8_t>(p_header_data, &current_poc->resno1);
 		++p_header_data;
 		/* CEpoc_i */
-		grk_read<uint32_t>(p_header_data, &(current_poc->compno1), comp_room);
+		grk_read<uint16_t>(p_header_data, &(current_poc->compno1), comp_room);
 		p_header_data += comp_room;
 		/* Ppoc_i */
-		grk_read<uint32_t>(p_header_data++, &tmp, 1);
+		uint8_t tmp;
+		grk_read<uint8_t>(p_header_data++, &tmp);
 		current_poc->prg = (GRK_PROG_ORDER) tmp;
 		/* make sure comp is in acceptable bounds */
-		current_poc->compno1 = std::min<uint32_t>(current_poc->compno1,
+		current_poc->compno1 = std::min<uint16_t>(current_poc->compno1,
 				nb_comp);
 		++current_poc;
 	}
@@ -2178,7 +2175,7 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno, uint8_t *p_he
 		return false;
 	}
 	/* SPcox (D) */
-	grk_read<uint32_t>(current_ptr++, &tccp->numresolutions, 1);
+	grk_read<uint8_t>(current_ptr++, &tccp->numresolutions);
 	++tccp->numresolutions;
 	if (tccp->numresolutions > GRK_J2K_MAXRLVLS) {
 		GRK_ERROR("Number of resolutions %u is greater than"

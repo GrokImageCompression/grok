@@ -494,7 +494,7 @@ static bool jp2_read_ihdr(FileFormat *fileFormat, uint8_t *p_image_header_data,
 		return false;
 	}
 
-	grk_read<uint32_t>(p_image_header_data, &(fileFormat->numcomps), 2); /* NC */
+	grk_read<uint16_t>(p_image_header_data, &fileFormat->numcomps); /* NC */
 	p_image_header_data += 2;
 
 	if ((fileFormat->numcomps == 0) || (fileFormat->numcomps > max_num_components)) {
@@ -506,7 +506,7 @@ static bool jp2_read_ihdr(FileFormat *fileFormat, uint8_t *p_image_header_data,
 
 	/* allocate memory for components */
 	fileFormat->comps = new grk_jp2_comps[fileFormat->numcomps];
-	grk_read<uint32_t>(p_image_header_data++, &(fileFormat->bpc), 1); /* BPC */
+	grk_read<uint8_t>(p_image_header_data++, &fileFormat->bpc); /* BPC */
 
 	///////////////////////////////////////////////////
 	// (bits per component == precision -1)
@@ -522,18 +522,17 @@ static bool jp2_read_ihdr(FileFormat *fileFormat, uint8_t *p_image_header_data,
 		return false;
 	}
 
-	grk_read<uint32_t>(p_image_header_data++, &(fileFormat->C), 1); /* C */
+	grk_read<uint8_t>(p_image_header_data++, &fileFormat->C); /* C */
 
 	/* Should be equal to 7 cf. chapter about image header box */
 	if (fileFormat->C != 7) {
-		GRK_ERROR(
-				"JP2 IHDR box: compression type: %u indicates"
+		GRK_ERROR("JP2 IHDR box: compression type: %u indicates"
 				" a non-conformant JP2 file.",
 				fileFormat->C);
 		return false;
 	}
 
-	grk_read<uint32_t>(p_image_header_data++, &(fileFormat->UnkC), 1); /* UnkC */
+	grk_read<uint8_t>(p_image_header_data++, &fileFormat->UnkC); /* UnkC */
 
 	// UnkC must be binary : {0,1}
 	if ((fileFormat->UnkC > 1)) {
@@ -542,7 +541,7 @@ static bool jp2_read_ihdr(FileFormat *fileFormat, uint8_t *p_image_header_data,
 		return false;
 	}
 
-	grk_read<uint32_t>(p_image_header_data++, &(fileFormat->IPR), 1); /* IPR */
+	grk_read<uint8_t>(p_image_header_data++, &fileFormat->IPR); /* IPR */
 
 	// IPR must be binary : {0,1}
 	if ((fileFormat->IPR > 1)) {
@@ -583,20 +582,20 @@ static uint8_t* jp2_write_ihdr(FileFormat *fileFormat, uint32_t *p_nb_bytes_writ
 	current_ihdr_ptr += 4;
 
 	/* NC */
-	grk_write<uint32_t>(current_ihdr_ptr, fileFormat->numcomps, 2);
+	grk_write<uint16_t>(current_ihdr_ptr, fileFormat->numcomps);
 	current_ihdr_ptr += 2;
 
 	/* BPC */
-	grk_write<uint32_t>(current_ihdr_ptr++, fileFormat->bpc, 1);
+	grk_write<uint8_t>(current_ihdr_ptr++, fileFormat->bpc);
 
 	/* C : Always 7 */
-	grk_write<uint32_t>(current_ihdr_ptr++, fileFormat->C, 1);
+	grk_write<uint8_t>(current_ihdr_ptr++, fileFormat->C);
 
 	/* UnkC, colorspace unknown */
-	grk_write<uint32_t>(current_ihdr_ptr++, fileFormat->UnkC, 1);
+	grk_write<uint8_t>(current_ihdr_ptr++, fileFormat->UnkC);
 
 	/* IPR, no intellectual property */
-	grk_write<uint32_t>(current_ihdr_ptr++, fileFormat->IPR, 1);
+	grk_write<uint8_t>(current_ihdr_ptr++, fileFormat->IPR);
 
 	*p_nb_bytes_written = 22;
 
@@ -806,13 +805,13 @@ static void jp2_write_res_box(double resx, double resy, uint32_t box_id,
 		find_cf(res[i], num + i, den + i);
 	}
 	for (size_t i = 0; i < 2; ++i) {
-		grk_write<uint32_t>(*current_res_ptr, num[i], 2);
+		grk_write<uint16_t>(*current_res_ptr, (uint16_t)num[i]);
 		*current_res_ptr += 2;
-		grk_write<uint32_t>(*current_res_ptr, den[i], 2);
+		grk_write<uint16_t>(*current_res_ptr, (uint16_t)den[i]);
 		*current_res_ptr += 2;
 	}
 	for (size_t i = 0; i < 2; ++i) {
-		grk_write<uint32_t>(*current_res_ptr, (uint32_t)exponent[i], 1);
+		grk_write<uint8_t>(*current_res_ptr, (uint8_t)exponent[i]);
 		*current_res_ptr += 1;
 	}
 }
@@ -1150,15 +1149,15 @@ static uint8_t* jp2_write_colr(FileFormat *fileFormat, uint32_t *p_nb_bytes_writ
 	current_colr_ptr += 4;
 
 	/* METH */
-	grk_write<uint32_t>(current_colr_ptr, fileFormat->meth, 1);
+	grk_write<uint8_t>(current_colr_ptr, fileFormat->meth);
 	++current_colr_ptr;
 
 	/* PRECEDENCE */
-	grk_write<uint32_t>(current_colr_ptr, fileFormat->precedence, 1);
+	grk_write<uint8_t>(current_colr_ptr, fileFormat->precedence);
 	++current_colr_ptr;
 
 	/* APPROX */
-	grk_write<uint32_t>(current_colr_ptr, fileFormat->approx, 1);
+	grk_write<uint8_t>(current_colr_ptr, fileFormat->approx);
 	++current_colr_ptr;
 
 	/* Meth value is restricted to 1 or 2 (Table I.9 of part 1) */
@@ -1195,9 +1194,9 @@ static bool jp2_read_colr(FileFormat *fileFormat, uint8_t *p_colr_header_data,
 				"A conforming JP2 reader shall ignore all colour specification boxes after the first, so we ignore this one.");
 		return true;
 	}
-	grk_read<uint32_t>(p_colr_header_data++, &fileFormat->meth, 1); /* METH */
-	grk_read<uint32_t>(p_colr_header_data++, &fileFormat->precedence, 1); /* PRECEDENCE */
-	grk_read<uint32_t>(p_colr_header_data++, &fileFormat->approx, 1); /* APPROX */
+	grk_read<uint8_t>(p_colr_header_data++, &fileFormat->meth); /* METH */
+	grk_read<uint8_t>(p_colr_header_data++, &fileFormat->precedence); /* PRECEDENCE */
+	grk_read<uint8_t>(p_colr_header_data++, &fileFormat->approx); /* APPROX */
 
 	if (fileFormat->meth == 1) {
         uint32_t temp;
@@ -1602,7 +1601,6 @@ static void jp2_free_palette_clr(grk_jp2_color *color) {
 static bool jp2_read_component_mapping(FileFormat *fileFormat, uint8_t *p_cmap_header_data,
 		uint32_t cmap_header_size) {
 	uint8_t i, nr_channels;
-	uint32_t value;
 
 	assert(fileFormat != nullptr);
 	assert(p_cmap_header_data != nullptr);
@@ -1629,17 +1627,11 @@ static bool jp2_read_component_mapping(FileFormat *fileFormat, uint8_t *p_cmap_h
 
 	auto cmap = new grk_jp2_component_mapping_comp[nr_channels];
 	for (i = 0; i < nr_channels; ++i) {
-		grk_read<uint32_t>(p_cmap_header_data, &value, 2); /* CMP^i */
+		grk_read<uint16_t>(p_cmap_header_data, &cmap[i].cmp); /* CMP^i */
 		p_cmap_header_data += 2;
-		cmap[i].cmp = (uint16_t) value;
-
-		grk_read<uint32_t>(p_cmap_header_data++, &value, 1); /* MTYP^i */
-		cmap[i].mtyp = (uint8_t) value;
-
-		grk_read<uint32_t>(p_cmap_header_data++, &value, 1); /* PCOL^i */
-		cmap[i].pcol = (uint8_t) value;
+		grk_read<uint8_t>(p_cmap_header_data++, &cmap[i].mtyp); /* MTYP^i */
+		grk_read<uint8_t>(p_cmap_header_data++, &cmap[i].pcol); /* PCOL^i */
 	}
-
 	fileFormat->color.palette->cmap = cmap;
 
 	return true;
@@ -2634,7 +2626,7 @@ bool FileFormat::start_compress(void){
 
 bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
 	uint32_t i;
-	uint32_t depth_0;
+	uint8_t depth_0;
 	uint32_t sign = 0;
 	uint32_t alpha_count = 0;
 	uint32_t color_channels = 0U;
@@ -2669,9 +2661,9 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
 
 	h = image->y1 - image->y0;
 	w = image->x1 - image->x0;
-	depth_0 = image->comps[0].prec - 1;
+	depth_0 = (uint8_t)(image->comps[0].prec - 1);
 	sign = image->comps[0].sgnd;
-	bpc = depth_0 + (sign << 7);
+	bpc = (uint8_t)(depth_0 + (sign << 7));
 	for (i = 1; i < image->numcomps; i++) {
 		uint32_t depth = image->comps[i].prec - 1;
 		sign = image->comps[i].sgnd;

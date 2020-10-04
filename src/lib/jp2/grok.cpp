@@ -136,7 +136,7 @@ const char* GRK_CALLCONV grk_version(void) {
 }
 
 
-grk_image *  GRK_CALLCONV grk_image_create(uint32_t numcmpts,
+grk_image *  GRK_CALLCONV grk_image_create(uint16_t numcmpts,
 		 grk_image_cmptparm  *cmptparms, GRK_COLOR_SPACE clrspc, bool allocData) {
 	auto image = (grk_image * ) grk::grk_calloc(1, sizeof(grk_image));
 

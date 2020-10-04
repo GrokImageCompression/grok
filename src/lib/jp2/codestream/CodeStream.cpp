@@ -2292,7 +2292,7 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 	if (tcp->main_qcd_qntsty != J2K_CCP_QNTSTY_SIQNT) {
 
 		//1. Check main QCD
-		uint32_t maxDecompositions = 0;
+		uint8_t maxDecompositions = 0;
 		for (uint32_t k = 0; k < numComps; ++k) {
 			auto tccp = tcp->tccps + k;
 			if (tccp->numresolutions == 0)
@@ -2303,11 +2303,11 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 			// i.e. under main QCC scope, or tile QCD/QCC scope
 			if (tccp->fromQCC || tccp->fromTileHeader)
 				continue;
-			auto decomps = tccp->numresolutions - 1;
+			auto decomps = (uint8_t)(tccp->numresolutions - 1);
 			if (maxDecompositions < decomps)
 				maxDecompositions = decomps;
 		}
-		if ((tcp->main_qcd_numStepSizes < 3 * maxDecompositions + 1)) {
+		if ((tcp->main_qcd_numStepSizes < 3 * (uint32_t)maxDecompositions + 1)) {
 			GRK_ERROR("From Main QCD marker, "
 					"number of step sizes (%u) is less than "
 					"3* (maximum decompositions) + 1, "
@@ -2337,7 +2337,7 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 				// i.e. under Tile QCC scope
 				if (tccp->fromQCC && tccp->fromTileHeader)
 					continue;
-				auto decomps = tccp->numresolutions - 1;
+				auto decomps = (uint8_t)(tccp->numresolutions - 1);
 				if (maxTileDecompositions < decomps)
 					maxTileDecompositions = decomps;
 			}

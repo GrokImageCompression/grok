@@ -297,7 +297,7 @@ bool GrkDecompress::parse_precision(const char *option,
 			}
 
 			parameters->precision[parameters->nb_precision].prec =
-					(uint32_t) prec;
+					(uint8_t) prec;
 			switch (mode) {
 			case 'C':
 				parameters->precision[parameters->nb_precision].mode =
@@ -1392,7 +1392,7 @@ int GrkDecompress::post_decode(grk_plugin_decode_callback_info *info) {
 			uint32_t precisionno = compno;
 			if (precisionno >= parameters->nb_precision)
 				precisionno = parameters->nb_precision - 1U;
-			uint32_t prec = parameters->precision[precisionno].prec;
+			uint8_t prec = parameters->precision[precisionno].prec;
 			if (prec == 0)
 				prec = image->comps[compno].prec;
 

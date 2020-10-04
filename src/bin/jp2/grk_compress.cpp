@@ -845,7 +845,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				raw_cp->width = (uint32_t) width;
 				raw_cp->height = (uint32_t) height;
 				raw_cp->numcomps = (uint16_t) ncomp;
-				raw_cp->prec = (uint32_t) bitdepth;
+				raw_cp->prec = (uint8_t) bitdepth;
 				raw_cp->sgnd = raw_signed;
 				raw_cp->comps = (grk_raw_comp_cparameters*) malloc(
 						((uint32_t) (ncomp))
@@ -900,7 +900,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		}
 
 		if (resolutionArg.isSet())
-			parameters->numresolution = resolutionArg.getValue();
+			parameters->numresolution = (uint8_t)resolutionArg.getValue();
 
 		if (precinctDimArg.isSet()) {
 			char sep;
@@ -974,13 +974,16 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 
 			char *s = (char*) pocArg.getValue().c_str();
 			POC = parameters->POC;
-			uint32_t layno1;
+			uint32_t resno0, compno0,layno1,resno1, compno1;
 
 			while (sscanf(s, "T%u=%u,%u,%u,%u,%u,%4s", &POC[numpocs].tile,
-					&POC[numpocs].resno0, &POC[numpocs].compno0,
-					&layno1, &POC[numpocs].resno1,
-					&POC[numpocs].compno1, POC[numpocs].progorder) == 7) {
+					&resno0, &compno0,&layno1, &resno1,
+					&compno1, POC[numpocs].progorder) == 7) {
+				POC[numpocs].resno0 = (uint8_t)resno0;
+				POC[numpocs].compno0 = (uint16_t)compno0;
 				POC[numpocs].layno1 = (uint16_t)layno1;
+				POC[numpocs].resno1 = (uint8_t)resno1;
+				POC[numpocs].compno1 = (uint16_t)compno1;
 				POC[numpocs].prg1 = give_progression(POC[numpocs].progorder);
 				// sanity check on layer
 				if (POC[numpocs].layno1 > parameters->tcp_numlayers){
