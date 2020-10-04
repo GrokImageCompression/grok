@@ -899,10 +899,7 @@ typedef struct _grk_image {
 	GRK_COLOR_SPACE color_space;
 	/** image components */
 	grk_image_comp *comps;
-	/** 'restricted' ICC profile */
-	uint8_t *icc_profile_buf;
-	/** size of ICC profile */
-	uint32_t icc_profile_len;
+	grk_jp2_color color;
 	double capture_resolution[2];
 	double display_resolution[2];
 	uint8_t *iptc_buf;

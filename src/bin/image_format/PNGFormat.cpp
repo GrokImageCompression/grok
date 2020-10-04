@@ -260,9 +260,9 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 		png_charp ProfileName = nullptr;
 		if (png_get_iCCP(png, m_info, &ProfileName, &Compression,
 				&ProfileData, &ProfileLen) == PNG_INFO_iCCP) {
-			m_image->icc_profile_buf = new uint8_t[ProfileLen];
-			memcpy(m_image->icc_profile_buf, ProfileData, ProfileLen);
-			m_image->icc_profile_len = ProfileLen;
+			m_image->color.icc_profile_buf = new uint8_t[ProfileLen];
+			memcpy(m_image->color.icc_profile_buf, ProfileData, ProfileLen);
+			m_image->color.icc_profile_len = ProfileLen;
 			m_image->color_space = GRK_CLRSPC_ICC;
 		}
 	}
@@ -533,13 +533,13 @@ bool PNGFormat::encodeHeader(grk_image *img, const std::string &filename,
 	/* png_set_sRGB(png, info, PNG_sRGB_INTENT_PERCEPTUAL); */
 
 	// Set iCCP chunk
-	if (m_image->icc_profile_buf && m_image->icc_profile_len) {
+	if (m_image->color.icc_profile_buf && m_image->color.icc_profile_len) {
 		std::string profileName = "Unknown";
 		// if lcms is present, try to extract the description tag from the ICC header,
 		// and use this tag as the profile name
 #if defined(GROK_HAVE_LIBLCMS)
-		auto in_prof = cmsOpenProfileFromMem(m_image->icc_profile_buf,
-				m_image->icc_profile_len);
+		auto in_prof = cmsOpenProfileFromMem(m_image->color.icc_profile_buf,
+				m_image->color.icc_profile_len);
 		if (in_prof) {
 			cmsUInt32Number bufferSize = cmsGetProfileInfoASCII(in_prof,
 					cmsInfoDescription, cmsNoLanguage, cmsNoCountry, nullptr,
@@ -557,8 +557,8 @@ bool PNGFormat::encodeHeader(grk_image *img, const std::string &filename,
 		}
 #endif
 		png_set_iCCP(png, m_info, profileName.c_str(),
-		PNG_COMPRESSION_TYPE_BASE, m_image->icc_profile_buf,
-				m_image->icc_profile_len);
+		PNG_COMPRESSION_TYPE_BASE, m_image->color.icc_profile_buf,
+				m_image->color.icc_profile_len);
 	}
 
 	if (m_image->xmp_buf && m_image->xmp_len) {

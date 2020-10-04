@@ -699,9 +699,9 @@ static grk_image* tiftoimage(const char *filename,
 	if (!isCIE) {
 		if ((TIFFGetFieldDefaulted(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1)
 				&& icclen > 0 && icclen < grk::maxICCProfileBufferLen) {
-			image->icc_profile_buf = new uint8_t[icclen];
-			memcpy(image->icc_profile_buf, iccbuf, icclen);
-			image->icc_profile_len = icclen;
+			image->color.icc_profile_buf = new uint8_t[icclen];
+			memcpy(image->color.icc_profile_buf, iccbuf, icclen);
+			image->color.icc_profile_len = icclen;
 			image->color_space = GRK_CLRSPC_ICC;
 		}
 	}
@@ -959,10 +959,10 @@ bool TIFFFormat::encodeHeader(grk_image *image, const std::string &filename,
 			TIFFSetField(tif, TIFFTAG_COMPRESSION, compressionParam);
 	 }
 
-	if (m_image->icc_profile_buf) {
+	if (m_image->color.icc_profile_buf) {
 		if (m_image->color_space == GRK_CLRSPC_ICC)
-			TIFFSetField(tif, TIFFTAG_ICCPROFILE, m_image->icc_profile_len,
-					m_image->icc_profile_buf);
+			TIFFSetField(tif, TIFFTAG_ICCPROFILE, m_image->color.icc_profile_len,
+					m_image->color.icc_profile_buf);
 	}
 
 	if (m_image->xmp_buf && m_image->xmp_len)

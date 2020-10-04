@@ -184,6 +184,8 @@ struct FileFormat : public ICodeStream {
 
    grk_codestream_index* get_cstr_index(void);
 
+   static void free_color(grk_jp2_color *color);
+   static void alloc_palette(grk_jp2_color *color, uint8_t num_channels, uint16_t num_entries);
 
 	/** handle to the J2K codec  */
 	CodeStream *codeStream;

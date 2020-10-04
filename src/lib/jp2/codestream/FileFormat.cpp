@@ -1058,7 +1058,7 @@ static bool jp2_read_channel_definition(FileFormat *fileFormat, uint8_t *p_cdef_
 
 	auto cdef_info = fileFormat->color.channel_definition->info;
 
-	for (i = 0; i < fileFormat->color.channel_definition->num_channel_definitions; ++i) {
+	for (i = 0; i < num_channel_definitions; ++i) {
 		grk_read<uint16_t>(p_cdef_header_data, &cdef_info[i].cn); /* Cn^i */
 		p_cdef_header_data += 2;
 
@@ -1545,16 +1545,8 @@ static bool jp2_read_palette_clr(FileFormat *fileFormat, uint8_t *p_pclr_header_
 	if (pclr_header_size < 3 + (uint32_t) nr_channels)
 		return false;
 
-	auto jp2_pclr = new grk_jp2_palette_clr();
-	jp2_pclr->channel_sign = new uint8_t[nr_channels];
-	jp2_pclr->channel_size = new uint8_t[nr_channels];
-	jp2_pclr->entries = new uint32_t[nr_channels * nr_entries];
-	jp2_pclr->nr_entries = nr_entries;
-	jp2_pclr->nr_channels = nr_channels;
-	jp2_pclr->cmap = nullptr;
-
-	fileFormat->color.palette = jp2_pclr;
-
+	FileFormat::alloc_palette(&fileFormat->color, nr_channels,nr_entries);
+	auto jp2_pclr = fileFormat->color.palette;
 	for (uint8_t i = 0; i < nr_channels; ++i) {
 		uint8_t val;
 		grk_read<uint8_t>(p_pclr_header_data++, &val); /* Bi */
@@ -2409,12 +2401,7 @@ FileFormat::~FileFormat() {
 	delete codeStream;
 	delete[] comps;
 	grk_free(cl);
-	delete[] color.icc_profile_buf;
-	if (color.channel_definition) {
-		delete[] color.channel_definition->info;
-		delete color.channel_definition;
-	}
-	jp2_free_palette_clr(&color);
+	FileFormat::free_color(&color);
 	delete m_validation_list;
 	delete m_procedure_list;
 	xml.dealloc();
@@ -2539,8 +2526,8 @@ bool FileFormat::decompress( grk_plugin_tile *tile,	 grk_image *p_image){
 
 	// retrieve icc profile
 	if (color.icc_profile_buf) {
-		p_image->icc_profile_buf = color.icc_profile_buf;
-		p_image->icc_profile_len = color.icc_profile_len;
+		p_image->color.icc_profile_buf = color.icc_profile_buf;
+		p_image->color.icc_profile_len = color.icc_profile_len;
 		color.icc_profile_buf = nullptr;
 		color.icc_profile_len = 0;
 	}
@@ -2685,16 +2672,16 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
 	if (image->color_space == GRK_CLRSPC_ICC) {
 		meth = 2;
 		enumcs = GRK_ENUM_CLRSPC_UNKNOWN;
-		if (image->icc_profile_buf) {
+		if (image->color.icc_profile_buf) {
 			// clean up existing icc profile in this struct
 			if (color.icc_profile_buf) {
 				delete[] color.icc_profile_buf;
 				color.icc_profile_buf = nullptr;
 			}
 			// copy icc profile from image to this struct
-			color.icc_profile_len = image->icc_profile_len;
+			color.icc_profile_len = image->color.icc_profile_len;
 			color.icc_profile_buf = new uint8_t[color.icc_profile_len];
-			memcpy(color.icc_profile_buf, image->icc_profile_buf,
+			memcpy(color.icc_profile_buf, image->color.icc_profile_buf,
 					color.icc_profile_len);
 		}
 	} else {
@@ -2877,8 +2864,8 @@ bool FileFormat::decompress_tile(grk_image *p_image,uint16_t tile_index) {
 		jp2_apply_channel_definition(p_image, &(color));
 
 	if (color.icc_profile_buf) {
-		p_image->icc_profile_buf = color.icc_profile_buf;
-		p_image->icc_profile_len = color.icc_profile_len;
+		p_image->color.icc_profile_buf = color.icc_profile_buf;
+		p_image->color.icc_profile_len = color.icc_profile_len;
 		color.icc_profile_buf = nullptr;
 		color.icc_profile_len = 0;
 		p_image->color_space = GRK_CLRSPC_ICC;
@@ -2886,6 +2873,35 @@ bool FileFormat::decompress_tile(grk_image *p_image,uint16_t tile_index) {
 
 	return true;
 }
+
+void FileFormat::free_color(grk_jp2_color *color){
+	assert(color);
+	jp2_free_palette_clr(color);
+	delete[] color->icc_profile_buf;
+	color->icc_profile_buf = nullptr;
+	color->icc_profile_len = 0;
+	if (color->channel_definition) {
+		delete[] color->channel_definition->info;
+		delete color->channel_definition;
+		color->channel_definition = nullptr;
+	}
+}
+
+void FileFormat::alloc_palette(grk_jp2_color *color, uint8_t num_channels, uint16_t num_entries){
+	assert(color);
+	assert(num_channels);
+	assert(num_entries);
+
+	auto jp2_pclr = new grk_jp2_palette_clr();
+	jp2_pclr->channel_sign = new uint8_t[num_channels];
+	jp2_pclr->channel_size = new uint8_t[num_channels];
+	jp2_pclr->entries = new uint32_t[num_channels * num_entries];
+	jp2_pclr->nr_entries = num_entries;
+	jp2_pclr->nr_channels = num_channels;
+	jp2_pclr->cmap = nullptr;
+	color->palette = jp2_pclr;
+}
+
 
 
 void FileFormat::dump(int32_t flag, FILE *out_stream){

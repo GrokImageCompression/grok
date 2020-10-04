@@ -202,9 +202,9 @@ grk_image* JPEGFormat::jpegtoimage(const char *filename,
 		goto cleanup;
 	}
 	if (icc_data_ptr && icc_data_len) {
-		m_image->icc_profile_buf = new uint8_t[icc_data_len];
-		memcpy(m_image->icc_profile_buf, icc_data_ptr, icc_data_len);
-		m_image->icc_profile_len = icc_data_len;
+		m_image->color.icc_profile_buf = new uint8_t[icc_data_len];
+		memcpy(m_image->color.icc_profile_buf, icc_data_ptr, icc_data_len);
+		m_image->color.icc_profile_len = icc_data_len;
 		icc_data_len = 0;
 	}
 	if (icc_data_ptr)
@@ -538,9 +538,9 @@ bool JPEGFormat::encodeHeader(grk_image *image, const std::string &filename,
 	 * Pass TRUE unless you are very sure of what you're doing.
 	 */
 	jpeg_start_compress(&cinfo, (boolean) TRUE);
-	if (m_image->icc_profile_buf) {
-		write_icc_profile(&cinfo, m_image->icc_profile_buf,
-				m_image->icc_profile_len);
+	if (m_image->color.icc_profile_buf) {
+		write_icc_profile(&cinfo, m_image->color.icc_profile_buf,
+				m_image->color.icc_profile_len);
 	}
 
     return true;

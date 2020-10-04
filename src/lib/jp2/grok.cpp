@@ -198,7 +198,7 @@ void GRK_CALLCONV grk_image_destroy(grk_image *image) {
 			grk_image_all_components_data_free(image);
 			grk::grk_free(image->comps);
 		}
-		delete[] image->icc_profile_buf;
+		FileFormat::free_color(&image->color);
 		delete[] image->iptc_buf;
 		delete[] image->xmp_buf;
 		grk::grk_free(image);

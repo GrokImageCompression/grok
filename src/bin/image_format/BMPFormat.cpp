@@ -426,9 +426,9 @@ bool BMPFormat::encodeHeader(grk_image *image, const std::string &filename, uint
 	colours_used = (m_image->numcomps == 3) ? 0 : 256 ;
 	lut_size = colours_used * sizeof(uint32_t) ;
 	full_header_size = fileHeaderSize + BITMAPINFOHEADER_LENGTH;
-	if (m_image->icc_profile_buf){
+	if (m_image->color.icc_profile_buf){
 		full_header_size = fileHeaderSize + sizeof(GRK_BITMAPINFOHEADER);
-		icc_size = m_image->icc_profile_len;
+		icc_size = m_image->color.icc_profile_len;
 	}
 	info_header_size = full_header_size - fileHeaderSize;
 	header_plus_lut = full_header_size + lut_size;
@@ -458,7 +458,7 @@ bool BMPFormat::encodeHeader(grk_image *image, const std::string &filename, uint
 	}
 	put_int((uint32_t**)(&header_ptr), colours_used);
 	put_int((uint32_t**)(&header_ptr), colours_used);
-	if (m_image->icc_profile_buf){
+	if (m_image->color.icc_profile_buf){
 		put_int((uint32_t**)(&header_ptr), 0U);
 		put_int((uint32_t**)(&header_ptr), 0U);
 		put_int((uint32_t**)(&header_ptr), 0U);
@@ -471,7 +471,7 @@ bool BMPFormat::encodeHeader(grk_image *image, const std::string &filename, uint
 		put_int((uint32_t**)(&header_ptr), 0U);
 		put_int((uint32_t**)(&header_ptr), 0U);
 		put_int((uint32_t**)(&header_ptr), info_header_size +  lut_size + image_size);
-		put_int((uint32_t**)(&header_ptr), m_image->icc_profile_len);
+		put_int((uint32_t**)(&header_ptr), m_image->color.icc_profile_len);
 		put_int((uint32_t**)(&header_ptr), 0U);
 	}
 	// 1024-byte LUT
@@ -597,8 +597,8 @@ cleanup:
 	return ret;
 }
 bool BMPFormat::encodeFinish(void){
-	if (m_image->icc_profile_buf) {
-		if (!writeToFile(m_image->icc_profile_buf,m_image->icc_profile_len))
+	if (m_image->color.icc_profile_buf) {
+		if (!writeToFile(m_image->color.icc_profile_buf,m_image->color.icc_profile_len))
 			return false;
 	}
 
@@ -761,14 +761,14 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 			goto cleanup;
 
 		//allocate buffer
-		image->icc_profile_buf = new uint8_t[Info_h.biIccProfileSize];
-		if (!readFromFile(image->icc_profile_buf,Info_h.biIccProfileSize)){
+		image->color.icc_profile_buf = new uint8_t[Info_h.biIccProfileSize];
+		if (!readFromFile(image->color.icc_profile_buf,Info_h.biIccProfileSize)){
 			spdlog::warn("Unable to read full ICC profile. Profile will be ignored.");
-			delete[] image->icc_profile_buf;
-			image->icc_profile_buf = nullptr;
+			delete[] image->color.icc_profile_buf;
+			image->color.icc_profile_buf = nullptr;
 			goto cleanup;
 		}
-		image->icc_profile_len = Info_h.biIccProfileSize;
+		image->color.icc_profile_len = Info_h.biIccProfileSize;
 		image->color_space = GRK_CLRSPC_ICC;
 	}
 	if (numcmpts == 4U) {

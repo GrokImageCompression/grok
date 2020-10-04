@@ -399,11 +399,11 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB) {
 	grk_image *new_image = nullptr;
 	if (image->numcomps == 0 || !grk::all_components_sanity_check(image,true))
 		return;
-	in_prof = cmsOpenProfileFromMem(image->icc_profile_buf,
-			image->icc_profile_len);
+	in_prof = cmsOpenProfileFromMem(image->color.icc_profile_buf,
+			image->color.icc_profile_len);
 #ifdef DEBUG_PROFILE
     FILE *icm = fopen("debug.icm","wb");
-    fwrite( image->icc_profile_buf,1, image->icc_profile_len,icm);
+    fwrite( image->color.icc_profile_buf,1, image->color.icc_profile_len,icm);
     fclose(icm);
 #endif
 
@@ -723,7 +723,7 @@ bool color_cielab_to_rgb(grk_image *src_img) {
 		return false;
 	}
 
-	auto row = (uint32_t*) src_img->icc_profile_buf;
+	auto row = (uint32_t*) src_img->color.icc_profile_buf;
 	GRK_ENUM_COLOUR_SPACE enumcs = (GRK_ENUM_COLOUR_SPACE)row[0];
 	if (enumcs != GRK_ENUM_CLRSPC_CIE) { /* CIELab */
 		spdlog::warn("{}:{}:\n\tenumCS {} not handled. Ignoring.", __FILE__,

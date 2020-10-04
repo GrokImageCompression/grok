@@ -278,13 +278,16 @@ static void grk_copy_image_header(const grk_image *image_src,grk_image *image_de
 	}
 
 	image_dest->color_space = image_src->color_space;
-	image_dest->icc_profile_len = image_src->icc_profile_len;
-	if (image_dest->icc_profile_len) {
-		image_dest->icc_profile_buf = new uint8_t[image_dest->icc_profile_len];
-		memcpy(image_dest->icc_profile_buf, image_src->icc_profile_buf,
-				image_src->icc_profile_len);
+	auto color_dest = &image_dest->color;
+	auto color_src = &image_src->color;
+	delete [] color_dest->icc_profile_buf;
+	color_dest->icc_profile_len = color_src->icc_profile_len;
+	if (color_dest->icc_profile_len) {
+		color_dest->icc_profile_buf = new uint8_t[color_dest->icc_profile_len];
+		memcpy(color_dest->icc_profile_buf, color_src->icc_profile_buf,
+				color_src->icc_profile_len);
 	} else
-		image_dest->icc_profile_buf = nullptr;
+		color_dest->icc_profile_buf = nullptr;
 
 	return;
 }

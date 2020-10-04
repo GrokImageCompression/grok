@@ -1334,7 +1334,7 @@ int GrkDecompress::post_decode(grk_plugin_decode_callback_info *info) {
 					infile, outfile);
 		}
 	}
-	if (image->icc_profile_buf) {
+	if (image->color.icc_profile_buf) {
 		if (isCIE) {
 			if (!canStoreCIE || info->decoder_parameters->force_rgb) {
 #if defined(GROK_HAVE_LIBLCMS)
@@ -1346,9 +1346,9 @@ int GrkDecompress::post_decode(grk_plugin_decode_callback_info *info) {
 							"The output image will therefore be converted to sRGB before saving.",
 							infile, outfile);
 				if (color_cielab_to_rgb(image)){
-					delete[] image->icc_profile_buf;
-					image->icc_profile_buf = nullptr;
-					image->icc_profile_len = 0;
+					delete[] image->color.icc_profile_buf;
+					image->color.icc_profile_buf = nullptr;
+					image->color.icc_profile_len = 0;
 				} else {
 					spdlog::warn("Unable to convert L*a*b image to sRGB");
 				}
@@ -1378,9 +1378,9 @@ int GrkDecompress::post_decode(grk_plugin_decode_callback_info *info) {
 							infile, outfile);
 				color_apply_icc_profile(image,
 						info->decoder_parameters->force_rgb);
-				delete[] image->icc_profile_buf;
-				image->icc_profile_buf = nullptr;
-				image->icc_profile_len = 0;
+				delete[] image->color.icc_profile_buf;
+				image->color.icc_profile_buf = nullptr;
+				image->color.icc_profile_len = 0;
 #endif
 			}
 		}
