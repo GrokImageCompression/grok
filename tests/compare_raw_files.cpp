@@ -43,7 +43,7 @@
  */
 
 /*
- * This is equivalent to the UNIX `cmp` command
+ * This is equivalent to the UNIX `component_index` command
  */
 
 #include <stdio.h>

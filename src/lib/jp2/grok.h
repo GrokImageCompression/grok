@@ -561,48 +561,49 @@ typedef struct _grk_cparameters {
 /**
  Channel definition: channel index, type, association
  */
-typedef struct _grk_jp2_channel_definition_info {
+typedef struct _grk_channel_definition_info {
 	uint16_t cn;
 	uint16_t typ;
 	uint16_t asoc;
-} grk_jp2_channel_definition_info;
+} grk_channel_definition_info;
 
 /**
  Channel definitions and number of definitions
  */
-typedef struct _grk_jp2_channel_definition {
-	grk_jp2_channel_definition_info *info;
+typedef struct _grk_channel_definition {
+	grk_channel_definition_info *info;
 	uint16_t num_channel_definitions;
-} grk_jp2_channel_definition;
+} grk_channel_definition;
 
 /**
- Component mappings: channel index, mapping type, palette index
+ Component mappings: component index, mapping type, LUT index
  */
-typedef struct _grk_jp2_component_mapping_comp {
-	uint16_t cmp;
-	uint8_t mtyp, pcol;
-} grk_jp2_component_mapping_comp;
+typedef struct _grk_component_mapping_comp {
+	uint16_t component_index;
+	uint8_t mapping_type;
+	uint8_t lut_index;
+} grk_component_mapping_comp;
 
 /**
- Palette data: table entries, palette columns
+ Palette data
  */
-typedef struct _grk_jp2_palette_clr {
-	uint32_t *entries;
-	uint8_t *channel_sign;
-	uint8_t *channel_size;
-	grk_jp2_component_mapping_comp *cmap;
-	uint16_t nr_entries;
-	uint8_t nr_channels;
-} grk_jp2_palette_clr;
+typedef struct _grk_palette_data {
+	uint32_t *luts;
+	uint16_t num_luts;
+	grk_component_mapping_comp *component_mapping;
+	uint8_t num_channels;
+	bool *channel_sign;
+	uint8_t *channel_prec;
+} grk_palette_data;
 
 /**
- ICC profile, palette, component mapping, channel description
+ ICC profile, palette, channel definition
  */
 typedef struct _grk_jp2_color {
 	uint8_t *icc_profile_buf;
 	uint32_t icc_profile_len;
-	grk_jp2_channel_definition *channel_definition;
-	grk_jp2_palette_clr *palette;
+	grk_channel_definition *channel_definition;
+	grk_palette_data *palette;
 	bool has_colour_specification_box;
 } grk_jp2_color;
 

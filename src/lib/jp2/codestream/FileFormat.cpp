@@ -214,7 +214,8 @@ static bool jp2_read_jp2h(FileFormat *fileFormat, uint8_t *p_header_data,
 static bool jp2_write_uuids(FileFormat *fileFormat);
 
 /**
- * Writes the Jpeg2000 code stream Header box - JP2C Header box. This function must be called AFTER the coding has been done.
+ * Writes the Jpeg2000 code stream Header box - JP2C Header box.
+ * This function must be called AFTER the coding has been done.
  *
  * @param	fileFormat			JPEG 2000 code stream.
  
@@ -272,21 +273,21 @@ static bool jp2_read_palette_clr(FileFormat *fileFormat, uint8_t *p_pclr_header_
  * Collect component mapping data
  *
  * @param fileFormat          JP2 file format
- * @param p_cmap_header_data  cmap header data
- * @param cmap_header_size 	  cmap header data size
+ * @param component_mapping_header_data  component_mapping header data
+ * @param component_mapping_header_size 	  component_mapping header data size
 
  *
  * @return true if successful
  */
 
-static bool jp2_read_component_mapping(FileFormat *fileFormat, uint8_t *p_cmap_header_data,
-		uint32_t cmap_header_size);
+static bool jp2_read_component_mapping(FileFormat *fileFormat, uint8_t *component_mapping_header_data,
+		uint32_t component_mapping_header_size);
 
 /**
  * Reads the Color Specification box.
  *
  * @param	p_colr_header_data			pointer to actual data (already read from file)
- * @param	fileFormat							JPEG 2000 code stream.
+ * @param	fileFormat					JPEG 2000 code stream.
  * @param	colr_header_size			the size of the color header
  
  *
@@ -352,7 +353,8 @@ static bool jp2_read_box_hdr(grk_jp2_box *box, uint32_t *p_number_bytes_read,
 static bool jp2_init_compress_validation(FileFormat *fileFormat);
 
 /**
- * Sets up the procedures to do on writing header. Developers wanting to extend the library can add their own writing procedures.
+ * Sets up the procedures to do on writing header.
+ * Developers wanting to extend the library can add their own writing procedures.
  */
 static bool jp2_init_header_writing(FileFormat *fileFormat);
 
@@ -1052,8 +1054,8 @@ static bool jp2_read_channel_definition(FileFormat *fileFormat, uint8_t *p_cdef_
 		return false;
 	}
 
-	fileFormat->color.channel_definition = new grk_jp2_channel_definition();
-	fileFormat->color.channel_definition->info = new grk_jp2_channel_definition_info[num_channel_definitions];
+	fileFormat->color.channel_definition = new grk_channel_definition();
+	fileFormat->color.channel_definition->info = new grk_channel_definition_info[num_channel_definitions];
 	fileFormat->color.channel_definition->num_channel_definitions = (uint16_t) num_channel_definitions;
 
 	auto cdef_info = fileFormat->color.channel_definition->info;
@@ -1285,106 +1287,105 @@ static bool jp2_check_color(grk_image *image, grk_jp2_color *color) {
 	if (color->channel_definition) {
 		auto info = color->channel_definition->info;
 		uint16_t n = color->channel_definition->num_channel_definitions;
-		uint32_t nr_channels = image->numcomps; /* FIXME image->numcomps == fileFormat->numcomps before color is applied ??? */
+		uint32_t num_channels = image->numcomps; /* FIXME image->numcomps == fileFormat->numcomps before color is applied ??? */
 
-		/* cdef applies to cmap channels if any */
-		if (color->palette && color->palette->cmap)
-			nr_channels = (uint32_t) color->palette->nr_channels;
+		/* cdef applies to component_mapping channels if any */
+		if (color->palette && color->palette->component_mapping)
+			num_channels = (uint32_t) color->palette->num_channels;
 
 
 		for (i = 0; i < n; i++) {
-			if (info[i].cn >= nr_channels) {
+			if (info[i].cn >= num_channels) {
 				GRK_ERROR("Invalid component index %u (>= %u).", info[i].cn,
-						nr_channels);
+						num_channels);
 				return false;
 			}
 			if (info[i].asoc == GRK_COMPONENT_ASSOC_UNASSOCIATED)
 				continue;
 
 			if (info[i].asoc > 0
-					&& (uint32_t) (info[i].asoc - 1) >= nr_channels) {
+					&& (uint32_t) (info[i].asoc - 1) >= num_channels) {
 				GRK_ERROR("Invalid component index %u (>= %u).",
-						info[i].asoc - 1, nr_channels);
+						info[i].asoc - 1, num_channels);
 				return false;
 			}
 		}
 
 		/* issue 397 */
 		/* ISO 15444-1 states that if cdef is present, it shall contain a complete list of channel definitions. */
-		while (nr_channels > 0) {
+		while (num_channels > 0) {
 			for (i = 0; i < n; ++i) {
-				if ((uint32_t) info[i].cn == (nr_channels - 1U))
+				if ((uint32_t) info[i].cn == (num_channels - 1U))
 					break;
 			}
 			if (i == n) {
 				GRK_ERROR("Incomplete channel definitions.");
 				return false;
 			}
-			--nr_channels;
+			--num_channels;
 		}
 	}
 
 	/* testcases 451.pdf.SIGSEGV.f4c.3723, 451.pdf.SIGSEGV.5b5.3723 and
 	 66ea31acbb0f23a2bbc91f64d69a03f5_signal_sigsegv_13937c0_7030_5725.pdf */
-	if (color->palette && color->palette->cmap) {
-		uint16_t nr_channels = color->palette->nr_channels;
-		auto cmap = color->palette->cmap;
+	if (color->palette && color->palette->component_mapping) {
+		uint16_t num_channels = color->palette->num_channels;
+		auto component_mapping = color->palette->component_mapping;
 		bool *pcol_usage = nullptr;
 		bool is_sane = true;
 
 		/* verify that all original components match an existing one */
-		for (i = 0; i < nr_channels; i++) {
-			if (cmap[i].cmp >= image->numcomps) {
-				GRK_ERROR("Invalid component index %u (>= %u).", cmap[i].cmp,
+		for (i = 0; i < num_channels; i++) {
+			if (component_mapping[i].component_index >= image->numcomps) {
+				GRK_ERROR("Invalid component index %u (>= %u).", component_mapping[i].component_index,
 						image->numcomps);
 				is_sane = false;
 				goto cleanup;
 			}
 		}
 
-		pcol_usage = (bool*) grk_calloc(nr_channels, sizeof(bool));
+		pcol_usage = (bool*) grk_calloc(num_channels, sizeof(bool));
 		if (!pcol_usage) {
 			GRK_ERROR("Unexpected OOM.");
 			return false;
 		}
 		/* verify that no component is targeted more than once */
-		for (i = 0; i < nr_channels; i++) {
-			uint16_t pcol = cmap[i].pcol;
-			if (cmap[i].mtyp != 0 && cmap[i].mtyp != 1) {
+		for (i = 0; i < num_channels; i++) {
+			uint16_t lut_index = component_mapping[i].lut_index;
+			if (component_mapping[i].mapping_type != 0 && component_mapping[i].mapping_type != 1) {
 				GRK_ERROR("Unexpected MTYP value.");
 				is_sane = false;
 				goto cleanup;
 			}
-			if (pcol >= nr_channels) {
-				GRK_ERROR(
-						"Invalid component/palette index for direct mapping %u.",
-						pcol);
+			if (lut_index >= num_channels) {
+				GRK_ERROR("Invalid component/palette index for direct mapping %u.",
+						lut_index);
 				is_sane = false;
 				goto cleanup;
-			} else if (pcol_usage[pcol] && cmap[i].mtyp == 1) {
-				GRK_ERROR("Component %u is mapped twice.", pcol);
+			} else if (pcol_usage[lut_index] && component_mapping[i].mapping_type == 1) {
+				GRK_ERROR("Component %u is mapped twice.", lut_index);
 				is_sane = false;
 				goto cleanup;
-			} else if (cmap[i].mtyp == 0 && cmap[i].pcol != 0) {
+			} else if (component_mapping[i].mapping_type == 0 && component_mapping[i].lut_index != 0) {
 				/* I.5.3.5 PCOL: If the value of the MTYP field for this channel is 0, then
 				 * the value of this field shall be 0. */
-				GRK_ERROR("Direct use at #%u however pcol=%u.", i, pcol);
+				GRK_ERROR("Direct use at #%u however lut_index=%u.", i, lut_index);
 				is_sane = false;
 				goto cleanup;
 			} else
-				pcol_usage[pcol] = true;
+				pcol_usage[lut_index] = true;
 		}
 		/* verify that all components are targeted at least once */
-		for (i = 0; i < nr_channels; i++) {
-			if (!pcol_usage[i] && cmap[i].mtyp != 0) {
+		for (i = 0; i < num_channels; i++) {
+			if (!pcol_usage[i] && component_mapping[i].mapping_type != 0) {
 				GRK_ERROR("Component %u doesn't have a mapping.", i);
 				is_sane = false;
 				goto cleanup;
 			}
 		}
-		/* Issue 235/447 weird cmap */
-		if (1 && is_sane && (image->numcomps == 1U)) {
-			for (i = 0; i < nr_channels; i++) {
+		/* Issue 235/447 weird component_mapping */
+		if (is_sane && (image->numcomps == 1U)) {
+			for (i = 0; i < num_channels; i++) {
 				if (!pcol_usage[i]) {
 					is_sane = 0U;
 					GRK_WARN(
@@ -1395,13 +1396,13 @@ static bool jp2_check_color(grk_image *image, grk_jp2_color *color) {
 			}
 			if (!is_sane) {
 				is_sane = true;
-				for (i = 0; i < nr_channels; i++) {
-					cmap[i].mtyp = 1U;
-					cmap[i].pcol = (uint8_t) i;
+				for (i = 0; i < num_channels; i++) {
+					component_mapping[i].mapping_type = 1U;
+					component_mapping[i].lut_index = (uint8_t) i;
 				}
 			}
 		}
-		cleanup:
+	cleanup:
 		grk_free(pcol_usage);
 		if (!is_sane)
 			return false;
@@ -1411,47 +1412,45 @@ static bool jp2_check_color(grk_image *image, grk_jp2_color *color) {
 }
 
 static bool jp2_apply_palette_clr(grk_image *image, grk_jp2_color *color) {
-	uint32_t j, max;
-	uint16_t i, nr_channels, cmp, pcol;
+	uint16_t i, num_channels, component_index, lut_index;
 	int32_t k, top_k;
 
-	auto channel_size = color->palette->channel_size;
+	auto channel_prec = color->palette->channel_prec;
 	auto channel_sign = color->palette->channel_sign;
-	auto entries = color->palette->entries;
-	auto cmap = color->palette->cmap;
-	nr_channels = color->palette->nr_channels;
+	auto luts = color->palette->luts;
+	auto component_mapping = color->palette->component_mapping;
+	num_channels = color->palette->num_channels;
 
-	for (i = 0; i < nr_channels; ++i) {
+	for (i = 0; i < num_channels; ++i) {
 		/* Palette mapping: */
-		cmp = cmap[i].cmp;
-		if (image->comps[cmp].data == nullptr) {
-			GRK_ERROR(
-					"image->comps[%u].data == nullptr in grk_jp2_apply_pclr().",
-					i);
+		component_index = component_mapping[i].component_index;
+		if (image->comps[component_index].data == nullptr) {
+			GRK_ERROR("image->comps[%u].data == nullptr"
+					" in grk_jp2_apply_pclr().",i);
 			return false;
 		}
 	}
 
 	auto old_comps = image->comps;
-	auto new_comps = (grk_image_comp*) grk_malloc(
-			nr_channels * sizeof(grk_image_comp));
+	auto new_comps =
+			(grk_image_comp*) grk_malloc(num_channels * sizeof(grk_image_comp));
 	if (!new_comps) {
 		GRK_ERROR("Memory allocation failure in grk_jp2_apply_pclr().");
 		return false;
 	}
-	for (i = 0; i < nr_channels; ++i) {
-		pcol = cmap[i].pcol;
-		cmp = cmap[i].cmp;
+	for (uint16_t i = 0; i < num_channels; ++i) {
+		lut_index = component_mapping[i].lut_index;
+		component_index = component_mapping[i].component_index;
 
 		/* Direct use */
-		if (cmap[i].mtyp == 0) {
-			assert(pcol == 0);
-			new_comps[i] = old_comps[cmp];
+		if (component_mapping[i].mapping_type == 0) {
+			assert(lut_index == 0);
+			new_comps[i] = old_comps[component_index];
 			new_comps[i].data = nullptr;
 		} else {
-			assert(i == pcol);
-			new_comps[pcol] = old_comps[cmp];
-			new_comps[pcol].data = nullptr;
+			assert(i == lut_index);
+			new_comps[lut_index] = old_comps[component_index];
+			new_comps[lut_index].data = nullptr;
 		}
 
 		/* Palette mapping: */
@@ -1464,51 +1463,47 @@ static bool jp2_apply_palette_clr(grk_image *image, grk_jp2_color *color) {
 			GRK_ERROR("Memory allocation failure in grk_jp2_apply_pclr().");
 			return false;
 		}
-		new_comps[i].prec = channel_size[i];
+		new_comps[i].prec = channel_prec[i];
 		new_comps[i].sgnd = channel_sign[i];
 	}
 
-	top_k = color->palette->nr_entries - 1;
+	top_k = color->palette->num_luts - 1;
 
-	for (i = 0; i < nr_channels; ++i) {
+	for (i = 0; i < num_channels; ++i) {
 		/* Palette mapping: */
-		cmp = cmap[i].cmp;
-		pcol = cmap[i].pcol;
-		auto src = old_comps[cmp].data;
+		component_index = component_mapping[i].component_index;
+		lut_index = component_mapping[i].lut_index;
+		auto src = old_comps[component_index].data;
 		assert(src);
-		max = new_comps[pcol].stride * new_comps[pcol].h;
+		size_t num_pixels = (size_t)new_comps[lut_index].stride * new_comps[lut_index].h;
 
 		/* Direct use: */
-		if (cmap[i].mtyp == 0) {
-			assert(cmp == 0);
+		if (component_mapping[i].mapping_type == 0) {
+			assert(component_index == 0);
 			auto dst = new_comps[i].data;
 			assert(dst);
-			for (j = 0; j < max; ++j) {
+			for (size_t j = 0; j < num_pixels; ++j) {
 				dst[j] = src[j];
 			}
 		} else {
-			assert(i == pcol);
-			auto dst = new_comps[pcol].data;
+			assert(i == lut_index);
+			auto dst = new_comps[lut_index].data;
 			assert(dst);
-			for (j = 0; j < max; ++j) {
+			for (size_t j = 0; j < num_pixels; ++j) {
 				/* The index */
 				if ((k = src[j]) < 0)
 					k = 0;
 				else if (k > top_k)
 					k = top_k;
-
-				/* The colour */
-				dst[j] = (int32_t) entries[k * nr_channels + pcol];
+				dst[j] = (int32_t) luts[k * num_channels + lut_index];
 			}
 		}
 	}
-
-	max = image->numcomps;
-	for (i = 0; i < max; ++i)
+	for (i = 0; i < image->numcomps; ++i)
 		grk_image_single_component_data_free(old_comps + i);
 	grk_free(old_comps);
 	image->comps = new_comps;
-	image->numcomps = nr_channels;
+	image->numcomps = num_channels;
 
 	return true;
 
@@ -1526,38 +1521,38 @@ static bool jp2_read_palette_clr(FileFormat *fileFormat, uint8_t *p_pclr_header_
 	if (pclr_header_size < 3)
 		return false;
 
-	uint16_t nr_entries;
-	grk_read<uint16_t>(p_pclr_header_data, &nr_entries); /* NE */
+	uint16_t num_luts;
+	grk_read<uint16_t>(p_pclr_header_data, &num_luts); /* NE */
 	p_pclr_header_data += 2;
-	if ((nr_entries == 0U) || (nr_entries > 1024U)) {
-		GRK_ERROR("Invalid PCLR box. Reports %u entries", (int) nr_entries);
+	if ((num_luts == 0U) || (num_luts > 1024U)) {
+		GRK_ERROR("Invalid PCLR box. Reports %u entries", (int) num_luts);
 		return false;
 	}
 
-	uint8_t nr_channels;
-	grk_read<uint8_t>(p_pclr_header_data, &nr_channels); /* NPC */
+	uint8_t num_channels;
+	grk_read<uint8_t>(p_pclr_header_data, &num_channels); /* NPC */
 	++p_pclr_header_data;
-	if (nr_channels == 0U) {
+	if (num_channels == 0U) {
 		GRK_ERROR("Invalid PCLR box. Reports 0 palette columns");
 		return false;
 	}
 
-	if (pclr_header_size < 3 + (uint32_t) nr_channels)
+	if (pclr_header_size < 3 + (uint32_t) num_channels)
 		return false;
 
-	FileFormat::alloc_palette(&fileFormat->color, nr_channels,nr_entries);
+	FileFormat::alloc_palette(&fileFormat->color, num_channels,num_luts);
 	auto jp2_pclr = fileFormat->color.palette;
-	for (uint8_t i = 0; i < nr_channels; ++i) {
+	for (uint8_t i = 0; i < num_channels; ++i) {
 		uint8_t val;
 		grk_read<uint8_t>(p_pclr_header_data++, &val); /* Bi */
-		jp2_pclr->channel_size[i] = (uint8_t) ((val & 0x7f) + 1);
-		jp2_pclr->channel_sign[i] = (val & 0x80) ? 1 : 0;
+		jp2_pclr->channel_prec[i] = (uint8_t) ((val & 0x7f) + 1);
+		jp2_pclr->channel_sign[i] = (val & 0x80) ? true : false;
 	}
 
-	auto entries = jp2_pclr->entries;
-	for (uint16_t j = 0; j < nr_entries; ++j) {
-		for (uint8_t i = 0; i < nr_channels; ++i) {
-			uint32_t bytes_to_read = (uint32_t) ((jp2_pclr->channel_size[i] + 7) >> 3);
+	auto entries = jp2_pclr->luts;
+	for (uint16_t j = 0; j < num_luts; ++j) {
+		for (uint8_t i = 0; i < num_channels; ++i) {
+			uint32_t bytes_to_read = (uint32_t) ((jp2_pclr->channel_prec[i] + 7) >> 3);
 
 			if (bytes_to_read > sizeof(uint32_t))
 				bytes_to_read = sizeof(uint32_t);
@@ -1580,9 +1575,9 @@ static void jp2_free_palette_clr(grk_jp2_color *color) {
 	if (color) {
 		if (color->palette) {
 			delete[] color->palette->channel_sign;
-			delete[] color->palette->channel_size;
-			delete[] color->palette->entries;
-			delete[] color->palette->cmap;
+			delete[] color->palette->channel_prec;
+			delete[] color->palette->luts;
+			delete[] color->palette->component_mapping;
 			delete[] color->palette;
 			color->palette = nullptr;
 		}
@@ -1590,14 +1585,14 @@ static void jp2_free_palette_clr(grk_jp2_color *color) {
 }
 
 
-static bool jp2_read_component_mapping(FileFormat *fileFormat, uint8_t *p_cmap_header_data,
-		uint32_t cmap_header_size) {
-	uint8_t i, nr_channels;
+static bool jp2_read_component_mapping(FileFormat *fileFormat, uint8_t *component_mapping_header_data,
+		uint32_t component_mapping_header_size) {
+	uint8_t i, num_channels;
 
 	assert(fileFormat != nullptr);
-	assert(p_cmap_header_data != nullptr);
+	assert(component_mapping_header_data != nullptr);
 
-	/* Need nr_channels: */
+	/* Need num_channels: */
 	if (fileFormat->color.palette == nullptr) {
 		GRK_ERROR("Need to read a PCLR box before the CMAP box.");
 		return false;
@@ -1606,25 +1601,25 @@ static bool jp2_read_component_mapping(FileFormat *fileFormat, uint8_t *p_cmap_h
 	/* Part 1, I.5.3.5: 'There shall be at most one Component Mapping box
 	 * inside a JP2 Header box' :
 	 */
-	if (fileFormat->color.palette->cmap) {
+	if (fileFormat->color.palette->component_mapping) {
 		GRK_ERROR("Only one CMAP box is allowed.");
 		return false;
 	}
 
-	nr_channels = fileFormat->color.palette->nr_channels;
-	if (cmap_header_size < (uint32_t) nr_channels * 4) {
+	num_channels = fileFormat->color.palette->num_channels;
+	if (component_mapping_header_size < (uint32_t) num_channels * 4) {
 		GRK_ERROR("Insufficient data for CMAP box.");
 		return false;
 	}
 
-	auto cmap = new grk_jp2_component_mapping_comp[nr_channels];
-	for (i = 0; i < nr_channels; ++i) {
-		grk_read<uint16_t>(p_cmap_header_data, &cmap[i].cmp); /* CMP^i */
-		p_cmap_header_data += 2;
-		grk_read<uint8_t>(p_cmap_header_data++, &cmap[i].mtyp); /* MTYP^i */
-		grk_read<uint8_t>(p_cmap_header_data++, &cmap[i].pcol); /* PCOL^i */
+	auto component_mapping = new grk_component_mapping_comp[num_channels];
+	for (i = 0; i < num_channels; ++i) {
+		grk_read<uint16_t>(component_mapping_header_data, &component_mapping[i].component_index); /* CMP^i */
+		component_mapping_header_data += 2;
+		grk_read<uint8_t>(component_mapping_header_data++, &component_mapping[i].mapping_type); /* MTYP^i */
+		grk_read<uint8_t>(component_mapping_header_data++, &component_mapping[i].lut_index); /* PCOL^i */
 	}
-	fileFormat->color.palette->cmap = cmap;
+	fileFormat->color.palette->component_mapping = component_mapping;
 
 	return true;
 }
@@ -2511,7 +2506,7 @@ bool FileFormat::decompress( grk_plugin_tile *tile,	 grk_image *p_image){
 
 	if (color.palette) {
 		/* Part 1, I.5.3.4: Either both or none : */
-		if (!color.palette->cmap)
+		if (!color.palette->component_mapping)
 			jp2_free_palette_clr(&(color));
 		else {
 			if (!jp2_apply_palette_clr(p_image, &(color)))
@@ -2747,11 +2742,11 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
 		break;
 	}
 	if (alpha_count) {
-		color.channel_definition = new grk_jp2_channel_definition();
+		color.channel_definition = new grk_channel_definition();
 		/* no memset needed, all values will be overwritten except if
 		 * color.channel_definition->info allocation fails, */
 		/* in which case color.channel_definition->info will be nullptr => valid for destruction */
-		color.channel_definition->info = new grk_jp2_channel_definition_info[image->numcomps];
+		color.channel_definition->info = new grk_channel_definition_info[image->numcomps];
 		/* cast is valid : image->numcomps [1,16384] */
 		color.channel_definition->num_channel_definitions = (uint16_t) image->numcomps;
 		for (i = 0U; i < color_channels; i++) {
@@ -2851,7 +2846,7 @@ bool FileFormat::decompress_tile(grk_image *p_image,uint16_t tile_index) {
 
 	if (color.palette) {
 		/* Part 1, I.5.3.4: Either both or none : */
-		if (!color.palette->cmap)
+		if (!color.palette->component_mapping)
 			jp2_free_palette_clr(&(color));
 		else {
 			if (!jp2_apply_palette_clr(p_image, &(color)))
@@ -2887,18 +2882,18 @@ void FileFormat::free_color(grk_jp2_color *color){
 	}
 }
 
-void FileFormat::alloc_palette(grk_jp2_color *color, uint8_t num_channels, uint16_t num_entries){
+void FileFormat::alloc_palette(grk_jp2_color *color, uint8_t num_channels, uint16_t num_luts){
 	assert(color);
 	assert(num_channels);
-	assert(num_entries);
+	assert(num_luts);
 
-	auto jp2_pclr = new grk_jp2_palette_clr();
-	jp2_pclr->channel_sign = new uint8_t[num_channels];
-	jp2_pclr->channel_size = new uint8_t[num_channels];
-	jp2_pclr->entries = new uint32_t[num_channels * num_entries];
-	jp2_pclr->nr_entries = num_entries;
-	jp2_pclr->nr_channels = num_channels;
-	jp2_pclr->cmap = nullptr;
+	auto jp2_pclr = new grk_palette_data();
+	jp2_pclr->channel_sign = new bool[num_channels];
+	jp2_pclr->channel_prec = new uint8_t[num_channels];
+	jp2_pclr->luts = new uint32_t[num_channels * num_luts];
+	jp2_pclr->num_luts = num_luts;
+	jp2_pclr->num_channels = num_channels;
+	jp2_pclr->component_mapping = nullptr;
 	color->palette = jp2_pclr;
 }
 

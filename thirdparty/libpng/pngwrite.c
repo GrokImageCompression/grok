@@ -1784,11 +1784,11 @@ static void
 png_image_set_PLTE(png_image_write_control *display)
 {
    png_imagep image = display->image;
-   const void *cmap = display->colormap;
+   const void *component_mapping = display->colormap;
    int entries = image->colormap_entries > 256 ? 256 :
        (int)image->colormap_entries;
 
-   /* NOTE: the caller must check for cmap != NULL and entries != 0 */
+   /* NOTE: the caller must check for component_mapping != NULL and entries != 0 */
    png_uint_32 format = image->format;
    unsigned int channels = PNG_IMAGE_SAMPLE_CHANNELS(format);
 
@@ -1820,7 +1820,7 @@ png_image_set_PLTE(png_image_write_control *display)
        */
       if ((format & PNG_FORMAT_FLAG_LINEAR) != 0)
       {
-         png_const_uint_16p entry = png_voidcast(png_const_uint_16p, cmap);
+         png_const_uint_16p entry = png_voidcast(png_const_uint_16p, component_mapping);
 
          entry += (unsigned int)i * channels;
 
@@ -1876,7 +1876,7 @@ png_image_set_PLTE(png_image_write_control *display)
 
       else /* Color-map has sRGB values */
       {
-         png_const_bytep entry = png_voidcast(png_const_bytep, cmap);
+         png_const_bytep entry = png_voidcast(png_const_bytep, component_mapping);
 
          entry += (unsigned int)i * channels;
 
