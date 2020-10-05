@@ -561,35 +561,35 @@ typedef struct _grk_cparameters {
 /**
  Channel definition: channel index, type, association
  */
-typedef struct _grk_channel_definition_info {
+typedef struct _grk_channel_description {
 	uint16_t cn;
 	uint16_t typ;
 	uint16_t asoc;
-} grk_channel_definition_info;
+} grk_channel_description;
 
 /**
  Channel definitions and number of definitions
  */
 typedef struct _grk_channel_definition {
-	grk_channel_definition_info *info;
-	uint16_t num_channel_definitions;
+	grk_channel_description *descriptions;
+	uint16_t num_channel_descriptions;
 } grk_channel_definition;
 
 /**
- Component mappings: component index, mapping type, LUT index
+ Component mappings: component index, mapping type, palette column
  */
 typedef struct _grk_component_mapping_comp {
 	uint16_t component_index;
 	uint8_t mapping_type;
-	uint8_t lut_index;
+	uint8_t palette_column;
 } grk_component_mapping_comp;
 
 /**
  Palette data
  */
 typedef struct _grk_palette_data {
-	uint32_t *luts;
-	uint16_t num_luts;
+	uint32_t *lut;
+	uint16_t num_entries;
 	grk_component_mapping_comp *component_mapping;
 	uint8_t num_channels;
 	bool *channel_sign;

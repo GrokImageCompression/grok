@@ -189,14 +189,14 @@ grk_image* JPEGFormat::jpegtoimage(const char *filename,
 		color_space = GRK_CLRSPC_GRAY;
 
 	for (int j = 0; j < cinfo.output_components; j++) {
-		cmptparm[j].prec = (uint32_t)bps;
+		cmptparm[j].prec = (uint8_t)bps;
 		cmptparm[j].dx = 1;
 		cmptparm[j].dy = 1;
 		cmptparm[j].w = w;
 		cmptparm[j].h = h;
 	}
 
-	m_image = grk_image_create((uint32_t)numcomps, &cmptparm[0], color_space,true);
+	m_image = grk_image_create((uint16_t)numcomps, &cmptparm[0], color_space,true);
 	if (!m_image) {
 		success = false;
 		goto cleanup;
@@ -343,7 +343,7 @@ bool JPEGFormat::encodeHeader(grk_image *image, const std::string &filename,
 	uint32_t width = m_image->comps[0].w;
 
 	// actual bits per sample
-	uint32_t prec = m_image->comps[0].prec;
+	uint8_t prec = m_image->comps[0].prec;
 	uint32_t i = 0;
 
 	struct my_error_mgr jerr;
@@ -444,7 +444,7 @@ bool JPEGFormat::encodeHeader(grk_image *image, const std::string &filename,
 		else
 			prec++;
 		for (i = 0; i < numcomps; ++i)
-			scale_component(&(m_image->comps[i]), (uint32_t) prec);
+			scale_component(&(m_image->comps[i]), prec);
 	}
 
 	if (prec != 1 && prec != 2 && prec != 4 && prec != 8) {
