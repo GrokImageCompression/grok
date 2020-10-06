@@ -887,7 +887,7 @@ int main(int argc, char **argv) {
 
 	/* check dimensions (issue 286)*/
 	if (imageBase->numcomps != imageTest->numcomps) {
-		spdlog::error("dimension mismatch ({}><{})",
+		spdlog::error("dimension mismatch ({} != {})",
 				imageBase->numcomps, imageTest->numcomps);
 		goto cleanup;
 	}
@@ -897,7 +897,7 @@ int main(int argc, char **argv) {
 		auto baseComp = imageBase->comps + compno;
 		auto testComp = imageTest->comps + compno;
 		if (baseComp->sgnd != testComp->sgnd) {
-			spdlog::error("sign mismatch [comp {}] ({}><{})",
+			spdlog::error("sign mismatch [comp {}] ({} != {})",
 					(uint32_t)compno, baseComp->sgnd, testComp->sgnd);
 			goto cleanup;
 		}
@@ -916,20 +916,20 @@ int main(int argc, char **argv) {
 		} else {
 
 			if (baseComp->h != testComp->h) {
-				spdlog::error("height mismatch [comp {}] ({}><{})",
+				spdlog::error("height mismatch [comp {}] ({} != {})",
 						(uint32_t)compno, baseComp->h, testComp->h);
 				goto cleanup;
 			}
 
 			if (baseComp->w != testComp->w) {
-				spdlog::error("width mismatch [comp {}] ({}><{})",
+				spdlog::error("width mismatch [comp {}] ({} != {})",
 						(uint32_t)compno, baseComp->w, testComp->w);
 				goto cleanup;
 			}
 		}
 
 		if (baseComp->prec != testComp->prec) {
-			spdlog::error("precision mismatch [comp {}] ({}><{})",
+			spdlog::error("precision mismatch [comp {}] ({} != {})",
 					(uint32_t)compno, baseComp->prec, testComp->prec);
 			goto cleanup;
 		}

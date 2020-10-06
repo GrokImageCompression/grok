@@ -404,359 +404,6 @@ template<typename T> bool readTiffPixelsSigned(TIFF *tif, grk_image_comp *comps,
 //rec 601 conversion factors, multiplied by 1000
 const uint32_t rec_601_luma[3] {299, 587, 114};
 
-/*
- * libtiff/tif_getimage.c : 1,2,4,8,16 bitspersample accepted
- * CINEMA                 : 12 bit precision
- */
-static grk_image* tiftoimage(const char *filename,
-		grk_cparameters *parameters) {
-	TIFF *tif = nullptr;
-	bool found_assocalpha = false;
-	size_t alpha_count = 0;
-	uint16_t chroma_subsample_x = 1;
-	uint16_t chroma_subsample_y = 1;
-	GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
-	grk_image_cmptparm cmptparm[maxNumComponents];
-	grk_image *image = nullptr;
-	uint16_t tiBps = 0, tiPhoto = 0, tiSf = SAMPLEFORMAT_UINT, tiSpp = 0, tiPC =
-			0;
-	bool hasTiSf = false;
-	short tiResUnit = 0;
-	float tiXRes = 0, tiYRes = 0;
-	uint32_t tiWidth = 0, tiHeight = 0;
-	bool is_cinema = GRK_IS_CINEMA(parameters->rsiz);
-	bool success = false;
-	bool isCIE = false;
-    uint16 compress;
-	float *luma = nullptr, *refBlackWhite= nullptr;
-
-	tif = TIFFOpen(filename, "r");
-	if (!tif) {
-		spdlog::error("tiftoimage:Failed to open {} for reading", filename);
-		return 0;
-	}
-
-    TIFFGetField(tif, TIFFTAG_COMPRESSION, &compress);
-	TIFFGetFieldDefaulted(tif, TIFFTAG_IMAGEWIDTH, &tiWidth);
-	TIFFGetFieldDefaulted(tif, TIFFTAG_IMAGELENGTH, &tiHeight);
-	TIFFGetFieldDefaulted(tif, TIFFTAG_BITSPERSAMPLE, &tiBps);
-	TIFFGetFieldDefaulted(tif, TIFFTAG_SAMPLESPERPIXEL, &tiSpp);
-	TIFFGetFieldDefaulted(tif, TIFFTAG_PHOTOMETRIC, &tiPhoto);
-	TIFFGetFieldDefaulted(tif, TIFFTAG_PLANARCONFIG, &tiPC);
-	hasTiSf = TIFFGetFieldDefaulted(tif, TIFFTAG_SAMPLEFORMAT, &tiSf) == 1;
-
-	TIFFGetFieldDefaulted(tif, TIFFTAG_REFERENCEBLACKWHITE,
-	    &refBlackWhite);
-
-	uint32_t w = tiWidth;
-	uint32_t h = tiHeight;
-	uint16_t numcomps = 0;
-	uint32_t icclen = 0;
-	uint8_t *iccbuf = nullptr;
-	uint8_t *iptc_buf = nullptr;
-	uint32_t iptc_len = 0;
-	uint8_t *xmp_buf = nullptr;
-	uint32_t xmp_len = 0;
-	uint16 *sampleinfo = nullptr;
-	uint16 extrasamples = 0;
-	bool hasXRes = false, hasYRes = false, hasResUnit = false;
-	bool isSigned = (tiSf == SAMPLEFORMAT_INT);
-
-	// 1. sanity checks
-	//check for rec601
-	if (tiPhoto == PHOTOMETRIC_YCBCR) {
-		TIFFGetFieldDefaulted(tif, TIFFTAG_YCBCRCOEFFICIENTS, &luma);
-		for (size_t i = 0; i < 3; ++i){
-			if ((uint32_t)(luma[i] * 1000.0f + 0.5f) != rec_601_luma[i]){
-				spdlog::error("tiftoimage: YCbCr image with unsupported non Rec. 601 colour space;");
-				spdlog::error("YCbCrCoefficients: {},{},{}",luma[0],luma[1],luma[2]);
-				spdlog::error("Please convert to sRGB before compressing.");
-				goto cleanup;
-			}
-		}
-	}
-	if (hasTiSf && tiSf != SAMPLEFORMAT_UINT && tiSf != SAMPLEFORMAT_INT) {
-		spdlog::error("tiftoimage: Unsupported sample format: {}.", getSampleFormatString(tiSf));
-		goto cleanup;
-	}
-	if (tiSpp == 0 ) {
-		spdlog::error("tiftoimage: Samples per pixel must be non-zero");
-		goto cleanup;
-	}
-	if (tiBps > 16U || tiBps == 0) {
-		spdlog::error("tiftoimage: Unsupported precision {}. Maximum 16 Bits supported.", tiBps);
-		goto cleanup;
-	}
-	if (tiPhoto != PHOTOMETRIC_MINISBLACK && tiPhoto != PHOTOMETRIC_MINISWHITE
-			&& tiPhoto != PHOTOMETRIC_RGB && tiPhoto != PHOTOMETRIC_ICCLAB
-			&& tiPhoto != PHOTOMETRIC_CIELAB
-			&& tiPhoto != PHOTOMETRIC_YCBCR
-			&& tiPhoto != PHOTOMETRIC_SEPARATED) {
-		spdlog::error("tiftoimage: Unsupported color format {}.\n"
-				"Only RGB(A), GRAY(A), CIELAB, YCC and CMYK have been implemented.",
-				getColourFormatString(tiPhoto));
-		goto cleanup;
-	}
-	if (tiWidth == 0 || tiHeight == 0) {
-		spdlog::error("tiftoimage: Width({}) and height({}) must both "
-				"be non-zero", tiWidth, tiHeight);
-		goto cleanup;
-
-	}
-	TIFFGetFieldDefaulted(tif, TIFFTAG_EXTRASAMPLES, &extrasamples,
-			&sampleinfo);
-
-	// 2. initialize image components and signed/unsigned
-	memset(&cmptparm[0], 0, maxNumComponents * sizeof(grk_image_cmptparm));
-	if ((tiPhoto == PHOTOMETRIC_RGB) && (is_cinema) && (tiBps != 12U)) {
-		spdlog::warn("tiftoimage: Input image bitdepth is {} bits\n"
-					"TIF conversion has automatically rescaled to 12-bits\n"
-					"to comply with cinema profiles.", tiBps);
-	} else {
-		is_cinema = 0U;
-	}
-	numcomps = extrasamples;
-	switch (tiPhoto) {
-	case PHOTOMETRIC_RGB:
-		color_space = GRK_CLRSPC_SRGB;
-		numcomps += 3;
-		break;
-	case PHOTOMETRIC_MINISBLACK:
-	case PHOTOMETRIC_MINISWHITE:
-		color_space = GRK_CLRSPC_GRAY;
-		numcomps++;
-		break;
-	case PHOTOMETRIC_CIELAB:
-	case PHOTOMETRIC_ICCLAB:
-		isCIE = true;
-		color_space = GRK_CLRSPC_DEFAULT_CIE;
-		numcomps += 3;
-		break;
-	case PHOTOMETRIC_YCBCR:
-		// jpeg library is needed to convert from YCbCr to RGB
-		if (compress == COMPRESSION_OJPEG ||
-				compress == COMPRESSION_JPEG){
-			   spdlog::error("tiftoimage: YCbCr image with JPEG compression"
-					   " is not supported");
-			   goto cleanup;
-		}
-		else if (compress == COMPRESSION_PACKBITS) {
-			   spdlog::error("tiftoimage: YCbCr image with PACKBITS compression"
-					   " is not supported");
-			   goto cleanup;
-		}
-		color_space = GRK_CLRSPC_SYCC;
-		numcomps += 3;
-		TIFFGetFieldDefaulted( tif, TIFFTAG_YCBCRSUBSAMPLING, &chroma_subsample_x, &chroma_subsample_y);
-		if (chroma_subsample_x != 1 || chroma_subsample_y != 1){
-		   if (isSigned) {
-			   spdlog::error("tiftoimage: chroma subsampling {},{} with signed data is not supported",
-					   chroma_subsample_x,chroma_subsample_y );
-			   goto cleanup;
-		   }
-		   if (numcomps != 3) {
-			   spdlog::error("tiftoimage: chroma subsampling {},{} with alpha channel(s) not supported",
-					   chroma_subsample_x,chroma_subsample_y );
-			   goto cleanup;
-		   }
-		}
-
-		break;
-	case PHOTOMETRIC_SEPARATED:
-		color_space = GRK_CLRSPC_CMYK;
-		numcomps += 4;
-		break;
-	default:
-		spdlog::error("tiftoimage: Unsupported colour space {}.",tiPhoto );
-		goto cleanup;
-		break;
-	}
-	if (tiPhoto == PHOTOMETRIC_CIELAB) {
-		if (hasTiSf && (tiSf != SAMPLEFORMAT_INT)) {
-			spdlog::warn("tiftoimage: Input image is in CIE colour space"
-					" but sample format is unsigned int. Forcing to signed int");
-		}
-		isSigned = true;
-	} else if (tiPhoto == PHOTOMETRIC_ICCLAB) {
-		if (hasTiSf && (tiSf != SAMPLEFORMAT_UINT)) {
-			spdlog::warn("tiftoimage: Input image is in ICC CIE colour"
-					" space but sample format is signed int. Forcing to unsigned int");
-		}
-		isSigned = false;
-	}
-
-	if (isSigned) {
-		if (tiPhoto == PHOTOMETRIC_MINISWHITE) {
-			spdlog::error("tiftoimage: signed image with "
-					"MINISWHITE format is not supported");
-			goto cleanup;
-		}
-		if (tiBps != 8 && tiBps != 16){
-			spdlog::error("tiftoimage: signed image with bit"
-					" depth {} is not supported", tiBps);
-			goto cleanup;
-		}
-	}
-	if (numcomps > maxNumComponents){
-		spdlog::error("tiftoimage: number of components "
-				"{} must be <= %u", numcomps,maxNumComponents);
-		goto cleanup;
-	}
-
-	// 4. create image
-	for (uint32_t j = 0; j < numcomps; j++) {
-		auto img_comp = cmptparm + j;
-		img_comp->prec = (uint8_t)tiBps;
-		bool chroma = (j==1 || j==2);
-		img_comp->dx = chroma ? chroma_subsample_x : 1;
-		img_comp->dy = chroma ? chroma_subsample_y : 1;
-		img_comp->w = grk::ceildiv<uint32_t>(w, img_comp->dx);
-		img_comp->h = grk::ceildiv<uint32_t>(h, img_comp->dy);
-	}
-	image = grk_image_create(numcomps, &cmptparm[0], color_space,true);
-	if (!image)
-		goto cleanup;
-
-	/* set image offset and reference grid */
-	image->x0 = parameters->image_offset_x0;
-	image->x1 =	image->x0 + (w - 1) * 1 + 1;
-	if (image->x1 <= image->x0) {
-		spdlog::error("tiftoimage: Bad value for image->x1({}) vs. "
-				"image->x0({}).", image->x1, image->x0);
-		goto cleanup;
-	}
-	image->y0 = parameters->image_offset_y0;
-	image->y1 =	image->y0 + (h - 1) * 1 + 1;
-	if (image->y1 <= image->y0) {
-		spdlog::error("tiftoimage: Bad value for image->y1({}) vs. "
-				"image->y0({}).", image->y1, image->y0);
-		goto cleanup;
-	}
-	for (uint32_t j = 0; j < numcomps; j++) {
-		// handle non-colour channel
-		uint16_t numColourChannels = numcomps - extrasamples;
-		auto comp = image->comps + j;
-
-		if (extrasamples > 0 && j >= numColourChannels) {
-			comp->type = GRK_COMPONENT_TYPE_UNSPECIFIED;
-			comp->association = GRK_COMPONENT_ASSOC_UNASSOCIATED;
-			auto alphaType = sampleinfo[j - numColourChannels];
-			if (alphaType == EXTRASAMPLE_ASSOCALPHA) {
-				if (found_assocalpha){
-					spdlog::warn("tiftoimage: Found more than one associated alpha channel");
-				}
-				alpha_count++;
-				comp->type = GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
-				found_assocalpha = true;
-			}
-			else if (alphaType == EXTRASAMPLE_UNASSALPHA) {
-				alpha_count++;
-				comp->type = GRK_COMPONENT_TYPE_OPACITY;
-			}
-			else {
-				// some older mono or RGB images may have alpha channel
-				// stored as EXTRASAMPLE_UNSPECIFIED
-				if ((color_space == GRK_CLRSPC_GRAY && numcomps == 2) ||
-						(color_space == GRK_CLRSPC_SRGB && numcomps == 4) ) {
-					alpha_count++;
-					comp->type = GRK_COMPONENT_TYPE_OPACITY;
-				}
-			}
-		}
-		if (comp->type == GRK_COMPONENT_TYPE_OPACITY ||
-			comp->type == GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY){
-				switch(alpha_count){
-				case 1:
-					comp->association = GRK_COMPONENT_ASSOC_WHOLE_IMAGE;
-					break;
-				case 2:
-					comp->association = GRK_COMPONENT_ASSOC_UNASSOCIATED;
-					break;
-				default:
-					comp->type = GRK_COMPONENT_TYPE_UNSPECIFIED;
-					comp->association = GRK_COMPONENT_ASSOC_UNASSOCIATED;
-					break;
-				}
-
-		}
-		comp->sgnd = isSigned;
-	}
-
-	// 5. extract capture resolution
-	hasXRes = TIFFGetFieldDefaulted(tif, TIFFTAG_XRESOLUTION, &tiXRes) == 1;
-	hasYRes = TIFFGetFieldDefaulted(tif, TIFFTAG_YRESOLUTION, &tiYRes) == 1;
-	hasResUnit = TIFFGetFieldDefaulted(tif, TIFFTAG_RESOLUTIONUNIT, &tiResUnit) == 1;
-	if (hasXRes && hasYRes && hasResUnit && tiResUnit != RESUNIT_NONE) {
-		set_resolution(parameters->capture_resolution_from_file, tiXRes, tiYRes,
-				tiResUnit);
-		parameters->write_capture_resolution_from_file = true;
-		image->capture_resolution[0] = tiXRes;
-		image->capture_resolution[1] = tiYRes;
-	}
-	// 6. extract embedded ICC profile (with sanity check on binary size of profile)
-	// note: we ignore ICC profile for CIE images as JPEG 2000 can't signal both
-	// CIE and ICC
-	if (!isCIE) {
-		if ((TIFFGetFieldDefaulted(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1)
-				&& icclen > 0 && icclen < grk::maxICCProfileBufferLen) {
-			image->color.icc_profile_buf = new uint8_t[icclen];
-			memcpy(image->color.icc_profile_buf, iccbuf, icclen);
-			image->color.icc_profile_len = icclen;
-			image->color_space = GRK_CLRSPC_ICC;
-		}
-	}
-	// 7. extract IPTC meta-data
-	if (TIFFGetFieldDefaulted(tif, TIFFTAG_RICHTIFFIPTC, &iptc_len, &iptc_buf) == 1) {
-		if (TIFFIsByteSwapped(tif))
-			TIFFSwabArrayOfLong((uint32*) iptc_buf, iptc_len);
-		// since TIFFTAG_RICHTIFFIPTC is of type TIFF_LONG, we must multiply
-		// by 4 to get the length in bytes
-		image->iptc_len = iptc_len * 4;
-		image->iptc_buf = new uint8_t[iptc_len];
-		memcpy(image->iptc_buf, iptc_buf, iptc_len);
-	}
-	// 8. extract XML meta-data
-	if (TIFFGetFieldDefaulted(tif, TIFFTAG_XMLPACKET, &xmp_len, &xmp_buf) == 1) {
-		image->xmp_len = xmp_len;
-		image->xmp_buf = new uint8_t[xmp_len];
-		memcpy(image->xmp_buf, xmp_buf, xmp_len);
-	}
-	// 9. read pixel data
-	if (isSigned) {
-		if (tiBps == 8)
-			success =  readTiffPixelsSigned<int8_t>(tif, image->comps, numcomps, tiSpp,
-						tiPC);
-		else
-			success =  readTiffPixelsSigned<int16_t>(tif, image->comps, numcomps, tiSpp,
-						tiPC);
-	}
-	else {
-		success = readTiffPixelsUnsigned(tif,
-										image->comps,
-										numcomps,
-										tiSpp,
-										tiPC,
-										tiPhoto,
-										chroma_subsample_x,
-										chroma_subsample_y);
-	}
-	cleanup: if (tif)
-		TIFFClose(tif);
-	if (success) {
-		if (is_cinema) {
-			for (uint32_t j = 0; j < numcomps; ++j)
-				scale_component(&(image->comps[j]), 12);
-		}
-		return image;
-	}
-	if (image)
-		grk_image_destroy(image);
-
-	return nullptr;
-}/* tiftoimage() */
-
-
-
 TIFFFormat::TIFFFormat() : tif(nullptr),
 							chroma_subsample_x(1),
 							chroma_subsample_y(1),
@@ -1142,6 +789,389 @@ bool TIFFFormat::encodeFinish(void){
 }
 grk_image* TIFFFormat::decode(const std::string &filename,
 		grk_cparameters *parameters) {
-	return tiftoimage(filename.c_str(), parameters);
+	bool found_assocalpha = false;
+	size_t alpha_count = 0;
+	uint16_t chroma_subsample_x = 1;
+	uint16_t chroma_subsample_y = 1;
+	GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
+	grk_image_cmptparm cmptparm[maxNumComponents];
+	grk_image *image = nullptr;
+	uint16_t tiBps = 0, tiPhoto = 0, tiSf = SAMPLEFORMAT_UINT, tiSpp = 0, tiPC =
+			0;
+	bool hasTiSf = false;
+	short tiResUnit = 0;
+	float tiXRes = 0, tiYRes = 0;
+	uint32_t tiWidth = 0, tiHeight = 0;
+	bool is_cinema = GRK_IS_CINEMA(parameters->rsiz);
+	bool success = false;
+	bool isCIE = false;
+	uint16 compress;
+	float *luma = nullptr, *refBlackWhite= nullptr;
+	uint16 *red_orig=nullptr, *green_orig=nullptr, *blue_orig=nullptr;
+
+	tif = TIFFOpen(filename.c_str(), "r");
+	if (!tif) {
+		spdlog::error("tiftoimage:Failed to open {} for reading", filename);
+		return 0;
+	}
+
+	TIFFGetField(tif, TIFFTAG_COMPRESSION, &compress);
+	TIFFGetFieldDefaulted(tif, TIFFTAG_IMAGEWIDTH, &tiWidth);
+	TIFFGetFieldDefaulted(tif, TIFFTAG_IMAGELENGTH, &tiHeight);
+	TIFFGetFieldDefaulted(tif, TIFFTAG_BITSPERSAMPLE, &tiBps);
+	TIFFGetFieldDefaulted(tif, TIFFTAG_SAMPLESPERPIXEL, &tiSpp);
+	TIFFGetFieldDefaulted(tif, TIFFTAG_PHOTOMETRIC, &tiPhoto);
+	TIFFGetFieldDefaulted(tif, TIFFTAG_PLANARCONFIG, &tiPC);
+	hasTiSf = TIFFGetFieldDefaulted(tif, TIFFTAG_SAMPLEFORMAT, &tiSf) == 1;
+
+	TIFFGetFieldDefaulted(tif, TIFFTAG_REFERENCEBLACKWHITE,
+		&refBlackWhite);
+
+	uint32_t w = tiWidth;
+	uint32_t h = tiHeight;
+	uint16_t numcomps = 0;
+	uint32_t icclen = 0;
+	uint8_t *iccbuf = nullptr;
+	uint8_t *iptc_buf = nullptr;
+	uint32_t iptc_len = 0;
+	uint8_t *xmp_buf = nullptr;
+	uint32_t xmp_len = 0;
+	uint16 *sampleinfo = nullptr;
+	uint16 extrasamples = 0;
+	bool hasXRes = false, hasYRes = false, hasResUnit = false;
+	bool isSigned = (tiSf == SAMPLEFORMAT_INT);
+
+	// 1. sanity checks
+
+	// check for supported photometric interpretation
+	if (tiPhoto != PHOTOMETRIC_MINISBLACK && tiPhoto != PHOTOMETRIC_MINISWHITE
+			&& tiPhoto != PHOTOMETRIC_RGB && tiPhoto != PHOTOMETRIC_ICCLAB
+			&& tiPhoto != PHOTOMETRIC_CIELAB
+			&& tiPhoto != PHOTOMETRIC_YCBCR
+			&& tiPhoto != PHOTOMETRIC_SEPARATED
+			&& tiPhoto != PHOTOMETRIC_PALETTE) {
+		spdlog::error("tiftoimage: Unsupported color format {}.\n"
+				"Only RGB(A), GRAY(A), CIELAB, YCC, CMYK and PALETTE have been implemented.",
+				getColourFormatString(tiPhoto));
+		goto cleanup;
+	}
+	//check for rec601
+	if (tiPhoto == PHOTOMETRIC_YCBCR) {
+		TIFFGetFieldDefaulted(tif, TIFFTAG_YCBCRCOEFFICIENTS, &luma);
+		for (size_t i = 0; i < 3; ++i){
+			if ((uint32_t)(luma[i] * 1000.0f + 0.5f) != rec_601_luma[i]){
+				spdlog::error("tiftoimage: YCbCr image with unsupported non Rec. 601 colour space;");
+				spdlog::error("YCbCrCoefficients: {},{},{}",luma[0],luma[1],luma[2]);
+				spdlog::error("Please convert to sRGB before compressing.");
+				goto cleanup;
+			}
+		}
+	}
+	// check sample format
+	if (hasTiSf && tiSf != SAMPLEFORMAT_UINT && tiSf != SAMPLEFORMAT_INT) {
+		spdlog::error("tiftoimage: Unsupported sample format: {}.", getSampleFormatString(tiSf));
+		goto cleanup;
+	}
+	if (tiSpp == 0 ) {
+		spdlog::error("tiftoimage: Samples per pixel must be non-zero");
+		goto cleanup;
+	}
+	if (tiBps > 16U || tiBps == 0) {
+		spdlog::error("tiftoimage: Unsupported precision {}. Maximum 16 Bits supported.", tiBps);
+		goto cleanup;
+	}
+	if (tiWidth == 0 || tiHeight == 0) {
+		spdlog::error("tiftoimage: Width({}) and height({}) must both "
+				"be non-zero", tiWidth, tiHeight);
+		goto cleanup;
+
+	}
+	TIFFGetFieldDefaulted(tif, TIFFTAG_EXTRASAMPLES, &extrasamples,
+			&sampleinfo);
+
+	// 2. initialize image components and signed/unsigned
+	memset(&cmptparm[0], 0, maxNumComponents * sizeof(grk_image_cmptparm));
+	if ((tiPhoto == PHOTOMETRIC_RGB) && (is_cinema) && (tiBps != 12U)) {
+		spdlog::warn("tiftoimage: Input image bitdepth is {} bits\n"
+					"TIF conversion has automatically rescaled to 12-bits\n"
+					"to comply with cinema profiles.", tiBps);
+	} else {
+		is_cinema = 0U;
+	}
+	numcomps = extrasamples;
+	switch (tiPhoto) {
+	case PHOTOMETRIC_PALETTE:
+		if (isSigned) {
+		   spdlog::error("tiftoimage: Signed palette image not supported");
+		   goto cleanup;
+		}
+		color_space = GRK_CLRSPC_SRGB;
+		numcomps++;
+		break;
+	case PHOTOMETRIC_MINISBLACK:
+	case PHOTOMETRIC_MINISWHITE:
+		color_space = GRK_CLRSPC_GRAY;
+		numcomps++;
+		break;
+	case PHOTOMETRIC_RGB:
+		color_space = GRK_CLRSPC_SRGB;
+		numcomps += 3;
+		break;
+	case PHOTOMETRIC_CIELAB:
+	case PHOTOMETRIC_ICCLAB:
+		isCIE = true;
+		color_space = GRK_CLRSPC_DEFAULT_CIE;
+		numcomps += 3;
+		break;
+	case PHOTOMETRIC_YCBCR:
+		// jpeg library is needed to convert from YCbCr to RGB
+		if (compress == COMPRESSION_OJPEG ||
+				compress == COMPRESSION_JPEG){
+			   spdlog::error("tiftoimage: YCbCr image with JPEG compression"
+					   " is not supported");
+			   goto cleanup;
+		}
+		else if (compress == COMPRESSION_PACKBITS) {
+			   spdlog::error("tiftoimage: YCbCr image with PACKBITS compression"
+					   " is not supported");
+			   goto cleanup;
+		}
+		color_space = GRK_CLRSPC_SYCC;
+		numcomps += 3;
+		TIFFGetFieldDefaulted( tif, TIFFTAG_YCBCRSUBSAMPLING, &chroma_subsample_x, &chroma_subsample_y);
+		if (chroma_subsample_x != 1 || chroma_subsample_y != 1){
+		   if (isSigned) {
+			   spdlog::error("tiftoimage: chroma subsampling {},{} with signed data is not supported",
+					   chroma_subsample_x,chroma_subsample_y );
+			   goto cleanup;
+		   }
+		   if (numcomps != 3) {
+			   spdlog::error("tiftoimage: chroma subsampling {},{} with alpha channel(s) not supported",
+					   chroma_subsample_x,chroma_subsample_y );
+			   goto cleanup;
+		   }
+		}
+
+		break;
+	case PHOTOMETRIC_SEPARATED:
+		color_space = GRK_CLRSPC_CMYK;
+		numcomps += 4;
+		break;
+	default:
+		spdlog::error("tiftoimage: Unsupported colour space {}.",tiPhoto );
+		goto cleanup;
+		break;
+	}
+	if (tiPhoto == PHOTOMETRIC_CIELAB) {
+		if (hasTiSf && (tiSf != SAMPLEFORMAT_INT)) {
+			spdlog::warn("tiftoimage: Input image is in CIE colour space"
+					" but sample format is unsigned int. Forcing to signed int");
+		}
+		isSigned = true;
+	} else if (tiPhoto == PHOTOMETRIC_ICCLAB) {
+		if (hasTiSf && (tiSf != SAMPLEFORMAT_UINT)) {
+			spdlog::warn("tiftoimage: Input image is in ICC CIE colour"
+					" space but sample format is signed int. Forcing to unsigned int");
+		}
+		isSigned = false;
+	}
+
+	if (isSigned) {
+		if (tiPhoto == PHOTOMETRIC_MINISWHITE) {
+			spdlog::error("tiftoimage: signed image with "
+					"MINISWHITE format is not supported");
+			goto cleanup;
+		}
+		if (tiBps != 8 && tiBps != 16){
+			spdlog::error("tiftoimage: signed image with bit"
+					" depth {} is not supported", tiBps);
+			goto cleanup;
+		}
+	}
+	if (numcomps > maxNumComponents){
+		spdlog::error("tiftoimage: number of components "
+				"{} must be <= %u", numcomps,maxNumComponents);
+		goto cleanup;
+	}
+
+	// 4. create image
+	for (uint32_t j = 0; j < numcomps; j++) {
+		auto img_comp = cmptparm + j;
+		img_comp->prec = (uint8_t)tiBps;
+		bool chroma = (j==1 || j==2);
+		img_comp->dx = chroma ? chroma_subsample_x : 1;
+		img_comp->dy = chroma ? chroma_subsample_y : 1;
+		img_comp->w = grk::ceildiv<uint32_t>(w, img_comp->dx);
+		img_comp->h = grk::ceildiv<uint32_t>(h, img_comp->dy);
+	}
+	image = grk_image_create(numcomps, &cmptparm[0], color_space,true);
+	if (!image)
+		goto cleanup;
+
+	/* set image offset and reference grid */
+	image->x0 = parameters->image_offset_x0;
+	image->x1 =	image->x0 + (w - 1) * 1 + 1;
+	if (image->x1 <= image->x0) {
+		spdlog::error("tiftoimage: Bad value for image->x1({}) vs. "
+				"image->x0({}).", image->x1, image->x0);
+		goto cleanup;
+	}
+	image->y0 = parameters->image_offset_y0;
+	image->y1 =	image->y0 + (h - 1) * 1 + 1;
+	if (image->y1 <= image->y0) {
+		spdlog::error("tiftoimage: Bad value for image->y1({}) vs. "
+				"image->y0({}).", image->y1, image->y0);
+		goto cleanup;
+	}
+
+
+	if (tiPhoto == PHOTOMETRIC_PALETTE){
+		if (!TIFFGetField(tif, TIFFTAG_COLORMAP,
+			&red_orig, &green_orig, &blue_orig)) {
+			spdlog::error("Missing required \"Colormap\" tag");
+			goto cleanup;
+		}
+		uint16_t palette_num_entries = (1U << tiBps);
+		uint8_t num_channels = 3U;
+		grk::alloc_palette(&image->color, num_channels,  (uint16_t)palette_num_entries);
+		auto cmap = new _grk_component_mapping_comp[num_channels];
+		for (uint8_t i = 0; i < num_channels; ++i){
+			cmap[i].component_index = 0;
+			cmap[i].mapping_type = 1;
+			cmap[i].palette_column = i;
+			image->color.palette->channel_prec[i] = 16;
+			image->color.palette->channel_sign[i] = false;
+		}
+		image->color.palette->component_mapping = cmap;
+		auto lut_ptr = image->color.palette->lut;
+		for (uint16_t i = 0; i < palette_num_entries; i++){
+			*lut_ptr++ = red_orig[i];
+			*lut_ptr++ = green_orig[i];
+			*lut_ptr++ = blue_orig[i];
+		}
+	}
+
+
+	for (uint32_t j = 0; j < numcomps; j++) {
+		// handle non-colour channel
+		uint16_t numColourChannels = numcomps - extrasamples;
+		auto comp = image->comps + j;
+
+		if (extrasamples > 0 && j >= numColourChannels) {
+			comp->type = GRK_COMPONENT_TYPE_UNSPECIFIED;
+			comp->association = GRK_COMPONENT_ASSOC_UNASSOCIATED;
+			auto alphaType = sampleinfo[j - numColourChannels];
+			if (alphaType == EXTRASAMPLE_ASSOCALPHA) {
+				if (found_assocalpha){
+					spdlog::warn("tiftoimage: Found more than one associated alpha channel");
+				}
+				alpha_count++;
+				comp->type = GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
+				found_assocalpha = true;
+			}
+			else if (alphaType == EXTRASAMPLE_UNASSALPHA) {
+				alpha_count++;
+				comp->type = GRK_COMPONENT_TYPE_OPACITY;
+			}
+			else {
+				// some older mono or RGB images may have alpha channel
+				// stored as EXTRASAMPLE_UNSPECIFIED
+				if ((color_space == GRK_CLRSPC_GRAY && numcomps == 2) ||
+						(color_space == GRK_CLRSPC_SRGB && numcomps == 4) ) {
+					alpha_count++;
+					comp->type = GRK_COMPONENT_TYPE_OPACITY;
+				}
+			}
+		}
+		if (comp->type == GRK_COMPONENT_TYPE_OPACITY ||
+			comp->type == GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY){
+				switch(alpha_count){
+				case 1:
+					comp->association = GRK_COMPONENT_ASSOC_WHOLE_IMAGE;
+					break;
+				case 2:
+					comp->association = GRK_COMPONENT_ASSOC_UNASSOCIATED;
+					break;
+				default:
+					comp->type = GRK_COMPONENT_TYPE_UNSPECIFIED;
+					comp->association = GRK_COMPONENT_ASSOC_UNASSOCIATED;
+					break;
+				}
+
+		}
+		comp->sgnd = isSigned;
+	}
+
+	// 5. extract capture resolution
+	hasXRes = TIFFGetFieldDefaulted(tif, TIFFTAG_XRESOLUTION, &tiXRes) == 1;
+	hasYRes = TIFFGetFieldDefaulted(tif, TIFFTAG_YRESOLUTION, &tiYRes) == 1;
+	hasResUnit = TIFFGetFieldDefaulted(tif, TIFFTAG_RESOLUTIONUNIT, &tiResUnit) == 1;
+	if (hasXRes && hasYRes && hasResUnit && tiResUnit != RESUNIT_NONE) {
+		set_resolution(parameters->capture_resolution_from_file, tiXRes, tiYRes,
+				tiResUnit);
+		parameters->write_capture_resolution_from_file = true;
+		image->capture_resolution[0] = tiXRes;
+		image->capture_resolution[1] = tiYRes;
+	}
+	// 6. extract embedded ICC profile (with sanity check on binary size of profile)
+	// note: we ignore ICC profile for CIE images as JPEG 2000 can't signal both
+	// CIE and ICC
+	if (!isCIE) {
+		if ((TIFFGetFieldDefaulted(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1)
+				&& icclen > 0 && icclen < grk::maxICCProfileBufferLen) {
+			image->color.icc_profile_buf = new uint8_t[icclen];
+			memcpy(image->color.icc_profile_buf, iccbuf, icclen);
+			image->color.icc_profile_len = icclen;
+			image->color_space = GRK_CLRSPC_ICC;
+		}
+	}
+	// 7. extract IPTC meta-data
+	if (TIFFGetFieldDefaulted(tif, TIFFTAG_RICHTIFFIPTC, &iptc_len, &iptc_buf) == 1) {
+		if (TIFFIsByteSwapped(tif))
+			TIFFSwabArrayOfLong((uint32*) iptc_buf, iptc_len);
+		// since TIFFTAG_RICHTIFFIPTC is of type TIFF_LONG, we must multiply
+		// by 4 to get the length in bytes
+		image->iptc_len = iptc_len * 4;
+		image->iptc_buf = new uint8_t[iptc_len];
+		memcpy(image->iptc_buf, iptc_buf, iptc_len);
+	}
+	// 8. extract XML meta-data
+	if (TIFFGetFieldDefaulted(tif, TIFFTAG_XMLPACKET, &xmp_len, &xmp_buf) == 1) {
+		image->xmp_len = xmp_len;
+		image->xmp_buf = new uint8_t[xmp_len];
+		memcpy(image->xmp_buf, xmp_buf, xmp_len);
+	}
+	// 9. read pixel data
+	if (isSigned) {
+		if (tiBps == 8)
+			success =  readTiffPixelsSigned<int8_t>(tif, image->comps, numcomps, tiSpp,
+						tiPC);
+		else
+			success =  readTiffPixelsSigned<int16_t>(tif, image->comps, numcomps, tiSpp,
+						tiPC);
+	}
+	else {
+		success = readTiffPixelsUnsigned(tif,
+										image->comps,
+										numcomps,
+										tiSpp,
+										tiPC,
+										tiPhoto,
+										chroma_subsample_x,
+										chroma_subsample_y);
+	}
+	cleanup: if (tif)
+		TIFFClose(tif);
+	if (success) {
+		if (is_cinema) {
+			for (uint32_t j = 0; j < numcomps; ++j)
+				scale_component(&(image->comps[j]), 12);
+		}
+		return image;
+	}
+	if (image)
+		grk_image_destroy(image);
+
+	return nullptr;
 }
 
