@@ -197,20 +197,25 @@ bool BMPFormat::bmp_read_info_header(GRK_BITMAPFILEHEADER *fileHeader, GRK_BITMA
 		get_int((int32_t**)&temp_ptr,  &infoHeader->biXpelsPerMeter);
 		get_int((int32_t**)&temp_ptr,  &infoHeader->biYpelsPerMeter);
 		get_int(&temp_ptr, &infoHeader->biClrUsed);
+		if (Info_h.biBitCount <= 8U && infoHeader->biClrUsed == 0)
+			infoHeader->biClrUsed = (1U << Info_h.biBitCount);
 		get_int(&temp_ptr, &infoHeader->biClrImportant);
-		//re-adjust header size
-		//note: fileHeader->bfSize may include ICC profile length if ICC is present, in which case
-		//defacto_header_size will be greater than BITMAPV5HEADER_LENGTH. This is not a problem below
-		//since we truncate the defacto size at BITMAPV5HEADER_LENGTH.
-		uint32_t defacto_header_size =
-				fileHeader->bfSize - fileHeaderSize  -
-					infoHeader->biClrUsed * (uint32_t)sizeof(uint32_t) - infoHeader->biSizeImage;
-		if (defacto_header_size > infoHeader->biSize) {
-			infoHeader->biSize = std::min<uint32_t>(defacto_header_size,BITMAPV5HEADER_LENGTH);
-			 const size_t len_remaining = infoHeader->biSize - (len_initial + sizeof(uint32_t));
-			 if (!readFromFile(temp + len_initial, len_remaining))
-				return false;
 
+		if (fileHeader->bfSize && infoHeader->biSizeImage) {
+			//re-adjust header size
+			//note: fileHeader->bfSize may include ICC profile length if ICC is present, in which case
+			//defacto_header_size will be greater than BITMAPV5HEADER_LENGTH. This is not a problem below
+			//since we truncate the defacto size at BITMAPV5HEADER_LENGTH.
+			uint32_t defacto_header_size =
+					fileHeader->bfSize - fileHeaderSize  -
+						infoHeader->biClrUsed * (uint32_t)sizeof(uint32_t) - infoHeader->biSizeImage;
+			if (defacto_header_size > infoHeader->biSize) {
+				infoHeader->biSize = std::min<uint32_t>(defacto_header_size,BITMAPV5HEADER_LENGTH);
+				 const size_t len_remaining = infoHeader->biSize - (len_initial + sizeof(uint32_t));
+				 if (!readFromFile(temp + len_initial, len_remaining))
+					return false;
+
+			}
 		}
 	}
 	if (infoHeader->biSize >= BITMAPV2INFOHEADER_LENGTH) {
@@ -655,6 +660,7 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 		memset(lut_B, 0, sizeof(lut_B));
 
 		palette_num_entries = Info_h.biClrUsed;
+		// need to check this a second time for OS2 files
 		if ((palette_num_entries == 0U) && (Info_h.biBitCount <= 8U)) {
 			palette_num_entries = (1U << Info_h.biBitCount);
 		}
