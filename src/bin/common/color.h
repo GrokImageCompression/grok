@@ -21,11 +21,17 @@
 
 #pragma once
 
-extern bool color_sycc_to_rgb(grk_image *img, bool oddFirstX, bool oddFirstY);
+namespace grk {
+
+bool color_sycc_to_rgb(grk_image *img, bool oddFirstX, bool oddFirstY);
 #if defined(GROK_HAVE_LIBLCMS)
-extern bool color_cielab_to_rgb(grk_image *image);
-extern void color_apply_icc_profile(grk_image *image, bool forceRGB);
+bool color_cielab_to_rgb(grk_image *image);
+void color_apply_icc_profile(grk_image *image, bool forceRGB);
 #endif
-extern bool color_cmyk_to_rgb(grk_image *image);
-extern bool color_esycc_to_rgb(grk_image *image);
+bool color_cmyk_to_rgb(grk_image *image);
+bool color_esycc_to_rgb(grk_image *image);
+
+void alloc_palette(grk_jp2_color *color, uint8_t num_channels, uint16_t num_entries);
+
+}
 

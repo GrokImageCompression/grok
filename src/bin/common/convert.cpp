@@ -1792,8 +1792,8 @@ void convert_tif_16uto32s(const uint16_t *pSrc, int32_t *pDst, size_t length,
 		pDst[i] = INV(pSrc[i], 0xFFFF, invert);
 }
 
-void bmp_applyLUT8u_1u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
-		int32_t *pDst, int32_t dstStride, uint8_t const *pLUT, uint32_t destWidth,
+void bmp_1u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
+		int32_t *pDst, int32_t dstStride, uint32_t destWidth,
 		uint32_t destHeight) {
 	uint32_t absSrcStride = std::abs(srcStride);
 	for (uint32_t y = destHeight; y != 0U; --y) {
@@ -1801,7 +1801,7 @@ void bmp_applyLUT8u_1u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
 		for (uint32_t srcIndex = 0; srcIndex < absSrcStride; srcIndex++) {
 			uint8_t val = pSrc[srcIndex];
 			for (int32_t ct = 7; ct >= 0; --ct) {
-				pDst[destIndex++] = (int32_t) pLUT[(val >> (ct))&1];
+				pDst[destIndex++] = (int32_t) (val >> (ct))&1;
 				if (destIndex == destWidth)
 					break;
 			}
@@ -1811,8 +1811,8 @@ void bmp_applyLUT8u_1u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
 	}
 }
 
-void bmp_applyLUT8u_4u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
-		int32_t *pDst, int32_t dstStride, uint8_t const *pLUT, uint32_t destWidth,
+void bmp_4u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
+		int32_t *pDst, int32_t dstStride, uint32_t destWidth,
 		uint32_t destHeight) {
 	uint32_t absSrcStride = std::abs(srcStride);
 	for (uint32_t y = destHeight; y != 0U; --y) {
@@ -1820,7 +1820,7 @@ void bmp_applyLUT8u_4u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
 		for (uint32_t srcIndex = 0; srcIndex < absSrcStride; srcIndex++) {
 			uint8_t val = pSrc[srcIndex];
 			for (int32_t ct = 4; ct >= 0; ct-=4) {
-				pDst[destIndex++] = (int32_t) pLUT[(val >> (ct)) & 0xF];
+				pDst[destIndex++] = (int32_t) (val >> (ct)) & 0xF;
 				if (destIndex == destWidth)
 					break;
 			}
@@ -1830,16 +1830,15 @@ void bmp_applyLUT8u_4u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
 	}
 }
 
-void bmp_applyLUT8u_8u32s_C1R(uint8_t const *pSrc,
+void bmp_8u32s_C1R(uint8_t const *pSrc,
 									int32_t srcStride,
 									int32_t *pDst,
 									int32_t dstStride,
-									uint8_t const *pLUT,
 									uint32_t width,
 									uint32_t height) {
 	for (uint32_t y = height; y != 0U; --y) {
 		for (uint32_t x = 0; x < width; x++)
-			pDst[x] = (int32_t) pLUT[pSrc[x]];
+			pDst[x] = (int32_t) pSrc[x];
 		pSrc += srcStride;
 		pDst += dstStride;
 	}

@@ -28,6 +28,7 @@
 #include "common.h"
 #include <taskflow/taskflow.hpp>
 #include "FileUringIO.h"
+#include "color.h"
 
 // `MBED` in big endian format
 const uint32_t BMP_ICC_PROFILE_EMBEDDED = 0x4d424544;
@@ -59,8 +60,8 @@ grk_image* BMPFormat::bmp1toimage(const uint8_t *pData, uint32_t srcStride,
 	uint32_t height = image->comps[0].h;
 	auto pSrc = pData + (height - 1U) * srcStride;
 	if (image->numcomps == 1U) {
-		bmp_applyLUT8u_1u32s_C1R(pSrc, -(int32_t) srcStride, image->comps[0].data,
-				(int32_t) image->comps[0].stride, pLUT[0], width, height);
+		bmp_1u32s_C1R(pSrc, -(int32_t) srcStride, image->comps[0].data,
+				(int32_t) image->comps[0].stride, width, height);
 	} else {
 		int32_t *pDst[3];
 		int32_t pDstStride[3];
@@ -83,8 +84,8 @@ grk_image* BMPFormat::bmp4toimage(const uint8_t *pData, uint32_t srcStride,
 	uint32_t height = image->comps[0].h;
 	auto pSrc = pData + (height - 1U) * srcStride;
 	if (image->numcomps == 1U) {
-		bmp_applyLUT8u_4u32s_C1R(pSrc, -(int32_t) srcStride, image->comps[0].data,
-				(int32_t) image->comps[0].stride, pLUT[0], width, height);
+		bmp_4u32s_C1R(pSrc, -(int32_t) srcStride, image->comps[0].data,
+				(int32_t) image->comps[0].stride, width, height);
 	} else {
 		int32_t *pDst[3];
 		int32_t pDstStride[3];
@@ -110,13 +111,12 @@ grk_image* BMPFormat::bmp8toimage(const uint8_t *pData, uint32_t srcStride,
 	auto pSrc = topDown ? pData : (pData + (height - 1U) * srcStride);
 	int32_t s_stride = topDown ? (int32_t)srcStride : (-(int32_t)srcStride);
 	if (image->numcomps == 1U) {
-		bmp_applyLUT8u_8u32s_C1R(pSrc,
-								s_stride,
-								image->comps[0].data,
-								(int32_t) image->comps[0].stride,
-								pLUT[0],
-								width,
-								height);
+		bmp_8u32s_C1R(pSrc,
+					s_stride,
+					image->comps[0].data,
+					(int32_t) image->comps[0].stride,
+					width,
+					height);
 	} else {
 		int32_t *pDst[3];
 		int32_t pDstStride[3];
@@ -610,8 +610,6 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	uint8_t lut_R[256], lut_G[256], lut_B[256];
 	uint8_t const *pLUT[3];
 	grk_image *image = nullptr;
-	uint32_t palette_len;
-	uint16_t numcmpts = 1U;
 	bool l_result = false;
 	uint8_t *pData = nullptr;
 	uint32_t bmpStride;
@@ -621,7 +619,11 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	bool handled = true;
 	bool topDown = false;
 	bool is_os2 = false;
-	uint8_t *pal  = nullptr;
+	uint8_t *palette  = nullptr;
+	uint32_t palette_num_entries;
+	uint8_t palette_has_colour = 0U;
+	uint16_t numcmpts = 1U;
+	GRK_COLOR_SPACE colour_space = GRK_CLRSPC_UNKNOWN;
 
 	m_image = image;
 	if (!openFile(fname, "r"))
@@ -652,34 +654,32 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 		memset(lut_G, 0, sizeof(lut_G));
 		memset(lut_B, 0, sizeof(lut_B));
 
-		palette_len = Info_h.biClrUsed;
-		if ((palette_len == 0U) && (Info_h.biBitCount <= 8U)) {
-			palette_len = (1U << Info_h.biBitCount);
+		palette_num_entries = Info_h.biClrUsed;
+		if ((palette_num_entries == 0U) && (Info_h.biBitCount <= 8U)) {
+			palette_num_entries = (1U << Info_h.biBitCount);
 		}
-		if (palette_len > 256U)
-			palette_len = 256U;
+		if (palette_num_entries > 256U)
+			palette_num_entries = 256U;
 
 		const uint32_t palette_bytes =
-				palette_len * (is_os2 ? os2_palette_element_len : palette_element_len);
-		pal = new uint8_t[palette_bytes];
-		if (!readFromFile(pal, palette_bytes))
+				palette_num_entries * (is_os2 ? os2_palette_element_len : palette_element_len);
+		palette = new uint8_t[palette_bytes];
+		if (!readFromFile(palette, palette_bytes))
 			goto cleanup;
-		uint8_t *pal_ptr = pal;
+		uint8_t *pal_ptr = palette;
 
-		if (palette_len > 0U) {
-			uint8_t has_color = 0U;
-			for (uint32_t i = 0U; i < palette_len; i++) {
+		if (palette_num_entries > 0U) {
+			for (uint32_t i = 0U; i < palette_num_entries; i++) {
 				lut_B[i] = *pal_ptr++;
 				lut_G[i] = *pal_ptr++;
 				lut_R[i] =  *pal_ptr++;
 				if (!is_os2) {
 					pal_ptr++;
 				}
-				has_color |= (lut_B[i] ^ lut_G[i]) | (lut_G[i] ^ lut_R[i]);
+				palette_has_colour |= (lut_B[i] ^ lut_G[i]) | (lut_G[i] ^ lut_R[i]);
 			}
-			if (has_color) {
+			if (palette_has_colour)
 				numcmpts = 3U;
-			}
 		}
 	} else {
 		numcmpts = 3U;
@@ -702,7 +702,7 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 
 	if (bmpStride > ((uint32_t) -1) / sizeof(uint8_t) / Info_h.biHeight)
 		goto cleanup;
-	pData = (uint8_t*) calloc(1, bmpStride * Info_h.biHeight * sizeof(uint8_t));
+	pData = new uint8_t[bmpStride * Info_h.biHeight];
 	if (pData == nullptr)
 		goto cleanup;
 	if (!seekInFile((long) File_h.bfOffBits))
@@ -733,11 +733,15 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 		goto cleanup;
 	}
 
+	colour_space = (numcmpts == 1U) ? GRK_CLRSPC_GRAY : GRK_CLRSPC_SRGB;
+	if (palette && palette_has_colour)
+		numcmpts = 1;
+
 	/* create the image */
 	memset(&cmptparm[0], 0, sizeof(cmptparm));
-	for (uint32_t i = 0; i < 4U; i++) {
+	for (uint32_t i = 0; i < numcmpts; i++) {
 		auto img_comp = cmptparm + i;
-		img_comp->prec = 8;
+		img_comp->prec = (numcmpts == 1U) ? (uint8_t)Info_h.biBitCount : 8U;
 		img_comp->sgnd = false;
 		img_comp->dx = parameters->subsampling_dx;
 		img_comp->dy = parameters->subsampling_dy;
@@ -745,11 +749,32 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 		img_comp->h = grk::ceildiv<uint32_t>(Info_h.biHeight, img_comp->dy);
 	}
 
-	image = grk_image_create(numcmpts, &cmptparm[0],
-			(numcmpts == 1U) ? GRK_CLRSPC_GRAY : GRK_CLRSPC_SRGB,true);
-	if (!image) {
+	image = grk_image_create(numcmpts, &cmptparm[0],colour_space,true);
+	if (!image)
 		goto cleanup;
+
+	if (palette){
+		uint8_t num_channels = palette_has_colour ? 3U : 1U;
+		grk::alloc_palette(&image->color, num_channels,  (uint16_t)palette_num_entries);
+		auto cmap = new _grk_component_mapping_comp[num_channels];
+		for (uint8_t i = 0; i < num_channels; ++i){
+			cmap[i].component_index = 0;
+			cmap[i].mapping_type = 1;
+			cmap[i].palette_column = i;
+			image->color.palette->channel_prec[i] = 8U;
+			image->color.palette->channel_sign[i] = false;
+		}
+		image->color.palette->component_mapping = cmap;
+		auto lut_ptr = image->color.palette->lut;
+		for (uint16_t i = 0; i < palette_num_entries; i++){
+			*lut_ptr++ = lut_R[i];
+			if (num_channels == 3) {
+				*lut_ptr++ = lut_G[i];
+				*lut_ptr++ = lut_B[i];
+			}
+		}
 	}
+
 	// ICC profile
 	if (Info_h.biSize == sizeof(GRK_BITMAPINFOHEADER)
 			&& Info_h.biColorSpaceType == BMP_ICC_PROFILE_EMBEDDED
@@ -919,8 +944,8 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 				Info_h.biBitCount);
 	}
 	cleanup:
-		delete[] pal;
-		free(pData);
+		delete[] palette;
+		delete[] pData;
 		m_fileIO->close();
 	return image;
 }

@@ -288,6 +288,21 @@ static void grk_copy_image_header(const grk_image *image_src,grk_image *image_de
 				color_src->icc_profile_len);
 	} else
 		color_dest->icc_profile_buf = nullptr;
+	if (image_src->color.palette){
+		auto pal_src = image_src->color.palette;
+		if (pal_src->num_channels && pal_src->num_entries){
+			FileFormat::alloc_palette(&image_dest->color, pal_src->num_channels, pal_src->num_entries);
+			auto pal_dest = image_dest->color.palette;
+			memcpy(pal_dest->channel_prec, pal_src->channel_prec, pal_src->num_channels * sizeof(uint8_t) );
+			memcpy(pal_dest->channel_sign, pal_src->channel_sign, pal_src->num_channels * sizeof(bool) );
+
+			pal_dest->component_mapping = new grk_component_mapping_comp[pal_dest->num_channels];
+			memcpy(pal_dest->component_mapping, pal_src->component_mapping,
+									pal_src->num_channels * sizeof(grk_component_mapping_comp));
+
+			memcpy(pal_dest->lut, pal_src->lut, pal_src->num_channels * pal_src->num_entries * sizeof(uint32_t));
+		}
+	}
 
 	return;
 }

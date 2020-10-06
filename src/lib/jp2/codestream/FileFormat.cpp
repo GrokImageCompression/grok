@@ -1555,7 +1555,7 @@ static uint8_t* jp2_write_component_mapping(FileFormat *fileFormat, uint32_t *p_
 	auto palette = fileFormat->color.palette;
 	uint32_t boxSize = 4 + 4 + palette->num_channels * 4;
 
-	uint8_t *cmapBuf = new uint8_t[boxSize];
+	uint8_t *cmapBuf = (uint8_t*)grk_malloc(boxSize);
 	uint8_t *cmapPtr = cmapBuf;
 
 	/* box size */
@@ -1587,9 +1587,9 @@ static uint8_t* jp2_write_palette_clr(FileFormat *fileFormat, uint32_t *p_nb_byt
 	for (uint32_t i = 0; i < palette->num_channels; ++i)
 		bytesPerEntry += (palette->channel_prec[i] + 7)/8;
 
-	uint32_t boxSize = 4 + 4 + 2 + 1 + palette->num_channels + bytesPerEntry * palette->num_entries;
+	uint32_t boxSize = 4 + 4 + 2 + 1 +  palette->num_channels + bytesPerEntry * palette->num_entries;
 
-	uint8_t *paletteBuf = new uint8_t[boxSize];
+	uint8_t *paletteBuf = (uint8_t*)grk_malloc(boxSize);
 	uint8_t *palette_ptr = paletteBuf;
 
 	/* box size */
@@ -1607,6 +1607,10 @@ static uint8_t* jp2_write_palette_clr(FileFormat *fileFormat, uint32_t *p_nb_byt
 	// number of channels
 	grk_write<uint8_t>(palette_ptr++, palette->num_channels);
 
+	for (uint8_t i = 0; i < palette->num_channels; ++i) {
+		grk_write<uint8_t>(palette_ptr++, palette->channel_prec[i]-1); //Bi
+	}
+
 	// LUT values for all components
 	uint32_t *lut_ptr =  palette->lut;
 	for (uint16_t j = 0; j < palette->num_entries; ++j) {
@@ -1620,7 +1624,7 @@ static uint8_t* jp2_write_palette_clr(FileFormat *fileFormat, uint32_t *p_nb_byt
 
 	*p_nb_bytes_written = boxSize;
 
-	return palette_ptr;
+	return paletteBuf;
 }
 
 static bool jp2_read_palette_clr(FileFormat *fileFormat, uint8_t *p_pclr_header_data,
@@ -1695,7 +1699,7 @@ static void jp2_free_palette_clr(grk_jp2_color *color) {
 			delete[] color->palette->channel_prec;
 			delete[] color->palette->lut;
 			delete[] color->palette->component_mapping;
-			delete[] color->palette;
+			delete color->palette;
 			color->palette = nullptr;
 		}
 	}
@@ -2474,7 +2478,7 @@ FileFormat::FileFormat(bool isDecoder, BufferedStream *stream) : codeStream(new 
 
 FileFormat::~FileFormat() {
 	delete codeStream;
-	delete[] comps;
+	grk_free(comps);
 	grk_free(cl);
 	FileFormat::free_color(&color);
 	delete m_validation_list;
@@ -2843,6 +2847,12 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
 			color.channel_definition->descriptions[i].asoc = image->comps[i].association;
 		}
 	}
+
+	if (image->color.palette){
+		color.palette = image->color.palette;
+		image->color.palette = nullptr;
+	}
+
 	precedence = 0; /* PRECEDENCE */
 	approx = 0; /* APPROX */
 	has_capture_resolution = parameters->write_capture_resolution ||

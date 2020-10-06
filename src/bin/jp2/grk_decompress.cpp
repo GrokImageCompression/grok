@@ -1304,15 +1304,15 @@ int GrkDecompress::post_decode(grk_plugin_decode_callback_info *info) {
 	}
 	if (image->color_space == GRK_CLRSPC_SYCC) {
 		if (!isTiff || info->decoder_parameters->force_rgb) {
-			if (!color_sycc_to_rgb(image, oddFirstX, oddFirstY))
+			if (!grk::color_sycc_to_rgb(image, oddFirstX, oddFirstY))
 				spdlog::warn("grk_decompress: sYCC to RGB colour conversion failed");
 		}
 	} else if (image->color_space == GRK_CLRSPC_EYCC) {
-		if (!color_esycc_to_rgb(image))
+		if (!grk::color_esycc_to_rgb(image))
 			spdlog::warn("grk_decompress: eYCC to RGB colour conversion failed");
 	} else if (image->color_space == GRK_CLRSPC_CMYK) {
 		if (!isTiff || info->decoder_parameters->force_rgb) {
-			if (!color_cmyk_to_rgb(image))
+			if (!grk::color_cmyk_to_rgb(image))
 				spdlog::warn("grk_decompress: CMYK to RGB colour conversion failed");
 		}
 	}

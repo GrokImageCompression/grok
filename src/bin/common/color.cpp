@@ -33,6 +33,8 @@
 #include <lcms2.h>
 #endif
 
+namespace grk {
+
 //#define DEBUG_PROFILE
 
 static grk_image* create_rgb_no_subsample_image(uint16_t numcmpts, uint32_t w, uint32_t h,
@@ -993,3 +995,22 @@ bool color_esycc_to_rgb(grk_image *image) {
 	return true;
 
 }/* color_esycc_to_rgb() */
+
+void alloc_palette(grk_jp2_color *color, uint8_t num_channels, uint16_t num_entries){
+	assert(color);
+	assert(num_channels);
+	assert(num_entries);
+
+	auto jp2_pclr = new grk_palette_data();
+	jp2_pclr->channel_sign = new bool[num_channels];
+	jp2_pclr->channel_prec = new uint8_t[num_channels];
+	jp2_pclr->lut = new uint32_t[num_channels * num_entries];
+	jp2_pclr->num_entries = num_entries;
+	jp2_pclr->num_channels = num_channels;
+	jp2_pclr->component_mapping = nullptr;
+	color->palette = jp2_pclr;
+}
+
+
+
+}
