@@ -228,8 +228,11 @@ struct FileFormat : public ICodeStream {
 	grk_jp2_buffer xml;
 	grk_jp2_uuid uuids[JP2_MAX_NUM_UUIDS];
 	uint32_t numUuids;
+private:
 
 	BufferedStream *m_stream;
+
+	bool postDecompress( grk_image *p_image);
 };
 
 /**
