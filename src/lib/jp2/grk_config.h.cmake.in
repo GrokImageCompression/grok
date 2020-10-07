@@ -2,7 +2,7 @@
 #cmakedefine GROK_HAVE_STDINT_H 		@GROK_HAVE_STDINT_H@
 
 /*--------------------------------------------------------------------------*/
-/* OpenJPEG Versioning                                                      */
+/* Grok Versioning                                                      */
 
 /* Version number. */
 #define GRK_VERSION_MAJOR @GROK_VERSION_MAJOR@
