@@ -651,11 +651,6 @@ typedef struct _grk_header_info {
 	/** number of layers */
 	uint16_t tcp_numlayers;
 
-	GRK_ENUM_COLOUR_SPACE enumcs;
-	// ICC profile information
-	// note: the contents of this struct will remain valid
-	// until the codec is destroyed
-	grk_jp2_color color;
 	// note: xml_data will remain valid
 	// until codec is destroyed
 	uint8_t *xml_data;
@@ -664,12 +659,6 @@ typedef struct _grk_header_info {
 	char *comment[GRK_NUM_COMMENTS_SUPPORTED];
 	uint16_t comment_len[GRK_NUM_COMMENTS_SUPPORTED];
 	bool isBinaryComment[GRK_NUM_COMMENTS_SUPPORTED];
-
-	bool has_capture_resolution;
-	double capture_resolution[2];
-
-	bool has_display_resolution;
-	double display_resolution[2];
 
 } grk_header_info;
 
@@ -901,7 +890,9 @@ typedef struct _grk_image {
 	/** image components */
 	grk_image_comp *comps;
 	grk_jp2_color color;
+	bool has_capture_resolution;
 	double capture_resolution[2];
+	bool has_display_resolution;
 	double display_resolution[2];
 	uint8_t *iptc_buf;
 	size_t iptc_len;

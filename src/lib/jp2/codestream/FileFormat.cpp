@@ -2507,48 +2507,90 @@ bool FileFormat::read_header(grk_header_info  *header_info, grk_image **p_image)
 		return false;
 
 	if (header_info) {
-		header_info->enumcs = enumcs;
-		header_info->color = color;
-
 		header_info->xml_data = xml.buffer;
 		header_info->xml_data_len = xml.len;
-
-		if (has_capture_resolution) {
-			header_info->has_capture_resolution = true;
-			for (int i = 0; i < 2; ++i)
-				header_info->capture_resolution[i] = capture_resolution[i];
-		}
-
-		if (has_display_resolution) {
-			header_info->has_display_resolution = true;
-			for (int i = 0; i < 2; ++i)
-				header_info->display_resolution[i] = display_resolution[i];
-		}
 	}
 	if (!codeStream->read_header(header_info, p_image))
 		return false;
 
-	if (*p_image) {
-		for (int i = 0; i < 2; ++i) {
-			(*p_image)->capture_resolution[i] = capture_resolution[i];
-			(*p_image)->display_resolution[i] = display_resolution[i];
+	auto image = *p_image;
+
+	if (has_capture_resolution) {
+		image->has_capture_resolution = true;
+		for (int i = 0; i < 2; ++i)
+			image->capture_resolution[i] = capture_resolution[i];
+	}
+
+	if (has_display_resolution) {
+		image->has_display_resolution = true;
+		for (int i = 0; i < 2; ++i)
+			image->display_resolution[i] = display_resolution[i];
+	}
+
+	/* Set Image Color Space */
+	switch (enumcs) {
+	case GRK_ENUM_CLRSPC_CMYK:
+		image->color_space = GRK_CLRSPC_CMYK;
+		break;
+	case GRK_ENUM_CLRSPC_CIE:
+		if (color.icc_profile_buf) {
+			if (((uint32_t*) color.icc_profile_buf)[1]
+					== GRK_DEFAULT_CIELAB_SPACE)
+				image->color_space = GRK_CLRSPC_DEFAULT_CIE;
+			else
+				image->color_space = GRK_CLRSPC_CUSTOM_CIE;
+		} else {
+			GRK_ERROR("CIE Lab image requires ICC profile buffer set");
+			return false;
 		}
-		// retrieve special uuids
-		for (uint32_t i = 0; i < numUuids; ++i) {
-			auto uuid = uuids + i;
-			if (memcmp(uuid->uuid, IPTC_UUID, 16) == 0) {
-				(*p_image)->iptc_buf = uuid->buffer;
-				(*p_image)->iptc_len = uuid->len;
-				uuid->buffer = nullptr;
-				uuid->len = 0;
-			} else if (memcmp(uuid->uuid, XMP_UUID, 16) == 0) {
-				(*p_image)->xmp_buf = uuid->buffer;
-				(*p_image)->xmp_len = uuid->len;
-				uuid->buffer = nullptr;
-				uuid->len = 0;
-			}
+		break;
+	case GRK_ENUM_CLRSPC_SRGB:
+		image->color_space = GRK_CLRSPC_SRGB;
+		break;
+	case GRK_ENUM_CLRSPC_GRAY:
+		image->color_space = GRK_CLRSPC_GRAY;
+		break;
+	case GRK_ENUM_CLRSPC_SYCC:
+		image->color_space = GRK_CLRSPC_SYCC;
+		break;
+	case GRK_ENUM_CLRSPC_EYCC:
+		image->color_space = GRK_CLRSPC_EYCC;
+		break;
+	default:
+		image->color_space = GRK_CLRSPC_UNKNOWN;
+		break;
+	}
+	if (meth == 2 && color.icc_profile_buf)
+		image->color_space = GRK_CLRSPC_ICC;
+
+	// retrieve icc profile
+	if (color.icc_profile_buf) {
+		image->color.icc_profile_buf = color.icc_profile_buf;
+		image->color.icc_profile_len = color.icc_profile_len;
+		color.icc_profile_buf = nullptr;
+		color.icc_profile_len = 0;
+	}
+
+	for (int i = 0; i < 2; ++i) {
+		image->capture_resolution[i] = capture_resolution[i];
+		image->display_resolution[i] = display_resolution[i];
+	}
+	// retrieve special uuids
+	for (uint32_t i = 0; i < numUuids; ++i) {
+		auto uuid = uuids + i;
+		if (memcmp(uuid->uuid, IPTC_UUID, 16) == 0) {
+			image->iptc_buf = uuid->buffer;
+			image->iptc_len = uuid->len;
+			uuid->buffer = nullptr;
+			uuid->len = 0;
+		} else if (memcmp(uuid->uuid, XMP_UUID, 16) == 0) {
+			image->xmp_buf = uuid->buffer;
+			image->xmp_len = uuid->len;
+			uuid->buffer = nullptr;
+			uuid->len = 0;
 		}
 	}
+
 	return true;
 }
 
@@ -2570,42 +2612,6 @@ bool FileFormat::postDecompress( grk_image *p_image){
 	if (!jp2_check_color(p_image, &(color)))
 		return false;
 
-	/* Set Image Color Space */
-	switch (enumcs) {
-	case GRK_ENUM_CLRSPC_CMYK:
-		p_image->color_space = GRK_CLRSPC_CMYK;
-		break;
-	case GRK_ENUM_CLRSPC_CIE:
-		if (color.icc_profile_buf) {
-			if (((uint32_t*) color.icc_profile_buf)[1]
-					== GRK_DEFAULT_CIELAB_SPACE)
-				p_image->color_space = GRK_CLRSPC_DEFAULT_CIE;
-			else
-				p_image->color_space = GRK_CLRSPC_CUSTOM_CIE;
-		} else {
-			GRK_ERROR("CIE Lab image requires ICC profile buffer set");
-			return false;
-		}
-		break;
-	case GRK_ENUM_CLRSPC_SRGB:
-		p_image->color_space = GRK_CLRSPC_SRGB;
-		break;
-	case GRK_ENUM_CLRSPC_GRAY:
-		p_image->color_space = GRK_CLRSPC_GRAY;
-		break;
-	case GRK_ENUM_CLRSPC_SYCC:
-		p_image->color_space = GRK_CLRSPC_SYCC;
-		break;
-	case GRK_ENUM_CLRSPC_EYCC:
-		p_image->color_space = GRK_CLRSPC_EYCC;
-		break;
-	default:
-		p_image->color_space = GRK_CLRSPC_UNKNOWN;
-		break;
-	}
-	if (meth == 2 && color.icc_profile_buf)
-		p_image->color_space = GRK_CLRSPC_ICC;
-
 	if (color.palette) {
 		/* Part 1, I.5.3.4: Either both or none : */
 		if (!color.palette->component_mapping)
@@ -2619,14 +2625,6 @@ bool FileFormat::postDecompress( grk_image *p_image){
 	/* Apply channel definitions if needed */
 	if (color.channel_definition) {
 		jp2_apply_channel_definition(p_image, &(color));
-	}
-
-	// retrieve icc profile
-	if (color.icc_profile_buf) {
-		p_image->color.icc_profile_buf = color.icc_profile_buf;
-		p_image->color.icc_profile_len = color.icc_profile_len;
-		color.icc_profile_buf = nullptr;
-		color.icc_profile_len = 0;
 	}
 
 	return true;

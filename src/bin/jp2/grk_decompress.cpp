@@ -1145,7 +1145,7 @@ int GrkDecompress::pre_decode(grk_plugin_decode_callback_info *info) {
 		}
 
 		// do not allow odd top left region coordinates for SYCC
-		if (info->header_info.enumcs == GRK_ENUM_CLRSPC_SYCC){
+		if (info->image->color_space == GRK_CLRSPC_SYCC){
 			bool adjustX = (info->decoder_parameters->DA_x0 != info->full_image_x0) &&
 					(info->decoder_parameters->DA_x0 & 1);
 			bool adjustY = (info->decoder_parameters->DA_y0 != info->full_image_y0) &&
