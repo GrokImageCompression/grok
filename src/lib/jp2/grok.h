@@ -78,8 +78,9 @@ enum GRK_SUPPORTED_FILE_FMT {
  * So, accordingly, range for number of resolutions is 1-33
  * */
 
-#define GRK_J2K_MAXRLVLS 33						/**< Maximum number of resolution levels authorized */
-#define GRK_J2K_MAXBANDS (3*GRK_J2K_MAXRLVLS-2)	/**< Maximum number of sub-bands */
+#define GRK_J2K_MAX_DECOMP_LVLS 32						/**< Maximum number of decomposition levels authorized */
+#define GRK_J2K_MAXRLVLS (GRK_J2K_MAX_DECOMP_LVLS+1)	/**< Maximum number of resolution levels authorized */
+#define GRK_J2K_MAXBANDS (3*GRK_J2K_MAXRLVLS-2)			/**< Maximum number of sub-bands */
 
 // used by dump
 #define GRK_IMG_INFO		1	/**< Basic image information provided to the user */

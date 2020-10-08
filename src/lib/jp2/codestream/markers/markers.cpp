@@ -2175,14 +2175,15 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno, uint8_t *p_he
 		return false;
 	}
 	/* SPcox (D) */
+	// note: we actually read the number of decompositions
 	grk_read<uint8_t>(current_ptr++, &tccp->numresolutions);
-	++tccp->numresolutions;
-	if (tccp->numresolutions > GRK_J2K_MAXRLVLS) {
-		GRK_ERROR("Number of resolutions %u is greater than"
-				" maximum allowed number %u", tccp->numresolutions,
-		GRK_J2K_MAXRLVLS);
+	if (tccp->numresolutions > GRK_J2K_MAX_DECOMP_LVLS) {
+		GRK_ERROR("Invalid number of decomposition levels : %u. The JPEG 2000 standard\n"
+				"allows a maximum number of %u decomposition levels.", tccp->numresolutions,
+				GRK_J2K_MAX_DECOMP_LVLS);
 		return false;
 	}
+	++tccp->numresolutions;
 	if (codeStream->m_cp.ccap && !tcp->isHT) {
 		tcp->isHT = true;
 		tcp->qcd.generate(tccp->numgbits, tccp->numresolutions - 1,
