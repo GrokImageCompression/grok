@@ -2533,6 +2533,21 @@ bool FileFormat::read_header(grk_header_info  *header_info, grk_image **p_image)
 			(*p_image)->capture_resolution[i] = capture_resolution[i];
 			(*p_image)->display_resolution[i] = display_resolution[i];
 		}
+		// retrieve special uuids
+		for (uint32_t i = 0; i < numUuids; ++i) {
+			auto uuid = uuids + i;
+			if (memcmp(uuid->uuid, IPTC_UUID, 16) == 0) {
+				(*p_image)->iptc_buf = uuid->buffer;
+				(*p_image)->iptc_len = uuid->len;
+				uuid->buffer = nullptr;
+				uuid->len = 0;
+			} else if (memcmp(uuid->uuid, XMP_UUID, 16) == 0) {
+				(*p_image)->xmp_buf = uuid->buffer;
+				(*p_image)->xmp_len = uuid->len;
+				uuid->buffer = nullptr;
+				uuid->len = 0;
+			}
+		}
 	}
 	return true;
 }
@@ -2612,22 +2627,6 @@ bool FileFormat::postDecompress( grk_image *p_image){
 		p_image->color.icc_profile_len = color.icc_profile_len;
 		color.icc_profile_buf = nullptr;
 		color.icc_profile_len = 0;
-	}
-
-	// retrieve special uuids
-	for (uint32_t i = 0; i < numUuids; ++i) {
-		auto uuid = uuids + i;
-		if (memcmp(uuid->uuid, IPTC_UUID, 16) == 0) {
-			p_image->iptc_buf = uuid->buffer;
-			p_image->iptc_len = uuid->len;
-			uuid->buffer = nullptr;
-			uuid->len = 0;
-		} else if (memcmp(uuid->uuid, XMP_UUID, 16) == 0) {
-			p_image->xmp_buf = uuid->buffer;
-			p_image->xmp_len = uuid->len;
-			uuid->buffer = nullptr;
-			uuid->len = 0;
-		}
 	}
 
 	return true;
