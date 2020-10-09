@@ -164,11 +164,22 @@ bool DecoderState::findNextTile(CodeStream *codeStream){
 	// if EOC marker has not been read yet, then try to read the next marker
 	// (should be EOC or SOT)
 	if (m_state != J2K_DEC_STATE_EOC) {
+		try {
 		if (!codeStream->read_marker_skip_unknown()) {
 			GRK_WARN(
 					"findNextTile: Not enough data to read another marker.\n"
 							"Tile may be truncated.");
 			return true;
+		}
+		} catch (InvalidMarkerException &ume){
+			auto bytesLeft = stream->get_number_byte_left();
+			// not enough bytes left for another marker - file ends without EOC marker
+			if (bytesLeft <= 2) {
+				m_state = J2K_DEC_STATE_NO_EOC;
+				GRK_WARN("findNextTile:  file ends without EOC marker.");
+			} else {
+				return false;
+			}
 		}
 		switch (codeStream->m_curr_marker) {
 		// we found the EOC marker - set state accordingly and return true;
@@ -187,12 +198,12 @@ bool DecoderState::findNextTile(CodeStream *codeStream){
 			if (bytesLeft == 0) {
 				m_state = J2K_DEC_STATE_NO_EOC;
 				GRK_WARN("findNextTile: stream does not end with EOC");
-				return true;
+			} else {
+				GRK_WARN("findNextTile: expected EOC or SOT "
+						"but found marker 0x%x.\nIgnoring %d bytes "
+						"remaining in the stream.", codeStream->m_curr_marker, bytesLeft+2);
+				throw DecodeUnknownMarkerAtEndOfTileException();
 			}
-			GRK_WARN("findNextTile: expected EOC or SOT "
-					"but found marker 0x%x.\nIgnoring %d bytes "
-					"remaining in the stream.", codeStream->m_curr_marker, bytesLeft+2);
-			throw DecodeUnknownMarkerAtEndOfTileException();
 		}
 			break;
 		}

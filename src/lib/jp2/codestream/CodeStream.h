@@ -219,7 +219,7 @@ struct CodeStream : public ICodeStream {
    bool isDecodingTilePartHeader() ;
 	TileCodingParams* get_current_decode_tcp(void);
 
-	bool read_marker(void);
+	void read_marker(void);
 	bool read_marker_skip_unknown(void);
 	bool read_short(uint16_t *val);
 

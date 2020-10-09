@@ -236,12 +236,11 @@ bool Quantizer::read_SQcd_SQcc(CodeStream *codeStream,
 					(tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) ?
 							(uint8_t)(*header_size) : (uint8_t)((*header_size) / 2);
 			if (tccp->numStepSizes > GRK_J2K_MAXBANDS) {
-				GRK_WARN(
-						"While reading QCD or QCC marker segment, "
+				GRK_WARN("While reading QCD or QCC marker segment, "
 								"number of step sizes (%u) is greater"
-								" than GRK_J2K_MAXBANDS (%u). "
-								"So, we limit the number of elements stored to "
-								"GRK_J2K_MAXBANDS (%u) and skip the rest.",
+								" than GRK_J2K_MAXBANDS (%u).\n"
+								"So, number of elements stored is limited to "
+								"GRK_J2K_MAXBANDS (%u) and the rest are skipped.",
 						tccp->numStepSizes, GRK_J2K_MAXBANDS,
 						GRK_J2K_MAXBANDS);
 			}

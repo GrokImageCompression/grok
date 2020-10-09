@@ -421,7 +421,13 @@ static bool j2k_decompress_validation(CodeStream *codeStream) {
 }
 
 static bool j2k_read_header_procedure(CodeStream *codeStream) {
-	return codeStream->read_header_procedure();
+	bool rc = false;
+	try {
+		rc = codeStream->read_header_procedure();
+	} catch (InvalidMarkerException &ime){
+		rc = false;
+	}
+	return rc;
 }
 
 static bool j2k_decompress_tiles(CodeStream *codeStream) {
@@ -2077,23 +2083,22 @@ TileCodingParams* CodeStream::get_current_decode_tcp() {
 			m_decoder.m_default_tcp;
 }
 
-bool CodeStream::read_marker(){
+void CodeStream::read_marker(){
 	if (!read_short(&m_curr_marker))
-		return false;
+		throw TruncatedStreamException();
 
 	/* Check if the current marker ID is valid */
 	if (m_curr_marker < 0xff00) {
-		GRK_WARN("A marker ID was expected (0xff--) instead of 0x%.4x",
+		GRK_WARN("marker ID 0x%.4x does not match JPEG 2000 marker format 0xffxx",
 				m_curr_marker);
+		throw InvalidMarkerException();
 	}
-
-	return true;
 }
 
 bool CodeStream::read_short(uint16_t *val){
 	uint8_t temp[2];
 	if (m_stream->read(temp, 2) != 2) {
-		GRK_WARN("read marker: stream too short");
+		GRK_WARN("read short: stream too short");
 		return false;
 	}
 	grk_read<uint16_t>(temp, val);
@@ -2137,9 +2142,11 @@ bool CodeStream::alloc_multi_tile_output_data(grk_image *p_output_image){
 bool CodeStream::read_marker_skip_unknown(){
 	while (true) {
 		// read next marker id
-		if (!read_marker())
+		try {
+			read_marker();
+		} catch (TruncatedStreamException &tse){
 			return false;
-
+		}
 		/* handle unknown marker */
 		if (m_curr_marker == J2K_MS_UNK) {
 			GRK_WARN("Unknown marker 0x%02x detected.",
@@ -2458,10 +2465,10 @@ bool CodeStream::read_header_procedure(void) {
 
 		/* Manage case where marker is unknown */
 		if (marker_handler->id == J2K_MS_UNK) {
-			GRK_WARN("Unknown marker 0x%02x detected.", marker_handler->id);
+			GRK_WARN("Unknown marker 0x%02x detected.", m_curr_marker);
 			if (!j2k_read_unk(this, &m_curr_marker)) {
 				GRK_ERROR("Unable to read unknown marker 0x%02x.",
-						marker_handler->id);
+						m_curr_marker);
 				return false;
 			}
 			continue;
@@ -2663,8 +2670,12 @@ bool CodeStream::decompress_tile() {
 	    }
 	}
 	bool rc = false;
-	if (!parse_markers(&go_on))
+	try {
+		if (!parse_markers(&go_on))
+			goto cleanup;
+	} catch (InvalidMarkerException &ime){
 		goto cleanup;
+	}
 
 	tileProcessor = currentProcessor();
 	if (!decompress_tile_t2t1(tileProcessor, false))
@@ -2741,7 +2752,12 @@ bool CodeStream::decompress_tiles(void) {
 	// parse header and perform T2 followed by asynch T1
 	for (uint32_t tileno = 0; tileno < num_tiles_to_decode; tileno++) {
 		//1. read header
-		if (!parse_markers(&go_on)){
+		try {
+			if (!parse_markers(&go_on)){
+				success = false;
+				goto cleanup;
+			}
+		} catch (InvalidMarkerException &ime){
 			success = false;
 			goto cleanup;
 		}
@@ -3290,39 +3306,37 @@ bool CodeStream::read_unk(uint16_t *output_marker) {
 	const grk_dec_memory_marker_handler *marker_handler;
 	uint32_t size_unk = 2;
 	auto stream = getStream();
-
-	GRK_WARN("Unknown marker 0x%02x", *output_marker);
-
 	while (true) {
-		if (!read_marker())
+		try {
+			read_marker();
+		} catch (TruncatedStreamException &tse){
 			return false;
-		if (!(m_curr_marker < 0xff00)) {
+		}
 
-			/* Get the marker handler from the marker ID*/
-			marker_handler = j2k_get_marker_handler(m_curr_marker);
+		/* Get the marker handler from the marker ID*/
+		marker_handler = j2k_get_marker_handler(m_curr_marker);
 
-			if (!(m_decoder.m_state
-					& marker_handler->states)) {
-				GRK_ERROR("Marker is not compliant with its position");
-				return false;
-			} else {
-				if (marker_handler->id != J2K_MS_UNK) {
-					/* Add the marker to the code stream index*/
-					if (cstr_index && marker_handler->id != J2K_MS_SOT) {
-						bool res = j2k_add_mhmarker(cstr_index,
-						J2K_MS_UNK, stream->tell() - size_unk, size_unk);
+		if (!(m_decoder.m_state	& marker_handler->states)) {
+			GRK_ERROR("Marker is not compliant with its position");
+			return false;
+		} else {
+			if (marker_handler->id != J2K_MS_UNK) {
+				/* Add the marker to the code stream index*/
+				if (cstr_index && marker_handler->id != J2K_MS_SOT) {
+					bool res = j2k_add_mhmarker(cstr_index,
+					J2K_MS_UNK, stream->tell() - size_unk, size_unk);
 
-						if (res == false) {
-							GRK_ERROR("Not enough memory to add mh marker");
-							return false;
-						}
+					if (res == false) {
+						GRK_ERROR("Not enough memory to add mh marker");
+						return false;
 					}
-					break; /* next marker is known and well located */
-				} else {
-					size_unk += 2;
 				}
+				break; /* next marker is known and located correctly  */
+			} else {
+				size_unk += 2;
 			}
 		}
+
 	}
 	*output_marker = marker_handler->id;
 
