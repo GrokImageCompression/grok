@@ -686,7 +686,7 @@ namespace ojph {
     /////////////////////////////////////////////////////////////////////////
     //
     /////////////////////////////////////////////////////////////////////////
-    void ojph_decode_codeblock(ui8* coded_data, si32* decoded_data,
+    bool ojph_decode_codeblock(ui8* coded_data, si32* decoded_data,
                                int missing_msbs, int num_passes,
                                int lengths1, int lengths2,
                                int width, int height, int stride)
@@ -710,7 +710,7 @@ namespace ojph {
       lcup = lengths1;
       scup = (((int)coded_data[lcup-1]) << 4) + (coded_data[lcup-2] & 0xF);
       if (scup > lcup) //something is wrong
-        return;
+        return false;
 
       //init mel
       mel_struct mel;
@@ -1765,6 +1765,7 @@ namespace ojph {
           }
         }
       }
+      return true;
     }
   }
 }

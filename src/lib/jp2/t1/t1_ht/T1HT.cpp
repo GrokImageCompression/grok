@@ -161,7 +161,7 @@ bool T1HT::decompress(decodeBlockInfo *block) {
 	}
 
    if (num_passes)
-	   ojph_decode_codeblock(actual_coded_data,
+	   return ojph_decode_codeblock(actual_coded_data,
 							   unencoded_data,
 							   block->k_msbs,
 							   (int)num_passes,

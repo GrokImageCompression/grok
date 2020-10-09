@@ -64,9 +64,13 @@ bool T1Decoder::decompress(std::vector<decodeBlockInfo*> *blocks) {
 	if (num_threads == 1){
 		for (size_t i = 0; i < blocks->size(); ++i){
 			auto block = blocks->operator[](i);
-			auto impl = threadStructs[(size_t)0];
-			if (!decompressBlock(impl,block))
-				success = false;
+			if (!success){
+				delete block;
+			} else {
+				auto impl = threadStructs[(size_t)0];
+				if (!decompressBlock(impl,block))
+					success = false;
+			}
 		}
 		return success;
 	}

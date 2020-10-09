@@ -47,7 +47,7 @@ namespace ojph {
     //////////////////////////////////////////////////////////////////////////
     //decodes the cleanup pass, significance propagation pass,
     // and magnitude refinement pass
-    void
+    bool
       ojph_decode_codeblock(ui8* coded_data, si32* decoded_data,
         int missing_msbs, int num_passes, int lengths1, int lengths2,
         int width, int height, int stride);
