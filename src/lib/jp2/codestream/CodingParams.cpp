@@ -165,7 +165,7 @@ bool DecoderState::findNextTile(CodeStream *codeStream){
 	// (should be EOC or SOT)
 	if (m_state != J2K_DEC_STATE_EOC) {
 		try {
-		if (!codeStream->read_marker_skip_unknown()) {
+		if (!codeStream->read_marker()) {
 			GRK_WARN(
 					"findNextTile: Not enough data to read another marker.\n"
 							"Tile may be truncated.");

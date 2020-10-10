@@ -127,18 +127,6 @@ static bool j2k_end_encoding(CodeStream *codeStream);
  */
 static bool j2k_init_info(CodeStream *codeStream);
 
-/**
- * Reads an unknown marker
- *
- * @param       codeStream            JPEG 2000 code stream
- * @param       output_marker         marker value
-
- *
- * @return      true                  if the marker could be read
- */
-static bool j2k_read_unk(CodeStream *codeStream,
-		uint16_t *output_marker);
-
 
 
 /**
@@ -401,10 +389,6 @@ static const grk_dec_memory_marker_handler j2k_memory_marker_handler_tab[] = {
 {J2K_MS_UNK, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, 0 }/*j2k_read_unk is directly used*/
 };
 
-static bool j2k_read_unk(CodeStream *codeStream,
-		uint16_t *output_marker) {
-	return codeStream->read_unk(output_marker);
-}
 static const grk_dec_memory_marker_handler* j2k_get_marker_handler(	uint16_t id) {
 	const grk_dec_memory_marker_handler *e;
 	for (e = j2k_memory_marker_handler_tab; e->id != 0; ++e) {
@@ -2083,17 +2067,6 @@ TileCodingParams* CodeStream::get_current_decode_tcp() {
 			m_decoder.m_default_tcp;
 }
 
-void CodeStream::read_marker(){
-	if (!read_short(&m_curr_marker))
-		throw TruncatedStreamException();
-
-	/* Check if the current marker ID is valid */
-	if (m_curr_marker < 0xff00) {
-		GRK_WARN("marker ID 0x%.4x does not match JPEG 2000 marker format 0xffxx",
-				m_curr_marker);
-		throw InvalidMarkerException();
-	}
-}
 
 bool CodeStream::read_short(uint16_t *val){
 	uint8_t temp[2];
@@ -2139,27 +2112,18 @@ bool CodeStream::alloc_multi_tile_output_data(grk_image *p_output_image){
 
 }
 
-bool CodeStream::read_marker_skip_unknown(){
-	while (true) {
-		// read next marker id
-		try {
-			read_marker();
-		} catch (TruncatedStreamException &tse){
-			return false;
-		}
-		/* handle unknown marker */
-		if (m_curr_marker == J2K_MS_UNK) {
-			GRK_WARN("Unknown marker 0x%02x detected.",
-					m_curr_marker);
-			if (!j2k_read_unk(this, &m_curr_marker)) {
-				GRK_ERROR("Unable to read unknown marker 0x%02x.",
-						m_curr_marker);
-				return false;
-			}
-			continue;
-		}
-		break;
+
+bool CodeStream::read_marker(){
+	if (!read_short(&m_curr_marker))
+		return false;
+
+	/* Check if the current marker ID is valid */
+	if (m_curr_marker < 0xff00) {
+		GRK_WARN("marker ID 0x%.4x does not match JPEG 2000 marker format 0xffxx",
+				m_curr_marker);
+		throw InvalidMarkerException();
 	}
+
 	return true;
 }
 
@@ -2232,7 +2196,7 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 				}
 				break;
 			} else {
-				if (!read_marker_skip_unknown())
+				if (!read_marker())
 					return false;
 			}
 		}
@@ -2282,7 +2246,7 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 			}
 */
 			if (!m_decoder.last_tile_part_was_read) {
-				if (!read_marker_skip_unknown())
+				if (!read_marker())
 					return false;
 			}
 		} else {
@@ -2290,7 +2254,7 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 			m_decoder.m_skip_tile_data = false;
 			m_decoder.last_tile_part_was_read = false;
 			m_decoder.m_state = J2K_DEC_STATE_TPH_SOT;
-			if (!read_marker_skip_unknown())
+			if (!read_marker())
 				return false;
 		}
 	}
@@ -2454,7 +2418,7 @@ bool CodeStream::read_header_procedure(void) {
 		return false;
 	}
 	// read next marker
-	if (!read_marker_skip_unknown())
+	if (!read_marker())
 		return false;
 
 	/* Try to read until the SOT is detected */
@@ -2466,7 +2430,7 @@ bool CodeStream::read_header_procedure(void) {
 		/* Manage case where marker is unknown */
 		if (marker_handler->id == J2K_MS_UNK) {
 			GRK_WARN("Unknown marker 0x%02x detected.", m_curr_marker);
-			if (!j2k_read_unk(this, &m_curr_marker)) {
+			if (!read_unk(&m_curr_marker)) {
 				GRK_ERROR("Unable to read unknown marker 0x%02x.",
 						m_curr_marker);
 				return false;
@@ -2510,7 +2474,7 @@ bool CodeStream::read_header_procedure(void) {
 		}
 
 		// read next marker
-		if (!read_marker_skip_unknown())
+		if (!read_marker())
 			return false;
 
 	}
@@ -3225,7 +3189,7 @@ bool CodeStream::need_nb_tile_parts_correction(bool *p_correction_needed) {
 
 	uint64_t stream_pos_backup = stream->tell();
 	while (true) {
-		if (!read_marker_skip_unknown())
+		if (!read_marker())
 			/* assume all is OK */
 			return stream->seek(stream_pos_backup);
 
@@ -3307,12 +3271,8 @@ bool CodeStream::read_unk(uint16_t *output_marker) {
 	uint32_t size_unk = 2;
 	auto stream = getStream();
 	while (true) {
-		try {
-			read_marker();
-		} catch (TruncatedStreamException &tse){
+		if (!read_marker())
 			return false;
-		}
-
 		/* Get the marker handler from the marker ID*/
 		marker_handler = j2k_get_marker_handler(m_curr_marker);
 

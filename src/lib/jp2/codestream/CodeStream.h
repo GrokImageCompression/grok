@@ -219,8 +219,7 @@ struct CodeStream : public ICodeStream {
    bool isDecodingTilePartHeader() ;
 	TileCodingParams* get_current_decode_tcp(void);
 
-	void read_marker(void);
-	bool read_marker_skip_unknown(void);
+	bool read_marker(void);
 	bool read_short(uint16_t *val);
 
 	bool process_marker(const grk_dec_memory_marker_handler* marker_handler,
@@ -309,8 +308,13 @@ struct CodeStream : public ICodeStream {
 
 	bool mct_validation(void);
 
+	/**
+	 * Reads an unknown marker
+	 *
+	 * @param       output_marker         marker value
+	 * @return      true                  if the marker could be read
+	 */
 	bool read_unk(uint16_t *output_marker);
-
 
 
 	// state of decoder/encoder
