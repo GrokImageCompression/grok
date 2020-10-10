@@ -1962,18 +1962,18 @@ bool j2k_write_cbd(CodeStream *codeStream) {
 	assert(codeStream != nullptr);
 	auto stream = codeStream->getStream();
 	auto image = codeStream->m_input_image;
-	uint32_t cbd_size = 6 + codeStream->m_input_image->numcomps;
+	uint16_t cbd_size = 6 + codeStream->m_input_image->numcomps;
 
 	/* CBD */
 	if (!stream->write_short(J2K_MS_CBD))
 		return false;
 
 	/* L_CBD */
-	if (!stream->write_short((uint16_t) (cbd_size - 2)))
+	if (!stream->write_short(cbd_size - 2))
 		return false;
 
 	/* Ncbd */
-	if (!stream->write_short((uint16_t) image->numcomps))
+	if (!stream->write_short(image->numcomps))
 		return false;
 
 	for (i = 0; i < image->numcomps; ++i) {
@@ -1998,35 +1998,30 @@ bool j2k_write_cbd(CodeStream *codeStream) {
  */
 bool j2k_read_cbd(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size) {
-	uint32_t nb_comp, num_comp;
-	uint8_t comp_def;
-	uint32_t i;
 	assert(p_header_data != nullptr);
 	assert(codeStream != nullptr);
 
-	num_comp = codeStream->m_input_image->numcomps;
-
-	if (header_size != (codeStream->m_input_image->numcomps + 2)) {
-		GRK_ERROR("Crror reading CBD marker");
+	if (header_size < 2 || (header_size - 2) != codeStream->m_input_image->numcomps) {
+		GRK_ERROR("Error reading CBD marker");
 		return false;
 	}
 	/* Ncbd */
-	grk_read<uint32_t>(p_header_data, &nb_comp, 2);
+	uint16_t nb_comp;
+	grk_read<uint16_t>(p_header_data, &nb_comp);
 	p_header_data += 2;
 
-	if (nb_comp != num_comp) {
+	if (nb_comp != codeStream->m_input_image->numcomps) {
 		GRK_ERROR("Crror reading CBD marker");
 		return false;
 	}
 
-	auto comp = codeStream->m_input_image->comps;
-	for (i = 0; i < num_comp; ++i) {
+	for (uint16_t i = 0; i < codeStream->m_input_image->numcomps; ++i) {
 		/* Component bit depth */
-		grk_read<uint8_t>(p_header_data, &comp_def);
-		++p_header_data;
+		uint8_t comp_def;
+		grk_read<uint8_t>(p_header_data++, &comp_def);
+		auto comp = codeStream->m_input_image->comps + i;
 		comp->sgnd = (comp_def >> 7) & 1;
 		comp->prec = (comp_def & 0x7f) + 1;
-		++comp;
 	}
 
 	return true;
