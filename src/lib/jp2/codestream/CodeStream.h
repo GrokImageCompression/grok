@@ -129,14 +129,18 @@ bool grk_image_single_component_data_alloc(	grk_image_comp *image);
 struct TileProcessor;
 typedef bool (*j2k_procedure)(CodeStream *codeStream);
 
+typedef bool (*marker_callback)(CodeStream *codeStream, uint8_t *p_header_data, uint16_t header_size);
 
-struct  grk_dec_memory_marker_handler  {
+struct  marker_handler  {
+	marker_handler(uint16_t ID, uint32_t flags, marker_callback cb) :
+		id(ID), states(flags), callback(cb)
+	{}
 	/** marker value */
 	uint16_t id;
 	/** value of the state when the marker can appear */
 	uint32_t states;
 	/** action linked to the marker */
-	bool (*handler)(CodeStream *codeStream, uint8_t *p_header_data, uint16_t header_size);
+	marker_callback callback;
 } ;
 
 struct ICodeStream {
@@ -222,7 +226,7 @@ struct CodeStream : public ICodeStream {
 	bool read_marker(void);
 	bool read_short(uint16_t *val);
 
-	bool process_marker(const grk_dec_memory_marker_handler* marker_handler,
+	bool process_marker(const marker_handler* marker_handler,
 						uint16_t current_marker, uint16_t marker_size);
 
 	/**
@@ -347,6 +351,18 @@ struct CodeStream : public ICodeStream {
 	BufferedStream* getStream();
 
 private:
+
+	/**
+	 * Reads the lookup table containing all the marker, status and action,
+	 * and returns the handler associated with the marker value.
+	 * @param       id            Marker value to look up
+	 *
+	 * @return      the handler associated with the id.
+	 */
+
+	const marker_handler* get_marker_handler(	uint16_t id);
+
+	std::map<uint16_t, marker_handler*>  marker_map;
 
 	/** current TileProcessor **/
 	TileProcessor *m_tileProcessor;

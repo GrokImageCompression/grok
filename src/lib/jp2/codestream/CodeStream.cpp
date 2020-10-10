@@ -35,6 +35,9 @@ static j2k_prog_order j2k_prog_order_list[] = { { GRK_CPRL, "CPRL" }, {
 		GRK_RPCL, "RPCL" }, { (GRK_PROG_ORDER) -1, "" } };
 
 
+static const j2k_mct_function j2k_mct_write_functions_from_float[] = {
+		j2k_write_float_to_int16, j2k_write_float_to_int32,
+		j2k_write_float_to_float, j2k_write_float_to_float64 };
 
 /**
  * The read header procedure.
@@ -87,16 +90,6 @@ static bool j2k_update_rates(CodeStream *codeStream);
  * @param       codeStream          JPEG 2000 code stream
  */
 static bool j2k_copy_default_tcp(CodeStream *codeStream);
-
-/**
- * Reads the lookup table containing all the marker, status and action, and returns the handler associated
- * with the marker value.
- * @param       id            Marker value to look up
- *
- * @return      the handler associated with the id.
- */
-static const  grk_dec_memory_marker_handler  *  j2k_get_marker_handler(
-		uint16_t id);
 
 /**
  * Read the tiles.
@@ -201,9 +194,6 @@ static void lupInvert(float *pSrcMatrix, float *pDestMatrix, uint32_t nb_compo,
  */
 static bool matrix_inversion_f(float *pSrcMatrix, float *pDestMatrix,
 		uint32_t n);
-
-
-
 
 grk_image *  grk_image_create0(void) {
 	return (grk_image * ) grk_calloc(1, sizeof(grk_image));
@@ -359,45 +349,6 @@ static void transfer_image_data(grk_image *src, grk_image *dest) {
 	}
 }
 
-
-static const j2k_mct_function j2k_mct_write_functions_from_float[] = {
-		j2k_write_float_to_int16, j2k_write_float_to_int32,
-		j2k_write_float_to_float, j2k_write_float_to_float64 };
-
-static const grk_dec_memory_marker_handler j2k_memory_marker_handler_tab[] = {
-{J2K_MS_SOT, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH_SOT, j2k_read_sot },
-{J2K_MS_COD, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_cod },
-{J2K_MS_COC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_coc },
-{J2K_MS_RGN, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_rgn },
-{J2K_MS_QCD, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_qcd },
-{J2K_MS_QCC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_qcc },
-{J2K_MS_POC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_poc },
-{J2K_MS_SIZ, J2K_DEC_STATE_MH_SIZ, j2k_read_siz },
-{J2K_MS_CAP, J2K_DEC_STATE_MH,j2k_read_cap },
-{J2K_MS_TLM, J2K_DEC_STATE_MH, j2k_read_tlm },
-{J2K_MS_PLM, J2K_DEC_STATE_MH, j2k_read_plm },
-{J2K_MS_PLT, J2K_DEC_STATE_TPH, j2k_read_plt },
-{J2K_MS_PPM, J2K_DEC_STATE_MH,	j2k_read_ppm },
-{J2K_MS_PPT, J2K_DEC_STATE_TPH, j2k_read_ppt },
-{J2K_MS_SOP, 0, 0 },
-{J2K_MS_CRG, J2K_DEC_STATE_MH, j2k_read_crg },
-{J2K_MS_COM, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_com },
-{J2K_MS_MCT, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mct },
-{J2K_MS_CBD, J2K_DEC_STATE_MH, j2k_read_cbd },
-{J2K_MS_MCC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mcc },
-{J2K_MS_MCO, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mco },
-{J2K_MS_UNK, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, 0 }/*j2k_read_unk is directly used*/
-};
-
-static const grk_dec_memory_marker_handler* j2k_get_marker_handler(	uint16_t id) {
-	const grk_dec_memory_marker_handler *e;
-	for (e = j2k_memory_marker_handler_tab; e->id != 0; ++e) {
-		if (e->id == id) {
-			break; /* we find a handler corresponding to the marker ID*/
-		}
-	}
-	return e;
-}
 
 static bool j2k_decompress_validation(CodeStream *codeStream) {
 
@@ -1017,6 +968,32 @@ CodeStream::CodeStream(bool decode, BufferedStream *stream) : m_input_image(null
 			throw std::runtime_error("Out of memory");
 		}
     }
+
+    marker_map = {
+    {J2K_MS_SOT, new marker_handler(J2K_MS_SOT,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH_SOT, j2k_read_sot )},
+    {J2K_MS_COD, new marker_handler(J2K_MS_COD,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_cod )},
+    {J2K_MS_COC, new marker_handler(J2K_MS_COC,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_coc )},
+    {J2K_MS_RGN, new marker_handler(J2K_MS_RGN,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_rgn )},
+    {J2K_MS_QCD, new marker_handler(J2K_MS_QCD,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_qcd )},
+    {J2K_MS_QCC, new marker_handler(J2K_MS_QCC,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_qcc )},
+    {J2K_MS_POC, new marker_handler(J2K_MS_POC,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_poc )},
+    {J2K_MS_SIZ, new marker_handler(J2K_MS_SIZ,J2K_DEC_STATE_MH_SIZ, j2k_read_siz )},
+    {J2K_MS_CAP, new marker_handler(J2K_MS_CAP,J2K_DEC_STATE_MH,j2k_read_cap )},
+    {J2K_MS_TLM, new marker_handler(J2K_MS_TLM,J2K_DEC_STATE_MH, j2k_read_tlm )},
+    {J2K_MS_PLM, new marker_handler(J2K_MS_PLM,J2K_DEC_STATE_MH, j2k_read_plm )},
+    {J2K_MS_PLT, new marker_handler(J2K_MS_PLT,J2K_DEC_STATE_TPH, j2k_read_plt )},
+    {J2K_MS_PPM, new marker_handler(J2K_MS_PPM,J2K_DEC_STATE_MH,j2k_read_ppm )},
+    {J2K_MS_PPT, new marker_handler(J2K_MS_PPT,J2K_DEC_STATE_TPH, j2k_read_ppt )},
+    {J2K_MS_SOP, new marker_handler(J2K_MS_SOP,0, nullptr )},
+    {J2K_MS_CRG, new marker_handler(J2K_MS_CRG,J2K_DEC_STATE_MH, j2k_read_crg )},
+    {J2K_MS_COM, new marker_handler(J2K_MS_COM,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_com )},
+    {J2K_MS_MCT, new marker_handler(J2K_MS_MCT,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mct )},
+    {J2K_MS_CBD, new marker_handler(J2K_MS_CBD,J2K_DEC_STATE_MH, j2k_read_cbd )},
+    {J2K_MS_MCC, new marker_handler(J2K_MS_MCC,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mcc )},
+    {J2K_MS_MCO, new marker_handler(J2K_MS_MCO,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mco )}
+    };
+
+
 }
 CodeStream::~CodeStream(){
 	delete m_decoder.m_default_tcp;
@@ -1028,6 +1005,8 @@ CodeStream::~CodeStream(){
 	for(auto &pr : m_processors){
 		delete pr.second;
 	}
+	for (auto &val : marker_map)
+		delete val.second;
 }
 
 BufferedStream* CodeStream::getStream(){
@@ -2004,7 +1983,7 @@ grk_codestream_index* CodeStream::get_cstr_index(void){
 
 
 
-bool CodeStream::process_marker(const grk_dec_memory_marker_handler* marker_handler,
+bool CodeStream::process_marker(const marker_handler* marker_handler,
 		uint16_t current_marker, uint16_t marker_size){
 
 	if (!m_marker_scratch) {
@@ -2041,12 +2020,12 @@ bool CodeStream::process_marker(const grk_dec_memory_marker_handler* marker_hand
 	}
 
 	/* Handle the marker */
-	if (!marker_handler->handler) {
+	if (!marker_handler->callback) {
 		/* See issue #175 */
 		GRK_ERROR("Not sure how that happened.");
 		return false;
 	}
-	if (!(*(marker_handler->handler))(this,	m_marker_scratch, marker_size)) {
+	if (!(*(marker_handler->callback))(this,	m_marker_scratch, marker_size)) {
 		GRK_ERROR("Fail to read the current marker segment (%#x)",
 				current_marker);
 		return false;
@@ -2112,6 +2091,16 @@ bool CodeStream::alloc_multi_tile_output_data(grk_image *p_output_image){
 
 }
 
+const marker_handler* CodeStream::get_marker_handler(	uint16_t id) {
+	auto iter = marker_map.find(id);
+	if (iter != marker_map.end())
+		return iter->second;
+	else {
+		GRK_WARN("Unknown marker 0x%02x detected.", id);
+		return nullptr;
+	}
+}
+
 
 bool CodeStream::read_marker(){
 	if (!read_short(&m_curr_marker))
@@ -2161,7 +2150,9 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 
 			marker_size = (uint16_t)(marker_size - 2); /* Subtract the size of the marker ID already read */
 
-			auto marker_handler = j2k_get_marker_handler(m_curr_marker);
+			auto marker_handler = get_marker_handler(m_curr_marker);
+			if (!marker_handler)
+				return false;
 			if (!(m_decoder.m_state & marker_handler->states)) {
 				GRK_ERROR("Marker is not compliant with its position");
 				return false;
@@ -2425,11 +2416,10 @@ bool CodeStream::read_header_procedure(void) {
 	while (m_curr_marker != J2K_MS_SOT) {
 
 		/* Get the marker handler from the marker ID */
-		auto marker_handler = j2k_get_marker_handler(m_curr_marker);
+		auto marker_handler = get_marker_handler(m_curr_marker);
 
 		/* Manage case where marker is unknown */
-		if (marker_handler->id == J2K_MS_UNK) {
-			GRK_WARN("Unknown marker 0x%02x detected.", m_curr_marker);
+		if (!marker_handler) {
 			if (!read_unk(&m_curr_marker)) {
 				GRK_ERROR("Unable to read unknown marker 0x%02x.",
 						m_curr_marker);
@@ -2811,7 +2801,7 @@ bool CodeStream::decompress_tiles(void) {
 			goto cleanup;
 		}
 		marker_size = (uint16_t)(marker_size - 2); /* Subtract the size of the marker ID already read */
-		auto marker_handler = j2k_get_marker_handler(m_curr_marker);
+		auto marker_handler = get_marker_handler(m_curr_marker);
 		if (!(m_decoder.m_state & marker_handler->states)) {
 			GRK_ERROR("Marker is not compliant with its position");
 			success = false;
@@ -3267,24 +3257,24 @@ bool CodeStream::mct_validation(void) {
 }
 
 bool CodeStream::read_unk(uint16_t *output_marker) {
-	const grk_dec_memory_marker_handler *marker_handler;
+	const marker_handler *marker_handler = nullptr;
 	uint32_t size_unk = 2;
-	auto stream = getStream();
 	while (true) {
 		if (!read_marker())
 			return false;
 		/* Get the marker handler from the marker ID*/
-		marker_handler = j2k_get_marker_handler(m_curr_marker);
-
-		if (!(m_decoder.m_state	& marker_handler->states)) {
-			GRK_ERROR("Marker is not compliant with its position");
-			return false;
+		marker_handler = get_marker_handler(m_curr_marker);
+		if (marker_handler == nullptr)	{
+			size_unk += 2;
 		} else {
-			if (marker_handler->id != J2K_MS_UNK) {
+			if (!(m_decoder.m_state	& marker_handler->states)) {
+				GRK_ERROR("Marker is not compliant with its position");
+				return false;
+			} else {
 				/* Add the marker to the code stream index*/
 				if (cstr_index && marker_handler->id != J2K_MS_SOT) {
 					bool res = j2k_add_mhmarker(cstr_index,
-					J2K_MS_UNK, stream->tell() - size_unk, size_unk);
+					J2K_MS_UNK, m_stream->tell() - size_unk, size_unk);
 
 					if (res == false) {
 						GRK_ERROR("Not enough memory to add mh marker");
@@ -3292,11 +3282,8 @@ bool CodeStream::read_unk(uint16_t *output_marker) {
 					}
 				}
 				break; /* next marker is known and located correctly  */
-			} else {
-				size_unk += 2;
 			}
 		}
-
 	}
 	*output_marker = marker_handler->id;
 
