@@ -79,7 +79,7 @@ struct TileComponentCodingParams {
 	/** number of guard bits */
 	uint8_t numgbits;
 	/** Region Of Interest shift */
-	uint32_t roishift;
+	uint8_t roishift;
 	/** precinct width (power of 2 exponent) */
 	uint32_t prcw[GRK_J2K_MAXRLVLS];
 	/** precinct height (power of 2 exponent) */

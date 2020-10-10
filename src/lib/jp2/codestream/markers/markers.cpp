@@ -1234,8 +1234,7 @@ bool j2k_read_rgn(CodeStream *codeStream,  uint8_t *p_header_data,
 	}
 
 	/* SPrgn */
-	grk_read<uint32_t>(p_header_data,
-			(uint32_t*) (&(tcp->tccps[comp_no].roishift)), 1);
+	grk_read<uint8_t>(p_header_data,&(tcp->tccps[comp_no].roishift));
 	++p_header_data;
 
 	return true;
