@@ -82,25 +82,27 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 		GRK_ERROR("Error reading SOT marker");
 		return false;
 	}
-	uint32_t tile_index,len,tile_part_index,num_tile_parts;
-	grk_read<uint32_t>(p_header_data, &tile_index, 2);
+	uint32_t len;
+	uint16_t tile_index;
+	uint8_t tile_part_index, num_tile_parts;
+	grk_read<uint16_t>(p_header_data, &tile_index);
 	p_header_data += 2;
-	grk_read<uint32_t>(p_header_data, &len, 4);
+	grk_read<uint32_t>(p_header_data, &len);
 	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data++, &tile_part_index, 1);
-	grk_read<uint32_t>(p_header_data++, &num_tile_parts, 1);
+	grk_read<uint8_t>(p_header_data++, &tile_part_index);
+	grk_read<uint8_t>(p_header_data++, &num_tile_parts);
 
 	if (num_tile_parts && (tile_part_index == num_tile_parts)){
 		GRK_ERROR("Tile part index (%d) is not less than number of tile parts (%d)",tile_part_index,  num_tile_parts);
 		return false;
 	}
 
-	m_codeStream->allocateProcessor((uint16_t)tile_index);
+	m_codeStream->allocateProcessor(tile_index);
 	if (tile_no)
-		*tile_no = (uint16_t) tile_index;
+		*tile_no = tile_index;
 	*p_tot_len = len;
-	*p_current_part = (uint8_t) tile_part_index;
-	*p_num_parts = (uint8_t) num_tile_parts;
+	*p_current_part = tile_part_index;
+	*p_num_parts = num_tile_parts;
 
 	return true;
 }

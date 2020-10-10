@@ -53,9 +53,9 @@ struct TileComponentCodingParams {
 	/** number of resolutions */
 	uint8_t numresolutions;
 	/** log2(code-blocks width) */
-	uint32_t cblkw;
+	uint8_t cblkw;
 	/** log2(code-blocks height) */
-	uint32_t cblkh;
+	uint8_t cblkh;
 
 	Quantizer quant;
 

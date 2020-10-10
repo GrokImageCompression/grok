@@ -1659,8 +1659,8 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 			/* 0 => one precinct || 1 => custom precinct  */
 			tccp->csty = parameters->csty & J2K_CP_CSTY_PRT;
 			tccp->numresolutions = parameters->numresolution;
-			tccp->cblkw = floorlog2<uint32_t>(parameters->cblockw_init);
-			tccp->cblkh = floorlog2<uint32_t>(parameters->cblockh_init);
+			tccp->cblkw = (uint8_t)floorlog2<uint32_t>(parameters->cblockw_init);
+			tccp->cblkh = (uint8_t)floorlog2<uint32_t>(parameters->cblockh_init);
 			tccp->cblk_sty = parameters->cblk_sty;
 			tccp->qmfbid = parameters->irreversible ? 0 : 1;
 			tccp->qntsty = parameters->irreversible ?

@@ -200,7 +200,7 @@ bool j2k_read_cap(CodeStream *codeStream,  uint8_t *p_header_data,
 	}
 
 	uint32_t tmp;
-	grk_read<uint32_t>(p_header_data, &tmp, 4); /* Pcap */
+	grk_read<uint32_t>(p_header_data, &tmp); /* Pcap */
 	bool validPcap = true;
 	if (tmp & 0xFFFDFFFF) {
 		GRK_WARN("Pcap in CAP marker has unsupported options.");
@@ -1999,7 +1999,7 @@ bool j2k_write_cbd(CodeStream *codeStream) {
 bool j2k_read_cbd(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size) {
 	uint32_t nb_comp, num_comp;
-	uint32_t comp_def;
+	uint8_t comp_def;
 	uint32_t i;
 	assert(p_header_data != nullptr);
 	assert(codeStream != nullptr);
@@ -2022,7 +2022,7 @@ bool j2k_read_cbd(CodeStream *codeStream, uint8_t *p_header_data,
 	auto comp = codeStream->m_input_image->comps;
 	for (i = 0; i < num_comp; ++i) {
 		/* Component bit depth */
-		grk_read<uint32_t>(p_header_data, &comp_def, 1);
+		grk_read<uint8_t>(p_header_data, &comp_def);
 		++p_header_data;
 		comp->sgnd = (comp_def >> 7) & 1;
 		comp->prec = (comp_def & 0x7f) + 1;
@@ -2203,10 +2203,10 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno, uint8_t *p_he
 		return false;
 	}
 	/* SPcoc (E) */
-	grk_read<uint32_t>(current_ptr++, &tccp->cblkw, 1);
+	grk_read<uint8_t>(current_ptr++, &tccp->cblkw);
 	tccp->cblkw += 2;
 	/* SPcoc (F) */
-	grk_read<uint32_t>(current_ptr++, &tccp->cblkh, 1);
+	grk_read<uint8_t>(current_ptr++, &tccp->cblkh);
 	tccp->cblkh += 2;
 
 	if ((tccp->cblkw > 10) || (tccp->cblkh > 10)

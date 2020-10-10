@@ -111,21 +111,21 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 	}
 
 	cp->rsiz = (uint16_t) tmp;
-	grk_read<uint32_t>(p_header_data, &image->x1, 4); /* Xsiz */
+	grk_read<uint32_t>(p_header_data, &image->x1); /* Xsiz */
 	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &image->y1, 4); /* Ysiz */
+	grk_read<uint32_t>(p_header_data, &image->y1); /* Ysiz */
 	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &image->x0, 4); /* X0siz */
+	grk_read<uint32_t>(p_header_data, &image->x0); /* X0siz */
 	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &image->y0, 4); /* Y0siz */
+	grk_read<uint32_t>(p_header_data, &image->y0); /* Y0siz */
 	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &cp->t_width, 4); /* XTsiz */
+	grk_read<uint32_t>(p_header_data, &cp->t_width); /* XTsiz */
 	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &cp->t_height, 4); /* YTsiz */
+	grk_read<uint32_t>(p_header_data, &cp->t_height); /* YTsiz */
 	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &cp->tx0, 4); /* XT0siz */
+	grk_read<uint32_t>(p_header_data, &cp->tx0); /* XT0siz */
 	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &cp->ty0, 4); /* YT0siz */
+	grk_read<uint32_t>(p_header_data, &cp->ty0); /* YT0siz */
 	p_header_data += 4;
 	grk_read<uint32_t>(p_header_data, &tmp, 2); /* Csiz */
 	p_header_data += 2;

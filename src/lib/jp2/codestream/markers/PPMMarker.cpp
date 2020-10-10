@@ -136,7 +136,7 @@ bool PPMMarker::merge(){
 						return false;
 					}
 					uint32_t N_ppm;
-					grk_read<uint32_t>(data, &N_ppm, 4);
+					grk_read<uint32_t>(data, &N_ppm);
 					data += 4;
 					data_size -= 4;
 					m_tile_packet_headers.push_back(grk_buf(nullptr,total_data_size, N_ppm,false));
@@ -197,7 +197,7 @@ bool PPMMarker::merge(){
 						return false;
 					}
 					uint32_t N_ppm;
-					grk_read<uint32_t>(data, &N_ppm, 4);
+					grk_read<uint32_t>(data, &N_ppm);
 					data += 4;
 					data_size -= 4;
 

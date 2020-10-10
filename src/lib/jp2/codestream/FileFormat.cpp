@@ -448,9 +448,9 @@ static bool jp2_read_box_hdr(grk_jp2_box *box, uint32_t *p_number_bytes_read,
 
 	/* process read data */
 	uint32_t L = 0;
-	grk_read<uint32_t>(data_header, &L, 4);
+	grk_read<uint32_t>(data_header, &L);
 	box->length = L;
-	grk_read<uint32_t>(data_header + 4, &(box->type), 4);
+	grk_read<uint32_t>(data_header + 4, &(box->type));
 
 	if (box->length == 0) { /* last box */
 		box->length = stream->get_number_byte_left() + 8U;
@@ -489,9 +489,9 @@ static bool jp2_read_ihdr(FileFormat *fileFormat, uint8_t *p_image_header_data,
 		return false;
 	}
 
-	grk_read<uint32_t>(p_image_header_data, &(fileFormat->h), 4); /* HEIGHT */
+	grk_read<uint32_t>(p_image_header_data, &(fileFormat->h)); /* HEIGHT */
 	p_image_header_data += 4;
-	grk_read<uint32_t>(p_image_header_data, &(fileFormat->w), 4); /* WIDTH */
+	grk_read<uint32_t>(p_image_header_data, &(fileFormat->w)); /* WIDTH */
 	p_image_header_data += 4;
 
 	if ((fileFormat->w == 0) || (fileFormat->h == 0)) {
@@ -687,12 +687,12 @@ static bool jp2_read_res_box(uint32_t *id, uint32_t *num, uint32_t *den,
 		uint32_t *exponent, uint8_t **p_resolution_data) {
 	uint32_t box_size = 4 + 4 + 10;
 	uint32_t size = 0;
-	grk_read<uint32_t>(*p_resolution_data, &size, 4);
+	grk_read<uint32_t>(*p_resolution_data, &size);
 	*p_resolution_data += 4;
 	if (size != box_size)
 		return false;
 
-	grk_read<uint32_t>(*p_resolution_data, id, 4);
+	grk_read<uint32_t>(*p_resolution_data, id);
 	*p_resolution_data += 4;
 
 	grk_read<uint32_t>(*p_resolution_data, num + 1, 2);
@@ -1228,19 +1228,19 @@ static bool jp2_read_colr(FileFormat *fileFormat, uint8_t *p_colr_header_data,
 
 			if (colr_header_size == 35) {
 				uint32_t rl, ol, ra, oa, rb, ob, il;
-				grk_read<uint32_t>(p_colr_header_data, &rl, 4);
+				grk_read<uint32_t>(p_colr_header_data, &rl);
 				p_colr_header_data += 4;
-				grk_read<uint32_t>(p_colr_header_data, &ol, 4);
+				grk_read<uint32_t>(p_colr_header_data, &ol);
 				p_colr_header_data += 4;
-				grk_read<uint32_t>(p_colr_header_data, &ra, 4);
+				grk_read<uint32_t>(p_colr_header_data, &ra);
 				p_colr_header_data += 4;
-				grk_read<uint32_t>(p_colr_header_data, &oa, 4);
+				grk_read<uint32_t>(p_colr_header_data, &oa);
 				p_colr_header_data += 4;
-				grk_read<uint32_t>(p_colr_header_data, &rb, 4);
+				grk_read<uint32_t>(p_colr_header_data, &rb);
 				p_colr_header_data += 4;
-				grk_read<uint32_t>(p_colr_header_data, &ob, 4);
+				grk_read<uint32_t>(p_colr_header_data, &ob);
 				p_colr_header_data += 4;
-				grk_read<uint32_t>(p_colr_header_data, &il, 4);
+				grk_read<uint32_t>(p_colr_header_data, &il);
 				p_colr_header_data += 4;
 
 				cielab[1] = GRK_CUSTOM_CIELAB_SPACE;
@@ -2193,7 +2193,7 @@ static bool jp2_read_jp(FileFormat *fileFormat, uint8_t *p_header_data,
 	}
 
 	/* rearrange data */
-	grk_read<uint32_t>(p_header_data, &magic_number, 4);
+	grk_read<uint32_t>(p_header_data, &magic_number);
 	if (magic_number != 0x0d0a870a) {
 		GRK_ERROR("Error with JP Signature : bad magic number");
 		return false;
@@ -2231,10 +2231,10 @@ static bool jp2_read_ftyp(FileFormat *fileFormat, uint8_t *p_header_data,
 		return false;
 	}
 
-	grk_read<uint32_t>(p_header_data, &fileFormat->brand, 4); /* BR */
+	grk_read<uint32_t>(p_header_data, &fileFormat->brand); /* BR */
 	p_header_data += 4;
 
-	grk_read<uint32_t>(p_header_data, &fileFormat->minversion, 4); /* MinV */
+	grk_read<uint32_t>(p_header_data, &fileFormat->minversion); /* MinV */
 	p_header_data += 4;
 
 	remaining_bytes = header_size - 8;
@@ -2255,7 +2255,7 @@ static bool jp2_read_ftyp(FileFormat *fileFormat, uint8_t *p_header_data,
 		}
 	}
 	for (i = 0; i < fileFormat->numcl; ++i) {
-		grk_read<uint32_t>(p_header_data, &fileFormat->cl[i], 4); /* CLi */
+		grk_read<uint32_t>(p_header_data, &fileFormat->cl[i]); /* CLi */
 		p_header_data += 4;
 	}
 	fileFormat->jp2_state |= JP2_STATE_FILE_TYPE;
@@ -2356,11 +2356,11 @@ static bool jp2_read_box(grk_jp2_box *box, uint8_t *p_data,
 
 	/* process read data */
 	uint32_t L = 0;
-	grk_read<uint32_t>(p_data, &L, 4);
+	grk_read<uint32_t>(p_data, &L);
 	box->length = L;
 	p_data += 4;
 
-	grk_read<uint32_t>(p_data, &box->type, 4);
+	grk_read<uint32_t>(p_data, &box->type);
 	p_data += 4;
 
 	*p_number_bytes_read = 8;
