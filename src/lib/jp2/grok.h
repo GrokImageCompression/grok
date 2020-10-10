@@ -859,6 +859,8 @@ typedef struct _grk_image_comp {
 	uint32_t x0;
 	/** y component offset compared to the whole image */
 	uint32_t y0;
+	// component registration coordinates
+	uint16_t Xcrg, Ycrg;
 	/** precision */
 	uint8_t prec;
 	bool sgnd;

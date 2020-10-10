@@ -923,13 +923,13 @@ bool j2k_read_crg(CodeStream *codeStream, uint8_t *p_header_data,
 		GRK_ERROR("Error reading CRG marker");
 		return false;
 	}
-	uint32_t Xcrg_i, Ycrg_i;
 	for (uint32_t i = 0; i < nb_comp; ++i) {
+		auto comp = codeStream->m_input_image->comps + i;
 		// Xcrg_i
-		grk_read<uint32_t>(p_header_data, &Xcrg_i, 2);
+		grk_read<uint16_t>(p_header_data, &comp->Xcrg);
 		p_header_data += 2;
 		// Xcrg_i
-		grk_read<uint32_t>(p_header_data, &Ycrg_i, 2);
+		grk_read<uint16_t>(p_header_data, &comp->Ycrg);
 		p_header_data += 2;
 	}
 	return true;
