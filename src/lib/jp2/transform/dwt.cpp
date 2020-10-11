@@ -57,7 +57,19 @@ template <typename T, typename S> struct decode_job{
 	decode_job( S data,
 				uint32_t min_j,
 				uint32_t max_j) :
-					decode_job(data,nullptr,0,nullptr,0,nullptr,0,nullptr,0,nullptr,0,min_j, max_j)
+					decode_job(data,
+							nullptr,
+							0,
+							nullptr,
+							0,
+							nullptr,
+							0,
+							nullptr,
+							0,
+							nullptr,
+							0,
+							min_j,
+							max_j)
 	{}
     S data;
     T * GRK_RESTRICT bandLL;
@@ -1791,15 +1803,24 @@ public:
 /* FILTER_WIDTH value matches the maximum left/right extension given in tables */
 /* F.2 and F.3 of the standard. Note: in TileComponent::is_subband_area_of_interest() */
 /* we currently use 3. */
-template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_WIDTH, typename D>
-   bool decode_partial_tile(TileComponent* GRK_RESTRICT tilec, uint32_t numres, SparseBuffer *sa) {
-    auto tr = tilec->resolutions;
-    auto tr_max = &(tilec->resolutions[numres - 1]);
-    if (tr_max->width() == 0 || tr_max->height() == 0)
+template <typename T,
+			uint32_t HORIZ_STEP,
+			uint32_t VERT_STEP,
+			uint32_t FILTER_WIDTH,
+			typename D>
+
+   bool decode_partial_tile(TileComponent* GRK_RESTRICT tilec,
+		   	   	   	   	   uint32_t numres,
+						   SparseBuffer *sa) {
+
+    auto tr 	= tilec->resolutions;
+    auto tr_max = tilec->resolutions + numres - 1;
+    if (!tr_max->width() || !tr_max->height())
         return true;
 
     if (numres == 1U) {
         auto win_bounds = tr_max->win_bounds.pan(-tr_max->x0,-tr_max->y0);
+        // simply copy into tile component buffer
     	bool ret = sa->read(win_bounds,
 					   tilec->buf->ptr(),
                        1,
@@ -1810,9 +1831,8 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
         return true;
     }
 
-    /* width of the resolution level computed */
+    /* dimensions of the resolution level computed */
     uint32_t rw = tr->width();
-    /* height of the resolution level computed */
     uint32_t rh = tr->height();
 
     // in 53 vertical pass, we process 4 vertical columns at a time
@@ -1829,35 +1849,51 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
     size_t num_threads = ThreadPool::get()->num_threads();
 
     for (uint32_t resno = 1; resno < numres; resno ++) {
-        horiz.sn = (int32_t)rw;
-        vert.sn = (int32_t)rh;
+        horiz.sn = rw;
+        vert.sn = rh;
 
         ++tr;
         rw = tr->width();
         rh = tr->height();
 
-        horiz.dn = (int32_t)(rw - (uint32_t)horiz.sn);
+        horiz.dn = (int32_t)(rw - horiz.sn);
         horiz.cas = tr->x0 & 1;
 
-        vert.dn = (int32_t)(rh - (uint32_t)vert.sn);
+        vert.dn = (int32_t)(rh - vert.sn);
         vert.cas = tr->y0 & 1;
 
         /* Get the sub-band coordinates for the window of interest */
         /* LL band */
         /* Window of interest sub-band-based coordinates */
-        uint32_t win_ll_x0, win_ll_y0;
-        uint32_t win_ll_x1, win_ll_y1;
-        tilec->buf->get_region_band_coordinates(resno, 0,
-                                     &win_ll_x0, &win_ll_y0,
-                                     &win_ll_x1, &win_ll_y1);
+        uint32_t win_ll_x0,
+				 win_ll_y0,
+				 win_ll_x1,
+				 win_ll_y1;
+
+        tilec->buf->get_region_band_coordinates(resno,
+        										0,
+												&win_ll_x0,
+												&win_ll_y0,
+												&win_ll_x1,
+												&win_ll_y1);
         /* HL band */
-        uint32_t win_hl_x0, win_hl_x1;
-        tilec->buf->get_region_band_coordinates(resno, 1,
-                                      &win_hl_x0, nullptr, &win_hl_x1, nullptr);
+        uint32_t win_hl_x0,
+				win_hl_x1;
+        tilec->buf->get_region_band_coordinates(resno,
+        										1,
+												&win_hl_x0,
+												nullptr,
+												&win_hl_x1,
+												nullptr);
         /* LH band */
-        uint32_t win_lh_y0, win_lh_y1;
-        tilec->buf->get_region_band_coordinates(resno, 2,
-                                     nullptr, &win_lh_y0, nullptr, &win_lh_y1);
+        uint32_t win_lh_y0,
+				win_lh_y1;
+        tilec->buf->get_region_band_coordinates(resno,
+        										2,
+												nullptr,
+												&win_lh_y0,
+												nullptr,
+												&win_lh_y1);
 
         /* band coordinates */
         /* Beware: band index for non-LL0 resolution are 0=HL, 1=LH and 2=HH */
@@ -1876,13 +1912,14 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
         win_lh_y0 = uint_subs(win_lh_y0, tr_lh_y0);
         win_lh_y1 = uint_subs(win_lh_y1, tr_lh_y0);
 
-        segment_grow(FILTER_WIDTH, (uint32_t)horiz.sn, &win_ll_x0, &win_ll_x1);
-        segment_grow(FILTER_WIDTH, (uint32_t)horiz.dn, &win_hl_x0, &win_hl_x1);
-        segment_grow(FILTER_WIDTH, (uint32_t)vert.sn, &win_ll_y0, &win_ll_y1);
-        segment_grow(FILTER_WIDTH, (uint32_t)vert.dn, &win_lh_y0, &win_lh_y1);
+        segment_grow(FILTER_WIDTH, horiz.sn, &win_ll_x0, &win_ll_x1);
+        segment_grow(FILTER_WIDTH, horiz.dn, &win_hl_x0, &win_hl_x1);
+        segment_grow(FILTER_WIDTH, vert.sn, &win_ll_y0, &win_ll_y1);
+        segment_grow(FILTER_WIDTH, vert.dn, &win_lh_y0, &win_lh_y1);
 
         /* Compute resolution coordinates for window of interest */
-        uint32_t win_tr_x0, win_tr_x1;
+        uint32_t win_tr_x0,
+				win_tr_x1;
         if (horiz.cas == 0) {
             win_tr_x0 = min<uint32_t>(2 * win_ll_x0, 2 * win_hl_x0 + 1);
             win_tr_x1 = min<uint32_t>(max<uint32_t>(2 * win_ll_x1, 2 * win_hl_x1 + 1), rw);
@@ -1890,7 +1927,8 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
             win_tr_x0 = min<uint32_t>(2 * win_hl_x0, 2 * win_ll_x0 + 1);
             win_tr_x1 = min<uint32_t>(max<uint32_t>(2 * win_hl_x1, 2 * win_ll_x1 + 1), rw);
         }
-        uint32_t win_tr_y0, win_tr_y1;
+        uint32_t win_tr_y0,
+				win_tr_y1;
         if (vert.cas == 0) {
             win_tr_y0 = min<uint32_t>(2 * win_ll_y0, 2 * win_lh_y0 + 1);
             win_tr_y1 = min<uint32_t>(max<uint32_t>(2 * win_ll_y1, 2 * win_lh_y1 + 1), rh);
@@ -1899,15 +1937,16 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
             win_tr_y1 = min<uint32_t>(max<uint32_t>(2 * win_lh_y1, 2 * win_ll_y1 + 1), rh);
         }
         // two windows only overlap at most at the boundary
-        uint32_t bounds[2][2] ={
-        						{
-        						  uint_subs(win_ll_y0, HORIZ_STEP),
-        		                  win_ll_y1
-        						},
-							    {
-							      max<uint32_t>(win_ll_y1, uint_subs(min<uint32_t>(win_lh_y0 + (uint32_t)vert.sn,rh),HORIZ_STEP)),
-							      min<uint32_t>(win_lh_y1 + (uint32_t)vert.sn, rh)}
-        						};
+        uint32_t bounds[2][2] =
+        {
+			{
+			   uint_subs(win_ll_y0, HORIZ_STEP),
+			   win_ll_y1},
+			{
+			  max<uint32_t>(win_ll_y1, uint_subs(min<uint32_t>(win_lh_y0 + vert.sn,rh),HORIZ_STEP)),
+			  min<uint32_t>(win_lh_y1 + vert.sn, rh)
+			}
+		};
 
         // allocate all sparse array blocks in advance
         if (!sa->alloc(win_tr_x0,
@@ -1979,9 +2018,10 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 		}else{
 			std::vector< std::future<int> > results;
 			for(uint32_t j = 0; j < num_jobs; ++j) {
-			   auto job = new decode_job<float, dwt_data<T>>(horiz,
-											bounds[k][0] + j * step_j,
-											j < (num_jobs - 1U) ? bounds[k][0] + (j + 1U) * step_j : bounds[k][1]);
+			   auto job = new decode_job<float, dwt_data<T>>(
+					   	   	   horiz,
+							   bounds[k][0] + j * step_j,
+							   j < (num_jobs - 1U) ? bounds[k][0] + (j + 1U) * step_j : bounds[k][1]);
 				if (!job->data.alloc(data_size)) {
 					GRK_ERROR("Out of memory");
 					horiz.release();
@@ -2079,9 +2119,10 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 		} else {
 			std::vector< std::future<int> > results;
 			for(uint32_t j = 0; j < num_jobs; ++j) {
-			   auto job = new decode_job<float, dwt_data<T>>(vert,
-											win_tr_x0 + j * step_j,
-											j < (num_jobs - 1U) ? win_tr_x0 + (j + 1U) * step_j : win_tr_x1);
+			   auto job = new decode_job<float, dwt_data<T>>(
+					   	   	   	   	   vert,
+									   win_tr_x0 + j * step_j,
+									   j < (num_jobs - 1U) ? win_tr_x0 + (j + 1U) * step_j : win_tr_x1);
 				if (!job->data.alloc(data_size)) {
 					GRK_ERROR("Out of memory");
 					horiz.release();
@@ -2140,7 +2181,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 					   1,
 					   tilec->buf->stride(),
 					   true);
-assert(ret);
+	assert(ret);
 	GRK_UNUSED(ret);
     horiz.release();
 
@@ -2156,7 +2197,13 @@ bool decode_53(TileProcessor *p_tcd, TileComponent* tilec,
     if (p_tcd->whole_tile_decoding)
         return decode_tile_53(tilec,numres);
     else
-        return decode_partial_tile<int32_t, 1, 4,2, Partial53>(tilec, numres, tilec->m_sa);
+        return decode_partial_tile<int32_t,
+        							1,
+									4,
+									2,
+									Partial53>(tilec,
+											numres,
+											tilec->m_sa);
 }
 
 bool decode_97(TileProcessor *p_tcd,
@@ -2165,7 +2212,13 @@ bool decode_97(TileProcessor *p_tcd,
     if (p_tcd->whole_tile_decoding)
         return decode_tile_97(tilec, numres);
     else
-        return decode_partial_tile<vec4f,4,4,4, Partial97>(tilec, numres, tilec->m_sa);
+        return decode_partial_tile<vec4f,
+        							4,
+									4,
+									4,
+									Partial97>(tilec,
+											numres,
+											tilec->m_sa);
 }
 
 }
