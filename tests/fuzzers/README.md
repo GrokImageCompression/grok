@@ -1,7 +1,7 @@
 This directory contain fuzzer main functions and scripts for the
-Google [OSS Fuzz project](https://github.com/google/oss-fuzz/)
+Google [oss-fuzz](https://github.com/google/oss-fuzz/) project
 
-The main build scripts are [here](https://github.com/google/oss-fuzz/tree/master/projects/grok)
+The main build scripts can be found [here](https://github.com/google/oss-fuzz/tree/master/projects/grok)
 and call scripts in this directory.
 
 The list of issues can be found [here](https://bugs.chromium.org/p/oss-fuzz/issues/list?q=grok)
@@ -9,9 +9,11 @@ The list of issues can be found [here](https://bugs.chromium.org/p/oss-fuzz/issu
 Fuzzer build logs can be found [here](https://oss-fuzz-build-logs.storage.googleapis.com/index.html#grok)
 
 
-- Simulate the build of (dummy) fuzzers like OSS Fuzz does:
+### Simulate fuzzer
 
-   Preliminary steps:
+#### Preliminary steps
+
+```   
     $ cd /tmp
     $ git clone https://github.com/GrokImageCompression/grok
     $ cd grok
@@ -21,35 +23,57 @@ Fuzzer build logs can be found [here](https://oss-fuzz-build-logs.storage.google
     $ cmake ..
     $ make
     $ cd ..
+```
 
-   Actual building of fuzzer and seed corpus:
+#### Build fuzzer and seed corpus
+
+ ```  
     $ cd tests/fuzzers
     $ make
+```
 
-  They are created in /tmp/*_fuzzer as well as with the
-  /tmp/*_fuzzer_seed_corpus.zip files
+Fuzzers created in `/tmp/*_fuzzer`, with `/tmp/*_fuzzer_seed_corpus.zip` corpus files
 
-  Run one:
+#### Run a particular fuzzer
+
+ ```
     $ /tmp/grk_decompress_fuzzer a_file_name
+```
 
-- Run locally OSS Fuzz:
+### Run oss-fuzz locally
+
+```
     $ git clone https://github.com/google/oss-fuzz.git
     $ cd oss-fuzz
     $ python infra/helper.py build_image grok
+```
 
-  Build fuzzers with the address sanitizer (could use undefined, etc...)
+#### Build fuzzers with the address sanitizer (could use undefined, etc...)
+
+```  
     $ python infra/helper.py build_fuzzers --sanitizer address grok
+```
 
-  Test a particular fuzzer (replace grk_decompress_fuzzer by other fuzzers
-  like the ones generated in /tmp by "make dummyfuzzers")
+Test a particular fuzzer (replace grk_decompress_fuzzer by other fuzzers
+like the ones generated in /tmp by "make dummyfuzzers")
+
+```  
     $ python infra/helper.py run_fuzzer grok grk_decompress_fuzzer
+```
+
+Test a particular fuzzer on a test file:
+
+```  
+$ python infra/helper.py build_fuzzers --sanitizer address grok
+$ python infra/helper.py reproduce grok grk_decompress_fuzzer $FILE_NAME
+```
 
 
-How to deal with issues reported in https://bugs.chromium.org/p/oss-fuzz/issues/list?q=grok ?
+Handling issues reported in https://bugs.chromium.org/p/oss-fuzz/issues/list?q=grok
 
-    1. Leave a comment in (chromium database) bug entry to indicate that you work on it
-    2. Work
-    3. Commit a bug fix with log including "Credit to OSS-Fuzz" and a link to the bugs.chromium.org ticket
-    4. Add in the bugs.chromium.org ticket a link to the github commit implementing the fix.
-    5. Check chromium closed the bug (after one or two days typically)
 
+  1. Leave a comment in (chromium database) bug entry to indicate that you work on it
+  1. Work
+  1. Commit a bug fix with log including "Credit to OSS-Fuzz" and a link to the bugs.chromium.org ticket
+  1. Add in the bugs.chromium.org ticket a link to the github commit implementing the fix.
+  1. Check chromium closed the bug (after one or two days typically)
