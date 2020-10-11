@@ -61,28 +61,28 @@ int main()
     bool ret;
 
     {
-		SparseBuffer* sa = nullptr;
+		ISparseBuffer* sa = nullptr;
 
 		try {
-			sa = new SparseBuffer(0, 2, 2, 2);
+			sa = new SparseBuffer<2,2>(0, 2);
 		} catch (std::exception& ex){
 		}
 		assert(sa == NULL);
     }
 
     {
-        SparseBuffer* sa = nullptr;
+        ISparseBuffer* sa = nullptr;
 	   try {
-			sa = new SparseBuffer(2, 0, 2, 0);
+			sa = new SparseBuffer<2,0>(2, 0);
 		} catch (std::exception& ex){
 		}
 		assert(sa == NULL);
     }
 
     {
-        SparseBuffer* sa = nullptr;
+        ISparseBuffer* sa = nullptr;
 		try {
-			sa = new SparseBuffer(2, 2, 0, 2);
+			sa = new SparseBuffer<0,2>(2, 2);
 		 } catch (std::exception& ex){
 		 }
 		 assert(sa == NULL);
@@ -90,21 +90,21 @@ int main()
     }
 
     {
-        SparseBuffer* sa = nullptr;
+        ISparseBuffer* sa = nullptr;
 		 try {
-			sa = new SparseBuffer(2, 2, 2, 0);
+			sa = new SparseBuffer<2,0>(2, 2);
 		  } catch (std::exception& ex){
 		  }
 		  assert(sa == NULL);
     }
 
     {
-		auto sa = new SparseBuffer(99, 101, 5, 5);
+		auto sa = new SparseBuffer<5,5>(99, 101);
 		delete sa;
     }
 
     {
-		auto sa = new SparseBuffer(99, 101, 5, 5);
+		auto sa = new SparseBuffer<5,5>(99, 101);
 		ret = sa->read( 0, 0, 0, 1, buffer, 1, 1, false);
 		assert(!ret);
 		ret = sa->read( 0, 0, 1, 0, buffer, 1, 1, false);
@@ -186,7 +186,7 @@ int main()
     }
 
     {
-		auto sa = new SparseBuffer(99, 101, 5, 5);
+		auto sa = new SparseBuffer<5,5>(99, 101);
 		memset(buffer, 0xFF, sizeof(buffer));
 
 		buffer[0] = 1;

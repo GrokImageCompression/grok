@@ -65,7 +65,7 @@ struct TileComponent : public grk_rect_u32 {
 	TileComponentBuffer<int32_t> *buf;
     bool   whole_tile_decoding;
 	bool m_is_encoder;
-	SparseBuffer *m_sa;
+	ISparseBuffer *m_sa;
 
 private:
 	TileComponentCodingParams *m_tccp;

@@ -69,7 +69,99 @@ be used. If blocks are too small, the book-keeping costs of blocks will rise.
 
 namespace grk {
 
-class SparseBuffer {
+class ISparseBuffer {
+public:
+
+	virtual ~ISparseBuffer(){};
+
+	/** Read the content of a rectangular region of the sparse array into a
+	 * user buffer.
+	 *
+	 * Regions not written with write() are read as 0.
+	 *
+	 * @param x0 left x coordinate of the region to read in the sparse array.
+	 * @param y0 top x coordinate of the region to read in the sparse array.
+	 * @param x1 right x coordinate (not included) of the region to read in the sparse array. Must be greater than x0.
+	 * @param y1 bottom y coordinate (not included) of the region to read in the sparse array. Must be greater than y0.
+	 * @param dest user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * dest_line_stride + (x1 - x0 - 1) * dest_col_stride + 1) bytes large.
+	 * @param dest_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
+	 * @param dest_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
+	 * @param forgiving if set to TRUE and the region is invalid, true will still be returned.
+	 * @return true in case of success.
+	 */
+	virtual bool read(uint32_t x0,
+							 uint32_t y0,
+							 uint32_t x1,
+							 uint32_t y1,
+							 int32_t* dest,
+							 const uint32_t dest_col_stride,
+							 const uint32_t dest_line_stride,
+							 bool forgiving) = 0;
+
+	/** Read the content of a rectangular region of the sparse array into a
+	 * user buffer.
+	 *
+	 * Regions not written with write() are read as 0.
+	 *
+	 * @param region region to read in the sparse array.
+	 * @param dest user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * dest_line_stride + (x1 - x0 - 1) * dest_col_stride + 1) bytes large.
+	 * @param dest_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
+	 * @param dest_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
+	 * @param forgiving if set to TRUE and the region is invalid, true will still be returned.
+	 * @return true in case of success.
+	 */
+	virtual bool read(grk_rect_u32 region,
+							 int32_t* dest,
+							 const uint32_t dest_col_stride,
+							 const uint32_t dest_line_stride,
+							 bool forgiving) = 0;
+
+
+	/** Write the content of a rectangular region into the sparse array from a
+	 * user buffer.
+	 *
+	 * Blocks intersecting the region are allocated, if not already done.
+	 *
+	 * @param x0 left x coordinate of the region to write into the sparse array.
+	 * @param y0 top x coordinate of the region to write into the sparse array.
+	 * @param x1 right x coordinate (not included) of the region to write into the sparse array. Must be greater than x0.
+	 * @param y1 bottom y coordinate (not included) of the region to write into the sparse array. Must be greater than y0.
+	 * @param src user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * src_line_stride + (x1 - x0 - 1) * src_col_stride + 1) bytes large.
+	 * @param src_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
+	 * @param src_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
+	 * @param forgiving if set to TRUE and the region is invalid, true will still be returned.
+	 * @return true in case of success.
+	 */
+	virtual bool write(uint32_t x0,
+						  uint32_t y0,
+						  uint32_t x1,
+						  uint32_t y1,
+						  const int32_t* src,
+						  const uint32_t src_col_stride,
+						  const uint32_t src_line_stride,
+						  bool forgiving) = 0;
+
+
+	/** Allocate all blocks for a rectangular region into the sparse array from a
+	 * user buffer.
+	 *
+	 * Blocks intersecting the region are allocated
+	 *
+	 * @param x0 left x coordinate of the region to write into the sparse array.
+	 * @param y0 top x coordinate of the region to write into the sparse array.
+	 * @param x1 right x coordinate (not included) of the region to write into the sparse array. Must be greater than x0.
+	 * @param y1 bottom y coordinate (not included) of the region to write into the sparse array. Must be greater than y0.
+	 * @return true in case of success.
+	 */
+	virtual bool alloc( uint32_t x0,
+							  uint32_t y0,
+							  uint32_t x1,
+							  uint32_t y1) = 0;
+
+
+};
+
+template<uint32_t LBW, uint32_t LBH> class SparseBuffer : public ISparseBuffer {
 
 public:
 
@@ -77,25 +169,18 @@ public:
 	 *
 	 * @param width total width of the array.
 	 * @param height total height of the array
-	 * @param block_width width of a block.
-	 * @param block_height height of a block.
 	 *
 	 * @return a new sparse array instance, or NULL in case of failure.
 	 */
-	SparseBuffer(uint32_t width,
-								uint32_t height,
-								uint32_t log2_bw,
-								uint32_t log2_bh) :
-										width(width),
-										height(height),
-										log2_block_width(log2_bw),
-										log2_block_height(log2_bh),
-										block_width(1<<log2_bw),
-										block_height(1<<log2_bh),
-										block_area(block_width*block_height)
+	SparseBuffer(uint32_t w,uint32_t h) :
+										width(w),
+										height(h),
+										block_width(1<<LBW),
+										block_height(1<<LBH)
 	{
-	    if (!width  || !height  || !log2_block_width || !log2_block_height)
+	    if (!width  || !height  || !LBW || !LBH) {
 	    	throw std::runtime_error("invalid region for sparse array");
+		}
 	    block_count_hor = ceildiv<uint32_t>(width, block_width);
 	    block_count_ver = ceildiv<uint32_t>(height, block_height);
 	    auto block_count = (uint64_t)block_count_hor * block_count_ver;
@@ -114,22 +199,6 @@ public:
 			grk_free(data_blocks[i]);
 		grk_free(data_blocks);
 	}
-
-	/** Read the content of a rectangular region of the sparse array into a
-	 * user buffer.
-	 *
-	 * Regions not written with write() are read as 0.
-	 *
-	 * @param x0 left x coordinate of the region to read in the sparse array.
-	 * @param y0 top x coordinate of the region to read in the sparse array.
-	 * @param x1 right x coordinate (not included) of the region to read in the sparse array. Must be greater than x0.
-	 * @param y1 bottom y coordinate (not included) of the region to read in the sparse array. Must be greater than y0.
-	 * @param dest user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * dest_line_stride + (x1 - x0 - 1) * dest_col_stride + 1) bytes large.
-	 * @param dest_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
-	 * @param dest_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
-	 * @param forgiving if set to TRUE and the region is invalid, true will still be returned.
-	 * @return true in case of success.
-	 */
 	bool read(uint32_t x0,
 							 uint32_t y0,
 							 uint32_t x1,
@@ -147,18 +216,6 @@ public:
 							   true);
 	}
 
-	/** Read the content of a rectangular region of the sparse array into a
-	 * user buffer.
-	 *
-	 * Regions not written with write() are read as 0.
-	 *
-	 * @param region region to read in the sparse array.
-	 * @param dest user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * dest_line_stride + (x1 - x0 - 1) * dest_col_stride + 1) bytes large.
-	 * @param dest_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
-	 * @param dest_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
-	 * @param forgiving if set to TRUE and the region is invalid, true will still be returned.
-	 * @return true in case of success.
-	 */
 	bool read(grk_rect_u32 region,
 							 int32_t* dest,
 							 const uint32_t dest_col_stride,
@@ -175,22 +232,6 @@ public:
 				forgiving);
 	}
 
-
-	/** Write the content of a rectangular region into the sparse array from a
-	 * user buffer.
-	 *
-	 * Blocks intersecting the region are allocated, if not already done.
-	 *
-	 * @param x0 left x coordinate of the region to write into the sparse array.
-	 * @param y0 top x coordinate of the region to write into the sparse array.
-	 * @param x1 right x coordinate (not included) of the region to write into the sparse array. Must be greater than x0.
-	 * @param y1 bottom y coordinate (not included) of the region to write into the sparse array. Must be greater than y0.
-	 * @param src user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * src_line_stride + (x1 - x0 - 1) * src_col_stride + 1) bytes large.
-	 * @param src_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
-	 * @param src_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
-	 * @param forgiving if set to TRUE and the region is invalid, true will still be returned.
-	 * @return true in case of success.
-	 */
 	bool write(uint32_t x0,
 						  uint32_t y0,
 						  uint32_t x1,
@@ -208,18 +249,6 @@ public:
 	            false);
 	}
 
-
-	/** Allocate all blocks for a rectangular region into the sparse array from a
-	 * user buffer.
-	 *
-	 * Blocks intersecting the region are allocated
-	 *
-	 * @param x0 left x coordinate of the region to write into the sparse array.
-	 * @param y0 top x coordinate of the region to write into the sparse array.
-	 * @param x1 right x coordinate (not included) of the region to write into the sparse array. Must be greater than x0.
-	 * @param y1 bottom y coordinate (not included) of the region to write into the sparse array. Must be greater than y0.
-	 * @return true in case of success.
-	 */
 	bool alloc( uint32_t x0,
 							  uint32_t y0,
 							  uint32_t x1,
@@ -228,17 +257,18 @@ public:
 	        return true;
 
 	    uint32_t y_incr = 0;
-	    uint32_t block_y = y0 >> log2_block_height;
+	    uint32_t block_y = y0 >> LBH;
 	    for (uint32_t y = y0; y < y1; block_y ++, y += y_incr) {
 	        y_incr = (y == y0) ? block_height - (y0 & (block_height-1)) : block_height;
 	        y_incr = min<uint32_t>(y_incr, y1 - y);
-	        uint32_t block_x = x0 >>  log2_block_width;
+	        uint32_t block_x = x0 >>  LBW;
 	        uint32_t x_incr = 0;
 	        for (uint32_t x = x0; x < x1; block_x ++, x += x_incr) {
 	            x_incr = (x == x0) ? block_width - (x0 & (block_width-1)) : block_width;
 	            x_incr = min<uint32_t>(x_incr, x1 - x);
 	            auto src_block = data_blocks[(uint64_t)block_y * block_count_hor + block_x];
 				if (!src_block) {
+					const uint32_t block_area = block_width*block_height;
 					src_block = (int32_t*) grk_calloc(block_area, sizeof(int32_t));
 					if (!src_block) {
 						GRK_ERROR("SparseBuffer: Out of memory");
@@ -283,13 +313,13 @@ private:
 
 	    const uint64_t line_stride 	= buf_line_stride;
 	    const uint64_t col_stride 	= buf_col_stride;
-	    uint32_t block_y 			= y0 >>  log2_block_height;
+	    uint32_t block_y 			= y0 >>  LBH;
 	    uint32_t y_incr = 0;
 	    for (uint32_t y = y0; y < y1; block_y ++, y += y_incr) {
 	        y_incr = (y == y0) ? block_height - (y0 & (block_height-1)) : block_height;
 	        uint32_t block_y_offset = block_height - y_incr;
 	        y_incr = min<uint32_t>(y_incr, y1 - y);
-	        uint32_t block_x = x0 >> log2_block_width;
+	        uint32_t block_x = x0 >> LBW;
 	        uint32_t x_incr = 0;
 	        for (uint32_t x = x0; x < x1; block_x ++, x += x_incr) {
 	            x_incr = (x == x0) ? block_width - (x0 & (block_width-1) ) : block_width;
@@ -299,7 +329,7 @@ private:
 	            if (is_read_op) {
 	            	assert(src_block);
 					const int32_t* GRK_RESTRICT src_ptr =
-							src_block + ((uint64_t)block_y_offset << log2_block_width) + block_x_offset;
+							src_block + ((uint64_t)block_y_offset << LBW) + block_x_offset;
 					if (col_stride == 1) {
 						int32_t* GRK_RESTRICT dest_ptr = buf + (y - y0) * line_stride +
 														   (x - x0) * col_stride;
@@ -308,7 +338,7 @@ private:
 							/* can have an efficient memcpy() */
 							(void)(x_incr); /* trick to silent cppcheck duplicateBranch warning */
 							for (uint32_t j = 0; j < y_incr; j++) {
-								memcpy(dest_ptr, src_ptr, x_incr << 2); // << 2 == * sizeof(int32_t)
+								memcpy(dest_ptr, src_ptr, 4 << 2); // << 2 == * sizeof(int32_t)
 								dest_ptr += line_stride;
 								src_ptr  += block_width;
 							}
@@ -373,7 +403,7 @@ private:
 	            	//all blocks should be allocated first before read/write is called
 	                assert(src_block);
 	                if (col_stride == 1) {
-	                    int32_t* GRK_RESTRICT dest_ptr = src_block + ((uint64_t)block_y_offset << log2_block_width) + block_x_offset;
+	                    int32_t* GRK_RESTRICT dest_ptr = src_block + ((uint64_t)block_y_offset << LBW) + block_x_offset;
 	                    const int32_t* GRK_RESTRICT src_ptr = buf + (y - y0) * line_stride + (x - x0) * col_stride;
 	                    if (x_incr == 4) {
 	                        /* Same code as general branch, but the compiler */
@@ -392,7 +422,7 @@ private:
 	                        }
 	                    }
 	                } else {
-	                    int32_t* GRK_RESTRICT dest_ptr = src_block + ((uint64_t)block_y_offset << log2_block_width) + block_x_offset;
+	                    int32_t* GRK_RESTRICT dest_ptr = src_block + ((uint64_t)block_y_offset << LBW) + block_x_offset;
 	                    const int32_t* GRK_RESTRICT src_ptr = buf + (y - y0) * line_stride + (x - x0) * col_stride;
 	                    if (x_incr == 1) {
 	                        for (uint32_t j = 0; j < y_incr; j++) {
@@ -436,11 +466,8 @@ private:
 
 	uint32_t width;
     uint32_t height;
-    uint32_t log2_block_width;
-    uint32_t log2_block_height;
-    uint32_t block_width;
-    uint32_t block_height;
-    uint32_t block_area;
+    const uint32_t block_width;
+    const uint32_t block_height;
     uint32_t block_count_hor;
     uint32_t block_count_ver;
     int32_t** data_blocks;
