@@ -1429,7 +1429,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 }
 
 static void interleave_partial_h_53(dwt_data<int32_t> *dwt,
-									sparse_array* sa,
+									SparseBuffer* sa,
 									uint32_t sa_line)	{
 	auto dest = dwt->mem;
 	int32_t cas = dwt->cas;
@@ -1458,7 +1458,7 @@ static void interleave_partial_h_53(dwt_data<int32_t> *dwt,
 
 
 static void interleave_partial_v_53(dwt_data<int32_t> *vert,
-									sparse_array* sa,
+									SparseBuffer* sa,
 									uint32_t sa_col,
 									uint32_t nb_cols){
 	auto dest = vert->mem;
@@ -1700,7 +1700,7 @@ static void segment_grow(uint32_t filter_width,
 class Partial53 {
 public:
 	void interleave_partial_h(dwt_data<int32_t>* dwt,
-								sparse_array* sa,
+								SparseBuffer* sa,
 								uint32_t sa_line,
 								uint32_t num_rows){
 		(void)num_rows;
@@ -1710,7 +1710,7 @@ public:
 		decode_partial_h_53(dwt);
 	}
 	void interleave_partial_v(dwt_data<int32_t>* GRK_RESTRICT dwt,
-								sparse_array* sa,
+								SparseBuffer* sa,
 								uint32_t sa_col,
 								uint32_t nb_elts_read){
 		interleave_partial_v_53(dwt,sa,sa_col,nb_elts_read);
@@ -1721,7 +1721,7 @@ public:
 };
 
 static void interleave_partial_h_97(dwt_data<vec4f>* dwt,
-									sparse_array* sa,
+									SparseBuffer* sa,
 									uint32_t sa_line,
 									uint32_t num_rows){
     for (uint32_t i = 0; i < num_rows; i++) {
@@ -1747,7 +1747,7 @@ static void interleave_partial_h_97(dwt_data<vec4f>* dwt,
 
 
 static void interleave_partial_v_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
-									sparse_array* sa,
+									SparseBuffer* sa,
 									uint32_t sa_col,
 									uint32_t nb_elts_read){
     bool ret = sa->read(sa_col,
@@ -1769,7 +1769,7 @@ static void interleave_partial_v_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
 class Partial97 {
 public:
 	void interleave_partial_h(dwt_data<vec4f>* dwt,
-								sparse_array* sa,
+								SparseBuffer* sa,
 								uint32_t sa_line,
 								uint32_t num_rows){
 		interleave_partial_h_97(dwt,sa,sa_line,num_rows);
@@ -1778,7 +1778,7 @@ public:
 		decode_step_97(dwt);
 	}
 	void interleave_partial_v(dwt_data<vec4f>* GRK_RESTRICT dwt,
-								sparse_array* sa,
+								SparseBuffer* sa,
 								uint32_t sa_col,
 								uint32_t nb_elts_read){
 		interleave_partial_v_97(dwt,sa,sa_col,nb_elts_read);
@@ -1792,7 +1792,7 @@ public:
 /* F.2 and F.3 of the standard. Note: in TileComponent::is_subband_area_of_interest() */
 /* we currently use 3. */
 template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_WIDTH, typename D>
-   bool decode_partial_tile(TileComponent* GRK_RESTRICT tilec, uint32_t numres, sparse_array *sa) {
+   bool decode_partial_tile(TileComponent* GRK_RESTRICT tilec, uint32_t numres, SparseBuffer *sa) {
     auto tr = tilec->resolutions;
     auto tr_max = &(tilec->resolutions[numres - 1]);
     if (tr_max->width() == 0 || tr_max->height() == 0)

@@ -171,14 +171,14 @@ static inline long grk_lrintf(float f) {
 #include "TileComponentBuffer.h"
 #include "PacketIter.h"
 #include "TagTree.h"
-#include "sparse_array.h"
+#include <SparseBuffer.h>
 #include "TileComponent.h"
 #include "TileProcessor.h"
 #include "Wavelet.h"
 #include "t1_common.h"
 #include "dwt_utils.h"
 #include "dwt.h"
-#include "sparse_array.h"
+#include <SparseBuffer.h>
 #include "T2Encode.h"
 #include "T2Decode.h"
 #include "mct.h"

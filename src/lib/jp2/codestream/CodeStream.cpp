@@ -1669,7 +1669,7 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 			tccp->numgbits = numgbits;
 
 			if ((int32_t) i == parameters->roi_compno)
-				tccp->roishift = parameters->roi_shift;
+				tccp->roishift = (uint8_t)parameters->roi_shift;
 			else
 				tccp->roishift = 0;
 			if ((parameters->csty & J2K_CCP_CSTY_PRT) && parameters->res_spec) {

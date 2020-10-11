@@ -47,11 +47,12 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers
   ${CMAKE_CURRENT_SOURCE_DIR}/point_transform
   ${CMAKE_CURRENT_SOURCE_DIR}/t2
+  ${CMAKE_CURRENT_SOURCE_DIR}/tile
 )
 
 # Defines the source code for executables
 set(GROK_EXECUTABLES_SRCS
-  ${CMAKE_CURRENT_SOURCE_DIR}/util/test_sparse_array.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/TestSparseBuffer.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/bench_dwt.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_generate_luts.cpp
 )
@@ -138,17 +139,18 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/grok.h
   ${CMAKE_CURRENT_SOURCE_DIR}/grok.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/grok.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/TileComponentBuffer.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/TileComponent.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/TileComponent.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/TileProcessor.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/TileProcessor.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/grk_includes.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/grk_includes.h  
+    
+  ${CMAKE_CURRENT_SOURCE_DIR}/tile/TileComponentBuffer.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/tile/TileComponent.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/tile/TileComponent.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/tile/TileProcessor.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/tile/TileProcessor.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/tile/SparseBuffer.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/tile/SparseBuffer.h
 
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/Wavelet.h
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/Wavelet.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/sparse_array.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/sparse_array.h
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/dwt.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/dwt.h
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletForward.h
@@ -290,8 +292,8 @@ if(BUILD_UNIT_TESTS)
     if(UNIX)
         target_link_libraries(bench_dwt m ${GROK_LIBRARY_NAME})
     endif()
-    add_executable(test_sparse_array util/test_sparse_array.cpp)
+    add_executable(TestSparseBuffer util/TestSparseBuffer.cpp)
     if(UNIX)
-        target_link_libraries(test_sparse_array m ${GROK_LIBRARY_NAME})
+        target_link_libraries(TestSparseBuffer m ${GROK_LIBRARY_NAME})
     endif()
 endif(BUILD_UNIT_TESTS)

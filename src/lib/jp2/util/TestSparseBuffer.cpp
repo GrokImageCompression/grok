@@ -59,17 +59,17 @@ int main()
     uint32_t i, j, w, h;
     int32_t buffer[ 99 * 101 ];
     bool ret;
-    sparse_array* sa = nullptr;
+    SparseBuffer* sa = nullptr;
 
     try {
-    	sa = new sparse_array(0, 1, 1, 1);
+    	sa = new SparseBuffer(0, 1, 1, 1);
     } catch (std::exception& ex){
     	sa = nullptr;
     }
     assert(sa == NULL);
 
    try {
-    	sa = new sparse_array(1, 0, 1, 0);
+    	sa = new SparseBuffer(1, 0, 1, 0);
     } catch (std::exception& ex){
     	sa = nullptr;
     }
@@ -78,33 +78,24 @@ int main()
 
 
     try {
-     	sa = new sparse_array(1, 1, 0, 1);
+     	sa = new SparseBuffer(1, 1, 0, 1);
      } catch (std::exception& ex){
      	sa = nullptr;
      }
      assert(sa == NULL);
 
      try {
-      	sa = new sparse_array(1, 1, 1, 0);
+      	sa = new SparseBuffer(1, 1, 1, 0);
       } catch (std::exception& ex){
       	sa = nullptr;
       }
       assert(sa == NULL);
 
-      try {
-       	sa = new sparse_array(99, 101, ~0U, ~0U);
-       } catch (std::exception& ex){
-       	sa = nullptr;
-       }
-       assert(sa == NULL);
 
-
-
-
-    sa = new sparse_array(99, 101, 15, 17);
+    sa = new SparseBuffer(99, 101, 15, 17);
     delete sa;
 
-    sa = new sparse_array(99, 101, 15, 17);
+    sa = new SparseBuffer(99, 101, 15, 17);
     ret = sa->read( 0, 0, 0, 1, buffer, 1, 1, false);
     assert(!ret);
     ret = sa->read( 0, 0, 1, 0, buffer, 1, 1, false);
@@ -134,6 +125,9 @@ int main()
     }
 
     buffer[0] = 1;
+    ret = sa->alloc(4, 5, 4 + 1, 5 + 1);
+    assert(ret);
+
     ret = sa->write(4, 5, 4 + 1, 5 + 1, buffer, 1, 1,
                                        false);
     assert(ret);
@@ -193,7 +187,7 @@ int main()
     delete sa;
 
 
-    sa = new sparse_array(99, 101, 15, 17);
+    sa = new SparseBuffer(99, 101, 15, 17);
     memset(buffer, 0xFF, sizeof(buffer));
     ret = sa->read( 0, 0, 2, 1, buffer, 2, 4, false);
     assert(ret);
@@ -203,6 +197,8 @@ int main()
 
     buffer[0] = 1;
     buffer[2] = 3;
+    ret = sa->alloc(0,0,2,1);
+    assert(ret);
     ret = sa->write(0, 0, 2, 1, buffer, 2, 4, false);
     assert(ret);
 

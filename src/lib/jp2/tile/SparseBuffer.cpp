@@ -47,11 +47,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <grk_includes.h>
 #include <algorithm>
 #include <cstdint>
 #include <cassert>
-#include "grk_includes.h"
-#include "sparse_array.h"
 #include <exception>
 
 using namespace std;
@@ -59,7 +58,7 @@ using namespace std;
 namespace grk {
 
 
-sparse_array::sparse_array(uint32_t width,
+SparseBuffer::SparseBuffer(uint32_t width,
 							uint32_t height,
 							uint32_t block_width,
 							uint32_t block_height) :
@@ -79,14 +78,14 @@ sparse_array::sparse_array(uint32_t width,
     }
 }
 
-sparse_array::~sparse_array()
+SparseBuffer::~SparseBuffer()
 {
 	for (uint64_t i = 0; i < (uint64_t)block_count_hor * block_count_ver; i++)
 		grk_free(data_blocks[i]);
 	grk_free(data_blocks);
 }
 
-bool sparse_array::is_region_valid(
+bool SparseBuffer::is_region_valid(
         uint32_t x0,
         uint32_t y0,
         uint32_t x1,
@@ -95,11 +94,11 @@ bool sparse_array::is_region_valid(
     return !(x0 >= width || x1 <= x0 || x1 > width ||
              y0 >= height || y1 <= y0 || y1 > height);
 }
-bool sparse_array::alloc(             uint32_t x0,
+bool SparseBuffer::alloc(             uint32_t x0,
                                       uint32_t y0,
                                       uint32_t x1,
                                       uint32_t y1){
-    if (!sparse_array::is_region_valid(x0, y0, x1, y1))
+    if (!SparseBuffer::is_region_valid(x0, y0, x1, y1))
         return true;
 
     uint32_t y_incr = 0;
@@ -129,7 +128,7 @@ bool sparse_array::alloc(             uint32_t x0,
     return true;
 }
 
-bool sparse_array::read_or_write(uint32_t x0,
+bool SparseBuffer::read_or_write(uint32_t x0,
 										uint32_t y0,
 										uint32_t x1,
 										uint32_t y1,
@@ -309,7 +308,7 @@ bool sparse_array::read_or_write(uint32_t x0,
     return true;
 }
 
-bool sparse_array::read(grk_rect_u32 region,
+bool SparseBuffer::read(grk_rect_u32 region,
 						 int32_t* dest,
 						 const uint32_t dest_col_stride,
 						 const uint32_t dest_line_stride,
@@ -326,7 +325,7 @@ bool sparse_array::read(grk_rect_u32 region,
 }
 
 
-bool sparse_array::read(uint32_t x0,
+bool SparseBuffer::read(uint32_t x0,
 						 uint32_t y0,
 						 uint32_t x1,
 						 uint32_t y1,
@@ -343,7 +342,7 @@ bool sparse_array::read(uint32_t x0,
 						   true);
 }
 
-bool sparse_array::write(uint32_t x0,
+bool SparseBuffer::write(uint32_t x0,
 					  uint32_t y0,
 					  uint32_t x1,
 					  uint32_t y1,

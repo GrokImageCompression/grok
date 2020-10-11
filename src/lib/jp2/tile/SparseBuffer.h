@@ -50,7 +50,7 @@
 #pragma once
 
 /**
-@file sparse_array.h
+@file SparseBuffer.h
 @brief Sparse array management
 
 The functions in this file manage sparse arrays. Sparse arrays are arrays with
@@ -62,12 +62,14 @@ If it is too big, and pixels set are far from each other, too much memory will
 be used. If blocks are too small, the book-keeping costs of blocks will rise.
 */
 
-/** @defgroup SPARSE_ARRAY SPARSE ARRAYS - Sparse arrays */
+/** @defgroup SparseBuffer SPARSE ARRAYS - Sparse arrays */
 /*@{*/
+
+#include <cstdint>
 
 namespace grk {
 
-class sparse_array {
+class SparseBuffer {
 
 public:
 
@@ -80,7 +82,7 @@ public:
 	 *
 	 * @return a new sparse array instance, or NULL in case of failure.
 	 */
-	sparse_array(uint32_t width,
+	SparseBuffer(uint32_t width,
 					uint32_t height,
 					uint32_t block_width,
 					uint32_t block_height);
@@ -88,7 +90,7 @@ public:
 	/** Frees a sparse array.
 	 *
 	 */
-	~sparse_array();
+	~SparseBuffer();
 
 	/** Read the content of a rectangular region of the sparse array into a
 	 * user buffer.

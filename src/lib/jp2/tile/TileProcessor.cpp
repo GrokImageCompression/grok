@@ -935,7 +935,7 @@ bool TileProcessor::decompress_tile_t1(void) {
 
 			if (!whole_tile_decoding) {
 				try {
-					tilec->alloc_sparse_array(m_resno_decoded_per_component[compno] + 1);
+					tilec->alloc_SparseBuffer(m_resno_decoded_per_component[compno] + 1);
 				} catch (runtime_error &ex) {
 					GRK_ERROR("decompress_tile_t1: %s", ex.what());
 					return false;

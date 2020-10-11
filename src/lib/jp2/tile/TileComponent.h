@@ -44,7 +44,7 @@ struct TileComponent : public grk_rect_u32 {
 			TileComponentCodingParams* tccp,
 			grk_plugin_tile *current_plugin_tile);
 
-	 void alloc_sparse_array(uint32_t numres);
+	 void alloc_SparseBuffer(uint32_t numres);
 	 void release_mem();
 
 	 bool is_subband_area_of_interest(uint32_t resno,
@@ -65,7 +65,7 @@ struct TileComponent : public grk_rect_u32 {
 	TileComponentBuffer<int32_t> *buf;
     bool   whole_tile_decoding;
 	bool m_is_encoder;
-	sparse_array *m_sa;
+	SparseBuffer *m_sa;
 
 private:
 	TileComponentCodingParams *m_tccp;
