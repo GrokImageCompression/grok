@@ -62,40 +62,38 @@ int main()
     SparseBuffer* sa = nullptr;
 
     try {
-    	sa = new SparseBuffer(0, 1, 1, 1);
+    	sa = new SparseBuffer(0, 2, 2, 2);
     } catch (std::exception& ex){
     	sa = nullptr;
     }
     assert(sa == NULL);
 
    try {
-    	sa = new SparseBuffer(1, 0, 1, 0);
+    	sa = new SparseBuffer(2, 0, 2, 0);
     } catch (std::exception& ex){
     	sa = nullptr;
     }
     assert(sa == NULL);
 
-
-
     try {
-     	sa = new SparseBuffer(1, 1, 0, 1);
+     	sa = new SparseBuffer(2, 2, 0, 2);
      } catch (std::exception& ex){
      	sa = nullptr;
      }
      assert(sa == NULL);
 
      try {
-      	sa = new SparseBuffer(1, 1, 1, 0);
+      	sa = new SparseBuffer(2, 2, 2, 0);
       } catch (std::exception& ex){
       	sa = nullptr;
       }
       assert(sa == NULL);
 
 
-    sa = new SparseBuffer(99, 101, 15, 17);
+    sa = new SparseBuffer(99, 101, 5, 5);
     delete sa;
 
-    sa = new SparseBuffer(99, 101, 15, 17);
+    sa = new SparseBuffer(99, 101, 5, 5);
     ret = sa->read( 0, 0, 0, 1, buffer, 1, 1, false);
     assert(!ret);
     ret = sa->read( 0, 0, 1, 0, buffer, 1, 1, false);
@@ -108,21 +106,9 @@ int main()
     assert(!ret);
     ret = sa->read( 0, 1, 1, 0, buffer, 1, 1, false);
     assert(!ret);
-    ret = sa->read( 99, 101, 99, 101, buffer, 1, 1,
+    ret = sa->read( 99, 101, 32, 32, buffer, 1, 1,
                                       false);
     assert(!ret);
-
-    buffer[0] = 1;
-    ret = sa->read(0, 0, 1, 1, buffer, 1, 1, false);
-    assert(ret);
-    assert(buffer[0] == 0);
-
-    memset(buffer, 0xFF, sizeof(buffer));
-    ret = sa->read(0, 0, 99, 101, buffer, 1, 99, false);
-    assert(ret);
-    for (i = 0; i < 99 * 101; i++) {
-        assert(buffer[i] == 0);
-    }
 
     buffer[0] = 1;
     ret = sa->alloc(4, 5, 4 + 1, 5 + 1);
@@ -187,13 +173,8 @@ int main()
     delete sa;
 
 
-    sa = new SparseBuffer(99, 101, 15, 17);
+    sa = new SparseBuffer(99, 101, 5, 5);
     memset(buffer, 0xFF, sizeof(buffer));
-    ret = sa->read( 0, 0, 2, 1, buffer, 2, 4, false);
-    assert(ret);
-    assert(buffer[0] == 0);
-    assert(buffer[1] == -1);
-    assert(buffer[2] == 0);
 
     buffer[0] = 1;
     buffer[2] = 3;

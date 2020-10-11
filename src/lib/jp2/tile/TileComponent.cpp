@@ -460,7 +460,7 @@ void TileComponent::alloc_SparseBuffer(uint32_t numres){
     auto tr_max = &(resolutions[numres - 1]);
 	uint32_t w = (uint32_t)(tr_max->x1 - tr_max->x0);
 	uint32_t h = (uint32_t)(tr_max->y1 - tr_max->y0);
-	auto sa = new SparseBuffer(w, h, min<uint32_t>(w, 64), min<uint32_t>(h, 64));
+	auto sa = new SparseBuffer(w, h, 6, 6);
     for (uint32_t resno = 0; resno < numres; ++resno) {
         auto res = &resolutions[resno];
 

@@ -201,8 +201,11 @@ private:
 
 	uint32_t width;
     uint32_t height;
+    uint32_t log2_block_width;
+    uint32_t log2_block_height;
     uint32_t block_width;
     uint32_t block_height;
+    uint32_t block_area;
     uint32_t block_count_hor;
     uint32_t block_count_ver;
     int32_t** data_blocks;

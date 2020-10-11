@@ -60,22 +60,25 @@ namespace grk {
 
 SparseBuffer::SparseBuffer(uint32_t width,
 							uint32_t height,
-							uint32_t block_width,
-							uint32_t block_height) :
+							uint32_t log2_bw,
+							uint32_t log2_bh) :
 									width(width),
 									height(height),
-									block_width(block_width),
-									block_height(block_height)
+									log2_block_width(log2_bw),
+									log2_block_height(log2_bh),
+									block_width(1<<log2_bw),
+									block_height(1<<log2_bh),
+									block_area(block_width*block_height)
 {
-    if (width == 0 || height == 0 || block_width == 0 || block_height == 0)
+    if (!width  || !height  || !log2_block_width || !log2_block_height)
     	throw std::runtime_error("invalid region for sparse array");
     block_count_hor = ceildiv<uint32_t>(width, block_width);
     block_count_ver = ceildiv<uint32_t>(height, block_height);
-    data_blocks = (int32_t**) grk_calloc((uint64_t)block_count_hor * block_count_ver,sizeof(int32_t*));
-    if (data_blocks == NULL) {
-    	GRK_ERROR("Out of memory");
-    	throw new std::exception();
-    }
+    auto block_count = (uint64_t)block_count_hor * block_count_ver;
+    data_blocks = new int32_t*[block_count];
+    for (uint64_t i = 0; i < block_count; ++i)
+    	data_blocks[i] = nullptr;
+
 }
 
 SparseBuffer::~SparseBuffer()
@@ -94,30 +97,28 @@ bool SparseBuffer::is_region_valid(
     return !(x0 >= width || x1 <= x0 || x1 > width ||
              y0 >= height || y1 <= y0 || y1 > height);
 }
-bool SparseBuffer::alloc(             uint32_t x0,
-                                      uint32_t y0,
-                                      uint32_t x1,
-                                      uint32_t y1){
+bool SparseBuffer::alloc( uint32_t x0,
+						  uint32_t y0,
+						  uint32_t x1,
+						  uint32_t y1){
     if (!SparseBuffer::is_region_valid(x0, y0, x1, y1))
         return true;
 
     uint32_t y_incr = 0;
-    uint32_t block_y = y0 / block_height;
+    uint32_t block_y = y0 >> log2_block_height;
     for (uint32_t y = y0; y < y1; block_y ++, y += y_incr) {
-        y_incr = (y == y0) ? block_height - (y0 % block_height) :
-                 block_height;
+        y_incr = (y == y0) ? block_height - (y0 & (block_height-1)) : block_height;
         y_incr = min<uint32_t>(y_incr, y1 - y);
-        uint32_t block_x = x0 / block_width;
+        uint32_t block_x = x0 >>  log2_block_width;
         uint32_t x_incr = 0;
         for (uint32_t x = x0; x < x1; block_x ++, x += x_incr) {
-            x_incr = (x == x0) ? block_width - (x0 % block_width) : block_width;
+            x_incr = (x == x0) ? block_width - (x0 & (block_width-1)) : block_width;
             x_incr = min<uint32_t>(x_incr, x1 - x);
             auto src_block = data_blocks[(uint64_t)block_y * block_count_hor + block_x];
-			if (src_block == NULL) {
-				src_block = (int32_t*) grk_calloc((uint64_t)block_width * block_height,
-													 sizeof(int32_t));
+			if (!src_block) {
+				src_block = (int32_t*) grk_calloc(block_area, sizeof(int32_t));
 				if (!src_block) {
-					GRK_ERROR("Out of memory");
+					GRK_ERROR("SparseBuffer: Out of memory");
 					return false;
 				}
 				data_blocks[(uint64_t)block_y * block_count_hor + block_x] = src_block;
@@ -140,137 +141,119 @@ bool SparseBuffer::read_or_write(uint32_t x0,
     if (!is_region_valid(x0, y0, x1, y1))
         return forgiving;
 
-    const uint64_t line_stride = buf_line_stride;
-    const uint64_t col_stride = buf_col_stride;
-    uint32_t block_y = y0 / block_height;
+    const uint64_t line_stride 	= buf_line_stride;
+    const uint64_t col_stride 	= buf_col_stride;
+    uint32_t block_y 			= y0 >>  log2_block_height;
     uint32_t y_incr = 0;
     for (uint32_t y = y0; y < y1; block_y ++, y += y_incr) {
-        y_incr = (y == y0) ? block_height - (y0 % block_height) :
-                 block_height;
+        y_incr = (y == y0) ? block_height - (y0 & (block_height-1)) : block_height;
         uint32_t block_y_offset = block_height - y_incr;
         y_incr = min<uint32_t>(y_incr, y1 - y);
-        uint32_t block_x = x0 / block_width;
+        uint32_t block_x = x0 >> log2_block_width;
         uint32_t x_incr = 0;
         for (uint32_t x = x0; x < x1; block_x ++, x += x_incr) {
-            x_incr = (x == x0) ? block_width - (x0 % block_width) : block_width;
+            x_incr = (x == x0) ? block_width - (x0 & (block_width-1) ) : block_width;
             uint32_t block_x_offset = block_width - x_incr;
             x_incr = min<uint32_t>(x_incr, x1 - x);
             auto src_block = data_blocks[(uint64_t)block_y * block_count_hor + block_x];
             if (is_read_op) {
-                if (src_block == NULL) { // if block is NULL, then zero out destination
-                    if (col_stride == 1) {
-                        auto dest_ptr = buf + (y - y0) * line_stride +
-                                              (x - x0) * col_stride;
-                        for (uint32_t j = 0; j < y_incr; j++) {
-                            memset(dest_ptr, 0, sizeof(int32_t) * x_incr);
-                            dest_ptr += line_stride;
-                        }
-                    } else {
-                        auto dest_ptr = buf + (y - y0) * line_stride +
-                                              (x - x0) * col_stride;
-                        for (uint32_t j = 0; j < y_incr; j++) {
-                            for (uint32_t k = 0; k < x_incr; k++)
-                                dest_ptr[k * col_stride] = 0;
-                            dest_ptr += line_stride;
-                        }
-                    }
-                } else {
-                    const int32_t* GRK_RESTRICT src_ptr = src_block + (uint64_t)block_y_offset *
-                                                            block_width + block_x_offset;
-                    if (col_stride == 1) {
-                        int32_t* GRK_RESTRICT dest_ptr = buf + (y - y0) * line_stride
-                                                           +
-                                                           (x - x0) * col_stride;
-                        if (x_incr == 4) {
-                            /* Same code as general branch, but the compiler */
-                            /* can have an efficient memcpy() */
-                            (void)(x_incr); /* trick to silent cppcheck duplicateBranch warning */
-                            for (uint32_t j = 0; j < y_incr; j++) {
-                                memcpy(dest_ptr, src_ptr, sizeof(int32_t) * x_incr);
-                                dest_ptr += line_stride;
-                                src_ptr  += block_width;
-                            }
-                        } else {
-                            for (uint32_t j = 0; j < y_incr; j++) {
-                                memcpy(dest_ptr, src_ptr, sizeof(int32_t) * x_incr);
-                                dest_ptr += line_stride;
-                                src_ptr  += block_width;
-                            }
-                        }
-                    } else {
-                        int32_t* GRK_RESTRICT dest_ptr = buf + (y - y0) * (size_t)line_stride
-                                                           +
-                                                           (x - x0) * col_stride;
-                        if (x_incr == 1) {
-                            for (uint32_t j = 0; j < y_incr; j++) {
-                                *dest_ptr = *src_ptr;
-                                dest_ptr += line_stride;
-                                src_ptr  += block_width;
-                            }
-                        } else if (y_incr == 1 && col_stride == 2) {
-                            uint32_t k;
-                            for (k = 0; k < (x_incr & ~3U); k += 4) {
-                                dest_ptr[k * col_stride] = src_ptr[k];
-                                dest_ptr[(k + 1) * col_stride] = src_ptr[k + 1];
-                                dest_ptr[(k + 2) * col_stride] = src_ptr[k + 2];
-                                dest_ptr[(k + 3) * col_stride] = src_ptr[k + 3];
-                            }
-                            for (; k < x_incr; k++)
-                                dest_ptr[k * col_stride] = src_ptr[k];
-                        } else if (x_incr >= 8 && col_stride == 8) {
-                            for (uint32_t j = 0; j < y_incr; j++) {
-                                uint32_t k;
-                                for (k = 0; k < (x_incr & ~3U); k += 4) {
-                                    dest_ptr[k * col_stride] = src_ptr[k];
-                                    dest_ptr[(k + 1) * col_stride] = src_ptr[k + 1];
-                                    dest_ptr[(k + 2) * col_stride] = src_ptr[k + 2];
-                                    dest_ptr[(k + 3) * col_stride] = src_ptr[k + 3];
-                                }
-                                for (; k < x_incr; k++)
-                                    dest_ptr[k * col_stride] = src_ptr[k];
-                                dest_ptr += line_stride;
-                                src_ptr  += block_width;
-                            }
-                        } else {
-                            /* General case */
-                            for (uint32_t j = 0; j < y_incr; j++) {
-                                for (uint32_t k = 0; k < x_incr; k++)
-                                    dest_ptr[k * col_stride] = src_ptr[k];
-                                dest_ptr += line_stride;
-                                src_ptr  += block_width;
-                            }
-                        }
-                    }
-                }
+            	assert(src_block);
+				const int32_t* GRK_RESTRICT src_ptr =
+						src_block + ((uint64_t)block_y_offset << log2_block_width) + block_x_offset;
+				if (col_stride == 1) {
+					int32_t* GRK_RESTRICT dest_ptr = buf + (y - y0) * line_stride +
+													   (x - x0) * col_stride;
+					if (x_incr == 4) {
+						/* Same code as general branch, but the compiler */
+						/* can have an efficient memcpy() */
+						(void)(x_incr); /* trick to silent cppcheck duplicateBranch warning */
+						for (uint32_t j = 0; j < y_incr; j++) {
+							memcpy(dest_ptr, src_ptr, x_incr << 2); // << 2 == * sizeof(int32_t)
+							dest_ptr += line_stride;
+							src_ptr  += block_width;
+						}
+					} else {
+						for (uint32_t j = 0; j < y_incr; j++) {
+							memcpy(dest_ptr, src_ptr, x_incr << 2);
+							dest_ptr += line_stride;
+							src_ptr  += block_width;
+						}
+					}
+				} else {
+					int32_t* GRK_RESTRICT dest_ptr = buf +	(y - y0) * (size_t)line_stride +
+													   (x - x0) * col_stride;
+					if (x_incr == 1) {
+						for (uint32_t j = 0; j < y_incr; j++) {
+							*dest_ptr = *src_ptr;
+							dest_ptr += line_stride;
+							src_ptr  += block_width;
+						}
+					} else if (y_incr == 1 && col_stride == 2) {
+						uint32_t k;
+						for (k = 0; k < (x_incr & ~3U); k += 4) {
+							dest_ptr[k << 1] = src_ptr[k];
+							dest_ptr[(k + 1) << 1] = src_ptr[k + 1];
+							dest_ptr[(k + 2) << 1] = src_ptr[k + 2];
+							dest_ptr[(k + 3) << 1] = src_ptr[k + 3];
+						}
+						for (; k < x_incr; k++)
+							dest_ptr[k << 1] = src_ptr[k];
+					} else if (x_incr >= 8 && col_stride == 8) {
+						for (uint32_t j = 0; j < y_incr; j++) {
+							uint32_t k;
+							for (k = 0; k < (x_incr & ~3U); k += 4) {
+								dest_ptr[k << 3] = src_ptr[k];
+								dest_ptr[(k + 1) << 3] = src_ptr[k + 1];
+								dest_ptr[(k + 2) << 3] = src_ptr[k + 2];
+								dest_ptr[(k + 3) << 3] = src_ptr[k + 3];
+							}
+							uint64_t ind = k << 3;
+							for (; k < x_incr; k++) {
+								dest_ptr[ind] = src_ptr[k];
+								ind += col_stride;
+							}
+							dest_ptr += line_stride;
+							src_ptr  += block_width;
+						}
+					} else {
+						/* General case */
+						for (uint32_t j = 0; j < y_incr; j++) {
+							uint64_t ind = 0;
+							for (uint32_t k = 0; k < x_incr; k++){
+								dest_ptr[ind] = src_ptr[k];
+								ind += col_stride;
+							}
+							dest_ptr += line_stride;
+							src_ptr  += block_width;
+						}
+					}
+				}
+
             } else {
             	//all blocks should be allocated first before read/write is called
                 assert(src_block);
                 if (col_stride == 1) {
-                    int32_t* GRK_RESTRICT dest_ptr = src_block + (uint64_t)block_y_offset *
-                                                       	   	   	   block_width + block_x_offset;
-                    const int32_t* GRK_RESTRICT src_ptr = buf + (y - y0) *
-                                                            line_stride + (x - x0) * col_stride;
+                    int32_t* GRK_RESTRICT dest_ptr = src_block + ((uint64_t)block_y_offset << log2_block_width) + block_x_offset;
+                    const int32_t* GRK_RESTRICT src_ptr = buf + (y - y0) * line_stride + (x - x0) * col_stride;
                     if (x_incr == 4) {
                         /* Same code as general branch, but the compiler */
                         /* can have an efficient memcpy() */
                         (void)(x_incr); /* trick to silent cppcheck duplicateBranch warning */
                         for (uint32_t j = 0; j < y_incr; j++) {
-                            memcpy(dest_ptr, src_ptr, sizeof(int32_t) * x_incr);
+                            memcpy(dest_ptr, src_ptr, x_incr << 2);
                             dest_ptr += block_width;
                             src_ptr  += line_stride;
                         }
                     } else {
                         for (uint32_t j = 0; j < y_incr; j++) {
-                            memcpy(dest_ptr, src_ptr, sizeof(int32_t) * x_incr);
+                            memcpy(dest_ptr, src_ptr, x_incr << 2);
                             dest_ptr += block_width;
                             src_ptr  += line_stride;
                         }
                     }
                 } else {
-                    int32_t* GRK_RESTRICT dest_ptr = src_block + (uint64_t)block_y_offset *
-                                                                  block_width + block_x_offset;
-                    const int32_t* GRK_RESTRICT src_ptr = buf + (y - y0) *
-                                                            line_stride + (x - x0) * col_stride;
+                    int32_t* GRK_RESTRICT dest_ptr = src_block + ((uint64_t)block_y_offset << log2_block_width) + block_x_offset;
+                    const int32_t* GRK_RESTRICT src_ptr = buf + (y - y0) * line_stride + (x - x0) * col_stride;
                     if (x_incr == 1) {
                         for (uint32_t j = 0; j < y_incr; j++) {
                             *dest_ptr = *src_ptr;
@@ -281,21 +264,24 @@ bool SparseBuffer::read_or_write(uint32_t x0,
                         for (uint32_t j = 0; j < y_incr; j++) {
                             uint32_t k;
                             for (k = 0; k < (x_incr & ~3U); k += 4) {
-                                dest_ptr[k] = src_ptr[k * col_stride];
-                                dest_ptr[k + 1] = src_ptr[(k + 1) * col_stride];
-                                dest_ptr[k + 2] = src_ptr[(k + 2) * col_stride];
-                                dest_ptr[k + 3] = src_ptr[(k + 3) * col_stride];
+                                dest_ptr[k] = src_ptr[k << 3];
+                                dest_ptr[k + 1] = src_ptr[(k + 1) << 3];
+                                dest_ptr[k + 2] = src_ptr[(k + 2) << 3];
+                                dest_ptr[k + 3] = src_ptr[(k + 3) << 3];
                             }
                             for (; k < x_incr; k++)
-                                dest_ptr[k] = src_ptr[k * col_stride];
+                                dest_ptr[k] = src_ptr[k << 3];
                             src_ptr  += line_stride;
                             dest_ptr += block_width;
                         }
                     } else {
                         /* General case */
                         for (uint32_t j = 0; j < y_incr; j++) {
-                            for (uint32_t k = 0; k < x_incr; k++)
-                                dest_ptr[k] = src_ptr[k * col_stride];
+							uint64_t ind = 0;
+                            for (uint32_t k = 0; k < x_incr; k++) {
+                            	dest_ptr[k] = src_ptr[ind];
+                            	ind += col_stride;
+                            }
                             src_ptr  += line_stride;
                             dest_ptr += block_width;
                         }

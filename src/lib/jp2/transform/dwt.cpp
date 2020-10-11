@@ -1452,7 +1452,9 @@ static void interleave_partial_h_53(dwt_data<int32_t> *dwt,
 						win_l_x1,
 						sa_line + 1,
 						dest + cas + 2 * win_l_x0,
-						2, 0, true);
+						2,
+						0,
+						true);
     assert(ret);
 
 	uint32_t sn = dwt->sn;
@@ -1463,7 +1465,9 @@ static void interleave_partial_h_53(dwt_data<int32_t> *dwt,
 					sn + win_h_x1,
 					sa_line + 1,
 					dest + 1 - cas + 2 * win_h_x0,
-					2, 0, true);
+					2,
+					0,
+					true);
     assert(ret);
     GRK_UNUSED(ret);
 }
@@ -1480,7 +1484,9 @@ static void interleave_partial_v_53(dwt_data<int32_t> *vert,
     bool ret = sa->read(sa_col, win_l_y0,
 					   sa_col + nb_cols, win_l_y1,
 					   dest + cas * 4 + 2 * 4 * win_l_y0,
-					   1, 2 * 4, true);
+					   1,
+					   2 * 4,
+					   true);
     assert(ret);
 
 	uint32_t sn = vert->sn;
@@ -1489,7 +1495,9 @@ static void interleave_partial_v_53(dwt_data<int32_t> *vert,
 	ret = sa->read( sa_col, sn + win_h_y0,
 					  sa_col + nb_cols, sn + win_h_y1,
 					  dest + (1 - cas) * 4 + 2 * 4 * win_h_y0,
-					  1, 2 * 4, true);
+					  1,
+					  2 * 4,
+					  true);
     assert(ret);
     GRK_UNUSED(ret);
 }
@@ -1743,7 +1751,9 @@ static void interleave_partial_h_97(dwt_data<vec4f>* dwt,
 						  sa_line + i + 1,
 						  /* Nasty cast from float* to int32* */
 						  (int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_x0) + i,
-						  8, 0, true);
+						  8,
+						  0,
+						  true);
         assert(ret);
         ret = sa->read(dwt->sn + dwt->win_h_x0,
 						  sa_line + i,
@@ -1751,7 +1761,9 @@ static void interleave_partial_h_97(dwt_data<vec4f>* dwt,
 						  sa_line + i + 1,
 						  /* Nasty cast from float* to int32* */
 						  (int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_x0) + i,
-						  8, 0, true);
+						  8,
+						  0,
+						  true);
         assert(ret);
         GRK_UNUSED(ret);
     }
@@ -1766,14 +1778,18 @@ static void interleave_partial_v_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
     					dwt->win_l_x0,
 						sa_col + nb_elts_read, dwt->win_l_x1,
 						(int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_x0),
-						1, 8, true);
+						1,
+						8,
+						true);
     assert(ret);
     ret = sa->read(sa_col,
     				dwt->sn + dwt->win_h_x0,
 					sa_col + nb_elts_read,
 					dwt->sn + dwt->win_h_x1,
 					(int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_x0),
-					1, 8, true);
+					1,
+					8,
+					true);
     assert(ret);
     GRK_UNUSED(ret);
 }
