@@ -146,7 +146,6 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/tile/TileComponent.h
   ${CMAKE_CURRENT_SOURCE_DIR}/tile/TileProcessor.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/tile/TileProcessor.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/tile/SparseBuffer.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/tile/SparseBuffer.h
 
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/Wavelet.h

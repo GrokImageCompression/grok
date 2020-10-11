@@ -59,138 +59,153 @@ int main()
     uint32_t i, j, w, h;
     int32_t buffer[ 99 * 101 ];
     bool ret;
-    SparseBuffer* sa = nullptr;
 
-    try {
-    	sa = new SparseBuffer(0, 2, 2, 2);
-    } catch (std::exception& ex){
-    	sa = nullptr;
-    }
-    assert(sa == NULL);
+    {
+		SparseBuffer* sa = nullptr;
 
-   try {
-    	sa = new SparseBuffer(2, 0, 2, 0);
-    } catch (std::exception& ex){
-    	sa = nullptr;
-    }
-    assert(sa == NULL);
-
-    try {
-     	sa = new SparseBuffer(2, 2, 0, 2);
-     } catch (std::exception& ex){
-     	sa = nullptr;
-     }
-     assert(sa == NULL);
-
-     try {
-      	sa = new SparseBuffer(2, 2, 2, 0);
-      } catch (std::exception& ex){
-      	sa = nullptr;
-      }
-      assert(sa == NULL);
-
-
-    sa = new SparseBuffer(99, 101, 5, 5);
-    delete sa;
-
-    sa = new SparseBuffer(99, 101, 5, 5);
-    ret = sa->read( 0, 0, 0, 1, buffer, 1, 1, false);
-    assert(!ret);
-    ret = sa->read( 0, 0, 1, 0, buffer, 1, 1, false);
-    assert(!ret);
-    ret = sa->read( 0, 0, 100, 1, buffer, 1, 1, false);
-    assert(!ret);
-    ret = sa->read( 0, 0, 1, 102, buffer, 1, 1, false);
-    assert(!ret);
-    ret = sa->read( 1, 0, 0, 1, buffer, 1, 1, false);
-    assert(!ret);
-    ret = sa->read( 0, 1, 1, 0, buffer, 1, 1, false);
-    assert(!ret);
-    ret = sa->read( 99, 101, 32, 32, buffer, 1, 1,
-                                      false);
-    assert(!ret);
-
-    buffer[0] = 1;
-    ret = sa->alloc(4, 5, 4 + 1, 5 + 1);
-    assert(ret);
-
-    ret = sa->write(4, 5, 4 + 1, 5 + 1, buffer, 1, 1,
-                                       false);
-    assert(ret);
-
-    buffer[0] = 2;
-    ret = sa->write(4, 5, 4 + 1, 5 + 1, buffer, 1, 1,
-                                       false);
-    assert(ret);
-
-    buffer[0] = 0;
-    buffer[1] = 0xFF;
-    ret = sa->read(4, 5, 4 + 1, 5 + 1, buffer, 1, 1,
-                                      false);
-    assert(ret);
-    assert(buffer[0] == 2);
-    assert(buffer[1] == 0xFF);
-
-    buffer[0] = 0xFF;
-    buffer[1] = 0xFF;
-    buffer[2] = 0xFF;
-    ret = sa->read(4, 5, 4 + 1, 5 + 2, buffer, 0, 1,
-                                      false);
-    assert(ret);
-    assert(buffer[0] == 2);
-    assert(buffer[1] == 0);
-    assert(buffer[2] == 0xFF);
-
-    buffer[0] = 3;
-    ret = sa->write(4, 5, 4 + 1, 5 + 1, buffer, 0, 1,
-                                       false);
-    assert(ret);
-
-    buffer[0] = 0;
-    buffer[1] = 0xFF;
-    ret = sa->read(4, 5, 4 + 1, 5 + 1, buffer, 1, 1,
-                                      false);
-    assert(ret);
-    assert(buffer[0] == 3);
-    assert(buffer[1] == 0xFF);
-
-    w = 15 + 1;
-    h = 17 + 1;
-    memset(buffer, 0xFF, sizeof(buffer));
-    ret = sa->read(2, 1, 2 + w, 1 + h, buffer, 1, w,
-                                      false);
-    assert(ret);
-    for (j = 0; j < h; j++) {
-        for (i = 0; i < w; i++) {
-            if (i == 4 - 2 && j == 5 - 1) {
-                assert(buffer[ j * w + i ] == 3);
-            } else {
-                assert(buffer[ j * w + i ] == 0);
-            }
-        }
+		try {
+			sa = new SparseBuffer(0, 2, 2, 2);
+		} catch (std::exception& ex){
+		}
+		assert(sa == NULL);
     }
 
-    delete sa;
+    {
+        SparseBuffer* sa = nullptr;
+	   try {
+			sa = new SparseBuffer(2, 0, 2, 0);
+		} catch (std::exception& ex){
+		}
+		assert(sa == NULL);
+    }
 
+    {
+        SparseBuffer* sa = nullptr;
+		try {
+			sa = new SparseBuffer(2, 2, 0, 2);
+		 } catch (std::exception& ex){
+		 }
+		 assert(sa == NULL);
 
-    sa = new SparseBuffer(99, 101, 5, 5);
-    memset(buffer, 0xFF, sizeof(buffer));
+    }
 
-    buffer[0] = 1;
-    buffer[2] = 3;
-    ret = sa->alloc(0,0,2,1);
-    assert(ret);
-    ret = sa->write(0, 0, 2, 1, buffer, 2, 4, false);
-    assert(ret);
+    {
+        SparseBuffer* sa = nullptr;
+		 try {
+			sa = new SparseBuffer(2, 2, 2, 0);
+		  } catch (std::exception& ex){
+		  }
+		  assert(sa == NULL);
+    }
 
-    memset(buffer, 0xFF, sizeof(buffer));
-    ret = sa->read(0, 0, 2, 1, buffer, 2, 4, false);
-    assert(ret);
-    assert(buffer[0] == 1);
-    assert(buffer[1] == -1);
-    assert(buffer[2] == 3);
+    {
+		auto sa = new SparseBuffer(99, 101, 5, 5);
+		delete sa;
+    }
 
-    delete sa;
+    {
+		auto sa = new SparseBuffer(99, 101, 5, 5);
+		ret = sa->read( 0, 0, 0, 1, buffer, 1, 1, false);
+		assert(!ret);
+		ret = sa->read( 0, 0, 1, 0, buffer, 1, 1, false);
+		assert(!ret);
+		ret = sa->read( 0, 0, 100, 1, buffer, 1, 1, false);
+		assert(!ret);
+		ret = sa->read( 0, 0, 1, 102, buffer, 1, 1, false);
+		assert(!ret);
+		ret = sa->read( 1, 0, 0, 1, buffer, 1, 1, false);
+		assert(!ret);
+		ret = sa->read( 0, 1, 1, 0, buffer, 1, 1, false);
+		assert(!ret);
+		ret = sa->read( 99, 101, 32, 32, buffer, 1, 1,
+										  false);
+		assert(!ret);
+
+		buffer[0] = 1;
+		ret = sa->alloc(4, 5, 4 + 1, 5 + 1);
+		assert(ret);
+
+		ret = sa->write(4, 5, 4 + 1, 5 + 1, buffer, 1, 1,
+										   false);
+		assert(ret);
+
+		buffer[0] = 2;
+		ret = sa->write(4, 5, 4 + 1, 5 + 1, buffer, 1, 1,
+										   false);
+		assert(ret);
+
+		buffer[0] = 0;
+		buffer[1] = 0xFF;
+		ret = sa->read(4, 5, 4 + 1, 5 + 1, buffer, 1, 1,
+										  false);
+		assert(ret);
+		assert(buffer[0] == 2);
+		assert(buffer[1] == 0xFF);
+
+		buffer[0] = 0xFF;
+		buffer[1] = 0xFF;
+		buffer[2] = 0xFF;
+		ret = sa->read(4, 5, 4 + 1, 5 + 2, buffer, 0, 1,
+										  false);
+		assert(ret);
+		assert(buffer[0] == 2);
+		assert(buffer[1] == 0);
+		assert(buffer[2] == 0xFF);
+
+		buffer[0] = 3;
+		ret = sa->write(4, 5, 4 + 1, 5 + 1, buffer, 0, 1,
+										   false);
+		assert(ret);
+
+		buffer[0] = 0;
+		buffer[1] = 0xFF;
+		ret = sa->read(4, 5, 4 + 1, 5 + 1, buffer, 1, 1,
+										  false);
+		assert(ret);
+		assert(buffer[0] == 3);
+		assert(buffer[1] == 0xFF);
+
+		w = 15 + 1;
+		h = 17 + 1;
+		memset(buffer, 0xFF, sizeof(buffer));
+		ret = sa->read(2, 1, 2 + w, 1 + h, buffer, 1, w,
+										  false);
+		assert(ret);
+		for (j = 0; j < h; j++) {
+			for (i = 0; i < w; i++) {
+				if (i == 4 - 2 && j == 5 - 1) {
+					assert(buffer[ j * w + i ] == 3);
+				} else {
+					assert(buffer[ j * w + i ] == 0);
+				}
+			}
+		}
+
+		delete sa;
+
+    }
+
+    {
+		auto sa = new SparseBuffer(99, 101, 5, 5);
+		memset(buffer, 0xFF, sizeof(buffer));
+
+		buffer[0] = 1;
+		buffer[2] = 3;
+		ret = sa->alloc(0,0,2,1);
+		assert(ret);
+		ret = sa->write(0, 0, 2, 1, buffer, 2, 4, false);
+		assert(ret);
+
+		memset(buffer, 0xFF, sizeof(buffer));
+		ret = sa->read(0, 0, 2, 1, buffer, 2, 4, false);
+		assert(ret);
+		assert(buffer[0] == 1);
+		assert(buffer[1] == -1);
+		assert(buffer[2] == 3);
+
+		delete sa;
+
+    }
 
     return 0;
 }
