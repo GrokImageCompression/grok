@@ -62,7 +62,7 @@ If it is too big, and pixels set are far from each other, too much memory will
 be used. If blocks are too small, the book-keeping costs of blocks will rise.
 */
 
-/** @defgroup SparseBuffer SPARSE ARRAYS - Sparse arrays */
+/** @defgroup SparseBuffer SPARSE BUFFER - Sparse buffers */
 /*@{*/
 
 #include <cstdint>
@@ -90,13 +90,13 @@ public:
 	 * @return true in case of success.
 	 */
 	virtual bool read(uint32_t x0,
-							 uint32_t y0,
-							 uint32_t x1,
-							 uint32_t y1,
-							 int32_t* dest,
-							 const uint32_t dest_col_stride,
-							 const uint32_t dest_line_stride,
-							 bool forgiving) = 0;
+					 uint32_t y0,
+					 uint32_t x1,
+					 uint32_t y1,
+					 int32_t* dest,
+					 const uint32_t dest_col_stride,
+					 const uint32_t dest_line_stride,
+					 bool forgiving) = 0;
 
 	/** Read the content of a rectangular region of the sparse array into a
 	 * user buffer.
@@ -111,10 +111,10 @@ public:
 	 * @return true in case of success.
 	 */
 	virtual bool read(grk_rect_u32 region,
-							 int32_t* dest,
-							 const uint32_t dest_col_stride,
-							 const uint32_t dest_line_stride,
-							 bool forgiving) = 0;
+						 int32_t* dest,
+						 const uint32_t dest_col_stride,
+						 const uint32_t dest_line_stride,
+						 bool forgiving) = 0;
 
 
 	/** Write the content of a rectangular region into the sparse array from a
@@ -154,9 +154,9 @@ public:
 	 * @return true in case of success.
 	 */
 	virtual bool alloc( uint32_t x0,
-							  uint32_t y0,
-							  uint32_t x1,
-							  uint32_t y1) = 0;
+					  uint32_t y0,
+					  uint32_t x1,
+					  uint32_t y1) = 0;
 
 
 };
@@ -173,17 +173,17 @@ public:
 	 * @return a new sparse array instance, or NULL in case of failure.
 	 */
 	SparseBuffer(uint32_t w,uint32_t h) :
-										width(w),
-										height(h),
+										buffer_width(w),
+										buffer_height(h),
 										block_width(1<<LBW),
 										block_height(1<<LBH)
 	{
-	    if (!width  || !height  || !LBW || !LBH) {
+	    if (!buffer_width  || !buffer_height  || !LBW || !LBH) {
 	    	throw std::runtime_error("invalid region for sparse array");
 		}
-	    block_count_hor = ceildiv<uint32_t>(width, block_width);
-	    block_count_ver = ceildiv<uint32_t>(height, block_height);
-	    auto block_count = (uint64_t)block_count_hor * block_count_ver;
+	    grid_width = ceildiv<uint32_t>(buffer_width, block_width);
+	    grid_height = ceildiv<uint32_t>(buffer_height, block_height);
+	    auto block_count = (uint64_t)grid_width * grid_height;
 	    data_blocks = new int32_t*[block_count];
 	    for (uint64_t i = 0; i < block_count; ++i)
 	    	data_blocks[i] = nullptr;
@@ -195,18 +195,18 @@ public:
 	 */
 	~SparseBuffer()
 	{
-		for (uint64_t i = 0; i < (uint64_t)block_count_hor * block_count_ver; i++)
+		for (uint64_t i = 0; i < (uint64_t)grid_width * grid_height; i++)
 			grk_free(data_blocks[i]);
 		grk_free(data_blocks);
 	}
 	bool read(uint32_t x0,
-							 uint32_t y0,
-							 uint32_t x1,
-							 uint32_t y1,
-							 int32_t* dest,
-							 const uint32_t dest_col_stride,
-							 const uint32_t dest_line_stride,
-							 bool forgiving)
+			 uint32_t y0,
+			 uint32_t x1,
+			 uint32_t y1,
+			 int32_t* dest,
+			 const uint32_t dest_col_stride,
+			 const uint32_t dest_line_stride,
+			 bool forgiving)
 	{
 	    return read_or_write( x0, y0, x1, y1,
 							   dest,
@@ -217,10 +217,10 @@ public:
 	}
 
 	bool read(grk_rect_u32 region,
-							 int32_t* dest,
-							 const uint32_t dest_col_stride,
-							 const uint32_t dest_line_stride,
-							 bool forgiving)
+			 int32_t* dest,
+			 const uint32_t dest_col_stride,
+			 const uint32_t dest_line_stride,
+			 bool forgiving)
 	{
 		return read(region.x0,
 				region.y0,
@@ -233,13 +233,13 @@ public:
 	}
 
 	bool write(uint32_t x0,
-						  uint32_t y0,
-						  uint32_t x1,
-						  uint32_t y1,
-						  const int32_t* src,
-						  const uint32_t src_col_stride,
-						  const uint32_t src_line_stride,
-						  bool forgiving)
+			  uint32_t y0,
+			  uint32_t x1,
+			  uint32_t y1,
+			  const int32_t* src,
+			  const uint32_t src_col_stride,
+			  const uint32_t src_line_stride,
+			  bool forgiving)
 	{
 	    return read_or_write(x0, y0, x1, y1,
 	            (int32_t*)src,
@@ -250,9 +250,9 @@ public:
 	}
 
 	bool alloc( uint32_t x0,
-							  uint32_t y0,
-							  uint32_t x1,
-							  uint32_t y1){
+				  uint32_t y0,
+				  uint32_t x1,
+				  uint32_t y1){
 	    if (!SparseBuffer::is_region_valid(x0, y0, x1, y1))
 	        return true;
 
@@ -266,15 +266,18 @@ public:
 	        for (uint32_t x = x0; x < x1; block_x ++, x += x_incr) {
 	            x_incr = (x == x0) ? block_width - (x0 & (block_width-1)) : block_width;
 	            x_incr = min<uint32_t>(x_incr, x1 - x);
-	            auto src_block = data_blocks[(uint64_t)block_y * block_count_hor + block_x];
+	            auto src_block = data_blocks[(uint64_t)block_y * grid_width + block_x];
 				if (!src_block) {
 					const uint32_t block_area = block_width*block_height;
+					// note: we need to zero out each source block, in case
+					// some code blocks are missing from the compressed stream.
+					// In this case, zero is the best default value for the block.
 					src_block = (int32_t*) grk_calloc(block_area, sizeof(int32_t));
 					if (!src_block) {
 						GRK_ERROR("SparseBuffer: Out of memory");
 						return false;
 					}
-					data_blocks[(uint64_t)block_y * block_count_hor + block_x] = src_block;
+					data_blocks[(uint64_t)block_y * grid_width + block_x] = src_block;
 				}
 	        }
 	    }
@@ -291,23 +294,23 @@ private:
 	 * @param y1 bottom y coordinate (not included) of the region. Must be greater than y0.
 	 * @return true or false.
 	 */
-	bool is_region_valid(	uint32_t x0,
-							uint32_t y0,
-							uint32_t x1,
-							uint32_t y1){
-	    return !(x0 >= width || x1 <= x0 || x1 > width ||
-	             y0 >= height || y1 <= y0 || y1 > height);
+	bool is_region_valid(uint32_t x0,
+						uint32_t y0,
+						uint32_t x1,
+						uint32_t y1){
+	    return !(x0 >= buffer_width || x1 <= x0 || x1 > buffer_width ||
+	             y0 >= buffer_height || y1 <= y0 || y1 > buffer_height);
 	}
 
 	bool read_or_write(uint32_t x0,
-											uint32_t y0,
-											uint32_t x1,
-											uint32_t y1,
-											int32_t* buf,
-											const uint32_t buf_col_stride,
-											const uint32_t buf_line_stride,
-											bool forgiving,
-											bool is_read_op){
+						uint32_t y0,
+						uint32_t x1,
+						uint32_t y1,
+						int32_t* buf,
+						const uint32_t buf_col_stride,
+						const uint32_t buf_line_stride,
+						bool forgiving,
+						bool is_read_op){
 	    if (!is_region_valid(x0, y0, x1, y1))
 	        return forgiving;
 
@@ -325,14 +328,15 @@ private:
 	            x_incr = (x == x0) ? block_width - (x0 & (block_width-1) ) : block_width;
 	            uint32_t block_x_offset = block_width - x_incr;
 	            x_incr = min<uint32_t>(x_incr, x1 - x);
-	            auto src_block = data_blocks[(uint64_t)block_y * block_count_hor + block_x];
+	            auto src_block = data_blocks[(uint64_t)block_y * grid_width + block_x];
+            	//all blocks should be allocated first before read/write is called
+                assert(src_block);
 	            if (is_read_op) {
-	            	assert(src_block);
 					const int32_t* GRK_RESTRICT src_ptr =
 							src_block + ((uint64_t)block_y_offset << LBW) + block_x_offset;
+					int32_t* GRK_RESTRICT dest_ptr = buf + (y - y0) * line_stride +
+													   (x - x0) * col_stride;
 					if (col_stride == 1) {
-						int32_t* GRK_RESTRICT dest_ptr = buf + (y - y0) * line_stride +
-														   (x - x0) * col_stride;
 						if (x_incr == 4) {
 							/* Same code as general branch, but the compiler */
 							/* can have an efficient memcpy() */
@@ -350,8 +354,6 @@ private:
 							}
 						}
 					} else {
-						int32_t* GRK_RESTRICT dest_ptr = buf +	(y - y0) * (size_t)line_stride +
-														   (x - x0) * col_stride;
 						if (x_incr == 1) {
 							for (uint32_t j = 0; j < y_incr; j++) {
 								*dest_ptr = *src_ptr;
@@ -400,11 +402,9 @@ private:
 					}
 
 	            } else {
-	            	//all blocks should be allocated first before read/write is called
-	                assert(src_block);
+                    const int32_t* GRK_RESTRICT src_ptr = buf + (y - y0) * line_stride + (x - x0) * col_stride;
+                    int32_t* GRK_RESTRICT dest_ptr = src_block + ((uint64_t)block_y_offset << LBW) + block_x_offset;
 	                if (col_stride == 1) {
-	                    int32_t* GRK_RESTRICT dest_ptr = src_block + ((uint64_t)block_y_offset << LBW) + block_x_offset;
-	                    const int32_t* GRK_RESTRICT src_ptr = buf + (y - y0) * line_stride + (x - x0) * col_stride;
 	                    if (x_incr == 4) {
 	                        /* Same code as general branch, but the compiler */
 	                        /* can have an efficient memcpy() */
@@ -422,8 +422,6 @@ private:
 	                        }
 	                    }
 	                } else {
-	                    int32_t* GRK_RESTRICT dest_ptr = src_block + ((uint64_t)block_y_offset << LBW) + block_x_offset;
-	                    const int32_t* GRK_RESTRICT src_ptr = buf + (y - y0) * line_stride + (x - x0) * col_stride;
 	                    if (x_incr == 1) {
 	                        for (uint32_t j = 0; j < y_incr; j++) {
 	                            *dest_ptr = *src_ptr;
@@ -463,13 +461,14 @@ private:
 
 	    return true;
 	}
+private:
 
-	uint32_t width;
-    uint32_t height;
+	uint32_t buffer_width;
+    uint32_t buffer_height;
     const uint32_t block_width;
     const uint32_t block_height;
-    uint32_t block_count_hor;
-    uint32_t block_count_ver;
+    uint32_t grid_width;
+    uint32_t grid_height;
     int32_t** data_blocks;
 };
 
