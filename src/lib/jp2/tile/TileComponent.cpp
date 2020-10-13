@@ -323,34 +323,15 @@ bool TileComponent::is_subband_area_of_interest(uint32_t resno,
     uint32_t filter_margin = (m_tccp->qmfbid == 1) ? 2 : 3;
 
     /* Compute the intersection of the area of interest, expressed in tile component coordinates */
-    /* with the tile coordinates */
-	auto dims = buf->unreduced_bounds();
-	uint32_t tcx0 = (uint32_t)dims.x0;
-	uint32_t tcy0 = (uint32_t)dims.y0;
-	uint32_t tcx1 = (uint32_t)dims.x1;
-	uint32_t tcy1 = (uint32_t)dims.y1;
+    /* Map above tile-based coordinates to sub-band-based coordinates following equation B-15 of the standard */
 
-    /* Compute number of decomposition for this band. See table F-1 */
-    uint32_t num_decomps = (resno == 0) ?
-                    numresolutions - 1 :
-                    numresolutions - resno;
-    /* Map above tile-based coordinates to sub-band-based coordinates per */
-    /* equation B-15 of the standard */
-    uint32_t x0b = bandno & 1;
-    uint32_t y0b = bandno >> 1;
-    uint32_t tbx0 = (num_decomps == 0) ? tcx0 :
-                      (tcx0 <= (1U << (num_decomps - 1)) * x0b) ? 0 :
-                      ceildivpow2<uint32_t>(tcx0 - (1U << (num_decomps - 1)) * x0b, num_decomps);
-    uint32_t tby0 = (num_decomps == 0) ? tcy0 :
-                      (tcy0 <= (1U << (num_decomps - 1)) * y0b) ? 0 :
-                      ceildivpow2<uint32_t>(tcy0 - (1U << (num_decomps - 1)) * y0b, num_decomps);
-    uint32_t tbx1 = (num_decomps == 0) ? tcx1 :
-                      (tcx1 <= (1U << (num_decomps - 1)) * x0b) ? 0 :
-                      ceildivpow2<uint32_t>(tcx1 - (1U << (num_decomps - 1)) * x0b, num_decomps);
-    uint32_t tby1 = (num_decomps == 0) ? tcy1 :
-                      (tcy1 <= (1U << (num_decomps - 1)) * y0b) ? 0 :
-                      ceildivpow2<uint32_t>(tcy1 - (1U << (num_decomps - 1)) * y0b, num_decomps);
+    auto b = resolutions[resno].bands[bandno];
+    uint32_t tbx0 = b.x0;
+    uint32_t tby0 = b.y0;
+    uint32_t tbx1 = b.x1;
+    uint32_t tby1 = b.y1;
 
+    // take filter margin into account
     if (tbx0 < filter_margin)
         tbx0 = 0;
     else
@@ -359,7 +340,6 @@ bool TileComponent::is_subband_area_of_interest(uint32_t resno,
         tby0 = 0;
     else
         tby0 -= filter_margin;
-
     tbx1 = uint_adds(tbx1, filter_margin);
     tby1 = uint_adds(tby1, filter_margin);
 
