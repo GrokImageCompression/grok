@@ -203,13 +203,12 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 
 	auto tcp = m_tcp;
 
-	tile->numpix = 0;
 	uint32_t state = grk_plugin_get_debug_state();
 
 	RateInfo rateInfo;
 	for (uint32_t compno = 0; compno < tile->numcomps; compno++) {
 		auto tilec = &tile->comps[compno];
-		tilec->numpix = 0;
+		uint64_t numpix = 0;
 		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
 			auto res = &tilec->resolutions[resno];
 			for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
@@ -231,9 +230,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 							RateControl::convexHull(cblk->passes,
 									cblk->numPassesTotal);
 							rateInfo.synch(cblk);
-
-							tile->numpix += numPix;
-							tilec->numpix += numPix;
+							numpix += numPix;
 						}
 					} /* cbklno */
 				} /* precno */
@@ -243,7 +240,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 		if (!single_lossless) {
 			maxSE += (double) (((uint64_t) 1 << image->comps[compno].prec) - 1)
 					* (double) (((uint64_t) 1 << image->comps[compno].prec) - 1)
-					* (double) tilec->numpix;
+					* (double) numpix;
 		}
 	} /* compno */
 
@@ -344,14 +341,12 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 	double min_slope = DBL_MAX;
 	double max_slope = -1;
 
-	tile->numpix = 0;
 	uint32_t state = grk_plugin_get_debug_state();
-
 	bool single_lossless = make_single_lossless_layer();
 
 	for (compno = 0; compno < tile->numcomps; compno++) {
 		auto tilec = &tile->comps[compno];
-		tilec->numpix = 0;
+		uint64_t numpix = 0;
 		for (resno = 0; resno < tilec->numresolutions; resno++) {
 			auto res = &tilec->resolutions[resno];
 			for (bandno = 0; bandno < res->numbands; bandno++) {
@@ -393,8 +388,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 								if (rdslope > max_slope)
 									max_slope = rdslope;
 							} /* passno */
-							tile->numpix += numPix;
-							tilec->numpix += numPix;
+							numpix += numPix;
 						}
 
 					} /* cbklno */
@@ -405,7 +399,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 		if (!single_lossless)
 			maxSE += (double) (((uint64_t) 1 << image->comps[compno].prec) - 1)
 					* (double) (((uint64_t) 1 << image->comps[compno].prec) - 1)
-					* (double) tilec->numpix;
+					* (double) numpix;
 
 	} /* compno */
 	if (single_lossless){
@@ -1547,7 +1541,6 @@ bool TileProcessor::prepare_sod_decoding(CodeStream *codeStream) {
 
 grk_tile::grk_tile() : numcomps(0),
 			comps(nullptr),
-			numpix(0),
 			distotile(0),
 			packno(0)
 {

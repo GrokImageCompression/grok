@@ -29,7 +29,6 @@ TileComponent::TileComponent() :numresolutions(0),
 						#ifdef DEBUG_LOSSLESS_T2
 								round_trip_resolutions(nullptr),
 						#endif
-							   numpix(0),
 							   buf(nullptr),
 							   whole_tile_decoding(true),
 							   m_is_encoder(false),

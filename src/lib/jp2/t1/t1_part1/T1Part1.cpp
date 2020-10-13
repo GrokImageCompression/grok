@@ -23,9 +23,7 @@ using namespace std;
 namespace grk {
 namespace t1_part1{
 
-T1Part1::T1Part1(bool isEncoder, TileCodingParams *tcp, uint32_t maxCblkW,
-		uint32_t maxCblkH) : t1(nullptr){
-	(void) tcp;
+T1Part1::T1Part1(bool isEncoder, uint32_t maxCblkW,	uint32_t maxCblkH) : t1(nullptr){
 	t1 = t1_create(isEncoder);
 	if (!isEncoder) {
 	   t1->cblkdatabuffersize = maxCblkW * maxCblkH * (uint32_t)sizeof(int32_t);
@@ -136,8 +134,6 @@ double T1Part1::compress(encodeBlockInfo *block, grk_tile *tile,
 
 bool T1Part1::decompress(decodeBlockInfo *block) {
 	auto cblk = block->cblk;
-	bool ret;
-
   	if (cblk->seg_buffers.empty())
 		return true;
 
@@ -183,7 +179,7 @@ bool T1Part1::decompress(decodeBlockInfo *block) {
 	// and exp uses subtracted value
 	cblkexp.numbps = cblk->numbps - block->roishift;
 
-    ret =t1_decode_cblk(t1,
+    bool ret =t1_decode_cblk(t1,
     				&cblkexp,
     				block->bandno,
 					block->roishift,
@@ -202,8 +198,8 @@ bool T1Part1::postDecode(decodeBlockInfo *block) {
 	float stepsize_over_two = block->stepsize/2;
 	auto tilec_data = block->tiledp;
 	uint32_t stride = block->stride;
-	uint32_t cblk_w = (uint32_t) (cblk->x1 - cblk->x0);
-	uint32_t cblk_h = (uint32_t) (cblk->y1 - cblk->y0);
+	uint32_t cblk_w = cblk->width();
+	uint32_t cblk_h = cblk->height();
 
 	auto src = t1->data;
 	uint32_t roishift = block->roishift;

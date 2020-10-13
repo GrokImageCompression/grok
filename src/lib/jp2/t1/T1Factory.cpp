@@ -37,7 +37,7 @@ T1Interface* T1Factory::get_t1(bool isEncoder,
 	if (isHT)
 		return new t1_ht::T1HT(isEncoder, tcp, maxCblkW, maxCblkH);
 	else
-		return new t1_part1::T1Part1(isEncoder, tcp, maxCblkW, maxCblkH);
+		return new t1_part1::T1Part1(isEncoder, maxCblkW, maxCblkH);
 }
 
 }

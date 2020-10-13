@@ -164,7 +164,7 @@ struct grk_band : public grk_rect_u32 {
 struct grk_resolution : public grk_rect_u32 {
 	grk_resolution();
 
-	/* dimension of the resolution level in tile coordinates */
+	/* precinct dimensions */
 	uint32_t pw, ph;
 	uint32_t numbands; /* number sub-band for the resolution level */
 	grk_band bands[3]; /* subband information */
@@ -181,7 +181,6 @@ struct grk_tile : public grk_rect_u32 {
 	grk_tile();
 	uint32_t numcomps; /* number of components in tile */
 	TileComponent *comps; /* Components information */
-	uint64_t numpix;
 	double distotile;
 	double distolayer[100];
 	uint64_t packno; /* packet number */

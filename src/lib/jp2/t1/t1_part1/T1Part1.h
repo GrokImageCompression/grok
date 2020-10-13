@@ -32,7 +32,7 @@ namespace t1_part1 {
 
 class T1Part1: public T1Interface {
 public:
-	T1Part1(bool isEncoder, TileCodingParams *tcp, uint32_t maxCblkW, uint32_t maxCblkH);
+	T1Part1(bool isEncoder, uint32_t maxCblkW, uint32_t maxCblkH);
 	virtual ~T1Part1();
 
 	void preEncode(encodeBlockInfo *block, grk_tile *tile, uint32_t &max);

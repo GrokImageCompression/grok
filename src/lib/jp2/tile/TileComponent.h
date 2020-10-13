@@ -60,7 +60,6 @@ struct TileComponent : public grk_rect_u32 {
 #ifdef DEBUG_LOSSLESS_T2
 	grk_resolution* round_trip_resolutions;  /* round trip resolution information */
 #endif
-	uint64_t numpix;
 	TileComponentBuffer<int32_t> *buf;
     bool   whole_tile_decoding;
 	bool m_is_encoder;

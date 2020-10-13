@@ -261,7 +261,6 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 void set_context_stream(TileProcessor *p_tileProcessor) {
 	for (uint32_t compno = 0; compno < p_tileProcessor->tile->numcomps; compno++) {
 		auto tilec = p_tileProcessor->tile->comps + compno;
-		tilec->numpix = 0;
 		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
 			auto res = &tilec->resolutions[resno];
 			for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
