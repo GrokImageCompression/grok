@@ -24,7 +24,6 @@
 namespace grk {
 
 TileComponent::TileComponent() :numresolutions(0),
-								numAllocatedResolutions(0),
 								resolutions_to_decompress(0),
 								resolutions(nullptr),
 						#ifdef DEBUG_LOSSLESS_T2
@@ -44,8 +43,7 @@ TileComponent::~TileComponent(){
 }
 void TileComponent::release_mem(){
 	if (resolutions) {
-		auto nb_resolutions = numAllocatedResolutions;
-		for (uint32_t resno = 0; resno < nb_resolutions; ++resno) {
+		for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 			auto res = resolutions + resno;
 			for (uint32_t bandno = 0; bandno < 3; ++bandno) {
 				auto band = res->bands + bandno;
@@ -68,6 +66,11 @@ void TileComponent::release_mem(){
 	delete m_sa;
 	m_sa = nullptr;
 }
+/**
+ * Initialize tile component in unreduced tile component coordinates
+ * (tile component coordinates take sub-sampling into account).
+ *
+ */
 bool TileComponent::init(bool isEncoder,
 						bool whole_tile,
 						grk_image *output_image,
@@ -82,18 +85,11 @@ bool TileComponent::init(bool isEncoder,
 	whole_tile_decoding = whole_tile;
 	m_tccp = tccp;
 
-	/* extent of precincts , top left, bottom right**/
-	/* number of code blocks for a precinct*/
-	uint64_t nb_code_blocks, cblkno;
-	uint32_t leveno;
-	uint32_t x0b, y0b;
-
 	/* border of each tile component in tile component coordinates */
 	auto x0 = ceildiv<uint32_t>(tile->x0, image_comp->dx);
 	auto y0 = ceildiv<uint32_t>(tile->y0, image_comp->dy);
 	auto x1 = ceildiv<uint32_t>(tile->x1, image_comp->dx);
 	auto y1 = ceildiv<uint32_t>(tile->y1, image_comp->dy);
-	/*fprintf(stderr, "\tTile compo border = %u,%u,%u,%u\n", x0, y0,x1,y1);*/
 
 	numresolutions = m_tccp->numresolutions;
 	if (numresolutions < cp->m_coding_params.m_dec.m_reduce) {
@@ -102,40 +98,22 @@ bool TileComponent::init(bool isEncoder,
 		resolutions_to_decompress = numresolutions
 				- cp->m_coding_params.m_dec.m_reduce;
 	}
-	if (!resolutions) {
-		resolutions = new grk_resolution[numresolutions];
-		numAllocatedResolutions = numresolutions;
-	} else if (numresolutions > numAllocatedResolutions) {
-		auto new_resolutions =
-				new grk_resolution[numresolutions];
-		for (uint32_t i = 0; i < numresolutions; ++i)
-			new_resolutions[i] = resolutions[i];
-		delete[] resolutions;
-		resolutions = new_resolutions;
-		numAllocatedResolutions = numresolutions;
-	}
-	leveno = numresolutions;
-	/*fprintf(stderr, "\tleveno=%u\n",leveno);*/
+	assert(!resolutions);
+	resolutions = new grk_resolution[numresolutions];
 
+	uint32_t levelno = numresolutions;
 	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
-		/*fprintf(stderr, "\t\tresno = %u/%u\n", resno, numresolutions);*/
-		uint32_t tlcbgxstart, tlcbgystart;
-		uint32_t cbgwidthexpn, cbgheightexpn;
-		uint32_t cblkwidthexpn, cblkheightexpn;
-
-		--leveno;
+		--levelno;
 
 		/* border for each resolution level (global) */
-		res->x0 = ceildivpow2<uint32_t>(x0, leveno);
-		res->y0 = ceildivpow2<uint32_t>(y0, leveno);
-		res->x1 = ceildivpow2<uint32_t>(x1, leveno);
-		res->y1 = ceildivpow2<uint32_t>(y1, leveno);
-		/*fprintf(stderr, "\t\t\tres_x0= %u, res_y0 =%u, res_x1=%u, res_y1=%u\n", res->x0, res->y0, res->x1, res->y1);*/
+		res->x0 = ceildivpow2<uint32_t>(x0, levelno);
+		res->y0 = ceildivpow2<uint32_t>(y0, levelno);
+		res->x1 = ceildivpow2<uint32_t>(x1, levelno);
+		res->y1 = ceildivpow2<uint32_t>(y1, levelno);
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
 		uint32_t pdx = m_tccp->prcw[resno];
 		uint32_t pdy = m_tccp->prch[resno];
-		/*fprintf(stderr, "\t\t\tpdx=%u, pdy=%u\n", pdx, pdy);*/
 		/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
 		uint32_t tprc_x_start = uint_floordivpow2(res->x0, pdx) << pdx;
 		uint32_t tprc_y_start = uint_floordivpow2(res->y0, pdy) << pdy;
@@ -151,20 +129,10 @@ bool TileComponent::init(bool isEncoder,
 			return false;
 		}
 		uint32_t br_prc_y_end = (uint32_t)temp;
-
-		/*fprintf(stderr, "\t\t\tprc_x_start=%u, prc_y_start=%u, br_prc_x_end=%u, br_prc_y_end=%u \n", tprc_x_start, tprc_y_start, br_prc_x_end ,br_prc_y_end );*/
-
-		res->pw =
-				(res->x0 == res->x1) ?
-						0 : ((br_prc_x_end - tprc_x_start) >> pdx);
-		res->ph =
-				(res->y0 == res->y1) ?
-						0 : ((br_prc_y_end - tprc_y_start) >> pdy);
-		/*fprintf(stderr, "\t\t\tres_pw=%u, res_ph=%u\n", res->pw, res->ph );*/
-
+		res->pw =	(res->x0 == res->x1) ?	0 : ((br_prc_x_end - tprc_x_start) >> pdx);
+		res->ph =	(res->y0 == res->y1) ?	0 : ((br_prc_y_end - tprc_y_start) >> pdy);
 		if (mult_will_overflow(res->pw, res->ph)) {
-			GRK_ERROR(
-					"nb_precincts calculation would overflow ");
+			GRK_ERROR("nb_precincts calculation would overflow ");
 			return false;
 		}
 		/* number of precinct for a resolution */
@@ -174,6 +142,8 @@ bool TileComponent::init(bool isEncoder,
 			GRK_ERROR(	"nb_precinct_size calculation would overflow ");
 			return false;
 		}
+		uint32_t tlcbgxstart, tlcbgystart;
+		uint32_t cbgwidthexpn, cbgheightexpn;
 		if (resno == 0) {
 			tlcbgxstart = tprc_x_start;
 			tlcbgystart = tprc_y_start;
@@ -188,50 +158,37 @@ bool TileComponent::init(bool isEncoder,
 			res->numbands = 3;
 		}
 
-		cblkwidthexpn = std::min<uint32_t>(tccp->cblkw, cbgwidthexpn);
-		cblkheightexpn = std::min<uint32_t>(tccp->cblkh, cbgheightexpn);
-		size_t nominalBlockSize = (1 << cblkwidthexpn)
-				* (1 << cblkheightexpn);
+		uint32_t cblkwidthexpn 	= std::min<uint32_t>(tccp->cblkw, cbgwidthexpn);
+		uint32_t cblkheightexpn = std::min<uint32_t>(tccp->cblkh, cbgheightexpn);
+		size_t nominalBlockSize = (1 << cblkwidthexpn) * (1 << cblkheightexpn);
 
 		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
 			auto band = res->bands + bandno;
-
-			/*fprintf(stderr, "\t\t\tband_no=%u/%u\n", bandno, res->numbands );*/
-
 			if (resno == 0) {
 				band->bandno = 0;
-				band->x0 = ceildivpow2<uint32_t>(x0, leveno);
-				band->y0 = ceildivpow2<uint32_t>(y0, leveno);
-				band->x1 = ceildivpow2<uint32_t>(x1, leveno);
-				band->y1 = ceildivpow2<uint32_t>(y1, leveno);
+				band->x0 = ceildivpow2<uint32_t>(x0, levelno);
+				band->y0 = ceildivpow2<uint32_t>(y0, levelno);
+				band->x1 = ceildivpow2<uint32_t>(x1, levelno);
+				band->y1 = ceildivpow2<uint32_t>(y1, levelno);
 			} else {
 				band->bandno = (uint8_t)(bandno + 1);
 				/* x0b = 1 if bandno = 1 or 3 */
-				x0b = band->bandno & 1;
+				uint32_t x0b = band->bandno & 1;
 				/* y0b = 1 if bandno = 2 or 3 */
-				y0b = (uint32_t) ((band->bandno) >> 1);
+				uint32_t y0b = (uint32_t) ((band->bandno) >> 1);
 				/* band border (global) */
-				band->x0 = uint64_ceildivpow2(
-						x0 - ((uint64_t) x0b << leveno),
-						leveno + 1);
-				band->y0 = uint64_ceildivpow2(
-						y0 - ((uint64_t) y0b << leveno),
-						leveno + 1);
-				band->x1 = uint64_ceildivpow2(
-						x1 - ((uint64_t) x0b << leveno),
-						leveno + 1);
-				band->y1 = uint64_ceildivpow2(
-						y1 - ((uint64_t) y0b << leveno),
-						leveno + 1);
+				band->x0 = uint64_ceildivpow2(x0 - ((uint64_t) x0b << levelno),	levelno + 1);
+				band->y0 = uint64_ceildivpow2(y0 - ((uint64_t) y0b << levelno),	levelno + 1);
+				band->x1 = uint64_ceildivpow2(x1 - ((uint64_t) x0b << levelno),	levelno + 1);
+				band->y1 = uint64_ceildivpow2(y1 - ((uint64_t) y0b << levelno),	levelno + 1);
 			}
-
 			tccp->quant.setBandStepSizeAndBps(tcp,
-												band,
-												resno,
-												(uint8_t)bandno,
-												tccp,
-												image_comp->prec,
-												m_is_encoder);
+											band,
+											resno,
+											(uint8_t)bandno,
+											tccp,
+											image_comp->prec,
+											m_is_encoder);
 
 			if (!band->precincts && (nb_precincts > 0U)) {
 				band->precincts = new grk_precinct[nb_precincts];
@@ -247,49 +204,24 @@ bool TileComponent::init(bool isEncoder,
 			band->numPrecincts = nb_precincts;
 			for (uint64_t precno = 0; precno < nb_precincts; ++precno) {
 				auto current_precinct = band->precincts + precno;
-				uint32_t tlcblkxstart, tlcblkystart, brcblkxend, brcblkyend;
-				uint32_t cbgxstart = tlcbgxstart
-						+ (uint32_t)(precno % res->pw) * (1 << cbgwidthexpn);
-				uint32_t cbgystart = tlcbgystart
-						+ (uint32_t)(precno / res->pw) * (1 << cbgheightexpn);
-				uint32_t cbgxend = cbgxstart + (1 << cbgwidthexpn);
-				uint32_t cbgyend = cbgystart + (1 << cbgheightexpn);
-				/*fprintf(stderr, "\t precno=%u; bandno=%u, resno=%u; compno=%u\n", precno, bandno , resno, compno);*/
-				/*fprintf(stderr, "\t tlcbgxstart(=%u) + (precno(=%u) percent res->pw(=%u)) * (1 << cbgwidthexpn(=%u)) \n",tlcbgxstart,precno,res->pw,cbgwidthexpn);*/
+				uint32_t cbgxstart 	= tlcbgxstart + (uint32_t)(precno % res->pw) * (1 << cbgwidthexpn);
+				uint32_t cbgystart 	= tlcbgystart + (uint32_t)(precno / res->pw) * (1 << cbgheightexpn);
+				uint32_t cbgxend 	= cbgxstart + (1 << cbgwidthexpn);
+				uint32_t cbgyend 	= cbgystart + (1 << cbgheightexpn);
 
-				/* precinct size (global) */
-				/*fprintf(stderr, "\t cbgxstart=%u, band->x0 = %u \n",cbgxstart, band->x0);*/
+				current_precinct->x0 = std::max<uint32_t>(cbgxstart,band->x0);
+				current_precinct->y0 = std::max<uint32_t>(cbgystart,band->y0);
+				current_precinct->x1 = std::min<uint32_t>(cbgxend,  band->x1);
+				current_precinct->y1 = std::min<uint32_t>(cbgyend,  band->y1);
 
-				current_precinct->x0 = std::max<uint32_t>(cbgxstart,
-						band->x0);
-				current_precinct->y0 = std::max<uint32_t>(cbgystart,
-						band->y0);
-				current_precinct->x1 = std::min<uint32_t>(cbgxend,
-						band->x1);
-				current_precinct->y1 = std::min<uint32_t>(cbgyend,
-						band->y1);
-				/*fprintf(stderr, "\t prc_x0=%u; prc_y0=%u, prc_x1=%u; prc_y1=%u\n",current_precinct->x0, current_precinct->y0 ,current_precinct->x1, current_precinct->y1);*/
+				uint32_t tlcblkxstart 	= uint_floordivpow2(current_precinct->x0,cblkwidthexpn) << cblkwidthexpn;
+				uint32_t tlcblkystart 	= uint_floordivpow2(current_precinct->y0,cblkheightexpn) << cblkheightexpn;
+				uint32_t brcblkxend 	= ceildivpow2<uint32_t>(current_precinct->x1,cblkwidthexpn) << cblkwidthexpn;
+				uint32_t brcblkyend 	= ceildivpow2<uint32_t>(current_precinct->y1,cblkheightexpn) << cblkheightexpn;
+				current_precinct->cw 	= ((brcblkxend - tlcblkxstart)	>> cblkwidthexpn);
+				current_precinct->ch 	= ((brcblkyend - tlcblkystart)	>> cblkheightexpn);
 
-				tlcblkxstart = uint_floordivpow2(current_precinct->x0,
-						cblkwidthexpn) << cblkwidthexpn;
-				/*fprintf(stderr, "\t tlcblkxstart =%u\n",tlcblkxstart );*/
-				tlcblkystart = uint_floordivpow2(current_precinct->y0,
-						cblkheightexpn) << cblkheightexpn;
-				/*fprintf(stderr, "\t tlcblkystart =%u\n",tlcblkystart );*/
-				brcblkxend = ceildivpow2<uint32_t>(current_precinct->x1,
-						cblkwidthexpn) << cblkwidthexpn;
-				/*fprintf(stderr, "\t brcblkxend =%u\n",brcblkxend );*/
-				brcblkyend = ceildivpow2<uint32_t>(current_precinct->y1,
-						cblkheightexpn) << cblkheightexpn;
-				/*fprintf(stderr, "\t brcblkyend =%u\n",brcblkyend );*/
-				current_precinct->cw = ((brcblkxend - tlcblkxstart)
-						>> cblkwidthexpn);
-				current_precinct->ch = ((brcblkyend - tlcblkystart)
-						>> cblkheightexpn);
-
-				nb_code_blocks = (uint64_t) current_precinct->cw
-						* current_precinct->ch;
-				/*fprintf(stderr, "\t\t\t\t precinct_cw = %u x recinct_ch = %u\n",current_precinct->cw, current_precinct->ch);      */
+				uint64_t nb_code_blocks = (uint64_t) current_precinct->cw* current_precinct->ch;
 				if (nb_code_blocks > 0) {
 					if (isEncoder){
 						if (!current_precinct->enc){
@@ -320,13 +252,9 @@ bool TileComponent::init(bool isEncoder,
 				}
 				current_precinct->initTagTrees();
 
-				for (cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
-					uint32_t cblkxstart = tlcblkxstart
-							+ (uint32_t) (cblkno % current_precinct->cw)
-									* (1 << cblkwidthexpn);
-					uint32_t cblkystart = tlcblkystart
-							+ (uint32_t) (cblkno / current_precinct->cw)
-									* (1 << cblkheightexpn);
+				for (uint64_t cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
+					uint32_t cblkxstart = tlcblkxstart	+ (uint32_t) (cblkno % current_precinct->cw)* (1 << cblkwidthexpn);
+					uint32_t cblkystart = tlcblkystart	+ (uint32_t) (cblkno / current_precinct->cw)* (1 << cblkheightexpn);
 					uint32_t cblkxend = cblkxstart + (1 << cblkwidthexpn);
 					uint32_t cblkyend = cblkystart + (1 << cblkheightexpn);
 
@@ -336,14 +264,10 @@ bool TileComponent::init(bool isEncoder,
 						if (!code_block->alloc())
 							return false;
 						/* code-block size (global) */
-						code_block->x0 = std::max<uint32_t>(cblkxstart,
-								current_precinct->x0);
-						code_block->y0 = std::max<uint32_t>(cblkystart,
-								current_precinct->y0);
-						code_block->x1 = std::min<uint32_t>(cblkxend,
-								current_precinct->x1);
-						code_block->y1 = std::min<uint32_t>(cblkyend,
-								current_precinct->y1);
+						code_block->x0 = std::max<uint32_t>(cblkxstart,	current_precinct->x0);
+						code_block->y0 = std::max<uint32_t>(cblkystart,	current_precinct->y0);
+						code_block->x1 = std::min<uint32_t>(cblkxend,	current_precinct->x1);
+						code_block->y1 = std::min<uint32_t>(cblkyend,	current_precinct->y1);
 
 						if (!current_plugin_tile
 								|| (state & GRK_PLUGIN_STATE_DEBUG)) {
@@ -361,14 +285,10 @@ bool TileComponent::init(bool isEncoder,
 						}
 
 						/* code-block size (global) */
-						code_block->x0 = std::max<uint32_t>(cblkxstart,
-								current_precinct->x0);
-						code_block->y0 = std::max<uint32_t>(cblkystart,
-								current_precinct->y0);
-						code_block->x1 = std::min<uint32_t>(cblkxend,
-								current_precinct->x1);
-						code_block->y1 = std::min<uint32_t>(cblkyend,
-								current_precinct->y1);
+						code_block->x0 = std::max<uint32_t>(cblkxstart,	current_precinct->x0);
+						code_block->y0 = std::max<uint32_t>(cblkystart,	current_precinct->y0);
+						code_block->x1 = std::min<uint32_t>(cblkxend,	current_precinct->x1);
+						code_block->y1 = std::min<uint32_t>(cblkyend,	current_precinct->y1);
 					}
 				}
 			} /* precno */
@@ -411,25 +331,25 @@ bool TileComponent::is_subband_area_of_interest(uint32_t resno,
 	uint32_t tcy1 = (uint32_t)dims.y1;
 
     /* Compute number of decomposition for this band. See table F-1 */
-    uint32_t nb = (resno == 0) ?
+    uint32_t num_decomps = (resno == 0) ?
                     numresolutions - 1 :
                     numresolutions - resno;
     /* Map above tile-based coordinates to sub-band-based coordinates per */
     /* equation B-15 of the standard */
     uint32_t x0b = bandno & 1;
     uint32_t y0b = bandno >> 1;
-    uint32_t tbx0 = (nb == 0) ? tcx0 :
-                      (tcx0 <= (1U << (nb - 1)) * x0b) ? 0 :
-                      ceildivpow2<uint32_t>(tcx0 - (1U << (nb - 1)) * x0b, nb);
-    uint32_t tby0 = (nb == 0) ? tcy0 :
-                      (tcy0 <= (1U << (nb - 1)) * y0b) ? 0 :
-                      ceildivpow2<uint32_t>(tcy0 - (1U << (nb - 1)) * y0b, nb);
-    uint32_t tbx1 = (nb == 0) ? tcx1 :
-                      (tcx1 <= (1U << (nb - 1)) * x0b) ? 0 :
-                      ceildivpow2<uint32_t>(tcx1 - (1U << (nb - 1)) * x0b, nb);
-    uint32_t tby1 = (nb == 0) ? tcy1 :
-                      (tcy1 <= (1U << (nb - 1)) * y0b) ? 0 :
-                      ceildivpow2<uint32_t>(tcy1 - (1U << (nb - 1)) * y0b, nb);
+    uint32_t tbx0 = (num_decomps == 0) ? tcx0 :
+                      (tcx0 <= (1U << (num_decomps - 1)) * x0b) ? 0 :
+                      ceildivpow2<uint32_t>(tcx0 - (1U << (num_decomps - 1)) * x0b, num_decomps);
+    uint32_t tby0 = (num_decomps == 0) ? tcy0 :
+                      (tcy0 <= (1U << (num_decomps - 1)) * y0b) ? 0 :
+                      ceildivpow2<uint32_t>(tcy0 - (1U << (num_decomps - 1)) * y0b, num_decomps);
+    uint32_t tbx1 = (num_decomps == 0) ? tcx1 :
+                      (tcx1 <= (1U << (num_decomps - 1)) * x0b) ? 0 :
+                      ceildivpow2<uint32_t>(tcx1 - (1U << (num_decomps - 1)) * x0b, num_decomps);
+    uint32_t tby1 = (num_decomps == 0) ? tcy1 :
+                      (tcy1 <= (1U << (num_decomps - 1)) * y0b) ? 0 :
+                      ceildivpow2<uint32_t>(tcy1 - (1U << (num_decomps - 1)) * y0b, num_decomps);
 
     if (tbx0 < filter_margin)
         tbx0 = 0;
@@ -448,7 +368,7 @@ bool TileComponent::is_subband_area_of_interest(uint32_t resno,
 
 #ifdef DEBUG_VERBOSE
     printf("compno=%u resno=%u nb=%u bandno=%u x0b=%u y0b=%u band=%u,%u,%u,%u tb=%u,%u,%u,%u -> %u\n",
-           compno, resno, nb, bandno, x0b, y0b,
+           compno, resno, num_decomps, bandno, x0b, y0b,
            aoi_x0, aoi_y0, aoi_x1, aoi_y1,
            tbx0, tby0, tbx1, tby1, intersects);
 #endif
@@ -456,22 +376,21 @@ bool TileComponent::is_subband_area_of_interest(uint32_t resno,
 }
 
 
-void TileComponent::alloc_SparseBuffer(uint32_t numres){
-    auto tr_max = &(resolutions[numres - 1]);
-	uint32_t w = (uint32_t)(tr_max->x1 - tr_max->x0);
-	uint32_t h = (uint32_t)(tr_max->y1 - tr_max->y0);
+void TileComponent::allocSparseBuffer(uint32_t numres){
+    auto tr_max = resolutions + numres - 1;
+	uint32_t w = tr_max->width();
+	uint32_t h = tr_max->height();
 	auto sa = new SparseBuffer<6,6>(w, h);
+
     for (uint32_t resno = 0; resno < numres; ++resno) {
         auto res = &resolutions[resno];
-
         for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
-            auto band = &res->bands[bandno];
-
+            auto band = res->bands + bandno;
             for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph; ++precno) {
-                auto precinct = &band->precincts[precno];
-
+                auto precinct = band->precincts + precno;
                 for (uint64_t cblkno = 0; cblkno < (uint64_t)precinct->cw * precinct->ch; ++cblkno) {
-                    auto cblk = &precinct->dec[cblkno];
+                    auto cblk = precinct->dec + cblkno;
+
 					uint32_t x = cblk->x0;
 					uint32_t y = cblk->y0;
 					uint32_t cblk_w = cblk->width();
@@ -479,22 +398,21 @@ void TileComponent::alloc_SparseBuffer(uint32_t numres){
 
 					// check overlap in absolute coordinates
 					if (is_subband_area_of_interest(resno,
-							bandno,
-							x,
-							y,
-							x+cblk_w,
-							y+cblk_h)){
-
+													bandno,
+													x,
+													y,
+													x+cblk_w,
+													y+cblk_h)){
 						x -= band->x0;
 						y -= band->y0;
 
 						/* add band offset relative to previous resolution */
 						if (band->bandno & 1) {
-							grk_resolution *pres = &resolutions[resno - 1];
+							auto pres = resolutions + resno - 1;
 							x += pres->x1 - pres->x0;
 						}
 						if (band->bandno & 2) {
-							grk_resolution *pres = &resolutions[resno - 1];
+							auto pres = resolutions + resno - 1;
 							y += pres->y1 - pres->y0;
 						}
 

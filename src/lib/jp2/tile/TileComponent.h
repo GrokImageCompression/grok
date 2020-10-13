@@ -44,7 +44,7 @@ struct TileComponent : public grk_rect_u32 {
 			TileComponentCodingParams* tccp,
 			grk_plugin_tile *current_plugin_tile);
 
-	 void alloc_SparseBuffer(uint32_t numres);
+	 void allocSparseBuffer(uint32_t numres);
 	 void release_mem();
 
 	 bool is_subband_area_of_interest(uint32_t resno,
@@ -54,8 +54,7 @@ struct TileComponent : public grk_rect_u32 {
 	 								uint32_t aoi_x1,
 	 								uint32_t aoi_y1) const;
 
-	uint32_t numresolutions; /* number of resolutions level */
-	uint32_t numAllocatedResolutions;
+	uint32_t numresolutions; /* number of resolution levels */
 	uint32_t resolutions_to_decompress; /* number of resolutions level to decompress (at max)*/
 	grk_resolution *resolutions; /* resolutions information */
 #ifdef DEBUG_LOSSLESS_T2
