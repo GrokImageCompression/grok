@@ -169,7 +169,7 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 		*numPix = (uint32_t) plugin_cblk->numPix;
 
 		if (state & GRK_PLUGIN_STATE_DEBUG) {
-			uint32_t grkNumPix = cblk->area();
+			uint32_t grkNumPix = (uint32_t)cblk->area();
 			if (plugin_cblk->numPix != grkNumPix)
 				printf(
 						"[WARNING]  ojp numPix %u differs from plugin numPix %u\n",

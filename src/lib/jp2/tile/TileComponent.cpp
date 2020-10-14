@@ -300,13 +300,9 @@ bool TileComponent::init(bool isEncoder,
 	return true;
 }
 
-
-bool TileComponent::is_subband_area_of_interest(uint32_t resno,
+bool TileComponent::subbandIntersectsAOI(uint32_t resno,
 								uint32_t bandno,
-								uint32_t aoi_x0,
-								uint32_t aoi_y0,
-								uint32_t aoi_x1,
-								uint32_t aoi_y1) const
+								const grk_rect_u32 *aoi) const
 {
 	if (whole_tile_decoding)
 		return true;
@@ -327,13 +323,7 @@ bool TileComponent::is_subband_area_of_interest(uint32_t resno,
 
     auto b = resolutions[resno].bands[bandno];
     b.grow(filter_margin,filter_margin);
-    uint32_t tbx0 = b.x0;
-    uint32_t tby0 = b.y0;
-    uint32_t tbx1 = b.x1;
-    uint32_t tby1 = b.y1;
 
-    bool intersects = aoi_x0 < tbx1 && aoi_y0 < tby1 && aoi_x1 > tbx0 &&
-                 aoi_y1 > tby0;
 
 #ifdef DEBUG_VERBOSE
     printf("compno=%u resno=%u nb=%u bandno=%u x0b=%u y0b=%u band=%u,%u,%u,%u tb=%u,%u,%u,%u -> %u\n",
@@ -341,9 +331,8 @@ bool TileComponent::is_subband_area_of_interest(uint32_t resno,
            aoi_x0, aoi_y0, aoi_x1, aoi_y1,
            tbx0, tby0, tbx1, tby1, intersects);
 #endif
-    return intersects;
+    return b.intersection(*aoi).is_non_degenerate();
 }
-
 
 void TileComponent::allocSparseBuffer(uint32_t numres){
     auto tr_max = resolutions + numres - 1;
@@ -365,13 +354,11 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
 					uint32_t cblk_w = cblk->width();
 					uint32_t cblk_h = cblk->height();
 
+					grk_rect_u32 cblk_roi = grk_rect_u32(x,y,x+cblk_w,y+cblk_h);
 					// check overlap in absolute coordinates
-					if (is_subband_area_of_interest(resno,
+					if (subbandIntersectsAOI(resno,
 													bandno,
-													x,
-													y,
-													x+cblk_w,
-													y+cblk_h)){
+													&cblk_roi)){
 						x -= band->x0;
 						y -= band->y0;
 

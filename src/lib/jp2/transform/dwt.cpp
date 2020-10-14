@@ -1817,8 +1817,7 @@ public:
 };
 
 /* FILTER_WIDTH value matches the maximum left/right extension given in tables */
-/* F.2 and F.3 of the standard. Note: in TileComponent::is_subband_area_of_interest() */
-/* we currently use 3. */
+/* F.2 and F.3 of the standard. */
 template <typename T,
 			uint32_t HORIZ_STEP,
 			uint32_t VERT_STEP,

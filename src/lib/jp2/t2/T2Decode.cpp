@@ -92,9 +92,8 @@ bool T2Decode::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 						bandno < res->numbands && skip_the_packet; ++bandno) {
 					auto band = res->bands + bandno;
 					auto prec = band->precincts + current_pi->precno;
-					if (tilec->is_subband_area_of_interest(current_pi->resno,
-							band->bandno, prec->x0, prec->y0, prec->x1,
-							prec->y1)) {
+					if (tilec->subbandIntersectsAOI(current_pi->resno,
+							band->bandno, prec)) {
 						skip_the_packet = false;
 						break;
 					}

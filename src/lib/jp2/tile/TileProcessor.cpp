@@ -219,7 +219,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 					for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch;
 							cblkno++) {
 						auto cblk = &prc->enc[cblkno];
-						uint32_t numPix = cblk->area();
+						uint32_t numPix = (uint32_t)cblk->area();
 						if (!(state & GRK_PLUGIN_STATE_PRE_TR1)) {
 							encode_synch_with_plugin(this, compno, resno,
 									bandno, precno, cblkno, band, cblk,
@@ -355,7 +355,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 					auto prc = &band->precincts[precno];
 					for (cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch; cblkno++) {
 						auto cblk = &prc->enc[cblkno];
-						uint32_t numPix = cblk->area();
+						uint32_t numPix = (uint32_t)cblk->area();
 						if (!(state & GRK_PLUGIN_STATE_PRE_TR1)) {
 							encode_synch_with_plugin(this, compno, resno,
 									bandno, precno, cblkno, band, cblk,
@@ -390,7 +390,6 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 							} /* passno */
 							numpix += numPix;
 						}
-
 					} /* cbklno */
 				} /* precno */
 			} /* bandno */
@@ -1682,7 +1681,7 @@ grk_precinct::grk_precinct() :
 		incltree(nullptr), imsbtree(nullptr) {
 }
 
-grk_cblk::grk_cblk(): x0(0), y0(0), x1(0), y1(0),
+grk_cblk::grk_cblk():
 		compressedData(nullptr),
 		compressedDataSize(0),
 		owns_data(false),
@@ -1695,7 +1694,7 @@ grk_cblk::grk_cblk(): x0(0), y0(0), x1(0), y1(0),
 {
 }
 
-grk_cblk::grk_cblk(const grk_cblk &rhs): x0(rhs.x0), y0(rhs.y0), x1(rhs.x1), y1(rhs.y1),
+grk_cblk::grk_cblk(const grk_cblk &rhs): grk_rect_u32(rhs),
 		compressedData(rhs.compressedData), compressedDataSize(rhs.compressedDataSize), owns_data(rhs.owns_data),
 		numbps(rhs.numbps), numlenbits(rhs.numlenbits), numPassesInPacket(rhs.numPassesInPacket)
 #ifdef DEBUG_LOSSLESS_T2
@@ -1726,18 +1725,6 @@ void grk_cblk::clear(){
 	compressedData = nullptr;
 	owns_data = false;
 }
-
-uint32_t grk_cblk::width(){
-	return (uint32_t)(x1-x0);
-}
-uint32_t grk_cblk::height(){
-	return (uint32_t)(y1-y0);
-}
-
-uint32_t grk_cblk::area(){
-	return width() * height();
-}
-
 grk_cblk_enc::grk_cblk_enc() :
 				paddedCompressedData(nullptr),
 				layers(	nullptr),

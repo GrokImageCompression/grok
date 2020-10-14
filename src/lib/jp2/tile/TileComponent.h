@@ -33,7 +33,6 @@ struct TileComponent : public grk_rect_u32 {
 	~TileComponent();
 
 	void create_buffer(	grk_image *output_image,uint32_t dx,uint32_t dy);
-
 	bool init(bool isEncoder,
 			bool whole_tile,
 			grk_image *output_image,
@@ -46,13 +45,9 @@ struct TileComponent : public grk_rect_u32 {
 
 	 void allocSparseBuffer(uint32_t numres);
 	 void release_mem();
-
-	 bool is_subband_area_of_interest(uint32_t resno,
+	 bool subbandIntersectsAOI(uint32_t resno,
 	 								uint32_t bandno,
-	 								uint32_t aoi_x0,
-	 								uint32_t aoi_y0,
-	 								uint32_t aoi_x1,
-	 								uint32_t aoi_y1) const;
+	 								const grk_rect_u32 *aoi) const;
 
 	uint32_t numresolutions; /* number of resolution levels */
 	uint32_t resolutions_to_decompress; /* number of resolutions level to decompress (at max)*/
@@ -64,7 +59,6 @@ struct TileComponent : public grk_rect_u32 {
     bool   whole_tile_decoding;
 	bool m_is_encoder;
 	ISparseBuffer *m_sa;
-
 private:
 	TileComponentCodingParams *m_tccp;
 

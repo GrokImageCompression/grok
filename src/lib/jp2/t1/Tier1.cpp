@@ -90,12 +90,9 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, TileComponentCodingPar
 			grk_band *GRK_RESTRICT band = res->bands + bandno;
 			for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph; ++precno) {
 				auto precinct = band->precincts + precno;
-				if (!tilec->is_subband_area_of_interest(resno,
+				if (!tilec->subbandIntersectsAOI(resno,
 												bandno,
-												precinct->x0,
-												precinct->y0,
-												precinct->x1,
-												precinct->y1)){
+												precinct)){
 
 					continue;
 				}
@@ -103,12 +100,9 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, TileComponentCodingPar
 						cblkno < (uint64_t) precinct->cw * precinct->ch;
 						++cblkno) {
 					auto cblk = precinct->dec + cblkno;
-					if (tilec->is_subband_area_of_interest(resno,
+					if (tilec->subbandIntersectsAOI(resno,
 													bandno,
-													cblk->x0,
-													cblk->y0,
-													cblk->x1,
-													cblk->y1)){
+													cblk)){
 
 						auto block = new decodeBlockInfo();
 						block->x = cblk->x0;
