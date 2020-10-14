@@ -319,28 +319,18 @@ bool TileComponent::is_subband_area_of_interest(uint32_t resno,
     /* needed to be bumped to 4, in case inconsistencies are found while */
     /* decoding parts of irreversible coded images. */
     /* See dwt_decode_partial_53 and dwt_decode_partial_97 as well */
-    uint32_t filter_margin = (m_tccp->qmfbid == 1) ? 2 : 3;
+	//note: bumped up lossy filter margin to 4
+    uint32_t filter_margin = (m_tccp->qmfbid == 1) ? 2 : 4;
 
     /* Compute the intersection of the area of interest, expressed in tile component coordinates */
     /* Map above tile-based coordinates to sub-band-based coordinates following equation B-15 of the standard */
 
     auto b = resolutions[resno].bands[bandno];
+    b.grow(filter_margin,filter_margin);
     uint32_t tbx0 = b.x0;
     uint32_t tby0 = b.y0;
     uint32_t tbx1 = b.x1;
     uint32_t tby1 = b.y1;
-
-    // take filter margin into account
-    if (tbx0 < filter_margin)
-        tbx0 = 0;
-    else
-        tbx0 -= filter_margin;
-    if (tby0 < filter_margin)
-        tby0 = 0;
-    else
-        tby0 -= filter_margin;
-    tbx1 = uint_adds(tbx1, filter_margin);
-    tby1 = uint_adds(tby1, filter_margin);
 
     bool intersects = aoi_x0 < tbx1 && aoi_y0 < tby1 && aoi_x1 > tbx0 &&
                  aoi_y1 > tby0;
