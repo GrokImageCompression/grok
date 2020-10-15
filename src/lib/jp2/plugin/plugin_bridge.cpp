@@ -142,8 +142,8 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tile *p_tile) {
 }
 
 void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resno,
-		uint32_t bandno, uint64_t precno, uint64_t cblkno, grk_band *band,
-		grk_cblk_enc *cblk, uint32_t *numPix) {
+		uint32_t bandno, uint64_t precno, uint64_t cblkno, Subband *band,
+		CompressCodeblock *cblk, uint32_t *numPix) {
 
 	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
 		auto plugin_band =

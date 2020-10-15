@@ -16,17 +16,14 @@
  */
 #pragma once
 
-#include "util.h"
-#include "grk_intmath.h"
-#include "TagTree.h"
-#include "TileProcessor.h"
+#include "grk_includes.h"
 #include <stdexcept>
 
 namespace grk {
 
 template<typename T> struct res_buf {
 
-	res_buf(grk_resolution *res, grk_rect_u32 res_bounds) : res(new grk_buffer_2d<T>(res_bounds))
+	res_buf(Resolution *res, grk_rect_u32 res_bounds) : res(new grk_buffer_2d<T>(res_bounds))
 	{
 		for (uint32_t i = 0; i < 3; ++i)
 			bands[i] = res ? new grk_buffer_2d<T>(res->bands[i]) : nullptr;
@@ -72,7 +69,7 @@ template<typename T> struct TileComponentBuffer {
 						grk_rect_u32 reduced_dim,
 						uint32_t reduced_num_resolutions,
 						uint32_t numresolutions,
-						grk_resolution *tile_comp_resolutions,
+						Resolution *tile_comp_resolutions,
 						bool whole_tile) :
 							m_unreduced_bounds(unreduced_dim),
 							m_bounds(reduced_dim),
@@ -362,7 +359,7 @@ private:
 	/* encode: unreduced tile component coordinates of entire tile */
 	grk_rect_u32 m_bounds;
 
-	std::vector<grk_resolution*> resolutions;
+	std::vector<Resolution*> resolutions;
 	std::vector<res_buf<T>* > res_buffers;
 	uint32_t num_resolutions;
 

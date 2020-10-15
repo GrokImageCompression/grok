@@ -24,7 +24,7 @@
 namespace grk {
 
 void Quantizer::setBandStepSizeAndBps(TileCodingParams *tcp,
-							grk_band *band,
+							Subband *band,
 		                   uint32_t resno,
 						   uint8_t bandno,
 							TileComponentCodingParams *tccp,

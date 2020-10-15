@@ -159,7 +159,9 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/dwt53.h
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/dwt97.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/dwt97.h
-  
+
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Structs.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Structs.cpp  
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1DecodeScheduler.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1DecodeScheduler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1EncodeScheduler.h

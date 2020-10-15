@@ -85,7 +85,7 @@ bool T1Scheduler::prepareScheduleDecode(TileComponent *tilec, TileComponentCodin
 	for (uint32_t resno = 0; resno < tilec->resolutions_to_decompress; ++resno) {
 		auto res = &tilec->resolutions[resno];
 		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
-			grk_band *GRK_RESTRICT band = res->bands + bandno;
+			Subband *GRK_RESTRICT band = res->bands + bandno;
 			for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph; ++precno) {
 				auto precinct = band->precincts + precno;
 				if (!tilec->subbandIntersectsAOI(resno,

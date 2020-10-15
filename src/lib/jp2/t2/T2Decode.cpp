@@ -454,7 +454,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 				}
 				bio->read(&seg->numBytesInPacket, bits_to_read);
 #ifdef DEBUG_LOSSLESS_T2
-			 cblk->packet_length_info.push_back(grk_packet_length_info(seg->numBytesInPacket,
+			 cblk->packet_length_info.push_back(PacketLengthInfo(seg->numBytesInPacket,
 							 cblk->numlenbits + floorlog2<uint32_t>(seg->numPassesInPacket)));
 #endif
 				/*
@@ -503,7 +503,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 	return true;
 }
 
-bool T2Decode::read_packet_data(grk_resolution *res, PacketIter *p_pi,
+bool T2Decode::read_packet_data(Resolution *res, PacketIter *p_pi,
 		ChunkBuffer *src_buf, uint64_t *p_data_read) {
 	for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
 		auto band = res->bands + bandno;
@@ -515,7 +515,7 @@ bool T2Decode::read_packet_data(grk_resolution *res, PacketIter *p_pi,
 				++cblk;
 				continue;
 			}
-			grk_seg *seg = nullptr;
+			Segment *seg = nullptr;
 			if (!cblk->numSegments) {
 				seg = cblk->segs;
 				++cblk->numSegments;
@@ -595,7 +595,7 @@ bool T2Decode::skip_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuffe
 	return true;
 }
 
-bool T2Decode::skip_packet_data(grk_resolution *res, PacketIter *p_pi,
+bool T2Decode::skip_packet_data(Resolution *res, PacketIter *p_pi,
 		uint64_t *p_data_read, uint64_t max_length) {
 	*p_data_read = 0;
 	for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
@@ -612,7 +612,7 @@ bool T2Decode::skip_packet_data(grk_resolution *res, PacketIter *p_pi,
 				++cblk;
 				continue;
 			}
-			grk_seg *seg = nullptr;
+			Segment *seg = nullptr;
 			if (!cblk->numSegments) {
 				seg = cblk->segs;
 				++cblk->numSegments;

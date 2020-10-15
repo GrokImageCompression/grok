@@ -80,9 +80,9 @@ bool init_tilec(TileComponent * tilec,
 	tilec->m_is_encoder = false;
     tilec->numresolutions = numresolutions;
     tilec->resolutions_to_decompress = numresolutions;
-    tilec->resolutions = new grk_resolution[tilec->numresolutions];
+    tilec->resolutions = new Resolution[tilec->numresolutions];
     for (auto i = 0; i < tilec->numresolutions; ++i)
-    	memset(tilec->resolutions+i,0,sizeof(grk_resolution));
+    	memset(tilec->resolutions+i,0,sizeof(Resolution));
     uint32_t leveno = tilec->numresolutions-1;
     auto res = tilec->resolutions;
 

@@ -28,7 +28,7 @@ protected:
 	 @param cblk_sty
 	 @param first
 	 */
-	bool init_seg(grk_cblk_dec *cblk, uint32_t index, uint8_t cblk_sty,
+	bool init_seg(DecompressCodeblock *cblk, uint32_t index, uint8_t cblk_sty,
 			bool first);
 };
 

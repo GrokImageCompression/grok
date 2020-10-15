@@ -46,7 +46,7 @@ struct grk_stepsize {
 struct CodeStream;
 struct TileComponentCodingParams;
 struct BufferedStream;
-struct grk_band;
+struct Subband;
 struct TileCodingParams;
 struct TileProcessor;
 
@@ -55,7 +55,7 @@ class Quantizer {
 public:
 
 	void setBandStepSizeAndBps( TileCodingParams *tcp,
-								grk_band *band,
+								Subband *band,
 								uint32_t resno,
 								 uint8_t bandno,
 								TileComponentCodingParams *tccp,

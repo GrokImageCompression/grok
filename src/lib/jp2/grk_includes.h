@@ -52,6 +52,8 @@
 #include <sstream>
 #include <iostream>
 #include <vector>
+#include <algorithm>
+#include <numeric>
 
 /*
  Use fseeko() and ftello() if they are available since they use
@@ -168,9 +170,10 @@ static inline long grk_lrintf(float f) {
 #include <Dump.h>
 #include "FileFormat.h"
 #include "BitIO.h"
+#include "TagTree.h"
+#include "T1Structs.h"
 #include "TileComponentBuffer.h"
 #include "PacketIter.h"
-#include "TagTree.h"
 #include <SparseBuffer.h>
 #include "TileComponent.h"
 #include "TileProcessor.h"

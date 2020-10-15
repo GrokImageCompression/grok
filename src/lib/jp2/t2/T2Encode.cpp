@@ -313,7 +313,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 
 				if (pass->term || passno == nb_passes - 1) {
 #ifdef DEBUG_LOSSLESS_T2
-						cblk->packet_length_info.push_back(grk_packet_length_info(len, cblk->numlenbits + (uint32_t)floorlog2<int32_t>((int32_t)nump)));
+						cblk->packet_length_info.push_back(PacketLengthInfo(len, cblk->numlenbits + (uint32_t)floorlog2<int32_t>((int32_t)nump)));
 #endif
 					if (!bio->write(len,
 							cblk->numlenbits + (uint32_t) floorlog2<int32_t>(nump)))
@@ -402,7 +402,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 					auto roundTripPrec = roundTripBand->precincts + pno;
 					for (uint64_t cblkno = 0; cblkno < (uint64_t)prec->cw * prec->ch; ++cblkno) {
 						auto originalCblk = prec->enc + cblkno;
-						grk_layer *layer = originalCblk->layers + layno;
+						Layer *layer = originalCblk->layers + layno;
 						if (!layer->numpasses)
 							continue;
 
@@ -496,7 +496,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 							auto roundTripPrec = roundTripBand->precincts + pno;
 							for (uint32_t cblkno = 0; cblkno < (uint64_t)prec->cw * prec->ch; ++cblkno) {
 								auto originalCblk = prec->enc + cblkno;
-								grk_layer *layer = originalCblk->layers + layno;
+								Layer *layer = originalCblk->layers + layno;
 								if (!layer->numpasses)
 									continue;
 

@@ -19,13 +19,7 @@
  *
  */
 
-#include <T1Scheduler.h>
-#include <memory>
-#include "WaveletForward.h"
-#include <algorithm>
-#include <exception>
-#include "t1_common.h"
-#include <numeric>
+#include "grk_includes.h"
 
 using namespace std;
 
@@ -363,7 +357,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 						if (!single_lossless) {
 							for (passno = 0; passno < cblk->numPassesTotal;
 									passno++) {
-								grk_pass *pass = &cblk->passes[passno];
+								CodePass *pass = &cblk->passes[passno];
 								int32_t dr;
 								double dd, rdslope;
 
@@ -488,7 +482,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 
 	return true;
 }
-static void prepareBlockForFirstLayer(grk_cblk_enc *cblk) {
+static void prepareBlockForFirstLayer(CompressCodeblock *cblk) {
 	cblk->numPassesInPreviousPackets = 0;
 	cblk->numPassesInPacket = 0;
 	cblk->numlenbits = 0;
@@ -526,7 +520,7 @@ void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 									passno++) {
 								uint32_t dr;
 								double dd;
-								grk_pass *pass = &cblk->passes[passno];
+								CodePass *pass = &cblk->passes[passno];
 								if (cumulative_included_passes_in_block == 0) {
 									dr = pass->rate;
 									dd = pass->distortiondec;
@@ -1140,7 +1134,7 @@ bool TileProcessor::t2_encode(uint32_t *all_packet_bytes_written) {
 #ifdef DEBUG_LOSSLESS_T2
 	for (uint32_t compno = 0; compno < p_image->m_numcomps; ++compno) {
 		TileComponent *tilec = &p_tile->comps[compno];
-		tilec->round_trip_resolutions = new grk_resolution[tilec->numresolutions];
+		tilec->round_trip_resolutions = new Resolution[tilec->numresolutions];
 		for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
 			auto res = tilec->resolutions + resno;
 			auto roundRes = tilec->round_trip_resolutions + resno;
@@ -1163,8 +1157,8 @@ bool TileProcessor::t2_encode(uint32_t *all_packet_bytes_written) {
 				auto decodeBand = roundRes->bands + bandno;
 				if (!band->numPrecincts)
 					continue;
-				decodeBand->precincts = new grk_precinct[band->numPrecincts];
-				decodeBand->precincts_data_size = (uint32_t)(band->numPrecincts * sizeof(grk_precinct));
+				decodeBand->precincts = new Precinct[band->numPrecincts];
+				decodeBand->precincts_data_size = (uint32_t)(band->numPrecincts * sizeof(Precinct));
 				for (uint64_t precno = 0; precno < band->numPrecincts; ++precno) {
 					auto prec = band->precincts + precno;
 					auto decodePrec = decodeBand->precincts + precno;
@@ -1172,7 +1166,7 @@ bool TileProcessor::t2_encode(uint32_t *all_packet_bytes_written) {
 					decodePrec->ch = prec->ch;
 					if (prec->enc && prec->cw && prec->ch) {
 						decodePrec->initTagTrees();
-						decodePrec->dec = new grk_cblk_dec[(uint64_t)decodePrec->cw * decodePrec->ch];
+						decodePrec->dec = new DecompressCodeblock[(uint64_t)decodePrec->cw * decodePrec->ch];
 						for (uint64_t cblkno = 0; cblkno < decodePrec->cw * decodePrec->ch; ++cblkno) {
 							auto cblk = prec->enc + cblkno;
 							auto decodeCblk = decodePrec->dec + cblkno;
@@ -1632,382 +1626,6 @@ uint64_t PacketTracker::index(uint32_t comps,
 			res * m_numlayers * m_numprec +
 			comps * m_numres * m_numprec * m_numlayers;
 }
-
-grk_seg::grk_seg() {
-	clear();
-}
-void grk_seg::clear() {
-	dataindex = 0;
-	numpasses = 0;
-	len = 0;
-	maxpasses = 0;
-	numPassesInPacket = 0;
-	numBytesInPacket = 0;
-}
-
-grk_packet_length_info::grk_packet_length_info(uint32_t mylength, uint32_t bits) :
-		len(mylength), len_bits(bits) {
-}
-grk_packet_length_info::grk_packet_length_info() :
-		len(0), len_bits(0) {
-}
-bool grk_packet_length_info::operator==(const grk_packet_length_info &rhs) const {
-	return (rhs.len == len && rhs.len_bits == len_bits);
-}
-
-grk_pass::grk_pass() :
-		rate(0), distortiondec(0), len(0), term(0), slope(0) {
-}
-grk_layer::grk_layer() :
-		numpasses(0), len(0), disto(0), data(nullptr) {
-}
-
-grk_precinct::grk_precinct() :
-		cw(0), ch(0),
-		enc(nullptr), dec(nullptr),
-		num_code_blocks(0),
-		incltree(nullptr), imsbtree(nullptr) {
-}
-
-grk_cblk::grk_cblk():
-		compressedData(nullptr),
-		compressedDataSize(0),
-		owns_data(false),
-		numbps(0),
-		numlenbits(0),
-		numPassesInPacket(0)
-#ifdef DEBUG_LOSSLESS_T2
-		,included(false),
-#endif
-{
-}
-
-grk_cblk::grk_cblk(const grk_cblk &rhs): grk_rect_u32(rhs),
-		compressedData(rhs.compressedData), compressedDataSize(rhs.compressedDataSize), owns_data(rhs.owns_data),
-		numbps(rhs.numbps), numlenbits(rhs.numlenbits), numPassesInPacket(rhs.numPassesInPacket)
-#ifdef DEBUG_LOSSLESS_T2
-	,included(0)
-#endif
-{
-}
-grk_cblk& grk_cblk::operator=(const grk_cblk& rhs){
-	if (this != &rhs) { // self-assignment check expected
-		x0 = rhs.x0;
-		y0 = rhs.y0;
-		x1 = rhs.x1;
-		y1 = rhs.y1;
-		compressedData = rhs.compressedData;
-		compressedDataSize = rhs.compressedDataSize;
-		owns_data = rhs.owns_data;
-		numbps = rhs.numbps;
-		numlenbits = rhs.numlenbits;
-		numPassesInPacket = rhs.numPassesInPacket;
-#ifdef DEBUG_LOSSLESS_T2
-		included = rhs.included;
-		packet_length_info = rhs.packet_length_info;
-#endif
-	}
-	return *this;
-}
-void grk_cblk::clear(){
-	compressedData = nullptr;
-	owns_data = false;
-}
-grk_cblk_enc::grk_cblk_enc() :
-				paddedCompressedData(nullptr),
-				layers(	nullptr),
-				passes(nullptr),
-				numPassesInPreviousPackets(0),
-				numPassesTotal(0),
-				contextStream(nullptr)
-{
-}
-grk_cblk_enc::grk_cblk_enc(const grk_cblk_enc &rhs) :
-						grk_cblk(rhs),
-						paddedCompressedData(rhs.paddedCompressedData),
-						layers(	rhs.layers),
-						passes(rhs.passes),
-						numPassesInPreviousPackets(rhs.numPassesInPreviousPackets),
-						numPassesTotal(rhs.numPassesTotal),
-						contextStream(rhs.contextStream)
-{}
-
-grk_cblk_enc& grk_cblk_enc::operator=(const grk_cblk_enc& rhs){
-	if (this != &rhs) { // self-assignment check expected
-		grk_cblk::operator = (rhs);
-		paddedCompressedData = rhs.paddedCompressedData;
-		layers = rhs.layers;
-		passes = rhs.passes;
-		numPassesInPreviousPackets = rhs.numPassesInPreviousPackets;
-		numPassesTotal = rhs.numPassesTotal;
-		contextStream = rhs.contextStream;
-#ifdef DEBUG_LOSSLESS_T2
-		packet_length_info = rhs.packet_length_info;
-#endif
-
-	}
-	return *this;
-}
-
-grk_cblk_enc::~grk_cblk_enc() {
-	cleanup();
-}
-void grk_cblk_enc::clear(){
-	grk_cblk::clear();
-	layers = nullptr;
-	passes = nullptr;
-	contextStream = nullptr;
-#ifdef DEBUG_LOSSLESS_T2
-	packet_length_info.clear();
-#endif
-}
-bool grk_cblk_enc::alloc() {
-	if (!layers) {
-		/* no memset since data */
-		layers = (grk_layer*) grk_calloc(100, sizeof(grk_layer));
-		if (!layers)
-			return false;
-	}
-	if (!passes) {
-		passes = (grk_pass*) grk_calloc(100, sizeof(grk_pass));
-		if (!passes)
-			return false;
-	}
-
-	return true;
-}
-
-/**
- * Allocates data memory for an encoding code block.
- * We actually allocate 2 more bytes than specified, and then offset data by +2.
- * This is done so that we can safely initialize the MQ coder pointer to data-1,
- * without risk of accessing uninitialized memory.
- */
-bool grk_cblk_enc::alloc_data(size_t nominalBlockSize) {
-	uint32_t desired_data_size = (uint32_t) (nominalBlockSize * sizeof(uint32_t));
-	if (desired_data_size > compressedDataSize) {
-		if (owns_data)
-			delete[] compressedData;
-
-		// we add two fake zero bytes at beginning of buffer, so that mq coder
-		//can be initialized to data[-1] == actualData[1], and still point
-		//to a valid memory location
-		compressedData = new uint8_t[desired_data_size + grk_cblk_enc_compressed_data_pad_left];
-		compressedData[0] = 0;
-		compressedData[1] = 0;
-
-		paddedCompressedData = compressedData + grk_cblk_enc_compressed_data_pad_left;
-		compressedDataSize = desired_data_size;
-		owns_data = true;
-	}
-	return true;
-}
-
-void grk_cblk_enc::cleanup() {
-	if (owns_data) {
-		delete[] compressedData;
-		compressedData = nullptr;
-		owns_data = false;
-	}
-	paddedCompressedData = nullptr;
-	grk_free(layers);
-	layers = nullptr;
-	grk_free(passes);
-	passes = nullptr;
-}
-
-grk_cblk_dec::grk_cblk_dec() {
-	init();
-}
-
-grk_cblk_dec::~grk_cblk_dec(){
-    cleanup();
-}
-
-void grk_cblk_dec::clear(){
-	grk_cblk::clear();
-	segs = nullptr;
-	cleanup_seg_buffers();
-}
-
-grk_cblk_dec::grk_cblk_dec(const grk_cblk_dec &rhs) :
-				grk_cblk(rhs),
-				segs(rhs.segs), numSegments(rhs.numSegments),
-				numSegmentsAllocated(rhs.numSegmentsAllocated)
-{}
-
-grk_cblk_dec& grk_cblk_dec::operator=(const grk_cblk_dec& rhs){
-	if (this != &rhs) { // self-assignment check expected
-		*this = grk_cblk_dec(rhs);
-	}
-	return *this;
-}
-
-bool grk_cblk_dec::alloc() {
-	if (!segs) {
-		segs = new grk_seg[default_numbers_segments];
-		/*fprintf(stderr, "Allocate %u elements of code_block->data\n", default_numbers_segments * sizeof(grk_seg));*/
-
-		numSegmentsAllocated = default_numbers_segments;
-
-		/*fprintf(stderr, "Allocate 8192 elements of code_block->data\n");*/
-		/*fprintf(stderr, "numSegmentsAllocated of code_block->data = %u\n", p_code_block->numSegmentsAllocated);*/
-
-	} else {
-		/* sanitize */
-		auto l_segs = segs;
-		uint32_t l_current_max_segs = numSegmentsAllocated;
-
-		/* Note: since seg_buffers simply holds references to another data buffer,
-		 we do not need to copy it to the sanitized block  */
-		cleanup_seg_buffers();
-		init();
-		segs = l_segs;
-		numSegmentsAllocated = l_current_max_segs;
-	}
-	return true;
-}
-
-void grk_cblk_dec::init() {
-	compressedData = nullptr;
-	compressedDataSize = 0;
-	owns_data = false;
-	segs = nullptr;
-	x0 = 0;
-	y0 = 0;
-	x1 = 0;
-	y1 = 0;
-	numbps = 0;
-	numlenbits = 0;
-	numPassesInPacket = 0;
-	numSegments = 0;
-#ifdef DEBUG_LOSSLESS_T2
-	included = 0;
-#endif
-	numSegmentsAllocated = 0;
-}
-
-void grk_cblk_dec::cleanup() {
-	if (owns_data) {
-		delete[] compressedData;
-		compressedData = nullptr;
-		owns_data = false;
-	}
-	cleanup_seg_buffers();
-	delete[] segs;
-	segs = nullptr;
-}
-
-void grk_cblk_dec::cleanup_seg_buffers(){
-
-	for (auto& b : seg_buffers)
-		delete b;
-	seg_buffers.clear();
-
-}
-
-size_t grk_cblk_dec::getSegBuffersLen(){
-	return std::accumulate(seg_buffers.begin(), seg_buffers.end(), 0, [](const size_t s, grk_buf *a){
-	   return s + a->len;
-	});
-}
-
-bool grk_cblk_dec::copy_to_contiguous_buffer(uint8_t *buffer) {
-	if (!buffer)
-		return false;
-	size_t offset = 0;
-	for (auto& buf : seg_buffers){
-		if (buf->len){
-			memcpy(buffer + offset, buf->buf, buf->len);
-			offset += buf->len;
-		}
-	}
-	return true;
-}
-
-grk_band::grk_band() :
-				bandno(0),
-				precincts(nullptr),
-				numPrecincts(0),
-				numAllocatedPrecincts(0),
-				numbps(0),
-				stepsize(0),
-				inv_step(0) {
-}
-
-//note: don't copy precinct array
-grk_band::grk_band(const grk_band &rhs) : grk_rect_u32(rhs),
-										bandno(rhs.bandno),
-										precincts(nullptr),
-										numPrecincts(0),
-										numAllocatedPrecincts(0),
-										numbps(rhs.numbps),
-										stepsize(rhs.stepsize),
-										inv_step(rhs.inv_step)
-{
-}
-
-grk_band& grk_band::operator= (const grk_band &rhs){
-	if (this != &rhs) { // self-assignment check expected
-		*this = grk_band(rhs);
-	}
-	return *this;
-}
-
-
-bool grk_band::isEmpty() {
-	return ((x1 - x0 == 0) || (y1 - y0 == 0));
-}
-
-void grk_precinct::deleteTagTrees() {
-	delete incltree;
-	incltree = nullptr;
-	delete imsbtree;
-	imsbtree = nullptr;
-}
-
-void grk_precinct::initTagTrees() {
-
-	// if cw == 0 or ch == 0,
-	// then the precinct has no code blocks, therefore
-	// no need for inclusion and msb tag trees
-	if (cw > 0 && ch > 0) {
-		if (!incltree) {
-			try {
-				incltree = new TagTree(cw, ch);
-			} catch (std::exception &e) {
-				GRK_WARN("No incltree created.");
-			}
-		} else {
-			if (!incltree->init(cw, ch)) {
-				GRK_WARN("Failed to re-initialize incltree.");
-				delete incltree;
-				incltree = nullptr;
-			}
-		}
-
-		if (!imsbtree) {
-			try {
-				imsbtree = new TagTree(cw, ch);
-			} catch (std::exception &e) {
-				GRK_WARN("No imsbtree created.");
-			}
-		} else {
-			if (!imsbtree->init(cw, ch)) {
-				GRK_WARN("Failed to re-initialize imsbtree.");
-				delete imsbtree;
-				imsbtree = nullptr;
-			}
-		}
-	}
-}
-
-grk_resolution::grk_resolution() :
-		pw(0),
-		ph(0),
-		numbands(0)
-{}
-
 
 }
 

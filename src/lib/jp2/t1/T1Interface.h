@@ -39,7 +39,7 @@ struct decodeBlockInfo {
 	TileComponent *tilec;
 	int32_t *tiledp;
 	uint32_t stride;
-	grk_cblk_dec *cblk;
+	DecompressCodeblock *cblk;
 	uint32_t resno;
 	uint32_t bandno;
 	float stepsize;
@@ -77,7 +77,7 @@ struct encodeBlockInfo {
 	{
 	}
 	int32_t *tiledp;
-	grk_cblk_enc *cblk;
+	CompressCodeblock *cblk;
 	uint32_t compno;
 	uint32_t resno;
 	uint8_t bandno;

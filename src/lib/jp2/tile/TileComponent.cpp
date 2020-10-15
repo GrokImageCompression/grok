@@ -98,7 +98,7 @@ bool TileComponent::init(bool isEncoder,
 				- cp->m_coding_params.m_dec.m_reduce;
 	}
 	assert(!resolutions);
-	resolutions = new grk_resolution[numresolutions];
+	resolutions = new Resolution[numresolutions];
 
 	uint32_t levelno = numresolutions;
 	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
@@ -137,7 +137,7 @@ bool TileComponent::init(bool isEncoder,
 		/* number of precinct for a resolution */
 		uint64_t nb_precincts = (uint64_t)res->pw * res->ph;
 
-		if (mult64_will_overflow(nb_precincts, sizeof(grk_precinct))) {
+		if (mult64_will_overflow(nb_precincts, sizeof(Precinct))) {
 			GRK_ERROR(	"nb_precinct_size calculation would overflow ");
 			return false;
 		}
@@ -190,10 +190,10 @@ bool TileComponent::init(bool isEncoder,
 											m_is_encoder);
 
 			if (!band->precincts && (nb_precincts > 0U)) {
-				band->precincts = new grk_precinct[nb_precincts];
+				band->precincts = new Precinct[nb_precincts];
 				band->numAllocatedPrecincts = nb_precincts;
 			} else if (band->numAllocatedPrecincts < nb_precincts) {
-				auto new_precincts = new grk_precinct[nb_precincts];
+				auto new_precincts = new Precinct[nb_precincts];
 				for (size_t i = 0; i < band->numAllocatedPrecincts; ++i)
 					new_precincts[i] = band->precincts[i];
 				delete[] band->precincts;
@@ -224,9 +224,9 @@ bool TileComponent::init(bool isEncoder,
 				if (nb_code_blocks > 0) {
 					if (isEncoder){
 						if (!current_precinct->enc){
-							current_precinct->enc = new grk_cblk_enc[nb_code_blocks];
+							current_precinct->enc = new CompressCodeblock[nb_code_blocks];
 						} else if (nb_code_blocks > current_precinct->num_code_blocks){
-							auto new_blocks = new grk_cblk_enc[nb_code_blocks];
+							auto new_blocks = new CompressCodeblock[nb_code_blocks];
 							for (uint64_t i = 0; i < current_precinct->num_code_blocks; ++i){
 								new_blocks[i] = current_precinct->enc[i];
 								current_precinct->enc[i].clear();
@@ -236,9 +236,9 @@ bool TileComponent::init(bool isEncoder,
 						}
 					} else {
 						if (!current_precinct->dec){
-							current_precinct->dec = new grk_cblk_dec[nb_code_blocks];
+							current_precinct->dec = new DecompressCodeblock[nb_code_blocks];
 						} else if (nb_code_blocks > current_precinct->num_code_blocks){
-							auto new_blocks = new grk_cblk_dec[nb_code_blocks];
+							auto new_blocks = new DecompressCodeblock[nb_code_blocks];
 							for (uint64_t i = 0; i < current_precinct->num_code_blocks; ++i){
 								new_blocks[i] = current_precinct->dec[i];
 								current_precinct->dec[i].clear();

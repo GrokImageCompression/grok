@@ -51,9 +51,9 @@ struct TileComponent : public grk_rect_u32 {
 
 	uint32_t numresolutions; /* number of resolution levels */
 	uint32_t resolutions_to_decompress; /* number of resolutions level to decompress (at max)*/
-	grk_resolution *resolutions; /* resolutions information */
+	Resolution *resolutions; /* resolutions information */
 #ifdef DEBUG_LOSSLESS_T2
-	grk_resolution* round_trip_resolutions;  /* round trip resolution information */
+	Resolution* round_trip_resolutions;  /* round trip resolution information */
 #endif
 	TileComponentBuffer<int32_t> *buf;
     bool   whole_tile_decoding;

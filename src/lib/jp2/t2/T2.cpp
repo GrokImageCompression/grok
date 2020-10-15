@@ -21,12 +21,12 @@
 
 namespace grk {
 
-bool T2::init_seg(grk_cblk_dec *cblk, uint32_t index, uint8_t cblk_sty,
+bool T2::init_seg(DecompressCodeblock *cblk, uint32_t index, uint8_t cblk_sty,
 		bool first) {
 	uint32_t nb_segs = index + 1;
 
 	if (nb_segs > cblk->numSegmentsAllocated) {
-		auto new_segs = new grk_seg[cblk->numSegmentsAllocated
+		auto new_segs = new Segment[cblk->numSegmentsAllocated
 				+ cblk->numSegmentsAllocated];
 		for (uint32_t i = 0; i < cblk->numSegmentsAllocated; ++i)
 			new_segs[i] = cblk->segs[i];
