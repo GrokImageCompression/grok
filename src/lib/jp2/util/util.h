@@ -58,9 +58,6 @@ template<typename T> struct grk_rectangle {
     grk_rectangle(const grk_rectangle &rhs){
     	*this = rhs;
     }
-    grk_rect_u32 to_u32(){
-		return grk_rect_u32((uint32_t)x0,(uint32_t)y0,(uint32_t)x1,(uint32_t)y1);
-	}
     void print(void) const{
     	std::cout << "[" << x0 << "," << y0 << "," << x1 << "," << y1 << "]"
     			<< std::endl;

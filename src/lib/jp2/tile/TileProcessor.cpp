@@ -870,7 +870,7 @@ bool TileProcessor::decompress_tile_t2(ChunkBuffer *src_buf) {
 
 			/* Compute the intersection of the area of interest, expressed in tile coordinates */
 			/* with the tile coordinates */
-			auto win = tilec->buf->bounds().to_u32().intersection(*((grk_rect_u32*)tilec));
+			auto win = tilec->buf->bounds().intersection(*((grk_rect_u32*)tilec));
 			if (!win.is_valid()) {
 				/* We should not normally go there. The circumstance is when */
 				/* the tile coordinates do not intersect the area of interest */
@@ -1271,7 +1271,7 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_
 		uint32_t x1_dest = x0_dest + comp_dest->w;
 		uint32_t y1_dest = y0_dest + comp_dest->h;
 
-		grk_rect src_dim = tilec->buf->bounds();
+		grk_rect_u32 src_dim = tilec->buf->bounds();
 		uint32_t width_src = (uint32_t) src_dim.width();
 		uint32_t stride_src = tilec->buf->stride();
 		uint32_t height_src = (uint32_t) src_dim.height();

@@ -403,8 +403,8 @@ void TileComponent::create_buffer(grk_image *output_image,
 
 	delete buf;
 	buf = new TileComponentBuffer<int32_t>(output_image, dx,dy,
-											grk_rect(maxRes->x0, maxRes->y0, maxRes->x1, maxRes->y1),
-											grk_rect(x0, y0, x1, y1),
+											grk_rect_u32(maxRes->x0, maxRes->y0, maxRes->x1, maxRes->y1),
+											grk_rect_u32(x0, y0, x1, y1),
 											highestRes,
 											numresolutions,
 											resolutions,

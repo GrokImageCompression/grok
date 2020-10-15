@@ -68,8 +68,8 @@ template<typename T> struct res_buf {
 template<typename T> struct TileComponentBuffer {
 	TileComponentBuffer(grk_image *output_image,
 						uint32_t dx,uint32_t dy,
-						grk_rect unreduced_dim,
-						grk_rect reduced_dim,
+						grk_rect_u32 unreduced_dim,
+						grk_rect_u32 reduced_dim,
 						uint32_t reduced_num_resolutions,
 						uint32_t numresolutions,
 						grk_resolution *tile_comp_resolutions,
@@ -83,7 +83,7 @@ template<typename T> struct TileComponentBuffer {
 		//note: only decoder has output image
 		if (output_image) {
 			// tile component coordinates
-			m_unreduced_bounds = grk_rect(ceildiv<uint32_t>(output_image->x0, dx),
+			m_unreduced_bounds = grk_rect_u32(ceildiv<uint32_t>(output_image->x0, dx),
 										ceildiv<uint32_t>(output_image->y0, dy),
 										ceildiv<uint32_t>(output_image->x1, dx),
 										ceildiv<uint32_t>(output_image->y1, dy));
@@ -106,12 +106,12 @@ template<typename T> struct TileComponentBuffer {
 
         if ( use_band_buffers()) {
         	// lowest resolution equals 0th band
-        	 res_buffers.push_back(new res_buf<T>(nullptr, tile_comp_resolutions->bands[0].to_u32()) );
+        	 res_buffers.push_back(new res_buf<T>(nullptr, tile_comp_resolutions->bands[0]) );
 
         	 for (uint32_t resno = 1; resno < reduced_num_resolutions; ++resno)
-        		 res_buffers.push_back(new res_buf<T>( tile_comp_resolutions+resno, m_bounds.to_u32()) );
+        		 res_buffers.push_back(new res_buf<T>( tile_comp_resolutions+resno, m_bounds) );
         } else {
-        	res_buffers.push_back(new res_buf<T>( nullptr, m_bounds.to_u32()) );
+        	res_buffers.push_back(new res_buf<T>( nullptr, m_bounds) );
         }
 	}
 	~TileComponentBuffer(){
@@ -315,11 +315,11 @@ template<typename T> struct TileComponentBuffer {
 	 * decode: reduced tile component coordinates of region
 	 * encode: unreduced tile component coordinates of entire tile
 	 */
-	grk_rect bounds() const{
+	grk_rect_u32 bounds() const{
 		return m_bounds;
 	}
 
-	grk_rect unreduced_bounds() const{
+	grk_rect_u32 unreduced_bounds() const{
 		return m_unreduced_bounds;
 	}
 
@@ -356,11 +356,11 @@ private:
 		return res_buffers.back()->res;
 	}
 
-	grk_rect m_unreduced_bounds;
+	grk_rect_u32 m_unreduced_bounds;
 
 	/* decode: reduced tile component coordinates of region  */
 	/* encode: unreduced tile component coordinates of entire tile */
-	grk_rect m_bounds;
+	grk_rect_u32 m_bounds;
 
 	std::vector<grk_resolution*> resolutions;
 	std::vector<res_buf<T>* > res_buffers;
