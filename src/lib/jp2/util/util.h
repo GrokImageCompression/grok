@@ -185,20 +185,20 @@ template<typename T> struct grk_rectangle {
 
     grk_rectangle<T>& grow(T boundaryx, T boundaryy) {
 
-    	if (x0 < std::numeric_limits<T>::min() + boundaryx)
+    	if (x0 < (std::numeric_limits<T>::min)() + boundaryx)
     		x0 = 0;
     	else
     		x0 -= boundaryx;
-    	if (y0 < std::numeric_limits<T>::min() + boundaryy)
+    	if (y0 < (std::numeric_limits<T>::min)() + boundaryy)
     		y0 = 0;
     	else
     		y0 -= boundaryy;
-       	if (x1 > std::numeric_limits<T>::max() - boundaryx)
-    		x1 = std::numeric_limits<T>::max();
+       	if (x1 > (std::numeric_limits<T>::max)() - boundaryx)
+    		x1 = (std::numeric_limits<T>::max)();
     	else
     		x1 += boundaryx;
-    	if (y1 > std::numeric_limits<T>::max() - boundaryy)
-    		y1 = std::numeric_limits<T>::max();
+    	if (y1 > (std::numeric_limits<T>::max)() - boundaryy)
+    		y1 = (std::numeric_limits<T>::max)();
     	else
     		y1 += boundaryy;
 
