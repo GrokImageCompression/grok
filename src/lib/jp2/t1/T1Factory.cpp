@@ -24,9 +24,7 @@ using namespace ojph;
 using namespace ojph::local;
 
 #include "grk_includes.h"
-
-#include "T1Factory.h"
-#include <T1Part1.h>
+#include "T1Part1.h"
 #include "T1HT.h"
 
 namespace grk {

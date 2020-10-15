@@ -16,12 +16,10 @@
  */
 
 #include "grk_includes.h"
-#include "T1Factory.h"
-#include "T1Encoder.h"
 
 namespace grk {
 
-T1Encoder::T1Encoder(TileCodingParams *tcp, grk_tile *tile, uint32_t encodeMaxCblkW,
+T1EncodeScheduler::T1EncodeScheduler(TileCodingParams *tcp, grk_tile *tile, uint32_t encodeMaxCblkW,
 		uint32_t encodeMaxCblkH, bool needsRateControl) :
 		tile(tile),
 		needsRateControl(needsRateControl),
@@ -32,11 +30,11 @@ T1Encoder::T1Encoder(TileCodingParams *tcp, grk_tile *tile, uint32_t encodeMaxCb
 		threadStructs.push_back(
 				T1Factory::get_t1(true, tcp, encodeMaxCblkW, encodeMaxCblkH));
 }
-T1Encoder::~T1Encoder() {
+T1EncodeScheduler::~T1EncodeScheduler() {
 	for (auto &t : threadStructs)
 		delete t;
 }
-void T1Encoder::compress(std::vector<encodeBlockInfo*> *blocks) {
+void T1EncodeScheduler::compress(std::vector<encodeBlockInfo*> *blocks) {
 	if (!blocks || blocks->size() == 0)
 		return;
 
@@ -73,7 +71,7 @@ void T1Encoder::compress(std::vector<encodeBlockInfo*> *blocks) {
     }
 	delete[] encodeBlocks;
 }
-bool T1Encoder::compress(size_t threadId, uint64_t maxBlocks) {
+bool T1EncodeScheduler::compress(size_t threadId, uint64_t maxBlocks) {
 	auto impl = threadStructs[threadId];
 	uint64_t index = (uint64_t)++blockCount;
 	if (index >= maxBlocks)
@@ -84,7 +82,7 @@ bool T1Encoder::compress(size_t threadId, uint64_t maxBlocks) {
 
 	return true;
 }
-void T1Encoder::compress(T1Interface *impl, encodeBlockInfo *block){
+void T1EncodeScheduler::compress(T1Interface *impl, encodeBlockInfo *block){
 	uint32_t max = 0;
 	impl->preEncode(block, tile, max);
 	auto dist = impl->compress(block, tile, max, needsRateControl);

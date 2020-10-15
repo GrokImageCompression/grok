@@ -15,13 +15,11 @@
  *
  */
 #include "grk_includes.h"
-#include "T1Factory.h"
-#include "T1Decoder.h"
 #include <atomic>
 
 namespace grk {
 
-T1Decoder::T1Decoder(TileCodingParams *tcp,
+T1DecodeScheduler::T1DecodeScheduler(TileCodingParams *tcp,
 					uint16_t blockw,
 					uint16_t blockh) :
 		codeblock_width((uint16_t) (blockw ? (uint32_t) 1 << blockw : 0)),
@@ -35,12 +33,12 @@ T1Decoder::T1Decoder(TileCodingParams *tcp,
 	}
 }
 
-T1Decoder::~T1Decoder() {
+T1DecodeScheduler::~T1DecodeScheduler() {
 	for (auto &t : threadStructs) {
 		delete t;
 	}
 }
-bool T1Decoder::decompressBlock(T1Interface *impl, decodeBlockInfo *block){
+bool T1DecodeScheduler::decompressBlock(T1Interface *impl, decodeBlockInfo *block){
 	try {
 		if (!impl->decompress(block)) {
 			delete block;
@@ -56,7 +54,7 @@ bool T1Decoder::decompressBlock(T1Interface *impl, decodeBlockInfo *block){
 	return rc;
 }
 
-bool T1Decoder::decompress(std::vector<decodeBlockInfo*> *blocks) {
+bool T1DecodeScheduler::decompress(std::vector<decodeBlockInfo*> *blocks) {
 	if (!blocks || !blocks->size())
 		return true;
 	size_t num_threads = ThreadPool::get()->num_threads();

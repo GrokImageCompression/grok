@@ -15,9 +15,7 @@
  *
  */
 
-#include <T1Scheduler.h>
-#include "T1Decoder.h"
-#include "T1Encoder.h"
+#include "grk_includes.h"
 
 namespace grk {
 
@@ -74,7 +72,7 @@ void T1Scheduler::scheduleEncode(TileCodingParams *tcp,
 			}
 		}
 	}
-	T1Encoder encoder(tcp, tile, maxCblkW, maxCblkH, doRateControl);
+	T1EncodeScheduler encoder(tcp, tile, maxCblkW, maxCblkH, doRateControl);
 	encoder.compress(&blocks);
 }
 
@@ -133,7 +131,7 @@ bool T1Scheduler::prepareScheduleDecode(TileComponent *tilec, TileComponentCodin
 bool T1Scheduler::scheduleDecode(TileCodingParams *tcp,
 		                    uint16_t blockw, uint16_t blockh,
 		                    std::vector<decodeBlockInfo*> *blocks) {
-	T1Decoder decoder(tcp, blockw, blockh);
+	T1DecodeScheduler decoder(tcp, blockw, blockh);
 	return decoder.decompress(blocks);
 }
 

@@ -187,3 +187,7 @@ static inline long grk_lrintf(float f) {
 #include "RateControl.h"
 #include "RateInfo.h"
 #include "T1Interface.h"
+#include "T1Factory.h"
+#include "T1Scheduler.h"
+#include <T1DecodeScheduler.h>
+#include <T1EncodeScheduler.h>

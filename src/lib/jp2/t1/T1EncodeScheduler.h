@@ -21,11 +21,11 @@
 
 namespace grk {
 
-class T1Encoder {
+class T1EncodeScheduler {
 public:
-	T1Encoder(TileCodingParams *tcp, grk_tile *tile, uint32_t encodeMaxCblkW,
+	T1EncodeScheduler(TileCodingParams *tcp, grk_tile *tile, uint32_t encodeMaxCblkW,
 			uint32_t encodeMaxCblkH, bool needsRateControl);
-	~T1Encoder();
+	~T1EncodeScheduler();
 	void compress(std::vector<encodeBlockInfo*> *blocks);
 
 private:

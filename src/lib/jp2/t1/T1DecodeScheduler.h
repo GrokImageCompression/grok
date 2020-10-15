@@ -16,19 +16,18 @@
  */
 
 #pragma once
-#include <string>
-#include <vector>
-#include <thread>
+
+#include "grk_includes.h"
 
 namespace grk {
 
 struct decodeBlockInfo;
 class T1Interface;
 
-class T1Decoder {
+class T1DecodeScheduler {
 public:
-	T1Decoder(TileCodingParams *tcp, uint16_t blockw, uint16_t blockh);
-	~T1Decoder();
+	T1DecodeScheduler(TileCodingParams *tcp, uint16_t blockw, uint16_t blockh);
+	~T1DecodeScheduler();
 	bool decompress(std::vector<decodeBlockInfo*> *blocks);
 
 private:
