@@ -20,8 +20,8 @@
  */
 
 #pragma once
+#include "grk_includes.h"
 #include "testing.h"
-#include <vector>
 
 namespace grk {
 
@@ -352,6 +352,8 @@ private:
 
 	 void makelayer_feasible(uint32_t layno, uint16_t thresh,
 			bool final);
+
+
 public:
 	 bool m_corrupt_packet;
 

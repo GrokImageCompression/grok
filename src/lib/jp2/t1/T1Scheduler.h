@@ -18,27 +18,21 @@
 #pragma once
 
 #include "grk_includes.h"
-#include <vector>
-#include "T1Interface.h"
 
 namespace grk {
 
-class Tier1 {
+class T1Scheduler {
 public:
-
-	void encodeCodeblocks(	TileCodingParams *tcp,
-							grk_tile *tile,
-							const double *mct_norms,
-			uint32_t mct_numcomps, bool doRateControl);
-
-	bool prepareDecodeCodeblocks(TileComponent *tilec, TileComponentCodingParams *tccp,
+	void scheduleEncode(TileCodingParams *tcp,
+						grk_tile *tile,
+						const double *mct_norms,
+						uint32_t mct_numcomps, bool doRateControl);
+	bool prepareScheduleDecode(TileComponent *tilec, TileComponentCodingParams *tccp,
 			std::vector<decodeBlockInfo*> *blocks);
-
-	bool decodeCodeblocks(	TileCodingParams *tcp,
-							uint16_t blockw,
-							uint16_t blockh,
-							std::vector<decodeBlockInfo*> *blocks);
-
+	bool scheduleDecode(TileCodingParams *tcp,
+						uint16_t blockw,
+						uint16_t blockh,
+						std::vector<decodeBlockInfo*> *blocks);
 };
 
 }

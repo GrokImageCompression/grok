@@ -19,8 +19,7 @@
  *
  */
 
-#include "grk_includes.h"
-#include "Tier1.h"
+#include <T1Scheduler.h>
 #include <memory>
 #include "WaveletForward.h"
 #include <algorithm>
@@ -935,11 +934,11 @@ bool TileProcessor::decompress_tile_t1(void) {
 				}
 			}
 			std::vector<decodeBlockInfo*> blocks;
-			auto t1_wrap = std::unique_ptr<Tier1>(new Tier1());
-			if (!t1_wrap->prepareDecodeCodeblocks(tilec, tccp, &blocks))
+			auto scheduler = std::unique_ptr<T1Scheduler>(new T1Scheduler());
+			if (!scheduler->prepareScheduleDecode(tilec, tccp, &blocks))
 				return false;
 			// !!! assume that code block dimensions do not change over components
-			if (!t1_wrap->decodeCodeblocks(m_tcp,
+			if (!scheduler->scheduleDecode(m_tcp,
 					(uint16_t) m_tcp->tccps->cblkw,
 					(uint16_t) m_tcp->tccps->cblkh, &blocks))
 				return false;
@@ -1140,9 +1139,9 @@ void TileProcessor::t1_encode() {
 		mct_norms = (const double*) (tcp->mct_norms);
 	}
 
-	auto t1_wrap = std::unique_ptr<Tier1>(new Tier1());
+	auto scheduler = std::unique_ptr<T1Scheduler>(new T1Scheduler());
 
-	t1_wrap->encodeCodeblocks(tcp, tile, mct_norms, mct_numcomps,
+	scheduler->scheduleEncode(tcp, tile, mct_norms, mct_numcomps,
 			needs_rate_control());
 }
 

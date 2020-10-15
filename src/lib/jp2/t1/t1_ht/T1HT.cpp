@@ -62,8 +62,8 @@ void T1HT::preEncode(encodeBlockInfo *block, grk_tile *tile,
 	(void)tile;
 
 	auto cblk = block->cblk;
-	auto w = cblk->x1 - cblk->x0;
-	auto h = cblk->y1 - cblk->y0;
+	uint16_t w =  (uint16_t)cblk->width();
+	uint16_t h =  (uint16_t)cblk->height();
 	uint32_t tile_width = (tile->comps + block->compno)->buf->stride();
 	auto tileLineAdvance = tile_width - w;
 	uint32_t tileIndex = 0;
@@ -115,8 +115,8 @@ double T1HT::compress(encodeBlockInfo *block, grk_tile *tile, uint32_t maximum,
 	cblk->numbps = 0;
 	// optimization below was causing errors in encoding
 	//if (maximum >= (uint32_t)1<<(31 - (block->k_msbs+1)))
-	uint16_t w =  (uint16_t)(cblk->x1 - cblk->x0);
-	uint16_t h =  (uint16_t)(cblk->y1 - cblk->y0);
+	uint16_t w =  (uint16_t)cblk->width();
+	uint16_t h =  (uint16_t)cblk->height();
 
 	int pass_length[2] = {0,0};
 	 ojph_encode_codeblock(unencoded_data, block->k_msbs,1,
@@ -167,9 +167,9 @@ bool T1HT::decompress(decodeBlockInfo *block) {
 							   (int)num_passes,
 							   (int)offset,
 							   0,
-							   (int)(cblk->x1 - cblk->x0),
-							   (int)(cblk->y1 - cblk->y0),
-							   (int)(cblk->x1 - cblk->x0));
+							   cblk->width(),
+							   cblk->height(),
+							   cblk->width());
    else
 	   memset(unencoded_data, 0, (cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0) * sizeof(int32_t));
    return true;
@@ -178,8 +178,8 @@ bool T1HT::decompress(decodeBlockInfo *block) {
 
 bool T1HT::postDecode(decodeBlockInfo *block) {
 	auto cblk = block->cblk;
-	uint16_t cblk_w =  (uint16_t)(cblk->x1 - cblk->x0);
-	uint16_t cblk_h =  (uint16_t)(cblk->y1 - cblk->y0);
+	uint16_t cblk_w =  (uint16_t)cblk->width();
+	uint16_t cblk_h =  (uint16_t)cblk->height();
 
 	auto src = unencoded_data;
 	bool whole_tile_decoding = block->tilec->whole_tile_decoding;

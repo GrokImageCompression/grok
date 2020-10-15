@@ -14,8 +14,8 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#include <T1Part1.h>
 #include "grk_includes.h"
+#include "T1Part1.h"
 #include "testing.h"
 #include <algorithm>
 using namespace std;

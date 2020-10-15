@@ -17,7 +17,7 @@
  */
 
 #include "grk_includes.h"
-#include <T2.h>
+
 
 namespace grk {
 

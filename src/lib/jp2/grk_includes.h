@@ -186,3 +186,4 @@ static inline long grk_lrintf(float f) {
 #include "plugin_bridge.h"
 #include "RateControl.h"
 #include "RateInfo.h"
+#include "T1Interface.h"

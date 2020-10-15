@@ -15,13 +15,13 @@
  *
  */
 
-#include "Tier1.h"
+#include <T1Scheduler.h>
 #include "T1Decoder.h"
 #include "T1Encoder.h"
 
 namespace grk {
 
-void Tier1::encodeCodeblocks(TileCodingParams *tcp,
+void T1Scheduler::scheduleEncode(TileCodingParams *tcp,
 							grk_tile *tile,
 							const double *mct_norms,
 							uint32_t mct_numcomps,
@@ -78,7 +78,7 @@ void Tier1::encodeCodeblocks(TileCodingParams *tcp,
 	encoder.compress(&blocks);
 }
 
-bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, TileComponentCodingParams *tccp,
+bool T1Scheduler::prepareScheduleDecode(TileComponent *tilec, TileComponentCodingParams *tccp,
 		std::vector<decodeBlockInfo*> *blocks) {
 	if (!tilec->buf->alloc()) {
 		GRK_ERROR( "Not enough memory for tile data");
@@ -130,7 +130,7 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, TileComponentCodingPar
 }
 
 
-bool Tier1::decodeCodeblocks(TileCodingParams *tcp,
+bool T1Scheduler::scheduleDecode(TileCodingParams *tcp,
 		                    uint16_t blockw, uint16_t blockh,
 		                    std::vector<decodeBlockInfo*> *blocks) {
 	T1Decoder decoder(tcp, blockw, blockh);

@@ -21,7 +21,7 @@
 
 #include "grk_includes.h"
 #include "testing.h"
-#include <memory>
+
 
 //#define DEBUG_ENCODE_PACKETS
 
