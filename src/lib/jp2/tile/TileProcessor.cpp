@@ -838,13 +838,15 @@ bool TileProcessor::is_whole_tilecomp_decoding(uint32_t compno) {
 	uint32_t shift = tilec->numresolutions - tilec->resolutions_to_decompress;
 	/* Tolerate small margin within the reduced resolution factor to consider if */
 	/* the whole tile path must be taken */
-	return (tcx0 >= (uint32_t) tilec->x0 && tcy0 >= (uint32_t) tilec->y0
-			&& tcx1 <= (uint32_t) tilec->x1 && tcy1 <= (uint32_t) tilec->y1
-			&& (shift >= 32
-					|| (((tcx0 - (uint32_t) tilec->x0) >> shift) == 0
-							&& ((tcy0 - (uint32_t) tilec->y0) >> shift) == 0
-							&& (((uint32_t) tilec->x1 - tcx1) >> shift) == 0
-							&& (((uint32_t) tilec->y1 - tcy1) >> shift) == 0)));
+	return (tcx0 >=  tilec->x0 &&
+			tcy0 >= tilec->y0  &&
+			tcx1 <= tilec->x1  &&
+			tcy1 <= tilec->y1  &&
+			(shift >= 32 ||
+					   (((tcx0 -  tilec->x0) >> shift) == 0	 &&
+					    ((tcy0 -  tilec->y0) >> shift) == 0  &&
+					     ((tilec->x1 - tcx1) >> shift) == 0  &&
+						 ((tilec->y1 - tcy1) >> shift) == 0)));
 
 }
 
@@ -868,12 +870,8 @@ bool TileProcessor::decompress_tile_t2(ChunkBuffer *src_buf) {
 
 			/* Compute the intersection of the area of interest, expressed in tile coordinates */
 			/* with the tile coordinates */
-			auto dims = tilec->buf->bounds();
-			uint32_t win_x0 = max<uint32_t>(tilec->x0, (uint32_t) dims.x0);
-			uint32_t win_y0 = max<uint32_t>(tilec->y0, (uint32_t) dims.y0);
-			uint32_t win_x1 = min<uint32_t>(tilec->x1, (uint32_t) dims.x1);
-			uint32_t win_y1 = min<uint32_t>(tilec->y1, (uint32_t) dims.y1);
-			if (win_x1 < win_x0 || win_y1 < win_y0) {
+			auto win = tilec->buf->bounds().to_u32().intersection(*((grk_rect_u32*)tilec));
+			if (!win.is_valid()) {
 				/* We should not normally go there. The circumstance is when */
 				/* the tile coordinates do not intersect the area of interest */
 				/* Upper level logic should not even try to decompress that tile */
@@ -884,17 +882,8 @@ bool TileProcessor::decompress_tile_t2(ChunkBuffer *src_buf) {
 			for (uint32_t resno = 0; resno < tilec->resolutions_to_decompress;
 					++resno) {
 				auto res = tilec->resolutions + resno;
-
-				res->win_bounds =
-						grk_rect_u32(
-								ceildivpow2<uint32_t>(win_x0,
-										tilec->resolutions_to_decompress - 1 - resno),
-								ceildivpow2<uint32_t>(win_y0,
-										tilec->resolutions_to_decompress - 1 - resno),
-								ceildivpow2<uint32_t>(win_x1,
-										tilec->resolutions_to_decompress - 1 - resno),
-								ceildivpow2<uint32_t>(win_y1,
-										tilec->resolutions_to_decompress - 1 - resno));
+				auto window = win;
+				res->win_bounds = window.rectceildivpow2(tilec->resolutions_to_decompress - 1 - resno);
 			}
 		}
 	}
