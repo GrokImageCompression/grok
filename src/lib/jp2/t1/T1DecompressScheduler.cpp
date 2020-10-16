@@ -27,14 +27,14 @@ T1DecompressScheduler::T1DecompressScheduler(TileCodingParams *tcp,
 		success(true),
 		decodeBlocks(nullptr){
 	for (auto i = 0U; i < ThreadPool::get()->num_threads(); ++i) {
-		threadStructs.push_back(
+		t1Implementations.push_back(
 				T1Factory::get_t1(false, tcp, codeblock_width,
 						codeblock_height));
 	}
 }
 
 T1DecompressScheduler::~T1DecompressScheduler() {
-	for (auto &t : threadStructs) {
+	for (auto &t : t1Implementations) {
 		delete t;
 	}
 }
@@ -65,7 +65,7 @@ bool T1DecompressScheduler::decompress(std::vector<DecompressBlockInfo*> *blocks
 			if (!success){
 				delete block;
 			} else {
-				auto impl = threadStructs[(size_t)0];
+				auto impl = t1Implementations[(size_t)0];
 				if (!decompressBlock(impl,block))
 					success = false;
 			}
@@ -94,7 +94,7 @@ bool T1DecompressScheduler::decompress(std::vector<DecompressBlockInfo*> *blocks
 						delete block;
 						continue;
 					}
-					auto impl = threadStructs[(size_t)threadnum];
+					auto impl = t1Implementations[(size_t)threadnum];
 					if (!decompressBlock(impl,block))
 						success = false;
                 }

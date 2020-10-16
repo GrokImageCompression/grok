@@ -33,7 +33,7 @@ public:
 private:
 	bool decompressBlock(T1Interface *impl, DecompressBlockInfo *block);
 	uint16_t codeblock_width, codeblock_height;  //nominal dimensions of block
-	std::vector<T1Interface*> threadStructs;
+	std::vector<T1Interface*> t1Implementations;
 	std::atomic_bool success;
 
 	DecompressBlockInfo** decodeBlocks;

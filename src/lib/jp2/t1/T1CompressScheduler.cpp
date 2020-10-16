@@ -27,11 +27,11 @@ T1CompressScheduler::T1CompressScheduler(TileCodingParams *tcp, grk_tile *tile, 
 		blockCount(-1)
 {
 	for (auto i = 0U; i < ThreadPool::get()->num_threads(); ++i)
-		threadStructs.push_back(
+		t1Implementations.push_back(
 				T1Factory::get_t1(true, tcp, encodeMaxCblkW, encodeMaxCblkH));
 }
 T1CompressScheduler::~T1CompressScheduler() {
-	for (auto &t : threadStructs)
+	for (auto &t : t1Implementations)
 		delete t;
 }
 void T1CompressScheduler::compress(std::vector<CompressBlockInfo*> *blocks) {
@@ -40,7 +40,7 @@ void T1CompressScheduler::compress(std::vector<CompressBlockInfo*> *blocks) {
 
 	size_t num_threads = ThreadPool::get()->num_threads();
 	if (num_threads == 1){
-		auto impl = threadStructs[0];
+		auto impl = t1Implementations[0];
 		for (auto iter = blocks->begin(); iter != blocks->end(); ++iter){
 			compress(impl, *iter);
 			delete *iter;
@@ -72,7 +72,7 @@ void T1CompressScheduler::compress(std::vector<CompressBlockInfo*> *blocks) {
 	delete[] encodeBlocks;
 }
 bool T1CompressScheduler::compress(size_t threadId, uint64_t maxBlocks) {
-	auto impl = threadStructs[threadId];
+	auto impl = t1Implementations[threadId];
 	uint64_t index = (uint64_t)++blockCount;
 	if (index >= maxBlocks)
 		return false;

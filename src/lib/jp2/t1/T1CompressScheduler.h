@@ -33,7 +33,7 @@ private:
 	void compress(T1Interface *impl, CompressBlockInfo *block);
 
 	grk_tile *tile;
-	std::vector<T1Interface*> threadStructs;
+	std::vector<T1Interface*> t1Implementations;
 	mutable std::mutex distortion_mutex;
 	bool needsRateControl;
 	mutable std::mutex block_mutex;
