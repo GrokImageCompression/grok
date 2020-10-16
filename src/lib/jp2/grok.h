@@ -105,7 +105,7 @@ enum GRK_SUPPORTED_FILE_FMT {
  * JPEG 2000 Profiles, see Table A.10 from 15444-1 (updated in various AMDs)
  *
  * These values help choose the RSIZ value for the JPEG 2000 code stream.
- * The RSIZ value forces various encoding options, as detailed in Table A.10.
+ * The RSIZ value forces various compressing options, as detailed in Table A.10.
  * If GRK_PROFILE_PART2 is chosen, it must be combined with one or more extensions
  * described below.
  *
@@ -498,9 +498,9 @@ typedef struct _grk_cparameters {
 	char infile[GRK_PATH_LEN];
 	/** output file name */
 	char outfile[GRK_PATH_LEN];
-	/** subimage encoding: origin image offset in x direction */
+	/** subimage compressing: origin image offset in x direction */
 	uint32_t image_offset_x0;
-	/** subimage encoding: origin image offset in y direction */
+	/** subimage compressing: origin image offset in y direction */
 	uint32_t image_offset_y0;
 	/** subsampling value for dx */
 	uint32_t subsampling_dx;
@@ -523,7 +523,7 @@ typedef struct _grk_cparameters {
 	/** MCT (multiple component transform) */
 	uint8_t tcp_mct;
 	/** Naive implementation of MCT restricted to a single reversible array based
-	 encoding without offset concerning all the components. */
+	 compressing without offset concerning all the components. */
 	void *mct_data;
 	/**
 	 * Maximum size (in bytes) for the whole code stream.
@@ -1237,7 +1237,7 @@ typedef struct grk_plugin_tile_component {
  * Plugin tile
  */
 typedef struct _grk_plugin_tile {
-	uint32_t decode_flags;
+	uint32_t decompress_flags;
 	size_t numComponents;
 	grk_plugin_tile_component **tileComponents;
 } grk_plugin_tile;
@@ -1476,7 +1476,7 @@ GRK_API bool GRK_CALLCONV grk_init_decompress(grk_codec codec,
 		grk_dparameters *parameters);
 
 /**
- * Decode JPEG 2000 header
+ * Decompress JPEG 2000 header
  *
  * @param	codec				JPEG 2000 code stream to read.
  * @param	header_info			information read from JPEG 2000 header.
@@ -1549,7 +1549,7 @@ GRK_API grk_codec GRK_CALLCONV grk_create_compress(GRK_CODEC_FORMAT format,
 		grk_stream *stream);
 
 /**
- Set encoding parameters to default values, that means :
+ Set compressing parameters to default values, that means :
 
  Lossless
  Single tile
@@ -1699,7 +1699,7 @@ GRK_API void GRK_CALLCONV grk_destroy_cstr_index(
  * Set the MCT matrix to use.
  *
  * @param	parameters		the parameters to change.
- * @param	pEncodingMatrix	the encoding matrix.
+ * @param	pEncodingMatrix	the compressing matrix.
  * @param	p_dc_shift		the dc shift coefficients to use.
  * @param	pNbComp			the number of components of the image.
  *
@@ -1761,7 +1761,7 @@ GRK_API void GRK_CALLCONV grk_plugin_cleanup(void);
 GRK_API uint32_t GRK_CALLCONV grk_plugin_get_debug_state();
 
 /*
- Plugin encoding
+ Plugin compressing
  */
 typedef struct _grk_plugin_init_info {
 	int32_t deviceId;
@@ -1773,45 +1773,45 @@ typedef struct _grk_plugin_init_info {
  */
 GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info initInfo);
 
-typedef struct grk_plugin_encode_user_callback_info {
+typedef struct grk_plugin_compress_user_callback_info {
 	const char *input_file_name;
 	bool outputFileNameIsRelative;
 	const char *output_file_name;
-	grk_cparameters *encoder_parameters;
+	grk_cparameters *compressor_parameters;
 	grk_image *image;
 	grk_plugin_tile *tile;
 	uint8_t *compressBuffer;
 	size_t compressBufferLen;
 	unsigned int error_code;
-} grk_plugin_encode_user_callback_info;
+} grk_plugin_compress_user_callback_info;
 
-typedef bool (*GRK_PLUGIN_ENCODE_USER_CALLBACK)(
-		grk_plugin_encode_user_callback_info *info);
+typedef bool (*GRK_PLUGIN_COMPRESS_USER_CALLBACK)(
+		grk_plugin_compress_user_callback_info *info);
 
 /**
  * Compress with plugin
  *
- * @param encode_parameters 	compress parameters
+ * @param compress_parameters 	compress parameters
  * @param callback				callback
  */
 GRK_API int32_t GRK_CALLCONV grk_plugin_compress(
-		grk_cparameters *encode_parameters,
-		GRK_PLUGIN_ENCODE_USER_CALLBACK callback);
+		grk_cparameters *compress_parameters,
+		GRK_PLUGIN_COMPRESS_USER_CALLBACK callback);
 
 /**
  * Batch compress with plugin
  *
  * @param input_dir				directory holding input images
  * @param output_dir			directory holding compressed output images
- * @param encode_parameters 	compress parameters
+ * @param compress_parameters 	compress parameters
  * @param callback				callback
  *
  * @return 0 if successful
  *
  */
 GRK_API int32_t GRK_CALLCONV grk_plugin_batch_compress(const char *input_dir,
-		const char *output_dir, grk_cparameters *encode_parameters,
-		GRK_PLUGIN_ENCODE_USER_CALLBACK callback);
+		const char *output_dir, grk_cparameters *compress_parameters,
+		GRK_PLUGIN_COMPRESS_USER_CALLBACK callback);
 
 /**
  * Check if batch job is complete
@@ -1827,12 +1827,12 @@ GRK_API void GRK_CALLCONV grk_plugin_stop_batch_compress(void);
  Plugin decompression
  */
 
-typedef int (*GROK_INIT_DECODERS)(grk_header_info *header_info,
+typedef int (*GROK_INIT_DECOMPRESSORS)(grk_header_info *header_info,
 		grk_image *image);
 
-typedef struct _grk_plugin_decode_callback_info {
+typedef struct _grk_plugin_decompress_callback_info {
 	size_t deviceId;
-	GROK_INIT_DECODERS init_decoders_func;
+	GROK_INIT_DECOMPRESSORS init_decompressors_func;
 	const char *input_file_name;
 	const char *output_file_name;
 	// input file format 0: J2K, 1: JP2
@@ -1842,19 +1842,19 @@ typedef struct _grk_plugin_decode_callback_info {
 	grk_stream *l_stream;
 	grk_codec l_codec;
 	grk_header_info header_info;
-	grk_decompress_parameters *decoder_parameters;
+	grk_decompress_parameters *decompressor_parameters;
 	grk_image *image;
 	bool plugin_owns_image;
 	grk_plugin_tile *tile;
 	unsigned int error_code;
-	uint32_t decode_flags;
+	uint32_t decompress_flags;
 	uint32_t full_image_x0;
 	uint32_t full_image_y0;
 	void* user_data;
-} grk_plugin_decode_callback_info;
+} grk_plugin_decompress_callback_info;
 
-typedef int32_t (*grk_plugin_decode_callback)(
-		grk_plugin_decode_callback_info *info);
+typedef int32_t (*grk_plugin_decompress_callback)(
+		grk_plugin_decompress_callback_info *info);
 
 /**
  * Decompress with plugin
@@ -1864,7 +1864,7 @@ typedef int32_t (*grk_plugin_decode_callback)(
  */
 GRK_API int32_t GRK_CALLCONV grk_plugin_decompress(
 		grk_decompress_parameters *decompress_parameters,
-		grk_plugin_decode_callback callback);
+		grk_plugin_decompress_callback callback);
 
 /**
  * Initialize batch decompress
@@ -1879,7 +1879,7 @@ GRK_API int32_t GRK_CALLCONV grk_plugin_decompress(
 GRK_API int32_t GRK_CALLCONV grk_plugin_init_batch_decompress(
 		const char *input_dir, const char *output_dir,
 		grk_decompress_parameters *decompress_parameters,
-		grk_plugin_decode_callback callback);
+		grk_plugin_decompress_callback callback);
 
 /**
  * Batch decompress

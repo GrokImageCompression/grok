@@ -57,7 +57,7 @@ struct plugin_encode_user_callback_info {
 	const char *input_file_name;
 	bool outputFileNameIsRelative;
 	const char *output_file_name;
-	 grk_cparameters  *encoder_parameters;
+	 grk_cparameters  *compressor_parameters;
 	grk_image *image;
 	grk_plugin_tile *tile;
 	int32_t error_code;
@@ -91,26 +91,26 @@ struct PluginDecodeCallbackInfo {
 			grk_decompress_parameters *decoderParameters, GRK_SUPPORTED_FILE_FMT format,
 			uint32_t flags) :
 			deviceId(0),
-			init_decoders_func(nullptr),
+			init_decompressors_func(nullptr),
 			inputFile(input),
 			outputFile(	output),
 			decod_format(format),
 			cod_format(GRK_UNK_FMT),
 			l_stream(nullptr),
 			l_codec(nullptr),
-			decoder_parameters(decoderParameters),
+			decompressor_parameters(decoderParameters),
 			image(nullptr),
 			plugin_owns_image(false),
 			tile(nullptr),
 			error_code(0),
-			decode_flags(flags),
+			decompress_flags(flags),
 			user_data(nullptr)
 
 	{
 		memset(&header_info, 0, sizeof(header_info));
 	}
 	size_t deviceId;
-	GROK_INIT_DECODERS init_decoders_func;
+	GROK_INIT_DECOMPRESSORS init_decompressors_func;
 	std::string inputFile;
 	std::string outputFile;
 	// input file format 0: J2K, 1: JP2
@@ -119,13 +119,13 @@ struct PluginDecodeCallbackInfo {
 	GRK_SUPPORTED_FILE_FMT cod_format;
 	 grk_stream  *l_stream;
 	 grk_codec  l_codec;
-	grk_decompress_parameters *decoder_parameters;
+	grk_decompress_parameters *decompressor_parameters;
 	 grk_header_info  header_info;
 	grk_image *image;
 	bool plugin_owns_image;
 	grk_plugin_tile *tile;
 	int32_t error_code;
-	uint32_t decode_flags;
+	uint32_t decompress_flags;
 	void* user_data;
 };
 

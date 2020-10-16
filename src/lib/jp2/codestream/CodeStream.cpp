@@ -48,7 +48,7 @@ static const j2k_mct_function j2k_mct_write_functions_from_float[] = {
 static bool j2k_read_header_procedure(CodeStream *codeStream);
 
 /**
- * The default encoding validation procedure without any extension.
+ * The default compressing validation procedure without any extension.
  *
  * @param       codeStream          JPEG 2000 code stream
  * @param 		tileProcessor		tile processor
@@ -67,7 +67,7 @@ static bool j2k_compress_validation(CodeStream *codeStream);
 static bool j2k_decompress_validation(CodeStream *codeStream);
 
 /**
- * The mct encoding validation procedure.
+ * The mct compressing validation procedure.
  *
  * @param       codeStream          JPEG 2000 code stream
  *
@@ -107,7 +107,7 @@ static bool j2k_decompress_tiles(CodeStream *codeStream);
 static bool j2k_get_end_header(CodeStream *codeStream);
 
 /**
- * Ends the encoding, i.e. frees memory.
+ * Ends the compressing, i.e. frees memory.
  *
  * @param       codeStream          JPEG 2000 code stream
  */
@@ -469,7 +469,7 @@ bool j2k_init_mct_encoding(TileCodingParams *p_tcp, grk_image *p_image) {
 				p_tcp->m_mct_records = nullptr;
 				p_tcp->m_nb_max_mct_records = 0;
 				p_tcp->m_nb_mct_records = 0;
-				/* GRK_ERROR( "Not enough memory to set up mct encoding"); */
+				/* GRK_ERROR( "Not enough memory to set up mct compressing"); */
 				return false;
 			}
 			p_tcp->m_mct_records = new_mct_records;
@@ -510,7 +510,7 @@ bool j2k_init_mct_encoding(TileCodingParams *p_tcp, grk_image *p_image) {
 			p_tcp->m_mct_records = nullptr;
 			p_tcp->m_nb_max_mct_records = 0;
 			p_tcp->m_nb_mct_records = 0;
-			/* GRK_ERROR( "Not enough memory to set up mct encoding"); */
+			/* GRK_ERROR( "Not enough memory to set up mct compressing"); */
 			return false;
 		}
 		p_tcp->m_mct_records = new_mct_records;
@@ -567,7 +567,7 @@ bool j2k_init_mct_encoding(TileCodingParams *p_tcp, grk_image *p_image) {
 			p_tcp->m_mcc_records = nullptr;
 			p_tcp->m_nb_max_mcc_records = 0;
 			p_tcp->m_nb_mcc_records = 0;
-			/* GRK_ERROR( "Not enough memory to set up mct encoding"); */
+			/* GRK_ERROR( "Not enough memory to set up mct compressing"); */
 			return false;
 		}
 		p_tcp->m_mcc_records = new_mcc_records;
@@ -1113,7 +1113,7 @@ bool CodeStream::read_header(grk_header_info  *header_info, grk_image **p_image)
 	return true;
 }
 bool CodeStream::do_decompress(grk_image *p_image){
-	/* Decode the code stream */
+	/* Decompress the code stream */
 	if (!exec(m_procedure_list))
 		return false;
 
@@ -1194,7 +1194,7 @@ bool CodeStream::decompress_tile(grk_image *p_image,	uint16_t tile_index){
 		p_image->y1 = (uint32_t) overlap_rect.y1;
 	} else {
 		GRK_WARN(
-				"Decode region <%u,%u,%u,%u> does not overlap requested tile %u. Ignoring.",
+				"Decompress region <%u,%u,%u,%u> does not overlap requested tile %u. Ignoring.",
 				original_image_rect.x0, original_image_rect.y0,
 				original_image_rect.x1, original_image_rect.y1, tile_index);
 	}
@@ -1260,7 +1260,7 @@ bool CodeStream::start_compress(void){
 	if (!exec(m_validation_list))
 		return false;
 
-	/* customization of the encoding */
+	/* customization of the compressing */
 	if (!init_header_writing())
 		return false;
 
@@ -1421,7 +1421,7 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 	}
 
 	/*
-	 copy user encoding parameters
+	 copy user compressing parameters
 	 */
 
 	/* keep a link to cp so that we can destroy it later in j2k_destroy_compress */
@@ -1491,7 +1491,7 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 	}
 
 	/*
-	 calculate other encoding parameters
+	 calculate other compressing parameters
 	 */
 
 	if (parameters->tile_size_on) {
@@ -1624,7 +1624,7 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 
 			if (j2k_init_mct_encoding(tcp, image) == false) {
 				/* free will be handled by j2k_destroy */
-				GRK_ERROR("Failed to set up j2k mct encoding");
+				GRK_ERROR("Failed to set up j2k mct compressing");
 				return false;
 			}
 		} else {
@@ -1849,7 +1849,7 @@ cleanup:
 
 bool CodeStream::end_compress(void){
 
-	/* customization of the encoding */
+	/* customization of the compressing */
 	m_procedure_list.push_back((j2k_procedure) j2k_write_eoc);
 	if (m_cp.m_coding_params.m_enc.writeTLM)
 		m_procedure_list.push_back((j2k_procedure) j2k_write_tlm_end);
@@ -2516,7 +2516,7 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor, bool multi_t
 
 	bool rc = true;
 	bool doPost = !tileProcessor->current_plugin_tile
-			|| (tileProcessor->current_plugin_tile->decode_flags
+			|| (tileProcessor->current_plugin_tile->decompress_flags
 					& GRK_DECODE_POST_T1);
 
 	// T1 decode of previous tile
@@ -2684,7 +2684,7 @@ bool CodeStream::decompress_tile_t2(TileProcessor *tileProcessor) {
 	// find next tile
 	bool rc = true;
 	bool doPost = !tileProcessor->current_plugin_tile
-			|| (tileProcessor->current_plugin_tile->decode_flags
+			|| (tileProcessor->current_plugin_tile->decompress_flags
 					& GRK_DECODE_POST_T1);
 	if (doPost){
 		rc =  decoder->findNextTile(this);

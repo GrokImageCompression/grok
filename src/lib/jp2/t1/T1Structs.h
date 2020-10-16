@@ -42,7 +42,7 @@ struct PacketLengthInfo {
 	uint32_t len_bits;
 };
 
-// encoding/decoding pass
+// compressing/decoding pass
 struct CodePass {
 	CodePass();
 	uint32_t rate;

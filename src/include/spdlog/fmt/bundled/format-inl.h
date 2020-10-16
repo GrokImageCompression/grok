@@ -1216,7 +1216,7 @@ int snprintf_float(T value, int precision, float_specs specs,
 
 // A public domain branchless UTF-8 decoder by Christopher Wellons:
 // https://github.com/skeeto/branchless-utf8
-/* Decode the next character, c, from buf, reporting errors in e.
+/* Decompress the next character, c, from buf, reporting errors in e.
  *
  * Since this is a branchless decoder, four bytes will be read from the
  * buffer regardless of the actual length of the next character. This
@@ -1225,7 +1225,7 @@ int snprintf_float(T value, int precision, float_specs specs,
  *
  * Errors are reported in e, which will be non-zero if the parsed
  * character was somehow invalid: invalid byte sequence, non-canonical
- * encoding, or a surrogate half.
+ * compressing, or a surrogate half.
  *
  * The function returns a pointer to the next character. When an error
  * occurs, this pointer will be a guess that depends on the particular
@@ -1257,7 +1257,7 @@ FMT_FUNC const char* utf8_decode(const char* buf, uint32_t* c, int* e) {
   *c >>= shiftc[len];
 
   // Accumulate the various error conditions.
-  *e = (*c < mins[len]) << 6;       // non-canonical encoding
+  *e = (*c < mins[len]) << 6;       // non-canonical compressing
   *e |= ((*c >> 11) == 0x1b) << 7;  // surrogate half?
   *e |= (*c > 0x10FFFF) << 8;       // out of range?
   *e |= (s[1] & 0xc0) >> 2;
@@ -1380,7 +1380,7 @@ FMT_FUNC void vprint(std::FILE* f, string_view format_str, format_args args) {
 }
 
 #ifdef _WIN32
-// Print assuming legacy (non-Unicode) encoding.
+// Print assuming legacy (non-Unicode) compressing.
 FMT_FUNC void internal::vprint_mojibake(std::FILE* f, string_view format_str,
                                         format_args args) {
   memory_buffer buffer;

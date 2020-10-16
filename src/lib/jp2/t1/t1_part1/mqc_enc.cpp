@@ -209,7 +209,7 @@ uint32_t mqc_numbytes_enc(mqcoder *mqc){
 
 void mqc_init_enc(mqcoder *mqc, uint8_t *bp){
     /* To avoid the curctx pointer to be dangling, but not strictly */
-    /* required as the current context is always set before encoding */
+    /* required as the current context is always set before compressing */
     mqc_setcurctx(mqc, 0);
 
     /* As specified in Figure C.10 - Initialization of the compressor */

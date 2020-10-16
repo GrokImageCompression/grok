@@ -61,7 +61,7 @@ static bool pi_next_pcrl(PacketIter *pi);
 static bool pi_next_cprl(PacketIter *pi);
 
 /**
- * Updates the coding parameters if the encoding is used with Progression order changes and final (or cinema parameters are used).
+ * Updates the coding parameters if the compressing is used with Progression order changes and final (or cinema parameters are used).
  *
  * @param	p_cp		the coding parameters to modify
  * @param	tileno	the tile index being concerned.
@@ -78,7 +78,7 @@ static void pi_update_encode_poc_and_final(CodingParams *p_cp,
 		uint64_t max_precincts, uint32_t dx_min, uint32_t dy_min);
 
 /**
- * Updates the coding parameters if the encoding is not used with Progression order changes and final (and cinema parameters are used).
+ * Updates the coding parameters if the compressing is not used with Progression order changes and final (and cinema parameters are used).
  *
  * @param	p_cp		the coding parameters to modify
  * @param	num_comps		the number of components
@@ -97,7 +97,7 @@ static void pi_update_encode_no_poc(CodingParams *p_cp,
 		uint32_t ty0, uint32_t ty1, uint64_t max_precincts, uint8_t max_res,
 		uint32_t dx_min, uint32_t dy_min);
 /**
- * Gets the encoding parameters needed to update the coding parameters and all the pocs.
+ * Gets the compressing parameters needed to update the coding parameters and all the pocs.
  *
  * @param	p_image		the image being encoded.
  * @param	p_cp		the coding parameters.
@@ -117,7 +117,7 @@ static void grk_get_encoding_parameters(const grk_image *p_image,
 		uint32_t *dy_min, uint64_t *max_precincts, uint8_t *max_res);
 
 /**
- * Gets the encoding parameters needed to update the coding parameters and all the pocs.
+ * Gets the compressing parameters needed to update the coding parameters and all the pocs.
  * The precinct widths, heights, dx and dy for each component at each resolution will be stored as well.
  * the last parameter of the function should be an array of pointers of size nb components, each pointer leading
  * to an area of size 4 * max_res. The data is stored inside this area with the following pattern :

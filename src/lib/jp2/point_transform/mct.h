@@ -34,14 +34,14 @@ public:
 	 @param c2 Samples blue component
 	 @param n Number of samples for each component
 	 */
-	static void encode_rev(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
+	static void compress_rev(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
 	/**
 	 Apply a reversible multi-component inverse transform to an image
 	 @param tile tile
 	 @param image image
 	 @param tccps tile component coding parameters
 	 */
-	static void decode_rev(grk_tile *tile, grk_image *image,
+	static void decompress_rev(grk_tile *tile, grk_image *image,
 			TileComponentCodingParams *tccps);
 
 	/**
@@ -57,14 +57,14 @@ public:
 	 @param c2 Samples blue component
 	 @param n Number of samples for each component
 	 */
-	static void encode_irrev(int *c0, int *c1, int *c2, uint64_t n);
+	static void compress_irrev(int *c0, int *c1, int *c2, uint64_t n);
 	/**
 	 Apply an irreversible multi-component inverse transform to an image
 	 @param tile tile
 	 @param image image
 	 @param tccps tile component coding parameters
 	 */
-	static void decode_irrev(grk_tile *tile, grk_image *image,
+	static void decompress_irrev(grk_tile *tile, grk_image *image,
 			TileComponentCodingParams *tccps);
 
 	/**
@@ -81,7 +81,7 @@ public:
 	 @param is_signed        indicates if the data is signed
 	 @return false if function encounter a problem, true otherwise
 	 */
-	static bool encode_custom(uint8_t *p_coding_data, uint64_t n, uint8_t **p_data,
+	static bool compress_custom(uint8_t *p_coding_data, uint64_t n, uint8_t **p_data,
 			uint32_t nb_comp, uint32_t is_signed);
 	/**
 	 Custom MCT decode
@@ -92,7 +92,7 @@ public:
 	 @param isSigned         tells if the data is signed
 	 @return false if function encounter a problem, true otherwise
 	 */
-	static bool decode_custom(uint8_t *pDecodingData, uint64_t n, uint8_t **pData,
+	static bool decompress_custom(uint8_t *pDecodingData, uint64_t n, uint8_t **pData,
 			uint32_t pNbComp, uint32_t isSigned);
 	/**
 	 Calculate norm of MCT transform
@@ -102,8 +102,8 @@ public:
 	 */
 	static void calculate_norms(double *pNorms, uint32_t nb_comps, float *pMatrix);
 
-	static void decode_rev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno);
-	static void decode_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno) ;
+	static void decompress_rev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno);
+	static void decompress_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno) ;
 
 };
 

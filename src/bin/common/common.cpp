@@ -65,7 +65,7 @@ int parse_DA_values(char *inArg, uint32_t *DA_x0, uint32_t *DA_y0,
 
 	// region must be specified by 4 values exactly
 	if (it != 4) {
-		spdlog::warn("Decode region must be specified by exactly "
+		spdlog::warn("Decompress region must be specified by exactly "
 				"four coordinates. Ignoring specified region.");
 		return EXIT_FAILURE;
 
@@ -73,13 +73,13 @@ int parse_DA_values(char *inArg, uint32_t *DA_x0, uint32_t *DA_y0,
 
 	// don't allow negative values
 	if ((values[0] < 0 || values[1] < 0 || values[2] < 0 || values[3] < 0)) {
-		spdlog::warn("Decode region cannot contain negative "
+		spdlog::warn("Decompress region cannot contain negative "
 				"values.\n Ignoring specified region ({},{},{},{}).",
 					values[0], values[1], values[2], values[3]);
 		return EXIT_FAILURE;
 	}
 	if (values[2] <= values[0] || values[3] <= values[1]) {
-		spdlog::warn("Decode region must have strictly "
+		spdlog::warn("Decompress region must have strictly "
 				"positive area.\n Ignoring specified region ({},{},{},{}).",
 					values[0], values[1], values[2], values[3]);
 		return EXIT_FAILURE;

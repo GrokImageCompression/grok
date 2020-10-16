@@ -432,7 +432,7 @@ namespace ojph {
     }
 
     /////////////////////////////////////////////////////////////////////////
-    inline int decode_init_uvlc(ui32 vlc, ui32 mode, int *u)
+    inline int decompress_init_uvlc(ui32 vlc, ui32 mode, int *u)
     {
       //table stores possible decoding three bits from vlc
       // there are 8 entries for xx1, x10, 100, 000
@@ -533,7 +533,7 @@ namespace ojph {
     }
 
     /////////////////////////////////////////////////////////////////////////
-    inline int decode_noninit_uvlc(ui32 vlc, ui32 mode, int *u)
+    inline int decompress_noninit_uvlc(ui32 vlc, ui32 mode, int *u)
     {
       //table stores possible decoding three bits from vlc
       // there are 8 entries for xx1, x10, 100, 000
@@ -798,7 +798,7 @@ namespace ojph {
           if (run < 0) //either -1 or -2, get
             run = mel_get_run(&mel);
         }
-        int consumed_bits = decode_init_uvlc(vlc_val, uvlc_mode, U_p);
+        int consumed_bits = decompress_init_uvlc(vlc_val, uvlc_mode, U_p);
         vlc_val = rev_advance(&vlc, consumed_bits);
 
         //decode magsgn and update line_state
@@ -1022,7 +1022,7 @@ namespace ojph {
           ////////////
           int U_p[2];
           int uvlc_mode = ((qinf[0] & 0x8) >> 3) | ((qinf[1] & 0x8) >> 2);
-          int consumed_bits = decode_noninit_uvlc(vlc_val, uvlc_mode, U_p);
+          int consumed_bits = decompress_noninit_uvlc(vlc_val, uvlc_mode, U_p);
           vlc_val = rev_advance(&vlc, consumed_bits);
 
           //calculate kappa and add it to U_p

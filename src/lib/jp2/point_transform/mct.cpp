@@ -45,7 +45,7 @@ const double* mct::get_norms_irrev() {
 /* <summary> */
 /* Forward reversible MCT. */
 /* </summary> */
-void mct::encode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
+void mct::compress_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 		int32_t *GRK_RESTRICT chan2, uint64_t n) {
 	size_t i = 0;
 
@@ -106,7 +106,7 @@ void mct::encode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 
 
 
-void mct::decode_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno) {
+void mct::decompress_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno) {
 	size_t i = 0;
 	float *GRK_RESTRICT c0 = (float*) tile->comps[compno].buf->ptr();
 	int32_t *c0_i = (int32_t*)c0;
@@ -174,7 +174,7 @@ void mct::decode_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParam
 /* <summary> */
 /* Inverse irreversible MCT. */
 /* </summary> */
-void mct::decode_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps) {
+void mct::decompress_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps) {
 	uint64_t i = 0;
 	uint64_t n = tile->comps->buf->strided_area();
 
@@ -270,7 +270,7 @@ void mct::decode_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParam
 }
 
 
-void mct::decode_rev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno) {
+void mct::decompress_rev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno) {
 	size_t i = 0;
 	int32_t *GRK_RESTRICT c0 = tile->comps[compno].buf->ptr();
 
@@ -334,7 +334,7 @@ void mct::decode_rev(grk_tile *tile, grk_image *image,TileComponentCodingParams 
 /* <summary> */
 /* Inverse reversible MCT. */
 /* </summary> */
-void mct::decode_rev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps) {
+void mct::decompress_rev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps) {
 	size_t i = 0;
 	int32_t *GRK_RESTRICT c0 = tile->comps[0].buf->ptr();
 	int32_t *GRK_RESTRICT c1 = tile->comps[1].buf->ptr();
@@ -421,7 +421,7 @@ void mct::decode_rev(grk_tile *tile, grk_image *image,TileComponentCodingParams 
 /* <summary> */
 /* Forward irreversible MCT. */
 /* </summary> */
-void mct::encode_irrev( int* GRK_RESTRICT chan0,
+void mct::compress_irrev( int* GRK_RESTRICT chan0,
 		int* GRK_RESTRICT chan1,
 		int* GRK_RESTRICT chan2,
 						uint64_t n)
@@ -520,7 +520,7 @@ void mct::calculate_norms(double *pNorms, uint32_t pNbComps, float *pMatrix) {
 	}
 }
 
-bool mct::encode_custom(uint8_t *mct_matrix, uint64_t n, uint8_t **pData,
+bool mct::compress_custom(uint8_t *mct_matrix, uint64_t n, uint8_t **pData,
 		uint32_t pNbComp, uint32_t isSigned) {
 	auto Mct = (float*) mct_matrix;
 	uint32_t NbMatCoeff = pNbComp * pNbComp;
@@ -556,7 +556,7 @@ bool mct::encode_custom(uint8_t *mct_matrix, uint64_t n, uint8_t **pData,
 	return true;
 }
 
-bool mct::decode_custom(uint8_t *mct_matrix, uint64_t n, uint8_t **pData,
+bool mct::decompress_custom(uint8_t *mct_matrix, uint64_t n, uint8_t **pData,
 		uint32_t num_comps, uint32_t is_signed) {
 	auto data = (float**) pData;
 

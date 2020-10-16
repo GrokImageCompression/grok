@@ -100,7 +100,7 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 					auto aj = a + m;
 					for (uint32_t k = 0; k < rh; ++k)
 						bj[k] = aj[k * stride];
-					wavelet.encode_line(bj, (int32_t)d_n, (int32_t)s_n, cas_col);
+					wavelet.compress_line(bj, (int32_t)d_n, (int32_t)s_n, cas_col);
 					dwt_utils::deinterleave_v(bj, aj, d_n, s_n, stride, cas_col);
 				}
 			} else {
@@ -119,7 +119,7 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 								auto aj = a + m;
 								for (uint32_t k = 0; k < rh; ++k)
 									bj[k] = aj[k * stride];
-								wavelet.encode_line(bj, (int32_t)d_n, (int32_t)s_n, cas_col);
+								wavelet.compress_line(bj, (int32_t)d_n, (int32_t)s_n, cas_col);
 								dwt_utils::deinterleave_v(bj, aj, d_n, s_n, stride, cas_col);
 							}
 							return 0;
@@ -142,7 +142,7 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 					auto bj = bj_array[0];
 					auto aj = a + m * stride;
 					memcpy(bj,aj,rw << 2);
-					wavelet.encode_line(bj, (int32_t)d_n, (int32_t)s_n, cas_row);
+					wavelet.compress_line(bj, (int32_t)d_n, (int32_t)s_n, cas_row);
 					dwt_utils::deinterleave_h(bj, aj, d_n, s_n, cas_row);
 				}
 
@@ -161,7 +161,7 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 								int32_t *bj = bj_array[index];
 								int32_t *aj = a + m * stride;
 								memcpy(bj,aj,rw << 2);
-								wavelet.encode_line(bj, (int32_t)d_n, (int32_t)s_n, cas_row);
+								wavelet.compress_line(bj, (int32_t)d_n, (int32_t)s_n, cas_row);
 								dwt_utils::deinterleave_h(bj, aj, d_n, s_n, cas_row);
 							}
 							return 0;

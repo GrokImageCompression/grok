@@ -52,14 +52,14 @@ namespace ojph {
     // tables
     /////////////////////////////////////////////////////////////////////////
 
-    //VLC encoding
+    //VLC compressing
     // index is (c_q << 8) + (rho << 4) + eps
     // data is  (cwd << 8) + (cwd_len << 4) + eps
     // table 0 is for the initial line of quads
     static ui16 vlc_tbl0[2048] = { 0 };
     static ui16 vlc_tbl1[2048] = { 0 };
 
-    //UVLC encoding
+    //UVLC compressing
     static int ulvc_cwd_pre[33];
     static int ulvc_cwd_pre_len[33];
     static int ulvc_cwd_suf[33];

@@ -21,7 +21,7 @@
 
 #pragma once
 
-/* For internal use of decode_macro() */
+/* For internal use of decompress_macro() */
 #define mpsexchange_dec_macro(d, curctx, a) \
 { \
     if (a < (*curctx)->qeval) { \
@@ -33,7 +33,7 @@
     } \
 }
 
-/* For internal use of decode_macro() */
+/* For internal use of decompress_macro() */
 #define lpsexchange_dec_macro(d, curctx, a) \
 { \
     if (a < (*curctx)->qeval) { \
@@ -48,7 +48,7 @@
 }
 
 /**
-Decode a symbol using raw-decoder. Cfr p.506 TAUBMAN
+Decompress a symbol using raw-decoder. Cfr p.506 TAUBMAN
 @param mqc MQC handle
 @return Returns the decoded symbol (0 or 1)
 */
@@ -98,7 +98,7 @@ static INLINE uint32_t mqc_raw_decode(mqcoder *mqc){
 	} \
 }
 
-/* For internal use of decode_macro() */
+/* For internal use of decompress_macro() */
 #define renorm_dec_macro(mqc, a, c, ct) \
 { \
     do { \
@@ -110,7 +110,7 @@ static INLINE uint32_t mqc_raw_decode(mqcoder *mqc){
     } while (a < A_MIN); \
 }
 
-#define decode_macro(d, mqc, curctx, a, c, ct) \
+#define decompress_macro(d, mqc, curctx, a, c, ct) \
 { \
     /* Implements ISO 15444-1 C.3.2 Decoding a decision (DECODE) */ \
     a -= (*curctx)->qeval;  \
@@ -145,10 +145,10 @@ Renormalize mqc->a and mqc->c while decoding
     renorm_dec_macro(mqc, mqc->a, mqc->c, mqc->ct)
 
 /**
-Decode a symbol
+Decompress a symbol
 @param d uint32_t value where to store the decoded symbol
 @param mqc MQC handle
 @return Returns the decoded symbol (0 or 1) in d
 */
 #define mqc_decode(d, mqc) \
-    decode_macro(d, mqc, mqc->curctx, mqc->a, mqc->c, mqc->ct)
+    decompress_macro(d, mqc, mqc->curctx, mqc->a, mqc->c, mqc->ct)

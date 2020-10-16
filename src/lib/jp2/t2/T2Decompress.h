@@ -40,26 +40,26 @@ struct T2Decompress : public T2 {
 	T2Decompress(TileProcessor *tileProc);
 
 	/**
-	 Decode the packets of a tile from a source buffer
+	 Decompress the packets of a tile from a source buffer
 	 @param tileno 		number that identifies the tile for which to decompress the packets
 	 @param src_buf     source buffer
 	 @param data_read   amount of data read
 	 @return true if successful
 	 */
-	bool decode_packets(uint16_t tileno, ChunkBuffer *src_buf,
+	bool decompress_packets(uint16_t tileno, ChunkBuffer *src_buf,
 			uint64_t *data_read);
 
 private:
 	TileProcessor *tileProcessor;
 	/**
-	 Decode a packet of a tile from a source buffer
+	 Decompress a packet of a tile from a source buffer
 	 @param tcp 		Tile coding parameters
 	 @param pi 			Packet iterator
 	 @param src_buf 	source buffer
 	 @param data_read   amount of data read
 	 @return  true if packet was successfully decoded
 	 */
-	bool decode_packet(TileCodingParams *tcp, PacketIter *pi, ChunkBuffer *src_buf,
+	bool decompress_packet(TileCodingParams *tcp, PacketIter *pi, ChunkBuffer *src_buf,
 			uint64_t *data_read);
 
 	bool skip_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuffer *src_buf,

@@ -2494,7 +2494,7 @@ bool FileFormat::read_header(grk_header_info  *header_info, grk_image **p_image)
 	if (!jp2_init_decompress_validation(this))
 		return false;
 
-	/* customization of the encoding */
+	/* customization of the compressing */
 	if (!jp2_init_header_reading(this))
 		return false;
 
@@ -2647,7 +2647,7 @@ bool FileFormat::decompress( grk_plugin_tile *tile,	 grk_image *p_image){
 
 /** Reading function used after code stream if necessary */
 bool FileFormat::end_decompress(void){
-	/* customization of the end encoding */
+	/* customization of the end compressing */
 	if (!jp2_init_end_header_reading(this))
 		return false;
 
@@ -2684,7 +2684,7 @@ bool FileFormat::start_compress(void){
 	if (!jp2_exec(this, m_validation_list))
 		return false;
 
-	/* customization of the encoding */
+	/* customization of the compressing */
 	if (!jp2_init_header_writing(this))
 		return false;
 
@@ -2913,7 +2913,7 @@ bool FileFormat::compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t da
 }
 
 bool FileFormat::end_compress(void){
-	/* customization of the end encoding */
+	/* customization of the end compressing */
 	if (!jp2_init_end_header_writing(this))
 		return false;
 	if (!codeStream->end_compress())

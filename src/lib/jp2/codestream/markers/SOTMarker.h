@@ -39,7 +39,7 @@ public:
 	bool write_psot(uint32_t tile_part_bytes_written);
 
 	/**
-	 * Decode a SOT marker (Start of tile-part)
+	 * Decompress a SOT marker (Start of tile-part)
 	 *
 	 * @param       p_header_data   the data contained in the SOT marker.
 	 * @param       header_size     the size of the data contained in the PPT marker.

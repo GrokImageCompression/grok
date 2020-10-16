@@ -33,7 +33,7 @@ typedef struct {
 	int32_t biHeight; 			/* Height of the image in pixels */
 	uint16_t biPlanes; 			/* 1 */
 	uint16_t biBitCount; 		/* Number of color bits per pixels */
-	uint32_t biCompression; 	/* Type of encoding:
+	uint32_t biCompression; 	/* Type of compressing:
 	 	 	 	 	 	 	 	   0: none
 	 	 	 	 	 	 	 	   1: RLE8
 	 	 	 	 	 	 	 	   2: RLE4

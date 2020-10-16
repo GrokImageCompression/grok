@@ -47,11 +47,11 @@ struct T1 {
 	T1(bool isEncoder, uint32_t maxCblkW,	uint32_t maxCblkH);
 	~T1();
 
-	bool decode_cblk(cblk_dec *cblk,
+	bool decompress_cblk(cblk_dec *cblk,
 					uint32_t orient, uint32_t roishift, uint32_t cblksty);
 	void code_block_enc_deallocate(cblk_enc *p_code_block);
 	bool allocate_buffers(uint32_t w, uint32_t h);
-	double encode_cblk(cblk_enc *cblk,
+	double compress_cblk(cblk_enc *cblk,
 					uint32_t max,
 					uint8_t orient, uint32_t compno, uint32_t level,
 					uint32_t qmfbid, double stepsize, uint32_t cblksty,

@@ -126,7 +126,7 @@ static void info_callback(const char *msg, void *client_data) {
 }
 
 
-static void decode_help_display(void) {
+static void decompress_help_display(void) {
 	fprintf(stdout,
 			"grk_decompress - decompress JPEG 2000 codestream to various image formats.\n"
 					"This utility has been compiled against libgrokj2k v%s.\n\n",
@@ -387,7 +387,7 @@ class GrokOutput: public StdOutput {
 public:
 	virtual void usage(CmdLineInterface &c) {
 		(void) c;
-		decode_help_display();
+		decompress_help_display();
 	}
 };
 
@@ -459,7 +459,7 @@ int GrkDecompress::parse_cmdline_decoder(int argc, char **argv,
 				0, "unsigned integer", cmd);
 		ValueArg<std::string> precisionArg("p", "Precision", "Force precision",
 				false, "", "string", cmd);
-		ValueArg<std::string> decodeRegionArg("d", "DecodeRegion", "Decode Region",
+		ValueArg<std::string> decodeRegionArg("d", "DecodeRegion", "Decompress Region",
 				false, "", "string", cmd);
 		ValueArg<std::string> compressionArg("c", "Compression",
 				"Compression Type", false, "", "string", cmd);
@@ -719,7 +719,7 @@ int GrkDecompress::parse_cmdline_decoder(int argc, char **argv,
 	}
 #if 0
     case 'h': 			/* display an help description */
-        decode_help_display();
+        decompress_help_display();
         return 1;
 #endif
 
@@ -788,7 +788,7 @@ void MycmsLogErrorHandlerFunction(cmsContext ContextID,
 }
 #endif
 
-static int decode_callback(grk_plugin_decode_callback_info *info);
+static int decompress_callback(grk_plugin_decompress_callback_info *info);
 
 // returns 0 for failure, 1 for success, and 2 if file is not suitable for decoding
 int GrkDecompress::decompress(const char *fileName, DecompressInitParams *initParams) {
@@ -801,12 +801,12 @@ int GrkDecompress::decompress(const char *fileName, DecompressInitParams *initPa
 		}
 	}
 
-	grk_plugin_decode_callback_info info;
-	memset(&info, 0, sizeof(grk_plugin_decode_callback_info));
+	grk_plugin_decompress_callback_info info;
+	memset(&info, 0, sizeof(grk_plugin_decompress_callback_info));
 	info.decod_format = GRK_UNK_FMT;
 	info.cod_format = GRK_UNK_FMT;
-	info.decode_flags = GRK_DECODE_ALL;
-	info.decoder_parameters = &initParams->parameters;
+	info.decompress_flags = GRK_DECODE_ALL;
+	info.decompressor_parameters = &initParams->parameters;
 	info.user_data = this;
 
 	if (pre_decode(&info)) {
@@ -835,7 +835,7 @@ int GrkDecompress::plugin_main(int argc, char **argv, DecompressInitParams *init
 	/* set decoding parameters to default values */
 	set_default_parameters(&initParams->parameters);
 
-	/* parse input and get user encoding parameters */
+	/* parse input and get user compressing parameters */
 	if (parse_cmdline_decoder(argc, argv, &initParams->parameters,
 			&initParams->img_fol, &initParams->out_fol, initParams->plugin_path)
 			== 1) {
@@ -875,7 +875,7 @@ int GrkDecompress::plugin_main(int argc, char **argv, DecompressInitParams *init
 		setup_signal_handler();
 		success = grk_plugin_init_batch_decompress(initParams->img_fol.imgdirpath,
 				initParams->out_fol.imgdirpath, &initParams->parameters,
-				decode_callback);
+				decompress_callback);
 		//start batch
 		if (success)
 			success = grk_plugin_batch_decompress();
@@ -945,7 +945,7 @@ int GrkDecompress::plugin_main(int argc, char **argv, DecompressInitParams *init
 		}
 
 		//1. try to decompress using plugin
-		success = grk_plugin_decompress(&initParams->parameters, decode_callback);
+		success = grk_plugin_decompress(&initParams->parameters, decompress_callback);
 		if (success != 0)
 			goto cleanup;
 		num_decompressed_images++;
@@ -968,14 +968,14 @@ int GrkDecompress::plugin_main(int argc, char **argv, DecompressInitParams *init
 }
 
 
-int decode_callback(grk_plugin_decode_callback_info *info) {
+int decompress_callback(grk_plugin_decompress_callback_info *info) {
 	int rc = -1;
 	// GRK_DECODE_T1 flag specifies full decompress on CPU, so
 	// we don't need to initialize the decoder in this case
-	if (info->decode_flags & GRK_DECODE_T1) {
-		info->init_decoders_func = nullptr;
+	if (info->decompress_flags & GRK_DECODE_T1) {
+		info->init_decompressors_func = nullptr;
 	}
-	if (info->decode_flags & GRK_PLUGIN_DECODE_CLEAN) {
+	if (info->decompress_flags & GRK_PLUGIN_DECODE_CLEAN) {
 		if (info->l_stream)
 			grk_stream_destroy(info->l_stream);
 		info->l_stream = nullptr;
@@ -989,14 +989,14 @@ int decode_callback(grk_plugin_decode_callback_info *info) {
 		rc = 0;
 	}
 	auto decompressor = (GrkDecompress*)info->user_data;
-	if (info->decode_flags & (GRK_DECODE_HEADER |
+	if (info->decompress_flags & (GRK_DECODE_HEADER |
 									GRK_DECODE_T1 |
 									GRK_DECODE_T2)) {
 		rc = decompressor->pre_decode(info);
 		if (rc)
 			return rc;
 	}
-	if (info->decode_flags & GRK_DECODE_POST_T1) {
+	if (info->decompress_flags & GRK_DECODE_POST_T1) {
 		rc = decompressor->post_decode(info);
 	}
 	return rc;
@@ -1007,12 +1007,12 @@ enum grk_stream_type {
 };
 
 // return: 0 for success, non-zero for failure
-int GrkDecompress::pre_decode(grk_plugin_decode_callback_info *info) {
+int GrkDecompress::pre_decode(grk_plugin_decompress_callback_info *info) {
 	if (!info)
 		return 1;
 	bool failed = true;
 	bool useMemoryBuffer = false;
-	auto parameters = info->decoder_parameters;
+	auto parameters = info->decompressor_parameters;
 	if (!parameters)
 		return 1;
 	auto infile =
@@ -1137,7 +1137,7 @@ int GrkDecompress::pre_decode(grk_plugin_decode_callback_info *info) {
 	}
 
 	// 2. read header
-	if (info->decode_flags & GRK_DECODE_HEADER) {
+	if (info->decompress_flags & GRK_DECODE_HEADER) {
 		// Read the main header of the code stream (j2k) and also JP2 boxes (jp2)
 		if (!grk_read_header(info->l_codec, &info->header_info, &info->image)) {
 			spdlog::error("grk_decompress: failed to read the header");
@@ -1146,10 +1146,10 @@ int GrkDecompress::pre_decode(grk_plugin_decode_callback_info *info) {
 
 		// do not allow odd top left region coordinates for SYCC
 		if (info->image->color_space == GRK_CLRSPC_SYCC){
-			bool adjustX = (info->decoder_parameters->DA_x0 != info->full_image_x0) &&
-					(info->decoder_parameters->DA_x0 & 1);
-			bool adjustY = (info->decoder_parameters->DA_y0 != info->full_image_y0) &&
-						(info->decoder_parameters->DA_y0 & 1);
+			bool adjustX = (info->decompressor_parameters->DA_x0 != info->full_image_x0) &&
+					(info->decompressor_parameters->DA_x0 & 1);
+			bool adjustY = (info->decompressor_parameters->DA_y0 != info->full_image_y0) &&
+						(info->decompressor_parameters->DA_y0 & 1);
 			if (adjustX || adjustY){
 				spdlog::error("grk_decompress: Top left-hand region coordinates that do not coincide\n"
 						"with respective top left-hand image coordinates must be even");
@@ -1182,8 +1182,8 @@ int GrkDecompress::pre_decode(grk_plugin_decode_callback_info *info) {
 				goto cleanup;
 			}
 		}
-		if (info->init_decoders_func)
-			return info->init_decoders_func(&info->header_info, info->image);
+		if (info->init_decompressors_func)
+			return info->init_decompressors_func(&info->header_info, info->image);
 	}
 
 	if (info->image){
@@ -1192,13 +1192,13 @@ int GrkDecompress::pre_decode(grk_plugin_decode_callback_info *info) {
 	}
 
 	// header-only decompress
-	if (info->decode_flags == GRK_DECODE_HEADER)
+	if (info->decompress_flags == GRK_DECODE_HEADER)
 		goto cleanup;
 
 
 	//3. decompress
 	if (info->tile)
-		info->tile->decode_flags = info->decode_flags;
+		info->tile->decompress_flags = info->decompress_flags;
 
 	// limit to 16 bit precision
 	for (uint32_t i = 0; i < info->image->numcomps; ++i) {
@@ -1251,19 +1251,19 @@ cleanup:
 /*
  Post-process decompressed image and store in selected image format
  */
-int GrkDecompress::post_decode(grk_plugin_decode_callback_info *info) {
+int GrkDecompress::post_decode(grk_plugin_decompress_callback_info *info) {
 	if (!info)
 		return -1;
 	bool oddFirstX = info->full_image_x0 & 1;
 	bool oddFirstY = info->full_image_y0 & 1;
 
-	bool regionDecode = info->decoder_parameters->DA_x1 > info->decoder_parameters->DA_x0 &&
-							info->decoder_parameters->DA_y1 > info->decoder_parameters->DA_y0;
+	bool regionDecode = info->decompressor_parameters->DA_x1 > info->decompressor_parameters->DA_x0 &&
+							info->decompressor_parameters->DA_y1 > info->decompressor_parameters->DA_y0;
 
 	if (regionDecode) {
-		if (info->decoder_parameters->DA_x0 != info->image->x0 )
+		if (info->decompressor_parameters->DA_x0 != info->image->x0 )
 			oddFirstX = false;
-		if (info->decoder_parameters->DA_y0 != info->image->y0 )
+		if (info->decompressor_parameters->DA_y0 != info->image->y0 )
 			oddFirstY = false;
 	}
 
@@ -1271,18 +1271,18 @@ int GrkDecompress::post_decode(grk_plugin_decode_callback_info *info) {
 
 	bool failed = true;
 	bool canStoreICC = false;
-	bool isTiff = info->decoder_parameters->cod_format == GRK_TIF_FMT;
-	grk_decompress_parameters *parameters = info->decoder_parameters;
+	bool isTiff = info->decompressor_parameters->cod_format == GRK_TIF_FMT;
+	grk_decompress_parameters *parameters = info->decompressor_parameters;
 	auto image = info->image;
 	bool canStoreCIE = isTiff && image->color_space == GRK_CLRSPC_DEFAULT_CIE;
 	bool isCIE = image->color_space == GRK_CLRSPC_DEFAULT_CIE
 			|| image->color_space == GRK_CLRSPC_CUSTOM_CIE;
 	const char *infile =
-			info->decoder_parameters->infile[0] ?
-					info->decoder_parameters->infile : info->input_file_name;
+			info->decompressor_parameters->infile[0] ?
+					info->decompressor_parameters->infile : info->input_file_name;
 	const char *outfile =
-			info->decoder_parameters->outfile[0] ?
-					info->decoder_parameters->outfile : info->output_file_name;
+			info->decompressor_parameters->outfile[0] ?
+					info->decompressor_parameters->outfile : info->output_file_name;
 
 	GRK_SUPPORTED_FILE_FMT cod_format = (GRK_SUPPORTED_FILE_FMT) (
 			info->cod_format != GRK_UNK_FMT ?
@@ -1303,7 +1303,7 @@ int GrkDecompress::post_decode(grk_plugin_decode_callback_info *info) {
 		}
 	}
 	if (image->color_space == GRK_CLRSPC_SYCC) {
-		if (!isTiff || info->decoder_parameters->force_rgb) {
+		if (!isTiff || info->decompressor_parameters->force_rgb) {
 			if (!grk::color_sycc_to_rgb(image, oddFirstX, oddFirstY))
 				spdlog::warn("grk_decompress: sYCC to RGB colour conversion failed");
 		}
@@ -1311,14 +1311,14 @@ int GrkDecompress::post_decode(grk_plugin_decode_callback_info *info) {
 		if (!grk::color_esycc_to_rgb(image))
 			spdlog::warn("grk_decompress: eYCC to RGB colour conversion failed");
 	} else if (image->color_space == GRK_CLRSPC_CMYK) {
-		if (!isTiff || info->decoder_parameters->force_rgb) {
+		if (!isTiff || info->decompressor_parameters->force_rgb) {
 			if (!grk::color_cmyk_to_rgb(image))
 				spdlog::warn("grk_decompress: CMYK to RGB colour conversion failed");
 		}
 	}
 	if (image->xmp_buf) {
-		bool canStoreXMP = (info->decoder_parameters->cod_format == GRK_TIF_FMT
-				|| info->decoder_parameters->cod_format == GRK_PNG_FMT);
+		bool canStoreXMP = (info->decompressor_parameters->cod_format == GRK_TIF_FMT
+				|| info->decompressor_parameters->cod_format == GRK_PNG_FMT);
 		if (!canStoreXMP) {
 			spdlog::warn(
 					" Input file {} contains XMP meta-data,\nbut the file format for output file {} does not support storage of this data.",
@@ -1326,7 +1326,7 @@ int GrkDecompress::post_decode(grk_plugin_decode_callback_info *info) {
 		}
 	}
 	if (image->iptc_buf) {
-		bool canStoreIPTC_IIM = (info->decoder_parameters->cod_format
+		bool canStoreIPTC_IIM = (info->decompressor_parameters->cod_format
 				== GRK_TIF_FMT);
 		if (!canStoreIPTC_IIM) {
 			spdlog::warn(
@@ -1336,9 +1336,9 @@ int GrkDecompress::post_decode(grk_plugin_decode_callback_info *info) {
 	}
 	if (image->color.icc_profile_buf) {
 		if (isCIE) {
-			if (!canStoreCIE || info->decoder_parameters->force_rgb) {
+			if (!canStoreCIE || info->decompressor_parameters->force_rgb) {
 #if defined(GROK_HAVE_LIBLCMS)
-				if (!info->decoder_parameters->force_rgb)
+				if (!info->decompressor_parameters->force_rgb)
 					spdlog::warn(
 							" Input file {} is in CIE colour space,\n"
 							"but the codec is unable to store this information in the "
@@ -1362,13 +1362,13 @@ int GrkDecompress::post_decode(grk_plugin_decode_callback_info *info) {
 			// so no need to apply it in this case,
 			// (unless we are forcing to RGB).
 			// Otherwise, we apply the profile
-			canStoreICC = (info->decoder_parameters->cod_format == GRK_TIF_FMT
-					|| info->decoder_parameters->cod_format == GRK_PNG_FMT
-					|| info->decoder_parameters->cod_format == GRK_JPG_FMT
-					|| info->decoder_parameters->cod_format == GRK_BMP_FMT);
-			if (info->decoder_parameters->force_rgb || !canStoreICC) {
+			canStoreICC = (info->decompressor_parameters->cod_format == GRK_TIF_FMT
+					|| info->decompressor_parameters->cod_format == GRK_PNG_FMT
+					|| info->decompressor_parameters->cod_format == GRK_JPG_FMT
+					|| info->decompressor_parameters->cod_format == GRK_BMP_FMT);
+			if (info->decompressor_parameters->force_rgb || !canStoreICC) {
 #if defined(GROK_HAVE_LIBLCMS)
-				if (!info->decoder_parameters->force_rgb)
+				if (!info->decompressor_parameters->force_rgb)
 					spdlog::warn(
 							" Input file {} contains a color profile,\n"
 							"but the codec is unable to store this profile"
@@ -1377,7 +1377,7 @@ int GrkDecompress::post_decode(grk_plugin_decode_callback_info *info) {
 							" image before saving.",
 							infile, outfile);
 				color_apply_icc_profile(image,
-						info->decoder_parameters->force_rgb);
+						info->decompressor_parameters->force_rgb);
 				delete[] image->color.icc_profile_buf;
 				image->color.icc_profile_buf = nullptr;
 				image->color.icc_profile_len = 0;

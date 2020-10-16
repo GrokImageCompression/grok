@@ -658,25 +658,25 @@ GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info initInfo) {
  Encode Implementation
  ********************/
 
-GRK_PLUGIN_ENCODE_USER_CALLBACK userEncodeCallback = 0;
+GRK_PLUGIN_COMPRESS_USER_CALLBACK userEncodeCallback = 0;
 
 /* wrapper for user's compress callback */
 void grk_plugin_internal_encode_callback(
 		plugin_encode_user_callback_info *info) {
 	/* set code block data etc on code object */
-	grk_plugin_encode_user_callback_info grk_info;
-	memset(&grk_info, 0, sizeof(grk_plugin_encode_user_callback_info));
+	grk_plugin_compress_user_callback_info grk_info;
+	memset(&grk_info, 0, sizeof(grk_plugin_compress_user_callback_info));
 	grk_info.input_file_name = info->input_file_name;
 	grk_info.outputFileNameIsRelative = info->outputFileNameIsRelative;
 	grk_info.output_file_name = info->output_file_name;
-	grk_info.encoder_parameters = ( grk_cparameters  * ) info->encoder_parameters;
+	grk_info.compressor_parameters = ( grk_cparameters  * ) info->compressor_parameters;
 	grk_info.image = (grk_image * ) info->image;
 	grk_info.tile = (grk_plugin_tile*) info->tile;
 	if (userEncodeCallback)
 		userEncodeCallback(&grk_info);
 }
-int32_t GRK_CALLCONV grk_plugin_compress( grk_cparameters  *encode_parameters,
-		GRK_PLUGIN_ENCODE_USER_CALLBACK callback) {
+int32_t GRK_CALLCONV grk_plugin_compress( grk_cparameters  *compress_parameters,
+		GRK_PLUGIN_COMPRESS_USER_CALLBACK callback) {
 	if (!pluginLoaded)
 		return -1;
 	userEncodeCallback = callback;
@@ -685,14 +685,14 @@ int32_t GRK_CALLCONV grk_plugin_compress( grk_cparameters  *encode_parameters,
 		auto func = (PLUGIN_ENCODE) minpf_get_symbol(mgr->dynamic_libraries[0],
 				plugin_encode_method_name);
 		if (func)
-			return func(( grk_cparameters  * ) encode_parameters,
+			return func(( grk_cparameters  * ) compress_parameters,
 					grk_plugin_internal_encode_callback);
 	}
 	return -1;
 }
 int32_t GRK_CALLCONV grk_plugin_batch_compress(const char *input_dir,
-		const char *output_dir,  grk_cparameters  *encode_parameters,
-		GRK_PLUGIN_ENCODE_USER_CALLBACK callback) {
+		const char *output_dir,  grk_cparameters  *compress_parameters,
+		GRK_PLUGIN_COMPRESS_USER_CALLBACK callback) {
 	if (!pluginLoaded)
 		return -1;
 	userEncodeCallback = callback;
@@ -702,7 +702,7 @@ int32_t GRK_CALLCONV grk_plugin_batch_compress(const char *input_dir,
 				plugin_batch_encode_method_name);
 		if (func) {
 			return func(input_dir, output_dir,
-					( grk_cparameters  * ) encode_parameters,
+					( grk_cparameters  * ) compress_parameters,
 					grk_plugin_internal_encode_callback);
 		}
 	}
@@ -739,31 +739,31 @@ void GRK_CALLCONV grk_plugin_stop_batch_compress(void) {
 }
 
 /*******************
- Decode Implementation
+ Decompress Implementation
  ********************/
 
-grk_plugin_decode_callback decodeCallback = 0;
+grk_plugin_decompress_callback decodeCallback = 0;
 
 /* wrapper for user's decompress callback */
 int32_t grk_plugin_internal_decode_callback(PluginDecodeCallbackInfo *info) {
 	int32_t rc = -1;
 	/* set code block data etc on code object */
-	grk_plugin_decode_callback_info grokInfo;
-	memset(&grokInfo, 0, sizeof(grk_plugin_decode_callback_info));
-	grokInfo.init_decoders_func = info->init_decoders_func;
+	grk_plugin_decompress_callback_info grokInfo;
+	memset(&grokInfo, 0, sizeof(grk_plugin_decompress_callback_info));
+	grokInfo.init_decompressors_func = info->init_decompressors_func;
 	grokInfo.input_file_name =
 			info->inputFile.empty() ? nullptr : info->inputFile.c_str();
 	grokInfo.output_file_name =
 			info->outputFile.empty() ? nullptr : info->outputFile.c_str();
 	grokInfo.decod_format = info->decod_format;
 	grokInfo.cod_format = info->cod_format;
-	grokInfo.decoder_parameters = info->decoder_parameters;
+	grokInfo.decompressor_parameters = info->decompressor_parameters;
 	grokInfo.l_stream = info->l_stream;
 	grokInfo.l_codec = info->l_codec;
 	grokInfo.image = info->image;
 	grokInfo.plugin_owns_image = info->plugin_owns_image;
 	grokInfo.tile = info->tile;
-	grokInfo.decode_flags = info->decode_flags;
+	grokInfo.decompress_flags = info->decompress_flags;
 	if (decodeCallback)
 		rc = decodeCallback(&grokInfo);
 	//synch
@@ -775,8 +775,8 @@ int32_t grk_plugin_internal_decode_callback(PluginDecodeCallbackInfo *info) {
 }
 
 int32_t GRK_CALLCONV grk_plugin_decompress(
-		grk_decompress_parameters *decode_parameters,
-		grk_plugin_decode_callback callback) {
+		grk_decompress_parameters *decompress_parameters,
+		grk_plugin_decompress_callback callback) {
 	if (!pluginLoaded)
 		return -1;
 	decodeCallback = callback;
@@ -785,14 +785,14 @@ int32_t GRK_CALLCONV grk_plugin_decompress(
 		auto func = (PLUGIN_DECODE) minpf_get_symbol(mgr->dynamic_libraries[0],
 				plugin_decode_method_name);
 		if (func)
-			return func((grk_decompress_parameters*) decode_parameters,
+			return func((grk_decompress_parameters*) decompress_parameters,
 					grk_plugin_internal_decode_callback);
 	}
 	return -1;
 }
 int32_t GRK_CALLCONV grk_plugin_init_batch_decompress(const char *input_dir,
-		const char *output_dir, grk_decompress_parameters *decode_parameters,
-		grk_plugin_decode_callback callback) {
+		const char *output_dir, grk_decompress_parameters *decompress_parameters,
+		grk_plugin_decompress_callback callback) {
 	if (!pluginLoaded)
 		return -1;
 	decodeCallback = callback;
@@ -803,7 +803,7 @@ int32_t GRK_CALLCONV grk_plugin_init_batch_decompress(const char *input_dir,
 				plugin_init_batch_decode_method_name);
 		if (func)
 			return func(input_dir, output_dir,
-					(grk_decompress_parameters*) decode_parameters,
+					(grk_decompress_parameters*) decompress_parameters,
 					grk_plugin_internal_decode_callback);
 	}
 	return -1;

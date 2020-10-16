@@ -35,7 +35,7 @@ namespace grk {
  *
  *  These \#defines declare the layout of a 32-bit flags word.
  *
- *  This is currently done for encoding only.
+ *  This is currently done for compressing only.
  *  The values must NOT be changed, otherwise this is going to break a lot of
  *  assumptions.
  */
@@ -134,7 +134,7 @@ namespace grk {
 #define T1_LUT_SIG_S (1U << 7)
 
 #define T1_TYPE_MQ 0    /** Normal coding using entropy coder */
-#define T1_TYPE_RAW 1   /** Raw encoding*/
+#define T1_TYPE_RAW 1   /** Raw compressing*/
 
 #include "t1_luts.h"
 #define T1_FLAGS(x, y) (t1->flags[x + 1 + ((y>>2) + 1) * (t1->w+2)])
@@ -374,7 +374,7 @@ T1::~T1(){
 /// ENCODE ////////////////////////////////////////////////////
 
 /**
- * Deallocate the encoding data of the given precinct.
+ * Deallocate the compressing data of the given precinct.
  */
 void T1::code_block_enc_deallocate(cblk_enc *code_block) {
 	grk::grk_free(code_block->passes);
@@ -723,7 +723,7 @@ static void enc_clnpass(T1 *t1, int32_t bpno, int32_t *nmsedec,	uint32_t cblksty
 }
 
 
-double T1::encode_cblk(cblk_enc *cblk, uint32_t max,
+double T1::compress_cblk(cblk_enc *cblk, uint32_t max,
 					uint8_t orient, uint32_t compno, uint32_t level, uint32_t qmfbid,
 					double stepsize, uint32_t cblksty,
 					const double *mct_norms, uint32_t mct_numcomps, bool doRateControl) {
@@ -877,7 +877,7 @@ double T1::encode_cblk(cblk_enc *cblk, uint32_t max,
             if( !partial ) { \
                 uint32_t ctxt1 = getctxno_zc(mqc, flags >> (ci)); \
                 setcurctx(curctx, ctxt1); \
-                decode_macro(v, mqc, curctx, a, c, ct); \
+                decompress_macro(v, mqc, curctx, a, c, ct); \
                 if( !v ) \
                     break; \
             } \
@@ -886,7 +886,7 @@ double T1::encode_cblk(cblk_enc *cblk, uint32_t max,
                                     flags, flagsp[-1], flagsp[1], \
                                     ci); \
                 setcurctx(curctx, getctxno_sc(lu)); \
-                decode_macro(v, mqc, curctx, a, c, ct); \
+                decompress_macro(v, mqc, curctx, a, c, ct); \
                 v = v ^ getspb(lu); \
                 data[ciorig*data_stride] = v ? -oneplushalf : oneplushalf; \
                 update_flags_macro(flags, flagsp, ci, v, flags_stride, vsc); \
@@ -926,12 +926,12 @@ static void dec_clnpass_step(T1 *t1, grk_flag *flagsp, int32_t *datap,
             if (flags == 0) { \
                 uint32_t partial = true; \
                 setcurctx(curctx, T1_CTXNO_AGG); \
-                decode_macro(v, mqc, curctx, a, c, ct); \
+                decompress_macro(v, mqc, curctx, a, c, ct); \
                 if (!v) \
                     continue; \
                 setcurctx(curctx, T1_CTXNO_UNI); \
-                decode_macro(runlen, mqc, curctx, a, c, ct); \
-                decode_macro(v, mqc, curctx, a, c, ct); \
+                decompress_macro(runlen, mqc, curctx, a, c, ct); \
+                decompress_macro(v, mqc, curctx, a, c, ct); \
                 runlen = (runlen << 1) | v; \
                 switch(runlen) { \
                     case 0: \
@@ -1053,7 +1053,7 @@ static INLINE void dec_sigpass_step_raw(T1 *t1, grk_flag *flagsp,
         (flags & (T1_SIGMA_NEIGHBOURS << (ci))) != 0U) { \
         uint32_t ctxt1 = getctxno_zc(mqc, flags >> (ci)); \
         setcurctx(curctx, ctxt1); \
-        decode_macro(v, mqc, curctx, a, c, ct); \
+        decompress_macro(v, mqc, curctx, a, c, ct); \
         if (v) { \
             uint32_t lu = getctxtno_sc_or_spb_index( \
                                 flags, \
@@ -1062,7 +1062,7 @@ static INLINE void dec_sigpass_step_raw(T1 *t1, grk_flag *flagsp,
             uint32_t ctxt2 = getctxno_sc(lu); \
             uint32_t spb = getspb(lu); \
             setcurctx(curctx, ctxt2); \
-            decode_macro(v, mqc, curctx, a, c, ct); \
+            decompress_macro(v, mqc, curctx, a, c, ct); \
             v = v ^ spb; \
             data[(ciorig)*data_stride] = v ? -oneplushalf : oneplushalf; \
             update_flags_macro(flags, flagsp, ci, v, flags_stride, vsc); \
@@ -1202,7 +1202,7 @@ static INLINE void dec_refpass_step_raw(T1 *t1, grk_flag *flagsp,
             (T1_SIGMA_THIS << (ci))) { \
         uint32_t ctxt = getctxno_mag(flags >> (ci)); \
         setcurctx(curctx, ctxt); \
-        decode_macro(v, mqc, curctx, a, c, ct); \
+        decompress_macro(v, mqc, curctx, a, c, ct); \
         data[ciorig*data_stride] += (v ^ (data[ciorig*data_stride] < 0)) ? poshalf : -poshalf; \
         flags |= T1_MU_THIS << (ci); \
     } \
@@ -1297,7 +1297,7 @@ static void dec_refpass_mqc(T1 *t1, int32_t bpno) {
 	}
 }
 
-bool T1::decode_cblk(cblk_dec *cblk, uint32_t orient,
+bool T1::decompress_cblk(cblk_dec *cblk, uint32_t orient,
 		uint32_t roishift, uint32_t cblksty) {
 	auto mqcPtr = &(mqc);
 	uint32_t cblkdataindex = 0;

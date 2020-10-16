@@ -35,7 +35,7 @@ namespace grk {
 /*@{*/
 
 /**
- T2 encoding mode
+ T2 compressing mode
  */
 enum J2K_T2_MODE {
 	THRESH_CALC = 0, /** Function called in Rate allocation process*/
@@ -105,7 +105,7 @@ struct PacketIter {
 /*@{*/
 /* ----------------------------------------------------------------------- */
 /**
- * Creates a packet iterator for encoding.
+ * Creates a packet iterator for compressing.
  *
  * @param	image		the image being encoded.
  * @param	cp		the coding parameters.
@@ -118,7 +118,7 @@ PacketIter* pi_initialise_encode(const grk_image *image, CodingParams *cp,
 		uint16_t tileno, J2K_T2_MODE t2_mode);
 
 /**
- * Updates the encoding parameters of the codec.
+ * Updates the compressing parameters of the codec.
  *
  * @param	p_image		the image being encoded.
  * @param	p_cp		the coding parameters.

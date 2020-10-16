@@ -56,8 +56,8 @@ public:
 	GrkDecompress(void);
 	~GrkDecompress(void);
 	int main(int argc, char **argv);
-	int pre_decode(grk_plugin_decode_callback_info *info);
-	int post_decode(grk_plugin_decode_callback_info *info);
+	int pre_decode(grk_plugin_decompress_callback_info *info);
+	int post_decode(grk_plugin_decompress_callback_info *info);
 private:
 	bool store_file_to_disk;
 	IImageFormat *imageFormat;

@@ -165,7 +165,7 @@ bool CompressCodeblock::alloc() {
 }
 
 /**
- * Allocates data memory for an encoding code block.
+ * Allocates data memory for an compressing code block.
  * We actually allocate 2 more bytes than specified, and then offset data by +2.
  * This is done so that we can safely initialize the MQ coder pointer to data-1,
  * without risk of accessing uninitialized memory.

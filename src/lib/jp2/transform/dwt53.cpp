@@ -110,7 +110,7 @@ namespace grk {
 /* <summary>                            */
 /* Forward 5-3 wavelet transform in 1-D. */
 /* </summary>                           */
-void dwt53::encode_line(int32_t *a, int32_t d_n, int32_t s_n, uint8_t cas) {
+void dwt53::compress_line(int32_t *a, int32_t d_n, int32_t s_n, uint8_t cas) {
 	if (!cas) {
 		if ((d_n > 0) || (s_n > 1)) {
 			for (int32_t i = 0; i < d_n; i++)

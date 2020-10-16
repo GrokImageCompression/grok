@@ -113,7 +113,7 @@ double T1HT::compress(CompressBlockInfo *block, grk_tile *tile, uint32_t maximum
 	 coded_lists *next_coded = nullptr;
 	auto cblk = block->cblk;
 	cblk->numbps = 0;
-	// optimization below was causing errors in encoding
+	// optimization below was causing errors in compressing
 	//if (maximum >= (uint32_t)1<<(31 - (block->k_msbs+1)))
 	uint16_t w =  (uint16_t)cblk->width();
 	uint16_t h =  (uint16_t)cblk->height();

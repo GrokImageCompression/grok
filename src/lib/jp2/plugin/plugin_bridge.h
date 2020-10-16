@@ -33,9 +33,9 @@
 
 namespace grk {
 
-void decode_synch_plugin_with_host(TileProcessor *tcd);
+void decompress_synch_plugin_with_host(TileProcessor *tcd);
 
-void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resno,
+void compress_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resno,
 		uint32_t bandno, uint64_t precno, uint64_t cblkno, Subband *band,
 		CompressCodeblock *cblk, uint32_t *numPix);
 

@@ -1192,12 +1192,12 @@ class locale_ref {
   template <typename Locale> Locale get() const;
 };
 
-template <typename> constexpr unsigned long long encode_types() { return 0; }
+template <typename> constexpr unsigned long long compress_types() { return 0; }
 
 template <typename Context, typename Arg, typename... Args>
-constexpr unsigned long long encode_types() {
+constexpr unsigned long long compress_types() {
   return static_cast<unsigned>(mapped_type_constant<Arg, Context>::value) |
-         (encode_types<Context, Args...>() << packed_arg_bits);
+         (compress_types<Context, Args...>() << packed_arg_bits);
 }
 
 template <typename Context, typename T>
@@ -1343,7 +1343,7 @@ class format_arg_store
 
  public:
   static constexpr unsigned long long types =
-      is_packed ? internal::encode_types<Context, Args...>()
+      is_packed ? internal::compress_types<Context, Args...>()
                 : internal::is_unpacked_bit | num_args;
 
   format_arg_store(const Args&... args)

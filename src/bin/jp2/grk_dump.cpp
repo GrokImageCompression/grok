@@ -80,7 +80,7 @@ static int parse_cmdline_decoder(int argc, char **argv,
 		grk_dparameters *parameters, img_fol *img_fol);
 
 /* -------------------------------------------------------------------------- */
-static void decode_help_display(void) {
+static void decompress_help_display(void) {
 	fprintf(stdout, "\nThis is the grk_dump utility from the Grok project.\n"
 			"It dumps JPEG 2000 code stream info to stdout or a given file.\n"
 			"It has been compiled against Grok library v%s.\n\n",
@@ -112,7 +112,7 @@ class GrokOutput: public StdOutput {
 public:
 	virtual void usage(CmdLineInterface &c) {
 		(void) c;
-		decode_help_display();
+		decompress_help_display();
 	}
 };
 
@@ -366,7 +366,7 @@ int main(int argc, char *argv[]) {
 	memset(&img_fol, 0, sizeof(img_fol));
 	img_fol.flag = GRK_IMG_INFO | GRK_J2K_MH_INFO | GRK_J2K_MH_IND;
 
-	/* Parse input and get user encoding parameters */
+	/* Parse input and get user compressing parameters */
 	if (parse_cmdline_decoder(argc, argv, &parameters, &img_fol) == 1) {
 		rc = EXIT_FAILURE;
 		goto cleanup;

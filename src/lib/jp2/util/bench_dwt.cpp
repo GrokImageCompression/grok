@@ -263,9 +263,9 @@ int main(int argc, char** argv)
 			rc = w.compress(&tilec,lossy ? 0 : 1 );
 		} else {
 			if (lossy)
-				rc = decode_97(tileProcessor.get(), &tilec, tilec.numresolutions);
+				rc = decompress_97(tileProcessor.get(), &tilec, tilec.numresolutions);
 			else
-				rc = decode_53(tileProcessor.get(), &tilec, tilec.numresolutions);
+				rc = decompress_53(tileProcessor.get(), &tilec, tilec.numresolutions);
 		}
 		assert(rc);
 		finish = std::chrono::high_resolution_clock::now();

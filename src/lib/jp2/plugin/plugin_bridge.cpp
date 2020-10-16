@@ -21,7 +21,7 @@ namespace grk {
 
 // Performed after T2, just before plugin decompress is triggered
 // note: only support single segment at the moment
-void decode_synch_plugin_with_host(TileProcessor *tcd) {
+void decompress_synch_plugin_with_host(TileProcessor *tcd) {
 	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
 		auto tile = tcd->tile;
 		for (uint32_t compno = 0; compno < tile->numcomps; compno++) {
@@ -141,7 +141,7 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tile *p_tile) {
 	return true;
 }
 
-void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resno,
+void compress_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resno,
 		uint32_t bandno, uint64_t precno, uint64_t cblkno, Subband *band,
 		CompressCodeblock *cblk, uint32_t *numPix) {
 

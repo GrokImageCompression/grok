@@ -33,7 +33,7 @@ T2Compress::T2Compress(TileProcessor *tileProc) :
 }
 
 
-bool T2Compress::encode_packets(uint16_t tile_no, uint16_t max_layers,
+bool T2Compress::compress_packets(uint16_t tile_no, uint16_t max_layers,
 		BufferedStream *stream, uint32_t *p_data_written,
 		uint32_t tp_num, uint32_t tp_pos,
 		uint32_t pino) {
@@ -52,13 +52,13 @@ bool T2Compress::encode_packets(uint16_t tile_no, uint16_t max_layers,
 	auto current_pi = &pi[pino];
 	if (current_pi->poc.prg == GRK_PROG_UNKNOWN) {
 		pi_destroy(pi, nb_pocs);
-		GRK_ERROR("encode_packets: Unknown progression order");
+		GRK_ERROR("compress_packets: Unknown progression order");
 		return false;
 	}
 	while (pi_next(current_pi)) {
 		if (current_pi->layno < max_layers) {
 			uint32_t nb_bytes = 0;
-			if (!encode_packet(tcp, current_pi, stream, &nb_bytes)) {
+			if (!compress_packet(tcp, current_pi, stream, &nb_bytes)) {
 				pi_destroy(pi, nb_pocs);
 				return false;
 			}
@@ -72,7 +72,7 @@ bool T2Compress::encode_packets(uint16_t tile_no, uint16_t max_layers,
 	return true;
 }
 
-bool T2Compress::encode_packets_simulate(uint16_t tile_no, uint16_t max_layers,
+bool T2Compress::compress_packets_simulate(uint16_t tile_no, uint16_t max_layers,
 		uint32_t *all_packets_len, uint32_t max_len, uint32_t tp_pos,
 		PacketLengthMarkers *markers) {
 
@@ -105,14 +105,14 @@ bool T2Compress::encode_packets_simulate(uint16_t tile_no, uint16_t max_layers,
 			if (current_pi->poc.prg == GRK_PROG_UNKNOWN) {
 				pi_destroy(pi, nb_pocs);
 				GRK_ERROR(
-						"decode_packets_simulate: Unknown progression order");
+						"decompress_packets_simulate: Unknown progression order");
 				return false;
 			}
 			while (pi_next(current_pi)) {
 				if (current_pi->layno < max_layers) {
 					uint32_t bytesInPacket = 0;
 
-					if (!encode_packet_simulate(tcp, current_pi, &bytesInPacket,
+					if (!compress_packet_simulate(tcp, current_pi, &bytesInPacket,
 							max_len, markers)) {
 						pi_destroy(pi, nb_pocs);
 						return false;
@@ -137,7 +137,7 @@ bool T2Compress::encode_packets_simulate(uint16_t tile_no, uint16_t max_layers,
 }
 
 //--------------------------------------------------------------------------------------------------
-bool T2Compress::encode_packet(TileCodingParams *tcp, PacketIter *pi,
+bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 		BufferedStream *stream, uint32_t *packet_bytes_written) {
 	assert(stream);
 	uint32_t compno = pi->compno;
@@ -328,7 +328,7 @@ bool T2Compress::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 	}
 
 	if (!bio->flush()) {
-		GRK_ERROR("encode_packet: Bit IO flush failed while encoding packet");
+		GRK_ERROR("compress_packet: Bit IO flush failed while compressing packet");
 		return false;
 	}
 
@@ -390,7 +390,7 @@ bool T2Compress::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 
 			// compare size of header
 			if (numHeaderBytes != nb_bytes_read) {
-				printf("encode_packet: round trip header bytes %u differs from original %u\n", (uint32_t)l_nb_bytes_read, (uint32_t)numHeaderBytes);
+				printf("compress_packet: round trip header bytes %u differs from original %u\n", (uint32_t)l_nb_bytes_read, (uint32_t)numHeaderBytes);
 			}
 			for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
 				auto band = res->bands + bandno;
@@ -409,7 +409,7 @@ bool T2Compress::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 						// compare number of passes
 						auto roundTripCblk = roundTripPrec->dec + cblkno;
 						if (roundTripCblk->numPassesInPacket != layer->numpasses) {
-							printf("encode_packet: round trip layer numpasses %u differs from original num passes %u at layer %u, component %u, band %u, precinct %u, resolution %u\n",
+							printf("compress_packet: round trip layer numpasses %u differs from original num passes %u at layer %u, component %u, band %u, precinct %u, resolution %u\n",
 								roundTripCblk->numPassesInPacket,
 								layer->numpasses,
 								layno,
@@ -421,17 +421,17 @@ bool T2Compress::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 						}
 						// compare number of bit planes
 						if (roundTripCblk->numbps != originalCblk->numbps) {
-							printf("encode_packet: round trip numbps %u differs from original %u\n", roundTripCblk->numbps, originalCblk->numbps);
+							printf("compress_packet: round trip numbps %u differs from original %u\n", roundTripCblk->numbps, originalCblk->numbps);
 						}
 
 						// compare number of length bits
 						if (roundTripCblk->numlenbits != originalCblk->numlenbits) {
-							printf("encode_packet: round trip numlenbits %u differs from original %u\n", roundTripCblk->numlenbits, originalCblk->numlenbits);
+							printf("compress_packet: round trip numlenbits %u differs from original %u\n", roundTripCblk->numlenbits, originalCblk->numlenbits);
 						}
 
 						// compare inclusion
 						if (roundTripCblk->included != originalCblk->included) {
-							printf("encode_packet: round trip inclusion %u differs from original inclusion %u at layer %u, component %u, band %u, precinct %u, resolution %u\n",
+							printf("compress_packet: round trip inclusion %u differs from original inclusion %u at layer %u, component %u, band %u, precinct %u, resolution %u\n",
 								roundTripCblk->included,
 								originalCblk->included,
 								layno,
@@ -443,7 +443,7 @@ bool T2Compress::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 
 						// compare lengths
 						if (roundTripCblk->packet_length_info.size() != originalCblk->packet_length_info.size()) {
-							printf("encode_packet: round trip length size %u differs from original %u at layer %u, component %u, band %u, precinct %u, resolution %u\n",
+							printf("compress_packet: round trip length size %u differs from original %u at layer %u, component %u, band %u, precinct %u, resolution %u\n",
 								(uint32_t)roundTripCblk->packet_length_info.size(),
 								(uint32_t)originalCblk->packet_length_info.size(),
 								layno,
@@ -456,7 +456,7 @@ bool T2Compress::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 								auto roundTrip = roundTripCblk->packet_length_info.operator[](i);
 								auto original = originalCblk->packet_length_info.operator[](i);
 								if (!(roundTrip ==original)) {
-									printf("encode_packet: round trip length size %u differs from original %u at layer %u, component %u, band %u, precinct %u, resolution %u\n",
+									printf("compress_packet: round trip length size %u differs from original %u at layer %u, component %u, band %u, precinct %u, resolution %u\n",
 										roundTrip.len,
 										original.len,
 										layno,
@@ -483,7 +483,7 @@ bool T2Compress::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 				}
 				else {
 					if (originalDataBytes != nb_bytes_read) {
-						printf("encode_packet: round trip data bytes %u differs from original %u\n", (uint32_t)l_nb_bytes_read, (uint32_t)originalDataBytes);
+						printf("compress_packet: round trip data bytes %u differs from original %u\n", (uint32_t)l_nb_bytes_read, (uint32_t)originalDataBytes);
 					}
 
 					for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
@@ -510,7 +510,7 @@ bool T2Compress::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 								auto roundTripCblk = roundTripPrec->dec + cblkno;
 								uint16_t roundTripTotalSegLen = min_buf_vec_get_len(&roundTripCblk->seg_buffers);
 								if (roundTripTotalSegLen != originalCumulativeLayerLength) {
-									printf("encode_packet: layer %u: round trip segment length %u differs from original %u\n", layno, roundTripTotalSegLen, originalCumulativeLayerLength);
+									printf("compress_packet: layer %u: round trip segment length %u differs from original %u\n", layno, roundTripTotalSegLen, originalCumulativeLayerLength);
 								}
 
 								// compare individual data points
@@ -528,7 +528,7 @@ bool T2Compress::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 									}
 									for (uint32_t i = 0; i < originalCumulativeLayerLength; ++i) {
 										if (roundTripData[i] != originalCblk->data[i]) {
-											printf("encode_packet: layer %u: round trip data %x differs from original %x\n", layno, roundTripData[i], originalCblk->data[i]);
+											printf("compress_packet: layer %u: round trip data %x differs from original %x\n", layno, roundTripData[i], originalCblk->data[i]);
 										}
 									}
 									if (needs_delete)
@@ -542,14 +542,14 @@ bool T2Compress::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 			}
 		}
 		else {
-			GRK_ERROR("encode_packet: decompress packet failed");
+			GRK_ERROR("compress_packet: decompress packet failed");
 		}
 		return ret;
 #endif
 	return true;
 }
 
-bool T2Compress::encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
+bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 		uint32_t *packet_bytes_written, uint32_t max_bytes_available,
 		PacketLengthMarkers *markers) {
 	uint32_t compno = pi->compno;

@@ -31,7 +31,7 @@ After a 0xff byte, the next byte must be smaller than 0x90.
 void mqc_byteout(mqcoder *mqc);
 
 /**
-Renormalize mqc->a and mqc->c while encoding, so that mqc->a stays between 0x8000 and 0x10000
+Renormalize mqc->a and mqc->c while compressing, so that mqc->a stays between 0x8000 and 0x10000
 @param mqc MQC handle
 @param a_ value of mqc->a
 @param c_ value of mqc->c_

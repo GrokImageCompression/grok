@@ -170,7 +170,7 @@ struct TileCodingParams {
 
 	ChunkBuffer *m_tile_data;
 
-	/** encoding norms */
+	/** compressing norms */
 	double *mct_norms;
 	/** the mct decoding matrix */
 	float *m_mct_decoding_matrix;

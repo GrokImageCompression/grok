@@ -30,7 +30,7 @@ T2Decompress::T2Decompress(TileProcessor *tileProc) :
 		tileProcessor(tileProc) {
 }
 
-bool T2Decompress::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
+bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
 
 	auto cp = tileProcessor->m_cp;
@@ -64,7 +64,7 @@ bool T2Decompress::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 		if (current_pi->poc.prg == GRK_PROG_UNKNOWN) {
 			pi_destroy(pi, nb_pocs);
 			delete[] first_pass_failed;
-			GRK_ERROR("decode_packets: Unknown progression order");
+			GRK_ERROR("decompress_packets: Unknown progression order");
 			return false;
 		}
 		while (pi_next(current_pi)) {
@@ -109,7 +109,7 @@ bool T2Decompress::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 					 */
 					first_pass_failed[current_pi->compno] = false;
 
-					if (!decode_packet(tcp, current_pi, src_buf, &nb_bytes_read)) {
+					if (!decompress_packet(tcp, current_pi, src_buf, &nb_bytes_read)) {
 						pi_destroy(pi, nb_pocs);
 						delete[] first_pass_failed;
 						return false;
@@ -151,11 +151,11 @@ bool T2Decompress::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 }
 
 
-bool T2Decompress::decode_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuffer *src_buf,
+bool T2Decompress::decompress_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
 	uint64_t max_length = src_buf->getRemainingLength();
 	if (max_length == 0) {
-		GRK_WARN("Tile %d decode_packet: No data for either packet header\n"
+		GRK_WARN("Tile %d decompress_packet: No data for either packet header\n"
 				"or packet body for packet prg=%u "
 				"cmptno=%02d reslvlno=%02d prcno=%03d layrno=%02d",
 		tileProcessor->m_tile_index,

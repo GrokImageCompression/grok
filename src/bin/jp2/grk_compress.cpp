@@ -73,7 +73,7 @@ using namespace grk;
 using namespace TCLAP;
 
 static bool plugin_compress_callback(
-		grk_plugin_encode_user_callback_info *info);
+		grk_plugin_compress_user_callback_info *info);
 
 void exit_func() {
 	grk_plugin_stop_batch_compress();
@@ -134,14 +134,14 @@ static void info_callback(const char *msg, void *client_data) {
 	spdlog::default_logger()->info(msg);
 }
 
-static void encode_help_display(void) {
+static void compress_help_display(void) {
 	fprintf(stdout,
 			"grk_compress compresses various image formats into the JPEG 2000 format.\n"
 					"It has been compiled against libgrokj2k v%s.\n\n",
 			grk_version());
 
 	fprintf(stdout, "-------------------------\n");
-	fprintf(stdout, "Default encoding options:\n");
+	fprintf(stdout, "Default compressing options:\n");
 	fprintf(stdout, "-------------------------\n");
 	fprintf(stdout, "\n");
 	fprintf(stdout, " * Lossless\n");
@@ -437,7 +437,7 @@ class GrokOutput: public StdOutput {
 public:
 	virtual void usage(CmdLineInterface &c) {
 		(void) c;
-		encode_help_display();
+		compress_help_display();
 	}
 };
 
@@ -466,7 +466,7 @@ static bool checkCinema(ValueArg<uint32_t> *arg, uint16_t profile,
 	}
 	return isValid;
 }
-static int parse_cmdline_encoder_ex(int argc, char **argv,
+static int parse_cmdline_compressor_ex(int argc, char **argv,
 		grk_cparameters *parameters, grk_img_fol *img_fol, grk_img_fol *out_fol,
 		char *indexfilename, size_t indexfilename_size, char *plugin_path) {
 	(void) indexfilename;
@@ -1061,7 +1061,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 			if (parameters->cblk_sty & GRK_CBLKSTY_HT) {
 				if (parameters->cblk_sty != GRK_CBLKSTY_HT) {
 					spdlog::error(
-							"High throughput encoding mode cannot be combined"
+							"High throughput compressing mode cannot be combined"
 									" with any other block mode switches. Ignoring mode switch");
 					parameters->cblk_sty = 0;
 				} else {
@@ -1672,9 +1672,9 @@ static int compress(const std::string &image_filename, CompressInitParams *initP
 			return 2;
 		}
 	}
-	grk_plugin_encode_user_callback_info callbackInfo;
-	memset(&callbackInfo, 0, sizeof(grk_plugin_encode_user_callback_info));
-	callbackInfo.encoder_parameters = &initParams->parameters;
+	grk_plugin_compress_user_callback_info callbackInfo;
+	memset(&callbackInfo, 0, sizeof(grk_plugin_compress_user_callback_info));
+	callbackInfo.compressor_parameters = &initParams->parameters;
 	callbackInfo.image = nullptr;
 	callbackInfo.output_file_name = initParams->parameters.outfile;
 	callbackInfo.input_file_name = initParams->parameters.infile;
@@ -1756,8 +1756,8 @@ int main(int argc, char **argv) {
 grk_img_fol img_fol_plugin, out_fol_plugin;
 
 static bool plugin_compress_callback(
-		grk_plugin_encode_user_callback_info *info) {
-	grk_cparameters *parameters = info->encoder_parameters;
+		grk_plugin_compress_user_callback_info *info) {
+	grk_cparameters *parameters = info->compressor_parameters;
 	bool bSuccess = true;
 	grk_stream *stream = nullptr;
 	grk_codec codec = nullptr;
@@ -1805,10 +1805,10 @@ static bool plugin_compress_callback(
 		/* decode the source image */
 		/* ----------------------- */
 
-		switch (info->encoder_parameters->decod_format) {
+		switch (info->compressor_parameters->decod_format) {
 		case GRK_PGX_FMT: {
 			PGXFormat pgx;
-			image = pgx.decode(info->input_file_name, info->encoder_parameters);
+			image = pgx.decode(info->input_file_name, info->compressor_parameters);
 			if (!image) {
 				spdlog::error("Unable to load pgx file");
 				bSuccess = false;
@@ -1819,7 +1819,7 @@ static bool plugin_compress_callback(
 
 		case GRK_PXM_FMT: {
 			PNMFormat pnm(false);
-			image = pnm.decode(info->input_file_name, info->encoder_parameters);
+			image = pnm.decode(info->input_file_name, info->compressor_parameters);
 			if (!image) {
 				spdlog::error("Unable to load pnm file");
 				bSuccess = false;
@@ -1830,7 +1830,7 @@ static bool plugin_compress_callback(
 
 		case GRK_BMP_FMT: {
 			BMPFormat bmp;
-			image = bmp.decode(info->input_file_name, info->encoder_parameters);
+			image = bmp.decode(info->input_file_name, info->compressor_parameters);
 			if (!image) {
 				spdlog::error("Unable to load bmp file");
 				bSuccess = false;
@@ -1842,7 +1842,7 @@ static bool plugin_compress_callback(
 #ifdef GROK_HAVE_LIBTIFF
 		case GRK_TIF_FMT: {
 			TIFFFormat tif;
-			image = tif.decode(info->input_file_name, info->encoder_parameters);
+			image = tif.decode(info->input_file_name, info->compressor_parameters);
 			if (!image) {
 				bSuccess = false;
 				goto cleanup;
@@ -1853,7 +1853,7 @@ static bool plugin_compress_callback(
 
 		case GRK_RAW_FMT: {
 			RAWFormat raw(true);
-			image = raw.decode(info->input_file_name, info->encoder_parameters);
+			image = raw.decode(info->input_file_name, info->compressor_parameters);
 			if (!image) {
 				spdlog::error("Unable to load raw file");
 				bSuccess = false;
@@ -1864,7 +1864,7 @@ static bool plugin_compress_callback(
 
 		case GRK_RAWL_FMT: {
 			RAWFormat raw(false);
-			image = raw.decode(info->input_file_name, info->encoder_parameters);
+			image = raw.decode(info->input_file_name, info->compressor_parameters);
 			if (!image) {
 				spdlog::error("Unable to load raw file");
 				bSuccess = false;
@@ -1876,7 +1876,7 @@ static bool plugin_compress_callback(
 #ifdef GROK_HAVE_LIBPNG
 		case GRK_PNG_FMT: {
 			PNGFormat png;
-			image = png.decode(info->input_file_name, info->encoder_parameters);
+			image = png.decode(info->input_file_name, info->compressor_parameters);
 			if (!image) {
 				spdlog::error("Unable to load png file");
 				bSuccess = false;
@@ -1890,7 +1890,7 @@ static bool plugin_compress_callback(
 		case GRK_JPG_FMT: {
 			JPEGFormat jpeg;
 			image = jpeg.decode(info->input_file_name,
-					info->encoder_parameters);
+					info->compressor_parameters);
 			if (!image) {
 				spdlog::error("Unable to load jpeg file");
 				bSuccess = false;
@@ -1901,7 +1901,7 @@ static bool plugin_compress_callback(
 #endif /* GROK_HAVE_LIBPNG */
 		default: {
 			spdlog::error("Unsupported input file format {}",
-					info->encoder_parameters->decod_format);
+					info->compressor_parameters->decod_format);
 			bSuccess = false;
 			goto cleanup;
 		}
@@ -2149,15 +2149,15 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 	bool isBatch = false;
 	uint32_t state= 0;
 
-	/* set encoding parameters to default values */
+	/* set compressing parameters to default values */
 	grk_set_default_compress_params(&initParams->parameters);
 
 
 
-	/* parse input and get user encoding parameters */
+	/* parse input and get user compressing parameters */
 	initParams->parameters.tcp_mct = 255; /* This will be set later according to the input image or the provided option */
 	initParams->parameters.rateControlAlgorithm = 255;
-	if (parse_cmdline_encoder_ex(argc, argv, &initParams->parameters,
+	if (parse_cmdline_compressor_ex(argc, argv, &initParams->parameters,
 			&initParams->img_fol, &initParams->out_fol,
 			initParams->indexfilename, sizeof(initParams->indexfilename),
 			initParams->plugin_path) == 1) {

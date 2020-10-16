@@ -92,13 +92,13 @@ struct TileProcessor {
 
 
 	/**
-	 T1 Decode a tile from a buffer
+	 T1 Decompress a tile from a buffer
 	 @return true if successful
 	 */
 	bool decompress_tile_t1(void);
 
 	/**
-	 T2 Decode a tile from a buffer
+	 T2 Decompress a tile from a buffer
 	 @param src_buf Source buffer
 	 @return true if successful
 	 */
@@ -128,7 +128,7 @@ struct TileProcessor {
 	/** Encoding Only
 	 *  index of tile part being currently coding, taking into account POC.
 	 *  m_tile_part_index holds the total number of tile parts encoded thus far
-	 *  while the compressor is encoding the current tile part.*/
+	 *  while the compressor is compressing the current tile part.*/
 	uint8_t m_tile_part_index;
 
 	// Decoding Only
