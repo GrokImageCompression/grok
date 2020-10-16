@@ -240,7 +240,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 	if (single_lossless) {
 		makelayer_final(0);
 		if (plt_markers) {
-			auto t2 = new T2Encode(this);
+			auto t2 = new T2Compress(this);
 			uint32_t sim_all_packets_len = 0;
 			t2->encode_packets_simulate(m_tile_index,
 										0 + 1, &sim_all_packets_len, UINT_MAX,
@@ -262,7 +262,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 
 
 		if (layer_needs_rate_control(layno)) {
-			auto t2 = new T2Encode(this);
+			auto t2 = new T2Compress(this);
 			// thresh from previous iteration - starts off uninitialized
 			// used to bail out if difference with current thresh is small enough
 			uint32_t prevthresh = 0;
@@ -396,7 +396,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 	} /* compno */
 	if (single_lossless){
 		if (plt_markers) {
-			auto t2 = new T2Encode(this);
+			auto t2 = new T2Compress(this);
 			uint32_t sim_all_packets_len = 0;
 			t2->encode_packets_simulate(m_tile_index,
 										0 + 1, &sim_all_packets_len, UINT_MAX,
@@ -428,7 +428,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 							- ((K * maxSE)
 									/ pow(10.0, m_tcp->distoratio[layno] / 10.0));
 
-			auto t2 = new T2Encode(this);
+			auto t2 = new T2Compress(this);
 			double thresh;
 			for (uint32_t i = 0; i < 128; ++i) {
 				thresh =
@@ -746,7 +746,7 @@ bool TileProcessor::do_encode(void){
 
 	m_tcp = &m_cp->tcps[m_tile_index];
 
-	// When debugging the encoder, we do all of T1 up to and including DWT
+	// When debugging the compressor, we do all of T1 up to and including DWT
 	// in the plugin, and pass this in as image data.
 	// This way, both Grok and plugin start with same inputs for
 	// context formation and MQ coding.
@@ -916,7 +916,7 @@ bool TileProcessor::decompress_tile_t1(void) {
 					return false;
 				}
 			}
-			std::vector<DecodeBlockInfo*> blocks;
+			std::vector<DecompressBlockInfo*> blocks;
 			auto scheduler = std::unique_ptr<T1Scheduler>(new T1Scheduler());
 			if (!scheduler->prepareScheduleDecode(tilec, tccp, &blocks))
 				return false;
@@ -967,7 +967,7 @@ void TileProcessor::copy_image_to_tile() {
 
 bool TileProcessor::t2_decode(ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
-	auto t2 = new T2Decode(this);
+	auto t2 = new T2Decompress(this);
 	bool rc = t2->decode_packets(m_tile_index, src_buf, p_data_read);
 	delete t2;
 
@@ -1130,7 +1130,7 @@ void TileProcessor::t1_encode() {
 
 bool TileProcessor::t2_encode(uint32_t *all_packet_bytes_written) {
 
-	auto l_t2 = new T2Encode(this);
+	auto l_t2 = new T2Compress(this);
 #ifdef DEBUG_LOSSLESS_T2
 	for (uint32_t compno = 0; compno < p_image->m_numcomps; ++compno) {
 		TileComponent *tilec = &p_tile->comps[compno];

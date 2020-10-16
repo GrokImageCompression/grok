@@ -19,7 +19,7 @@
  *
  */
 
-#include <T1DecodeScheduler.h>
+#include <T1DecompressScheduler.h>
 #include "CPUArch.h"
 #include <atomic>
 #include "testing.h"

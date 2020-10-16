@@ -20,7 +20,6 @@
  */
 
 #include "grk_includes.h"
-#include "grok.h"
 #include "t1_common.h"
 #include "logger.h"
 #include "dwt_utils.h"
@@ -30,7 +29,7 @@ using namespace std;
 namespace grk {
 
 /* BEGINNING of flags that apply to grk_flag */
-/** We hold the state of individual data points for the T1 encoder using
+/** We hold the state of individual data points for the T1 compressor using
  *  a single 32-bit flags word to hold the state of 4 data points.  This corresponds
  *  to the 4-point-high columns that the data is processed in.
  *
@@ -274,7 +273,7 @@ bool T1::allocate_buffers(uint32_t width, uint32_t height) {
 	assert(height <= 1024);
 	assert(width * height <= 4096);
 
-	/* encoder uses tile buffer, so no need to allocate */
+	/* compressor uses tile buffer, so no need to allocate */
 	uint32_t newDataSize = width * height;
 
 	if (newDataSize > datasize) {
@@ -288,7 +287,7 @@ bool T1::allocate_buffers(uint32_t width, uint32_t height) {
 		datasize = newDataSize;
 	}
 	/* memset first arg is declared to never be null by gcc */
-	if (data && !encoder)
+	if (data && !compressor)
 		memset(data, 0, newDataSize * sizeof(int32_t));
 
 	flags_stride = width + 2U; /* can't be 0U */
@@ -349,7 +348,7 @@ T1::T1(bool isEncoder,uint32_t maxCblkW,uint32_t maxCblkH) : data(nullptr),
 															datasize(0),
 															flagssize(0),
 															data_stride(0),
-															encoder(isEncoder),
+															compressor(isEncoder),
 															cblkdatabuffer(nullptr),
 															cblkdatabuffersize(0)
 {
@@ -768,7 +767,7 @@ double T1::encode_cblk(cblk_enc *cblk, uint32_t max,
 				(passtype < 2)	&&
 				(cblksty & GRK_CBLKSTY_LAZY)) ? T1_TYPE_RAW : T1_TYPE_MQ;
 
-		/* If the previous pass was terminating, we need to reset the encoder */
+		/* If the previous pass was terminating, we need to reset the compressor */
 		if (passno > 0 && cblk->passes[passno - 1].term) {
 			if (type == T1_TYPE_RAW)
 				mqc_bypass_init_enc(mqcPtr);

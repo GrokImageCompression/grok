@@ -28,7 +28,7 @@ void T1Scheduler::scheduleEncode(TileCodingParams *tcp,
 	uint32_t compno, resno, bandno;
 	uint64_t precno;
 	tile->distotile = 0;
-	std::vector<EncodeBlockInfo*> blocks;
+	std::vector<CompressBlockInfo*> blocks;
 	uint32_t maxCblkW = 0;
 	uint32_t maxCblkH = 0;
 
@@ -44,7 +44,7 @@ void T1Scheduler::scheduleEncode(TileCodingParams *tcp,
 					for (uint64_t cblkno = 0; cblkno < (int64_t) prc->cw * prc->ch;
 							++cblkno) {
 						auto cblk = prc->enc + cblkno;
-						auto block = new EncodeBlockInfo();
+						auto block = new CompressBlockInfo();
 						block->x = cblk->x0;
 						block->y = cblk->y0;
 						block->tiledp = tilec->buf->cblk_ptr( resno, bandno,
@@ -72,12 +72,12 @@ void T1Scheduler::scheduleEncode(TileCodingParams *tcp,
 			}
 		}
 	}
-	T1EncodeScheduler encoder(tcp, tile, maxCblkW, maxCblkH, doRateControl);
-	encoder.compress(&blocks);
+	T1CompressScheduler compressor(tcp, tile, maxCblkW, maxCblkH, doRateControl);
+	compressor.compress(&blocks);
 }
 
 bool T1Scheduler::prepareScheduleDecode(TileComponent *tilec, TileComponentCodingParams *tccp,
-		std::vector<DecodeBlockInfo*> *blocks) {
+		std::vector<DecompressBlockInfo*> *blocks) {
 	if (!tilec->buf->alloc()) {
 		GRK_ERROR( "Not enough memory for tile data");
 		return false;
@@ -102,7 +102,7 @@ bool T1Scheduler::prepareScheduleDecode(TileComponent *tilec, TileComponentCodin
 													bandno,
 													cblk)){
 
-						auto block = new DecodeBlockInfo();
+						auto block = new DecompressBlockInfo();
 						block->x = cblk->x0;
 						block->y = cblk->y0;
 						block->tiledp = tilec->buf->cblk_ptr( resno, bandno,
@@ -130,8 +130,8 @@ bool T1Scheduler::prepareScheduleDecode(TileComponent *tilec, TileComponentCodin
 
 bool T1Scheduler::scheduleDecode(TileCodingParams *tcp,
 		                    uint16_t blockw, uint16_t blockh,
-		                    std::vector<DecodeBlockInfo*> *blocks) {
-	T1DecodeScheduler decoder(tcp, blockw, blockh);
+		                    std::vector<DecompressBlockInfo*> *blocks) {
+	T1DecompressScheduler decoder(tcp, blockw, blockh);
 	return decoder.decompress(blocks);
 }
 

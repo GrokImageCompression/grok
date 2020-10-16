@@ -19,7 +19,7 @@
 
 namespace grk {
 
-T1EncodeScheduler::T1EncodeScheduler(TileCodingParams *tcp, grk_tile *tile, uint32_t encodeMaxCblkW,
+T1CompressScheduler::T1CompressScheduler(TileCodingParams *tcp, grk_tile *tile, uint32_t encodeMaxCblkW,
 		uint32_t encodeMaxCblkH, bool needsRateControl) :
 		tile(tile),
 		needsRateControl(needsRateControl),
@@ -30,11 +30,11 @@ T1EncodeScheduler::T1EncodeScheduler(TileCodingParams *tcp, grk_tile *tile, uint
 		threadStructs.push_back(
 				T1Factory::get_t1(true, tcp, encodeMaxCblkW, encodeMaxCblkH));
 }
-T1EncodeScheduler::~T1EncodeScheduler() {
+T1CompressScheduler::~T1CompressScheduler() {
 	for (auto &t : threadStructs)
 		delete t;
 }
-void T1EncodeScheduler::compress(std::vector<EncodeBlockInfo*> *blocks) {
+void T1CompressScheduler::compress(std::vector<CompressBlockInfo*> *blocks) {
 	if (!blocks || blocks->size() == 0)
 		return;
 
@@ -50,7 +50,7 @@ void T1EncodeScheduler::compress(std::vector<EncodeBlockInfo*> *blocks) {
 
 
 	auto maxBlocks = blocks->size();
-	encodeBlocks = new EncodeBlockInfo*[maxBlocks];
+	encodeBlocks = new CompressBlockInfo*[maxBlocks];
 	for (uint64_t i = 0; i < maxBlocks; ++i)
 		encodeBlocks[i] = blocks->operator[](i);
 	blocks->clear();
@@ -71,20 +71,20 @@ void T1EncodeScheduler::compress(std::vector<EncodeBlockInfo*> *blocks) {
     }
 	delete[] encodeBlocks;
 }
-bool T1EncodeScheduler::compress(size_t threadId, uint64_t maxBlocks) {
+bool T1CompressScheduler::compress(size_t threadId, uint64_t maxBlocks) {
 	auto impl = threadStructs[threadId];
 	uint64_t index = (uint64_t)++blockCount;
 	if (index >= maxBlocks)
 		return false;
-	EncodeBlockInfo *block = encodeBlocks[index];
+	CompressBlockInfo *block = encodeBlocks[index];
 	compress(impl,block);
 	delete block;
 
 	return true;
 }
-void T1EncodeScheduler::compress(T1Interface *impl, EncodeBlockInfo *block){
+void T1CompressScheduler::compress(T1Interface *impl, CompressBlockInfo *block){
 	uint32_t max = 0;
-	impl->preEncode(block, tile, max);
+	impl->preCompress(block, tile, max);
 	auto dist = impl->compress(block, tile, max, needsRateControl);
 	if (needsRateControl) {
 		std::unique_lock<std::mutex> lk(distortion_mutex);

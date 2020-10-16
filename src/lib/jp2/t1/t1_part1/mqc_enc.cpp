@@ -212,8 +212,8 @@ void mqc_init_enc(mqcoder *mqc, uint8_t *bp){
     /* required as the current context is always set before encoding */
     mqc_setcurctx(mqc, 0);
 
-    /* As specified in Figure C.10 - Initialization of the encoder */
-    /* (C.2.8 Initialization of the encoder (INITENC)) */
+    /* As specified in Figure C.10 - Initialization of the compressor */
+    /* (C.2.8 Initialization of the compressor (INITENC)) */
     mqc->a = 0x8000;
     mqc->c = 0;
     /* Yes, we point before the start of the buffer, but this is safe */
@@ -313,8 +313,8 @@ void mqc_bypass_flush_enc(mqcoder *mqc, bool erterm){
 
 void mqc_restart_init_enc(mqcoder *mqc){
     /* <Re-init part> */
-    /* As specified in Figure C.10 - Initialization of the encoder */
-    /* (C.2.8 Initialization of the encoder (INITENC)) */
+    /* As specified in Figure C.10 - Initialization of the compressor */
+    /* (C.2.8 Initialization of the compressor (INITENC)) */
     mqc->a = 0x8000;
     mqc->c = 0;
     mqc->ct = 12;

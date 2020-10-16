@@ -1573,7 +1573,7 @@ GRK_API void GRK_CALLCONV grk_set_default_compress_params(
 		grk_cparameters *parameters);
 
 /**
- * Set up the encoder parameters using the current image and user parameters.
+ * Set up the compressor parameters using the current image and user parameters.
  *
  * @param codec 		JPEG 2000 code stream
  * @param parameters 	compression parameters

@@ -28,12 +28,12 @@
 namespace grk {
 
 
-T2Encode::T2Encode(TileProcessor *tileProc) :
+T2Compress::T2Compress(TileProcessor *tileProc) :
 		tileProcessor(tileProc) {
 }
 
 
-bool T2Encode::encode_packets(uint16_t tile_no, uint16_t max_layers,
+bool T2Compress::encode_packets(uint16_t tile_no, uint16_t max_layers,
 		BufferedStream *stream, uint32_t *p_data_written,
 		uint32_t tp_num, uint32_t tp_pos,
 		uint32_t pino) {
@@ -72,7 +72,7 @@ bool T2Encode::encode_packets(uint16_t tile_no, uint16_t max_layers,
 	return true;
 }
 
-bool T2Encode::encode_packets_simulate(uint16_t tile_no, uint16_t max_layers,
+bool T2Compress::encode_packets_simulate(uint16_t tile_no, uint16_t max_layers,
 		uint32_t *all_packets_len, uint32_t max_len, uint32_t tp_pos,
 		PacketLengthMarkers *markers) {
 
@@ -137,7 +137,7 @@ bool T2Encode::encode_packets_simulate(uint16_t tile_no, uint16_t max_layers,
 }
 
 //--------------------------------------------------------------------------------------------------
-bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
+bool T2Compress::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 		BufferedStream *stream, uint32_t *packet_bytes_written) {
 	assert(stream);
 	uint32_t compno = pi->compno;
@@ -377,7 +377,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 
 		bool ret = true;
 		bool read_data;
-		if (!T2Encode::read_packet_header(p_t2,
+		if (!T2Compress::read_packet_header(p_t2,
 			roundRes,
 			tcp,
 			pi,
@@ -475,7 +475,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 			/* we should read data for the packet */
 			if (read_data) {
 			 nb_bytes_read = 0;
-				if (!T2Encode::read_packet_data(roundRes,
+				if (!T2Compress::read_packet_data(roundRes,
 					pi,
 					src_buf.get(),
 					&nb_bytes_read)) {
@@ -549,7 +549,7 @@ bool T2Encode::encode_packet(TileCodingParams *tcp, PacketIter *pi,
 	return true;
 }
 
-bool T2Encode::encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
+bool T2Compress::encode_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 		uint32_t *packet_bytes_written, uint32_t max_bytes_available,
 		PacketLengthMarkers *markers) {
 	uint32_t compno = pi->compno;

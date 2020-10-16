@@ -182,8 +182,8 @@ static inline long grk_lrintf(float f) {
 #include "dwt_utils.h"
 #include "dwt.h"
 #include <SparseBuffer.h>
-#include "T2Encode.h"
-#include "T2Decode.h"
+#include <T2Compress.h>
+#include <T2Decompress.h>
 #include "mct.h"
 #include "grk_intmath.h"
 #include "plugin_bridge.h"
@@ -192,5 +192,5 @@ static inline long grk_lrintf(float f) {
 #include "T1Interface.h"
 #include "T1Factory.h"
 #include "T1Scheduler.h"
-#include <T1DecodeScheduler.h>
-#include <T1EncodeScheduler.h>
+#include <T1DecompressScheduler.h>
+#include <T1CompressScheduler.h>

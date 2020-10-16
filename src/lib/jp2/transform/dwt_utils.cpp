@@ -19,7 +19,7 @@
  *
  */
 
-#include <T1DecodeScheduler.h>
+#include <T1DecompressScheduler.h>
 #include "grk_includes.h"
 #include <atomic>
 #include "testing.h"

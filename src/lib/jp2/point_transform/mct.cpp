@@ -59,7 +59,7 @@ void mct::encode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 		std::vector< std::future<int> > results;
 	    for(uint64_t tr = 0; tr < num_threads; ++tr) {
 	    	uint64_t index = tr;
-			auto encoder = [index, chunkSize, chan0,chan1,chan2]()	{
+			auto compressor = [index, chunkSize, chan0,chan1,chan2]()	{
 				uint64_t begin = (uint64_t)index * chunkSize;
 				for (auto j = begin; j < begin+chunkSize; j+=VREG_INT_COUNT ){
 					VREG y, u, v;
@@ -80,9 +80,9 @@ void mct::encode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 			};
 
 			if (num_threads > 1)
-				results.emplace_back(ThreadPool::get()->enqueue(encoder));
+				results.emplace_back(ThreadPool::get()->enqueue(compressor));
 			else
-				encoder();
+				compressor();
 	    }
 	    for(auto &result: results){
 	        result.get();
@@ -444,7 +444,7 @@ void mct::encode_irrev( int* GRK_RESTRICT chan0,
 		std::vector< std::future<int> > results;
 	    for(uint64_t tr = 0; tr < num_threads; ++tr) {
 	    	uint64_t index = tr;
-			auto encoder = [index, chunkSize, chan0,chan1,chan2]()	{
+			auto compressor = [index, chunkSize, chan0,chan1,chan2]()	{
 				const VREGF va_r = LOAD_CST_F(0.299f);
 				const VREGF va_g = LOAD_CST_F(0.587f);
 				const VREGF va_b = LOAD_CST_F(0.114f);
@@ -473,9 +473,9 @@ void mct::encode_irrev( int* GRK_RESTRICT chan0,
 			};
 
 			if (num_threads > 1)
-				results.emplace_back(ThreadPool::get()->enqueue(encoder));
+				results.emplace_back(ThreadPool::get()->enqueue(compressor));
 			else
-				encoder();
+				compressor();
 		}
 		for(auto &result: results){
 			result.get();

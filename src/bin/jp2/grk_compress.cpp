@@ -1491,7 +1491,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				size_t count = parameters->cp_num_comments;
 				if (count == GRK_NUM_COMMENTS_SUPPORTED) {
 					spdlog::warn(
-							" Grok encoder is limited to {} comments. Ignoring subsequent comments.",
+							" Grok compressor is limited to {} comments. Ignoring subsequent comments.",
 							GRK_NUM_COMMENTS_SUPPORTED);
 					break;
 				}

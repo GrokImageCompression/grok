@@ -50,7 +50,7 @@ typedef void (*PLUGIN_DEBUG_MQC_NEXT_CXD)(grk_plugin_debug_mqc *mqc, uint32_t d)
 typedef void (*PLUGIN_DEBUG_MQC_NEXT_PLANE)(grk_plugin_debug_mqc *mqc);
 
 /////////////////////
-// encoder interface
+// compressor interface
 /////////////////////
 
 struct plugin_encode_user_callback_info {

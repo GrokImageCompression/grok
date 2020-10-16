@@ -26,11 +26,11 @@
 
 namespace grk {
 
-T2Decode::T2Decode(TileProcessor *tileProc) :
+T2Decompress::T2Decompress(TileProcessor *tileProc) :
 		tileProcessor(tileProc) {
 }
 
-bool T2Decode::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
+bool T2Decompress::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
 
 	auto cp = tileProcessor->m_cp;
@@ -141,7 +141,7 @@ bool T2Decode::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 									- 1;
 				}
 			}
-			//GRK_INFO("T2Decode Packet length: %u", nb_bytes_read);
+			//GRK_INFO("T2Decompress Packet length: %u", nb_bytes_read);
 			*p_data_read += nb_bytes_read;
 		}
 		delete[] first_pass_failed;
@@ -151,7 +151,7 @@ bool T2Decode::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 }
 
 
-bool T2Decode::decode_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuffer *src_buf,
+bool T2Decompress::decode_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
 	uint64_t max_length = src_buf->getRemainingLength();
 	if (max_length == 0) {
@@ -187,7 +187,7 @@ bool T2Decode::decode_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuf
 	return true;
 }
 
-bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
+bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 		bool *p_is_data_present, ChunkBuffer *src_buf, uint64_t *p_data_read) {
 	auto p_tile = tileProcessor->tile;
 	auto res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
@@ -406,7 +406,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 			uint32_t segno = 0;
 
 			if (!cblk->numSegments) {
-				if (!T2Decode::init_seg(cblk, segno,
+				if (!T2Decompress::init_seg(cblk, segno,
 						p_tcp->tccps[p_pi->compno].cblk_sty, true)) {
 					return false;
 				}
@@ -415,7 +415,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 				if (cblk->segs[segno].numpasses
 						== cblk->segs[segno].maxpasses) {
 					++segno;
-					if (!T2Decode::init_seg(cblk, segno,
+					if (!T2Decompress::init_seg(cblk, segno,
 							p_tcp->tccps[p_pi->compno].cblk_sty, false)) {
 						return false;
 					}
@@ -466,7 +466,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 				blockPassesInPacket -= (int32_t) seg->numPassesInPacket;
 				if (blockPassesInPacket > 0) {
 					++segno;
-					if (!T2Decode::init_seg(cblk, segno,
+					if (!T2Decompress::init_seg(cblk, segno,
 							p_tcp->tccps[p_pi->compno].cblk_sty, false)) {
 						return false;
 					}
@@ -503,7 +503,7 @@ bool T2Decode::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 	return true;
 }
 
-bool T2Decode::read_packet_data(Resolution *res, PacketIter *p_pi,
+bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 		ChunkBuffer *src_buf, uint64_t *p_data_read) {
 	for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
 		auto band = res->bands + bandno;
@@ -565,7 +565,7 @@ bool T2Decode::read_packet_data(Resolution *res, PacketIter *p_pi,
 
 	return true;
 }
-bool T2Decode::skip_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuffer *src_buf,
+bool T2Decompress::skip_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
 	bool read_data;
 	uint64_t nb_bytes_read = 0;
@@ -595,7 +595,7 @@ bool T2Decode::skip_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuffe
 	return true;
 }
 
-bool T2Decode::skip_packet_data(Resolution *res, PacketIter *p_pi,
+bool T2Decompress::skip_packet_data(Resolution *res, PacketIter *p_pi,
 		uint64_t *p_data_read, uint64_t max_length) {
 	*p_data_read = 0;
 	for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {

@@ -54,7 +54,7 @@ static inline int32_t int_fix_mul_t1(int32_t a, int32_t b) {
 }
 
 
-void T1Part1::preEncode(EncodeBlockInfo *block, grk_tile *tile,
+void T1Part1::preCompress(CompressBlockInfo *block, grk_tile *tile,
 		uint32_t &maximum) {
 	auto cblk = block->cblk;
 	auto w = cblk->width();
@@ -93,7 +93,7 @@ void T1Part1::preEncode(EncodeBlockInfo *block, grk_tile *tile,
 		}
 	}
 }
-double T1Part1::compress(EncodeBlockInfo *block, grk_tile *tile,
+double T1Part1::compress(CompressBlockInfo *block, grk_tile *tile,
 		uint32_t max, bool doRateControl) {
 	auto cblk = block->cblk;
 	cblk_enc cblkexp;
@@ -131,7 +131,7 @@ double T1Part1::compress(EncodeBlockInfo *block, grk_tile *tile,
  	return disto;
 }
 
-bool T1Part1::decompress(DecodeBlockInfo *block) {
+bool T1Part1::decompress(DecompressBlockInfo *block) {
 	auto cblk = block->cblk;
   	if (cblk->seg_buffers.empty())
 		return true;
@@ -187,7 +187,7 @@ bool T1Part1::decompress(DecodeBlockInfo *block) {
 	return ret;
 }
 
-bool T1Part1::postDecode(DecodeBlockInfo *block) {
+bool T1Part1::postDecompress(DecompressBlockInfo *block) {
 
 	auto cblk = block->cblk;
 	if (cblk->seg_buffers.empty())

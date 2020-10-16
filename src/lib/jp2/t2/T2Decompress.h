@@ -36,8 +36,8 @@ struct TileProcessor;
 /**
  Tier-2 coding
  */
-struct T2Decode : public T2 {
-	T2Decode(TileProcessor *tileProc);
+struct T2Decompress : public T2 {
+	T2Decompress(TileProcessor *tileProc);
 
 	/**
 	 Decode the packets of a tile from a source buffer

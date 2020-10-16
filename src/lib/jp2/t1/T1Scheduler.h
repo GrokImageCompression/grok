@@ -28,11 +28,11 @@ public:
 						const double *mct_norms,
 						uint32_t mct_numcomps, bool doRateControl);
 	bool prepareScheduleDecode(TileComponent *tilec, TileComponentCodingParams *tccp,
-			std::vector<DecodeBlockInfo*> *blocks);
+			std::vector<DecompressBlockInfo*> *blocks);
 	bool scheduleDecode(TileCodingParams *tcp,
 						uint16_t blockw,
 						uint16_t blockh,
-						std::vector<DecodeBlockInfo*> *blocks);
+						std::vector<DecompressBlockInfo*> *blocks);
 };
 
 }

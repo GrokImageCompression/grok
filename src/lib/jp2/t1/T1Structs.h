@@ -79,7 +79,7 @@ struct Codeblock : public grk_rect_u32 {
 #endif
 };
 
-// encoder code block
+// compressor code block
 struct CompressCodeblock : public Codeblock {
 	CompressCodeblock();
 	~CompressCodeblock();

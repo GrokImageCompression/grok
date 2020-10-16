@@ -19,7 +19,7 @@
 
 namespace grk {
 
-T1DecodeScheduler::T1DecodeScheduler(TileCodingParams *tcp,
+T1DecompressScheduler::T1DecompressScheduler(TileCodingParams *tcp,
 					uint16_t blockw,
 					uint16_t blockh) :
 		codeblock_width((uint16_t) (blockw ? (uint32_t) 1 << blockw : 0)),
@@ -33,12 +33,12 @@ T1DecodeScheduler::T1DecodeScheduler(TileCodingParams *tcp,
 	}
 }
 
-T1DecodeScheduler::~T1DecodeScheduler() {
+T1DecompressScheduler::~T1DecompressScheduler() {
 	for (auto &t : threadStructs) {
 		delete t;
 	}
 }
-bool T1DecodeScheduler::decompressBlock(T1Interface *impl, DecodeBlockInfo *block){
+bool T1DecompressScheduler::decompressBlock(T1Interface *impl, DecompressBlockInfo *block){
 	try {
 		if (!impl->decompress(block)) {
 			delete block;
@@ -49,12 +49,12 @@ bool T1DecodeScheduler::decompressBlock(T1Interface *impl, DecodeBlockInfo *bloc
 		GRK_ERROR(rerr.what());
 		return false;
 	}
-	bool rc =  impl->postDecode(block);
+	bool rc =  impl->postDecompress(block);
 	delete block;
 	return rc;
 }
 
-bool T1DecodeScheduler::decompress(std::vector<DecodeBlockInfo*> *blocks) {
+bool T1DecompressScheduler::decompress(std::vector<DecompressBlockInfo*> *blocks) {
 	if (!blocks || !blocks->size())
 		return true;
 	size_t num_threads = ThreadPool::get()->num_threads();
@@ -73,7 +73,7 @@ bool T1DecodeScheduler::decompress(std::vector<DecodeBlockInfo*> *blocks) {
 		return success;
 	}
 	auto maxBlocks = blocks->size();
-	decodeBlocks = new DecodeBlockInfo*[maxBlocks];
+	decodeBlocks = new DecompressBlockInfo*[maxBlocks];
 	for (uint64_t i = 0; i < maxBlocks; ++i)
 		decodeBlocks[i] = blocks->operator[](i);
 	std::atomic<int> blockCount(-1);

@@ -150,7 +150,7 @@ static bool j2k_check_poc_val(const  grk_poc  *p_pocs, uint32_t nb_pocs,
 static uint8_t j2k_get_num_tp(CodingParams *cp, uint32_t pino, uint16_t tileno);
 
 /**
- * Calculates the total number of tile parts needed by the encoder to
+ * Calculates the total number of tile parts needed by the compressor to
  * compress such an image. If not enough memory is available, then the function return false.
  *
  * @param       cp              coding parameters for the image.
@@ -1278,24 +1278,24 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 	//sanity check on image
 	if (image->numcomps < 1 || image->numcomps > max_num_components) {
 		GRK_ERROR(
-				"Invalid number of components specified while setting up JP2 encoder");
+				"Invalid number of components specified while setting up JP2 compressor");
 		return false;
 	}
 	if ((image->x1 < image->x0) || (image->y1 < image->y0)) {
 		GRK_ERROR(
-				"Invalid input image dimensions found while setting up JP2 encoder");
+				"Invalid input image dimensions found while setting up JP2 compressor");
 		return false;
 	}
 	for (uint32_t i = 0; i < image->numcomps; ++i) {
 		auto comp = image->comps + i;
 		if (comp->w == 0 || comp->h == 0) {
 			GRK_ERROR(
-					"Invalid input image component dimensions found while setting up JP2 encoder");
+					"Invalid input image component dimensions found while setting up JP2 compressor");
 			return false;
 		}
 		if (comp->prec == 0) {
 			GRK_ERROR(
-					"Invalid component precision of 0 found while setting up JP2 encoder");
+					"Invalid component precision of 0 found while setting up JP2 compressor");
 			return false;
 		}
 	}
@@ -1583,7 +1583,7 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 				grk_free(lTmpBuf);
 				lTmpBuf = nullptr;
 				GRK_ERROR(
-						"Not enough memory to allocate encoder MCT coding matrix ");
+						"Not enough memory to allocate compressor MCT coding matrix ");
 				return false;
 			}
 			memcpy(tcp->m_mct_coding_matrix, parameters->mct_data, lMctSize);
@@ -1594,14 +1594,14 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 				grk_free(lTmpBuf);
 				lTmpBuf = nullptr;
 				GRK_ERROR(
-						"Not enough memory to allocate encoder MCT decoding matrix ");
+						"Not enough memory to allocate compressor MCT decoding matrix ");
 				return false;
 			}
 			if (matrix_inversion_f(lTmpBuf, (tcp->m_mct_decoding_matrix),
 					image->numcomps) == false) {
 				grk_free(lTmpBuf);
 				lTmpBuf = nullptr;
-				GRK_ERROR("Failed to inverse encoder MCT decoding matrix ");
+				GRK_ERROR("Failed to inverse compressor MCT decoding matrix ");
 				return false;
 			}
 
@@ -1610,7 +1610,7 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 			if (!tcp->mct_norms) {
 				grk_free(lTmpBuf);
 				lTmpBuf = nullptr;
-				GRK_ERROR("Not enough memory to allocate encoder MCT norms ");
+				GRK_ERROR("Not enough memory to allocate compressor MCT norms ");
 				return false;
 			}
 			mct::calculate_norms(tcp->mct_norms, image->numcomps,

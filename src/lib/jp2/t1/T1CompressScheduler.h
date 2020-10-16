@@ -17,26 +17,29 @@
 
 #pragma once
 
-#include "grk_includes.h"
+#include <thread>
 
 namespace grk {
 
-struct DecodeBlockInfo;
-class T1Interface;
-
-class T1DecodeScheduler {
+class T1CompressScheduler {
 public:
-	T1DecodeScheduler(TileCodingParams *tcp, uint16_t blockw, uint16_t blockh);
-	~T1DecodeScheduler();
-	bool decompress(std::vector<DecodeBlockInfo*> *blocks);
+	T1CompressScheduler(TileCodingParams *tcp, grk_tile *tile, uint32_t encodeMaxCblkW,
+			uint32_t encodeMaxCblkH, bool needsRateControl);
+	~T1CompressScheduler();
+	void compress(std::vector<CompressBlockInfo*> *blocks);
 
 private:
-	bool decompressBlock(T1Interface *impl, DecodeBlockInfo *block);
-	uint16_t codeblock_width, codeblock_height;  //nominal dimensions of block
-	std::vector<T1Interface*> threadStructs;
-	std::atomic_bool success;
+	bool compress(size_t threadId, uint64_t maxBlocks);
+	void compress(T1Interface *impl, CompressBlockInfo *block);
 
-	DecodeBlockInfo** decodeBlocks;
+	grk_tile *tile;
+	std::vector<T1Interface*> threadStructs;
+	mutable std::mutex distortion_mutex;
+	bool needsRateControl;
+	mutable std::mutex block_mutex;
+	CompressBlockInfo** encodeBlocks;
+	std::atomic<int64_t> blockCount;
+
 };
 
 }

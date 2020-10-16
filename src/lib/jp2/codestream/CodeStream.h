@@ -321,7 +321,7 @@ struct CodeStream : public ICodeStream {
 	bool read_unk(uint16_t *output_marker);
 
 
-	// state of decoder/encoder
+	// state of decoder/compressor
 	DecoderState m_decoder;
 	EncoderState m_encoder;
 

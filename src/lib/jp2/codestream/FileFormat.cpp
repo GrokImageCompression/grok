@@ -2726,7 +2726,7 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
 	numcl = 1;
 	cl = (uint32_t*) grk_malloc(sizeof(uint32_t));
 	if (!cl) {
-		GRK_ERROR("Not enough memory when set up the JP2 encoder");
+		GRK_ERROR("Not enough memory when set up the JP2 compressor");
 		return false;
 	}
 	cl[0] = JP2_JP2; /* CL0 : JP2 */
@@ -2736,7 +2736,7 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
 	comps = (grk_jp2_comps*) grk_malloc(
 			numcomps * sizeof(grk_jp2_comps));
 	if (!comps) {
-		GRK_ERROR("Not enough memory when set up the JP2 encoder");
+		GRK_ERROR("Not enough memory when set up the JP2 compressor");
 		return false;
 	}
 
