@@ -16,6 +16,9 @@
  */
 #include "grk_includes.h"
 #include "T1Part1.h"
+#include "TileProcessor.h"
+#include "t1_common.h"
+#include "T1.h"
 #include "testing.h"
 #include <algorithm>
 using namespace std;
@@ -104,7 +107,6 @@ double T1Part1::compress(EncodeBlockInfo *block, grk_tile *tile,
 	assert(cblk->height() > 0);
 
 	cblkexp.data = cblk->paddedCompressedData;
-	cblkexp.data_size = cblk->compressedDataSize;
 
 	auto disto = t1->encode_cblk(&cblkexp, max, block->bandno,
 			block->compno,
@@ -112,7 +114,7 @@ double T1Part1::compress(EncodeBlockInfo *block, grk_tile *tile,
 			block->qmfbid, block->stepsize, block->cblk_sty,
 			block->mct_norms, block->mct_numcomps, doRateControl);
 
-	cblk->numPassesTotal = cblkexp.totalpasses;
+	cblk->numPassesTotal = cblkexp.numPassesTotal;
 	cblk->numbps = cblkexp.numbps;
 	for (uint32_t i = 0; i < cblk->numPassesTotal; ++i) {
 		auto passexp = cblkexp.passes + i;
@@ -150,18 +152,18 @@ bool T1Part1::decompress(DecodeBlockInfo *block) {
 	}
 	seg_data_chunk chunk;
 	chunk.len = t1->cblkdatabuffersize;
-	chunk.data = t1->cblkdatabuffer;
+	chunk.buf = t1->cblkdatabuffer;
 
 	cblk_dec cblkexp;
 	memset(&cblkexp, 0, sizeof(cblk_dec));
-	cblkexp.chunks = &chunk;
+	cblkexp.seg_buffers = &chunk;
 	cblkexp.x0 = block->x;
 	cblkexp.y0 = block->y;
 	cblkexp.x1 = block->x + cblk->width();
 	cblkexp.y1 = block->y + cblk->height();
 	assert(cblk->width() > 0);
 	assert(cblk->height() > 0);
-	cblkexp.real_num_segs = cblk->numSegments;
+	cblkexp.numSegments = cblk->numSegments;
 	auto segs = new seg[cblk->numSegments];
 	for (uint32_t i = 0; i < cblk->numSegments; ++i){
 		auto segp = segs + i;
@@ -169,7 +171,7 @@ bool T1Part1::decompress(DecodeBlockInfo *block) {
 		auto sgrk = cblk->segs + i;
 		segp->len = sgrk->len;
 		assert(segp->len <= total_seg_len);
-		segp->real_num_passes = sgrk->numpasses;
+		segp->numpasses = sgrk->numpasses;
 	}
 	cblkexp.segs = segs;
 	// subtract roishift as it was added when packet was parsed

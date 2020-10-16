@@ -751,7 +751,7 @@ double T1::encode_cblk(cblk_enc *cblk, uint32_t max,
 			cblk->numbps = temp - T1_NMSEDEC_FRACBITS;
 	}
 	if (cblk->numbps == 0) {
-		cblk->totalpasses = 0;
+		cblk->numPassesTotal = 0;
 		return 0;
 	}
 
@@ -838,12 +838,12 @@ double T1::encode_cblk(cblk_enc *cblk, uint32_t max,
 			mqc_resetstates(mqcPtr);
 	}
 
-	cblk->totalpasses = passno;
+	cblk->numPassesTotal = passno;
 
-	if (cblk->totalpasses) {
+	if (cblk->numPassesTotal) {
 		/* Make sure that pass rates are increasing */
 		uint32_t last_pass_rate = mqc_numbytes_enc(mqcPtr);
-		for (passno = cblk->totalpasses; passno > 0;) {
+		for (passno = cblk->numPassesTotal; passno > 0;) {
 			auto *pass = &cblk->passes[--passno];
 			if (pass->rate > last_pass_rate)
 				pass->rate = last_pass_rate;
@@ -852,7 +852,7 @@ double T1::encode_cblk(cblk_enc *cblk, uint32_t max,
 		}
 	}
 
-	for (passno = 0; passno < cblk->totalpasses; passno++) {
+	for (passno = 0; passno < cblk->numPassesTotal; passno++) {
 		auto pass = cblk->passes + passno;
 
 		/* Prevent generation of FF as last data byte of a pass*/
@@ -1320,9 +1320,9 @@ bool T1::decode_cblk(cblk_dec *cblk, uint32_t orient,
 	uint32_t passtype = 2;
 
 	mqc_resetstates(mqcPtr);
-	auto cblkdata = cblk->chunks[0].data;
+	auto cblkdata = cblk->seg_buffers[0].buf;
 
-	for (uint32_t segno = 0; segno < cblk->real_num_segs; ++segno) {
+	for (uint32_t segno = 0; segno < cblk->numSegments; ++segno) {
 		auto seg = cblk->segs + segno;
 
 		/* BYPASS mode */
@@ -1338,7 +1338,7 @@ bool T1::decode_cblk(cblk_dec *cblk, uint32_t orient,
 		cblkdataindex += seg->len;
 
 		for (uint32_t passno = 0;
-				(passno < seg->real_num_passes) && (bpno_plus_one >= 1);
+				(passno < seg->numpasses) && (bpno_plus_one >= 1);
 				++passno) {
 			switch (passtype) {
 			case 0:

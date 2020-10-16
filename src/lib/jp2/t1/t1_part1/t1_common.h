@@ -66,29 +66,28 @@ struct pass_enc {
 
 struct cblk_enc {
     uint8_t* data;
-    uint32_t data_size;
     pass_enc* passes;
     uint32_t x0, y0, x1, y1;
     uint32_t numbps;
-    uint32_t totalpasses;
+    uint32_t numPassesTotal;
 };
 
 struct seg_data_chunk {
-    uint8_t * data;
+    uint8_t * buf;
     uint32_t len;
 };
 
 struct seg {
     uint32_t len;
-    uint32_t real_num_passes;
+    uint32_t numpasses;
 };
 
 struct cblk_dec {
     seg* segs;
-    seg_data_chunk* chunks;
+    seg_data_chunk* seg_buffers;
     uint32_t x0, y0, x1, y1;
     uint32_t numbps;
-    uint32_t real_num_segs;
+    uint32_t numSegments;
 };
 
 /* Macros to deal with signed integer with just MSB bit set for
