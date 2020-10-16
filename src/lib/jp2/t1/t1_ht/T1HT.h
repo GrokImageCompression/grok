@@ -35,12 +35,12 @@ public:
 	T1HT(bool isEncoder, TileCodingParams *tcp, uint32_t maxCblkW, uint32_t maxCblkH);
 	virtual ~T1HT();
 
-	void preEncode(encodeBlockInfo *block, grk_tile *tile, uint32_t &max);
-	double compress(encodeBlockInfo *block, grk_tile *tile, uint32_t max,
+	void preEncode(EncodeBlockInfo *block, grk_tile *tile, uint32_t &max);
+	double compress(EncodeBlockInfo *block, grk_tile *tile, uint32_t max,
 			bool doRateControl);
 
-	bool decompress(decodeBlockInfo *block);
-	bool postDecode(decodeBlockInfo *block);
+	bool decompress(DecodeBlockInfo *block);
+	bool postDecode(DecodeBlockInfo *block);
 
 private:
 	uint32_t coded_data_size;

@@ -21,22 +21,22 @@
 
 namespace grk {
 
-struct decodeBlockInfo;
+struct DecodeBlockInfo;
 class T1Interface;
 
 class T1DecodeScheduler {
 public:
 	T1DecodeScheduler(TileCodingParams *tcp, uint16_t blockw, uint16_t blockh);
 	~T1DecodeScheduler();
-	bool decompress(std::vector<decodeBlockInfo*> *blocks);
+	bool decompress(std::vector<DecodeBlockInfo*> *blocks);
 
 private:
-	bool decompressBlock(T1Interface *impl, decodeBlockInfo *block);
+	bool decompressBlock(T1Interface *impl, DecodeBlockInfo *block);
 	uint16_t codeblock_width, codeblock_height;  //nominal dimensions of block
 	std::vector<T1Interface*> threadStructs;
 	std::atomic_bool success;
 
-	decodeBlockInfo** decodeBlocks;
+	DecodeBlockInfo** decodeBlocks;
 };
 
 }

@@ -24,14 +24,11 @@ namespace grk {
 namespace t1_part1{
 
 T1Part1::T1Part1(bool isEncoder, uint32_t maxCblkW,	uint32_t maxCblkH) : t1(nullptr){
-	t1 = t1_create(isEncoder);
-	if (!isEncoder) {
-	   t1->cblkdatabuffersize = maxCblkW * maxCblkH * (uint32_t)sizeof(int32_t);
-	   t1->cblkdatabuffer = (uint8_t*)grk_malloc(t1->cblkdatabuffersize);
-   }
+	t1 = new T1(isEncoder,maxCblkW,	maxCblkH);
+
 }
 T1Part1::~T1Part1() {
-	t1_destroy( t1);
+	delete t1;
 }
 
 /**
@@ -54,12 +51,12 @@ static inline int32_t int_fix_mul_t1(int32_t a, int32_t b) {
 }
 
 
-void T1Part1::preEncode(encodeBlockInfo *block, grk_tile *tile,
+void T1Part1::preEncode(EncodeBlockInfo *block, grk_tile *tile,
 		uint32_t &maximum) {
 	auto cblk = block->cblk;
 	auto w = cblk->width();
 	auto h = cblk->height();
-	if (!t1_allocate_buffers(t1, w,h))
+	if (!allocate_buffers(t1, w,h))
 		return;
 	t1->data_stride = w;
 	auto tileLineAdvance = (tile->comps + block->compno)->buf->stride() - w;
@@ -93,7 +90,7 @@ void T1Part1::preEncode(encodeBlockInfo *block, grk_tile *tile,
 		}
 	}
 }
-double T1Part1::compress(encodeBlockInfo *block, grk_tile *tile,
+double T1Part1::compress(EncodeBlockInfo *block, grk_tile *tile,
 		uint32_t max, bool doRateControl) {
 	auto cblk = block->cblk;
 	cblk_enc cblkexp;
@@ -109,7 +106,7 @@ double T1Part1::compress(encodeBlockInfo *block, grk_tile *tile,
 	cblkexp.data = cblk->paddedCompressedData;
 	cblkexp.data_size = cblk->compressedDataSize;
 
-	auto disto = t1_encode_cblk(t1, &cblkexp, max, block->bandno,
+	auto disto = encode_cblk(t1, &cblkexp, max, block->bandno,
 			block->compno,
 			(tile->comps + block->compno)->numresolutions - 1 - block->resno,
 			block->qmfbid, block->stepsize, block->cblk_sty,
@@ -126,13 +123,13 @@ double T1Part1::compress(encodeBlockInfo *block, grk_tile *tile,
 		passgrk->term = passexp->term;
 	}
 
-	t1_code_block_enc_deallocate(&cblkexp);
+ code_block_enc_deallocate(&cblkexp);
 	cblkexp.data = nullptr;
 
  	return disto;
 }
 
-bool T1Part1::decompress(decodeBlockInfo *block) {
+bool T1Part1::decompress(DecodeBlockInfo *block) {
 	auto cblk = block->cblk;
   	if (cblk->seg_buffers.empty())
 		return true;
@@ -179,7 +176,7 @@ bool T1Part1::decompress(decodeBlockInfo *block) {
 	// and exp uses subtracted value
 	cblkexp.numbps = cblk->numbps - block->roishift;
 
-    bool ret =t1_decode_cblk(t1,
+    bool ret =decode_cblk(t1,
     				&cblkexp,
     				block->bandno,
 					block->roishift,
@@ -189,7 +186,7 @@ bool T1Part1::decompress(decodeBlockInfo *block) {
 	return ret;
 }
 
-bool T1Part1::postDecode(decodeBlockInfo *block) {
+bool T1Part1::postDecode(DecodeBlockInfo *block) {
 
 	auto cblk = block->cblk;
 	if (cblk->seg_buffers.empty())

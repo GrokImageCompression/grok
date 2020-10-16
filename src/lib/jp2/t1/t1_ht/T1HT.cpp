@@ -56,7 +56,7 @@ T1HT::~T1HT() {
    delete allocator;
    delete elastic_alloc;
 }
-void T1HT::preEncode(encodeBlockInfo *block, grk_tile *tile,
+void T1HT::preEncode(EncodeBlockInfo *block, grk_tile *tile,
 		uint32_t &maximum) {
 	(void)block;
 	(void)tile;
@@ -104,7 +104,7 @@ void T1HT::preEncode(encodeBlockInfo *block, grk_tile *tile,
 		}
 	}
 }
-double T1HT::compress(encodeBlockInfo *block, grk_tile *tile, uint32_t maximum,
+double T1HT::compress(EncodeBlockInfo *block, grk_tile *tile, uint32_t maximum,
 		bool doRateControl) {
 	(void)doRateControl;
 	(void)tile;
@@ -134,7 +134,7 @@ double T1HT::compress(encodeBlockInfo *block, grk_tile *tile, uint32_t maximum,
 	 memcpy(cblk->paddedCompressedData, next_coded->buf, (size_t)pass_length[0]);
   return 0;
 }
-bool T1HT::decompress(decodeBlockInfo *block) {
+bool T1HT::decompress(DecodeBlockInfo *block) {
 	auto cblk = block->cblk;
 	if (cblk->seg_buffers.empty())
 		return true;
@@ -176,7 +176,7 @@ bool T1HT::decompress(decodeBlockInfo *block) {
 
 }
 
-bool T1HT::postDecode(decodeBlockInfo *block) {
+bool T1HT::postDecode(DecodeBlockInfo *block) {
 	auto cblk = block->cblk;
 	uint16_t cblk_w =  (uint16_t)cblk->width();
 	uint16_t cblk_h =  (uint16_t)cblk->height();

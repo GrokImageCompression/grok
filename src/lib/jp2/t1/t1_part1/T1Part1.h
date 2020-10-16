@@ -21,7 +21,7 @@
 #include "TileProcessor.h"
 #include "T1Interface.h"
 #include "t1_common.h"
-#include "t1.h"
+#include "T1.h"
 
 
 
@@ -34,15 +34,15 @@ public:
 	T1Part1(bool isEncoder, uint32_t maxCblkW, uint32_t maxCblkH);
 	virtual ~T1Part1();
 
-	void preEncode(encodeBlockInfo *block, grk_tile *tile, uint32_t &max);
-	double compress(encodeBlockInfo *block, grk_tile *tile, uint32_t max,
+	void preEncode(EncodeBlockInfo *block, grk_tile *tile, uint32_t &max);
+	double compress(EncodeBlockInfo *block, grk_tile *tile, uint32_t max,
 			bool doRateControl);
 
-	bool decompress(decodeBlockInfo *block);
-	bool postDecode(decodeBlockInfo *block);
+	bool decompress(DecodeBlockInfo *block);
+	bool postDecode(DecodeBlockInfo *block);
 
 private:
-	t1_info *t1;
+	T1 *t1;
 };
 }
 }

@@ -130,7 +130,11 @@ typedef uint32_t grk_flag;
 
 /* ----------------------------------------------------------------------- */
 
-struct t1_info {
+struct T1 {
+
+	T1(bool isEncoder, uint32_t maxCblkW,	uint32_t maxCblkH);
+	~T1();
+
 
 	/** MQC component */
 	mqcoder mqc;
@@ -156,23 +160,21 @@ struct t1_info {
 	uint32_t cblkdatabuffersize;
 };
 
-bool t1_decode_cblk(t1_info *t1, cblk_dec *cblk,
+bool decode_cblk(T1 *t1, cblk_dec *cblk,
 		uint32_t orient, uint32_t roishift, uint32_t cblksty);
 
-void t1_code_block_enc_deallocate(cblk_enc *
+void code_block_enc_deallocate(cblk_enc *
         p_code_block);
 
-bool t1_allocate_buffers(t1_info *t1, uint32_t w,
+bool allocate_buffers(T1 *t1, uint32_t w,
 		uint32_t h);
 
-double t1_encode_cblk(t1_info *t1, cblk_enc *cblk,
+double encode_cblk(T1 *t1, cblk_enc *cblk,
 		uint32_t max,
 		uint8_t orient, uint32_t compno, uint32_t level,
 		uint32_t qmfbid, double stepsize, uint32_t cblksty,
 		const double *mct_norms,
 		uint32_t mct_numcomps, bool doRateControl);
 
-t1_info* t1_create(bool isEncoder);
-void t1_destroy(t1_info *p_t1);
 
 }

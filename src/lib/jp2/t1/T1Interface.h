@@ -20,8 +20,8 @@
 
 namespace grk {
 
-struct decodeBlockInfo {
-	decodeBlockInfo() :
+struct DecodeBlockInfo {
+	DecodeBlockInfo() :
 			tilec(nullptr),
 			tiledp(nullptr),
 			stride(0),
@@ -53,8 +53,8 @@ struct decodeBlockInfo {
 	uint8_t k_msbs;
 };
 
-struct encodeBlockInfo {
-	encodeBlockInfo() :	tiledp(nullptr),
+struct EncodeBlockInfo {
+	EncodeBlockInfo() :	tiledp(nullptr),
 			            cblk(nullptr),
 						compno(0),
 						resno(0),
@@ -103,13 +103,13 @@ public:
 	virtual ~T1Interface() {
 	}
 
-	virtual void preEncode(encodeBlockInfo *block, grk_tile *tile,
+	virtual void preEncode(EncodeBlockInfo *block, grk_tile *tile,
 			uint32_t &max) = 0;
-	virtual double compress(encodeBlockInfo *block, grk_tile *tile,
+	virtual double compress(EncodeBlockInfo *block, grk_tile *tile,
 			uint32_t max, bool doRateControl)=0;
 
-	virtual bool decompress(decodeBlockInfo *block)=0;
-	virtual bool postDecode(decodeBlockInfo *block)=0;
+	virtual bool decompress(DecodeBlockInfo *block)=0;
+	virtual bool postDecode(DecodeBlockInfo *block)=0;
 };
 
 }

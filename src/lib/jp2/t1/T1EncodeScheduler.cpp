@@ -34,7 +34,7 @@ T1EncodeScheduler::~T1EncodeScheduler() {
 	for (auto &t : threadStructs)
 		delete t;
 }
-void T1EncodeScheduler::compress(std::vector<encodeBlockInfo*> *blocks) {
+void T1EncodeScheduler::compress(std::vector<EncodeBlockInfo*> *blocks) {
 	if (!blocks || blocks->size() == 0)
 		return;
 
@@ -50,7 +50,7 @@ void T1EncodeScheduler::compress(std::vector<encodeBlockInfo*> *blocks) {
 
 
 	auto maxBlocks = blocks->size();
-	encodeBlocks = new encodeBlockInfo*[maxBlocks];
+	encodeBlocks = new EncodeBlockInfo*[maxBlocks];
 	for (uint64_t i = 0; i < maxBlocks; ++i)
 		encodeBlocks[i] = blocks->operator[](i);
 	blocks->clear();
@@ -76,13 +76,13 @@ bool T1EncodeScheduler::compress(size_t threadId, uint64_t maxBlocks) {
 	uint64_t index = (uint64_t)++blockCount;
 	if (index >= maxBlocks)
 		return false;
-	encodeBlockInfo *block = encodeBlocks[index];
+	EncodeBlockInfo *block = encodeBlocks[index];
 	compress(impl,block);
 	delete block;
 
 	return true;
 }
-void T1EncodeScheduler::compress(T1Interface *impl, encodeBlockInfo *block){
+void T1EncodeScheduler::compress(T1Interface *impl, EncodeBlockInfo *block){
 	uint32_t max = 0;
 	impl->preEncode(block, tile, max);
 	auto dist = impl->compress(block, tile, max, needsRateControl);

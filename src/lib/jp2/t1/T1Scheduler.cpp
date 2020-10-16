@@ -28,7 +28,7 @@ void T1Scheduler::scheduleEncode(TileCodingParams *tcp,
 	uint32_t compno, resno, bandno;
 	uint64_t precno;
 	tile->distotile = 0;
-	std::vector<encodeBlockInfo*> blocks;
+	std::vector<EncodeBlockInfo*> blocks;
 	uint32_t maxCblkW = 0;
 	uint32_t maxCblkH = 0;
 
@@ -44,7 +44,7 @@ void T1Scheduler::scheduleEncode(TileCodingParams *tcp,
 					for (uint64_t cblkno = 0; cblkno < (int64_t) prc->cw * prc->ch;
 							++cblkno) {
 						auto cblk = prc->enc + cblkno;
-						auto block = new encodeBlockInfo();
+						auto block = new EncodeBlockInfo();
 						block->x = cblk->x0;
 						block->y = cblk->y0;
 						block->tiledp = tilec->buf->cblk_ptr( resno, bandno,
@@ -77,7 +77,7 @@ void T1Scheduler::scheduleEncode(TileCodingParams *tcp,
 }
 
 bool T1Scheduler::prepareScheduleDecode(TileComponent *tilec, TileComponentCodingParams *tccp,
-		std::vector<decodeBlockInfo*> *blocks) {
+		std::vector<DecodeBlockInfo*> *blocks) {
 	if (!tilec->buf->alloc()) {
 		GRK_ERROR( "Not enough memory for tile data");
 		return false;
@@ -102,7 +102,7 @@ bool T1Scheduler::prepareScheduleDecode(TileComponent *tilec, TileComponentCodin
 													bandno,
 													cblk)){
 
-						auto block = new decodeBlockInfo();
+						auto block = new DecodeBlockInfo();
 						block->x = cblk->x0;
 						block->y = cblk->y0;
 						block->tiledp = tilec->buf->cblk_ptr( resno, bandno,
@@ -130,7 +130,7 @@ bool T1Scheduler::prepareScheduleDecode(TileComponent *tilec, TileComponentCodin
 
 bool T1Scheduler::scheduleDecode(TileCodingParams *tcp,
 		                    uint16_t blockw, uint16_t blockh,
-		                    std::vector<decodeBlockInfo*> *blocks) {
+		                    std::vector<DecodeBlockInfo*> *blocks) {
 	T1DecodeScheduler decoder(tcp, blockw, blockh);
 	return decoder.decompress(blocks);
 }

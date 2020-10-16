@@ -26,18 +26,18 @@ public:
 	T1EncodeScheduler(TileCodingParams *tcp, grk_tile *tile, uint32_t encodeMaxCblkW,
 			uint32_t encodeMaxCblkH, bool needsRateControl);
 	~T1EncodeScheduler();
-	void compress(std::vector<encodeBlockInfo*> *blocks);
+	void compress(std::vector<EncodeBlockInfo*> *blocks);
 
 private:
 	bool compress(size_t threadId, uint64_t maxBlocks);
-	void compress(T1Interface *impl, encodeBlockInfo *block);
+	void compress(T1Interface *impl, EncodeBlockInfo *block);
 
 	grk_tile *tile;
 	std::vector<T1Interface*> threadStructs;
 	mutable std::mutex distortion_mutex;
 	bool needsRateControl;
 	mutable std::mutex block_mutex;
-	encodeBlockInfo** encodeBlocks;
+	EncodeBlockInfo** encodeBlocks;
 	std::atomic<int64_t> blockCount;
 
 };
