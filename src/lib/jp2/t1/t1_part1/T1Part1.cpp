@@ -56,7 +56,7 @@ void T1Part1::preEncode(EncodeBlockInfo *block, grk_tile *tile,
 	auto cblk = block->cblk;
 	auto w = cblk->width();
 	auto h = cblk->height();
-	if (!allocate_buffers(t1, w,h))
+	if (!t1->allocate_buffers(w,h))
 		return;
 	t1->data_stride = w;
 	auto tileLineAdvance = (tile->comps + block->compno)->buf->stride() - w;
@@ -106,7 +106,7 @@ double T1Part1::compress(EncodeBlockInfo *block, grk_tile *tile,
 	cblkexp.data = cblk->paddedCompressedData;
 	cblkexp.data_size = cblk->compressedDataSize;
 
-	auto disto = encode_cblk(t1, &cblkexp, max, block->bandno,
+	auto disto = t1->encode_cblk(&cblkexp, max, block->bandno,
 			block->compno,
 			(tile->comps + block->compno)->numresolutions - 1 - block->resno,
 			block->qmfbid, block->stepsize, block->cblk_sty,
@@ -123,7 +123,7 @@ double T1Part1::compress(EncodeBlockInfo *block, grk_tile *tile,
 		passgrk->term = passexp->term;
 	}
 
- code_block_enc_deallocate(&cblkexp);
+ t1->code_block_enc_deallocate(&cblkexp);
 	cblkexp.data = nullptr;
 
  	return disto;
@@ -176,11 +176,10 @@ bool T1Part1::decompress(DecodeBlockInfo *block) {
 	// and exp uses subtracted value
 	cblkexp.numbps = cblk->numbps - block->roishift;
 
-    bool ret =decode_cblk(t1,
-    				&cblkexp,
-    				block->bandno,
-					block->roishift,
-					block->cblk_sty);
+    bool ret =t1->decode_cblk(&cblkexp,
+								block->bandno,
+								block->roishift,
+								block->cblk_sty);
 
 	delete[] segs;
 	return ret;

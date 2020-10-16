@@ -159,7 +159,7 @@ static INLINE void update_flags(grk_flag *flagsp, uint32_t ci, uint32_t s,
 }
 
 
-bool allocate_buffers(T1 *t1, uint32_t width, uint32_t height) {
+bool T1::allocate_buffers(uint32_t width, uint32_t height) {
 	uint32_t newflagssize;
 	uint32_t flags_stride;
 
@@ -172,19 +172,19 @@ bool allocate_buffers(T1 *t1, uint32_t width, uint32_t height) {
 	/* encoder uses tile buffer, so no need to allocate */
 	uint32_t newDataSize = width * height;
 
-	if (newDataSize > t1->datasize) {
-		grk::grk_aligned_free(t1->data);
-		t1->data =
+	if (newDataSize > datasize) {
+		grk::grk_aligned_free(data);
+		data =
 				(int32_t*) grk::grk_aligned_malloc(newDataSize * sizeof(int32_t));
-		if (!t1->data) {
+		if (!data) {
 			GRK_ERROR("Out of memory");
 			return false;
 		}
-		t1->datasize = newDataSize;
+		datasize = newDataSize;
 	}
 	/* memset first arg is declared to never be null by gcc */
-	if (t1->data && !t1->encoder)
-		memset(t1->data, 0, newDataSize * sizeof(int32_t));
+	if (data && !encoder)
+		memset(data, 0, newDataSize * sizeof(int32_t));
 
 	flags_stride = width + 2U; /* can't be 0U */
 	newflagssize = (height + 3U) / 4U + 2U;
@@ -192,32 +192,32 @@ bool allocate_buffers(T1 *t1, uint32_t width, uint32_t height) {
 	uint32_t x;
 	uint32_t flags_height = (height + 3U) / 4U;
 
-	if (newflagssize > t1->flagssize) {
+	if (newflagssize > flagssize) {
 
-		grk::grk_aligned_free(t1->flags);
-		t1->flags = (grk_flag*) grk::grk_aligned_malloc(
+		grk::grk_aligned_free(flags);
+		flags = (grk_flag*) grk::grk_aligned_malloc(
 				newflagssize * sizeof(grk_flag));
-		if (!t1->flags) {
+		if (!flags) {
 			GRK_ERROR("Out of memory");
 			return false;
 		}
 	}
-	t1->flagssize = newflagssize;
+	flagssize = newflagssize;
 
-	memset(t1->flags, 0, newflagssize * sizeof(grk_flag));
-	auto p = &t1->flags[0];
+	memset(flags, 0, newflagssize * sizeof(grk_flag));
+	auto p = &flags[0];
 	for (x = 0; x < flags_stride; ++x) {
 		/* magic value to hopefully stop any passes being interested in this entry */
 		*p++ = (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
 	}
-	p = &t1->flags[((flags_height + 1) * flags_stride)];
+	p = &flags[((flags_height + 1) * flags_stride)];
 	for (x = 0; x < flags_stride; ++x) {
 		/* magic value to hopefully stop any passes being interested in this entry */
 		*p++ = (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
 	}
 	if (height % 4) {
 		uint32_t v = 0;
-		p = &t1->flags[((flags_height) * flags_stride)];
+		p = &flags[((flags_height) * flags_stride)];
 		if ((height&3) == 1) {
 			v |= T1_PI_1 | T1_PI_2 | T1_PI_3;
 		} else if ((height&3) == 2) {
@@ -230,8 +230,8 @@ bool allocate_buffers(T1 *t1, uint32_t width, uint32_t height) {
 		}
 	}
 
-	t1->w = width;
-	t1->h = height;
+	w = width;
+	h = height;
 
 	return true;
 }
@@ -272,7 +272,7 @@ T1::~T1(){
 /**
  * Deallocate the encoding data of the given precinct.
  */
-void code_block_enc_deallocate(cblk_enc *code_block) {
+void T1::code_block_enc_deallocate(cblk_enc *code_block) {
 	grk::grk_free(code_block->passes);
 	code_block->passes = nullptr;
 }
@@ -619,14 +619,14 @@ static void enc_clnpass(T1 *t1, int32_t bpno, int32_t *nmsedec,	uint32_t cblksty
 }
 
 
-double encode_cblk(T1 *t1, cblk_enc *cblk, uint32_t max,
+double T1::encode_cblk(cblk_enc *cblk, uint32_t max,
 					uint8_t orient, uint32_t compno, uint32_t level, uint32_t qmfbid,
 					double stepsize, uint32_t cblksty,
 					const double *mct_norms, uint32_t mct_numcomps, bool doRateControl) {
 	if (!code_block_enc_allocate(cblk))
 		return 0;
 
-	auto mqcPtr = &t1->mqc;
+	auto mqcPtr = &mqc;
 	mqc_init_enc(mqcPtr, cblk->data);
 
 	uint32_t passno;
@@ -673,13 +673,13 @@ double encode_cblk(T1 *t1, cblk_enc *cblk, uint32_t max,
 
 		switch (passtype) {
 		case 0:
-		 enc_sigpass(t1, bpno, p_nmsdedec, type, cblksty);
+		 enc_sigpass(this, bpno, p_nmsdedec, type, cblksty);
 			break;
 		case 1:
-		 enc_refpass(t1, bpno, p_nmsdedec, type);
+		 enc_refpass(this, bpno, p_nmsdedec, type);
 			break;
 		case 2:
-		 enc_clnpass(t1, bpno,p_nmsdedec, cblksty);
+		 enc_clnpass(this, bpno,p_nmsdedec, cblksty);
 			if (cblksty & GRK_CBLKSTY_SEGSYM)
 				mqc_segmark_enc(mqcPtr);
 			break;
@@ -1193,15 +1193,15 @@ static void dec_refpass_mqc(T1 *t1, int32_t bpno) {
 	}
 }
 
-bool decode_cblk(T1 *t1, cblk_dec *cblk, uint32_t orient,
+bool T1::decode_cblk(cblk_dec *cblk, uint32_t orient,
 		uint32_t roishift, uint32_t cblksty) {
-	auto mqcPtr = &(t1->mqc);
+	auto mqcPtr = &(mqc);
 	uint32_t cblkdataindex = 0;
 	bool check_pterm = cblksty & GRK_CBLKSTY_PTERM;
 
 	mqcPtr->lut_ctxno_zc_orient = lut_ctxno_zc + (orient << 9);
 
-	if (!allocate_buffers(t1, (uint32_t) (cblk->x1 - cblk->x0),
+	if (!allocate_buffers((uint32_t) (cblk->x1 - cblk->x0),
 							(uint32_t) (cblk->y1 - cblk->y0)))
 		return false;
 
@@ -1238,18 +1238,18 @@ bool decode_cblk(T1 *t1, cblk_dec *cblk, uint32_t orient,
 			switch (passtype) {
 			case 0:
 				if (type == T1_TYPE_RAW)
-				 dec_sigpass_raw(t1, bpno_plus_one, (int32_t) cblksty);
+				 dec_sigpass_raw(this, bpno_plus_one, (int32_t) cblksty);
 				else
-				 dec_sigpass_mqc(t1, bpno_plus_one, (int32_t) cblksty);
+				 dec_sigpass_mqc(this, bpno_plus_one, (int32_t) cblksty);
 				break;
 			case 1:
 				if (type == T1_TYPE_RAW)
-				 dec_refpass_raw(t1, bpno_plus_one);
+				 dec_refpass_raw(this, bpno_plus_one);
 				else
-				 dec_refpass_mqc(t1, bpno_plus_one);
+				 dec_refpass_mqc(this, bpno_plus_one);
 				break;
 			case 2:
-			 dec_clnpass(t1, bpno_plus_one, (int32_t) cblksty);
+			 dec_clnpass(this, bpno_plus_one, (int32_t) cblksty);
 				break;
 			}
 
