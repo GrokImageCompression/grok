@@ -1828,6 +1828,7 @@ public:
 template <typename T,
 			uint32_t HORIZ_STEP,
 			uint32_t VERT_STEP,
+			uint32_t COLUMNS_PER_STEP,
 			uint32_t FILTER_WIDTH,
 			typename D>
 
@@ -1853,13 +1854,8 @@ template <typename T,
         return true;
     }
 
-    /* dimensions of the resolution level computed */
-    uint32_t rw = tr->width();
-    uint32_t rh = tr->height();
-
     // in 53 vertical pass, we process 4 vertical columns at a time
-    const uint32_t data_multiplier = (sizeof(T) == 4) ? 4 : 1;
-    size_t data_size = dwt_utils::max_resolution(tr, numres) * data_multiplier;
+    size_t data_size = dwt_utils::max_resolution(tr, numres) * COLUMNS_PER_STEP;
 	dwt_data<T> horiz;
     if (!horiz.alloc(data_size)) {
         GRK_ERROR("Out of memory");
@@ -1871,12 +1867,12 @@ template <typename T,
     size_t num_threads = ThreadPool::get()->num_threads();
 
     for (uint32_t resno = 1; resno < numres; resno ++) {
-        horiz.sn = rw;
-        vert.sn = rh;
+        horiz.sn = tr->width();
+        vert.sn = tr->height();
 
         ++tr;
-        rw = tr->width();
-        rh = tr->height();
+        uint32_t rw = tr->width();
+        uint32_t rh = tr->height();
 
         horiz.dn = (int32_t)(rw - horiz.sn);
         horiz.cas = tr->x0 & 1;
@@ -2191,6 +2187,7 @@ bool decompress_53(TileProcessor *p_tcd, TileComponent* tilec,
         return decompress_partial_tile<int32_t,
         							1,
 									4,
+									4,
 									2,
 									Partial53>(tilec,
 											numres,
@@ -2206,6 +2203,7 @@ bool decompress_97(TileProcessor *p_tcd,
         return decompress_partial_tile<vec4f,
         							4,
 									4,
+									1,
 									4,
 									Partial97>(tilec,
 											numres,
