@@ -32,6 +32,7 @@ Apply a reversible inverse DWT transform to a component of an image.
 */
 bool decompress_53(TileProcessor *p_tcd,
                         TileComponent* GRK_RESTRICT tilec,
+						grk_rect_u32 region,
                         uint32_t numres);
 
 /**
@@ -43,6 +44,7 @@ Apply an irreversible inverse DWT transform to a component of an image.
 */
 bool decompress_97(TileProcessor *p_tcd,
                              TileComponent* GRK_RESTRICT tilec,
+							 grk_rect_u32 region,
 							 uint32_t numres);
 
 }

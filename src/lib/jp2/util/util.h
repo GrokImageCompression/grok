@@ -330,5 +330,7 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
     uint32_t stride;
 } ;
 
+grk_rect_u32 grk_get_region_band_coordinates(uint32_t num_res, uint32_t resno, uint32_t bandno, grk_rect_u32 unreduced_region);
+
 }
 

@@ -1824,6 +1824,7 @@ template <typename T,
 			typename D>
 
    bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec,
+		   	   	   	   	   grk_rect_u32 region,
 		   	   	   	   	   uint32_t numres,
 						   ISparseBuffer *sa) {
 
@@ -1872,9 +1873,9 @@ template <typename T,
         vert.cas = tr->y0 & 1;
 
         /* Get the sub-band coordinates for the window of interest */
-        grk_rect_u32 win_ll = tilec->buf->get_region_band_coordinates(resno,0);
-        grk_rect_u32 win_hl = tilec->buf->get_region_band_coordinates(resno,1);
-        grk_rect_u32 win_lh = tilec->buf->get_region_band_coordinates(resno,2);
+        grk_rect_u32 win_ll = grk_get_region_band_coordinates(tilec->numresolutions,resno,0,region);
+        grk_rect_u32 win_hl = grk_get_region_band_coordinates(tilec->numresolutions,resno,1,region);
+        grk_rect_u32 win_lh = grk_get_region_band_coordinates(tilec->numresolutions,resno,2,region);
 
         /* band coordinates */
         /* Beware: band index for non-LL0 resolution are 0=HL, 1=LH and 2=HH */
@@ -2161,8 +2162,10 @@ template <typename T,
 /* <summary>                            */
 /* Inverse 5-3 wavelet transform in 2-D. */
 /* </summary>                           */
-bool decompress_53(TileProcessor *p_tcd, TileComponent* tilec,
-                        uint32_t numres)
+bool decompress_53(TileProcessor *p_tcd,
+					TileComponent* tilec,
+					grk_rect_u32 region,
+                    uint32_t numres)
 {
     if (p_tcd->whole_tile_decoding)
         return decompress_tile_53(tilec,numres);
@@ -2173,12 +2176,14 @@ bool decompress_53(TileProcessor *p_tcd, TileComponent* tilec,
 									4,
 									2,
 									Partial53>(tilec,
+											region,
 											numres,
 											tilec->m_sa);
 }
 
 bool decompress_97(TileProcessor *p_tcd,
                 TileComponent* GRK_RESTRICT tilec,
+				grk_rect_u32 region,
                 uint32_t numres){
     if (p_tcd->whole_tile_decoding)
         return decompress_tile_97(tilec, numres);
@@ -2189,6 +2194,7 @@ bool decompress_97(TileProcessor *p_tcd,
 									1,
 									4,
 									Partial97>(tilec,
+											region,
 											numres,
 											tilec->m_sa);
 }

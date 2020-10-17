@@ -24,8 +24,11 @@ class Wavelet {
 public:
 	virtual ~Wavelet(){}
 	static bool compress(TileComponent *tile_comp, uint8_t qmfbid);
-	static bool decompress(TileProcessor *p_tcd,  TileComponent* tilec,
-	                             uint32_t numres, uint8_t qmfbid);
+	static bool decompress(TileProcessor *p_tcd,
+							TileComponent* tilec,
+							grk_rect_u32 region,
+	                        uint32_t numres,
+							uint8_t qmfbid);
 };
 
 }

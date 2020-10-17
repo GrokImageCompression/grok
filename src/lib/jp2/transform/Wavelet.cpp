@@ -37,12 +37,15 @@ bool Wavelet::compress(TileComponent *tile_comp, uint8_t qmfbid){
 	return false;
 }
 
-bool Wavelet::decompress(TileProcessor *p_tcd,  TileComponent* tilec,
-                             uint32_t numres, uint8_t qmfbid){
+bool Wavelet::decompress(TileProcessor *p_tcd,
+						TileComponent* tilec,
+						grk_rect_u32 region,
+                        uint32_t numres,
+						uint8_t qmfbid){
 	if (qmfbid == 1)
-		return decompress_53(p_tcd,tilec,numres);
+		return decompress_53(p_tcd,tilec,region,numres);
 	else if (qmfbid == 0)
-		return decompress_97(p_tcd,tilec,numres);
+		return decompress_97(p_tcd,tilec,region,numres);
 	return false;
 }
 

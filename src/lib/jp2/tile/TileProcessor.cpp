@@ -927,8 +927,11 @@ bool TileProcessor::decompress_tile_t1(void) {
 				return false;
 
 			if (doPostT1)
-				if (!Wavelet::decompress(this, tilec,
-						m_resno_decoded_per_component[compno] + 1, tccp->qmfbid))
+				if (!Wavelet::decompress(this,
+										tilec,
+										tilec->buf->unreduced_bounds(),
+										m_resno_decoded_per_component[compno] + 1,
+										tccp->qmfbid))
 					return false;
 
 			tilec->release_mem();
