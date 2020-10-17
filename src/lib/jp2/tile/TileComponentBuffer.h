@@ -259,52 +259,44 @@ template<typename T> struct TileComponentBuffer {
 	 *
 	 * @param resno resolution number
 	 * @param bandno band number {0,1,2,3} for LL HL,LH and HH bands
-	 * @param tbx0	x0 coordinate of region
-	 * @param tby0	y0 coordinate of region
-	 * @param tbx1	x1 coordinate of region
-	 * @param tby1	y1 coordinate of region
 	 *
+	 * @return grk_rect_u32 holding reduced coordinates of sub-band region
 	 *
 	 */
-	void get_region_band_coordinates(uint32_t resno,
-							uint32_t bandno,
-							uint32_t* tbx0,
-							uint32_t* tby0,
-							uint32_t* tbx1,
-							uint32_t* tby1) const{
-	    /* Compute number of decomposition for this band. See table F-1 */
-	    uint32_t nb = (resno == 0) ?
-	                    num_resolutions - 1 :
-	                    num_resolutions - resno;
+	grk_rect_u32 get_region_band_coordinates(uint32_t resno, uint32_t bandno) const{
+		return get_region_band_coordinates(num_resolutions, resno,bandno,m_unreduced_bounds );
+	}
 
-		uint32_t tcx0 = (uint32_t)m_unreduced_bounds.x0;
-		uint32_t tcy0 = (uint32_t)m_unreduced_bounds.y0;
-		uint32_t tcx1 = (uint32_t)m_unreduced_bounds.x1;
-		uint32_t tcy1 = (uint32_t)m_unreduced_bounds.y1;
+	static grk_rect_u32 get_region_band_coordinates(uint32_t num_res, uint32_t resno, uint32_t bandno, grk_rect_u32 unreduced_region){
+	    /* Compute number of decomposition for this band. See table F-1 */
+	    uint32_t nb = (resno == 0) ? num_res - 1 :num_res - resno;
+
+	    uint32_t tcx0 = unreduced_region.x0;
+		uint32_t tcy0 = unreduced_region.y0;
+		uint32_t tcx1 = unreduced_region.x1;
+		uint32_t tcy1 = unreduced_region.y1;
 	    /* Map above tile-based coordinates to sub-band-based coordinates per */
 	    /* equation B-15 of the standard */
 	    uint32_t x0b = bandno & 1;
 	    uint32_t y0b = bandno >> 1;
-	    if (tbx0) {
-	        *tbx0 = (nb == 0) ? tcx0 :
-	                (tcx0 <= (1U << (nb - 1)) * x0b) ? 0 :
-	                ceildivpow2<uint32_t>(tcx0 - (1U << (nb - 1)) * x0b, nb);
-	    }
-	    if (tby0) {
-	        *tby0 = (nb == 0) ? tcy0 :
-	                (tcy0 <= (1U << (nb - 1)) * y0b) ? 0 :
-	                ceildivpow2<uint32_t>(tcy0 - (1U << (nb - 1)) * y0b, nb);
-	    }
-	    if (tbx1) {
-	        *tbx1 = (nb == 0) ? tcx1 :
-	                (tcx1 <= (1U << (nb - 1)) * x0b) ? 0 :
-	                ceildivpow2<uint32_t>(tcx1 - (1U << (nb - 1)) * x0b, nb);
-	    }
-	    if (tby1) {
-	        *tby1 = (nb == 0) ? tcy1 :
-	                (tcy1 <= (1U << (nb - 1)) * y0b) ? 0 :
-	                ceildivpow2<uint32_t>(tcy1 - (1U << (nb - 1)) * y0b, nb);
-	    }
+		uint32_t tbx0 = (nb == 0) ? tcx0 :
+				(tcx0 <= (1U << (nb - 1)) * x0b) ? 0 :
+				ceildivpow2<uint32_t>(tcx0 - (1U << (nb - 1)) * x0b, nb);
+
+		uint32_t tby0 = (nb == 0) ? tcy0 :
+				(tcy0 <= (1U << (nb - 1)) * y0b) ? 0 :
+				ceildivpow2<uint32_t>(tcy0 - (1U << (nb - 1)) * y0b, nb);
+
+		uint32_t tbx1 = (nb == 0) ? tcx1 :
+				(tcx1 <= (1U << (nb - 1)) * x0b) ? 0 :
+				ceildivpow2<uint32_t>(tcx1 - (1U << (nb - 1)) * x0b, nb);
+
+		uint32_t tby1 = (nb == 0) ? tcy1 :
+				(tcy1 <= (1U << (nb - 1)) * y0b) ? 0 :
+				ceildivpow2<uint32_t>(tcy1 - (1U << (nb - 1)) * y0b, nb);
+
+
+		return grk_rect_u32(tbx0,tby0,tbx1,tby1);
 	}
 
 	/**

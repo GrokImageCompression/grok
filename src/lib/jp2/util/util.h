@@ -139,18 +139,33 @@ template<typename T> struct grk_rectangle {
     T height() const{
     	return y1 - y0;
     }
+
     grk_rectangle<T> pan(int64_t x, int64_t y) const {
-    	assert(x0 + x >= std::numeric_limits<T>::min());
-    	assert(x1 + x >= std::numeric_limits<T>::min());
-    	assert(y0 + y >= std::numeric_limits<T>::min());
-    	assert(y1 + y >= std::numeric_limits<T>::min());
+    	int64_t X0 = x0 + x;
+    	int64_t Y0 = y0 + y;
+    	int64_t X1 = x1 + x;
+    	int64_t Y1 = y1 + y;
 
-    	assert(x0 + x <= std::numeric_limits<T>::max());
-    	assert(x1 + x <= std::numeric_limits<T>::max());
-    	assert(y0 + y <= std::numeric_limits<T>::max());
-    	assert(y1 + y <= std::numeric_limits<T>::max());
 
-    	return grk_rectangle<T>( (T)(x0 + x), (T)(y0 + y), (T)(x1 + x), (T)(y1 + y));
+    	if(X0 < std::numeric_limits<T>::min())
+    		X0 = std::numeric_limits<T>::min();
+    	if(X1 < std::numeric_limits<T>::min())
+    		X1 = std::numeric_limits<T>::min();
+    	if(Y0 < std::numeric_limits<T>::min())
+    		Y0 = std::numeric_limits<T>::min();
+    	if(Y1 < std::numeric_limits<T>::min())
+    		Y1 = std::numeric_limits<T>::min();
+
+    	if(X0 > std::numeric_limits<T>::max())
+    		X0 = std::numeric_limits<T>::max();
+    	if(X1 > std::numeric_limits<T>::max())
+    		X1 = std::numeric_limits<T>::max();
+    	if(Y0 > std::numeric_limits<T>::max())
+    		Y0 = std::numeric_limits<T>::max();
+    	if(Y1 > std::numeric_limits<T>::max())
+    		Y1 = std::numeric_limits<T>::max();
+
+    	return grk_rectangle<T>( (T)X0, (T)Y0, (T)X1, (T)Y1);
     }
     grk_rectangle<T>& subsample(uint32_t dx, uint32_t dy) {
     	x0 = ceildiv(x0, (T) dx);

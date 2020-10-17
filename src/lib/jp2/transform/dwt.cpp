@@ -1880,35 +1880,17 @@ template <typename T,
         /* Get the sub-band coordinates for the window of interest */
         /* LL band */
         /* Window of interest sub-band-based coordinates */
-        uint32_t win_ll_x0,
-				 win_ll_y0,
-				 win_ll_x1,
-				 win_ll_y1;
 
-        tilec->buf->get_region_band_coordinates(resno,
-        										0,
-												&win_ll_x0,
-												&win_ll_y0,
-												&win_ll_x1,
-												&win_ll_y1);
+        grk_rect_u32 win_ll = tilec->buf->get_region_band_coordinates(resno,0);
+
         /* HL band */
-        uint32_t win_hl_x0,
-				win_hl_x1;
-        tilec->buf->get_region_band_coordinates(resno,
-        										1,
-												&win_hl_x0,
-												nullptr,
-												&win_hl_x1,
-												nullptr);
+        grk_rect_u32 win_hl = tilec->buf->get_region_band_coordinates(resno,1);
+        uint32_t win_hl_x0 = win_hl.x0, win_hl_x1 = win_hl.x1;
+
         /* LH band */
-        uint32_t win_lh_y0,
-				win_lh_y1;
-        tilec->buf->get_region_band_coordinates(resno,
-        										2,
-												nullptr,
-												&win_lh_y0,
-												nullptr,
-												&win_lh_y1);
+        grk_rect_u32 win_lh = tilec->buf->get_region_band_coordinates(resno,2);
+        uint32_t win_lh_y0 = win_lh.y0, win_lh_y1 = win_hl.y1;
+
 
         /* band coordinates */
         /* Beware: band index for non-LL0 resolution are 0=HL, 1=LH and 2=HH */
@@ -1918,47 +1900,45 @@ template <typename T,
         uint32_t tr_lh_y0 = (uint32_t)tr->bands[1].y0;
 
         /* Transform window of interest relative to band*/
-        win_ll_x0 = uint_subs(win_ll_x0, tr_ll_x0);
-        win_ll_y0 = uint_subs(win_ll_y0, tr_ll_y0);
-        win_ll_x1 = uint_subs(win_ll_x1, tr_ll_x0);
-        win_ll_y1 = uint_subs(win_ll_y1, tr_ll_y0);
+        win_ll.x0 = uint_subs(win_ll.x0, tr_ll_x0);
+        win_ll.y0 = uint_subs(win_ll.y0, tr_ll_y0);
+        win_ll.x1 = uint_subs(win_ll.x1, tr_ll_x0);
+        win_ll.y1 = uint_subs(win_ll.y1, tr_ll_y0);
         win_hl_x0 = uint_subs(win_hl_x0, tr_hl_x0);
         win_hl_x1 = uint_subs(win_hl_x1, tr_hl_x0);
         win_lh_y0 = uint_subs(win_lh_y0, tr_lh_y0);
         win_lh_y1 = uint_subs(win_lh_y1, tr_lh_y0);
 
-        segment_grow(FILTER_WIDTH, horiz.sn, &win_ll_x0, &win_ll_x1);
+        segment_grow(FILTER_WIDTH, horiz.sn, &win_ll.x0, &win_ll.x1);
         segment_grow(FILTER_WIDTH, horiz.dn, &win_hl_x0, &win_hl_x1);
-        segment_grow(FILTER_WIDTH, vert.sn, &win_ll_y0, &win_ll_y1);
+        segment_grow(FILTER_WIDTH, vert.sn, &win_ll.y0, &win_ll.y1);
         segment_grow(FILTER_WIDTH, vert.dn, &win_lh_y0, &win_lh_y1);
 
         /* Compute resolution coordinates for window of interest */
-        uint32_t win_tr_x0,
-				win_tr_x1;
+        uint32_t win_tr_x0,	win_tr_x1;
         if (horiz.cas == 0) {
-            win_tr_x0 = min<uint32_t>(2 * win_ll_x0, 2 * win_hl_x0 + 1);
-            win_tr_x1 = min<uint32_t>(max<uint32_t>(2 * win_ll_x1, 2 * win_hl_x1 + 1), rw);
+            win_tr_x0 = min<uint32_t>(2 * win_ll.x0, 2 * win_hl_x0 + 1);
+            win_tr_x1 = min<uint32_t>(max<uint32_t>(2 * win_ll.x1, 2 * win_hl_x1 + 1), rw);
         } else {
-            win_tr_x0 = min<uint32_t>(2 * win_hl_x0, 2 * win_ll_x0 + 1);
-            win_tr_x1 = min<uint32_t>(max<uint32_t>(2 * win_hl_x1, 2 * win_ll_x1 + 1), rw);
+            win_tr_x0 = min<uint32_t>(2 * win_hl_x0, 2 * win_ll.x0 + 1);
+            win_tr_x1 = min<uint32_t>(max<uint32_t>(2 * win_hl_x1, 2 * win_ll.x1 + 1), rw);
         }
-        uint32_t win_tr_y0,
-				win_tr_y1;
+        uint32_t win_tr_y0,	win_tr_y1;
         if (vert.cas == 0) {
-            win_tr_y0 = min<uint32_t>(2 * win_ll_y0, 2 * win_lh_y0 + 1);
-            win_tr_y1 = min<uint32_t>(max<uint32_t>(2 * win_ll_y1, 2 * win_lh_y1 + 1), rh);
+            win_tr_y0 = min<uint32_t>(2 * win_ll.y0, 2 * win_lh_y0 + 1);
+            win_tr_y1 = min<uint32_t>(max<uint32_t>(2 * win_ll.y1, 2 * win_lh_y1 + 1), rh);
         } else {
-            win_tr_y0 = min<uint32_t>(2 * win_lh_y0, 2 * win_ll_y0 + 1);
-            win_tr_y1 = min<uint32_t>(max<uint32_t>(2 * win_lh_y1, 2 * win_ll_y1 + 1), rh);
+            win_tr_y0 = min<uint32_t>(2 * win_lh_y0, 2 * win_ll.y0 + 1);
+            win_tr_y1 = min<uint32_t>(max<uint32_t>(2 * win_lh_y1, 2 * win_ll.y1 + 1), rh);
         }
         // two windows only overlap at most at the boundary
         uint32_t bounds[2][2] =
         {
 			{
-			   uint_subs(win_ll_y0, HORIZ_STEP),
-			   win_ll_y1},
+			   uint_subs(win_ll.y0, HORIZ_STEP),
+			   win_ll.y1},
 			{
-			  max<uint32_t>(win_ll_y1, uint_subs(min<uint32_t>(win_lh_y0 + vert.sn,rh),HORIZ_STEP)),
+			  max<uint32_t>(win_ll.y1, uint_subs(min<uint32_t>(win_lh_y0 + vert.sn,rh),HORIZ_STEP)),
 			  min<uint32_t>(win_lh_y1 + vert.sn, rh)
 			}
 		};
@@ -1976,8 +1956,8 @@ template <typename T,
 						  bounds[k][1]))
 				 return false;
 		}
-        horiz.win_l_x0 = win_ll_x0;
-        horiz.win_l_x1 = win_ll_x1;
+        horiz.win_l_x0 = win_ll.x0;
+        horiz.win_l_x1 = win_ll.x1;
         horiz.win_h_x0 = win_hl_x0;
         horiz.win_h_x1 = win_hl_x1;
 		for (uint32_t k = 0; k < 2; ++k) {
@@ -2087,8 +2067,8 @@ template <typename T,
 				result.get();
 		   }
         }
-		vert.win_l_x0 = win_ll_y0;
-        vert.win_l_x1 = win_ll_y1;
+		vert.win_l_x0 = win_ll.y0;
+        vert.win_l_x1 = win_ll.y1;
         vert.win_h_x0 = win_lh_y0;
         vert.win_h_x1 = win_lh_y1;
 
