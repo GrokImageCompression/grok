@@ -218,10 +218,10 @@ bool TagTree::compress(BitIO *bio, uint64_t leafno, int64_t threshold) {
 }
 
 void TagTree::decompress(BitIO *bio, uint64_t leafno, int64_t threshold,
-		uint8_t *decoded) {
+		uint8_t *decompressed) {
 	uint64_t value;
 	decodeValue(bio, leafno, threshold, &value);
-	*decoded = (value < (uint32_t) threshold) ? 1 : 0;
+	*decompressed = (value < (uint32_t) threshold) ? 1 : 0;
 }
 
 void TagTree::decodeValue(BitIO *bio, uint64_t leafno, int64_t threshold,

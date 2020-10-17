@@ -70,7 +70,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 	uint32_t nb_comp_remain;
 	uint32_t remaining_size;
 	uint16_t nb_tiles;
-	auto decoder = &codeStream->m_decoder;
+	auto decompressor = &codeStream->m_decompressor;
 
 	assert(codeStream != nullptr);
 	assert(p_header_data != nullptr);
@@ -243,60 +243,60 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 	}
 	nb_tiles = (uint16_t)(cp->t_grid_width * cp->t_grid_height);
 
-	/* Define the tiles which will be decoded */
+	/* Define the tiles which will be decompressed */
 	if (!codeStream->whole_tile_decoding) {
-		decoder->m_start_tile_x_index =
-				(decoder->m_start_tile_x_index
+		decompressor->m_start_tile_x_index =
+				(decompressor->m_start_tile_x_index
 						- cp->tx0) / cp->t_width;
-		decoder->m_start_tile_y_index =
-				(decoder->m_start_tile_y_index
+		decompressor->m_start_tile_y_index =
+				(decompressor->m_start_tile_y_index
 						- cp->ty0) / cp->t_height;
-		decoder->m_end_tile_x_index =
+		decompressor->m_end_tile_x_index =
 				ceildiv<uint32_t>(
-						(decoder->m_end_tile_x_index
+						(decompressor->m_end_tile_x_index
 								- cp->tx0), cp->t_width);
-		decoder->m_end_tile_y_index =
+		decompressor->m_end_tile_y_index =
 				ceildiv<uint32_t>(
-						(decoder->m_end_tile_y_index
+						(decompressor->m_end_tile_y_index
 								- cp->ty0), cp->t_height);
 	} else {
-		decoder->m_start_tile_x_index = 0;
-		decoder->m_start_tile_y_index = 0;
-		decoder->m_end_tile_x_index = cp->t_grid_width;
-		decoder->m_end_tile_y_index =
+		decompressor->m_start_tile_x_index = 0;
+		decompressor->m_start_tile_y_index = 0;
+		decompressor->m_end_tile_x_index = cp->t_grid_width;
+		decompressor->m_end_tile_y_index =
 				cp->t_grid_height;
 	}
 
 	/* memory allocations */
 	cp->tcps = new TileCodingParams[nb_tiles];
-	decoder->m_default_tcp->tccps = new  TileComponentCodingParams[image->numcomps];
-	decoder->m_default_tcp->m_mct_records =
+	decompressor->m_default_tcp->tccps = new  TileComponentCodingParams[image->numcomps];
+	decompressor->m_default_tcp->m_mct_records =
 			(grk_mct_data*) grk_calloc(default_number_mct_records,
 					sizeof(grk_mct_data));
 
-	if (!decoder->m_default_tcp->m_mct_records) {
+	if (!decompressor->m_default_tcp->m_mct_records) {
 		GRK_ERROR("Not enough memory to take in charge SIZ marker");
 		return false;
 	}
-	decoder->m_default_tcp->m_nb_max_mct_records =
+	decompressor->m_default_tcp->m_nb_max_mct_records =
 			default_number_mct_records;
 
-	decoder->m_default_tcp->m_mcc_records =
+	decompressor->m_default_tcp->m_mcc_records =
 			(grk_simple_mcc_decorrelation_data*) grk_calloc(
 					default_number_mcc_records,
 					sizeof(grk_simple_mcc_decorrelation_data));
 
-	if (!decoder->m_default_tcp->m_mcc_records) {
+	if (!decompressor->m_default_tcp->m_mcc_records) {
 		GRK_ERROR("Not enough memory to take in charge SIZ marker");
 		return false;
 	}
-	decoder->m_default_tcp->m_nb_max_mcc_records =
+	decompressor->m_default_tcp->m_nb_max_mcc_records =
 			default_number_mcc_records;
 
 	/* set up default dc level shift */
 	for (i = 0; i < image->numcomps; ++i) {
 		if (!image->comps[i].sgnd) {
-			decoder->m_default_tcp->tccps[i].m_dc_level_shift =
+			decompressor->m_default_tcp->tccps[i].m_dc_level_shift =
 					1 << (image->comps[i].prec - 1);
 		}
 	}
@@ -305,7 +305,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		auto current_tile_param = cp->tcps + i;
 		current_tile_param->tccps = new TileComponentCodingParams[image->numcomps];
 	}
-	decoder->m_state = J2K_DEC_STATE_MH;
+	decompressor->m_state = J2K_DEC_STATE_MH;
 	grk_update_image_comp_header_from_coding_params(image, cp);
 
 	return true;

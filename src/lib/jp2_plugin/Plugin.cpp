@@ -89,7 +89,7 @@ extern "C"  PLUGIN_API void plugin_stop_batch_encode(void) {
 // Decoder Interface Implementation
 ////////////////////////////////////
 
-extern "C"  PLUGIN_API int32_t plugin_decode(grk_decompress_parameters* decompress_parameters,
+extern "C"  PLUGIN_API int32_t plugin_decompress(grk_decompress_parameters* decompress_parameters,
 											grk::PLUGIN_DECODE_USER_CALLBACK userCallback) {
 	return -1;
 }

@@ -2658,7 +2658,7 @@ bool FileFormat::end_decompress(void){
 	return codeStream->end_decompress();
 }
 
-/** Setup decoder function handler */
+/** Set up decompressor function handler */
 void FileFormat::init_decompress(grk_dparameters  *parameters){
 	/* set up the J2K codec */
 	codeStream->init_decompress(parameters);

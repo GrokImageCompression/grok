@@ -93,7 +93,7 @@ bool T2Compress::compress_packets_simulate(uint16_t tile_no, uint16_t max_layers
 
 	tileProcessor->m_packetTracker.clear();
 #ifdef DEBUG_ENCODE_PACKETS
-    GRK_INFO("simulate encode packets for layers below layno %u", max_layers);
+    GRK_INFO("simulate compress packets for layers below layno %u", max_layers);
 #endif
 	for (uint32_t compno = 0; compno < max_comp; ++compno) {
 		uint64_t comp_len = 0;
@@ -155,7 +155,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 	tileProcessor->m_packetTracker.packet_encoded(compno, resno, precno, layno);
 
 #ifdef DEBUG_ENCODE_PACKETS
-    GRK_INFO("encode packet compono=%u, resno=%u, precno=%u, layno=%u",
+    GRK_INFO("compress packet compono=%u, resno=%u, precno=%u, layno=%u",
              compno, resno, precno, layno);
 #endif
 
@@ -569,7 +569,7 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 	tileProcessor->m_packetTracker.packet_encoded(compno, resno, precno, layno);
 
 #ifdef DEBUG_ENCODE_PACKETS
-    GRK_INFO("simulate encode packet compono=%u, resno=%u, precno=%u, layno=%u",
+    GRK_INFO("simulate compress packet compono=%u, resno=%u, precno=%u, layno=%u",
              compno, resno, precno, layno);
 #endif
 

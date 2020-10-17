@@ -580,12 +580,12 @@ static const char *plugin_stop_batch_encode_method_name =
 		"plugin_stop_batch_encode";
 static const char *plugin_is_batch_complete_method_name =
 		"plugin_is_batch_complete";
-static const char *plugin_decode_method_name = "plugin_decode";
+static const char *plugin_decode_method_name = "plugin_decompress";
 static const char *plugin_init_batch_decode_method_name =
-		"plugin_init_batch_decode";
-static const char *plugin_batch_decode_method_name = "plugin_batch_decode";
+		"plugin_init_batch_decompress";
+static const char *plugin_batch_decode_method_name = "plugin_batch_decompress";
 static const char *plugin_stop_batch_decode_method_name =
-		"plugin_stop_batch_decode";
+		"plugin_stop_batch_decompress";
 
 static const char* get_path_separator() {
 #ifdef _WIN32

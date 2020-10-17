@@ -152,12 +152,12 @@ static void grk_get_all_encoding_parameters(const grk_image *p_image,
 static PacketIter* pi_create(const grk_image *p_image,
 		const CodingParams *p_cp, uint16_t tileno);
 /**
- * Update decode packet iterator with no POC
+ * Update decompress packet iterator with no POC
  */
 static void pi_update_decode_no_poc(PacketIter *p_pi, TileCodingParams *p_tcp,
 		uint64_t max_precincts, uint8_t max_res);
 /**
- * Upgrade decode packet iterator with POC
+ * Upgrade decompress packet iterator with POC
  */
 static void pi_update_decode_poc(PacketIter *p_pi, TileCodingParams *p_tcp,
 		uint64_t max_precincts);
@@ -980,7 +980,7 @@ static bool pi_check_next_level(int32_t pos, CodingParams *cp,
  Packet iterator interface
  ==========================================================
  */
-PacketIter* pi_create_decode(grk_image *p_image, CodingParams *p_cp,
+PacketIter* pi_create_decompress(grk_image *p_image, CodingParams *p_cp,
 		uint16_t tile_no) {
 	assert(p_cp != nullptr);
 	assert(p_image != nullptr);

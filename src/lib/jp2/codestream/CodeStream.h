@@ -103,7 +103,7 @@ const uint32_t default_number_mct_records = 10;
  * These values may be combined with the | operator.
  * */
 enum J2K_STATUS {
-	J2K_DEC_STATE_NONE = 0x0000, 		/**< no decode state */
+	J2K_DEC_STATE_NONE = 0x0000, 		/**< no decompress state */
 	J2K_DEC_STATE_MH_SOC = 0x0001, 		/**< a SOC marker is expected */
 	J2K_DEC_STATE_MH_SIZ = 0x0002, 		/**< a SIZ marker is expected */
 	J2K_DEC_STATE_MH = 0x0004, 			/**< the decoding process is in the main header */
@@ -159,7 +159,7 @@ struct ICodeStream {
 	/** Reading function used after code stream if necessary */
    virtual bool end_decompress(void) = 0;
 
-	/** Setup decoder function handler */
+	/** Set up decompressor function handler */
    virtual void init_decompress(grk_dparameters  *p_param) = 0;
 
 	/** Set decompress area function handler */
@@ -185,7 +185,7 @@ struct ICodeStream {
 
 struct CodeStream : public ICodeStream {
 
-	CodeStream(bool decode, BufferedStream *stream);
+	CodeStream(bool decompress, BufferedStream *stream);
 	~CodeStream();
 
 	/** Main header reading function handler */
@@ -200,7 +200,7 @@ struct CodeStream : public ICodeStream {
 	/** Reading function used after code stream if necessary */
    bool end_decompress(void);
 
-	/** Setup decoder function handler */
+	/** Set up decompressor function handler */
    void init_decompress(grk_dparameters  *p_param);
 
    bool start_compress(void);
@@ -230,7 +230,7 @@ struct CodeStream : public ICodeStream {
 						uint16_t current_marker, uint16_t marker_size);
 
 	/**
-	 * Sets the given area to be decoded. This function should be called right after grk_read_header
+	 * Sets the given area to be decompressed. This function should be called right after grk_read_header
 	 * and before any tile header reading.
 	 *
 	 * @param	p_image     image
@@ -250,7 +250,7 @@ struct CodeStream : public ICodeStream {
 
 
 	/**
-	 * Allocate output buffer for multiple tile decode
+	 * Allocate output buffer for multiple tile decompress
 	 *
 	 * @param p_output_image output image
 	 *
@@ -321,11 +321,11 @@ struct CodeStream : public ICodeStream {
 	bool read_unk(uint16_t *output_marker);
 
 
-	// state of decoder/compressor
-	DecoderState m_decoder;
+	// state of decompressor/compressor
+	DecoderState m_decompressor;
 	EncoderState m_encoder;
 
-	/** internal/private encoded / decoded image */
+	/** internal/private encoded / decompressed image */
 	grk_image *m_input_image;
 
 	/* output image (for decompress) */
@@ -380,7 +380,7 @@ private:
 
 	uint8_t *m_marker_scratch;
 	uint16_t m_marker_scratch_size;
-    /** Only valid for decoding. Whether the whole tile is decoded, or just the region in win_x0/win_y0/win_x1/win_y1 */
+    /** Only valid for decoding. Whether the whole tile is decompressed, or just the region in win_x0/win_y0/win_x1/win_y1 */
 
 public:
 	uint16_t m_curr_marker;

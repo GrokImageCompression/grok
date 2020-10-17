@@ -90,15 +90,15 @@ struct PacketLengthMarkers {
 	PacketLengthMarkers(BufferedStream *strm);
 	~PacketLengthMarkers(void);
 
-	// decode packet lengths
+	// decompress packet lengths
 	bool readPLT(uint8_t *p_header_data, uint16_t header_size);
 	bool readPLM(uint8_t *p_header_data, uint16_t header_size);
 
-	// get decoded packet lengths
+	// get decompressed packet lengths
 	void getInit(void);
 	uint32_t getNext(void);
 
-	// encode packet lengths
+	// compress packet lengths
 	void writeInit(void);
 	void writeNext(uint32_t len);
 	// write marker to stream

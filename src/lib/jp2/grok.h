@@ -672,14 +672,14 @@ typedef struct _grk_dparameters {
 	 The image resolution is effectively divided by 2 to the power of the number of discarded levels.
 	 The reduce factor is limited by the smallest total number of decomposition levels among tiles.
 	 if greater than zero, then image is deocded to original dimension divided by 2^(cp_reduce);
-	 if equal to zero or not used, image is decoded to full resolution
+	 if equal to zero or not used, image is decompressed to full resolution
 	 */
 	uint32_t cp_reduce;
 	/**
 	 Set the maximum number of quality layers to decompress.
-	 If there are fewer quality layers than the specified number, all quality layers will be decoded.
-	 if != 0, then only the first "layer" layers are decoded;
-	 if == 0 or not used, all the quality layers are decoded
+	 If there are fewer quality layers than the specified number, all quality layers will be decompressed.
+	 if != 0, then only the first "layer" layers are decompressed;
+	 if == 0 or not used, all the quality layers are decompressed
 	 */
 	uint16_t cp_layer;
 	/** input file name */
@@ -703,7 +703,7 @@ typedef struct _grk_dparameters {
 	/** tile number of the decompressed tile*/
 	uint16_t tile_index;
 	/** Number of tiles to decompress */
-	uint32_t nb_tile_to_decode;
+	uint32_t nb_tile_to_decompress;
 	uint32_t flags;
 } grk_dparameters;
 
@@ -750,10 +750,10 @@ typedef struct _grk_decompress_params {
 	uint32_t DA_y1;
 	/** Verbose mode */
 	bool m_verbose;
-	/** tile number of the decoded tile*/
+	/** tile number of the decompressed tile*/
 	uint16_t tile_index;
 	/** Number of tiles to decompress */
-	uint32_t nb_tile_to_decode;
+	uint32_t nb_tile_to_decompress;
 	grk_precision *precision;
 	uint32_t nb_precision;
 	/* force output colorspace to RGB */
@@ -1470,7 +1470,7 @@ GRK_API void GRK_CALLCONV grk_set_default_decompress_params(
  * @param codec 		decompressor handler
  * @param parameters 	decompression parameters
  *
- * @return true			if the decoder is correctly set
+ * @return true			if the decompressor is correctly set
  */
 GRK_API bool GRK_CALLCONV grk_init_decompress(grk_codec codec,
 		grk_dparameters *parameters);
@@ -1510,7 +1510,7 @@ GRK_API bool GRK_CALLCONV grk_set_decompress_area(grk_codec codec,
  *
  * @param p_decompressor 	decompressor handle
  * @param tile			 	tile struct from plugin
- * @param image 			the decoded image
+ * @param image 			the decompressed image
  * @return 					true if success, otherwise false
  * */
 GRK_API bool GRK_CALLCONV grk_decompress(grk_codec p_decompressor,

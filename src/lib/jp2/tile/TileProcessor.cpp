@@ -710,7 +710,7 @@ bool TileProcessor::init_tile(grk_image *output_image,
 		}
 	} /* compno */
 
-	// decoder plugin debug sanity check on tile struct
+	// decompressor plugin debug sanity check on tile struct
 	if (!isEncoder) {
 		if (state & GRK_PLUGIN_STATE_DEBUG) {
 			if (!tile_equals(current_plugin_tile, tile))
@@ -812,11 +812,11 @@ bool TileProcessor::compress_tile_part(	uint32_t *tile_bytes_written) {
 	return t2_encode(tile_bytes_written);
 }
 
-/** Returns whether a tile component should be fully decoded,
+/** Returns whether a tile component should be fully decompressed,
  * taking into account win_* members.
  *
  * @param compno Component number
- * @return true if the tile component should be fully decoded
+ * @return true if the tile component should be fully decompressed
  */
 bool TileProcessor::is_whole_tilecomp_decoding(uint32_t compno) {
 	auto tilec = tile->comps + compno;
@@ -847,7 +847,7 @@ bool TileProcessor::is_whole_tilecomp_decoding(uint32_t compno) {
 bool TileProcessor::decompress_tile_t2(ChunkBuffer *src_buf) {
 	m_tcp = m_cp->tcps + m_tile_index;
 
-	// optimization for regions that are close to largest decoded resolution
+	// optimization for regions that are close to largest decompressed resolution
 	// (currently breaks tests, so disabled)
 	for (uint32_t compno = 0; compno < image->numcomps; compno++) {
 		if (!is_whole_tilecomp_decoding(compno)) {
@@ -888,7 +888,7 @@ bool TileProcessor::decompress_tile_t2(ChunkBuffer *src_buf) {
 	if (doT2) {
 		uint64_t l_data_read = 0;
 
-		if (!t2_decode(src_buf, &l_data_read))
+		if (!t2_decompress(src_buf, &l_data_read))
 			return false;
 		// synch plugin with T2 data
 		decompress_synch_plugin_with_host(this);
@@ -936,9 +936,9 @@ bool TileProcessor::decompress_tile_t1(void) {
 	}
 
 	if (doPostT1) {
-		if (!mct_decode())
+		if (!mct_decompress())
 			return false;
-		if (!dc_level_shift_decode())
+		if (!dc_level_shift_decompress())
 			return false;
 	}
 	return true;
@@ -965,7 +965,7 @@ void TileProcessor::copy_image_to_tile() {
 	}
 }
 
-bool TileProcessor::t2_decode(ChunkBuffer *src_buf,
+bool TileProcessor::t2_decompress(ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
 	auto t2 = new T2Decompress(this);
 	bool rc = t2->decompress_packets(m_tile_index, src_buf, p_data_read);
@@ -974,7 +974,7 @@ bool TileProcessor::t2_decode(ChunkBuffer *src_buf,
 	return rc;
 }
 
-bool TileProcessor::need_mct_decode(uint32_t compno){
+bool TileProcessor::need_mct_decompress(uint32_t compno){
 	if (!m_tcp->mct)
 		return false;
 	if (tile->numcomps < 3){
@@ -997,9 +997,9 @@ bool TileProcessor::need_mct_decode(uint32_t compno){
 	return true;
 }
 
-bool TileProcessor::mct_decode() {
+bool TileProcessor::mct_decompress() {
 
-	if (!need_mct_decode(0))
+	if (!need_mct_decompress(0))
 		return true;
 	if (m_tcp->mct == 2) {
 		auto data = new uint8_t*[tile->numcomps];
@@ -1026,9 +1026,9 @@ bool TileProcessor::mct_decode() {
 	return true;
 }
 
-bool TileProcessor::dc_level_shift_decode() {
+bool TileProcessor::dc_level_shift_decompress() {
 	for (uint32_t compno = 0; compno < tile->numcomps; compno++) {
-		if (!need_mct_decode(compno) || m_tcp->mct == 2 ) {
+		if (!need_mct_decompress(compno) || m_tcp->mct == 2 ) {
 			auto tccp = m_tcp->tccps + compno;
 			if (tccp->qmfbid == 1)
 				mct::decompress_rev(tile,image,m_tcp->tccps,compno);
@@ -1241,8 +1241,8 @@ bool TileProcessor::rate_allocate() {
 }
 
 /**
- * tile_data stores only the decoded resolutions, in the actual precision
- * of the decoded image. This method copies a sub-region of this region
+ * tile_data stores only the decompressed resolutions, in the actual precision
+ * of the decompressed image. This method copies a sub-region of this region
  * into p_output_image (which stores data in 32 bit precision)
  *
  * @param p_output_image:
@@ -1271,7 +1271,7 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_
 		uint32_t height_src = (uint32_t) src_dim.height();
 
 		/* Compute the area (0, 0, off_x1_src, off_y1_src)
-		 * of the input buffer (decoded tile component) which will be moved
+		 * of the input buffer (decompressed tile component) which will be moved
 		 * to the output buffer. Compute the area of the output buffer (off_x0_dest,
 		 * off_y0_dest, width_dest, height_dest)  which will be modified
 		 * by this input area.
@@ -1441,7 +1441,7 @@ bool TileProcessor::prepare_sod_decoding(CodeStream *codeStream) {
 
 	// note: we subtract 2 to account for SOD marker
 	auto tcp = codeStream->get_current_decode_tcp();
-	if (codeStream->m_decoder.m_last_tile_part_in_code_stream) {
+	if (codeStream->m_decompressor.m_last_tile_part_in_code_stream) {
 		tile_part_data_length =
 				(uint32_t) (m_stream->get_number_byte_left() - 2);
 	} else {
@@ -1513,9 +1513,9 @@ bool TileProcessor::prepare_sod_decoding(CodeStream *codeStream) {
 
 	}
 	if (current_read_size != tile_part_data_length)
-		codeStream->m_decoder.m_state = J2K_DEC_STATE_NO_EOC;
+		codeStream->m_decompressor.m_state = J2K_DEC_STATE_NO_EOC;
 	else
-		codeStream->m_decoder.m_state = J2K_DEC_STATE_TPH_SOT;
+		codeStream->m_decompressor.m_state = J2K_DEC_STATE_TPH_SOT;
 
 	return true;
 }

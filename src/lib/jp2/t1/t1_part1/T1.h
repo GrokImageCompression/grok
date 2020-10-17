@@ -63,7 +63,7 @@ struct T1 {
 	mqcoder mqc;
 
 	int32_t *data;
-	/** Flags used by decoder and compressor.
+	/** Flags used by decompressor and compressor.
 	 * Such that flags[1+0] is for state of col=0,row=0..3,
 	 flags[1+1] for col=1, row=0..3, flags[1+flags_stride] for col=0,row=4..7, ...
 	 This array avoids too much cache trashing when processing by 4 vertical samples

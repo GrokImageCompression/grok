@@ -57,7 +57,7 @@ private:
 	 @param pi 			Packet iterator
 	 @param src_buf 	source buffer
 	 @param data_read   amount of data read
-	 @return  true if packet was successfully decoded
+	 @return  true if packet was successfully decompressed
 	 */
 	bool decompress_packet(TileCodingParams *tcp, PacketIter *pi, ChunkBuffer *src_buf,
 			uint64_t *data_read);

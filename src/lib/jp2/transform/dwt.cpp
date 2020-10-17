@@ -1860,7 +1860,7 @@ template <typename T,
     }
 	dwt_data<T> vert;
     vert.mem = horiz.mem;
-    D decoder;
+    D decompressor;
     size_t num_threads = ThreadPool::get()->num_threads();
 
     for (uint32_t resno = 1; resno < numres; resno ++) {
@@ -1999,8 +1999,8 @@ template <typename T,
 			if (num_threads == 1 ||step_j < HORIZ_STEP){
 		     uint32_t j;
 			 for (j = bounds[k][0]; j + HORIZ_STEP-1 < bounds[k][1]; j += HORIZ_STEP) {
-				 decoder.interleave_partial_h(&horiz, sa, j,HORIZ_STEP);
-				 decoder.decompress_h(&horiz);
+				 decompressor.interleave_partial_h(&horiz, sa, j,HORIZ_STEP);
+				 decompressor.decompress_h(&horiz);
 				 if (!sa->write( win_tr_x0,
 								  j,
 								  win_tr_x1,
@@ -2015,8 +2015,8 @@ template <typename T,
 				 }
 			 }
 			 if (j < bounds[k][1] ) {
-				 decoder.interleave_partial_h(&horiz, sa, j, bounds[k][1] - j);
-				 decoder.decompress_h(&horiz);
+				 decompressor.interleave_partial_h(&horiz, sa, j, bounds[k][1] - j);
+				 decompressor.decompress_h(&horiz);
 				 if (!sa->write( win_tr_x0,
 								  j,
 								  win_tr_x1,
@@ -2043,11 +2043,11 @@ template <typename T,
 					return false;
 				}
 				results.emplace_back(
-					ThreadPool::get()->enqueue([job,sa, win_tr_x0, win_tr_x1, &decoder] {
+					ThreadPool::get()->enqueue([job,sa, win_tr_x0, win_tr_x1, &decompressor] {
 					 uint32_t j;
 					 for (j = job->min_j; j + HORIZ_STEP-1 < job->max_j; j += HORIZ_STEP) {
-						 decoder.interleave_partial_h(&job->data, sa, j,HORIZ_STEP);
-						 decoder.decompress_h(&job->data);
+						 decompressor.interleave_partial_h(&job->data, sa, j,HORIZ_STEP);
+						 decompressor.decompress_h(&job->data);
 						 if (!sa->write( win_tr_x0,
 										  j,
 										  win_tr_x1,
@@ -2062,8 +2062,8 @@ template <typename T,
 						 }
 					 }
 					 if (j < job->max_j ) {
-						 decoder.interleave_partial_h(&job->data, sa, j, job->max_j - j);
-						 decoder.decompress_h(&job->data);
+						 decompressor.interleave_partial_h(&job->data, sa, j, job->max_j - j);
+						 decompressor.decompress_h(&job->data);
 						 if (!sa->write( win_tr_x0,
 										  j,
 										  win_tr_x1,
@@ -2100,8 +2100,8 @@ template <typename T,
 		if (num_threads == 1 || step_j < VERT_STEP){
 	        uint32_t j;
 			for (j = win_tr_x0; j + VERT_STEP < win_tr_x1; j += VERT_STEP) {
-				decoder.interleave_partial_v(&vert, sa, j, VERT_STEP);
-				decoder.decompress_v(&vert);
+				decompressor.interleave_partial_v(&vert, sa, j, VERT_STEP);
+				decompressor.decompress_v(&vert);
 				if (!sa->write(j,
 							  win_tr_y0,
 							  j + VERT_STEP,
@@ -2116,8 +2116,8 @@ template <typename T,
 				}
 			}
 			if (j < win_tr_x1) {
-				decoder.interleave_partial_v(&vert, sa, j, win_tr_x1 - j);
-				decoder.decompress_v(&vert);
+				decompressor.interleave_partial_v(&vert, sa, j, win_tr_x1 - j);
+				decompressor.decompress_v(&vert);
 				if (!sa->write( j,
 								  win_tr_y0,
 								  win_tr_x1,
@@ -2144,11 +2144,11 @@ template <typename T,
 					return false;
 				}
 				results.emplace_back(
-					ThreadPool::get()->enqueue([job,sa, win_tr_y0, win_tr_y1, &decoder] {
+					ThreadPool::get()->enqueue([job,sa, win_tr_y0, win_tr_y1, &decompressor] {
 					 uint32_t j;
 					 for (j = job->min_j; j + VERT_STEP-1 < job->max_j; j += VERT_STEP) {
-						decoder.interleave_partial_v(&job->data, sa, j, VERT_STEP);
-						decoder.decompress_v(&job->data);
+						decompressor.interleave_partial_v(&job->data, sa, j, VERT_STEP);
+						decompressor.decompress_v(&job->data);
 						if (!sa->write(j,
 									  win_tr_y0,
 									  j + VERT_STEP,
@@ -2163,8 +2163,8 @@ template <typename T,
 						}
 					 }
 					 if (j <  job->max_j) {
-						decoder.interleave_partial_v(&job->data, sa, j,  job->max_j - j);
-						decoder.decompress_v(&job->data);
+						decompressor.interleave_partial_v(&job->data, sa, j,  job->max_j - j);
+						decompressor.decompress_v(&job->data);
 						if (!sa->write(			  j,
 												  win_tr_y0,
 												  job->max_j,

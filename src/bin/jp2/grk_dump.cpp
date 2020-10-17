@@ -76,7 +76,7 @@ static uint32_t get_num_images(char *imgdirpath);
 static int load_images(dircnt *dirptr, char *imgdirpath);
 static char get_next_file(size_t imageno, dircnt *dirptr, img_fol *img_fol,
 		grk_dparameters *parameters);
-static int parse_cmdline_decoder(int argc, char **argv,
+static int parse_cmdline_decompressor(int argc, char **argv,
 		grk_dparameters *parameters, img_fol *img_fol);
 
 /* -------------------------------------------------------------------------- */
@@ -207,7 +207,7 @@ static char get_next_file(size_t imageno, dircnt *dirptr, img_fol *img_fol,
  * Parse the command line
  */
 /* -------------------------------------------------------------------------- */
-static int parse_cmdline_decoder(int argc, char **argv,
+static int parse_cmdline_decompressor(int argc, char **argv,
 		grk_dparameters *parameters, img_fol *img_fol) {
 
 
@@ -367,7 +367,7 @@ int main(int argc, char *argv[]) {
 	img_fol.flag = GRK_IMG_INFO | GRK_J2K_MH_INFO | GRK_J2K_MH_IND;
 
 	/* Parse input and get user compressing parameters */
-	if (parse_cmdline_decoder(argc, argv, &parameters, &img_fol) == 1) {
+	if (parse_cmdline_decompressor(argc, argv, &parameters, &img_fol) == 1) {
 		rc = EXIT_FAILURE;
 		goto cleanup;
 	}
@@ -445,12 +445,12 @@ int main(int argc, char *argv[]) {
 
 		switch (parameters.decod_format) {
 		case GRK_J2K_FMT: { /* JPEG 2000 code stream */
-			/* Get a decoder handle */
+			/* Get a decompressor handle */
 			l_codec = grk_create_decompress(GRK_CODEC_J2K, l_stream);
 			break;
 		}
 		case GRK_JP2_FMT: { /* JPEG 2000 compressed image data */
-			/* Get a decoder handle */
+			/* Get a decompressor handle */
 			l_codec = grk_create_decompress(GRK_CODEC_JP2, l_stream);
 			break;
 		}
@@ -460,9 +460,9 @@ int main(int argc, char *argv[]) {
 			continue;
 		}
 
-		/* Setup the decoder decoding parameters using user parameters */
+		/* Setup the decompressor decoding parameters using user parameters */
 		if (!grk_init_decompress(l_codec, &parameters)) {
-			spdlog::error("grk_dump: failed to set up the decoder");
+			spdlog::error("grk_dump: failed to set up the decompressor");
 			rc = EXIT_FAILURE;
 			goto cleanup;
 		}

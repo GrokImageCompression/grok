@@ -137,11 +137,11 @@ struct FileFormat : public ICodeStream {
 	/** Main header reading function handler */
    bool read_header(grk_header_info  *header_info, grk_image **p_image);
 
-	/** Setup decoder function handler */
+	/** Set up decompressor function handler */
   void init_decompress(grk_dparameters  *p_param);
 
 	/**
-	 * Sets the given area to be decoded. This function should be called right after grk_read_header
+	 * Sets the given area to be decompressed. This function should be called right after grk_read_header
 	 * and before any tile header reading.
 	 *
 	 * @param	p_image     image

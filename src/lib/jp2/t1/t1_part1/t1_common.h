@@ -32,11 +32,11 @@
 /////////////////
 // buffer padding
 
-// decode
+// decompress
 /**< Space for a fake FFFF marker */
 const uint8_t grk_cblk_dec_compressed_data_pad_right = 2;
 
-// encode
+// compress
 const uint8_t grk_cblk_enc_compressed_data_pad_left = 2;
 ////////////////////////////////////////////////////////
 

@@ -137,7 +137,7 @@ void mct::decompress_irrev(grk_tile *tile, grk_image *image,TileComponentCodingP
 	    std::vector< std::future<int> > results;
 	    for(uint64_t threadid = 0; threadid < num_threads; ++threadid) {
 	    	uint64_t index = threadid;
-	    	auto decoder = [index, chunkSize,c0, shift, _min, _max,n](){
+	    	auto decompressor = [index, chunkSize,c0, shift, _min, _max,n](){
 	    		uint64_t begin = (uint64_t)index * chunkSize;
 				const VREG  vdc = LOAD_CST(shift);
 				const VREG  vmin = LOAD_CST(_min);
@@ -150,9 +150,9 @@ void mct::decompress_irrev(grk_tile *tile, grk_image *image,TileComponentCodingP
 	    	};
 
 	    	if (num_threads > 1)
-	    		results.emplace_back(ThreadPool::get()->enqueue(decoder));
+	    		results.emplace_back(ThreadPool::get()->enqueue(decompressor));
 	    	else
-	    		decoder();
+	    		decompressor();
 
 	    }
 	    for(auto &result: results){
@@ -209,7 +209,7 @@ void mct::decompress_irrev(grk_tile *tile, grk_image *image,TileComponentCodingP
 		std::vector< std::future<int> > results;
 		for(uint64_t threadid = 0; threadid < num_threads; ++threadid) {
 			uint64_t index = threadid;
-			auto decoder = [index, chunkSize, c0,c0_i,c1,c1_i,c2,c2_i, &shift, &_min, &_max]() {
+			auto decompressor = [index, chunkSize, c0,c0_i,c1,c1_i,c2,c2_i, &shift, &_min, &_max]() {
 				const VREGF vrv = LOAD_CST_F(1.402f);
 				const VREGF vgu = LOAD_CST_F(0.34413f);
 				const VREGF vgv = LOAD_CST_F(0.71414f);
@@ -243,9 +243,9 @@ void mct::decompress_irrev(grk_tile *tile, grk_image *image,TileComponentCodingP
 				return 0;
 			};
 			if (num_threads > 1)
-				results.emplace_back(ThreadPool::get()->enqueue(decoder));
+				results.emplace_back(ThreadPool::get()->enqueue(decompressor));
 			else
-				decoder();
+				decompressor();
 		}
 		for(auto &result: results){
 			result.get();
@@ -300,7 +300,7 @@ void mct::decompress_rev(grk_tile *tile, grk_image *image,TileComponentCodingPar
 	    std::vector< std::future<int> > results;
 	    for(uint64_t threadid = 0; threadid < num_threads; ++threadid) {
 	    	uint64_t index = threadid;
-	    	auto decoder = [index, chunkSize,c0, shift, _min, _max,n](){
+	    	auto decompressor = [index, chunkSize,c0, shift, _min, _max,n](){
 	    		uint64_t begin = (uint64_t)index * chunkSize;
 				const VREG  vdc = LOAD_CST(shift);
 				const VREG  vmin = LOAD_CST(_min);
@@ -314,9 +314,9 @@ void mct::decompress_rev(grk_tile *tile, grk_image *image,TileComponentCodingPar
 	    	};
 
 	    	if (num_threads > 1)
-	    		results.emplace_back(ThreadPool::get()->enqueue(decoder));
+	    		results.emplace_back(ThreadPool::get()->enqueue(decompressor));
 	    	else
-	    		decoder();
+	    		decompressor();
 
 	    }
 	    for(auto &result: results){
@@ -368,7 +368,7 @@ void mct::decompress_rev(grk_tile *tile, grk_image *image,TileComponentCodingPar
 	    std::vector< std::future<int> > results;
 	    for(uint64_t threadid = 0; threadid < num_threads; ++threadid) {
 	    	uint64_t index = threadid;
-	    	auto decoder = [index, chunkSize,c0,c1,c2, &shift, &_min, &_max](){
+	    	auto decompressor = [index, chunkSize,c0,c1,c2, &shift, &_min, &_max](){
 	    		uint64_t begin = (uint64_t)index * chunkSize;
 				const VREG  vdcr = LOAD_CST(shift[0]);
 				const VREG  vdcg = LOAD_CST(shift[1]);
@@ -394,9 +394,9 @@ void mct::decompress_rev(grk_tile *tile, grk_image *image,TileComponentCodingPar
 	    	};
 
 	    	if (num_threads > 1)
-	    		results.emplace_back(ThreadPool::get()->enqueue(decoder));
+	    		results.emplace_back(ThreadPool::get()->enqueue(decompressor));
 	    	else
-	    		decoder();
+	    		decompressor();
 
 	    }
 	    for(auto &result: results){

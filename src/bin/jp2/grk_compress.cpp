@@ -2056,11 +2056,9 @@ static bool plugin_compress_callback(
 
 	switch (parameters->cod_format) {
 	case GRK_J2K_FMT: /* JPEG 2000 code stream */
-		/* Get a decoder handle */
 		codec = grk_create_compress(GRK_CODEC_J2K, stream);
 		break;
 	case GRK_JP2_FMT: /* JPEG 2000 compressed image data */
-		/* Get a decoder handle */
 		codec = grk_create_compress(GRK_CODEC_JP2, stream);
 		break;
 	default:

@@ -51,7 +51,7 @@ public:
 	 /**
 	  * Reads values from a SOT marker (Start of tile-part)
 	  *
-	  * the j2k decoder state is not affected. No side effects,
+	  * the j2k decompressor state is not affected. No side effects,
 	  *  no checks except for header_size.
 	  *
 	  * @param       p_header_data   the data contained in the SOT marker.

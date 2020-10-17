@@ -131,8 +131,8 @@ bool T1Scheduler::prepareScheduleDecode(TileComponent *tilec, TileComponentCodin
 bool T1Scheduler::scheduleDecode(TileCodingParams *tcp,
 		                    uint16_t blockw, uint16_t blockh,
 		                    std::vector<DecompressBlockInfo*> *blocks) {
-	T1DecompressScheduler decoder(tcp, blockw, blockh);
-	return decoder.decompress(blocks);
+	T1DecompressScheduler decompressor(tcp, blockw, blockh);
+	return decompressor.decompress(blocks);
 }
 
 }

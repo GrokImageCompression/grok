@@ -57,7 +57,7 @@ private:
 };
 
 /**
- Tile coder/decoder
+ Tile coder/decompressor
  */
 struct TileProcessor {
 	explicit TileProcessor(CodeStream *codeStream, BufferedStream *stream) ;
@@ -117,7 +117,7 @@ struct TileProcessor {
 
 	bool prepare_sod_decoding(CodeStream *codeStream);
 
-	/** index of tile being currently coded/decoded */
+	/** index of tile being currently coded/decompressed */
 	uint16_t m_tile_index;
 
 	/** Encoding Only
@@ -148,7 +148,7 @@ struct TileProcessor {
 	grk_image *image;
 	grk_plugin_tile *current_plugin_tile;
 
-    /** Only valid for decoding. Whether the whole tile is decoded, or just the region in win_x0/win_y0/win_x1/win_y1 */
+    /** Only valid for decoding. Whether the whole tile is decompressed, or just the region in win_x0/win_y0/win_x1/win_y1 */
     bool   whole_tile_decoding;
 
 	PacketLengthMarkers *plt_markers;
@@ -170,15 +170,15 @@ private:
 	/** coding/decoding parameters common to all tiles */
 	TileCodingParams *m_tcp;
 
-	 bool t2_decode(ChunkBuffer *src_buf,	uint64_t *p_data_read);
+	 bool t2_decompress(ChunkBuffer *src_buf,	uint64_t *p_data_read);
 
 	 bool is_whole_tilecomp_decoding( uint32_t compno);
 
-	 bool need_mct_decode(uint32_t compno);
+	 bool need_mct_decompress(uint32_t compno);
 
-	 bool mct_decode();
+	 bool mct_decompress();
 
-	 bool dc_level_shift_decode();
+	 bool dc_level_shift_decompress();
 
 	 bool dc_level_shift_encode();
 

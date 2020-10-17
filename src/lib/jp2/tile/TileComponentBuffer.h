@@ -77,7 +77,7 @@ template<typename T> struct TileComponentBuffer {
 							m_encode(output_image==nullptr),
 							whole_tile_decoding(whole_tile)
 	{
-		//note: only decoder has output image
+		//note: only decompressor has output image
 		if (output_image) {
 			// tile component coordinates
 			m_unreduced_bounds = grk_rect_u32(ceildiv<uint32_t>(output_image->x0, dx),
@@ -309,8 +309,8 @@ template<typename T> struct TileComponentBuffer {
 
 	/**
 	 * Get bounds of tile component
-	 * decode: reduced tile component coordinates of region
-	 * encode: unreduced tile component coordinates of entire tile
+	 * decompress: reduced tile component coordinates of region
+	 * compress: unreduced tile component coordinates of entire tile
 	 */
 	grk_rect_u32 bounds() const{
 		return m_bounds;
@@ -355,8 +355,8 @@ private:
 
 	grk_rect_u32 m_unreduced_bounds;
 
-	/* decode: reduced tile component coordinates of region  */
-	/* encode: unreduced tile component coordinates of entire tile */
+	/* decompress: reduced tile component coordinates of region  */
+	/* compress: unreduced tile component coordinates of entire tile */
 	grk_rect_u32 m_bounds;
 
 	std::vector<Resolution*> resolutions;

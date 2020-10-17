@@ -88,10 +88,10 @@ public:
 	 @param bio Pointer to a BIO handle
 	 @param leafno Number that identifies the leaf to decompress
 	 @param threshold Threshold to use when decoding value of the leaf
-	 @param decoded 1 if the node's value < threshold, 0 otherwise
+	 @param decompressed 1 if the node's value < threshold, 0 otherwise
 	 */
 	void decompress(BitIO *bio, uint64_t leafno, int64_t threshold,
-			uint8_t *decoded);
+			uint8_t *decompressed);
 
 	/**
 	 Decompress the value of a leaf of the tag tree up to a given threshold

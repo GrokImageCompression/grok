@@ -303,7 +303,7 @@ void mqc_bypass_flush_enc(mqcoder *mqc, bool erterm){
     } else if (mqc->ct == 8 && !erterm &&
                mqc->bp[-1] == 0x7f && mqc->bp[-2] == 0xff) {
         /* Tiny optimization: discard terminating 0xff 0x7f since it is */
-        /* interpreted as 0xff 0x7f [0xff 0xff] by the decoder, and given */
+        /* interpreted as 0xff 0x7f [0xff 0xff] by the decompressor, and given */
         /* the bit stuffing, in fact as 0xff 0xff [0xff ..] */
         mqc->bp -= 2;
     }

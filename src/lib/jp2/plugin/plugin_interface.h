@@ -80,7 +80,7 @@ typedef void (*PLUGIN_STOP_BATCH_ENCODE)(void);
 typedef bool (*PLUGIN_IS_BATCH_COMPLETE)(void);
 
 ////////////////////
-// decoder interface
+// decompressor interface
 ////////////////////
 
 struct PluginDecodeCallbackInfo {
@@ -88,7 +88,7 @@ struct PluginDecodeCallbackInfo {
 			PluginDecodeCallbackInfo("", "", nullptr, GRK_UNK_FMT, 0) {
 	}
 	PluginDecodeCallbackInfo(std::string input, std::string output,
-			grk_decompress_parameters *decoderParameters, GRK_SUPPORTED_FILE_FMT format,
+			grk_decompress_parameters *decompressorParameters, GRK_SUPPORTED_FILE_FMT format,
 			uint32_t flags) :
 			deviceId(0),
 			init_decompressors_func(nullptr),
@@ -98,7 +98,7 @@ struct PluginDecodeCallbackInfo {
 			cod_format(GRK_UNK_FMT),
 			l_stream(nullptr),
 			l_codec(nullptr),
-			decompressor_parameters(decoderParameters),
+			decompressor_parameters(decompressorParameters),
 			image(nullptr),
 			plugin_owns_image(false),
 			tile(nullptr),

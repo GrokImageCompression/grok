@@ -148,7 +148,7 @@ void pi_init_encode(PacketIter *pi, CodingParams *cp, uint16_t tileno, uint32_t 
  @return a packet iterator that points to the first packet of the tile
  @see pi_destroy
  */
-PacketIter* pi_create_decode(grk_image *image, CodingParams *cp, uint16_t tileno);
+PacketIter* pi_create_decompress(grk_image *image, CodingParams *cp, uint16_t tileno);
 /**
  * Destroys a packet iterator array.
  *

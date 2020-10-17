@@ -163,7 +163,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	if (!tot_len) {
 		//GRK_WARN( "Psot value of the current tile-part is equal to zero; "
 		//              "we assume it is the last tile-part of the code stream.");
-		m_codeStream->m_decoder.m_last_tile_part_in_code_stream = true;
+		m_codeStream->m_decompressor.m_last_tile_part_in_code_stream = true;
 	}
 
 	// ensure that current tile part number read from SOT marker
@@ -174,7 +174,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 				"Current tile part number (%u) read from SOT marker is greater\n than total "
 						"number of tile-parts (%u).", current_part,
 				tcp->m_nb_tile_parts);
-		m_codeStream->m_decoder.m_last_tile_part_in_code_stream = true;
+		m_codeStream->m_decompressor.m_last_tile_part_in_code_stream = true;
 		return false;
 	}
 
@@ -191,7 +191,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 						"In SOT marker, TPSot (%u) is not valid with regards to the current "
 								"number of tile-part (%u)",
 						current_part, tcp->m_nb_tile_parts);
-				m_codeStream->m_decoder.m_last_tile_part_in_code_stream = true;
+				m_codeStream->m_decompressor.m_last_tile_part_in_code_stream = true;
 				return false;
 			}
 		}
@@ -201,7 +201,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 					"In SOT marker, TPSot (%u) is not valid with regards to the current "
 							"number of tile-part (header) (%u)",
 					current_part, num_parts);
-			m_codeStream->m_decoder.m_last_tile_part_in_code_stream = true;
+			m_codeStream->m_decompressor.m_last_tile_part_in_code_stream = true;
 			return false;
 		}
 		tcp->m_nb_tile_parts = num_parts;
@@ -210,10 +210,10 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	/* If we know the number of tile part header we check whether we have read the last one*/
 	if (tcp->m_nb_tile_parts && (tcp->m_nb_tile_parts == (current_part + 1))) {
 		/* indicate that we are now ready to read the tile data */
-		m_codeStream->m_decoder.last_tile_part_was_read =	true;
+		m_codeStream->m_decompressor.last_tile_part_was_read =	true;
 	}
 
-	if (!m_codeStream->m_decoder.m_last_tile_part_in_code_stream) {
+	if (!m_codeStream->m_decompressor.m_last_tile_part_in_code_stream) {
 		/* Keep the size of data to skip after this marker */
 		m_codeStream->currentProcessor()->tile_part_data_length = tot_len
 				- sot_marker_segment_len;
@@ -221,21 +221,21 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 		m_codeStream->currentProcessor()->tile_part_data_length = 0;
 	}
 
-	m_codeStream->m_decoder.m_state = J2K_DEC_STATE_TPH;
+	m_codeStream->m_decompressor.m_state = J2K_DEC_STATE_TPH;
 
 	/* Check if the current tile is outside the area we want
 	 *  decompress or not corresponding to the tile index*/
 	if (m_codeStream->tileIndexToDecode() == -1) {
-		m_codeStream->m_decoder.m_skip_tile_data =
-				(tile_x < m_codeStream->m_decoder.m_start_tile_x_index)
+		m_codeStream->m_decompressor.m_skip_tile_data =
+				(tile_x < m_codeStream->m_decompressor.m_start_tile_x_index)
 						|| (tile_x
-								>= m_codeStream->m_decoder.m_end_tile_x_index)
+								>= m_codeStream->m_decompressor.m_end_tile_x_index)
 						|| (tile_y
-								< m_codeStream->m_decoder.m_start_tile_y_index)
+								< m_codeStream->m_decompressor.m_start_tile_y_index)
 						|| (tile_y
-								>= m_codeStream->m_decoder.m_end_tile_y_index);
+								>= m_codeStream->m_decompressor.m_end_tile_y_index);
 	} else {
-		m_codeStream->m_decoder.m_skip_tile_data = (tile_number
+		m_codeStream->m_decompressor.m_skip_tile_data = (tile_number
 				!= (uint32_t) m_codeStream->tileIndexToDecode());
 	}
 

@@ -29,7 +29,7 @@ void Quantizer::setBandStepSizeAndBps(TileCodingParams *tcp,
 						   uint8_t bandno,
 							TileComponentCodingParams *tccp,
 							uint32_t image_precision,
-							bool encode){
+							bool compress){
 
 	uint32_t gain = 0;
 	if (tccp->qmfbid == 1) {
@@ -54,8 +54,8 @@ void Quantizer::setBandStepSizeAndBps(TileCodingParams *tcp,
 	band->inv_step = (uint32_t)((8192.0/band->stepsize) + 0.5f);
 
 	if (tcp->isHT){
-		// lossy decode
-		 if (!encode && tccp->qmfbid == 0)
+		// lossy decompress
+		 if (!compress && tccp->qmfbid == 0)
 			 band->stepsize /=(float)(1u << (31 - band->numbps));
 	}
 }

@@ -38,7 +38,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 	auto tcp = cp->tcps + tile_no;
 	auto p_tile = tileProcessor->tile;
 	uint32_t nb_pocs = tcp->numpocs + 1;
-	auto pi = pi_create_decode(image, cp, tile_no);
+	auto pi = pi_create_decompress(image, cp, tile_no);
 	if (!pi)
 		return false;
 
@@ -51,7 +51,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 	for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
 		/* if the resolution needed is too low, one dim of the tilec
 		 * could be equal to zero
-		 * and no packets are used to decode this resolution and
+		 * and no packets are used to decompress this resolution and
 		 * current_pi->resno is always >=
 		 * tile->comps[current_pi->compno].resolutions_to_decompress
 		 * and no l_img_comp->resno_decoded are computed
@@ -70,7 +70,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 		while (pi_next(current_pi)) {
 			auto tilec = p_tile->comps + current_pi->compno;
 			auto skip_the_packet = current_pi->layno
-					>= tcp->num_layers_to_decode
+					>= tcp->num_layers_to_decompress
 					|| current_pi->resno >= tilec->resolutions_to_decompress;
 
 			uint32_t pltMarkerLen = 0;

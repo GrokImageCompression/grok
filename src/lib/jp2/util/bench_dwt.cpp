@@ -272,7 +272,7 @@ int main(int argc, char** argv)
 		elapsed = finish - start;
 		spdlog::info("{} dwt {} with {:02d} threads: {} ms",
 				lossy ? "lossy" : "lossless",
-				forward ? "encode" : "decode",
+				forward ? "compress" : "decompress",
 				k,
 				(uint32_t)(elapsed.count()*1000));
 

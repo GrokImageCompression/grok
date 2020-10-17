@@ -160,7 +160,7 @@ bool j2k_read_soc(CodeStream *codeStream) {
 		return false;
 
 	/* Next marker should be a SIZ marker in the main header */
-	codeStream->m_decoder.m_state = J2K_DEC_STATE_MH_SIZ;
+	codeStream->m_decompressor.m_state = J2K_DEC_STATE_MH_SIZ;
 
 	if (codeStream->cstr_index) {
 		/* FIXME move it in a index structure included in codeStream*/
@@ -471,9 +471,9 @@ bool j2k_read_cod(CodeStream *codeStream,uint8_t *p_header_data,
 
 	/* If user didn't set a number layer to decompress take the max specify in the code stream. */
 	if (cp->m_coding_params.m_dec.m_layer) {
-		tcp->num_layers_to_decode = cp->m_coding_params.m_dec.m_layer;
+		tcp->num_layers_to_decompress = cp->m_coding_params.m_dec.m_layer;
 	} else {
-		tcp->num_layers_to_decode = tcp->numlayers;
+		tcp->num_layers_to_decompress = tcp->numlayers;
 	}
 
 	grk_read<uint8_t>(p_header_data++, &tcp->mct); /* SGcod (C) */
@@ -2192,7 +2192,7 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno, uint8_t *p_he
 				"of resolutions (%d) of this component\n"
 				"Please decrease the cp_reduce parameter.",
 				compno,cp->m_coding_params.m_dec.m_reduce,tccp->numresolutions);
-		codeStream->m_decoder.m_state |= J2K_DEC_STATE_ERR;
+		codeStream->m_decompressor.m_state |= J2K_DEC_STATE_ERR;
 		return false;
 	}
 	/* SPcoc (E) */

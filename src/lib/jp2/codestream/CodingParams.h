@@ -130,7 +130,7 @@ struct TileCodingParams {
 	GRK_PROG_ORDER prg;
 	/** number of layers */
 	uint16_t numlayers;
-	uint16_t num_layers_to_decode;
+	uint16_t num_layers_to_decompress;
 	/** multi-component transform identifier */
 	uint8_t mct;
 	/** rates of layers */
@@ -223,9 +223,9 @@ struct EncodingParams {
 };
 
 struct DecodingParams {
-	/** if != 0, then original dimension divided by 2^(reduce); if == 0 or not used, image is decoded to the full resolution */
+	/** if != 0, then original dimension divided by 2^(reduce); if == 0 or not used, image is decompressed to the full resolution */
 	uint32_t m_reduce;
-	/** if != 0, then only the first "layer" layers are decoded; if == 0 or not used, all the quality layers are decoded */
+	/** if != 0, then only the first "layer" layers are decompressed; if == 0 or not used, all the quality layers are decompressed */
 	uint16_t m_layer;
 };
 
@@ -291,13 +291,13 @@ struct DecoderState {
 	bool findNextTile(CodeStream *codeStream);
 
 	/** Decoder state: used to indicate in which part of the code stream
-	 *  the decoder is (main header, tile header, end) */
+	 *  the decompressor is (main header, tile header, end) */
 	uint32_t m_state;
 
 	//store decoding parameters common to all tiles (information
 	// like COD, COC and RGN in main header)
 	TileCodingParams *m_default_tcp;
-	/** Only tile indices in the correct range will be decoded.*/
+	/** Only tile indices in the correct range will be decompressed.*/
 	uint32_t m_start_tile_x_index;
 	uint32_t m_start_tile_y_index;
 	uint32_t m_end_tile_x_index;
@@ -314,7 +314,7 @@ struct DecoderState {
 	bool m_last_tile_part_in_code_stream;
 
 	// Indicates that the last tile part header has been read, so that
-	// the tile's data can now be decoded
+	// the tile's data can now be decompressed
 	bool last_tile_part_was_read;
 
 	bool m_skip_tile_data;

@@ -172,10 +172,10 @@ static void decompress_help_display(void) {
 			"	Default value is set to 9 (Z_BEST_COMPRESSION).\n"
 			"	Other options are 0 (Z_NO_COMPRESSION) and 1 (Z_BEST_SPEED)\n");
 	fprintf(stdout, "  [-t | -TileIndex] <tile index>\n"
-			"    Index of tile to be decoded\n");
+			"    Index of tile to be decompressed\n");
 	fprintf(stdout,
 			"  [-d | -DecodeRegion] <x0,y0,x1,y1>\n"
-			"    Top left-hand corner and bottom right-hand corner of region to be decoded.\n");
+			"    Top left-hand corner and bottom right-hand corner of region to be decompressed.\n");
 	fprintf(stdout,
 			"  [-r | -Reduce] <reduce factor>\n"
 			"    Set the number of highest resolution levels to be discarded. The\n"
@@ -185,7 +185,7 @@ static void decompress_help_display(void) {
 			"  [-l | -Layer] <number of quality layers to decompress>\n"
 			"    Set the maximum number of quality layers to decompress. If there are\n"
 			"    fewer quality layers than the specified number, all the quality layers\n"
-			"    are decoded.\n");
+			"    are decompressed.\n");
 	fprintf(stdout,
 			"  [-p | -Precision] <comp 0 precision>[C|S][,<comp 1 precision>[C|S][,...]]\n"
 			"    OPTIONAL\n"
@@ -420,7 +420,7 @@ uint32_t GrkDecompress::getCompressionCode(const std::string &compressionString)
  * Parse the command line
  */
 /* -------------------------------------------------------------------------- */
-int GrkDecompress::parse_cmdline_decoder(int argc, char **argv,
+int GrkDecompress::parse_cmdline_decompressor(int argc, char **argv,
 		grk_decompress_parameters *parameters, grk_img_fol *img_fol,
 		grk_img_fol *out_fol, char *plugin_path) {
 	try {
@@ -660,7 +660,7 @@ int GrkDecompress::parse_cmdline_decoder(int argc, char **argv,
 		}
 		if (tileArg.isSet()) {
 			parameters->tile_index = (uint16_t) tileArg.getValue();
-			parameters->nb_tile_to_decode = 1;
+			parameters->nb_tile_to_decompress = 1;
 		}
 		if (precisionArg.isSet()) {
 			if (!parse_precision(precisionArg.getValue().c_str(), parameters))
@@ -809,10 +809,10 @@ int GrkDecompress::decompress(const char *fileName, DecompressInitParams *initPa
 	info.decompressor_parameters = &initParams->parameters;
 	info.user_data = this;
 
-	if (pre_decode(&info)) {
+	if (preDecompress(&info)) {
 		return 0;
 	}
-	if (post_decode(&info)) {
+	if (postDecompress(&info)) {
 		return 0;
 	}
 	return 1;
@@ -836,7 +836,7 @@ int GrkDecompress::plugin_main(int argc, char **argv, DecompressInitParams *init
 	set_default_parameters(&initParams->parameters);
 
 	/* parse input and get user compressing parameters */
-	if (parse_cmdline_decoder(argc, argv, &initParams->parameters,
+	if (parse_cmdline_decompressor(argc, argv, &initParams->parameters,
 			&initParams->img_fol, &initParams->out_fol, initParams->plugin_path)
 			== 1) {
 		return EXIT_FAILURE;
@@ -971,7 +971,7 @@ int GrkDecompress::plugin_main(int argc, char **argv, DecompressInitParams *init
 int decompress_callback(grk_plugin_decompress_callback_info *info) {
 	int rc = -1;
 	// GRK_DECODE_T1 flag specifies full decompress on CPU, so
-	// we don't need to initialize the decoder in this case
+	// we don't need to initialize the decompressor in this case
 	if (info->decompress_flags & GRK_DECODE_T1) {
 		info->init_decompressors_func = nullptr;
 	}
@@ -992,12 +992,12 @@ int decompress_callback(grk_plugin_decompress_callback_info *info) {
 	if (info->decompress_flags & (GRK_DECODE_HEADER |
 									GRK_DECODE_T1 |
 									GRK_DECODE_T2)) {
-		rc = decompressor->pre_decode(info);
+		rc = decompressor->preDecompress(info);
 		if (rc)
 			return rc;
 	}
 	if (info->decompress_flags & GRK_DECODE_POST_T1) {
-		rc = decompressor->post_decode(info);
+		rc = decompressor->postDecompress(info);
 	}
 	return rc;
 }
@@ -1007,7 +1007,7 @@ enum grk_stream_type {
 };
 
 // return: 0 for success, non-zero for failure
-int GrkDecompress::pre_decode(grk_plugin_decompress_callback_info *info) {
+int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 	if (!info)
 		return 1;
 	bool failed = true;
@@ -1131,7 +1131,7 @@ int GrkDecompress::pre_decode(grk_plugin_decompress_callback_info *info) {
 		grk_set_error_handler(error_callback, nullptr);
 
 		if (!grk_init_decompress(info->l_codec, &(parameters->core))) {
-			spdlog::error("grk_decompress: failed to set up the decoder");
+			spdlog::error("grk_decompress: failed to set up the decompressor");
 			goto cleanup;
 		}
 	}
@@ -1211,12 +1211,12 @@ int GrkDecompress::pre_decode(grk_plugin_decompress_callback_info *info) {
 
 	if (!grk_set_decompress_area(info->l_codec, info->image, parameters->DA_x0,
 			parameters->DA_y0, parameters->DA_x1, parameters->DA_y1)) {
-		spdlog::error("grk_decompress: failed to set the decoded area");
+		spdlog::error("grk_decompress: failed to set the decompressed area");
 		goto cleanup;
 	}
 
 	// decompress all tiles
-	if (!parameters->nb_tile_to_decode) {
+	if (!parameters->nb_tile_to_decompress) {
 		if (!(grk_decompress(info->l_codec, info->tile, info->image)
 				&& grk_end_decompress(info->l_codec))) {
 			spdlog::error("grk_decompress: failed to decompress image.");
@@ -1230,7 +1230,7 @@ int GrkDecompress::pre_decode(grk_plugin_decompress_callback_info *info) {
 			spdlog::error("grk_decompress: failed to decompress tile");
 			goto cleanup;
 		}
-		//spdlog::info("Tile {} was decoded.", parameters->tile_index);
+		//spdlog::info("Tile {} was decompressed.", parameters->tile_index);
 	}
 	failed = false;
 cleanup:
@@ -1251,7 +1251,7 @@ cleanup:
 /*
  Post-process decompressed image and store in selected image format
  */
-int GrkDecompress::post_decode(grk_plugin_decompress_callback_info *info) {
+int GrkDecompress::postDecompress(grk_plugin_decompress_callback_info *info) {
 	if (!info)
 		return -1;
 	bool oddFirstX = info->full_image_x0 & 1;

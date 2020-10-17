@@ -97,7 +97,7 @@ struct CompressCodeblock : public Codeblock {
 	uint32_t *contextStream;
 };
 
-//decoder code block
+//decompressor code block
 struct DecompressCodeblock: public Codeblock {
 	DecompressCodeblock();
 	~DecompressCodeblock();
