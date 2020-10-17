@@ -1866,10 +1866,10 @@ template <typename T,
         uint32_t rw = tr->width();
         uint32_t rh = tr->height();
 
-        horiz.dn = (int32_t)(rw - horiz.sn);
+        horiz.dn = rw - horiz.sn;
         horiz.cas = tr->x0 & 1;
 
-        vert.dn = (int32_t)(rh - vert.sn);
+        vert.dn = rh - vert.sn;
         vert.cas = tr->y0 & 1;
 
         /* Get the sub-band coordinates for the window of interest */
@@ -1890,48 +1890,45 @@ template <typename T,
         win_hl.grow(FILTER_WIDTH, horiz.dn,  vert.sn);
         win_lh.grow(FILTER_WIDTH, horiz.sn,  vert.dn);
 
-        /* Compute resolution coordinates for window of interest */
-        uint32_t win_tr_x0,	win_tr_x1;
+        /*target window of interest */
+        grk_rect_u32 win_target;
         if (horiz.cas == 0) {
-            win_tr_x0 = min<uint32_t>(2 * win_ll.x0, 2 * win_hl.x0 + 1);
-            win_tr_x1 = min<uint32_t>(max<uint32_t>(2 * win_ll.x1, 2 * win_hl.x1 + 1), rw);
+            win_target.x0 = min<uint32_t>(2 * win_ll.x0, 2 * win_hl.x0 + 1);
+            win_target.x1 = min<uint32_t>(max<uint32_t>(2 * win_ll.x1, 2 * win_hl.x1 + 1), rw);
         } else {
-            win_tr_x0 = min<uint32_t>(2 * win_hl.x0, 2 * win_ll.x0 + 1);
-            win_tr_x1 = min<uint32_t>(max<uint32_t>(2 * win_hl.x1, 2 * win_ll.x1 + 1), rw);
+            win_target.x0 = min<uint32_t>(2 * win_hl.x0, 2 * win_ll.x0 + 1);
+            win_target.x1 = min<uint32_t>(max<uint32_t>(2 * win_hl.x1, 2 * win_ll.x1 + 1), rw);
         }
-        uint32_t win_tr_y0,	win_tr_y1;
         if (vert.cas == 0) {
-            win_tr_y0 = min<uint32_t>(2 * win_ll.y0, 2 * win_lh.y0 + 1);
-            win_tr_y1 = min<uint32_t>(max<uint32_t>(2 * win_ll.y1, 2 * win_lh.y1 + 1), rh);
+            win_target.y0 = min<uint32_t>(2 * win_ll.y0, 2 * win_lh.y0 + 1);
+            win_target.y1 = min<uint32_t>(max<uint32_t>(2 * win_ll.y1, 2 * win_lh.y1 + 1), rh);
         } else {
-            win_tr_y0 = min<uint32_t>(2 * win_lh.y0, 2 * win_ll.y0 + 1);
-            win_tr_y1 = min<uint32_t>(max<uint32_t>(2 * win_lh.y1, 2 * win_ll.y1 + 1), rh);
+            win_target.y0 = min<uint32_t>(2 * win_lh.y0, 2 * win_ll.y0 + 1);
+            win_target.y1 = min<uint32_t>(max<uint32_t>(2 * win_lh.y1, 2 * win_ll.y1 + 1), rh);
         }
         // two windows only overlap at most at the boundary
-        uint32_t bounds[2][2] =
+        uint32_t y_bounds[2][2] =
         {
 			{
 			   uint_subs(win_ll.y0, HORIZ_STEP),
 			   win_ll.y1},
 			{
-			  max<uint32_t>(win_ll.y1, uint_subs(min<uint32_t>(win_lh.y0 + vert.sn,rh),HORIZ_STEP)),
+			  max<uint32_t>(win_ll.y1, uint_subs(min<uint32_t>(win_lh.y0 + vert.sn, rh),HORIZ_STEP)),
 			  min<uint32_t>(win_lh.y1 + vert.sn, rh)
 			}
 		};
-
         // allocate all sparse array blocks in advance
-        if (!sa->alloc(win_tr_x0,
-					  win_tr_y0,
-					  win_tr_x1,
-					  win_tr_y1))
+        if (!sa->alloc(win_target))
 			 return false;
 		for (uint32_t k = 0; k < 2; ++k) {
-			 if (!sa->alloc(win_tr_x0,
-						  bounds[k][0],
-						  win_tr_x1,
-						  bounds[k][1]))
+			 if (!sa->alloc(win_target.x0,
+						  y_bounds[k][0],
+						  win_target.x1,
+						  y_bounds[k][1]))
 				 return false;
 		}
+
+
         horiz.win_l_0 = win_ll.x0;
         horiz.win_l_1 = win_ll.x1;
         horiz.win_h_0 = win_hl.x0;
@@ -1942,26 +1939,26 @@ template <typename T,
 	        /* on decompress -i  ../../openjpeg/MAPA.jp2 -o out.tif -d 0,0,256,256 */
 	        /* This is less extreme than memsetting the whole buffer to 0 */
 	        /* although we could potentially do better with better handling of edge conditions */
-	        if (win_tr_x1 >= 1 && win_tr_x1 < rw)
-	            horiz.mem[win_tr_x1 - 1] = T(0);
-	        if (win_tr_x1 < rw)
-	            horiz.mem[win_tr_x1] = T(0);
+	        if (win_target.x1 >= 1 && win_target.x1 < rw)
+	            horiz.mem[win_target.x1 - 1] = T(0);
+	        if (win_target.x1 < rw)
+	            horiz.mem[win_target.x1] = T(0);
 
 			uint32_t num_jobs = (uint32_t)num_threads;
-			uint32_t num_cols = bounds[k][1] - bounds[k][0] + 1;
+			uint32_t num_cols = y_bounds[k][1] - y_bounds[k][0] + 1;
 			if (num_cols < num_jobs)
 				num_jobs = num_cols;
 			uint32_t step_j = num_jobs ? ( num_cols / num_jobs) : 0;
 			if (num_threads == 1 ||step_j < HORIZ_STEP){
 		     uint32_t j;
-			 for (j = bounds[k][0]; j + HORIZ_STEP-1 < bounds[k][1]; j += HORIZ_STEP) {
+			 for (j = y_bounds[k][0]; j + HORIZ_STEP-1 < y_bounds[k][1]; j += HORIZ_STEP) {
 				 decompressor.interleave_partial_h(&horiz, sa, j,HORIZ_STEP);
 				 decompressor.decompress_h(&horiz);
-				 if (!sa->write( win_tr_x0,
+				 if (!sa->write( win_target.x0,
 								  j,
-								  win_tr_x1,
+								  win_target.x1,
 								  j + HORIZ_STEP,
-								  (int32_t*)(horiz.mem + win_tr_x0),
+								  (int32_t*)(horiz.mem + win_target.x0),
 								  HORIZ_STEP,
 								  1,
 								  true)) {
@@ -1970,14 +1967,14 @@ template <typename T,
 					 return false;
 				 }
 			 }
-			 if (j < bounds[k][1] ) {
-				 decompressor.interleave_partial_h(&horiz, sa, j, bounds[k][1] - j);
+			 if (j < y_bounds[k][1] ) {
+				 decompressor.interleave_partial_h(&horiz, sa, j, y_bounds[k][1] - j);
 				 decompressor.decompress_h(&horiz);
-				 if (!sa->write( win_tr_x0,
+				 if (!sa->write( win_target.x0,
 								  j,
-								  win_tr_x1,
-								  bounds[k][1],
-								  (int32_t*)(horiz.mem + win_tr_x0),
+								  win_target.x1,
+								  y_bounds[k][1],
+								  (int32_t*)(horiz.mem + win_target.x0),
 								  HORIZ_STEP,
 								  1,
 								  true)) {
@@ -1991,24 +1988,24 @@ template <typename T,
 			for(uint32_t j = 0; j < num_jobs; ++j) {
 			   auto job = new decompress_job<float, dwt_data<T>>(
 					   	   	   horiz,
-							   bounds[k][0] + j * step_j,
-							   j < (num_jobs - 1U) ? bounds[k][0] + (j + 1U) * step_j : bounds[k][1]);
+							   y_bounds[k][0] + j * step_j,
+							   j < (num_jobs - 1U) ? y_bounds[k][0] + (j + 1U) * step_j : y_bounds[k][1]);
 				if (!job->data.alloc(data_size)) {
 					GRK_ERROR("Out of memory");
 					horiz.release();
 					return false;
 				}
 				results.emplace_back(
-					ThreadPool::get()->enqueue([job,sa, win_tr_x0, win_tr_x1, &decompressor] {
+					ThreadPool::get()->enqueue([job,sa, win_target, &decompressor] {
 					 uint32_t j;
 					 for (j = job->min_j; j + HORIZ_STEP-1 < job->max_j; j += HORIZ_STEP) {
 						 decompressor.interleave_partial_h(&job->data, sa, j,HORIZ_STEP);
 						 decompressor.decompress_h(&job->data);
-						 if (!sa->write( win_tr_x0,
+						 if (!sa->write( win_target.x0,
 										  j,
-										  win_tr_x1,
+										  win_target.x1,
 										  j + HORIZ_STEP,
-										  (int32_t*)(job->data.mem + win_tr_x0),
+										  (int32_t*)(job->data.mem + win_target.x0),
 										  HORIZ_STEP,
 										  1,
 										  true)) {
@@ -2020,11 +2017,11 @@ template <typename T,
 					 if (j < job->max_j ) {
 						 decompressor.interleave_partial_h(&job->data, sa, j, job->max_j - j);
 						 decompressor.decompress_h(&job->data);
-						 if (!sa->write( win_tr_x0,
+						 if (!sa->write( win_target.x0,
 										  j,
-										  win_tr_x1,
+										  win_target.x1,
 										  job->max_j,
-										  (int32_t*)(job->data.mem + win_tr_x0),
+										  (int32_t*)(job->data.mem + win_target.x0),
 										  HORIZ_STEP,
 										  1,
 										  true)) {
@@ -2043,26 +2040,26 @@ template <typename T,
 				result.get();
 		   }
         }
+
 		vert.win_l_0 = win_ll.y0;
         vert.win_l_1 = win_ll.y1;
         vert.win_h_0 = win_lh.y0;
         vert.win_h_1 = win_lh.y1;
-
         uint32_t num_jobs = (uint32_t)num_threads;
-        uint32_t num_cols = win_tr_x1 - win_tr_x0 + 1;
+        uint32_t num_cols = win_target.x1 - win_target.x0 + 1;
 		if (num_cols < num_jobs)
 			num_jobs = num_cols;
 		uint32_t step_j = num_jobs ? ( num_cols / num_jobs) : 0;
 		if (num_threads == 1 || step_j < VERT_STEP){
 	        uint32_t j;
-			for (j = win_tr_x0; j + VERT_STEP < win_tr_x1; j += VERT_STEP) {
+			for (j = win_target.x0; j + VERT_STEP < win_target.x1; j += VERT_STEP) {
 				decompressor.interleave_partial_v(&vert, sa, j, VERT_STEP);
 				decompressor.decompress_v(&vert);
 				if (!sa->write(j,
-							  win_tr_y0,
+							  win_target.y0,
 							  j + VERT_STEP,
-							  win_tr_y1,
-							  (int32_t*)vert.mem + VERT_STEP * win_tr_y0,
+							  win_target.y1,
+							  (int32_t*)vert.mem + VERT_STEP * win_target.y0,
 							  1,
 							  VERT_STEP,
 							  true)) {
@@ -2071,14 +2068,14 @@ template <typename T,
 					return false;
 				}
 			}
-			if (j < win_tr_x1) {
-				decompressor.interleave_partial_v(&vert, sa, j, win_tr_x1 - j);
+			if (j < win_target.x1) {
+				decompressor.interleave_partial_v(&vert, sa, j, win_target.x1 - j);
 				decompressor.decompress_v(&vert);
 				if (!sa->write( j,
-								  win_tr_y0,
-								  win_tr_x1,
-								  win_tr_y1,
-								  (int32_t*)vert.mem + VERT_STEP * win_tr_y0,
+								  win_target.y0,
+								  win_target.x1,
+								  win_target.y1,
+								  (int32_t*)vert.mem + VERT_STEP * win_target.y0,
 								  1,
 								  VERT_STEP,
 								  true)) {
@@ -2092,24 +2089,24 @@ template <typename T,
 			for(uint32_t j = 0; j < num_jobs; ++j) {
 			   auto job = new decompress_job<float, dwt_data<T>>(
 					   	   	   	   	   vert,
-									   win_tr_x0 + j * step_j,
-									   j < (num_jobs - 1U) ? win_tr_x0 + (j + 1U) * step_j : win_tr_x1);
+									   win_target.x0 + j * step_j,
+									   j < (num_jobs - 1U) ? win_target.x0 + (j + 1U) * step_j : win_target.x1);
 				if (!job->data.alloc(data_size)) {
 					GRK_ERROR("Out of memory");
 					horiz.release();
 					return false;
 				}
 				results.emplace_back(
-					ThreadPool::get()->enqueue([job,sa, win_tr_y0, win_tr_y1, &decompressor] {
+					ThreadPool::get()->enqueue([job,sa, win_target, &decompressor] {
 					 uint32_t j;
 					 for (j = job->min_j; j + VERT_STEP-1 < job->max_j; j += VERT_STEP) {
 						decompressor.interleave_partial_v(&job->data, sa, j, VERT_STEP);
 						decompressor.decompress_v(&job->data);
 						if (!sa->write(j,
-									  win_tr_y0,
+									  win_target.y0,
 									  j + VERT_STEP,
-									  win_tr_y1,
-									  (int32_t*)job->data.mem + VERT_STEP * win_tr_y0,
+									  win_target.y1,
+									  (int32_t*)job->data.mem + VERT_STEP * win_target.y0,
 									  1,
 									  VERT_STEP,
 									  true)) {
@@ -2122,10 +2119,10 @@ template <typename T,
 						decompressor.interleave_partial_v(&job->data, sa, j,  job->max_j - j);
 						decompressor.decompress_v(&job->data);
 						if (!sa->write(			  j,
-												  win_tr_y0,
+												  win_target.y0,
 												  job->max_j,
-												  win_tr_y1,
-												  (int32_t*)job->data.mem + VERT_STEP * win_tr_y0,
+												  win_target.y1,
+												  (int32_t*)job->data.mem + VERT_STEP * win_target.y0,
 												  1,
 												  VERT_STEP,
 												  true)) {

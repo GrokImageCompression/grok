@@ -158,6 +158,8 @@ public:
 					  uint32_t x1,
 					  uint32_t y1) = 0;
 
+	virtual bool alloc( grk_rect_u32 region) = 0;
+
 
 };
 
@@ -247,6 +249,10 @@ public:
 	            src_line_stride,
 	            forgiving,
 	            false);
+	}
+
+	bool alloc( grk_rect_u32 region){
+		return alloc(region.x0, region.y0, region.x1, region.y1);
 	}
 
 	bool alloc( uint32_t x0,
