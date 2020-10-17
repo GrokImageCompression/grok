@@ -147,23 +147,23 @@ template<typename T> struct grk_rectangle {
     	int64_t Y1 = y1 + y;
 
 
-    	if(X0 < std::numeric_limits<T>::min())
-    		X0 = std::numeric_limits<T>::min();
-    	if(X1 < std::numeric_limits<T>::min())
-    		X1 = std::numeric_limits<T>::min();
-    	if(Y0 < std::numeric_limits<T>::min())
-    		Y0 = std::numeric_limits<T>::min();
-    	if(Y1 < std::numeric_limits<T>::min())
-    		Y1 = std::numeric_limits<T>::min();
+    	if(X0 < (std::numeric_limits<T>::min)())
+    		X0 = (std::numeric_limits<T>::min)();
+    	if(X1 < (std::numeric_limits<T>::min)())
+    		X1 = (std::numeric_limits<T>::min)();
+    	if(Y0 < (std::numeric_limits<T>::min)())
+    		Y0 = (std::numeric_limits<T>::min)();
+    	if(Y1 < (std::numeric_limits<T>::min)())
+    		Y1 = (std::numeric_limits<T>::min)();
 
-    	if(X0 > std::numeric_limits<T>::max())
-    		X0 = std::numeric_limits<T>::max();
-    	if(X1 > std::numeric_limits<T>::max())
-    		X1 = std::numeric_limits<T>::max();
-    	if(Y0 > std::numeric_limits<T>::max())
-    		Y0 = std::numeric_limits<T>::max();
-    	if(Y1 > std::numeric_limits<T>::max())
-    		Y1 = std::numeric_limits<T>::max();
+    	if(X0 > (std::numeric_limits<T>::max)())
+    		X0 = (std::numeric_limits<T>::max)();
+    	if(X1 > (std::numeric_limits<T>::max)())
+    		X1 = (std::numeric_limits<T>::max)();
+    	if(Y0 > (std::numeric_limits<T>::max)())
+    		Y0 = (std::numeric_limits<T>::max)();
+    	if(Y1 > (std::numeric_limits<T>::max)())
+    		Y1 = (std::numeric_limits<T>::max)();
 
     	return grk_rectangle<T>( (T)X0, (T)Y0, (T)X1, (T)Y1);
     }
