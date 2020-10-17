@@ -1712,8 +1712,8 @@ static void segment_grow(uint32_t filter_width,
 						 uint32_t max_size,
 						 uint32_t* start,
 						 uint32_t* end){
-    *start = uint_subs(*start, filter_width);
-    *end = uint_adds(*end, filter_width);
+    *start = sat_sub<uint32_t>(*start, filter_width);
+    *end = sat_add<uint32_t>(*end, filter_width);
     *end = min<uint32_t>(*end, max_size);
 }
 
