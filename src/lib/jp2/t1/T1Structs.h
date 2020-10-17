@@ -156,14 +156,11 @@ struct Subband : public grk_rect_u32 {
 struct Resolution : public grk_rect_u32 {
 	Resolution();
 
+	Subband bands[3]; /* subband information */
 	/* precinct dimensions */
 	uint32_t pw, ph;
 	uint32_t numbands; /* number sub-band for the resolution level */
-	Subband bands[3]; /* subband information */
 
-    /* dimension of the resolution limited to window of interest.
-     *  Only valid if tcd->whole_tile_decoding is set */
-	grk_rect_u32 win_bounds;
 };
 
 }

@@ -856,32 +856,6 @@ bool TileProcessor::decompress_tile_t2(ChunkBuffer *src_buf) {
 		}
 	}
 
-	if (!whole_tile_decoding) {
-		/* Compute restricted tile-component and tile-resolution coordinates */
-		/* of the window of interest */
-		for (uint32_t compno = 0; compno < image->numcomps; compno++) {
-			auto tilec = tile->comps + compno;
-
-			/* Compute the intersection of the area of interest, expressed in tile coordinates */
-			/* with the tile coordinates */
-			auto win = tilec->buf->bounds().intersection(*((grk_rect_u32*)tilec));
-			if (!win.is_valid()) {
-				/* We should not normally go there. The circumstance is when */
-				/* the tile coordinates do not intersect the area of interest */
-				/* Upper level logic should not even try to decompress that tile */
-				GRK_ERROR("Invalid tilec->win_xxx values.");
-				return false;
-			}
-
-			for (uint32_t resno = 0; resno < tilec->resolutions_to_decompress;
-					++resno) {
-				auto res = tilec->resolutions + resno;
-				auto window = win;
-				res->win_bounds = window.rectceildivpow2(tilec->resolutions_to_decompress - 1 - resno);
-			}
-		}
-	}
-
 	bool doT2 = !current_plugin_tile
 			|| (current_plugin_tile->decompress_flags & GRK_DECODE_T2);
 

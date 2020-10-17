@@ -1830,13 +1830,17 @@ template <typename T,
 
     auto tr 	= tilec->resolutions;
     auto tr_max = tilec->resolutions + numres - 1;
-    if (!tr_max->width() || !tr_max->height())
+    if (!tr_max->width() || !tr_max->height()){
         return true;
+    }
+
+	auto win_bounds = tilec->buf->bounds();
+	win_bounds.rectceildivpow2(tilec->resolutions_to_decompress - 1 - (numres-1));
+    auto final_win_bounds = win_bounds.pan(-(uint64_t)tr_max->x0,-(uint64_t)tr_max->y0);
 
     if (numres == 1U) {
-        auto win_bounds = tr_max->win_bounds.pan(-(uint64_t)tr_max->x0,-(uint64_t)tr_max->y0);
         // simply copy into tile component buffer
-    	bool ret = sa->read(win_bounds,
+    	bool ret = sa->read(final_win_bounds,
 					   tilec->buf->ptr(),
                        1,
 					   tilec->buf->stride(),
@@ -2143,8 +2147,7 @@ template <typename T,
 		}
     }
     //final read into tile buffer
-    auto win_bounds = tr_max->win_bounds.pan(-(uint64_t)tr_max->x0,-(uint64_t)tr_max->y0);
-	bool ret = sa->read(win_bounds,
+	bool ret = sa->read(final_win_bounds,
 					   tilec->buf->ptr(),
 					   1,
 					   tilec->buf->stride(),
