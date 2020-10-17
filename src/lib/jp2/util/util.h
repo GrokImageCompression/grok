@@ -46,6 +46,22 @@ template<typename T> struct grk_rectangle;
 using grk_rect = grk_rectangle<int64_t>;
 using grk_rect_u32 = grk_rectangle<uint32_t>;
 
+template<typename T> T sat_add(T lhs, T rhs) {
+ 	if (lhs > (std::numeric_limits<T>::max)() - rhs)
+ 		return (std::numeric_limits<T>::max)();
+    else
+    	return lhs + rhs;
+}
+
+template<typename T> T sat_sub(T lhs, T rhs) {
+ 	if (lhs < (std::numeric_limits<T>::min)() + rhs)
+ 		return (std::numeric_limits<T>::min)();
+    else
+    	return lhs - rhs;
+}
+
+
+
 template<typename T> struct grk_rectangle {
 	T x0;
     T y0;
@@ -81,24 +97,6 @@ template<typename T> struct grk_rectangle {
     	}
 
     	return *this;
-    }
-    grk_rectangle<T>& operator- (const grk_rectangle<T> &rhs)
-    {
-        x0 -= rhs.x0;
-        y0 -= rhs.y0;
-        x1 -= rhs.x1;
-        y1 -= rhs.y1;
-
-        return *this;
-    }
-    grk_rectangle<T>& operator-= (const grk_rectangle<T> &rhs)
-    {
-        x0 -= rhs.x0;
-        y0 -= rhs.y0;
-        x1 -= rhs.x1;
-        y1 -= rhs.y1;
-
-        return *this;
     }
     grk_rectangle<T>&  rectceildivpow2(uint32_t power) {
     	x0 = ceildivpow2(x0, power);
@@ -141,12 +139,11 @@ template<typename T> struct grk_rectangle {
     T height() const{
     	return y1 - y0;
     }
-    grk_rectangle<T>& pan(T x, T y) {
-    	x0 += x;
-    	y0 += y;
-    	x1 += x;
-    	y1 += y;
-
+    grk_rectangle<T>& pan(int64_t x, int64_t y) {
+    	x0 = (T)(x0 + x);
+    	y0 = (T)(y0 + y);
+    	x1 = (T)(x1 + x);
+    	y1 = (T)(y1 + y);
     	return *this;
     }
     grk_rectangle<T>& subsample(uint32_t dx, uint32_t dy) {
@@ -159,24 +156,10 @@ template<typename T> struct grk_rectangle {
     	return grow(boundary, boundary);
     }
     grk_rectangle<T>& grow(T boundaryx, T boundaryy) {
-
-    	if (x0 < (std::numeric_limits<T>::min)() + boundaryx)
-    		x0 = 0;
-    	else
-    		x0 -= boundaryx;
-    	if (y0 < (std::numeric_limits<T>::min)() + boundaryy)
-    		y0 = 0;
-    	else
-    		y0 -= boundaryy;
-       	if (x1 > (std::numeric_limits<T>::max)() - boundaryx)
-    		x1 = (std::numeric_limits<T>::max)();
-    	else
-    		x1 += boundaryx;
-    	if (y1 > (std::numeric_limits<T>::max)() - boundaryy)
-    		y1 = (std::numeric_limits<T>::max)();
-    	else
-    		y1 += boundaryy;
-
+    	x0 = sat_sub<T>(x0, boundaryx);
+    	y0 = sat_sub<T>(y0, boundaryy);
+    	x1 = sat_add<T>(x1, boundaryx);
+    	y1 = sat_add<T>(y1, boundaryx);
     	return *this;
     }
 };
