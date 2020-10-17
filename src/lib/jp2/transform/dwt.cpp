@@ -1834,7 +1834,7 @@ template <typename T,
         return true;
 
     if (numres == 1U) {
-        auto win_bounds = tr_max->win_bounds.pan(-tr_max->x0,-tr_max->y0);
+        auto win_bounds = tr_max->win_bounds.pan(-(uint64_t)tr_max->x0,-(uint64_t)tr_max->y0);
         // simply copy into tile component buffer
     	bool ret = sa->read(win_bounds,
 					   tilec->buf->ptr(),
@@ -2190,7 +2190,7 @@ template <typename T,
 		}
     }
     //final read into tile buffer
-    auto win_bounds = tr_max->win_bounds.pan(-tr_max->x0,-tr_max->y0);
+    auto win_bounds = tr_max->win_bounds.pan(-(uint64_t)tr_max->x0,-(uint64_t)tr_max->y0);
 	bool ret = sa->read(win_bounds,
 					   tilec->buf->ptr(),
 					   1,

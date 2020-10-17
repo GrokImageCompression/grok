@@ -140,6 +140,16 @@ template<typename T> struct grk_rectangle {
     	return y1 - y0;
     }
     grk_rectangle<T> pan(int64_t x, int64_t y) const {
+    	assert(x0 + x >= std::numeric_limits<T>::min());
+    	assert(x1 + x >= std::numeric_limits<T>::min());
+    	assert(y0 + y >= std::numeric_limits<T>::min());
+    	assert(y1 + y >= std::numeric_limits<T>::min());
+
+    	assert(x0 + x <= std::numeric_limits<T>::max());
+    	assert(x1 + x <= std::numeric_limits<T>::max());
+    	assert(y0 + y <= std::numeric_limits<T>::max());
+    	assert(y1 + y <= std::numeric_limits<T>::max());
+
     	return grk_rectangle<T>( (T)(x0 + x), (T)(y0 + y), (T)(x1 + x), (T)(y1 + y));
     }
     grk_rectangle<T>& subsample(uint32_t dx, uint32_t dy) {
