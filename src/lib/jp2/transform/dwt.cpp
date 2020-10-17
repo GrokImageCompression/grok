@@ -1715,15 +1715,6 @@ static void decompress_partial_v_53(dwt_data<int32_t> *vert){
     }
 }
 
-static void segment_grow(uint32_t filter_width,
-						 uint32_t max_size,
-						 uint32_t* start,
-						 uint32_t* end){
-    *start = sat_sub<uint32_t>(*start, filter_width);
-    *end = sat_add<uint32_t>(*end, filter_width);
-    *end = min<uint32_t>(*end, max_size);
-}
-
 class Partial53 {
 public:
 	void interleave_partial_h(dwt_data<int32_t>* dwt,
@@ -1887,24 +1878,16 @@ template <typename T,
 
         /* band coordinates */
         /* Beware: band index for non-LL0 resolution are 0=HL, 1=LH and 2=HH */
-        uint32_t tr_ll_x0 = tr->bands[1].x0;
-        uint32_t tr_ll_y0 = tr->bands[0].y0;
-        uint32_t tr_hl_x0 = tr->bands[0].x0;
-        uint32_t tr_lh_y0 = tr->bands[1].y0;
 
         /* Transform window of interest relative to band*/
-        win_ll = win_ll.pan(-(int64_t)tr_ll_x0, -(int64_t)tr_ll_y0);
+        win_ll = win_ll.pan(-(int64_t)tr->bands[1].x0, -(int64_t)tr->bands[0].y0);
+        // note: we pass in zero when we don't care about those coordinates
+        win_hl = win_hl.pan(-(int64_t)tr->bands[0].x0, 0);
+        win_lh = win_lh.pan(0, -(int64_t)tr->bands[1].y0);
 
-        win_hl.x0 = uint_subs(win_hl.x0, tr_hl_x0);
-        win_hl.x1 = uint_subs(win_hl.x1, tr_hl_x0);
-
-        win_lh.y0 = uint_subs(win_lh.y0, tr_lh_y0);
-        win_lh.y1 = uint_subs(win_lh.y1, tr_lh_y0);
-
-        segment_grow(FILTER_WIDTH, horiz.sn, &win_ll.x0, &win_ll.x1);
-        segment_grow(FILTER_WIDTH, horiz.dn, &win_hl.x0, &win_hl.x1);
-        segment_grow(FILTER_WIDTH, vert.sn, &win_ll.y0, &win_ll.y1);
-        segment_grow(FILTER_WIDTH, vert.dn, &win_lh.y0, &win_lh.y1);
+        win_ll.grow(FILTER_WIDTH, horiz.sn,  vert.sn);
+        win_hl.grow(FILTER_WIDTH, horiz.dn,  vert.sn);
+        win_lh.grow(FILTER_WIDTH, horiz.sn,  vert.dn);
 
         /* Compute resolution coordinates for window of interest */
         uint32_t win_tr_x0,	win_tr_x1;

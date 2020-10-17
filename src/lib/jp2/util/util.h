@@ -174,13 +174,23 @@ template<typename T> struct grk_rectangle {
     	y1 = ceildiv(y1, (T) dy);
     }
     grk_rectangle<T>& grow(T boundary) {
-    	return grow(boundary, boundary);
+    	return grow(boundary, boundary,(std::numeric_limits<T>::max)(),(std::numeric_limits<T>::max)());
     }
     grk_rectangle<T>& grow(T boundaryx, T boundaryy) {
+    	return grow(boundaryx, boundaryy,(std::numeric_limits<T>::max)(),(std::numeric_limits<T>::max)());
+    }
+    grk_rectangle<T>& grow(T boundary, T maxX, T maxY) {
+    	return grow(boundary, boundary,maxX,maxY);
+    }
+    grk_rectangle<T>& grow(T boundaryx, T boundaryy, T maxX, T maxY) {
     	x0 = sat_sub<T>(x0, boundaryx);
     	y0 = sat_sub<T>(y0, boundaryy);
     	x1 = sat_add<T>(x1, boundaryx);
     	y1 = sat_add<T>(y1, boundaryx);
+    	if (x1 > maxX)
+    		x1 = maxX;
+    	if (y1 > maxY)
+    		y1 = maxY;
     	return *this;
     }
 };
