@@ -139,12 +139,8 @@ template<typename T> struct grk_rectangle {
     T height() const{
     	return y1 - y0;
     }
-    grk_rectangle<T>& pan(int64_t x, int64_t y) {
-    	x0 = (T)(x0 + x);
-    	y0 = (T)(y0 + y);
-    	x1 = (T)(x1 + x);
-    	y1 = (T)(y1 + y);
-    	return *this;
+    grk_rectangle<T> pan(int64_t x, int64_t y) const {
+    	return grk_rectangle<T>( (T)(x0 + x), (T)(y0 + y), (T)(x1 + x), (T)(y1 + y));
     }
     grk_rectangle<T>& subsample(uint32_t dx, uint32_t dy) {
     	x0 = ceildiv(x0, (T) dx);
