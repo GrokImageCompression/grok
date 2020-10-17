@@ -1581,24 +1581,31 @@ static void decompress_partial_h_53(dwt_data<int32_t> *horiz){
     }
 }
 
-#define GRK_S_off(i,off) a[(uint32_t)(i)*2*4+off]
-#define GRK_D_off(i,off) a[(1+(uint32_t)(i)*2)*4+off]
-#define GRK_S__off(i,off) ((i)<0?GRK_S_off(0,off):((i)>=sn?GRK_S_off(sn-1,off):GRK_S_off(i,off)))
-#define GRK_D__off(i,off) ((i)<0?GRK_D_off(0,off):((i)>=dn?GRK_D_off(dn-1,off):GRK_D_off(i,off)))
-#define GRK_SS__off(i,off) ((i)<0?GRK_S_off(0,off):((i)>=dn?GRK_S_off(dn-1,off):GRK_S_off(i,off)))
-#define GRK_DD__off(i,off) ((i)<0?GRK_D_off(0,off):((i)>=sn?GRK_D_off(sn-1,off):GRK_D_off(i,off)))
+#define GRK_S_off(i,off) a[(i)*2*4+off]
+#define GRK_D_off(i,off) a[(1+(i)*2)*4+off]
+
+#define GRK_S__SGND_off(i,off) ((i)<0?GRK_S_off(0,off):((i)>=sn?GRK_S_off(sn-1,off):GRK_S_off(i,off)))
+#define GRK_D__SGND_off(i,off) ((i)<0?GRK_D_off(0,off):((i)>=dn?GRK_D_off(dn-1,off):GRK_D_off(i,off)))
+#define GRK_SS__SGND_off(i,off) ((i)<0?GRK_S_off(0,off):((i)>=dn?GRK_S_off(dn-1,off):GRK_S_off(i,off)))
+#define GRK_DD__SGND_off(i,off) ((i)<0?GRK_D_off(0,off):((i)>=sn?GRK_D_off(sn-1,off):GRK_D_off(i,off)))
+
+#define GRK_S__off(i,off) (((i)>=sn?GRK_S_off(sn-1,off):GRK_S_off(i,off)))
+#define GRK_D__off(i,off) (((i)>=dn?GRK_D_off(dn-1,off):GRK_D_off(i,off)))
+#define GRK_SS__off(i,off) (((i)>=dn?GRK_S_off(dn-1,off):GRK_S_off(i,off)))
+#define GRK_DD__off(i,off) (((i)>=sn?GRK_D_off(sn-1,off):GRK_D_off(i,off)))
+
+
 
 static void decompress_partial_v_53(dwt_data<int32_t> *vert){
-    int32_t i;
-    uint32_t off;
+    uint32_t i;
     int32_t *a = vert->mem;
-	int32_t dn = vert->dn;
-	int32_t sn = vert->sn;
-	int32_t cas = vert->cas;
-	int32_t win_l_x0 = (int32_t)vert->win_l_0;
-	int32_t win_l_x1 = (int32_t)vert->win_l_1;
-	int32_t win_h_x0 = (int32_t)vert->win_h_0;
-	int32_t win_h_x1 = (int32_t)vert->win_h_1;
+	uint32_t dn = vert->dn;
+	uint32_t sn = vert->sn;
+	uint32_t cas = vert->cas;
+	uint32_t win_l_x0 = vert->win_l_0;
+	uint32_t win_l_x1 = vert->win_l_1;
+	uint32_t win_h_x0 = vert->win_h_0;
+	uint32_t win_h_x1 = vert->win_h_1;
 
     if (!cas) {
         if ((dn > 0) || (sn > 1)) { /* NEW :  CASE ONE ELEMENT */
@@ -1614,11 +1621,11 @@ static void decompress_partial_v_53(dwt_data<int32_t> *vert){
             */
             i = win_l_x0;
             if (i < win_l_x1) {
-                int32_t i_max;
+                uint32_t i_max;
 
                 /* Left-most case */
-                for (off = 0; off < 4; off++)
-                    GRK_S_off(i, off) -= (GRK_D__off(i - 1, off) + GRK_D__off(i, off) + 2) >> 2;
+                for (uint32_t off = 0; off < 4; off++)
+                    GRK_S_off(i, off) -= (GRK_D__SGND_off((int64_t)i - 1, off) + GRK_D__off(i, off) + 2) >> 2;
                 i ++;
 
                 i_max = win_l_x1;
@@ -1627,13 +1634,13 @@ static void decompress_partial_v_53(dwt_data<int32_t> *vert){
 #ifdef __SSE2__
                 if (i + 1 < i_max) {
                     const __m128i two = _mm_set1_epi32(2);
-                    __m128i Dm1 = _mm_load_si128((__m128i *)(a + 4 + (i - 1) * 8));
+                    auto Dm1 = _mm_load_si128((__m128i *)(a + 4 + ((int64_t)i - 1) * 8));
                     for (; i + 1 < i_max; i += 2) {
                         /* No bound checking */
-                        __m128i S = _mm_load_si128((__m128i *)(a + i * 8));
-                        __m128i D = _mm_load_si128((__m128i *)(a + 4 + i * 8));
-                        __m128i S1 = _mm_load_si128((__m128i *)(a + (i + 1) * 8));
-                        __m128i D1 = _mm_load_si128((__m128i *)(a + 4 + (i + 1) * 8));
+                        auto S = _mm_load_si128((__m128i *)(a + i * 8));
+                        auto D = _mm_load_si128((__m128i *)(a + 4 + i * 8));
+                        auto S1 = _mm_load_si128((__m128i *)(a + (i + 1) * 8));
+                        auto D1 = _mm_load_si128((__m128i *)(a + 4 + (i + 1) * 8));
                         S = _mm_sub_epi32(S,
                                           _mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(Dm1, D), two), 2));
                         S1 = _mm_sub_epi32(S1,
@@ -1646,29 +1653,29 @@ static void decompress_partial_v_53(dwt_data<int32_t> *vert){
 #endif
                 for (; i < i_max; i++) {
                     /* No bound checking */
-                    for (off = 0; off < 4; off++)
-                        GRK_S_off(i, off) -= (GRK_D_off(i - 1, off) + GRK_D_off(i, off) + 2) >> 2;
+                    for (uint32_t off = 0; off < 4; off++)
+                        GRK_S_off(i, off) -= (GRK_D__SGND_off((int64_t)i - 1, off) + GRK_D_off(i, off) + 2) >> 2;
                 }
                 for (; i < win_l_x1; i++) {
                     /* Right-most case */
-                    for (off = 0; off < 4; off++)
-                        GRK_S_off(i, off) -= (GRK_D__off(i - 1, off) + GRK_D__off(i, off) + 2) >> 2;
+                    for (uint32_t off = 0; off < 4; off++)
+                        GRK_S_off(i, off) -= (GRK_D__SGND_off((int64_t)i - 1, off) + GRK_D__off(i, off) + 2) >> 2;
                 }
             }
             i = win_h_x0;
             if (i < win_h_x1) {
-                int32_t i_max = win_h_x1;
+                uint32_t i_max = win_h_x1;
                 if (i_max >= sn)
                     i_max = sn - 1;
 #ifdef __SSE2__
                 if (i + 1 < i_max) {
-                    __m128i S =  _mm_load_si128((__m128i *)(a + i * 8));
+                    auto S =  _mm_load_si128((__m128i *)(a + i * 8));
                     for (; i + 1 < i_max; i += 2) {
                         /* No bound checking */
-                        __m128i D = _mm_load_si128((__m128i *)(a + 4 + i * 8));
-                        __m128i S1 = _mm_load_si128((__m128i *)(a + (i + 1) * 8));
-                        __m128i D1 = _mm_load_si128((__m128i *)(a + 4 + (i + 1) * 8));
-                        __m128i S2 = _mm_load_si128((__m128i *)(a + (i + 2) * 8));
+                    	auto D = _mm_load_si128((__m128i *)(a + 4 + i * 8));
+                    	auto S1 = _mm_load_si128((__m128i *)(a + (i + 1) * 8));
+                    	auto D1 = _mm_load_si128((__m128i *)(a + 4 + (i + 1) * 8));
+                    	auto S2 = _mm_load_si128((__m128i *)(a + (i + 2) * 8));
                         D = _mm_add_epi32(D, _mm_srai_epi32(_mm_add_epi32(S, S1), 1));
                         D1 = _mm_add_epi32(D1, _mm_srai_epi32(_mm_add_epi32(S1, S2), 1));
                         _mm_store_si128((__m128i*)(a + 4 + i * 8), D);
@@ -1679,30 +1686,30 @@ static void decompress_partial_v_53(dwt_data<int32_t> *vert){
 #endif
                 for (; i < i_max; i++) {
                     /* No bound checking */
-                    for (off = 0; off < 4; off++)
+                    for (uint32_t off = 0; off < 4; off++)
                         GRK_D_off(i, off) += (GRK_S_off(i, off) + GRK_S_off(i + 1, off)) >> 1;
                 }
                 for (; i < win_h_x1; i++) {
                     /* Right-most case */
-                    for (off = 0; off < 4; off++)
+                    for (uint32_t off = 0; off < 4; off++)
                         GRK_D_off(i, off) += (GRK_S__off(i, off) + GRK_S__off(i + 1, off)) >> 1;
                 }
             }
         }
     } else {
         if (!sn  && dn == 1) {        /* NEW :  CASE ONE ELEMENT */
-            for (off = 0; off < 4; off++)
+            for (uint32_t off = 0; off < 4; off++)
                 GRK_S_off(0, off) /= 2;
         } else {
             for (i = win_l_x0; i < win_l_x1; i++) {
-                for (off = 0; off < 4; off++)
+                for (uint32_t off = 0; off < 4; off++)
                     GRK_D_off(i, off) -=
                     		(GRK_SS__off(i, off) + GRK_SS__off(i + 1, off) + 2) >> 2;
             }
             for (i = win_h_x0; i < win_h_x1; i++) {
-                for (off = 0; off < 4; off++)
+                for (uint32_t off = 0; off < 4; off++)
                     GRK_S_off(i, off) +=
-                    		(GRK_DD__off(i, off) + GRK_DD__off(i - 1, off)) >> 1;
+                    		(GRK_DD__off(i, off) + GRK_DD__SGND_off((int64_t)i - 1, off)) >> 1;
             }
         }
     }
