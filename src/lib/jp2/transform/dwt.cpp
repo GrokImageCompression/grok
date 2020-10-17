@@ -1062,7 +1062,7 @@ static void decompress_step_97(dwt_data<vec4f>* GRK_RESTRICT dwt)
 #else
     decompress_step1_97(dwt->mem + a, dwt->win_l_0, dwt->win_l_1,
                            K);
-    decompress_step1_97(dwt->mem + b, dwt->win_h_x0, dwt->win_h_1,
+    decompress_step1_97(dwt->mem + b, dwt->win_h_0, dwt->win_h_1,
                            c13318);
     decompress_step2_97(dwt->mem + b, dwt->mem + a + 1,
                            dwt->win_l_0, dwt->win_l_1,
