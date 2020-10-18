@@ -359,20 +359,22 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
 					if (subbandIntersectsAOI(resno,
 													bandno,
 													&cblk_roi)){
+
+						// switch from coordinates relative to band,
+						// to coordinates relative to current resolution
 						x -= band->x0;
 						y -= band->y0;
 
 						/* add band offset relative to previous resolution */
 						if (band->bandno & 1) {
-							auto pres = resolutions + resno - 1;
-							x += pres->x1 - pres->x0;
+							auto prev_res = resolutions + resno - 1;
+							x += prev_res->x1 - prev_res->x0;
 						}
 						if (band->bandno & 2) {
-							auto pres = resolutions + resno - 1;
-							y += pres->y1 - pres->y0;
+							auto prev_res = resolutions + resno - 1;
+							y += prev_res->y1 - prev_res->y0;
 						}
 
-						// allocate in relative coordinates
 						if (!sa->alloc(x,
 									  y,
 									  x + cblk_w,
