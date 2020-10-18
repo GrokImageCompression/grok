@@ -20,58 +20,40 @@
  */
 
 #pragma once
-#include "testing.h"
-#include <vector>
+
 
 #include "TileProcessor.h"
 
-namespace grk {
+namespace grk
+{
 
-// tile component
-struct TileComponent : public grk_rect_u32 {
-	TileComponent();
-	~TileComponent();
+class TileComponentRegion  : public grk_rect_u32 {
+public:
+	TileComponentRegion(Resolution *res,uint32_t numres,TileComponentCodingParams *tccp);
+	virtual ~TileComponentRegion();
 
-	void create_buffer(	grk_image *output_image,uint32_t dx,uint32_t dy);
-	bool init(bool isEncoder,
-			bool whole_tile,
-			grk_image *output_image,
-			CodingParams *cp,
-			TileCodingParams *tcp,
-			grk_tile *tile,
-			grk_image_comp* image_comp,
-			TileComponentCodingParams* tccp,
-			grk_plugin_tile *current_plugin_tile);
+	void create_buffer(grk_image *output_image,
+										uint32_t dx,
+										uint32_t dy);
 
-	 void allocSparseBuffer(uint32_t numres);
+	void allocSparseBuffer(Resolution *resolutions, uint32_t numres);
+
 	 void release_mem();
+	 TileComponentBuffer<int32_t>* getBuffer();
+	 ISparseBuffer* getSparseBuffer();
+private:
 	 bool subbandIntersectsAOI(uint32_t resno,
 	 								uint32_t bandno,
 	 								const grk_rect_u32 *aoi) const;
 
-	 TileComponentBuffer<int32_t>* getBuffer();
-	 bool isWholeTileDecoding();
-	 ISparseBuffer* getSparseBuffer();
 
+	TileComponentBuffer<int32_t> *buf;
+	ISparseBuffer *m_sa;
 	Resolution *resolutions; /* resolutions information */
 	uint32_t numresolutions; /* number of resolution levels */
 	uint32_t resolutions_to_decompress; /* number of resolutions level to decompress (at max)*/
-#ifdef DEBUG_LOSSLESS_T2
-	Resolution* round_trip_resolutions;  /* round trip resolution information */
-#endif
-private:
-	ISparseBuffer *m_sa;
-    bool   whole_tile_decoding;
-	bool m_is_encoder;
-	TileComponentBuffer<int32_t> *buf;
 	TileComponentCodingParams *m_tccp;
-
-	TileComponentRegion *region;
 
 };
 
 }
-
-
-
-

@@ -33,7 +33,8 @@ TileComponent::TileComponent() :resolutions(nullptr),
 							   whole_tile_decoding(true),
 							   m_is_encoder(false),
 							   buf(nullptr),
-							   m_tccp(nullptr)
+							   m_tccp(nullptr),
+							   region(nullptr)
 {}
 
 TileComponent::~TileComponent(){
@@ -392,22 +393,26 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
     m_sa = sa;
 }
 
-
 void TileComponent::create_buffer(grk_image *output_image,
 									uint32_t dx,
 									uint32_t dy) {
-
-	auto highestRes =
+	auto highestNumberOfResolutions =
 			(!m_is_encoder) ? resolutions_to_decompress : numresolutions;
-	auto res =  resolutions + highestRes - 1;
-	grk_rect_u32::operator=(*(grk_rect_u32*)res);
-	auto maxRes = resolutions + numresolutions - 1;
+	auto hightestResolution =  resolutions + highestNumberOfResolutions - 1;
+	auto maxResolution = resolutions + numresolutions - 1;
 
+	grk_rect_u32::operator=(*(grk_rect_u32*)hightestResolution);
 	delete buf;
 	buf = new TileComponentBuffer<int32_t>(output_image, dx,dy,
-											grk_rect_u32(maxRes->x0, maxRes->y0, maxRes->x1, maxRes->y1),
-											grk_rect_u32(x0, y0, x1, y1),
-											highestRes,
+											grk_rect_u32(maxResolution->x0,
+														maxResolution->y0,
+														maxResolution->x1,
+														maxResolution->y1),
+											grk_rect_u32(x0,
+														y0,
+														x1,
+														y1),
+											highestNumberOfResolutions,
 											numresolutions,
 											resolutions,
 											whole_tile_decoding);

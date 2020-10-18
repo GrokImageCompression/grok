@@ -1573,18 +1573,18 @@ void pi_update_encoding_parameters(const grk_image *p_image,
 
 bool pi_next(PacketIter *pi) {
 	switch (pi->poc.prg) {
-	case GRK_LRCP:
-		return pi_next_lrcp(pi);
-	case GRK_RLCP:
-		return pi_next_rlcp(pi);
-	case GRK_RPCL:
-		return pi_next_rpcl(pi);
-	case GRK_PCRL:
-		return pi_next_pcrl(pi);
-	case GRK_CPRL:
-		return pi_next_cprl(pi);
-	case GRK_PROG_UNKNOWN:
-		return false;
+		case GRK_LRCP:
+			return pi_next_lrcp(pi);
+		case GRK_RLCP:
+			return pi_next_rlcp(pi);
+		case GRK_RPCL:
+			return pi_next_rpcl(pi);
+		case GRK_PCRL:
+			return pi_next_pcrl(pi);
+		case GRK_CPRL:
+			return pi_next_cprl(pi);
+		default:
+			return false;
 	}
 
 	return false;

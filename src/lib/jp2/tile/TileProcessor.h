@@ -162,6 +162,7 @@ struct TileProcessor {
 
 	uint32_t* m_resno_decoded_per_component;
 	BufferedStream *m_stream;
+	 bool m_corrupt_packet;
 private:
 
 	/** position of the tile part flag in progression order*/
@@ -208,9 +209,6 @@ private:
 	 void makelayer_feasible(uint32_t layno, uint16_t thresh,
 			bool final);
 
-
-public:
-	 bool m_corrupt_packet;
 
 };
 

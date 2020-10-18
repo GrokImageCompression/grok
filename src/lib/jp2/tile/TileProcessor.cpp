@@ -40,9 +40,9 @@ TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream) :
 				m_cp(&codeStream->m_cp),
 				m_resno_decoded_per_component(nullptr),
 				m_stream(stream),
+				m_corrupt_packet(false),
 				tp_pos(0),
-				m_tcp(nullptr),
-				m_corrupt_packet(false)
+				m_tcp(nullptr)
 {
 	assert(stream);
 	tile = new grk_tile();

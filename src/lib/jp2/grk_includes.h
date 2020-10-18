@@ -175,6 +175,7 @@ static inline long grk_lrintf(float f) {
 #include "TileComponentBuffer.h"
 #include "PacketIter.h"
 #include <SparseBuffer.h>
+#include "TileComponentRegion.h"
 #include "TileComponent.h"
 #include "TileProcessor.h"
 #include "Wavelet.h"
