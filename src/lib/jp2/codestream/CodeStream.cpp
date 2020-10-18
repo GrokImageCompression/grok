@@ -2541,7 +2541,7 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor, bool multi_t
 					auto comp = m_output_image->comps + compno;
 
 					//transfer memory from tile component to output image
-					tilec->buf->transfer(&comp->data, &comp->owns_data, &comp->stride);
+					tilec->getBuffer()->transfer(&comp->data, &comp->owns_data, &comp->stride);
 					assert(comp->stride >= comp->w);
 				}
 			}

@@ -845,24 +845,24 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
 							horiz,
 							vert,
 							vert.sn,
-							tilec->buf->ptr(res-1),
-							tilec->buf->stride(res-1),
-							tilec->buf->ptr(res, 0),
-							tilec->buf->stride(res,0),
-							tilec->buf->ptr(res),
-							tilec->buf->stride(res)))
+							tilec->getBuffer()->ptr(res-1),
+							tilec->getBuffer()->stride(res-1),
+							tilec->getBuffer()->ptr(res, 0),
+							tilec->getBuffer()->stride(res,0),
+							tilec->getBuffer()->ptr(res),
+							tilec->getBuffer()->stride(res)))
     		return false;
     	if (!decompress_h_mt_53(num_threads,
     						data_size,
 							horiz,
 							vert,
 							rh -  vert.sn,
-							tilec->buf->ptr(res, 1),
-							tilec->buf->stride(res,1),
-							tilec->buf->ptr(res, 2),
-							tilec->buf->stride(res,2),
-    						tilec->buf->ptr(res) + vert.sn *tilec->buf->stride(res) ,
-    						tilec->buf->stride(res) ))
+							tilec->getBuffer()->ptr(res, 1),
+							tilec->getBuffer()->stride(res,1),
+							tilec->getBuffer()->ptr(res, 2),
+							tilec->getBuffer()->stride(res,2),
+    						tilec->getBuffer()->ptr(res) + vert.sn *tilec->getBuffer()->stride(res) ,
+    						tilec->getBuffer()->stride(res) ))
     		return false;
         vert.dn = rh - vert.sn;
         vert.cas = tr->y0 & 1;
@@ -871,12 +871,12 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
 							horiz,
 							vert,
 							rw,
-							tilec->buf->ptr(res),
-							tilec->buf->stride(res),
-							tilec->buf->ptr(res)+ vert.sn *tilec->buf->stride(res) ,
-							tilec->buf->stride(res),
-							tilec->buf->ptr(res),
-							tilec->buf->stride(res)))
+							tilec->getBuffer()->ptr(res),
+							tilec->getBuffer()->stride(res),
+							tilec->getBuffer()->ptr(res)+ vert.sn *tilec->getBuffer()->stride(res) ,
+							tilec->getBuffer()->stride(res),
+							tilec->getBuffer()->ptr(res),
+							tilec->getBuffer()->stride(res)))
     		return false;
     }
     horiz.release();
@@ -1399,23 +1399,23 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         					data_size,
 							horiz,
 							vert.sn,
-							(float*) tilec->buf->ptr(res-1),
-							tilec->buf->stride(res-1),
-							(float*) tilec->buf->ptr(res, 0),
-							tilec->buf->stride(res,0),
-							(float*) tilec->buf->ptr(res),
-							tilec->buf->stride(res)))
+							(float*) tilec->getBuffer()->ptr(res-1),
+							tilec->getBuffer()->stride(res-1),
+							(float*) tilec->getBuffer()->ptr(res, 0),
+							tilec->getBuffer()->stride(res,0),
+							(float*) tilec->getBuffer()->ptr(res),
+							tilec->getBuffer()->stride(res)))
         	return false;
         if (!decompress_h_mt_97(num_threads,
         					data_size,
 							horiz,
 							rh-vert.sn,
-							(float*) tilec->buf->ptr(res, 1),
-							tilec->buf->stride(res,1),
-							(float*) tilec->buf->ptr(res, 2),
-							tilec->buf->stride(res,2),
-							(float*) tilec->buf->ptr(res) +  + vert.sn *tilec->buf->stride(res),
-							tilec->buf->stride(res) ))
+							(float*) tilec->getBuffer()->ptr(res, 1),
+							tilec->getBuffer()->stride(res,1),
+							(float*) tilec->getBuffer()->ptr(res, 2),
+							tilec->getBuffer()->stride(res,2),
+							(float*) tilec->getBuffer()->ptr(res) +  + vert.sn *tilec->getBuffer()->stride(res),
+							tilec->getBuffer()->stride(res) ))
         	return false;
         vert.dn = rh - vert.sn;
         vert.cas = tr->y0 & 1;
@@ -1428,12 +1428,12 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 							vert,
 							rw,
 							rh,
-							(float*) tilec->buf->ptr(res),
-							tilec->buf->stride(res),
-							(float*) tilec->buf->ptr(res) +  + vert.sn *tilec->buf->stride(res),
-							tilec->buf->stride(res),
-							(float*) tilec->buf->ptr(res),
-							tilec->buf->stride(res)))
+							(float*) tilec->getBuffer()->ptr(res),
+							tilec->getBuffer()->stride(res),
+							(float*) tilec->getBuffer()->ptr(res) +  + vert.sn *tilec->getBuffer()->stride(res),
+							tilec->getBuffer()->stride(res),
+							(float*) tilec->getBuffer()->ptr(res),
+							tilec->getBuffer()->stride(res)))
         	return false;
     }
     horiz.release();
@@ -1841,9 +1841,9 @@ template <typename T,
     if (numres == 1U) {
         // simply copy into tile component buffer
     	bool ret = sa->read(final_win_bounds,
-					   tilec->buf->ptr(),
+					   tilec->getBuffer()->ptr(),
                        1,
-					   tilec->buf->stride(),
+					   tilec->getBuffer()->stride(),
                        true);
         assert(ret);
         GRK_UNUSED(ret);
@@ -2148,9 +2148,9 @@ template <typename T,
     }
     //final read into tile buffer
 	bool ret = sa->read(final_win_bounds,
-					   tilec->buf->ptr(),
+					   tilec->getBuffer()->ptr(),
 					   1,
-					   tilec->buf->stride(),
+					   tilec->getBuffer()->stride(),
 					   true);
 	assert(ret);
 	GRK_UNUSED(ret);
@@ -2178,7 +2178,7 @@ bool decompress_53(TileProcessor *p_tcd,
 									Partial53>(tilec,
 											region,
 											numres,
-											tilec->m_sa);
+											tilec->getSparseBuffer());
 }
 
 bool decompress_97(TileProcessor *p_tcd,
@@ -2196,7 +2196,7 @@ bool decompress_97(TileProcessor *p_tcd,
 									Partial97>(tilec,
 											region,
 											numres,
-											tilec->m_sa);
+											tilec->getSparseBuffer());
 }
 
 }

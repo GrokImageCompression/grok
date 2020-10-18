@@ -84,7 +84,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			 current_pi->resno, current_pi->precno,
 			 current_pi->layno);
 			 */
-			if (!skip_the_packet && !tilec->whole_tile_decoding) {
+			if (!skip_the_packet && !tilec->isWholeTileDecoding()) {
 				skip_the_packet = true;
 				auto res = tilec->resolutions + current_pi->resno;
 				for (uint32_t bandno = 0;

@@ -54,9 +54,9 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 	bool rc = true;
 	uint32_t rw,rh,rw_next,rh_next;
 	uint8_t cas_row,cas_col;
-	uint32_t stride = tilec->buf->stride();
+	uint32_t stride = tilec->getBuffer()->stride();
 	uint32_t num_decomps = (uint32_t) (tilec->numresolutions - 1);
-	auto a = tilec->buf->ptr();
+	auto a = tilec->getBuffer()->ptr();
 	auto cur_res = tilec->resolutions + num_decomps;
 	auto next_res = cur_res - 1;
 

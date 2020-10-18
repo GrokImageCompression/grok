@@ -823,7 +823,7 @@ bool TileProcessor::is_whole_tilecomp_decoding(uint32_t compno) {
 	/* Compute the intersection of the area of interest, expressed in tile component coordinates */
 	/* with the tile coordinates */
 
-	auto dims = tilec->buf->bounds();
+	auto dims = tilec->getBuffer()->bounds();
 	uint32_t tcx0 = (uint32_t)dims.x0;
 	uint32_t tcy0 = (uint32_t)dims.y0;
 	uint32_t tcx1 = (uint32_t)dims.x1;
@@ -903,7 +903,7 @@ bool TileProcessor::decompress_tile_t1(void) {
 			if (doPostT1)
 				if (!Wavelet::decompress(this,
 										tilec,
-										tilec->buf->unreduced_bounds(),
+										tilec->getBuffer()->unreduced_bounds(),
 										m_resno_decoded_per_component[compno] + 1,
 										tccp->qmfbid))
 					return false;
@@ -932,12 +932,12 @@ void TileProcessor::copy_image_to_tile() {
 		uint64_t image_offset = (tilec->x0 - offset_x)
 				+ (uint64_t) (tilec->y0 - offset_y) * img_comp->stride;
 		auto src = img_comp->data + image_offset;
-		auto dest = tilec->buf->ptr();
+		auto dest = tilec->getBuffer()->ptr();
 
 		for (uint32_t j = 0; j < tilec->height(); ++j) {
 			memcpy(dest, src, tilec->width() * sizeof(int32_t));
 			src += img_comp->stride;
-			dest += tilec->buf->stride();
+			dest += tilec->getBuffer()->stride();
 		}
 	}
 }
@@ -960,9 +960,9 @@ bool TileProcessor::need_mct_decompress(uint32_t compno){
 		return false;
 	}
 	/* testcase 1336.pdf.asan.47.376 */
-	uint64_t samples = tile->comps->buf->strided_area();
-	if (tile->comps[1].buf->strided_area()	!= samples
-			|| tile->comps[2].buf->strided_area()	!= samples) {
+	uint64_t samples = tile->comps->getBuffer()->strided_area();
+	if (tile->comps[1].getBuffer()->strided_area()	!= samples
+			|| tile->comps[2].getBuffer()->strided_area()	!= samples) {
 		GRK_WARN("Not all tiles components have the same dimension: skipping MCT.");
 		return false;
 	}
@@ -982,9 +982,9 @@ bool TileProcessor::mct_decompress() {
 		auto data = new uint8_t*[tile->numcomps];
 		for (uint32_t i = 0; i < tile->numcomps; ++i) {
 			auto tile_comp = tile->comps + i;
-			data[i] = (uint8_t*) tile_comp->buf->ptr();
+			data[i] = (uint8_t*) tile_comp->getBuffer()->ptr();
 		}
-		uint64_t samples = tile->comps->buf->strided_area();
+		uint64_t samples = tile->comps->getBuffer()->strided_area();
 		bool rc = mct::decompress_custom((uint8_t*) m_tcp->m_mct_decoding_matrix,
 									samples,
 									data,
@@ -1020,8 +1020,8 @@ bool TileProcessor::dc_level_shift_encode() {
 	for (uint32_t compno = 0; compno < tile->numcomps; compno++) {
 		auto tile_comp = tile->comps + compno;
 		auto tccp = m_tcp->tccps + compno;
-		auto current_ptr = tile_comp->buf->ptr();
-		uint64_t samples = tile_comp->buf->strided_area();
+		auto current_ptr = tile_comp->getBuffer()->ptr();
+		uint64_t samples = tile_comp->getBuffer()->strided_area();
 		if (tccp->m_dc_level_shift == 0)
 			continue;
 		for (uint64_t i = 0; i < samples; ++i) {
@@ -1035,7 +1035,7 @@ bool TileProcessor::dc_level_shift_encode() {
 
 
 bool TileProcessor::mct_encode() {
-	uint64_t samples = tile->comps->buf->strided_area();
+	uint64_t samples = tile->comps->getBuffer()->strided_area();
 
 	if (!m_tcp->mct)
 		return true;
@@ -1045,7 +1045,7 @@ bool TileProcessor::mct_encode() {
 		auto data = new uint8_t*[tile->numcomps];
 		for (uint32_t i = 0; i < tile->numcomps; ++i) {
 			auto tile_comp = tile->comps + i;
-			data[i] = (uint8_t*) tile_comp->buf->ptr();
+			data[i] = (uint8_t*) tile_comp->getBuffer()->ptr();
 		}
 		bool rc = mct::compress_custom((uint8_t*) m_tcp->m_mct_coding_matrix,
 								samples,
@@ -1055,13 +1055,13 @@ bool TileProcessor::mct_encode() {
 		delete[] data;
 		return rc;
 	} else if (m_tcp->tccps->qmfbid == 0) {
-		mct::compress_irrev(tile->comps[0].buf->ptr(),
-				tile->comps[1].buf->ptr(),
-				tile->comps[2].buf->ptr(), samples);
+		mct::compress_irrev(tile->comps[0].getBuffer()->ptr(),
+				tile->comps[1].getBuffer()->ptr(),
+				tile->comps[2].getBuffer()->ptr(), samples);
 	} else {
-		mct::compress_rev(tile->comps[0].buf->ptr(),
-				tile->comps[1].buf->ptr(),
-				tile->comps[2].buf->ptr(), samples);
+		mct::compress_rev(tile->comps[0].getBuffer()->ptr(),
+				tile->comps[1].getBuffer()->ptr(),
+				tile->comps[2].getBuffer()->ptr(), samples);
 	}
 
 	return true;
@@ -1242,9 +1242,9 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_
 		uint32_t x1_dest = x0_dest + comp_dest->w;
 		uint32_t y1_dest = y0_dest + comp_dest->h;
 
-		grk_rect_u32 src_dim = tilec->buf->bounds();
+		grk_rect_u32 src_dim = tilec->getBuffer()->bounds();
 		uint32_t width_src = (uint32_t) src_dim.width();
-		uint32_t stride_src = tilec->buf->stride();
+		uint32_t stride_src = tilec->getBuffer()->stride();
 		uint32_t height_src = (uint32_t) src_dim.height();
 
 		/* Compute the area (0, 0, off_x1_src, off_y1_src)
@@ -1300,7 +1300,7 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_
 		auto dest_ind = (size_t) off_x0_dest
 				  	  + (size_t) off_y0_dest * comp_dest->stride;
 		size_t line_off_dest =  (size_t) comp_dest->stride - (size_t) width_dest;
-		auto src_ptr = tilec->buf->ptr();
+		auto src_ptr = tilec->getBuffer()->ptr();
 		for (uint32_t j = 0; j < height_dest; ++j) {
 			memcpy(comp_dest->data + dest_ind, src_ptr + src_ind,width_dest * sizeof(int32_t));
 			dest_ind += width_dest + line_off_dest;
@@ -1329,9 +1329,9 @@ bool TileProcessor::pre_write_tile() {
 			auto tilec = tile->comps + j;
 			auto imagec = image->comps + j;
 			if (transfer_image_to_tile && imagec->data) {
-				tilec->buf->attach(imagec->data, imagec->stride);
+				tilec->getBuffer()->attach(imagec->data, imagec->stride);
 			} else {
-				if (!tilec->buf->alloc()) {
+				if (!tilec->getBuffer()->alloc()) {
 					GRK_ERROR("Error allocating tile component data.");
 					return false;
 				}
@@ -1378,10 +1378,10 @@ bool TileProcessor::copy_uncompressed_data_to_tile(uint8_t *p_src,
 		auto img_comp = image->comps + i;
 
 		uint32_t size_comp = (img_comp->prec + 7) >> 3;
-		auto dest_ptr = tilec->buf->ptr();
-		uint32_t w = (uint32_t)tilec->buf->bounds().width();
-		uint32_t h = (uint32_t)tilec->buf->bounds().height();
-		uint32_t stride = tilec->buf->stride();
+		auto dest_ptr = tilec->getBuffer()->ptr();
+		uint32_t w = (uint32_t)tilec->getBuffer()->bounds().width();
+		uint32_t h = (uint32_t)tilec->getBuffer()->bounds().height();
+		uint32_t stride = tilec->getBuffer()->stride();
 		switch (size_comp) {
 		case 1:
 			if (img_comp->sgnd) {

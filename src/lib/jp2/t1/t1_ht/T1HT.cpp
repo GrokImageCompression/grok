@@ -64,7 +64,7 @@ void T1HT::preCompress(CompressBlockInfo *block, grk_tile *tile,
 	auto cblk = block->cblk;
 	uint16_t w =  (uint16_t)cblk->width();
 	uint16_t h =  (uint16_t)cblk->height();
-	uint32_t tile_width = (tile->comps + block->compno)->buf->stride();
+	uint32_t tile_width = (tile->comps + block->compno)->getBuffer()->stride();
 	auto tileLineAdvance = tile_width - w;
 	uint32_t tileIndex = 0;
 	uint32_t cblk_index = 0;
@@ -182,7 +182,7 @@ bool T1HT::postDecompress(DecompressBlockInfo *block) {
 	uint16_t cblk_h =  (uint16_t)cblk->height();
 
 	auto src = unencoded_data;
-	bool whole_tile_decoding = block->tilec->whole_tile_decoding;
+	bool whole_tile_decoding = block->tilec->isWholeTileDecoding();
 	auto tilec = block->tilec;
 
 	// ROI shift
@@ -238,7 +238,7 @@ bool T1HT::postDecompress(DecompressBlockInfo *block) {
 	}
 	if (!whole_tile_decoding){
 		// write directly from t1 to sparse array
-		if (!tilec->m_sa->write(block->x,
+		if (!tilec->getSparseBuffer()->write(block->x,
 							  block->y,
 							  block->x + cblk_w,
 							  block->y + cblk_h,

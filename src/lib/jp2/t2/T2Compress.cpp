@@ -519,7 +519,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 									bool needs_delete = false;
 									/* if there is only one segment, then it is already contiguous, so no need to make a copy*/
 									if (roundTripTotalSegLen == 1 && roundTripCblk->seg_buffers.get(0)) {
-										roundTripData = ((grk_buf*)(roundTripCblk->seg_buffers.get(0)))->buf;
+										roundTripData = ((grk_buf*)(roundTripCblk->seg_buffers.get(0)))->getBuffer();
 									}
 									else {
 										needs_delete = true;

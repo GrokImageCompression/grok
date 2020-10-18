@@ -62,7 +62,7 @@ void T1Part1::preCompress(CompressBlockInfo *block, grk_tile *tile,
 	if (!t1->allocate_buffers(w,h))
 		return;
 	t1->data_stride = w;
-	auto tileLineAdvance = (tile->comps + block->compno)->buf->stride() - w;
+	auto tileLineAdvance = (tile->comps + block->compno)->getBuffer()->stride() - w;
 	auto tiledp = block->tiledp;
 	uint32_t tileIndex = 0;
 	uint32_t cblk_index = 0;
@@ -219,7 +219,7 @@ bool T1Part1::postDecompress(DecompressBlockInfo *block) {
 		}
 	}
 
-	if (!block->tilec->whole_tile_decoding) {
+	if (!block->tilec->isWholeTileDecoding()) {
     	if (qmfbid == 1) {
     		for (uint32_t j = 0; j < cblk_h; ++j) {
     			uint32_t i = 0;
@@ -247,7 +247,7 @@ bool T1Part1::postDecompress(DecompressBlockInfo *block) {
 			}
     	}
 		// write directly from t1 to sparse array
-        if (!block->tilec->m_sa->write(block->x,
+        if (!block->tilec->getSparseBuffer()->write(block->x,
 					  block->y,
 					  block->x + cblk_w,
 					  block->y + cblk_h,

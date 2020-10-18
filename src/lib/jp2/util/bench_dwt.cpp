@@ -77,7 +77,6 @@ bool init_tilec(TileComponent * tilec,
                 uint32_t y1,
                 uint32_t numresolutions,
 				grk_image *output_image){
-	tilec->m_is_encoder = false;
     tilec->numresolutions = numresolutions;
     tilec->resolutions_to_decompress = numresolutions;
     tilec->resolutions = new Resolution[tilec->numresolutions];
@@ -97,9 +96,9 @@ bool init_tilec(TileComponent * tilec,
         --leveno;
     }
     tilec->create_buffer(output_image,1,1);
-    tilec->buf->alloc();
-	auto data = tilec->buf->ptr();
-    for (size_t i = 0; i < tilec->buf->strided_area(); i++)
+    tilec->getBuffer()->alloc();
+	auto data = tilec->getBuffer()->ptr();
+    for (size_t i = 0; i < tilec->getBuffer()->strided_area(); i++)
         data[i] = getValue((uint32_t)i);
     return true;
 
@@ -232,7 +231,7 @@ int main(int argc, char** argv)
 				   offset_x + size, offset_y + size,
 				   num_resolutions,
 				   &image);
-		auto data = tilec.buf->ptr();
+		auto data = tilec.getBuffer()->ptr();
 
 		if (display) {
 			spdlog::info("Before");
@@ -263,9 +262,9 @@ int main(int argc, char** argv)
 			rc = w.compress(&tilec,lossy ? 0 : 1 );
 		} else {
 			if (lossy)
-				rc = decompress_97(tileProcessor.get(), &tilec, tilec.buf->unreduced_bounds(), tilec.numresolutions);
+				rc = decompress_97(tileProcessor.get(), &tilec, tilec.getBuffer()->unreduced_bounds(), tilec.numresolutions);
 			else
-				rc = decompress_53(tileProcessor.get(), &tilec, tilec.buf->unreduced_bounds(), tilec.numresolutions);
+				rc = decompress_53(tileProcessor.get(), &tilec, tilec.getBuffer()->unreduced_bounds(), tilec.numresolutions);
 		}
 		assert(rc);
 		finish = std::chrono::high_resolution_clock::now();

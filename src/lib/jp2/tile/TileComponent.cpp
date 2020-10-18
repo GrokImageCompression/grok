@@ -23,16 +23,16 @@
 
 namespace grk {
 
-TileComponent::TileComponent() :numresolutions(0),
+TileComponent::TileComponent() :resolutions(nullptr),
+								numresolutions(0),
 								resolutions_to_decompress(0),
-								resolutions(nullptr),
 						#ifdef DEBUG_LOSSLESS_T2
 								round_trip_resolutions(nullptr),
 						#endif
-							   buf(nullptr),
+							   m_sa(nullptr),
 							   whole_tile_decoding(true),
 							   m_is_encoder(false),
-							   m_sa(nullptr),
+							   buf(nullptr),
 							   m_tccp(nullptr)
 {}
 
@@ -411,6 +411,17 @@ void TileComponent::create_buffer(grk_image *output_image,
 											numresolutions,
 											resolutions,
 											whole_tile_decoding);
+}
+
+TileComponentBuffer<int32_t>* TileComponent::getBuffer(){
+	return buf;
+}
+
+bool TileComponent::isWholeTileDecoding() {
+	return whole_tile_decoding;
+}
+ISparseBuffer* TileComponent::getSparseBuffer(){
+	return m_sa;
 }
 
 }

@@ -108,7 +108,7 @@ void mct::compress_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 
 void mct::decompress_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno) {
 	size_t i = 0;
-	float *GRK_RESTRICT c0 = (float*) tile->comps[compno].buf->ptr();
+	float *GRK_RESTRICT c0 = (float*) tile->comps[compno].getBuffer()->ptr();
 	int32_t *c0_i = (int32_t*)c0;
 
 	int32_t _min;
@@ -125,7 +125,7 @@ void mct::decompress_irrev(grk_tile *tile, grk_image *image,TileComponentCodingP
 	auto tccp = tccps + compno;
 	shift = tccp->m_dc_level_shift;
 
-	uint64_t n = (tile->comps+compno)->buf->strided_area();
+	uint64_t n = (tile->comps+compno)->getBuffer()->strided_area();
 
 	if (CPUArch::AVX2() ) {
 #if defined(__AVX2__)
@@ -176,11 +176,11 @@ void mct::decompress_irrev(grk_tile *tile, grk_image *image,TileComponentCodingP
 /* </summary> */
 void mct::decompress_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps) {
 	uint64_t i = 0;
-	uint64_t n = tile->comps->buf->strided_area();
+	uint64_t n = tile->comps->getBuffer()->strided_area();
 
-	float *GRK_RESTRICT c0 = (float*) tile->comps[0].buf->ptr();
-	float *GRK_RESTRICT c1 = (float*) tile->comps[1].buf->ptr();
-	float *GRK_RESTRICT c2 = (float*) tile->comps[2].buf->ptr();
+	float *GRK_RESTRICT c0 = (float*) tile->comps[0].getBuffer()->ptr();
+	float *GRK_RESTRICT c1 = (float*) tile->comps[1].getBuffer()->ptr();
+	float *GRK_RESTRICT c2 = (float*) tile->comps[2].getBuffer()->ptr();
 	int32_t *c0_i = (int32_t*)c0, *c1_i = (int32_t*)c1, *c2_i = (int32_t*)c2;
 
 	int32_t _min[3];
@@ -272,7 +272,7 @@ void mct::decompress_irrev(grk_tile *tile, grk_image *image,TileComponentCodingP
 
 void mct::decompress_rev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno) {
 	size_t i = 0;
-	int32_t *GRK_RESTRICT c0 = tile->comps[compno].buf->ptr();
+	int32_t *GRK_RESTRICT c0 = tile->comps[compno].getBuffer()->ptr();
 
 	int32_t _min;
     int32_t _max;
@@ -288,7 +288,7 @@ void mct::decompress_rev(grk_tile *tile, grk_image *image,TileComponentCodingPar
 	auto tccp = tccps + compno;
 	shift = tccp->m_dc_level_shift;
 
-	uint64_t n = (tile->comps+compno)->buf->strided_area();
+	uint64_t n = (tile->comps+compno)->getBuffer()->strided_area();
 
 	if (CPUArch::AVX2() ) {
 #if (defined(__AVX2__))
@@ -336,9 +336,9 @@ void mct::decompress_rev(grk_tile *tile, grk_image *image,TileComponentCodingPar
 /* </summary> */
 void mct::decompress_rev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps) {
 	size_t i = 0;
-	int32_t *GRK_RESTRICT c0 = tile->comps[0].buf->ptr();
-	int32_t *GRK_RESTRICT c1 = tile->comps[1].buf->ptr();
-	int32_t *GRK_RESTRICT c2 = tile->comps[2].buf->ptr();
+	int32_t *GRK_RESTRICT c0 = tile->comps[0].getBuffer()->ptr();
+	int32_t *GRK_RESTRICT c1 = tile->comps[1].getBuffer()->ptr();
+	int32_t *GRK_RESTRICT c2 = tile->comps[2].getBuffer()->ptr();
 
 	int32_t _min[3];
     int32_t _max[3];
@@ -356,7 +356,7 @@ void mct::decompress_rev(grk_tile *tile, grk_image *image,TileComponentCodingPar
     	shift[compno] = tccp->m_dc_level_shift;
     }
 
-	uint64_t n = tile->comps->buf->strided_area();
+	uint64_t n = tile->comps->getBuffer()->strided_area();
 
 	if (CPUArch::AVX2() ) {
 #if (defined(__AVX2__))

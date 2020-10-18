@@ -49,17 +49,21 @@ struct TileComponent : public grk_rect_u32 {
 	 								uint32_t bandno,
 	 								const grk_rect_u32 *aoi) const;
 
+	 TileComponentBuffer<int32_t>* getBuffer();
+	 bool isWholeTileDecoding();
+	 ISparseBuffer* getSparseBuffer();
+
+	Resolution *resolutions; /* resolutions information */
 	uint32_t numresolutions; /* number of resolution levels */
 	uint32_t resolutions_to_decompress; /* number of resolutions level to decompress (at max)*/
-	Resolution *resolutions; /* resolutions information */
 #ifdef DEBUG_LOSSLESS_T2
 	Resolution* round_trip_resolutions;  /* round trip resolution information */
 #endif
-	TileComponentBuffer<int32_t> *buf;
+private:
+	ISparseBuffer *m_sa;
     bool   whole_tile_decoding;
 	bool m_is_encoder;
-	ISparseBuffer *m_sa;
-private:
+	TileComponentBuffer<int32_t> *buf;
 	TileComponentCodingParams *m_tccp;
 
 };
