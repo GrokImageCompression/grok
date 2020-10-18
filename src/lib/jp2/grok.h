@@ -287,12 +287,13 @@ enum GRK_SUPPORTED_FILE_FMT {
  * Progression order
  * */
 typedef enum _GRK_PROG_ORDER {
-	GRK_PROG_UNKNOWN = -1, /**< place-holder */
-	GRK_LRCP = 0, /**< layer-resolution-component-precinct order */
-	GRK_RLCP = 1, /**< resolution-layer-component-precinct order */
-	GRK_RPCL = 2, /**< resolution-precinct-component-layer order */
-	GRK_PCRL = 3, /**< precinct-component-resolution-layer order */
-	GRK_CPRL = 4 /**< component-precinct-resolution-layer order */
+	GRK_PROG_UNKNOWN = -1, 			/**< place-holder */
+	GRK_LRCP = 0, 					/**< layer-resolution-component-precinct order */
+	GRK_RLCP = 1, 					/**< resolution-layer-component-precinct order */
+	GRK_RPCL = 2, 					/**< resolution-precinct-component-layer order */
+	GRK_PCRL = 3, 					/**< precinct-component-resolution-layer order */
+	GRK_CPRL = 4, 					/**< component-precinct-resolution-layer order */
+	GRK_NUM_PROGRESSION_ORDERS = 5 	/** number of possible progression orders */
 } GRK_PROG_ORDER;
 
 /*
