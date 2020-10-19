@@ -3142,7 +3142,8 @@ bool CodeStream::compress_validation() {
 	is_valid &=
 			(m_decompressor.m_state == J2K_DEC_STATE_NONE);
 
-	/* ISO 15444-1:2004 states between 1 & 33 (decomposition levels between 0 -> 32) */
+	/* ISO 15444-1:2004 states between 1 & 33
+	 * ergo (number of decomposition levels between 0 -> 32) */
 	if ((m_cp.tcps->tccps->numresolutions == 0)
 			|| (m_cp.tcps->tccps->numresolutions > GRK_J2K_MAXRLVLS)) {
 		GRK_ERROR("Invalid number of resolutions : %u not in range [1,%u]",

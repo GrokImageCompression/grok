@@ -846,8 +846,15 @@ bool j2k_read_poc(CodeStream *codeStream, uint8_t *p_header_data,
 
 	assert(p_header_data != nullptr);
 	assert(codeStream != nullptr);
-
 	auto image = codeStream->m_input_image;
+
+	uint16_t maxNumResLevels = 0;
+	auto tcp = codeStream->get_current_decode_tcp();
+	for (uint16_t i = 0; i < image->numcomps; ++i){
+		if (tcp->tccps[i].numresolutions > maxNumResLevels)
+			maxNumResLevels = tcp->tccps[i].numresolutions;
+	}
+
 	uint16_t nb_comp = image->numcomps;
 	comp_room = (nb_comp <= 256) ? 1 : 2;
 	chunk_size = 5 + 2 * comp_room;
@@ -859,7 +866,7 @@ bool j2k_read_poc(CodeStream *codeStream, uint8_t *p_header_data,
 		return false;
 	}
 
-	auto tcp = codeStream->get_current_decode_tcp();
+
 	old_poc_nb = tcp->POC ? tcp->numpocs + 1 : 0;
 	current_poc_nb += old_poc_nb;
 
@@ -877,7 +884,11 @@ bool j2k_read_poc(CodeStream *codeStream, uint8_t *p_header_data,
 		/* RSpoc_i */
 		grk_read<uint8_t>(p_header_data, &current_poc->resno0);
 		++p_header_data;
-		if (current_poc->resno0 > GRK_J2K_MAXRLVLS){
+		if (current_poc->resno0 >= GRK_J2K_MAXRLVLS){
+			GRK_ERROR("read_poc: invalid POC start resolution number %d", current_poc->resno0);
+			return false;
+		}
+		if (current_poc->resno0 >= maxNumResLevels){
 			GRK_ERROR("read_poc: invalid POC start resolution number %d", current_poc->resno0);
 			return false;
 		}
@@ -897,10 +908,6 @@ bool j2k_read_poc(CodeStream *codeStream, uint8_t *p_header_data,
 		/* REpoc_i */
 		grk_read<uint8_t>(p_header_data, &current_poc->resno1);
 		++p_header_data;
-		if (current_poc->resno1 > GRK_J2K_MAXRLVLS){
-			GRK_ERROR("read_poc: invalid POC end resolution number %d", current_poc->resno1);
-			return false;
-		}
 		/* CEpoc_i */
 		grk_read<uint16_t>(p_header_data, &(current_poc->compno1), comp_room);
 		p_header_data += comp_room;
