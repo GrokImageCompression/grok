@@ -23,7 +23,7 @@
 #if defined(_MSC_VER)
 #define INLINE __forceinline
 #elif defined(__GNUC__)
-#define INLINE __inline__
+#define INLINE inline
 #else
 #define INLINE
 #endif /* defined(<Compiler>) */
@@ -50,6 +50,19 @@ namespace grk {
 
 #define T1_NMSEDEC_BITS 7
 #define T1_NMSEDEC_FRACBITS (T1_NMSEDEC_BITS-1)
+
+#define T1_NUMCTXS_ZC  9
+#define T1_NUMCTXS_SC  5
+#define T1_NUMCTXS_MAG 3
+#define T1_NUMCTXS_AGG 1
+#define T1_NUMCTXS_UNI 1
+
+#define T1_CTXNO_ZC  0
+#define T1_CTXNO_SC  (T1_CTXNO_ZC+T1_NUMCTXS_ZC)
+#define T1_CTXNO_MAG (T1_CTXNO_SC+T1_NUMCTXS_SC)
+#define T1_CTXNO_AGG (T1_CTXNO_MAG+T1_NUMCTXS_MAG)
+#define T1_CTXNO_UNI (T1_CTXNO_AGG+T1_NUMCTXS_AGG)
+#define T1_NUMCTXS   (T1_CTXNO_UNI+T1_NUMCTXS_UNI)
 
 // We can have a maximum 31 bits in each 32 bit wavelet coefficient
 // as the most significant bit is reserved for the sign.

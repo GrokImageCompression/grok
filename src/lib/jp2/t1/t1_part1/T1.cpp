@@ -137,45 +137,26 @@ namespace grk {
 #define T1_TYPE_RAW 1   /** Raw compressing*/
 
 #include "t1_luts.h"
-#define T1_FLAGS(x, y) (t1->flags[x + 1 + ((y>>2) + 1) * (t1->w+2)])
 #define setcurctx(curctx, ctxno)  curctx = &(mqc)->ctxs[(uint32_t)(ctxno)]
+static INLINE void 	 update_flags(grk_flag *flagsp, uint32_t ci, uint32_t s,
+										uint32_t stride, uint32_t vsc);
 
-static INLINE uint8_t  getctxno_zc(mqcoder *mqc, uint32_t f);
-static INLINE uint32_t  getctxno_mag(uint32_t f);
+// ENCODE
+
 static int16_t 		 getnmsedec_sig(uint32_t x, uint32_t bitpos);
 static int16_t 		 getnmsedec_ref(uint32_t x, uint32_t bitpos);
-static INLINE void 	 update_flags(grk_flag *flagsp, uint32_t ci, uint32_t s,
-										uint32_t stride, uint32_t vsc);
-static INLINE void 	 update_flags(grk_flag *flagsp, uint32_t ci, uint32_t s,
-										uint32_t stride, uint32_t vsc);
-static INLINE void 	 dec_sigpass_step_raw(T1 *t1, grk_flag *flagsp,
-												int32_t *datap, int32_t oneplushalf,
-												uint32_t vsc, uint32_t ci);
-static INLINE void 	 dec_sigpass_step_mqc(T1 *t1, grk_flag *flagsp,
-												int32_t *datap, int32_t oneplushalf, uint32_t ci,
-												uint32_t flags_stride, uint32_t vsc);
-static void 		 enc_sigpass(T1 *t1, int32_t bpno, int32_t *nmsedec,
-										uint8_t type, uint32_t cblksty);
-static void 		 dec_sigpass_raw(T1 *t1, int32_t bpno, int32_t cblksty);
-static void 		 enc_refpass(T1 *t1, int32_t bpno, int32_t *nmsedec,
-										uint8_t type);
-static void 		 dec_refpass_raw(T1 *t1, int32_t bpno);
-static INLINE void 	 dec_refpass_step_raw(T1 *t1, grk_flag *flagsp,
-												int32_t *datap, int32_t poshalf, uint32_t ci);
-static INLINE void 	 dec_refpass_step_mqc(T1 *t1, grk_flag *flagsp,
-												int32_t *datap, int32_t poshalf, uint32_t ci);
-static void 		 dec_clnpass_step(T1 *t1, grk_flag *flagsp, int32_t *datap,
-											int32_t oneplushalf, uint32_t ciorig, uint32_t ci, uint32_t vsc);
-static void 		 enc_clnpass(T1 *t1, int32_t bpno, int32_t *nmsedec,
-										uint32_t cblksty);
-static bool 		 code_block_enc_allocate(cblk_enc *p_code_block);
 static double 		 getwmsedec(int32_t nmsedec, uint32_t compno, uint32_t level,
 										uint8_t orient, int32_t bpno,
 										uint32_t qmfbid, double stepsize,
 										const double *mct_norms,
 										uint32_t mct_numcomps);
 
-
+// DECODE
+static INLINE uint8_t  getctxno_zc(mqcoder *mqc, uint32_t f);
+static INLINE uint32_t  getctxno_mag(uint32_t f);
+static INLINE uint32_t getctxtno_sc_or_spb_index(uint32_t fX, uint32_t pfX,
+		uint32_t nfX, uint32_t ci);
+static INLINE uint8_t getspb(uint32_t lu);
 static INLINE uint8_t  getctxno_zc(mqcoder *mqc, uint32_t f) {
 	return mqc->lut_ctxno_zc_orient[(f & T1_SIGMA_NEIGHBOURS)];
 }
@@ -342,15 +323,15 @@ bool T1::allocate_buffers(uint32_t width, uint32_t height) {
 
 
 T1::T1(bool isEncoder,uint32_t maxCblkW,uint32_t maxCblkH) : data(nullptr),
-															flags(nullptr),
 															w(0),
 															h(0),
+															data_stride(0),
+															cblkdatabuffer(nullptr),
+															cblkdatabuffersize(0),
+															flags(nullptr),
 															datasize(0),
 															flagssize(0),
-															data_stride(0),
-															compressor(isEncoder),
-															cblkdatabuffer(nullptr),
-															cblkdatabuffersize(0)
+															compressor(isEncoder)
 {
 	if (!isEncoder) {
 	   cblkdatabuffersize = maxCblkW * maxCblkH * (uint32_t)sizeof(int32_t);
@@ -380,7 +361,7 @@ void T1::code_block_enc_deallocate(cblk_enc *code_block) {
 	grk::grk_free(code_block->passes);
 	code_block->passes = nullptr;
 }
-static bool code_block_enc_allocate(cblk_enc *p_code_block) {
+bool T1::code_block_enc_allocate(cblk_enc *p_code_block) {
 	if (!p_code_block->passes) {
 		p_code_block->passes = (pass_enc*) grk::grk_calloc(100,
 				sizeof(pass_enc));
@@ -413,7 +394,7 @@ static double getwmsedec(int32_t nmsedec,
 	return wmsedec;
 }
 
-static int enc_is_term_pass(cblk_enc *cblk, uint32_t cblksty,
+int T1::enc_is_term_pass(cblk_enc *cblk, uint32_t cblksty,
 								int32_t bpno, uint32_t passtype) {
 	/* Is it the last cleanup pass ? */
 	if (passtype == 2 && bpno == 0)
@@ -468,46 +449,46 @@ static int enc_is_term_pass(cblk_enc *cblk, uint32_t cblksty,
 	} \
 }
 
-static void enc_sigpass(T1 *t1, int32_t bpno, int32_t *nmsedec,
+void T1::enc_sigpass(int32_t bpno, int32_t *nmsedec,
 							uint8_t type, uint32_t cblksty) {
 	uint32_t i, k;
 	int32_t const one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
-	auto flagsp = &T1_FLAGS(0, 0);
-	auto mqc = &(t1->mqc);
+	// flags top left hand corner
+	auto flagsp = flags + 1 + (w+2);
+	auto mqc = &(coder);
 	DOWNLOAD_MQC_VARIABLES(mqc);
-	uint32_t w = t1->w;
 	uint32_t const extra = 2;
 	if (nmsedec)
 		*nmsedec = 0;
 
-	for (k = 0; k < (t1->h & ~3U); k += 4) {
-		for (i = 0; i < t1->w; ++i) {
+	for (k = 0; k < (h & ~3U); k += 4) {
+		for (i = 0; i < w; ++i) {
 			if (*flagsp == 0U) {
 				/* Nothing to do for any of the 4 data points */
 				flagsp++;
 				continue;
 			}
-		 enc_sigpass_step_macro(&t1->data[((k + 0) * t1->data_stride) + i], 0, cblksty & GRK_CBLKSTY_VSC);
-		 enc_sigpass_step_macro(&t1->data[((k + 1) * t1->data_stride) + i], 3, 0);
-		 enc_sigpass_step_macro(&t1->data[((k + 2) * t1->data_stride) + i], 6, 0);
-		 enc_sigpass_step_macro(&t1->data[((k + 3) * t1->data_stride) + i], 9, 0);
+		 enc_sigpass_step_macro(&data[((k + 0) * data_stride) + i], 0, cblksty & GRK_CBLKSTY_VSC);
+		 enc_sigpass_step_macro(&data[((k + 1) * data_stride) + i], 3, 0);
+		 enc_sigpass_step_macro(&data[((k + 2) * data_stride) + i], 6, 0);
+		 enc_sigpass_step_macro(&data[((k + 3) * data_stride) + i], 9, 0);
 			++flagsp;
 		}
 		flagsp += extra;
 	}
 
-	if (k < t1->h) {
-		for (i = 0; i < t1->w; ++i) {
+	if (k < h) {
+		for (i = 0; i < w; ++i) {
 			if (*flagsp == 0U) {
 				/* Nothing to do for any of the 4 data points */
 				flagsp++;
 				continue;
 			}
-			int32_t* pdata = t1->data + k* t1->data_stride + i;
-			for (uint32_t j = k;	j < t1->h; 	++j) {
+			int32_t* pdata = data + k* data_stride + i;
+			for (uint32_t j = k;	j < h; 	++j) {
 			 enc_sigpass_step_macro(pdata,	 3*(j - k),
 						(j == k && (cblksty & GRK_CBLKSTY_VSC) != 0));
-				pdata += t1->data_stride;
+				pdata += data_stride;
 			}
 			++flagsp;
 		}
@@ -534,18 +515,17 @@ static void enc_sigpass(T1 *t1, int32_t bpno, int32_t *nmsedec,
 	} \
 }
 
-static void enc_refpass(T1 *t1, int32_t bpno, int32_t *nmsedec,
-		uint8_t type) {
+void T1::enc_refpass(int32_t bpno, int32_t *nmsedec,uint8_t type) {
 	uint32_t i, k;
 	const int32_t one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
-	auto flagsp = &T1_FLAGS(0, 0);
-	auto mqc = &(t1->mqc);
+	auto flagsp = flags + 1 + (w+2);
+	auto mqc = &(coder);
 	DOWNLOAD_MQC_VARIABLES(mqc);
 	const uint32_t extra = 2U;
 	if (nmsedec)
 		*nmsedec = 0;
-	for (k = 0; k < (t1->h & ~3U); k += 4) {
-		for (i = 0; i < t1->w; ++i) {
+	for (k = 0; k < (h & ~3U); k += 4) {
+		for (i = 0; i < w; ++i) {
 			if ((*flagsp & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13))
 					== 0) { 	/* none significant */
 				flagsp++;
@@ -556,45 +536,45 @@ static void enc_refpass(T1 *t1, int32_t bpno, int32_t *nmsedec,
 				flagsp++;
 				continue;
 			}
-		 enc_refpass_step_macro(	&t1->data[((k + 0) * t1->data_stride) + i],  0);
-		 enc_refpass_step_macro(	&t1->data[((k + 1) * t1->data_stride) + i], 3);
-		 enc_refpass_step_macro(	&t1->data[((k + 2) * t1->data_stride) + i], 6);
-		 enc_refpass_step_macro(	&t1->data[((k + 3) * t1->data_stride) + i], 9);
+		 enc_refpass_step_macro(	&data[((k + 0) * data_stride) + i],  0);
+		 enc_refpass_step_macro(	&data[((k + 1) * data_stride) + i], 3);
+		 enc_refpass_step_macro(	&data[((k + 2) * data_stride) + i], 6);
+		 enc_refpass_step_macro(	&data[((k + 3) * data_stride) + i], 9);
 			++flagsp;
 		}
 		flagsp += extra;
 	}
-	if (k < t1->h) {
+	if (k < h) {
 		uint32_t j;
-		for (i = 0; i < t1->w; ++i) {
+		for (i = 0; i < w; ++i) {
 			if ((*flagsp & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13))== 0) {
 				/* none significant */
 				flagsp++;
 				continue;
 			}
-			for (j = k; j < t1->h; ++j)
-			 enc_refpass_step_macro(&t1->data[(j * t1->data_stride) + i],3*(j - k));
+			for (j = k; j < h; ++j)
+			 enc_refpass_step_macro(&data[(j * data_stride) + i],3*(j - k));
 			++flagsp;
 		}
 	}
 	UPLOAD_MQC_VARIABLES(mqc,curctx);
 }
 
-static void enc_clnpass(T1 *t1, int32_t bpno, int32_t *nmsedec,	uint32_t cblksty) {
+void T1::enc_clnpass(int32_t bpno, int32_t *nmsedec,	uint32_t cblksty) {
 	const int32_t one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
-	auto mqc = &(t1->mqc);
+	auto mqc = &coder;
 	DOWNLOAD_MQC_VARIABLES(mqc);
 	if (nmsedec)
 	  *nmsedec = 0;
-	grk_flag *f = &T1_FLAGS(0, 0);
+	auto flagsp = flags + 1 + (w+2);
 	uint32_t k;
-	for (k = 0; k < (t1->h & ~3U); k += 4, f+=2) {
-		for (uint32_t i = 0; i < t1->w; ++i, ++f) {
-			uint32_t agg = !(*f);
+	for (k = 0; k < (h & ~3U); k += 4, flagsp+=2) {
+		for (uint32_t i = 0; i < w; ++i, ++flagsp) {
+			uint32_t agg = !(*flagsp);
 			uint32_t runlen = 0;
 			if (agg) {
 				for (; runlen < 4; ++runlen) {
-					if (smr_abs(t1->data[((k + runlen) * t1->data_stride) + i])	& one)
+					if (smr_abs(data[((k + runlen) * data_stride) + i])	& one)
 						break;
 				}
 				curctx = mqc->ctxs + T1_CTXNO_AGG;
@@ -605,23 +585,23 @@ static void enc_clnpass(T1 *t1, int32_t bpno, int32_t *nmsedec,	uint32_t cblksty
 				mqc_encode_macro(mqc,curctx,a,c, ct,  runlen >> 1);
 				mqc_encode_macro(mqc,curctx,a,c, ct, runlen & 1);
 			}
-			auto datap = &t1->data[((k + runlen) * t1->data_stride) + i];
+			auto datap = &data[((k + runlen) * data_stride) + i];
 			const uint32_t check = (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 |
 					T1_SIGMA_13	| T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
 			bool stage_2 = true;
-			if ((*f & check) == check) {
+			if ((*flagsp & check) == check) {
 				switch(runlen){
 				case 0:
-					*f &= ~(T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
+					*flagsp &= ~(T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
 					break;
 				case 1:
-					*f &= ~(T1_PI_1 | T1_PI_2 | T1_PI_3);
+					*flagsp &= ~(T1_PI_1 | T1_PI_2 | T1_PI_3);
 					break;
 				case 2 :
-					*f &= ~(T1_PI_2 | T1_PI_3);
+					*flagsp &= ~(T1_PI_2 | T1_PI_3);
 					break;
 				case 3:
-					*f &= ~(T1_PI_3);
+					*flagsp &= ~(T1_PI_3);
 					break;
 				default:
 					stage_2 = false;
@@ -632,7 +612,7 @@ static void enc_clnpass(T1 *t1, int32_t bpno, int32_t *nmsedec,	uint32_t cblksty
 				bool goto_PARTIAL = false;
 				grk_flag flags;
 				uint32_t ctxt1;
-				flags = *f;
+				flags = *flagsp;
 				if ((agg != 0) && (ci == 3*runlen))
 					goto_PARTIAL = true;
 				else if (!(flags & ((T1_SIGMA_THIS | T1_PI_THIS) << (ci)))) {
@@ -643,8 +623,8 @@ static void enc_clnpass(T1 *t1, int32_t bpno, int32_t *nmsedec,	uint32_t cblksty
 					goto_PARTIAL = v;
 				}
 				if (goto_PARTIAL) {
-					uint32_t lu = getctxtno_sc_or_spb_index(*f,
-							*(f-1), *(f+1), ci);
+					uint32_t lu = getctxtno_sc_or_spb_index(*flagsp,
+							*(flagsp-1), *(flagsp+1), ci);
 					if (nmsedec)
 						*nmsedec += getnmsedec_sig((uint32_t) smr_abs(*datap),
 							(uint32_t) bpno);
@@ -654,44 +634,44 @@ static void enc_clnpass(T1 *t1, int32_t bpno, int32_t *nmsedec,	uint32_t cblksty
 					uint32_t spb = getspb(lu);
 					mqc_encode_macro(mqc,curctx,a,c, ct, v ^ spb );
 					uint32_t vsc = ((cblksty & GRK_CBLKSTY_VSC) && (ci == 0)) ? 1 : 0;
-				 update_flags(f, ci, v, t1->w + 2U, vsc);
+				 update_flags(flagsp, ci, v, w + 2U, vsc);
 				}
-				*f &= ~(T1_PI_THIS << (ci));
-				datap += t1->data_stride;
+				*flagsp &= ~(T1_PI_THIS << (ci));
+				datap += data_stride;
 			}
 		}
 	}
-	if (k < t1->h) {
+	if (k < h) {
 		uint32_t runlen = 0;
-		for (uint32_t i = 0; i < t1->w; ++i,++f) {
-			auto datap = &t1->data[((k + runlen) * t1->data_stride) + i];
+		for (uint32_t i = 0; i < w; ++i,++flagsp) {
+			auto datap = &data[((k + runlen) * data_stride) + i];
 			const uint32_t check = (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 |
 					T1_SIGMA_13	| T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
 			bool stage_2 = true;
-			if ((*f & check) == check) {
+			if ((*flagsp & check) == check) {
 				switch(runlen){
 				case 0:
-					*f &= ~(T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
+					*flagsp &= ~(T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
 					break;
 				case 1:
-					*f &= ~(T1_PI_1 | T1_PI_2 | T1_PI_3);
+					*flagsp &= ~(T1_PI_1 | T1_PI_2 | T1_PI_3);
 					break;
 				case 2 :
-					*f &= ~(T1_PI_2 | T1_PI_3);
+					*flagsp &= ~(T1_PI_2 | T1_PI_3);
 					break;
 				case 3:
-					*f &= ~(T1_PI_3);
+					*flagsp &= ~(T1_PI_3);
 					break;
 				default:
 					stage_2 = false;
 					break;
 				}
 			}
-			const uint32_t lim = 3*(t1->h - k);
+			const uint32_t lim = 3*(h - k);
 			for (uint32_t ci = 3*runlen; ci < lim && stage_2; ci+=3) {
 				bool goto_PARTIAL = false;
 				grk_flag flags;
-				flags = *f;
+				flags = *flagsp;
 				if (!(flags & ((T1_SIGMA_THIS | T1_PI_THIS) << (ci)))) {
 					uint32_t ctxt1 = getctxno_zc(mqc, flags >> (ci));
 					curctx = mqc->ctxs + ctxt1;
@@ -700,8 +680,8 @@ static void enc_clnpass(T1 *t1, int32_t bpno, int32_t *nmsedec,	uint32_t cblksty
 					goto_PARTIAL = v;
 				}
 				if (goto_PARTIAL) {
-					uint32_t lu = getctxtno_sc_or_spb_index(*f,
-							*(f-1), *(f+1), ci);
+					uint32_t lu = getctxtno_sc_or_spb_index(*flagsp,
+							*(flagsp-1), *(flagsp+1), ci);
 					if (nmsedec)
 						*nmsedec += getnmsedec_sig((uint32_t) smr_abs(*datap),
 							(uint32_t) bpno);
@@ -711,10 +691,10 @@ static void enc_clnpass(T1 *t1, int32_t bpno, int32_t *nmsedec,	uint32_t cblksty
 					uint32_t spb = getspb(lu);
 					mqc_encode_macro(mqc,curctx,a,c, ct, v ^ spb );
 					uint32_t vsc = ((cblksty & GRK_CBLKSTY_VSC) && (ci == 0)) ? 1 : 0;
-				 update_flags(f, ci, v, t1->w + 2U, vsc);
+				 update_flags(flagsp, ci, v, w + 2U, vsc);
 				}
-				*f &= ~(T1_PI_THIS << (ci));
-				datap += t1->data_stride;
+				*flagsp &= ~(T1_PI_THIS << (ci));
+				datap += data_stride;
 			}
 		}
 	}
@@ -730,8 +710,8 @@ double T1::compress_cblk(cblk_enc *cblk, uint32_t max,
 	if (!code_block_enc_allocate(cblk))
 		return 0;
 
-	auto mqcPtr = &mqc;
-	mqc_init_enc(mqcPtr, cblk->data);
+	auto mqc = &coder;
+	mqc_init_enc(mqc, cblk->data);
 
 	uint32_t passno;
 	int32_t bpno;
@@ -740,7 +720,7 @@ double T1::compress_cblk(cblk_enc *cblk, uint32_t max,
 	int32_t *p_nmsdedec = doRateControl ? &nmsedec : nullptr;
 	double tempwmsedec;
 
-	mqcPtr->lut_ctxno_zc_orient = lut_ctxno_zc + (orient << 9);
+	mqc->lut_ctxno_zc_orient = lut_ctxno_zc + (orient << 9);
 	cblk->numbps = 0;
 	if (max) {
 		uint32_t temp = floorlog2<uint32_t>(max) + 1;
@@ -757,8 +737,8 @@ double T1::compress_cblk(cblk_enc *cblk, uint32_t max,
 	bpno = (int32_t) (cblk->numbps - 1);
 	passtype = 2;
 
-	mqc_resetstates(mqcPtr);
-	mqc_init_enc(mqcPtr, cblk->data);
+	mqc_resetstates(mqc);
+	mqc_init_enc(mqc, cblk->data);
 
 	double cumwmsedec = 0.0;
 	for (passno = 0; bpno >= 0; ++passno) {
@@ -770,22 +750,22 @@ double T1::compress_cblk(cblk_enc *cblk, uint32_t max,
 		/* If the previous pass was terminating, we need to reset the compressor */
 		if (passno > 0 && cblk->passes[passno - 1].term) {
 			if (type == T1_TYPE_RAW)
-				mqc_bypass_init_enc(mqcPtr);
+				mqc_bypass_init_enc(mqc);
 			else
-				mqc_restart_init_enc(mqcPtr);
+				mqc_restart_init_enc(mqc);
 		}
 
 		switch (passtype) {
 		case 0:
-		 enc_sigpass(this, bpno, p_nmsdedec, type, cblksty);
+		 enc_sigpass(bpno, p_nmsdedec, type, cblksty);
 			break;
 		case 1:
-		 enc_refpass(this, bpno, p_nmsdedec, type);
+		 enc_refpass(bpno, p_nmsdedec, type);
 			break;
 		case 2:
-		 enc_clnpass(this, bpno,p_nmsdedec, cblksty);
+		 enc_clnpass(bpno,p_nmsdedec, cblksty);
 			if (cblksty & GRK_CBLKSTY_SEGSYM)
-				mqc_segmark_enc(mqcPtr);
+				mqc_segmark_enc(mqc);
 			break;
 		}
 
@@ -798,15 +778,15 @@ double T1::compress_cblk(cblk_enc *cblk, uint32_t max,
 
 		if (enc_is_term_pass(cblk, cblksty, bpno, passtype)) {
 			if (type == T1_TYPE_RAW) {
-				mqc_bypass_flush_enc(mqcPtr, cblksty & GRK_CBLKSTY_PTERM);
+				mqc_bypass_flush_enc(mqc, cblksty & GRK_CBLKSTY_PTERM);
 			} else {
 				if (cblksty & GRK_CBLKSTY_PTERM)
-					mqc_erterm_enc(mqcPtr);
+					mqc_erterm_enc(mqc);
 				else
-					mqc_flush_enc(mqcPtr);
+					mqc_flush_enc(mqc);
 			}
 			pass->term = true;
-			pass->rate = mqc_numbytes_enc(mqcPtr);
+			pass->rate = mqc_numbytes_enc(mqc);
 		} else {
 			/* Non terminated pass */
 			// correction term is used for non-terminated passes,
@@ -819,29 +799,29 @@ double T1::compress_cblk(cblk_enc *cblk, uint32_t max,
 			// which is always 1 less than actual rate
 			uint32_t rate_extra_bytes;
 			if (type == T1_TYPE_RAW) {
-				rate_extra_bytes = mqc_bypass_get_extra_bytes_enc(mqcPtr,
+				rate_extra_bytes = mqc_bypass_get_extra_bytes_enc(mqc,
 						(cblksty & GRK_CBLKSTY_PTERM));
 			} else {
 				rate_extra_bytes = 4 + 1;
-				if (mqcPtr->ct < 5)
+				if (mqc->ct < 5)
 					rate_extra_bytes++;
 			}
 			pass->term = false;
-			pass->rate = mqc_numbytes_enc(mqcPtr) + rate_extra_bytes;
+			pass->rate = mqc_numbytes_enc(mqc) + rate_extra_bytes;
 		}
 		if (++passtype == 3) {
 			passtype = 0;
 			bpno--;
 		}
 		if (cblksty & GRK_CBLKSTY_RESET)
-			mqc_resetstates(mqcPtr);
+			mqc_resetstates(mqc);
 	}
 
 	cblk->numPassesTotal = passno;
 
 	if (cblk->numPassesTotal) {
 		/* Make sure that pass rates are increasing */
-		uint32_t last_pass_rate = mqc_numbytes_enc(mqcPtr);
+		uint32_t last_pass_rate = mqc_numbytes_enc(mqc);
 		for (passno = cblk->numPassesTotal; passno > 0;) {
 			auto *pass = &cblk->passes[--passno];
 			if (pass->rate > last_pass_rate)
@@ -895,12 +875,12 @@ double T1::compress_cblk(cblk_enc *cblk, uint32_t max,
     } \
 }
 
-static void dec_clnpass_step(T1 *t1, grk_flag *flagsp, int32_t *datap,
+void T1::dec_clnpass_step(grk_flag *flagsp, int32_t *datap,
 		int32_t oneplushalf, uint32_t ciorig, uint32_t ci, uint32_t vsc) {
 	uint32_t v;
-	auto mqc = &(t1->mqc);
+	auto mqc = &coder;
 
- dec_clnpass_step_macro(true, false, *flagsp, flagsp, t1->w + 2U, datap,
+ dec_clnpass_step_macro(true, false, *flagsp, flagsp, w + 2U, datap,
 			0, ciorig, ci, mqc, mqc->curctx, v, mqc->a, mqc->c, mqc->ct, oneplushalf,
 			vsc);
 }
@@ -911,7 +891,7 @@ static void dec_clnpass_step(T1 *t1, grk_flag *flagsp, int32_t *datap,
     uint32_t runlen; \
     uint32_t i, j, k; \
     const uint32_t l_w = w; \
-    auto mqc = &(t1->mqc); \
+    auto mqc = &(t1->coder); \
     auto data = t1->data; \
     auto flagsp = &t1->flags[flags_stride + 1]; \
  \
@@ -987,15 +967,15 @@ static void dec_clnpass_step(T1 *t1, grk_flag *flagsp, int32_t *datap,
     if( k < h ) { \
         for (i = 0; i < l_w; ++i, ++flagsp, ++data) { \
             for (j = 0; j < h - k; ++j) \
-                dec_clnpass_step(t1, flagsp, data + j * l_w, oneplushalf, j, 3*j, vsc); \
+                t1->dec_clnpass_step(flagsp, data + j * l_w, oneplushalf, j, 3*j, vsc); \
             *flagsp &= ~(T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3); \
         } \
     } \
 }
 
-static void dec_clnpass_check_segsym(T1 *t1, int32_t cblksty) {
+void T1::dec_clnpass_check_segsym(int32_t cblksty) {
 	if (cblksty & GRK_CBLKSTY_SEGSYM) {
-		auto mqc = &(t1->mqc);
+		auto mqc = &coder;
 		uint32_t v, v2;
 
 		mqc_setcurctx(mqc, T1_CTXNO_UNI);
@@ -1012,26 +992,26 @@ static void dec_clnpass_check_segsym(T1 *t1, int32_t cblksty) {
 	}
 }
 
-template <uint32_t w, uint32_t h, bool vsc> void dec_clnpass(T1 *t1, int32_t bpno) {
- dec_clnpass_internal(t1, bpno, vsc, w, h, w+2);
+template <uint32_t w, uint32_t h, bool vsc> void T1::dec_clnpass(int32_t bpno) {
+ dec_clnpass_internal(this, bpno, vsc, w, h, w+2);
 }
 
-static void dec_clnpass(T1 *t1, int32_t bpno, int32_t cblksty) {
-	if (t1->w == 64 && t1->h == 64) {
+void T1::dec_clnpass(int32_t bpno, int32_t cblksty) {
+	if (w == 64 && h == 64) {
 		if (cblksty & GRK_CBLKSTY_VSC)
-		 dec_clnpass<64,64,true>(t1, bpno);
+		 dec_clnpass<64,64,true>(bpno);
 		else
-		 dec_clnpass<64,64,false>(t1, bpno);
+		 dec_clnpass<64,64,false>(bpno);
 	} else {
-	 dec_clnpass_internal(t1, bpno, cblksty & GRK_CBLKSTY_VSC,t1->w,t1->h,t1->w+2);
+		dec_clnpass_internal(this, bpno, cblksty & GRK_CBLKSTY_VSC,w,h,w+2);
 	}
- dec_clnpass_check_segsym(t1, cblksty);
+    dec_clnpass_check_segsym(cblksty);
 }
 
 
-static INLINE void dec_sigpass_step_raw(T1 *t1, grk_flag *flagsp,
+inline void T1::dec_sigpass_step_raw(grk_flag *flagsp,
 		int32_t *datap, int32_t oneplushalf, uint32_t vsc, uint32_t ci) {
-	auto mqc = &(t1->mqc);
+	auto mqc = &(coder);
 	uint32_t const flags = *flagsp;
 
 	if ((flags & ((T1_SIGMA_THIS | T1_PI_THIS) << (ci))) == 0U
@@ -1039,7 +1019,7 @@ static INLINE void dec_sigpass_step_raw(T1 *t1, grk_flag *flagsp,
 		if (mqc_raw_decode(mqc)) {
 			uint32_t v = mqc_raw_decode(mqc);
 			*datap = v ? -oneplushalf : oneplushalf;
-		 update_flags(flagsp, ci, v, t1->w + 2, vsc);
+		 update_flags(flagsp, ci, v, w + 2, vsc);
 		}
 		*flagsp |= T1_PI_THIS << (ci);
 	}
@@ -1071,52 +1051,51 @@ static INLINE void dec_sigpass_step_raw(T1 *t1, grk_flag *flagsp,
     } \
 }
 
-static INLINE void dec_sigpass_step_mqc(T1 *t1, grk_flag *flagsp,
-											int32_t *datap, int32_t oneplushalf,
-											uint32_t ci, uint32_t flags_stride,
-											uint32_t vsc) {
+inline void T1::dec_sigpass_step_mqc(grk_flag *flagsp,
+								int32_t *datap, int32_t oneplushalf,
+								uint32_t ci, uint32_t flags_stride,
+								uint32_t vsc) {
 	uint32_t v;
-	auto mqc = &(t1->mqc);
+	auto mqc = &(coder);
 
  dec_sigpass_step_mqc_macro(*flagsp, flagsp, flags_stride, datap, 0, ci, 3*ci,
 			mqc, mqc->curctx, v, mqc->a, mqc->c, mqc->ct, oneplushalf, vsc);
 }
 
-
-static void dec_sigpass_raw(T1 *t1, int32_t bpno, int32_t cblksty) {
+void T1::dec_sigpass_raw(int32_t bpno, int32_t cblksty) {
 	int32_t one, half, oneplushalf;
-	auto data = t1->data;
-	auto flagsp = &T1_FLAGS(0, 0);
-	const uint32_t l_w = t1->w;
+	auto flagsp = flags + 1 + (w+2);
+	const uint32_t l_w = w;
+	auto dataPtr = data;
 
 	one = 1 << bpno;
 	half = one >> 1;
 	oneplushalf = one | half;
 
 	uint32_t k;
-	for (k = 0; k < (t1->h & ~3U); k += 4, flagsp += 2, data += 3 * l_w) {
-		for (uint32_t i = 0; i < l_w; ++i, ++flagsp, ++data) {
+	for (k = 0; k < (h & ~3U); k += 4, flagsp += 2, dataPtr += 3 * l_w) {
+		for (uint32_t i = 0; i < l_w; ++i, ++flagsp, ++dataPtr) {
 			grk_flag flags = *flagsp;
 			if (flags != 0) {
-			 dec_sigpass_step_raw(t1, flagsp, data, oneplushalf,
+			 dec_sigpass_step_raw(flagsp, dataPtr, oneplushalf,
 						cblksty & GRK_CBLKSTY_VSC,
 						0U);
-			 dec_sigpass_step_raw(t1, flagsp, data + l_w, oneplushalf,
+			 dec_sigpass_step_raw(flagsp, dataPtr + l_w, oneplushalf,
 						false,
 						3U);
-			 dec_sigpass_step_raw(t1, flagsp, data + 2 * l_w, oneplushalf,
+			 dec_sigpass_step_raw(flagsp, dataPtr + 2 * l_w, oneplushalf,
 						false,
 						6U);
-			 dec_sigpass_step_raw(t1, flagsp, data + 3 * l_w, oneplushalf,
+			 dec_sigpass_step_raw(flagsp, dataPtr + 3 * l_w, oneplushalf,
 						false,
 						9U);
 			}
 		}
 	}
-	if (k < t1->h) {
-		for (uint32_t i = 0; i < l_w; ++i, ++flagsp, ++data) {
-			for (uint32_t j = 0; j < t1->h - k; ++j) {
-			 dec_sigpass_step_raw(t1, flagsp, data + j * l_w, oneplushalf,
+	if (k < h) {
+		for (uint32_t i = 0; i < l_w; ++i, ++flagsp, ++dataPtr) {
+			for (uint32_t j = 0; j < h - k; ++j) {
+			 dec_sigpass_step_raw(flagsp, dataPtr + j * l_w, oneplushalf,
 						cblksty & GRK_CBLKSTY_VSC,
 						3*j);
 			}
@@ -1124,35 +1103,35 @@ static void dec_sigpass_raw(T1 *t1, int32_t bpno, int32_t cblksty) {
 	}
 }
 
-#define dec_sigpass_mqc_internal(t1, bpno, vsc, w, h, flags_stride) \
+#define dec_sigpass_mqc_internal(bpno, vsc, w, h, flags_stride) \
 { \
         int32_t one, half, oneplushalf; \
         uint32_t i, j, k; \
-        auto data = t1->data; \
-        auto flagsp = &t1->flags[(flags_stride) + 1]; \
+        auto dataPtr = data; \
+        auto flagsp = &flags[(flags_stride) + 1]; \
         const uint32_t l_w = w; \
-        auto mqc = &(t1->mqc); \
+        auto mqc = &(coder); \
   \
         DOWNLOAD_MQC_VARIABLES(mqc); \
         uint32_t v; \
         one = 1 << bpno; \
         half = one >> 1; \
         oneplushalf = one | half; \
-        for (k = 0; k < (h & ~3u); k += 4, data += 3*l_w, flagsp += 2) { \
-                for (i = 0; i < l_w; ++i, ++data, ++flagsp) { \
+        for (k = 0; k < (h & ~3u); k += 4, dataPtr += 3*l_w, flagsp += 2) { \
+                for (i = 0; i < l_w; ++i, ++dataPtr, ++flagsp) { \
                         grk_flag flags = *flagsp; \
                         if( flags != 0 ) { \
                             dec_sigpass_step_mqc_macro( \
-                                flags, flagsp, flags_stride, data, \
+                                flags, flagsp, flags_stride, dataPtr, \
                                 l_w, 0,0, mqc, curctx, v, a, c, ct, oneplushalf, vsc); \
                             dec_sigpass_step_mqc_macro( \
-                                flags, flagsp, flags_stride, data, \
+                                flags, flagsp, flags_stride, dataPtr, \
                                 l_w, 1,3, mqc, curctx, v, a, c, ct, oneplushalf, false); \
                             dec_sigpass_step_mqc_macro( \
-                                flags, flagsp, flags_stride, data, \
+                                flags, flagsp, flags_stride, dataPtr, \
                                 l_w, 2,6, mqc, curctx, v, a, c, ct, oneplushalf, false); \
                             dec_sigpass_step_mqc_macro( \
-                                flags, flagsp, flags_stride, data, \
+                                flags, flagsp, flags_stride, dataPtr, \
                                 l_w, 3, 9, mqc, curctx, v, a, c, ct, oneplushalf, false); \
                             *flagsp = flags; \
                         } \
@@ -1160,32 +1139,32 @@ static void dec_sigpass_raw(T1 *t1, int32_t bpno, int32_t cblksty) {
         } \
         UPLOAD_MQC_VARIABLES(mqc, curctx); \
         if( k < h ) { \
-            for (i = 0; i < l_w; ++i, ++data, ++flagsp) { \
+            for (i = 0; i < l_w; ++i, ++dataPtr, ++flagsp) { \
                 for (j = 0; j < h - k; ++j) { \
-                        dec_sigpass_step_mqc(t1, flagsp, \
-                            data + j * l_w, oneplushalf, j, flags_stride, vsc); \
+                        dec_sigpass_step_mqc(flagsp, \
+                        		dataPtr + j * l_w, oneplushalf, j, flags_stride, vsc); \
                 } \
             } \
         } \
 }
 
-static void dec_sigpass_mqc(T1 *t1, int32_t bpno, int32_t cblksty) {
-	if (t1->w == 64 && t1->h == 64) {
+void T1::dec_sigpass_mqc(int32_t bpno, int32_t cblksty) {
+	if (w == 64 && h == 64) {
 		if (cblksty & GRK_CBLKSTY_VSC){
-		 dec_sigpass_mqc_internal(t1, bpno, true, 64, 64, 66);
+		 dec_sigpass_mqc_internal(bpno, true, 64, 64, 66);
 		}
 		else {
-		 dec_sigpass_mqc_internal(t1, bpno, false, 64, 64, 66);
+		 dec_sigpass_mqc_internal(bpno, false, 64, 64, 66);
 		}
 	} else {
-	 dec_sigpass_mqc_internal(t1, bpno, cblksty & GRK_CBLKSTY_VSC, t1->w, t1->h, t1->w + 2U);
+	 dec_sigpass_mqc_internal(bpno, cblksty & GRK_CBLKSTY_VSC, w, h, w + 2U);
 	}
 }
 
 
-static INLINE void dec_refpass_step_raw(T1 *t1, grk_flag *flagsp,
+inline void T1::dec_refpass_step_raw(grk_flag *flagsp,
 		int32_t *datap, int32_t poshalf, uint32_t ci) {
-	auto mqc = &(t1->mqc);
+	auto mqc = &(coder);
 
 	if ((*flagsp & ((T1_SIGMA_THIS | T1_PI_THIS) << (ci)))
 			== (T1_SIGMA_THIS << (ci))) {
@@ -1208,72 +1187,71 @@ static INLINE void dec_refpass_step_raw(T1 *t1, grk_flag *flagsp,
     } \
 }
 
-static INLINE void dec_refpass_step_mqc(T1 *t1, grk_flag *flagsp,
+inline void T1::dec_refpass_step_mqc(mqcoder *mqc, grk_flag *flagsp,
 											int32_t *datap, int32_t poshalf, uint32_t ci) {
 	uint32_t v;
-	auto mqc = &(t1->mqc);
  dec_refpass_step_mqc_macro(*flagsp, datap, 0, ci, ci*3, mqc, mqc->curctx, v,
 			mqc->a, mqc->c, mqc->ct, poshalf);
 }
 
-static void dec_refpass_raw(T1 *t1, int32_t bpno) {
+void T1::dec_refpass_raw(int32_t bpno) {
 	int32_t one, poshalf;
-	auto data = t1->data;
-	auto flagsp = &T1_FLAGS(0, 0);
-	const uint32_t l_w = t1->w;
+	auto dataPtr = data;
+	auto flagsp = flags + 1 + (w+2);
+	const uint32_t l_w = w;
 
 	one = 1 << bpno;
 	poshalf = one >> 1;
 	uint32_t k;
-	for (k = 0; k < (t1->h & ~3U); k += 4, flagsp += 2, data += 3 * l_w) {
-		for (uint32_t i = 0; i < l_w; ++i, ++flagsp, ++data) {
+	for (k = 0; k < (h & ~3U); k += 4, flagsp += 2, dataPtr += 3 * l_w) {
+		for (uint32_t i = 0; i < l_w; ++i, ++flagsp, ++dataPtr) {
 			grk_flag flags = *flagsp;
 			if (flags != 0) {
-			 dec_refpass_step_raw(t1, flagsp, data, poshalf, 0U);
-			 dec_refpass_step_raw(t1, flagsp, data + l_w, poshalf, 3U);
-			 dec_refpass_step_raw(t1, flagsp, data + 2 * l_w, poshalf,
+			 dec_refpass_step_raw(flagsp, dataPtr, poshalf, 0U);
+			 dec_refpass_step_raw(flagsp, dataPtr + l_w, poshalf, 3U);
+			 dec_refpass_step_raw(flagsp, dataPtr + 2 * l_w, poshalf,
 						6U);
-			 dec_refpass_step_raw(t1, flagsp, data + 3 * l_w, poshalf,
+			 dec_refpass_step_raw(flagsp, dataPtr + 3 * l_w, poshalf,
 						9U);
 			}
 		}
 	}
-	if (k < t1->h) {
-		for (uint32_t i = 0; i < l_w; ++i, ++flagsp, ++data) {
-			for (uint32_t j = 0; j < t1->h - k; ++j)
-			 dec_refpass_step_raw(t1, flagsp, data + j * l_w, poshalf, 3*j);
+	if (k < h) {
+		for (uint32_t i = 0; i < l_w; ++i, ++flagsp, ++dataPtr) {
+			for (uint32_t j = 0; j < h - k; ++j)
+			 dec_refpass_step_raw(flagsp, dataPtr + j * l_w, poshalf, 3*j);
 		}
 	}
 }
 
-#define dec_refpass_mqc_internal(t1, bpno, w, h, flags_stride) \
+#define dec_refpass_mqc_internal(bpno, w, h, flags_stride) \
 { \
         int32_t one, poshalf; \
         uint32_t i, j, k; \
-        auto data = t1->data; \
-        auto flagsp = &t1->flags[flags_stride + 1]; \
+        auto dataPtr = data; \
+        auto flagsp = &flags[flags_stride + 1]; \
         const uint32_t l_w = w; \
-        auto mqc = &(t1->mqc); \
+        auto mqc = &(coder); \
  \
         DOWNLOAD_MQC_VARIABLES(mqc); \
         uint32_t v; \
         one = 1 << bpno; \
         poshalf = one >> 1; \
-        for (k = 0; k < (h & ~3u); k += 4, data += 3*l_w, flagsp += 2) { \
-                for (i = 0; i < l_w; ++i, ++data, ++flagsp) { \
+        for (k = 0; k < (h & ~3u); k += 4, dataPtr += 3*l_w, flagsp += 2) { \
+                for (i = 0; i < l_w; ++i, ++dataPtr, ++flagsp) { \
                         grk_flag flags = *flagsp; \
                         if( flags != 0 ) { \
                             dec_refpass_step_mqc_macro( \
-                                flags, data, l_w, 0,0, \
+                                flags, dataPtr, l_w, 0,0, \
                                 mqc, curctx, v, a, c, ct, poshalf); \
                             dec_refpass_step_mqc_macro( \
-                                flags, data, l_w, 1,3, \
+                                flags, dataPtr, l_w, 1,3, \
                                 mqc, curctx, v, a, c, ct, poshalf); \
                             dec_refpass_step_mqc_macro( \
-                                flags, data, l_w, 2,6, \
+                                flags, dataPtr, l_w, 2,6, \
                                 mqc, curctx, v, a, c, ct, poshalf); \
                             dec_refpass_step_mqc_macro( \
-                                flags, data, l_w, 3,9, \
+                                flags, dataPtr, l_w, 3,9, \
                                 mqc, curctx, v, a, c, ct, poshalf); \
                             *flagsp = flags; \
                         } \
@@ -1281,29 +1259,29 @@ static void dec_refpass_raw(T1 *t1, int32_t bpno) {
         } \
         UPLOAD_MQC_VARIABLES(mqc, curctx); \
         if( k < h ) { \
-            for (i = 0; i < l_w; ++i, ++data, ++flagsp) { \
+            for (i = 0; i < l_w; ++i, ++dataPtr, ++flagsp) { \
                 for (j = 0; j < h - k; ++j) { \
-                        dec_refpass_step_mqc(t1, flagsp, data + j * l_w, poshalf, j); \
+                        dec_refpass_step_mqc(mqc, flagsp, dataPtr + j * l_w, poshalf, j); \
                 } \
             } \
         } \
 }
 
-static void dec_refpass_mqc(T1 *t1, int32_t bpno) {
-	if (t1->w == 64 && t1->h == 64) {
-	 dec_refpass_mqc_internal(t1, bpno, 64, 64, 66);
+void T1::dec_refpass_mqc(int32_t bpno) {
+	if (w == 64 && h == 64) {
+	 dec_refpass_mqc_internal(bpno, 64, 64, 66);
 	} else {
-	 dec_refpass_mqc_internal(t1, bpno, t1->w, t1->h, t1->w + 2U);
+	 dec_refpass_mqc_internal(bpno, w, h, w + 2U);
 	}
 }
 
 bool T1::decompress_cblk(cblk_dec *cblk, uint32_t orient,
 		uint32_t roishift, uint32_t cblksty) {
-	auto mqcPtr = &(mqc);
+	auto mqc = &coder;
 	uint32_t cblkdataindex = 0;
 	bool check_pterm = cblksty & GRK_CBLKSTY_PTERM;
 
-	mqcPtr->lut_ctxno_zc_orient = lut_ctxno_zc + (orient << 9);
+	mqc->lut_ctxno_zc_orient = lut_ctxno_zc + (orient << 9);
 
 	if (!allocate_buffers((uint32_t) (cblk->x1 - cblk->x0),
 							(uint32_t) (cblk->y1 - cblk->y0)))
@@ -1318,7 +1296,7 @@ bool T1::decompress_cblk(cblk_dec *cblk, uint32_t orient,
 	}
 	uint32_t passtype = 2;
 
-	mqc_resetstates(mqcPtr);
+	mqc_resetstates(mqc);
 	auto cblkdata = cblk->seg_buffers[0].buf;
 
 	for (uint32_t segno = 0; segno < cblk->numSegments; ++segno) {
@@ -1330,9 +1308,9 @@ bool T1::decompress_cblk(cblk_dec *cblk, uint32_t orient,
 				T1_TYPE_RAW : T1_TYPE_MQ;
 
 		if (type == T1_TYPE_RAW) {
-			mqc_raw_init_dec(mqcPtr, cblkdata + cblkdataindex, seg->len);
+			mqc_raw_init_dec(mqc, cblkdata + cblkdataindex, seg->len);
 		} else {
-			mqc_init_dec(mqcPtr, cblkdata + cblkdataindex, seg->len);
+			mqc_init_dec(mqc, cblkdata + cblkdataindex, seg->len);
 		}
 		cblkdataindex += seg->len;
 
@@ -1342,42 +1320,42 @@ bool T1::decompress_cblk(cblk_dec *cblk, uint32_t orient,
 			switch (passtype) {
 			case 0:
 				if (type == T1_TYPE_RAW)
-				 dec_sigpass_raw(this, bpno_plus_one, (int32_t) cblksty);
+				 dec_sigpass_raw(bpno_plus_one, (int32_t) cblksty);
 				else
-				 dec_sigpass_mqc(this, bpno_plus_one, (int32_t) cblksty);
+				 dec_sigpass_mqc(bpno_plus_one, (int32_t) cblksty);
 				break;
 			case 1:
 				if (type == T1_TYPE_RAW)
-				 dec_refpass_raw(this, bpno_plus_one);
+				 dec_refpass_raw(bpno_plus_one);
 				else
-				 dec_refpass_mqc(this, bpno_plus_one);
+				 dec_refpass_mqc(bpno_plus_one);
 				break;
 			case 2:
-			 dec_clnpass(this, bpno_plus_one, (int32_t) cblksty);
+			 dec_clnpass(bpno_plus_one, (int32_t) cblksty);
 				break;
 			}
 
 			if ((cblksty & GRK_CBLKSTY_RESET) && type == T1_TYPE_MQ)
-				mqc_resetstates(mqcPtr);
+				mqc_resetstates(mqc);
 			if (++passtype == 3) {
 				passtype = 0;
 				bpno_plus_one--;
 			}
 		}
-		mqc_finish_dec(mqcPtr);
+		mqc_finish_dec(mqc);
 	}
 
 	if (check_pterm) {
-		if (mqcPtr->bp + 2 < mqcPtr->end) {
+		if (mqc->bp + 2 < mqc->end) {
 			grk::GRK_WARN(
 					"PTERM check failure: %u remaining bytes in code block (%u used / %u)",
-					(int) (mqcPtr->end - mqcPtr->bp) - 2,
-					(int) (mqcPtr->bp - mqcPtr->start),
-					(int) (mqcPtr->end - mqcPtr->start));
-		} else if (mqcPtr->end_of_byte_stream_counter > 2) {
+					(int) (mqc->end - mqc->bp) - 2,
+					(int) (mqc->bp - mqc->start),
+					(int) (mqc->end - mqc->start));
+		} else if (mqc->end_of_byte_stream_counter > 2) {
 			grk::GRK_WARN(
 					"PTERM check failure: %u synthesized 0xFF markers read",
-					mqcPtr->end_of_byte_stream_counter);
+					mqc->end_of_byte_stream_counter);
 		}
 	}
 

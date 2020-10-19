@@ -28,41 +28,44 @@ namespace grk {
 /** Flags for 4 consecutive rows of a column */
 typedef uint32_t grk_flag;
 
-#define T1_NUMCTXS_ZC  9
-#define T1_NUMCTXS_SC  5
-#define T1_NUMCTXS_MAG 3
-#define T1_NUMCTXS_AGG 1
-#define T1_NUMCTXS_UNI 1
-
-#define T1_CTXNO_ZC  0
-#define T1_CTXNO_SC  (T1_CTXNO_ZC+T1_NUMCTXS_ZC)
-#define T1_CTXNO_MAG (T1_CTXNO_SC+T1_NUMCTXS_SC)
-#define T1_CTXNO_AGG (T1_CTXNO_MAG+T1_NUMCTXS_MAG)
-#define T1_CTXNO_UNI (T1_CTXNO_AGG+T1_NUMCTXS_AGG)
-#define T1_NUMCTXS   (T1_CTXNO_UNI+T1_NUMCTXS_UNI)
-
-
 struct T1 {
 
 	T1(bool isEncoder, uint32_t maxCblkW,	uint32_t maxCblkH);
 	~T1();
 
 	bool decompress_cblk(cblk_dec *cblk,
-					uint32_t orient, uint32_t roishift, uint32_t cblksty);
+						uint32_t orient,
+						uint32_t roishift,
+						uint32_t cblksty);
 	void code_block_enc_deallocate(cblk_enc *p_code_block);
 	bool allocate_buffers(uint32_t w, uint32_t h);
 	double compress_cblk(cblk_enc *cblk,
-					uint32_t max,
-					uint8_t orient, uint32_t compno, uint32_t level,
-					uint32_t qmfbid, double stepsize, uint32_t cblksty,
-					const double *mct_norms,
-					uint32_t mct_numcomps, bool doRateControl);
-
+							uint32_t max,
+							uint8_t orient,
+							uint32_t compno,
+							uint32_t level,
+							uint32_t qmfbid,
+							double stepsize,
+							uint32_t cblksty,
+							const double *mct_norms,
+							uint32_t mct_numcomps,
+							bool doRateControl);
 
 	/** MQC component */
-	mqcoder mqc;
+	mqcoder coder;
 
 	int32_t *data;
+	uint32_t w;
+	uint32_t h;
+	uint32_t data_stride;
+	/* Temporary buffer to concatenate all chunks of a codebock */
+	uint8_t *cblkdatabuffer;
+	/* Maximum size available in cblkdatabuffer */
+	uint32_t cblkdatabuffersize;
+
+
+private:
+
 	/** Flags used by decompressor and compressor.
 	 * Such that flags[1+0] is for state of col=0,row=0..3,
 	 flags[1+1] for col=1, row=0..3, flags[1+flags_stride] for col=0,row=4..7, ...
@@ -70,19 +73,58 @@ struct T1 {
 	 as done in the various decoding steps. */
 	grk_flag *flags;
 
-	uint32_t w;
-	uint32_t h;
 	uint32_t datasize;
 	uint32_t flagssize;
-	uint32_t data_stride;
 	bool compressor;
 
-	/* Temporary buffer to concatenate all chunks of a codebock */
-	uint8_t *cblkdatabuffer;
-	/* Maximum size available in cblkdatabuffer */
-	uint32_t cblkdatabuffersize;
+	template <uint32_t w, uint32_t h, bool vsc> void dec_clnpass(int32_t bpno);
+	void  dec_clnpass_step(grk_flag *flagsp,
+							int32_t *datap,
+							int32_t oneplushalf,
+							uint32_t ciorig,
+							uint32_t ci,
+							uint32_t vsc);
+	void dec_clnpass(int32_t bpno, int32_t cblksty);
+	void dec_clnpass_check_segsym(int32_t cblksty);
+	void dec_sigpass_raw(int32_t bpno, int32_t cblksty);
+	void dec_refpass_raw(int32_t bpno);
+	void dec_sigpass_mqc(int32_t bpno, int32_t cblksty);
+	void dec_refpass_mqc(int32_t bpno);
+	inline void	 dec_refpass_step_raw(grk_flag *flagsp,
+									int32_t *datap,
+									int32_t poshalf,
+									uint32_t ci);
+	inline void  dec_refpass_step_mqc(mqcoder *mqc,
+										grk_flag *flagsp,
+										int32_t *datap,
+										int32_t poshalf,
+										uint32_t ci);
+	inline void  dec_sigpass_step_raw(grk_flag *flagsp,
+										int32_t *datap,
+										int32_t oneplushalf,
+											uint32_t vsc,
+											uint32_t ci);
+	inline void  dec_sigpass_step_mqc( grk_flag *flagsp,
+										int32_t *datap,
+										int32_t oneplushalf,
+										uint32_t ci,
+										uint32_t flags_stride,
+										uint32_t vsc);
+	void enc_clnpass(int32_t bpno,
+					int32_t *nmsedec,
+					uint32_t cblksty);
+	void enc_sigpass(int32_t bpno,
+					int32_t *nmsedec,
+					uint8_t type,
+					uint32_t cblksty);
+	void  enc_refpass(int32_t bpno,
+						int32_t *nmsedec,
+						uint8_t type);
+	int enc_is_term_pass(cblk_enc *cblk,
+						uint32_t cblksty,
+						int32_t bpno,
+						uint32_t passtype);
+	bool code_block_enc_allocate(cblk_enc *p_code_block);
 };
-
-
 
 }
