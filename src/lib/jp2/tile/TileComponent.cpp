@@ -33,8 +33,7 @@ TileComponent::TileComponent() :resolutions(nullptr),
 							   whole_tile_decoding(true),
 							   m_is_encoder(false),
 							   buf(nullptr),
-							   m_tccp(nullptr),
-							   region(nullptr)
+							   m_tccp(nullptr)
 {}
 
 TileComponent::~TileComponent(){

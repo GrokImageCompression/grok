@@ -66,8 +66,6 @@ private:
 	TileComponentBuffer<int32_t> *buf;
 	TileComponentCodingParams *m_tccp;
 
-	TileComponentRegion *region;
-
 };
 
 }
