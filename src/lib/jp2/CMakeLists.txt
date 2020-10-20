@@ -153,10 +153,6 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/dwt.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/dwt.h
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletForward.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/dwt53.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/dwt53.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/dwt97.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/dwt97.h
 
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Structs.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Structs.cpp  
