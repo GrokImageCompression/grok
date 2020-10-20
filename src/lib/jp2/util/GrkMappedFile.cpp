@@ -182,7 +182,7 @@ static int32_t close_fd(grk_handle fd) {
 
 static void mem_map_free(void *user_data) {
 	if (user_data) {
-		buf_info *buffer_info = (buf_info*) user_data;
+		MemStream *buffer_info = (MemStream*) user_data;
 		int32_t rc = unmap(buffer_info->buf, buffer_info->len);
 		if (rc)
 			GRK_ERROR("Unmapping memory mapped file failed with error %u", rc);
@@ -200,24 +200,24 @@ grk_stream* create_mapped_file_read_stream(const char *fname) {
 		return nullptr;
 	}
 
-	auto buffer_info = new buf_info();
-	buffer_info->fd = fd;
-	buffer_info->len = (size_t) size_proc(fd);
-	auto mapped_view = grk_map(fd, buffer_info->len, true);
+	auto memStream = new MemStream();
+	memStream->fd = fd;
+	memStream->len = (size_t) size_proc(fd);
+	auto mapped_view = grk_map(fd, memStream->len, true);
 	if (!mapped_view) {
 		GRK_ERROR("Unable to map memory mapped file %s", fname);
-		mem_map_free(buffer_info);
+		mem_map_free(memStream);
 		return nullptr;
 	}
-	buffer_info->buf = (uint8_t*) mapped_view;
-	buffer_info->off = 0;
+	memStream->buf = (uint8_t*) mapped_view;
+	memStream->off = 0;
 
 	// now treat mapped file like any other memory stream
-	auto l_stream = (grk_stream*) (new BufferedStream(buffer_info->buf,
-			buffer_info->len, true));
-	grk_stream_set_user_data(l_stream, buffer_info,
+	auto l_stream = (grk_stream*) (new BufferedStream(memStream->buf,
+			memStream->len, true));
+	grk_stream_set_user_data(l_stream, memStream,
 			(grk_stream_free_user_data_fn) mem_map_free);
-	set_up_mem_stream(l_stream, buffer_info->len, true);
+	set_up_mem_stream(l_stream, memStream->len, true);
 
 	return l_stream;
 }
@@ -232,23 +232,23 @@ grk_stream* create_mapped_file_write_stream(const char *fname) {
 		return nullptr;
 	}
 
-	auto buffer_info = new buf_info();
-	buffer_info->fd = fd;
-	auto mapped_view = grk_map(fd, buffer_info->len, false);
+	auto memStream = new MemStream();
+	memStream->fd = fd;
+	auto mapped_view = grk_map(fd, memStream->len, false);
 	if (!mapped_view) {
 		GRK_ERROR("Unable to map memory mapped file %s", fname);
-		mem_map_free(buffer_info);
+		mem_map_free(memStream);
 		return nullptr;
 	}
-	buffer_info->buf = (uint8_t*) mapped_view;
-	buffer_info->off = 0;
+	memStream->buf = (uint8_t*) mapped_view;
+	memStream->off = 0;
 
 	// now treat mapped file like any other memory stream
-	auto l_stream = (grk_stream*) (new BufferedStream(buffer_info->buf,
-			buffer_info->len, true));
-	grk_stream_set_user_data(l_stream, buffer_info,
+	auto l_stream = (grk_stream*) (new BufferedStream(memStream->buf,
+			memStream->len, true));
+	grk_stream_set_user_data(l_stream, memStream,
 			(grk_stream_free_user_data_fn) mem_map_free);
-	set_up_mem_stream(l_stream, buffer_info->len, false);
+	set_up_mem_stream(l_stream, memStream->len, false);
 
 	return l_stream;
 }

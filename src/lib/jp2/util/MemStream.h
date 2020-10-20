@@ -24,19 +24,17 @@ typedef void* grk_handle;
 typedef int32_t grk_handle;
 #endif
 
-struct buf_info {
-	buf_info(uint8_t *buffer, size_t offset, size_t length, bool owns) :	buf(buffer),
-																		off(offset),
-																		len(length),
-																		fd(0),
-																		ownsBuffer(owns)
-	{}
-	buf_info() : buf_info(nullptr, 0, 0, false) {
-	}
-	~buf_info() {
-		if (ownsBuffer)
-			delete[] buf;
-	}
+/*
+ * Callback function prototype for zero copy read function
+ */
+typedef size_t (*grk_stream_zero_copy_read_fn)(void **p_buffer, size_t nb_bytes,
+		void *user_data);
+
+
+struct MemStream {
+	MemStream(uint8_t *buffer, size_t offset, size_t length, bool owns);
+	MemStream();
+	~MemStream() ;
 	uint8_t *buf;
 	size_t off;
 	size_t len;
@@ -49,12 +47,6 @@ void set_up_mem_stream(grk_stream *l_stream, size_t len,
 grk_stream  *  create_mem_stream(uint8_t *buf, size_t len, bool ownsBuffer,
 		bool is_read_stream);
 size_t get_mem_stream_offset( grk_stream  *stream);
-
-/*
- * Callback function prototype for zero copy read function
- */
-typedef size_t (*grk_stream_zero_copy_read_fn)(void **p_buffer, size_t nb_bytes,
-		void *user_data);
 
 
 }

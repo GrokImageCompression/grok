@@ -18,14 +18,27 @@
 
 namespace grk {
 
+MemStream::MemStream(uint8_t *buffer, size_t offset, size_t length, bool owns) :	buf(buffer),
+																	off(offset),
+																	len(length),
+																	fd(0),
+																	ownsBuffer(owns)
+{}
+MemStream::MemStream() : MemStream(nullptr, 0, 0, false)
+{}
+MemStream::~MemStream() {
+	if (ownsBuffer)
+		delete[] buf;
+}
+
 static void free_mem(void *user_data) {
-	auto data = (buf_info*) user_data;
+	auto data = (MemStream*) user_data;
 	if (data)
 		delete data;
 }
 
 static size_t zero_copy_read_from_mem(void **p_buffer, size_t nb_bytes,
-		buf_info *p_source_buffer) {
+		MemStream *p_source_buffer) {
 	size_t nb_read = 0;
 
 	if (((size_t) p_source_buffer->off + nb_bytes) < p_source_buffer->len)
@@ -39,7 +52,7 @@ static size_t zero_copy_read_from_mem(void **p_buffer, size_t nb_bytes,
 }
 
 static size_t read_from_mem(void *p_buffer, size_t nb_bytes,
-		buf_info *p_source_buffer) {
+		MemStream *p_source_buffer) {
 	size_t nb_read;
 
 	if (!p_buffer)
@@ -62,7 +75,7 @@ static size_t read_from_mem(void *p_buffer, size_t nb_bytes,
 	return nb_read;
 }
 
-static size_t write_to_mem(void *dest, size_t nb_bytes, buf_info *src) {
+static size_t write_to_mem(void *dest, size_t nb_bytes, MemStream *src) {
 	if (src->off + nb_bytes >= src->len)
 		return 0;
 
@@ -73,7 +86,7 @@ static size_t write_to_mem(void *dest, size_t nb_bytes, buf_info *src) {
 	return nb_bytes;
 }
 
-static bool seek_from_mem(uint64_t nb_bytes, buf_info *src) {
+static bool seek_from_mem(uint64_t nb_bytes, MemStream *src) {
 	if (nb_bytes < src->len)
 		src->off = nb_bytes;
 	else
@@ -114,10 +127,10 @@ void set_up_mem_stream(grk_stream *l_stream, size_t len, bool is_read_stream) {
 size_t get_mem_stream_offset(grk_stream *stream) {
 	if (!stream)
 		return 0;
-	auto private_stream = (BufferedStream*) stream;
-	if (!private_stream->m_user_data)
+	auto bufferedStream = (BufferedStream*) stream;
+	if (!bufferedStream->m_user_data)
 		return 0;
-	auto buf = (buf_info*) private_stream->m_user_data;
+	auto buf = (MemStream*) bufferedStream->m_user_data;
 
 	return buf->off;
 }
@@ -127,10 +140,10 @@ grk_stream* create_mem_stream(uint8_t *buf, size_t len, bool ownsBuffer,
 	if (!buf || !len) {
 		return nullptr;
 	}
+	auto memStream = new MemStream(buf, 0, len, ownsBuffer);
 	auto l_stream = new BufferedStream(buf, len, is_read_stream);
-	auto p_source_buffer = new buf_info(buf, 0, len, ownsBuffer);
-	grk_stream_set_user_data((grk_stream*) l_stream, p_source_buffer, free_mem);
-	set_up_mem_stream((grk_stream*) l_stream, p_source_buffer->len,
+	grk_stream_set_user_data((grk_stream*) l_stream, memStream, free_mem);
+	set_up_mem_stream((grk_stream*) l_stream, memStream->len,
 			is_read_stream);
 
 	return (grk_stream*) l_stream;
