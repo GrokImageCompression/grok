@@ -59,7 +59,7 @@ public:
 								uint32_t resno,
 								 uint8_t bandno,
 								TileComponentCodingParams *tccp,
-								uint32_t image_precision,
+								uint8_t image_precision,
 								bool compress);
 
 

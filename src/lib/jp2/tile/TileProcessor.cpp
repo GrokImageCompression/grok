@@ -703,9 +703,29 @@ bool TileProcessor::init_tile(grk_image *output_image,
 		if (image_comp->dx == 0 || image_comp->dy == 0)
 			return false;
 		auto tilec = tile->comps + compno;
-		if (!tilec->init(isEncoder, whole_tile_decoding, output_image, m_cp,
-				tcp, tile, image_comp, tcp->tccps + compno,
-				current_plugin_tile)) {
+		grk_rect_u32 unreduced_tile_comp_region_dims;
+		if (!isEncoder)
+		 unreduced_tile_comp_region_dims =
+				 grk_rect_u32(ceildiv<uint32_t>(output_image->x0, image_comp->dx),
+											ceildiv<uint32_t>(output_image->y0, image_comp->dy),
+											ceildiv<uint32_t>(output_image->x1, image_comp->dx),
+											ceildiv<uint32_t>(output_image->y1, image_comp->dy));
+
+		/* border of each tile component in tile component coordinates */
+		grk_rect_u32 unreduced_tile_comp_dims =
+						grk_rect_u32(ceildiv<uint32_t>(tile->x0, image_comp->dx),
+									ceildiv<uint32_t>(tile->y0, image_comp->dy),
+									ceildiv<uint32_t>(tile->x1, image_comp->dx),
+									ceildiv<uint32_t>(tile->y1, image_comp->dy));
+		if (!tilec->init(isEncoder,
+						whole_tile_decoding,
+						unreduced_tile_comp_dims,
+						unreduced_tile_comp_region_dims,
+						image_comp->prec,
+						m_cp,
+						tcp,
+						tcp->tccps + compno,
+						current_plugin_tile)) {
 			return false;
 		}
 	} /* compno */

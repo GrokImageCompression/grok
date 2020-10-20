@@ -32,14 +32,14 @@ struct TileComponent : public grk_rect_u32 {
 	TileComponent();
 	~TileComponent();
 
-	void create_buffer(	grk_image *output_image,uint32_t dx,uint32_t dy);
+	void create_buffer(bool isEncoder, grk_rect_u32 unreduced_tile_comp_region_dims);
 	bool init(bool isEncoder,
 			bool whole_tile,
-			grk_image *output_image,
+			grk_rect_u32 unreduced_tile_comp_dims,
+			grk_rect_u32 unreduced_tile_comp_region_dims,
+			uint8_t prec,
 			CodingParams *cp,
 			TileCodingParams *tcp,
-			grk_tile *tile,
-			grk_image_comp* image_comp,
 			TileComponentCodingParams* tccp,
 			grk_plugin_tile *current_plugin_tile);
 

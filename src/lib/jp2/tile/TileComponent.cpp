@@ -72,24 +72,17 @@ void TileComponent::release_mem(){
  */
 bool TileComponent::init(bool isEncoder,
 						bool whole_tile,
-						grk_image *output_image,
+						grk_rect_u32 unreduced_tile_comp_dims,
+						grk_rect_u32 unreduced_tile_comp_region_dims,
+						uint8_t prec,
 						CodingParams *cp,
 						TileCodingParams *tcp,
-						grk_tile* tile,
-						grk_image_comp* image_comp,
 						TileComponentCodingParams* tccp,
 						grk_plugin_tile *current_plugin_tile){
 	uint32_t state = grk_plugin_get_debug_state();
 	m_is_encoder = isEncoder;
 	whole_tile_decoding = whole_tile;
 	m_tccp = tccp;
-
-	/* border of each tile component in tile component coordinates */
-	auto x0 = ceildiv<uint32_t>(tile->x0, image_comp->dx);
-	auto y0 = ceildiv<uint32_t>(tile->y0, image_comp->dy);
-	auto x1 = ceildiv<uint32_t>(tile->x1, image_comp->dx);
-	auto y1 = ceildiv<uint32_t>(tile->y1, image_comp->dy);
-
 	numresolutions = m_tccp->numresolutions;
 	if (numresolutions < cp->m_coding_params.m_dec.m_reduce) {
 		resolutions_to_decompress = 1;
@@ -106,10 +99,9 @@ bool TileComponent::init(bool isEncoder,
 		--levelno;
 
 		/* border for each resolution level (global) */
-		res->x0 = ceildivpow2<uint32_t>(x0, levelno);
-		res->y0 = ceildivpow2<uint32_t>(y0, levelno);
-		res->x1 = ceildivpow2<uint32_t>(x1, levelno);
-		res->y1 = ceildivpow2<uint32_t>(y1, levelno);
+		auto dim = unreduced_tile_comp_dims;
+		*((grk_rect_u32*)res) = dim.rectceildivpow2(levelno);
+
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
 		uint32_t pdx = m_tccp->prcw[resno];
 		uint32_t pdy = m_tccp->prch[resno];
@@ -163,30 +155,27 @@ bool TileComponent::init(bool isEncoder,
 
 		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
 			auto band = res->bands + bandno;
+			auto tile_comp = unreduced_tile_comp_dims;
 			if (resno == 0) {
 				band->bandno = 0;
-				band->x0 = ceildivpow2<uint32_t>(x0, levelno);
-				band->y0 = ceildivpow2<uint32_t>(y0, levelno);
-				band->x1 = ceildivpow2<uint32_t>(x1, levelno);
-				band->y1 = ceildivpow2<uint32_t>(y1, levelno);
+				*((grk_rect_u32*)band) =  tile_comp.rectceildivpow2(levelno);
 			} else {
 				band->bandno = (uint8_t)(bandno + 1);
-				/* x0b = 1 if bandno = 1 or 3 */
-				uint32_t x0b = band->bandno & 1;
-				/* y0b = 1 if bandno = 2 or 3 */
-				uint32_t y0b = (uint32_t) ((band->bandno) >> 1);
+				uint32_t x0b = band->bandno & 1;  					/* x0b = 1 if bandno = 1 or 3 */
+				uint32_t y0b = (uint32_t) ((band->bandno) >> 1); 	/* y0b = 1 if bandno = 2 or 3 */
+
 				/* band border (global) */
-				band->x0 = uint64_ceildivpow2(x0 - ((uint64_t) x0b << levelno),	levelno + 1);
-				band->y0 = uint64_ceildivpow2(y0 - ((uint64_t) y0b << levelno),	levelno + 1);
-				band->x1 = uint64_ceildivpow2(x1 - ((uint64_t) x0b << levelno),	levelno + 1);
-				band->y1 = uint64_ceildivpow2(y1 - ((uint64_t) y0b << levelno),	levelno + 1);
+				band->x0 = uint64_ceildivpow2(tile_comp.x0 - ((uint64_t) x0b << levelno),	levelno + 1);
+				band->y0 = uint64_ceildivpow2(tile_comp.y0 - ((uint64_t) y0b << levelno),	levelno + 1);
+				band->x1 = uint64_ceildivpow2(tile_comp.x1 - ((uint64_t) x0b << levelno),	levelno + 1);
+				band->y1 = uint64_ceildivpow2(tile_comp.y1 - ((uint64_t) y0b << levelno),	levelno + 1);
 			}
 			tccp->quant.setBandStepSizeAndBps(tcp,
 											band,
 											resno,
 											(uint8_t)bandno,
 											tccp,
-											image_comp->prec,
+											prec,
 											m_is_encoder);
 
 			if (!band->precincts && (nb_precincts > 0U)) {
@@ -203,15 +192,14 @@ bool TileComponent::init(bool isEncoder,
 			band->numPrecincts = nb_precincts;
 			for (uint64_t precno = 0; precno < nb_precincts; ++precno) {
 				auto current_precinct = band->precincts + precno;
-				uint32_t cbgxstart 	= tlcbgxstart + (uint32_t)(precno % res->pw) * (1 << cbgwidthexpn);
-				uint32_t cbgystart 	= tlcbgystart + (uint32_t)(precno / res->pw) * (1 << cbgheightexpn);
-				uint32_t cbgxend 	= cbgxstart + (1 << cbgwidthexpn);
-				uint32_t cbgyend 	= cbgystart + (1 << cbgheightexpn);
+				uint32_t cbgxstart = tlcbgxstart + (uint32_t)(precno % res->pw) * (1 << cbgwidthexpn);
+				uint32_t cbgystart = tlcbgystart + (uint32_t)(precno / res->pw) * (1 << cbgheightexpn);
+				auto cbg = grk_rect_u32(cbgxstart,
+										cbgystart,
+										cbgxstart + (1 << cbgwidthexpn),
+										cbgystart + (1 << cbgheightexpn));
 
-				current_precinct->x0 = std::max<uint32_t>(cbgxstart,band->x0);
-				current_precinct->y0 = std::max<uint32_t>(cbgystart,band->y0);
-				current_precinct->x1 = std::min<uint32_t>(cbgxend,  band->x1);
-				current_precinct->y1 = std::min<uint32_t>(cbgyend,  band->y1);
+				*((grk_rect_u32*)current_precinct) = cbg.intersection(band);
 
 				uint32_t tlcblkxstart 	= uint_floordivpow2(current_precinct->x0,cblkwidthexpn) << cblkwidthexpn;
 				uint32_t tlcblkystart 	= uint_floordivpow2(current_precinct->y0,cblkheightexpn) << cblkheightexpn;
@@ -254,20 +242,18 @@ bool TileComponent::init(bool isEncoder,
 				for (uint64_t cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
 					uint32_t cblkxstart = tlcblkxstart	+ (uint32_t) (cblkno % current_precinct->cw)* (1 << cblkwidthexpn);
 					uint32_t cblkystart = tlcblkystart	+ (uint32_t) (cblkno / current_precinct->cw)* (1 << cblkheightexpn);
-					uint32_t cblkxend = cblkxstart + (1 << cblkwidthexpn);
-					uint32_t cblkyend = cblkystart + (1 << cblkheightexpn);
+					auto cblk_bounds = grk_rect_u32(cblkxstart,
+													cblkystart,
+													cblkxstart + (1 << cblkwidthexpn),
+													cblkystart + (1 << cblkheightexpn));
 
+					auto cblk_dims = (m_is_encoder) ?
+												(grk_rect_u32*)(current_precinct->enc + cblkno) :
+												(grk_rect_u32*)(current_precinct->dec + cblkno);
 					if (m_is_encoder) {
 						auto code_block = current_precinct->enc + cblkno;
-
 						if (!code_block->alloc())
 							return false;
-						/* code-block size (global) */
-						code_block->x0 = std::max<uint32_t>(cblkxstart,	current_precinct->x0);
-						code_block->y0 = std::max<uint32_t>(cblkystart,	current_precinct->y0);
-						code_block->x1 = std::min<uint32_t>(cblkxend,	current_precinct->x1);
-						code_block->y1 = std::min<uint32_t>(cblkyend,	current_precinct->y1);
-
 						if (!current_plugin_tile
 								|| (state & GRK_PLUGIN_STATE_DEBUG)) {
 							if (!code_block->alloc_data(
@@ -282,20 +268,14 @@ bool TileComponent::init(bool isEncoder,
 							if (!code_block->alloc())
 								return false;
 						}
-
-						/* code-block size (global) */
-						code_block->x0 = std::max<uint32_t>(cblkxstart,	current_precinct->x0);
-						code_block->y0 = std::max<uint32_t>(cblkystart,	current_precinct->y0);
-						code_block->x1 = std::min<uint32_t>(cblkxend,	current_precinct->x1);
-						code_block->y1 = std::min<uint32_t>(cblkyend,	current_precinct->y1);
 					}
+					/* code-block size (global) */
+					*cblk_dims = cblk_bounds.intersection(current_precinct);
 				}
 			} /* precno */
 		} /* bandno */
 	} /* resno */
-	create_buffer(output_image,
-					image_comp->dx,
-					image_comp->dy);
+	create_buffer(isEncoder, unreduced_tile_comp_region_dims);
 
 	return true;
 }
@@ -392,9 +372,7 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
     m_sa = sa;
 }
 
-void TileComponent::create_buffer(grk_image *output_image,
-									uint32_t dx,
-									uint32_t dy) {
+void TileComponent::create_buffer(bool isEncoder, grk_rect_u32 unreduced_tile_comp_region_dims) {
 	auto highestNumberOfResolutions =
 			(!m_is_encoder) ? resolutions_to_decompress : numresolutions;
 	auto hightestResolution =  resolutions + highestNumberOfResolutions - 1;
@@ -402,7 +380,7 @@ void TileComponent::create_buffer(grk_image *output_image,
 
 	grk_rect_u32::operator=(*(grk_rect_u32*)hightestResolution);
 	delete buf;
-	buf = new TileComponentBuffer<int32_t>(output_image, dx,dy,
+	buf = new TileComponentBuffer<int32_t>(isEncoder,
 											grk_rect_u32(maxResolution->x0,
 														maxResolution->y0,
 														maxResolution->x1,
@@ -411,9 +389,10 @@ void TileComponent::create_buffer(grk_image *output_image,
 														y0,
 														x1,
 														y1),
-											highestNumberOfResolutions,
-											numresolutions,
+											unreduced_tile_comp_region_dims,
 											resolutions,
+											numresolutions,
+											highestNumberOfResolutions,
 											whole_tile_decoding);
 }
 

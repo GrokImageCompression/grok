@@ -122,6 +122,14 @@ template<typename T> struct grk_rectangle {
 
 		return *this;
     }
+    grk_rectangle<T>& intersection(const grk_rectangle<T> *rhs){
+    	x0 = std::max<T>(x0,rhs->x0);
+		y0 = std::max<T>(y0,rhs->y0);
+		x1 = std::min<T>(x1,rhs->x1);
+		y1 = std::min<T>(y1,rhs->y1);
+
+		return *this;
+    }
     grk_rectangle<T>& r_union(const grk_rectangle<T> rhs){
     	x0 = std::min<T>(x0,rhs.x0);
 		y0 = std::min<T>(y0,rhs.y0);
@@ -326,7 +334,7 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 	}
 
 	T *data;		/* internal array*/
-    bool owns_data;	/* true if buffer manages the buf array */
+    bool owns_data;	/* true if buffer manages the data array */
     uint32_t stride;
 } ;
 

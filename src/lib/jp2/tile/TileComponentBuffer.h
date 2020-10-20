@@ -63,35 +63,28 @@ template<typename T> struct res_buf {
  */
 
 template<typename T> struct TileComponentBuffer {
-	TileComponentBuffer(grk_image *output_image,
-						uint32_t dx,uint32_t dy,
-						grk_rect_u32 unreduced_dim,
-						grk_rect_u32 reduced_dim,
-						uint32_t reduced_num_resolutions,
-						uint32_t numresolutions,
+	TileComponentBuffer(bool isEncoder,
+						grk_rect_u32 unreduced_tile_dim,
+						grk_rect_u32 reduced_tile_dim,
+						grk_rect_u32 unreduced_region_dim,
 						Resolution *tile_comp_resolutions,
+						uint32_t numresolutions,
+						uint32_t reduced_num_resolutions,
 						bool whole_tile) :
-							m_unreduced_bounds(unreduced_dim),
-							m_bounds(reduced_dim),
+							m_unreduced_bounds(unreduced_tile_dim),
+							m_bounds(reduced_tile_dim),
 							num_resolutions(numresolutions),
-							m_encode(output_image==nullptr),
+							m_encode(isEncoder),
 							whole_tile_decoding(whole_tile)
 	{
-		//note: only decompressor has output image
-		if (output_image) {
-			// tile component coordinates
-			m_unreduced_bounds = grk_rect_u32(ceildiv<uint32_t>(output_image->x0, dx),
-										ceildiv<uint32_t>(output_image->y0, dy),
-										ceildiv<uint32_t>(output_image->x1, dx),
-										ceildiv<uint32_t>(output_image->y1, dy));
-
-			m_bounds 	= m_unreduced_bounds;
+		if (!m_encode) {
+			m_bounds = unreduced_region_dim;
 			m_bounds.rectceildivpow2(num_resolutions - reduced_num_resolutions);
-
-			/* clip region dimensions against tile */
-			m_bounds.intersection(reduced_dim);
+			m_bounds.intersection(reduced_tile_dim);
 			assert(m_bounds.is_valid());
-			m_unreduced_bounds.intersection(unreduced_dim);
+
+			m_unreduced_bounds 	= unreduced_region_dim;
+			m_unreduced_bounds.intersection(unreduced_tile_dim);
 			assert(m_unreduced_bounds.is_valid());
 		}
 

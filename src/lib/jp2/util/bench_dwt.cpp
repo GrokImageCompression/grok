@@ -95,7 +95,15 @@ bool init_tilec(TileComponent * tilec,
         ++res;
         --leveno;
     }
-    tilec->create_buffer(output_image,1,1);
+    bool isEncoder = (output_image == nullptr);
+    grk_rect_u32 unreduced_tile_comp_region_dims;
+	if (!isEncoder) {
+		unreduced_tile_comp_region_dims = grk_rect_u32(ceildiv<uint32_t>(output_image->x0,1),
+											ceildiv<uint32_t>(output_image->y0,1),
+											ceildiv<uint32_t>(output_image->x1,1),
+											ceildiv<uint32_t>(output_image->y1,1));
+	}
+    tilec->create_buffer(isEncoder, unreduced_tile_comp_region_dims);
     tilec->getBuffer()->alloc();
 	auto data = tilec->getBuffer()->ptr();
     for (size_t i = 0; i < tilec->getBuffer()->strided_area(); i++)
