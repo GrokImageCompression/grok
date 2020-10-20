@@ -179,7 +179,6 @@ static inline long grk_lrintf(float f) {
 #include "TileProcessor.h"
 #include "Wavelet.h"
 #include "t1_common.h"
-#include "dwt_utils.h"
 #include "dwt.h"
 #include <SparseBuffer.h>
 #include <T2Compress.h>

@@ -18,7 +18,6 @@
 
 #include "grk_includes.h"
 
-#include "dwt_utils.h"
 #include "dwt53.h"
 #include "dwt97.h"
 #include "WaveletForward.h"

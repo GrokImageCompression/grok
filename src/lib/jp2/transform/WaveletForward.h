@@ -30,7 +30,69 @@ public:
 	 @param tilec Tile component information (current tile)
 	 */
 	bool run(TileComponent *tilec);
+
+	/* <summary>                             */
+	/* Forward lazy transform (vertical).    */
+	/* </summary>                            */
+	void deinterleave_v(int32_t *a, int32_t *b, uint32_t d_n, uint32_t s_n,
+			uint32_t stride, int32_t cas);
+
+
+	/* <summary>			                 */
+	/* Forward lazy transform (horizontal).  */
+	/* </summary>                            */
+	void deinterleave_h(int32_t *a, int32_t *b, uint32_t d_n, uint32_t s_n,
+			int32_t cas) ;
 };
+
+
+/* <summary>                             */
+/* Forward lazy transform (vertical).    */
+/* </summary>                            */
+template <typename DWT> void WaveletForward<DWT>::deinterleave_v(int32_t *a, int32_t *b, uint32_t d_n, uint32_t s_n,
+		uint32_t stride, int32_t cas) {
+	uint32_t i = s_n;
+	int32_t *dest = b;
+	int32_t *src = a + cas;
+
+	while (i--) {
+		*dest = *src;
+		dest += stride;
+		src += 2;
+	}
+
+	dest = b + s_n * stride;
+	src = a + 1 - cas;
+
+	i = d_n;
+	while (i--) {
+		*dest = *src;
+		dest += stride;
+		src += 2;
+	}
+}
+
+/* <summary>			                 */
+/* Forward lazy transform (horizontal).  */
+/* </summary>                            */
+template <typename DWT> void WaveletForward<DWT>::deinterleave_h(int32_t *a, int32_t *b, uint32_t d_n, uint32_t s_n,
+		int32_t cas) {
+	int32_t *dest = b;
+	int32_t *src = a + cas;
+
+	for (uint32_t i = 0; i < s_n; ++i) {
+		*dest++ = *src;
+		src += 2;
+	}
+
+	dest = b + s_n;
+	src = a + 1 - cas;
+
+	for (uint32_t i = 0; i < d_n; ++i) {
+		*dest++ = *src;
+		src += 2;
+	}
+}
 
 
 /**
@@ -41,7 +103,7 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 	if (tilec->numresolutions == 1U)
 		return true;
 
-	size_t l_data_size = dwt_utils::max_resolution(tilec->resolutions,
+	size_t l_data_size = max_resolution(tilec->resolutions,
 			tilec->numresolutions) * sizeof(int32_t);
 	/* overflow check */
 	if (l_data_size > SIZE_MAX) {
@@ -101,14 +163,14 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 					for (uint32_t k = 0; k < rh; ++k)
 						bj[k] = aj[k * stride];
 					wavelet.compress_line(bj, (int32_t)d_n, (int32_t)s_n, cas_col);
-					dwt_utils::deinterleave_v(bj, aj, d_n, s_n, stride, cas_col);
+					deinterleave_v(bj, aj, d_n, s_n, stride, cas_col);
 				}
 			} else {
 				std::vector< std::future<int> > results;
 				for(uint32_t i = 0; i < ThreadPool::get()->num_threads(); ++i) {
 					uint32_t index = i;
 					results.emplace_back(
-						ThreadPool::get()->enqueue([index, bj_array,a,
+						ThreadPool::get()->enqueue([this, index, bj_array,a,
 													 stride, rw,rh,
 													 d_n, s_n, cas_col,
 													 linesPerThreadV] {
@@ -120,7 +182,7 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 								for (uint32_t k = 0; k < rh; ++k)
 									bj[k] = aj[k * stride];
 								wavelet.compress_line(bj, (int32_t)d_n, (int32_t)s_n, cas_col);
-								dwt_utils::deinterleave_v(bj, aj, d_n, s_n, stride, cas_col);
+								deinterleave_v(bj, aj, d_n, s_n, stride, cas_col);
 							}
 							return 0;
 						})
@@ -143,7 +205,7 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 					auto aj = a + m * stride;
 					memcpy(bj,aj,rw << 2);
 					wavelet.compress_line(bj, (int32_t)d_n, (int32_t)s_n, cas_row);
-					dwt_utils::deinterleave_h(bj, aj, d_n, s_n, cas_row);
+					deinterleave_h(bj, aj, d_n, s_n, cas_row);
 				}
 
 			} else {
@@ -151,7 +213,7 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 				for(uint32_t i = 0; i < ThreadPool::get()->num_threads(); ++i) {
 					uint32_t index = i;
 					results.emplace_back(
-						ThreadPool::get()->enqueue([index, bj_array,a,
+						ThreadPool::get()->enqueue([this, index, bj_array,a,
 													 stride, rw,rh,
 													 d_n, s_n, cas_row,
 													 linesPerThreadH] {
@@ -162,7 +224,7 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 								int32_t *aj = a + m * stride;
 								memcpy(bj,aj,rw << 2);
 								wavelet.compress_line(bj, (int32_t)d_n, (int32_t)s_n, cas_row);
-								dwt_utils::deinterleave_h(bj, aj, d_n, s_n, cas_row);
+								deinterleave_h(bj, aj, d_n, s_n, cas_row);
 							}
 							return 0;
 						})

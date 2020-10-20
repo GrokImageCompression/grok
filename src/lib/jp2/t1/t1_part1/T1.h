@@ -125,6 +125,31 @@ private:
 						int32_t bpno,
 						uint32_t passtype);
 	bool code_block_enc_allocate(cblk_enc *p_code_block);
+
+
+	/**
+	 Get the norm of a wavelet function of a subband at a specified level for the reversible 5-3 DWT.
+	 @param level Level of the wavelet function
+	 @param orient Band of the wavelet function
+	 @return the norm of the wavelet function
+	 */
+	double getnorm_53(uint32_t level, uint8_t orient);
+	/**
+	 Get the norm of a wavelet function of a subband at a specified level for the irreversible 9-7 DWT
+	 @param level Level of the wavelet function
+	 @param orient Band of the wavelet function
+	 @return the norm of the 9-7 wavelet
+	 */
+	double getnorm_97(uint32_t level, uint8_t orient);
+
+	double getnorm(uint32_t level, uint8_t orient, bool reversible);
+
+	double getwmsedec(int32_t nmsedec, uint32_t compno, uint32_t level,
+											uint8_t orient, int32_t bpno,
+											uint32_t qmfbid, double stepsize,
+											const double *mct_norms,
+											uint32_t mct_numcomps);
+
 };
 
 }

@@ -22,7 +22,6 @@
 #include "grk_includes.h"
 #include "t1_common.h"
 #include "logger.h"
-#include "dwt_utils.h"
 
 using namespace std;
 
@@ -145,11 +144,7 @@ static INLINE void 	 update_flags(grk_flag *flagsp, uint32_t ci, uint32_t s,
 
 static int16_t 		 getnmsedec_sig(uint32_t x, uint32_t bitpos);
 static int16_t 		 getnmsedec_ref(uint32_t x, uint32_t bitpos);
-static double 		 getwmsedec(int32_t nmsedec, uint32_t compno, uint32_t level,
-										uint8_t orient, int32_t bpno,
-										uint32_t qmfbid, double stepsize,
-										const double *mct_norms,
-										uint32_t mct_numcomps);
+
 
 // DECODE
 static INLINE uint8_t  getctxno_zc(mqcoder *mqc, uint32_t f);
@@ -241,6 +236,44 @@ static int16_t getnmsedec_ref(uint32_t x, uint32_t bitpos) {
 static INLINE void update_flags(grk_flag *flagsp, uint32_t ci, uint32_t s,
 									uint32_t stride, uint32_t vsc) {
  update_flags_macro(*flagsp, flagsp, ci, s, stride, vsc);
+}
+
+
+double T1::getnorm(uint32_t level, uint8_t orient, bool reversible) {
+	assert(orient <= 3);
+	switch(orient){
+	case 0:
+		return sqrt_energy_gains::get_gain_l(level,reversible) *
+				sqrt_energy_gains::get_gain_l(level,reversible);
+		break;
+	case 1:
+	case 2:
+		return sqrt_energy_gains::get_gain_l(level+1,reversible) *
+				sqrt_energy_gains::get_gain_h(level,reversible);
+		break;
+	case 3:
+		return sqrt_energy_gains::get_gain_h(level,reversible) *
+				sqrt_energy_gains::get_gain_h(level,reversible);
+		break;
+	default:
+		return 0;
+	}
+}
+
+
+
+/* <summary>                */
+/* Get norm of 5-3 wavelet. */
+/* </summary>               */
+double T1::getnorm_53(uint32_t level, uint8_t orient) {
+	return getnorm(level,orient,true);
+}
+
+/* <summary>                */
+/* Get norm of 9-7 wavelet. */
+/* </summary>               */
+double T1::getnorm_97(uint32_t level, uint8_t orient) {
+	return getnorm(level,orient,false);
 }
 
 
@@ -372,7 +405,7 @@ bool T1::code_block_enc_allocate(cblk_enc *p_code_block) {
 }
 
 
-static double getwmsedec(int32_t nmsedec,
+double T1::getwmsedec(int32_t nmsedec,
 							uint32_t compno, uint32_t level,
 							uint8_t orient, int32_t bpno,
 							uint32_t qmfbid, double stepsize,
@@ -384,9 +417,9 @@ static double getwmsedec(int32_t nmsedec,
 		w1 = mct_norms[compno];
 
 	if (qmfbid == 1)
-		w2 = grk::dwt_utils::getnorm_53(level, orient);
+		w2 = getnorm_53(level, orient);
 	else /* if (qmfbid == 0) */
-		w2 = grk::dwt_utils::getnorm_97(level, orient);
+		w2 = getnorm_97(level, orient);
 
 	wmsedec = w1 * w2 * stepsize * (1 << bpno);
 	wmsedec *= wmsedec * nmsedec / 8192.0;

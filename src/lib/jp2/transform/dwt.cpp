@@ -27,6 +27,22 @@
 
 namespace grk {
 
+/* <summary>                             */
+/* Determine maximum computed resolution level for inverse wavelet transform */
+/* </summary>                            */
+uint32_t max_resolution(Resolution *GRK_RESTRICT r, uint32_t i) {
+	uint32_t mr = 0;
+	while (--i) {
+		++r;
+		uint32_t w;
+		if (mr < (w = r->x1 - r->x0))
+			mr = w;
+		if (mr < (w = r->y1 - r->y0))
+			mr = w;
+	}
+	return mr;
+}
+
 template <typename T, typename S> struct decompress_job{
 	decompress_job( S data,
 				T * GRK_RESTRICT LL,
@@ -817,7 +833,7 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
     uint32_t rh = tr->height();
 
     uint32_t num_threads = (uint32_t)ThreadPool::get()->num_threads();
-    size_t data_size = dwt_utils::max_resolution(tr, numres);
+    size_t data_size = max_resolution(tr, numres);
     /* overflow check */
     if (data_size > (SIZE_MAX / PLL_COLS_53 / sizeof(int32_t))) {
         GRK_ERROR("Overflow");
@@ -1372,7 +1388,7 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
     uint32_t rw = tr->width();
     uint32_t rh = tr->height();
 
-    size_t data_size = dwt_utils::max_resolution(tr, numres);
+    size_t data_size = max_resolution(tr, numres);
     dwt_data<vec4f> horiz;
     dwt_data<vec4f> vert;
     if (!horiz.alloc(data_size)) {
@@ -1851,7 +1867,7 @@ template <typename T,
     }
 
     // in 53 vertical pass, we process 4 vertical columns at a time
-    size_t data_size = dwt_utils::max_resolution(tr, numres) * COLUMNS_PER_STEP;
+    size_t data_size = max_resolution(tr, numres) * COLUMNS_PER_STEP;
 	dwt_data<T> horiz;
     if (!horiz.alloc(data_size)) {
         GRK_ERROR("Out of memory");
