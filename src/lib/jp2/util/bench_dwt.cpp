@@ -258,7 +258,7 @@ int main(int argc, char** argv)
 		start = std::chrono::high_resolution_clock::now();
 		bool rc = false;
 		if (forward){
-			Wavelet w;
+			WaveletFwdImpl w;
 			rc = w.compress(&tilec,lossy ? 0 : 1 );
 		} else {
 			if (lossy)
@@ -287,8 +287,8 @@ int main(int argc, char** argv)
 					printf("\n");
 				}
 			}
-
-			Wavelet::compress(&tilec, 1);
+			WaveletFwdImpl w;
+			w.compress(&tilec, 1);
 			if (display) {
 				spdlog::info("After FDWT\n");
 				k = 0;

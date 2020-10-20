@@ -16,10 +16,7 @@
  */
 
 
-#include "grk_includes.h"
-
-#include "WaveletForward.h"
-#include "dwt.h"
+#include <WaveletFwd.h>
 
 namespace grk {
 
@@ -159,11 +156,7 @@ void dwt97::compress_line(int32_t* GRK_RESTRICT a, int32_t d_n, int32_t s_n, uin
 	}
 }
 
-
-
-
-
-bool Wavelet::compress(TileComponent *tile_comp, uint8_t qmfbid){
+bool WaveletFwdImpl::compress(TileComponent *tile_comp, uint8_t qmfbid){
 	if (qmfbid == 1) {
 		WaveletForward<dwt53> dwt;
 		return dwt.run(tile_comp);
@@ -174,7 +167,7 @@ bool Wavelet::compress(TileComponent *tile_comp, uint8_t qmfbid){
 	return false;
 }
 
-bool Wavelet::decompress(TileProcessor *p_tcd,
+bool WaveletFwdImpl::decompress(TileProcessor *p_tcd,
 						TileComponent* tilec,
 						grk_rect_u32 region,
                         uint32_t numres,

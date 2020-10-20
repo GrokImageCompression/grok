@@ -900,13 +900,15 @@ bool TileProcessor::decompress_tile_t1(void) {
 					(uint16_t) m_tcp->tccps->cblkh, &blocks))
 				return false;
 
-			if (doPostT1)
-				if (!Wavelet::decompress(this,
+			if (doPostT1){
+				WaveletFwdImpl w;
+				if (!w.decompress(this,
 										tilec,
 										tilec->getBuffer()->unreduced_bounds(),
 										m_resno_decoded_per_component[compno] + 1,
 										tccp->qmfbid))
 					return false;
+			}
 
 			tilec->release_mem();
 		}
@@ -1073,7 +1075,8 @@ bool TileProcessor::dwt_encode() {
 	for (compno = 0; compno < (int64_t) tile->numcomps; ++compno) {
 		auto tile_comp = tile->comps + compno;
 		auto tccp = m_tcp->tccps + compno;
-		if (!Wavelet::compress(tile_comp, tccp->qmfbid)) {
+		WaveletFwdImpl w;
+		if (!w.compress(tile_comp, tccp->qmfbid)) {
 			rc = false;
 			continue;
 

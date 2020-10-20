@@ -19,10 +19,8 @@
  *
  */
 
-#include <assert.h>
-#include "CPUArch.h"
 #include "grk_includes.h"
-#include "dwt.h"
+#include "CPUArch.h"
 #include <algorithm>
 
 namespace grk {
