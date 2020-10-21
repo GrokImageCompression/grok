@@ -147,17 +147,10 @@ public:
 	 *
 	 * Blocks intersecting the region are allocated
 	 *
-	 * @param x0 left x coordinate of the region to write into the sparse array.
-	 * @param y0 top x coordinate of the region to write into the sparse array.
-	 * @param x1 right x coordinate (not included) of the region to write into the sparse array. Must be greater than x0.
-	 * @param y1 bottom y coordinate (not included) of the region to write into the sparse array. Must be greater than y0.
+	 * @param region region to write into the sparse array.
+	 *
 	 * @return true in case of success.
 	 */
-	virtual bool alloc( uint32_t x0,
-					  uint32_t y0,
-					  uint32_t x1,
-					  uint32_t y1) = 0;
-
 	virtual bool alloc( grk_rect_u32 region) = 0;
 
 
@@ -254,6 +247,7 @@ public:
 	bool alloc( grk_rect_u32 region){
 		return alloc(region.x0, region.y0, region.x1, region.y1);
 	}
+private:
 
 	bool alloc( uint32_t x0,
 				  uint32_t y0,
@@ -290,8 +284,6 @@ public:
 
 	    return true;
 	}
-
-private:
 
 	/** Returns whether region bounds are valid (non empty and within array bounds)
 	 * @param x0 left x coordinate of the region.

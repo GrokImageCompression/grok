@@ -46,18 +46,9 @@ void TileComponent::release_mem(){
 			auto res = resolutions + resno;
 			for (uint32_t bandno = 0; bandno < 3; ++bandno) {
 				auto band = res->bands + bandno;
-				for (uint64_t precno = 0; precno < band->numPrecincts;
-						++precno) {
-					auto precinct = band->precincts + precno;
-					precinct->deleteTagTrees();
-					if (m_is_encoder)
-						delete[] precinct->enc;
-					else
-						delete[] precinct->dec;
-				}
 				delete[] band->precincts;
 				band->precincts = nullptr;
-			} /* for (resno */
+			}
 		}
 		delete[] resolutions;
 		resolutions = nullptr;
@@ -216,7 +207,7 @@ bool TileComponent::init(bool isEncoder,
 						current_precinct->enc = new CompressCodeblock[nb_code_blocks];
 					else
 						current_precinct->dec = new DecompressCodeblock[nb_code_blocks];
-				    current_precinct->num_code_blocks = nb_code_blocks;
+				    current_precinct->numCodeBlocks = nb_code_blocks;
 				}
 				current_precinct->initTagTrees();
 
@@ -250,12 +241,11 @@ bool TileComponent::init(bool isEncoder,
 								return false;
 						}
 					}
-					/* code-block size (global) */
 					*cblk_dims = cblk_bounds.intersection(current_precinct);
 				}
-			} /* precno */
-		} /* bandno */
-	} /* resno */
+			}
+		}
+	}
 
 	return true;
 }
@@ -268,30 +258,14 @@ bool TileComponent::subbandIntersectsAOI(uint32_t resno,
 		return true;
 
     /* Note: those values for filter_margin are in part the result of */
-    /* experimentation. The value 2 for QMFBID=1 (5x3 filter) can be linked */
-    /* to the maximum left/right extension given in tables F.2 and F.3 of the */
-    /* standard. The value 3 for QMFBID=0 (9x7 filter) is more suspicious, */
-    /* since F.2 and F.3 would lead to 4 instead, so the current 3 might be */
-    /* needed to be bumped to 4, in case inconsistencies are found while */
-    /* decoding parts of irreversible coded images. */
-    /* See dwt_decode_partial_53 and dwt_decode_partial_97 as well */
-	//note: bumped up lossy filter margin to 4
+    /* experimentation. The value 2 for QMFBID=1 (5x3 filter) and */
+    /* 4 for QMFBID=0 (9x7 filter) can be linked to the */
+    /* maximum left/right extension given in tables F.2 and F.3 of the */
+    /* standard.*/
     uint32_t filter_margin = (m_tccp->qmfbid == 1) ? 2 : 4;
-
-    /* Compute the intersection of the area of interest, expressed in tile component coordinates */
-    /* Map above tile-based coordinates to sub-band-based coordinates following equation B-15 of the standard */
-
     auto b = resolutions[resno].bands[bandno];
     b.grow(filter_margin,filter_margin);
-
-
-#ifdef DEBUG_VERBOSE
-    printf("compno=%u resno=%u nb=%u bandno=%u x0b=%u y0b=%u band=%u,%u,%u,%u tb=%u,%u,%u,%u -> %u\n",
-           compno, resno, num_decomps, bandno, x0b, y0b,
-           aoi_x0, aoi_y0, aoi_x1, aoi_y1,
-           tbx0, tby0, tbx1, tby1, intersects);
-#endif
-    return b.intersection(*aoi).is_non_degenerate();
+    return b.intersection(aoi).is_non_degenerate();
 }
 
 void TileComponent::allocSparseBuffer(uint32_t numres){
@@ -308,17 +282,10 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
                 auto precinct = band->precincts + precno;
                 for (uint64_t cblkno = 0; cblkno < (uint64_t)precinct->cw * precinct->ch; ++cblkno) {
                     auto cblk = precinct->dec + cblkno;
-
-					uint32_t x = cblk->x0;
-					uint32_t y = cblk->y0;
-					uint32_t cblk_w = cblk->width();
-					uint32_t cblk_h = cblk->height();
-
-					grk_rect_u32 cblk_roi = grk_rect_u32(x,y,x+cblk_w,y+cblk_h);
 					// check overlap in absolute coordinates
-					if (subbandIntersectsAOI(resno,
-													bandno,
-													&cblk_roi)){
+					if (subbandIntersectsAOI(resno,	bandno,	cblk)){
+						uint32_t x = cblk->x0;
+						uint32_t y = cblk->y0;
 
 						// switch from coordinates relative to band,
 						// to coordinates relative to current resolution
@@ -335,10 +302,10 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
 							y += prev_res->y1 - prev_res->y0;
 						}
 
-						if (!sa->alloc(x,
-									  y,
-									  x + cblk_w,
-									  y + cblk_h)) {
+						if (!sa->alloc(grk_rect_u32(x,
+												  y,
+												  x + cblk->width(),
+												  y + cblk->height()))) {
 							delete sa;
 							throw runtime_error("unable to allocate sparse array");
 						}

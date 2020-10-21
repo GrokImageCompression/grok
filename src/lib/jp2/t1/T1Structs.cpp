@@ -52,8 +52,13 @@ Layer::Layer() :
 Precinct::Precinct() :
 		cw(0), ch(0),
 		enc(nullptr), dec(nullptr),
-		num_code_blocks(0),
+		numCodeBlocks(0),
 		incltree(nullptr), imsbtree(nullptr) {
+}
+Precinct::~Precinct(){
+	deleteTagTrees();
+	delete[] enc;
+	delete[] dec;
 }
 
 Codeblock::Codeblock():

@@ -1939,10 +1939,10 @@ template <typename T,
         if (!sa->alloc(win_target))
 			 return false;
 		for (uint32_t k = 0; k < 2; ++k) {
-			 if (!sa->alloc(win_target.x0,
-						  y_bounds[k][0],
-						  win_target.x1,
-						  y_bounds[k][1]))
+			 if (!sa->alloc(grk_rect_u32(win_target.x0,
+									  y_bounds[k][0],
+									  win_target.x1,
+									  y_bounds[k][1])))
 				 return false;
 		}
 

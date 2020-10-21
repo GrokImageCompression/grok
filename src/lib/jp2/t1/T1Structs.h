@@ -120,13 +120,14 @@ struct DecompressCodeblock: public Codeblock {
 // precinct
 struct Precinct : public grk_rect_u32 {
 	Precinct();
+	~Precinct();
 	void initTagTrees();
 	void deleteTagTrees();
 
-	uint32_t cw, ch; /* number of precinct in width and height */
+	uint32_t cw, ch; /* dimensions of precinct code block grid */
 	CompressCodeblock *enc;
 	DecompressCodeblock *dec;
-	uint64_t num_code_blocks;
+	uint64_t numCodeBlocks;
 	TagTree *incltree; /* inclusion tree */
 	TagTree *imsbtree; /* IMSB tree */
 };
@@ -135,10 +136,7 @@ struct Precinct : public grk_rect_u32 {
 struct Subband : public grk_rect_u32 {
 	Subband();
 	Subband(const Subband &rhs);
-
 	Subband& operator= (const Subband &rhs);
-
-
 	bool isEmpty() ;
 	// 0 for first band of lowest resolution, otherwise equal to 1,2 or 3
 	uint8_t bandno;
@@ -154,7 +152,6 @@ struct Subband : public grk_rect_u32 {
 // resolution
 struct Resolution : public grk_rect_u32 {
 	Resolution();
-
 	Subband bands[3]; /* subband information */
 	/* precinct dimensions */
 	uint32_t pw, ph;

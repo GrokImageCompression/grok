@@ -122,7 +122,7 @@ int main()
 		assert(!ret);
 
 		buffer[0] = 1;
-		ret = sa->alloc(4, 5, 4 + 1, 5 + 1);
+		ret = sa->alloc(grk_rect_u32(4, 5, 4 + 1, 5 + 1));
 		assert(ret);
 
 		ret = sa->write(4, 5, 4 + 1, 5 + 1, buffer, 1, 1,
@@ -191,7 +191,7 @@ int main()
 
 		buffer[0] = 1;
 		buffer[2] = 3;
-		ret = sa->alloc(0,0,2,1);
+		ret = sa->alloc(grk_rect_u32(0,0,2,1));
 		assert(ret);
 		ret = sa->write(0, 0, 2, 1, buffer, 2, 4, false);
 		assert(ret);
