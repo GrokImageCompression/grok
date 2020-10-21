@@ -844,23 +844,17 @@ bool TileProcessor::is_whole_tilecomp_decoding(uint32_t compno) {
 	/* with the tile coordinates */
 
 	auto dims = tilec->getBuffer()->bounds();
-	uint32_t tcx0 = (uint32_t)dims.x0;
-	uint32_t tcy0 = (uint32_t)dims.y0;
-	uint32_t tcx1 = (uint32_t)dims.x1;
-	uint32_t tcy1 = (uint32_t)dims.y1;
+	dims.intersection(tilec);
 
 	uint32_t shift = tilec->numresolutions - tilec->resolutions_to_decompress;
 	/* Tolerate small margin within the reduced resolution factor to consider if */
 	/* the whole tile path must be taken */
-	return (tcx0 >=  tilec->x0 &&
-			tcy0 >= tilec->y0  &&
-			tcx1 <= tilec->x1  &&
-			tcy1 <= tilec->y1  &&
+	return (dims.is_valid() &&
 			(shift >= 32 ||
-					   (((tcx0 -  tilec->x0) >> shift) == 0	 &&
-					    ((tcy0 -  tilec->y0) >> shift) == 0  &&
-					     ((tilec->x1 - tcx1) >> shift) == 0  &&
-						 ((tilec->y1 - tcy1) >> shift) == 0)));
+						(((dims.x0 -  tilec->x0) >> shift) == 0	&&
+					     ((dims.y0 -  tilec->y0) >> shift) == 0 &&
+					     ((tilec->x1 - dims.x1) >> shift) == 0  &&
+						 ((tilec->y1 - dims.y1) >> shift) == 0)));
 
 }
 
