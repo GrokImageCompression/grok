@@ -316,7 +316,6 @@ Subband::Subband() :
 				bandno(0),
 				precincts(nullptr),
 				numPrecincts(0),
-				numAllocatedPrecincts(0),
 				numbps(0),
 				stepsize(0),
 				inv_step(0) {
@@ -327,7 +326,6 @@ Subband::Subband(const Subband &rhs) : grk_rect_u32(rhs),
 										bandno(rhs.bandno),
 										precincts(nullptr),
 										numPrecincts(0),
-										numAllocatedPrecincts(0),
 										numbps(rhs.numbps),
 										stepsize(rhs.stepsize),
 										inv_step(rhs.inv_step)

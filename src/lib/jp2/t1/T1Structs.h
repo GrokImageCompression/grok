@@ -144,7 +144,6 @@ struct Subband : public grk_rect_u32 {
 	uint8_t bandno;
 	Precinct *precincts; /* precinct information */
 	uint64_t numPrecincts;
-	size_t numAllocatedPrecincts;
 	uint32_t numbps;
 	float stepsize;
 	// inverse step size in 13 bit fixed point

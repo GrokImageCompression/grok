@@ -46,7 +46,7 @@ void TileComponent::release_mem(){
 			auto res = resolutions + resno;
 			for (uint32_t bandno = 0; bandno < 3; ++bandno) {
 				auto band = res->bands + bandno;
-				for (uint64_t precno = 0; precno < band->numAllocatedPrecincts;
+				for (uint64_t precno = 0; precno < band->numPrecincts;
 						++precno) {
 					auto precinct = band->precincts + precno;
 					precinct->deleteTagTrees();
@@ -83,6 +83,8 @@ bool TileComponent::init(bool isEncoder,
 	m_is_encoder = isEncoder;
 	whole_tile_decoding = whole_tile;
 	m_tccp = tccp;
+
+	// 1. initialize resolutions, bands and buffer
 	numresolutions = m_tccp->numresolutions;
 	if (numresolutions < cp->m_coding_params.m_dec.m_reduce) {
 		resolutions_to_decompress = 1;
@@ -90,13 +92,10 @@ bool TileComponent::init(bool isEncoder,
 		resolutions_to_decompress = numresolutions
 				- cp->m_coding_params.m_dec.m_reduce;
 	}
-	assert(!resolutions);
 	resolutions = new Resolution[numresolutions];
-
-	uint32_t levelno = numresolutions;
 	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
-		--levelno;
+		uint32_t levelno = numresolutions - 1 - resno;
 
 		/* border for each resolution level (global) */
 		auto dim = unreduced_tile_comp_dims;
@@ -122,13 +121,43 @@ bool TileComponent::init(bool isEncoder,
 		uint32_t br_prc_y_end = (uint32_t)temp;
 		res->pw =	(res->x0 == res->x1) ?	0 : ((br_prc_x_end - tprc_x_start) >> pdx);
 		res->ph =	(res->y0 == res->y1) ?	0 : ((br_prc_y_end - tprc_y_start) >> pdy);
-		if (mult_will_overflow(res->pw, res->ph)) {
-			GRK_ERROR("nb_precincts calculation would overflow ");
-			return false;
-		}
-		/* number of precinct for a resolution */
-		uint64_t nb_precincts = (uint64_t)res->pw * res->ph;
+		res->numbands = (resno == 0) ? 1 : 3;
+		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
+			auto band = res->bands + bandno;
+			auto tile_comp = unreduced_tile_comp_dims;
+			if (resno == 0) {
+				band->bandno = 0;
+				*((grk_rect_u32*)band) =  tile_comp.rectceildivpow2(levelno);
+			} else {
+				band->bandno = (uint8_t)(bandno + 1);
+				uint32_t x0b = band->bandno & 1;  					/* x0b = 1 if bandno = 1 or 3 */
+				uint32_t y0b = (uint32_t) (band->bandno >> 1); 	/* y0b = 1 if bandno = 2 or 3 */
 
+				uint64_t off_x = ((uint64_t) x0b << levelno);
+				uint64_t off_y =  ((uint64_t) y0b << levelno);
+
+				/* band border (global) */
+				*((grk_rect_u32*)band) = grk_rect_u32(
+						uint64_ceildivpow2(tile_comp.x0 - off_x, levelno + 1),
+						uint64_ceildivpow2(tile_comp.y0 - off_y, levelno + 1),
+						uint64_ceildivpow2(tile_comp.x1 - off_x, levelno + 1),
+						uint64_ceildivpow2(tile_comp.y1 - off_y, levelno + 1));
+			}
+		}
+	}
+	create_buffer(isEncoder, unreduced_tile_comp_region_dims);
+
+	// 2. initialize precincts and code blocks
+	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
+		auto res = resolutions + resno;
+
+		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
+		uint32_t pdx = m_tccp->prcw[resno];
+		uint32_t pdy = m_tccp->prch[resno];
+		/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
+		uint32_t tprc_x_start = uint_floordivpow2(res->x0, pdx) << pdx;
+		uint32_t tprc_y_start = uint_floordivpow2(res->y0, pdy) << pdy;
+		uint64_t nb_precincts = (uint64_t)res->pw * res->ph;
 		if (mult64_will_overflow(nb_precincts, sizeof(Precinct))) {
 			GRK_ERROR(	"nb_precinct_size calculation would overflow ");
 			return false;
@@ -140,13 +169,11 @@ bool TileComponent::init(bool isEncoder,
 			tlcbgystart = tprc_y_start;
 			cbgwidthexpn = pdx;
 			cbgheightexpn = pdy;
-			res->numbands = 1;
 		} else {
 			tlcbgxstart = ceildivpow2<uint32_t>(tprc_x_start, 1);
 			tlcbgystart = ceildivpow2<uint32_t>(tprc_y_start, 1);
 			cbgwidthexpn = pdx - 1;
 			cbgheightexpn = pdy - 1;
-			res->numbands = 3;
 		}
 
 		uint32_t cblkwidthexpn 	= std::min<uint32_t>(tccp->cblkw, cbgwidthexpn);
@@ -155,21 +182,6 @@ bool TileComponent::init(bool isEncoder,
 
 		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
 			auto band = res->bands + bandno;
-			auto tile_comp = unreduced_tile_comp_dims;
-			if (resno == 0) {
-				band->bandno = 0;
-				*((grk_rect_u32*)band) =  tile_comp.rectceildivpow2(levelno);
-			} else {
-				band->bandno = (uint8_t)(bandno + 1);
-				uint32_t x0b = band->bandno & 1;  					/* x0b = 1 if bandno = 1 or 3 */
-				uint32_t y0b = (uint32_t) ((band->bandno) >> 1); 	/* y0b = 1 if bandno = 2 or 3 */
-
-				/* band border (global) */
-				band->x0 = uint64_ceildivpow2(tile_comp.x0 - ((uint64_t) x0b << levelno),	levelno + 1);
-				band->y0 = uint64_ceildivpow2(tile_comp.y0 - ((uint64_t) y0b << levelno),	levelno + 1);
-				band->x1 = uint64_ceildivpow2(tile_comp.x1 - ((uint64_t) x0b << levelno),	levelno + 1);
-				band->y1 = uint64_ceildivpow2(tile_comp.y1 - ((uint64_t) y0b << levelno),	levelno + 1);
-			}
 			tccp->quant.setBandStepSizeAndBps(tcp,
 											band,
 											resno,
@@ -178,17 +190,7 @@ bool TileComponent::init(bool isEncoder,
 											prec,
 											m_is_encoder);
 
-			if (!band->precincts && (nb_precincts > 0U)) {
-				band->precincts = new Precinct[nb_precincts];
-				band->numAllocatedPrecincts = nb_precincts;
-			} else if (band->numAllocatedPrecincts < nb_precincts) {
-				auto new_precincts = new Precinct[nb_precincts];
-				for (size_t i = 0; i < band->numAllocatedPrecincts; ++i)
-					new_precincts[i] = band->precincts[i];
-				delete[] band->precincts;
-				band->precincts = new_precincts;
-				band->numAllocatedPrecincts = nb_precincts;
-			}
+			band->precincts = new Precinct[nb_precincts];
 			band->numPrecincts = nb_precincts;
 			for (uint64_t precno = 0; precno < nb_precincts; ++precno) {
 				auto current_precinct = band->precincts + precno;
@@ -210,31 +212,10 @@ bool TileComponent::init(bool isEncoder,
 
 				uint64_t nb_code_blocks = (uint64_t) current_precinct->cw* current_precinct->ch;
 				if (nb_code_blocks > 0) {
-					if (isEncoder){
-						if (!current_precinct->enc){
-							current_precinct->enc = new CompressCodeblock[nb_code_blocks];
-						} else if (nb_code_blocks > current_precinct->num_code_blocks){
-							auto new_blocks = new CompressCodeblock[nb_code_blocks];
-							for (uint64_t i = 0; i < current_precinct->num_code_blocks; ++i){
-								new_blocks[i] = current_precinct->enc[i];
-								current_precinct->enc[i].clear();
-							}
-							delete[] current_precinct->enc;
-							current_precinct->enc = new_blocks;
-						}
-					} else {
-						if (!current_precinct->dec){
-							current_precinct->dec = new DecompressCodeblock[nb_code_blocks];
-						} else if (nb_code_blocks > current_precinct->num_code_blocks){
-							auto new_blocks = new DecompressCodeblock[nb_code_blocks];
-							for (uint64_t i = 0; i < current_precinct->num_code_blocks; ++i){
-								new_blocks[i] = current_precinct->dec[i];
-								current_precinct->dec[i].clear();
-							}
-							delete[] current_precinct->dec;
-							current_precinct->dec = new_blocks;
-						}
-					}
+					if (isEncoder)
+						current_precinct->enc = new CompressCodeblock[nb_code_blocks];
+					else
+						current_precinct->dec = new DecompressCodeblock[nb_code_blocks];
 				    current_precinct->num_code_blocks = nb_code_blocks;
 				}
 				current_precinct->initTagTrees();
@@ -275,7 +256,6 @@ bool TileComponent::init(bool isEncoder,
 			} /* precno */
 		} /* bandno */
 	} /* resno */
-	create_buffer(isEncoder, unreduced_tile_comp_region_dims);
 
 	return true;
 }
