@@ -81,7 +81,6 @@ static uint8_t* jp2_write_xml(FileFormat *fileFormat, uint32_t *p_nb_bytes_writt
  *
  * @param boxId					box id.
  * @param buffer					buffer with data
- * @param fileFormat					JPEG 2000 file codec.
  * @param p_nb_bytes_written		pointer to store the nb of bytes written by the function.
  *
  * @return	the data being copied.
@@ -94,7 +93,7 @@ static uint8_t* jp2_write_buffer(uint32_t boxId, grk_jp2_buffer *buffer,
  *
  * @param	fileFormat					JPEG 2000 file codec.
  * @param	p_header_data		pointer to actual data (already read from file)
- * @param	p_header_data_size	size of data
+ * @param	header_data_size	size of data
  
  *
  * @return	true if the image header is valid, false else.
@@ -186,8 +185,8 @@ static bool jp2_write_ftyp(FileFormat *fileFormat);
 /**
  * Reads a a FTYP box - File type box
  *
- * @param	p_header_data	the data contained in the FTYP box.
  * @param	fileFormat				JPEG 2000 code stream.
+ * @param	p_header_data	the data contained in the FTYP box.
  * @param	header_size	the size of the data contained in the FTYP box.
  .
  *
@@ -201,8 +200,8 @@ static bool jp2_skip_jp2c(FileFormat *fileFormat);
 /**
  * Reads the Jpeg2000 file Header box - JP2 Header box (warning, this is a super box).
  *
- * @param	p_header_data	the data contained in the file header box.
  * @param	fileFormat				JPEG 2000 code stream.
+ * @param	p_header_data	the data contained in the file header box.
  * @param	header_size	the size of the data contained in the file header box.
  .
  *
@@ -227,8 +226,8 @@ static bool jp2_write_jp2c(FileFormat *fileFormat);
 /**
  * Reads a JPEG 2000 file signature box.
  *
- * @param	p_header_data	the data contained in the signature box.
  * @param	fileFormat				JPEG 2000 code stream.
+ * @param	p_header_data	the data contained in the signature box.
  * @param	header_size	the size of the data contained in the signature box.
  .
  *
@@ -240,7 +239,6 @@ static bool jp2_read_jp(FileFormat *fileFormat, uint8_t *p_header_data,
 /**
  * Writes a JPEG 2000 file signature box.
  *
- * @param stream buffered stream.
  * @param	fileFormat			JPEG 2000 code stream.
  
  *
@@ -320,8 +318,6 @@ static bool jp2_init_end_header_reading(FileFormat *fileFormat);
  * Reads a JPEG 2000 file header structure.
  *
  * @param fileFormat the JPEG 2000 file header structure.
- * @param stream the stream to read data from.
- 
  *
  * @return true if the box is valid.
  */
@@ -330,12 +326,12 @@ static bool jp2_read_header_procedure(FileFormat *fileFormat);
 /**
  * Executes the given procedures on the given codec.
  *
- * @param	p_procedure_list	the list of procedures to execute
- * @param	fileFormat					JPEG 2000 code stream to execute the procedures on.
+ * @param	fileFormat			JPEG 2000 code stream to execute the procedures on.
+ *  @param	procs	the list of procedures to execute
  *
  * @return	true				if all the procedures were successfully executed.
  */
-static bool jp2_exec(FileFormat *fileFormat, std::vector<jp2_procedure> *p_procedure_list);
+static bool jp2_exec(FileFormat *fileFormat, std::vector<jp2_procedure> *procs);
 
 /**
  * Reads a box header.
@@ -2112,9 +2108,8 @@ static bool jp2_read_header_procedure(FileFormat *fileFormat) {
 /**
  * Executes the given procedures on the given codec.
  *
+ * @param	fileFormat			JPEG 2000 code stream to execute the procedures on.
  * @param	procs	the list of procedures to execute
- * @param	fileFormat					JPEG 2000 code stream to execute the procedures on.
- * @param	stream					the stream to execute the procedures on.
  *
  * @return	true				if all the procedures were successfully executed.
  */
@@ -2167,10 +2162,9 @@ static const grk_jp2_header_handler* jp2_img_find_handler(uint32_t id) {
 /**
  * Reads a JPEG 2000 file signature box.
  *
- * @param	p_header_data	the data contained in the signature box.
  * @param	fileFormat				JPEG 2000 code stream.
+ * @param	p_header_data	the data contained in the signature box.
  * @param	header_size	the size of the data contained in the signature box.
- .
  *
  * @return true if the file signature box is valid.
  */
@@ -2206,10 +2200,9 @@ static bool jp2_read_jp(FileFormat *fileFormat, uint8_t *p_header_data,
 /**
  * Reads a a FTYP box - File type box
  *
- * @param	p_header_data	the data contained in the FTYP box.
  * @param	fileFormat				JPEG 2000 code stream.
+ * @param	p_header_data	the data contained in the FTYP box.
  * @param	header_size	the size of the data contained in the FTYP box.
- .
  *
  * @return true if the FTYP box is valid.
  */
@@ -2277,15 +2270,14 @@ static bool jp2_skip_jp2c(FileFormat *fileFormat) {
 /**
  * Reads the Jpeg2000 file Header box - JP2 Header box (warning, this is a super box).
  *
- * @param	p_header_data	the data contained in the file header box.
  * @param	fileFormat				JPEG 2000 code stream.
+ * @param	p_header_data	the data contained in the file header box.
  * @param	header_size	the size of the data contained in the file header box.
- .
  *
  * @return true if the JP2 Header box was successfully recognized.
  */
 static bool jp2_read_jp2h(FileFormat *fileFormat, uint8_t *p_header_data,
-		uint32_t hdr_size) {
+		uint32_t header_size) {
 	uint32_t box_size = 0;
 	grk_jp2_box box;
 	bool has_ihdr = 0;
@@ -2300,8 +2292,6 @@ static bool jp2_read_jp2h(FileFormat *fileFormat, uint8_t *p_header_data,
 	}
 
 	fileFormat->jp2_img_state = JP2_IMG_STATE_NONE;
-
-	int64_t header_size = (int64_t)hdr_size;
 
 	/* iterate while remaining data */
 	while (header_size) {

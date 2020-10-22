@@ -28,7 +28,6 @@ namespace grk {
  * from the first tile component.
  *
  * @param       codeStream           the J2k codec.
- * @param		tileProcessor	tile processor
  */
 static void j2k_copy_tile_component_parameters(CodeStream *codeStream);
 
@@ -964,13 +963,13 @@ bool j2k_read_crg(CodeStream *codeStream, uint8_t *p_header_data,
  *
  */
 bool j2k_read_plm(CodeStream *codeStream, uint8_t *p_header_data,
-		uint16_t hdr_size) {
+		uint16_t header_size) {
 	assert(p_header_data != nullptr);
 	assert(codeStream != nullptr);
 	if (!codeStream->m_cp.plm_markers)
 		codeStream->m_cp.plm_markers = new PacketLengthMarkers();
 
-	return codeStream->m_cp.plm_markers->readPLM(p_header_data, hdr_size);
+	return codeStream->m_cp.plm_markers->readPLM(p_header_data, header_size);
 }
 
 /**

@@ -167,9 +167,9 @@ public:
 	 *
 	 * @return a new sparse array instance, or NULL in case of failure.
 	 */
-	SparseBuffer(uint32_t w,uint32_t h) :
-										buffer_width(w),
-										buffer_height(h),
+	SparseBuffer(uint32_t width,uint32_t height) :
+										buffer_width(width),
+										buffer_height(height),
 										block_width(1<<LBW),
 										block_height(1<<LBH)
 	{

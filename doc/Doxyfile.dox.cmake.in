@@ -96,11 +96,12 @@ WARN_LOGFILE           =
 # configuration options related to the input files
 #---------------------------------------------------------------------------
 INPUT                  = @GROK_SOURCE_DIR@/src/lib/jp2 \
-                         @GROK_SOURCE_DIR@/src/lib/openjpip \
                          @GROK_BINARY_DIR@/doc
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.h \
                          *.c \
+                         *.hpp \
+                         *.cpp \
                          *.dox
 RECURSIVE              = YES
 EXCLUDE                =
@@ -233,8 +234,7 @@ EXPAND_ONLY_PREDEF     = NO
 SEARCH_INCLUDES        = YES
 INCLUDE_PATH           =
 INCLUDE_FILE_PATTERNS  =
-PREDEFINED             = USE_JPWL \
-                         USE_JPSEC
+PREDEFINED             =
 EXPAND_AS_DEFINED      =
 SKIP_FUNCTION_MACROS   = YES
 #---------------------------------------------------------------------------

@@ -291,7 +291,6 @@ struct CodeStream : public ICodeStream {
 	 * Executes the given procedures on the given codec.
 	 *
 	 * @param       p_procedure_list        the list of procedures to execute
-	 * @param       stream                the stream to execute the procedures on.
 	 *
 	 * @return      true                            if all the procedures were successfully executed.
 	 */
@@ -301,7 +300,6 @@ struct CodeStream : public ICodeStream {
 	/**
 	 * Checks for invalid number of tile-parts in SOT marker (TPsot==TNsot). See issue 254.
 	 *
-	 * @param		codeStream							JPEG 2000 code stream
 	 * @param       p_correction_needed output value. 	if true, nonconformant code stream needs TNsot correction.
 
 	 *

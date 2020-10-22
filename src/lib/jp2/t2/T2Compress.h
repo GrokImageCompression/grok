@@ -89,7 +89,8 @@ private:
 	 @param tcp 			Tile coding parameters
 	 @param pi 				packet iterator
 	 @param p_data_written  amount of data written
-	 @param len Length of the destination buffer
+	 @param len 			length of the destination buffer
+	 @param markers			packet length markers
 	 @return
 	 */
 	bool compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,

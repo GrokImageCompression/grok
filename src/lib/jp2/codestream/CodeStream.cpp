@@ -51,7 +51,6 @@ static bool j2k_read_header_procedure(CodeStream *codeStream);
  * The default compressing validation procedure without any extension.
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
  *
  * @return true if the parameters are correct.
  */
@@ -95,7 +94,6 @@ static bool j2k_copy_default_tcp(CodeStream *codeStream);
  * Read the tiles.
  *
  * @param       codeStream          JPEG 2000 code stream
- * @param 		tileProcessor		tile processor
  */
 static bool j2k_decompress_tiles(CodeStream *codeStream);
 
@@ -607,7 +605,6 @@ static bool j2k_get_end_header(CodeStream *codeStream) {
 
 /**
  * @param codeStream 	code stream
- * @param tileProcess	tile processor
  *
  * @return
  */
@@ -2941,12 +2938,6 @@ bool CodeStream::get_end_header(void) {
 	return true;
 }
 
-
-/**
- * @param tileProcess	tile processor
- *
- * @return
- */
 bool CodeStream::copy_default_tcp(void) {
 	auto image = m_input_image;
 	uint32_t nb_tiles = m_cp.t_grid_height * m_cp.t_grid_width;
