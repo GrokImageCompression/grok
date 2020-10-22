@@ -625,7 +625,7 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	bool topDown = false;
 	bool is_os2 = false;
 	uint8_t *palette  = nullptr;
-	uint32_t palette_num_entries;
+	uint32_t palette_num_entries = 0;
 	uint8_t palette_has_colour = 0U;
 	uint16_t numcmpts = 1U;
 	GRK_COLOR_SPACE colour_space = GRK_CLRSPC_UNKNOWN;
