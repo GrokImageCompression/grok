@@ -485,7 +485,7 @@ bool TIFFFormat::encodeHeader(grk_image *image, const std::string &filename,
 
 	if (numcomps > maxNumComponents){
 		spdlog::error(
-				"imagetotif: number of components {} must be <= %u", numcomps,maxNumComponents);
+				"imagetotif: number of components {} must be <= {}", numcomps,maxNumComponents);
 		goto cleanup;
 	}
 
