@@ -115,12 +115,7 @@ template<typename T> struct grk_rectangle {
     	return *this;
     }
     grk_rectangle<T>& intersection(const grk_rectangle<T> rhs){
-    	x0 = std::max<T>(x0,rhs.x0);
-		y0 = std::max<T>(y0,rhs.y0);
-		x1 = std::min<T>(x1,rhs.x1);
-		y1 = std::min<T>(y1,rhs.y1);
-
-		return *this;
+    	return intersection(&rhs);
     }
     grk_rectangle<T>& intersection(const grk_rectangle<T> *rhs){
     	x0 = std::max<T>(x0,rhs->x0);
