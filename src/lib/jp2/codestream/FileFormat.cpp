@@ -2278,10 +2278,6 @@ static bool jp2_skip_jp2c(FileFormat *fileFormat) {
  */
 static bool jp2_read_jp2h(FileFormat *fileFormat, uint8_t *p_header_data,
 		uint32_t header_size) {
-	uint32_t box_size = 0;
-	grk_jp2_box box;
-	bool has_ihdr = 0;
-
 	assert(p_header_data != nullptr);
 	assert(fileFormat != nullptr);
 
@@ -2292,21 +2288,22 @@ static bool jp2_read_jp2h(FileFormat *fileFormat, uint8_t *p_header_data,
 	}
 
 	fileFormat->jp2_img_state = JP2_IMG_STATE_NONE;
-
+	bool has_ihdr = false;
 	/* iterate while remaining data */
 	while (header_size) {
+		uint32_t box_size = 0;
+		grk_jp2_box box;
 		if (!jp2_read_box(&box, p_header_data, &box_size, (uint64_t)header_size)) {
 			GRK_ERROR("Stream error while reading JP2 Header box");
 			return false;
 		}
-
-		auto current_handler = jp2_img_find_handler(box.type);
-		uint32_t current_data_size = (uint32_t) (box.length - box_size);
+		uint32_t box_data_length = (uint32_t) (box.length - box_size);
 		p_header_data += box_size;
 
+		auto current_handler = jp2_img_find_handler(box.type);
 		if (current_handler != nullptr) {
 			if (!current_handler->handler(fileFormat, p_header_data,
-					current_data_size)) {
+					box_data_length)) {
 				return false;
 			}
 		} else {
@@ -2314,17 +2311,14 @@ static bool jp2_read_jp2h(FileFormat *fileFormat, uint8_t *p_header_data,
 		}
 
 		if (box.type == JP2_IHDR)
-			has_ihdr = 1;
+			has_ihdr = true;
 
-		p_header_data += current_data_size;
-		header_size -= box.length;
-		if (header_size < 0) {
-			GRK_ERROR("Error reading JP2 header box");
-			return false;
-		}
+		p_header_data += box_data_length;
+		// this will never overflow since "jp2_read_box" checks for overflow
+		header_size = header_size - (uint32_t)box.length;
 	}
 
-	if (has_ihdr == 0) {
+	if (!has_ihdr) {
 		GRK_ERROR("Stream error while reading JP2 Header box: no 'ihdr' box.");
 		return false;
 	}
@@ -2378,8 +2372,7 @@ static bool jp2_read_box(grk_jp2_box *box, uint8_t *p_data,
 		return false;
 	}
 	if (box->length > p_box_max_size) {
-		GRK_ERROR(
-				"Stream error while reading JP2 Header box: box length is inconsistent.");
+		GRK_ERROR("Stream error while reading JP2 Header box: box length is inconsistent.");
 		return false;
 	}
 	return true;
