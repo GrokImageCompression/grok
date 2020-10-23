@@ -190,9 +190,11 @@ public:
 	 */
 	~SparseBuffer()
 	{
-		for (uint64_t i = 0; i < (uint64_t)grid_width * grid_height; i++)
+		for (uint64_t i = 0; i < (uint64_t)grid_width * grid_height; i++){
 			grk_free(data_blocks[i]);
-		grk_free(data_blocks);
+			data_blocks[i] = nullptr;
+		}
+		delete[] data_blocks;
 	}
 	bool read(uint32_t x0,
 			 uint32_t y0,
