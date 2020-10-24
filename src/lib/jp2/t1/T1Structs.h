@@ -139,7 +139,7 @@ struct Subband : public grk_rect_u32 {
 	Subband& operator= (const Subband &rhs);
 	bool isEmpty() ;
 	// 0 for first band of lowest resolution, otherwise equal to 1,2 or 3
-	uint8_t bandno;
+	uint8_t band_id;
 	Precinct *precincts; /* precinct information */
 	uint64_t numPrecincts;
 	uint32_t numbps;

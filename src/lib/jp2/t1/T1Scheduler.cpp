@@ -54,7 +54,7 @@ void T1Scheduler::scheduleEncode(TileCodingParams *tcp,
 						maxCblkH = std::max<uint32_t>(maxCblkH,
 								(uint32_t) (1 << tccp->cblkh));
 						block->compno = compno;
-						block->bandno = band->bandno;
+						block->band_id = band->band_id;
 						block->cblk = cblk;
 						block->cblk_sty = tccp->cblk_sty;
 						block->qmfbid = tccp->qmfbid;
@@ -108,7 +108,7 @@ bool T1Scheduler::prepareScheduleDecode(TileComponent *tilec, TileComponentCodin
 						block->tiledp = tilec->getBuffer()->cblk_ptr( resno, bandno,
 								block->x, block->y);
 						block->stride = tilec->getBuffer()->stride(resno,bandno);
-						block->bandno = band->bandno;
+						block->band_id = band->band_id;
 						block->cblk = cblk;
 						block->cblk_sty = tccp->cblk_sty;
 						block->qmfbid = tccp->qmfbid;

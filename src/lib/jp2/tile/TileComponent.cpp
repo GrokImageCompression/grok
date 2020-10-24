@@ -117,12 +117,12 @@ bool TileComponent::init(bool isEncoder,
 			auto band = res->bands + bandno;
 			auto tile_comp = unreduced_tile_comp_dims;
 			if (resno == 0) {
-				band->bandno = 0;
+				band->band_id = 0;
 				*((grk_rect_u32*)band) =  tile_comp.rectceildivpow2(levelno);
 			} else {
-				band->bandno = (uint8_t)(bandno + 1);
-				uint32_t x0b = band->bandno & 1;  					/* x0b = 1 if bandno = 1 or 3 */
-				uint32_t y0b = (uint32_t) (band->bandno >> 1); 	/* y0b = 1 if bandno = 2 or 3 */
+				band->band_id = (uint8_t)(bandno + 1);
+				uint32_t x0b = band->band_id & 1;  					/* x0b = 1 if bandno = 1 or 3 */
+				uint32_t y0b = (uint32_t) (band->band_id >> 1); 	/* y0b = 1 if bandno = 2 or 3 */
 
 				uint64_t off_x = ((uint64_t) x0b << levelno);
 				uint64_t off_y =  ((uint64_t) y0b << levelno);
@@ -293,11 +293,11 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
 						y -= band->y0;
 
 						/* add band offset relative to previous resolution */
-						if (band->bandno & 1) {
+						if (band->band_id & 1) {
 							auto prev_res = resolutions + resno - 1;
 							x += prev_res->x1 - prev_res->x0;
 						}
-						if (band->bandno & 2) {
+						if (band->band_id & 2) {
 							auto prev_res = resolutions + resno - 1;
 							y += prev_res->y1 - prev_res->y0;
 						}

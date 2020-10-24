@@ -33,9 +33,9 @@ void Quantizer::setBandStepSizeAndBps(TileCodingParams *tcp,
 
 	uint32_t gain = 0;
 	if (tccp->qmfbid == 1) {
-		if (band->bandno == 0)
+		if (band->band_id == 0)
 			gain = 0;
-		else if (band->bandno < 3)
+		else if (band->band_id < 3)
 			gain = 1;
 		else
 			gain = 2;

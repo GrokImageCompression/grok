@@ -137,9 +137,9 @@ template<typename T> struct TileComponentBuffer {
 		if (!use_band_buffers()){
 			auto pres = resno == 0 ? nullptr : resolutions[ resno - 1];
 			// add band offset relative to previous resolution
-			if (band->bandno & 1)
+			if (band->band_id & 1)
 				x += pres->width();
-			if (band->bandno & 2)
+			if (band->band_id & 2)
 				y += pres->height();
 		}
 		offsetx = x;
