@@ -1204,6 +1204,17 @@ static bool jp2_read_colr(FileFormat *fileFormat, uint8_t *p_colr_header_data,
 		grk_read<uint32_t>(p_colr_header_data, &temp); /* EnumCS */
 		p_colr_header_data += 4;
 
+		if (temp != GRK_ENUM_CLRSPC_UNKNOWN &&
+				temp != GRK_ENUM_CLRSPC_CMYK &&
+				temp != GRK_ENUM_CLRSPC_CIE &&
+				temp != GRK_ENUM_CLRSPC_SRGB &&
+				temp != GRK_ENUM_CLRSPC_GRAY &&
+				temp != GRK_ENUM_CLRSPC_SYCC &&
+				temp != GRK_ENUM_CLRSPC_EYCC){
+			GRK_WARN("Invalid colour space enumeration %u. Ignoring colour box", temp);
+			return true;
+		}
+
 		fileFormat->enumcs = (GRK_ENUM_COLOUR_SPACE)temp;
 		if ((colr_header_size > 7) && (fileFormat->enumcs != GRK_ENUM_CLRSPC_CIE)) { /* handled below for CIELab) */
 			/* testcase Altona_Technical_v20_x4.pdf */
@@ -1976,7 +1987,7 @@ static bool jp2_read_header_procedure(FileFormat *fileFormat) {
 	assert(fileFormat != nullptr);
     auto stream = fileFormat->codeStream->getStream();
 	assert(stream != nullptr);
-	bool rc = true;
+	bool rc = false;
 
 	auto current_data = (uint8_t*) grk_calloc(1, last_data_size);
 	if (!current_data) {
@@ -1994,7 +2005,6 @@ static bool jp2_read_header_procedure(FileFormat *fileFormat) {
 					goto cleanup;
 				} else {
 					GRK_ERROR("bad placed jpeg code stream");
-					rc = false;
 					goto cleanup;
 				}
 			}
@@ -2006,8 +2016,7 @@ static bool jp2_read_header_procedure(FileFormat *fileFormat) {
 			if ((current_handler != nullptr)
 					|| (current_handler_misplaced != nullptr)) {
 				if (current_handler == nullptr) {
-					GRK_WARN(
-							"Found a misplaced '%c%c%c%c' box outside jp2h box",
+					GRK_WARN("Found a misplaced '%c%c%c%c' box outside jp2h box",
 							(uint8_t) (box.type >> 24),
 							(uint8_t) (box.type >> 16),
 							(uint8_t) (box.type >> 8),
@@ -2016,16 +2025,14 @@ static bool jp2_read_header_procedure(FileFormat *fileFormat) {
 						/* read anyway, we already have jp2h */
 						current_handler = current_handler_misplaced;
 					} else {
-						GRK_WARN(
-								"JPEG2000 Header box not read yet, '%c%c%c%c' box will be ignored",
+						GRK_WARN("JPEG2000 Header box not read yet, '%c%c%c%c' box will be ignored",
 								(uint8_t) (box.type >> 24),
 								(uint8_t) (box.type >> 16),
 								(uint8_t) (box.type >> 8),
 								(uint8_t) (box.type >> 0));
 						fileFormat->jp2_state |= JP2_STATE_UNKNOWN;
 						if (!stream->skip(current_data_size)) {
-							GRK_WARN(
-									"Problem with skipping JPEG2000 box, stream error");
+							GRK_WARN("Problem with skipping JPEG2000 box, stream error");
 							// ignore error and return true if code stream box has already been read
 							// (we don't worry about any boxes after code stream)
 							rc = (fileFormat->jp2_state & JP2_STATE_CODESTREAM) ?
@@ -2037,14 +2044,12 @@ static bool jp2_read_header_procedure(FileFormat *fileFormat) {
 				}
 				if (current_data_size > stream->get_number_byte_left()) {
 					/* do not even try to malloc if we can't read */
-					GRK_ERROR(
-							"Invalid box size %" PRIu64 " for box '%c%c%c%c'. Need %u bytes, %" PRIu64 " bytes remaining ",
+					GRK_ERROR("Invalid box size %" PRIu64 " for box '%c%c%c%c'. Need %u bytes, %" PRIu64 " bytes remaining ",
 							box.length, (uint8_t) (box.type >> 24),
 							(uint8_t) (box.type >> 16),
 							(uint8_t) (box.type >> 8),
 							(uint8_t) (box.type >> 0), current_data_size,
 							stream->get_number_byte_left());
-					rc = false;
 					goto cleanup;
 				}
 				if (current_data_size > last_data_size) {
@@ -2052,7 +2057,6 @@ static bool jp2_read_header_procedure(FileFormat *fileFormat) {
 							current_data, current_data_size);
 					if (!new_current_data) {
 						GRK_ERROR("Not enough memory to handle JPEG 2000 box");
-						rc = false;
 						goto cleanup;
 					}
 					current_data = new_current_data;
@@ -2062,35 +2066,27 @@ static bool jp2_read_header_procedure(FileFormat *fileFormat) {
 				nb_bytes_read = (uint32_t) stream->read(current_data,
 						current_data_size);
 				if (nb_bytes_read != current_data_size) {
-					GRK_ERROR(
-							"Problem with reading JPEG2000 box, stream error");
-					rc = false;
+					GRK_ERROR("Problem with reading JPEG2000 box, stream error");
 					goto cleanup;
 				}
 
 				if (!current_handler->handler(fileFormat, current_data,
 						current_data_size)) {
-					rc = false;
 					goto cleanup;
 				}
 			} else {
 				if (!(fileFormat->jp2_state & JP2_STATE_SIGNATURE)) {
-					GRK_ERROR(
-							"Malformed JP2 file format: first box must be JPEG 2000 signature box");
-					rc = false;
+					GRK_ERROR("Malformed JP2 file format: first box must be JPEG 2000 signature box");
 					goto cleanup;
 				}
 				if (!(fileFormat->jp2_state & JP2_STATE_FILE_TYPE)) {
-					GRK_ERROR(
-							"Malformed JP2 file format: second box must be file type box");
-					rc = false;
+					GRK_ERROR("Malformed JP2 file format: second box must be file type box");
 					goto cleanup;
 
 				}
 				fileFormat->jp2_state |= JP2_STATE_UNKNOWN;
 				if (!stream->skip(current_data_size)) {
-					GRK_WARN(
-							"Problem with skipping JPEG2000 box, stream error");
+					GRK_WARN("Problem with skipping JPEG2000 box, stream error");
 					// ignore error and return true if code stream box has already been read
 					// (we don't worry about any boxes after code stream)
 					rc = (fileFormat->jp2_state & JP2_STATE_CODESTREAM) ? true : false;
@@ -2101,7 +2097,9 @@ static bool jp2_read_header_procedure(FileFormat *fileFormat) {
 	} catch (CorruptJP2BoxException &ex) {
 		rc = false;
 	}
-	cleanup: grk_free(current_data);
+	rc = true;
+cleanup:
+	grk_free(current_data);
 	return rc;
 }
 
