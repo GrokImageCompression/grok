@@ -239,9 +239,9 @@ static INLINE void update_flags(grk_flag *flagsp, uint32_t ci, uint32_t s,
 }
 
 
-double T1::getnorm(uint32_t level, uint8_t orient, bool reversible) {
-	assert(orient <= 3);
-	switch(orient){
+double T1::getnorm(uint32_t level, uint8_t orientation, bool reversible) {
+	assert(orientation <= 3);
+	switch(orientation){
 	case 0:
 		return sqrt_energy_gains::get_gain_l(level,reversible) *
 				sqrt_energy_gains::get_gain_l(level,reversible);
@@ -265,15 +265,15 @@ double T1::getnorm(uint32_t level, uint8_t orient, bool reversible) {
 /* <summary>                */
 /* Get norm of 5-3 wavelet. */
 /* </summary>               */
-double T1::getnorm_53(uint32_t level, uint8_t orient) {
-	return getnorm(level,orient,true);
+double T1::getnorm_53(uint32_t level, uint8_t orientation) {
+	return getnorm(level,orientation,true);
 }
 
 /* <summary>                */
 /* Get norm of 9-7 wavelet. */
 /* </summary>               */
-double T1::getnorm_97(uint32_t level, uint8_t orient) {
-	return getnorm(level,orient,false);
+double T1::getnorm_97(uint32_t level, uint8_t orientation) {
+	return getnorm(level,orientation,false);
 }
 
 
@@ -407,7 +407,7 @@ bool T1::code_block_enc_allocate(cblk_enc *p_code_block) {
 
 double T1::getwmsedec(int32_t nmsedec,
 							uint32_t compno, uint32_t level,
-							uint8_t orient, int32_t bpno,
+							uint8_t orientation, int32_t bpno,
 							uint32_t qmfbid, double stepsize,
 							const double *mct_norms,
 							uint32_t mct_numcomps) {
@@ -417,9 +417,9 @@ double T1::getwmsedec(int32_t nmsedec,
 		w1 = mct_norms[compno];
 
 	if (qmfbid == 1)
-		w2 = getnorm_53(level, orient);
+		w2 = getnorm_53(level, orientation);
 	else /* if (qmfbid == 0) */
-		w2 = getnorm_97(level, orient);
+		w2 = getnorm_97(level, orientation);
 
 	wmsedec = w1 * w2 * stepsize * (1 << bpno);
 	wmsedec *= wmsedec * nmsedec / 8192.0;
@@ -737,7 +737,7 @@ void T1::enc_clnpass(int32_t bpno, int32_t *nmsedec,	uint32_t cblksty) {
 
 
 double T1::compress_cblk(cblk_enc *cblk, uint32_t max,
-					uint8_t orient, uint32_t compno, uint32_t level, uint32_t qmfbid,
+					uint8_t orientation, uint32_t compno, uint32_t level, uint32_t qmfbid,
 					double stepsize, uint32_t cblksty,
 					const double *mct_norms, uint32_t mct_numcomps, bool doRateControl) {
 	if (!code_block_enc_allocate(cblk))
@@ -753,7 +753,7 @@ double T1::compress_cblk(cblk_enc *cblk, uint32_t max,
 	int32_t *p_nmsdedec = doRateControl ? &nmsedec : nullptr;
 	double tempwmsedec;
 
-	mqc->lut_ctxno_zc_orient = lut_ctxno_zc + (orient << 9);
+	mqc->lut_ctxno_zc_orient = lut_ctxno_zc + (orientation << 9);
 	cblk->numbps = 0;
 	if (max) {
 		uint32_t temp = floorlog2<uint32_t>(max) + 1;
@@ -803,7 +803,7 @@ double T1::compress_cblk(cblk_enc *cblk, uint32_t max,
 		}
 
 		if (doRateControl) {
-			tempwmsedec = getwmsedec(nmsedec, compno, level, orient, bpno,
+			tempwmsedec = getwmsedec(nmsedec, compno, level, orientation, bpno,
 					qmfbid, stepsize, mct_norms, mct_numcomps);
 			cumwmsedec += tempwmsedec;
 			pass->distortiondec = cumwmsedec;
@@ -1308,13 +1308,13 @@ void T1::dec_refpass_mqc(int32_t bpno) {
 	}
 }
 
-bool T1::decompress_cblk(cblk_dec *cblk, uint32_t orient,
+bool T1::decompress_cblk(cblk_dec *cblk, uint8_t orientation,
 		uint32_t roishift, uint32_t cblksty) {
 	auto mqc = &coder;
 	uint32_t cblkdataindex = 0;
 	bool check_pterm = cblksty & GRK_CBLKSTY_PTERM;
 
-	mqc->lut_ctxno_zc_orient = lut_ctxno_zc + (orient << 9);
+	mqc->lut_ctxno_zc_orient = lut_ctxno_zc + (orientation << 9);
 
 	if (!allocate_buffers((uint32_t) (cblk->x1 - cblk->x0),
 							(uint32_t) (cblk->y1 - cblk->y0)))

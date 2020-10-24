@@ -34,14 +34,14 @@ struct T1 {
 	~T1();
 
 	bool decompress_cblk(cblk_dec *cblk,
-						uint32_t orient,
+						uint8_t orientation,
 						uint32_t roishift,
 						uint32_t cblksty);
 	void code_block_enc_deallocate(cblk_enc *p_code_block);
 	bool allocate_buffers(uint32_t w, uint32_t h);
 	double compress_cblk(cblk_enc *cblk,
 							uint32_t max,
-							uint8_t orient,
+							uint8_t orientation,
 							uint32_t compno,
 							uint32_t level,
 							uint32_t qmfbid,
@@ -130,22 +130,22 @@ private:
 	/**
 	 Get the norm of a wavelet function of a subband at a specified level for the reversible 5-3 DWT.
 	 @param level Level of the wavelet function
-	 @param orient Band of the wavelet function
+	 @param orientation Band of the wavelet function
 	 @return the norm of the wavelet function
 	 */
-	double getnorm_53(uint32_t level, uint8_t orient);
+	double getnorm_53(uint32_t level, uint8_t orientation);
 	/**
 	 Get the norm of a wavelet function of a subband at a specified level for the irreversible 9-7 DWT
 	 @param level Level of the wavelet function
-	 @param orient Band of the wavelet function
+	 @param orientation Band of the wavelet function
 	 @return the norm of the 9-7 wavelet
 	 */
-	double getnorm_97(uint32_t level, uint8_t orient);
+	double getnorm_97(uint32_t level, uint8_t orientation);
 
-	double getnorm(uint32_t level, uint8_t orient, bool reversible);
+	double getnorm(uint32_t level, uint8_t orientation, bool reversible);
 
 	double getwmsedec(int32_t nmsedec, uint32_t compno, uint32_t level,
-											uint8_t orient, int32_t bpno,
+											uint8_t orientation, int32_t bpno,
 											uint32_t qmfbid, double stepsize,
 											const double *mct_norms,
 											uint32_t mct_numcomps);

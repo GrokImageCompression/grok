@@ -108,7 +108,7 @@ double T1Part1::compress(CompressBlockInfo *block, grk_tile *tile,
 
 	cblkexp.data = cblk->paddedCompressedData;
 
-	auto disto = t1->compress_cblk(&cblkexp, max, block->band_id,
+	auto disto = t1->compress_cblk(&cblkexp, max, block->band_orientation,
 			block->compno,
 			(tile->comps + block->compno)->numresolutions - 1 - block->resno,
 			block->qmfbid, block->stepsize, block->cblk_sty,
@@ -179,7 +179,7 @@ bool T1Part1::decompress(DecompressBlockInfo *block) {
 	cblkexp.numbps = cblk->numbps - block->roishift;
 
     bool ret =t1->decompress_cblk(&cblkexp,
-								block->band_id,
+								block->band_orientation,
 								block->roishift,
 								block->cblk_sty);
 

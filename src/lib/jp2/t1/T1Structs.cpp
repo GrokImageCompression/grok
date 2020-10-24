@@ -318,7 +318,7 @@ bool DecompressCodeblock::copy_to_contiguous_buffer(uint8_t *buffer) {
 }
 
 Subband::Subband() :
-				band_id(0),
+				orientation(0),
 				precincts(nullptr),
 				numPrecincts(0),
 				numbps(0),
@@ -328,7 +328,7 @@ Subband::Subband() :
 
 //note: don't copy precinct array
 Subband::Subband(const Subband &rhs) : grk_rect_u32(rhs),
-										band_id(rhs.band_id),
+										orientation(rhs.orientation),
 										precincts(nullptr),
 										numPrecincts(0),
 										numbps(rhs.numbps),

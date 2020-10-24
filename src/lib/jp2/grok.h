@@ -1204,7 +1204,7 @@ typedef struct _grk_plugin_precinct {
  * Plugin band
  */
 typedef struct _grk_plugin_band {
-	size_t orient;
+	uint8_t orientation;
 	uint64_t numPrecincts;
 	grk_plugin_precinct **precincts;
 	float stepsize;

@@ -27,7 +27,7 @@ struct DecompressBlockInfo {
 			stride(0),
 			cblk(nullptr),
 			resno(0),
-			band_id(0),
+			band_orientation(0),
 			stepsize(0),
 			roishift(0),
 			cblk_sty(0),
@@ -41,7 +41,7 @@ struct DecompressBlockInfo {
 	uint32_t stride;
 	DecompressCodeblock *cblk;
 	uint32_t resno;
-	uint32_t band_id;
+	uint8_t band_orientation;
 	float stepsize;
 	uint32_t roishift;
 	uint32_t cblk_sty;
@@ -58,7 +58,7 @@ struct CompressBlockInfo {
 			            cblk(nullptr),
 						compno(0),
 						resno(0),
-						band_id(0),
+						band_orientation(0),
 						precno(0),
 						cblkno(0),
 						inv_step(0),
@@ -80,7 +80,7 @@ struct CompressBlockInfo {
 	CompressCodeblock *cblk;
 	uint32_t compno;
 	uint32_t resno;
-	uint8_t band_id;
+	uint8_t band_orientation;
 	uint64_t precno;
 	uint64_t cblkno;
 	// inverse step size in 13 bit fixed point

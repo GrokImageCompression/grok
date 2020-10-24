@@ -25,7 +25,7 @@ using namespace std;
 #include "t1_common.h"
 
 
-static int t1_init_ctxno_zc(uint32_t f, uint32_t orient)
+static int t1_init_ctxno_zc(uint32_t f, uint32_t orientation)
 {
     int h, v, d, n, t, hv;
     n = 0;
@@ -34,7 +34,7 @@ static int t1_init_ctxno_zc(uint32_t f, uint32_t orient)
     d = ((f & T1_SIGMA_0) != 0) + ((f & T1_SIGMA_2) != 0) + ((
                 f & T1_SIGMA_8) != 0) + ((f & T1_SIGMA_6) != 0);
 
-    switch (orient) {
+    switch (orientation) {
     case 2:
         t = h;
         h = v;
@@ -206,13 +206,13 @@ int main(int argc, char **argv)
     /* lut_ctxno_zc */
     for (j = 0; j < 4; ++j) {
         for (i = 0; i < 512; ++i) {
-            uint32_t orient = j;
-            if (orient == 2) {
-                orient = 1;
-            } else if (orient == 1) {
-                orient = 2;
+            uint32_t orientation = j;
+            if (orientation == 2) {
+                orientation = 1;
+            } else if (orientation == 1) {
+                orientation = 2;
             }
-            lut_ctxno_zc[(orient << 9) | i] = t1_init_ctxno_zc(i, j);
+            lut_ctxno_zc[(orientation << 9) | i] = t1_init_ctxno_zc(i, j);
         }
     }
 
