@@ -1831,8 +1831,8 @@ public:
 /* FILTER_WIDTH value matches the maximum left/right extension given in tables */
 /* F.2 and F.3 of the standard. */
 template <typename T,
-			uint32_t HORIZ_STEP,
-			uint32_t VERT_STEP,
+			uint32_t HORIZ_PASS_HEIGHT,
+			uint32_t VERT_PASS_WIDTH,
 			uint32_t COLUMNS_PER_STEP,
 			uint32_t FILTER_WIDTH,
 			typename D>
@@ -1928,10 +1928,10 @@ template <typename T,
         uint32_t y_bounds[2][2] =
         {
 			{
-			   uint_subs(win_ll.y0, HORIZ_STEP),
+			   uint_subs(win_ll.y0, HORIZ_PASS_HEIGHT),
 			   win_ll.y1},
 			{
-			  max<uint32_t>(win_ll.y1, uint_subs(min<uint32_t>(win_lh.y0 + vert.sn, rh),HORIZ_STEP)),
+			  max<uint32_t>(win_ll.y1, uint_subs(min<uint32_t>(win_lh.y0 + vert.sn, rh),HORIZ_PASS_HEIGHT)),
 			  min<uint32_t>(win_lh.y1 + vert.sn, rh)
 			}
 		};
@@ -1967,17 +1967,17 @@ template <typename T,
 			if (num_cols < num_jobs)
 				num_jobs = num_cols;
 			uint32_t step_j = num_jobs ? ( num_cols / num_jobs) : 0;
-			if (num_threads == 1 ||step_j < HORIZ_STEP){
+			if (num_threads == 1 ||step_j < HORIZ_PASS_HEIGHT){
 		     uint32_t j;
-			 for (j = y_bounds[k][0]; j + HORIZ_STEP-1 < y_bounds[k][1]; j += HORIZ_STEP) {
-				 decompressor.interleave_partial_h(&horiz, sa, j,HORIZ_STEP);
+			 for (j = y_bounds[k][0]; j + HORIZ_PASS_HEIGHT-1 < y_bounds[k][1]; j += HORIZ_PASS_HEIGHT) {
+				 decompressor.interleave_partial_h(&horiz, sa, j,HORIZ_PASS_HEIGHT);
 				 decompressor.decompress_h(&horiz);
 				 if (!sa->write( win_target.x0,
 								  j,
 								  win_target.x1,
-								  j + HORIZ_STEP,
+								  j + HORIZ_PASS_HEIGHT,
 								  (int32_t*)(horiz.mem + win_target.x0),
-								  HORIZ_STEP,
+								  HORIZ_PASS_HEIGHT,
 								  1,
 								  true)) {
 					 GRK_ERROR("sparse array write failure");
@@ -1993,7 +1993,7 @@ template <typename T,
 								  win_target.x1,
 								  y_bounds[k][1],
 								  (int32_t*)(horiz.mem + win_target.x0),
-								  HORIZ_STEP,
+								  HORIZ_PASS_HEIGHT,
 								  1,
 								  true)) {
 					 GRK_ERROR("Sparse array write failure");
@@ -2016,15 +2016,15 @@ template <typename T,
 				results.emplace_back(
 					ThreadPool::get()->enqueue([job,sa, win_target, &decompressor] {
 					 uint32_t j;
-					 for (j = job->min_j; j + HORIZ_STEP-1 < job->max_j; j += HORIZ_STEP) {
-						 decompressor.interleave_partial_h(&job->data, sa, j,HORIZ_STEP);
+					 for (j = job->min_j; j + HORIZ_PASS_HEIGHT-1 < job->max_j; j += HORIZ_PASS_HEIGHT) {
+						 decompressor.interleave_partial_h(&job->data, sa, j,HORIZ_PASS_HEIGHT);
 						 decompressor.decompress_h(&job->data);
 						 if (!sa->write( win_target.x0,
 										  j,
 										  win_target.x1,
-										  j + HORIZ_STEP,
+										  j + HORIZ_PASS_HEIGHT,
 										  (int32_t*)(job->data.mem + win_target.x0),
-										  HORIZ_STEP,
+										  HORIZ_PASS_HEIGHT,
 										  1,
 										  true)) {
 							 GRK_ERROR("sparse array write failure");
@@ -2040,7 +2040,7 @@ template <typename T,
 										  win_target.x1,
 										  job->max_j,
 										  (int32_t*)(job->data.mem + win_target.x0),
-										  HORIZ_STEP,
+										  HORIZ_PASS_HEIGHT,
 										  1,
 										  true)) {
 							 GRK_ERROR("Sparse array write failure");
@@ -2068,18 +2068,18 @@ template <typename T,
 		if (num_cols < num_jobs)
 			num_jobs = num_cols;
 		uint32_t step_j = num_jobs ? ( num_cols / num_jobs) : 0;
-		if (num_threads == 1 || step_j < VERT_STEP){
+		if (num_threads == 1 || step_j < VERT_PASS_WIDTH){
 	        uint32_t j;
-			for (j = win_target.x0; j + VERT_STEP < win_target.x1; j += VERT_STEP) {
-				decompressor.interleave_partial_v(&vert, sa, j, VERT_STEP);
+			for (j = win_target.x0; j + VERT_PASS_WIDTH < win_target.x1; j += VERT_PASS_WIDTH) {
+				decompressor.interleave_partial_v(&vert, sa, j, VERT_PASS_WIDTH);
 				decompressor.decompress_v(&vert);
 				if (!sa->write(j,
 							  win_target.y0,
-							  j + VERT_STEP,
+							  j + VERT_PASS_WIDTH,
 							  win_target.y1,
-							  (int32_t*)vert.mem + VERT_STEP * win_target.y0,
+							  (int32_t*)vert.mem + VERT_PASS_WIDTH * win_target.y0,
 							  1,
-							  VERT_STEP,
+							  VERT_PASS_WIDTH,
 							  true)) {
 					GRK_ERROR("Sparse array write failure");
 					horiz.release();
@@ -2093,9 +2093,9 @@ template <typename T,
 								  win_target.y0,
 								  win_target.x1,
 								  win_target.y1,
-								  (int32_t*)vert.mem + VERT_STEP * win_target.y0,
+								  (int32_t*)vert.mem + VERT_PASS_WIDTH * win_target.y0,
 								  1,
-								  VERT_STEP,
+								  VERT_PASS_WIDTH,
 								  true)) {
 					GRK_ERROR("Sparse array write failure");
 					horiz.release();
@@ -2117,16 +2117,16 @@ template <typename T,
 				results.emplace_back(
 					ThreadPool::get()->enqueue([job,sa, win_target, &decompressor] {
 					 uint32_t j;
-					 for (j = job->min_j; j + VERT_STEP-1 < job->max_j; j += VERT_STEP) {
-						decompressor.interleave_partial_v(&job->data, sa, j, VERT_STEP);
+					 for (j = job->min_j; j + VERT_PASS_WIDTH-1 < job->max_j; j += VERT_PASS_WIDTH) {
+						decompressor.interleave_partial_v(&job->data, sa, j, VERT_PASS_WIDTH);
 						decompressor.decompress_v(&job->data);
 						if (!sa->write(j,
 									  win_target.y0,
-									  j + VERT_STEP,
+									  j + VERT_PASS_WIDTH,
 									  win_target.y1,
-									  (int32_t*)job->data.mem + VERT_STEP * win_target.y0,
+									  (int32_t*)job->data.mem + VERT_PASS_WIDTH * win_target.y0,
 									  1,
-									  VERT_STEP,
+									  VERT_PASS_WIDTH,
 									  true)) {
 							GRK_ERROR("Sparse array write failure");
 							job->data.release();
@@ -2140,9 +2140,9 @@ template <typename T,
 												  win_target.y0,
 												  job->max_j,
 												  win_target.y1,
-												  (int32_t*)job->data.mem + VERT_STEP * win_target.y0,
+												  (int32_t*)job->data.mem + VERT_PASS_WIDTH * win_target.y0,
 												  1,
-												  VERT_STEP,
+												  VERT_PASS_WIDTH,
 												  true)) {
 							GRK_ERROR("Sparse array write failure");
 							job->data.release();
