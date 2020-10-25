@@ -79,9 +79,6 @@ const int NUM_FRAC_BITS = 13;
 /////////////////////////////////////////////////////////////////////////////
 #define ojph_min(a, b) (((a) < (b)) ? (a) : (b))
 
-#define ojph_unused(x) (void)(x)
-
-
 }
 
 #endif // !OJPH_TYPES_H

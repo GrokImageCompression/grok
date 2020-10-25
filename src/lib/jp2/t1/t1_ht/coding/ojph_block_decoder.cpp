@@ -144,7 +144,7 @@ namespace ojph {
         }
         else
         { //0 is found
-          run = (int)(melp->tmp >> (63 - eval)) & ((1 << eval) - 1);
+          run = (melp->tmp >> (63 - eval)) & ((1 << eval) - 1);
           //run = bit_reverse[run] >> (5 - eval);
           melp->k = melp->k - 1 > 0 ? melp->k - 1 : 0;
           melp->tmp <<= eval + 1;
@@ -173,7 +173,7 @@ namespace ojph {
 
       //These few lines take care of the case where data is not at a multiple
       // of 4 boundary.  It reads at 1,2,3 up to 4 bytes from the mel stream
-      int num = 4 - (int)(intptr_t(melp->data) & 0x3);
+      int num = 4 - (intptr_t(melp->data) & 0x3);
       for (int i = 0; i < num; ++i) {
         assert(melp->unstuff == false || melp->data[0] <= 0x8F);
         ui64 d = (melp->size > 0) ? *melp->data : 0xFF;
@@ -269,7 +269,7 @@ namespace ojph {
 
       //These few lines take care of the case where data is not at a multiple
       // of 4 boundary.  It reads at 1,2,3 up to 4 bytes from the vlc stream
-      int num = 1 + (int)(intptr_t(vlcp->data) & 0x3);
+      int num = 1 + (intptr_t(vlcp->data) & 0x3);
       int tnum = num < vlcp->size ? num : vlcp->size;
       for (int i = 0; i < tnum; ++i) {
         ui64 d;
@@ -349,7 +349,7 @@ namespace ojph {
 
       //These few lines take care of the case where data is not at a multiple
       // of 4 boundary.  It reads at 1,2,3 up to 4 bytes from the mrp stream
-      int num = 1 + (int)(intptr_t(vlcp->data) & 0x3);
+      int num = 1 + (intptr_t(vlcp->data) & 0x3);
       for (int i = 0; i < num; ++i) {
         ui64 d;
         d = (vlcp->size-- > 0) ? *vlcp->data-- : 0;
@@ -409,8 +409,8 @@ namespace ojph {
             if (tbl0[j].cwd == (cwd & ((1 << tbl0[j].cwd_len) - 1)))
             {
               if (debug) assert(vlc_tbl0[i] == 0);
-              vlc_tbl0[i] = (ui16)((tbl0[j].rho << 4) | (tbl0[j].u_off << 3)
-                | (tbl0[j].e_k << 12) | (tbl0[j].e_1 << 8) | tbl0[j].cwd_len);
+              vlc_tbl0[i] = (tbl0[j].rho << 4) | (tbl0[j].u_off << 3)
+                | (tbl0[j].e_k << 12) | (tbl0[j].e_1 << 8) | tbl0[j].cwd_len;
             }
       }
       if (debug) memset(vlc_tbl1, 0, sizeof(vlc_tbl1)); //unnecessary
@@ -423,8 +423,8 @@ namespace ojph {
             if (tbl1[j].cwd == (cwd & ((1 << tbl1[j].cwd_len) - 1)))
             {
               if (debug) assert(vlc_tbl1[i] == 0);
-              vlc_tbl1[i] = (ui16)((tbl1[j].rho << 4) | (tbl1[j].u_off << 3)
-                | (tbl1[j].e_k << 12) | (tbl1[j].e_1 << 8) | tbl1[j].cwd_len);
+              vlc_tbl1[i] = (tbl1[j].rho << 4) | (tbl1[j].u_off << 3)
+                | (tbl1[j].e_k << 12) | (tbl1[j].e_1 << 8) | tbl1[j].cwd_len;
             }
       }
 
@@ -432,7 +432,7 @@ namespace ojph {
     }
 
     /////////////////////////////////////////////////////////////////////////
-    inline int decompress_init_uvlc(ui32 vlc, ui32 mode, int *u)
+    inline int decode_init_uvlc(ui32 vlc, ui32 mode, int *u)
     {
       //table stores possible decoding three bits from vlc
       // there are 8 entries for xx1, x10, 100, 000
@@ -533,7 +533,7 @@ namespace ojph {
     }
 
     /////////////////////////////////////////////////////////////////////////
-    inline int decompress_noninit_uvlc(ui32 vlc, ui32 mode, int *u)
+    inline int decode_noninit_uvlc(ui32 vlc, ui32 mode, int *u)
     {
       //table stores possible decoding three bits from vlc
       // there are 8 entries for xx1, x10, 100, 000
@@ -652,7 +652,7 @@ namespace ojph {
 
       //These few lines take care of the case where data is not at a multiple
       // of 4 boundary.  It reads at 1,2,3 up to 4 bytes from the mel stream
-      int num = 4 - (int)(intptr_t(msp->data) & 0x3);
+      int num = 4 - (intptr_t(msp->data) & 0x3);
       for (int i = 0; i < num; ++i)
       {
         ui64 d;
@@ -738,7 +738,7 @@ namespace ojph {
       lsp[0] = 0;
       int run = mel_get_run(&mel);
       ui32 vlc_val, qinf[2] = { 0 };
-      ui32 c_p = 0;
+      ui16 c_p = 0;
       si32* sp = decoded_data;
       for (int x = 0; x < width; x += 4)
       {
@@ -798,7 +798,7 @@ namespace ojph {
           if (run < 0) //either -1 or -2, get
             run = mel_get_run(&mel);
         }
-        int consumed_bits = decompress_init_uvlc(vlc_val, uvlc_mode, U_p);
+        int consumed_bits = decode_init_uvlc(vlc_val, uvlc_mode, U_p);
         vlc_val = rev_advance(&vlc, consumed_bits);
 
         //decode magsgn and update line_state
@@ -840,7 +840,7 @@ namespace ojph {
           int s = (lsp[0] & 0x80) | 0x80; //\sigma^NW | \sigma^N
           int t = lsp[0] & 0x7F; //E^NW
           v_n = 32 - count_leading_zeros(v_n); //because E-=2;
-          lsp[0] = (ui8)(s | (t > v_n ? t : v_n));
+          lsp[0] = s | (t > v_n ? t : v_n);
         }
         else if (locs & 0x2)
           sp[stride] = 0; //no need to update line_state
@@ -875,7 +875,7 @@ namespace ojph {
           sp[stride] = val | ((v_n + 2) << (p - 1));
 
           //update line_state: bit 7 (\sigma^NW), and E^NW for next quad
-          lsp[0] = (ui8)(0x80 | (32 - count_leading_zeros(v_n)));//cause E-=2;
+          lsp[0] = 0x80 | 32 - count_leading_zeros(v_n); //because E-=2;
         }
         else if (locs & 0x8)
           sp[stride] = 0;
@@ -911,7 +911,7 @@ namespace ojph {
           int s = (lsp[0] & 0x80) | 0x80; //\sigma^NW | \sigma^N
           int t = lsp[0] & 0x7F; //E^NW
           v_n = 32 - count_leading_zeros(v_n); //because E-=2;
-          lsp[0] = (ui8)(s | (t > v_n ? t : v_n));
+          lsp[0] = s | (t > v_n ? t : v_n);
         }
         else if (locs & 0x20)
           sp[stride] = 0; //no need to update line_state
@@ -946,7 +946,7 @@ namespace ojph {
           sp[stride] = val | ((v_n + 2) << (p - 1));
 
           //update line_state: bit 7 (\sigma^NW), and E^NW for next quad
-          lsp[0] = (ui8)(0x80 | (32 - count_leading_zeros(v_n))); //cause E-=2;
+          lsp[0] = 0x80 | 32 - count_leading_zeros(v_n); //because E-=2;
         }
         else if (locs & 0x80)
           sp[stride] = 0;
@@ -1022,7 +1022,7 @@ namespace ojph {
           ////////////
           int U_p[2];
           int uvlc_mode = ((qinf[0] & 0x8) >> 3) | ((qinf[1] & 0x8) >> 2);
-          int consumed_bits = decompress_noninit_uvlc(vlc_val, uvlc_mode, U_p);
+          int consumed_bits = decode_noninit_uvlc(vlc_val, uvlc_mode, U_p);
           vlc_val = rev_advance(&vlc, consumed_bits);
 
           //calculate kappa and add it to U_p
@@ -1084,7 +1084,7 @@ namespace ojph {
             int s = (lsp[0] & 0x80) | 0x80; //\sigma^NW | \sigma^N
             int t = lsp[0] & 0x7F; //E^NW
             v_n = 32 - count_leading_zeros(v_n); //because E-=2;
-            lsp[0] = (ui8)(s | (t > v_n ? t : v_n));
+            lsp[0] = s | (t > v_n ? t : v_n);
           }
           else if (locs & 0x2)
             sp[stride] = 0; //no need to update line_state
@@ -1119,7 +1119,7 @@ namespace ojph {
             sp[stride] = val | ((v_n + 2) << (p - 1));
 
             //update line_state: bit 7 (\sigma^NW), and E^NW for next quad
-            lsp[0] = (ui8)(0x80 | (32 - count_leading_zeros(v_n)));//cause E-=2
+            lsp[0] = 0x80 | 32 - count_leading_zeros(v_n); //because E-=2
           }
           else if (locs & 0x8)
             sp[stride] = 0;
@@ -1155,7 +1155,7 @@ namespace ojph {
             int s = (lsp[0] & 0x80) | 0x80; //\sigma^NW | \sigma^N
             int t = lsp[0] & 0x7F; //E^NW
             v_n = 32 - count_leading_zeros(v_n); //because E-=2;
-            lsp[0] = (ui8)(s | (t > v_n ? t : v_n));
+            lsp[0] = s | (t > v_n ? t : v_n);
           }
           else if (locs & 0x20)
             sp[stride] = 0; //no need to update line_state
@@ -1190,7 +1190,7 @@ namespace ojph {
             sp[stride] = val | ((v_n + 2) << (p - 1));
 
             //update line_state: bit 7 (\sigma^NW), and E^NW for next quad
-            lsp[0] = (ui8)(0x80 | (32 - count_leading_zeros(v_n)));//cause E-=2
+            lsp[0] = 0x80 | 32 - count_leading_zeros(v_n); //because E-=2
           }
           else if (locs & 0x80)
             sp[stride] = 0;

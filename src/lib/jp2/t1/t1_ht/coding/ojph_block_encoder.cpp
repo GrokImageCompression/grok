@@ -52,14 +52,14 @@ namespace ojph {
     // tables
     /////////////////////////////////////////////////////////////////////////
 
-    //VLC compressing
+    //VLC encoding
     // index is (c_q << 8) + (rho << 4) + eps
     // data is  (cwd << 8) + (cwd_len << 4) + eps
     // table 0 is for the initial line of quads
     static ui16 vlc_tbl0[2048] = { 0 };
     static ui16 vlc_tbl1[2048] = { 0 };
 
-    //UVLC compressing
+    //UVLC encoding
     static int ulvc_cwd_pre[33];
     static int ulvc_cwd_pre_len[33];
     static int ulvc_cwd_suf[33];
@@ -254,7 +254,7 @@ namespace ojph {
       if (melp->remaining_bits == 0)
       {
         if (melp->pos >= melp->buf_size)
-          OJPH_ERROR(0x00020001, "mel compressor's buffer is full");
+          OJPH_ERROR(0x00020001, "mel encoder's buffer is full");
 
         melp->buf[melp->pos++] = (ui8)melp->tmp;
         melp->remaining_bits = (melp->tmp == 0xFF ? 7 : 8);
@@ -327,7 +327,7 @@ namespace ojph {
       while (cwd_len > 0)
       {
         if (vlcp->pos >= vlcp->buf_size)
-          OJPH_ERROR(0x00020002, "vlc compressor's buffer is full");
+          OJPH_ERROR(0x00020002, "vlc encoder's buffer is full");
 
         int avail_bits = 8 - vlcp->last_greater_than_8F - vlcp->used_bits;
         int t = ojph_min(avail_bits, cwd_len);
@@ -343,7 +343,7 @@ namespace ojph {
             vlcp->last_greater_than_8F = false;
             continue; //one empty bit remaining
           }
-          vlcp->buf[-vlcp->pos] = (ui8)(vlcp->tmp);
+          vlcp->buf[-vlcp->pos] = vlcp->tmp;
           vlcp->pos++;
           vlcp->last_greater_than_8F = vlcp->tmp > 0x8F;
           vlcp->tmp = 0;
@@ -368,20 +368,20 @@ namespace ojph {
         return;  //last mel byte cannot be 0xFF, since then
                  //melp->remaining_bits would be < 8
       if (melp->pos >= melp->buf_size)
-        OJPH_ERROR(0x00020003, "mel compressor's buffer is full");
+        OJPH_ERROR(0x00020003, "mel encoder's buffer is full");
       int fuse = melp->tmp | vlcp->tmp;
       if ( ( ((fuse ^ melp->tmp) & mel_mask)
            | ((fuse ^ vlcp->tmp) & vlc_mask) ) == 0
           && (fuse != 0xFF) && vlcp->pos > 1)
       {
-        melp->buf[melp->pos++] = (ui8)fuse;
+        melp->buf[melp->pos++] = fuse;
       }
       else
       {
         if (vlcp->pos >= vlcp->buf_size)
-          OJPH_ERROR(0x00020004, "vlc compressor's buffer is full");
-        melp->buf[melp->pos++] = (ui8)melp->tmp; //melp->tmp cannot be 0xFF
-        vlcp->buf[-vlcp->pos] = (ui8)vlcp->tmp;
+          OJPH_ERROR(0x00020004, "vlc encoder's buffer is full");
+        melp->buf[melp->pos++] = melp->tmp; // melp->tmp cannot be 0xFF here
+        vlcp->buf[-vlcp->pos] = vlcp->tmp;
         vlcp->pos++;
       }
     }
@@ -419,7 +419,7 @@ namespace ojph {
       while (cwd_len > 0)
       {
         if (msp->pos >= msp->buf_size)
-          OJPH_ERROR(0x00020005, "magnitude sign compressor's buffer is full");
+          OJPH_ERROR(0x00020005, "magnitude sign encoder's buffer is full");
         int t = ojph_min(msp->max_bits - msp->used_bits, cwd_len);
         msp->tmp |= (cwd & ((1 << t) - 1)) << msp->used_bits;
         msp->used_bits += t;
@@ -427,7 +427,7 @@ namespace ojph {
         cwd_len -= t;
         if (msp->used_bits >= msp->max_bits)
         {
-          msp->buf[msp->pos++] = (ui8)msp->tmp;
+          msp->buf[msp->pos++] = msp->tmp;
           msp->max_bits = (msp->tmp == 0xFF) ? 7 : 8;
           msp->tmp = 0;
           msp->used_bits = 0;
@@ -447,8 +447,8 @@ namespace ojph {
         if (msp->tmp != 0xFF)
         {
           if (msp->pos >= msp->buf_size)
-            OJPH_ERROR(0x00020006, "magnitude sign compressor's buffer is full");
-          msp->buf[msp->pos++] = (ui8)msp->tmp;
+            OJPH_ERROR(0x00020006, "magnitude sign encoder's buffer is full");
+          msp->buf[msp->pos++] = msp->tmp;
         }
       }
       else if (msp->max_bits == 7)
@@ -575,10 +575,10 @@ namespace ojph {
           eps0 |= (e_q[2] == e_qmax[0]) << 2;
           eps0 |= (e_q[3] == e_qmax[0]) << 3;
         }
-        lep[0] = ojph_max(lep[0], (ui8)e_q[1]); lep++;
-        lep[0] = (ui8)e_q[3];
-        lcxp[0] |= (ui8)((rho[0] & 2) >> 1); lcxp++;
-        lcxp[0] = (ui8)((rho[0] & 8) >> 3);
+        lep[0] = ojph_max(lep[0], e_q[1]); lep++;
+        lep[0] = e_q[3];
+        lcxp[0] |= (rho[0] & 2) >> 1; lcxp++;
+        lcxp[0] = (rho[0] & 8) >> 3;
 
         ui16 tuple0 = vlc_tbl0[(c_q0 << 8) + (rho[0] << 4) + eps0];
         vlc_encode(&vlc, tuple0 >> 8, (tuple0 >> 4) & 7);
@@ -662,10 +662,10 @@ namespace ojph {
             eps1 |= (e_q[6] == e_qmax[1]) << 2;
             eps1 |= (e_q[7] == e_qmax[1]) << 3;
           }
-          lep[0] = ojph_max(lep[0], (ui8)e_q[5]); lep++;
-          lep[0] = (ui8)e_q[7];
-          lcxp[0] |= (ui8)((rho[1] & 2) >> 1); lcxp++;
-          lcxp[0] = (ui8)((rho[1] & 8) >> 3);
+          lep[0] = ojph_max(lep[0], e_q[5]); lep++;
+          lep[0] = e_q[7];
+          lcxp[0] |= (rho[1] & 2) >> 1; lcxp++;
+          lcxp[0] = (rho[1] & 8) >> 3;
           ui16 tuple1 = vlc_tbl0[(c_q1 << 8) + (rho[1] << 4) + eps1];
           vlc_encode(&vlc, tuple1 >> 8, (tuple1 >> 4) & 7);
 
@@ -713,7 +713,6 @@ namespace ojph {
         rho[0] = rho[1] = 0; e_qmax[0] = e_qmax[1] = 0;
       }
 
-      lep[1] = 0;
 
       for (y = 2; y < height; y += 2)
       {
@@ -793,12 +792,12 @@ namespace ojph {
             eps0 |= (e_q[2] == e_qmax[0]) << 2;
             eps0 |= (e_q[3] == e_qmax[0]) << 3;
           }
-          lep[0] = ojph_max(lep[0], (ui8)e_q[1]); lep++;
+          lep[0] = ojph_max(lep[0], e_q[1]); lep++;
           max_e = ojph_max(lep[0], lep[1]) - 1;
-          lep[0] = (ui8)e_q[3];
-          lcxp[0] |= (ui8)((rho[0] & 2) >> 1); lcxp++;
+          lep[0] = e_q[3];
+          lcxp[0] |= (rho[0] & 2) >> 1; lcxp++;
           int c_q1 = lcxp[0] + (lcxp[1] << 2);
-          lcxp[0] = (ui8)((rho[0] & 8) >> 3);
+          lcxp[0] = (rho[0] & 8) >> 3;
           ui16 tuple0 = vlc_tbl1[(c_q0 << 8) + (rho[0] << 4) + eps0];
           vlc_encode(&vlc, tuple0 >> 8, (tuple0 >> 4) & 7);
 
@@ -882,12 +881,12 @@ namespace ojph {
               eps1 |= (e_q[6] == e_qmax[1]) << 2;
               eps1 |= (e_q[7] == e_qmax[1]) << 3;
             }
-            lep[0] = ojph_max(lep[0], (ui8)e_q[5]); lep++;
+            lep[0] = ojph_max(lep[0], e_q[5]); lep++;
             max_e = ojph_max(lep[0], lep[1]) - 1;
-            lep[0] = (ui8)e_q[7];
-            lcxp[0] |= (ui8)((rho[1] & 2) >> 1); lcxp++;
+            lep[0] = e_q[7];
+            lcxp[0] |= (rho[1] & 2) >> 1; lcxp++;
             c_q0 = lcxp[0] + (lcxp[1] << 2);
-            lcxp[0] = (ui8)((rho[1] & 8) >> 3);
+            lcxp[0] = (rho[1] & 8) >> 3;
             ui16 tuple1 = vlc_tbl1[(c_q1 << 8) + (rho[1] << 4) + eps1];
             vlc_encode(&vlc, tuple1 >> 8, (tuple1 >> 4) & 7);
 
@@ -932,8 +931,7 @@ namespace ojph {
       int num_bytes = mel.pos + vlc.pos;
       coded->buf[lengths[0]-1] = (ui8)(num_bytes >> 4);
       coded->buf[lengths[0]-2] = coded->buf[lengths[0]-2] & 0xF0;
-      coded->buf[lengths[0]-2] = 
-        (ui8)(coded->buf[lengths[0]-2] | (num_bytes & 0xF));
+      coded->buf[lengths[0]-2] |= (ui8)(num_bytes & 0xF);
 
       coded->avail_size -= lengths[0];
     }

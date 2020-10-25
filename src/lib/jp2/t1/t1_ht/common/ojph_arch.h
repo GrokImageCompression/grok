@@ -70,7 +70,7 @@ namespace ojph {
   #endif
 
   /////////////////////////////////////////////////////////////////////////////
-  static inline int population_count(ui32 val)
+  static inline ui32 population_count(ui32 val)
   {
   #ifdef OJPH_COMPILER_MSVC
     return __popcnt(val);
@@ -82,7 +82,7 @@ namespace ojph {
     val = (((val >> 4) + val) & 0x0f0f0f0f);
     val += (val >> 8);
     val += (val >> 16);
-    return (int)(val & 0x0000003f);
+    return val & 0x0000003f;
   #endif
   }
 
@@ -90,12 +90,12 @@ namespace ojph {
 #ifdef OJPH_COMPILER_MSVC
   #pragma intrinsic(_BitScanReverse)
 #endif
-  static inline int count_leading_zeros(ui32 val)
+  static inline ui32 count_leading_zeros(ui32 val)
   {
   #ifdef OJPH_COMPILER_MSVC
     unsigned long result = 0;
     _BitScanReverse(&result, val);
-    return 31 ^ (int)result;
+    return (ui32)(31 ^ result);
   #elif (defined OJPH_COMPILER_GNUC)
     return __builtin_clz(val);
   #else
@@ -112,12 +112,12 @@ namespace ojph {
 #ifdef OJPH_COMPILER_MSVC
   #pragma intrinsic(_BitScanForward)
 #endif
-  static inline int count_trailing_zeros(ui32 val)
+  static inline ui32 count_trailing_zeros(ui32 val)
   {
   #ifdef OJPH_COMPILER_MSVC
     unsigned long result = 0;
     _BitScanForward(&result, val);
-    return 31 ^ (int)result;
+    return (ui32)(31 ^ result);
   #elif (defined OJPH_COMPILER_GNUC)
     return __builtin_ctz(val);
   #else
@@ -171,7 +171,7 @@ namespace ojph {
   size_t calc_aligned_size(size_t size) {
     size = size * sizeof(T) + N - 1;
     size &= ~((1ULL << (31 - count_leading_zeros(N))) - 1);
-    size >>= (31 - count_leading_zeros(sizeof(T)));
+    size >>= 31 - count_leading_zeros(sizeof(T));
     return size;
   }
 
