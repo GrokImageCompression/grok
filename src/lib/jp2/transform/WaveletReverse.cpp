@@ -1878,7 +1878,7 @@ template <typename T,
 		   	   	   	   	   uint32_t numres,
 						   ISparseBuffer *sa) {
 
-    auto tr 	= tilec->resolutions;
+    auto res 	= tilec->resolutions;
     auto tr_max = tilec->resolutions + numres - 1;
     if (!tr_max->width() || !tr_max->height()){
         return true;
@@ -1901,7 +1901,7 @@ template <typename T,
     }
 
     // in 53 vertical pass, we process 4 vertical columns at a time
-    size_t data_size = max_resolution(tr, numres) * COLUMNS_PER_STEP;
+    size_t data_size = max_resolution(res, numres) * COLUMNS_PER_STEP;
 	dwt_data<T> horiz;
     if (!horiz.alloc(data_size)) {
         GRK_ERROR("Out of memory");
@@ -1913,105 +1913,111 @@ template <typename T,
     size_t num_threads = ThreadPool::get()->num_threads();
 
     for (uint32_t resno = 1; resno < numres; resno ++) {
-        horiz.sn = tr->width();
-        vert.sn = tr->height();
+        horiz.sn = res->width();
+        vert.sn = res->height();
 
-        ++tr;
-        uint32_t rw = tr->width();
-        uint32_t rh = tr->height();
+        ++res;
+        uint32_t rw = res->width();
+        uint32_t rh = res->height();
 
         horiz.dn = rw - horiz.sn;
-        horiz.cas = tr->x0 & 1;
+        horiz.cas = res->x0 & 1;
 
         vert.dn = rh - vert.sn;
-        vert.cas = tr->y0 & 1;
+        vert.cas = res->y0 & 1;
 
-        /* Get the sub-band coordinates for the window of interest */
-        auto win_ll = region_band(tilec->numresolutions,resno,0,region);
-        auto win_hl = region_band(tilec->numresolutions,resno,1,region);
-        auto win_lh = region_band(tilec->numresolutions,resno,2,region);
-        auto win_hh = region_band(tilec->numresolutions,resno,3,region);
+        // 1. set up regions for horizontal and vertical pass
 
-        /* Transform window of interest relative to band*/
-        win_ll = win_ll.pan(-(int64_t)tr->bands[BAND_INDEX_LH].x0, -(int64_t)tr->bands[BAND_INDEX_HL].y0);
-        win_hl = win_hl.pan(-(int64_t)tr->bands[BAND_INDEX_HL].x0, -(int64_t)tr->bands[BAND_INDEX_HL].y0);
-        win_lh = win_lh.pan(-(int64_t)tr->bands[BAND_INDEX_LH].x0, -(int64_t)tr->bands[BAND_INDEX_LH].y0);
-        win_hh = win_hh.pan(-(int64_t)tr->bands[BAND_INDEX_HH].x0, -(int64_t)tr->bands[BAND_INDEX_HH].y0);
-
-        win_ll.grow(FILTER_WIDTH, horiz.sn,  vert.sn);
-        win_hl.grow(FILTER_WIDTH, horiz.dn,  vert.sn);
-        win_lh.grow(FILTER_WIDTH, horiz.sn,  vert.dn);
-        win_hh.grow(FILTER_WIDTH, horiz.dn,  vert.dn);
-
-        /*target window of interest i.e. reduced region with padding */
-        grk_rect_u32 win_target;
-        if (horiz.cas == 0) {
-            win_target.x0 = min<uint32_t>(2 * win_ll.x0, 2 * win_hl.x0 + 1);
-            win_target.x1 = min<uint32_t>(max<uint32_t>(2 * win_ll.x1, 2 * win_hl.x1 + 1), rw);
-        } else {
-            win_target.x0 = min<uint32_t>(2 * win_hl.x0, 2 * win_ll.x0 + 1);
-            win_target.x1 = min<uint32_t>(max<uint32_t>(2 * win_hl.x1, 2 * win_ll.x1 + 1), rw);
-        }
-        if (vert.cas == 0) {
-            win_target.y0 = min<uint32_t>(2 * win_ll.y0, 2 * win_lh.y0 + 1);
-            win_target.y1 = min<uint32_t>(max<uint32_t>(2 * win_ll.y1, 2 * win_lh.y1 + 1), rh);
-        } else {
-            win_target.y0 = min<uint32_t>(2 * win_lh.y0, 2 * win_ll.y0 + 1);
-            win_target.y1 = min<uint32_t>(max<uint32_t>(2 * win_lh.y1, 2 * win_ll.y1 + 1), rh);
-        }
-        uint32_t horiz_pass_y_bounds[2][2] =
-        {
-			{
-			   uint_subs(win_ll.y0, HORIZ_PASS_HEIGHT),
-			   win_ll.y1},
-			{
-			  // two windows only overlap at most at the boundary - max is used to avoid overlap
-			  max<uint32_t>(win_ll.y1, uint_subs(min<uint32_t>(win_lh.y0 + vert.sn, rh),HORIZ_PASS_HEIGHT)),
-			  min<uint32_t>(win_lh.y1 + vert.sn, rh)
-			}
-		};
-        // allocate all sparse array blocks in advance
-        if (!sa->alloc(win_target))
+        // four sub-band regions that serve as input to horizontal pass
+        grk_rect_u32 win_horiz[BAND_NUM_ORIENTATIONS];
+        win_horiz[BAND_ORIENT_LL] = region_band(tilec->numresolutions,resno,0,region);
+        win_horiz[BAND_ORIENT_LL]  = win_horiz[BAND_ORIENT_LL].pan(-(int64_t)res->bands[BAND_INDEX_LH].x0, -(int64_t)res->bands[BAND_INDEX_HL].y0);
+        win_horiz[BAND_ORIENT_LL] .grow(FILTER_WIDTH, horiz.sn,  vert.sn);
+        if (!sa->alloc(win_horiz[BAND_ORIENT_LL] ))
 			 return false;
+
+        win_horiz[BAND_ORIENT_HL] = region_band(tilec->numresolutions,resno,1,region);
+        win_horiz[BAND_ORIENT_HL] = win_horiz[BAND_ORIENT_HL].pan(-(int64_t)res->bands[BAND_INDEX_HL].x0, -(int64_t)res->bands[BAND_INDEX_HL].y0);
+        win_horiz[BAND_ORIENT_HL].grow(FILTER_WIDTH, horiz.dn,  vert.sn);
+        if (!sa->alloc(win_horiz[BAND_ORIENT_HL]))
+			 return false;
+
+        win_horiz[BAND_ORIENT_LH] = region_band(tilec->numresolutions,resno,2,region);
+        win_horiz[BAND_ORIENT_LH] = win_horiz[BAND_ORIENT_LH].pan(-(int64_t)res->bands[BAND_INDEX_LH].x0, -(int64_t)res->bands[BAND_INDEX_LH].y0);
+        win_horiz[BAND_ORIENT_LH].grow(FILTER_WIDTH, horiz.sn,  vert.dn);
+        if (!sa->alloc(win_horiz[BAND_ORIENT_LH]))
+			 return false;
+
+        win_horiz[BAND__ORIENT_HH] = region_band(tilec->numresolutions,resno,3,region);
+        win_horiz[BAND__ORIENT_HH] = win_horiz[BAND__ORIENT_HH].pan(-(int64_t)res->bands[BAND_INDEX_HH].x0, -(int64_t)res->bands[BAND_INDEX_HH].y0);
+        win_horiz[BAND__ORIENT_HH].grow(FILTER_WIDTH, horiz.dn,  vert.dn);
+        if (!sa->alloc(win_horiz[BAND__ORIENT_HH]))
+			 return false;
+
+        grk_rect_u32 win_synthesis;
+
+        grk_rect_u32 win_low = (horiz.cas == 0) ? win_horiz[BAND_ORIENT_LL] : win_horiz[BAND_ORIENT_HL];
+        grk_rect_u32 win_high = (horiz.cas == 0) ? win_horiz[BAND_ORIENT_HL] : win_horiz[BAND_ORIENT_LL];
+        win_synthesis.x0 = min<uint32_t>(2 * win_low.x0, 2 * win_horiz[BAND_ORIENT_HL].x0 + 1);
+        win_synthesis.x1 = min<uint32_t>(max<uint32_t>(2 * win_low.x1, 2 * win_high.x1 + 1), rw);
+        win_low = (vert.cas == 0) ? win_horiz[BAND_ORIENT_LL] : win_horiz[BAND_ORIENT_LH];
+        win_high = (vert.cas == 0) ? win_horiz[BAND_ORIENT_LH] : win_horiz[BAND_ORIENT_LL];
+        win_synthesis.y0 = min<uint32_t>(2 * win_low.y0, 2 * win_high.y0 + 1);
+        win_synthesis.y1 = min<uint32_t>(max<uint32_t>(2 * win_low.y1, 2 * win_high.y1 + 1), rh);
+        if (!sa->alloc(win_synthesis))
+			 return false;
+
+        // two windows formed by horizontal pass and used as input for vertical pass
+        grk_rect_u32 win_vert[2];
+        win_vert[0] = grk_rect_u32(win_synthesis.x0,
+        						  uint_subs(win_horiz[BAND_ORIENT_LL].y0, HORIZ_PASS_HEIGHT),
+								  win_synthesis.x1,
+								  win_horiz[BAND_ORIENT_LL].y1);
+
+        win_vert[1] = grk_rect_u32(win_synthesis.x0,
+        							// note: max is used to avoid overlap between the two windows
+        							max<uint32_t>(win_horiz[BAND_ORIENT_LL].y1,
+        											uint_subs(min<uint32_t>(win_horiz[BAND_ORIENT_LH].y0 + vert.sn, rh),HORIZ_PASS_HEIGHT)),
+								  win_synthesis.x1,
+								  min<uint32_t>(win_horiz[BAND_ORIENT_LH].y1 + vert.sn, rh));
 		for (uint32_t k = 0; k < 2; ++k) {
-			 if (!sa->alloc(grk_rect_u32(win_target.x0,
-									  horiz_pass_y_bounds[k][0],
-									  win_target.x1,
-									  horiz_pass_y_bounds[k][1])))
+			 if (!sa->alloc(win_vert[k]))
 				 return false;
 		}
 
+        ///////////////////////////////////////////////////////////////////////////////////////////
 
-        horiz.win_l_0 = win_ll.x0;
-        horiz.win_l_1 = win_ll.x1;
-        horiz.win_h_0 = win_hl.x0;
-        horiz.win_h_1 = win_hl.x1;
+
+        horiz.win_l_0 = win_horiz[BAND_ORIENT_LL].x0;
+        horiz.win_l_1 = win_horiz[BAND_ORIENT_LL].x1;
+        horiz.win_h_0 = win_horiz[BAND_ORIENT_HL].x0;
+        horiz.win_h_1 = win_horiz[BAND_ORIENT_HL].x1;
 		for (uint32_t k = 0; k < 2; ++k) {
 	        /* Avoids dwt.c:1584:44 (in dwt_decode_partial_1): runtime error: */
 	        /* signed integer overflow: -1094795586 + -1094795586 cannot be represented in type 'int' */
 	        /* on decompress -i  ../../openjpeg/MAPA.jp2 -o out.tif -d 0,0,256,256 */
 	        /* This is less extreme than memsetting the whole buffer to 0 */
 	        /* although we could potentially do better with better handling of edge conditions */
-	        if (win_target.x1 >= 1 && win_target.x1 < rw)
-	            horiz.mem[win_target.x1 - 1] = T(0);
-	        if (win_target.x1 < rw)
-	            horiz.mem[win_target.x1] = T(0);
+	        if (win_synthesis.x1 >= 1 && win_synthesis.x1 < rw)
+	            horiz.mem[win_synthesis.x1 - 1] = T(0);
+	        if (win_synthesis.x1 < rw)
+	            horiz.mem[win_synthesis.x1] = T(0);
 
 			uint32_t num_jobs = (uint32_t)num_threads;
-			uint32_t num_cols = horiz_pass_y_bounds[k][1] - horiz_pass_y_bounds[k][0] + 1;
+			uint32_t num_cols = win_vert[k].y1 - win_vert[k].y0 + 1;
 			if (num_cols < num_jobs)
 				num_jobs = num_cols;
 			uint32_t step_j = num_jobs ? ( num_cols / num_jobs) : 0;
 			if (num_threads == 1 ||step_j < HORIZ_PASS_HEIGHT){
 		     uint32_t j;
-			 for (j = horiz_pass_y_bounds[k][0]; j + HORIZ_PASS_HEIGHT-1 < horiz_pass_y_bounds[k][1]; j += HORIZ_PASS_HEIGHT) {
+			 for (j = win_vert[k].y0; j + HORIZ_PASS_HEIGHT-1 < win_vert[k].y1; j += HORIZ_PASS_HEIGHT) {
 				 decompressor.interleave_partial_h(&horiz, sa, j,HORIZ_PASS_HEIGHT);
 				 decompressor.decompress_h(&horiz);
-				 if (!sa->write( win_target.x0,
+				 if (!sa->write( win_synthesis.x0,
 								  j,
-								  win_target.x1,
+								  win_synthesis.x1,
 								  j + HORIZ_PASS_HEIGHT,
-								  (int32_t*)(horiz.mem + win_target.x0),
+								  (int32_t*)(horiz.mem + win_synthesis.x0),
 								  HORIZ_PASS_HEIGHT,
 								  1,
 								  true)) {
@@ -2020,14 +2026,14 @@ template <typename T,
 					 return false;
 				 }
 			 }
-			 if (j < horiz_pass_y_bounds[k][1] ) {
-				 decompressor.interleave_partial_h(&horiz, sa, j, horiz_pass_y_bounds[k][1] - j);
+			 if (j < win_vert[k].y1 ) {
+				 decompressor.interleave_partial_h(&horiz, sa, j, win_vert[k].y1 - j);
 				 decompressor.decompress_h(&horiz);
-				 if (!sa->write( win_target.x0,
+				 if (!sa->write( win_synthesis.x0,
 								  j,
-								  win_target.x1,
-								  horiz_pass_y_bounds[k][1],
-								  (int32_t*)(horiz.mem + win_target.x0),
+								  win_synthesis.x1,
+								  win_vert[k].y1,
+								  (int32_t*)(horiz.mem + win_synthesis.x0),
 								  HORIZ_PASS_HEIGHT,
 								  1,
 								  true)) {
@@ -2041,24 +2047,24 @@ template <typename T,
 			for(uint32_t j = 0; j < num_jobs; ++j) {
 			   auto job = new decompress_job<float, dwt_data<T>>(
 					   	   	   horiz,
-							   horiz_pass_y_bounds[k][0] + j * step_j,
-							   j < (num_jobs - 1U) ? horiz_pass_y_bounds[k][0] + (j + 1U) * step_j : horiz_pass_y_bounds[k][1]);
+							   win_vert[k].y0 + j * step_j,
+							   j < (num_jobs - 1U) ? win_vert[k].y0 + (j + 1U) * step_j : win_vert[k].y1);
 				if (!job->data.alloc(data_size)) {
 					GRK_ERROR("Out of memory");
 					horiz.release();
 					return false;
 				}
 				results.emplace_back(
-					ThreadPool::get()->enqueue([job,sa, win_target, &decompressor] {
+					ThreadPool::get()->enqueue([job,sa, win_synthesis, &decompressor] {
 					 uint32_t j;
 					 for (j = job->min_j; j + HORIZ_PASS_HEIGHT-1 < job->max_j; j += HORIZ_PASS_HEIGHT) {
 						 decompressor.interleave_partial_h(&job->data, sa, j,HORIZ_PASS_HEIGHT);
 						 decompressor.decompress_h(&job->data);
-						 if (!sa->write( win_target.x0,
+						 if (!sa->write( win_synthesis.x0,
 										  j,
-										  win_target.x1,
+										  win_synthesis.x1,
 										  j + HORIZ_PASS_HEIGHT,
-										  (int32_t*)(job->data.mem + win_target.x0),
+										  (int32_t*)(job->data.mem + win_synthesis.x0),
 										  HORIZ_PASS_HEIGHT,
 										  1,
 										  true)) {
@@ -2070,11 +2076,11 @@ template <typename T,
 					 if (j < job->max_j ) {
 						 decompressor.interleave_partial_h(&job->data, sa, j, job->max_j - j);
 						 decompressor.decompress_h(&job->data);
-						 if (!sa->write( win_target.x0,
+						 if (!sa->write( win_synthesis.x0,
 										  j,
-										  win_target.x1,
+										  win_synthesis.x1,
 										  job->max_j,
-										  (int32_t*)(job->data.mem + win_target.x0),
+										  (int32_t*)(job->data.mem + win_synthesis.x0),
 										  HORIZ_PASS_HEIGHT,
 										  1,
 										  true)) {
@@ -2094,25 +2100,25 @@ template <typename T,
 		   }
         }
 
-		vert.win_l_0 = win_ll.y0;
-        vert.win_l_1 = win_ll.y1;
-        vert.win_h_0 = win_lh.y0;
-        vert.win_h_1 = win_lh.y1;
+		vert.win_l_0 = win_horiz[BAND_ORIENT_LL].y0;
+        vert.win_l_1 = win_horiz[BAND_ORIENT_LL].y1;
+        vert.win_h_0 = win_horiz[BAND_ORIENT_LH].y0;
+        vert.win_h_1 = win_horiz[BAND_ORIENT_LH].y1;
         uint32_t num_jobs = (uint32_t)num_threads;
-        uint32_t num_cols = win_target.x1 - win_target.x0 + 1;
+        uint32_t num_cols = win_synthesis.x1 - win_synthesis.x0 + 1;
 		if (num_cols < num_jobs)
 			num_jobs = num_cols;
 		uint32_t step_j = num_jobs ? ( num_cols / num_jobs) : 0;
 		if (num_threads == 1 || step_j < VERT_PASS_WIDTH){
 	        uint32_t j;
-			for (j = win_target.x0; j + VERT_PASS_WIDTH < win_target.x1; j += VERT_PASS_WIDTH) {
+			for (j = win_synthesis.x0; j + VERT_PASS_WIDTH < win_synthesis.x1; j += VERT_PASS_WIDTH) {
 				decompressor.interleave_partial_v(&vert, sa, j, VERT_PASS_WIDTH);
 				decompressor.decompress_v(&vert);
 				if (!sa->write(j,
-							  win_target.y0,
+							  win_synthesis.y0,
 							  j + VERT_PASS_WIDTH,
-							  win_target.y1,
-							  (int32_t*)vert.mem + VERT_PASS_WIDTH * win_target.y0,
+							  win_synthesis.y1,
+							  (int32_t*)vert.mem + VERT_PASS_WIDTH * win_synthesis.y0,
 							  1,
 							  VERT_PASS_WIDTH,
 							  true)) {
@@ -2121,14 +2127,14 @@ template <typename T,
 					return false;
 				}
 			}
-			if (j < win_target.x1) {
-				decompressor.interleave_partial_v(&vert, sa, j, win_target.x1 - j);
+			if (j < win_synthesis.x1) {
+				decompressor.interleave_partial_v(&vert, sa, j, win_synthesis.x1 - j);
 				decompressor.decompress_v(&vert);
 				if (!sa->write( j,
-								  win_target.y0,
-								  win_target.x1,
-								  win_target.y1,
-								  (int32_t*)vert.mem + VERT_PASS_WIDTH * win_target.y0,
+								  win_synthesis.y0,
+								  win_synthesis.x1,
+								  win_synthesis.y1,
+								  (int32_t*)vert.mem + VERT_PASS_WIDTH * win_synthesis.y0,
 								  1,
 								  VERT_PASS_WIDTH,
 								  true)) {
@@ -2142,24 +2148,24 @@ template <typename T,
 			for(uint32_t j = 0; j < num_jobs; ++j) {
 			   auto job = new decompress_job<float, dwt_data<T>>(
 					   	   	   	   	   vert,
-									   win_target.x0 + j * step_j,
-									   j < (num_jobs - 1U) ? win_target.x0 + (j + 1U) * step_j : win_target.x1);
+									   win_synthesis.x0 + j * step_j,
+									   j < (num_jobs - 1U) ? win_synthesis.x0 + (j + 1U) * step_j : win_synthesis.x1);
 				if (!job->data.alloc(data_size)) {
 					GRK_ERROR("Out of memory");
 					horiz.release();
 					return false;
 				}
 				results.emplace_back(
-					ThreadPool::get()->enqueue([job,sa, win_target, &decompressor] {
+					ThreadPool::get()->enqueue([job,sa, win_synthesis, &decompressor] {
 					 uint32_t j;
 					 for (j = job->min_j; j + VERT_PASS_WIDTH-1 < job->max_j; j += VERT_PASS_WIDTH) {
 						decompressor.interleave_partial_v(&job->data, sa, j, VERT_PASS_WIDTH);
 						decompressor.decompress_v(&job->data);
 						if (!sa->write(j,
-									  win_target.y0,
+									  win_synthesis.y0,
 									  j + VERT_PASS_WIDTH,
-									  win_target.y1,
-									  (int32_t*)job->data.mem + VERT_PASS_WIDTH * win_target.y0,
+									  win_synthesis.y1,
+									  (int32_t*)job->data.mem + VERT_PASS_WIDTH * win_synthesis.y0,
 									  1,
 									  VERT_PASS_WIDTH,
 									  true)) {
@@ -2172,10 +2178,10 @@ template <typename T,
 						decompressor.interleave_partial_v(&job->data, sa, j,  job->max_j - j);
 						decompressor.decompress_v(&job->data);
 						if (!sa->write(			  j,
-												  win_target.y0,
+												  win_synthesis.y0,
 												  job->max_j,
-												  win_target.y1,
-												  (int32_t*)job->data.mem + VERT_PASS_WIDTH * win_target.y0,
+												  win_synthesis.y1,
+												  (int32_t*)job->data.mem + VERT_PASS_WIDTH * win_synthesis.y0,
 												  1,
 												  VERT_PASS_WIDTH,
 												  true)) {
