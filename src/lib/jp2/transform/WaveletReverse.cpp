@@ -1891,12 +1891,12 @@ template <typename T,
         vert.cas = tr->y0 & 1;
 
         /* Get the sub-band coordinates for the window of interest */
-        grk_rect_u32 win_ll = grk_get_region_band_coordinates(tilec->numresolutions,resno,0,region);
-        grk_rect_u32 win_hl = grk_get_region_band_coordinates(tilec->numresolutions,resno,1,region);
-        grk_rect_u32 win_lh = grk_get_region_band_coordinates(tilec->numresolutions,resno,2,region);
+        auto win_ll = grk_region_band(tilec->numresolutions,resno,0,region);
+        auto win_hl = grk_region_band(tilec->numresolutions,resno,1,region);
+        auto win_lh = grk_region_band(tilec->numresolutions,resno,2,region);
 
         /* band coordinates */
-        /* Beware: band index for non-LL0 resolution are 0=HL, 1=LH and 2=HH */
+        /* Beware: bandno for non-LL0 resolution are 0=HL, 1=LH and 2=HH */
 
         /* Transform window of interest relative to band*/
         win_ll = win_ll.pan(-(int64_t)tr->bands[1].x0, -(int64_t)tr->bands[0].y0);
@@ -1908,7 +1908,7 @@ template <typename T,
         win_hl.grow(FILTER_WIDTH, horiz.dn,  vert.sn);
         win_lh.grow(FILTER_WIDTH, horiz.sn,  vert.dn);
 
-        /*target window of interest */
+        /*target window of interest i.e. reduced region with padding */
         grk_rect_u32 win_target;
         if (horiz.cas == 0) {
             win_target.x0 = min<uint32_t>(2 * win_ll.x0, 2 * win_hl.x0 + 1);

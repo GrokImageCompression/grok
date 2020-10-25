@@ -18,7 +18,10 @@
 
 namespace grk {
 
-grk_rect_u32 grk_get_region_band_coordinates(uint32_t num_res, uint32_t resno, uint32_t bandno, grk_rect_u32 unreduced_region){
+grk_rect_u32 grk_region_band(uint32_t num_res,
+							uint32_t resno,
+							uint32_t orientation,
+							grk_rect_u32 unreduced_region){
     /* Compute number of decomposition for this band. See table F-1 */
     uint32_t nb = (resno == 0) ? num_res - 1 :num_res - resno;
 
@@ -28,8 +31,8 @@ grk_rect_u32 grk_get_region_band_coordinates(uint32_t num_res, uint32_t resno, u
 	uint32_t tcy1 = unreduced_region.y1;
     /* Map above tile-based coordinates to sub-band-based coordinates per */
     /* equation B-15 of the standard */
-    uint32_t x0b = bandno & 1;
-    uint32_t y0b = bandno >> 1;
+    uint32_t x0b = orientation & 1;
+    uint32_t y0b = orientation >> 1;
 	uint32_t tbx0 = (nb == 0) ? tcx0 :
 			(tcx0 <= (1U << (nb - 1)) * x0b) ? 0 :
 			ceildivpow2<uint32_t>(tcx0 - (1U << (nb - 1)) * x0b, nb);
