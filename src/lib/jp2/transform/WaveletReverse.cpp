@@ -1828,6 +1828,42 @@ public:
 	}
 };
 
+static grk_rect_u32 region_band(uint32_t num_res,
+							uint32_t resno,
+							uint32_t orientation,
+							grk_rect_u32 unreduced_region){
+    /* Compute number of decomposition for this band. See table F-1 */
+    uint32_t nb = (resno == 0) ? num_res - 1 :num_res - resno;
+
+    uint32_t tcx0 = unreduced_region.x0;
+	uint32_t tcy0 = unreduced_region.y0;
+	uint32_t tcx1 = unreduced_region.x1;
+	uint32_t tcy1 = unreduced_region.y1;
+    /* Map above tile-based coordinates to sub-band-based coordinates per */
+    /* equation B-15 of the standard */
+    uint32_t x0b = orientation & 1;
+    uint32_t y0b = orientation >> 1;
+	uint32_t tbx0 = (nb == 0) ? tcx0 :
+			(tcx0 <= (1U << (nb - 1)) * x0b) ? 0 :
+			ceildivpow2<uint32_t>(tcx0 - (1U << (nb - 1)) * x0b, nb);
+
+	uint32_t tby0 = (nb == 0) ? tcy0 :
+			(tcy0 <= (1U << (nb - 1)) * y0b) ? 0 :
+			ceildivpow2<uint32_t>(tcy0 - (1U << (nb - 1)) * y0b, nb);
+
+	uint32_t tbx1 = (nb == 0) ? tcx1 :
+			(tcx1 <= (1U << (nb - 1)) * x0b) ? 0 :
+			ceildivpow2<uint32_t>(tcx1 - (1U << (nb - 1)) * x0b, nb);
+
+	uint32_t tby1 = (nb == 0) ? tcy1 :
+			(tcy1 <= (1U << (nb - 1)) * y0b) ? 0 :
+			ceildivpow2<uint32_t>(tcy1 - (1U << (nb - 1)) * y0b, nb);
+
+
+	return grk_rect_u32(tbx0,tby0,tbx1,tby1);
+}
+
+
 /* FILTER_WIDTH value matches the maximum left/right extension given in tables */
 /* F.2 and F.3 of the standard. */
 template <typename T,
@@ -1891,22 +1927,21 @@ template <typename T,
         vert.cas = tr->y0 & 1;
 
         /* Get the sub-band coordinates for the window of interest */
-        auto win_ll = grk_region_band(tilec->numresolutions,resno,0,region);
-        auto win_hl = grk_region_band(tilec->numresolutions,resno,1,region);
-        auto win_lh = grk_region_band(tilec->numresolutions,resno,2,region);
-
-        /* band coordinates */
-        /* Beware: bandno for non-LL0 resolution are 0=HL, 1=LH and 2=HH */
+        auto win_ll = region_band(tilec->numresolutions,resno,0,region);
+        auto win_hl = region_band(tilec->numresolutions,resno,1,region);
+        auto win_lh = region_band(tilec->numresolutions,resno,2,region);
+        auto win_hh = region_band(tilec->numresolutions,resno,3,region);
 
         /* Transform window of interest relative to band*/
-        win_ll = win_ll.pan(-(int64_t)tr->bands[1].x0, -(int64_t)tr->bands[0].y0);
-        // note: we pass in zero when we don't care about those coordinates
-        win_hl = win_hl.pan(-(int64_t)tr->bands[0].x0, 0);
-        win_lh = win_lh.pan(0, -(int64_t)tr->bands[1].y0);
+        win_ll = win_ll.pan(-(int64_t)tr->bands[BAND_INDEX_LH].x0, -(int64_t)tr->bands[BAND_INDEX_HL].y0);
+        win_hl = win_hl.pan(-(int64_t)tr->bands[BAND_INDEX_HL].x0, -(int64_t)tr->bands[BAND_INDEX_HL].y0);
+        win_lh = win_lh.pan(-(int64_t)tr->bands[BAND_INDEX_LH].x0, -(int64_t)tr->bands[BAND_INDEX_LH].y0);
+        win_hh = win_hh.pan(-(int64_t)tr->bands[BAND_INDEX_HH].x0, -(int64_t)tr->bands[BAND_INDEX_HH].y0);
 
         win_ll.grow(FILTER_WIDTH, horiz.sn,  vert.sn);
         win_hl.grow(FILTER_WIDTH, horiz.dn,  vert.sn);
         win_lh.grow(FILTER_WIDTH, horiz.sn,  vert.dn);
+        win_hh.grow(FILTER_WIDTH, horiz.dn,  vert.dn);
 
         /*target window of interest i.e. reduced region with padding */
         grk_rect_u32 win_target;
@@ -1924,13 +1959,13 @@ template <typename T,
             win_target.y0 = min<uint32_t>(2 * win_lh.y0, 2 * win_ll.y0 + 1);
             win_target.y1 = min<uint32_t>(max<uint32_t>(2 * win_lh.y1, 2 * win_ll.y1 + 1), rh);
         }
-        // two windows only overlap at most at the boundary
-        uint32_t y_bounds[2][2] =
+        uint32_t horiz_pass_y_bounds[2][2] =
         {
 			{
 			   uint_subs(win_ll.y0, HORIZ_PASS_HEIGHT),
 			   win_ll.y1},
 			{
+			  // two windows only overlap at most at the boundary - max is used to avoid overlap
 			  max<uint32_t>(win_ll.y1, uint_subs(min<uint32_t>(win_lh.y0 + vert.sn, rh),HORIZ_PASS_HEIGHT)),
 			  min<uint32_t>(win_lh.y1 + vert.sn, rh)
 			}
@@ -1940,9 +1975,9 @@ template <typename T,
 			 return false;
 		for (uint32_t k = 0; k < 2; ++k) {
 			 if (!sa->alloc(grk_rect_u32(win_target.x0,
-									  y_bounds[k][0],
+									  horiz_pass_y_bounds[k][0],
 									  win_target.x1,
-									  y_bounds[k][1])))
+									  horiz_pass_y_bounds[k][1])))
 				 return false;
 		}
 
@@ -1963,13 +1998,13 @@ template <typename T,
 	            horiz.mem[win_target.x1] = T(0);
 
 			uint32_t num_jobs = (uint32_t)num_threads;
-			uint32_t num_cols = y_bounds[k][1] - y_bounds[k][0] + 1;
+			uint32_t num_cols = horiz_pass_y_bounds[k][1] - horiz_pass_y_bounds[k][0] + 1;
 			if (num_cols < num_jobs)
 				num_jobs = num_cols;
 			uint32_t step_j = num_jobs ? ( num_cols / num_jobs) : 0;
 			if (num_threads == 1 ||step_j < HORIZ_PASS_HEIGHT){
 		     uint32_t j;
-			 for (j = y_bounds[k][0]; j + HORIZ_PASS_HEIGHT-1 < y_bounds[k][1]; j += HORIZ_PASS_HEIGHT) {
+			 for (j = horiz_pass_y_bounds[k][0]; j + HORIZ_PASS_HEIGHT-1 < horiz_pass_y_bounds[k][1]; j += HORIZ_PASS_HEIGHT) {
 				 decompressor.interleave_partial_h(&horiz, sa, j,HORIZ_PASS_HEIGHT);
 				 decompressor.decompress_h(&horiz);
 				 if (!sa->write( win_target.x0,
@@ -1985,13 +2020,13 @@ template <typename T,
 					 return false;
 				 }
 			 }
-			 if (j < y_bounds[k][1] ) {
-				 decompressor.interleave_partial_h(&horiz, sa, j, y_bounds[k][1] - j);
+			 if (j < horiz_pass_y_bounds[k][1] ) {
+				 decompressor.interleave_partial_h(&horiz, sa, j, horiz_pass_y_bounds[k][1] - j);
 				 decompressor.decompress_h(&horiz);
 				 if (!sa->write( win_target.x0,
 								  j,
 								  win_target.x1,
-								  y_bounds[k][1],
+								  horiz_pass_y_bounds[k][1],
 								  (int32_t*)(horiz.mem + win_target.x0),
 								  HORIZ_PASS_HEIGHT,
 								  1,
@@ -2006,8 +2041,8 @@ template <typename T,
 			for(uint32_t j = 0; j < num_jobs; ++j) {
 			   auto job = new decompress_job<float, dwt_data<T>>(
 					   	   	   horiz,
-							   y_bounds[k][0] + j * step_j,
-							   j < (num_jobs - 1U) ? y_bounds[k][0] + (j + 1U) * step_j : y_bounds[k][1]);
+							   horiz_pass_y_bounds[k][0] + j * step_j,
+							   j < (num_jobs - 1U) ? horiz_pass_y_bounds[k][0] + (j + 1U) * step_j : horiz_pass_y_bounds[k][1]);
 				if (!job->data.alloc(data_size)) {
 					GRK_ERROR("Out of memory");
 					horiz.release();

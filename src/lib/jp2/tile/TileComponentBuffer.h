@@ -25,7 +25,7 @@ template<typename T> struct res_buf {
 
 	res_buf(Resolution *res, grk_rect_u32 res_bounds) : res(new grk_buffer_2d<T>(res_bounds))
 	{
-		for (uint32_t i = 0; i < 3; ++i)
+		for (uint32_t i = 0; i < BAND_NUM_INDICES; ++i)
 			bands[i] = res ? new grk_buffer_2d<T>(res->bands[i]) : nullptr;
 	}
 	~res_buf(){
@@ -36,7 +36,7 @@ template<typename T> struct res_buf {
 	bool alloc(bool clear){
 		if (!res->alloc(clear))
 			return false;
-		for (uint32_t i = 0; i < 3; ++i){
+		for (uint32_t i = 0; i < BAND_NUM_INDICES; ++i){
 			if (bands[i] && !bands[i]->alloc(clear))
 				return false;
 		}
@@ -96,7 +96,7 @@ template<typename T> struct TileComponentBuffer {
 
         if ( use_band_buffers()) {
         	// lowest resolution equals 0th band
-        	 res_buffers.push_back(new res_buf<T>(nullptr, tile_comp_resolutions->bands[0]) );
+        	 res_buffers.push_back(new res_buf<T>(nullptr, tile_comp_resolutions->bands[BAND_RES_ZERO_INDEX_LL]) );
 
         	 for (uint32_t resno = 1; resno < reduced_num_resolutions; ++resno)
         		 res_buffers.push_back(new res_buf<T>( tile_comp_resolutions+resno, m_bounds) );
@@ -119,11 +119,9 @@ template<typename T> struct TileComponentBuffer {
 	 *
 	 */
 	T* cblk_ptr(uint32_t resno,uint32_t bandno, uint32_t &offsetx, uint32_t &offsety) const {
-		assert(bandno < 3 && resno < resolutions.size());
+		assert(bandno < BAND_NUM_INDICES && resno < resolutions.size());
 		if (resno==0)
-			assert(bandno==0);
-		else
-			assert(bandno < 3);
+			assert(bandno==BAND_RES_ZERO_INDEX_LL);
 
 		auto res = resolutions[resno];
 		auto band = res->bands + bandno;
