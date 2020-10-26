@@ -24,11 +24,7 @@ class WaveletFwdImpl {
 public:
 	virtual ~WaveletFwdImpl(){}
 	bool compress(TileComponent *tile_comp, uint8_t qmfbid);
-	bool decompress(TileProcessor *p_tcd,
-					TileComponent* tilec,
-					grk_rect_u32 region,
-					uint32_t numres,
-					uint8_t qmfbid);
+
 };
 
 }

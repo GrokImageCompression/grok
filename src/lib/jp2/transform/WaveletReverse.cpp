@@ -2217,7 +2217,7 @@ template <typename T,
 /* <summary>                            */
 /* Inverse 5-3 wavelet transform in 2-D. */
 /* </summary>                           */
-bool decompress_53(TileProcessor *p_tcd,
+bool WaveletReverse::decompress_53(TileProcessor *p_tcd,
 					TileComponent* tilec,
 					grk_rect_u32 region,
                     uint32_t numres)
@@ -2236,7 +2236,7 @@ bool decompress_53(TileProcessor *p_tcd,
 											tilec->getSparseBuffer());
 }
 
-bool decompress_97(TileProcessor *p_tcd,
+bool WaveletReverse::decompress_97(TileProcessor *p_tcd,
                 TileComponent* GRK_RESTRICT tilec,
 				grk_rect_u32 region,
                 uint32_t numres){
@@ -2252,6 +2252,19 @@ bool decompress_97(TileProcessor *p_tcd,
 											region,
 											numres,
 											tilec->getSparseBuffer());
+}
+
+
+bool WaveletReverse::decompress(TileProcessor *p_tcd,
+						TileComponent* tilec,
+						grk_rect_u32 region,
+                        uint32_t numres,
+						uint8_t qmfbid){
+	if (qmfbid == 1)
+		return decompress_53(p_tcd,tilec,region,numres);
+	else if (qmfbid == 0)
+		return decompress_97(p_tcd,tilec,region,numres);
+	return false;
 }
 
 }

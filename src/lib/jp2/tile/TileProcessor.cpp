@@ -915,7 +915,7 @@ bool TileProcessor::decompress_tile_t1(void) {
 				return false;
 
 			if (doPostT1){
-				WaveletFwdImpl w;
+				WaveletReverse w;
 				if (!w.decompress(this,
 										tilec,
 										tilec->getBuffer()->unreduced_bounds(),

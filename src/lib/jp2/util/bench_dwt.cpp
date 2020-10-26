@@ -269,10 +269,8 @@ int main(int argc, char** argv)
 			WaveletFwdImpl w;
 			rc = w.compress(&tilec,lossy ? 0 : 1 );
 		} else {
-			if (lossy)
-				rc = decompress_97(tileProcessor.get(), &tilec, tilec.getBuffer()->unreduced_bounds(), tilec.numresolutions);
-			else
-				rc = decompress_53(tileProcessor.get(), &tilec, tilec.getBuffer()->unreduced_bounds(), tilec.numresolutions);
+			WaveletReverse w;
+			rc = w.decompress(tileProcessor.get(), &tilec, tilec.getBuffer()->unreduced_bounds(), tilec.numresolutions, lossy ? 0 : 1);
 		}
 		assert(rc);
 		finish = std::chrono::high_resolution_clock::now();
