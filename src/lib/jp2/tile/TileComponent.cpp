@@ -258,14 +258,49 @@ bool TileComponent::subbandIntersectsAOI(uint32_t resno,
 		return true;
 
     /* Note: those values for filter_margin are in part the result of */
-    /* experimentation. The value 2 for QMFBID=1 (5x3 filter) and */
-    /* 4 for QMFBID=0 (9x7 filter) can be linked to the */
-    /* maximum left/right extension given in tables F.2 and F.3 of the */
-    /* standard.*/
-    uint32_t filter_margin = (m_tccp->qmfbid == 1) ? 2 : 4;
-    auto b = resolutions[resno].bands[bandno];
-    b.grow(filter_margin,filter_margin);
-    return b.intersection(aoi).is_non_degenerate();
+    /* experimentation. The value 2 for QMFBID=1 (5x3 filter) can be linked */
+    /* to the maximum left/right extension given in tables F.2 and F.3 of the */
+    /* standard. The value 3 for QMFBID=0 (9x7 filter) is more suspicious, */
+    /* since F.2 and F.3 would lead to 4 instead, so the current 3 might be */
+    /* needed to be bumped to 4, in case inconsistencies are found while */
+    /* decoding parts of irreversible coded images. */
+    /* See dwt_decode_partial_53 and dwt_decode_partial_97 as well */
+    uint32_t filter_margin = (m_tccp->qmfbid == 1) ? 2 : 3;
+
+    /* Compute the intersection of the area of interest, expressed in tile component coordinates */
+    /* with the tile coordinates */
+	auto dims = buf->unreduced_bounds();
+	uint32_t tcx0 = dims.x0;
+	uint32_t tcy0 = dims.y0;
+	uint32_t tcx1 = dims.x1;
+	uint32_t tcy1 = dims.y1;
+
+    /* Compute number of decomposition for this band. See table F-1 */
+    uint32_t num_decomps = (resno == 0) ?
+                    numresolutions - 1 :
+                    numresolutions - resno;
+    /* Map above tile-based coordinates to sub-band-based coordinates per */
+    /* equation B-15 of the standard */
+    uint32_t orientation = (resno == 0) ? 0 : bandno+1;
+    uint32_t x0b = orientation & 1;
+    uint32_t y0b = orientation >> 1;
+    grk_rect_u32 region;
+    region.x0 = (num_decomps == 0) ? tcx0 :
+                      (tcx0 <= (1U << (num_decomps - 1)) * x0b) ? 0 :
+                      ceildivpow2<uint32_t>(tcx0 - (1U << (num_decomps - 1)) * x0b, num_decomps);
+    region.y0 = (num_decomps == 0) ? tcy0 :
+                      (tcy0 <= (1U << (num_decomps - 1)) * y0b) ? 0 :
+                      ceildivpow2<uint32_t>(tcy0 - (1U << (num_decomps - 1)) * y0b, num_decomps);
+    region.x1 = (num_decomps == 0) ? tcx1 :
+                      (tcx1 <= (1U << (num_decomps - 1)) * x0b) ? 0 :
+                      ceildivpow2<uint32_t>(tcx1 - (1U << (num_decomps - 1)) * x0b, num_decomps);
+    region.y1 = (num_decomps == 0) ? tcy1 :
+                      (tcy1 <= (1U << (num_decomps - 1)) * y0b) ? 0 :
+                      ceildivpow2<uint32_t>(tcy1 - (1U << (num_decomps - 1)) * y0b, num_decomps);
+
+
+    region.grow(filter_margin,filter_margin);
+    return region.intersection(aoi).is_non_degenerate();
 }
 
 void TileComponent::allocSparseBuffer(uint32_t numres){
