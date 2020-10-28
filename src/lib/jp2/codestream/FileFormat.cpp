@@ -2459,7 +2459,7 @@ FileFormat::FileFormat(bool isDecoder, BufferedStream *stream) : codeStream(new 
 
 FileFormat::~FileFormat() {
 	delete codeStream;
-	grk_free(comps);
+	delete[] comps;
 	grk_free(cl);
 	FileFormat::free_color(&color);
 	delete m_validation_list;
@@ -2714,12 +2714,7 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
 
 	/* Image Header box */
 	numcomps = image->numcomps; /* NC */
-	comps = (grk_jp2_comps*) grk_malloc(
-			numcomps * sizeof(grk_jp2_comps));
-	if (!comps) {
-		GRK_ERROR("Not enough memory when set up the JP2 compressor");
-		return false;
-	}
+	comps = new grk_jp2_comps[numcomps];
 
 	h = image->y1 - image->y0;
 	w = image->x1 - image->x0;
