@@ -330,7 +330,17 @@ private:
 	            x_incr = min<uint32_t>(x_incr, x1 - x);
 	            auto src_block = data_blocks[(uint64_t)block_y * grid_width + block_x];
             	//all blocks should be allocated first before read/write is called
-                assert(src_block);
+	            if (!src_block){
+	            	GRK_ERROR("Sparse array: missing block (%d,%d,%d,%d) for %s (%d,%d,%d,%d)",
+	            			block_x*block_width,
+						   block_y*block_height,
+						   block_x*block_width + x_incr,
+						   block_y*block_height + y_incr,
+						   is_read_op ? "read" : "write",
+						   x0,y0,x1,y1);
+	            	assert(src_block);
+	            	return false;
+	            }
 	            if (is_read_op) {
 					const int32_t* GRK_RESTRICT src_ptr =
 							src_block + ((uint64_t)block_y_offset << LBW) + block_x_offset;

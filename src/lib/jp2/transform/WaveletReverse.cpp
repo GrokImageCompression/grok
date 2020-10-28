@@ -23,6 +23,8 @@
 #include "CPUArch.h"
 #include <algorithm>
 
+const bool DEBUG_WAVELET = false;
+
 namespace grk {
 
 /* <summary>                             */
@@ -1912,6 +1914,10 @@ template <typename T,
     D decompressor;
     size_t num_threads = ThreadPool::get()->num_threads();
 
+	if (DEBUG_WAVELET){
+		std::cout << "Partial Wavelet" << std::endl;
+	}
+
     for (uint32_t resno = 1; resno < numres; resno ++) {
         horiz.sn = res->width();
         vert.sn = res->height();
@@ -1926,33 +1932,49 @@ template <typename T,
         vert.dn = rh - vert.sn;
         vert.cas = res->y0 & 1;
 
+    	if (DEBUG_WAVELET){
+    		std::cout << "Resolution: " << resno << std::endl;
+    	}
+
         // 1. set up regions for horizontal and vertical pass
 
         // four sub-band regions that serve as input to horizontal pass
         grk_rect_u32 win_horiz[BAND_NUM_ORIENTATIONS];
+        grk_rect_u32 win_horiz_global[BAND_NUM_ORIENTATIONS];
         win_horiz[BAND_ORIENT_LL] = region_band(tilec->numresolutions,resno,0,region);
-        win_horiz[BAND_ORIENT_LL]  = win_horiz[BAND_ORIENT_LL].pan(-(int64_t)res->bands[BAND_INDEX_LH].x0, -(int64_t)res->bands[BAND_INDEX_HL].y0);
-        win_horiz[BAND_ORIENT_LL] .grow(FILTER_WIDTH, horiz.sn,  vert.sn);
-        if (!sa->alloc(win_horiz[BAND_ORIENT_LL] ))
+        win_horiz[BAND_ORIENT_LL] = win_horiz[BAND_ORIENT_LL].pan(-(int64_t)res->bands[BAND_INDEX_LH].x0, -(int64_t)res->bands[BAND_INDEX_HL].y0);
+        win_horiz[BAND_ORIENT_LL].grow(FILTER_WIDTH, horiz.sn,  vert.sn);
+        win_horiz_global[BAND_ORIENT_LL] = win_horiz[BAND_ORIENT_LL];
+        if (!sa->alloc(win_horiz_global[BAND_ORIENT_LL].grow(FILTER_WIDTH, horiz.sn,  vert.sn) ))
 			 return false;
 
         win_horiz[BAND_ORIENT_HL] = region_band(tilec->numresolutions,resno,1,region);
         win_horiz[BAND_ORIENT_HL] = win_horiz[BAND_ORIENT_HL].pan(-(int64_t)res->bands[BAND_INDEX_HL].x0, -(int64_t)res->bands[BAND_INDEX_HL].y0);
         win_horiz[BAND_ORIENT_HL].grow(FILTER_WIDTH, horiz.dn,  vert.sn);
-        if (!sa->alloc(win_horiz[BAND_ORIENT_HL]))
+        win_horiz_global[BAND_ORIENT_HL] = win_horiz[BAND_ORIENT_HL].pan(res->bands[BAND_INDEX_LH].width(),0);
+        if (!sa->alloc(win_horiz_global[BAND_ORIENT_HL].grow(FILTER_WIDTH, rw,  vert.sn)))
 			 return false;
 
         win_horiz[BAND_ORIENT_LH] = region_band(tilec->numresolutions,resno,2,region);
         win_horiz[BAND_ORIENT_LH] = win_horiz[BAND_ORIENT_LH].pan(-(int64_t)res->bands[BAND_INDEX_LH].x0, -(int64_t)res->bands[BAND_INDEX_LH].y0);
         win_horiz[BAND_ORIENT_LH].grow(FILTER_WIDTH, horiz.sn,  vert.dn);
-        if (!sa->alloc(win_horiz[BAND_ORIENT_LH]))
+        win_horiz_global[BAND_ORIENT_LH] = win_horiz[BAND_ORIENT_LH].pan(0,res->bands[BAND_INDEX_HL].height());
+        if (!sa->alloc(win_horiz_global[BAND_ORIENT_LH].grow(FILTER_WIDTH, horiz.sn,  rh)))
 			 return false;
 
         win_horiz[BAND__ORIENT_HH] = region_band(tilec->numresolutions,resno,3,region);
         win_horiz[BAND__ORIENT_HH] = win_horiz[BAND__ORIENT_HH].pan(-(int64_t)res->bands[BAND_INDEX_HH].x0, -(int64_t)res->bands[BAND_INDEX_HH].y0);
         win_horiz[BAND__ORIENT_HH].grow(FILTER_WIDTH, horiz.dn,  vert.dn);
-        if (!sa->alloc(win_horiz[BAND__ORIENT_HH]))
+        win_horiz_global[BAND__ORIENT_HH] = win_horiz[BAND__ORIENT_HH].pan(res->bands[BAND_INDEX_LH].width(),res->bands[BAND_INDEX_HL].height());
+        if (!sa->alloc(win_horiz_global[BAND__ORIENT_HH].grow(FILTER_WIDTH, rw,  rh)))
 			 return false;
+
+        if (DEBUG_WAVELET){
+        	for (uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i){
+        		std::cout << "horizontal pass window " << i << " ";
+        		win_horiz_global[i].print();
+        	}
+        }
 
         grk_rect_u32 win_synthesis;
 
@@ -1983,6 +2005,15 @@ template <typename T,
 		for (uint32_t k = 0; k < 2; ++k) {
 			 if (!sa->alloc(win_vert[k]))
 				 return false;
+		        if (DEBUG_WAVELET){
+					std::cout << "vertical pass window " << k << " ";
+					win_vert[k].print();
+		        }
+		}
+
+		if (DEBUG_WAVELET){
+			std::cout << "synthesis window ";
+			win_synthesis.print();
 		}
 
         ///////////////////////////////////////////////////////////////////////////////////////////
@@ -1993,6 +2024,8 @@ template <typename T,
         horiz.win_h_0 = win_horiz[BAND_ORIENT_HL].x0;
         horiz.win_h_1 = win_horiz[BAND_ORIENT_HL].x1;
 		for (uint32_t k = 0; k < 2; ++k) {
+// not sure what this code actually does
+#if 0
 	        /* Avoids dwt.c:1584:44 (in dwt_decode_partial_1): runtime error: */
 	        /* signed integer overflow: -1094795586 + -1094795586 cannot be represented in type 'int' */
 	        /* on decompress -i  ../../openjpeg/MAPA.jp2 -o out.tif -d 0,0,256,256 */
@@ -2002,7 +2035,7 @@ template <typename T,
 	            horiz.mem[win_synthesis.x1 - 1] = T(0);
 	        if (win_synthesis.x1 < rw)
 	            horiz.mem[win_synthesis.x1] = T(0);
-
+#endif
 			uint32_t num_jobs = (uint32_t)num_threads;
 			uint32_t num_cols = win_vert[k].y1 - win_vert[k].y0 + 1;
 			if (num_cols < num_jobs)

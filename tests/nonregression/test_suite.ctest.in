@@ -636,6 +636,7 @@ grk_decompress -i @TEMP_PATH@/ybr-cat.jp2 -o @TEMP_PATH@/ybr-cat.tif   -d 2,2,20
 grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5713875855736832 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5713875855736832.pgx
 # test odd dimension mono bmp output
 grk_decompress -i @INPUT_NR_PATH@/cinema129x129.jp2 -o @TEMP_PATH@/cinema129x129.bmp
-
+# test boundary condition for region decode
+grk_decompress -i @INPUT_NR_PATH@/b1_mono_4k.j2k -o @TEMP_PATH@/b1_mono_4k.tif -d 0,0,1024,1024
 
 

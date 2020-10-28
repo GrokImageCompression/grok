@@ -158,6 +158,7 @@ struct Subband : public grk_rect_u32 {
 	Subband(const Subband &rhs);
 	Subband& operator= (const Subband &rhs);
 	bool isEmpty() ;
+	void print();
 	// 0 for first band of lowest resolution, otherwise equal to 1,2 or 3
 	uint8_t orientation;
 	Precinct *precincts; /* precinct information */
@@ -172,6 +173,7 @@ struct Subband : public grk_rect_u32 {
 // resolution
 struct Resolution : public grk_rect_u32 {
 	Resolution();
+	void print();
 	Subband bands[BAND_NUM_INDICES]; /* subband information */
 	/* precinct dimensions */
 	uint32_t pw, ph;

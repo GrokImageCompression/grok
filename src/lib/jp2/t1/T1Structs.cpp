@@ -344,6 +344,10 @@ Subband& Subband::operator= (const Subband &rhs){
 	return *this;
 }
 
+void Subband::print(){
+	grk_rect_u32::print();
+}
+
 
 bool Subband::isEmpty() {
 	return ((x1 - x0 == 0) || (y1 - y0 == 0));
@@ -397,6 +401,15 @@ Resolution::Resolution() :
 		ph(0),
 		numbands(0)
 {}
+
+void Resolution::print(){
+	grk_rect_u32::print();
+	for (uint32_t i = 0; i < numbands; ++i){
+		std::cout << "band " << i << " : ";
+		bands[i].print();
+	}
+}
+
 
 
 }

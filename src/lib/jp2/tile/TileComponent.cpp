@@ -21,6 +21,8 @@
 
 #include "grk_includes.h"
 
+const bool DEBUG_TILE_COMPONENT = false;
+
 namespace grk {
 
 TileComponent::TileComponent() :resolutions(nullptr),
@@ -135,6 +137,11 @@ bool TileComponent::init(bool isEncoder,
 						uint64_ceildivpow2(tile_comp.y1 - off_y, levelno + 1));
 			}
 		}
+		if (DEBUG_TILE_COMPONENT){
+			std::cout << "res: " << resno << " ";
+			res->print();
+		}
+
 	}
 	create_buffer(isEncoder, unreduced_tile_comp_region_dims);
 
