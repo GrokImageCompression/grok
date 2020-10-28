@@ -22,7 +22,7 @@
 #include "grk_includes.h"
 #include "testing.h"
 
-//#define DEBUG_ENCODE_PACKETS
+const bool debugDecompressPackets = false;
 
 namespace grk {
 
@@ -76,22 +76,13 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			uint32_t pltMarkerLen = 0;
 			if (usePlt)
 				pltMarkerLen = packetLengths->getNext();
-
-			/*
-			 GRK_INFO(
-			 "packet prg=%u cmptno=%02d rlvlno=%02d prcno=%03d layrno=%02d\n",
-			 current_pi->poc.prg1, current_pi->compno,
-			 current_pi->resno, current_pi->precno,
-			 current_pi->layno);
-			 */
 			if (!skip_the_packet && !tilec->isWholeTileDecoding()) {
 				skip_the_packet = true;
 				auto res = tilec->resolutions + current_pi->resno;
 				for (uint32_t bandno = 0;	bandno < res->numbands; ++bandno) {
 					auto band = res->bands + bandno;
 					auto prec = band->precincts + current_pi->precno;
-					if (tilec->subbandIntersectsAOI(current_pi->resno,
-							bandno, prec)) {
+					if (tilec->subbandIntersectsAOI(current_pi->resno,bandno, prec)) {
 						skip_the_packet = false;
 						break;
 					}
@@ -101,11 +92,6 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			uint64_t nb_bytes_read = 0;
 			try {
 				if (!skip_the_packet) {
-					/*
-					 printf("packet cmptno=%02d rlvlno=%02d prcno=%03d layrno=%02d -> %s\n",
-					 current_pi->compno, current_pi->resno,
-					 current_pi->precno, current_pi->layno, skip_the_packet ? "skipped" : "kept");
-					 */
 					first_pass_failed[current_pi->compno] = false;
 
 					if (!decompress_packet(tcp, current_pi, src_buf, &nb_bytes_read)) {
@@ -127,20 +113,31 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 						return false;
 					}
 				}
+				p_tile->packno++;
 			} 	catch (TruncatedStreamException &tex){
 				GRK_WARN("Truncated packet: tile=%d component=%02d resolution=%02d precinct=%03d layer=%02d",
 				 tile_no, current_pi->compno, current_pi->resno,
 				 current_pi->precno, current_pi->layno);
 				break;
 			}
+			if (debugDecompressPackets) {
+				 GRK_INFO("packet cmptno=%02d rlvlno=%02d prcno=%03d layrno=%02d -> %s",
+				 current_pi->compno, current_pi->resno,
+				 current_pi->precno, current_pi->layno, skip_the_packet ? "skipped" : "decompressed");
+			}
 			if (first_pass_failed[current_pi->compno]) {
 				if (tileProcessor->m_resno_decoded_per_component[current_pi->compno]  == 0) {
 					tileProcessor->m_resno_decoded_per_component[current_pi->compno] =
-							p_tile->comps[current_pi->compno].resolutions_to_decompress
-									- 1;
+							p_tile->comps[current_pi->compno].resolutions_to_decompress- 1;
 				}
 			}
-			//GRK_INFO("T2Decompress Packet length: %u", nb_bytes_read);
+			if (debugDecompressPackets) {
+				GRK_INFO("T2Decompress Packet length: %u", nb_bytes_read);
+				if (pltMarkerLen) {
+					if (nb_bytes_read != pltMarkerLen)
+						GRK_WARN("T2Decompress PLT Packet length: %u", pltMarkerLen);
+				}
+			}
 			*p_data_read += nb_bytes_read;
 		}
 		delete[] first_pass_failed;
@@ -228,12 +225,10 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 			uint16_t packno = (uint16_t) (((uint16_t) active_src[4] << 8)
 					| active_src[5]);
 			if (packno != (p_tile->packno % 0x10000)) {
-				GRK_ERROR(
-						"SOP marker packet counter %u does not match expected counter %u",
+				GRK_ERROR("SOP marker packet counter %u does not match expected counter %u",
 						packno, p_tile->packno);
 				return false;
 			}
-			p_tile->packno++;
 			active_src += 6;
 		}
 	}
@@ -566,23 +561,21 @@ bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 }
 bool T2Decompress::skip_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
-	bool read_data;
-	uint64_t nb_bytes_read = 0;
-	uint64_t nb_totabytes_read = 0;
 	uint64_t max_length = (uint64_t) src_buf->get_cur_chunk_len();
 	auto p_tile = tileProcessor->tile;
 
 	*p_data_read = 0;
+	uint64_t nb_bytes_read = 0;
+	bool read_data;
 	if (!read_packet_header(p_tcp, p_pi, &read_data, src_buf, &nb_bytes_read))
 		return false;
-	nb_totabytes_read += nb_bytes_read;
+	uint64_t nb_totabytes_read = nb_bytes_read;
 	max_length -= nb_bytes_read;
 
 	/* we should read data for the packet */
 	if (read_data) {
 		nb_bytes_read = 0;
-		if (!skip_packet_data(
-				&p_tile->comps[p_pi->compno].resolutions[p_pi->resno], p_pi,
+		if (!skip_packet_data(&p_tile->comps[p_pi->compno].resolutions[p_pi->resno], p_pi,
 				&nb_bytes_read, max_length)) {
 			return false;
 		}
@@ -628,8 +621,7 @@ bool T2Decompress::skip_packet_data(Resolution *res, PacketIter *p_pi,
 				/* Check possible overflow then size */
 				if (((*p_data_read + seg->numBytesInPacket) < (*p_data_read))
 						|| ((*p_data_read + seg->numBytesInPacket) > max_length)) {
-					GRK_ERROR(
-							"skip: segment too long (%u) with max (%u) for codeblock %u (p=%u, b=%u, r=%u, c=%u)",
+					GRK_ERROR("skip: segment too long (%u) with max (%u) for codeblock %u (p=%u, b=%u, r=%u, c=%u)",
 							seg->numBytesInPacket, max_length, cblkno,
 							p_pi->precno, bandno, p_pi->resno, p_pi->compno);
 					return false;
