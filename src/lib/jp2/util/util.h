@@ -47,51 +47,32 @@ using grk_rect = grk_rectangle<int64_t>;
 using grk_rect_u32 = grk_rectangle<uint32_t>;
 
 
-template<typename T> T sat_add(int64_t lhs, int64_t rhs) {
+template<typename T> T clip(int64_t val) {
+	if(val < (std::numeric_limits<T>::min)())
+		val = (std::numeric_limits<T>::min)();
+	else if (val > (std::numeric_limits<T>::max)())
+ 		val = (std::numeric_limits<T>::max)();
+	return (T)val;
+}
 
-	int64_t res = lhs + rhs;
-	if(res < (std::numeric_limits<T>::min)())
-		res = (std::numeric_limits<T>::min)();
-	else if (res > (std::numeric_limits<T>::max)())
- 		res = (std::numeric_limits<T>::max)();
-	return (T)res;
+template<typename T> T sat_add(int64_t lhs, int64_t rhs) {
+	return clip<T>(lhs + rhs);
 }
 
 template<typename T> T sat_add(T lhs, T rhs) {
-
-	int64_t res = (int64_t)lhs + rhs;
-	if(res < (std::numeric_limits<T>::min)())
-		res = (std::numeric_limits<T>::min)();
-	else if (res > (std::numeric_limits<T>::max)())
- 		res = (std::numeric_limits<T>::max)();
-	return (T)res;
+	return clip<T>((int64_t)lhs + rhs);
 }
 
 template<typename T> T sat_sub(T lhs, T rhs) {
-	int64_t res = (int64_t)lhs - rhs;
-	if(res < (std::numeric_limits<T>::min)())
-		res = (std::numeric_limits<T>::min)();
-	else if (res > (std::numeric_limits<T>::max)())
- 		res = (std::numeric_limits<T>::max)();
-	return (T)res;
+	return clip<T>((int64_t)lhs - rhs);
 }
 
 template<typename T> T sat_sub(int64_t lhs, int64_t rhs) {
-	int64_t res = lhs - rhs;
-	if(res < (std::numeric_limits<T>::min)())
-		res = (std::numeric_limits<T>::min)();
-	else if (res > (std::numeric_limits<T>::max)())
- 		res = (std::numeric_limits<T>::max)();
-	return (T)res;
+	return clip<T>(lhs - rhs);
 }
 
-
-
 template<typename T> struct grk_rectangle {
-	T x0;
-    T y0;
-    T x1;
-    T y1;
+	T x0, y0,x1,y1;
 
     grk_rectangle(T x0, T y0, T x1, T y1) :
     		x0(x0), y0(y0), x1(x1), y1(y1) {
