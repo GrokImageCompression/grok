@@ -318,7 +318,7 @@ bool DecompressCodeblock::copy_to_contiguous_buffer(uint8_t *buffer) {
 }
 
 Subband::Subband() :
-				orientation(0),
+				orientation(BAND_ORIENT_LL),
 				precincts(nullptr),
 				numPrecincts(0),
 				numbps(0),
@@ -397,9 +397,9 @@ void Precinct::initTagTrees() {
 }
 
 Resolution::Resolution() :
+		numbands(0),
 		pw(0),
-		ph(0),
-		numbands(0)
+		ph(0)
 {}
 
 void Resolution::print(){

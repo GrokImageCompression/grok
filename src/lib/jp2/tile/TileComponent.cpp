@@ -119,10 +119,10 @@ bool TileComponent::init(bool isEncoder,
 			auto band = res->bands + bandno;
 			auto tile_comp = unreduced_tile_comp_dims;
 			if (resno == 0) {
-				band->orientation = 0;
+				band->orientation = BAND_ORIENT_LL;
 				*((grk_rect_u32*)band) =  tile_comp.rectceildivpow2(levelno);
 			} else {
-				band->orientation = (uint8_t)(bandno + 1);
+				band->orientation = (eBandOrientation)(bandno + 1);
 				uint32_t x0b = band->orientation & 1;  					/* x0b = 1 if bandno = 1 or 3 */
 				uint32_t y0b = (uint32_t) (band->orientation >> 1); 	/* y0b = 1 if bandno = 2 or 3 */
 

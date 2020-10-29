@@ -87,12 +87,12 @@ struct Codeblock : public grk_rect_u32 {
     Codeblock& operator=(const Codeblock& other);
     virtual ~Codeblock(){}
     virtual void clear();
-	uint8_t *compressedData; /* data buffer*/
-	uint32_t compressedDataSize; /* size of allocated data buffer */
-	bool owns_data;	// true if code block manages data buffer, otherwise false
+	uint8_t *compressedData; 		/* data buffer*/
+	uint32_t compressedDataSize; 	/* size of allocated data buffer */
+	bool owns_data;				// true if code block manages data buffer, otherwise false
 	uint32_t numbps;
 	uint32_t numlenbits;
-	uint32_t numPassesInPacket; /* number of passes encoded in current packet */
+	uint32_t numPassesInPacket; 	/* number of passes encoded in current packet */
 #ifdef DEBUG_LOSSLESS_T2
 	uint32_t included;
 	std::vector<PacketLengthInfo> packet_length_info;
@@ -109,11 +109,11 @@ struct CompressCodeblock : public Codeblock {
 	bool alloc();
 	bool alloc_data(size_t nominalBlockSize);
 	void cleanup();
-	uint8_t *paddedCompressedData; /* data buffer*/
+	uint8_t *paddedCompressedData;
 	Layer *layers;
 	CodePass *passes;
-	uint32_t numPassesInPreviousPackets; /* number of passes in previous packetss */
-	uint32_t numPassesTotal; /* total number of passes in all layers */
+	uint32_t numPassesInPreviousPackets; /* number of passes in previous packets */
+	uint32_t numPassesTotal; 			/* total number of passes in all layers */
 	uint32_t *contextStream;
 };
 
@@ -131,9 +131,9 @@ struct DecompressCodeblock: public Codeblock {
 	size_t getSegBuffersLen();
 	bool copy_to_contiguous_buffer(uint8_t *buffer);
 	std::vector<grk_buf*> seg_buffers;
-	Segment *segs; /* information on segments */
-	uint32_t numSegments; /* number of segment in block*/
-	uint32_t numSegmentsAllocated; // number of segments allocated for segs array
+	Segment *segs; 					/* information on segments */
+	uint32_t numSegments; 			/* number of segment in block*/
+	uint32_t numSegmentsAllocated; 	// number of segments allocated for segs array
 
 };
 
@@ -144,7 +144,7 @@ struct Precinct : public grk_rect_u32 {
 	void initTagTrees();
 	void deleteTagTrees();
 
-	uint32_t cw, ch; /* dimensions of precinct code block grid */
+	uint32_t cw, ch; /* dimensions of code block grid */
 	CompressCodeblock *enc;
 	DecompressCodeblock *dec;
 	uint64_t numCodeBlocks;
@@ -159,9 +159,9 @@ struct Subband : public grk_rect_u32 {
 	Subband& operator= (const Subband &rhs);
 	bool isEmpty() ;
 	void print();
-	// 0 for first band of lowest resolution, otherwise equal to 1,2 or 3
-	uint8_t orientation;
-	Precinct *precincts; /* precinct information */
+
+	eBandOrientation orientation;
+	Precinct *precincts;
 	uint64_t numPrecincts;
 	uint32_t numbps;
 	float stepsize;
@@ -174,13 +174,10 @@ struct Subband : public grk_rect_u32 {
 struct Resolution : public grk_rect_u32 {
 	Resolution();
 	void print();
-	Subband bands[BAND_NUM_INDICES]; /* subband information */
-	/* precinct dimensions */
-	uint32_t pw, ph;
-	uint32_t numbands; /* number sub-band for the resolution level */
-
+	Subband bands[BAND_NUM_INDICES];
+	uint32_t numbands;
 	grk_rect_u32 region[BAND_NUM_ORIENTATIONS];
-
+	uint32_t pw, ph; 	/* dimensions of precinct grid */
 };
 
 }
