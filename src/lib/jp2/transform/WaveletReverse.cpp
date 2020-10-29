@@ -1964,8 +1964,10 @@ template <typename T,
         win_horiz_tile[BAND__ORIENT_HH] = win_horiz_band[BAND__ORIENT_HH].pan(res->bands[BAND_INDEX_LH].width(),res->bands[BAND_INDEX_HL].height());
 
 
+        // pad horizontal windows
         for (uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i){
-            if (!sa->alloc(win_horiz_tile[i].grow(FILTER_WIDTH, rw,  rh)))
+        	auto temp = win_horiz_tile[i];
+            if (!sa->alloc(temp.grow(FILTER_WIDTH, rw,  rh)))
     			 return false;
         }
 
@@ -2002,8 +2004,11 @@ template <typename T,
         											uint_subs(min<uint32_t>(win_horiz_band[BAND_ORIENT_LH].y0 + vert.sn, rh),HORIZ_PASS_HEIGHT)),
 								  win_synthesis.x1,
 								  min<uint32_t>(win_horiz_band[BAND_ORIENT_LH].y1 + vert.sn, rh));
+
+        // pad vertical windows
 		for (uint32_t k = 0; k < 2; ++k) {
-			 if (!sa->alloc(win_vert[k]))
+			 auto temp = win_vert[k];
+			 if (!sa->alloc(temp.grow(FILTER_WIDTH, rw,  rh)))
 				 return false;
 		        if (DEBUG_WAVELET){
 					std::cout << "vertical pass window " << k << " ";
