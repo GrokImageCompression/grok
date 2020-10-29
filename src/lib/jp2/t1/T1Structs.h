@@ -179,6 +179,8 @@ struct Resolution : public grk_rect_u32 {
 	uint32_t pw, ph;
 	uint32_t numbands; /* number sub-band for the resolution level */
 
+	grk_rect_u32 region[BAND_NUM_ORIENTATIONS];
+
 };
 
 }
