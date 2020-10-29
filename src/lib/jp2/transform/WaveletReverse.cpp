@@ -1941,51 +1941,49 @@ template <typename T,
         // 1. set up regions for horizontal and vertical pass
 
         // four sub-band regions that serve as input to horizontal pass
-        grk_rect_u32 win_horiz[BAND_NUM_ORIENTATIONS];
-        grk_rect_u32 win_horiz_global[BAND_NUM_ORIENTATIONS];
-        win_horiz[BAND_ORIENT_LL] = region_band(tilec->numresolutions,resno,0,region);
-        win_horiz[BAND_ORIENT_LL] = win_horiz[BAND_ORIENT_LL].pan(-(int64_t)res->bands[BAND_INDEX_LH].x0, -(int64_t)res->bands[BAND_INDEX_HL].y0);
-        win_horiz[BAND_ORIENT_LL].grow(FILTER_WIDTH, horiz.sn,  vert.sn);
-        win_horiz_global[BAND_ORIENT_LL] = win_horiz[BAND_ORIENT_LL];
-        if (!sa->alloc(win_horiz_global[BAND_ORIENT_LL].grow(FILTER_WIDTH, horiz.sn,  vert.sn) ))
-			 return false;
+        grk_rect_u32 win_horiz_band[BAND_NUM_ORIENTATIONS];
+        grk_rect_u32 win_horiz_tile[BAND_NUM_ORIENTATIONS];
+        win_horiz_band[BAND_ORIENT_LL] = region_band(tilec->numresolutions,resno,0,region);
+        win_horiz_band[BAND_ORIENT_LL] = win_horiz_band[BAND_ORIENT_LL].pan(-(int64_t)res->bands[BAND_INDEX_LH].x0, -(int64_t)res->bands[BAND_INDEX_HL].y0);
+        win_horiz_band[BAND_ORIENT_LL].grow(FILTER_WIDTH, horiz.sn,  vert.sn);
+        win_horiz_tile[BAND_ORIENT_LL] = win_horiz_band[BAND_ORIENT_LL];
 
-        win_horiz[BAND_ORIENT_HL] = region_band(tilec->numresolutions,resno,1,region);
-        win_horiz[BAND_ORIENT_HL] = win_horiz[BAND_ORIENT_HL].pan(-(int64_t)res->bands[BAND_INDEX_HL].x0, -(int64_t)res->bands[BAND_INDEX_HL].y0);
-        win_horiz[BAND_ORIENT_HL].grow(FILTER_WIDTH, horiz.dn,  vert.sn);
-        win_horiz_global[BAND_ORIENT_HL] = win_horiz[BAND_ORIENT_HL].pan(res->bands[BAND_INDEX_LH].width(),0);
-        if (!sa->alloc(win_horiz_global[BAND_ORIENT_HL].grow(FILTER_WIDTH, rw,  vert.sn)))
-			 return false;
+        win_horiz_band[BAND_ORIENT_HL] = region_band(tilec->numresolutions,resno,1,region);
+        win_horiz_band[BAND_ORIENT_HL] = win_horiz_band[BAND_ORIENT_HL].pan(-(int64_t)res->bands[BAND_INDEX_HL].x0, -(int64_t)res->bands[BAND_INDEX_HL].y0);
+        win_horiz_band[BAND_ORIENT_HL].grow(FILTER_WIDTH, horiz.dn,  vert.sn);
+        win_horiz_tile[BAND_ORIENT_HL] = win_horiz_band[BAND_ORIENT_HL].pan(res->bands[BAND_INDEX_LH].width(),0);
 
-        win_horiz[BAND_ORIENT_LH] = region_band(tilec->numresolutions,resno,2,region);
-        win_horiz[BAND_ORIENT_LH] = win_horiz[BAND_ORIENT_LH].pan(-(int64_t)res->bands[BAND_INDEX_LH].x0, -(int64_t)res->bands[BAND_INDEX_LH].y0);
-        win_horiz[BAND_ORIENT_LH].grow(FILTER_WIDTH, horiz.sn,  vert.dn);
-        win_horiz_global[BAND_ORIENT_LH] = win_horiz[BAND_ORIENT_LH].pan(0,res->bands[BAND_INDEX_HL].height());
-        if (!sa->alloc(win_horiz_global[BAND_ORIENT_LH].grow(FILTER_WIDTH, horiz.sn,  rh)))
-			 return false;
+        win_horiz_band[BAND_ORIENT_LH] = region_band(tilec->numresolutions,resno,2,region);
+        win_horiz_band[BAND_ORIENT_LH] = win_horiz_band[BAND_ORIENT_LH].pan(-(int64_t)res->bands[BAND_INDEX_LH].x0, -(int64_t)res->bands[BAND_INDEX_LH].y0);
+        win_horiz_band[BAND_ORIENT_LH].grow(FILTER_WIDTH, horiz.sn,  vert.dn);
+        win_horiz_tile[BAND_ORIENT_LH] = win_horiz_band[BAND_ORIENT_LH].pan(0,res->bands[BAND_INDEX_HL].height());
 
-        win_horiz[BAND__ORIENT_HH] = region_band(tilec->numresolutions,resno,3,region);
-        win_horiz[BAND__ORIENT_HH] = win_horiz[BAND__ORIENT_HH].pan(-(int64_t)res->bands[BAND_INDEX_HH].x0, -(int64_t)res->bands[BAND_INDEX_HH].y0);
-        win_horiz[BAND__ORIENT_HH].grow(FILTER_WIDTH, horiz.dn,  vert.dn);
-        win_horiz_global[BAND__ORIENT_HH] = win_horiz[BAND__ORIENT_HH].pan(res->bands[BAND_INDEX_LH].width(),res->bands[BAND_INDEX_HL].height());
-        if (!sa->alloc(win_horiz_global[BAND__ORIENT_HH].grow(FILTER_WIDTH, rw,  rh)))
-			 return false;
+        win_horiz_band[BAND__ORIENT_HH] = region_band(tilec->numresolutions,resno,3,region);
+        win_horiz_band[BAND__ORIENT_HH] = win_horiz_band[BAND__ORIENT_HH].pan(-(int64_t)res->bands[BAND_INDEX_HH].x0, -(int64_t)res->bands[BAND_INDEX_HH].y0);
+        win_horiz_band[BAND__ORIENT_HH].grow(FILTER_WIDTH, horiz.dn,  vert.dn);
+        win_horiz_tile[BAND__ORIENT_HH] = win_horiz_band[BAND__ORIENT_HH].pan(res->bands[BAND_INDEX_LH].width(),res->bands[BAND_INDEX_HL].height());
+
+
+        for (uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i){
+            if (!sa->alloc(win_horiz_tile[i].grow(FILTER_WIDTH, rw,  rh)))
+    			 return false;
+        }
 
         if (DEBUG_WAVELET){
         	for (uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i){
         		std::cout << "horizontal pass window " << i << " ";
-        		win_horiz_global[i].print();
+        		win_horiz_tile[i].print();
         	}
         }
 
         grk_rect_u32 win_synthesis;
 
-        grk_rect_u32 win_low = (horiz.cas == 0) ? win_horiz[BAND_ORIENT_LL] : win_horiz[BAND_ORIENT_HL];
-        grk_rect_u32 win_high = (horiz.cas == 0) ? win_horiz[BAND_ORIENT_HL] : win_horiz[BAND_ORIENT_LL];
-        win_synthesis.x0 = min<uint32_t>(2 * win_low.x0, 2 * win_horiz[BAND_ORIENT_HL].x0 + 1);
+        grk_rect_u32 win_low = (horiz.cas == 0) ? win_horiz_band[BAND_ORIENT_LL] : win_horiz_band[BAND_ORIENT_HL];
+        grk_rect_u32 win_high = (horiz.cas == 0) ? win_horiz_band[BAND_ORIENT_HL] : win_horiz_band[BAND_ORIENT_LL];
+        win_synthesis.x0 = min<uint32_t>(2 * win_low.x0, 2 * win_horiz_band[BAND_ORIENT_HL].x0 + 1);
         win_synthesis.x1 = min<uint32_t>(max<uint32_t>(2 * win_low.x1, 2 * win_high.x1 + 1), rw);
-        win_low = (vert.cas == 0) ? win_horiz[BAND_ORIENT_LL] : win_horiz[BAND_ORIENT_LH];
-        win_high = (vert.cas == 0) ? win_horiz[BAND_ORIENT_LH] : win_horiz[BAND_ORIENT_LL];
+        win_low = (vert.cas == 0) ? win_horiz_band[BAND_ORIENT_LL] : win_horiz_band[BAND_ORIENT_LH];
+        win_high = (vert.cas == 0) ? win_horiz_band[BAND_ORIENT_LH] : win_horiz_band[BAND_ORIENT_LL];
         win_synthesis.y0 = min<uint32_t>(2 * win_low.y0, 2 * win_high.y0 + 1);
         win_synthesis.y1 = min<uint32_t>(max<uint32_t>(2 * win_low.y1, 2 * win_high.y1 + 1), rh);
         if (!sa->alloc(win_synthesis))
@@ -1994,16 +1992,16 @@ template <typename T,
         // two windows formed by horizontal pass and used as input for vertical pass
         grk_rect_u32 win_vert[2];
         win_vert[0] = grk_rect_u32(win_synthesis.x0,
-        						  uint_subs(win_horiz[BAND_ORIENT_LL].y0, HORIZ_PASS_HEIGHT),
+        						  uint_subs(win_horiz_band[BAND_ORIENT_LL].y0, HORIZ_PASS_HEIGHT),
 								  win_synthesis.x1,
-								  win_horiz[BAND_ORIENT_LL].y1);
+								  win_horiz_band[BAND_ORIENT_LL].y1);
 
         win_vert[1] = grk_rect_u32(win_synthesis.x0,
         							// note: max is used to avoid overlap between the two windows
-        							max<uint32_t>(win_horiz[BAND_ORIENT_LL].y1,
-        											uint_subs(min<uint32_t>(win_horiz[BAND_ORIENT_LH].y0 + vert.sn, rh),HORIZ_PASS_HEIGHT)),
+        							max<uint32_t>(win_horiz_band[BAND_ORIENT_LL].y1,
+        											uint_subs(min<uint32_t>(win_horiz_band[BAND_ORIENT_LH].y0 + vert.sn, rh),HORIZ_PASS_HEIGHT)),
 								  win_synthesis.x1,
-								  min<uint32_t>(win_horiz[BAND_ORIENT_LH].y1 + vert.sn, rh));
+								  min<uint32_t>(win_horiz_band[BAND_ORIENT_LH].y1 + vert.sn, rh));
 		for (uint32_t k = 0; k < 2; ++k) {
 			 if (!sa->alloc(win_vert[k]))
 				 return false;
@@ -2021,10 +2019,10 @@ template <typename T,
         ///////////////////////////////////////////////////////////////////////////////////////////
 
 
-        horiz.win_l_0 = win_horiz[BAND_ORIENT_LL].x0;
-        horiz.win_l_1 = win_horiz[BAND_ORIENT_LL].x1;
-        horiz.win_h_0 = win_horiz[BAND_ORIENT_HL].x0;
-        horiz.win_h_1 = win_horiz[BAND_ORIENT_HL].x1;
+        horiz.win_l_0 = win_horiz_band[BAND_ORIENT_LL].x0;
+        horiz.win_l_1 = win_horiz_band[BAND_ORIENT_LL].x1;
+        horiz.win_h_0 = win_horiz_band[BAND_ORIENT_HL].x0;
+        horiz.win_h_1 = win_horiz_band[BAND_ORIENT_HL].x1;
 		for (uint32_t k = 0; k < 2; ++k) {
 // not sure what this code actually does
 #if 0
@@ -2135,10 +2133,10 @@ template <typename T,
 		   }
         }
 
-		vert.win_l_0 = win_horiz[BAND_ORIENT_LL].y0;
-        vert.win_l_1 = win_horiz[BAND_ORIENT_LL].y1;
-        vert.win_h_0 = win_horiz[BAND_ORIENT_LH].y0;
-        vert.win_h_1 = win_horiz[BAND_ORIENT_LH].y1;
+		vert.win_l_0 = win_horiz_band[BAND_ORIENT_LL].y0;
+        vert.win_l_1 = win_horiz_band[BAND_ORIENT_LL].y1;
+        vert.win_h_0 = win_horiz_band[BAND_ORIENT_LH].y0;
+        vert.win_h_1 = win_horiz_band[BAND_ORIENT_LH].y1;
         uint32_t num_jobs = (uint32_t)num_threads;
         uint32_t num_cols = win_synthesis.x1 - win_synthesis.x0 + 1;
 		if (num_cols < num_jobs)
