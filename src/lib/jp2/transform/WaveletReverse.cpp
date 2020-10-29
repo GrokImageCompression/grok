@@ -1918,6 +1918,8 @@ template <typename T,
 		std::cout << "Partial Wavelet" << std::endl;
 	}
 
+	try {
+
     for (uint32_t resno = 1; resno < numres; resno ++) {
         horiz.sn = res->width();
         vert.sn = res->height();
@@ -2243,6 +2245,10 @@ template <typename T,
 	assert(ret);
 	GRK_UNUSED(ret);
     horiz.release();
+
+	} catch (MissingSparseBlockException &ex){
+		return false;
+	}
 
     return true;
 }

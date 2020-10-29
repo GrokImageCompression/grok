@@ -339,7 +339,7 @@ private:
 						   is_read_op ? "read" : "write",
 						   x0,y0,x1,y1);
 	            	assert(src_block);
-	            	return false;
+	            	throw MissingSparseBlockException();
 	            }
 	            if (is_read_op) {
 					const int32_t* GRK_RESTRICT src_ptr =
