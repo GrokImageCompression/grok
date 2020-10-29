@@ -1830,41 +1830,6 @@ public:
 	}
 };
 
-static grk_rect_u32 region_band(uint32_t num_res,
-							uint32_t resno,
-							uint32_t orientation,
-							grk_rect_u32 unreduced_region){
-    /* Compute number of decomposition for this band. See table F-1 */
-    uint32_t nb = (resno == 0) ? num_res - 1 :num_res - resno;
-
-    uint32_t tcx0 = unreduced_region.x0;
-	uint32_t tcy0 = unreduced_region.y0;
-	uint32_t tcx1 = unreduced_region.x1;
-	uint32_t tcy1 = unreduced_region.y1;
-    /* Map above tile-based coordinates to sub-band-based coordinates per */
-    /* equation B-15 of the standard */
-    uint32_t x0b = orientation & 1;
-    uint32_t y0b = orientation >> 1;
-	uint32_t tbx0 = (nb == 0) ? tcx0 :
-			(tcx0 <= (1U << (nb - 1)) * x0b) ? 0 :
-			ceildivpow2<uint32_t>(tcx0 - (1U << (nb - 1)) * x0b, nb);
-
-	uint32_t tby0 = (nb == 0) ? tcy0 :
-			(tcy0 <= (1U << (nb - 1)) * y0b) ? 0 :
-			ceildivpow2<uint32_t>(tcy0 - (1U << (nb - 1)) * y0b, nb);
-
-	uint32_t tbx1 = (nb == 0) ? tcx1 :
-			(tcx1 <= (1U << (nb - 1)) * x0b) ? 0 :
-			ceildivpow2<uint32_t>(tcx1 - (1U << (nb - 1)) * x0b, nb);
-
-	uint32_t tby1 = (nb == 0) ? tcy1 :
-			(tcy1 <= (1U << (nb - 1)) * y0b) ? 0 :
-			ceildivpow2<uint32_t>(tcy1 - (1U << (nb - 1)) * y0b, nb);
-
-
-	return grk_rect_u32(tbx0,tby0,tbx1,tby1);
-}
-
 
 /* FILTER_WIDTH value matches the maximum left/right extension given in tables */
 /* F.2 and F.3 of the standard. */
@@ -1943,22 +1908,22 @@ template <typename T,
         // four sub-band regions that serve as input to horizontal pass
         grk_rect_u32 win_horiz_band[BAND_NUM_ORIENTATIONS];
         grk_rect_u32 win_horiz_tile[BAND_NUM_ORIENTATIONS];
-        win_horiz_band[BAND_ORIENT_LL] = region_band(tilec->numresolutions,resno,0,region);
+        win_horiz_band[BAND_ORIENT_LL] = grk_region_band(tilec->numresolutions,resno,0,region);
         win_horiz_band[BAND_ORIENT_LL] = win_horiz_band[BAND_ORIENT_LL].pan(-(int64_t)res->bands[BAND_INDEX_LH].x0, -(int64_t)res->bands[BAND_INDEX_HL].y0);
         win_horiz_band[BAND_ORIENT_LL].grow(FILTER_WIDTH, horiz.sn,  vert.sn);
         win_horiz_tile[BAND_ORIENT_LL] = win_horiz_band[BAND_ORIENT_LL];
 
-        win_horiz_band[BAND_ORIENT_HL] = region_band(tilec->numresolutions,resno,1,region);
+        win_horiz_band[BAND_ORIENT_HL] = grk_region_band(tilec->numresolutions,resno,1,region);
         win_horiz_band[BAND_ORIENT_HL] = win_horiz_band[BAND_ORIENT_HL].pan(-(int64_t)res->bands[BAND_INDEX_HL].x0, -(int64_t)res->bands[BAND_INDEX_HL].y0);
         win_horiz_band[BAND_ORIENT_HL].grow(FILTER_WIDTH, horiz.dn,  vert.sn);
         win_horiz_tile[BAND_ORIENT_HL] = win_horiz_band[BAND_ORIENT_HL].pan(res->bands[BAND_INDEX_LH].width(),0);
 
-        win_horiz_band[BAND_ORIENT_LH] = region_band(tilec->numresolutions,resno,2,region);
+        win_horiz_band[BAND_ORIENT_LH] = grk_region_band(tilec->numresolutions,resno,2,region);
         win_horiz_band[BAND_ORIENT_LH] = win_horiz_band[BAND_ORIENT_LH].pan(-(int64_t)res->bands[BAND_INDEX_LH].x0, -(int64_t)res->bands[BAND_INDEX_LH].y0);
         win_horiz_band[BAND_ORIENT_LH].grow(FILTER_WIDTH, horiz.sn,  vert.dn);
         win_horiz_tile[BAND_ORIENT_LH] = win_horiz_band[BAND_ORIENT_LH].pan(0,res->bands[BAND_INDEX_HL].height());
 
-        win_horiz_band[BAND__ORIENT_HH] = region_band(tilec->numresolutions,resno,3,region);
+        win_horiz_band[BAND__ORIENT_HH] = grk_region_band(tilec->numresolutions,resno,3,region);
         win_horiz_band[BAND__ORIENT_HH] = win_horiz_band[BAND__ORIENT_HH].pan(-(int64_t)res->bands[BAND_INDEX_HH].x0, -(int64_t)res->bands[BAND_INDEX_HH].y0);
         win_horiz_band[BAND__ORIENT_HH].grow(FILTER_WIDTH, horiz.dn,  vert.dn);
         win_horiz_tile[BAND__ORIENT_HH] = win_horiz_band[BAND__ORIENT_HH].pan(res->bands[BAND_INDEX_LH].width(),res->bands[BAND_INDEX_HL].height());

@@ -118,24 +118,9 @@ bool TileComponent::init(bool isEncoder,
 		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
 			auto band = res->bands + bandno;
 			auto tile_comp = unreduced_tile_comp_dims;
-			if (resno == 0) {
-				band->orientation = BAND_ORIENT_LL;
-				*((grk_rect_u32*)band) =  tile_comp.rectceildivpow2(levelno);
-			} else {
-				band->orientation = (eBandOrientation)(bandno + 1);
-				uint32_t x0b = band->orientation & 1;  					/* x0b = 1 if bandno = 1 or 3 */
-				uint32_t y0b = (uint32_t) (band->orientation >> 1); 	/* y0b = 1 if bandno = 2 or 3 */
-
-				uint64_t off_x = ((uint64_t) x0b << levelno);
-				uint64_t off_y =  ((uint64_t) y0b << levelno);
-
-				/* band border (global) */
-				*((grk_rect_u32*)band) = grk_rect_u32(
-						uint64_ceildivpow2(tile_comp.x0 - off_x, levelno + 1),
-						uint64_ceildivpow2(tile_comp.y0 - off_y, levelno + 1),
-						uint64_ceildivpow2(tile_comp.x1 - off_x, levelno + 1),
-						uint64_ceildivpow2(tile_comp.y1 - off_y, levelno + 1));
-			}
+			eBandOrientation orientation = (resno ==0) ? BAND_ORIENT_LL : (eBandOrientation)(bandno+1);
+			band->orientation = orientation;
+			*((grk_rect_u32*)band) = grk_region_band(numresolutions, resno, orientation,tile_comp);
 		}
 		if (DEBUG_TILE_COMPONENT){
 			std::cout << "res: " << resno << " ";
