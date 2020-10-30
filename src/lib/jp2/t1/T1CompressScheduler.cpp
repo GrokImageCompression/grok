@@ -34,7 +34,7 @@ T1CompressScheduler::~T1CompressScheduler() {
 	for (auto &t : t1Implementations)
 		delete t;
 }
-void T1CompressScheduler::compress(std::vector<CompressBlockInfo*> *blocks) {
+void T1CompressScheduler::compress(std::vector<CompressBlockExec*> *blocks) {
 	if (!blocks || blocks->size() == 0)
 		return;
 
@@ -50,7 +50,7 @@ void T1CompressScheduler::compress(std::vector<CompressBlockInfo*> *blocks) {
 
 
 	auto maxBlocks = blocks->size();
-	encodeBlocks = new CompressBlockInfo*[maxBlocks];
+	encodeBlocks = new CompressBlockExec*[maxBlocks];
 	for (uint64_t i = 0; i < maxBlocks; ++i)
 		encodeBlocks[i] = blocks->operator[](i);
 	blocks->clear();
@@ -76,13 +76,13 @@ bool T1CompressScheduler::compress(size_t threadId, uint64_t maxBlocks) {
 	uint64_t index = (uint64_t)++blockCount;
 	if (index >= maxBlocks)
 		return false;
-	CompressBlockInfo *block = encodeBlocks[index];
+	CompressBlockExec *block = encodeBlocks[index];
 	compress(impl,block);
 	delete block;
 
 	return true;
 }
-void T1CompressScheduler::compress(T1Interface *impl, CompressBlockInfo *block){
+void T1CompressScheduler::compress(T1Interface *impl, CompressBlockExec *block){
 	uint32_t max = 0;
 	impl->preCompress(block, tile, max);
 	auto dist = impl->compress(block, tile, max, needsRateControl);

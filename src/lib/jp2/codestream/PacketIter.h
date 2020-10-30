@@ -155,7 +155,6 @@ PacketIter* pi_create_decompress(grk_image *image, CodingParams *cp, uint16_t ti
  * Destroys a packet iterator array.
  *
  * @param	p_pi			the packet iterator array to destroy.
- * @param	nb_elements	the number of elements in the array.
  */
 void pi_destroy(PacketIter *p_pi);
 

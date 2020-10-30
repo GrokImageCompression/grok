@@ -144,6 +144,14 @@ CompressCodeblock& CompressCodeblock::operator=(const CompressCodeblock& rhs){
 CompressCodeblock::~CompressCodeblock() {
 	cleanup();
 }
+bool CompressCodeblock::open(void){
+	return true;
+}
+void CompressCodeblock::close(void){
+
+}
+
+
 void CompressCodeblock::clear(){
 	Codeblock::clear();
 	layers = nullptr;
@@ -214,6 +222,12 @@ DecompressCodeblock::DecompressCodeblock() {
 
 DecompressCodeblock::~DecompressCodeblock(){
     cleanup();
+}
+bool DecompressCodeblock::open(void){
+	return true;
+}
+void DecompressCodeblock::close(void){
+
 }
 
 void DecompressCodeblock::clear(){
@@ -409,6 +423,58 @@ void Resolution::print(){
 		bands[i].print();
 	}
 }
+
+BlockExec::BlockExec() : 	band_orientation(0),
+							stepsize(0),
+							cblk_sty(0),
+							qmfbid(0),
+							x(0),
+							y(0),
+							k_msbs(0)
+
+{}
+
+CompressBlockExec::CompressBlockExec() :
+		            cblk(nullptr),
+					tiledp(nullptr),
+					compno(0),
+					resno(0),
+					precno(0),
+					cblkno(0),
+					inv_step(0),
+					inv_step_ht(0),
+					mct_norms(nullptr),
+#ifdef DEBUG_LOSSLESS_T1
+	unencodedData(nullptr),
+#endif
+				mct_numcomps(0)
+{}
+
+bool CompressBlockExec::open(void){
+
+	return cblk->open();
+}
+void CompressBlockExec::close(void){
+	cblk->close();
+}
+
+DecompressBlockExec::DecompressBlockExec() :
+				cblk(nullptr),
+				tilec(nullptr),
+				tiledp(nullptr),
+				stride(0),
+				resno(0),
+				roishift(0)
+{	}
+
+bool DecompressBlockExec::open(void){
+
+	return cblk->open();
+}
+void DecompressBlockExec::close(void){
+	cblk->close();
+}
+
 
 
 

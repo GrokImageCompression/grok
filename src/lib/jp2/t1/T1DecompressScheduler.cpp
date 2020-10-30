@@ -38,7 +38,7 @@ T1DecompressScheduler::~T1DecompressScheduler() {
 		delete t;
 	}
 }
-bool T1DecompressScheduler::decompressBlock(T1Interface *impl, DecompressBlockInfo *block){
+bool T1DecompressScheduler::decompressBlock(T1Interface *impl, DecompressBlockExec *block){
 	try {
 		if (!impl->decompress(block)) {
 			delete block;
@@ -54,7 +54,7 @@ bool T1DecompressScheduler::decompressBlock(T1Interface *impl, DecompressBlockIn
 	return rc;
 }
 
-bool T1DecompressScheduler::decompress(std::vector<DecompressBlockInfo*> *blocks) {
+bool T1DecompressScheduler::decompress(std::vector<DecompressBlockExec*> *blocks) {
 	if (!blocks || !blocks->size())
 		return true;
 	size_t num_threads = ThreadPool::get()->num_threads();
@@ -73,7 +73,7 @@ bool T1DecompressScheduler::decompress(std::vector<DecompressBlockInfo*> *blocks
 		return success;
 	}
 	auto maxBlocks = blocks->size();
-	decodeBlocks = new DecompressBlockInfo*[maxBlocks];
+	decodeBlocks = new DecompressBlockExec*[maxBlocks];
 	for (uint64_t i = 0; i < maxBlocks; ++i)
 		decodeBlocks[i] = blocks->operator[](i);
 	std::atomic<int> blockCount(-1);

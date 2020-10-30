@@ -41,7 +41,7 @@ private:
 	Apply a reversible inverse DWT transform to a component of an image.
 	@param p_tcd TCD handle
 	@param tilec Tile component information (current tile)
-	@param region to decompress, for region decode
+	@param region region to decompress, for region decode
 	@param numres Number of resolution levels to decompress
 	*/
 	bool decompress_53(TileProcessor *p_tcd,
@@ -54,6 +54,7 @@ private:
 	Apply an irreversible inverse DWT transform to a component of an image.
 	@param p_tcd TCD handle
 	@param tilec Tile component information (current tile)
+	@param region region to decompress, for region decode
 	@param numres Number of resolution levels to decompress
 	*/
 	bool decompress_97(TileProcessor *p_tcd,

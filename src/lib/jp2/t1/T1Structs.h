@@ -81,7 +81,7 @@ struct Layer {
 	uint8_t *data; /* data buffer (points to code block data) */
 };
 
-struct Codeblock : public grk_rect_u32 {
+struct Codeblock : public grk_rect_u32, public IOpenable {
     Codeblock(const Codeblock &rhs);
     Codeblock();
     Codeblock& operator=(const Codeblock& other);
@@ -105,6 +105,9 @@ struct CompressCodeblock : public Codeblock {
 	~CompressCodeblock();
 	CompressCodeblock(const CompressCodeblock &rhs);
 	CompressCodeblock& operator=(const CompressCodeblock& other);
+
+	bool open(void);
+	void close(void);
 	void clear() override;
 	bool alloc();
 	bool alloc_data(size_t nominalBlockSize);
@@ -123,6 +126,9 @@ struct DecompressCodeblock: public Codeblock {
 	~DecompressCodeblock();
 	DecompressCodeblock(const DecompressCodeblock &rhs);
 	DecompressCodeblock& operator=(const DecompressCodeblock& other);
+
+	bool open(void);
+	void close(void);
 	void clear() override;
 	void init();
 	bool alloc();
@@ -179,5 +185,59 @@ struct Resolution : public grk_rect_u32 {
 	grk_rect_u32 region[BAND_NUM_ORIENTATIONS];
 	uint32_t pw, ph; 	/* dimensions of precinct grid */
 };
+
+struct BlockExec : public IOpenable {
+
+	BlockExec();
+	uint8_t band_orientation;
+	float stepsize;
+	uint32_t cblk_sty;
+	uint32_t qmfbid;
+	/* code block offset in tile coordinates*/
+	uint32_t x;
+	uint32_t y;
+	// missing bit planes for all blocks in band
+	uint8_t k_msbs;
+};
+
+
+struct TileComponent;
+
+struct DecompressBlockExec : public BlockExec {
+	DecompressBlockExec();
+	bool open(void);
+	void close(void);
+
+	DecompressCodeblock *cblk;
+	TileComponent *tilec;
+	int32_t *tiledp;
+	uint32_t stride;
+	uint32_t resno;
+	uint32_t roishift;
+
+};
+
+struct CompressBlockExec : public BlockExec{
+	CompressBlockExec();
+	bool open(void);
+	void close(void);
+
+	CompressCodeblock *cblk;
+	int32_t *tiledp;
+	uint32_t compno;
+	uint32_t resno;
+	uint64_t precno;
+	uint64_t cblkno;
+	// inverse step size in 13 bit fixed point
+	int32_t inv_step;
+	float inv_step_ht;
+	const double *mct_norms;
+#ifdef DEBUG_LOSSLESS_T1
+	int32_t* unencodedData;
+#endif
+	uint32_t mct_numcomps;
+
+};
+
 
 }

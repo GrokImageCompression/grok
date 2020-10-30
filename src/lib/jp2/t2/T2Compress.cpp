@@ -41,8 +41,6 @@ bool T2Compress::compress_packets(uint16_t tile_no, uint16_t max_layers,
 	auto image = tileProcessor->image;
 	auto p_tile = tileProcessor->tile;
 	auto tcp = &cp->tcps[tile_no];
-	uint32_t nb_pocs = tcp->numpocs + 1;
-
 	auto pi = pi_initialise_encode(image, cp, tile_no, FINAL_PASS);
 	if (!pi)
 		return false;

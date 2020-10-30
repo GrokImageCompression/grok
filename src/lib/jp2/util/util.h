@@ -110,6 +110,12 @@ template<typename T> struct grk_rectangle {
 				ceildivpow2(x1, power),
 				ceildivpow2(y1, power));
     }
+    grk_rectangle<T>  ceildiv(uint32_t den) const{
+    	return grk_rectangle<T>(ceildiv(x0, den),
+    			ceildiv(y0, den),
+				ceildiv(x1, den),
+				ceildiv(y1, den));
+    }
     grk_rectangle<T> intersection(const grk_rectangle<T> rhs) const{
     	return intersection(&rhs);
     }
