@@ -95,10 +95,13 @@ bool T2Compress::compress_packets_simulate(uint16_t tile_no, uint16_t max_layers
 #ifdef DEBUG_ENCODE_PACKETS
     GRK_INFO("simulate compress packets for layers below layno %u", max_layers);
 #endif
+    // assume CPRL progression, why ???
 	for (uint32_t compno = 0; compno < max_comp; ++compno) {
 		uint64_t comp_len = 0;
 		for (uint32_t poc = 0; poc < pocno; ++poc) {
 			auto current_pi = pi + poc;
+			// 1. why is tile part number set to component number ?
+			// 2. why is tile part generation initialized for each progression order change ?
 			uint32_t tp_num = compno;
 			pi_enable_tile_part_generation(pi, cp, tile_no, poc, tp_num, tp_pos, THRESH_CALC);
 
