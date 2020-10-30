@@ -1260,7 +1260,7 @@ PacketIter* pi_initialise_encode(const grk_image *p_image,
 	return pi;
 }
 
-void pi_init_encode(PacketIter *pi, CodingParams *cp, uint16_t tileno,
+void pi_enable_tile_part_generation(PacketIter *pi, CodingParams *cp, uint16_t tileno,
 		uint32_t pino, uint32_t tpnum, uint32_t tppos, J2K_T2_MODE t2_mode) {
 	auto tcps = &cp->tcps[tileno];
 	auto tcp = &tcps->pocs[pino];

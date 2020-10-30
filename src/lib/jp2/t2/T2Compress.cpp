@@ -47,7 +47,7 @@ bool T2Compress::compress_packets(uint16_t tile_no, uint16_t max_layers,
 	if (!pi)
 		return false;
 
-	pi_init_encode(pi, cp, tile_no, pino, tp_num, tp_pos, FINAL_PASS);
+	pi_enable_tile_part_generation(pi, cp, tile_no, pino, tp_num, tp_pos, FINAL_PASS);
 
 	auto current_pi = &pi[pino];
 	if (current_pi->poc.prg == GRK_PROG_UNKNOWN) {
@@ -100,7 +100,7 @@ bool T2Compress::compress_packets_simulate(uint16_t tile_no, uint16_t max_layers
 		for (uint32_t poc = 0; poc < pocno; ++poc) {
 			auto current_pi = pi + poc;
 			uint32_t tp_num = compno;
-			pi_init_encode(pi, cp, tile_no, poc, tp_num, tp_pos, THRESH_CALC);
+			pi_enable_tile_part_generation(pi, cp, tile_no, poc, tp_num, tp_pos, THRESH_CALC);
 
 			if (current_pi->poc.prg == GRK_PROG_UNKNOWN) {
 				pi_destroy(pi, nb_pocs);

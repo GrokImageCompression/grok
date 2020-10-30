@@ -137,7 +137,7 @@ void pi_update_encoding_parameters(const grk_image *p_image, CodingParams *p_cp,
  @param tppos 	The position of the tile part flag in the progression order
  @param t2_mode T2 mode
  */
-void pi_init_encode(PacketIter *pi, CodingParams *cp, uint16_t tileno, uint32_t pino,
+void pi_enable_tile_part_generation(PacketIter *pi, CodingParams *cp, uint16_t tileno, uint32_t pino,
 		uint32_t tpnum, uint32_t tppos, J2K_T2_MODE t2_mode);
 
 /**
