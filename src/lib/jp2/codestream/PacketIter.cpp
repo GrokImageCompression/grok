@@ -221,8 +221,6 @@ static bool pi_next_lrcp(PacketIter *pi) {
 		res = &comp->resolutions[pi->resno];
 		goto LABEL_SKIP;
 	}
-
-	pi->first = 0;
 	for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
 
 		for (pi->resno = pi->poc.resno0; pi->resno < pi->poc.resno1;
@@ -272,8 +270,6 @@ static bool pi_next_rlcp(PacketIter *pi) {
 		res = &comp->resolutions[pi->resno];
 		goto LABEL_SKIP;
 	}
-
-	pi->first = 0;
 	for (pi->resno = pi->poc.resno0; pi->resno < pi->poc.resno1; pi->resno++) {
 		for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1;
 				pi->layno++) {
@@ -510,8 +506,6 @@ static bool pi_next_cprl(PacketIter *pi) {
 		comp = &pi->comps[pi->compno];
 		goto LABEL_SKIP;
 	}
-
-	pi->first = 0;
 	for (pi->compno = pi->poc.compno0; pi->compno < pi->poc.compno1;
 			pi->compno++) {
 		comp = &pi->comps[pi->compno];
@@ -783,10 +777,7 @@ static PacketIter* pi_create(const grk_image *image,
 	auto tcp = &cp->tcps[tileno];
 	uint32_t poc_bound = tcp->numpocs + 1;
 
-	auto pi = (PacketIter*) grk_calloc((poc_bound), sizeof(PacketIter));
-	if (!pi)
-		return nullptr;
-
+	auto pi = new PacketIter[poc_bound];
 	for (uint32_t pino = 0; pino < poc_bound; ++pino) {
 		auto current_pi = pi + pino;
 
@@ -1545,7 +1536,7 @@ void pi_destroy(PacketIter *p_pi, uint32_t nb_elements) {
 				grk_free(current_pi->comps);
 			}
 		}
-		grk_free(p_pi);
+		delete[] p_pi;
 	}
 }
 
@@ -1588,6 +1579,13 @@ bool pi_next(PacketIter *pi) {
 	}
 
 	return false;
+}
+
+PacketIter::PacketIter() : tp_on(false), include(nullptr), step_l(0), step_r(0), step_c(0), step_p(0), compno(0),
+							resno(0), precno(0), layno(0), first(0), numcomps(0),comps(nullptr), tx0(0), ty0(0),
+							tx1(0), ty1(0), x(0), y(0), dx(0), dy(0)
+{
+	memset(&poc, 0, sizeof(poc));
 }
 
 }

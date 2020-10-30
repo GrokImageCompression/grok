@@ -65,6 +65,7 @@ struct grk_pi_comp {
  Packet iterator
  */
 struct PacketIter {
+	PacketIter();
 	/** Enabling Tile part generation*/
 	bool  tp_on;
 	/** specify if the packet has already been included in a previous layer */
