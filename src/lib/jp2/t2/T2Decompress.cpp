@@ -37,7 +37,6 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 	auto image = tileProcessor->image;
 	auto tcp = cp->tcps + tile_no;
 	auto p_tile = tileProcessor->tile;
-	uint32_t nb_pocs = tcp->numpocs + 1;
 	auto pi = pi_create_decompress(image, cp, tile_no);
 	if (!pi)
 		return false;
@@ -62,7 +61,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 
 		auto current_pi = pi + pino;
 		if (current_pi->poc.prg == GRK_PROG_UNKNOWN) {
-			pi_destroy(pi, nb_pocs);
+			pi_destroy(pi);
 			delete[] first_pass_failed;
 			GRK_ERROR("decompress_packets: Unknown progression order");
 			return false;
@@ -95,7 +94,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 					first_pass_failed[current_pi->compno] = false;
 
 					if (!decompress_packet(tcp, current_pi, src_buf, &nb_bytes_read)) {
-						pi_destroy(pi, nb_pocs);
+						pi_destroy(pi);
 						delete[] first_pass_failed;
 						return false;
 					}
@@ -108,7 +107,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 						src_buf->incr_cur_chunk_offset(nb_bytes_read);
 					} else if (!skip_packet(tcp, current_pi, src_buf,
 							&nb_bytes_read)) {
-						pi_destroy(pi, nb_pocs);
+						pi_destroy(pi);
 						delete[] first_pass_failed;
 						return false;
 					}
@@ -142,7 +141,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 		}
 		delete[] first_pass_failed;
 	}
-	pi_destroy(pi, nb_pocs);
+	pi_destroy(pi);
 	return true;
 }
 

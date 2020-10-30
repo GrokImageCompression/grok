@@ -51,7 +51,7 @@ bool T2Compress::compress_packets(uint16_t tile_no, uint16_t max_layers,
 
 	auto current_pi = &pi[pino];
 	if (current_pi->poc.prg == GRK_PROG_UNKNOWN) {
-		pi_destroy(pi, nb_pocs);
+		pi_destroy(pi);
 		GRK_ERROR("compress_packets: Unknown progression order");
 		return false;
 	}
@@ -59,7 +59,7 @@ bool T2Compress::compress_packets(uint16_t tile_no, uint16_t max_layers,
 		if (current_pi->layno < max_layers) {
 			uint32_t nb_bytes = 0;
 			if (!compress_packet(tcp, current_pi, stream, &nb_bytes)) {
-				pi_destroy(pi, nb_pocs);
+				pi_destroy(pi);
 				return false;
 			}
 			*p_data_written += nb_bytes;
@@ -67,7 +67,7 @@ bool T2Compress::compress_packets(uint16_t tile_no, uint16_t max_layers,
 			++p_tile->packno;
 		}
 	}
-	pi_destroy(pi, nb_pocs);
+	pi_destroy(pi);
 
 	return true;
 }
@@ -83,8 +83,6 @@ bool T2Compress::compress_packets_simulate(uint16_t tile_no, uint16_t max_layers
 	uint32_t pocno = (cp->rsiz == GRK_PROFILE_CINEMA_4K) ? 2 : 1;
 	uint32_t max_comp =
 			cp->m_coding_params.m_enc.m_max_comp_size > 0 ? image->numcomps : 1;
-	uint32_t nb_pocs = tcp->numpocs + 1;
-
 	auto pi = pi_initialise_encode(image, cp, tile_no, THRESH_CALC);
 	if (!pi)
 		return false;
@@ -105,7 +103,7 @@ bool T2Compress::compress_packets_simulate(uint16_t tile_no, uint16_t max_layers
 			pi_enable_tile_part_generation(pi, cp, tile_no, poc, (compno == 0), tp_pos, THRESH_CALC);
 
 			if (current_pi->poc.prg == GRK_PROG_UNKNOWN) {
-				pi_destroy(pi, nb_pocs);
+				pi_destroy(pi);
 				GRK_ERROR(
 						"decompress_packets_simulate: Unknown progression order");
 				return false;
@@ -116,7 +114,7 @@ bool T2Compress::compress_packets_simulate(uint16_t tile_no, uint16_t max_layers
 
 					if (!compress_packet_simulate(tcp, current_pi, &bytesInPacket,
 							max_len, markers)) {
-						pi_destroy(pi, nb_pocs);
+						pi_destroy(pi);
 						return false;
 					}
 
@@ -128,13 +126,13 @@ bool T2Compress::compress_packets_simulate(uint16_t tile_no, uint16_t max_layers
 
 			if (cp->m_coding_params.m_enc.m_max_comp_size) {
 				if (comp_len > cp->m_coding_params.m_enc.m_max_comp_size) {
-					pi_destroy(pi, nb_pocs);
+					pi_destroy(pi);
 					return false;
 				}
 			}
 		}
 	}
-	pi_destroy(pi, nb_pocs);
+	pi_destroy(pi);
 	return true;
 }
 

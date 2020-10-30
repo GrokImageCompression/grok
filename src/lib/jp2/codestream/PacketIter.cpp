@@ -678,7 +678,7 @@ static PacketIter* pi_create(const grk_image *image,
 		current_pi->comps = (grk_pi_comp*) grk_calloc(image->numcomps,
 				sizeof(grk_pi_comp));
 		if (!current_pi->comps) {
-			pi_destroy(pi, poc_bound);
+			pi_destroy(pi);
 			return nullptr;
 		}
 		current_pi->numcomps = image->numcomps;
@@ -689,7 +689,7 @@ static PacketIter* pi_create(const grk_image *image,
 					tccp->numresolutions, sizeof(grk_pi_resolution));
 
 			if (!comp->resolutions) {
-				pi_destroy(pi, poc_bound);
+				pi_destroy(pi);
 				return nullptr;
 			}
 			comp->numresolutions = tccp->numresolutions;
@@ -1414,22 +1414,9 @@ void pi_enable_tile_part_generation(PacketIter *pi, CodingParams *cp, uint16_t t
 	}
 }
 
-void pi_destroy(PacketIter *p_pi, uint32_t nb_elements) {
+void pi_destroy(PacketIter *p_pi) {
 	if (p_pi) {
 		delete[] p_pi->include;
-		for (uint32_t pino = 0; pino < nb_elements; ++pino) {
-			auto current_pi = p_pi + pino;
-
-			if (current_pi->comps) {
-				for (uint32_t compno = 0; compno < current_pi->numcomps;
-						compno++) {
-					auto current_component = current_pi->comps + compno;
-
-					grk_free(current_component->resolutions);
-				}
-				grk_free(current_pi->comps);
-			}
-		}
 		delete[] p_pi;
 	}
 }
@@ -1480,6 +1467,18 @@ PacketIter::PacketIter() : tp_on(false), include(nullptr), step_l(0), step_r(0),
 							tx1(0), ty1(0), x(0), y(0), dx(0), dy(0)
 {
 	memset(&poc, 0, sizeof(poc));
+}
+
+PacketIter::~PacketIter(){
+	if (comps) {
+		for (uint32_t compno = 0; compno < numcomps;
+				compno++) {
+			auto current_component = comps + compno;
+
+			grk_free(current_component->resolutions);
+		}
+		grk_free(comps);
+	}
 }
 
 }

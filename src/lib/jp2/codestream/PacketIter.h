@@ -66,6 +66,7 @@ struct grk_pi_comp {
  */
 struct PacketIter {
 	PacketIter();
+	~PacketIter();
 	/** Enabling Tile part generation*/
 	bool  tp_on;
 	/** specify if the packet has already been included in a previous layer */
@@ -156,7 +157,7 @@ PacketIter* pi_create_decompress(grk_image *image, CodingParams *cp, uint16_t ti
  * @param	p_pi			the packet iterator array to destroy.
  * @param	nb_elements	the number of elements in the array.
  */
-void pi_destroy(PacketIter *p_pi, uint32_t nb_elements);
+void pi_destroy(PacketIter *p_pi);
 
 /**
  Modify the packet iterator to point to the next packet
