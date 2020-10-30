@@ -80,12 +80,12 @@ template<typename T> struct grk_rectangle {
     grk_rectangle(const grk_rectangle &rhs){
     	*this = rhs;
     }
+    grk_rectangle(void) :
+    		x0(0), y0(0), x1(0), y1(0) {
+    }
     void print(void) const{
     	std::cout << "[" << x0 << "," << y0 << "," << x1 << "," << y1 << "]"
     			<< std::endl;
-    }
-    grk_rectangle(void) :
-    		x0(0), y0(0), x1(0), y1(0) {
     }
     bool is_valid(void) const {
     	return x0 <= x1 && y0 <= y1;
@@ -104,40 +104,20 @@ template<typename T> struct grk_rectangle {
 
     	return *this;
     }
-    grk_rectangle<T>&  rectceildivpow2(uint32_t power) {
-    	x0 = ceildivpow2(x0, power);
-    	y0 = ceildivpow2(y0, power);
-    	x1 = ceildivpow2(x1, power);
-    	y1 = ceildivpow2(y1, power);
-
-    	return *this;
+    grk_rectangle<T>  rectceildivpow2(uint32_t power) const{
+    	return grk_rectangle<T>(ceildivpow2(x0, power),
+    			ceildivpow2(y0, power),
+				ceildivpow2(x1, power),
+				ceildivpow2(y1, power));
     }
-    grk_rectangle<T>&  mulpow2(uint32_t power) {
-		x0 *= 1 << power;
-		y0 *= 1 << power;
-		x1 *= 1 << power;
-		y1 *= 1 << power;
-
-    	return *this;
-    }
-    grk_rectangle<T>& intersection(const grk_rectangle<T> rhs){
+    grk_rectangle<T> intersection(const grk_rectangle<T> rhs) const{
     	return intersection(&rhs);
     }
-    grk_rectangle<T>& intersection(const grk_rectangle<T> *rhs){
-    	x0 = std::max<T>(x0,rhs->x0);
-		y0 = std::max<T>(y0,rhs->y0);
-		x1 = std::min<T>(x1,rhs->x1);
-		y1 = std::min<T>(y1,rhs->y1);
-
-		return *this;
-    }
-    grk_rectangle<T>& r_union(const grk_rectangle<T> rhs){
-    	x0 = std::min<T>(x0,rhs.x0);
-		y0 = std::min<T>(y0,rhs.y0);
-		x1 = std::max<T>(x1,rhs.x1);
-		y1 = std::max<T>(y1,rhs.y1);
-
-		return *this;
+    grk_rectangle<T> intersection(const grk_rectangle<T> *rhs) const{
+    	return grk_rectangle<T>(std::max<T>(x0,rhs->x0),
+    							std::max<T>(y0,rhs->y0),
+								std::min<T>(x1,rhs->x1),
+								std::min<T>(y1,rhs->y1));
     }
     uint64_t area(void) const {
     	return (uint64_t)(x1 - x0) * (y1 - y0);
@@ -154,12 +134,6 @@ template<typename T> struct grk_rectangle {
 								 sat_add<T>((int64_t)y0, (int64_t)y),
 								 sat_add<T>((int64_t)x1, (int64_t)x),
 								 sat_add<T>((int64_t)y1, (int64_t)y));
-    }
-    grk_rectangle<T>& subsample(uint32_t dx, uint32_t dy) {
-    	x0 = ceildiv(x0, (T) dx);
-    	y0 = ceildiv(y0, (T) dy);
-    	x1 = ceildiv(x1, (T) dx);
-    	y1 = ceildiv(y1, (T) dy);
     }
     grk_rectangle<T>& grow(T boundary) {
     	return grow(boundary, boundary,(std::numeric_limits<T>::max)(),(std::numeric_limits<T>::max)());

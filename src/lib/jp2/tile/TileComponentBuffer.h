@@ -78,13 +78,11 @@ template<typename T> struct TileComponentBuffer {
 							whole_tile_decoding(whole_tile)
 	{
 		if (!m_encode) {
-			m_bounds = unreduced_region_dim;
-			m_bounds.rectceildivpow2(num_resolutions - reduced_num_resolutions);
-			m_bounds.intersection(reduced_tile_dim);
+			m_bounds = unreduced_region_dim.rectceildivpow2(num_resolutions - reduced_num_resolutions);
+			m_bounds = m_bounds.intersection(reduced_tile_dim);
 			assert(m_bounds.is_valid());
 
-			m_unreduced_bounds 	= unreduced_region_dim;
-			m_unreduced_bounds.intersection(unreduced_tile_dim);
+			m_unreduced_bounds = unreduced_region_dim.intersection(unreduced_tile_dim);
 			assert(m_unreduced_bounds.is_valid());
 		}
 

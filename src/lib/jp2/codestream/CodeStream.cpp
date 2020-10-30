@@ -1180,8 +1180,7 @@ bool CodeStream::decompress_tile(grk_image *p_image,	uint16_t tile_index){
 								p_image->x1,
 								p_image->y1);
 
-	auto overlap_rect = original_image_rect;
-	overlap_rect.intersection(tile_rect);
+	auto overlap_rect = original_image_rect.intersection(tile_rect);
 	if (original_image_rect.is_non_degenerate()
 			&& tile_rect.is_non_degenerate()
 			&& overlap_rect.is_non_degenerate()) {

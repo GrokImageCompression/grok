@@ -1852,7 +1852,7 @@ template <typename T,
     }
 
 	auto win_bounds = region;
-	win_bounds.rectceildivpow2(tilec->numresolutions - 1 - (numres-1));
+	win_bounds = win_bounds.rectceildivpow2(tilec->numresolutions - 1 - (numres-1));
     auto final_win_bounds = win_bounds.pan(-(uint64_t)tr_max->x0,-(uint64_t)tr_max->y0);
 
     if (numres == 1U) {

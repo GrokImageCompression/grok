@@ -843,8 +843,7 @@ bool TileProcessor::is_whole_tilecomp_decoding(uint32_t compno) {
 	/* Compute the intersection of the area of interest, expressed in tile component coordinates */
 	/* with the tile coordinates */
 
-	auto dims = tilec->getBuffer()->bounds();
-	dims.intersection(tilec);
+	auto dims = tilec->getBuffer()->bounds().intersection(tilec);
 
 	uint32_t shift = tilec->numresolutions - tilec->resolutions_to_decompress;
 	/* Tolerate small margin within the reduced resolution factor to consider if */
