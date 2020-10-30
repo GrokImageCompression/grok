@@ -204,7 +204,7 @@ static void update_pi_dxy_for_comp(PacketIter *pi, grk_pi_comp *comp) {
 	}
 }
 static void update_pi_dxy(PacketIter *pi) {
-	pi->first = 0;
+	pi->first = true;
 	pi->dx = 0;
 	pi->dy = 0;
 	for (uint32_t compno = 0; compno < pi->numcomps; compno++)
@@ -216,7 +216,7 @@ static bool pi_next_lrcp(PacketIter *pi) {
 	grk_pi_resolution *res = nullptr;
 	uint64_t index = 0;
 
-	if (!pi->first) {
+	if (pi->first) {
 		comp = &pi->comps[pi->compno];
 		res = &comp->resolutions[pi->resno];
 		goto LABEL_SKIP;
@@ -265,7 +265,7 @@ static bool pi_next_rlcp(PacketIter *pi) {
 	grk_pi_resolution *res = nullptr;
 	uint64_t index = 0;
 
-	if (!pi->first) {
+	if (pi->first) {
 		comp = &pi->comps[pi->compno];
 		res = &comp->resolutions[pi->resno];
 		goto LABEL_SKIP;
@@ -302,12 +302,74 @@ static bool pi_next_rlcp(PacketIter *pi) {
 	return false;
 }
 
+/**
+ *
+ * @return 0 : continue; 1 : do not continue
+ */
+static uint8_t pi_next_l(PacketIter *pi){
+	uint32_t levelno;
+	uint32_t trx0, try0;
+	uint32_t trx1, try1;
+	uint32_t rpx, rpy;
+	uint32_t prci, prcj;
+	auto comp = &pi->comps[pi->compno];
+	if (pi->resno >= comp->numresolutions)
+		return 0;
+
+	auto res = &comp->resolutions[pi->resno];
+	levelno = comp->numresolutions - 1 - pi->resno;
+	if (levelno >= GRK_J2K_MAXRLVLS)
+		return 0;
+	trx0 = ceildiv<uint64_t>((uint64_t) pi->tx0,
+			((uint64_t) comp->dx << levelno));
+	try0 = ceildiv<uint64_t>((uint64_t) pi->ty0,
+			((uint64_t) comp->dy << levelno));
+	trx1 = ceildiv<uint64_t>((uint64_t) pi->tx1,
+			((uint64_t) comp->dx << levelno));
+	try1 = ceildiv<uint64_t>((uint64_t) pi->ty1,
+			((uint64_t) comp->dy << levelno));
+	rpx = res->pdx + levelno;
+	rpy = res->pdy + levelno;
+	if (!(((uint64_t) pi->y % ((uint64_t) comp->dy << rpy) == 0)
+			|| ((pi->y == pi->ty0)
+					&& (((uint64_t) try0 << levelno)
+							% ((uint64_t) 1 << rpy))))) {
+		return 0;
+	}
+	if (!(((uint64_t) pi->x % ((uint64_t) comp->dx << rpx) == 0)
+			|| ((pi->x == pi->tx0)
+					&& (((uint64_t) trx0 << levelno)
+							% ((uint64_t) 1 << rpx))))) {
+		return 0;
+	}
+
+	if ((res->pw == 0) || (res->ph == 0))
+		return 0;
+
+	if ((trx0 == trx1) || (try0 == try1))
+		return 0;
+
+	prci = uint_floordivpow2(
+			ceildiv<uint64_t>((uint64_t) pi->x,
+					((uint64_t) comp->dx << levelno)), res->pdx)
+			- uint_floordivpow2(trx0, res->pdx);
+	prcj = uint_floordivpow2(
+			ceildiv<uint64_t>((uint64_t) pi->y,
+					((uint64_t) comp->dy << levelno)), res->pdy)
+			- uint_floordivpow2(try0, res->pdy);
+	pi->precno = (prci + (uint64_t)prcj * res->pw);
+	//skip precinct numbers greater than total number of precincts
+	// for this resolution
+	if (pi->precno >= (uint64_t)res->pw * res->ph)
+		return 0;
+
+	return 1;
+}
+
 static bool pi_next_rpcl(PacketIter *pi) {
-	grk_pi_comp *comp = nullptr;
-	grk_pi_resolution *res = nullptr;
 	uint64_t index = 0;
 
-	if (!pi->first) {
+	if (pi->first) {
 		goto LABEL_SKIP;
 	} else {
 		update_pi_dxy(pi);
@@ -325,60 +387,7 @@ static bool pi_next_rpcl(PacketIter *pi) {
 					pi->x += pi->dx - (pi->x % pi->dx)) {
 				for (pi->compno = pi->poc.compno0; pi->compno < pi->poc.compno1;
 						pi->compno++) {
-					uint32_t levelno;
-					uint32_t trx0, try0;
-					uint32_t trx1, try1;
-					uint32_t rpx, rpy;
-					uint32_t prci, prcj;
-					comp = &pi->comps[pi->compno];
-					if (pi->resno >= comp->numresolutions)
-						continue;
-
-					res = &comp->resolutions[pi->resno];
-					levelno = comp->numresolutions - 1 - pi->resno;
-					if (levelno >= GRK_J2K_MAXRLVLS)
-						continue;
-					trx0 = ceildiv<uint64_t>((uint64_t) pi->tx0,
-							((uint64_t) comp->dx << levelno));
-					try0 = ceildiv<uint64_t>((uint64_t) pi->ty0,
-							((uint64_t) comp->dy << levelno));
-					trx1 = ceildiv<uint64_t>((uint64_t) pi->tx1,
-							((uint64_t) comp->dx << levelno));
-					try1 = ceildiv<uint64_t>((uint64_t) pi->ty1,
-							((uint64_t) comp->dy << levelno));
-					rpx = res->pdx + levelno;
-					rpy = res->pdy + levelno;
-					if (!(((uint64_t) pi->y % ((uint64_t) comp->dy << rpy) == 0)
-							|| ((pi->y == pi->ty0)
-									&& (((uint64_t) try0 << levelno)
-											% ((uint64_t) 1 << rpy))))) {
-						continue;
-					}
-					if (!(((uint64_t) pi->x % ((uint64_t) comp->dx << rpx) == 0)
-							|| ((pi->x == pi->tx0)
-									&& (((uint64_t) trx0 << levelno)
-											% ((uint64_t) 1 << rpx))))) {
-						continue;
-					}
-
-					if ((res->pw == 0) || (res->ph == 0))
-						continue;
-
-					if ((trx0 == trx1) || (try0 == try1))
-						continue;
-
-					prci = uint_floordivpow2(
-							ceildiv<uint64_t>((uint64_t) pi->x,
-									((uint64_t) comp->dx << levelno)), res->pdx)
-							- uint_floordivpow2(trx0, res->pdx);
-					prcj = uint_floordivpow2(
-							ceildiv<uint64_t>((uint64_t) pi->y,
-									((uint64_t) comp->dy << levelno)), res->pdy)
-							- uint_floordivpow2(try0, res->pdy);
-					pi->precno = (prci + (uint64_t)prcj * res->pw);
-					//skip precinct numbers greater than total number of precincts
-					// for this resolution
-					if (pi->precno >= (uint64_t)res->pw * res->ph)
+					if (pi_next_l(pi) == 0)
 						continue;
 					for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1;
 							pi->layno++) {
@@ -401,10 +410,9 @@ static bool pi_next_rpcl(PacketIter *pi) {
 
 static bool pi_next_pcrl(PacketIter *pi) {
 	grk_pi_comp *comp = nullptr;
-	grk_pi_resolution *res = nullptr;
 	uint64_t index = 0;
 
-	if (!pi->first) {
+	if (pi->first) {
 		comp = &pi->comps[pi->compno];
 		goto LABEL_SKIP;
 	}
@@ -427,56 +435,7 @@ static bool pi_next_pcrl(PacketIter *pi) {
 						pi->resno
 								< std::min<uint32_t>(pi->poc.resno1,
 										comp->numresolutions); pi->resno++) {
-					uint32_t levelno;
-					uint32_t trx0, try0;
-					uint32_t trx1, try1;
-					uint32_t rpx, rpy;
-					uint32_t prci, prcj;
-					res = &comp->resolutions[pi->resno];
-					levelno = comp->numresolutions - 1 - pi->resno;
-					if (levelno >= GRK_J2K_MAXRLVLS)
-						continue;
-					trx0 = ceildiv<uint64_t>((uint64_t) pi->tx0,
-							((uint64_t) comp->dx << levelno));
-					try0 = ceildiv<uint64_t>((uint64_t) pi->ty0,
-							((uint64_t) comp->dy << levelno));
-					trx1 = ceildiv<uint64_t>((uint64_t) pi->tx1,
-							((uint64_t) comp->dx << levelno));
-					try1 = ceildiv<uint64_t>((uint64_t) pi->ty1,
-							((uint64_t) comp->dy << levelno));
-					rpx = res->pdx + levelno;
-					rpy = res->pdy + levelno;
-					if (!(((uint64_t) pi->y % ((uint64_t) comp->dy << rpy) == 0)
-							|| ((pi->y == pi->ty0)
-									&& (((uint64_t) try0 << levelno)
-											% ((uint64_t) 1 << rpy))))) {
-						continue;
-					}
-					if (!(((uint64_t) pi->x % ((uint64_t) comp->dx << rpx) == 0)
-							|| ((pi->x == pi->tx0)
-									&& (((uint64_t) trx0 << levelno)
-											% ((uint64_t) 1 << rpx))))) {
-						continue;
-					}
-
-					if ((res->pw == 0) || (res->ph == 0))
-						continue;
-
-					if ((trx0 == trx1) || (try0 == try1))
-						continue;
-
-					prci = uint_floordivpow2(
-							ceildiv<uint64_t>((uint64_t) pi->x,
-									((uint64_t) comp->dx << levelno)), res->pdx)
-							- uint_floordivpow2(trx0, res->pdx);
-					prcj = uint_floordivpow2(
-							ceildiv<uint64_t>((uint64_t) pi->y,
-									((uint64_t) comp->dy << levelno)), res->pdy)
-							- uint_floordivpow2(try0, res->pdy);
-					pi->precno = (prci + (uint64_t)prcj * res->pw);
-					//skip precinct numbers greater than total number of precincts
-					// for this resolution
-					if (pi->precno >= (uint64_t)res->pw * res->ph)
+					if (pi_next_l(pi) == 0)
 						continue;
 					for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1;
 							pi->layno++) {
@@ -499,10 +458,9 @@ static bool pi_next_pcrl(PacketIter *pi) {
 
 static bool pi_next_cprl(PacketIter *pi) {
 	grk_pi_comp *comp = nullptr;
-	grk_pi_resolution *res = nullptr;
 	uint64_t index = 0;
 
-	if (!pi->first) {
+	if (pi->first) {
 		comp = &pi->comps[pi->compno];
 		goto LABEL_SKIP;
 	}
@@ -526,71 +484,7 @@ static bool pi_next_cprl(PacketIter *pi) {
 						pi->resno
 								< std::min<uint32_t>(pi->poc.resno1,
 										comp->numresolutions); pi->resno++) {
-					uint32_t levelno;
-					uint32_t trx0, try0;
-					uint32_t trx1, try1;
-					uint32_t rpx, rpy;
-					uint32_t prci, prcj;
-					uint32_t temp1, temp2;
-					res = &comp->resolutions[pi->resno];
-					levelno = comp->numresolutions - 1 - pi->resno;
-					if (levelno >= GRK_J2K_MAXRLVLS)
-						continue;
-					trx0 = ceildiv<uint64_t>((uint64_t) pi->tx0,
-							((uint64_t) comp->dx << levelno));
-					try0 = ceildiv<uint64_t>((uint64_t) pi->ty0,
-							((uint64_t) comp->dy << levelno));
-					trx1 = ceildiv<uint64_t>((uint64_t) pi->tx1,
-							((uint64_t) comp->dx << levelno));
-					try1 = ceildiv<uint64_t>((uint64_t) pi->ty1,
-							((uint64_t) comp->dy << levelno));
-					rpx = res->pdx + levelno;
-					rpy = res->pdy + levelno;
-					if (!(((uint64_t) pi->y % ((uint64_t) comp->dy << rpy) == 0)
-							|| ((pi->y == pi->ty0)
-									&& (((uint64_t) try0 << levelno)
-											% ((uint64_t) 1 << rpy))))) {
-						continue;
-					}
-					if (!(((uint64_t) pi->x % ((uint64_t) comp->dx << rpx) == 0)
-							|| ((pi->x == pi->tx0)
-									&& (((uint64_t) trx0 << levelno)
-											% ((uint64_t) 1 << rpx))))) {
-						continue;
-					}
-
-					if ((res->pw == 0) || (res->ph == 0))
-						continue;
-
-					if ((trx0 == trx1) || (try0 == try1))
-						continue;
-
-					temp1 = uint_floordivpow2(
-							ceildiv<uint64_t>((uint64_t) pi->x,
-									((uint64_t) comp->dx << levelno)),
-							res->pdx);
-
-					temp2 = uint_floordivpow2(trx0, res->pdx);
-					if (temp2 > temp1) {
-						GRK_ERROR("Precinct index invalid");
-						return false;
-					}
-					prci = temp1 - temp2;
-
-					temp1 = uint_floordivpow2(
-							ceildiv<uint64_t>((uint64_t) pi->y,
-									((uint64_t) comp->dy << levelno)),
-							res->pdy);
-					temp2 = uint_floordivpow2(try0, res->pdy);
-					if (temp2 > temp1) {
-						GRK_ERROR("Precinct index invalid");
-						return false;
-					}
-					prcj = temp1 - temp2;
-					pi->precno = prci + (uint64_t)prcj * res->pw;
-					//skip precinct numbers greater than total number of precincts
-					// for this resolution
-					if (pi->precno >= (uint64_t)res->pw * res->ph)
+					if (pi_next_l(pi) == 0)
 						continue;
 					for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1;
 							pi->layno++) {
@@ -876,7 +770,7 @@ static void pi_update_decode_poc(PacketIter *p_pi, TileCodingParams *p_tcp,
 		auto current_poc = p_tcp->pocs + pino;
 
 		current_pi->poc.prg = current_poc->prg; /* Progression Order #0 */
-		current_pi->first = 1;
+		current_pi->first = false;
 		current_pi->poc.resno0 = current_poc->resno0; /* Resolution Level Index #0 (Start) */
 		current_pi->poc.compno0 = current_poc->compno0; /* Component Index #0 (Start) */
 		current_pi->poc.layno0 = 0;
@@ -900,7 +794,7 @@ static void pi_update_decode_no_poc(PacketIter *p_pi, TileCodingParams *p_tcp,
 		auto current_pi = p_pi + pino;
 
 		current_pi->poc.prg = p_tcp->prg;
-		current_pi->first = 1;
+		current_pi->first = false;
 		current_pi->poc.resno0 = 0;
 		current_pi->poc.compno0 = 0;
 		current_pi->poc.layno0 = 0;
@@ -915,42 +809,42 @@ static void pi_update_decode_no_poc(PacketIter *p_pi, TileCodingParams *p_tcp,
 static bool pi_check_next_level(int32_t pos, CodingParams *cp,
 		uint16_t tileno, uint32_t pino, const char *prog) {
 	auto tcps = cp->tcps + tileno;
-	auto tcp = tcps->pocs + pino;
+	auto poc = tcps->pocs + pino;
 
 	if (pos >= 0) {
 		for (int32_t i = pos; pos >= 0; i--) {
 			switch (prog[i]) {
 			case 'R':
-				if (tcp->res_t == tcp->resE)
+				if (poc->res_t == poc->resE)
 					return pi_check_next_level(pos - 1, cp, tileno, pino, prog);
 				else
 					return true;
 				break;
 			case 'C':
-				if (tcp->comp_t == tcp->compE)
+				if (poc->comp_t == poc->compE)
 					return pi_check_next_level(pos - 1, cp, tileno, pino, prog);
 				else
 					return true;
 				break;
 			case 'L':
-				if (tcp->lay_t == tcp->layE)
+				if (poc->lay_t == poc->layE)
 					return pi_check_next_level(pos - 1, cp, tileno, pino, prog);
 				else
 					return true;
 				break;
 			case 'P':
-				switch (tcp->prg) {
+				switch (poc->prg) {
 				case GRK_LRCP: /* fall through */
 				case GRK_RLCP:
-					if (tcp->prc_t == tcp->prcE)
+					if (poc->prc_t == poc->prcE)
 						return pi_check_next_level(i - 1, cp, tileno, pino,	prog);
 					else
 						return true;
 					break;
 				default:
-					if (tcp->tx0_t == tcp->txE) {
+					if (poc->tx0_t == poc->txE) {
 						/*TY*/
-						if (tcp->ty0_t == tcp->tyE)
+						if (poc->ty0_t == poc->tyE)
 							return pi_check_next_level(i - 1, cp, tileno, pino,	prog);
 						else
 							return true;
@@ -1253,56 +1147,56 @@ PacketIter* pi_initialise_encode(const grk_image *p_image,
 
 void pi_enable_tile_part_generation(PacketIter *pi, CodingParams *cp, uint16_t tileno,
 		uint32_t pino, bool first_poc_tile_part, uint32_t tppos, J2K_T2_MODE t2_mode) {
-	auto tcps = &cp->tcps[tileno];
-	auto tcp = &tcps->pocs[pino];
-	auto prog = j2k_convert_progression_order(tcp->prg);
+	auto tcps = cp->tcps + tileno;
+	auto poc = tcps->pocs + pino;
+	auto prog = j2k_convert_progression_order(poc->prg);
 
-	pi[pino].first = 1;
-	pi[pino].poc.prg = tcp->prg;
+	pi[pino].first = false;
+	pi[pino].poc.prg = poc->prg;
 
 	if (!(cp->m_coding_params.m_enc.m_tp_on
 			&& ((!GRK_IS_CINEMA(cp->rsiz) && !GRK_IS_IMF(cp->rsiz)
 					&& (t2_mode == FINAL_PASS)) || GRK_IS_CINEMA(cp->rsiz)
 					|| GRK_IS_IMF(cp->rsiz)))) {
-		pi[pino].poc.resno0 = tcp->resS;
-		pi[pino].poc.resno1 = tcp->resE;
-		pi[pino].poc.compno0 = tcp->compS;
-		pi[pino].poc.compno1 = tcp->compE;
+		pi[pino].poc.resno0 = poc->resS;
+		pi[pino].poc.resno1 = poc->resE;
+		pi[pino].poc.compno0 = poc->compS;
+		pi[pino].poc.compno1 = poc->compE;
 		pi[pino].poc.layno0 = 0;
-		pi[pino].poc.layno1 = tcp->layE;
+		pi[pino].poc.layno1 = poc->layE;
 		pi[pino].poc.precno0 = 0;
-		pi[pino].poc.precno1 = tcp->prcE;
-		pi[pino].poc.tx0 = tcp->txS;
-		pi[pino].poc.ty0 = tcp->tyS;
-		pi[pino].poc.tx1 = tcp->txE;
-		pi[pino].poc.ty1 = tcp->tyE;
+		pi[pino].poc.precno1 = poc->prcE;
+		pi[pino].poc.tx0 = poc->txS;
+		pi[pino].poc.ty0 = poc->tyS;
+		pi[pino].poc.tx1 = poc->txE;
+		pi[pino].poc.ty1 = poc->tyE;
 	} else {
 		for (uint32_t i = tppos + 1; i < 4; i++) {
 			switch (prog[i]) {
 			case 'R':
-				pi[pino].poc.resno0 = tcp->resS;
-				pi[pino].poc.resno1 = tcp->resE;
+				pi[pino].poc.resno0 = poc->resS;
+				pi[pino].poc.resno1 = poc->resE;
 				break;
 			case 'C':
-				pi[pino].poc.compno0 = tcp->compS;
-				pi[pino].poc.compno1 = tcp->compE;
+				pi[pino].poc.compno0 = poc->compS;
+				pi[pino].poc.compno1 = poc->compE;
 				break;
 			case 'L':
 				pi[pino].poc.layno0 = 0;
-				pi[pino].poc.layno1 = tcp->layE;
+				pi[pino].poc.layno1 = poc->layE;
 				break;
 			case 'P':
-				switch (tcp->prg) {
+				switch (poc->prg) {
 				case GRK_LRCP:
 				case GRK_RLCP:
 					pi[pino].poc.precno0 = 0;
-					pi[pino].poc.precno1 = tcp->prcE;
+					pi[pino].poc.precno1 = poc->prcE;
 					break;
 				default:
-					pi[pino].poc.tx0 = tcp->txS;
-					pi[pino].poc.ty0 = tcp->tyS;
-					pi[pino].poc.tx1 = tcp->txE;
-					pi[pino].poc.ty1 = tcp->tyE;
+					pi[pino].poc.tx0 = poc->txS;
+					pi[pino].poc.ty0 = poc->tyS;
+					pi[pino].poc.tx1 = poc->txE;
+					pi[pino].poc.ty1 = poc->tyE;
 					break;
 				}
 				break;
@@ -1313,43 +1207,43 @@ void pi_enable_tile_part_generation(PacketIter *pi, CodingParams *cp, uint16_t t
 			for (int32_t i = (int32_t) tppos; i >= 0; i--) {
 				switch (prog[i]) {
 				case 'C':
-					tcp->comp_t = tcp->compS;
-					pi[pino].poc.compno0 = tcp->comp_t;
-					pi[pino].poc.compno1 = tcp->comp_t + 1;
-					tcp->comp_t += 1;
+					poc->comp_t = poc->compS;
+					pi[pino].poc.compno0 = poc->comp_t;
+					pi[pino].poc.compno1 = poc->comp_t + 1;
+					poc->comp_t += 1;
 					break;
 				case 'R':
-					tcp->res_t = tcp->resS;
-					pi[pino].poc.resno0 = tcp->res_t;
-					pi[pino].poc.resno1 = tcp->res_t + 1;
-					tcp->res_t += 1;
+					poc->res_t = poc->resS;
+					pi[pino].poc.resno0 = poc->res_t;
+					pi[pino].poc.resno1 = poc->res_t + 1;
+					poc->res_t += 1;
 					break;
 				case 'L':
-					tcp->lay_t = 0;
-					pi[pino].poc.layno0 = tcp->lay_t;
-					pi[pino].poc.layno1 = tcp->lay_t + 1;
-					tcp->lay_t += 1;
+					poc->lay_t = 0;
+					pi[pino].poc.layno0 = poc->lay_t;
+					pi[pino].poc.layno1 = poc->lay_t + 1;
+					poc->lay_t += 1;
 					break;
 				case 'P':
-					switch (tcp->prg) {
+					switch (poc->prg) {
 					case GRK_LRCP:
 					case GRK_RLCP:
-						tcp->prc_t = 0;
-						pi[pino].poc.precno0 = tcp->prc_t;
-						pi[pino].poc.precno1 = tcp->prc_t + 1;
-						tcp->prc_t += 1;
+						poc->prc_t = 0;
+						pi[pino].poc.precno0 = poc->prc_t;
+						pi[pino].poc.precno1 = poc->prc_t + 1;
+						poc->prc_t += 1;
 						break;
 					default:
-						tcp->tx0_t = tcp->txS;
-						tcp->ty0_t = tcp->tyS;
-						pi[pino].poc.tx0 = tcp->tx0_t;
-						pi[pino].poc.tx1 = (tcp->tx0_t + tcp->dx
-								- (tcp->tx0_t % tcp->dx));
-						pi[pino].poc.ty0 = tcp->ty0_t;
-						pi[pino].poc.ty1 = (tcp->ty0_t + tcp->dy
-								- (tcp->ty0_t % tcp->dy));
-						tcp->tx0_t = pi[pino].poc.tx1;
-						tcp->ty0_t = pi[pino].poc.ty1;
+						poc->tx0_t = poc->txS;
+						poc->ty0_t = poc->tyS;
+						pi[pino].poc.tx0 = poc->tx0_t;
+						pi[pino].poc.tx1 = (poc->tx0_t + poc->dx
+								- (poc->tx0_t % poc->dx));
+						pi[pino].poc.ty0 = poc->ty0_t;
+						pi[pino].poc.ty1 = (poc->ty0_t + poc->dy
+								- (poc->ty0_t % poc->dy));
+						poc->tx0_t = pi[pino].poc.tx1;
+						poc->ty0_t = pi[pino].poc.ty1;
 						break;
 					}
 					break;
@@ -1361,31 +1255,31 @@ void pi_enable_tile_part_generation(PacketIter *pi, CodingParams *cp, uint16_t t
 			for (int32_t i = (int32_t) tppos; i >= 0; i--) {
 				switch (prog[i]) {
 				case 'C':
-					pi[pino].poc.compno0 = tcp->comp_t - 1;
-					pi[pino].poc.compno1 = tcp->comp_t;
+					pi[pino].poc.compno0 = poc->comp_t - 1;
+					pi[pino].poc.compno1 = poc->comp_t;
 					break;
 				case 'R':
-					pi[pino].poc.resno0 = tcp->res_t - 1;
-					pi[pino].poc.resno1 = tcp->res_t;
+					pi[pino].poc.resno0 = poc->res_t - 1;
+					pi[pino].poc.resno1 = poc->res_t;
 					break;
 				case 'L':
-					pi[pino].poc.layno0 = tcp->lay_t - 1;
-					pi[pino].poc.layno1 = tcp->lay_t;
+					pi[pino].poc.layno0 = poc->lay_t - 1;
+					pi[pino].poc.layno1 = poc->lay_t;
 					break;
 				case 'P':
-					switch (tcp->prg) {
+					switch (poc->prg) {
 					case GRK_LRCP:
 					case GRK_RLCP:
-						pi[pino].poc.precno0 = tcp->prc_t - 1;
-						pi[pino].poc.precno1 = tcp->prc_t;
+						pi[pino].poc.precno0 = poc->prc_t - 1;
+						pi[pino].poc.precno1 = poc->prc_t;
 						break;
 					default:
-						pi[pino].poc.tx0 = (tcp->tx0_t - tcp->dx
-								- (tcp->tx0_t % tcp->dx));
-						pi[pino].poc.tx1 = tcp->tx0_t;
-						pi[pino].poc.ty0 = (tcp->ty0_t - tcp->dy
-								- (tcp->ty0_t % tcp->dy));
-						pi[pino].poc.ty1 = tcp->ty0_t;
+						pi[pino].poc.tx0 = (poc->tx0_t - poc->dx
+								- (poc->tx0_t % poc->dx));
+						pi[pino].poc.tx1 = poc->tx0_t;
+						pi[pino].poc.ty0 = (poc->ty0_t - poc->dy
+								- (poc->ty0_t % poc->dy));
+						pi[pino].poc.ty1 = poc->ty0_t;
 						break;
 					}
 					break;
@@ -1393,95 +1287,95 @@ void pi_enable_tile_part_generation(PacketIter *pi, CodingParams *cp, uint16_t t
 				if (incr_top == 1) {
 					switch (prog[i]) {
 					case 'R':
-						if (tcp->res_t == tcp->resE) {
+						if (poc->res_t == poc->resE) {
 							if (pi_check_next_level(i - 1, cp, tileno, pino,
 									prog)) {
-								tcp->res_t = tcp->resS;
-								pi[pino].poc.resno0 = tcp->res_t;
-								pi[pino].poc.resno1 = tcp->res_t + 1;
-								tcp->res_t += 1;
+								poc->res_t = poc->resS;
+								pi[pino].poc.resno0 = poc->res_t;
+								pi[pino].poc.resno1 = poc->res_t + 1;
+								poc->res_t += 1;
 								incr_top = 1;
 							} else {
 								incr_top = 0;
 							}
 						} else {
-							pi[pino].poc.resno0 = tcp->res_t;
-							pi[pino].poc.resno1 = tcp->res_t + 1;
-							tcp->res_t += 1;
+							pi[pino].poc.resno0 = poc->res_t;
+							pi[pino].poc.resno1 = poc->res_t + 1;
+							poc->res_t += 1;
 							incr_top = 0;
 						}
 						break;
 					case 'C':
-						if (tcp->comp_t == tcp->compE) {
+						if (poc->comp_t == poc->compE) {
 							if (pi_check_next_level(i - 1, cp, tileno, pino,
 									prog)) {
-								tcp->comp_t = tcp->compS;
-								pi[pino].poc.compno0 = tcp->comp_t;
-								pi[pino].poc.compno1 = tcp->comp_t + 1;
-								tcp->comp_t += 1;
+								poc->comp_t = poc->compS;
+								pi[pino].poc.compno0 = poc->comp_t;
+								pi[pino].poc.compno1 = poc->comp_t + 1;
+								poc->comp_t += 1;
 								incr_top = 1;
 							} else {
 								incr_top = 0;
 							}
 						} else {
-							pi[pino].poc.compno0 = tcp->comp_t;
-							pi[pino].poc.compno1 = tcp->comp_t + 1;
-							tcp->comp_t += 1;
+							pi[pino].poc.compno0 = poc->comp_t;
+							pi[pino].poc.compno1 = poc->comp_t + 1;
+							poc->comp_t += 1;
 							incr_top = 0;
 						}
 						break;
 					case 'L':
-						if (tcp->lay_t == tcp->layE) {
+						if (poc->lay_t == poc->layE) {
 							if (pi_check_next_level(i - 1, cp, tileno, pino,
 									prog)) {
-								tcp->lay_t = 0;
-								pi[pino].poc.layno0 = tcp->lay_t;
-								pi[pino].poc.layno1 = tcp->lay_t + 1;
-								tcp->lay_t += 1;
+								poc->lay_t = 0;
+								pi[pino].poc.layno0 = poc->lay_t;
+								pi[pino].poc.layno1 = poc->lay_t + 1;
+								poc->lay_t += 1;
 								incr_top = 1;
 							} else {
 								incr_top = 0;
 							}
 						} else {
-							pi[pino].poc.layno0 = tcp->lay_t;
-							pi[pino].poc.layno1 = tcp->lay_t + 1;
-							tcp->lay_t += 1;
+							pi[pino].poc.layno0 = poc->lay_t;
+							pi[pino].poc.layno1 = poc->lay_t + 1;
+							poc->lay_t += 1;
 							incr_top = 0;
 						}
 						break;
 					case 'P':
-						switch (tcp->prg) {
+						switch (poc->prg) {
 						case GRK_LRCP:
 						case GRK_RLCP:
-							if (tcp->prc_t == tcp->prcE) {
+							if (poc->prc_t == poc->prcE) {
 								if (pi_check_next_level(i - 1, cp, tileno, pino,
 										prog)) {
-									tcp->prc_t = 0;
-									pi[pino].poc.precno0 = tcp->prc_t;
-									pi[pino].poc.precno1 = tcp->prc_t + 1;
-									tcp->prc_t += 1;
+									poc->prc_t = 0;
+									pi[pino].poc.precno0 = poc->prc_t;
+									pi[pino].poc.precno1 = poc->prc_t + 1;
+									poc->prc_t += 1;
 									incr_top = 1;
 								} else {
 									incr_top = 0;
 								}
 							} else {
-								pi[pino].poc.precno0 = tcp->prc_t;
-								pi[pino].poc.precno1 = tcp->prc_t + 1;
-								tcp->prc_t += 1;
+								pi[pino].poc.precno0 = poc->prc_t;
+								pi[pino].poc.precno1 = poc->prc_t + 1;
+								poc->prc_t += 1;
 								incr_top = 0;
 							}
 							break;
 						default:
-							if (tcp->tx0_t >= tcp->txE) {
-								if (tcp->ty0_t >= tcp->tyE) {
+							if (poc->tx0_t >= poc->txE) {
+								if (poc->ty0_t >= poc->tyE) {
 									if (pi_check_next_level(i - 1, cp, tileno,
 											pino, prog)) {
-										tcp->ty0_t = tcp->tyS;
-										pi[pino].poc.ty0 = tcp->ty0_t;
+										poc->ty0_t = poc->tyS;
+										pi[pino].poc.ty0 = poc->ty0_t;
 										pi[pino].poc.ty1 =
-												(uint32_t) (tcp->ty0_t + tcp->dy
-														- (tcp->ty0_t % tcp->dy));
-										tcp->ty0_t = pi[pino].poc.ty1;
+												(uint32_t) (poc->ty0_t + poc->dy
+														- (poc->ty0_t % poc->dy));
+										poc->ty0_t = pi[pino].poc.ty1;
 										incr_top = 1;
 										resetX = 1;
 									} else {
@@ -1489,25 +1383,25 @@ void pi_enable_tile_part_generation(PacketIter *pi, CodingParams *cp, uint16_t t
 										resetX = 0;
 									}
 								} else {
-									pi[pino].poc.ty0 = tcp->ty0_t;
-									pi[pino].poc.ty1 = (tcp->ty0_t + tcp->dy
-											- (tcp->ty0_t % tcp->dy));
-									tcp->ty0_t = pi[pino].poc.ty1;
+									pi[pino].poc.ty0 = poc->ty0_t;
+									pi[pino].poc.ty1 = (poc->ty0_t + poc->dy
+											- (poc->ty0_t % poc->dy));
+									poc->ty0_t = pi[pino].poc.ty1;
 									incr_top = 0;
 									resetX = 1;
 								}
 								if (resetX == 1) {
-									tcp->tx0_t = tcp->txS;
-									pi[pino].poc.tx0 = tcp->tx0_t;
-									pi[pino].poc.tx1 = (uint32_t) (tcp->tx0_t
-											+ tcp->dx - (tcp->tx0_t % tcp->dx));
-									tcp->tx0_t = pi[pino].poc.tx1;
+									poc->tx0_t = poc->txS;
+									pi[pino].poc.tx0 = poc->tx0_t;
+									pi[pino].poc.tx1 = (uint32_t) (poc->tx0_t
+											+ poc->dx - (poc->tx0_t % poc->dx));
+									poc->tx0_t = pi[pino].poc.tx1;
 								}
 							} else {
-								pi[pino].poc.tx0 = tcp->tx0_t;
-								pi[pino].poc.tx1 = (uint32_t) (tcp->tx0_t
-										+ tcp->dx - (tcp->tx0_t % tcp->dx));
-								tcp->tx0_t = pi[pino].poc.tx1;
+								pi[pino].poc.tx0 = poc->tx0_t;
+								pi[pino].poc.tx1 = (uint32_t) (poc->tx0_t
+										+ poc->dx - (poc->tx0_t % poc->dx));
+								poc->tx0_t = pi[pino].poc.tx1;
 								incr_top = 0;
 							}
 							break;
@@ -1582,7 +1476,7 @@ bool pi_next(PacketIter *pi) {
 }
 
 PacketIter::PacketIter() : tp_on(false), include(nullptr), step_l(0), step_r(0), step_c(0), step_p(0), compno(0),
-							resno(0), precno(0), layno(0), first(0), numcomps(0),comps(nullptr), tx0(0), ty0(0),
+							resno(0), precno(0), layno(0), first(true), numcomps(0),comps(nullptr), tx0(0), ty0(0),
 							tx1(0), ty1(0), x(0), y(0), dx(0), dy(0)
 {
 	memset(&poc, 0, sizeof(poc));

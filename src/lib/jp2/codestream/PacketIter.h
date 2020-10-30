@@ -86,7 +86,7 @@ struct PacketIter {
 	uint64_t precno;
 	/** layer that identify the packet */
 	uint16_t layno;
-	/** 0 if the first packet */
+	/** true if the first packet */
 	bool first;
 	/** progression order change information */
 	 grk_poc  poc;
@@ -98,7 +98,7 @@ struct PacketIter {
 	uint32_t tx0, ty0, tx1, ty1;
 	/** packet coordinates */
 	uint32_t x, y;
-	/** packet subsampling factors */
+	/** packet sub-sampling factors */
 	uint32_t dx, dy;
 };
 
