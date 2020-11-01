@@ -103,6 +103,7 @@ bool T1Scheduler::prepareScheduleDecode(TileComponent *tilec, TileComponentCodin
 													cblk)){
 
 						auto block = new DecompressBlockExec();
+						block->sparseBuffer = tilec->getSparseBuffer();
 						block->x = cblk->x0;
 						block->y = cblk->y0;
 						block->tiledp = tilec->getBuffer()->cblk_ptr( resno, bandno,
@@ -115,7 +116,7 @@ bool T1Scheduler::prepareScheduleDecode(TileComponent *tilec, TileComponentCodin
 						block->resno = resno;
 						block->roishift = tccp->roishift;
 						block->stepsize = band->stepsize;
-						block->tilec = tilec;
+
 						block->k_msbs = (uint8_t)(band->numbps - cblk->numbps);
 						blocks->push_back(block);
 					}

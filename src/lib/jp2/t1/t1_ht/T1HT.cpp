@@ -182,8 +182,6 @@ bool T1HT::postDecompress(DecompressBlockExec *block) {
 	uint16_t cblk_h =  (uint16_t)cblk->height();
 
 	auto src = unencoded_data;
-	bool whole_tile_decoding = block->tilec->isWholeTileDecoding();
-	auto tilec = block->tilec;
 
 	// ROI shift
 	if (block->roishift) {
@@ -206,7 +204,7 @@ bool T1HT::postDecompress(DecompressBlockExec *block) {
 
 	uint32_t dest_width = block->stride;
 	int32_t *dest = block->tiledp;
-	if (!whole_tile_decoding){
+	if (block->sparseBuffer){
        dest_width = cblk_w;
        dest = src;
 	}
@@ -236,9 +234,9 @@ bool T1HT::postDecompress(DecompressBlockExec *block) {
 			tile_data += dest_width;
 		}
 	}
-	if (!whole_tile_decoding){
+	if (block->sparseBuffer){
 		// write directly from t1 to sparse array
-		if (!tilec->getSparseBuffer()->write(block->x,
+		if (!block->sparseBuffer->write(block->x,
 							  block->y,
 							  block->x + cblk_w,
 							  block->y + cblk_h,

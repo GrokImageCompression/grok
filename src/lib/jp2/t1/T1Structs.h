@@ -21,6 +21,8 @@
 
 namespace grk {
 
+struct ISparseBuffer;
+
 enum eBandOrientation{
 	BAND_ORIENT_LL,
 	BAND_ORIENT_HL,
@@ -209,7 +211,7 @@ struct DecompressBlockExec : public BlockExec {
 	void close(void);
 
 	DecompressCodeblock *cblk;
-	TileComponent *tilec;
+	ISparseBuffer *sparseBuffer;
 	int32_t *tiledp;
 	uint32_t stride;
 	uint32_t resno;

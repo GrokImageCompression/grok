@@ -460,7 +460,7 @@ void CompressBlockExec::close(void){
 
 DecompressBlockExec::DecompressBlockExec() :
 				cblk(nullptr),
-				tilec(nullptr),
+				sparseBuffer(nullptr),
 				tiledp(nullptr),
 				stride(0),
 				resno(0),

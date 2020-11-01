@@ -219,7 +219,7 @@ bool T1Part1::postDecompress(DecompressBlockExec *block) {
 		}
 	}
 
-	if (!block->tilec->isWholeTileDecoding()) {
+	if (block->sparseBuffer) {
     	if (qmfbid == 1) {
     		for (uint32_t j = 0; j < cblk_h; ++j) {
     			uint32_t i = 0;
@@ -247,7 +247,7 @@ bool T1Part1::postDecompress(DecompressBlockExec *block) {
 			}
     	}
 		// write directly from t1 to sparse array
-        if (!block->tilec->getSparseBuffer()->write(block->x,
+        if (!block->sparseBuffer->write(block->x,
 					  block->y,
 					  block->x + cblk_w,
 					  block->y + cblk_h,
