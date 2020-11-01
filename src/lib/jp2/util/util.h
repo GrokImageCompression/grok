@@ -167,6 +167,14 @@ using grk_rect = grk_rectangle<int64_t>;
 using grk_rect_u32 = grk_rectangle<uint32_t>;
 
 template <typename T> struct grk_buffer {
+	grk_buffer() : buf(nullptr), offset(0), len(0), owns_data(false)
+	{}
+
+	grk_buffer(const grk_buffer<T> &lhs) : buf(lhs.buf),
+											offset(lhs.offset),
+											len(lhs.len),
+											owns_data(false)
+	{}
 
 	grk_buffer(T *buffer, size_t off, size_t length, bool ownsData) : buf(buffer),
 		offset(off),

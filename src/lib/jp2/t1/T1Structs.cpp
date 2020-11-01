@@ -75,8 +75,12 @@ Codeblock::Codeblock():
 }
 
 Codeblock::Codeblock(const Codeblock &rhs): grk_rect_u32(rhs),
-		compressedData(rhs.compressedData), compressedDataSize(rhs.compressedDataSize), owns_data(rhs.owns_data),
-		numbps(rhs.numbps), numlenbits(rhs.numlenbits), numPassesInPacket(rhs.numPassesInPacket)
+											compressedData(rhs.compressedData),
+											compressedDataSize(rhs.compressedDataSize),
+											owns_data(false),
+											numbps(rhs.numbps),
+											numlenbits(rhs.numlenbits),
+											numPassesInPacket(rhs.numPassesInPacket)
 #ifdef DEBUG_LOSSLESS_T2
 	,included(0)
 #endif
@@ -151,7 +155,6 @@ void CompressCodeblock::close(void){
 
 }
 
-
 void CompressCodeblock::clear(){
 	Codeblock::clear();
 	layers = nullptr;
@@ -185,21 +188,18 @@ bool CompressCodeblock::alloc() {
  */
 bool CompressCodeblock::alloc_data(size_t nominalBlockSize) {
 	uint32_t desired_data_size = (uint32_t) (nominalBlockSize * sizeof(uint32_t));
-	if (desired_data_size > compressedDataSize) {
-		if (owns_data)
-			delete[] compressedData;
+	// we add two fake zero bytes at beginning of buffer, so that mq coder
+	//can be initialized to data[-1] == actualData[1], and still point
+	//to a valid memory location
+	auto buf =  new uint8_t[desired_data_size + grk_cblk_enc_compressed_data_pad_left];
+	buf[0] = 0;
+	buf[1] = 0;
 
-		// we add two fake zero bytes at beginning of buffer, so that mq coder
-		//can be initialized to data[-1] == actualData[1], and still point
-		//to a valid memory location
-		compressedData = new uint8_t[desired_data_size + grk_cblk_enc_compressed_data_pad_left];
-		compressedData[0] = 0;
-		compressedData[1] = 0;
+	compressedData = buf;
+	paddedCompressedData = buf + grk_cblk_enc_compressed_data_pad_left;
+	compressedDataSize = desired_data_size;
+	owns_data = true;
 
-		paddedCompressedData = compressedData + grk_cblk_enc_compressed_data_pad_left;
-		compressedDataSize = desired_data_size;
-		owns_data = true;
-	}
 	return true;
 }
 
@@ -210,6 +210,7 @@ void CompressCodeblock::cleanup() {
 		owns_data = false;
 	}
 	paddedCompressedData = nullptr;
+	compressedDataSize = 0;
 	grk_free(layers);
 	layers = nullptr;
 	grk_free(passes);
