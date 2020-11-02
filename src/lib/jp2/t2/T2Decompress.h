@@ -18,25 +18,14 @@
 
 #pragma once
 
-#include <T2.h>
-
 namespace grk {
 
 struct TileProcessor;
 
 /**
- @file T2.h
- @brief Implementation of a tier-2 coding (packetization of code-block data) (T2)
-
+ Tier-2 decoding
  */
-
-/** @defgroup T2 T2 - Implementation of a tier-2 coding */
-/*@{*/
-
-/**
- Tier-2 coding
- */
-struct T2Decompress : public T2 {
+struct T2Decompress {
 	T2Decompress(TileProcessor *tileProc);
 
 	/**
@@ -74,6 +63,9 @@ private:
 
 	bool skip_packet_data(Resolution *l_res, PacketIter *p_pi,
 			uint64_t *p_data_read, uint64_t max_length);
+
+	bool init_seg(DecompressCodeblock *cblk, uint32_t index, uint8_t cblk_sty,
+			bool first);
 
 };
 

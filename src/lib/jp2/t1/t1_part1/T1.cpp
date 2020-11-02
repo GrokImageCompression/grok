@@ -501,10 +501,10 @@ void T1::enc_sigpass(int32_t bpno, int32_t *nmsedec,
 				flagsp++;
 				continue;
 			}
-		 enc_sigpass_step_macro(&data[((k + 0) * data_stride) + i], 0, cblksty & GRK_CBLKSTY_VSC);
-		 enc_sigpass_step_macro(&data[((k + 1) * data_stride) + i], 3, 0);
-		 enc_sigpass_step_macro(&data[((k + 2) * data_stride) + i], 6, 0);
-		 enc_sigpass_step_macro(&data[((k + 3) * data_stride) + i], 9, 0);
+			 enc_sigpass_step_macro(&data[((k + 0) * data_stride) + i], 0, cblksty & GRK_CBLKSTY_VSC);
+			 enc_sigpass_step_macro(&data[((k + 1) * data_stride) + i], 3, 0);
+			 enc_sigpass_step_macro(&data[((k + 2) * data_stride) + i], 6, 0);
+			 enc_sigpass_step_macro(&data[((k + 3) * data_stride) + i], 9, 0);
 			++flagsp;
 		}
 		flagsp += extra;
@@ -569,10 +569,10 @@ void T1::enc_refpass(int32_t bpno, int32_t *nmsedec,uint8_t type) {
 				flagsp++;
 				continue;
 			}
-		 enc_refpass_step_macro(	&data[((k + 0) * data_stride) + i],  0);
-		 enc_refpass_step_macro(	&data[((k + 1) * data_stride) + i], 3);
-		 enc_refpass_step_macro(	&data[((k + 2) * data_stride) + i], 6);
-		 enc_refpass_step_macro(	&data[((k + 3) * data_stride) + i], 9);
+			 enc_refpass_step_macro(	&data[((k + 0) * data_stride) + i],  0);
+			 enc_refpass_step_macro(	&data[((k + 1) * data_stride) + i], 3);
+			 enc_refpass_step_macro(	&data[((k + 2) * data_stride) + i], 6);
+			 enc_refpass_step_macro(	&data[((k + 3) * data_stride) + i], 9);
 			++flagsp;
 		}
 		flagsp += extra;

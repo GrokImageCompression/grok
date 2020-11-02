@@ -21,25 +21,14 @@
 
 #pragma once
 
-#include <T2.h>
-
 namespace grk {
 
 struct TileProcessor;
 
 /**
- @file T2.h
- @brief Implementation of a tier-2 coding (packetization of code-block data) (T2)
-
- */
-
-/** @defgroup T2 T2 - Implementation of a tier-2 coding */
-/*@{*/
-
-/**
  Tier-2 coding
  */
-struct T2Compress : public T2 {
+struct T2Compress {
 	T2Compress(TileProcessor *tileProc);
 
 	/*

@@ -125,8 +125,6 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/point_transform/mct.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/point_transform/mct.h
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/t2/T2.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t2/T2.h  
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/T2Compress.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/T2Compress.h  
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/T2Decompress.cpp

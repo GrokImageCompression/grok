@@ -66,7 +66,7 @@ template<typename T> struct TileComponentWindowBuffer {
 	TileComponentWindowBuffer(bool isEncoder,
 						grk_rect_u32 unreduced_tile_dim,
 						grk_rect_u32 reduced_tile_dim,
-						grk_rect_u32 unreduced_region_dim,
+						grk_rect_u32 unreduced_window_dim,
 						Resolution *tile_comp_resolutions,
 						uint32_t numresolutions,
 						uint32_t reduced_num_resolutions) :
@@ -76,11 +76,11 @@ template<typename T> struct TileComponentWindowBuffer {
 							m_encode(isEncoder)
 	{
 		if (!m_encode) {
-			m_bounds = unreduced_region_dim.rectceildivpow2(num_resolutions - reduced_num_resolutions);
+			m_bounds = unreduced_window_dim.rectceildivpow2(num_resolutions - reduced_num_resolutions);
 			m_bounds = m_bounds.intersection(reduced_tile_dim);
 			assert(m_bounds.is_valid());
 
-			m_unreduced_bounds = unreduced_region_dim.intersection(unreduced_tile_dim);
+			m_unreduced_bounds = unreduced_window_dim.intersection(unreduced_tile_dim);
 			assert(m_unreduced_bounds.is_valid());
 		}
 

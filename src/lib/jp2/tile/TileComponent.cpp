@@ -364,14 +364,14 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
 }
 
 void TileComponent::create_buffer(grk_rect_u32 unreduced_tile_comp_dims,
-									grk_rect_u32 unreduced_tile_comp_region_dims) {
+									grk_rect_u32 unreduced_tile_comp_window_dims) {
 	// calculate bandWindow
 	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
 		for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
 			auto band = res->bandWindow + bandno;
 			*((grk_rect_u32*)band) =
-					grk_region_band(numresolutions, resno, band->orientation,unreduced_tile_comp_dims);
+					grk_band_window(numresolutions, resno, band->orientation,unreduced_tile_comp_dims);
 		}
 	}
 
@@ -382,7 +382,7 @@ void TileComponent::create_buffer(grk_rect_u32 unreduced_tile_comp_dims,
 	buf = new TileComponentWindowBuffer<int32_t>(m_is_encoder,
 											*(grk_rect_u32*)maxResolution,
 											*(grk_rect_u32*)this,
-											unreduced_tile_comp_region_dims,
+											unreduced_tile_comp_window_dims,
 											resolutions,
 											numresolutions,
 											highestNumberOfResolutions);

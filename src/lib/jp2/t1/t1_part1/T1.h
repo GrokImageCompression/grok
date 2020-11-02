@@ -21,9 +21,11 @@
 
 #pragma once
 
-namespace grk {
 
-#include "t1_common.h"
+#include "grk_includes.h"
+
+
+namespace grk {
 
 /** Flags for 4 consecutive rows of a column */
 typedef uint32_t grk_flag;

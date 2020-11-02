@@ -18,7 +18,7 @@
 
 namespace grk {
 
-grk_rect_u32 grk_region_band(uint32_t num_res,
+grk_rect_u32 grk_band_window(uint32_t num_res,
 							uint32_t resno,
 							uint32_t orientation,
 							grk_rect_u32 unreduced_region){

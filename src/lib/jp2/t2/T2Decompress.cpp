@@ -182,6 +182,43 @@ bool T2Decompress::decompress_packet(TileCodingParams *p_tcp, PacketIter *p_pi, 
 	return true;
 }
 
+bool T2Decompress::init_seg(DecompressCodeblock *cblk, uint32_t index, uint8_t cblk_sty,
+		bool first) {
+	uint32_t nb_segs = index + 1;
+
+	if (nb_segs > cblk->numSegmentsAllocated) {
+		auto new_segs = new Segment[cblk->numSegmentsAllocated
+				+ cblk->numSegmentsAllocated];
+		for (uint32_t i = 0; i < cblk->numSegmentsAllocated; ++i)
+			new_segs[i] = cblk->segs[i];
+		cblk->numSegmentsAllocated += default_numbers_segments;
+		if (cblk->segs)
+			delete[] cblk->segs;
+		cblk->segs = new_segs;
+	}
+
+	auto seg = &cblk->segs[index];
+	seg->clear();
+
+	if (cblk_sty & GRK_CBLKSTY_TERMALL) {
+		seg->maxpasses = 1;
+	} else if (cblk_sty & GRK_CBLKSTY_LAZY) {
+		if (first) {
+			seg->maxpasses = 10;
+		} else {
+			auto last_seg = seg - 1;
+			seg->maxpasses =
+					((last_seg->maxpasses == 1) || (last_seg->maxpasses == 10)) ?
+							2 : 1;
+		}
+	} else {
+		seg->maxpasses = max_passes_per_segment;
+	}
+
+	return true;
+}
+
+
 bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 		bool *p_is_data_present, ChunkBuffer *src_buf, uint64_t *p_data_read) {
 	auto p_tile = tileProcessor->tile;
@@ -399,7 +436,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 			uint32_t segno = 0;
 
 			if (!cblk->numSegments) {
-				if (!T2Decompress::init_seg(cblk, segno,
+				if (!init_seg(cblk, segno,
 						p_tcp->tccps[p_pi->compno].cblk_sty, true)) {
 					return false;
 				}
@@ -408,7 +445,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 				if (cblk->segs[segno].numpasses
 						== cblk->segs[segno].maxpasses) {
 					++segno;
-					if (!T2Decompress::init_seg(cblk, segno,
+					if (!init_seg(cblk, segno,
 							p_tcp->tccps[p_pi->compno].cblk_sty, false)) {
 						return false;
 					}
@@ -459,7 +496,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 				blockPassesInPacket -= (int32_t) seg->numPassesInPacket;
 				if (blockPassesInPacket > 0) {
 					++segno;
-					if (!T2Decompress::init_seg(cblk, segno,
+					if (!init_seg(cblk, segno,
 							p_tcp->tccps[p_pi->compno].cblk_sty, false)) {
 						return false;
 					}
