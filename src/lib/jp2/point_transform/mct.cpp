@@ -465,9 +465,9 @@ void mct::compress_irrev( int* GRK_RESTRICT chan0,
 					VREGF u = MULF(vcb, SUBF(b, y));
 					VREGF v = MULF(vcr, SUBF(r, y));
 
-					STORE(chan0 + j, _mm256_cvttps_epi32(y * (1 << 11)));
-					STORE(chan1 + j, _mm256_cvttps_epi32(u * (1 << 11)));
-					STORE(chan2 + j, _mm256_cvttps_epi32(v * (1 << 11)));
+					STORE(chan0 + j, _mm256_cvttps_epi32(y * 2048.0f));
+					STORE(chan1 + j, _mm256_cvttps_epi32(u * 2048.0f));
+					STORE(chan2 + j, _mm256_cvttps_epi32(v * 2048.0f));
 				}
 				return 0;
 			};
@@ -493,9 +493,9 @@ void mct::compress_irrev( int* GRK_RESTRICT chan0,
         float u = cb * (b - y);
         float v = cr * (r - y);
 
-        chan0[i] = (int32_t)(y * (1 << 11));
-        chan1[i] = (int32_t)(u * (1 << 11));
-        chan2[i] = (int32_t)(v * (1 << 11));
+        chan0[i] = (int32_t)(y * 2048.0f);
+        chan1[i] = (int32_t)(u * 2048.0f);
+        chan2[i] = (int32_t)(v * 2048.0f);
     }
 }
 
