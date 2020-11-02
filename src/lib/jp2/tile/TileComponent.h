@@ -49,7 +49,7 @@ struct TileComponent : public grk_rect_u32 {
 	 								uint32_t bandno,
 	 								const grk_rect_u32 *aoi) const;
 
-	 TileComponentRegionBuffer<int32_t>* getBuffer();
+	 TileComponentWindowBuffer<int32_t>* getBuffer();
 	 bool isWholeTileDecoding();
 	 ISparseBuffer* getSparseBuffer();
 
@@ -63,7 +63,7 @@ private:
 	ISparseBuffer *m_sa;
     bool   whole_tile_decoding;
 	bool m_is_encoder;
-	TileComponentRegionBuffer<int32_t> *buf;
+	TileComponentWindowBuffer<int32_t> *buf;
 	TileComponentCodingParams *m_tccp;
 
 };

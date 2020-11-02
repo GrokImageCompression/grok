@@ -78,8 +78,8 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			if (!skip_the_packet && !tilec->isWholeTileDecoding()) {
 				skip_the_packet = true;
 				auto res = tilec->resolutions + current_pi->resno;
-				for (uint32_t bandno = 0;	bandno < res->numbands; ++bandno) {
-					auto band = res->bands + bandno;
+				for (uint32_t bandno = 0;	bandno < res->numBandWindows; ++bandno) {
+					auto band = res->bandWindow + bandno;
 					auto prec = band->precincts + current_pi->precno;
 					if (tilec->subbandIntersectsAOI(current_pi->resno,bandno, prec)) {
 						skip_the_packet = false;
@@ -193,8 +193,8 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 
 	if (p_pi->layno == 0) {
 		/* reset tagtrees */
-		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
-			auto band = res->bands + bandno;
+		for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
+			auto band = res->bandWindow + bandno;
 			if (band->isEmpty())
 				continue;
 			auto prc = &band->precincts[p_pi->precno];
@@ -299,8 +299,8 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 		src_buf->incr_cur_chunk_offset(*p_data_read);
 		return true;
 	}
-	for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
-		auto band = res->bands + bandno;
+	for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
+		auto band = res->bandWindow + bandno;
 		if (band->isEmpty())
 			continue;
 		auto prc = band->precincts + p_pi->precno;
@@ -498,8 +498,8 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 
 bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 		ChunkBuffer *src_buf, uint64_t *p_data_read) {
-	for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
-		auto band = res->bands + bandno;
+	for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
+		auto band = res->bandWindow + bandno;
 		auto prc = &band->precincts[p_pi->precno];
 		uint64_t nb_code_blocks = (uint64_t) prc->cw * prc->ch;
 		for (uint64_t cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
@@ -512,7 +512,7 @@ bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 			if (!cblk->numSegments) {
 				seg = cblk->segs;
 				++cblk->numSegments;
-				cblk->compressedData.len = 0;
+				cblk->compressedStream.len = 0;
 			} else {
 				seg = &cblk->segs[cblk->numSegments - 1];
 				if (seg->numpasses == seg->maxpasses) {
@@ -535,7 +535,7 @@ bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 				}
 				//initialize dataindex to current contiguous size of code block
 				if (seg->numpasses == 0)
-					seg->dataindex = (uint32_t) cblk->compressedData.len;
+					seg->dataindex = (uint32_t) cblk->compressedStream.len;
 
 				// only add segment to seg_buffers if length is greater than zero
 				if (seg->numBytesInPacket) {
@@ -543,7 +543,7 @@ bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 							seg->numBytesInPacket, false));
 					*(p_data_read) += seg->numBytesInPacket;
 					src_buf->incr_cur_chunk_offset(seg->numBytesInPacket);
-					cblk->compressedData.len += seg->numBytesInPacket;
+					cblk->compressedStream.len += seg->numBytesInPacket;
 					seg->len += seg->numBytesInPacket;
 				}
 				seg->numpasses += seg->numPassesInPacket;
@@ -589,8 +589,8 @@ bool T2Decompress::skip_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkB
 bool T2Decompress::skip_packet_data(Resolution *res, PacketIter *p_pi,
 		uint64_t *p_data_read, uint64_t max_length) {
 	*p_data_read = 0;
-	for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
-		auto band = res->bands + bandno;
+	for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
+		auto band = res->bandWindow + bandno;
 		if (band->isEmpty())
 			continue;
 
@@ -607,7 +607,7 @@ bool T2Decompress::skip_packet_data(Resolution *res, PacketIter *p_pi,
 			if (!cblk->numSegments) {
 				seg = cblk->segs;
 				++cblk->numSegments;
-				cblk->compressedData.len = 0;
+				cblk->compressedStream.len = 0;
 			} else {
 				seg = &cblk->segs[cblk->numSegments - 1];
 				if (seg->numpasses == seg->maxpasses) {

@@ -26,25 +26,25 @@ template<typename T> struct res_buf {
 	res_buf(Resolution *res, grk_rect_u32 res_bounds) : res(new grk_buffer_2d<T>(res_bounds))
 	{
 		for (uint32_t i = 0; i < BAND_NUM_INDICES; ++i)
-			bands[i] = res ? new grk_buffer_2d<T>(res->bands[i]) : nullptr;
+			bandWindow[i] = res ? new grk_buffer_2d<T>(res->bandWindow[i]) : nullptr;
 	}
 	~res_buf(){
 		delete res;
 		for (uint32_t i = 0; i < 3; ++i)
-			delete bands[i];
+			delete bandWindow[i];
 	}
 	bool alloc(bool clear){
 		if (!res->alloc(clear))
 			return false;
 		for (uint32_t i = 0; i < BAND_NUM_INDICES; ++i){
-			if (bands[i] && !bands[i]->alloc(clear))
+			if (bandWindow[i] && !bandWindow[i]->alloc(clear))
 				return false;
 		}
 		return true;
 	}
 
 	grk_buffer_2d<T> *res;
-	grk_buffer_2d<T> *bands[3];
+	grk_buffer_2d<T> *bandWindow[3];
 };
 
 
@@ -62,8 +62,8 @@ template<typename T> struct res_buf {
 
  */
 
-template<typename T> struct TileComponentRegionBuffer {
-	TileComponentRegionBuffer(bool isEncoder,
+template<typename T> struct TileComponentWindowBuffer {
+	TileComponentWindowBuffer(bool isEncoder,
 						grk_rect_u32 unreduced_tile_dim,
 						grk_rect_u32 reduced_tile_dim,
 						grk_rect_u32 unreduced_region_dim,
@@ -92,7 +92,7 @@ template<typename T> struct TileComponentRegionBuffer {
 
         if ( use_band_buffers()) {
         	// lowest resolution equals 0th band
-        	 res_buffers.push_back(new res_buf<T>(nullptr, tile_comp_resolutions->bands[BAND_RES_ZERO_INDEX_LL]) );
+        	 res_buffers.push_back(new res_buf<T>(nullptr, tile_comp_resolutions->bandWindow[BAND_RES_ZERO_INDEX_LL]) );
 
         	 for (uint32_t resno = 1; resno < reduced_num_resolutions; ++resno)
         		 res_buffers.push_back(new res_buf<T>( tile_comp_resolutions+resno, m_bounds) );
@@ -100,7 +100,7 @@ template<typename T> struct TileComponentRegionBuffer {
         	res_buffers.push_back(new res_buf<T>( nullptr, m_bounds) );
         }
 	}
-	~TileComponentRegionBuffer(){
+	~TileComponentWindowBuffer(){
 		for (auto& b : res_buffers)
 			delete b;
 	}
@@ -109,7 +109,7 @@ template<typename T> struct TileComponentRegionBuffer {
 	 *
 	 * @param resno resolution number
 	 * @param bandno band number (0 for LL band of 0th resolution, otherwise
-	 * 0 for LL band of 0th resolution, or {0,1,2} for {HL,LH,HH} bands
+	 * 0 for LL band of 0th resolution, or {0,1,2} for {HL,LH,HH} bandWindow
 	 * @param offsetx x offset of code block
 	 * @param offsety y offset of code block
 	 *
@@ -120,7 +120,7 @@ template<typename T> struct TileComponentRegionBuffer {
 			assert(bandno==BAND_RES_ZERO_INDEX_LL);
 
 		auto res = resolutions[resno];
-		auto band = res->bands + bandno;
+		auto band = res->bandWindow + bandno;
 		uint32_t x = offsetx;
 		uint32_t y = offsety;
 
@@ -150,7 +150,7 @@ template<typename T> struct TileComponentRegionBuffer {
 	 * Get pointer to band buffer
 	 *
 	 * @param resno resolution number
-	 * @param bandno band number {0,1,2} for HL,LH and HH bands
+	 * @param bandno band number {0,1,2} for HL,LH and HH bandWindow
 	 *
 	 */
 	T* ptr(uint32_t resno,uint32_t bandno) const{
@@ -202,7 +202,7 @@ template<typename T> struct TileComponentRegionBuffer {
 	 * Get stride of band buffer
 	 *
 	 * @param resno resolution number
-	 * @param bandno band number 0 for resno==0 LL band, or {0,1,2} for {HL,LH,HH} bands
+	 * @param bandno band number 0 for resno==0 LL band, or {0,1,2} for {HL,LH,HH} bandWindow
 	 */
 	uint32_t stride(uint32_t resno,uint32_t bandno) const{
 		assert(bandno < 3 && resno < resolutions.size());
@@ -234,16 +234,16 @@ template<typename T> struct TileComponentRegionBuffer {
 			auto b = res_buffers[i];
 			auto b_prev = res_buffers[i-1];
 			if (!b_prev->res->data)
-				b_prev->res->data = b->bands[0]->data;
-			if (!b->bands[1]->data)
-				b->bands[1]->data = b->bands[2]->data;
+				b_prev->res->data = b->bandWindow[0]->data;
+			if (!b->bandWindow[1]->data)
+				b->bandWindow[1]->data = b->bandWindow[2]->data;
 		}
 		return true;
 	}
 
 	/**
 	 * Get bounds of tile component
-	 * decompress: reduced tile component coordinates of region
+	 * decompress: reduced tile component coordinates of window
 	 * compress: unreduced tile component coordinates of entire tile
 	 */
 	grk_rect_u32 bounds() const{
@@ -280,7 +280,7 @@ private:
 
 	grk_buffer_2d<T>* band_buf(uint32_t resno,uint32_t bandno) const{
 		assert(bandno < 3 && resno < resolutions.size());
-		return resno > 0 ? res_buffers[resno]->bands[bandno] : res_buffers[resno]->res;
+		return resno > 0 ? res_buffers[resno]->bandWindow[bandno] : res_buffers[resno]->res;
 	}
 
 	grk_buffer_2d<T>* tile_buf() const{
@@ -289,7 +289,7 @@ private:
 
 	grk_rect_u32 m_unreduced_bounds;
 
-	/* decompress: reduced tile component coordinates of region  */
+	/* decompress: reduced tile component coordinates of window  */
 	/* compress: unreduced tile component coordinates of entire tile */
 	grk_rect_u32 m_bounds;
 

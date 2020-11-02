@@ -130,8 +130,8 @@ double T1HT::compress(CompressBlockExec *block, grk_tile *tile, uint32_t maximum
 	 cblk->passes[0].len = (uint16_t)pass_length[0];
 	 cblk->passes[0].rate = (uint16_t)pass_length[0];
 	 cblk->numbps = 1;
-	 assert(cblk->paddedCompressedData);
-	 memcpy(cblk->paddedCompressedData, next_coded->buf, (size_t)pass_length[0]);
+	 assert(cblk->paddedCompressedStream);
+	 memcpy(cblk->paddedCompressedStream, next_coded->buf, (size_t)pass_length[0]);
   return 0;
 }
 bool T1HT::decompress(DecompressBlockExec *block) {

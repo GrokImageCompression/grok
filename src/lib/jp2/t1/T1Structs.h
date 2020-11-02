@@ -89,7 +89,7 @@ struct Codeblock : public grk_rect_u32, public IOpenable {
     Codeblock& operator=(const Codeblock& other);
     virtual ~Codeblock(){}
     virtual void clear();
-	grk_buf compressedData;
+	grk_buf compressedStream;
 	uint32_t numbps;
 	uint32_t numlenbits;
 	uint32_t numPassesInPacket; 	/* number of passes encoded in current packet */
@@ -112,7 +112,7 @@ struct CompressCodeblock : public Codeblock {
 	bool alloc();
 	bool alloc_data(size_t nominalBlockSize);
 	void cleanup();
-	uint8_t *paddedCompressedData;
+	uint8_t *paddedCompressedStream;
 	Layer *layers;
 	CodePass *passes;
 	uint32_t numPassesInPreviousPackets; /* number of passes in previous packets */
@@ -180,9 +180,9 @@ struct Subband : public grk_rect_u32 {
 struct Resolution : public grk_rect_u32 {
 	Resolution();
 	void print();
-	Subband bands[BAND_NUM_INDICES];
-	uint32_t numbands;
-	grk_rect_u32 region[BAND_NUM_ORIENTATIONS];
+	Subband bandWindow[BAND_NUM_INDICES];
+	uint32_t numBandWindows;  // 1 or 3
+	grk_rect_u32 allBandWindow[BAND_NUM_ORIENTATIONS];
 	uint32_t pw, ph; 	/* dimensions of precinct grid */
 };
 

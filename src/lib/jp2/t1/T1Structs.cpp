@@ -72,7 +72,7 @@ Codeblock::Codeblock():
 }
 
 Codeblock::Codeblock(const Codeblock &rhs): grk_rect_u32(rhs),
-											compressedData(rhs.compressedData),
+											compressedStream(rhs.compressedStream),
 											numbps(rhs.numbps),
 											numlenbits(rhs.numlenbits),
 											numPassesInPacket(rhs.numPassesInPacket)
@@ -87,7 +87,7 @@ Codeblock& Codeblock::operator=(const Codeblock& rhs){
 		y0 = rhs.y0;
 		x1 = rhs.x1;
 		y1 = rhs.y1;
-		compressedData = rhs.compressedData;
+		compressedStream = rhs.compressedStream;
 		numbps = rhs.numbps;
 		numlenbits = rhs.numlenbits;
 		numPassesInPacket = rhs.numPassesInPacket;
@@ -99,11 +99,11 @@ Codeblock& Codeblock::operator=(const Codeblock& rhs){
 	return *this;
 }
 void Codeblock::clear(){
-	compressedData.buf = nullptr;
-	compressedData.owns_data = false;
+	compressedStream.buf = nullptr;
+	compressedStream.owns_data = false;
 }
 CompressCodeblock::CompressCodeblock() :
-				paddedCompressedData(nullptr),
+				paddedCompressedStream(nullptr),
 				layers(	nullptr),
 				passes(nullptr),
 				numPassesInPreviousPackets(0),
@@ -113,7 +113,7 @@ CompressCodeblock::CompressCodeblock() :
 }
 CompressCodeblock::CompressCodeblock(const CompressCodeblock &rhs) :
 						Codeblock(rhs),
-						paddedCompressedData(rhs.paddedCompressedData),
+						paddedCompressedStream(rhs.paddedCompressedStream),
 						layers(	rhs.layers),
 						passes(rhs.passes),
 						numPassesInPreviousPackets(rhs.numPassesInPreviousPackets),
@@ -124,7 +124,7 @@ CompressCodeblock::CompressCodeblock(const CompressCodeblock &rhs) :
 CompressCodeblock& CompressCodeblock::operator=(const CompressCodeblock& rhs){
 	if (this != &rhs) { // self-assignment check expected
 		Codeblock::operator = (rhs);
-		paddedCompressedData = rhs.paddedCompressedData;
+		paddedCompressedStream = rhs.paddedCompressedStream;
 		layers = rhs.layers;
 		passes = rhs.passes;
 		numPassesInPreviousPackets = rhs.numPassesInPreviousPackets;
@@ -188,17 +188,17 @@ bool CompressCodeblock::alloc_data(size_t nominalBlockSize) {
 	buf[0] = 0;
 	buf[1] = 0;
 
-	paddedCompressedData = buf + grk_cblk_enc_compressed_data_pad_left;
-	compressedData.buf = buf;
-	compressedData.len = desired_data_size;
-	compressedData.owns_data = true;
+	paddedCompressedStream = buf + grk_cblk_enc_compressed_data_pad_left;
+	compressedStream.buf = buf;
+	compressedStream.len = desired_data_size;
+	compressedStream.owns_data = true;
 
 	return true;
 }
 
 void CompressCodeblock::cleanup() {
-	compressedData.dealloc();
-	paddedCompressedData = nullptr;
+	compressedStream.dealloc();
+	paddedCompressedStream = nullptr;
 	grk_free(layers);
 	layers = nullptr;
 	grk_free(passes);
@@ -264,9 +264,9 @@ bool DecompressCodeblock::alloc() {
 }
 
 void DecompressCodeblock::init() {
-	compressedData.buf = nullptr;
-	compressedData.len = 0;
-	compressedData.owns_data = false;
+	compressedStream.buf = nullptr;
+	compressedStream.len = 0;
+	compressedStream.owns_data = false;
 	segs = nullptr;
 	x0 = 0;
 	y0 = 0;
@@ -283,10 +283,10 @@ void DecompressCodeblock::init() {
 }
 
 void DecompressCodeblock::cleanup() {
-	if (compressedData.owns_data) {
-		delete[] compressedData.buf;
-		compressedData.buf = nullptr;
-		compressedData.owns_data = false;
+	if (compressedStream.owns_data) {
+		delete[] compressedStream.buf;
+		compressedStream.buf = nullptr;
+		compressedStream.owns_data = false;
 	}
 	cleanup_seg_buffers();
 	delete[] segs;
@@ -400,16 +400,16 @@ void Precinct::initTagTrees() {
 }
 
 Resolution::Resolution() :
-		numbands(0),
+		numBandWindows(0),
 		pw(0),
 		ph(0)
 {}
 
 void Resolution::print(){
 	grk_rect_u32::print();
-	for (uint32_t i = 0; i < numbands; ++i){
+	for (uint32_t i = 0; i < numBandWindows; ++i){
 		std::cout << "band " << i << " : ";
-		bands[i].print();
+		bandWindow[i].print();
 	}
 }
 

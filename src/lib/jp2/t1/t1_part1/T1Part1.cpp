@@ -106,7 +106,7 @@ double T1Part1::compress(CompressBlockExec *block, grk_tile *tile,
 	assert(cblk->width() > 0);
 	assert(cblk->height() > 0);
 
-	cblkexp.data = cblk->paddedCompressedData;
+	cblkexp.data = cblk->paddedCompressedStream;
 
 	auto disto = t1->compress_cblk(&cblkexp, max, block->band_orientation,
 			block->compno,

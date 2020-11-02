@@ -174,8 +174,8 @@ static void decompress_help_display(void) {
 	fprintf(stdout, "  [-t | -TileIndex] <tile index>\n"
 			"    Index of tile to be decompressed\n");
 	fprintf(stdout,
-			"  [-d | -DecodeRegion] <x0,y0,x1,y1>\n"
-			"    Top left-hand corner and bottom right-hand corner of region to be decompressed.\n");
+			"  [-d | -DecodeWindow] <x0,y0,x1,y1>\n"
+			"    Top left-hand corner and bottom right-hand corner of window to be decompressed.\n");
 	fprintf(stdout,
 			"  [-r | -Reduce] <reduce factor>\n"
 			"    Set the number of highest resolution levels to be discarded. The\n"
@@ -1144,14 +1144,14 @@ int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 			goto cleanup;
 		}
 
-		// do not allow odd top left region coordinates for SYCC
+		// do not allow odd top left window coordinates for SYCC
 		if (info->image->color_space == GRK_CLRSPC_SYCC){
 			bool adjustX = (info->decompressor_parameters->DA_x0 != info->full_image_x0) &&
 					(info->decompressor_parameters->DA_x0 & 1);
 			bool adjustY = (info->decompressor_parameters->DA_y0 != info->full_image_y0) &&
 						(info->decompressor_parameters->DA_y0 & 1);
 			if (adjustX || adjustY){
-				spdlog::error("grk_decompress: Top left-hand region coordinates that do not coincide\n"
+				spdlog::error("grk_decompress: Top left-hand window coordinates that do not coincide\n"
 						"with respective top left-hand image coordinates must be even");
 				goto cleanup;
 			}

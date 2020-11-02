@@ -74,19 +74,19 @@ public:
 
 	virtual ~ISparseBuffer(){};
 
-	/** Read the content of a rectangular region of the sparse array into a
+	/** Read the content of a rectangular window of the sparse array into a
 	 * user buffer.
 	 *
-	 * Regions not written with write() are read as 0.
+	 * Windows not written with write() are read as 0.
 	 *
-	 * @param x0 left x coordinate of the region to read in the sparse array.
-	 * @param y0 top x coordinate of the region to read in the sparse array.
-	 * @param x1 right x coordinate (not included) of the region to read in the sparse array. Must be greater than x0.
-	 * @param y1 bottom y coordinate (not included) of the region to read in the sparse array. Must be greater than y0.
+	 * @param x0 left x coordinate of the window to read in the sparse array.
+	 * @param y0 top x coordinate of the window to read in the sparse array.
+	 * @param x1 right x coordinate (not included) of the window to read in the sparse array. Must be greater than x0.
+	 * @param y1 bottom y coordinate (not included) of the window to read in the sparse array. Must be greater than y0.
 	 * @param dest user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * dest_line_stride + (x1 - x0 - 1) * dest_col_stride + 1) bytes large.
 	 * @param dest_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
 	 * @param dest_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
-	 * @param forgiving if set to TRUE and the region is invalid, true will still be returned.
+	 * @param forgiving if set to TRUE and the window is invalid, true will still be returned.
 	 * @return true in case of success.
 	 */
 	virtual bool read(uint32_t x0,
@@ -98,38 +98,38 @@ public:
 					 const uint32_t dest_line_stride,
 					 bool forgiving) = 0;
 
-	/** Read the content of a rectangular region of the sparse array into a
+	/** Read the content of a rectangular window of the sparse array into a
 	 * user buffer.
 	 *
-	 * Regions not written with write() are read as 0.
+	 * Windows not written with write() are read as 0.
 	 *
-	 * @param region region to read in the sparse array.
+	 * @param window window to read in the sparse array.
 	 * @param dest user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * dest_line_stride + (x1 - x0 - 1) * dest_col_stride + 1) bytes large.
 	 * @param dest_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
 	 * @param dest_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
-	 * @param forgiving if set to TRUE and the region is invalid, true will still be returned.
+	 * @param forgiving if set to TRUE and the window is invalid, true will still be returned.
 	 * @return true in case of success.
 	 */
-	virtual bool read(grk_rect_u32 region,
+	virtual bool read(grk_rect_u32 window,
 						 int32_t* dest,
 						 const uint32_t dest_col_stride,
 						 const uint32_t dest_line_stride,
 						 bool forgiving) = 0;
 
 
-	/** Write the content of a rectangular region into the sparse array from a
+	/** Write the content of a rectangular window into the sparse array from a
 	 * user buffer.
 	 *
-	 * Blocks intersecting the region are allocated, if not already done.
+	 * Blocks intersecting the window are allocated, if not already done.
 	 *
-	 * @param x0 left x coordinate of the region to write into the sparse array.
-	 * @param y0 top x coordinate of the region to write into the sparse array.
-	 * @param x1 right x coordinate (not included) of the region to write into the sparse array. Must be greater than x0.
-	 * @param y1 bottom y coordinate (not included) of the region to write into the sparse array. Must be greater than y0.
+	 * @param x0 left x coordinate of the window to write into the sparse array.
+	 * @param y0 top x coordinate of the window to write into the sparse array.
+	 * @param x1 right x coordinate (not included) of the window to write into the sparse array. Must be greater than x0.
+	 * @param y1 bottom y coordinate (not included) of the window to write into the sparse array. Must be greater than y0.
 	 * @param src user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * src_line_stride + (x1 - x0 - 1) * src_col_stride + 1) bytes large.
 	 * @param src_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
 	 * @param src_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
-	 * @param forgiving if set to TRUE and the region is invalid, true will still be returned.
+	 * @param forgiving if set to TRUE and the window is invalid, true will still be returned.
 	 * @return true in case of success.
 	 */
 	virtual bool write(uint32_t x0,
@@ -142,16 +142,16 @@ public:
 						  bool forgiving) = 0;
 
 
-	/** Allocate all blocks for a rectangular region into the sparse array from a
+	/** Allocate all blocks for a rectangular window into the sparse array from a
 	 * user buffer.
 	 *
-	 * Blocks intersecting the region are allocated
+	 * Blocks intersecting the window are allocated
 	 *
-	 * @param region region to write into the sparse array.
+	 * @param window window to write into the sparse array.
 	 *
 	 * @return true in case of success.
 	 */
-	virtual bool alloc( grk_rect_u32 region) = 0;
+	virtual bool alloc( grk_rect_u32 window) = 0;
 
 
 };
@@ -174,7 +174,7 @@ public:
 										block_height(1<<LBH)
 	{
 	    if (!buffer_width  || !buffer_height  || !LBW || !LBH) {
-	    	throw std::runtime_error("invalid region for sparse array");
+	    	throw std::runtime_error("invalid window for sparse array");
 		}
 	    grid_width = ceildiv<uint32_t>(buffer_width, block_width);
 	    grid_height = ceildiv<uint32_t>(buffer_height, block_height);
@@ -213,16 +213,16 @@ public:
 							   true);
 	}
 
-	bool read(grk_rect_u32 region,
+	bool read(grk_rect_u32 window,
 			 int32_t* dest,
 			 const uint32_t dest_col_stride,
 			 const uint32_t dest_line_stride,
 			 bool forgiving)
 	{
-		return read(region.x0,
-				region.y0,
-				region.x1,
-				region.y1,
+		return read(window.x0,
+				window.y0,
+				window.x1,
+				window.y1,
 				dest,
 				dest_col_stride,
 				dest_line_stride,
@@ -246,8 +246,8 @@ public:
 	            false);
 	}
 
-	bool alloc( grk_rect_u32 region){
-		return alloc(region.x0, region.y0, region.x1, region.y1);
+	bool alloc( grk_rect_u32 window){
+		return alloc(window.x0, window.y0, window.x1, window.y1);
 	}
 private:
 
@@ -255,7 +255,7 @@ private:
 				  uint32_t y0,
 				  uint32_t x1,
 				  uint32_t y1){
-	    if (!SparseBuffer::is_region_valid(x0, y0, x1, y1))
+	    if (!SparseBuffer::is_window_valid(x0, y0, x1, y1))
 	        return true;
 
 	    uint32_t y_incr = 0;
@@ -287,14 +287,14 @@ private:
 	    return true;
 	}
 
-	/** Returns whether region bounds are valid (non empty and within array bounds)
-	 * @param x0 left x coordinate of the region.
-	 * @param y0 top x coordinate of the region.
-	 * @param x1 right x coordinate (not included) of the region. Must be greater than x0.
-	 * @param y1 bottom y coordinate (not included) of the region. Must be greater than y0.
+	/** Returns whether window bounds are valid (non empty and within array bounds)
+	 * @param x0 left x coordinate of the window.
+	 * @param y0 top x coordinate of the window.
+	 * @param x1 right x coordinate (not included) of the window. Must be greater than x0.
+	 * @param y1 bottom y coordinate (not included) of the window. Must be greater than y0.
 	 * @return true or false.
 	 */
-	bool is_region_valid(uint32_t x0,
+	bool is_window_valid(uint32_t x0,
 						uint32_t y0,
 						uint32_t x1,
 						uint32_t y1){
@@ -311,7 +311,7 @@ private:
 						const uint32_t buf_line_stride,
 						bool forgiving,
 						bool is_read_op){
-	    if (!is_region_valid(x0, y0, x1, y1))
+	    if (!is_window_valid(x0, y0, x1, y1))
 	        return forgiving;
 
 	    const uint64_t line_stride 	= buf_line_stride;

@@ -173,7 +173,7 @@ static inline long grk_lrintf(float f) {
 #include "BitIO.h"
 #include "TagTree.h"
 #include "T1Structs.h"
-#include <TileComponentRegionBuffer.h>
+#include <TileComponentWindowBuffer.h>
 #include "PacketIter.h"
 #include <SparseBuffer.h>
 #include "TileComponent.h"

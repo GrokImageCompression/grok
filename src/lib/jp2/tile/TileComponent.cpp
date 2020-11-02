@@ -47,7 +47,7 @@ void TileComponent::release_mem(){
 		for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 			auto res = resolutions + resno;
 			for (uint32_t bandno = 0; bandno < 3; ++bandno) {
-				auto band = res->bands + bandno;
+				auto band = res->bandWindow + bandno;
 				delete[] band->precincts;
 				band->precincts = nullptr;
 			}
@@ -114,19 +114,19 @@ bool TileComponent::init(bool isEncoder,
 		uint32_t br_prc_y_end = (uint32_t)temp;
 		res->pw =	(res->x0 == res->x1) ?	0 : ((br_prc_x_end - tprc_x_start) >> pdx);
 		res->ph =	(res->y0 == res->y1) ?	0 : ((br_prc_y_end - tprc_y_start) >> pdy);
-		res->numbands = (resno == 0) ? 1 : 3;
+		res->numBandWindows = (resno == 0) ? 1 : 3;
 		if (DEBUG_TILE_COMPONENT){
 			std::cout << "res: " << resno << " ";
 			res->print();
 		}
-		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
-			auto band = res->bands + bandno;
+		for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
+			auto band = res->bandWindow + bandno;
 			eBandOrientation orientation = (resno ==0) ? BAND_ORIENT_LL : (eBandOrientation)(bandno+1);
 			band->orientation = orientation;
 		}
 	}
 
-	//2. calculate region bands
+	//2. calculate region bandWindow
 	auto highestNumberOfResolutions =
 			(!m_is_encoder) ? resolutions_to_decompress : numresolutions;
 	auto hightestResolution =  resolutions + highestNumberOfResolutions - 1;
@@ -166,21 +166,21 @@ bool TileComponent::init(bool isEncoder,
 				/* equation B-15 of the standard */
 				uint32_t x0b = orientation & 1;
 				uint32_t y0b = orientation >> 1;
-				auto region = res->region + orientation;
-				region->x0 = (num_decomps == 0) ? tcx0 :
+				auto window = res->allBandWindow + orientation;
+				window->x0 = (num_decomps == 0) ? tcx0 :
 								  (tcx0 <= (1U << (num_decomps - 1)) * x0b) ? 0 :
 								  ceildivpow2<uint32_t>(tcx0 - (1U << (num_decomps - 1)) * x0b, num_decomps);
-				region->y0 = (num_decomps == 0) ? tcy0 :
+				window->y0 = (num_decomps == 0) ? tcy0 :
 								  (tcy0 <= (1U << (num_decomps - 1)) * y0b) ? 0 :
 								  ceildivpow2<uint32_t>(tcy0 - (1U << (num_decomps - 1)) * y0b, num_decomps);
-				region->x1 = (num_decomps == 0) ? tcx1 :
+				window->x1 = (num_decomps == 0) ? tcx1 :
 								  (tcx1 <= (1U << (num_decomps - 1)) * x0b) ? 0 :
 								  ceildivpow2<uint32_t>(tcx1 - (1U << (num_decomps - 1)) * x0b, num_decomps);
-				region->y1 = (num_decomps == 0) ? tcy1 :
+				window->y1 = (num_decomps == 0) ? tcy1 :
 								  (tcy1 <= (1U << (num_decomps - 1)) * y0b) ? 0 :
 								  ceildivpow2<uint32_t>(tcy1 - (1U << (num_decomps - 1)) * y0b, num_decomps);
 
-			    region->grow(filter_margin,filter_margin);
+			    window->grow(filter_margin,filter_margin);
 			}
 		}
 
@@ -220,8 +220,8 @@ bool TileComponent::init(bool isEncoder,
 		uint32_t cblkheightexpn = std::min<uint32_t>(tccp->cblkh, cbgheightexpn);
 		size_t nominalBlockSize = (1 << cblkwidthexpn) * (1 << cblkheightexpn);
 
-		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
-			auto band = res->bands + bandno;
+		for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
+			auto band = res->bandWindow + bandno;
 			tccp->quant.setBandStepSizeAndBps(tcp,
 											band,
 											resno,
@@ -307,9 +307,9 @@ bool TileComponent::subbandIntersectsAOI(uint32_t resno,
 		return true;
 	assert(resno < numresolutions && bandno <=3);
 	auto orientation = (resno == 0) ? 0 : bandno+1;
-	auto region = ((resolutions + resno)->region)[orientation];
+	auto window = ((resolutions + resno)->allBandWindow)[orientation];
 
-    return region.intersection(aoi).is_non_degenerate();
+    return window.intersection(aoi).is_non_degenerate();
 }
 
 void TileComponent::allocSparseBuffer(uint32_t numres){
@@ -320,8 +320,8 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
 
     for (uint32_t resno = 0; resno < numres; ++resno) {
         auto res = &resolutions[resno];
-        for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
-            auto band = res->bands + bandno;
+        for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
+            auto band = res->bandWindow + bandno;
             for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph; ++precno) {
                 auto precinct = band->precincts + precno;
                 for (uint64_t cblkno = 0; cblkno < (uint64_t)precinct->cw * precinct->ch; ++cblkno) {
@@ -365,11 +365,11 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
 
 void TileComponent::create_buffer(grk_rect_u32 unreduced_tile_comp_dims,
 									grk_rect_u32 unreduced_tile_comp_region_dims) {
-	// calculate region bands
+	// calculate bandWindow
 	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
-		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
-			auto band = res->bands + bandno;
+		for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
+			auto band = res->bandWindow + bandno;
 			*((grk_rect_u32*)band) =
 					grk_region_band(numresolutions, resno, band->orientation,unreduced_tile_comp_dims);
 		}
@@ -379,7 +379,7 @@ void TileComponent::create_buffer(grk_rect_u32 unreduced_tile_comp_dims,
 	auto highestNumberOfResolutions =
 			(!m_is_encoder) ? resolutions_to_decompress : numresolutions;
 	auto maxResolution = resolutions + numresolutions - 1;
-	buf = new TileComponentRegionBuffer<int32_t>(m_is_encoder,
+	buf = new TileComponentWindowBuffer<int32_t>(m_is_encoder,
 											*(grk_rect_u32*)maxResolution,
 											*(grk_rect_u32*)this,
 											unreduced_tile_comp_region_dims,
@@ -388,7 +388,7 @@ void TileComponent::create_buffer(grk_rect_u32 unreduced_tile_comp_dims,
 											highestNumberOfResolutions);
 }
 
-TileComponentRegionBuffer<int32_t>* TileComponent::getBuffer(){
+TileComponentWindowBuffer<int32_t>* TileComponent::getBuffer(){
 	return buf;
 }
 

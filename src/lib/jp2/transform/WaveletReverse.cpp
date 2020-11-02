@@ -1841,7 +1841,7 @@ template <typename T,
 			typename D>
 
    bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec,
-		   	   	   	   	   grk_rect_u32 region,
+		   	   	   	   	   grk_rect_u32 window,
 		   	   	   	   	   uint32_t numres,
 						   ISparseBuffer *sa) {
 
@@ -1851,7 +1851,7 @@ template <typename T,
         return true;
     }
 
-	auto win_bounds = region;
+	auto win_bounds = window;
 	win_bounds = win_bounds.rectceildivpow2(tilec->numresolutions - 1 - (numres-1));
     auto final_win_bounds = win_bounds.pan(-(uint64_t)tr_max->x0,-(uint64_t)tr_max->y0);
 
@@ -1908,25 +1908,25 @@ template <typename T,
         // four sub-band regions that serve as input to horizontal pass
         grk_rect_u32 win_horiz_band[BAND_NUM_ORIENTATIONS];
         grk_rect_u32 win_horiz_tile[BAND_NUM_ORIENTATIONS];
-        win_horiz_band[BAND_ORIENT_LL] = grk_region_band(tilec->numresolutions,resno,0,region);
-        win_horiz_band[BAND_ORIENT_LL] = win_horiz_band[BAND_ORIENT_LL].pan(-(int64_t)res->bands[BAND_INDEX_LH].x0, -(int64_t)res->bands[BAND_INDEX_HL].y0);
+        win_horiz_band[BAND_ORIENT_LL] = grk_region_band(tilec->numresolutions,resno,0,window);
+        win_horiz_band[BAND_ORIENT_LL] = win_horiz_band[BAND_ORIENT_LL].pan(-(int64_t)res->bandWindow[BAND_INDEX_LH].x0, -(int64_t)res->bandWindow[BAND_INDEX_HL].y0);
         win_horiz_band[BAND_ORIENT_LL].grow(FILTER_WIDTH, horiz.sn,  vert.sn);
         win_horiz_tile[BAND_ORIENT_LL] = win_horiz_band[BAND_ORIENT_LL];
 
-        win_horiz_band[BAND_ORIENT_HL] = grk_region_band(tilec->numresolutions,resno,1,region);
-        win_horiz_band[BAND_ORIENT_HL] = win_horiz_band[BAND_ORIENT_HL].pan(-(int64_t)res->bands[BAND_INDEX_HL].x0, -(int64_t)res->bands[BAND_INDEX_HL].y0);
+        win_horiz_band[BAND_ORIENT_HL] = grk_region_band(tilec->numresolutions,resno,1,window);
+        win_horiz_band[BAND_ORIENT_HL] = win_horiz_band[BAND_ORIENT_HL].pan(-(int64_t)res->bandWindow[BAND_INDEX_HL].x0, -(int64_t)res->bandWindow[BAND_INDEX_HL].y0);
         win_horiz_band[BAND_ORIENT_HL].grow(FILTER_WIDTH, horiz.dn,  vert.sn);
-        win_horiz_tile[BAND_ORIENT_HL] = win_horiz_band[BAND_ORIENT_HL].pan(res->bands[BAND_INDEX_LH].width(),0);
+        win_horiz_tile[BAND_ORIENT_HL] = win_horiz_band[BAND_ORIENT_HL].pan(res->bandWindow[BAND_INDEX_LH].width(),0);
 
-        win_horiz_band[BAND_ORIENT_LH] = grk_region_band(tilec->numresolutions,resno,2,region);
-        win_horiz_band[BAND_ORIENT_LH] = win_horiz_band[BAND_ORIENT_LH].pan(-(int64_t)res->bands[BAND_INDEX_LH].x0, -(int64_t)res->bands[BAND_INDEX_LH].y0);
+        win_horiz_band[BAND_ORIENT_LH] = grk_region_band(tilec->numresolutions,resno,2,window);
+        win_horiz_band[BAND_ORIENT_LH] = win_horiz_band[BAND_ORIENT_LH].pan(-(int64_t)res->bandWindow[BAND_INDEX_LH].x0, -(int64_t)res->bandWindow[BAND_INDEX_LH].y0);
         win_horiz_band[BAND_ORIENT_LH].grow(FILTER_WIDTH, horiz.sn,  vert.dn);
-        win_horiz_tile[BAND_ORIENT_LH] = win_horiz_band[BAND_ORIENT_LH].pan(0,res->bands[BAND_INDEX_HL].height());
+        win_horiz_tile[BAND_ORIENT_LH] = win_horiz_band[BAND_ORIENT_LH].pan(0,res->bandWindow[BAND_INDEX_HL].height());
 
-        win_horiz_band[BAND__ORIENT_HH] = grk_region_band(tilec->numresolutions,resno,3,region);
-        win_horiz_band[BAND__ORIENT_HH] = win_horiz_band[BAND__ORIENT_HH].pan(-(int64_t)res->bands[BAND_INDEX_HH].x0, -(int64_t)res->bands[BAND_INDEX_HH].y0);
+        win_horiz_band[BAND__ORIENT_HH] = grk_region_band(tilec->numresolutions,resno,3,window);
+        win_horiz_band[BAND__ORIENT_HH] = win_horiz_band[BAND__ORIENT_HH].pan(-(int64_t)res->bandWindow[BAND_INDEX_HH].x0, -(int64_t)res->bandWindow[BAND_INDEX_HH].y0);
         win_horiz_band[BAND__ORIENT_HH].grow(FILTER_WIDTH, horiz.dn,  vert.dn);
-        win_horiz_tile[BAND__ORIENT_HH] = win_horiz_band[BAND__ORIENT_HH].pan(res->bands[BAND_INDEX_LH].width(),res->bands[BAND_INDEX_HL].height());
+        win_horiz_tile[BAND__ORIENT_HH] = win_horiz_band[BAND__ORIENT_HH].pan(res->bandWindow[BAND_INDEX_LH].width(),res->bandWindow[BAND_INDEX_HL].height());
 
 
         // pad horizontal windows
@@ -2226,7 +2226,7 @@ template <typename T,
 /* </summary>                           */
 bool WaveletReverse::decompress_53(TileProcessor *p_tcd,
 					TileComponent* tilec,
-					grk_rect_u32 region,
+					grk_rect_u32 window,
                     uint32_t numres)
 {
     if (p_tcd->whole_tile_decoding)
@@ -2238,14 +2238,14 @@ bool WaveletReverse::decompress_53(TileProcessor *p_tcd,
 									4,
 									2,
 									Partial53>(tilec,
-											region,
+											window,
 											numres,
 											tilec->getSparseBuffer());
 }
 
 bool WaveletReverse::decompress_97(TileProcessor *p_tcd,
                 TileComponent* GRK_RESTRICT tilec,
-				grk_rect_u32 region,
+				grk_rect_u32 window,
                 uint32_t numres){
     if (p_tcd->whole_tile_decoding)
         return decompress_tile_97(tilec, numres);
@@ -2256,7 +2256,7 @@ bool WaveletReverse::decompress_97(TileProcessor *p_tcd,
 									1,
 									4,
 									Partial97>(tilec,
-											region,
+											window,
 											numres,
 											tilec->getSparseBuffer());
 }
@@ -2264,13 +2264,13 @@ bool WaveletReverse::decompress_97(TileProcessor *p_tcd,
 
 bool WaveletReverse::decompress(TileProcessor *p_tcd,
 						TileComponent* tilec,
-						grk_rect_u32 region,
+						grk_rect_u32 window,
                         uint32_t numres,
 						uint8_t qmfbid){
 	if (qmfbid == 1)
-		return decompress_53(p_tcd,tilec,region,numres);
+		return decompress_53(p_tcd,tilec,window,numres);
 	else if (qmfbid == 0)
-		return decompress_97(p_tcd,tilec,region,numres);
+		return decompress_97(p_tcd,tilec,window,numres);
 	return false;
 }
 

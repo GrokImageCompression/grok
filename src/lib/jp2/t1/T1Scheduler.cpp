@@ -37,8 +37,8 @@ void T1Scheduler::scheduleEncode(TileCodingParams *tcp,
 		auto tccp = tcp->tccps + compno;
 		for (resno = 0; resno < tilec->numresolutions; ++resno) {
 			auto res = &tilec->resolutions[resno];
-			for (bandno = 0; bandno < res->numbands; ++bandno) {
-				auto band = &res->bands[bandno];
+			for (bandno = 0; bandno < res->numBandWindows; ++bandno) {
+				auto band = &res->bandWindow[bandno];
 				for (precno = 0; precno < (uint64_t)res->pw * res->ph; ++precno) {
 					auto prc = &band->precincts[precno];
 					for (uint64_t cblkno = 0; cblkno < (int64_t) prc->cw * prc->ch;
@@ -84,8 +84,8 @@ bool T1Scheduler::prepareScheduleDecode(TileComponent *tilec, TileComponentCodin
 	}
 	for (uint32_t resno = 0; resno < tilec->resolutions_to_decompress; ++resno) {
 		auto res = &tilec->resolutions[resno];
-		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
-			Subband *GRK_RESTRICT band = res->bands + bandno;
+		for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
+			Subband *GRK_RESTRICT band = res->bandWindow + bandno;
 			for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph; ++precno) {
 				auto precinct = band->precincts + precno;
 				if (!tilec->subbandIntersectsAOI(resno,

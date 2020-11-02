@@ -31,10 +31,10 @@ void decompress_synch_plugin_with_host(TileProcessor *tcd) {
 			for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
 				auto res = &tilec->resolutions[resno];
 				auto plugin_res = plugin_tilec->resolutions[resno];
-				assert(plugin_res->numBands == res->numbands);
-				for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
-					auto band = &res->bands[bandno];
-					auto plugin_band = plugin_res->bands[bandno];
+				assert(plugin_res->numBands == res->numBandWindows);
+				for (uint32_t bandno = 0; bandno < res->numBandWindows; bandno++) {
+					auto band = &res->bandWindow[bandno];
+					auto plugin_band = plugin_res->bandWindow[bandno];
 					assert(plugin_band->numPrecincts == (uint64_t)res->pw * res->ph);
 					//!!!! plugin still uses stepsize/2
 					plugin_band->stepsize = band->stepsize/2;
@@ -73,9 +73,9 @@ void decompress_synch_plugin_with_host(TileProcessor *tcd) {
 									(uint32_t)cblk->getSegBuffersLen();
 							cblk->copy_to_contiguous_buffer(
 									plugin_cblk->compressedData);
-							cblk->compressedData.buf = plugin_cblk->compressedData;
-							cblk->compressedData.len = plugin_cblk->compressedDataLength;
-							cblk->compressedData.owns_data = false;
+							cblk->compressedStream.buf = plugin_cblk->compressedData;
+							cblk->compressedStream.len = plugin_cblk->compressedDataLength;
+							cblk->compressedStream.owns_data = false;
 							plugin_cblk->numBitPlanes = cblk->numbps;
 							plugin_cblk->numPasses = cblk->segs[0].numpasses;
 						}
@@ -106,12 +106,12 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tile *p_tile) {
 			auto resolution = tilecomp->resolutions + resno;
 			auto plugin_resolution =
 					plugin_tilecomp->resolutions[resno];
-			if (resolution->numbands != plugin_resolution->numBands)
+			if (resolution->numBandWindows != plugin_resolution->numBands)
 				return false;
-			for (uint32_t bandno = 0; bandno < resolution->numbands; ++bandno) {
-				auto band = resolution->bands + bandno;
+			for (uint32_t bandno = 0; bandno < resolution->numBandWindows; ++bandno) {
+				auto band = resolution->bandWindow + bandno;
 				auto plugin_band =
-						plugin_resolution->bands[bandno];
+						plugin_resolution->bandWindow[bandno];
 				size_t num_precincts = band->numPrecincts;
 				if (num_precincts != plugin_band->numPrecincts)
 					return false;
@@ -147,7 +147,7 @@ void compress_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t re
 
 	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
 		auto plugin_band =
-				tcd->current_plugin_tile->tileComponents[compno]->resolutions[resno]->bands[bandno];
+				tcd->current_plugin_tile->tileComponents[compno]->resolutions[resno]->bandWindow[bandno];
 		auto precinct = plugin_band->precincts[precno];
 		auto plugin_cblk = precinct->blocks[cblkno];
 		uint32_t state = grk_plugin_get_debug_state();
@@ -191,7 +191,7 @@ void compress_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t re
 			}
 
 			for (uint32_t p = 0; p < totalRate; ++p) {
-				if (cblk->paddedCompressedData[p] != plugin_cblk->compressedData[p]) {
+				if (cblk->paddedCompressedStream[p] != plugin_cblk->compressedData[p]) {
 					GRK_WARN("data differs at position={}, component={}, res={}, band={}, block={}, CPU rate ={}, plugin rate={}",
 							p, compno, resno, bandno, cblkno, totalRate,
 							totalRatePlugin);
@@ -202,9 +202,9 @@ void compress_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t re
 		}
 
 		if (goodData)
-			cblk->paddedCompressedData = plugin_cblk->compressedData;
-		cblk->compressedData.len = (uint32_t) (plugin_cblk->compressedDataLength);
-		cblk->compressedData.owns_data = false;
+			cblk->paddedCompressedStream = plugin_cblk->compressedData;
+		cblk->compressedStream.len = (uint32_t) (plugin_cblk->compressedDataLength);
+		cblk->compressedStream.owns_data = false;
 		cblk->numbps = (uint32_t) plugin_cblk->numBitPlanes;
 		if (state & GRK_PLUGIN_STATE_DEBUG) {
 			if (cblk->x0 != plugin_cblk->x0 || cblk->y0 != plugin_cblk->y0
@@ -263,8 +263,8 @@ void set_context_stream(TileProcessor *p_tileProcessor) {
 		auto tilec = p_tileProcessor->tile->comps + compno;
 		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
 			auto res = &tilec->resolutions[resno];
-			for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
-				auto band = &res->bands[bandno];
+			for (uint32_t bandno = 0; bandno < res->numBandWindows; bandno++) {
+				auto band = &res->bandWindow[bandno];
 				for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph;
 						precno++) {
 					auto prc = &band->precincts[precno];
@@ -277,7 +277,7 @@ void set_context_stream(TileProcessor *p_tileProcessor) {
 									p_tileProcessor->current_plugin_tile->tileComponents[compno];
 							if (resno < comp->numResolutions) {
 								auto plugin_band =
-										comp->resolutions[resno]->bands[bandno];
+										comp->resolutions[resno]->bandWindow[bandno];
 								auto precinct =
 										plugin_band->precincts[precno];
 								auto plugin_cblk =
