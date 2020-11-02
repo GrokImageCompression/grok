@@ -62,9 +62,6 @@ Precinct::~Precinct(){
 }
 
 Codeblock::Codeblock():
-		compressedData(nullptr),
-		compressedDataSize(0),
-		owns_data(false),
 		numbps(0),
 		numlenbits(0),
 		numPassesInPacket(0)
@@ -76,8 +73,6 @@ Codeblock::Codeblock():
 
 Codeblock::Codeblock(const Codeblock &rhs): grk_rect_u32(rhs),
 											compressedData(rhs.compressedData),
-											compressedDataSize(rhs.compressedDataSize),
-											owns_data(false),
 											numbps(rhs.numbps),
 											numlenbits(rhs.numlenbits),
 											numPassesInPacket(rhs.numPassesInPacket)
@@ -93,8 +88,6 @@ Codeblock& Codeblock::operator=(const Codeblock& rhs){
 		x1 = rhs.x1;
 		y1 = rhs.y1;
 		compressedData = rhs.compressedData;
-		compressedDataSize = rhs.compressedDataSize;
-		owns_data = rhs.owns_data;
 		numbps = rhs.numbps;
 		numlenbits = rhs.numlenbits;
 		numPassesInPacket = rhs.numPassesInPacket;
@@ -106,8 +99,8 @@ Codeblock& Codeblock::operator=(const Codeblock& rhs){
 	return *this;
 }
 void Codeblock::clear(){
-	compressedData = nullptr;
-	owns_data = false;
+	compressedData.buf = nullptr;
+	compressedData.owns_data = false;
 }
 CompressCodeblock::CompressCodeblock() :
 				paddedCompressedData(nullptr),
@@ -195,22 +188,17 @@ bool CompressCodeblock::alloc_data(size_t nominalBlockSize) {
 	buf[0] = 0;
 	buf[1] = 0;
 
-	compressedData = buf;
 	paddedCompressedData = buf + grk_cblk_enc_compressed_data_pad_left;
-	compressedDataSize = desired_data_size;
-	owns_data = true;
+	compressedData.buf = buf;
+	compressedData.len = desired_data_size;
+	compressedData.owns_data = true;
 
 	return true;
 }
 
 void CompressCodeblock::cleanup() {
-	if (owns_data) {
-		delete[] compressedData;
-		compressedData = nullptr;
-		owns_data = false;
-	}
+	compressedData.dealloc();
 	paddedCompressedData = nullptr;
-	compressedDataSize = 0;
 	grk_free(layers);
 	layers = nullptr;
 	grk_free(passes);
@@ -276,9 +264,9 @@ bool DecompressCodeblock::alloc() {
 }
 
 void DecompressCodeblock::init() {
-	compressedData = nullptr;
-	compressedDataSize = 0;
-	owns_data = false;
+	compressedData.buf = nullptr;
+	compressedData.len = 0;
+	compressedData.owns_data = false;
 	segs = nullptr;
 	x0 = 0;
 	y0 = 0;
@@ -295,10 +283,10 @@ void DecompressCodeblock::init() {
 }
 
 void DecompressCodeblock::cleanup() {
-	if (owns_data) {
-		delete[] compressedData;
-		compressedData = nullptr;
-		owns_data = false;
+	if (compressedData.owns_data) {
+		delete[] compressedData.buf;
+		compressedData.buf = nullptr;
+		compressedData.owns_data = false;
 	}
 	cleanup_seg_buffers();
 	delete[] segs;

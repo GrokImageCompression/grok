@@ -512,7 +512,7 @@ bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 			if (!cblk->numSegments) {
 				seg = cblk->segs;
 				++cblk->numSegments;
-				cblk->compressedDataSize = 0;
+				cblk->compressedData.len = 0;
 			} else {
 				seg = &cblk->segs[cblk->numSegments - 1];
 				if (seg->numpasses == seg->maxpasses) {
@@ -535,7 +535,7 @@ bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 				}
 				//initialize dataindex to current contiguous size of code block
 				if (seg->numpasses == 0)
-					seg->dataindex = (uint32_t) cblk->compressedDataSize;
+					seg->dataindex = (uint32_t) cblk->compressedData.len;
 
 				// only add segment to seg_buffers if length is greater than zero
 				if (seg->numBytesInPacket) {
@@ -543,7 +543,7 @@ bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 							seg->numBytesInPacket, false));
 					*(p_data_read) += seg->numBytesInPacket;
 					src_buf->incr_cur_chunk_offset(seg->numBytesInPacket);
-					cblk->compressedDataSize += seg->numBytesInPacket;
+					cblk->compressedData.len += seg->numBytesInPacket;
 					seg->len += seg->numBytesInPacket;
 				}
 				seg->numpasses += seg->numPassesInPacket;
@@ -607,7 +607,7 @@ bool T2Decompress::skip_packet_data(Resolution *res, PacketIter *p_pi,
 			if (!cblk->numSegments) {
 				seg = cblk->segs;
 				++cblk->numSegments;
-				cblk->compressedDataSize = 0;
+				cblk->compressedData.len = 0;
 			} else {
 				seg = &cblk->segs[cblk->numSegments - 1];
 				if (seg->numpasses == seg->maxpasses) {

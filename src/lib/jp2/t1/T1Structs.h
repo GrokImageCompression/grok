@@ -89,9 +89,7 @@ struct Codeblock : public grk_rect_u32, public IOpenable {
     Codeblock& operator=(const Codeblock& other);
     virtual ~Codeblock(){}
     virtual void clear();
-	uint8_t *compressedData; 		/* data buffer*/
-	uint32_t compressedDataSize; 	/* size of allocated data buffer */
-	bool owns_data;				// true if code block manages data buffer, otherwise false
+	grk_buf compressedData;
 	uint32_t numbps;
 	uint32_t numlenbits;
 	uint32_t numPassesInPacket; 	/* number of passes encoded in current packet */

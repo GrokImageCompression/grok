@@ -73,9 +73,9 @@ void decompress_synch_plugin_with_host(TileProcessor *tcd) {
 									(uint32_t)cblk->getSegBuffersLen();
 							cblk->copy_to_contiguous_buffer(
 									plugin_cblk->compressedData);
-							cblk->compressedData = plugin_cblk->compressedData;
-							cblk->compressedDataSize = plugin_cblk->compressedDataLength;
-							cblk->owns_data = false;
+							cblk->compressedData.buf = plugin_cblk->compressedData;
+							cblk->compressedData.len = plugin_cblk->compressedDataLength;
+							cblk->compressedData.owns_data = false;
 							plugin_cblk->numBitPlanes = cblk->numbps;
 							plugin_cblk->numPasses = cblk->segs[0].numpasses;
 						}
@@ -203,8 +203,8 @@ void compress_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t re
 
 		if (goodData)
 			cblk->paddedCompressedData = plugin_cblk->compressedData;
-		cblk->compressedDataSize = (uint32_t) (plugin_cblk->compressedDataLength);
-		cblk->owns_data = false;
+		cblk->compressedData.len = (uint32_t) (plugin_cblk->compressedDataLength);
+		cblk->compressedData.owns_data = false;
 		cblk->numbps = (uint32_t) plugin_cblk->numBitPlanes;
 		if (state & GRK_PLUGIN_STATE_DEBUG) {
 			if (cblk->x0 != plugin_cblk->x0 || cblk->y0 != plugin_cblk->y0

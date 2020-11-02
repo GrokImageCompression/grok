@@ -170,12 +170,6 @@ template <typename T> struct grk_buffer {
 	grk_buffer() : buf(nullptr), offset(0), len(0), owns_data(false)
 	{}
 
-	grk_buffer(const grk_buffer<T> &lhs) : buf(lhs.buf),
-											offset(lhs.offset),
-											len(lhs.len),
-											owns_data(false)
-	{}
-
 	grk_buffer(T *buffer, size_t off, size_t length, bool ownsData) : buf(buffer),
 		offset(off),
 		len(length),
@@ -186,6 +180,10 @@ template <typename T> struct grk_buffer {
 	{}
 
 	virtual ~grk_buffer() {
+		dealloc();
+	}
+
+	void dealloc(){
 		if (owns_data)
 			delete[] buf;
 		buf = nullptr;
