@@ -44,7 +44,6 @@ TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream) :
 				tp_pos(0),
 				m_tcp(nullptr)
 {
-	assert(stream);
 	tile = new grk_tile();
 	tile->comps = new TileComponent[image->numcomps];
 	m_resno_decoded_per_component = new uint32_t[image->numcomps];

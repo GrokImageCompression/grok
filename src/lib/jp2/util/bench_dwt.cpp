@@ -96,6 +96,10 @@ bool init_tilec(TileComponent * tilec,
         --leveno;
     }
     bool isEncoder = (output_image == nullptr);
+	auto highestNumberOfResolutions =
+			(!isEncoder) ? tilec->resolutions_to_decompress : numresolutions;
+	auto hightestResolution =  tilec->resolutions + highestNumberOfResolutions - 1;
+	*((grk_rect_u32*)tilec) = (*(grk_rect_u32*)hightestResolution);
     grk_rect_u32 unreduced_tile_comp_region_dims;
 	if (!isEncoder) {
 		unreduced_tile_comp_region_dims = grk_rect_u32(ceildiv<uint32_t>(output_image->x0,1),
@@ -103,7 +107,7 @@ bool init_tilec(TileComponent * tilec,
 											ceildiv<uint32_t>(output_image->x1,1),
 											ceildiv<uint32_t>(output_image->y1,1));
 	}
-    tilec->create_buffer(isEncoder, unreduced_tile_comp_region_dims);
+    tilec->create_buffer(*((grk_rect_u32*)tilec),unreduced_tile_comp_region_dims);
     tilec->getBuffer()->alloc();
 	auto data = tilec->getBuffer()->ptr();
     for (size_t i = 0; i < tilec->getBuffer()->strided_area(); i++)

@@ -77,7 +77,7 @@ bool TileComponent::init(bool isEncoder,
 	whole_tile_decoding = whole_tile;
 	m_tccp = tccp;
 
-	// 1. initialize resolutions, bands and buffer
+	// 1. calculate resolutions
 	numresolutions = m_tccp->numresolutions;
 	if (numresolutions < cp->m_coding_params.m_dec.m_reduce) {
 		resolutions_to_decompress = 1;
@@ -115,22 +115,27 @@ bool TileComponent::init(bool isEncoder,
 		res->pw =	(res->x0 == res->x1) ?	0 : ((br_prc_x_end - tprc_x_start) >> pdx);
 		res->ph =	(res->y0 == res->y1) ?	0 : ((br_prc_y_end - tprc_y_start) >> pdy);
 		res->numbands = (resno == 0) ? 1 : 3;
-		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
-			auto band = res->bands + bandno;
-			auto tile_comp = unreduced_tile_comp_dims;
-			eBandOrientation orientation = (resno ==0) ? BAND_ORIENT_LL : (eBandOrientation)(bandno+1);
-			band->orientation = orientation;
-			*((grk_rect_u32*)band) = grk_region_band(numresolutions, resno, orientation,tile_comp);
-		}
 		if (DEBUG_TILE_COMPONENT){
 			std::cout << "res: " << resno << " ";
 			res->print();
 		}
-
+		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
+			auto band = res->bands + bandno;
+			eBandOrientation orientation = (resno ==0) ? BAND_ORIENT_LL : (eBandOrientation)(bandno+1);
+			band->orientation = orientation;
+		}
 	}
-	create_buffer(isEncoder, unreduced_tile_comp_region_dims);
 
-	// calculate band windows for sub-tile decoding
+	//2. calculate region bands
+	auto highestNumberOfResolutions =
+			(!m_is_encoder) ? resolutions_to_decompress : numresolutions;
+	auto hightestResolution =  resolutions + highestNumberOfResolutions - 1;
+	grk_rect_u32::operator=(*(grk_rect_u32*)hightestResolution);
+
+	//3. create region buffer
+	create_buffer(unreduced_tile_comp_dims, unreduced_tile_comp_region_dims);
+
+	// calculate padded region windows
 	if (!whole_tile_decoding){
 	    /* Note: those values for filter_margin are in part the result of */
 	    /* experimentation. The value 2 for QMFBID=1 (5x3 filter) can be linked */
@@ -182,7 +187,7 @@ bool TileComponent::init(bool isEncoder,
 	}
 
 
-	// 2. initialize precincts and code blocks
+	// 4. initialize precincts and code blocks
 	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
 
@@ -358,31 +363,32 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
     m_sa = sa;
 }
 
-void TileComponent::create_buffer(bool isEncoder, grk_rect_u32 unreduced_tile_comp_region_dims) {
+void TileComponent::create_buffer(grk_rect_u32 unreduced_tile_comp_dims,
+									grk_rect_u32 unreduced_tile_comp_region_dims) {
+	// calculate region bands
+	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
+		auto res = resolutions + resno;
+		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
+			auto band = res->bands + bandno;
+			*((grk_rect_u32*)band) =
+					grk_region_band(numresolutions, resno, band->orientation,unreduced_tile_comp_dims);
+		}
+	}
+
+	delete buf;
 	auto highestNumberOfResolutions =
 			(!m_is_encoder) ? resolutions_to_decompress : numresolutions;
-	auto hightestResolution =  resolutions + highestNumberOfResolutions - 1;
 	auto maxResolution = resolutions + numresolutions - 1;
-
-	grk_rect_u32::operator=(*(grk_rect_u32*)hightestResolution);
-	delete buf;
-	buf = new TileComponentBuffer<int32_t>(isEncoder,
-											grk_rect_u32(maxResolution->x0,
-														maxResolution->y0,
-														maxResolution->x1,
-														maxResolution->y1),
-											grk_rect_u32(x0,
-														y0,
-														x1,
-														y1),
+	buf = new TileComponentRegionBuffer<int32_t>(m_is_encoder,
+											*(grk_rect_u32*)maxResolution,
+											*(grk_rect_u32*)this,
 											unreduced_tile_comp_region_dims,
 											resolutions,
 											numresolutions,
-											highestNumberOfResolutions,
-											whole_tile_decoding);
+											highestNumberOfResolutions);
 }
 
-TileComponentBuffer<int32_t>* TileComponent::getBuffer(){
+TileComponentRegionBuffer<int32_t>* TileComponent::getBuffer(){
 	return buf;
 }
 
