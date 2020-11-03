@@ -26,13 +26,20 @@ class T1Interface;
 
 class T1DecompressScheduler {
 public:
-	T1DecompressScheduler(TileCodingParams *tcp, uint16_t blockw, uint16_t blockh);
+	T1DecompressScheduler(TileCodingParams *tcp);
 	~T1DecompressScheduler();
 	bool decompress(std::vector<DecompressBlockExec*> *blocks);
 
+	bool prepareScheduleDecompress(TileComponent *tilec, TileComponentCodingParams *tccp,
+			std::vector<DecompressBlockExec*> *blocks);
+
+	bool scheduleDecompress(TileCodingParams *tcp,
+						uint16_t blockw,
+						uint16_t blockh,
+						std::vector<DecompressBlockExec*> *blocks);
+
 private:
 	bool decompressBlock(T1Interface *impl, DecompressBlockExec *block);
-	uint16_t codeblock_width, codeblock_height;  //nominal dimensions of block
 	std::vector<T1Interface*> t1Implementations;
 	std::atomic_bool success;
 

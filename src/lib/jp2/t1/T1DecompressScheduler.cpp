@@ -15,22 +15,12 @@
  *
  */
 #include "grk_includes.h"
-#include <atomic>
 
 namespace grk {
 
-T1DecompressScheduler::T1DecompressScheduler(TileCodingParams *tcp,
-					uint16_t blockw,
-					uint16_t blockh) :
-		codeblock_width((uint16_t) (blockw ? (uint32_t) 1 << blockw : 0)),
-		codeblock_height((uint16_t) (blockh ? (uint32_t) 1 << blockh : 0)),
-		success(true),
-		decodeBlocks(nullptr){
-	for (auto i = 0U; i < ThreadPool::get()->num_threads(); ++i) {
-		t1Implementations.push_back(
-				T1Factory::get_t1(false, tcp, codeblock_width,
-						codeblock_height));
-	}
+T1DecompressScheduler::T1DecompressScheduler(TileCodingParams *tcp) :	success(true),
+																		decodeBlocks(nullptr){
+
 }
 
 T1DecompressScheduler::~T1DecompressScheduler() {
@@ -38,20 +28,83 @@ T1DecompressScheduler::~T1DecompressScheduler() {
 		delete t;
 	}
 }
+
+bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent *tilec, TileComponentCodingParams *tccp,
+		std::vector<DecompressBlockExec*> *blocks) {
+	if (!tilec->getBuffer()->alloc()) {
+		GRK_ERROR( "Not enough memory for tile data");
+		return false;
+	}
+	for (uint32_t resno = 0; resno < tilec->resolutions_to_decompress; ++resno) {
+		auto res = &tilec->resolutions[resno];
+		for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
+			Subband *GRK_RESTRICT band = res->bandWindow + bandno;
+			for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph; ++precno) {
+				auto precinct = band->precincts + precno;
+				if (!tilec->subbandIntersectsAOI(resno,
+												bandno,
+												precinct)){
+
+					continue;
+				}
+				for (uint64_t cblkno = 0;
+						cblkno < (uint64_t) precinct->cw * precinct->ch;
+						++cblkno) {
+					auto cblk = precinct->dec + cblkno;
+					if (tilec->subbandIntersectsAOI(resno,
+													bandno,
+													cblk)){
+
+						auto block = new DecompressBlockExec();
+						block->sparseBuffer = tilec->getSparseBuffer();
+						block->x = cblk->x0;
+						block->y = cblk->y0;
+						block->tiledp = tilec->getBuffer()->cblk_ptr( resno, bandno,
+								block->x, block->y);
+						block->stride = tilec->getBuffer()->stride(resno,bandno);
+						block->band_orientation = band->orientation;
+						block->cblk = cblk;
+						block->cblk_sty = tccp->cblk_sty;
+						block->qmfbid = tccp->qmfbid;
+						block->resno = resno;
+						block->roishift = tccp->roishift;
+						block->stepsize = band->stepsize;
+
+						block->k_msbs = (uint8_t)(band->numbps - cblk->numbps);
+						blocks->push_back(block);
+					}
+
+				}
+			}
+		}
+	}
+	return true;
+}
+
+
+bool T1DecompressScheduler::scheduleDecompress(TileCodingParams *tcp,
+		                    uint16_t blockw, uint16_t blockh,
+		                    std::vector<DecompressBlockExec*> *blocks) {
+	// nominal code block dimensions
+	uint16_t codeblock_width = (uint16_t) (blockw ? (uint32_t) 1 << blockw : 0);
+	uint16_t codeblock_height = (uint16_t) (blockh ? (uint32_t) 1 << blockh : 0);
+	for (auto i = 0U; i < ThreadPool::get()->num_threads(); ++i) {
+		t1Implementations.push_back(T1Factory::get_t1(false, tcp, codeblock_width,codeblock_height));
+	}
+	return decompress(blocks);
+}
 bool T1DecompressScheduler::decompressBlock(T1Interface *impl, DecompressBlockExec *block){
 	try {
-		if (!impl->decompress(block)) {
-			delete block;
-			return false;
-		}
+		bool rc = block->open(impl);
+		delete block;
+		return rc;
 	} catch (std::runtime_error &rerr){
 		delete block;
 		GRK_ERROR(rerr.what());
 		return false;
 	}
-	bool rc =  impl->postDecompress(block);
-	delete block;
-	return rc;
+
+	return true;
 }
 
 bool T1DecompressScheduler::decompress(std::vector<DecompressBlockExec*> *blocks) {

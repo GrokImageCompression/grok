@@ -22,16 +22,10 @@ namespace grk {
 
 class T1Interface {
 public:
-	virtual ~T1Interface() {
-	}
+	virtual ~T1Interface() {}
 
-	virtual void preCompress(CompressBlockExec *block, grk_tile *tile,
-			uint32_t &max) = 0;
-	virtual double compress(CompressBlockExec *block, grk_tile *tile,
-			uint32_t max, bool doRateControl)=0;
-
+	virtual bool compress(CompressBlockExec *block)=0;
 	virtual bool decompress(DecompressBlockExec *block)=0;
-	virtual bool postDecompress(DecompressBlockExec *block)=0;
 };
 
 }

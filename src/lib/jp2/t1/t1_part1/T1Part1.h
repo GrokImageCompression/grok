@@ -27,14 +27,12 @@ public:
 	T1Part1(bool isEncoder, uint32_t maxCblkW, uint32_t maxCblkH);
 	virtual ~T1Part1();
 
-	void preCompress(CompressBlockExec *block, grk_tile *tile, uint32_t &max);
-	double compress(CompressBlockExec *block, grk_tile *tile, uint32_t max,
-			bool doRateControl);
-
+	bool compress(CompressBlockExec *block);
 	bool decompress(DecompressBlockExec *block);
-	bool postDecompress(DecompressBlockExec *block);
 
 private:
+	void preCompress(CompressBlockExec *block, grk_tile *tile, uint32_t &max);
+	bool postDecompress(DecompressBlockExec *block);
 	T1 *t1;
 };
 }

@@ -158,8 +158,6 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1DecompressScheduler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1CompressScheduler.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1CompressScheduler.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Scheduler.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Scheduler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Factory.cpp  
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Factory.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Interface.h

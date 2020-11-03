@@ -56,8 +56,7 @@ T1HT::~T1HT() {
    delete allocator;
    delete elastic_alloc;
 }
-void T1HT::preCompress(CompressBlockExec *block, grk_tile *tile,
-		uint32_t &maximum) {
+void T1HT::preCompress(CompressBlockExec *block, grk_tile *tile) {
 	(void)block;
 	(void)tile;
 
@@ -68,7 +67,6 @@ void T1HT::preCompress(CompressBlockExec *block, grk_tile *tile,
 	auto tileLineAdvance = tile_width - w;
 	uint32_t tileIndex = 0;
 	uint32_t cblk_index = 0;
-	maximum = 0;
 
 	//convert to sign-magnitude
 	if (block->qmfbid == 1) {
@@ -80,7 +78,6 @@ void T1HT::preCompress(CompressBlockExec *block, grk_tile *tile,
 		        int32_t sign = (int32_t)((temp >= 0) ? 0U : 0x80000000);
 		        int32_t res = sign | (val << shift);
 		        unencoded_data[cblk_index] = res;
-				maximum = max(maximum, (uint32_t)res);
 				tileIndex++;
 				cblk_index++;
 			}
@@ -93,7 +90,6 @@ void T1HT::preCompress(CompressBlockExec *block, grk_tile *tile,
 				int32_t temp = block->tiledp[tileIndex];
 				int32_t t = (int32_t)((float)temp * block->inv_step_ht * (float)(1<<shift));
 				int32_t val = t >= 0 ? t : -t;
-				maximum = max((uint32_t)val, maximum);
 				int32_t sign = t >= 0 ? 0 : (int32_t)0x80000000;
 				int32_t res = sign | val;
 				unencoded_data[cblk_index] = res;
@@ -104,11 +100,8 @@ void T1HT::preCompress(CompressBlockExec *block, grk_tile *tile,
 		}
 	}
 }
-double T1HT::compress(CompressBlockExec *block, grk_tile *tile, uint32_t maximum,
-		bool doRateControl) {
-	(void)doRateControl;
-	(void)tile;
-	(void)maximum;
+bool T1HT::compress(CompressBlockExec *block) {
+	preCompress(block,block->tile);
 
 	 coded_lists *next_coded = nullptr;
 	auto cblk = block->cblk;
@@ -132,48 +125,53 @@ double T1HT::compress(CompressBlockExec *block, grk_tile *tile, uint32_t maximum
 	 cblk->numbps = 1;
 	 assert(cblk->paddedCompressedStream);
 	 memcpy(cblk->paddedCompressedStream, next_coded->buf, (size_t)pass_length[0]);
-  return 0;
+
+	 return true;
 }
 bool T1HT::decompress(DecompressBlockExec *block) {
 	auto cblk = block->cblk;
-	if (cblk->seg_buffers.empty())
-		return true;
+	bool rc = true;
+	if (!cblk->seg_buffers.empty()) {
+		size_t total_seg_len = grk_cblk_dec_compressed_data_pad_left_ht + cblk->getSegBuffersLen();
+		if (coded_data_size < total_seg_len) {
+			delete[] coded_data;
+			coded_data = new uint8_t[total_seg_len];
+			coded_data_size = (uint32_t)total_seg_len;
+			memset(coded_data,0,grk_cblk_dec_compressed_data_pad_left_ht);
+		}
+		uint8_t *actual_coded_data =
+				coded_data + grk_cblk_dec_compressed_data_pad_left_ht;
+		size_t offset = 0;
+		for (auto& b : cblk->seg_buffers) {
+			memcpy(actual_coded_data + offset, b->buf, b->len);
+			offset += b->len;
+		}
 
-	size_t total_seg_len = grk_cblk_dec_compressed_data_pad_left_ht + cblk->getSegBuffersLen();
-	if (coded_data_size < total_seg_len) {
-		delete[] coded_data;
-		coded_data = new uint8_t[total_seg_len];
-		coded_data_size = (uint32_t)total_seg_len;
-		memset(coded_data,0,grk_cblk_dec_compressed_data_pad_left_ht);
+		size_t num_passes = 0;
+		for (uint32_t i = 0; i < cblk->numSegments; ++i){
+			auto sgrk = cblk->segs + i;
+			num_passes += sgrk->numpasses;
+		}
+
+	   if (num_passes) {
+		   rc =  ojph_decode_codeblock(actual_coded_data,
+								   unencoded_data,
+								   block->k_msbs,
+								   (int)num_passes,
+								   (int)offset,
+								   0,
+								   cblk->width(),
+								   cblk->height(),
+								   cblk->width());
+	   }
+	   else {
+		   memset(unencoded_data, 0, (cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0) * sizeof(int32_t));
+	   }
 	}
-	uint8_t *actual_coded_data =
-			coded_data + grk_cblk_dec_compressed_data_pad_left_ht;
-	size_t offset = 0;
-	for (auto& b : cblk->seg_buffers) {
-		memcpy(actual_coded_data + offset, b->buf, b->len);
-		offset += b->len;
-	}
+	if (!rc)
+		return false;
 
-	size_t num_passes = 0;
-	for (uint32_t i = 0; i < cblk->numSegments; ++i){
-		auto sgrk = cblk->segs + i;
-		num_passes += sgrk->numpasses;
-	}
-
-   if (num_passes)
-	   return ojph_decode_codeblock(actual_coded_data,
-							   unencoded_data,
-							   block->k_msbs,
-							   (int)num_passes,
-							   (int)offset,
-							   0,
-							   cblk->width(),
-							   cblk->height(),
-							   cblk->width());
-   else
-	   memset(unencoded_data, 0, (cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0) * sizeof(int32_t));
-   return true;
-
+    return postDecompress(block);
 }
 
 bool T1HT::postDecompress(DecompressBlockExec *block) {

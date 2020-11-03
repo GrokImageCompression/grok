@@ -19,21 +19,75 @@
 
 namespace grk {
 
-T1CompressScheduler::T1CompressScheduler(TileCodingParams *tcp, grk_tile *tile, uint32_t encodeMaxCblkW,
-		uint32_t encodeMaxCblkH, bool needsRateControl) :
-		tile(tile),
-		needsRateControl(needsRateControl),
-		encodeBlocks(nullptr),
-		blockCount(-1)
-{
-	for (auto i = 0U; i < ThreadPool::get()->num_threads(); ++i)
-		t1Implementations.push_back(
-				T1Factory::get_t1(true, tcp, encodeMaxCblkW, encodeMaxCblkH));
+T1CompressScheduler::T1CompressScheduler(grk_tile *tile,
+										bool needsRateControl) :  tile(tile),
+																	needsRateControl(needsRateControl),
+																	encodeBlocks(nullptr),
+																	blockCount(-1) {
 }
 T1CompressScheduler::~T1CompressScheduler() {
 	for (auto &t : t1Implementations)
 		delete t;
 }
+
+void T1CompressScheduler::scheduleCompress(TileCodingParams *tcp,
+							const double *mct_norms,
+							uint32_t mct_numcomps) {
+
+	uint32_t compno, resno, bandno;
+	uint64_t precno;
+	tile->distotile = 0;
+	std::vector<CompressBlockExec*> blocks;
+	uint32_t maxCblkW = 0;
+	uint32_t maxCblkH = 0;
+
+	for (compno = 0; compno < tile->numcomps; ++compno) {
+		auto tilec = tile->comps + compno;
+		auto tccp = tcp->tccps + compno;
+		for (resno = 0; resno < tilec->numresolutions; ++resno) {
+			auto res = &tilec->resolutions[resno];
+			for (bandno = 0; bandno < res->numBandWindows; ++bandno) {
+				auto band = &res->bandWindow[bandno];
+				for (precno = 0; precno < (uint64_t)res->pw * res->ph; ++precno) {
+					auto prc = &band->precincts[precno];
+					for (uint64_t cblkno = 0; cblkno < (int64_t) prc->cw * prc->ch;
+							++cblkno) {
+						auto cblk = prc->enc + cblkno;
+						auto block = new CompressBlockExec();
+						block->tile = tile;
+						block->doRateControl = needsRateControl;
+						block->x = cblk->x0;
+						block->y = cblk->y0;
+						block->tiledp = tilec->getBuffer()->cblk_ptr( resno, bandno,
+								block->x, block->y);
+						maxCblkW = std::max<uint32_t>(maxCblkW,
+								(uint32_t) (1 << tccp->cblkw));
+						maxCblkH = std::max<uint32_t>(maxCblkH,
+								(uint32_t) (1 << tccp->cblkh));
+						block->compno = compno;
+						block->band_orientation = band->orientation;
+						block->cblk = cblk;
+						block->cblk_sty = tccp->cblk_sty;
+						block->qmfbid = tccp->qmfbid;
+						block->resno = resno;
+						block->inv_step = (int32_t)band->inv_step;
+						block->inv_step_ht = 1.0f/band->stepsize;
+						block->stepsize = band->stepsize;
+						block->mct_norms = mct_norms;
+						block->mct_numcomps = mct_numcomps;
+						block->k_msbs = (uint8_t)(band->numbps - cblk->numbps);
+						blocks.push_back(block);
+
+					}
+				}
+			}
+		}
+	}
+	for (auto i = 0U; i < ThreadPool::get()->num_threads(); ++i)
+		t1Implementations.push_back(T1Factory::get_t1(true, tcp, maxCblkW, maxCblkH));
+	compress(&blocks);
+}
+
 void T1CompressScheduler::compress(std::vector<CompressBlockExec*> *blocks) {
 	if (!blocks || blocks->size() == 0)
 		return;
@@ -47,8 +101,6 @@ void T1CompressScheduler::compress(std::vector<CompressBlockExec*> *blocks) {
 		}
 		return;
 	}
-
-
 	auto maxBlocks = blocks->size();
 	encodeBlocks = new CompressBlockExec*[maxBlocks];
 	for (uint64_t i = 0; i < maxBlocks; ++i)
@@ -83,12 +135,10 @@ bool T1CompressScheduler::compress(size_t threadId, uint64_t maxBlocks) {
 	return true;
 }
 void T1CompressScheduler::compress(T1Interface *impl, CompressBlockExec *block){
-	uint32_t max = 0;
-	impl->preCompress(block, tile, max);
-	auto dist = impl->compress(block, tile, max, needsRateControl);
+	block->open(impl);
 	if (needsRateControl) {
 		std::unique_lock<std::mutex> lk(distortion_mutex);
-		tile->distotile += dist;
+		tile->distotile += block->distortion;
 	}
 }
 

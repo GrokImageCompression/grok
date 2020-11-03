@@ -22,6 +22,7 @@
 namespace grk {
 
 struct ISparseBuffer;
+struct grk_tile;
 
 enum eBandOrientation{
 	BAND_ORIENT_LL,
@@ -83,7 +84,7 @@ struct Layer {
 	uint8_t *data; /* data buffer (points to code block data) */
 };
 
-struct Codeblock : public grk_rect_u32, public IOpenable {
+struct Codeblock : public grk_rect_u32 {
     Codeblock(const Codeblock &rhs);
     Codeblock();
     Codeblock& operator=(const Codeblock& other);
@@ -106,8 +107,6 @@ struct CompressCodeblock : public Codeblock {
 	CompressCodeblock(const CompressCodeblock &rhs);
 	CompressCodeblock& operator=(const CompressCodeblock& other);
 
-	bool open(void);
-	void close(void);
 	void clear() override;
 	bool alloc();
 	bool alloc_data(size_t nominalBlockSize);
@@ -127,8 +126,6 @@ struct DecompressCodeblock: public Codeblock {
 	DecompressCodeblock(const DecompressCodeblock &rhs);
 	DecompressCodeblock& operator=(const DecompressCodeblock& other);
 
-	bool open(void);
-	void close(void);
 	void clear() override;
 	void init();
 	bool alloc();
@@ -198,6 +195,7 @@ struct BlockExec : public IOpenable {
 	uint32_t y;
 	// missing bit planes for all blocks in band
 	uint8_t k_msbs;
+	bool isOpen;
 };
 
 
@@ -205,7 +203,7 @@ struct TileComponent;
 
 struct DecompressBlockExec : public BlockExec {
 	DecompressBlockExec();
-	bool open(void);
+	bool open(T1Interface *t1);
 	void close(void);
 
 	DecompressCodeblock *cblk;
@@ -219,10 +217,13 @@ struct DecompressBlockExec : public BlockExec {
 
 struct CompressBlockExec : public BlockExec{
 	CompressBlockExec();
-	bool open(void);
+	bool open(T1Interface *t1);
 	void close(void);
 
 	CompressCodeblock *cblk;
+	grk_tile *tile;
+	bool doRateControl;
+	double distortion;
 	int32_t *tiledp;
 	uint32_t compno;
 	uint32_t resno;

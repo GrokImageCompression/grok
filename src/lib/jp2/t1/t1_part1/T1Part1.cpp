@@ -93,8 +93,10 @@ void T1Part1::preCompress(CompressBlockExec *block, grk_tile *tile,
 		}
 	}
 }
-double T1Part1::compress(CompressBlockExec *block, grk_tile *tile,
-		uint32_t max, bool doRateControl) {
+bool T1Part1::compress(CompressBlockExec *block) {
+	uint32_t max = 0;
+	preCompress(block,block->tile,max);
+
 	auto cblk = block->cblk;
 	cblk_enc cblkexp;
 	memset(&cblkexp, 0, sizeof(cblk_enc));
@@ -110,9 +112,9 @@ double T1Part1::compress(CompressBlockExec *block, grk_tile *tile,
 
 	auto disto = t1->compress_cblk(&cblkexp, max, block->band_orientation,
 			block->compno,
-			(tile->comps + block->compno)->numresolutions - 1 - block->resno,
+			(block->tile->comps + block->compno)->numresolutions - 1 - block->resno,
 			block->qmfbid, block->stepsize, block->cblk_sty,
-			block->mct_norms, block->mct_numcomps, doRateControl);
+			block->mct_norms, block->mct_numcomps, block->doRateControl);
 
 	cblk->numPassesTotal = cblkexp.numPassesTotal;
 	cblk->numbps = cblkexp.numbps;
@@ -125,10 +127,12 @@ double T1Part1::compress(CompressBlockExec *block, grk_tile *tile,
 		passgrk->term = passexp->term;
 	}
 
- t1->code_block_enc_deallocate(&cblkexp);
+    t1->code_block_enc_deallocate(&cblkexp);
 	cblkexp.data = nullptr;
 
- 	return disto;
+ 	block->distortion =  disto;
+
+ 	return true;
 }
 
 bool T1Part1::decompress(DecompressBlockExec *block) {
@@ -184,7 +188,10 @@ bool T1Part1::decompress(DecompressBlockExec *block) {
 								block->cblk_sty);
 
 	delete[] segs;
-	return ret;
+	if (!ret)
+		return false;
+
+	return postDecompress(block);
 }
 
 bool T1Part1::postDecompress(DecompressBlockExec *block) {

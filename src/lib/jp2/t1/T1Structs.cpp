@@ -141,13 +141,6 @@ CompressCodeblock& CompressCodeblock::operator=(const CompressCodeblock& rhs){
 CompressCodeblock::~CompressCodeblock() {
 	cleanup();
 }
-bool CompressCodeblock::open(void){
-	return true;
-}
-void CompressCodeblock::close(void){
-
-}
-
 void CompressCodeblock::clear(){
 	Codeblock::clear();
 	layers = nullptr;
@@ -212,13 +205,6 @@ DecompressCodeblock::DecompressCodeblock() {
 DecompressCodeblock::~DecompressCodeblock(){
     cleanup();
 }
-bool DecompressCodeblock::open(void){
-	return true;
-}
-void DecompressCodeblock::close(void){
-
-}
-
 void DecompressCodeblock::clear(){
 	Codeblock::clear();
 	segs = nullptr;
@@ -264,9 +250,7 @@ bool DecompressCodeblock::alloc() {
 }
 
 void DecompressCodeblock::init() {
-	compressedStream.buf = nullptr;
-	compressedStream.len = 0;
-	compressedStream.owns_data = false;
+	compressedStream.dealloc();
 	segs = nullptr;
 	x0 = 0;
 	y0 = 0;
@@ -283,11 +267,7 @@ void DecompressCodeblock::init() {
 }
 
 void DecompressCodeblock::cleanup() {
-	if (compressedStream.owns_data) {
-		delete[] compressedStream.buf;
-		compressedStream.buf = nullptr;
-		compressedStream.owns_data = false;
-	}
+	compressedStream.dealloc();
 	cleanup_seg_buffers();
 	delete[] segs;
 	segs = nullptr;
@@ -419,12 +399,15 @@ BlockExec::BlockExec() : 	band_orientation(0),
 							qmfbid(0),
 							x(0),
 							y(0),
-							k_msbs(0)
-
+							k_msbs(0),
+							isOpen(false)
 {}
 
 CompressBlockExec::CompressBlockExec() :
 		            cblk(nullptr),
+					tile(nullptr),
+					doRateControl(false),
+					distortion(0),
 					tiledp(nullptr),
 					compno(0),
 					resno(0),
@@ -439,12 +422,13 @@ CompressBlockExec::CompressBlockExec() :
 				mct_numcomps(0)
 {}
 
-bool CompressBlockExec::open(void){
+bool CompressBlockExec::open(T1Interface *t1){
+	isOpen = t1->compress(this);
 
-	return cblk->open();
+	return isOpen;
 }
 void CompressBlockExec::close(void){
-	cblk->close();
+
 }
 
 DecompressBlockExec::DecompressBlockExec() :
@@ -456,15 +440,13 @@ DecompressBlockExec::DecompressBlockExec() :
 				roishift(0)
 {	}
 
-bool DecompressBlockExec::open(void){
+bool DecompressBlockExec::open(T1Interface *t1){
+	isOpen =  t1->decompress(this);
 
-	return cblk->open();
+	return isOpen;
 }
 void DecompressBlockExec::close(void){
-	cblk->close();
+
 }
-
-
-
 
 }

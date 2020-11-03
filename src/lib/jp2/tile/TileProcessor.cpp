@@ -903,11 +903,11 @@ bool TileProcessor::decompress_tile_t1(void) {
 				}
 			}
 			std::vector<DecompressBlockExec*> blocks;
-			auto scheduler = std::unique_ptr<T1Scheduler>(new T1Scheduler());
-			if (!scheduler->prepareScheduleDecode(tilec, tccp, &blocks))
+			auto scheduler = std::unique_ptr<T1DecompressScheduler>(new T1DecompressScheduler(m_tcp));
+			if (!scheduler->prepareScheduleDecompress(tilec, tccp, &blocks))
 				return false;
 			// !!! assume that code block dimensions do not change over components
-			if (!scheduler->scheduleDecode(m_tcp,
+			if (!scheduler->scheduleDecompress(m_tcp,
 					(uint16_t) m_tcp->tccps->cblkw,
 					(uint16_t) m_tcp->tccps->cblkh, &blocks))
 				return false;
@@ -1114,10 +1114,8 @@ void TileProcessor::t1_encode() {
 		mct_norms = (const double*) (tcp->mct_norms);
 	}
 
-	auto scheduler = std::unique_ptr<T1Scheduler>(new T1Scheduler());
-
-	scheduler->scheduleEncode(tcp, tile, mct_norms, mct_numcomps,
-			needs_rate_control());
+	auto scheduler = std::unique_ptr<T1CompressScheduler>(new T1CompressScheduler(tile,needs_rate_control()));
+	scheduler->scheduleCompress(tcp, mct_norms, mct_numcomps);
 }
 
 bool TileProcessor::t2_encode(uint32_t *all_packet_bytes_written) {

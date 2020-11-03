@@ -23,11 +23,13 @@ namespace grk {
 
 class T1CompressScheduler {
 public:
-	T1CompressScheduler(TileCodingParams *tcp, grk_tile *tile, uint32_t encodeMaxCblkW,
-			uint32_t encodeMaxCblkH, bool needsRateControl);
+	T1CompressScheduler(grk_tile *tile, bool needsRateControl);
 	~T1CompressScheduler();
 	void compress(std::vector<CompressBlockExec*> *blocks);
 
+	void scheduleCompress(TileCodingParams *tcp,
+						const double *mct_norms,
+						uint32_t mct_numcomps);
 private:
 	bool compress(size_t threadId, uint64_t maxBlocks);
 	void compress(T1Interface *impl, CompressBlockExec *block);
