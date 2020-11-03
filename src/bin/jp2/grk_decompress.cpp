@@ -1209,7 +1209,7 @@ int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 		}
 	}
 
-	if (!grk_set_decompress_area(info->l_codec, info->image, parameters->DA_x0,
+	if (!grk_set_decompress_window(info->l_codec, info->image, parameters->DA_x0,
 			parameters->DA_y0, parameters->DA_x1, parameters->DA_y1)) {
 		spdlog::error("grk_decompress: failed to set the decompressed area");
 		goto cleanup;

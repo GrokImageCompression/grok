@@ -128,7 +128,7 @@ bool T1CompressScheduler::compress(size_t threadId, uint64_t maxBlocks) {
 	uint64_t index = (uint64_t)++blockCount;
 	if (index >= maxBlocks)
 		return false;
-	CompressBlockExec *block = encodeBlocks[index];
+	auto block = encodeBlocks[index];
 	compress(impl,block);
 	delete block;
 

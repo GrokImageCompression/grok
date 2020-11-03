@@ -1855,7 +1855,7 @@ bool CodeStream::end_compress(void){
 	return  exec(m_procedure_list);
 }
 
-bool CodeStream::set_decompress_area(grk_image *output_image,
+bool CodeStream::set_decompress_window(grk_image *output_image,
 		uint32_t start_x, uint32_t start_y, uint32_t end_x, uint32_t end_y) {
 
 	auto cp = &(m_cp);
@@ -1865,7 +1865,7 @@ bool CodeStream::set_decompress_area(grk_image *output_image,
 	/* Check if we have read the main header */
 	if (decompressor->m_state != J2K_DEC_STATE_TPH_SOT) {
 		GRK_ERROR(
-				"Need to decompress the main header before setting decompress area");
+				"Need to decompress the main header before setting decompress window");
 		return false;
 	}
 

@@ -153,7 +153,7 @@ struct FileFormat : public ICodeStream {
 	 *
 	 * @return	true			if the area could be set.
 	 */
-	bool set_decompress_area(grk_image *p_image,
+	bool set_decompress_window(grk_image *p_image,
 						uint32_t start_x,
 						uint32_t start_y,
 						uint32_t end_x,

@@ -1502,7 +1502,7 @@ GRK_API bool GRK_CALLCONV grk_read_header(grk_codec codec,
  *
  * @return	true			if the area could be set.
  */
-GRK_API bool GRK_CALLCONV grk_set_decompress_area(grk_codec codec,
+GRK_API bool GRK_CALLCONV grk_set_decompress_window(grk_codec codec,
 		grk_image *image, uint32_t start_x, uint32_t start_y, uint32_t end_x,
 		uint32_t end_y);
 

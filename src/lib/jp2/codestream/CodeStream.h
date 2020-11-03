@@ -162,8 +162,8 @@ struct ICodeStream {
 	/** Set up decompressor function handler */
    virtual void init_decompress(grk_dparameters  *p_param) = 0;
 
-	/** Set decompress area function handler */
-   virtual bool set_decompress_area(grk_image *p_image,
+	/** Set decompress window function handler */
+   virtual bool set_decompress_window(grk_image *p_image,
 		   uint32_t start_x, uint32_t end_x, uint32_t start_y,	uint32_t end_y) = 0;
 
    virtual bool start_compress(void) = 0;
@@ -242,7 +242,7 @@ struct CodeStream : public ICodeStream {
 	 *
 	 * @return	true			if the area could be set.
 	 */
-	bool set_decompress_area(grk_image *p_image,
+	bool set_decompress_window(grk_image *p_image,
 						uint32_t start_x,
 						uint32_t start_y,
 						uint32_t end_x,

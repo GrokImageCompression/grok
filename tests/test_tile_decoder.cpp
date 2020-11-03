@@ -180,12 +180,10 @@ int main(int argc, char *argv[]) {
 
 	switch (param.decod_format) {
 	case GRK_J2K_FMT: { /* JPEG-2000 codestream */
-		/* Get a decoder handle */
 		codec = grk_create_decompress(GRK_CODEC_J2K, stream);
 		break;
 	}
 	case GRK_JP2_FMT: { /* JPEG 2000 compressed image data */
-		/* Get a decoder handle */
 		codec = grk_create_decompress(GRK_CODEC_JP2, stream);
 		break;
 	}
@@ -201,20 +199,20 @@ int main(int argc, char *argv[]) {
 	grk_set_warning_handler(warning_callback, nullptr);
 	grk_set_error_handler(error_callback, nullptr);
 
-	/* Setup the decoder decoding parameters using user parameters */
+	/* Set up the decompress parameters using user parameters */
 	if (!grk_init_decompress(codec, &param)) {
-		spdlog::error("j2k_dump: failed to setup the decoder\n");
+		spdlog::error("test tile decoder: failed to set up decompressor\n");
 		goto beach;
 	}
 
 	/* Read the main header of the codestream and if necessary the JP2 boxes*/
 	if (!grk_read_header(codec, nullptr, &image)) {
-		spdlog::error("j2k_to_image: failed to read the header\n");
+		spdlog::error("test tile decoder: failed to read the header\n");
 		goto beach;
 	}
 
-	if (!grk_set_decompress_area(codec, image, da_x0, da_y0, da_x1, da_y1)) {
-		spdlog::error("j2k_to_image: failed to set the decoded area\n");
+	if (!grk_set_decompress_window(codec, image, da_x0, da_y0, da_x1, da_y1)) {
+		spdlog::error("grk_set_decompress_window: failed to set decompress window\n");
 		goto beach;
 	}
 

@@ -85,12 +85,12 @@ static uint32_t test_tile( uint16_t tile_index, grk_image *image, grk_stream *st
 								grk_codec codec) {
 	spdlog::info("Decoding tile {} ...", tile_index);
 	if(!grk_decompress_tile(codec, image, tile_index )){
-		spdlog::error("j2k_to_image: failed to decode tile {}", tile_index);
+		spdlog::error("random tile processor: failed to decompress tile {}", tile_index);
 		return EXIT_FAILURE;
 	}
   for(uint32_t index = 0; index < image->numcomps; ++index) {
     if( image->comps[index].data == nullptr ){
-    	spdlog::error("j2k_to_image: failed to decode tile {}", tile_index);
+    	spdlog::error("random tile processor: failed to decompress tile {}", tile_index);
         return EXIT_FAILURE;
         }
   }
@@ -155,15 +155,15 @@ int main(int argc, char **argv) {
 			return EXIT_FAILURE;
 		}
 
-		/* Setup the decoder decoding parameters using user parameters */
+		/* Set up the decompress parameters using user parameters */
 		if (!grk_init_decompress(codec, &parameters)) {
-			spdlog::error("j2k_dump: failed to setup the decoder");
+			spdlog::error("random tile processor: failed to set up decompressor");
 			goto cleanup;
 		}
 
 		/* Read the main header of the codestream and if necessary the JP2 boxes*/
 		if (!grk_read_header(codec, nullptr, &image)) {
-			spdlog::error("j2k_to_image: failed to read the header");
+			spdlog::error("randome tile processor : failed to read header");
 			goto cleanup;
 		}
 
