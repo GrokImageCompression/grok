@@ -2895,7 +2895,7 @@ bool CodeStream::post_write_tile(TileProcessor *tileProcessor) {
 
 	//1. write first tile part
 	tileProcessor->pino = 0;
-	tileProcessor->m_poc_tile_part_index = 0;
+	tileProcessor->m_first_poc_tile_part = true;
 	if (!write_tile_part(tileProcessor))
 		return false;
 
@@ -2908,8 +2908,8 @@ bool CodeStream::post_write_tile(TileProcessor *tileProcessor) {
 
 	// write tile parts for first progression order
 	tot_num_tp = j2k_get_num_tp(cp, 0, tileProcessor->m_tile_index);
+	tileProcessor->m_first_poc_tile_part = false;
 	for (uint8_t tilepartno = 1; tilepartno < tot_num_tp; ++tilepartno) {
-		tileProcessor->m_poc_tile_part_index = tilepartno;
 		if (!write_tile_part(tileProcessor))
 			return false;
 	}
@@ -2921,7 +2921,7 @@ bool CodeStream::post_write_tile(TileProcessor *tileProcessor) {
 		tot_num_tp = j2k_get_num_tp(cp, pino,
 				tileProcessor->m_tile_index);
 		for (uint8_t tilepartno = 0; tilepartno < tot_num_tp; ++tilepartno) {
-			tileProcessor->m_poc_tile_part_index = tilepartno;
+			tileProcessor->m_first_poc_tile_part = (tilepartno == 0);
 			if (!write_tile_part(tileProcessor))
 				return false;
 		}

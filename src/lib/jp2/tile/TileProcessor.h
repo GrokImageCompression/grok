@@ -121,12 +121,11 @@ struct TileProcessor {
 	uint16_t m_tile_index;
 
 	/** Encoding Only
-	 *  tile part index, regardless of poc.
-	 *  for each new poc, tp is reset to 0*/
-	uint8_t m_poc_tile_part_index;
+	 *  true for first POC tile part, otherwise false*/
+	bool m_first_poc_tile_part;
 
 	/** Encoding Only
-	 *  index of tile part being currently coding, taking into account POC.
+	 *  index of tile part being currently coding.
 	 *  m_tile_part_index holds the total number of tile parts encoded thus far
 	 *  while the compressor is compressing the current tile part.*/
 	uint8_t m_tile_part_index;

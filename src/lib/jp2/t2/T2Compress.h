@@ -37,13 +37,13 @@ struct T2Compress {
 	 @param maxlayers        maximum number of layers
 	 @param dest             the destination buffer
 	 @param p_data_written   amount of data written
-	 @param tpnum            Tile part number of the current tile
+	 @param first_poc_tile_part true if first POC tile part, otherwise false
 	 @param tppos            The position of the tile part flag in the progression order
 	 @param pino             packet iterator number
 	 */
 	bool compress_packets(uint16_t tileno, uint16_t maxlayers,
 			BufferedStream *stream, uint32_t *p_data_written,
-			uint32_t tpnum, uint32_t tppos,
+			bool first_poc_tile_part, uint32_t tppos,
 			uint32_t pino);
 
 	/**

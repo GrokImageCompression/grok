@@ -27,7 +27,7 @@ namespace grk {
 
 TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream) :
 				 m_tile_index(0),
-				 m_poc_tile_part_index(0),
+				 m_first_poc_tile_part(true),
 				 m_tile_part_index(0),
 				 tile_part_data_length(0),
 				totnum_tp(0),
@@ -1176,7 +1176,7 @@ bool TileProcessor::t2_encode(uint32_t *all_packet_bytes_written) {
 #endif
 
 	if (!l_t2->compress_packets(m_tile_index, m_tcp->numlayers, m_stream,
-			all_packet_bytes_written, m_poc_tile_part_index, tp_pos, pino)) {
+			all_packet_bytes_written, m_first_poc_tile_part, tp_pos, pino)) {
 		delete l_t2;
 		return false;
 	}
@@ -1329,7 +1329,7 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_
 bool TileProcessor::pre_write_tile() {
 	m_tile_part_index = 0;
 	totnum_tp =	m_cp->tcps[m_tile_index].m_nb_tile_parts;
-	m_poc_tile_part_index = 0;
+	m_first_poc_tile_part = true;
 
 	/* initialisation before tile compressing  */
 	bool rc =  init_tile(nullptr, true);

@@ -35,7 +35,7 @@ T2Compress::T2Compress(TileProcessor *tileProc) :
 
 bool T2Compress::compress_packets(uint16_t tile_no, uint16_t max_layers,
 		BufferedStream *stream, uint32_t *p_data_written,
-		uint32_t tp_num, uint32_t tp_pos,
+		bool first_poc_tile_part, uint32_t tp_pos,
 		uint32_t pino) {
 	auto cp = tileProcessor->m_cp;
 	auto image = tileProcessor->image;
@@ -45,7 +45,7 @@ bool T2Compress::compress_packets(uint16_t tile_no, uint16_t max_layers,
 	if (!pi)
 		return false;
 
-	pi_enable_tile_part_generation(pi, cp, tile_no, pino, (tp_num == 0), tp_pos, FINAL_PASS);
+	pi_enable_tile_part_generation(pi, cp, tile_no, pino, first_poc_tile_part, tp_pos, FINAL_PASS);
 
 	auto current_pi = &pi[pino];
 	if (current_pi->poc.prg == GRK_PROG_UNKNOWN) {
