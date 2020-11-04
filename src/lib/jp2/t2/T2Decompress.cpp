@@ -47,6 +47,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 	bool usePlt = packetLengths && !cp->plm_markers;
 	if (usePlt)
 		packetLengths->getInit();
+	bool truncatedTile = false;
 	for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
 		/* if the resolution needed is too low, one dim of the tilec
 		 * could be equal to zero
@@ -67,6 +68,11 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			return false;
 		}
 		while (pi_next(current_pi)) {
+			if (src_buf->getRemainingLength() == 0){
+				GRK_WARN("Tile %d is truncated.", tile_no);
+				truncatedTile = true;
+				break;
+			}
 			auto tilec = p_tile->comps + current_pi->compno;
 			auto skip_the_packet = current_pi->layno
 					>= tcp->num_layers_to_decompress
@@ -140,6 +146,8 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			*p_data_read += nb_bytes_read;
 		}
 		delete[] first_pass_failed;
+		if (truncatedTile)
+			break;
 	}
 	pi_destroy(pi);
 	return true;
@@ -148,17 +156,6 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 
 bool T2Decompress::decompress_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
-	uint64_t max_length = src_buf->getRemainingLength();
-	if (max_length == 0) {
-		GRK_WARN("Tile %d decompress_packet: No data for either packet header\n"
-				"or packet body for packet prg=%u "
-				"cmptno=%02d reslvlno=%02d prcno=%03d layrno=%02d",
-		tileProcessor->m_tile_index,
-		 p_pi->poc.prg1, p_pi->compno,
-		 p_pi->resno, p_pi->precno,
-		 p_pi->layno);
-		return true;
-	}
 	auto p_tile = tileProcessor->tile;
 	auto res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
 	bool read_data;
