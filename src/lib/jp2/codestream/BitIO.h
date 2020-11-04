@@ -33,8 +33,8 @@ class BitIO: public IBitIO {
 
 public:
 
-	BitIO(uint8_t *bp, uint64_t len, bool isEncoder);
-	BitIO(IBufferedStream *stream, bool isEncoder);
+	BitIO(uint8_t *bp, uint64_t len, bool isCompressor);
+	BitIO(IBufferedStream *stream, bool isCompressor);
 
 	/*
 	 Number of bytes written.

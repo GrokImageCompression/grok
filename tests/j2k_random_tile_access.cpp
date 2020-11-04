@@ -83,7 +83,7 @@ static void info_callback(const char *msg, void *client_data) {
 
 static uint32_t test_tile( uint16_t tile_index, grk_image *image, grk_stream *stream,
 								grk_codec codec) {
-	spdlog::info("Decoding tile {} ...", tile_index);
+	spdlog::info("Decompressing tile {} ...", tile_index);
 	if(!grk_decompress_tile(codec, image, tile_index )){
 		spdlog::error("random tile processor: failed to decompress tile {}", tile_index);
 		return EXIT_FAILURE;

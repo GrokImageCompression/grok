@@ -2253,7 +2253,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 		//cache certain settings
 		auto tcp_mct = initParams->parameters.tcp_mct;
 		auto rateControlAlgorithm = initParams->parameters.rateControlAlgorithm;
-		/*Encoding image one by one*/
+		/*Compressing image one by one*/
 		for (imageno = 0; imageno < num_images; imageno++) {
 			if (initParams->img_fol.set_imgdir) {
 				if (get_next_file(dirptr->filename[imageno],

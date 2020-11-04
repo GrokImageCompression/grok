@@ -355,7 +355,7 @@ bool T1::allocate_buffers(uint32_t width, uint32_t height) {
 }
 
 
-T1::T1(bool isEncoder,uint32_t maxCblkW,uint32_t maxCblkH) : data(nullptr),
+T1::T1(bool isCompressor,uint32_t maxCblkW,uint32_t maxCblkH) : data(nullptr),
 															w(0),
 															h(0),
 															data_stride(0),
@@ -364,9 +364,9 @@ T1::T1(bool isEncoder,uint32_t maxCblkW,uint32_t maxCblkH) : data(nullptr),
 															flags(nullptr),
 															datasize(0),
 															flagssize(0),
-															compressor(isEncoder)
+															compressor(isCompressor)
 {
-	if (!isEncoder) {
+	if (!isCompressor) {
 	   cblkdatabuffersize = maxCblkW * maxCblkH * (uint32_t)sizeof(int32_t);
 	   cblkdatabuffer = (uint8_t*)grk_malloc(cblkdatabuffersize);
    }

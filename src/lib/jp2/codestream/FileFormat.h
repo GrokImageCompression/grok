@@ -160,10 +160,8 @@ struct FileFormat : public ICodeStream {
 						uint32_t end_y);
 
 
-	/** Decoding function */
    bool decompress( grk_plugin_tile *tile,	grk_image *p_image);
 
-	/** Reading function used after code stream if necessary */
    bool end_decompress(void);
 
    bool init_compress(grk_cparameters  *p_param,grk_image *p_image);

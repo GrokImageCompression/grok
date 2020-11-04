@@ -18,8 +18,8 @@
 
 namespace grk {
 
-T1DecompressScheduler::T1DecompressScheduler(TileCodingParams *tcp) :	success(true),
-																		decodeBlocks(nullptr){
+T1DecompressScheduler::T1DecompressScheduler() :success(true),
+												decodeBlocks(nullptr){
 
 }
 

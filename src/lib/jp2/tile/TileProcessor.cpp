@@ -660,7 +660,7 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 }
 
 bool TileProcessor::init_tile(grk_image *output_image,
-		bool isEncoder) {
+		bool isCompressor) {
 	uint32_t state = grk_plugin_get_debug_state();
 	auto tcp = &(m_cp->tcps[m_tile_index]);
 
@@ -703,7 +703,7 @@ bool TileProcessor::init_tile(grk_image *output_image,
 			return false;
 		auto tilec = tile->comps + compno;
 		grk_rect_u32 unreduced_tile_comp_region_dims;
-		if (!isEncoder)
+		if (!isCompressor)
 		 unreduced_tile_comp_region_dims =
 				 grk_rect_u32(ceildiv<uint32_t>(output_image->x0, image_comp->dx),
 											ceildiv<uint32_t>(output_image->y0, image_comp->dy),
@@ -716,7 +716,7 @@ bool TileProcessor::init_tile(grk_image *output_image,
 									ceildiv<uint32_t>(tile->y0, image_comp->dy),
 									ceildiv<uint32_t>(tile->x1, image_comp->dx),
 									ceildiv<uint32_t>(tile->y1, image_comp->dy));
-		if (!tilec->init(isEncoder,
+		if (!tilec->init(isCompressor,
 						whole_tile_decoding,
 						unreduced_tile_comp_dims,
 						unreduced_tile_comp_region_dims,
@@ -730,7 +730,7 @@ bool TileProcessor::init_tile(grk_image *output_image,
 	} /* compno */
 
 	// decompressor plugin debug sanity check on tile struct
-	if (!isEncoder) {
+	if (!isCompressor) {
 		if (state & GRK_PLUGIN_STATE_DEBUG) {
 			if (!tile_equals(current_plugin_tile, tile))
 				GRK_WARN("plugin tile differs from grok tile", nullptr);
@@ -738,7 +738,7 @@ bool TileProcessor::init_tile(grk_image *output_image,
 	}
 	tile->packno = 0;
 
-	if (isEncoder) {
+	if (isCompressor) {
         uint64_t max_precincts=0;
 		for (uint32_t compno = 0; compno < image->numcomps; ++compno) {
 			TileComponent *tilec = &tile->comps[compno];
@@ -758,7 +758,7 @@ bool TileProcessor::init_tile(grk_image *output_image,
 	return true;
 }
 
-bool TileProcessor::do_encode(void){
+bool TileProcessor::do_compress(void){
 	uint32_t state = grk_plugin_get_debug_state();
 	if (state & GRK_PLUGIN_STATE_DEBUG)
 		set_context_stream(this);
@@ -903,7 +903,7 @@ bool TileProcessor::decompress_tile_t1(void) {
 				}
 			}
 			std::vector<DecompressBlockExec*> blocks;
-			auto scheduler = std::unique_ptr<T1DecompressScheduler>(new T1DecompressScheduler(m_tcp));
+			auto scheduler = std::unique_ptr<T1DecompressScheduler>(new T1DecompressScheduler());
 			if (!scheduler->prepareScheduleDecompress(tilec, tccp, &blocks))
 				return false;
 			// !!! assume that code block dimensions do not change over components

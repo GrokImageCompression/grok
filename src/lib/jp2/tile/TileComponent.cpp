@@ -63,7 +63,7 @@ void TileComponent::release_mem(){
  * (tile component coordinates take sub-sampling into account).
  *
  */
-bool TileComponent::init(bool isEncoder,
+bool TileComponent::init(bool isCompressor,
 						bool whole_tile,
 						grk_rect_u32 unreduced_tile_comp_dims,
 						grk_rect_u32 unreduced_tile_comp_region_dims,
@@ -73,7 +73,7 @@ bool TileComponent::init(bool isEncoder,
 						TileComponentCodingParams* tccp,
 						grk_plugin_tile *current_plugin_tile){
 	uint32_t state = grk_plugin_get_debug_state();
-	m_is_encoder = isEncoder;
+	m_is_encoder = isCompressor;
 	whole_tile_decoding = whole_tile;
 	m_tccp = tccp;
 
@@ -252,7 +252,7 @@ bool TileComponent::init(bool isEncoder,
 
 				uint64_t nb_code_blocks = (uint64_t) current_precinct->cw* current_precinct->ch;
 				if (nb_code_blocks > 0) {
-					if (isEncoder)
+					if (isCompressor)
 						current_precinct->enc = new CompressCodeblock[nb_code_blocks];
 					else
 						current_precinct->dec = new DecompressCodeblock[nb_code_blocks];

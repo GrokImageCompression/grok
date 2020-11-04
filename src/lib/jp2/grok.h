@@ -691,13 +691,13 @@ typedef struct _grk_dparameters {
 	GRK_SUPPORTED_FILE_FMT decod_format;
 	/** output file format*/
 	GRK_SUPPORTED_FILE_FMT cod_format;
-	/** Decoding area left boundary */
+	/** Decompress window left boundary */
 	uint32_t DA_x0;
-	/** Decoding area right boundary */
+	/** Decompress window right boundary */
 	uint32_t DA_x1;
-	/** Decoding area up boundary */
+	/** Decompress window up boundary */
 	uint32_t DA_y0;
-	/** Decoding area bottom boundary */
+	/** Decompress window bottom boundary */
 	uint32_t DA_y1;
 	/** Verbose mode */
 	bool m_verbose;
@@ -741,13 +741,13 @@ typedef struct _grk_decompress_params {
 	GRK_SUPPORTED_FILE_FMT cod_format;
 	/** index file name */
 	char indexfilename[GRK_PATH_LEN];
-	/** Decoding area left boundary */
+	/** Decompress window left boundary */
 	uint32_t DA_x0;
-	/** Decoding area right boundary */
+	/** Decompress window right boundary */
 	uint32_t DA_x1;
-	/** Decoding area up boundary */
+	/** Decompress window up boundary */
 	uint32_t DA_y0;
-	/** Decoding area bottom boundary */
+	/** Decompress window bottom boundary */
 	uint32_t DA_y1;
 	/** Verbose mode */
 	bool m_verbose;

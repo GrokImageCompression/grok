@@ -57,7 +57,7 @@ private:
 };
 
 /**
- Tile coder/decompressor
+ Tile compressor/decompressor
  */
 struct TileProcessor {
 	explicit TileProcessor(CodeStream *codeStream, BufferedStream *stream) ;
@@ -66,17 +66,17 @@ struct TileProcessor {
 	/**
 	 * Allocates memory for decoding a specific tile.
 	 *
-	 * @param	output_image 	output image - stores the decompress region of interest
-	 * @param	isEncoder	 	true if tile will be encoded, otherwise false
+	 * @param	output_image 	output image (for decompress)
+	 * @param	isCompressor	true if tile will be compressed, otherwise false
 	 *
 	 * @return	true if the remaining data is sufficient.
 	 */
-	 bool init_tile(grk_image *output_image, bool isEncoder);
+	 bool init_tile(grk_image *output_image, bool isCompressor);
 
 	 bool pre_write_tile(void);
 
 	/**
-	 * Compress a tile from a raw image into stream.
+	 * Compress tile part
 	 * @param	tile_bytes_written	number of bytes written to stream
 	 * @return  true if the coding is successful.
 	 */
@@ -85,20 +85,20 @@ struct TileProcessor {
 	bool pre_compress_first_tile_part(void);
 
 	/**
-	 * Compress a tile from a raw image into stream.
+	 * Compress tile
 	 * @return  true if the coding is successful.
 	 */
-	bool do_encode(void);
+	bool do_compress(void);
 
 
 	/**
-	 T1 Decompress a tile from a buffer
+	 T1 decompress
 	 @return true if successful
 	 */
 	bool decompress_tile_t1(void);
 
 	/**
-	 T2 Decompress a tile from a buffer
+	 T2 decompress
 	 @param src_buf Source buffer
 	 @return true if successful
 	 */
@@ -117,27 +117,27 @@ struct TileProcessor {
 
 	bool prepare_sod_decoding(CodeStream *codeStream);
 
-	/** index of tile being currently coded/decompressed */
+	/** index of tile being currently compressed/decompressed */
 	uint16_t m_tile_index;
 
-	/** Encoding Only
+	/** Compressing Only
 	 *  true for first POC tile part, otherwise false*/
 	bool m_first_poc_tile_part;
 
-	/** Encoding Only
+	/** Compressing Only
 	 *  index of tile part being currently coding.
 	 *  m_tile_part_index holds the total number of tile parts encoded thus far
 	 *  while the compressor is compressing the current tile part.*/
 	uint8_t m_tile_part_index;
 
-	// Decoding Only
+	// Decompressing Only
 	uint32_t tile_part_data_length;
 
-	/** Encoding Only
+	/** Compressing Only
 	 * Total number of tile parts of the tile*/
 	uint8_t totnum_tp;
 
-	/** Encoding Only
+	/** Compressing Only
 	 *  Current packet iterator number */
 	uint32_t pino;
 
@@ -147,7 +147,7 @@ struct TileProcessor {
 	grk_image *image;
 	grk_plugin_tile *current_plugin_tile;
 
-    /** Only valid for decoding. Whether the whole tile is decompressed, or just the region in win_x0/win_y0/win_x1/win_y1 */
+    // true if whole tile will be decoded; false if tile window will be decoded
     bool   whole_tile_decoding;
 
 	PacketLengthMarkers *plt_markers;
@@ -155,7 +155,7 @@ struct TileProcessor {
 	/** Coding parameters */
 	CodingParams *m_cp;
 
-	// Encoding only - track which packets have been arleady written
+	// Compressing only - track which packets have been already written
 	// to the code stream
 	PacketTracker m_packetTracker;
 
@@ -167,7 +167,7 @@ private:
 	/** position of the tile part flag in progression order*/
 	uint32_t tp_pos;
 
-	/** coding/decoding parameters common to all tiles */
+	// coding/decoding parameters for this tile
 	TileCodingParams *m_tcp;
 
 	 bool t2_decompress(ChunkBuffer *src_buf,	uint64_t *p_data_read);

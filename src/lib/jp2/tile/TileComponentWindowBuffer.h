@@ -63,7 +63,7 @@ template<typename T> struct res_buf {
  */
 
 template<typename T> struct TileComponentWindowBuffer {
-	TileComponentWindowBuffer(bool isEncoder,
+	TileComponentWindowBuffer(bool isCompressor,
 						grk_rect_u32 unreduced_tile_dim,
 						grk_rect_u32 reduced_tile_dim,
 						grk_rect_u32 unreduced_window_dim,
@@ -73,7 +73,7 @@ template<typename T> struct TileComponentWindowBuffer {
 							m_unreduced_bounds(unreduced_tile_dim),
 							m_bounds(reduced_tile_dim),
 							num_resolutions(numresolutions),
-							m_encode(isEncoder)
+							m_encode(isCompressor)
 	{
 		if (!m_encode) {
 			m_bounds = unreduced_window_dim.rectceildivpow2(num_resolutions - reduced_num_resolutions);

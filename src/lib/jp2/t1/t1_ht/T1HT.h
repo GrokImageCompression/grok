@@ -32,7 +32,7 @@ namespace t1_ht {
 
 class T1HT: public T1Interface {
 public:
-	T1HT(bool isEncoder, TileCodingParams *tcp, uint32_t maxCblkW, uint32_t maxCblkH);
+	T1HT(bool isCompressor, TileCodingParams *tcp, uint32_t maxCblkW, uint32_t maxCblkH);
 	virtual ~T1HT();
 
 	bool compress(CompressBlockExec *block);

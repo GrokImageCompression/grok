@@ -26,8 +26,8 @@ using namespace std;
 namespace grk {
 namespace t1_part1{
 
-T1Part1::T1Part1(bool isEncoder, uint32_t maxCblkW,	uint32_t maxCblkH) : t1(nullptr){
-	t1 = new T1(isEncoder,maxCblkW,	maxCblkH);
+T1Part1::T1Part1(bool isCompressor, uint32_t maxCblkW,	uint32_t maxCblkH) : t1(nullptr){
+	t1 = new T1(isCompressor,maxCblkW,	maxCblkH);
 
 }
 T1Part1::~T1Part1() {

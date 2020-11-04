@@ -112,7 +112,7 @@ static INLINE uint32_t mqc_raw_decode(mqcoder *mqc){
 
 #define decompress_macro(d, mqc, curctx, a, c, ct) \
 { \
-    /* Implements ISO 15444-1 C.3.2 Decoding a decision (DECODE) */ \
+    /* Implements ISO 15444-1 C.3.2 Decompressing a decision (DECODE) */ \
     a -= (*curctx)->qeval;  \
     uint32_t qeval_shift = (*curctx)->qeval << 16; \
     if (c < qeval_shift) {  \

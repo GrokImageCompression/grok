@@ -22,14 +22,14 @@
 
 namespace grk {
 
-BitIO::BitIO(uint8_t *bp, uint64_t len, bool isEncoder) :
-		start(bp), offset(0), buf_len(len), buf(0), ct(isEncoder ? 8 : 0), total_bytes(
+BitIO::BitIO(uint8_t *bp, uint64_t len, bool isCompressor) :
+		start(bp), offset(0), buf_len(len), buf(0), ct(isCompressor ? 8 : 0), total_bytes(
 				0), sim_out(false), stream(nullptr) {
 
 }
 
-BitIO::BitIO(IBufferedStream *strm, bool isEncoder) :
-		start(nullptr), offset(0), buf_len(0), buf(0), ct(isEncoder ? 8 : 0), total_bytes(
+BitIO::BitIO(IBufferedStream *strm, bool isCompressor) :
+		start(nullptr), offset(0), buf_len(0), buf(0), ct(isCompressor ? 8 : 0), total_bytes(
 				0), sim_out(false), stream(strm) {
 }
 

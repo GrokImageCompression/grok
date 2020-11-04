@@ -1120,8 +1120,6 @@ bool CodeStream::do_decompress(grk_image *p_image){
 	return true;
 }
 
-
-/** Decoding function */
 bool CodeStream::decompress( grk_plugin_tile *tile,	 grk_image *p_image){
 
 	if (!p_image)
@@ -1759,7 +1757,7 @@ bool CodeStream::compress(grk_plugin_tile* tile){
 							if (!tileProcessor->pre_write_tile())
 								success = false;
 							else {
-								if (!tileProcessor->do_encode())
+								if (!tileProcessor->do_compress())
 									success = false;
 							}
 						}
@@ -1776,7 +1774,7 @@ bool CodeStream::compress(grk_plugin_tile* tile){
 				delete tileProcessor;
 				goto cleanup;
 			}
-			if (!tileProcessor->do_encode()){
+			if (!tileProcessor->do_compress()){
 				delete tileProcessor;
 				goto cleanup;
 			}
@@ -1829,7 +1827,7 @@ bool CodeStream::compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t un
 		GRK_ERROR("Size mismatch between tile data and sent data.");
 		goto cleanup;
 	}
-	if (!m_tileProcessor->do_encode())
+	if (!m_tileProcessor->do_compress())
 		goto cleanup;
 	if (!post_write_tile(m_tileProcessor)) {
 		GRK_ERROR("Error while j2k_post_write_tile with tile index = %u",

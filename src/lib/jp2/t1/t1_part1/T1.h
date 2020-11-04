@@ -32,7 +32,7 @@ typedef uint32_t grk_flag;
 
 struct T1 {
 
-	T1(bool isEncoder, uint32_t maxCblkW,	uint32_t maxCblkH);
+	T1(bool isCompressor, uint32_t maxCblkW,	uint32_t maxCblkH);
 	~T1();
 
 	bool decompress_cblk(cblk_dec *cblk,

@@ -95,13 +95,13 @@ bool init_tilec(TileComponent * tilec,
         ++res;
         --leveno;
     }
-    bool isEncoder = (output_image == nullptr);
+    bool isCompressor = (output_image == nullptr);
 	auto highestNumberOfResolutions =
-			(!isEncoder) ? tilec->resolutions_to_decompress : numresolutions;
+			(!isCompressor) ? tilec->resolutions_to_decompress : numresolutions;
 	auto hightestResolution =  tilec->resolutions + highestNumberOfResolutions - 1;
 	*((grk_rect_u32*)tilec) = (*(grk_rect_u32*)hightestResolution);
     grk_rect_u32 unreduced_tile_comp_region_dims;
-	if (!isEncoder) {
+	if (!isCompressor) {
 		unreduced_tile_comp_region_dims = grk_rect_u32(ceildiv<uint32_t>(output_image->x0,1),
 											ceildiv<uint32_t>(output_image->y0,1),
 											ceildiv<uint32_t>(output_image->x1,1),

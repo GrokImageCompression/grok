@@ -153,7 +153,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	spdlog::info(
-			"Encoding random values -> keep in mind that this is very hard to compress");
+			"Compressing random values -> keep in mind that this is very hard to compress");
 	for (i = 0; i < data_size; ++i)
 		data[i] = (uint8_t) i;
 

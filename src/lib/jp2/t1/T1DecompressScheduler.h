@@ -26,7 +26,7 @@ class T1Interface;
 
 class T1DecompressScheduler {
 public:
-	T1DecompressScheduler(TileCodingParams *tcp);
+	T1DecompressScheduler(void);
 	~T1DecompressScheduler();
 	bool decompress(std::vector<DecompressBlockExec*> *blocks);
 

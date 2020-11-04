@@ -933,7 +933,7 @@ int GrkDecompress::plugin_main(int argc, char **argv, DecompressInitParams *init
 
 	start = std::chrono::high_resolution_clock::now();
 
-	/*Decoding image one by one*/
+	/*Decompressing image one by one*/
 	for (imageno = 0; imageno < num_images; imageno++) {
 		if (initParams->img_fol.set_imgdir) {
 			if (get_next_file(dirptr->filename[imageno], &initParams->img_fol,
