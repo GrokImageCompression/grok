@@ -2216,17 +2216,19 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno, uint8_t *p_he
 	}
 	/* SPcoc (E) */
 	grk_read<uint8_t>(current_ptr++, &tccp->cblkw);
-	tccp->cblkw += 2;
 	/* SPcoc (F) */
 	grk_read<uint8_t>(current_ptr++, &tccp->cblkh);
-	tccp->cblkh += 2;
 
-	if ((tccp->cblkw > 10) || (tccp->cblkh > 10)
-			|| ((tccp->cblkw + tccp->cblkh) > 12)) {
-		GRK_ERROR("Error reading SPCod SPCoc element,"
-				" Invalid cblkw/cblkh combination");
+	if ((tccp->cblkw > 8) || (tccp->cblkh > 8)
+			|| ((tccp->cblkw + tccp->cblkh) > 10)) {
+		GRK_ERROR("Error reading SPCod SPCoc element: "
+				" Invalid code block dimension exponents (%d, %d)",
+				(uint32_t)tccp->cblkw + 2, (uint32_t)tccp->cblkh + 2);
 		return false;
 	}
+
+	tccp->cblkw += 2;
+	tccp->cblkh += 2;
 
 	/* SPcoc (G) */
 	tccp->cblk_sty = *current_ptr++;
