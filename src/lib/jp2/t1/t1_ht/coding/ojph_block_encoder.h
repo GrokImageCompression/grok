@@ -56,6 +56,9 @@ namespace ojph {
                             int width, int height, int stride,
                             int* lengths, ojph::mem_elastic_allocator *elastic,
                             ojph::coded_lists *& coded);
+
+    bool vlc_init_tables();
+    bool uvlc_init_tables();
   }
 }
 
