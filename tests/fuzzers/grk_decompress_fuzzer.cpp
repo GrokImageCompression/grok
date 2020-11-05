@@ -146,7 +146,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
     if (height_to_read > 1024)
         height_to_read = 1024;
 
-    if (grk_set_decompress_area(pCodec,
+    if (grk_set_decompress_window(pCodec,
     						psImage,
                             psImage->x0,
 							psImage->y0,
