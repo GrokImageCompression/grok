@@ -22,6 +22,7 @@
 #include "grk_includes.h"
 #include "CPUArch.h"
 #include <algorithm>
+#include <limits>
 
 const bool DEBUG_WAVELET = false;
 
@@ -114,7 +115,8 @@ template <typename T> struct dwt_data {
 				 win_l_0(0),
 				 win_l_1(0),
 				 win_h_0(0),
-				 win_h_1(0)
+				 win_h_1(0),
+				 length(0)
 	{}
 
 	dwt_data(const dwt_data& rhs) : mem(nullptr),
@@ -124,11 +126,13 @@ template <typename T> struct dwt_data {
 									win_l_0 ( rhs.win_l_0),
 									win_l_1 ( rhs.win_l_1),
 									win_h_0 ( rhs.win_h_0),
-									win_h_1 ( rhs.win_h_1)
+									win_h_1 ( rhs.win_h_1),
+									length (rhs.length)
 	{}
 
 	bool alloc(size_t len) {
 		release();
+		length = len;
 
 	    /* overflow check */
 		// add 10 just to be sure to we are safe from
@@ -146,6 +150,12 @@ template <typename T> struct dwt_data {
 		mem = (T*)grk_aligned_malloc(len * sizeof(T));
 		return mem != nullptr;
 	}
+
+	void fill() {
+		for (size_t i = 0; i < length; ++i){
+			mem[i] = T((std::numeric_limits<float>::max)());
+		}
+	}
 	void release(){
 		grk_aligned_free(mem);
 		mem = nullptr;
@@ -158,13 +168,20 @@ template <typename T> struct dwt_data {
     uint32_t      win_l_1; /* end coord in low pass band */
     uint32_t      win_h_0; /* start coord in high pass band */
     uint32_t      win_h_1; /* end coord in high pass band */
+    size_t length;
 };
 
 struct  vec4f {
 	vec4f() : f{0}
 	{}
-	explicit vec4f(float m) : f{m}
-	{}
+	explicit vec4f(float m)
+	{
+		f[0]=m;
+		f[1]=m;
+		f[2]=m;
+		f[3]=m;
+
+	}
     float f[4];
 };
 
@@ -1756,13 +1773,13 @@ public:
 
 static void interleave_partial_h_97(dwt_data<vec4f>* dwt,
 									ISparseBuffer* sa,
-									uint32_t sa_line,
+									uint32_t y_offset,
 									uint32_t num_rows){
     for (uint32_t i = 0; i < num_rows; i++) {
         bool ret = sa->read(dwt->win_l_0,
-						  sa_line + i,
+						  y_offset + i,
 						  dwt->win_l_1,
-						  sa_line + i + 1,
+						  y_offset + i + 1,
 						  /* Nasty cast from float* to int32* */
 						  (int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_0) + i,
 						  8,
@@ -1770,9 +1787,9 @@ static void interleave_partial_h_97(dwt_data<vec4f>* dwt,
 						  true);
         assert(ret);
         ret = sa->read(dwt->sn + dwt->win_h_0,
-						  sa_line + i,
+						  y_offset + i,
 						  dwt->sn + dwt->win_h_1,
-						  sa_line + i + 1,
+						  y_offset + i + 1,
 						  /* Nasty cast from float* to int32* */
 						  (int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_0) + i,
 						  8,
@@ -1790,19 +1807,20 @@ static void interleave_partial_v_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
 									uint32_t nb_elts_read){
     bool ret = sa->read(sa_col,
     					dwt->win_l_0,
-						sa_col + nb_elts_read, dwt->win_l_1,
+						sa_col + nb_elts_read,
+						dwt->win_l_1,
 						(int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_0),
 						1,
-						8,
+						2*4,
 						true);
     assert(ret);
     ret = sa->read(sa_col,
     				dwt->sn + dwt->win_h_0,
 					sa_col + nb_elts_read,
 					dwt->sn + dwt->win_h_1,
-					(int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_0),
+					(int32_t*)(dwt->mem + (1 - dwt->cas) + 2 * dwt->win_h_0),
 					1,
-					8,
+					2*4,
 					true);
     assert(ret);
     GRK_UNUSED(ret);
@@ -1876,6 +1894,7 @@ template <typename T,
     }
 	dwt_data<T> vert;
     vert.mem = horiz.mem;
+    vert.length = horiz.length;
     D decompressor;
     size_t num_threads = ThreadPool::get()->num_threads();
 
