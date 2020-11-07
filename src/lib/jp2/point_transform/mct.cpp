@@ -106,7 +106,7 @@ void mct::compress_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 
 
 
-void mct::decompress_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno) {
+void mct::decompress_dc_shift_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno) {
 	size_t i = 0;
 	float *GRK_RESTRICT c0 = (float*) tile->comps[compno].getBuffer()->ptr();
 	int32_t *c0_i = (int32_t*)c0;
@@ -270,7 +270,7 @@ void mct::decompress_irrev(grk_tile *tile, grk_image *image,TileComponentCodingP
 }
 
 
-void mct::decompress_rev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno) {
+void mct::decompress_dc_shift_rev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno) {
 	size_t i = 0;
 	int32_t *GRK_RESTRICT c0 = tile->comps[compno].getBuffer()->ptr();
 

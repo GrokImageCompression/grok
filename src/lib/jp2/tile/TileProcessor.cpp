@@ -1022,9 +1022,9 @@ bool TileProcessor::dc_level_shift_decompress() {
 		if (!need_mct_decompress(compno) || m_tcp->mct == 2 ) {
 			auto tccp = m_tcp->tccps + compno;
 			if (tccp->qmfbid == 1)
-				mct::decompress_rev(tile,image,m_tcp->tccps,compno);
+				mct::decompress_dc_shift_rev(tile,image,m_tcp->tccps,compno);
 			else
-				mct::decompress_irrev(tile,image,m_tcp->tccps,compno);
+				mct::decompress_dc_shift_irrev(tile,image,m_tcp->tccps,compno);
 		}
 	}
 	return true;
