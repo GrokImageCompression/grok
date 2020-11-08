@@ -2034,8 +2034,12 @@ template <typename T,
 			if (num_threads == 1 ||step_j < HORIZ_PASS_HEIGHT){
 		     uint32_t j;
 			 for (j = win_vert[k].y0; j + HORIZ_PASS_HEIGHT-1 < win_vert[k].y1; j += HORIZ_PASS_HEIGHT) {
+				 //horiz.fill();
 				 decompressor.interleave_partial_h(&horiz, sa, j,HORIZ_PASS_HEIGHT);
 				 decompressor.decompress_h(&horiz);
+				 //for (uint32_t p =  win_synthesis.x0; p <  win_synthesis.x1; ++p)
+					// for (uint32_t pp = 0; pp < HORIZ_PASS_HEIGHT; ++pp)
+						// assert( ((float*)horiz.mem)[p*HORIZ_PASS_HEIGHT + pp] != std::numeric_limits<float>::max());
 				 if (!sa->write( win_synthesis.x0,
 								  j,
 								  win_synthesis.x1,
@@ -2135,7 +2139,13 @@ template <typename T,
 		if (num_threads == 1 || step_j < VERT_PASS_WIDTH){
 	        uint32_t j;
 			for (j = win_synthesis.x0; j + VERT_PASS_WIDTH < win_synthesis.x1; j += VERT_PASS_WIDTH) {
+				//vert.fill();
 				decompressor.interleave_partial_v(&vert, sa, j, VERT_PASS_WIDTH);
+				/*
+				for (uint32_t p = win_synthesis.y0; p < win_synthesis.y1; ++p)
+					for (uint32_t index = 0; index < VERT_PASS_WIDTH; ++index)
+						assert( ((float*)vert.mem)[p*VERT_PASS_WIDTH + index] != std::numeric_limits<float>::max());
+				*/
 				decompressor.decompress_v(&vert);
 				if (!sa->write(j,
 							  win_synthesis.y0,
@@ -2153,6 +2163,9 @@ template <typename T,
 			if (j < win_synthesis.x1) {
 				decompressor.interleave_partial_v(&vert, sa, j, win_synthesis.x1 - j);
 				decompressor.decompress_v(&vert);
+				//for (uint32_t p = win_synthesis.y0; p < win_synthesis.y1; ++p)
+					//for (uint32_t index = 0; index < VERT_PASS_WIDTH; ++index)
+						//assert( ((float*)vert.mem)[p*VERT_PASS_WIDTH + index] != std::numeric_limits<float>::max());
 				if (!sa->write( j,
 								  win_synthesis.y0,
 								  win_synthesis.x1,
@@ -2225,6 +2238,9 @@ template <typename T,
 		}
     }
     //final read into tile buffer
+   // final_win_bounds.x1 = final_win_bounds.x0+7;
+    //final_win_bounds.x0 += 6;
+    //-i clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4742584414765056 -o foo.tif  -v -d 7,32,70,33
 	bool ret = sa->read(final_win_bounds,
 					   tilec->getBuffer()->ptr(),
 					   1,
