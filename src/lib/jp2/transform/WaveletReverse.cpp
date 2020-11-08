@@ -2026,10 +2026,10 @@ template <typename T,
 	            horiz.mem[win_synthesis.x1] = T(0);
 #endif
 			uint32_t num_jobs = (uint32_t)num_threads;
-			uint32_t num_cols = win_vert[k].y1 - win_vert[k].y0 + 1;
-			if (num_cols < num_jobs)
-				num_jobs = num_cols;
-			uint32_t step_j = num_jobs ? ( num_cols / num_jobs) : 0;
+			uint32_t num_rows = win_vert[k].height();
+			if (num_rows < num_jobs)
+				num_jobs = num_rows;
+			uint32_t step_j = num_jobs ? ( num_rows / num_jobs) : 0;
 			if (num_threads == 1 ||step_j < HORIZ_PASS_HEIGHT){
 		     uint32_t j;
 			 for (j = win_vert[k].y0; j + HORIZ_PASS_HEIGHT-1 < win_vert[k].y1; j += HORIZ_PASS_HEIGHT) {
@@ -2127,7 +2127,7 @@ template <typename T,
         vert.win_h_0 = win_horiz_band[BAND_ORIENT_LH].y0;
         vert.win_h_1 = win_horiz_band[BAND_ORIENT_LH].y1;
         uint32_t num_jobs = (uint32_t)num_threads;
-        uint32_t num_cols = win_synthesis.x1 - win_synthesis.x0 + 1;
+        uint32_t num_cols = win_synthesis.width();
 		if (num_cols < num_jobs)
 			num_jobs = num_cols;
 		uint32_t step_j = num_jobs ? ( num_cols / num_jobs) : 0;
