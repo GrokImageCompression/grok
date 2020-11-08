@@ -565,6 +565,13 @@ bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 //							"for codeblock %u (layer=%u, prec=%u, band=%u, res=%u, comp=%u).\n"
 //							"Truncating packet data.", seg->numBytesInPacket,
 //							maxLen, cblkno, p_pi->layno, p_pi->precno, bandno, p_pi->resno, p_pi->compno);
+
+					// HT doesn't tolerate truncated code blocks since decoding runs both forward and reverse.
+					// So, in this case, we ignore the entire code block
+					if (tileProcessor->m_cp->tcps[0].isHT){
+						cblk->numSegments = 0;
+						cblk->seg_buffers.clear();
+					}
 					throw TruncatedStreamException();
 				}
 				//initialize dataindex to current contiguous size of code block
