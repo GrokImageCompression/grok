@@ -250,14 +250,15 @@ bool BMPFormat::bmp_read_raw_data(uint8_t *pData, uint32_t stride, uint32_t heig
 bool BMPFormat::bmp_read_rle8_data(uint8_t *pData, uint32_t stride,
 		uint32_t width, uint32_t height) {
 	uint32_t x = 0, y = 0, written = 0;
-	uint8_t *pix;
-	const uint8_t *beyond;
+	uint8_t *pix = nullptr;
+	const uint8_t *beyond = nullptr;
+	uint8_t *pixels_ptr = nullptr;
+	bool rc = false;
 	uint8_t *pixels = new uint8_t[Info_h.biSizeImage];
 	if (!readFromFile(pixels, Info_h.biSizeImage)){
-		delete[] pixels;
-		return false;
+		goto cleanup;
 	}
-	uint8_t *pixels_ptr = pixels;
+	pixels_ptr = pixels;
 	beyond = pData + stride * height;
 	pix = pData;
 
@@ -305,9 +306,12 @@ bool BMPFormat::bmp_read_rle8_data(uint8_t *pData, uint32_t stride,
 	if (written != width * height) {
 		spdlog::error(
 				"Number of pixels written does not match specified image dimensions.");
-		return false;
+		goto cleanup;
 	}
-	return true;
+	rc = true;
+cleanup:
+	delete[] pixels;
+	return rc;
 }
 bool BMPFormat::bmp_read_rle4_data(uint8_t *pData, uint32_t stride,
 		uint32_t width, uint32_t height) {
