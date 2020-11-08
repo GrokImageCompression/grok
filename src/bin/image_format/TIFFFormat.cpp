@@ -439,18 +439,21 @@ bool TIFFFormat::encodeHeader(grk_image *image, const std::string &filename,
 	bool subsampled = grk::isSubsampled(m_image);
 	tsize_t stride, rowsPerStrip;
 
+	if (grk::isSubsampled(m_image) && !grk::isChromaSubsampled(m_image)){
+		spdlog::error("TIFFFormat::encodeHeader: only support subsampled image with subsampled chroma channels");
+		return false;
+	}
 	assert(m_image);
 	assert(m_fileName.c_str());
 	if (m_image->color_space == GRK_CLRSPC_CMYK) {
 		if (numcomps < 4U) {
-			spdlog::error(
-					"imagetotif: CMYK images shall be composed of at least 4 planes.");
+			spdlog::error("TIFFFormat::encodeHeader: CMYK images shall be composed of at least 4 planes.");
 
 			return false;
 		}
 		tiPhoto = PHOTOMETRIC_SEPARATED;
 		if (numcomps > 4U) {
-			spdlog::warn("imagetotif: number of components {} is "
+			spdlog::warn("TIFFFormat::encodeHeader: number of components {} is "
 						"greater than 4. Truncating to 4", numcomps);
 			numcomps = 4U;
 		}
@@ -459,7 +462,7 @@ bool TIFFFormat::encodeHeader(grk_image *image, const std::string &filename,
 		case GRK_CLRSPC_EYCC:
 		case GRK_CLRSPC_SYCC:
 			if (subsampled && numcomps != 3){
-				spdlog::error("imagetotif: subsampled YCbCr m_image with alpha not supported.");
+				spdlog::error("TIFFFormat::encodeHeader: subsampled YCbCr m_image with alpha not supported.");
 				goto cleanup;
 			}
 			chroma_subsample_x = m_image->comps[1].dx;
@@ -479,13 +482,13 @@ bool TIFFFormat::encodeHeader(grk_image *image, const std::string &filename,
 	}
 
 	if (bps == 0) {
-		spdlog::error("imagetotif: m_image precision is zero.");
+		spdlog::error("TIFFFormat::encodeHeader: m_image precision is zero.");
 		goto cleanup;
 	}
 
 	if (numcomps > maxNumComponents){
 		spdlog::error(
-				"imagetotif: number of components {} must be <= {}", numcomps,maxNumComponents);
+				"TIFFFormat::encodeHeader: number of components {} must be <= {}", numcomps,maxNumComponents);
 		goto cleanup;
 	}
 
@@ -550,7 +553,7 @@ bool TIFFFormat::encodeHeader(grk_image *image, const std::string &filename,
 	if (numExtraChannels > 0) {
 		num_colour_channels = (uint32_t)(numcomps - (uint32_t)numExtraChannels);
 		if ((uint32_t)firstExtraChannel < num_colour_channels) {
-			spdlog::warn("imagetotif: TIFF requires that non-colour channels occur as "
+			spdlog::warn("TIFFFormat::encodeHeader: TIFF requires that non-colour channels occur as "
 						"last channels in m_image. "
 						"TIFFTAG_EXTRASAMPLES tag for extra channels will not be set");
 			numExtraChannels = 0;
@@ -558,7 +561,7 @@ bool TIFFFormat::encodeHeader(grk_image *image, const std::string &filename,
 	}
 	tif = TIFFOpen(m_fileName.c_str(), "wb");
 	if (!tif) {
-		spdlog::error("imagetotif:failed to open {} for writing", m_fileName.c_str());
+		spdlog::error("TIFFFormat::encodeHeader:failed to open {} for writing", m_fileName.c_str());
 		goto cleanup;
 	}
 	// calculate rows per strip, base on target 8K strip size

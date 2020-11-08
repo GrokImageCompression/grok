@@ -318,6 +318,31 @@ bool isSubsampled(grk_image *image) {
 	return false;
 }
 
+bool isChromaSubsampled(grk_image *image) {
+	if (!image || image->numcomps < 3)
+		return false;
+	for (uint32_t i = 0; i < image->numcomps; ++i) {
+		auto comp = image->comps + i;
+		switch (i) {
+		case 1:
+		case 2:
+			if (comp->type != GRK_COMPONENT_TYPE_COLOUR)
+				return false;
+			break;
+		default:
+			if (comp->dx != 1 || comp->dy != 1) {
+				return false;
+			}
+			break;
+		}
+	}
+	auto compB = image->comps + 1;
+	auto compR = image->comps + 2;
+
+	return (compB->dx == compR->dx && compB->dy == compR->dy);
+}
+
+
 int population_count(uint32_t val)
 {
 #ifdef _MSC_VER
