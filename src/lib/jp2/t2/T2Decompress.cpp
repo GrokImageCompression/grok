@@ -560,12 +560,12 @@ bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 				size_t maxLen = src_buf->getRemainingLength();
 				// Check possible overflow on segment length
 				if (((seg->numBytesInPacket) > maxLen)) {
-					GRK_WARN("read packet data:\nSegment segment length %u\n"
-							"is greater than remaining total length of all segments (%u)\n"
-							"for codeblock %u (layer=%u, prec=%u, band=%u, res=%u, comp=%u).\n"
-							"Truncating packet data.", seg->numBytesInPacket,
-							maxLen, cblkno, p_pi->layno, p_pi->precno, bandno, p_pi->resno, p_pi->compno);
-					seg->numBytesInPacket = (uint32_t) maxLen;
+//					GRK_WARN("read packet data:\nSegment segment length %u\n"
+//							"is greater than remaining total length of all segments (%u)\n"
+//							"for codeblock %u (layer=%u, prec=%u, band=%u, res=%u, comp=%u).\n"
+//							"Truncating packet data.", seg->numBytesInPacket,
+//							maxLen, cblkno, p_pi->layno, p_pi->precno, bandno, p_pi->resno, p_pi->compno);
+					throw TruncatedStreamException();
 				}
 				//initialize dataindex to current contiguous size of code block
 				if (seg->numpasses == 0)
