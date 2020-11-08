@@ -176,6 +176,9 @@ bool T1HT::decompress(DecompressBlockExec *block) {
 
 bool T1HT::postDecompress(DecompressBlockExec *block) {
 	auto cblk = block->cblk;
+	if (cblk->seg_buffers.empty())
+		return true;
+
 	uint16_t cblk_w =  (uint16_t)cblk->width();
 	uint16_t cblk_h =  (uint16_t)cblk->height();
 
