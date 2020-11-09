@@ -403,6 +403,11 @@ bool PNGFormat::encodeHeader(grk_image *img, const std::string &filename,
 	uint32_t i;
 	bool fails = true;
 
+	if (grk::isSubsampled(m_image)) {
+		spdlog::error("Sub-sampled images not supported");
+		return false;
+	}
+
 	memset(&sig_bit, 0, sizeof(sig_bit));
 
 	prec =  m_image->comps[0].prec;
