@@ -54,7 +54,7 @@ struct TileProcessor;
 class Quantizer {
 public:
 
-	void setBandStepSizeAndBps( TileCodingParams *tcp,
+	bool setBandStepSizeAndBps( TileCodingParams *tcp,
 								Subband *band,
 								uint32_t resno,
 								 uint8_t bandno,

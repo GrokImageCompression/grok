@@ -222,13 +222,14 @@ bool TileComponent::init(bool isCompressor,
 
 		for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
 			auto band = res->bandWindow + bandno;
-			tccp->quant.setBandStepSizeAndBps(tcp,
+			if (!tccp->quant.setBandStepSizeAndBps(tcp,
 											band,
 											resno,
 											(uint8_t)bandno,
 											tccp,
 											prec,
-											m_is_encoder);
+											m_is_encoder))
+				return false;
 
 			band->precincts = new Precinct[nb_precincts];
 			band->numPrecincts = nb_precincts;
