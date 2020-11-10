@@ -1240,20 +1240,23 @@ bool j2k_read_rgn(CodeStream *codeStream,  uint8_t *p_header_data,
 	/* Srgn */
 	grk_read<uint32_t>(p_header_data++, &roi_sty, 1);
 	if (roi_sty != 0) {
-		GRK_WARN(
-				"RGN marker RS value of %u is not supported by JPEG 2000 Part 1",
-				roi_sty);
+		GRK_ERROR("RGN marker RS value of %u is not supported by JPEG 2000 Part 1",roi_sty);
+		return false;
 	}
 
 	/* testcase 3635.pdf.asan.77.2930 */
 	if (comp_no >= nb_comp) {
-		GRK_ERROR("bad component number in RGN (%u when there are only %u)",
+		GRK_ERROR("bad component number in RGN (%u is >= number of components %u)",
 				comp_no, nb_comp);
 		return false;
 	}
 
 	/* SPrgn */
 	grk_read<uint8_t>(p_header_data++,&(tcp->tccps[comp_no].roishift));
+	if (tcp->tccps[comp_no].roishift >= 32){
+		GRK_ERROR("Unsupported ROI shift : %u", tcp->tccps[comp_no].roishift);
+		return false;
+	}
 
 	return true;
 }
