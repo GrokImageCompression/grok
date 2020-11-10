@@ -37,7 +37,6 @@ struct T1 {
 
 	bool decompress_cblk(cblk_dec *cblk,
 						uint8_t orientation,
-						uint32_t roishift,
 						uint32_t cblksty);
 	void code_block_enc_deallocate(cblk_enc *p_code_block);
 	bool allocate_buffers(uint32_t w, uint32_t h);

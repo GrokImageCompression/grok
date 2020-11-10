@@ -180,11 +180,10 @@ bool T1Part1::decompress(DecompressBlockExec *block) {
 	cblkexp.segs = segs;
 	// subtract roishift as it was added when packet was parsed
 	// and exp uses subtracted value
-	cblkexp.numbps = cblk->numbps - block->roishift;
+	cblkexp.numbps = cblk->numbps;
 
     bool ret =t1->decompress_cblk(&cblkexp,
 								block->band_orientation,
-								block->roishift,
 								block->cblk_sty);
 
 	delete[] segs;

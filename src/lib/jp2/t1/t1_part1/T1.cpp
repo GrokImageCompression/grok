@@ -1308,8 +1308,7 @@ void T1::dec_refpass_mqc(int32_t bpno) {
 	}
 }
 
-bool T1::decompress_cblk(cblk_dec *cblk, uint8_t orientation,
-		uint32_t roishift, uint32_t cblksty) {
+bool T1::decompress_cblk(cblk_dec *cblk, uint8_t orientation, uint32_t cblksty) {
 	auto mqc = &coder;
 	uint32_t cblkdataindex = 0;
 	bool check_pterm = cblksty & GRK_CBLKSTY_PTERM;
@@ -1321,7 +1320,7 @@ bool T1::decompress_cblk(cblk_dec *cblk, uint8_t orientation,
 		return false;
 
 
-	int32_t bpno_plus_one = (int32_t) (roishift + cblk->numbps);
+	int32_t bpno_plus_one = (int32_t) (cblk->numbps);
 	if (bpno_plus_one >= (int32_t)k_max_bit_planes) {
 		grk::GRK_ERROR("unsupported number of bit planes: %u > %u",
 				bpno_plus_one, k_max_bit_planes);
