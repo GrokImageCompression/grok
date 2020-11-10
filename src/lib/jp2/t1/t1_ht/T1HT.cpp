@@ -131,6 +131,8 @@ bool T1HT::compress(CompressBlockExec *block) {
 bool T1HT::decompress(DecompressBlockExec *block) {
 	auto cblk = block->cblk;
 	bool rc = true;
+	if (!cblk->area())
+		return true;
 	if (!cblk->seg_buffers.empty()) {
 		size_t total_seg_len = grk_cblk_dec_compressed_data_pad_left_ht + cblk->getSegBuffersLen();
 		if (coded_data_size < total_seg_len) {
@@ -153,7 +155,7 @@ bool T1HT::decompress(DecompressBlockExec *block) {
 			num_passes += sgrk->numpasses;
 		}
 
-	   if (num_passes) {
+	   if (num_passes && offset) {
 		   rc =  ojph_decode_codeblock(actual_coded_data,
 								   unencoded_data,
 								   block->k_msbs,
@@ -165,7 +167,7 @@ bool T1HT::decompress(DecompressBlockExec *block) {
 								   cblk->width());
 	   }
 	   else {
-		   memset(unencoded_data, 0, (cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0) * sizeof(int32_t));
+		   memset(unencoded_data, 0, cblk->area()* sizeof(int32_t));
 	   }
 	}
 	if (!rc)
