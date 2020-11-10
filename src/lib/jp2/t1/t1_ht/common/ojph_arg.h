@@ -74,11 +74,12 @@ namespace ojph {
       assert(avail == avail_store);
       if (argc > 128)
         avail = new ui8[(argc + 7) >> 3];
-      memset(avail, 0, ojph_max(sizeof(avail_store), (argc + 7) >> 3));
+      memset(avail, 0, 
+        ojph_max(sizeof(avail_store), (size_t)((argc + 7) >> 3)));
       this->argv = argv;
       this->argc = argc;
       for (int i = 0; i < argc; ++i)
-        avail[i >> 3] |= 1 << (i & 7);
+        avail[i >> 3] = (ui8)(avail[i >> 3] | (ui8)(1 << (i & 7)));
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -109,7 +110,7 @@ namespace ojph {
     void release_argument(const argument& arg) {
       if (arg.index != 0) {
         assert(arg.index < argc);
-        avail[arg.index >> 3] &= ~(1 << (arg.index & 0x7));
+        avail[arg.index >> 3] &= (ui8)(~(1 << (arg.index & 0x7)));
       }
     }
 
@@ -148,6 +149,19 @@ namespace ojph {
         argument t2 = get_next_value(t);
         if (t2.is_valid()) {
           val = atoi(t2.arg);
+          release_argument(t);
+          release_argument(t2);
+        }
+      }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    void reinterpret(const char* str, ui32& val) {
+      argument t = find_argument(str);
+      if (t.is_valid()) {
+        argument t2 = get_next_value(t);
+        if (t2.is_valid()) {
+          val = (ui32)strtoul(t2.arg, NULL, 10);
           release_argument(t);
           release_argument(t2);
         }

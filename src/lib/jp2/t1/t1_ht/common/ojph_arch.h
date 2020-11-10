@@ -73,16 +73,16 @@ namespace ojph {
   static inline ui32 population_count(ui32 val)
   {
   #ifdef OJPH_COMPILER_MSVC
-    return __popcnt(val);
+    return (ui32)__popcnt(val);
   #elif (defined OJPH_COMPILER_GNUC)
-    return __builtin_popcount(val);
+    return (ui32)__builtin_popcount(val);
   #else
     val -= ((val >> 1) & 0x55555555);
     val = (((val >> 2) & 0x33333333) + (val & 0x33333333));
     val = (((val >> 4) + val) & 0x0f0f0f0f);
     val += (val >> 8);
     val += (val >> 16);
-    return val & 0x0000003f;
+    return (int)(val & 0x0000003f);
   #endif
   }
 
@@ -95,9 +95,9 @@ namespace ojph {
   #ifdef OJPH_COMPILER_MSVC
     unsigned long result = 0;
     _BitScanReverse(&result, val);
-    return (ui32)(31 ^ result);
+    return 31 ^ (ui32)result;
   #elif (defined OJPH_COMPILER_GNUC)
-    return __builtin_clz(val);
+    return (ui32)__builtin_clz(val);
   #else
     val |= (val >> 1);
     val |= (val >> 2);
@@ -117,9 +117,9 @@ namespace ojph {
   #ifdef OJPH_COMPILER_MSVC
     unsigned long result = 0;
     _BitScanForward(&result, val);
-    return (ui32)(31 ^ result);
+    return (ui32)result;
   #elif (defined OJPH_COMPILER_GNUC)
-    return __builtin_ctz(val);
+    return (ui32)__builtin_ctz(val);
   #else
     val |= (val << 1);
     val |= (val << 2);
@@ -157,9 +157,9 @@ namespace ojph {
   ////////////////////////////////////////////////////////////////////////////
   // constants
   ////////////////////////////////////////////////////////////////////////////
-  const int byte_alignment = 32; //32 bytes == 256 bits
-  const int log_byte_alignment = 31 - count_leading_zeros(byte_alignment);
-  const int object_alignment = 8;
+  const ui32 byte_alignment = 32; //32 bytes == 256 bits
+  const ui32 log_byte_alignment = 31 - count_leading_zeros(byte_alignment);
+  const ui32 object_alignment = 8;
 
   ////////////////////////////////////////////////////////////////////////////
   // templates for alignment
@@ -171,7 +171,7 @@ namespace ojph {
   size_t calc_aligned_size(size_t size) {
     size = size * sizeof(T) + N - 1;
     size &= ~((1ULL << (31 - count_leading_zeros(N))) - 1);
-    size >>= 31 - count_leading_zeros(sizeof(T));
+    size >>= (31 - count_leading_zeros(sizeof(T)));
     return size;
   }
 

@@ -52,9 +52,10 @@ namespace ojph {
 
     //////////////////////////////////////////////////////////////////////////
     void
-      ojph_encode_codeblock(si32* buf, int missing_msbs, int num_passes,
-                            int width, int height, int stride,
-                            int* lengths, ojph::mem_elastic_allocator *elastic,
+      ojph_encode_codeblock(ui32* buf, ui32 missing_msbs, ui32 num_passes,
+                            ui32 width, ui32 height, ui32 stride,
+                            ui32* lengths, 
+                            ojph::mem_elastic_allocator *elastic,
                             ojph::coded_lists *& coded);
 
     bool vlc_init_tables();

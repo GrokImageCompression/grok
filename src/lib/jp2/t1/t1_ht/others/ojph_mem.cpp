@@ -67,7 +67,7 @@ namespace ojph {
 
   ////////////////////////////////////////////////////////////////////////////
   template<>
-  void line_buf::wrap(si32 *buffer, size_t num_ele, int pre_size)
+  void line_buf::wrap(si32 *buffer, size_t num_ele, ui32 pre_size)
   {
     i32 = buffer;
     this->size = num_ele;
@@ -76,7 +76,7 @@ namespace ojph {
 
   ////////////////////////////////////////////////////////////////////////////
   template<>
-  void line_buf::wrap(float *buffer, size_t num_ele, int pre_size)
+  void line_buf::wrap(float *buffer, size_t num_ele, ui32 pre_size)
   {
     f32 = buffer;
     this->size = num_ele;
@@ -92,13 +92,13 @@ namespace ojph {
   ////////////////////////////////////////////////////////////////////////////
 
   ////////////////////////////////////////////////////////////////////////////
-  void mem_elastic_allocator::get_buffer(int needed_bytes, coded_lists* &p)
+  void mem_elastic_allocator::get_buffer(ui32 needed_bytes, coded_lists* &p)
   {
-    int extended_bytes = needed_bytes + sizeof(coded_lists);
+    ui32 extended_bytes = needed_bytes + (ui32)sizeof(coded_lists);
 
     if (store == NULL)
     {
-      int bytes = ojph_max(extended_bytes, chunk_size);
+      ui32 bytes = ojph_max(extended_bytes, chunk_size);
       store = (stores_list*)malloc(bytes);
       cur_store = store = new (store) stores_list(bytes);
       total_allocated += bytes;
@@ -106,7 +106,7 @@ namespace ojph {
 
     if (cur_store->available < extended_bytes)
     {
-      int bytes = ojph_max(extended_bytes, chunk_size);
+      ui32 bytes = ojph_max(extended_bytes, chunk_size);
       cur_store->next_store = (stores_list*)malloc(bytes);
       cur_store = new (cur_store->next_store) stores_list(bytes);
       total_allocated += bytes;
