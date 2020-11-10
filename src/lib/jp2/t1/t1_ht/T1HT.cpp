@@ -191,12 +191,9 @@ bool T1HT::postDecompress(DecompressBlockExec *block) {
 		for (auto j = 0U; j < cblk_h; ++j) {
 			for (auto i = 0U; i < cblk_w; ++i) {
 				auto value = *src;
-				auto magnitude = abs(value);
-				if (magnitude >= threshold) {
-					magnitude >>= block->roishift;
-					// ((value > 0) - (value < 0)) == signum(value)
-					*src = ((value > 0) - (value < 0)) * magnitude;
-				}
+				auto magnitude = (value & 0x7FFFFFFF);
+				if (magnitude >= threshold)
+					magnitude = (magnitude >> block->roishift) & (value & 0x80000000);
 				src++;
 			}
 		}
