@@ -56,11 +56,9 @@ bool FileStreamIO::open(std::string fileName, std::string mode){
 
 }
 bool FileStreamIO::close(void){
-	bool rc = false;
-	if (!grk::useStdio(m_fileName.c_str()) && m_fileHandle) {
-		if (grk::safe_fclose(m_fileHandle))
-			rc = true;
-	}
+	bool rc = true;
+	if (!grk::useStdio(m_fileName.c_str()) && m_fileHandle)
+		rc =  grk::safe_fclose(m_fileHandle);
 	m_fileHandle = nullptr;
 	return rc;
 }
