@@ -317,7 +317,8 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 		if (p_tcp->csty & J2K_CP_CSTY_EPH) {
 			if ((*modified_length_ptr
 					- (size_t) (header_data - *header_data_start)) < 2U) {
-				GRK_WARN("Not enough space for expected EPH marker");
+				//GRK_WARN("Not enough space for expected EPH marker");
+				throw TruncatedStreamException();
 			} else if ((*header_data) != 0xff || (*(header_data + 1) != 0x92)) {
 				GRK_WARN("Expected EPH marker");
 			} else {
@@ -511,7 +512,8 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 	if (p_tcp->csty & J2K_CP_CSTY_EPH) {
 		if ((*modified_length_ptr
 				- (uint32_t) (header_data - *header_data_start)) < 2U) {
-			GRK_WARN("Not enough space for expected EPH marker");
+			//GRK_WARN("Not enough space for expected EPH marker");
+			throw TruncatedStreamException();
 		} else if ((*header_data) != 0xff || (*(header_data + 1) != 0x92)) {
 			GRK_WARN("Expected EPH marker");
 		} else {
