@@ -487,6 +487,10 @@ int GrkDecompress::parse_cmdline_decompressor(int argc, char **argv,
 		cmd.parse(argc, argv);
 
 		parameters->verbose = verboseArg.isSet();
+		bool useStdio = inputFileArg.isSet() && outForArg.isSet() && !outputFileArg.isSet();
+		// disable verbose mode so we don't write info or warnings to stdout
+		if (useStdio)
+			parameters->verbose = false;
 		if (!parameters->verbose)
 			spdlog::set_level(spdlog::level::level_enum::err);
 
@@ -549,15 +553,6 @@ int GrkDecompress::parse_cmdline_decompressor(int argc, char **argv,
 				return 1;
 			}
 		}
-
-		// disable verbose mode when writing to stdout
-		if (parameters->verbose && outForArg.isSet() && !outputFileArg.isSet()
-				&& !outDirArg.isSet()) {
-			spdlog::warn(
-					" Verbose mode is automatically disabled when decompressing to stdout");
-			parameters->verbose = false;
-		}
-
 		if (outForArg.isSet()) {
 			char outformat[50];
 			const char *of = outForArg.getValue().c_str();
