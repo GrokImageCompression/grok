@@ -150,7 +150,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			break;
 	}
 	pi_destroy(pi);
-	return true;
+	return p_tile->packno > 0;
 }
 
 
