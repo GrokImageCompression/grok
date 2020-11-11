@@ -251,7 +251,8 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 	/* SOP markers */
 	if (p_tcp->csty & J2K_CP_CSTY_SOP) {
 		if (max_length < 6) {
-			GRK_WARN("Not enough space for expected SOP marker");
+			//GRK_WARN("Not enough space for expected SOP marker");
+			throw TruncatedStreamException();
 		} else if ((*active_src) != 0xff || (*(active_src + 1) != 0x91)) {
 			GRK_WARN("Expected SOP marker");
 		} else {
