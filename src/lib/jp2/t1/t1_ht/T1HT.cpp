@@ -29,7 +29,7 @@ using namespace ojph::local;
 #include <algorithm>
 using namespace std;
 
-const uint8_t grk_cblk_dec_compressed_data_pad_left_ht = 8;
+const uint8_t grk_cblk_dec_compressed_data_pad_ht = 8;
 
 
 namespace grk {
@@ -48,7 +48,7 @@ T1HT::T1HT(bool isCompressor,
 {
 	(void) tcp;
 	if (!isCompressor)
-		memset(coded_data,0,grk_cblk_dec_compressed_data_pad_left_ht);
+		memset(coded_data,0,grk_cblk_dec_compressed_data_pad_ht);
 }
 T1HT::~T1HT() {
    delete[] coded_data;
@@ -133,15 +133,16 @@ bool T1HT::decompress(DecompressBlockExec *block) {
 	if (!cblk->area())
 		return true;
 	if (!cblk->seg_buffers.empty()) {
-		size_t total_seg_len = grk_cblk_dec_compressed_data_pad_left_ht + cblk->getSegBuffersLen();
+		size_t total_seg_len =  2 * grk_cblk_dec_compressed_data_pad_ht + cblk->getSegBuffersLen();
 		if (coded_data_size < total_seg_len) {
 			delete[] coded_data;
 			coded_data = new uint8_t[total_seg_len];
 			coded_data_size = (uint32_t)total_seg_len;
-			memset(coded_data,0,grk_cblk_dec_compressed_data_pad_left_ht);
+			memset(coded_data,0,grk_cblk_dec_compressed_data_pad_ht);
+			memset(coded_data + grk_cblk_dec_compressed_data_pad_ht + cblk->getSegBuffersLen() ,0,grk_cblk_dec_compressed_data_pad_ht);
 		}
 		uint8_t *actual_coded_data =
-				coded_data + grk_cblk_dec_compressed_data_pad_left_ht;
+				coded_data + grk_cblk_dec_compressed_data_pad_ht;
 		size_t offset = 0;
 		for (auto& b : cblk->seg_buffers) {
 			memcpy(actual_coded_data + offset, b->buf, b->len);
