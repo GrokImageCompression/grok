@@ -150,6 +150,8 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			break;
 	}
 	pi_destroy(pi);
+	if (p_tile->packno == 0)
+		GRK_ERROR("T2Decompress: no packets in tile were successfully decompressed");
 	return p_tile->packno > 0;
 }
 
