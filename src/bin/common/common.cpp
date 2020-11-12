@@ -186,9 +186,6 @@ bool jpeg2000_file_format(const char *fname, GRK_SUPPORTED_FILE_FMT *fmt) {
 	int temp = get_file_format(fname);
 	if (temp > GRK_UNK_FMT)
 		ext_format = (GRK_SUPPORTED_FILE_FMT) temp;
-	else
-		spdlog::warn("Unable to recognize file format from file extension \n"
-				"for {}.",fname);
 
 	if (memcmp(buf, JP2_RFC3745_MAGIC, 12) == 0) {
 		magic_format = GRK_JP2_FMT;
@@ -207,12 +204,17 @@ bool jpeg2000_file_format(const char *fname, GRK_SUPPORTED_FILE_FMT *fmt) {
 		return true;
 	}
 
+	bool foundExtension = false;
 	if (strlen(fname) >= 4){
 		const char *s = fname + strlen(fname) - 4;
-		if (s[0] == '.')
-			spdlog::warn("The extension {} of this file is incorrect. "
-					"Should be {}",s, magic_s);
+		foundExtension = s[0] == '.';
 	}
+	if (foundExtension)
+		spdlog::warn("The extension {} of this file is incorrect. "
+				"Should be {}",fname, magic_s);
+	else
+		spdlog::warn("File {} is missing proper extension: should be {}",fname, magic_s);
+
 	*fmt = magic_format;
 	return true;
 }
