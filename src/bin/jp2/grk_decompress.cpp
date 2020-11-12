@@ -365,10 +365,10 @@ char GrkDecompress::get_next_file(std::string image_filename, grk_img_fol *img_f
 			infilename.c_str()) != 0) {
 		return 1;
 	}
+	auto temp_ofname = image_filename;
 	auto pos = image_filename.find(".");
-	if (pos == std::string::npos)
-		return 1;
-	std::string temp_ofname = image_filename.substr(0, pos);
+	if (pos != std::string::npos)
+		temp_ofname = image_filename.substr(0, pos);
 	if (img_fol->set_out_format) {
 		std::string outfilename = out_fol->imgdirpath
 				+ std::string(get_path_separator()) + temp_ofname + "."
