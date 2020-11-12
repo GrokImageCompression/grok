@@ -224,7 +224,7 @@ struct EncodingParams {
 
 struct DecodingParams {
 	/** if != 0, then original dimension divided by 2^(reduce); if == 0 or not used, image is decompressed to the full resolution */
-	uint32_t m_reduce;
+	uint8_t m_reduce;
 	/** if != 0, then only the first "layer" layers are decompressed; if == 0 or not used, all the quality layers are decompressed */
 	uint16_t m_layer;
 };

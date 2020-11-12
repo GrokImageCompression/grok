@@ -675,7 +675,7 @@ typedef struct _grk_dparameters {
 	 if greater than zero, then image is deocded to original dimension divided by 2^(cp_reduce);
 	 if equal to zero or not used, image is decompressed to full resolution
 	 */
-	uint32_t cp_reduce;
+	uint8_t cp_reduce;
 	/**
 	 Set the maximum number of quality layers to decompress.
 	 If there are fewer quality layers than the specified number, all quality layers will be decompressed.
