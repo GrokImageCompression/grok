@@ -54,10 +54,7 @@ TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream) :
 }
 
 TileProcessor::~TileProcessor() {
-	if (tile) {
-		delete[] tile->comps;
-		delete tile;
-	}
+	delete tile;
 	delete plt_markers;
 	delete[] m_resno_decoded_per_component;
 }
@@ -1518,6 +1515,13 @@ grk_tile::grk_tile() : numcomps(0),
 	for (uint32_t i = 0; i < 100; ++i)
 		distolayer[i] = 0;
 }
+
+grk_tile::~grk_tile()
+{
+	delete[] comps;
+}
+
+
 
 PacketTracker::PacketTracker() : bits(nullptr),
 		m_numcomps(0),
