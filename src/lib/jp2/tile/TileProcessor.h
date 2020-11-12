@@ -159,10 +159,8 @@ struct TileProcessor {
 	// Compressing only - track which packets have been already written
 	// to the code stream
 	PacketTracker m_packetTracker;
-
-	uint32_t* m_resno_decoded_per_component;
 	BufferedStream *m_stream;
-	 bool m_corrupt_packet;
+	bool m_corrupt_packet;
 private:
 
 	/** position of the tile part flag in progression order*/

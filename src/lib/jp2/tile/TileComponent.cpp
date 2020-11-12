@@ -28,6 +28,7 @@ namespace grk {
 TileComponent::TileComponent() :resolutions(nullptr),
 								numresolutions(0),
 								resolutions_to_decompress(0),
+								resolutions_decompressed(0),
 						#ifdef DEBUG_LOSSLESS_T2
 								round_trip_resolutions(nullptr),
 						#endif

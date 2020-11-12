@@ -38,7 +38,6 @@ TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream) :
 				whole_tile_decoding(codeStream->whole_tile_decoding),
 				plt_markers(nullptr),
 				m_cp(&codeStream->m_cp),
-				m_resno_decoded_per_component(nullptr),
 				m_stream(stream),
 				m_corrupt_packet(false),
 				tp_pos(0),
@@ -46,8 +45,6 @@ TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream) :
 {
 	tile = new grk_tile();
 	tile->comps = new TileComponent[image->numcomps];
-	m_resno_decoded_per_component = new uint32_t[image->numcomps];
-	memset(m_resno_decoded_per_component,0, image->numcomps * sizeof(uint32_t));
 	tile->numcomps = image->numcomps;
 
 	tp_pos = m_cp->m_coding_params.m_enc.m_tp_pos;
@@ -56,7 +53,6 @@ TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream) :
 TileProcessor::~TileProcessor() {
 	delete tile;
 	delete plt_markers;
-	delete[] m_resno_decoded_per_component;
 }
 
 /*
@@ -893,7 +889,7 @@ bool TileProcessor::decompress_tile_t1(void) {
 
 			if (!whole_tile_decoding) {
 				try {
-					tilec->allocSparseBuffer(m_resno_decoded_per_component[compno] + 1);
+					tilec->allocSparseBuffer(tilec->resolutions_decompressed + 1);
 				} catch (runtime_error &ex) {
 					GRK_ERROR("decompress_tile_t1: %s", ex.what());
 					return false;
@@ -914,7 +910,7 @@ bool TileProcessor::decompress_tile_t1(void) {
 				if (!w.decompress(this,
 										tilec,
 										tilec->getBuffer()->unreduced_bounds(),
-										m_resno_decoded_per_component[compno] + 1,
+										tilec->resolutions_decompressed + 1,
 										tccp->qmfbid))
 					return false;
 			}
