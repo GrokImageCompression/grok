@@ -575,7 +575,7 @@ bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 					// So, in this case, we ignore the entire code block
 					if (tileProcessor->m_cp->tcps[0].isHT){
 						cblk->numSegments = 0;
-						cblk->seg_buffers.clear();
+						cblk->cleanup_seg_buffers();
 					}
 					throw TruncatedStreamException();
 				}
