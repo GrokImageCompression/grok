@@ -648,7 +648,11 @@ int GrkDecompress::parse_cmdline_decompressor(int argc, char **argv,
 		}
 
 		if (reduceArg.isSet()) {
-			parameters->core.cp_reduce = reduceArg.getValue();
+			if (reduceArg.getValue() >= GRK_J2K_MAXRLVLS)
+				spdlog::warn("Resolution level reduction %d must be strictly less than the "
+						"maximum number of resolutions %u. Ignoring", reduceArg.getValue(),GRK_J2K_MAXRLVLS);
+			else
+				parameters->core.cp_reduce = reduceArg.getValue();
 		}
 		if (layerArg.isSet()) {
 			parameters->core.cp_layer = layerArg.getValue();
