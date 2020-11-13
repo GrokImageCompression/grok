@@ -228,9 +228,15 @@ namespace ojph {
       //process 4 bytes at a time
       if (vlcp->bits > 32)
         return;
-      ui32 val;
-      val = *(ui32*)vlcp->data;
+      //because we read ahead of time, we might in fact exceed vlc size,
+      // but data should not be used if the codeblock is properly generated
+      //The mel code can in fact occupy zero length, if it has a small number
+      // of bits and these bits overlap with the VLC code
+      if (vlcp->size < -4) // we pad the data by 8 bytes at the beginning
+        OJPH_ERROR(0x00010001, "Error in reading VLC data: vlcp size %d less than -4 before rev_read", vlcp->size);
+      ui32 val = *(ui32*)vlcp->data;
       vlcp->data -= 4;
+      vlcp->size -= 4;
 
       //accumulate in int and then push into the registers
       ui32 tmp = val >> 24;
@@ -253,14 +259,6 @@ namespace ojph {
       vlcp->tmp |= (ui64)tmp << vlcp->bits;
       vlcp->bits += bits;
       vlcp->unstuff = unstuff;
-
-      vlcp->size -= 4;
-      //because we read ahead of time, we might in fact exceed vlc size,
-      // but data should not be used if the codeblock is properly generated
-      //The mel code can in fact occupy zero length, if it has a small number
-      // of bits and these bits overlap with the VLC code
-      if (vlcp->size < -8) //8 is based on the fact that we may read 64 bits
-        OJPH_ERROR(0x00010001, "Error in reading VLC data");
     }
 
     /////////////////////////////////////////////////////////////////////////
