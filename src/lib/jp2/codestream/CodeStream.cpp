@@ -2147,8 +2147,10 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 			marker_size = (uint16_t)(marker_size - 2); /* Subtract the size of the marker ID already read */
 
 			auto marker_handler = get_marker_handler(m_curr_marker);
-			if (!marker_handler)
+			if (!marker_handler) {
+				GRK_ERROR("Unknown marker encountered while seeking SOT marker");
 				return false;
+			}
 			if (!(m_decompressor.m_state & marker_handler->states)) {
 				GRK_ERROR("Marker is not compliant with its position");
 				return false;
