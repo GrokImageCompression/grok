@@ -2115,8 +2115,10 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 	if (m_decompressor.m_state == J2K_DEC_STATE_EOC)
 		m_curr_marker = J2K_MS_EOC;
 	/* We need to encounter a SOT marker (a new tile-part header) */
-	else if (m_decompressor.m_state != J2K_DEC_STATE_TPH_SOT)
+	else if (m_decompressor.m_state != J2K_DEC_STATE_TPH_SOT){
+		GRK_ERROR("parse_markers: no SOT marker found");
 		return false;
+	}
 
 	/* Seek in code stream for SOT marker specifying desired tile index.
 	 * If we don't find it, we stop when we read the EOC or run out of data */
