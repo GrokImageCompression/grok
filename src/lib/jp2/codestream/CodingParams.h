@@ -274,8 +274,30 @@ struct CodingParams {
 
 };
 
+
+/**
+ * Status of decoding process when decoding main header.
+ * These values may be combined with the | operator.
+ * */
+enum J2K_STATUS {
+	J2K_DEC_STATE_NONE = 0x0000, 		/**< no decompress state */
+	J2K_DEC_STATE_MH_SOC = 0x0001, 		/**< a SOC marker is expected */
+	J2K_DEC_STATE_MH_SIZ = 0x0002, 		/**< a SIZ marker is expected */
+	J2K_DEC_STATE_MH = 0x0004, 			/**< the decoding process is in the main header */
+	J2K_DEC_STATE_TPH_SOT = 0x0008, 	/**< the decoding process is in a tile part header
+	 	 	 	 	 	 	 	 	 	 	 and expects a SOT marker */
+	J2K_DEC_STATE_TPH = 0x0010, 		/**< the decoding process is in a tile part header */
+	J2K_DEC_STATE_NO_EOC = 0x0020, 		/**< the decoding process must not expect a EOC marker
+	 	 	 	 	 	 	 	 	 	 	 because the code stream is truncated */
+	J2K_DEC_STATE_DATA = 0x0040, 		/**< the decoding process is expecting
+	 	 	 	 	 	 	 	 	 	 	 to read tile data from the code stream */
+	J2K_DEC_STATE_EOC = 0x0080, 		/**< the decoding process has encountered the EOC marker */
+	J2K_DEC_STATE_ERR = 0x0100 			/**< the decoding process has encountered an error */
+};
+
+
 struct DecoderState {
-	DecoderState() : m_state(0),
+	DecoderState() : m_state(J2K_DEC_STATE_NONE),
 					m_default_tcp(nullptr),
 					m_start_tile_x_index(0),
 					m_start_tile_y_index(0),
@@ -292,7 +314,7 @@ struct DecoderState {
 
 	/** Decoder state: used to indicate in which part of the code stream
 	 *  the decompressor is (main header, tile header, end) */
-	uint32_t m_state;
+	uint16_t m_state;
 
 	//store decoding parameters common to all tiles (information
 	// like COD, COC and RGN in main header)

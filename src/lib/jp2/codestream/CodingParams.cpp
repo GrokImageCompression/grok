@@ -154,7 +154,7 @@ TileComponentCodingParams::TileComponentCodingParams() : csty(0),
 bool DecoderState::findNextTile(CodeStream *codeStream){
 	auto stream = codeStream->getStream();
 	last_tile_part_was_read = false;
-	m_state &= (uint32_t) (~J2K_DEC_STATE_DATA);
+	m_state &= (uint16_t) (~J2K_DEC_STATE_DATA);
 
 	// if there is no EOC marker and there is also no data left, then simply return true
 	if (stream->get_number_byte_left() == 0
