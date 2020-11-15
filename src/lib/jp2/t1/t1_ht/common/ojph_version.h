@@ -30,54 +30,9 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //***************************************************************************/
 // This file is part of the OpenJPH software implementation.
-// File: ojph_defs.h
-// Author: Aous Naman
-// Date: 28 August 2019
+// File: ojph_base.h
 //***************************************************************************/
 
-
-#ifndef OJPH_TYPES_H
-#define OJPH_TYPES_H
-
-#include <cstdint>
-#include "ojph_version.h"
-
-namespace ojph {
-
-/////////////////////////////////////////////////////////////////////////////
-//                               types
-/////////////////////////////////////////////////////////////////////////////
-typedef uint8_t ui8;
-typedef int8_t si8;
-typedef uint16_t ui16;
-typedef int16_t si16;
-typedef uint32_t ui32;
-typedef int32_t si32;
-typedef uint64_t ui64;
-typedef int64_t si64;
-
-/////////////////////////////////////////////////////////////////////////////
-#define OJPH_INT_STRINGIFY(I) #I
-#define OJPH_INT_TO_STRING(I) OJPH_INT_STRINGIFY(I)
-
-/////////////////////////////////////////////////////////////////////////////
-// number of fractional bits for 16 bit representation
-// for 32 bits, it is NUM_FRAC_BITS + 16
-// All numbers are in the range of [-0.5, 0.5)
-const int NUM_FRAC_BITS = 13;
-
-/////////////////////////////////////////////////////////////////////////////
-#define ojph_div_ceil(a, b) (((a) + (b) - 1) / (b))
-
-/////////////////////////////////////////////////////////////////////////////
-#define ojph_max(a, b) (((a) > (b)) ? (a) : (b))
-
-/////////////////////////////////////////////////////////////////////////////
-#define ojph_min(a, b) (((a) < (b)) ? (a) : (b))
-
-#define ojph_unused(x) (void)(x)
-
-
-}
-
-#endif // !OJPH_TYPES_H
+#define OPENJPH_VERSION_MAJOR 0
+#define OPENJPH_VERSION_MINOR 7
+#define OPENJPH_VERSION_PATCH 2
