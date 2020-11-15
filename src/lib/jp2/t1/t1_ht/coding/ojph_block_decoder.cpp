@@ -214,6 +214,12 @@ namespace ojph {
     //
     /////////////////////////////////////////////////////////////////////////
     struct rev_struct {
+      rev_struct() : data(nullptr),
+    		  	  	  tmp(0),
+					  bits(0),
+					  size(0),
+					  unstuff(false)
+      {}
       //storage
       ui8* data;     //pointer to where to read data
       ui64 tmp;		   //temporary buffer of read data
