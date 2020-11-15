@@ -122,7 +122,7 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 	auto cur_res = tilec->resolutions + num_decomps;
 	auto next_res = cur_res - 1;
 
-	auto bj_array = new int32_t*[ThreadPool::get()->num_threads()];
+	int32_t** bj_array = new int32_t*[ThreadPool::get()->num_threads()];
 	for (uint32_t i = 0; i < ThreadPool::get()->num_threads(); ++i){
 		bj_array[i] = nullptr;
 	}
