@@ -287,6 +287,7 @@ namespace ojph {
         vlcp->bits += d_bits;
         vlcp->unstuff = d > 0x8F;
       }
+      vlcp->size -= tnum;
       vlcp->data -= 3; //make ready to read a 32 bits
       rev_read(vlcp);
     }
