@@ -179,7 +179,7 @@ bool T2Decompress::decompress_packet(TileCodingParams *p_tcp, PacketIter *p_pi, 
 	return true;
 }
 
-bool T2Decompress::init_seg(DecompressCodeblock *cblk, uint32_t index, uint8_t cblk_sty,
+void T2Decompress::init_seg(DecompressCodeblock *cblk, uint32_t index, uint8_t cblk_sty,
 		bool first) {
 	uint32_t nb_segs = index + 1;
 
@@ -211,8 +211,6 @@ bool T2Decompress::init_seg(DecompressCodeblock *cblk, uint32_t index, uint8_t c
 	} else {
 		seg->maxpasses = max_passes_per_segment;
 	}
-
-	return true;
 }
 
 
@@ -411,8 +409,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 				K_msbs--;
 
 				if (K_msbs > band->numbps) {
-					GRK_WARN(
-							"More missing bit planes (%u) than band bit planes (%u).",
+					GRK_WARN("More missing bit planes (%u) than band bit planes (%u).",
 							K_msbs, band->numbps);
 					cblk->numbps = band->numbps;
 				} else {
@@ -437,19 +434,13 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 			uint32_t segno = 0;
 
 			if (!cblk->numSegments) {
-				if (!init_seg(cblk, segno,
-						p_tcp->tccps[p_pi->compno].cblk_sty, true)) {
-					return false;
-				}
+				init_seg(cblk, segno,p_tcp->tccps[p_pi->compno].cblk_sty, true);
 			} else {
 				segno = cblk->numSegments - 1;
 				if (cblk->segs[segno].numpasses
 						== cblk->segs[segno].maxpasses) {
 					++segno;
-					if (!init_seg(cblk, segno,
-							p_tcp->tccps[p_pi->compno].cblk_sty, false)) {
-						return false;
-					}
+					init_seg(cblk, segno,p_tcp->tccps[p_pi->compno].cblk_sty, false);
 				}
 			}
 			auto blockPassesInPacket = (int32_t) cblk->numPassesInPacket;
@@ -459,8 +450,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 				if (seg->maxpasses == max_passes_per_segment) {
 					if (blockPassesInPacket
 							> (int32_t) max_passes_per_segment) {
-						GRK_WARN(
-								"Number of code block passes (%u) in packet is suspiciously large.",
+						GRK_WARN("Number of code block passes (%u) in packet is suspiciously large.",
 								blockPassesInPacket);
 						// ToDO - we are truncating the number of passes at an arbitrary value of
 						// max_passes_per_segment. We should probably either skip the rest of this
@@ -479,8 +469,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 				uint32_t bits_to_read = cblk->numlenbits
 						+ floorlog2<uint32_t>(seg->numPassesInPacket);
 				if (bits_to_read > 32) {
-					GRK_ERROR(
-							"read_packet_header: too many bits in segment length ");
+					GRK_ERROR("read_packet_header: too many bits in segment length ");
 					return false;
 				}
 				bio->read(&seg->numBytesInPacket, bits_to_read);
@@ -497,17 +486,12 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 				blockPassesInPacket -= (int32_t) seg->numPassesInPacket;
 				if (blockPassesInPacket > 0) {
 					++segno;
-					if (!init_seg(cblk, segno,
-							p_tcp->tccps[p_pi->compno].cblk_sty, false)) {
-						return false;
-					}
+					init_seg(cblk, segno,p_tcp->tccps[p_pi->compno].cblk_sty, false);
 				}
 			} while (blockPassesInPacket > 0);
 		}
 	}
-
 	bio->inalign();
-
 	header_data += bio->numbytes();
 
 	/* EPH markers */

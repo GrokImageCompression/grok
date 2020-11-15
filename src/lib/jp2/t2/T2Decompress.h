@@ -64,7 +64,7 @@ private:
 	bool skip_packet_data(Resolution *l_res, PacketIter *p_pi,
 			uint64_t *p_data_read, uint64_t max_length);
 
-	bool init_seg(DecompressCodeblock *cblk, uint32_t index, uint8_t cblk_sty,
+	void init_seg(DecompressCodeblock *cblk, uint32_t index, uint8_t cblk_sty,
 			bool first);
 
 };
