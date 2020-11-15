@@ -333,6 +333,8 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 		*p_is_data_present = false;
 		*p_data_read = (size_t) (active_src - p_src_data);
 		src_buf->incr_cur_chunk_offset(*p_data_read);
+		if (!*p_data_read)
+			throw TruncatedStreamException();
 		return true;
 	}
 	for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
