@@ -251,6 +251,8 @@ namespace ojph {
       int num = 4 - (int)(intptr_t(melp->data) & 0x3);
       for (int i = 0; i < num; ++i) { // this code is similar to mel_read
         assert(melp->unstuff == false || melp->data[0] <= 0x8F);
+        if (melp->unstuff && melp->data[0] > 0x8F)
+        	OJPH_ERROR(0x00010001, "Error while initializing MEL coding");
         ui64 d = (melp->size > 0) ? *melp->data : 0xFF;//if buffer is consumed
                                                        //set data to 0xFF
         if (melp->size == 1) d |= 0xF; //if this is MEL+VLC-1, set LSBs to 0xF

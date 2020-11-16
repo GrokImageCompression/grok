@@ -138,9 +138,9 @@ bool T1HT::decompress(DecompressBlockExec *block) {
 			delete[] coded_data;
 			coded_data = new uint8_t[total_seg_len];
 			coded_data_size = (uint32_t)total_seg_len;
-			memset(coded_data,0,grk_cblk_dec_compressed_data_pad_ht);
-			memset(coded_data + grk_cblk_dec_compressed_data_pad_ht + cblk->getSegBuffersLen() ,0,grk_cblk_dec_compressed_data_pad_ht);
 		}
+		memset(coded_data,0,grk_cblk_dec_compressed_data_pad_ht);
+		memset(coded_data + grk_cblk_dec_compressed_data_pad_ht + cblk->getSegBuffersLen() ,0,grk_cblk_dec_compressed_data_pad_ht);
 		uint8_t *actual_coded_data =
 				coded_data + grk_cblk_dec_compressed_data_pad_ht;
 		size_t offset = 0;
