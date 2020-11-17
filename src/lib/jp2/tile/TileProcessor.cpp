@@ -1433,11 +1433,16 @@ bool TileProcessor::prepare_sod_decoding(CodeStream *codeStream) {
 	}
 	if (tile_part_data_length) {
 		auto bytesLeftInStream = m_stream->get_number_byte_left();
+		if (bytesLeftInStream == 0){
+			GRK_ERROR("Tile %d, tile part %d: stream has been truncated and "
+					"there is no tile data available",m_tile_index,tcp->m_tile_part_index);
+			return false;
+		}
 		// check that there are enough bytes in stream to fill tile data
 		if (tile_part_data_length > bytesLeftInStream) {
 			GRK_WARN("Tile part length %lld greater than "
 					"stream length %lld\n"
-					"(tile: %u, tile part: %d). Tile may be truncated.",
+					"(tile: %u, tile part: %d). Tile has been truncated.",
 					tile_part_data_length,
 					m_stream->get_number_byte_left(),
 					m_tile_index,
