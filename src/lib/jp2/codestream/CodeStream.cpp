@@ -2508,7 +2508,6 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor, bool multi_t
 	if (!tileProcessor->decompress_tile_t2(tcp->m_tile_data)) {
 		tcp->destroy();
 		decompressor->m_state |= J2K_DEC_STATE_ERR;
-		GRK_ERROR("j2k_decompress_tile: failed to decompress.");
 		return false;
 	}
 
@@ -2527,7 +2526,6 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor, bool multi_t
 	if (!tileProcessor->decompress_tile_t1()) {
 		tcp->destroy();
 		decompressor->m_state |= J2K_DEC_STATE_ERR;
-		GRK_ERROR("j2k_decompress_tile: failed to decompress.");
 		return false;
 	}
 
