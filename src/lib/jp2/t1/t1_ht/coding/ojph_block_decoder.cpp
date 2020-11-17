@@ -1020,8 +1020,9 @@ namespace ojph {
       lcup = (int)lengths1;  // length of CUP
       //scup is the length of MEL + VLC
       scup = (((int)coded_data[lcup-1]) << 4) + (coded_data[lcup-2] & 0xF);
-      if (scup < 2 || scup > lcup || scup > 4079) //something is wrong
-        return false;
+      if (scup < 2 || scup > lcup || scup > 4079) {
+    	  OJPH_ERROR(0x00010001, "Invalid scup value: %d", scup);
+      }
 
       // init structures
       dec_mel_st mel;
