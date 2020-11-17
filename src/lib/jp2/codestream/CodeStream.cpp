@@ -358,6 +358,7 @@ static bool j2k_read_header_procedure(CodeStream *codeStream) {
 	try {
 		rc = codeStream->read_header_procedure();
 	} catch (InvalidMarkerException &ime){
+		GRK_ERROR("Invalid marker");
 		rc = false;
 	}
 	return rc;
@@ -2631,6 +2632,7 @@ bool CodeStream::decompress_tile() {
 		if (!parse_markers(&go_on))
 			goto cleanup;
 	} catch (InvalidMarkerException &ime){
+		GRK_ERROR("Invalid marker");
 		goto cleanup;
 	}
 
@@ -2715,6 +2717,7 @@ bool CodeStream::decompress_tiles(void) {
 				goto cleanup;
 			}
 		} catch (InvalidMarkerException &ime){
+			GRK_ERROR("Invalid marker");
 			success = false;
 			goto cleanup;
 		}
