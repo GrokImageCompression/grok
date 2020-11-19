@@ -66,7 +66,7 @@ namespace ojph {
     static int ulvc_cwd_suf_len[33];
 
     /////////////////////////////////////////////////////////////////////////
-    bool vlc_init_tables()
+    bool encode_vlc_init_tables()
     {
       struct vlc_src_table { int c_q, rho, u_off, e_k, e_1, cwd, cwd_len; };
       vlc_src_table tbl0[] = {
@@ -186,7 +186,7 @@ namespace ojph {
     }
 
     /////////////////////////////////////////////////////////////////////////
-    bool uvlc_init_tables()
+    bool encode_uvlc_init_tables()
     {
       //code goes from 0 to 31, extension and 32 are not supported here
       ulvc_cwd_pre[0] = 0; ulvc_cwd_pre[1] = 1; ulvc_cwd_pre[2] = 2;

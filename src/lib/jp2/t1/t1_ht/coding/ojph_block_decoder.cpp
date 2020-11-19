@@ -584,7 +584,7 @@ namespace ojph {
      *  @brief Initializes vlc_tbl0 and vlc_tbl1 tables, from table0.h and
      *         table1.h
      */
-    static bool vlc_init_tables()
+    bool decode_vlc_init_tables()
     {
       const bool debug = false; //useful for checking 
 
@@ -841,7 +841,7 @@ namespace ojph {
     /** @ingroup vlc_decoding_tables_grp
      *  @brief Initializes VLC tables vlc_tbl0 and vlc_tbl1
      */
-    static bool vlc_tables_initialized = vlc_init_tables();
+    //static bool vlc_tables_initialized = vlc_init_tables();
 
     //************************************************************************/
     /** @brief State structure for reading and unstuffing of forward-growing 

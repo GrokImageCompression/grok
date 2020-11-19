@@ -58,8 +58,8 @@ namespace ojph {
                             ojph::mem_elastic_allocator *elastic,
                             ojph::coded_lists *& coded);
 
-    bool vlc_init_tables();
-    bool uvlc_init_tables();
+    bool encode_vlc_init_tables();
+    bool encode_uvlc_init_tables();
   }
 }
 

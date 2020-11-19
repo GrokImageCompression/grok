@@ -31,6 +31,7 @@
 #endif
 #include <fcntl.h>
 #include "ojph_block_encoder.h"
+#include "ojph_block_decoder.h"
 #include "grk_includes.h"
 using namespace grk;
 
@@ -55,8 +56,9 @@ bool GRK_CALLCONV grk_initialize(const char *plugin_path, uint32_t numthreads) {
 		info.plugin_path = plugin_path;
 		is_plugin_initialized = grk_plugin_load(info);
 	}
-    ojph::local::vlc_init_tables();
-    ojph::local::uvlc_init_tables();
+	ojph::local::decode_vlc_init_tables();
+    ojph::local::encode_vlc_init_tables();
+    ojph::local::encode_uvlc_init_tables();
 
 	return is_plugin_initialized;
 }
