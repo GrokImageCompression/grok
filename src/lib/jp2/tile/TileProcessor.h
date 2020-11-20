@@ -65,14 +65,14 @@ struct TileProcessor {
 	~TileProcessor();
 
 	/**
-	 * Allocates memory for decoding a specific tile.
+	 * Initializes tile processor (no buffer memory is allocated)
 	 *
 	 * @param	output_image 	output image (for decompress)
 	 * @param	isCompressor	true if tile will be compressed, otherwise false
 	 *
 	 * @return	true if the remaining data is sufficient.
 	 */
-	 bool init_tile(grk_image *output_image, bool isCompressor);
+	 bool init(grk_image *output_image, bool isCompressor);
 
 	 bool pre_write_tile(void);
 

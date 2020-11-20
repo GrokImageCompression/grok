@@ -652,8 +652,7 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 	}
 }
 
-bool TileProcessor::init_tile(grk_image *output_image,
-		bool isCompressor) {
+bool TileProcessor::init(grk_image *output_image,bool isCompressor) {
 	uint32_t state = grk_plugin_get_debug_state();
 	auto tcp = &(m_cp->tcps[m_tile_index]);
 
@@ -1323,7 +1322,7 @@ bool TileProcessor::pre_write_tile() {
 	m_first_poc_tile_part = true;
 
 	/* initialisation before tile compressing  */
-	bool rc =  init_tile(nullptr, true);
+	bool rc =  init(nullptr, true);
 	if (rc){
 		uint32_t nb_tiles = (uint32_t) m_cp->t_grid_height
 				* m_cp->t_grid_width;

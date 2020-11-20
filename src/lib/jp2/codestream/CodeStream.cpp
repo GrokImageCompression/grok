@@ -2355,7 +2355,7 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 		GRK_ERROR("Failed to merge PPT data");
 		return false;
 	}
-	if (!m_tileProcessor->init_tile(m_output_image, false)) {
+	if (!m_tileProcessor->init(m_output_image, false)) {
 		GRK_ERROR("Cannot decompress tile %u",
 				m_tileProcessor->m_tile_index);
 		return false;
