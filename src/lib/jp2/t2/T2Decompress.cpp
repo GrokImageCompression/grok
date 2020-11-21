@@ -300,197 +300,173 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 		modified_length_ptr = &(remaining_length);
 	}
 
+	if (!*modified_length_ptr)
+		throw TruncatedStreamException();
+
 	uint32_t present = 0;
-	std::unique_ptr<BitIO> bio(
-			new BitIO(header_data, *modified_length_ptr, false));
-	if (*modified_length_ptr) {
-		bio->read(&present, 1);
-	}
+	std::unique_ptr<BitIO> bio(new BitIO(header_data, *modified_length_ptr, false));
+	bio->read(&present, 1);
+
 	//GRK_INFO("present=%u ", present);
-	if (!present) {
-		bio->inalign();
-		header_data += bio->numbytes();
-
-		/* EPH markers */
-		if (p_tcp->csty & J2K_CP_CSTY_EPH) {
-			if ((*modified_length_ptr
-					- (size_t) (header_data - *header_data_start)) < 2U) {
-				//GRK_WARN("Not enough space for expected EPH marker");
-				throw TruncatedStreamException();
-			} else if ((*header_data) != 0xff || (*(header_data + 1) != 0x92)) {
-				GRK_WARN("Expected EPH marker");
-			} else {
-				header_data += 2;
-			}
-		}
-
-		auto header_length = (size_t) (header_data - *header_data_start);
-		*modified_length_ptr -= header_length;
-		*header_data_start += header_length;
-
-		*p_is_data_present = false;
-		*p_data_read = (size_t) (active_src - p_src_data);
-		src_buf->incr_cur_chunk_offset(*p_data_read);
-		if (!*p_data_read)
-			throw TruncatedStreamException();
-		return true;
-	}
-	for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
-		auto band = res->bandWindow + bandno;
-		if (band->isEmpty())
-			continue;
-		auto prc = band->precincts + p_pi->precno;
-		nb_code_blocks = (uint64_t) prc->cblk_grid_width * prc->cblk_grid_height;
-		for (uint64_t cblkno = 0; cblkno < nb_code_blocks; cblkno++) {
-			uint32_t included = 0, increment = 0;
-			auto cblk = prc->dec + cblkno;
-
-			/* if cblk not yet included before --> inclusion tagtree */
-			if (!cblk->numSegments) {
-				uint64_t value;
-				prc->incltree->decodeValue(bio.get(), cblkno,
-						p_pi->layno + 1, &value);
-
-				if (value != tag_tree_uninitialized_node_value
-						&& value != p_pi->layno) {
-					GRK_WARN("Tile number: %u",tileProcessor->m_tile_index+1);
-					std::string msg =
-							"Illegal inclusion tag tree found when decoding packet header.\n";
-					msg +=
-							"This problem can occur if empty packets are used (i.e., packets whose first header\n";
-					msg +=
-							"bit is 0) and the value coded by the inclusion tag tree in a subsequent packet\n";
-					msg +=
-							"is not exactly equal to the index of the quality layer in which each code-block\n";
-					msg +=
-							"makes its first contribution.  Such an error may occur from a\n";
-					msg +=
-							"mis-interpretation of the standard.  The problem may also occur as a result of\n";
-					msg += "a corrupted code-stream";
-					GRK_WARN("%s", msg.c_str());
-					tileProcessor->m_corrupt_packet = true;
-
-				}
-#ifdef DEBUG_LOSSLESS_T2
-				 cblk->included = value;
-#endif
-				included = (value <= p_pi->layno) ? 1 : 0;
-			}
-			/* else one bit */
-			else {
-				bio->read(&included, 1);
-#ifdef DEBUG_LOSSLESS_T2
-				 cblk->included = included;
-#endif
-			}
-
-			/* if cblk not included */
-			if (!included) {
-				cblk->numPassesInPacket = 0;
-				//GRK_INFO("included=%u ", included);
+	if (present) {
+		for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
+			auto band = res->bandWindow + bandno;
+			if (band->isEmpty())
 				continue;
-			}
+			auto prc = band->precincts + p_pi->precno;
+			nb_code_blocks = (uint64_t) prc->cblk_grid_width * prc->cblk_grid_height;
+			for (uint64_t cblkno = 0; cblkno < nb_code_blocks; cblkno++) {
+				uint32_t included = 0, increment = 0;
+				auto cblk = prc->dec + cblkno;
 
-			/* if cblk not yet included --> zero-bitplane tagtree */
-			if (!cblk->numSegments) {
-				uint32_t K_msbs = 0;
-				uint8_t value;
+				/* if cblk not yet included before --> inclusion tagtree */
+				if (!cblk->numSegments) {
+					uint64_t value;
+					prc->incltree->decodeValue(bio.get(), cblkno,
+							p_pi->layno + 1, &value);
 
-				// see Taubman + Marcellin page 388
-				// loop below stops at (# of missing bit planes  + 1)
-				prc->imsbtree->decompress(bio.get(), cblkno,
-										K_msbs, &value);
-				while (!value) {
-					++K_msbs;
+					if (value != tag_tree_uninitialized_node_value
+							&& value != p_pi->layno) {
+						GRK_WARN("Tile number: %u",tileProcessor->m_tile_index+1);
+						std::string msg =
+								"Illegal inclusion tag tree found when decoding packet header.\n";
+						msg +=
+								"This problem can occur if empty packets are used (i.e., packets whose first header\n";
+						msg +=
+								"bit is 0) and the value coded by the inclusion tag tree in a subsequent packet\n";
+						msg +=
+								"is not exactly equal to the index of the quality layer in which each code-block\n";
+						msg +=
+								"makes its first contribution.  Such an error may occur from a\n";
+						msg +=
+								"mis-interpretation of the standard.  The problem may also occur as a result of\n";
+						msg += "a corrupted code-stream";
+						GRK_WARN("%s", msg.c_str());
+						tileProcessor->m_corrupt_packet = true;
+
+					}
+	#ifdef DEBUG_LOSSLESS_T2
+					 cblk->included = value;
+	#endif
+					included = (value <= p_pi->layno) ? 1 : 0;
+				}
+				/* else one bit */
+				else {
+					bio->read(&included, 1);
+	#ifdef DEBUG_LOSSLESS_T2
+					 cblk->included = included;
+	#endif
+				}
+
+				/* if cblk not included */
+				if (!included) {
+					cblk->numPassesInPacket = 0;
+					//GRK_INFO("included=%u ", included);
+					continue;
+				}
+
+				/* if cblk not yet included --> zero-bitplane tagtree */
+				if (!cblk->numSegments) {
+					uint32_t K_msbs = 0;
+					uint8_t value;
+
+					// see Taubman + Marcellin page 388
+					// loop below stops at (# of missing bit planes  + 1)
 					prc->imsbtree->decompress(bio.get(), cblkno,
 											K_msbs, &value);
-				}
-				assert(K_msbs >= 1);
-				K_msbs--;
-
-				if (K_msbs > band->numbps) {
-					GRK_WARN("More missing bit planes (%u) than band bit planes (%u).",
-							K_msbs, band->numbps);
-					cblk->numbps = band->numbps;
-				} else {
-					cblk->numbps = band->numbps - K_msbs;
-				}
-				// BIBO analysis gives sanity check on number of bit planes
-				if (cblk->numbps
-						> max_precision_jpeg_2000 + GRK_J2K_MAXRLVLS * 5) {
-					GRK_WARN("Number of bit planes %u is impossibly large.",
-							cblk->numbps);
-					return false;
-				}
-				cblk->numlenbits = 3;
-			}
-
-			/* number of coding passes */
-			bio->getnumpasses(&cblk->numPassesInPacket);
-			bio->getcommacode(&increment);
-
-			/* length indicator increment */
-			cblk->numlenbits += increment;
-			uint32_t segno = 0;
-
-			if (!cblk->numSegments) {
-				init_seg(cblk, segno,p_tcp->tccps[p_pi->compno].cblk_sty, true);
-			} else {
-				segno = cblk->numSegments - 1;
-				if (cblk->segs[segno].numpasses
-						== cblk->segs[segno].maxpasses) {
-					++segno;
-					init_seg(cblk, segno,p_tcp->tccps[p_pi->compno].cblk_sty, false);
-				}
-			}
-			auto blockPassesInPacket = (int32_t) cblk->numPassesInPacket;
-			do {
-				auto seg = cblk->segs + segno;
-				/* sanity check when there is no mode switch */
-				if (seg->maxpasses == max_passes_per_segment) {
-					if (blockPassesInPacket
-							> (int32_t) max_passes_per_segment) {
-						GRK_WARN("Number of code block passes (%u) in packet is suspiciously large.",
-								blockPassesInPacket);
-						// ToDO - we are truncating the number of passes at an arbitrary value of
-						// max_passes_per_segment. We should probably either skip the rest of this
-						// block, if possible, or do further sanity check on packet
-						seg->numPassesInPacket = max_passes_per_segment;
-					} else {
-						seg->numPassesInPacket = (uint32_t) blockPassesInPacket;
+					while (!value) {
+						++K_msbs;
+						prc->imsbtree->decompress(bio.get(), cblkno,
+												K_msbs, &value);
 					}
+					assert(K_msbs >= 1);
+					K_msbs--;
 
+					if (K_msbs > band->numbps) {
+						GRK_WARN("More missing bit planes (%u) than band bit planes (%u).",
+								K_msbs, band->numbps);
+						cblk->numbps = band->numbps;
+					} else {
+						cblk->numbps = band->numbps - K_msbs;
+					}
+					// BIBO analysis gives sanity check on number of bit planes
+					if (cblk->numbps
+							> max_precision_jpeg_2000 + GRK_J2K_MAXRLVLS * 5) {
+						GRK_WARN("Number of bit planes %u is impossibly large.",
+								cblk->numbps);
+						return false;
+					}
+					cblk->numlenbits = 3;
+				}
+
+				/* number of coding passes */
+				bio->getnumpasses(&cblk->numPassesInPacket);
+				bio->getcommacode(&increment);
+
+				/* length indicator increment */
+				cblk->numlenbits += increment;
+				uint32_t segno = 0;
+
+				if (!cblk->numSegments) {
+					init_seg(cblk, segno,p_tcp->tccps[p_pi->compno].cblk_sty, true);
 				} else {
-					assert(seg->maxpasses >= seg->numpasses);
-					seg->numPassesInPacket = (uint32_t) std::min<int32_t>(
-							(int32_t) (seg->maxpasses - seg->numpasses),
-							blockPassesInPacket);
+					segno = cblk->numSegments - 1;
+					if (cblk->segs[segno].numpasses
+							== cblk->segs[segno].maxpasses) {
+						++segno;
+						init_seg(cblk, segno,p_tcp->tccps[p_pi->compno].cblk_sty, false);
+					}
 				}
-				uint32_t bits_to_read = cblk->numlenbits
-						+ floorlog2<uint32_t>(seg->numPassesInPacket);
-				if (bits_to_read > 32) {
-					GRK_ERROR("read_packet_header: too many bits in segment length ");
-					return false;
-				}
-				bio->read(&seg->numBytesInPacket, bits_to_read);
-#ifdef DEBUG_LOSSLESS_T2
-			 cblk->packet_length_info.push_back(PacketLengthInfo(seg->numBytesInPacket,
-							 cblk->numlenbits + floorlog2<uint32_t>(seg->numPassesInPacket)));
-#endif
-				/*
-				 GRK_INFO(
-				 "included=%u numPassesInPacket=%u increment=%u len=%u ",
-				 included, seg->numPassesInPacket, increment,
-				 seg->newlen);
-				 */
-				blockPassesInPacket -= (int32_t) seg->numPassesInPacket;
-				if (blockPassesInPacket > 0) {
-					++segno;
-					init_seg(cblk, segno,p_tcp->tccps[p_pi->compno].cblk_sty, false);
-				}
-			} while (blockPassesInPacket > 0);
+				auto blockPassesInPacket = (int32_t) cblk->numPassesInPacket;
+				do {
+					auto seg = cblk->segs + segno;
+					/* sanity check when there is no mode switch */
+					if (seg->maxpasses == max_passes_per_segment) {
+						if (blockPassesInPacket
+								> (int32_t) max_passes_per_segment) {
+							GRK_WARN("Number of code block passes (%u) in packet is suspiciously large.",
+									blockPassesInPacket);
+							// ToDO - we are truncating the number of passes at an arbitrary value of
+							// max_passes_per_segment. We should probably either skip the rest of this
+							// block, if possible, or do further sanity check on packet
+							seg->numPassesInPacket = max_passes_per_segment;
+						} else {
+							seg->numPassesInPacket = (uint32_t) blockPassesInPacket;
+						}
+
+					} else {
+						assert(seg->maxpasses >= seg->numpasses);
+						seg->numPassesInPacket = (uint32_t) std::min<int32_t>(
+								(int32_t) (seg->maxpasses - seg->numpasses),
+								blockPassesInPacket);
+					}
+					uint32_t bits_to_read = cblk->numlenbits
+							+ floorlog2<uint32_t>(seg->numPassesInPacket);
+					if (bits_to_read > 32) {
+						GRK_ERROR("read_packet_header: too many bits in segment length ");
+						return false;
+					}
+					bio->read(&seg->numBytesInPacket, bits_to_read);
+	#ifdef DEBUG_LOSSLESS_T2
+				 cblk->packet_length_info.push_back(PacketLengthInfo(seg->numBytesInPacket,
+								 cblk->numlenbits + floorlog2<uint32_t>(seg->numPassesInPacket)));
+	#endif
+					/*
+					 GRK_INFO(
+					 "included=%u numPassesInPacket=%u increment=%u len=%u ",
+					 included, seg->numPassesInPacket, increment,
+					 seg->newlen);
+					 */
+					blockPassesInPacket -= (int32_t) seg->numPassesInPacket;
+					if (blockPassesInPacket > 0) {
+						++segno;
+						init_seg(cblk, segno,p_tcp->tccps[p_pi->compno].cblk_sty, false);
+					}
+				} while (blockPassesInPacket > 0);
+			}
 		}
 	}
+
 	bio->inalign();
 	header_data += bio->numbytes();
 
@@ -512,9 +488,12 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 	//GRK_INFO("packet body\n");
 	*modified_length_ptr -= header_length;
 	*header_data_start += header_length;
-	*p_is_data_present = true;
+	*p_is_data_present = present;
 	*p_data_read = (uint32_t) (active_src - p_src_data);
 	src_buf->incr_cur_chunk_offset(*p_data_read);
+
+	if (!present && !*p_data_read)
+		throw TruncatedStreamException();
 
 	return true;
 }
