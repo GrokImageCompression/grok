@@ -184,91 +184,96 @@ bool TileComponent::init(bool isCompressor,
 			    window->grow(filter_margin,filter_margin);
 			}
 		}
-
 	}
 
+	// set band step size
+	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
+		auto res = resolutions + resno;
+		for (uint8_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
+			auto band = res->bandWindow + bandno;
+			if (!m_tccp->quant.setBandStepSizeAndBps(tcp,
+											band,
+											resno,
+											bandno,
+											m_tccp,
+											prec,
+											m_is_encoder))
+				return false;
+		}
+	}
 
 	// 4. initialize precincts and code blocks
 	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
 
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
-		uint32_t pdx = m_tccp->prcw[resno];
-		uint32_t pdy = m_tccp->prch[resno];
+		uint32_t precinct_dx_expn = m_tccp->prcw[resno];
+		uint32_t precinct_dy_expn = m_tccp->prch[resno];
 		/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
-		uint32_t tprc_x_start = uint_floordivpow2(res->x0, pdx) << pdx;
-		uint32_t tprc_y_start = uint_floordivpow2(res->y0, pdy) << pdy;
-		uint64_t nb_precincts = (uint64_t)res->pw * res->ph;
-		if (mult64_will_overflow(nb_precincts, sizeof(Precinct))) {
+		uint32_t tile_precinct_x_start = uint_floordivpow2(res->x0, precinct_dx_expn) << precinct_dx_expn;
+		uint32_t tile_precinct_y_start = uint_floordivpow2(res->y0, precinct_dy_expn) << precinct_dy_expn;
+		uint64_t num_precincts = (uint64_t)res->pw * res->ph;
+		if (mult64_will_overflow(num_precincts, sizeof(Precinct))) {
 			GRK_ERROR(	"nb_precinct_size calculation would overflow ");
 			return false;
 		}
-		uint32_t tlcbgxstart, tlcbgystart;
-		uint32_t cbgwidthexpn, cbgheightexpn;
+		uint32_t tile_cblk_g_xstart, tile_cblk_g_ystart;
+		uint32_t cblk_g_width_expn, cblk_g_height_expn;
 		if (resno == 0) {
-			tlcbgxstart = tprc_x_start;
-			tlcbgystart = tprc_y_start;
-			cbgwidthexpn = pdx;
-			cbgheightexpn = pdy;
+			tile_cblk_g_xstart = tile_precinct_x_start;
+			tile_cblk_g_ystart = tile_precinct_y_start;
+			cblk_g_width_expn = precinct_dx_expn;
+			cblk_g_height_expn = precinct_dy_expn;
 		} else {
-			tlcbgxstart = ceildivpow2<uint32_t>(tprc_x_start, 1);
-			tlcbgystart = ceildivpow2<uint32_t>(tprc_y_start, 1);
-			cbgwidthexpn = pdx - 1;
-			cbgheightexpn = pdy - 1;
+			tile_cblk_g_xstart = ceildivpow2<uint32_t>(tile_precinct_x_start, 1);
+			tile_cblk_g_ystart = ceildivpow2<uint32_t>(tile_precinct_y_start, 1);
+			cblk_g_width_expn = precinct_dx_expn - 1;
+			cblk_g_height_expn = precinct_dy_expn - 1;
 		}
+		uint32_t cblk_width_expn    = std::min<uint32_t>(m_tccp->cblkw, cblk_g_width_expn);
+		uint32_t cblk_height_expn   = std::min<uint32_t>(m_tccp->cblkh, cblk_g_height_expn);
+		size_t nominalBlockSize = (1 << cblk_width_expn) * (1 << cblk_height_expn);
 
-		uint32_t cblkwidthexpn 	= std::min<uint32_t>(tccp->cblkw, cbgwidthexpn);
-		uint32_t cblkheightexpn = std::min<uint32_t>(tccp->cblkh, cbgheightexpn);
-		size_t nominalBlockSize = (1 << cblkwidthexpn) * (1 << cblkheightexpn);
-
-		for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
+		for (uint8_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
 			auto band = res->bandWindow + bandno;
-			if (!tccp->quant.setBandStepSizeAndBps(tcp,
-											band,
-											resno,
-											(uint8_t)bandno,
-											tccp,
-											prec,
-											m_is_encoder))
-				return false;
-
-			band->precincts = new Precinct[nb_precincts];
-			band->numPrecincts = nb_precincts;
-			for (uint64_t precno = 0; precno < nb_precincts; ++precno) {
+			band->precincts = new Precinct[num_precincts];
+			band->numPrecincts = num_precincts;
+			for (uint64_t precno = 0; precno < num_precincts; ++precno) {
 				auto current_precinct = band->precincts + precno;
-				uint32_t cbgxstart = tlcbgxstart + (uint32_t)(precno % res->pw) * (1 << cbgwidthexpn);
-				uint32_t cbgystart = tlcbgystart + (uint32_t)(precno / res->pw) * (1 << cbgheightexpn);
-				auto cbg = grk_rect_u32(cbgxstart,
-										cbgystart,
-										cbgxstart + (1 << cbgwidthexpn),
-										cbgystart + (1 << cbgheightexpn));
+				uint32_t cblk_g_xstart = tile_cblk_g_xstart + (uint32_t)(precno % res->pw) * (1 << cblk_g_width_expn);
+				uint32_t cblk_g_ystart = tile_cblk_g_ystart + (uint32_t)(precno / res->pw) * (1 << cblk_g_height_expn);
+				auto cbg = grk_rect_u32(cblk_g_xstart,
+										cblk_g_ystart,
+										cblk_g_xstart + (1 << cblk_g_width_expn),
+										cblk_g_ystart + (1 << cblk_g_height_expn));
 
 				*((grk_rect_u32*)current_precinct) = cbg.intersection(band);
 
-				uint32_t tlcblkxstart 	= uint_floordivpow2(current_precinct->x0,cblkwidthexpn) << cblkwidthexpn;
-				uint32_t tlcblkystart 	= uint_floordivpow2(current_precinct->y0,cblkheightexpn) << cblkheightexpn;
-				uint32_t brcblkxend 	= ceildivpow2<uint32_t>(current_precinct->x1,cblkwidthexpn) << cblkwidthexpn;
-				uint32_t brcblkyend 	= ceildivpow2<uint32_t>(current_precinct->y1,cblkheightexpn) << cblkheightexpn;
-				current_precinct->cw 	= ((brcblkxend - tlcblkxstart)	>> cblkwidthexpn);
-				current_precinct->ch 	= ((brcblkyend - tlcblkystart)	>> cblkheightexpn);
+				uint32_t tile_cblk_xstart 	= uint_floordivpow2(current_precinct->x0,cblk_width_expn) << cblk_width_expn;
+				uint32_t tile_cblk_ystart 	= uint_floordivpow2(current_precinct->y0,cblk_height_expn) << cblk_height_expn;
+				uint32_t brcblkxend 	= ceildivpow2<uint32_t>(current_precinct->x1,cblk_width_expn) << cblk_width_expn;
+				uint32_t brcblkyend 	= ceildivpow2<uint32_t>(current_precinct->y1,cblk_height_expn) << cblk_height_expn;
+				current_precinct->cblk_grid_width 	= ((brcblkxend - tile_cblk_xstart)	>> cblk_width_expn);
+				current_precinct->cblk_grid_height 	= ((brcblkyend - tile_cblk_ystart)	>> cblk_height_expn);
 
-				uint64_t nb_code_blocks = (uint64_t) current_precinct->cw* current_precinct->ch;
-				if (nb_code_blocks > 0) {
-					if (isCompressor)
-						current_precinct->enc = new CompressCodeblock[nb_code_blocks];
-					else
-						current_precinct->dec = new DecompressCodeblock[nb_code_blocks];
-				    current_precinct->numCodeBlocks = nb_code_blocks;
-				}
+				uint64_t nb_code_blocks = (uint64_t) current_precinct->cblk_grid_width* current_precinct->cblk_grid_height;
+				if (!nb_code_blocks)
+					continue;
+
+				if (isCompressor)
+					current_precinct->enc = new CompressCodeblock[nb_code_blocks];
+				else
+					current_precinct->dec = new DecompressCodeblock[nb_code_blocks];
+				current_precinct->numCodeBlocks = nb_code_blocks;
 				current_precinct->initTagTrees();
 
 				for (uint64_t cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
-					uint32_t cblkxstart = tlcblkxstart	+ (uint32_t) (cblkno % current_precinct->cw)* (1 << cblkwidthexpn);
-					uint32_t cblkystart = tlcblkystart	+ (uint32_t) (cblkno / current_precinct->cw)* (1 << cblkheightexpn);
+					uint32_t cblkxstart = tile_cblk_xstart	+ (uint32_t) (cblkno % current_precinct->cblk_grid_width)* (1 << cblk_width_expn);
+					uint32_t cblkystart = tile_cblk_ystart	+ (uint32_t) (cblkno / current_precinct->cblk_grid_width)* (1 << cblk_height_expn);
 					auto cblk_bounds = grk_rect_u32(cblkxstart,
 													cblkystart,
-													cblkxstart + (1 << cblkwidthexpn),
-													cblkystart + (1 << cblkheightexpn));
+													cblkxstart + (1 << cblk_width_expn),
+													cblkystart + (1 << cblk_height_expn));
 
 					auto cblk_dims = (m_is_encoder) ?
 												(grk_rect_u32*)(current_precinct->enc + cblkno) :
@@ -279,8 +284,7 @@ bool TileComponent::init(bool isCompressor,
 							return false;
 						if (!current_plugin_tile
 								|| (state & GRK_PLUGIN_STATE_DEBUG)) {
-							if (!code_block->alloc_data(
-									nominalBlockSize))
+							if (!code_block->alloc_data(nominalBlockSize))
 								return false;
 						}
 					} else {
@@ -326,7 +330,7 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
             auto band = res->bandWindow + bandno;
             for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph; ++precno) {
                 auto precinct = band->precincts + precno;
-                for (uint64_t cblkno = 0; cblkno < (uint64_t)precinct->cw * precinct->ch; ++cblkno) {
+                for (uint64_t cblkno = 0; cblkno < (uint64_t)precinct->cblk_grid_width * precinct->cblk_grid_height; ++cblkno) {
                     auto cblk = precinct->dec + cblkno;
 					// check overlap in band coordinates
 					if (subbandIntersectsAOI(resno,	bandno,	cblk)){

@@ -238,7 +238,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 				prc->incltree->reset();
 			if (prc->imsbtree)
 				prc->imsbtree->reset();
-			nb_code_blocks = (uint64_t) prc->cw * prc->ch;
+			nb_code_blocks = (uint64_t) prc->cblk_grid_width * prc->cblk_grid_height;
 			for (uint64_t cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
 				auto cblk = prc->dec + cblkno;
 				cblk->numSegments = 0;
@@ -340,7 +340,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 		if (band->isEmpty())
 			continue;
 		auto prc = band->precincts + p_pi->precno;
-		nb_code_blocks = (uint64_t) prc->cw * prc->ch;
+		nb_code_blocks = (uint64_t) prc->cblk_grid_width * prc->cblk_grid_height;
 		for (uint64_t cblkno = 0; cblkno < nb_code_blocks; cblkno++) {
 			uint32_t included = 0, increment = 0;
 			auto cblk = prc->dec + cblkno;
@@ -524,7 +524,7 @@ bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 	for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
 		auto band = res->bandWindow + bandno;
 		auto prc = &band->precincts[p_pi->precno];
-		uint64_t nb_code_blocks = (uint64_t) prc->cw * prc->ch;
+		uint64_t nb_code_blocks = (uint64_t) prc->cblk_grid_width * prc->cblk_grid_height;
 		for (uint64_t cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
 			auto cblk = prc->dec + cblkno;
 			if (!cblk->numPassesInPacket) {
@@ -625,7 +625,7 @@ bool T2Decompress::skip_packet_data(Resolution *res, PacketIter *p_pi,
 			continue;
 
 		auto prc = &band->precincts[p_pi->precno];
-		uint64_t nb_code_blocks = (uint64_t) prc->cw * prc->ch;
+		uint64_t nb_code_blocks = (uint64_t) prc->cblk_grid_width * prc->cblk_grid_height;
 		for (uint64_t cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
 			auto cblk = prc->dec + cblkno;
 			if (!cblk->numPassesInPacket) {

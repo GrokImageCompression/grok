@@ -106,7 +106,7 @@ void TileProcessor::makelayer_feasible(uint32_t layno, uint16_t thresh,
 				auto band = res->bandWindow + bandno;
 				for (precno = 0; precno < (uint64_t)res->pw * res->ph; precno++) {
 					auto prc = band->precincts + precno;
-					for (cblkno = 0; (uint64_t)cblkno < prc->cw * prc->ch; cblkno++) {
+					for (cblkno = 0; (uint64_t)cblkno < prc->cblk_grid_width * prc->cblk_grid_height; cblkno++) {
 						auto cblk = prc->enc + cblkno;
 						auto layer = cblk->layers + layno;
 						uint32_t cumulative_included_passes_in_block;
@@ -201,7 +201,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 				for (uint64_t precno = 0; (uint64_t)precno < res->pw * res->ph;
 						precno++) {
 					auto prc = &band->precincts[precno];
-					for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch;
+					for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cblk_grid_width * prc->cblk_grid_height;
 							cblkno++) {
 						auto cblk = &prc->enc[cblkno];
 						uint32_t numPix = (uint32_t)cblk->area();
@@ -338,7 +338,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 				auto band = &res->bandWindow[bandno];
 				for (precno = 0; precno < (uint64_t)res->pw * res->ph; precno++) {
 					auto prc = &band->precincts[precno];
-					for (cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch; cblkno++) {
+					for (cblkno = 0; cblkno < (uint64_t)prc->cblk_grid_width * prc->cblk_grid_height; cblkno++) {
 						auto cblk = &prc->enc[cblkno];
 						uint32_t numPix = (uint32_t)cblk->area();
 						if (!(state & GRK_PLUGIN_STATE_PRE_TR1)) {
@@ -494,7 +494,7 @@ void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 				auto band = res->bandWindow + bandno;
 				for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph; precno++) {
 					auto prc = band->precincts + precno;
-					for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch; cblkno++) {
+					for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cblk_grid_width * prc->cblk_grid_height; cblkno++) {
 						auto cblk = prc->enc + cblkno;
 						auto layer = cblk->layers + layno;
 						uint32_t cumulative_included_passes_in_block;
@@ -596,7 +596,7 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 				auto band = res->bandWindow + bandno;
 				for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph; precno++) {
 					auto prc = band->precincts + precno;
-					for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch; cblkno++) {
+					for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cblk_grid_width * prc->cblk_grid_height; cblkno++) {
 						auto cblk = prc->enc + cblkno;
 						auto layer = cblk->layers + layno;
 						if (layno == 0)
@@ -736,10 +736,7 @@ bool TileProcessor::init(grk_image *output_image,bool isCompressor) {
 			TileComponent *tilec = &tile->comps[compno];
 			for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
 				auto res = tilec->resolutions + resno;
-				for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
-					auto band = res->bandWindow + bandno;
-					max_precincts = max<uint64_t>(max_precincts, band->numPrecincts);
-				}
+				max_precincts = max<uint64_t>(max_precincts, (uint64_t)res->pw * res->ph);
 			}
 		}
 		m_packetTracker.init(tile->numcomps,
@@ -1144,12 +1141,12 @@ bool TileProcessor::t2_encode(uint32_t *all_packet_bytes_written) {
 				for (uint64_t precno = 0; precno < band->numPrecincts; ++precno) {
 					auto prec = band->precincts + precno;
 					auto decodePrec = decodeBand->precincts + precno;
-					decodePrec->cw = prec->cw;
-					decodePrec->ch = prec->ch;
-					if (prec->enc && prec->cw && prec->ch) {
+					decodePrec->cblk_grid_width = prec->cblk_grid_width;
+					decodePrec->cblk_grid_height = prec->cblk_grid_height;
+					if (prec->enc && prec->cblk_grid_width && prec->cblk_grid_height) {
 						decodePrec->initTagTrees();
-						decodePrec->dec = new DecompressCodeblock[(uint64_t)decodePrec->cw * decodePrec->ch];
-						for (uint64_t cblkno = 0; cblkno < decodePrec->cw * decodePrec->ch; ++cblkno) {
+						decodePrec->dec = new DecompressCodeblock[(uint64_t)decodePrec->cblk_grid_width * decodePrec->cblk_grid_height];
+						for (uint64_t cblkno = 0; cblkno < decodePrec->cblk_grid_width * decodePrec->cblk_grid_height; ++cblkno) {
 							auto cblk = prec->enc + cblkno;
 							auto decodeCblk = decodePrec->dec + cblkno;
 							decodeCblk->x0 = cblk->x0;

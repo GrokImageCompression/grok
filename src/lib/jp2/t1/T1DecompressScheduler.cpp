@@ -48,7 +48,7 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent *tilec, Tile
 					continue;
 				}
 				for (uint64_t cblkno = 0;
-						cblkno < (uint64_t) precinct->cw * precinct->ch;
+						cblkno < (uint64_t) precinct->cblk_grid_width * precinct->cblk_grid_height;
 						++cblkno) {
 					auto cblk = precinct->dec + cblkno;
 					if (tilec->subbandIntersectsAOI(resno,

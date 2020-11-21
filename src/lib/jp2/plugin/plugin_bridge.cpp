@@ -42,8 +42,8 @@ void decompress_synch_plugin_with_host(TileProcessor *tcd) {
 							precno++) {
 						auto prc = &band->precincts[precno];
 						auto plugin_prc = plugin_band->precincts[precno];
-						assert(plugin_prc->numBlocks == (uint64_t)prc->cw * prc->ch);
-						for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch;
+						assert(plugin_prc->numBlocks == (uint64_t)prc->cblk_grid_width * prc->cblk_grid_height);
+						for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cblk_grid_width * prc->cblk_grid_height;
 								cblkno++) {
 							auto cblk = &prc->dec[cblkno];
 							if (!cblk->numSegments)
@@ -119,12 +119,12 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tile *p_tile) {
 					auto precinct = band->precincts + precno;
 					auto plugin_precinct =
 							plugin_band->precincts[precno];
-					if ((uint64_t)precinct->ch * precinct->cw
+					if ((uint64_t)precinct->cblk_grid_height * precinct->cblk_grid_width
 							!= plugin_precinct->numBlocks) {
 						return false;
 					}
 					for (uint64_t cblkno = 0;
-							cblkno < (uint64_t)precinct->ch * precinct->cw; ++cblkno) {
+							cblkno < (uint64_t)precinct->cblk_grid_height * precinct->cblk_grid_width; ++cblkno) {
 						auto cblk = precinct->dec + cblkno;
 						auto plugin_cblk =
 								plugin_precinct->blocks[cblkno];
@@ -268,7 +268,7 @@ void set_context_stream(TileProcessor *p_tileProcessor) {
 				for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph;
 						precno++) {
 					auto prc = &band->precincts[precno];
-					for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cw * prc->ch;
+					for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cblk_grid_width * prc->cblk_grid_height;
 							cblkno++) {
 						auto cblk = &prc->enc[cblkno];
 						if (p_tileProcessor->current_plugin_tile

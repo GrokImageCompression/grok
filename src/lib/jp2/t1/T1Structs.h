@@ -147,7 +147,8 @@ struct Precinct : public grk_rect_u32 {
 	void initTagTrees();
 	void deleteTagTrees();
 
-	uint32_t cw, ch; /* dimensions of code block grid */
+	uint32_t cblk_grid_width;
+	uint32_t cblk_grid_height;
 	CompressCodeblock *enc;
 	DecompressCodeblock *dec;
 	uint64_t numCodeBlocks;

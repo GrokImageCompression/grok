@@ -50,7 +50,7 @@ void T1CompressScheduler::scheduleCompress(TileCodingParams *tcp,
 				auto band = &res->bandWindow[bandno];
 				for (precno = 0; precno < (uint64_t)res->pw * res->ph; ++precno) {
 					auto prc = &band->precincts[precno];
-					for (uint64_t cblkno = 0; cblkno < (int64_t) prc->cw * prc->ch;
+					for (uint64_t cblkno = 0; cblkno < (int64_t) prc->cblk_grid_width * prc->cblk_grid_height;
 							++cblkno) {
 						auto cblk = prc->enc + cblkno;
 						auto block = new CompressBlockExec();

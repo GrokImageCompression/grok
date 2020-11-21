@@ -50,7 +50,7 @@ Layer::Layer() :
 }
 
 Precinct::Precinct() :
-		cw(0), ch(0),
+		cblk_grid_width(0), cblk_grid_height(0),
 		enc(nullptr), dec(nullptr),
 		numCodeBlocks(0),
 		incltree(nullptr), imsbtree(nullptr) {
@@ -348,15 +348,15 @@ void Precinct::initTagTrees() {
 	// if cw == 0 or ch == 0,
 	// then the precinct has no code blocks, therefore
 	// no need for inclusion and msb tag trees
-	if (cw > 0 && ch > 0) {
+	if (cblk_grid_width > 0 && cblk_grid_height > 0) {
 		if (!incltree) {
 			try {
-				incltree = new TagTree(cw, ch);
+				incltree = new TagTree(cblk_grid_width, cblk_grid_height);
 			} catch (std::exception &e) {
 				GRK_WARN("No incltree created.");
 			}
 		} else {
-			if (!incltree->init(cw, ch)) {
+			if (!incltree->init(cblk_grid_width, cblk_grid_height)) {
 				GRK_WARN("Failed to re-initialize incltree.");
 				delete incltree;
 				incltree = nullptr;
@@ -365,12 +365,12 @@ void Precinct::initTagTrees() {
 
 		if (!imsbtree) {
 			try {
-				imsbtree = new TagTree(cw, ch);
+				imsbtree = new TagTree(cblk_grid_width, cblk_grid_height);
 			} catch (std::exception &e) {
 				GRK_WARN("No imsbtree created.");
 			}
 		} else {
-			if (!imsbtree->init(cw, ch)) {
+			if (!imsbtree->init(cblk_grid_width, cblk_grid_height)) {
 				GRK_WARN("Failed to re-initialize imsbtree.");
 				delete imsbtree;
 				imsbtree = nullptr;

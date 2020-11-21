@@ -180,7 +180,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 		for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
 			auto band = res->bandWindow + bandno;
 			auto prc = band->precincts + precno;
-			uint64_t nb_blocks = (uint64_t)prc->cw * prc->ch;
+			uint64_t nb_blocks = (uint64_t)prc->cblk_grid_width * prc->cblk_grid_height;
 
 			if (band->isEmpty() || !nb_blocks) {
 				band++;
@@ -216,7 +216,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 	for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
 		auto band = res->bandWindow + bandno;
 		auto prc = band->precincts + precno;
-		uint64_t nb_blocks = (uint64_t)prc->cw * prc->ch;
+		uint64_t nb_blocks = (uint64_t)prc->cblk_grid_width * prc->cblk_grid_height;
 
 		if (band->isEmpty() || !nb_blocks) {
 			band++;
@@ -341,7 +341,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 	for (uint32_t bandno = 0; bandno < res->numBandWindows; bandno++) {
 		auto band = res->bandWindow + bandno;
 		auto prc = band->precincts + precno;
-		uint64_t nb_blocks = (uint64_t)prc->cw * prc->ch;
+		uint64_t nb_blocks = (uint64_t)prc->cblk_grid_width * prc->cblk_grid_height;
 
 		if (band->isEmpty() || !nb_blocks) {
 			band++;
@@ -398,7 +398,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 				for (uint64_t pno = 0; pno < band->numPrecincts; ++pno) {
 					auto prec = band->precincts + pno;
 					auto roundTripPrec = roundTripBand->precincts + pno;
-					for (uint64_t cblkno = 0; cblkno < (uint64_t)prec->cw * prec->ch; ++cblkno) {
+					for (uint64_t cblkno = 0; cblkno < (uint64_t)prec->cblk_grid_width * prec->cblk_grid_height; ++cblkno) {
 						auto originalCblk = prec->enc + cblkno;
 						Layer *layer = originalCblk->layers + layno;
 						if (!layer->numpasses)
@@ -492,7 +492,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 						for (uint64_t pno = 0; pno < band->numPrecincts; ++pno) {
 							auto prec = band->precincts + pno;
 							auto roundTripPrec = roundTripBand->precincts + pno;
-							for (uint32_t cblkno = 0; cblkno < (uint64_t)prec->cw * prec->ch; ++cblkno) {
+							for (uint32_t cblkno = 0; cblkno < (uint64_t)prec->cblk_grid_width * prec->cblk_grid_height; ++cblkno) {
 								auto originalCblk = prec->enc + cblkno;
 								Layer *layer = originalCblk->layers + layno;
 								if (!layer->numpasses)
@@ -588,7 +588,7 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 			if (prc->imsbtree)
 				prc->imsbtree->reset();
 
-			nb_blocks = (uint64_t)prc->cw * prc->ch;
+			nb_blocks = (uint64_t)prc->cblk_grid_width * prc->cblk_grid_height;
 			for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 				auto cblk = prc->enc + cblkno;
 				cblk->numPassesInPacket = 0;
@@ -615,7 +615,7 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 		auto band = res->bandWindow + bandno;
 		auto prc = band->precincts + precno;
 
-		nb_blocks = (uint64_t)prc->cw * prc->ch;
+		nb_blocks = (uint64_t)prc->cblk_grid_width * prc->cblk_grid_height;
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 			auto cblk = prc->enc + cblkno;
 			auto layer = cblk->layers + layno;
@@ -722,7 +722,7 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 		auto band = res->bandWindow + bandno;
 		auto prc = band->precincts + precno;
 
-		nb_blocks = (uint64_t)prc->cw * prc->ch;
+		nb_blocks = (uint64_t)prc->cblk_grid_width * prc->cblk_grid_height;
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 			auto cblk = prc->enc + cblkno;
 			auto layer = cblk->layers + layno;
