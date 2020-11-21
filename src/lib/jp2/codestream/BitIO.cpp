@@ -23,14 +23,12 @@
 namespace grk {
 
 BitIO::BitIO(uint8_t *bp, uint64_t len, bool isCompressor) :
-		start(bp), offset(0), buf_len(len), buf(0), ct(isCompressor ? 8 : 0), total_bytes(
-				0), sim_out(false), stream(nullptr) {
+		start(bp), offset(0), buf_len(len), buf(0), ct(isCompressor ? 8 : 0),  sim_out(false), stream(nullptr) {
 
 }
 
 BitIO::BitIO(IBufferedStream *strm, bool isCompressor) :
-		start(nullptr), offset(0), buf_len(0), buf(0), ct(isCompressor ? 8 : 0), total_bytes(
-				0), sim_out(false), stream(strm) {
+		start(nullptr), offset(0), buf_len(0), buf(0), ct(isCompressor ? 8 : 0),sim_out(false), stream(strm) {
 }
 
 bool BitIO::byteout() {
@@ -84,7 +82,7 @@ void BitIO::getbit(uint32_t *bits, uint8_t pos) {
 }
 
 size_t BitIO::numbytes() {
-	return total_bytes + offset;
+	return offset;
 }
 
 bool BitIO::write(uint32_t v, uint32_t n) {

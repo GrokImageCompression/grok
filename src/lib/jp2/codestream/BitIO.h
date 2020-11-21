@@ -85,8 +85,6 @@ private:
 	/* coder : number of bits free to write. decoder : number of bits read */
 	uint8_t ct;
 
-	size_t total_bytes;
-
 	bool sim_out;
 
 	IBufferedStream *stream;
