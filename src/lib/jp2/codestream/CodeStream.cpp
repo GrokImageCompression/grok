@@ -1877,16 +1877,16 @@ bool CodeStream::set_decompress_window(grk_image *output_image,
 		return true;
 	}
 
-	/* Check if the positions provided by the user are correct */
+	/* Check if the window provided by the user are correct */
 
 	/* Left */
 	if (start_x > image->x1) {
-		GRK_ERROR("Left position of the decompressed area (region_x0=%u)"
-				" is outside the image area (Xsiz=%u).", start_x, image->x1);
+		GRK_ERROR("Left position of the decompress window (%u)"
+				" is outside of the image area (Xsiz=%u).", start_x, image->x1);
 		return false;
 	} else if (start_x < image->x0) {
-		GRK_WARN("Left position of the decompressed area (region_x0=%u)"
-				" is outside the image area (XOsiz=%u).", start_x, image->x0);
+		GRK_WARN("Left position of the decompress window (%u)"
+				" is outside of the image area (XOsiz=%u).", start_x, image->x0);
 		decompressor->m_start_tile_x_index = 0;
 		output_image->x0 = image->x0;
 	} else {
@@ -1896,12 +1896,12 @@ bool CodeStream::set_decompress_window(grk_image *output_image,
 
 	/* Up */
 	if (start_y > image->y1) {
-		GRK_ERROR("Up position of the decompressed area (region_y0=%u)"
-				" is outside the image area (Ysiz=%u).", start_y, image->y1);
+		GRK_ERROR("Top position of the decompress window (%u)"
+				" is outside of the image area (Ysiz=%u).", start_y, image->y1);
 		return false;
 	} else if (start_y < image->y0) {
-		GRK_WARN("Up position of the decompressed area (region_y0=%u)"
-				" is outside the image area (YOsiz=%u).", start_y, image->y0);
+		GRK_WARN("Top position of the decompress window (%u)"
+				" is outside of the image area (YOsiz=%u).", start_y, image->y0);
 		decompressor->m_start_tile_y_index = 0;
 		output_image->y0 = image->y0;
 	} else {
@@ -1933,13 +1933,13 @@ bool CodeStream::set_decompress_window(grk_image *output_image,
 
 	/* Bottom */
 	if (end_y < image->y0) {
-		GRK_ERROR("Bottom position of the decompressed area (region_y1=%u)"
-				" is outside the image area (YOsiz=%u).", end_y, image->y0);
+		GRK_ERROR("Bottom position of the decompress window (%u)"
+				" is outside of the image area (YOsiz=%u).", end_y, image->y0);
 		return false;
 	}
 	if (end_y > image->y1) {
-		GRK_WARN("Bottom position of the decompressed area (region_y1=%u)"
-				" is outside the image area (Ysiz=%u).", end_y, image->y1);
+		GRK_WARN("Bottom position of the decompress window (%u)"
+				" is outside of the image area (Ysiz=%u).", end_y, image->y1);
 		decompressor->m_end_tile_y_index = cp->t_grid_height;
 		output_image->y1 = image->y1;
 	} else {

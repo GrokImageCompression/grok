@@ -1864,6 +1864,7 @@ template <typename T,
 		   	   	   	   	   uint32_t numres,
 						   ISparseBuffer *sa) {
 
+	bool rc = false;
     auto res 	= tilec->resolutions;
     auto tr_max = tilec->resolutions + numres - 1;
     if (!tr_max->width() || !tr_max->height()){
@@ -1919,9 +1920,9 @@ template <typename T,
         vert.dn = rh - vert.sn;
         vert.cas = res->y0 & 1;
 
-    	if (DEBUG_WAVELET){
+    	if (DEBUG_WAVELET)
     		std::cout << "Resolution: " << resno << std::endl;
-    	}
+
 
         // 1. set up regions for horizontal and vertical pass
 
@@ -1953,7 +1954,7 @@ template <typename T,
         for (uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i){
         	auto temp = win_horiz_tile[i];
             if (!sa->alloc(temp.grow(FILTER_WIDTH, rw,  rh)))
-    			 return false;
+    			 goto cleanup;
         }
 
         if (DEBUG_WAVELET){
@@ -1974,7 +1975,7 @@ template <typename T,
         win_synthesis.y0 = min<uint32_t>(2 * win_low.y0, 2 * win_high.y0 + 1);
         win_synthesis.y1 = min<uint32_t>(max<uint32_t>(2 * win_low.y1, 2 * win_high.y1 + 1), rh);
         if (!sa->alloc(win_synthesis))
-			 return false;
+			goto cleanup;
 
         // two windows formed by horizontal pass and used as input for vertical pass
         grk_rect_u32 win_vert[2];
@@ -1994,7 +1995,7 @@ template <typename T,
 		for (uint32_t k = 0; k < 2; ++k) {
 			 auto temp = win_vert[k];
 			 if (!sa->alloc(temp.grow(FILTER_WIDTH, rw,  rh)))
-				 return false;
+					goto cleanup;
 		        if (DEBUG_WAVELET){
 					std::cout << "vertical pass window " << k << " ";
 					win_vert[k].print();
@@ -2049,8 +2050,7 @@ template <typename T,
 								  1,
 								  true)) {
 					 GRK_ERROR("sparse array write failure");
-					 horiz.release();
-					 return false;
+					 goto cleanup;
 				 }
 			 }
 			 if (j < win_vert[k].y1 ) {
@@ -2065,8 +2065,7 @@ template <typename T,
 								  1,
 								  true)) {
 					 GRK_ERROR("Sparse array write failure");
-					 horiz.release();
-					 return false;
+					goto cleanup;
 				 }
 			 }
 		}else{
@@ -2078,8 +2077,7 @@ template <typename T,
 							   j < (num_jobs - 1U) ? win_vert[k].y0 + (j + 1U) * step_j : win_vert[k].y1);
 				if (!job->data.alloc(data_size)) {
 					GRK_ERROR("Out of memory");
-					horiz.release();
-					return false;
+					goto cleanup;
 				}
 				results.emplace_back(
 					ThreadPool::get()->enqueue([job,sa, win_synthesis, &decompressor] {
@@ -2097,7 +2095,7 @@ template <typename T,
 										  true)) {
 							 GRK_ERROR("sparse array write failure");
 							 job->data.release();
-							 return 0;
+							 return 1;
 						 }
 					 }
 					 if (j < job->max_j ) {
@@ -2113,7 +2111,7 @@ template <typename T,
 										  true)) {
 							 GRK_ERROR("Sparse array write failure");
 							 job->data.release();
-							 return 0;
+							 return 1;
 						 }
 					  }
 					  job->data.release();
@@ -2122,9 +2120,15 @@ template <typename T,
 					})
 				);
 			}
-			for(auto &result: results)
-				result.get();
-		   }
+			bool blockError = false;
+			for(auto &result: results){
+				if (result.get() != 0)
+					blockError = true;
+			}
+			if (blockError)
+				goto cleanup;
+
+		  }
         }
 
 		vert.win_l_0 = win_horiz_band[BAND_ORIENT_LL].y0;
@@ -2156,8 +2160,7 @@ template <typename T,
 							  VERT_PASS_WIDTH,
 							  true)) {
 					GRK_ERROR("Sparse array write failure");
-					horiz.release();
-					return false;
+					goto cleanup;
 				}
 			}
 			if (j < win_synthesis.x1) {
@@ -2175,8 +2178,7 @@ template <typename T,
 								  VERT_PASS_WIDTH,
 								  true)) {
 					GRK_ERROR("Sparse array write failure");
-					horiz.release();
-					return false;
+					goto cleanup;
 				}
 			}
 		} else {
@@ -2188,8 +2190,7 @@ template <typename T,
 									   j < (num_jobs - 1U) ? win_synthesis.x0 + (j + 1U) * step_j : win_synthesis.x1);
 				if (!job->data.alloc(data_size)) {
 					GRK_ERROR("Out of memory");
-					horiz.release();
-					return false;
+					goto cleanup;
 				}
 				results.emplace_back(
 					ThreadPool::get()->enqueue([job,sa, win_synthesis, &decompressor] {
@@ -2207,7 +2208,7 @@ template <typename T,
 									  true)) {
 							GRK_ERROR("Sparse array write failure");
 							job->data.release();
-							return 0;
+							return 1;
 						}
 					 }
 					 if (j <  job->max_j) {
@@ -2223,7 +2224,7 @@ template <typename T,
 												  true)) {
 							GRK_ERROR("Sparse array write failure");
 							job->data.release();
-							return 0;
+							return 1;
 						}
 					}
 
@@ -2233,8 +2234,13 @@ template <typename T,
 				})
 				);
 			}
-			for(auto &result: results)
-				result.get();
+			bool blockError = false;
+			for(auto &result: results){
+				if (result.get() != 0)
+					blockError = true;
+			}
+			if (blockError)
+				goto cleanup;
 		}
     }
     //final read into tile buffer
@@ -2248,13 +2254,14 @@ template <typename T,
 					   true);
 	assert(ret);
 	GRK_UNUSED(ret);
-    horiz.release();
-
 	} catch (MissingSparseBlockException &ex){
-		return false;
+		goto cleanup;
 	}
+	rc = true;
 
-    return true;
+cleanup:
+    horiz.release();
+    return rc;
 }
 
 /* <summary>                            */
