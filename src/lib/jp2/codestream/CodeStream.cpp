@@ -2044,12 +2044,10 @@ TileCodingParams* CodeStream::get_current_decode_tcp() {
 
 bool CodeStream::read_short(uint16_t *val){
 	uint8_t temp[2];
-	if (m_stream->read(temp, 2) != 2) {
-		//GRK_WARN("read short: stream too short");
+	if (m_stream->read(temp, 2) != 2)
 		return false;
-	}
-	grk_read<uint16_t>(temp, val);
 
+	grk_read<uint16_t>(temp, val);
 	return true;
 }
 /**

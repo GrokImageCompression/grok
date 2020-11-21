@@ -53,7 +53,6 @@ const uint32_t max_num_tile_parts = 65535;
 const uint32_t max_tile_part_size = UINT_MAX;
 
 // limits in Grok library
-const uint64_t max_tile_area = 67108864000;
 const uint32_t max_supported_precision = 16; // maximum supported precision for Grok library
 const uint32_t default_numbers_segments = 10;
 const uint32_t default_header_size = 1000;

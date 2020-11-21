@@ -178,15 +178,6 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		return false;
 	}
 
-	uint64_t tileArea = (uint64_t) cp->t_width * cp->t_height;
-	if (tileArea > max_tile_area) {
-		GRK_ERROR(
-				"Error in SIZ marker: tile area = %llu greater than max tile area = %llu",
-				tileArea, max_tile_area);
-		return false;
-
-	}
-
 	/* Allocate the resulting image components */
 	image->comps = (grk_image_comp*) grk_calloc(image->numcomps,
 			sizeof(grk_image_comp));
