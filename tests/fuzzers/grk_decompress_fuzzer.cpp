@@ -91,17 +91,17 @@ static bool SeekCallback(size_t nBytes, void * pUserData)
     return true;
 }
 
-int LLVMFuzzerInitialize(int* /*argc*/, char*** argv)
+int LLVMFuzzerInitialize(int* argc, char*** argv)
 {
+	grk_initialize(nullptr,0);
     return 0;
 }
 
 static const unsigned char jpc_header[] = {0xff, 0x4f};
 static const unsigned char jp2_box_jp[] = {0x6a, 0x50, 0x20, 0x20}; /* 'jP  ' */
 
-int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
-{
-    GRK_CODEC_FORMAT eCodecFormat;
+int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len){
+	GRK_CODEC_FORMAT eCodecFormat;
     if (len >= sizeof(jpc_header) &&
             memcmp(buf, jpc_header, sizeof(jpc_header)) == 0) {
         eCodecFormat = GRK_CODEC_J2K;
@@ -111,7 +111,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
     } else {
         return 0;
     }
-	grk_initialize(nullptr,0);
     grk_stream *pStream = grk_stream_create(1024, true);
     MemFile memFile;
     memFile.pabyData = buf;
@@ -121,7 +120,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
     grk_stream_set_read_function(pStream, ReadCallback);
     grk_stream_set_seek_function(pStream, SeekCallback);
     grk_stream_set_user_data(pStream, &memFile, NULL);
-
 
     grk_codec pCodec = grk_create_decompress(eCodecFormat, pStream);
     grk_set_info_handler(InfoCallback, NULL);
