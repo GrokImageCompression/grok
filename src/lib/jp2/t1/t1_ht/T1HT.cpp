@@ -129,7 +129,6 @@ bool T1HT::compress(CompressBlockExec *block) {
 }
 bool T1HT::decompress(DecompressBlockExec *block) {
 	auto cblk = block->cblk;
-	bool rc = true;
 	if (!cblk->area())
 		return true;
 	if (!cblk->seg_buffers.empty()) {
@@ -156,7 +155,7 @@ bool T1HT::decompress(DecompressBlockExec *block) {
 		}
 
 	   if (num_passes && offset) {
-		   rc =  ojph_decode_codeblock(actual_coded_data,
+		   ojph_decode_codeblock(actual_coded_data,
 								   (uint32_t*)unencoded_data,
 								   block->k_msbs,
 								   (int)num_passes,
@@ -170,8 +169,7 @@ bool T1HT::decompress(DecompressBlockExec *block) {
 		   memset(unencoded_data, 0, cblk->area()* sizeof(int32_t));
 	   }
 	}
-	if (!rc)
-		return false;
+
 
     return postDecompress(block);
 }
