@@ -22,13 +22,25 @@
 
 namespace grk {
 
-BitIO::BitIO(uint8_t *bp, uint64_t len, bool isCompressor) :
-		start(bp), offset(0), buf_len(len), buf(0), ct(isCompressor ? 8 : 0),  sim_out(false), stream(nullptr) {
+BitIO::BitIO(uint8_t *bp, uint64_t len, bool isCompressor) : start(bp),
+															offset(0),
+															buf_len(len),
+															buf(0),
+															ct(isCompressor ? 8 : 0),
+															sim_out(false),
+															stream(nullptr),
+															read0xFF(false){
 
 }
 
-BitIO::BitIO(IBufferedStream *strm, bool isCompressor) :
-		start(nullptr), offset(0), buf_len(0), buf(0), ct(isCompressor ? 8 : 0),sim_out(false), stream(strm) {
+BitIO::BitIO(IBufferedStream *strm, bool isCompressor) : start(nullptr),
+														offset(0),
+														buf_len(0),
+														buf(0),
+														ct(isCompressor ? 8 : 0),
+														sim_out(false),
+														stream(strm),
+														read0xFF(false){
 }
 
 bool BitIO::byteout() {
@@ -58,7 +70,13 @@ bool BitIO::byteout_stream() {
 void BitIO::bytein() {
 	if (offset == buf_len)
 		throw TruncatedStreamException();
-	ct = buf == 0xff ? 7 : 8;
+	if (read0xFF && (buf >= 0x90)){
+		uint16_t marker = (uint16_t)(((uint16_t)0xFF<< 8) | (uint16_t)buf);
+		GRK_ERROR("Invalid marker 0x%x detected in packet header",marker);
+		throw InvalidMarkerException(marker);
+	}
+	read0xFF = (buf == 0xff);
+	ct = read0xFF ? 7 : 8;
 	buf = start[offset];
 	offset++;
 }

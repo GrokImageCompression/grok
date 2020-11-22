@@ -358,7 +358,7 @@ static bool j2k_read_header_procedure(CodeStream *codeStream) {
 	try {
 		rc = codeStream->read_header_procedure();
 	} catch (InvalidMarkerException &ime){
-		GRK_ERROR("Invalid marker");
+		GRK_ERROR("Invalid marker : 0x%x", ime.m_marker);
 		rc = false;
 	}
 	return rc;
@@ -2103,7 +2103,7 @@ bool CodeStream::read_marker(){
 	if (m_curr_marker < 0xff00) {
 		GRK_WARN("marker ID 0x%.4x does not match JPEG 2000 marker format 0xffxx",
 				m_curr_marker);
-		throw InvalidMarkerException();
+		throw InvalidMarkerException(m_curr_marker);
 	}
 
 	return true;
@@ -2628,7 +2628,7 @@ bool CodeStream::decompress_tile() {
 		if (!parse_markers(&go_on))
 			goto cleanup;
 	} catch (InvalidMarkerException &ime){
-		GRK_ERROR("Invalid marker");
+		GRK_ERROR("Invalid marker : 0x%x", ime.m_marker);
 		goto cleanup;
 	}
 
@@ -2713,7 +2713,7 @@ bool CodeStream::decompress_tiles(void) {
 				goto cleanup;
 			}
 		} catch (InvalidMarkerException &ime){
-			GRK_ERROR("Invalid marker");
+			GRK_ERROR("Invalid marker : 0x%x", ime.m_marker);
 			success = false;
 			goto cleanup;
 		}

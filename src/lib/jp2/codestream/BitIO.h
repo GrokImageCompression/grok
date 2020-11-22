@@ -89,6 +89,8 @@ private:
 
 	IBufferedStream *stream;
 
+	bool read0xFF;
+
 	/*
 	 Write a bit
 	 @param bio BIO handle

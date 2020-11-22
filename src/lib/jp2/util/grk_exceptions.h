@@ -25,6 +25,13 @@ class DecodeUnknownMarkerAtEndOfTileException: public std::exception {};
 class PluginDecodeUnsupportedException: public std::exception {};
 class CorruptJP2BoxException: public std::exception {};
 class TruncatedStreamException: public std::exception {};
-class InvalidMarkerException: public std::exception {};
+class InvalidMarkerException: public std::exception {
+public:
+	explicit InvalidMarkerException(uint16_t marker) : m_marker(marker)
+	{}
+
+	uint16_t m_marker;
+
+};
 class MissingSparseBlockException: public std::exception {};
 }

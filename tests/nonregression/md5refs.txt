@@ -325,4 +325,3 @@ d9a4feed1773b7b1ae5c20bdbdd37291  1336.pdf.asan.47.376.jp2_2.pgx
 8cef180e6ee6d2ead831cbdc9c299003  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5713875855736832_2.pgx
 a37951a75863e7912789703a0b09f473  b1_mono_4k.tif
 90afe08c78791e48eeaf56c450d8fdba  issue432.jp2_0.pgx
-34567aa59db3d77c0885d5b369019df0  issue775-2.png
