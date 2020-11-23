@@ -40,7 +40,7 @@ template<typename T> struct grk_point {
     T x;
     T y;
 };
-using grk_pt = grk_point<int64_t>;
+using grk_pt = grk_point<uint32_t>;
 
 
 template<typename T> struct grk_rectangle;

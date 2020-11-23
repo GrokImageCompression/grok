@@ -99,22 +99,23 @@ bool TileComponent::init(bool isCompressor,
 		uint32_t pdx = m_tccp->prcw[resno];
 		uint32_t pdy = m_tccp->prch[resno];
 		/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
-		uint32_t tprc_x_start = uint_floordivpow2(res->x0, pdx) << pdx;
-		uint32_t tprc_y_start = uint_floordivpow2(res->y0, pdy) << pdy;
+		grk_rect_u32 precinct_grid;
+		precinct_grid.x0 = uint_floordivpow2(res->x0, pdx) << pdx;
+		precinct_grid.y0 = uint_floordivpow2(res->y0, pdy) << pdy;
 		uint64_t temp = (uint64_t)ceildivpow2<uint32_t>(res->x1, pdx) << pdx;
 		if (temp > UINT_MAX){
 			GRK_ERROR("Resolution x1 value %u must be less than 2^32", temp);
 			return false;
 		}
-		uint32_t br_prc_x_end = (uint32_t)temp;
+		precinct_grid.x1 = (uint32_t)temp;
 		temp = (uint64_t)ceildivpow2<uint32_t>(res->y1, pdy) << pdy;
 		if (temp > UINT_MAX){
 			GRK_ERROR("Resolution y1 value %u must be less than 2^32", temp);
 			return false;
 		}
-		uint32_t br_prc_y_end = (uint32_t)temp;
-		res->pw =	(res->x0 == res->x1) ?	0 : ((br_prc_x_end - tprc_x_start) >> pdx);
-		res->ph =	(res->y0 == res->y1) ?	0 : ((br_prc_y_end - tprc_y_start) >> pdy);
+		precinct_grid.y1 = (uint32_t)temp;
+		res->pw =	(res->x0 == res->x1) ?	0 : (precinct_grid.width() >> pdx);
+		res->ph =	(res->y0 == res->y1) ?	0 : (precinct_grid.height() >> pdy);
 		res->numBandWindows = (resno == 0) ? 1 : 3;
 		if (DEBUG_TILE_COMPONENT){
 			std::cout << "res: " << resno << " ";
@@ -207,57 +208,54 @@ bool TileComponent::init(bool isCompressor,
 		auto res = resolutions + resno;
 
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
-		uint32_t precinct_dx_expn = m_tccp->prcw[resno];
-		uint32_t precinct_dy_expn = m_tccp->prch[resno];
+		auto precinct_expn = grk_pt(m_tccp->prcw[resno],m_tccp->prch[resno]);
 		/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
-		uint32_t top_left_precinct_x_start = uint_floordivpow2(res->x0, precinct_dx_expn) << precinct_dx_expn;
-		uint32_t top_left_precinct_y_start = uint_floordivpow2(res->y0, precinct_dy_expn) << precinct_dy_expn;
+		auto precinct_start = grk_pt(uint_floordivpow2(res->x0, precinct_expn.x) << precinct_expn.x,
+										uint_floordivpow2(res->y0, precinct_expn.y) << precinct_expn.y);
 		uint64_t num_precincts = (uint64_t)res->pw * res->ph;
 		if (mult64_will_overflow(num_precincts, sizeof(Precinct))) {
 			GRK_ERROR(	"nb_precinct_size calculation would overflow ");
 			return false;
 		}
-		uint32_t top_left_cblk_g_xstart, top_left_cblk_g_ystart;
-		uint32_t cblk_g_width_expn, cblk_g_height_expn;
+		grk_pt cblk_grid_start;
+		grk_pt cblk_grid_expn;
 		if (resno == 0) {
-			top_left_cblk_g_xstart = top_left_precinct_x_start;
-			top_left_cblk_g_ystart = top_left_precinct_y_start;
-			cblk_g_width_expn = precinct_dx_expn;
-			cblk_g_height_expn = precinct_dy_expn;
+			cblk_grid_start = precinct_start;
+			cblk_grid_expn = precinct_expn;
 		} else {
-			top_left_cblk_g_xstart = ceildivpow2<uint32_t>(top_left_precinct_x_start, 1);
-			top_left_cblk_g_ystart = ceildivpow2<uint32_t>(top_left_precinct_y_start, 1);
-			cblk_g_width_expn = precinct_dx_expn - 1;
-			cblk_g_height_expn = precinct_dy_expn - 1;
+			cblk_grid_start=  grk_pt(	ceildivpow2<uint32_t>(precinct_start.x, 1),
+									ceildivpow2<uint32_t>(precinct_start.y, 1));
+			cblk_grid_expn.x = precinct_expn.x - 1;
+			cblk_grid_expn.y = precinct_expn.y - 1;
 		}
-		uint32_t cblk_width_expn    = std::min<uint32_t>(m_tccp->cblkw, cblk_g_width_expn);
-		uint32_t cblk_height_expn   = std::min<uint32_t>(m_tccp->cblkh, cblk_g_height_expn);
-		size_t nominalBlockSize = (1 << cblk_width_expn) * (1 << cblk_height_expn);
+		auto cblk_expn    =  grk_pt(	std::min<uint32_t>(m_tccp->cblkw, cblk_grid_expn.x),
+										std::min<uint32_t>(m_tccp->cblkh, cblk_grid_expn.y));
+		size_t nominalBlockSize = (1 << cblk_expn.x) * (1 << cblk_expn.y);
 
 		for (uint8_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
 			auto band = res->bandWindow + bandno;
 			band->precincts = new Precinct[num_precincts];
 			band->numPrecincts = num_precincts;
 			for (uint64_t precno = 0; precno < num_precincts; ++precno) {
-				uint32_t cblk_g_xstart = top_left_cblk_g_xstart + (uint32_t)(precno % res->pw) * (1 << cblk_g_width_expn);
-				uint32_t cblk_g_ystart = top_left_cblk_g_ystart + (uint32_t)(precno / res->pw) * (1 << cblk_g_height_expn);
-				auto cbg = grk_rect_u32(cblk_g_xstart,
-										cblk_g_ystart,
-										cblk_g_xstart + (1 << cblk_g_width_expn),
-										cblk_g_ystart + (1 << cblk_g_height_expn));
-
 				auto current_precinct = band->precincts + precno;
-				*((grk_rect_u32*)current_precinct) = cbg.intersection(band);
 
-				uint32_t top_left_cblk_xstart 		= uint_floordivpow2(current_precinct->x0,cblk_width_expn) << cblk_width_expn;
-				uint32_t top_left_cblk_ystart 		= uint_floordivpow2(current_precinct->y0,cblk_height_expn) << cblk_height_expn;
-				uint32_t bottom_right_cblk_xend 	= ceildivpow2<uint32_t>(current_precinct->x1,cblk_width_expn) << cblk_width_expn;
-				uint32_t bottom_right_cblk_yend 	= ceildivpow2<uint32_t>(current_precinct->y1,cblk_height_expn) << cblk_height_expn;
+				auto band_precinct_start = grk_pt(cblk_grid_start.x + (uint32_t)((precno % res->pw) << cblk_grid_expn.x),
+													cblk_grid_start.y + (uint32_t)((precno / res->pw) << cblk_grid_expn.y));
+				*((grk_rect_u32*)current_precinct) = grk_rect_u32(band_precinct_start.x,
+																band_precinct_start.y,
+																band_precinct_start.x + (1 << cblk_grid_expn.x),
+																band_precinct_start.y + (1 << cblk_grid_expn.y)).intersection(band);
 
-				current_precinct->cblk_grid_width 	= ((bottom_right_cblk_xend - top_left_cblk_xstart)	>> cblk_width_expn);
-				current_precinct->cblk_grid_height 	= ((bottom_right_cblk_yend - top_left_cblk_ystart)	>> cblk_height_expn);
+				auto cblk_grid = grk_rect_u32(
+						uint_floordivpow2(current_precinct->x0,cblk_expn.x),
+						uint_floordivpow2(current_precinct->y0,cblk_expn.y),
+						ceildivpow2<uint32_t>(current_precinct->x1,cblk_expn.x),
+						ceildivpow2<uint32_t>(current_precinct->y1,cblk_expn.y));
 
-				uint64_t nb_code_blocks = (uint64_t) current_precinct->cblk_grid_width* current_precinct->cblk_grid_height;
+				current_precinct->cblk_grid_width 	= cblk_grid.width();
+				current_precinct->cblk_grid_height 	= cblk_grid.height();
+
+				uint64_t nb_code_blocks = cblk_grid.area();
 				if (!nb_code_blocks)
 					continue;
 
@@ -269,12 +267,12 @@ bool TileComponent::init(bool isCompressor,
 				current_precinct->initTagTrees();
 
 				for (uint64_t cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
-					uint32_t cblkxstart = top_left_cblk_xstart	+ (uint32_t) (cblkno % current_precinct->cblk_grid_width)* (1 << cblk_width_expn);
-					uint32_t cblkystart = top_left_cblk_ystart	+ (uint32_t) (cblkno / current_precinct->cblk_grid_width)* (1 << cblk_height_expn);
-					auto cblk_bounds = grk_rect_u32(cblkxstart,
-													cblkystart,
-													cblkxstart + (1 << cblk_width_expn),
-													cblkystart + (1 << cblk_height_expn));
+					auto cblk_start = grk_pt(	(cblk_grid.x0  + (uint32_t) (cblkno % current_precinct->cblk_grid_width)) << cblk_expn.x,
+												(cblk_grid.y0  + (uint32_t) (cblkno / current_precinct->cblk_grid_width)) << cblk_expn.y);
+					auto cblk_bounds = grk_rect_u32(cblk_start.x,
+													cblk_start.y,
+													cblk_start.x + (1 << cblk_expn.x),
+													cblk_start.y + (1 << cblk_expn.y));
 
 					auto cblk_dims = (m_is_encoder) ?
 												(grk_rect_u32*)(current_precinct->enc + cblkno) :
