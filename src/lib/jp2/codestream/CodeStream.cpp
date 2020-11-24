@@ -1189,7 +1189,7 @@ bool CodeStream::decompress_tile(grk_image *p_image,	uint16_t tile_index){
 		p_image->y1 = (uint32_t) overlap_rect.y1;
 	} else {
 		GRK_WARN(
-				"Decompress region <%u,%u,%u,%u> does not overlap requested tile %u. Ignoring.",
+				"Decompress window <%u,%u,%u,%u> does not overlap requested tile %u. Ignoring.",
 				original_image_rect.x0, original_image_rect.y0,
 				original_image_rect.x1, original_image_rect.y1, tile_index);
 	}
@@ -1913,11 +1913,11 @@ bool CodeStream::set_decompress_window(grk_image *output_image,
 	assert(end_x > 0);
 	assert(end_y > 0);
 	if (end_x < image->x0) {
-		GRK_ERROR("Right position of the decompressed area (region_x1=%u)"
+		GRK_ERROR("Right position of the decompress window (%u)"
 				" is outside the image area (XOsiz=%u).", end_x, image->x0);
 		return false;
 	} else if (end_x > image->x1) {
-		GRK_WARN("Right position of the decompressed area (region_x1=%u)"
+		GRK_WARN("Right position of the decompress window (%u)"
 				" is outside the image area (Xsiz=%u).", end_x, image->x1);
 		decompressor->m_end_tile_x_index = cp->t_grid_width;
 		output_image->x1 = image->x1;

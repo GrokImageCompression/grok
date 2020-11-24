@@ -355,7 +355,7 @@ private:
 
 	uint8_t *m_marker_scratch;
 	uint16_t m_marker_scratch_size;
-    /** Only valid for decoding. Whether the whole tile is decompressed, or just the region in win_x0/win_y0/win_x1/win_y1 */
+    /** Only valid for decoding. Whether the whole tile is decompressed, or just the window in win_x0/win_y0/win_x1/win_y1 */
 
 public:
 	uint16_t m_curr_marker;

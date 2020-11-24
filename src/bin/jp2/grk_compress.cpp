@@ -1465,7 +1465,7 @@ static int parse_cmdline_compressor_ex(int argc, char **argv,
 				if (tx1 <= parameters->image_offset_x0 || ty1 <= parameters->image_offset_y0) {
 					spdlog::error("Tile grid: first tile bottom, right hand corner\n"
 							"({},{}) must lie to the right and bottom of"
-							" image offset ({},{})\n so that the tile overlaps with the image region.",
+							" image offset ({},{})\n so that the tile overlaps with the image area.",
 								tx1,
 								ty1,
 								parameters->image_offset_x0,

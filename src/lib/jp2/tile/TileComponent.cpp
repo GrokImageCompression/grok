@@ -133,10 +133,10 @@ bool TileComponent::init(bool isCompressor,
 	auto hightestResolution =  resolutions + highestNumberOfResolutions - 1;
 	grk_rect_u32::operator=(*(grk_rect_u32*)hightestResolution);
 
-	//3. create region buffer
+	//3. create window buffer
 	create_buffer(unreduced_tile_comp_dims, unreduced_tile_comp_region_dims);
 
-	// calculate padded region windows
+	// calculate padded windows
 	if (!whole_tile_decoding){
 	    /* Note: those values for filter_margin are in part the result of */
 	    /* experimentation. The value 2 for QMFBID=1 (5x3 filter) can be linked */

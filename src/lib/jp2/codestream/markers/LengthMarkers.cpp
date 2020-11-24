@@ -222,7 +222,7 @@ bool TileLengthMarkers::add_to_index(uint16_t tileno, grk_codestream_index *cstr
 			cstr_index->tile_index[tileno].marker = nullptr;
 			cstr_index->tile_index[tileno].maxmarknum = 0;
 			cstr_index->tile_index[tileno].marknum = 0;
-			GRK_ERROR("Not enough memory to add tl marker");
+			GRK_ERROR("Not enough memory to add TLM marker");
 			return false;
 		}
 		cstr_index->tile_index[tileno].marker = new_marker;

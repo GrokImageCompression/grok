@@ -118,7 +118,7 @@ bool j2k_add_mhmarker(grk_codestream_index *cstr_index, uint32_t type,
 			cstr_index->marker = nullptr;
 			cstr_index->maxmarknum = 0;
 			cstr_index->marknum = 0;
-			/* GRK_ERROR( "Not enough memory to add mh marker"); */
+			GRK_ERROR( "Not enough memory to add mh marker");
 			return false;
 		}
 		cstr_index->marker = new_marker;

@@ -65,7 +65,7 @@ int parse_DA_values(char *inArg, uint32_t *DA_x0, uint32_t *DA_y0,
 
 	// region must be specified by 4 values exactly
 	if (it != 4) {
-		spdlog::warn("Decompress region must be specified by exactly "
+		spdlog::warn("Decompress window must be specified by exactly "
 				"four coordinates. Ignoring specified region.");
 		return EXIT_FAILURE;
 
@@ -73,14 +73,14 @@ int parse_DA_values(char *inArg, uint32_t *DA_x0, uint32_t *DA_y0,
 
 	// don't allow negative values
 	if ((values[0] < 0 || values[1] < 0 || values[2] < 0 || values[3] < 0)) {
-		spdlog::warn("Decompress region cannot contain negative "
+		spdlog::warn("Decompress window cannot contain negative "
 				"values.\n Ignoring specified region ({},{},{},{}).",
 					values[0], values[1], values[2], values[3]);
 		return EXIT_FAILURE;
 	}
 	if (values[2] <= values[0] || values[3] <= values[1]) {
-		spdlog::warn("Decompress region must have strictly "
-				"positive area.\n Ignoring specified region ({},{},{},{}).",
+		spdlog::warn("Decompress window must have strictly "
+				"positive area.\n Ignoring specified window ({},{},{},{}).",
 					values[0], values[1], values[2], values[3]);
 		return EXIT_FAILURE;
 	}
@@ -166,7 +166,6 @@ int get_file_format(const char *filename) {
 #define J2K_CODESTREAM_MAGIC "\xff\x4f\xff\x51"
 bool jpeg2000_file_format(const char *fname, GRK_SUPPORTED_FILE_FMT *fmt) {
 	FILE *reader;
-	const char *magic_s;
 	GRK_SUPPORTED_FILE_FMT ext_format = GRK_UNK_FMT, magic_format = GRK_UNK_FMT;
 	uint8_t buf[12];
 	size_t nb_read;
@@ -189,10 +188,8 @@ bool jpeg2000_file_format(const char *fname, GRK_SUPPORTED_FILE_FMT *fmt) {
 
 	if (memcmp(buf, JP2_RFC3745_MAGIC, 12) == 0) {
 		magic_format = GRK_JP2_FMT;
-		magic_s = ".jp2";
 	} else if (memcmp(buf, J2K_CODESTREAM_MAGIC, 4) == 0) {
 		magic_format = GRK_J2K_FMT;
-		magic_s = ".j2k or .jpc or .j2c";
 	} else {
 		spdlog::error("{} does not contain a JPEG 2000 code stream",fname);
 		*fmt = GRK_UNK_FMT;
@@ -203,18 +200,6 @@ bool jpeg2000_file_format(const char *fname, GRK_SUPPORTED_FILE_FMT *fmt) {
 		*fmt = ext_format;
 		return true;
 	}
-
-	bool foundExtension = false;
-	if (strlen(fname) >= 4){
-		const char *s = fname + strlen(fname) - 4;
-		foundExtension = s[0] == '.';
-	}
-	if (foundExtension)
-		spdlog::warn("The extension {} of this file is incorrect. "
-				"Should be {}",fname, magic_s);
-	else
-		spdlog::warn("File {} is missing proper extension: should be {}",fname, magic_s);
-
 	*fmt = magic_format;
 	return true;
 }

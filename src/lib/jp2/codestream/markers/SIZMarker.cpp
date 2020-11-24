@@ -102,6 +102,10 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		//profile = GRK_PROFILE_PART2;
 		//uint16_t part2_extensions = tmp & GRK_PROFILE_PART2_EXTENSIONS_MASK;
 	} else {
+		if (tmp & 0x3000) {
+			GRK_WARN("SIZ marker segment's Rsiz word must have bits 12 and 13 equal to 0");
+			GRK_WARN("unless the Part-2 flag (bit-15) is set.\n");
+		}
 		uint16_t profile = tmp & GRK_PROFILE_MASK;
 		if ((profile > GRK_PROFILE_CINEMA_LTS)
 				&& !GRK_IS_BROADCAST(profile) && !GRK_IS_IMF(profile)) {

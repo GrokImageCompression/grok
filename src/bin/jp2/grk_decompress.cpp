@@ -1218,7 +1218,6 @@ int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 	if (!parameters->nb_tile_to_decompress) {
 		if (!(grk_decompress(info->l_codec, info->tile, info->image)
 				&& grk_end_decompress(info->l_codec))) {
-			spdlog::error("grk_decompress: failed to decompress image.");
 			goto cleanup;
 		}
 	}
