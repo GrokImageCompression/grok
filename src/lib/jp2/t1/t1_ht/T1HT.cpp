@@ -154,8 +154,9 @@ bool T1HT::decompress(DecompressBlockExec *block) {
 			num_passes += sgrk->numpasses;
 		}
 
+	   bool rc = false;
 	   if (num_passes && offset) {
-		   ojph_decode_codeblock(actual_coded_data,
+		   rc = ojph_decode_codeblock(actual_coded_data,
 								   (uint32_t*)unencoded_data,
 								   block->k_msbs,
 								   (int)num_passes,
@@ -167,6 +168,10 @@ bool T1HT::decompress(DecompressBlockExec *block) {
 	   }
 	   else {
 		   memset(unencoded_data, 0, cblk->area()* sizeof(int32_t));
+	   }
+	   if (!rc) {
+		   GRK_ERROR("Error in HT block coder");
+		   return false;
 	   }
 	}
 

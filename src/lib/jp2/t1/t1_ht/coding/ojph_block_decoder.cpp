@@ -251,8 +251,6 @@ namespace ojph {
       int num = 4 - (int)(intptr_t(melp->data) & 0x3);
       for (int i = 0; i < num; ++i) { // this code is similar to mel_read
         assert(melp->unstuff == false || melp->data[0] <= 0x8F);
-        if (melp->unstuff && melp->data[0] > 0x8F)
-        	OJPH_ERROR(0x00010001, "Error while initializing MEL coding");
         ui64 d = (melp->size > 0) ? *melp->data : 0xFF;//if buffer is consumed
                                                        //set data to 0xFF
         if (melp->size == 1) d |= 0xF; //if this is MEL+VLC-1, set LSBs to 0xF
@@ -988,7 +986,7 @@ namespace ojph {
      *  @param [in]   height is the decoded codeblock height
      *  @param [in]   stride is the decoded codeblock buffer stride 
      */
-    void ojph_decode_codeblock(ui8* coded_data, ui32* decoded_data,
+    bool ojph_decode_codeblock(ui8* coded_data, ui32* decoded_data,
                                ui32 missing_msbs, ui32 num_passes,
                                ui32 lengths1, ui32 lengths2,
                                ui32 width, ui32 height, ui32 stride)
@@ -1013,16 +1011,21 @@ namespace ojph {
       ui32 *sip = sigma1; //pointers to arrays to be used interchangeably
       int sip_shift = 0;  //the amount of shift needed for sigma
 
+      if (missing_msbs > 29) // p < 1
+        return false;        // 32 bits are not enough to decode this
+      else if (missing_msbs == 29) // if p is 1, then num_passes must be 1
+        num_passes = 1;
       ui32 p = 30 - missing_msbs; // The least significant bitplane for CUP
+      // There is a way to handle the case of p == 0, but a different path
+      // is required
 
       // read scup and fix the bytes there
       int lcup, scup;
       lcup = (int)lengths1;  // length of CUP
       //scup is the length of MEL + VLC
       scup = (((int)coded_data[lcup-1]) << 4) + (coded_data[lcup-2] & 0xF);
-      if (scup < 2 || scup > lcup || scup > 4079) {
-    	  OJPH_ERROR(0x00010001, "Invalid scup value: %d", scup);
-      }
+      if (scup < 2 || scup > lcup || scup > 4079) //something is wrong
+        return false;
 
       // init structures
       dec_mel_st mel;
@@ -1172,6 +1175,8 @@ namespace ojph {
         }
         //decode uvlc_mode to get u for both quads
         ui32 consumed_bits = decode_init_uvlc(vlc_val, uvlc_mode, U_q);
+        if (U_q[0] > missing_msbs && U_q[1] > missing_msbs)
+          return false;
 
         //consume u bits in the VLC code
         vlc_val = rev_advance(&vlc, consumed_bits);
@@ -1192,8 +1197,6 @@ namespace ojph {
           ms_val = frwd_fetch<0xFF>(&magsgn);   //get 32 bits of magsgn data
           m_n = U_q[0] - ((qinf[0] >> 12) & 1); //evaluate m_n (number of bits
                                      // to read from bitstream), using EMB e_k
-          if (m_n > 31)
-        	  OJPH_ERROR(0x00010001, "Invalid m_n shift %d", m_n);
           frwd_advance(&magsgn, m_n);        //consume m_n
           ui32 val = ms_val << 31;           //get sign bit
           v_n = ms_val & ((1 << m_n) - 1);   //keep only m_n bits
@@ -1210,8 +1213,6 @@ namespace ojph {
         {
           ms_val = frwd_fetch<0xFF>(&magsgn);   //get 32 bits
           m_n = U_q[0] - ((qinf[0] >> 13) & 1); //m_n, uses EMB e_k
-          if (m_n > 31)
-        	  OJPH_ERROR(0x00010001, "Invalid m_n shift %d", m_n);
           frwd_advance(&magsgn, m_n);           //consume m_n
           ui32 val = ms_val << 31;              //get sign bit
           v_n = ms_val & ((1 << m_n) - 1);      //keep only m_n bits
@@ -1237,9 +1238,7 @@ namespace ojph {
         if (qinf[0] & 0x40) 
         {
           ms_val = frwd_fetch<0xFF>(&magsgn);
-          m_n = U_q[0] - ((qinf[0] >> 14) & 1);
-          if (m_n > 31)
-        	  OJPH_ERROR(0x00010001, "Invalid m_n shift %d", m_n);
+          m_n = U_q[0] - ((qinf[0] >> 14) & 1); 
           frwd_advance(&magsgn, m_n);
           ui32 val = ms_val << 31;
           v_n = ms_val & ((1 << m_n) - 1);
@@ -1256,8 +1255,6 @@ namespace ojph {
           ms_val = frwd_fetch<0xFF>(&magsgn);
           m_n = U_q[0] - ((qinf[0] >> 15) & 1); //m_n
           frwd_advance(&magsgn, m_n);
-          if (m_n > 31)
-        	  OJPH_ERROR(0x00010001, "Invalid m_n shift %d", m_n);
           ui32 val = ms_val << 31;
           v_n = ms_val & ((1 << m_n) - 1);
           v_n |= ((qinf[0] & 0x800) >> 11) << m_n;
@@ -1277,8 +1274,6 @@ namespace ojph {
         {
           ms_val = frwd_fetch<0xFF>(&magsgn);
           m_n = U_q[1] - ((qinf[1] >> 12) & 1); //m_n
-          if (m_n > 31)
-        	  OJPH_ERROR(0x00010001, "Invalid m_n shift %d", m_n);
           frwd_advance(&magsgn, m_n);
           ui32 val = ms_val << 31;
           v_n = ms_val & ((1 << m_n) - 1);
@@ -1293,8 +1288,6 @@ namespace ojph {
         {
           ms_val = frwd_fetch<0xFF>(&magsgn);
           m_n = U_q[1] - ((qinf[1] >> 13) & 1); //m_n
-          if (m_n > 31)
-        	  OJPH_ERROR(0x00010001, "Invalid m_n shift %d", m_n);
           frwd_advance(&magsgn, m_n);
           ui32 val = ms_val << 31;
           v_n = ms_val & ((1 << m_n) - 1);
@@ -1318,8 +1311,6 @@ namespace ojph {
         {
           ms_val = frwd_fetch<0xFF>(&magsgn);
           m_n = U_q[1] - ((qinf[1] >> 14) & 1); //m_n
-          if (m_n > 31)
-        	  OJPH_ERROR(0x00010001, "Invalid m_n shift %d", m_n);
           frwd_advance(&magsgn, m_n);
           ui32 val = ms_val << 31;
           v_n = ms_val & ((1 << m_n) - 1);
@@ -1335,10 +1326,6 @@ namespace ojph {
         {
           ms_val = frwd_fetch<0xFF>(&magsgn);
           m_n = U_q[1] - ((qinf[1] >> 15) & 1); //m_n
-          if (m_n > 31)
-        	  OJPH_ERROR(0x00010001, "Invalid m_n shift %d", m_n);
-          if (m_n > 31)
-        	  OJPH_ERROR(0x00010001, "Invalid m_n shift %d", m_n);
           frwd_advance(&magsgn, m_n);
           ui32 val = ms_val << 31;
           v_n = ms_val & ((1 << m_n) - 1);
@@ -1438,6 +1425,8 @@ namespace ojph {
           ui32 U_q[2];
           ui32 uvlc_mode = ((qinf[0] & 0x8) >> 3) | ((qinf[1] & 0x8) >> 2);
           ui32 consumed_bits = decode_noninit_uvlc(vlc_val, uvlc_mode, U_q);
+          if (U_q[0] > missing_msbs && U_q[1] > missing_msbs)
+            return false;
           vlc_val = rev_advance(&vlc, consumed_bits);
 
           //calculate E^max and add it to U_q, eqns 5 and 6 in ITU T.814
@@ -1475,8 +1464,6 @@ namespace ojph {
           {
             ms_val = frwd_fetch<0xFF>(&magsgn);
             m_n = U_q[0] - ((qinf[0] >> 12) & 1); //m_n
-            if (m_n > 31)
-          	  OJPH_ERROR(0x00010001, "Invalid m_n shift %d", m_n);
             frwd_advance(&magsgn, m_n);
             ui32 val = ms_val << 31;
             v_n = ms_val & ((1 << m_n) - 1);
@@ -1491,8 +1478,6 @@ namespace ojph {
           {
             ms_val = frwd_fetch<0xFF>(&magsgn);
             m_n = U_q[0] - ((qinf[0] >> 13) & 1); //m_n
-            if (m_n > 31)
-          	  OJPH_ERROR(0x00010001, "Invalid m_n shift %d", m_n);
             frwd_advance(&magsgn, m_n);
             ui32 val = ms_val << 31;
             v_n = ms_val & ((1 << m_n) - 1);
@@ -1516,8 +1501,6 @@ namespace ojph {
           {
             ms_val = frwd_fetch<0xFF>(&magsgn);
             m_n = U_q[0] - ((qinf[0] >> 14) & 1); //m_n
-            if (m_n > 31)
-          	  OJPH_ERROR(0x00010001, "Invalid m_n shift %d", m_n);
             frwd_advance(&magsgn, m_n);
             ui32 val = ms_val << 31;
             v_n = ms_val & ((1 << m_n) - 1);
@@ -1532,8 +1515,6 @@ namespace ojph {
           {
             ms_val = frwd_fetch<0xFF>(&magsgn);
             m_n = U_q[0] - ((qinf[0] >> 15) & 1); //m_n
-            if (m_n > 31)
-          	  OJPH_ERROR(0x00010001, "Invalid m_n shift %d", m_n);
             frwd_advance(&magsgn, m_n);
             ui32 val = ms_val << 31;
             v_n = ms_val & ((1 << m_n) - 1);
@@ -1556,8 +1537,6 @@ namespace ojph {
           {
             ms_val = frwd_fetch<0xFF>(&magsgn);
             m_n = U_q[1] - ((qinf[1] >> 12) & 1); //m_n
-            if (m_n > 31)
-          	  OJPH_ERROR(0x00010001, "Invalid m_n shift %d", m_n);
             frwd_advance(&magsgn, m_n);
             ui32 val = ms_val << 31;
             v_n = ms_val & ((1 << m_n) - 1);
@@ -1572,8 +1551,6 @@ namespace ojph {
           {
             ms_val = frwd_fetch<0xFF>(&magsgn);
             m_n = U_q[1] - ((qinf[1] >> 13) & 1); //m_n
-            if (m_n > 31)
-          	  OJPH_ERROR(0x00010001, "Invalid m_n shift %d", m_n);
             frwd_advance(&magsgn, m_n);
             ui32 val = ms_val << 31;
             v_n = ms_val & ((1 << m_n) - 1);
@@ -1597,8 +1574,6 @@ namespace ojph {
           {
             ms_val = frwd_fetch<0xFF>(&magsgn);
             m_n = U_q[1] - ((qinf[1] >> 14) & 1); //m_n
-            if (m_n > 31)
-          	  OJPH_ERROR(0x00010001, "Invalid m_n shift %d", m_n);
             frwd_advance(&magsgn, m_n);
             ui32 val = ms_val << 31;
             v_n = ms_val & ((1 << m_n) - 1);
@@ -1613,8 +1588,6 @@ namespace ojph {
           {
             ms_val = frwd_fetch<0xFF>(&magsgn);
             m_n = U_q[1] - ((qinf[1] >> 15) & 1); //m_n
-            if (m_n > 31)
-          	  OJPH_ERROR(0x00010001, "Invalid m_n shift %d", m_n);
             frwd_advance(&magsgn, m_n);
             ui32 val = ms_val << 31;
             v_n = ms_val & ((1 << m_n) - 1);
@@ -2217,6 +2190,7 @@ namespace ojph {
           }
         }
       }
+      return true;
     }
   }
 }
