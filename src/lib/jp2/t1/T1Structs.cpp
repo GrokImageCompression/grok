@@ -50,16 +50,175 @@ Layer::Layer() :
 }
 
 Precinct::Precinct() :
-		cblk_grid_width(0), cblk_grid_height(0),
-		enc(nullptr), dec(nullptr),
-		numCodeBlocks(0),
-		incltree(nullptr), imsbtree(nullptr) {
+		impl(nullptr),
+		initialized(false)
+{
 }
 Precinct::~Precinct(){
+	delete impl;
+}
+
+bool Precinct::init(bool isCompressor,
+					grk_pt cblk_expn,
+					grk_plugin_tile *current_plugin_tile){
+	if (initialized)
+		return true;
+	impl = new PrecinctImpl();
+	initialized =  impl->init(isCompressor,this,cblk_expn,current_plugin_tile);
+
+	return initialized;
+
+}
+
+void Precinct::deleteTagTrees() {
+	if (impl)
+		impl->deleteTagTrees();
+}
+
+void Precinct::initTagTrees() {
+	if (impl)
+		impl->initTagTrees();
+}
+
+uint32_t Precinct::getCblkGridwidth(void){
+	return impl ? impl->cblk_grid_width : 0;
+}
+uint32_t Precinct::getCblkGridHeight(void){
+	return impl ? impl->cblk_grid_height : 0;
+}
+uint64_t Precinct::getNumCblks(void){
+	return impl ? (uint64_t)impl->cblk_grid_width * impl->cblk_grid_height : 0;
+}
+CompressCodeblock* Precinct::getCompressedBlockPtr(void){
+	return impl ? impl->enc : nullptr;
+}
+DecompressCodeblock* Precinct::getDecompressedBlockPtr(void){
+	return impl ? impl->dec : nullptr;
+}
+TagTree* Precinct::getInclTree(void){
+	return impl ? impl->incltree : nullptr;
+}
+TagTree* Precinct::getImsbTree(void){
+	return impl ? impl->imsbtree : nullptr;
+}
+
+PrecinctImpl::PrecinctImpl() :
+		cblk_grid_width(0), cblk_grid_height(0),
+		enc(nullptr), dec(nullptr),
+		incltree(nullptr), imsbtree(nullptr) {
+}
+PrecinctImpl::~PrecinctImpl(){
 	deleteTagTrees();
 	delete[] enc;
 	delete[] dec;
 }
+
+bool PrecinctImpl::init(bool isCompressor,
+					grk_rect_u32 *bounds,
+					grk_pt cblk_expn,
+					grk_plugin_tile *current_plugin_tile){
+
+
+	auto cblk_grid = grk_rect_u32(
+			uint_floordivpow2(bounds->x0,cblk_expn.x),
+			uint_floordivpow2(bounds->y0,cblk_expn.y),
+			ceildivpow2<uint32_t>(bounds->x1,cblk_expn.x),
+			ceildivpow2<uint32_t>(bounds->y1,cblk_expn.y));
+
+
+	uint32_t state = grk_plugin_get_debug_state();
+	size_t nominalBlockSize = (1 << cblk_expn.x) * (1 << cblk_expn.y);
+	cblk_grid_width 	= cblk_grid.width();
+	cblk_grid_height 	= cblk_grid.height();
+
+
+	uint64_t nb_code_blocks = cblk_grid.area();
+	if (!nb_code_blocks)
+		return true;
+
+	if (isCompressor)
+		enc = new CompressCodeblock[nb_code_blocks];
+	else
+		dec = new DecompressCodeblock[nb_code_blocks];
+	initTagTrees();
+
+	for (uint64_t cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
+		auto cblk_start = grk_pt(	(cblk_grid.x0  + (uint32_t) (cblkno % cblk_grid_width)) << cblk_expn.x,
+									(cblk_grid.y0  + (uint32_t) (cblkno / cblk_grid_width)) << cblk_expn.y);
+		auto cblk_bounds = grk_rect_u32(cblk_start.x,
+										cblk_start.y,
+										cblk_start.x + (1 << cblk_expn.x),
+										cblk_start.y + (1 << cblk_expn.y));
+
+		auto cblk_dims = (isCompressor) ?
+									(grk_rect_u32*)(enc + cblkno) :
+									(grk_rect_u32*)(dec + cblkno);
+		if (isCompressor) {
+			auto code_block = enc + cblkno;
+			if (!code_block->alloc())
+				return false;
+			if (!current_plugin_tile
+					|| (state & GRK_PLUGIN_STATE_DEBUG)) {
+				if (!code_block->alloc_data(nominalBlockSize))
+					return false;
+			}
+		} else {
+			auto code_block = dec + cblkno;
+			if (!current_plugin_tile
+					|| (state & GRK_PLUGIN_STATE_DEBUG)) {
+				if (!code_block->alloc())
+					return false;
+			}
+		}
+		*cblk_dims = cblk_bounds.intersection(bounds);
+	}
+
+	return true;
+}
+
+void PrecinctImpl::deleteTagTrees() {
+	delete incltree;
+	incltree = nullptr;
+	delete imsbtree;
+	imsbtree = nullptr;
+}
+
+void PrecinctImpl::initTagTrees() {
+
+	// if cw == 0 or ch == 0,
+	// then the precinct has no code blocks, therefore
+	// no need for inclusion and msb tag trees
+	if (cblk_grid_width > 0 && cblk_grid_height > 0) {
+		if (!incltree) {
+			try {
+				incltree = new TagTree(cblk_grid_width, cblk_grid_height);
+			} catch (std::exception &e) {
+				GRK_WARN("No incltree created.");
+			}
+		} else {
+			if (!incltree->init(cblk_grid_width, cblk_grid_height)) {
+				GRK_WARN("Failed to re-initialize incltree.");
+				delete incltree;
+				incltree = nullptr;
+			}
+		}
+
+		if (!imsbtree) {
+			try {
+				imsbtree = new TagTree(cblk_grid_width, cblk_grid_height);
+			} catch (std::exception &e) {
+				GRK_WARN("No imsbtree created.");
+			}
+		} else {
+			if (!imsbtree->init(cblk_grid_width, cblk_grid_height)) {
+				GRK_WARN("Failed to re-initialize imsbtree.");
+				delete imsbtree;
+				imsbtree = nullptr;
+			}
+		}
+	}
+}
+
 
 Codeblock::Codeblock():
 		numbps(0),
@@ -336,48 +495,6 @@ bool Subband::isEmpty() {
 	return ((x1 - x0 == 0) || (y1 - y0 == 0));
 }
 
-void Precinct::deleteTagTrees() {
-	delete incltree;
-	incltree = nullptr;
-	delete imsbtree;
-	imsbtree = nullptr;
-}
-
-void Precinct::initTagTrees() {
-
-	// if cw == 0 or ch == 0,
-	// then the precinct has no code blocks, therefore
-	// no need for inclusion and msb tag trees
-	if (cblk_grid_width > 0 && cblk_grid_height > 0) {
-		if (!incltree) {
-			try {
-				incltree = new TagTree(cblk_grid_width, cblk_grid_height);
-			} catch (std::exception &e) {
-				GRK_WARN("No incltree created.");
-			}
-		} else {
-			if (!incltree->init(cblk_grid_width, cblk_grid_height)) {
-				GRK_WARN("Failed to re-initialize incltree.");
-				delete incltree;
-				incltree = nullptr;
-			}
-		}
-
-		if (!imsbtree) {
-			try {
-				imsbtree = new TagTree(cblk_grid_width, cblk_grid_height);
-			} catch (std::exception &e) {
-				GRK_WARN("No imsbtree created.");
-			}
-		} else {
-			if (!imsbtree->init(cblk_grid_width, cblk_grid_height)) {
-				GRK_WARN("Failed to re-initialize imsbtree.");
-				delete imsbtree;
-				imsbtree = nullptr;
-			}
-		}
-	}
-}
 
 Resolution::Resolution() :
 		numBandWindows(0),

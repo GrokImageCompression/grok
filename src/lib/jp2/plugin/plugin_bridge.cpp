@@ -42,10 +42,10 @@ void decompress_synch_plugin_with_host(TileProcessor *tcd) {
 							precno++) {
 						auto prc = &band->precincts[precno];
 						auto plugin_prc = plugin_band->precincts[precno];
-						assert(plugin_prc->numBlocks == (uint64_t)prc->cblk_grid_width * prc->cblk_grid_height);
-						for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cblk_grid_width * prc->cblk_grid_height;
+						assert(plugin_prc->numBlocks == prc->getNumCblks());
+						for (uint64_t cblkno = 0; cblkno < prc->getNumCblks();
 								cblkno++) {
-							auto cblk = &prc->dec[cblkno];
+							auto cblk = &prc->getDecompressedBlockPtr()[cblkno];
 							if (!cblk->numSegments)
 								continue;
 							// sanity check
@@ -119,13 +119,12 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tile *p_tile) {
 					auto precinct = band->precincts + precno;
 					auto plugin_precinct =
 							plugin_band->precincts[precno];
-					if ((uint64_t)precinct->cblk_grid_height * precinct->cblk_grid_width
-							!= plugin_precinct->numBlocks) {
+					uint64_t numBlocks = precinct->getNumCblks();
+					if (numBlocks != plugin_precinct->numBlocks) {
 						return false;
 					}
-					for (uint64_t cblkno = 0;
-							cblkno < (uint64_t)precinct->cblk_grid_height * precinct->cblk_grid_width; ++cblkno) {
-						auto cblk = precinct->dec + cblkno;
+					for (uint64_t cblkno = 0; cblkno < numBlocks; ++cblkno) {
+						auto cblk = precinct->getDecompressedBlockPtr() + cblkno;
 						auto plugin_cblk =
 								plugin_precinct->blocks[cblkno];
 						if (cblk->x0 != plugin_cblk->x0
@@ -268,9 +267,9 @@ void set_context_stream(TileProcessor *p_tileProcessor) {
 				for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph;
 						precno++) {
 					auto prc = &band->precincts[precno];
-					for (uint64_t cblkno = 0; cblkno < (uint64_t)prc->cblk_grid_width * prc->cblk_grid_height;
+					for (uint64_t cblkno = 0; cblkno < prc->getNumCblks();
 							cblkno++) {
-						auto cblk = &prc->enc[cblkno];
+						auto cblk = &prc->getCompressedBlockPtr()[cblkno];
 						if (p_tileProcessor->current_plugin_tile
 								&& p_tileProcessor->current_plugin_tile->tileComponents) {
 							auto comp =

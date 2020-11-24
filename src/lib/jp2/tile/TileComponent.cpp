@@ -73,7 +73,6 @@ bool TileComponent::init(bool isCompressor,
 						TileCodingParams *tcp,
 						TileComponentCodingParams* tccp,
 						grk_plugin_tile *current_plugin_tile){
-	uint32_t state = grk_plugin_get_debug_state();
 	m_is_encoder = isCompressor;
 	whole_tile_decoding = whole_tile;
 	m_tccp = tccp;
@@ -160,9 +159,7 @@ bool TileComponent::init(bool isCompressor,
 		for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 			auto res = resolutions + resno;
 			/* Compute number of decomposition for this band. See table F-1 */
-			uint32_t num_decomps = (resno == 0) ?
-							numresolutions - 1 :
-							numresolutions - resno;
+			uint32_t num_decomps = (resno == 0) ? numresolutions - 1 :	numresolutions - resno;
 			for (uint32_t orientation = 0; orientation < BAND_NUM_ORIENTATIONS; ++orientation) {
 				/* Map above tile-based coordinates to sub-band-based coordinates per */
 				/* equation B-15 of the standard */
@@ -193,12 +190,12 @@ bool TileComponent::init(bool isCompressor,
 		for (uint8_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
 			auto band = res->bandWindow + bandno;
 			if (!m_tccp->quant.setBandStepSizeAndBps(tcp,
-											band,
-											resno,
-											bandno,
-											m_tccp,
-											prec,
-											m_is_encoder))
+													band,
+													resno,
+													bandno,
+													m_tccp,
+													prec,
+													m_is_encoder))
 				return false;
 		}
 	}
@@ -209,9 +206,11 @@ bool TileComponent::init(bool isCompressor,
 
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
 		auto precinct_expn = grk_pt(m_tccp->prcw[resno],m_tccp->prch[resno]);
+
 		/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
-		auto precinct_start = grk_pt(uint_floordivpow2(res->x0, precinct_expn.x) << precinct_expn.x,
+		auto precinct_start = grk_pt(	uint_floordivpow2(res->x0, precinct_expn.x) << precinct_expn.x,
 										uint_floordivpow2(res->y0, precinct_expn.y) << precinct_expn.y);
+
 		uint64_t num_precincts = (uint64_t)res->pw * res->ph;
 		if (mult64_will_overflow(num_precincts, sizeof(Precinct))) {
 			GRK_ERROR(	"nb_precinct_size calculation would overflow ");
@@ -221,16 +220,15 @@ bool TileComponent::init(bool isCompressor,
 		grk_pt cblk_grid_expn;
 		if (resno == 0) {
 			cblk_grid_start = precinct_start;
-			cblk_grid_expn = precinct_expn;
+			cblk_grid_expn 	= precinct_expn;
 		} else {
 			cblk_grid_start=  grk_pt(	ceildivpow2<uint32_t>(precinct_start.x, 1),
-									ceildivpow2<uint32_t>(precinct_start.y, 1));
+										ceildivpow2<uint32_t>(precinct_start.y, 1));
 			cblk_grid_expn.x = precinct_expn.x - 1;
 			cblk_grid_expn.y = precinct_expn.y - 1;
 		}
-		auto cblk_expn    =  grk_pt(	std::min<uint32_t>(m_tccp->cblkw, cblk_grid_expn.x),
+		res->cblk_expn    =  grk_pt(	std::min<uint32_t>(m_tccp->cblkw, cblk_grid_expn.x),
 										std::min<uint32_t>(m_tccp->cblkh, cblk_grid_expn.y));
-		size_t nominalBlockSize = (1 << cblk_expn.x) * (1 << cblk_expn.y);
 
 		for (uint8_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
 			auto band = res->bandWindow + bandno;
@@ -238,65 +236,17 @@ bool TileComponent::init(bool isCompressor,
 			band->numPrecincts = num_precincts;
 			for (uint64_t precno = 0; precno < num_precincts; ++precno) {
 				auto current_precinct = band->precincts + precno;
-
-				auto band_precinct_start = grk_pt(cblk_grid_start.x + (uint32_t)((precno % res->pw) << cblk_grid_expn.x),
+				auto band_precinct_start = grk_pt(	cblk_grid_start.x + (uint32_t)((precno % res->pw) << cblk_grid_expn.x),
 													cblk_grid_start.y + (uint32_t)((precno / res->pw) << cblk_grid_expn.y));
-				*((grk_rect_u32*)current_precinct) = grk_rect_u32(band_precinct_start.x,
+				*((grk_rect_u32*)current_precinct) = grk_rect_u32(
+																band_precinct_start.x,
 																band_precinct_start.y,
 																band_precinct_start.x + (1 << cblk_grid_expn.x),
 																band_precinct_start.y + (1 << cblk_grid_expn.y)).intersection(band);
 
-				auto cblk_grid = grk_rect_u32(
-						uint_floordivpow2(current_precinct->x0,cblk_expn.x),
-						uint_floordivpow2(current_precinct->y0,cblk_expn.y),
-						ceildivpow2<uint32_t>(current_precinct->x1,cblk_expn.x),
-						ceildivpow2<uint32_t>(current_precinct->y1,cblk_expn.y));
-
-				current_precinct->cblk_grid_width 	= cblk_grid.width();
-				current_precinct->cblk_grid_height 	= cblk_grid.height();
-
-				uint64_t nb_code_blocks = cblk_grid.area();
-				if (!nb_code_blocks)
-					continue;
-
 				if (isCompressor)
-					current_precinct->enc = new CompressCodeblock[nb_code_blocks];
-				else
-					current_precinct->dec = new DecompressCodeblock[nb_code_blocks];
-				current_precinct->numCodeBlocks = nb_code_blocks;
-				current_precinct->initTagTrees();
-
-				for (uint64_t cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
-					auto cblk_start = grk_pt(	(cblk_grid.x0  + (uint32_t) (cblkno % current_precinct->cblk_grid_width)) << cblk_expn.x,
-												(cblk_grid.y0  + (uint32_t) (cblkno / current_precinct->cblk_grid_width)) << cblk_expn.y);
-					auto cblk_bounds = grk_rect_u32(cblk_start.x,
-													cblk_start.y,
-													cblk_start.x + (1 << cblk_expn.x),
-													cblk_start.y + (1 << cblk_expn.y));
-
-					auto cblk_dims = (m_is_encoder) ?
-												(grk_rect_u32*)(current_precinct->enc + cblkno) :
-												(grk_rect_u32*)(current_precinct->dec + cblkno);
-					if (m_is_encoder) {
-						auto code_block = current_precinct->enc + cblkno;
-						if (!code_block->alloc())
-							return false;
-						if (!current_plugin_tile
-								|| (state & GRK_PLUGIN_STATE_DEBUG)) {
-							if (!code_block->alloc_data(nominalBlockSize))
-								return false;
-						}
-					} else {
-						auto code_block =
-								current_precinct->dec + cblkno;
-						if (!current_plugin_tile
-								|| (state & GRK_PLUGIN_STATE_DEBUG)) {
-							if (!code_block->alloc())
-								return false;
-						}
-					}
-					*cblk_dims = cblk_bounds.intersection(current_precinct);
-				}
+					if (!current_precinct->init(m_is_encoder,res->cblk_expn,current_plugin_tile))
+						return false;
 			}
 		}
 	}
@@ -329,8 +279,8 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
             auto band = res->bandWindow + bandno;
             for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph; ++precno) {
                 auto precinct = band->precincts + precno;
-                for (uint64_t cblkno = 0; cblkno < (uint64_t)precinct->cblk_grid_width * precinct->cblk_grid_height; ++cblkno) {
-                    auto cblk = precinct->dec + cblkno;
+                for (uint64_t cblkno = 0; cblkno < precinct->getNumCblks(); ++cblkno) {
+                    auto cblk = precinct->getDecompressedBlockPtr() + cblkno;
 					// check overlap in band coordinates
 					if (subbandIntersectsAOI(resno,	bandno,	cblk)){
 						uint32_t x = cblk->x0;

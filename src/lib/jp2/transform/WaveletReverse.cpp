@@ -1875,6 +1875,7 @@ template <typename T,
 	win_bounds = win_bounds.rectceildivpow2(tilec->numresolutions - 1 - (numres-1));
     auto final_win_bounds = win_bounds.pan(-(uint64_t)tr_max->x0,-(uint64_t)tr_max->y0);
 
+	try {
     if (numres == 1U) {
         // simply copy into tile component buffer
     	bool ret = sa->read(final_win_bounds,
@@ -1886,6 +1887,9 @@ template <typename T,
         GRK_UNUSED(ret);
         return true;
     }
+	} catch (MissingSparseBlockException &ex){
+		return false;
+	}
 
     // in 53 vertical pass, we process 4 vertical columns at a time
     size_t data_size = max_resolution(res, numres) * COLUMNS_PER_STEP;

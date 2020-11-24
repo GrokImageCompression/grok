@@ -140,21 +140,49 @@ struct DecompressCodeblock: public Codeblock {
 
 };
 
-// precinct
-struct Precinct : public grk_rect_u32 {
-	Precinct();
-	~Precinct();
+struct PrecinctImpl {
+	PrecinctImpl();
+	~PrecinctImpl();
 	void initTagTrees();
 	void deleteTagTrees();
+	bool init(bool isCompressor,
+				grk_rect_u32 *bounds,
+				grk_pt cblk_expn,
+				grk_plugin_tile *current_plugin_tile);
 
 	uint32_t cblk_grid_width;
 	uint32_t cblk_grid_height;
 	CompressCodeblock *enc;
 	DecompressCodeblock *dec;
-	uint64_t numCodeBlocks;
 	TagTree *incltree; /* inclusion tree */
 	TagTree *imsbtree; /* IMSB tree */
 };
+
+
+// precinct
+struct Precinct : public grk_rect_u32 {
+	Precinct(void);
+	~Precinct(void);
+	bool init(bool isCompressor,
+				grk_pt cblk_expn,
+				grk_plugin_tile *current_plugin_tile);
+
+	void initTagTrees(void);
+	void deleteTagTrees(void);
+	uint32_t getCblkGridwidth(void);
+	uint32_t getCblkGridHeight(void);
+	uint64_t getNumCblks(void);
+	CompressCodeblock* getCompressedBlockPtr(void);
+	DecompressCodeblock* getDecompressedBlockPtr(void);
+	TagTree* getInclTree(void);
+	TagTree* getImsbTree(void);
+
+private:
+	PrecinctImpl *impl;
+	bool initialized;
+};
+
+
 
 // band
 struct Subband : public grk_rect_u32 {
@@ -182,6 +210,7 @@ struct Resolution : public grk_rect_u32 {
 	uint32_t numBandWindows;  // 1 or 3
 	grk_rect_u32 allBandWindow[BAND_NUM_ORIENTATIONS];
 	uint32_t pw, ph; 	/* dimensions of precinct grid */
+	grk_pt cblk_expn;
 };
 
 struct BlockExec : public IOpenable {

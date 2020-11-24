@@ -2678,6 +2678,7 @@ bool CodeStream::decompress_tile_t2(TileProcessor *tileProcessor) {
 	}
 	auto tcp = m_cp.tcps + tileProcessor->m_tile_index;
 	if (!tcp->m_tile_data) {
+		GRK_ERROR("Missing SOD marker");
 		tcp->destroy();
 		return false;
 	}
