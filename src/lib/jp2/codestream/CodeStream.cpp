@@ -202,6 +202,8 @@ bool grk_image_single_component_data_alloc(
 	if (!comp)
 		return false;
 	comp->stride = grk_make_aligned_width(comp->w);
+	assert(comp->stride);
+
 	size_t dataSize = (uint64_t) comp->stride * comp->h * sizeof(uint32_t);
 	auto data = (int32_t*) grk_aligned_malloc(dataSize);
 	if (!data) {
@@ -304,21 +306,23 @@ static bool update_image_dimensions(grk_image* image, uint32_t reduce)
 
         temp1 = ceildivpow2<uint32_t>(comp_x1, reduce);
         temp2 = ceildivpow2<uint32_t>(img_comp->x0, reduce);
-        if (temp1 < temp2) {
+        if (temp1 <= temp2) {
             GRK_ERROR("Size x of the decompressed component image is incorrect (comp[%u].w=%u).",
                           compno, (int32_t)temp1 - (int32_t)temp2);
             return false;
         }
         img_comp->w  = (uint32_t)(temp1 - temp2);
+        assert(img_comp->w);
 
         temp1 = ceildivpow2<uint32_t>(comp_y1, reduce);
         temp2 = ceildivpow2<uint32_t>(img_comp->y0, reduce);
-         if (temp1 < temp2) {
+         if (temp1 <= temp2) {
             GRK_ERROR("Size y of the decompressed component image is incorrect (comp[%u].h=%u).",
                           compno, (int32_t)temp1 - (int32_t)temp2);
             return false;
         }
         img_comp->h = (uint32_t)(temp1 - temp2);
+        assert(img_comp->h);
     }
 
     return true;
@@ -341,8 +345,10 @@ static void transfer_image_data(grk_image *src, grk_image *dest) {
 		grk_image_single_component_data_free(dest_comp);
 		dest_comp->data = src_comp->data;
 		dest_comp->owns_data = src_comp->owns_data;
-		dest_comp->stride = src_comp->stride;
-		assert(dest_comp->stride >= dest_comp->w);
+		if (src_comp->stride){
+			dest_comp->stride = src_comp->stride;
+			assert(dest_comp->stride >= dest_comp->w);
+		}
 		src_comp->data = nullptr;
 	}
 }

@@ -265,7 +265,7 @@ bool all_components_sanity_check(grk_image *image, bool equal_precision) {
 	auto comp0 = image->comps;
 
 	if (!comp0->data) {
-		spdlog::warn("component 0 data is null.");
+		spdlog::error("component 0 : data is null.");
 		return false;
 	}
 	if (comp0->prec == 0 || comp0->prec > 16) {
@@ -277,7 +277,7 @@ bool all_components_sanity_check(grk_image *image, bool equal_precision) {
 		auto compi = image->comps + i;
 
 		if (!compi->data) {
-			spdlog::error("component {} data is null.", i);
+			spdlog::error("component {} : data is null.", i);
 			return false;
 		}
 		if (equal_precision && comp0->prec != compi->prec){

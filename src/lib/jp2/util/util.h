@@ -257,7 +257,7 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 	}
 
 	bool alloc(bool clear){
-		if (!data) {
+		if (!data && width() && height()) {
 			stride = grk_make_aligned_width(width());
 			uint64_t data_size_needed = stride * height() * sizeof(T);
 			if (!data_size_needed)
