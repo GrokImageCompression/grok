@@ -57,7 +57,7 @@ public:
 	bool setBandStepSizeAndBps( TileCodingParams *tcp,
 								Subband *band,
 								uint32_t resno,
-								 uint8_t bandno,
+								 uint8_t bandIndex,
 								TileComponentCodingParams *tccp,
 								uint8_t image_precision,
 								bool compress);

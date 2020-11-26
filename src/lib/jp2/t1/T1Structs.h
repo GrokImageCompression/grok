@@ -32,6 +32,10 @@ enum eBandOrientation{
 	BAND_NUM_ORIENTATIONS
 };
 
+
+//////////////////////////////////////////////
+// Band Indices
+
 // LL band index when resolution == 0
 const uint32_t BAND_RES_ZERO_INDEX_LL = 0;
 
@@ -42,6 +46,7 @@ enum eBandIndex{
 	BAND_INDEX_HH,
 	BAND_NUM_INDICES
 };
+/////////////////////////////////////////////
 
 
 // code segment (code block can be encoded into multiple segments)
@@ -208,7 +213,7 @@ struct Resolution : public grk_rect_u32 {
 	void print();
 	Subband bandWindow[BAND_NUM_INDICES];
 	uint32_t numBandWindows;  // 1 or 3
-	grk_rect_u32 allBandWindow[BAND_NUM_ORIENTATIONS];
+	grk_rect_u32 paddedBandWindow[BAND_NUM_ORIENTATIONS];
 	uint32_t pw, ph; 	/* dimensions of precinct grid */
 	grk_pt cblk_expn;
 };

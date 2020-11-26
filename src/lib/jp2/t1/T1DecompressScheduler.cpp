@@ -37,12 +37,12 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent *tilec, Tile
 	}
 	for (uint32_t resno = 0; resno < tilec->resolutions_to_decompress; ++resno) {
 		auto res = &tilec->resolutions[resno];
-		for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
-			Subband *GRK_RESTRICT band = res->bandWindow + bandno;
+		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
+			Subband *GRK_RESTRICT band = res->bandWindow + bandIndex;
 			for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph; ++precno) {
 				auto precinct = band->precincts + precno;
 				if (!tilec->subbandIntersectsAOI(resno,
-												bandno,
+												bandIndex,
 												precinct)){
 
 					continue;
@@ -50,16 +50,16 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent *tilec, Tile
 				for (uint64_t cblkno = 0; cblkno < precinct->getNumCblks();	++cblkno) {
 					auto cblk = precinct->getDecompressedBlockPtr() + cblkno;
 					if (tilec->subbandIntersectsAOI(resno,
-													bandno,
+													bandIndex,
 													cblk)){
 
 						auto block = new DecompressBlockExec();
 						block->sparseBuffer = tilec->getSparseBuffer();
 						block->x = cblk->x0;
 						block->y = cblk->y0;
-						block->tiledp = tilec->getBuffer()->cblk_ptr( resno, bandno,
+						block->tiledp = tilec->getBuffer()->cblk_ptr( resno, bandIndex,
 								block->x, block->y);
-						block->stride = tilec->getBuffer()->stride(resno,bandno);
+						block->stride = tilec->getBuffer()->stride(resno,bandIndex);
 						block->band_orientation = band->orientation;
 						block->cblk = cblk;
 						block->cblk_sty = tccp->cblk_sty;

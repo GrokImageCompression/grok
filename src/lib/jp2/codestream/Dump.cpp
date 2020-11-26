@@ -41,7 +41,7 @@ static void j2k_dump_tile_info(TileCodingParams *default_tile,
 		for (compno = 0; compno < numcomps; compno++) {
 			auto tccp = &(default_tile->tccps[compno]);
 			uint32_t resno;
-			uint32_t bandno, numBandWindows;
+			uint32_t bandIndex, numBandWindows;
 
 			assert(tccp->numresolutions > 0);
 
@@ -69,9 +69,9 @@ static void j2k_dump_tile_info(TileCodingParams *default_tile,
 			numBandWindows =
 					(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
 							1 : (uint32_t) (tccp->numresolutions * 3 - 2);
-			for (bandno = 0; bandno < numBandWindows; bandno++) {
-				fprintf(out_stream, "(%d,%d) ", tccp->stepsizes[bandno].mant,
-						tccp->stepsizes[bandno].expn);
+			for (bandIndex = 0; bandIndex < numBandWindows; bandIndex++) {
+				fprintf(out_stream, "(%d,%d) ", tccp->stepsizes[bandIndex].mant,
+						tccp->stepsizes[bandIndex].expn);
 			}
 			fprintf(out_stream, "\n");
 
@@ -334,11 +334,11 @@ grk_codestream_info_v2* j2k_get_cstr_info(CodeStream *codeStream) {
 				(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
 						1 : (tccp->numresolutions * 3 - 2);
 		if (numBandWindows < GRK_J2K_MAXBANDS) {
-			for (uint32_t bandno = 0; bandno < numBandWindows; bandno++) {
-				tccp_info->stepsizes_mant[bandno] =
-						tccp->stepsizes[bandno].mant;
-				tccp_info->stepsizes_expn[bandno] =
-						tccp->stepsizes[bandno].expn;
+			for (uint32_t bandIndex = 0; bandIndex < numBandWindows; bandIndex++) {
+				tccp_info->stepsizes_mant[bandIndex] =
+						tccp->stepsizes[bandIndex].mant;
+				tccp_info->stepsizes_expn[bandIndex] =
+						tccp->stepsizes[bandIndex].expn;
 			}
 		}
 

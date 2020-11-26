@@ -94,7 +94,7 @@ bool TileProcessor::make_single_lossless_layer() {
 
 void TileProcessor::makelayer_feasible(uint32_t layno, uint16_t thresh,
 		bool final) {
-	uint32_t compno, resno, bandno;
+	uint32_t compno, resno, bandIndex;
 	uint64_t precno, cblkno;
 	uint32_t passno;
 	tile->distolayer[layno] = 0;
@@ -102,8 +102,8 @@ void TileProcessor::makelayer_feasible(uint32_t layno, uint16_t thresh,
 		auto tilec = tile->comps + compno;
 		for (resno = 0; resno < tilec->numresolutions; resno++) {
 			auto res = tilec->resolutions + resno;
-			for (bandno = 0; bandno < res->numBandWindows; bandno++) {
-				auto band = res->bandWindow + bandno;
+			for (bandIndex = 0; bandIndex < res->numBandWindows; bandIndex++) {
+				auto band = res->bandWindow + bandIndex;
 				for (precno = 0; precno < (uint64_t)res->pw * res->ph; precno++) {
 					auto prc = band->precincts + precno;
 					for (cblkno = 0; cblkno < prc->getNumCblks(); cblkno++) {
@@ -196,8 +196,8 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 		uint64_t numpix = 0;
 		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
 			auto res = &tilec->resolutions[resno];
-			for (uint32_t bandno = 0; bandno < res->numBandWindows; bandno++) {
-				auto band = &res->bandWindow[bandno];
+			for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; bandIndex++) {
+				auto band = &res->bandWindow[bandIndex];
 				for (uint64_t precno = 0; (uint64_t)precno < res->pw * res->ph;
 						precno++) {
 					auto prc = &band->precincts[precno];
@@ -207,7 +207,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 						uint32_t numPix = (uint32_t)cblk->area();
 						if (!(state & GRK_PLUGIN_STATE_PRE_TR1)) {
 							compress_synch_with_plugin(this, compno, resno,
-									bandno, precno, cblkno, band, cblk,
+									bandIndex, precno, cblkno, band, cblk,
 									&numPix);
 						}
 
@@ -219,7 +219,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 						}
 					} /* cbklno */
 				} /* precno */
-			} /* bandno */
+			} /* bandIndex */
 		} /* resno */
 
 		if (!single_lossless) {
@@ -315,7 +315,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
  Simple bisect algorithm to calculate optimal layer truncation points
  */
 bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
-	uint32_t compno, resno, bandno;
+	uint32_t compno, resno, bandIndex;
 	uint16_t layno;
 	uint64_t precno, cblkno;
 	uint32_t passno;
@@ -334,8 +334,8 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 		uint64_t numpix = 0;
 		for (resno = 0; resno < tilec->numresolutions; resno++) {
 			auto res = &tilec->resolutions[resno];
-			for (bandno = 0; bandno < res->numBandWindows; bandno++) {
-				auto band = &res->bandWindow[bandno];
+			for (bandIndex = 0; bandIndex < res->numBandWindows; bandIndex++) {
+				auto band = &res->bandWindow[bandIndex];
 				for (precno = 0; precno < (uint64_t)res->pw * res->ph; precno++) {
 					auto prc = &band->precincts[precno];
 					for (cblkno = 0; cblkno < prc->getNumCblks(); cblkno++) {
@@ -343,7 +343,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 						uint32_t numPix = (uint32_t)cblk->area();
 						if (!(state & GRK_PLUGIN_STATE_PRE_TR1)) {
 							compress_synch_with_plugin(this, compno, resno,
-									bandno, precno, cblkno, band, cblk,
+									bandIndex, precno, cblkno, band, cblk,
 									&numPix);
 						}
 						if (!single_lossless) {
@@ -377,7 +377,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 						}
 					} /* cbklno */
 				} /* precno */
-			} /* bandno */
+			} /* bandIndex */
 		} /* resno */
 
 		if (!single_lossless)
@@ -490,8 +490,8 @@ void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 		auto tilec = tile->comps + compno;
 		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
 			auto res = tilec->resolutions + resno;
-			for (uint32_t bandno = 0; bandno < res->numBandWindows; bandno++) {
-				auto band = res->bandWindow + bandno;
+			for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; bandIndex++) {
+				auto band = res->bandWindow + bandIndex;
 				for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph; precno++) {
 					auto prc = band->precincts + precno;
 					for (uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++) {
@@ -592,8 +592,8 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 		auto tilec = tile->comps + compno;
 		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
 			auto res = tilec->resolutions + resno;
-			for (uint32_t bandno = 0; bandno < res->numBandWindows; bandno++) {
-				auto band = res->bandWindow + bandno;
+			for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; bandIndex++) {
+				auto band = res->bandWindow + bandIndex;
 				for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph; precno++) {
 					auto prc = band->precincts + precno;
 					for (uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++) {
@@ -1122,18 +1122,18 @@ bool TileProcessor::t2_encode(uint32_t *all_packet_bytes_written) {
 			roundRes->x1 = res->x1;
 			roundRes->y1 = res->y1;
 			roundRes->numBandWindows = res->numBandWindows;
-			for (uint32_t bandno = 0; bandno < roundRes->numBandWindows; ++bandno) {
-				roundRes->bandWindow[bandno] = res->bandWindow[bandno];
-				roundRes->bandWindow[bandno].x0 = res->bandWindow[bandno].x0;
-				roundRes->bandWindow[bandno].y0 = res->bandWindow[bandno].y0;
-				roundRes->bandWindow[bandno].x1 = res->bandWindow[bandno].x1;
-				roundRes->bandWindow[bandno].y1 = res->bandWindow[bandno].y1;
+			for (uint32_t bandIndex = 0; bandIndex < roundRes->numBandWindows; ++bandIndex) {
+				roundRes->bandWindow[bandIndex] = res->bandWindow[bandIndex];
+				roundRes->bandWindow[bandIndex].x0 = res->bandWindow[bandIndex].x0;
+				roundRes->bandWindow[bandIndex].y0 = res->bandWindow[bandIndex].y0;
+				roundRes->bandWindow[bandIndex].x1 = res->bandWindow[bandIndex].x1;
+				roundRes->bandWindow[bandIndex].y1 = res->bandWindow[bandIndex].y1;
 			}
 
 			// allocate
-			for (uint32_t bandno = 0; bandno < roundRes->numBandWindows; ++bandno) {
-				auto band = res->bandWindow + bandno;
-				auto decodeBand = roundRes->bandWindow + bandno;
+			for (uint32_t bandIndex = 0; bandIndex < roundRes->numBandWindows; ++bandIndex) {
+				auto band = res->bandWindow + bandIndex;
+				auto decodeBand = roundRes->bandWindow + bandIndex;
 				if (!band->numPrecincts)
 					continue;
 				decodeBand->precincts = new Precinct[band->numPrecincts];
@@ -1175,8 +1175,8 @@ bool TileProcessor::t2_encode(uint32_t *all_packet_bytes_written) {
 		TileComponent *tilec = &p_tile->comps[compno];
 		for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
 			auto roundRes = tilec->round_trip_resolutions + resno;
-			for (uint32_t bandno = 0; bandno < roundRes->numBandWindows; ++bandno) {
-				auto decodeBand = roundRes->bandWindow + bandno;
+			for (uint32_t bandIndex = 0; bandIndex < roundRes->numBandWindows; ++bandIndex) {
+				auto decodeBand = roundRes->bandWindow + bandIndex;
 				if (decodeBand->precincts) {
 					for (uint64_t precno = 0; precno < decodeBand->numPrecincts; ++precno) {
 						auto decodePrec = decodeBand->precincts + precno;

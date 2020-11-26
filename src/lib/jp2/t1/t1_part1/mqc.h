@@ -58,7 +58,7 @@ struct mqcoder {
     const mqc_state *ctxs[MQC_NUMCTXS];
     /** Active context */
     const mqc_state **curctx;
-    /* lut_ctxno_zc shifted by (1 << 9) * bandno */
+    /* lut_ctxno_zc shifted by (1 << 9) * bandIndex */
     const uint8_t* lut_ctxno_zc_orient;
     /** Original value of the 2 bytes at end[0] and end[1] */
     uint8_t backup[grk_cblk_dec_compressed_data_pad_right];

@@ -32,9 +32,9 @@ void decompress_synch_plugin_with_host(TileProcessor *tcd) {
 				auto res = &tilec->resolutions[resno];
 				auto plugin_res = plugin_tilec->resolutions[resno];
 				assert(plugin_res->numBands == res->numBandWindows);
-				for (uint32_t bandno = 0; bandno < res->numBandWindows; bandno++) {
-					auto band = &res->bandWindow[bandno];
-					auto plugin_band = plugin_res->bandWindow[bandno];
+				for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; bandIndex++) {
+					auto band = &res->bandWindow[bandIndex];
+					auto plugin_band = plugin_res->bandWindow[bandIndex];
 					assert(plugin_band->numPrecincts == (uint64_t)res->pw * res->ph);
 					//!!!! plugin still uses stepsize/2
 					plugin_band->stepsize = band->stepsize/2;
@@ -108,10 +108,10 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tile *p_tile) {
 					plugin_tilecomp->resolutions[resno];
 			if (resolution->numBandWindows != plugin_resolution->numBands)
 				return false;
-			for (uint32_t bandno = 0; bandno < resolution->numBandWindows; ++bandno) {
-				auto band = resolution->bandWindow + bandno;
+			for (uint32_t bandIndex = 0; bandIndex < resolution->numBandWindows; ++bandIndex) {
+				auto band = resolution->bandWindow + bandIndex;
 				auto plugin_band =
-						plugin_resolution->bandWindow[bandno];
+						plugin_resolution->bandWindow[bandIndex];
 				size_t num_precincts = band->numPrecincts;
 				if (num_precincts != plugin_band->numPrecincts)
 					return false;
@@ -141,12 +141,12 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tile *p_tile) {
 }
 
 void compress_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resno,
-		uint32_t bandno, uint64_t precno, uint64_t cblkno, Subband *band,
+		uint32_t bandIndex, uint64_t precno, uint64_t cblkno, Subband *band,
 		CompressCodeblock *cblk, uint32_t *numPix) {
 
 	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
 		auto plugin_band =
-				tcd->current_plugin_tile->tileComponents[compno]->resolutions[resno]->bandWindow[bandno];
+				tcd->current_plugin_tile->tileComponents[compno]->resolutions[resno]->bandWindow[bandIndex];
 		auto precinct = plugin_band->precincts[precno];
 		auto plugin_cblk = precinct->blocks[cblkno];
 		uint32_t state = grk_plugin_get_debug_state();
@@ -161,7 +161,7 @@ void compress_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t re
 						"plugin total number of passes ({}) : component={}, res={}, band={}, block={}",
 						cblk->numPassesTotal,
 						(uint32_t) plugin_cblk->numPasses, compno, resno,
-						bandno, cblkno);
+						bandIndex, cblkno);
 		}
 
 		cblk->numPassesTotal = (uint32_t) plugin_cblk->numPasses;
@@ -192,7 +192,7 @@ void compress_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t re
 			for (uint32_t p = 0; p < totalRate; ++p) {
 				if (cblk->paddedCompressedStream[p] != plugin_cblk->compressedData[p]) {
 					GRK_WARN("data differs at position={}, component={}, res={}, band={}, block={}, CPU rate ={}, plugin rate={}",
-							p, compno, resno, bandno, cblkno, totalRate,
+							p, compno, resno, bandIndex, cblkno, totalRate,
 							totalRatePlugin);
 					goodData = false;
 					break;
@@ -262,8 +262,8 @@ void set_context_stream(TileProcessor *p_tileProcessor) {
 		auto tilec = p_tileProcessor->tile->comps + compno;
 		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
 			auto res = &tilec->resolutions[resno];
-			for (uint32_t bandno = 0; bandno < res->numBandWindows; bandno++) {
-				auto band = &res->bandWindow[bandno];
+			for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; bandIndex++) {
+				auto band = &res->bandWindow[bandIndex];
 				for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph;
 						precno++) {
 					auto prc = &band->precincts[precno];
@@ -276,7 +276,7 @@ void set_context_stream(TileProcessor *p_tileProcessor) {
 									p_tileProcessor->current_plugin_tile->tileComponents[compno];
 							if (resno < comp->numResolutions) {
 								auto plugin_band =
-										comp->resolutions[resno]->bandWindow[bandno];
+										comp->resolutions[resno]->bandWindow[bandIndex];
 								auto precinct =
 										plugin_band->precincts[precno];
 								auto plugin_cblk =

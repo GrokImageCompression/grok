@@ -47,8 +47,8 @@ void TileComponent::release_mem(){
 	if (resolutions) {
 		for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 			auto res = resolutions + resno;
-			for (uint32_t bandno = 0; bandno < 3; ++bandno) {
-				auto band = res->bandWindow + bandno;
+			for (uint32_t bandIndex = 0; bandIndex < 3; ++bandIndex) {
+				auto band = res->bandWindow + bandIndex;
 				delete[] band->precincts;
 				band->precincts = nullptr;
 			}
@@ -120,9 +120,9 @@ bool TileComponent::init(bool isCompressor,
 			std::cout << "res: " << resno << " ";
 			res->print();
 		}
-		for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
-			auto band = res->bandWindow + bandno;
-			eBandOrientation orientation = (resno ==0) ? BAND_ORIENT_LL : (eBandOrientation)(bandno+1);
+		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
+			auto band = res->bandWindow + bandIndex;
+			eBandOrientation orientation = (resno ==0) ? BAND_ORIENT_LL : (eBandOrientation)(bandIndex+1);
 			band->orientation = orientation;
 		}
 	}
@@ -148,8 +148,8 @@ bool TileComponent::init(bool isCompressor,
 	    /* See dwt_decode_partial_53 and dwt_decode_partial_97 as well */
 	    uint32_t filter_margin = (m_tccp->qmfbid == 1) ? 2 : 3;
 
-	    /* Compute the intersection of the area of interest, expressed in tile component coordinates */
-	    /* with the tile coordinates */
+	    /* Compute the intersection of the window of interest, expressed in tile component coordinates, */
+	    /* with the tile component */
 		auto dims = buf->unreduced_bounds();
 		uint32_t tcx0 = dims.x0;
 		uint32_t tcy0 = dims.y0;
@@ -165,21 +165,21 @@ bool TileComponent::init(bool isCompressor,
 				/* equation B-15 of the standard */
 				uint32_t x0b = orientation & 1;
 				uint32_t y0b = orientation >> 1;
-				auto window = res->allBandWindow + orientation;
-				window->x0 = (num_decomps == 0) ? tcx0 :
+				auto paddedWindow = res->paddedBandWindow + orientation;
+				paddedWindow->x0 = (num_decomps == 0) ? tcx0 :
 								  (tcx0 <= (1U << (num_decomps - 1)) * x0b) ? 0 :
 								  ceildivpow2<uint32_t>(tcx0 - (1U << (num_decomps - 1)) * x0b, num_decomps);
-				window->y0 = (num_decomps == 0) ? tcy0 :
+				paddedWindow->y0 = (num_decomps == 0) ? tcy0 :
 								  (tcy0 <= (1U << (num_decomps - 1)) * y0b) ? 0 :
 								  ceildivpow2<uint32_t>(tcy0 - (1U << (num_decomps - 1)) * y0b, num_decomps);
-				window->x1 = (num_decomps == 0) ? tcx1 :
+				paddedWindow->x1 = (num_decomps == 0) ? tcx1 :
 								  (tcx1 <= (1U << (num_decomps - 1)) * x0b) ? 0 :
 								  ceildivpow2<uint32_t>(tcx1 - (1U << (num_decomps - 1)) * x0b, num_decomps);
-				window->y1 = (num_decomps == 0) ? tcy1 :
+				paddedWindow->y1 = (num_decomps == 0) ? tcy1 :
 								  (tcy1 <= (1U << (num_decomps - 1)) * y0b) ? 0 :
 								  ceildivpow2<uint32_t>(tcy1 - (1U << (num_decomps - 1)) * y0b, num_decomps);
 
-			    window->grow(filter_margin,filter_margin);
+			    paddedWindow->grow(filter_margin,filter_margin);
 			}
 		}
 	}
@@ -187,12 +187,12 @@ bool TileComponent::init(bool isCompressor,
 	// set band step size
 	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
-		for (uint8_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
-			auto band = res->bandWindow + bandno;
+		for (uint8_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
+			auto band = res->bandWindow + bandIndex;
 			if (!m_tccp->quant.setBandStepSizeAndBps(tcp,
 													band,
 													resno,
-													bandno,
+													bandIndex,
 													m_tccp,
 													prec,
 													m_is_encoder))
@@ -230,8 +230,8 @@ bool TileComponent::init(bool isCompressor,
 		res->cblk_expn    =  grk_pt(	std::min<uint32_t>(m_tccp->cblkw, cblk_grid_expn.x),
 										std::min<uint32_t>(m_tccp->cblkh, cblk_grid_expn.y));
 
-		for (uint8_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
-			auto band = res->bandWindow + bandno;
+		for (uint8_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
+			auto band = res->bandWindow + bandIndex;
 			band->precincts = new Precinct[num_precincts];
 			band->numPrecincts = num_precincts;
 			for (uint64_t precno = 0; precno < num_precincts; ++precno) {
@@ -255,16 +255,16 @@ bool TileComponent::init(bool isCompressor,
 }
 
 bool TileComponent::subbandIntersectsAOI(uint32_t resno,
-								uint32_t bandno,
+								uint32_t bandIndex,
 								const grk_rect_u32 *aoi) const
 {
 	if (whole_tile_decoding)
 		return true;
-	assert(resno < numresolutions && bandno <=3);
-	auto orientation = (resno == 0) ? 0 : bandno+1;
-	auto window = ((resolutions + resno)->allBandWindow)[orientation];
+	assert(resno < numresolutions && bandIndex <=3);
+	auto orientation = (resno == 0) ? 0 : bandIndex+1;
+	auto paddedBandWinow = ((resolutions + resno)->paddedBandWindow)[orientation];
 
-    return window.intersection(aoi).is_non_degenerate();
+    return paddedBandWinow.intersection(aoi).is_non_degenerate();
 }
 
 void TileComponent::allocSparseBuffer(uint32_t numres){
@@ -275,14 +275,14 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
 
     for (uint32_t resno = 0; resno < numres; ++resno) {
         auto res = &resolutions[resno];
-        for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
-            auto band = res->bandWindow + bandno;
+        for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
+            auto band = res->bandWindow + bandIndex;
             for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph; ++precno) {
                 auto precinct = band->precincts + precno;
                 for (uint64_t cblkno = 0; cblkno < precinct->getNumCblks(); ++cblkno) {
                     auto cblk = precinct->getDecompressedBlockPtr() + cblkno;
 					// check overlap in band coordinates
-					if (subbandIntersectsAOI(resno,	bandno,	cblk)){
+					if (subbandIntersectsAOI(resno,	bandIndex,	cblk)){
 						uint32_t x = cblk->x0;
 						uint32_t y = cblk->y0;
 
@@ -323,8 +323,8 @@ void TileComponent::create_buffer(grk_rect_u32 unreduced_tile_comp_dims,
 	// calculate bandWindow
 	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
-		for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
-			auto band = res->bandWindow + bandno;
+		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
+			auto band = res->bandWindow + bandIndex;
 			*((grk_rect_u32*)band) =
 					grk_band_window(numresolutions, resno, band->orientation,unreduced_tile_comp_dims);
 		}
