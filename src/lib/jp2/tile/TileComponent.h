@@ -32,11 +32,11 @@ struct TileComponent : public grk_rect_u32 {
 	TileComponent();
 	~TileComponent();
 
-	void create_buffer(grk_rect_u32 unreduced_tile_comp_dims,grk_rect_u32 unreduced_tile_comp_region_dims);
+	void create_buffer(grk_rect_u32 unreduced_tile_comp_dims,grk_rect_u32 unreduced_tile_comp_window_dims);
 	bool init(bool isCompressor,
 			bool whole_tile,
 			grk_rect_u32 unreduced_tile_comp_dims,
-			grk_rect_u32 unreduced_tile_comp_region_dims,
+			grk_rect_u32 unreduced_tile_comp_window_dims,
 			uint8_t prec,
 			CodingParams *cp,
 			TileCodingParams *tcp,

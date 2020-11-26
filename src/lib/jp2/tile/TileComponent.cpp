@@ -68,7 +68,7 @@ void TileComponent::release_mem(){
 bool TileComponent::init(bool isCompressor,
 						bool whole_tile,
 						grk_rect_u32 unreduced_tile_comp_dims,
-						grk_rect_u32 unreduced_tile_comp_region_dims,
+						grk_rect_u32 unreduced_tile_comp_window_dims,
 						uint8_t prec,
 						CodingParams *cp,
 						TileCodingParams *tcp,
@@ -135,7 +135,7 @@ bool TileComponent::init(bool isCompressor,
 	grk_rect_u32::operator=(*(grk_rect_u32*)hightestResolution);
 
 	//3. create window buffer
-	create_buffer(unreduced_tile_comp_dims, unreduced_tile_comp_region_dims);
+	create_buffer(unreduced_tile_comp_dims, unreduced_tile_comp_window_dims);
 
 	// calculate padded windows
 	if (!whole_tile_decoding){

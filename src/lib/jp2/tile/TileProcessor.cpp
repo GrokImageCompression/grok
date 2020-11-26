@@ -688,9 +688,9 @@ bool TileProcessor::init(grk_image *output_image,bool isCompressor) {
 		if (image_comp->dx == 0 || image_comp->dy == 0)
 			return false;
 		auto tilec = tile->comps + compno;
-		grk_rect_u32 unreduced_tile_comp_region_dims;
+		grk_rect_u32 unreduced_tile_comp_window_dims;
 		if (!isCompressor)
-		 unreduced_tile_comp_region_dims =
+		 unreduced_tile_comp_window_dims =
 				 grk_rect_u32(ceildiv<uint32_t>(output_image->x0, image_comp->dx),
 											ceildiv<uint32_t>(output_image->y0, image_comp->dy),
 											ceildiv<uint32_t>(output_image->x1, image_comp->dx),
@@ -705,7 +705,7 @@ bool TileProcessor::init(grk_image *output_image,bool isCompressor) {
 		if (!tilec->init(isCompressor,
 						whole_tile_decoding,
 						unreduced_tile_comp_dims,
-						unreduced_tile_comp_region_dims,
+						unreduced_tile_comp_window_dims,
 						image_comp->prec,
 						m_cp,
 						tcp,
