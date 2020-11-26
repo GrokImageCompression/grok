@@ -88,7 +88,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 					for (uint32_t bandIndex = 0;	bandIndex < res->numBandWindows; ++bandIndex) {
 						auto band = res->bandWindow + bandIndex;
 						auto prec = band->getPrecinct(current_pi->precinctIndex);
-						if (tilec->subbandIntersectsAOI(current_pi->resno,bandIndex, prec)) {
+						if (prec && tilec->subbandIntersectsAOI(current_pi->resno,bandIndex, prec)) {
 							skip_the_packet = false;
 							break;
 						}
@@ -230,6 +230,8 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 			if (band->isEmpty())
 				continue;
 			auto prc = band->getPrecinct(p_pi->precinctIndex);
+			if (!prc)
+				continue;
 			if (p_pi->precinctIndex >= (band->numPrecincts)) {
 				GRK_ERROR("Invalid precinct");
 				return false;
@@ -315,6 +317,8 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 				if (band->isEmpty())
 					continue;
 				auto prc = band->getPrecinct(p_pi->precinctIndex);
+				if (!prc)
+					continue;
 				for (uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++) {
 					uint32_t included = 0, increment = 0;
 					auto cblk = prc->getDecompressedBlockPtr() + cblkno;
@@ -507,6 +511,8 @@ bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 	for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 		auto band = res->bandWindow + bandIndex;
 		auto prc = band->getPrecinct(p_pi->precinctIndex);
+		if (!prc)
+			continue;
 		for (uint64_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno) {
 			auto cblk = prc->getDecompressedBlockPtr() + cblkno;
 			if (!cblk->numPassesInPacket) {
@@ -613,6 +619,8 @@ bool T2Decompress::skip_packet_data(Resolution *res, PacketIter *p_pi,
 			continue;
 
 		auto prc = band->getPrecinct(p_pi->precinctIndex);
+		if (!prc)
+			continue;
 		for (uint64_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno) {
 			if (max_length - *p_data_read == 0)
 				return true;

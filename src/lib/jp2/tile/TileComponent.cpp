@@ -205,53 +205,9 @@ bool TileComponent::init(bool isCompressor,
 	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
 
-		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
-		auto precinct_expn = grk_pt(m_tccp->prcw[resno],m_tccp->prch[resno]);
-
-		/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
-		auto precinct_start = grk_pt(	uint_floordivpow2(res->x0, precinct_expn.x) << precinct_expn.x,
-										uint_floordivpow2(res->y0, precinct_expn.y) << precinct_expn.y);
-
-		uint64_t num_precincts = (uint64_t)res->pw * res->ph;
-		if (mult64_will_overflow(num_precincts, sizeof(Precinct))) {
-			GRK_ERROR(	"nb_precinct_size calculation would overflow ");
+		if (!res->init(isCompressor,m_tccp,(uint8_t)resno,whole_tile_decoding,current_plugin_tile))
 			return false;
-		}
-		grk_pt cblk_grid_start;
-		grk_pt cblk_grid_expn;
-		if (resno == 0) {
-			cblk_grid_start = precinct_start;
-			cblk_grid_expn 	= precinct_expn;
-		} else {
-			cblk_grid_start=  grk_pt(	ceildivpow2<uint32_t>(precinct_start.x, 1),
-										ceildivpow2<uint32_t>(precinct_start.y, 1));
-			cblk_grid_expn.x = precinct_expn.x - 1;
-			cblk_grid_expn.y = precinct_expn.y - 1;
-		}
-		res->cblk_expn    =  grk_pt(	std::min<uint32_t>(m_tccp->cblkw, cblk_grid_expn.x),
-										std::min<uint32_t>(m_tccp->cblkh, cblk_grid_expn.y));
 
-		for (uint8_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-			auto band = res->bandWindow + bandIndex;
-			band->numPrecincts = num_precincts;
-			for (uint64_t precinctIndex = 0; precinctIndex < num_precincts; ++precinctIndex) {
-				auto current_precinct = new Precinct();
-				current_precinct->precinctIndex = precinctIndex;
-				band->precincts.push_back(current_precinct);
-				band->precinctMap[precinctIndex] = band->precincts.size()-1;
-				auto band_precinct_start = grk_pt(	cblk_grid_start.x + (uint32_t)((precinctIndex % res->pw) << cblk_grid_expn.x),
-													cblk_grid_start.y + (uint32_t)((precinctIndex / res->pw) << cblk_grid_expn.y));
-				*((grk_rect_u32*)current_precinct) = grk_rect_u32(
-																band_precinct_start.x,
-																band_precinct_start.y,
-																band_precinct_start.x + (1 << cblk_grid_expn.x),
-																band_precinct_start.y + (1 << cblk_grid_expn.y)).intersection(band);
-
-				if (isCompressor)
-					if (!current_precinct->init(m_is_encoder,res->cblk_expn,current_plugin_tile))
-						return false;
-			}
-		}
 	}
 
 	return true;

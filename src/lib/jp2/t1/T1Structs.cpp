@@ -495,12 +495,16 @@ bool Subband::isEmpty() {
 }
 
 Precinct* Subband::getPrecinct(uint64_t precinctIndex){
+	if (precinctMap.find(precinctIndex) == precinctMap.end())
+		return nullptr;
 	uint64_t index = precinctMap[precinctIndex];
+
 	return precincts[index];
 }
 
 
 Resolution::Resolution() :
+		initialized(false),
 		numBandWindows(0),
 		pw(0),
 		ph(0)
@@ -512,6 +516,74 @@ void Resolution::print(){
 		std::cout << "band " << i << " : ";
 		bandWindow[i].print();
 	}
+}
+
+bool Resolution::init(bool isCompressor,
+			TileComponentCodingParams *tccp,
+			uint8_t resno,
+			bool wholeTileDecoding,
+			grk_plugin_tile *current_plugin_tile){
+
+	if (initialized)
+		return true;
+
+	/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
+	auto precinct_expn = grk_pt(tccp->prcw[resno],tccp->prch[resno]);
+
+	/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
+	auto precinct_start = grk_pt(	uint_floordivpow2(x0, precinct_expn.x) << precinct_expn.x,
+									uint_floordivpow2(y0, precinct_expn.y) << precinct_expn.y);
+
+	uint64_t num_precincts = (uint64_t)pw * ph;
+	if (mult64_will_overflow(num_precincts, sizeof(Precinct))) {
+		GRK_ERROR(	"nb_precinct_size calculation would overflow ");
+		return false;
+	}
+	if (resno != 0) {
+		precinct_start=  grk_pt(	ceildivpow2<uint32_t>(precinct_start.x, 1),
+									ceildivpow2<uint32_t>(precinct_start.y, 1));
+		precinct_expn.x--;
+		precinct_expn.y--;
+	}
+	cblk_expn    =  grk_pt(	std::min<uint32_t>(tccp->cblkw, precinct_expn.x),
+							std::min<uint32_t>(tccp->cblkh, precinct_expn.y));
+
+	for (uint8_t bandIndex = 0; bandIndex < numBandWindows; ++bandIndex) {
+		auto band = bandWindow + bandIndex;
+		band->numPrecincts = num_precincts;
+		for (uint64_t precinctIndex = 0; precinctIndex < num_precincts; ++precinctIndex) {
+			auto band_precinct_start = grk_pt(	precinct_start.x + (uint32_t)((precinctIndex % pw) << precinct_expn.x),
+					precinct_start.y + (uint32_t)((precinctIndex / pw) << precinct_expn.y));
+			auto precinct_dim = grk_rect_u32(
+					band_precinct_start.x,
+					band_precinct_start.y,
+					band_precinct_start.x + (1 << precinct_expn.x),
+					band_precinct_start.y + (1 << precinct_expn.y)).intersection(band);
+
+			// check overlay
+/*
+			if (!wholeTileDecoding){
+				uint8_t orientation = (resno == 0) ? 0 : bandIndex + 1;
+				auto paddedWindow = paddedBandWindow[orientation];
+				if (!paddedWindow.intersection(precinct_dim).is_non_degenerate())
+					continue;
+			}
+*/
+
+			auto current_precinct = new Precinct();
+			*((grk_rect_u32*)current_precinct) = precinct_dim;
+			current_precinct->precinctIndex = precinctIndex;
+			band->precincts.push_back(current_precinct);
+			band->precinctMap[precinctIndex] = band->precincts.size()-1;
+
+			if (isCompressor)
+				if (!current_precinct->init(isCompressor,cblk_expn,current_plugin_tile))
+					return false;
+		}
+	}
+	initialized = true;
+
+	return true;
 }
 
 BlockExec::BlockExec() : 	band_orientation(0),
