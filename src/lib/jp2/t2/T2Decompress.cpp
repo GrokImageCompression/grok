@@ -120,7 +120,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 					}
 				}
 				p_tile->packno++;
-			} 	catch (TruncatedStreamException &tex){
+			} 	catch (TruncatedPacketHeaderException &tex){
 				GRK_WARN("Truncated packet: tile=%d component=%02d resolution=%02d precinct=%03d layer=%02d",
 				 tile_no, current_pi->compno, current_pi->resno,
 				 current_pi->precno, current_pi->layno);
@@ -250,7 +250,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 	if (p_tcp->csty & J2K_CP_CSTY_SOP) {
 		if (max_length < 6) {
 			//GRK_WARN("Not enough space for expected SOP marker");
-			throw TruncatedStreamException();
+			throw TruncatedPacketHeaderException();
 		} else if ((*active_src) != 0xff || (*(active_src + 1) != 0x91)) {
 			GRK_WARN("Expected SOP marker");
 		} else {
@@ -301,7 +301,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 	}
 
 	if (!*modified_length_ptr)
-		throw TruncatedStreamException();
+		throw TruncatedPacketHeaderException();
 
 	uint32_t present = 0;
 	std::unique_ptr<BitIO> bio(new BitIO(header_data, *modified_length_ptr, false));
@@ -479,7 +479,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 		if ((*modified_length_ptr
 				- (uint32_t) (header_data - *header_data_start)) < 2U) {
 			//GRK_WARN("Not enough space for expected EPH marker");
-			throw TruncatedStreamException();
+			throw TruncatedPacketHeaderException();
 		} else if ((*header_data) != 0xff || (*(header_data + 1) != 0x92)) {
 			GRK_WARN("Expected EPH marker");
 		} else {
@@ -497,7 +497,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 	src_buf->incr_cur_chunk_offset(*p_data_read);
 
 	if (!present && !*p_data_read)
-		throw TruncatedStreamException();
+		throw TruncatedPacketHeaderException();
 
 	return true;
 }
@@ -529,6 +529,8 @@ bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 			uint32_t numPassesInPacket = cblk->numPassesInPacket;
 			do {
 				size_t maxLen = src_buf->getRemainingLength();
+				if (maxLen == 0)
+					return true;
 				// Check possible overflow on segment length
 				if (((seg->numBytesInPacket) > maxLen)) {
 //					GRK_WARN("read packet data:\nSegment segment length %u\n"
@@ -542,8 +544,10 @@ bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 					if (tileProcessor->m_cp->tcps[0].isHT){
 						cblk->numSegments = 0;
 						cblk->cleanup_seg_buffers();
+					} else {
+						seg->numBytesInPacket = 0;
 					}
-					throw TruncatedStreamException();
+					break;
 				}
 				//initialize dataindex to current contiguous size of code block
 				if (seg->numpasses == 0)
@@ -602,12 +606,16 @@ bool T2Decompress::skip_packet_data(Resolution *res, PacketIter *p_pi,
 		uint64_t *p_data_read, uint64_t max_length) {
 	*p_data_read = 0;
 	for (uint32_t bandno = 0; bandno < res->numBandWindows; ++bandno) {
+		if (max_length - *p_data_read == 0)
+			return true;
 		auto band = res->bandWindow + bandno;
 		if (band->isEmpty())
 			continue;
 
 		auto prc = &band->precincts[p_pi->precno];
 		for (uint64_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno) {
+			if (max_length - *p_data_read == 0)
+				return true;
 			auto cblk = prc->getDecompressedBlockPtr() + cblkno;
 			if (!cblk->numPassesInPacket) {
 				/* nothing to do */
@@ -628,13 +636,14 @@ bool T2Decompress::skip_packet_data(Resolution *res, PacketIter *p_pi,
 			}
 			uint32_t numPassesInPacket = cblk->numPassesInPacket;
 			do {
-				/* Check possible overflow then size */
-				if (((*p_data_read + seg->numBytesInPacket) < (*p_data_read))
-						|| ((*p_data_read + seg->numBytesInPacket) > max_length)) {
-					GRK_ERROR("skip: segment too long (%u) with max (%u) for codeblock %u (p=%u, b=%u, r=%u, c=%u)",
-							seg->numBytesInPacket, max_length, cblkno,
+				if (max_length - *p_data_read == 0)
+					return true;
+				/* Check possible overflow  */
+				if (((*p_data_read + seg->numBytesInPacket) > max_length)) {
+					GRK_WARN("skip: segment bytes (%u) too large for remaining stream bytes (%u) in codeblock %u (p=%u, b=%u, r=%u, c=%u). Truncating segment",
+							seg->numBytesInPacket, max_length - *p_data_read, cblkno,
 							p_pi->precno, bandno, p_pi->resno, p_pi->compno);
-					return false;
+					seg->numBytesInPacket = (uint32_t)(max_length - *p_data_read);
 				}
 
 				//GRK_INFO( "skip packet: p_data_read = %u, bytes in packet =  %u ",

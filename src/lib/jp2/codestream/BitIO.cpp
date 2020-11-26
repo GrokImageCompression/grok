@@ -69,7 +69,7 @@ bool BitIO::byteout_stream() {
 
 void BitIO::bytein() {
 	if (offset == buf_len)
-		throw TruncatedStreamException();
+		throw TruncatedPacketHeaderException();
 	if (read0xFF && (buf >= 0x90)){
 		uint16_t marker = (uint16_t)(((uint16_t)0xFF<< 8) | (uint16_t)buf);
 		GRK_ERROR("Invalid marker 0x%x detected in packet header",marker);
