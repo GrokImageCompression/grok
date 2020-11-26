@@ -50,6 +50,7 @@ Layer::Layer() :
 }
 
 Precinct::Precinct() :
+		precinctIndex(0),
 		impl(nullptr),
 		initialized(false)
 {
@@ -461,7 +462,6 @@ bool DecompressCodeblock::copy_to_contiguous_buffer(uint8_t *buffer) {
 
 Subband::Subband() :
 				orientation(BAND_ORIENT_LL),
-				precincts(nullptr),
 				numPrecincts(0),
 				numbps(0),
 				stepsize(0),
@@ -471,7 +471,6 @@ Subband::Subband() :
 //note: don't copy precinct array
 Subband::Subband(const Subband &rhs) : grk_rect_u32(rhs),
 										orientation(rhs.orientation),
-										precincts(nullptr),
 										numPrecincts(0),
 										numbps(rhs.numbps),
 										stepsize(rhs.stepsize),
@@ -493,6 +492,11 @@ void Subband::print(){
 
 bool Subband::isEmpty() {
 	return ((x1 - x0 == 0) || (y1 - y0 == 0));
+}
+
+Precinct* Subband::getPrecinct(uint64_t precinctIndex){
+	uint64_t index = precinctMap[precinctIndex];
+	return precincts[index];
 }
 
 
@@ -528,7 +532,7 @@ CompressBlockExec::CompressBlockExec() :
 					tiledp(nullptr),
 					compno(0),
 					resno(0),
-					precno(0),
+					precinctIndex(0),
 					cblkno(0),
 					inv_step(0),
 					inv_step_ht(0),

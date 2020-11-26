@@ -237,16 +237,16 @@ static bool pi_next_lrcp(PacketIter *pi) {
 				if (!pi->tp_on)
 					pi->poc.precno1 = (uint64_t)res->pw * res->ph;
 
-				for (pi->precno = pi->poc.precno0; pi->precno < pi->poc.precno1;
-						pi->precno++) {
+				for (pi->precinctIndex = pi->poc.precno0; pi->precinctIndex < pi->poc.precno1;
+						pi->precinctIndex++) {
 
 					//skip precinct numbers greater than total number of precincts
 					// for this resolution
-					if (pi->precno >= (uint64_t)res->pw * res->ph)
+					if (pi->precinctIndex >= (uint64_t)res->pw * res->ph)
 						continue;
 
 					index = pi->layno * pi->step_l + pi->resno * pi->step_r
-							+ pi->compno * pi->step_c + pi->precno * pi->step_p;
+							+ pi->compno * pi->step_c + pi->precinctIndex * pi->step_p;
 					if (!pi->include[index]) {
 						pi->include[index] = true;
 						return true;
@@ -281,15 +281,15 @@ static bool pi_next_rlcp(PacketIter *pi) {
 				res = &comp->resolutions[pi->resno];
 				if (!pi->tp_on)
 					pi->poc.precno1 = (uint64_t)res->pw * res->ph;
-				for (pi->precno = pi->poc.precno0; pi->precno < pi->poc.precno1;
-						pi->precno++) {
+				for (pi->precinctIndex = pi->poc.precno0; pi->precinctIndex < pi->poc.precno1;
+						pi->precinctIndex++) {
 					//skip precinct numbers greater than total number of precincts
 					// for this resolution
-					if (pi->precno >= (uint64_t)res->pw * res->ph)
+					if (pi->precinctIndex >= (uint64_t)res->pw * res->ph)
 						continue;
 
 					index = pi->layno * pi->step_l + pi->resno * pi->step_r
-							+ pi->compno * pi->step_c + pi->precno * pi->step_p;
+							+ pi->compno * pi->step_c + pi->precinctIndex * pi->step_p;
 					if (!pi->include[index]) {
 						pi->include[index] = true;
 						return true;
@@ -357,10 +357,10 @@ static uint8_t pi_next_l(PacketIter *pi){
 			ceildiv<uint64_t>((uint64_t) pi->y,
 					((uint64_t) comp->dy << levelno)), res->pdy)
 			- uint_floordivpow2(try0, res->pdy);
-	pi->precno = (prci + (uint64_t)prcj * res->pw);
+	pi->precinctIndex = (prci + (uint64_t)prcj * res->pw);
 	//skip precinct numbers greater than total number of precincts
 	// for this resolution
-	if (pi->precno >= (uint64_t)res->pw * res->ph)
+	if (pi->precinctIndex >= (uint64_t)res->pw * res->ph)
 		return 0;
 
 	return 1;
@@ -393,7 +393,7 @@ static bool pi_next_rpcl(PacketIter *pi) {
 							pi->layno++) {
 						index = pi->layno * pi->step_l + pi->resno * pi->step_r
 								+ pi->compno * pi->step_c
-								+ pi->precno * pi->step_p;
+								+ pi->precinctIndex * pi->step_p;
 						if (!pi->include[index]) {
 							pi->include[index] = true;
 							return true;
@@ -441,7 +441,7 @@ static bool pi_next_pcrl(PacketIter *pi) {
 							pi->layno++) {
 						index = pi->layno * pi->step_l + pi->resno * pi->step_r
 								+ pi->compno * pi->step_c
-								+ pi->precno * pi->step_p;
+								+ pi->precinctIndex * pi->step_p;
 						if (!pi->include[index]) {
 							pi->include[index] = true;
 							return true;
@@ -490,7 +490,7 @@ static bool pi_next_cprl(PacketIter *pi) {
 							pi->layno++) {
 						index = pi->layno * pi->step_l + pi->resno * pi->step_r
 								+ pi->compno * pi->step_c
-								+ pi->precno * pi->step_p;
+								+ pi->precinctIndex * pi->step_p;
 						if (!pi->include[index]) {
 							pi->include[index] = true;
 							return true;
@@ -1463,7 +1463,7 @@ bool pi_next(PacketIter *pi) {
 }
 
 PacketIter::PacketIter() : tp_on(false), include(nullptr), step_l(0), step_r(0), step_c(0), step_p(0), compno(0),
-							resno(0), precno(0), layno(0), first(true), numcomps(0),comps(nullptr), tx0(0), ty0(0),
+							resno(0), precinctIndex(0), layno(0), first(true), numcomps(0),comps(nullptr), tx0(0), ty0(0),
 							tx1(0), ty1(0), x(0), y(0), dx(0), dy(0)
 {
 	memset(&poc, 0, sizeof(poc));

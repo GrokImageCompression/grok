@@ -18,6 +18,7 @@
 #pragma once
 
 #include "grk_includes.h"
+#include <map>
 
 namespace grk {
 
@@ -182,6 +183,7 @@ struct Precinct : public grk_rect_u32 {
 	TagTree* getInclTree(void);
 	TagTree* getImsbTree(void);
 
+	uint64_t precinctIndex;
 private:
 	PrecinctImpl *impl;
 	bool initialized;
@@ -196,9 +198,12 @@ struct Subband : public grk_rect_u32 {
 	Subband& operator= (const Subband &rhs);
 	bool isEmpty() ;
 	void print();
+	Precinct* getPrecinct(uint64_t precinctIndex);
 
 	eBandOrientation orientation;
-	Precinct *precincts;
+	std::vector<Precinct*> precincts;
+	// maps global precinct index to vector index
+	std::map<uint64_t, uint64_t> precinctMap;
 	uint64_t numPrecincts;
 	uint32_t numbps;
 	float stepsize;
@@ -262,7 +267,7 @@ struct CompressBlockExec : public BlockExec{
 	int32_t *tiledp;
 	uint32_t compno;
 	uint32_t resno;
-	uint64_t precno;
+	uint64_t precinctIndex;
 	uint64_t cblkno;
 	// inverse step size in 13 bit fixed point
 	int32_t inv_step;

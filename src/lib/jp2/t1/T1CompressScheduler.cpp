@@ -35,7 +35,6 @@ void T1CompressScheduler::scheduleCompress(TileCodingParams *tcp,
 							uint32_t mct_numcomps) {
 
 	uint32_t compno, resno, bandIndex;
-	uint64_t precno;
 	tile->distotile = 0;
 	std::vector<CompressBlockExec*> blocks;
 	uint32_t maxCblkW = 0;
@@ -48,8 +47,7 @@ void T1CompressScheduler::scheduleCompress(TileCodingParams *tcp,
 			auto res = &tilec->resolutions[resno];
 			for (bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 				auto band = &res->bandWindow[bandIndex];
-				for (precno = 0; precno < (uint64_t)res->pw * res->ph; ++precno) {
-					auto prc = &band->precincts[precno];
+				for (auto prc : band->precincts){
 					for (uint64_t cblkno = 0; cblkno < prc->getNumCblks();	++cblkno) {
 						auto cblk = prc->getCompressedBlockPtr() + cblkno;
 						auto block = new CompressBlockExec();

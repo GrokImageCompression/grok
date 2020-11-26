@@ -87,7 +87,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 					auto res = tilec->resolutions + current_pi->resno;
 					for (uint32_t bandIndex = 0;	bandIndex < res->numBandWindows; ++bandIndex) {
 						auto band = res->bandWindow + bandIndex;
-						auto prec = band->precincts + current_pi->precno;
+						auto prec = band->getPrecinct(current_pi->precinctIndex);
 						if (tilec->subbandIntersectsAOI(current_pi->resno,bandIndex, prec)) {
 							skip_the_packet = false;
 							break;
@@ -123,13 +123,13 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			} 	catch (TruncatedPacketHeaderException &tex){
 				GRK_WARN("Truncated packet: tile=%d component=%02d resolution=%02d precinct=%03d layer=%02d",
 				 tile_no, current_pi->compno, current_pi->resno,
-				 current_pi->precno, current_pi->layno);
+				 current_pi->precinctIndex, current_pi->layno);
 				break;
 			}
 			if (debugDecompressPackets) {
 				 GRK_INFO("packet cmptno=%02d rlvlno=%02d prcno=%03d layrno=%02d -> %s",
 				 current_pi->compno, current_pi->resno,
-				 current_pi->precno, current_pi->layno, skip_the_packet ? "skipped" : "decompressed");
+				 current_pi->precinctIndex, current_pi->layno, skip_the_packet ? "skipped" : "decompressed");
 			}
 			if (first_pass_failed[current_pi->compno]) {
 				if (tilec->resolutions_decompressed == 0) {
@@ -229,8 +229,8 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 			auto band = res->bandWindow + bandIndex;
 			if (band->isEmpty())
 				continue;
-			auto prc = &band->precincts[p_pi->precno];
-			if (!(p_pi->precno < (band->numPrecincts))) {
+			auto prc = band->getPrecinct(p_pi->precinctIndex);
+			if (p_pi->precinctIndex >= (band->numPrecincts)) {
 				GRK_ERROR("Invalid precinct");
 				return false;
 			}
@@ -314,7 +314,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 				auto band = res->bandWindow + bandIndex;
 				if (band->isEmpty())
 					continue;
-				auto prc = band->precincts + p_pi->precno;
+				auto prc = band->getPrecinct(p_pi->precinctIndex);
 				for (uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++) {
 					uint32_t included = 0, increment = 0;
 					auto cblk = prc->getDecompressedBlockPtr() + cblkno;
@@ -506,7 +506,7 @@ bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 		ChunkBuffer *src_buf, uint64_t *p_data_read) {
 	for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 		auto band = res->bandWindow + bandIndex;
-		auto prc = &band->precincts[p_pi->precno];
+		auto prc = band->getPrecinct(p_pi->precinctIndex);
 		for (uint64_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno) {
 			auto cblk = prc->getDecompressedBlockPtr() + cblkno;
 			if (!cblk->numPassesInPacket) {
@@ -537,7 +537,7 @@ bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 //							"is greater than remaining total length of all segments (%u)\n"
 //							"for codeblock %u (layer=%u, prec=%u, band=%u, res=%u, comp=%u).\n"
 //							"Truncating packet data.", seg->numBytesInPacket,
-//							maxLen, cblkno, p_pi->layno, p_pi->precno, bandIndex, p_pi->resno, p_pi->compno);
+//							maxLen, cblkno, p_pi->layno, p_pi->precinctIndex, bandIndex, p_pi->resno, p_pi->compno);
 
 					// HT doesn't tolerate truncated code blocks since decoding runs both forward and reverse.
 					// So, in this case, we ignore the entire code block
@@ -612,7 +612,7 @@ bool T2Decompress::skip_packet_data(Resolution *res, PacketIter *p_pi,
 		if (band->isEmpty())
 			continue;
 
-		auto prc = &band->precincts[p_pi->precno];
+		auto prc = band->getPrecinct(p_pi->precinctIndex);
 		for (uint64_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno) {
 			if (max_length - *p_data_read == 0)
 				return true;
@@ -642,7 +642,7 @@ bool T2Decompress::skip_packet_data(Resolution *res, PacketIter *p_pi,
 				if (((*p_data_read + seg->numBytesInPacket) > max_length)) {
 					GRK_WARN("skip: segment bytes (%u) too large for remaining stream bytes (%u) in codeblock %u (p=%u, b=%u, r=%u, c=%u). Truncating segment",
 							seg->numBytesInPacket, max_length - *p_data_read, cblkno,
-							p_pi->precno, bandIndex, p_pi->resno, p_pi->compno);
+							p_pi->precinctIndex, bandIndex, p_pi->resno, p_pi->compno);
 					seg->numBytesInPacket = (uint32_t)(max_length - *p_data_read);
 				}
 

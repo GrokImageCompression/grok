@@ -140,21 +140,21 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 	assert(stream);
 	uint32_t compno = pi->compno;
 	uint32_t resno = pi->resno;
-	uint64_t precno = pi->precno;
+	uint64_t precinctIndex = pi->precinctIndex;
 	uint32_t layno = pi->layno;
 	auto tile = tileProcessor->tile;
 	auto tilec = &tile->comps[compno];
 	auto res = &tilec->resolutions[resno];
 	size_t stream_start = stream->tell();
 
-	if (tileProcessor->m_packetTracker.is_packet_encoded(compno, resno, precno,
+	if (tileProcessor->m_packetTracker.is_packet_encoded(compno, resno, precinctIndex,
 			layno))
 		return true;
-	tileProcessor->m_packetTracker.packet_encoded(compno, resno, precno, layno);
+	tileProcessor->m_packetTracker.packet_encoded(compno, resno, precinctIndex, layno);
 
 #ifdef DEBUG_ENCODE_PACKETS
-    GRK_INFO("compress packet compono=%u, resno=%u, precno=%u, layno=%u",
-             compno, resno, precno, layno);
+    GRK_INFO("compress packet compono=%u, resno=%u, precinctIndex=%u, layno=%u",
+             compno, resno, precinctIndex, layno);
 #endif
 
 	// SOP marker
@@ -179,7 +179,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 	if (!layno) {
 		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 			auto band = res->bandWindow + bandIndex;
-			auto prc = band->precincts + precno;
+			auto prc = band->precincts[precinctIndex];
 			uint64_t nb_blocks = prc->getNumCblks();
 
 			if (band->isEmpty() || !nb_blocks) {
@@ -215,7 +215,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 	/* Writing Packet header */
 	for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 		auto band = res->bandWindow + bandIndex;
-		auto prc = band->precincts + precno;
+		auto prc = band->precincts[precinctIndex];
 		uint64_t nb_blocks = prc->getNumCblks();
 
 		if (band->isEmpty() || !nb_blocks) {
@@ -340,7 +340,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 	/* Writing the packet body */
 	for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; bandIndex++) {
 		auto band = res->bandWindow + bandIndex;
-		auto prc = band->precincts + precno;
+		auto prc = band->precincts[precinctIndex];
 		uint64_t nb_blocks = prc->getNumCblks();
 
 		if (band->isEmpty() || !nb_blocks) {
@@ -413,7 +413,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 								layno,
 								compno,
 								bandIndex,
-								(uint32_t)precno,
+								(uint32_t)precinctIndex,
 								pi->resno);
 
 						}
@@ -435,7 +435,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 								layno,
 								compno,
 								bandIndex,
-								(uint32_t)precno,
+								(uint32_t)precinctIndex,
 								pi->resno);
 						}
 
@@ -447,7 +447,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 								layno,
 								compno,
 								bandIndex,
-								(uint32_t)precno,
+								(uint32_t)precinctIndex,
 								pi->resno);
 						} else {
 							for (uint32_t i = 0; i < roundTripCblk->packet_length_info.size(); ++i) {
@@ -460,7 +460,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 										layno,
 										compno,
 										bandIndex,
-										(uint32_t)precno,
+										(uint32_t)precinctIndex,
 										pi->resno);
 								}
 							}
@@ -552,7 +552,7 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 		PacketLengthMarkers *markers) {
 	uint32_t compno = pi->compno;
 	uint32_t resno = pi->resno;
-	uint64_t precno = pi->precno;
+	uint64_t precinctIndex = pi->precinctIndex;
 	uint32_t layno = pi->layno;
 	uint64_t nb_blocks;
 
@@ -561,14 +561,14 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 	auto res = tilec->resolutions + resno;
 	*packet_bytes_written = 0;
 
-	if (tileProcessor->m_packetTracker.is_packet_encoded(compno, resno, precno,
+	if (tileProcessor->m_packetTracker.is_packet_encoded(compno, resno, precinctIndex,
 			layno))
 		return true;
-	tileProcessor->m_packetTracker.packet_encoded(compno, resno, precno, layno);
+	tileProcessor->m_packetTracker.packet_encoded(compno, resno, precinctIndex, layno);
 
 #ifdef DEBUG_ENCODE_PACKETS
-    GRK_INFO("simulate compress packet compono=%u, resno=%u, precno=%u, layno=%u",
-             compno, resno, precno, layno);
+    GRK_INFO("simulate compress packet compono=%u, resno=%u, precinctIndex=%u, layno=%u",
+             compno, resno, precinctIndex, layno);
 #endif
 
 	/* <SOP 0xff91> */
@@ -581,7 +581,7 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 	if (!layno) {
 		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 			auto band = res->bandWindow + bandIndex;
-			auto prc = band->precincts + precno;
+			auto prc = band->precincts[precinctIndex];
 
 			if (prc->getInclTree())
 				prc->getInclTree()->reset();
@@ -613,7 +613,7 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 	/* Writing Packet header */
 	for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 		auto band = res->bandWindow + bandIndex;
-		auto prc = band->precincts + precno;
+		auto prc = band->precincts[precinctIndex];
 
 		nb_blocks = prc->getNumCblks();
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
@@ -720,7 +720,7 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 	/* Writing the packet body */
 	for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; bandIndex++) {
 		auto band = res->bandWindow + bandIndex;
-		auto prc = band->precincts + precno;
+		auto prc = band->precincts[precinctIndex];
 
 		nb_blocks = prc->getNumCblks();
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {

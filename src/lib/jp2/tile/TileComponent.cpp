@@ -49,8 +49,9 @@ void TileComponent::release_mem(){
 			auto res = resolutions + resno;
 			for (uint32_t bandIndex = 0; bandIndex < 3; ++bandIndex) {
 				auto band = res->bandWindow + bandIndex;
-				delete[] band->precincts;
-				band->precincts = nullptr;
+				for (auto prc : band->precincts)
+					delete prc;
+				band->precincts.clear();
 			}
 		}
 		delete[] resolutions;
@@ -232,12 +233,14 @@ bool TileComponent::init(bool isCompressor,
 
 		for (uint8_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 			auto band = res->bandWindow + bandIndex;
-			band->precincts = new Precinct[num_precincts];
 			band->numPrecincts = num_precincts;
-			for (uint64_t precno = 0; precno < num_precincts; ++precno) {
-				auto current_precinct = band->precincts + precno;
-				auto band_precinct_start = grk_pt(	cblk_grid_start.x + (uint32_t)((precno % res->pw) << cblk_grid_expn.x),
-													cblk_grid_start.y + (uint32_t)((precno / res->pw) << cblk_grid_expn.y));
+			for (uint64_t precinctIndex = 0; precinctIndex < num_precincts; ++precinctIndex) {
+				auto current_precinct = new Precinct();
+				current_precinct->precinctIndex = precinctIndex;
+				band->precincts.push_back(current_precinct);
+				band->precinctMap[precinctIndex] = band->precincts.size()-1;
+				auto band_precinct_start = grk_pt(	cblk_grid_start.x + (uint32_t)((precinctIndex % res->pw) << cblk_grid_expn.x),
+													cblk_grid_start.y + (uint32_t)((precinctIndex / res->pw) << cblk_grid_expn.y));
 				*((grk_rect_u32*)current_precinct) = grk_rect_u32(
 																band_precinct_start.x,
 																band_precinct_start.y,
@@ -277,8 +280,7 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
         auto res = &resolutions[resno];
         for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
             auto band = res->bandWindow + bandIndex;
-            for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph; ++precno) {
-                auto precinct = band->precincts + precno;
+            for (auto precinct : band->precincts) {
                 for (uint64_t cblkno = 0; cblkno < precinct->getNumCblks(); ++cblkno) {
                     auto cblk = precinct->getDecompressedBlockPtr() + cblkno;
 					// check overlap in band coordinates

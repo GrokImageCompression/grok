@@ -38,10 +38,8 @@ void decompress_synch_plugin_with_host(TileProcessor *tcd) {
 					assert(plugin_band->numPrecincts == (uint64_t)res->pw * res->ph);
 					//!!!! plugin still uses stepsize/2
 					plugin_band->stepsize = band->stepsize/2;
-					for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph;
-							precno++) {
-						auto prc = &band->precincts[precno];
-						auto plugin_prc = plugin_band->precincts[precno];
+					for (auto prc : band->precincts){
+						auto plugin_prc = plugin_band->precincts[prc->precinctIndex];
 						assert(plugin_prc->numBlocks == prc->getNumCblks());
 						for (uint64_t cblkno = 0; cblkno < prc->getNumCblks();
 								cblkno++) {
@@ -115,10 +113,9 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tile *p_tile) {
 				size_t num_precincts = band->numPrecincts;
 				if (num_precincts != plugin_band->numPrecincts)
 					return false;
-				for (uint64_t precno = 0; precno < num_precincts; ++precno) {
-					auto precinct = band->precincts + precno;
+				for (auto precinct : band->precincts){
 					auto plugin_precinct =
-							plugin_band->precincts[precno];
+							plugin_band->precincts[precinct->precinctIndex];
 					uint64_t numBlocks = precinct->getNumCblks();
 					if (numBlocks != plugin_precinct->numBlocks) {
 						return false;
@@ -141,13 +138,13 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tile *p_tile) {
 }
 
 void compress_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resno,
-		uint32_t bandIndex, uint64_t precno, uint64_t cblkno, Subband *band,
+		uint32_t bandIndex, uint64_t precinctIndex, uint64_t cblkno, Subband *band,
 		CompressCodeblock *cblk, uint32_t *numPix) {
 
 	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
 		auto plugin_band =
 				tcd->current_plugin_tile->tileComponents[compno]->resolutions[resno]->bandWindow[bandIndex];
-		auto precinct = plugin_band->precincts[precno];
+		auto precinct = plugin_band->precincts[precinctIndex];
 		auto plugin_cblk = precinct->blocks[cblkno];
 		uint32_t state = grk_plugin_get_debug_state();
 
@@ -264,9 +261,7 @@ void set_context_stream(TileProcessor *p_tileProcessor) {
 			auto res = &tilec->resolutions[resno];
 			for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; bandIndex++) {
 				auto band = &res->bandWindow[bandIndex];
-				for (uint64_t precno = 0; precno < (uint64_t)res->pw * res->ph;
-						precno++) {
-					auto prc = &band->precincts[precno];
+				for (auto prc : band->precincts){
 					for (uint64_t cblkno = 0; cblkno < prc->getNumCblks();
 							cblkno++) {
 						auto cblk = &prc->getCompressedBlockPtr()[cblkno];
@@ -278,7 +273,7 @@ void set_context_stream(TileProcessor *p_tileProcessor) {
 								auto plugin_band =
 										comp->resolutions[resno]->bandWindow[bandIndex];
 								auto precinct =
-										plugin_band->precincts[precno];
+										plugin_band->precincts[prc->precinctIndex];
 								auto plugin_cblk =
 										precinct->blocks[cblkno];
 								cblk->contextStream =
