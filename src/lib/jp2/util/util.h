@@ -105,6 +105,13 @@ template<typename T> struct grk_rectangle {
 
     	return *this;
     }
+   bool operator== (const grk_rectangle<T> &rhs)
+    {
+	   if (this == &rhs)
+		   return true;
+		return x0 == rhs.x0 &&	y0 == rhs.y0 && x1 == rhs.x1 && y1 == rhs.y1;
+
+    }
     grk_rectangle<T>  rectceildivpow2(uint32_t power) const{
     	return grk_rectangle<T>(ceildivpow2(x0, power),
     			ceildivpow2(y0, power),
@@ -119,6 +126,9 @@ template<typename T> struct grk_rectangle {
     }
     grk_rectangle<T> intersection(const grk_rectangle<T> rhs) const{
     	return intersection(&rhs);
+    }
+    bool isContainedIn(const grk_rectangle<T> rhs) const{
+    	return (intersection(&rhs)== *this);
     }
     grk_rectangle<T> intersection(const grk_rectangle<T> *rhs) const{
     	return grk_rectangle<T>(std::max<T>(x0,rhs->x0),
@@ -308,7 +318,7 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 grk_rect_u32 grk_band_window(uint32_t num_res,
 							uint32_t resno,
 							uint32_t orientation,
-							grk_rect_u32 unreduced_region);
+							grk_rect_u32 unreduced_window);
 
 }
 

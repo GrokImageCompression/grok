@@ -21,14 +21,14 @@ namespace grk {
 grk_rect_u32 grk_band_window(uint32_t num_res,
 							uint32_t resno,
 							uint32_t orientation,
-							grk_rect_u32 unreduced_region){
+							grk_rect_u32 unreduced_window){
     /* Compute number of decomposition for this band. See table F-1 */
     uint32_t nb = (resno == 0) ? num_res - 1 :num_res - resno;
 
-    uint32_t tcx0 = unreduced_region.x0;
-	uint32_t tcy0 = unreduced_region.y0;
-	uint32_t tcx1 = unreduced_region.x1;
-	uint32_t tcy1 = unreduced_region.y1;
+    uint32_t tcx0 = unreduced_window.x0;
+	uint32_t tcy0 = unreduced_window.y0;
+	uint32_t tcx1 = unreduced_window.x1;
+	uint32_t tcy1 = unreduced_window.y1;
     /* Map above tile-based coordinates to sub-band-based coordinates per */
     /* equation B-15 of the standard */
     uint32_t x0b = orientation & 1;

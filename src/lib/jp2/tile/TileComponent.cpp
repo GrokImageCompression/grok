@@ -152,35 +152,16 @@ bool TileComponent::init(bool isCompressor,
 	    /* Compute the intersection of the window of interest, expressed in tile component coordinates, */
 	    /* with the tile component */
 		auto dims = buf->unreduced_bounds();
-		uint32_t tcx0 = dims.x0;
-		uint32_t tcy0 = dims.y0;
-		uint32_t tcx1 = dims.x1;
-		uint32_t tcy1 = dims.y1;
-
 		for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 			auto res = resolutions + resno;
-			/* Compute number of decomposition for this band. See table F-1 */
-			uint32_t num_decomps = (resno == 0) ? numresolutions - 1 :	numresolutions - resno;
 			for (uint32_t orientation = 0; orientation < BAND_NUM_ORIENTATIONS; ++orientation) {
-				/* Map above tile-based coordinates to sub-band-based coordinates per */
-				/* equation B-15 of the standard */
-				uint32_t x0b = orientation & 1;
-				uint32_t y0b = orientation >> 1;
 				auto paddedWindow = res->paddedBandWindow + orientation;
-				paddedWindow->x0 = (num_decomps == 0) ? tcx0 :
-								  (tcx0 <= (1U << (num_decomps - 1)) * x0b) ? 0 :
-								  ceildivpow2<uint32_t>(tcx0 - (1U << (num_decomps - 1)) * x0b, num_decomps);
-				paddedWindow->y0 = (num_decomps == 0) ? tcy0 :
-								  (tcy0 <= (1U << (num_decomps - 1)) * y0b) ? 0 :
-								  ceildivpow2<uint32_t>(tcy0 - (1U << (num_decomps - 1)) * y0b, num_decomps);
-				paddedWindow->x1 = (num_decomps == 0) ? tcx1 :
-								  (tcx1 <= (1U << (num_decomps - 1)) * x0b) ? 0 :
-								  ceildivpow2<uint32_t>(tcx1 - (1U << (num_decomps - 1)) * x0b, num_decomps);
-				paddedWindow->y1 = (num_decomps == 0) ? tcy1 :
-								  (tcy1 <= (1U << (num_decomps - 1)) * y0b) ? 0 :
-								  ceildivpow2<uint32_t>(tcy1 - (1U << (num_decomps - 1)) * y0b, num_decomps);
+				*paddedWindow = grk_band_window(numresolutions, resno, orientation,dims);
 
 			    paddedWindow->grow(filter_margin,filter_margin);
+			    uint32_t ind = (orientation > 0) ? orientation-1 : 0;
+				*paddedWindow = paddedWindow->intersection(res->bandWindow[ind]);
+
 			}
 		}
 	}
