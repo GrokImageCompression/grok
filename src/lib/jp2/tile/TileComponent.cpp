@@ -158,10 +158,7 @@ bool TileComponent::init(bool isCompressor,
 				uint32_t orientation = (resno == 0) ? 0 : index+1;
 				auto paddedWindow = res->paddedBandWindow + index;
 				*paddedWindow = grk_band_window(numresolutions, resno, orientation,dims);
-
 			    paddedWindow->grow(filter_margin,filter_margin);
-				*paddedWindow = paddedWindow->intersection(res->bandWindow[index]);
-
 			}
 		}
 	}
@@ -185,7 +182,6 @@ bool TileComponent::init(bool isCompressor,
 	// 4. initialize precincts and code blocks
 	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
-
 		if (!res->init(isCompressor,m_tccp,(uint8_t)resno,whole_tile_decoding,current_plugin_tile))
 			return false;
 
