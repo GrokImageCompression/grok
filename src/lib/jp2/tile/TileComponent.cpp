@@ -154,13 +154,13 @@ bool TileComponent::init(bool isCompressor,
 		auto dims = buf->unreduced_bounds();
 		for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 			auto res = resolutions + resno;
-			for (uint32_t orientation = 0; orientation < BAND_NUM_ORIENTATIONS; ++orientation) {
-				auto paddedWindow = res->paddedBandWindow + orientation;
+			for (uint32_t index = 0; index < res->numBandWindows; ++index) {
+				uint32_t orientation = (resno == 0) ? 0 : index+1;
+				auto paddedWindow = res->paddedBandWindow + index;
 				*paddedWindow = grk_band_window(numresolutions, resno, orientation,dims);
 
 			    paddedWindow->grow(filter_margin,filter_margin);
-			    uint32_t ind = (orientation > 0) ? orientation-1 : 0;
-				*paddedWindow = paddedWindow->intersection(res->bandWindow[ind]);
+				*paddedWindow = paddedWindow->intersection(res->bandWindow[index]);
 
 			}
 		}
@@ -200,9 +200,8 @@ bool TileComponent::subbandIntersectsAOI(uint32_t resno,
 {
 	if (whole_tile_decoding)
 		return true;
-	assert(resno < numresolutions && bandIndex <=3);
-	auto orientation = (resno == 0) ? 0 : bandIndex+1;
-	auto paddedBandWinow = ((resolutions + resno)->paddedBandWindow)[orientation];
+	assert(resno < numresolutions && bandIndex < BAND_NUM_INDICES);
+	auto paddedBandWinow = ((resolutions + resno)->paddedBandWindow)[bandIndex];
 
     return paddedBandWinow.intersection(aoi).is_non_degenerate();
 }
