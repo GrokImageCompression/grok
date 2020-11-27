@@ -502,6 +502,54 @@ Precinct* Subband::getPrecinct(uint64_t precinctIndex){
 	return precincts[index];
 }
 
+Precinct* Subband::createPrecinct(bool isCompressor,
+					uint64_t precinctIndex,
+					grk_pt precinct_start,
+					grk_pt precinct_expn,
+					uint32_t pw,
+					grk_pt cblk_expn,
+					bool wholeTileDecoding,
+					grk_plugin_tile *current_plugin_tile){
+
+	auto temp = precinctMap.find(precinctIndex);
+	if (temp != precinctMap.end())
+			precincts[temp->second];
+
+	auto band_precinct_start = grk_pt(	precinct_start.x + (uint32_t)((precinctIndex % pw) << precinct_expn.x),
+			precinct_start.y + (uint32_t)((precinctIndex / pw) << precinct_expn.y));
+	auto precinct_dim = grk_rect_u32(
+			band_precinct_start.x,
+			band_precinct_start.y,
+			band_precinct_start.x + (1 << precinct_expn.x),
+			band_precinct_start.y + (1 << precinct_expn.y)).intersection(this);
+
+	// check overlay
+/*
+	if (!wholeTileDecoding){
+		uint8_t orientation = (resno == 0) ? 0 : bandIndex + 1;
+		auto paddedWindow = paddedBandWindow[orientation];
+		if (!paddedWindow.intersection(precinct_dim).is_non_degenerate())
+			continue;
+	}
+*/
+	auto current_precinct = new Precinct();
+	*((grk_rect_u32*)current_precinct) = precinct_dim;
+
+	if (isCompressor) {
+		if (!current_precinct->init(isCompressor,cblk_expn,current_plugin_tile)){
+			delete current_precinct;
+			return nullptr;
+		}
+	}
+
+	current_precinct->precinctIndex = precinctIndex;
+	precincts.push_back(current_precinct);
+	precinctMap[precinctIndex] = precincts.size()-1;
+
+	return current_precinct;
+}
+
+
 
 Resolution::Resolution() :
 		initialized(false),
@@ -528,11 +576,11 @@ bool Resolution::init(bool isCompressor,
 		return true;
 
 	/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
-	auto precinct_expn = grk_pt(tccp->prcw[resno],tccp->prch[resno]);
+	precinct_expn = grk_pt(tccp->prcw[resno],tccp->prch[resno]);
 
 	/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
-	auto precinct_start = grk_pt(	uint_floordivpow2(x0, precinct_expn.x) << precinct_expn.x,
-									uint_floordivpow2(y0, precinct_expn.y) << precinct_expn.y);
+	precinct_start = grk_pt(uint_floordivpow2(x0, precinct_expn.x) << precinct_expn.x,
+							uint_floordivpow2(y0, precinct_expn.y) << precinct_expn.y);
 
 	uint64_t num_precincts = (uint64_t)pw * ph;
 	if (mult64_will_overflow(num_precincts, sizeof(Precinct))) {
@@ -540,45 +588,27 @@ bool Resolution::init(bool isCompressor,
 		return false;
 	}
 	if (resno != 0) {
-		precinct_start=  grk_pt(	ceildivpow2<uint32_t>(precinct_start.x, 1),
-									ceildivpow2<uint32_t>(precinct_start.y, 1));
+		precinct_start=  grk_pt(ceildivpow2<uint32_t>(precinct_start.x, 1),
+								ceildivpow2<uint32_t>(precinct_start.y, 1));
 		precinct_expn.x--;
 		precinct_expn.y--;
 	}
-	cblk_expn    =  grk_pt(	std::min<uint32_t>(tccp->cblkw, precinct_expn.x),
-							std::min<uint32_t>(tccp->cblkh, precinct_expn.y));
-
+	cblk_expn    =  grk_pt(std::min<uint32_t>(tccp->cblkw, precinct_expn.x),
+						   std::min<uint32_t>(tccp->cblkh, precinct_expn.y));
 	for (uint8_t bandIndex = 0; bandIndex < numBandWindows; ++bandIndex) {
 		auto band = bandWindow + bandIndex;
 		band->numPrecincts = num_precincts;
 		for (uint64_t precinctIndex = 0; precinctIndex < num_precincts; ++precinctIndex) {
-			auto band_precinct_start = grk_pt(	precinct_start.x + (uint32_t)((precinctIndex % pw) << precinct_expn.x),
-					precinct_start.y + (uint32_t)((precinctIndex / pw) << precinct_expn.y));
-			auto precinct_dim = grk_rect_u32(
-					band_precinct_start.x,
-					band_precinct_start.y,
-					band_precinct_start.x + (1 << precinct_expn.x),
-					band_precinct_start.y + (1 << precinct_expn.y)).intersection(band);
+			if (!band->createPrecinct(isCompressor,
+								precinctIndex,
+								precinct_start,
+								precinct_expn,
+								pw,
+								cblk_expn,
+								wholeTileDecoding,
+								current_plugin_tile))
+				return false;
 
-			// check overlay
-/*
-			if (!wholeTileDecoding){
-				uint8_t orientation = (resno == 0) ? 0 : bandIndex + 1;
-				auto paddedWindow = paddedBandWindow[orientation];
-				if (!paddedWindow.intersection(precinct_dim).is_non_degenerate())
-					continue;
-			}
-*/
-
-			auto current_precinct = new Precinct();
-			*((grk_rect_u32*)current_precinct) = precinct_dim;
-			current_precinct->precinctIndex = precinctIndex;
-			band->precincts.push_back(current_precinct);
-			band->precinctMap[precinctIndex] = band->precincts.size()-1;
-
-			if (isCompressor)
-				if (!current_precinct->init(isCompressor,cblk_expn,current_plugin_tile))
-					return false;
 		}
 	}
 	initialized = true;

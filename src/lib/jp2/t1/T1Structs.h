@@ -199,6 +199,14 @@ struct Subband : public grk_rect_u32 {
 	bool isEmpty() ;
 	void print();
 	Precinct* getPrecinct(uint64_t precinctIndex);
+	Precinct* createPrecinct(bool isCompressor,
+						uint64_t precinctIndex,
+						grk_pt precinct_start,
+						grk_pt precinct_expn,
+						uint32_t pw,
+						grk_pt cblk_expn,
+						bool wholeTileDecoding,
+						grk_plugin_tile *current_plugin_tile);
 
 	eBandOrientation orientation;
 	std::vector<Precinct*> precincts;
@@ -228,6 +236,9 @@ struct Resolution : public grk_rect_u32 {
 	grk_rect_u32 paddedBandWindow[BAND_NUM_INDICES];
 	uint32_t pw, ph; 	/* dimensions of precinct grid */
 	grk_pt cblk_expn;
+	grk_pt precinct_start;
+	grk_pt precinct_expn;
+
 };
 
 struct BlockExec : public IOpenable {
