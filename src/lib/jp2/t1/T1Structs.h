@@ -205,7 +205,6 @@ struct Subband : public grk_rect_u32 {
 						grk_pt precinct_expn,
 						uint32_t pw,
 						grk_pt cblk_expn,
-						bool wholeTileDecoding,
 						grk_plugin_tile *current_plugin_tile);
 
 	eBandOrientation orientation;
@@ -227,7 +226,6 @@ struct Resolution : public grk_rect_u32 {
 	bool init(bool isCompressor,
 				TileComponentCodingParams *tccp,
 				uint8_t resno,
-				bool wholeTileDecoding,
 				grk_plugin_tile *current_plugin_tile);
 
 	bool initialized;
@@ -238,6 +236,7 @@ struct Resolution : public grk_rect_u32 {
 	grk_pt cblk_expn;
 	grk_pt precinct_start;
 	grk_pt precinct_expn;
+	grk_plugin_tile *current_plugin_tile;
 
 };
 

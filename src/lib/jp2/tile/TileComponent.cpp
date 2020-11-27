@@ -182,7 +182,7 @@ bool TileComponent::init(bool isCompressor,
 	// 4. initialize precincts and code blocks
 	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
-		if (!res->init(isCompressor,m_tccp,(uint8_t)resno,whole_tile_decoding,current_plugin_tile))
+		if (!res->init(isCompressor,m_tccp,(uint8_t)resno,current_plugin_tile))
 			return false;
 
 	}

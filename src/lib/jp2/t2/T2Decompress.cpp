@@ -81,10 +81,23 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			uint32_t pltMarkerLen = 0;
 			if (usePlt)
 				pltMarkerLen = packetLengths->getNext();
+			auto res = tilec->resolutions + current_pi->resno;
+			// create precincts
+			for (uint32_t bandIndex = 0;	bandIndex < res->numBandWindows; ++bandIndex) {
+				auto band = res->bandWindow + bandIndex;
+				if (!band->createPrecinct(false,
+									current_pi->precinctIndex,
+									res->precinct_start,
+									res->precinct_expn,
+									res->pw,
+									res->cblk_expn,
+									res->current_plugin_tile))
+					return false;
+
+			}
 			if (!skip_the_packet) {
 				if (!tilec->isWholeTileDecoding()) {
 					skip_the_packet = true;
-					auto res = tilec->resolutions + current_pi->resno;
 					for (uint32_t bandIndex = 0;	bandIndex < res->numBandWindows; ++bandIndex) {
 						auto band = res->bandWindow + bandIndex;
 						auto prec = band->getPrecinct(current_pi->precinctIndex);

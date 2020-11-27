@@ -508,12 +508,11 @@ Precinct* Subband::createPrecinct(bool isCompressor,
 					grk_pt precinct_expn,
 					uint32_t pw,
 					grk_pt cblk_expn,
-					bool wholeTileDecoding,
 					grk_plugin_tile *current_plugin_tile){
 
 	auto temp = precinctMap.find(precinctIndex);
 	if (temp != precinctMap.end())
-			precincts[temp->second];
+		return precincts[temp->second];
 
 	auto band_precinct_start = grk_pt(	precinct_start.x + (uint32_t)((precinctIndex % pw) << precinct_expn.x),
 			precinct_start.y + (uint32_t)((precinctIndex / pw) << precinct_expn.y));
@@ -523,15 +522,6 @@ Precinct* Subband::createPrecinct(bool isCompressor,
 			band_precinct_start.x + (1 << precinct_expn.x),
 			band_precinct_start.y + (1 << precinct_expn.y)).intersection(this);
 
-	// check overlay
-/*
-	if (!wholeTileDecoding){
-		uint8_t orientation = (resno == 0) ? 0 : bandIndex + 1;
-		auto paddedWindow = paddedBandWindow[orientation];
-		if (!paddedWindow.intersection(precinct_dim).is_non_degenerate())
-			continue;
-	}
-*/
 	auto current_precinct = new Precinct();
 	*((grk_rect_u32*)current_precinct) = precinct_dim;
 
@@ -555,7 +545,8 @@ Resolution::Resolution() :
 		initialized(false),
 		numBandWindows(0),
 		pw(0),
-		ph(0)
+		ph(0),
+		current_plugin_tile(nullptr)
 {}
 
 void Resolution::print(){
@@ -569,11 +560,12 @@ void Resolution::print(){
 bool Resolution::init(bool isCompressor,
 			TileComponentCodingParams *tccp,
 			uint8_t resno,
-			bool wholeTileDecoding,
 			grk_plugin_tile *current_plugin_tile){
 
 	if (initialized)
 		return true;
+
+	this->current_plugin_tile = current_plugin_tile;
 
 	/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
 	precinct_expn = grk_pt(tccp->prcw[resno],tccp->prch[resno]);
@@ -598,17 +590,18 @@ bool Resolution::init(bool isCompressor,
 	for (uint8_t bandIndex = 0; bandIndex < numBandWindows; ++bandIndex) {
 		auto band = bandWindow + bandIndex;
 		band->numPrecincts = num_precincts;
-		for (uint64_t precinctIndex = 0; precinctIndex < num_precincts; ++precinctIndex) {
-			if (!band->createPrecinct(isCompressor,
-								precinctIndex,
-								precinct_start,
-								precinct_expn,
-								pw,
-								cblk_expn,
-								wholeTileDecoding,
-								current_plugin_tile))
-				return false;
+		if (isCompressor) {
+			for (uint64_t precinctIndex = 0; precinctIndex < num_precincts; ++precinctIndex) {
+				if (!band->createPrecinct(true,
+									precinctIndex,
+									precinct_start,
+									precinct_expn,
+									pw,
+									cblk_expn,
+									current_plugin_tile))
+					return false;
 
+			}
 		}
 	}
 	initialized = true;
