@@ -2062,6 +2062,10 @@ static bool jp2_read_header_procedure(FileFormat *fileFormat) {
 					current_data = new_current_data;
 					last_data_size = current_data_size;
 				}
+				if (current_data_size == 0) {
+					GRK_ERROR("Problem with reading JPEG2000 box, stream error");
+					goto cleanup;
+				}
 
 				nb_bytes_read = (uint32_t) stream->read(current_data,
 						current_data_size);

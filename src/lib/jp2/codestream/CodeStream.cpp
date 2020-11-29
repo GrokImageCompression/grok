@@ -2116,7 +2116,7 @@ bool CodeStream::read_marker(){
 }
 
 
-bool CodeStream::parse_markers(bool *can_decode_tile_data) {
+bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 	if (m_decompressor.m_state == J2K_DEC_STATE_EOC)
 		m_curr_marker = J2K_MS_EOC;
 	/* We need to encounter a SOT marker (a new tile-part header) */
@@ -2140,8 +2140,12 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 			uint16_t marker_size;
 			if (!read_short(&marker_size))
 				return false;
-			if (marker_size < 2) {
+			else if (marker_size < 2) {
 				GRK_ERROR("Inconsistent marker size");
+				return false;
+			}
+			else if (marker_size == 2) {
+				GRK_ERROR("Zero-size marker in header.");
 				return false;
 			}
 
@@ -2157,7 +2161,7 @@ bool CodeStream::parse_markers(bool *can_decode_tile_data) {
 				return false;
 			}
 			if (!(m_decompressor.m_state & marker_handler->states)) {
-				GRK_ERROR("Marker is not compliant with its position");
+				GRK_ERROR("Marker 0x%x is not compliant with its expected position", m_curr_marker);
 				return false;
 			}
 			if (!process_marker(marker_handler, m_curr_marker, marker_size))
@@ -2453,8 +2457,12 @@ bool CodeStream::read_header_procedure(void) {
 		if (!read_short(&marker_size))
 			return false;
 		/* Check marker size (does not include marker ID but includes marker size) */
-		if (marker_size < 2) {
+		else if (marker_size < 2) {
 			GRK_ERROR("Inconsistent marker size");
+			return false;
+		}
+		else if (marker_size == 2) {
+			GRK_ERROR("Zero-size marker in header.");
 			return false;
 		}
 		marker_size = (uint16_t)(marker_size - 2); /* Subtract the size of the marker ID already read */
@@ -2631,7 +2639,7 @@ bool CodeStream::decompress_tile() {
 	}
 	bool rc = false;
 	try {
-		if (!parse_markers(&go_on))
+		if (!parse_tile_header_markers(&go_on))
 			goto cleanup;
 	} catch (InvalidMarkerException &ime){
 		GRK_ERROR("Invalid marker : 0x%x", ime.m_marker);
@@ -2715,7 +2723,7 @@ bool CodeStream::decompress_tiles(void) {
 	for (uint32_t tileno = 0; tileno < num_tiles_to_decompress; tileno++) {
 		//1. read header
 		try {
-			if (!parse_markers(&go_on)){
+			if (!parse_tile_header_markers(&go_on)){
 				success = false;
 				goto cleanup;
 			}

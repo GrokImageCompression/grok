@@ -74,6 +74,7 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
 		assert(m_buffered_bytes <= m_read_bytes_seekable);
 		read_nb_bytes += p_size;
 		m_stream_offset += p_size;
+		assert(m_stream_offset <= m_user_data_length);
 		return read_nb_bytes;
 	}
 	//3. if stream is at end, then read remaining bytes in buffer and return
@@ -81,13 +82,13 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
 		read_nb_bytes += m_buffered_bytes;
 		if (p_buffer && m_buffered_bytes) {
 			assert(m_buf->curr_ptr() >= m_buf->buf);
-			assert(
-					(ptrdiff_t )m_buf->curr_ptr() - (ptrdiff_t )m_buf->buf
+			assert(	(ptrdiff_t )m_buf->curr_ptr() - (ptrdiff_t )m_buf->buf
 							+ (ptrdiff_t )m_buffered_bytes
 							<= (ptrdiff_t )m_buf->len);
 			memcpy(p_buffer, m_buf->curr_ptr(), m_buffered_bytes);
 		}
 		m_stream_offset += m_buffered_bytes;
+		assert(m_stream_offset <= m_user_data_length);
 		invalidate_buffer();
 		return read_nb_bytes;
 	}
@@ -105,6 +106,7 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
 		}
 		p_size -= m_buffered_bytes;
 		m_stream_offset += m_buffered_bytes;
+		assert(m_stream_offset <= m_user_data_length);
 		m_buffered_bytes = 0;
 	}
 
@@ -140,6 +142,7 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
 			}
 			p_size -= m_buffered_bytes;
 			m_stream_offset += m_buffered_bytes;
+			assert(m_stream_offset <= m_user_data_length);
 			invalidate_buffer();
 		}
 		// iii) or we have read the exact amount requested
@@ -156,6 +159,7 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
 			m_buffered_bytes -= p_size;
 			assert(m_buffered_bytes <= m_read_bytes_seekable);
 			m_stream_offset += p_size;
+			assert(m_stream_offset <= m_user_data_length);
 			return read_nb_bytes;
 		}
 	}
@@ -171,6 +175,7 @@ size_t BufferedStream::read_data_zero_copy(uint8_t **p_buffer, size_t p_size) {
 		return 0;
 	} else {
 		m_stream_offset += read_nb_bytes;
+		assert(m_stream_offset <= m_user_data_length);
 		return read_nb_bytes;
 	}
 }
@@ -326,7 +331,7 @@ uint64_t BufferedStream::tell() {
 	return m_stream_offset;
 }
 uint64_t BufferedStream::get_number_byte_left(void) {
-	assert(m_user_data_length >= m_stream_offset);
+	assert(m_stream_offset <= m_user_data_length);
 	return m_user_data_length ?
 			(uint64_t) (m_user_data_length - m_stream_offset) : 0;
 }
@@ -353,6 +358,7 @@ bool BufferedStream::read_seek(uint64_t offset) {
 												- m_buffered_bytes))) {
 			int64_t increment = (int64_t) offset - (int64_t) m_stream_offset;
 			m_stream_offset = offset;
+			assert(m_stream_offset <= m_user_data_length);
 			m_buf->incr_offset((ptrdiff_t) increment);
 			assert(m_buf->curr_ptr() >= m_buf->buf);
 			m_buffered_bytes =
@@ -372,6 +378,10 @@ bool BufferedStream::read_seek(uint64_t offset) {
 	} else {
 		m_status &= (~GROK_STREAM_STATUS_END);
 		m_stream_offset = offset;
+		if (m_stream_offset > m_user_data_length){
+			m_status |= GROK_STREAM_STATUS_END;
+			return false;
+		}
 	}
 	return true;
 }

@@ -235,7 +235,7 @@ struct CodeStream : public ICodeStream {
 	 */
 	bool alloc_multi_tile_output_data(grk_image *p_output_image);
 
-	bool parse_markers(bool *can_decode_tile_data);
+	bool parse_tile_header_markers(bool *can_decode_tile_data);
 
 	bool init_header_writing(void);
 

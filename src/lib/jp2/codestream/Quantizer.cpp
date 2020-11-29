@@ -220,7 +220,6 @@ bool Quantizer::read_SQcd_SQcc(CodeStream *codeStream,
 			if (setMainQCC || (mainQCD && setMainQCD))
 				ignore = true;
 		} else {
-			assert(setMainQCD);
 			if (setTileHeaderQCC)
 				ignore = true;
 			else if (setTileHeaderQCD && !tileHeaderQCC)
