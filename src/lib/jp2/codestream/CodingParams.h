@@ -238,7 +238,7 @@ struct CodingParams {
 	/* Pcap */
 	uint32_t pcap;
 	/* Ccap */
-	uint16_t ccap;
+	uint16_t ccap[32];
 	/** XTOsiz */
 	uint32_t tx0;
 	/** YTOsiz */

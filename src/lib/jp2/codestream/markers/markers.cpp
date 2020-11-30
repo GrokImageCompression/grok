@@ -20,6 +20,7 @@
  */
 
 #include "grk_includes.h"
+#include "ojph_arch.h"
 
 namespace grk {
 
@@ -193,24 +194,32 @@ bool j2k_read_cap(CodeStream *codeStream,  uint8_t *p_header_data,
 		uint16_t header_size) {
 	CodingParams *cp = &(codeStream->m_cp);
 
-	if (header_size < 6) {
+	if (header_size < sizeof(cp->pcap)) {
 		GRK_ERROR("Error with SIZ marker size");
 		return false;
 	}
 
 	uint32_t tmp;
 	grk_read<uint32_t>(p_header_data, &tmp); /* Pcap */
-	bool validPcap = true;
 	if (tmp & 0xFFFDFFFF) {
-		GRK_WARN("Pcap in CAP marker has unsupported options.");
+		GRK_ERROR("Pcap in CAP marker has unsupported options.");
+		return false;
 	}
 	if ((tmp & 0x00020000) == 0) {
-		GRK_WARN("Pcap in CAP marker should have its 15th MSB set. "
-				" Ignoring CAP.");
-		validPcap = false;
+		GRK_ERROR("Pcap in CAP marker should have its 15th MSB set. ");
+		return false;
 	}
-	if (validPcap)
-		grk_read<uint16_t>(p_header_data, &cp->ccap); /* Ccap */
+	p_header_data += sizeof(uint32_t);
+	cp->pcap = tmp;
+    uint32_t count = ojph::population_count(cp->pcap);
+    uint32_t expected_size = sizeof(cp->pcap) + 2 * count;
+	if (header_size != expected_size) {
+	  GRK_ERROR("CAP marker size %d != expected size %d",header_size, expected_size);
+	  return false;
+	}
+    for (uint32_t i = 0; i < count; ++i) {
+    	grk_read<uint16_t>(p_header_data, cp->ccap+i);
+    }
 
 	return true;
 }
@@ -2199,7 +2208,7 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno, uint8_t *p_he
 		return false;
 	}
 	++tccp->numresolutions;
-	if (codeStream->m_cp.ccap && !tcp->isHT) {
+	if (codeStream->m_cp.pcap && !tcp->isHT) {
 		tcp->isHT = true;
 		tcp->qcd.generate(tccp->numgbits, tccp->numresolutions - 1,
 				tccp->qmfbid == 1, codeStream->m_input_image->comps[compno].prec,
