@@ -2117,10 +2117,12 @@ bool CodeStream::read_marker(){
 
 
 bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
-	if (m_decompressor.m_state == J2K_DEC_STATE_EOC)
+	if (m_decompressor.m_state == J2K_DEC_STATE_EOC) {
 		m_curr_marker = J2K_MS_EOC;
+		return true;
+	}
 	/* We need to encounter a SOT marker (a new tile-part header) */
-	else if (m_decompressor.m_state != J2K_DEC_STATE_TPH_SOT){
+	if (m_decompressor.m_state != J2K_DEC_STATE_TPH_SOT){
 		GRK_ERROR("parse_markers: no SOT marker found");
 		return false;
 	}
@@ -2244,16 +2246,22 @@ bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 			}
 */
 			if (!m_decompressor.last_tile_part_was_read) {
-				if (!read_marker())
-					return false;
+				if (!read_marker()){
+					m_decompressor.m_state = J2K_DEC_STATE_NO_EOC;
+					GRK_WARN("Missing EOC marker");
+					break;
+				}
 			}
 		} else {
+			if (!read_marker()){
+				m_decompressor.m_state = J2K_DEC_STATE_NO_EOC;
+				GRK_WARN("Missing EOC marker");
+				break;
+			}
 			/* Indicate we will try to read a new tile-part header*/
 			m_decompressor.m_skip_tile_data = false;
 			m_decompressor.last_tile_part_was_read = false;
 			m_decompressor.m_state = J2K_DEC_STATE_TPH_SOT;
-			if (!read_marker())
-				return false;
 		}
 	}
 
