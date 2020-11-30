@@ -238,10 +238,8 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 		goto beach;
 	m_image->x0 = params->image_offset_x0;
 	m_image->y0 = params->image_offset_y0;
-	m_image->x1 = (m_image->x0
-			+ (width - 1) * params->subsampling_dx + 1 + m_image->x0);
-	m_image->y1 = (m_image->y0
-			+ (height - 1) * params->subsampling_dy + 1 + m_image->y0);
+	m_image->x1 = m_image->x0	+ (width - 1)  * params->subsampling_dx + 1;
+	m_image->y1 = m_image->y0	+ (height - 1) * params->subsampling_dy + 1;
 
 	/* Set alpha channel. Only non-premultiplied alpha is supported */
 	if ((nr_comp & 1U) == 0){
