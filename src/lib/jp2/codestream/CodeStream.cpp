@@ -2136,7 +2136,6 @@ bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 			// end of stream with no EOC
 			if (m_stream->get_number_byte_left() == 0) {
 				m_decompressor.m_state = J2K_DEC_STATE_NO_EOC;
-				GRK_WARN("Missing EOC marker");
 				break;
 			}
 			uint16_t marker_size;
@@ -2248,14 +2247,12 @@ bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 			if (!m_decompressor.last_tile_part_was_read) {
 				if (!read_marker()){
 					m_decompressor.m_state = J2K_DEC_STATE_NO_EOC;
-					GRK_WARN("Missing EOC marker");
 					break;
 				}
 			}
 		} else {
 			if (!read_marker()){
 				m_decompressor.m_state = J2K_DEC_STATE_NO_EOC;
-				GRK_WARN("Missing EOC marker");
 				break;
 			}
 			/* Indicate we will try to read a new tile-part header*/
