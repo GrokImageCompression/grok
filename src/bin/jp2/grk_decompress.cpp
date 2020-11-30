@@ -213,6 +213,15 @@ static void decompress_help_display(void) {
 	fprintf(stdout, "\n");
 }
 
+void GrkDecompress::print_timing(uint32_t num_images, std::chrono::duration<double> elapsed){
+	if (!num_images)
+		return;
+	std::string temp = (num_images > 1) ?  "ms/image" : "ms";
+	spdlog::info("decompress time: {} {}",
+			(elapsed.count() * 1000) / (double) num_images, temp);
+}
+
+
 bool GrkDecompress::parse_precision(const char *option,
 		grk_decompress_parameters *parameters) {
 	const char *remaining = option;
@@ -825,8 +834,6 @@ int GrkDecompress::plugin_main(int argc, char **argv, DecompressInitParams *init
 	uint32_t num_decompressed_images = 0;
 	bool isBatch = false;
 	std::chrono::time_point<std::chrono::high_resolution_clock> start, finish;
-	std::chrono::duration<double> elapsed;
-
 #ifdef GROK_HAVE_LIBLCMS
 	cmsSetLogErrorHandler(MycmsLogErrorHandlerFunction);
 #endif
@@ -950,12 +957,7 @@ int GrkDecompress::plugin_main(int argc, char **argv, DecompressInitParams *init
 		num_decompressed_images++;
 
 	}
-	finish = std::chrono::high_resolution_clock::now();
-	elapsed = finish - start;
-	if (num_decompressed_images && success == 0) {
-		spdlog::info("decompress time: {} ms/image",
-				(elapsed.count() * 1000) / (double) num_decompressed_images);
-	}
+	print_timing(num_decompressed_images,  std::chrono::high_resolution_clock::now() - start);
 	cleanup: if (dirptr) {
 		if (dirptr->filename_buf)
 			free(dirptr->filename_buf);
@@ -1529,13 +1531,7 @@ int GrkDecompress::main(int argc, char **argv) {
 				closedir(dir);
 			}
 		}
-		auto finish = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double> elapsed = finish - start;
-		if (num_decompressed_images) {
-			spdlog::info("decompress time: {} ms/image",
-					(elapsed.count() * 1000)
-							/ (double) num_decompressed_images);
-		}
+		print_timing(num_decompressed_images,  std::chrono::high_resolution_clock::now() - start);
 	} catch (std::bad_alloc &ba) {
 		spdlog::error("Out of memory. Exiting.");
 		rc = 1;

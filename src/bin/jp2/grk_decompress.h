@@ -78,6 +78,7 @@ private:
 	uint32_t getCompressionCode(const std::string &compressionString);
 	void set_default_parameters(grk_decompress_parameters *parameters);
 	void destroy_parameters(grk_decompress_parameters *parameters);
+	void print_timing(uint32_t num_images, std::chrono::duration<double> elapsed);
 
 
 
