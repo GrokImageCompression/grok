@@ -147,6 +147,12 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 	auto res = &tilec->resolutions[resno];
 	size_t stream_start = stream->tell();
 
+	if (compno >= tile->numcomps) {
+		GRK_ERROR("compress packet simulate: component number %d must be less than total number "
+				"of components %d",compno, tile->numcomps);
+		return false;
+	}
+
 	if (tileProcessor->m_packetTracker.is_packet_encoded(compno, resno, precinctIndex,
 			layno))
 		return true;
@@ -179,6 +185,11 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 	if (!layno) {
 		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 			auto band = res->bandWindow + bandIndex;
+			if (precinctIndex >= band->precincts.size()) {
+				GRK_ERROR("compress packet simulate: precinct index %d must be less than total "
+						"number of precincts %d", precinctIndex, band->precincts.size());
+				return false;
+			}
 			auto prc = band->precincts[precinctIndex];
 			uint64_t nb_blocks = prc->getNumCblks();
 
@@ -555,12 +566,16 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 	uint64_t precinctIndex = pi->precinctIndex;
 	uint32_t layno = pi->layno;
 	uint64_t nb_blocks;
-
 	auto tile = tileProcessor->tile;
 	auto tilec = tile->comps + compno;
 	auto res = tilec->resolutions + resno;
-	*packet_bytes_written = 0;
 
+	if (compno >= tile->numcomps) {
+		GRK_ERROR("compress packet simulate: component number %d must be less than total number "
+				"of components %d",compno, tile->numcomps);
+		return false;
+	}
+	*packet_bytes_written = 0;
 	if (tileProcessor->m_packetTracker.is_packet_encoded(compno, resno, precinctIndex,
 			layno))
 		return true;
@@ -581,6 +596,11 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 	if (!layno) {
 		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 			auto band = res->bandWindow + bandIndex;
+			if (precinctIndex >= band->precincts.size()) {
+				GRK_ERROR("compress packet simulate: precinct index %d must be less than total "
+						"number of precincts %d", precinctIndex, band->precincts.size());
+				return false;
+			}
 			auto prc = band->precincts[precinctIndex];
 
 			if (prc->getInclTree())
