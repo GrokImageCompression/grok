@@ -61,19 +61,34 @@ like the ones generated in /tmp by "make dummyfuzzers")
     $ python infra/helper.py run_fuzzer grok grk_decompress_fuzzer
 ```
 
-Test a particular fuzzer on a test file:
+#### Test a particular fuzzer on a test file:
 
 ```  
 $ python infra/helper.py build_fuzzers --sanitizer address grok
 $ python infra/helper.py reproduce grok grk_decompress_fuzzer $FILE_NAME
 ```
 
+#### Fetch reproducer backup
 
-Handling issues reported in https://bugs.chromium.org/p/oss-fuzz/issues/list?q=grok
+Reproducers are periodically backed up on Google Cloud. 
+A zip file of these reproducers can be downloaded as follows:
+
+First of all, ensure that Google Cloud SDK is installed:
+
+```
+$ sudo snap install google-cloud-sdk --classic
+$ gcloud init
+```
+
+Now, we can list the contents of our fuzzer bucket:
+
+`$ gsutil ls -R gs://grok-backup.clusterfuzz-external.appspot.com/corpus/libFuzzer/**/public.zip`
+
+and then copy the zip to a local drive:
+
+`$ gsutil cp gs://grok-backup.clusterfuzz-external.appspot.com/corpus/libFuzzer/grok_grk_decompress_fuzzer/public.zip .`
 
 
-  1. Leave a comment in (chromium database) bug entry to indicate that you work on it
-  1. Work
-  1. Commit a bug fix with log including "Credit to OSS-Fuzz" and a link to the bugs.chromium.org ticket
-  1. Add in the bugs.chromium.org ticket a link to the github commit implementing the fix.
-  1. Check chromium closed the bug (after one or two days typically)
+
+
+
