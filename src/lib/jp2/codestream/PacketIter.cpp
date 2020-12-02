@@ -217,23 +217,22 @@ static bool pi_next_lrcp(PacketIter *pi) {
 	uint64_t index = 0;
 
 	if (pi->first) {
-		comp = &pi->comps[pi->compno];
-		res = &comp->resolutions[pi->resno];
+		if (pi->compno >= pi->numcomps){
+			GRK_ERROR("Packet iterator component %d must be strictly less than "
+					"total number of components %d",pi->compno , pi->numcomps);
+			return false;
+		}
+		comp = pi->comps + pi->compno;
 		goto LABEL_SKIP;
 	}
 	for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
-
-		for (pi->resno = pi->poc.resno0; pi->resno < pi->poc.resno1;
-				pi->resno++) {
-
-			for (pi->compno = pi->poc.compno0; pi->compno < pi->poc.compno1;
-					pi->compno++) {
-
-				comp = &pi->comps[pi->compno];
+		for (pi->resno = pi->poc.resno0; pi->resno < pi->poc.resno1;pi->resno++) {
+			for (pi->compno = pi->poc.compno0; pi->compno < pi->poc.compno1;pi->compno++) {
+				comp = pi->comps + pi->compno;
 				//skip resolutions greater than current component resolution
 				if (pi->resno >= comp->numresolutions)
 					continue;
-				res = &comp->resolutions[pi->resno];
+				res = comp->resolutions + pi->resno;
 				if (!pi->tp_on)
 					pi->poc.precno1 = (uint64_t)res->pw * res->ph;
 
@@ -265,20 +264,22 @@ static bool pi_next_rlcp(PacketIter *pi) {
 	grk_pi_resolution *res = nullptr;
 	uint64_t index = 0;
 
+	if (pi->compno >= pi->numcomps){
+		GRK_ERROR("Packet iterator component %d must be strictly less than "
+				"total number of components %d",pi->compno , pi->numcomps);
+		return false;
+	}
 	if (pi->first) {
-		comp = &pi->comps[pi->compno];
-		res = &comp->resolutions[pi->resno];
+		comp = pi->comps + pi->compno;
 		goto LABEL_SKIP;
 	}
 	for (pi->resno = pi->poc.resno0; pi->resno < pi->poc.resno1; pi->resno++) {
-		for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1;
-				pi->layno++) {
-			for (pi->compno = pi->poc.compno0; pi->compno < pi->poc.compno1;
-					pi->compno++) {
+		for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1;	pi->layno++) {
+			for (pi->compno = pi->poc.compno0; pi->compno < pi->poc.compno1;pi->compno++) {
 				comp = &pi->comps[pi->compno];
 				if (pi->resno >= comp->numresolutions)
 					continue;
-				res = &comp->resolutions[pi->resno];
+				res = comp->resolutions + pi->resno;
 				if (!pi->tp_on)
 					pi->poc.precno1 = (uint64_t)res->pw * res->ph;
 				for (pi->precinctIndex = pi->poc.precno0; pi->precinctIndex < pi->poc.precno1;
@@ -312,11 +313,18 @@ static uint8_t pi_next_l(PacketIter *pi){
 	uint32_t trx1, try1;
 	uint32_t rpx, rpy;
 	uint32_t prci, prcj;
-	auto comp = &pi->comps[pi->compno];
+
+	if (pi->compno >= pi->numcomps){
+		GRK_ERROR("Packet iterator component %d must be strictly less than "
+				"total number of components %d",pi->compno , pi->numcomps);
+		return false;
+	}
+
+	auto comp = pi->comps + pi->compno;
 	if (pi->resno >= comp->numresolutions)
 		return 0;
 
-	auto res = &comp->resolutions[pi->resno];
+	auto res = comp->resolutions + pi->resno;
 	levelno = comp->numresolutions - 1 - pi->resno;
 	if (levelno >= GRK_J2K_MAXRLVLS)
 		return 0;
@@ -381,16 +389,12 @@ static bool pi_next_rpcl(PacketIter *pi) {
 		pi->poc.tx1 = pi->tx1;
 	}
 	for (pi->resno = pi->poc.resno0; pi->resno < pi->poc.resno1; pi->resno++) {
-		for (pi->y = pi->poc.ty0; pi->y < pi->poc.ty1;
-				pi->y += pi->dy - (pi->y % pi->dy)) {
-			for (pi->x = pi->poc.tx0; pi->x < pi->poc.tx1;
-					pi->x += pi->dx - (pi->x % pi->dx)) {
-				for (pi->compno = pi->poc.compno0; pi->compno < pi->poc.compno1;
-						pi->compno++) {
+		for (pi->y = pi->poc.ty0; pi->y < pi->poc.ty1;	pi->y += pi->dy - (pi->y % pi->dy)) {
+			for (pi->x = pi->poc.tx0; pi->x < pi->poc.tx1;	pi->x += pi->dx - (pi->x % pi->dx)) {
+				for (pi->compno = pi->poc.compno0; pi->compno < pi->poc.compno1; pi->compno++) {
 					if (pi_next_l(pi) == 0)
 						continue;
-					for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1;
-							pi->layno++) {
+					for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
 						index = pi->layno * pi->step_l + pi->resno * pi->step_r
 								+ pi->compno * pi->step_c
 								+ pi->precinctIndex * pi->step_p;
@@ -412,8 +416,14 @@ static bool pi_next_pcrl(PacketIter *pi) {
 	grk_pi_comp *comp = nullptr;
 	uint64_t index = 0;
 
+	if (pi->compno >= pi->numcomps){
+		GRK_ERROR("Packet iterator component %d must be strictly less than "
+				"total number of components %d",pi->compno , pi->numcomps);
+		return false;
+	}
+
 	if (pi->first) {
-		comp = &pi->comps[pi->compno];
+		comp = pi->comps + pi->compno;
 		goto LABEL_SKIP;
 	}
 
@@ -428,17 +438,14 @@ static bool pi_next_pcrl(PacketIter *pi) {
 			pi->y += pi->dy - (pi->y % pi->dy)) {
 		for (pi->x = pi->poc.tx0; pi->x < pi->poc.tx1;
 				pi->x += pi->dx - (pi->x % pi->dx)) {
-			for (pi->compno = pi->poc.compno0; pi->compno < pi->poc.compno1;
-					pi->compno++) {
+			for (pi->compno = pi->poc.compno0; pi->compno < pi->poc.compno1; pi->compno++) {
 				comp = &pi->comps[pi->compno];
-				for (pi->resno = pi->poc.resno0;
-						pi->resno
+				for (pi->resno = pi->poc.resno0; pi->resno
 								< std::min<uint32_t>(pi->poc.resno1,
 										comp->numresolutions); pi->resno++) {
 					if (pi_next_l(pi) == 0)
 						continue;
-					for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1;
-							pi->layno++) {
+					for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
 						index = pi->layno * pi->step_l + pi->resno * pi->step_r
 								+ pi->compno * pi->step_c
 								+ pi->precinctIndex * pi->step_p;
@@ -460,12 +467,17 @@ static bool pi_next_cprl(PacketIter *pi) {
 	grk_pi_comp *comp = nullptr;
 	uint64_t index = 0;
 
+	if (pi->compno >= pi->numcomps){
+		GRK_ERROR("Packet iterator component %d must be strictly less than "
+				"total number of components %d",pi->compno , pi->numcomps);
+		return false;
+	}
+
 	if (pi->first) {
 		comp = &pi->comps[pi->compno];
 		goto LABEL_SKIP;
 	}
-	for (pi->compno = pi->poc.compno0; pi->compno < pi->poc.compno1;
-			pi->compno++) {
+	for (pi->compno = pi->poc.compno0; pi->compno < pi->poc.compno1; pi->compno++) {
 		comp = &pi->comps[pi->compno];
 		pi->dx = 0;
 		pi->dy = 0;
@@ -476,18 +488,13 @@ static bool pi_next_cprl(PacketIter *pi) {
 			pi->poc.ty1 = pi->ty1;
 			pi->poc.tx1 = pi->tx1;
 		}
-		for (pi->y = pi->poc.ty0; pi->y < pi->poc.ty1;
-				pi->y += pi->dy - (pi->y % pi->dy)) {
-			for (pi->x = pi->poc.tx0; pi->x < pi->poc.tx1;
-					pi->x += pi->dx - (pi->x % pi->dx)) {
-				for (pi->resno = pi->poc.resno0;
-						pi->resno
-								< std::min<uint32_t>(pi->poc.resno1,
-										comp->numresolutions); pi->resno++) {
+		for (pi->y = pi->poc.ty0; pi->y < pi->poc.ty1;	pi->y += pi->dy - (pi->y % pi->dy)) {
+			for (pi->x = pi->poc.tx0; pi->x < pi->poc.tx1;	pi->x += pi->dx - (pi->x % pi->dx)) {
+				for (pi->resno = pi->poc.resno0; pi->resno
+						< std::min<uint32_t>(pi->poc.resno1, comp->numresolutions); pi->resno++) {
 					if (pi_next_l(pi) == 0)
 						continue;
-					for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1;
-							pi->layno++) {
+					for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
 						index = pi->layno * pi->step_l + pi->resno * pi->step_r
 								+ pi->compno * pi->step_c
 								+ pi->precinctIndex * pi->step_p;
