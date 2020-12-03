@@ -558,9 +558,9 @@ bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 					if (tileProcessor->m_cp->tcps[0].isHT){
 						cblk->numSegments = 0;
 						cblk->cleanup_seg_buffers();
-					} else {
-						seg->numBytesInPacket = 0;
 					}
+					seg->numBytesInPacket = 0;
+					seg->numpasses = 0;
 					break;
 				}
 				//initialize dataindex to current contiguous size of code block
