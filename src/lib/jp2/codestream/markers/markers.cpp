@@ -2219,8 +2219,8 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno, uint8_t *p_he
 	/* If user wants to remove more resolutions than the code stream contains, return error */
 	if (cp->m_coding_params.m_dec.m_reduce >= tccp->numresolutions) {
 		GRK_ERROR("Error decoding component %u.\nThe number of resolutions "
-				" to remove (%d) is not strictly less than the number "
-				"of resolutions (%d) of this component\n"
+				" to remove (%d) must be strictly less than the number "
+				"of resolutions (%d) of this component.\n"
 				"Please decrease the cp_reduce parameter.",
 				compno,cp->m_coding_params.m_dec.m_reduce,tccp->numresolutions);
 		codeStream->m_decompressor.m_state |= J2K_DEC_STATE_ERR;
