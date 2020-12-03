@@ -146,7 +146,8 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			}
 			if (first_pass_failed[current_pi->compno]) {
 				if (tilec->resolutions_decompressed == 0) {
-					tilec->resolutions_decompressed = p_tile->comps[current_pi->compno].resolutions_to_decompress- 1;
+					tilec->resolutions_decompressed =
+							(uint8_t)(p_tile->comps[current_pi->compno].resolutions_to_decompress- 1);
 				}
 			}
 			if (debugDecompressPackets) {
@@ -550,14 +551,8 @@ bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 				size_t maxLen = src_buf->getRemainingLength();
 				if (maxLen == 0)
 					return true;
-				// Check possible overflow on segment length
+				// reject truncated packet
 				if (((seg->numBytesInPacket) > maxLen)) {
-//					GRK_WARN("read packet data:\nSegment segment length %u\n"
-//							"is greater than remaining total length of all segments (%u)\n"
-//							"for codeblock %u (layer=%u, prec=%u, band=%u, res=%u, comp=%u).\n"
-//							"Truncating packet data.", seg->numBytesInPacket,
-//							maxLen, cblkno, p_pi->layno, p_pi->precinctIndex, bandIndex, p_pi->resno, p_pi->compno);
-
 					// HT doesn't tolerate truncated code blocks since decoding runs both forward and reverse.
 					// So, in this case, we ignore the entire code block
 					if (tileProcessor->m_cp->tcps[0].isHT){
@@ -574,6 +569,12 @@ bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 
 				// only add segment to seg_buffers if length is greater than zero
 				if (seg->numBytesInPacket) {
+					// sanity check on seg->numBytesInPacket
+					if (UINT_MAX - seg->numBytesInPacket <  seg->len){
+						GRK_ERROR("Segment packet length %d plus total segment length %d must be less than 2^32",
+								seg->numBytesInPacket, seg->len);
+						return false;
+					}
 					cblk->seg_buffers.push_back(new grk_buf(src_buf->get_global_ptr(),
 							seg->numBytesInPacket, false));
 					*(p_data_read) += seg->numBytesInPacket;
