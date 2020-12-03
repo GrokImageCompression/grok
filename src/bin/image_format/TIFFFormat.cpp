@@ -672,6 +672,22 @@ bool TIFFFormat::encodeHeader(grk_image *image, const std::string &filename,
 cleanup:
 	return success;
 }
+
+bool TIFFFormat::write(uint32_t *strip, void* buf, tmsize_t toWrite, tmsize_t *written){
+	*written = 	TIFFWriteEncodedStrip(tif, (*strip)++, buf, toWrite);
+	if (*written == -1){
+		spdlog::error("TIFFFormat::encodeStrip: error in TIFFWriteEncodedStrip");
+		return false;
+	}
+	if (*written != toWrite){
+		spdlog::error("TIFFFormat::encodeStrip: Bytes written {} does not equal bytes to write {}", *written, toWrite);
+		return false;
+	}
+
+	return true;
+}
+
+
 bool TIFFFormat::encodeStrip(uint32_t rows){
 	(void)rows;
 
@@ -684,7 +700,6 @@ bool TIFFFormat::encodeStrip(uint32_t rows){
 
 	uint32_t numcomps = m_image->numcomps;
 	tsize_t stride, rowsPerStrip;
-	tmsize_t bytesToWrite = 0;
 	uint32_t strip = 0;
 	int32_t *buffer32s = nullptr;
 	int32_t adjust =
@@ -715,13 +730,15 @@ bool TIFFFormat::encodeStrip(uint32_t rows){
 		goto cleanup;
 
 	if (subsampled){
+		tmsize_t bytesToWrite = 0;
 		auto bufptr = (int8_t*)buf;
 		for (uint32_t h = 0; h < height; h+=chroma_subsample_y) {
 			if (h > 0 &&  (h % rowsPerStrip == 0)){
-				tmsize_t written =
-						TIFFWriteEncodedStrip(tif, strip++, (void*) buf, bytesToWrite);
-				assert(written == bytesToWrite);
-				(void)written;
+				tmsize_t written = 0;
+				if (!write(&strip, buf, bytesToWrite, &written)){
+					success = false;
+					goto cleanup;
+				}
 				bufptr = (int8_t*)buf;
 				bytesToWrite = 0;
 			}
@@ -745,31 +762,35 @@ bool TIFFFormat::encodeStrip(uint32_t rows){
 			planes[1] += m_image->comps[1].stride - m_image->comps[1].w;
 			planes[2] += m_image->comps[2].stride - m_image->comps[2].w;
 		}
+		//cleanup (
+		if (bytesToWrite) {
+			tmsize_t written = 0;
+			if (!write(&strip, buf, bytesToWrite, &written)){
+				success = false;
+				goto cleanup;
+			}
+		}
 	} else {
 		tmsize_t h = 0;
 		tmsize_t h_start = 0;
 		while (h < height){
-			tmsize_t byesToWrite = 0;
+			tmsize_t bytesToWrite = 0;
 			for (h = h_start; h < h_start + rowsPerStrip && (h < height); h++) {
 				cvtPxToCx(planes, buffer32s, (size_t) width, adjust);
-				cvt32sToTif(buffer32s, (uint8_t*) buf + byesToWrite, (size_t) width * numcomps);
+				cvt32sToTif(buffer32s, (uint8_t*) buf + bytesToWrite, (size_t) width * numcomps);
 				for (uint32_t k = 0; k < numcomps; ++k)
 					planes[k] += m_image->comps[k].stride;
-				byesToWrite +=  stride;
+				bytesToWrite +=  stride;
 			}
-			tmsize_t written =  TIFFWriteEncodedStrip(tif, strip++,(void*) buf, byesToWrite);
-			assert(written == byesToWrite);
-			(void)written;
+			tmsize_t written = 0;
+			if (!write(&strip, buf, bytesToWrite, &written)){
+				success = false;
+				goto cleanup;
+			}
+
 			h_start += (h - h_start);
 		}
 	}
-	//cleanup
-	if (bytesToWrite) {
-	  tmsize_t written =  TIFFWriteEncodedStrip(tif, strip++, (void*) buf, bytesToWrite);
-	  (void)written;
-	  assert(written == bytesToWrite);
-	}
-
 	success = true;
 
 cleanup:

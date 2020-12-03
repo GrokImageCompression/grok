@@ -38,6 +38,7 @@ public:
 	bool encodeFinish(void) override;
 	grk_image *  decode(const std::string &filename,  grk_cparameters  *parameters) override;
 private:
+	bool write(uint32_t *strip, void* buf, tmsize_t toWrite, tmsize_t *written);
 	TIFF *tif;
 	uint32_t chroma_subsample_x;
 	uint32_t chroma_subsample_y;
