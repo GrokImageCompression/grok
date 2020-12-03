@@ -269,6 +269,7 @@ void TileComponent::create_buffer(grk_rect_u32 unreduced_tile_comp_dims,
 			(!m_is_encoder) ? resolutions_to_decompress : numresolutions;
 	auto maxResolution = resolutions + numresolutions - 1;
 	buf = new TileComponentWindowBuffer<int32_t>(m_is_encoder,
+											whole_tile_decoding,
 											*(grk_rect_u32*)maxResolution,
 											*(grk_rect_u32*)this,
 											unreduced_tile_comp_window_dims,
