@@ -96,8 +96,15 @@ template<typename T> struct TileComponentWindowBuffer {
         	// lowest resolution equals 0th band
         	 res_buffers.push_back(new res_buf<T>(nullptr, tile_comp_resolutions->bandWindow[BAND_RES_ZERO_INDEX_LL]) );
 
-        	 for (uint32_t resno = 1; resno < reduced_num_resolutions; ++resno)
-        		 res_buffers.push_back(new res_buf<T>( tile_comp_resolutions+resno, m_bounds) );
+        	 for (uint32_t resno = 1; resno < reduced_num_resolutions; ++resno){
+        		 auto res_dims =  (resno == num_resolutions - 1) ?  unreduced_window_dim :
+															 grk_band_window(num_resolutions,
+																				resno+1,
+																				0,
+																				unreduced_window_dim);
+        		 res_buffers.push_back(new res_buf<T>( tile_comp_resolutions+resno, res_dims) );
+
+        	 }
         } else {
         	res_buffers.push_back(new res_buf<T>( nullptr, m_bounds) );
         }
