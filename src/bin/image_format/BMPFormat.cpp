@@ -528,9 +528,9 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 	auto h = m_image->comps[0].h;
 	auto numcomps = m_image->numcomps;
 	auto stride_src = m_image->comps[0].stride;
-	m_srcIndex = stride_src * (h - 1);
+	m_srcIndex = (uint64_t)stride_src * (h - 1);
 	uint32_t w_dest = getPaddedWidth();
-	uint32_t pad_dest = (4 - ((numcomps * w) &3 )) &3;
+	uint32_t pad_dest = (4 - (((uint64_t)numcomps * w) &3 )) &3;
 	if (pad_dest == 4)
 		pad_dest = 0;
 
@@ -552,7 +552,7 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 				1 << (m_image->comps[compno].prec - 1) : 0);
 	}
 
-	auto destBuff = new uint8_t[m_rowsPerStrip * w_dest];
+	auto destBuff = new uint8_t[(uint64_t)m_rowsPerStrip * w_dest];
 	// zero out padding at end of line
 	if (pad_dest){
 		uint8_t *ptr = destBuff + w_dest - pad_dest;
