@@ -48,17 +48,18 @@ typedef struct {
 
 static void ErrorCallback(const char * msg, void *)
 {
-    (void)msg;
-    //fprintf(stderr, "%s\n", msg);
+    fprintf(stderr, "error: %s\n", msg);
 }
 
 
 static void WarningCallback(const char *, void *)
 {
+    fprintf(stdout, "warning: %s\n", msg);
 }
 
 static void InfoCallback(const char *, void *)
 {
+    fprintf(stdout, "info: %s\n", msg);
 }
 
 static size_t ReadCallback(void* pBuffer, size_t nBytes,
