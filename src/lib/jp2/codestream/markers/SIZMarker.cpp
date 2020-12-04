@@ -104,7 +104,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 	} else {
 		if (tmp & 0x3000) {
 			GRK_WARN("SIZ marker segment's Rsiz word must have bits 12 and 13 equal to 0");
-			GRK_WARN("unless the Part-2 flag (bit-15) is set.\n");
+			GRK_WARN("unless the Part-2 flag (bit-15) is set.");
 		}
 		uint16_t profile = tmp & GRK_PROFILE_MASK;
 		if ((profile > GRK_PROFILE_CINEMA_LTS)
@@ -196,7 +196,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 	/* Read the component information */
 	for (i = 0; i < image->numcomps; ++i) {
 		grk_read<uint32_t>(p_header_data++, &tmp, 1); /* Ssiz_i */
-		img_comp->prec = (tmp & 0x7f) + 1;
+		img_comp->prec = (uint8_t)((tmp & 0x7f) + 1);
 		img_comp->sgnd = tmp >> 7;
 		grk_read<uint32_t>(p_header_data++, &tmp, 1); /* XRsiz_i */
 		img_comp->dx = tmp; /* should be between 1 and 255 */
