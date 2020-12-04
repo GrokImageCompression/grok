@@ -160,7 +160,6 @@ cleanup:
     grk_stream_destroy(pStream);
     grk_destroy_codec(pCodec);
     grk_image_destroy(psImage);
-    grk_deinitialize();
 
     return 0;
 }
