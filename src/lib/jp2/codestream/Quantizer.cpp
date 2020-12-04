@@ -201,6 +201,10 @@ bool Quantizer::read_SQcd_SQcc(CodeStream *codeStream,
 	grk_read<uint32_t>(current_ptr++, &tmp, 1);
 	uint8_t qntsty = tmp & 0x1f;
 	*header_size = (uint16_t)(*header_size - 1);
+	if (qntsty > J2K_CCP_QNTSTY_SEQNT){
+		GRK_ERROR( "Undefined quantization style %d", qntsty);
+		return false;
+	}
 
 	// scoping rules
 	auto tcp = codeStream->get_current_decode_tcp();
