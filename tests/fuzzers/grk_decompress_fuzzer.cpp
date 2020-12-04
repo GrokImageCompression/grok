@@ -46,18 +46,18 @@ typedef struct {
 } MemFile;
 
 
-static void ErrorCallback(const char * msg, void *)
+static void ErrorCallback(const char * msg, void *user_data)
 {
     fprintf(stderr, "error: %s\n", msg);
 }
 
 
-static void WarningCallback(const char *, void *)
+static void WarningCallback(const char *msg, void *user_data)
 {
     fprintf(stdout, "warning: %s\n", msg);
 }
 
-static void InfoCallback(const char *, void *)
+static void InfoCallback(const char *msg, void *user_data)
 {
     fprintf(stdout, "info: %s\n", msg);
 }
