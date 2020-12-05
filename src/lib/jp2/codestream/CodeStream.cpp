@@ -145,7 +145,7 @@ static bool j2k_check_poc_val(const  grk_poc  *p_pocs, uint32_t nb_pocs,
  *
  * @return              the number of tile parts.
  */
-static uint8_t j2k_get_num_tp(CodingParams *cp, uint32_t pino, uint16_t tileno);
+static uint64_t j2k_get_num_tp(CodingParams *cp, uint32_t pino, uint16_t tileno);
 
 /**
  * Calculates the total number of tile parts needed by the compressor to
@@ -633,8 +633,7 @@ char* j2k_convert_progression_order(GRK_PROG_ORDER prg_order) {
 	return po->str_prog;
 }
 
-static uint8_t j2k_get_num_tp(CodingParams *cp, uint32_t pino,
-		uint16_t tileno) {
+static uint64_t j2k_get_num_tp(CodingParams *cp, uint32_t pino,	uint16_t tileno) {
 	uint64_t num_tp = 1;
 
 	/*  preconditions */
@@ -681,8 +680,7 @@ static uint8_t j2k_get_num_tp(CodingParams *cp, uint32_t pino,
 	} else {
 		num_tp = 1;
 	}
-	assert(num_tp <= 255);
-	return (uint8_t) num_tp;
+	return num_tp;
 }
 
 static bool j2k_calculate_tp(CodingParams *cp, uint16_t *p_nb_tile_parts,
@@ -694,45 +692,31 @@ static bool j2k_calculate_tp(CodingParams *cp, uint16_t *p_nb_tile_parts,
 	uint32_t nb_tiles = (uint16_t) (cp->t_grid_width * cp->t_grid_height);
 	*p_nb_tile_parts = 0;
 	auto tcp = cp->tcps;
-
-	/* INDEX >> */
-	/* TODO mergeV2: check this part which use cstr_info */
-	/*if (codeStream->cstr_info) {
-	 grk_tile_info  * info_tile_ptr = codeStream->cstr_info->tile;
-	 for (tileno = 0; tileno < nb_tiles; ++tileno) {
-	 uint32_t totnum_tp = 0;
-	 pi_update_encoding_parameters(image,cp,tileno);
-	 for (pino = 0; pino <= tcp->numpocs; ++pino)
-	 {
-	 uint32_t tp_num = j2k_get_num_tp(cp,pino,tileno);
-	 *p_nb_tiles = *p_nb_tiles + tp_num;
-	 totnum_tp += tp_num;
-	 }
-	 tcp->m_nb_tile_parts = totnum_tp;
-	 info_tile_ptr->tp = ( grk_tp_info  *) grk_malloc(totnum_tp * sizeof( grk_tp_info) );
-	 if (info_tile_ptr->tp == nullptr) {
-	 return false;
-	 }
-	 memset(info_tile_ptr->tp,0,totnum_tp * sizeof( grk_tp_info) );
-	 info_tile_ptr->num_tps = totnum_tp;
-	 ++info_tile_ptr;
-	 ++tcp;
-	 }
-	 }
-	 else */{
-		for (uint16_t tileno = 0; tileno < nb_tiles; ++tileno) {
-			uint8_t totnum_tp = 0;
-			pi_update_encoding_parameters(image, cp, tileno);
-			for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
-				uint8_t tp_num = j2k_get_num_tp(cp, pino, tileno);
-
-				*p_nb_tile_parts = (uint16_t)(*p_nb_tile_parts + tp_num);
-				totnum_tp = (uint8_t) (totnum_tp + tp_num);
+	for (uint16_t tileno = 0; tileno < nb_tiles; ++tileno) {
+		uint8_t totnum_tp = 0;
+		pi_update_encoding_parameters(image, cp, tileno);
+		for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
+			uint64_t num_tp = j2k_get_num_tp(cp, pino, tileno);
+			if (num_tp > max_num_tile_parts_per_tile){
+				GRK_ERROR("Number of tile parts %d exceeds maximum number of "
+						"tile parts %d", num_tp,max_num_tile_parts_per_tile );
+				return false;
 			}
-			tcp->m_nb_tile_parts = totnum_tp;
-			++tcp;
+
+			uint64_t total = num_tp + *p_nb_tile_parts;
+			if (total > max_num_tile_parts){
+				GRK_ERROR("Total number of tile parts %d exceeds maximum total number of "
+						"tile parts %d", total,max_num_tile_parts );
+				return false;
+			}
+
+			*p_nb_tile_parts = (uint16_t)(*p_nb_tile_parts + num_tp);
+			totnum_tp = (uint8_t) (totnum_tp + num_tp);
 		}
+		tcp->m_nb_tile_parts = totnum_tp;
+		++tcp;
 	}
+
 	return true;
 }
 
@@ -2926,16 +2910,19 @@ bool CodeStream::post_write_tile(TileProcessor *tileProcessor) {
 		return false;
 
 	//2. write the other tile parts
-	uint8_t tot_num_tp;
 	uint32_t pino;
 
 	auto cp = &(m_cp);
 	auto tcp = cp->tcps + tileProcessor->m_tile_index;
 
 	// write tile parts for first progression order
-	tot_num_tp = j2k_get_num_tp(cp, 0, tileProcessor->m_tile_index);
+	uint64_t num_tp = j2k_get_num_tp(cp, 0, tileProcessor->m_tile_index);
+	if (num_tp > max_num_tile_parts_per_tile){
+		GRK_ERROR("Number of tile parts %d for first POC exceeds maximum number of tile parts %d", num_tp,max_num_tile_parts_per_tile );
+		return false;
+	}
 	tileProcessor->m_first_poc_tile_part = false;
-	for (uint8_t tilepartno = 1; tilepartno < tot_num_tp; ++tilepartno) {
+	for (uint8_t tilepartno = 1; tilepartno < (uint8_t)num_tp; ++tilepartno) {
 		if (!write_tile_part(tileProcessor))
 			return false;
 	}
@@ -2944,9 +2931,14 @@ bool CodeStream::post_write_tile(TileProcessor *tileProcessor) {
 	for (pino = 1; pino <= tcp->numpocs; ++pino) {
 		tileProcessor->pino = pino;
 
-		tot_num_tp = j2k_get_num_tp(cp, pino,
+		num_tp = j2k_get_num_tp(cp, pino,
 				tileProcessor->m_tile_index);
-		for (uint8_t tilepartno = 0; tilepartno < tot_num_tp; ++tilepartno) {
+		if (num_tp > max_num_tile_parts_per_tile){
+			GRK_ERROR("Number of tile parts %d exceeds maximum number of "
+					"tile parts %d", num_tp,max_num_tile_parts_per_tile );
+			return false;
+		}
+		for (uint8_t tilepartno = 0; tilepartno < num_tp; ++tilepartno) {
 			tileProcessor->m_first_poc_tile_part = (tilepartno == 0);
 			if (!write_tile_part(tileProcessor))
 				return false;
