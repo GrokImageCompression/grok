@@ -24,6 +24,7 @@ namespace grk {
 
 struct ISparseBuffer;
 struct grk_tile;
+struct TileComponent;
 
 enum eBandOrientation{
 	BAND_ORIENT_LL,
@@ -243,6 +244,8 @@ struct Resolution : public grk_rect_u32 {
 struct BlockExec : public IOpenable {
 
 	BlockExec();
+	TileComponent *tilec;
+	uint8_t bandIndex;
 	uint8_t band_orientation;
 	float stepsize;
 	uint32_t cblk_sty;
@@ -264,10 +267,7 @@ struct DecompressBlockExec : public BlockExec {
 	void close(void);
 
 	DecompressCodeblock *cblk;
-	ISparseBuffer *sparseBuffer;
-	int32_t *tiledp;
-	uint32_t stride;
-	uint32_t resno;
+	uint8_t resno;
 	uint32_t roishift;
 
 };
@@ -282,8 +282,8 @@ struct CompressBlockExec : public BlockExec{
 	bool doRateControl;
 	double distortion;
 	int32_t *tiledp;
-	uint32_t compno;
-	uint32_t resno;
+	uint16_t compno;
+	uint8_t resno;
 	uint64_t precinctIndex;
 	uint64_t cblkno;
 	// inverse step size in 13 bit fixed point

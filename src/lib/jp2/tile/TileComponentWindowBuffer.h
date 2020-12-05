@@ -122,26 +122,27 @@ template<typename T> struct TileComponentWindowBuffer {
 	 * @param offsety y offset of code block
 	 *
 	 */
-	T* cblk_ptr(uint32_t resno,uint32_t bandIndex, uint32_t &offsetx, uint32_t &offsety) const {
+	T* cblk_ptr(uint8_t resno,uint8_t bandIndex, uint32_t &offsetx, uint32_t &offsety) const {
 		assert(bandIndex < BAND_NUM_INDICES && resno < resolutions.size());
 		if (resno==0)
 			assert(bandIndex==BAND_RES_ZERO_INDEX_LL);
 
+		//////////////////////////////////////////////
+		// calculate buffer offset for this code block
 		auto res = resolutions[resno];
 		auto band = res->bandWindow + bandIndex;
 
-		//1. calculate offset
 		uint32_t x = offsetx;
 		uint32_t y = offsety;
 
-		// get code block offset relative to band
+		// get offset relative to band
 		x -= band->x0;
 		y -= band->y0;
 
 		// if we use one single buffer, then add band offset
-		// relative to previous resolution to get correct coordinates
+		// relative to previous resolution to get correct buffer offset
 		if (!use_band_buffers()){
-			auto pres = resno == 0 ? nullptr : resolutions[ resno - 1];
+			auto pres = (resno == 0) ? nullptr : resolutions[ resno - 1];
 
 			if (band->orientation & 1)
 				x += pres->width();
@@ -151,16 +152,9 @@ template<typename T> struct TileComponentWindowBuffer {
 		offsetx = x;
 		offsety = y;
 
-		T* rc = nullptr;
-		if (use_band_buffers()) {
-			auto dest = band_buf(resno,bandIndex);
-			rc = dest->data + (uint64_t) x + y * (uint64_t) dest->stride;
-		} else {
-			auto dest = tile_buf();;
-			rc = dest->data + (uint64_t) x + y * (uint64_t) dest->stride;
-		}
+		auto dest = (use_band_buffers()) ? band_buf(resno,bandIndex) : tile_buf();
 
-		return rc;
+		return dest->data + (uint64_t) x + y * (uint64_t) dest->stride;
 	}
 	/**
 	 * Get pointer to band buffer

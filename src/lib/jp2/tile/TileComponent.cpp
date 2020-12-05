@@ -83,8 +83,8 @@ bool TileComponent::init(bool isCompressor,
 	if (numresolutions < cp->m_coding_params.m_dec.m_reduce) {
 		resolutions_to_decompress = 1;
 	} else {
-		resolutions_to_decompress = numresolutions
-				- cp->m_coding_params.m_dec.m_reduce;
+		resolutions_to_decompress =
+				(uint8_t)(numresolutions - cp->m_coding_params.m_dec.m_reduce);
 	}
 	resolutions = new Resolution[numresolutions];
 	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
@@ -287,6 +287,184 @@ bool TileComponent::isWholeTileDecoding() {
 }
 ISparseBuffer* TileComponent::getSparseBuffer(){
 	return m_sa;
+}
+bool TileComponent::postDecompress(int32_t *srcData, DecompressBlockExec *block) {
+	auto tilec_data = buf->cblk_ptr( block->resno, block->bandIndex,
+			block->x, block->y);
+	auto cblk = block->cblk;
+	if (cblk->seg_buffers.empty())
+		return true;
+	uint32_t qmfbid = block->qmfbid;
+	float stepsize_over_two = block->stepsize/2;
+	uint32_t stride = buf->stride(block->resno,block->bandIndex);
+	uint32_t cblk_w = cblk->width();
+	uint32_t cblk_h = cblk->height();
+
+	//1. ROI
+	if (block->roishift) {
+		auto src_roi = srcData;
+		int32_t thresh = 1 << block->roishift;
+		for (uint32_t j = 0; j < cblk_h; ++j) {
+			for (uint32_t i = 0; i < cblk_w; ++i) {
+				int32_t val = src_roi[i];
+				int32_t mag = abs(val);
+				if (mag >= thresh) {
+					mag >>= block->roishift;
+					src_roi[i] = val < 0 ? -mag : mag;
+				}
+			}
+			src_roi += cblk_w;
+		}
+	}
+
+	if (m_sa) {
+		auto src = srcData;
+    	if (qmfbid == 1) {
+    		for (uint32_t j = 0; j < cblk_h; ++j) {
+    			uint32_t i = 0;
+    			for (; i < (cblk_w & ~(uint32_t) 3U); i += 4U) {
+    				src[i + 0U] /= 2;
+    				src[i + 1U] /= 2;
+    				src[i + 2U] /= 2;
+    				src[i + 3U] /= 2;
+    			}
+    			for (; i < cblk_w; ++i)
+    				src[i] /= 2;
+    			src += cblk_w;
+     		}
+    	} else {
+			float *GRK_RESTRICT tiledp = (float*) src;
+			for (uint32_t j = 0; j < cblk_h; ++j) {
+				float *GRK_RESTRICT tiledp2 = tiledp;
+				for (uint32_t i = 0; i < cblk_w; ++i) {
+					float tmp = (float) (*src) * stepsize_over_two;
+					*tiledp2 = tmp;
+					src++;
+					tiledp2++;
+				}
+				tiledp += cblk_w;
+			}
+    	}
+		// write directly from t1 to sparse array
+        if (!m_sa->write(block->x,
+					  block->y,
+					  block->x + cblk_w,
+					  block->y + cblk_h,
+					  srcData,
+					  1,
+					  cblk_w,
+					  true)) {
+			  return false;
+		  }
+	} else {
+		auto dest = tilec_data;
+		if (qmfbid == 1) {
+			int32_t *GRK_RESTRICT tiledp = dest;
+			for (uint32_t j = 0; j < cblk_h; ++j) {
+				uint32_t i = 0;
+				for (; i < (cblk_w & ~(uint32_t) 3U); i += 4U) {
+					int32_t tmp0 = srcData[i + 0U];
+					int32_t tmp1 = srcData[i + 1U];
+					int32_t tmp2 = srcData[i + 2U];
+					int32_t tmp3 = srcData[i + 3U];
+					((int32_t*) tiledp)[i + 0U] = tmp0/ 2;
+					((int32_t*) tiledp)[i + 1U] = tmp1/ 2;
+					((int32_t*) tiledp)[i + 2U] = tmp2/ 2;
+					((int32_t*) tiledp)[i + 3U] = tmp3/ 2;
+				}
+				for (; i < cblk_w; ++i)
+					((int32_t*) tiledp)[i] =  srcData[i] / 2;
+				srcData += (size_t) cblk_w;
+				tiledp += stride;
+			}
+		} else {
+			float *GRK_RESTRICT tiledp = (float*) dest;
+			for (uint32_t j = 0; j < cblk_h; ++j) {
+				float *GRK_RESTRICT tiledp2 = tiledp;
+				for (uint32_t i = 0; i < cblk_w; ++i) {
+					float tmp = (float) (*srcData) * stepsize_over_two;
+					*tiledp2 = tmp;
+					srcData++;
+					tiledp2++;
+				}
+				tiledp += stride;
+			}
+		}
+	}
+
+	// note: if no MCT, then we could do dc shift and clamp here
+
+	return true;
+}
+
+bool TileComponent::postDecompressHT(int32_t *srcData, DecompressBlockExec *block){
+	auto src = srcData;
+	int32_t *dest = m_sa ? src : buf->cblk_ptr( block->resno, block->bandIndex,
+			block->x, block->y);
+	auto cblk = block->cblk;
+	if (cblk->seg_buffers.empty())
+		return true;
+
+	uint16_t cblk_w =  (uint16_t)cblk->width();
+	uint16_t cblk_h =  (uint16_t)cblk->height();
+
+	// ROI shift
+	if (block->roishift) {
+		int32_t threshold = 1 << block->roishift;
+		for (auto j = 0U; j < cblk_h; ++j) {
+			for (auto i = 0U; i < cblk_w; ++i) {
+				auto value = *src;
+				auto magnitude = (value & 0x7FFFFFFF);
+				if (magnitude >= threshold)
+					magnitude = (magnitude >> block->roishift) & (value & 0x80000000);
+				src++;
+			}
+		}
+		//reset src data to beginning
+		src = srcData;
+	}
+
+	uint32_t dest_width = m_sa ? cblk_w : buf->stride(block->resno,block->bandIndex);
+	if (block->qmfbid == 1) {
+		int32_t shift = 31 - (block->k_msbs + 1);
+		int32_t *GRK_RESTRICT tile_data = dest;
+		for (auto j = 0U; j < cblk_h; ++j) {
+			int32_t *GRK_RESTRICT tile_row_data = tile_data;
+			for (auto i = 0U; i < cblk_w; ++i) {
+				int32_t temp = *src;
+				int32_t val = (temp & 0x7FFFFFFF) >> shift;
+				tile_row_data[i] = (int32_t)(((uint32_t)temp & 0x80000000) ? -val : val);
+				src++;
+			}
+			tile_data += dest_width;
+		}
+	} else {
+		int32_t *GRK_RESTRICT tile_data = dest;
+		for (auto j = 0U; j < cblk_h; ++j) {
+			float *GRK_RESTRICT tile_row_data = (float*)tile_data;
+			for (auto i = 0U; i < cblk_w; ++i) {
+		       float val = (float)(*src & 0x7FFFFFFF) * block->stepsize;
+		       tile_row_data[i] = ((uint32_t)*src & 0x80000000) ? -val : val;
+			   src++;
+			}
+			tile_data += dest_width;
+		}
+	}
+	if (m_sa){
+		// write directly from t1 to sparse array
+		if (!m_sa->write(block->x,
+							  block->y,
+							  block->x + cblk_w,
+							  block->y + cblk_h,
+							  srcData,
+							  1,
+							  cblk_w,
+							  true)) {
+			  return false;
+		}
+	}
+
+	return true;
 }
 
 }

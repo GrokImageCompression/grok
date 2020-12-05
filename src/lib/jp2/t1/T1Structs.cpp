@@ -609,7 +609,9 @@ bool Resolution::init(bool isCompressor,
 	return true;
 }
 
-BlockExec::BlockExec() : 	band_orientation(0),
+BlockExec::BlockExec() : 	tilec(nullptr),
+							bandIndex(0),
+							band_orientation(0),
 							stepsize(0),
 							cblk_sty(0),
 							qmfbid(0),
@@ -649,9 +651,6 @@ void CompressBlockExec::close(void){
 
 DecompressBlockExec::DecompressBlockExec() :
 				cblk(nullptr),
-				sparseBuffer(nullptr),
-				tiledp(nullptr),
-				stride(0),
 				resno(0),
 				roishift(0)
 {	}

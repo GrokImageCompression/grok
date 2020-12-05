@@ -180,78 +180,7 @@ bool T1HT::decompress(DecompressBlockExec *block) {
 }
 
 bool T1HT::postDecompress(DecompressBlockExec *block) {
-	auto cblk = block->cblk;
-	if (cblk->seg_buffers.empty())
-		return true;
-
-	uint16_t cblk_w =  (uint16_t)cblk->width();
-	uint16_t cblk_h =  (uint16_t)cblk->height();
-
-	auto src = unencoded_data;
-
-	// ROI shift
-	if (block->roishift) {
-		int32_t threshold = 1 << block->roishift;
-		for (auto j = 0U; j < cblk_h; ++j) {
-			for (auto i = 0U; i < cblk_w; ++i) {
-				auto value = *src;
-				auto magnitude = (value & 0x7FFFFFFF);
-				if (magnitude >= threshold)
-					magnitude = (magnitude >> block->roishift) & (value & 0x80000000);
-				src++;
-			}
-		}
-		//reset t1_data to start of buffer
-		src = unencoded_data;
-	}
-
-	uint32_t dest_width = block->stride;
-	int32_t *dest = block->tiledp;
-	if (block->sparseBuffer){
-       dest_width = cblk_w;
-       dest = src;
-	}
-
-	if (block->qmfbid == 1) {
-		int32_t shift = 31 - (block->k_msbs + 1);
-		int32_t *GRK_RESTRICT tile_data = dest;
-		for (auto j = 0U; j < cblk_h; ++j) {
-			int32_t *GRK_RESTRICT tile_row_data = tile_data;
-			for (auto i = 0U; i < cblk_w; ++i) {
-				int32_t temp = *src;
-				int32_t val = (temp & 0x7FFFFFFF) >> shift;
-				tile_row_data[i] = (int32_t)(((uint32_t)temp & 0x80000000) ? -val : val);
-				src++;
-			}
-			tile_data += dest_width;
-		}
-	} else {
-		int32_t *GRK_RESTRICT tile_data = dest;
-		for (auto j = 0U; j < cblk_h; ++j) {
-			float *GRK_RESTRICT tile_row_data = (float*)tile_data;
-			for (auto i = 0U; i < cblk_w; ++i) {
-		       float val = (float)(*src & 0x7FFFFFFF) * block->stepsize;
-		       tile_row_data[i] = ((uint32_t)*src & 0x80000000) ? -val : val;
-			   src++;
-			}
-			tile_data += dest_width;
-		}
-	}
-	if (block->sparseBuffer){
-		// write directly from t1 to sparse array
-		if (!block->sparseBuffer->write(block->x,
-							  block->y,
-							  block->x + cblk_w,
-							  block->y + cblk_h,
-							  unencoded_data,
-							  1,
-							  cblk_w,
-							  true)) {
-			  return false;
-		}
-	}
-
-	return true;
+	return block->tilec->postDecompressHT(unencoded_data, block);
 }
 
 }

@@ -1615,7 +1615,7 @@ static uint8_t* jp2_write_palette_clr(FileFormat *fileFormat, uint32_t *p_nb_byt
 	grk_write<uint8_t>(palette_ptr++, palette->num_channels);
 
 	for (uint8_t i = 0; i < palette->num_channels; ++i) {
-		grk_write<uint8_t>(palette_ptr++, palette->channel_prec[i]-1); //Bi
+		grk_write<uint8_t>(palette_ptr++, (uint8_t)(palette->channel_prec[i]-1)); //Bi
 	}
 
 	// LUT values for all components
