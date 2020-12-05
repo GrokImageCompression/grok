@@ -234,7 +234,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 	auto p_tile = tileProcessor->tile;
 	auto res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
 	auto p_src_data = src_buf->get_global_ptr();
-	uint64_t max_length = src_buf->getRemainingLength();
+	uint64_t available_bytes = src_buf->getRemainingLength();
 	auto active_src = p_src_data;
 
 	if (p_pi->layno == 0) {
@@ -264,7 +264,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 
 	/* SOP markers */
 	if (p_tcp->csty & J2K_CP_CSTY_SOP) {
-		if (max_length < 6) {
+		if (available_bytes < 6) {
 			//GRK_WARN("Not enough space for expected SOP marker");
 			throw TruncatedPacketHeaderException();
 		} else if ((*active_src) != 0xff || (*(active_src + 1) != 0x91)) {
@@ -278,6 +278,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 				return false;
 			}
 			active_src += 6;
+			available_bytes -= 6;
 		}
 	}
 
@@ -303,20 +304,19 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 		header_data_start = &tile_packet_header->buf;
 		header_data = *header_data_start;
 		remaining_length = tile_packet_header->len;
-		modified_length_ptr = &(remaining_length);
-
+		modified_length_ptr = &remaining_length;
 	} else if (p_tcp->ppt) { /* PPT */
 		header_data_start = &(p_tcp->ppt_data);
 		header_data = *header_data_start;
 		modified_length_ptr = &(p_tcp->ppt_len);
 	} else { /* Normal Case */
-		header_data_start = &(active_src);
+		header_data_start = &active_src;
 		header_data = *header_data_start;
-		remaining_length = (size_t) (p_src_data + max_length - header_data);
-		modified_length_ptr = &(remaining_length);
+		remaining_length = available_bytes;
+		modified_length_ptr = &remaining_length;
 	}
 
-	if (!*modified_length_ptr)
+	if (*modified_length_ptr==0)
 		throw TruncatedPacketHeaderException();
 
 	uint32_t present = 0;
