@@ -1892,7 +1892,7 @@ template <typename T,
 	}
 
     // in 53 vertical pass, we process 4 vertical columns at a time
-    size_t data_size = max_resolution(res, numres) * COLUMNS_PER_STEP;
+    size_t data_size = (size_t)max_resolution(res, numres) * COLUMNS_PER_STEP;
 	dwt_data<T> horiz;
     if (!horiz.alloc(data_size)) {
         GRK_ERROR("Out of memory");
