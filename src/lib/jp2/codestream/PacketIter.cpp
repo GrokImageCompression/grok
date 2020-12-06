@@ -247,7 +247,7 @@ static bool pi_next_lrcp(PacketIter *pi) {
 					index = pi->layno * pi->step_l + pi->resno * pi->step_r
 							+ pi->compno * pi->step_c + pi->precinctIndex * pi->step_p;
 					if (!pi->include[index]) {
-						pi->include[index] = true;
+						pi->include[index] = 1;
 						return true;
 					}
 					LABEL_SKIP: ;
@@ -292,7 +292,7 @@ static bool pi_next_rlcp(PacketIter *pi) {
 					index = pi->layno * pi->step_l + pi->resno * pi->step_r
 							+ pi->compno * pi->step_c + pi->precinctIndex * pi->step_p;
 					if (!pi->include[index]) {
-						pi->include[index] = true;
+						pi->include[index] = 1;
 						return true;
 					}
 					LABEL_SKIP: ;
@@ -399,7 +399,7 @@ static bool pi_next_rpcl(PacketIter *pi) {
 								+ pi->compno * pi->step_c
 								+ pi->precinctIndex * pi->step_p;
 						if (!pi->include[index]) {
-							pi->include[index] = true;
+							pi->include[index] = 1;
 							return true;
 						}
 						LABEL_SKIP: ;
@@ -450,7 +450,7 @@ static bool pi_next_pcrl(PacketIter *pi) {
 								+ pi->compno * pi->step_c
 								+ pi->precinctIndex * pi->step_p;
 						if (!pi->include[index]) {
-							pi->include[index] = true;
+							pi->include[index] = 1;
 							return true;
 						}
 						LABEL_SKIP: ;
@@ -499,7 +499,7 @@ static bool pi_next_cprl(PacketIter *pi) {
 								+ pi->compno * pi->step_c
 								+ pi->precinctIndex * pi->step_p;
 						if (!pi->include[index]) {
-							pi->include[index] = true;
+							pi->include[index] = 1;
 							return true;
 						}
 						LABEL_SKIP: ;
@@ -882,12 +882,10 @@ PacketIter* pi_create_decompress(grk_image *p_image, CodingParams *p_cp,
 	uint32_t bound = tcp->numpocs + 1;
 
 	uint32_t data_stride = 4 * GRK_J2K_MAXRLVLS;
-	auto tmp_data = (uint32_t*) grk_malloc(
-			data_stride * p_image->numcomps * sizeof(uint32_t));
+	auto tmp_data = (uint32_t*) grk_malloc((size_t)data_stride * p_image->numcomps * sizeof(uint32_t));
 	if (!tmp_data)
 		return nullptr;
-	auto tmp_ptr = (uint32_t**) grk_malloc(
-			p_image->numcomps * sizeof(uint32_t*));
+	auto tmp_ptr = (uint32_t**) grk_malloc(p_image->numcomps * sizeof(uint32_t*));
 	if (!tmp_ptr) {
 		grk_free(tmp_data);
 		return nullptr;
@@ -923,13 +921,10 @@ PacketIter* pi_create_decompress(grk_image *p_image, CodingParams *p_cp,
 
 	/* set values for first packet iterator */
 	auto current_pi = pi;
-
-	/* memory allocation for include */
-	current_pi->include = nullptr;
 	if (step_l && (tcp->numlayers < (SIZE_MAX / step_l) - 1)) {
-		current_pi->include = new bool[((size_t) tcp->numlayers + 1) * step_l];
-		for (size_t i = 0; i < ((size_t) tcp->numlayers + 1) * step_l; ++i)
-			current_pi->include[i] = false;
+		size_t includeLen = ((size_t) tcp->numlayers + 1) * step_l;
+		current_pi->include = new uint8_t[includeLen];
+		memset(current_pi->include, 0, includeLen);
 	}
 
 	/* special treatment for the first packet iterator */
@@ -952,9 +947,8 @@ PacketIter* pi_create_decompress(grk_image *p_image, CodingParams *p_cp,
 		current_comp->dx = img_comp->dx;
 		current_comp->dy = img_comp->dy;
 		/* resolutions have already been initialized */
-		for (uint32_t resno = 0; resno < current_comp->numresolutions;
-				resno++) {
-			grk_pi_resolution *res = current_comp->resolutions + resno;
+		for (uint32_t resno = 0; resno < current_comp->numresolutions;	resno++) {
+			auto res = current_comp->resolutions + resno;
 
 			res->pdx = *(encoding_value_ptr++);
 			res->pdy = *(encoding_value_ptr++);
@@ -985,9 +979,8 @@ PacketIter* pi_create_decompress(grk_image *p_image, CodingParams *p_cp,
 			current_comp->dx = img_comp->dx;
 			current_comp->dy = img_comp->dy;
 			/* resolutions have already been initialized */
-			for (uint32_t resno = 0; resno < current_comp->numresolutions;
-					resno++) {
-				grk_pi_resolution *res = current_comp->resolutions + resno;
+			for (uint32_t resno = 0; resno < current_comp->numresolutions;	resno++) {
+				auto res = current_comp->resolutions + resno;
 
 				res->pdx = *(encoding_value_ptr++);
 				res->pdy = *(encoding_value_ptr++);
@@ -1008,7 +1001,7 @@ PacketIter* pi_create_decompress(grk_image *p_image, CodingParams *p_cp,
 	return pi;
 }
 
-PacketIter* pi_initialise_encode(const grk_image *p_image,
+PacketIter* pi_create_compress(const grk_image *p_image,
 		CodingParams *p_cp, uint16_t tile_no, J2K_T2_MODE p_t2_mode) {
 	assert(p_cp != nullptr);
 	assert(p_image != nullptr);
@@ -1017,14 +1010,12 @@ PacketIter* pi_initialise_encode(const grk_image *p_image,
 	auto tcp = &p_cp->tcps[tile_no];
 	uint32_t bound = tcp->numpocs + 1;
 	uint32_t data_stride = 4 * GRK_J2K_MAXRLVLS;
-	auto tmp_data = (uint32_t*) grk_malloc(
-			data_stride * p_image->numcomps * sizeof(uint32_t));
+	auto tmp_data = (uint32_t*) grk_malloc((size_t)data_stride * p_image->numcomps * sizeof(uint32_t));
 	if (!tmp_data) {
 		return nullptr;
 	}
 
-	auto tmp_ptr = (uint32_t**) grk_malloc(
-			p_image->numcomps * sizeof(uint32_t*));
+	auto tmp_ptr = (uint32_t**) grk_malloc(p_image->numcomps * sizeof(uint32_t*));
 	if (!tmp_ptr) {
 		grk_free(tmp_data);
 		return nullptr;
@@ -1058,11 +1049,10 @@ PacketIter* pi_initialise_encode(const grk_image *p_image,
 	/* set values for first packet iterator*/
 	pi->tp_on = p_cp->m_coding_params.m_enc.m_tp_on;
 	auto current_pi = pi;
-	current_pi->include = nullptr;
-	if (step_l && (tcp->numlayers < (SIZE_MAX / step_l))) {
-		current_pi->include = new bool[(size_t) tcp->numlayers * step_l];
-		for (size_t i = 0; i < (size_t) tcp->numlayers * step_l; ++i)
-			current_pi->include[i] = false;
+	if (step_l && (tcp->numlayers < (SIZE_MAX / step_l) - 1)) {
+		size_t includeLen = ((size_t) tcp->numlayers + 1) * step_l;
+		current_pi->include = new uint8_t[includeLen];
+		memset(current_pi->include, 0, includeLen);
 	}
 
 	/* special treatment for the first packet iterator*/
@@ -1123,8 +1113,7 @@ PacketIter* pi_initialise_encode(const grk_image *p_image,
 			current_comp->dx = img_comp->dx;
 			current_comp->dy = img_comp->dy;
 			/* resolutions have already been initialized */
-			for (uint32_t resno = 0; resno < current_comp->numresolutions;
-					resno++) {
+			for (uint32_t resno = 0; resno < current_comp->numresolutions; resno++) {
 				auto res = current_comp->resolutions + resno;
 
 				res->pdx = *(encoding_value_ptr++);

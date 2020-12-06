@@ -70,7 +70,7 @@ struct PacketIter {
 	/** Enabling Tile part generation*/
 	bool  tp_on;
 	/** specify if the packet has already been included in a previous layer */
-	bool *include;
+	uint8_t *include;
 	/** layer step used to localize the packet in the include vector */
 	uint64_t step_l;
 	/** resolution step used to localize the packet in the include vector */
@@ -116,7 +116,7 @@ struct PacketIter {
  *
  * @return	a list of packet iterator that points to the first packet of the tile (not true).
  */
-PacketIter* pi_initialise_encode(const grk_image *image, CodingParams *cp,
+PacketIter* pi_create_compress(const grk_image *image, CodingParams *cp,
 		uint16_t tileno, J2K_T2_MODE t2_mode);
 
 /**
