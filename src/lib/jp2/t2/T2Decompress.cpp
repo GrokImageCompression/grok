@@ -61,6 +61,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			first_pass_failed[k] = true;
 
 		auto current_pi = pi + pino;
+		current_pi->include = pi->include;
 		if (current_pi->poc.prg == GRK_PROG_UNKNOWN) {
 			pi_destroy(pi);
 			delete[] first_pass_failed;

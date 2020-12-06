@@ -214,7 +214,6 @@ static void update_pi_dxy(PacketIter *pi) {
 static bool pi_next_lrcp(PacketIter *pi) {
 	grk_pi_comp *comp = nullptr;
 	grk_pi_resolution *res = nullptr;
-	uint64_t index = 0;
 
 	if (pi->first) {
 		if (pi->compno >= pi->numcomps){
@@ -244,12 +243,9 @@ static bool pi_next_lrcp(PacketIter *pi) {
 					if (pi->precinctIndex >= (uint64_t)res->pw * res->ph)
 						continue;
 
-					index = pi->layno * pi->step_l + pi->resno * pi->step_r
-							+ pi->compno * pi->step_c + pi->precinctIndex * pi->step_p;
-					if (!pi->include[index]) {
-						pi->include[index] = 1;
+					if (pi->update_include())
 						return true;
-					}
+
 					LABEL_SKIP: ;
 				}
 			}
@@ -262,7 +258,6 @@ static bool pi_next_lrcp(PacketIter *pi) {
 static bool pi_next_rlcp(PacketIter *pi) {
 	grk_pi_comp *comp = nullptr;
 	grk_pi_resolution *res = nullptr;
-	uint64_t index = 0;
 
 	if (pi->compno >= pi->numcomps){
 		GRK_ERROR("Packet iterator component %d must be strictly less than "
@@ -289,12 +284,9 @@ static bool pi_next_rlcp(PacketIter *pi) {
 					if (pi->precinctIndex >= (uint64_t)res->pw * res->ph)
 						continue;
 
-					index = pi->layno * pi->step_l + pi->resno * pi->step_r
-							+ pi->compno * pi->step_c + pi->precinctIndex * pi->step_p;
-					if (!pi->include[index]) {
-						pi->include[index] = 1;
+					if (pi->update_include())
 						return true;
-					}
+
 					LABEL_SKIP: ;
 				}
 			}
@@ -375,8 +367,6 @@ static uint8_t pi_next_l(PacketIter *pi){
 }
 
 static bool pi_next_rpcl(PacketIter *pi) {
-	uint64_t index = 0;
-
 	if (pi->first) {
 		goto LABEL_SKIP;
 	} else {
@@ -395,13 +385,8 @@ static bool pi_next_rpcl(PacketIter *pi) {
 					if (pi_next_l(pi) == 0)
 						continue;
 					for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
-						index = pi->layno * pi->step_l + pi->resno * pi->step_r
-								+ pi->compno * pi->step_c
-								+ pi->precinctIndex * pi->step_p;
-						if (!pi->include[index]) {
-							pi->include[index] = 1;
+						if (pi->update_include())
 							return true;
-						}
 						LABEL_SKIP: ;
 					}
 				}
@@ -414,7 +399,6 @@ static bool pi_next_rpcl(PacketIter *pi) {
 
 static bool pi_next_pcrl(PacketIter *pi) {
 	grk_pi_comp *comp = nullptr;
-	uint64_t index = 0;
 
 	if (pi->compno >= pi->numcomps){
 		GRK_ERROR("Packet iterator component %d must be strictly less than "
@@ -446,13 +430,8 @@ static bool pi_next_pcrl(PacketIter *pi) {
 					if (pi_next_l(pi) == 0)
 						continue;
 					for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
-						index = pi->layno * pi->step_l + pi->resno * pi->step_r
-								+ pi->compno * pi->step_c
-								+ pi->precinctIndex * pi->step_p;
-						if (!pi->include[index]) {
-							pi->include[index] = 1;
+						if (pi->update_include())
 							return true;
-						}
 						LABEL_SKIP: ;
 					}
 				}
@@ -465,7 +444,6 @@ static bool pi_next_pcrl(PacketIter *pi) {
 
 static bool pi_next_cprl(PacketIter *pi) {
 	grk_pi_comp *comp = nullptr;
-	uint64_t index = 0;
 
 	if (pi->compno >= pi->numcomps){
 		GRK_ERROR("Packet iterator component %d must be strictly less than "
@@ -495,13 +473,8 @@ static bool pi_next_cprl(PacketIter *pi) {
 					if (pi_next_l(pi) == 0)
 						continue;
 					for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
-						index = pi->layno * pi->step_l + pi->resno * pi->step_r
-								+ pi->compno * pi->step_c
-								+ pi->precinctIndex * pi->step_p;
-						if (!pi->include[index]) {
-							pi->include[index] = 1;
+						if (pi->update_include())
 							return true;
-						}
 						LABEL_SKIP: ;
 					}
 				}
@@ -921,11 +894,6 @@ PacketIter* pi_create_decompress(grk_image *p_image, CodingParams *p_cp,
 
 	/* set values for first packet iterator */
 	auto current_pi = pi;
-	if (step_l && (tcp->numlayers < (SIZE_MAX / step_l) - 1)) {
-		size_t includeLen = ((size_t) tcp->numlayers + 1) * step_l;
-		current_pi->include = new uint8_t[includeLen];
-		memset(current_pi->include, 0, includeLen);
-	}
 
 	/* special treatment for the first packet iterator */
 	current_pi->tx0 = tx0;
@@ -1049,11 +1017,6 @@ PacketIter* pi_create_compress(const grk_image *p_image,
 	/* set values for first packet iterator*/
 	pi->tp_on = p_cp->m_coding_params.m_enc.m_tp_on;
 	auto current_pi = pi;
-	if (step_l && (tcp->numlayers < (SIZE_MAX / step_l) - 1)) {
-		size_t includeLen = ((size_t) tcp->numlayers + 1) * step_l;
-		current_pi->include = new uint8_t[includeLen];
-		memset(current_pi->include, 0, includeLen);
-	}
 
 	/* special treatment for the first packet iterator*/
 	current_pi->tx0 = tx0;
@@ -1412,7 +1375,7 @@ void pi_enable_tile_part_generation(PacketIter *pi, CodingParams *cp, uint16_t t
 
 void pi_destroy(PacketIter *p_pi) {
 	if (p_pi) {
-		delete[] p_pi->include;
+		p_pi->destroy_include();
 		delete[] p_pi;
 	}
 }
@@ -1458,7 +1421,7 @@ bool pi_next(PacketIter *pi) {
 	return false;
 }
 
-PacketIter::PacketIter() : tp_on(false), include(nullptr), step_l(0), step_r(0), step_c(0), step_p(0), compno(0),
+PacketIter::PacketIter() : tp_on(false), step_l(0), step_r(0), step_c(0), step_p(0), compno(0),
 							resno(0), precinctIndex(0), layno(0), first(true), numcomps(0),comps(nullptr), tx0(0), ty0(0),
 							tx1(0), ty1(0), x(0), y(0), dx(0), dy(0)
 {
@@ -1475,6 +1438,41 @@ PacketIter::~PacketIter(){
 		}
 		grk_free(comps);
 	}
+}
+
+uint8_t* PacketIter::get_include(uint16_t layerno){
+	assert(layerno <= include.size());
+	if (layerno == include.size()){
+		size_t len = (step_l + 7)/8;
+		auto buf = new uint8_t[len];
+		memset(buf, 0, len);
+		include.push_back(buf);
+		return buf;
+	}
+	return include[layerno];
+}
+
+bool PacketIter::update_include(void){
+	uint64_t index = resno * step_r + compno * step_c + precinctIndex * step_p;
+	assert(index < step_l);
+
+	auto include = get_include(layno);
+	uint32_t include_index 	= (index >> 3);
+	uint32_t shift 	= (index & 7);
+	bool rc = false;
+	uint8_t val = include[include_index];
+	if ( ((val >> shift)& 1) == 0 ) {
+		include[include_index] = val | (1 << shift);
+		rc = true;
+	}
+
+	return rc;
+}
+
+void PacketIter::destroy_include(void){
+	for (auto &b : include)
+		delete[] b;
+	include.clear();
 }
 
 }

@@ -67,10 +67,16 @@ struct grk_pi_comp {
 struct PacketIter {
 	PacketIter();
 	~PacketIter();
+
+	uint8_t* get_include(uint16_t layerIndex);
+	bool update_include(void);
+	void destroy_include(void);
+
 	/** Enabling Tile part generation*/
 	bool  tp_on;
-	/** specify if the packet has already been included in a previous layer */
-	uint8_t *include;
+
+	std::vector<uint8_t*> include;
+
 	/** layer step used to localize the packet in the include vector */
 	uint64_t step_l;
 	/** resolution step used to localize the packet in the include vector */
