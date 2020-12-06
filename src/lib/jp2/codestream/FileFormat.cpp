@@ -1302,7 +1302,7 @@ static bool jp2_check_color(grk_image *image, grk_jp2_color *color) {
 
 		for (i = 0; i < n; i++) {
 			if (info[i].cn >= num_channels) {
-				GRK_ERROR("Invalid component index %u (>= %u).", info[i].cn,
+				GRK_ERROR("Invalid channel index %u (>= %u).", info[i].cn,
 						num_channels);
 				return false;
 			}
@@ -1311,7 +1311,7 @@ static bool jp2_check_color(grk_image *image, grk_jp2_color *color) {
 
 			if (info[i].asoc > 0
 					&& (uint32_t) (info[i].asoc - 1) >= num_channels) {
-				GRK_ERROR("Invalid component index %u (>= %u).",
+				GRK_ERROR("Invalid component association %u  (>= %u).",
 						info[i].asoc - 1, num_channels);
 				return false;
 			}
@@ -2499,6 +2499,9 @@ bool FileFormat::read_header(grk_header_info  *header_info, grk_image **p_image)
 		return false;
 
 	auto image = *p_image;
+	if (!jp2_check_color(image, &color))
+		return false;
+
 
 	if (has_capture_resolution) {
 		image->has_capture_resolution = true;
@@ -2593,10 +2596,6 @@ bool FileFormat::decompress_tile(grk_image *p_image,uint16_t tile_index) {
 }
 
 bool FileFormat::postDecompress( grk_image *p_image){
-
-	if (!jp2_check_color(p_image, &(color)))
-		return false;
-
 	if (color.palette) {
 		/* Part 1, I.5.3.4: Either both or none : */
 		if (!color.palette->component_mapping)
@@ -2608,9 +2607,8 @@ bool FileFormat::postDecompress( grk_image *p_image){
 	}
 
 	/* Apply channel definitions if needed */
-	if (color.channel_definition) {
+	if (color.channel_definition)
 		jp2_apply_channel_definition(p_image, &(color));
-	}
 
 	return true;
 }

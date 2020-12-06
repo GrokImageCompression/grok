@@ -151,6 +151,7 @@ template<typename T> struct TileComponentWindowBuffer {
 		}
 		offsetx = x;
 		offsety = y;
+		/////////////////////////////////////////////////////////////////////
 
 		auto dest = (use_band_buffers()) ? band_buf(resno,bandIndex) : tile_buf();
 

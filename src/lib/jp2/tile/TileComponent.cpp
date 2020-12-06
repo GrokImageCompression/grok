@@ -399,7 +399,7 @@ bool TileComponent::postDecompress(int32_t *srcData, DecompressBlockExec *block)
 
 bool TileComponent::postDecompressHT(int32_t *srcData, DecompressBlockExec *block){
 	auto src = srcData;
-	int32_t *dest = m_sa ? src : buf->cblk_ptr( block->resno, block->bandIndex,
+	int32_t *dest = m_sa ? srcData : buf->cblk_ptr( block->resno, block->bandIndex,
 			block->x, block->y);
 	auto cblk = block->cblk;
 	if (cblk->seg_buffers.empty())
