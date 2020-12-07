@@ -452,15 +452,19 @@ bool TileComponent::postDecompressHT(int32_t *srcData, DecompressBlockExec *bloc
 	}
 	if (m_sa){
 		// write directly from t1 to sparse array
-		if (!m_sa->write(block->x,
-							  block->y,
-							  block->x + cblk_w,
-							  block->y + cblk_h,
-							  srcData,
-							  1,
-							  cblk_w,
-							  true)) {
-			  return false;
+		try {
+			if (!m_sa->write(block->x,
+								  block->y,
+								  block->x + cblk_w,
+								  block->y + cblk_h,
+								  srcData,
+								  1,
+								  cblk_w,
+								  true)) {
+				  return false;
+			}
+		} catch (MissingSparseBlockException &ex){
+			return false;
 		}
 	}
 
