@@ -288,6 +288,64 @@ bool TileComponent::isWholeTileDecoding() {
 ISparseBuffer* TileComponent::getSparseBuffer(){
 	return m_sa;
 }
+
+
+
+template<typename T> class HalfFilter {
+	void copy(T* dest,T* src, uint32_t len){
+		for (uint32_t i = 0; i < len; ++i)
+			dest[i] = src[i]/2;
+	}
+};
+
+template<typename T> class RoiHalfFilter {
+	RoiHalfFilter(uint32_t roi) : roiShift(roi){}
+	void copy(T* dest,T* src, uint32_t len){
+		T thresh = 1 << roiShift;
+		for (uint32_t i = 0; i < len; ++i){
+			T val = src[i];
+			T mag = abs(val);
+			if (mag >= thresh) {
+				mag >>= roiShift;
+				val = val < 0 ? -mag : mag;
+			}
+			dest[i] = val/2;
+		}
+	}
+private:
+	uint32_t roiShift;
+};
+
+template<typename T> class ScaleFilter {
+	ScaleFilter(float s) : scale(s)	{}
+	void copy(T* dest,T* src, uint32_t len){
+		for (uint32_t i = 0; i < len; ++i)
+			((float*)dest)[i] = ((float*)src)[i] * scale;
+	}
+private:
+	float scale;
+};
+
+template<typename T> class RoiScaleFilter {
+	RoiScaleFilter(uint32_t roi, float s) : roiShift(roi), scale(s)	{}
+	void copy(T* dest,T* src, uint32_t len){
+		T thresh = 1 << roiShift;
+		for (uint32_t i = 0; i < len; ++i){
+			T val = src[i];
+			T mag = abs(val);
+			if (mag >= thresh) {
+				mag >>= roiShift;
+				val = val < 0 ? -mag : mag;
+			}
+			((float*)dest)[i] = (float)val * scale;
+		}
+	}
+private:
+	uint32_t roiShift;
+	float scale;
+};
+
+
 bool TileComponent::postDecompress(int32_t *srcData, DecompressBlockExec *block) {
 	auto tilec_data = buf->cblk_ptr( block->resno, block->bandIndex,
 			block->x, block->y);
@@ -333,12 +391,12 @@ bool TileComponent::postDecompress(int32_t *srcData, DecompressBlockExec *block)
     			src += cblk_w;
      		}
     	} else {
-			float *GRK_RESTRICT tiledp = (float*) src;
+			int32_t *GRK_RESTRICT tiledp = src;
 			for (uint32_t j = 0; j < cblk_h; ++j) {
-				float *GRK_RESTRICT tiledp2 = tiledp;
+				int32_t *GRK_RESTRICT tiledp2 = tiledp;
 				for (uint32_t i = 0; i < cblk_w; ++i) {
 					float tmp = (float) (*src) * stepsize_over_two;
-					*tiledp2 = tmp;
+					*(float*)tiledp2 = tmp;
 					src++;
 					tiledp2++;
 				}
@@ -378,12 +436,12 @@ bool TileComponent::postDecompress(int32_t *srcData, DecompressBlockExec *block)
 				tiledp += stride;
 			}
 		} else {
-			float *GRK_RESTRICT tiledp = (float*) dest;
+			int32_t *GRK_RESTRICT tiledp = dest;
 			for (uint32_t j = 0; j < cblk_h; ++j) {
-				float *GRK_RESTRICT tiledp2 = tiledp;
+				int32_t *GRK_RESTRICT tiledp2 = tiledp;
 				for (uint32_t i = 0; i < cblk_w; ++i) {
 					float tmp = (float) (*srcData) * stepsize_over_two;
-					*tiledp2 = tmp;
+					*(float*)tiledp2 = tmp;
 					srcData++;
 					tiledp2++;
 				}

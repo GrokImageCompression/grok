@@ -310,6 +310,24 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 		}
 	}
 
+
+	// rhs coordinates are in "this" coordinate system
+	template<typename F> void copy(grk_buffer_2d &rhs){
+		auto inter = this->intersection(rhs);
+		if (!inter.is_non_degenerate())
+			return;
+
+		T* dest = data + (inter.y0 * stride + inter.x0);
+		T* src = rhs.data + ((inter.y0 - rhs.y0) * rhs.stride + inter.x0 - rhs.x0);
+		uint32_t len = inter.width();
+		F filter;
+		for (uint32_t j = inter.y0; j < inter.y1; ++j){
+			filter.copy(dest,src, len);
+			dest += stride;
+			src += rhs.stride;
+		}
+	}
+
 	T *data;		/* internal array*/
     bool owns_data;	/* true if buffer manages the data array */
     uint32_t stride;
