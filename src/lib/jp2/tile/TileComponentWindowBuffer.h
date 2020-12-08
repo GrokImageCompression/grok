@@ -113,8 +113,10 @@ template<typename T> struct TileComponentWindowBuffer {
 		for (auto& b : res_buffers)
 			delete b;
 	}
+
+
 	/**
-	 * Get pointer to code block region in tile buffer
+	 * Tranform code block offsets
 	 *
 	 * @param resno resolution number
 	 * @param bandIndex band index (0 for LL band of 0th resolution, otherwise {0,1,2} for {HL,LH,HH} bandWindow
@@ -122,13 +124,11 @@ template<typename T> struct TileComponentWindowBuffer {
 	 * @param offsety y offset of code block
 	 *
 	 */
-	T* cblk_ptr(uint8_t resno,uint8_t bandIndex, uint32_t &offsetx, uint32_t &offsety) const {
+	void transform(uint8_t resno,uint8_t bandIndex, uint32_t &offsetx, uint32_t &offsety) const {
 		assert(bandIndex < BAND_NUM_INDICES && resno < resolutions.size());
 		if (resno==0)
 			assert(bandIndex==BAND_RES_ZERO_INDEX_LL);
 
-		//////////////////////////////////////////////
-		// calculate buffer offset for this code block
 		auto res = resolutions[resno];
 		auto band = res->bandWindow + bandIndex;
 
@@ -142,21 +142,28 @@ template<typename T> struct TileComponentWindowBuffer {
 		// if we use one single buffer, then add band offset
 		// relative to previous resolution to get correct buffer offset
 		if (!use_band_buffers()){
-			auto pres = (resno == 0) ? nullptr : resolutions[ resno - 1];
+			auto res = (resno == 0) ? nullptr : resolutions[ resno - 1];
 
 			if (band->orientation & 1)
-				x += pres->width();
+				x += res->width();
 			if (band->orientation & 2)
-				y += pres->height();
+				y += res->height();
 		}
 		offsetx = x;
 		offsety = y;
-		/////////////////////////////////////////////////////////////////////
-
-		auto dest = (use_band_buffers()) ? band_buf(resno,bandIndex) : tile_buf();
-
-		return dest->data + (uint64_t) x + y * (uint64_t) dest->stride;
 	}
+
+	/**
+	 * Get destination buffer
+	 *
+	 * @param resno resolution number
+	 * @param bandIndex band index (0 for LL band of 0th resolution, otherwise {0,1,2} for {HL,LH,HH} bandWindow
+	 *
+	 */
+	grk_buffer_2d<T>* dest_buf(uint8_t resno,uint8_t bandIndex) const {
+		return (use_band_buffers()) ? band_buf(resno,bandIndex) : tile_buf();
+	}
+
 	/**
 	 * Get pointer to band buffer
 	 *

@@ -292,7 +292,7 @@ ISparseBuffer* TileComponent::getSparseBuffer(){
 
 
 template<typename T> class HalfFilter {
-	void copy(T* dest,T* src, uint32_t len){
+	inline void copy(T* dest,T* src, uint32_t len){
 		for (uint32_t i = 0; i < len; ++i)
 			dest[i] = src[i]/2;
 	}
@@ -300,7 +300,7 @@ template<typename T> class HalfFilter {
 
 template<typename T> class RoiHalfFilter {
 	RoiHalfFilter(uint32_t roi) : roiShift(roi){}
-	void copy(T* dest,T* src, uint32_t len){
+	inline void copy(T* dest,T* src, uint32_t len){
 		T thresh = 1 << roiShift;
 		for (uint32_t i = 0; i < len; ++i){
 			T val = src[i];
@@ -318,7 +318,7 @@ private:
 
 template<typename T> class ScaleFilter {
 	ScaleFilter(float s) : scale(s)	{}
-	void copy(T* dest,T* src, uint32_t len){
+	inline void copy(T* dest,T* src, uint32_t len){
 		for (uint32_t i = 0; i < len; ++i)
 			((float*)dest)[i] = ((float*)src)[i] * scale;
 	}
@@ -328,7 +328,7 @@ private:
 
 template<typename T> class RoiScaleFilter {
 	RoiScaleFilter(uint32_t roi, float s) : roiShift(roi), scale(s)	{}
-	void copy(T* dest,T* src, uint32_t len){
+	inline void copy(T* dest,T* src, uint32_t len){
 		T thresh = 1 << roiShift;
 		for (uint32_t i = 0; i < len; ++i){
 			T val = src[i];
@@ -347,8 +347,9 @@ private:
 
 
 bool TileComponent::postDecompress(int32_t *srcData, DecompressBlockExec *block) {
-	auto tilec_data = buf->cblk_ptr( block->resno, block->bandIndex,
-			block->x, block->y);
+	buf->transform(block->resno,block->bandIndex,block->x,block->y);
+	auto dest = buf->dest_buf(block->resno,block->bandIndex);
+	auto tilec_data = dest->data + (uint64_t) block->x + block->y * (uint64_t) dest->stride;
 	auto cblk = block->cblk;
 	if (cblk->seg_buffers.empty())
 		return true;
@@ -455,10 +456,79 @@ bool TileComponent::postDecompress(int32_t *srcData, DecompressBlockExec *block)
 	return true;
 }
 
+
+
+template<typename T> class ShiftHTFilter {
+	inline void copy(T* dest,T* src, uint32_t len){
+		for (uint32_t i = 0; i < len; ++i){
+			T val = src[i];
+			T val_shifted = (val & 0x7FFFFFFF) >> shift;
+			dest[i] = (T)(((uint32_t)val & 0x80000000) ? -val_shifted : val_shifted);
+		}
+	}
+private:
+	uint32_t shift;
+};
+
+template<typename T> class RoiShiftHTFilter {
+	RoiShiftHTFilter(uint32_t roi) : roiShift(roi){}
+	inline void copy(T* dest,T* src, uint32_t len){
+		T thresh = 1 << roiShift;
+		for (uint32_t i = 0; i < len; ++i){
+			T val = src[i];
+			T mag = (val & 0x7FFFFFFF);
+			if (mag >= thresh) {
+				val = (mag >> roiShift) & (val & 0x80000000);
+			}
+			dest[i] = val/2;
+		}
+	}
+private:
+	uint32_t roiShift;
+};
+
+template<typename T> class ScaleHTFilter {
+	ScaleHTFilter(float s) : scale(s)	{}
+	inline void copy(T* dest,T* src, uint32_t len){
+		for (uint32_t i = 0; i < len; ++i)
+			((float*)dest)[i] = ((float*)src)[i] * scale;
+	}
+private:
+	float scale;
+};
+
+template<typename T> class RoiScaleHTFilter {
+	RoiScaleHTFilter(uint32_t roi, float s) : roiShift(roi), scale(s)	{}
+	inline void copy(T* dest,T* src, uint32_t len){
+		T thresh = 1 << roiShift;
+		for (uint32_t i = 0; i < len; ++i){
+			T val = src[i];
+			T mag = (val & 0x7FFFFFFF);
+			if (mag >= thresh) {
+				val = (mag >> roiShift) & (val & 0x80000000);
+			}
+			((float*)dest)[i] = (float)val * scale;
+		}
+	}
+private:
+	uint32_t roiShift;
+	float scale;
+};
+
+
+
 bool TileComponent::postDecompressHT(int32_t *srcData, DecompressBlockExec *block){
 	auto src = srcData;
-	int32_t *dest = m_sa ? srcData : buf->cblk_ptr( block->resno, block->bandIndex,
-			block->x, block->y);
+	int32_t *tilec_data = nullptr;
+	if (m_sa) {
+		tilec_data = srcData;
+	}
+	else {
+		buf->transform(block->resno,block->bandIndex,block->x,block->y);
+		auto dest = buf->dest_buf(block->resno,block->bandIndex);
+		tilec_data = dest->data + (uint64_t) block->x + block->y * (uint64_t) dest->stride;
+	}
+
 	auto cblk = block->cblk;
 	if (cblk->seg_buffers.empty())
 		return true;
@@ -471,11 +541,12 @@ bool TileComponent::postDecompressHT(int32_t *srcData, DecompressBlockExec *bloc
 		int32_t threshold = 1 << block->roishift;
 		for (auto j = 0U; j < cblk_h; ++j) {
 			for (auto i = 0U; i < cblk_w; ++i) {
-				auto value = *src;
-				auto magnitude = (value & 0x7FFFFFFF);
-				if (magnitude >= threshold)
-					magnitude = (magnitude >> block->roishift) & (value & 0x80000000);
-				src++;
+				auto val = *src;
+				auto mag = (val & 0x7FFFFFFF);
+				if (mag >= threshold)
+					*src++ = (mag >> block->roishift) & (val & 0x80000000);
+				else
+					*src++ = val;
 			}
 		}
 		//reset src data to beginning
@@ -484,25 +555,26 @@ bool TileComponent::postDecompressHT(int32_t *srcData, DecompressBlockExec *bloc
 
 	uint32_t dest_width = m_sa ? cblk_w : buf->stride(block->resno,block->bandIndex);
 	if (block->qmfbid == 1) {
-		int32_t shift = 31 - (block->k_msbs + 1);
-		int32_t *GRK_RESTRICT tile_data = dest;
+		uint32_t shift = 31 - (block->k_msbs + 1);
+		int32_t *GRK_RESTRICT tile_data = tilec_data;
 		for (auto j = 0U; j < cblk_h; ++j) {
 			int32_t *GRK_RESTRICT tile_row_data = tile_data;
 			for (auto i = 0U; i < cblk_w; ++i) {
-				int32_t temp = *src;
-				int32_t val = (temp & 0x7FFFFFFF) >> shift;
-				tile_row_data[i] = (int32_t)(((uint32_t)temp & 0x80000000) ? -val : val);
+				int32_t val = *src;
+				int32_t val_shifted = (val & 0x7FFFFFFF) >> shift;
+				tile_row_data[i] = (int32_t)(((uint32_t)val & 0x80000000) ? -val_shifted : val_shifted);
 				src++;
 			}
 			tile_data += dest_width;
 		}
 	} else {
-		int32_t *GRK_RESTRICT tile_data = dest;
+		int32_t *GRK_RESTRICT tile_data = tilec_data;
 		for (auto j = 0U; j < cblk_h; ++j) {
 			float *GRK_RESTRICT tile_row_data = (float*)tile_data;
 			for (auto i = 0U; i < cblk_w; ++i) {
-		       float val = (float)(*src & 0x7FFFFFFF) * block->stepsize;
-		       tile_row_data[i] = ((uint32_t)*src & 0x80000000) ? -val : val;
+				int32_t val = *src;
+		       float val_scaled = (float)(val & 0x7FFFFFFF) * block->stepsize;
+		       tile_row_data[i] = ((uint32_t)val & 0x80000000) ? -val_scaled : val_scaled;
 			   src++;
 			}
 			tile_data += dest_width;
