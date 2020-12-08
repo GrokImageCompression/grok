@@ -75,7 +75,7 @@ struct PacketIter {
 	/** Enabling Tile part generation*/
 	bool  tp_on;
 
-	std::vector<uint8_t*> include;
+	std::vector<uint8_t*> *include;
 
 	/** layer step used to localize the packet in the include vector */
 	uint64_t step_l;
@@ -119,11 +119,12 @@ struct PacketIter {
  * @param	cp		the coding parameters.
  * @param	tileno	index of the tile being encoded.
  * @param	t2_mode	the type of pass for generating the packet iterator
+ * @param 	include	vector of include buffers, one per layer
  *
  * @return	a list of packet iterator that points to the first packet of the tile (not true).
  */
 PacketIter* pi_create_compress(const grk_image *image, CodingParams *cp,
-		uint16_t tileno, J2K_T2_MODE t2_mode);
+		uint16_t tileno, J2K_T2_MODE t2_mode, std::vector<uint8_t*> *include);
 
 /**
  * Updates the compressing parameters of the codec.
@@ -153,10 +154,11 @@ void pi_enable_tile_part_generation(PacketIter *pi, CodingParams *cp, uint16_t t
  @param image Raw image for which the packets will be listed
  @param cp Coding parameters
  @param tileno Number that identifies the tile for which to list the packets
+ @param include	vector of include buffers, one per layer
  @return a packet iterator that points to the first packet of the tile
  @see pi_destroy
  */
-PacketIter* pi_create_decompress(grk_image *image, CodingParams *cp, uint16_t tileno);
+PacketIter* pi_create_decompress(grk_image *image, CodingParams *cp, uint16_t tileno, std::vector<uint8_t*> *include);
 /**
  * Destroys a packet iterator array.
  *
