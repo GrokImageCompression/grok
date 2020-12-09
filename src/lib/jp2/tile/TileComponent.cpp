@@ -290,16 +290,9 @@ ISparseBuffer* TileComponent::getSparseBuffer(){
 }
 
 
-
-template<typename T> class HalfFilter {
-	inline void copy(T* dest,T* src, uint32_t len){
-		for (uint32_t i = 0; i < len; ++i)
-			dest[i] = src[i]/2;
-	}
-};
-
-template<typename T> class RoiHalfFilter {
-	RoiHalfFilter(uint32_t roi) : roiShift(roi){}
+template<typename T> class RoiShiftFilter {
+public:
+	RoiShiftFilter(uint32_t roi) : roiShift(roi){}
 	inline void copy(T* dest,T* src, uint32_t len){
 		T thresh = 1 << roiShift;
 		for (uint32_t i = 0; i < len; ++i){
@@ -315,18 +308,17 @@ template<typename T> class RoiHalfFilter {
 private:
 	uint32_t roiShift;
 };
-
-template<typename T> class ScaleFilter {
-	ScaleFilter(float s) : scale(s)	{}
+template<typename T> class ShiftFilter {
+public:
 	inline void copy(T* dest,T* src, uint32_t len){
 		for (uint32_t i = 0; i < len; ++i)
-			((float*)dest)[i] = ((float*)src)[i] * scale;
+			dest[i] = src[i]/2;
 	}
-private:
-	float scale;
 };
 
+
 template<typename T> class RoiScaleFilter {
+public:
 	RoiScaleFilter(uint32_t roi, float s) : roiShift(roi), scale(s)	{}
 	inline void copy(T* dest,T* src, uint32_t len){
 		T thresh = 1 << roiShift;
@@ -345,120 +337,102 @@ private:
 	float scale;
 };
 
+template<typename T> class ScaleFilter {
+public:
+	ScaleFilter(float s) : scale(s)	{}
+	inline void copy(T* dest,T* src, uint32_t len){
+		for (uint32_t i = 0; i < len; ++i){
+			((float*)dest)[i] = (float)src[i] * scale;
+		}
+	}
+private:
+	float scale;
+};
+
 
 bool TileComponent::postDecompress(int32_t *srcData, DecompressBlockExec *block) {
-	buf->transform(block->resno,block->bandIndex,block->x,block->y);
-	auto dest = buf->dest_buf(block->resno,block->bandIndex);
-	auto tilec_data = dest->data + (uint64_t) block->x + block->y * (uint64_t) dest->stride;
 	auto cblk = block->cblk;
 	if (cblk->seg_buffers.empty())
 		return true;
-	uint32_t qmfbid = block->qmfbid;
-	float stepsize_over_two = block->stepsize/2;
-	uint32_t stride = buf->stride(block->resno,block->bandIndex);
-	uint32_t cblk_w = cblk->width();
-	uint32_t cblk_h = cblk->height();
 
-	//1. ROI
-	if (block->roishift) {
-		auto src_roi = srcData;
-		int32_t thresh = 1 << block->roishift;
-		for (uint32_t j = 0; j < cblk_h; ++j) {
-			for (uint32_t i = 0; i < cblk_w; ++i) {
-				int32_t val = src_roi[i];
-				int32_t mag = abs(val);
-				if (mag >= thresh) {
-					mag >>= block->roishift;
-					src_roi[i] = val < 0 ? -mag : mag;
-				}
-			}
-			src_roi += cblk_w;
-		}
-	}
-
+	grk_buffer_2d<int32_t> dest_rect;
+	grk_buffer_2d<int32_t> src_rect = grk_buffer_2d<int32_t>(srcData, false, cblk->width(), cblk->width(), cblk->height());
+	buf->transform(block->resno,block->bandIndex,block->x,block->y);
 	if (m_sa) {
-		auto src = srcData;
-    	if (qmfbid == 1) {
-    		for (uint32_t j = 0; j < cblk_h; ++j) {
-    			uint32_t i = 0;
-    			for (; i < (cblk_w & ~(uint32_t) 3U); i += 4U) {
-    				src[i + 0U] /= 2;
-    				src[i + 1U] /= 2;
-    				src[i + 2U] /= 2;
-    				src[i + 3U] /= 2;
-    			}
-    			for (; i < cblk_w; ++i)
-    				src[i] /= 2;
-    			src += cblk_w;
-     		}
-    	} else {
-			int32_t *GRK_RESTRICT tiledp = src;
-			for (uint32_t j = 0; j < cblk_h; ++j) {
-				int32_t *GRK_RESTRICT tiledp2 = tiledp;
-				for (uint32_t i = 0; i < cblk_w; ++i) {
-					float tmp = (float) (*src) * stepsize_over_two;
-					*(float*)tiledp2 = tmp;
-					src++;
-					tiledp2++;
-				}
-				tiledp += cblk_w;
-			}
-    	}
-		// write directly from t1 to sparse array
-        if (!m_sa->write(block->x,
-					  block->y,
-					  block->x + cblk_w,
-					  block->y + cblk_h,
-					  srcData,
-					  1,
-					  cblk_w,
-					  true)) {
-			  return false;
-		  }
-	} else {
-		auto dest = tilec_data;
-		if (qmfbid == 1) {
-			int32_t *GRK_RESTRICT tiledp = dest;
-			for (uint32_t j = 0; j < cblk_h; ++j) {
-				uint32_t i = 0;
-				for (; i < (cblk_w & ~(uint32_t) 3U); i += 4U) {
-					int32_t tmp0 = srcData[i + 0U];
-					int32_t tmp1 = srcData[i + 1U];
-					int32_t tmp2 = srcData[i + 2U];
-					int32_t tmp3 = srcData[i + 3U];
-					((int32_t*) tiledp)[i + 0U] = tmp0/ 2;
-					((int32_t*) tiledp)[i + 1U] = tmp1/ 2;
-					((int32_t*) tiledp)[i + 2U] = tmp2/ 2;
-					((int32_t*) tiledp)[i + 3U] = tmp3/ 2;
-				}
-				for (; i < cblk_w; ++i)
-					((int32_t*) tiledp)[i] =  srcData[i] / 2;
-				srcData += (size_t) cblk_w;
-				tiledp += stride;
-			}
+		dest_rect = src_rect;
+	}
+	else {
+		*((grk_rect_u32*)&src_rect) = grk_rect_u32(block->x,
+													block->y,
+													block->x + cblk->width(),
+													block->y + cblk->height());
+
+		dest_rect = buf->dest_buf(block->resno,block->bandIndex);
+	}
+
+	if (block->roishift) {
+		if (block->qmfbid == 1) {
+			auto f = RoiShiftFilter<int32_t>(block->roishift);
+			dest_rect.copy< RoiShiftFilter<int32_t> >(src_rect, f);
 		} else {
-			int32_t *GRK_RESTRICT tiledp = dest;
-			for (uint32_t j = 0; j < cblk_h; ++j) {
-				int32_t *GRK_RESTRICT tiledp2 = tiledp;
-				for (uint32_t i = 0; i < cblk_w; ++i) {
-					float tmp = (float) (*srcData) * stepsize_over_two;
-					*(float*)tiledp2 = tmp;
-					srcData++;
-					tiledp2++;
-				}
-				tiledp += stride;
-			}
+			auto f = RoiScaleFilter<int32_t>(block->roishift,block->stepsize/2);
+			dest_rect.copy< RoiScaleFilter<int32_t> >(src_rect, f);
+		}
+	} else {
+		if (block->qmfbid == 1) {
+			auto f = ShiftFilter<int32_t>();
+			dest_rect.copy< ShiftFilter<int32_t> >(src_rect, f);
+		} else {
+			auto f = ScaleFilter<int32_t>(block->stepsize/2);
+			dest_rect.copy< ScaleFilter<int32_t> >(src_rect, f);
 		}
 	}
 
-	// note: if no MCT, then we could do dc shift and clamp here
+	if (m_sa){
+		// write directly from t1 to sparse array
+		try {
+			if (!m_sa->write(block->x,
+								  block->y,
+								  block->x + cblk->width(),
+								  block->y + cblk->height(),
+								  srcData,
+								  1,
+								  cblk->width(),
+								  true)) {
+				  return false;
+			}
+		} catch (MissingSparseBlockException &ex){
+			return false;
+		}
+	}
 
 	return true;
 }
 
-
-
+template<typename T> class RoiShiftHTFilter {
+public:
+	RoiShiftHTFilter(uint32_t roi, uint32_t shift) : roiShift(roi),
+													 shift(shift)
+	{}
+	inline void copy(T* dest,T* src, uint32_t len){
+		T thresh = 1 << roiShift;
+		for (uint32_t i = 0; i < len; ++i){
+			T val = src[i];
+			T mag = (val & 0x7FFFFFFF);
+			if (mag >= thresh) {
+				val = (mag >> roiShift) & (val & 0x80000000);
+			}
+			int32_t val_shifted = (val & 0x7FFFFFFF) >> shift;
+			dest[i] = (int32_t)(((uint32_t)val & 0x80000000) ? -val_shifted : val_shifted);
+		}
+	}
+private:
+	uint32_t roiShift;
+	uint32_t shift;
+};
 template<typename T> class ShiftHTFilter {
+public:
+	ShiftHTFilter(uint32_t shift) :  shift(shift){}
 	inline void copy(T* dest,T* src, uint32_t len){
 		for (uint32_t i = 0; i < len; ++i){
 			T val = src[i];
@@ -470,34 +444,8 @@ private:
 	uint32_t shift;
 };
 
-template<typename T> class RoiShiftHTFilter {
-	RoiShiftHTFilter(uint32_t roi) : roiShift(roi){}
-	inline void copy(T* dest,T* src, uint32_t len){
-		T thresh = 1 << roiShift;
-		for (uint32_t i = 0; i < len; ++i){
-			T val = src[i];
-			T mag = (val & 0x7FFFFFFF);
-			if (mag >= thresh) {
-				val = (mag >> roiShift) & (val & 0x80000000);
-			}
-			dest[i] = val/2;
-		}
-	}
-private:
-	uint32_t roiShift;
-};
-
-template<typename T> class ScaleHTFilter {
-	ScaleHTFilter(float s) : scale(s)	{}
-	inline void copy(T* dest,T* src, uint32_t len){
-		for (uint32_t i = 0; i < len; ++i)
-			((float*)dest)[i] = ((float*)src)[i] * scale;
-	}
-private:
-	float scale;
-};
-
 template<typename T> class RoiScaleHTFilter {
+public:
 	RoiScaleHTFilter(uint32_t roi, float s) : roiShift(roi), scale(s)	{}
 	inline void copy(T* dest,T* src, uint32_t len){
 		T thresh = 1 << roiShift;
@@ -507,7 +455,8 @@ template<typename T> class RoiScaleHTFilter {
 			if (mag >= thresh) {
 				val = (mag >> roiShift) & (val & 0x80000000);
 			}
-			((float*)dest)[i] = (float)val * scale;
+		    float val_scaled = (float)(val & 0x7FFFFFFF) * scale;
+		    ((float*)dest)[i] = ((uint32_t)val & 0x80000000) ? -val_scaled : val_scaled;
 		}
 	}
 private:
@@ -516,80 +465,69 @@ private:
 };
 
 
+template<typename T> class ScaleHTFilter {
+public:
+	ScaleHTFilter(float s) : scale(s)	{}
+	inline void copy(T* dest,T* src, uint32_t len){
+		for (uint32_t i = 0; i < len; ++i){
+			int32_t val = src[i];
+		    float val_scaled = (float)(val & 0x7FFFFFFF) * scale;
+		    ((float*)dest)[i] = ((uint32_t)val & 0x80000000) ? -val_scaled : val_scaled;
+		}
+	}
+private:
+	float scale;
+};
+
+
 
 bool TileComponent::postDecompressHT(int32_t *srcData, DecompressBlockExec *block){
-	auto src = srcData;
-	int32_t *tilec_data = nullptr;
-	if (m_sa) {
-		tilec_data = srcData;
-	}
-	else {
-		buf->transform(block->resno,block->bandIndex,block->x,block->y);
-		auto dest = buf->dest_buf(block->resno,block->bandIndex);
-		tilec_data = dest->data + (uint64_t) block->x + block->y * (uint64_t) dest->stride;
-	}
-
 	auto cblk = block->cblk;
 	if (cblk->seg_buffers.empty())
 		return true;
 
-	uint16_t cblk_w =  (uint16_t)cblk->width();
-	uint16_t cblk_h =  (uint16_t)cblk->height();
+	grk_buffer_2d<int32_t> dest_rect;
+	grk_buffer_2d<int32_t> src_rect = grk_buffer_2d<int32_t>(srcData, false, cblk->width(), cblk->width(), cblk->height());
+	buf->transform(block->resno,block->bandIndex,block->x,block->y);
+	if (m_sa) {
+		dest_rect = src_rect;
+	}
+	else {
+		*((grk_rect_u32*)&src_rect) = grk_rect_u32(block->x,
+													block->y,
+													block->x + cblk->width(),
+													block->y + cblk->height());
 
-	// ROI shift
-	if (block->roishift) {
-		int32_t threshold = 1 << block->roishift;
-		for (auto j = 0U; j < cblk_h; ++j) {
-			for (auto i = 0U; i < cblk_w; ++i) {
-				auto val = *src;
-				auto mag = (val & 0x7FFFFFFF);
-				if (mag >= threshold)
-					*src++ = (mag >> block->roishift) & (val & 0x80000000);
-				else
-					*src++ = val;
-			}
-		}
-		//reset src data to beginning
-		src = srcData;
+		dest_rect = buf->dest_buf(block->resno,block->bandIndex);
 	}
 
-	uint32_t dest_width = m_sa ? cblk_w : buf->stride(block->resno,block->bandIndex);
-	if (block->qmfbid == 1) {
-		uint32_t shift = 31 - (block->k_msbs + 1);
-		int32_t *GRK_RESTRICT tile_data = tilec_data;
-		for (auto j = 0U; j < cblk_h; ++j) {
-			int32_t *GRK_RESTRICT tile_row_data = tile_data;
-			for (auto i = 0U; i < cblk_w; ++i) {
-				int32_t val = *src;
-				int32_t val_shifted = (val & 0x7FFFFFFF) >> shift;
-				tile_row_data[i] = (int32_t)(((uint32_t)val & 0x80000000) ? -val_shifted : val_shifted);
-				src++;
-			}
-			tile_data += dest_width;
+	if (block->roishift) {
+		if (block->qmfbid == 1) {
+			auto f = RoiShiftHTFilter<int32_t>(block->roishift,31 - (block->k_msbs + 1));
+			dest_rect.copy< RoiShiftHTFilter<int32_t> >(src_rect, f);
+		} else {
+			auto f = RoiScaleHTFilter<int32_t>(block->roishift,block->stepsize);
+			dest_rect.copy< RoiScaleHTFilter<int32_t> >(src_rect, f);
 		}
 	} else {
-		int32_t *GRK_RESTRICT tile_data = tilec_data;
-		for (auto j = 0U; j < cblk_h; ++j) {
-			float *GRK_RESTRICT tile_row_data = (float*)tile_data;
-			for (auto i = 0U; i < cblk_w; ++i) {
-				int32_t val = *src;
-		       float val_scaled = (float)(val & 0x7FFFFFFF) * block->stepsize;
-		       tile_row_data[i] = ((uint32_t)val & 0x80000000) ? -val_scaled : val_scaled;
-			   src++;
-			}
-			tile_data += dest_width;
+		if (block->qmfbid == 1) {
+			auto f = ShiftHTFilter<int32_t>(31 - (block->k_msbs + 1));
+			dest_rect.copy< ShiftHTFilter<int32_t> >(src_rect, f);
+		} else {
+			auto f = ScaleHTFilter<int32_t>(block->stepsize);
+			dest_rect.copy< ScaleHTFilter<int32_t> >(src_rect, f);
 		}
 	}
+
 	if (m_sa){
-		// write directly from t1 to sparse array
 		try {
 			if (!m_sa->write(block->x,
 								  block->y,
-								  block->x + cblk_w,
-								  block->y + cblk_h,
+								  block->x + cblk->width(),
+								  block->y + cblk->height(),
 								  srcData,
 								  1,
-								  cblk_w,
+								  cblk->width(),
 								  true)) {
 				  return false;
 			}

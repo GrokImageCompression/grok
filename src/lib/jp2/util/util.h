@@ -261,6 +261,22 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 	{}
 	grk_buffer_2d(void) : grk_buffer_2d(nullptr,0,0,0,false)
 	{}
+
+	grk_buffer_2d& operator=(const grk_buffer_2d& rhs) // copy assignment
+	{
+	    return operator=(&rhs);
+	}
+	grk_buffer_2d& operator=(const grk_buffer_2d* rhs) // copy assignment
+	{
+	    if (this != rhs) { // self-assignment check expected
+	    	data = rhs->data;
+	    	owns_data = false;
+	    	stride = rhs->stride;
+	    	*((grk_rect_u32*)this) = *((grk_rect_u32*)rhs);
+	    }
+	    return *this;
+	}
+
 	virtual ~grk_buffer_2d() {
 		if (owns_data)
 			grk_aligned_free(data);
@@ -312,7 +328,7 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 
 
 	// rhs coordinates are in "this" coordinate system
-	template<typename F> void copy(grk_buffer_2d &rhs){
+	template<typename F> void copy(grk_buffer_2d &rhs, F filter){
 		auto inter = this->intersection(rhs);
 		if (!inter.is_non_degenerate())
 			return;
@@ -320,7 +336,6 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 		T* dest = data + (inter.y0 * stride + inter.x0);
 		T* src = rhs.data + ((inter.y0 - rhs.y0) * rhs.stride + inter.x0 - rhs.x0);
 		uint32_t len = inter.width();
-		F filter;
 		for (uint32_t j = inter.y0; j < inter.y1; ++j){
 			filter.copy(dest,src, len);
 			dest += stride;
