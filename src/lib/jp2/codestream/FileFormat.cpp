@@ -2551,6 +2551,17 @@ bool FileFormat::read_header(grk_header_info  *header_info, grk_image **p_image)
 	if (meth == 2 && color.icc_profile_buf)
 		image->color_space = GRK_CLRSPC_ICC;
 
+	// check RGB subsampling
+	if (image->color_space == GRK_CLRSPC_SRGB){
+		for (uint16_t i = 1; i < image->numcomps; ++i){
+			auto comp = image->comps+i;
+			if (comp->dx != image->comps->dx || comp->dy != image->comps->dy){
+				GRK_ERROR("sRGB colour space mandates uniform sampling in all three components");
+				return false;
+			}
+		}
+	}
+
 	// retrieve icc profile
 	if (color.icc_profile_buf) {
 		image->color.icc_profile_buf = color.icc_profile_buf;

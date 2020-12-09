@@ -25,6 +25,8 @@ set(BLACKLIST_JPEG2000_TMP
     451.pdf.SIGSEGV.5b5.3723.jp2
     451.pdf.SIGSEGV.f4c.3723.jp2
     4149.pdf.SIGSEGV.cf7.3501.jp2
+    1336.pdf.asan.47.376.jp2
+    openjpeg_1125.jp2
     issue395.jp2
     issue397.jp2
     issue733.jp2
@@ -41,7 +43,7 @@ set(BLACKLIST_JPEG2000_TMP
     edf_c2_1000234.jp2
     edf_c2_225881.jp2
     edf_c2_1000671.jp2
-    #edf_c2_1013627.jp2 # weird box, but kdu_jp2info ok
+    edf_c2_1013627.jp2
     edf_c2_1015644.jp2
     edf_c2_101463.jp2
     edf_c2_1674177.jp2
