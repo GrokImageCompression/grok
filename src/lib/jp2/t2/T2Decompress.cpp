@@ -403,9 +403,10 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 						K_msbs--;
 
 						if (K_msbs > band->numbps) {
-							GRK_WARN("More missing bit planes (%u) than band bit planes (%u).",
+							GRK_WARN("More missing bit planes (%u) than band bit planes (%u). Ignoring code block",
 									K_msbs, band->numbps);
-							cblk->numbps = band->numbps;
+							//suppress this code block
+							cblk->numbps = 0;
 						} else {
 							cblk->numbps = band->numbps - K_msbs;
 						}
