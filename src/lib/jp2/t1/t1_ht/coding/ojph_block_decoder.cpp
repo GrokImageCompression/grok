@@ -1175,7 +1175,7 @@ namespace ojph {
         }
         //decode uvlc_mode to get u for both quads
         ui32 consumed_bits = decode_init_uvlc(vlc_val, uvlc_mode, U_q);
-        if (U_q[0] > missing_msbs && U_q[1] > missing_msbs)
+        if (U_q[0] > missing_msbs || U_q[1] > missing_msbs)
           return false;
 
         //consume u bits in the VLC code
