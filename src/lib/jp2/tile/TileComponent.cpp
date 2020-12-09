@@ -252,6 +252,7 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
     m_sa = sa;
 }
 
+
 void TileComponent::create_buffer(grk_rect_u32 unreduced_tile_comp_dims,
 									grk_rect_u32 unreduced_tile_comp_window_dims) {
 	// calculate bandWindow
@@ -289,10 +290,9 @@ ISparseBuffer* TileComponent::getSparseBuffer(){
 	return m_sa;
 }
 
-
 template<typename T> class RoiShiftFilter {
 public:
-	RoiShiftFilter(uint32_t roi) : roiShift(roi){}
+	RoiShiftFilter(DecompressBlockExec *block) : roiShift(block->roishift){}
 	inline void copy(T* dest,T* src, uint32_t len){
 		T thresh = 1 << roiShift;
 		for (uint32_t i = 0; i < len; ++i){
@@ -310,6 +310,9 @@ private:
 };
 template<typename T> class ShiftFilter {
 public:
+	ShiftFilter(DecompressBlockExec *block){
+		(void)block;
+	}
 	inline void copy(T* dest,T* src, uint32_t len){
 		for (uint32_t i = 0; i < len; ++i)
 			dest[i] = src[i]/2;
@@ -319,7 +322,9 @@ public:
 
 template<typename T> class RoiScaleFilter {
 public:
-	RoiScaleFilter(uint32_t roi, float s) : roiShift(roi), scale(s)	{}
+	RoiScaleFilter(DecompressBlockExec *block) : roiShift(block->roishift),
+												scale(block->stepsize/2)
+	{}
 	inline void copy(T* dest,T* src, uint32_t len){
 		T thresh = 1 << roiShift;
 		for (uint32_t i = 0; i < len; ++i){
@@ -339,7 +344,8 @@ private:
 
 template<typename T> class ScaleFilter {
 public:
-	ScaleFilter(float s) : scale(s)	{}
+	ScaleFilter(DecompressBlockExec *block) : scale(block->stepsize/2)
+	{}
 	inline void copy(T* dest,T* src, uint32_t len){
 		for (uint32_t i = 0; i < len; ++i){
 			((float*)dest)[i] = (float)src[i] * scale;
@@ -350,69 +356,10 @@ private:
 };
 
 
-bool TileComponent::postDecompress(int32_t *srcData, DecompressBlockExec *block) {
-	auto cblk = block->cblk;
-	if (cblk->seg_buffers.empty())
-		return true;
-
-	grk_buffer_2d<int32_t> dest_rect;
-	grk_buffer_2d<int32_t> src_rect = grk_buffer_2d<int32_t>(srcData, false, cblk->width(), cblk->width(), cblk->height());
-	buf->transform(block->resno,block->bandIndex,block->x,block->y);
-	if (m_sa) {
-		dest_rect = src_rect;
-	}
-	else {
-		*((grk_rect_u32*)&src_rect) = grk_rect_u32(block->x,
-													block->y,
-													block->x + cblk->width(),
-													block->y + cblk->height());
-
-		dest_rect = buf->dest_buf(block->resno,block->bandIndex);
-	}
-
-	if (block->roishift) {
-		if (block->qmfbid == 1) {
-			auto f = RoiShiftFilter<int32_t>(block->roishift);
-			dest_rect.copy< RoiShiftFilter<int32_t> >(src_rect, f);
-		} else {
-			auto f = RoiScaleFilter<int32_t>(block->roishift,block->stepsize/2);
-			dest_rect.copy< RoiScaleFilter<int32_t> >(src_rect, f);
-		}
-	} else {
-		if (block->qmfbid == 1) {
-			auto f = ShiftFilter<int32_t>();
-			dest_rect.copy< ShiftFilter<int32_t> >(src_rect, f);
-		} else {
-			auto f = ScaleFilter<int32_t>(block->stepsize/2);
-			dest_rect.copy< ScaleFilter<int32_t> >(src_rect, f);
-		}
-	}
-
-	if (m_sa){
-		// write directly from t1 to sparse array
-		try {
-			if (!m_sa->write(block->x,
-								  block->y,
-								  block->x + cblk->width(),
-								  block->y + cblk->height(),
-								  srcData,
-								  1,
-								  cblk->width(),
-								  true)) {
-				  return false;
-			}
-		} catch (MissingSparseBlockException &ex){
-			return false;
-		}
-	}
-
-	return true;
-}
-
 template<typename T> class RoiShiftHTFilter {
 public:
-	RoiShiftHTFilter(uint32_t roi, uint32_t shift) : roiShift(roi),
-													 shift(shift)
+	RoiShiftHTFilter(DecompressBlockExec *block) : roiShift(block->roishift),
+													 shift(31 - (block->k_msbs + 1))
 	{}
 	inline void copy(T* dest,T* src, uint32_t len){
 		T thresh = 1 << roiShift;
@@ -432,7 +379,7 @@ private:
 };
 template<typename T> class ShiftHTFilter {
 public:
-	ShiftHTFilter(uint32_t shift) :  shift(shift){}
+	ShiftHTFilter(DecompressBlockExec *block) :  shift(31 - (block->k_msbs + 1)){}
 	inline void copy(T* dest,T* src, uint32_t len){
 		for (uint32_t i = 0; i < len; ++i){
 			T val = src[i];
@@ -446,7 +393,7 @@ private:
 
 template<typename T> class RoiScaleHTFilter {
 public:
-	RoiScaleHTFilter(uint32_t roi, float s) : roiShift(roi), scale(s)	{}
+	RoiScaleHTFilter(DecompressBlockExec *block) : roiShift(block->roishift), scale(block->stepsize)	{}
 	inline void copy(T* dest,T* src, uint32_t len){
 		T thresh = 1 << roiShift;
 		for (uint32_t i = 0; i < len; ++i){
@@ -467,7 +414,7 @@ private:
 
 template<typename T> class ScaleHTFilter {
 public:
-	ScaleHTFilter(float s) : scale(s)	{}
+	ScaleHTFilter(DecompressBlockExec *block) : scale(block->stepsize)	{}
 	inline void copy(T* dest,T* src, uint32_t len){
 		for (uint32_t i = 0; i < len; ++i){
 			int32_t val = src[i];
@@ -479,9 +426,39 @@ private:
 	float scale;
 };
 
+bool TileComponent::postDecompress(int32_t *srcData, DecompressBlockExec *block, bool isHT) {
+	if (isHT){
+		if (block->roishift) {
+			if (block->qmfbid == 1) {
+				return postDecompressImpl< RoiShiftHTFilter<int32_t>  >(srcData, block);
+			} else {
+				return postDecompressImpl< RoiScaleHTFilter<int32_t>  >(srcData, block);
+			}
+		} else {
+			if (block->qmfbid == 1) {
+				return postDecompressImpl< ShiftHTFilter<int32_t> >(srcData, block);
+			} else {
+				return postDecompressImpl< ScaleHTFilter<int32_t> >(srcData, block);
+			}
+		}
+	} else {
+		if (block->roishift) {
+			if (block->qmfbid == 1) {
+				return postDecompressImpl< RoiShiftFilter<int32_t>  >(srcData, block);
+			} else {
+				return postDecompressImpl< RoiScaleFilter<int32_t>  >(srcData, block);
+			}
+		} else {
+			if (block->qmfbid == 1) {
+				return postDecompressImpl< ShiftFilter<int32_t> >(srcData, block);
+			} else {
+				return postDecompressImpl< ScaleFilter<int32_t> >(srcData, block);
+			}
+		}
+	}
+}
 
-
-bool TileComponent::postDecompressHT(int32_t *srcData, DecompressBlockExec *block){
+template<typename F> bool TileComponent::postDecompressImpl(int32_t *srcData, DecompressBlockExec *block){
 	auto cblk = block->cblk;
 	if (cblk->seg_buffers.empty())
 		return true;
@@ -497,27 +474,11 @@ bool TileComponent::postDecompressHT(int32_t *srcData, DecompressBlockExec *bloc
 													block->y,
 													block->x + cblk->width(),
 													block->y + cblk->height());
-
 		dest_rect = buf->dest_buf(block->resno,block->bandIndex);
 	}
 
-	if (block->roishift) {
-		if (block->qmfbid == 1) {
-			auto f = RoiShiftHTFilter<int32_t>(block->roishift,31 - (block->k_msbs + 1));
-			dest_rect.copy< RoiShiftHTFilter<int32_t> >(src_rect, f);
-		} else {
-			auto f = RoiScaleHTFilter<int32_t>(block->roishift,block->stepsize);
-			dest_rect.copy< RoiScaleHTFilter<int32_t> >(src_rect, f);
-		}
-	} else {
-		if (block->qmfbid == 1) {
-			auto f = ShiftHTFilter<int32_t>(31 - (block->k_msbs + 1));
-			dest_rect.copy< ShiftHTFilter<int32_t> >(src_rect, f);
-		} else {
-			auto f = ScaleHTFilter<int32_t>(block->stepsize);
-			dest_rect.copy< ScaleHTFilter<int32_t> >(src_rect, f);
-		}
-	}
+	F f(block);
+	dest_rect.copy<F>(src_rect, f);
 
 	if (m_sa){
 		try {

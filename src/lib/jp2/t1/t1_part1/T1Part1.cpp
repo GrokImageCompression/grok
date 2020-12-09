@@ -190,11 +190,7 @@ bool T1Part1::decompress(DecompressBlockExec *block) {
 	if (!ret)
 		return false;
 
-	return postDecompress(block);
-}
-
-bool T1Part1::postDecompress(DecompressBlockExec *block) {
-	return block->tilec->postDecompress(t1->data, block);
+	return block->tilec->postDecompress(t1->data, block,false);
 }
 
 }

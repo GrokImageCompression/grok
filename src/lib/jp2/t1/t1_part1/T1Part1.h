@@ -32,7 +32,6 @@ public:
 
 private:
 	void preCompress(CompressBlockExec *block, grk_tile *tile, uint32_t &max);
-	bool postDecompress(DecompressBlockExec *block);
 	T1 *t1;
 };
 }
