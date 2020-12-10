@@ -309,6 +309,7 @@ private:
 		return data_blocks[(uint64_t)(block_y - grid_bounds.y0) * grid_bounds.width() + (block_x - grid_bounds.x0)];
 	}
 	inline void setBlock(uint32_t block_x, uint32_t block_y, int32_t* block){
+		assert(grid_bounds.contains(grk_pt(block_x,block_y)));
 		data_blocks[(uint64_t)(block_y - grid_bounds.y0)* grid_bounds.width() + (block_x - grid_bounds.x0)] = block;
 	}
 	/** Returns whether window bounds are valid (non empty and within array bounds)

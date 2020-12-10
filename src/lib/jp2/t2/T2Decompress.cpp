@@ -578,6 +578,10 @@ bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 								seg->numBytesInPacket, seg->len);
 						return false;
 					}
+					size_t max_seg_len = src_buf->get_cur_chunk_len();
+					// correct for truncated packet
+					if (seg->numBytesInPacket > max_seg_len)
+						seg->numBytesInPacket = max_seg_len;
 					cblk->seg_buffers.push_back(new grk_buf(src_buf->get_global_ptr(),
 							seg->numBytesInPacket, false));
 					*(p_data_read) += seg->numBytesInPacket;
