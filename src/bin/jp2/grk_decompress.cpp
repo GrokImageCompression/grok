@@ -1007,6 +1007,8 @@ enum grk_stream_type {
 	GRK_FILE_STREAM, GRK_MAPPED_FILE_STREAM
 };
 
+grk_stream_type stream_type = GRK_MAPPED_FILE_STREAM;
+
 // return: 0 for success, non-zero for failure
 int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 	if (!info)
@@ -1100,7 +1102,10 @@ int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 				goto cleanup;
 			}
 		} else {
-			info->l_stream = grk_stream_create_mapped_file_stream(infile, true);
+			if (stream_type == GRK_MAPPED_FILE_STREAM)
+				info->l_stream = grk_stream_create_mapped_file_stream(infile, true);
+			else
+				info->l_stream = grk_stream_create_file_stream(infile, 1024*1024, true);
 		}
 	}
 	if (!info->l_stream) {
