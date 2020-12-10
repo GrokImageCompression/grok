@@ -94,6 +94,9 @@ template<typename T> struct grk_rectangle {
     bool is_non_degenerate(void) const{
     	return x0 < x1 && y0 < y1;
     }
+    bool contains(grk_point<T> pt){
+    	return pt.x >= x0 && pt.y >= y0 && pt.x < x1 && pt.y < y1;
+    }
     grk_rectangle<T>& operator= (const grk_rectangle<T> &rhs)
     {
     	if (this != &rhs) { // self-assignment check expected
@@ -135,6 +138,16 @@ template<typename T> struct grk_rectangle {
     							std::max<T>(y0,rhs->y0),
 								std::min<T>(x1,rhs->x1),
 								std::min<T>(y1,rhs->y1));
+    }
+
+    grk_rectangle<T> rect_union(const grk_rectangle<T> *rhs) const{
+    	return grk_rectangle<T>(std::min<T>(x0,rhs->x0),
+    							std::min<T>(y0,rhs->y0),
+								std::max<T>(x1,rhs->x1),
+								std::max<T>(y1,rhs->y1));
+    }
+    grk_rectangle<T> rect_union(const grk_rectangle<T> &rhs) const{
+    	return rect_union(&rhs);
     }
     uint64_t area(void) const {
     	return (uint64_t)(x1 - x0) * (y1 - y0);

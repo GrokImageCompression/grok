@@ -167,18 +167,33 @@ public:
 	 *
 	 * @return a new sparse array instance, or NULL in case of failure.
 	 */
-	SparseBuffer(uint32_t width,uint32_t height) :
-										buffer_width(width),
-										buffer_height(height),
-										block_width(1<<LBW),
-										block_height(1<<LBH)
+	SparseBuffer(uint32_t width,uint32_t height) : SparseBuffer(grk_rect_u32(0,0,width,height))
+	{}
+
+
+	/** Creates a new sparse array.
+	 *
+	 * @param bds bounds
+	 *
+	 * @return a new sparse array instance, or NULL in case of failure.
+	 */
+	SparseBuffer(grk_rect_u32 bds) :	block_width(1<<LBW),
+										block_height(1<<LBH),
+										data_blocks(nullptr),
+										bounds(bds)
 	{
-	    if (!buffer_width  || !buffer_height  || !LBW || !LBH) {
+	    if (!bounds.width()  || !bounds.height()  || !LBW || !LBH) {
 	    	throw std::runtime_error("invalid window for sparse array");
 		}
-	    grid_width = ceildiv<uint32_t>(buffer_width, block_width);
-	    grid_height = ceildiv<uint32_t>(buffer_height, block_height);
-	    auto block_count = (uint64_t)grid_width * grid_height;
+	    uint32_t grid_off_x = uint_floordivpow2(bounds.x0, LBW);
+	    uint32_t grid_off_y = uint_floordivpow2(bounds.y0, LBH);
+	    uint32_t grid_width = ceildivpow2<uint32_t>(bounds.width(), LBW);
+	    uint32_t grid_height = ceildivpow2<uint32_t>(bounds.height(), LBH);
+	    grid_bounds = grk_rect_u32(grid_off_x,
+	    							grid_off_y,
+									grid_off_x+grid_width,
+									grid_off_y + grid_height);
+	    auto block_count = grid_bounds.area();
 	    data_blocks = new int32_t*[block_count];
 	    for (uint64_t i = 0; i < block_count; ++i)
 	    	data_blocks[i] = nullptr;
@@ -190,11 +205,13 @@ public:
 	 */
 	~SparseBuffer()
 	{
-		for (uint64_t i = 0; i < (uint64_t)grid_width * grid_height; i++){
-			grk_free(data_blocks[i]);
-			data_blocks[i] = nullptr;
+		if (data_blocks) {
+			for (uint64_t i = 0; i < (uint64_t)grid_bounds.width() * grid_bounds.height(); i++){
+				grk_free(data_blocks[i]);
+				data_blocks[i] = nullptr;
+			}
+			delete[] data_blocks;
 		}
-		delete[] data_blocks;
 	}
 	bool read(uint32_t x0,
 			 uint32_t y0,
@@ -268,7 +285,7 @@ private:
 	        for (uint32_t x = x0; x < x1; block_x ++, x += x_incr) {
 	            x_incr = (x == x0) ? block_width - (x0 & (block_width-1)) : block_width;
 	            x_incr = min<uint32_t>(x_incr, x1 - x);
-	            auto src_block = data_blocks[(uint64_t)block_y * grid_width + block_x];
+	            auto src_block = getBlock(block_x, block_y);
 				if (!src_block) {
 					const uint32_t block_area = block_width*block_height;
 					// note: we need to zero out each source block, in case
@@ -279,7 +296,7 @@ private:
 						GRK_ERROR("SparseBuffer: Out of memory");
 						return false;
 					}
-					data_blocks[(uint64_t)block_y * grid_width + block_x] = src_block;
+					setBlock(block_x, block_y, src_block);
 				}
 	        }
 	    }
@@ -287,6 +304,13 @@ private:
 	    return true;
 	}
 
+	inline int32_t* getBlock(uint32_t block_x, uint32_t block_y){
+		assert(grid_bounds.contains(grk_pt(block_x,block_y)));
+		return data_blocks[(uint64_t)(block_y - grid_bounds.y0) * grid_bounds.width() + (block_x - grid_bounds.x0)];
+	}
+	inline void setBlock(uint32_t block_x, uint32_t block_y, int32_t* block){
+		data_blocks[(uint64_t)(block_y - grid_bounds.y0)* grid_bounds.width() + (block_x - grid_bounds.x0)] = block;
+	}
 	/** Returns whether window bounds are valid (non empty and within array bounds)
 	 * @param x0 left x coordinate of the window.
 	 * @param y0 top x coordinate of the window.
@@ -298,8 +322,8 @@ private:
 						uint32_t y0,
 						uint32_t x1,
 						uint32_t y1){
-	    return !(x0 >= buffer_width || x1 <= x0 || x1 > buffer_width ||
-	             y0 >= buffer_height || y1 <= y0 || y1 > buffer_height);
+	    return !(x0 >= bounds.width() || x1 <= x0 || x1 > bounds.width() ||
+	             y0 >= bounds.height() || y1 <= y0 || y1 > bounds.height());
 	}
 
 	bool read_or_write(uint32_t x0,
@@ -328,7 +352,7 @@ private:
 	            x_incr = (x == x0) ? block_width - (x0 & (block_width-1) ) : block_width;
 	            uint32_t block_x_offset = block_width - x_incr;
 	            x_incr = min<uint32_t>(x_incr, x1 - x);
-	            auto src_block = data_blocks[(uint64_t)block_y * grid_width + block_x];
+	            auto src_block = getBlock(block_x, block_y);
             	//all blocks should be allocated first before read/write is called
 	            if (!src_block){
 	            	GRK_ERROR("Sparse array: missing block (%d,%d,%d,%d) for %s (%d,%d,%d,%d)",
@@ -472,14 +496,11 @@ private:
 	    return true;
 	}
 private:
-
-	uint32_t buffer_width;
-    uint32_t buffer_height;
     const uint32_t block_width;
     const uint32_t block_height;
-    uint32_t grid_width;
-    uint32_t grid_height;
     int32_t** data_blocks;
+    grk_rect_u32 bounds;
+    grk_rect_u32 grid_bounds;
 };
 
 }
