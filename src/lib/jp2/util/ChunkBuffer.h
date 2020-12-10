@@ -52,7 +52,7 @@ struct ChunkBuffer {
 	/*
 	 Treat segmented buffer as single contiguous buffer, and get current pointer
 	 */
-	uint8_t* get_global_ptr(void);
+	uint8_t* get_cur_chunk_ptr(void);
 
 	/*
 	 Reset all offsets to zero, and set current chunk to beginning of list
@@ -65,7 +65,6 @@ struct ChunkBuffer {
 
 	size_t read(void *p_buffer, size_t nb_bytes);
 
-	size_t getRemainingLength(void);
 private:
 	/*
 	 Treat segmented buffer as single contiguous buffer, and get current offset

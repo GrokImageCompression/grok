@@ -70,7 +70,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			return false;
 		}
 		while (pi_next(current_pi)) {
-			if (src_buf->getRemainingLength() == 0){
+			if (src_buf->get_cur_chunk_len() == 0){
 				GRK_WARN("Tile %d is truncated.", tile_no);
 				truncatedTile = true;
 				break;
@@ -235,8 +235,8 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 		bool *p_is_data_present, ChunkBuffer *src_buf, uint64_t *p_data_read) {
 	auto p_tile = tileProcessor->tile;
 	auto res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
-	auto p_src_data = src_buf->get_global_ptr();
-	uint64_t available_bytes = src_buf->getRemainingLength();
+	auto p_src_data = src_buf->get_cur_chunk_ptr();
+	uint64_t available_bytes = src_buf->get_cur_chunk_len();
 	auto active_src = p_src_data;
 
 	if (p_pi->layno == 0) {
@@ -551,7 +551,7 @@ bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 
 			uint32_t numPassesInPacket = cblk->numPassesInPacket;
 			do {
-				size_t maxLen = src_buf->getRemainingLength();
+				size_t maxLen = src_buf->get_cur_chunk_len();
 				if (maxLen == 0)
 					return true;
 				// reject truncated packet
@@ -581,8 +581,8 @@ bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 					size_t max_seg_len = src_buf->get_cur_chunk_len();
 					// correct for truncated packet
 					if (seg->numBytesInPacket > max_seg_len)
-						seg->numBytesInPacket = max_seg_len;
-					cblk->seg_buffers.push_back(new grk_buf(src_buf->get_global_ptr(),
+						seg->numBytesInPacket = (uint32_t)max_seg_len;
+					cblk->seg_buffers.push_back(new grk_buf(src_buf->get_cur_chunk_ptr(),
 							seg->numBytesInPacket, false));
 					*(p_data_read) += seg->numBytesInPacket;
 					src_buf->incr_cur_chunk_offset(seg->numBytesInPacket);

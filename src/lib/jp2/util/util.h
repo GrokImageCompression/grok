@@ -216,6 +216,10 @@ template <typename T> struct grk_buffer {
 		len = 0;
 	}
 
+	size_t get_remaining_length(void){
+		return len - offset;
+	}
+
 	void incr_offset(ptrdiff_t off) {
 		/*  we allow the offset to move to one location beyond end of buffer segment*/
 		if (off > 0 ){

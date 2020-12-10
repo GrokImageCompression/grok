@@ -640,5 +640,5 @@ grk_decompress -i @INPUT_NR_PATH@/cinema129x129.jp2 -o @TEMP_PATH@/cinema129x129
 grk_decompress -i @INPUT_NR_PATH@/b1_mono_4k.j2k -o @TEMP_PATH@/b1_mono_4k.tif -d 0,0,1024,1024
 # missing EOC marker
 grk_decompress -i @INPUT_NR_PATH@/tnsot_zero_missing_eoc.jp2 -o @TEMP_PATH@/tnsot_zero_missing_eoc.tif
-grk_decompress -i @INPUT_NR_PATH@/grk_decompress_fuzzer-5796072240840704   -o @TEMP_PATH@/grk_decompress_fuzzer-5796072240840704.png
+!grk_decompress -i @INPUT_NR_PATH@/grk_decompress_fuzzer-5796072240840704   -o @TEMP_PATH@/grk_decompress_fuzzer-5796072240840704.png
 grk_decompress -i @INPUT_NR_PATH@/grk_decompress_fuzzer-6502012527181824   -o @TEMP_PATH@/grk_decompress_fuzzer-6502012527181824.pgx -d 537879136,538976288,537880136,538977288

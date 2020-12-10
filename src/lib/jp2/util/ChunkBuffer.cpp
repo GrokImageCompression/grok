@@ -195,16 +195,16 @@ bool ChunkBuffer::copy_to_contiguous_buffer(uint8_t *buffer) {
 
 }
 
-uint8_t* ChunkBuffer::get_global_ptr(void) {
+uint8_t* ChunkBuffer::get_cur_chunk_ptr(void) {
 	auto cur_chunk = chunks[cur_chunk_id];
 
-	return (cur_chunk) ? (cur_chunk->buf + cur_chunk->offset) : nullptr;
+	return (cur_chunk) ? cur_chunk->curr_ptr() : nullptr;
 }
 
 size_t ChunkBuffer::get_cur_chunk_len(void) {
 	auto cur_chunk = chunks[cur_chunk_id];
 
-	return (cur_chunk) ? (cur_chunk->len - (size_t) cur_chunk->offset) : 0;
+	return (cur_chunk) ? cur_chunk->get_remaining_length() : 0;
 }
 
 size_t ChunkBuffer::get_cur_chunk_offset(void) {
@@ -222,10 +222,6 @@ size_t ChunkBuffer::get_global_offset(void) {
 	}
 
 	return offset + get_cur_chunk_offset();
-}
-
-size_t ChunkBuffer::getRemainingLength(void){
-	return data_len - get_global_offset();
 }
 
 }
