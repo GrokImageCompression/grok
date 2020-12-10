@@ -289,8 +289,11 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 			if (!data_size_needed)
 			  return true;
 			data = (T*) grk_aligned_malloc(data_size_needed);
-			if (!data)
+			if (!data) {
+				grk::GRK_ERROR("Failed to allocate aligned memory buffer of dimensions %u x %u "
+						"@ alignment %d",stride, height(), grk::default_align);
 				return false;
+			}
 			if (clear)
 				memset(data, 0, data_size_needed);
 			owns_data = true;

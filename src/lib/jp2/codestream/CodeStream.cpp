@@ -207,9 +207,8 @@ bool grk_image_single_component_data_alloc(
 	size_t dataSize = (uint64_t) comp->stride * comp->h * sizeof(uint32_t);
 	auto data = (int32_t*) grk_aligned_malloc(dataSize);
 	if (!data) {
-		grk::GRK_ERROR("Failed to allocate aligned memory of size 0x%x "
-				"@ alignment 0x%x",dataSize, grk::default_align);
-		return false;
+		grk::GRK_ERROR("Failed to allocate aligned memory buffer of dimensions %u x %u "
+				"@ alignment %d",comp->stride, comp->h, grk::default_align);
 	}
 	grk_image_single_component_data_free(comp);
 	comp->data = data;
@@ -2052,7 +2051,7 @@ bool CodeStream::alloc_multi_tile_output_data(grk_image *p_output_image){
 	for (uint32_t i = 0; i < image_src->numcomps; i++) {
 		auto comp_dest = p_output_image->comps + i;
 
-		if (comp_dest->w * comp_dest->h == 0) {
+		if (comp_dest->w  == 0 || comp_dest->h == 0) {
 			GRK_ERROR("Output component %d has invalid dimensions %u x %u",
 					i, comp_dest->w, comp_dest->h);
 			return false;
