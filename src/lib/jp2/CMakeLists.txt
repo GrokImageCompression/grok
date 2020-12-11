@@ -48,6 +48,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/point_transform
   ${CMAKE_CURRENT_SOURCE_DIR}/t2
   ${CMAKE_CURRENT_SOURCE_DIR}/tile
+  ${CMAKE_CURRENT_SOURCE_DIR}/filters
 )
 
 # Defines the source code for executables
