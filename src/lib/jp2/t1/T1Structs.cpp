@@ -523,7 +523,7 @@ Precinct* Subband::createPrecinct(bool isCompressor,
 			band_precinct_start.y + (1 << precinct_expn.y)).intersection(this);
 
 	auto current_precinct = new Precinct();
-	*((grk_rect_u32*)current_precinct) = precinct_dim;
+	current_precinct->set_rect(precinct_dim);
 
 	if (isCompressor) {
 		if (!current_precinct->init(isCompressor,cblk_expn,current_plugin_tile)){

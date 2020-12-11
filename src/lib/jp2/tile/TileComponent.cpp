@@ -94,7 +94,7 @@ bool TileComponent::init(bool isCompressor,
 
 		/* border for each resolution level (global) */
 		auto dim = unreduced_tile_comp_dims;
-		*((grk_rect_u32*)res) = dim.rectceildivpow2(levelno);
+		res->set_rect(dim.rectceildivpow2(levelno));
 
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
 		uint32_t pdx = m_tccp->prcw[resno];
@@ -133,10 +133,10 @@ bool TileComponent::init(bool isCompressor,
 	auto highestNumberOfResolutions =
 			(!m_is_encoder) ? resolutions_to_decompress : numresolutions;
 	auto hightestResolution =  resolutions + highestNumberOfResolutions - 1;
-	grk_rect_u32::operator=(*(grk_rect_u32*)hightestResolution);
+	set_rect(hightestResolution);
 
 	//3. create window buffer
-	create_buffer(unreduced_tile_comp_dims, unreduced_tile_comp_window_dims);
+	create_buffer(&unreduced_tile_comp_dims, unreduced_tile_comp_window_dims);
 
 	// calculate padded windows
 	if (!whole_tile_decoding){
@@ -305,15 +305,14 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
 }
 
 
-void TileComponent::create_buffer(grk_rect_u32 unreduced_tile_comp_dims,
+void TileComponent::create_buffer(grk_rect_u32 *unreduced_tile_comp_dims,
 									grk_rect_u32 unreduced_tile_comp_window_dims) {
 	// calculate bandWindow
 	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
 		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 			auto band = res->bandWindow + bandIndex;
-			*((grk_rect_u32*)band) =
-					grk_band_window(numresolutions, resno, band->orientation,unreduced_tile_comp_dims);
+			band->set_rect(grk_band_window(numresolutions, resno, band->orientation,*unreduced_tile_comp_dims));
 		}
 	}
 
@@ -386,10 +385,10 @@ template<typename F> bool TileComponent::postDecompressImpl(int32_t *srcData, De
 		dest_rect = src_rect;
 	}
 	else {
-		*((grk_rect_u32*)&src_rect) = grk_rect_u32(block->x,
-													block->y,
-													block->x + cblk->width(),
-													block->y + cblk->height());
+		src_rect.set_rect(grk_rect_u32(block->x,
+										block->y,
+										block->x + cblk->width(),
+										block->y + cblk->height()));
 		dest_rect = buf->dest_buf(block->resno,block->bandIndex);
 	}
 

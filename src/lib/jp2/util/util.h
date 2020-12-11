@@ -113,8 +113,15 @@ template<typename T> struct grk_rectangle {
 	   if (this == &rhs)
 		   return true;
 		return x0 == rhs.x0 &&	y0 == rhs.y0 && x1 == rhs.x1 && y1 == rhs.y1;
-
     }
+
+	void set_rect(grk_rectangle<T> *rhs){
+		*this = *rhs;
+	}
+
+	void set_rect(grk_rectangle<T> rhs){
+		set_rect(&rhs);
+	}
     grk_rectangle<T>  rectceildivpow2(uint32_t power) const{
     	return grk_rectangle<T>(ceildivpow2(x0, power),
     			ceildivpow2(y0, power),
@@ -345,7 +352,6 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 			*strd = stride;
 		}
 	}
-
 
 	// rhs coordinates are in "this" coordinate system
 	template<typename F> void copy(grk_buffer_2d &rhs, F filter){
