@@ -32,64 +32,43 @@
 #include <limits>
 
 /* Component clipping */
-void clip_component(grk_image_comp *component, uint8_t precision) {
+template<typename T> void clip(grk_image_comp *component, uint8_t precision) {
 	uint32_t stride_diff = component->stride - component->w;
 	assert(precision <= 16);
-
-	if (component->sgnd) {
-		auto data = component->data;
-		int32_t max = std::numeric_limits<int32_t>::max();
-		int32_t min = std::numeric_limits<int32_t>::min();
-		size_t index = 0;
-		for (uint32_t j = 0; j < component->h; ++j){
-			for (uint32_t i = 0; i < component->w; ++i){
-				data[index] = std::clamp<int32_t>(data[index], min, max);
-				index++;
-			}
-			index+= stride_diff;
+	auto data = component->data;
+	T max = std::numeric_limits<T>::max();
+	T min = std::numeric_limits<T>::min();
+	size_t index = 0;
+	for (uint32_t j = 0; j < component->h; ++j){
+		for (uint32_t i = 0; i < component->w; ++i){
+			data[index] = std::clamp<T>(data[index], min, max);
+			index++;
 		}
-	} else {
-		auto data = (uint32_t*) component->data;
-		size_t index = 0;
-		uint32_t max = std::numeric_limits<uint32_t>::max();
-		for (uint32_t j = 0; j < component->h; ++j){
-			for (uint32_t i = 0; i < component->w; ++i){
-				data[index] = std::min<uint32_t>(data[index], max);
-				index++;
-			}
-			index += stride_diff;
-		}
+		index+= stride_diff;
 	}
 	component->prec = precision;
 }
 
+void clip_component( grk_image_comp  *  component, uint8_t precision){
+	if (component->sgnd)
+		clip<int32_t>(component, precision);
+	else
+		clip<uint32_t>(component, precision);
+}
+
 /* Component precision scaling */
-static void scale_component_up(grk_image_comp *component, uint8_t precision) {
+template<typename T> void scale_component_up(grk_image_comp *component, uint8_t precision) {
 	uint32_t stride_diff = component->stride - component->w;
-	if (component->sgnd) {
-		int64_t newMax = (int64_t) 1U << (precision - 1);
-		int64_t oldMax = (int64_t) 1U << (component->prec - 1);
-		auto data = component->data;
-		size_t index = 0;
-		for (uint32_t j = 0; j < component->h; ++j){
-			for (uint32_t i = 0; i < component->w; ++i){
-				data[index] = (int32_t)(((int64_t) data[index] * newMax) / oldMax);
-				index++;
-			}
-			index += stride_diff;
+	T newMax = std::is_signed<T>::value ? ((T) 1U << (precision - 1))       : (((T) 1U << precision) - 1U);
+	T oldMax = std::is_signed<T>::value ? ((T) 1U << (component->prec - 1)) : (((T) 1U << component->prec) - 1U);
+	auto data = component->data;
+	size_t index = 0;
+	for (uint32_t j = 0; j < component->h; ++j){
+		for (uint32_t i = 0; i < component->w; ++i){
+			data[index] = (int32_t)(((T) data[index] * newMax) / oldMax);
+			index++;
 		}
-	} else {
-		uint64_t newMax = ((uint64_t) 1U << precision) - 1U;
-		uint64_t oldMax = ((uint64_t) 1U << component->prec) - 1U;
-		auto data = component->data;
-		size_t index = 0;
-		for (uint32_t j = 0; j < component->h; ++j){
-			for (uint32_t i = 0; i < component->w; ++i){
-				data[index] = (int32_t)(((uint64_t) data[index] * newMax) / oldMax);
-				index++;
-			}
-			index += stride_diff;
-		}
+		index += stride_diff;
 	}
 	component->prec = precision;
 }
@@ -97,41 +76,31 @@ void scale_component(grk_image_comp *component, uint8_t precision) {
 	if (component->prec == precision)
 		return;
 	if (component->prec < precision) {
-		scale_component_up(component, precision);
-		return;
-	}
-	uint32_t stride_diff = component->stride - component->w;
-	uint32_t scale = 1 << (uint32_t) (component->prec - precision);
-	auto data = component->data;
-	size_t index = 0;
-	for (uint32_t j = 0; j < component->h; ++j){
-		for (uint32_t i = 0; i < component->w; ++i){
-			data[index] /= scale;
-			index++;
+		if (component->sgnd)
+			scale_component_up<int64_t>(component, precision);
+		else
+			scale_component_up<uint64_t>(component, precision);
+	} else {
+		uint32_t stride_diff = component->stride - component->w;
+		uint32_t scale = 1 << (uint32_t) (component->prec - precision);
+		auto data = component->data;
+		size_t index = 0;
+		for (uint32_t j = 0; j < component->h; ++j){
+			for (uint32_t i = 0; i < component->w; ++i){
+				data[index] /= scale;
+				index++;
+			}
+			index += stride_diff;
 		}
-		index += stride_diff;
+		component->prec = precision;
 	}
-
-	component->prec = precision;
 }
 
 
 grk_image* convert_gray_to_rgb(grk_image *original) {
 	if (original->numcomps == 0)
 		return nullptr;
-	uint32_t compno;
-	grk_image *new_image = nullptr;
-	grk_image_cmptparm *new_components = nullptr;
-
-	new_components = (grk_image_cmptparm*) malloc(
-			(original->numcomps + 2U) * sizeof(grk_image_cmptparm));
-	if (new_components == nullptr) {
-		spdlog::error(
-				"grk_decompress: failed to allocate memory for RGB image.");
-		grk_image_destroy(original);
-		return nullptr;
-	}
-
+	auto new_components = new grk_image_cmptparm[original->numcomps + 2U];
 	new_components[0].dx = new_components[1].dx = new_components[2].dx =
 			original->comps[0].dx;
 	new_components[0].dy = new_components[1].dy = new_components[2].dy =
@@ -149,7 +118,7 @@ grk_image* convert_gray_to_rgb(grk_image *original) {
 	new_components[0].y0 = new_components[1].y0 = new_components[2].y0 =
 			original->comps[0].y0;
 
-	for (compno = 1U; compno < original->numcomps; ++compno) {
+	for (uint32_t compno = 1U; compno < original->numcomps; ++compno) {
 		new_components[compno + 2U].dx = original->comps[compno].dx;
 		new_components[compno + 2U].dy = original->comps[compno].dy;
 		new_components[compno + 2U].h = original->comps[compno].h;
@@ -160,9 +129,9 @@ grk_image* convert_gray_to_rgb(grk_image *original) {
 		new_components[compno + 2U].y0 = original->comps[compno].y0;
 	}
 
-	new_image = grk_image_create(original->numcomps + 2U, new_components,
+	auto new_image = grk_image_create((uint16_t)(original->numcomps + 2U), new_components,
 			GRK_CLRSPC_SRGB,true);
-	free(new_components);
+	delete[] new_components;
 	if (new_image == nullptr) {
 		spdlog::error(
 				"grk_decompress: failed to allocate memory for RGB image.");
@@ -184,13 +153,13 @@ grk_image* convert_gray_to_rgb(grk_image *original) {
 	memcpy(new_image->comps[2].data, original->comps[0].data,
 			original->comps[0].stride * original->comps[0].h * sizeof(int32_t));
 
-	for (compno = 1U; compno < original->numcomps; ++compno) {
+	for (uint32_t compno = 1U; compno < original->numcomps; ++compno) {
 		new_image->comps[compno + 2U].type = original->comps[compno].type;
 		memcpy(new_image->comps[compno + 2U].data, original->comps[compno].data,
-				original->comps[compno].stride * original->comps[compno].h
-						* sizeof(int32_t));
+				original->comps[compno].stride * original->comps[compno].h 	* sizeof(int32_t));
 	}
 	grk_image_destroy(original);
+
 	return new_image;
 }
 
@@ -216,15 +185,7 @@ grk_image* upsample_image_components(grk_image *original) {
 		return original;
 	}
 	/* Upsample is needed */
-	new_components = (grk_image_cmptparm*) malloc(
-			original->numcomps * sizeof(grk_image_cmptparm));
-	if (new_components == nullptr) {
-		spdlog::error(
-				"grk_decompress: failed to allocate memory for upsampled components.");
-		grk_image_destroy(original);
-		return nullptr;
-	}
-
+	new_components = new grk_image_cmptparm[original->numcomps];
 	for (compno = 0U; compno < original->numcomps; ++compno) {
 		auto new_cmp = &(new_components[compno]);
 		auto org_cmp = &(original->comps[compno]);
@@ -244,9 +205,8 @@ grk_image* upsample_image_components(grk_image *original) {
 			new_cmp->h = original->y1 - original->y0;
 	}
 
-	new_image = grk_image_create(original->numcomps, new_components,
-			original->color_space,true);
-	free(new_components);
+	new_image = grk_image_create(original->numcomps, new_components,original->color_space,true);
+	delete[] new_components;
 	if (new_image == nullptr) {
 		spdlog::error(
 				"grk_decompress: failed to allocate memory for upsampled components.");
@@ -273,8 +233,7 @@ grk_image* upsample_image_components(grk_image *original) {
 			uint32_t xoff = org_cmp->dx * org_cmp->x0 - original->x0;
 			uint32_t yoff = org_cmp->dy * org_cmp->y0 - original->y0;
 			if ((xoff >= org_cmp->dx) || (yoff >= org_cmp->dy)) {
-				spdlog::error(
-						"grk_decompress: Invalid image/component parameters found when upsampling");
+				spdlog::error("upsample: Invalid image/component parameters found when upsampling");
 				grk_image_destroy(original);
 				grk_image_destroy(new_image);
 				return nullptr;
@@ -312,9 +271,7 @@ grk_image* upsample_image_components(grk_image *original) {
 			}
 			if (y < new_cmp->h) {
 				uint32_t x;
-				uint32_t xorg;
-
-				xorg = 0U;
+				uint32_t xorg = 0;
 				for (x = 0U; x < xoff; ++x)
 					dst[x] = 0;
 
@@ -338,6 +295,7 @@ grk_image* upsample_image_components(grk_image *original) {
 		}
 	}
 	grk_image_destroy(original);
+
 	return new_image;
 }
 

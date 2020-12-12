@@ -1398,15 +1398,16 @@ int GrkDecompress::postDecompress(grk_plugin_decompress_callback_info *info) {
 			if (precisionno >= parameters->nb_precision)
 				precisionno = parameters->nb_precision - 1U;
 			uint8_t prec = parameters->precision[precisionno].prec;
+			auto comp = image->comps + compno;
 			if (prec == 0)
-				prec = image->comps[compno].prec;
+				prec = comp->prec;
 
 			switch (parameters->precision[precisionno].mode) {
 			case GRK_PREC_MODE_CLIP:
-				clip_component(&(image->comps[compno]), prec);
+				clip_component(comp, prec);
 				break;
 			case GRK_PREC_MODE_SCALE:
-				scale_component(&(image->comps[compno]), prec);
+				scale_component(comp, prec);
 				break;
 			default:
 				break;
