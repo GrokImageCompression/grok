@@ -21,21 +21,6 @@
 
 #pragma once
 
-#define INV_MASK_16 0xFFFF
-#define INV_MASK_15 ((1<<15)-1)
-#define INV_MASK_14 ((1<<14)-1)
-#define INV_MASK_13 ((1<<13)-1)
-#define INV_MASK_12 ((1<<12)-1)
-#define INV_MASK_11 ((1<<11)-1)
-#define INV_MASK_10 ((1<<10)-1)
-#define INV_MASK_9 ((1<<9)-1)
-#define INV_MASK_8 0xFF
-#define INV_MASK_7 ((1<<7)-1)
-#define INV_MASK_6 ((1<<6)-1)
-#define INV_MASK_5 ((1<<5)-1)
-#define INV_MASK_4 ((1<<4)-1)
-#define INV_MASK_3 ((1<<3)-1)
-#define INV_MASK_2 ((1<<2)-1)
 #define INV(val, mask,invert)  ((invert) ? ((val)^(mask)) : (val))
 
 /* Component precision clipping */
@@ -71,27 +56,6 @@ void convert_tif_32sto12u(const int32_t *pSrc, uint8_t *pDst, size_t length);
 void convert_tif_32sto13u(const int32_t *pSrc, uint8_t *pDst, size_t length);
 void convert_tif_32sto14u(const int32_t *pSrc, uint8_t *pDst, size_t length);
 void convert_tif_32sto15u(const int32_t *pSrc, uint8_t *pDst, size_t length);
-void convert_tif_32sto16u(const int32_t *pSrc, uint16_t *pDst, size_t length);
-void convert_tif_3uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
-		bool invert);
-void convert_tif_5uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
-		bool invert);
-void convert_tif_7uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
-		bool invert);
-void convert_tif_9uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
-		bool invert);
-void convert_tif_10uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
-		bool invert);
-void convert_tif_11uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
-		bool invert);
-void convert_tif_12uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
-		bool invert);
-void convert_tif_13uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
-		bool invert);
-void convert_tif_14uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
-		bool invert);
-void convert_tif_15uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
-		bool invert);
-void convert_tif_16uto32s(const uint16_t *pSrc, int32_t *pDst, size_t length,
-		bool invert);
+void convert_tif_32sto16u(const int32_t *pSrc, uint8_t *pDst, size_t length);
+
 

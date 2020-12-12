@@ -38,6 +38,29 @@
 #include <memory>
 #include <string>
 
+static void convert_tif_3uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert);
+static void convert_tif_5uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert);
+static void convert_tif_7uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert);
+static void convert_tif_9uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert);
+static void convert_tif_10uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert);
+static void convert_tif_11uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert);
+static void convert_tif_12uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert);
+static void convert_tif_13uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert);
+static void convert_tif_14uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert);
+static void convert_tif_15uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert);
+static void convert_tif_16uto32s(const uint16_t *pSrc, int32_t *pDst, size_t length,
+		bool invert);
+
 static void tiff_error(const char *msg, void *client_data){
 	(void)client_data;
 	if (msg){
@@ -535,7 +558,7 @@ bool TIFFFormat::encodeHeader(grk_image *image, const std::string &filename,
 		cvt32sToTif = convert_tif_32sto15u;
 		break;
 	case 16:
-		cvt32sToTif = (cvtFrom32) convert_tif_32sto16u;
+		cvt32sToTif =  convert_tif_32sto16u;
 		break;
 	default:
 		break;
@@ -1198,4 +1221,368 @@ grk_image* TIFFFormat::decode(const std::string &filename,
 
 	return nullptr;
 }
+
+#define INV_MASK_16 0xFFFF
+#define INV_MASK_15 ((1<<15)-1)
+#define INV_MASK_14 ((1<<14)-1)
+#define INV_MASK_13 ((1<<13)-1)
+#define INV_MASK_12 ((1<<12)-1)
+#define INV_MASK_11 ((1<<11)-1)
+#define INV_MASK_10 ((1<<10)-1)
+#define INV_MASK_9 ((1<<9)-1)
+#define INV_MASK_8 0xFF
+#define INV_MASK_7 ((1<<7)-1)
+#define INV_MASK_6 ((1<<6)-1)
+#define INV_MASK_5 ((1<<5)-1)
+#define INV_MASK_4 ((1<<4)-1)
+#define INV_MASK_3 ((1<<3)-1)
+#define INV_MASK_2 ((1<<2)-1)
+
+#define GETBITS(dest, nb, mask, invert) { \
+	int needed = (nb); \
+	uint32_t dst = 0U; \
+	if (available == 0) { \
+		val = *pSrc++; \
+		available = 8; \
+	} \
+	while (needed > available) { \
+		dst |= val & ((1U << available) - 1U); \
+		needed -= available; \
+		dst <<= needed; \
+		val = *pSrc++; \
+		available = 8; \
+	} \
+	dst |= (val >> (available - needed)) & ((1U << needed) - 1U); \
+	available -= needed; \
+	dest = INV((int32_t)dst, mask,invert); \
+}
+
+static void convert_tif_3uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert) {
+	size_t i;
+	for (i = 0; i < (length & ~(size_t) 7U); i += 8U) {
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		uint32_t val2 = *pSrc++;
+
+		pDst[i + 0] = INV((int32_t )((val0 >> 5)), INV_MASK_3, invert);
+		pDst[i + 1] = INV((int32_t )(((val0 & 0x1FU) >> 2)), INV_MASK_3,invert);
+		pDst[i + 2] = INV((int32_t )(((val0 & 0x3U) << 1) | (val1 >> 7)), INV_MASK_3, invert);
+		pDst[i + 3] = INV((int32_t )(((val1 & 0x7FU) >> 4)), INV_MASK_3,invert);
+		pDst[i + 4] = INV((int32_t )(((val1 & 0xFU) >> 1)), INV_MASK_3, invert);
+		pDst[i + 5] = INV((int32_t )(((val1 & 0x1U) << 2) | (val2 >> 6)),INV_MASK_3, invert);
+		pDst[i + 6] = INV((int32_t )(((val2 & 0x3FU) >> 3)), INV_MASK_3,invert);
+		pDst[i + 7] = INV((int32_t )(((val2 & 0x7U))), INV_MASK_3, invert);
+
+	}
+
+	length = length & 7U;
+	if (length) {
+		uint32_t val;
+		int available = 0;
+		for (size_t j = 0; j < length; ++j)
+			GETBITS(pDst[i + j], 3, INV_MASK_3, invert)
+	}
+}
+static void convert_tif_5uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert) {
+	size_t i;
+	for (i = 0; i < (length & ~(size_t) 7U); i += 8U) {
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		uint32_t val2 = *pSrc++;
+		uint32_t val3 = *pSrc++;
+		uint32_t val4 = *pSrc++;
+
+		pDst[i + 0] = INV((int32_t )((val0 >> 3)), INV_MASK_5, invert);
+		pDst[i + 1] = INV((int32_t )(((val0 & 0x7U) << 2) | (val1 >> 6)),INV_MASK_5, invert);
+		pDst[i + 2] = INV((int32_t )(((val1 & 0x3FU) >> 1)), INV_MASK_5,invert);
+		pDst[i + 3] = INV((int32_t )(((val1 & 0x1U) << 4) | (val2 >> 4)),	INV_MASK_5, invert);
+		pDst[i + 4] = INV((int32_t )(((val2 & 0xFU) << 1) | (val3 >> 7)),	INV_MASK_5, invert);
+		pDst[i + 5] = INV((int32_t )(((val3 & 0x7FU) >> 2)), INV_MASK_5,	invert);
+		pDst[i + 6] = INV((int32_t )(((val3 & 0x3U) << 3) | (val4 >> 5)),	INV_MASK_5, invert);
+		pDst[i + 7] = INV((int32_t )(((val4 & 0x1FU))), INV_MASK_5, invert);
+
+	}
+
+	length = length & 7U;
+	if (length) {
+		uint32_t val;
+		int available = 0;
+		for (size_t j = 0; j < length; ++j)
+			GETBITS(pDst[i + j], 5, INV_MASK_5, invert)
+	}
+}
+static void convert_tif_7uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert) {
+	size_t i;
+	for (i = 0; i < (length & ~(size_t) 7U); i += 8U) {
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		uint32_t val2 = *pSrc++;
+		uint32_t val3 = *pSrc++;
+		uint32_t val4 = *pSrc++;
+		uint32_t val5 = *pSrc++;
+		uint32_t val6 = *pSrc++;
+
+		pDst[i + 0] = INV((int32_t )((val0 >> 1)), INV_MASK_7, invert);
+		pDst[i + 1] = INV((int32_t )(((val0 & 0x1U) << 6) | (val1 >> 2)),INV_MASK_7, invert);
+		pDst[i + 2] = INV((int32_t )(((val1 & 0x3U) << 5) | (val2 >> 3)),INV_MASK_7, invert);
+		pDst[i + 3] = INV((int32_t )(((val2 & 0x7U) << 4) | (val3 >> 4)),INV_MASK_7, invert);
+		pDst[i + 4] = INV((int32_t )(((val3 & 0xFU) << 3) | (val4 >> 5)),INV_MASK_7, invert);
+		pDst[i + 5] = INV((int32_t )(((val4 & 0x1FU) << 2) | (val5 >> 6)),	INV_MASK_7, invert);
+		pDst[i + 6] = INV((int32_t )(((val5 & 0x3FU) << 1) | (val6 >> 7)),	INV_MASK_7, invert);
+		pDst[i + 7] = INV((int32_t )(((val6 & 0x7FU))), INV_MASK_7, invert);
+
+	}
+
+	length = length & 7U;
+	if (length) {
+		uint32_t val;
+		int available = 0;
+		for (size_t j = 0; j < length; ++j)
+			GETBITS(pDst[i + j], 7, INV_MASK_7, invert)
+	}
+}
+static void convert_tif_9uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert) {
+	size_t i;
+	for (i = 0; i < (length & ~(size_t) 7U); i += 8U) {
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		uint32_t val2 = *pSrc++;
+		uint32_t val3 = *pSrc++;
+		uint32_t val4 = *pSrc++;
+		uint32_t val5 = *pSrc++;
+		uint32_t val6 = *pSrc++;
+		uint32_t val7 = *pSrc++;
+		uint32_t val8 = *pSrc++;
+
+		pDst[i + 0] = INV((int32_t )((val0 << 1) | (val1 >> 7)), INV_MASK_9,invert);
+		pDst[i + 1] = INV((int32_t )(((val1 & 0x7FU) << 2) | (val2 >> 6)),	INV_MASK_9, invert);
+		pDst[i + 2] = INV((int32_t )(((val2 & 0x3FU) << 3) | (val3 >> 5)),	INV_MASK_9, invert);
+		pDst[i + 3] = INV((int32_t )(((val3 & 0x1FU) << 4) | (val4 >> 4)),	INV_MASK_9, invert);
+		pDst[i + 4] = INV((int32_t )(((val4 & 0xFU) << 5) | (val5 >> 3)),	INV_MASK_9, invert);
+		pDst[i + 5] = INV((int32_t )(((val5 & 0x7U) << 6) | (val6 >> 2)),	INV_MASK_9, invert);
+		pDst[i + 6] = INV((int32_t )(((val6 & 0x3U) << 7) | (val7 >> 1)),	INV_MASK_9, invert);
+		pDst[i + 7] = INV((int32_t )(((val7 & 0x1U) << 8) | (val8)), INV_MASK_9,
+				invert);
+
+	}
+	length = length & 7U;
+	if (length) {
+		uint32_t val;
+		int available = 0;
+		for (size_t j = 0; j < length; ++j)
+			GETBITS(pDst[i + j], 9, INV_MASK_9, invert)
+	}
+}
+
+static void convert_tif_10uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert) {
+	size_t i;
+	for (i = 0; i < (length & ~(size_t) 3U); i += 4U) {
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		uint32_t val2 = *pSrc++;
+		uint32_t val3 = *pSrc++;
+		uint32_t val4 = *pSrc++;
+
+		pDst[i + 0] = INV((int32_t )((val0 << 2) | (val1 >> 6)), INV_MASK_10,invert);
+		pDst[i + 1] = INV((int32_t )(((val1 & 0x3FU) << 4) | (val2 >> 4)),	INV_MASK_10, invert);
+		pDst[i + 2] = INV((int32_t )(((val2 & 0xFU) << 6) | (val3 >> 2)),	INV_MASK_10, invert);
+		pDst[i + 3] = INV((int32_t )(((val3 & 0x3U) << 8) | val4), INV_MASK_10,	invert);
+
+	}
+	if (length & 3U) {
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		length = length & 3U;
+		pDst[i + 0] = INV((int32_t )((val0 << 2) | (val1 >> 6)), INV_MASK_10,
+				invert);
+
+		if (length > 1U) {
+			uint32_t val2 = *pSrc++;
+			pDst[i + 1] = INV((int32_t )(((val1 & 0x3FU) << 4) | (val2 >> 4)),	INV_MASK_10, invert);
+			if (length > 2U) {
+				uint32_t val3 = *pSrc++;
+				pDst[i + 2] = INV((int32_t )(((val2 & 0xFU) << 6) | (val3 >> 2)),INV_MASK_10, invert);
+			}
+		}
+	}
+}
+
+static void convert_tif_11uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert) {
+	size_t i;
+	for (i = 0; i < (length & ~(size_t) 7U); i += 8U) {
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		uint32_t val2 = *pSrc++;
+		uint32_t val3 = *pSrc++;
+		uint32_t val4 = *pSrc++;
+		uint32_t val5 = *pSrc++;
+		uint32_t val6 = *pSrc++;
+		uint32_t val7 = *pSrc++;
+		uint32_t val8 = *pSrc++;
+		uint32_t val9 = *pSrc++;
+		uint32_t val10 = *pSrc++;
+
+		pDst[i + 0] = INV((int32_t )((val0 << 3) | (val1 >> 5)), INV_MASK_11,invert);
+		pDst[i + 1] = INV((int32_t )(((val1 & 0x1FU) << 6) | (val2 >> 2)),	INV_MASK_11, invert);
+		pDst[i + 2] = INV((int32_t )(((val2 & 0x3U) << 9) | (val3 << 1) | (val4 >> 7)),	INV_MASK_11, invert);
+		pDst[i + 3] = INV((int32_t )(((val4 & 0x7FU) << 4) | (val5 >> 4)),	INV_MASK_11, invert);
+		pDst[i + 4] = INV((int32_t )(((val5 & 0xFU) << 7) | (val6 >> 1)),	INV_MASK_11, invert);
+		pDst[i + 5] = INV((int32_t )(((val6 & 0x1U) << 10) | (val7 << 2) | (val8 >> 6)),INV_MASK_11, invert);
+		pDst[i + 6] = INV((int32_t )(((val8 & 0x3FU) << 5) | (val9 >> 3)),INV_MASK_11, invert);
+		pDst[i + 7] = INV((int32_t )(((val9 & 0x7U) << 8) | (val10)),INV_MASK_11, invert);
+
+	}
+	length = length & 7U;
+	if (length) {
+		uint32_t val;
+		int available = 0;
+		for (size_t j = 0; j < length; ++j)
+			GETBITS(pDst[i + j], 11, INV_MASK_11, invert)
+	}
+}
+static void convert_tif_12uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert) {
+	size_t i;
+	for (i = 0; i < (length & ~(size_t) 1U); i += 2U) {
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		uint32_t val2 = *pSrc++;
+
+		pDst[i + 0] = INV((int32_t )((val0 << 4) | (val1 >> 4)), INV_MASK_12,invert);
+		pDst[i + 1] = INV((int32_t )(((val1 & 0xFU) << 8) | val2), INV_MASK_12,	invert);
+	}
+	if (length & 1U) {
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		pDst[i + 0] = INV((int32_t )((val0 << 4) | (val1 >> 4)), INV_MASK_12,invert);
+	}
+}
+
+static void convert_tif_13uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert) {
+	size_t i;
+	for (i = 0; i < (length & ~(size_t) 7U); i += 8U) {
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		uint32_t val2 = *pSrc++;
+		uint32_t val3 = *pSrc++;
+		uint32_t val4 = *pSrc++;
+		uint32_t val5 = *pSrc++;
+		uint32_t val6 = *pSrc++;
+		uint32_t val7 = *pSrc++;
+		uint32_t val8 = *pSrc++;
+		uint32_t val9 = *pSrc++;
+		uint32_t val10 = *pSrc++;
+		uint32_t val11 = *pSrc++;
+		uint32_t val12 = *pSrc++;
+
+		pDst[i + 0] = INV((int32_t )((val0 << 5) | (val1 >> 3)), INV_MASK_13,invert);
+		pDst[i + 1] = INV(
+				(int32_t )(((val1 & 0x7U) << 10) | (val2 << 2) | (val3 >> 6)),INV_MASK_13, invert);
+		pDst[i + 2] = INV((int32_t )(((val3 & 0x3FU) << 7) | (val4 >> 1)),	INV_MASK_13, invert);
+		pDst[i + 3] = INV((int32_t )(((val4 & 0x1U) << 12) | (val5 << 4) | (val6 >> 4)),INV_MASK_13, invert);
+		pDst[i + 4] = INV((int32_t )(((val6 & 0xFU) << 9) | (val7 << 1) | (val8 >> 7)),	INV_MASK_13, invert);
+		pDst[i + 5] = INV((int32_t )(((val8 & 0x7FU) << 6) | (val9 >> 2)),	INV_MASK_13, invert);
+		pDst[i + 6] = INV((int32_t )(((val9 & 0x3U) << 11) | (val10 << 3) | (val11 >> 5)),	INV_MASK_13, invert);
+		pDst[i + 7] = INV((int32_t )(((val11 & 0x1FU) << 8) | (val12)),	INV_MASK_13, invert);
+
+	}
+	length = length & 7U;
+	if (length) {
+		uint32_t val;
+		int available = 0;
+		for (size_t j = 0; j < length; ++j)
+			GETBITS(pDst[i + j], 13, INV_MASK_13, invert)
+	}
+}
+
+static void convert_tif_14uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert) {
+	size_t i;
+	for (i = 0; i < (length & ~(size_t) 3U); i += 4U) {
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		uint32_t val2 = *pSrc++;
+		uint32_t val3 = *pSrc++;
+		uint32_t val4 = *pSrc++;
+		uint32_t val5 = *pSrc++;
+		uint32_t val6 = *pSrc++;
+
+		pDst[i + 0] = INV((int32_t )((val0 << 6) | (val1 >> 2)), INV_MASK_14,invert);
+		pDst[i + 1] = INV((int32_t )(((val1 & 0x3U) << 12) | (val2 << 4) | (val3 >> 4)),INV_MASK_14, invert);
+		pDst[i + 2] = INV((int32_t )(((val3 & 0xFU) << 10) | (val4 << 2) | (val5 >> 6)),INV_MASK_14, invert);
+		pDst[i + 3] = INV((int32_t )(((val5 & 0x3FU) << 8) | val6), INV_MASK_14,invert);
+
+	}
+	if (length & 3U) {
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		length = length & 3U;
+		pDst[i + 0] = (int32_t) ((val0 << 6) | (val1 >> 2));
+
+		if (length > 1U) {
+			uint32_t val2 = *pSrc++;
+			uint32_t val3 = *pSrc++;
+			pDst[i + 1] = INV((int32_t )(((val1 & 0x3U) << 12) | (val2 << 4)| (val3 >> 4)), INV_MASK_14, invert);
+			if (length > 2U) {
+				uint32_t val4 = *pSrc++;
+				uint32_t val5 = *pSrc++;
+				pDst[i + 2] = INV((int32_t )(((val3 & 0xFU) << 10) | (val4 << 2) | (val5 >> 6)), INV_MASK_14, invert);
+			}
+		}
+	}
+}
+
+static void convert_tif_15uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert) {
+	size_t i;
+	for (i = 0; i < (length & ~(size_t) 7U); i += 8U) {
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		uint32_t val2 = *pSrc++;
+		uint32_t val3 = *pSrc++;
+		uint32_t val4 = *pSrc++;
+		uint32_t val5 = *pSrc++;
+		uint32_t val6 = *pSrc++;
+		uint32_t val7 = *pSrc++;
+		uint32_t val8 = *pSrc++;
+		uint32_t val9 = *pSrc++;
+		uint32_t val10 = *pSrc++;
+		uint32_t val11 = *pSrc++;
+		uint32_t val12 = *pSrc++;
+		uint32_t val13 = *pSrc++;
+		uint32_t val14 = *pSrc++;
+
+		pDst[i + 0] = INV((int32_t )((val0 << 7) | (val1 >> 1)), (1 << 15) - 1,	invert);
+		pDst[i + 1] = INV((int32_t )(((val1 & 0x1U) << 14) | (val2 << 6) | (val3 >> 2)), INV_MASK_15, invert);
+		pDst[i + 2] = INV((int32_t )(((val3 & 0x3U) << 13) | (val4 << 5) | (val5 >> 3)), INV_MASK_15, invert);
+		pDst[i + 3] = INV((int32_t )(((val5 & 0x7U) << 12) | (val6 << 4) | (val7 >> 4)), INV_MASK_15, invert);
+		pDst[i + 4] = INV((int32_t )(((val7 & 0xFU) << 11) | (val8 << 3) | (val9 >> 5)), INV_MASK_15, invert);
+		pDst[i + 5] = INV((int32_t )(((val9 & 0x1FU) << 10) | (val10 << 2) 	| (val11 >> 6)), INV_MASK_15, invert);
+		pDst[i + 6] = INV((int32_t )(((val11 & 0x3FU) << 9) | (val12 << 1) 	| (val13 >> 7)), INV_MASK_15, invert);
+		pDst[i + 7] = INV((int32_t )(((val13 & 0x7FU) << 8) | (val14)), INV_MASK_15, invert);
+
+	}
+	length = length & 7U;
+	if (length) {
+		uint32_t val;
+		int available = 0;
+		for (size_t j = 0; j < length; ++j)
+			GETBITS(pDst[i + j], 15, INV_MASK_15, invert)
+	}
+}
+
+/* seems that libtiff decodes this to machine endianness */
+static void convert_tif_16uto32s(const uint16_t *pSrc, int32_t *pDst, size_t length,
+		bool invert) {
+	for (size_t i = 0; i < length; i++)
+		pDst[i] = INV(pSrc[i], 0xFFFF, invert);
+}
+
 
