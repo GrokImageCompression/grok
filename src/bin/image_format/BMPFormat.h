@@ -75,18 +75,51 @@ private:
 			grk_image *image, uint8_t const *const*pLUT);
 	grk_image* bmp1toimage(const uint8_t *pData, uint32_t srcStride,
 			grk_image *image, uint8_t const *const*pLUT);
-	bool bmp_read_file_header(GRK_BITMAPFILEHEADER *fileHeader, GRK_BITMAPINFOHEADER *infoHeader);
-	bool bmp_read_info_header(GRK_BITMAPFILEHEADER *fileHeader, GRK_BITMAPINFOHEADER *infoHeader);
-	bool bmp_read_raw_data(uint8_t *pData, uint32_t stride, uint32_t height);
-	bool bmp_read_rle8_data(uint8_t *pData, uint32_t stride,
+	bool read_file_header(GRK_BITMAPFILEHEADER *fileHeader, GRK_BITMAPINFOHEADER *infoHeader);
+	bool read_info_header(GRK_BITMAPFILEHEADER *fileHeader, GRK_BITMAPINFOHEADER *infoHeader);
+	bool read_raw_data(uint8_t *pData, uint32_t stride, uint32_t height);
+	bool read_rle8_data(uint8_t *pData, uint32_t stride,
 			uint32_t width, uint32_t height);
-	bool bmp_read_rle4_data(uint8_t *pData, uint32_t stride,
+	bool read_rle4_data(uint8_t *pData, uint32_t stride,
 			uint32_t width, uint32_t height);
 
 	uint32_t getPaddedWidth();
 	uint64_t m_srcIndex;
 	GRK_BITMAPFILEHEADER File_h;
 	GRK_BITMAPINFOHEADER Info_h;
+
+	void conv_1u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
+			int32_t *pDst, int32_t dstStride, uint32_t destWidth,
+			uint32_t destHeight);
+	void conv_4u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
+			int32_t *pDst, int32_t dstStride, uint32_t destWidth,
+			uint32_t destHeight);
+	void conv_8u32s_C1R(uint8_t const *pSrc,
+										int32_t srcStride,
+										int32_t *pDst,
+										int32_t dstStride,
+										uint32_t width,
+										uint32_t height);
+
+	void applyLUT8u_1u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
+			int32_t *const*pDst, int32_t const *pDstStride,
+			uint8_t const *const*pLUT, uint32_t destWidth, uint32_t destHeight);
+	void applyLUT8u_4u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
+			int32_t *const*pDst, int32_t const *pDstStride,
+			uint8_t const *const*pLUT, uint32_t destWidth, uint32_t destHeight);
+	void applyLUT8u_8u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
+			int32_t *const*pDst, int32_t const *pDstStride,
+			uint8_t const *const*pLUT, uint32_t destWidth, uint32_t destHeight);
+	void mask32toimage(const uint8_t *pData, uint32_t srcStride,
+			grk_image *image, uint32_t redMask, uint32_t greenMask,
+			uint32_t blueMask, uint32_t alphaMask);
+	void mask16toimage(const uint8_t *pData, uint32_t srcStride,
+			grk_image *image, uint32_t redMask, uint32_t greenMask,
+			uint32_t blueMask, uint32_t alphaMask);
+	void bmp24toimage(const uint8_t *pData, uint32_t srcStride,
+			grk_image *image);
+	void mask_get_shift_and_prec(uint32_t mask, uint8_t *shift,
+			uint8_t *prec);
 
 };
 

@@ -95,33 +95,3 @@ void convert_tif_15uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
 void convert_tif_16uto32s(const uint16_t *pSrc, int32_t *pDst, size_t length,
 		bool invert);
 
-void bmp_1u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
-		int32_t *pDst, int32_t dstStride, uint32_t destWidth,
-		uint32_t destHeight);
-void bmp_4u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
-		int32_t *pDst, int32_t dstStride, uint32_t destWidth,
-		uint32_t destHeight);
-void bmp_8u32s_C1R(uint8_t const *pSrc,
-									int32_t srcStride,
-									int32_t *pDst,
-									int32_t dstStride,
-									uint32_t width,
-									uint32_t height);
-
-void bmp_applyLUT8u_1u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
-		int32_t *const*pDst, int32_t const *pDstStride,
-		uint8_t const *const*pLUT, uint32_t destWidth, uint32_t destHeight);
-void bmp_applyLUT8u_4u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
-		int32_t *const*pDst, int32_t const *pDstStride,
-		uint8_t const *const*pLUT, uint32_t destWidth, uint32_t destHeight);
-void bmp_applyLUT8u_8u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
-		int32_t *const*pDst, int32_t const *pDstStride,
-		uint8_t const *const*pLUT, uint32_t destWidth, uint32_t destHeight);
-void bmp_mask32toimage(const uint8_t *pData, uint32_t srcStride,
-		grk_image *image, uint32_t redMask, uint32_t greenMask,
-		uint32_t blueMask, uint32_t alphaMask);
-void bmp_mask16toimage(const uint8_t *pData, uint32_t srcStride,
-		grk_image *image, uint32_t redMask, uint32_t greenMask,
-		uint32_t blueMask, uint32_t alphaMask);
-void bmp24toimage(const uint8_t *pData, uint32_t srcStride,
-		grk_image *image);
