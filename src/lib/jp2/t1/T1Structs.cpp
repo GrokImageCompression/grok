@@ -553,7 +553,7 @@ void Resolution::print(){
 	grk_rect_u32::print();
 	for (uint32_t i = 0; i < numBandWindows; ++i){
 		std::cout << "band " << i << " : ";
-		bandWindow[i].print();
+		band[i].print();
 	}
 }
 
@@ -588,11 +588,11 @@ bool Resolution::init(bool isCompressor,
 	cblk_expn    =  grk_pt(std::min<uint32_t>(tccp->cblkw, precinct_expn.x),
 						   std::min<uint32_t>(tccp->cblkh, precinct_expn.y));
 	for (uint8_t bandIndex = 0; bandIndex < numBandWindows; ++bandIndex) {
-		auto band = bandWindow + bandIndex;
-		band->numPrecincts = num_precincts;
+		auto curr_band = band + bandIndex;
+		curr_band->numPrecincts = num_precincts;
 		if (isCompressor) {
 			for (uint64_t precinctIndex = 0; precinctIndex < num_precincts; ++precinctIndex) {
-				if (!band->createPrecinct(true,
+				if (!curr_band->createPrecinct(true,
 									precinctIndex,
 									precinct_start,
 									precinct_expn,

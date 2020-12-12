@@ -1934,24 +1934,24 @@ template <typename T,
         grk_rect_u32 win_horiz_band[BAND_NUM_ORIENTATIONS];
         grk_rect_u32 win_horiz_tile[BAND_NUM_ORIENTATIONS];
         win_horiz_band[BAND_ORIENT_LL] = grk_band_window(tilec->numresolutions,resno,0,window);
-        win_horiz_band[BAND_ORIENT_LL] = win_horiz_band[BAND_ORIENT_LL].pan(-(int64_t)res->bandWindow[BAND_INDEX_LH].x0, -(int64_t)res->bandWindow[BAND_INDEX_HL].y0);
+        win_horiz_band[BAND_ORIENT_LL] = win_horiz_band[BAND_ORIENT_LL].pan(-(int64_t)res->band[BAND_INDEX_LH].x0, -(int64_t)res->band[BAND_INDEX_HL].y0);
         win_horiz_band[BAND_ORIENT_LL].grow(FILTER_WIDTH, horiz.sn,  vert.sn);
         win_horiz_tile[BAND_ORIENT_LL] = win_horiz_band[BAND_ORIENT_LL];
 
         win_horiz_band[BAND_ORIENT_HL] = grk_band_window(tilec->numresolutions,resno,1,window);
-        win_horiz_band[BAND_ORIENT_HL] = win_horiz_band[BAND_ORIENT_HL].pan(-(int64_t)res->bandWindow[BAND_INDEX_HL].x0, -(int64_t)res->bandWindow[BAND_INDEX_HL].y0);
+        win_horiz_band[BAND_ORIENT_HL] = win_horiz_band[BAND_ORIENT_HL].pan(-(int64_t)res->band[BAND_INDEX_HL].x0, -(int64_t)res->band[BAND_INDEX_HL].y0);
         win_horiz_band[BAND_ORIENT_HL].grow(FILTER_WIDTH, horiz.dn,  vert.sn);
-        win_horiz_tile[BAND_ORIENT_HL] = win_horiz_band[BAND_ORIENT_HL].pan(res->bandWindow[BAND_INDEX_LH].width(),0);
+        win_horiz_tile[BAND_ORIENT_HL] = win_horiz_band[BAND_ORIENT_HL].pan(res->band[BAND_INDEX_LH].width(),0);
 
         win_horiz_band[BAND_ORIENT_LH] = grk_band_window(tilec->numresolutions,resno,2,window);
-        win_horiz_band[BAND_ORIENT_LH] = win_horiz_band[BAND_ORIENT_LH].pan(-(int64_t)res->bandWindow[BAND_INDEX_LH].x0, -(int64_t)res->bandWindow[BAND_INDEX_LH].y0);
+        win_horiz_band[BAND_ORIENT_LH] = win_horiz_band[BAND_ORIENT_LH].pan(-(int64_t)res->band[BAND_INDEX_LH].x0, -(int64_t)res->band[BAND_INDEX_LH].y0);
         win_horiz_band[BAND_ORIENT_LH].grow(FILTER_WIDTH, horiz.sn,  vert.dn);
-        win_horiz_tile[BAND_ORIENT_LH] = win_horiz_band[BAND_ORIENT_LH].pan(0,res->bandWindow[BAND_INDEX_HL].height());
+        win_horiz_tile[BAND_ORIENT_LH] = win_horiz_band[BAND_ORIENT_LH].pan(0,res->band[BAND_INDEX_HL].height());
 
         win_horiz_band[BAND__ORIENT_HH] = grk_band_window(tilec->numresolutions,resno,3,window);
-        win_horiz_band[BAND__ORIENT_HH] = win_horiz_band[BAND__ORIENT_HH].pan(-(int64_t)res->bandWindow[BAND_INDEX_HH].x0, -(int64_t)res->bandWindow[BAND_INDEX_HH].y0);
+        win_horiz_band[BAND__ORIENT_HH] = win_horiz_band[BAND__ORIENT_HH].pan(-(int64_t)res->band[BAND_INDEX_HH].x0, -(int64_t)res->band[BAND_INDEX_HH].y0);
         win_horiz_band[BAND__ORIENT_HH].grow(FILTER_WIDTH, horiz.dn,  vert.dn);
-        win_horiz_tile[BAND__ORIENT_HH] = win_horiz_band[BAND__ORIENT_HH].pan(res->bandWindow[BAND_INDEX_LH].width(),res->bandWindow[BAND_INDEX_HL].height());
+        win_horiz_tile[BAND__ORIENT_HH] = win_horiz_band[BAND__ORIENT_HH].pan(res->band[BAND_INDEX_LH].width(),res->band[BAND_INDEX_HL].height());
 
 
         // pad horizontal windows

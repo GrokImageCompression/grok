@@ -49,7 +49,7 @@ void TileComponent::release_mem(){
 		for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 			auto res = resolutions + resno;
 			for (uint32_t bandIndex = 0; bandIndex < 3; ++bandIndex) {
-				auto band = res->bandWindow + bandIndex;
+				auto band = res->band + bandIndex;
 				for (auto prc : band->precincts)
 					delete prc;
 				band->precincts.clear();
@@ -123,13 +123,13 @@ bool TileComponent::init(bool isCompressor,
 			res->print();
 		}
 		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-			auto band = res->bandWindow + bandIndex;
+			auto band = res->band + bandIndex;
 			eBandOrientation orientation = (resno ==0) ? BAND_ORIENT_LL : (eBandOrientation)(bandIndex+1);
 			band->orientation = orientation;
 		}
 	}
 
-	//2. calculate region bandWindow
+	//2. calculate region band
 	auto highestNumberOfResolutions =
 			(!m_is_encoder) ? resolutions_to_decompress : numresolutions;
 	auto hightestResolution =  resolutions + highestNumberOfResolutions - 1;
@@ -168,7 +168,7 @@ bool TileComponent::init(bool isCompressor,
 	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
 		for (uint8_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-			auto band = res->bandWindow + bandIndex;
+			auto band = res->band + bandIndex;
 			if (!m_tccp->quant.setBandStepSizeAndBps(tcp,
 													band,
 													resno,
@@ -214,7 +214,7 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
     for (uint32_t resno = 0; resno < numres; ++resno) {
         auto res = &resolutions[resno];
         for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-          	auto band = res->bandWindow + bandIndex;
+          	auto band = res->band + bandIndex;
             for (auto precinct : band->precincts) {
                 for (uint64_t cblkno = 0; cblkno < precinct->getNumCblks(); ++cblkno) {
                     auto cblk = precinct->getDecompressedBlockPtr() + cblkno;
@@ -263,7 +263,7 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
     for (uint32_t resno = 0; resno < numres; ++resno) {
         auto res = &resolutions[resno];
         for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-          	auto band = res->bandWindow + bandIndex;
+          	auto band = res->band + bandIndex;
             for (auto precinct : band->precincts) {
                 for (uint64_t cblkno = 0; cblkno < precinct->getNumCblks(); ++cblkno) {
                     auto cblk = precinct->getDecompressedBlockPtr() + cblkno;
@@ -307,11 +307,11 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
 
 void TileComponent::create_buffer(grk_rect_u32 *unreduced_tile_comp_dims,
 									grk_rect_u32 unreduced_tile_comp_window_dims) {
-	// calculate bandWindow
+	// calculate band
 	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
 		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-			auto band = res->bandWindow + bandIndex;
+			auto band = res->band + bandIndex;
 			band->set_rect(grk_band_window(numresolutions, resno, band->orientation,*unreduced_tile_comp_dims));
 		}
 	}

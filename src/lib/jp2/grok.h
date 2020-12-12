@@ -1216,7 +1216,7 @@ typedef struct _grk_plugin_band {
 typedef struct _grk_plugin_resolution {
 	size_t level;
 	size_t numBands;
-	grk_plugin_band **bandWindow;
+	grk_plugin_band **band;
 } grk_plugin_resolution;
 
 /**

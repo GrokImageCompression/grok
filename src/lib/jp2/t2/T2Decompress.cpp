@@ -86,7 +86,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			auto res = tilec->resolutions + current_pi->resno;
 			// create precincts
 			for (uint32_t bandIndex = 0;	bandIndex < res->numBandWindows; ++bandIndex) {
-				auto band = res->bandWindow + bandIndex;
+				auto band = res->band + bandIndex;
 				if (!band->createPrecinct(false,
 									current_pi->precinctIndex,
 									res->precinct_start,
@@ -101,7 +101,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 				if (!tilec->isWholeTileDecoding()) {
 					skip_the_packet = true;
 					for (uint32_t bandIndex = 0;	bandIndex < res->numBandWindows; ++bandIndex) {
-						auto band = res->bandWindow + bandIndex;
+						auto band = res->band + bandIndex;
 						auto prec = band->getPrecinct(current_pi->precinctIndex);
 						if (prec && tilec->subbandIntersectsAOI(current_pi->resno,bandIndex, prec)) {
 							skip_the_packet = false;
@@ -242,7 +242,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 	if (p_pi->layno == 0) {
 		/* reset tagtrees */
 		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-			auto band = res->bandWindow + bandIndex;
+			auto band = res->band + bandIndex;
 			if (band->isEmpty())
 				continue;
 			auto prc = band->getPrecinct(p_pi->precinctIndex);
@@ -329,7 +329,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 		//GRK_INFO("present=%u ", present);
 		if (present) {
 			for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-				auto band = res->bandWindow + bandIndex;
+				auto band = res->band + bandIndex;
 				if (band->isEmpty())
 					continue;
 				auto prc = band->getPrecinct(p_pi->precinctIndex);
@@ -526,7 +526,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
 		ChunkBuffer *src_buf, uint64_t *p_data_read) {
 	for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-		auto band = res->bandWindow + bandIndex;
+		auto band = res->band + bandIndex;
 		auto prc = band->getPrecinct(p_pi->precinctIndex);
 		if (!prc)
 			continue;
@@ -635,7 +635,7 @@ bool T2Decompress::skip_packet_data(Resolution *res, PacketIter *p_pi,
 	for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 		if (max_length - *p_data_read == 0)
 			return true;
-		auto band = res->bandWindow + bandIndex;
+		auto band = res->band + bandIndex;
 		if (band->isEmpty())
 			continue;
 

@@ -103,7 +103,7 @@ void TileProcessor::makelayer_feasible(uint32_t layno, uint16_t thresh,
 		for (resno = 0; resno < tilec->numresolutions; resno++) {
 			auto res = tilec->resolutions + resno;
 			for (bandIndex = 0; bandIndex < res->numBandWindows; bandIndex++) {
-				auto band = res->bandWindow + bandIndex;
+				auto band = res->band + bandIndex;
 	            for (auto prc : band->precincts) {
 					for (cblkno = 0; cblkno < prc->getNumCblks(); cblkno++) {
 						auto cblk = prc->getCompressedBlockPtr() + cblkno;
@@ -196,7 +196,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
 			auto res = &tilec->resolutions[resno];
 			for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; bandIndex++) {
-				auto band = &res->bandWindow[bandIndex];
+				auto band = &res->band[bandIndex];
 				for (auto prc : band->precincts) {
 					for (uint64_t cblkno = 0; cblkno < prc->getNumCblks();
 							cblkno++) {
@@ -332,7 +332,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 		for (resno = 0; resno < tilec->numresolutions; resno++) {
 			auto res = &tilec->resolutions[resno];
 			for (bandIndex = 0; bandIndex < res->numBandWindows; bandIndex++) {
-				auto band = &res->bandWindow[bandIndex];
+				auto band = &res->band[bandIndex];
 				for (auto prc : band->precincts){
 					for (cblkno = 0; cblkno < prc->getNumCblks(); cblkno++) {
 						auto cblk = &prc->getCompressedBlockPtr()[cblkno];
@@ -487,7 +487,7 @@ void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
 			auto res = tilec->resolutions + resno;
 			for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; bandIndex++) {
-				auto band = res->bandWindow + bandIndex;
+				auto band = res->band + bandIndex;
 				for (auto prc : band->precincts){
 					for (uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++) {
 						auto cblk = prc->getCompressedBlockPtr() + cblkno;
@@ -588,7 +588,7 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
 			auto res = tilec->resolutions + resno;
 			for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; bandIndex++) {
-				auto band = res->bandWindow + bandIndex;
+				auto band = res->band + bandIndex;
 				for (auto prc : band->precincts){
 					for (uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++) {
 						auto cblk = prc->getCompressedBlockPtr() + cblkno;
@@ -1117,17 +1117,17 @@ bool TileProcessor::t2_encode(uint32_t *all_packet_bytes_written) {
 			roundRes->y1 = res->y1;
 			roundRes->numBandWindows = res->numBandWindows;
 			for (uint32_t bandIndex = 0; bandIndex < roundRes->numBandWindows; ++bandIndex) {
-				roundRes->bandWindow[bandIndex] = res->bandWindow[bandIndex];
-				roundRes->bandWindow[bandIndex].x0 = res->bandWindow[bandIndex].x0;
-				roundRes->bandWindow[bandIndex].y0 = res->bandWindow[bandIndex].y0;
-				roundRes->bandWindow[bandIndex].x1 = res->bandWindow[bandIndex].x1;
-				roundRes->bandWindow[bandIndex].y1 = res->bandWindow[bandIndex].y1;
+				roundRes->band[bandIndex] = res->band[bandIndex];
+				roundRes->band[bandIndex].x0 = res->band[bandIndex].x0;
+				roundRes->band[bandIndex].y0 = res->band[bandIndex].y0;
+				roundRes->band[bandIndex].x1 = res->band[bandIndex].x1;
+				roundRes->band[bandIndex].y1 = res->band[bandIndex].y1;
 			}
 
 			// allocate
 			for (uint32_t bandIndex = 0; bandIndex < roundRes->numBandWindows; ++bandIndex) {
-				auto band = res->bandWindow + bandIndex;
-				auto decodeBand = roundRes->bandWindow + bandIndex;
+				auto band = res->band + bandIndex;
+				auto decodeBand = roundRes->band + bandIndex;
 				if (!band->numPrecincts)
 					continue;
 				decodeBand->precincts = new Precinct[band->numPrecincts];
@@ -1170,7 +1170,7 @@ bool TileProcessor::t2_encode(uint32_t *all_packet_bytes_written) {
 		for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
 			auto roundRes = tilec->round_trip_resolutions + resno;
 			for (uint32_t bandIndex = 0; bandIndex < roundRes->numBandWindows; ++bandIndex) {
-				auto decodeBand = roundRes->bandWindow + bandIndex;
+				auto decodeBand = roundRes->band + bandIndex;
 				if (decodeBand->precincts) {
 					for (uint64_t precinctIndex = 0; precinctIndex < decodeBand->numPrecincts; ++precinctIndex) {
 						auto decodePrec = decodeBand->precincts + precinctIndex;

@@ -47,7 +47,7 @@ void T1CompressScheduler::scheduleCompress(TileCodingParams *tcp,
 		for (resno = 0; resno < tilec->numresolutions; ++resno) {
 			auto res = &tilec->resolutions[resno];
 			for (bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-				auto band = &res->bandWindow[bandIndex];
+				auto band = &res->band[bandIndex];
 				for (auto prc : band->precincts){
 					for (uint64_t cblkno = 0; cblkno < prc->getNumCblks();	++cblkno) {
 						auto cblk = prc->getCompressedBlockPtr() + cblkno;

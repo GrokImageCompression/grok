@@ -230,7 +230,7 @@ struct Resolution : public grk_rect_u32 {
 				grk_plugin_tile *current_plugin_tile);
 
 	bool initialized;
-	Subband bandWindow[BAND_NUM_INDICES];
+	Subband band[BAND_NUM_INDICES];
 	uint32_t numBandWindows;  // 1 or 3
 	grk_rect_u32 paddedBandWindow[BAND_NUM_INDICES];
 	uint32_t pw, ph; 	/* dimensions of precinct grid */

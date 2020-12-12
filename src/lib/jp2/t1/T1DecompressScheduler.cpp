@@ -38,7 +38,7 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent *tilec, Tile
 	for (uint8_t resno = 0; resno < tilec->resolutions_to_decompress; ++resno) {
 		auto res = &tilec->resolutions[resno];
 		for (uint8_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-			Subband *GRK_RESTRICT band = res->bandWindow + bandIndex;
+			Subband *GRK_RESTRICT band = res->band + bandIndex;
 			for (auto precinct : band->precincts) {
 				if (!tilec->subbandIntersectsAOI(resno,
 												bandIndex,

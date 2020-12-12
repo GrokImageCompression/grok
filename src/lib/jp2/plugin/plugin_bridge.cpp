@@ -33,8 +33,8 @@ void decompress_synch_plugin_with_host(TileProcessor *tcd) {
 				auto plugin_res = plugin_tilec->resolutions[resno];
 				assert(plugin_res->numBands == res->numBandWindows);
 				for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; bandIndex++) {
-					auto band = &res->bandWindow[bandIndex];
-					auto plugin_band = plugin_res->bandWindow[bandIndex];
+					auto band = &res->band[bandIndex];
+					auto plugin_band = plugin_res->band[bandIndex];
 					assert(plugin_band->numPrecincts == (uint64_t)res->pw * res->ph);
 					//!!!! plugin still uses stepsize/2
 					plugin_band->stepsize = band->stepsize/2;
@@ -107,9 +107,9 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tile *p_tile) {
 			if (resolution->numBandWindows != plugin_resolution->numBands)
 				return false;
 			for (uint32_t bandIndex = 0; bandIndex < resolution->numBandWindows; ++bandIndex) {
-				auto band = resolution->bandWindow + bandIndex;
+				auto band = resolution->band + bandIndex;
 				auto plugin_band =
-						plugin_resolution->bandWindow[bandIndex];
+						plugin_resolution->band[bandIndex];
 				size_t num_precincts = band->numPrecincts;
 				if (num_precincts != plugin_band->numPrecincts)
 					return false;
@@ -143,7 +143,7 @@ void compress_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t re
 
 	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
 		auto plugin_band =
-				tcd->current_plugin_tile->tileComponents[compno]->resolutions[resno]->bandWindow[bandIndex];
+				tcd->current_plugin_tile->tileComponents[compno]->resolutions[resno]->band[bandIndex];
 		auto precinct = plugin_band->precincts[precinctIndex];
 		auto plugin_cblk = precinct->blocks[cblkno];
 		uint32_t state = grk_plugin_get_debug_state();
@@ -260,7 +260,7 @@ void set_context_stream(TileProcessor *p_tileProcessor) {
 		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
 			auto res = &tilec->resolutions[resno];
 			for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; bandIndex++) {
-				auto band = &res->bandWindow[bandIndex];
+				auto band = &res->band[bandIndex];
 				for (auto prc : band->precincts){
 					for (uint64_t cblkno = 0; cblkno < prc->getNumCblks();
 							cblkno++) {
@@ -271,7 +271,7 @@ void set_context_stream(TileProcessor *p_tileProcessor) {
 									p_tileProcessor->current_plugin_tile->tileComponents[compno];
 							if (resno < comp->numResolutions) {
 								auto plugin_band =
-										comp->resolutions[resno]->bandWindow[bandIndex];
+										comp->resolutions[resno]->band[bandIndex];
 								auto precinct =
 										plugin_band->precincts[prc->precinctIndex];
 								auto plugin_cblk =

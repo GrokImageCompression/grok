@@ -34,7 +34,7 @@ template<typename T> struct res_buf {
 										top_level_res(top),
 										res(new grk_buffer_2d<T>(bounds))  {
 		for (uint32_t i = 0; i < BAND_NUM_INDICES; ++i)
-			bandWindow[i] = resol ? new grk_buffer_2d<T>(resol->bandWindow[i]) : nullptr;
+			bandWindow[i] = resol ? new grk_buffer_2d<T>(resol->band[i]) : nullptr;
 		for (uint32_t i = 0; i < 2; ++i)
 			horizBandWindow[i] = nullptr;
 	}
@@ -127,7 +127,7 @@ template<typename T> struct TileComponentWindowBuffer {
 					 // lowest resolution equals 0th band
 					 res_buffers.push_back(new res_buf<T>(use_band_buffers() ? nullptr : topLevel->res,
 														  nullptr,
-														  tile_comp_resolutions->bandWindow[BAND_RES_ZERO_INDEX_LL]) );
+														  tile_comp_resolutions->band[BAND_RES_ZERO_INDEX_LL]) );
 				 } else {
 					 auto res_dims =  grk_band_window(num_resolutions,
 														resno+1,
@@ -161,7 +161,7 @@ template<typename T> struct TileComponentWindowBuffer {
 			assert(bandIndex==BAND_RES_ZERO_INDEX_LL);
 
 		auto res = resolutions[resno];
-		auto band = res->bandWindow + bandIndex;
+		auto band = res->band + bandIndex;
 
 		uint32_t x = offsetx;
 		uint32_t y = offsety;
