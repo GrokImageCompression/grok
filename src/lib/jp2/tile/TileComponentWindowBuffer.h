@@ -29,12 +29,13 @@ namespace grk {
 template<typename T> struct res_buf {
 
 	res_buf(grk_buffer_2d<T> *top,
-				Resolution *resol,
+				Resolution *full_res,
 				grk_rect_u32 bounds) :  allocated(false),
 										top_level_res(top),
-										res(new grk_buffer_2d<T>(bounds))  {
+										res(new grk_buffer_2d<T>(bounds)),
+										full_res(full_res) {
 		for (uint32_t i = 0; i < BAND_NUM_INDICES; ++i)
-			bandWindow[i] = resol ? new grk_buffer_2d<T>(resol->band[i]) : nullptr;
+			bandWindow[i] = full_res ? new grk_buffer_2d<T>(full_res->band[i]) : nullptr;
 		for (uint32_t i = 0; i < 2; ++i)
 			horizBandWindow[i] = nullptr;
 	}
@@ -51,6 +52,27 @@ template<typename T> struct res_buf {
 
 		// no allocation needed if there is a top level buffer
 		if (top_level_res) {
+			res->data = top_level_res->data;
+			res->stride = top_level_res->stride;
+			for (uint32_t i = 0; i < BAND_NUM_INDICES; ++i){
+				if (bandWindow[i]) {
+					switch(i){
+					case 0:
+						bandWindow[i]->attach(top_level_res->data + (full_res->band+1)->width(),
+												top_level_res->stride);
+						break;
+					case 1:
+						bandWindow[i]->attach(top_level_res->data + (full_res->band+0)->height() * top_level_res->stride,
+												top_level_res->stride);
+						break;
+					case 2:
+						bandWindow[i]->attach(top_level_res->data + (full_res->band+0)->width() +
+														(full_res->band+0)->height() * top_level_res->stride,
+												top_level_res->stride);
+						break;
+					}
+				}
+			}
 			return true;
 		} else {
 			if (!res->alloc(clear))
@@ -68,6 +90,7 @@ template<typename T> struct res_buf {
 	bool allocated;
 	grk_buffer_2d<T> *top_level_res;
 	grk_buffer_2d<T> *res;
+	Resolution *full_res;
 	// destination buffers for horizontal synthesis DWT transform
 	grk_buffer_2d<T> *horizBandWindow[2];
 	grk_buffer_2d<T> *bandWindow[BAND_NUM_INDICES];
