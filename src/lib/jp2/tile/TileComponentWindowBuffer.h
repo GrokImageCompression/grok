@@ -21,29 +21,55 @@
 
 namespace grk {
 
+/**
+ *  Class to manage multiple buffers needed to perform DWT transform
+ *
+ *
+ */
 template<typename T> struct res_buf {
 
-	res_buf(Resolution *res, grk_rect_u32 res_bounds) : res(new grk_buffer_2d<T>(res_bounds))
-	{
+	res_buf(grk_buffer_2d<T> *top,
+				Resolution *resol,
+				grk_rect_u32 bounds) :  allocated(false),
+										top_level_res(top),
+										res(new grk_buffer_2d<T>(bounds))  {
 		for (uint32_t i = 0; i < BAND_NUM_INDICES; ++i)
-			bandWindow[i] = res ? new grk_buffer_2d<T>(res->bandWindow[i]) : nullptr;
+			bandWindow[i] = resol ? new grk_buffer_2d<T>(resol->bandWindow[i]) : nullptr;
+		for (uint32_t i = 0; i < 2; ++i)
+			horizBandWindow[i] = nullptr;
 	}
 	~res_buf(){
 		delete res;
-		for (uint32_t i = 0; i < 3; ++i)
+		for (uint32_t i = 0; i < BAND_NUM_INDICES; ++i)
 			delete bandWindow[i];
+		for (uint32_t i = 0; i < 2; ++i)
+			delete horizBandWindow[i];
 	}
 	bool alloc(bool clear){
-		if (!res->alloc(clear))
-			return false;
-		for (uint32_t i = 0; i < BAND_NUM_INDICES; ++i){
-			if (bandWindow[i] && !bandWindow[i]->alloc(clear))
+		if (allocated)
+			return true;
+
+		// no allocation needed if there is a top level buffer
+		if (top_level_res) {
+			return true;
+		} else {
+			if (!res->alloc(clear))
 				return false;
+			for (uint32_t i = 0; i < BAND_NUM_INDICES; ++i){
+				if (bandWindow[i] && !bandWindow[i]->alloc(clear))
+					return false;
+			}
 		}
+		allocated = true;
+
 		return true;
 	}
 
+	bool allocated;
+	grk_buffer_2d<T> *top_level_res;
 	grk_buffer_2d<T> *res;
+	// destination buffers for horizontal synthesis DWT transform
+	grk_buffer_2d<T> *horizBandWindow[2];
 	grk_buffer_2d<T> *bandWindow[BAND_NUM_INDICES];
 };
 
@@ -86,34 +112,39 @@ template<typename T> struct TileComponentWindowBuffer {
 			assert(m_unreduced_bounds.is_valid());
 		}
 
-		/* fill resolutions vector */
+		// fill resolutions vector
         assert(reduced_num_resolutions>0);
-
         for (uint32_t resno = 0; resno < reduced_num_resolutions; ++resno)
         	resolutions.push_back(tile_comp_resolutions+resno);
 
-        if ( use_band_buffers()) {
-        	// lowest resolution equals 0th band
-        	 res_buffers.push_back(new res_buf<T>(nullptr, tile_comp_resolutions->bandWindow[BAND_RES_ZERO_INDEX_LL]) );
-
-        	 for (uint32_t resno = 1; resno < reduced_num_resolutions; ++resno){
-        		 auto res_dims =  (resno == num_resolutions - 1) ?  unreduced_window_dim :
-															 grk_band_window(num_resolutions,
-																				resno+1,
-																				0,
-																				unreduced_window_dim);
-        		 res_buffers.push_back(new res_buf<T>( tile_comp_resolutions+resno, res_dims) );
-
-        	 }
-        } else {
-        	res_buffers.push_back(new res_buf<T>( nullptr, m_bounds) );
-        }
+        // create resolution buffers
+		 auto topLevel = new res_buf<T>( nullptr,
+										 use_band_buffers() ? tile_comp_resolutions+reduced_num_resolutions-1 : nullptr,
+										 m_bounds);
+		 if (reduced_num_resolutions > 1) {
+			 for (uint32_t resno = 0; resno < reduced_num_resolutions-1; ++resno){
+				 if (resno == 0) {
+					 // lowest resolution equals 0th band
+					 res_buffers.push_back(new res_buf<T>(use_band_buffers() ? nullptr : topLevel->res,
+														  nullptr,
+														  tile_comp_resolutions->bandWindow[BAND_RES_ZERO_INDEX_LL]) );
+				 } else {
+					 auto res_dims =  grk_band_window(num_resolutions,
+														resno+1,
+														0,
+														unreduced_window_dim);
+					 res_buffers.push_back(new res_buf<T>(use_band_buffers() ? nullptr : topLevel->res,
+														  use_band_buffers() ? tile_comp_resolutions+resno : nullptr,
+														  res_dims) );
+				 }
+			 }
+		 }
+		 res_buffers.push_back(topLevel);
 	}
 	~TileComponentWindowBuffer(){
 		for (auto& b : res_buffers)
 			delete b;
 	}
-
 
 	/**
 	 * Tranform code block offsets
@@ -237,6 +268,8 @@ template<typename T> struct TileComponentWindowBuffer {
 
 
 	bool alloc(){
+		// allocate top level res buffer first
+
 		for (auto& b : res_buffers) {
 			if (!b->alloc(!m_encode))
 				return false;
@@ -245,9 +278,9 @@ template<typename T> struct TileComponentWindowBuffer {
 		for (uint32_t i = 1; i < res_buffers.size(); ++i){
 			auto b = res_buffers[i];
 			auto b_prev = res_buffers[i-1];
-			if (!b_prev->res->data)
+			if (!b_prev->res->data && b->bandWindow[0])
 				b_prev->res->data = b->bandWindow[0]->data;
-			if (!b->bandWindow[1]->data)
+			if (b->bandWindow[1] && !b->bandWindow[1]->data)
 				b->bandWindow[1]->data = b->bandWindow[2]->data;
 		}
 		return true;
@@ -296,18 +329,24 @@ private:
 		return resno > 0 ? res_buffers[resno]->bandWindow[bandIndex] : res_buffers[resno]->res;
 	}
 
+	// top-level buffer
 	grk_buffer_2d<T>* tile_buf() const{
 		return res_buffers.back()->res;
 	}
 
 	grk_rect_u32 m_unreduced_bounds;
 
-	/* decompress: reduced tile component coordinates of window  */
-	/* compress: unreduced tile component coordinates of entire tile */
+	// decompress: reduced tile component coordinates of window
+	// compress: unreduced tile component coordinates of entire tile
 	grk_rect_u32 m_bounds;
 
+	// full bounds
 	std::vector<Resolution*> resolutions;
+
+	// windowed bounds for windowed decompress, otherwise full bounds
 	std::vector<res_buf<T>* > res_buffers;
+
+	// unreduced number of resolutions
 	uint32_t num_resolutions;
 
 	bool m_encode;
