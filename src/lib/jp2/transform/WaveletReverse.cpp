@@ -1910,7 +1910,7 @@ template <typename T,
 
 	try {
 
-    for (uint32_t resno = 1; resno < numres; resno ++) {
+    for (uint8_t resno = 1; resno < numres; resno ++) {
         horiz.sn = res->width();
         vert.sn = res->height();
 
@@ -1928,128 +1928,102 @@ template <typename T,
     		std::cout << "Resolution: " << resno << std::endl;
 
 
-        // 1. set up regions for horizontal and vertical pass
+        // 1. set up windows for horizontal and vertical pass
 
-        // four sub-band regions that serve as input to horizontal pass
-        grk_rect_u32 win_horiz_band[BAND_NUM_ORIENTATIONS];
-        grk_rect_u32 win_horiz_tile[BAND_NUM_ORIENTATIONS];
-        win_horiz_band[BAND_ORIENT_LL] = grk_band_window(tilec->numresolutions,resno,0,window);
-        win_horiz_band[BAND_ORIENT_LL] = win_horiz_band[BAND_ORIENT_LL].pan(-(int64_t)res->band[BAND_INDEX_LH].x0, -(int64_t)res->band[BAND_INDEX_HL].y0);
-        win_horiz_band[BAND_ORIENT_LL].grow(FILTER_WIDTH, horiz.sn,  vert.sn);
-        win_horiz_tile[BAND_ORIENT_LL] = win_horiz_band[BAND_ORIENT_LL];
+        // four sub-band windows that serve as input to horizontal pass
+        grk_rect_u32 bandWindow[BAND_NUM_ORIENTATIONS];
+        grk_rect_u32 tileBandWindow[BAND_NUM_ORIENTATIONS];
+        bandWindow[BAND_ORIENT_LL] = grk_band_window(tilec->numresolutions,resno,BAND_ORIENT_LL,window);
+        bandWindow[BAND_ORIENT_LL] = bandWindow[BAND_ORIENT_LL].pan(-(int64_t)res->band[BAND_INDEX_LH].x0, -(int64_t)res->band[BAND_INDEX_HL].y0);
+        bandWindow[BAND_ORIENT_LL].grow(FILTER_WIDTH, horiz.sn,  vert.sn);
 
-        win_horiz_band[BAND_ORIENT_HL] = grk_band_window(tilec->numresolutions,resno,1,window);
-        win_horiz_band[BAND_ORIENT_HL] = win_horiz_band[BAND_ORIENT_HL].pan(-(int64_t)res->band[BAND_INDEX_HL].x0, -(int64_t)res->band[BAND_INDEX_HL].y0);
-        win_horiz_band[BAND_ORIENT_HL].grow(FILTER_WIDTH, horiz.dn,  vert.sn);
-        win_horiz_tile[BAND_ORIENT_HL] = win_horiz_band[BAND_ORIENT_HL].pan(res->band[BAND_INDEX_LH].width(),0);
+        bandWindow[BAND_ORIENT_HL] = grk_band_window(tilec->numresolutions,resno,BAND_ORIENT_HL,window);
+        bandWindow[BAND_ORIENT_HL] = bandWindow[BAND_ORIENT_HL].pan(-(int64_t)res->band[BAND_INDEX_HL].x0, -(int64_t)res->band[BAND_INDEX_HL].y0);
+        bandWindow[BAND_ORIENT_HL].grow(FILTER_WIDTH, horiz.dn,  vert.sn);
 
-        win_horiz_band[BAND_ORIENT_LH] = grk_band_window(tilec->numresolutions,resno,2,window);
-        win_horiz_band[BAND_ORIENT_LH] = win_horiz_band[BAND_ORIENT_LH].pan(-(int64_t)res->band[BAND_INDEX_LH].x0, -(int64_t)res->band[BAND_INDEX_LH].y0);
-        win_horiz_band[BAND_ORIENT_LH].grow(FILTER_WIDTH, horiz.sn,  vert.dn);
-        win_horiz_tile[BAND_ORIENT_LH] = win_horiz_band[BAND_ORIENT_LH].pan(0,res->band[BAND_INDEX_HL].height());
+        bandWindow[BAND_ORIENT_LH] = grk_band_window(tilec->numresolutions,resno,BAND_ORIENT_LH,window);
+        bandWindow[BAND_ORIENT_LH] = bandWindow[BAND_ORIENT_LH].pan(-(int64_t)res->band[BAND_INDEX_LH].x0, -(int64_t)res->band[BAND_INDEX_LH].y0);
+        bandWindow[BAND_ORIENT_LH].grow(FILTER_WIDTH, horiz.sn,  vert.dn);
 
-        win_horiz_band[BAND__ORIENT_HH] = grk_band_window(tilec->numresolutions,resno,3,window);
-        win_horiz_band[BAND__ORIENT_HH] = win_horiz_band[BAND__ORIENT_HH].pan(-(int64_t)res->band[BAND_INDEX_HH].x0, -(int64_t)res->band[BAND_INDEX_HH].y0);
-        win_horiz_band[BAND__ORIENT_HH].grow(FILTER_WIDTH, horiz.dn,  vert.dn);
-        win_horiz_tile[BAND__ORIENT_HH] = win_horiz_band[BAND__ORIENT_HH].pan(res->band[BAND_INDEX_LH].width(),res->band[BAND_INDEX_HL].height());
+        bandWindow[BAND__ORIENT_HH] = grk_band_window(tilec->numresolutions,resno,BAND__ORIENT_HH,window);
+        bandWindow[BAND__ORIENT_HH] = bandWindow[BAND__ORIENT_HH].pan(-(int64_t)res->band[BAND_INDEX_HH].x0, -(int64_t)res->band[BAND_INDEX_HH].y0);
+        bandWindow[BAND__ORIENT_HH].grow(FILTER_WIDTH, horiz.dn,  vert.dn);
 
-
-        // pad horizontal windows
+        // pre-allocate sparse blocks
+        tileBandWindow[BAND_ORIENT_LL]  =  bandWindow[BAND_ORIENT_LL];
+        tileBandWindow[BAND_ORIENT_HL]  =  bandWindow[BAND_ORIENT_HL].pan(res->band[BAND_INDEX_LH].width(),0);
+        tileBandWindow[BAND_ORIENT_LH]  =  bandWindow[BAND_ORIENT_LH].pan(0,res->band[BAND_INDEX_HL].height());
+        tileBandWindow[BAND__ORIENT_HH] =  bandWindow[BAND__ORIENT_HH].pan(res->band[BAND_INDEX_LH].width(),res->band[BAND_INDEX_HL].height());
         for (uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i){
-        	auto temp = win_horiz_tile[i];
+        	auto temp = tileBandWindow[i];
             if (!sa->alloc(temp.grow(FILTER_WIDTH, rw,  rh)))
     			 goto cleanup;
+            if (DEBUG_WAVELET){
+				std::cout << "tile band window " << i << " ";
+				tileBandWindow[i].print();
+            }
         }
-
-        if (DEBUG_WAVELET){
-        	for (uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i){
-        		std::cout << "horizontal pass window " << i << " ";
-        		win_horiz_tile[i].print();
-        	}
-        }
-
-        grk_rect_u32 win_synthesis;
-
-        grk_rect_u32 win_low = (horiz.cas == 0) ? win_horiz_band[BAND_ORIENT_LL] : win_horiz_band[BAND_ORIENT_HL];
-        grk_rect_u32 win_high = (horiz.cas == 0) ? win_horiz_band[BAND_ORIENT_HL] : win_horiz_band[BAND_ORIENT_LL];
-        win_synthesis.x0 = min<uint32_t>(2 * win_low.x0, 2 * win_horiz_band[BAND_ORIENT_HL].x0 + 1);
-        win_synthesis.x1 = min<uint32_t>(max<uint32_t>(2 * win_low.x1, 2 * win_high.x1 + 1), rw);
-        win_low = (vert.cas == 0) ? win_horiz_band[BAND_ORIENT_LL] : win_horiz_band[BAND_ORIENT_LH];
-        win_high = (vert.cas == 0) ? win_horiz_band[BAND_ORIENT_LH] : win_horiz_band[BAND_ORIENT_LL];
-        win_synthesis.y0 = min<uint32_t>(2 * win_low.y0, 2 * win_high.y0 + 1);
-        win_synthesis.y1 = min<uint32_t>(max<uint32_t>(2 * win_low.y1, 2 * win_high.y1 + 1), rh);
-        if (!sa->alloc(win_synthesis))
+        auto win_low 		= (horiz.cas == 0) ? bandWindow[BAND_ORIENT_LL] : bandWindow[BAND_ORIENT_HL];
+        auto win_high 		= (horiz.cas == 0) ? bandWindow[BAND_ORIENT_HL] : bandWindow[BAND_ORIENT_LL];
+        grk_rect_u32 resWindow;
+        resWindow.x0 				= min<uint32_t>(2 * win_low.x0, 2 * bandWindow[BAND_ORIENT_HL].x0 + 1);
+        resWindow.x1 				= min<uint32_t>(max<uint32_t>(2 * win_low.x1, 2 * win_high.x1 + 1), rw);
+        win_low 					= (vert.cas == 0) ? bandWindow[BAND_ORIENT_LL] : bandWindow[BAND_ORIENT_LH];
+        win_high 					= (vert.cas == 0) ? bandWindow[BAND_ORIENT_LH] : bandWindow[BAND_ORIENT_LL];
+        resWindow.y0 				= min<uint32_t>(2 * win_low.y0, 2 * win_high.y0 + 1);
+        resWindow.y1 				= min<uint32_t>(max<uint32_t>(2 * win_low.y1, 2 * win_high.y1 + 1), rh);
+        if (!sa->alloc(resWindow))
 			goto cleanup;
+		if (DEBUG_WAVELET){
+			std::cout << "resolution window ";
+			resWindow.print();
+		}
 
         // two windows formed by horizontal pass and used as input for vertical pass
-        grk_rect_u32 win_vert[2];
-        win_vert[0] = grk_rect_u32(win_synthesis.x0,
-        						  uint_subs(win_horiz_band[BAND_ORIENT_LL].y0, HORIZ_PASS_HEIGHT),
-								  win_synthesis.x1,
-								  win_horiz_band[BAND_ORIENT_LL].y1);
+        grk_rect_u32 intermediateWindow[2];
+        intermediateWindow[0] = grk_rect_u32(resWindow.x0,
+        						  uint_subs(bandWindow[BAND_ORIENT_LL].y0, HORIZ_PASS_HEIGHT),
+								  resWindow.x1,
+								  bandWindow[BAND_ORIENT_LL].y1);
 
-        win_vert[1] = grk_rect_u32(win_synthesis.x0,
-        							// note: max is used to avoid overlap between the two windows
-        							max<uint32_t>(win_horiz_band[BAND_ORIENT_LL].y1,
-        											uint_subs(min<uint32_t>(win_horiz_band[BAND_ORIENT_LH].y0 + vert.sn, rh),HORIZ_PASS_HEIGHT)),
-								  win_synthesis.x1,
-								  min<uint32_t>(win_horiz_band[BAND_ORIENT_LH].y1 + vert.sn, rh));
+        intermediateWindow[1] = grk_rect_u32(resWindow.x0,
+        							// note: max is used to avoid vertical overlap between the two intermediate windows
+        							max<uint32_t>(bandWindow[BAND_ORIENT_LL].y1,
+        											uint_subs(min<uint32_t>(bandWindow[BAND_ORIENT_LH].y0 + vert.sn, rh),HORIZ_PASS_HEIGHT)),
+								  resWindow.x1,
+								  min<uint32_t>(bandWindow[BAND_ORIENT_LH].y1 + vert.sn, rh));
 
-        // pad vertical windows
+        // pad
 		for (uint32_t k = 0; k < 2; ++k) {
-			 auto temp = win_vert[k];
+			 auto temp = intermediateWindow[k];
 			 if (!sa->alloc(temp.grow(FILTER_WIDTH, rw,  rh)))
 					goto cleanup;
 		        if (DEBUG_WAVELET){
-					std::cout << "vertical pass window " << k << " ";
-					win_vert[k].print();
+					std::cout << "intermedate window " << k << " ";
+					intermediateWindow[k].print();
 		        }
 		}
 
-		if (DEBUG_WAVELET){
-			std::cout << "synthesis window ";
-			win_synthesis.print();
-		}
-
-        ///////////////////////////////////////////////////////////////////////////////////////////
-
-
-        horiz.win_l_0 = win_horiz_band[BAND_ORIENT_LL].x0;
-        horiz.win_l_1 = win_horiz_band[BAND_ORIENT_LL].x1;
-        horiz.win_h_0 = win_horiz_band[BAND_ORIENT_HL].x0;
-        horiz.win_h_1 = win_horiz_band[BAND_ORIENT_HL].x1;
+        horiz.win_l_0 = bandWindow[BAND_ORIENT_LL].x0;
+        horiz.win_l_1 = bandWindow[BAND_ORIENT_LL].x1;
+        horiz.win_h_0 = bandWindow[BAND_ORIENT_HL].x0;
+        horiz.win_h_1 = bandWindow[BAND_ORIENT_HL].x1;
 		for (uint32_t k = 0; k < 2; ++k) {
-// not sure what this code actually does
-#if 0
-	        /* Avoids dwt.c:1584:44 (in dwt_decode_partial_1): runtime error: */
-	        /* signed integer overflow: -1094795586 + -1094795586 cannot be represented in type 'int' */
-	        /* on decompress -i  ../../openjpeg/MAPA.jp2 -o out.tif -d 0,0,256,256 */
-	        /* This is less extreme than memsetting the whole buffer to 0 */
-	        /* although we could potentially do better with better handling of edge conditions */
-	        if (win_synthesis.x1 >= 1 && win_synthesis.x1 < rw)
-	            horiz.mem[win_synthesis.x1 - 1] = T(0);
-	        if (win_synthesis.x1 < rw)
-	            horiz.mem[win_synthesis.x1] = T(0);
-#endif
 			uint32_t num_jobs = (uint32_t)num_threads;
-			uint32_t num_rows = win_vert[k].height();
+			uint32_t num_rows = intermediateWindow[k].height();
 			if (num_rows < num_jobs)
 				num_jobs = num_rows;
 			uint32_t step_j = num_jobs ? ( num_rows / num_jobs) : 0;
 			if (num_threads == 1 ||step_j < HORIZ_PASS_HEIGHT){
 		     uint32_t j;
-			 for (j = win_vert[k].y0; j + HORIZ_PASS_HEIGHT-1 < win_vert[k].y1; j += HORIZ_PASS_HEIGHT) {
-				 //horiz.fill();
+			 for (j = intermediateWindow[k].y0; j + HORIZ_PASS_HEIGHT-1 < intermediateWindow[k].y1; j += HORIZ_PASS_HEIGHT) {
 				 decompressor.interleave_partial_h(&horiz, sa, j,HORIZ_PASS_HEIGHT);
 				 decompressor.decompress_h(&horiz);
-				 //for (uint32_t p =  win_synthesis.x0; p <  win_synthesis.x1; ++p)
-					// for (uint32_t pp = 0; pp < HORIZ_PASS_HEIGHT; ++pp)
-						// assert( ((float*)horiz.mem)[p*HORIZ_PASS_HEIGHT + pp] != std::numeric_limits<float>::max());
-				 if (!sa->write( win_synthesis.x0,
+				 if (!sa->write( resWindow.x0,
 								  j,
-								  win_synthesis.x1,
+								  resWindow.x1,
 								  j + HORIZ_PASS_HEIGHT,
-								  (int32_t*)(horiz.mem + win_synthesis.x0),
+								  (int32_t*)(horiz.mem + resWindow.x0),
 								  HORIZ_PASS_HEIGHT,
 								  1,
 								  true)) {
@@ -2057,14 +2031,14 @@ template <typename T,
 					 goto cleanup;
 				 }
 			 }
-			 if (j < win_vert[k].y1 ) {
-				 decompressor.interleave_partial_h(&horiz, sa, j, win_vert[k].y1 - j);
+			 if (j < intermediateWindow[k].y1 ) {
+				 decompressor.interleave_partial_h(&horiz, sa, j, intermediateWindow[k].y1 - j);
 				 decompressor.decompress_h(&horiz);
-				 if (!sa->write( win_synthesis.x0,
+				 if (!sa->write( resWindow.x0,
 								  j,
-								  win_synthesis.x1,
-								  win_vert[k].y1,
-								  (int32_t*)(horiz.mem + win_synthesis.x0),
+								  resWindow.x1,
+								  intermediateWindow[k].y1,
+								  (int32_t*)(horiz.mem + resWindow.x0),
 								  HORIZ_PASS_HEIGHT,
 								  1,
 								  true)) {
@@ -2077,23 +2051,23 @@ template <typename T,
 			for(uint32_t j = 0; j < num_jobs; ++j) {
 			   auto job = new decompress_job<float, dwt_data<T>>(
 					   	   	   horiz,
-							   win_vert[k].y0 + j * step_j,
-							   j < (num_jobs - 1U) ? win_vert[k].y0 + (j + 1U) * step_j : win_vert[k].y1);
+							   intermediateWindow[k].y0 + j * step_j,
+							   j < (num_jobs - 1U) ? intermediateWindow[k].y0 + (j + 1U) * step_j : intermediateWindow[k].y1);
 				if (!job->data.alloc(data_size)) {
 					GRK_ERROR("Out of memory");
 					goto cleanup;
 				}
 				results.emplace_back(
-					ThreadPool::get()->enqueue([job,sa, win_synthesis, &decompressor] {
+					ThreadPool::get()->enqueue([job,sa, resWindow, &decompressor] {
 					 uint32_t j;
 					 for (j = job->min_j; j + HORIZ_PASS_HEIGHT-1 < job->max_j; j += HORIZ_PASS_HEIGHT) {
 						 decompressor.interleave_partial_h(&job->data, sa, j,HORIZ_PASS_HEIGHT);
 						 decompressor.decompress_h(&job->data);
-						 if (!sa->write( win_synthesis.x0,
+						 if (!sa->write( resWindow.x0,
 										  j,
-										  win_synthesis.x1,
+										  resWindow.x1,
 										  j + HORIZ_PASS_HEIGHT,
-										  (int32_t*)(job->data.mem + win_synthesis.x0),
+										  (int32_t*)(job->data.mem + resWindow.x0),
 										  HORIZ_PASS_HEIGHT,
 										  1,
 										  true)) {
@@ -2105,11 +2079,11 @@ template <typename T,
 					 if (j < job->max_j ) {
 						 decompressor.interleave_partial_h(&job->data, sa, j, job->max_j - j);
 						 decompressor.decompress_h(&job->data);
-						 if (!sa->write( win_synthesis.x0,
+						 if (!sa->write( resWindow.x0,
 										  j,
-										  win_synthesis.x1,
+										  resWindow.x1,
 										  job->max_j,
-										  (int32_t*)(job->data.mem + win_synthesis.x0),
+										  (int32_t*)(job->data.mem + resWindow.x0),
 										  HORIZ_PASS_HEIGHT,
 										  1,
 										  true)) {
@@ -2135,31 +2109,25 @@ template <typename T,
 		  }
         }
 
-		vert.win_l_0 = win_horiz_band[BAND_ORIENT_LL].y0;
-        vert.win_l_1 = win_horiz_band[BAND_ORIENT_LL].y1;
-        vert.win_h_0 = win_horiz_band[BAND_ORIENT_LH].y0;
-        vert.win_h_1 = win_horiz_band[BAND_ORIENT_LH].y1;
+		vert.win_l_0 = bandWindow[BAND_ORIENT_LL].y0;
+        vert.win_l_1 = bandWindow[BAND_ORIENT_LL].y1;
+        vert.win_h_0 = bandWindow[BAND_ORIENT_LH].y0;
+        vert.win_h_1 = bandWindow[BAND_ORIENT_LH].y1;
         uint32_t num_jobs = (uint32_t)num_threads;
-        uint32_t num_cols = win_synthesis.width();
+        uint32_t num_cols = resWindow.width();
 		if (num_cols < num_jobs)
 			num_jobs = num_cols;
 		uint32_t step_j = num_jobs ? ( num_cols / num_jobs) : 0;
 		if (num_threads == 1 || step_j < VERT_PASS_WIDTH){
 	        uint32_t j;
-			for (j = win_synthesis.x0; j + VERT_PASS_WIDTH < win_synthesis.x1; j += VERT_PASS_WIDTH) {
-				//vert.fill();
+			for (j = resWindow.x0; j + VERT_PASS_WIDTH < resWindow.x1; j += VERT_PASS_WIDTH) {
 				decompressor.interleave_partial_v(&vert, sa, j, VERT_PASS_WIDTH);
-				/*
-				for (uint32_t p = win_synthesis.y0; p < win_synthesis.y1; ++p)
-					for (uint32_t index = 0; index < VERT_PASS_WIDTH; ++index)
-						assert( ((float*)vert.mem)[p*VERT_PASS_WIDTH + index] != std::numeric_limits<float>::max());
-				*/
 				decompressor.decompress_v(&vert);
 				if (!sa->write(j,
-							  win_synthesis.y0,
+							  resWindow.y0,
 							  j + VERT_PASS_WIDTH,
-							  win_synthesis.y1,
-							  (int32_t*)vert.mem + VERT_PASS_WIDTH * win_synthesis.y0,
+							  resWindow.y1,
+							  (int32_t*)vert.mem + VERT_PASS_WIDTH * resWindow.y0,
 							  1,
 							  VERT_PASS_WIDTH,
 							  true)) {
@@ -2167,17 +2135,14 @@ template <typename T,
 					goto cleanup;
 				}
 			}
-			if (j < win_synthesis.x1) {
-				decompressor.interleave_partial_v(&vert, sa, j, win_synthesis.x1 - j);
+			if (j < resWindow.x1) {
+				decompressor.interleave_partial_v(&vert, sa, j, resWindow.x1 - j);
 				decompressor.decompress_v(&vert);
-				//for (uint32_t p = win_synthesis.y0; p < win_synthesis.y1; ++p)
-					//for (uint32_t index = 0; index < VERT_PASS_WIDTH; ++index)
-						//assert( ((float*)vert.mem)[p*VERT_PASS_WIDTH + index] != std::numeric_limits<float>::max());
 				if (!sa->write( j,
-								  win_synthesis.y0,
-								  win_synthesis.x1,
-								  win_synthesis.y1,
-								  (int32_t*)vert.mem + VERT_PASS_WIDTH * win_synthesis.y0,
+								  resWindow.y0,
+								  resWindow.x1,
+								  resWindow.y1,
+								  (int32_t*)vert.mem + VERT_PASS_WIDTH * resWindow.y0,
 								  1,
 								  VERT_PASS_WIDTH,
 								  true)) {
@@ -2190,23 +2155,23 @@ template <typename T,
 			for(uint32_t j = 0; j < num_jobs; ++j) {
 			   auto job = new decompress_job<float, dwt_data<T>>(
 					   	   	   	   	   vert,
-									   win_synthesis.x0 + j * step_j,
-									   j < (num_jobs - 1U) ? win_synthesis.x0 + (j + 1U) * step_j : win_synthesis.x1);
+									   resWindow.x0 + j * step_j,
+									   j < (num_jobs - 1U) ? resWindow.x0 + (j + 1U) * step_j : resWindow.x1);
 				if (!job->data.alloc(data_size)) {
 					GRK_ERROR("Out of memory");
 					goto cleanup;
 				}
 				results.emplace_back(
-					ThreadPool::get()->enqueue([job,sa, win_synthesis, &decompressor] {
+					ThreadPool::get()->enqueue([job,sa, resWindow, &decompressor] {
 					 uint32_t j;
 					 for (j = job->min_j; j + VERT_PASS_WIDTH-1 < job->max_j; j += VERT_PASS_WIDTH) {
 						decompressor.interleave_partial_v(&job->data, sa, j, VERT_PASS_WIDTH);
 						decompressor.decompress_v(&job->data);
 						if (!sa->write(j,
-									  win_synthesis.y0,
+									  resWindow.y0,
 									  j + VERT_PASS_WIDTH,
-									  win_synthesis.y1,
-									  (int32_t*)job->data.mem + VERT_PASS_WIDTH * win_synthesis.y0,
+									  resWindow.y1,
+									  (int32_t*)job->data.mem + VERT_PASS_WIDTH * resWindow.y0,
 									  1,
 									  VERT_PASS_WIDTH,
 									  true)) {
@@ -2219,10 +2184,10 @@ template <typename T,
 						decompressor.interleave_partial_v(&job->data, sa, j,  job->max_j - j);
 						decompressor.decompress_v(&job->data);
 						if (!sa->write(			  j,
-												  win_synthesis.y0,
+												  resWindow.y0,
 												  job->max_j,
-												  win_synthesis.y1,
-												  (int32_t*)job->data.mem + VERT_PASS_WIDTH * win_synthesis.y0,
+												  resWindow.y1,
+												  (int32_t*)job->data.mem + VERT_PASS_WIDTH * resWindow.y0,
 												  1,
 												  VERT_PASS_WIDTH,
 												  true)) {
@@ -2248,9 +2213,6 @@ template <typename T,
 		}
     }
     //final read into tile buffer
-   // final_win_bounds.x1 = final_win_bounds.x0+7;
-    //final_win_bounds.x0 += 6;
-    //-i clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4742584414765056 -o foo.tif  -v -d 7,32,70,33
 	bool ret = sa->read(final_win_bounds,
 					   tilec->getBuffer()->ptr(),
 					   1,

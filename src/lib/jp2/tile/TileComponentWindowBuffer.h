@@ -32,53 +32,54 @@ template<typename T> struct res_buf {
 				Resolution *full_res,
 				Resolution *lower_full_res,
 				grk_rect_u32 bounds) :  allocated(false),
-										top_level_res(top),
-										res(new grk_buffer_2d<T>(bounds)),
-										full_res(full_res),
-										lower_full_res(lower_full_res){
+										fullRes(full_res),
+										fullResLower(lower_full_res),
+										resWindow(new grk_buffer_2d<T>(bounds)),
+										resWindowTopLevel(top)
+	{
 		if (full_res) {
 			for (uint32_t i = 0; i < full_res->numBandWindows; ++i) {
 				bandWindow.push_back( new grk_buffer_2d<T>(full_res->band[i]) );
 			}
 		}
 		for (uint32_t i = 0; i < 2; ++i)
-			horizBandWindow[i] = nullptr;
+			intermediateWindow[i] = nullptr;
 	}
 	~res_buf(){
-		delete res;
+		delete resWindow;
 		for (auto &b : bandWindow)
 			delete b;
 		for (uint32_t i = 0; i < 2; ++i)
-			delete horizBandWindow[i];
+			delete intermediateWindow[i];
 	}
 	bool alloc(bool clear){
 		if (allocated)
 			return true;
 
-		if (top_level_res) {
-			if (!top_level_res->alloc(clear))
+		if (resWindowTopLevel) {
+			if (!resWindowTopLevel->alloc(clear))
 				return false;
 
-			if (res != top_level_res)
-				res->attach(top_level_res->data, top_level_res->stride);
+			if (resWindow != resWindowTopLevel)
+				resWindow->attach(resWindowTopLevel->data, resWindowTopLevel->stride);
 
-			if (full_res) {
-				assert(lower_full_res || bandWindow.size()== 1);
-				if (lower_full_res) {
+			if (fullRes) {
+				assert(fullResLower || bandWindow.size()== 1);
+				if (fullResLower) {
 					for (uint32_t i = 0; i < bandWindow.size(); ++i){
 						switch(i){
 						case 0:
-							bandWindow[i]->attach(top_level_res->data + lower_full_res->width(),
-													top_level_res->stride);
+							bandWindow[i]->attach(resWindowTopLevel->data + fullResLower->width(),
+													resWindowTopLevel->stride);
 							break;
 						case 1:
-							bandWindow[i]->attach(top_level_res->data + lower_full_res->height() * top_level_res->stride,
-													top_level_res->stride);
+							bandWindow[i]->attach(resWindowTopLevel->data + fullResLower->height() * resWindowTopLevel->stride,
+													resWindowTopLevel->stride);
 							break;
 						case 2:
-							bandWindow[i]->attach(top_level_res->data + lower_full_res->width() +
-														lower_full_res->height() * top_level_res->stride,
-													top_level_res->stride);
+							bandWindow[i]->attach(resWindowTopLevel->data + fullResLower->width() +
+														fullResLower->height() * resWindowTopLevel->stride,
+													resWindowTopLevel->stride);
 							break;
 						default:
 							break;
@@ -87,7 +88,7 @@ template<typename T> struct res_buf {
 				}
 			}
 		} else {
-			if (!res->alloc(clear))
+			if (!resWindow->alloc(clear))
 				return false;
 			for (auto &b : bandWindow){
 				if (!b->alloc(clear))
@@ -100,13 +101,13 @@ template<typename T> struct res_buf {
 	}
 
 	bool allocated;
-	grk_buffer_2d<T> *top_level_res;
-	grk_buffer_2d<T> *res;
-	Resolution *full_res;
-	Resolution *lower_full_res;
-	// destination buffers for horizontal synthesis DWT transform
-	grk_buffer_2d<T> *horizBandWindow[2];
+	Resolution *fullRes;
+	Resolution *fullResLower;
 	std::vector< grk_buffer_2d<T>* > bandWindow;
+	// destination buffers for horizontal synthesis DWT transform
+	grk_buffer_2d<T> *intermediateWindow[2];
+	grk_buffer_2d<T> *resWindow;
+	grk_buffer_2d<T> *resWindowTopLevel;
 };
 
 
@@ -131,8 +132,8 @@ template<typename T> struct TileComponentWindowBuffer {
 						grk_rect_u32 reduced_tile_dim,
 						grk_rect_u32 unreduced_window_dim,
 						Resolution *tile_comp_resolutions,
-						uint32_t numresolutions,
-						uint32_t reduced_num_resolutions) :
+						uint8_t numresolutions,
+						uint8_t reduced_num_resolutions) :
 							m_unreduced_bounds(unreduced_tile_dim),
 							m_bounds(reduced_tile_dim),
 							num_resolutions(numresolutions),
@@ -164,13 +165,15 @@ template<typename T> struct TileComponentWindowBuffer {
 										 m_bounds);
 		 // setting top level blocks allocation of bandWindow buffers
 		 if (!use_band_buffers())
-			 topLevel->top_level_res = topLevel->res;
-		 for (uint32_t resno = 0; resno < reduced_num_resolutions-1; ++resno){
+			 topLevel->resWindowTopLevel = topLevel->resWindow;
+		 for (uint8_t resno = 0; resno < reduced_num_resolutions-1; ++resno){
+			 // band window of next resolution up at orientation = 0
+			 // is equal to resolution window
 			  auto res_dims =  grk_band_window(num_resolutions,
-												resno+1,
+												(uint8_t)(resno+1),
 												0,
 												unreduced_window_dim);
-			 res_buffers.push_back(new res_buf<T>(use_band_buffers() ? nullptr : topLevel->res,
+			 res_buffers.push_back(new res_buf<T>(use_band_buffers() ? nullptr : topLevel->resWindow,
 												  whole_tile_decoding ? tile_comp_resolutions+resno : nullptr,
 												  (whole_tile_decoding && resno > 0) ? tile_comp_resolutions+resno-1 : nullptr,
 												  res_dims) );
@@ -248,7 +251,7 @@ template<typename T> struct TileComponentWindowBuffer {
 	 *
 	 */
 	T* ptr(uint32_t resno) const{
-		return res_buffers[resno]->res->data;
+		return res_buffers[resno]->resWindow->data;
 	}
 
 	/**
@@ -272,7 +275,7 @@ template<typename T> struct TileComponentWindowBuffer {
 	}
 
 	uint32_t stride(uint32_t resno) const{
-		return res_buffers[resno]->res->stride;
+		return res_buffers[resno]->resWindow->stride;
 	}
 
 	uint32_t stride(void) const{
@@ -328,12 +331,12 @@ private:
 	grk_buffer_2d<T>* band_buf(uint32_t resno,uint32_t bandIndex) const{
 		assert(bandIndex < 3 && resno < resolutions.size());
 
-		return resno > 0 ? res_buffers[resno]->bandWindow[bandIndex] : res_buffers[resno]->res;
+		return resno > 0 ? res_buffers[resno]->bandWindow[bandIndex] : res_buffers[resno]->resWindow;
 	}
 
 	// top-level buffer
 	grk_buffer_2d<T>* tile_buf() const{
-		return res_buffers.back()->res;
+		return res_buffers.back()->resWindow;
 	}
 
 	grk_rect_u32 m_unreduced_bounds;
@@ -349,7 +352,7 @@ private:
 	std::vector<res_buf<T>* > res_buffers;
 
 	// unreduced number of resolutions
-	uint32_t num_resolutions;
+	uint8_t num_resolutions;
 
 	bool m_compress;
 	bool whole_tile_decoding;

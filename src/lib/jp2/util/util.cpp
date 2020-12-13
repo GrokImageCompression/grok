@@ -18,11 +18,18 @@
 
 namespace grk {
 
-grk_rect_u32 grk_band_window(uint32_t num_res,
-							uint32_t resno,
-							uint32_t orientation,
+/**
+ * Note: for 0th resolution, band window (and there is only one)
+ * is equal to resolution window
+ */
+grk_rect_u32 grk_band_window(uint8_t num_res,
+							uint8_t resno,
+							uint8_t orientation,
 							grk_rect_u32 unreduced_window){
     /* Compute number of decomposition for this band. See table F-1 */
+	assert(orientation < BAND_NUM_ORIENTATIONS);
+	assert(resno > 0 || orientation == 0);
+
     uint32_t nb = (resno == 0) ? num_res - 1 :num_res - resno;
 
     uint32_t tcx0 = unreduced_window.x0;

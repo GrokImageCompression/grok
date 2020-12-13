@@ -374,9 +374,9 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
     uint32_t stride;
 } ;
 
-grk_rect_u32 grk_band_window(uint32_t num_res,
-							uint32_t resno,
-							uint32_t orientation,
+grk_rect_u32 grk_band_window(uint8_t num_res,
+							uint8_t resno,
+							uint8_t orientation,
 							grk_rect_u32 unreduced_window);
 
 }

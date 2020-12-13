@@ -153,10 +153,10 @@ bool TileComponent::init(bool isCompressor,
 	    /* Compute the intersection of the window of interest, expressed in tile component coordinates, */
 	    /* with the tile component */
 		auto dims = buf->unreduced_bounds();
-		for (uint32_t resno = 0; resno < numresolutions; ++resno) {
+		for (uint8_t resno = 0; resno < numresolutions; ++resno) {
 			auto res = resolutions + resno;
-			for (uint32_t index = 0; index < res->numBandWindows; ++index) {
-				uint32_t orientation = (resno == 0) ? 0 : index+1;
+			for (uint8_t index = 0; index < res->numBandWindows; ++index) {
+				uint8_t orientation = (resno == 0) ? 0 : (uint8_t)(index+1);
 				auto paddedWindow = res->paddedBandWindow + index;
 				*paddedWindow = grk_band_window(numresolutions, resno, orientation,dims);
 			    paddedWindow->grow(filter_margin,filter_margin);
@@ -308,7 +308,7 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
 void TileComponent::create_buffer(grk_rect_u32 *unreduced_tile_comp_dims,
 									grk_rect_u32 unreduced_tile_comp_window_dims) {
 	// calculate band
-	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
+	for (uint8_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
 		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 			auto band = res->band + bandIndex;
