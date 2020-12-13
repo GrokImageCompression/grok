@@ -200,7 +200,7 @@ bool TileComponent::subbandIntersectsAOI(uint32_t resno,
 	assert(resno < numresolutions && bandIndex < BAND_NUM_INDICES);
 	auto paddedBandWinow = ((resolutions + resno)->paddedBandWindow)[bandIndex];
 
-    return paddedBandWinow.intersection(aoi).is_non_degenerate();
+    return paddedBandWinow.intersection(aoi).non_empty();
 }
 
 void TileComponent::allocSparseBuffer(uint32_t numres){
@@ -378,22 +378,22 @@ template<typename F> bool TileComponent::postDecompressImpl(int32_t *srcData, De
 	if (cblk->seg_buffers.empty())
 		return true;
 
-	grk_buffer_2d<int32_t> dest_rect;
-	grk_buffer_2d<int32_t> src_rect = grk_buffer_2d<int32_t>(srcData, false, cblk->width(), cblk->width(), cblk->height());
+	grk_buffer_2d<int32_t> dest;
+	grk_buffer_2d<int32_t> src = grk_buffer_2d<int32_t>(srcData, false, cblk->width(), cblk->width(), cblk->height());
 	buf->transform(block->resno,block->bandIndex,block->x,block->y);
 	if (m_sa) {
-		dest_rect = src_rect;
+		dest = src;
 	}
 	else {
-		src_rect.set_rect(grk_rect_u32(block->x,
+		src.set_rect(grk_rect_u32(block->x,
 										block->y,
 										block->x + cblk->width(),
 										block->y + cblk->height()));
-		dest_rect = buf->dest_buf(block->resno,block->bandIndex);
+		dest = buf->code_block_dest_buf(block->resno,block->bandIndex);
 	}
 
 	F f(block);
-	dest_rect.copy<F>(src_rect, f);
+	dest.copy<F>(src, f);
 
 	if (m_sa){
 		try {

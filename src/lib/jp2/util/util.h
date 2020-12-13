@@ -91,7 +91,7 @@ template<typename T> struct grk_rectangle {
     bool is_valid(void) const {
     	return x0 <= x1 && y0 <= y1;
     }
-    bool is_non_degenerate(void) const{
+    bool non_empty(void) const{
     	return x0 < x1 && y0 < y1;
     }
     bool contains(grk_point<T> pt){
@@ -356,7 +356,7 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 	// rhs coordinates are in "this" coordinate system
 	template<typename F> void copy(grk_buffer_2d &rhs, F filter){
 		auto inter = this->intersection(rhs);
-		if (!inter.is_non_degenerate())
+		if (!inter.non_empty())
 			return;
 
 		T* dest = data + (inter.y0 * stride + inter.x0);
