@@ -285,6 +285,10 @@ private:
 	        for (uint32_t x = x0; x < x1; block_x ++, x += x_incr) {
 	            x_incr = (x == x0) ? block_width - (x0 & (block_width-1)) : block_width;
 	            x_incr = min<uint32_t>(x_incr, x1 - x);
+	    		if (!grid_bounds.contains(grk_pt(block_x,block_y))){
+	    			GRK_ERROR("Attempt to allocate a block (%d,%d) outside block grid bounds", block_x, block_y);
+	    			return false;
+	    		}
 	            auto src_block = getBlock(block_x, block_y);
 				if (!src_block) {
 					const uint32_t block_area = block_width*block_height;
@@ -305,7 +309,6 @@ private:
 	}
 
 	inline int32_t* getBlock(uint32_t block_x, uint32_t block_y){
-		assert(grid_bounds.contains(grk_pt(block_x,block_y)));
 		return data_blocks[(uint64_t)(block_y - grid_bounds.y0) * grid_bounds.width() + (block_x - grid_bounds.x0)];
 	}
 	inline void setBlock(uint32_t block_x, uint32_t block_y, int32_t* block){
@@ -353,6 +356,10 @@ private:
 	            x_incr = (x == x0) ? block_width - (x0 & (block_width-1) ) : block_width;
 	            uint32_t block_x_offset = block_width - x_incr;
 	            x_incr = min<uint32_t>(x_incr, x1 - x);
+	    		if (!grid_bounds.contains(grk_pt(block_x,block_y))){
+	    			GRK_ERROR("Attempt to access a block (%d,%d) outside block grid bounds", block_x, block_y);
+	    			return false;
+	    		}
 	            auto src_block = getBlock(block_x, block_y);
             	//all blocks should be allocated first before read/write is called
 	            if (!src_block){
