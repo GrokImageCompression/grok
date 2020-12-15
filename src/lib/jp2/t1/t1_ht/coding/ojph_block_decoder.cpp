@@ -1425,7 +1425,7 @@ namespace ojph {
           ui32 U_q[2];
           ui32 uvlc_mode = ((qinf[0] & 0x8) >> 3) | ((qinf[1] & 0x8) >> 2);
           ui32 consumed_bits = decode_noninit_uvlc(vlc_val, uvlc_mode, U_q);
-          if (U_q[0] > missing_msbs && U_q[1] > missing_msbs)
+          if (U_q[0] > missing_msbs || U_q[1] > missing_msbs)
             return false;
           vlc_val = rev_advance(&vlc, consumed_bits);
 
