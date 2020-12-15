@@ -41,8 +41,8 @@ static void grk_update_image_comp_header_from_coding_params(grk_image *image_hea
 	uint32_t y1 = p_cp->ty0 + (p_cp->t_grid_height - 1U) * p_cp->t_height;
 
 	 /* use add saturated to prevent overflow */
-	x1 = std::min<uint32_t>(uint_adds(x1, p_cp->t_width), image_header->x1);
-	y1 = std::min<uint32_t>(uint_adds(y1, p_cp->t_height), image_header->y1);
+	x1 = std::min<uint32_t>(sat_add<uint32_t>(x1, p_cp->t_width), image_header->x1);
+	y1 = std::min<uint32_t>(sat_add<uint32_t>(y1, p_cp->t_height), image_header->y1);
 
 	// 2. convert from canvas to tile coordinates, taking into account
 	// resolution reduction
@@ -173,8 +173,8 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 				cp->tx0, cp->ty0, image->x0, image->y0);
 		return false;
 	}
-	uint32_t tx1 = uint_adds(cp->tx0, cp->t_width); /* manage overflow */
-	uint32_t ty1 = uint_adds(cp->ty0, cp->t_height); /* manage overflow */
+	uint32_t tx1 = sat_add<uint32_t>(cp->tx0, cp->t_width); /* manage overflow */
+	uint32_t ty1 = sat_add<uint32_t>(cp->ty0, cp->t_height); /* manage overflow */
 	if (tx1 <= image->x0 || ty1 <= image->y0) {
 		GRK_ERROR("Error in SIZ marker: first tile (%u,%u,%u,%u) must overlap"
 				" image (%u,%u,%u,%u)", cp->tx0, cp->ty0, tx1, ty1, image->x0,

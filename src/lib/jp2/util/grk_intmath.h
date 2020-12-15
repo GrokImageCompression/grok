@@ -24,26 +24,6 @@
 namespace grk {
 
 /**
- Get the saturated difference of two unsigned integers
- @return Returns saturated sum of a-b
- */
-static inline uint32_t uint_subs(uint32_t a, uint32_t b)
-{
-    return (a >= b) ? a - b : 0;
-}
-
-/**
- Get the saturated sum of two unsigned integers
- @param  a integer
- @param  b integer
- @return saturated sum of a+b
- */
-static inline uint32_t uint_adds(uint32_t a, uint32_t b) {
-	uint64_t sum = (uint64_t) a + (uint64_t) b;
-	return (uint32_t)(-(int32_t)(sum >> 32)) | (uint32_t) sum;
-}
-
-/**
  Divide an integer by another integer and round upwards
  @param  a integer of type T
  @param  b integer of type T

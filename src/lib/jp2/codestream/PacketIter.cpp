@@ -580,12 +580,12 @@ static void grk_get_all_encoding_parameters(const grk_image *p_image,
 	/* can't be greater than p_image->x1 so won't overflow */
 	uint32_t uncorrected_tx0 = p_cp->tx0 + p * p_cp->t_width;
 	*tx0 = std::max<uint32_t>(uncorrected_tx0, p_image->x0);
-	*tx1 = std::min<uint32_t>(uint_adds(uncorrected_tx0, p_cp->t_width),
+	*tx1 = std::min<uint32_t>(sat_add<uint32_t>(uncorrected_tx0, p_cp->t_width),
 			p_image->x1);
 	/* can't be greater than p_image->y1 so won't overflow */
 	uint32_t uncorrected_ty0 = p_cp->ty0 + q * p_cp->t_height;
 	*ty0 = std::max<uint32_t>(uncorrected_ty0, p_image->y0);
-	*ty1 = std::min<uint32_t>(uint_adds(uncorrected_ty0, p_cp->t_height),
+	*ty1 = std::min<uint32_t>(sat_add<uint32_t>(uncorrected_ty0, p_cp->t_height),
 			p_image->y1);
 
 	*max_precincts = 0;

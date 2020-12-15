@@ -1982,14 +1982,14 @@ template <typename T,
         // two windows formed by horizontal pass and used as input for vertical pass
         grk_rect_u32 intermediateWindow[2];
         intermediateWindow[0] = grk_rect_u32(resWindow.x0,
-        						  uint_subs(bandWindow[BAND_ORIENT_LL].y0, HORIZ_PASS_HEIGHT),
+        						  sat_sub<uint32_t>(bandWindow[BAND_ORIENT_LL].y0, HORIZ_PASS_HEIGHT),
 								  resWindow.x1,
 								  bandWindow[BAND_ORIENT_LL].y1);
 
         intermediateWindow[1] = grk_rect_u32(resWindow.x0,
         							// note: max is used to avoid vertical overlap between the two intermediate windows
         							max<uint32_t>(bandWindow[BAND_ORIENT_LL].y1,
-        											uint_subs(min<uint32_t>(bandWindow[BAND_ORIENT_LH].y0 + vert.sn, rh),HORIZ_PASS_HEIGHT)),
+        									sat_sub<uint32_t>(min<uint32_t>(bandWindow[BAND_ORIENT_LH].y0 + vert.sn, rh),HORIZ_PASS_HEIGHT)),
 								  resWindow.x1,
 								  min<uint32_t>(bandWindow[BAND_ORIENT_LH].y1 + vert.sn, rh));
 
