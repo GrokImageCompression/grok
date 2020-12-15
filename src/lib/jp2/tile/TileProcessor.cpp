@@ -659,16 +659,26 @@ bool TileProcessor::init(grk_image *output_image,bool isCompressor) {
 
 	/* 4 borders of the tile rescale on the image if necessary */
 	uint64_t tx0 = m_cp->tx0 + (uint64_t)p * m_cp->t_width;
+	if (tx0 >= image->x1) {
+		GRK_ERROR("Tile x0 coordinate %u must be "
+				"<= image x1 coordinate %u", tx0, image->x1);
+		return false;
+	}
 	tile->x0 = (uint32_t)std::max<uint64_t>(tx0, image->x0);
-	tile->x1 = std::min<uint32_t>(sat_add<uint32_t>(tx0, m_cp->t_width), image->x1);
+	tile->x1 = (uint32_t)std::min<uint64_t>(sat_add<uint64_t>(tx0, m_cp->t_width), image->x1);
 	if (tile->x1 <= tile->x0) {
 		GRK_ERROR("Tile x0 coordinate %u must be "
 				"<= tile x1 coordinate %u", tile->x0, tile->x1);
 		return false;
 	}
-	uint32_t ty0 = m_cp->ty0 + q * m_cp->t_height;
-	tile->y0 = std::max<uint32_t>(ty0, image->y0);
-	tile->y1 = std::min<uint32_t>(sat_add<uint32_t>(ty0, m_cp->t_height), image->y1);
+	uint64_t ty0 = m_cp->ty0 + q * m_cp->t_height;
+	if (ty0 >= image->y1) {
+		GRK_ERROR("Tile y0 coordinate %u must be "
+				"<= image y1 coordinate %u", ty0, image->y1);
+		return false;
+	}
+	tile->y0 = (uint32_t)std::max<uint64_t>(ty0, image->y0);
+	tile->y1 = (uint32_t)std::min<uint64_t>(sat_add<uint64_t>(ty0, m_cp->t_height), image->y1);
 	if (tile->y1 <= tile->y0) {
 		GRK_ERROR("Tile y0 coordinate %u must be "
 				"<= tile y1 coordinate %u", tile->y0, tile->y1);
