@@ -2249,6 +2249,12 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno, uint8_t *p_he
 				"set (HT block coder), the other mode flags from the original J2K block coder must be 0.",tccp->cblk_sty);
 		return false;
 	}
+	uint8_t high_bits = tccp->cblk_sty >> 6;
+	if (high_bits == 2) {
+		GRK_ERROR("Unrecognized code-block style byte 0x%x found in COD/COC marker segment. "
+				"Most significant 2 bits can be 00, 01 or 11, but not 10",tccp->cblk_sty );
+		return false;
+	}
 
 	/* SPcoc (H) */
 	tccp->qmfbid = *current_ptr++;
