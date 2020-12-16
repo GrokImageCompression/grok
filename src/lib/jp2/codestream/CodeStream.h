@@ -203,8 +203,7 @@ struct CodeStream : public ICodeStream {
 	bool read_marker(void);
 	bool read_short(uint16_t *val);
 
-	bool process_marker(const marker_handler* marker_handler,
-						uint16_t current_marker, uint16_t marker_size);
+	bool process_marker(const marker_handler* marker_handler, uint16_t marker_size);
 
 	/**
 	 * Sets the given area to be decompressed. This function should be called right after grk_read_header

@@ -495,7 +495,6 @@ bool j2k_read_cod(CodeStream *codeStream,uint8_t *p_header_data,
 	}
 
 	if (!j2k_read_SPCod_SPCoc(codeStream, 0, p_header_data, &header_size)) {
-		GRK_ERROR("Error reading COD marker");
 		return false;
 	}
 
@@ -614,14 +613,13 @@ bool j2k_read_coc(CodeStream *codeStream, uint8_t *p_header_data,
 	grk_read<uint32_t>(p_header_data, &comp_no, comp_room); /* Ccoc */
 	p_header_data += comp_room;
 	if (comp_no >= image->numcomps) {
-		GRK_ERROR("Error reading COC marker (bad number of components)");
+		GRK_ERROR("Error reading COC marker : invalid component number %d", comp_no);
 		return false;
 	}
 
 	tcp->tccps[comp_no].csty = *p_header_data++; /* Scoc */
 
 	if (!j2k_read_SPCod_SPCoc(codeStream, comp_no, p_header_data, &header_size)) {
-		GRK_ERROR("Error reading COC marker");
 		return false;
 	}
 
@@ -667,7 +665,6 @@ bool j2k_read_qcd(CodeStream *codeStream, uint8_t *p_header_data,
 	assert(codeStream != nullptr);
 
 	if (!j2k_read_SQcd_SQcc(codeStream, false, 0, p_header_data, &header_size)) {
-		GRK_ERROR("Error reading QCD marker");
 		return false;
 	}
 	if (header_size != 0) {
@@ -764,7 +761,6 @@ bool j2k_read_qcc(CodeStream *codeStream, uint8_t *p_header_data,
 
 	if (!j2k_read_SQcd_SQcc(codeStream, true, comp_no, p_header_data,
 			&header_size)) {
-		GRK_ERROR("Error reading QCC marker");
 		return false;
 	}
 

@@ -1967,8 +1967,7 @@ grk_codestream_index* CodeStream::get_cstr_index(void){
 
 
 
-bool CodeStream::process_marker(const marker_handler* marker_handler,
-		uint16_t current_marker, uint16_t marker_size){
+bool CodeStream::process_marker(const marker_handler* marker_handler, uint16_t marker_size){
 
 	if (!m_marker_scratch) {
 		m_marker_scratch = (uint8_t*) grk_calloc(1, default_header_size);
@@ -2010,8 +2009,6 @@ bool CodeStream::process_marker(const marker_handler* marker_handler,
 		return false;
 	}
 	if (!(*(marker_handler->callback))(this,	m_marker_scratch, marker_size)) {
-		GRK_ERROR("Fail to read the current marker segment (%#x)",
-				current_marker);
 		return false;
 	}
 
@@ -2148,7 +2145,7 @@ bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 				GRK_ERROR("Marker 0x%x is not compliant with its expected position", m_curr_marker);
 				return false;
 			}
-			if (!process_marker(marker_handler, m_curr_marker, marker_size))
+			if (!process_marker(marker_handler, marker_size))
 				return false;
 
 
@@ -2460,7 +2457,7 @@ bool CodeStream::read_header_procedure(void) {
 		}
 		marker_size = (uint16_t)(marker_size - 2); /* Subtract the size of the marker ID already read */
 
-		if (!process_marker(marker_handler, m_curr_marker, marker_size))
+		if (!process_marker(marker_handler, marker_size))
 			return false;
 
 		if (cstr_index) {
@@ -2817,7 +2814,7 @@ bool CodeStream::decompress_tiles(void) {
 			success = false;
 			goto cleanup;
 		}
-		if (!process_marker(marker_handler, m_curr_marker, marker_size)){
+		if (!process_marker(marker_handler, marker_size)){
 			success = false;
 			goto cleanup;
 		}
