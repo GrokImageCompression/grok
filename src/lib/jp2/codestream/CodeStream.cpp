@@ -1945,7 +1945,7 @@ bool CodeStream::set_decompress_window(grk_image *output_image,
 			cp->m_coding_params.m_dec.m_reduce))
 		return false;
 
-	GRK_INFO("Setting decoding area to ( %u,%u,%u,%u )", output_image->x0,
+	GRK_INFO("Setting decompress window to ( %u,%u,%u,%u )", output_image->x0,
 			output_image->y0, output_image->x1, output_image->y1);
 	return true;
 }

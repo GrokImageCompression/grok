@@ -136,7 +136,8 @@ bool TileComponent::init(bool isCompressor,
 	set_rect(hightestResolution);
 
 	//3. create window buffer
-	create_buffer(&unreduced_tile_comp_dims, unreduced_tile_comp_window_dims);
+	if (!create_buffer(&unreduced_tile_comp_dims, unreduced_tile_comp_window_dims))
+		return false;
 
 	// calculate padded windows
 	if (!whole_tile_decoding){
@@ -305,7 +306,7 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
 }
 
 
-void TileComponent::create_buffer(grk_rect_u32 *unreduced_tile_comp_dims,
+bool TileComponent::create_buffer(grk_rect_u32 *unreduced_tile_comp_dims,
 									grk_rect_u32 unreduced_tile_comp_window_dims) {
 	// calculate band
 	for (uint8_t resno = 0; resno < numresolutions; ++resno) {
@@ -320,6 +321,18 @@ void TileComponent::create_buffer(grk_rect_u32 *unreduced_tile_comp_dims,
 	auto highestNumberOfResolutions =
 			(!m_is_encoder) ? resolutions_to_decompress : numresolutions;
 	auto maxResolution = resolutions + numresolutions - 1;
+	if (!maxResolution->intersection(unreduced_tile_comp_window_dims).is_valid()){
+		GRK_ERROR("Decompress window (%d,%d,%d,%d) must overlap tile region (%d,%d,%d,%d)",
+				unreduced_tile_comp_window_dims.x0,
+				unreduced_tile_comp_window_dims.y0,
+				unreduced_tile_comp_window_dims.x1,
+				unreduced_tile_comp_window_dims.y1,
+				maxResolution->x0,
+				maxResolution->y0,
+				maxResolution->x1,
+				maxResolution->y1);
+		return false;
+	}
 	buf = new TileComponentWindowBuffer<int32_t>(m_is_encoder,
 											whole_tile_decoding,
 											*(grk_rect_u32*)maxResolution,
@@ -328,6 +341,8 @@ void TileComponent::create_buffer(grk_rect_u32 *unreduced_tile_comp_dims,
 											resolutions,
 											numresolutions,
 											highestNumberOfResolutions);
+
+	return true;
 }
 
 TileComponentWindowBuffer<int32_t>* TileComponent::getBuffer(){
