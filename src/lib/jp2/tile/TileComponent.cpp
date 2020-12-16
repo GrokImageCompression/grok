@@ -404,7 +404,7 @@ template<typename F> bool TileComponent::postDecompressImpl(int32_t *srcData, De
 										block->y,
 										block->x + cblk->width(),
 										block->y + cblk->height()));
-		dest = buf->code_block_dest_buf(block->resno,block->bandIndex);
+		dest = buf->getCodeBlockDestWindow(block->resno,block->bandIndex);
 	}
 
 	F f(block);

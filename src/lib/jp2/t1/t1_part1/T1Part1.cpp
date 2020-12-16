@@ -62,7 +62,7 @@ void T1Part1::preCompress(CompressBlockExec *block, grk_tile *tile,
 	if (!t1->allocate_buffers(w,h))
 		return;
 	t1->data_stride = w;
-	auto tileLineAdvance = (tile->comps + block->compno)->getBuffer()->stride() - w;
+	auto tileLineAdvance = (tile->comps + block->compno)->getBuffer()->getWindow()->stride - w;
 	auto tiledp = block->tiledp;
 	uint32_t tileIndex = 0;
 	uint32_t cblk_index = 0;

@@ -864,7 +864,7 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
     dwt_data<int32_t> vert;
     data_size *= PLL_COLS_53 * sizeof(int32_t);
     bool rc = true;
-    for (uint32_t res = 1; res < numres; ++res){
+    for (uint8_t res = 1; res < numres; ++res){
         horiz.sn = rw;
         vert.sn = rh;
         ++tr;
@@ -879,24 +879,30 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
 							horiz,
 							vert,
 							vert.sn,
-							tilec->getBuffer()->ptr(res-1),
-							tilec->getBuffer()->stride(res-1),
-							tilec->getBuffer()->ptr(res, 0),
-							tilec->getBuffer()->stride(res,0),
-							tilec->getBuffer()->ptr(res),
-							tilec->getBuffer()->stride(res)))
+							// LL
+							tilec->getBuffer()->getWindow(res-1)->data,
+							tilec->getBuffer()->getWindow(res-1)->stride,
+							// HL
+							tilec->getBuffer()->getWindow(res, 0)->data,
+							tilec->getBuffer()->getWindow(res,0)->stride,
+							// upper split window
+							tilec->getBuffer()->getSplitWindow(res,0)->data,
+							tilec->getBuffer()->getSplitWindow(res,0)->stride))
     		return false;
     	if (!decompress_h_mt_53(num_threads,
     						data_size,
 							horiz,
 							vert,
 							rh -  vert.sn,
-							tilec->getBuffer()->ptr(res, 1),
-							tilec->getBuffer()->stride(res,1),
-							tilec->getBuffer()->ptr(res, 2),
-							tilec->getBuffer()->stride(res,2),
-    						tilec->getBuffer()->ptr(res) + vert.sn *tilec->getBuffer()->stride(res) ,
-    						tilec->getBuffer()->stride(res) ))
+							// LH
+							tilec->getBuffer()->getWindow(res, 1)->data,
+							tilec->getBuffer()->getWindow(res,1)->stride,
+							// HH
+							tilec->getBuffer()->getWindow(res, 2)->data,
+							tilec->getBuffer()->getWindow(res,2)->stride,
+							// lower split window
+    						tilec->getBuffer()->getSplitWindow(res,1)->data,
+    						tilec->getBuffer()->getSplitWindow(res,1)->stride ))
     		return false;
         vert.dn = rh - vert.sn;
         vert.cas = tr->y0 & 1;
@@ -905,12 +911,15 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
 							horiz,
 							vert,
 							rw,
-							tilec->getBuffer()->ptr(res),
-							tilec->getBuffer()->stride(res),
-							tilec->getBuffer()->ptr(res)+ vert.sn *tilec->getBuffer()->stride(res) ,
-							tilec->getBuffer()->stride(res),
-							tilec->getBuffer()->ptr(res),
-							tilec->getBuffer()->stride(res)))
+							// upper split window
+							tilec->getBuffer()->getSplitWindow(res,0)->data,
+							tilec->getBuffer()->getSplitWindow(res,0)->stride,
+							// lower split window
+							tilec->getBuffer()->getSplitWindow(res,1)->data,
+							tilec->getBuffer()->getSplitWindow(res,1)->stride,
+							// resolution buffer
+							tilec->getBuffer()->getWindow(res)->data,
+							tilec->getBuffer()->getWindow(res)->stride))
     		return false;
     }
     horiz.release();
@@ -1415,7 +1424,7 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
     }
     vert.mem = horiz.mem;
     uint32_t num_threads = (uint32_t)ThreadPool::get()->num_threads();
-    for (uint32_t res = 1; res < numres; ++res) {
+    for (uint8_t res = 1; res < numres; ++res) {
         horiz.sn = rw;
         vert.sn = rh;
         ++tr;
@@ -1433,23 +1442,29 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         					data_size,
 							horiz,
 							vert.sn,
-							(float*) tilec->getBuffer()->ptr(res-1),
-							tilec->getBuffer()->stride(res-1),
-							(float*) tilec->getBuffer()->ptr(res, 0),
-							tilec->getBuffer()->stride(res,0),
-							(float*) tilec->getBuffer()->ptr(res),
-							tilec->getBuffer()->stride(res)))
+							// LL
+							(float*) tilec->getBuffer()->getWindow(res-1)->data,
+							tilec->getBuffer()->getWindow(res-1)->stride,
+							// HL
+							(float*) tilec->getBuffer()->getWindow(res, 0)->data,
+							tilec->getBuffer()->getWindow(res,0)->stride,
+							// upper split window
+							(float*) tilec->getBuffer()->getSplitWindow(res,0)->data,
+							tilec->getBuffer()->getSplitWindow(res,0)->stride))
         	return false;
         if (!decompress_h_mt_97(num_threads,
         					data_size,
 							horiz,
 							rh-vert.sn,
-							(float*) tilec->getBuffer()->ptr(res, 1),
-							tilec->getBuffer()->stride(res,1),
-							(float*) tilec->getBuffer()->ptr(res, 2),
-							tilec->getBuffer()->stride(res,2),
-							(float*) tilec->getBuffer()->ptr(res) +  + vert.sn *tilec->getBuffer()->stride(res),
-							tilec->getBuffer()->stride(res) ))
+							// LH
+							(float*) tilec->getBuffer()->getWindow(res, 1)->data,
+							tilec->getBuffer()->getWindow(res,1)->stride,
+							// HH
+							(float*) tilec->getBuffer()->getWindow(res, 2)->data,
+							tilec->getBuffer()->getWindow(res,2)->stride,
+							// lower split window
+							(float*) tilec->getBuffer()->getSplitWindow(res,1)->data,
+							tilec->getBuffer()->getSplitWindow(res,1)->stride ))
         	return false;
         vert.dn = rh - vert.sn;
         vert.cas = tr->y0 & 1;
@@ -1462,12 +1477,15 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 							vert,
 							rw,
 							rh,
-							(float*) tilec->getBuffer()->ptr(res),
-							tilec->getBuffer()->stride(res),
-							(float*) tilec->getBuffer()->ptr(res) +  + vert.sn *tilec->getBuffer()->stride(res),
-							tilec->getBuffer()->stride(res),
-							(float*) tilec->getBuffer()->ptr(res),
-							tilec->getBuffer()->stride(res)))
+							// upper split window
+							(float*) tilec->getBuffer()->getSplitWindow(res,0)->data,
+							tilec->getBuffer()->getSplitWindow(res,0)->stride,
+							// lower split window
+							(float*) tilec->getBuffer()->getSplitWindow(res,1)->data,
+							tilec->getBuffer()->getSplitWindow(res,1)->stride,
+							// resolution window
+							(float*) tilec->getBuffer()->getWindow(res)->data,
+							tilec->getBuffer()->getWindow(res)->stride))
         	return false;
     }
     horiz.release();
@@ -1879,9 +1897,9 @@ template <typename T,
     if (numres == 1U) {
         // simply copy into tile component buffer
     	bool ret = sa->read(final_win_bounds,
-					   tilec->getBuffer()->ptr(),
+					   tilec->getBuffer()->getWindow()->data,
                        1,
-					   tilec->getBuffer()->stride(),
+					   tilec->getBuffer()->getWindow()->stride,
                        true);
         assert(ret);
         GRK_UNUSED(ret);
@@ -1963,9 +1981,9 @@ template <typename T,
 				tileBandWindow[i].print();
             }
         }
-        auto win_low 		= (horiz.cas == 0) ? bandWindow[BAND_ORIENT_LL] : bandWindow[BAND_ORIENT_HL];
-        auto win_high 		= (horiz.cas == 0) ? bandWindow[BAND_ORIENT_HL] : bandWindow[BAND_ORIENT_LL];
         grk_rect_u32 resWindow;
+        auto win_low 				= (horiz.cas == 0) ? bandWindow[BAND_ORIENT_LL] : bandWindow[BAND_ORIENT_HL];
+        auto win_high 				= (horiz.cas == 0) ? bandWindow[BAND_ORIENT_HL] : bandWindow[BAND_ORIENT_LL];
         resWindow.x0 				= min<uint32_t>(2 * win_low.x0, 2 * bandWindow[BAND_ORIENT_HL].x0 + 1);
         resWindow.x1 				= min<uint32_t>(max<uint32_t>(2 * win_low.x1, 2 * win_high.x1 + 1), rw);
         win_low 					= (vert.cas == 0) ? bandWindow[BAND_ORIENT_LL] : bandWindow[BAND_ORIENT_LH];
@@ -1980,28 +1998,28 @@ template <typename T,
 		}
 
         // two windows formed by horizontal pass and used as input for vertical pass
-        grk_rect_u32 intermediateWindow[2];
-        intermediateWindow[0] = grk_rect_u32(resWindow.x0,
-        						  sat_sub<uint32_t>(bandWindow[BAND_ORIENT_LL].y0, HORIZ_PASS_HEIGHT),
-								  resWindow.x1,
-								  bandWindow[BAND_ORIENT_LL].y1);
+        grk_rect_u32 splitWindow[2];
+        splitWindow[0] = grk_rect_u32(resWindow.x0,
+											  sat_sub<uint32_t>(bandWindow[BAND_ORIENT_LL].y0, HORIZ_PASS_HEIGHT),
+											  resWindow.x1,
+											  bandWindow[BAND_ORIENT_LL].y1);
 
-        intermediateWindow[1] = grk_rect_u32(resWindow.x0,
-        							// note: max is used to avoid vertical overlap between the two intermediate windows
-        							max<uint32_t>(bandWindow[BAND_ORIENT_LL].y1,
-        									sat_sub<uint32_t>(min<uint32_t>(bandWindow[BAND_ORIENT_LH].y0 + vert.sn, rh),HORIZ_PASS_HEIGHT)),
-								  resWindow.x1,
-								  min<uint32_t>(bandWindow[BAND_ORIENT_LH].y1 + vert.sn, rh));
+        splitWindow[1] = grk_rect_u32(resWindow.x0,
+        										// note: max is used to avoid vertical overlap between the two intermediate windows
+        										max<uint32_t>(bandWindow[BAND_ORIENT_LL].y1,
+        										sat_sub<uint32_t>(min<uint32_t>(bandWindow[BAND_ORIENT_LH].y0 + vert.sn, rh),HORIZ_PASS_HEIGHT)),
+												resWindow.x1,
+												min<uint32_t>(bandWindow[BAND_ORIENT_LH].y1 + vert.sn, rh));
 
         // pad
 		for (uint32_t k = 0; k < 2; ++k) {
-			 auto temp = intermediateWindow[k];
+			 auto temp = splitWindow[k];
 			 if (!sa->alloc(temp.grow(FILTER_WIDTH, rw,  rh)))
 					goto cleanup;
-		        if (DEBUG_WAVELET){
-					std::cout << "intermedate window " << k << " ";
-					intermediateWindow[k].print();
-		        }
+			if (DEBUG_WAVELET){
+				std::cout << "intermedate window " << k << " ";
+				splitWindow[k].print();
+			}
 		}
 
         horiz.win_l_0 = bandWindow[BAND_ORIENT_LL].x0;
@@ -2010,13 +2028,13 @@ template <typename T,
         horiz.win_h_1 = bandWindow[BAND_ORIENT_HL].x1;
 		for (uint32_t k = 0; k < 2; ++k) {
 			uint32_t num_jobs = (uint32_t)num_threads;
-			uint32_t num_rows = intermediateWindow[k].height();
+			uint32_t num_rows = splitWindow[k].height();
 			if (num_rows < num_jobs)
 				num_jobs = num_rows;
 			uint32_t step_j = num_jobs ? ( num_rows / num_jobs) : 0;
 			if (num_threads == 1 ||step_j < HORIZ_PASS_HEIGHT){
 		     uint32_t j;
-			 for (j = intermediateWindow[k].y0; j + HORIZ_PASS_HEIGHT-1 < intermediateWindow[k].y1; j += HORIZ_PASS_HEIGHT) {
+			 for (j = splitWindow[k].y0; j + HORIZ_PASS_HEIGHT-1 < splitWindow[k].y1; j += HORIZ_PASS_HEIGHT) {
 				 decompressor.interleave_partial_h(&horiz, sa, j,HORIZ_PASS_HEIGHT);
 				 decompressor.decompress_h(&horiz);
 				 if (!sa->write( resWindow.x0,
@@ -2031,13 +2049,13 @@ template <typename T,
 					 goto cleanup;
 				 }
 			 }
-			 if (j < intermediateWindow[k].y1 ) {
-				 decompressor.interleave_partial_h(&horiz, sa, j, intermediateWindow[k].y1 - j);
+			 if (j < splitWindow[k].y1 ) {
+				 decompressor.interleave_partial_h(&horiz, sa, j, splitWindow[k].y1 - j);
 				 decompressor.decompress_h(&horiz);
 				 if (!sa->write( resWindow.x0,
 								  j,
 								  resWindow.x1,
-								  intermediateWindow[k].y1,
+								  splitWindow[k].y1,
 								  (int32_t*)(horiz.mem + resWindow.x0),
 								  HORIZ_PASS_HEIGHT,
 								  1,
@@ -2051,8 +2069,8 @@ template <typename T,
 			for(uint32_t j = 0; j < num_jobs; ++j) {
 			   auto job = new decompress_job<float, dwt_data<T>>(
 					   	   	   horiz,
-							   intermediateWindow[k].y0 + j * step_j,
-							   j < (num_jobs - 1U) ? intermediateWindow[k].y0 + (j + 1U) * step_j : intermediateWindow[k].y1);
+							   splitWindow[k].y0 + j * step_j,
+							   j < (num_jobs - 1U) ? splitWindow[k].y0 + (j + 1U) * step_j : splitWindow[k].y1);
 				if (!job->data.alloc(data_size)) {
 					GRK_ERROR("Out of memory");
 					goto cleanup;
@@ -2105,7 +2123,6 @@ template <typename T,
 			}
 			if (blockError)
 				goto cleanup;
-
 		  }
         }
 
@@ -2214,9 +2231,9 @@ template <typename T,
     }
     //final read into tile buffer
 	bool ret = sa->read(final_win_bounds,
-					   tilec->getBuffer()->ptr(),
+					   tilec->getBuffer()->getWindow()->data,
 					   1,
-					   tilec->getBuffer()->stride(),
+					   tilec->getBuffer()->getWindow()->stride,
 					   true);
 	assert(ret);
 	GRK_UNUSED(ret);
