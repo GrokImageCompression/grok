@@ -2405,12 +2405,17 @@ bool CodeStream::read_header_procedure(void) {
 
 	/* Try to read the SOC marker, the code stream must begin with SOC marker */
 	if (!j2k_read_soc(this)) {
-		GRK_ERROR("Expected a SOC marker ");
+		GRK_ERROR("Code stream must begin with SOC marker ");
 		return false;
 	}
 	// read next marker
 	if (!read_marker())
 		return false;
+
+	if (m_curr_marker != J2K_MS_SIZ){
+		GRK_ERROR("Code-stream must contain a valid SIZ marker segment, immediately after the SOC marker ");
+		return false;
+	}
 
 	/* Try to read until the SOT is detected */
 	while (m_curr_marker != J2K_MS_SOT) {
@@ -2435,7 +2440,7 @@ bool CodeStream::read_header_procedure(void) {
 		else if (marker_handler->id == J2K_MS_QCD)
 			has_qcd = true;
 
-		/* Check if the marker is known and if it is the right place to find it */
+		/* Check if the marker is known and if it is in the correct location (main, tile, end of code stream)*/
 		if (!(m_decompressor.m_state & marker_handler->states)) {
 			GRK_ERROR("Marker is not compliant with its position");
 			return false;
