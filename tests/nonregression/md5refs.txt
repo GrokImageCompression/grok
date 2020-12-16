@@ -322,6 +322,5 @@ d5c155592a00f695dad564cf51e602f8  cinema129x129.bmp
 8cef180e6ee6d2ead831cbdc9c299003  clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5713875855736832_2.pgx
 a37951a75863e7912789703a0b09f473  b1_mono_4k.tif
 90afe08c78791e48eeaf56c450d8fdba  issue432.jp2_0.pgx
-6c83dabd29799f44db637b3e6cac6b6a  grk_decompress_fuzzer-6502012527181824_0.pgx
 1bd39562880ff7ac0e8c5898223312b7  tnsot_zero_missing_eoc.tif
 

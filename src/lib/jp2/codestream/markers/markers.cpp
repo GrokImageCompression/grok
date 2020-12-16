@@ -2232,10 +2232,10 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno, uint8_t *p_he
 	grk_read<uint8_t>(current_ptr++, &tccp->cblkh);
 
 	if ( tccp->cblkw > 8 || tccp->cblkh > 8
-			|| (tccp->cblkw + tccp->cblkh) > 10 ) {
-		GRK_ERROR("Illegal code-block width/height exponents (%d, %d) found in COD/COC marker segment.\n"
+			|| (tccp->cblkw + tccp->cblkh) > 8 ) {
+		GRK_ERROR("Illegal code-block width/height (%d, %d) found in COD/COC marker segment.\n"
 		"Code-block dimensions must be powers of 2, in the range 4-1024, whose product "
-		"lies in the range 16-4096.",(uint32_t)tccp->cblkw + 2, (uint32_t)tccp->cblkh + 2);
+		"lies in the range 16-4096.",1 << ((uint32_t)tccp->cblkw + 2), 1 << ((uint32_t)tccp->cblkh + 2));
 		return false;
 	}
 
