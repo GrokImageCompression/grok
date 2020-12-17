@@ -1883,20 +1883,22 @@ template <typename T,
 						   ISparseBuffer *sa) {
 
 	bool rc = false;
-    auto res 	= tilec->resolutions;
-    auto tr_max = tilec->resolutions + numres - 1;
-    if (!tr_max->width() || !tr_max->height()){
+    auto fullRes 	= tilec->resolutions;
+    auto fullResTopLevel = tilec->resolutions + numres - 1;
+    if (!fullResTopLevel->width() || !fullResTopLevel->height()){
         return true;
     }
 
-	auto win_bounds = window;
-	win_bounds = win_bounds.rectceildivpow2(tilec->numresolutions - 1 - (numres-1));
-    auto final_win_bounds = win_bounds.pan(-(uint64_t)tr_max->x0,-(uint64_t)tr_max->y0);
+	auto synthesisWindow = window;
+	synthesisWindow = synthesisWindow.rectceildivpow2(tilec->numresolutions - 1 - (numres-1));
+
+	assert(fullResTopLevel->intersection(synthesisWindow) == synthesisWindow);
+    synthesisWindow = synthesisWindow.pan(-(uint64_t)fullResTopLevel->x0,-(uint64_t)fullResTopLevel->y0);
 
 	try {
     if (numres == 1U) {
         // simply copy into tile component buffer
-    	bool ret = sa->read(final_win_bounds,
+    	bool ret = sa->read(synthesisWindow,
 					   tilec->getBuffer()->getWindow()->data,
                        1,
 					   tilec->getBuffer()->getWindow()->stride,
@@ -1910,7 +1912,7 @@ template <typename T,
 	}
 
     // in 53 vertical pass, we process 4 vertical columns at a time
-    size_t data_size = (size_t)max_resolution(res, numres) * COLUMNS_PER_STEP;
+    size_t data_size = (size_t)max_resolution(fullRes, numres) * COLUMNS_PER_STEP;
 	dwt_data<T> horiz;
     if (!horiz.alloc(data_size)) {
         GRK_ERROR("Out of memory");
@@ -1929,18 +1931,18 @@ template <typename T,
 	try {
 
     for (uint8_t resno = 1; resno < numres; resno ++) {
-        horiz.sn = res->width();
-        vert.sn = res->height();
+        horiz.sn = fullRes->width();
+        vert.sn = fullRes->height();
 
-        ++res;
-        uint32_t rw = res->width();
-        uint32_t rh = res->height();
+        ++fullRes;
+        uint32_t rw = fullRes->width();
+        uint32_t rh = fullRes->height();
 
         horiz.dn = rw - horiz.sn;
-        horiz.cas = res->x0 & 1;
+        horiz.cas = fullRes->x0 & 1;
 
         vert.dn = rh - vert.sn;
-        vert.cas = res->y0 & 1;
+        vert.cas = fullRes->y0 & 1;
 
     	if (DEBUG_WAVELET)
     		std::cout << "Resolution: " << resno << std::endl;
@@ -1952,26 +1954,26 @@ template <typename T,
         grk_rect_u32 bandWindow[BAND_NUM_ORIENTATIONS];
         grk_rect_u32 tileBandWindow[BAND_NUM_ORIENTATIONS];
         bandWindow[BAND_ORIENT_LL] = grk_band_window(tilec->numresolutions,resno,BAND_ORIENT_LL,window);
-        bandWindow[BAND_ORIENT_LL] = bandWindow[BAND_ORIENT_LL].pan(-(int64_t)res->band[BAND_INDEX_LH].x0, -(int64_t)res->band[BAND_INDEX_HL].y0);
+        bandWindow[BAND_ORIENT_LL] = bandWindow[BAND_ORIENT_LL].pan(-(int64_t)fullRes->band[BAND_INDEX_LH].x0, -(int64_t)fullRes->band[BAND_INDEX_HL].y0);
         bandWindow[BAND_ORIENT_LL].grow(FILTER_WIDTH, horiz.sn,  vert.sn);
 
         bandWindow[BAND_ORIENT_HL] = grk_band_window(tilec->numresolutions,resno,BAND_ORIENT_HL,window);
-        bandWindow[BAND_ORIENT_HL] = bandWindow[BAND_ORIENT_HL].pan(-(int64_t)res->band[BAND_INDEX_HL].x0, -(int64_t)res->band[BAND_INDEX_HL].y0);
+        bandWindow[BAND_ORIENT_HL] = bandWindow[BAND_ORIENT_HL].pan(-(int64_t)fullRes->band[BAND_INDEX_HL].x0, -(int64_t)fullRes->band[BAND_INDEX_HL].y0);
         bandWindow[BAND_ORIENT_HL].grow(FILTER_WIDTH, horiz.dn,  vert.sn);
 
         bandWindow[BAND_ORIENT_LH] = grk_band_window(tilec->numresolutions,resno,BAND_ORIENT_LH,window);
-        bandWindow[BAND_ORIENT_LH] = bandWindow[BAND_ORIENT_LH].pan(-(int64_t)res->band[BAND_INDEX_LH].x0, -(int64_t)res->band[BAND_INDEX_LH].y0);
+        bandWindow[BAND_ORIENT_LH] = bandWindow[BAND_ORIENT_LH].pan(-(int64_t)fullRes->band[BAND_INDEX_LH].x0, -(int64_t)fullRes->band[BAND_INDEX_LH].y0);
         bandWindow[BAND_ORIENT_LH].grow(FILTER_WIDTH, horiz.sn,  vert.dn);
 
         bandWindow[BAND__ORIENT_HH] = grk_band_window(tilec->numresolutions,resno,BAND__ORIENT_HH,window);
-        bandWindow[BAND__ORIENT_HH] = bandWindow[BAND__ORIENT_HH].pan(-(int64_t)res->band[BAND_INDEX_HH].x0, -(int64_t)res->band[BAND_INDEX_HH].y0);
+        bandWindow[BAND__ORIENT_HH] = bandWindow[BAND__ORIENT_HH].pan(-(int64_t)fullRes->band[BAND_INDEX_HH].x0, -(int64_t)fullRes->band[BAND_INDEX_HH].y0);
         bandWindow[BAND__ORIENT_HH].grow(FILTER_WIDTH, horiz.dn,  vert.dn);
 
         // pre-allocate sparse blocks
         tileBandWindow[BAND_ORIENT_LL]  =  bandWindow[BAND_ORIENT_LL];
-        tileBandWindow[BAND_ORIENT_HL]  =  bandWindow[BAND_ORIENT_HL].pan(res->band[BAND_INDEX_LH].width(),0);
-        tileBandWindow[BAND_ORIENT_LH]  =  bandWindow[BAND_ORIENT_LH].pan(0,res->band[BAND_INDEX_HL].height());
-        tileBandWindow[BAND__ORIENT_HH] =  bandWindow[BAND__ORIENT_HH].pan(res->band[BAND_INDEX_LH].width(),res->band[BAND_INDEX_HL].height());
+        tileBandWindow[BAND_ORIENT_HL]  =  bandWindow[BAND_ORIENT_HL].pan(fullRes->band[BAND_INDEX_LH].width(),0);
+        tileBandWindow[BAND_ORIENT_LH]  =  bandWindow[BAND_ORIENT_LH].pan(0,fullRes->band[BAND_INDEX_HL].height());
+        tileBandWindow[BAND__ORIENT_HH] =  bandWindow[BAND__ORIENT_HH].pan(fullRes->band[BAND_INDEX_LH].width(),fullRes->band[BAND_INDEX_HL].height());
         for (uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i){
         	auto temp = tileBandWindow[i];
             if (!sa->alloc(temp.grow(FILTER_WIDTH, rw,  rh)))
@@ -1984,12 +1986,12 @@ template <typename T,
         grk_rect_u32 resWindow;
         auto win_low 				= (horiz.cas == 0) ? bandWindow[BAND_ORIENT_LL] : bandWindow[BAND_ORIENT_HL];
         auto win_high 				= (horiz.cas == 0) ? bandWindow[BAND_ORIENT_HL] : bandWindow[BAND_ORIENT_LL];
-        resWindow.x0 				= min<uint32_t>(2 * win_low.x0, 2 * bandWindow[BAND_ORIENT_HL].x0 + 1);
-        resWindow.x1 				= min<uint32_t>(max<uint32_t>(2 * win_low.x1, 2 * win_high.x1 + 1), rw);
+        resWindow.x0 				= min<uint32_t>(2 * win_low.x0, 2 * bandWindow[BAND_ORIENT_HL].x0);
+        resWindow.x1 				= min<uint32_t>(max<uint32_t>(2 * win_low.x1, 2 * win_high.x1), rw);
         win_low 					= (vert.cas == 0) ? bandWindow[BAND_ORIENT_LL] : bandWindow[BAND_ORIENT_LH];
         win_high 					= (vert.cas == 0) ? bandWindow[BAND_ORIENT_LH] : bandWindow[BAND_ORIENT_LL];
-        resWindow.y0 				= min<uint32_t>(2 * win_low.y0, 2 * win_high.y0 + 1);
-        resWindow.y1 				= min<uint32_t>(max<uint32_t>(2 * win_low.y1, 2 * win_high.y1 + 1), rh);
+        resWindow.y0 				= min<uint32_t>(2 * win_low.y0, 2 * win_high.y0);
+        resWindow.y1 				= min<uint32_t>(max<uint32_t>(2 * win_low.y1, 2 * win_high.y1), rh);
         if (!sa->alloc(resWindow))
 			goto cleanup;
 		if (DEBUG_WAVELET){
@@ -2017,7 +2019,7 @@ template <typename T,
 			 if (!sa->alloc(temp.grow(FILTER_WIDTH, rw,  rh)))
 					goto cleanup;
 			if (DEBUG_WAVELET){
-				std::cout << "intermedate window " << k << " ";
+				std::cout << "split window " << k << " ";
 				splitWindow[k].print();
 			}
 		}
@@ -2230,7 +2232,7 @@ template <typename T,
 		}
     }
     //final read into tile buffer
-	bool ret = sa->read(final_win_bounds,
+	bool ret = sa->read(synthesisWindow,
 					   tilec->getBuffer()->getWindow()->data,
 					   1,
 					   tilec->getBuffer()->getWindow()->stride,
