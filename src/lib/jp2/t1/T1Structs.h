@@ -26,11 +26,18 @@ struct ISparseBuffer;
 struct grk_tile;
 struct TileComponent;
 
+enum eSplitOrientation{
+	SPLIT_L,
+	SPLIT_H,
+	SPLIT_NUM_ORIENTATIONS
+};
+
+
 enum eBandOrientation{
 	BAND_ORIENT_LL,
 	BAND_ORIENT_HL,
 	BAND_ORIENT_LH,
-	BAND__ORIENT_HH,
+	BAND_ORIENT_HH,
 	BAND_NUM_ORIENTATIONS
 };
 
@@ -246,7 +253,7 @@ struct BlockExec : public IOpenable {
 	BlockExec();
 	TileComponent *tilec;
 	uint8_t bandIndex;
-	uint8_t band_orientation;
+	eBandOrientation band_orientation;
 	float stepsize;
 	uint32_t cblk_sty;
 	uint32_t qmfbid;

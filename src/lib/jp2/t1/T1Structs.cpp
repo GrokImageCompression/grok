@@ -611,7 +611,7 @@ bool Resolution::init(bool isCompressor,
 
 BlockExec::BlockExec() : 	tilec(nullptr),
 							bandIndex(0),
-							band_orientation(0),
+							band_orientation(BAND_ORIENT_LL),
 							stepsize(0),
 							cblk_sty(0),
 							qmfbid(0),

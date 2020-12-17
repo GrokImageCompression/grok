@@ -56,7 +56,7 @@ void T1CompressScheduler::scheduleCompress(TileCodingParams *tcp,
 						block->doRateControl = needsRateControl;
 						block->x = cblk->x0;
 						block->y = cblk->y0;
-						tilec->getBuffer()->transform(resno,bandIndex,block->x,block->y);
+						tilec->getBuffer()->transform(resno,band->orientation,block->x,block->y);
 						block->tiledp = tilec->getBuffer()->getWindow()->data + (uint64_t) block->x +
 											block->y * (uint64_t) tilec->getBuffer()->getWindow()->stride;
 						maxCblkW = std::max<uint32_t>(maxCblkW,

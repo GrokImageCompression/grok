@@ -37,20 +37,27 @@ template<typename T> struct res_window {
 										resWindow(new grk_buffer_2d<T>(bounds)),
 										resWindowTopLevel(top)
 	{
-		for (uint32_t i = 0; i < 2; ++i)
+		for (uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
 			splitWindow[i] = nullptr;
 		if (full_res) {
-			for (uint32_t i = 0; i < full_res->numBandWindows; ++i)
-				bandWindow.push_back( new grk_buffer_2d<T>(full_res->band[i]) );
-			for (uint32_t i = 0; i < 2; ++i)
-				splitWindow[i] = new grk_buffer_2d<T>(bounds);
+			// dummy LL band window
+			bandWindow.push_back( new grk_buffer_2d<T>( grk_rect_u32(0,0,0,0)) );
+			assert(full_res->numBandWindows == 3 || !lower_full_res);
+			if (lower_full_res) {
+				for (uint32_t i = 0; i < full_res->numBandWindows; ++i)
+					bandWindow.push_back( new grk_buffer_2d<T>(full_res->band[i]) );
+				for (uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
+					splitWindow[i] = new grk_buffer_2d<T>(bounds);
+				splitWindow[SPLIT_L]->y1 = bounds.y0 + lower_full_res->height();
+				splitWindow[SPLIT_H]->y0 = splitWindow[SPLIT_L]->y1;
+			}
 		}
 	}
 	~res_window(){
 		delete resWindow;
 		for (auto &b : bandWindow)
 			delete b;
-		for (uint32_t i = 0; i < 2; ++i)
+		for (uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
 			delete splitWindow[i];
 	}
 	bool alloc(bool clear){
@@ -69,18 +76,18 @@ template<typename T> struct res_window {
 
 			// fullResLower is null for lowest resolution
 			if (fullResLower) {
-				for (uint32_t i = 0; i < bandWindow.size(); ++i){
-					switch(i){
-					case 0:
-						bandWindow[i]->attach(resWindowTopLevel->data + fullResLower->width(),
+				for (uint8_t orientation = 0; orientation < bandWindow.size(); ++orientation){
+					switch(orientation){
+					case BAND_ORIENT_HL:
+						bandWindow[orientation]->attach(resWindowTopLevel->data + fullResLower->width(),
 												resWindowTopLevel->stride);
 						break;
-					case 1:
-						bandWindow[i]->attach(resWindowTopLevel->data + fullResLower->height() * resWindowTopLevel->stride,
+					case BAND_ORIENT_LH:
+						bandWindow[orientation]->attach(resWindowTopLevel->data + fullResLower->height() * resWindowTopLevel->stride,
 												resWindowTopLevel->stride);
 						break;
-					case 2:
-						bandWindow[i]->attach(resWindowTopLevel->data + fullResLower->width() +
+					case BAND_ORIENT_HH:
+						bandWindow[orientation]->attach(resWindowTopLevel->data + fullResLower->width() +
 													fullResLower->height() * resWindowTopLevel->stride,
 														resWindowTopLevel->stride);
 						break;
@@ -88,8 +95,8 @@ template<typename T> struct res_window {
 						break;
 					}
 				}
-				splitWindow[0]->attach(resWindowTopLevel->data, resWindowTopLevel->stride);
-				splitWindow[1]->attach(resWindowTopLevel->data + fullResLower->height() * resWindowTopLevel->stride,
+				splitWindow[SPLIT_L]->attach(resWindowTopLevel->data, resWindowTopLevel->stride);
+				splitWindow[SPLIT_H]->attach(resWindowTopLevel->data + fullResLower->height() * resWindowTopLevel->stride,
 											resWindowTopLevel->stride);
 
 
@@ -104,8 +111,8 @@ template<typename T> struct res_window {
 					return false;
 			}
 			if (fullResLower){
-				splitWindow[0]->attach(resWindow->data, resWindow->stride);
-				splitWindow[1]->attach(resWindow->data + fullResLower->height() * resWindow->stride,resWindow->stride);
+				splitWindow[SPLIT_L]->attach(resWindow->data, resWindow->stride);
+				splitWindow[SPLIT_H]->attach(resWindow->data + fullResLower->height() * resWindow->stride,resWindow->stride);
 			}
 		}
 		allocated = true;
@@ -116,10 +123,11 @@ template<typename T> struct res_window {
 	bool allocated;
 	// fullRes triggers creation of bandWindow buffers
 	Resolution *fullRes;
+	// fullResLower is null for lowest resolution
 	Resolution *fullResLower;
 	std::vector< grk_buffer_2d<T>* > bandWindow;
-	// intermediate buffers for DWT: upper and lower
-	grk_buffer_2d<T> *splitWindow[2];
+	// intermediate buffers for DWT
+	grk_buffer_2d<T> *splitWindow[SPLIT_NUM_ORIENTATIONS];
 	grk_buffer_2d<T> *resWindow;
 	grk_buffer_2d<T> *resWindowTopLevel;
 };
@@ -202,17 +210,16 @@ template<typename T> struct TileComponentWindowBuffer {
 	 * Tranform code block offsets
 	 *
 	 * @param resno resolution number
-	 * @param bandIndex band index (0 for LL band of 0th resolution, otherwise {0,1,2} for {HL,LH,HH} bandWindow
+	 * @param orientation band orientation {LL,HL,LH,HH}
 	 * @param offsetx x offset of code block
 	 * @param offsety y offset of code block
 	 *
 	 */
-	void transform(uint8_t resno,uint8_t bandIndex, uint32_t &offsetx, uint32_t &offsety) const {
-		assert(bandIndex < BAND_NUM_INDICES && resno < resolutions.size());
-		assert(resno > 0 || bandIndex==BAND_RES_ZERO_INDEX_LL);
+	void transform(uint8_t resno,eBandOrientation orientation, uint32_t &offsetx, uint32_t &offsety) const {
+		assert(resno < resolutions.size());
 
 		auto res = resolutions[resno];
-		auto band = res->band + bandIndex;
+		auto band = res->band + getBandIndex(resno,orientation);
 
 		uint32_t x = offsetx;
 		uint32_t y = offsety;
@@ -234,31 +241,34 @@ template<typename T> struct TileComponentWindowBuffer {
 	}
 
 	/**
-	 * Get destination window
+	 * Get code block destination window
 	 *
 	 * @param resno resolution number
-	 * @param bandIndex band index (0 for LL band of 0th resolution, otherwise {0,1,2} for {HL,LH,HH} bandWindow
+	 * @param orientation band orientation {LL,HL,LH,HH}
 	 *
 	 */
-	const grk_buffer_2d<T>* getCodeBlockDestWindow(uint8_t resno,uint8_t bandIndex) const {
-		return (global_code_block_offset()) ? tile_buf() : band_window(resno,bandIndex);
+	const grk_buffer_2d<T>* getCodeBlockDestWindow(uint8_t resno,eBandOrientation orientation) const {
+		return (global_code_block_offset()) ? tile_buf() : band_window(resno,orientation);
 	}
 
 	/**
-	 * Get band window
+	 * Get non-LL band window
 	 *
 	 * @param resno resolution number
-	 * @param bandIndex band index 0 for resno==0 LL band, or {0,1,2} for {HL,LH,HH} bandWindow
+	 * @param orientation band orientation {0,1,2,3} for {LL,HL,LH,HH} band windows
 	 *
 	 */
-	const grk_buffer_2d<T>*  getWindow(uint8_t resno,uint8_t bandIndex) const{
-		assert(bandIndex < 3 && resno > 0 && resno < resolutions.size());
-
-		return band_window(resno,bandIndex);
+	const grk_buffer_2d<T>*  getWindow(uint8_t resno,eBandOrientation orientation) const{
+		return band_window(resno,orientation);
 	}
 
-	const grk_buffer_2d<T>*  getSplitWindow(uint8_t resno,uint8_t orientation) const{
-		assert(orientation < 2 && resno > 0 && resno < resolutions.size());
+	/*
+	 * Get intermediate split window.
+	 *
+	 * @param orientation 0 for upper split window, and 1 for lower split window
+	 */
+	const grk_buffer_2d<T>*  getSplitWindow(uint8_t resno,eSplitOrientation orientation) const{
+		assert(resno > 0 && resno < resolutions.size());
 
 		return res_windows[resno]->splitWindow[orientation];
 	}
@@ -328,16 +338,29 @@ private:
 		return m_compress || !whole_tile_decoding;
 	}
 
-	grk_buffer_2d<T>* band_window(uint32_t resno,uint32_t bandIndex) const{
-		assert(bandIndex < 3 && resno < resolutions.size());
+	uint8_t getBandIndex(uint8_t resno, eBandOrientation orientation) const{
+		uint8_t index = 0;
+		if (resno > 0) {
+			index = (uint8_t)orientation;
+			index--;
+		}
+		return index;
+	}
 
-		return resno > 0 ? res_windows[resno]->bandWindow[bandIndex] : res_windows[resno]->resWindow;
+	/**
+	 * If resno is > 0, return HL,LH or HH band window, otherwise return LL resolution window
+	 */
+	grk_buffer_2d<T>* band_window(uint8_t resno,eBandOrientation orientation) const{
+		assert(resno < resolutions.size());
+
+		return resno > 0 ? res_windows[resno]->bandWindow[orientation] : res_windows[resno]->resWindow;
 	}
 
 	// top-level buffer
 	grk_buffer_2d<T>* tile_buf() const{
 		return res_windows.back()->resWindow;
 	}
+
 
 	grk_rect_u32 m_unreduced_bounds;
 
