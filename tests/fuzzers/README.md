@@ -88,6 +88,13 @@ and then copy the zip to a local drive:
 
 `$ gsutil cp gs://grok-backup.clusterfuzz-external.appspot.com/corpus/libFuzzer/grok_grk_decompress_fuzzer/public.zip .`
 
+#### Batch testing of reproducers
+
+The following shell script run in the directory holding the reproducers will compare Grok output with `kdu_expand` :
+
+```
+( for i in *; do echo -e "${i} \n"; kdu_expand -i $i -o ../fuzz_out/$i.tiff; echo -e "\n" ;grk_decompress -i $i -o ../fuzz_out/$i.tiff;  echo -e "\n\n";  done; ) |  tee ~/output.txt
+```
 
 
 
