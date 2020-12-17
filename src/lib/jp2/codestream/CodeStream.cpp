@@ -2726,6 +2726,12 @@ bool CodeStream::decompress_tiles(void) {
 		if (!go_on)
 			break;
 
+		if (!m_tileProcessor){
+			GRK_ERROR("Missing SOT marker in tile %d", tileno);
+			success = false;
+			goto cleanup;
+		}
+
 		//2. T2 decompress
 		auto processor = m_tileProcessor;
 		m_tileProcessor = nullptr;
