@@ -255,8 +255,8 @@ template<typename T> struct TileComponentWindowBuffer {
 				 	 	 	 	 	 	 fullResLower,
 										 m_bounds,
 										 m_unreduced_bounds,
-										 wholeTileDecompress ? 0 : getHorizontalPassHeight(lossless),
-										 wholeTileDecompress ? 0 : getFilterWidth(lossless));
+										 wholeTileDecompress ? 0 : getHorizontalPassHeight<uint32_t>(lossless),
+										 wholeTileDecompress ? 0 : getFilterWidth<uint32_t>(lossless));
 		 // setting top level blocks allocation of bandWindow buffers
 		 if (!use_band_windows())
 			 topLevel->resWindowTopLevel = topLevel->resWindow;
@@ -273,19 +273,14 @@ template<typename T> struct TileComponentWindowBuffer {
 												  resno > 0 ? tile_comp_resolutions+resno-1 : nullptr,
 												  res_dims,
 												  m_unreduced_bounds,
-												  wholeTileDecompress ? 0 : getHorizontalPassHeight(lossless),
-												  wholeTileDecompress ? 0 : getFilterWidth(lossless)) );
+												  wholeTileDecompress ? 0 : getHorizontalPassHeight<uint32_t>(lossless),
+												  wholeTileDecompress ? 0 : getFilterWidth<uint32_t>(lossless)) );
 		 }
 		 res_windows.push_back(topLevel);
 	}
 	~TileComponentWindowBuffer(){
 		for (auto& b : res_windows)
 			delete b;
-	}
-
-	// see tables F.2 and F.3 of the standard
-	uint32_t getFilterWidth(bool lossless) const {
-		return  lossless ? 2 : 4;
 	}
 
 	/**

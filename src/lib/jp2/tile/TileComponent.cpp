@@ -141,7 +141,7 @@ bool TileComponent::init(bool isCompressor,
 
 	// calculate padded windows
 	if (!wholeTileDecompress){
-	    uint32_t filter_margin = buf->getFilterWidth(m_tccp->qmfbid == 1);
+	    uint32_t filter_margin = getFilterWidth<uint32_t>(m_tccp->qmfbid == 1);
 
 	    /* Compute the intersection of the window of interest, expressed in tile component coordinates, */
 	    /* with the tile component */

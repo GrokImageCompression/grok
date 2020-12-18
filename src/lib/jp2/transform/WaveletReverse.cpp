@@ -2211,6 +2211,7 @@ cleanup:
     return rc;
 }
 
+
 /* <summary>                            */
 /* Inverse 5-3 wavelet transform in 2-D. */
 /* </summary>                           */
@@ -2225,8 +2226,8 @@ bool WaveletReverse::decompress_53(TileProcessor *p_tcd,
         return decompress_partial_tile<int32_t,
         							1,
 									4,
-									4,
-									2,
+									getHorizontalPassHeight<uint32_t>(true),
+									getFilterWidth<uint32_t>(true),
 									Partial53>(tilec,
 											window,
 											numres,
@@ -2243,8 +2244,8 @@ bool WaveletReverse::decompress_97(TileProcessor *p_tcd,
         return decompress_partial_tile<vec4f,
         							4,
 									4,
-									1,
-									4,
+									getHorizontalPassHeight<uint32_t>(false),
+									getFilterWidth<uint32_t>(false),
 									Partial97>(tilec,
 											window,
 											numres,
