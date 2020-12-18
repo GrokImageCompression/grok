@@ -1883,6 +1883,7 @@ template <typename T,
 						   ISparseBuffer *sa) {
 
 	bool rc = false;
+	uint8_t numresolutions = tilec->numresolutions;
     auto fullRes 	= tilec->resolutions;
     auto fullResTopLevel = tilec->resolutions + numres - 1;
     if (!fullResTopLevel->width() || !fullResTopLevel->height()){
@@ -1890,7 +1891,7 @@ template <typename T,
     }
 
 	auto synthesisWindow = bounds;
-	synthesisWindow = synthesisWindow.rectceildivpow2(tilec->numresolutions - 1 - (numres-1));
+	synthesisWindow = synthesisWindow.rectceildivpow2(numresolutions - 1 - (numres-1));
 
 	assert(fullResTopLevel->intersection(synthesisWindow) == synthesisWindow);
     synthesisWindow = synthesisWindow.pan(-(uint64_t)fullResTopLevel->x0,-(uint64_t)fullResTopLevel->y0);
@@ -1942,90 +1943,69 @@ template <typename T,
         vert.cas 	= fullRes->y0 & 1;
 
         // 1. set up windows for horizontal and vertical passes
-        grk_rect_u32 bandWindow[BAND_NUM_ORIENTATIONS];
-        bandWindow[BAND_ORIENT_LL] = grk_band_window(tilec->numresolutions,resno,BAND_ORIENT_LL,bounds);
-        bandWindow[BAND_ORIENT_LL] = bandWindow[BAND_ORIENT_LL].pan(-(int64_t)fullRes->band[BAND_INDEX_LH].x0, -(int64_t)fullRes->band[BAND_INDEX_HL].y0);
-        bandWindow[BAND_ORIENT_LL].grow(FILTER_WIDTH, fullResLower->width(),  fullResLower->height());
-
-        bandWindow[BAND_ORIENT_HL] = grk_band_window(tilec->numresolutions,resno,BAND_ORIENT_HL,bounds);
-        bandWindow[BAND_ORIENT_HL] = bandWindow[BAND_ORIENT_HL].pan(-(int64_t)fullRes->band[BAND_INDEX_HL].x0, -(int64_t)fullRes->band[BAND_INDEX_HL].y0);
-        bandWindow[BAND_ORIENT_HL].grow(FILTER_WIDTH, fullRes->width() - fullResLower->width(),  fullResLower->height());
-
-        bandWindow[BAND_ORIENT_LH] = grk_band_window(tilec->numresolutions,resno,BAND_ORIENT_LH,bounds);
-        bandWindow[BAND_ORIENT_LH] = bandWindow[BAND_ORIENT_LH].pan(-(int64_t)fullRes->band[BAND_INDEX_LH].x0, -(int64_t)fullRes->band[BAND_INDEX_LH].y0);
-        bandWindow[BAND_ORIENT_LH].grow(FILTER_WIDTH, fullResLower->width(),  fullRes->height() - fullResLower->height());
-
-        bandWindow[BAND_ORIENT_HH] = grk_band_window(tilec->numresolutions,resno,BAND_ORIENT_HH,bounds);
-        bandWindow[BAND_ORIENT_HH] = bandWindow[BAND_ORIENT_HH].pan(-(int64_t)fullRes->band[BAND_INDEX_HH].x0, -(int64_t)fullRes->band[BAND_INDEX_HH].y0);
-        bandWindow[BAND_ORIENT_HH].grow(FILTER_WIDTH, fullRes->width() - fullResLower->width(),  fullRes->height() - fullResLower->height());
+        grk_rect_u32 bandWindowRect[BAND_NUM_ORIENTATIONS];
+        bandWindowRect[BAND_ORIENT_LL] = *((grk_rect_u32*)tilec->getBuffer()->getWindow(resno,BAND_ORIENT_LL ));
+        bandWindowRect[BAND_ORIENT_HL] = *((grk_rect_u32*)tilec->getBuffer()->getWindow(resno,BAND_ORIENT_HL ));
+        bandWindowRect[BAND_ORIENT_LH] = *((grk_rect_u32*)tilec->getBuffer()->getWindow(resno,BAND_ORIENT_LH ));
+        bandWindowRect[BAND_ORIENT_HH] = *((grk_rect_u32*)tilec->getBuffer()->getWindow(resno,BAND_ORIENT_HH ));
 
         // band windows in tile coordinates - needed to pre-allocate sparse blocks
-        grk_rect_u32 tileBandWindow[BAND_NUM_ORIENTATIONS];
-        tileBandWindow[BAND_ORIENT_LL]  =  bandWindow[BAND_ORIENT_LL];
-        tileBandWindow[BAND_ORIENT_HL]  =  bandWindow[BAND_ORIENT_HL].pan(fullRes->band[BAND_INDEX_LH].width(),0);
-        tileBandWindow[BAND_ORIENT_LH]  =  bandWindow[BAND_ORIENT_LH].pan(0,fullRes->band[BAND_INDEX_HL].height());
-        tileBandWindow[BAND_ORIENT_HH] =  bandWindow[BAND_ORIENT_HH].pan(fullRes->band[BAND_INDEX_LH].width(),fullRes->band[BAND_INDEX_HL].height());
+        grk_rect_u32 tileBandWindowRect[BAND_NUM_ORIENTATIONS];
+        tileBandWindowRect[BAND_ORIENT_LL]  =  bandWindowRect[BAND_ORIENT_LL];
+        tileBandWindowRect[BAND_ORIENT_HL]  =  bandWindowRect[BAND_ORIENT_HL].pan(fullRes->band[BAND_INDEX_LH].width(),0);
+        tileBandWindowRect[BAND_ORIENT_LH]  =  bandWindowRect[BAND_ORIENT_LH].pan(0,fullRes->band[BAND_INDEX_HL].height());
+        tileBandWindowRect[BAND_ORIENT_HH]  =  bandWindowRect[BAND_ORIENT_HH].pan(fullRes->band[BAND_INDEX_LH].width(),fullRes->band[BAND_INDEX_HL].height());
 
-        grk_rect_u32 resWindow;
-        auto win_low 				= bandWindow[BAND_ORIENT_LL];
-        auto win_high 				= bandWindow[BAND_ORIENT_HL];
-        resWindow.x0 				= min<uint32_t>(2 * win_low.x0, 2 * bandWindow[BAND_ORIENT_HL].x0);
-        resWindow.x1 				= min<uint32_t>(max<uint32_t>(2 * win_low.x1, 2 * win_high.x1), fullRes->width());
-        win_low 					= bandWindow[BAND_ORIENT_LL];
-        win_high 					= bandWindow[BAND_ORIENT_LH];
-        resWindow.y0 				= min<uint32_t>(2 * win_low.y0, 2 * win_high.y0);
-        resWindow.y1 				= min<uint32_t>(max<uint32_t>(2 * win_low.y1, 2 * win_high.y1), fullRes->height());
+        grk_rect_u32 resWindowRect;
+        auto win_low 				= bandWindowRect[BAND_ORIENT_LL];
+        auto win_high 				= bandWindowRect[BAND_ORIENT_HL];
+        resWindowRect.x0 			= min<uint32_t>(2 * win_low.x0, 2 * bandWindowRect[BAND_ORIENT_HL].x0);
+        resWindowRect.x1 			= min<uint32_t>(max<uint32_t>(2 * win_low.x1, 2 * win_high.x1), fullRes->width());
+        win_low 					= bandWindowRect[BAND_ORIENT_LL];
+        win_high 					= bandWindowRect[BAND_ORIENT_LH];
+        resWindowRect.y0 			= min<uint32_t>(2 * win_low.y0, 2 * win_high.y0);
+        resWindowRect.y1 			= min<uint32_t>(max<uint32_t>(2 * win_low.y1, 2 * win_high.y1), fullRes->height());
 
         // two windows formed by horizontal pass and used as input for vertical pass
-        grk_rect_u32 splitWindow[SPLIT_NUM_ORIENTATIONS];
-        splitWindow[SPLIT_L] = grk_rect_u32(resWindow.x0,
-									  sat_sub<uint32_t>(bandWindow[BAND_ORIENT_LL].y0, HORIZ_PASS_HEIGHT),
-									  resWindow.x1,
-									  bandWindow[BAND_ORIENT_LL].y1);
-
-        splitWindow[SPLIT_H] = grk_rect_u32(resWindow.x0,
-									// note: max is used to avoid vertical overlap between the two intermediate windows
-									max<uint32_t>(bandWindow[BAND_ORIENT_LL].y1,
-									sat_sub<uint32_t>(min<uint32_t>(bandWindow[BAND_ORIENT_LH].y0 + fullResLower->height(), fullRes->height()),HORIZ_PASS_HEIGHT)),
-									resWindow.x1,
-									min<uint32_t>(bandWindow[BAND_ORIENT_LH].y1 + fullResLower->height(), fullRes->height()));
-
+        grk_rect_u32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
+        splitWindowRect[SPLIT_L] = *((grk_rect_u32*)tilec->getBuffer()->getSplitWindow(resno,SPLIT_L ));
+        splitWindowRect[SPLIT_H] = *((grk_rect_u32*)tilec->getBuffer()->getSplitWindow(resno,SPLIT_H ));
 
         // 2. pre-allocate sparse blocks
         for (uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i){
-        	auto temp = tileBandWindow[i];
+        	auto temp = tileBandWindowRect[i];
             if (!sa->alloc(temp.grow(FILTER_WIDTH, fullRes->width(),  fullRes->height())))
     			 goto cleanup;
         }
-        if (!sa->alloc(resWindow))
+        if (!sa->alloc(resWindowRect))
 			goto cleanup;
 		for (uint32_t k = 0; k < SPLIT_NUM_ORIENTATIONS; ++k) {
-			 auto temp = splitWindow[k];
+			 auto temp = splitWindowRect[k];
 			 if (!sa->alloc(temp.grow(FILTER_WIDTH, fullRes->width(),  fullRes->height())))
 					goto cleanup;
 		}
 
 		//3. calculate synthesis
-        horiz.win_l_0 = bandWindow[BAND_ORIENT_LL].x0;
-        horiz.win_l_1 = bandWindow[BAND_ORIENT_LL].x1;
-        horiz.win_h_0 = bandWindow[BAND_ORIENT_HL].x0;
-        horiz.win_h_1 = bandWindow[BAND_ORIENT_HL].x1;
+        horiz.win_l_0 = bandWindowRect[BAND_ORIENT_LL].x0;
+        horiz.win_l_1 = bandWindowRect[BAND_ORIENT_LL].x1;
+        horiz.win_h_0 = bandWindowRect[BAND_ORIENT_HL].x0;
+        horiz.win_h_1 = bandWindowRect[BAND_ORIENT_HL].x1;
 		for (uint32_t k = 0; k < 2; ++k) {
 			uint32_t num_jobs = (uint32_t)num_threads;
-			uint32_t num_rows = splitWindow[k].height();
+			uint32_t num_rows = splitWindowRect[k].height();
 			if (num_rows < num_jobs)
 				num_jobs = num_rows;
 			uint32_t step_j = num_jobs ? ( num_rows / num_jobs) : 0;
 			if (num_threads == 1 ||step_j < HORIZ_PASS_HEIGHT){
 		     uint32_t j;
-			 for (j = splitWindow[k].y0; j + HORIZ_PASS_HEIGHT-1 < splitWindow[k].y1; j += HORIZ_PASS_HEIGHT) {
+			 for (j = splitWindowRect[k].y0; j + HORIZ_PASS_HEIGHT-1 < splitWindowRect[k].y1; j += HORIZ_PASS_HEIGHT) {
 				 decompressor.interleave_partial_h(&horiz, sa, j,HORIZ_PASS_HEIGHT);
 				 decompressor.decompress_h(&horiz);
-				 if (!sa->write( resWindow.x0,
+				 if (!sa->write( resWindowRect.x0,
 								  j,
-								  resWindow.x1,
+								  resWindowRect.x1,
 								  j + HORIZ_PASS_HEIGHT,
-								  (int32_t*)(horiz.mem + resWindow.x0),
+								  (int32_t*)(horiz.mem + resWindowRect.x0),
 								  HORIZ_PASS_HEIGHT,
 								  1,
 								  true)) {
@@ -2033,14 +2013,14 @@ template <typename T,
 					 goto cleanup;
 				 }
 			 }
-			 if (j < splitWindow[k].y1 ) {
-				 decompressor.interleave_partial_h(&horiz, sa, j, splitWindow[k].y1 - j);
+			 if (j < splitWindowRect[k].y1 ) {
+				 decompressor.interleave_partial_h(&horiz, sa, j, splitWindowRect[k].y1 - j);
 				 decompressor.decompress_h(&horiz);
-				 if (!sa->write( resWindow.x0,
+				 if (!sa->write( resWindowRect.x0,
 								  j,
-								  resWindow.x1,
-								  splitWindow[k].y1,
-								  (int32_t*)(horiz.mem + resWindow.x0),
+								  resWindowRect.x1,
+								  splitWindowRect[k].y1,
+								  (int32_t*)(horiz.mem + resWindowRect.x0),
 								  HORIZ_PASS_HEIGHT,
 								  1,
 								  true)) {
@@ -2053,23 +2033,23 @@ template <typename T,
 			for(uint32_t j = 0; j < num_jobs; ++j) {
 			   auto job = new decompress_job<float, dwt_data<T>>(
 					   	   	   horiz,
-							   splitWindow[k].y0 + j * step_j,
-							   j < (num_jobs - 1U) ? splitWindow[k].y0 + (j + 1U) * step_j : splitWindow[k].y1);
+							   splitWindowRect[k].y0 + j * step_j,
+							   j < (num_jobs - 1U) ? splitWindowRect[k].y0 + (j + 1U) * step_j : splitWindowRect[k].y1);
 				if (!job->data.alloc(data_size)) {
 					GRK_ERROR("Out of memory");
 					goto cleanup;
 				}
 				results.emplace_back(
-					ThreadPool::get()->enqueue([job,sa, resWindow, &decompressor] {
+					ThreadPool::get()->enqueue([job,sa, resWindowRect, &decompressor] {
 					 uint32_t j;
 					 for (j = job->min_j; j + HORIZ_PASS_HEIGHT-1 < job->max_j; j += HORIZ_PASS_HEIGHT) {
 						 decompressor.interleave_partial_h(&job->data, sa, j,HORIZ_PASS_HEIGHT);
 						 decompressor.decompress_h(&job->data);
-						 if (!sa->write( resWindow.x0,
+						 if (!sa->write( resWindowRect.x0,
 										  j,
-										  resWindow.x1,
+										  resWindowRect.x1,
 										  j + HORIZ_PASS_HEIGHT,
-										  (int32_t*)(job->data.mem + resWindow.x0),
+										  (int32_t*)(job->data.mem + resWindowRect.x0),
 										  HORIZ_PASS_HEIGHT,
 										  1,
 										  true)) {
@@ -2081,11 +2061,11 @@ template <typename T,
 					 if (j < job->max_j ) {
 						 decompressor.interleave_partial_h(&job->data, sa, j, job->max_j - j);
 						 decompressor.decompress_h(&job->data);
-						 if (!sa->write( resWindow.x0,
+						 if (!sa->write( resWindowRect.x0,
 										  j,
-										  resWindow.x1,
+										  resWindowRect.x1,
 										  job->max_j,
-										  (int32_t*)(job->data.mem + resWindow.x0),
+										  (int32_t*)(job->data.mem + resWindowRect.x0),
 										  HORIZ_PASS_HEIGHT,
 										  1,
 										  true)) {
@@ -2110,25 +2090,25 @@ template <typename T,
 		  }
         }
 
-		vert.win_l_0 = bandWindow[BAND_ORIENT_LL].y0;
-        vert.win_l_1 = bandWindow[BAND_ORIENT_LL].y1;
-        vert.win_h_0 = bandWindow[BAND_ORIENT_LH].y0;
-        vert.win_h_1 = bandWindow[BAND_ORIENT_LH].y1;
+		vert.win_l_0 = bandWindowRect[BAND_ORIENT_LL].y0;
+        vert.win_l_1 = bandWindowRect[BAND_ORIENT_LL].y1;
+        vert.win_h_0 = bandWindowRect[BAND_ORIENT_LH].y0;
+        vert.win_h_1 = bandWindowRect[BAND_ORIENT_LH].y1;
         uint32_t num_jobs = (uint32_t)num_threads;
-        uint32_t num_cols = resWindow.width();
+        uint32_t num_cols = resWindowRect.width();
 		if (num_cols < num_jobs)
 			num_jobs = num_cols;
 		uint32_t step_j = num_jobs ? ( num_cols / num_jobs) : 0;
 		if (num_threads == 1 || step_j < VERT_PASS_WIDTH){
 	        uint32_t j;
-			for (j = resWindow.x0; j + VERT_PASS_WIDTH < resWindow.x1; j += VERT_PASS_WIDTH) {
+			for (j = resWindowRect.x0; j + VERT_PASS_WIDTH < resWindowRect.x1; j += VERT_PASS_WIDTH) {
 				decompressor.interleave_partial_v(&vert, sa, j, VERT_PASS_WIDTH);
 				decompressor.decompress_v(&vert);
 				if (!sa->write(j,
-							  resWindow.y0,
+							  resWindowRect.y0,
 							  j + VERT_PASS_WIDTH,
-							  resWindow.y1,
-							  (int32_t*)vert.mem + VERT_PASS_WIDTH * resWindow.y0,
+							  resWindowRect.y1,
+							  (int32_t*)vert.mem + VERT_PASS_WIDTH * resWindowRect.y0,
 							  1,
 							  VERT_PASS_WIDTH,
 							  true)) {
@@ -2136,14 +2116,14 @@ template <typename T,
 					goto cleanup;
 				}
 			}
-			if (j < resWindow.x1) {
-				decompressor.interleave_partial_v(&vert, sa, j, resWindow.x1 - j);
+			if (j < resWindowRect.x1) {
+				decompressor.interleave_partial_v(&vert, sa, j, resWindowRect.x1 - j);
 				decompressor.decompress_v(&vert);
 				if (!sa->write( j,
-								  resWindow.y0,
-								  resWindow.x1,
-								  resWindow.y1,
-								  (int32_t*)vert.mem + VERT_PASS_WIDTH * resWindow.y0,
+								  resWindowRect.y0,
+								  resWindowRect.x1,
+								  resWindowRect.y1,
+								  (int32_t*)vert.mem + VERT_PASS_WIDTH * resWindowRect.y0,
 								  1,
 								  VERT_PASS_WIDTH,
 								  true)) {
@@ -2156,23 +2136,23 @@ template <typename T,
 			for(uint32_t j = 0; j < num_jobs; ++j) {
 			   auto job = new decompress_job<float, dwt_data<T>>(
 					   	   	   	   	   vert,
-									   resWindow.x0 + j * step_j,
-									   j < (num_jobs - 1U) ? resWindow.x0 + (j + 1U) * step_j : resWindow.x1);
+									   resWindowRect.x0 + j * step_j,
+									   j < (num_jobs - 1U) ? resWindowRect.x0 + (j + 1U) * step_j : resWindowRect.x1);
 				if (!job->data.alloc(data_size)) {
 					GRK_ERROR("Out of memory");
 					goto cleanup;
 				}
 				results.emplace_back(
-					ThreadPool::get()->enqueue([job,sa, resWindow, &decompressor] {
+					ThreadPool::get()->enqueue([job,sa, resWindowRect, &decompressor] {
 					 uint32_t j;
 					 for (j = job->min_j; j + VERT_PASS_WIDTH-1 < job->max_j; j += VERT_PASS_WIDTH) {
 						decompressor.interleave_partial_v(&job->data, sa, j, VERT_PASS_WIDTH);
 						decompressor.decompress_v(&job->data);
 						if (!sa->write(j,
-									  resWindow.y0,
+									  resWindowRect.y0,
 									  j + VERT_PASS_WIDTH,
-									  resWindow.y1,
-									  (int32_t*)job->data.mem + VERT_PASS_WIDTH * resWindow.y0,
+									  resWindowRect.y1,
+									  (int32_t*)job->data.mem + VERT_PASS_WIDTH * resWindowRect.y0,
 									  1,
 									  VERT_PASS_WIDTH,
 									  true)) {
@@ -2185,10 +2165,10 @@ template <typename T,
 						decompressor.interleave_partial_v(&job->data, sa, j,  job->max_j - j);
 						decompressor.decompress_v(&job->data);
 						if (!sa->write(			  j,
-												  resWindow.y0,
+												  resWindowRect.y0,
 												  job->max_j,
-												  resWindow.y1,
-												  (int32_t*)job->data.mem + VERT_PASS_WIDTH * resWindow.y0,
+												  resWindowRect.y1,
+												  (int32_t*)job->data.mem + VERT_PASS_WIDTH * resWindowRect.y0,
 												  1,
 												  VERT_PASS_WIDTH,
 												  true)) {

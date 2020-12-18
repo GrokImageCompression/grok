@@ -45,11 +45,11 @@ struct TileComponent : public grk_rect_u32 {
 
 	 void allocSparseBuffer(uint32_t numres);
 	 void release_mem();
-	 bool subbandIntersectsAOI(uint32_t resno,
-	 								uint32_t bandIndex,
+	 bool subbandIntersectsAOI(uint8_t resno,
+	 								uint8_t bandIndex,
 	 								const grk_rect_u32 *aoi) const;
 
-	 TileComponentWindowBuffer<int32_t>* getBuffer();
+	 TileComponentWindowBuffer<int32_t>* getBuffer() const;
 	 bool isWholeTileDecoding();
 	 ISparseBuffer* getSparseBuffer();
 	 bool postDecompress(int32_t *srcData, DecompressBlockExec *block, bool isHT);

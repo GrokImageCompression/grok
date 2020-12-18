@@ -100,7 +100,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			if (!skip_the_packet) {
 				if (!tilec->isWholeTileDecoding()) {
 					skip_the_packet = true;
-					for (uint32_t bandIndex = 0;	bandIndex < res->numBandWindows; ++bandIndex) {
+					for (uint8_t bandIndex = 0;	bandIndex < res->numBandWindows; ++bandIndex) {
 						auto band = res->band + bandIndex;
 						auto prec = band->getPrecinct(current_pi->precinctIndex);
 						if (prec && tilec->subbandIntersectsAOI(current_pi->resno,bandIndex, prec)) {

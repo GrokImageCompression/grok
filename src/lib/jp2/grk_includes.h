@@ -173,6 +173,7 @@ static inline long grk_lrintf(float f) {
 #include "BitIO.h"
 #include "TagTree.h"
 #include "T1Structs.h"
+#include <WaveletReverse.h>
 #include <TileComponentWindowBuffer.h>
 #include "PacketIter.h"
 #include <SparseBuffer.h>
@@ -180,7 +181,6 @@ static inline long grk_lrintf(float f) {
 #include "TileProcessor.h"
 #include <WaveletFwdImpl.h>
 #include "t1_common.h"
-#include <WaveletReverse.h>
 #include <SparseBuffer.h>
 #include <T2Compress.h>
 #include <T2Decompress.h>

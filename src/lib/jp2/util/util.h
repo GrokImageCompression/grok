@@ -275,13 +275,13 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 																					owns_data(ownsData),
 																					stride(strd)
 	{}
-	grk_buffer_2d(T *buffer,bool ownsData, uint32_t w, uint32_t h) : grk_buffer_2d(buffer,ownsData,w,w,h)
+	grk_buffer_2d(T *buffer,bool ownsData, uint32_t w, uint32_t h) : grk_buffer_2d(buffer,ownsData,w,0,h)
 	{}
 	grk_buffer_2d(uint32_t w, uint32_t strd, uint32_t h) : grk_buffer_2d(nullptr,false,w,strd,h)
 	{}
-	grk_buffer_2d(uint32_t w, uint32_t h) : grk_buffer_2d(w,w,h)
+	grk_buffer_2d(uint32_t w, uint32_t h) : grk_buffer_2d(w,0,h)
 	{}
-	explicit grk_buffer_2d(grk_rect_u32 b) : grk_buffer_2d(b.width(),b.width(),b.height())
+	explicit grk_buffer_2d(grk_rect_u32 b) : grk_buffer_2d(b.width(),0,b.height())
 	{}
 	grk_buffer_2d(void) : grk_buffer_2d(nullptr,0,0,0,false)
 	{}
@@ -304,6 +304,14 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 	virtual ~grk_buffer_2d() {
 		if (owns_data)
 			grk_aligned_free(data);
+	}
+
+
+	void copy_rect(grk_rect_u32 b){
+		x0 = b.x0;
+		x1 = b.x1;
+		y0 = b.y0;
+		y1 = b.y1;
 	}
 
 	bool alloc(bool clear){
@@ -378,6 +386,10 @@ grk_rect_u32 grk_band_window(uint8_t num_res,
 							uint8_t resno,
 							uint8_t orientation,
 							grk_rect_u32 unreduced_window);
+
+
+uint32_t getHorizontalPassHeight(bool lossless);
+
 
 }
 

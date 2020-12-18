@@ -141,15 +141,7 @@ bool TileComponent::init(bool isCompressor,
 
 	// calculate padded windows
 	if (!whole_tile_decoding){
-	    /* Note: those values for filter_margin are in part the result of */
-	    /* experimentation. The value 2 for QMFBID=1 (5x3 filter) can be linked */
-	    /* to the maximum left/right extension given in tables F.2 and F.3 of the */
-	    /* standard. The value 3 for QMFBID=0 (9x7 filter) is more suspicious, */
-	    /* since F.2 and F.3 would lead to 4 instead, so the current 3 might be */
-	    /* needed to be bumped to 4, in case inconsistencies are found while */
-	    /* decoding parts of irreversible coded images. */
-	    /* See dwt_decode_partial_53 and dwt_decode_partial_97 as well */
-	    uint32_t filter_margin = (m_tccp->qmfbid == 1) ? 2 : 3;
+	    uint32_t filter_margin = buf->getFilterWidth(m_tccp->qmfbid == 1);
 
 	    /* Compute the intersection of the window of interest, expressed in tile component coordinates, */
 	    /* with the tile component */
@@ -192,8 +184,8 @@ bool TileComponent::init(bool isCompressor,
 	return true;
 }
 
-bool TileComponent::subbandIntersectsAOI(uint32_t resno,
-								uint32_t bandIndex,
+bool TileComponent::subbandIntersectsAOI(uint8_t resno,
+								uint8_t bandIndex,
 								const grk_rect_u32 *aoi) const
 {
 	if (whole_tile_decoding)
@@ -212,9 +204,9 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
 	grk_rect_u32 temp(0,0,0,0);
 	bool first = true;
 
-    for (uint32_t resno = 0; resno < numres; ++resno) {
+    for (uint8_t resno = 0; resno < numres; ++resno) {
         auto res = &resolutions[resno];
-        for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
+        for (uint8_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
           	auto band = res->band + bandIndex;
             for (auto precinct : band->precincts) {
                 for (uint64_t cblkno = 0; cblkno < precinct->getNumCblks(); ++cblkno) {
@@ -261,9 +253,9 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
     temp.grow(10,w,h);
 	auto sa = new SparseBuffer<6,6>(temp);
 
-    for (uint32_t resno = 0; resno < numres; ++resno) {
+    for (uint8_t resno = 0; resno < numres; ++resno) {
         auto res = &resolutions[resno];
-        for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
+        for (uint8_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
           	auto band = res->band + bandIndex;
             for (auto precinct : band->precincts) {
                 for (uint64_t cblkno = 0; cblkno < precinct->getNumCblks(); ++cblkno) {
@@ -334,6 +326,7 @@ bool TileComponent::create_buffer(grk_rect_u32 *unreduced_tile_comp_dims,
 		return false;
 	}
 	buf = new TileComponentWindowBuffer<int32_t>(m_is_encoder,
+											m_tccp->qmfbid == 1,
 											whole_tile_decoding,
 											*(grk_rect_u32*)maxResolution,
 											*(grk_rect_u32*)this,
@@ -345,7 +338,7 @@ bool TileComponent::create_buffer(grk_rect_u32 *unreduced_tile_comp_dims,
 	return true;
 }
 
-TileComponentWindowBuffer<int32_t>* TileComponent::getBuffer(){
+TileComponentWindowBuffer<int32_t>* TileComponent::getBuffer() const{
 	return buf;
 }
 

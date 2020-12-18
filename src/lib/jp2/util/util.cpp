@@ -61,4 +61,9 @@ grk_rect_u32 grk_band_window(uint8_t num_res,
 }
 
 
+uint32_t getHorizontalPassHeight(bool lossless){
+	return lossless ? 1 : 4;
+}
+
+
 }
