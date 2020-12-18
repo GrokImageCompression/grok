@@ -1878,7 +1878,7 @@ template <typename T,
 			typename D>
 
    bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec,
-		   	   	   	   	   grk_rect_u32 window,
+		   	   	   	   	   grk_rect_u32 bounds,
 		   	   	   	   	   uint32_t numres,
 						   ISparseBuffer *sa) {
 
@@ -1889,7 +1889,7 @@ template <typename T,
         return true;
     }
 
-	auto synthesisWindow = window;
+	auto synthesisWindow = bounds;
 	synthesisWindow = synthesisWindow.rectceildivpow2(tilec->numresolutions - 1 - (numres-1));
 
 	assert(fullResTopLevel->intersection(synthesisWindow) == synthesisWindow);
@@ -1931,99 +1931,81 @@ template <typename T,
 	try {
 
     for (uint8_t resno = 1; resno < numres; resno ++) {
-        horiz.sn = fullRes->width();
-        vert.sn = fullRes->height();
+    	auto fullResLower = fullRes;
 
+        horiz.sn 	= fullResLower->width();
+        vert.sn 	= fullResLower->height();
         ++fullRes;
-        uint32_t rw = fullRes->width();
-        uint32_t rh = fullRes->height();
+        horiz.dn 	= fullRes->width() - horiz.sn;
+        horiz.cas 	= fullRes->x0 & 1;
+        vert.dn 	= fullRes->height() - vert.sn;
+        vert.cas 	= fullRes->y0 & 1;
 
-        horiz.dn = rw - horiz.sn;
-        horiz.cas = fullRes->x0 & 1;
-
-        vert.dn = rh - vert.sn;
-        vert.cas = fullRes->y0 & 1;
-
-    	if (DEBUG_WAVELET)
-    		std::cout << "Resolution: " << resno << std::endl;
-
-
-        // 1. set up windows for horizontal and vertical pass
-
-        // four sub-band windows that serve as input to horizontal pass
+        // 1. set up windows for horizontal and vertical passes
         grk_rect_u32 bandWindow[BAND_NUM_ORIENTATIONS];
-        grk_rect_u32 tileBandWindow[BAND_NUM_ORIENTATIONS];
-        bandWindow[BAND_ORIENT_LL] = grk_band_window(tilec->numresolutions,resno,BAND_ORIENT_LL,window);
+        bandWindow[BAND_ORIENT_LL] = grk_band_window(tilec->numresolutions,resno,BAND_ORIENT_LL,bounds);
         bandWindow[BAND_ORIENT_LL] = bandWindow[BAND_ORIENT_LL].pan(-(int64_t)fullRes->band[BAND_INDEX_LH].x0, -(int64_t)fullRes->band[BAND_INDEX_HL].y0);
-        bandWindow[BAND_ORIENT_LL].grow(FILTER_WIDTH, horiz.sn,  vert.sn);
+        bandWindow[BAND_ORIENT_LL].grow(FILTER_WIDTH, fullResLower->width(),  fullResLower->height());
 
-        bandWindow[BAND_ORIENT_HL] = grk_band_window(tilec->numresolutions,resno,BAND_ORIENT_HL,window);
+        bandWindow[BAND_ORIENT_HL] = grk_band_window(tilec->numresolutions,resno,BAND_ORIENT_HL,bounds);
         bandWindow[BAND_ORIENT_HL] = bandWindow[BAND_ORIENT_HL].pan(-(int64_t)fullRes->band[BAND_INDEX_HL].x0, -(int64_t)fullRes->band[BAND_INDEX_HL].y0);
-        bandWindow[BAND_ORIENT_HL].grow(FILTER_WIDTH, horiz.dn,  vert.sn);
+        bandWindow[BAND_ORIENT_HL].grow(FILTER_WIDTH, fullRes->width() - fullResLower->width(),  fullResLower->height());
 
-        bandWindow[BAND_ORIENT_LH] = grk_band_window(tilec->numresolutions,resno,BAND_ORIENT_LH,window);
+        bandWindow[BAND_ORIENT_LH] = grk_band_window(tilec->numresolutions,resno,BAND_ORIENT_LH,bounds);
         bandWindow[BAND_ORIENT_LH] = bandWindow[BAND_ORIENT_LH].pan(-(int64_t)fullRes->band[BAND_INDEX_LH].x0, -(int64_t)fullRes->band[BAND_INDEX_LH].y0);
-        bandWindow[BAND_ORIENT_LH].grow(FILTER_WIDTH, horiz.sn,  vert.dn);
+        bandWindow[BAND_ORIENT_LH].grow(FILTER_WIDTH, fullResLower->width(),  fullRes->height() - fullResLower->height());
 
-        bandWindow[BAND_ORIENT_HH] = grk_band_window(tilec->numresolutions,resno,BAND_ORIENT_HH,window);
+        bandWindow[BAND_ORIENT_HH] = grk_band_window(tilec->numresolutions,resno,BAND_ORIENT_HH,bounds);
         bandWindow[BAND_ORIENT_HH] = bandWindow[BAND_ORIENT_HH].pan(-(int64_t)fullRes->band[BAND_INDEX_HH].x0, -(int64_t)fullRes->band[BAND_INDEX_HH].y0);
-        bandWindow[BAND_ORIENT_HH].grow(FILTER_WIDTH, horiz.dn,  vert.dn);
+        bandWindow[BAND_ORIENT_HH].grow(FILTER_WIDTH, fullRes->width() - fullResLower->width(),  fullRes->height() - fullResLower->height());
 
-        // pre-allocate sparse blocks
+        // band windows in tile coordinates - needed to pre-allocate sparse blocks
+        grk_rect_u32 tileBandWindow[BAND_NUM_ORIENTATIONS];
         tileBandWindow[BAND_ORIENT_LL]  =  bandWindow[BAND_ORIENT_LL];
         tileBandWindow[BAND_ORIENT_HL]  =  bandWindow[BAND_ORIENT_HL].pan(fullRes->band[BAND_INDEX_LH].width(),0);
         tileBandWindow[BAND_ORIENT_LH]  =  bandWindow[BAND_ORIENT_LH].pan(0,fullRes->band[BAND_INDEX_HL].height());
         tileBandWindow[BAND_ORIENT_HH] =  bandWindow[BAND_ORIENT_HH].pan(fullRes->band[BAND_INDEX_LH].width(),fullRes->band[BAND_INDEX_HL].height());
-        for (uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i){
-        	auto temp = tileBandWindow[i];
-            if (!sa->alloc(temp.grow(FILTER_WIDTH, rw,  rh)))
-    			 goto cleanup;
-            if (DEBUG_WAVELET){
-				std::cout << "tile band window " << i << " ";
-				tileBandWindow[i].print();
-            }
-        }
+
         grk_rect_u32 resWindow;
-        auto win_low 				= (horiz.cas == 0) ? bandWindow[BAND_ORIENT_LL] : bandWindow[BAND_ORIENT_HL];
-        auto win_high 				= (horiz.cas == 0) ? bandWindow[BAND_ORIENT_HL] : bandWindow[BAND_ORIENT_LL];
+        auto win_low 				= bandWindow[BAND_ORIENT_LL];
+        auto win_high 				= bandWindow[BAND_ORIENT_HL];
         resWindow.x0 				= min<uint32_t>(2 * win_low.x0, 2 * bandWindow[BAND_ORIENT_HL].x0);
-        resWindow.x1 				= min<uint32_t>(max<uint32_t>(2 * win_low.x1, 2 * win_high.x1), rw);
-        win_low 					= (vert.cas == 0) ? bandWindow[BAND_ORIENT_LL] : bandWindow[BAND_ORIENT_LH];
-        win_high 					= (vert.cas == 0) ? bandWindow[BAND_ORIENT_LH] : bandWindow[BAND_ORIENT_LL];
+        resWindow.x1 				= min<uint32_t>(max<uint32_t>(2 * win_low.x1, 2 * win_high.x1), fullRes->width());
+        win_low 					= bandWindow[BAND_ORIENT_LL];
+        win_high 					= bandWindow[BAND_ORIENT_LH];
         resWindow.y0 				= min<uint32_t>(2 * win_low.y0, 2 * win_high.y0);
-        resWindow.y1 				= min<uint32_t>(max<uint32_t>(2 * win_low.y1, 2 * win_high.y1), rh);
-        if (!sa->alloc(resWindow))
-			goto cleanup;
-		if (DEBUG_WAVELET){
-			std::cout << "resolution window ";
-			resWindow.print();
-		}
+        resWindow.y1 				= min<uint32_t>(max<uint32_t>(2 * win_low.y1, 2 * win_high.y1), fullRes->height());
 
         // two windows formed by horizontal pass and used as input for vertical pass
-        grk_rect_u32 splitWindow[2];
-        splitWindow[0] = grk_rect_u32(resWindow.x0,
-											  sat_sub<uint32_t>(bandWindow[BAND_ORIENT_LL].y0, HORIZ_PASS_HEIGHT),
-											  resWindow.x1,
-											  bandWindow[BAND_ORIENT_LL].y1);
+        grk_rect_u32 splitWindow[SPLIT_NUM_ORIENTATIONS];
+        splitWindow[SPLIT_L] = grk_rect_u32(resWindow.x0,
+									  sat_sub<uint32_t>(bandWindow[BAND_ORIENT_LL].y0, HORIZ_PASS_HEIGHT),
+									  resWindow.x1,
+									  bandWindow[BAND_ORIENT_LL].y1);
 
-        splitWindow[1] = grk_rect_u32(resWindow.x0,
-        										// note: max is used to avoid vertical overlap between the two intermediate windows
-        										max<uint32_t>(bandWindow[BAND_ORIENT_LL].y1,
-        										sat_sub<uint32_t>(min<uint32_t>(bandWindow[BAND_ORIENT_LH].y0 + vert.sn, rh),HORIZ_PASS_HEIGHT)),
-												resWindow.x1,
-												min<uint32_t>(bandWindow[BAND_ORIENT_LH].y1 + vert.sn, rh));
+        splitWindow[SPLIT_H] = grk_rect_u32(resWindow.x0,
+									// note: max is used to avoid vertical overlap between the two intermediate windows
+									max<uint32_t>(bandWindow[BAND_ORIENT_LL].y1,
+									sat_sub<uint32_t>(min<uint32_t>(bandWindow[BAND_ORIENT_LH].y0 + fullResLower->height(), fullRes->height()),HORIZ_PASS_HEIGHT)),
+									resWindow.x1,
+									min<uint32_t>(bandWindow[BAND_ORIENT_LH].y1 + fullResLower->height(), fullRes->height()));
 
-        // pad
-		for (uint32_t k = 0; k < 2; ++k) {
+
+        // 2. pre-allocate sparse blocks
+        for (uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i){
+        	auto temp = tileBandWindow[i];
+            if (!sa->alloc(temp.grow(FILTER_WIDTH, fullRes->width(),  fullRes->height())))
+    			 goto cleanup;
+        }
+        if (!sa->alloc(resWindow))
+			goto cleanup;
+		for (uint32_t k = 0; k < SPLIT_NUM_ORIENTATIONS; ++k) {
 			 auto temp = splitWindow[k];
-			 if (!sa->alloc(temp.grow(FILTER_WIDTH, rw,  rh)))
+			 if (!sa->alloc(temp.grow(FILTER_WIDTH, fullRes->width(),  fullRes->height())))
 					goto cleanup;
-			if (DEBUG_WAVELET){
-				std::cout << "split window " << k << " ";
-				splitWindow[k].print();
-			}
 		}
 
+		//3. calculate synthesis
         horiz.win_l_0 = bandWindow[BAND_ORIENT_LL].x0;
         horiz.win_l_1 = bandWindow[BAND_ORIENT_LL].x1;
         horiz.win_h_0 = bandWindow[BAND_ORIENT_HL].x0;

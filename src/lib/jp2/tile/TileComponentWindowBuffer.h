@@ -28,10 +28,14 @@ namespace grk {
  */
 template<typename T> struct res_window {
 
-	res_window(grk_buffer_2d<T> *top,
+	res_window(uint8_t numresolutions,
+				uint8_t resno,
+				grk_buffer_2d<T> *top,
 				Resolution *full_res,
 				Resolution *lower_full_res,
-				grk_rect_u32 bounds) :  allocated(false),
+				grk_rect_u32 bounds,
+				uint32_t HORIZ_PASS_HEIGHT,
+				uint32_t FILTER_WIDTH) : allocated(false),
 										fullRes(full_res),
 										fullResLower(lower_full_res),
 										resWindow(new grk_buffer_2d<T>(bounds)),
@@ -181,10 +185,14 @@ template<typename T> struct TileComponentWindowBuffer {
         									tile_comp_resolutions+reduced_num_resolutions-2 : nullptr;
 
         // create resolution buffers
-		 auto topLevel = new res_window<T>( nullptr,
+		 auto topLevel = new res_window<T>(numresolutions,
+				 	 	 	 	 	 	 reduced_num_resolutions-1,
+				  	 	 	 	 	 	 nullptr,
 				 	 	 	 	 	 	 whole_tile_decoding ? current_full_res: nullptr,
 				 	 	 	 	 	 	 whole_tile_decoding ? lower_full_res: nullptr,
-										 m_bounds);
+										 m_bounds,
+										 0,
+										 0);
 		 // setting top level blocks allocation of bandWindow buffers
 		 if (!use_band_windows())
 			 topLevel->resWindowTopLevel = topLevel->resWindow;
@@ -194,10 +202,14 @@ template<typename T> struct TileComponentWindowBuffer {
 												(uint8_t)(resno+1),
 												0,
 												unreduced_window_dim);
-			 res_windows.push_back(new res_window<T>(use_band_windows() ? nullptr : topLevel->resWindow,
+			 res_windows.push_back(new res_window<T>(numresolutions,
+					 	 	 	 	 	 	 	 resno,
+					  	 	 	 	 	 	 	 use_band_windows() ? nullptr : topLevel->resWindow,
 												  whole_tile_decoding ? tile_comp_resolutions+resno : nullptr,
 												  (whole_tile_decoding && resno > 0) ? tile_comp_resolutions+resno-1 : nullptr,
-												  res_dims) );
+												  res_dims,
+												  0,
+												  0) );
 		 }
 		 res_windows.push_back(topLevel);
 	}
