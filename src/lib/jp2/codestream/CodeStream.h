@@ -358,7 +358,7 @@ private:
 
 public:
 	uint16_t m_curr_marker;
-    bool   whole_tile_decoding;
+    bool   wholeTileDecompress;
 	grk_plugin_tile *current_plugin_tile;
 	bool m_nb_tile_parts_correction_checked;
 	uint32_t m_nb_tile_parts_correction;

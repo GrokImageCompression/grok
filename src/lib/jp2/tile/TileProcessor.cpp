@@ -35,7 +35,7 @@ TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream) :
 				tile(nullptr),
 				image(codeStream->m_input_image),
 				current_plugin_tile(codeStream->current_plugin_tile),
-				whole_tile_decoding(codeStream->whole_tile_decoding),
+				wholeTileDecompress(codeStream->wholeTileDecompress),
 				plt_markers(nullptr),
 				m_cp(&codeStream->m_cp),
 				m_stream(stream),
@@ -714,7 +714,7 @@ bool TileProcessor::init(grk_image *output_image,bool isCompressor) {
 
 
 		if (!tilec->init(isCompressor,
-						whole_tile_decoding,
+						wholeTileDecompress,
 						unreduced_tile_comp_dims,
 						unreduced_tile_comp_window_dims,
 						image_comp->prec,
@@ -857,7 +857,7 @@ bool TileProcessor::decompress_tile_t2(ChunkBuffer *src_buf) {
 	// (currently breaks tests, so disabled)
 	for (uint32_t compno = 0; compno < image->numcomps; compno++) {
 		if (!is_whole_tilecomp_decoding(compno)) {
-			whole_tile_decoding = false;
+			wholeTileDecompress = false;
 			break;
 		}
 	}
@@ -888,7 +888,7 @@ bool TileProcessor::decompress_tile_t1(void) {
 			auto tilec = tile->comps + compno;
 			auto tccp = m_tcp->tccps + compno;
 
-			if (!whole_tile_decoding) {
+			if (!wholeTileDecompress) {
 				try {
 					tilec->allocSparseBuffer(tilec->resolutions_decompressed + 1);
 				} catch (runtime_error &ex) {

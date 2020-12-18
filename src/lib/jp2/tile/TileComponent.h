@@ -64,7 +64,7 @@ struct TileComponent : public grk_rect_u32 {
 private:
 	template<typename F> bool postDecompressImpl(int32_t *srcData, DecompressBlockExec *block);
 	ISparseBuffer *m_sa;
-    bool   whole_tile_decoding;
+    bool   wholeTileDecompress;
 	bool m_is_encoder;
 	TileComponentWindowBuffer<int32_t> *buf;
 	TileComponentCodingParams *m_tccp;

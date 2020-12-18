@@ -39,93 +39,77 @@ template<typename T> struct res_window {
 				uint32_t FILTER_WIDTH) : allocated(false),
 										fullRes(full_res),
 										fullResLower(lower_full_res),
-										resWindow(new grk_buffer_2d<T>(bounds)),
-										resWindowTopLevel(top)
+										resWindow(new grk_buffer_2d<T>(bounds.width(), bounds.height())),
+										resWindowTopLevel(top),
+										filterWidth(FILTER_WIDTH)
 	{
-		for (uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
+	  for (uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
 			splitWindow[i] = nullptr;
-		if (full_res) {
+	  if (FILTER_WIDTH) {
 
-		  if (FILTER_WIDTH) {
+		if (fullResLower) {
+		// 1. set up windows for horizontal and vertical passes
+		grk_rect_u32 bandWindowRect[BAND_NUM_ORIENTATIONS];
+		bandWindowRect[BAND_ORIENT_LL] = grk_band_window(numresolutions,resno,BAND_ORIENT_LL,unreduced_bounds);
+		bandWindowRect[BAND_ORIENT_LL] = bandWindowRect[BAND_ORIENT_LL].pan(-(int64_t)fullRes->band[BAND_INDEX_LH].x0, -(int64_t)fullRes->band[BAND_INDEX_HL].y0);
+		bandWindowRect[BAND_ORIENT_LL].grow(FILTER_WIDTH, fullResLower->width(),  fullResLower->height());
+		bandWindow.push_back(new grk_buffer_2d<T>(bandWindowRect[BAND_ORIENT_LL]));
 
-			if (fullResLower) {
-	        // 1. set up windows for horizontal and vertical passes
-	        grk_rect_u32 bandWindowRect[BAND_NUM_ORIENTATIONS];
-	        bandWindowRect[BAND_ORIENT_LL] = grk_band_window(numresolutions,resno,BAND_ORIENT_LL,unreduced_bounds);
-	        bandWindowRect[BAND_ORIENT_LL] = bandWindowRect[BAND_ORIENT_LL].pan(-(int64_t)fullRes->band[BAND_INDEX_LH].x0, -(int64_t)fullRes->band[BAND_INDEX_HL].y0);
-	        bandWindowRect[BAND_ORIENT_LL].grow(FILTER_WIDTH, fullResLower->width(),  fullResLower->height());
-	        auto t = new grk_buffer_2d<T>();
-	        t->copy_rect(bandWindowRect[BAND_ORIENT_LL]);
-	        bandWindow.push_back(t);
+		bandWindowRect[BAND_ORIENT_HL] = grk_band_window(numresolutions,resno,BAND_ORIENT_HL,unreduced_bounds);
+		bandWindowRect[BAND_ORIENT_HL] = bandWindowRect[BAND_ORIENT_HL].pan(-(int64_t)fullRes->band[BAND_INDEX_HL].x0, -(int64_t)fullRes->band[BAND_INDEX_HL].y0);
+		bandWindowRect[BAND_ORIENT_HL].grow(FILTER_WIDTH, fullRes->width() - fullResLower->width(),  fullResLower->height());
+		bandWindow.push_back(new grk_buffer_2d<T>(bandWindowRect[BAND_ORIENT_HL]));
 
-	        bandWindowRect[BAND_ORIENT_HL] = grk_band_window(numresolutions,resno,BAND_ORIENT_HL,unreduced_bounds);
-	        bandWindowRect[BAND_ORIENT_HL] = bandWindowRect[BAND_ORIENT_HL].pan(-(int64_t)fullRes->band[BAND_INDEX_HL].x0, -(int64_t)fullRes->band[BAND_INDEX_HL].y0);
-	        bandWindowRect[BAND_ORIENT_HL].grow(FILTER_WIDTH, fullRes->width() - fullResLower->width(),  fullResLower->height());
-	        t = new grk_buffer_2d<T>();
-	        t->copy_rect(bandWindowRect[BAND_ORIENT_HL]);
-	        bandWindow.push_back(t);
+		bandWindowRect[BAND_ORIENT_LH] = grk_band_window(numresolutions,resno,BAND_ORIENT_LH,unreduced_bounds);
+		bandWindowRect[BAND_ORIENT_LH] = bandWindowRect[BAND_ORIENT_LH].pan(-(int64_t)fullRes->band[BAND_INDEX_LH].x0, -(int64_t)fullRes->band[BAND_INDEX_LH].y0);
+		bandWindowRect[BAND_ORIENT_LH].grow(FILTER_WIDTH, fullResLower->width(),  fullRes->height() - fullResLower->height());
+		bandWindow.push_back(new grk_buffer_2d<T>(bandWindowRect[BAND_ORIENT_LH]));
 
-	        bandWindowRect[BAND_ORIENT_LH] = grk_band_window(numresolutions,resno,BAND_ORIENT_LH,unreduced_bounds);
-	        bandWindowRect[BAND_ORIENT_LH] = bandWindowRect[BAND_ORIENT_LH].pan(-(int64_t)fullRes->band[BAND_INDEX_LH].x0, -(int64_t)fullRes->band[BAND_INDEX_LH].y0);
-	        bandWindowRect[BAND_ORIENT_LH].grow(FILTER_WIDTH, fullResLower->width(),  fullRes->height() - fullResLower->height());
-	        t = new grk_buffer_2d<T>();
-	        t->copy_rect(bandWindowRect[BAND_ORIENT_LH]);
-	        bandWindow.push_back(t);
+		bandWindowRect[BAND_ORIENT_HH] = grk_band_window(numresolutions,resno,BAND_ORIENT_HH,unreduced_bounds);
+		bandWindowRect[BAND_ORIENT_HH] = bandWindowRect[BAND_ORIENT_HH].pan(-(int64_t)fullRes->band[BAND_INDEX_HH].x0, -(int64_t)fullRes->band[BAND_INDEX_HH].y0);
+		bandWindowRect[BAND_ORIENT_HH].grow(FILTER_WIDTH, fullRes->width() - fullResLower->width(),  fullRes->height() - fullResLower->height());
+		bandWindow.push_back(new grk_buffer_2d<T>(bandWindowRect[BAND_ORIENT_HH]));
 
-	        bandWindowRect[BAND_ORIENT_HH] = grk_band_window(numresolutions,resno,BAND_ORIENT_HH,unreduced_bounds);
-	        bandWindowRect[BAND_ORIENT_HH] = bandWindowRect[BAND_ORIENT_HH].pan(-(int64_t)fullRes->band[BAND_INDEX_HH].x0, -(int64_t)fullRes->band[BAND_INDEX_HH].y0);
-	        bandWindowRect[BAND_ORIENT_HH].grow(FILTER_WIDTH, fullRes->width() - fullResLower->width(),  fullRes->height() - fullResLower->height());
-	        t = new grk_buffer_2d<T>();
-	        t->copy_rect(bandWindowRect[BAND_ORIENT_HH]);
-	        bandWindow.push_back(t);
+		grk_rect_u32 resWindow;
+		auto win_low 				= bandWindowRect[BAND_ORIENT_LL];
+		auto win_high 				= bandWindowRect[BAND_ORIENT_HL];
+		resWindow.x0 				= min<uint32_t>(2 * win_low.x0, 2 * bandWindowRect[BAND_ORIENT_HL].x0);
+		resWindow.x1 				= min<uint32_t>(max<uint32_t>(2 * win_low.x1, 2 * win_high.x1), fullRes->width());
+		win_low 					= bandWindowRect[BAND_ORIENT_LL];
+		win_high 					= bandWindowRect[BAND_ORIENT_LH];
+		resWindow.y0 				= min<uint32_t>(2 * win_low.y0, 2 * win_high.y0);
+		resWindow.y1 				= min<uint32_t>(max<uint32_t>(2 * win_low.y1, 2 * win_high.y1), fullRes->height());
 
+		// two windows formed by horizontal pass and used as input for vertical pass
+		grk_rect_u32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
+		splitWindowRect[SPLIT_L] = grk_rect_u32(resWindow.x0,
+									  sat_sub<uint32_t>(bandWindowRect[BAND_ORIENT_LL].y0, HORIZ_PASS_HEIGHT),
+									  resWindow.x1,
+									  bandWindowRect[BAND_ORIENT_LL].y1);
+		splitWindow[SPLIT_L] = new grk_buffer_2d<T>(splitWindowRect[SPLIT_L]);
 
-	        grk_rect_u32 resWindow;
-	        auto win_low 				= bandWindowRect[BAND_ORIENT_LL];
-	        auto win_high 				= bandWindowRect[BAND_ORIENT_HL];
-	        resWindow.x0 				= min<uint32_t>(2 * win_low.x0, 2 * bandWindowRect[BAND_ORIENT_HL].x0);
-	        resWindow.x1 				= min<uint32_t>(max<uint32_t>(2 * win_low.x1, 2 * win_high.x1), fullRes->width());
-	        win_low 					= bandWindowRect[BAND_ORIENT_LL];
-	        win_high 					= bandWindowRect[BAND_ORIENT_LH];
-	        resWindow.y0 				= min<uint32_t>(2 * win_low.y0, 2 * win_high.y0);
-	        resWindow.y1 				= min<uint32_t>(max<uint32_t>(2 * win_low.y1, 2 * win_high.y1), fullRes->height());
-
-	        // two windows formed by horizontal pass and used as input for vertical pass
-	        grk_rect_u32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
-	        splitWindowRect[SPLIT_L] = grk_rect_u32(resWindow.x0,
-										  sat_sub<uint32_t>(bandWindowRect[BAND_ORIENT_LL].y0, HORIZ_PASS_HEIGHT),
-										  resWindow.x1,
-										  bandWindowRect[BAND_ORIENT_LL].y1);
-	        t = new grk_buffer_2d<T>();
-	        t->copy_rect(splitWindowRect[SPLIT_L]);
-	        splitWindow[SPLIT_L] = t;
-
-	        splitWindowRect[SPLIT_H] = grk_rect_u32(resWindow.x0,
-										// note: max is used to avoid vertical overlap between the two intermediate windows
-										max<uint32_t>(bandWindowRect[BAND_ORIENT_LL].y1,
-										sat_sub<uint32_t>(min<uint32_t>(bandWindowRect[BAND_ORIENT_LH].y0 + fullResLower->height(), fullRes->height()),HORIZ_PASS_HEIGHT)),
-										resWindow.x1,
-										min<uint32_t>(bandWindowRect[BAND_ORIENT_LH].y1 + fullResLower->height(), fullRes->height()));
-	        t = new grk_buffer_2d<T>();
-	        t->copy_rect(splitWindowRect[SPLIT_H]);
-	        splitWindow[SPLIT_H] = t;
-
+		splitWindowRect[SPLIT_H] = grk_rect_u32(resWindow.x0,
+									// note: max is used to avoid vertical overlap between the two intermediate windows
+									max<uint32_t>(bandWindowRect[BAND_ORIENT_LL].y1,
+									sat_sub<uint32_t>(min<uint32_t>(bandWindowRect[BAND_ORIENT_LH].y0 + fullResLower->height(), fullRes->height()),HORIZ_PASS_HEIGHT)),
+									resWindow.x1,
+									min<uint32_t>(bandWindowRect[BAND_ORIENT_LH].y1 + fullResLower->height(), fullRes->height()));
+		splitWindow[SPLIT_H] = new grk_buffer_2d<T>(splitWindowRect[SPLIT_H]);
+		}
+	   } else {
+		    // (NOTE: we use relative coordinates)
+			// dummy LL band window
+			bandWindow.push_back( new grk_buffer_2d<T>( 0,0) );
+			assert(full_res->numBandWindows == 3 || !lower_full_res);
+			if (lower_full_res) {
+				for (uint32_t i = 0; i < full_res->numBandWindows; ++i)
+					bandWindow.push_back( new grk_buffer_2d<T>(full_res->band[i].width(),full_res->band[i].height() ) );
+				for (uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
+					splitWindow[i] = new grk_buffer_2d<T>(bounds.width(), bounds.height());
+				splitWindow[SPLIT_L]->y1 = bounds.y0 + lower_full_res->height();
+				splitWindow[SPLIT_H]->y0 = splitWindow[SPLIT_L]->y1;
 			}
 
-		   } else {
-				// dummy LL band window
-				bandWindow.push_back( new grk_buffer_2d<T>( grk_rect_u32(0,0,0,0)) );
-				assert(full_res->numBandWindows == 3 || !lower_full_res);
-				if (lower_full_res) {
-					for (uint32_t i = 0; i < full_res->numBandWindows; ++i)
-						bandWindow.push_back( new grk_buffer_2d<T>(full_res->band[i]) );
-					for (uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
-						splitWindow[i] = new grk_buffer_2d<T>(bounds);
-					splitWindow[SPLIT_L]->y1 = bounds.y0 + lower_full_res->height();
-					splitWindow[SPLIT_H]->y0 = splitWindow[SPLIT_L]->y1;
-				}
-
-			}
 		}
 	}
 	~res_window(){
@@ -140,12 +124,15 @@ template<typename T> struct res_window {
 		if (allocated)
 			return true;
 
-
 		// if top level window is present, then all buffers attach to this window
 		if (resWindowTopLevel) {
 			// ensure that top level window is allocated
 			if (!resWindowTopLevel->alloc(clear))
 				return false;
+
+			// for now, we don't allocate bandWindows for windowed decode
+			if (filterWidth)
+				return true;
 
 			// attach to top level window
 			if (resWindow != resWindowTopLevel)
@@ -175,13 +162,15 @@ template<typename T> struct res_window {
 				splitWindow[SPLIT_L]->attach(resWindowTopLevel->data, resWindowTopLevel->stride);
 				splitWindow[SPLIT_H]->attach(resWindowTopLevel->data + fullResLower->height() * resWindowTopLevel->stride,
 											resWindowTopLevel->stride);
-
-
 			}
 		} else {
 			// resolution window is always allocated
 			if (!resWindow->alloc(clear))
 				return false;
+			// for now, we don't allocate bandWindows for windowed decode
+			if (filterWidth)
+				return true;
+
 			// band windows are allocated if present
 			for (auto &b : bandWindow){
 				if (!b->alloc(clear))
@@ -207,6 +196,7 @@ template<typename T> struct res_window {
 	grk_buffer_2d<T> *splitWindow[SPLIT_NUM_ORIENTATIONS];
 	grk_buffer_2d<T> *resWindow;
 	grk_buffer_2d<T> *resWindowTopLevel;
+	uint32_t filterWidth;
 };
 
 
@@ -222,12 +212,11 @@ template<typename T> struct res_window {
 
  4) Sub-band coordinate system: coordinates relative to a particular sub-band's top left hand corner
 
- */
-
+*/
 template<typename T> struct TileComponentWindowBuffer {
 	TileComponentWindowBuffer(bool isCompressor,
 						bool lossless,
-						bool whole_tile_decoding,
+						bool wholeTileDecompress,
 						grk_rect_u32 unreduced_tile_dim,
 						grk_rect_u32 reduced_tile_dim,
 						grk_rect_u32 unreduced_window_dim,
@@ -238,7 +227,7 @@ template<typename T> struct TileComponentWindowBuffer {
 							m_bounds(reduced_tile_dim),
 							num_resolutions(numresolutions),
 							m_compress(isCompressor),
-							whole_tile_decoding(whole_tile_decoding)
+							wholeTileDecompress(wholeTileDecompress)
 	{
 		if (!m_compress) {
 			m_bounds = unreduced_window_dim.rectceildivpow2(num_resolutions - reduced_num_resolutions);
@@ -266,8 +255,8 @@ template<typename T> struct TileComponentWindowBuffer {
 				 	 	 	 	 	 	 fullResLower,
 										 m_bounds,
 										 m_unreduced_bounds,
-										 whole_tile_decoding ? 0 : getHorizontalPassHeight(lossless),
-										 whole_tile_decoding ? 0 : getFilterWidth(lossless));
+										 wholeTileDecompress ? 0 : getHorizontalPassHeight(lossless),
+										 wholeTileDecompress ? 0 : getFilterWidth(lossless));
 		 // setting top level blocks allocation of bandWindow buffers
 		 if (!use_band_windows())
 			 topLevel->resWindowTopLevel = topLevel->resWindow;
@@ -284,8 +273,8 @@ template<typename T> struct TileComponentWindowBuffer {
 												  resno > 0 ? tile_comp_resolutions+resno-1 : nullptr,
 												  res_dims,
 												  m_unreduced_bounds,
-												  whole_tile_decoding ? 0 : getHorizontalPassHeight(lossless),
-												  whole_tile_decoding ? 0 : getFilterWidth(lossless)) );
+												  wholeTileDecompress ? 0 : getHorizontalPassHeight(lossless),
+												  wholeTileDecompress ? 0 : getFilterWidth(lossless)) );
 		 }
 		 res_windows.push_back(topLevel);
 	}
@@ -294,16 +283,7 @@ template<typename T> struct TileComponentWindowBuffer {
 			delete b;
 	}
 
-
-
-    /* Note: those values for filter_margin are in part the result of */
-    /* experimentation. The value 2 for QMFBID=1 (5x3 filter) can be linked */
-    /* to the maximum left/right extension given in tables F.2 and F.3 of the */
-    /* standard. The value 3 for QMFBID=0 (9x7 filter) is more suspicious, */
-    /* since F.2 and F.3 would lead to 4 instead, so the current 3 might be */
-    /* needed to be bumped to 4, in case inconsistencies are found while */
-    /* decoding parts of irreversible coded images. */
-    /* See dwt_decode_partial_53 and dwt_decode_partial_97 as well */
+	// see tables F.2 and F.3 of the standard
 	uint32_t getFilterWidth(bool lossless) const {
 		return  lossless ? 2 : 4;
 	}
@@ -432,12 +412,12 @@ template<typename T> struct TileComponentWindowBuffer {
 private:
 
 	bool use_band_windows() const{
-		//return !m_compress && whole_tile_decoding;
+		//return !m_compress && wholeTileDecompress;
 		return false;
 	}
 
 	bool global_code_block_offset() const {
-		return m_compress || !whole_tile_decoding;
+		return m_compress || !wholeTileDecompress;
 	}
 
 	uint8_t getBandIndex(uint8_t resno, eBandOrientation orientation) const{
@@ -479,7 +459,7 @@ private:
 	uint8_t num_resolutions;
 
 	bool m_compress;
-	bool whole_tile_decoding;
+	bool wholeTileDecompress;
 };
 
 

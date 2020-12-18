@@ -149,7 +149,7 @@ struct TileProcessor {
 	grk_plugin_tile *current_plugin_tile;
 
     // true if whole tile will be decoded; false if tile window will be decoded
-    bool   whole_tile_decoding;
+    bool   wholeTileDecompress;
 
 	PacketLengthMarkers *plt_markers;
 

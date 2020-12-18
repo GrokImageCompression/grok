@@ -239,7 +239,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 	nb_tiles = (uint16_t)(cp->t_grid_width * cp->t_grid_height);
 
 	/* Define the tiles which will be decompressed */
-	if (!codeStream->whole_tile_decoding) {
+	if (!codeStream->wholeTileDecompress) {
 		decompressor->m_start_tile_x_index =
 				(decompressor->m_start_tile_x_index
 						- cp->tx0) / cp->t_width;

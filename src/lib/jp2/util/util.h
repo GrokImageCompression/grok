@@ -275,13 +275,14 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 																					owns_data(ownsData),
 																					stride(strd)
 	{}
-	grk_buffer_2d(T *buffer,bool ownsData, uint32_t w, uint32_t h) : grk_buffer_2d(buffer,ownsData,w,0,h)
-	{}
 	grk_buffer_2d(uint32_t w, uint32_t strd, uint32_t h) : grk_buffer_2d(nullptr,false,w,strd,h)
 	{}
 	grk_buffer_2d(uint32_t w, uint32_t h) : grk_buffer_2d(w,0,h)
 	{}
-	explicit grk_buffer_2d(grk_rect_u32 b) : grk_buffer_2d(b.width(),0,b.height())
+	explicit grk_buffer_2d(grk_rect_u32 b) : grk_rect_u32(b.x0,b.y0,b.x1,b.y1),
+											data(nullptr),
+											owns_data(false),
+											stride(0)
 	{}
 	grk_buffer_2d(void) : grk_buffer_2d(nullptr,0,0,0,false)
 	{}

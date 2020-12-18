@@ -2219,7 +2219,7 @@ bool WaveletReverse::decompress_53(TileProcessor *p_tcd,
 					grk_rect_u32 window,
                     uint32_t numres)
 {
-    if (p_tcd->whole_tile_decoding)
+    if (p_tcd->wholeTileDecompress)
         return decompress_tile_53(tilec,numres);
     else
         return decompress_partial_tile<int32_t,
@@ -2237,7 +2237,7 @@ bool WaveletReverse::decompress_97(TileProcessor *p_tcd,
                 TileComponent* GRK_RESTRICT tilec,
 				grk_rect_u32 window,
                 uint32_t numres){
-    if (p_tcd->whole_tile_decoding)
+    if (p_tcd->wholeTileDecompress)
         return decompress_tile_97(tilec, numres);
     else
         return decompress_partial_tile<vec4f,

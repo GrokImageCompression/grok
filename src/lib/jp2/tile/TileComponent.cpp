@@ -34,7 +34,7 @@ TileComponent::TileComponent() :resolutions(nullptr),
 								round_trip_resolutions(nullptr),
 						#endif
 							   m_sa(nullptr),
-							   whole_tile_decoding(true),
+							   wholeTileDecompress(true),
 							   m_is_encoder(false),
 							   buf(nullptr),
 							   m_tccp(nullptr)
@@ -76,7 +76,7 @@ bool TileComponent::init(bool isCompressor,
 						TileComponentCodingParams* tccp,
 						grk_plugin_tile *current_plugin_tile){
 	m_is_encoder = isCompressor;
-	whole_tile_decoding = whole_tile;
+	wholeTileDecompress = whole_tile;
 	m_tccp = tccp;
 
 	// 1. calculate resolutions
@@ -140,7 +140,7 @@ bool TileComponent::init(bool isCompressor,
 		return false;
 
 	// calculate padded windows
-	if (!whole_tile_decoding){
+	if (!wholeTileDecompress){
 	    uint32_t filter_margin = buf->getFilterWidth(m_tccp->qmfbid == 1);
 
 	    /* Compute the intersection of the window of interest, expressed in tile component coordinates, */
@@ -188,7 +188,7 @@ bool TileComponent::subbandIntersectsAOI(uint8_t resno,
 								uint8_t bandIndex,
 								const grk_rect_u32 *aoi) const
 {
-	if (whole_tile_decoding)
+	if (wholeTileDecompress)
 		return true;
 	assert(resno < numresolutions && bandIndex < BAND_NUM_INDICES);
 	auto paddedBandWinow = ((resolutions + resno)->paddedBandWindow)[bandIndex];
@@ -327,7 +327,7 @@ bool TileComponent::create_buffer(grk_rect_u32 *unreduced_tile_comp_dims,
 	}
 	buf = new TileComponentWindowBuffer<int32_t>(m_is_encoder,
 											m_tccp->qmfbid == 1,
-											whole_tile_decoding,
+											wholeTileDecompress,
 											*(grk_rect_u32*)maxResolution,
 											*(grk_rect_u32*)this,
 											unreduced_tile_comp_window_dims,
@@ -343,7 +343,7 @@ TileComponentWindowBuffer<int32_t>* TileComponent::getBuffer() const{
 }
 
 bool TileComponent::isWholeTileDecoding() {
-	return whole_tile_decoding;
+	return wholeTileDecompress;
 }
 ISparseBuffer* TileComponent::getSparseBuffer(){
 	return m_sa;

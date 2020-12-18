@@ -938,7 +938,7 @@ CodeStream::CodeStream(bool decompress, BufferedStream *stream) : m_input_image(
 																m_marker_scratch(nullptr),
 																m_marker_scratch_size(0),
 																m_curr_marker(0),
-																whole_tile_decoding(true),
+																wholeTileDecompress(true),
 																current_plugin_tile(nullptr),
 																 m_nb_tile_parts_correction_checked(false),
 																 m_nb_tile_parts_correction(0)
@@ -1940,7 +1940,7 @@ bool CodeStream::set_decompress_window(grk_image *output_image,
 				cp->t_height);
 		output_image->y1 = end_y;
 	}
-	whole_tile_decoding = false;
+	wholeTileDecompress = false;
 	if (!update_image_dimensions(output_image,
 			cp->m_coding_params.m_dec.m_reduce))
 		return false;
