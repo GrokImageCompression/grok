@@ -266,11 +266,11 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 
 	/* SOP markers */
 	if (p_tcp->csty & J2K_CP_CSTY_SOP) {
-		if (available_bytes < 6) {
-			//GRK_WARN("Not enough space for expected SOP marker");
+		if (available_bytes < 6)
 			throw TruncatedPacketHeaderException();
-		} else if ((*active_src) != 0xff || (*(active_src + 1) != 0x91)) {
-			GRK_WARN("Expected SOP marker");
+		uint16_t marker = (uint16_t)(((uint16_t)(*active_src) << 8) | (uint16_t)(*(active_src + 1)));
+		if (marker != J2K_MS_SOP) {
+			GRK_WARN("Expected SOP marker, but found 0x%x", marker);
 		} else {
 			uint16_t packno = (uint16_t) (((uint16_t) active_src[4] << 8)
 					| active_src[5]);
@@ -498,11 +498,12 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 	/* EPH markers */
 	if (p_tcp->csty & J2K_CP_CSTY_EPH) {
 		if ((*modified_length_ptr
-				- (uint32_t) (header_data - *header_data_start)) < 2U) {
+				- (uint32_t) (header_data - *header_data_start)) < 2U)
 			//GRK_WARN("Not enough space for expected EPH marker");
 			throw TruncatedPacketHeaderException();
-		} else if ((*header_data) != 0xff || (*(header_data + 1) != 0x92)) {
-			GRK_ERROR("Expected EPH marker");
+		uint16_t marker = (uint16_t)(((uint16_t)(*header_data) << 8) | (uint16_t)(*(header_data + 1)));
+		if (marker != J2K_MS_EPH) {
+			GRK_ERROR("Expected EPH marker, but found 0x%x",marker);
 			return false;
 		} else {
 			header_data += 2;
