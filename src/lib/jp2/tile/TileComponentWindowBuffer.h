@@ -70,29 +70,28 @@ template<typename T> struct res_window {
 		bandWindowRect[BAND_ORIENT_HH].grow(FILTER_WIDTH, fullRes->width() - fullResLower->width(),  fullRes->height() - fullResLower->height());
 		bandWindow.push_back(new grk_buffer_2d<T>(bandWindowRect[BAND_ORIENT_HH]));
 
-		grk_rect_u32 resWindow;
 		auto win_low 				= bandWindowRect[BAND_ORIENT_LL];
 		auto win_high 				= bandWindowRect[BAND_ORIENT_HL];
-		resWindow.x0 				= min<uint32_t>(2 * win_low.x0, 2 * bandWindowRect[BAND_ORIENT_HL].x0);
-		resWindow.x1 				= min<uint32_t>(max<uint32_t>(2 * win_low.x1, 2 * win_high.x1), fullRes->width());
+		resWindow->x0 				= min<uint32_t>(2 * win_low.x0, 2 * bandWindowRect[BAND_ORIENT_HL].x0);
+		resWindow->x1 				= min<uint32_t>(max<uint32_t>(2 * win_low.x1, 2 * win_high.x1), fullRes->width());
 		win_low 					= bandWindowRect[BAND_ORIENT_LL];
 		win_high 					= bandWindowRect[BAND_ORIENT_LH];
-		resWindow.y0 				= min<uint32_t>(2 * win_low.y0, 2 * win_high.y0);
-		resWindow.y1 				= min<uint32_t>(max<uint32_t>(2 * win_low.y1, 2 * win_high.y1), fullRes->height());
+		resWindow->y0 				= min<uint32_t>(2 * win_low.y0, 2 * win_high.y0);
+		resWindow->y1 				= min<uint32_t>(max<uint32_t>(2 * win_low.y1, 2 * win_high.y1), fullRes->height());
 
 		// two windows formed by horizontal pass and used as input for vertical pass
 		grk_rect_u32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
-		splitWindowRect[SPLIT_L] = grk_rect_u32(resWindow.x0,
+		splitWindowRect[SPLIT_L] = grk_rect_u32(resWindow->x0,
 									  sat_sub<uint32_t>(bandWindowRect[BAND_ORIENT_LL].y0, HORIZ_PASS_HEIGHT),
-									  resWindow.x1,
+									  resWindow->x1,
 									  bandWindowRect[BAND_ORIENT_LL].y1);
 		splitWindow[SPLIT_L] = new grk_buffer_2d<T>(splitWindowRect[SPLIT_L]);
 
-		splitWindowRect[SPLIT_H] = grk_rect_u32(resWindow.x0,
+		splitWindowRect[SPLIT_H] = grk_rect_u32(resWindow->x0,
 									// note: max is used to avoid vertical overlap between the two intermediate windows
 									max<uint32_t>(bandWindowRect[BAND_ORIENT_LL].y1,
 									sat_sub<uint32_t>(min<uint32_t>(bandWindowRect[BAND_ORIENT_LH].y0 + fullResLower->height(), fullRes->height()),HORIZ_PASS_HEIGHT)),
-									resWindow.x1,
+									resWindow->x1,
 									min<uint32_t>(bandWindowRect[BAND_ORIENT_LH].y1 + fullResLower->height(), fullRes->height()));
 		splitWindow[SPLIT_H] = new grk_buffer_2d<T>(splitWindowRect[SPLIT_H]);
 		}
@@ -391,7 +390,7 @@ template<typename T> struct TileComponentWindowBuffer {
 		return m_unreduced_bounds;
 	}
 
-	uint64_t strided_area(void){
+	uint64_t strided_area(void) const{
 		return tile_buf()->stride * m_bounds.height();
 	}
 

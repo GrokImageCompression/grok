@@ -1956,15 +1956,7 @@ template <typename T,
         tileBandWindowRect[BAND_ORIENT_LH]  =  bandWindowRect[BAND_ORIENT_LH].pan(0,fullRes->band[BAND_INDEX_HL].height());
         tileBandWindowRect[BAND_ORIENT_HH]  =  bandWindowRect[BAND_ORIENT_HH].pan(fullRes->band[BAND_INDEX_LH].width(),fullRes->band[BAND_INDEX_HL].height());
 
-        grk_rect_u32 resWindowRect;
-        auto win_low 				= bandWindowRect[BAND_ORIENT_LL];
-        auto win_high 				= bandWindowRect[BAND_ORIENT_HL];
-        resWindowRect.x0 			= min<uint32_t>(2 * win_low.x0, 2 * bandWindowRect[BAND_ORIENT_HL].x0);
-        resWindowRect.x1 			= min<uint32_t>(max<uint32_t>(2 * win_low.x1, 2 * win_high.x1), fullRes->width());
-        win_low 					= bandWindowRect[BAND_ORIENT_LL];
-        win_high 					= bandWindowRect[BAND_ORIENT_LH];
-        resWindowRect.y0 			= min<uint32_t>(2 * win_low.y0, 2 * win_high.y0);
-        resWindowRect.y1 			= min<uint32_t>(max<uint32_t>(2 * win_low.y1, 2 * win_high.y1), fullRes->height());
+        grk_rect_u32 resWindowRect = *((grk_rect_u32*)tilec->getBuffer()->getWindow(resno));
 
         // two windows formed by horizontal pass and used as input for vertical pass
         grk_rect_u32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];

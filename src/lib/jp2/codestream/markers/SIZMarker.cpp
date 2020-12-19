@@ -154,7 +154,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		std::stringstream ss;
 		ss << "Error in SIZ marker: negative or zero image dimensions ("
 				<< (int64_t) image->x1 - image->x0 << " x "
-				<< (int64_t) image->y1 - image->y0 << ")" << std::endl;
+				<< (int64_t) image->y1 - image->y0 << ")";
 		GRK_ERROR("%s", ss.str().c_str());
 		return false;
 	}
