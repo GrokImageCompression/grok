@@ -502,7 +502,8 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 			//GRK_WARN("Not enough space for expected EPH marker");
 			throw TruncatedPacketHeaderException();
 		} else if ((*header_data) != 0xff || (*(header_data + 1) != 0x92)) {
-			GRK_WARN("Expected EPH marker");
+			GRK_ERROR("Expected EPH marker");
+			return false;
 		} else {
 			header_data += 2;
 		}
