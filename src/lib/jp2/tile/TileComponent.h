@@ -46,7 +46,7 @@ struct TileComponent : public grk_rect_u32 {
 	 void allocSparseBuffer(uint32_t numres);
 	 void release_mem();
 	 bool subbandIntersectsAOI(uint8_t resno,
-	 								uint8_t bandIndex,
+	 								eBandOrientation orient,
 	 								const grk_rect_u32 *aoi) const;
 
 	 TileComponentWindowBuffer<int32_t>* getBuffer() const;

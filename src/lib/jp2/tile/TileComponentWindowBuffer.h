@@ -47,13 +47,20 @@ template<typename T> struct res_window {
 			splitWindow[i] = nullptr;
 	  if (FILTER_WIDTH) {
 
+		for (uint8_t orient = 0; orient < ( (resno) > 0 ? BAND_NUM_ORIENTATIONS : 1); orient++) {
+			grk_rect_u32 temp = grk_band_window(numresolutions, resno, orient,unreduced_bounds);
+			paddedTileBandWindow.push_back(temp.grow(FILTER_WIDTH,FILTER_WIDTH));
+		}
+
 		if (fullResLower) {
+
 		// 1. set up windows for horizontal and vertical passes
 		grk_rect_u32 bandWindowRect[BAND_NUM_ORIENTATIONS];
 		bandWindowRect[BAND_ORIENT_LL] = grk_band_window(numresolutions,resno,BAND_ORIENT_LL,unreduced_bounds);
 		bandWindowRect[BAND_ORIENT_LL] = bandWindowRect[BAND_ORIENT_LL].pan(-(int64_t)fullRes->band[BAND_INDEX_LH].x0, -(int64_t)fullRes->band[BAND_INDEX_HL].y0);
 		bandWindowRect[BAND_ORIENT_LL].grow(FILTER_WIDTH, fullResLower->width(),  fullResLower->height());
 		bandWindow.push_back(new grk_buffer_2d<T>(bandWindowRect[BAND_ORIENT_LL]));
+
 
 		bandWindowRect[BAND_ORIENT_HL] = grk_band_window(numresolutions,resno,BAND_ORIENT_HL,unreduced_bounds);
 		bandWindowRect[BAND_ORIENT_HL] = bandWindowRect[BAND_ORIENT_HL].pan(-(int64_t)fullRes->band[BAND_INDEX_HL].x0, -(int64_t)fullRes->band[BAND_INDEX_HL].y0);
@@ -196,6 +203,7 @@ template<typename T> struct res_window {
 	grk_buffer_2d<T> *resWindow;
 	grk_buffer_2d<T> *resWindowTopLevel;
 	uint32_t filterWidth;
+	std::vector< grk_rect_u32 > paddedTileBandWindow;
 };
 
 
@@ -336,6 +344,12 @@ template<typename T> struct TileComponentWindowBuffer {
 	 */
 	const grk_buffer_2d<T>*  getWindow(uint8_t resno,eBandOrientation orientation) const{
 		return band_window(resno,orientation);
+	}
+
+	const grk_rect_u32 getPaddedTileBandWindow(uint8_t resno,eBandOrientation orientation) const{
+		if (res_windows[resno]->paddedTileBandWindow.empty())
+			return grk_rect_u32();
+		return res_windows[resno]->paddedTileBandWindow[orientation];
 	}
 
 	/*

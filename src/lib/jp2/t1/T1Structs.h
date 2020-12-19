@@ -239,7 +239,6 @@ struct Resolution : public grk_rect_u32 {
 	bool initialized;
 	Subband band[BAND_NUM_INDICES];
 	uint32_t numBandWindows;  // 1 or 3
-	grk_rect_u32 paddedBandWindow[BAND_NUM_INDICES];
 	uint32_t pw, ph; 	/* dimensions of precinct grid */
 	grk_pt cblk_expn;
 	grk_pt precinct_start;

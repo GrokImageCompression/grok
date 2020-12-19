@@ -41,7 +41,7 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent *tilec, Tile
 			Subband *GRK_RESTRICT band = res->band + bandIndex;
 			for (auto precinct : band->precincts) {
 				if (!tilec->subbandIntersectsAOI(resno,
-												bandIndex,
+												band->orientation,
 												precinct)){
 
 					continue;
@@ -49,7 +49,7 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent *tilec, Tile
 				for (uint64_t cblkno = 0; cblkno < precinct->getNumCblks();	++cblkno) {
 					auto cblk = precinct->getDecompressedBlockPtr() + cblkno;
 					if (tilec->subbandIntersectsAOI(resno,
-													bandIndex,
+													band->orientation,
 													cblk)){
 
 						auto block = new DecompressBlockExec();

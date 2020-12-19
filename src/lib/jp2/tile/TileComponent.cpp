@@ -139,24 +139,6 @@ bool TileComponent::init(bool isCompressor,
 	if (!create_buffer(&unreduced_tile_comp_dims, unreduced_tile_comp_window_dims))
 		return false;
 
-	// calculate padded windows
-	if (!wholeTileDecompress){
-	    uint32_t filter_margin = getFilterWidth<uint32_t>(m_tccp->qmfbid == 1);
-
-	    /* Compute the intersection of the window of interest, expressed in tile component coordinates, */
-	    /* with the tile component */
-		auto dims = buf->unreduced_bounds();
-		for (uint8_t resno = 0; resno < numresolutions; ++resno) {
-			auto res = resolutions + resno;
-			for (uint8_t index = 0; index < res->numBandWindows; ++index) {
-				uint8_t orientation = (resno == 0) ? 0 : (uint8_t)(index+1);
-				auto paddedWindow = res->paddedBandWindow + index;
-				*paddedWindow = grk_band_window(numresolutions, resno, orientation,dims);
-			    paddedWindow->grow(filter_margin,filter_margin);
-			}
-		}
-	}
-
 	// set band step size
 	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
@@ -185,15 +167,13 @@ bool TileComponent::init(bool isCompressor,
 }
 
 bool TileComponent::subbandIntersectsAOI(uint8_t resno,
-								uint8_t bandIndex,
+								eBandOrientation orient,
 								const grk_rect_u32 *aoi) const
 {
+	assert(resno < numresolutions);
 	if (wholeTileDecompress)
 		return true;
-	assert(resno < numresolutions && bandIndex < BAND_NUM_INDICES);
-	auto paddedBandWinow = ((resolutions + resno)->paddedBandWindow)[bandIndex];
-
-    return paddedBandWinow.intersection(aoi).non_empty();
+    return buf->getPaddedTileBandWindow(resno, orient).intersection(aoi).non_empty();
 }
 
 void TileComponent::allocSparseBuffer(uint32_t numres){
@@ -212,7 +192,7 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
                 for (uint64_t cblkno = 0; cblkno < precinct->getNumCblks(); ++cblkno) {
                     auto cblk = precinct->getDecompressedBlockPtr() + cblkno;
 					// check overlap in band coordinates
-					if (subbandIntersectsAOI(resno,	bandIndex,	cblk)){
+					if (subbandIntersectsAOI(resno,	band->orientation,	cblk)){
 						uint32_t x = cblk->x0;
 						uint32_t y = cblk->y0;
 
@@ -261,7 +241,7 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
                 for (uint64_t cblkno = 0; cblkno < precinct->getNumCblks(); ++cblkno) {
                     auto cblk = precinct->getDecompressedBlockPtr() + cblkno;
 					// check overlap in band coordinates
-					if (subbandIntersectsAOI(resno,	bandIndex,	cblk)){
+					if (subbandIntersectsAOI(resno,	band->orientation,	cblk)){
 						uint32_t x = cblk->x0;
 						uint32_t y = cblk->y0;
 
