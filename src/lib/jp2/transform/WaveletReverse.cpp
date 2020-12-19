@@ -1554,16 +1554,20 @@ static void interleave_partial_v_53(dwt_data<int32_t> *vert,
     GRK_UNUSED(ret);
 }
 
-#define GRK_S(i) a[(i)<<1]
-#define GRK_D(i) a[(1+((i)<<1))]
-#define GRK_S_(i) ((i)<0?GRK_S(0):((i)>=sn?GRK_S(sn-1):GRK_S(i)))
-#define GRK_D_(i) ((i)<0?GRK_D(0):((i)>=dn?GRK_D(dn-1):GRK_D(i)))
-#define GRK_SS_(i) ((i)<0?GRK_S(0):((i)>=dn?GRK_S(dn-1):GRK_S(i)))
-#define GRK_DD_(i) ((i)<0?GRK_D(0):((i)>=sn?GRK_D(sn-1):GRK_D(i)))
-
 static void decompress_partial_h_53(dwt_data<int32_t> *horiz){
-    int32_t i;
-    int32_t *a = horiz->mem;
+
+	#define S(i) 	buf[(i)<<1]
+	#define D(i) 	buf[(1+((i)<<1))]
+
+	#define S_(i) 	((i)<0?S(0):((i)>=sn?S(sn-1):S(i)))
+	#define D_(i) 	((i)<0?D(0):((i)>=dn?D(dn-1):D(i)))
+
+	#define SS_(i)	((i)<0?S(0):((i)>=dn?S(dn-1):S(i)))
+	#define DD_(i) 	((i)<0?D(0):((i)>=sn?D(sn-1):D(i)))
+
+
+	int32_t i;
+    auto buf = horiz->mem;
 	int32_t dn = horiz->dn;
 	int32_t sn = horiz->sn;
 	int32_t cas = horiz->cas;
@@ -1573,16 +1577,16 @@ static void decompress_partial_h_53(dwt_data<int32_t> *horiz){
 	int32_t win_h_x1 = (int32_t)horiz->win_h_1;
 
     if (!cas) {
-        if ((dn > 0) || (sn > 1)) { /* NEW :  CASE ONE ELEMENT */
+        if ((dn > 0) || (sn > 1)) {
             /* Naive version is :
             for (i = win_l_x0; i < i_max; i++) {
-                GRK_S(i) -= (GRK_D_(i - 1) + GRK_D_(i) + 2) >> 2;
+                S(i) -= (D_(i - 1) + D_(i) + 2) >> 2;
             }
             for (i = win_h_x0; i < win_h_x1; i++) {
-                GRK_D(i) += (GRK_S_(i) + GRK_S_(i + 1)) >> 1;
+                D(i) += (S_(i) + S_(i + 1)) >> 1;
             }
             but the compiler doesn't manage to unroll it to avoid bound
-            checking in GRK_S_ and GRK_D_ macros
+            checking in S_ and D_ macros
             */
 
             i = win_l_x0;
@@ -1590,7 +1594,7 @@ static void decompress_partial_h_53(dwt_data<int32_t> *horiz){
                 int32_t i_max;
 
                 /* Left-most case */
-                GRK_S(i) -= (GRK_D_(i - 1) + GRK_D_(i) + 2) >> 2;
+                S(i) -= (D_(i - 1) + D_(i) + 2) >> 2;
                 i ++;
 
                 i_max = win_l_x1;
@@ -1598,11 +1602,11 @@ static void decompress_partial_h_53(dwt_data<int32_t> *horiz){
                     i_max = dn;
                 for (; i < i_max; i++) {
                     /* No bound checking */
-                    GRK_S(i) -= (GRK_D(i - 1) + GRK_D(i) + 2) >> 2;
+                    S(i) -= (D(i - 1) + D(i) + 2) >> 2;
                 }
                 for (; i < win_l_x1; i++) {
                     /* Right-most case */
-                    GRK_S(i) -= (GRK_D_(i - 1) + GRK_D_(i) + 2) >> 2;
+                    S(i) -= (D_(i - 1) + D_(i) + 2) >> 2;
                 }
             }
 
@@ -1613,44 +1617,45 @@ static void decompress_partial_h_53(dwt_data<int32_t> *horiz){
                     i_max = sn - 1;
                 for (; i < i_max; i++) {
                     /* No bound checking */
-                    GRK_D(i) += (GRK_S(i) + GRK_S(i + 1)) >> 1;
+                    D(i) += (S(i) + S(i + 1)) >> 1;
                 }
                 for (; i < win_h_x1; i++) {
                     /* Right-most case */
-                    GRK_D(i) += (GRK_S_(i) + GRK_S_(i + 1)) >> 1;
+                    D(i) += (S_(i) + S_(i + 1)) >> 1;
                 }
             }
         }
     } else {
-        if (!sn  && dn == 1) {        /* NEW :  CASE ONE ELEMENT */
-            GRK_S(0) /= 2;
+        if (!sn  && dn == 1) {
+            S(0) /= 2;
         } else {
             for (i = win_l_x0; i < win_l_x1; i++)
-                GRK_D(i) -= (GRK_SS_(i) + GRK_SS_(i + 1) + 2) >> 2;
+                D(i) -= (SS_(i) + SS_(i + 1) + 2) >> 2;
             for (i = win_h_x0; i < win_h_x1; i++)
-                GRK_S(i) += (GRK_DD_(i) + GRK_DD_(i - 1)) >> 1;
+                S(i) += (DD_(i) + DD_(i - 1)) >> 1;
         }
     }
 }
 
-#define GRK_S_off(i,off) a[(i)*2*4+off]
-#define GRK_D_off(i,off) a[(1+(i)*2)*4+off]
-
-#define GRK_S__SGND_off(i,off) ((i)<0?GRK_S_off(0,off):((i)>=sn?GRK_S_off(sn-1,off):GRK_S_off(i,off)))
-#define GRK_D__SGND_off(i,off) ((i)<0?GRK_D_off(0,off):((i)>=dn?GRK_D_off(dn-1,off):GRK_D_off(i,off)))
-#define GRK_SS__SGND_off(i,off) ((i)<0?GRK_S_off(0,off):((i)>=dn?GRK_S_off(dn-1,off):GRK_S_off(i,off)))
-#define GRK_DD__SGND_off(i,off) ((i)<0?GRK_D_off(0,off):((i)>=sn?GRK_D_off(sn-1,off):GRK_D_off(i,off)))
-
-#define GRK_S__off(i,off) (((i)>=sn?GRK_S_off(sn-1,off):GRK_S_off(i,off)))
-#define GRK_D__off(i,off) (((i)>=dn?GRK_D_off(dn-1,off):GRK_D_off(i,off)))
-#define GRK_SS__off(i,off) (((i)>=dn?GRK_S_off(dn-1,off):GRK_S_off(i,off)))
-#define GRK_DD__off(i,off) (((i)>=sn?GRK_D_off(sn-1,off):GRK_D_off(i,off)))
-
-
-
 static void decompress_partial_v_53(dwt_data<int32_t> *vert){
-    uint32_t i;
-    int32_t *a = vert->mem;
+
+	#define S_off(i,off) 		buf[(i)*8+off]
+	#define D_off(i,off) 		buf[(1+(i)*2)*4+off]
+
+	#define S_off_(i,off) 		(((i)>=sn ? S_off(sn-1,off) : S_off(i,off)))
+	#define D_off_(i,off) 		(((i)>=dn ? D_off(dn-1,off) : D_off(i,off)))
+
+	#define S_sgnd_off_(i,off) 	(((i)<0   ? S_off(0,off)    : S_off_(i,off)))
+	#define D_sgnd_off_(i,off) 	(((i)<0	  ? D_off(0,off)    : D_off_(i,off)))
+
+	#define SS_sgnd_off_(i,off)  ((i)<0   ? S_off(0,off)    : ((i)>=dn ? S_off(dn-1,off) : S_off(i,off)))
+	#define DD_sgnd_off_(i,off)  ((i)<0   ? D_off(0,off)    : ((i)>=sn ? D_off(sn-1,off) : D_off(i,off)))
+
+	#define SS_off_(i,off) 		(((i)>=dn ? S_off(dn-1,off) : S_off(i,off)))
+	#define DD_off_(i,off) 		(((i)>=sn ? D_off(sn-1,off) : D_off(i,off)))
+
+	uint32_t i;
+    auto buf = vert->mem;
 	uint32_t dn = vert->dn;
 	uint32_t sn = vert->sn;
 	uint32_t cas = vert->cas;
@@ -1660,16 +1665,16 @@ static void decompress_partial_v_53(dwt_data<int32_t> *vert){
 	uint32_t win_h_x1 = vert->win_h_1;
 
     if (!cas) {
-        if ((dn > 0) || (sn > 1)) { /* NEW :  CASE ONE ELEMENT */
+        if ((dn > 0) || (sn > 1)) {
             /* Naive version is :
             for (i = win_l_x0; i < i_max; i++) {
-                GRK_S(i) -= (GRK_D_(i - 1) + GRK_D_(i) + 2) >> 2;
+                S(i) -= (D_(i - 1) + D_(i) + 2) >> 2;
             }
             for (i = win_h_x0; i < win_h_x1; i++) {
-                GRK_D(i) += (GRK_S_(i) + GRK_S_(i + 1)) >> 1;
+                D(i) += (S_(i) + S_(i + 1)) >> 1;
             }
             but the compiler doesn't manage to unroll it to avoid bound
-            checking in GRK_S_ and GRK_D_ macros
+            checking in S_ and D_ macros
             */
             i = win_l_x0;
             if (i < win_l_x1) {
@@ -1677,7 +1682,7 @@ static void decompress_partial_v_53(dwt_data<int32_t> *vert){
 
                 /* Left-most case */
                 for (uint32_t off = 0; off < 4; off++)
-                    GRK_S_off(i, off) -= (GRK_D__SGND_off((int64_t)i - 1, off) + GRK_D__off(i, off) + 2) >> 2;
+                    S_off(i, off) -= (D_sgnd_off_((int64_t)i - 1, off) + D_off_(i, off) + 2) >> 2;
                 i ++;
 
                 i_max = win_l_x1;
@@ -1686,19 +1691,19 @@ static void decompress_partial_v_53(dwt_data<int32_t> *vert){
 #ifdef __SSE2__
                 if (i + 1 < i_max) {
                     const __m128i two = _mm_set1_epi32(2);
-                    auto Dm1 = _mm_load_si128((__m128i *)(a + 4 + ((int64_t)i - 1) * 8));
+                    auto Dm1 = _mm_load_si128((__m128i *)(buf + 4 + ((int64_t)i - 1) * 8));
                     for (; i + 1 < i_max; i += 2) {
                         /* No bound checking */
-                        auto S = _mm_load_si128((__m128i *)(a + i * 8));
-                        auto D = _mm_load_si128((__m128i *)(a + 4 + i * 8));
-                        auto S1 = _mm_load_si128((__m128i *)(a + (i + 1) * 8));
-                        auto D1 = _mm_load_si128((__m128i *)(a + 4 + (i + 1) * 8));
+                        auto S = _mm_load_si128((__m128i *)(buf + i * 8));
+                        auto D = _mm_load_si128((__m128i *)(buf + 4 + i * 8));
+                        auto S1 = _mm_load_si128((__m128i *)(buf + (i + 1) * 8));
+                        auto D1 = _mm_load_si128((__m128i *)(buf + 4 + (i + 1) * 8));
                         S = _mm_sub_epi32(S,
                                           _mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(Dm1, D), two), 2));
                         S1 = _mm_sub_epi32(S1,
                                            _mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(D, D1), two), 2));
-                        _mm_store_si128((__m128i*)(a + i * 8), S);
-                        _mm_store_si128((__m128i*)(a + (i + 1) * 8), S1);
+                        _mm_store_si128((__m128i*)(buf + i * 8), S);
+                        _mm_store_si128((__m128i*)(buf + (i + 1) * 8), S1);
                         Dm1 = D1;
                     }
                 }
@@ -1706,12 +1711,12 @@ static void decompress_partial_v_53(dwt_data<int32_t> *vert){
                 for (; i < i_max; i++) {
                     /* No bound checking */
                     for (uint32_t off = 0; off < 4; off++)
-                        GRK_S_off(i, off) -= (GRK_D__SGND_off((int64_t)i - 1, off) + GRK_D_off(i, off) + 2) >> 2;
+                        S_off(i, off) -= (D_sgnd_off_((int64_t)i - 1, off) + D_off(i, off) + 2) >> 2;
                 }
                 for (; i < win_l_x1; i++) {
                     /* Right-most case */
                     for (uint32_t off = 0; off < 4; off++)
-                        GRK_S_off(i, off) -= (GRK_D__SGND_off((int64_t)i - 1, off) + GRK_D__off(i, off) + 2) >> 2;
+                        S_off(i, off) -= (D_sgnd_off_((int64_t)i - 1, off) + D_off_(i, off) + 2) >> 2;
                 }
             }
             i = win_h_x0;
@@ -1721,17 +1726,17 @@ static void decompress_partial_v_53(dwt_data<int32_t> *vert){
                     i_max = sn - 1;
 #ifdef __SSE2__
                 if (i + 1 < i_max) {
-                    auto S =  _mm_load_si128((__m128i *)(a + i * 8));
+                    auto S =  _mm_load_si128((__m128i *)(buf + i * 8));
                     for (; i + 1 < i_max; i += 2) {
                         /* No bound checking */
-                    	auto D = _mm_load_si128((__m128i *)(a + 4 + i * 8));
-                    	auto S1 = _mm_load_si128((__m128i *)(a + (i + 1) * 8));
-                    	auto D1 = _mm_load_si128((__m128i *)(a + 4 + (i + 1) * 8));
-                    	auto S2 = _mm_load_si128((__m128i *)(a + (i + 2) * 8));
+                    	auto D = _mm_load_si128((__m128i *)(buf + 4 + i * 8));
+                    	auto S1 = _mm_load_si128((__m128i *)(buf + (i + 1) * 8));
+                    	auto D1 = _mm_load_si128((__m128i *)(buf + 4 + (i + 1) * 8));
+                    	auto S2 = _mm_load_si128((__m128i *)(buf + (i + 2) * 8));
                         D = _mm_add_epi32(D, _mm_srai_epi32(_mm_add_epi32(S, S1), 1));
                         D1 = _mm_add_epi32(D1, _mm_srai_epi32(_mm_add_epi32(S1, S2), 1));
-                        _mm_store_si128((__m128i*)(a + 4 + i * 8), D);
-                        _mm_store_si128((__m128i*)(a + 4 + (i + 1) * 8), D1);
+                        _mm_store_si128((__m128i*)(buf + 4 + i * 8), D);
+                        _mm_store_si128((__m128i*)(buf + 4 + (i + 1) * 8), D1);
                         S = S2;
                     }
                 }
@@ -1739,29 +1744,29 @@ static void decompress_partial_v_53(dwt_data<int32_t> *vert){
                 for (; i < i_max; i++) {
                     /* No bound checking */
                     for (uint32_t off = 0; off < 4; off++)
-                        GRK_D_off(i, off) += (GRK_S_off(i, off) + GRK_S_off(i + 1, off)) >> 1;
+                        D_off(i, off) += (S_off(i, off) + S_off(i + 1, off)) >> 1;
                 }
                 for (; i < win_h_x1; i++) {
                     /* Right-most case */
                     for (uint32_t off = 0; off < 4; off++)
-                        GRK_D_off(i, off) += (GRK_S__off(i, off) + GRK_S__off(i + 1, off)) >> 1;
+                        D_off(i, off) += (S_off_(i, off) + S_off_(i + 1, off)) >> 1;
                 }
             }
         }
     } else {
-        if (!sn  && dn == 1) {        /* NEW :  CASE ONE ELEMENT */
-            for (uint32_t off = 0; off < 4; off++)
-                GRK_S_off(0, off) /= 2;
+        if (!sn  && dn == 1) {
+        	for (uint32_t off = 0; off < 4; off++)
+                S_off(0, off) /= 2;
         } else {
             for (i = win_l_x0; i < win_l_x1; i++) {
                 for (uint32_t off = 0; off < 4; off++)
-                    GRK_D_off(i, off) -=
-                    		(GRK_SS__off(i, off) + GRK_SS__off(i + 1, off) + 2) >> 2;
+                    D_off(i, off) -=
+                    		(SS_off_(i, off) + SS_off_(i + 1, off) + 2) >> 2;
             }
             for (i = win_h_x0; i < win_h_x1; i++) {
                 for (uint32_t off = 0; off < 4; off++)
-                    GRK_S_off(i, off) +=
-                    		(GRK_DD__off(i, off) + GRK_DD__SGND_off((int64_t)i - 1, off)) >> 1;
+                    S_off(i, off) +=
+                    		(DD_off_(i, off) + DD_sgnd_off_((int64_t)i - 1, off)) >> 1;
             }
         }
     }
