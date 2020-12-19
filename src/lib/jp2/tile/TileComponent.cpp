@@ -285,7 +285,7 @@ bool TileComponent::create_buffer(grk_rect_u32 *unreduced_tile_comp_dims,
 		auto res = resolutions + resno;
 		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 			auto band = res->band + bandIndex;
-			band->set_rect(grk_band_window(numresolutions, resno, band->orientation,*unreduced_tile_comp_dims));
+			band->set_rect(res_window<int32_t>::getBandWindowRect(numresolutions, resno, band->orientation,*unreduced_tile_comp_dims));
 		}
 	}
 
