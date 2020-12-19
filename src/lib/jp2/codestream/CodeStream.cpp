@@ -2439,7 +2439,7 @@ bool CodeStream::read_header_procedure(void) {
 
 		/* Check if the marker is known and if it is in the correct location (main, tile, end of code stream)*/
 		if (!(m_decompressor.m_state & marker_handler->states)) {
-			GRK_ERROR("Marker is not compliant with its position");
+			GRK_ERROR("Marker %d is not compliant with its position",m_curr_marker);
 			return false;
 		}
 
@@ -2816,7 +2816,7 @@ bool CodeStream::decompress_tiles(void) {
 		marker_size = (uint16_t)(marker_size - 2); /* Subtract the size of the marker ID already read */
 		auto marker_handler = get_marker_handler(m_curr_marker);
 		if (!(m_decompressor.m_state & marker_handler->states)) {
-			GRK_ERROR("Marker is not compliant with its position");
+			GRK_ERROR("Marker %d is not compliant with its position",m_curr_marker);
 			success = false;
 			goto cleanup;
 		}
@@ -3284,7 +3284,7 @@ bool CodeStream::read_unk(uint16_t *output_marker) {
 			size_unk += 2;
 		} else {
 			if (!(m_decompressor.m_state	& marker_handler->states)) {
-				GRK_ERROR("Marker is not compliant with its position");
+				GRK_ERROR("Marker %d is not compliant with its position",m_curr_marker);
 				return false;
 			} else {
 				/* Add the marker to the code stream index*/
