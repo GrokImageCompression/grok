@@ -30,7 +30,7 @@ template<class T> constexpr T getFilterWidth(bool lossless) {
  }
 
 template<class T> constexpr T getHorizontalPassHeight(bool lossless){
-	return lossless ? 4 : 1;
+	return lossless ? 1 : 4;
 }
 
 class WaveletReverse {

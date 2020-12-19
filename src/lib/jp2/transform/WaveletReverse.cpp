@@ -2221,9 +2221,9 @@ bool WaveletReverse::decompress_53(TileProcessor *p_tcd,
         return decompress_tile_53(tilec,numres);
     else
         return decompress_partial_tile<int32_t,
-        							1,
+        							getHorizontalPassHeight<uint32_t>(true),
 									4,
-									getHorizontalPassHeight<uint32_t>(true),
+									4,
 									getFilterWidth<uint32_t>(true),
 									Partial53>(tilec,
 											window,
@@ -2239,9 +2239,9 @@ bool WaveletReverse::decompress_97(TileProcessor *p_tcd,
         return decompress_tile_97(tilec, numres);
     else
         return decompress_partial_tile<vec4f,
-        							4,
+        							getHorizontalPassHeight<uint32_t>(false),
 									4,
-									getHorizontalPassHeight<uint32_t>(false),
+									1,
 									getFilterWidth<uint32_t>(false),
 									Partial97>(tilec,
 											window,
