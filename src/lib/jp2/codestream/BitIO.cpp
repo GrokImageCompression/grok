@@ -75,7 +75,7 @@ void BitIO::bytein() {
 		if (marker != J2K_MS_EPH && marker != J2K_MS_SOP) {
 			GRK_ERROR("Invalid marker 0x%x detected in packet header",marker);
 		} else {
-			GRK_ERROR("Packet SOP/EPH marker 0x%x detected inside packet header",marker);
+			GRK_ERROR("Unexpected SOP/EPH marker 0x%x detected in packet header",marker);
 		}
 		throw InvalidMarkerException(marker);
 	}
