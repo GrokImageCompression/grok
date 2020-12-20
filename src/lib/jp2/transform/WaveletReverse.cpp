@@ -24,8 +24,6 @@
 #include <algorithm>
 #include <limits>
 
-const bool DEBUG_WAVELET = false;
-
 namespace grk {
 
 /* <summary>                             */
@@ -164,7 +162,7 @@ template <typename T> struct dwt_data {
     T* mem;
     uint32_t dn;   /* number of elements in high pass band */
     uint32_t sn;   /* number of elements in low pass band */
-    int32_t cas;  /* 0 = start on even coord, 1 = start on odd coord */
+    uint32_t cas;  /* 0 = start on even coord, 1 = start on odd coord */
     uint32_t      win_l_0; /* start coord in low pass band */
     uint32_t      win_l_1; /* end coord in low pass band */
     uint32_t      win_h_0; /* start coord in high pass band */
@@ -1492,393 +1490,345 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
     return true;
 }
 
-static void interleave_partial_h_53(dwt_data<int32_t> *dwt,
-									ISparseBuffer* sa,
-									uint32_t sa_line)	{
-	auto dest = dwt->mem;
-	int32_t cas = dwt->cas;
-	uint32_t win_l_x0 = dwt->win_l_0;
-	uint32_t win_l_x1 = dwt->win_l_1;
-    bool ret = sa->read( win_l_x0,
-    					sa_line,
-						win_l_x1,
-						sa_line + 1,
-						dest + cas + 2 * win_l_x0,
-						2,
-						0,
-						true);
-    assert(ret);
-
-	uint32_t sn = dwt->sn;
-	uint32_t win_h_x0 = dwt->win_h_0;
-	uint32_t win_h_x1 = dwt->win_h_1;
-    ret = sa->read(sn + win_h_x0,
-    				sa_line,
-					sn + win_h_x1,
-					sa_line + 1,
-					dest + 1 - cas + 2 * win_h_x0,
-					2,
-					0,
-					true);
-    assert(ret);
-    GRK_UNUSED(ret);
-}
-
-
-static void interleave_partial_v_53(dwt_data<int32_t> *vert,
-									ISparseBuffer* sa,
-									uint32_t sa_col,
-									uint32_t nb_cols){
-	auto dest = vert->mem;
-	int32_t cas = vert->cas;
-	uint32_t win_l_y0 = vert->win_l_0;
-	uint32_t win_l_y1 = vert->win_l_1;
-    bool ret = sa->read(sa_col, win_l_y0,
-					   sa_col + nb_cols, win_l_y1,
-					   dest + cas * 4 + 2 * 4 * win_l_y0,
-					   1,
-					   2 * 4,
-					   true);
-    assert(ret);
-
-	uint32_t sn = vert->sn;
-	uint32_t win_h_y0 = vert->win_h_0;
-	uint32_t win_h_y1 = vert->win_h_1;
-	ret = sa->read( sa_col, sn + win_h_y0,
-					  sa_col + nb_cols, sn + win_h_y1,
-					  dest + (1 - cas) * 4 + 2 * 4 * win_h_y0,
-					  1,
-					  2 * 4,
-					  true);
-    assert(ret);
-    GRK_UNUSED(ret);
-}
-
-static void decompress_partial_h_53(dwt_data<int32_t> *horiz){
-
-	#define S(i) 	buf[(i)<<1]
-	#define D(i) 	buf[(1+((i)<<1))]
-
-	#define S_(i) 	((i)<0?S(0):((i)>=sn?S(sn-1):S(i)))
-	#define D_(i) 	((i)<0?D(0):((i)>=dn?D(dn-1):D(i)))
-
-	#define SS_(i)	((i)<0?S(0):((i)>=dn?S(dn-1):S(i)))
-	#define DD_(i) 	((i)<0?D(0):((i)>=sn?D(sn-1):D(i)))
-
-
-	int32_t i;
-    auto buf = horiz->mem;
-	int32_t dn = horiz->dn;
-	int32_t sn = horiz->sn;
-	int32_t cas = horiz->cas;
-	int32_t win_l_x0 = (int32_t)horiz->win_l_0;
-	int32_t win_l_x1 = (int32_t)horiz->win_l_1;
-	int32_t win_h_x0 = (int32_t)horiz->win_h_0;
-	int32_t win_h_x1 = (int32_t)horiz->win_h_1;
-
-    if (!cas) {
-        if ((dn > 0) || (sn > 1)) {
-            /* Naive version is :
-            for (i = win_l_x0; i < i_max; i++) {
-                S(i) -= (D_(i - 1) + D_(i) + 2) >> 2;
-            }
-            for (i = win_h_x0; i < win_h_x1; i++) {
-                D(i) += (S_(i) + S_(i + 1)) >> 1;
-            }
-            but the compiler doesn't manage to unroll it to avoid bound
-            checking in S_ and D_ macros
-            */
-
-            i = win_l_x0;
-            if (i < win_l_x1) {
-                int32_t i_max;
-
-                /* Left-most case */
-                S(i) -= (D_(i - 1) + D_(i) + 2) >> 2;
-                i ++;
-
-                i_max = win_l_x1;
-                if (i_max > dn)
-                    i_max = dn;
-                for (; i < i_max; i++) {
-                    /* No bound checking */
-                    S(i) -= (D(i - 1) + D(i) + 2) >> 2;
-                }
-                for (; i < win_l_x1; i++) {
-                    /* Right-most case */
-                    S(i) -= (D_(i - 1) + D_(i) + 2) >> 2;
-                }
-            }
-
-            i = win_h_x0;
-            if (i < win_h_x1) {
-                int32_t i_max = win_h_x1;
-                if (i_max >= sn)
-                    i_max = sn - 1;
-                for (; i < i_max; i++) {
-                    /* No bound checking */
-                    D(i) += (S(i) + S(i + 1)) >> 1;
-                }
-                for (; i < win_h_x1; i++) {
-                    /* Right-most case */
-                    D(i) += (S_(i) + S_(i + 1)) >> 1;
-                }
-            }
-        }
-    } else {
-        if (!sn  && dn == 1) {
-            S(0) /= 2;
-        } else {
-            for (i = win_l_x0; i < win_l_x1; i++)
-                D(i) -= (SS_(i) + SS_(i + 1) + 2) >> 2;
-            for (i = win_h_x0; i < win_h_x1; i++)
-                S(i) += (DD_(i) + DD_(i - 1)) >> 1;
-        }
-    }
-}
-
-static void decompress_partial_v_53(dwt_data<int32_t> *vert){
-
-	#define S_off(i,off) 		buf[(i)*8+off]
-	#define D_off(i,off) 		buf[(1+(i)*2)*4+off]
-
-	#define S_off_(i,off) 		(((i)>=sn ? S_off(sn-1,off) : S_off(i,off)))
-	#define D_off_(i,off) 		(((i)>=dn ? D_off(dn-1,off) : D_off(i,off)))
-
-	#define S_sgnd_off_(i,off) 	(((i)<0   ? S_off(0,off)    : S_off_(i,off)))
-	#define D_sgnd_off_(i,off) 	(((i)<0	  ? D_off(0,off)    : D_off_(i,off)))
-
-	#define SS_sgnd_off_(i,off)  ((i)<0   ? S_off(0,off)    : ((i)>=dn ? S_off(dn-1,off) : S_off(i,off)))
-	#define DD_sgnd_off_(i,off)  ((i)<0   ? D_off(0,off)    : ((i)>=sn ? D_off(sn-1,off) : D_off(i,off)))
-
-	#define SS_off_(i,off) 		(((i)>=dn ? S_off(dn-1,off) : S_off(i,off)))
-	#define DD_off_(i,off) 		(((i)>=sn ? D_off(sn-1,off) : D_off(i,off)))
-
-	uint32_t i;
-    auto buf = vert->mem;
-	uint32_t dn = vert->dn;
-	uint32_t sn = vert->sn;
-	uint32_t cas = vert->cas;
-	uint32_t win_l_x0 = vert->win_l_0;
-	uint32_t win_l_x1 = vert->win_l_1;
-	uint32_t win_h_x0 = vert->win_h_0;
-	uint32_t win_h_x1 = vert->win_h_1;
-
-    if (!cas) {
-        if ((dn > 0) || (sn > 1)) {
-            /* Naive version is :
-            for (i = win_l_x0; i < i_max; i++) {
-                S(i) -= (D_(i - 1) + D_(i) + 2) >> 2;
-            }
-            for (i = win_h_x0; i < win_h_x1; i++) {
-                D(i) += (S_(i) + S_(i + 1)) >> 1;
-            }
-            but the compiler doesn't manage to unroll it to avoid bound
-            checking in S_ and D_ macros
-            */
-            i = win_l_x0;
-            if (i < win_l_x1) {
-                uint32_t i_max;
-
-                /* Left-most case */
-                for (uint32_t off = 0; off < 4; off++)
-                    S_off(i, off) -= (D_sgnd_off_((int64_t)i - 1, off) + D_off_(i, off) + 2) >> 2;
-                i ++;
-
-                i_max = win_l_x1;
-                if (i_max > dn)
-                    i_max = dn;
-#ifdef __SSE2__
-                if (i + 1 < i_max) {
-                    const __m128i two = _mm_set1_epi32(2);
-                    auto Dm1 = _mm_load_si128((__m128i *)(buf + 4 + ((int64_t)i - 1) * 8));
-                    for (; i + 1 < i_max; i += 2) {
-                        /* No bound checking */
-                        auto S = _mm_load_si128((__m128i *)(buf + i * 8));
-                        auto D = _mm_load_si128((__m128i *)(buf + 4 + i * 8));
-                        auto S1 = _mm_load_si128((__m128i *)(buf + (i + 1) * 8));
-                        auto D1 = _mm_load_si128((__m128i *)(buf + 4 + (i + 1) * 8));
-                        S = _mm_sub_epi32(S,
-                                          _mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(Dm1, D), two), 2));
-                        S1 = _mm_sub_epi32(S1,
-                                           _mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(D, D1), two), 2));
-                        _mm_store_si128((__m128i*)(buf + i * 8), S);
-                        _mm_store_si128((__m128i*)(buf + (i + 1) * 8), S1);
-                        Dm1 = D1;
-                    }
-                }
-#endif
-                for (; i < i_max; i++) {
-                    /* No bound checking */
-                    for (uint32_t off = 0; off < 4; off++)
-                        S_off(i, off) -= (D_sgnd_off_((int64_t)i - 1, off) + D_off(i, off) + 2) >> 2;
-                }
-                for (; i < win_l_x1; i++) {
-                    /* Right-most case */
-                    for (uint32_t off = 0; off < 4; off++)
-                        S_off(i, off) -= (D_sgnd_off_((int64_t)i - 1, off) + D_off_(i, off) + 2) >> 2;
-                }
-            }
-            i = win_h_x0;
-            if (i < win_h_x1) {
-                uint32_t i_max = win_h_x1;
-                if (i_max >= sn)
-                    i_max = sn - 1;
-#ifdef __SSE2__
-                if (i + 1 < i_max) {
-                    auto S =  _mm_load_si128((__m128i *)(buf + i * 8));
-                    for (; i + 1 < i_max; i += 2) {
-                        /* No bound checking */
-                    	auto D = _mm_load_si128((__m128i *)(buf + 4 + i * 8));
-                    	auto S1 = _mm_load_si128((__m128i *)(buf + (i + 1) * 8));
-                    	auto D1 = _mm_load_si128((__m128i *)(buf + 4 + (i + 1) * 8));
-                    	auto S2 = _mm_load_si128((__m128i *)(buf + (i + 2) * 8));
-                        D = _mm_add_epi32(D, _mm_srai_epi32(_mm_add_epi32(S, S1), 1));
-                        D1 = _mm_add_epi32(D1, _mm_srai_epi32(_mm_add_epi32(S1, S2), 1));
-                        _mm_store_si128((__m128i*)(buf + 4 + i * 8), D);
-                        _mm_store_si128((__m128i*)(buf + 4 + (i + 1) * 8), D1);
-                        S = S2;
-                    }
-                }
-#endif
-                for (; i < i_max; i++) {
-                    /* No bound checking */
-                    for (uint32_t off = 0; off < 4; off++)
-                        D_off(i, off) += (S_off(i, off) + S_off(i + 1, off)) >> 1;
-                }
-                for (; i < win_h_x1; i++) {
-                    /* Right-most case */
-                    for (uint32_t off = 0; off < 4; off++)
-                        D_off(i, off) += (S_off_(i, off) + S_off_(i + 1, off)) >> 1;
-                }
-            }
-        }
-    } else {
-        if (!sn  && dn == 1) {
-        	for (uint32_t off = 0; off < 4; off++)
-                S_off(0, off) /= 2;
-        } else {
-            for (i = win_l_x0; i < win_l_x1; i++) {
-                for (uint32_t off = 0; off < 4; off++)
-                    D_off(i, off) -=
-                    		(SS_off_(i, off) + SS_off_(i + 1, off) + 2) >> 2;
-            }
-            for (i = win_h_x0; i < win_h_x1; i++) {
-                for (uint32_t off = 0; off < 4; off++)
-                    S_off(i, off) +=
-                    		(DD_off_(i, off) + DD_sgnd_off_((int64_t)i - 1, off)) >> 1;
-            }
-        }
-    }
-}
-
-class Partial53 {
+template<typename T,
+			uint32_t VERT_PASS_WIDTH,
+			uint32_t VERT_PASS_HEIGHT> class PartialInterleaver {
 public:
-	void interleave_partial_h(dwt_data<int32_t>* dwt,
+	/**
+	 * interleaved data is laid out in the dwt->mem buffer in
+	 * increments of type T
+	 */
+	void interleave_h(dwt_data<T>* dwt,
 								ISparseBuffer* sa,
-								uint32_t sa_line,
-								uint32_t num_rows){
-		(void)num_rows;
-		interleave_partial_h_53(dwt,sa,sa_line);
+								uint32_t y_offset,
+								uint32_t y_num_rows){
+	    for (uint32_t i = 0; i < y_num_rows; i++) {
+	    	// read one row of L band and write interleaved
+	        bool ret = sa->read(dwt->win_l_0,
+							  y_offset + i,
+							  dwt->win_l_1,
+							  y_offset + i + 1,
+							  (int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_0) + i,
+							  2 * sizeof(T)/sizeof(int32_t),
+							  0,
+							  true);
+	        assert(ret);
+	        // read one row of H band and write interleaved
+	        ret = sa->read(dwt->sn + dwt->win_h_0,
+							  y_offset + i,
+							  dwt->sn + dwt->win_h_1,
+							  y_offset + i + 1,
+							  (int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_0) + i,
+							  2 * sizeof(T)/sizeof(int32_t),
+							  0,
+							  true);
+	        assert(ret);
+	        GRK_UNUSED(ret);
+	    }
 	}
-	void decompress_h(dwt_data<int32_t>* dwt){
-		decompress_partial_h_53(dwt);
-	}
-	void interleave_partial_v(dwt_data<int32_t>* GRK_RESTRICT dwt,
+	/*
+	 * interleaved data is laid out in the dwt->mem buffer in
+	 * increments of VERT_PASS_HEIGHT elements of type T
+	 *
+	 */
+	void interleave_v(dwt_data<T>* GRK_RESTRICT dwt,
 								ISparseBuffer* sa,
-								uint32_t sa_col,
-								uint32_t nb_elts_read){
-		interleave_partial_v_53(dwt,sa,sa_col,nb_elts_read);
-	}
-	void decompress_v(dwt_data<int32_t>* dwt){
-		decompress_partial_v_53(dwt);
-	}
-};
-
-static void interleave_partial_h_97(dwt_data<vec4f>* dwt,
-									ISparseBuffer* sa,
-									uint32_t y_offset,
-									uint32_t num_rows){
-    for (uint32_t i = 0; i < num_rows; i++) {
-        bool ret = sa->read(dwt->win_l_0,
-						  y_offset + i,
-						  dwt->win_l_1,
-						  y_offset + i + 1,
-						  /* Nasty cast from float* to int32* */
-						  (int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_0) + i,
-						  8,
-						  0,
-						  true);
-        assert(ret);
-        ret = sa->read(dwt->sn + dwt->win_h_0,
-						  y_offset + i,
-						  dwt->sn + dwt->win_h_1,
-						  y_offset + i + 1,
-						  /* Nasty cast from float* to int32* */
-						  (int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_0) + i,
-						  8,
-						  0,
-						  true);
-        assert(ret);
-        GRK_UNUSED(ret);
-    }
-}
-
-
-static void interleave_partial_v_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
-									ISparseBuffer* sa,
-									uint32_t sa_col,
-									uint32_t nb_elts_read){
-    bool ret = sa->read(sa_col,
-    					dwt->win_l_0,
-						sa_col + nb_elts_read,
-						dwt->win_l_1,
-						(int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_0),
+								uint32_t x_offset,
+								uint32_t x_num_elements){
+		assert(x_num_elements <= VERT_PASS_WIDTH);
+    	// read one vertical strip (of width x_num_elements <= VERT_PASS_WIDTH) of L band and write interleaved
+	    bool ret = sa->read(x_offset,
+	    					dwt->win_l_0,
+							x_offset + x_num_elements,
+							dwt->win_l_1,
+							(int32_t*)(dwt->mem + (dwt->cas + 2 * dwt->win_l_0) * VERT_PASS_HEIGHT),
+							1,
+							2 * VERT_PASS_HEIGHT * sizeof(T)/sizeof(int32_t),
+							true);
+	    assert(ret);
+    	// read one vertical strip (of width x_num_elements) of H band and write interleaved
+	    ret = sa->read(x_offset,
+	    				dwt->sn + dwt->win_h_0,
+						x_offset + x_num_elements,
+						dwt->sn + dwt->win_h_1,
+						(int32_t*)(dwt->mem + ((1 - dwt->cas) + 2 * dwt->win_h_0) *  VERT_PASS_HEIGHT),
 						1,
-						2*4,
+						2 * VERT_PASS_HEIGHT * sizeof(T)/sizeof(int32_t),
 						true);
-    assert(ret);
-    ret = sa->read(sa_col,
-    				dwt->sn + dwt->win_h_0,
-					sa_col + nb_elts_read,
-					dwt->sn + dwt->win_h_1,
-					(int32_t*)(dwt->mem + (1 - dwt->cas) + 2 * dwt->win_h_0),
-					1,
-					2*4,
-					true);
-    assert(ret);
-    GRK_UNUSED(ret);
-}
-
-class Partial97 {
-public:
-	void interleave_partial_h(dwt_data<vec4f>* dwt,
-								ISparseBuffer* sa,
-								uint32_t sa_line,
-								uint32_t num_rows){
-		interleave_partial_h_97(dwt,sa,sa_line,num_rows);
+	    assert(ret);
+	    GRK_UNUSED(ret);
 	}
-	void decompress_h(dwt_data<vec4f>* dwt){
+};
+
+template<typename T,
+			uint32_t VERT_PASS_WIDTH,
+			uint32_t VERT_PASS_HEIGHT> class Partial53 : public PartialInterleaver<T,
+																					VERT_PASS_WIDTH,
+																					VERT_PASS_HEIGHT> {
+public:
+	void decompress_h(dwt_data<T>* horiz){
+
+		#define S(i) 	buf[(i)<<1]
+		#define D(i) 	buf[(1+((i)<<1))]
+
+		#define S_(i) 	((i)<0 ? S(0) :	((i)>=sn ? S(sn-1) : S(i)))
+		#define D_(i) 	((i)<0 ? D(0) :	((i)>=dn ? D(dn-1) : D(i)))
+
+		#define SS_(i)	((i)<0 ? S(0) :	((i)>=dn ? S(dn-1) : S(i)))
+		#define DD_(i) 	((i)<0 ? D(0) :	((i)>=sn ? D(sn-1) : D(i)))
+
+		int32_t i;
+		auto buf 		 = horiz->mem;
+		int32_t dn 		 = horiz->dn;
+		int32_t sn 		 = horiz->sn;
+		int32_t cas 	 = horiz->cas;
+		int32_t win_l_x0 = (int32_t)horiz->win_l_0;
+		int32_t win_l_x1 = (int32_t)horiz->win_l_1;
+		int32_t win_h_x0 = (int32_t)horiz->win_h_0;
+		int32_t win_h_x1 = (int32_t)horiz->win_h_1;
+
+		if (!cas) {
+			if ((dn > 0) || (sn > 1)) {
+				/* Naive version is :
+				for (i = win_l_x0; i < i_max; i++) {
+					S(i) -= (D_(i - 1) + D_(i) + 2) >> 2;
+				}
+				for (i = win_h_x0; i < win_h_x1; i++) {
+					D(i) += (S_(i) + S_(i + 1)) >> 1;
+				}
+				but the compiler doesn't manage to unroll it to avoid bound
+				checking in S_ and D_ macros
+				*/
+
+				i = win_l_x0;
+				if (i < win_l_x1) {
+					int32_t i_max;
+
+					/* Left-most case */
+					S(i) -= (D_(i - 1) + D_(i) + 2) >> 2;
+					i ++;
+
+					i_max = win_l_x1;
+					if (i_max > dn)
+						i_max = dn;
+					for (; i < i_max; i++) {
+						/* No bound checking */
+						S(i) -= (D(i - 1) + D(i) + 2) >> 2;
+					}
+					for (; i < win_l_x1; i++) {
+						/* Right-most case */
+						S(i) -= (D_(i - 1) + D_(i) + 2) >> 2;
+					}
+				}
+
+				i = win_h_x0;
+				if (i < win_h_x1) {
+					int32_t i_max = win_h_x1;
+					if (i_max >= sn)
+						i_max = sn - 1;
+					for (; i < i_max; i++) {
+						/* No bound checking */
+						D(i) += (S(i) + S(i + 1)) >> 1;
+					}
+					for (; i < win_h_x1; i++) {
+						/* Right-most case */
+						D(i) += (S_(i) + S_(i + 1)) >> 1;
+					}
+				}
+			}
+		} else {
+			if (!sn  && dn == 1) {
+				S(0) /= 2;
+			} else {
+				for (i = win_l_x0; i < win_l_x1; i++)
+					D(i) -= (SS_(i) + SS_(i + 1) + 2) >> 2;
+				for (i = win_h_x0; i < win_h_x1; i++)
+					S(i) += (DD_(i) + DD_(i - 1)) >> 1;
+			}
+		}
+	}
+	void decompress_v(dwt_data<T>* vert){
+
+		#define S_off(i,off) 		buf[(i)*2 * VERT_PASS_WIDTH + off]
+		#define D_off(i,off) 		buf[(1+(i)*2)*VERT_PASS_WIDTH + off]
+
+		#define S_off_(i,off) 		(((i)>=sn ? S_off(sn-1,off) : S_off(i,off)))
+		#define D_off_(i,off) 		(((i)>=dn ? D_off(dn-1,off) : D_off(i,off)))
+
+		#define S_sgnd_off_(i,off) 	(((i)<0   ? S_off(0,off)    : S_off_(i,off)))
+		#define D_sgnd_off_(i,off) 	(((i)<0	  ? D_off(0,off)    : D_off_(i,off)))
+
+		#define SS_sgnd_off_(i,off)  ((i)<0   ? S_off(0,off)    : ((i)>=dn ? S_off(dn-1,off) : S_off(i,off)))
+		#define DD_sgnd_off_(i,off)  ((i)<0   ? D_off(0,off)    : ((i)>=sn ? D_off(sn-1,off) : D_off(i,off)))
+
+		#define SS_off_(i,off) 		(((i)>=dn ? S_off(dn-1,off) : S_off(i,off)))
+		#define DD_off_(i,off) 		(((i)>=sn ? D_off(sn-1,off) : D_off(i,off)))
+
+		uint32_t i;
+		auto buf 		  = vert->mem;
+		uint32_t dn 	  = vert->dn;
+		uint32_t sn 	  = vert->sn;
+		uint32_t cas 	  = vert->cas;
+		uint32_t win_l_x0 = vert->win_l_0;
+		uint32_t win_l_x1 = vert->win_l_1;
+		uint32_t win_h_x0 = vert->win_h_0;
+		uint32_t win_h_x1 = vert->win_h_1;
+
+		if (!cas) {
+			if ((dn > 0) || (sn > 1)) {
+				/* Naive version is :
+				for (i = win_l_x0; i < i_max; i++) {
+					S(i) -= (D_(i - 1) + D_(i) + 2) >> 2;
+				}
+				for (i = win_h_x0; i < win_h_x1; i++) {
+					D(i) += (S_(i) + S_(i + 1)) >> 1;
+				}
+				but the compiler doesn't manage to unroll it to avoid bound
+				checking in S_ and D_ macros
+				*/
+				i = win_l_x0;
+				if (i < win_l_x1) {
+					uint32_t i_max;
+
+					/* Left-most case */
+					for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
+						S_off(i, off) -= (D_sgnd_off_((int64_t)i - 1, off) + D_off_(i, off) + 2) >> 2;
+					i ++;
+
+					i_max = win_l_x1;
+					if (i_max > dn)
+						i_max = dn;
+		#ifdef __SSE2__
+					if (i + 1 < i_max) {
+						const __m128i two = _mm_set1_epi32(2);
+						auto Dm1 = _mm_load_si128((__m128i *)(buf + VERT_PASS_WIDTH + ((int64_t)i - 1) * 2 * VERT_PASS_WIDTH));
+						for (; i + 1 < i_max; i += 2) {
+							/* No bound checking */
+							auto S = _mm_load_si128((__m128i *)(buf +  (i * 2) * VERT_PASS_WIDTH));
+							auto D = _mm_load_si128((__m128i *)(buf +  (i * 2 + 1) * VERT_PASS_WIDTH));
+							auto S1 = _mm_load_si128((__m128i *)(buf + (i * 2 + 2) * VERT_PASS_WIDTH));
+							auto D1 = _mm_load_si128((__m128i *)(buf + (i * 2 + 3) * VERT_PASS_WIDTH));
+							S  = _mm_sub_epi32(S,  _mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(Dm1, D), two), 2));
+							S1 = _mm_sub_epi32(S1, _mm_srai_epi32(_mm_add_epi32(_mm_add_epi32(D, D1), two), 2));
+							_mm_store_si128((__m128i*)(buf + i * 2 * VERT_PASS_WIDTH), S);
+							_mm_store_si128((__m128i*)(buf + (i + 1) * 2 * VERT_PASS_WIDTH), S1);
+							Dm1 = D1;
+						}
+					}
+		#endif
+					for (; i < i_max; i++) {
+						/* No bound checking */
+						for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
+							S_off(i, off) -= (D_sgnd_off_((int64_t)i - 1, off) + D_off(i, off) + 2) >> 2;
+					}
+					for (; i < win_l_x1; i++) {
+						/* Right-most case */
+						for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
+							S_off(i, off) -= (D_sgnd_off_((int64_t)i - 1, off) + D_off_(i, off) + 2) >> 2;
+					}
+				}
+				i = win_h_x0;
+				if (i < win_h_x1) {
+					uint32_t i_max = win_h_x1;
+					if (i_max >= sn)
+						i_max = sn - 1;
+		#ifdef __SSE2__
+					if (i + 1 < i_max) {
+						auto S =  _mm_load_si128((__m128i *)(buf + i * 2 * VERT_PASS_WIDTH));
+						for (; i + 1 < i_max; i += 2) {
+							/* No bound checking */
+							auto D =  _mm_load_si128((__m128i *)(buf + (1 + i * 2) * VERT_PASS_WIDTH ));
+							auto S1 = _mm_load_si128((__m128i *)(buf + ((i + 1) * 2) * VERT_PASS_WIDTH ));
+							auto D1 = _mm_load_si128((__m128i *)(buf + (1 + (i + 1) * 2) * VERT_PASS_WIDTH ));
+							auto S2 = _mm_load_si128((__m128i *)(buf + ((i + 2) * 2) * VERT_PASS_WIDTH) );
+							D  = _mm_add_epi32(D,  _mm_srai_epi32(_mm_add_epi32(S, S1),  1));
+							D1 = _mm_add_epi32(D1, _mm_srai_epi32(_mm_add_epi32(S1, S2), 1));
+							_mm_store_si128((__m128i*)(buf + (1 + i * 2) * VERT_PASS_WIDTH), D);
+							_mm_store_si128((__m128i*)(buf + (1 + (i + 1) * 2) * VERT_PASS_WIDTH ), D1);
+							S = S2;
+						}
+					}
+		#endif
+					for (; i < i_max; i++) {
+						/* No bound checking */
+						for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
+							D_off(i, off) += (S_off(i, off) + S_off(i + 1, off)) >> 1;
+					}
+					for (; i < win_h_x1; i++) {
+						/* Right-most case */
+						for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
+							D_off(i, off) += (S_off_(i, off) + S_off_(i + 1, off)) >> 1;
+					}
+				}
+			}
+		} else {
+			if (!sn  && dn == 1) {
+				for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
+					S_off(0, off) /= 2;
+			} else {
+				for (i = win_l_x0; i < win_l_x1; i++) {
+					for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
+						D_off(i, off) -= (SS_off_(i, off) + SS_off_(i + 1, off) + 2) >> 2;
+				}
+				for (i = win_h_x0; i < win_h_x1; i++) {
+					for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
+						S_off(i, off) += (DD_off_(i, off) + DD_sgnd_off_((int64_t)i - 1, off)) >> 1;
+				}
+			}
+		}
+	}
+};
+
+template<typename T,
+			uint32_t VERT_PASS_WIDTH,
+			uint32_t VERT_PASS_HEIGHT> class Partial97 : public PartialInterleaver<T,
+																					VERT_PASS_WIDTH,
+																					VERT_PASS_HEIGHT> {
+public:
+	void decompress_h(dwt_data<T>* dwt){
 		decompress_step_97(dwt);
 	}
-	void interleave_partial_v(dwt_data<vec4f>* GRK_RESTRICT dwt,
-								ISparseBuffer* sa,
-								uint32_t sa_col,
-								uint32_t nb_elts_read){
-		interleave_partial_v_97(dwt,sa,sa_col,nb_elts_read);
-	}
-	void decompress_v(dwt_data<vec4f>* dwt){
+	void decompress_v(dwt_data<T>* dwt){
 		decompress_step_97(dwt);
 	}
 };
 
-
-/* FILTER_WIDTH value matches the maximum left/right extension given in tables */
-/* F.2 and F.3 of the standard. */
+/**
+ * ************************************************************************************
+ *
+ * 5/3 operates on elements of type int32_t while 9/7 operates on elements of type vec4f
+ *
+ * Horizontal pass
+ *
+ * Each thread processes a strip running the length of the window, in the following units:
+ *
+ *   5/3
+ *   Width :  1
+ *   Height : 1
+ *
+ *   9/7
+ *   Width :  1
+ *   Height : 4
+ *
+ * Vertical pass
+ *
+ *  5/3
+ *  Width :  4
+ *  Height : 4
+ *
+ *  9/7
+ *  Width :  1
+ *  Height : 4
+ *
+ ****************************************************************************
+ *
+ * FILTER_WIDTH value matches the maximum left/right extension given in tables
+ * F.2 and F.3 of the standard
+ */
 template <typename T,
 			uint32_t HORIZ_PASS_HEIGHT,
 			uint32_t VERT_PASS_WIDTH,
-			uint32_t COLUMNS_PER_STEP,
+			uint32_t VERT_PASS_HEIGHT,
 			uint32_t FILTER_WIDTH,
 			typename D>
 
@@ -1918,7 +1868,7 @@ template <typename T,
 	}
 
     // in 53 vertical pass, we process 4 vertical columns at a time
-    size_t data_size = (size_t)max_resolution(fullRes, numres) * COLUMNS_PER_STEP;
+    size_t data_size = (size_t)(max_resolution(fullRes, numres) + 2 * FILTER_WIDTH )* VERT_PASS_HEIGHT;
 	dwt_data<T> horiz;
     if (!horiz.alloc(data_size)) {
         GRK_ERROR("Out of memory");
@@ -1930,11 +1880,7 @@ template <typename T,
     D decompressor;
     size_t num_threads = ThreadPool::get()->num_threads();
 
-	if (DEBUG_WAVELET){
-		std::cout << "Partial Wavelet" << std::endl;
-	}
-
-	try {
+    try {
 
     for (uint8_t resno = 1; resno < numres; resno ++) {
     	auto fullResLower = fullRes;
@@ -1982,6 +1928,85 @@ template <typename T,
 					goto cleanup;
 		}
 
+		auto executor_h = [sa, resWindowRect, &decompressor](decompress_job<float, dwt_data<T>> *job){
+			 uint32_t j;
+			 for (j = job->min_j; j + HORIZ_PASS_HEIGHT-1 < job->max_j; j += HORIZ_PASS_HEIGHT) {
+				 decompressor.interleave_h(&job->data, sa, j,HORIZ_PASS_HEIGHT);
+				 decompressor.decompress_h(&job->data);
+				 if (!sa->write( resWindowRect.x0,
+								  j,
+								  resWindowRect.x1,
+								  j + HORIZ_PASS_HEIGHT,
+								  (int32_t*)(job->data.mem + resWindowRect.x0),
+								  HORIZ_PASS_HEIGHT,
+								  1,
+								  true)) {
+					 GRK_ERROR("sparse array write failure");
+					 job->data.release();
+					 return 1;
+				 }
+			 }
+			 if (j < job->max_j ) {
+				 decompressor.interleave_h(&job->data, sa, j, job->max_j - j);
+				 decompressor.decompress_h(&job->data);
+				 if (!sa->write( resWindowRect.x0,
+								  j,
+								  resWindowRect.x1,
+								  job->max_j,
+								  (int32_t*)(job->data.mem + resWindowRect.x0),
+								  HORIZ_PASS_HEIGHT,
+								  1,
+								  true)) {
+					 GRK_ERROR("Sparse array write failure");
+					 job->data.release();
+					 return 1;
+				 }
+			  }
+			  job->data.release();
+			  delete job;
+			  return 0;
+		};
+
+		auto executor_v = [sa, resWindowRect, &decompressor](decompress_job<float, dwt_data<T>> *job){
+			 uint32_t j;
+			 for (j = job->min_j; j + VERT_PASS_WIDTH-1 < job->max_j; j += VERT_PASS_WIDTH) {
+				decompressor.interleave_v(&job->data, sa, j, VERT_PASS_WIDTH);
+				decompressor.decompress_v(&job->data);
+				if (!sa->write(j,
+							  resWindowRect.y0,
+							  j + VERT_PASS_WIDTH,
+							  resWindowRect.y1,
+							  (int32_t*)job->data.mem + VERT_PASS_WIDTH * resWindowRect.y0,
+							  1,
+							  VERT_PASS_WIDTH,
+							  true)) {
+					GRK_ERROR("Sparse array write failure");
+					job->data.release();
+					return 1;
+				}
+			 }
+			 if (j <  job->max_j) {
+				decompressor.interleave_v(&job->data, sa, j,  job->max_j - j);
+				decompressor.decompress_v(&job->data);
+				if (!sa->write(j,
+							  resWindowRect.y0,
+							  job->max_j,
+							  resWindowRect.y1,
+							  (int32_t*)job->data.mem + VERT_PASS_WIDTH * resWindowRect.y0,
+							  1,
+							  VERT_PASS_WIDTH,
+							  true)) {
+					GRK_ERROR("Sparse array write failure");
+					job->data.release();
+					return 1;
+				}
+			}
+
+			job->data.release();
+			delete job;
+			return 0;
+		};
+
 		//3. calculate synthesis
         horiz.win_l_0 = bandWindowRect[BAND_ORIENT_LL].x0;
         horiz.win_l_1 = bandWindowRect[BAND_ORIENT_LL].x1;
@@ -1994,191 +2019,72 @@ template <typename T,
 				num_jobs = num_rows;
 			uint32_t step_j = num_jobs ? ( num_rows / num_jobs) : 0;
 			if (num_threads == 1 ||step_j < HORIZ_PASS_HEIGHT){
-		     uint32_t j;
-			 for (j = splitWindowRect[k].y0; j + HORIZ_PASS_HEIGHT-1 < splitWindowRect[k].y1; j += HORIZ_PASS_HEIGHT) {
-				 decompressor.interleave_partial_h(&horiz, sa, j,HORIZ_PASS_HEIGHT);
-				 decompressor.decompress_h(&horiz);
-				 if (!sa->write( resWindowRect.x0,
-								  j,
-								  resWindowRect.x1,
-								  j + HORIZ_PASS_HEIGHT,
-								  (int32_t*)(horiz.mem + resWindowRect.x0),
-								  HORIZ_PASS_HEIGHT,
-								  1,
-								  true)) {
-					 GRK_ERROR("sparse array write failure");
-					 goto cleanup;
-				 }
-			 }
-			 if (j < splitWindowRect[k].y1 ) {
-				 decompressor.interleave_partial_h(&horiz, sa, j, splitWindowRect[k].y1 - j);
-				 decompressor.decompress_h(&horiz);
-				 if (!sa->write( resWindowRect.x0,
-								  j,
-								  resWindowRect.x1,
-								  splitWindowRect[k].y1,
-								  (int32_t*)(horiz.mem + resWindowRect.x0),
-								  HORIZ_PASS_HEIGHT,
-								  1,
-								  true)) {
-					 GRK_ERROR("Sparse array write failure");
-					goto cleanup;
-				 }
-			 }
-		}else{
-			std::vector< std::future<int> > results;
-			for(uint32_t j = 0; j < num_jobs; ++j) {
-			   auto job = new decompress_job<float, dwt_data<T>>(
-					   	   	   horiz,
-							   splitWindowRect[k].y0 + j * step_j,
-							   j < (num_jobs - 1U) ? splitWindowRect[k].y0 + (j + 1U) * step_j : splitWindowRect[k].y1);
+			   auto job = new decompress_job<float, dwt_data<T>>( horiz, splitWindowRect[k].y0, splitWindowRect[k].y1);
 				if (!job->data.alloc(data_size)) {
 					GRK_ERROR("Out of memory");
 					goto cleanup;
 				}
-				results.emplace_back(
-					ThreadPool::get()->enqueue([job,sa, resWindowRect, &decompressor] {
-					 uint32_t j;
-					 for (j = job->min_j; j + HORIZ_PASS_HEIGHT-1 < job->max_j; j += HORIZ_PASS_HEIGHT) {
-						 decompressor.interleave_partial_h(&job->data, sa, j,HORIZ_PASS_HEIGHT);
-						 decompressor.decompress_h(&job->data);
-						 if (!sa->write( resWindowRect.x0,
-										  j,
-										  resWindowRect.x1,
-										  j + HORIZ_PASS_HEIGHT,
-										  (int32_t*)(job->data.mem + resWindowRect.x0),
-										  HORIZ_PASS_HEIGHT,
-										  1,
-										  true)) {
-							 GRK_ERROR("sparse array write failure");
-							 job->data.release();
-							 return 1;
-						 }
-					 }
-					 if (j < job->max_j ) {
-						 decompressor.interleave_partial_h(&job->data, sa, j, job->max_j - j);
-						 decompressor.decompress_h(&job->data);
-						 if (!sa->write( resWindowRect.x0,
-										  j,
-										  resWindowRect.x1,
-										  job->max_j,
-										  (int32_t*)(job->data.mem + resWindowRect.x0),
-										  HORIZ_PASS_HEIGHT,
-										  1,
-										  true)) {
-							 GRK_ERROR("Sparse array write failure");
-							 job->data.release();
-							 return 1;
-						 }
-					  }
-					  job->data.release();
-					  delete job;
-					  return 0;
-					})
-				);
+				if (executor_h(job))
+					goto cleanup;
+			}else{
+				std::vector< std::future<int> > results;
+				for(uint32_t j = 0; j < num_jobs; ++j) {
+				   auto job = new decompress_job<float, dwt_data<T>>( horiz,splitWindowRect[k].y0 + j * step_j,
+																	   j < (num_jobs - 1U) ?
+																			   splitWindowRect[k].y0 + (j + 1U) * step_j :
+																				   splitWindowRect[k].y1);
+					if (!job->data.alloc(data_size)) {
+						GRK_ERROR("Out of memory");
+						goto cleanup;
+					}
+					results.emplace_back(
+						ThreadPool::get()->enqueue([job,executor_h] {
+							return executor_h(job);
+						})
+					);
+				}
+				bool blockError = false;
+				for(auto &result: results){
+					if (result.get() != 0)
+						blockError = true;
+				}
+				if (blockError)
+					goto cleanup;
 			}
-			bool blockError = false;
-			for(auto &result: results){
-				if (result.get() != 0)
-					blockError = true;
-			}
-			if (blockError)
-				goto cleanup;
-		  }
-        }
+		}
 
 		vert.win_l_0 = bandWindowRect[BAND_ORIENT_LL].y0;
-        vert.win_l_1 = bandWindowRect[BAND_ORIENT_LL].y1;
-        vert.win_h_0 = bandWindowRect[BAND_ORIENT_LH].y0;
-        vert.win_h_1 = bandWindowRect[BAND_ORIENT_LH].y1;
-        uint32_t num_jobs = (uint32_t)num_threads;
-        uint32_t num_cols = resWindowRect.width();
+		vert.win_l_1 = bandWindowRect[BAND_ORIENT_LL].y1;
+		vert.win_h_0 = bandWindowRect[BAND_ORIENT_LH].y0;
+		vert.win_h_1 = bandWindowRect[BAND_ORIENT_LH].y1;
+		uint32_t num_jobs = (uint32_t)num_threads;
+		uint32_t num_cols = resWindowRect.width();
 		if (num_cols < num_jobs)
 			num_jobs = num_cols;
 		uint32_t step_j = num_jobs ? ( num_cols / num_jobs) : 0;
 		if (num_threads == 1 || step_j < VERT_PASS_WIDTH){
-	        uint32_t j;
-			for (j = resWindowRect.x0; j + VERT_PASS_WIDTH < resWindowRect.x1; j += VERT_PASS_WIDTH) {
-				decompressor.interleave_partial_v(&vert, sa, j, VERT_PASS_WIDTH);
-				decompressor.decompress_v(&vert);
-				if (!sa->write(j,
-							  resWindowRect.y0,
-							  j + VERT_PASS_WIDTH,
-							  resWindowRect.y1,
-							  (int32_t*)vert.mem + VERT_PASS_WIDTH * resWindowRect.y0,
-							  1,
-							  VERT_PASS_WIDTH,
-							  true)) {
-					GRK_ERROR("Sparse array write failure");
-					goto cleanup;
-				}
+		   auto job = new decompress_job<float, dwt_data<T>>(vert, resWindowRect.x0, resWindowRect.x1);
+			if (!job->data.alloc(data_size)) {
+				GRK_ERROR("Out of memory");
+				goto cleanup;
 			}
-			if (j < resWindowRect.x1) {
-				decompressor.interleave_partial_v(&vert, sa, j, resWindowRect.x1 - j);
-				decompressor.decompress_v(&vert);
-				if (!sa->write( j,
-								  resWindowRect.y0,
-								  resWindowRect.x1,
-								  resWindowRect.y1,
-								  (int32_t*)vert.mem + VERT_PASS_WIDTH * resWindowRect.y0,
-								  1,
-								  VERT_PASS_WIDTH,
-								  true)) {
-					GRK_ERROR("Sparse array write failure");
-					goto cleanup;
-				}
-			}
+			if (executor_v(job))
+				goto cleanup;
 		} else {
 			std::vector< std::future<int> > results;
 			for(uint32_t j = 0; j < num_jobs; ++j) {
-			   auto job = new decompress_job<float, dwt_data<T>>(
-					   	   	   	   	   vert,
-									   resWindowRect.x0 + j * step_j,
-									   j < (num_jobs - 1U) ? resWindowRect.x0 + (j + 1U) * step_j : resWindowRect.x1);
+			   auto job = new decompress_job<float, dwt_data<T>>( vert,resWindowRect.x0 + j * step_j,
+									   	   	   	   	   	   	   	   j < (num_jobs - 1U) ?
+									   	   	   	   	   	   	   			   resWindowRect.x0 + (j + 1U) * step_j :
+																		   	   resWindowRect.x1);
 				if (!job->data.alloc(data_size)) {
 					GRK_ERROR("Out of memory");
 					goto cleanup;
 				}
 				results.emplace_back(
-					ThreadPool::get()->enqueue([job,sa, resWindowRect, &decompressor] {
-					 uint32_t j;
-					 for (j = job->min_j; j + VERT_PASS_WIDTH-1 < job->max_j; j += VERT_PASS_WIDTH) {
-						decompressor.interleave_partial_v(&job->data, sa, j, VERT_PASS_WIDTH);
-						decompressor.decompress_v(&job->data);
-						if (!sa->write(j,
-									  resWindowRect.y0,
-									  j + VERT_PASS_WIDTH,
-									  resWindowRect.y1,
-									  (int32_t*)job->data.mem + VERT_PASS_WIDTH * resWindowRect.y0,
-									  1,
-									  VERT_PASS_WIDTH,
-									  true)) {
-							GRK_ERROR("Sparse array write failure");
-							job->data.release();
-							return 1;
-						}
-					 }
-					 if (j <  job->max_j) {
-						decompressor.interleave_partial_v(&job->data, sa, j,  job->max_j - j);
-						decompressor.decompress_v(&job->data);
-						if (!sa->write(			  j,
-												  resWindowRect.y0,
-												  job->max_j,
-												  resWindowRect.y1,
-												  (int32_t*)job->data.mem + VERT_PASS_WIDTH * resWindowRect.y0,
-												  1,
-												  VERT_PASS_WIDTH,
-												  true)) {
-							GRK_ERROR("Sparse array write failure");
-							job->data.release();
-							return 1;
-						}
-					}
-
-				  job->data.release();
-				  delete job;
-				  return 0;
-				})
+					ThreadPool::get()->enqueue([job,executor_v] {
+						return executor_v(job);
+					})
 				);
 			}
 			bool blockError = false;
@@ -2219,16 +2125,19 @@ bool WaveletReverse::decompress_53(TileProcessor *p_tcd,
 {
     if (p_tcd->wholeTileDecompress)
         return decompress_tile_53(tilec,numres);
-    else
+    else {
+    	constexpr uint32_t vertPassWidth = 4;
+    	constexpr uint32_t vertPassHeight = 4;
         return decompress_partial_tile<int32_t,
         							getHorizontalPassHeight<uint32_t>(true),
-									4,
-									4,
+									vertPassWidth,
+									vertPassHeight,
 									getFilterWidth<uint32_t>(true),
-									Partial53>(tilec,
-											window,
-											numres,
-											tilec->getSparseBuffer());
+									Partial53<int32_t, vertPassWidth, vertPassHeight>>(tilec,
+																		window,
+																		numres,
+																		tilec->getSparseBuffer());
+    }
 }
 
 bool WaveletReverse::decompress_97(TileProcessor *p_tcd,
@@ -2237,16 +2146,19 @@ bool WaveletReverse::decompress_97(TileProcessor *p_tcd,
                 uint32_t numres){
     if (p_tcd->wholeTileDecompress)
         return decompress_tile_97(tilec, numres);
-    else
+    else {
+    	constexpr uint32_t vertPassWidth = 4;
+    	constexpr uint32_t vertPassHeight = 1;
         return decompress_partial_tile<vec4f,
         							getHorizontalPassHeight<uint32_t>(false),
-									4,
-									1,
+									vertPassWidth,
+									vertPassHeight,
 									getFilterWidth<uint32_t>(false),
-									Partial97>(tilec,
-											window,
-											numres,
-											tilec->getSparseBuffer());
+									Partial97<vec4f,vertPassWidth,vertPassHeight>>(tilec,
+																	window,
+																	numres,
+																	tilec->getSparseBuffer());
+    }
 }
 
 
