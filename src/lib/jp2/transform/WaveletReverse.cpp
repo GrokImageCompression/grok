@@ -911,49 +911,79 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
     return rc;
 }
 
+//#undef __SSE__
+
+struct Decompress97{
+	Decompress97() : l(nullptr), w(nullptr), absoluteStart(0), len(0), lenMax(0)
+	{}
+	vec4f* l;
+	vec4f* w;
+	uint32_t absoluteStart;
+	uint32_t len;
+	uint32_t lenMax;
+};
+
+static Decompress97 makeDecompress97(dwt_data<vec4f>* dwt, bool low){
+	 int32_t a, b;
+
+	if (dwt->cas == 0) {
+		a = 0;
+		b = 1;
+	} else {
+		a = 1;
+		b = 0;
+	}
+
+	Decompress97 rc;
+	if (low){
+		rc.l = dwt->mem + b;
+		rc.w = dwt->mem + a + 1;
+		rc.absoluteStart = dwt->win_l_0;
+		rc.len = dwt->win_l_1 - dwt->win_l_0;
+		rc.lenMax = (uint32_t)min<int32_t>(dwt->sn, dwt->dn - a) - dwt->win_l_0;
+	} else {
+		rc.l = dwt->mem + a;
+		rc.w = dwt->mem + b + 1;
+		rc.absoluteStart = dwt->win_h_0;
+		rc.len = dwt->win_h_1 - dwt->win_h_0;
+		rc.lenMax = (uint32_t)min<int32_t>(dwt->dn, dwt->sn - b) - dwt->win_h_0;
+	}
+	return rc;
+};
+
+
 #ifdef __SSE__
-static void decompress_step1_sse_97(vec4f* w,
-                                       uint32_t start,
-                                       uint32_t end,
-                                       const __m128 c){
-    __m128* GRK_RESTRICT vw = (__m128*) w;
+static void decompress_step1_sse_97(vec4f* data,
+                                    uint32_t end,
+                                    const __m128 c){
+	// process 4 floats at a time
+    __m128* GRK_RESTRICT mmData = (__m128*) data;
     uint32_t i;
-    /* 4x unrolled loop */
-    vw += 2 * start;
-    for (i = start; i + 3 < end; i += 4, vw += 8) {
-        __m128 xmm0 = _mm_mul_ps(vw[0], c);
-        __m128 xmm2 = _mm_mul_ps(vw[2], c);
-        __m128 xmm4 = _mm_mul_ps(vw[4], c);
-        __m128 xmm6 = _mm_mul_ps(vw[6], c);
-        vw[0] = xmm0;
-        vw[2] = xmm2;
-        vw[4] = xmm4;
-        vw[6] = xmm6;
+    for (i = 0; i + 3 < end; i += 4, mmData += 8) {
+    	mmData[0] = _mm_mul_ps(mmData[0], c);
+    	mmData[2] = _mm_mul_ps(mmData[2], c);
+    	mmData[4] = _mm_mul_ps(mmData[4], c);
+    	mmData[6] = _mm_mul_ps(mmData[6], c);
     }
-    for (; i < end; ++i, vw += 2)
-        vw[0] = _mm_mul_ps(vw[0], c);
+    for (; i < end; ++i, mmData += 2)
+        mmData[0] = _mm_mul_ps(mmData[0], c);
 }
 
-static void decompress_step2_sse_97(vec4f* l, vec4f* w,
-                                       uint32_t start,
-                                       uint32_t end,
-                                       uint32_t m,
-                                       __m128 c){
-    __m128* GRK_RESTRICT vl = (__m128*) l;
-    __m128* GRK_RESTRICT vw = (__m128*) w;
-    uint32_t i;
-    uint32_t imax = min<uint32_t>(end, m);
+static void decompress_step2_sse_97(Decompress97 d,
+                                    __m128 c){
+    __m128* GRK_RESTRICT vw = (__m128*) d.w;
+
+    uint32_t imax = min<uint32_t>(d.len, d.lenMax);
     __m128 tmp1, tmp2, tmp3;
-    if (start == 0) {
+    if (d.absoluteStart == 0) {
+        __m128* GRK_RESTRICT vl = (__m128*) d.l;
         tmp1 = vl[0];
     } else {
-        vw += start * 2;
+        vw += d.absoluteStart * 2;
         tmp1 = vw[-3];
     }
 
-    i = start;
-
-    /* 4x loop unrolling */
+    uint32_t i = 0;
     for (; i + 3 < imax; i += 4) {
         __m128 tmp4, tmp5, tmp6, tmp7, tmp8, tmp9;
         tmp2 = vw[-1];
@@ -979,8 +1009,8 @@ static void decompress_step2_sse_97(vec4f* l, vec4f* w,
         tmp1 = tmp3;
         vw += 2;
     }
-    if (m < end) {
-        assert(m + 1 == end);
+    if (d.lenMax < d.len) {
+        assert(d.lenMax + 1 == d.len);
         c = _mm_add_ps(c, c);
         c = _mm_mul_ps(c, vw[-2]);
         vw[-1] = _mm_add_ps(vw[-1], c);
@@ -988,36 +1018,28 @@ static void decompress_step2_sse_97(vec4f* l, vec4f* w,
 }
 #else
 static void decompress_step1_97(vec4f* w,
-                                   uint32_t start,
-                                   uint32_t end,
-                                   const float c){
+                                uint32_t end,
+                                const float c){
     float* GRK_RESTRICT fw = (float*) w;
-    uint32_t i;
-    for (i = start; i < end; ++i) {
-        float tmp1 = fw[i * 8    ];
-        float tmp2 = fw[i * 8 + 1];
-        float tmp3 = fw[i * 8 + 2];
-        float tmp4 = fw[i * 8 + 3];
-        fw[i * 8    ] = tmp1 * c;
-        fw[i * 8 + 1] = tmp2 * c;
-        fw[i * 8 + 2] = tmp3 * c;
-        fw[i * 8 + 3] = tmp4 * c;
+
+    for (uint32_t i = 0; i < end; ++i, fw += 8) {
+        fw[0] *= c;
+        fw[1] *= c;
+        fw[2] *= c;
+        fw[3] *= c;;
     }
 }
-static void decompress_step2_97(vec4f* l, vec4f* w,
-                                   uint32_t start,
-                                   uint32_t end,
-                                   uint32_t m,
-                                   float c){
-    float* fl = (float*) l;
-    float* fw = (float*) w;
-    uint32_t i;
-    uint32_t imax = min<uint32_t>(end, m);
-    if (start > 0) {
-        fw += 8 * start;
+static void decompress_step2_97(Decompress97 d,
+                                float c){
+    float* fl = (float*) d.l;
+    float* fw = (float*) d.w;
+
+    uint32_t imax = min<uint32_t>(d.len, d.lenMax);
+    if (d.absoluteStart > 0) {
+        fw += 8 * d.absoluteStart;
         fl = fw - 8;
     }
-    for (i = start; i < imax; ++i) {
+    for (uint32_t i = 0; i < imax; ++i) {
         float tmp1_1 = fl[0];
         float tmp1_2 = fl[1];
         float tmp1_3 = fl[2];
@@ -1037,8 +1059,8 @@ static void decompress_step2_97(vec4f* l, vec4f* w,
         fl = fw;
         fw += 8;
     }
-    if (m < end) {
-        assert(m + 1 == end);
+    if (d.lenMax < d.len) {
+        assert(d.lenMax + 1 == d.len);
         c += c;
         fw[-4] = fw[-4] + fl[0] * c;
         fw[-3] = fw[-3] + fl[1] * c;
@@ -1053,61 +1075,56 @@ static void decompress_step2_97(vec4f* l, vec4f* w,
 /* </summary>                            */
 static void decompress_step_97(dwt_data<vec4f>* GRK_RESTRICT dwt)
 {
-    int32_t a, b;
-
     if (dwt->cas == 0) {
         if (dwt->dn == 0 && dwt->sn <= 1)
             return;
-        a = 0;
-        b = 1;
     } else {
         if (dwt->sn == 0 && dwt->dn >= 1)
             return;
+    }
+
+
+	int32_t a, b;
+
+    if (dwt->cas == 0) {
+        a = 0;
+        b = 1;
+    } else {
         a = 1;
         b = 0;
     }
 #ifdef __SSE__
-    decompress_step1_sse_97(dwt->mem + a, dwt->win_l_0, dwt->win_l_1,
-                               _mm_set1_ps(K));
-    decompress_step1_sse_97(dwt->mem + b, dwt->win_h_0, dwt->win_h_1,
-                               _mm_set1_ps(c13318));
-    decompress_step2_sse_97(dwt->mem + b, dwt->mem + a + 1,
-                               dwt->win_l_0, dwt->win_l_1,
-                               (uint32_t)min<int32_t>(dwt->sn, dwt->dn - a),
-                               _mm_set1_ps(dwt_delta));
-    decompress_step2_sse_97(dwt->mem + a, dwt->mem + b + 1,
-                               dwt->win_h_0, dwt->win_h_1,
-                               (uint32_t)min<int32_t>(dwt->dn, dwt->sn - b),
-                               _mm_set1_ps(dwt_gamma));
-    decompress_step2_sse_97(dwt->mem + b, dwt->mem + a + 1,
-                               dwt->win_l_0, dwt->win_l_1,
-                               (uint32_t)min<int32_t>(dwt->sn, dwt->dn - a),
-                               _mm_set1_ps(dwt_beta));
-    decompress_step2_sse_97(dwt->mem + a, dwt->mem + b + 1,
-                               dwt->win_h_0, dwt->win_h_1,
-                               (uint32_t)min<int32_t>(dwt->dn, dwt->sn - b),
-                               _mm_set1_ps(dwt_alpha));
+    decompress_step1_sse_97(dwt->mem + a + 2 * dwt->win_l_0,
+    						dwt->win_l_1 - dwt->win_l_0,
+                            _mm_set1_ps(K));
+    decompress_step1_sse_97(dwt->mem + b + 2 * dwt->win_h_0,
+							dwt->win_h_1 - dwt->win_h_0,
+                            _mm_set1_ps(c13318));
+
+    decompress_step2_sse_97(makeDecompress97(dwt,true),
+                            _mm_set1_ps(dwt_delta));
+    decompress_step2_sse_97(makeDecompress97(dwt,false),
+                            _mm_set1_ps(dwt_gamma));
+    decompress_step2_sse_97(makeDecompress97(dwt,true),
+                            _mm_set1_ps(dwt_beta));
+    decompress_step2_sse_97(makeDecompress97(dwt,false),
+                            _mm_set1_ps(dwt_alpha));
 #else
-    decompress_step1_97(dwt->mem + a, dwt->win_l_0, dwt->win_l_1,
-                           K);
-    decompress_step1_97(dwt->mem + b, dwt->win_h_0, dwt->win_h_1,
-                           c13318);
-    decompress_step2_97(dwt->mem + b, dwt->mem + a + 1,
-                           dwt->win_l_0, dwt->win_l_1,
-                           (uint32_t)min<int32_t>(dwt->sn, dwt->dn - a),
-                           dwt_delta);
-    decompress_step2_97(dwt->mem + a, dwt->mem + b + 1,
-                           dwt->win_h_0, dwt->win_h_1,
-                           (uint32_t)min<int32_t>(dwt->dn, dwt->sn - b),
-                           dwt_gamma);
-    decompress_step2_97(dwt->mem + b, dwt->mem + a + 1,
-                           dwt->win_l_0, dwt->win_l_1,
-                           (uint32_t)min<int32_t>(dwt->sn, dwt->dn - a),
-                           dwt_beta);
-    decompress_step2_97(dwt->mem + a, dwt->mem + b + 1,
-                           dwt->win_h_0, dwt->win_h_1,
-                           (uint32_t)min<int32_t>(dwt->dn, dwt->sn - b),
-                           dwt_alpha);
+    decompress_step1_97(dwt->mem + a + 2 * dwt->win_l_0,
+						dwt->win_l_1 - dwt->win_l_0,
+                         K);
+    decompress_step1_97(dwt->mem + b + 2 * dwt->win_h_0,
+						dwt->win_h_1 - dwt->win_h_0,
+                        c13318);
+
+    decompress_step2_97(makeDecompress97(dwt,true),
+                        dwt_delta);
+    decompress_step2_97(makeDecompress97(dwt,false),
+                        dwt_gamma);
+    decompress_step2_97(makeDecompress97(dwt,true),
+                        dwt_beta);
+    decompress_step2_97(makeDecompress97(dwt,false),
+                        dwt_alpha);
 #endif
 }
 
