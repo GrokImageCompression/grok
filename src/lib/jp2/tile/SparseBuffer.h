@@ -378,125 +378,28 @@ private:
 							src_block + ((uint64_t)block_y_offset << LBW) + block_x_offset;
 					int32_t* GRK_RESTRICT dest_ptr = buf + (y - y0) * line_stride +
 													   (x - x0) * col_stride;
-					if (col_stride == 1) {
-						if (x_incr == 4) {
-							/* Same code as general branch, but the compiler */
-							/* can have an efficient memcpy() */
-							(void)(x_incr); /* trick to silent cppcheck duplicateBranch warning */
-							for (uint32_t j = 0; j < y_incr; j++) {
-								memcpy(dest_ptr, src_ptr, 4 << 2); // << 2 == * sizeof(int32_t)
-								dest_ptr += line_stride;
-								src_ptr  += block_width;
-							}
-						} else {
-							for (uint32_t j = 0; j < y_incr; j++) {
-								memcpy(dest_ptr, src_ptr, x_incr << 2);
-								dest_ptr += line_stride;
-								src_ptr  += block_width;
-							}
+					for (uint32_t j = 0; j < y_incr; j++) {
+						uint64_t ind = 0;
+						for (uint32_t k = 0; k < x_incr; k++){
+							dest_ptr[ind] = src_ptr[k];
+							ind += col_stride;
 						}
-					} else {
-						if (x_incr == 1) {
-							for (uint32_t j = 0; j < y_incr; j++) {
-								*dest_ptr = *src_ptr;
-								dest_ptr += line_stride;
-								src_ptr  += block_width;
-							}
-						} else if (y_incr == 1 && col_stride == 2) {
-							uint32_t k;
-							for (k = 0; k < (x_incr & ~3U); k += 4) {
-								dest_ptr[k << 1] = src_ptr[k];
-								dest_ptr[(k + 1) << 1] = src_ptr[k + 1];
-								dest_ptr[(k + 2) << 1] = src_ptr[k + 2];
-								dest_ptr[(k + 3) << 1] = src_ptr[k + 3];
-							}
-							for (; k < x_incr; k++)
-								dest_ptr[k << 1] = src_ptr[k];
-						} else if (x_incr >= 8 && col_stride == 8) {
-							for (uint32_t j = 0; j < y_incr; j++) {
-								uint32_t k;
-								for (k = 0; k < (x_incr & ~3U); k += 4) {
-									dest_ptr[k << 3] = src_ptr[k];
-									dest_ptr[(k + 1) << 3] = src_ptr[k + 1];
-									dest_ptr[(k + 2) << 3] = src_ptr[k + 2];
-									dest_ptr[(k + 3) << 3] = src_ptr[k + 3];
-								}
-								uint64_t ind = k << 3;
-								for (; k < x_incr; k++) {
-									dest_ptr[ind] = src_ptr[k];
-									ind += col_stride;
-								}
-								dest_ptr += line_stride;
-								src_ptr  += block_width;
-							}
-						} else {
-							/* General case */
-							for (uint32_t j = 0; j < y_incr; j++) {
-								uint64_t ind = 0;
-								for (uint32_t k = 0; k < x_incr; k++){
-									dest_ptr[ind] = src_ptr[k];
-									ind += col_stride;
-								}
-								dest_ptr += line_stride;
-								src_ptr  += block_width;
-							}
-						}
+						dest_ptr += line_stride;
+						src_ptr  += block_width;
 					}
-
 	            } else {
                     const int32_t* GRK_RESTRICT src_ptr = buf + (y - y0) * line_stride + (x - x0) * col_stride;
                     int32_t* GRK_RESTRICT dest_ptr = src_block + ((uint64_t)block_y_offset << LBW) + block_x_offset;
-	                if (col_stride == 1) {
-	                    if (x_incr == 4) {
-	                        /* Same code as general branch, but the compiler */
-	                        /* can have an efficient memcpy() */
-	                        (void)(x_incr); /* trick to silent cppcheck duplicateBranch warning */
-	                        for (uint32_t j = 0; j < y_incr; j++) {
-	                            memcpy(dest_ptr, src_ptr, x_incr << 2);
-	                            dest_ptr += block_width;
-	                            src_ptr  += line_stride;
-	                        }
-	                    } else {
-	                        for (uint32_t j = 0; j < y_incr; j++) {
-	                            memcpy(dest_ptr, src_ptr, x_incr << 2);
-	                            dest_ptr += block_width;
-	                            src_ptr  += line_stride;
-	                        }
-	                    }
-	                } else {
-	                    if (x_incr == 1) {
-	                        for (uint32_t j = 0; j < y_incr; j++) {
-	                            *dest_ptr = *src_ptr;
-	                            src_ptr  += line_stride;
-	                            dest_ptr += block_width;
-	                        }
-	                    } else if (x_incr >= 8 && col_stride == 8) {
-	                        for (uint32_t j = 0; j < y_incr; j++) {
-	                            uint32_t k;
-	                            for (k = 0; k < (x_incr & ~3U); k += 4) {
-	                                dest_ptr[k] = src_ptr[k << 3];
-	                                dest_ptr[k + 1] = src_ptr[(k + 1) << 3];
-	                                dest_ptr[k + 2] = src_ptr[(k + 2) << 3];
-	                                dest_ptr[k + 3] = src_ptr[(k + 3) << 3];
-	                            }
-	                            for (; k < x_incr; k++)
-	                                dest_ptr[k] = src_ptr[k << 3];
-	                            src_ptr  += line_stride;
-	                            dest_ptr += block_width;
-	                        }
-	                    } else {
-	                        /* General case */
-	                        for (uint32_t j = 0; j < y_incr; j++) {
-								uint64_t ind = 0;
-	                            for (uint32_t k = 0; k < x_incr; k++) {
-	                            	dest_ptr[k] = src_ptr[ind];
-	                            	ind += col_stride;
-	                            }
-	                            src_ptr  += line_stride;
-	                            dest_ptr += block_width;
-	                        }
-	                    }
-	                }
+
+                    for (uint32_t j = 0; j < y_incr; j++) {
+						uint64_t ind = 0;
+						for (uint32_t k = 0; k < x_incr; k++) {
+							dest_ptr[k] = src_ptr[ind];
+							ind += col_stride;
+						}
+						src_ptr  += line_stride;
+						dest_ptr += block_width;
+					}
 	            }
 	        }
 	    }
