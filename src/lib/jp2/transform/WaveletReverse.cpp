@@ -170,19 +170,6 @@ template <typename T> struct dwt_data {
     size_t length;
 };
 
-struct  vec4f {
-	vec4f() : f{0}
-	{}
-	explicit vec4f(float m)
-	{
-		f[0]=m;
-		f[1]=m;
-		f[2]=m;
-		f[3]=m;
-
-	}
-    float f[4];
-};
 
 static const float dwt_alpha =  1.586134342f; /*  12994 */
 static const float dwt_beta  =  0.052980118f; /*    434 */
@@ -1069,12 +1056,12 @@ static void decompress_step_97(dwt_data<vec4f>* GRK_RESTRICT dwt)
     int32_t a, b;
 
     if (dwt->cas == 0) {
-        if (!((dwt->dn > 0) || (dwt->sn > 1)))
+        if (dwt->dn == 0 && dwt->sn <= 1)
             return;
         a = 0;
         b = 1;
     } else {
-        if (!((dwt->sn > 0) || (dwt->dn > 1)))
+        if (dwt->sn == 0 && dwt->dn >= 1)
             return;
         a = 1;
         b = 0;
@@ -1490,18 +1477,42 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
     return true;
 }
 
-template<typename T,
-			uint32_t VERT_PASS_WIDTH,
-			uint32_t VERT_PASS_HEIGHT> class PartialInterleaver {
+/**
+ * ************************************************************************************
+ *
+ * 5/3 operates on elements of type int32_t while 9/7 operates on elements of type vec4f
+ *
+ * Horizontal pass
+ *
+ * Each thread processes a strip running the length of the window, with height
+ *   5/3
+ *   Height : sizeof(T)/sizeof(int32_t)
+ *
+ *   9/7
+ *   Height : sizeof(T)/sizeof(int32_t)
+ *
+ * Vertical pass
+ *
+ * Each thread processes a strip running the height of the window, with width
+ *
+ *  5/3
+ *  Width :  4
+ *
+ *  9/7
+ *  Width :  4
+ *
+ ****************************************************************************/
+template<typename T> class PartialInterleaver {
 public:
 	/**
-	 * interleaved data is laid out in the dwt->mem buffer in
-	 * increments of type T
+	 * interleaved data is laid out in the dwt->mem buffer in increments of
+	 * type T
 	 */
 	void interleave_h(dwt_data<T>* dwt,
 								ISparseBuffer* sa,
 								uint32_t y_offset,
 								uint32_t y_num_rows){
+		const uint32_t typeSize = (uint32_t)(sizeof(T)/sizeof(int32_t));
 	    for (uint32_t i = 0; i < y_num_rows; i++) {
 	    	// read one row of L band and write interleaved
 	        bool ret = sa->read(dwt->win_l_0,
@@ -1509,7 +1520,7 @@ public:
 							  dwt->win_l_1,
 							  y_offset + i + 1,
 							  (int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_0) + i,
-							  2 * sizeof(T)/sizeof(int32_t),
+							  2 * typeSize,
 							  0,
 							  true);
 	        assert(ret);
@@ -1519,7 +1530,7 @@ public:
 							  dwt->sn + dwt->win_h_1,
 							  y_offset + i + 1,
 							  (int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_0) + i,
-							  2 * sizeof(T)/sizeof(int32_t),
+							  2 * typeSize,
 							  0,
 							  true);
 	        assert(ret);
@@ -1528,22 +1539,23 @@ public:
 	}
 	/*
 	 * interleaved data is laid out in the dwt->mem buffer in
-	 * increments of VERT_PASS_HEIGHT elements of type T
+	 * increments of VERT_PASS_WIDTH elements of type int32_t/float
 	 *
 	 */
 	void interleave_v(dwt_data<T>* GRK_RESTRICT dwt,
 								ISparseBuffer* sa,
 								uint32_t x_offset,
 								uint32_t x_num_elements){
+	    const uint32_t VERT_PASS_WIDTH = 4;
 		assert(x_num_elements <= VERT_PASS_WIDTH);
     	// read one vertical strip (of width x_num_elements <= VERT_PASS_WIDTH) of L band and write interleaved
 	    bool ret = sa->read(x_offset,
 	    					dwt->win_l_0,
 							x_offset + x_num_elements,
 							dwt->win_l_1,
-							(int32_t*)(dwt->mem + (dwt->cas + 2 * dwt->win_l_0) * VERT_PASS_HEIGHT),
+							(int32_t*)(dwt->mem) + (dwt->cas + 2 * dwt->win_l_0) * VERT_PASS_WIDTH,
 							1,
-							2 * VERT_PASS_HEIGHT * sizeof(T)/sizeof(int32_t),
+							2 * VERT_PASS_WIDTH,
 							true);
 	    assert(ret);
     	// read one vertical strip (of width x_num_elements) of H band and write interleaved
@@ -1551,25 +1563,22 @@ public:
 	    				dwt->sn + dwt->win_h_0,
 						x_offset + x_num_elements,
 						dwt->sn + dwt->win_h_1,
-						(int32_t*)(dwt->mem + ((1 - dwt->cas) + 2 * dwt->win_h_0) *  VERT_PASS_HEIGHT),
+						(int32_t*)(dwt->mem) + ((1 - dwt->cas) + 2 * dwt->win_h_0) *  VERT_PASS_WIDTH,
 						1,
-						2 * VERT_PASS_HEIGHT * sizeof(T)/sizeof(int32_t),
+						2 * VERT_PASS_WIDTH,
 						true);
 	    assert(ret);
 	    GRK_UNUSED(ret);
 	}
 };
 
-template<typename T,
-			uint32_t VERT_PASS_WIDTH,
-			uint32_t VERT_PASS_HEIGHT> class Partial53 : public PartialInterleaver<T,
-																					VERT_PASS_WIDTH,
-																					VERT_PASS_HEIGHT> {
+template<typename T> class Partial53 : public PartialInterleaver<T> {
 public:
 	void decompress_h(dwt_data<T>* horiz){
 
-		#define S(i) 	buf[(i)<<1]
-		#define D(i) 	buf[(1+((i)<<1))]
+		#define OFF(i)  (i)
+		#define S(i) 	buf[OFF(i)<<1]
+		#define D(i) 	buf[(1+OFF((i)<<1))]
 
 		#define S_(i) 	((i)<0 ? S(0) :	((i)>=sn ? S(sn-1) : S(i)))
 		#define D_(i) 	((i)<0 ? D(0) :	((i)>=dn ? D(dn-1) : D(i)))
@@ -1648,9 +1657,11 @@ public:
 		}
 	}
 	void decompress_v(dwt_data<T>* vert){
+	    const uint32_t VERT_PASS_WIDTH = 4;
 
-		#define S_off(i,off) 		buf[(i)*2 * VERT_PASS_WIDTH + off]
-		#define D_off(i,off) 		buf[(1+(i)*2)*VERT_PASS_WIDTH + off]
+		#define OFF(i)  (i)
+		#define S_off(i,off) 		buf[OFF(i)*2 * VERT_PASS_WIDTH + off]
+		#define D_off(i,off) 		buf[(1+OFF(i)*2)*VERT_PASS_WIDTH + off]
 
 		#define S_off_(i,off) 		(((i)>=sn ? S_off(sn-1,off) : S_off(i,off)))
 		#define D_off_(i,off) 		(((i)>=dn ? D_off(dn-1,off) : D_off(i,off)))
@@ -1779,11 +1790,7 @@ public:
 	}
 };
 
-template<typename T,
-			uint32_t VERT_PASS_WIDTH,
-			uint32_t VERT_PASS_HEIGHT> class Partial97 : public PartialInterleaver<T,
-																					VERT_PASS_WIDTH,
-																					VERT_PASS_HEIGHT> {
+template<typename T> class Partial97 : public PartialInterleaver<T> {
 public:
 	void decompress_h(dwt_data<T>* dwt){
 		decompress_step_97(dwt);
@@ -1800,25 +1807,21 @@ public:
  *
  * Horizontal pass
  *
- * Each thread processes a strip running the length of the window, in the following units:
+ * Each thread processes a strip running the length of the window, of the following dimensions:
  *
  *   5/3
- *   Width :  1
  *   Height : 1
  *
  *   9/7
- *   Width :  1
  *   Height : 4
  *
  * Vertical pass
  *
  *  5/3
  *  Width :  4
- *  Height : 4
  *
  *  9/7
- *  Width :  1
- *  Height : 4
+ *  Height : 1
  *
  ****************************************************************************
  *
@@ -1826,9 +1829,6 @@ public:
  * F.2 and F.3 of the standard
  */
 template <typename T,
-			uint32_t HORIZ_PASS_HEIGHT,
-			uint32_t VERT_PASS_WIDTH,
-			uint32_t VERT_PASS_HEIGHT,
 			uint32_t FILTER_WIDTH,
 			typename D>
 
@@ -1844,6 +1844,9 @@ template <typename T,
     if (!fullResTopLevel->width() || !fullResTopLevel->height()){
         return true;
     }
+
+    const uint32_t HORIZ_PASS_HEIGHT = sizeof(T)/sizeof(int32_t);
+    const uint32_t VERT_PASS_WIDTH = 4;
 
 	auto synthesisWindow = bounds;
 	synthesisWindow = synthesisWindow.rectceildivpow2(numresolutions - 1 - (numres-1));
@@ -1867,8 +1870,8 @@ template <typename T,
 		return false;
 	}
 
-    // in 53 vertical pass, we process 4 vertical columns at a time
-    size_t data_size = (size_t)(max_resolution(fullRes, numres) + 2 * FILTER_WIDTH )* VERT_PASS_HEIGHT;
+    // in vertical pass, we process 4 vertical columns at a time
+    size_t data_size = (size_t)(max_resolution(fullRes, numres) + 2 * FILTER_WIDTH )* VERT_PASS_WIDTH;
 	dwt_data<T> horiz;
     if (!horiz.alloc(data_size)) {
         GRK_ERROR("Out of memory");
@@ -1976,7 +1979,7 @@ template <typename T,
 							  resWindowRect.y0,
 							  j + VERT_PASS_WIDTH,
 							  resWindowRect.y1,
-							  (int32_t*)job->data.mem + VERT_PASS_WIDTH * resWindowRect.y0,
+							  (int32_t*)(job->data.mem + resWindowRect.y0),
 							  1,
 							  VERT_PASS_WIDTH,
 							  true)) {
@@ -1992,7 +1995,7 @@ template <typename T,
 							  resWindowRect.y0,
 							  job->max_j,
 							  resWindowRect.y1,
-							  (int32_t*)job->data.mem + VERT_PASS_WIDTH * resWindowRect.y0,
+							  (int32_t*)(job->data.mem + resWindowRect.y0),
 							  1,
 							  VERT_PASS_WIDTH,
 							  true)) {
@@ -2126,17 +2129,12 @@ bool WaveletReverse::decompress_53(TileProcessor *p_tcd,
     if (p_tcd->wholeTileDecompress)
         return decompress_tile_53(tilec,numres);
     else {
-    	constexpr uint32_t vertPassWidth = 4;
-    	constexpr uint32_t vertPassHeight = 4;
         return decompress_partial_tile<int32_t,
-        							getHorizontalPassHeight<uint32_t>(true),
-									vertPassWidth,
-									vertPassHeight,
 									getFilterWidth<uint32_t>(true),
-									Partial53<int32_t, vertPassWidth, vertPassHeight>>(tilec,
-																		window,
-																		numres,
-																		tilec->getSparseBuffer());
+									Partial53<int32_t>>(tilec,
+														window,
+														numres,
+														tilec->getSparseBuffer());
     }
 }
 
@@ -2147,17 +2145,12 @@ bool WaveletReverse::decompress_97(TileProcessor *p_tcd,
     if (p_tcd->wholeTileDecompress)
         return decompress_tile_97(tilec, numres);
     else {
-    	constexpr uint32_t vertPassWidth = 4;
-    	constexpr uint32_t vertPassHeight = 1;
         return decompress_partial_tile<vec4f,
-        							getHorizontalPassHeight<uint32_t>(false),
-									vertPassWidth,
-									vertPassHeight,
 									getFilterWidth<uint32_t>(false),
-									Partial97<vec4f,vertPassWidth,vertPassHeight>>(tilec,
-																	window,
-																	numres,
-																	tilec->getSparseBuffer());
+									Partial97<vec4f>>(tilec,
+													window,
+													numres,
+													tilec->getSparseBuffer());
     }
 }
 

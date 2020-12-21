@@ -383,7 +383,6 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
     uint32_t stride;
 } ;
 
-uint32_t getHorizontalPassHeight(bool lossless);
 
 }
 

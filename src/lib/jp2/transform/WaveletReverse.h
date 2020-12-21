@@ -21,7 +21,24 @@
 
 #pragma once
 
+#include <cstdint>
+
 namespace grk {
+
+
+struct  vec4f {
+	vec4f() : f{0}
+	{}
+	explicit vec4f(float m)
+	{
+		f[0]=m;
+		f[1]=m;
+		f[2]=m;
+		f[3]=m;
+
+	}
+    float f[4];
+};
 
 uint32_t max_resolution(Resolution *GRK_RESTRICT r, uint32_t i);
 
@@ -30,7 +47,7 @@ template<class T> constexpr T getFilterWidth(bool lossless) {
  }
 
 template<class T> constexpr T getHorizontalPassHeight(bool lossless){
-	return lossless ? 1 : 4;
+	return T(lossless ? (sizeof(int32_t)/sizeof(int32_t)) : (sizeof(vec4f) / sizeof(float)));
 }
 
 class WaveletReverse {
