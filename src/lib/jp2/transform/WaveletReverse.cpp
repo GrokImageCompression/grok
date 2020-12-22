@@ -107,6 +107,8 @@ template <typename T, typename S> struct decompress_job{
 #define PLL_COLS_53     (2*VREG_INT_COUNT)
 template <typename T> struct dwt_data {
 	dwt_data() : mem(nullptr),
+				memLow(nullptr),
+				memHigh(nullptr),
 		         dn(0),
 				 sn(0),
 				 cas(0),
@@ -120,6 +122,8 @@ template <typename T> struct dwt_data {
 	{}
 
 	dwt_data(const dwt_data& rhs) : mem(nullptr),
+									memLow(nullptr),
+									memHigh(nullptr),
 									dn ( rhs.dn),
 									sn ( rhs.sn),
 									cas ( rhs.cas),
@@ -156,6 +160,8 @@ template <typename T> struct dwt_data {
 		mem = nullptr;
 	}
     T* mem;
+    T* memLow;
+    T* memHigh;
     uint32_t dn;   /* number of elements in high pass band */
     uint32_t sn;   /* number of elements in low pass band */
     uint32_t cas;  /* 0 = start on even coord, 1 = start on odd coord */
@@ -168,6 +174,21 @@ template <typename T> struct dwt_data {
     size_t length;
 };
 
+struct PartialParams97{
+	PartialParams97() :dataPrev(nullptr),
+					data(nullptr),
+					absoluteStart(0),
+					len(0),
+					lenMax(0)
+	{}
+	vec4f* dataPrev;
+	vec4f* data;
+	uint32_t absoluteStart;
+	uint32_t len;
+	uint32_t lenMax;
+};
+
+static PartialParams97 makeDecompress97(dwt_data<vec4f>* dwt, bool low, bool step1);
 
 static const float dwt_alpha =  1.586134342f; /*  12994 */
 static const float dwt_beta  =  0.052980118f; /*    434 */
@@ -255,7 +276,6 @@ static void  decompress_h_cas1_53(int32_t* buf,
     }
     memcpy(dest, buf, total_width * sizeof(int32_t));
 }
-
 
 #if (defined(__SSE2__) || defined(__AVX2__))
 
@@ -909,17 +929,8 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
     return rc;
 }
 
-struct Decompress97{
-	Decompress97() : boundaryData(nullptr), data(nullptr), absoluteStart(0), len(0), lenMax(0)
-	{}
-	vec4f* boundaryData;	// only needed when absoluteStart == 0
-	vec4f* data;
-	uint32_t absoluteStart;
-	uint32_t len;
-	uint32_t lenMax;
-};
 
-static Decompress97 makeDecompress97(dwt_data<vec4f>* dwt, bool low){
+static PartialParams97 makeDecompress97(dwt_data<vec4f>* dwt, bool low, bool step1){
 	 int32_t a, b;
 
 	if (dwt->cas == 0) {
@@ -930,138 +941,164 @@ static Decompress97 makeDecompress97(dwt_data<vec4f>* dwt, bool low){
 		b = 0;
 	}
 
-	Decompress97 rc;
+	PartialParams97 rc;
 	if (low){
-		rc.boundaryData = dwt->mem + b;
-		rc.data = dwt->mem + a + 1;
-		rc.absoluteStart = dwt->win_l_0;
-		rc.len = dwt->win_l_1 - dwt->win_l_0;
-		rc.lenMax = (uint32_t)min<int32_t>(dwt->sn, dwt->dn - a) - dwt->win_l_0;
+		if (step1) {
+			rc.data = dwt->mem + a + 2 * dwt->win_l_0;
+			rc.len = dwt->win_l_1 - dwt->win_l_0;
+
+		} else {
+			rc.dataPrev = dwt->mem + b;
+			rc.data = dwt->mem + a + 1;
+			rc.absoluteStart = dwt->win_l_0;
+			rc.len = dwt->win_l_1 - dwt->win_l_0;
+			rc.lenMax = (uint32_t)min<int32_t>(dwt->sn, dwt->dn - a) - dwt->win_l_0;
+		}
 	} else {
-		rc.boundaryData = dwt->mem + a;
-		rc.data = dwt->mem + b + 1;
-		rc.absoluteStart = dwt->win_h_0;
-		rc.len = dwt->win_h_1 - dwt->win_h_0;
-		rc.lenMax = (uint32_t)min<int32_t>(dwt->dn, dwt->sn - b) - dwt->win_h_0;
+		if (step1) {
+			rc.data = dwt->mem + b + 2 * dwt->win_h_0;
+			rc.len = dwt->win_h_1 - dwt->win_h_0;
+
+		} else {
+			rc.dataPrev = dwt->mem + a;
+			rc.data = dwt->mem + b + 1;
+			rc.absoluteStart = dwt->win_h_0;
+			rc.len = dwt->win_h_1 - dwt->win_h_0;
+			rc.lenMax = (uint32_t)min<int32_t>(dwt->dn, dwt->sn - b) - dwt->win_h_0;
+		}
 	}
     rc.data += 2 * rc.absoluteStart;
+    if (rc.absoluteStart > 0) {
+        rc.dataPrev = rc.data - 2;
+    }
 	return rc;
 };
 
 //#undef __SSE__
 
 #ifdef __SSE__
-static void decompress_step1_sse_97(vec4f* data,
-                                    uint32_t end,
+static void decompress_step1_sse_97(PartialParams97 d,
                                     const __m128 c){
 	// process 4 floats at a time
-    __m128* GRK_RESTRICT mmData = (__m128*) data;
+    __m128* GRK_RESTRICT mmData = (__m128*) d.data;
     uint32_t i;
-    for (i = 0; i + 3 < end; i += 4, mmData += 8) {
+    for (i = 0; i + 3 < d.len; i += 4, mmData += 8) {
     	mmData[0] = _mm_mul_ps(mmData[0], c);
     	mmData[2] = _mm_mul_ps(mmData[2], c);
     	mmData[4] = _mm_mul_ps(mmData[4], c);
     	mmData[6] = _mm_mul_ps(mmData[6], c);
     }
-    for (; i < end; ++i, mmData += 2)
+    for (; i < d.len; ++i, mmData += 2)
         mmData[0] = _mm_mul_ps(mmData[0], c);
 }
+#endif
 
-static void decompress_step2_sse_97(Decompress97 d, __m128 c){
-    __m128* GRK_RESTRICT vw = (__m128*) d.data;
-
-    uint32_t imax = min<uint32_t>(d.len, d.lenMax);
-    __m128 tmp1, tmp2, tmp3;
-    if (d.absoluteStart == 0) {
-        tmp1 = ((__m128*) d.boundaryData)[0];
-    } else {
-        tmp1 = vw[-3];
-    }
-
-    uint32_t i = 0;
-    for (; i + 3 < imax; i += 4) {
-        __m128 tmp4, tmp5, tmp6, tmp7, tmp8, tmp9;
-        tmp2 = vw[-1];
-        tmp3 = vw[ 0];
-        tmp4 = vw[ 1];
-        tmp5 = vw[ 2];
-        tmp6 = vw[ 3];
-        tmp7 = vw[ 4];
-        tmp8 = vw[ 5];
-        tmp9 = vw[ 6];
-        vw[-1] = _mm_add_ps(tmp2, _mm_mul_ps(_mm_add_ps(tmp1, tmp3), c));
-        vw[ 1] = _mm_add_ps(tmp4, _mm_mul_ps(_mm_add_ps(tmp3, tmp5), c));
-        vw[ 3] = _mm_add_ps(tmp6, _mm_mul_ps(_mm_add_ps(tmp5, tmp7), c));
-        vw[ 5] = _mm_add_ps(tmp8, _mm_mul_ps(_mm_add_ps(tmp7, tmp9), c));
-        tmp1 = tmp9;
-        vw += 8;
-    }
-
-    for (; i < imax; ++i) {
-        tmp2 = vw[-1];
-        tmp3 = vw[ 0];
-        vw[-1] = _mm_add_ps(tmp2, _mm_mul_ps(_mm_add_ps(tmp1, tmp3), c));
-        tmp1 = tmp3;
-        vw += 2;
-    }
-    if (d.lenMax < d.len) {
-        assert(d.lenMax + 1 == d.len);
-        c = _mm_add_ps(c, c);
-        c = _mm_mul_ps(c, vw[-2]);
-        vw[-1] = _mm_add_ps(vw[-1], c);
-    }
-}
-#else
-static void decompress_step1_97(vec4f* data,
-                                uint32_t end,
+static void decompress_step1_97(PartialParams97 d,
                                 const float c){
-    float* GRK_RESTRICT fw = (float*) data;
 
-    for (uint32_t i = 0; i < end; ++i, fw += 8) {
+#ifdef __SSE__
+	decompress_step1_sse_97(d, _mm_set1_ps(c));
+#else
+    float* GRK_RESTRICT fw = (float*) d.data;
+
+    for (uint32_t i = 0; i < d.len; ++i, fw += 8) {
         fw[0] *= c;
         fw[1] *= c;
         fw[2] *= c;
         fw[3] *= c;;
     }
+#endif
 }
-static void decompress_step2_97(Decompress97 d,float c){
-    float* fl = (float*) d.boundaryData;
-    float* fw = (float*) d.data;
+
+
+#ifdef __SSE__
+static void decompress_step2_sse_97(PartialParams97 d, __m128 c){
+    __m128* GRK_RESTRICT vec_data = (__m128*) d.data;
 
     uint32_t imax = min<uint32_t>(d.len, d.lenMax);
-    if (d.absoluteStart > 0) {
-        fl = fw - 8;
+    __m128 tmp1, tmp2, tmp3;
+    if (d.absoluteStart == 0) {
+        tmp1 = ((__m128*) d.dataPrev)[0];
+    } else {
+        tmp1 = vec_data[-3];
     }
+
+    uint32_t i = 0;
+    for (; i + 3 < imax; i += 4) {
+        __m128 tmp4, tmp5, tmp6, tmp7, tmp8, tmp9;
+        tmp2 = vec_data[-1];
+        tmp3 = vec_data[ 0];
+        tmp4 = vec_data[ 1];
+        tmp5 = vec_data[ 2];
+        tmp6 = vec_data[ 3];
+        tmp7 = vec_data[ 4];
+        tmp8 = vec_data[ 5];
+        tmp9 = vec_data[ 6];
+        vec_data[-1] = _mm_add_ps(tmp2, _mm_mul_ps(_mm_add_ps(tmp1, tmp3), c));
+        vec_data[ 1] = _mm_add_ps(tmp4, _mm_mul_ps(_mm_add_ps(tmp3, tmp5), c));
+        vec_data[ 3] = _mm_add_ps(tmp6, _mm_mul_ps(_mm_add_ps(tmp5, tmp7), c));
+        vec_data[ 5] = _mm_add_ps(tmp8, _mm_mul_ps(_mm_add_ps(tmp7, tmp9), c));
+        tmp1 = tmp9;
+        vec_data += 8;
+    }
+
+    for (; i < imax; ++i) {
+        tmp2 = vec_data[-1];
+        tmp3 = vec_data[ 0];
+        vec_data[-1] = _mm_add_ps(tmp2, _mm_mul_ps(_mm_add_ps(tmp1, tmp3), c));
+        tmp1 = tmp3;
+        vec_data += 2;
+    }
+    if (d.lenMax < d.len) {
+        assert(d.lenMax + 1 == d.len);
+        c = _mm_add_ps(c, c);
+        c = _mm_mul_ps(c, vec_data[-2]);
+        vec_data[-1] = _mm_add_ps(vec_data[-1], c);
+    }
+}
+#endif
+
+
+static void decompress_step2_97(PartialParams97 d,float c){
+#ifdef __SSE__
+	decompress_step2_sse_97(d, _mm_set1_ps(c));
+#else
+
+    float* dataPrev = (float*) d.dataPrev;
+    float* data = (float*) d.data;
+
+    uint32_t imax = min<uint32_t>(d.len, d.lenMax);
     for (uint32_t i = 0; i < imax; ++i) {
-        float tmp1_1 = fl[0];
-        float tmp1_2 = fl[1];
-        float tmp1_3 = fl[2];
-        float tmp1_4 = fl[3];
-        float tmp2_1 = fw[-4];
-        float tmp2_2 = fw[-3];
-        float tmp2_3 = fw[-2];
-        float tmp2_4 = fw[-1];
-        float tmp3_1 = fw[0];
-        float tmp3_2 = fw[1];
-        float tmp3_3 = fw[2];
-        float tmp3_4 = fw[3];
-        fw[-4] = tmp2_1 + ((tmp1_1 + tmp3_1) * c);
-        fw[-3] = tmp2_2 + ((tmp1_2 + tmp3_2) * c);
-        fw[-2] = tmp2_3 + ((tmp1_3 + tmp3_3) * c);
-        fw[-1] = tmp2_4 + ((tmp1_4 + tmp3_4) * c);
-        fl = fw;
-        fw += 8;
+        float tmp1_1 = dataPrev[0];
+        float tmp1_2 = dataPrev[1];
+        float tmp1_3 = dataPrev[2];
+        float tmp1_4 = dataPrev[3];
+        float tmp2_1 = data[-4];
+        float tmp2_2 = data[-3];
+        float tmp2_3 = data[-2];
+        float tmp2_4 = data[-1];
+        float tmp3_1 = data[0];
+        float tmp3_2 = data[1];
+        float tmp3_3 = data[2];
+        float tmp3_4 = data[3];
+        data[-4] = tmp2_1 + ((tmp1_1 + tmp3_1) * c);
+        data[-3] = tmp2_2 + ((tmp1_2 + tmp3_2) * c);
+        data[-2] = tmp2_3 + ((tmp1_3 + tmp3_3) * c);
+        data[-1] = tmp2_4 + ((tmp1_4 + tmp3_4) * c);
+        dataPrev = data;
+        data += 8;
     }
     if (d.lenMax < d.len) {
         assert(d.lenMax + 1 == d.len);
         c += c;
-        fw[-4] = fw[-4] + fl[0] * c;
-        fw[-3] = fw[-3] + fl[1] * c;
-        fw[-2] = fw[-2] + fl[2] * c;
-        fw[-1] = fw[-1] + fl[3] * c;
+        data[-4] = data[-4] + dataPrev[0] * c;
+        data[-3] = data[-3] + dataPrev[1] * c;
+        data[-2] = data[-2] + dataPrev[2] * c;
+        data[-1] = data[-1] + dataPrev[3] * c;
     }
-}
 #endif
+}
+
 
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 1-D. */
@@ -1075,52 +1112,19 @@ static void decompress_step_97(dwt_data<vec4f>* GRK_RESTRICT dwt)
         if (dwt->sn == 0 && dwt->dn >= 1)
             return;
     }
-
-
-	int32_t a, b;
-
-    if (dwt->cas == 0) {
-        a = 0;
-        b = 1;
-    } else {
-        a = 1;
-        b = 0;
-    }
-#ifdef __SSE__
-    decompress_step1_sse_97(dwt->mem + a + 2 * dwt->win_l_0,
-    						dwt->win_l_1 - dwt->win_l_0,
-                            _mm_set1_ps(K));
-    decompress_step1_sse_97(dwt->mem + b + 2 * dwt->win_h_0,
-							dwt->win_h_1 - dwt->win_h_0,
-                            _mm_set1_ps(c13318));
-
-    decompress_step2_sse_97(makeDecompress97(dwt,true),
-                            _mm_set1_ps(dwt_delta));
-    decompress_step2_sse_97(makeDecompress97(dwt,false),
-                            _mm_set1_ps(dwt_gamma));
-    decompress_step2_sse_97(makeDecompress97(dwt,true),
-                            _mm_set1_ps(dwt_beta));
-    decompress_step2_sse_97(makeDecompress97(dwt,false),
-                            _mm_set1_ps(dwt_alpha));
-#else
-    decompress_step1_97(dwt->mem + a + 2 * dwt->win_l_0,
-						dwt->win_l_1 - dwt->win_l_0,
+    decompress_step1_97(makeDecompress97(dwt,true,true),
                          K);
-    decompress_step1_97(dwt->mem + b + 2 * dwt->win_h_0,
-						dwt->win_h_1 - dwt->win_h_0,
+    decompress_step1_97(makeDecompress97(dwt,false,true),
                         c13318);
-
-    decompress_step2_97(makeDecompress97(dwt,true),
+    decompress_step2_97(makeDecompress97(dwt,true,false),
                         dwt_delta);
-    decompress_step2_97(makeDecompress97(dwt,false),
+    decompress_step2_97(makeDecompress97(dwt,false,false),
                         dwt_gamma);
-    decompress_step2_97(makeDecompress97(dwt,true),
+    decompress_step2_97(makeDecompress97(dwt,true,false),
                         dwt_beta);
-    decompress_step2_97(makeDecompress97(dwt,false),
+    decompress_step2_97(makeDecompress97(dwt,false,false),
                         dwt_alpha);
-#endif
 }
-
 
 static void interleave_h_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
                                    float* GRK_RESTRICT bandL,
@@ -1529,7 +1533,7 @@ public:
 							  y_offset + i,
 							  dwt->win_l_1,
 							  y_offset + i + 1,
-							  (int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_0) + i,
+							  (int32_t*)dwt->memLow + i,
 							  2 * typeSize,
 							  0,
 							  true);
@@ -1539,7 +1543,7 @@ public:
 							  y_offset + i,
 							  dwt->sn + dwt->win_h_1,
 							  y_offset + i + 1,
-							  (int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_0) + i,
+							  (int32_t*)dwt->memHigh + i,
 							  2 * typeSize,
 							  0,
 							  true);
@@ -1563,7 +1567,7 @@ public:
 	    					dwt->win_l_0,
 							x_offset + x_num_elements,
 							dwt->win_l_1,
-							(int32_t*)(dwt->mem) + (dwt->cas + 2 * dwt->win_l_0) * VERT_PASS_WIDTH,
+							(int32_t*)dwt->memLow,
 							1,
 							2 * VERT_PASS_WIDTH,
 							true);
@@ -1573,7 +1577,7 @@ public:
 	    				dwt->sn + dwt->win_h_0,
 						x_offset + x_num_elements,
 						dwt->sn + dwt->win_h_1,
-						(int32_t*)(dwt->mem) + ((1 - dwt->cas) + 2 * dwt->win_h_0) *  VERT_PASS_WIDTH,
+						(int32_t*)dwt->memHigh,
 						1,
 						2 * VERT_PASS_WIDTH,
 						true);
@@ -1582,13 +1586,13 @@ public:
 	}
 };
 
+
 template<typename T> class Partial53 : public PartialInterleaver<T> {
 public:
 	void decompress_h(dwt_data<T>* horiz){
 
-		#define OFF(i)  (i)
-		#define S(i) 	buf[OFF(i)<<1]
-		#define D(i) 	buf[(1+OFF((i)<<1))]
+		#define S(i) 	buf[(i)<<1]
+		#define D(i) 	buf[(1+((i)<<1))]
 
 		#define S_(i) 	((i)<0 ? S(0) :	((i)>=sn ? S(sn-1) : S(i)))
 		#define D_(i) 	((i)<0 ? D(0) :	((i)>=dn ? D(dn-1) : D(i)))
@@ -1619,32 +1623,34 @@ public:
 				checking in S_ and D_ macros
 				*/
 
-				i = win_l_x0;
-				if (i < win_l_x1) {
+				buf	 = horiz->memLow;
+				i = 0;
+				if (i < win_l_x1 - win_l_x0) {
 					int32_t i_max;
 
 					/* Left-most case */
 					S(i) -= (D_(i - 1) + D_(i) + 2) >> 2;
 					i ++;
 
-					i_max = win_l_x1;
-					if (i_max > dn)
-						i_max = dn;
+					i_max = win_l_x1 - win_l_x0;
+					if (i_max > dn - win_l_x0)
+						i_max = dn - win_l_x0;
 					for (; i < i_max; i++) {
 						/* No bound checking */
 						S(i) -= (D(i - 1) + D(i) + 2) >> 2;
 					}
-					for (; i < win_l_x1; i++) {
+					for (; i < win_l_x1 - win_l_x0; i++) {
 						/* Right-most case */
 						S(i) -= (D_(i - 1) + D_(i) + 2) >> 2;
 					}
 				}
 
-				i = win_h_x0;
-				if (i < win_h_x1) {
-					int32_t i_max = win_h_x1;
-					if (i_max >= sn)
-						i_max = sn - 1;
+				buf	 = horiz->memHigh;
+				i = 0;
+				if (i < win_h_x1 - win_h_x0) {
+					int32_t i_max = win_h_x1 - win_h_x0;
+					if (i_max >= sn - win_h_x0)
+						i_max = sn - 1 - win_h_x0;
 					for (; i < i_max; i++) {
 						/* No bound checking */
 						D(i) += (S(i) + S(i + 1)) >> 1;
@@ -1659,9 +1665,11 @@ public:
 			if (!sn  && dn == 1) {
 				S(0) /= 2;
 			} else {
-				for (i = win_l_x0; i < win_l_x1; i++)
+				buf	 = horiz->memLow;
+				for (i = 0; i < win_l_x1 - win_l_x0; i++)
 					D(i) -= (SS_(i) + SS_(i + 1) + 2) >> 2;
-				for (i = win_h_x0; i < win_h_x1; i++)
+				buf	 = horiz->memHigh;
+				for (i = win_h_x0; i < win_h_x1 - win_h_x0; i++)
 					S(i) += (DD_(i) + DD_(i - 1)) >> 1;
 			}
 		}
@@ -1669,9 +1677,8 @@ public:
 	void decompress_v(dwt_data<T>* vert){
 	    const uint32_t VERT_PASS_WIDTH = 4;
 
-		#define OFF(i)  (i)
-		#define S_off(i,off) 		buf[OFF(i)*2 * VERT_PASS_WIDTH + off]
-		#define D_off(i,off) 		buf[(1+OFF(i)*2)*VERT_PASS_WIDTH + off]
+		#define S_off(i,off) 		buf[(i)*2 * VERT_PASS_WIDTH + off]
+		#define D_off(i,off) 		buf[(1+(i)*2)*VERT_PASS_WIDTH + off]
 
 		#define S_off_(i,off) 		(((i)>=sn ? S_off(sn-1,off) : S_off(i,off)))
 		#define D_off_(i,off) 		(((i)>=dn ? D_off(dn-1,off) : D_off(i,off)))
@@ -1707,8 +1714,11 @@ public:
 				but the compiler doesn't manage to unroll it to avoid bound
 				checking in S_ and D_ macros
 				*/
-				i = win_l_x0;
-				if (i < win_l_x1) {
+
+				// 1. low pass
+				buf   = vert->memLow;
+				i = 0;
+				if (i < win_l_x1 - win_l_x0) {
 					uint32_t i_max;
 
 					/* Left-most case */
@@ -1716,9 +1726,9 @@ public:
 						S_off(i, off) -= (D_sgnd_off_((int64_t)i - 1, off) + D_off_(i, off) + 2) >> 2;
 					i ++;
 
-					i_max = win_l_x1;
-					if (i_max > dn)
-						i_max = dn;
+					i_max = win_l_x1 - win_l_x0;
+					if (i_max > dn - win_l_x0)
+						i_max = dn - win_l_x0;
 		#ifdef __SSE2__
 					if (i + 1 < i_max) {
 						const __m128i two = _mm_set1_epi32(2);
@@ -1742,17 +1752,20 @@ public:
 						for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 							S_off(i, off) -= (D_sgnd_off_((int64_t)i - 1, off) + D_off(i, off) + 2) >> 2;
 					}
-					for (; i < win_l_x1; i++) {
+					for (; i < win_l_x1 - win_l_x0; i++) {
 						/* Right-most case */
 						for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 							S_off(i, off) -= (D_sgnd_off_((int64_t)i - 1, off) + D_off_(i, off) + 2) >> 2;
 					}
 				}
-				i = win_h_x0;
-				if (i < win_h_x1) {
-					uint32_t i_max = win_h_x1;
-					if (i_max >= sn)
-						i_max = sn - 1;
+
+				// 2. high pass
+				buf = vert->memHigh;
+				i = 0;
+				if (i < win_h_x1 - win_h_x0) {
+					uint32_t i_max = win_h_x1 - win_h_x0;
+					if (i_max >= sn - win_h_x0)
+						i_max = sn - 1 - win_h_x0;
 		#ifdef __SSE2__
 					if (i + 1 < i_max) {
 						auto S =  _mm_load_si128((__m128i *)(buf + i * 2 * VERT_PASS_WIDTH));
@@ -1784,14 +1797,19 @@ public:
 			}
 		} else {
 			if (!sn  && dn == 1) {
+				// edge case at origin
 				for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 					S_off(0, off) /= 2;
 			} else {
-				for (i = win_l_x0; i < win_l_x1; i++) {
+				// 1. low pass
+				buf   = vert->memLow;
+				for (i = 0; i < win_l_x1 - win_l_x0; i++) {
 					for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 						D_off(i, off) -= (SS_off_(i, off) + SS_off_(i + 1, off) + 2) >> 2;
 				}
-				for (i = win_h_x0; i < win_h_x1; i++) {
+				// 2. high pass
+				buf   = vert->memHigh;
+				for (i = 0; i < win_h_x1 - win_h_x0; i++) {
 					for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 						S_off(i, off) += (DD_off_(i, off) + DD_sgnd_off_((int64_t)i - 1, off)) >> 1;
 				}
@@ -1944,7 +1962,11 @@ template <typename T,
 		auto executor_h = [sa, resWindowRect, &decompressor](decompress_job<float, dwt_data<T>> *job){
 			 uint32_t j;
 			 for (j = job->min_j; j + HORIZ_PASS_HEIGHT-1 < job->max_j; j += HORIZ_PASS_HEIGHT) {
+				 job->data.memLow 	=  job->data.mem + job->data.cas +     2 * job->data.win_l_0;
+				 job->data.memHigh  =  job->data.mem + 1 - job->data.cas + 2 * job->data.win_h_0;
 				 decompressor.interleave_h(&job->data, sa, j,HORIZ_PASS_HEIGHT);
+				 job->data.memLow 	=  job->data.mem + job->data.win_l_0;
+				 job->data.memHigh  =  job->data.mem + job->data.win_h_0;
 				 decompressor.decompress_h(&job->data);
 				 if (!sa->write( resWindowRect.x0,
 								  j,
@@ -1960,7 +1982,11 @@ template <typename T,
 				 }
 			 }
 			 if (j < job->max_j ) {
+				 job->data.memLow 	=  job->data.mem + job->data.cas +     2 * job->data.win_l_0;
+				 job->data.memHigh  =  job->data.mem + 1 - job->data.cas + 2 * job->data.win_h_0;
 				 decompressor.interleave_h(&job->data, sa, j, job->max_j - j);
+				 job->data.memLow 	=  job->data.mem + job->data.win_l_0;
+				 job->data.memHigh  =  job->data.mem + job->data.win_h_0;
 				 decompressor.decompress_h(&job->data);
 				 if (!sa->write( resWindowRect.x0,
 								  j,
@@ -1983,7 +2009,11 @@ template <typename T,
 		auto executor_v = [sa, resWindowRect, &decompressor](decompress_job<float, dwt_data<T>> *job){
 			 uint32_t j;
 			 for (j = job->min_j; j + VERT_PASS_WIDTH-1 < job->max_j; j += VERT_PASS_WIDTH) {
+				 job->data.memLow 	=  (T*)((int32_t*)job->data.mem + (    job->data.cas + 2 * job->data.win_l_0) * VERT_PASS_WIDTH);
+				 job->data.memHigh  =  (T*)((int32_t*)job->data.mem + (1 - job->data.cas + 2 * job->data.win_h_0) * VERT_PASS_WIDTH);
 				decompressor.interleave_v(&job->data, sa, j, VERT_PASS_WIDTH);
+				 job->data.memLow 	=  job->data.mem + job->data.win_l_0;
+				 job->data.memHigh  =  job->data.mem + job->data.win_h_0;
 				decompressor.decompress_v(&job->data);
 				if (!sa->write(j,
 							  resWindowRect.y0,
@@ -1999,7 +2029,11 @@ template <typename T,
 				}
 			 }
 			 if (j <  job->max_j) {
+				job->data.memLow 	=  (T*)((int32_t*)job->data.mem + (    job->data.cas + 2 * job->data.win_l_0) * VERT_PASS_WIDTH);
+				job->data.memHigh  =  (T*)((int32_t*)job->data.mem + (1 - job->data.cas + 2 * job->data.win_h_0) * VERT_PASS_WIDTH);
 				decompressor.interleave_v(&job->data, sa, j,  job->max_j - j);
+				 job->data.memLow 	=  job->data.mem + job->data.win_l_0;
+				 job->data.memHigh  =  job->data.mem + job->data.win_h_0;
 				decompressor.decompress_v(&job->data);
 				if (!sa->write(j,
 							  resWindowRect.y0,
