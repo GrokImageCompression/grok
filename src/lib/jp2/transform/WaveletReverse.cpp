@@ -110,8 +110,10 @@ template <typename T> struct dwt_data {
 		         dn(0),
 				 sn(0),
 				 cas(0),
+				 win_l_off(0),
 				 win_l_0(0),
 				 win_l_1(0),
+				 win_h_off(0),
 				 win_h_0(0),
 				 win_h_1(0),
 				 length(0)
@@ -121,8 +123,10 @@ template <typename T> struct dwt_data {
 									dn ( rhs.dn),
 									sn ( rhs.sn),
 									cas ( rhs.cas),
+									win_l_off ( rhs.win_l_off),
 									win_l_0 ( rhs.win_l_0),
 									win_l_1 ( rhs.win_l_1),
+									win_h_off ( rhs.win_h_off),
 									win_h_0 ( rhs.win_h_0),
 									win_h_1 ( rhs.win_h_1),
 									length (rhs.length)
@@ -155,8 +159,10 @@ template <typename T> struct dwt_data {
     uint32_t dn;   /* number of elements in high pass band */
     uint32_t sn;   /* number of elements in low pass band */
     uint32_t cas;  /* 0 = start on even coord, 1 = start on odd coord */
+    uint32_t	  win_l_off; // offset of low buffer
     uint32_t      win_l_0; /* start coord in low pass band */
     uint32_t      win_l_1; /* end coord in low pass band */
+    uint32_t	  win_h_off; // offset of high buffer
     uint32_t      win_h_0; /* start coord in high pass band */
     uint32_t      win_h_1; /* end coord in high pass band */
     size_t length;
@@ -903,13 +909,11 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
     return rc;
 }
 
-//#undef __SSE__
-
 struct Decompress97{
-	Decompress97() : l(nullptr), w(nullptr), absoluteStart(0), len(0), lenMax(0)
+	Decompress97() : boundaryData(nullptr), data(nullptr), absoluteStart(0), len(0), lenMax(0)
 	{}
-	vec4f* l;
-	vec4f* w;
+	vec4f* boundaryData;	// only needed when absoluteStart == 0
+	vec4f* data;
 	uint32_t absoluteStart;
 	uint32_t len;
 	uint32_t lenMax;
@@ -928,21 +932,23 @@ static Decompress97 makeDecompress97(dwt_data<vec4f>* dwt, bool low){
 
 	Decompress97 rc;
 	if (low){
-		rc.l = dwt->mem + b;
-		rc.w = dwt->mem + a + 1;
+		rc.boundaryData = dwt->mem + b;
+		rc.data = dwt->mem + a + 1;
 		rc.absoluteStart = dwt->win_l_0;
 		rc.len = dwt->win_l_1 - dwt->win_l_0;
 		rc.lenMax = (uint32_t)min<int32_t>(dwt->sn, dwt->dn - a) - dwt->win_l_0;
 	} else {
-		rc.l = dwt->mem + a;
-		rc.w = dwt->mem + b + 1;
+		rc.boundaryData = dwt->mem + a;
+		rc.data = dwt->mem + b + 1;
 		rc.absoluteStart = dwt->win_h_0;
 		rc.len = dwt->win_h_1 - dwt->win_h_0;
 		rc.lenMax = (uint32_t)min<int32_t>(dwt->dn, dwt->sn - b) - dwt->win_h_0;
 	}
+    rc.data += 2 * rc.absoluteStart;
 	return rc;
 };
 
+//#undef __SSE__
 
 #ifdef __SSE__
 static void decompress_step1_sse_97(vec4f* data,
@@ -961,17 +967,14 @@ static void decompress_step1_sse_97(vec4f* data,
         mmData[0] = _mm_mul_ps(mmData[0], c);
 }
 
-static void decompress_step2_sse_97(Decompress97 d,
-                                    __m128 c){
-    __m128* GRK_RESTRICT vw = (__m128*) d.w;
+static void decompress_step2_sse_97(Decompress97 d, __m128 c){
+    __m128* GRK_RESTRICT vw = (__m128*) d.data;
 
     uint32_t imax = min<uint32_t>(d.len, d.lenMax);
     __m128 tmp1, tmp2, tmp3;
     if (d.absoluteStart == 0) {
-        __m128* GRK_RESTRICT vl = (__m128*) d.l;
-        tmp1 = vl[0];
+        tmp1 = ((__m128*) d.boundaryData)[0];
     } else {
-        vw += d.absoluteStart * 2;
         tmp1 = vw[-3];
     }
 
@@ -1009,10 +1012,10 @@ static void decompress_step2_sse_97(Decompress97 d,
     }
 }
 #else
-static void decompress_step1_97(vec4f* w,
+static void decompress_step1_97(vec4f* data,
                                 uint32_t end,
                                 const float c){
-    float* GRK_RESTRICT fw = (float*) w;
+    float* GRK_RESTRICT fw = (float*) data;
 
     for (uint32_t i = 0; i < end; ++i, fw += 8) {
         fw[0] *= c;
@@ -1021,14 +1024,12 @@ static void decompress_step1_97(vec4f* w,
         fw[3] *= c;;
     }
 }
-static void decompress_step2_97(Decompress97 d,
-                                float c){
-    float* fl = (float*) d.l;
-    float* fw = (float*) d.w;
+static void decompress_step2_97(Decompress97 d,float c){
+    float* fl = (float*) d.boundaryData;
+    float* fw = (float*) d.data;
 
     uint32_t imax = min<uint32_t>(d.len, d.lenMax);
     if (d.absoluteStart > 0) {
-        fw += 8 * d.absoluteStart;
         fl = fw - 8;
     }
     for (uint32_t i = 0; i < imax; ++i) {
