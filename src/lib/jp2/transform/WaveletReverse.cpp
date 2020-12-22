@@ -145,7 +145,6 @@ template <typename T> struct dwt_data {
 	        return false;
 	    }
 		mem = (T*)grk_aligned_malloc(len * sizeof(T));
-		memset((uint8_t*)mem, 0, len * sizeof(T));
 		return mem != nullptr;
 	}
 
