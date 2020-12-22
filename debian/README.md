@@ -5,30 +5,30 @@ Git - Move Tag
 
 1. Delete old tag
 
-`git push origin :refs/tags/v7.6.0`
+`git push origin :refs/tags/v7.6.2`
 
 2. Replace the tag to reference the most recent commit
 
-`git tag -fa v7.6.0`
+`git tag -fa v7.6.2`
 
 3. Push the new tag to remote origin
 
 `git push origin master --tags`
 
-`$ git push origin :refs/tags/v7.6.0 && git tag -fa v7.6.0 && git push origin master --tags`
+`$ git push origin :refs/tags/v7.6.2 && git tag -fa v7.6.2 && git push origin master --tags`
 
 ------------------
 Building a Package
 ------------------
 
-(In steps below, we are packaging version 7.6.0, using GPG key id
+(In steps below, we are packaging version 7.6.2, using GPG key id
 B1D6B0917E6191EB3D0FF95F347F22FFCA601A1C)
 
 0. `cd $SOURCE_DIR`
 
 1. `sudo schroot -c debian-sid`
 
-2. `$ git archive --format=tar v7.6.0 | gzip > libgrokj2k_7.6.0.orig.tar.gz && mv libgrokj2k_7.6.0.orig.tar.gz ..`
+2. `$ git archive --format=tar v7.6.2 | gzip > libgrokj2k_7.6.2.orig.tar.gz && mv libgrokj2k_7.6.2.orig.tar.gz ..`
 
 3. `$ dpkg-buildpackage -us -uc`
 
@@ -41,29 +41,6 @@ or, to just check lintian errors:
    `$ lintian -EviIL +pedantic ../*.changes`
    
    
-4. Symbols file
-
-```
-$ dpkg-gensymbols -plibgrokj2k1 -Olibgrokj2k1.symbols
-$ mv libgrokj2k1.symbols debian
-$ vi debian/libgrokj2k1.symbols
-```
-copy
-
-```
-libgrokj2k.so.1 libgrokj2k1
-| libgrokj2k1 #MINVER#
-* Build-Depends-Package: libgrokj2k1-dev
-```
-
-to beginning of file
-
-
-`:%s/7.6.0-1/7.6.0/g` 
-
-`$ sed 's/ \(_.*\) \(.*\)/ (c++)"\1" \2/' libgrokj2k1.symbols | c++filt`
-
-
 ------------------
 GPG Key Management
 ------------------
