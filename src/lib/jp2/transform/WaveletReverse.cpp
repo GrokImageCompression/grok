@@ -147,12 +147,6 @@ template <typename T> struct dwt_data {
 		mem = (T*)grk_aligned_malloc(len * sizeof(T));
 		return mem != nullptr;
 	}
-
-	void fill() {
-		for (size_t i = 0; i < length; ++i){
-			mem[i] = T((std::numeric_limits<float>::max)());
-		}
-	}
 	void release(){
 		grk_aligned_free(mem);
 		mem = nullptr;
