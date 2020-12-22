@@ -135,11 +135,10 @@ template <typename T> struct dwt_data {
 	    /* overflow check */
 		// add 10 just to be sure to we are safe from
 		// segment growth overflow
-	    if (len > (SIZE_MAX - 10U)) {
+	    if (len > (SIZE_MAX)) {
 	        GRK_ERROR("data size overflow");
 	        return false;
 	    }
-	    len += 10U;
 	    /* overflow check */
 	    if (len > (SIZE_MAX / sizeof(T))) {
 	        GRK_ERROR("data size overflow");
