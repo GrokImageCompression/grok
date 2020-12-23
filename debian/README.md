@@ -22,7 +22,7 @@ Building a Package
 ------------------
 
 Guide to [setting up schroot](https://wiki.debian.org/Packaging/Pre-Requisites)
-`$ apt install git sbuild cmake  debhelper help2man liblcms2-dev libpng-dev libzstd-dev libtiff-dev libjpeg-dev zlib1g-dev doxygen `
+`$ apt install git sbuild cmake  debhelper help2man liblcms2-dev libpng-dev libzstd-dev libtiff-dev libjpeg-dev zlib1g-dev doxygen lintian`
 
 
 (In steps below, we are packaging version 7.6.2, using GPG key id
