@@ -1961,97 +1961,113 @@ template <typename T,
 
 		auto executor_h = [sa, resWindowRect, &decompressor](decompress_job<float, dwt_data<T>> *job){
 			 uint32_t j;
-			 for (j = job->min_j; j + HORIZ_PASS_HEIGHT-1 < job->max_j; j += HORIZ_PASS_HEIGHT) {
-				 job->data.memLow 	=  job->data.mem + job->data.cas +     2 * job->data.win_l_0;
-				 job->data.memHigh  =  job->data.mem + 1 - job->data.cas + 2 * job->data.win_h_0;
-				 decompressor.interleave_h(&job->data, sa, j,HORIZ_PASS_HEIGHT);
-				 job->data.memLow 	=  job->data.mem + job->data.win_l_0;
-				 job->data.memHigh  =  job->data.mem + job->data.win_h_0;
-				 decompressor.decompress_h(&job->data);
-				 if (!sa->write( resWindowRect.x0,
-								  j,
-								  resWindowRect.x1,
-								  j + HORIZ_PASS_HEIGHT,
-								  (int32_t*)(job->data.mem + resWindowRect.x0),
-								  HORIZ_PASS_HEIGHT,
-								  1,
-								  true)) {
-					 GRK_ERROR("sparse array write failure");
-					 job->data.release();
-					 return 1;
+			 try {
+				 for (j = job->min_j; j + HORIZ_PASS_HEIGHT-1 < job->max_j; j += HORIZ_PASS_HEIGHT) {
+					 job->data.memLow 	=  job->data.mem + job->data.cas +     2 * job->data.win_l_0;
+					 job->data.memHigh  =  job->data.mem + 1 - job->data.cas + 2 * job->data.win_h_0;
+					 decompressor.interleave_h(&job->data, sa, j,HORIZ_PASS_HEIGHT);
+					 job->data.memLow 	=  job->data.mem + job->data.win_l_0;
+					 job->data.memHigh  =  job->data.mem + job->data.win_h_0;
+					 decompressor.decompress_h(&job->data);
+					 if (!sa->write( resWindowRect.x0,
+									  j,
+									  resWindowRect.x1,
+									  j + HORIZ_PASS_HEIGHT,
+									  (int32_t*)(job->data.mem + resWindowRect.x0),
+									  HORIZ_PASS_HEIGHT,
+									  1,
+									  true)) {
+						 GRK_ERROR("sparse array write failure");
+						 job->data.release();
+						 delete job;
+						 return 1;
+					 }
 				 }
+				 if (j < job->max_j ) {
+					 job->data.memLow 	=  job->data.mem + job->data.cas +     2 * job->data.win_l_0;
+					 job->data.memHigh  =  job->data.mem + 1 - job->data.cas + 2 * job->data.win_h_0;
+					 decompressor.interleave_h(&job->data, sa, j, job->max_j - j);
+					 job->data.memLow 	=  job->data.mem + job->data.win_l_0;
+					 job->data.memHigh  =  job->data.mem + job->data.win_h_0;
+					 decompressor.decompress_h(&job->data);
+					 if (!sa->write( resWindowRect.x0,
+									  j,
+									  resWindowRect.x1,
+									  job->max_j,
+									  (int32_t*)(job->data.mem + resWindowRect.x0),
+									  HORIZ_PASS_HEIGHT,
+									  1,
+									  true)) {
+						 GRK_ERROR("Sparse array write failure");
+						 job->data.release();
+						 delete job;
+						 return 1;
+					 }
+				  }
+				  job->data.release();
+				  delete job;
+				  return 0;
+			 } catch (MissingSparseBlockException &msbe){
+				  job->data.release();
+				  delete job;
+				  return 1;
 			 }
-			 if (j < job->max_j ) {
-				 job->data.memLow 	=  job->data.mem + job->data.cas +     2 * job->data.win_l_0;
-				 job->data.memHigh  =  job->data.mem + 1 - job->data.cas + 2 * job->data.win_h_0;
-				 decompressor.interleave_h(&job->data, sa, j, job->max_j - j);
-				 job->data.memLow 	=  job->data.mem + job->data.win_l_0;
-				 job->data.memHigh  =  job->data.mem + job->data.win_h_0;
-				 decompressor.decompress_h(&job->data);
-				 if (!sa->write( resWindowRect.x0,
-								  j,
-								  resWindowRect.x1,
-								  job->max_j,
-								  (int32_t*)(job->data.mem + resWindowRect.x0),
-								  HORIZ_PASS_HEIGHT,
-								  1,
-								  true)) {
-					 GRK_ERROR("Sparse array write failure");
-					 job->data.release();
-					 return 1;
-				 }
-			  }
-			  job->data.release();
-			  delete job;
-			  return 0;
 		};
 
 		auto executor_v = [sa, resWindowRect, &decompressor](decompress_job<float, dwt_data<T>> *job){
 			 uint32_t j;
-			 for (j = job->min_j; j + VERT_PASS_WIDTH-1 < job->max_j; j += VERT_PASS_WIDTH) {
-				 job->data.memLow 	=  (T*)((int32_t*)job->data.mem + (    job->data.cas + 2 * job->data.win_l_0) * VERT_PASS_WIDTH);
-				 job->data.memHigh  =  (T*)((int32_t*)job->data.mem + (1 - job->data.cas + 2 * job->data.win_h_0) * VERT_PASS_WIDTH);
-				decompressor.interleave_v(&job->data, sa, j, VERT_PASS_WIDTH);
-				 job->data.memLow 	=  job->data.mem + job->data.win_l_0;
-				 job->data.memHigh  =  job->data.mem + job->data.win_h_0;
-				decompressor.decompress_v(&job->data);
-				if (!sa->write(j,
-							  resWindowRect.y0,
-							  j + VERT_PASS_WIDTH,
-							  resWindowRect.y1,
-							  (int32_t*)(job->data.mem + resWindowRect.y0),
-							  1,
-							  VERT_PASS_WIDTH,
-							  true)) {
-					GRK_ERROR("Sparse array write failure");
-					job->data.release();
-					return 1;
+			 try {
+				 for (j = job->min_j; j + VERT_PASS_WIDTH-1 < job->max_j; j += VERT_PASS_WIDTH) {
+					job->data.memLow 	=  (T*)((int32_t*)job->data.mem + (    job->data.cas + 2 * job->data.win_l_0) * VERT_PASS_WIDTH);
+					job->data.memHigh  =  (T*)((int32_t*)job->data.mem + (1 - job->data.cas + 2 * job->data.win_h_0) * VERT_PASS_WIDTH);
+					decompressor.interleave_v(&job->data, sa, j, VERT_PASS_WIDTH);
+					job->data.memLow 	=  job->data.mem + job->data.win_l_0;
+					job->data.memHigh  =  job->data.mem + job->data.win_h_0;
+					decompressor.decompress_v(&job->data);
+					if (!sa->write(j,
+								  resWindowRect.y0,
+								  j + VERT_PASS_WIDTH,
+								  resWindowRect.y1,
+								  (int32_t*)(job->data.mem + resWindowRect.y0),
+								  1,
+								  VERT_PASS_WIDTH,
+								  true)) {
+						GRK_ERROR("Sparse array write failure");
+						job->data.release();
+						delete job;
+						return 1;
+					}
+				 }
+				 if (j <  job->max_j) {
+					job->data.memLow 	=  (T*)((int32_t*)job->data.mem + (    job->data.cas + 2 * job->data.win_l_0) * VERT_PASS_WIDTH);
+					job->data.memHigh  =  (T*)((int32_t*)job->data.mem + (1 - job->data.cas + 2 * job->data.win_h_0) * VERT_PASS_WIDTH);
+					decompressor.interleave_v(&job->data, sa, j,  job->max_j - j);
+					job->data.memLow 	=  job->data.mem + job->data.win_l_0;
+					job->data.memHigh  =  job->data.mem + job->data.win_h_0;
+					decompressor.decompress_v(&job->data);
+					if (!sa->write(j,
+								  resWindowRect.y0,
+								  job->max_j,
+								  resWindowRect.y1,
+								  (int32_t*)(job->data.mem + resWindowRect.y0),
+								  1,
+								  VERT_PASS_WIDTH,
+								  true)) {
+						GRK_ERROR("Sparse array write failure");
+						job->data.release();
+						delete job;
+						return 1;
+					}
 				}
-			 }
-			 if (j <  job->max_j) {
-				job->data.memLow 	=  (T*)((int32_t*)job->data.mem + (    job->data.cas + 2 * job->data.win_l_0) * VERT_PASS_WIDTH);
-				job->data.memHigh  =  (T*)((int32_t*)job->data.mem + (1 - job->data.cas + 2 * job->data.win_h_0) * VERT_PASS_WIDTH);
-				decompressor.interleave_v(&job->data, sa, j,  job->max_j - j);
-				 job->data.memLow 	=  job->data.mem + job->data.win_l_0;
-				 job->data.memHigh  =  job->data.mem + job->data.win_h_0;
-				decompressor.decompress_v(&job->data);
-				if (!sa->write(j,
-							  resWindowRect.y0,
-							  job->max_j,
-							  resWindowRect.y1,
-							  (int32_t*)(job->data.mem + resWindowRect.y0),
-							  1,
-							  VERT_PASS_WIDTH,
-							  true)) {
-					GRK_ERROR("Sparse array write failure");
-					job->data.release();
-					return 1;
-				}
-			}
 
-			job->data.release();
-			delete job;
-			return 0;
+				job->data.release();
+				delete job;
+				return 0;
+			 } catch (MissingSparseBlockException &msbe){
+				  job->data.release();
+				  delete job;
+				  return 1;
+			 }
 		};
 
 		//3. calculate synthesis
@@ -2066,9 +2082,10 @@ template <typename T,
 				num_jobs = num_rows;
 			uint32_t step_j = num_jobs ? ( num_rows / num_jobs) : 0;
 			if (num_threads == 1 ||step_j < HORIZ_PASS_HEIGHT){
-			   auto job = new decompress_job<float, dwt_data<T>>( horiz, splitWindowRect[k].y0, splitWindowRect[k].y1);
+			    auto job = new decompress_job<float, dwt_data<T>>( horiz, splitWindowRect[k].y0, splitWindowRect[k].y1);
 				if (!job->data.alloc(data_size)) {
 					GRK_ERROR("Out of memory");
+					delete job;
 					goto cleanup;
 				}
 				if (executor_h(job))
@@ -2082,6 +2099,7 @@ template <typename T,
 																				   splitWindowRect[k].y1);
 					if (!job->data.alloc(data_size)) {
 						GRK_ERROR("Out of memory");
+						delete job;
 						goto cleanup;
 					}
 					results.emplace_back(
@@ -2113,6 +2131,7 @@ template <typename T,
 		   auto job = new decompress_job<float, dwt_data<T>>(vert, resWindowRect.x0, resWindowRect.x1);
 			if (!job->data.alloc(data_size)) {
 				GRK_ERROR("Out of memory");
+				delete job;
 				goto cleanup;
 			}
 			if (executor_v(job))
@@ -2126,6 +2145,7 @@ template <typename T,
 																		   	   resWindowRect.x1);
 				if (!job->data.alloc(data_size)) {
 					GRK_ERROR("Out of memory");
+					delete job;
 					goto cleanup;
 				}
 				results.emplace_back(
