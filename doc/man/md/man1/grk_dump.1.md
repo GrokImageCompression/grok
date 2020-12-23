@@ -3,7 +3,7 @@
 NAME
 ====
 
-**grk_dump** — dump JPEG 2000 code stream to stdout or to file
+**grk_dump** -- dump JPEG 2000 code stream to stdout or to file
 
 
 SYNOPSIS

@@ -3,7 +3,7 @@
 NAME
 ====
 
-**grk_decompress** — decompresses an image in the JPEG 2000 format to a different
+**grk_decompress** -- decompresses an image in the JPEG 2000 format to a different
 image format
 
 SYNOPSIS
