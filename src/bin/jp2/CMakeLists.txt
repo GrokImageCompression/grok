@@ -124,6 +124,7 @@ if(BUILD_DOC)
 install(
   FILES       ${GROK_SOURCE_DIR}/doc/man/man1/grk_compress.1
               ${GROK_SOURCE_DIR}/doc/man/man1/grk_decompress.1
+              ${GROK_SOURCE_DIR}/doc/man/man1/grk_dump.1
   DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 #
 endif()
