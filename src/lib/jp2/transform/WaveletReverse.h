@@ -59,34 +59,6 @@ public:
 					uint32_t numres,
 					uint8_t qmfbid);
 
-private:
-
-	/**
-	Inverse 5-3 wavelet transform in 2-D.
-	Apply a reversible inverse DWT transform to a component of an image.
-	@param p_tcd TCD handle
-	@param tilec Tile component information (current tile)
-	@param window window to decompress, for window decode
-	@param numres Number of resolution levels to decompress
-	*/
-	bool decompress_53(TileProcessor *p_tcd,
-							TileComponent* GRK_RESTRICT tilec,
-							grk_rect_u32 window,
-							uint32_t numres);
-
-	/**
-	Inverse 9-7 wavelet transform in 2-D.
-	Apply an irreversible inverse DWT transform to a component of an image.
-	@param p_tcd TCD handle
-	@param tilec Tile component information (current tile)
-	@param window window to decompress, for window decode
-	@param numres Number of resolution levels to decompress
-	*/
-	bool decompress_97(TileProcessor *p_tcd,
-								 TileComponent* GRK_RESTRICT tilec,
-								 grk_rect_u32 window,
-								 uint32_t numres);
-
 };
 
 }

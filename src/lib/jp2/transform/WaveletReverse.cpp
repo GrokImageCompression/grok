@@ -112,10 +112,8 @@ template <typename T> struct dwt_data {
 		         dn(0),
 				 sn(0),
 				 cas(0),
-				 win_l_off(0),
 				 win_l_0(0),
 				 win_l_1(0),
-				 win_h_off(0),
 				 win_h_0(0),
 				 win_h_1(0),
 				 length(0)
@@ -127,10 +125,8 @@ template <typename T> struct dwt_data {
 									dn ( rhs.dn),
 									sn ( rhs.sn),
 									cas ( rhs.cas),
-									win_l_off ( rhs.win_l_off),
 									win_l_0 ( rhs.win_l_0),
 									win_l_1 ( rhs.win_l_1),
-									win_h_off ( rhs.win_h_off),
 									win_h_0 ( rhs.win_h_0),
 									win_h_1 ( rhs.win_h_1),
 									length (rhs.length)
@@ -140,13 +136,6 @@ template <typename T> struct dwt_data {
 		release();
 		length = len;
 
-	    /* overflow check */
-		// add 10 just to be sure to we are safe from
-		// segment growth overflow
-	    if (len > (SIZE_MAX)) {
-	        GRK_ERROR("data size overflow");
-	        return false;
-	    }
 	    /* overflow check */
 	    if (len > (SIZE_MAX / sizeof(T))) {
 	        GRK_ERROR("data size overflow");
@@ -165,17 +154,15 @@ template <typename T> struct dwt_data {
     uint32_t dn;   /* number of elements in high pass band */
     uint32_t sn;   /* number of elements in low pass band */
     uint32_t cas;  /* 0 = start on even coord, 1 = start on odd coord */
-    uint32_t	  win_l_off; // offset of low buffer
     uint32_t      win_l_0; /* start coord in low pass band */
     uint32_t      win_l_1; /* end coord in low pass band */
-    uint32_t	  win_h_off; // offset of high buffer
     uint32_t      win_h_0; /* start coord in high pass band */
     uint32_t      win_h_1; /* end coord in high pass band */
     size_t length;
 };
 
-struct PartialParams97{
-	PartialParams97() :dataPrev(nullptr),
+struct Params97{
+	Params97() :dataPrev(nullptr),
 					data(nullptr),
 					absoluteStart(0),
 					len(0),
@@ -188,7 +175,7 @@ struct PartialParams97{
 	uint32_t lenMax;
 };
 
-static PartialParams97 makeDecompress97(dwt_data<vec4f>* dwt, bool low, bool step1);
+static Params97 makeParams97(dwt_data<vec4f>* dwt, bool low, bool step1);
 
 static const float dwt_alpha =  1.586134342f; /*  12994 */
 static const float dwt_beta  =  0.052980118f; /*    434 */
@@ -929,55 +916,10 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
     return rc;
 }
 
-
-static PartialParams97 makeDecompress97(dwt_data<vec4f>* dwt, bool low, bool step1){
-	 int32_t a, b;
-
-	if (dwt->cas == 0) {
-		a = 0;
-		b = 1;
-	} else {
-		a = 1;
-		b = 0;
-	}
-
-	PartialParams97 rc;
-	if (low){
-		if (step1) {
-			rc.data = dwt->mem + a + 2 * dwt->win_l_0;
-			rc.len = dwt->win_l_1 - dwt->win_l_0;
-
-		} else {
-			rc.dataPrev = dwt->mem + b;
-			rc.data = dwt->mem + a + 1;
-			rc.absoluteStart = dwt->win_l_0;
-			rc.len = dwt->win_l_1 - dwt->win_l_0;
-			rc.lenMax = (uint32_t)min<int32_t>(dwt->sn, dwt->dn - a) - dwt->win_l_0;
-		}
-	} else {
-		if (step1) {
-			rc.data = dwt->mem + b + 2 * dwt->win_h_0;
-			rc.len = dwt->win_h_1 - dwt->win_h_0;
-
-		} else {
-			rc.dataPrev = dwt->mem + a;
-			rc.data = dwt->mem + b + 1;
-			rc.absoluteStart = dwt->win_h_0;
-			rc.len = dwt->win_h_1 - dwt->win_h_0;
-			rc.lenMax = (uint32_t)min<int32_t>(dwt->dn, dwt->sn - b) - dwt->win_h_0;
-		}
-	}
-    rc.data += 2 * rc.absoluteStart;
-    if (rc.absoluteStart > 0) {
-        rc.dataPrev = rc.data - 2;
-    }
-	return rc;
-};
-
 //#undef __SSE__
 
 #ifdef __SSE__
-static void decompress_step1_sse_97(PartialParams97 d,
+static void decompress_step1_sse_97(Params97 d,
                                     const __m128 c){
 	// process 4 floats at a time
     __m128* GRK_RESTRICT mmData = (__m128*) d.data;
@@ -993,7 +935,7 @@ static void decompress_step1_sse_97(PartialParams97 d,
 }
 #endif
 
-static void decompress_step1_97(PartialParams97 d,
+static void decompress_step1_97(Params97 d,
                                 const float c){
 
 #ifdef __SSE__
@@ -1012,7 +954,7 @@ static void decompress_step1_97(PartialParams97 d,
 
 
 #ifdef __SSE__
-static void decompress_step2_sse_97(PartialParams97 d, __m128 c){
+static void decompress_step2_sse_97(Params97 d, __m128 c){
     __m128* GRK_RESTRICT vec_data = (__m128*) d.data;
 
     uint32_t imax = min<uint32_t>(d.len, d.lenMax);
@@ -1059,7 +1001,7 @@ static void decompress_step2_sse_97(PartialParams97 d, __m128 c){
 #endif
 
 
-static void decompress_step2_97(PartialParams97 d,float c){
+static void decompress_step2_97(Params97 d,float c){
 #ifdef __SSE__
 	decompress_step2_sse_97(d, _mm_set1_ps(c));
 #else
@@ -1099,31 +1041,22 @@ static void decompress_step2_97(PartialParams97 d,float c){
 #endif
 }
 
-
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
 static void decompress_step_97(dwt_data<vec4f>* GRK_RESTRICT dwt)
 {
-    if (dwt->cas == 0) {
-        if (dwt->dn == 0 && dwt->sn <= 1)
+
+    if ( (!dwt->cas && dwt->dn == 0 && dwt->sn <= 1) ||
+    	 ( dwt->cas && dwt->sn == 0 && dwt->dn >= 1) )
             return;
-    } else {
-        if (dwt->sn == 0 && dwt->dn >= 1)
-            return;
-    }
-    decompress_step1_97(makeDecompress97(dwt,true,true),
-                         K);
-    decompress_step1_97(makeDecompress97(dwt,false,true),
-                        c13318);
-    decompress_step2_97(makeDecompress97(dwt,true,false),
-                        dwt_delta);
-    decompress_step2_97(makeDecompress97(dwt,false,false),
-                        dwt_gamma);
-    decompress_step2_97(makeDecompress97(dwt,true,false),
-                        dwt_beta);
-    decompress_step2_97(makeDecompress97(dwt,false,false),
-                        dwt_alpha);
+
+    decompress_step1_97(makeParams97(dwt,true,true),  K);
+    decompress_step1_97(makeParams97(dwt,false,true), c13318);
+    decompress_step2_97(makeParams97(dwt,true,false), dwt_delta);
+    decompress_step2_97(makeParams97(dwt,false,false),dwt_gamma);
+    decompress_step2_97(makeParams97(dwt,true,false), dwt_beta);
+    decompress_step2_97(makeParams97(dwt,false,false),dwt_alpha);
 }
 
 static void interleave_h_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
@@ -1601,7 +1534,6 @@ public:
 		#define DD_(i) 	((i)<0 ? D(0) :	((i)>=sn ? D(sn-1) : D(i)))
 
 		int32_t i;
-		auto buf 		 = horiz->mem;
 		int32_t dn 		 = horiz->dn;
 		int32_t sn 		 = horiz->sn;
 		int32_t cas 	 = horiz->cas;
@@ -1623,7 +1555,7 @@ public:
 				checking in S_ and D_ macros
 				*/
 
-				buf	 = horiz->memLow;
+				auto buf	 = horiz->memLow;
 				i = 0;
 				if (i < win_l_x1 - win_l_x0) {
 					int32_t i_max;
@@ -1655,7 +1587,7 @@ public:
 						/* No bound checking */
 						D(i) += (S(i) + S(i + 1)) >> 1;
 					}
-					for (; i < win_h_x1; i++) {
+					for (; i < win_h_x1 - win_h_x0; i++) {
 						/* Right-most case */
 						D(i) += (S_(i) + S_(i + 1)) >> 1;
 					}
@@ -1663,9 +1595,10 @@ public:
 			}
 		} else {
 			if (!sn  && dn == 1) {
+				auto buf = horiz->memLow;
 				S(0) /= 2;
 			} else {
-				buf	 = horiz->memLow;
+				auto buf = horiz->memLow;
 				for (i = 0; i < win_l_x1 - win_l_x0; i++)
 					D(i) -= (SS_(i) + SS_(i + 1) + 2) >> 2;
 				buf	 = horiz->memHigh;
@@ -1693,7 +1626,6 @@ public:
 		#define DD_off_(i,off) 		(((i)>=sn ? D_off(sn-1,off) : D_off(i,off)))
 
 		uint32_t i;
-		auto buf 		  = vert->mem;
 		uint32_t dn 	  = vert->dn;
 		uint32_t sn 	  = vert->sn;
 		uint32_t cas 	  = vert->cas;
@@ -1716,7 +1648,7 @@ public:
 				*/
 
 				// 1. low pass
-				buf   = vert->memLow;
+				auto buf   = vert->memLow;
 				i = 0;
 				if (i < win_l_x1 - win_l_x0) {
 					uint32_t i_max;
@@ -1788,7 +1720,7 @@ public:
 						for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 							D_off(i, off) += (S_off(i, off) + S_off(i + 1, off)) >> 1;
 					}
-					for (; i < win_h_x1; i++) {
+					for (; i < win_h_x1  - win_h_x0; i++) {
 						/* Right-most case */
 						for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 							D_off(i, off) += (S_off_(i, off) + S_off_(i + 1, off)) >> 1;
@@ -1798,11 +1730,12 @@ public:
 		} else {
 			if (!sn  && dn == 1) {
 				// edge case at origin
+				auto buf   = vert->memLow;
 				for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 					S_off(0, off) /= 2;
 			} else {
 				// 1. low pass
-				buf   = vert->memLow;
+				auto buf   = vert->memLow;
 				for (i = 0; i < win_l_x1 - win_l_x0; i++) {
 					for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 						D_off(i, off) -= (SS_off_(i, off) + SS_off_(i + 1, off) + 2) >> 2;
@@ -1818,6 +1751,7 @@ public:
 	}
 };
 
+
 template<typename T> class Partial97 : public PartialInterleaver<T> {
 public:
 	void decompress_h(dwt_data<T>* dwt){
@@ -1826,6 +1760,52 @@ public:
 	void decompress_v(dwt_data<T>* dwt){
 		decompress_step_97(dwt);
 	}
+};
+
+// note: dwt->memLow and dwt->memHigh are only set for partial decode
+static Params97 makeParams97(dwt_data<vec4f>* dwt,
+							bool low,
+							bool step1){
+	Params97 rc;
+	if (low){
+		rc.data = dwt->memLow ? dwt->memLow : dwt->mem;
+		if (step1) {
+			rc.data += dwt->memLow ?   (dwt->cas + dwt->win_l_0) :  (dwt->cas + 2 * dwt->win_l_0);
+			rc.len  = dwt->win_l_1 - dwt->win_l_0;
+		} else {
+			rc.data += dwt->cas + 1;
+			// handle reflection at boundary
+			rc.dataPrev = rc.data -(dwt->cas + 1) + (!dwt->cas);
+			rc.len = dwt->win_l_1 - dwt->win_l_0;
+			rc.lenMax = (uint32_t)min<int32_t>(dwt->sn, dwt->dn - dwt->cas) - dwt->win_l_0;
+
+		    if (dwt->win_l_0 > 0) {
+		        rc.data += dwt->win_l_0;
+		        rc.dataPrev = rc.data - 2;
+		    }
+		    rc.absoluteStart = dwt->win_l_0;
+		}
+	} else {
+		rc.data = dwt->memHigh ? dwt->memHigh : dwt->mem;
+		if (step1) {
+			rc.data += dwt->memHigh ? ((!dwt->cas) + dwt->win_h_0) :  ((!dwt->cas) + 2 * dwt->win_h_0);
+			rc.len = dwt->win_h_1 - dwt->win_h_0;
+		} else {
+			rc.data += (!dwt->cas) + 1;
+			// handle reflection at boundary
+			rc.dataPrev = rc.data - ((!dwt->cas) + 1) + dwt->cas;
+			rc.len = dwt->win_h_1 - dwt->win_h_0;
+			rc.lenMax = (uint32_t)min<int32_t>(dwt->dn, dwt->sn - (!dwt->cas)) - dwt->win_h_0;
+
+		    if (dwt->win_h_0 > 0) {
+		        rc.data += dwt->win_h_0;
+		        rc.dataPrev = rc.data - 2;
+		    }
+			rc.absoluteStart = dwt->win_h_0;
+		}
+	}
+
+	return rc;
 };
 
 /**
@@ -1962,17 +1942,18 @@ template <typename T,
 		auto executor_h = [sa, resWindowRect, &decompressor](decompress_job<float, dwt_data<T>> *job){
 			 uint32_t j;
 			 try {
-				 for (j = job->min_j; j + HORIZ_PASS_HEIGHT-1 < job->max_j; j += HORIZ_PASS_HEIGHT) {
-					 job->data.memLow 	=  job->data.mem + job->data.cas +     2 * job->data.win_l_0;
-					 job->data.memHigh  =  job->data.mem + 1 - job->data.cas + 2 * job->data.win_h_0;
-					 decompressor.interleave_h(&job->data, sa, j,HORIZ_PASS_HEIGHT);
+				 for (j = job->min_j; j < job->max_j; j += HORIZ_PASS_HEIGHT) {
+					 auto height = std::min<uint32_t>((uint32_t)HORIZ_PASS_HEIGHT,job->max_j - j );
+					 job->data.memLow 	=  job->data.mem +   job->data.cas  + 2 * job->data.win_l_0;
+					 job->data.memHigh  =  job->data.mem + (!job->data.cas) + 2 * job->data.win_h_0;
+					 decompressor.interleave_h(&job->data, sa, j,height);
 					 job->data.memLow 	=  job->data.mem + job->data.win_l_0;
 					 job->data.memHigh  =  job->data.mem + job->data.win_h_0;
 					 decompressor.decompress_h(&job->data);
 					 if (!sa->write( resWindowRect.x0,
 									  j,
 									  resWindowRect.x1,
-									  j + HORIZ_PASS_HEIGHT,
+									  j + height,
 									  (int32_t*)(job->data.mem + resWindowRect.x0),
 									  HORIZ_PASS_HEIGHT,
 									  1,
@@ -1983,27 +1964,6 @@ template <typename T,
 						 return 1;
 					 }
 				 }
-				 if (j < job->max_j ) {
-					 job->data.memLow 	=  job->data.mem + job->data.cas +     2 * job->data.win_l_0;
-					 job->data.memHigh  =  job->data.mem + 1 - job->data.cas + 2 * job->data.win_h_0;
-					 decompressor.interleave_h(&job->data, sa, j, job->max_j - j);
-					 job->data.memLow 	=  job->data.mem + job->data.win_l_0;
-					 job->data.memHigh  =  job->data.mem + job->data.win_h_0;
-					 decompressor.decompress_h(&job->data);
-					 if (!sa->write( resWindowRect.x0,
-									  j,
-									  resWindowRect.x1,
-									  job->max_j,
-									  (int32_t*)(job->data.mem + resWindowRect.x0),
-									  HORIZ_PASS_HEIGHT,
-									  1,
-									  true)) {
-						 GRK_ERROR("Sparse array write failure");
-						 job->data.release();
-						 delete job;
-						 return 1;
-					 }
-				  }
 				  job->data.release();
 				  delete job;
 				  return 0;
@@ -2017,16 +1977,17 @@ template <typename T,
 		auto executor_v = [sa, resWindowRect, &decompressor](decompress_job<float, dwt_data<T>> *job){
 			 uint32_t j;
 			 try {
-				 for (j = job->min_j; j + VERT_PASS_WIDTH-1 < job->max_j; j += VERT_PASS_WIDTH) {
-					job->data.memLow 	=  (T*)((int32_t*)job->data.mem + (    job->data.cas + 2 * job->data.win_l_0) * VERT_PASS_WIDTH);
-					job->data.memHigh  =  (T*)((int32_t*)job->data.mem + (1 - job->data.cas + 2 * job->data.win_h_0) * VERT_PASS_WIDTH);
-					decompressor.interleave_v(&job->data, sa, j, VERT_PASS_WIDTH);
-					job->data.memLow 	=  job->data.mem + job->data.win_l_0;
+				 for (j = job->min_j; j < job->max_j; j += VERT_PASS_WIDTH) {
+					auto width = std::min<uint32_t>((uint32_t)VERT_PASS_WIDTH,job->max_j - j );
+					job->data.memLow   =  (T*)((int32_t*)job->data.mem +   (job->data.cas  + 2 * job->data.win_l_0) * VERT_PASS_WIDTH);
+					job->data.memHigh  =  (T*)((int32_t*)job->data.mem + ((!job->data.cas) + 2 * job->data.win_h_0) * VERT_PASS_WIDTH);
+					decompressor.interleave_v(&job->data, sa, j, width);
+					job->data.memLow   =  job->data.mem + job->data.win_l_0;
 					job->data.memHigh  =  job->data.mem + job->data.win_h_0;
 					decompressor.decompress_v(&job->data);
 					if (!sa->write(j,
 								  resWindowRect.y0,
-								  j + VERT_PASS_WIDTH,
+								  j + width,
 								  resWindowRect.y1,
 								  (int32_t*)(job->data.mem + resWindowRect.y0),
 								  1,
@@ -2038,28 +1999,6 @@ template <typename T,
 						return 1;
 					}
 				 }
-				 if (j <  job->max_j) {
-					job->data.memLow 	=  (T*)((int32_t*)job->data.mem + (    job->data.cas + 2 * job->data.win_l_0) * VERT_PASS_WIDTH);
-					job->data.memHigh  =  (T*)((int32_t*)job->data.mem + (1 - job->data.cas + 2 * job->data.win_h_0) * VERT_PASS_WIDTH);
-					decompressor.interleave_v(&job->data, sa, j,  job->max_j - j);
-					job->data.memLow 	=  job->data.mem + job->data.win_l_0;
-					job->data.memHigh  =  job->data.mem + job->data.win_h_0;
-					decompressor.decompress_v(&job->data);
-					if (!sa->write(j,
-								  resWindowRect.y0,
-								  job->max_j,
-								  resWindowRect.y1,
-								  (int32_t*)(job->data.mem + resWindowRect.y0),
-								  1,
-								  VERT_PASS_WIDTH,
-								  true)) {
-						GRK_ERROR("Sparse array write failure");
-						job->data.release();
-						delete job;
-						return 1;
-					}
-				}
-
 				job->data.release();
 				delete job;
 				return 0;
@@ -2081,41 +2020,34 @@ template <typename T,
 			if (num_rows < num_jobs)
 				num_jobs = num_rows;
 			uint32_t step_j = num_jobs ? ( num_rows / num_jobs) : 0;
-			if (num_threads == 1 ||step_j < HORIZ_PASS_HEIGHT){
-			    auto job = new decompress_job<float, dwt_data<T>>( horiz, splitWindowRect[k].y0, splitWindowRect[k].y1);
+			if (num_threads == 1 ||step_j < HORIZ_PASS_HEIGHT)
+				num_jobs = 1;
+			std::vector< std::future<int> > results;
+			bool blockError = false;
+			for(uint32_t j = 0; j < num_jobs; ++j) {
+			   auto job = new decompress_job<float, dwt_data<T>>( horiz,splitWindowRect[k].y0 + j * step_j,
+													   j < (num_jobs - 1U) ? splitWindowRect[k].y0 + (j + 1U) * step_j : splitWindowRect[k].y1);
 				if (!job->data.alloc(data_size)) {
 					GRK_ERROR("Out of memory");
 					delete job;
 					goto cleanup;
 				}
-				if (executor_h(job))
-					goto cleanup;
-			}else{
-				std::vector< std::future<int> > results;
-				for(uint32_t j = 0; j < num_jobs; ++j) {
-				   auto job = new decompress_job<float, dwt_data<T>>( horiz,splitWindowRect[k].y0 + j * step_j,
-																	   j < (num_jobs - 1U) ?
-																			   splitWindowRect[k].y0 + (j + 1U) * step_j :
-																				   splitWindowRect[k].y1);
-					if (!job->data.alloc(data_size)) {
-						GRK_ERROR("Out of memory");
-						delete job;
-						goto cleanup;
-					}
+				if (num_jobs > 1) {
 					results.emplace_back(
 						ThreadPool::get()->enqueue([job,executor_h] {
 							return executor_h(job);
 						})
 					);
+				} else {
+					blockError = ( executor_h(job) != 0);
 				}
-				bool blockError = false;
-				for(auto &result: results){
-					if (result.get() != 0)
-						blockError = true;
-				}
-				if (blockError)
-					goto cleanup;
 			}
+			for(auto &result: results){
+				if (result.get() != 0)
+					blockError = true;
+			}
+			if (blockError)
+				goto cleanup;
 		}
 
 		vert.win_l_0 = bandWindowRect[BAND_ORIENT_LL].y0;
@@ -2127,41 +2059,34 @@ template <typename T,
 		if (num_cols < num_jobs)
 			num_jobs = num_cols;
 		uint32_t step_j = num_jobs ? ( num_cols / num_jobs) : 0;
-		if (num_threads == 1 || step_j < VERT_PASS_WIDTH){
-		   auto job = new decompress_job<float, dwt_data<T>>(vert, resWindowRect.x0, resWindowRect.x1);
+		if (num_threads == 1 || step_j < VERT_PASS_WIDTH)
+			num_jobs = 1;
+		bool blockError = false;
+		std::vector< std::future<int> > results;
+		for(uint32_t j = 0; j < num_jobs; ++j) {
+		   auto job = new decompress_job<float, dwt_data<T>>( vert,resWindowRect.x0 + j * step_j,
+												  j < (num_jobs - 1U) ?  resWindowRect.x0 + (j + 1U) * step_j : resWindowRect.x1);
 			if (!job->data.alloc(data_size)) {
 				GRK_ERROR("Out of memory");
 				delete job;
 				goto cleanup;
 			}
-			if (executor_v(job))
-				goto cleanup;
-		} else {
-			std::vector< std::future<int> > results;
-			for(uint32_t j = 0; j < num_jobs; ++j) {
-			   auto job = new decompress_job<float, dwt_data<T>>( vert,resWindowRect.x0 + j * step_j,
-									   	   	   	   	   	   	   	   j < (num_jobs - 1U) ?
-									   	   	   	   	   	   	   			   resWindowRect.x0 + (j + 1U) * step_j :
-																		   	   resWindowRect.x1);
-				if (!job->data.alloc(data_size)) {
-					GRK_ERROR("Out of memory");
-					delete job;
-					goto cleanup;
-				}
+			if (num_jobs > 1) {
 				results.emplace_back(
 					ThreadPool::get()->enqueue([job,executor_v] {
 						return executor_v(job);
 					})
 				);
+			} else {
+				blockError = ( executor_v(job) != 0);
 			}
-			bool blockError = false;
-			for(auto &result: results){
-				if (result.get() != 0)
-					blockError = true;
-			}
-			if (blockError)
-				goto cleanup;
 		}
+		for(auto &result: results){
+			if (result.get() != 0)
+				blockError = true;
+		}
+		if (blockError)
+			goto cleanup;
     }
     //final read into tile buffer
 	bool ret = sa->read(synthesisWindow,
@@ -2181,54 +2106,33 @@ cleanup:
     return rc;
 }
 
-
-/* <summary>                            */
-/* Inverse 5-3 wavelet transform in 2-D. */
-/* </summary>                           */
-bool WaveletReverse::decompress_53(TileProcessor *p_tcd,
-					TileComponent* tilec,
-					grk_rect_u32 window,
-                    uint32_t numres)
-{
-    if (p_tcd->wholeTileDecompress)
-        return decompress_tile_53(tilec,numres);
-    else {
-        return decompress_partial_tile<int32_t,
-									getFilterWidth<uint32_t>(true),
-									Partial53<int32_t>>(tilec,
-														window,
-														numres,
-														tilec->getSparseBuffer());
-    }
-}
-
-bool WaveletReverse::decompress_97(TileProcessor *p_tcd,
-                TileComponent* GRK_RESTRICT tilec,
-				grk_rect_u32 window,
-                uint32_t numres){
-    if (p_tcd->wholeTileDecompress)
-        return decompress_tile_97(tilec, numres);
-    else {
-        return decompress_partial_tile<vec4f,
-									getFilterWidth<uint32_t>(false),
-									Partial97<vec4f>>(tilec,
-													window,
-													numres,
-													tilec->getSparseBuffer());
-    }
-}
-
-
 bool WaveletReverse::decompress(TileProcessor *p_tcd,
 						TileComponent* tilec,
 						grk_rect_u32 window,
                         uint32_t numres,
 						uint8_t qmfbid){
-	if (qmfbid == 1)
-		return decompress_53(p_tcd,tilec,window,numres);
-	else if (qmfbid == 0)
-		return decompress_97(p_tcd,tilec,window,numres);
-	return false;
+
+	if (qmfbid == 1) {
+	    if (p_tcd->wholeTileDecompress)
+	        return decompress_tile_53(tilec,numres);
+	    else
+	        return decompress_partial_tile<int32_t,
+										getFilterWidth<uint32_t>(true),
+										Partial53<int32_t>>(tilec,
+															window,
+															numres,
+															tilec->getSparseBuffer());
+	} else {
+		 if (p_tcd->wholeTileDecompress)
+		        return decompress_tile_97(tilec, numres);
+		    else
+		        return decompress_partial_tile<vec4f,
+											getFilterWidth<uint32_t>(false),
+											Partial97<vec4f>>(tilec,
+															window,
+															numres,
+															tilec->getSparseBuffer());
+	}
 }
 
 }
