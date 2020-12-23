@@ -3,7 +3,7 @@
 NAME
 ====
 
-**grk_compress** -- compresses images to JPEG 2000 format
+grk_compress - compresses images to JPEG 2000 format
 
 SYNOPSIS
 ========
