@@ -12,7 +12,7 @@ Build-Depends: cmake (>= 3.16.0),
                libjpeg-dev,
                zlib1g-dev
 Build-Depends-Indep: doxygen
-Standards-Version: 4.5.0
+Standards-Version: 4.5.1
 Section: libs
 Vcs-Browser: https://github.com/GrokImageCompression/grok
 Vcs-Git: https://github.com/GrokImageCompression/grok.git -b debian/master
