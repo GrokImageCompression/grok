@@ -1,3 +1,9 @@
+libgrokj2k (7.6.2-2) unstable; urgency=medium
+
+    * Fix lintian warnings
+
+ -- Aaron Boxer <boxerab@gmail.com>  Wed, 23 Dec 2020 21:10:00 +0200
+
 libgrokj2k (7.6.2-1) unstable; urgency=medium
 
     * Maintenance bug release
