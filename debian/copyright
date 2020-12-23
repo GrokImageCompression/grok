@@ -27,10 +27,9 @@ Copyright: 2019, Aous Naman
   2019, The University of New South Wales, Australia
 License: BSD-2-clause
 
-Files: src/lib/jp2/transform/sparse_array.cpp
- src/lib/jp2/transform/sparse_array.h
+Files: src/lib/jp2/tile/SparseBuffer.h
  src/lib/jp2/util/bench_dwt.cpp
- src/lib/jp2/util/test_sparse_array.cpp
+ src/lib/jp2/util/TestSparseBuffer.cpp
 Copyright: 2016-2020, Grok Image Compression Inc.
   2017, IntoPix SA <contact@intopix.com>
 License: AGPL-3 and BSD-2-clause
@@ -52,8 +51,8 @@ License: MIT
 
 Files: src/include/taskflow/*
 Copyright: 2018-2020 T.-W. Huang, C.-X. Lin, G. Guo, and M. Wong
-University of Utah, Salt Lake City, UT, USA
-University of Illinois at Urbana-Champaign, IL, USA
+  2018-2020 University of Utah, Salt Lake City, UT, USA
+  2018-2020 University of Illinois at Urbana-Champaign, IL, USA
 License: MIT
 
 Files: src/bin/common/spdlog/*
