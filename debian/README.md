@@ -21,6 +21,10 @@ Git - Move Tag
 Building a Package
 ------------------
 
+Guide to [setting up schroot](https://wiki.debian.org/Packaging/Pre-Requisites)
+`$ apt install git sbuild cmake  debhelper help2man liblcms2-dev libpng-dev libzstd-dev libtiff-dev libjpeg-dev zlib1g-dev doxygen `
+
+
 (In steps below, we are packaging version 7.6.2, using GPG key id
 B1D6B0917E6191EB3D0FF95F347F22FFCA601A1C)
 
