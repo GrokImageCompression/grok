@@ -565,7 +565,7 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 		uint32_t k_max = std::min<uint32_t>(m_rowsPerStrip, (uint32_t)(h - m_rowCount));
 		for (uint32_t k = 0; k < k_max; k++) {
 			for (uint32_t i = 0; i < w; i++) {
-				uint8_t rc[4];
+				uint8_t rc[4] = {0,0,0,0};
 				for (uint32_t compno = 0; compno < numcomps; ++compno){
 					int32_t r = m_image->comps[compno].data[m_srcIndex + i];
 					r += shift[compno];

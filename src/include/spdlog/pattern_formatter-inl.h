@@ -45,12 +45,12 @@ public:
             return;
         }
 
-        if (padinfo_.side_ == padding_info::left)
+        if (padinfo_.side_ == padding_info::pad_side::left)
         {
             pad_it(remaining_pad_);
             remaining_pad_ = 0;
         }
-        else if (padinfo_.side_ == padding_info::center)
+        else if (padinfo_.side_ == padding_info::pad_side::center)
         {
             auto half_pad = remaining_pad_ / 2;
             auto reminder = remaining_pad_ & 1;
@@ -1246,9 +1246,24 @@ SPDLOG_INLINE void pattern_formatter::handle_flag_(char flag, details::padding_i
 
     default: // Unknown flag appears as is
         auto unknown_flag = details::make_unique<details::aggregate_formatter>();
-        unknown_flag->add_ch('%');
-        unknown_flag->add_ch(flag);
-        formatters_.push_back((std::move(unknown_flag)));
+
+        if (!padding.truncate_)
+        {
+            unknown_flag->add_ch('%');
+            unknown_flag->add_ch(flag);
+            formatters_.push_back((std::move(unknown_flag)));
+        }
+        // fix issue #1617 (prev char was '!' and should have been treated as funcname flag instead of truncating flag)
+        // spdlog::set_pattern("[%10!] %v") => "[      main] some message"
+        // spdlog::set_pattern("[%3!!] %v") => "[mai] some message"
+        else
+        {
+            padding.truncate_ = false;
+            formatters_.push_back(details::make_unique<details::source_funcname_formatter<Padder>>(padding));
+            unknown_flag->add_ch(flag);
+            formatters_.push_back((std::move(unknown_flag)));
+        }
+
         break;
     }
 }
@@ -1270,15 +1285,15 @@ SPDLOG_INLINE details::padding_info pattern_formatter::handle_padspec_(std::stri
     switch (*it)
     {
     case '-':
-        side = padding_info::right;
+        side = padding_info::pad_side::right;
         ++it;
         break;
     case '=':
-        side = padding_info::center;
+        side = padding_info::pad_side::center;
         ++it;
         break;
     default:
-        side = details::padding_info::left;
+        side = details::padding_info::pad_side::left;
         break;
     }
 
