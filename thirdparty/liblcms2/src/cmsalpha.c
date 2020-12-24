@@ -389,7 +389,7 @@ static cmsFormatterAlphaFn FormattersAlpha[6][6] = {
         int in_n  = FormatterPos(in);
         int out_n = FormatterPos(out);
 
-        if (in_n < 0 || out_n < 0 || in_n > 4 || out_n > 4) {
+        if (in_n < 0 || out_n < 0 || in_n > 5 || out_n > 5) {
 
                cmsSignalError(id, cmsERROR_UNKNOWN_EXTENSION, "Unrecognized alpha channel width");
                return NULL;
@@ -571,6 +571,8 @@ void _cmsHandleExtraChannels(_cmsTRANSFORM* p, const void* in,
 
     // Check for conversions 8, 16, half, float, dbl
     copyValueFn = _cmsGetFormatterAlpha(p->ContextID, p->InputFormat, p->OutputFormat);
+    if (copyValueFn == NULL) 
+        return;
 
     if (nExtra == 1) { // Optimized routine for copying a single extra channel quickly
 
