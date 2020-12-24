@@ -106,20 +106,21 @@ template <typename T, typename S> struct decompress_job{
 /** Number of columns that we can process in parallel in the vertical pass */
 #define PLL_COLS_53     (2*VREG_INT_COUNT)
 template <typename T> struct dwt_data {
-	dwt_data() : mem(nullptr),
-				memLow(nullptr),
-				memHigh(nullptr),
+	dwt_data() : allocatedMem(nullptr),
+				 mem(nullptr),
+				 memLow(nullptr),
+				 memHigh(nullptr),
 		         dn(0),
 				 sn(0),
 				 cas(0),
 				 win_l_0(0),
 				 win_l_1(0),
 				 win_h_0(0),
-				 win_h_1(0),
-				 length(0)
+				 win_h_1(0)
 	{}
 
-	dwt_data(const dwt_data& rhs) : mem(nullptr),
+	dwt_data(const dwt_data& rhs) : allocatedMem(nullptr),
+									mem(nullptr),
 									memLow(nullptr),
 									memHigh(nullptr),
 									dn ( rhs.dn),
@@ -128,26 +129,33 @@ template <typename T> struct dwt_data {
 									win_l_0 ( rhs.win_l_0),
 									win_l_1 ( rhs.win_l_1),
 									win_h_0 ( rhs.win_h_0),
-									win_h_1 ( rhs.win_h_1),
-									length (rhs.length)
+									win_h_1 ( rhs.win_h_1)
 	{}
 
 	bool alloc(size_t len) {
+		return alloc(len,0);
+	}
+
+	bool alloc(size_t len, size_t padding) {
 		release();
-		length = len;
 
 	    /* overflow check */
 	    if (len > (SIZE_MAX / sizeof(T))) {
 	        GRK_ERROR("data size overflow");
 	        return false;
 	    }
-		mem = (T*)grk_aligned_malloc(len * sizeof(T));
-		return mem != nullptr;
+	    allocatedMem = (T*)grk_aligned_malloc((len +  2 * padding) * sizeof(T));
+	    mem = allocatedMem + padding;
+		return allocatedMem != nullptr;
 	}
 	void release(){
-		grk_aligned_free(mem);
+		grk_aligned_free(allocatedMem);
+		allocatedMem = nullptr;
 		mem = nullptr;
+		memLow = nullptr;
+		memHigh = nullptr;
 	}
+	T* allocatedMem;
     T* mem;
     T* memLow;
     T* memHigh;
@@ -158,7 +166,6 @@ template <typename T> struct dwt_data {
     uint32_t      win_l_1; /* end coord in low pass band */
     uint32_t      win_h_0; /* start coord in high pass band */
     uint32_t      win_h_1; /* end coord in high pass band */
-    size_t length;
 };
 
 struct Params97{
@@ -1855,6 +1862,7 @@ template <typename T,
 
     const uint32_t HORIZ_PASS_HEIGHT = sizeof(T)/sizeof(int32_t);
     const uint32_t VERT_PASS_WIDTH = 4;
+    const uint32_t pad = FILTER_WIDTH * VERT_PASS_WIDTH;
 
 	auto synthesisWindow = bounds;
 	synthesisWindow = synthesisWindow.rectceildivpow2(numresolutions - 1 - (numres-1));
@@ -1878,16 +1886,6 @@ template <typename T,
 		return false;
 	}
 
-    // in vertical pass, we process 4 vertical columns at a time
-    size_t data_size = (size_t)(max_resolution(fullRes, numres) + 2 * FILTER_WIDTH )* VERT_PASS_WIDTH;
-	dwt_data<T> horiz;
-    if (!horiz.alloc(data_size)) {
-        GRK_ERROR("Out of memory");
-        return false;
-    }
-	dwt_data<T> vert;
-    vert.mem = horiz.mem;
-    vert.length = horiz.length;
     D decompressor;
     size_t num_threads = ThreadPool::get()->num_threads();
 
@@ -1895,6 +1893,8 @@ template <typename T,
 
     for (uint8_t resno = 1; resno < numres; resno ++) {
     	auto fullResLower = fullRes;
+    	dwt_data<T> horiz;
+    	dwt_data<T> vert;
 
         horiz.sn 	= fullResLower->width();
         vert.sn 	= fullResLower->height();
@@ -1944,17 +1944,17 @@ template <typename T,
 			 try {
 				 for (j = job->min_j; j < job->max_j; j += HORIZ_PASS_HEIGHT) {
 					 auto height = std::min<uint32_t>((uint32_t)HORIZ_PASS_HEIGHT,job->max_j - j );
-					 job->data.memLow 	=  job->data.mem +   job->data.cas  + 2 * job->data.win_l_0;
-					 job->data.memHigh  =  job->data.mem + (!job->data.cas) + 2 * job->data.win_h_0;
+					 job->data.memLow 	=  job->data.mem +   job->data.cas;
+					 job->data.memHigh  =  job->data.mem + (!job->data.cas) + 2 * job->data.win_h_0 - 2 * job->data.win_l_0;
 					 decompressor.interleave_h(&job->data, sa, j,height);
-					 job->data.memLow 	=  job->data.mem + job->data.win_l_0;
-					 job->data.memHigh  =  job->data.mem + job->data.win_h_0;
+					 job->data.memLow 	=  job->data.mem - job->data.win_l_0;
+					 job->data.memHigh  =  job->data.mem + job->data.win_h_0 - 2 * job->data.win_l_0;
 					 decompressor.decompress_h(&job->data);
 					 if (!sa->write( resWindowRect.x0,
 									  j,
 									  resWindowRect.x1,
 									  j + height,
-									  (int32_t*)(job->data.mem + resWindowRect.x0),
+									  (int32_t*)(job->data.mem + resWindowRect.x0 - 2 * job->data.win_l_0),
 									  HORIZ_PASS_HEIGHT,
 									  1,
 									  true)) {
@@ -1979,17 +1979,17 @@ template <typename T,
 			 try {
 				 for (j = job->min_j; j < job->max_j; j += VERT_PASS_WIDTH) {
 					auto width = std::min<uint32_t>((uint32_t)VERT_PASS_WIDTH,job->max_j - j );
-					job->data.memLow   =  (T*)((int32_t*)job->data.mem +   (job->data.cas  + 2 * job->data.win_l_0) * VERT_PASS_WIDTH);
-					job->data.memHigh  =  (T*)((int32_t*)job->data.mem + ((!job->data.cas) + 2 * job->data.win_h_0) * VERT_PASS_WIDTH);
+					job->data.memLow   =  (T*)((int32_t*)job->data.mem +   (job->data.cas) * VERT_PASS_WIDTH);
+					job->data.memHigh  =  (T*)((int32_t*)job->data.mem + ((!job->data.cas) + 2 * job->data.win_h_0) * VERT_PASS_WIDTH) - 2 * job->data.win_l_0;
 					decompressor.interleave_v(&job->data, sa, j, width);
-					job->data.memLow   =  job->data.mem + job->data.win_l_0;
-					job->data.memHigh  =  job->data.mem + job->data.win_h_0;
+					job->data.memLow   =  job->data.mem - job->data.win_l_0;
+					job->data.memHigh  =  job->data.mem + job->data.win_h_0 - 2 * job->data.win_l_0;
 					decompressor.decompress_v(&job->data);
 					if (!sa->write(j,
 								  resWindowRect.y0,
 								  j + width,
 								  resWindowRect.y1,
-								  (int32_t*)(job->data.mem + resWindowRect.y0),
+								  (int32_t*)(job->data.mem + resWindowRect.y0 - 2 * job->data.win_l_0),
 								  1,
 								  VERT_PASS_WIDTH,
 								  true)) {
@@ -2014,6 +2014,10 @@ template <typename T,
         horiz.win_l_1 = bandWindowRect[BAND_ORIENT_LL].x1;
         horiz.win_h_0 = bandWindowRect[BAND_ORIENT_HL].x0;
         horiz.win_h_1 = bandWindowRect[BAND_ORIENT_HL].x1;
+
+
+        size_t data_size = splitWindowRect[0].width();
+
 		for (uint32_t k = 0; k < 2; ++k) {
 			uint32_t num_jobs = (uint32_t)num_threads;
 			uint32_t num_rows = splitWindowRect[k].height();
@@ -2027,7 +2031,7 @@ template <typename T,
 			for(uint32_t j = 0; j < num_jobs; ++j) {
 			   auto job = new decompress_job<float, dwt_data<T>>( horiz,splitWindowRect[k].y0 + j * step_j,
 													   j < (num_jobs - 1U) ? splitWindowRect[k].y0 + (j + 1U) * step_j : splitWindowRect[k].y1);
-				if (!job->data.alloc(data_size)) {
+				if (!job->data.alloc(data_size,pad)) {
 					GRK_ERROR("Out of memory");
 					delete job;
 					goto cleanup;
@@ -2050,6 +2054,8 @@ template <typename T,
 				goto cleanup;
 		}
 
+		data_size = resWindowRect.height() * VERT_PASS_WIDTH;
+
 		vert.win_l_0 = bandWindowRect[BAND_ORIENT_LL].y0;
 		vert.win_l_1 = bandWindowRect[BAND_ORIENT_LL].y1;
 		vert.win_h_0 = bandWindowRect[BAND_ORIENT_LH].y0;
@@ -2066,7 +2072,7 @@ template <typename T,
 		for(uint32_t j = 0; j < num_jobs; ++j) {
 		   auto job = new decompress_job<float, dwt_data<T>>( vert,resWindowRect.x0 + j * step_j,
 												  j < (num_jobs - 1U) ?  resWindowRect.x0 + (j + 1U) * step_j : resWindowRect.x1);
-			if (!job->data.alloc(data_size)) {
+			if (!job->data.alloc(data_size,pad)) {
 				GRK_ERROR("Out of memory");
 				delete job;
 				goto cleanup;
@@ -2102,7 +2108,6 @@ template <typename T,
 	rc = true;
 
 cleanup:
-    horiz.release();
     return rc;
 }
 
