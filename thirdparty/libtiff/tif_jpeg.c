@@ -466,7 +466,8 @@ std_empty_output_buffer(j_compress_ptr cinfo)
        }
 #endif
 
-	TIFFFlushData1(tif);
+	if( !TIFFFlushData1(tif) )
+            return FALSE;
 	sp->dest.next_output_byte = (JOCTET*) tif->tif_rawdata;
 	sp->dest.free_in_buffer = (size_t) tif->tif_rawdatasize;
 
@@ -937,7 +938,10 @@ JPEGFixupTagsSubsamplingReadByte(struct JPEGFixupTagsSubsamplingData* data, uint
 			return(0);
 		if (!data->filepositioned)
 		{
-			TIFFSeekFile(data->tif,data->fileoffset,SEEK_SET);
+			if (TIFFSeekFile(data->tif,data->fileoffset,SEEK_SET) == (toff_t)-1)
+			{
+			    return 0;
+			}
 			data->filepositioned=1;
 		}
 		m=data->buffersize;
@@ -2481,6 +2485,7 @@ TIFFInitJPEG(TIFF* tif, int scheme)
 {
 	JPEGState* sp;
 
+        (void)scheme;
 	assert(scheme == COMPRESSION_JPEG);
 
 	/*

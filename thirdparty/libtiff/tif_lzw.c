@@ -214,18 +214,15 @@ LZWSetupDecode(TIFF* tif)
 			return (0);
 		}
 
-		DecoderState(tif)->dec_codetab = NULL;
-		DecoderState(tif)->dec_decode = NULL;
+		sp = DecoderState(tif);
+		sp->dec_codetab = NULL;
+		sp->dec_decode = NULL;
 
 		/*
 		 * Setup predictor setup.
 		 */
 		(void) TIFFPredictorInit(tif);
-
-		sp = DecoderState(tif);
 	}
-
-	assert(sp != NULL);
 
 	if (sp->dec_codetab == NULL) {
 		sp->dec_codetab = (code_t*)_TIFFmalloc(CSIZE*sizeof (code_t));
@@ -1161,6 +1158,7 @@ int
 TIFFInitLZW(TIFF* tif, int scheme)
 {
 	static const char module[] = "TIFFInitLZW";
+        (void)scheme;
 	assert(scheme == COMPRESSION_LZW);
 	/*
 	 * Allocate state block so tag methods have storage to record values.
