@@ -278,14 +278,14 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
 }
 
 
-bool TileComponent::create_buffer(grk_rect_u32 *unreduced_tile_comp_dims,
-									grk_rect_u32 unreduced_tile_comp_window_dims) {
+bool TileComponent::create_buffer(grk_rect_u32 *unreducedCanvasTileCompDims,
+									grk_rect_u32 unreducedCanvasTileCompWindowDims) {
 	// calculate band
 	for (uint8_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
 		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 			auto band = res->band + bandIndex;
-			band->set_rect(res_window<int32_t>::getBandWindowRect(numresolutions, resno, band->orientation,*unreduced_tile_comp_dims));
+			band->set_rect(ResWindow<int32_t>::getTileCompBandWindow(numresolutions, resno, band->orientation,*unreducedCanvasTileCompDims));
 		}
 	}
 
@@ -293,12 +293,12 @@ bool TileComponent::create_buffer(grk_rect_u32 *unreduced_tile_comp_dims,
 	auto highestNumberOfResolutions =
 			(!m_is_encoder) ? resolutions_to_decompress : numresolutions;
 	auto maxResolution = resolutions + numresolutions - 1;
-	if (!maxResolution->intersection(unreduced_tile_comp_window_dims).is_valid()){
+	if (!maxResolution->intersection(unreducedCanvasTileCompWindowDims).is_valid()){
 		GRK_ERROR("Decompress window (%d,%d,%d,%d) must overlap tile region (%d,%d,%d,%d)",
-				unreduced_tile_comp_window_dims.x0,
-				unreduced_tile_comp_window_dims.y0,
-				unreduced_tile_comp_window_dims.x1,
-				unreduced_tile_comp_window_dims.y1,
+				unreducedCanvasTileCompWindowDims.x0,
+				unreducedCanvasTileCompWindowDims.y0,
+				unreducedCanvasTileCompWindowDims.x1,
+				unreducedCanvasTileCompWindowDims.y1,
 				maxResolution->x0,
 				maxResolution->y0,
 				maxResolution->x1,
@@ -310,7 +310,7 @@ bool TileComponent::create_buffer(grk_rect_u32 *unreduced_tile_comp_dims,
 											wholeTileDecompress,
 											*(grk_rect_u32*)maxResolution,
 											*(grk_rect_u32*)this,
-											unreduced_tile_comp_window_dims,
+											unreducedCanvasTileCompWindowDims,
 											resolutions,
 											numresolutions,
 											highestNumberOfResolutions);
