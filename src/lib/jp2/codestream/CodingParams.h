@@ -233,6 +233,11 @@ struct DecodingParams {
  * Coding parameters
  */
 struct CodingParams {
+
+	grk_rect_u32 getTileBounds( const grk_image *p_image,
+								uint32_t tile_x,
+								uint32_t tile_y) const;
+
 	/** Rsiz*/
 	uint16_t rsiz;
 	/* Pcap */

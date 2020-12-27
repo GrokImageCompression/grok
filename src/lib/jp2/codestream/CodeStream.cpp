@@ -1129,9 +1129,8 @@ bool CodeStream::decompress( grk_plugin_tile *tile,	 grk_image *p_image){
 }
 
 /** decompress tile*/
-bool CodeStream::decompress_tile(grk_image *p_image,	uint16_t tile_index){
-
-	if (!p_image) {
+bool CodeStream::decompress_tile(grk_image *image,uint16_t tile_index){
+	if (!image) {
 		GRK_ERROR("Image is null");
 		return false;
 	}
@@ -1146,66 +1145,42 @@ bool CodeStream::decompress_tile(grk_image *p_image,	uint16_t tile_index){
 	uint32_t tile_x = tile_index % m_cp.t_grid_width;
 	uint32_t tile_y = tile_index / m_cp.t_grid_width;
 
-	auto original_image_rect = grk_rect(p_image->x0, p_image->y0, p_image->x1,
-			p_image->y1);
-
-	p_image->x0 = tile_x * m_cp.t_width + m_cp.tx0;
-	if (p_image->x0 < m_input_image->x0)
-		p_image->x0 = m_input_image->x0;
-	p_image->x1 = (tile_x + 1) * m_cp.t_width + m_cp.tx0;
-	if (p_image->x1 > m_input_image->x1)
-		p_image->x1 = m_input_image->x1;
-
-	p_image->y0 = tile_y * m_cp.t_height + m_cp.ty0;
-	if (p_image->y0 < m_input_image->y0)
-		p_image->y0 = m_input_image->y0;
-	p_image->y1 = (tile_y + 1) * m_cp.t_height + m_cp.ty0;
-	if (p_image->y1 > m_input_image->y1)
-		p_image->y1 = m_input_image->y1;
-
-	auto tile_rect = grk_rect(p_image->x0,
-								p_image->y0,
-								p_image->x1,
-								p_image->y1);
-
-	auto overlap_rect = original_image_rect.intersection(tile_rect);
-	if (original_image_rect.non_empty()
-			&& tile_rect.non_empty()
-			&& overlap_rect.non_empty()) {
-		p_image->x0 = (uint32_t) overlap_rect.x0;
-		p_image->y0 = (uint32_t) overlap_rect.y0;
-		p_image->x1 = (uint32_t) overlap_rect.x1;
-		p_image->y1 = (uint32_t) overlap_rect.y1;
+	auto imageBounds = grk_rect_u32(image->x0,
+									image->y0,
+									image->x1,
+									image->y1);
+	auto tileBounds = m_cp.getTileBounds(image, tile_x, tile_y);
+	// crop tile bounds with image bounds
+	auto croppedImageBounds = imageBounds.intersection(tileBounds);
+	if (imageBounds.non_empty() && tileBounds.non_empty() && croppedImageBounds.non_empty()) {
+		image->x0 = (uint32_t) croppedImageBounds.x0;
+		image->y0 = (uint32_t) croppedImageBounds.y0;
+		image->x1 = (uint32_t) croppedImageBounds.x1;
+		image->y1 = (uint32_t) croppedImageBounds.y1;
 	} else {
-		GRK_WARN(
-				"Decompress window <%u,%u,%u,%u> does not overlap requested tile %u. Ignoring.",
-				original_image_rect.x0, original_image_rect.y0,
-				original_image_rect.x1, original_image_rect.y1, tile_index);
+		GRK_WARN("Decompress bounds <%u,%u,%u,%u> do not overlap with requested tile %u. Decompressing full image",
+				imageBounds.x0,
+				imageBounds.y0,
+				imageBounds.x1,
+				imageBounds.y1,
+				tile_index);
+		croppedImageBounds = imageBounds;
 	}
 
-	auto img_comp = p_image->comps;
 	auto reduce = m_cp.m_coding_params.m_dec.m_reduce;
-	for (uint32_t compno = 0; compno < p_image->numcomps; ++compno) {
-		uint32_t comp_x1, comp_y1;
-
-		img_comp->x0 = ceildiv<uint32_t>(p_image->x0, img_comp->dx);
-		img_comp->y0 = ceildiv<uint32_t>(p_image->y0, img_comp->dy);
-		comp_x1 = ceildiv<uint32_t>(p_image->x1, img_comp->dx);
-		comp_y1 = ceildiv<uint32_t>(p_image->y1, img_comp->dy);
-
-		img_comp->w = (ceildivpow2<uint32_t>(comp_x1, reduce)
-				- ceildivpow2<uint32_t>(img_comp->x0, reduce));
-		img_comp->h = (ceildivpow2<uint32_t>(comp_y1, reduce)
-				- ceildivpow2<uint32_t>(img_comp->y0, reduce));
-
-		img_comp++;
+	for (uint32_t compno = 0; compno < image->numcomps; ++compno) {
+		auto comp = image->comps + compno;
+		auto compBounds = croppedImageBounds.rectceildiv(comp->dx,comp->dy);
+		auto reducedCompBounds = compBounds.rectceildivpow2(reduce);
+		comp->w = reducedCompBounds.width();
+		comp->h = reducedCompBounds.height();
 	}
 	if (m_output_image)
 		grk_image_destroy(m_output_image);
 	m_output_image = grk_image_create0();
 	if (!(m_output_image))
 		return false;
-	grk_copy_image_header(p_image, m_output_image);
+	grk_copy_image_header(image, m_output_image);
 	m_tile_ind_to_dec = (int32_t) tile_index;
 
 	// reset tile part numbers, in case we are re-using the same codec object
@@ -1217,7 +1192,7 @@ bool CodeStream::decompress_tile(grk_image *p_image,	uint16_t tile_index){
 	/* customization of the decoding */
 	m_procedure_list.push_back((j2k_procedure) j2k_decompress_tile);
 
-	return do_decompress(p_image);
+	return do_decompress(image);
 }
 
 /** Reading function used after code stream if necessary */
@@ -1484,12 +1459,10 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 			GRK_ERROR("Invalid tile dimensions (%u,%u)",cp->t_width, cp->t_height);
 			return false;
 		}
-		cp->t_grid_width = ceildiv<uint32_t>((image->x1 - cp->tx0),
-				cp->t_width);
-		cp->t_grid_height = ceildiv<uint32_t>((image->y1 - cp->ty0),
-				cp->t_height);
+		cp->t_grid_width  = ceildiv<uint32_t>((image->x1 - cp->tx0), cp->t_width);
+		cp->t_grid_height = ceildiv<uint32_t>((image->y1 - cp->ty0), cp->t_height);
 	} else {
-		cp->t_width = image->x1 - cp->tx0;
+		cp->t_width  = image->x1 - cp->tx0;
 		cp->t_height = image->y1 - cp->ty0;
 	}
 
@@ -3076,25 +3049,14 @@ bool CodeStream::update_rates(void) {
 	uint32_t size_pixel = image->numcomps * image->comps->prec;
 	auto header_size = (double) m_stream->tell();
 
-	for (uint32_t i = 0; i < cp->t_grid_height; ++i) {
-		for (uint32_t j = 0; j < cp->t_grid_width; ++j) {
+	for (uint32_t tile_y = 0; tile_y < cp->t_grid_height; ++tile_y) {
+		for (uint32_t tile_x = 0; tile_x < cp->t_grid_width; ++tile_x) {
 			double stride = 0;
 			if (cp->m_coding_params.m_enc.m_tp_on)
 				stride = (tcp->m_nb_tile_parts - 1) * 14;
-
 			double offset = stride / tcp->numlayers;
-
-			/* 4 borders of the tile rescale on the image if necessary */
-			uint32_t x0 = std::max<uint32_t>((cp->tx0 + j * cp->t_width),
-					image->x0);
-			uint32_t y0 = std::max<uint32_t>((cp->ty0 + i * cp->t_height),
-					image->y0);
-			uint32_t x1 = std::min<uint32_t>((cp->tx0 + (j + 1) * cp->t_width),
-					image->x1);
-			uint32_t y1 = std::min<uint32_t>((cp->ty0 + (i + 1) * cp->t_height),
-					image->y1);
-			uint64_t numTilePixels = (uint64_t) (x1 - x0) * (y1 - y0);
-
+			auto tileBounds = cp->getTileBounds(image,  tile_x, tile_y);
+			uint64_t numTilePixels = tileBounds.area();
 			for (uint16_t k = 0; k < tcp->numlayers; ++k) {
 				double *rates = tcp->rates + k;
 				if (*rates > 0.0f)
@@ -3106,19 +3068,12 @@ bool CodeStream::update_rates(void) {
 	}
 	tcp = cp->tcps;
 
-	for (uint32_t i = 0; i < cp->t_grid_height; ++i) {
-		for (uint32_t j = 0; j < cp->t_grid_width; ++j) {
+	for (uint32_t tile_y = 0; tile_y < cp->t_grid_height; ++tile_y) {
+		for (uint32_t tile_x = 0; tile_x < cp->t_grid_width; ++tile_x) {
 			double *rates = tcp->rates;
-			/* 4 borders of the tile rescale on the image if necessary */
-			uint32_t x0 = std::max<uint32_t>((cp->tx0 + j * cp->t_width),
-					image->x0);
-			uint32_t y0 = std::max<uint32_t>((cp->ty0 + i * cp->t_height),
-					image->y0);
-			uint32_t x1 = std::min<uint32_t>((cp->tx0 + (j + 1) * cp->t_width),
-					image->x1);
-			uint32_t y1 = std::min<uint32_t>((cp->ty0 + (i + 1) * cp->t_height),
-					image->y1);
-			uint64_t numTilePixels = (uint64_t) (x1 - x0) * (y1 - y0);
+
+			auto tileBounds = cp->getTileBounds(image,  tile_x, tile_y);
+			uint64_t numTilePixels = tileBounds.area();
 
 			double sot_adjust = ((double) numTilePixels * (double) header_size)
 					/ ((double) width * height);

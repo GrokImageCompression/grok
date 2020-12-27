@@ -23,6 +23,26 @@
 
 namespace grk {
 
+grk_rect_u32 CodingParams::getTileBounds(const grk_image *p_image,
+										uint32_t tile_x,
+										uint32_t tile_y) const{
+	grk_rect_u32 rc;
+
+	/* find extent of tile */
+	assert(tx0 + (uint64_t)tile_x * t_width < UINT_MAX);
+	rc.x0 = std::max<uint32_t>(tx0 + tile_x * t_width, p_image->x0);
+	assert(ty0 + (uint64_t)tile_y * t_height < UINT_MAX);
+	rc.y0 = std::max<uint32_t>(ty0 + tile_y * t_height, p_image->y0);
+
+	uint64_t temp = tx0 + (uint64_t)(tile_x + 1) * t_width;
+	rc.x1 = (temp > p_image->x1) ? p_image->x1 : (uint32_t)temp;
+
+	temp = ty0 + (uint64_t)(tile_y + 1) * t_height;
+	rc.y1 = (temp > p_image->y1) ? p_image->y1 : (uint32_t)temp;
+
+	return rc;
+}
+
 void CodingParams::destroy() {
 	if (tcps != nullptr) {
 		uint32_t nb_tiles = t_grid_height * t_grid_width;

@@ -44,21 +44,20 @@ static void grk_update_image_comp_header_from_coding_params(grk_image *image_hea
 	x1 = std::min<uint32_t>(sat_add<uint32_t>(x1, p_cp->t_width), image_header->x1);
 	y1 = std::min<uint32_t>(sat_add<uint32_t>(y1, p_cp->t_height), image_header->y1);
 
+	auto imageBounds = grk_rect_u32(x0,y0,x1,y1);
+
 	// 2. convert from canvas to tile coordinates, taking into account
 	// resolution reduction
 	uint32_t reduce = p_cp->m_coding_params.m_dec.m_reduce;
 	for (uint32_t i = 0; i < image_header->numcomps; ++i) {
-		auto img_comp = image_header->comps + i;
-		uint32_t comp_x0 = ceildiv<uint32_t>(x0, img_comp->dx);
-		uint32_t comp_y0 = ceildiv<uint32_t>(y0, img_comp->dy);
-		uint32_t comp_x1 = ceildiv<uint32_t>(x1, img_comp->dx);
-		uint32_t comp_y1 = ceildiv<uint32_t>(y1, img_comp->dy);
-		uint32_t width = ceildivpow2<uint32_t>(comp_x1 - comp_x0,reduce);
-		uint32_t height = ceildivpow2<uint32_t>(comp_y1 - comp_y0,reduce);
-		img_comp->w = width;
-		img_comp->h = height;
-		img_comp->x0 = comp_x0;
-		img_comp->y0 = comp_y0;
+		auto comp = image_header->comps + i;
+		auto compBounds = imageBounds.rectceildiv(comp->dx, comp->dy);
+		uint32_t width = ceildivpow2<uint32_t>(compBounds.width(),reduce);
+		uint32_t height = ceildivpow2<uint32_t>(compBounds.height(),reduce);
+		comp->w = width;
+		comp->h = height;
+		comp->x0 = compBounds.x0;
+		comp->y0 = compBounds.y0;
 	}
 }
 
@@ -240,20 +239,10 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 
 	/* Define the tiles which will be decompressed */
 	if (!codeStream->wholeTileDecompress) {
-		decompressor->m_start_tile_x_index =
-				(decompressor->m_start_tile_x_index
-						- cp->tx0) / cp->t_width;
-		decompressor->m_start_tile_y_index =
-				(decompressor->m_start_tile_y_index
-						- cp->ty0) / cp->t_height;
-		decompressor->m_end_tile_x_index =
-				ceildiv<uint32_t>(
-						(decompressor->m_end_tile_x_index
-								- cp->tx0), cp->t_width);
-		decompressor->m_end_tile_y_index =
-				ceildiv<uint32_t>(
-						(decompressor->m_end_tile_y_index
-								- cp->ty0), cp->t_height);
+		decompressor->m_start_tile_x_index = (decompressor->m_start_tile_x_index - cp->tx0) / cp->t_width;
+		decompressor->m_start_tile_y_index = (decompressor->m_start_tile_y_index - cp->ty0) / cp->t_height;
+		decompressor->m_end_tile_x_index   = ceildiv<uint32_t>((decompressor->m_end_tile_x_index	- cp->tx0), cp->t_width);
+		decompressor->m_end_tile_y_index   = ceildiv<uint32_t>((decompressor->m_end_tile_y_index	- cp->ty0), cp->t_height);
 	} else {
 		decompressor->m_start_tile_x_index = 0;
 		decompressor->m_start_tile_y_index = 0;
