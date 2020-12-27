@@ -115,8 +115,11 @@ struct PacketIter {
  *
  * @return	a list of packet iterator that points to the first packet of the tile (not true).
  */
-PacketIter* pi_create_compress(const grk_image *image, CodingParams *cp,
-		uint16_t tileno, J2K_T2_MODE t2_mode, std::vector<uint8_t*> *include);
+PacketIter* pi_create_compress(const grk_image *image,
+								CodingParams *cp,
+								uint16_t tileno,
+								J2K_T2_MODE t2_mode,
+								std::vector<uint8_t*> *include);
 
 /**
  * Updates the compressing parameters of the codec.
@@ -125,8 +128,9 @@ PacketIter* pi_create_compress(const grk_image *image, CodingParams *cp,
  * @param	p_cp		the coding parameters.
  * @param	tile_no	index of the tile being encoded.
  */
-void pi_update_encoding_parameters(const grk_image *p_image, CodingParams *p_cp,
-		uint16_t tile_no);
+void pi_update_encoding_parameters(const grk_image *p_image,
+									CodingParams *p_cp,
+									uint16_t tile_no);
 
 /**
  Modify the packet iterator for enabling tile part generation
@@ -138,8 +142,13 @@ void pi_update_encoding_parameters(const grk_image *p_image, CodingParams *p_cp,
  @param tppos 	The position of the tile part flag in the progression order
  @param t2_mode T2 mode
  */
-void pi_enable_tile_part_generation(PacketIter *pi, CodingParams *cp, uint16_t tileno, uint32_t pino,
-		bool first_poc_tile_part, uint32_t tppos, J2K_T2_MODE t2_mode);
+void pi_enable_tile_part_generation(PacketIter *pi,
+									CodingParams *cp,
+									uint16_t tileno,
+									uint32_t pino,
+									bool first_poc_tile_part,
+									uint32_t tppos,
+									J2K_T2_MODE t2_mode);
 
 /**
  Create a packet iterator for Decoder
@@ -150,7 +159,10 @@ void pi_enable_tile_part_generation(PacketIter *pi, CodingParams *cp, uint16_t t
  @return a packet iterator that points to the first packet of the tile
  @see pi_destroy
  */
-PacketIter* pi_create_decompress(grk_image *image, CodingParams *cp, uint16_t tileno, std::vector<uint8_t*> *include);
+PacketIter* pi_create_decompress(grk_image *image,
+								CodingParams *cp,
+								uint16_t tileno,
+								std::vector<uint8_t*> *include);
 /**
  * Destroys a packet iterator array.
  *
