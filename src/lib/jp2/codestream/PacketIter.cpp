@@ -163,10 +163,10 @@ static void pi_update_decode_poc(PacketIter *p_pi, TileCodingParams *p_tcp,
 		uint64_t max_precincts);
 
 /**
- * Check packet iterator's nexxt level
+* Check if there is a remaining valid progression order
  */
-static bool pi_check_next_level(int32_t pos, CodingParams *cp,
-		uint16_t tileno, uint32_t pino, const char *prog);
+static bool pi_check_next_for_valid_progression(int32_t prog, CodingParams *cp,
+		uint16_t tileno, uint32_t pino, const char *progString);
 
 static void update_pi_dxy(PacketIter *pi);
 static void update_pi_dxy_for_comp(PacketIter *pi, grk_pi_comp *comp);
@@ -788,56 +788,57 @@ static void pi_update_decode_no_poc(PacketIter *p_pi, TileCodingParams *p_tcp,
 	}
 }
 
-static bool pi_check_next_level(int32_t pos, CodingParams *cp,
-		uint16_t tileno, uint32_t pino, const char *prog) {
+/**
+ * Check if there is a remaining valid progression order
+ */
+static bool pi_check_next_for_valid_progression(int32_t prog, CodingParams *cp,
+		uint16_t tileno, uint32_t pino, const char *progString) {
 	auto tcps = cp->tcps + tileno;
 	auto poc = tcps->pocs + pino;
 
-	if (pos >= 0) {
-		for (int32_t i = pos; pos >= 0; i--) {
-			switch (prog[i]) {
-			case 'R':
-				if (poc->res_t == poc->resE)
-					return pi_check_next_level(pos - 1, cp, tileno, pino, prog);
+	if (prog >= 0) {
+		switch (progString[prog]) {
+		case 'R':
+			if (poc->res_t == poc->resE)
+				return pi_check_next_for_valid_progression(prog - 1, cp, tileno, pino, progString);
+			else
+				return true;
+			break;
+		case 'C':
+			if (poc->comp_t == poc->compE)
+				return pi_check_next_for_valid_progression(prog - 1, cp, tileno, pino, progString);
+			else
+				return true;
+			break;
+		case 'L':
+			if (poc->lay_t == poc->layE)
+				return pi_check_next_for_valid_progression(prog - 1, cp, tileno, pino, progString);
+			else
+				return true;
+			break;
+		case 'P':
+			switch (poc->prg) {
+			case GRK_LRCP: /* fall through */
+			case GRK_RLCP:
+				if (poc->prc_t == poc->prcE)
+					return pi_check_next_for_valid_progression(prog - 1, cp, tileno, pino,	progString);
 				else
 					return true;
 				break;
-			case 'C':
-				if (poc->comp_t == poc->compE)
-					return pi_check_next_level(pos - 1, cp, tileno, pino, prog);
-				else
-					return true;
-				break;
-			case 'L':
-				if (poc->lay_t == poc->layE)
-					return pi_check_next_level(pos - 1, cp, tileno, pino, prog);
-				else
-					return true;
-				break;
-			case 'P':
-				switch (poc->prg) {
-				case GRK_LRCP: /* fall through */
-				case GRK_RLCP:
-					if (poc->prc_t == poc->prcE)
-						return pi_check_next_level(i - 1, cp, tileno, pino,	prog);
+			default:
+				if (poc->tx0_t == poc->txE) {
+					/*TY*/
+					if (poc->ty0_t == poc->tyE)
+						return pi_check_next_for_valid_progression(prog - 1, cp, tileno, pino,	progString);
 					else
 						return true;
-					break;
-				default:
-					if (poc->tx0_t == poc->txE) {
-						/*TY*/
-						if (poc->ty0_t == poc->tyE)
-							return pi_check_next_level(i - 1, cp, tileno, pino,	prog);
-						else
-							return true;
-						/*TY*/
-					} else {
-						return true;
-					}
-					break;
-				}/*end case P*/
-			}/*end switch*/
-		}/*end for*/
+					/*TY*/
+				} else {
+					return true;
+				}
+				break;
+			}/*end case P*/
+		}/*end switch*/
 	}/*end if*/
 	return false;
 }
@@ -1245,7 +1246,7 @@ void pi_enable_tile_part_generation(PacketIter *pi, CodingParams *cp, uint16_t t
 					switch (prog[i]) {
 					case 'R':
 						if (poc->res_t == poc->resE) {
-							if (pi_check_next_level(i - 1, cp, tileno, pino,
+							if (pi_check_next_for_valid_progression(i - 1, cp, tileno, pino,
 									prog)) {
 								poc->res_t = poc->resS;
 								pi[pino].poc.resno0 = poc->res_t;
@@ -1264,7 +1265,7 @@ void pi_enable_tile_part_generation(PacketIter *pi, CodingParams *cp, uint16_t t
 						break;
 					case 'C':
 						if (poc->comp_t == poc->compE) {
-							if (pi_check_next_level(i - 1, cp, tileno, pino,
+							if (pi_check_next_for_valid_progression(i - 1, cp, tileno, pino,
 									prog)) {
 								poc->comp_t = poc->compS;
 								pi[pino].poc.compno0 = poc->comp_t;
@@ -1283,7 +1284,7 @@ void pi_enable_tile_part_generation(PacketIter *pi, CodingParams *cp, uint16_t t
 						break;
 					case 'L':
 						if (poc->lay_t == poc->layE) {
-							if (pi_check_next_level(i - 1, cp, tileno, pino,
+							if (pi_check_next_for_valid_progression(i - 1, cp, tileno, pino,
 									prog)) {
 								poc->lay_t = 0;
 								pi[pino].poc.layno0 = poc->lay_t;
@@ -1305,7 +1306,7 @@ void pi_enable_tile_part_generation(PacketIter *pi, CodingParams *cp, uint16_t t
 						case GRK_LRCP:
 						case GRK_RLCP:
 							if (poc->prc_t == poc->prcE) {
-								if (pi_check_next_level(i - 1, cp, tileno, pino,
+								if (pi_check_next_for_valid_progression(i - 1, cp, tileno, pino,
 										prog)) {
 									poc->prc_t = 0;
 									pi[pino].poc.precno0 = poc->prc_t;
@@ -1325,7 +1326,7 @@ void pi_enable_tile_part_generation(PacketIter *pi, CodingParams *cp, uint16_t t
 						default:
 							if (poc->tx0_t >= poc->txE) {
 								if (poc->ty0_t >= poc->tyE) {
-									if (pi_check_next_level(i - 1, cp, tileno,
+									if (pi_check_next_for_valid_progression(i - 1, cp, tileno,
 											pino, prog)) {
 										poc->ty0_t = poc->tyS;
 										pi[pino].poc.ty0 = poc->ty0_t;

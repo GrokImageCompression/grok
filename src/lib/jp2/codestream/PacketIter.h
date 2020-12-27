@@ -26,20 +26,12 @@ namespace grk {
  @file PacketIter.h
  @brief Implementation of a packet iterator (PI)
 
- The functions in PI.C have for goal to realize a packet iterator that permits to get the next
- packet following the progression order and change of it. The functions in PI.C are used
- by some function in T2.C.
- */
+ A packet iterator gets the next packet following the progression order
+*/
 
-/** @defgroup PI PI - Implementation of a packet iterator */
-/*@{*/
-
-/**
- T2 compressing mode
- */
 enum J2K_T2_MODE {
-	THRESH_CALC = 0, /** Function called in Rate allocation process*/
-	FINAL_PASS = 1 /** Function called in Tier 2 process*/
+	THRESH_CALC = 0, /** Function called in rate allocation process*/
+	FINAL_PASS = 1 	/** Function called in Tier 2 process*/
 };
 
 
