@@ -175,11 +175,11 @@ bool BMPFormat::read_info_header(GRK_BITMAPFILEHEADER *fileHeader, GRK_BITMAPINF
 	}
 	bool is_os2 = infoHeader->biSize == BITMAPCOREHEADER_LENGTH;
 	if (is_os2){	//OS2
-		int16_t temp;
-		get_int((int16_t**)&temp_ptr, &temp);
-		infoHeader->biWidth = temp;
-		get_int((int16_t**)&temp_ptr, &temp);
-		infoHeader->biHeight = temp;
+		int16_t val;
+		get_int((int16_t**)&temp_ptr, &val);
+		infoHeader->biWidth = val;
+		get_int((int16_t**)&temp_ptr, &val);
+		infoHeader->biHeight = val;
 	} else {
 		get_int((int32_t**)&temp_ptr, &infoHeader->biWidth);
 		get_int((int32_t**)&temp_ptr, &infoHeader->biHeight);
@@ -390,6 +390,8 @@ BMPFormat::BMPFormat(void) : m_srcIndex(0)
 	delete m_fileIO;
 	m_fileIO = new FileUringIO();
 #endif
+	memset(&File_h, 0, sizeof(GRK_BITMAPFILEHEADER));
+	memset(&Info_h, 0, sizeof(GRK_BITMAPINFOHEADER));
 }
 
 bool BMPFormat::encodeHeader(grk_image *image, const std::string &filename, uint32_t compressionParam){
@@ -530,8 +532,6 @@ bool BMPFormat::encodeStrip(uint32_t rows){
 	m_srcIndex = (uint64_t)stride_src * (h - 1);
 	uint32_t w_dest = getPaddedWidth();
 	uint32_t pad_dest = (4 - (((uint64_t)numcomps * w) &3 )) &3;
-	if (pad_dest == 4)
-		pad_dest = 0;
 
 	int trunc[4] = {0,0,0,0};
 	float scale[4] = {1.0f, 1.0f, 1.0f, 1.0f};

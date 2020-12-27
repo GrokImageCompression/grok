@@ -134,8 +134,8 @@ bool j2k_add_mhmarker(grk_codestream_index *cstr_index, uint32_t type,
 }
 
 bool j2k_write_soc(CodeStream *codeStream) {
-	auto stream = codeStream->getStream();
 	assert(codeStream != nullptr);
+	auto stream = codeStream->getStream();
 	(void) codeStream;
 
 	return stream->write_short(J2K_MS_SOC);
@@ -536,8 +536,6 @@ bool j2k_write_coc(CodeStream *codeStream, uint32_t comp_no) {
 	uint32_t coc_size;
 	uint32_t comp_room;
 	auto stream = codeStream->getStream();
-
-	assert(codeStream != nullptr);
 
 	auto cp = &(codeStream->m_cp);
 	auto tcp = &cp->tcps[0];
@@ -987,9 +985,9 @@ bool j2k_read_plm(CodeStream *codeStream, uint8_t *p_header_data,
  */
 bool j2k_read_plt(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size) {
-	auto tileProcessor = codeStream->currentProcessor();
 	assert(p_header_data != nullptr);
 	assert(codeStream != nullptr);
+	auto tileProcessor = codeStream->currentProcessor();
 	if (!tileProcessor->plt_markers)
 		tileProcessor->plt_markers = new PacketLengthMarkers();
 
@@ -1033,11 +1031,11 @@ bool j2k_merge_ppm(CodingParams *p_cp) {
  */
 bool j2k_read_ppt(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size) {
-	uint32_t Z_ppt;
-	auto tileProcessor = codeStream->currentProcessor();
-
 	assert(p_header_data != nullptr);
 	assert(codeStream != nullptr);
+
+	uint32_t Z_ppt;
+	auto tileProcessor = codeStream->currentProcessor();
 
 	/* We need to have the Z_ppt element + 1 byte of Ippt at minimum */
 	if (header_size < 2) {
@@ -1417,11 +1415,6 @@ bool j2k_read_mct(CodeStream *codeStream, uint8_t *p_header_data,
 		return true;
 	}
 
-	if (header_size <= 6) {
-		GRK_ERROR("Error reading MCT marker");
-		return false;
-	}
-
 	/* Imct -> no need for other values, take the first,
 	 * type is double with decorrelation x0000 1101 0000 0000*/
 	grk_read<uint32_t>(p_header_data, &tmp, 2); /* Imct */
@@ -1501,7 +1494,7 @@ bool j2k_read_mct(CodeStream *codeStream, uint8_t *p_header_data,
 		GRK_WARN("Cannot take in charge multiple MCT markers");
 		return true;
 	}
-	if (header_size < 6) {
+	if (header_size <= 6) {
 		GRK_ERROR("Error reading MCT markers");
 		return false;
 	}
@@ -1832,11 +1825,11 @@ bool j2k_read_mcc(CodeStream *codeStream, uint8_t *p_header_data,
 }
 
 bool j2k_write_mco(CodeStream *codeStream) {
+	assert(codeStream != nullptr);
+
 	uint32_t mco_size;
 	uint32_t i;
 	auto stream = codeStream->getStream();
-
-	assert(codeStream != nullptr);
 	auto tcp = &(codeStream->m_cp.tcps[0]);
 	mco_size = 5 + tcp->m_nb_mcc_records;
 

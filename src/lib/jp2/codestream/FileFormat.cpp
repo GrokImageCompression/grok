@@ -1418,7 +1418,7 @@ static bool jp2_check_color(grk_image *image, grk_jp2_color *color) {
 }
 
 static bool jp2_apply_palette_clr(grk_image *image, grk_jp2_color *color) {
-	uint16_t i, num_channels, component_index, palette_column;
+	uint16_t num_channels, component_index, palette_column;
 	int32_t k, top_k;
 
 	auto channel_prec = color->palette->channel_prec;
@@ -1427,7 +1427,7 @@ static bool jp2_apply_palette_clr(grk_image *image, grk_jp2_color *color) {
 	auto component_mapping = color->palette->component_mapping;
 	num_channels = color->palette->num_channels;
 
-	for (i = 0; i < num_channels; ++i) {
+	for (uint16_t i = 0; i < num_channels; ++i) {
 		/* Palette mapping: */
 		component_index = component_mapping[i].component_index;
 		if (image->comps[component_index].data == nullptr) {
@@ -1475,7 +1475,7 @@ static bool jp2_apply_palette_clr(grk_image *image, grk_jp2_color *color) {
 
 	top_k = color->palette->num_entries - 1;
 
-	for (i = 0; i < num_channels; ++i) {
+	for (uint16_t i = 0; i < num_channels; ++i) {
 		/* Palette mapping: */
 		component_index = component_mapping[i].component_index;
 		palette_column = component_mapping[i].palette_column;
@@ -1505,7 +1505,7 @@ static bool jp2_apply_palette_clr(grk_image *image, grk_jp2_color *color) {
 			}
 		}
 	}
-	for (i = 0; i < image->numcomps; ++i)
+	for (uint16_t i = 0; i < image->numcomps; ++i)
 		grk_image_single_component_data_free(old_comps + i);
 	grk_free(old_comps);
 	image->comps = new_comps;
@@ -2098,10 +2098,10 @@ static bool jp2_read_header_procedure(FileFormat *fileFormat) {
 				}
 			}
 		}
+		rc = true;
 	} catch (CorruptJP2BoxException &ex) {
 		rc = false;
 	}
-	rc = true;
 cleanup:
 	grk_free(current_data);
 	return rc;

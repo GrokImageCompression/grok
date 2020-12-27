@@ -3301,6 +3301,11 @@ bool CodeStream::read_unk(uint16_t *output_marker) {
 			}
 		}
 	}
+	if (!marker_handler){
+		GRK_ERROR("Unable to read unknown marker");
+		return false;
+	}
+
 	*output_marker = marker_handler->id;
 
 	return true;

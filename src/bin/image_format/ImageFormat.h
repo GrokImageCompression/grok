@@ -23,9 +23,11 @@
 class ImageFormat : public IImageFormat {
 public:
 	ImageFormat();
+	ImageFormat(const ImageFormat& rhs);
 	virtual ~ImageFormat();
-	virtual bool encodeHeader(grk_image *image, const std::string &filename, uint32_t compressionParam);
-	virtual bool encodeFinish(void);
+	ImageFormat& operator=(const ImageFormat& rhs);
+	virtual bool encodeHeader(grk_image *image, const std::string &filename, uint32_t compressionParam) override;
+	virtual bool encodeFinish(void) override;
 protected:
 	bool openFile(std::string fname, std::string mode);
 	bool writeToFile(uint8_t *buf, size_t len);

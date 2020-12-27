@@ -65,15 +65,15 @@ static void grk_update_image_comp_header_from_coding_params(grk_image *image_hea
 
 bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size){
+	assert(codeStream != nullptr);
+	assert(p_header_data != nullptr);
+
 	uint32_t i;
 	uint32_t nb_comp;
 	uint32_t nb_comp_remain;
 	uint32_t remaining_size;
 	uint16_t nb_tiles;
 	auto decompressor = &codeStream->m_decompressor;
-
-	assert(codeStream != nullptr);
-	assert(p_header_data != nullptr);
 
 	auto image = codeStream->m_input_image;
 	auto cp = &(codeStream->m_cp);

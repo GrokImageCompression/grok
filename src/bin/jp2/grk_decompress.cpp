@@ -833,7 +833,7 @@ int GrkDecompress::plugin_main(int argc, char **argv, DecompressInitParams *init
 	int32_t success = 0;
 	uint32_t num_decompressed_images = 0;
 	bool isBatch = false;
-	std::chrono::time_point<std::chrono::high_resolution_clock> start, finish;
+	std::chrono::time_point<std::chrono::high_resolution_clock> start;
 #ifdef GROK_HAVE_LIBLCMS
 	cmsSetLogErrorHandler(MycmsLogErrorHandlerFunction);
 #endif

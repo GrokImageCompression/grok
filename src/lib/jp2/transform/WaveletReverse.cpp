@@ -144,9 +144,14 @@ template <typename T> struct dwt_data {
 	        GRK_ERROR("data size overflow");
 	        return false;
 	    }
-	    allocatedMem = (T*)grk_aligned_malloc((len +  2 * padding) * sizeof(T));
+	    len = (len +  2 * padding) * sizeof(T);
+	    allocatedMem = (T*)grk_aligned_malloc(len);
+	    if (!allocatedMem){
+	        GRK_ERROR("Failed to allocate %d bytes", len);
+	        return false;
+	    }
 	    mem = allocatedMem + padding;
-		return allocatedMem != nullptr;
+		return (allocatedMem != nullptr) ? true : false;
 	}
 	void release(){
 		grk_aligned_free(allocatedMem);
@@ -942,7 +947,7 @@ static void decompress_step1_sse_97(Params97 d,
 }
 #endif
 
-static void decompress_step1_97(Params97 d,
+static void decompress_step1_97(const Params97 &d,
                                 const float c){
 
 #ifdef __SSE__
@@ -961,7 +966,7 @@ static void decompress_step1_97(Params97 d,
 
 
 #ifdef __SSE__
-static void decompress_step2_sse_97(Params97 d, __m128 c){
+static void decompress_step2_sse_97(const Params97 &d, __m128 c){
     __m128* GRK_RESTRICT vec_data = (__m128*) d.data;
 
     uint32_t imax = min<uint32_t>(d.len, d.lenMax);
@@ -1008,7 +1013,7 @@ static void decompress_step2_sse_97(Params97 d, __m128 c){
 #endif
 
 
-static void decompress_step2_97(Params97 d,float c){
+static void decompress_step2_97(const Params97 &d,float c){
 #ifdef __SSE__
 	decompress_step2_sse_97(d, _mm_set1_ps(c));
 #else
@@ -1940,9 +1945,8 @@ template <typename T,
 		}
 
 		auto executor_h = [sa, resWindowRect, &decompressor](decompress_job<float, dwt_data<T>> *job){
-			 uint32_t j;
 			 try {
-				 for (j = job->min_j; j < job->max_j; j += HORIZ_PASS_HEIGHT) {
+				 for (uint32_t j = job->min_j; j < job->max_j; j += HORIZ_PASS_HEIGHT) {
 					 auto height = std::min<uint32_t>((uint32_t)HORIZ_PASS_HEIGHT,job->max_j - j );
 					 job->data.memLow 	=  job->data.mem +   job->data.cas;
 					 job->data.memHigh  =  job->data.mem + (!job->data.cas) + 2 * job->data.win_h_0 - 2 * job->data.win_l_0;
@@ -1975,9 +1979,8 @@ template <typename T,
 		};
 
 		auto executor_v = [sa, resWindowRect, &decompressor](decompress_job<float, dwt_data<T>> *job){
-			 uint32_t j;
 			 try {
-				 for (j = job->min_j; j < job->max_j; j += VERT_PASS_WIDTH) {
+				 for (uint32_t j = job->min_j; j < job->max_j; j += VERT_PASS_WIDTH) {
 					auto width = std::min<uint32_t>((uint32_t)VERT_PASS_WIDTH,job->max_j - j );
 					job->data.memLow   =  (T*)((int32_t*)job->data.mem +   (job->data.cas) * VERT_PASS_WIDTH);
 					job->data.memHigh  =  (T*)((int32_t*)job->data.mem + ((!job->data.cas) + 2 * job->data.win_h_0) * VERT_PASS_WIDTH) - 2 * job->data.win_l_0;

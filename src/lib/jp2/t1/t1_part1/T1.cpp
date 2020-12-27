@@ -366,6 +366,7 @@ T1::T1(bool isCompressor,uint32_t maxCblkW,uint32_t maxCblkH) : data(nullptr),
 															flagssize(0),
 															compressor(isCompressor)
 {
+	memset(&coder, 0, sizeof(coder));
 	if (!isCompressor) {
 	   cblkdatabuffersize = maxCblkW * maxCblkH * (uint32_t)sizeof(int32_t);
 	   cblkdatabuffer = (uint8_t*)grk_malloc(cblkdatabuffersize);
