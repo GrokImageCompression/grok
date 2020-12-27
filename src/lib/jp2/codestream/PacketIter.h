@@ -134,7 +134,7 @@ void pi_update_encoding_parameters(const grk_image *p_image,
 
 /**
  Modify the packet iterator for enabling tile part generation
- @param pi 		Handle to the packet iterator generated in pi_initialise_encode
+ @param pi 		Handle to the packet iterator generated in pi_initialise_compress
  @param cp 		Coding parameters
  @param tileno 	Number that identifies the tile for which to list the packets
  @param pino   	packet iterator number

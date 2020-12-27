@@ -71,7 +71,7 @@ static bool pi_next_cprl(PacketIter *pi);
  * @param	dx_min		the minimum dx of all the components of all the resolutions for the tile.
  * @param	dy_min		the minimum dy of all the components of all the resolutions for the tile.
  */
-static void pi_update_encode_poc_and_final(CodingParams *p_cp,
+static void pi_update_compress_poc_and_final(CodingParams *p_cp,
 											uint16_t tileno,
 											grk_rect_u32 tileBounds,
 											uint64_t max_precincts,
@@ -90,7 +90,7 @@ static void pi_update_encode_poc_and_final(CodingParams *p_cp,
  * @param	dx_min		the minimum dx of all the components of all the resolutions for the tile.
  * @param	dy_min		the minimum dy of all the components of all the resolutions for the tile.
  */
-static void pi_update_encode_no_poc(CodingParams *p_cp,
+static void pi_update_compress_no_poc(CodingParams *p_cp,
 									uint16_t num_comps,
 									uint16_t tileno,
 									grk_rect_u32 tileBounds,
@@ -160,14 +160,14 @@ static PacketIter* pi_create(const grk_image *p_image,
 /**
  * Update decompress packet iterator with no POC
  */
-static void pi_update_decode_no_poc(PacketIter *p_pi,
+static void pi_update_decompress_no_poc(PacketIter *p_pi,
 									TileCodingParams *p_tcp,
 									uint64_t max_precincts,
 									uint8_t max_res);
 /**
  * Upgrade decompress packet iterator with POC
  */
-static void pi_update_decode_poc(PacketIter *p_pi,
+static void pi_update_decompress_poc(PacketIter *p_pi,
 								TileCodingParams *p_tcp,
 								uint64_t max_precincts);
 
@@ -664,7 +664,7 @@ static PacketIter* pi_create(const grk_image *image,
 	return pi;
 }
 
-static void pi_update_encode_poc_and_final(CodingParams *p_cp,
+static void pi_update_compress_poc_and_final(CodingParams *p_cp,
 											uint16_t tileno,
 											grk_rect_u32 tileBounds,
 											uint64_t max_precincts,
@@ -696,7 +696,7 @@ static void pi_update_encode_poc_and_final(CodingParams *p_cp,
 	}
 }
 
-static void pi_update_encode_no_poc(CodingParams *p_cp,
+static void pi_update_compress_no_poc(CodingParams *p_cp,
 									uint16_t num_comps,
 									uint16_t tileno,
 									grk_rect_u32 tileBounds,
@@ -731,7 +731,7 @@ static void pi_update_encode_no_poc(CodingParams *p_cp,
 	}
 }
 
-static void pi_update_decode_poc(PacketIter *p_pi,
+static void pi_update_decompress_poc(PacketIter *p_pi,
 								TileCodingParams *p_tcp,
 								uint64_t max_precincts) {
 	assert(p_pi != nullptr);
@@ -757,7 +757,7 @@ static void pi_update_decode_poc(PacketIter *p_pi,
 	}
 }
 
-static void pi_update_decode_no_poc(PacketIter *p_pi,
+static void pi_update_decompress_no_poc(PacketIter *p_pi,
 									TileCodingParams *p_tcp,
 									uint64_t max_precincts,
 									uint8_t max_res) {
@@ -961,9 +961,9 @@ PacketIter* pi_create_decompress(grk_image *p_image,
 	grk_free(tmp_data);
 	grk_free(tmp_ptr);
 	if (tcp->POC)
-		pi_update_decode_poc(pi, tcp, max_precincts);
+		pi_update_decompress_poc(pi, tcp, max_precincts);
 	else
-		pi_update_decode_no_poc(pi, tcp, max_precincts, max_res);
+		pi_update_decompress_no_poc(pi, tcp, max_precincts, max_res);
 
 	return pi;
 }
@@ -1094,10 +1094,10 @@ PacketIter* pi_create_compress(const grk_image *p_image,
 	tmp_ptr = nullptr;
 
 	if (tcp->POC && (GRK_IS_CINEMA(p_cp->rsiz) || p_t2_mode == FINAL_PASS))
-		pi_update_encode_poc_and_final(p_cp, tile_no, tileBounds,
+		pi_update_compress_poc_and_final(p_cp, tile_no, tileBounds,
 				max_precincts, dx_min, dy_min);
 	else
-		pi_update_encode_no_poc(p_cp, p_image->numcomps, tile_no, tileBounds, max_precincts, max_res, dx_min, dy_min);
+		pi_update_compress_no_poc(p_cp, p_image->numcomps, tile_no, tileBounds, max_precincts, max_res, dx_min, dy_min);
 
 	return pi;
 }
@@ -1405,14 +1405,14 @@ void pi_update_encoding_parameters(const grk_image *p_image,
 								&max_res);
 
 	if (tcp->POC)
-		pi_update_encode_poc_and_final(p_cp,
+		pi_update_compress_poc_and_final(p_cp,
 										tile_no,
 										tileBounds,
 										max_precincts,
 										dx_min,
 										dy_min);
 	else
-		pi_update_encode_no_poc(p_cp,
+		pi_update_compress_no_poc(p_cp,
 								p_image->numcomps,
 								tile_no,
 								tileBounds,
