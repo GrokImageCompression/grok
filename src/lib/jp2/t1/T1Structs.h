@@ -22,7 +22,7 @@
 
 namespace grk {
 
-struct ISparseBuffer;
+class ISparseBuffer;
 struct grk_tile;
 struct TileComponent;
 

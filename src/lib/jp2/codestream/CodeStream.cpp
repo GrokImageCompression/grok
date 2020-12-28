@@ -1924,7 +1924,7 @@ bool CodeStream::set_decompress_window(grk_image *output_image,
 }
 
 
-void CodeStream::dump(int32_t flag, FILE *out_stream){
+void CodeStream::dump(uint32_t flag, FILE *out_stream){
 	j2k_dump(this, flag, out_stream);
 }
 

@@ -41,7 +41,7 @@ template<typename T> void clip(grk_image_comp *component, uint8_t precision) {
 	size_t index = 0;
 	for (uint32_t j = 0; j < component->h; ++j){
 		for (uint32_t i = 0; i < component->w; ++i){
-			data[index] = std::clamp<T>(data[index], min, max);
+			data[index] = (int32_t)std::clamp<T>((T)data[index], min, max);
 			index++;
 		}
 		index+= stride_diff;

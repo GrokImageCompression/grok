@@ -154,7 +154,7 @@ struct ICodeStream {
 
    virtual bool end_compress(void) = 0;
 
-   virtual void dump(int32_t flag, FILE *out_stream) = 0;
+   virtual void dump(uint32_t flag, FILE *out_stream) = 0;
 
    virtual grk_codestream_info_v2* get_cstr_info(void) = 0;
 
@@ -190,7 +190,7 @@ struct CodeStream : public ICodeStream {
 
    bool end_compress(void);
 
-   void dump(int32_t flag, FILE *out_stream);
+   void dump(uint32_t flag, FILE *out_stream);
 
    grk_codestream_info_v2* get_cstr_info(void);
 

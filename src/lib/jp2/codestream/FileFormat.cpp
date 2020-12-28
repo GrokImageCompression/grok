@@ -2444,8 +2444,7 @@ FileFormat::FileFormat(bool isDecoder, BufferedStream *stream) : codeStream(new 
 										jp2_img_state(0),
 										has_capture_resolution(false),
 										has_display_resolution(false),
-										numUuids(0),
-										m_stream(stream)
+										numUuids(0)
 {
 	for (uint32_t i = 0; i < 2; ++i) {
 		capture_resolution[i] = 0;
@@ -2942,7 +2941,7 @@ void FileFormat::alloc_palette(grk_jp2_color *color, uint8_t num_channels, uint1
 
 
 
-void FileFormat::dump(int32_t flag, FILE *out_stream){
+void FileFormat::dump(uint32_t flag, FILE *out_stream){
 	j2k_dump(codeStream, flag, out_stream);
 }
 

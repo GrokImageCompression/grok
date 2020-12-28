@@ -176,7 +176,7 @@ struct FileFormat : public ICodeStream {
 
 	bool decompress_tile(grk_image *p_image,uint16_t tile_index);
 
-   void dump(int32_t flag, FILE *out_stream);
+   void dump(uint32_t flag, FILE *out_stream);
 
    grk_codestream_info_v2* get_cstr_info(void);
 
@@ -227,9 +227,6 @@ struct FileFormat : public ICodeStream {
 	grk_jp2_uuid uuids[JP2_MAX_NUM_UUIDS];
 	uint32_t numUuids;
 private:
-
-	BufferedStream *m_stream;
-
 	bool postDecompress( grk_image *p_image);
 };
 

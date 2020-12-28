@@ -843,8 +843,7 @@ grk_image* TIFFFormat::decode(const std::string &filename,
 	GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
 	grk_image_cmptparm cmptparm[maxNumComponents];
 	grk_image *image = nullptr;
-	uint16_t tiBps = 0, tiPhoto = 0, tiSf = SAMPLEFORMAT_UINT, tiSpp = 0, tiPC =
-			0;
+	uint16_t tiBps = 0, tiPhoto = 0, tiSf = SAMPLEFORMAT_UINT, tiSpp = 0, tiPC = 0;
 	bool hasTiSf = false;
 	short tiResUnit = 0;
 	float tiXRes = 0, tiYRes = 0;
@@ -1078,7 +1077,7 @@ grk_image* TIFFFormat::decode(const std::string &filename,
 			spdlog::error("Missing required \"Colormap\" tag");
 			goto cleanup;
 		}
-		uint16_t palette_num_entries = (1U << tiBps);
+		uint16_t palette_num_entries = (uint16_t)(1U << tiBps);
 		uint8_t num_channels = 3U;
 		grk::alloc_palette(&image->color, num_channels,  (uint16_t)palette_num_entries);
 		auto cmap = new _grk_component_mapping_comp[num_channels];

@@ -82,7 +82,7 @@ public:
 			T val = src[i];
 			T mag = (val & 0x7FFFFFFF);
 			if (mag >= thresh)
-				val = (mag >> roiShift) & (val & 0x80000000);
+				val = (T)(((uint32_t)mag >> roiShift) & ((uint32_t)val & 0x80000000));
 			int32_t val_shifted = (val & 0x7FFFFFFF) >> shift;
 			dest[i] = (int32_t)(((uint32_t)val & 0x80000000) ? -val_shifted : val_shifted);
 		}
@@ -112,9 +112,9 @@ public:
 		T thresh = 1 << roiShift;
 		for (uint32_t i = 0; i < len; ++i){
 			T val = src[i];
-			T mag = (val & 0x7FFFFFFF);
+			T mag = (T)(val & 0x7FFFFFFF);
 			if (mag >= thresh)
-				val = (mag >> roiShift) & (val & 0x80000000);
+				val = (T)(((uint32_t)mag >> roiShift) & ((uint32_t)val & 0x80000000));
 		    float val_scaled = (float)(val & 0x7FFFFFFF) * scale;
 		    ((float*)dest)[i] = ((uint32_t)val & 0x80000000) ? -val_scaled : val_scaled;
 		}

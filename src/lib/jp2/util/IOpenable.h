@@ -2,7 +2,7 @@
 
 namespace grk {
 
-struct T1Interface;
+class T1Interface;
 
 class IOpenable{
 public:

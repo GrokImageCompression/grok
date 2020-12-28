@@ -280,7 +280,7 @@ uint32_t param_qcd::get_MAGBp() const
   else if (irrev == 2) //scalar expounded
 	for (uint32_t i = 0; i < 3 * num_decomps + 1; ++i)
     {
-      int nb = num_decomps - (i ? (i - 1) / 3 : 0); //decomposition level
+      uint32_t nb = num_decomps - (i ? (i - 1) / 3 : 0); //decomposition level
       B = max(B, (u16_SPqcd[i] >> 11) + get_num_guard_bits() - nb);
     }
   else

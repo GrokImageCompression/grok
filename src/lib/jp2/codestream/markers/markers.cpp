@@ -472,7 +472,7 @@ bool j2k_read_cod(CodeStream *codeStream,uint8_t *p_header_data,
 	grk_read<uint16_t>(p_header_data, &tcp->numlayers); /* SGcod (B) */
 	p_header_data += 2;
 
-	if ((tcp->numlayers  == 0)) {
+	if (tcp->numlayers  == 0) {
 		GRK_ERROR("Number of layers must be positive");
 		return false;
 	}

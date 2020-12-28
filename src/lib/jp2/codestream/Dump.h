@@ -37,7 +37,7 @@ struct FileFormat;
  *@param out_stream			output stream where dump the elements.
  *
  */
-void j2k_dump(CodeStream *codeStream, int32_t flag, FILE *out_stream);
+void j2k_dump(CodeStream *codeStream, uint32_t flag, FILE *out_stream);
 
 /**
  * Dump an image header structure.

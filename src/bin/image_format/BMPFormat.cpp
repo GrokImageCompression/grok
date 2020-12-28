@@ -653,6 +653,10 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 			goto cleanup;
 		}
 	}
+	if (Info_h.biWidth < 0){
+		spdlog::warn("BMP with negative width. Converting to positive value");
+		Info_h.biWidth = -Info_h.biWidth;
+	}
 	if (Info_h.biHeight < 0){
 		topDown = true;
 		Info_h.biHeight = -Info_h.biHeight;
@@ -700,39 +704,39 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 
 	if (Info_h.biWidth == 0 || Info_h.biHeight == 0)
 		goto cleanup;
-	if (Info_h.biBitCount > (((uint32_t) -1) - 31) / Info_h.biWidth)
+	if (Info_h.biBitCount > ((uint32_t)((uint32_t) -1) - 31) / (uint32_t)Info_h.biWidth)
 		goto cleanup;
 
-	bmpStride = ((Info_h.biWidth * Info_h.biBitCount + 31U) / 32U) * sizeof(uint32_t); /* rows are aligned on 32bits */
+	bmpStride = (((uint32_t)Info_h.biWidth * Info_h.biBitCount + 31U) / 32U) * sizeof(uint32_t); /* rows are aligned on 32bits */
 	if (Info_h.biBitCount == 4 && Info_h.biCompression == 2) { /* RLE 4 gets decoded as 8 bits data for now... */
-		if (8 > (((uint32_t) -1) - 31) / Info_h.biWidth)
+		if (8 > ((uint32_t)((uint32_t) -1) - 31) / (uint32_t)Info_h.biWidth)
 			goto cleanup;
-		bmpStride = ((Info_h.biWidth * 8U + 31U) / 32U) * sizeof(uint32_t);
+		bmpStride = (((uint32_t)Info_h.biWidth * 8U + 31U) / 32U) * sizeof(uint32_t);
 	}
 
-	if (bmpStride > ((uint32_t) -1) / sizeof(uint8_t) / Info_h.biHeight)
+	if (bmpStride > ((uint32_t)(uint32_t) -1) / sizeof(uint8_t) / (uint32_t)Info_h.biHeight)
 		goto cleanup;
-	pData = new uint8_t[bmpStride * Info_h.biHeight];
+	pData = new uint8_t[bmpStride * (size_t)Info_h.biHeight];
 	if (pData == nullptr)
 		goto cleanup;
-	if (!seekInFile((long) File_h.bfOffBits))
+	if (!seekInFile((size_t) File_h.bfOffBits))
 		goto cleanup;
 
 	switch (Info_h.biCompression) {
 	case 0:
 	case 3:
 		/* read raw data */
-		l_result = read_raw_data(pData, bmpStride, Info_h.biHeight);
+		l_result = read_raw_data(pData, bmpStride, (uint32_t)Info_h.biHeight);
 		break;
 	case 1:
 		/* read rle8 data */
-		l_result = read_rle8_data(pData, bmpStride, Info_h.biWidth,
-				Info_h.biHeight);
+		l_result = read_rle8_data(pData, bmpStride, (uint32_t)Info_h.biWidth,
+				(uint32_t)Info_h.biHeight);
 		break;
 	case 2:
 		/* read rle4 data */
-		l_result = read_rle4_data(pData, bmpStride, Info_h.biWidth,
-				Info_h.biHeight);
+		l_result = read_rle4_data(pData, bmpStride, (uint32_t)Info_h.biWidth,
+				(uint32_t)Info_h.biHeight);
 		break;
 	default:
 		spdlog::error("Unsupported BMP compression");
@@ -755,8 +759,8 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 		img_comp->sgnd = false;
 		img_comp->dx = parameters->subsampling_dx;
 		img_comp->dy = parameters->subsampling_dy;
-		img_comp->w = grk::ceildiv<uint32_t>(Info_h.biWidth, img_comp->dx);
-		img_comp->h = grk::ceildiv<uint32_t>(Info_h.biHeight, img_comp->dy);
+		img_comp->w = grk::ceildiv<uint32_t>((uint32_t)Info_h.biWidth, img_comp->dx);
+		img_comp->h = grk::ceildiv<uint32_t>((uint32_t)Info_h.biHeight, img_comp->dy);
 	}
 
 	image = grk_image_create(numcmpts, &cmptparm[0],colour_space,true);
@@ -814,8 +818,8 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	/* set image offset and reference grid */
 	image->x0 = parameters->image_offset_x0;
 	image->y0 = parameters->image_offset_y0;
-	image->x1 = image->x0 + (Info_h.biWidth - 1U) * parameters->subsampling_dx	+ 1U;
-	image->y1 = image->y0 + (Info_h.biHeight - 1U) * parameters->subsampling_dy	+ 1U;
+	image->x1 = image->x0 + ((uint32_t)Info_h.biWidth - 1U) * parameters->subsampling_dx	+ 1U;
+	image->y1 = image->y0 + ((uint32_t)Info_h.biHeight - 1U) * parameters->subsampling_dy	+ 1U;
 
 	/* Read the data */
 	switch(Info_h.biCompression){

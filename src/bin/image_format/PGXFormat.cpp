@@ -45,7 +45,7 @@ static uint8_t readuchar(FILE *f) {
 	return c1;
 }
 
-static unsigned short readushort(FILE *f, int bigendian) {
+static unsigned short readushort(FILE *f, bool bigendian) {
 	uint8_t c1, c2;
 	if (!fread(&c1, 1, 1, f)) {
 		spdlog::error(
@@ -81,7 +81,7 @@ static grk_image* pgxtoimage(const char *filename,
 	char signtmp[32];
 
 	char temp[32];
-	uint32_t bigendian;
+	bool bigendian;
 	grk_image_comp *comp = nullptr;
 
 	numcomps = 1;
@@ -121,9 +121,9 @@ static grk_image* pgxtoimage(const char *filename,
 	if (c == EOF)
 		goto cleanup;
 	if (endian1 == 'M' && endian2 == 'L') {
-		bigendian = 1;
+		bigendian = true;
 	} else if (endian2 == 'M' && endian1 == 'L') {
-		bigendian = 0;
+		bigendian = false;
 	} else {
 		spdlog::error("Bad pgx header, please check input file");
 		goto cleanup;
@@ -185,20 +185,20 @@ static grk_image* pgxtoimage(const char *filename,
 		for (uint32_t k = 0; k <  w; ++k) {
 			int32_t v = 0;
 			if (force8) {
-				v = readuchar(f) + adjustS;
+				v = (int32_t)(readuchar(f) + adjustS);
 				v = (v << ushift) + (v >> dshift);
 			} else  {
 				if (comp->prec == 8) {
 					if (!comp->sgnd) {
-						v = readuchar(f);
+						v = (int32_t)readuchar(f);
 					} else {
-						v = readuchar(f);
+						v = (int32_t)readuchar(f);
 					}
 				} else {
 					if (!comp->sgnd) {
-						v = readushort(f, bigendian);
+						v = (int32_t)readushort(f, bigendian);
 					} else {
-						v = readushort(f, bigendian);
+						v = (int32_t)readushort(f, bigendian);
 					}
 				}
 			}

@@ -84,7 +84,7 @@ static void j2k_dump_tile_info(TileCodingParams *default_tile,
 	}
 }
 
-void j2k_dump(CodeStream *codeStream, int32_t flag, FILE *out_stream) {
+void j2k_dump(CodeStream *codeStream, uint32_t flag, FILE *out_stream) {
 	/* Check if the flag is compatible with j2k file*/
 	if ((flag & GRK_JP2_INFO) || (flag & GRK_JP2_IND)) {
 		fprintf(out_stream, "Wrong flag\n");
