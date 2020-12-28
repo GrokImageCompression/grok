@@ -1740,8 +1740,9 @@ int main(int argc, char **argv) {
 		std::chrono::duration<double> elapsed = finish - start;
 
 		if (num_compressed_files) {
-			spdlog::info("compress time: {} ms/image",
-					(elapsed.count() * 1000) / (double) num_compressed_files);
+			spdlog::info("compress time: {} {}",
+					(elapsed.count() * 1000) / (double) num_compressed_files,
+					num_compressed_files > 1 ? "ms/image" : "ms");
 		}
 	} catch (std::bad_alloc &ba) {
 		spdlog::error(" Out of memory. Exiting.");
