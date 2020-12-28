@@ -49,6 +49,7 @@ using grk_rect_u32 = grk_rectangle<uint32_t>;
 
 
 template<typename T> T clip(int64_t val) {
+	static_assert(sizeof(T) <= 4);
 	if(val < (std::numeric_limits<T>::min)())
 		val = (std::numeric_limits<T>::min)();
 	else if (val > (std::numeric_limits<T>::max)())
