@@ -1135,8 +1135,7 @@ static int parse_cmdline_compressor_ex(int argc, char **argv,
 					return 1;
 				}
 				parameters->rsiz = (uint16_t) (profile | mainlevel);
-				spdlog::info("Broadcast profile activated\n"
-							"Other options specified could be overridden");
+				spdlog::info("Broadcast profile activated. Other options specified may be overridden");
 				parameters->framerate = framerate;
 				if (framerate > 0) {
 					const int limitMBitsSec[] = { 0,
@@ -1224,10 +1223,8 @@ static int parse_cmdline_compressor_ex(int argc, char **argv,
 					spdlog::error("Invalid sub-level {}.",sublevel);
 					return 1;
 				}
-				parameters->rsiz = (uint16_t) (profile | (sublevel << 4)
-						| mainlevel);
-				spdlog::info("IMF profile activated\n"
-						"Other options specified could be overridden");
+				parameters->rsiz = (uint16_t) (profile | (sublevel << 4) | mainlevel);
+				spdlog::info("IMF profile activated. Other options specified may be overridden");
 
 				parameters->framerate = framerate;
 				if (framerate > 0 && sublevel > 0 && sublevel <= 9) {
@@ -1253,13 +1250,9 @@ static int parse_cmdline_compressor_ex(int argc, char **argv,
 
 			if (rsizArg.isSet()) {
 				if (cinema2KArg.isSet() || cinema4KArg.isSet()) {
-					warning_callback(
-							"  Cinema profile set - RSIZ parameter ignored.",
-							nullptr);
+					warning_callback("Cinema profile set - RSIZ parameter ignored.",nullptr);
 				} else if (IMFArg.isSet()) {
-					warning_callback(
-							"  IMF profile set - RSIZ parameter ignored.",
-							nullptr);
+					warning_callback("IMF profile set - RSIZ parameter ignored.",	nullptr);
 				} else {
 					parameters->rsiz = rsizArg.getValue();
 				}
@@ -1272,8 +1265,7 @@ static int parse_cmdline_compressor_ex(int argc, char **argv,
 			if (sscanf(captureResArg.getValue().c_str(), "%lf,%lf",
 					parameters->capture_resolution,
 					parameters->capture_resolution + 1) != 2) {
-				spdlog::error(
-						"-Q 'capture resolution' argument error  [-Q X0,Y0]");
+				spdlog::error("-Q 'capture resolution' argument error  [-Q X0,Y0]");
 				return 1;
 			}
 			parameters->write_capture_resolution = true;
@@ -1282,8 +1274,7 @@ static int parse_cmdline_compressor_ex(int argc, char **argv,
 			if (sscanf(captureResArg.getValue().c_str(), "%lf,%lf",
 					parameters->display_resolution,
 					parameters->display_resolution + 1) != 2) {
-				spdlog::error(
-						"-D 'display resolution' argument error  [-D X0,Y0]");
+				spdlog::error("-D 'display resolution' argument error  [-D X0,Y0]");
 				return 1;
 			}
 			parameters->write_display_resolution = true;
@@ -1292,9 +1283,7 @@ static int parse_cmdline_compressor_ex(int argc, char **argv,
 		if (mctArg.isSet()) {
 			uint32_t mct_mode = mctArg.getValue();
 			if (mct_mode > 2) {
-				spdlog::error(
-						"Incorrect MCT value {}. Must be equal to 0, 1 or 2.",
-						mct_mode);
+				spdlog::error("Incorrect MCT value {}. Must be equal to 0, 1 or 2.",mct_mode);
 				return 1;
 			}
 			parameters->tcp_mct = (uint8_t) mct_mode;

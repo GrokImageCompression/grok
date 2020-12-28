@@ -1326,7 +1326,7 @@ int GrkDecompress::postDecompress(grk_plugin_decompress_callback_info *info) {
 				|| info->decompressor_parameters->cod_format == GRK_PNG_FMT);
 		if (!canStoreXMP) {
 			spdlog::warn(
-					" Input file {} contains XMP meta-data,\nbut the file format for output file {} does not support storage of this data.",
+					" Input file `{}` contains XMP meta-data,\nbut the file format for output file `{}` does not support storage of this data.",
 					infile, outfile);
 		}
 	}
@@ -1335,7 +1335,7 @@ int GrkDecompress::postDecompress(grk_plugin_decompress_callback_info *info) {
 				== GRK_TIF_FMT);
 		if (!canStoreIPTC_IIM) {
 			spdlog::warn(
-					" Input file {} contains legacy IPTC-IIM meta-data,\nbut the file format for output file {} does not support storage of this data.",
+					" Input file `{}` contains legacy IPTC-IIM meta-data,\nbut the file format for output file `{}` does not support storage of this data.",
 					infile, outfile);
 		}
 	}
@@ -1345,9 +1345,9 @@ int GrkDecompress::postDecompress(grk_plugin_decompress_callback_info *info) {
 #if defined(GROK_HAVE_LIBLCMS)
 				if (!info->decompressor_parameters->force_rgb)
 					spdlog::warn(
-							" Input file {} is in CIE colour space,\n"
+							" Input file `{}` is in CIE colour space,\n"
 							"but the codec is unable to store this information in the "
-							"output file {}.\n"
+							"output file `{}`.\n"
 							"The output image will therefore be converted to sRGB before saving.",
 							infile, outfile);
 				if (color_cielab_to_rgb(image)){
@@ -1359,7 +1359,7 @@ int GrkDecompress::postDecompress(grk_plugin_decompress_callback_info *info) {
 				}
 #else
 			spdlog::warn(" Input file is stored in CIELab colour space,"
-					" but lcms library is not linked, so codec can't convert L*a*b to sRGB");
+					" but the lcms library is not linked, so the library is unable to convert L*a*b to sRGB");
 #endif
 			}
 		} else {
@@ -1375,9 +1375,9 @@ int GrkDecompress::postDecompress(grk_plugin_decompress_callback_info *info) {
 #if defined(GROK_HAVE_LIBLCMS)
 				if (!info->decompressor_parameters->force_rgb)
 					spdlog::warn(
-							" Input file {} contains a color profile,\n"
+							" Input file `{}` contains a color profile,\n"
 							"but the codec is unable to store this profile"
-							" in the output file {}.\n"
+							" in the output file `{}`.\n"
 							"The profile will therefore be applied to the output"
 							" image before saving.",
 							infile, outfile);
