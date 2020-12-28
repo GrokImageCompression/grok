@@ -1132,7 +1132,7 @@ static void decompress_h_strip_97(dwt_data<vec4f>* GRK_RESTRICT horiz,
 								   float* dest,
 								   const size_t strideDest){
 	uint32_t j;
-	for (j = 0; j< (rh & ~3); j += 4) {
+	for (j = 0; j< (rh & (uint32_t)(~3)); j += 4) {
 		interleave_h_97(horiz, bandL,strideL, bandH, strideH, rh - j);
 		decompress_step_97(horiz);
 		for (uint32_t k = 0; k <  horiz->sn + horiz->dn; k++) {
@@ -1252,7 +1252,7 @@ static void decompress_v_strip_97(dwt_data<vec4f>* GRK_RESTRICT vert,
 								   float* GRK_RESTRICT dest,
 								   const uint32_t strideDest){
     uint32_t j;
-	for (j = 0; j < (rw & ~3); j += 4) {
+	for (j = 0; j < (rw & (uint32_t)~3); j += 4) {
 		interleave_v_97(vert, bandL,strideL, bandH,strideH, 4);
 		decompress_step_97(vert);
 		auto destPtr = dest;
@@ -1789,7 +1789,7 @@ static Params97 makeParams97(dwt_data<vec4f>* dwt,
 			// handle reflection at boundary
 			rc.dataPrev = rc.data -(dwt->cas + 1) + (!dwt->cas);
 			rc.len = dwt->win_l_1 - dwt->win_l_0;
-			rc.lenMax = (uint32_t)min<int32_t>(dwt->sn, dwt->dn - dwt->cas) - dwt->win_l_0;
+			rc.lenMax = (uint32_t)(min<int32_t>((int32_t)dwt->sn, (int32_t)dwt->dn - (int32_t)dwt->cas) - (int32_t)dwt->win_l_0);
 
 		    if (dwt->win_l_0 > 0) {
 		        rc.data += dwt->win_l_0;
@@ -1807,7 +1807,7 @@ static Params97 makeParams97(dwt_data<vec4f>* dwt,
 			// handle reflection at boundary
 			rc.dataPrev = rc.data - ((!dwt->cas) + 1) + dwt->cas;
 			rc.len = dwt->win_h_1 - dwt->win_h_0;
-			rc.lenMax = (uint32_t)min<int32_t>(dwt->dn, dwt->sn - (!dwt->cas)) - dwt->win_h_0;
+			rc.lenMax = (uint32_t)(min<int32_t>((int32_t)dwt->dn, (int32_t)dwt->sn - (int32_t)(!dwt->cas)) - (int32_t)dwt->win_h_0);
 
 		    if (dwt->win_h_0 > 0) {
 		        rc.data += dwt->win_h_0;

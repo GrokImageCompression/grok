@@ -513,7 +513,7 @@ void j2k_destroy_cstr_index(grk_codestream_index *p_cstr_ind) {
 	}
 }
 
-void jp2_dump(FileFormat *fileFormat, int32_t flag, FILE *out_stream) {
+void jp2_dump(FileFormat *fileFormat, uint32_t flag, FILE *out_stream) {
 	assert(fileFormat != nullptr);
 	j2k_dump(fileFormat->codeStream, flag, out_stream);
 }

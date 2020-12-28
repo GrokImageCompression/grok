@@ -96,7 +96,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp, bool dev_dump_flag,
   *@param out_stream      output stream where dump the elements.
   *
   */
- void jp2_dump(FileFormat *fileFormat, int32_t flag, FILE *out_stream);
+ void jp2_dump(FileFormat *fileFormat, uint32_t flag, FILE *out_stream);
 
  /**
   * Get the code stream info from a JPEG2000 codec.

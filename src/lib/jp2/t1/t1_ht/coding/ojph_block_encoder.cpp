@@ -467,6 +467,7 @@ namespace ojph {
                                ojph::coded_lists *& coded)
     {
       assert(num_passes == 1);
+      (void)num_passes;
       const int ms_size = 16384;         //more than enough
       ui8 ms_buf[ms_size];
       const int mel_vlc_size = 3072;     //more than enough

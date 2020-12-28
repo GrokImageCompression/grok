@@ -456,7 +456,7 @@ int T1::enc_is_term_pass(cblk_enc *cblk, uint32_t cblksty,
 	if ((flags & ((T1_SIGMA_THIS | T1_PI_THIS) << (ci))) == 0U \
 			&& (flags & (T1_SIGMA_NEIGHBOURS << (ci))) != 0U) { \
  		uint32_t ctxt1 = getctxno_zc(mqc, flags >> (ci)); \
-		v = !!(smr_abs(*datap) & one); \
+		v = !!(smr_abs(*datap) & (uint32_t)one); \
 		curctx = mqc->ctxs + ctxt1; \
 		if (type == T1_TYPE_RAW) { \
 			mqc_bypass_enc_macro(mqc,c,ct, v); \
@@ -537,7 +537,7 @@ void T1::enc_sigpass(int32_t bpno, int32_t *nmsedec,
 		uint32_t ctxt = getctxno_mag(shift_flags);  \
 		if (nmsedec) \
 			*nmsedec += getnmsedec_ref((uint32_t) smr_abs(*datap), (uint32_t) bpno);  \
-		v = !!(smr_abs(*datap) & one);  \
+		v = !!(smr_abs(*datap) & (uint32_t)one);  \
 		curctx = mqc->ctxs + ctxt; \
 		if (type == T1_TYPE_RAW) { \
 			mqc_bypass_enc_macro(mqc,c,ct, v); \
@@ -608,7 +608,7 @@ void T1::enc_clnpass(int32_t bpno, int32_t *nmsedec,	uint32_t cblksty) {
 			uint32_t runlen = 0;
 			if (agg) {
 				for (; runlen < 4; ++runlen) {
-					if (smr_abs(data[((k + runlen) * data_stride) + i])	& one)
+					if (smr_abs(data[((k + runlen) * data_stride) + i])	& (uint32_t)one)
 						break;
 				}
 				curctx = mqc->ctxs + T1_CTXNO_AGG;
@@ -652,7 +652,7 @@ void T1::enc_clnpass(int32_t bpno, int32_t *nmsedec,	uint32_t cblksty) {
 				else if (!(flags & ((T1_SIGMA_THIS | T1_PI_THIS) << (ci)))) {
 					ctxt1 = getctxno_zc(mqc, flags >> (ci));
 					curctx = mqc->ctxs + ctxt1;
-					uint32_t v = !!(smr_abs(*datap) & one);
+					uint32_t v = !!(smr_abs(*datap) & (uint32_t)one);
 					mqc_encode_macro(mqc,curctx,a,c, ct, v);
 					goto_PARTIAL = v;
 				}
@@ -709,7 +709,7 @@ void T1::enc_clnpass(int32_t bpno, int32_t *nmsedec,	uint32_t cblksty) {
 				if (!(flags & ((T1_SIGMA_THIS | T1_PI_THIS) << (ci)))) {
 					uint32_t ctxt1 = getctxno_zc(mqc, flags >> (ci));
 					curctx = mqc->ctxs + ctxt1;
-					uint32_t v = !!(smr_abs(*datap) & one);
+					uint32_t v = !!(smr_abs(*datap) & (uint32_t)one);
 					mqc_encode_macro(mqc,curctx,a,c, ct, v);
 					goto_PARTIAL = v;
 				}
