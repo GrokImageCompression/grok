@@ -139,7 +139,7 @@ static void grk_get_encoding_parameters(const grk_image *p_image,
 static void grk_get_all_encoding_parameters(const grk_image *image,
 											const CodingParams *p_cp,
 											uint16_t tileno,
-											uint32_t *tileBounds,
+											grk_rect_u32 *tileBounds,
 											uint32_t *dx_min,
 											uint32_t *dy_min,
 											uint64_t *max_precincts,
@@ -649,7 +649,7 @@ static PacketIter* pi_create(const grk_image *image,
 		}
 		current_pi->numcomps = image->numcomps;
 		for (uint32_t compno = 0; compno < image->numcomps; ++compno) {
-			grk_pi_comp *comp = current_pi->comps + compno;
+			auto comp = current_pi->comps + compno;
 			auto tccp = &tcp->tccps[compno];
 			comp->resolutions = (grk_pi_resolution*) grk_calloc(
 					tccp->numresolutions, sizeof(grk_pi_resolution));

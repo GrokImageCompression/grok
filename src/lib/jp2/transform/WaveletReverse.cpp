@@ -1546,9 +1546,9 @@ public:
 		#define DD_(i) 	((i)<0 ? D(0) :	((i)>=sn ? D(sn-1) : D(i)))
 
 		int32_t i;
-		int32_t dn 		 = horiz->dn;
-		int32_t sn 		 = horiz->sn;
-		int32_t cas 	 = horiz->cas;
+		int32_t dn 		 = (int32_t)horiz->dn;
+		int32_t sn 		 = (int32_t)horiz->sn;
+		int32_t cas 	 = (int32_t)horiz->cas;
 		int32_t win_l_x0 = (int32_t)horiz->win_l_0;
 		int32_t win_l_x1 = (int32_t)horiz->win_l_1;
 		int32_t win_h_x0 = (int32_t)horiz->win_h_0;
@@ -1873,7 +1873,7 @@ template <typename T,
 	synthesisWindow = synthesisWindow.rectceildivpow2(numresolutions - 1 - (numres-1));
 
 	assert(fullResTopLevel->intersection(synthesisWindow) == synthesisWindow);
-    synthesisWindow = synthesisWindow.pan(-(uint64_t)fullResTopLevel->x0,-(uint64_t)fullResTopLevel->y0);
+    synthesisWindow = synthesisWindow.pan(-(int64_t)fullResTopLevel->x0,-(int64_t)fullResTopLevel->y0);
 
 	try {
     if (numres == 1U) {

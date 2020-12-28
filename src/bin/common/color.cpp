@@ -168,8 +168,8 @@ static bool sycc422_to_rgb(grk_image *src_img, bool oddFirstX) {
 	if (!dest_img)
 		return false;
 
-	uint32_t upb =  src_img->comps[0].prec;
-	uint32_t offset = 1 << (upb - 1);
+	int32_t upb =  src_img->comps[0].prec;
+	int32_t offset = 1 << (upb - 1);
 	upb = (1 << upb) - 1;
 
 	uint32_t w = src_img->comps[0].w;
@@ -245,8 +245,8 @@ static bool sycc420_to_rgb(grk_image *src_img, bool oddFirstX, bool oddFirstY) {
 	if (!dest_img)
 		return false;
 
-	uint32_t upb = src_img->comps[0].prec;
-	uint32_t offset = 1 << (upb - 1);
+	int32_t upb = src_img->comps[0].prec;
+	int32_t offset = 1 << (upb - 1);
 	upb = (1 << upb) - 1;
 
 	uint32_t w = src_img->comps[0].w;

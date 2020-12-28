@@ -464,8 +464,7 @@ bool BMPFormat::encodeHeader(grk_image *image, const std::string &filename, uint
 	put_int((uint32_t**)(&header_ptr), 0U);
 	put_int((uint32_t**)(&header_ptr), image_size);
 	for (uint32_t i = 0; i < 2; ++i){
-		double cap = m_image->capture_resolution[i] ?
-				m_image->capture_resolution[i] : 7834;
+		double cap = (m_image->capture_resolution[i] != 0) ? m_image->capture_resolution[i] : 7834.0;
 		put_int((uint32_t**)(&header_ptr), (uint32_t)(cap + 0.5f));
 	}
 	put_int((uint32_t**)(&header_ptr), colours_used);
@@ -815,10 +814,8 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	/* set image offset and reference grid */
 	image->x0 = parameters->image_offset_x0;
 	image->y0 = parameters->image_offset_y0;
-	image->x1 = image->x0 + (Info_h.biWidth - 1U) * parameters->subsampling_dx
-			+ 1U;
-	image->y1 = image->y0 + (Info_h.biHeight - 1U) * parameters->subsampling_dy
-			+ 1U;
+	image->x1 = image->x0 + (Info_h.biWidth - 1U) * parameters->subsampling_dx	+ 1U;
+	image->y1 = image->y0 + (Info_h.biHeight - 1U) * parameters->subsampling_dy	+ 1U;
 
 	/* Read the data */
 	switch(Info_h.biCompression){
@@ -965,7 +962,7 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 void BMPFormat::conv_1u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
 		int32_t *pDst, int32_t dstStride, uint32_t destWidth,
 		uint32_t destHeight) {
-	uint32_t absSrcStride = std::abs(srcStride);
+	uint32_t absSrcStride = (uint32_t)std::abs(srcStride);
 	for (uint32_t y = destHeight; y != 0U; --y) {
 		uint32_t destIndex = 0;
 		for (uint32_t srcIndex = 0; srcIndex < absSrcStride; srcIndex++) {
@@ -984,7 +981,7 @@ void BMPFormat::conv_1u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
 void BMPFormat::conv_4u32s_C1R(uint8_t const *pSrc, int32_t srcStride,
 		int32_t *pDst, int32_t dstStride, uint32_t destWidth,
 		uint32_t destHeight) {
-	uint32_t absSrcStride = std::abs(srcStride);
+	uint32_t absSrcStride = (uint32_t)std::abs(srcStride);
 	for (uint32_t y = destHeight; y != 0U; --y) {
 		uint32_t destIndex = 0;
 		for (uint32_t srcIndex = 0; srcIndex < absSrcStride; srcIndex++) {
@@ -1017,7 +1014,7 @@ void BMPFormat::conv_8u32s_C1R(uint8_t const *pSrc,
 void BMPFormat::applyLUT8u_1u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
 		int32_t *const*pDst, int32_t const *pDstStride,
 		uint8_t const *const*pLUT, uint32_t destWidth, uint32_t destHeight) {
-	uint32_t absSrcStride = std::abs(srcStride);
+	uint32_t absSrcStride = (uint32_t)std::abs(srcStride);
 	uint32_t y;
 	auto pR = pDst[0];
 	auto pG = pDst[1];
@@ -1051,7 +1048,7 @@ void BMPFormat::applyLUT8u_1u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
 void BMPFormat::applyLUT8u_4u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
 		int32_t *const*pDst, int32_t const *pDstStride,
 		uint8_t const *const*pLUT, uint32_t destWidth, uint32_t destHeight) {
-	uint32_t absSrcStride = std::abs(srcStride);
+	uint32_t absSrcStride = (uint32_t)std::abs(srcStride);
 	uint32_t y;
 	auto pR = pDst[0];
 	auto pG = pDst[1];
