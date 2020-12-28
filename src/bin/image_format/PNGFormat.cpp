@@ -512,7 +512,7 @@ bool PNGFormat::encodeHeader(grk_image *img, const std::string &filename,
 	 */
 	png_set_compression_level(png,
 			(int)((compressionLevel == GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT) ?
-					3 : compressionLevel));
+					0 : compressionLevel));
 
 	if (nr_comp >= 3) { /* RGB(A) */
 		color_type = PNG_COLOR_TYPE_RGB;

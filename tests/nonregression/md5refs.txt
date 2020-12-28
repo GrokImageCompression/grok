@@ -237,8 +237,8 @@ f3081c8e9e9a175f223382a7443b480f  issue559-eci-091-CIELab.jp2_2.pgx
 3bf91c974abc17e520c6a5efa883a58a  issue653-zero-unknownbox.jp2.png
 8d7a866d29d5c68dc540b0f0011959a5  issue726.png
 3bf91c974abc17e520c6a5efa883a58a  issue818.png
-eeb340cb37a868745b4b149b8fbeccc3  Bretagne2_ht_lossy.png
-dec17b0d2af36884580c1bc0455e7852  Bretagne2_ht.png
+1c1b8a1e92cc4d64589c138a8fe52fc1  Bretagne2_ht_lossy.png
+ae691453545f95a55a8fbbcdfce4b7b7  Bretagne2_ht.png
 c9ff4b6b63c2fb7729a6d1dce26ec602  a1_mono_tif-10.tif
 7754a710721fb72e75e9c85f6830c93a  a1_mono_tif-11.tif
 f260d8d7f30643d307527e6575107510  a1_mono_tif-12.tif
@@ -309,8 +309,8 @@ c12abf323bfdb7e53c87be3138df5643  p0_14_tif-3.tif
 5e59d77971a42c57218670a25b1539bf  4bpp.bmp
 dc4f61d85db7583163fb95d6c3e07fd3  truncated.bmp
 7b0b690c2fb3abec14872e1b109b0d71  ppm_tile1.tif
-f7f00f884659eb3e34a2854e299041cd  BMP_v5_with_ICC.png
-263c6f911942f6c3a08c49124bc4f2e3  BMP_v5_with_ICC2.png
+c2ce44407d6937a7f8f1da1e2e3f1f8f  BMP_v5_with_ICC.png
+18211c8542caa3a342998be36974598c  BMP_v5_with_ICC2.png
 a6cd67b1e9fcd8b94ba77e2e9b15e04d  BMP_v5_with_ICC.bmp
 3295911f26ee8a782dd3849256a16f26  BMP_v5_with_ICC2.bmp
 c671d85080b52f2cd68e8a9d3a8c1ff4  ybr-cat.tif
