@@ -9,8 +9,7 @@ See [LICENSE][link-license] for license and copyright information.
 
 See [INSTALL](https://github.com/GrokImageCompression/grok/blob/master/INSTALL.md) for installation procedures.
 
-
-Please see the project WIKI for library usage.
+Please see the project [wiki](https://github.com/GrokImageCompression/grok/wiki) for library usage.
 
 ## Current Build Status
 [![badge-build]][link-build]
