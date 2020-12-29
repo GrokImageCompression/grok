@@ -1,3 +1,4 @@
+#
 #    Copyright (C) 2016-2021 Grok Image Compression Inc.
 #
 #    This source code is free software: you can redistribute it and/or  modify
@@ -13,14 +14,8 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 #
-#    This source code incorporates work covered by the following copyright and
-#    permission notice:
-#
-#  Copyright (c) 2014 Mathieu Malaterre <mathieu.malaterre@voxxl.com>
-#
-#  Redistribution and use is allowed according to the terms of the New
-#  BSD license.
-#  For details see the accompanying COPYING-CMAKE-SCRIPTS file.
+#    This source code incorporates work covered by the BSD 2-clause license.
+#    Please see the LICENSE file in the root directory for details.
 
 # check md5 refs
 #

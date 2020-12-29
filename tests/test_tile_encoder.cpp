@@ -81,12 +81,12 @@ int main(int argc, char *argv[]) {
 	uint32_t i;
 	uint8_t *data = nullptr;
 
-	uint32_t num_comps;
+	uint16_t num_comps;
 	uint32_t image_width;
 	uint32_t image_height;
 	uint32_t tile_width;
 	uint32_t tile_height;
-	uint32_t comp_prec;
+	uint8_t comp_prec;
 	bool irreversible;
 	const char *output_file;
 
@@ -94,12 +94,12 @@ int main(int argc, char *argv[]) {
 
 	/* should be test_tile_encoder 3 2000 2000 1000 1000 8 tte1.j2k */
 	if (argc == 9) {
-		num_comps = (uint32_t)atoi(argv[1]);
+		num_comps = (uint16_t)atoi(argv[1]);
 		image_width = (uint32_t)atoi(argv[2]);
 		image_height = (uint32_t)atoi(argv[3]);
 		tile_width = (uint32_t)atoi(argv[4]);
 		tile_height = (uint32_t)atoi(argv[5]);
-		comp_prec = (uint32_t)atoi(argv[6]);
+		comp_prec = (uint8_t)atoi(argv[6]);
 		irreversible = atoi(argv[7]) ? true : false;
 		output_file = argv[8];
 	} else {

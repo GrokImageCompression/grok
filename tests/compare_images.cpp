@@ -249,8 +249,7 @@ static grk_image* readImageFromFilePPM(const char *filename, size_t nbFilenamePG
 		free(filenameComponentPGX);
 	}
 
-	dest = grk_image_create((uint32_t) nbFilenamePGX, src_param,
-			GRK_CLRSPC_UNKNOWN,true);
+	dest = grk_image_create((uint16_t) nbFilenamePGX, src_param,GRK_CLRSPC_UNKNOWN,true);
 	if (!dest || !dest->comps)
 		goto cleanup;
 	for (fileno = 0; fileno < nbFilenamePGX; fileno++) {
@@ -333,7 +332,7 @@ static grk_image* readImageFromFileTIF(const char *filename, size_t nbFilenamePG
 	return image_read;
 }
 
-static grk_image* readImageFromFilePGX(const char *filename, size_t nbFilenamePGX,
+static grk_image* readImageFromFilePGX(const char *filename, uint16_t nbFilenamePGX,
 		const char *separator) {
 	size_t fileno;
 	grk_image *src = nullptr;
@@ -415,7 +414,7 @@ static grk_image* readImageFromFilePGX(const char *filename, size_t nbFilenamePG
 		free(filenameComponentPGX);
 	}
 
-	dest = grk_image_create((uint32_t) nbFilenamePGX, dest_param,
+	dest = grk_image_create(nbFilenamePGX, dest_param,
 			GRK_CLRSPC_UNKNOWN,true);
 	if (!dest || !dest->comps)
 		goto cleanup;

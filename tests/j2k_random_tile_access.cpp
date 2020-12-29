@@ -56,7 +56,7 @@ static void info_callback(const char *msg, void *client_data) {
 }
 
 
-static uint32_t test_tile( uint16_t tile_index, grk_image *image, grk_stream *stream,
+static int32_t test_tile( uint16_t tile_index, grk_image *image, grk_stream *stream,
 								grk_codec codec) {
 	spdlog::info("Decompressing tile {} ...", tile_index);
 	if(!grk_decompress_tile(codec, image, tile_index )){
@@ -74,10 +74,9 @@ static uint32_t test_tile( uint16_t tile_index, grk_image *image, grk_stream *st
 }
 
 
-int main(int argc, char **argv) {
-	uint32_t index;
+int32_t main(int argc, char **argv) {
 	grk_dparameters parameters; /* decompression parameters */
-	uint32_t ret = EXIT_FAILURE, rc;
+	int32_t ret = EXIT_FAILURE, rc;
 
 	if (argc != 2) {
 		spdlog::error("Usage: {} <input_file>", argv[0]);
