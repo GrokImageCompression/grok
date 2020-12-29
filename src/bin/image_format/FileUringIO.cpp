@@ -188,7 +188,7 @@ bool FileUringIO::close(void){
 bool FileUringIO::write(uint8_t *buf, size_t len){
 
 	bool rc = true;
-	auto start = std::chrono::high_resolution_clock::now();
+	//auto start = std::chrono::high_resolution_clock::now();
 	io_data *data = new io_data();
 	auto b = new uint8_t[len];
 	memcpy(b,buf,len);
@@ -198,8 +198,8 @@ bool FileUringIO::write(uint8_t *buf, size_t len){
 	data->iov.iov_len = len;
 	queue_write(&ring, data, m_fd);
 
-	auto finish = std::chrono::high_resolution_clock::now();
-	std::chrono::duration<double> elapsed = finish - start;
+	//auto finish = std::chrono::high_resolution_clock::now();
+	//std::chrono::duration<double> elapsed = finish - start;
 	//spdlog::info("write time: {} ms",	elapsed.count() * 1000);
 	m_writeCount++;
 
@@ -213,6 +213,6 @@ bool FileUringIO::read(uint8_t *buf, size_t len){
 
 	return actual == len;
 }
-bool FileUringIO::seek(size_t pos){
-	return   (size_t)lseek(m_fd, pos, SEEK_SET) == pos;
+bool FileUringIO::seek(off_t pos){
+	return   lseek(m_fd, pos, SEEK_SET) == pos;
 }

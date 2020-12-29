@@ -179,7 +179,7 @@ option(BUILD_UNIT_TESTS "Build unit tests (bench_dwt, TestSparseBuffer, etc..)" 
 option(BUILD_CODEC "Build the CODEC executables" ON)
 option(BUILD_PLUGIN_LOADER "Enable loading of T1 plugin" OFF)
 mark_as_advanced(BUILD_PLUGIN_LOADER)
-option(URING OFF "Enable support for io_uring (requires liburing and Linux kernel >= 5.1)")
+option(URING OFF "Enable support for io_uring (requires liburing and Linux kernel >= 5.8)")
 mark_as_advanced(URING)
 
 #---Check for liburing----------------------------------------------------------------

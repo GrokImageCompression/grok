@@ -28,12 +28,12 @@ public:
 	bool close(void) override;
 	bool write(uint8_t *buf, size_t len) override;
 	bool read(uint8_t *buf, size_t len) override;
-	bool seek(size_t pos) override;
+	bool seek(off_t pos) override;
 
 private:
 	int m_fd;
 	std::string m_fileName;
-	size_t m_off;
+	off_t m_off;
 	size_t m_writeCount;
 };
 

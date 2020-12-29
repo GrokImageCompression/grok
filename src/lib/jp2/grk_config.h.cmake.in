@@ -1,8 +1,5 @@
-/* create grk_config.h for CMake */
-#cmakedefine GROK_HAVE_STDINT_H 		@GROK_HAVE_STDINT_H@
-
-/*--------------------------------------------------------------------------*/
-/* Grok Versioning                                                      */
+/*-----------------------------------------------*/
+/* Grok Versioning                               */
 
 /* Version number. */
 #define GRK_VERSION_MAJOR @GROK_VERSION_MAJOR@

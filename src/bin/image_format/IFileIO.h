@@ -27,5 +27,5 @@ public:
 	virtual bool close(void)=0;
 	virtual bool write(uint8_t *buf, size_t len)=0;
 	virtual bool read(uint8_t *buf, size_t len)=0;
-	virtual bool seek(size_t pos)=0;
+	virtual bool seek(off_t pos)=0;
 };
