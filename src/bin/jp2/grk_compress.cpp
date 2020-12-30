@@ -985,13 +985,17 @@ static int parse_cmdline_compressor_ex(int argc,
 		}
 
 		if (progressionOrderArg.isSet()) {
-			char progression[4];
-
-			strncpy(progression, progressionOrderArg.getValue().c_str(), 4);
-			parameters->prog_order = give_progression(progression);
-			if (parameters->prog_order == -1) {
-				spdlog::error("Unrecognized progression order "
-						"[LRCP, RLCP, RPCL, PCRL, CPRL] ");
+			char progression[5];
+			progression[4] = 0;
+			bool recognized = false;
+			if (progressionOrderArg.getValue().length() == 4){
+				strncpy(progression, progressionOrderArg.getValue().c_str(), 4);
+				parameters->prog_order = give_progression(progression);
+				recognized = parameters->prog_order != -1;
+			}
+			if (!recognized) {
+				spdlog::error("Unrecognized progression order {} is not one of "
+						"[LRCP, RLCP, RPCL, PCRL, CPRL]",progressionOrderArg.getValue());
 				return 1;
 			}
 		}
