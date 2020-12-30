@@ -30,7 +30,7 @@ set(common_SRCS
   ${GROK_SOURCE_DIR}/src/bin/common/common.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/common.h
   ${GROK_SOURCE_DIR}/src/bin/common/grk_string.h
-  
+  ${GROK_SOURCE_DIR}/src/bin/common/exif.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/spdlog/spdlog.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/spdlog/color_sinks.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/spdlog/stdout_sinks.cpp
@@ -105,7 +105,12 @@ foreach(exe grk_decompress grk_compress grk_dump)
   if(URING)
 	  target_link_libraries(${exe} uring)
   endif()
-
+  
+  if (PERLLIBS_FOUND)
+  	include_directories(${PERL_INCLUDE_PATH})
+  	target_link_libraries(${exe} ${PERL_LIBRARY} "crypt")
+  endif()
+  
   # Install exe
   install(TARGETS ${exe}
     EXPORT GrokTargets

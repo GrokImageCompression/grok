@@ -69,8 +69,8 @@ using namespace grk;
 #include "tclap/CmdLine.h"
 #include <chrono>
 #include "spdlog/sinks/basic_file_sink.h"
-
 using namespace TCLAP;
+#include "exif.h"
 
 static bool plugin_compress_callback(
 		grk_plugin_compress_user_callback_info *info);
@@ -358,6 +358,36 @@ static GRK_PROG_ORDER give_progression(const char progression[4]) {
 	return GRK_PROG_UNKNOWN;
 }
 
+struct CompressInitParams {
+	CompressInitParams() : initialized(false),
+							transferExifTags(false) {
+		plugin_path[0] = 0;
+		*indexfilename = 0;
+		memset(&img_fol, 0, sizeof(img_fol));
+		memset(&out_fol, 0, sizeof(out_fol));
+	}
+	~CompressInitParams() {
+		for (size_t i = 0; i < parameters.cp_num_comments; ++i) {
+			if (parameters.cp_comment[i])
+				delete[] ((uint8_t*) parameters.cp_comment[i]);
+		}
+		if (parameters.raw_cp.comps)
+			free(parameters.raw_cp.comps);
+		if (img_fol.imgdirpath)
+			free(img_fol.imgdirpath);
+		if (out_fol.imgdirpath)
+			free(out_fol.imgdirpath);
+
+	}
+	bool initialized;
+	grk_cparameters parameters;
+	char indexfilename[GRK_PATH_LEN]; /* index file name */
+	char plugin_path[GRK_PATH_LEN];
+	grk_img_fol img_fol;
+	grk_img_fol out_fol;
+	bool transferExifTags;
+};
+
 static int load_images(grk_dircnt *dirptr, char *imgdirpath) {
 	/*Reading the input images from given input directory*/
 
@@ -466,11 +496,16 @@ static bool checkCinema(ValueArg<uint32_t> *arg, uint16_t profile,
 	}
 	return isValid;
 }
-static int parse_cmdline_compressor_ex(int argc, char **argv,
-		grk_cparameters *parameters, grk_img_fol *img_fol, grk_img_fol *out_fol,
-		char *indexfilename, size_t indexfilename_size, char *plugin_path) {
-	(void) indexfilename;
-	(void) indexfilename_size;
+static int parse_cmdline_compressor_ex(int argc,
+										char **argv,
+										CompressInitParams *initParams) {
+
+
+	grk_cparameters *parameters = &initParams->parameters;
+	grk_img_fol *img_fol = &initParams->img_fol;
+	grk_img_fol *out_fol = &initParams->out_fol;
+	char *plugin_path = initParams->plugin_path;
+
 	try {
 		CmdLine cmd("grk_compress command line", ' ', grk_version());
 
@@ -609,8 +644,11 @@ static int parse_cmdline_compressor_ex(int argc, char **argv,
 				"Rate control algorithm", false, 0, "unsigned integer", cmd);
 
 		SwitchArg verboseArg("v", "verbose", "Verbose", cmd);
+		SwitchArg transferExifTagsArg("V", "TransferExifTags", "Transfer Exif tags", cmd);
 
 		cmd.parse(argc, argv);
+
+		initParams->transferExifTags = transferExifTagsArg.isSet();
 
 		if (logfileArg.isSet()){
 		    auto file_logger = spdlog::basic_logger_mt("grk_compress", logfileArg.getValue());
@@ -1603,44 +1641,7 @@ static int parse_cmdline_compressor_ex(int argc, char **argv,
 
 	return 0;
 }
-struct CompressInitParams {
-	CompressInitParams() :
-			initialized(false) {
 
-		plugin_path[0] = 0;
-
-		/* Initialize indexfilename and img_fol */
-		*indexfilename = 0;
-
-		memset(&img_fol, 0, sizeof(img_fol));
-		memset(&out_fol, 0, sizeof(out_fol));
-
-	}
-
-	~CompressInitParams() {
-		for (size_t i = 0; i < parameters.cp_num_comments; ++i) {
-			if (parameters.cp_comment[i])
-				delete[] ((uint8_t*) parameters.cp_comment[i]);
-		}
-		if (parameters.raw_cp.comps)
-			free(parameters.raw_cp.comps);
-		if (img_fol.imgdirpath)
-			free(img_fol.imgdirpath);
-		if (out_fol.imgdirpath)
-			free(out_fol.imgdirpath);
-
-	}
-	bool initialized;
-
-	grk_cparameters parameters; /* compression parameters */
-
-	char indexfilename[GRK_PATH_LEN]; /* index file name */
-	char plugin_path[GRK_PATH_LEN];
-
-	grk_img_fol img_fol;
-	grk_img_fol out_fol;
-
-};
 
 static int plugin_main(int argc, char **argv, CompressInitParams *initParams);
 
@@ -1667,6 +1668,7 @@ static int compress(const std::string &image_filename, CompressInitParams *initP
 	callbackInfo.image = nullptr;
 	callbackInfo.output_file_name = initParams->parameters.outfile;
 	callbackInfo.input_file_name = initParams->parameters.infile;
+	callbackInfo.transferExifTags = initParams->transferExifTags;
 
 	return plugin_compress_callback(&callbackInfo) ? 1 : 0;
 }
@@ -1745,9 +1747,8 @@ int main(int argc, char **argv) {
 
 grk_img_fol img_fol_plugin, out_fol_plugin;
 
-static bool plugin_compress_callback(
-		grk_plugin_compress_user_callback_info *info) {
-	grk_cparameters *parameters = info->compressor_parameters;
+static bool plugin_compress_callback(grk_plugin_compress_user_callback_info *info) {
+	auto parameters = info->compressor_parameters;
 	bool bSuccess = true;
 	grk_stream *stream = nullptr;
 	grk_codec codec = nullptr;
@@ -2090,6 +2091,10 @@ static bool plugin_compress_callback(
 		bSuccess = false;
 		goto cleanup;
 	}
+#ifdef GROK_HAVE_EXIFTOOL
+	if (bSuccess && info->transferExifTags)
+		transferExifTags(info->input_file_name, info->output_file_name);
+#endif
 	if (info->compressBuffer) {
 		auto fp = fopen(outfile, "wb");
 		if (!fp) {
@@ -2130,7 +2135,6 @@ static bool plugin_compress_callback(
 static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 	if (!initParams)
 		return 1;
-
 	grk_dircnt *dirptr = nullptr;
 	int32_t success = 0;
 	uint32_t num_images, imageno;
@@ -2139,36 +2143,24 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 
 	/* set compressing parameters to default values */
 	grk_set_default_compress_params(&initParams->parameters);
-
-
-
 	/* parse input and get user compressing parameters */
 	initParams->parameters.tcp_mct = 255; /* This will be set later according to the input image or the provided option */
 	initParams->parameters.rateControlAlgorithm = 255;
-	if (parse_cmdline_compressor_ex(argc, argv, &initParams->parameters,
-			&initParams->img_fol, &initParams->out_fol,
-			initParams->indexfilename, sizeof(initParams->indexfilename),
-			initParams->plugin_path) == 1) {
+	if (parse_cmdline_compressor_ex(argc,argv,initParams) == 1) {
 		success = 1;
 		goto cleanup;
 	}
 	isBatch = initParams->img_fol.imgdirpath &&  initParams->out_fol.imgdirpath;
 	state = grk_plugin_get_debug_state();
-
-
 #ifdef GROK_HAVE_LIBTIFF
 	tiffSetErrorAndWarningHandlers(initParams->parameters.verbose);
 #endif
-
 	initParams->initialized = true;
-
 	// loads plugin but does not actually create codec
-	if (!grk_initialize(initParams->plugin_path,
-			initParams->parameters.numThreads)) {
+	if (!grk_initialize(initParams->plugin_path, initParams->parameters.numThreads)) {
 		success = 1;
 		goto cleanup;
 	}
-
 	img_fol_plugin = initParams->img_fol;
 	out_fol_plugin = initParams->out_fol;
 
@@ -2179,17 +2171,16 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 	if (!grk_plugin_init(initInfo)) {
 		success = 1;
 		goto cleanup;
-
 	}
-	if ((state & GRK_PLUGIN_STATE_DEBUG)
-			|| (state & GRK_PLUGIN_STATE_PRE_TR1)) {
+	if ((state & GRK_PLUGIN_STATE_DEBUG)|| (state & GRK_PLUGIN_STATE_PRE_TR1)) {
 		isBatch = 0;
 	}
 	if (isBatch) {
 		setup_signal_handler();
 		success = grk_plugin_batch_compress(initParams->img_fol.imgdirpath,
-				initParams->out_fol.imgdirpath, &initParams->parameters,
-				plugin_compress_callback);
+											initParams->out_fol.imgdirpath,
+											&initParams->parameters,
+											plugin_compress_callback);
 		// if plugin successfully begins batch compress, then wait for batch to complete
 		if (success == 0) {
 			uint32_t slice = 100;	//ms
@@ -2257,13 +2248,11 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 			//restore cached settings
 			initParams->parameters.tcp_mct = tcp_mct;
 			initParams->parameters.rateControlAlgorithm = rateControlAlgorithm;
-			success = grk_plugin_compress(&initParams->parameters,
-					plugin_compress_callback);
+			success = grk_plugin_compress(&initParams->parameters,plugin_compress_callback);
 			if (success != 0)
 				break;
 		}
 	}
-
 	cleanup: if (dirptr) {
 		if (dirptr->filename_buf)
 			free(dirptr->filename_buf);

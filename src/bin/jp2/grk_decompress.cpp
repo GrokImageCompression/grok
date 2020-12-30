@@ -69,6 +69,7 @@
 #include "tclap/CmdLine.h"
 #include <chrono>
 #include "spdlog/sinks/basic_file_sink.h"
+#include "exif.h"
 
 namespace grk {
 
@@ -427,9 +428,15 @@ uint32_t GrkDecompress::getCompressionCode(const std::string &compressionString)
  * Parse the command line
  */
 /* -------------------------------------------------------------------------- */
-int GrkDecompress::parse_cmdline_decompressor(int argc, char **argv,
-		grk_decompress_parameters *parameters, grk_img_fol *img_fol,
-		grk_img_fol *out_fol, char *plugin_path) {
+int GrkDecompress::parse_cmdline_decompressor(int argc,
+												char **argv,
+												DecompressInitParams *initParams) {
+
+
+	grk_decompress_parameters *parameters = &initParams->parameters;
+	grk_img_fol *img_fol = &initParams->img_fol;
+	grk_img_fol *out_fol = &initParams->out_fol;
+	char *plugin_path = initParams->plugin_path;
 	try {
 		TCLAP::CmdLine cmd("grk_decompress command line", ' ', grk_version());
 
@@ -479,6 +486,7 @@ int GrkDecompress::parse_cmdline_decompressor(int argc, char **argv,
 				"integer", cmd);
 
 		TCLAP::SwitchArg xmlArg("X", "XML", "XML metadata", cmd);
+		TCLAP::SwitchArg transferExifTagsArg("V", "TransferExifTags", "Transfer Exif tags", cmd);
 
 		// Kernel build flags:
 		// 1 indicates build binary, otherwise load binary
@@ -492,6 +500,8 @@ int GrkDecompress::parse_cmdline_decompressor(int argc, char **argv,
 
 		TCLAP::SwitchArg verboseArg("v", "verbose", "Verbose", cmd);
 		cmd.parse(argc, argv);
+
+		initParams->transferExifTags = transferExifTagsArg.isSet();
 
 		parameters->verbose = verboseArg.isSet();
 		bool useStdio = inputFileArg.isSet() && outForArg.isSet() && !outputFileArg.isSet();
@@ -840,9 +850,7 @@ int GrkDecompress::plugin_main(int argc, char **argv, DecompressInitParams *init
 	set_default_parameters(&initParams->parameters);
 
 	/* parse input and get user compressing parameters */
-	if (parse_cmdline_decompressor(argc, argv, &initParams->parameters,
-			&initParams->img_fol, &initParams->out_fol, initParams->plugin_path)
-			== 1) {
+	if (parse_cmdline_decompressor(argc, argv,initParams)== 1) {
 		return EXIT_FAILURE;
 	}
 
@@ -1515,6 +1523,10 @@ int GrkDecompress::main(int argc, char **argv) {
 					rc = EXIT_FAILURE;
 					goto cleanup;
 				}
+#ifdef GROK_HAVE_EXIFTOOL
+				if (initParams.transferExifTags)
+					transferExifTags(initParams.parameters.infile, initParams.parameters.outfile);
+#endif
 				num_decompressed_images++;
 			} else {
 				auto dir = opendir(initParams.img_fol.imgdirpath);

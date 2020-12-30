@@ -1784,6 +1784,7 @@ typedef struct grk_plugin_compress_user_callback_info {
 	uint8_t *compressBuffer;
 	size_t compressBufferLen;
 	unsigned int error_code;
+	bool transferExifTags;
 } grk_plugin_compress_user_callback_info;
 
 typedef bool (*GRK_PLUGIN_COMPRESS_USER_CALLBACK)(

@@ -28,13 +28,12 @@
 namespace grk {
 
 struct DecompressInitParams {
-	DecompressInitParams() :
-			initialized(false) {
+	DecompressInitParams() :initialized(false),
+							transferExifTags(false) 	{
 		plugin_path[0] = 0;
 		memset(&img_fol, 0, sizeof(img_fol));
 		memset(&out_fol, 0, sizeof(out_fol));
 	}
-
 	~DecompressInitParams() {
 		if (img_fol.imgdirpath)
 			free(img_fol.imgdirpath);
@@ -42,13 +41,11 @@ struct DecompressInitParams {
 			free(out_fol.imgdirpath);
 	}
 	bool initialized;
-
-	grk_decompress_parameters parameters; /* compression parameters */
+	grk_decompress_parameters parameters;
 	char plugin_path[GRK_PATH_LEN];
-
 	grk_img_fol img_fol;
 	grk_img_fol out_fol;
-
+	bool transferExifTags;
 };
 
 class GrkDecompress{
@@ -72,9 +69,7 @@ private:
 	int load_images(grk_dircnt *dirptr, char *imgdirpath);
 	char get_next_file(std::string file_name, grk_img_fol *img_fol,
 			grk_img_fol *out_fol, grk_decompress_parameters *parameters);
-	int parse_cmdline_decompressor(int argc, char **argv,
-			grk_decompress_parameters *parameters, grk_img_fol *img_fol,
-			grk_img_fol *out_fol, char *plugin_path);
+	int parse_cmdline_decompressor(int argc, char **argv,DecompressInitParams *initParams);
 	uint32_t getCompressionCode(const std::string &compressionString);
 	void set_default_parameters(grk_decompress_parameters *parameters);
 	void destroy_parameters(grk_decompress_parameters *parameters);

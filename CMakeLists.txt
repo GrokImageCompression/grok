@@ -205,6 +205,20 @@ if (URING)
   endif()
 endif()
 
+find_package(PerlLibs)
+if (PERLLIBS_FOUND)
+ 	message(STATUS "Perl libraries found")
+ 	execute_process(COMMAND ${PERL_EXECUTABLE} -MImage::ExifTool -e ""
+     ERROR_QUIET RESULT_VARIABLE status)
+     if (NOT status)
+      	message(STATUS "ExifTool Perl module found")
+       	set(GROK_HAVE_EXIFTOOL define)  
+     else()
+      	message(STATUS "ExifTool Perl module not found")     
+     endif()
+endif(PERLLIBS_FOUND)
+
+
 if(BUILD_CODEC)
   # OFF: 3rd party libs will only be built if not found in system
   # ON:  3rd party libs will always be built
