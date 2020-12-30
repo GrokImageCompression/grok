@@ -300,7 +300,7 @@ void mct::decompress_dc_shift_rev(grk_tile *tile, grk_image *image,TileComponent
 	    std::vector< std::future<int> > results;
 	    for(uint64_t threadid = 0; threadid < num_threads; ++threadid) {
 	    	uint64_t index = threadid;
-	    	auto decompressor = [index, chunkSize,c0, shift, _min, _max](){
+	    	auto decompressor = [index, chunkSize,c0, shift, _min, _max,n](){
 	    		uint64_t begin = (uint64_t)index * chunkSize;
 				const VREG  vdc = LOAD_CST(shift);
 				const VREG  vmin = LOAD_CST(_min);
