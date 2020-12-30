@@ -46,20 +46,18 @@
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
 
-using namespace TCLAP;
-using namespace std;
 
 /*******************************************************************************
  * Parse MSE and PEAK input values (
  * separator = ":"
  *******************************************************************************/
-static double* parseToleranceValues(char *inArg, const size_t nbcomp) {
+static double* parseToleranceValues(char *inArg, const uint16_t nbcomp) {
 	if (!nbcomp || !inArg)
 		return nullptr;
 	double *outArgs = (double*) malloc((size_t) nbcomp * sizeof(double));
 	if (!outArgs)
 		return nullptr;
-	size_t it_comp = 0;
+	uint16_t it_comp = 0;
 	const char delims[] = ":";
 	char *result = strtok(inArg, delims);
 
@@ -105,72 +103,41 @@ static void compare_images_help_display(void) {
 	fprintf(stdout, "\n");
 }
 
-static int get_decod_format_from_string(const char *filename) {
-	const int dot = '.';
-	char *ext = (char*) strrchr(filename, dot);
-	if (strcmp(ext, ".pgx") == 0)
-		return GRK_PGX_FMT;
-	if (strcmp(ext, ".tif") == 0)
-		return GRK_TIF_FMT;
-	if (strcmp(ext, ".ppm") == 0)
-		return GRK_PXM_FMT;
-	if (strcmp(ext, ".png") == 0)
-		return GRK_PNG_FMT;
-	return -1;
-}
-
 /*******************************************************************************
  * Create filenames from a filename using separator and nb components
  * (begin from 0)
  *******************************************************************************/
-static char* createMultiComponentsFilename(const char *inFilename,
-		const size_t indexF, const char *separator) {
-	char s[255];
-	char *outFilename, *ptr;
-	const char token = '.';
-	size_t posToken = 0;
-	int decod_format;
-
-	/*spdlog::info("inFilename = {}", inFilename);*/
-	if ((ptr = (char*) strrchr(inFilename, token)) != nullptr) {
-		posToken = strlen(inFilename) - strlen(ptr);
-		/*spdlog::info("Position of {} character inside inFilename = {}\n", token, posToken);*/
-	} else {
-		/*spdlog::info("Token {} not found", token);*/
-		outFilename = (char*) malloc(1);
-		if (!outFilename)
-			return nullptr;
-		outFilename[0] = '\0';
-		return outFilename;
+static char* createMultiComponentsFilename(std::string inFilename,
+		const uint16_t indexF, const char *separator) {
+	size_t lastindex = inFilename.find_last_of(".");
+	if (lastindex == std::string::npos) {
+		spdlog::error(" createMultiComponentsFilename: missing file tag");
+		return nullptr;
 	}
+	std::string rawname = inFilename.substr(0, lastindex);
+	std::ostringstream iss;
+	iss << rawname << separator << indexF;
 
-	outFilename = (char*) malloc((posToken + 7) * sizeof(char)); /*6*/
+	char *outFilename = (char*) malloc(inFilename.size() + 7);
 	if (!outFilename)
 		return nullptr;
-
-	strncpy(outFilename, inFilename, posToken);
-	outFilename[posToken] = '\0';
-	strcat(outFilename, separator);
-	sprintf(s, "%u", (uint32_t)indexF);
-	strcat(outFilename, s);
-
-	decod_format = get_decod_format_from_string(inFilename);
+	strcpy(outFilename, iss.str().c_str());
+	GRK_SUPPORTED_FILE_FMT decod_format = grk::get_file_format(inFilename.c_str());
 	if (decod_format == GRK_PGX_FMT) {
 		strcat(outFilename, ".pgx");
 	} else if (decod_format == GRK_PXM_FMT) {
 		strcat(outFilename, ".pgm");
 	}
 
-	/*spdlog::info("outfilename: {}", outFilename);*/
 	return outFilename;
 }
 
 /*******************************************************************************
  *
  *******************************************************************************/
-static grk_image* readImageFromFilePPM(const char *filename, size_t nbFilenamePGX,
+static grk_image* readImageFromFilePPM(const char *filename, uint16_t nbFilenamePGX,
 		const char *separator) {
-	size_t fileno = 0;
+	uint16_t fileno = 0;
 	grk_image *src = nullptr;
 	grk_image *dest = nullptr;
 	grk_cparameters parameters;
@@ -273,7 +240,7 @@ static grk_image* readImageFromFilePPM(const char *filename, size_t nbFilenamePG
 	return dest;
 }
 
-static grk_image* readImageFromFilePNG(const char *filename, size_t nbFilenamePGX,
+static grk_image* readImageFromFilePNG(const char *filename, uint16_t nbFilenamePGX,
 		const char *separator) {
 	grk_image *image_read = nullptr;
 	grk_cparameters parameters;
@@ -300,7 +267,7 @@ static grk_image* readImageFromFilePNG(const char *filename, size_t nbFilenamePG
 	return image_read;
 }
 
-static grk_image* readImageFromFileTIF(const char *filename, size_t nbFilenamePGX,
+static grk_image* readImageFromFileTIF(const char *filename, uint16_t nbFilenamePGX,
 		const char *separator) {
 	grk_image *image_read = nullptr;
 	grk_cparameters parameters;
@@ -334,7 +301,7 @@ static grk_image* readImageFromFileTIF(const char *filename, size_t nbFilenamePG
 
 static grk_image* readImageFromFilePGX(const char *filename, uint16_t nbFilenamePGX,
 		const char *separator) {
-	size_t fileno;
+	uint16_t fileno;
 	grk_image *src = nullptr;
 	grk_image *dest = nullptr;
 	grk_cparameters parameters;
@@ -442,7 +409,7 @@ static grk_image* readImageFromFilePGX(const char *filename, uint16_t nbFilename
 /*******************************************************************************
  *
  *******************************************************************************/
-static int imageToPNG(const grk_image *src, const char *filename, size_t compno) {
+static int imageToPNG(const grk_image *src, const char *filename, uint16_t compno) {
 	grk_image_cmptparm dest_param;
 	auto src_comp = src->comps + compno;
 	dest_param.x0 = 0;
@@ -484,7 +451,7 @@ struct test_cmp_parameters {
 	/**  */
 	char *test_filename;
 	/** Number of components */
-	uint32_t nbcomp;
+	uint16_t nbcomp;
 	/**  */
 	double *tabMSEvalues;
 	/**  */
@@ -501,13 +468,13 @@ struct test_cmp_parameters {
 
 };
 
-/* return decode format PGX / TIF / PPM , return -1 on error */
-static int get_decod_format(test_cmp_parameters *param) {
-	int base_format = get_decod_format_from_string(param->base_filename);
-	int test_format = get_decod_format_from_string(param->test_filename);
+/* return decode format PGX / TIF / PPM , return GRK_UNK_FMT on error */
+static GRK_SUPPORTED_FILE_FMT get_decod_format(test_cmp_parameters *param) {
+	auto base_format = grk::get_file_format(param->base_filename);
+	auto test_format = grk::get_file_format(param->test_filename);
 	if (base_format != test_format)
-		return -1;
-	/* handle case -1: */
+		return GRK_UNK_FMT;
+
 	return base_format;
 }
 
@@ -515,9 +482,9 @@ static int get_decod_format(test_cmp_parameters *param) {
  * Parse command line
  *******************************************************************************/
 
-class GrokOutput: public StdOutput {
+class GrokOutput: public TCLAP::StdOutput {
 public:
-	virtual void usage(CmdLineInterface &c) {
+	virtual void usage(TCLAP::CmdLineInterface &c) {
 		(void) c;
 		compare_images_help_display();
 	}
@@ -544,29 +511,29 @@ static int parse_cmdline_cmp(int argc, char **argv,
 	try {
 
 		// Define the command line object.
-		CmdLine cmd("compare_images command line", ' ', "0.9");
+		TCLAP::CmdLine cmd("compare_images command line", ' ', "0.9");
 
 		// set the output
 		GrokOutput output;
 		cmd.setOutput(&output);
 
-		ValueArg<string> baseImageArg("b", "Base", "Base Image", true, "",
+		TCLAP::ValueArg<std::string> baseImageArg("b", "Base", "Base Image", true, "",
 				"string", cmd);
-		ValueArg<string> testImageArg("t", "Test", "Test Image", true, "",
+		TCLAP::ValueArg<std::string> testImageArg("t", "Test", "Test Image", true, "",
 				"string", cmd);
-		ValueArg<uint32_t> numComponentsArg("n", "NumComponents",
+		TCLAP::ValueArg<uint32_t> numComponentsArg("n", "NumComponents",
 				"Number of components", true, 1, "uint32_t", cmd);
 
-		ValueArg<string> mseArg("m", "MSE", "Mean Square Energy", false, "",
+		TCLAP::ValueArg<std::string> mseArg("m", "MSE", "Mean Square Energy", false, "",
 				"string", cmd);
-		ValueArg<string> psnrArg("p", "PSNR", "Peak Signal To Noise Ratio",
+		TCLAP::ValueArg<std::string> psnrArg("p", "PSNR", "Peak Signal To Noise Ratio",
 				false, "", "string", cmd);
 
-		SwitchArg nonRegressionArg("d", "NonRegression", "Non regression", cmd);
-		ValueArg<string> separatorArg("s", "Separator", "Separator", false, "",
+		TCLAP::SwitchArg nonRegressionArg("d", "NonRegression", "Non regression", cmd);
+		TCLAP::ValueArg<std::string> separatorArg("s", "Separator", "Separator", false, "",
 				"string", cmd);
 
-		ValueArg<string> regionArg("R", "SubRegion", "Sub region to compare",
+		TCLAP::ValueArg<std::string> regionArg("R", "SubRegion", "Sub region to compare",
 				false, "", "string", cmd);
 
 		cmd.parse(argc, argv);
@@ -588,7 +555,7 @@ static int parse_cmdline_cmp(int argc, char **argv,
 			/*spdlog::info("param->test_filename = %s [%u / %u]", param->test_filename, strlen(param->test_filename), sizememtestfile);*/
 		}
 		if (numComponentsArg.isSet()) {
-			param->nbcomp = numComponentsArg.getValue();
+			param->nbcomp = (uint16_t)numComponentsArg.getValue();
 		}
 		if (mseArg.isSet()) {
 			MSElistvalues = (char*) mseArg.getValue().c_str();
@@ -716,9 +683,9 @@ static int parse_cmdline_cmp(int argc, char **argv,
 					" PEAK or MSE tolerance are not specified. Flag has now been set.");
 			param->nr_flag = 1;
 		}
-	} catch (ArgException &e)  // catch any exceptions
+	} catch (TCLAP::ArgException &e)  // catch any exceptions
 	{
-		cerr << "error: " << e.error() << " for arg " << e.argId() << endl;
+		std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
 	}
 
 	return 0;
@@ -737,7 +704,7 @@ int main(int argc, char **argv) {
 #endif
 
 	test_cmp_parameters inParam;
-	size_t compno;
+	uint16_t compno;
 	int failed = 1;
 	uint16_t nbFilenamePGXbase = 0, nbFilenamePGXtest = 0;
 	char *filenamePNGtest = nullptr, *filenamePNGbase = nullptr,
@@ -872,7 +839,7 @@ int main(int argc, char **argv) {
 		auto testComp = imageTest->comps + compno;
 		if (baseComp->sgnd != testComp->sgnd) {
 			spdlog::error("sign mismatch [comp {}] ({} != {})",
-					(uint32_t)compno, baseComp->sgnd, testComp->sgnd);
+					compno, baseComp->sgnd, testComp->sgnd);
 			goto cleanup;
 		}
 
@@ -891,20 +858,20 @@ int main(int argc, char **argv) {
 
 			if (baseComp->h != testComp->h) {
 				spdlog::error("height mismatch [comp {}] ({} != {})",
-						(uint32_t)compno, baseComp->h, testComp->h);
+						compno, baseComp->h, testComp->h);
 				goto cleanup;
 			}
 
 			if (baseComp->w != testComp->w) {
 				spdlog::error("width mismatch [comp {}] ({} != {})",
-						(uint32_t)compno, baseComp->w, testComp->w);
+						compno, baseComp->w, testComp->w);
 				goto cleanup;
 			}
 		}
 
 		if (baseComp->prec != testComp->prec) {
 			spdlog::error("precision mismatch [comp {}] ({} != {})",
-					(uint32_t)compno, baseComp->prec, testComp->prec);
+					compno, baseComp->prec, testComp->prec);
 			goto cleanup;
 		}
 
@@ -976,10 +943,10 @@ int main(int argc, char **argv) {
 			/* Conformance test*/
 			spdlog::info(
 					"<DartMeasurement name=\"PEAK_{}\" type=\"numeric/double\"> {} </DartMeasurement>",
-					(uint32_t)compno, PEAK);
+					compno, PEAK);
 			spdlog::info(
 					"<DartMeasurement name=\"MSE_{}\" type=\"numeric/double\"> {} </DartMeasurement>",
-					(uint32_t)compno, MSE);
+					compno, MSE);
 
 			if ((MSE > inParam.tabMSEvalues[compno])
 					|| (PEAK > inParam.tabPEAKvalues[compno])) {
@@ -996,16 +963,16 @@ int main(int argc, char **argv) {
 
 				spdlog::info(
 						"<DartMeasurement name=\"NumberOfPixelsWithDifferences_{}\" type=\"numeric/int\"> {} </DartMeasurement>",
-						(uint32_t)compno, nbPixelDiff);
+						compno, nbPixelDiff);
 				spdlog::info(
 						"<DartMeasurement name=\"ComponentError_{}\" type=\"numeric/double\"> {} </DartMeasurement>",
-						(uint32_t)compno, sumDiff);
+						compno, sumDiff);
 				spdlog::info(
 						"<DartMeasurement name=\"PEAK_{}\" type=\"numeric/double\"> {} </DartMeasurement>",
-						(uint32_t)compno, PEAK);
+						compno, PEAK);
 				spdlog::info(
 						"<DartMeasurement name=\"MSE_{}\" type=\"numeric/double\"> {} </DartMeasurement>",
-						(uint32_t)compno, MSE);
+						compno, MSE);
 
 #ifdef GROK_HAVE_LIBPNG
 				{
@@ -1037,7 +1004,7 @@ int main(int argc, char **argv) {
 					}
 					strcpy(filenamePNGdiff_it_comp, filenamePNGdiff);
 
-					sprintf(it_compc, "_%i", (uint32_t)compno);
+					sprintf(it_compc, "_%i", compno);
 					strcat(it_compc, ".png");
 					strcat(filenamePNGbase_it_comp, it_compc);
 					/*spdlog::info("filenamePNGbase_it = %s [%u / %u octets]",filenamePNGbase_it_comp, strlen(filenamePNGbase_it_comp),memsizebasefilename );*/
@@ -1050,21 +1017,21 @@ int main(int argc, char **argv) {
 							compno) == EXIT_SUCCESS) {
 						spdlog::info(
 								"<DartMeasurementFile name=\"BaselineImage_{}\" type=\"image/png\"> {} </DartMeasurementFile>",
-								(uint32_t)compno, filenamePNGbase_it_comp);
+								compno, filenamePNGbase_it_comp);
 					}
 
 					if (imageToPNG(imageTest, filenamePNGtest_it_comp,
 							compno) == EXIT_SUCCESS) {
 						spdlog::info(
 								"<DartMeasurementFile name=\"TestImage_{}\" type=\"image/png\"> {} </DartMeasurementFile>",
-								(uint32_t)compno, filenamePNGtest_it_comp);
+								compno, filenamePNGtest_it_comp);
 					}
 
 					if (imageToPNG(imageDiff, filenamePNGdiff_it_comp,
 							compno) == EXIT_SUCCESS) {
 						spdlog::info(
 								"<DartMeasurementFile name=\"DiffferenceImage_{}\" type=\"image/png\"> {} </DartMeasurementFile>",
-								(uint32_t)compno, filenamePNGdiff_it_comp);
+								compno, filenamePNGdiff_it_comp);
 					}
 
 					free(filenamePNGbase_it_comp);

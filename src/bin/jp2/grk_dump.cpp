@@ -42,10 +42,6 @@
 
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
-
-using namespace TCLAP;
-using namespace std;
-
 #include "convert.h"
 #include "grk_string.h"
 #include <string>
@@ -108,9 +104,9 @@ static void decompress_help_display(void) {
 	fprintf(stdout, "\n");
 }
 
-class GrokOutput: public StdOutput {
+class GrokOutput: public TCLAP::StdOutput {
 public:
-	virtual void usage(CmdLineInterface &c) {
+	virtual void usage(TCLAP::CmdLineInterface &c) {
 		(void) c;
 		decompress_help_display();
 	}
@@ -212,23 +208,23 @@ static int parse_cmdline_decompressor(int argc, char **argv,
 
 
 	try {
-		CmdLine cmd("grk_dump command line", ' ', grk_version());
+		TCLAP::CmdLine cmd("grk_dump command line", ' ', grk_version());
 
 		// set the output
 		GrokOutput output;
 		cmd.setOutput(&output);
 
-		ValueArg<string> inputArg("i", "input", "input file", false, "", "string",
+		TCLAP::ValueArg<std::string> inputArg("i", "input", "input file", false, "", "string",
 				cmd);
 
-		ValueArg<string> outputArg("o", "output", "output file", false, "", "string",
+		TCLAP::ValueArg<std::string> outputArg("o", "output", "output file", false, "", "string",
 				cmd);
 
-		ValueArg<string> imgDirArg("y", "ImgDir", "image directory", false, "", "string",
+		TCLAP::ValueArg<std::string> imgDirArg("y", "ImgDir", "image directory", false, "", "string",
 				cmd);
 
-		SwitchArg verboseArg("v", "verbose", "verbose", cmd);
-		ValueArg<uint32_t> flagArg("f", "flag",	"flag", false, 0, "unsigned integer", cmd);
+		TCLAP::SwitchArg verboseArg("v", "verbose", "verbose", cmd);
+		TCLAP::ValueArg<uint32_t> flagArg("f", "flag",	"flag", false, 0, "unsigned integer", cmd);
 
 		cmd.parse(argc, argv);
 
@@ -272,9 +268,9 @@ static int parse_cmdline_decompressor(int argc, char **argv,
 			img_fol->flag = flagArg.getValue();
 		}
 
-	} catch (ArgException &e)  // catch any exceptions
+	} catch (TCLAP::ArgException &e)  // catch any exceptions
 	{
-		cerr << "error: " << e.error() << " for arg " << e.argId() << endl;
+		std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
 		return 1;
 	}
 

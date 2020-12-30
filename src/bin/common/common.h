@@ -94,7 +94,7 @@ bool supportedStdioFormat(GRK_SUPPORTED_FILE_FMT format);
 bool grk_open_for_output(FILE **fdest, const char* outfile, bool writeToStdout);
 bool grk_set_binary_mode(FILE* file);
 bool jpeg2000_file_format(const char *fname, GRK_SUPPORTED_FILE_FMT *fmt);
-int get_file_format(const char *filename);
+GRK_SUPPORTED_FILE_FMT get_file_format(const char *filename);
 const char* get_path_separator();
 char* get_file_name(char *name);
 uint32_t get_num_images(char *imgdirpath);

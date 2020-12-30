@@ -181,10 +181,10 @@ bool grk_open_for_output(FILE **fdest, const char* outfile, bool writeToStdout){
 	return true;
 }
 
-int get_file_format(const char *filename) {
+GRK_SUPPORTED_FILE_FMT get_file_format(const char *filename) {
 	const char *ext = strrchr(filename, '.');
 	if (ext == nullptr)
-		return -1;
+		return GRK_UNK_FMT;
 	ext++;
 	if (*ext) {
 		static const char *extension[] = { "pgx", "pam", "pnm", "pgm", "ppm", "pbm",

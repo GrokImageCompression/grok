@@ -25,9 +25,6 @@
 #include "spdlog/spdlog.h"
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
-
-using namespace TCLAP;
-using namespace std;
 #include <string>
 #include "test_common.h"
 
@@ -63,12 +60,12 @@ static int parse_cmdline_cmp(int argc, char **argv,
 	param->base_filename = nullptr;
 	param->test_filename = nullptr;
 	try {
-		CmdLine cmd("compare_raw_files command line", ' ', "");
+		TCLAP::CmdLine cmd("compare_raw_files command line", ' ', "");
 
-		ValueArg<string> baseArg("b", "base", "base file", false, "", "string",
+		TCLAP::ValueArg<std::string> baseArg("b", "base", "base file", false, "", "string",
 				cmd);
 
-		ValueArg<string> testArg("t", "test", "test file", false, "", "string",
+		TCLAP::ValueArg<std::string> testArg("t", "test", "test file", false, "", "string",
 				cmd);
 
 		cmd.parse(argc, argv);
@@ -98,9 +95,9 @@ static int parse_cmdline_cmp(int argc, char **argv,
 		}
 
 
-	} catch (ArgException &e)  // catch any exceptions
+	} catch (TCLAP::ArgException &e)  // catch any exceptions
 	{
-		cerr << "error: " << e.error() << " for arg " << e.argId() << endl;
+		std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
 		return 0;
 	}
 	return index;
