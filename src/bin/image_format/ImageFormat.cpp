@@ -82,7 +82,7 @@ bool ImageFormat::readFromFile(uint8_t *buf, size_t len){
 	return m_fileIO->read(buf,len);
 }
 
-bool ImageFormat::seekInFile(size_t pos){
+bool ImageFormat::seekInFile(off_t pos){
 	return m_fileIO->seek(pos);
 }
 
