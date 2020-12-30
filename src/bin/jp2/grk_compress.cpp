@@ -2096,7 +2096,7 @@ static bool plugin_compress_callback(grk_plugin_compress_user_callback_info *inf
 		goto cleanup;
 	}
 #ifdef GROK_HAVE_EXIFTOOL
-	if (bSuccess && info->transferExifTags)
+	if (bSuccess && info->transferExifTags && info->compressor_parameters->cod_format == GRK_JP2_FMT )
 		transferExifTags(info->input_file_name, info->output_file_name);
 #endif
 	if (info->compressBuffer) {

@@ -1524,7 +1524,7 @@ int GrkDecompress::main(int argc, char **argv) {
 					goto cleanup;
 				}
 #ifdef GROK_HAVE_EXIFTOOL
-				if (initParams.transferExifTags)
+				if (initParams.transferExifTags && initParams.parameters.decod_format == GRK_JP2_FMT)
 					transferExifTags(initParams.parameters.infile, initParams.parameters.outfile);
 #endif
 				num_decompressed_images++;
