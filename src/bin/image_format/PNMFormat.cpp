@@ -754,16 +754,15 @@ bool PNMFormat::encodeStrip(uint32_t rows){
 
 	for (compno = 0; compno < ncomp; compno++) {
 		if (ncomp > 1) {
-			const size_t olen = strlen(m_fileName.c_str());
-			if (olen < 4) {
-				spdlog::error(
-						" imagetopnm: output file name size less than 4.");
+			size_t lastindex = m_fileName.find_last_of(".");
+			if (lastindex == std::string::npos) {
+				spdlog::error(" imagetopnm: missing file tag");
 				goto cleanup;
 			}
-			const size_t dotpos = olen - 4;
-
-			strncpy(destname, m_fileName.c_str(), dotpos);
-			sprintf(destname + dotpos, "_%u.pgm", compno);
+			string rawname = m_fileName.substr(0, lastindex);
+			ostringstream iss;
+			iss << rawname << "_" << compno << ".pgm";
+			strcpy(destname, iss.str().c_str());
 		} else
 			sprintf(destname, "%s", m_fileName.c_str());
 
