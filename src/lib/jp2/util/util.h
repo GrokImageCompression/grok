@@ -109,7 +109,7 @@ template<typename T> struct grk_rectangle {
 
     	return *this;
     }
-   bool operator== (const grk_rectangle<T> &rhs)
+   bool operator== (const grk_rectangle<T> &rhs) const
     {
 	   if (this == &rhs)
 		   return true;
