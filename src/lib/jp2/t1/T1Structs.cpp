@@ -442,7 +442,7 @@ void DecompressCodeblock::cleanup_seg_buffers(){
 }
 
 size_t DecompressCodeblock::getSegBuffersLen(){
-	return std::accumulate(seg_buffers.begin(), seg_buffers.end(), 0U, [](const size_t s, grk_buf *a){
+	return std::accumulate(seg_buffers.begin(), seg_buffers.end(), 0UL, [](const size_t s, grk_buf *a){
 	   return (s + a->len);
 	});
 }
