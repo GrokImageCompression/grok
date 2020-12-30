@@ -70,8 +70,6 @@
 #include <chrono>
 #include "spdlog/sinks/basic_file_sink.h"
 
-using namespace TCLAP;
-
 namespace grk {
 
 void exit_func() {
@@ -392,9 +390,9 @@ char GrkDecompress::get_next_file(std::string image_filename, grk_img_fol *img_f
 
 /* -------------------------------------------------------------------------- */
 
-class GrokOutput: public StdOutput {
+class GrokOutput: public TCLAP::StdOutput {
 public:
-	virtual void usage(CmdLineInterface &c) {
+	virtual void usage(TCLAP::CmdLineInterface &c) {
 		(void) c;
 		decompress_help_display();
 	}
@@ -433,66 +431,66 @@ int GrkDecompress::parse_cmdline_decompressor(int argc, char **argv,
 		grk_decompress_parameters *parameters, grk_img_fol *img_fol,
 		grk_img_fol *out_fol, char *plugin_path) {
 	try {
-		CmdLine cmd("grk_decompress command line", ' ', grk_version());
+		TCLAP::CmdLine cmd("grk_decompress command line", ' ', grk_version());
 
 		// set the output
 		GrokOutput output;
 		cmd.setOutput(&output);
 
-		ValueArg<std::string> logfileArg("W", "logfile", "Log file",
+		TCLAP::ValueArg<std::string> logfileArg("W", "logfile", "Log file",
 				false, "", "string", cmd);
 
-		ValueArg<std::string> imgDirArg("y", "ImgDir", "Image Directory", false, "",
+		TCLAP::ValueArg<std::string> imgDirArg("y", "ImgDir", "Image Directory", false, "",
 				"string", cmd);
-		ValueArg<std::string> outDirArg("a", "OutDir", "Output Directory", false, "",
+		TCLAP::ValueArg<std::string> outDirArg("a", "OutDir", "Output Directory", false, "",
 				"string", cmd);
-		ValueArg<std::string> outForArg("O", "OutFor", "Output Format", false, "",
+		TCLAP::ValueArg<std::string> outForArg("O", "OutFor", "Output Format", false, "",
 				"string", cmd);
 
-		SwitchArg forceRgbArg("f", "force-rgb", "Force RGB", cmd);
-		SwitchArg upsampleArg("u", "upsample", "Upsample", cmd);
-		SwitchArg splitPnmArg("s", "split-pnm", "Split PNM", cmd);
-		ValueArg<std::string> pluginPathArg("g", "PluginPath", "Plugin path", false,
+		TCLAP::SwitchArg forceRgbArg("f", "force-rgb", "Force RGB", cmd);
+		TCLAP::SwitchArg upsampleArg("u", "upsample", "Upsample", cmd);
+		TCLAP::SwitchArg splitPnmArg("s", "split-pnm", "Split PNM", cmd);
+		TCLAP::ValueArg<std::string> pluginPathArg("g", "PluginPath", "Plugin path", false,
 				"", "string", cmd);
-		ValueArg<uint32_t> numThreadsArg("H", "num_threads",
+		TCLAP::ValueArg<uint32_t> numThreadsArg("H", "num_threads",
 				"Number of threads", false, 0, "unsigned integer", cmd);
-		ValueArg<std::string> inputFileArg("i", "InputFile", "Input file", false, "",
+		TCLAP::ValueArg<std::string> inputFileArg("i", "InputFile", "Input file", false, "",
 				"string", cmd);
-		ValueArg<std::string> outputFileArg("o", "OutputFile", "Output file", false,
+		TCLAP::ValueArg<std::string> outputFileArg("o", "OutputFile", "Output file", false,
 				"", "string", cmd);
-		ValueArg<uint32_t> reduceArg("r", "Reduce", "Reduce resolutions", false,
+		TCLAP::ValueArg<uint32_t> reduceArg("r", "Reduce", "Reduce resolutions", false,
 				0, "unsigned integer", cmd);
-		ValueArg<uint16_t> layerArg("l", "Layer", "Layer", false, 0,
+		TCLAP::ValueArg<uint16_t> layerArg("l", "Layer", "Layer", false, 0,
 				"unsigned integer", cmd);
-		ValueArg<uint32_t> tileArg("t", "TileIndex", "Input tile index", false,
+		TCLAP::ValueArg<uint32_t> tileArg("t", "TileIndex", "Input tile index", false,
 				0, "unsigned integer", cmd);
-		ValueArg<std::string> precisionArg("p", "Precision", "Force precision",
+		TCLAP::ValueArg<std::string> precisionArg("p", "Precision", "Force precision",
 				false, "", "string", cmd);
-		ValueArg<std::string> decodeRegionArg("d", "DecodeRegion", "Decompress Region",
+		TCLAP::ValueArg<std::string> decodeRegionArg("d", "DecodeRegion", "Decompress Region",
 				false, "", "string", cmd);
-		ValueArg<std::string> compressionArg("c", "Compression",
+		TCLAP::ValueArg<std::string> compressionArg("c", "Compression",
 				"Compression Type", false, "", "string", cmd);
-		ValueArg<uint32_t> compressionLevelArg("L", "CompressionLevel",
+		TCLAP::ValueArg<uint32_t> compressionLevelArg("L", "CompressionLevel",
 				"Compression Level", false, UINT_MAX, "unsigned integer", cmd);
-		ValueArg<uint32_t> durationArg("z", "Duration", "Duration in seconds",
+		TCLAP::ValueArg<uint32_t> durationArg("z", "Duration", "Duration in seconds",
 				false, 0, "unsigned integer", cmd);
 
-		ValueArg<int32_t> deviceIdArg("G", "DeviceId", "Device ID", false, 0,
+		TCLAP::ValueArg<int32_t> deviceIdArg("G", "DeviceId", "Device ID", false, 0,
 				"integer", cmd);
 
-		SwitchArg xmlArg("X", "XML", "XML metadata", cmd);
+		TCLAP::SwitchArg xmlArg("X", "XML", "XML metadata", cmd);
 
 		// Kernel build flags:
 		// 1 indicates build binary, otherwise load binary
 		// 2 indicates generate binaries
-		ValueArg<uint32_t> kernelBuildOptionsArg("k", "KernelBuild",
+		TCLAP::ValueArg<uint32_t> kernelBuildOptionsArg("k", "KernelBuild",
 				"Kernel build options", false, 0, "unsigned integer", cmd);
 
-		ValueArg<uint32_t> repetitionsArg("e", "Repetitions",
+		TCLAP::ValueArg<uint32_t> repetitionsArg("e", "Repetitions",
 				"Number of compress repetitions, for either a folder or a single file",
 				false, 0, "unsigned integer", cmd);
 
-		SwitchArg verboseArg("v", "verbose", "Verbose", cmd);
+		TCLAP::SwitchArg verboseArg("v", "verbose", "Verbose", cmd);
 		cmd.parse(argc, argv);
 
 		parameters->verbose = verboseArg.isSet();
@@ -720,7 +718,7 @@ int GrkDecompress::parse_cmdline_decompressor(int argc, char **argv,
 			parameters->duration = durationArg.getValue();
 		}
 
-	} catch (ArgException &e)  // catch any exceptions
+	} catch (TCLAP::ArgException &e)  // catch any exceptions
 	{
 		std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
 		return 1;
