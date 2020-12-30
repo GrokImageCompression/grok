@@ -43,6 +43,48 @@ int batch_sleep(int val) {
 }
 ;
 
+std::string convertFileFmtToString(GRK_SUPPORTED_FILE_FMT fmt){
+	switch (fmt){
+	case GRK_J2K_FMT:
+		return "J2K";
+		break;
+	case GRK_JP2_FMT:
+		return "JP2";
+		break;
+	case GRK_PXM_FMT:
+		return "PNM";
+		break;
+	case GRK_PGX_FMT:
+		return "PGX";
+		break;
+	case GRK_PAM_FMT:
+		return "PAM";
+		break;
+	case GRK_BMP_FMT:
+		return "BMP";
+		break;
+	case GRK_TIF_FMT:
+		return "TIFF";
+		break;
+	case GRK_RAW_FMT:
+		return "RAW";
+		break;
+	case GRK_PNG_FMT:
+		return "PNG";
+		break;
+	case GRK_RAWL_FMT:
+		return "RAWL";
+		break;
+	case GRK_JPG_FMT:
+		return "JPEG";
+		break;
+	case GRK_UNK_FMT:
+	default:
+		return "UNKNOWN";
+		break;
+	}
+}
+
 /* -------------------------------------------------------------------------- */
 /**
  * Parse decoding area input values

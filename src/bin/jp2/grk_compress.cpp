@@ -1895,8 +1895,8 @@ static bool plugin_compress_callback(grk_plugin_compress_user_callback_info *inf
 			break;
 #endif /* GROK_HAVE_LIBPNG */
 		default: {
-			spdlog::error("Unsupported input file format {}",
-					info->compressor_parameters->decod_format);
+			spdlog::error("Input file format {} is not supported",
+					convertFileFmtToString(info->compressor_parameters->decod_format));
 			bSuccess = false;
 			goto cleanup;
 		}

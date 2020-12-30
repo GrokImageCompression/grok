@@ -85,9 +85,9 @@ struct grk_img_fol {
 	bool set_out_format;
 };
 
+std::string convertFileFmtToString(GRK_SUPPORTED_FILE_FMT fmt);
 int parse_DA_values(char *inArg, uint32_t *DA_x0, uint32_t *DA_y0,
 		uint32_t *DA_x1, uint32_t *DA_y1);
-
 bool safe_fclose(FILE *fd);
 bool useStdio(const char *filename);
 bool supportedStdioFormat(GRK_SUPPORTED_FILE_FMT format);
