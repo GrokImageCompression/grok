@@ -739,7 +739,7 @@ int main(int argc, char **argv) {
 	test_cmp_parameters inParam;
 	size_t compno;
 	int failed = 1;
-	uint32_t nbFilenamePGXbase = 0, nbFilenamePGXtest = 0;
+	uint16_t nbFilenamePGXbase = 0, nbFilenamePGXtest = 0;
 	char *filenamePNGtest = nullptr, *filenamePNGbase = nullptr,
 			*filenamePNGdiff = nullptr;
 	size_t memsizebasefilename, memsizetestfilename;

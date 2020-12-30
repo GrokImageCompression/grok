@@ -49,6 +49,8 @@ void transferExifTags(std::string src, std::string dest){
     perl_destruct(my_perl);
     perl_free(my_perl);
 #else
+    (void)src;
+    (void)dest;
     spdlog::warn("ExifTool not available; unable to transfer Exif tags");
 #endif
 }
