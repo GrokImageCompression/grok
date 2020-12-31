@@ -48,7 +48,7 @@ struct io_data {
 	io_data() : offset(0),
 				iov{0,0}
 	{}
-	off_t offset;
+	int64_t offset;
 	struct iovec iov;
 };
 
@@ -213,6 +213,6 @@ bool FileUringIO::read(uint8_t *buf, size_t len){
 
 	return actual == len;
 }
-bool FileUringIO::seek(off_t pos){
+bool FileUringIO::seek(int64_t pos){
 	return   lseek(m_fd, pos, SEEK_SET) == pos;
 }

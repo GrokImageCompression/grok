@@ -32,7 +32,7 @@ protected:
 	bool openFile(std::string fname, std::string mode);
 	bool writeToFile(uint8_t *buf, size_t len);
 	bool readFromFile(uint8_t *buf, size_t len);
-	bool seekInFile(off_t pos);
+	bool seekInFile(int64_t pos);
 	uint32_t maxY(uint32_t rows);
 	int getMode(const char* mode);
 

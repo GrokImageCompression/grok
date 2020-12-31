@@ -19,6 +19,7 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wvolatile"
 #pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
 #include <EXTERN.h>
 #include <perl.h>
 #pragma GCC diagnostic pop

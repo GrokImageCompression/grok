@@ -76,6 +76,6 @@ bool FileStreamIO::read(uint8_t *buf, size_t len){
 
 	return actual == len;
 }
-bool FileStreamIO::seek(off_t pos){
+bool FileStreamIO::seek(int64_t pos){
 	return  fseek(m_fileHandle, pos, SEEK_SET) == 0;
 }

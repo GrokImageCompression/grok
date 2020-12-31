@@ -57,9 +57,9 @@
 
 /*
  Use fseeko() and ftello() if they are available since they use
- 'off_t' rather than 'long'.  It is wrong to use fseeko() and
+ 'int64_t' rather than 'long'.  It is wrong to use fseeko() and
  ftello() only on systems with special LFS support since some systems
- (e.g. FreeBSD) support a 64-bit off_t by default.
+ (e.g. FreeBSD) support a 64-bit int64_t by default.
  */
 #if defined(GROK_HAVE_FSEEKO) && !defined(fseek)
 #  define fseek  fseeko

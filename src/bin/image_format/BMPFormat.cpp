@@ -719,7 +719,7 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	pData = new uint8_t[bmpStride * (size_t)Info_h.biHeight];
 	if (pData == nullptr)
 		goto cleanup;
-	if (!seekInFile((off_t) File_h.bfOffBits))
+	if (!seekInFile((int64_t) File_h.bfOffBits))
 		goto cleanup;
 
 	switch (Info_h.biCompression) {
@@ -796,7 +796,7 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 			&& Info_h.biIccProfileSize < grk::maxICCProfileBufferLen) {
 
 		//read in ICC profile
-		if (!seekInFile( (off_t)(fileHeaderSize + Info_h.biIccProfileOffset)))
+		if (!seekInFile( (int64_t)(fileHeaderSize + Info_h.biIccProfileOffset)))
 			goto cleanup;
 
 		//allocate buffer
