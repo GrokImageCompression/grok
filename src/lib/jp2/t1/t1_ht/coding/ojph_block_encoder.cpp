@@ -419,7 +419,7 @@ namespace ojph {
         if (msp->pos >= msp->buf_size)
           OJPH_ERROR(0x00020005, "magnitude sign encoder's buffer is full");
         int t = ojph_min(msp->max_bits - msp->used_bits, cwd_len);
-        msp->tmp |= (cwd & ((1 << t) - 1)) << msp->used_bits;
+        msp->tmp = (int)((ui32)msp->tmp | ((cwd & ((ui32)(1 << t) - 1)) << msp->used_bits));
         msp->used_bits += t;
         cwd >>= t;
         cwd_len -= t;
@@ -586,13 +586,13 @@ namespace ojph {
             mel_encode(&mel, rho[0] != 0);
 
         int m = (rho[0] & 1) ? Uq0 - (tuple0 & 1) : 0;
-        ms_encode(&ms, s[0] & ((1<<m)-1), m);
+        ms_encode(&ms, s[0] & ((ui32)(1<<m)-1), m);
         m = (rho[0] & 2) ? Uq0 - ((tuple0 & 2) >> 1) : 0;
-        ms_encode(&ms, s[1] & ((1<<m)-1), m);
+        ms_encode(&ms, s[1] & ((ui32)(1<<m)-1), m);
         m = (rho[0] & 4) ? Uq0 - ((tuple0 & 4) >> 2) : 0;
-        ms_encode(&ms, s[2] & ((1<<m)-1), m);
+        ms_encode(&ms, s[2] & ((ui32)(1<<m)-1), m);
         m = (rho[0] & 8) ? Uq0 - ((tuple0 & 8) >> 3) : 0;
-        ms_encode(&ms, s[3] & ((1<<m)-1), m);
+        ms_encode(&ms, s[3] & ((ui32)(1<<m)-1), m);
 
         if (x+2 < width)
         {
@@ -672,13 +672,13 @@ namespace ojph {
             mel_encode(&mel, rho[1] != 0);
 
           int m = (rho[1] & 1) ? Uq1 - (tuple1 & 1) : 0;
-          ms_encode(&ms, s[4] & ((1<<m)-1), m);
+          ms_encode(&ms, s[4] & ((ui32)(1<<m)-1), m);
           m = (rho[1] & 2) ? Uq1 - ((tuple1 & 2) >> 1) : 0;
-          ms_encode(&ms, s[5] & ((1<<m)-1), m);
+          ms_encode(&ms, s[5] & ((ui32)(1<<m)-1), m);
           m = (rho[1] & 4) ? Uq1 - ((tuple1 & 4) >> 2) : 0;
-          ms_encode(&ms, s[6] & ((1<<m)-1), m);
+          ms_encode(&ms, s[6] & ((ui32)(1<<m)-1), m);
           m = (rho[1] & 8) ? Uq1 - ((tuple1 & 8) >> 3) : 0;
-          ms_encode(&ms, s[7] & ((1<<m)-1), m);
+          ms_encode(&ms, s[7] & ((ui32)(1<<m)-1), m);
         }
 
         if (u_q0 > 0 && u_q1 > 0)
@@ -805,13 +805,13 @@ namespace ojph {
               mel_encode(&mel, rho[0] != 0);
 
           int m = (rho[0] & 1) ? Uq0 - (tuple0 & 1) : 0;
-          ms_encode(&ms, s[0] & ((1<<m)-1), m);
+          ms_encode(&ms, s[0] & ((ui32)(1<<m)-1), m);
           m = (rho[0] & 2) ? Uq0 - ((tuple0 & 2) >> 1) : 0;
-          ms_encode(&ms, s[1] & ((1<<m)-1), m);
+          ms_encode(&ms, s[1] & ((ui32)(1<<m)-1), m);
           m = (rho[0] & 4) ? Uq0 - ((tuple0 & 4) >> 2) : 0;
-          ms_encode(&ms, s[2] & ((1<<m)-1), m);
+          ms_encode(&ms, s[2] & ((ui32)(1<<m)-1), m);
           m = (rho[0] & 8) ? Uq0 - ((tuple0 & 8) >> 3) : 0;
-          ms_encode(&ms, s[3] & ((1<<m)-1), m);
+          ms_encode(&ms, s[3] & ((ui32)(1<<m)-1), m);
 
           if (x+2 < width)
           {
@@ -894,13 +894,13 @@ namespace ojph {
               mel_encode(&mel, rho[1] != 0);
 
             int m = (rho[1] & 1) ? Uq1 - (tuple1 & 1) : 0;
-            ms_encode(&ms, s[4] & ((1<<m)-1), m);
+            ms_encode(&ms, s[4] & ((ui32)(1<<m)-1), m);
             m = (rho[1] & 2) ? Uq1 - ((tuple1 & 2) >> 1) : 0;
-            ms_encode(&ms, s[5] & ((1<<m)-1), m);
+            ms_encode(&ms, s[5] & ((ui32)(1<<m)-1), m);
             m = (rho[1] & 4) ? Uq1 - ((tuple1 & 4) >> 2) : 0;
-            ms_encode(&ms, s[6] & ((1<<m)-1), m);
+            ms_encode(&ms, s[6] & ((ui32)(1<<m)-1), m);
             m = (rho[1] & 8) ? Uq1 - ((tuple1 & 8) >> 3) : 0;
-            ms_encode(&ms, s[7] & ((1<<m)-1), m);
+            ms_encode(&ms, s[7] & ((ui32)(1<<m)-1), m);
           }
 
           vlc_encode(&vlc, ulvc_cwd_pre[u_q0], ulvc_cwd_pre_len[u_q0]);

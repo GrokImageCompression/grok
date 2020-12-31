@@ -1108,7 +1108,7 @@ void BMPFormat::applyLUT8u_8u32s_C1P3R(uint8_t const *pSrc, int32_t srcStride,
 }
 void BMPFormat::bmp24toimage(const uint8_t *pData, uint32_t srcStride,
 		grk_image *image) {
-	int index;
+	uint32_t index;
 	uint32_t width, height;
 	const uint8_t *pSrc = nullptr;
 	width = image->comps[0].w;
@@ -1171,7 +1171,7 @@ void BMPFormat::mask32toimage(const uint8_t *pData, uint32_t srcStride,
 	image->comps[2].prec = bluePrec;
 	if (hasAlpha)
 		image->comps[3].prec = alphaPrec;
-	int index=0;
+	uint32_t index=0;
 	uint32_t x, y;
 	auto pSrc = pData + (height - 1U) * srcStride;
 	for (y = 0; y < height; y++) {
@@ -1222,7 +1222,7 @@ void BMPFormat::mask16toimage(const uint8_t *pData, uint32_t srcStride,
 	image->comps[2].prec = bluePrec;
 	if (hasAlpha)
 		image->comps[3].prec = alphaPrec;
-	int index=0;
+	uint32_t index=0;
 	uint32_t x, y;
 	auto pSrc = pData + (height - 1U) * srcStride;
 	for (y = 0; y < height; y++) {

@@ -305,7 +305,7 @@ bool SIZMarker::write(CodeStream *codeStream, BufferedStream *stream){
 
 	auto image = codeStream->m_input_image;
 	auto cp = &(codeStream->m_cp);
-	size_len = 40 + 3 * image->numcomps;
+	size_len = 40 + 3U * image->numcomps;
 	/* write SOC identifier */
 
 	/* SIZ */

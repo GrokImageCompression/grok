@@ -128,7 +128,7 @@ bool PrecinctImpl::init(bool isCompressor,
 
 
 	uint32_t state = grk_plugin_get_debug_state();
-	size_t nominalBlockSize = (1 << cblk_expn.x) * (1 << cblk_expn.y);
+	uint32_t nominalBlockSize = (uint32_t)(1 << cblk_expn.x) * (1 << cblk_expn.y);
 	cblk_grid_width 	= cblk_grid.width();
 	cblk_grid_height 	= cblk_grid.height();
 

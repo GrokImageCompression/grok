@@ -181,7 +181,7 @@ namespace ojph {
   inline T *align_ptr(T *ptr) {
     intptr_t p = reinterpret_cast<intptr_t>(ptr);
     p += N - 1;
-    p &= ~((1ULL << (31 - count_leading_zeros(N))) - 1);
+    p &= ~((ui32)(1ULL << (31 - count_leading_zeros(N))) - 1);
     return reinterpret_cast<T *>(p);
   }
 

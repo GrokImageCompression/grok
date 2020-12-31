@@ -1343,7 +1343,7 @@ bool TileProcessor::copy_uncompressed_data_to_tile(uint8_t *p_src,
 	for (uint32_t i = 0; i < image->numcomps; ++i) {
 		auto tilec = tile->comps + i;
 		auto img_comp = image->comps + i;
-		uint32_t size_comp = (img_comp->prec + 7) >> 3;
+		uint32_t size_comp = (uint32_t)((img_comp->prec + 7) >> 3);
 		tile_size += size_comp *tilec->area();
 	}
 
@@ -1355,7 +1355,7 @@ bool TileProcessor::copy_uncompressed_data_to_tile(uint8_t *p_src,
 		auto tilec = tile->comps + i;
 		auto img_comp = image->comps + i;
 
-		uint32_t size_comp = (img_comp->prec + 7) >> 3;
+		uint32_t size_comp = (uint32_t)((img_comp->prec + 7) >> 3);
 		auto dest_ptr = tilec->getBuffer()->getWindow()->data;
 		uint32_t w = (uint32_t)tilec->getBuffer()->bounds().width();
 		uint32_t h = (uint32_t)tilec->getBuffer()->bounds().height();

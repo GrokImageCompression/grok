@@ -1942,9 +1942,11 @@ static bool plugin_compress_callback(grk_plugin_compress_user_callback_info *inf
 
 		if (fileLength) {
 			//  option to write to buffer, assuming one knows how large compressed stream will be 
-			uint64_t imageSize = (((uint64_t)(image->x1 - image->x0)
-					* (image->y1 - image->y0) * image->numcomps
-					* ((image->comps[0].prec + 7) / 8)) * 3) / 2;
+			uint64_t imageSize = ((
+					(uint64_t)(image->x1 - image->x0) *
+					(uint64_t)(image->y1 - image->y0) *
+					image->numcomps	*
+					((image->comps[0].prec + 7) / 8U)) * 3U) / 2U;
 			info->compressBufferLen =
 					(size_t) fileLength > imageSize ?
 							(size_t) fileLength : imageSize;

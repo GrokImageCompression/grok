@@ -87,7 +87,7 @@ void scale_component(grk_image_comp *component, uint8_t precision) {
 		size_t index = 0;
 		for (uint32_t j = 0; j < component->h; ++j){
 			for (uint32_t i = 0; i < component->w; ++i){
-				data[index] /= scale;
+				data[index] = (int32_t)(data[index] / (int32_t)scale);
 				index++;
 			}
 			index += stride_diff;

@@ -43,7 +43,7 @@ public:
     ~ThreadPool();
     int thread_number(std::thread::id id){
     	if (id_map.find(id) != id_map.end())
-    		return id_map[id];
+    		return (int)id_map[id];
     	return -1;
     }
     size_t num_threads(){return m_num_threads;}
@@ -86,7 +86,7 @@ private:
     std::condition_variable condition;
     bool stop;
 
-    std::map<std::thread::id, int> id_map;
+    std::map<std::thread::id, size_t> id_map;
     size_t m_num_threads;
 
 	static ThreadPool* singleton;
@@ -124,7 +124,7 @@ inline ThreadPool::ThreadPool(size_t threads)
                 }
             }
         );
-    int thread_count = 0;
+    size_t thread_count = 0;
     for(std::thread &worker: workers){
     	id_map[worker.get_id()] = thread_count;
 #ifdef __linux__

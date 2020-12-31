@@ -1560,7 +1560,7 @@ static uint8_t* jp2_write_component_mapping(FileFormat *fileFormat, uint32_t *p_
 
 	assert(fileFormat);
 	auto palette = fileFormat->color.palette;
-	uint32_t boxSize = 4 + 4 + palette->num_channels * 4;
+	uint32_t boxSize = 4 + 4 + palette->num_channels * 4U;
 
 	uint8_t *cmapBuf = (uint8_t*)grk_malloc(boxSize);
 	uint8_t *cmapPtr = cmapBuf;
@@ -1592,7 +1592,7 @@ static uint8_t* jp2_write_palette_clr(FileFormat *fileFormat, uint32_t *p_nb_byt
 
 	uint32_t bytesPerEntry = 0;
 	for (uint32_t i = 0; i < palette->num_channels; ++i)
-		bytesPerEntry += (palette->channel_prec[i] + 7)/8;
+		bytesPerEntry += ((palette->channel_prec[i] + 7)/8U);
 
 	uint32_t boxSize = 4 + 4 + 2 + 1 +  palette->num_channels + bytesPerEntry * palette->num_entries;
 
@@ -2686,7 +2686,7 @@ bool FileFormat::start_compress(void){
 	uint64_t image_size = 0;
 	for (auto i = 0U; i < p_image->numcomps; ++i) {
 		auto comp = p_image->comps + i;
-		image_size += (uint64_t) comp->w * comp->h * ((comp->prec + 7) / 8);
+		image_size += (uint64_t) comp->w * comp->h * ((comp->prec + 7U) / 8);
 	}
 	needs_xl_jp2c_box_length =
 			(image_size > (uint64_t) 1 << 30) ? true : false;

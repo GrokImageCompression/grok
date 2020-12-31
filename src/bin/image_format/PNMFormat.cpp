@@ -594,7 +594,7 @@ bool PNMFormat::encodeStrip(uint32_t rows){
 		width = m_image->comps[0].w;
 		stride_diff = m_image->comps[0].stride - width;
 		height = m_image->comps[0].h;
-		max = (1 << prec) - 1;
+		max = (uint32_t)((1 << prec) - 1);
 		has_alpha = (ncomp == 4 || ncomp == 2);
 
 		red = m_image->comps[0].data;
@@ -775,7 +775,7 @@ bool PNMFormat::encodeStrip(uint32_t rows){
 		stride_diff = m_image->comps[compno].stride - width;
 		height = m_image->comps[compno].h;
 		prec = m_image->comps[compno].prec;
-		max = (1 << prec) - 1;
+		max = (uint32_t)((1 << prec) - 1);
 
 		fprintf(m_fileStream, "P5\n#Grok-%s\n%u %u\n%u\n", grk_version(), width, height, max);
 

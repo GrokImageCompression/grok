@@ -590,7 +590,7 @@ bool TIFFFormat::encodeHeader(grk_image *image, const std::string &filename,
 	// calculate rows per strip, base on target 8K strip size
 	if (subsampled){
 		units = (width + chroma_subsample_x - 1) / chroma_subsample_x;
-		stride = ((width * chroma_subsample_y + units * 2) * bps + 7)/8;
+		stride = (tmsize_t)(((width * chroma_subsample_y + units * 2U) * bps + 7U)/8U);
 		rowsPerStrip = (chroma_subsample_y * 8 * 1024 * 1024) / stride;
 	} else {
 		stride = (width * numcomps * bps + 7U) / 8U;
@@ -658,8 +658,8 @@ bool TIFFFormat::encodeHeader(grk_image *image, const std::string &filename,
 
 		// Tag is of type TIFF_LONG, so byte length is divided by four
 		if (TIFFIsByteSwapped(tif))
-			TIFFSwabArrayOfLong((uint32_t*) iptc_buf, iptc_len / 4);
-		TIFFSetField(tif, TIFFTAG_RICHTIFFIPTC, (uint32_t) iptc_len / 4,
+			TIFFSwabArrayOfLong((uint32_t*) iptc_buf, (tmsize_t)(iptc_len / 4));
+		TIFFSetField(tif, TIFFTAG_RICHTIFFIPTC, (uint32_t) (iptc_len / 4),
 				(void*) iptc_buf);
 	}
 
@@ -732,7 +732,7 @@ bool TIFFFormat::encodeStrip(uint32_t rows){
 	// calculate rows per strip, base on target 8K strip size
 	if (subsampled){
 		units = (width + chroma_subsample_x - 1) / chroma_subsample_x;
-		stride = ((width * chroma_subsample_y + units * 2) * bps + 7)/8;
+		stride = (tsize_t)((width * chroma_subsample_y + units * 2U) * bps + 7U)/8U;
 		rowsPerStrip = (chroma_subsample_y * 8 * 1024 * 1024) / stride;
 	} else {
 		stride = (width * numcomps * bps + 7U) / 8U;

@@ -98,7 +98,7 @@ bool Quantizer::write_SQcd_SQcc(CodeStream *codeStream,
 
 	uint32_t num_bands =
 			(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
-					1 : (tccp->numresolutions * 3 - 2);
+					1 : (tccp->numresolutions * 3U - 2);
 
 	/* Sqcx */
 	if (!stream->write_byte(
@@ -135,7 +135,7 @@ uint32_t Quantizer::get_SQcd_SQcc_size(CodeStream *codeStream,
 
 	uint32_t num_bands =
 			(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
-					1 : (tccp->numresolutions * 3 - 2);
+					1 : (tccp->numresolutions * 3U - 2);
 
 	if (tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) {
 		return 1 + num_bands;

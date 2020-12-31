@@ -332,7 +332,7 @@ grk_codestream_info_v2* j2k_get_cstr_info(CodeStream *codeStream) {
 
 		numBandWindows =
 				(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
-						1 : (tccp->numresolutions * 3 - 2);
+						1 : (tccp->numresolutions * 3U - 2);
 		if (numBandWindows < GRK_J2K_MAXBANDS) {
 			for (uint32_t bandIndex = 0; bandIndex < numBandWindows; bandIndex++) {
 				tccp_info->stepsizes_mant[bandIndex] =

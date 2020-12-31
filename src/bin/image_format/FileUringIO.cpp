@@ -193,7 +193,7 @@ bool FileUringIO::write(uint8_t *buf, size_t len){
 	auto b = new uint8_t[len];
 	memcpy(b,buf,len);
 	data->offset = m_off;
-	m_off += len;
+	m_off += (int64_t)len;
 	data->iov.iov_base = b;
 	data->iov.iov_len = len;
 	queue_write(&ring, data, m_fd);
