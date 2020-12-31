@@ -809,14 +809,13 @@ static int decompress_callback(grk_plugin_decompress_callback_info *info);
 // returns 0 for failure, 1 for success, and 2 if file is not suitable for decoding
 int GrkDecompress::decompress(const char *fileName, DecompressInitParams *initParams) {
 	if (initParams->img_fol.set_imgdir) {
-		if (get_next_file(fileName, &initParams->img_fol,
-				initParams->out_fol.set_imgdir ?
-						&initParams->out_fol : &initParams->img_fol,
-				&initParams->parameters)) {
+		if (get_next_file(fileName,
+						&initParams->img_fol,
+						initParams->out_fol.set_imgdir ? &initParams->out_fol : &initParams->img_fol,
+						&initParams->parameters)) {
 			return 2;
 		}
 	}
-
 	grk_plugin_decompress_callback_info info;
 	memset(&info, 0, sizeof(grk_plugin_decompress_callback_info));
 	info.decod_format = GRK_UNK_FMT;
@@ -825,12 +824,14 @@ int GrkDecompress::decompress(const char *fileName, DecompressInitParams *initPa
 	info.decompressor_parameters = &initParams->parameters;
 	info.user_data = this;
 
-	if (preDecompress(&info)) {
+	if (preDecompress(&info))
 		return 0;
-	}
-	if (postDecompress(&info)) {
+	if (postDecompress(&info))
 		return 0;
-	}
+#ifdef GROK_HAVE_EXIFTOOL
+		if (initParams->transferExifTags && initParams->parameters.decod_format == GRK_JP2_FMT)
+			transferExifTags(initParams->parameters.infile, initParams->parameters.outfile);
+#endif
 	return 1;
 }
 
@@ -1519,15 +1520,12 @@ int GrkDecompress::main(int argc, char **argv) {
 		auto start = std::chrono::high_resolution_clock::now();
 		for (uint32_t i = 0; i < initParams.parameters.repeats; ++i) {
 			if (!initParams.img_fol.set_imgdir) {
-				if (!decompress("", &initParams)) {
+				if (decompress("", &initParams) == 1) {
+					num_decompressed_images++;
+				} else {
 					rc = EXIT_FAILURE;
 					goto cleanup;
 				}
-#ifdef GROK_HAVE_EXIFTOOL
-				if (initParams.transferExifTags && initParams.parameters.decod_format == GRK_JP2_FMT)
-					transferExifTags(initParams.parameters.infile, initParams.parameters.outfile);
-#endif
-				num_decompressed_images++;
 			} else {
 				auto dir = opendir(initParams.img_fol.imgdirpath);
 				if (!dir) {
@@ -1538,8 +1536,7 @@ int GrkDecompress::main(int argc, char **argv) {
 				}
 				struct dirent *content = nullptr;
 				while ((content = readdir(dir)) != nullptr) {
-					if (strcmp(".", content->d_name) == 0
-							|| strcmp("..", content->d_name) == 0)
+					if (strcmp(".", content->d_name) == 0 || strcmp("..", content->d_name) == 0)
 						continue;
 					if (decompress(content->d_name, &initParams) == 1)
 						num_decompressed_images++;
