@@ -419,7 +419,7 @@ namespace ojph {
         if (msp->pos >= msp->buf_size)
           OJPH_ERROR(0x00020005, "magnitude sign encoder's buffer is full");
         int t = ojph_min(msp->max_bits - msp->used_bits, cwd_len);
-        msp->tmp = (int)((ui32)msp->tmp | ((cwd & ((ui32)(1 << t) - 1)) << msp->used_bits));
+        msp->tmp = (int)((ui32)msp->tmp | ((cwd & ((1U << t) - 1)) << msp->used_bits));
         msp->used_bits += t;
         cwd >>= t;
         cwd_len -= t;
