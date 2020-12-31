@@ -1,10 +1,7 @@
-# Third Party Libraries
-
 if(NOT BUILD_THIRDPARTY)
   include(FindPkgConfig)
 endif(NOT BUILD_THIRDPARTY)
 
-#------------
 # Try to find lib Z
 if(BUILD_THIRDPARTY)
   message(STATUS "zlib will be built.")
@@ -24,8 +21,6 @@ else(BUILD_THIRDPARTY)
   endif(ZLIB_FOUND)
 endif(BUILD_THIRDPARTY)
 
-
-#------------
 # Try to find libpng (which depends on zlib)
 if(BUILD_THIRDPARTY)
   message(STATUS "libpng will be built")
@@ -51,7 +46,6 @@ else(BUILD_THIRDPARTY)
   endif(ZLIB_FOUND)
 endif(BUILD_THIRDPARTY)
 
-#------------
 # Try to find lib TIFF
 
 if(BUILD_THIRDPARTY)
@@ -89,7 +83,6 @@ else(BUILD_THIRDPARTY)
   endif(TIFF_FOUND)
 endif(BUILD_THIRDPARTY)
 
-#------------
 # Try to find lib LCMS2
 
 if( BUILD_THIRDPARTY)
@@ -111,17 +104,14 @@ else(BUILD_THIRDPARTY)
   endif(LCMS2_FOUND)
 endif(BUILD_THIRDPARTY)
 
-
 # JPEG library
-if (GRK_USE_LIBJPEG)
-	find_package(JPEG)
-	if(JPEG_FOUND)
-		message(STATUS "The system seems to have libjpeg available, it will be used to support JPEG files")
-		set(GROK_HAVE_LIBJPEG 1 PARENT_SCOPE)
-		set(JPEG_LIBNAME ${JPEG_LIBRARIES} PARENT_SCOPE)
-		set(JPEG_INCLUDE_DIRNAME ${JPEG_INCLUDE_DIR} PARENT_SCOPE)
-	else(JPEG_FOUND)
-	    set(GROK_HAVE_LIBJPEG 0 PARENT_SCOPE)
-	    message(STATUS "libjpeg not found, please install or build from source and ensure install directory is on path")
-	endif(JPEG_FOUND)
-endif(GRK_USE_LIBJPEG)
+find_package(JPEG)
+if(JPEG_FOUND)
+	message(STATUS "The system seems to have libjpeg available, it will be used to support JPEG files")
+	set(GROK_HAVE_LIBJPEG 1 PARENT_SCOPE)
+	set(JPEG_LIBNAME ${JPEG_LIBRARIES} PARENT_SCOPE)
+	set(JPEG_INCLUDE_DIRNAME ${JPEG_INCLUDE_DIR} PARENT_SCOPE)
+else(JPEG_FOUND)
+    set(GROK_HAVE_LIBJPEG 0 PARENT_SCOPE)
+    message(STATUS "libjpeg not found, please install or build from source and ensure install directory is on path")
+endif(JPEG_FOUND)
