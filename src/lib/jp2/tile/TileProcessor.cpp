@@ -1064,7 +1064,7 @@ bool TileProcessor::dwt_encode() {
 
 void TileProcessor::t1_encode() {
 	const double *mct_norms;
-	uint32_t mct_numcomps = 0U;
+	uint16_t mct_numcomps = 0U;
 	auto tcp = m_tcp;
 
 	if (tcp->mct == 1) {

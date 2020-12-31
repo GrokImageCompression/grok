@@ -255,7 +255,7 @@ struct BlockExec : public IOpenable {
 	eBandOrientation band_orientation;
 	float stepsize;
 	uint32_t cblk_sty;
-	uint32_t qmfbid;
+	uint8_t qmfbid;
 	/* code block offset in tile coordinates*/
 	uint32_t x;
 	uint32_t y;
@@ -299,7 +299,7 @@ struct CompressBlockExec : public BlockExec{
 #ifdef DEBUG_LOSSLESS_T1
 	int32_t* unencodedData;
 #endif
-	uint32_t mct_numcomps;
+	uint16_t mct_numcomps;
 
 };
 

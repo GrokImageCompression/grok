@@ -32,7 +32,7 @@ T1CompressScheduler::~T1CompressScheduler() {
 
 void T1CompressScheduler::scheduleCompress(TileCodingParams *tcp,
 							const double *mct_norms,
-							uint32_t mct_numcomps) {
+							uint16_t mct_numcomps) {
 
 	uint16_t compno;
 	uint8_t resno, bandIndex;

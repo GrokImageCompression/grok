@@ -737,10 +737,16 @@ void T1::enc_clnpass(int32_t bpno, int32_t *nmsedec,	uint32_t cblksty) {
 }
 
 
-double T1::compress_cblk(cblk_enc *cblk, uint32_t max,
-					uint8_t orientation, uint32_t compno, uint32_t level, uint32_t qmfbid,
-					double stepsize, uint32_t cblksty,
-					const double *mct_norms, uint32_t mct_numcomps, bool doRateControl) {
+double T1::compress_cblk(cblk_enc *cblk,
+						uint32_t max,
+						uint8_t orientation,
+						uint16_t compno,
+						uint8_t level,
+						uint8_t qmfbid,
+						double stepsize, uint32_t cblksty,
+						const double *mct_norms,
+						uint16_t mct_numcomps,
+						bool doRateControl) {
 	if (!code_block_enc_allocate(cblk))
 		return 0;
 

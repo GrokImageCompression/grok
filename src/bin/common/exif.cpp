@@ -16,8 +16,12 @@
 
 #include "grk_apps_config.h"
 #ifdef GROK_HAVE_EXIFTOOL
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wvolatile"
+#pragma GCC diagnostic ignored "-Wconversion"
 #include <EXTERN.h>
 #include <perl.h>
+#pragma GCC diagnostic pop
 #endif
 #include "exif.h"
 #include "spdlog/spdlog.h"

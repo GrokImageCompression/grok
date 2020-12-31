@@ -112,9 +112,13 @@ bool T1Part1::compress(CompressBlockExec *block) {
 
 	auto disto = t1->compress_cblk(&cblkexp, max, block->band_orientation,
 			block->compno,
-			(block->tile->comps + block->compno)->numresolutions - 1 - block->resno,
-			block->qmfbid, block->stepsize, block->cblk_sty,
-			block->mct_norms, block->mct_numcomps, block->doRateControl);
+			(uint8_t)((block->tile->comps + block->compno)->numresolutions - 1 - block->resno),
+			block->qmfbid,
+			block->stepsize,
+			block->cblk_sty,
+			block->mct_norms,
+			block->mct_numcomps,
+			block->doRateControl);
 
 	cblk->numPassesTotal = cblkexp.numPassesTotal;
 	cblk->numbps = cblkexp.numbps;

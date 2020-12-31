@@ -43,13 +43,13 @@ struct T1 {
 	double compress_cblk(cblk_enc *cblk,
 							uint32_t max,
 							uint8_t orientation,
-							uint32_t compno,
-							uint32_t level,
-							uint32_t qmfbid,
+							uint16_t compno,
+							uint8_t level,
+							uint8_t qmfbid,
 							double stepsize,
 							uint32_t cblksty,
 							const double *mct_norms,
-							uint32_t mct_numcomps,
+							uint16_t mct_numcomps,
 							bool doRateControl);
 
 	/** MQC component */

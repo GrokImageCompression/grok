@@ -29,7 +29,7 @@ public:
 
 	void scheduleCompress(TileCodingParams *tcp,
 						const double *mct_norms,
-						uint32_t mct_numcomps);
+						uint16_t mct_numcomps);
 private:
 	bool compress(size_t threadId, uint64_t maxBlocks);
 	void compress(T1Interface *impl, CompressBlockExec *block);
