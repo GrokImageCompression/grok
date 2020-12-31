@@ -10,9 +10,7 @@ add_library(${LIBTARGET} STATIC ${SRCS} ${HDRS})
 if(MSVC)
   set_target_properties(${LIBTARGET} PROPERTIES PREFIX "lib")
 else()
- set_source_files_properties(SRCS
-            PROPERTIES
-            COMPILE_FLAGS -Wno-stringop-truncation)
+  target_compile_options(${LIBTARGET} PRIVATE -Wstringop-truncation -Wno-stringop-truncation)
 endif()
 set_target_properties(${LIBTARGET}
   PROPERTIES
