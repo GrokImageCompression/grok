@@ -4,7 +4,7 @@
 # Results will be available at: http://my.cdash.org/index.php?project=GROK
 # -----------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.12)
 
 set( ENV{LANG} en_US.UTF-8)
 if($ENV{GROK_BINARY_DIR})
