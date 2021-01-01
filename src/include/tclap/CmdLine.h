@@ -25,14 +25,14 @@
 #ifndef TCLAP_CMD_LINE_H
 #define TCLAP_CMD_LINE_H
 
-#include <tclap/SwitchArg.h>
 #include <tclap/MultiSwitchArg.h>
-#include <tclap/UnlabeledValueArg.h>
+#include <tclap/SwitchArg.h>
 #include <tclap/UnlabeledMultiArg.h>
+#include <tclap/UnlabeledValueArg.h>
 
 #include <tclap/HelpVisitor.h>
-#include <tclap/VersionVisitor.h>
 #include <tclap/IgnoreRestVisitor.h>
+#include <tclap/VersionVisitor.h>
 
 #include <tclap/CmdLineOutput.h>
 #include <tclap/StdOutput.h>
@@ -43,13 +43,13 @@
 #include <tclap/ArgGroup.h>
 #include <tclap/DeferDelete.h>
 
-#include <string>
-#include <vector>
-#include <list>
-#include <iostream>
-#include <iomanip>
 #include <algorithm>
 #include <cstdlib>
+#include <iomanip>
+#include <iostream>
+#include <list>
+#include <string>
+#include <vector>
 
 namespace TCLAP {
 
@@ -124,7 +124,6 @@ protected:
      */
     char _delimiter;
 
-
     /**
      * Add pointers that should be deleted as part of cleanup when
      * this object is destroyed.
@@ -159,7 +158,7 @@ protected:
      * \param s - The message to be used in the usage.
      */
     bool _emptyCombined(const std::string &s);
-    
+
 private:
     /**
      * Prevent accidental copying.
@@ -183,10 +182,10 @@ private:
      */
     bool _ignoreUnmatched;
 
-	/**
-	 * Ignoring arguments (e.g., after we have seen "--")
-	 */
-	bool _ignoring;
+    /**
+     * Ignoring arguments (e.g., after we have seen "--")
+     */
+    bool _ignoring;
 
 public:
     /**
@@ -310,9 +309,8 @@ public:
      */
     void ignoreUnmatched(const bool ignore);
 
-	void beginIgnoring() { _ignoring = true; }
+    void beginIgnoring() { _ignoring = true; }
     bool ignoreRest() { return _ignoring; }
-
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -336,7 +334,7 @@ inline CmdLine::CmdLine(const std::string &m, char delim, const std::string &v,
       _handleExceptions(true),
       _helpAndVersion(help),
       _ignoreUnmatched(false),
-	  _ignoring(false) {
+      _ignoring(false) {
     _constructor();
 }
 
@@ -440,7 +438,15 @@ inline void CmdLine::parse(std::vector<std::string> &args) {
     int estat = 0;
 
     try {
-		// TODO(macbishop): Maybe store the full name somewhere?
+        if (args.empty()) {
+            // https://sourceforge.net/p/tclap/bugs/30/
+            throw CmdLineParseException(
+                "The args vector must not be empty, "
+                "the first entry should contain the "
+                "program's name.");
+        }
+
+        // TODO(macbishop): Maybe store the full name somewhere?
         _progName = basename(args.front());
         args.erase(args.begin());
 
@@ -475,7 +481,7 @@ inline void CmdLine::parse(std::vector<std::string> &args) {
                 // TODO: This logic should probably be refactored to
                 // remove this logic from here.
                 bool alreadySet = arg.isSet();
-				bool ignore = arg.isIgnoreable() && ignoreRest();
+                bool ignore = arg.isIgnoreable() && ignoreRest();
                 if (!ignore && arg.processArg(&i, args)) {
                     requiredCount += (!alreadySet && arg.isRequired()) ? 1 : 0;
                     matched = true;
@@ -488,10 +494,10 @@ inline void CmdLine::parse(std::vector<std::string> &args) {
             if (!matched && _emptyCombined(args[i])) matched = true;
 
             if (!matched && !ignoreRest() && !_ignoreUnmatched)
-                throw(CmdLineParseException(
-                    "Couldn't find match "
-                    "for argument",
-                    args[i]));
+                throw(
+                    CmdLineParseException("Couldn't find match "
+                                          "for argument",
+                                          args[i]));
         }
 
         // Once all arguments have been parsed, check that we don't
@@ -578,9 +584,7 @@ inline void CmdLine::missingArgsException(
     throw(CmdLineParseException(msg));
 }
 
-inline void CmdLine::setOutput(CmdLineOutput *co) {
-    _output = co;
-}
+inline void CmdLine::setOutput(CmdLineOutput *co) { _output = co; }
 
 inline void CmdLine::setExceptionHandling(const bool state) {
     _handleExceptions = state;

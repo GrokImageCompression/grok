@@ -29,19 +29,19 @@
 #include <tclap/TCLAPConfig.h>
 #endif
 
-#include <tclap/sstream.h>
 #include <tclap/ArgException.h>
-#include <tclap/Visitor.h>
-#include <tclap/CmdLineInterface.h>
 #include <tclap/ArgTraits.h>
+#include <tclap/CmdLineInterface.h>
 #include <tclap/StandardTraits.h>
+#include <tclap/Visitor.h>
+#include <tclap/sstream.h>
 
+#include <cstdio>
+#include <iomanip>
+#include <iostream>
+#include <list>
 #include <string>
 #include <vector>
-#include <list>
-#include <iostream>
-#include <iomanip>
-#include <cstdio>
 
 namespace TCLAP {
 
@@ -415,16 +415,16 @@ void ExtractValue(T &destVal, const std::string &strVal, ValueLike vl) {
     }
 
     if (is.fail())
-        throw(ArgParseException(
-            "Couldn't read argument value "
-            "from string '" +
-            strVal + "'"));
+        throw(
+            ArgParseException("Couldn't read argument value "
+                              "from string '" +
+                              strVal + "'"));
 
     if (valuesRead > 1)
-        throw(ArgParseException(
-            "More than one valid value parsed from "
-            "string '" +
-            strVal + "'"));
+        throw(
+            ArgParseException("More than one valid value parsed from "
+                              "string '" +
+                              strVal + "'"));
 }
 
 /*

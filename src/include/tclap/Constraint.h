@@ -24,13 +24,13 @@
 #ifndef TCLAP_CONSTRAINT_H
 #define TCLAP_CONSTRAINT_H
 
+#include <algorithm>
+#include <iomanip>
+#include <iostream>
+#include <list>
+#include <stdexcept>
 #include <string>
 #include <vector>
-#include <list>
-#include <iostream>
-#include <iomanip>
-#include <algorithm>
-#include <stdexcept>
 
 namespace TCLAP {
 

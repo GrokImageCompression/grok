@@ -25,12 +25,12 @@
 #ifndef TCLAP_UNLABELED_VALUE_ARG_H
 #define TCLAP_UNLABELED_VALUE_ARG_H
 
-#include <tclap/ValueArg.h>
 #include <tclap/OptionalUnlabeledTracker.h>
+#include <tclap/ValueArg.h>
 
+#include <list>
 #include <string>
 #include <vector>
-#include <list>
 
 namespace TCLAP {
 

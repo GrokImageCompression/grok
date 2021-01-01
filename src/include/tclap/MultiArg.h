@@ -330,10 +330,10 @@ void MultiArg<T>::_extractValue(const std::string &val) {
 
     if (_constraint != NULL)
         if (!_constraint->check(_values.back()))
-            throw(CmdLineParseException("Value '" + val +
-                                            "' does not meet constraint: " +
-                                            _constraint->description(),
-                                        toString()));
+            throw(CmdLineParseException(
+                "Value '" + val +
+                    "' does not meet constraint: " + _constraint->description(),
+                toString()));
 }
 
 template <class T>

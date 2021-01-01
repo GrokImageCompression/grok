@@ -92,18 +92,18 @@ inline void removeArgsInArgGroups(std::list<Arg *> &argList,
 }
 
 inline std::string basename(std::string s) {
-	// TODO(macbishop): See if we can make this more robust
-	size_t p = s.find_last_of("/\\");
-	if (p != std::string::npos) {
-		s.erase(0, p + 1);
-	}
+    // TODO(macbishop): See if we can make this more robust
+    size_t p = s.find_last_of("/\\");
+    if (p != std::string::npos) {
+        s.erase(0, p + 1);
+    }
 
-	p = s.rfind(".exe");
-	if (p == s.length() - 4) {
-		s.erase(s.length() - 4);
-	}
+    p = s.rfind(".exe");
+    if (p == s.length() - 4) {
+        s.erase(s.length() - 4);
+    }
 
-	return s;
+    return s;
 }
 
 }  // namespace TCLAP

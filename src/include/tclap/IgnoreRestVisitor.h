@@ -24,8 +24,8 @@
 #ifndef TCLAP_IGNORE_REST_VISITOR_H
 #define TCLAP_IGNORE_REST_VISITOR_H
 
-#include <tclap/Visitor.h>
 #include <tclap/CmdLineInterface.h>
+#include <tclap/Visitor.h>
 
 namespace TCLAP {
 
@@ -35,11 +35,12 @@ namespace TCLAP {
  */
 class IgnoreRestVisitor : public Visitor {
 public:
-    IgnoreRestVisitor(CmdLineInterface &cmdLine) : Visitor(), cmdLine_(cmdLine) {}
+    IgnoreRestVisitor(CmdLineInterface &cmdLine)
+        : Visitor(), cmdLine_(cmdLine) {}
     void visit() { cmdLine_.beginIgnoring(); }
 
 private:
-	CmdLineInterface &cmdLine_;
+    CmdLineInterface &cmdLine_;
 };
 }  // namespace TCLAP
 

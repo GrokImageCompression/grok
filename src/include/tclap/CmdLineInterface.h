@@ -27,11 +27,11 @@
 
 #include <tclap/ArgContainer.h>
 
+#include <algorithm>
+#include <iostream>
+#include <list>
 #include <string>
 #include <vector>
-#include <list>
-#include <iostream>
-#include <algorithm>
 
 namespace TCLAP {
 
@@ -105,7 +105,6 @@ public:
      */
     void parse(std::vector<std::string> &args);
 
-
     /**
      * \param co - CmdLineOutput object that we want to use instead.
      */
@@ -125,8 +124,8 @@ public:
      * Returns the list of ArgGroups.
      */
     virtual std::list<ArgGroup *> getArgGroups() = 0;
-    virtual std::list<Arg *> getArgList() const = 0; // TODO: get rid of this
-    
+    virtual std::list<Arg *> getArgList() const = 0;  // TODO: get rid of this
+
     /**
      * Returns the delimiter string.
      */
@@ -149,18 +148,17 @@ public:
      */
     virtual void reset() = 0;
 
-	/**
+    /**
      * Begin ignoring arguments since the "--" argument was specified.
-	 * \internal
+     * \internal
      */
     virtual void beginIgnoring() = 0;
 
     /**
      * Whether to ignore the rest.
-	 * \internal
+     * \internal
      */
     virtual bool ignoreRest() = 0;
-
 };
 
 }  // namespace TCLAP

@@ -101,7 +101,7 @@ class ArgTraits {
     template <typename C>
     static short test(typename C::ValueCategory *);  // NOLINT
     template <typename C>
-    static long test(...);  // NOLINT
+    static long test(...);                                             // NOLINT
     static const bool hasTrait = sizeof(test<T>(0)) == sizeof(short);  // NOLINT
 
     template <typename C, bool>

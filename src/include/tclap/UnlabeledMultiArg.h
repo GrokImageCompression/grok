@@ -27,9 +27,9 @@
 #include <tclap/MultiArg.h>
 #include <tclap/OptionalUnlabeledTracker.h>
 
+#include <list>
 #include <string>
 #include <vector>
-#include <list>
 
 namespace TCLAP {
 

@@ -1,27 +1,27 @@
 // -*- Mode: c++; c-basic-offset: 4; tab-width: 4; -*-
 
 /******************************************************************************
-*
-*  file:  MultiSwitchArg.h
-*
-*  Copyright (c) 2003, Michael E. Smoot .
-*  Copyright (c) 2004, Michael E. Smoot, Daniel Aarno.
-*  Copyright (c) 2005, Michael E. Smoot, Daniel Aarno, Erik Zeek.
-*  Copyright (c) 2017, Google LLC
-*  All rights reserved.
-*
-*  See the file COPYING in the top directory of this distribution for
-*  more information.
-*
-*  THE SOFTWARE IS PROVIDED _AS IS_, WITHOUT WARRANTY OF ANY KIND, EXPRESS
-*  OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-*  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-*  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-*  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-*  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-*  DEALINGS IN THE SOFTWARE.
-*
-*****************************************************************************/
+ *
+ *  file:  MultiSwitchArg.h
+ *
+ *  Copyright (c) 2003, Michael E. Smoot .
+ *  Copyright (c) 2004, Michael E. Smoot, Daniel Aarno.
+ *  Copyright (c) 2005, Michael E. Smoot, Daniel Aarno, Erik Zeek.
+ *  Copyright (c) 2017, Google LLC
+ *  All rights reserved.
+ *
+ *  See the file COPYING in the top directory of this distribution for
+ *  more information.
+ *
+ *  THE SOFTWARE IS PROVIDED _AS IS_, WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ *  OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ *  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ *  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ *  DEALINGS IN THE SOFTWARE.
+ *
+ *****************************************************************************/
 
 #ifndef TCLAP_MULTI_SWITCH_ARG_H
 #define TCLAP_MULTI_SWITCH_ARG_H
@@ -34,9 +34,9 @@
 namespace TCLAP {
 
 /**
-* A multiple switch argument.  If the switch is set on the command line, then
-* the getValue method will return the number of times the switch appears.
-*/
+ * A multiple switch argument.  If the switch is set on the command line, then
+ * the getValue method will return the number of times the switch appears.
+ */
 class MultiSwitchArg : public SwitchArg {
 protected:
     /**
