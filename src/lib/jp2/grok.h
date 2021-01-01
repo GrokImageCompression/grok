@@ -348,6 +348,7 @@ typedef enum _GRK_CODEC_FORMAT {
 } GRK_CODEC_FORMAT;
 
 #define  GRK_NUM_COMMENTS_SUPPORTED 256
+#define  GRK_NUM_ASOC_BOXES_SUPPORTED 256
 #define GRK_MAX_COMMENT_LENGTH (UINT16_MAX-2)
 
 /**
@@ -609,6 +610,13 @@ typedef struct _grk_jp2_color {
 	bool has_colour_specification_box;
 } grk_jp2_color;
 
+typedef struct grk_asoc {
+    uint32_t level;
+    const char* label;
+    uint8_t *xml;
+    uint32_t xml_len;
+} grk_asoc;
+
 /**
  * Header info
  */
@@ -661,6 +669,9 @@ typedef struct _grk_header_info {
 	char *comment[GRK_NUM_COMMENTS_SUPPORTED];
 	uint16_t comment_len[GRK_NUM_COMMENTS_SUPPORTED];
 	bool isBinaryComment[GRK_NUM_COMMENTS_SUPPORTED];
+
+	grk_asoc asocs[GRK_NUM_ASOC_BOXES_SUPPORTED];
+	size_t num_asocs;
 
 } grk_header_info;
 

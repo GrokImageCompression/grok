@@ -20,6 +20,8 @@
  */
 
 #include "grk_includes.h"
+#include <string>
+
 namespace grk {
 
 /** @defgroup JP2 JP2 - JPEG 2000 file format reader/writer */
@@ -65,6 +67,18 @@ static uint8_t* jp2_write_ihdr(FileFormat *fileFormat, uint32_t *p_nb_bytes_writ
  * @return	true if the image header is valid, false otherwise.
  */
 static bool jp2_read_xml(FileFormat *fileFormat, uint8_t *p_xml_data, uint32_t xml_size);
+
+/**
+ * Read Associated data
+ *
+ * @param	fileFormat			JPEG 2000 file codec.
+ * @param	header_data			pointer to actual data (already read from file)
+ * @param	header_data_size	size of the data
+
+ *
+ * @return	true if the image header is valid, false otherwise.
+ */
+static bool jp2_read_asoc(FileFormat *fileFormat, uint8_t *header_data, uint32_t header_data_size);
 
 /**
  * Write XML box
@@ -383,7 +397,8 @@ static const grk_jp2_header_handler jp2_header[] = {
 		{ JP2_FTYP, jp2_read_ftyp },
 		{ JP2_JP2H, jp2_read_jp2h },
 		{ JP2_XML, jp2_read_xml },
-		{ JP2_UUID, jp2_read_uuid } };
+		{ JP2_UUID, jp2_read_uuid },
+		{ JP2_ASOC, jp2_read_asoc }};
 
 static const grk_jp2_header_handler jp2_img_header[] = {
 		{ JP2_IHDR,	jp2_read_ihdr },
@@ -631,6 +646,26 @@ static uint8_t* jp2_write_buffer(uint32_t boxId, grk_jp2_buffer *buffer,
 
 	return data;
 }
+
+static bool jp2_read_asoc(FileFormat *fileFormat, uint8_t *header_data, uint32_t header_data_size) {
+    assert(fileFormat);
+    assert(header_data);
+
+    // 12 == sizoef(asoc tag) + sizeof(child size) + sizeof(child tag)
+    if (header_data_size <= 12) {
+        GRK_ERROR("ASOC super box can't be empty");
+        return false;
+    }
+
+    try {
+    	fileFormat->read_asoc(&header_data,&header_data_size,header_data_size,0);
+    } catch (BadAsocException &bae){
+    	return false;
+    }
+
+    return true;
+}
+
 
 static bool jp2_read_xml(FileFormat *fileFormat, uint8_t *p_xml_data, uint32_t xml_size) {
 	if (!p_xml_data || !xml_size) {
@@ -2470,6 +2505,9 @@ FileFormat::~FileFormat() {
 	xml.dealloc();
 	for (uint32_t i = 0; i < numUuids; ++i)
 		(uuids + i)->dealloc();
+	for (auto& as : asocs) {
+		delete as;
+	}
 }
 
 /** Main header reading function handler */
@@ -2586,6 +2624,25 @@ bool FileFormat::read_header(grk_header_info  *header_info, grk_image **p_image)
 			image->xmp_len = uuid->len;
 			uuid->buffer = nullptr;
 			uuid->len = 0;
+		}
+	}
+
+	// retrieve GML
+	if (header_info){
+		uint32_t asocIndex = 0;
+		for (auto &as : asocs){
+			auto as_c = header_info->asocs + asocIndex;
+			as_c->label = as->label.c_str();
+			as_c->level = as->level;
+			as_c->xml = as->buffer;
+			as_c->xml_len = (uint32_t)as->len;
+			//if (as_c->xml)
+			//	GRK_INFO("%s", std::string((char*)as_c->xml, as_c->xml_len).c_str());
+			asocIndex++;
+			if (asocIndex == GRK_NUM_ASOC_BOXES_SUPPORTED){
+				GRK_WARN("Image contains more than maximum supported number of asoc boxes (%d). Ignoring the rest",GRK_NUM_ASOC_BOXES_SUPPORTED );
+				break;
+			}
 		}
 	}
 
@@ -2939,6 +2996,97 @@ void FileFormat::alloc_palette(grk_jp2_color *color, uint8_t num_channels, uint1
 	color->palette = jp2_pclr;
 }
 
+uint32_t FileFormat::read_asoc(uint8_t **header_data,
+								uint32_t *header_data_size,
+								uint32_t asocSize,
+								uint32_t level) {
+    assert(*header_data);
+
+    if (*header_data_size < 8) {
+        GRK_ERROR("ASOC box must be at least 8 bytes in size");
+        throw BadAsocException();
+    }
+    uint32_t asocBytes = 0;
+
+    // read label size
+	uint32_t labelSize = 0;
+    grk_read<uint32_t>(*header_data, &labelSize);
+
+    *header_data += 4;
+    *header_data_size -= 4;
+    labelSize -= 4;
+    asocBytes += 4;
+
+    if (*header_data_size < labelSize) {
+        GRK_ERROR("ASOC super box is smaller than containing sub box");
+        throw BadAsocException();
+    }
+
+    // read label tag
+	uint32_t labelTag = 0;
+    grk_read<uint32_t>(*header_data, &labelTag);
+    *header_data += 4;
+    *header_data_size -= 4;
+    labelSize -= 4;
+    asocBytes += 4;
+
+    if(labelTag != JP2_LBL){
+        GRK_ERROR("ASOC: expected LBL tag but found 0x%x", labelTag);
+        throw BadAsocException();
+    }
+
+    // create asoc
+    auto asoc = new grk_jp2_asoc((uint32_t)level,
+    								std::string((const char*)*header_data,	labelSize) );
+    asocs.push_back(asoc);
+    *header_data 		+= labelSize;
+    *header_data_size 	-= labelSize;
+    asocBytes += labelSize;
+
+    // read all children
+    while (asocBytes < asocSize && *header_data_size > 8) {
+		uint32_t childSize = 0;
+		grk_read<uint32_t>(*header_data, &childSize);
+		*header_data 		+= 4;
+		*header_data_size 	-= 4;
+		childSize 			-= 4;
+		asocBytes			+= 4;
+
+		if (childSize > *header_data_size){
+			GRK_ERROR("Not enough space in ASOC box for child box");
+			throw BadAsocException();
+		}
+
+		uint32_t childTag = 0;
+		grk_read<uint32_t>(*header_data, &childTag);
+		*header_data 		+= 4;
+		*header_data_size 	-= 4;
+		childSize 			-= 4;
+		asocBytes			+= 4;
+
+		switch (childTag) {
+			case JP2_ASOC:
+				asocBytes += read_asoc(header_data, header_data_size,childSize, level+1);
+				break;
+			case JP2_XML:
+				asoc->alloc(childSize);
+				memcpy(asoc->buffer, *header_data, childSize);
+				asocBytes += childSize;
+				break;
+			default:
+				GRK_ERROR("ASOC box has unknown tag 0x%x", childTag);
+				throw BadAsocException();
+				break;
+		}
+    }
+
+    if (asocBytes < asocSize){
+		GRK_ERROR("ASOC box has extra bytes");
+		throw BadAsocException();
+    }
+
+	return asocBytes;
+}
 
 
 void FileFormat::dump(uint32_t flag, FILE *out_stream){
@@ -2954,8 +3102,5 @@ grk_codestream_index* FileFormat::get_cstr_index(void){
 
 	return j2k_get_cstr_index(codeStream);
 }
-
-
-
 
 }

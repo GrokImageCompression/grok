@@ -34,4 +34,5 @@ public:
 
 };
 class MissingSparseBlockException: public std::exception {};
+class BadAsocException: public std::exception {};
 }

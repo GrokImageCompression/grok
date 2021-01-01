@@ -21,6 +21,9 @@
 
 
 #pragma once
+
+#include <string>
+
 namespace grk {
 
 /**
@@ -55,6 +58,9 @@ namespace grk {
 #define JP2_UINF 0x75696e66   /**< UUID info box (super-box) */
 #define JP2_ULST 0x756c7374   /**< UUID list box */
 #define JP2_URL  0x75726c20   /**< Data entry URL box */
+#define JP2_ASOC 0x61736f63   /**< Associated data */
+#define JP2_LBL  0x6c626c20   /**< Association label */
+
 
 /* ----------------------------------------------------------------------- */
 
@@ -112,6 +118,26 @@ struct grk_jp2_buffer {
 	size_t len;
 	bool ownsData;
 };
+
+/**
+	Association box (ASOC data) struct, defined by level, label and optionally XML data.
+	See here: http://docs.opengeospatial.org/is/08-085r4/08-085r4.html for GML specification
+	The first GML asoc is named 'gml.data' and has no XML data.
+	The second GML asoc is named 'gml.root-instance'
+	and contains XML formatted geo-information.
+*/
+struct grk_jp2_asoc : grk_jp2_buffer{
+	grk_jp2_asoc(uint32_t lev, std::string lbl) : grk_jp2_buffer(),
+													level(lev),
+													label(lbl)
+	{}
+	~grk_jp2_asoc(){
+		dealloc();
+	}
+    uint32_t level;
+    std::string label;
+};
+
 
 struct grk_jp2_uuid: public grk_jp2_buffer {
 	grk_jp2_uuid() : grk_jp2_buffer() {}
@@ -185,6 +211,8 @@ struct FileFormat : public ICodeStream {
    static void free_color(grk_jp2_color *color);
    static void alloc_palette(grk_jp2_color *color, uint8_t num_channels, uint16_t num_entries);
 
+   uint32_t read_asoc(uint8_t **header_data, uint32_t *header_data_size, uint32_t asocSize, uint32_t level);
+
 	/** handle to the J2K codec  */
 	CodeStream *codeStream;
 	/** list of validation procedures */
@@ -226,6 +254,8 @@ struct FileFormat : public ICodeStream {
 	grk_jp2_buffer xml;
 	grk_jp2_uuid uuids[JP2_MAX_NUM_UUIDS];
 	uint32_t numUuids;
+
+	std::vector<grk_jp2_asoc*> asocs;
 private:
 	bool postDecompress( grk_image *p_image);
 };
