@@ -1,21 +1,15 @@
-autopkg testsuite
+----------------
+Useful Commands
+----------------
+
+Move master tag:
+
+`$ git push origin :refs/tags/v7.6.3 && git tag -fa v7.6.3 && git push origin master --tags`
 
 
-Git - Move Tag
+Move debian/master tag:
 
-1. Delete old tag
-
-`git push origin :refs/tags/v7.6.2`
-
-2. Replace the tag to reference the most recent commit
-
-`git tag -fa v7.6.2`
-
-3. Push the new tag to remote origin
-
-`git push origin master --tags`
-
-`$ git push origin :refs/tags/v7.6.2 && git tag -fa v7.6.2 && git push origin master --tags`
+`$ git push origin :refs/tags/v7.6.3.debian && git tag -fa v7.6.3.debian && git push origin debian/master --tags`
 
 ------------------
 Building a Package
@@ -32,7 +26,7 @@ B1D6B0917E6191EB3D0FF95F347F22FFCA601A1C)
 
 1. `sudo schroot -c debian-sid`
 
-2. `$ git archive --format=tar v7.6.2 | gzip > libgrokj2k_7.6.2.orig.tar.gz && mv libgrokj2k_7.6.2.orig.tar.gz ..`
+2. `$ git archive --format=tar v7.6.3 | gzip > libgrokj2k_7.6.3.orig.tar.gz && mv libgrokj2k_7.6.3.orig.tar.gz ..`
 
 3. `$ dpkg-buildpackage -us -uc`
 
