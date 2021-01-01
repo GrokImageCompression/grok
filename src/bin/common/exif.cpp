@@ -32,7 +32,7 @@ namespace grk {
 #ifdef GROK_HAVE_EXIFTOOL
 class PerlInterp {
 public:
-	PerlInterp() : my_perl(nullptr) {
+	PerlInterp() : perlInterp(nullptr) {
 		 std::string script {R"x(
 				use Image::ExifTool qw(ImageInfo);
 				use strict;
@@ -48,21 +48,21 @@ public:
 	    constexpr int NUM_ARGS = 3;
 	    const char* embedding[NUM_ARGS] = { "", "-e", "0" };
 	    PERL_SYS_INIT3(NULL,NULL,NULL);
-	    auto my_perl = perl_alloc();
-	    perl_construct( my_perl );
-	    int res = perl_parse(my_perl, NULL, NUM_ARGS, (char**)embedding, NULL);
+	    perlInterp = perl_alloc();
+	    perl_construct( perlInterp );
+	    int res = perl_parse(perlInterp, NULL, NUM_ARGS, (char**)embedding, NULL);
 	    assert(!res);
 	    (void)res;
-	    perl_run(my_perl);
+	    perl_run(perlInterp);
 	    eval_pv(script.c_str(), TRUE);
 	}
 
 	~PerlInterp(){
-		perl_destruct(my_perl);
-		perl_free(my_perl);
+		perl_destruct(perlInterp);
+		perl_free(perlInterp);
 		PERL_SYS_TERM();
 	}
-	PerlInterpreter *my_perl;
+	PerlInterpreter *perlInterp;
 };
 
 class PerlScriptRunner{
