@@ -20,8 +20,10 @@
 #pragma GCC diagnostic ignored "-Wvolatile"
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wsign-conversion"
-#include <EXTERN.h>
-#include <perl.h>
+#define PERL_NO_GET_CONTEXT
+#include "EXTERN.h"
+#include "perl.h"
+#include "XSUB.h"
 #pragma GCC diagnostic pop
 #endif
 #include "exif.h"
@@ -33,6 +35,7 @@ namespace grk {
 class PerlInterp {
 public:
 	PerlInterp() : perlInterp(nullptr) {
+		 dTHX;
 		 std::string script {R"x(
 				use Image::ExifTool qw(ImageInfo);
 				use strict;
@@ -58,6 +61,7 @@ public:
 	}
 
 	~PerlInterp(){
+		dTHX;
 		perl_destruct(perlInterp);
 		perl_free(perlInterp);
 		PERL_SYS_TERM();
@@ -76,6 +80,7 @@ public:
 
 void transferExifTags(std::string src, std::string dest){
 #ifdef GROK_HAVE_EXIFTOOL
+	dTHX;
 	PerlScriptRunner::instance();
     char *args[] = {(char*)src.c_str(), (char*)dest.c_str(), NULL};
     call_argv("transfer", G_DISCARD, args);
