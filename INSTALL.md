@@ -1,4 +1,18 @@
-# How to Build and Install Grok binaries
+## Install from a Package Manager
+
+1. Debian. Grok has been accepted into Debian unstable. Package status can be
+found [here](https://tracker.debian.org/pkg/libgrokj2k)
+
+1. Archlinux: Grok has a [package in Archlinux](https://aur.archlinux.org/packages/grok-jpeg2000/)
+
+1. Homebrew: Grok has a [brew formula PR](https://github.com/Homebrew/homebrew-core/pull/68156)
+
+## Install from a Release
+
+Grok releases are archived [here](https://github.com/GrokImageCompression/grok/releases)
+
+
+## Install from Source
 
 Grok uses [cmake](www.cmake.org) to configure builds across multiple platforms.
 
@@ -10,27 +24,23 @@ To configure a build using the defaults:
    $ cmake /PATH/TO/SOURCE
 ```
 
-On headless systems, `ccmake` (an ncurses application) may be used to configure the build.
-If you are running Windows, OSX or X-Windows, then the `cmake` gui may be used.
+The `cmake` GUI is recommended, in order to easily view all cmake options. On headless systems, `ccmake` (an ncurses application) may be used to configure the build.
 
 
-## UNIX/LINUX/OSX
+### *NIX
 
-### SHARED/STATIC
+#### SHARED/STATIC
 
-The `BUILD_SHARED_LIBS` `cmake` flag determines if the `grk_compress` and `grk_decompress` binaries are
-linked to dynamic or static builds of the codec library `libgrokj2k`. If both `BUILD_SHARED_LIBS`
-and `BUILD_STATIC_LIBS` `cmake` flags are set for a non-windows build, then both dynamic and static builds are generated,
-and the static version is installed.
+The `BUILD_SHARED_LIBS` `cmake` flag determines if the `grk_compress` and `grk_decompress` binaries are linked to dynamic or static builds of the codec library `libgrokj2k`. If both `BUILD_SHARED_LIBS` and `BUILD_STATIC_LIBS` `cmake` flags are set for a non-windows build, then both dynamic and static builds are generated, and the static version is installed.
 
 
-### DEBUG/RELEASE
+#### DEBUG/RELEASE
 
 Default build type is `Release`. For a `Debug` build, run:
 
 `$ cmake -DCMAKE_BUILD_TYPE=Debug /PATH/TO/SOURCE`
 
-### Build
+#### Build
 
 `$ make -j8`
 
@@ -38,7 +48,7 @@ for a machine with 8 logical cores.
 
 Binaries are located in the `bin` directory.
 
-### INSTALL
+#### INSTALL
 
 Root users may run:
 
@@ -58,7 +68,7 @@ Note: On Linux, after a shared library build, run
 
 to update the shared library cache.
 
-### DOCUMENTATION
+#### DOCUMENTATION
 
 To build the Doxygen documentation (Doxygen needs to be found on the system):
 
@@ -66,9 +76,9 @@ To build the Doxygen documentation (Doxygen needs to be found on the system):
 
 A `HTML` directory is generated in the `doc` directory
 
-### CMAKE FLAGS
+#### CMAKE FLAGS
 
-Important cmake flags:
+Important `cmake` flags:
 
 * To specify the install path: use `-DCMAKE_INSTALL_PREFIX=/path`, or use `DESTDIR` env variable (see above)
 * To build the shared libraries and link the executables against it:
@@ -92,14 +102,14 @@ If the `-DGRK_DATA_ROOT:PATH` option is omitted, test files will be automaticall
  `${CMAKE_SOURCE_DIR}/../grok-test-data`
 
 
-### CPU Specific Optimizations
+#### SIMD
 
-For Intel and AMD processors, Grok implements optimizations using the `SSE4.1`
+On Intel and AMD processors, Grok implements optimizations using the `SSE4.1`
 instruction set (example: 9x7 inverse MCT transform) and the `AVX2`
 instruction set (example: 5x3 inverse discrete wavelet transform).
 Currently, those optimizations are only available if Grok is built to
-use those instruction sets, and the resulting binary will only run
-on compatible CPUs.
+use those instruction sets. If Grok is able to run on machines both with and without
+these instructions.
 
 With `gcc`/`clang`, it is possible to enable those instruction sets
 with the following commands:
@@ -121,18 +131,16 @@ been compiled :
 cmake -DCMAKE_CXX_FLAGS="-O3 -march=native -DNDEBUG" ..
 ```
 
-
 ## OSX
 
 OSX builds are configured similar to Unix builds.
 
-The xcode project files can be generated using:
+The Xcode project files can be generated using:
 
 `$ cmake -G Xcode ....`
 
 
 ## WINDOWS
-
 
 ### SHARED/STATIC
 
@@ -163,7 +171,7 @@ version of the library.
 
 ##### Grok dynamic build with JPEG support (Windows)
 
-`libjpeg-turbo` must be built with the `WITH_CRT_DLL` flag on, to ensure that the dynamic version of the C runtime libraries is used. Also, if Grok is linking with dynamic build of `libjpeg-turbo`, (cmake flag `JPEG_LIBRARY` is set to `LIBJPEG_INSTALL_DIRECTORY/jpeg.lib`), then make sure that  `LIBJPEG_INSTALL_DIRECTORY/bin` is on the path.
+`libjpeg-turbo` must be built with the `WITH_CRT_DLL` flag on, to ensure that the dynamic version of the C runtime libraries is used. Also, if Grok is linking with dynamic build of `libjpeg-turbo`, (cmake flag `JPEG_LIBRARY` is set to `LIBJPEG_INSTALL_DIRECTORY/jpeg.lib`), then make sure that `LIBJPEG_INSTALL_DIRECTORY/bin` is on the path.
 
 ##### Grok static build with JPEG support (Windows)
 
