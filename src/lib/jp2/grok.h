@@ -56,7 +56,7 @@ extern "C" {
 #	endif
 #endif
 
-enum GRK_SUPPORTED_FILE_FMT {
+typedef enum GRK_SUPPORTED_FILE_FMT {
 	GRK_UNK_FMT,
 	GRK_J2K_FMT,
 	GRK_JP2_FMT,
@@ -69,7 +69,7 @@ enum GRK_SUPPORTED_FILE_FMT {
 	GRK_PNG_FMT,
 	GRK_RAWL_FMT, /* LSB / Little Endian */
 	GRK_JPG_FMT
-};
+} GRK_SUPPORTED_FILE_FMT;
 
 #define GRK_PATH_LEN 4096 /**< Maximum allowed size for filenames */
 
@@ -328,7 +328,7 @@ typedef enum _GRK_COLOR_SPACE {
 } GRK_COLOR_SPACE;
 
 /* JPEG 2000 standard values for colour spaces */
-enum GRK_ENUM_COLOUR_SPACE{
+typedef enum GRK_ENUM_COLOUR_SPACE{
 	GRK_ENUM_CLRSPC_UNKNOWN = 0,
 	GRK_ENUM_CLRSPC_CMYK = 12,
 	GRK_ENUM_CLRSPC_CIE = 14,
@@ -336,7 +336,7 @@ enum GRK_ENUM_COLOUR_SPACE{
 	GRK_ENUM_CLRSPC_GRAY = 17,
 	GRK_ENUM_CLRSPC_SYCC = 18,
 	GRK_ENUM_CLRSPC_EYCC = 24
-};
+} GRK_ENUM_COLOUR_SPACE;
 
 /**
  * Supported codecs
@@ -833,17 +833,17 @@ typedef void *grk_stream;
  */
 
 // component type
-enum GRK_COMPONENT_TYPE{
+typedef enum GRK_COMPONENT_TYPE{
 
 	GRK_COMPONENT_TYPE_COLOUR =	0,
 	GRK_COMPONENT_TYPE_OPACITY = 	1,
 	GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY =  2,
 	GRK_COMPONENT_TYPE_UNSPECIFIED = 65535U
 
-};
+} GRK_COMPONENT_TYPE;
 
 // component association
-enum GRK_COMPONENT_ASSOC{
+typedef enum GRK_COMPONENT_ASSOC{
 
 	GRK_COMPONENT_ASSOC_WHOLE_IMAGE =	0,
 	GRK_COMPONENT_ASSOC_COLOUR_1 = 	1,
@@ -851,7 +851,7 @@ enum GRK_COMPONENT_ASSOC{
 	GRK_COMPONENT_ASSOC_COLOUR_3 =  3,
 	GRK_COMPONENT_ASSOC_UNASSOCIATED = 65535U
 
-};
+} GRK_COMPONENT_ASSOC;
 
 /**
  * Image component
