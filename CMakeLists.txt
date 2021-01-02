@@ -121,7 +121,9 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   set(GROK_COMPILE_OPTIONS ${GROK_COMPILE_OPTIONS} -Wall -Wextra -Wconversion -Wsign-conversion -Wunused-parameter)
 endif()
 
-find_package(SSE)
+IF(NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
+	find_package(SSE)
+ENDIF(NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
 
 #-----------------------------------------------------------------------------
 # grk_config.h generation (1/2)
