@@ -1068,7 +1068,7 @@ int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 				break;
 	#endif
 			default:
-				spdlog::error("Unsupported output format {}",cod_format);
+				spdlog::error("Unsupported output format {}",convertFileFmtToString(cod_format));
 				goto cleanup;
 				break;
 	}
