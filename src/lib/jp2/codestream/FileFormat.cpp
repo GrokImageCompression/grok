@@ -1237,53 +1237,58 @@ uint32_t FileFormat::read_asoc(grk_jp2_asoc *parent,
 								uint32_t asocSize) {
     assert(*header_data);
 
-    if (*header_data_size < 8) {
+    if (asocSize < 8) {
         GRK_ERROR("ASOC box must be at least 8 bytes in size");
         throw BadAsocException();
     }
-    uint32_t asocBytes = 0;
+    uint32_t asocBytesUsed = 0;
 
     // create asoc
     auto childAsoc = new grk_jp2_asoc();
     parent->children.push_back(childAsoc);
 
     // read all children
-    while (asocBytes < asocSize && *header_data_size > 8) {
+    while (asocBytesUsed < asocSize && *header_data_size > 8) {
 		uint32_t childSize = 0;
 		grk_read<uint32_t>(*header_data, &childSize);
+	    if (childSize < 8) {
+	        GRK_ERROR("JP2 box must be at least 8 bytes in size");
+	        throw BadAsocException();
+	    }
+
 		*header_data 		+= 4;
 		*header_data_size 	-= 4;
 		childSize 			-= 4;
-		asocBytes			+= 4;
-
-		if (childSize > *header_data_size){
-			GRK_ERROR("Not enough space in ASOC box for child box");
-			throw BadAsocException();
-		}
+		asocBytesUsed		+= 4;
 
 		uint32_t childTag = 0;
 		grk_read<uint32_t>(*header_data, &childTag);
 		*header_data 		+= 4;
 		*header_data_size 	-= 4;
 		childSize 			-= 4;
-		asocBytes			+= 4;
+		asocBytesUsed		+= 4;
+
+		if (childSize > *header_data_size){
+			GRK_ERROR("Not enough space in ASOC box for child box");
+			throw BadAsocException();
+		}
 
 		switch (childTag) {
 			case JP2_LBL:
 			    childAsoc->label = std::string((const char*)*header_data,childSize);
 				*header_data 		+= childSize;
 				*header_data_size 	-= childSize;
-				asocBytes			+= childSize;
+				asocBytesUsed		+= childSize;
 				break;
 			case JP2_ASOC:
-				asocBytes += read_asoc(childAsoc,header_data, header_data_size,childSize);
+				asocBytesUsed += read_asoc(childAsoc,header_data, header_data_size,childSize);
 				break;
 			case JP2_XML:
 				childAsoc->alloc(childSize);
 				memcpy(childAsoc->buf, *header_data, childSize);
 				*header_data 		+= childSize;
 				*header_data_size 	-= childSize;
-				asocBytes			+= childSize;
+				asocBytesUsed		+= childSize;
 				break;
 			default:
 				GRK_ERROR("ASOC box has unknown tag 0x%x", childTag);
@@ -1292,12 +1297,12 @@ uint32_t FileFormat::read_asoc(grk_jp2_asoc *parent,
 		}
     }
 
-    if (asocBytes < asocSize){
+    if (asocBytesUsed < asocSize){
 		GRK_ERROR("ASOC box has extra bytes");
 		throw BadAsocException();
     }
 
-	return asocBytes;
+	return asocBytesUsed;
 }
 
 

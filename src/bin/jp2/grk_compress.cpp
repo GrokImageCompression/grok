@@ -1177,7 +1177,7 @@ static int parse_cmdline_compressor_ex(int argc,
 				}
 				parameters->rsiz = (uint16_t) (profile | mainlevel);
 				spdlog::info("Broadcast profile activated. Other options specified may be overridden");
-				parameters->framerate = framerate;
+				parameters->framerate = (uint16_t)framerate;
 				if (framerate > 0) {
 					const int limitMBitsSec[] = { 0,
 							GRK_BROADCAST_LEVEL_1_MBITSSEC,
@@ -1267,7 +1267,7 @@ static int parse_cmdline_compressor_ex(int argc,
 				parameters->rsiz = (uint16_t) (profile | (sublevel << 4) | mainlevel);
 				spdlog::info("IMF profile activated. Other options specified may be overridden");
 
-				parameters->framerate = framerate;
+				parameters->framerate = (uint16_t)framerate;
 				if (framerate > 0 && sublevel > 0 && sublevel <= 9) {
 					const int limitMBitsSec[] = { 0,
 					GRK_IMF_SUBLEVEL_1_MBITSSEC,
@@ -1989,7 +1989,7 @@ static bool plugin_compress_callback(grk_plugin_compress_user_callback_info *inf
 
 	if ((GRK_IS_BROADCAST(parameters->rsiz) ||
 			GRK_IS_IMF(parameters->rsiz)) &&
-				parameters->framerate > 0) {
+				parameters->framerate != 0) {
 		uint32_t avgcomponents = image->numcomps;
 		if (image->numcomps == 3 && image->comps[1].dx == 2
 				&& image->comps[1].dy == 2) {

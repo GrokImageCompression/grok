@@ -537,7 +537,7 @@ typedef struct _grk_cparameters {
 	/** RSIZ value
 	 To be used to combine GRK_PROFILE_*, GRK_EXTENSION_* and (sub)levels values. */
 	uint16_t rsiz;
-	int framerate;
+	uint16_t framerate;
 
 	// set to true if input file stores capture resolution
 	bool write_capture_resolution_from_file;
