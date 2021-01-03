@@ -86,6 +86,15 @@ enum JP2_IMG_STATE {
 };
 
 /**
+ JP2 Box
+ */
+struct grk_jp2_box {
+	uint64_t length;
+	uint32_t type;
+};
+
+
+/**
  JP2 component
  */
 struct grk_jp2_comps {
@@ -94,45 +103,15 @@ struct grk_jp2_comps {
 	uint8_t bpc;
 };
 
-struct grk_jp2_buffer {
-	grk_jp2_buffer(uint8_t *buf, size_t size, bool owns) :
-			buffer(buf), len(size), ownsData(owns) {
-	}
-	grk_jp2_buffer() :
-			grk_jp2_buffer(nullptr, 0, false) {
-	}
-	virtual ~grk_jp2_buffer(){}
-	void alloc(size_t length) {
-		dealloc();
-		buffer = new uint8_t[length];
-		len = length;
-		ownsData = true;
-	}
-	virtual void dealloc() {
-		if (ownsData)
-			delete[] buffer;
-		buffer = nullptr;
-		ownsData = false;
-		len = 0;
-	}
-	uint8_t *buffer;
-	size_t len;
-	bool ownsData;
-};
-
 /**
-	Association box (ASOC data) struct, defined by level, label and optionally XML data.
-	See here: http://docs.opengeospatial.org/is/08-085r4/08-085r4.html for GML specification
-	The first GML asoc is named 'gml.data' and has no XML data.
-	The second GML asoc is named 'gml.root-instance'
-	and contains XML formatted geo-information.
+	Association box (defined in ITU 15444-2 Annex M 11.1 )
 */
-struct grk_jp2_asoc : grk_jp2_buffer{
+struct grk_jp2_asoc : grk_jp2_box, grk_buffer<uint8_t>{
 	virtual ~grk_jp2_asoc() override {
 		dealloc();
 	}
 	void dealloc() override {
-		grk_jp2_buffer::dealloc();
+		grk_buffer<uint8_t>::dealloc();
 		for (auto& as : children){
 			delete as;
 		}
@@ -142,24 +121,19 @@ struct grk_jp2_asoc : grk_jp2_buffer{
     std::vector<grk_jp2_asoc*> children;
 };
 
-
-struct grk_jp2_uuid: public grk_jp2_buffer {
-	grk_jp2_uuid() : grk_jp2_buffer() {}
+/**
+ * UUI box
+ */
+struct grk_jp2_uuid: public grk_jp2_box, grk_buffer<uint8_t> {
+	grk_jp2_uuid() :  grk_buffer<uint8_t>() {}
 	grk_jp2_uuid(const uint8_t myuuid[16], uint8_t *buf, size_t size, bool owns) :
-			grk_jp2_buffer(buf, size, owns) {
+		grk_buffer<uint8_t>(buf, size, owns) {
 		for (int i = 0; i < 16; ++i)
 			uuid[i] = myuuid[i];
 	}
 	uint8_t uuid[16];
 };
 
-/**
- JP2 Box
- */
-struct grk_jp2_box {
-	uint64_t length;
-	uint32_t type;
-};
 
 class FileFormat;
 
@@ -251,7 +225,7 @@ struct FileFormat : public ICodeStream {
    bool read_box_hdr(grk_jp2_box *box, uint32_t *p_number_bytes_read,BufferedStream *stream);
    bool read_ihdr( uint8_t *p_image_header_data,uint32_t image_header_size);
    uint8_t* write_ihdr( uint32_t *p_nb_bytes_written);
-   uint8_t* write_buffer(uint32_t boxId, grk_jp2_buffer *buffer,uint32_t *p_nb_bytes_written);
+   uint8_t* write_buffer(uint32_t boxId, grk_buffer<uint8_t> *buffer,uint32_t *p_nb_bytes_written);
    bool read_xml( uint8_t *p_xml_data, uint32_t xml_size);
    uint8_t* write_xml( uint32_t *p_nb_bytes_written);
    bool read_uuid( uint8_t *p_header_data,uint32_t header_size);
@@ -338,7 +312,7 @@ struct FileFormat : public ICodeStream {
 	bool has_display_resolution;
 	double display_resolution[2];
 
-	grk_jp2_buffer xml;
+	grk_buffer<uint8_t> xml;
 	grk_jp2_uuid uuids[JP2_MAX_NUM_UUIDS];
 	uint32_t numUuids;
 

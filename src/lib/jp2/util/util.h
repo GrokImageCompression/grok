@@ -205,13 +205,13 @@ using grk_rect = grk_rectangle<int64_t>;
 using grk_rect_u32 = grk_rectangle<uint32_t>;
 
 template <typename T> struct grk_buffer {
-	grk_buffer() : buf(nullptr), offset(0), len(0), owns_data(false)
-	{}
-
 	grk_buffer(T *buffer, size_t off, size_t length, bool ownsData) : buf(buffer),
 		offset(off),
 		len(length),
 		owns_data(ownsData)
+	{}
+
+	grk_buffer() : grk_buffer(0,0,0,false)
 	{}
 
 	grk_buffer(T *buffer, size_t length, bool ownsData) : grk_buffer(buffer,0,length,ownsData)
@@ -221,7 +221,15 @@ template <typename T> struct grk_buffer {
 		dealloc();
 	}
 
-	void dealloc(){
+	void alloc(size_t length) {
+		dealloc();
+		buf = new T[length];
+		len = length;
+		offset = 0;
+		owns_data = true;
+	}
+
+	virtual void dealloc(){
 		if (owns_data)
 			delete[] buf;
 		buf = nullptr;

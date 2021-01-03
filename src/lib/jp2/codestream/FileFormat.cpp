@@ -745,7 +745,7 @@ void FileFormat::serializeAsoc(grk_jp2_asoc *asoc,
 	auto as_c = serial_asocs+ *num_asocs;
 	as_c->label = asoc->label.c_str();
 	as_c->level = level;
-	as_c->xml = asoc->buffer;
+	as_c->xml = asoc->buf;
 	as_c->xml_len = (uint32_t)asoc->len;
 	(*num_asocs)++;
 	/*
@@ -779,7 +779,7 @@ bool FileFormat::read_header(grk_header_info  *header_info, grk_image **p_image)
 		return false;
 
 	if (header_info) {
-		header_info->xml_data = xml.buffer;
+		header_info->xml_data = xml.buf;
 		header_info->xml_data_len = xml.len;
 	}
 	if (!codeStream->read_header(header_info, p_image))
@@ -865,14 +865,14 @@ bool FileFormat::read_header(grk_header_info  *header_info, grk_image **p_image)
 	for (uint32_t i = 0; i < numUuids; ++i) {
 		auto uuid = uuids + i;
 		if (memcmp(uuid->uuid, IPTC_UUID, 16) == 0) {
-			image->iptc_buf = uuid->buffer;
+			image->iptc_buf = uuid->buf;
 			image->iptc_len = uuid->len;
-			uuid->buffer = nullptr;
+			uuid->buf = nullptr;
 			uuid->len = 0;
 		} else if (memcmp(uuid->uuid, XMP_UUID, 16) == 0) {
-			image->xmp_buf = uuid->buffer;
+			image->xmp_buf = uuid->buf;
 			image->xmp_len = uuid->len;
-			uuid->buffer = nullptr;
+			uuid->buf = nullptr;
 			uuid->len = 0;
 		}
 	}
@@ -1280,7 +1280,7 @@ uint32_t FileFormat::read_asoc(grk_jp2_asoc *parent,
 				break;
 			case JP2_XML:
 				childAsoc->alloc(childSize);
-				memcpy(childAsoc->buffer, *header_data, childSize);
+				memcpy(childAsoc->buf, *header_data, childSize);
 				*header_data 		+= childSize;
 				*header_data_size 	-= childSize;
 				asocBytes			+= childSize;
@@ -1666,7 +1666,7 @@ uint8_t* FileFormat::write_ihdr( uint32_t *p_nb_bytes_written) {
 	return ihdr_data;
 }
 
-uint8_t* FileFormat::write_buffer(uint32_t boxId, grk_jp2_buffer *buffer,
+uint8_t* FileFormat::write_buffer(uint32_t boxId, grk_buffer<uint8_t> *buffer,
 		uint32_t *p_nb_bytes_written) {
 	assert(p_nb_bytes_written != nullptr);
 
@@ -1687,7 +1687,7 @@ uint8_t* FileFormat::write_buffer(uint32_t boxId, grk_jp2_buffer *buffer,
 	current_ptr += 4;
 
 	/* write buffer data */
-	memcpy(current_ptr, buffer->buffer, buffer->len);
+	memcpy(current_ptr, buffer->buf, buffer->len);
 
 	*p_nb_bytes_written = total_size;
 
@@ -1699,11 +1699,11 @@ bool FileFormat::read_xml( uint8_t *p_xml_data, uint32_t xml_size) {
 		return false;
 	}
 	xml.alloc(xml_size);
-	if (!xml.buffer) {
+	if (!xml.buf) {
 		xml.len = 0;
 		return false;
 	}
-	memcpy(xml.buffer, p_xml_data, xml_size);
+	memcpy(xml.buf, p_xml_data, xml_size);
 	return true;
 }
 
@@ -1726,7 +1726,7 @@ bool FileFormat::read_uuid( uint8_t *p_header_data,
 	memcpy(uuid->uuid, p_header_data, 16);
 	p_header_data += 16;
 	uuid->alloc(header_size - 16);
-	memcpy(uuid->buffer, p_header_data, uuid->len);
+	memcpy(uuid->buf, p_header_data, uuid->len);
 	numUuids++;
 
 	return true;
@@ -2783,7 +2783,7 @@ bool FileFormat::write_jp2h(void) {
 		if (storeCapture || storeDisplay)
 			writers[nb_writers++].handler = jp2_write_res;
 	}
-	if (xml.buffer && xml.len)
+	if (xml.buf && xml.len)
 		writers[nb_writers++].handler = jp2_write_xml;
 	for (i = 0; i < nb_writers; ++i) {
 		auto current_writer = writers + i;
@@ -2844,7 +2844,7 @@ bool FileFormat::write_uuids(void) {
 	// write the uuids
 	for (size_t i = 0; i < numUuids; ++i) {
 		auto uuid = uuids + i;
-		if (uuid->buffer && uuid->len) {
+		if (uuid->buf && uuid->len) {
 			/* write box size */
 			stream->write_int((uint32_t) (8 + 16 + uuid->len));
 
@@ -2855,7 +2855,7 @@ bool FileFormat::write_uuids(void) {
 			stream->write_bytes(uuid->uuid, 16);
 
 			/* uuid data */
-			stream->write_bytes(uuid->buffer, (uint32_t) uuid->len);
+			stream->write_bytes(uuid->buf, (uint32_t) uuid->len);
 		}
 	}
 	return true;
