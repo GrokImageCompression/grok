@@ -149,6 +149,32 @@ struct grk_jp2_uuid: public grk_jp2_buffer {
 	uint8_t uuid[16];
 };
 
+/**
+ JP2 Box
+ */
+struct grk_jp2_box {
+	uint64_t length;
+	uint32_t type;
+};
+
+class FileFormat;
+
+struct grk_jp2_header_handler {
+	/* marker value */
+	uint32_t id;
+	/* action linked to the marker */
+	bool (*handler)(FileFormat *fileFormat, uint8_t *p_header_data, uint32_t header_size);
+};
+
+struct grk_jp2_img_header_writer_handler {
+	/* action to perform */
+	uint8_t* (*handler)(FileFormat *fileFormat, uint32_t *data_size);
+	/* result of the action : data */
+	uint8_t *m_data;
+	/* size of data */
+	uint32_t m_size;
+};
+
 struct FileFormat;
 typedef bool (*jp2_procedure)(FileFormat *fileFormat);
 
@@ -210,8 +236,58 @@ struct FileFormat : public ICodeStream {
 
    static void free_color(grk_jp2_color *color);
    static void alloc_palette(grk_jp2_color *color, uint8_t num_channels, uint16_t num_entries);
+   static void free_palette_clr(grk_jp2_color *color);
 
    uint32_t read_asoc(uint8_t **header_data, uint32_t *header_data_size, uint32_t asocSize, uint32_t level);
+   bool read_header_procedure(void);
+   bool default_validation(void);
+   bool read_box_hdr(grk_jp2_box *box, uint32_t *p_number_bytes_read,BufferedStream *stream);
+   bool read_ihdr( uint8_t *p_image_header_data,uint32_t image_header_size);
+   uint8_t* write_ihdr( uint32_t *p_nb_bytes_written);
+   uint8_t* write_buffer(uint32_t boxId, grk_jp2_buffer *buffer,uint32_t *p_nb_bytes_written);
+   bool read_xml( uint8_t *p_xml_data, uint32_t xml_size);
+   uint8_t* write_xml( uint32_t *p_nb_bytes_written);
+   bool read_uuid( uint8_t *p_header_data,uint32_t header_size);
+
+   double calc_res(uint16_t num, uint16_t den, uint8_t exponent);
+   bool read_res_box(uint32_t *id, uint32_t *num, uint32_t *den,
+   		uint32_t *exponent, uint8_t **p_resolution_data);
+   bool read_res( uint8_t *p_resolution_data,
+   		uint32_t resolution_size);
+   void find_cf(double x, uint32_t *num, uint32_t *den);
+   void write_res_box(double resx, double resy, uint32_t box_id,
+   		uint8_t **current_res_ptr);
+   uint8_t* write_res( uint32_t *p_nb_bytes_written);
+   uint8_t* write_bpc( uint32_t *p_nb_bytes_written);
+   bool read_bpc( uint8_t *p_bpc_header_data,uint32_t bpc_header_size);
+   uint8_t* write_channel_definition( uint32_t *p_nb_bytes_written);
+   void apply_channel_definition(grk_image *image, grk_jp2_color *color);
+   bool read_channel_definition( uint8_t *p_cdef_header_data,
+   		uint32_t cdef_header_size);
+   uint8_t* write_colr( uint32_t *p_nb_bytes_written);
+   bool read_colr( uint8_t *p_colr_header_data,
+   		uint32_t colr_header_size);
+   bool check_color(grk_image *image, grk_jp2_color *color);
+   bool apply_palette_clr(grk_image *image, grk_jp2_color *color);
+   bool read_component_mapping( uint8_t *component_mapping_header_data,
+   		uint32_t component_mapping_header_size);
+   uint8_t* write_component_mapping( uint32_t *p_nb_bytes_written);
+   uint8_t* write_palette_clr( uint32_t *p_nb_bytes_written);
+   bool read_palette_clr( uint8_t *p_pclr_header_data,	uint32_t pclr_header_size);
+   bool write_jp2h(void);
+   bool write_uuids(void);
+   bool write_ftyp(void);
+   bool write_jp2c(void);
+   bool write_jp(void);
+   bool exec( std::vector<jp2_procedure> *procs) ;
+   const grk_jp2_header_handler* find_handler(uint32_t id);
+   const grk_jp2_header_handler* img_find_handler(uint32_t id);
+   bool read_jp( uint8_t *p_header_data,uint32_t header_size);
+   bool read_ftyp( uint8_t *p_header_data,	uint32_t header_size) ;
+   bool skip_jp2c(void) ;
+   bool read_jp2h( uint8_t *p_header_data,	uint32_t header_size);
+   bool read_box(grk_jp2_box *box, uint8_t *p_data,
+   		uint32_t *p_number_bytes_read, uint64_t p_box_max_size);
 
 	/** handle to the J2K codec  */
 	CodeStream *codeStream;
@@ -260,29 +336,6 @@ private:
 	bool postDecompress( grk_image *p_image);
 };
 
-/**
- JP2 Box
- */
-struct grk_jp2_box {
-	uint64_t length;
-	uint32_t type;
-};
-
-struct grk_jp2_header_handler {
-	/* marker value */
-	uint32_t id;
-	/* action linked to the marker */
-	bool (*handler)(FileFormat *fileFormat, uint8_t *p_header_data, uint32_t header_size);
-};
-
-struct grk_jp2_img_header_writer_handler {
-	/* action to perform */
-	uint8_t* (*handler)(FileFormat *fileFormat, uint32_t *data_size);
-	/* result of the action : data */
-	uint8_t *m_data;
-	/* size of data */
-	uint32_t m_size;
-};
 
 /** @name Exported functions */
 /*@{*/
