@@ -611,7 +611,7 @@ typedef struct _grk_jp2_color {
 } grk_jp2_color;
 
 typedef struct grk_asoc {
-    uint32_t level;
+    uint32_t level;  //0 for root level
     const char* label;
     uint8_t *xml;
     uint32_t xml_len;
@@ -671,7 +671,7 @@ typedef struct _grk_header_info {
 	bool isBinaryComment[GRK_NUM_COMMENTS_SUPPORTED];
 
 	grk_asoc asocs[GRK_NUM_ASOC_BOXES_SUPPORTED];
-	size_t num_asocs;
+	uint32_t num_asocs;
 
 } grk_header_info;
 

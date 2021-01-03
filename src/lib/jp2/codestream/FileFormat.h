@@ -101,13 +101,14 @@ struct grk_jp2_buffer {
 	grk_jp2_buffer() :
 			grk_jp2_buffer(nullptr, 0, false) {
 	}
+	virtual ~grk_jp2_buffer(){}
 	void alloc(size_t length) {
 		dealloc();
 		buffer = new uint8_t[length];
 		len = length;
 		ownsData = true;
 	}
-	void dealloc() {
+	virtual void dealloc() {
 		if (ownsData)
 			delete[] buffer;
 		buffer = nullptr;
@@ -127,15 +128,18 @@ struct grk_jp2_buffer {
 	and contains XML formatted geo-information.
 */
 struct grk_jp2_asoc : grk_jp2_buffer{
-	grk_jp2_asoc(uint32_t lev, std::string lbl) : grk_jp2_buffer(),
-													level(lev),
-													label(lbl)
-	{}
-	~grk_jp2_asoc(){
+	virtual ~grk_jp2_asoc() override {
 		dealloc();
 	}
-    uint32_t level;
+	void dealloc() override {
+		grk_jp2_buffer::dealloc();
+		for (auto& as : children){
+			delete as;
+		}
+		children.clear();
+	}
     std::string label;
+    std::vector<grk_jp2_asoc*> children;
 };
 
 
@@ -238,7 +242,10 @@ struct FileFormat : public ICodeStream {
    static void alloc_palette(grk_jp2_color *color, uint8_t num_channels, uint16_t num_entries);
    static void free_palette_clr(grk_jp2_color *color);
 
-   uint32_t read_asoc(uint8_t **header_data, uint32_t *header_data_size, uint32_t asocSize, uint32_t level);
+   uint32_t read_asoc(grk_jp2_asoc *parent,
+		   	   	   	   uint8_t **header_data,
+					   uint32_t *header_data_size,
+					   uint32_t asocSize);
    bool read_header_procedure(void);
    bool default_validation(void);
    bool read_box_hdr(grk_jp2_box *box, uint32_t *p_number_bytes_read,BufferedStream *stream);
@@ -288,6 +295,10 @@ struct FileFormat : public ICodeStream {
    bool read_jp2h( uint8_t *p_header_data,	uint32_t header_size);
    bool read_box(grk_jp2_box *box, uint8_t *p_data,
    		uint32_t *p_number_bytes_read, uint64_t p_box_max_size);
+   void serializeAsoc(grk_jp2_asoc *asoc,
+		   	   	   	   grk_asoc *serial_asocs,
+					   uint32_t *num_asocs,
+					   uint32_t level);
 
 	/** handle to the J2K codec  */
 	CodeStream *codeStream;
@@ -331,7 +342,7 @@ struct FileFormat : public ICodeStream {
 	grk_jp2_uuid uuids[JP2_MAX_NUM_UUIDS];
 	uint32_t numUuids;
 
-	std::vector<grk_jp2_asoc*> asocs;
+	grk_jp2_asoc root_asoc;
 private:
 	bool postDecompress( grk_image *p_image);
 };
