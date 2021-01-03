@@ -125,7 +125,9 @@ struct grk_jp2_asoc : grk_jp2_box, grk_buffer<uint8_t>{
  * UUI box
  */
 struct grk_jp2_uuid: public grk_jp2_box, grk_buffer<uint8_t> {
-	grk_jp2_uuid() :  grk_buffer<uint8_t>() {}
+	grk_jp2_uuid() :  grk_buffer<uint8_t>() {
+		memset(uuid, 0, sizeof(uuid));
+	}
 	grk_jp2_uuid(const uint8_t myuuid[16], uint8_t *buf, size_t size, bool owns) :
 		grk_buffer<uint8_t>(buf, size, owns) {
 		for (int i = 0; i < 16; ++i)
@@ -153,13 +155,14 @@ struct grk_jp2_img_header_writer_handler {
 	uint32_t m_size;
 };
 
-struct FileFormat;
+class FileFormat;
 typedef bool (*jp2_procedure)(FileFormat *fileFormat);
 
 /**
  JPEG 2000 file format reader/writer
  */
-struct FileFormat : public ICodeStream {
+class FileFormat : public ICodeStream {
+public:
 	FileFormat(bool isDecoder, BufferedStream *stream);
 	~FileFormat();
 

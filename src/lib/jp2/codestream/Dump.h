@@ -26,7 +26,7 @@
 
 namespace grk {
 
-struct FileFormat;
+class FileFormat;
 
 
 /**
