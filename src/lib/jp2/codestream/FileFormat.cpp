@@ -346,7 +346,7 @@ static bool jp2_default_validation(FileFormat *fileFormat);
  *
  * @return	the given handler or nullptr if it could not be found.
  */
-static const grk_jp2_header_handler* jp2_img_find_handler(uint32_t id);
+static const BoxReadHandler* jp2_img_find_handler(uint32_t id);
 
 /**
  * Finds the execution function related to the given box id.
@@ -355,9 +355,9 @@ static const grk_jp2_header_handler* jp2_img_find_handler(uint32_t id);
  *
  * @return	the given handler or nullptr if it could not be found.
  */
-static const grk_jp2_header_handler* jp2_find_handler(uint32_t id);
+static const BoxReadHandler* jp2_find_handler(uint32_t id);
 
-static const grk_jp2_header_handler jp2_header[] = {
+static const BoxReadHandler jp2_header[] = {
 		{ JP2_JP, jp2_read_jp },
 		{ JP2_FTYP, jp2_read_ftyp },
 		{ JP2_JP2H, jp2_read_jp2h },
@@ -365,7 +365,7 @@ static const grk_jp2_header_handler jp2_header[] = {
 		{ JP2_UUID, jp2_read_uuid },
 		{ JP2_ASOC, jp2_read_asoc }};
 
-static const grk_jp2_header_handler jp2_img_header[] = {
+static const BoxReadHandler jp2_img_header[] = {
 		{ JP2_IHDR,	jp2_read_ihdr },
 		{ JP2_COLR, jp2_read_colr },
 		{ JP2_BPCC, jp2_read_bpc },
@@ -561,9 +561,9 @@ static bool jp2_exec(FileFormat *fileFormat, std::vector<jp2_procedure> *procs) 
 	return fileFormat->exec(procs);
 }
 
-static const grk_jp2_header_handler* jp2_find_handler(uint32_t id) {
+static const BoxReadHandler* jp2_find_handler(uint32_t id) {
 	auto handler_size =
-			sizeof(jp2_header) / sizeof(grk_jp2_header_handler);
+			sizeof(jp2_header) / sizeof(BoxReadHandler);
 
 	for (uint32_t i = 0; i < handler_size; ++i) {
 		if (jp2_header[i].id == id)
@@ -580,9 +580,9 @@ static const grk_jp2_header_handler* jp2_find_handler(uint32_t id) {
  *
  * @return	the given handler or nullptr if it could not be found.
  */
-static const grk_jp2_header_handler* jp2_img_find_handler(uint32_t id) {
+static const BoxReadHandler* jp2_img_find_handler(uint32_t id) {
 	auto handler_size =
-			sizeof(jp2_img_header) / sizeof(grk_jp2_header_handler);
+			sizeof(jp2_img_header) / sizeof(BoxReadHandler);
 
 	for (uint32_t i = 0; i < handler_size; ++i) {
 		if (jp2_img_header[i].id == id)
@@ -734,7 +734,7 @@ FileFormat::~FileFormat() {
 		(uuids + i)->dealloc();
 }
 
-void FileFormat::serializeAsoc(grk_jp2_asoc *asoc,
+void FileFormat::serializeAsoc(AsocBox *asoc,
 								grk_asoc *serial_asocs,
 								uint32_t *num_asocs,
 								uint32_t level){
@@ -1018,7 +1018,7 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
 
 	/* Image Header box */
 	numcomps = image->numcomps; /* NC */
-	comps = new grk_jp2_comps[numcomps];
+	comps = new ComponentInfo[numcomps];
 
 	h = image->y1 - image->y0;
 	w = image->x1 - image->x0;
@@ -1080,7 +1080,7 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
 
 	//transfer buffer to uuid
 	if (image->iptc_len && image->iptc_buf) {
-		uuids[numUuids++] = grk_jp2_uuid(IPTC_UUID, image->iptc_buf,
+		uuids[numUuids++] = UUIDBox(IPTC_UUID, image->iptc_buf,
 				image->iptc_len, true);
 		image->iptc_buf = nullptr;
 		image->iptc_len = 0;
@@ -1088,7 +1088,7 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
 
 	//transfer buffer to uuid
 	if (image->xmp_len && image->xmp_buf) {
-		uuids[numUuids++] = grk_jp2_uuid(XMP_UUID, image->xmp_buf,
+		uuids[numUuids++] = UUIDBox(XMP_UUID, image->xmp_buf,
 				image->xmp_len, true);
 		image->xmp_buf = nullptr;
 		image->xmp_len = 0;
@@ -1203,7 +1203,7 @@ bool FileFormat::end_compress(void){
 	return jp2_exec(this, m_procedure_list);
 }
 
-void FileFormat::free_color(grk_jp2_color *color){
+void FileFormat::free_color(grk_color *color){
 	assert(color);
 	free_palette_clr(color);
 	delete[] color->icc_profile_buf;
@@ -1216,7 +1216,7 @@ void FileFormat::free_color(grk_jp2_color *color){
 	}
 }
 
-void FileFormat::alloc_palette(grk_jp2_color *color, uint8_t num_channels, uint16_t num_entries){
+void FileFormat::alloc_palette(grk_color *color, uint8_t num_channels, uint16_t num_entries){
 	assert(color);
 	assert(num_channels);
 	assert(num_entries);
@@ -1231,7 +1231,7 @@ void FileFormat::alloc_palette(grk_jp2_color *color, uint8_t num_channels, uint1
 	color->palette = jp2_pclr;
 }
 
-uint32_t FileFormat::read_asoc(grk_jp2_asoc *parent,
+uint32_t FileFormat::read_asoc(AsocBox *parent,
 								uint8_t **header_data,
 								uint32_t *header_data_size,
 								uint32_t asocSize) {
@@ -1244,7 +1244,7 @@ uint32_t FileFormat::read_asoc(grk_jp2_asoc *parent,
     uint32_t asocBytesUsed = 0;
 
     // create asoc
-    auto childAsoc = new grk_jp2_asoc();
+    auto childAsoc = new AsocBox();
     parent->children.push_back(childAsoc);
 
     // read all children
@@ -1321,7 +1321,7 @@ grk_codestream_index* FileFormat::get_cstr_index(void){
 }
 
 bool FileFormat::read_header_procedure(void) {
-	grk_jp2_box box;
+	FileFormatBox box;
 	uint32_t nb_bytes_read;
 	uint64_t last_data_size = GRK_BOX_SIZE;
 	uint32_t current_data_size;
@@ -1499,7 +1499,7 @@ bool FileFormat::default_validation(void) {
  * Note: box length is never 0
  *
  */
-bool FileFormat::read_box_hdr(grk_jp2_box *box, uint32_t *p_number_bytes_read,
+bool FileFormat::read_box_hdr(FileFormatBox *box, uint32_t *p_number_bytes_read,
 		BufferedStream *stream) {
 	uint8_t data_header[8];
 
@@ -1575,7 +1575,7 @@ bool FileFormat::read_ihdr( uint8_t *p_image_header_data,
 	}
 
 	/* allocate memory for components */
-	comps = new grk_jp2_comps[numcomps];
+	comps = new ComponentInfo[numcomps];
 	grk_read<uint8_t>(p_image_header_data++, &bpc); /* BPC */
 
 	///////////////////////////////////////////////////
@@ -1671,7 +1671,7 @@ uint8_t* FileFormat::write_ihdr( uint32_t *p_nb_bytes_written) {
 	return ihdr_data;
 }
 
-uint8_t* FileFormat::write_buffer(uint32_t boxId, grk_buffer<uint8_t> *buffer,
+uint8_t* FileFormat::write_buffer(uint32_t boxId, grk_buf *buffer,
 		uint32_t *p_nb_bytes_written) {
 	assert(p_nb_bytes_written != nullptr);
 
@@ -2024,7 +2024,7 @@ uint8_t* FileFormat::write_channel_definition( uint32_t *p_nb_bytes_written) {
 	return cdef_data;
 }
 
-void FileFormat::apply_channel_definition(grk_image *image, grk_jp2_color *color) {
+void FileFormat::apply_channel_definition(grk_image *image, grk_color *color) {
 	auto info = color->channel_definition->descriptions;
 	uint16_t n = color->channel_definition->num_channel_descriptions;
 
@@ -2341,7 +2341,7 @@ bool FileFormat::read_colr( uint8_t *p_colr_header_data,
 	}
 	return true;
 }
-bool FileFormat::check_color(grk_image *image, grk_jp2_color *color) {
+bool FileFormat::check_color(grk_image *image, grk_color *color) {
 	uint16_t i;
 
 	/* testcase 4149.pdf.SIGSEGV.cf7.3501 */
@@ -2472,7 +2472,7 @@ bool FileFormat::check_color(grk_image *image, grk_jp2_color *color) {
 	return true;
 }
 
-bool FileFormat::apply_palette_clr(grk_image *image, grk_jp2_color *color) {
+bool FileFormat::apply_palette_clr(grk_image *image, grk_color *color) {
 	uint16_t num_channels, component_index, palette_column;
 	int32_t k, top_k;
 
@@ -2487,7 +2487,7 @@ bool FileFormat::apply_palette_clr(grk_image *image, grk_jp2_color *color) {
 		component_index = component_mapping[i].component_index;
 		if (image->comps[component_index].data == nullptr) {
 			GRK_ERROR("image->comps[%u].data == nullptr"
-					" in grk_jp2_apply_pclr().",i);
+					" in apply_palette_clr().",i);
 			return false;
 		}
 	}
@@ -2496,7 +2496,7 @@ bool FileFormat::apply_palette_clr(grk_image *image, grk_jp2_color *color) {
 	auto new_comps =
 			(grk_image_comp*) grk_malloc(num_channels * sizeof(grk_image_comp));
 	if (!new_comps) {
-		GRK_ERROR("Memory allocation failure in grk_jp2_apply_pclr().");
+		GRK_ERROR("Memory allocation failure in apply_palette_clr().");
 		return false;
 	}
 	for (uint16_t i = 0; i < num_channels; ++i) {
@@ -2521,7 +2521,7 @@ bool FileFormat::apply_palette_clr(grk_image *image, grk_jp2_color *color) {
 				grk_aligned_free(new_comps[i].data);
 			}
 			grk_free(new_comps);
-			GRK_ERROR("Memory allocation failure in grk_jp2_apply_pclr().");
+			GRK_ERROR("Memory allocation failure in apply_palette_clr().");
 			return false;
 		}
 		new_comps[i].prec = channel_prec[i];
@@ -2746,7 +2746,7 @@ bool FileFormat::read_palette_clr( uint8_t *p_pclr_header_data,	uint32_t pclr_he
 
 	return true;
 }
-void FileFormat::free_palette_clr(grk_jp2_color *color) {
+void FileFormat::free_palette_clr(grk_color *color) {
 	if (color) {
 		if (color->palette) {
 			delete[] color->palette->channel_sign;
@@ -2760,7 +2760,7 @@ void FileFormat::free_palette_clr(grk_jp2_color *color) {
 }
 
 bool FileFormat::write_jp2h(void) {
-	grk_jp2_img_header_writer_handler writers[32];
+	BoxWriteHandler writers[32];
 	int32_t i, nb_writers = 0;
 	/* size of data for super box*/
 	uint32_t jp2h_size = 8;
@@ -2981,9 +2981,9 @@ bool FileFormat::exec( std::vector<jp2_procedure> *procs) {
 	return result;
 }
 
-const grk_jp2_header_handler* FileFormat::find_handler(uint32_t id) {
+const BoxReadHandler* FileFormat::find_handler(uint32_t id) {
 	auto handler_size =
-			sizeof(jp2_header) / sizeof(grk_jp2_header_handler);
+			sizeof(jp2_header) / sizeof(BoxReadHandler);
 
 	for (uint32_t i = 0; i < handler_size; ++i) {
 		if (jp2_header[i].id == id)
@@ -3000,9 +3000,9 @@ const grk_jp2_header_handler* FileFormat::find_handler(uint32_t id) {
  *
  * @return	the given handler or nullptr if it could not be found.
  */
-const grk_jp2_header_handler* FileFormat::img_find_handler(uint32_t id) {
+const BoxReadHandler* FileFormat::img_find_handler(uint32_t id) {
 	auto handler_size =
-			sizeof(jp2_img_header) / sizeof(grk_jp2_header_handler);
+			sizeof(jp2_img_header) / sizeof(BoxReadHandler);
 
 	for (uint32_t i = 0; i < handler_size; ++i) {
 		if (jp2_img_header[i].id == id)
@@ -3134,7 +3134,7 @@ bool FileFormat::read_jp2h( uint8_t *p_header_data,	uint32_t header_size) {
 	/* iterate while remaining data */
 	while (header_size) {
 		uint32_t box_size = 0;
-		grk_jp2_box box;
+		FileFormatBox box;
 		if (!read_box(&box, p_header_data, &box_size, (uint64_t)header_size)) {
 			GRK_ERROR("Stream error while reading JP2 Header box");
 			return false;
@@ -3169,7 +3169,7 @@ bool FileFormat::read_jp2h( uint8_t *p_header_data,	uint32_t header_size) {
 	return true;
 }
 
-bool FileFormat::read_box(grk_jp2_box *box, uint8_t *p_data,
+bool FileFormat::read_box(FileFormatBox *box, uint8_t *p_data,
 		uint32_t *p_number_bytes_read, uint64_t p_box_max_size) {
 	assert(p_data != nullptr);
 	assert(box != nullptr);

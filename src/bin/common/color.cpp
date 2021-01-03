@@ -996,7 +996,7 @@ bool color_esycc_to_rgb(grk_image *image) {
 
 }/* color_esycc_to_rgb() */
 
-void alloc_palette(grk_jp2_color *color, uint8_t num_channels, uint16_t num_entries){
+void alloc_palette(grk_color *color, uint8_t num_channels, uint16_t num_entries){
 	assert(color);
 	assert(num_channels);
 	assert(num_entries);

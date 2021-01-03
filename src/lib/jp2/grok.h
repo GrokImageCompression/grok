@@ -602,13 +602,13 @@ typedef struct _grk_palette_data {
 /**
  ICC profile, palette, channel definition
  */
-typedef struct _grk_jp2_color {
+typedef struct grk_color {
 	uint8_t *icc_profile_buf;
 	uint32_t icc_profile_len;
 	grk_channel_definition *channel_definition;
 	grk_palette_data *palette;
 	bool has_colour_specification_box;
-} grk_jp2_color;
+} grk_color;
 
 typedef struct grk_asoc {
     uint32_t level;  //0 for root level
@@ -803,24 +803,19 @@ typedef void *grk_codec;
 typedef size_t (*grk_stream_read_fn)(void *p_buffer, size_t nb_bytes,
 		void *user_data);
 
-
-
 /*
  * Callback function prototype for write function
  */
 typedef size_t (*grk_stream_write_fn)(void *p_buffer, size_t nb_bytes,
 		void *user_data);
-
 /*
  * Callback function prototype for (absolute) seek function.
  */
 typedef bool (*grk_stream_seek_fn)(uint64_t nb_bytes, void *user_data);
-
 /*
  * Callback function prototype for free user data function
  */
 typedef void (*grk_stream_free_user_data_fn)(void *user_data);
-
 /*
  * JPEG 2000 stream.
  */
@@ -904,7 +899,7 @@ typedef struct _grk_image {
 	GRK_COLOR_SPACE color_space;
 	/** image components */
 	grk_image_comp *comps;
-	grk_jp2_color color;
+	grk_color color;
 	bool has_capture_resolution;
 	double capture_resolution[2];
 	bool has_display_resolution;

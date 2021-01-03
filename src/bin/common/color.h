@@ -31,7 +31,7 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB);
 bool color_cmyk_to_rgb(grk_image *image);
 bool color_esycc_to_rgb(grk_image *image);
 
-void alloc_palette(grk_jp2_color *color, uint8_t num_channels, uint16_t num_entries);
+void alloc_palette(grk_color *color, uint8_t num_channels, uint16_t num_entries);
 
 }
 
