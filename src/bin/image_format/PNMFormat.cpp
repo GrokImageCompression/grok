@@ -426,8 +426,10 @@ static grk_image* pnmtoimage(const char *filename,
 		for (uint64_t i = 0; i < area; i++) {
 			for (compno = 0; compno < numcomps; compno++) {
 				uint32_t val = 0;
-				if (fscanf(fp, "%u", &val) != 1)
-					spdlog::warn("fscanf error");
+				if (fscanf(fp, "%u", &val) != 1){
+					spdlog::error("error reading ASCII PPM pixel data");
+					goto cleanup;
+				}
 				image->comps[compno].data[i] = (int32_t)val;
 			}
 			counter++;
