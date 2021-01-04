@@ -109,9 +109,15 @@ static bool SeekCallback(size_t nBytes, void * pUserData)
     return true;
 }
 
+struct Initializer{
+	Initializer(){
+		grk_initialize(nullptr,0);
+	}
+};
+
 int LLVMFuzzerInitialize(int* argc, char*** argv)
 {
-	grk_initialize(nullptr,0);
+	static Initializer init;
     return 0;
 }
 
