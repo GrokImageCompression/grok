@@ -462,10 +462,6 @@ bool TIFFFormat::encodeHeader(grk_image *image, const std::string &filename,
 	bool subsampled = grk::isSubsampled(m_image);
 	tsize_t stride, rowsPerStrip;
 
-	if (grk::isSubsampled(m_image) && !grk::isChromaSubsampled(m_image)){
-		spdlog::error("TIFFFormat::encodeHeader: only support subsampled image with subsampled chroma channels");
-		return false;
-	}
 	assert(m_image);
 	assert(m_fileName.c_str());
 	if (m_image->color_space == GRK_CLRSPC_CMYK) {
@@ -513,6 +509,17 @@ bool TIFFFormat::encodeHeader(grk_image *image, const std::string &filename,
 		spdlog::error(
 				"TIFFFormat::encodeHeader: number of components {} must be <= {}", numcomps,maxNumComponents);
 		goto cleanup;
+	}
+
+	if (grk::isSubsampled(m_image)){
+		if (tiPhoto != PHOTOMETRIC_YCBCR){
+			spdlog::error("TIFFFormat : subsampling only supported for YCbCr images");
+			goto cleanup;
+		}
+		if (!grk::isChromaSubsampled(m_image)) {
+			spdlog::error("TIFFFormat::encodeHeader: only chroma channels can be subsampled");
+			goto cleanup;
+		}
 	}
 
 	if (!grk::all_components_sanity_check(m_image,true))
