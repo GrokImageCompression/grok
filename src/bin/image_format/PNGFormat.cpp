@@ -134,6 +134,14 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	if (!width || !height)
 		goto beach;
 
+
+    if (interlace_type == PNG_INTERLACE_ADAM7) {
+        auto number_of_passes = png_set_interlace_handling(png);
+        assert(number_of_passes == 7);
+        (void)number_of_passes;
+    }
+
+
 	/* png_set_expand():
 	 * expand paletted images to RGB, expand grayscale images of
 	 * less than 8-bit depth to 8-bit depth, and expand tRNS chunks
