@@ -209,6 +209,7 @@ bool grk_image_single_component_data_alloc(
 	if (!data) {
 		grk::GRK_ERROR("Failed to allocate aligned memory buffer of dimensions %u x %u "
 				"@ alignment %d",comp->stride, comp->h, grk::default_align);
+		return false;
 	}
 	grk_image_single_component_data_free(comp);
 	comp->data = data;
