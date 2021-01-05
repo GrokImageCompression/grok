@@ -77,14 +77,16 @@ template<typename T> struct ResWindow {
 		bandWindowRect[BAND_ORIENT_HH].grow(FILTER_WIDTH, m_tileCompFullRes->width() - m_tileCompFullResLower->width(),  m_tileCompFullRes->height() - m_tileCompFullResLower->height());
 		m_bandWindows.push_back(new grk_buffer_2d<T>(bandWindowRect[BAND_ORIENT_HH]));
 
-		auto win_low 				= bandWindowRect[BAND_ORIENT_LL];
-		auto win_high 				= bandWindowRect[BAND_ORIENT_HL];
-		m_resWindow->x0 	= min<uint32_t>(2 * win_low.x0, 2 * bandWindowRect[BAND_ORIENT_HL].x0);
+		auto win_low 		= bandWindowRect[BAND_ORIENT_LL];
+		auto win_high 		= bandWindowRect[BAND_ORIENT_HL];
+		m_resWindow->x0 	= min<uint32_t>(2 * win_low.x0, 2 * win_high.x0);
 		m_resWindow->x1 	= min<uint32_t>(max<uint32_t>(2 * win_low.x1, 2 * win_high.x1), m_tileCompFullRes->width());
-		win_low 					= bandWindowRect[BAND_ORIENT_LL];
-		win_high 					= bandWindowRect[BAND_ORIENT_LH];
+		assert(m_resWindow->x0 <= m_resWindow->x1);
+		win_low 			= bandWindowRect[BAND_ORIENT_LL];
+		win_high 			= bandWindowRect[BAND_ORIENT_LH];
 		m_resWindow->y0 	= min<uint32_t>(2 * win_low.y0, 2 * win_high.y0);
 		m_resWindow->y1 	= min<uint32_t>(max<uint32_t>(2 * win_low.y1, 2 * win_high.y1), m_tileCompFullRes->height());
+		assert(m_resWindow->y0 <= m_resWindow->y1);
 
 		// two windows formed by horizontal pass and used as input for vertical pass
 		grk_rect_u32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
