@@ -160,14 +160,6 @@ static void compress_help_display(void) {
 	fprintf(stdout, " * No offset of the origin of the tiles\n");
 	fprintf(stdout, " * Reversible DWT 5-3\n");
 	fprintf(stdout, "\n");
-
-	fprintf(stdout, "Note:\n");
-	fprintf(stdout, "-----\n");
-	fprintf(stdout, "\n");
-	fprintf(stdout,
-			"The markers written to the main_header are : SOC SIZ COD QCD COM.\n");
-	fprintf(stdout, "COD and QCD never appear in the tile_header.\n");
-	fprintf(stdout, "\n");
 	fprintf(stdout, "-----------\n");
 	fprintf(stdout, "Parameters:\n");
 	fprintf(stdout, "-----------\n");

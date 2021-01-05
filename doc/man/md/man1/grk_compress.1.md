@@ -197,7 +197,7 @@ and they can be combined together. If more than one mode is used, the values bet
 
 Mode HT [64], for High Throughput encoding, *cannot* be combined with any of the other flags.
 
-`-u, -TP] [R|L|C]`
+`-u, -TP [R|L|C]`
 
 Divide packets of every tile into tile-parts. The division is made by grouping Resolutions (R), Layers (L) or Components (C). The type of division is specified by setting the single letter `R`, `L`, or `C` as the value for this flag.
 
