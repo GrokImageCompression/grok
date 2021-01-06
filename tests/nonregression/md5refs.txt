@@ -323,3 +323,4 @@ d5c155592a00f695dad564cf51e602f8  cinema129x129.bmp
 a37951a75863e7912789703a0b09f473  b1_mono_4k.tif
 90afe08c78791e48eeaf56c450d8fdba  issue432.jp2_0.pgx
 1bd39562880ff7ac0e8c5898223312b7  tnsot_zero_missing_eoc.tif
+2e40083a5abcb75a7996b81503180064  clusterfuzz-29249-uninitialized-mem_0.pgx
