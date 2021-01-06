@@ -1954,7 +1954,7 @@ template <typename T,
 					goto cleanup;
 		}
 
-		auto executor_h = [sa, resWindowRect, &decompressor](decompress_job<float, dwt_data<T>> *job){
+		auto executor_h = [sa, resWindowRect, &decompressor](decompress_job<T, dwt_data<T>> *job){
 			 try {
 				 for (uint32_t j = job->min_j; j < job->max_j; j += HORIZ_PASS_HEIGHT) {
 					 auto height = std::min<uint32_t>((uint32_t)HORIZ_PASS_HEIGHT,job->max_j - j );
@@ -1989,7 +1989,7 @@ template <typename T,
 			 }
 		};
 
-		auto executor_v = [sa, resWindowRect, &decompressor](decompress_job<float, dwt_data<T>> *job){
+		auto executor_v = [sa, resWindowRect, &decompressor](decompress_job<T, dwt_data<T>> *job){
 			 try {
 				 for (uint32_t j = job->min_j; j < job->max_j; j += VERT_PASS_WIDTH) {
 					auto width = std::min<uint32_t>((uint32_t)VERT_PASS_WIDTH,job->max_j - j );
@@ -2044,7 +2044,7 @@ template <typename T,
 			std::vector< std::future<int> > results;
 			bool blockError = false;
 			for(uint32_t j = 0; j < num_jobs; ++j) {
-			   auto job = new decompress_job<float, dwt_data<T>>( horiz,splitWindowRect[k].y0 + j * step_j,
+			   auto job = new decompress_job<T, dwt_data<T>>( horiz,splitWindowRect[k].y0 + j * step_j,
 													   j < (num_jobs - 1U) ? splitWindowRect[k].y0 + (j + 1U) * step_j : splitWindowRect[k].y1);
 				if (!job->data.alloc(data_size,pad)) {
 					GRK_ERROR("Out of memory");
@@ -2085,7 +2085,7 @@ template <typename T,
 		bool blockError = false;
 		std::vector< std::future<int> > results;
 		for(uint32_t j = 0; j < num_jobs; ++j) {
-		   auto job = new decompress_job<float, dwt_data<T>>( vert,resWindowRect.x0 + j * step_j,
+		   auto job = new decompress_job<T, dwt_data<T>>( vert,resWindowRect.x0 + j * step_j,
 												  j < (num_jobs - 1U) ?  resWindowRect.x0 + (j + 1U) * step_j : resWindowRect.x1);
 			if (!job->data.alloc(data_size,pad)) {
 				GRK_ERROR("Out of memory");
