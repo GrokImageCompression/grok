@@ -391,8 +391,7 @@ template<typename F> bool TileComponent::postDecompressImpl(int32_t *srcData, De
 								  block->y + cblk->height(),
 								  srcData,
 								  1,
-								  cblk->width(),
-								  true)) {
+								  cblk->width())) {
 				  return false;
 			}
 		} catch (MissingSparseBlockException &ex){
