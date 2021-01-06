@@ -69,6 +69,9 @@ be used. If blocks are too small, the book-keeping costs of blocks will rise.
 
 namespace grk {
 
+const uint32_t debugFill = 1 << 25;
+//#define DEBUG_SPARSE
+
 class ISparseBuffer {
 public:
 
@@ -152,8 +155,33 @@ public:
 	 * @return true in case of success.
 	 */
 	virtual bool alloc( grk_rect_u32 window) = 0;
+};
 
-
+struct SparseBlock{
+	SparseBlock(void) : data(nullptr),
+						valid(nullptr)
+	{}
+	~SparseBlock() {
+		delete[] data;
+		delete[] valid;
+	}
+	bool alloc(uint32_t block_area){
+		data = new int32_t[block_area];
+#ifdef DEBUG_SPARSE
+		for (uint32_t i = 0; i < block_area; ++i)
+			data[i] = debugFill;
+		valid = new uint8_t[block_area];
+		memset(valid, 0, block_area);
+#else
+		// note: we need to zero out each source block, in case
+		// some code blocks are missing from the compressed stream.
+		// In this case, zero is the best default value for the block.
+		memset(data, 0, block_area * sizeof(int32_t));
+#endif
+		return true;
+	}
+	int32_t *data;
+	uint8_t *valid;
 };
 
 template<uint32_t LBW, uint32_t LBH> class SparseBuffer : public ISparseBuffer {
@@ -194,7 +222,7 @@ public:
 									grid_off_x+grid_width,
 									grid_off_y + grid_height);
 	    auto block_count = grid_bounds.area();
-	    data_blocks = new int32_t*[block_count];
+	    data_blocks = new SparseBlock*[block_count];
 	    for (uint64_t i = 0; i < block_count; ++i)
 	    	data_blocks[i] = nullptr;
 
@@ -207,7 +235,7 @@ public:
 	{
 		if (data_blocks) {
 			for (uint64_t i = 0; i < (uint64_t)grid_bounds.width() * grid_bounds.height(); i++){
-				grk_free(data_blocks[i]);
+				delete (data_blocks[i]);
 				data_blocks[i] = nullptr;
 			}
 			delete[] data_blocks;
@@ -291,16 +319,10 @@ private:
 	    		}
 	            auto src_block = getBlock(block_x, block_y);
 				if (!src_block) {
-					const uint32_t block_area = block_width*block_height;
-					// note: we need to zero out each source block, in case
-					// some code blocks are missing from the compressed stream.
-					// In this case, zero is the best default value for the block.
-					src_block = (int32_t*) grk_calloc(block_area, sizeof(int32_t));
-					if (!src_block) {
-						GRK_ERROR("SparseBuffer: Out of memory");
+					auto b = new SparseBlock();
+					if (!b->alloc(block_width*block_height))
 						return false;
-					}
-					setBlock(block_x, block_y, src_block);
+					setBlock(block_x, block_y, b);
 				}
 	        }
 	    }
@@ -308,12 +330,14 @@ private:
 	    return true;
 	}
 
-	inline int32_t* getBlock(uint32_t block_x, uint32_t block_y){
-		return data_blocks[(uint64_t)(block_y - grid_bounds.y0) * grid_bounds.width() + (block_x - grid_bounds.x0)];
+	inline SparseBlock* getBlock(uint32_t block_x, uint32_t block_y){
+		uint64_t index = (uint64_t)(block_y - grid_bounds.y0) * grid_bounds.width() + (block_x - grid_bounds.x0);
+		return data_blocks[index];
 	}
-	inline void setBlock(uint32_t block_x, uint32_t block_y, int32_t* block){
+	inline void setBlock(uint32_t block_x, uint32_t block_y, SparseBlock* block){
 		assert(grid_bounds.contains(grk_pt(block_x,block_y)));
-		data_blocks[(uint64_t)(block_y - grid_bounds.y0)* grid_bounds.width() + (block_x - grid_bounds.x0)] = block;
+		uint64_t index = (uint64_t)(block_y - grid_bounds.y0) * grid_bounds.width() + (block_x - grid_bounds.x0);
+		data_blocks[index] = block;
 	}
 	/** Returns whether window bounds are valid (non empty and within array bounds)
 	 * @param x0 left x coordinate of the window.
@@ -375,7 +399,7 @@ private:
 	            }
 	            if (is_read_op) {
 					const int32_t* GRK_RESTRICT src_ptr =
-							src_block + ((uint64_t)block_y_offset << LBW) + block_x_offset;
+							src_block->data + ((uint64_t)block_y_offset << LBW) + block_x_offset;
 					int32_t* GRK_RESTRICT dest_ptr = buf + (y - y0) * line_stride +
 													   (x - x0) * col_stride;
 					for (uint32_t j = 0; j < y_incr; j++) {
@@ -389,7 +413,7 @@ private:
 					}
 	            } else {
                     const int32_t* GRK_RESTRICT src_ptr = buf + (y - y0) * line_stride + (x - x0) * col_stride;
-                    int32_t* GRK_RESTRICT dest_ptr = src_block + ((uint64_t)block_y_offset << LBW) + block_x_offset;
+                    int32_t* GRK_RESTRICT dest_ptr = src_block->data + ((uint64_t)block_y_offset << LBW) + block_x_offset;
 
                     for (uint32_t j = 0; j < y_incr; j++) {
 						uint64_t ind = 0;
@@ -409,7 +433,7 @@ private:
 private:
     const uint32_t block_width;
     const uint32_t block_height;
-    int32_t** data_blocks;
+    SparseBlock** data_blocks;
     grk_rect_u32 bounds;
     grk_rect_u32 grid_bounds;
 };

@@ -150,6 +150,10 @@ template <typename T> struct dwt_data {
 	        GRK_ERROR("Failed to allocate %d bytes", len);
 	        return false;
 	    }
+#ifdef DEBUG_SPARSE
+		for (uint32_t i = 0; i < len / sizeof(T); ++i)
+			allocatedMem[i] = T(debugFill);
+#endif
 	    mem = allocatedMem + padding;
 		return (allocatedMem != nullptr) ? true : false;
 	}
