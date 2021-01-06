@@ -407,7 +407,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 									K_msbs, band->numbps);
 							// since we don't know how many bit planes are in this block, we
 							// set numbps to max - the t1 decoder will sort it out
-							cblk->numbps = 32 * 3 - 2;
+							cblk->numbps = max_precision_jpeg_2000 * 3 - 2;
 						} else {
 							cblk->numbps = band->numbps - K_msbs;
 						}
