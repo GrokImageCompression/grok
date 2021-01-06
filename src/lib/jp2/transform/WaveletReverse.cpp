@@ -2138,7 +2138,7 @@ bool WaveletReverse::decompress(TileProcessor *p_tcd,
 	        return decompress_tile_53(tilec,numres);
 	    else
 	        return decompress_partial_tile<int32_t,
-										getFilterWidth<uint32_t>(true),
+										getFilterPad<uint32_t>(true),
 										Partial53<int32_t>>(tilec,
 															window,
 															numres,
@@ -2148,7 +2148,7 @@ bool WaveletReverse::decompress(TileProcessor *p_tcd,
 		        return decompress_tile_97(tilec, numres);
 		    else
 		        return decompress_partial_tile<vec4f,
-											getFilterWidth<uint32_t>(false),
+											getFilterPad<uint32_t>(false),
 											Partial97<vec4f>>(tilec,
 															window,
 															numres,
