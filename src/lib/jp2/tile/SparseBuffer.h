@@ -89,6 +89,7 @@ public:
 	 * @param dest user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * dest_line_stride + (x1 - x0 - 1) * dest_col_stride + 1) bytes large.
 	 * @param dest_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
 	 * @param dest_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
+	 * @param forgiving if set to TRUE and the window is invalid, true will still be returned.
 	 * @return true in case of success.
 	 */
 	virtual bool read(uint32_t x0,
@@ -97,7 +98,8 @@ public:
 					 uint32_t y1,
 					 int32_t* dest,
 					 const uint32_t dest_col_stride,
-					 const uint32_t dest_line_stride) = 0;
+					 const uint32_t dest_line_stride,
+					 bool forgiving) = 0;
 
 	/** Read the content of a rectangular window of the sparse array into a
 	 * user buffer.
@@ -108,12 +110,14 @@ public:
 	 * @param dest user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * dest_line_stride + (x1 - x0 - 1) * dest_col_stride + 1) bytes large.
 	 * @param dest_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
 	 * @param dest_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
+	 * @param forgiving if set to TRUE and the window is invalid, true will still be returned.
 	 * @return true in case of success.
 	 */
 	virtual bool read(grk_rect_u32 window,
 						 int32_t* dest,
 						 const uint32_t dest_col_stride,
-						 const uint32_t dest_line_stride) = 0;
+						 const uint32_t dest_line_stride,
+						 bool forgiving) = 0;
 
 
 	/** Write the content of a rectangular window into the sparse array from a
@@ -128,6 +132,7 @@ public:
 	 * @param src user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * src_line_stride + (x1 - x0 - 1) * src_col_stride + 1) bytes large.
 	 * @param src_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
 	 * @param src_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
+	 * @param forgiving if set to TRUE and the window is invalid, true will still be returned.
 	 * @return true in case of success.
 	 */
 	virtual bool write(uint32_t x0,
@@ -136,7 +141,8 @@ public:
 						  uint32_t y1,
 						  const int32_t* src,
 						  const uint32_t src_col_stride,
-						  const uint32_t src_line_stride) = 0;
+						  const uint32_t src_line_stride,
+						  bool forgiving) = 0;
 
 
 	/** Allocate all blocks for a rectangular window into the sparse array from a
@@ -241,19 +247,22 @@ public:
 			 uint32_t y1,
 			 int32_t* dest,
 			 const uint32_t dest_col_stride,
-			 const uint32_t dest_line_stride)
+			 const uint32_t dest_line_stride,
+			 bool forgiving)
 	{
 	    return read_or_write( x0, y0, x1, y1,
 							   dest,
 							   dest_col_stride,
 							   dest_line_stride,
+							   forgiving,
 							   true);
 	}
 
 	bool read(grk_rect_u32 window,
 			 int32_t* dest,
 			 const uint32_t dest_col_stride,
-			 const uint32_t dest_line_stride)
+			 const uint32_t dest_line_stride,
+			 bool forgiving)
 	{
 		return read(window.x0,
 				window.y0,
@@ -261,7 +270,8 @@ public:
 				window.y1,
 				dest,
 				dest_col_stride,
-				dest_line_stride);
+				dest_line_stride,
+				forgiving);
 	}
 
 	bool write(uint32_t x0,
@@ -270,12 +280,14 @@ public:
 			  uint32_t y1,
 			  const int32_t* src,
 			  const uint32_t src_col_stride,
-			  const uint32_t src_line_stride)
+			  const uint32_t src_line_stride,
+			  bool forgiving)
 	{
 	    return read_or_write(x0, y0, x1, y1,
 	            (int32_t*)src,
 	            src_col_stride,
 	            src_line_stride,
+	            forgiving,
 	            false);
 	}
 
@@ -349,9 +361,10 @@ private:
 						int32_t* buf,
 						const uint32_t buf_col_stride,
 						const uint32_t buf_line_stride,
+						bool forgiving,
 						bool is_read_op){
 	    if (!is_window_valid(x0, y0, x1, y1))
-	        return false;
+	        return forgiving;
 
 	    const uint64_t line_stride 	= buf_line_stride;
 	    const uint64_t col_stride 	= buf_col_stride;

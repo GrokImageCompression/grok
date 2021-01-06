@@ -1478,29 +1478,26 @@ public:
 		const uint32_t typeSize = (uint32_t)(sizeof(T)/sizeof(int32_t));
 	    for (uint32_t i = 0; i < y_num_rows; i++) {
 	    	// read one row of L band and write interleaved
-			if (dwt->win_l_0 < dwt->win_l_1) {
-				bool ret = sa->read(dwt->win_l_0,
-								  y_offset + i,
-								  dwt->win_l_1,
-								  y_offset + i + 1,
-								  (int32_t*)dwt->memLow + i,
-								  2 * typeSize,
-								  0);
-				assert(ret);
-				GRK_UNUSED(ret);
-			}
-			if (dwt->win_h_0 < dwt->win_h_1) {
-				// read one row of H band and write interleaved
-				bool ret = sa->read(dwt->sn + dwt->win_h_0,
-								  y_offset + i,
-								  dwt->sn + dwt->win_h_1,
-								  y_offset + i + 1,
-								  (int32_t*)dwt->memHigh + i,
-								  2 * typeSize,
-								  0);
-				assert(ret);
-				GRK_UNUSED(ret);
-			}
+	        bool ret = sa->read(dwt->win_l_0,
+							  y_offset + i,
+							  dwt->win_l_1,
+							  y_offset + i + 1,
+							  (int32_t*)dwt->memLow + i,
+							  2 * typeSize,
+							  0,
+							  true);
+	        assert(ret);
+	        // read one row of H band and write interleaved
+	        ret = sa->read(dwt->sn + dwt->win_h_0,
+							  y_offset + i,
+							  dwt->sn + dwt->win_h_1,
+							  y_offset + i + 1,
+							  (int32_t*)dwt->memHigh + i,
+							  2 * typeSize,
+							  0,
+							  true);
+	        assert(ret);
+	        GRK_UNUSED(ret);
 	    }
 	}
 	/*
@@ -1514,31 +1511,27 @@ public:
 								uint32_t x_num_elements){
 	    const uint32_t VERT_PASS_WIDTH = 4;
 		assert(x_num_elements <= VERT_PASS_WIDTH);
-		if (dwt->win_l_0 < dwt->win_l_1) {
-				// read one vertical strip (of width x_num_elements <= VERT_PASS_WIDTH) of L band and write interleaved
-			bool ret = sa->read(x_offset,
-								dwt->win_l_0,
-								x_offset + x_num_elements,
-								dwt->win_l_1,
-								(int32_t*)dwt->memLow,
-								1,
-								2 * VERT_PASS_WIDTH);
-			assert(ret);
-			GRK_UNUSED(ret);
-		}
-		if (dwt->win_h_0 < dwt->win_h_1) {
-			// read one vertical strip (of width x_num_elements) of H band and write interleaved
-			bool ret = sa->read(x_offset,
-							dwt->sn + dwt->win_h_0,
+    	// read one vertical strip (of width x_num_elements <= VERT_PASS_WIDTH) of L band and write interleaved
+	    bool ret = sa->read(x_offset,
+	    					dwt->win_l_0,
 							x_offset + x_num_elements,
-							dwt->sn + dwt->win_h_1,
-							(int32_t*)dwt->memHigh,
+							dwt->win_l_1,
+							(int32_t*)dwt->memLow,
 							1,
-							2 * VERT_PASS_WIDTH);
-			assert(ret);
-		    GRK_UNUSED(ret);
-		}
-
+							2 * VERT_PASS_WIDTH,
+							true);
+	    assert(ret);
+    	// read one vertical strip (of width x_num_elements) of H band and write interleaved
+	    ret = sa->read(x_offset,
+	    				dwt->sn + dwt->win_h_0,
+						x_offset + x_num_elements,
+						dwt->sn + dwt->win_h_1,
+						(int32_t*)dwt->memHigh,
+						1,
+						2 * VERT_PASS_WIDTH,
+						true);
+	    assert(ret);
+	    GRK_UNUSED(ret);
 	}
 };
 
@@ -1892,7 +1885,8 @@ template <typename T,
     	bool ret = sa->read(synthesisWindow,
 					   tilec->getBuffer()->getWindow()->data,
                        1,
-					   tilec->getBuffer()->getWindow()->stride);
+					   tilec->getBuffer()->getWindow()->stride,
+                       true);
         assert(ret);
         GRK_UNUSED(ret);
         return true;
@@ -1964,19 +1958,18 @@ template <typename T,
 					 job->data.memLow 	=  job->data.mem - job->data.win_l_0;
 					 job->data.memHigh  =  job->data.mem + job->data.win_h_0 - 2 * job->data.win_l_0;
 					 decompressor.decompress_h(&job->data);
-					 if (resWindowRect.x0 < resWindowRect.x1) {
-						 if (!sa->write( resWindowRect.x0,
-										  j,
-										  resWindowRect.x1,
-										  j + height,
-										  (int32_t*)(job->data.mem + resWindowRect.x0 - 2 * job->data.win_l_0),
-										  HORIZ_PASS_HEIGHT,
-										  1)) {
-							 GRK_ERROR("sparse array write failure");
-							 job->data.release();
-							 delete job;
-							 return 1;
-						 }
+					 if (!sa->write( resWindowRect.x0,
+									  j,
+									  resWindowRect.x1,
+									  j + height,
+									  (int32_t*)(job->data.mem + resWindowRect.x0 - 2 * job->data.win_l_0),
+									  HORIZ_PASS_HEIGHT,
+									  1,
+									  true)) {
+						 GRK_ERROR("sparse array write failure");
+						 job->data.release();
+						 delete job;
+						 return 1;
 					 }
 				 }
 				  job->data.release();
@@ -1999,19 +1992,18 @@ template <typename T,
 					job->data.memLow   =  job->data.mem - job->data.win_l_0;
 					job->data.memHigh  =  job->data.mem + job->data.win_h_0 - 2 * job->data.win_l_0;
 					decompressor.decompress_v(&job->data);
-					if (resWindowRect.y0 < resWindowRect.y1) {
-						if (!sa->write(j,
-									  resWindowRect.y0,
-									  j + width,
-									  resWindowRect.y1,
-									  (int32_t*)(job->data.mem + resWindowRect.y0 - 2 * job->data.win_l_0),
-									  1,
-									  VERT_PASS_WIDTH)) {
-							GRK_ERROR("Sparse array write failure");
-							job->data.release();
-							delete job;
-							return 1;
-						}
+					if (!sa->write(j,
+								  resWindowRect.y0,
+								  j + width,
+								  resWindowRect.y1,
+								  (int32_t*)(job->data.mem + resWindowRect.y0 - 2 * job->data.win_l_0),
+								  1,
+								  VERT_PASS_WIDTH,
+								  true)) {
+						GRK_ERROR("Sparse array write failure");
+						job->data.release();
+						delete job;
+						return 1;
 					}
 				 }
 				job->data.release();
@@ -2110,14 +2102,13 @@ template <typename T,
 			goto cleanup;
     }
     //final read into tile buffer
-    if (synthesisWindow.non_empty()) {
-		bool ret = sa->read(synthesisWindow,
-						   tilec->getBuffer()->getWindow()->data,
-						   1,
-						   tilec->getBuffer()->getWindow()->stride);
-		assert(ret);
-		GRK_UNUSED(ret);
-    }
+	bool ret = sa->read(synthesisWindow,
+					   tilec->getBuffer()->getWindow()->data,
+					   1,
+					   tilec->getBuffer()->getWindow()->stride,
+					   true);
+	assert(ret);
+	GRK_UNUSED(ret);
 	} catch (MissingSparseBlockException &ex){
 		goto cleanup;
 	}
