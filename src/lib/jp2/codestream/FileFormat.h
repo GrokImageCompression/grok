@@ -154,29 +154,23 @@ public:
 	FileFormat(bool isDecoder, BufferedStream *stream);
 	~FileFormat();
 
-	/** Main header reading function handler */
+   /** Main header reading function handler */
    bool read_header(grk_header_info  *header_info, grk_image **p_image);
 
-	/** Set up decompressor function handler */
-  void init_decompress(grk_dparameters  *p_param);
+   /** Set up decompressor function handler */
+   void init_decompress(grk_dparameters  *p_param);
 
-	/**
-	 * Sets the given area to be decompressed. This function should be called right after grk_read_header
-	 * and before any tile header reading.
-	 *
-	 * @param	p_image     image
-	 * @param	start_x		left position of the rectangle to decompress (in image coordinates).
-	 * @param	start_y		up position of the rectangle to decompress (in image coordinates).
-	 * @param	end_x		right position of the rectangle to decompress (in image coordinates).
-	 * @param	end_y		bottom position of the rectangle to decompress (in image coordinates).
-	 *
-	 * @return	true			if the area could be set.
-	 */
-	bool set_decompress_window(grk_image *p_image,
-								uint32_t start_x,
-								uint32_t start_y,
-								uint32_t end_x,
-								uint32_t end_y);
+  /**
+  	* Sets the given area to be decompressed, relative to image origin.
+  	* This function should be called right after grk_read_header
+	* and before any tile header reading.
+	*
+	* @param	p_image     image
+	* @param	window		decompress window
+	*
+	* @return	true			if the area could be set.
+  */
+   bool set_decompress_window(grk_image *p_image, grk_rect_u32 window);
    bool decompress( grk_plugin_tile *tile,	grk_image *p_image);
    bool end_decompress(void);
    bool init_compress(grk_cparameters  *p_param,grk_image *p_image);
@@ -239,7 +233,7 @@ public:
    const BoxReadHandler* img_find_handler(uint32_t id);
    bool read_jp( uint8_t *p_header_data,uint32_t header_size);
    bool read_ftyp( uint8_t *p_header_data,	uint32_t header_size) ;
-   bool skip_jp2c(void) ;
+   bool skip_jp2c(void);
    bool read_jp2h( uint8_t *p_header_data,	uint32_t header_size);
    bool read_box(FileFormatBox *box, uint8_t *p_data,
    		uint32_t *p_number_bytes_read, uint64_t p_box_max_size);

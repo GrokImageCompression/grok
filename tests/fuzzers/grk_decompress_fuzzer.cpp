@@ -135,7 +135,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len){
     } else {
         return 0;
     }
-    grk_stream *pStream = grk_stream_create(1024, true);
+    auto pStream = grk_stream_create(1024, true);
     MemFile memFile;
     memFile.pabyData = buf;
     memFile.nLength = len;
@@ -144,36 +144,32 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len){
     grk_stream_set_read_function(pStream, ReadCallback);
     grk_stream_set_seek_function(pStream, SeekCallback);
     grk_stream_set_user_data(pStream, &memFile, NULL);
-
-    grk_codec pCodec = grk_create_decompress(eCodecFormat, pStream);
+    auto pCodec = grk_create_decompress(eCodecFormat, pStream);
     grk_set_info_handler(InfoCallback, NULL);
     grk_set_warning_handler(WarningCallback, NULL);
     grk_set_error_handler(ErrorCallback, NULL);
-
     grk_dparameters parameters;
     grk_set_default_decompress_params(&parameters);
-
     grk_init_decompress(pCodec, &parameters);
     grk_image * psImage = NULL;
     grk_header_info  header_info;
-    uint32_t width, height,width_to_read, height_to_read;
     if (!grk_read_header(pCodec, &header_info, &psImage))
         goto cleanup;
-    width = psImage->x1 - psImage->x0;
-    height = psImage->y1 - psImage->y0;
-    width_to_read = width;
+    uint32_t width = psImage->x1 - psImage->x0;
+    uint32_t height = psImage->y1 - psImage->y0;
+    uint32_t width_to_read = width;
     if (width_to_read > 1024)
         width_to_read = 1024;
-    height_to_read = height;
+    uint32_t height_to_read = height;
     if (height_to_read > 1024)
         height_to_read = 1024;
 
     if (grk_set_decompress_window(pCodec,
     						psImage,
-                            psImage->x0,
-							psImage->y0,
-                            psImage->x0 + width_to_read,
-                            psImage->y0 + height_to_read)) {
+                            0,
+							0,
+                            width_to_read,
+                            height_to_read)) {
         if (!grk_decompress(pCodec, nullptr, psImage))
         	goto cleanup;
     }

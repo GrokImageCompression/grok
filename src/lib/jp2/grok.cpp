@@ -256,8 +256,7 @@ bool GRK_CALLCONV grk_init_decompress( grk_codec p_codec,
 	}
 	return false;
 }
-bool GRK_CALLCONV grk_read_header(
-		 grk_codec p_codec,  grk_header_info  *header_info,
+bool GRK_CALLCONV grk_read_header( grk_codec p_codec,  grk_header_info  *header_info,
 		grk_image **p_image) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
@@ -283,8 +282,8 @@ bool GRK_CALLCONV grk_set_decompress_window( grk_codec p_codec,
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
 		assert(codec->is_decompressor);
-		return codec->m_codeStreamBase->set_decompress_window(p_image, start_x, start_y, end_x,
-				end_y);
+		return codec->m_codeStreamBase->set_decompress_window(p_image,
+										grk_rect_u32(start_x, start_y, end_x,end_y));
 	}
 	return false;
 }

@@ -952,12 +952,8 @@ void FileFormat::init_decompress(grk_dparameters  *parameters){
 	color.has_colour_specification_box = false;
 }
 
-bool FileFormat::set_decompress_window(grk_image *p_image,
-					uint32_t start_x,
-					uint32_t start_y,
-					uint32_t end_x,
-					uint32_t end_y){
-	return codeStream->set_decompress_window(p_image, start_x, start_y, end_x, end_y);
+bool FileFormat::set_decompress_window(grk_image *p_image,	grk_rect_u32 window){
+	return codeStream->set_decompress_window(p_image, window);
 }
 
 bool FileFormat::start_compress(void){

@@ -141,8 +141,7 @@ struct ICodeStream {
    virtual void init_decompress(grk_dparameters  *p_param) = 0;
 
 	/** Set decompress window function handler */
-   virtual bool set_decompress_window(grk_image *p_image,
-		   uint32_t start_x, uint32_t end_x, uint32_t start_y,	uint32_t end_y) = 0;
+   virtual bool set_decompress_window(grk_image *p_image, grk_rect_u32 window) = 0;
 
    virtual bool start_compress(void) = 0;
 
@@ -210,19 +209,11 @@ struct CodeStream : public ICodeStream {
 	 * and before any tile header reading.
 	 *
 	 * @param	p_image     image
-	 * @param	start_x		the left position of the rectangle to decompress (in image coordinates).
-	 * @param	start_y		the up position of the rectangle to decompress (in image coordinates).
-	 * @param	end_x		the right position of the rectangle to decompress (in image coordinates).
-	 * @param	end_y		the bottom position of the rectangle to decompress (in image coordinates).
-
+	 * @param	window		decompress window
 	 *
 	 * @return	true			if the area could be set.
 	 */
-	bool set_decompress_window(grk_image *p_image,
-						uint32_t start_x,
-						uint32_t start_y,
-						uint32_t end_x,
-						uint32_t end_y);
+	bool set_decompress_window(grk_image *p_image, grk_rect_u32 window);
 
 
 	/**

@@ -1817,8 +1817,7 @@ bool CodeStream::end_compress(void){
 	return  exec(m_procedure_list);
 }
 
-bool CodeStream::set_decompress_window(grk_image *output_image,
-		uint32_t start_x, uint32_t start_y, uint32_t end_x, uint32_t end_y) {
+bool CodeStream::set_decompress_window(grk_image *output_image,grk_rect_u32 window) {
 
 	auto cp = &(m_cp);
 	auto image = m_input_image;
@@ -1826,32 +1825,29 @@ bool CodeStream::set_decompress_window(grk_image *output_image,
 
 	/* Check if we have read the main header */
 	if (decompressor->m_state != J2K_DEC_STATE_TPH_SOT) {
-		GRK_ERROR(
-				"Need to decompress the main header before setting decompress window");
+		GRK_ERROR("Need to decompress the main header before setting decompress window");
 		return false;
 	}
 
-	if (!start_x && !start_y && !end_x && !end_y) {
+	if (window == grk_rect_u32(0,0,0,0)) {
 		decompressor->m_start_tile_x_index = 0;
 		decompressor->m_start_tile_y_index = 0;
 		decompressor->m_end_tile_x_index = cp->t_grid_width;
 		decompressor->m_end_tile_y_index = cp->t_grid_height;
-
 		return true;
 	}
 
 	/* Check if the window provided by the user are correct */
 
+	uint32_t start_x = window.x0 + image->x0;
+	uint32_t start_y = window.y0 + image->y0;
+	uint32_t end_x 	 = window.x1 + image->x0;
+	uint32_t end_y   = window.y1 + image->y0;
 	/* Left */
 	if (start_x > image->x1) {
 		GRK_ERROR("Left position of the decompress window (%u)"
 				" is outside of the image area (Xsiz=%u).", start_x, image->x1);
 		return false;
-	} else if (start_x < image->x0) {
-		GRK_WARN("Left position of the decompress window (%u)"
-				" is outside of the image area (XOsiz=%u).", start_x, image->x0);
-		decompressor->m_start_tile_x_index = 0;
-		output_image->x0 = image->x0;
 	} else {
 		decompressor->m_start_tile_x_index = (start_x - cp->tx0) / cp->t_width;
 		output_image->x0 = start_x;
@@ -1862,11 +1858,6 @@ bool CodeStream::set_decompress_window(grk_image *output_image,
 		GRK_ERROR("Top position of the decompress window (%u)"
 				" is outside of the image area (Ysiz=%u).", start_y, image->y1);
 		return false;
-	} else if (start_y < image->y0) {
-		GRK_WARN("Top position of the decompress window (%u)"
-				" is outside of the image area (YOsiz=%u).", start_y, image->y0);
-		decompressor->m_start_tile_y_index = 0;
-		output_image->y0 = image->y0;
 	} else {
 		decompressor->m_start_tile_y_index = (start_y - cp->ty0) / cp->t_height;
 		output_image->y0 = start_y;
@@ -1875,31 +1866,21 @@ bool CodeStream::set_decompress_window(grk_image *output_image,
 	/* Right */
 	assert(end_x > 0);
 	assert(end_y > 0);
-	if (end_x < image->x0) {
-		GRK_ERROR("Right position of the decompress window (%u)"
-				" is outside the image area (XOsiz=%u).", end_x, image->x0);
-		return false;
-	} else if (end_x > image->x1) {
+	if (end_x > image->x1) {
 		GRK_WARN("Right position of the decompress window (%u)"
 				" is outside the image area (Xsiz=%u).", end_x, image->x1);
 		decompressor->m_end_tile_x_index = cp->t_grid_width;
 		output_image->x1 = image->x1;
 	} else {
 		// avoid divide by zero
-		if (cp->t_width == 0) {
+		if (cp->t_width == 0)
 			return false;
-		}
 		decompressor->m_end_tile_x_index = ceildiv<uint32_t>(end_x - cp->tx0,
 				cp->t_width);
 		output_image->x1 = end_x;
 	}
 
 	/* Bottom */
-	if (end_y < image->y0) {
-		GRK_ERROR("Bottom position of the decompress window (%u)"
-				" is outside of the image area (YOsiz=%u).", end_y, image->y0);
-		return false;
-	}
 	if (end_y > image->y1) {
 		GRK_WARN("Bottom position of the decompress window (%u)"
 				" is outside of the image area (Ysiz=%u).", end_y, image->y1);
@@ -1907,9 +1888,8 @@ bool CodeStream::set_decompress_window(grk_image *output_image,
 		output_image->y1 = image->y1;
 	} else {
 		// avoid divide by zero
-		if (cp->t_height == 0) {
+		if (cp->t_height == 0)
 			return false;
-		}
 		decompressor->m_end_tile_y_index = ceildiv<uint32_t>(end_y - cp->ty0,
 				cp->t_height);
 		output_image->y1 = end_y;
@@ -1919,8 +1899,6 @@ bool CodeStream::set_decompress_window(grk_image *output_image,
 			cp->m_coding_params.m_dec.m_reduce))
 		return false;
 
-	GRK_INFO("Setting decompress window to ( %u,%u,%u,%u )", output_image->x0,
-			output_image->y0, output_image->x1, output_image->y1);
 	return true;
 }
 
