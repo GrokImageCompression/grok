@@ -18,7 +18,6 @@
 #pragma once
 #include "T1Interface.h"
 #include "stdint.h"
-#include "testing.h"
 #include "TileProcessor.h"
 #include "T1Interface.h"
 

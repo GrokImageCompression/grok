@@ -23,7 +23,6 @@
 #include "CPUArch.h"
 #include <algorithm>
 #include <limits>
-#include "testing.h"
 
 namespace grk {
 

@@ -19,7 +19,6 @@
 #include "TileProcessor.h"
 #include "t1_common.h"
 #include "T1.h"
-#include "testing.h"
 #include <algorithm>
 using namespace std;
 

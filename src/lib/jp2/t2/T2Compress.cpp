@@ -20,8 +20,6 @@
  */
 
 #include "grk_includes.h"
-#include "testing.h"
-
 
 //#define DEBUG_ENCODE_PACKETS
 

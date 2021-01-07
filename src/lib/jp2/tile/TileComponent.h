@@ -20,7 +20,6 @@
  */
 
 #pragma once
-#include "testing.h"
 #include <vector>
 
 #include "TileProcessor.h"

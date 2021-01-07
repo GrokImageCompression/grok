@@ -149,6 +149,7 @@ static inline long grk_lrintf(float f) {
 
 #define GRK_UNUSED(x) (void)x
 
+#include "testing.h"
 #include "ThreadPool.hpp"
 #include "IOpenable.h"
 #include <MemStream.h>

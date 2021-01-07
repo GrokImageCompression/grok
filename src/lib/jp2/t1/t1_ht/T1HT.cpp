@@ -25,7 +25,6 @@ using namespace ojph::local;
 
 #include "grk_includes.h"
 #include "T1HT.h"
-#include "testing.h"
 #include <algorithm>
 using namespace std;
 

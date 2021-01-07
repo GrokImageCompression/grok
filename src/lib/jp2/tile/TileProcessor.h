@@ -21,7 +21,6 @@
 
 #pragma once
 #include "grk_includes.h"
-#include "testing.h"
 
 namespace grk {
 

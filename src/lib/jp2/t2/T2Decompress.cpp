@@ -20,7 +20,6 @@
  */
 
 #include "grk_includes.h"
-#include "testing.h"
 
 const bool debugDecompressPackets = false;
 
