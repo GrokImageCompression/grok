@@ -66,11 +66,9 @@ be used. If blocks are too small, the book-keeping costs of blocks will rise.
 /*@{*/
 
 #include <cstdint>
+#include "testing.h"
 
 namespace grk {
-
-const uint32_t debugFill = 1 << 25;
-//#define DEBUG_SPARSE
 
 class ISparseBuffer {
 public:
@@ -168,10 +166,9 @@ struct SparseBlock{
 	bool alloc(uint32_t block_area){
 		data = new int32_t[block_area];
 #ifdef DEBUG_SPARSE
-		for (uint32_t i = 0; i < block_area; ++i)
-			data[i] = debugFill;
+		//for (uint32_t i = 0; i < block_area; ++i)
+		//	data[i] = kDebugSparseFill;
 		valid = new uint8_t[block_area];
-		memset(valid, 0, block_area);
 #else
 		// note: we need to zero out each source block, in case
 		// some code blocks are missing from the compressed stream.

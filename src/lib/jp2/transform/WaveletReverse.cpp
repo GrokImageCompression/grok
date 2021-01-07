@@ -23,6 +23,7 @@
 #include "CPUArch.h"
 #include <algorithm>
 #include <limits>
+#include "testing.h"
 
 namespace grk {
 
@@ -152,7 +153,7 @@ template <typename T> struct dwt_data {
 	    }
 #ifdef DEBUG_SPARSE
 		for (uint32_t i = 0; i < len / sizeof(T); ++i)
-			allocatedMem[i] = T(debugFill);
+			allocatedMem[i] = T(kDebugSparseFill);
 #endif
 	    mem = allocatedMem + padding;
 		return (allocatedMem != nullptr) ? true : false;
@@ -1538,16 +1539,22 @@ public:
 
 template<typename T> class Partial53 : public PartialInterleaver<T> {
 public:
+
 	void decompress_h(dwt_data<T>* horiz){
 
-		#define S(i) 	buf[(i)<<1]
-		#define D(i) 	buf[(1+((i)<<1))]
+#ifndef DEBUG_SPARSE
+		#define get_S(buf,i) 	buf[(i)<<1]
+		#define get_D(buf,i) 	buf[(1+((i)<<1))]
+#endif
 
-		#define S_(i) 	((i)<0 ? S(0) :	((i)>=sn ? S(sn-1) : S(i)))
-		#define D_(i) 	((i)<0 ? D(0) :	((i)>=dn ? D(dn-1) : D(i)))
+		#define S(buf,i) 	buf[(i)<<1]
+		#define D(buf,i) 	buf[(1+((i)<<1))]
 
-		#define SS_(i)	((i)<0 ? S(0) :	((i)>=dn ? S(dn-1) : S(i)))
-		#define DD_(i) 	((i)<0 ? D(0) :	((i)>=sn ? D(sn-1) : D(i)))
+		#define S_(buf,i) 	((i)<0 ? get_S(buf,0) :	((i)>=sn ? get_S(buf,sn-1) : get_S(buf,i)))
+		#define D_(buf,i) 	((i)<0 ? get_D(buf,0) :	((i)>=dn ? get_D(buf,dn-1) : get_D(buf,i)))
+
+		#define SS_(buf,i)	((i)<0 ? get_S(buf,0) :	((i)>=dn ? get_S(buf,dn-1) : get_S(buf,i)))
+		#define DD_(buf,i) 	((i)<0 ? get_D(buf,0) :	((i)>=sn ? get_D(buf,sn-1) : get_D(buf,i)))
 
 		int32_t i;
 		int32_t dn 		 = (int32_t)horiz->dn;
@@ -1577,7 +1584,7 @@ public:
 					int32_t i_max;
 
 					/* Left-most case */
-					S(i) -= (D_(i - 1) + D_(i) + 2) >> 2;
+					S(buf,i) -= (D_(buf,i - 1) + D_(buf,i) + 2) >> 2;
 					i ++;
 
 					i_max = win_l_x1 - win_l_x0;
@@ -1585,11 +1592,11 @@ public:
 						i_max = dn - win_l_x0;
 					for (; i < i_max; i++) {
 						/* No bound checking */
-						S(i) -= (D(i - 1) + D(i) + 2) >> 2;
+						S(buf,i) -= (D(buf,i - 1) + D(buf,i) + 2) >> 2;
 					}
 					for (; i < win_l_x1 - win_l_x0; i++) {
 						/* Right-most case */
-						S(i) -= (D_(i - 1) + D_(i) + 2) >> 2;
+						S(buf,i) -= (D_(buf,i - 1) + D_(buf,i) + 2) >> 2;
 					}
 				}
 
@@ -1601,45 +1608,49 @@ public:
 						i_max = sn - 1 - win_h_x0;
 					for (; i < i_max; i++) {
 						/* No bound checking */
-						D(i) += (S(i) + S(i + 1)) >> 1;
+						D(buf,i) += (S(buf,i) + S(buf,i + 1)) >> 1;
 					}
 					for (; i < win_h_x1 - win_h_x0; i++) {
 						/* Right-most case */
-						D(i) += (S_(i) + S_(i + 1)) >> 1;
+						D(buf,i) += (S_(buf,i) + S_(buf,i + 1)) >> 1;
 					}
 				}
 			}
 		} else {
 			if (!sn  && dn == 1) {
 				auto buf = horiz->memLow;
-				S(0) /= 2;
+				S(buf,0) /= 2;
 			} else {
 				auto buf = horiz->memLow;
 				for (i = 0; i < win_l_x1 - win_l_x0; i++)
-					D(i) -= (SS_(i) + SS_(i + 1) + 2) >> 2;
+					D(buf,i) -= (SS_(buf,i) + SS_(buf,i + 1) + 2) >> 2;
 				buf	 = horiz->memHigh;
 				for (i = win_h_x0; i < win_h_x1 - win_h_x0; i++)
-					S(i) += (DD_(i) + DD_(i - 1)) >> 1;
+					S(buf,i) += (DD_(buf,i) + DD_(buf,i - 1)) >> 1;
 			}
 		}
 	}
 	void decompress_v(dwt_data<T>* vert){
-	    const uint32_t VERT_PASS_WIDTH = 4;
 
-		#define S_off(i,off) 		buf[(i)*2 * VERT_PASS_WIDTH + off]
-		#define D_off(i,off) 		buf[(1+(i)*2)*VERT_PASS_WIDTH + off]
+#ifndef DEBUG_SPARSE
+		#define get_S_off(buf,i,off) 		buf[(i)*2 * VERT_PASS_WIDTH + off]
+		#define get_D_off(buf,i,off) 		buf[(1+(i)*2)*VERT_PASS_WIDTH + off]
+#endif
 
-		#define S_off_(i,off) 		(((i)>=sn ? S_off(sn-1,off) : S_off(i,off)))
-		#define D_off_(i,off) 		(((i)>=dn ? D_off(dn-1,off) : D_off(i,off)))
+		#define S_off(buf,i,off) 		buf[(i)*2 * VERT_PASS_WIDTH + off]
+		#define D_off(buf,i,off) 		buf[(1+(i)*2)*VERT_PASS_WIDTH + off]
 
-		#define S_sgnd_off_(i,off) 	(((i)<0   ? S_off(0,off)    : S_off_(i,off)))
-		#define D_sgnd_off_(i,off) 	(((i)<0	  ? D_off(0,off)    : D_off_(i,off)))
+		#define S_off_(buf,i,off) 		(((i)>=sn ? get_S_off(buf,sn-1,off) : get_S_off(buf,i,off)))
+		#define D_off_(buf,i,off) 		(((i)>=dn ? get_D_off(buf,dn-1,off) : get_D_off(buf,i,off)))
 
-		#define SS_sgnd_off_(i,off)  ((i)<0   ? S_off(0,off)    : ((i)>=dn ? S_off(dn-1,off) : S_off(i,off)))
-		#define DD_sgnd_off_(i,off)  ((i)<0   ? D_off(0,off)    : ((i)>=sn ? D_off(sn-1,off) : D_off(i,off)))
+		#define S_sgnd_off_(buf,i,off) 	(((i)<0   ? get_S_off(buf,0,off)    : S_off_(buf,i,off)))
+		#define D_sgnd_off_(buf,i,off) 	(((i)<0	  ? get_D_off(buf,0,off)    : D_off_(buf,i,off)))
 
-		#define SS_off_(i,off) 		(((i)>=dn ? S_off(dn-1,off) : S_off(i,off)))
-		#define DD_off_(i,off) 		(((i)>=sn ? D_off(sn-1,off) : D_off(i,off)))
+		#define SS_sgnd_off_(buf,i,off)  ((i)<0   ? get_S_off(buf,0,off)    : ((i)>=dn ? get_S_off(buf,dn-1,off) : get_S_off(buf,i,off)))
+		#define DD_sgnd_off_(buf,i,off)  ((i)<0   ? get_D_off(buf,0,off)    : ((i)>=sn ? get_D_off(buf,sn-1,off) : get_D_off(buf,i,off)))
+
+		#define SS_off_(buf,i,off) 		(((i)>=dn ? get_S_off(buf,dn-1,off) : get_S_off(buf,i,off)))
+		#define DD_off_(buf,i,off) 		(((i)>=sn ? get_D_off(buf,sn-1,off) : get_D_off(buf,i,off)))
 
 		uint32_t i;
 		uint32_t dn 	  = vert->dn;
@@ -1671,7 +1682,7 @@ public:
 
 					/* Left-most case */
 					for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
-						S_off(i, off) -= (D_sgnd_off_((int64_t)i - 1, off) + D_off_(i, off) + 2) >> 2;
+						S_off(buf,i, off) -= (D_sgnd_off_(buf,(int64_t)i - 1, off) + D_off_(buf,i, off) + 2) >> 2;
 					i ++;
 
 					i_max = win_l_x1 - win_l_x0;
@@ -1698,12 +1709,12 @@ public:
 					for (; i < i_max; i++) {
 						/* No bound checking */
 						for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
-							S_off(i, off) -= (D_sgnd_off_((int64_t)i - 1, off) + D_off(i, off) + 2) >> 2;
+							S_off(buf,i, off) -= (D_sgnd_off_(buf,(int64_t)i - 1, off) + D_off(buf,i, off) + 2) >> 2;
 					}
 					for (; i < win_l_x1 - win_l_x0; i++) {
 						/* Right-most case */
 						for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
-							S_off(i, off) -= (D_sgnd_off_((int64_t)i - 1, off) + D_off_(i, off) + 2) >> 2;
+							S_off(buf,i, off) -= (D_sgnd_off_(buf,(int64_t)i - 1, off) + D_off_(buf,i, off) + 2) >> 2;
 					}
 				}
 
@@ -1734,12 +1745,12 @@ public:
 					for (; i < i_max; i++) {
 						/* No bound checking */
 						for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
-							D_off(i, off) += (S_off(i, off) + S_off(i + 1, off)) >> 1;
+							D_off(buf,i, off) += (S_off(buf,i, off) + S_off(buf,i + 1, off)) >> 1;
 					}
 					for (; i < win_h_x1  - win_h_x0; i++) {
 						/* Right-most case */
 						for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
-							D_off(i, off) += (S_off_(i, off) + S_off_(i + 1, off)) >> 1;
+							D_off(buf,i, off) += (S_off_(buf,i, off) + S_off_(buf,i + 1, off)) >> 1;
 					}
 				}
 			}
@@ -1748,23 +1759,50 @@ public:
 				// edge case at origin
 				auto buf   = vert->memLow;
 				for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
-					S_off(0, off) /= 2;
+					S_off(buf,0, off) /= 2;
 			} else {
 				// 1. low pass
 				auto buf   = vert->memLow;
 				for (i = 0; i < win_l_x1 - win_l_x0; i++) {
 					for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
-						D_off(i, off) -= (SS_off_(i, off) + SS_off_(i + 1, off) + 2) >> 2;
+						D_off(buf,i, off) -= (SS_off_(buf,i, off) + SS_off_(buf,i + 1, off) + 2) >> 2;
 				}
 				// 2. high pass
 				buf   = vert->memHigh;
 				for (i = 0; i < win_h_x1 - win_h_x0; i++) {
 					for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
-						S_off(i, off) += (DD_off_(i, off) + DD_sgnd_off_((int64_t)i - 1, off)) >> 1;
+						S_off(buf,i, off) += (DD_off_(buf,i, off) + DD_sgnd_off_(buf,(int64_t)i - 1, off)) >> 1;
 				}
 			}
 		}
 	}
+private:
+
+#ifdef DEBUG_SPARSE
+		inline T get_S(T* buf, int32_t i) {
+			auto ret = buf[(i)<<1];
+			//assert(ret != kDebugSparseFill);
+			return ret;
+		}
+		inline T get_D(T* buf, int32_t i) {
+			auto ret =  buf[(1+((i)<<1))];
+			//assert(ret != kDebugSparseFill);
+			return ret;
+		}
+		inline T get_S_off(T* buf,uint32_t i, uint32_t off) {
+			auto ret = buf[(i)*2 * VERT_PASS_WIDTH + off];
+			//assert(ret != kDebugSparseFill);
+			return ret;
+		}
+		inline T get_D_off(T* buf,uint32_t i, uint32_t off) {
+			auto ret =  buf[(1+(i)*2)*VERT_PASS_WIDTH + off];
+			//assert(ret != kDebugSparseFill);
+			return ret;
+		}
+#endif
+
+
+    const uint32_t VERT_PASS_WIDTH = 4;
 };
 
 
