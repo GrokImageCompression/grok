@@ -165,8 +165,8 @@ struct SparseBlock{
 	bool alloc(uint32_t block_area){
 		data = new int32_t[block_area];
 #ifdef DEBUG_SPARSE
-		//for (uint32_t i = 0; i < block_area; ++i)
-			//data[i] = kDebugSparseFill;
+		for (uint32_t i = 0; i < block_area; ++i)
+			data[i] = kDebugSparseFill;
 		valid = new uint8_t[block_area];
 #else
 		// note: we need to zero out each source block, in case
