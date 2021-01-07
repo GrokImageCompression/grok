@@ -150,8 +150,8 @@ template <typename T> struct dwt_data {
 	        GRK_ERROR("data size overflow");
 	        return false;
 	    }
-	    m_padding = padding;
-	    m_len = (len +  2 * m_padding) * sizeof(T) * VERT_PASS_WIDTH;
+	    m_padding = padding * VERT_PASS_WIDTH;
+	    m_len = (len +  2 * m_padding) * sizeof(T) ;
 	    allocatedMem = (T*)grk_aligned_malloc(m_len);
 	    if (!allocatedMem){
 	        GRK_ERROR("Failed to allocate %d bytes", m_len);
