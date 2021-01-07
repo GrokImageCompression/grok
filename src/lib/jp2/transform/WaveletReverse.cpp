@@ -42,6 +42,8 @@ uint32_t max_resolution(Resolution *GRK_RESTRICT r, uint32_t i) {
 	return mr;
 }
 
+const uint32_t VERT_PASS_WIDTH = 4;
+
 template <typename T, typename S> struct decompress_job{
 	decompress_job( S data,
 				T * GRK_RESTRICT LL,
@@ -107,6 +109,8 @@ template <typename T, typename S> struct decompress_job{
 #define PLL_COLS_53     (2*VREG_INT_COUNT)
 template <typename T> struct dwt_data {
 	dwt_data() : allocatedMem(nullptr),
+				 m_len(0),
+				 m_padding(0),
 				 mem(nullptr),
 				 memLow(nullptr),
 				 memHigh(nullptr),
@@ -120,6 +124,8 @@ template <typename T> struct dwt_data {
 	{}
 
 	dwt_data(const dwt_data& rhs) : allocatedMem(nullptr),
+									m_len(0),
+									m_padding(0),
 									mem(nullptr),
 									memLow(nullptr),
 									memHigh(nullptr),
@@ -144,10 +150,11 @@ template <typename T> struct dwt_data {
 	        GRK_ERROR("data size overflow");
 	        return false;
 	    }
-	    len = (len +  2 * padding) * sizeof(T);
-	    allocatedMem = (T*)grk_aligned_malloc(len);
+	    m_padding = padding;
+	    m_len = (len +  2 * m_padding) * sizeof(T) * VERT_PASS_WIDTH;
+	    allocatedMem = (T*)grk_aligned_malloc(m_len);
 	    if (!allocatedMem){
-	        GRK_ERROR("Failed to allocate %d bytes", len);
+	        GRK_ERROR("Failed to allocate %d bytes", m_len);
 	        return false;
 	    }
 #ifdef DEBUG_SPARSE
@@ -165,6 +172,8 @@ template <typename T> struct dwt_data {
 		memHigh = nullptr;
 	}
 	T* allocatedMem;
+	size_t m_len;
+	size_t m_padding;
     T* mem;
     T* memLow;
     T* memHigh;
@@ -1509,9 +1518,10 @@ public:
 								ISparseBuffer* sa,
 								uint32_t x_offset,
 								uint32_t x_num_elements){
-	    const uint32_t VERT_PASS_WIDTH = 4;
 		assert(x_num_elements <= VERT_PASS_WIDTH);
     	// read one vertical strip (of width x_num_elements <= VERT_PASS_WIDTH) of L band and write interleaved
+	    assert( (size_t)(dwt->memLow + (dwt->win_l_1 - dwt->win_l_0) * 2 * VERT_PASS_WIDTH) <
+	    		(size_t)(dwt->allocatedMem + dwt->m_len/sizeof(T)));
 	    bool ret = sa->read(x_offset,
 	    					dwt->win_l_0,
 							x_offset + x_num_elements,
@@ -1522,6 +1532,8 @@ public:
 							true);
 	    assert(ret);
     	// read one vertical strip (of width x_num_elements) of H band and write interleaved
+	    assert( (size_t)(dwt->memHigh + (dwt->win_h_1 - dwt->win_h_0) * 2 * VERT_PASS_WIDTH) <
+	    		(size_t)(dwt->allocatedMem + dwt->m_len/sizeof(T)));
 	    ret = sa->read(x_offset,
 	    				dwt->sn + dwt->win_h_0,
 						x_offset + x_num_elements,
