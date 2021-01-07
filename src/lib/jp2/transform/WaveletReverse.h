@@ -43,7 +43,7 @@ struct  vec4f {
 uint32_t max_resolution(Resolution *GRK_RESTRICT r, uint32_t i);
 
 template<class T> constexpr T getFilterPad(bool lossless) {
-     return  lossless ? 3 : 5;
+     return  lossless ? 3 : 4;
  }
 
 template<class T> constexpr T getHorizontalPassHeight(bool lossless){
