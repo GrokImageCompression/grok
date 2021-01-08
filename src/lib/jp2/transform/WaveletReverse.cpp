@@ -2002,7 +2002,7 @@ template <typename T,
 				 for (uint32_t j = job->min_j; j < job->max_j; j += HORIZ_PASS_HEIGHT) {
 					 auto height = std::min<uint32_t>((uint32_t)HORIZ_PASS_HEIGHT,job->max_j - j );
 					 job->data.memLow 	=  job->data.mem +   job->data.cas;
-					 job->data.memHigh  =  job->data.mem + (!job->data.cas) + 2 * job->data.win_h_0 - 2 * job->data.win_l_0;
+					 job->data.memHigh  =  job->data.mem + (!job->data.cas) + 2 * ((int32_t)job->data.win_h_0 - (int32_t)job->data.win_l_0);
 					 decompressor.interleave_h(&job->data, sa, j,height);
 					 job->data.memLow 	=  job->data.mem - job->data.win_l_0;
 					 job->data.memHigh  =  job->data.memLow  + ((int32_t)job->data.win_h_0 - (int32_t)job->data.win_l_0);
