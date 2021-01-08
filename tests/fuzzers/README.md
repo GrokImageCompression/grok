@@ -42,30 +42,31 @@ Fuzzers created in `/tmp/*_fuzzer`, with `/tmp/*_fuzzer_seed_corpus.zip` corpus 
 
 ### Run oss-fuzz locally
 
+#### Build grok image
+
 ```
     $ git clone https://github.com/google/oss-fuzz.git
     $ cd oss-fuzz
-    $ python infra/helper.py build_image grok
+    $ sudo python3 infra/helper.py build_image grok
 ```
 
 #### Build fuzzers with the address sanitizer (could use undefined, etc...)
 
 ```  
-    $ python infra/helper.py build_fuzzers --sanitizer address grok
+    $ sudo python3 infra/helper.py build_fuzzers --sanitizer address grok
 ```
 
 Test a particular fuzzer (replace grk_decompress_fuzzer by other fuzzers
 like the ones generated in /tmp by "make dummyfuzzers")
 
 ```  
-    $ python infra/helper.py run_fuzzer grok grk_decompress_fuzzer
+    $ sudo python3 infra/helper.py run_fuzzer grok grk_decompress_fuzzer
 ```
 
-#### Test a particular fuzzer on a test file:
+Test a particular fuzzer on a test file:
 
 ```  
-$ python infra/helper.py build_fuzzers --sanitizer address grok
-$ python infra/helper.py reproduce grok grk_decompress_fuzzer $FILE_NAME
+$ sudo python3 infra/helper.py reproduce grok grk_decompress_fuzzer $FILE_NAME
 ```
 
 #### Fetch reproducer backup
