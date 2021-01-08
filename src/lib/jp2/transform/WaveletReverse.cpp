@@ -150,7 +150,7 @@ template <typename T> struct dwt_data {
 	        GRK_ERROR("data size overflow");
 	        return false;
 	    }
-	    m_padding = padding * VERT_PASS_WIDTH;
+	    m_padding = grk_make_aligned_width((uint32_t)padding * VERT_PASS_WIDTH + 32);
 	    m_len = (len +  2 * m_padding) * sizeof(T) ;
 	    allocatedMem = (T*)grk_aligned_malloc(m_len);
 	    if (!allocatedMem){
@@ -161,7 +161,7 @@ template <typename T> struct dwt_data {
 		for (uint32_t i = 0; i < len / sizeof(T); ++i)
 			allocatedMem[i] = T(kDebugSparseFill);
 #endif
-	    mem = allocatedMem + padding;
+	    mem = allocatedMem + m_padding;
 		return (allocatedMem != nullptr) ? true : false;
 	}
 	void release(){
