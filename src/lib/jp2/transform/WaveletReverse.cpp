@@ -2005,7 +2005,7 @@ template <typename T,
 					 job->data.memHigh  =  job->data.mem + (!job->data.cas) + 2 * job->data.win_h_0 - 2 * job->data.win_l_0;
 					 decompressor.interleave_h(&job->data, sa, j,height);
 					 job->data.memLow 	=  job->data.mem - job->data.win_l_0;
-					 job->data.memHigh  =  job->data.mem + job->data.win_h_0 - 2 * job->data.win_l_0;
+					 job->data.memHigh  =  job->data.memLow  + ((int32_t)job->data.win_h_0 - (int32_t)job->data.win_l_0);
 					 decompressor.decompress_h(&job->data);
 					 if (!sa->write( resWindowRect.x0,
 									  j,
@@ -2039,7 +2039,7 @@ template <typename T,
 					job->data.memHigh  =  (T*)((int32_t*)job->data.mem + ((!job->data.cas) + 2 * job->data.win_h_0) * VERT_PASS_WIDTH) - 2 * job->data.win_l_0;
 					decompressor.interleave_v(&job->data, sa, j, width);
 					job->data.memLow   =  job->data.mem - job->data.win_l_0;
-					job->data.memHigh  =  job->data.mem + job->data.win_h_0 - 2 * job->data.win_l_0;
+					job->data.memHigh  =  job->data.memLow  + ((int32_t)job->data.win_h_0 - (int32_t)job->data.win_l_0);
 					decompressor.decompress_v(&job->data);
 					if (!sa->write(j,
 								  resWindowRect.y0,
