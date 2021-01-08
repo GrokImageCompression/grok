@@ -158,7 +158,7 @@ template <typename T> struct dwt_data {
 	        return false;
 	    }
 #ifdef DEBUG_SPARSE
-		for (uint32_t i = 0; i < len / sizeof(T); ++i)
+		for (uint32_t i = 0; i < m_len / sizeof(T); ++i)
 			allocatedMem[i] = T(kDebugSparseFill);
 #endif
 	    mem = allocatedMem + m_padding;
