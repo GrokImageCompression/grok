@@ -1821,46 +1821,35 @@ public:
 
 // note: dwt->memLow and dwt->memHigh are only set for partial decode
 static Params97 makeParams97(dwt_data<vec4f>* dwt,
-							bool low,
+							bool lowPass,
 							bool step1){
 	Params97 rc;
-	if (low){
-		rc.data = dwt->memLow ? dwt->memLow : dwt->mem;
-		if (step1) {
-			rc.data += dwt->memLow ?   (dwt->cas + dwt->win_l_0) :  (dwt->cas + 2 * dwt->win_l_0);
-			rc.len  = dwt->win_l_1 - dwt->win_l_0;
-		} else {
-			rc.data += dwt->cas + 1;
-			// handle reflection at boundary
-			rc.dataPrev = rc.data -(dwt->cas + 1) + (!dwt->cas);
-			rc.len = dwt->win_l_1 - dwt->win_l_0;
-			rc.lenMax = (uint32_t)(min<int32_t>((int32_t)dwt->sn, (int32_t)dwt->dn - (int32_t)dwt->cas) - (int32_t)dwt->win_l_0);
+	uint32_t lower = lowPass ?  dwt->win_l_0 :  dwt->win_h_0;
+	uint32_t upper = lowPass ?  dwt->win_l_1 :  dwt->win_h_1;
+	auto memPartial = lowPass ? dwt->memLow : dwt->memHigh;
+	uint32_t cas = lowPass ? dwt->cas : !dwt->cas;
+	uint32_t lenMax = lowPass ?
+			(uint32_t)(min<int32_t>((int32_t)dwt->sn, (int32_t)dwt->dn - (int32_t)cas) - (int32_t)lower) :
+			(uint32_t)(min<int32_t>((int32_t)dwt->dn, (int32_t)dwt->sn - (int32_t)(cas)) - (int32_t)lower);
+	rc.data = memPartial? memPartial: dwt->mem;
 
-		    if (dwt->win_l_0 > 0) {
-		        rc.data += dwt->win_l_0;
-		        rc.dataPrev = rc.data - 2;
-		    }
-		    rc.absoluteStart = dwt->win_l_0;
-		}
+	if (step1) {
+		rc.data += memPartial ?   (cas + lower) :  (cas + 2 * lower);
+		rc.len  = upper - lower;
 	} else {
-		rc.data = dwt->memHigh ? dwt->memHigh : dwt->mem;
-		if (step1) {
-			rc.data += dwt->memHigh ? ((!dwt->cas) + dwt->win_h_0) :  ((!dwt->cas) + 2 * dwt->win_h_0);
-			rc.len = dwt->win_h_1 - dwt->win_h_0;
-		} else {
-			rc.data += (!dwt->cas) + 1;
-			// handle reflection at boundary
-			rc.dataPrev = rc.data - ((!dwt->cas) + 1) + dwt->cas;
-			rc.len = dwt->win_h_1 - dwt->win_h_0;
-			rc.lenMax = (uint32_t)(min<int32_t>((int32_t)dwt->dn, (int32_t)dwt->sn - (int32_t)(!dwt->cas)) - (int32_t)dwt->win_h_0);
+		rc.data += cas + 1;
+		// handle reflection at boundary
+		rc.dataPrev = rc.data -(cas + 1) + (!cas);
+		rc.len = upper - lower;
+		rc.lenMax = lenMax;
 
-		    if (dwt->win_h_0 > 0) {
-		        rc.data += dwt->win_h_0;
-		        rc.dataPrev = rc.data - 2;
-		    }
-			rc.absoluteStart = dwt->win_h_0;
+		if (lower > 0) {
+			rc.data += lower;
+			rc.dataPrev = rc.data - 2;
 		}
+		rc.absoluteStart = lower;
 	}
+
 
 	return rc;
 };
