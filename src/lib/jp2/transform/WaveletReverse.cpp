@@ -1834,19 +1834,13 @@ static Params97 makeParams97(dwt_data<vec4f>* dwt,
 	rc.data = memPartial? memPartial: dwt->mem;
 
 	if (step1) {
-		rc.data += memPartial ?   (cas + lower) :  (cas + 2 * lower);
+		rc.data += cas + lower;
 		rc.len  = upper - lower;
 	} else {
-		rc.data += cas + 1;
-		// handle reflection at boundary
+		rc.data += cas + 1 + lower;
 		rc.dataPrev = rc.data -(cas + 1) + (!cas);
 		rc.len = upper - lower;
 		rc.lenMax = lenMax;
-
-		if (lower > 0) {
-			rc.data += lower;
-			rc.dataPrev = rc.data - 2;
-		}
 		rc.absoluteStart = lower;
 	}
 
