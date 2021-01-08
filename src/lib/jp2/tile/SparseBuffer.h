@@ -390,7 +390,6 @@ private:
 						   block_y*block_height + y_incr,
 						   is_read_op ? "read" : "write",
 						   x0,y0,x1,y1);
-	            	//assert(src_block);
 	            	throw MissingSparseBlockException();
 	            }
 	            if (is_read_op) {

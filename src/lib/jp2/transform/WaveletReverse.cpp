@@ -150,7 +150,7 @@ template <typename T> struct dwt_data {
 	        GRK_ERROR("data size overflow");
 	        return false;
 	    }
-	    m_padding = grk_make_aligned_width((uint32_t)padding * VERT_PASS_WIDTH + 32);
+	    m_padding = grk_make_aligned_width((uint32_t)padding + 32);
 	    m_len = (len +  2 * m_padding) * sizeof(T) ;
 	    allocatedMem = (T*)grk_aligned_malloc(m_len);
 	    if (!allocatedMem){
@@ -2036,7 +2036,7 @@ template <typename T,
 				 for (uint32_t j = job->min_j; j < job->max_j; j += VERT_PASS_WIDTH) {
 					auto width = std::min<uint32_t>((uint32_t)VERT_PASS_WIDTH,job->max_j - j );
 					job->data.memLow   =  (T*)((int32_t*)job->data.mem +   (job->data.cas) * VERT_PASS_WIDTH);
-					job->data.memHigh  =  (T*)((int32_t*)job->data.mem + ((!job->data.cas) + 2 * job->data.win_h_0) * VERT_PASS_WIDTH) - 2 * job->data.win_l_0;
+					job->data.memHigh  =  (T*)((int32_t*)job->data.mem + ((!job->data.cas) + 2 * job->data.win_h_0) * VERT_PASS_WIDTH - 2 * job->data.win_l_0 * VERT_PASS_WIDTH);
 					decompressor.interleave_v(&job->data, sa, j, width);
 					job->data.memLow   =  job->data.mem - job->data.win_l_0;
 					job->data.memHigh  =  job->data.memLow  + ((int32_t)job->data.win_h_0 - (int32_t)job->data.win_l_0);
