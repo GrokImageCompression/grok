@@ -157,10 +157,6 @@ template <typename T> struct dwt_data {
 	        GRK_ERROR("Failed to allocate %d bytes", m_len);
 	        return false;
 	    }
-#ifdef DEBUG_SPARSE
-		for (uint32_t i = 0; i < m_len / sizeof(T); ++i)
-			allocatedMem[i] = T(kDebugSparseFill);
-#endif
 	    mem = allocatedMem + m_padding;
 		return (allocatedMem != nullptr) ? true : false;
 	}
@@ -1792,22 +1788,18 @@ private:
 #ifdef DEBUG_SPARSE
 		inline T get_S(T* buf, int32_t i) {
 			auto ret = buf[(i)<<1];
-			//assert(ret != kDebugSparseFill);
 			return ret;
 		}
 		inline T get_D(T* buf, int32_t i) {
 			auto ret =  buf[(1+((i)<<1))];
-			//assert(ret != kDebugSparseFill);
 			return ret;
 		}
 		inline T get_S_off(T* buf,uint32_t i, uint32_t off) {
 			auto ret = buf[(i)*2 * VERT_PASS_WIDTH + off];
-			//assert(ret != kDebugSparseFill);
 			return ret;
 		}
 		inline T get_D_off(T* buf,uint32_t i, uint32_t off) {
 			auto ret =  buf[(1+(i)*2)*VERT_PASS_WIDTH + off];
-			//assert(ret != kDebugSparseFill);
 			return ret;
 		}
 #endif

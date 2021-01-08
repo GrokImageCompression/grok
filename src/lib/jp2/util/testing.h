@@ -24,7 +24,6 @@ namespace grk {
 //#define DEBUG_LOSSLESS_T1
 //#define DEBUG_LOSSLESS_T2
 
-const uint32_t kDebugSparseFill = 1 << 26;
 //#define DEBUG_SPARSE
 
 #ifdef DEBUG_SPARSE

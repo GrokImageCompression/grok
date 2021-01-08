@@ -155,29 +155,20 @@ public:
 };
 
 struct SparseBlock{
-	SparseBlock(void) : data(nullptr),
-						valid(nullptr)
+	SparseBlock(void) : data(nullptr)
 	{}
 	~SparseBlock() {
 		delete[] data;
-		delete[] valid;
 	}
 	bool alloc(uint32_t block_area){
 		data = new int32_t[block_area];
-#ifdef DEBUG_SPARSE
-		for (uint32_t i = 0; i < block_area; ++i)
-			data[i] = kDebugSparseFill;
-		valid = new uint8_t[block_area];
-#else
 		// note: we need to zero out each source block, in case
 		// some code blocks are missing from the compressed stream.
 		// In this case, zero is the best default value for the block.
 		memset(data, 0, block_area * sizeof(int32_t));
-#endif
 		return true;
 	}
 	int32_t *data;
-	uint8_t *valid;
 };
 
 template<uint32_t LBW, uint32_t LBH> class SparseBuffer : public ISparseBuffer {
