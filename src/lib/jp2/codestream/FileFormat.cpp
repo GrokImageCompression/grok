@@ -878,7 +878,7 @@ bool FileFormat::read_header(grk_header_info  *header_info, grk_image **p_image)
 	}
 
 	// retrieve ASOCs
-	if (header_info)
+	if (!root_asoc.children.empty() && header_info)
 		serializeAsoc(&root_asoc,header_info->asocs, &header_info->num_asocs, 0);
 
 	return true;
