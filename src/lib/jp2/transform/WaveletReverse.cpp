@@ -1698,7 +1698,7 @@ public:
 		#ifdef __SSE2__
 					if (i + 1 < i_max) {
 						const __m128i two = _mm_set1_epi32(2);
-						auto Dm1 = _mm_load_si128((__m128i *)(buf + VERT_PASS_WIDTH + ((int64_t)i - 1) * 2 * VERT_PASS_WIDTH));
+						auto Dm1 = _mm_load_si128((__m128i *)(buf +  ((int64_t)2 * i - 1) * VERT_PASS_WIDTH));
 						for (; i + 1 < i_max; i += 2) {
 							/* No bound checking */
 							auto S = _mm_load_si128((__m128i *)(buf +  (i * 2) * VERT_PASS_WIDTH));
@@ -2010,17 +2010,22 @@ template <typename T,
 			 try {
 				 for (uint32_t j = job->min_j; j < job->max_j; j += VERT_PASS_WIDTH) {
 					auto width = std::min<uint32_t>((uint32_t)VERT_PASS_WIDTH,job->max_j - j );
-					job->data.memLow   =  (T*)((int32_t*)job->data.mem +   (job->data.cas) * VERT_PASS_WIDTH);
-					job->data.memHigh  =  (T*)((int32_t*)job->data.mem + ((!job->data.cas) + 2 * job->data.win_h_0) * VERT_PASS_WIDTH - 2 * job->data.win_l_0 * VERT_PASS_WIDTH);
+					auto alignedMem = job->data.mem;
+#ifdef __SSE2__
+					auto adjust = (uint64_t)(job->data.mem - job->data.win_l_0) & 0x0f;
+					alignedMem = (T*)((uint8_t*)job->data.mem - adjust);
+#endif
+					job->data.memLow   =  (T*)((int32_t*)alignedMem +   (job->data.cas) * VERT_PASS_WIDTH);
+					job->data.memHigh  =  (T*)((int32_t*)alignedMem + ((!job->data.cas) + 2 * job->data.win_h_0) * VERT_PASS_WIDTH - 2 * job->data.win_l_0 * VERT_PASS_WIDTH);
 					decompressor.interleave_v(&job->data, sa, j, width);
-					job->data.memLow   =  job->data.mem - job->data.win_l_0;
+					job->data.memLow   =  alignedMem - job->data.win_l_0;
 					job->data.memHigh  =  job->data.memLow  + ((int32_t)job->data.win_h_0 - (int32_t)job->data.win_l_0);
 					decompressor.decompress_v(&job->data);
 					if (!sa->write(j,
 								  resWindowRect.y0,
 								  j + width,
 								  resWindowRect.y1,
-								  (int32_t*)(job->data.mem + resWindowRect.y0 - 2 * job->data.win_l_0),
+								  (int32_t*)(alignedMem + resWindowRect.y0 - 2 * job->data.win_l_0),
 								  1,
 								  VERT_PASS_WIDTH,
 								  true)) {
