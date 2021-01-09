@@ -109,8 +109,8 @@ template <typename T, typename S> struct decompress_job{
 #define PLL_COLS_53     (2*VREG_INT_COUNT)
 template <typename T> struct dwt_data {
 	dwt_data() : allocatedMem(nullptr),
-				 m_len(0),
-				 m_padding(0),
+				 m_lenBytes(0),
+				 m_paddingBytes(0),
 				 mem(nullptr),
 				 memLow(nullptr),
 				 memHigh(nullptr),
@@ -124,8 +124,8 @@ template <typename T> struct dwt_data {
 	{}
 
 	dwt_data(const dwt_data& rhs) : allocatedMem(nullptr),
-									m_len(0),
-									m_padding(0),
+									m_lenBytes(0),
+									m_paddingBytes(0),
 									mem(nullptr),
 									memLow(nullptr),
 									memHigh(nullptr),
@@ -150,14 +150,14 @@ template <typename T> struct dwt_data {
 	        GRK_ERROR("data size overflow");
 	        return false;
 	    }
-	    m_padding = grk_make_aligned_width((uint32_t)padding * 2 + 32);
-	    m_len = (len +  2 * m_padding) * sizeof(T) ;
-	    allocatedMem = (T*)grk_aligned_malloc(m_len);
+	    m_paddingBytes = grk_make_aligned_width((uint32_t)padding * 2 + 32) * sizeof(T);
+	    m_lenBytes = len  * sizeof(T) +  2 * m_paddingBytes;
+	    allocatedMem = (T*)grk_aligned_malloc(m_lenBytes);
 	    if (!allocatedMem){
-	        GRK_ERROR("Failed to allocate %d bytes", m_len);
+	        GRK_ERROR("Failed to allocate %d bytes", m_lenBytes);
 	        return false;
 	    }
-	    mem = allocatedMem + m_padding;
+	    mem = allocatedMem + m_paddingBytes / sizeof(T);
 		return (allocatedMem != nullptr) ? true : false;
 	}
 	void release(){
@@ -168,8 +168,8 @@ template <typename T> struct dwt_data {
 		memHigh = nullptr;
 	}
 	T* allocatedMem;
-	size_t m_len;
-	size_t m_padding;
+	size_t m_lenBytes;
+	size_t m_paddingBytes;
     T* mem;
     T* memLow;
     T* memHigh;
@@ -1517,7 +1517,7 @@ public:
 		assert(x_num_elements <= VERT_PASS_WIDTH);
     	// read one vertical strip (of width x_num_elements <= VERT_PASS_WIDTH) of L band and write interleaved
 	    assert( (size_t)(dwt->memLow + (dwt->win_l_1 - dwt->win_l_0) * 2 * VERT_PASS_WIDTH) <
-	    		(size_t)(dwt->allocatedMem + dwt->m_len/sizeof(T)));
+	    		(size_t)(dwt->allocatedMem + dwt->m_lenBytes/sizeof(T)));
 	    bool ret = sa->read(x_offset,
 	    					dwt->win_l_0,
 							x_offset + x_num_elements,
@@ -1529,7 +1529,7 @@ public:
 	    assert(ret);
     	// read one vertical strip (of width x_num_elements) of H band and write interleaved
 	    assert( (size_t)(dwt->memHigh + (dwt->win_h_1 - dwt->win_h_0) * 2 * VERT_PASS_WIDTH) <
-	    		(size_t)(dwt->allocatedMem + dwt->m_len/sizeof(T)));
+	    		(size_t)(dwt->allocatedMem + dwt->m_lenBytes/sizeof(T)));
 	    ret = sa->read(x_offset,
 	    				dwt->sn + dwt->win_h_0,
 						x_offset + x_num_elements,
