@@ -1733,8 +1733,7 @@ public:
 					if (i_max >= sn - win_h_x0)
 						i_max = sn - 1 - win_h_x0;
 		#ifdef __SSE2__
-					// TODO fix high memory buffer alignment
-					if ((((uint64_t)(buf) & 0x0f) == 0) && i + 1 < i_max) {
+					if (i + 1 < i_max) {
 						auto S =  _mm_load_si128((__m128i *)(buf + i * 2 * VERT_PASS_WIDTH));
 						for (; i + 1 < i_max; i += 2) {
 							/* No bound checking */
@@ -1838,7 +1837,7 @@ static Params97 makeParams97(dwt_data<vec4f>* dwt,
 		rc.len  = upper - lower;
 	} else {
 		rc.data += cas + 1 + lower;
-		rc.dataPrev = rc.data -(cas + 1) + (!cas);
+		rc.dataPrev = rc.data - 2 * cas;
 		rc.len = upper - lower;
 		rc.lenMax = lenMax;
 		rc.absoluteStart = lower;

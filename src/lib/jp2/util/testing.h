@@ -26,5 +26,10 @@ namespace grk {
 
 //#define DEBUG_SPARSE
 
+/*
+#undef __SSE__
+#undef __SSE2__
+#undef __AVX2__
+*/
 
 }
