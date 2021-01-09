@@ -1899,6 +1899,8 @@ bool CodeStream::set_decompress_window(grk_image *output_image,grk_rect_u32 wind
 			cp->m_coding_params.m_dec.m_reduce))
 		return false;
 
+	GRK_INFO("Decompress window set to (%d,%d,%d,%d)", window.x0,window.y0,window.x1,window.y1);
+
 	return true;
 }
 
