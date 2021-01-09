@@ -1771,12 +1771,14 @@ public:
 			} else {
 				// 1. low pass
 				auto buf   = vert->memLow;
+				assert( (uint64_t)(vert->memLow + (win_l_x1 - win_l_x0) * VERT_PASS_WIDTH) - (uint64_t)vert->allocatedMem < vert->m_lenBytes);
 				for (i = 0; i < win_l_x1 - win_l_x0; i++) {
 					for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 						D_off(buf,i, off) -= (SS_off_(buf,i, off) + SS_off_(buf,i + 1, off) + 2) >> 2;
 				}
 				// 2. high pass
 				buf   = vert->memHigh;
+				assert( (uint64_t)(vert->memHigh + (win_h_x1 - win_h_x0) * VERT_PASS_WIDTH) - (uint64_t)vert->allocatedMem < vert->m_lenBytes);
 				for (i = 0; i < win_h_x1 - win_h_x0; i++) {
 					for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 						S_off(buf,i, off) += (DD_off_(buf,i, off) + DD_sgnd_off_(buf,(int64_t)i - 1, off)) >> 1;
@@ -1977,7 +1979,7 @@ template <typename T,
 					 job->data.memLow 	=  job->data.mem +   job->data.cas;
 					 job->data.memHigh  =  job->data.mem + (!job->data.cas) + 2 * ((int32_t)job->data.win_h_0 - (int32_t)job->data.win_l_0);
 					 decompressor.interleave_h(&job->data, sa, j,height);
-					 job->data.memLow 	=  job->data.mem - job->data.win_l_0;
+					 job->data.memLow 	=  job->data.mem - ((sizeof(T) == 4) ? 0 : job->data.win_l_0);
 					 job->data.memHigh  =  job->data.memLow  + ((int32_t)job->data.win_h_0 - (int32_t)job->data.win_l_0);
 					 decompressor.decompress_h(&job->data);
 					 if (!sa->write( resWindowRect.x0,
@@ -2004,26 +2006,21 @@ template <typename T,
 			 }
 		};
 
-		auto executor_v = [sa, resWindowRect, &decompressor](decompress_job<T, dwt_data<T>> *job){
+		auto executor_v = [resno,sa, resWindowRect, &decompressor](decompress_job<T, dwt_data<T>> *job){
 			 try {
 				 for (uint32_t j = job->min_j; j < job->max_j; j += VERT_PASS_WIDTH) {
 					auto width = std::min<uint32_t>((uint32_t)VERT_PASS_WIDTH,job->max_j - j );
-					auto alignedMem = job->data.mem;
-#ifdef __SSE2__
-					auto adjust = (uint64_t)((T*)((int32_t*)alignedMem - job->data.win_l_0 * VERT_PASS_WIDTH)) & 0x0f;
-					alignedMem = (T*)((uint8_t*)job->data.mem - adjust);
-#endif
-					job->data.memLow   =  (T*)((int32_t*)alignedMem +   (job->data.cas) * VERT_PASS_WIDTH);
-					job->data.memHigh  =  (T*)((int32_t*)alignedMem + ((!job->data.cas) + 2 * job->data.win_h_0) * VERT_PASS_WIDTH - 2 * job->data.win_l_0 * VERT_PASS_WIDTH);
+					job->data.memLow   =  (T*)((int32_t*)job->data.mem +   (job->data.cas) * VERT_PASS_WIDTH);
+					job->data.memHigh  =  (T*)((int32_t*)job->data.mem + ((!job->data.cas) + 2 * job->data.win_h_0) * VERT_PASS_WIDTH - 2 * job->data.win_l_0 * VERT_PASS_WIDTH);
 					decompressor.interleave_v(&job->data, sa, j, width);
-					job->data.memLow   =  (T*)((int32_t*)alignedMem - job->data.win_l_0 * VERT_PASS_WIDTH);
+					job->data.memLow   =  (T*)((int32_t*)job->data.mem - (sizeof(T) ==4 ? 0 : job->data.win_l_0 * VERT_PASS_WIDTH) );
 					job->data.memHigh  =  (T*)((int32_t*)job->data.memLow  + job->data.win_h_0 * VERT_PASS_WIDTH - job->data.win_l_0 * VERT_PASS_WIDTH);
 					decompressor.decompress_v(&job->data);
 					if (!sa->write(j,
 								  resWindowRect.y0,
 								  j + width,
 								  resWindowRect.y1,
-								  (int32_t*)(alignedMem + resWindowRect.y0 - 2 * job->data.win_l_0),
+								  (int32_t*)(job->data.mem + resWindowRect.y0 - 2 * job->data.win_l_0),
 								  1,
 								  VERT_PASS_WIDTH,
 								  true)) {
