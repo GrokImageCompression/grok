@@ -1804,9 +1804,6 @@ private:
 			return ret;
 		}
 #endif
-
-
-    const uint32_t VERT_PASS_WIDTH = 4;
 };
 
 
