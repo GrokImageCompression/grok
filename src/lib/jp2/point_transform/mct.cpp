@@ -162,6 +162,13 @@ void mct::decompress_dc_shift_irrev(grk_tile *tile, grk_image *image,TileCompone
 	}
 #endif
 	}
+#ifdef DEBUG_SPARSE
+	/*
+	 size_t val = VALGRIND_CHECK_MEM_IS_DEFINED(c0,n * sizeof(float));
+	 if (val)
+	    fprintf(stderr,"Uninitialized at location %d\n",(val - (size_t)c0)/sizeof(float));
+	    */
+#endif
 	for (; i < n; ++i) {
 		c0_i[i] = std::clamp<int32_t>((int32_t)grk_lrintf(c0[i]) + shift, _min, _max);
 	}
@@ -254,6 +261,21 @@ void mct::decompress_irrev(grk_tile *tile, grk_image *image,TileComponentCodingP
 	}
 #endif
 	}
+
+#ifdef DEBUG_SPARSE
+	/*
+	size_t val = VALGRIND_CHECK_MEM_IS_DEFINED(c0,n * sizeof(int32_t));
+	if (val)
+	   fprintf(stderr,"\n\nComponent 0: Uninitialized at location %d\n",(val - (size_t)c0)/sizeof(int32_t));
+	val = VALGRIND_CHECK_MEM_IS_DEFINED(c1,n * sizeof(int32_t));
+	if (val)
+	   fprintf(stderr,"\n\nComponent 1: Uninitialized at location %d\n",(val - (size_t)c1)/sizeof(int32_t));
+	val = VALGRIND_CHECK_MEM_IS_DEFINED(c2,n * sizeof(int32_t));
+	if (val)
+	   fprintf(stderr,"\n\nComponent 2: Uninitialized at location %d\n",(val - (size_t)c2)/sizeof(int32_t));
+	   */
+#endif
+
 	for (; i < n; ++i) {
 		float y = c0[i];
 		float u = c1[i];
@@ -327,6 +349,13 @@ void mct::decompress_dc_shift_rev(grk_tile *tile, grk_image *image,TileComponent
 	}
 #endif
 	}
+#ifdef DEBUG_SPARSE
+	/*
+	size_t val = VALGRIND_CHECK_MEM_IS_DEFINED(c0,n * sizeof(int32_t));
+	if (val)
+	   fprintf(stderr,"Uninitialized at location %d\n",(val - (size_t)c0)/sizeof(int32_t));
+	   */
+#endif
 	for (; i < n; ++i) {
 		c0[i] = std::clamp<int32_t>(c0[i] + shift, _min, _max);
 	}
@@ -407,6 +436,19 @@ void mct::decompress_rev(grk_tile *tile, grk_image *image,TileComponentCodingPar
 	}
 #endif
 	}
+#ifdef DEBUG_SPARSE
+	/*
+	size_t val = VALGRIND_CHECK_MEM_IS_DEFINED(c0,n * sizeof(int32_t));
+	if (val)
+	   fprintf(stderr,"Component 0: Uninitialized at location %d\n",(val - (size_t)c0)/sizeof(int32_t));
+	val = VALGRIND_CHECK_MEM_IS_DEFINED(c1,n * sizeof(int32_t));
+	if (val)
+	   fprintf(stderr,"Component 1: Uninitialized at location %d\n",(val - (size_t)c1)/sizeof(int32_t));
+	val = VALGRIND_CHECK_MEM_IS_DEFINED(c2,n * sizeof(int32_t));
+	if (val)
+	   fprintf(stderr,"Component 2: Uninitialized at location %d\n",(val - (size_t)c2)/sizeof(int32_t));
+	   */
+#endif
 	for (; i < n; ++i) {
 		int32_t y = c0[i];
 		int32_t u = c1[i];

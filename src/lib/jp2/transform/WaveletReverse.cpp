@@ -2005,7 +2005,7 @@ template <typename T,
 			 }
 		};
 
-		auto executor_v = [resno,sa, resWindowRect, &decompressor](decompress_job<T, dwt_data<T>> *job){
+		auto executor_v = [sa, resWindowRect, &decompressor](decompress_job<T, dwt_data<T>> *job){
 			 try {
 				 for (uint32_t j = job->min_j; j < job->max_j; j += VERT_PASS_WIDTH) {
 					auto width = std::min<uint32_t>((uint32_t)VERT_PASS_WIDTH,job->max_j - j );

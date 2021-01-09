@@ -32,4 +32,8 @@ namespace grk {
 #undef __AVX2__
 */
 
+#if defined(GROK_HAVE_VALGRIND)
+#include <valgrind/memcheck.h>
+#endif
+
 }

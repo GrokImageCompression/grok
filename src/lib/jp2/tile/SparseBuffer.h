@@ -177,17 +177,6 @@ public:
 
 	/** Creates a new sparse array.
 	 *
-	 * @param width total width of the array.
-	 * @param height total height of the array
-	 *
-	 * @return a new sparse array instance, or NULL in case of failure.
-	 */
-	SparseBuffer(uint32_t width,uint32_t height) : SparseBuffer(grk_rect_u32(0,0,width,height))
-	{}
-
-
-	/** Creates a new sparse array.
-	 *
 	 * @param bds bounds
 	 *
 	 * @return a new sparse array instance, or NULL in case of failure.
@@ -210,10 +199,26 @@ public:
 									grid_off_y + grid_height);
 	    auto block_count = grid_bounds.area();
 	    data_blocks = new SparseBlock*[block_count];
-	    for (uint64_t i = 0; i < block_count; ++i)
+	    for (uint64_t i = 0; i < block_count; ++i){
 	    	data_blocks[i] = nullptr;
+	    }
 
+#if defined(GROK_HAVE_VALGRIND) && defined(DEBUG_SPARSE)
+		validate = grk_rect_u32(10,94,11,95);
+#endif
 	}
+
+
+	/** Creates a new sparse array.
+	 *
+	 * @param width total width of the array.
+	 * @param height total height of the array
+	 *
+	 * @return a new sparse array instance, or NULL in case of failure.
+	 */
+	SparseBuffer(uint32_t width,uint32_t height) : SparseBuffer(grk_rect_u32(0,0,width,height))
+	{}
+
 
 	/** Frees a sparse array.
 	 *
@@ -310,6 +315,7 @@ private:
 					if (!b->alloc(block_width*block_height))
 						return false;
 					setBlock(block_x, block_y, b);
+					//GRK_INFO("Allocated block at (%d,%d)", block_x, block_y);
 				}
 	        }
 	    }
@@ -319,10 +325,27 @@ private:
 
 	inline SparseBlock* getBlock(uint32_t block_x, uint32_t block_y){
 		uint64_t index = (uint64_t)(block_y - grid_bounds.y0) * grid_bounds.width() + (block_x - grid_bounds.x0);
-		return data_blocks[index];
+		auto b =  data_blocks[index];
+#if defined(GROK_HAVE_VALGRIND) && defined(DEBUG_SPARSE)
+	//if (b) {
+		//size_t val = VALGRIND_CHECK_MEM_IS_DEFINED(b->data,block_width*block_height * sizeof(int32_t));
+		//if (val)
+		//   GRK_ERROR("Sparse array getBlock (%d.%d): Uninitialized at location %d\n",
+		//		   block_x, block_y, (val - (size_t)b->data)/sizeof(int32_t));
+	//}
+#endif
+
+		return b;
 	}
 	inline void setBlock(uint32_t block_x, uint32_t block_y, SparseBlock* block){
+#if defined(GROK_HAVE_VALGRIND) && defined(DEBUG_SPARSE)
+	size_t val = VALGRIND_CHECK_MEM_IS_DEFINED(block->data,block_width*block_height * sizeof(int32_t));
+	if (val)
+	   GRK_ERROR("\n\n\nSparse array setBlock (%d,%d) : Uninitialized at location %d\n\n\n",
+			   block_x, block_y,(uint32_t)((val - (size_t)block->data)/sizeof(int32_t))  );
+#endif
 		assert(grid_bounds.contains(grk_pt(block_x,block_y)));
+		assert(block->data);
 		uint64_t index = (uint64_t)(block_y - grid_bounds.y0) * grid_bounds.width() + (block_x - grid_bounds.x0);
 		data_blocks[index] = block;
 	}
@@ -388,26 +411,48 @@ private:
 							src_block->data + ((uint64_t)block_y_offset << LBW) + block_x_offset;
 					int32_t* GRK_RESTRICT dest_ptr = buf + (y - y0) * line_stride +
 													   (x - x0) * col_stride;
+					uint32_t y_ = y;
 					for (uint32_t j = 0; j < y_incr; j++) {
 						uint64_t ind = 0;
 						for (uint32_t k = 0; k < x_incr; k++){
+#if defined(GROK_HAVE_VALGRIND) && defined(DEBUG_SPARSE)
+							grk_pt pt((uint32_t)(x+ind), y_);
+							if (validate.contains(pt)) {
+								size_t val = VALGRIND_CHECK_MEM_IS_DEFINED(src_ptr+k,4);
+								if (val)
+								   GRK_ERROR("\n\n\nSparse array read (offset %d): Uninitialized at location (%d,%d), block (%d,%d)\n\n\n",
+										   (uint32_t)(val - (uint64_t)(src_ptr+k)), x+ind,y_, block_x, block_y);
+							}
+#endif
 							dest_ptr[ind] = src_ptr[k];
 							ind += col_stride;
 						}
 						dest_ptr += line_stride;
+						y_ ++;
 						src_ptr  += block_width;
 					}
 	            } else {
                     const int32_t* GRK_RESTRICT src_ptr = buf + (y - y0) * line_stride + (x - x0) * col_stride;
                     int32_t* GRK_RESTRICT dest_ptr = src_block->data + ((uint64_t)block_y_offset << LBW) + block_x_offset;
 
+					uint32_t y_ = y;
                     for (uint32_t j = 0; j < y_incr; j++) {
 						uint64_t ind = 0;
 						for (uint32_t k = 0; k < x_incr; k++) {
+#if defined(GROK_HAVE_VALGRIND) && defined(DEBUG_SPARSE)
+							grk_pt pt((uint32_t)(x+ind), y_);
+							if (validate.contains(pt)) {
+								size_t val = VALGRIND_CHECK_MEM_IS_DEFINED(src_ptr+ind,4);
+								if (val)
+								   GRK_ERROR("\n\n\nSparse array write (offset %d) : Uninitialized at location (%d,%d)\n\n\n",
+										   (uint32_t)(val - (uint64_t)(src_ptr+ind)), x+ind,y_);
+							}
+#endif
 							dest_ptr[k] = src_ptr[ind];
 							ind += col_stride;
 						}
 						src_ptr  += line_stride;
+						y_ ++;
 						dest_ptr += block_width;
 					}
 	            }
@@ -422,6 +467,9 @@ private:
     SparseBlock** data_blocks;
     grk_rect_u32 bounds;
     grk_rect_u32 grid_bounds;
+#if defined(GROK_HAVE_VALGRIND) && defined(DEBUG_SPARSE)
+    grk_rect_u32 validate;
+#endif
 };
 
 }
