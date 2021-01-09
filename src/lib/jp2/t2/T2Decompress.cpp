@@ -447,7 +447,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 									> (int32_t) max_passes_per_segment) {
 								GRK_WARN("Number of code block passes (%u) in packet is suspiciously large.",
 										blockPassesInPacket);
-								// ToDO - we are truncating the number of passes at an arbitrary value of
+								// TODO - we are truncating the number of passes at an arbitrary value of
 								// max_passes_per_segment. We should probably either skip the rest of this
 								// block, if possible, or do further sanity check on packet
 								seg->numPassesInPacket = max_passes_per_segment;

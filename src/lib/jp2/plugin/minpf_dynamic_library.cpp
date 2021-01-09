@@ -116,13 +116,13 @@ minpf_dynamic_library* minpf_load_dynamic_library(const char *path,
 #ifdef _WIN32
     handle = LoadLibrary(path);
     if (handle == nullptr) {
-		//ToDo report error
+		//TODO report error
         return nullptr;
     }
 #else
     handle = dlopen(path, RTLD_NOW);
     if (!handle) {
-        //ToDo report error
+        //TODO report error
         return nullptr;
     }
 
