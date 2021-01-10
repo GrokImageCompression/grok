@@ -108,14 +108,12 @@ void mct::compress_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 
 void mct::decompress_dc_shift_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno) {
 	size_t i = 0;
-#ifdef DEBUG_SPARSE
+#ifdef GRK_DEBUG_VALGRIND
 	 auto buf = tile->comps[compno].getBuffer();
-	 auto win = buf->getWindow();
-	 auto winSize = buf->strided_area();
-	 size_t val = VALGRIND_CHECK_MEM_IS_DEFINED(win->data,winSize * sizeof(float));
-	 if (val)
-	    GRK_ERROR("Component %d: uninitialized value at location %d\n",compno, (val - (size_t)win->data)/sizeof(float));
-
+	 auto val = grk_memcheck(buf, buf->strided_area());
+	 if (val != grk_mem_ok){
+		   GRK_ERROR("decompress_dc_shift_irrev: uninitialized memory at offset %d for component %d\n\n", val, compno);
+	 }
 #endif
 	float *GRK_RESTRICT c0 = (float*) tile->comps[compno].getBuffer()->getWindow()->data;
 	int32_t *c0_i = (int32_t*)c0;
@@ -264,7 +262,7 @@ void mct::decompress_irrev(grk_tile *tile, grk_image *image,TileComponentCodingP
 #endif
 	}
 
-#ifdef DEBUG_SPARSE
+#ifdef GRK_DEBUG_SPARSE
 	/*
 	size_t val = VALGRIND_CHECK_MEM_IS_DEFINED(c0,n * sizeof(int32_t));
 	if (val)
@@ -351,7 +349,7 @@ void mct::decompress_dc_shift_rev(grk_tile *tile, grk_image *image,TileComponent
 	}
 #endif
 	}
-#ifdef DEBUG_SPARSE
+#ifdef GRK_DEBUG_SPARSE
 	/*
 	size_t val = VALGRIND_CHECK_MEM_IS_DEFINED(c0,n * sizeof(int32_t));
 	if (val)
@@ -438,7 +436,7 @@ void mct::decompress_rev(grk_tile *tile, grk_image *image,TileComponentCodingPar
 	}
 #endif
 	}
-#ifdef DEBUG_SPARSE
+#ifdef GRK_DEBUG_SPARSE
 	/*
 	size_t val = VALGRIND_CHECK_MEM_IS_DEFINED(c0,n * sizeof(int32_t));
 	if (val)

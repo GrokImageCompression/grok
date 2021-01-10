@@ -149,13 +149,13 @@ static inline long grk_lrintf(float f) {
 
 #define GRK_UNUSED(x) (void)x
 
+#include "logger.h"
 #include "testing.h"
 #include "ThreadPool.hpp"
 #include "IOpenable.h"
 #include <MemStream.h>
 #include "GrkMappedFile.h"
 #include "MemManager.h"
-#include "logger.h"
 #include "util.h"
 #include "grk_exceptions.h"
 #include "ChunkBuffer.h"

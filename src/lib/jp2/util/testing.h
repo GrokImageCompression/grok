@@ -19,22 +19,31 @@
 
 namespace grk {
 
+#if defined(GRK_HAVE_VALGRIND)
+#include <valgrind/memcheck.h>
+#endif
+
 // uncomment to enable testing of different stages of round-trip lossless compress
 //#define DEBUG_LOSSLESS_DWT
 //#define DEBUG_LOSSLESS_T1
 //#define DEBUG_LOSSLESS_T2
 
-//#define DEBUG_SPARSE
+#define GRK_DEBUG_SPARSE
 
-#ifdef DEBUG_SPARSE
+#ifdef GRK_DEBUG_SPARSE
 #undef __SSE__
 #undef __SSE2__
 #undef __AVX2__
 #endif
 
+#if defined(GRK_HAVE_VALGRIND) && defined(GRK_DEBUG_SPARSE)
+const size_t grk_mem_ok = (size_t)-1;
 
-#if defined(GROK_HAVE_VALGRIND)
-#include <valgrind/memcheck.h>
+#define GRK_DEBUG_VALGRIND
+template<typename T> size_t grk_memcheck(const T* buf, size_t len){
+	 size_t val =  VALGRIND_CHECK_MEM_IS_DEFINED(buf,len * sizeof(T));
+	 return (val) ? (val - (uint64_t)buf)/sizeof(T) : grk_mem_ok;
+}
 #endif
 
 }

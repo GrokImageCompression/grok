@@ -1549,7 +1549,7 @@ public:
 
 	void decompress_h(dwt_data<T>* horiz){
 
-#ifndef DEBUG_SPARSE
+#ifndef GRK_DEBUG_SPARSE
 		#define get_S(buf,i) 	buf[(i)<<1]
 		#define get_D(buf,i) 	buf[(1+((i)<<1))]
 #endif
@@ -1639,7 +1639,7 @@ public:
 	}
 	void decompress_v(dwt_data<T>* vert){
 
-#ifndef DEBUG_SPARSE
+#ifndef GRK_DEBUG_SPARSE
 		#define get_S_off(buf,i,off) 		buf[(i)*2 * VERT_PASS_WIDTH + off]
 		#define get_D_off(buf,i,off) 		buf[(1+(i)*2)*VERT_PASS_WIDTH + off]
 #endif
@@ -1787,7 +1787,7 @@ public:
 	}
 private:
 
-#ifdef DEBUG_SPARSE
+#ifdef GRK_DEBUG_SPARSE
 		inline T get_S(T* buf, int32_t i) {
 			auto ret = buf[(i)<<1];
 			return ret;
