@@ -1826,18 +1826,18 @@ static Params97 makeParams97(dwt_data<vec4f>* dwt,
 	uint32_t lower = lowPass ?  dwt->win_l_0 :  dwt->win_h_0;
 	uint32_t upper = lowPass ?  dwt->win_l_1 :  dwt->win_h_1;
 	auto memPartial = lowPass ? dwt->memLow : dwt->memHigh;
-	uint32_t cas = lowPass ? dwt->cas : !dwt->cas;
+	uint32_t shift = lowPass ? dwt->cas : !dwt->cas;
 	uint32_t lenMax = lowPass ?
-			(uint32_t)(min<int32_t>((int32_t)dwt->sn, (int32_t)dwt->dn - (int32_t)cas) - (int32_t)lower) :
-			(uint32_t)(min<int32_t>((int32_t)dwt->dn, (int32_t)dwt->sn - (int32_t)(cas)) - (int32_t)lower);
+			(uint32_t)(min<int32_t>((int32_t)dwt->sn, (int32_t)dwt->dn - (int32_t)shift) - (int32_t)lower) :
+			(uint32_t)(min<int32_t>((int32_t)dwt->dn, (int32_t)dwt->sn - (int32_t)(shift)) - (int32_t)lower);
 	rc.data = memPartial? memPartial: dwt->mem;
 
 	if (step1) {
-		rc.data += cas + lower;
+		rc.data += shift + lower - dwt->win_l_0;
 		rc.len  = upper - lower;
 	} else {
-		rc.data += cas + 1 + lower;
-		rc.dataPrev = rc.data - 2 * cas;
+		rc.data += shift + 1 + lower - dwt->win_l_0;
+		rc.dataPrev = rc.data - 2 * shift;
 		rc.len = upper - lower;
 		rc.lenMax = lenMax;
 		rc.absoluteStart = lower;
@@ -1978,7 +1978,7 @@ template <typename T,
 					 job->data.memLow 	=  job->data.mem +   job->data.cas;
 					 job->data.memHigh  =  job->data.mem + (!job->data.cas) + 2 * ((int32_t)job->data.win_h_0 - (int32_t)job->data.win_l_0);
 					 decompressor.interleave_h(&job->data, sa, j,height);
-					 job->data.memLow 	=  job->data.mem - ((sizeof(T) == 4) ? 0 : job->data.win_l_0);
+					 job->data.memLow 	=  job->data.mem;
 					 job->data.memHigh  =  job->data.memLow  + ((int32_t)job->data.win_h_0 - (int32_t)job->data.win_l_0);
 					 decompressor.decompress_h(&job->data);
 					 if (!sa->write( resWindowRect.x0,
@@ -2012,7 +2012,7 @@ template <typename T,
 					job->data.memLow   =  (T*)((int32_t*)job->data.mem +   (job->data.cas) * VERT_PASS_WIDTH);
 					job->data.memHigh  =  (T*)((int32_t*)job->data.mem + ((!job->data.cas) + 2 * job->data.win_h_0) * VERT_PASS_WIDTH - 2 * job->data.win_l_0 * VERT_PASS_WIDTH);
 					decompressor.interleave_v(&job->data, sa, j, width);
-					job->data.memLow   =  (T*)((int32_t*)job->data.mem - (sizeof(T) ==4 ? 0 : job->data.win_l_0 * VERT_PASS_WIDTH) );
+					job->data.memLow   =  job->data.mem;
 					job->data.memHigh  =  (T*)((int32_t*)job->data.memLow  + job->data.win_h_0 * VERT_PASS_WIDTH - job->data.win_l_0 * VERT_PASS_WIDTH);
 					decompressor.decompress_v(&job->data);
 					if (!sa->write(j,
