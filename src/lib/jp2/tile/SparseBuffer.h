@@ -204,7 +204,7 @@ public:
 	    }
 
 #if defined(GROK_HAVE_VALGRIND) && defined(DEBUG_SPARSE)
-		validate = grk_rect_u32(10,94,11,95);
+	    validate = grk_rect_u32(27,22,30,30);
 #endif
 	}
 
@@ -314,8 +314,10 @@ private:
 					auto b = new SparseBlock();
 					if (!b->alloc(block_width*block_height))
 						return false;
-					setBlock(block_x, block_y, b);
-					//GRK_INFO("Allocated block at (%d,%d)", block_x, block_y);
+					assert(grid_bounds.contains(grk_pt(block_x,block_y)));
+					assert(b->data);
+					uint64_t index = (uint64_t)(block_y - grid_bounds.y0) * grid_bounds.width() + (block_x - grid_bounds.x0);
+					data_blocks[index] = b;
 				}
 	        }
 	    }
@@ -327,28 +329,29 @@ private:
 		uint64_t index = (uint64_t)(block_y - grid_bounds.y0) * grid_bounds.width() + (block_x - grid_bounds.x0);
 		auto b =  data_blocks[index];
 #if defined(GROK_HAVE_VALGRIND) && defined(DEBUG_SPARSE)
-	//if (b) {
-		//size_t val = VALGRIND_CHECK_MEM_IS_DEFINED(b->data,block_width*block_height * sizeof(int32_t));
-		//if (val)
-		//   GRK_ERROR("Sparse array getBlock (%d.%d): Uninitialized at location %d\n",
-		//		   block_x, block_y, (val - (size_t)b->data)/sizeof(int32_t));
-	//}
+	/*
+	if (b) {
+		size_t val = VALGRIND_CHECK_MEM_IS_DEFINED(b->data,block_width*block_height * sizeof(int32_t));
+		if (val) {
+		   GRK_ERROR("Sparse array getBlock (%d.%d): Uninitialized",block_x, block_y);
+		   for (size_t i = 0; i < block_width*block_height; ++i){
+			   val = VALGRIND_CHECK_MEM_IS_DEFINED(b->data + i,sizeof(int32_t));
+			   if (val) {
+				   auto offset = (val - (size_t)b->data)/sizeof(int32_t);
+				   auto x = block_x * block_width + offset % block_width;
+				   auto y = block_y * block_height + offset / block_width;
+				   printf("Sparse array getBlock (%d.%d): Uninitialized at location (%d,%d)\n",
+						   block_x, block_y, x,y );
+			   }
+		   }
+		}
+	}
+	*/
 #endif
 
 		return b;
 	}
-	inline void setBlock(uint32_t block_x, uint32_t block_y, SparseBlock* block){
-#if defined(GROK_HAVE_VALGRIND) && defined(DEBUG_SPARSE)
-	size_t val = VALGRIND_CHECK_MEM_IS_DEFINED(block->data,block_width*block_height * sizeof(int32_t));
-	if (val)
-	   GRK_ERROR("\n\n\nSparse array setBlock (%d,%d) : Uninitialized at location %d\n\n\n",
-			   block_x, block_y,(uint32_t)((val - (size_t)block->data)/sizeof(int32_t))  );
-#endif
-		assert(grid_bounds.contains(grk_pt(block_x,block_y)));
-		assert(block->data);
-		uint64_t index = (uint64_t)(block_y - grid_bounds.y0) * grid_bounds.width() + (block_x - grid_bounds.x0);
-		data_blocks[index] = block;
-	}
+
 	/** Returns whether window bounds are valid (non empty and within array bounds)
 	 * @param x0 left x coordinate of the window.
 	 * @param y0 top x coordinate of the window.
