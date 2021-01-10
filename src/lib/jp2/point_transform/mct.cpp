@@ -109,11 +109,13 @@ void mct::compress_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 void mct::decompress_dc_shift_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno) {
 	size_t i = 0;
 #ifdef GRK_DEBUG_VALGRIND
+/*
 	 auto buf = tile->comps[compno].getBuffer();
 	 auto val = grk_memcheck(buf, buf->strided_area());
 	 if (val != grk_mem_ok){
 		   GRK_ERROR("decompress_dc_shift_irrev: uninitialized memory at offset %d for component %d\n\n", val, compno);
 	 }
+*/
 #endif
 	float *GRK_RESTRICT c0 = (float*) tile->comps[compno].getBuffer()->getWindow()->data;
 	int32_t *c0_i = (int32_t*)c0;

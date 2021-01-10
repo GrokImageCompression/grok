@@ -2124,6 +2124,16 @@ template <typename T,
 		if (blockError)
 			goto cleanup;
     }
+
+#ifdef GRK_DEBUG_VALGRIND
+
+	auto val = grk_memcheck(tilec->getBuffer()->getWindow()->data,tilec->getBuffer()->strided_area() );
+	if (val != grk_mem_ok){
+		GRK_ERROR("Partial wavelet before final read: uninitialized memory at offset %d", val);
+	}
+
+#endif
+
     //final read into tile buffer
 	bool ret = sa->read(synthesisWindow,
 					   tilec->getBuffer()->getWindow()->data,
@@ -2132,6 +2142,17 @@ template <typename T,
 					   true);
 	assert(ret);
 	GRK_UNUSED(ret);
+
+#ifdef GRK_DEBUG_VALGRIND
+	{
+	auto val = grk_memcheck(tilec->getBuffer()->getWindow()->data,tilec->getBuffer()->strided_area() );
+	if (val != grk_mem_ok){
+		GRK_ERROR("Partial wavelet after final read: uninitialized memory at offset %d", val);
+	}
+	}
+#endif
+
+
 	} catch (MissingSparseBlockException &ex){
 		goto cleanup;
 	}

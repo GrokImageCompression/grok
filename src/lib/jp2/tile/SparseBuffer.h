@@ -419,12 +419,12 @@ private:
 						uint64_t ind = 0;
 						for (uint32_t k = 0; k < x_incr; k++){
 #ifdef GRK_DEBUG_VALGRIND
-							grk_pt pt((uint32_t)(x+ind), y_);
+							grk_pt pt((uint32_t)(x+k), y_);
 							if (validate.contains(pt)) {
 								size_t val = grk_memcheck<int32_t>(src_ptr+k,1);
 								if (val != grk_mem_ok)
 								   GRK_ERROR("Sparse array read (offset %d) : Uninitialized at location (%d,%d)\n\n\n",
-										   val, x+ind,y_);
+										   val, x+k,y_);
 							}
 #endif
 							dest_ptr[ind] = src_ptr[k];
@@ -443,12 +443,12 @@ private:
 						uint64_t ind = 0;
 						for (uint32_t k = 0; k < x_incr; k++) {
 #ifdef GRK_DEBUG_VALGRIND
-							grk_pt pt((uint32_t)(x+ind), y_);
+							grk_pt pt((uint32_t)(x+k), y_);
 							if (validate.contains(pt)) {
 								size_t val = grk_memcheck<int32_t>(src_ptr+ind,1);
 								if (val != grk_mem_ok)
 								   GRK_ERROR("Sparse array write (offset %d) : Uninitialized at location (%d,%d)\n\n\n",
-										   val, x+ind,y_);
+										   val, x+k,y_);
 							}
 #endif
 							dest_ptr[k] = src_ptr[ind];
