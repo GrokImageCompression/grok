@@ -26,11 +26,12 @@ namespace grk {
 
 //#define DEBUG_SPARSE
 
-/*
+#ifdef DEBUG_SPARSE
 #undef __SSE__
 #undef __SSE2__
 #undef __AVX2__
-*/
+#endif
+
 
 #if defined(GROK_HAVE_VALGRIND)
 #include <valgrind/memcheck.h>

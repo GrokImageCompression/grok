@@ -108,6 +108,15 @@ void mct::compress_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 
 void mct::decompress_dc_shift_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno) {
 	size_t i = 0;
+#ifdef DEBUG_SPARSE
+	 auto buf = tile->comps[compno].getBuffer();
+	 auto win = buf->getWindow();
+	 auto winSize = buf->strided_area();
+	 size_t val = VALGRIND_CHECK_MEM_IS_DEFINED(win->data,winSize * sizeof(float));
+	 if (val)
+	    GRK_ERROR("Component %d: uninitialized value at location %d\n",compno, (val - (size_t)win->data)/sizeof(float));
+
+#endif
 	float *GRK_RESTRICT c0 = (float*) tile->comps[compno].getBuffer()->getWindow()->data;
 	int32_t *c0_i = (int32_t*)c0;
 
@@ -162,13 +171,6 @@ void mct::decompress_dc_shift_irrev(grk_tile *tile, grk_image *image,TileCompone
 	}
 #endif
 	}
-#ifdef DEBUG_SPARSE
-	/*
-	 size_t val = VALGRIND_CHECK_MEM_IS_DEFINED(c0,n * sizeof(float));
-	 if (val)
-	    fprintf(stderr,"Uninitialized at location %d\n",(val - (size_t)c0)/sizeof(float));
-	    */
-#endif
 	for (; i < n; ++i) {
 		c0_i[i] = std::clamp<int32_t>((int32_t)grk_lrintf(c0[i]) + shift, _min, _max);
 	}
