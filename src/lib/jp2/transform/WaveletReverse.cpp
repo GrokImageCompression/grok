@@ -42,7 +42,6 @@ uint32_t max_resolution(Resolution *GRK_RESTRICT r, uint32_t i) {
 	return mr;
 }
 
-const uint32_t VERT_PASS_WIDTH = 4;
 
 template <typename T, typename S> struct decompress_job{
 	decompress_job( S data,
@@ -1471,17 +1470,16 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
  *  Width :  4
  *
  ****************************************************************************/
-template<typename T> class PartialInterleaver {
+template<typename T, int VERT_PASS_WIDTH> class PartialInterleaver {
 public:
 	/**
-	 * interleaved data is laid out in the dwt->mem buffer in increments of
-	 * type T
+	 * interleaved data is laid out in the dwt->mem buffer in increments of h_chunk
 	 */
 	void interleave_h(dwt_data<T>* dwt,
 								ISparseBuffer* sa,
 								uint32_t y_offset,
 								uint32_t y_num_rows){
-		const uint32_t typeSize = (uint32_t)(sizeof(T)/sizeof(int32_t));
+		const uint32_t h_chunk = (uint32_t)(sizeof(T)/sizeof(int32_t));
 	    for (uint32_t i = 0; i < y_num_rows; i++) {
 	    	// read one row of L band and write interleaved
 	        bool ret = sa->read(dwt->win_l_0,
@@ -1489,7 +1487,7 @@ public:
 							  dwt->win_l_1,
 							  y_offset + i + 1,
 							  (int32_t*)dwt->memLow + i,
-							  2 * typeSize,
+							  2 * h_chunk,
 							  0,
 							  true);
 	        assert(ret);
@@ -1499,7 +1497,7 @@ public:
 							  dwt->sn + dwt->win_h_1,
 							  y_offset + i + 1,
 							  (int32_t*)dwt->memHigh + i,
-							  2 * typeSize,
+							  2 * h_chunk,
 							  0,
 							  true);
 	        assert(ret);
@@ -1508,36 +1506,31 @@ public:
 	}
 	/*
 	 * interleaved data is laid out in the dwt->mem buffer in
-	 * increments of VERT_PASS_WIDTH elements of type int32_t/float
-	 *
+	 * v_chunk lines
 	 */
 	void interleave_v(dwt_data<T>* GRK_RESTRICT dwt,
 								ISparseBuffer* sa,
 								uint32_t x_offset,
 								uint32_t x_num_elements){
-		assert(x_num_elements <= VERT_PASS_WIDTH);
-    	// read one vertical strip (of width x_num_elements <= VERT_PASS_WIDTH) of L band and write interleaved
-	    assert( (size_t)(dwt->memLow + (dwt->win_l_1 - dwt->win_l_0) * 2 * VERT_PASS_WIDTH) <
-	    		(size_t)(dwt->allocatedMem + dwt->m_lenBytes/sizeof(T)));
+		const uint32_t v_chunk = (uint32_t)(sizeof(T)/sizeof(int32_t)) * VERT_PASS_WIDTH;
+    	// read one vertical strip (of width x_num_elements <= v_chunk) of L band and write interleaved
 	    bool ret = sa->read(x_offset,
 	    					dwt->win_l_0,
 							x_offset + x_num_elements,
 							dwt->win_l_1,
 							(int32_t*)dwt->memLow,
 							1,
-							2 * VERT_PASS_WIDTH,
+							2 * v_chunk,
 							true);
 	    assert(ret);
-    	// read one vertical strip (of width x_num_elements) of H band and write interleaved
-	    assert( (size_t)(dwt->memHigh + (dwt->win_h_1 - dwt->win_h_0) * 2 * VERT_PASS_WIDTH) <
-	    		(size_t)(dwt->allocatedMem + dwt->m_lenBytes/sizeof(T)));
+    	// read one vertical strip (of width x_num_elements <= v_chunk) of H band and write interleaved
 	    ret = sa->read(x_offset,
 	    				dwt->sn + dwt->win_h_0,
 						x_offset + x_num_elements,
 						dwt->sn + dwt->win_h_1,
 						(int32_t*)dwt->memHigh,
 						1,
-						2 * VERT_PASS_WIDTH,
+						2 * v_chunk,
 						true);
 	    assert(ret);
 	    GRK_UNUSED(ret);
@@ -1545,7 +1538,7 @@ public:
 };
 
 
-template<typename T> class Partial53 : public PartialInterleaver<T> {
+template<typename T, int VERT_PASS_WIDTH> class Partial53 : public PartialInterleaver<T,VERT_PASS_WIDTH> {
 public:
 
 	void decompress_h(dwt_data<T>* horiz){
@@ -1791,25 +1784,29 @@ private:
 #ifdef GRK_DEBUG_SPARSE
 		inline T get_S(T* buf, int32_t i) {
 			auto ret = buf[(i)<<1];
+			assert(abs(ret) < 0xFFFFFFF);
 			return ret;
 		}
 		inline T get_D(T* buf, int32_t i) {
 			auto ret =  buf[(1+((i)<<1))];
+			assert(abs(ret) < 0xFFFFFFF);
 			return ret;
 		}
 		inline T get_S_off(T* buf,uint32_t i, uint32_t off) {
 			auto ret = buf[(i)*2 * VERT_PASS_WIDTH + off];
+			assert(abs(ret) < 0xFFFFFFF);
 			return ret;
 		}
 		inline T get_D_off(T* buf,uint32_t i, uint32_t off) {
 			auto ret =  buf[(1+(i)*2)*VERT_PASS_WIDTH + off];
+			assert(abs(ret) < 0xFFFFFFF);
 			return ret;
 		}
 #endif
 };
 
 
-template<typename T> class Partial97 : public PartialInterleaver<T> {
+template<typename T, int VERT_PASS_WIDTH> class Partial97 : public PartialInterleaver<T,VERT_PASS_WIDTH> {
 public:
 	void decompress_h(dwt_data<T>* dwt){
 		decompress_step_97(dwt);
@@ -1878,6 +1875,7 @@ static Params97 makeParams97(dwt_data<vec4f>* dwt,
  */
 template <typename T,
 			uint32_t FILTER_WIDTH,
+			uint32_t VERT_PASS_WIDTH,
 			typename D>
 
    bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec,
@@ -1894,8 +1892,7 @@ template <typename T,
     }
 
     const uint32_t HORIZ_PASS_HEIGHT = sizeof(T)/sizeof(int32_t);
-    const uint32_t VERT_PASS_WIDTH = 4;
-    const uint32_t pad = FILTER_WIDTH * VERT_PASS_WIDTH;
+    const uint32_t pad = FILTER_WIDTH * VERT_PASS_WIDTH * sizeof(T)/sizeof(int32_t);
 
 	auto synthesisWindow = bounds;
 	synthesisWindow = synthesisWindow.rectceildivpow2(numresolutions - 1 - (numres-1));
@@ -1972,20 +1969,44 @@ template <typename T,
 					goto cleanup;
 		}
 
-		auto executor_h = [sa, resWindowRect, &decompressor](decompress_job<T, dwt_data<T>> *job){
+		auto executor_h = [resno,sa, resWindowRect, &decompressor](decompress_job<T, dwt_data<T>> *job){
+			(void)resno;
 			 try {
 				 for (uint32_t j = job->min_j; j < job->max_j; j += HORIZ_PASS_HEIGHT) {
-					 auto height = std::min<uint32_t>((uint32_t)HORIZ_PASS_HEIGHT,job->max_j - j );
+#ifdef GRK_DEBUG_VALGRIND
+					 GRK_INFO("H: resno = %d,y begin = %d", resno, j);
+#endif
+					 auto v_chunk = std::min<uint32_t>((uint32_t)HORIZ_PASS_HEIGHT,job->max_j - j );
 					 job->data.memLow 	=  job->data.mem +   job->data.cas;
 					 job->data.memHigh  =  job->data.mem + (!job->data.cas) + 2 * ((int32_t)job->data.win_h_0 - (int32_t)job->data.win_l_0);
-					 decompressor.interleave_h(&job->data, sa, j,height);
+					 decompressor.interleave_h(&job->data, sa, j,v_chunk);
+#ifdef GRK_DEBUG_VALGRIND
+					if (resno == 2 && j == 0) {
+						for (int i = 0; i < 11 * v_chunk; ++i) {
+							auto val = grk_memcheck<int32_t>((int32_t*)job->data.memLow + i, 1);
+							if (val != grk_mem_ok){
+								GRK_ERROR("Interleave uninitialized value: resno=%d, x begin = %d,  offset  = %d", resno, j, i + val);
+							}
+						}
+					}
+#endif
 					 job->data.memLow 	=  job->data.mem;
 					 job->data.memHigh  =  job->data.memLow  + ((int32_t)job->data.win_h_0 - (int32_t)job->data.win_l_0);
 					 decompressor.decompress_h(&job->data);
+#ifdef GRK_DEBUG_VALGRIND
+					if (resno == 2 && j == 0) {
+						for (int i = 0; i < 11 * v_chunk; ++i) {
+							auto val = grk_memcheck<int32_t>((int32_t*)job->data.memLow + i, 1);
+							if (val != grk_mem_ok){
+								GRK_ERROR("Decompress uninitialized value: resno=%d, x begin = %d,  offset  = %d", resno, j, i + val);
+							}
+						}
+					}
+#endif
 					 if (!sa->write( resWindowRect.x0,
 									  j,
 									  resWindowRect.x1,
-									  j + height,
+									  j + v_chunk,
 									  (int32_t*)(job->data.mem + resWindowRect.x0 - 2 * job->data.win_l_0),
 									  HORIZ_PASS_HEIGHT,
 									  1,
@@ -2006,23 +2027,39 @@ template <typename T,
 			 }
 		};
 
-		auto executor_v = [sa, resWindowRect, &decompressor](decompress_job<T, dwt_data<T>> *job){
+		auto executor_v = [resno, sa, resWindowRect, &decompressor](decompress_job<T, dwt_data<T>> *job){
+			(void)resno;
 			 try {
-				 for (uint32_t j = job->min_j; j < job->max_j; j += VERT_PASS_WIDTH) {
-					auto width = std::min<uint32_t>((uint32_t)VERT_PASS_WIDTH,job->max_j - j );
-					job->data.memLow   =  (T*)((int32_t*)job->data.mem +   (job->data.cas) * VERT_PASS_WIDTH);
-					job->data.memHigh  =  (T*)((int32_t*)job->data.mem + ((!job->data.cas) + 2 * job->data.win_h_0) * VERT_PASS_WIDTH - 2 * job->data.win_l_0 * VERT_PASS_WIDTH);
+				 const uint32_t h_chunk = (sizeof(T)/sizeof(int32_t)) * VERT_PASS_WIDTH;
+				 for (uint32_t j = job->min_j; j < job->max_j; j += h_chunk) {
+#ifdef GRK_DEBUG_VALGRIND
+					GRK_INFO("V: resno = %d, x begin = %d", resno, j);
+#endif
+					auto width = std::min<uint32_t>((uint32_t)h_chunk,job->max_j - j );
+					job->data.memLow   =  job->data.mem +   (job->data.cas) * VERT_PASS_WIDTH;
+					job->data.memHigh  =  job->data.mem + ((!job->data.cas) + 2 * job->data.win_h_0) * VERT_PASS_WIDTH - 2 * job->data.win_l_0 * VERT_PASS_WIDTH;
 					decompressor.interleave_v(&job->data, sa, j, width);
+
+#ifdef GRK_DEBUG_VALGRIND
+					if (resno == 1 && j == 260) {
+						for (int i = 0; i < 8 * h_chunk; ++i) {
+							auto val = grk_memcheck<int32_t>((int32_t*)job->data.memLow + i, 1);
+							if (val != grk_mem_ok){
+								GRK_ERROR("Interleave uninitialized value: resno=%d, x begin = %d,  offset  = %d", resno, j, i + val);
+							}
+						}
+					}
+#endif
 					job->data.memLow   =  job->data.mem;
-					job->data.memHigh  =  (T*)((int32_t*)job->data.memLow  + job->data.win_h_0 * VERT_PASS_WIDTH - job->data.win_l_0 * VERT_PASS_WIDTH);
+					job->data.memHigh  =  job->data.memLow  + job->data.win_h_0 * VERT_PASS_WIDTH - job->data.win_l_0 * VERT_PASS_WIDTH;
 					decompressor.decompress_v(&job->data);
 					if (!sa->write(j,
 								  resWindowRect.y0,
 								  j + width,
 								  resWindowRect.y1,
-								  (int32_t*)job->data.mem + resWindowRect.y0 * VERT_PASS_WIDTH - 2 * job->data.win_l_0 * VERT_PASS_WIDTH,
+								  (int32_t*)(job->data.mem + resWindowRect.y0 * VERT_PASS_WIDTH - 2 * job->data.win_l_0 * VERT_PASS_WIDTH),
 								  1,
-								  VERT_PASS_WIDTH,
+								  VERT_PASS_WIDTH * sizeof(T)/sizeof(int32_t),
 								  true)) {
 						GRK_ERROR("Sparse array write failure");
 						job->data.release();
@@ -2047,7 +2084,7 @@ template <typename T,
         horiz.win_h_1 = bandWindowRect[BAND_ORIENT_HL].x1;
 
 
-        size_t data_size = splitWindowRect[0].width();
+        size_t data_size = splitWindowRect[0].width() * HORIZ_PASS_HEIGHT;
 
 		for (uint32_t k = 0; k < 2; ++k) {
 			uint32_t num_jobs = (uint32_t)num_threads;
@@ -2085,7 +2122,7 @@ template <typename T,
 				goto cleanup;
 		}
 
-		data_size = resWindowRect.height() * VERT_PASS_WIDTH;
+		data_size = resWindowRect.height() * VERT_PASS_WIDTH * sizeof(T)/sizeof(int32_t);
 
 		vert.win_l_0 = bandWindowRect[BAND_ORIENT_LL].y0;
 		vert.win_l_1 = bandWindowRect[BAND_ORIENT_LL].y1;
@@ -2096,7 +2133,7 @@ template <typename T,
 		if (num_cols < num_jobs)
 			num_jobs = num_cols;
 		uint32_t step_j = num_jobs ? ( num_cols / num_jobs) : 0;
-		if (num_threads == 1 || step_j < VERT_PASS_WIDTH)
+		if (num_threads == 1 || step_j < 4)
 			num_jobs = 1;
 		bool blockError = false;
 		std::vector< std::future<int> > results;
@@ -2172,23 +2209,29 @@ bool WaveletReverse::decompress(TileProcessor *p_tcd,
 	if (qmfbid == 1) {
 	    if (p_tcd->wholeTileDecompress)
 	        return decompress_tile_53(tilec,numres);
-	    else
+	    else {
+	    	constexpr uint32_t VERT_PASS_WIDTH = 4;
 	        return decompress_partial_tile<int32_t,
 										getFilterPad<uint32_t>(true),
-										Partial53<int32_t>>(tilec,
+										VERT_PASS_WIDTH,
+										Partial53<int32_t,VERT_PASS_WIDTH>>(tilec,
 															window,
 															numres,
 															tilec->getSparseBuffer());
+	    }
 	} else {
 		 if (p_tcd->wholeTileDecompress)
 		        return decompress_tile_97(tilec, numres);
-		    else
+		    else {
+		    	constexpr uint32_t VERT_PASS_WIDTH = 1;
 		        return decompress_partial_tile<vec4f,
 											getFilterPad<uint32_t>(false),
-											Partial97<vec4f>>(tilec,
+											VERT_PASS_WIDTH,
+											Partial97<vec4f,VERT_PASS_WIDTH>>(tilec,
 															window,
 															numres,
 															tilec->getSparseBuffer());
+		    }
 	}
 }
 

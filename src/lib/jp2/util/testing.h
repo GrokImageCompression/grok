@@ -28,7 +28,7 @@ namespace grk {
 //#define DEBUG_LOSSLESS_T1
 //#define DEBUG_LOSSLESS_T2
 
-#define GRK_DEBUG_SPARSE
+//#define GRK_DEBUG_SPARSE
 
 #ifdef GRK_DEBUG_SPARSE
 #undef __SSE__

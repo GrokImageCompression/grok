@@ -204,8 +204,9 @@ public:
 	    }
 
 #ifdef GRK_DEBUG_VALGRIND
-	    validate = grk_rect_u32(27,22,30,30);
-	    //validate = grk_rect_u32(-1,-1,-1,-1);
+	    validate = grk_rect_u32(8,8,10,10);
+	    // take into account sub-sampling
+	   // validate = grk_rect_u32(1,22,2,30);
 #endif
 	}
 
@@ -377,8 +378,20 @@ private:
 						const uint32_t buf_line_stride,
 						bool forgiving,
 						bool is_read_op){
-	    if (!is_window_valid(x0, y0, x1, y1))
+	    if (!is_window_valid(x0, y0, x1, y1)){
+	    	// fill the client buffer with zeros in this case
+	    	if (forgiving && is_read_op){
+	    		GRK_WARN("Sparse buffer: attempt to read invalid window (%d,%d,%d,%d). Filling with zeros.", x0,y0,x1,y1);
+	    		for (uint32_t y = y0; y < y1; ++y){
+	    	    	int32_t *bufPtr = buf + (y - y0)  * buf_line_stride;
+		    		for (uint32_t x = x0; x < x1; ++x){
+		    			*bufPtr = 0;
+		    			bufPtr += buf_col_stride;
+		    		}
+	    		}
+	    	}
 	        return forgiving;
+	    }
 
 	    const uint64_t line_stride 	= buf_line_stride;
 	    const uint64_t col_stride 	= buf_col_stride;
