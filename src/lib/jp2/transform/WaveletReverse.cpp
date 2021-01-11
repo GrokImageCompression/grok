@@ -157,6 +157,7 @@ template <typename T> struct dwt_data {
 	        GRK_ERROR("Failed to allocate %d bytes", m_lenBytes);
 	        return false;
 	    }
+	    //memset(allocatedMem, 0, m_lenBytes);
 	    mem = allocatedMem + m_paddingBytes / sizeof(T);
 		return (allocatedMem != nullptr) ? true : false;
 	}
@@ -1985,7 +1986,7 @@ template <typename T,
 									  j,
 									  resWindowRect.x1,
 									  j + height,
-									  (int32_t*)(job->data.mem + resWindowRect.x0 - (sizeof(T) ==4 ?  job->data.win_l_0 : 2 * job->data.win_l_0) ),
+									  (int32_t*)(job->data.mem + resWindowRect.x0 - 2 * job->data.win_l_0),
 									  HORIZ_PASS_HEIGHT,
 									  1,
 									  true)) {
@@ -2019,7 +2020,7 @@ template <typename T,
 								  resWindowRect.y0,
 								  j + width,
 								  resWindowRect.y1,
-								  (int32_t*)(job->data.mem + resWindowRect.y0 - (sizeof(T) ==4 ?  job->data.win_l_0 : 2 * job->data.win_l_0) ),
+								  (int32_t*)job->data.mem + resWindowRect.y0 * VERT_PASS_WIDTH - 2 * job->data.win_l_0 * VERT_PASS_WIDTH,
 								  1,
 								  VERT_PASS_WIDTH,
 								  true)) {

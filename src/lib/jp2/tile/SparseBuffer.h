@@ -205,6 +205,7 @@ public:
 
 #ifdef GRK_DEBUG_VALGRIND
 	    validate = grk_rect_u32(27,22,30,30);
+	    //validate = grk_rect_u32(-1,-1,-1,-1);
 #endif
 	}
 
