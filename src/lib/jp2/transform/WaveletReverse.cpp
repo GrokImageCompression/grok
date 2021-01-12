@@ -1826,21 +1826,25 @@ static Params97 makeParams97(dwt_data<vec4f>* dwt,
 	auto memPartial = lowPass ? dwt->memLow : dwt->memHigh;
 	uint32_t shift = lowPass ? dwt->cas : !dwt->cas;
 	uint32_t lenMax = lowPass ?
-			(uint32_t)(min<int32_t>((int32_t)dwt->sn, (int32_t)dwt->dn - (int32_t)shift) - (int32_t)lower) :
-			(uint32_t)(min<int32_t>((int32_t)dwt->dn, (int32_t)dwt->sn - (int32_t)(shift)) - (int32_t)lower);
+			(uint32_t)(min<int64_t>((int64_t)dwt->sn, (int64_t)dwt->dn - (int64_t)shift) - (int64_t)lower) :
+			(uint32_t)(min<int64_t>((int64_t)dwt->dn, (int64_t)dwt->sn - (int64_t)(shift)) - (int64_t)lower);
 	rc.data = memPartial? memPartial: dwt->mem;
 
 	if (step1) {
-		rc.data += shift + lower - dwt->win_l_0;
+		rc.data += (int64_t)shift + (int64_t)lower - (int64_t)dwt->win_l_0;
 		rc.len  = upper - lower;
 	} else {
-		rc.data += shift + 1 + lower - dwt->win_l_0;
+		rc.data += (int64_t)shift + 1 + (int64_t)lower - (int64_t)dwt->win_l_0;
 		rc.dataPrev = rc.data - 2 * shift;
 		rc.len = upper - lower;
 		rc.lenMax = lenMax;
 		rc.absoluteStart = lower;
 	}
 
+	if (memPartial) {
+		assert((uint64_t)rc.data >= (uint64_t)dwt->allocatedMem);
+		assert((uint64_t)rc.data <= (uint64_t)dwt->allocatedMem + dwt->m_lenBytes);
+	}
 
 	return rc;
 };
@@ -1978,7 +1982,7 @@ template <typename T,
 #endif
 					 auto v_chunk = std::min<uint32_t>((uint32_t)HORIZ_PASS_HEIGHT,job->max_j - j );
 					 job->data.memLow 	=  job->data.mem +   job->data.cas;
-					 job->data.memHigh  =  job->data.mem + (!job->data.cas) + 2 * ((int32_t)job->data.win_h_0 - (int32_t)job->data.win_l_0);
+					 job->data.memHigh  =  job->data.mem + (int64_t)(!job->data.cas) + 2 * ((int64_t)job->data.win_h_0 - (int64_t)job->data.win_l_0);
 					 decompressor.interleave_h(&job->data, sa, j,v_chunk);
 #ifdef GRK_DEBUG_VALGRIND
 					if (resno == 2 && j == 0) {
@@ -1991,7 +1995,7 @@ template <typename T,
 					}
 #endif
 					 job->data.memLow 	=  job->data.mem;
-					 job->data.memHigh  =  job->data.memLow  + ((int32_t)job->data.win_h_0 - (int32_t)job->data.win_l_0);
+					 job->data.memHigh  =  job->data.memLow  + ((int64_t)job->data.win_h_0 - (int64_t)job->data.win_l_0);
 					 decompressor.decompress_h(&job->data);
 #ifdef GRK_DEBUG_VALGRIND
 					if (resno == 2 && j == 0) {
@@ -2007,7 +2011,7 @@ template <typename T,
 									  j,
 									  resWindowRect.x1,
 									  j + v_chunk,
-									  (int32_t*)(job->data.mem + resWindowRect.x0 - 2 * job->data.win_l_0),
+									  (int32_t*)(job->data.mem + (int64_t)resWindowRect.x0 - 2 * (int64_t)job->data.win_l_0),
 									  HORIZ_PASS_HEIGHT,
 									  1,
 									  true)) {
@@ -2037,7 +2041,7 @@ template <typename T,
 #endif
 					auto width = std::min<uint32_t>((uint32_t)h_chunk,job->max_j - j );
 					job->data.memLow   =  job->data.mem +   (job->data.cas) * VERT_PASS_WIDTH;
-					job->data.memHigh  =  job->data.mem + ((!job->data.cas) + 2 * job->data.win_h_0) * VERT_PASS_WIDTH - 2 * job->data.win_l_0 * VERT_PASS_WIDTH;
+					job->data.memHigh  =  job->data.mem + ((!job->data.cas) + 2 * (int64_t)job->data.win_h_0) * VERT_PASS_WIDTH - 2 * (int64_t)job->data.win_l_0 * VERT_PASS_WIDTH;
 					decompressor.interleave_v(&job->data, sa, j, width);
 
 #ifdef GRK_DEBUG_VALGRIND
@@ -2051,13 +2055,13 @@ template <typename T,
 					}
 #endif
 					job->data.memLow   =  job->data.mem;
-					job->data.memHigh  =  job->data.memLow  + job->data.win_h_0 * VERT_PASS_WIDTH - job->data.win_l_0 * VERT_PASS_WIDTH;
+					job->data.memHigh  =  job->data.memLow  + (int64_t)job->data.win_h_0 * VERT_PASS_WIDTH - (int64_t)job->data.win_l_0 * VERT_PASS_WIDTH;
 					decompressor.decompress_v(&job->data);
 					if (!sa->write(j,
 								  resWindowRect.y0,
 								  j + width,
 								  resWindowRect.y1,
-								  (int32_t*)(job->data.mem + resWindowRect.y0 * VERT_PASS_WIDTH - 2 * job->data.win_l_0 * VERT_PASS_WIDTH),
+								  (int32_t*)(job->data.mem + (int64_t)resWindowRect.y0 * VERT_PASS_WIDTH - 2 * (int64_t)job->data.win_l_0 * VERT_PASS_WIDTH),
 								  1,
 								  VERT_PASS_WIDTH * sizeof(T)/sizeof(int32_t),
 								  true)) {
