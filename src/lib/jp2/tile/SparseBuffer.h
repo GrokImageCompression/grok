@@ -204,9 +204,7 @@ public:
 	    }
 
 #ifdef GRK_DEBUG_VALGRIND
-	    validate = grk_rect_u32(8,8,10,10);
-	    // take into account sub-sampling
-	   // validate = grk_rect_u32(1,22,2,30);
+	    //validate = grk_rect_u32(9, 8,10, 10);
 #endif
 	}
 

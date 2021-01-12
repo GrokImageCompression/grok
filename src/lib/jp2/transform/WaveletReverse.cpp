@@ -592,12 +592,15 @@ static void decompress_h_53(const dwt_data<int32_t> *dwt,
         if (total_width > 1) {
             decompress_h_cas0_53(dwt->mem,bandL,dwt->sn, bandH, dwt->dn, dest);
         } else if (total_width == 1) {
-        	//FIXME - validate this calculation
+        	assert(dwt->sn == 1);
+        	// only L op: only one sample in L band and H band is empty
         	dest[0] = bandL[0];
         }
     } else { /* Left-most sample is on odd coordinate */
+    	assert(total_width != 0);
         if (total_width == 1) {
-        	//FIXME - validate this calculation
+        	assert(dwt->dn == 1);
+        	// only H op: only one sample in H band and L band is empty
         	dest[0] = bandH[0]/2;
         } else if (total_width == 2) {
             dwt->mem[1] = bandL[0] - ((bandH[0] + 1) >> 1);
@@ -621,36 +624,35 @@ static void decompress_v_53(const dwt_data<int32_t> *dwt,
 						 int32_t *dest,
 						 const uint32_t strideDest,
                          uint32_t nb_cols){
-    const uint32_t sn = dwt->sn;
-    const uint32_t len = sn + dwt->dn;
+    const uint32_t total_height = dwt->sn + dwt->dn;
     if (dwt->cas == 0) {
-        if (len == 1) {
+        if (total_height == 1) {
             for (uint32_t c = 0; c < nb_cols; c++, bandL++,dest++)
                 dest[0] = bandL[0];
             return;
         }
     	if (CPUArch::SSE2() || CPUArch::AVX2() ) {
 #if (defined(__SSE2__) || defined(__AVX2__))
-			if (len > 1 && nb_cols == PLL_COLS_53) {
+			if (total_height > 1 && nb_cols == PLL_COLS_53) {
 				/* Same as below general case, except that thanks to SSE2/AVX2 */
 				/* we can efficiently process 8/16 columns in parallel */
-				decompress_v_cas0_mcols_SSE2_OR_AVX2_53(dwt->mem, bandL,sn, strideL, bandH, dwt->dn, strideH, dest, strideDest);
+				decompress_v_cas0_mcols_SSE2_OR_AVX2_53(dwt->mem, bandL,dwt->sn, strideL, bandH, dwt->dn, strideH, dest, strideDest);
 				return;
 			}
 #endif
     	}
-        if (len > 1) {
+        if (total_height > 1) {
             for (uint32_t c = 0; c < nb_cols; c++, bandL++, bandH++,dest++)
-                decompress_v_cas0_53(dwt->mem, bandL,sn, strideL,bandH,dwt->dn, strideH, dest, strideDest);
+                decompress_v_cas0_53(dwt->mem, bandL,dwt->sn, strideL,bandH,dwt->dn, strideH, dest, strideDest);
             return;
         }
     } else {
-        if (len == 1) {
+        if (total_height == 1) {
             for (uint32_t c = 0; c < nb_cols; c++, bandL++,dest++)
                 dest[0] = bandL[0] >> 1;
             return;
         }
-        else if (len == 2) {
+        else if (total_height == 2) {
             auto out = dwt->mem;
             for (uint32_t c = 0; c < nb_cols; c++, bandL++,bandH++,dest++) {
                 out[1] = bandL[0] - ((bandH[0] + 1) >> 1);
@@ -664,13 +666,13 @@ static void decompress_v_53(const dwt_data<int32_t> *dwt,
 			if (nb_cols == PLL_COLS_53) {
 				/* Same as below general case, except that thanks to SSE2/AVX2 */
 				/* we can efficiently process 8/16 columns in parallel */
-				decompress_v_cas1_mcols_SSE2_OR_AVX2_53(dwt->mem, bandL,sn, strideL,bandH,dwt->dn, strideH, dest, strideDest);
+				decompress_v_cas1_mcols_SSE2_OR_AVX2_53(dwt->mem, bandL,dwt->sn, strideL,bandH,dwt->dn, strideH, dest, strideDest);
 				return;
 			}
 #endif
         }
 		for (uint32_t c = 0; c < nb_cols; c++, bandL++,bandH++,dest++)
-			decompress_v_cas1_53(dwt->mem, bandL,sn,strideL,bandH, dwt->dn, strideH, dest, strideDest);
+			decompress_v_cas1_53(dwt->mem, bandL,dwt->sn,strideL,bandH, dwt->dn, strideH, dest, strideDest);
     }
 }
 
@@ -1541,7 +1543,7 @@ public:
 template<typename T, int VERT_PASS_WIDTH> class Partial53 : public PartialInterleaver<T,VERT_PASS_WIDTH> {
 public:
 
-	void decompress_h(dwt_data<T>* horiz){
+	void decompress_h(dwt_data<T>* dwt){
 
 #ifndef GRK_DEBUG_SPARSE
 		#define get_S(buf,i) 	buf[(i)<<1]
@@ -1551,23 +1553,29 @@ public:
 		#define S(buf,i) 	buf[(i)<<1]
 		#define D(buf,i) 	buf[(1+((i)<<1))]
 
+		// cas == 0 (L segment of band contains low pass samples)
 		#define S_(buf,i) 	((i)<0 ? get_S(buf,0) :	((i)>=sn ? get_S(buf,sn-1) : get_S(buf,i)))
 		#define D_(buf,i) 	((i)<0 ? get_D(buf,0) :	((i)>=dn ? get_D(buf,dn-1) : get_D(buf,i)))
 
+		// cas == 1 (L segment of band contains high pass samples)
 		#define SS_(buf,i)	((i)<0 ? get_S(buf,0) :	((i)>=dn ? get_S(buf,dn-1) : get_S(buf,i)))
 		#define DD_(buf,i) 	((i)<0 ? get_D(buf,0) :	((i)>=sn ? get_D(buf,sn-1) : get_D(buf,i)))
 
 		int32_t i;
-		int32_t dn 		 = (int32_t)horiz->dn;
-		int32_t sn 		 = (int32_t)horiz->sn;
-		int32_t cas 	 = (int32_t)horiz->cas;
-		int32_t win_l_x0 = (int32_t)horiz->win_l_0;
-		int32_t win_l_x1 = (int32_t)horiz->win_l_1;
-		int32_t win_h_x0 = (int32_t)horiz->win_h_0;
-		int32_t win_h_x1 = (int32_t)horiz->win_h_1;
+		int32_t cas 	 = (int32_t)dwt->cas;
+		int32_t win_l_x0 = (int32_t)dwt->win_l_0;
+		int32_t win_l_x1 = (int32_t)dwt->win_l_1;
+		int32_t win_h_x0 = (int32_t)dwt->win_h_0;
+		int32_t win_h_x1 = (int32_t)dwt->win_h_1;
+		int32_t sn 	  		= (int32_t)(dwt->sn - dwt->win_l_0);
+		int32_t sn_global  	= (int32_t)dwt->sn;
+		int32_t dn 	  		= (int32_t)(dwt->dn - dwt->win_h_0);
+		int32_t dn_global	= (int32_t)dwt->dn;
+
+		assert(dwt->win_l_1 <= (uint32_t)sn_global && dwt->win_h_1 <= (uint32_t)dn_global);
 
 		if (!cas) {
-			if ((dn > 0) || (sn > 1)) {
+			if ((dn_global != 0) || (sn_global > 1)) {
 				/* Naive version is :
 				for (i = win_l_x0; i < i_max; i++) {
 					S(i) -= (D_(i - 1) + D_(i) + 2) >> 2;
@@ -1579,18 +1587,16 @@ public:
 				checking in S_ and D_ macros
 				*/
 
-				auto buf	 = horiz->memLow;
+				auto buf	 = dwt->memLow;
 				i = 0;
-				if (i < win_l_x1 - win_l_x0) {
-					int32_t i_max;
-
+				int32_t i_max = win_l_x1 - win_l_x0;
+				if (i < i_max) {
 					/* Left-most case */
 					S(buf,i) -= (D_(buf,i - 1) + D_(buf,i) + 2) >> 2;
 					i ++;
 
-					i_max = win_l_x1 - win_l_x0;
-					if (i_max > dn - win_l_x0)
-						i_max = dn - win_l_x0;
+					if (i_max > dn_global - win_l_x0)
+						i_max = dn_global - win_l_x0;
 					for (; i < i_max; i++) {
 						/* No bound checking */
 						S(buf,i) -= (D(buf,i - 1) + D(buf,i) + 2) >> 2;
@@ -1601,12 +1607,12 @@ public:
 					}
 				}
 
-				buf	 = horiz->memHigh;
+				buf	 = dwt->memHigh;
 				i = 0;
-				if (i < win_h_x1 - win_h_x0) {
-					int32_t i_max = win_h_x1 - win_h_x0;
-					if (i_max >= sn - win_h_x0)
-						i_max = sn - 1 - win_h_x0;
+				i_max = win_h_x1 - win_h_x0;
+				if (i < i_max) {
+					if (i_max >= sn_global - win_h_x0)
+						i_max = sn_global - 1 - win_h_x0;
 					for (; i < i_max; i++) {
 						/* No bound checking */
 						D(buf,i) += (S(buf,i) + S(buf,i + 1)) >> 1;
@@ -1618,20 +1624,21 @@ public:
 				}
 			}
 		} else {
-			if (!sn  && dn == 1) {
-				auto buf = horiz->memLow;
+			if (sn_global == 0  && dn_global == 1) {
+				// only do L band (high pass)
+				auto buf = dwt->memLow;
 				S(buf,0) /= 2;
 			} else {
-				auto buf = horiz->memLow;
-				for (i = 0; i < win_l_x1 - win_l_x0; i++)
+				auto buf = dwt->memHigh;
+				for (i = 0; i < win_h_x1 - win_h_x0; i++)
 					D(buf,i) -= (SS_(buf,i) + SS_(buf,i + 1) + 2) >> 2;
-				buf	 = horiz->memHigh;
-				for (i = win_h_x0; i < win_h_x1 - win_h_x0; i++)
+				//2. high pass
+				for (i = win_h_x0; i < win_l_x1 - win_l_x0; i++)
 					S(buf,i) += (DD_(buf,i) + DD_(buf,i - 1)) >> 1;
 			}
 		}
 	}
-	void decompress_v(dwt_data<T>* vert){
+	void decompress_v(dwt_data<T>* dwt){
 
 #ifndef GRK_DEBUG_SPARSE
 		#define get_S_off(buf,i,off) 		buf[(i)*2 * VERT_PASS_WIDTH + off]
@@ -1641,12 +1648,14 @@ public:
 		#define S_off(buf,i,off) 		buf[(i)*2 * VERT_PASS_WIDTH + off]
 		#define D_off(buf,i,off) 		buf[(1+(i)*2)*VERT_PASS_WIDTH + off]
 
+		// cas == 0
 		#define S_off_(buf,i,off) 		(((i)>=sn ? get_S_off(buf,sn-1,off) : get_S_off(buf,i,off)))
 		#define D_off_(buf,i,off) 		(((i)>=dn ? get_D_off(buf,dn-1,off) : get_D_off(buf,i,off)))
 
 		#define S_sgnd_off_(buf,i,off) 	(((i)<0   ? get_S_off(buf,0,off)    : S_off_(buf,i,off)))
 		#define D_sgnd_off_(buf,i,off) 	(((i)<0	  ? get_D_off(buf,0,off)    : D_off_(buf,i,off)))
 
+		// case == 1
 		#define SS_sgnd_off_(buf,i,off)  ((i)<0   ? get_S_off(buf,0,off)    : ((i)>=dn ? get_S_off(buf,dn-1,off) : get_S_off(buf,i,off)))
 		#define DD_sgnd_off_(buf,i,off)  ((i)<0   ? get_D_off(buf,0,off)    : ((i)>=sn ? get_D_off(buf,sn-1,off) : get_D_off(buf,i,off)))
 
@@ -1654,16 +1663,20 @@ public:
 		#define DD_off_(buf,i,off) 		(((i)>=sn ? get_D_off(buf,sn-1,off) : get_D_off(buf,i,off)))
 
 		uint32_t i;
-		uint32_t dn 	  = vert->dn;
-		uint32_t sn 	  = vert->sn;
-		uint32_t cas 	  = vert->cas;
-		uint32_t win_l_x0 = vert->win_l_0;
-		uint32_t win_l_x1 = vert->win_l_1;
-		uint32_t win_h_x0 = vert->win_h_0;
-		uint32_t win_h_x1 = vert->win_h_1;
+		uint32_t cas 	  = dwt->cas;
+		uint32_t win_l_x0 = dwt->win_l_0;
+		uint32_t win_l_x1 = dwt->win_l_1;
+		uint32_t win_h_x0 = dwt->win_h_0;
+		uint32_t win_h_x1 = dwt->win_h_1;
+		uint32_t sn 	  	= dwt->sn - dwt->win_l_0;
+		uint32_t sn_global  = dwt->sn;
+		uint32_t dn 	  	= dwt->dn - dwt->win_h_0;
+		uint32_t dn_global	= dwt->dn;
+
+		assert(dwt->win_l_1 <= (uint32_t)sn_global && dwt->win_h_1 <= (uint32_t)dn_global);
 
 		if (!cas) {
-			if ((dn > 0) || (sn > 1)) {
+			if ((dn_global != 0) || (sn_global > 1)) {
 				/* Naive version is :
 				for (i = win_l_x0; i < i_max; i++) {
 					S(i) -= (D_(i - 1) + D_(i) + 2) >> 2;
@@ -1676,19 +1689,17 @@ public:
 				*/
 
 				// 1. low pass
-				auto buf   = vert->memLow;
+				auto buf   = dwt->memLow;
 				i = 0;
-				if (i < win_l_x1 - win_l_x0) {
-					uint32_t i_max;
-
+				uint32_t i_max = win_l_x1 - win_l_x0;
+				assert(win_l_x1 >=  win_l_x0);
+				if (i < i_max) {
 					/* Left-most case */
 					for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 						S_off(buf,i, off) -= (D_sgnd_off_(buf,(int64_t)i - 1, off) + D_off_(buf,i, off) + 2) >> 2;
 					i ++;
-
-					i_max = win_l_x1 - win_l_x0;
-					if (i_max > dn - win_l_x0)
-						i_max = dn - win_l_x0;
+					if (i_max > dn_global - win_l_x0)
+						i_max = dn_global - win_l_x0;
 		#ifdef __SSE2__
 					if (i + 1 < i_max) {
 						const __m128i two = _mm_set1_epi32(2);
@@ -1720,12 +1731,13 @@ public:
 				}
 
 				// 2. high pass
-				buf = vert->memHigh;
+				buf = dwt->memHigh;
 				i = 0;
-				if (i < win_h_x1 - win_h_x0) {
-					uint32_t i_max = win_h_x1 - win_h_x0;
-					if (i_max >= sn - win_h_x0)
-						i_max = sn - 1 - win_h_x0;
+				assert(win_h_x1 >=  win_h_x0);
+				i_max = win_h_x1 - win_h_x0;
+				if (i < i_max) {
+					if (i_max >= sn_global - win_h_x0)
+						i_max = sn_global - 1 - win_h_x0;
 		#ifdef __SSE2__
 					if (i + 1 < i_max) {
 						auto S =  _mm_load_si128((__m128i *)(buf + i * 2 * VERT_PASS_WIDTH));
@@ -1756,23 +1768,21 @@ public:
 				}
 			}
 		} else {
-			if (!sn  && dn == 1) {
+			if (sn_global == 0  && dn_global == 1) {
 				// edge case at origin
-				auto buf   = vert->memLow;
+				auto buf   = dwt->memLow;
 				for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 					S_off(buf,0, off) /= 2;
 			} else {
-				// 1. low pass
-				auto buf   = vert->memLow;
-				assert( (uint64_t)(vert->memLow + (win_l_x1 - win_l_x0) * VERT_PASS_WIDTH) - (uint64_t)vert->allocatedMem < vert->m_lenBytes);
-				for (i = 0; i < win_l_x1 - win_l_x0; i++) {
+				auto buf   = dwt->memHigh;
+				assert( (uint64_t)(dwt->memHigh + (win_h_x1 - win_h_x0) * VERT_PASS_WIDTH) - (uint64_t)dwt->allocatedMem < dwt->m_lenBytes);
+				for (i = 0; i < win_h_x1 - win_h_x0; i++) {
 					for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 						D_off(buf,i, off) -= (SS_off_(buf,i, off) + SS_off_(buf,i + 1, off) + 2) >> 2;
 				}
-				// 2. high pass
-				buf   = vert->memHigh;
-				assert( (uint64_t)(vert->memHigh + (win_h_x1 - win_h_x0) * VERT_PASS_WIDTH) - (uint64_t)vert->allocatedMem < vert->m_lenBytes);
-				for (i = 0; i < win_h_x1 - win_h_x0; i++) {
+				buf   = dwt->memLow;
+				assert( (uint64_t)(dwt->memLow + (win_l_x1 - win_l_x0) * VERT_PASS_WIDTH) - (uint64_t)dwt->allocatedMem < dwt->m_lenBytes);
+				for (i = 0; i < win_l_x1 - win_l_x0; i++) {
 					for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 						S_off(buf,i, off) += (DD_off_(buf,i, off) + DD_sgnd_off_(buf,(int64_t)i - 1, off)) >> 1;
 				}
@@ -1825,10 +1835,16 @@ static Params97 makeParams97(dwt_data<vec4f>* dwt,
 	uint32_t upper = lowPass ?  dwt->win_l_1 :  dwt->win_h_1;
 	auto memPartial = lowPass ? dwt->memLow : dwt->memHigh;
 	uint32_t shift = lowPass ? dwt->cas : !dwt->cas;
-	uint32_t lenMax = lowPass ?
-			(uint32_t)(min<int64_t>((int64_t)dwt->sn, (int64_t)dwt->dn - (int64_t)shift) - (int64_t)lower) :
-			(uint32_t)(min<int64_t>((int64_t)dwt->dn, (int64_t)dwt->sn - (int64_t)(shift)) - (int64_t)lower);
+	int64_t lenMax = lowPass ?
+			min<int64_t>((int64_t)dwt->sn, (int64_t)dwt->dn - (int64_t)shift) :
+			min<int64_t>((int64_t)dwt->dn, (int64_t)dwt->sn - (int64_t)(shift));
+	if (lenMax < 0)
+		lenMax = 0;
+	assert(lenMax >= lower);
+	lenMax -= lower;
 	rc.data = memPartial? memPartial: dwt->mem;
+
+	assert(!memPartial || (dwt->win_l_1 <= dwt->sn && dwt->win_h_1 <= dwt->dn));
 
 	if (step1) {
 		rc.data += (int64_t)shift + (int64_t)lower - (int64_t)dwt->win_l_0;
@@ -1837,7 +1853,7 @@ static Params97 makeParams97(dwt_data<vec4f>* dwt,
 		rc.data += (int64_t)shift + 1 + (int64_t)lower - (int64_t)dwt->win_l_0;
 		rc.dataPrev = rc.data - 2 * shift;
 		rc.len = upper - lower;
-		rc.lenMax = lenMax;
+		rc.lenMax = (uint32_t)lenMax;
 		rc.absoluteStart = lower;
 	}
 
@@ -1985,6 +2001,7 @@ template <typename T,
 					 job->data.memHigh  =  job->data.mem + (int64_t)(!job->data.cas) + 2 * ((int64_t)job->data.win_h_0 - (int64_t)job->data.win_l_0);
 					 decompressor.interleave_h(&job->data, sa, j,v_chunk);
 #ifdef GRK_DEBUG_VALGRIND
+					 /*
 					if (resno == 2 && j == 0) {
 						for (int i = 0; i < 11 * v_chunk; ++i) {
 							auto val = grk_memcheck<int32_t>((int32_t*)job->data.memLow + i, 1);
@@ -1993,11 +2010,13 @@ template <typename T,
 							}
 						}
 					}
+					*/
 #endif
 					 job->data.memLow 	=  job->data.mem;
 					 job->data.memHigh  =  job->data.memLow  + ((int64_t)job->data.win_h_0 - (int64_t)job->data.win_l_0);
 					 decompressor.decompress_h(&job->data);
 #ifdef GRK_DEBUG_VALGRIND
+					 /*
 					if (resno == 2 && j == 0) {
 						for (int i = 0; i < 11 * v_chunk; ++i) {
 							auto val = grk_memcheck<int32_t>((int32_t*)job->data.memLow + i, 1);
@@ -2006,6 +2025,7 @@ template <typename T,
 							}
 						}
 					}
+					*/
 #endif
 					 if (!sa->write( resWindowRect.x0,
 									  j,
@@ -2045,7 +2065,8 @@ template <typename T,
 					decompressor.interleave_v(&job->data, sa, j, width);
 
 #ifdef GRK_DEBUG_VALGRIND
-					if (resno == 1 && j == 260) {
+/*
+					if (resno == 2 && j == 6) {
 						for (int i = 0; i < 8 * h_chunk; ++i) {
 							auto val = grk_memcheck<int32_t>((int32_t*)job->data.memLow + i, 1);
 							if (val != grk_mem_ok){
@@ -2053,10 +2074,24 @@ template <typename T,
 							}
 						}
 					}
+*/
 #endif
 					job->data.memLow   =  job->data.mem;
 					job->data.memHigh  =  job->data.memLow  + (int64_t)job->data.win_h_0 * VERT_PASS_WIDTH - (int64_t)job->data.win_l_0 * VERT_PASS_WIDTH;
 					decompressor.decompress_v(&job->data);
+#ifdef GRK_DEBUG_VALGRIND
+/*
+					if (resno == 2 && j == 6) {
+						for (int i = 0; i < 8 * h_chunk; ++i) {
+							auto val = grk_memcheck<int32_t>((int32_t*)job->data.memLow + i, 1);
+							if (val != grk_mem_ok){
+								GRK_ERROR("Decompress uninitialized value: resno=%d, x begin = %d,  offset  = %d", resno, j, i + val);
+							}
+						}
+					}
+*/
+#endif
+
 					if (!sa->write(j,
 								  resWindowRect.y0,
 								  j + width,
@@ -2168,12 +2203,12 @@ template <typename T,
     }
 
 #ifdef GRK_DEBUG_VALGRIND
-
+/*
 	auto val = grk_memcheck(tilec->getBuffer()->getWindow()->data,tilec->getBuffer()->strided_area() );
 	if (val != grk_mem_ok){
 		GRK_ERROR("Partial wavelet before final read: uninitialized memory at offset %d", val);
 	}
-
+*/
 #endif
 
     //final read into tile buffer
@@ -2186,12 +2221,14 @@ template <typename T,
 	GRK_UNUSED(ret);
 
 #ifdef GRK_DEBUG_VALGRIND
+/*
 	{
 	auto val = grk_memcheck(tilec->getBuffer()->getWindow()->data,tilec->getBuffer()->strided_area() );
 	if (val != grk_mem_ok){
 		GRK_ERROR("Partial wavelet after final read: uninitialized memory at offset %d", val);
 	}
 	}
+*/
 #endif
 
 

@@ -463,7 +463,7 @@ template<typename T> struct TileComponentWindowBuffer {
 private:
 
 	bool useBandWindows() const{
-		//return !m_compress && wholeTileDecompress;
+		//return !m_compress && m_wholeTileDecompress;
 		return false;
 	}
 
