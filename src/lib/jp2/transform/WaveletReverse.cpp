@@ -1553,11 +1553,11 @@ public:
 		#define S(buf,i) 	buf[(i)<<1]
 		#define D(buf,i) 	buf[(1+((i)<<1))]
 
-		// cas == 0 (L segment of band contains low pass samples)
+		// cas == 0
 		#define S_(buf,i) 	((i)<0 ? get_S(buf,0) :	((i)>=sn ? get_S(buf,sn-1) : get_S(buf,i)))
 		#define D_(buf,i) 	((i)<0 ? get_D(buf,0) :	((i)>=dn ? get_D(buf,dn-1) : get_D(buf,i)))
 
-		// cas == 1 (L segment of band contains high pass samples)
+		// cas == 1
 		#define SS_(buf,i)	((i)<0 ? get_S(buf,0) :	((i)>=dn ? get_S(buf,dn-1) : get_S(buf,i)))
 		#define DD_(buf,i) 	((i)<0 ? get_D(buf,0) :	((i)>=sn ? get_D(buf,sn-1) : get_D(buf,i)))
 
@@ -1629,11 +1629,11 @@ public:
 				auto buf = dwt->memLow;
 				S(buf,0) /= 2;
 			} else {
-				auto buf = dwt->memHigh;
-				for (i = 0; i < win_h_x1 - win_h_x0; i++)
+				auto buf = dwt->memLow;
+				for (i = 0; i < win_l_x1 - win_l_x0; i++)
 					D(buf,i) -= (SS_(buf,i) + SS_(buf,i + 1) + 2) >> 2;
-				//2. high pass
-				for (i = win_h_x0; i < win_l_x1 - win_l_x0; i++)
+				buf = dwt->memHigh;
+				for (i = 0; i < win_h_x1 - win_h_x0; i++)
 					S(buf,i) += (DD_(buf,i) + DD_(buf,i - 1)) >> 1;
 			}
 		}
@@ -1774,15 +1774,15 @@ public:
 				for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 					S_off(buf,0, off) /= 2;
 			} else {
-				auto buf   = dwt->memHigh;
-				assert( (uint64_t)(dwt->memHigh + (win_h_x1 - win_h_x0) * VERT_PASS_WIDTH) - (uint64_t)dwt->allocatedMem < dwt->m_lenBytes);
-				for (i = 0; i < win_h_x1 - win_h_x0; i++) {
+				auto buf   = dwt->memLow;
+				assert( (uint64_t)(dwt->memLow + (win_l_x1 - win_l_x0) * VERT_PASS_WIDTH) - (uint64_t)dwt->allocatedMem < dwt->m_lenBytes);
+				for (i = 0; i < win_l_x1 - win_l_x0; i++) {
 					for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 						D_off(buf,i, off) -= (SS_off_(buf,i, off) + SS_off_(buf,i + 1, off) + 2) >> 2;
 				}
-				buf   = dwt->memLow;
-				assert( (uint64_t)(dwt->memLow + (win_l_x1 - win_l_x0) * VERT_PASS_WIDTH) - (uint64_t)dwt->allocatedMem < dwt->m_lenBytes);
-				for (i = 0; i < win_l_x1 - win_l_x0; i++) {
+				buf   = dwt->memHigh;
+				assert( (uint64_t)(dwt->memHigh + (win_h_x1 - win_h_x0) * VERT_PASS_WIDTH) - (uint64_t)dwt->allocatedMem < dwt->m_lenBytes);
+				for (i = 0; i < win_h_x1 - win_h_x0; i++) {
 					for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 						S_off(buf,i, off) += (DD_off_(buf,i, off) + DD_sgnd_off_(buf,(int64_t)i - 1, off)) >> 1;
 				}

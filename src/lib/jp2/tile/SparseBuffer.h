@@ -379,7 +379,7 @@ private:
 	    if (!is_window_valid(x0, y0, x1, y1)){
 	    	// fill the client buffer with zeros in this case
 	    	if (forgiving && is_read_op){
-	    		GRK_WARN("Sparse buffer: attempt to read invalid window (%d,%d,%d,%d). Filling with zeros.", x0,y0,x1,y1);
+	    		//GRK_WARN("Sparse buffer: attempt to read invalid window (%d,%d,%d,%d). Filling with zeros.", x0,y0,x1,y1);
 	    		for (uint32_t y = y0; y < y1; ++y){
 	    	    	int32_t *bufPtr = buf + (y - y0)  * buf_line_stride;
 		    		for (uint32_t x = x0; x < x1; ++x){
