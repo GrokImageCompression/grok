@@ -204,7 +204,7 @@ public:
 	    }
 
 #ifdef GRK_DEBUG_VALGRIND
-	    validate = grk_rect_u32(22,24,10,11);
+	    validate = grk_rect_u32(7,10,8,11);
 #endif
 	}
 
@@ -431,6 +431,7 @@ private:
 						uint64_t ind = 0;
 						for (uint32_t k = 0; k < x_incr; k++){
 #ifdef GRK_DEBUG_VALGRIND
+					/*
 							grk_pt pt((uint32_t)(x+k), y_);
 							if (validate.contains(pt)) {
 								size_t val = grk_memcheck<int32_t>(src_ptr+k,1);
@@ -438,6 +439,7 @@ private:
 								   GRK_ERROR("Sparse array read (offset %d) : Uninitialized at location (%d,%d)\n\n\n",
 										   val, x+k,y_);
 							}
+							*/
 #endif
 							dest_ptr[ind] = src_ptr[k];
 							ind += col_stride;

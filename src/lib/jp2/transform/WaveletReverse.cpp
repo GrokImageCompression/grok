@@ -2065,16 +2065,16 @@ template <typename T,
 					decompressor.interleave_v(&job->data, sa, j, width);
 
 #ifdef GRK_DEBUG_VALGRIND
-/*
-					if (resno == 1 && j == 0) {
-						for (int i = 0; i < 4 * h_chunk; ++i) {
+
+					if (resno == 3 && j == 4) {
+						for (uint32_t i = 0; i < 11 * h_chunk; ++i) {
 							auto val = grk_memcheck<int32_t>((int32_t*)job->data.memLow + i, 1);
 							if (val != grk_mem_ok){
 								GRK_ERROR("Interleave uninitialized value: resno=%d, x begin = %d,  offset  = %d", resno, j, i + val);
 							}
 						}
 					}
-*/
+
 #endif
 					job->data.memLow   =  job->data.mem;
 					job->data.memHigh  =  job->data.memLow  + (int64_t)job->data.win_h_0 * VERT_PASS_WIDTH - (int64_t)job->data.win_l_0 * VERT_PASS_WIDTH;
@@ -2082,7 +2082,7 @@ template <typename T,
 #ifdef GRK_DEBUG_VALGRIND
 /*
 					if (resno == 2 && j == 6) {
-						for (int i = 0; i < 8 * h_chunk; ++i) {
+						for (uint32_t i = 0; i < 8 * h_chunk; ++i) {
 							auto val = grk_memcheck<int32_t>((int32_t*)job->data.memLow + i, 1);
 							if (val != grk_mem_ok){
 								GRK_ERROR("Decompress uninitialized value: resno=%d, x begin = %d,  offset  = %d", resno, j, i + val);
