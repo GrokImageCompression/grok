@@ -658,5 +658,11 @@ grk_decompress -i @INPUT_NR_PATH@/tnsot_zero_missing_eoc.jp2 -o @TEMP_PATH@/tnso
 !grk_decompress -i @INPUT_NR_PATH@/grk_decompress_fuzzer-5796072240840704   -o @TEMP_PATH@/grk_decompress_fuzzer-5796072240840704.png
 !grk_decompress -i @INPUT_NR_PATH@/grk_decompress_fuzzer-6502012527181824   -o @TEMP_PATH@/grk_decompress_fuzzer-6502012527181824.pgx -d 0,0,1024,1024
 grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-29249-uninitialized-mem   -o @TEMP_PATH@/clusterfuzz-29249-uninitialized-mem.pgx -d 0,0,1024,1024
-
-
+grk_decompress -i @INPUT_NR_PATH@/ybr-cat.jp2   -o @TEMP_PATH@/ybr-cat.jp2.pgx -d 0,324,1,325 -r 1
+grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5245768921382912 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5245768921382912.pgx  -d 27,22,30,30
+grk_decompress -i @INPUT_NR_PATH@/foo.j2k -o @TEMP_PATH@/foo.j2k.pgx  -d 72,64,73,73 -r 3
+grk_decompress -i @INPUT_NR_PATH@/foo_irrev.j2k -o @TEMP_PATH@/foo_irrev.j2k.pgx -d 60,60,75,75 -r 3
+grk_decompress -i @INPUT_NR_PATH@/1615b673ff67eddf0a79b3fce6950a9ece638d65 -o @TEMP_PATH@/1615b673ff67eddf0a79b3fce6950a9ece638d65.pgx -d 10,94,11,95
+grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-grk_decompress_fuzzer-4634603289706496 -o @TEMP_PATH@/clusterfuzz-testcase-grk_decompress_fuzzer-4634603289706496.pgx -d 270,32,530,1056
+grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4772443124269056 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4772443124269056.pgx  -d 214,881,215,978 -r 4
+grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5764218712358912 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5764218712358912.pgx  -d 2,5,128,186

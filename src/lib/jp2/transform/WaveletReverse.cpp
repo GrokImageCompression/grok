@@ -2066,8 +2066,8 @@ template <typename T,
 
 #ifdef GRK_DEBUG_VALGRIND
 /*
-					if (resno == 2 && j == 6) {
-						for (int i = 0; i < 8 * h_chunk; ++i) {
+					if (resno == 1 && j == 0) {
+						for (int i = 0; i < 4 * h_chunk; ++i) {
 							auto val = grk_memcheck<int32_t>((int32_t*)job->data.memLow + i, 1);
 							if (val != grk_mem_ok){
 								GRK_ERROR("Interleave uninitialized value: resno=%d, x begin = %d,  offset  = %d", resno, j, i + val);
@@ -2221,14 +2221,16 @@ template <typename T,
 	GRK_UNUSED(ret);
 
 #ifdef GRK_DEBUG_VALGRIND
-/*
-	{
-	auto val = grk_memcheck(tilec->getBuffer()->getWindow()->data,tilec->getBuffer()->strided_area() );
-	if (val != grk_mem_ok){
-		GRK_ERROR("Partial wavelet after final read: uninitialized memory at offset %d", val);
+	for (uint32_t j = 0; j < synthesisWindow.height();j++) {
+		auto bufPtr = tilec->getBuffer()->getWindow()->data + j * tilec->getBuffer()->getWindow()->stride;
+		for (uint32_t i = 0; i < synthesisWindow.height();i++) {
+			auto val = grk_memcheck(bufPtr,1);
+			if (val != grk_mem_ok){
+				GRK_ERROR("Partial wavelet after final read: uninitialized memory at offset %d", val);
+			}
+		}
 	}
-	}
-*/
+
 #endif
 
 
