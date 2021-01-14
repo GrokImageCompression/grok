@@ -1,15 +1,23 @@
 # Grok
 
-Grok is a high performance open source JPEG 2000 codec.
+Grok is a high performance JPEG 2000 codec.
 
-## Who can use the code ?
+Library features include:
+
+1. Fast random access sub-image decoding, using `TLM` and `PLT` markers when available
+1. Full encode/decode support for `ICC` colour profiles
+1. Full encode/decode support for `XML`,`IPTC`, `XMP` and `EXIF` meta data
+1. Full encode/decode support for `mono`, `sRGB`, `palette`, `sYCC`, `eYCC`, `CIELab` and `CMYK` colour spaces
+1. Full encode/decode support for `JPEG`,`PNG`,`BMP`,`TIFF`,`RAW`,`PGM` and `PAM` image formats.
+1. Full encode/decode support for 1-16 bit precision.
+
+Please see:
+
+1. [LICENSE][link-license] for license and copyright information.
+1. [INSTALL](https://github.com/GrokImageCompression/grok/blob/master/INSTALL.md) for installation procedures.
+1. [Project Wiki](https://github.com/GrokImageCompression/grok/wiki) for library usage.
+
 [![badge-license]][link-license]
-
-See [LICENSE][link-license] for license and copyright information.
-
-See [INSTALL](https://github.com/GrokImageCompression/grok/blob/master/INSTALL.md) for installation procedures.
-
-Please see the project [wiki](https://github.com/GrokImageCompression/grok/wiki) for library usage.
 
 ## Current Build Status
 [![badge-build]][link-build]
