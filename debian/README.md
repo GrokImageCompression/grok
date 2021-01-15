@@ -16,11 +16,7 @@ Building a Package
 ------------------
 
 Guide to [setting up schroot](https://wiki.debian.org/Packaging/Pre-Requisites)
-`$ apt install git sbuild cmake  debhelper help2man liblcms2-dev libpng-dev libzstd-dev libtiff-dev libjpeg-dev zlib1g-dev doxygen lintian libimage-exiftool-perl`
-
-
-(In steps below, we are packaging version 7.6.5, using GPG key id
-B1D6B0917E6191EB3D0FF95F347F22FFCA601A1C)
+`$ apt install git sbuild cmake  devscripts build-essential debhelper help2man liblcms2-dev libpng-dev libzstd-dev libtiff-dev libjpeg-dev zlib1g-dev doxygen lintian libimage-exiftool-perl`
 
 0. `cd $SOURCE_DIR`
 
@@ -43,13 +39,20 @@ or, to just check lintian errors:
 GPG Key Management
 ------------------
 
+Guides to configuring gpg : note: need to generate 4096 bit keys
+
+https://keyring.debian.org/creating-key.html
+https://blog.chapagain.com.np/gpg-remove-keys-from-your-public-keyring/
+https://www.linuxbabe.com/security/a-practical-guide-to-gpg-part-1-generate-your-keypair
+
+
 1. create gpg key
 
-`$ gpg --gen-key`
+`$ gpg --full-gen-key`
 
 2. sign .changes file
 
-`$ debsign -k B1D6B0917E6191EB3D0FF95F347F22FFCA601A1C ../*.changes`
+`$ debsign -k CA02AD91A2CD5E4875BFE20292D3B561135ECB52 ../*.changes`
 
 3. dupload changes file
 
