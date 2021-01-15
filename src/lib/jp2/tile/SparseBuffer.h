@@ -204,7 +204,7 @@ public:
 	    }
 
 #ifdef GRK_DEBUG_VALGRIND
-	    validate = grk_rect_u32(7,10,8,11);
+	    validate = grk_rect_u32(31,0,32,1);
 #endif
 	}
 
@@ -329,24 +329,23 @@ private:
 		uint64_t index = (uint64_t)(block_y - grid_bounds.y0) * grid_bounds.width() + (block_x - grid_bounds.x0);
 		auto b =  data_blocks[index];
 #ifdef GRK_DEBUG_VALGRIND
-	/*
+/*
 	if (b) {
 		size_t val = VALGRIND_CHECK_MEM_IS_DEFINED(b->data,block_width*block_height * sizeof(int32_t));
 		if (val) {
-		   GRK_ERROR("Sparse array getBlock (%d.%d): Uninitialized",block_x, block_y);
 		   for (size_t i = 0; i < block_width*block_height; ++i){
 		   	   size_t val = grk_memcheck<int32_t>(b->data + i,1);
-			   if (val != grk_mem_ok)
-				   auto offset = (val - (size_t)b->data)/sizeof(int32_t);
-				   auto x = block_x * block_width + offset % block_width;
-				   auto y = block_y * block_height + offset / block_width;
-				   printf("Sparse array getBlock (%d.%d): Uninitialized at location (%d,%d)\n",
-						   block_x, block_y, x,y );
+			   if (val != grk_mem_ok) {
+				   uint32_t x = block_x * block_width + i % block_width;
+				   uint32_t y = block_y * block_height + i / block_width;
+				   printf("Sparse array get block (%d.%d): uninitialized at location (%d,%d)\n",
+						    block_x, block_y, x,y );
 			   }
 		   }
+
 		}
 	}
-	*/
+*/
 #endif
 
 		return b;
@@ -431,15 +430,13 @@ private:
 						uint64_t ind = 0;
 						for (uint32_t k = 0; k < x_incr; k++){
 #ifdef GRK_DEBUG_VALGRIND
-					/*
 							grk_pt pt((uint32_t)(x+k), y_);
 							if (validate.contains(pt)) {
 								size_t val = grk_memcheck<int32_t>(src_ptr+k,1);
 								if (val != grk_mem_ok)
-								   GRK_ERROR("Sparse array read (offset %d) : Uninitialized at location (%d,%d)\n\n\n",
-										   val, x+k,y_);
+								   GRK_ERROR("Sparse array read block(%d,%d) : uninitialized at location (%d,%d)",
+										   block_x, block_y, x+k,y_);
 							}
-							*/
 #endif
 							dest_ptr[ind] = src_ptr[k];
 							ind += col_stride;
@@ -461,8 +458,8 @@ private:
 							if (validate.contains(pt)) {
 								size_t val = grk_memcheck<int32_t>(src_ptr+ind,1);
 								if (val != grk_mem_ok)
-								   GRK_ERROR("Sparse array write (offset %d) : Uninitialized at location (%d,%d)\n\n\n",
-										   val, x+k,y_);
+								   GRK_ERROR("Sparse array write block(%d,%d): uninitialized at location (%d,%d)",
+										   block_x, block_y, x+k,y_);
 							}
 #endif
 							dest_ptr[k] = src_ptr[ind];

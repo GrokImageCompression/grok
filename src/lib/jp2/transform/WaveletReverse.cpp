@@ -111,8 +111,8 @@ template <typename T> struct dwt_data {
 				 m_lenBytes(0),
 				 m_paddingBytes(0),
 				 mem(nullptr),
-				 memLow(nullptr),
-				 memHigh(nullptr),
+				 memL(nullptr),
+				 memH(nullptr),
 		         dn(0),
 				 sn(0),
 				 cas(0),
@@ -126,8 +126,8 @@ template <typename T> struct dwt_data {
 									m_lenBytes(0),
 									m_paddingBytes(0),
 									mem(nullptr),
-									memLow(nullptr),
-									memHigh(nullptr),
+									memL(nullptr),
+									memH(nullptr),
 									dn ( rhs.dn),
 									sn ( rhs.sn),
 									cas ( rhs.cas),
@@ -164,15 +164,15 @@ template <typename T> struct dwt_data {
 		grk_aligned_free(allocatedMem);
 		allocatedMem = nullptr;
 		mem = nullptr;
-		memLow = nullptr;
-		memHigh = nullptr;
+		memL = nullptr;
+		memH = nullptr;
 	}
 	T* allocatedMem;
 	size_t m_lenBytes;
 	size_t m_paddingBytes;
     T* mem;
-    T* memLow;
-    T* memHigh;
+    T* memL;
+    T* memH;
     uint32_t dn;   /* number of elements in high pass band */
     uint32_t sn;   /* number of elements in low pass band */
     uint32_t cas;  /* 0 = start on even coord, 1 = start on odd coord */
@@ -196,7 +196,7 @@ struct Params97{
 	uint32_t lenMax;
 };
 
-static Params97 makeParams97(dwt_data<vec4f>* dwt, bool low, bool step1);
+static Params97 makeParams97(dwt_data<vec4f>* dwt, bool isBandL, bool step1);
 
 static const float dwt_alpha =  1.586134342f; /*  12994 */
 static const float dwt_beta  =  0.052980118f; /*    434 */
@@ -1488,7 +1488,7 @@ public:
 							  y_offset + i,
 							  dwt->win_l_1,
 							  y_offset + i + 1,
-							  (int32_t*)dwt->memLow + i,
+							  (int32_t*)dwt->memL + i,
 							  2 * h_chunk,
 							  0,
 							  true);
@@ -1498,7 +1498,7 @@ public:
 							  y_offset + i,
 							  dwt->sn + dwt->win_h_1,
 							  y_offset + i + 1,
-							  (int32_t*)dwt->memHigh + i,
+							  (int32_t*)dwt->memH + i,
 							  2 * h_chunk,
 							  0,
 							  true);
@@ -1520,7 +1520,7 @@ public:
 	    					dwt->win_l_0,
 							x_offset + x_num_elements,
 							dwt->win_l_1,
-							(int32_t*)dwt->memLow,
+							(int32_t*)dwt->memL,
 							1,
 							2 * v_chunk,
 							true);
@@ -1530,7 +1530,7 @@ public:
 	    				dwt->sn + dwt->win_h_0,
 						x_offset + x_num_elements,
 						dwt->sn + dwt->win_h_1,
-						(int32_t*)dwt->memHigh,
+						(int32_t*)dwt->memH,
 						1,
 						2 * v_chunk,
 						true);
@@ -1587,7 +1587,7 @@ public:
 				checking in S_ and D_ macros
 				*/
 
-				auto buf	 = dwt->memLow;
+				auto buf	 = dwt->memL;
 				i = 0;
 				int32_t i_max = win_l_x1 - win_l_x0;
 				if (i < i_max) {
@@ -1607,7 +1607,7 @@ public:
 					}
 				}
 
-				buf	 = dwt->memHigh;
+				buf	 = dwt->memH;
 				i = 0;
 				i_max = win_h_x1 - win_h_x0;
 				if (i < i_max) {
@@ -1626,13 +1626,13 @@ public:
 		} else {
 			if (sn_global == 0  && dn_global == 1) {
 				// only do L band (high pass)
-				auto buf = dwt->memLow;
+				auto buf = dwt->memL;
 				S(buf,0) /= 2;
 			} else {
-				auto buf = dwt->memLow;
+				auto buf = dwt->memL;
 				for (i = 0; i < win_l_x1 - win_l_x0; i++)
 					D(buf,i) -= (SS_(buf,i) + SS_(buf,i + 1) + 2) >> 2;
-				buf = dwt->memHigh;
+				buf = dwt->memH;
 				for (i = 0; i < win_h_x1 - win_h_x0; i++)
 					S(buf,i) += (DD_(buf,i) + DD_(buf,i - 1)) >> 1;
 			}
@@ -1689,7 +1689,7 @@ public:
 				*/
 
 				// 1. low pass
-				auto buf   = dwt->memLow;
+				auto buf   = dwt->memL;
 				i = 0;
 				uint32_t i_max = win_l_x1 - win_l_x0;
 				assert(win_l_x1 >=  win_l_x0);
@@ -1731,7 +1731,7 @@ public:
 				}
 
 				// 2. high pass
-				buf = dwt->memHigh;
+				buf = dwt->memH;
 				i = 0;
 				assert(win_h_x1 >=  win_h_x0);
 				i_max = win_h_x1 - win_h_x0;
@@ -1770,18 +1770,18 @@ public:
 		} else {
 			if (sn_global == 0  && dn_global == 1) {
 				// edge case at origin
-				auto buf   = dwt->memLow;
+				auto buf   = dwt->memL;
 				for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 					S_off(buf,0, off) /= 2;
 			} else {
-				auto buf   = dwt->memLow;
-				assert( (uint64_t)(dwt->memLow + (win_l_x1 - win_l_x0) * VERT_PASS_WIDTH) - (uint64_t)dwt->allocatedMem < dwt->m_lenBytes);
+				auto buf   = dwt->memL;
+				assert( (uint64_t)(dwt->memL + (win_l_x1 - win_l_x0) * VERT_PASS_WIDTH) - (uint64_t)dwt->allocatedMem < dwt->m_lenBytes);
 				for (i = 0; i < win_l_x1 - win_l_x0; i++) {
 					for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 						D_off(buf,i, off) -= (SS_off_(buf,i, off) + SS_off_(buf,i + 1, off) + 2) >> 2;
 				}
-				buf   = dwt->memHigh;
-				assert( (uint64_t)(dwt->memHigh + (win_h_x1 - win_h_x0) * VERT_PASS_WIDTH) - (uint64_t)dwt->allocatedMem < dwt->m_lenBytes);
+				buf   = dwt->memH;
+				assert( (uint64_t)(dwt->memH + (win_h_x1 - win_h_x0) * VERT_PASS_WIDTH) - (uint64_t)dwt->allocatedMem < dwt->m_lenBytes);
 				for (i = 0; i < win_h_x1 - win_h_x0; i++) {
 					for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 						S_off(buf,i, off) += (DD_off_(buf,i, off) + DD_sgnd_off_(buf,(int64_t)i - 1, off)) >> 1;
@@ -1826,35 +1826,37 @@ public:
 	}
 };
 
-// note: dwt->memLow and dwt->memHigh are only set for partial decode
+// Notes:
+// 1. line buffer 0 offset == dwt->win_l_0
+// 2. dwt->memL and dwt->memH are only set for partial decode
 static Params97 makeParams97(dwt_data<vec4f>* dwt,
-							bool lowPass,
+							bool isBandL,
 							bool step1){
 	Params97 rc;
-	uint32_t lower = lowPass ?  dwt->win_l_0 :  dwt->win_h_0;
-	uint32_t upper = lowPass ?  dwt->win_l_1 :  dwt->win_h_1;
-	auto memPartial = lowPass ? dwt->memLow : dwt->memHigh;
-	uint32_t shift = lowPass ? dwt->cas : !dwt->cas;
-	int64_t lenMax = lowPass ?
+	uint32_t band_0 = isBandL ?  dwt->win_l_0 :  dwt->win_h_0;
+	uint32_t band_1 = isBandL ?  dwt->win_l_1 :  dwt->win_h_1;
+	auto memPartial = isBandL ? dwt->memL : dwt->memH;
+	uint32_t shift = isBandL ? dwt->cas : !dwt->cas;
+	int64_t lenMax = isBandL ?
 			min<int64_t>((int64_t)dwt->sn, (int64_t)dwt->dn - (int64_t)shift) :
 			min<int64_t>((int64_t)dwt->dn, (int64_t)dwt->sn - (int64_t)(shift));
 	if (lenMax < 0)
 		lenMax = 0;
-	assert(lenMax >= lower);
-	lenMax -= lower;
+	assert(lenMax >= band_0);
+	lenMax -= band_0;
 	rc.data = memPartial? memPartial: dwt->mem;
 
 	assert(!memPartial || (dwt->win_l_1 <= dwt->sn && dwt->win_h_1 <= dwt->dn));
 
 	if (step1) {
-		rc.data += (int64_t)shift + (int64_t)lower - (int64_t)dwt->win_l_0;
-		rc.len  = upper - lower;
+		rc.data += (int64_t)shift + (int64_t)band_0 - (int64_t)dwt->win_l_0;
+		rc.len  = band_1 - band_0;
 	} else {
-		rc.data += (int64_t)shift + 1 + (int64_t)lower - (int64_t)dwt->win_l_0;
+		rc.data += (int64_t)shift + 1 + (int64_t)band_0 - (int64_t)dwt->win_l_0;
 		rc.dataPrev = rc.data - 2 * shift;
-		rc.len = upper - lower;
+		rc.len = band_1 - band_0;
 		rc.lenMax = (uint32_t)lenMax;
-		rc.absoluteStart = lower;
+		rc.absoluteStart = band_0;
 	}
 
 	if (memPartial) {
@@ -1899,6 +1901,7 @@ template <typename T,
 			typename D>
 
    bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec,
+		   	   	   	   	   uint16_t compno,
 		   	   	   	   	   grk_rect_u32 bounds,
 		   	   	   	   	   uint32_t numres,
 						   ISparseBuffer *sa) {
@@ -1911,6 +1914,8 @@ template <typename T,
         return true;
     }
 
+    const uint16_t debug_compno = 0;
+    (void)debug_compno;
     const uint32_t HORIZ_PASS_HEIGHT = sizeof(T)/sizeof(int32_t);
     const uint32_t pad = FILTER_WIDTH * VERT_PASS_WIDTH * sizeof(T)/sizeof(int32_t);
 
@@ -1967,71 +1972,69 @@ template <typename T,
         tileBandWindowRect[BAND_ORIENT_HL]  =  bandWindowRect[BAND_ORIENT_HL].pan(fullRes->band[BAND_INDEX_LH].width(),0);
         tileBandWindowRect[BAND_ORIENT_LH]  =  bandWindowRect[BAND_ORIENT_LH].pan(0,fullRes->band[BAND_INDEX_HL].height());
         tileBandWindowRect[BAND_ORIENT_HH]  =  bandWindowRect[BAND_ORIENT_HH].pan(fullRes->band[BAND_INDEX_LH].width(),fullRes->band[BAND_INDEX_HL].height());
-
-        grk_rect_u32 resWindowRect = *((grk_rect_u32*)tilec->getBuffer()->getWindow(resno));
-
-        // two windows formed by horizontal pass and used as input for vertical pass
-        grk_rect_u32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
-        splitWindowRect[SPLIT_L] = *((grk_rect_u32*)tilec->getBuffer()->getSplitWindow(resno,SPLIT_L ));
-        splitWindowRect[SPLIT_H] = *((grk_rect_u32*)tilec->getBuffer()->getSplitWindow(resno,SPLIT_H ));
-
         // 2. pre-allocate sparse blocks
         for (uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i){
         	auto temp = tileBandWindowRect[i];
             if (!sa->alloc(temp.grow(FILTER_WIDTH, fullRes->width(),  fullRes->height())))
     			 goto cleanup;
         }
+        auto resWindowRect = *((grk_rect_u32*)tilec->getBuffer()->getWindow(resno));
         if (!sa->alloc(resWindowRect))
 			goto cleanup;
+        // two windows formed by horizontal pass and used as input for vertical pass
+        grk_rect_u32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
+        splitWindowRect[SPLIT_L] = *((grk_rect_u32*)tilec->getBuffer()->getSplitWindow(resno,SPLIT_L ));
+        splitWindowRect[SPLIT_H] = *((grk_rect_u32*)tilec->getBuffer()->getSplitWindow(resno,SPLIT_H ));
 		for (uint32_t k = 0; k < SPLIT_NUM_ORIENTATIONS; ++k) {
 			 auto temp = splitWindowRect[k];
 			 if (!sa->alloc(temp.grow(FILTER_WIDTH, fullRes->width(),  fullRes->height())))
 					goto cleanup;
 		}
 
-		auto executor_h = [resno,sa, resWindowRect, &decompressor](decompress_job<T, dwt_data<T>> *job){
+		auto executor_h = [resno,compno,sa, resWindowRect, &decompressor](decompress_job<T, dwt_data<T>> *job){
+			(void)compno;
 			(void)resno;
 			 try {
-				 for (uint32_t j = job->min_j; j < job->max_j; j += HORIZ_PASS_HEIGHT) {
+				 const uint32_t v_chunk = HORIZ_PASS_HEIGHT;
+				 for (uint32_t j = job->min_j; j < job->max_j; j += v_chunk) {
+					 auto height = std::min<uint32_t>((uint32_t)v_chunk,job->max_j - j );
 #ifdef GRK_DEBUG_VALGRIND
-					 GRK_INFO("H: resno = %d,y begin = %d", resno, j);
+					 GRK_INFO("H: compno = %d, resno = %d,y begin = %d, height = %d,", compno, resno, j, height);
 #endif
-					 auto v_chunk = std::min<uint32_t>((uint32_t)HORIZ_PASS_HEIGHT,job->max_j - j );
-					 job->data.memLow 	=  job->data.mem +   job->data.cas;
-					 job->data.memHigh  =  job->data.mem + (int64_t)(!job->data.cas) + 2 * ((int64_t)job->data.win_h_0 - (int64_t)job->data.win_l_0);
-					 decompressor.interleave_h(&job->data, sa, j,v_chunk);
+					 job->data.memL 	=  job->data.mem +   job->data.cas;
+					 job->data.memH  =  job->data.mem + (int64_t)(!job->data.cas) + 2 * ((int64_t)job->data.win_h_0 - (int64_t)job->data.win_l_0);
+					 decompressor.interleave_h(&job->data, sa, j,height);
 #ifdef GRK_DEBUG_VALGRIND
-					 /*
-					if (resno == 2 && j == 0) {
-						for (int i = 0; i < 11 * v_chunk; ++i) {
-							auto val = grk_memcheck<int32_t>((int32_t*)job->data.memLow + i, 1);
+					if (compno == debug_compno && resno == 1 && j == 0) {
+						uint32_t len = job->data.win_l_1 - job->data.win_l_0 + job->data.win_h_1 - job->data.win_h_0;
+						for (uint32_t i = 0; i < len * v_chunk; ++i) {
+							auto val = grk_memcheck<int32_t>((int32_t*)job->data.memL + i, 1);
 							if (val != grk_mem_ok){
 								GRK_ERROR("Interleave uninitialized value: resno=%d, x begin = %d,  offset  = %d", resno, j, i + val);
 							}
 						}
 					}
-					*/
 #endif
-					 job->data.memLow 	=  job->data.mem;
-					 job->data.memHigh  =  job->data.memLow  + ((int64_t)job->data.win_h_0 - (int64_t)job->data.win_l_0);
+					 job->data.memL 	=  job->data.mem;
+					 job->data.memH  =  job->data.memL  + ((int64_t)job->data.win_h_0 - (int64_t)job->data.win_l_0);
 					 decompressor.decompress_h(&job->data);
 #ifdef GRK_DEBUG_VALGRIND
-					 /*
-					if (resno == 2 && j == 0) {
-						for (int i = 0; i < 11 * v_chunk; ++i) {
-							auto val = grk_memcheck<int32_t>((int32_t*)job->data.memLow + i, 1);
+/*
+					if (compno == debug_compno && resno == 1 && j == 0) {
+						for (uint32_t i = 0; i < len * v_chunk; ++i) {
+							auto val = grk_memcheck<int32_t>((int32_t*)job->data.memL + i, 1);
 							if (val != grk_mem_ok){
-								GRK_ERROR("Decompress uninitialized value: resno=%d, x begin = %d,  offset  = %d", resno, j, i + val);
+								GRK_ERROR("H decompress uninitialized value: resno=%d, x begin = %d,  offset  = %d", resno, j, i + val);
 							}
 						}
 					}
-					*/
+*/
 #endif
 					 if (!sa->write( resWindowRect.x0,
 									  j,
 									  resWindowRect.x1,
-									  j + v_chunk,
-									  (int32_t*)(job->data.mem + (int64_t)resWindowRect.x0 - 2 * (int64_t)job->data.win_l_0),
+									  j + height,
+									  (int32_t*)(job->data.memL + (int64_t)resWindowRect.x0 - 2 * (int64_t)job->data.win_l_0),
 									  HORIZ_PASS_HEIGHT,
 									  1,
 									  true)) {
@@ -2051,39 +2054,39 @@ template <typename T,
 			 }
 		};
 
-		auto executor_v = [resno, sa, resWindowRect, &decompressor](decompress_job<T, dwt_data<T>> *job){
+		auto executor_v = [compno,resno, sa, resWindowRect, &decompressor](decompress_job<T, dwt_data<T>> *job){
 			(void)resno;
 			 try {
 				 const uint32_t h_chunk = (sizeof(T)/sizeof(int32_t)) * VERT_PASS_WIDTH;
 				 for (uint32_t j = job->min_j; j < job->max_j; j += h_chunk) {
+					auto width = std::min<uint32_t>((uint32_t)(sizeof(T)/sizeof(int32_t)) * VERT_PASS_WIDTH,job->max_j - j );
 #ifdef GRK_DEBUG_VALGRIND
-					GRK_INFO("V: resno = %d, x begin = %d", resno, j);
+					GRK_INFO("V: resno = %d, x begin = %d, width = %d", resno, j, width);
 #endif
-					auto width = std::min<uint32_t>((uint32_t)h_chunk,job->max_j - j );
-					job->data.memLow   =  job->data.mem +   (job->data.cas) * VERT_PASS_WIDTH;
-					job->data.memHigh  =  job->data.mem + ((!job->data.cas) + 2 * (int64_t)job->data.win_h_0) * VERT_PASS_WIDTH - 2 * (int64_t)job->data.win_l_0 * VERT_PASS_WIDTH;
+					job->data.memL   =  job->data.mem +   (job->data.cas) * VERT_PASS_WIDTH;
+					job->data.memH  =  job->data.mem + ((!job->data.cas) + 2 * (int64_t)job->data.win_h_0) * VERT_PASS_WIDTH - 2 * (int64_t)job->data.win_l_0 * VERT_PASS_WIDTH;
 					decompressor.interleave_v(&job->data, sa, j, width);
 
 #ifdef GRK_DEBUG_VALGRIND
-
-					if (resno == 3 && j == 4) {
+/*
+					if (compno == debug_compno && resno == 3 && j == 4) {
 						for (uint32_t i = 0; i < 11 * h_chunk; ++i) {
-							auto val = grk_memcheck<int32_t>((int32_t*)job->data.memLow + i, 1);
+							auto val = grk_memcheck<int32_t>((int32_t*)job->data.memL + i, 1);
 							if (val != grk_mem_ok){
 								GRK_ERROR("Interleave uninitialized value: resno=%d, x begin = %d,  offset  = %d", resno, j, i + val);
 							}
 						}
 					}
-
+*/
 #endif
-					job->data.memLow   =  job->data.mem;
-					job->data.memHigh  =  job->data.memLow  + (int64_t)job->data.win_h_0 * VERT_PASS_WIDTH - (int64_t)job->data.win_l_0 * VERT_PASS_WIDTH;
+					job->data.memL   =  job->data.mem;
+					job->data.memH  =  job->data.memL  + (int64_t)job->data.win_h_0 * VERT_PASS_WIDTH - (int64_t)job->data.win_l_0 * VERT_PASS_WIDTH;
 					decompressor.decompress_v(&job->data);
 #ifdef GRK_DEBUG_VALGRIND
 /*
-					if (resno == 2 && j == 6) {
+					if (compno == debug_compno && resno == 2 && j == 6) {
 						for (uint32_t i = 0; i < 8 * h_chunk; ++i) {
-							auto val = grk_memcheck<int32_t>((int32_t*)job->data.memLow + i, 1);
+							auto val = grk_memcheck<int32_t>((int32_t*)job->data.memL + i, 1);
 							if (val != grk_mem_ok){
 								GRK_ERROR("Decompress uninitialized value: resno=%d, x begin = %d,  offset  = %d", resno, j, i + val);
 							}
@@ -2096,7 +2099,7 @@ template <typename T,
 								  resWindowRect.y0,
 								  j + width,
 								  resWindowRect.y1,
-								  (int32_t*)(job->data.mem + (int64_t)resWindowRect.y0 * VERT_PASS_WIDTH - 2 * (int64_t)job->data.win_l_0 * VERT_PASS_WIDTH),
+								  (int32_t*)(job->data.memL + (int64_t)resWindowRect.y0 * VERT_PASS_WIDTH - 2 * (int64_t)job->data.win_l_0 * VERT_PASS_WIDTH),
 								  1,
 								  VERT_PASS_WIDTH * sizeof(T)/sizeof(int32_t),
 								  true)) {
@@ -2121,8 +2124,6 @@ template <typename T,
         horiz.win_l_1 = bandWindowRect[BAND_ORIENT_LL].x1;
         horiz.win_h_0 = bandWindowRect[BAND_ORIENT_HL].x0;
         horiz.win_h_1 = bandWindowRect[BAND_ORIENT_HL].x1;
-
-
         size_t data_size = splitWindowRect[0].width() * HORIZ_PASS_HEIGHT;
 
 		for (uint32_t k = 0; k < 2; ++k) {
@@ -2221,12 +2222,16 @@ template <typename T,
 	GRK_UNUSED(ret);
 
 #ifdef GRK_DEBUG_VALGRIND
-	for (uint32_t j = 0; j < synthesisWindow.height();j++) {
-		auto bufPtr = tilec->getBuffer()->getWindow()->data + j * tilec->getBuffer()->getWindow()->stride;
-		for (uint32_t i = 0; i < synthesisWindow.height();i++) {
-			auto val = grk_memcheck(bufPtr,1);
-			if (val != grk_mem_ok){
-				GRK_ERROR("Partial wavelet after final read: uninitialized memory at offset %d", val);
+	GRK_INFO("Final synthesis window for component %d", compno);
+	synthesisWindow.print();
+	if (compno == debug_compno) {
+		for (uint32_t j = 0; j < synthesisWindow.height();j++) {
+			auto bufPtr = tilec->getBuffer()->getWindow()->data + j * tilec->getBuffer()->getWindow()->stride;
+			for (uint32_t i = 0; i < synthesisWindow.height();i++) {
+				auto val = grk_memcheck(bufPtr,1);
+				if (val != grk_mem_ok){
+					GRK_ERROR("Partial wavelet after final read: uninitialized memory at offset %d", val);
+				}
 			}
 		}
 	}
@@ -2245,6 +2250,7 @@ cleanup:
 
 bool WaveletReverse::decompress(TileProcessor *p_tcd,
 						TileComponent* tilec,
+						uint16_t compno,
 						grk_rect_u32 window,
                         uint32_t numres,
 						uint8_t qmfbid){
@@ -2258,6 +2264,7 @@ bool WaveletReverse::decompress(TileProcessor *p_tcd,
 										getFilterPad<uint32_t>(true),
 										VERT_PASS_WIDTH,
 										Partial53<int32_t,VERT_PASS_WIDTH>>(tilec,
+															compno,
 															window,
 															numres,
 															tilec->getSparseBuffer());
@@ -2271,6 +2278,7 @@ bool WaveletReverse::decompress(TileProcessor *p_tcd,
 											getFilterPad<uint32_t>(false),
 											VERT_PASS_WIDTH,
 											Partial97<vec4f,VERT_PASS_WIDTH>>(tilec,
+															compno,
 															window,
 															numres,
 															tilec->getSparseBuffer());

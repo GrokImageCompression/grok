@@ -43,7 +43,7 @@ struct  vec4f {
 uint32_t max_resolution(Resolution *GRK_RESTRICT r, uint32_t i);
 
 template<class T> constexpr T getFilterPad(bool lossless) {
-     return  lossless ? 3 : 4;
+     return  lossless ? 2 : 4;
  }
 
 template<class T> constexpr T getHorizontalPassHeight(bool lossless){
@@ -55,6 +55,7 @@ class WaveletReverse {
 public:
 	bool decompress(TileProcessor *p_tcd,
 					TileComponent* tilec,
+					uint16_t compno,
 					grk_rect_u32 window,
 					uint32_t numres,
 					uint8_t qmfbid);

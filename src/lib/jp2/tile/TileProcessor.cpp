@@ -855,7 +855,7 @@ bool TileProcessor::decompress_tile_t1(void) {
 	bool doPostT1 = !current_plugin_tile
 			|| (current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
 	if (doT1) {
-		for (uint32_t compno = 0; compno < tile->numcomps; ++compno) {
+		for (uint16_t compno = 0; compno < tile->numcomps; ++compno) {
 			auto tilec = tile->comps + compno;
 			auto tccp = m_tcp->tccps + compno;
 
@@ -881,6 +881,7 @@ bool TileProcessor::decompress_tile_t1(void) {
 				WaveletReverse w;
 				if (!w.decompress(this,
 										tilec,
+										compno,
 										tilec->getBuffer()->unreduced_bounds(),
 										tilec->resolutions_decompressed + 1,
 										tccp->qmfbid))

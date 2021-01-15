@@ -50,8 +50,8 @@ const uint32_t BAND_RES_ZERO_INDEX_LL = 0;
 
 // band indices when resolution > 0
 enum eBandIndex{
-	BAND_INDEX_LH,
 	BAND_INDEX_HL,
+	BAND_INDEX_LH,
 	BAND_INDEX_HH,
 	BAND_NUM_INDICES
 };
@@ -237,7 +237,8 @@ struct Resolution : public grk_rect_u32 {
 				grk_plugin_tile *current_plugin_tile);
 
 	bool initialized;
-	Subband band[BAND_NUM_INDICES];
+	Subband band[BAND_NUM_INDICES]; // unreduced tile component bands
+									// (in canvas coords, but shifted to tile origin)
 	uint32_t numBandWindows;  // 1 or 3
 	uint32_t pw, ph; 	/* dimensions of precinct grid */
 	grk_pt cblk_expn;

@@ -18,6 +18,7 @@
 
 #include "grk_includes.h"
 #include <stdexcept>
+#include <algorithm>
 
 namespace grk {
 
@@ -57,51 +58,49 @@ template<typename T> struct ResWindow {
 		// 1. set up windows for horizontal and vertical passes
 		grk_rect_u32 bandWindowRect[BAND_NUM_ORIENTATIONS];
 		bandWindowRect[BAND_ORIENT_LL] = getTileCompBandWindow(numresolutions,resno,BAND_ORIENT_LL,tileCompWindowUnreducedBounds);
-		bandWindowRect[BAND_ORIENT_LL] = bandWindowRect[BAND_ORIENT_LL].pan(-(int64_t)m_tileCompFullRes->band[BAND_INDEX_LH].x0, -(int64_t)m_tileCompFullRes->band[BAND_INDEX_HL].y0);
+		bandWindowRect[BAND_ORIENT_LL] = bandWindowRect[BAND_ORIENT_LL].pan(-(int64_t)m_tileCompFullResLower->x0, -(int64_t)m_tileCompFullResLower->y0);
 		bandWindowRect[BAND_ORIENT_LL].grow(FILTER_WIDTH, m_tileCompFullResLower->width(),  m_tileCompFullResLower->height());
 		m_bandWindows.push_back(new grk_buffer_2d<T>(bandWindowRect[BAND_ORIENT_LL]));
 
 
 		bandWindowRect[BAND_ORIENT_HL] = getTileCompBandWindow(numresolutions,resno,BAND_ORIENT_HL,tileCompWindowUnreducedBounds);
-		bandWindowRect[BAND_ORIENT_HL] = bandWindowRect[BAND_ORIENT_HL].pan(-(int64_t)m_tileCompFullRes->band[BAND_INDEX_HL].x0, -(int64_t)m_tileCompFullRes->band[BAND_INDEX_HL].y0);
+		bandWindowRect[BAND_ORIENT_HL] = bandWindowRect[BAND_ORIENT_HL].pan(-(int64_t)m_tileCompFullResLower->x0, -(int64_t)m_tileCompFullResLower->y0);
 		bandWindowRect[BAND_ORIENT_HL].grow(FILTER_WIDTH, m_tileCompFullRes->width() - m_tileCompFullResLower->width(),  m_tileCompFullResLower->height());
 		m_bandWindows.push_back(new grk_buffer_2d<T>(bandWindowRect[BAND_ORIENT_HL]));
 
 		bandWindowRect[BAND_ORIENT_LH] = getTileCompBandWindow(numresolutions,resno,BAND_ORIENT_LH,tileCompWindowUnreducedBounds);
-		bandWindowRect[BAND_ORIENT_LH] = bandWindowRect[BAND_ORIENT_LH].pan(-(int64_t)m_tileCompFullRes->band[BAND_INDEX_LH].x0, -(int64_t)m_tileCompFullRes->band[BAND_INDEX_LH].y0);
+		bandWindowRect[BAND_ORIENT_LH] = bandWindowRect[BAND_ORIENT_LH].pan(-(int64_t)m_tileCompFullResLower->x0, -(int64_t)m_tileCompFullResLower->y0);
 		bandWindowRect[BAND_ORIENT_LH].grow(FILTER_WIDTH, m_tileCompFullResLower->width(),  m_tileCompFullRes->height() - m_tileCompFullResLower->height());
 		m_bandWindows.push_back(new grk_buffer_2d<T>(bandWindowRect[BAND_ORIENT_LH]));
 
 		bandWindowRect[BAND_ORIENT_HH] = getTileCompBandWindow(numresolutions,resno,BAND_ORIENT_HH,tileCompWindowUnreducedBounds);
-		bandWindowRect[BAND_ORIENT_HH] = bandWindowRect[BAND_ORIENT_HH].pan(-(int64_t)m_tileCompFullRes->band[BAND_INDEX_HH].x0, -(int64_t)m_tileCompFullRes->band[BAND_INDEX_HH].y0);
+		bandWindowRect[BAND_ORIENT_HH] = bandWindowRect[BAND_ORIENT_HH].pan(-(int64_t)m_tileCompFullResLower->x0, -(int64_t)m_tileCompFullResLower->y0);
 		bandWindowRect[BAND_ORIENT_HH].grow(FILTER_WIDTH, m_tileCompFullRes->width() - m_tileCompFullResLower->width(),  m_tileCompFullRes->height() - m_tileCompFullResLower->height());
 		m_bandWindows.push_back(new grk_buffer_2d<T>(bandWindowRect[BAND_ORIENT_HH]));
 
 		auto win_low 		= bandWindowRect[BAND_ORIENT_LL];
 		auto win_high 		= bandWindowRect[BAND_ORIENT_HL];
-		m_resWindow->x0 	= min<uint32_t>(2 * win_low.x0, 2 * win_high.x0);
-		m_resWindow->x1 	= min<uint32_t>(max<uint32_t>(2 * win_low.x1, 2 * win_high.x1), m_tileCompFullRes->width());
+		m_resWindow->x0 	= min<uint32_t>(2 * win_low.x0, 2 * win_high.x0 + 1);
+		m_resWindow->x1 	= min<uint32_t>(max<uint32_t>(2 * win_low.x1, 2 * win_high.x1 + 1), m_tileCompFullRes->width());
 		assert(m_resWindow->x0 <= m_resWindow->x1);
 		win_low 			= bandWindowRect[BAND_ORIENT_LL];
 		win_high 			= bandWindowRect[BAND_ORIENT_LH];
-		m_resWindow->y0 	= min<uint32_t>(2 * win_low.y0, 2 * win_high.y0);
-		m_resWindow->y1 	= min<uint32_t>(max<uint32_t>(2 * win_low.y1, 2 * win_high.y1), m_tileCompFullRes->height());
+		m_resWindow->y0 	= min<uint32_t>(2 * win_low.y0, 2 * win_high.y0 + 1);
+		m_resWindow->y1 	= min<uint32_t>(max<uint32_t>(2 * win_low.y1, 2 * win_high.y1 + 1), m_tileCompFullRes->height());
 		assert(m_resWindow->y0 <= m_resWindow->y1);
 
 		// two windows formed by horizontal pass and used as input for vertical pass
 		grk_rect_u32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
 		splitWindowRect[SPLIT_L] = grk_rect_u32(m_resWindow->x0,
-												  sat_sub<uint32_t>(bandWindowRect[BAND_ORIENT_LL].y0, HORIZ_PASS_HEIGHT),
+												  bandWindowRect[BAND_ORIENT_LL].y0,
 												  m_resWindow->x1,
 												  bandWindowRect[BAND_ORIENT_LL].y1);
 		m_splitWindow[SPLIT_L] = new grk_buffer_2d<T>(splitWindowRect[SPLIT_L]);
 
 		splitWindowRect[SPLIT_H] = grk_rect_u32(m_resWindow->x0,
-									// note: max is used to avoid vertical overlap between the two intermediate windows
-									max<uint32_t>(bandWindowRect[BAND_ORIENT_LL].y1,
-									sat_sub<uint32_t>(min<uint32_t>(bandWindowRect[BAND_ORIENT_LH].y0 + m_tileCompFullResLower->height(), m_tileCompFullRes->height()),HORIZ_PASS_HEIGHT)),
-									m_resWindow->x1,
-									min<uint32_t>(bandWindowRect[BAND_ORIENT_LH].y1 + m_tileCompFullResLower->height(), m_tileCompFullRes->height()));
+													bandWindowRect[BAND_ORIENT_LH].y0 + m_tileCompFullResLower->height(),
+													m_resWindow->x1,
+													bandWindowRect[BAND_ORIENT_LH].y1 + m_tileCompFullResLower->height());
 		m_splitWindow[SPLIT_H] = new grk_buffer_2d<T>(splitWindowRect[SPLIT_H]);
 		}
 	   } else {
@@ -199,45 +198,46 @@ template<typename T> struct ResWindow {
 	 * Get band window in tile component coordinates for specified resolution
 	 * and band orientation
 	 *
-	 * Note: for 0th resolution, band window (and there is only one)
-	 * is equal to resolution window
+	 * Note: for 0th resolution, the band window (and there is only one)
+	 * is equal to the resolution window
 	 */
 	static grk_rect_u32 getTileCompBandWindow(uint8_t num_res,
 								uint8_t resno,
 								uint8_t orientation,
-								grk_rect_u32 unreducedTileCompBandWindow){
-	    /* Compute number of decomposition for this band. See table F-1 */
+								grk_rect_u32 unreducedTileCompWindow){
 		assert(orientation < BAND_NUM_ORIENTATIONS);
 		assert(resno > 0 || orientation == 0);
 
-	    uint32_t nb = (resno == 0) ? num_res - 1 :num_res - resno;
+	    // Compute number of decomposition for this band. See table F-1
+	    uint32_t num_decomps = (resno == 0) ? num_res - 1 :num_res - resno;
 
-	    uint32_t tcx0 = unreducedTileCompBandWindow.x0;
-		uint32_t tcy0 = unreducedTileCompBandWindow.y0;
-		uint32_t tcx1 = unreducedTileCompBandWindow.x1;
-		uint32_t tcy1 = unreducedTileCompBandWindow.y1;
-	    /* Map above tile-based coordinates to sub-band-based coordinates per */
-	    /* equation B-15 of the standard */
+	    uint32_t tcx0 = unreducedTileCompWindow.x0;
+		uint32_t tcy0 = unreducedTileCompWindow.y0;
+		uint32_t tcx1 = unreducedTileCompWindow.x1;
+		uint32_t tcy1 = unreducedTileCompWindow.y1;
+	    /* Map above tile-based coordinates to
+	     * sub-band-based coordinates, i.e. origin is at tile origin  */
+	    /* See equation B-15 of the standard. */
 	    uint32_t x0b = orientation & 1;
 	    uint32_t y0b = orientation >> 1;
-		uint32_t tbx0 = (nb == 0) ? tcx0 :
-				(tcx0 <= (1U << (nb - 1)) * x0b) ? 0 :
-				ceildivpow2<uint32_t>(tcx0 - (1U << (nb - 1)) * x0b, nb);
+		uint32_t band_x0 = (num_decomps == 0) ? tcx0 :
+				(tcx0 <= (1U << (num_decomps - 1)) * x0b) ? 0 :
+				ceildivpow2<uint32_t>(tcx0 - (1U << (num_decomps - 1)) * x0b, num_decomps);
 
-		uint32_t tby0 = (nb == 0) ? tcy0 :
-				(tcy0 <= (1U << (nb - 1)) * y0b) ? 0 :
-				ceildivpow2<uint32_t>(tcy0 - (1U << (nb - 1)) * y0b, nb);
+		uint32_t band_y0 = (num_decomps == 0) ? tcy0 :
+				(tcy0 <= (1U << (num_decomps - 1)) * y0b) ? 0 :
+				ceildivpow2<uint32_t>(tcy0 - (1U << (num_decomps - 1)) * y0b, num_decomps);
 
-		uint32_t tbx1 = (nb == 0) ? tcx1 :
-				(tcx1 <= (1U << (nb - 1)) * x0b) ? 0 :
-				ceildivpow2<uint32_t>(tcx1 - (1U << (nb - 1)) * x0b, nb);
+		uint32_t band_x1 = (num_decomps == 0) ? tcx1 :
+				(tcx1 <= (1U << (num_decomps - 1)) * x0b) ? 0 :
+				ceildivpow2<uint32_t>(tcx1 - (1U << (num_decomps - 1)) * x0b, num_decomps);
 
-		uint32_t tby1 = (nb == 0) ? tcy1 :
-				(tcy1 <= (1U << (nb - 1)) * y0b) ? 0 :
-				ceildivpow2<uint32_t>(tcy1 - (1U << (nb - 1)) * y0b, nb);
+		uint32_t band_y1 = (num_decomps == 0) ? tcy1 :
+				(tcy1 <= (1U << (num_decomps - 1)) * y0b) ? 0 :
+				ceildivpow2<uint32_t>(tcy1 - (1U << (num_decomps - 1)) * y0b, num_decomps);
 
 
-		return grk_rect_u32(tbx0,tby0,tbx1,tby1);
+		return grk_rect_u32(band_x0,band_y0,band_x1,band_y1);
 	}
 
 	bool m_allocated;
