@@ -1988,17 +1988,20 @@ template <typename T,
 					 auto height = std::min<uint32_t>((uint32_t)v_chunk,job->max_j - j );
 #ifdef GRK_DEBUG_VALGRIND
 					 GRK_INFO("H: compno = %d, resno = %d,y begin = %d, height = %d,", compno, resno, j, height);
-					 uint32_t len = job->data.win_l.x1 - job->data.win_l.x0 + job->data.win_h.x1 - job->data.win_h.x0;
+					 uint32_t len = (job->data.win_l.x1 - job->data.win_l.x0 + job->data.win_h.x1 - job->data.win_h.x0) * HORIZ_PASS_HEIGHT;
+					 (void)len;
 #endif
 					 job->data.memL 	=  job->data.mem +   job->data.cas;
 					 job->data.memH  =  job->data.mem + (int64_t)(!job->data.cas) + 2 * ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0);
 					 decompressor.interleave_h(&job->data, sa, j,height);
 #ifdef GRK_DEBUG_VALGRIND
+/*
 					if (compno == debug_compno && resno == 1 && j == 11) {
 						std::ostringstream ss;
-						ss << "Interleave uninitialized value: resno=" << resno << ", x begin = " << j;
+						ss << "Interleave uninitialized value: resno=" << resno << ", x begin = " << j << ", total samples = " << len;
 						grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 					}
+*/
 #endif
 					 job->data.memL 	=  job->data.mem;
 					 job->data.memH  =  job->data.memL  + ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0);
@@ -2007,7 +2010,7 @@ template <typename T,
 /*
 					if (compno == debug_compno && resno == 1 && j == 11) {
 						std::ostringstream ss;
-						ss << "Decompress uninitialized value: resno=" << resno << ", x begin = " << j;
+						ss << "Decompress uninitialized value: resno=" << resno << ", x begin = " << j << ", total samples = " << len;
 						grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 					}
 */
@@ -2037,6 +2040,7 @@ template <typename T,
 		};
 
 		auto executor_v = [compno,resno, sa, resWindowRect, &decompressor](decompress_job<T, dwt_data<T>> *job){
+			(void)compno;
 			(void)resno;
 			 try {
 				 const uint32_t h_chunk = (sizeof(T)/sizeof(int32_t)) * VERT_PASS_WIDTH;
@@ -2044,7 +2048,7 @@ template <typename T,
 					auto width = std::min<uint32_t>((uint32_t)(sizeof(T)/sizeof(int32_t)) * VERT_PASS_WIDTH,job->max_j - j );
 #ifdef GRK_DEBUG_VALGRIND
 					GRK_INFO("V: resno = %d, x begin = %d, width = %d", resno, j, width);
-					uint32_t len = job->data.win_l.x1 - job->data.win_l.x0 + job->data.win_h.x1 - job->data.win_h.x0;
+					uint32_t len = (job->data.win_l.x1 - job->data.win_l.x0 + job->data.win_h.x1 - job->data.win_h.x0) * VERT_PASS_WIDTH;
 					(void)len;
 #endif
 					job->data.memL   =  job->data.mem +   (job->data.cas) * VERT_PASS_WIDTH;
@@ -2053,9 +2057,9 @@ template <typename T,
 
 #ifdef GRK_DEBUG_VALGRIND
 /*
-					if (compno == debug_compno && resno == 1 && j == 11) {
+					if (compno == debug_compno && resno == 1 && j == 19) {
 						std::ostringstream ss;
-						ss << "Interleave uninitialized value: resno=" << resno << ", x begin = " << j;
+						ss << "Interleave uninitialized value: resno=" << resno << ", x begin = " << j << ", total samples = " << len;
 						grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 					}
 */
@@ -2064,13 +2068,13 @@ template <typename T,
 					job->data.memH  =  job->data.memL  + (int64_t)job->data.win_h.x0 * VERT_PASS_WIDTH - (int64_t)job->data.win_l.x0 * VERT_PASS_WIDTH;
 					decompressor.decompress_v(&job->data);
 #ifdef GRK_DEBUG_VALGRIND
-/*
-					if (compno == debug_compno && resno == 1 && j == 11) {
+
+					if (compno == debug_compno && resno == 1 && j == 19) {
 						std::ostringstream ss;
-						ss << "Decompress uninitialized value: resno=" << resno << ", x begin = " << j;
+						ss << "Decompress uninitialized value: resno=" << resno << ", x begin = " << j << ", total samples = " << len;
 						grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 					}
-*/
+
 #endif
 					if (!sa->write(j,
 								  resWindowRect.y0,

@@ -431,12 +431,12 @@ private:
 						for (uint32_t k = 0; k < x_incr; k++){
 #ifdef GRK_DEBUG_VALGRIND
 							grk_pt pt((uint32_t)(x+k), y_);
-							if (validate.contains(pt)) {
+							//if (validate.contains(pt)) {
 								size_t val = grk_memcheck<int32_t>(src_ptr+k,1);
 								if (val != grk_mem_ok)
 								   GRK_ERROR("Sparse array read block(%d,%d) : uninitialized at location (%d,%d)",
 										   block_x, block_y, x+k,y_);
-							}
+							//}
 #endif
 							dest_ptr[ind] = src_ptr[k];
 							ind += col_stride;
@@ -455,12 +455,12 @@ private:
 						for (uint32_t k = 0; k < x_incr; k++) {
 #ifdef GRK_DEBUG_VALGRIND
 							grk_pt pt((uint32_t)(x+k), y_);
-							if (validate.contains(pt)) {
+							//if (validate.contains(pt)) {
 								size_t val = grk_memcheck<int32_t>(src_ptr+ind,1);
 								if (val != grk_mem_ok)
 								   GRK_ERROR("Sparse array write block(%d,%d): uninitialized at location (%d,%d)",
 										   block_x, block_y, x+k,y_);
-							}
+							//}
 #endif
 							dest_ptr[k] = src_ptr[ind];
 							ind += col_stride;

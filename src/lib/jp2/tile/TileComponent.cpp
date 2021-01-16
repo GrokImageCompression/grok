@@ -61,6 +61,7 @@ void TileComponent::release_mem(){
 	delete m_sa;
 	m_sa = nullptr;
 }
+
 /**
  * Initialize tile component in unreduced tile component coordinates
  * (tile component coordinates take sub-sampling into account).
@@ -88,13 +89,17 @@ bool TileComponent::init(bool isCompressor,
 				(uint8_t)(numresolutions - cp->m_coding_params.m_dec.m_reduce);
 	}
 	resolutions = new Resolution[numresolutions];
-	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
+	for (uint8_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
-		uint32_t levelno = numresolutions - 1 - resno;
 
 		/* border for each resolution level (global) */
-		auto dim = unreduced_tile_comp_dims;
-		res->set_rect(dim.rectceildivpow2(levelno));
+		grk_rect_u32 dim;
+		if (resno == numresolutions - 1){
+			dim = unreduced_tile_comp_dims;
+		} else {
+			dim = getTileCompBandWindow(numresolutions,resno+1,BAND_ORIENT_LL,unreduced_tile_comp_dims);
+		}
+		res->set_rect(dim);
 
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
 		uint32_t pdx = m_tccp->prcw[resno];
@@ -285,7 +290,7 @@ bool TileComponent::create_buffer(grk_rect_u32 *unreducedCanvasTileCompDims,
 		auto res = resolutions + resno;
 		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 			auto band = res->band + bandIndex;
-			band->set_rect(ResWindow<int32_t>::getTileCompBandWindow(numresolutions, resno, band->orientation,*unreducedCanvasTileCompDims));
+			band->set_rect(getTileCompBandWindow(numresolutions, resno, band->orientation,*unreducedCanvasTileCompDims));
 		}
 	}
 

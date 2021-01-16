@@ -79,6 +79,7 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/MemManager.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/MemManager.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/util.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/util.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/CPUArch.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/CPUArch.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/ChunkBuffer.cpp

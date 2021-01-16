@@ -204,14 +204,22 @@ template<typename T> struct grk_rectangle {
     	return grow(boundary, boundary,maxX,maxY);
     }
     grk_rectangle<T>& grow(T boundaryx, T boundaryy, T maxX, T maxY) {
-    	x0 = sat_sub<T>(x0, boundaryx);
-    	y0 = sat_sub<T>(y0, boundaryy);
-    	x1 = sat_add<T>(x1, boundaryx);
-    	y1 = sat_add<T>(y1, boundaryx);
-    	if (x1 > maxX)
-    		x1 = maxX;
-    	if (y1 > maxY)
-    		y1 = maxY;
+    	return grow(boundaryx,boundaryy, grk_rectangle<T>((T)0,(T)0,maxX,maxY));
+    }
+    grk_rectangle<T>& grow(T boundaryx, T boundaryy, grk_rectangle<T> bounds) {
+    	x0 = std::max<T>( sat_sub<T>(x0, boundaryx), bounds.x0);
+    	y0 = std::max<T>( sat_sub<T>(y0, boundaryy), bounds.y0);
+    	x1 = std::min<T>( sat_add<T>(x1, boundaryx), bounds.x1);
+    	y1 = std::min<T>( sat_add<T>(y1, boundaryy), bounds.y1);
+
+    	return *this;
+    }
+    grk_rectangle<T>& grow(T boundary, grk_rectangle<T> bounds) {
+    	x0 = std::max<T>( sat_sub<T>(x0, boundary), bounds.x0);
+    	y0 = std::max<T>( sat_sub<T>(y0, boundary), bounds.y0);
+    	x1 = std::min<T>( sat_add<T>(x1, boundary), bounds.x1);
+    	y1 = std::min<T>( sat_add<T>(y1, boundary), bounds.y1);
+
     	return *this;
     }
 };
@@ -412,6 +420,11 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
     bool owns_data;	/* true if buffer manages the data array */
     uint32_t stride;
 } ;
+
+grk_rect_u32 getTileCompBandWindow(uint8_t num_res,
+							uint8_t resno,
+							uint8_t orientation,
+							grk_rect_u32 unreducedTileCompWindow);
 
 
 }

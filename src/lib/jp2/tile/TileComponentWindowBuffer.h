@@ -56,25 +56,29 @@ template<typename T> struct ResWindow {
 
 		// 1. set up windows for horizontal and vertical passes
 		grk_rect_u32 bandWindowRect[BAND_NUM_ORIENTATIONS];
+		auto bandRect = *((grk_rect_u32*)m_tileCompFullResLower);
 		bandWindowRect[BAND_ORIENT_LL] = getTileCompBandWindow(numresolutions,resno,BAND_ORIENT_LL,tileCompWindowUnreducedBounds);
-		bandWindowRect[BAND_ORIENT_LL] = bandWindowRect[BAND_ORIENT_LL].pan(-(int64_t)m_tileCompFullResLower->x0, -(int64_t)m_tileCompFullResLower->y0);
-		bandWindowRect[BAND_ORIENT_LL].grow(FILTER_WIDTH, m_tileCompFullResLower->width(),  m_tileCompFullResLower->height());
+		bandWindowRect[BAND_ORIENT_LL].grow(FILTER_WIDTH, bandRect);
+		bandWindowRect[BAND_ORIENT_LL] = bandWindowRect[BAND_ORIENT_LL].pan(-(int64_t)bandRect.x0, -(int64_t)bandRect.y0);
 		m_bandWindows.push_back(new grk_buffer_2d<T>(bandWindowRect[BAND_ORIENT_LL]));
 
 
 		bandWindowRect[BAND_ORIENT_HL] = getTileCompBandWindow(numresolutions,resno,BAND_ORIENT_HL,tileCompWindowUnreducedBounds);
-		bandWindowRect[BAND_ORIENT_HL] = bandWindowRect[BAND_ORIENT_HL].pan(-(int64_t)m_tileCompFullResLower->x0, -(int64_t)m_tileCompFullResLower->y0);
-		bandWindowRect[BAND_ORIENT_HL].grow(FILTER_WIDTH, m_tileCompFullRes->width() - m_tileCompFullResLower->width(),  m_tileCompFullResLower->height());
+		bandRect = m_tileCompFullRes->band[BAND_ORIENT_HL-1];
+		bandWindowRect[BAND_ORIENT_HL].grow(FILTER_WIDTH, bandRect);
+		bandWindowRect[BAND_ORIENT_HL] = bandWindowRect[BAND_ORIENT_HL].pan(-(int64_t)bandRect.x0, -(int64_t)bandRect.y0);
 		m_bandWindows.push_back(new grk_buffer_2d<T>(bandWindowRect[BAND_ORIENT_HL]));
 
 		bandWindowRect[BAND_ORIENT_LH] = getTileCompBandWindow(numresolutions,resno,BAND_ORIENT_LH,tileCompWindowUnreducedBounds);
-		bandWindowRect[BAND_ORIENT_LH] = bandWindowRect[BAND_ORIENT_LH].pan(-(int64_t)m_tileCompFullResLower->x0, -(int64_t)m_tileCompFullResLower->y0);
-		bandWindowRect[BAND_ORIENT_LH].grow(FILTER_WIDTH, m_tileCompFullResLower->width(),  m_tileCompFullRes->height() - m_tileCompFullResLower->height());
+		bandRect = m_tileCompFullRes->band[BAND_ORIENT_LH-1];
+		bandWindowRect[BAND_ORIENT_LH].grow(FILTER_WIDTH, bandRect);
+		bandWindowRect[BAND_ORIENT_LH] = bandWindowRect[BAND_ORIENT_LH].pan(-(int64_t)bandRect.x0, -(int64_t)bandRect.y0);
 		m_bandWindows.push_back(new grk_buffer_2d<T>(bandWindowRect[BAND_ORIENT_LH]));
 
 		bandWindowRect[BAND_ORIENT_HH] = getTileCompBandWindow(numresolutions,resno,BAND_ORIENT_HH,tileCompWindowUnreducedBounds);
-		bandWindowRect[BAND_ORIENT_HH] = bandWindowRect[BAND_ORIENT_HH].pan(-(int64_t)m_tileCompFullResLower->x0, -(int64_t)m_tileCompFullResLower->y0);
-		bandWindowRect[BAND_ORIENT_HH].grow(FILTER_WIDTH, m_tileCompFullRes->width() - m_tileCompFullResLower->width(),  m_tileCompFullRes->height() - m_tileCompFullResLower->height());
+		bandRect = m_tileCompFullRes->band[BAND_ORIENT_HH-1];
+		bandWindowRect[BAND_ORIENT_HH].grow(FILTER_WIDTH, bandRect);
+		bandWindowRect[BAND_ORIENT_HH] = bandWindowRect[BAND_ORIENT_HH].pan(-(int64_t)bandRect.x0, -(int64_t)bandRect.y0);
 		m_bandWindows.push_back(new grk_buffer_2d<T>(bandWindowRect[BAND_ORIENT_HH]));
 
 		auto win_low 		= bandWindowRect[BAND_ORIENT_LL];
@@ -192,53 +196,6 @@ template<typename T> struct ResWindow {
 		return true;
 	}
 
-
-	/**
-	 * Get band window in tile component coordinates for specified resolution
-	 * and band orientation
-	 *
-	 * Note: for 0th resolution, the band window (and there is only one)
-	 * is equal to the resolution window
-	 */
-	static grk_rect_u32 getTileCompBandWindow(uint8_t num_res,
-								uint8_t resno,
-								uint8_t orientation,
-								grk_rect_u32 unreducedTileCompWindow){
-		assert(orientation < BAND_NUM_ORIENTATIONS);
-		assert(resno > 0 || orientation == 0);
-
-	    // Compute number of decomposition for this band. See table F-1
-	    uint32_t num_decomps = (resno == 0) ? num_res - 1 :num_res - resno;
-
-	    uint32_t tcx0 = unreducedTileCompWindow.x0;
-		uint32_t tcy0 = unreducedTileCompWindow.y0;
-		uint32_t tcx1 = unreducedTileCompWindow.x1;
-		uint32_t tcy1 = unreducedTileCompWindow.y1;
-	    /* Map above tile-based coordinates to
-	     * sub-band-based coordinates, i.e. origin is at tile origin  */
-	    /* See equation B-15 of the standard. */
-	    uint32_t x0b = orientation & 1;
-	    uint32_t y0b = orientation >> 1;
-		uint32_t band_x0 = (num_decomps == 0) ? tcx0 :
-				(tcx0 <= (1U << (num_decomps - 1)) * x0b) ? 0 :
-				ceildivpow2<uint32_t>(tcx0 - (1U << (num_decomps - 1)) * x0b, num_decomps);
-
-		uint32_t band_y0 = (num_decomps == 0) ? tcy0 :
-				(tcy0 <= (1U << (num_decomps - 1)) * y0b) ? 0 :
-				ceildivpow2<uint32_t>(tcy0 - (1U << (num_decomps - 1)) * y0b, num_decomps);
-
-		uint32_t band_x1 = (num_decomps == 0) ? tcx1 :
-				(tcx1 <= (1U << (num_decomps - 1)) * x0b) ? 0 :
-				ceildivpow2<uint32_t>(tcx1 - (1U << (num_decomps - 1)) * x0b, num_decomps);
-
-		uint32_t band_y1 = (num_decomps == 0) ? tcy1 :
-				(tcy1 <= (1U << (num_decomps - 1)) * y0b) ? 0 :
-				ceildivpow2<uint32_t>(tcy1 - (1U << (num_decomps - 1)) * y0b, num_decomps);
-
-
-		return grk_rect_u32(band_x0,band_y0,band_x1,band_y1);
-	}
-
 	bool m_allocated;
 	// note: non-null m_tileCompFullRes triggers creation of band window buffers
 	Resolution *m_tileCompFullRes;
@@ -307,9 +264,7 @@ template<typename T> struct TileComponentWindowBuffer {
 
 		for (uint8_t resno = 0; resno < reducedNumResolutions - 1; ++resno) {
 			// resolution window ==  next resolution band window at orientation 0
-			auto res_dims = ResWindow<int32_t>::getTileCompBandWindow(
-					m_numResolutions, (uint8_t) ((resno + 1)), 0,
-					unreducedTileWindowDim);
+			auto res_dims = getTileCompBandWindow(m_numResolutions, (uint8_t) ((resno + 1)), 0,	unreducedTileWindowDim);
 			m_resWindows.push_back(
 					new ResWindow<T>(numresolutions, resno,
 							useBandWindows() ? nullptr : topLevel->m_resWindow,
