@@ -575,7 +575,7 @@ bool Resolution::init(bool isCompressor,
 							uint_floordivpow2(y0, precinct_expn.y) << precinct_expn.y);
 
 	uint64_t num_precincts = (uint64_t)pw * ph;
-	if (mult64_will_overflow(num_precincts, sizeof(Precinct))) {
+	if (mult_will_overflow(num_precincts, sizeof(Precinct))) {
 		GRK_ERROR(	"nb_precinct_size calculation would overflow ");
 		return false;
 	}

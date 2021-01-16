@@ -27,10 +27,7 @@
 
 namespace grk {
 
-inline bool mult_will_overflow(uint32_t a, uint32_t b) {
-	return (b && (a > UINT_MAX / b));
-}
-inline bool mult64_will_overflow(uint64_t a, uint64_t b) {
+inline bool mult_will_overflow(uint64_t a, uint64_t b) {
 	return (b && (a > UINT64_MAX / b));
 }
 
@@ -41,6 +38,19 @@ template<typename T> struct grk_point {
     T y;
 };
 using grk_pt = grk_point<uint32_t>;
+
+template<typename T> struct grk_line {
+	grk_line() : x0(0), x1(0){}
+	grk_line(T _x0, T _x1) : x0(_x0), x1(_x1){}
+    T x0;
+    T x1;
+    T length(){
+    	assert(x1 >= x0);
+    	return (T)(x1-x0);
+    }
+};
+using grk_u32_line = grk_line<uint32_t>;
+
 
 
 template<typename T> struct grk_rectangle;
@@ -172,7 +182,12 @@ template<typename T> struct grk_rectangle {
     T height() const{
     	return y1 - y0;
     }
-
+    grk_line<T> dimX(){
+    	return grk_line<T>(x0,x1);
+    }
+    grk_line<T> dimY(){
+    	return grk_line<T>(y0,y1);
+    }
     grk_rectangle<T> pan(int64_t x, int64_t y) const {
     	return grk_rectangle<T>( sat_add<T>((int64_t)x0, (int64_t)x),
 								 sat_add<T>((int64_t)y0, (int64_t)y),

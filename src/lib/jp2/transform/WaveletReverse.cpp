@@ -116,11 +116,7 @@ template <typename T> struct dwt_data {
 				 memH(nullptr),
 		         dn(0),
 				 sn(0),
-				 cas(0),
-				 win_l_0(0),
-				 win_l_1(0),
-				 win_h_0(0),
-				 win_h_1(0)
+				 cas(0)
 	{}
 
 	dwt_data(const dwt_data& rhs) : allocatedMem(nullptr),
@@ -132,10 +128,8 @@ template <typename T> struct dwt_data {
 									dn ( rhs.dn),
 									sn ( rhs.sn),
 									cas ( rhs.cas),
-									win_l_0 ( rhs.win_l_0),
-									win_l_1 ( rhs.win_l_1),
-									win_h_0 ( rhs.win_h_0),
-									win_h_1 ( rhs.win_h_1)
+									win_l ( rhs.win_l),
+									win_h ( rhs.win_h)
 	{}
 
 	bool alloc(size_t len) {
@@ -177,10 +171,8 @@ template <typename T> struct dwt_data {
     uint32_t dn;   /* number of elements in high pass band */
     uint32_t sn;   /* number of elements in low pass band */
     uint32_t cas;  /* 0 = start on even coord, 1 = start on odd coord */
-    uint32_t      win_l_0; /* start coord in low pass band */
-    uint32_t      win_l_1; /* end coord in low pass band */
-    uint32_t      win_h_0; /* start coord in high pass band */
-    uint32_t      win_h_1; /* end coord in high pass band */
+    grk_u32_line  win_l;
+    grk_u32_line  win_h;
 };
 
 struct Params97{
@@ -1090,8 +1082,8 @@ static void interleave_h_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
                                    const uint32_t strideH,
                                    uint32_t remaining_height){
     float* GRK_RESTRICT bi = (float*)(dwt->mem + dwt->cas);
-    uint32_t x0 = dwt->win_l_0;
-    uint32_t x1 = dwt->win_l_1;
+    uint32_t x0 = dwt->win_l.x0;
+    uint32_t x1 = dwt->win_l.x1;
 
     for (uint32_t k = 0; k < 2; ++k) {
     	auto band = (k == 0) ? bandL : bandH;
@@ -1130,8 +1122,8 @@ static void interleave_h_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
         }
 
         bi = (float*)(dwt->mem + 1 - dwt->cas);
-        x0 = dwt->win_h_0;
-        x1 = dwt->win_h_1;
+        x0 = dwt->win_h.x0;
+        x1 = dwt->win_h.x1;
     }
 }
 
@@ -1241,15 +1233,15 @@ static void interleave_v_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
                                    const uint32_t strideH,
                                    uint32_t nb_elts_read){
     vec4f* GRK_RESTRICT bi = dwt->mem + dwt->cas;
-    auto band = bandL + dwt->win_l_0 * strideL;
-    for (uint32_t i = dwt->win_l_0; i < dwt->win_l_1; ++i, bi+=2) {
+    auto band = bandL + dwt->win_l.x0 * strideL;
+    for (uint32_t i = dwt->win_l.x0; i < dwt->win_l.x1; ++i, bi+=2) {
         memcpy((float*)bi, band, nb_elts_read * sizeof(float));
         band +=strideL;
     }
 
     bi = dwt->mem + 1 - dwt->cas;
-    band = bandH + dwt->win_h_0 * strideH;
-    for (uint32_t i = dwt->win_h_0; i < dwt->win_h_1; ++i, bi+=2) {
+    band = bandH + dwt->win_h.x0 * strideH;
+    for (uint32_t i = dwt->win_h.x0; i < dwt->win_h.x1; ++i, bi+=2) {
         memcpy((float*)bi, band, nb_elts_read * sizeof(float));
         band += strideH;
     }
@@ -1390,10 +1382,8 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         	continue;
         horiz.dn = rw - horiz.sn;
         horiz.cas = tr->x0 & 1;
-        horiz.win_l_0 = 0;
-        horiz.win_l_1 = horiz.sn;
-        horiz.win_h_0 = 0;
-        horiz.win_h_1 = horiz.dn;
+        horiz.win_l = grk_u32_line(0, horiz.sn);
+        horiz.win_h = grk_u32_line(0, horiz.dn);
         if (!decompress_h_mt_97(num_threads,
         					data_size,
 							horiz,
@@ -1424,10 +1414,8 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         	return false;
         vert.dn = rh - vert.sn;
         vert.cas = tr->y0 & 1;
-        vert.win_l_0 = 0;
-        vert.win_l_1 = vert.sn;
-        vert.win_h_0 = 0;
-        vert.win_h_1 = vert.dn;
+        vert.win_l = grk_u32_line(0, vert.sn);
+        vert.win_h = grk_u32_line(0, vert.dn);
         if (!decompress_v_mt_97(num_threads,
         					data_size,
 							vert,
@@ -1485,9 +1473,9 @@ public:
 		const uint32_t h_chunk = (uint32_t)(sizeof(T)/sizeof(int32_t));
 	    for (uint32_t i = 0; i < y_num_rows; i++) {
 	    	// read one row of L band and write interleaved
-	        bool ret = sa->read(dwt->win_l_0,
+	        bool ret = sa->read(dwt->win_l.x0,
 							  y_offset + i,
-							  dwt->win_l_1,
+							  dwt->win_l.x1,
 							  y_offset + i + 1,
 							  (int32_t*)dwt->memL + i,
 							  2 * h_chunk,
@@ -1495,9 +1483,9 @@ public:
 							  true);
 	        assert(ret);
 	        // read one row of H band and write interleaved
-	        ret = sa->read(dwt->sn + dwt->win_h_0,
+	        ret = sa->read(dwt->sn + dwt->win_h.x0,
 							  y_offset + i,
-							  dwt->sn + dwt->win_h_1,
+							  dwt->sn + dwt->win_h.x1,
 							  y_offset + i + 1,
 							  (int32_t*)dwt->memH + i,
 							  2 * h_chunk,
@@ -1518,9 +1506,9 @@ public:
 		const uint32_t v_chunk = (uint32_t)(sizeof(T)/sizeof(int32_t)) * VERT_PASS_WIDTH;
     	// read one vertical strip (of width x_num_elements <= v_chunk) of L band and write interleaved
 	    bool ret = sa->read(x_offset,
-	    					dwt->win_l_0,
+	    					dwt->win_l.x0,
 							x_offset + x_num_elements,
-							dwt->win_l_1,
+							dwt->win_l.x1,
 							(int32_t*)dwt->memL,
 							1,
 							2 * v_chunk,
@@ -1528,9 +1516,9 @@ public:
 	    assert(ret);
     	// read one vertical strip (of width x_num_elements <= v_chunk) of H band and write interleaved
 	    ret = sa->read(x_offset,
-	    				dwt->sn + dwt->win_h_0,
+	    				dwt->sn + dwt->win_h.x0,
 						x_offset + x_num_elements,
-						dwt->sn + dwt->win_h_1,
+						dwt->sn + dwt->win_h.x1,
 						(int32_t*)dwt->memH,
 						1,
 						2 * v_chunk,
@@ -1564,16 +1552,16 @@ public:
 
 		int32_t i;
 		int32_t cas 	 = (int32_t)dwt->cas;
-		int32_t win_l_x0 = (int32_t)dwt->win_l_0;
-		int32_t win_l_x1 = (int32_t)dwt->win_l_1;
-		int32_t win_h_x0 = (int32_t)dwt->win_h_0;
-		int32_t win_h_x1 = (int32_t)dwt->win_h_1;
-		int32_t sn 	  		= (int32_t)(dwt->sn - dwt->win_l_0);
+		int32_t win_l_x0 = (int32_t)dwt->win_l.x0;
+		int32_t win_l_x1 = (int32_t)dwt->win_l.x1;
+		int32_t win_h_x0 = (int32_t)dwt->win_h.x0;
+		int32_t win_h_x1 = (int32_t)dwt->win_h.x1;
+		int32_t sn 	  		= (int32_t)(dwt->sn - dwt->win_l.x0);
 		int32_t sn_global  	= (int32_t)dwt->sn;
-		int32_t dn 	  		= (int32_t)(dwt->dn - dwt->win_h_0);
+		int32_t dn 	  		= (int32_t)(dwt->dn - dwt->win_h.x0);
 		int32_t dn_global	= (int32_t)dwt->dn;
 
-		assert(dwt->win_l_1 <= (uint32_t)sn_global && dwt->win_h_1 <= (uint32_t)dn_global);
+		assert(dwt->win_l.x1 <= (uint32_t)sn_global && dwt->win_h.x1 <= (uint32_t)dn_global);
 
 		if (!cas) {
 			if ((dn_global != 0) || (sn_global > 1)) {
@@ -1665,16 +1653,16 @@ public:
 
 		uint32_t i;
 		uint32_t cas 	  = dwt->cas;
-		uint32_t win_l_x0 = dwt->win_l_0;
-		uint32_t win_l_x1 = dwt->win_l_1;
-		uint32_t win_h_x0 = dwt->win_h_0;
-		uint32_t win_h_x1 = dwt->win_h_1;
-		uint32_t sn 	  	= dwt->sn - dwt->win_l_0;
+		uint32_t win_l_x0 = dwt->win_l.x0;
+		uint32_t win_l_x1 = dwt->win_l.x1;
+		uint32_t win_h_x0 = dwt->win_h.x0;
+		uint32_t win_h_x1 = dwt->win_h.x1;
+		uint32_t sn 	  	= dwt->sn - dwt->win_l.x0;
 		uint32_t sn_global  = dwt->sn;
-		uint32_t dn 	  	= dwt->dn - dwt->win_h_0;
+		uint32_t dn 	  	= dwt->dn - dwt->win_h.x0;
 		uint32_t dn_global	= dwt->dn;
 
-		assert(dwt->win_l_1 <= (uint32_t)sn_global && dwt->win_h_1 <= (uint32_t)dn_global);
+		assert(dwt->win_l.x1 <= (uint32_t)sn_global && dwt->win_h.x1 <= (uint32_t)dn_global);
 
 		if (!cas) {
 			if ((dn_global != 0) || (sn_global > 1)) {
@@ -1828,32 +1816,31 @@ public:
 };
 
 // Notes:
-// 1. line buffer 0 offset == dwt->win_l_0
+// 1. line buffer 0 offset == dwt->win_l.x0
 // 2. dwt->memL and dwt->memH are only set for partial decode
 static Params97 makeParams97(dwt_data<vec4f>* dwt,
 							bool isBandL,
 							bool step1){
 	Params97 rc;
-	uint32_t band_0 = isBandL ?  dwt->win_l_0 :  dwt->win_h_0;
-	uint32_t band_1 = isBandL ?  dwt->win_l_1 :  dwt->win_h_1;
+	uint32_t band_0 = isBandL ?  dwt->win_l.x0 :  dwt->win_h.x0;
+	uint32_t band_1 = isBandL ?  dwt->win_l.x1 :  dwt->win_h.x1;
 	auto memPartial = isBandL ? dwt->memL : dwt->memH;
 	uint32_t shift = isBandL ? dwt->cas : !dwt->cas;
-	int64_t lenMax = isBandL ?
-			min<int64_t>((int64_t)dwt->sn, (int64_t)dwt->dn - (int64_t)shift) :
-			min<int64_t>((int64_t)dwt->dn, (int64_t)dwt->sn - (int64_t)(shift));
+	int64_t lenMax = isBandL ? 	min<int64_t>((int64_t)dwt->sn, (int64_t)dwt->dn - (int64_t)shift) :
+									min<int64_t>((int64_t)dwt->dn, (int64_t)dwt->sn - (int64_t)(shift));
 	if (lenMax < 0)
 		lenMax = 0;
 	assert(lenMax >= band_0);
 	lenMax -= band_0;
 	rc.data = memPartial? memPartial: dwt->mem;
 
-	assert(!memPartial || (dwt->win_l_1 <= dwt->sn && dwt->win_h_1 <= dwt->dn));
+	assert(!memPartial || (dwt->win_l.x1 <= dwt->sn && dwt->win_h.x1 <= dwt->dn));
 
 	if (step1) {
-		rc.data += (int64_t)shift + (int64_t)band_0 - (int64_t)dwt->win_l_0;
+		rc.data += (int64_t)shift + (int64_t)band_0 - (int64_t)dwt->win_l.x0;
 		rc.len  = band_1 - band_0;
 	} else {
-		rc.data += (int64_t)shift + 1 + (int64_t)band_0 - (int64_t)dwt->win_l_0;
+		rc.data += (int64_t)shift + 1 + (int64_t)band_0 - (int64_t)dwt->win_l.x0;
 		rc.dataPrev = rc.data - 2 * shift;
 		rc.len = band_1 - band_0;
 		rc.lenMax = (uint32_t)lenMax;
@@ -2001,10 +1988,10 @@ template <typename T,
 					 auto height = std::min<uint32_t>((uint32_t)v_chunk,job->max_j - j );
 #ifdef GRK_DEBUG_VALGRIND
 					 GRK_INFO("H: compno = %d, resno = %d,y begin = %d, height = %d,", compno, resno, j, height);
-					 uint32_t len = job->data.win_l_1 - job->data.win_l_0 + job->data.win_h_1 - job->data.win_h_0;
+					 uint32_t len = job->data.win_l.x1 - job->data.win_l.x0 + job->data.win_h.x1 - job->data.win_h.x0;
 #endif
 					 job->data.memL 	=  job->data.mem +   job->data.cas;
-					 job->data.memH  =  job->data.mem + (int64_t)(!job->data.cas) + 2 * ((int64_t)job->data.win_h_0 - (int64_t)job->data.win_l_0);
+					 job->data.memH  =  job->data.mem + (int64_t)(!job->data.cas) + 2 * ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0);
 					 decompressor.interleave_h(&job->data, sa, j,height);
 #ifdef GRK_DEBUG_VALGRIND
 					if (compno == debug_compno && resno == 1 && j == 11) {
@@ -2014,7 +2001,7 @@ template <typename T,
 					}
 #endif
 					 job->data.memL 	=  job->data.mem;
-					 job->data.memH  =  job->data.memL  + ((int64_t)job->data.win_h_0 - (int64_t)job->data.win_l_0);
+					 job->data.memH  =  job->data.memL  + ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0);
 					 decompressor.decompress_h(&job->data);
 #ifdef GRK_DEBUG_VALGRIND
 /*
@@ -2029,7 +2016,7 @@ template <typename T,
 									  j,
 									  resWindowRect.x1,
 									  j + height,
-									  (int32_t*)(job->data.memL + (int64_t)resWindowRect.x0 - 2 * (int64_t)job->data.win_l_0),
+									  (int32_t*)(job->data.memL + (int64_t)resWindowRect.x0 - 2 * (int64_t)job->data.win_l.x0),
 									  HORIZ_PASS_HEIGHT,
 									  1,
 									  true)) {
@@ -2057,11 +2044,11 @@ template <typename T,
 					auto width = std::min<uint32_t>((uint32_t)(sizeof(T)/sizeof(int32_t)) * VERT_PASS_WIDTH,job->max_j - j );
 #ifdef GRK_DEBUG_VALGRIND
 					GRK_INFO("V: resno = %d, x begin = %d, width = %d", resno, j, width);
-					uint32_t len = job->data.win_l_1 - job->data.win_l_0 + job->data.win_h_1 - job->data.win_h_0;
+					uint32_t len = job->data.win_l.x1 - job->data.win_l.x0 + job->data.win_h.x1 - job->data.win_h.x0;
 					(void)len;
 #endif
 					job->data.memL   =  job->data.mem +   (job->data.cas) * VERT_PASS_WIDTH;
-					job->data.memH  =  job->data.mem + ((!job->data.cas) + 2 * (int64_t)job->data.win_h_0) * VERT_PASS_WIDTH - 2 * (int64_t)job->data.win_l_0 * VERT_PASS_WIDTH;
+					job->data.memH  =  job->data.mem + ((!job->data.cas) + 2 * (int64_t)job->data.win_h.x0) * VERT_PASS_WIDTH - 2 * (int64_t)job->data.win_l.x0 * VERT_PASS_WIDTH;
 					decompressor.interleave_v(&job->data, sa, j, width);
 
 #ifdef GRK_DEBUG_VALGRIND
@@ -2074,7 +2061,7 @@ template <typename T,
 */
 #endif
 					job->data.memL   =  job->data.mem;
-					job->data.memH  =  job->data.memL  + (int64_t)job->data.win_h_0 * VERT_PASS_WIDTH - (int64_t)job->data.win_l_0 * VERT_PASS_WIDTH;
+					job->data.memH  =  job->data.memL  + (int64_t)job->data.win_h.x0 * VERT_PASS_WIDTH - (int64_t)job->data.win_l.x0 * VERT_PASS_WIDTH;
 					decompressor.decompress_v(&job->data);
 #ifdef GRK_DEBUG_VALGRIND
 /*
@@ -2089,7 +2076,7 @@ template <typename T,
 								  resWindowRect.y0,
 								  j + width,
 								  resWindowRect.y1,
-								  (int32_t*)(job->data.memL + (int64_t)resWindowRect.y0 * VERT_PASS_WIDTH - 2 * (int64_t)job->data.win_l_0 * VERT_PASS_WIDTH),
+								  (int32_t*)(job->data.memL + (int64_t)resWindowRect.y0 * VERT_PASS_WIDTH - 2 * (int64_t)job->data.win_l.x0 * VERT_PASS_WIDTH),
 								  1,
 								  VERT_PASS_WIDTH * sizeof(T)/sizeof(int32_t),
 								  true)) {
@@ -2110,10 +2097,8 @@ template <typename T,
 		};
 
 		//3. calculate synthesis
-        horiz.win_l_0 = bandWindowRect[BAND_ORIENT_LL].x0;
-        horiz.win_l_1 = bandWindowRect[BAND_ORIENT_LL].x1;
-        horiz.win_h_0 = bandWindowRect[BAND_ORIENT_HL].x0;
-        horiz.win_h_1 = bandWindowRect[BAND_ORIENT_HL].x1;
+        horiz.win_l = bandWindowRect[BAND_ORIENT_LL].dimX();
+        horiz.win_h = bandWindowRect[BAND_ORIENT_HL].dimX();
         size_t data_size = splitWindowRect[0].width() * HORIZ_PASS_HEIGHT;
 
 		for (uint32_t k = 0; k < 2; ++k) {
@@ -2154,10 +2139,8 @@ template <typename T,
 
 		data_size = resWindowRect.height() * VERT_PASS_WIDTH * sizeof(T)/sizeof(int32_t);
 
-		vert.win_l_0 = bandWindowRect[BAND_ORIENT_LL].y0;
-		vert.win_l_1 = bandWindowRect[BAND_ORIENT_LL].y1;
-		vert.win_h_0 = bandWindowRect[BAND_ORIENT_LH].y0;
-		vert.win_h_1 = bandWindowRect[BAND_ORIENT_LH].y1;
+		vert.win_l = bandWindowRect[BAND_ORIENT_LL].dimY();
+		vert.win_h = bandWindowRect[BAND_ORIENT_LH].dimY();
 		uint32_t num_jobs = (uint32_t)num_threads;
 		uint32_t num_cols = resWindowRect.width();
 		if (num_cols < num_jobs)
