@@ -23,6 +23,7 @@
 #include "CPUArch.h"
 #include <algorithm>
 #include <limits>
+#include <sstream>
 
 namespace grk {
 
@@ -2000,19 +2001,16 @@ template <typename T,
 					 auto height = std::min<uint32_t>((uint32_t)v_chunk,job->max_j - j );
 #ifdef GRK_DEBUG_VALGRIND
 					 GRK_INFO("H: compno = %d, resno = %d,y begin = %d, height = %d,", compno, resno, j, height);
+					 uint32_t len = job->data.win_l_1 - job->data.win_l_0 + job->data.win_h_1 - job->data.win_h_0;
 #endif
 					 job->data.memL 	=  job->data.mem +   job->data.cas;
 					 job->data.memH  =  job->data.mem + (int64_t)(!job->data.cas) + 2 * ((int64_t)job->data.win_h_0 - (int64_t)job->data.win_l_0);
 					 decompressor.interleave_h(&job->data, sa, j,height);
 #ifdef GRK_DEBUG_VALGRIND
-					if (compno == debug_compno && resno == 1 && j == 0) {
-						uint32_t len = job->data.win_l_1 - job->data.win_l_0 + job->data.win_h_1 - job->data.win_h_0;
-						for (uint32_t i = 0; i < len * v_chunk; ++i) {
-							auto val = grk_memcheck<int32_t>((int32_t*)job->data.memL + i, 1);
-							if (val != grk_mem_ok){
-								GRK_ERROR("Interleave uninitialized value: resno=%d, x begin = %d,  offset  = %d", resno, j, i + val);
-							}
-						}
+					if (compno == debug_compno && resno == 1 && j == 11) {
+						std::ostringstream ss;
+						ss << "Interleave uninitialized value: resno=" << resno << ", x begin = " << j;
+						grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 					}
 #endif
 					 job->data.memL 	=  job->data.mem;
@@ -2020,13 +2018,10 @@ template <typename T,
 					 decompressor.decompress_h(&job->data);
 #ifdef GRK_DEBUG_VALGRIND
 /*
-					if (compno == debug_compno && resno == 1 && j == 0) {
-						for (uint32_t i = 0; i < len * v_chunk; ++i) {
-							auto val = grk_memcheck<int32_t>((int32_t*)job->data.memL + i, 1);
-							if (val != grk_mem_ok){
-								GRK_ERROR("H decompress uninitialized value: resno=%d, x begin = %d,  offset  = %d", resno, j, i + val);
-							}
-						}
+					if (compno == debug_compno && resno == 1 && j == 11) {
+						std::ostringstream ss;
+						ss << "Decompress uninitialized value: resno=" << resno << ", x begin = " << j;
+						grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 					}
 */
 #endif
@@ -2062,6 +2057,8 @@ template <typename T,
 					auto width = std::min<uint32_t>((uint32_t)(sizeof(T)/sizeof(int32_t)) * VERT_PASS_WIDTH,job->max_j - j );
 #ifdef GRK_DEBUG_VALGRIND
 					GRK_INFO("V: resno = %d, x begin = %d, width = %d", resno, j, width);
+					uint32_t len = job->data.win_l_1 - job->data.win_l_0 + job->data.win_h_1 - job->data.win_h_0;
+					(void)len;
 #endif
 					job->data.memL   =  job->data.mem +   (job->data.cas) * VERT_PASS_WIDTH;
 					job->data.memH  =  job->data.mem + ((!job->data.cas) + 2 * (int64_t)job->data.win_h_0) * VERT_PASS_WIDTH - 2 * (int64_t)job->data.win_l_0 * VERT_PASS_WIDTH;
@@ -2069,13 +2066,10 @@ template <typename T,
 
 #ifdef GRK_DEBUG_VALGRIND
 /*
-					if (compno == debug_compno && resno == 3 && j == 4) {
-						for (uint32_t i = 0; i < 11 * h_chunk; ++i) {
-							auto val = grk_memcheck<int32_t>((int32_t*)job->data.memL + i, 1);
-							if (val != grk_mem_ok){
-								GRK_ERROR("Interleave uninitialized value: resno=%d, x begin = %d,  offset  = %d", resno, j, i + val);
-							}
-						}
+					if (compno == debug_compno && resno == 1 && j == 11) {
+						std::ostringstream ss;
+						ss << "Interleave uninitialized value: resno=" << resno << ", x begin = " << j;
+						grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 					}
 */
 #endif
@@ -2084,17 +2078,13 @@ template <typename T,
 					decompressor.decompress_v(&job->data);
 #ifdef GRK_DEBUG_VALGRIND
 /*
-					if (compno == debug_compno && resno == 2 && j == 6) {
-						for (uint32_t i = 0; i < 8 * h_chunk; ++i) {
-							auto val = grk_memcheck<int32_t>((int32_t*)job->data.memL + i, 1);
-							if (val != grk_mem_ok){
-								GRK_ERROR("Decompress uninitialized value: resno=%d, x begin = %d,  offset  = %d", resno, j, i + val);
-							}
-						}
+					if (compno == debug_compno && resno == 1 && j == 11) {
+						std::ostringstream ss;
+						ss << "Decompress uninitialized value: resno=" << resno << ", x begin = " << j;
+						grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 					}
 */
 #endif
-
 					if (!sa->write(j,
 								  resWindowRect.y0,
 								  j + width,

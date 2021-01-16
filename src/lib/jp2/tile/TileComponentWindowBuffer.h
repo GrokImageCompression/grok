@@ -36,7 +36,6 @@ template<typename T> struct ResWindow {
 				Resolution *tileCompFullResLower,
 				grk_rect_u32 tileCompWindowBounds,
 				grk_rect_u32 tileCompWindowUnreducedBounds,
-				uint32_t HORIZ_PASS_HEIGHT,
 				uint32_t FILTER_WIDTH) : m_allocated(false),
 										m_tileCompFullRes(tileCompFullRes),
 										m_tileCompFullResLower(tileCompFullResLower),
@@ -301,8 +300,6 @@ template<typename T> struct TileComponentWindowBuffer {
 		auto topLevel = new ResWindow<T>(numresolutions, reducedNumResolutions - 1,
 				nullptr, canvasFullRes, canvasFullResLower, m_bounds,
 				m_unreducedBounds,
-				wholeTileDecompress ?
-						0 : getHorizontalPassHeight<uint32_t>(lossless),
 				wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless));
 		// setting top level blocks allocation of tileCompBandWindows buffers
 		if (!useBandWindows())
@@ -319,8 +316,6 @@ template<typename T> struct TileComponentWindowBuffer {
 							tileCompResolutions + resno,
 							resno > 0 ? tileCompResolutions + resno - 1 : nullptr,
 							res_dims, m_unreducedBounds,
-							wholeTileDecompress ?
-									0 : getHorizontalPassHeight<uint32_t>(lossless),
 							wholeTileDecompress ?
 									0 : getFilterPad<uint32_t>(lossless)));
 		}

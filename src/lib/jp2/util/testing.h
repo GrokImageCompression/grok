@@ -17,6 +17,8 @@
 
 #pragma once
 
+#include <sstream>
+
 namespace grk {
 
 #if defined(GRK_HAVE_VALGRIND)
@@ -44,6 +46,18 @@ template<typename T> size_t grk_memcheck(const T* buf, size_t len){
 	 size_t val =  VALGRIND_CHECK_MEM_IS_DEFINED(buf,len * sizeof(T));
 	 return (val) ? (val - (uint64_t)buf)/sizeof(T) : grk_mem_ok;
 }
+template<typename T> void grk_memcheck_all(const T* buf, size_t len, std::string msg){
+	for (uint32_t i = 0; i < len; ++i) {
+		auto val = grk_memcheck<T>(buf + i, 1);
+		if (val != grk_mem_ok){
+			std::ostringstream ss;
+			ss << msg << " " << "offset = " << i + val;
+			GRK_ERROR(ss.str().c_str());
+		}
+	}
+}
+
+
 #endif
 
 }
