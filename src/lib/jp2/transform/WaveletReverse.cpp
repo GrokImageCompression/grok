@@ -1550,16 +1550,16 @@ public:
 		#define SS_(buf,i)	((i)<0 ? get_S(buf,0) :	((i)>=dn ? get_S(buf,dn-1) : get_S(buf,i)))
 		#define DD_(buf,i) 	((i)<0 ? get_D(buf,0) :	((i)>=sn ? get_D(buf,sn-1) : get_D(buf,i)))
 
-		int32_t i;
-		int32_t cas 	 = (int32_t)dwt->cas;
-		int32_t win_l_x0 = (int32_t)dwt->win_l.x0;
-		int32_t win_l_x1 = (int32_t)dwt->win_l.x1;
-		int32_t win_h_x0 = (int32_t)dwt->win_h.x0;
-		int32_t win_h_x1 = (int32_t)dwt->win_h.x1;
-		int32_t sn 	  		= (int32_t)(dwt->sn - dwt->win_l.x0);
-		int32_t sn_global  	= (int32_t)dwt->sn;
-		int32_t dn 	  		= (int32_t)(dwt->dn - dwt->win_h.x0);
-		int32_t dn_global	= (int32_t)dwt->dn;
+		int64_t i;
+		int64_t cas 	 = dwt->cas;
+		int64_t win_l_x0 = dwt->win_l.x0;
+		int64_t win_l_x1 = dwt->win_l.x1;
+		int64_t win_h_x0 = dwt->win_h.x0;
+		int64_t win_h_x1 = dwt->win_h.x1;
+		int64_t sn 	  		= (int64_t)dwt->sn - (int64_t)dwt->win_l.x0;
+		int64_t sn_global  	= dwt->sn;
+		int64_t dn 	  		= (int64_t)dwt->dn - (int64_t)dwt->win_h.x0;
+		int64_t dn_global	= dwt->dn;
 
 		assert(dwt->win_l.x1 <= (uint32_t)sn_global && dwt->win_h.x1 <= (uint32_t)dn_global);
 
@@ -1578,7 +1578,7 @@ public:
 
 				auto buf	 = dwt->memL;
 				i = 0;
-				int32_t i_max = win_l_x1 - win_l_x0;
+				int64_t i_max = win_l_x1 - win_l_x0;
 				if (i < i_max) {
 					/* Left-most case */
 					S(buf,i) -= (D_(buf,i - 1) + D_(buf,i) + 2) >> 2;
@@ -1641,8 +1641,8 @@ public:
 		#define S_off_(buf,i,off) 		(((i)>=sn ? get_S_off(buf,sn-1,off) : get_S_off(buf,i,off)))
 		#define D_off_(buf,i,off) 		(((i)>=dn ? get_D_off(buf,dn-1,off) : get_D_off(buf,i,off)))
 
-		#define S_sgnd_off_(buf,i,off) 	(((i)<0   ? get_S_off(buf,0,off)    : S_off_(buf,i,off)))
-		#define D_sgnd_off_(buf,i,off) 	(((i)<0	  ? get_D_off(buf,0,off)    : D_off_(buf,i,off)))
+		#define S_sgnd_off_(buf,i,off) 	(((i)<(-win_l_x0)   ? get_S_off(buf,0,off)    : S_off_(buf,i,off)))
+		#define D_sgnd_off_(buf,i,off) 	(((i)<(-win_h_x0)	  ? get_D_off(buf,0,off)    : D_off_(buf,i,off)))
 
 		// case == 1
 		#define SS_sgnd_off_(buf,i,off)  ((i)<0   ? get_S_off(buf,0,off)    : ((i)>=dn ? get_S_off(buf,dn-1,off) : get_S_off(buf,i,off)))
@@ -1651,16 +1651,16 @@ public:
 		#define SS_off_(buf,i,off) 		(((i)>=dn ? get_S_off(buf,dn-1,off) : get_S_off(buf,i,off)))
 		#define DD_off_(buf,i,off) 		(((i)>=sn ? get_D_off(buf,sn-1,off) : get_D_off(buf,i,off)))
 
-		uint32_t i;
-		uint32_t cas 	  = dwt->cas;
-		uint32_t win_l_x0 = dwt->win_l.x0;
-		uint32_t win_l_x1 = dwt->win_l.x1;
-		uint32_t win_h_x0 = dwt->win_h.x0;
-		uint32_t win_h_x1 = dwt->win_h.x1;
-		uint32_t sn 	  	= dwt->sn - dwt->win_l.x0;
-		uint32_t sn_global  = dwt->sn;
-		uint32_t dn 	  	= dwt->dn - dwt->win_h.x0;
-		uint32_t dn_global	= dwt->dn;
+		int64_t i;
+		int64_t cas 	  	= dwt->cas;
+		int64_t win_l_x0 	= dwt->win_l.x0;
+		int64_t win_l_x1 	= dwt->win_l.x1;
+		int64_t win_h_x0 	= dwt->win_h.x0;
+		int64_t win_h_x1 	= dwt->win_h.x1;
+		int64_t sn 	  		= (int64_t)dwt->sn - (int64_t)dwt->win_l.x0;
+		int64_t sn_global  	= dwt->sn;
+		int64_t dn 	  		= (int64_t)dwt->dn - (int64_t)dwt->win_h.x0;
+		int64_t dn_global	= dwt->dn;
 
 		assert(dwt->win_l.x1 <= (uint32_t)sn_global && dwt->win_h.x1 <= (uint32_t)dn_global);
 
@@ -1680,19 +1680,19 @@ public:
 				// 1. low pass
 				auto buf   = dwt->memL;
 				i = 0;
-				uint32_t i_max = win_l_x1 - win_l_x0;
+				int64_t i_max = win_l_x1 - win_l_x0;
 				assert(win_l_x1 >=  win_l_x0);
 				if (i < i_max) {
 					/* Left-most case */
-					for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
-						S_off(buf,i, off) -= (D_sgnd_off_(buf,(int64_t)i - 1, off) + D_off_(buf,i, off) + 2) >> 2;
+					for (int64_t off = 0; off < VERT_PASS_WIDTH; off++)
+						S_off(buf,i, off) -= (D_sgnd_off_(buf,i - 1, off) + D_off_(buf,i, off) + 2) >> 2;
 					i ++;
-					if (i_max > dn_global - win_l_x0)
-						i_max = dn_global - win_l_x0;
+					if (i_max > (int64_t)dn_global -(int64_t) win_l_x0)
+						i_max = (int64_t)dn_global - (int64_t)win_l_x0;
 		#ifdef __SSE2__
 					if (i + 1 < i_max) {
 						const __m128i two = _mm_set1_epi32(2);
-						auto Dm1 = _mm_load_si128((__m128i *)(buf +  ((int64_t)2 * i - 1) * VERT_PASS_WIDTH));
+						auto Dm1 = _mm_load_si128((__m128i *)(buf +  (2 * i - 1) * VERT_PASS_WIDTH));
 						for (; i + 1 < i_max; i += 2) {
 							/* No bound checking */
 							auto S = _mm_load_si128((__m128i *)(buf +  (i * 2) * VERT_PASS_WIDTH));
@@ -1710,12 +1710,12 @@ public:
 					for (; i < i_max; i++) {
 						/* No bound checking */
 						for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
-							S_off(buf,i, off) -= (D_sgnd_off_(buf,(int64_t)i - 1, off) + D_off(buf,i, off) + 2) >> 2;
+							S_off(buf,i, off) -= (D_sgnd_off_(buf,i - 1, off) + D_off(buf,i, off) + 2) >> 2;
 					}
 					for (; i < win_l_x1 - win_l_x0; i++) {
 						/* Right-most case */
 						for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
-							S_off(buf,i, off) -= (D_sgnd_off_(buf,(int64_t)i - 1, off) + D_off_(buf,i, off) + 2) >> 2;
+							S_off(buf,i, off) -= (D_sgnd_off_(buf,i - 1, off) + D_off_(buf,i, off) + 2) >> 2;
 					}
 				}
 
@@ -1773,7 +1773,7 @@ public:
 				assert( (uint64_t)(dwt->memH + (win_h_x1 - win_h_x0) * VERT_PASS_WIDTH) - (uint64_t)dwt->allocatedMem < dwt->m_lenBytes);
 				for (i = 0; i < win_h_x1 - win_h_x0; i++) {
 					for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
-						S_off(buf,i, off) += (DD_off_(buf,i, off) + DD_sgnd_off_(buf,(int64_t)i - 1, off)) >> 1;
+						S_off(buf,i, off) += (DD_off_(buf,i, off) + DD_sgnd_off_(buf,i - 1, off)) >> 1;
 				}
 			}
 		}
@@ -1781,22 +1781,22 @@ public:
 private:
 
 #ifdef GRK_DEBUG_SPARSE
-		inline T get_S(T* buf, int32_t i) {
+		inline T get_S(T* buf, int64_t i) {
 			auto ret = buf[(i)<<1];
 			assert(abs(ret) < 0xFFFFFFF);
 			return ret;
 		}
-		inline T get_D(T* buf, int32_t i) {
+		inline T get_D(T* buf, int64_t i) {
 			auto ret =  buf[(1+((i)<<1))];
 			assert(abs(ret) < 0xFFFFFFF);
 			return ret;
 		}
-		inline T get_S_off(T* buf,uint32_t i, uint32_t off) {
+		inline T get_S_off(T* buf,int64_t i, int64_t off) {
 			auto ret = buf[(i)*2 * VERT_PASS_WIDTH + off];
 			assert(abs(ret) < 0xFFFFFFF);
 			return ret;
 		}
-		inline T get_D_off(T* buf,uint32_t i, uint32_t off) {
+		inline T get_D_off(T* buf,int64_t i, int64_t off) {
 			auto ret =  buf[(1+(i)*2)*VERT_PASS_WIDTH + off];
 			assert(abs(ret) < 0xFFFFFFF);
 			return ret;
@@ -1995,13 +1995,8 @@ template <typename T,
 					 job->data.memH  =  job->data.mem + (int64_t)(!job->data.cas) + 2 * ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0);
 					 decompressor.interleave_h(&job->data, sa, j,height);
 #ifdef GRK_DEBUG_VALGRIND
-/*
-					if (compno == debug_compno && resno == 1 && j == 11) {
-						std::ostringstream ss;
-						ss << "Interleave uninitialized value: resno=" << resno << ", x begin = " << j << ", total samples = " << len;
-						grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
-					}
-*/
+					 auto ptr = ((uint64_t)job->data.memL < (uint64_t)job->data.memH) ? job->data.memL : job->data.memH;
+					 assert(grk_memcheck<T>(ptr, len) == grk_mem_ok);
 #endif
 					 job->data.memL 	=  job->data.mem;
 					 job->data.memH  =  job->data.memL  + ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0);
@@ -2052,20 +2047,16 @@ template <typename T,
 					(void)len;
 #endif
 					job->data.memL   =  job->data.mem +   (job->data.cas) * VERT_PASS_WIDTH;
-					job->data.memH  =  job->data.mem + ((!job->data.cas) + 2 * (int64_t)job->data.win_h.x0) * VERT_PASS_WIDTH - 2 * (int64_t)job->data.win_l.x0 * VERT_PASS_WIDTH;
+					job->data.memH  =
+							job->data.mem + ((!job->data.cas) + 2 * ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0)) * VERT_PASS_WIDTH;
 					decompressor.interleave_v(&job->data, sa, j, width);
 
 #ifdef GRK_DEBUG_VALGRIND
-/*
-					if (compno == debug_compno && resno == 1 && j == 19) {
-						std::ostringstream ss;
-						ss << "Interleave uninitialized value: resno=" << resno << ", x begin = " << j << ", total samples = " << len;
-						grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
-					}
-*/
+					 auto ptr = ((uint64_t)job->data.memL < (uint64_t)job->data.memH) ? job->data.memL : job->data.memH;
+					 assert(grk_memcheck<T>(ptr, len) == grk_mem_ok);
 #endif
 					job->data.memL   =  job->data.mem;
-					job->data.memH  =  job->data.memL  + (int64_t)job->data.win_h.x0 * VERT_PASS_WIDTH - (int64_t)job->data.win_l.x0 * VERT_PASS_WIDTH;
+					job->data.memH  =  job->data.memL  + ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0) * VERT_PASS_WIDTH;
 					decompressor.decompress_v(&job->data);
 #ifdef GRK_DEBUG_VALGRIND
 
@@ -2080,7 +2071,7 @@ template <typename T,
 								  resWindowRect.y0,
 								  j + width,
 								  resWindowRect.y1,
-								  (int32_t*)(job->data.memL + (int64_t)resWindowRect.y0 * VERT_PASS_WIDTH - 2 * (int64_t)job->data.win_l.x0 * VERT_PASS_WIDTH),
+								  (int32_t*)(job->data.memL + ((int64_t)resWindowRect.y0 - 2 * (int64_t)job->data.win_l.x0) * VERT_PASS_WIDTH),
 								  1,
 								  VERT_PASS_WIDTH * sizeof(T)/sizeof(int32_t),
 								  true)) {

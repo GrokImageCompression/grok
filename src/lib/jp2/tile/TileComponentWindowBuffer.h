@@ -85,12 +85,10 @@ template<typename T> struct ResWindow {
 		auto win_high 		= bandWindowRect[BAND_ORIENT_HL];
 		m_resWindow->x0 	= min<uint32_t>(2 * win_low.x0, 2 * win_high.x0 + 1);
 		m_resWindow->x1 	= min<uint32_t>(max<uint32_t>(2 * win_low.x1, 2 * win_high.x1 + 1), m_tileCompFullRes->width());
-		assert(m_resWindow->x0 <= m_resWindow->x1);
 		win_low 			= bandWindowRect[BAND_ORIENT_LL];
 		win_high 			= bandWindowRect[BAND_ORIENT_LH];
 		m_resWindow->y0 	= min<uint32_t>(2 * win_low.y0, 2 * win_high.y0 + 1);
 		m_resWindow->y1 	= min<uint32_t>(max<uint32_t>(2 * win_low.y1, 2 * win_high.y1 + 1), m_tileCompFullRes->height());
-		assert(m_resWindow->y0 <= m_resWindow->y1);
 
 		// two windows formed by horizontal pass and used as input for vertical pass
 		grk_rect_u32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
