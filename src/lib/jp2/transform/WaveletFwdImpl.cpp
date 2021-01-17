@@ -22,7 +22,7 @@ namespace grk {
 
 class dwt53 {
 public:
-	void compress_line(int32_t* GRK_RESTRICT a, int32_t d_n, int32_t s_n, uint8_t cas);
+	void compress_line(int32_t* GRK_RESTRICT a, int32_t d_n, int32_t s_n, uint8_t parity);
 };
 
 #define GROK_S(i) a[(i)<<1]
@@ -66,8 +66,8 @@ public:
 /* <summary>                            */
 /* Forward 5-3 wavelet transform in 1-D. */
 /* </summary>                           */
-void dwt53::compress_line(int32_t *a, int32_t d_n, int32_t s_n, uint8_t cas) {
-	if (!cas) {
+void dwt53::compress_line(int32_t *a, int32_t d_n, int32_t s_n, uint8_t parity) {
+	if (!parity) {
 		if ((d_n > 0) || (s_n > 1)) {
 			for (int32_t i = 0; i < d_n; i++)
 				GROK_D(i)-= (GROK_S_(i) + GROK_S_(i + 1)) >> 1;
@@ -93,7 +93,7 @@ public:
 	/**
 	 Forward 9-7 wavelet transform in 1-D
 	 */
-	void compress_line(int32_t* GRK_RESTRICT a, int32_t d_n, int32_t s_n, uint8_t cas);
+	void compress_line(int32_t* GRK_RESTRICT a, int32_t d_n, int32_t s_n, uint8_t parity);
 
 };
 
@@ -121,8 +121,8 @@ static const float dwt_c13318 = 1.625732422f;
 /* <summary>                             */
 /* Forward 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
-void dwt97::compress_line(int32_t* GRK_RESTRICT a, int32_t d_n, int32_t s_n, uint8_t cas) {
-	if (!cas) {
+void dwt97::compress_line(int32_t* GRK_RESTRICT a, int32_t d_n, int32_t s_n, uint8_t parity) {
+	if (!parity) {
 	  if ((d_n > 0) || (s_n > 1)) { /* NEW :  CASE ONE ELEMENT */
 		for (int32_t i = 0; i < d_n; i++)
 			GROK_D(i)-= int_fix_mul(GROK_S_(i) + GROK_S_(i + 1), 12994);

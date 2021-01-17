@@ -283,14 +283,14 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
 }
 
 
-bool TileComponent::create_buffer(grk_rect_u32 *unreducedCanvasTileCompDims,
-									grk_rect_u32 unreducedCanvasTileCompWindowDims) {
+bool TileComponent::create_buffer(grk_rect_u32 *unreducedTileCompDims,
+									grk_rect_u32 unreducedTileCompWindowDims) {
 	// calculate band
 	for (uint8_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
 		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 			auto band = res->band + bandIndex;
-			band->set_rect(getTileCompBandWindow(numresolutions, resno, band->orientation,*unreducedCanvasTileCompDims));
+			band->set_rect(getTileCompBandWindow(numresolutions, resno, band->orientation,*unreducedTileCompDims));
 		}
 	}
 
@@ -298,12 +298,12 @@ bool TileComponent::create_buffer(grk_rect_u32 *unreducedCanvasTileCompDims,
 	auto highestNumberOfResolutions =
 			(!m_is_encoder) ? resolutions_to_decompress : numresolutions;
 	auto maxResolution = resolutions + numresolutions - 1;
-	if (!maxResolution->intersection(unreducedCanvasTileCompWindowDims).is_valid()){
+	if (!maxResolution->intersection(unreducedTileCompWindowDims).is_valid()){
 		GRK_ERROR("Decompress window (%d,%d,%d,%d) must overlap tile region (%d,%d,%d,%d)",
-				unreducedCanvasTileCompWindowDims.x0,
-				unreducedCanvasTileCompWindowDims.y0,
-				unreducedCanvasTileCompWindowDims.x1,
-				unreducedCanvasTileCompWindowDims.y1,
+				unreducedTileCompWindowDims.x0,
+				unreducedTileCompWindowDims.y0,
+				unreducedTileCompWindowDims.x1,
+				unreducedTileCompWindowDims.y1,
 				maxResolution->x0,
 				maxResolution->y0,
 				maxResolution->x1,
@@ -315,7 +315,7 @@ bool TileComponent::create_buffer(grk_rect_u32 *unreducedCanvasTileCompDims,
 											wholeTileDecompress,
 											*(grk_rect_u32*)maxResolution,
 											*(grk_rect_u32*)this,
-											unreducedCanvasTileCompWindowDims,
+											unreducedTileCompWindowDims,
 											resolutions,
 											numresolutions,
 											highestNumberOfResolutions);

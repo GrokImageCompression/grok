@@ -35,14 +35,14 @@ public:
 	/* Forward lazy transform (vertical).    */
 	/* </summary>                            */
 	void deinterleave_v(int32_t *a, int32_t *b, uint32_t d_n, uint32_t s_n,
-			uint32_t stride, int32_t cas);
+			uint32_t stride, int32_t parity);
 
 
 	/* <summary>			                 */
 	/* Forward lazy transform (horizontal).  */
 	/* </summary>                            */
 	void deinterleave_h(int32_t *a, int32_t *b, uint32_t d_n, uint32_t s_n,
-			int32_t cas) ;
+			int32_t parity) ;
 };
 
 
@@ -50,10 +50,10 @@ public:
 /* Forward lazy transform (vertical).    */
 /* </summary>                            */
 template <typename DWT> void WaveletForward<DWT>::deinterleave_v(int32_t *a, int32_t *b, uint32_t d_n, uint32_t s_n,
-		uint32_t stride, int32_t cas) {
+		uint32_t stride, int32_t parity) {
 	uint32_t i = s_n;
 	int32_t *dest = b;
-	int32_t *src = a + cas;
+	int32_t *src = a + parity;
 
 	while (i--) {
 		*dest = *src;
@@ -62,7 +62,7 @@ template <typename DWT> void WaveletForward<DWT>::deinterleave_v(int32_t *a, int
 	}
 
 	dest = b + s_n * stride;
-	src = a + 1 - cas;
+	src = a + 1 - parity;
 
 	i = d_n;
 	while (i--) {
@@ -76,9 +76,9 @@ template <typename DWT> void WaveletForward<DWT>::deinterleave_v(int32_t *a, int
 /* Forward lazy transform (horizontal).  */
 /* </summary>                            */
 template <typename DWT> void WaveletForward<DWT>::deinterleave_h(int32_t *a, int32_t *b, uint32_t d_n, uint32_t s_n,
-		int32_t cas) {
+		int32_t parity) {
 	int32_t *dest = b;
-	int32_t *src = a + cas;
+	int32_t *src = a + parity;
 
 	for (uint32_t i = 0; i < s_n; ++i) {
 		*dest++ = *src;
@@ -86,7 +86,7 @@ template <typename DWT> void WaveletForward<DWT>::deinterleave_h(int32_t *a, int
 	}
 
 	dest = b + s_n;
-	src = a + 1 - cas;
+	src = a + 1 - parity;
 
 	for (uint32_t i = 0; i < d_n; ++i) {
 		*dest++ = *src;

@@ -213,7 +213,7 @@ template<typename T> struct ResWindow {
 
  1) Canvas coordinate system:  JPEG 2000 global image coordinates, independent of sub-sampling
 
- 2) Tile coordinate system:  transformed from canvas coordinates, with sub-sampling accounted for
+ 2) Tile coordinate system:  canvas coordinates with sub-sampling accounted for
 
  3) Resolution coordinate system: coordinates relative to a particular resolution's top left hand corner
 
