@@ -189,10 +189,15 @@ template<typename T> struct grk_rectangle {
     	return grk_line<T>(y0,y1);
     }
     grk_rectangle<T> pan(int64_t x, int64_t y) const {
-    	return grk_rectangle<T>( sat_add<T>((int64_t)x0, (int64_t)x),
-								 sat_add<T>((int64_t)y0, (int64_t)y),
-								 sat_add<T>((int64_t)x1, (int64_t)x),
-								 sat_add<T>((int64_t)y1, (int64_t)y));
+    	auto rc = *this;
+    	rc.pan_inplace(x,y);
+    	return rc;
+    }
+    void pan_inplace(int64_t x, int64_t y) {
+    	x0 =  sat_add<T>((int64_t)x0, (int64_t)x);
+		y0 =  sat_add<T>((int64_t)y0, (int64_t)y);
+		x1 =  sat_add<T>((int64_t)x1, (int64_t)x);
+		y1 =  sat_add<T>((int64_t)y1, (int64_t)y);
     }
     grk_rectangle<T>& grow(T boundary) {
     	return grow(boundary, boundary,(std::numeric_limits<T>::max)(),(std::numeric_limits<T>::max)());

@@ -182,10 +182,6 @@ bool TileComponent::subbandIntersectsAOI(uint8_t resno,
 }
 
 void TileComponent::allocSparseBuffer(uint32_t numres){
-    auto tr_max = resolutions + numres - 1;
-	uint32_t w = tr_max->width();
-	uint32_t h = tr_max->height();
-
 	grk_rect_u32 temp(0,0,0,0);
 	bool first = true;
 
@@ -196,38 +192,27 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
             for (auto precinct : band->precincts) {
                 for (uint64_t cblkno = 0; cblkno < precinct->getNumCblks(); ++cblkno) {
                     auto cblk = precinct->getDecompressedBlockPtr() + cblkno;
-					// check overlap in band coordinates
+					// check overlap in canvas coordinates
 					if (subbandIntersectsAOI(resno,	band->orientation,	cblk)){
-						uint32_t x = cblk->x0;
-						uint32_t y = cblk->y0;
-
-						// switch from coordinates relative to band,
+						// transform from canvas coordinates
 						// to coordinates relative to current resolution
-						x -= band->x0;
-						y -= band->y0;
-
-						/* add band offset relative to previous resolution */
+						uint32_t x = cblk->x0 - band->x0;
+						uint32_t y = cblk->y0 - band->y0;
 						if (band->orientation & 1) {
 							auto prev_res = resolutions + resno - 1;
-							x += prev_res->x1 - prev_res->x0;
+							x += prev_res->width();
 						}
 						if (band->orientation & 2) {
 							auto prev_res = resolutions + resno - 1;
-							y += prev_res->y1 - prev_res->y0;
+							y += prev_res->height();
 						}
-
+						// add to union of code block bounds
 						if (first) {
-							temp = grk_rect_u32(x,
-										  y,
-										  x + cblk->width(),
-										  y + cblk->height());
+							temp = grk_rect_u32(x,y,x + cblk->width(), y + cblk->height());
 							first = false;
 						}
 						else {
-							temp = temp.rect_union(grk_rect_u32(x,
-															  y,
-															  x + cblk->width(),
-															  y + cblk->height()));
+							temp = temp.rect_union(grk_rect_u32(x,y, x + cblk->width(),y + cblk->height()));
 						}
 					}
                 }
@@ -235,7 +220,8 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
         }
     }
 
-    temp.grow(10,w,h);
+    auto tr_max = resolutions + numres - 1;
+    temp.grow(5,tr_max->width(),tr_max->height());
 	auto sa = new SparseBuffer<6,6>(temp);
 
     for (uint8_t resno = 0; resno < numres; ++resno) {
@@ -245,24 +231,19 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
             for (auto precinct : band->precincts) {
                 for (uint64_t cblkno = 0; cblkno < precinct->getNumCblks(); ++cblkno) {
                     auto cblk = precinct->getDecompressedBlockPtr() + cblkno;
-					// check overlap in band coordinates
+					// check overlap in canvas coordinates
 					if (subbandIntersectsAOI(resno,	band->orientation,	cblk)){
-						uint32_t x = cblk->x0;
-						uint32_t y = cblk->y0;
-
-						// switch from coordinates relative to band,
+						// transform from canvas coordinates
 						// to coordinates relative to current resolution
-						x -= band->x0;
-						y -= band->y0;
-
-						/* add band offset relative to previous resolution */
+						uint32_t x = cblk->x0 - band->x0;
+						uint32_t y = cblk->y0 - band->y0;
 						if (band->orientation & 1) {
 							auto prev_res = resolutions + resno - 1;
-							x += prev_res->x1 - prev_res->x0;
+							x += prev_res->width();
 						}
 						if (band->orientation & 2) {
 							auto prev_res = resolutions + resno - 1;
-							y += prev_res->y1 - prev_res->y0;
+							y += prev_res->height();
 						}
 
 						if (!sa->alloc(grk_rect_u32(x,
