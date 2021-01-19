@@ -51,12 +51,9 @@ template<typename T> struct grk_line {
 };
 using grk_u32_line = grk_line<uint32_t>;
 
-
-
 template<typename T> struct grk_rectangle;
 using grk_rect = grk_rectangle<int64_t>;
 using grk_rect_u32 = grk_rectangle<uint32_t>;
-
 
 template<typename T> T clip(int64_t val) {
 	static_assert(sizeof(T) <= 4);
@@ -211,19 +208,14 @@ template<typename T> struct grk_rectangle {
     grk_rectangle<T>& grow(T boundaryx, T boundaryy, T maxX, T maxY) {
     	return grow(boundaryx,boundaryy, grk_rectangle<T>((T)0,(T)0,maxX,maxY));
     }
+    grk_rectangle<T>& grow(T boundary, grk_rectangle<T> bounds) {
+    	return grow(boundary,boundary, bounds);
+    }
     grk_rectangle<T>& grow(T boundaryx, T boundaryy, grk_rectangle<T> bounds) {
     	x0 = std::max<T>( sat_sub<T>(x0, boundaryx), bounds.x0);
     	y0 = std::max<T>( sat_sub<T>(y0, boundaryy), bounds.y0);
     	x1 = std::min<T>( sat_add<T>(x1, boundaryx), bounds.x1);
     	y1 = std::min<T>( sat_add<T>(y1, boundaryy), bounds.y1);
-
-    	return *this;
-    }
-    grk_rectangle<T>& grow(T boundary, grk_rectangle<T> bounds) {
-    	x0 = std::max<T>( sat_sub<T>(x0, boundary), bounds.x0);
-    	y0 = std::max<T>( sat_sub<T>(y0, boundary), bounds.y0);
-    	x1 = std::min<T>( sat_add<T>(x1, boundary), bounds.x1);
-    	y1 = std::min<T>( sat_add<T>(y1, boundary), bounds.y1);
 
     	return *this;
     }
@@ -302,14 +294,12 @@ template <typename T> struct grk_buffer {
 		return buf + offset;
 	}
 
-
 	T *buf;		/* internal array*/
     size_t offset;	/* current offset into array */
     size_t len;		/* length of array */
     bool owns_data;	/* true if buffer manages the buf array */
 } ;
 using grk_buf = grk_buffer<uint8_t>;
-
 
 template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 
@@ -344,20 +334,16 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 	    }
 	    return *this;
 	}
-
 	virtual ~grk_buffer_2d() {
 		if (owns_data)
 			grk_aligned_free(data);
 	}
-
-
 	void copy_rect(grk_rect_u32 b){
 		x0 = b.x0;
 		x1 = b.x1;
 		y0 = b.y0;
 		y1 = b.y1;
 	}
-
 	bool alloc(bool clear){
 		if (!data && width() && height()) {
 			stride = grk_make_aligned_width(width());
@@ -433,4 +419,3 @@ grk_rect_u32 getTileCompBandWindow(uint8_t num_res,
 
 
 }
-

@@ -151,7 +151,7 @@ template <typename T> struct dwt_data {
 	        GRK_ERROR("Failed to allocate %d bytes", m_lenBytes);
 	        return false;
 	    }
-	    //memset(allocatedMem, 0, m_lenBytes);
+	    //memset(allocatedMem, 0xFF, m_lenBytes);
 	    mem = allocatedMem + m_paddingBytes / sizeof(T);
 		return (allocatedMem != nullptr) ? true : false;
 	}
@@ -1983,9 +1983,8 @@ template <typename T,
 			(void)compno;
 			(void)resno;
 			 try {
-				 const uint32_t v_chunk = HORIZ_PASS_HEIGHT;
-				 for (uint32_t j = job->min_j; j < job->max_j; j += v_chunk) {
-					 auto height = std::min<uint32_t>((uint32_t)v_chunk,job->max_j - j );
+				 for (uint32_t j = job->min_j; j < job->max_j; j += HORIZ_PASS_HEIGHT) {
+					 auto height = std::min<uint32_t>((uint32_t)HORIZ_PASS_HEIGHT,job->max_j - j );
 #ifdef GRK_DEBUG_VALGRIND
 					 GRK_INFO("H: compno = %d, resno = %d,y begin = %d, height = %d,", compno, resno, j, height);
 					 uint32_t len = (job->data.win_l.x1 - job->data.win_l.x0 + job->data.win_h.x1 - job->data.win_h.x0) * HORIZ_PASS_HEIGHT;
@@ -1995,17 +1994,23 @@ template <typename T,
 					 job->data.memH  =  job->data.mem + (int64_t)(!job->data.parity) + 2 * ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0);
 					 decompressor.interleave_h(&job->data, sa, j,height);
 #ifdef GRK_DEBUG_VALGRIND
+					/*
 					 auto ptr = ((uint64_t)job->data.memL < (uint64_t)job->data.memH) ? job->data.memL : job->data.memH;
-					 assert(grk_memcheck<T>(ptr, len) == grk_mem_ok);
+					 if (grk_memcheck<T>(ptr, len) != grk_mem_ok) {
+						std::ostringstream ss;
+						ss << "H interleave uninitialized value: compno = " << (uint32_t)compno  << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
+						grk_memcheck_all<int32_t>((int32_t*)ptr, len, ss.str());
+					 }
+					 */
 #endif
-					 job->data.memL 	=  job->data.mem;
-					 job->data.memH  =  job->data.memL  + ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0);
+					 job->data.memL  =  job->data.mem;
+					 job->data.memH  =  job->data.mem  + ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0);
 					 decompressor.decompress_h(&job->data);
 #ifdef GRK_DEBUG_VALGRIND
 /*
 					if (compno == debug_compno && resno == 1 && j == 11) {
 						std::ostringstream ss;
-						ss << "Decompress uninitialized value: resno=" << resno << ", x begin = " << j << ", total samples = " << len;
+						ss << "H decompress uninitialized value: compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
 						grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 					}
 */
@@ -2014,7 +2019,7 @@ template <typename T,
 									  j,
 									  resWindowRect.x1,
 									  j + height,
-									  (int32_t*)(job->data.memL + (int64_t)resWindowRect.x0 - 2 * (int64_t)job->data.win_l.x0),
+									  (int32_t*)(job->data.mem + (int64_t)resWindowRect.x0 - 2 * (int64_t)job->data.win_l.x0),
 									  HORIZ_PASS_HEIGHT,
 									  1,
 									  true)) {
@@ -2038,11 +2043,10 @@ template <typename T,
 			(void)compno;
 			(void)resno;
 			 try {
-				 const uint32_t h_chunk = (sizeof(T)/sizeof(int32_t)) * VERT_PASS_WIDTH;
-				 for (uint32_t j = job->min_j; j < job->max_j; j += h_chunk) {
-					auto width = std::min<uint32_t>((uint32_t)(sizeof(T)/sizeof(int32_t)) * VERT_PASS_WIDTH,job->max_j - j );
+				 for (uint32_t j = job->min_j; j < job->max_j; j += VERT_PASS_WIDTH) {
+					auto width = std::min<uint32_t>(VERT_PASS_WIDTH,(job->max_j - j));
 #ifdef GRK_DEBUG_VALGRIND
-					GRK_INFO("V: resno = %d, x begin = %d, width = %d", resno, j, width);
+					GRK_INFO("V: compno = %d, resno = %d, x begin = %d, width = %d", compno, resno, j, width);
 					uint32_t len = (job->data.win_l.x1 - job->data.win_l.x0 + job->data.win_h.x1 - job->data.win_h.x0) * VERT_PASS_WIDTH;
 					(void)len;
 #endif
@@ -2052,17 +2056,23 @@ template <typename T,
 					decompressor.interleave_v(&job->data, sa, j, width);
 
 #ifdef GRK_DEBUG_VALGRIND
-					 auto ptr = ((uint64_t)job->data.memL < (uint64_t)job->data.memH) ? job->data.memL : job->data.memH;
-					 assert(grk_memcheck<T>(ptr, len) == grk_mem_ok);
+					if (compno == debug_compno && resno == 1 && j == 19) {
+						 auto ptr = ((uint64_t)job->data.memL < (uint64_t)job->data.memH) ? job->data.memL : job->data.memH;
+						 if (grk_memcheck<T>(ptr, len) != grk_mem_ok) {
+							std::ostringstream ss;
+							ss <<  "V interleave uninitialized value: compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
+							grk_memcheck_all<int32_t>((int32_t*)ptr, len, ss.str());
+						 }
+					}
 #endif
-					job->data.memL   =  job->data.mem;
-					job->data.memH  =  job->data.memL  + ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0) * VERT_PASS_WIDTH;
+					job->data.memL  =  job->data.mem;
+					job->data.memH  =  job->data.mem  + ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0) * VERT_PASS_WIDTH;
 					decompressor.decompress_v(&job->data);
 #ifdef GRK_DEBUG_VALGRIND
 
 					if (compno == debug_compno && resno == 1 && j == 19) {
 						std::ostringstream ss;
-						ss << "Decompress uninitialized value: resno=" << resno << ", x begin = " << j << ", total samples = " << len;
+						ss << "V decompress uninitialized value: compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
 						grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 					}
 
@@ -2070,8 +2080,8 @@ template <typename T,
 					if (!sa->write(j,
 								  resWindowRect.y0,
 								  j + width,
-								  resWindowRect.y1,
-								  (int32_t*)(job->data.memL + ((int64_t)resWindowRect.y0 - 2 * (int64_t)job->data.win_l.x0) * VERT_PASS_WIDTH),
+								  resWindowRect.y0 + job->data.win_l.length() + job->data.win_h.length(),
+								  (int32_t*)(job->data.mem + ((int64_t)resWindowRect.y0 - 2 * (int64_t)job->data.win_l.x0) * VERT_PASS_WIDTH),
 								  1,
 								  VERT_PASS_WIDTH * sizeof(T)/sizeof(int32_t),
 								  true)) {

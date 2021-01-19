@@ -49,40 +49,43 @@ template<typename T> struct ResWindow {
 
 		for (uint8_t orient = 0; orient < ( (resno) > 0 ? BAND_NUM_ORIENTATIONS : 1); orient++) {
 			grk_rect_u32 temp = getTileCompBandWindow(numresolutions, resno, orient,tileCompWindowUnreducedBounds);
-			m_paddedBandWindows.push_back(temp.grow(FILTER_WIDTH,FILTER_WIDTH));
+			m_paddedBandWindows.push_back(temp.grow(2 * FILTER_WIDTH));
 		}
 
 		if (m_tileCompFullResLower) {
 
-		// 1. set up windows for horizontal and vertical passes
-		for (uint8_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i) {
-			auto bandWindowRect = getTileCompBandWindow(numresolutions,resno,i,tileCompWindowUnreducedBounds);
-			auto bandRect = i ==0 ? *((grk_rect_u32*)m_tileCompFullResLower) : m_tileCompFullRes->band[i-1];
-			m_bandWindows.push_back(new grk_buffer_2d<T>(bandWindowRect.grow(FILTER_WIDTH, bandRect).pan(-(int64_t)bandRect.x0, -(int64_t)bandRect.y0)));
-		}
+			std::vector< grk_buffer_2d<T>* > unpaddedBandWindows;
 
-		auto win_low 		= m_bandWindows[BAND_ORIENT_LL];
-		auto win_high 		= m_bandWindows[BAND_ORIENT_HL];
-		m_resWindow->x0 	= min<uint32_t>(2 * win_low->x0, 2 * win_high->x0 + 1);
-		m_resWindow->x1 	= min<uint32_t>(max<uint32_t>(2 * win_low->x1, 2 * win_high->x1 + 1), m_tileCompFullRes->width());
-		win_low 			= m_bandWindows[BAND_ORIENT_LL];
-		win_high 			= m_bandWindows[BAND_ORIENT_LH];
-		m_resWindow->y0 	= min<uint32_t>(2 * win_low->y0, 2 * win_high->y0 + 1);
-		m_resWindow->y1 	= min<uint32_t>(max<uint32_t>(2 * win_low->y1, 2 * win_high->y1 + 1), m_tileCompFullRes->height());
+			// 1. set up windows for horizontal and vertical passes
+			for (uint8_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i) {
+				auto bandWindowRect = getTileCompBandWindow(numresolutions,resno,i,tileCompWindowUnreducedBounds);
+				auto bandRect = i ==0 ? *((grk_rect_u32*)m_tileCompFullResLower) : m_tileCompFullRes->band[i-1];
+				m_bandWindows.push_back(new grk_buffer_2d<T>(bandWindowRect.grow(2 * FILTER_WIDTH, bandRect).pan(-(int64_t)bandRect.x0, -(int64_t)bandRect.y0)));
+				unpaddedBandWindows.push_back(new grk_buffer_2d<T>(bandWindowRect.pan(-(int64_t)bandRect.x0, -(int64_t)bandRect.y0)));
+			}
 
-		// two windows formed by horizontal pass and used as input for vertical pass
-		grk_rect_u32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
-		splitWindowRect[SPLIT_L] = grk_rect_u32(m_resWindow->x0,
-												  m_bandWindows[BAND_ORIENT_LL]->y0,
-												  m_resWindow->x1,
-												  m_bandWindows[BAND_ORIENT_LL]->y1);
-		m_splitWindow[SPLIT_L] = new grk_buffer_2d<T>(splitWindowRect[SPLIT_L]);
+			auto win_low 		= unpaddedBandWindows[BAND_ORIENT_LL];
+			auto win_high 		= unpaddedBandWindows[BAND_ORIENT_HL];
+			m_resWindow->x0 	= min<uint32_t>(2 * win_low->x0, 2 * win_high->x0 + 1);
+			m_resWindow->x1 	= min<uint32_t>(max<uint32_t>(2 * win_low->x1, 2 * win_high->x1 + 1), m_tileCompFullRes->width());
+			win_low 			= unpaddedBandWindows[BAND_ORIENT_LL];
+			win_high 			= unpaddedBandWindows[BAND_ORIENT_LH];
+			m_resWindow->y0 	= min<uint32_t>(2 * win_low->y0, 2 * win_high->y0 + 1);
+			m_resWindow->y1 	= min<uint32_t>(max<uint32_t>(2 * win_low->y1, 2 * win_high->y1 + 1), m_tileCompFullRes->height());
 
-		splitWindowRect[SPLIT_H] = grk_rect_u32(m_resWindow->x0,
-													m_bandWindows[BAND_ORIENT_LH]->y0 + m_tileCompFullResLower->height(),
-													m_resWindow->x1,
-													m_bandWindows[BAND_ORIENT_LH]->y1 + m_tileCompFullResLower->height());
-		m_splitWindow[SPLIT_H] = new grk_buffer_2d<T>(splitWindowRect[SPLIT_H]);
+			// two windows formed by horizontal pass and used as input for vertical pass
+			grk_rect_u32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
+			splitWindowRect[SPLIT_L] = grk_rect_u32(m_resWindow->x0,
+													  unpaddedBandWindows[BAND_ORIENT_LL]->y0,
+													  m_resWindow->x1,
+													  unpaddedBandWindows[BAND_ORIENT_LL]->y1);
+			m_splitWindow[SPLIT_L] = new grk_buffer_2d<T>(splitWindowRect[SPLIT_L]);
+
+			splitWindowRect[SPLIT_H] = grk_rect_u32(m_resWindow->x0,
+														unpaddedBandWindows[BAND_ORIENT_LH]->y0 + m_tileCompFullResLower->height(),
+														m_resWindow->x1,
+														unpaddedBandWindows[BAND_ORIENT_LH]->y1 + m_tileCompFullResLower->height());
+			m_splitWindow[SPLIT_H] = new grk_buffer_2d<T>(splitWindowRect[SPLIT_H]);
 		}
 	   } else {
 		    // (NOTE: we use relative coordinates)
@@ -412,7 +415,7 @@ private:
 	}
 
 	/**
-	 * If resno is > 0, return HL,LH or HH band window, otherwise return LL resolution window
+	 * If resno is > 0, return LL,HL,LH or HH band window, otherwise return LL resolution window
 	 */
 	grk_buffer_2d<T>* getBandWindow(uint8_t resno,eBandOrientation orientation) const{
 		assert(resno < m_tileCompResolutions.size());
