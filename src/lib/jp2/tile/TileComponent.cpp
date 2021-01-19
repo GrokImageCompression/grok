@@ -69,8 +69,8 @@ void TileComponent::release_mem(){
  */
 bool TileComponent::init(bool isCompressor,
 						bool whole_tile,
-						grk_rect_u32 unreduced_tile_comp_dims,
-						grk_rect_u32 unreduced_tile_comp_window_dims,
+						grk_rect_u32 unreducedTileComp,
+						grk_rect_u32 unreducedTileOrImageCompWindow,
 						uint8_t prec,
 						CodingParams *cp,
 						TileCodingParams *tcp,
@@ -95,9 +95,9 @@ bool TileComponent::init(bool isCompressor,
 		/* border for each resolution level (global) */
 		grk_rect_u32 dim;
 		if (resno == numresolutions - 1){
-			dim = unreduced_tile_comp_dims;
+			dim = unreducedTileComp;
 		} else {
-			dim = getTileCompBandWindow(numresolutions,resno+1,BAND_ORIENT_LL,unreduced_tile_comp_dims);
+			dim = getTileCompBandWindow(numresolutions,resno+1,BAND_ORIENT_LL,unreducedTileComp);
 		}
 		res->set_rect(dim);
 
@@ -141,7 +141,7 @@ bool TileComponent::init(bool isCompressor,
 	set_rect(hightestResolution);
 
 	//3. create window buffer
-	if (!create_buffer(&unreduced_tile_comp_dims, unreduced_tile_comp_window_dims))
+	if (!create_buffer(&unreducedTileComp, unreducedTileOrImageCompWindow))
 		return false;
 
 	// set band step size
@@ -264,14 +264,14 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
 }
 
 
-bool TileComponent::create_buffer(grk_rect_u32 *unreducedTileCompDims,
-									grk_rect_u32 unreducedTileCompWindowDims) {
+bool TileComponent::create_buffer(grk_rect_u32 *unreducedImageComp,
+									grk_rect_u32 unreducedTileOrImageCompWindow) {
 	// calculate band
 	for (uint8_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
 		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 			auto band = res->band + bandIndex;
-			band->set_rect(getTileCompBandWindow(numresolutions, resno, band->orientation,*unreducedTileCompDims));
+			band->set_rect(getTileCompBandWindow(numresolutions, resno, band->orientation,*unreducedImageComp));
 		}
 	}
 
@@ -279,12 +279,12 @@ bool TileComponent::create_buffer(grk_rect_u32 *unreducedTileCompDims,
 	auto highestNumberOfResolutions =
 			(!m_is_encoder) ? resolutions_to_decompress : numresolutions;
 	auto maxResolution = resolutions + numresolutions - 1;
-	if (!maxResolution->intersection(unreducedTileCompWindowDims).is_valid()){
-		GRK_ERROR("Decompress window (%d,%d,%d,%d) must overlap tile region (%d,%d,%d,%d)",
-				unreducedTileCompWindowDims.x0,
-				unreducedTileCompWindowDims.y0,
-				unreducedTileCompWindowDims.x1,
-				unreducedTileCompWindowDims.y1,
+	if (!maxResolution->intersection(unreducedTileOrImageCompWindow).is_valid()){
+		GRK_ERROR("Decompress window (%d,%d,%d,%d) must overlap image bounds (%d,%d,%d,%d)",
+				unreducedTileOrImageCompWindow.x0,
+				unreducedTileOrImageCompWindow.y0,
+				unreducedTileOrImageCompWindow.x1,
+				unreducedTileOrImageCompWindow.y1,
 				maxResolution->x0,
 				maxResolution->y0,
 				maxResolution->x1,
@@ -296,7 +296,7 @@ bool TileComponent::create_buffer(grk_rect_u32 *unreducedTileCompDims,
 											wholeTileDecompress,
 											*(grk_rect_u32*)maxResolution,
 											*(grk_rect_u32*)this,
-											unreducedTileCompWindowDims,
+											unreducedTileOrImageCompWindow,
 											resolutions,
 											numresolutions,
 											highestNumberOfResolutions);
