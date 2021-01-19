@@ -38,6 +38,7 @@ set(PACKAGE_VERSION
 #   7.6.2 |  1
 #   7.6.3 |  1
 #   7.6.4 |  1
+#   7.6.5 |  1
 if(NOT GROK_SOVERSION)
   set(GROK_SOVERSION 1)
 endif(NOT GROK_SOVERSION)
