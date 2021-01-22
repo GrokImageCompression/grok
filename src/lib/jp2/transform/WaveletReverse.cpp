@@ -1461,7 +1461,7 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
  *  Width :  4
  *
  ****************************************************************************/
-template<typename T, uint32_t VERT_PASS_WIDTH> class PartialInterleaver {
+template<typename T, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH> class PartialInterleaver {
 public:
 	/**
 	 * interleaved data is laid out in the dwt->mem buffer in increments of h_chunk
@@ -1475,7 +1475,7 @@ public:
 	    	// read one row of L band and write interleaved
 	        bool ret = sa->read(dwt->win_l.x0,
 							  y_offset + i,
-							  dwt->win_l.x1,
+							  std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn),
 							  y_offset + i + 1,
 							  (int32_t*)dwt->memL + i,
 							  2 * h_chunk,
@@ -1485,7 +1485,7 @@ public:
 	        // read one row of H band and write interleaved
 	        ret = sa->read(dwt->sn + dwt->win_h.x0,
 							  y_offset + i,
-							  dwt->sn + dwt->win_h.x1,
+							  dwt->sn + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn),
 							  y_offset + i + 1,
 							  (int32_t*)dwt->memH + i,
 							  2 * h_chunk,
@@ -1508,7 +1508,7 @@ public:
 	    bool ret = sa->read(x_offset,
 	    					dwt->win_l.x0,
 							x_offset + x_num_elements,
-							dwt->win_l.x1,
+							 std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn),
 							(int32_t*)dwt->memL,
 							1,
 							2 * v_chunk,
@@ -1518,7 +1518,7 @@ public:
 	    ret = sa->read(x_offset,
 	    				dwt->sn + dwt->win_h.x0,
 						x_offset + x_num_elements,
-						dwt->sn + dwt->win_h.x1,
+						 dwt->sn + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn),
 						(int32_t*)dwt->memH,
 						1,
 						2 * v_chunk,
@@ -1529,7 +1529,7 @@ public:
 };
 
 
-template<typename T, uint32_t VERT_PASS_WIDTH> class Partial53 : public PartialInterleaver<T,VERT_PASS_WIDTH> {
+template<typename T, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH> class Partial53 : public PartialInterleaver<T,FILTER_WIDTH,VERT_PASS_WIDTH> {
 public:
 
 	void decompress_h(dwt_data<T>* dwt){
@@ -1805,7 +1805,7 @@ private:
 };
 
 
-template<typename T, uint32_t VERT_PASS_WIDTH> class Partial97 : public PartialInterleaver<T,VERT_PASS_WIDTH> {
+template<typename T, uint32_t FILTER_WIDTH, uint32_t VERT_PASS_WIDTH> class Partial97 : public PartialInterleaver<T,FILTER_WIDTH,VERT_PASS_WIDTH> {
 public:
 	void decompress_h(dwt_data<T>* dwt){
 		decompress_step_97(dwt);
@@ -2087,7 +2087,7 @@ template <typename T,
 		//3. calculate synthesis
         horiz.win_l = bandWindowRect[BAND_ORIENT_LL].dimX();
         horiz.win_h = bandWindowRect[BAND_ORIENT_HL].dimX();
-        size_t data_size = splitWindowRect[0].width() * HORIZ_PASS_HEIGHT;
+        size_t data_size = (splitWindowRect[0].width() + 2 * FILTER_WIDTH) * HORIZ_PASS_HEIGHT;
 
 		for (uint32_t k = 0; k < 2; ++k) {
 			uint32_t num_jobs = (uint32_t)num_threads;
@@ -2125,7 +2125,7 @@ template <typename T,
 				goto cleanup;
 		}
 
-		data_size = resWindowRect.height() * VERT_PASS_WIDTH * sizeof(T)/sizeof(int32_t);
+		data_size = (resWindowRect.height()  + 2 * FILTER_WIDTH) * VERT_PASS_WIDTH * sizeof(T)/sizeof(int32_t);
 
 		vert.win_l = bandWindowRect[BAND_ORIENT_LL].dimY();
 		vert.win_h = bandWindowRect[BAND_ORIENT_LH].dimY();
@@ -2219,7 +2219,7 @@ bool WaveletReverse::decompress(TileProcessor *p_tcd,
 	        return decompress_partial_tile<int32_t,
 										getFilterPad<uint32_t>(true),
 										VERT_PASS_WIDTH,
-										Partial53<int32_t,VERT_PASS_WIDTH>>(tilec,
+										Partial53<int32_t,getFilterPad<uint32_t>(false),VERT_PASS_WIDTH>>(tilec,
 															compno,
 															window,
 															numres,
@@ -2233,7 +2233,7 @@ bool WaveletReverse::decompress(TileProcessor *p_tcd,
 		        return decompress_partial_tile<vec4f,
 											getFilterPad<uint32_t>(false),
 											VERT_PASS_WIDTH,
-											Partial97<vec4f,VERT_PASS_WIDTH>>(tilec,
+											Partial97<vec4f,getFilterPad<uint32_t>(false),VERT_PASS_WIDTH>>(tilec,
 															compno,
 															window,
 															numres,
