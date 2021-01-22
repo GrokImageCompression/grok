@@ -1461,7 +1461,7 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
  *  Width :  4
  *
  ****************************************************************************/
-template<typename T, int VERT_PASS_WIDTH> class PartialInterleaver {
+template<typename T, uint32_t VERT_PASS_WIDTH> class PartialInterleaver {
 public:
 	/**
 	 * interleaved data is laid out in the dwt->mem buffer in increments of h_chunk
@@ -1469,9 +1469,9 @@ public:
 	void interleave_h(dwt_data<T>* dwt,
 								ISparseBuffer* sa,
 								uint32_t y_offset,
-								uint32_t y_num_rows){
+								uint32_t height){
 		const uint32_t h_chunk = (uint32_t)(sizeof(T)/sizeof(int32_t));
-	    for (uint32_t i = 0; i < y_num_rows; i++) {
+	    for (uint32_t i = 0; i < height; i++) {
 	    	// read one row of L band and write interleaved
 	        bool ret = sa->read(dwt->win_l.x0,
 							  y_offset + i,
@@ -1529,7 +1529,7 @@ public:
 };
 
 
-template<typename T, int VERT_PASS_WIDTH> class Partial53 : public PartialInterleaver<T,VERT_PASS_WIDTH> {
+template<typename T, uint32_t VERT_PASS_WIDTH> class Partial53 : public PartialInterleaver<T,VERT_PASS_WIDTH> {
 public:
 
 	void decompress_h(dwt_data<T>* dwt){
@@ -1805,7 +1805,7 @@ private:
 };
 
 
-template<typename T, int VERT_PASS_WIDTH> class Partial97 : public PartialInterleaver<T,VERT_PASS_WIDTH> {
+template<typename T, uint32_t VERT_PASS_WIDTH> class Partial97 : public PartialInterleaver<T,VERT_PASS_WIDTH> {
 public:
 	void decompress_h(dwt_data<T>* dwt){
 		decompress_step_97(dwt);
@@ -1905,7 +1905,7 @@ template <typename T,
     const uint16_t debug_compno = 0;
     (void)debug_compno;
     const uint32_t HORIZ_PASS_HEIGHT = sizeof(T)/sizeof(int32_t);
-    const uint32_t pad = FILTER_WIDTH * VERT_PASS_WIDTH * sizeof(T)/sizeof(int32_t);
+    const uint32_t pad = 16 * FILTER_WIDTH * VERT_PASS_WIDTH * sizeof(T)/sizeof(int32_t);
 
 	auto synthesisWindow = bounds;
 	synthesisWindow = synthesisWindow.rectceildivpow2(numresolutions - 1 - (numres-1));
@@ -1987,7 +1987,7 @@ template <typename T,
 					 auto height = std::min<uint32_t>((uint32_t)HORIZ_PASS_HEIGHT,job->max_j - j );
 #ifdef GRK_DEBUG_VALGRIND
 					 GRK_INFO("H: compno = %d, resno = %d,y begin = %d, height = %d,", compno, resno, j, height);
-					 uint32_t len = (job->data.win_l.x1 - job->data.win_l.x0 + job->data.win_h.x1 - job->data.win_h.x0) * HORIZ_PASS_HEIGHT;
+					 uint32_t len = (job->data.win_l.length() + job->data.win_h.length()) * HORIZ_PASS_HEIGHT;
 					 (void)len;
 #endif
 					 job->data.memL 	=  job->data.mem +   job->data.parity;
@@ -2047,7 +2047,7 @@ template <typename T,
 					auto width = std::min<uint32_t>(VERT_PASS_WIDTH,(job->max_j - j));
 #ifdef GRK_DEBUG_VALGRIND
 					GRK_INFO("V: compno = %d, resno = %d, x begin = %d, width = %d", compno, resno, j, width);
-					uint32_t len = (job->data.win_l.x1 - job->data.win_l.x0 + job->data.win_h.x1 - job->data.win_h.x0) * VERT_PASS_WIDTH;
+					uint32_t len = (job->data.win_l.length() + job->data.win_h.length()) * VERT_PASS_WIDTH;
 					(void)len;
 #endif
 					job->data.memL   =  job->data.mem +   (job->data.parity) * VERT_PASS_WIDTH;
