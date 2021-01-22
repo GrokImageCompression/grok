@@ -33,6 +33,5 @@ public:
 	uint16_t m_marker;
 
 };
-class MissingSparseBlockException: public std::exception {};
 class BadAsocException: public std::exception {};
 }

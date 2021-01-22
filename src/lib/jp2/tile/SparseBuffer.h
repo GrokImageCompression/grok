@@ -51,9 +51,9 @@
 
 /**
 @file SparseBuffer.h
-@brief Sparse array management
+@brief Sparse buffer management
 
-The functions in this file manage sparse arrays. Sparse arrays are arrays with
+The functions in this file manage sparse buffers. sparse buffers are arrays with
 potentially large dimensions, but with very few samples actually set. Such sparse
 arrays require allocating a small amount of memory, by just allocating memory
 for blocks of the array that are set. The minimum memory allocation unit is a
@@ -74,15 +74,15 @@ public:
 
 	virtual ~ISparseBuffer(){};
 
-	/** Read the content of a rectangular window of the sparse array into a
+	/** Read the content of a rectangular window of the sparse buffer into a
 	 * user buffer.
 	 *
 	 * Windows not written with write() are read as 0.
 	 *
-	 * @param x0 left x coordinate of the window to read in the sparse array.
-	 * @param y0 top x coordinate of the window to read in the sparse array.
-	 * @param x1 right x coordinate (not included) of the window to read in the sparse array. Must be greater than x0.
-	 * @param y1 bottom y coordinate (not included) of the window to read in the sparse array. Must be greater than y0.
+	 * @param x0 left x coordinate of the window to read in the sparse buffer.
+	 * @param y0 top x coordinate of the window to read in the sparse buffer.
+	 * @param x1 right x coordinate (not included) of the window to read in the sparse buffer. Must be greater than x0.
+	 * @param y1 bottom y coordinate (not included) of the window to read in the sparse buffer. Must be greater than y0.
 	 * @param dest user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * dest_line_stride + (x1 - x0 - 1) * dest_col_stride + 1) bytes large.
 	 * @param dest_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
 	 * @param dest_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
@@ -98,12 +98,12 @@ public:
 					 const uint32_t dest_line_stride,
 					 bool forgiving) = 0;
 
-	/** Read the content of a rectangular window of the sparse array into a
+	/** Read the content of a rectangular window of the sparse buffer into a
 	 * user buffer.
 	 *
 	 * Windows not written with write() are read as 0.
 	 *
-	 * @param window window to read in the sparse array.
+	 * @param window window to read in the sparse buffer.
 	 * @param dest user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * dest_line_stride + (x1 - x0 - 1) * dest_col_stride + 1) bytes large.
 	 * @param dest_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
 	 * @param dest_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
@@ -117,15 +117,15 @@ public:
 						 bool forgiving) = 0;
 
 
-	/** Write the content of a rectangular window into the sparse array from a
+	/** Write the content of a rectangular window into the sparse buffer from a
 	 * user buffer.
 	 *
 	 * Blocks intersecting the window are allocated, if not already done.
 	 *
-	 * @param x0 left x coordinate of the window to write into the sparse array.
-	 * @param y0 top x coordinate of the window to write into the sparse array.
-	 * @param x1 right x coordinate (not included) of the window to write into the sparse array. Must be greater than x0.
-	 * @param y1 bottom y coordinate (not included) of the window to write into the sparse array. Must be greater than y0.
+	 * @param x0 left x coordinate of the window to write into the sparse buffer.
+	 * @param y0 top x coordinate of the window to write into the sparse buffer.
+	 * @param x1 right x coordinate (not included) of the window to write into the sparse buffer. Must be greater than x0.
+	 * @param y1 bottom y coordinate (not included) of the window to write into the sparse buffer. Must be greater than y0.
 	 * @param src user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * src_line_stride + (x1 - x0 - 1) * src_col_stride + 1) bytes large.
 	 * @param src_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
 	 * @param src_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
@@ -142,12 +142,12 @@ public:
 						  bool forgiving) = 0;
 
 
-	/** Allocate all blocks for a rectangular window into the sparse array from a
+	/** Allocate all blocks for a rectangular window into the sparse buffer from a
 	 * user buffer.
 	 *
 	 * Blocks intersecting the window are allocated
 	 *
-	 * @param window window to write into the sparse array.
+	 * @param window window to write into the sparse buffer.
 	 *
 	 * @return true in case of success.
 	 */
@@ -175,11 +175,11 @@ template<uint32_t LBW, uint32_t LBH> class SparseBuffer : public ISparseBuffer {
 
 public:
 
-	/** Creates a new sparse array.
+	/** Creates a new sparse buffer.
 	 *
 	 * @param bds bounds
 	 *
-	 * @return a new sparse array instance, or NULL in case of failure.
+	 * @return a new sparse buffer instance, or NULL in case of failure.
 	 */
 	SparseBuffer(grk_rect_u32 bds) :	block_width(1<<LBW),
 										block_height(1<<LBH),
@@ -187,7 +187,7 @@ public:
 										bounds(bds)
 	{
 	    if (!bounds.width()  || !bounds.height()  || !LBW || !LBH) {
-	    	throw std::runtime_error("invalid window for sparse array");
+	    	throw std::runtime_error("invalid window for sparse buffer");
 		}
 	    uint32_t grid_off_x = uint_floordivpow2(bounds.x0, LBW);
 	    uint32_t grid_off_y = uint_floordivpow2(bounds.y0, LBH);
@@ -209,18 +209,18 @@ public:
 	}
 
 
-	/** Creates a new sparse array.
+	/** Creates a new sparse buffer.
 	 *
 	 * @param width total width of the array.
 	 * @param height total height of the array
 	 *
-	 * @return a new sparse array instance, or NULL in case of failure.
+	 * @return a new sparse buffer instance, or NULL in case of failure.
 	 */
 	SparseBuffer(uint32_t width,uint32_t height) : SparseBuffer(grk_rect_u32(0,0,width,height))
 	{}
 
 
-	/** Frees a sparse array.
+	/** Frees a sparse buffer.
 	 *
 	 */
 	~SparseBuffer()
@@ -338,7 +338,7 @@ private:
 			   if (val != grk_mem_ok) {
 				   uint32_t x = block_x * block_width + i % block_width;
 				   uint32_t y = block_y * block_height + i / block_width;
-				   printf("Sparse array get block (%d.%d): uninitialized at location (%d,%d)\n",
+				   printf("sparse buffer get block (%d.%d): uninitialized at location (%d,%d)\n",
 						    block_x, block_y, x,y );
 			   }
 		   }
@@ -411,14 +411,15 @@ private:
 	            auto src_block = getBlock(block_x, block_y);
             	//all blocks should be allocated first before read/write is called
 	            if (!src_block){
-	            	GRK_ERROR("Sparse array: missing block (%d,%d,%d,%d) for %s (%d,%d,%d,%d)",
+	            	GRK_WARN("Sparse buffer %s op: missing block (%d,%d,%d,%d) for %s (%d,%d,%d,%d)",
+	            			is_read_op ? "read" : "write",
 	            			block_x*block_width,
 						   block_y*block_height,
 						   block_x*block_width + x_incr,
 						   block_y*block_height + y_incr,
 						   is_read_op ? "read" : "write",
 						   x0,y0,x1,y1);
-	            	throw MissingSparseBlockException();
+	            	continue;
 	            }
 	            if (is_read_op) {
 					const int32_t* GRK_RESTRICT src_ptr =
@@ -434,7 +435,7 @@ private:
 							//if (validate.contains(pt)) {
 								size_t val = grk_memcheck<int32_t>(src_ptr+k,1);
 								if (val != grk_mem_ok)
-								   GRK_ERROR("Sparse array read block(%d,%d) : uninitialized at location (%d,%d)",
+								   GRK_ERROR("sparse buffer read block(%d,%d) : uninitialized at location (%d,%d)",
 										   block_x, block_y, x+k,y_);
 							//}
 #endif
@@ -458,7 +459,7 @@ private:
 							//if (validate.contains(pt)) {
 								size_t val = grk_memcheck<int32_t>(src_ptr+ind,1);
 								if (val != grk_mem_ok)
-								   GRK_ERROR("Sparse array write block(%d,%d): uninitialized at location (%d,%d)",
+								   GRK_ERROR("sparse buffer write block(%d,%d): uninitialized at location (%d,%d)",
 										   block_x, block_y, x+k,y_);
 							//}
 #endif

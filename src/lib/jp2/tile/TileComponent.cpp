@@ -370,19 +370,15 @@ template<typename F> bool TileComponent::postDecompressImpl(int32_t *srcData, De
 	dest.copy<F>(src, f);
 
 	if (m_sa){
-		try {
-			if (!m_sa->write(block->x,
-								  block->y,
-								  block->x + cblk->width(),
-								  block->y + cblk->height(),
-								  srcData,
-								  1,
-								  cblk->width(),
-								  true)) {
-				  return false;
-			}
-		} catch (MissingSparseBlockException &ex){
-			return false;
+		if (!m_sa->write(block->x,
+							  block->y,
+							  block->x + cblk->width(),
+							  block->y + cblk->height(),
+							  srcData,
+							  1,
+							  cblk->width(),
+							  true)) {
+			  return false;
 		}
 	}
 

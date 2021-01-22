@@ -1895,6 +1895,7 @@ template <typename T,
 						   ISparseBuffer *sa) {
 
 	bool rc = false;
+	bool ret = false;
 	uint8_t numresolutions = tilec->numresolutions;
     auto fullRes 	= tilec->resolutions;
     auto fullResTopLevel = tilec->resolutions + numres - 1;
@@ -1913,7 +1914,6 @@ template <typename T,
 	assert(fullResTopLevel->intersection(synthesisWindow) == synthesisWindow);
     synthesisWindow = synthesisWindow.pan(-(int64_t)fullResTopLevel->x0,-(int64_t)fullResTopLevel->y0);
 
-	try {
     if (numres == 1U) {
         // simply copy into tile component buffer
     	bool ret = sa->read(synthesisWindow,
@@ -1925,14 +1925,9 @@ template <typename T,
         GRK_UNUSED(ret);
         return true;
     }
-	} catch (MissingSparseBlockException &ex){
-		return false;
-	}
 
     D decompressor;
     size_t num_threads = ThreadPool::get()->num_threads();
-
-    try {
 
     for (uint8_t resno = 1; resno < numres; resno ++) {
     	auto fullResLower = fullRes;
@@ -1982,123 +1977,111 @@ template <typename T,
 		auto executor_h = [resno,compno,sa, resWindowRect, &decompressor](decompress_job<T, dwt_data<T>> *job){
 			(void)compno;
 			(void)resno;
-			 try {
-				 for (uint32_t j = job->min_j; j < job->max_j; j += HORIZ_PASS_HEIGHT) {
-					 auto height = std::min<uint32_t>((uint32_t)HORIZ_PASS_HEIGHT,job->max_j - j );
+			 for (uint32_t j = job->min_j; j < job->max_j; j += HORIZ_PASS_HEIGHT) {
+				 auto height = std::min<uint32_t>((uint32_t)HORIZ_PASS_HEIGHT,job->max_j - j );
 #ifdef GRK_DEBUG_VALGRIND
-					 GRK_INFO("H: compno = %d, resno = %d,y begin = %d, height = %d,", compno, resno, j, height);
-					 uint32_t len = (job->data.win_l.length() + job->data.win_h.length()) * HORIZ_PASS_HEIGHT;
-					 (void)len;
+				 GRK_INFO("H: compno = %d, resno = %d,y begin = %d, height = %d,", compno, resno, j, height);
+				 uint32_t len = (job->data.win_l.length() + job->data.win_h.length()) * HORIZ_PASS_HEIGHT;
+				 (void)len;
 #endif
-					 job->data.memL 	=  job->data.mem +   job->data.parity;
-					 job->data.memH  =  job->data.mem + (int64_t)(!job->data.parity) + 2 * ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0);
-					 decompressor.interleave_h(&job->data, sa, j,height);
+				 job->data.memL 	=  job->data.mem +   job->data.parity;
+				 job->data.memH  =  job->data.mem + (int64_t)(!job->data.parity) + 2 * ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0);
+				 decompressor.interleave_h(&job->data, sa, j,height);
 #ifdef GRK_DEBUG_VALGRIND
-					/*
-					 auto ptr = ((uint64_t)job->data.memL < (uint64_t)job->data.memH) ? job->data.memL : job->data.memH;
-					 if (grk_memcheck<T>(ptr, len) != grk_mem_ok) {
-						std::ostringstream ss;
-						ss << "H interleave uninitialized value: compno = " << (uint32_t)compno  << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
-						grk_memcheck_all<int32_t>((int32_t*)ptr, len, ss.str());
-					 }
-					 */
+				/*
+				 auto ptr = ((uint64_t)job->data.memL < (uint64_t)job->data.memH) ? job->data.memL : job->data.memH;
+				 if (grk_memcheck<T>(ptr, len) != grk_mem_ok) {
+					std::ostringstream ss;
+					ss << "H interleave uninitialized value: compno = " << (uint32_t)compno  << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
+					grk_memcheck_all<int32_t>((int32_t*)ptr, len, ss.str());
+				 }
+				 */
 #endif
-					 job->data.memL  =  job->data.mem;
-					 job->data.memH  =  job->data.mem  + ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0);
-					 decompressor.decompress_h(&job->data);
+				 job->data.memL  =  job->data.mem;
+				 job->data.memH  =  job->data.mem  + ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0);
+				 decompressor.decompress_h(&job->data);
 #ifdef GRK_DEBUG_VALGRIND
 /*
-					if (compno == debug_compno && resno == 1 && j == 11) {
-						std::ostringstream ss;
-						ss << "H decompress uninitialized value: compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
-						grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
-					}
+				if (compno == debug_compno && resno == 1 && j == 11) {
+					std::ostringstream ss;
+					ss << "H decompress uninitialized value: compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
+					grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
+				}
 */
 #endif
-					 if (!sa->write( resWindowRect.x0,
-									  j,
-									  resWindowRect.x1,
-									  j + height,
-									  (int32_t*)(job->data.mem + (int64_t)resWindowRect.x0 - 2 * (int64_t)job->data.win_l.x0),
-									  HORIZ_PASS_HEIGHT,
-									  1,
-									  true)) {
-						 GRK_ERROR("sparse array write failure");
-						 job->data.release();
-						 delete job;
-						 return 1;
-					 }
+				 if (!sa->write( resWindowRect.x0,
+								  j,
+								  resWindowRect.x1,
+								  j + height,
+								  (int32_t*)(job->data.mem + (int64_t)resWindowRect.x0 - 2 * (int64_t)job->data.win_l.x0),
+								  HORIZ_PASS_HEIGHT,
+								  1,
+								  true)) {
+					 GRK_ERROR("sparse array write failure");
+					 job->data.release();
+					 delete job;
+					 return 1;
 				 }
-				  job->data.release();
-				  delete job;
-				  return 0;
-			 } catch (MissingSparseBlockException &msbe){
-				  job->data.release();
-				  delete job;
-				  return 1;
 			 }
+			  job->data.release();
+			  delete job;
+			  return 0;
 		};
 
 		auto executor_v = [compno,resno, sa, resWindowRect, &decompressor](decompress_job<T, dwt_data<T>> *job){
 			(void)compno;
 			(void)resno;
-			 try {
-				 for (uint32_t j = job->min_j; j < job->max_j; j += VERT_PASS_WIDTH) {
-					auto width = std::min<uint32_t>(VERT_PASS_WIDTH,(job->max_j - j));
+			 for (uint32_t j = job->min_j; j < job->max_j; j += VERT_PASS_WIDTH) {
+				auto width = std::min<uint32_t>(VERT_PASS_WIDTH,(job->max_j - j));
 #ifdef GRK_DEBUG_VALGRIND
-					GRK_INFO("V: compno = %d, resno = %d, x begin = %d, width = %d", compno, resno, j, width);
-					uint32_t len = (job->data.win_l.length() + job->data.win_h.length()) * VERT_PASS_WIDTH;
-					(void)len;
+				GRK_INFO("V: compno = %d, resno = %d, x begin = %d, width = %d", compno, resno, j, width);
+				uint32_t len = (job->data.win_l.length() + job->data.win_h.length()) * VERT_PASS_WIDTH;
+				(void)len;
 #endif
-					job->data.memL   =  job->data.mem +   (job->data.parity) * VERT_PASS_WIDTH;
-					job->data.memH  =
-							job->data.mem + ((!job->data.parity) + 2 * ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0)) * VERT_PASS_WIDTH;
-					decompressor.interleave_v(&job->data, sa, j, width);
+				job->data.memL   =  job->data.mem +   (job->data.parity) * VERT_PASS_WIDTH;
+				job->data.memH  =
+						job->data.mem + ((!job->data.parity) + 2 * ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0)) * VERT_PASS_WIDTH;
+				decompressor.interleave_v(&job->data, sa, j, width);
 
 #ifdef GRK_DEBUG_VALGRIND
-					if (compno == debug_compno && resno == 1 && j == 19) {
-						 auto ptr = ((uint64_t)job->data.memL < (uint64_t)job->data.memH) ? job->data.memL : job->data.memH;
-						 if (grk_memcheck<T>(ptr, len) != grk_mem_ok) {
-							std::ostringstream ss;
-							ss <<  "V interleave uninitialized value: compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
-							grk_memcheck_all<int32_t>((int32_t*)ptr, len, ss.str());
-						 }
-					}
-#endif
-					job->data.memL  =  job->data.mem;
-					job->data.memH  =  job->data.mem  + ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0) * VERT_PASS_WIDTH;
-					decompressor.decompress_v(&job->data);
-#ifdef GRK_DEBUG_VALGRIND
-
-					if (compno == debug_compno && resno == 1 && j == 19) {
+				if (compno == debug_compno && resno == 1 && j == 19) {
+					 auto ptr = ((uint64_t)job->data.memL < (uint64_t)job->data.memH) ? job->data.memL : job->data.memH;
+					 if (grk_memcheck<T>(ptr, len) != grk_mem_ok) {
 						std::ostringstream ss;
-						ss << "V decompress uninitialized value: compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
-						grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
-					}
+						ss <<  "V interleave uninitialized value: compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
+						grk_memcheck_all<int32_t>((int32_t*)ptr, len, ss.str());
+					 }
+				}
+#endif
+				job->data.memL  =  job->data.mem;
+				job->data.memH  =  job->data.mem  + ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0) * VERT_PASS_WIDTH;
+				decompressor.decompress_v(&job->data);
+#ifdef GRK_DEBUG_VALGRIND
+
+				if (compno == debug_compno && resno == 1 && j == 19) {
+					std::ostringstream ss;
+					ss << "V decompress uninitialized value: compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
+					grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
+				}
 
 #endif
-					if (!sa->write(j,
-								  resWindowRect.y0,
-								  j + width,
-								  resWindowRect.y0 + job->data.win_l.length() + job->data.win_h.length(),
-								  (int32_t*)(job->data.mem + ((int64_t)resWindowRect.y0 - 2 * (int64_t)job->data.win_l.x0) * VERT_PASS_WIDTH),
-								  1,
-								  VERT_PASS_WIDTH * sizeof(T)/sizeof(int32_t),
-								  true)) {
-						GRK_ERROR("Sparse array write failure");
-						job->data.release();
-						delete job;
-						return 1;
-					}
-				 }
-				job->data.release();
-				delete job;
-				return 0;
-			 } catch (MissingSparseBlockException &msbe){
-				  job->data.release();
-				  delete job;
-				  return 1;
+				if (!sa->write(j,
+							  resWindowRect.y0,
+							  j + width,
+							  resWindowRect.y0 + job->data.win_l.length() + job->data.win_h.length(),
+							  (int32_t*)(job->data.mem + ((int64_t)resWindowRect.y0 - 2 * (int64_t)job->data.win_l.x0) * VERT_PASS_WIDTH),
+							  1,
+							  VERT_PASS_WIDTH * sizeof(T)/sizeof(int32_t),
+							  true)) {
+					GRK_ERROR("Sparse array write failure");
+					job->data.release();
+					delete job;
+					return 1;
+				}
 			 }
+			job->data.release();
+			delete job;
+			return 0;
 		};
 
 		//3. calculate synthesis
@@ -2191,7 +2174,7 @@ template <typename T,
 #endif
 
     //final read into tile buffer
-	bool ret = sa->read(synthesisWindow,
+	ret = sa->read(synthesisWindow,
 					   tilec->getBuffer()->getWindow()->data,
 					   1,
 					   tilec->getBuffer()->getWindow()->stride,
@@ -2215,11 +2198,6 @@ template <typename T,
 	}
 
 #endif
-
-
-	} catch (MissingSparseBlockException &ex){
-		goto cleanup;
-	}
 	rc = true;
 
 cleanup:
