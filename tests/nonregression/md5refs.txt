@@ -345,3 +345,4 @@ ee517bb0a2c051f75127da89c6171628  clusterfuzz-testcase-minimized-grk_decompress_
 965f08b1dc70ca86d7d879a0d74078a9  foo_irrev.j2k_0.pgx
 482f67d3f6d90002fd0e03ecc3c5fe9f  foo_irrev.j2k_1.pgx
 7e83021b54158734e86720002febda5c  foo_irrev.j2k_2.pgx
+1e3fdebd7c7a654d88c541d4263e4aa2  161388041dff7f85465687873c5a1d9680413331_0.pgx

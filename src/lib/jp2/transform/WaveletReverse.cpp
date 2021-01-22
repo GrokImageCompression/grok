@@ -1471,23 +1471,25 @@ public:
 								uint32_t y_offset,
 								uint32_t height){
 		const uint32_t h_chunk = (uint32_t)(sizeof(T)/sizeof(int32_t));
-	    for (uint32_t i = 0; i < height; i++) {
+		uint32_t shift_low_left = dwt->win_l.x0 > FILTER_WIDTH ? FILTER_WIDTH : dwt->win_l.x0;
+		uint32_t shift_high_left = dwt->win_h.x0 > FILTER_WIDTH ? FILTER_WIDTH : dwt->win_h.x0;
+		for (uint32_t i = 0; i < height; i++) {
 	    	// read one row of L band and write interleaved
-	        bool ret = sa->read(dwt->win_l.x0,
+	        bool ret = sa->read(dwt->win_l.x0 - shift_low_left,
 							  y_offset + i,
 							  std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn),
 							  y_offset + i + 1,
-							  (int32_t*)dwt->memL + i,
+							  (int32_t*)dwt->memL + i - shift_low_left * 2 * h_chunk,
 							  2 * h_chunk,
 							  0,
 							  true);
 	        assert(ret);
 	        // read one row of H band and write interleaved
-	        ret = sa->read(dwt->sn + dwt->win_h.x0,
+	        ret = sa->read(dwt->sn + dwt->win_h.x0 - shift_high_left,
 							  y_offset + i,
 							  dwt->sn + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn),
 							  y_offset + i + 1,
-							  (int32_t*)dwt->memH + i,
+							  (int32_t*)dwt->memH + i - shift_high_left * 2 * h_chunk,
 							  2 * h_chunk,
 							  0,
 							  true);
@@ -1504,22 +1506,24 @@ public:
 								uint32_t x_offset,
 								uint32_t x_num_elements){
 		const uint32_t v_chunk = (uint32_t)(sizeof(T)/sizeof(int32_t)) * VERT_PASS_WIDTH;
+		uint32_t shift_low_left = dwt->win_l.x0 > FILTER_WIDTH ? FILTER_WIDTH : dwt->win_l.x0;
+		uint32_t shift_high_left = dwt->win_h.x0 > FILTER_WIDTH ? FILTER_WIDTH : dwt->win_h.x0;
     	// read one vertical strip (of width x_num_elements <= v_chunk) of L band and write interleaved
 	    bool ret = sa->read(x_offset,
-	    					dwt->win_l.x0,
+	    					dwt->win_l.x0 - shift_low_left,
 							x_offset + x_num_elements,
 							 std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn),
-							(int32_t*)dwt->memL,
+							(int32_t*)dwt->memL - shift_low_left * 2 * v_chunk,
 							1,
 							2 * v_chunk,
 							true);
 	    assert(ret);
     	// read one vertical strip (of width x_num_elements <= v_chunk) of H band and write interleaved
 	    ret = sa->read(x_offset,
-	    				dwt->sn + dwt->win_h.x0,
+	    				dwt->sn + dwt->win_h.x0 - shift_high_left,
 						x_offset + x_num_elements,
 						 dwt->sn + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn),
-						(int32_t*)dwt->memH,
+						(int32_t*)dwt->memH - shift_high_left * 2 * v_chunk,
 						1,
 						2 * v_chunk,
 						true);
@@ -1556,10 +1560,14 @@ public:
 		int64_t win_l_x1 = dwt->win_l.x1;
 		int64_t win_h_x0 = dwt->win_h.x0;
 		int64_t win_h_x1 = dwt->win_h.x1;
+		assert(dwt->win_l.x0 <= dwt->sn);
 		int64_t sn 	  		= (int64_t)dwt->sn - (int64_t)dwt->win_l.x0;
 		int64_t sn_global  	= dwt->sn;
+		assert(dwt->win_h.x0 <= dwt->dn);
 		int64_t dn 	  		= (int64_t)dwt->dn - (int64_t)dwt->win_h.x0;
 		int64_t dn_global	= dwt->dn;
+
+		adjust_bounds(dwt, sn_global,dn_global, &sn, &dn);
 
 		assert(dwt->win_l.x1 <= sn_global && dwt->win_h.x1 <= dn_global);
 
@@ -1584,8 +1592,8 @@ public:
 					S(buf,i) -= (D_(buf,i - 1) + D_(buf,i) + 2) >> 2;
 					i ++;
 
-					if (i_max > dn_global - win_l_x0)
-						i_max = dn_global - win_l_x0;
+					if (i_max > dn)
+						i_max = dn;
 					for (; i < i_max; i++) {
 						/* No bound checking */
 						S(buf,i) -= (D(buf,i - 1) + D(buf,i) + 2) >> 2;
@@ -1600,8 +1608,8 @@ public:
 				i = 0;
 				i_max = win_h_x1 - win_h_x0;
 				if (i < i_max) {
-					if (i_max >= sn_global - win_h_x0)
-						i_max = sn_global - 1 - win_h_x0;
+					if (i_max >= sn)
+						i_max = sn - 1;
 					for (; i < i_max; i++) {
 						/* No bound checking */
 						D(buf,i) += (S(buf,i) + S(buf,i + 1)) >> 1;
@@ -1662,6 +1670,8 @@ public:
 		int64_t dn 	  		= (int64_t)dwt->dn - (int64_t)dwt->win_h.x0;
 		int64_t dn_global	= dwt->dn;
 
+		adjust_bounds(dwt, sn_global,dn_global, &sn, &dn);
+
 		assert(dwt->win_l.x1 <= sn_global && dwt->win_h.x1 <= dn_global);
 
 		if (!parity) {
@@ -1687,8 +1697,8 @@ public:
 					for (int64_t off = 0; off < VERT_PASS_WIDTH; off++)
 						S_off(buf,i, off) -= (D_sgnd_off_(buf,i - 1, off) + D_off_(buf,i, off) + 2) >> 2;
 					i ++;
-					if (i_max > dn_global -win_l_x0)
-						i_max = dn_global - win_l_x0;
+					if (i_max > dn)
+						i_max = dn;
 		#ifdef __SSE2__
 					if (i + 1 < i_max) {
 						const __m128i two = _mm_set1_epi32(2);
@@ -1725,8 +1735,8 @@ public:
 				assert(win_h_x1 >=  win_h_x0);
 				i_max = win_h_x1 - win_h_x0;
 				if (i < i_max) {
-					if (i_max >= sn_global - win_h_x0)
-						i_max = sn_global - 1 - win_h_x0;
+					if (i_max >= sn)
+						i_max = sn - 1;
 		#ifdef __SSE2__
 					if (i + 1 < i_max) {
 						auto S =  _mm_load_si128((__m128i *)(buf + i * 2 * VERT_PASS_WIDTH));
@@ -1779,6 +1789,17 @@ public:
 		}
 	}
 private:
+
+	void adjust_bounds(dwt_data<T>* dwt, int64_t sn_global, int64_t dn_global, int64_t *sn, int64_t *dn){
+		if ((uint64_t)dwt->memH < (uint64_t)dwt->memL && *sn == *dn){
+			assert(dn_global == sn_global-1);
+			(*dn)--;
+		}
+		if ((uint64_t)dwt->memL < (uint64_t)dwt->memH && *sn == *dn){
+			assert(sn_global == dn_global-1);
+			(*sn)--;
+		}
+	}
 
 #ifdef GRK_DEBUG_SPARSE
 		inline T get_S(T* buf, int64_t i) {
@@ -1984,30 +2005,30 @@ template <typename T,
 				 uint32_t len = (job->data.win_l.length() + job->data.win_h.length()) * HORIZ_PASS_HEIGHT;
 				 (void)len;
 #endif
-				 job->data.memL 	=  job->data.mem +   job->data.parity;
+				 job->data.memL  =  job->data.mem +   job->data.parity;
 				 job->data.memH  =  job->data.mem + (int64_t)(!job->data.parity) + 2 * ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0);
 				 decompressor.interleave_h(&job->data, sa, j,height);
 #ifdef GRK_DEBUG_VALGRIND
-				/*
+
 				 auto ptr = ((uint64_t)job->data.memL < (uint64_t)job->data.memH) ? job->data.memL : job->data.memH;
 				 if (grk_memcheck<T>(ptr, len) != grk_mem_ok) {
 					std::ostringstream ss;
 					ss << "H interleave uninitialized value: compno = " << (uint32_t)compno  << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
 					grk_memcheck_all<int32_t>((int32_t*)ptr, len, ss.str());
 				 }
-				 */
+
 #endif
 				 job->data.memL  =  job->data.mem;
 				 job->data.memH  =  job->data.mem  + ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0);
 				 decompressor.decompress_h(&job->data);
 #ifdef GRK_DEBUG_VALGRIND
-/*
-				if (compno == debug_compno && resno == 1 && j == 11) {
+
+				if (compno == debug_compno && resno == 2 && j == 1) {
 					std::ostringstream ss;
 					ss << "H decompress uninitialized value: compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
 					grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 				}
-*/
+
 #endif
 				 if (!sa->write( resWindowRect.x0,
 								  j,
