@@ -1547,12 +1547,12 @@ public:
 		#define D(buf,i) 	buf[(1+((i)<<1))]
 
 		// parity == 0
-		#define S_(buf,i) 	((i)<0 ? get_S(buf,0) :	((i)>=sn ? get_S(buf,sn-1) : get_S(buf,i)))
-		#define D_(buf,i) 	((i)<0 ? get_D(buf,0) :	((i)>=dn ? get_D(buf,dn-1) : get_D(buf,i)))
+		#define S_(buf,i) 	((i)<-win_l_x0 ? get_S(buf,-win_l_x0) :	((i)>=sn ? get_S(buf,sn-1) : get_S(buf,i)))
+		#define D_(buf,i) 	((i)<-win_h_x0 ? get_D(buf,-win_h_x0) :	((i)>=dn ? get_D(buf,dn-1) : get_D(buf,i)))
 
 		// parity == 1
-		#define SS_(buf,i)	((i)<0 ? get_S(buf,0) :	((i)>=dn ? get_S(buf,dn-1) : get_S(buf,i)))
-		#define DD_(buf,i) 	((i)<0 ? get_D(buf,0) :	((i)>=sn ? get_D(buf,sn-1) : get_D(buf,i)))
+		#define SS_(buf,i)	((i)<-win_h_x0 ? get_S(buf,-win_h_x0) :	((i)>=dn ? get_S(buf,dn-1) : get_S(buf,i)))
+		#define DD_(buf,i) 	((i)<-win_l_x0 ? get_D(buf,-win_l_x0) :	((i)>=sn ? get_D(buf,sn-1) : get_D(buf,i)))
 
 		int64_t i;
 		int64_t parity 	 = dwt->parity;
@@ -1649,12 +1649,12 @@ public:
 		#define S_off_(buf,i,off) 		(((i)>=sn ? get_S_off(buf,sn-1,off) : get_S_off(buf,i,off)))
 		#define D_off_(buf,i,off) 		(((i)>=dn ? get_D_off(buf,dn-1,off) : get_D_off(buf,i,off)))
 
-		#define S_sgnd_off_(buf,i,off) 	(((i)<(-win_l_x0)   ? get_S_off(buf,0,off)    : S_off_(buf,i,off)))
-		#define D_sgnd_off_(buf,i,off) 	(((i)<(-win_h_x0)	  ? get_D_off(buf,0,off)    : D_off_(buf,i,off)))
+		#define S_sgnd_off_(buf,i,off) 	(((i)<(-win_l_x0)   ? get_S_off(buf,-win_l_x0,off)    : S_off_(buf,i,off)))
+		#define D_sgnd_off_(buf,i,off) 	(((i)<(-win_h_x0)	? get_D_off(buf,-win_h_x0,off)    : D_off_(buf,i,off)))
 
 		// case == 1
-		#define SS_sgnd_off_(buf,i,off)  ((i)<0   ? get_S_off(buf,0,off)    : ((i)>=dn ? get_S_off(buf,dn-1,off) : get_S_off(buf,i,off)))
-		#define DD_sgnd_off_(buf,i,off)  ((i)<0   ? get_D_off(buf,0,off)    : ((i)>=sn ? get_D_off(buf,sn-1,off) : get_D_off(buf,i,off)))
+		#define SS_sgnd_off_(buf,i,off)  ((i)<(-win_h_x0)   ? get_S_off(buf,-win_l_x0,off)    : ((i)>=dn ? get_S_off(buf,dn-1,off) : get_S_off(buf,i,off)))
+		#define DD_sgnd_off_(buf,i,off)  ((i)<(-win_l_x0)   ? get_D_off(buf,-win_l_x0,off)    : ((i)>=sn ? get_D_off(buf,sn-1,off) : get_D_off(buf,i,off)))
 
 		#define SS_off_(buf,i,off) 		(((i)>=dn ? get_S_off(buf,dn-1,off) : get_S_off(buf,i,off)))
 		#define DD_off_(buf,i,off) 		(((i)>=sn ? get_D_off(buf,sn-1,off) : get_D_off(buf,i,off)))
