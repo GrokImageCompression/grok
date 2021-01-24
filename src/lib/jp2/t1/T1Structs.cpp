@@ -568,7 +568,7 @@ bool Resolution::init(bool isCompressor,
 	this->current_plugin_tile = current_plugin_tile;
 
 	/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
-	precinct_expn = grk_pt(tccp->prcw[resno],tccp->prch[resno]);
+	precinct_expn = grk_pt(tccp->prcw_exp[resno],tccp->prch_exp[resno]);
 
 	/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
 	precinct_start = grk_pt(uint_floordivpow2(x0, precinct_expn.x) << precinct_expn.x,

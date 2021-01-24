@@ -526,8 +526,8 @@ static void j2k_copy_tile_component_parameters(CodeStream *codeStream) {
 		copied_tccp->cblkh = ref_tccp->cblkh;
 		copied_tccp->cblk_sty = ref_tccp->cblk_sty;
 		copied_tccp->qmfbid = ref_tccp->qmfbid;
-		memcpy(copied_tccp->prcw, ref_tccp->prcw, prc_size);
-		memcpy(copied_tccp->prch, ref_tccp->prch, prc_size);
+		memcpy(copied_tccp->prcw_exp, ref_tccp->prcw_exp, prc_size);
+		memcpy(copied_tccp->prch_exp, ref_tccp->prch_exp, prc_size);
 	}
 }
 
@@ -2120,9 +2120,9 @@ bool j2k_compare_SPCod_SPCoc(CodeStream *codeStream,
 	if ((tccp0->csty & J2K_CCP_CSTY_PRT) != (tccp1->csty & J2K_CCP_CSTY_PRT))
 		return false;
 	for (uint32_t i = 0U; i < tccp0->numresolutions; ++i) {
-		if (tccp0->prcw[i] != tccp1->prcw[i])
+		if (tccp0->prcw_exp[i] != tccp1->prcw_exp[i])
 			return false;
-		if (tccp0->prch[i] != tccp1->prch[i])
+		if (tccp0->prch_exp[i] != tccp1->prch_exp[i])
 			return false;
 	}
 
@@ -2159,7 +2159,7 @@ bool j2k_write_SPCod_SPCoc(CodeStream *codeStream,uint32_t comp_no) {
 		for (uint32_t i = 0; i < tccp->numresolutions; ++i) {
 			/* SPcoc (I_i) */
 			if (!stream->write_byte(
-					(uint8_t) (tccp->prcw[i] + (tccp->prch[i] << 4)))) {
+					(uint8_t) (tccp->prcw_exp[i] + (tccp->prch_exp[i] << 4)))) {
 				return false;
 			}
 		}
@@ -2169,7 +2169,7 @@ bool j2k_write_SPCod_SPCoc(CodeStream *codeStream,uint32_t comp_no) {
 }
 
 bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno, uint8_t *p_header_data, uint16_t *header_size) {
-	uint32_t i, tmp;
+	uint32_t i;
     assert(codeStream != nullptr);
 	assert(p_header_data != nullptr);
 	assert(compno < codeStream->m_input_image->numcomps);
@@ -2262,24 +2262,25 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno, uint8_t *p_he
 		}
 
 		for (i = 0; i < tccp->numresolutions; ++i) {
+			uint8_t tmp;
 			/* SPcoc (I_i) */
-			grk_read<uint32_t>(current_ptr, &tmp, 1);
+			grk_read<uint8_t>(current_ptr, &tmp);
 			++current_ptr;
 			/* Precinct exponent 0 is only allowed for lowest resolution level (Table A.21) */
 			if ((i != 0) && (((tmp & 0xf) == 0) || ((tmp >> 4) == 0))) {
 				GRK_ERROR("Invalid precinct size");
 				return false;
 			}
-			tccp->prcw[i] = tmp & 0xf;
-			tccp->prch[i] = tmp >> 4;
+			tccp->prcw_exp[i] = tmp & 0xf;
+			tccp->prch_exp[i] = tmp >> 4;
 		}
 
 		*header_size = (uint16_t) (*header_size - tccp->numresolutions);
 	} else {
 		/* set default size for the precinct width and height */
 		for (i = 0; i < tccp->numresolutions; ++i) {
-			tccp->prcw[i] = 15;
-			tccp->prch[i] = 15;
+			tccp->prcw_exp[i] = 15;
+			tccp->prch_exp[i] = 15;
 		}
 	}
 

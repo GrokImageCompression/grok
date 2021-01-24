@@ -534,8 +534,8 @@ static void grk_get_encoding_parameters(const grk_image *image,
 		for (uint32_t resno = 0; resno < tccp->numresolutions; ++resno) {
 
 			/* precinct width and height */
-			uint32_t pdx = tccp->prcw[resno];
-			uint32_t pdy = tccp->prch[resno];
+			uint32_t pdx = tccp->prcw_exp[resno];
+			uint32_t pdy = tccp->prch_exp[resno];
 
 			uint64_t dx = 	comp->dx* ((uint64_t) 1u << (pdx + tccp->numresolutions - 1 - resno));
 			uint64_t dy = 	comp->dy* ((uint64_t) 1u << (pdy + tccp->numresolutions - 1 - resno));
@@ -597,8 +597,8 @@ static void grk_get_all_encoding_parameters(const grk_image *image,
 		/* use custom size for precincts*/
 		level_no = tccp->numresolutions - 1;
 		for (uint32_t resno = 0; resno < tccp->numresolutions; ++resno) {
-			uint32_t pdx = tccp->prcw[resno];
-			uint32_t pdy = tccp->prch[resno];
+			uint32_t pdx = tccp->prcw_exp[resno];
+			uint32_t pdy = tccp->prch_exp[resno];
 			*lResolutionPtr++ = pdx;
 			*lResolutionPtr++ = pdy;
 

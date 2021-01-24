@@ -57,8 +57,8 @@ static void j2k_dump_tile_info(TileCodingParams *default_tile,
 
 			fprintf(out_stream, "\t\t\t preccintsize (w,h)=");
 			for (resno = 0; resno < tccp->numresolutions; resno++) {
-				fprintf(out_stream, "(%d,%d) ", tccp->prcw[resno],
-						tccp->prch[resno]);
+				fprintf(out_stream, "(%d,%d) ", tccp->prcw_exp[resno],
+						tccp->prch_exp[resno]);
 			}
 			fprintf(out_stream, "\n");
 
@@ -322,8 +322,8 @@ grk_codestream_info_v2* j2k_get_cstr_info(CodeStream *codeStream) {
 		tccp_info->cblk_sty = tccp->cblk_sty;
 		tccp_info->qmfbid = tccp->qmfbid;
 		if (tccp->numresolutions < GRK_J2K_MAXRLVLS) {
-			memcpy(tccp_info->prch, tccp->prch, tccp->numresolutions);
-			memcpy(tccp_info->prcw, tccp->prcw, tccp->numresolutions);
+			memcpy(tccp_info->prch_exp, tccp->prch_exp, tccp->numresolutions);
+			memcpy(tccp_info->prcw_exp, tccp->prcw_exp, tccp->numresolutions);
 		}
 
 		/* quantization style*/

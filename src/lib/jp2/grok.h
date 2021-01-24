@@ -1065,10 +1065,10 @@ typedef struct _grk_tccp_info {
 	uint8_t numgbits;
 	/** Region Of Interest shift */
 	uint32_t roishift;
-	/** precinct width */
-	uint32_t prcw[GRK_J2K_MAXRLVLS];
-	/** precinct height */
-	uint32_t prch[GRK_J2K_MAXRLVLS];
+	/** precinct width power of 2 exponent, < 16*/
+	uint32_t prcw_exp[GRK_J2K_MAXRLVLS];
+	/** precinct height power of 2 exponent, < 16 */
+	uint32_t prch_exp[GRK_J2K_MAXRLVLS];
 } grk_tccp_info;
 
 /**

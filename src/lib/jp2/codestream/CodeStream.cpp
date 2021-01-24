@@ -1065,8 +1065,8 @@ bool CodeStream::read_header(grk_header_info  *header_info, grk_image **p_image)
 		// !!! assume that mode switch is constant across all tiles
 		header_info->cblk_sty = tccp->cblk_sty;
 		for (uint32_t i = 0; i < header_info->numresolutions; ++i) {
-			header_info->prcw_init[i] = 1 << tccp->prcw[i];
-			header_info->prch_init[i] = 1 << tccp->prch[i];
+			header_info->prcw_init[i] = 1 << tccp->prcw_exp[i];
+			header_info->prch_init[i] = 1 << tccp->prch_exp[i];
 		}
 		header_info->tx0 = m_cp.tx0;
 		header_info->ty0 = m_cp.ty0;
@@ -1638,15 +1638,15 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 						it_res--) {
 					if (p < parameters->res_spec) {
 						if (parameters->prcw_init[p] < 1) {
-							tccp->prcw[it_res] = 1;
+							tccp->prcw_exp[it_res] = 1;
 						} else {
-							tccp->prcw[it_res] = floorlog2<uint32_t>(
+							tccp->prcw_exp[it_res] = floorlog2<uint32_t>(
 									parameters->prcw_init[p]);
 						}
 						if (parameters->prch_init[p] < 1) {
-							tccp->prch[it_res] = 1;
+							tccp->prch_exp[it_res] = 1;
 						} else {
-							tccp->prch[it_res] = floorlog2<uint32_t>(
+							tccp->prch_exp[it_res] = floorlog2<uint32_t>(
 									parameters->prch_init[p]);
 						}
 					} else {
@@ -1658,23 +1658,23 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 						size_prch = parameters->prch_init[res_spec - 1]
 								>> (p - (res_spec - 1));
 						if (size_prcw < 1) {
-							tccp->prcw[it_res] = 1;
+							tccp->prcw_exp[it_res] = 1;
 						} else {
-							tccp->prcw[it_res] = floorlog2<uint32_t>(size_prcw);
+							tccp->prcw_exp[it_res] = floorlog2<uint32_t>(size_prcw);
 						}
 						if (size_prch < 1) {
-							tccp->prch[it_res] = 1;
+							tccp->prch_exp[it_res] = 1;
 						} else {
-							tccp->prch[it_res] = floorlog2<uint32_t>(size_prch);
+							tccp->prch_exp[it_res] = floorlog2<uint32_t>(size_prch);
 						}
 					}
 					p++;
-					/*printf("\nsize precinct for level %u : %u,%u\n", it_res,tccp->prcw[it_res], tccp->prch[it_res]); */
+					/*printf("\nsize precinct for level %u : %u,%u\n", it_res,tccp->prcw_exp[it_res], tccp->prch_exp[it_res]); */
 				} /*end for*/
 			} else {
 				for (uint32_t j = 0; j < tccp->numresolutions; j++) {
-					tccp->prcw[j] = 15;
-					tccp->prch[j] = 15;
+					tccp->prcw_exp[j] = 15;
+					tccp->prch_exp[j] = 15;
 				}
 			}
 			tcp->qcd.pull(tccp->stepsizes, !parameters->irreversible);

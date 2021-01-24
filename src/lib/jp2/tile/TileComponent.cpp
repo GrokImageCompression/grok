@@ -102,8 +102,8 @@ bool TileComponent::init(bool isCompressor,
 		res->set_rect(dim);
 
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
-		uint32_t pdx = m_tccp->prcw[resno];
-		uint32_t pdy = m_tccp->prch[resno];
+		uint32_t pdx = m_tccp->prcw_exp[resno];
+		uint32_t pdy = m_tccp->prch_exp[resno];
 		/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
 		grk_rect_u32 precinct_grid;
 		precinct_grid.x0 = uint_floordivpow2(res->x0, pdx) << pdx;
