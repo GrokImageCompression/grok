@@ -1927,7 +1927,7 @@ template <typename T,
     const uint16_t debug_compno = 0;
     (void)debug_compno;
     const uint32_t HORIZ_PASS_HEIGHT = sizeof(T)/sizeof(int32_t);
-    const uint32_t pad = 16 * FILTER_WIDTH * VERT_PASS_WIDTH * sizeof(T)/sizeof(int32_t);
+    const uint32_t pad = FILTER_WIDTH * std::max<uint32_t>(HORIZ_PASS_HEIGHT,VERT_PASS_WIDTH) * sizeof(T)/sizeof(int32_t);
 
 	auto synthesisWindow = bounds;
 	synthesisWindow = synthesisWindow.rectceildivpow2(numresolutions - 1 - (numres-1));
