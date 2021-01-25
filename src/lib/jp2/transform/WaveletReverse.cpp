@@ -1791,6 +1791,8 @@ public:
 private:
 
 	void adjust_bounds(dwt_data<T>* dwt, int64_t sn_global, int64_t dn_global, int64_t *sn, int64_t *dn){
+		(void)sn_global;
+		(void)dn_global;
 		if ((uint64_t)dwt->memH < (uint64_t)dwt->memL && *sn == *dn){
 			assert(dn_global == sn_global-1);
 			(*dn)--;

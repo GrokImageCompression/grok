@@ -142,6 +142,7 @@ static void grk_get_all_encoding_parameters(const grk_image *image,
 											grk_rect_u32 *tileBounds,
 											uint32_t *dx_min,
 											uint32_t *dy_min,
+											uint64_t *precincts,
 											uint64_t *max_precincts,
 											uint8_t *max_res,
 											uint32_t **p_resolutions);
@@ -156,7 +157,8 @@ static void grk_get_all_encoding_parameters(const grk_image *image,
 static PacketIter* pi_create(const grk_image *p_image,
 								const CodingParams *p_cp,
 								uint16_t tileno,
-								std::vector<ResBuf*> *include);
+								std::vector<ResBuf*> *include,
+								uint64_t *precincts);
 /**
  * Update decompress packet iterator with no POC
  */
@@ -567,6 +569,7 @@ static void grk_get_all_encoding_parameters(const grk_image *image,
 											grk_rect_u32 *tileBounds,
 											uint32_t *dx_min,
 											uint32_t *dy_min,
+											uint64_t *precincts,
 											uint64_t *max_precincts,
 											uint8_t *max_res,
 											uint32_t **p_resolutions) {
@@ -583,6 +586,8 @@ static void grk_get_all_encoding_parameters(const grk_image *image,
 	*dx_min = UINT_MAX;
 	*dy_min = UINT_MAX;
 
+	for (uint32_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
+		precincts[i] = 0;
 	auto tcp = &p_cp->tcps[tileno];
 	for (uint32_t compno = 0; compno < image->numcomps; ++compno) {
 		uint32_t level_no;
@@ -618,6 +623,8 @@ static void grk_get_all_encoding_parameters(const grk_image *image,
 			*lResolutionPtr++ = pw;
 			*lResolutionPtr++ = ph;
 			uint64_t product = (uint64_t)pw * ph;
+			if (product > precincts[resno])
+				precincts[resno] = product;
 			if (product > *max_precincts)
 				*max_precincts = product;
 			--level_no;
@@ -628,7 +635,8 @@ static void grk_get_all_encoding_parameters(const grk_image *image,
 static PacketIter* pi_create(const grk_image *image,
 							const CodingParams *cp,
 							uint16_t tileno,
-							std::vector<ResBuf*> *include) {
+							std::vector<ResBuf*> *include,
+							uint64_t *precincts) {
 	assert(cp != nullptr);
 	assert(image != nullptr);
 	assert(tileno < cp->t_grid_width * cp->t_grid_height);
@@ -636,8 +644,11 @@ static PacketIter* pi_create(const grk_image *image,
 	uint32_t poc_bound = tcp->numpocs + 1;
 
 	auto pi = new PacketIter[poc_bound];
-	for (uint32_t i = 0; i < poc_bound; ++i)
+	for (uint32_t i = 0; i < poc_bound; ++i){
 		pi[i].include = include;
+		pi[i].precincts = precincts;
+
+	}
 	for (uint32_t pino = 0; pino < poc_bound; ++pino) {
 		auto current_pi = pi + pino;
 
@@ -848,7 +859,8 @@ static bool pi_check_next_for_valid_progression(int32_t prog,
 PacketIter* pi_create_decompress(grk_image *p_image,
 								CodingParams *p_cp,
 								uint16_t tile_no,
-								std::vector<ResBuf*> *include) {
+								std::vector<ResBuf*> *include,
+								uint64_t *precincts) {
 	assert(p_cp != nullptr);
 	assert(p_image != nullptr);
 	assert(tile_no < p_cp->t_grid_width * p_cp->t_grid_height);
@@ -867,7 +879,7 @@ PacketIter* pi_create_decompress(grk_image *p_image,
 	}
 
 	/* memory allocation for pi */
-	auto pi = pi_create(p_image, p_cp, tile_no, include);
+	auto pi = pi_create(p_image, p_cp, tile_no, include,precincts);
 	if (!pi) {
 		grk_free(tmp_data);
 		grk_free(tmp_ptr);
@@ -885,7 +897,15 @@ PacketIter* pi_create_decompress(grk_image *p_image,
 	uint64_t max_precincts;
 	grk_rect_u32 tileBounds;
 	uint32_t dx_min, dy_min;
-	grk_get_all_encoding_parameters(p_image, p_cp, tile_no, &tileBounds, &dx_min, &dy_min, &max_precincts, &max_res, tmp_ptr);
+	grk_get_all_encoding_parameters(p_image,
+									p_cp,
+									tile_no,
+									&tileBounds,
+									&dx_min,
+									&dy_min,
+									precincts,
+									&max_precincts,
+									&max_res, tmp_ptr);
 
 	/* step calculations */
 	uint32_t step_p = 1;
@@ -972,7 +992,8 @@ PacketIter* pi_create_compress(const grk_image *p_image,
 								CodingParams *p_cp,
 								uint16_t tile_no,
 								J2K_T2_MODE p_t2_mode,
-								std::vector<ResBuf*> *include) {
+								std::vector<ResBuf*> *include,
+								uint64_t *precincts) {
 	assert(p_cp != nullptr);
 	assert(p_image != nullptr);
 	assert(tile_no < p_cp->t_grid_width * p_cp->t_grid_height);
@@ -990,8 +1011,7 @@ PacketIter* pi_create_compress(const grk_image *p_image,
 		grk_free(tmp_data);
 		return nullptr;
 	}
-
-	auto pi = pi_create(p_image, p_cp, tile_no,include);
+	auto pi = pi_create(p_image, p_cp, tile_no,include,precincts);
 	if (!pi) {
 		grk_free(tmp_data);
 		grk_free(tmp_ptr);
@@ -1008,7 +1028,16 @@ PacketIter* pi_create_compress(const grk_image *p_image,
 	uint64_t max_precincts;
 	grk_rect_u32 tileBounds;
 	uint32_t dx_min, dy_min;
-	grk_get_all_encoding_parameters(p_image, p_cp, tile_no, &tileBounds, &dx_min, &dy_min, &max_precincts, &max_res, tmp_ptr);
+	grk_get_all_encoding_parameters(p_image,
+									p_cp,
+									tile_no,
+									&tileBounds,
+									&dx_min,
+									&dy_min,
+									precincts,
+									&max_precincts,
+									&max_res,
+									tmp_ptr);
 
 	uint32_t step_p = 1;
 	uint64_t step_c = max_precincts * step_p;
@@ -1442,6 +1471,7 @@ bool pi_next(PacketIter *pi) {
 }
 
 PacketIter::PacketIter() : tp_on(false),
+							precincts(nullptr),
 							include(nullptr),
 							step_l(0),
 							step_r(0),
@@ -1480,7 +1510,10 @@ PacketIter::~PacketIter(){
 
 uint8_t* PacketIter::get_include(uint16_t layerno){
 	assert(layerno <= include->size());
-	size_t len = (step_r + 7)/8;
+	auto numprecs = precincts[resno];
+	if (numprecs == 0)
+		numprecs = 1;
+	size_t len = (numprecs * numcomps + 7)/8;
 	if (layerno == include->size()){
 		auto buf = new uint8_t[len];
 		memset(buf, 0, len);
@@ -1500,9 +1533,8 @@ uint8_t* PacketIter::get_include(uint16_t layerno){
 }
 
 bool PacketIter::update_include(void){
-	uint64_t index = compno * step_c + precinctIndex;
-	assert(index < step_l);
-
+	auto numprecs = precincts[resno];
+	uint64_t index = compno * numprecs + precinctIndex;
 	auto include = get_include(layno);
 	uint64_t include_index 	= (index >> 3);
 	uint32_t shift 	= (index & 7);

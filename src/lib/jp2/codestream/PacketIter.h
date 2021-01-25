@@ -81,6 +81,7 @@ struct PacketIter {
 	/** Enabling Tile part generation*/
 	bool  tp_on;
 
+	uint64_t *precincts;
 	std::vector<ResBuf*> *include;
 
 	/** layer step used to localize the packet in the include vector */
@@ -133,7 +134,8 @@ PacketIter* pi_create_compress(const grk_image *image,
 								CodingParams *cp,
 								uint16_t tileno,
 								J2K_T2_MODE t2_mode,
-								std::vector<ResBuf*> *include);
+								std::vector<ResBuf*> *include,
+								uint64_t *precincts);
 
 /**
  * Updates the compressing parameters of the codec.
@@ -176,7 +178,8 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 PacketIter* pi_create_decompress(grk_image *image,
 								CodingParams *cp,
 								uint16_t tileno,
-								std::vector<ResBuf*> *include);
+								std::vector<ResBuf*> *include,
+								uint64_t *precincts);
 /**
  * Destroys a packet iterator array.
  *

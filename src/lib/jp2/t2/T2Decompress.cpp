@@ -37,7 +37,8 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 	auto tcp = cp->tcps + tile_no;
 	auto p_tile = tileProcessor->tile;
 	std::vector<ResBuf*> include;
-	auto pi = pi_create_decompress(image, cp, tile_no, &include);
+	uint64_t precincts[GRK_J2K_MAXRLVLS];
+	auto pi = pi_create_decompress(image, cp, tile_no, &include, precincts);
 	if (!pi)
 		return false;
 
@@ -62,6 +63,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 
 		auto current_pi = pi + pino;
 		current_pi->include = pi->include;
+		current_pi->precincts = pi->precincts;
 		if (current_pi->poc.prg == GRK_PROG_UNKNOWN) {
 			pi_destroy(pi);
 			delete[] first_pass_failed;

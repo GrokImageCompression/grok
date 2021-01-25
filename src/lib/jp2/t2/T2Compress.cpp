@@ -40,7 +40,8 @@ bool T2Compress::compress_packets(uint16_t tile_no, uint16_t max_layers,
 	auto p_tile = tileProcessor->tile;
 	auto tcp = &cp->tcps[tile_no];
 	std::vector<ResBuf*> include;
-	auto pi = pi_create_compress(image, cp, tile_no, FINAL_PASS, &include);
+	uint64_t precincts[GRK_J2K_MAXRLVLS];
+	auto pi = pi_create_compress(image, cp, tile_no, FINAL_PASS, &include, precincts);
 	if (!pi)
 		return false;
 
@@ -81,7 +82,8 @@ bool T2Compress::compress_packets_simulate(uint16_t tile_no, uint16_t max_layers
 	uint32_t max_comp =
 			cp->m_coding_params.m_enc.m_max_comp_size > 0 ? image->numcomps : 1;
 	std::vector<ResBuf*> include;
-	auto pi = pi_create_compress(image, cp, tile_no, THRESH_CALC,&include);
+	uint64_t precincts[GRK_J2K_MAXRLVLS];
+	auto pi = pi_create_compress(image, cp, tile_no, THRESH_CALC,&include, precincts);
 	if (!pi)
 		return false;
 
