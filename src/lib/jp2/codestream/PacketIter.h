@@ -53,6 +53,20 @@ struct grk_pi_comp {
 	grk_pi_resolution *resolutions;
 };
 
+struct ResBuf{
+	ResBuf(){
+		for (uint8_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
+			buffers[i]=nullptr;
+	}
+	~ResBuf(){
+		for (uint8_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
+			delete[] buffers[i];
+	}
+
+
+	uint8_t* buffers[GRK_J2K_MAXRLVLS];
+};
+
 /**
  Packet iterator
  */
@@ -67,7 +81,7 @@ struct PacketIter {
 	/** Enabling Tile part generation*/
 	bool  tp_on;
 
-	std::vector<uint8_t*> *include;
+	std::vector<ResBuf*> *include;
 
 	/** layer step used to localize the packet in the include vector */
 	uint64_t step_l;
@@ -119,7 +133,7 @@ PacketIter* pi_create_compress(const grk_image *image,
 								CodingParams *cp,
 								uint16_t tileno,
 								J2K_T2_MODE t2_mode,
-								std::vector<uint8_t*> *include);
+								std::vector<ResBuf*> *include);
 
 /**
  * Updates the compressing parameters of the codec.
@@ -162,7 +176,7 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 PacketIter* pi_create_decompress(grk_image *image,
 								CodingParams *cp,
 								uint16_t tileno,
-								std::vector<uint8_t*> *include);
+								std::vector<ResBuf*> *include);
 /**
  * Destroys a packet iterator array.
  *

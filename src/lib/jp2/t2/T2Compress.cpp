@@ -39,7 +39,7 @@ bool T2Compress::compress_packets(uint16_t tile_no, uint16_t max_layers,
 	auto image = tileProcessor->image;
 	auto p_tile = tileProcessor->tile;
 	auto tcp = &cp->tcps[tile_no];
-	std::vector<uint8_t*> include;
+	std::vector<ResBuf*> include;
 	auto pi = pi_create_compress(image, cp, tile_no, FINAL_PASS, &include);
 	if (!pi)
 		return false;
@@ -80,7 +80,7 @@ bool T2Compress::compress_packets_simulate(uint16_t tile_no, uint16_t max_layers
 	uint32_t pocno = (cp->rsiz == GRK_PROFILE_CINEMA_4K) ? 2 : 1;
 	uint32_t max_comp =
 			cp->m_coding_params.m_enc.m_max_comp_size > 0 ? image->numcomps : 1;
-	std::vector<uint8_t*> include;
+	std::vector<ResBuf*> include;
 	auto pi = pi_create_compress(image, cp, tile_no, THRESH_CALC,&include);
 	if (!pi)
 		return false;

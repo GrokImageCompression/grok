@@ -156,7 +156,7 @@ static void grk_get_all_encoding_parameters(const grk_image *image,
 static PacketIter* pi_create(const grk_image *p_image,
 								const CodingParams *p_cp,
 								uint16_t tileno,
-								std::vector<uint8_t*> *include);
+								std::vector<ResBuf*> *include);
 /**
  * Update decompress packet iterator with no POC
  */
@@ -628,7 +628,7 @@ static void grk_get_all_encoding_parameters(const grk_image *image,
 static PacketIter* pi_create(const grk_image *image,
 							const CodingParams *cp,
 							uint16_t tileno,
-							std::vector<uint8_t*> *include) {
+							std::vector<ResBuf*> *include) {
 	assert(cp != nullptr);
 	assert(image != nullptr);
 	assert(tileno < cp->t_grid_width * cp->t_grid_height);
@@ -848,7 +848,7 @@ static bool pi_check_next_for_valid_progression(int32_t prog,
 PacketIter* pi_create_decompress(grk_image *p_image,
 								CodingParams *p_cp,
 								uint16_t tile_no,
-								std::vector<uint8_t*> *include) {
+								std::vector<ResBuf*> *include) {
 	assert(p_cp != nullptr);
 	assert(p_image != nullptr);
 	assert(tile_no < p_cp->t_grid_width * p_cp->t_grid_height);
@@ -972,7 +972,7 @@ PacketIter* pi_create_compress(const grk_image *p_image,
 								CodingParams *p_cp,
 								uint16_t tile_no,
 								J2K_T2_MODE p_t2_mode,
-								std::vector<uint8_t*> *include) {
+								std::vector<ResBuf*> *include) {
 	assert(p_cp != nullptr);
 	assert(p_image != nullptr);
 	assert(tile_no < p_cp->t_grid_width * p_cp->t_grid_height);
@@ -1480,18 +1480,27 @@ PacketIter::~PacketIter(){
 
 uint8_t* PacketIter::get_include(uint16_t layerno){
 	assert(layerno <= include->size());
+	size_t len = (step_r + 7)/8;
 	if (layerno == include->size()){
-		size_t len = (step_l + 7)/8;
 		auto buf = new uint8_t[len];
 		memset(buf, 0, len);
-		include->push_back(buf);
+		ResBuf *resBuf = new ResBuf;
+		resBuf->buffers[resno] = buf;
+		include->push_back(resBuf);
 		return buf;
 	}
-	return include->operator[](layerno);
+	auto resBuf = include->operator[](layerno);
+	auto buf = resBuf->buffers[resno];
+	if (!buf){
+		buf = new uint8_t[len];
+		memset(buf, 0, len);
+		resBuf->buffers[resno] = buf;
+	}
+	return buf;
 }
 
 bool PacketIter::update_include(void){
-	uint64_t index = resno * step_r + compno * step_c + precinctIndex * step_p;
+	uint64_t index = compno * step_c + precinctIndex;
 	assert(index < step_l);
 
 	auto include = get_include(layno);
@@ -1508,8 +1517,9 @@ bool PacketIter::update_include(void){
 }
 
 void PacketIter::destroy_include(void){
-	for (auto it = include->begin(); it != include->end(); ++it)
-		delete[] *it;
+	for (auto it = include->begin(); it != include->end(); ++it){
+		delete *it;
+	}
 	include->clear();
 }
 

@@ -36,7 +36,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 	auto image = tileProcessor->image;
 	auto tcp = cp->tcps + tile_no;
 	auto p_tile = tileProcessor->tile;
-	std::vector<uint8_t*> include;
+	std::vector<ResBuf*> include;
 	auto pi = pi_create_decompress(image, cp, tile_no, &include);
 	if (!pi)
 		return false;
