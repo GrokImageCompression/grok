@@ -157,8 +157,7 @@ static void grk_get_all_encoding_parameters(const grk_image *image,
 static PacketIter* pi_create(const grk_image *p_image,
 								const CodingParams *p_cp,
 								uint16_t tileno,
-								std::vector<ResBuf*> *include,
-								uint64_t *precincts);
+								IncludeTracker *include);
 /**
  * Update decompress packet iterator with no POC
  */
@@ -635,8 +634,7 @@ static void grk_get_all_encoding_parameters(const grk_image *image,
 static PacketIter* pi_create(const grk_image *image,
 							const CodingParams *cp,
 							uint16_t tileno,
-							std::vector<ResBuf*> *include,
-							uint64_t *precincts) {
+							IncludeTracker *include) {
 	assert(cp != nullptr);
 	assert(image != nullptr);
 	assert(tileno < cp->t_grid_width * cp->t_grid_height);
@@ -645,8 +643,7 @@ static PacketIter* pi_create(const grk_image *image,
 
 	auto pi = new PacketIter[poc_bound];
 	for (uint32_t i = 0; i < poc_bound; ++i){
-		pi[i].include = include;
-		pi[i].precincts = precincts;
+		pi[i].includeTracker = include;
 
 	}
 	for (uint32_t pino = 0; pino < poc_bound; ++pino) {
@@ -859,8 +856,7 @@ static bool pi_check_next_for_valid_progression(int32_t prog,
 PacketIter* pi_create_decompress(grk_image *p_image,
 								CodingParams *p_cp,
 								uint16_t tile_no,
-								std::vector<ResBuf*> *include,
-								uint64_t *precincts) {
+								IncludeTracker *include) {
 	assert(p_cp != nullptr);
 	assert(p_image != nullptr);
 	assert(tile_no < p_cp->t_grid_width * p_cp->t_grid_height);
@@ -879,7 +875,7 @@ PacketIter* pi_create_decompress(grk_image *p_image,
 	}
 
 	/* memory allocation for pi */
-	auto pi = pi_create(p_image, p_cp, tile_no, include,precincts);
+	auto pi = pi_create(p_image, p_cp, tile_no, include);
 	if (!pi) {
 		grk_free(tmp_data);
 		grk_free(tmp_ptr);
@@ -903,7 +899,7 @@ PacketIter* pi_create_decompress(grk_image *p_image,
 									&tileBounds,
 									&dx_min,
 									&dy_min,
-									precincts,
+									include->precincts,
 									&max_precincts,
 									&max_res, tmp_ptr);
 
@@ -992,8 +988,7 @@ PacketIter* pi_create_compress(const grk_image *p_image,
 								CodingParams *p_cp,
 								uint16_t tile_no,
 								J2K_T2_MODE p_t2_mode,
-								std::vector<ResBuf*> *include,
-								uint64_t *precincts) {
+								IncludeTracker *include) {
 	assert(p_cp != nullptr);
 	assert(p_image != nullptr);
 	assert(tile_no < p_cp->t_grid_width * p_cp->t_grid_height);
@@ -1011,7 +1006,7 @@ PacketIter* pi_create_compress(const grk_image *p_image,
 		grk_free(tmp_data);
 		return nullptr;
 	}
-	auto pi = pi_create(p_image, p_cp, tile_no,include,precincts);
+	auto pi = pi_create(p_image, p_cp, tile_no,include);
 	if (!pi) {
 		grk_free(tmp_data);
 		grk_free(tmp_ptr);
@@ -1034,7 +1029,7 @@ PacketIter* pi_create_compress(const grk_image *p_image,
 									&tileBounds,
 									&dx_min,
 									&dy_min,
-									precincts,
+									include->precincts,
 									&max_precincts,
 									&max_res,
 									tmp_ptr);
@@ -1471,8 +1466,7 @@ bool pi_next(PacketIter *pi) {
 }
 
 PacketIter::PacketIter() : tp_on(false),
-							precincts(nullptr),
-							include(nullptr),
+							includeTracker(nullptr),
 							step_l(0),
 							step_r(0),
 							step_c(0),
@@ -1509,50 +1503,15 @@ PacketIter::~PacketIter(){
 }
 
 uint8_t* PacketIter::get_include(uint16_t layerno){
-	assert(layerno <= include->size());
-	auto numprecs = precincts[resno];
-	if (numprecs == 0)
-		numprecs = 1;
-	size_t len = (numprecs * numcomps + 7)/8;
-	if (layerno == include->size()){
-		auto buf = new uint8_t[len];
-		memset(buf, 0, len);
-		ResBuf *resBuf = new ResBuf;
-		resBuf->buffers[resno] = buf;
-		include->push_back(resBuf);
-		return buf;
-	}
-	auto resBuf = include->operator[](layerno);
-	auto buf = resBuf->buffers[resno];
-	if (!buf){
-		buf = new uint8_t[len];
-		memset(buf, 0, len);
-		resBuf->buffers[resno] = buf;
-	}
-	return buf;
+	return includeTracker->get_include(layerno, resno);
 }
 
 bool PacketIter::update_include(void){
-	auto numprecs = precincts[resno];
-	uint64_t index = compno * numprecs + precinctIndex;
-	auto include = get_include(layno);
-	uint64_t include_index 	= (index >> 3);
-	uint32_t shift 	= (index & 7);
-	bool rc = false;
-	uint8_t val = include[include_index];
-	if ( ((val >> shift)& 1) == 0 ) {
-		include[include_index] = (uint8_t)(val | (1 << shift));
-		rc = true;
-	}
-
-	return rc;
+	return includeTracker->update(layno, resno, compno, precinctIndex);
 }
 
 void PacketIter::destroy_include(void){
-	for (auto it = include->begin(); it != include->end(); ++it){
-		delete *it;
-	}
-	include->clear();
+	includeTracker->clear();
 }
 
 }

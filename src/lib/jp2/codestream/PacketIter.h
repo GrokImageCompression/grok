@@ -67,6 +67,76 @@ struct ResBuf{
 	uint8_t* buffers[GRK_J2K_MAXRLVLS];
 };
 
+struct IncludeTracker {
+
+	IncludeTracker(uint16_t numcomponents) : numcomps(numcomponents),
+											currentLayer(0),
+											currentResBuf(nullptr),
+											include(new std::vector<ResBuf*>())
+	{}
+
+	~IncludeTracker() {
+		clear();
+		delete include;
+	}
+
+	uint8_t* get_include(uint16_t layerno,  uint8_t resno){
+		ResBuf* resBuf = nullptr;
+		if (layerno == currentLayer && currentResBuf) {
+			resBuf =  currentResBuf;
+		} else {
+			if (layerno == include->size()){
+				resBuf = new ResBuf;
+				include->push_back(resBuf);
+			} else {
+				resBuf = include->operator[](layerno);
+			}
+			currentResBuf = resBuf;
+			currentLayer = layerno;
+		}
+		auto buf = resBuf->buffers[resno];
+		if (!buf){
+			auto numprecs = precincts[resno];
+			auto len = (numprecs * numcomps + 7)/8;
+			buf = new uint8_t[len];
+			memset(buf, 0, len);
+			resBuf->buffers[resno] = buf;
+		}
+		return buf;
+	}
+
+
+	bool update(uint16_t layno, uint8_t resno, uint16_t compno, uint64_t precno) {
+		auto include = get_include(layno, resno);
+		auto numprecs = precincts[resno];
+		uint64_t index = compno * numprecs + precno;
+		uint64_t include_index 	= (index >> 3);
+		uint32_t shift 	= (index & 7);
+		bool rc = false;
+		uint8_t val = include[include_index];
+		if ( ((val >> shift)& 1) == 0 ) {
+			include[include_index] = (uint8_t)(val | (1 << shift));
+			rc = true;
+		}
+
+		return rc;
+	}
+
+	void clear() {
+		for (auto it = include->begin(); it != include->end(); ++it){
+			delete *it;
+		}
+		include->clear();
+	}
+
+	uint16_t numcomps;
+	uint16_t currentLayer;
+	ResBuf* currentResBuf;
+	uint64_t precincts[GRK_J2K_MAXRLVLS];
+	std::vector<ResBuf*> *include;
+};
+
+
 /**
  Packet iterator
  */
@@ -81,8 +151,7 @@ struct PacketIter {
 	/** Enabling Tile part generation*/
 	bool  tp_on;
 
-	uint64_t *precincts;
-	std::vector<ResBuf*> *include;
+	IncludeTracker *includeTracker;
 
 	/** layer step used to localize the packet in the include vector */
 	uint64_t step_l;
@@ -134,8 +203,7 @@ PacketIter* pi_create_compress(const grk_image *image,
 								CodingParams *cp,
 								uint16_t tileno,
 								J2K_T2_MODE t2_mode,
-								std::vector<ResBuf*> *include,
-								uint64_t *precincts);
+								IncludeTracker *include);
 
 /**
  * Updates the compressing parameters of the codec.
@@ -178,8 +246,7 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 PacketIter* pi_create_decompress(grk_image *image,
 								CodingParams *cp,
 								uint16_t tileno,
-								std::vector<ResBuf*> *include,
-								uint64_t *precincts);
+								IncludeTracker *include);
 /**
  * Destroys a packet iterator array.
  *

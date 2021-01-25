@@ -36,9 +36,8 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 	auto image = tileProcessor->image;
 	auto tcp = cp->tcps + tile_no;
 	auto p_tile = tileProcessor->tile;
-	std::vector<ResBuf*> include;
-	uint64_t precincts[GRK_J2K_MAXRLVLS];
-	auto pi = pi_create_decompress(image, cp, tile_no, &include, precincts);
+	IncludeTracker include(image->numcomps);
+	auto pi = pi_create_decompress(image, cp, tile_no, &include);
 	if (!pi)
 		return false;
 
@@ -50,23 +49,10 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 		packetLengths->getInit();
 	bool truncatedTile = false;
 	for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
-		/* if the resolution needed is too low, one dim of the tilec
-		 * could be equal to zero
-		 * and no packets are used to decompress this resolution and
-		 * current_pi->resno is always >=
-		 * tile->comps[current_pi->compno].resolutions_to_decompress
-		 * and no l_img_comp->resno_decoded are computed
-		 */
-		bool *first_pass_failed = new bool[image->numcomps];
-		for (size_t k = 0; k < image->numcomps; ++k)
-			first_pass_failed[k] = true;
-
 		auto current_pi = pi + pino;
-		current_pi->include = pi->include;
-		current_pi->precincts = pi->precincts;
+		current_pi->includeTracker = pi->includeTracker;
 		if (current_pi->poc.prg == GRK_PROG_UNKNOWN) {
 			pi_destroy(pi);
-			delete[] first_pass_failed;
 			GRK_ERROR("decompress_packets: Unknown progression order");
 			return false;
 		}
@@ -115,11 +101,9 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			uint64_t nb_bytes_read = 0;
 			try {
 				if (!skip_the_packet) {
-					first_pass_failed[current_pi->compno] = false;
-
+					// schedule this
 					if (!decompress_packet(tcp, current_pi, src_buf, &nb_bytes_read)) {
 						pi_destroy(pi);
-						delete[] first_pass_failed;
 						return false;
 					}
 					tilec->resolutions_decompressed = std::max<uint8_t>(current_pi->resno,
@@ -131,7 +115,6 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 					} else if (!skip_packet(tcp, current_pi, src_buf,
 							&nb_bytes_read)) {
 						pi_destroy(pi);
-						delete[] first_pass_failed;
 						return false;
 					}
 				}
@@ -147,12 +130,6 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 				 current_pi->compno, current_pi->resno,
 				 current_pi->precinctIndex, current_pi->layno, skip_the_packet ? "skipped" : "decompressed");
 			}
-			if (first_pass_failed[current_pi->compno]) {
-				if (tilec->resolutions_decompressed == 0) {
-					tilec->resolutions_decompressed =
-							(uint8_t)(p_tile->comps[current_pi->compno].resolutions_to_decompress- 1);
-				}
-			}
 			if (debugDecompressPackets) {
 				GRK_INFO("T2Decompress Packet length: %u", nb_bytes_read);
 				if (pltMarkerLen) {
@@ -162,7 +139,6 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			}
 			*p_data_read += nb_bytes_read;
 		}
-		delete[] first_pass_failed;
 		if (truncatedTile)
 			break;
 	}
@@ -173,7 +149,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 }
 
 
-bool T2Decompress::decompress_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuffer *src_buf,
+bool T2Decompress::decompress_packet(TileCodingParams *p_tcp, const PacketIter *p_pi, ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
 	auto p_tile = tileProcessor->tile;
 	auto res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
@@ -232,7 +208,7 @@ void T2Decompress::init_seg(DecompressCodeblock *cblk, uint32_t index, uint8_t c
 }
 
 
-bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
+bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, const PacketIter *p_pi,
 		bool *p_is_data_present, ChunkBuffer *src_buf, uint64_t *p_data_read) {
 	auto p_tile = tileProcessor->tile;
 	auto res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
@@ -527,7 +503,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, PacketIter *p_pi,
 	return true;
 }
 
-bool T2Decompress::read_packet_data(Resolution *res, PacketIter *p_pi,
+bool T2Decompress::read_packet_data(Resolution *res, const PacketIter *p_pi,
 		ChunkBuffer *src_buf, uint64_t *p_data_read) {
 	for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 		auto band = res->band + bandIndex;
