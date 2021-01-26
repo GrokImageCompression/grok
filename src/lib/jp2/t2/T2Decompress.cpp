@@ -55,7 +55,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			GRK_ERROR("decompress_packets: Unknown progression order");
 			return false;
 		}
-		while (pi_next(current_pi)) {
+		while (current_pi->next()) {
 			if (src_buf->get_cur_chunk_len() == 0){
 				GRK_WARN("Tile %d is truncated.", tile_no);
 				truncatedTile = true;

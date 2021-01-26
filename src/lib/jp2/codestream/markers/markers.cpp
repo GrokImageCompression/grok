@@ -799,23 +799,23 @@ bool j2k_write_poc(CodeStream *codeStream) {
 	for (uint32_t i = 0; i < nb_poc; ++i) {
 		auto current_poc = tcp->pocs + i;
 		/* RSpoc_i */
-		if (!stream->write_byte((uint8_t) current_poc->resno0))
+		if (!stream->write_byte((uint8_t) current_poc->resS))
 			return false;
 		/* CSpoc_i */
-		if (!stream->write_byte((uint8_t) current_poc->compno0))
+		if (!stream->write_byte((uint8_t) current_poc->compS))
 			return false;
 		/* LYEpoc_i */
-		if (!stream->write_short((uint16_t) current_poc->layno1))
+		if (!stream->write_short((uint16_t) current_poc->layE))
 			return false;
 		/* REpoc_i */
-		if (!stream->write_byte((uint8_t) current_poc->resno1))
+		if (!stream->write_byte((uint8_t) current_poc->resE))
 			return false;
 		/* CEpoc_i */
 		if (poc_room == 2) {
-			if (!stream->write_short((uint16_t) current_poc->compno1))
+			if (!stream->write_short((uint16_t) current_poc->compE))
 				return false;
 		} else {
-			if (!stream->write_byte((uint8_t) current_poc->compno1))
+			if (!stream->write_byte((uint8_t) current_poc->compE))
 				return false;
 		}
 		/* Ppoc_i */
@@ -823,11 +823,11 @@ bool j2k_write_poc(CodeStream *codeStream) {
 			return false;
 
 		/* change the value of the max layer according to the actual number of layers in the file, components and resolutions*/
-		current_poc->layno1 = std::min<uint16_t>(current_poc->layno1,
+		current_poc->layE = std::min<uint16_t>(current_poc->layE,
 				tcp->numlayers);
-		current_poc->resno1 = std::min<uint8_t>(current_poc->resno1,
+		current_poc->resE = std::min<uint8_t>(current_poc->resE,
 				tccp->numresolutions);
-		current_poc->compno1 = std::min<uint16_t>(current_poc->compno1,
+		current_poc->compE = std::min<uint16_t>(current_poc->compE,
 				nb_comp);
 	}
 
@@ -884,36 +884,36 @@ bool j2k_read_poc(CodeStream *codeStream, uint8_t *p_header_data,
 	for (uint32_t i = old_poc_nb; i < current_poc_nb; ++i) {
 		auto current_poc = tcp->pocs + i;
 		/* RSpoc_i */
-		grk_read<uint8_t>(p_header_data, &current_poc->resno0);
+		grk_read<uint8_t>(p_header_data, &current_poc->resS);
 		++p_header_data;
-		if (current_poc->resno0 >= GRK_J2K_MAXRLVLS){
-			GRK_ERROR("read_poc: invalid POC start resolution number %d", current_poc->resno0);
+		if (current_poc->resS >= GRK_J2K_MAXRLVLS){
+			GRK_ERROR("read_poc: invalid POC start resolution number %d", current_poc->resS);
 			return false;
 		}
-		if (current_poc->resno0 >= maxNumResLevels){
-			GRK_ERROR("read_poc: invalid POC start resolution number %d", current_poc->resno0);
+		if (current_poc->resS >= maxNumResLevels){
+			GRK_ERROR("read_poc: invalid POC start resolution number %d", current_poc->resS);
 			return false;
 		}
 		/* CSpoc_i */
-		grk_read<uint16_t>(p_header_data, &(current_poc->compno0), comp_room);
+		grk_read<uint16_t>(p_header_data, &(current_poc->compS), comp_room);
 		p_header_data += comp_room;
-		if (current_poc->compno0 > image->numcomps){
-			GRK_ERROR("read_poc: invalid POC start component %d", current_poc->compno0);
+		if (current_poc->compS > image->numcomps){
+			GRK_ERROR("read_poc: invalid POC start component %d", current_poc->compS);
 			return false;
 		}
 		/* LYEpoc_i */
-		grk_read<uint16_t>(p_header_data, &(current_poc->layno1));
+		grk_read<uint16_t>(p_header_data, &(current_poc->layE));
 		/* make sure layer end is in acceptable bounds */
-		current_poc->layno1 = std::min<uint16_t>(current_poc->layno1,
+		current_poc->layE = std::min<uint16_t>(current_poc->layE,
 				tcp->numlayers);
 		p_header_data += 2;
 		/* REpoc_i */
-		grk_read<uint8_t>(p_header_data, &current_poc->resno1);
+		grk_read<uint8_t>(p_header_data, &current_poc->resE);
 		++p_header_data;
 		/* CEpoc_i */
-		grk_read<uint16_t>(p_header_data, &(current_poc->compno1), comp_room);
+		grk_read<uint16_t>(p_header_data, &(current_poc->compE), comp_room);
 		p_header_data += comp_room;
-		current_poc->compno1 = std::min<uint16_t>(current_poc->compno1,	nb_comp);
+		current_poc->compE = std::min<uint16_t>(current_poc->compE,	nb_comp);
 		/* Ppoc_i */
 		uint8_t tmp;
 		grk_read<uint8_t>(p_header_data++, &tmp);

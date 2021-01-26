@@ -880,19 +880,19 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
 
 void Profile::initialise_4K_poc(grk_poc *POC, uint8_t numres) {
 	assert(numres > 0);
-	POC[0].tile = 1;
-	POC[0].resno0 = 0;
-	POC[0].compno0 = 0;
-	POC[0].layno1 = 1;
-	POC[0].resno1 = (uint8_t) (numres - 1);
-	POC[0].compno1 = 3;
+	POC[0].tileno = 1;
+	POC[0].resS = 0;
+	POC[0].compS = 0;
+	POC[0].layE = 1;
+	POC[0].resE = (uint8_t) (numres - 1);
+	POC[0].compE = 3;
 	POC[0].prg1 = GRK_CPRL;
-	POC[1].tile = 1;
-	POC[1].resno0 = (uint8_t) (numres - 1);
-	POC[1].compno0 = 0;
-	POC[1].layno1 = 1;
-	POC[1].resno1 = numres;
-	POC[1].compno1 = 3;
+	POC[1].tileno = 1;
+	POC[1].resS = (uint8_t) (numres - 1);
+	POC[1].compS = 0;
+	POC[1].layE = 1;
+	POC[1].resE = numres;
+	POC[1].compE = 3;
 	POC[1].prg1 = GRK_CPRL;
 }
 

@@ -72,7 +72,7 @@ struct IncludeTracker {
 	IncludeTracker(uint16_t numcomponents) : numcomps(numcomponents),
 											currentLayer(0),
 											currentResBuf(nullptr),
-											include(new std::vector<ResBuf*>())
+											include(new std::map<uint16_t, ResBuf*>())
 	{}
 
 	~IncludeTracker() {
@@ -85,9 +85,9 @@ struct IncludeTracker {
 		if (layerno == currentLayer && currentResBuf) {
 			resBuf =  currentResBuf;
 		} else {
-			if (layerno == include->size()){
+			if (include->find(layerno) == include->end()){
 				resBuf = new ResBuf;
-				include->push_back(resBuf);
+				include->operator[](layerno) = resBuf;
 			} else {
 				resBuf = include->operator[](layerno);
 			}
@@ -124,7 +124,7 @@ struct IncludeTracker {
 
 	void clear() {
 		for (auto it = include->begin(); it != include->end(); ++it){
-			delete *it;
+			delete it->second;
 		}
 		include->clear();
 	}
@@ -133,7 +133,7 @@ struct IncludeTracker {
 	uint16_t currentLayer;
 	ResBuf* currentResBuf;
 	uint64_t precincts[GRK_J2K_MAXRLVLS];
-	std::vector<ResBuf*> *include;
+	std::map<uint16_t, ResBuf*> *include;
 };
 
 
@@ -147,6 +147,47 @@ struct PacketIter {
 	uint8_t* get_include(uint16_t layerIndex);
 	bool update_include(void);
 	void destroy_include(void);
+
+	/**
+	 Get next packet in component-precinct-resolution-layer order.
+	 @return returns false if pi pointed to the last packet or else returns true
+	 */
+	bool next_cprl(void);
+
+	bool next_l(void);
+
+	/**
+	 Get next packet in precinct-component-resolution-layer order.
+	 @return returns false if pi pointed to the last packet or else returns true
+	 */
+	bool next_pcrl(void);
+
+	/**
+	 Get next packet in layer-resolution-component-precinct order.
+	 @return returns false if pi pointed to the last packet or else returns true
+	 */
+	bool next_lrcp(void);
+	/**
+	 Get next packet in resolution-layer-component-precinct order.
+	 @return returns false if pi pointed to the last packet or else returns true
+	 */
+	bool next_rlcp(void);
+	/**
+	 Get next packet in resolution-precinct-component-layer order.
+	 @return returns false if pi pointed to the last packet or else returns true
+	 */
+	bool next_rpcl(void);
+
+	/**
+	 Modify the packet iterator to point to the next packet
+	 @return false if pi pointed to the last packet or else returns true
+	 */
+
+	bool next(void);
+
+	void update_dxy(void);
+	void update_dxy_for_comp(grk_pi_comp *comp);
+
 
 	/** Enabling Tile part generation*/
 	bool  tp_on;
@@ -218,7 +259,7 @@ void pi_update_encoding_parameters(const grk_image *p_image,
 
 /**
  Modify the packet iterator for enabling tile part generation
- @param pi 		Handle to the packet iterator generated in pi_initialise_compress
+ @param pi 		Handle to the packet iterator generated in pi_create_compress
  @param cp 		Coding parameters
  @param tileno 	Number that identifies the tile for which to list the packets
  @param pino   	packet iterator number
@@ -254,12 +295,7 @@ PacketIter* pi_create_decompress(grk_image *image,
  */
 void pi_destroy(PacketIter *p_pi);
 
-/**
- Modify the packet iterator to point to the next packet
- @param pi Packet iterator to modify
- @return false if pi pointed to the last packet or else returns true
- */
-bool pi_next(PacketIter *pi);
+
 /* ----------------------------------------------------------------------- */
 /*@}*/
 

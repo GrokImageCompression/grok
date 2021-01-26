@@ -366,71 +366,72 @@ typedef void (*grk_msg_callback)(const char *msg, void *client_data);
  */
 
 /**
- * Progression order changes
+ * Progression order change
  *
  */
 typedef struct _grk_poc {
-	/** Resolution num start, component num start, given by POC */
-	uint8_t resno0;
-	uint16_t compno0;
-	/** Layer num end, resolution num end, component num end, given by POC */
-	uint16_t layno1;
-	uint8_t resno1;
-	uint16_t compno1;
-	/** Layer num start,precinct num start, precinct num end */
-	uint16_t layno0;
-	uint64_t precno0, precno1;
+	/** progression order bounds specified by POC */
+	uint16_t layS;
+	uint16_t layE;
+	uint8_t  resS;
+	uint8_t  resE;
+	uint16_t compS;
+	uint16_t compE;
+	uint64_t precS;
+	uint64_t precE;
+
 	/** Progression order enum*/
-	GRK_PROG_ORDER prg1, prg;
+	GRK_PROG_ORDER prg1;
+	GRK_PROG_ORDER prg;
 	/** Progression order string*/
 	char progorder[5];
 	/** Tile number */
-	uint32_t tile;
+	uint32_t tileno;
 	/** Start and end values for tile width and height*/
-	uint32_t tx0, tx1, ty0, ty1;
-	/** Start value, initialized in pi_initialise_encode*/
-	uint8_t resS;
-	uint16_t compS;
-	/** End value, initialized in pi_initialise_encode */
-	uint16_t layE;
-	uint8_t resE;
-	uint16_t compE;
-	uint64_t prcE;
-	/** Start and end values of tile width and height, initialized in pi_initialise_encode*/
-	uint32_t txS, txE, tyS, tyE, dx, dy;
-	/** Temporary values for Tile parts, initialized in pi_create_encode */
-	uint16_t lay_t;
-	uint8_t res_t;
-	uint16_t comp_t;
-	uint32_t tx0_t, ty0_t;
-	uint64_t prc_t;
+	uint32_t tx0;
+	uint32_t tx1;
+	uint32_t ty0;
+	uint32_t ty1;
+	/** progression order bounds initialized in pi_create_compress*/
+	uint16_t tpLayE;
+	uint8_t  tpResS;
+	uint8_t  tpResE;
+	uint16_t tpCompS;
+	uint16_t tpCompE;
+	uint64_t tpPrecE;
+	/** tile bounds initialized by pi_create_compress*/
+	uint32_t tp_txS;
+	uint32_t tp_txE;
+	uint32_t tp_tyS;
+	uint32_t tp_tyE;
+	uint32_t dx;
+	uint32_t dy;
+	/** tile part temporary values initialized by pi_create_encode */
+	uint16_t lay_temp;
+	uint8_t  res_temp;
+	uint16_t comp_temp;
+	uint64_t prec_temp;
+	uint32_t tx0_temp;
+	uint32_t ty0_temp;
 } grk_poc;
 
 /**@name RAW component compress parameters */
 /*@{*/
 typedef struct _grk_raw_comp_cparameters {
-	/** subsampling in X direction */
-	uint32_t dx;
-	/** subsampling in Y direction */
-	uint32_t dy;
+	uint32_t dx;  	/** subsampling in X direction */
+	uint32_t dy;   	/** subsampling in Y direction */
 	/*@}*/
 } grk_raw_comp_cparameters;
 
 /**@name RAW image compress parameters */
 /*@{*/
 typedef struct _grk_raw_cparameters {
-	/** width of the raw image */
-	uint32_t width;
-	/** height of the raw image */
-	uint32_t height;
-	/** number of components of the raw image */
-	uint16_t numcomps;
-	/** bit depth of the raw image */
-	uint8_t prec;
-	/** signed/unsigned raw image */
-	bool sgnd;
-	/** raw components parameters */
-	grk_raw_comp_cparameters *comps;
+	uint32_t width; 	/** width of the raw image */
+	uint32_t height;	/** height of the raw image */
+	uint16_t numcomps;	/** number of components of the raw image */
+	uint8_t prec;		/** bit depth of the raw image */
+	bool sgnd;			/** signed/unsigned raw image */
+	grk_raw_comp_cparameters *comps; 	/** raw components parameters */
 	/*@}*/
 } grk_raw_cparameters;
 

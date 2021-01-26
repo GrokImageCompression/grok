@@ -396,22 +396,22 @@ bool j2k_check_poc_val(const grk_poc *p_pocs, uint32_t nb_pocs,
 
 	/* iterate through all the pocs */
 	for (i = 0; i < nb_pocs; ++i) {
-		index = step_r * p_pocs->resno0;
+		index = step_r * p_pocs->resS;
 		/* take each resolution for each poc */
-		for (resno = p_pocs->resno0;
-				resno < std::min<uint32_t>(p_pocs->resno1, nb_resolutions);
+		for (resno = p_pocs->resS;
+				resno < std::min<uint32_t>(p_pocs->resE, nb_resolutions);
 				++resno) {
-			uint32_t res_index = index + p_pocs->compno0 * step_c;
+			uint32_t res_index = index + p_pocs->compS * step_c;
 
 			/* take each comp of each resolution for each poc */
-			for (compno = p_pocs->compno0;
-					compno < std::min<uint32_t>(p_pocs->compno1, num_comps);
+			for (compno = p_pocs->compS;
+					compno < std::min<uint32_t>(p_pocs->compE, num_comps);
 					++compno) {
 				uint32_t comp_index = res_index + 0 * step_l;
 
 				/* and finally take each layer of each res of ... */
 				for (layno = 0;
-						layno < std::min<uint32_t>(p_pocs->layno1, num_layers);
+						layno < std::min<uint32_t>(p_pocs->layE, num_layers);
 						++layno) {
 					/*index = step_r * resno + step_c * compno + step_l * layno;*/
 					packet_array[comp_index] = 1;
@@ -656,19 +656,19 @@ static uint64_t j2k_get_num_tp(CodingParams *cp, uint32_t pino,	uint16_t tileno)
 			switch (prog[i]) {
 			/* component wise */
 			case 'C':
-				num_tp *= current_poc->compE;
+				num_tp *= current_poc->tpCompE;
 				break;
 				/* resolution wise */
 			case 'R':
-				num_tp *= current_poc->resE;
+				num_tp *= current_poc->tpResE;
 				break;
 				/* precinct wise */
 			case 'P':
-				num_tp *= current_poc->prcE;
+				num_tp *= current_poc->tpPrecE;
 				break;
 				/* layer wise */
 			case 'L':
-				num_tp *= current_poc->layE;
+				num_tp *= current_poc->tpLayE;
 				break;
 			}
 			//we start a new tile part with every progression change
@@ -1499,16 +1499,16 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 			tcp->POC = true;
 			uint32_t numpocs_tile = 0;
 			for (uint32_t i = 0; i < parameters->numpocs; i++) {
-				if (tileno + 1 == parameters->POC[i].tile) {
+				if (tileno + 1 == parameters->POC[i].tileno) {
 					auto tcp_poc = &tcp->pocs[numpocs_tile];
 
-					tcp_poc->resno0 = parameters->POC[numpocs_tile].resno0;
-					tcp_poc->compno0 = parameters->POC[numpocs_tile].compno0;
-					tcp_poc->layno1 = parameters->POC[numpocs_tile].layno1;
-					tcp_poc->resno1 = parameters->POC[numpocs_tile].resno1;
-					tcp_poc->compno1 = parameters->POC[numpocs_tile].compno1;
+					tcp_poc->resS = parameters->POC[numpocs_tile].resS;
+					tcp_poc->compS = parameters->POC[numpocs_tile].compS;
+					tcp_poc->layE = parameters->POC[numpocs_tile].layE;
+					tcp_poc->resE = parameters->POC[numpocs_tile].resE;
+					tcp_poc->compE = parameters->POC[numpocs_tile].compE;
 					tcp_poc->prg1 = parameters->POC[numpocs_tile].prg1;
-					tcp_poc->tile = parameters->POC[numpocs_tile].tile;
+					tcp_poc->tileno = parameters->POC[numpocs_tile].tileno;
 					numpocs_tile++;
 				}
 			}

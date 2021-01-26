@@ -1007,38 +1007,38 @@ static int parse_cmdline_compressor_ex(int argc,
 
 			char *s = (char*) pocArg.getValue().c_str();
 			POC = parameters->POC;
-			uint32_t resno0, compno0,layno1,resno1, compno1;
+			uint32_t resS, compS,layE,resE, compE;
 
-			while (sscanf(s, "T%u=%u,%u,%u,%u,%u,%4s", &POC[numpocs].tile,
-					&resno0, &compno0,&layno1, &resno1,
-					&compno1, POC[numpocs].progorder) == 7) {
-				POC[numpocs].resno0 = (uint8_t)resno0;
-				POC[numpocs].compno0 = (uint16_t)compno0;
-				POC[numpocs].layno1 = (uint16_t)layno1;
-				POC[numpocs].resno1 = (uint8_t)resno1;
-				POC[numpocs].compno1 = (uint16_t)compno1;
+			while (sscanf(s, "T%u=%u,%u,%u,%u,%u,%4s", &POC[numpocs].tileno,
+					&resS, &compS,&layE, &resE,
+					&compE, POC[numpocs].progorder) == 7) {
+				POC[numpocs].resS = (uint8_t)resS;
+				POC[numpocs].compS = (uint16_t)compS;
+				POC[numpocs].layE = (uint16_t)layE;
+				POC[numpocs].resE = (uint8_t)resE;
+				POC[numpocs].compE = (uint16_t)compE;
 				POC[numpocs].prg1 = give_progression(POC[numpocs].progorder);
 				// sanity check on layer
-				if (POC[numpocs].layno1 > parameters->tcp_numlayers){
+				if (POC[numpocs].layE > parameters->tcp_numlayers){
 					spdlog::warn("End layer {} in POC {} is greater than"
 								" total number of layers {}. Truncating.",
-								POC[numpocs].layno1,
+								POC[numpocs].layE,
 								numpocs,
 								parameters->tcp_numlayers );
-					POC[numpocs].layno1 = parameters->tcp_numlayers;
+					POC[numpocs].layE = parameters->tcp_numlayers;
 				}
-				if (POC[numpocs].resno1 > parameters->numresolution){
+				if (POC[numpocs].resE > parameters->numresolution){
 					spdlog::warn("POC end resolution {} cannot be greater than"
 								"the number of resolutions {}",
-								POC[numpocs].resno1,
+								POC[numpocs].resE,
 								parameters->numresolution );
-						POC[numpocs].resno1 = parameters->numresolution-1;
+						POC[numpocs].resE = parameters->numresolution-1;
 				}
-				if (POC[numpocs].resno0 >= POC[numpocs].resno1){
+				if (POC[numpocs].resS >= POC[numpocs].resE){
 					spdlog::error("POC beginning resolution must be strictly less than end resolution");
 					return 1;
 				}
-				if (POC[numpocs].compno0 >= POC[numpocs].compno1){
+				if (POC[numpocs].compS >= POC[numpocs].compE){
 					spdlog::error("POC beginning component must be strictly less than end component");
 					return 1;
 				}
