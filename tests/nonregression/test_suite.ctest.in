@@ -42,7 +42,7 @@ grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_3.j2k -EP
 grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_4.j2k -d 150,300 -r 800
 grk_compress -i @INPUT_NR_PATH@/Cevennes1.bmp -o @TEMP_PATH@/Cevennes1.j2k -r 10
 grk_compress -i @INPUT_NR_PATH@/Cevennes2.ppm -o @TEMP_PATH@/Cevennes2.jp2 -r 50
-grk_compress -i @INPUT_NR_PATH@/Rome.bmp -o @TEMP_PATH@/Rome.jp2 -q 30,35,50 -p LRCP -n 3
+grk_compress -i @INPUT_NR_PATH@/Rome.bmp -o @TEMP_PATH@/Rome.jp2 -q 30,35,50 -n 3
 # related to issue 5
 grk_compress -i @INPUT_NR_PATH@/random-issue-0005.tif -o @TEMP_PATH@/random-issue-0005.tif.j2k
 # related to issue 62
@@ -667,3 +667,14 @@ grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-grk_decompress_fuzzer-463
 grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4772443124269056 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-4772443124269056.pgx  -d 214,881,215,978 -r 4
 grk_decompress -i @INPUT_NR_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5764218712358912 -o @TEMP_PATH@/clusterfuzz-testcase-minimized-grk_decompress_fuzzer-5764218712358912.pgx  -d 2,5,128,186
 grk_decompress -i @INPUT_NR_PATH@/161388041dff7f85465687873c5a1d9680413331 -o @TEMP_PATH@/161388041dff7f85465687873c5a1d9680413331.pgx -d  90,10,100,11
+# coverage for different progressions
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_LRCP.j2k -p LRCP
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_PCRL.j2k -p PCRL
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_CPRL.j2k -p CPRL
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_RLCP.j2k -p RLCP
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_RPCL.j2k -p RPCL
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_LRCP_tp_R.j2k -p LRCP -u R -r 200,50,1
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_PCRL_tp_L.j2k -p PCRL -u L -r 200,50,1
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_CPRL_tp_C.j2k -p CPRL -u C -r 200,50,1
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_RLCP_tp_R.j2k -p RLCP -u R -r 200,50,5
+grk_compress -i @INPUT_NR_PATH@/Bretagne1.ppm -o @TEMP_PATH@/Bretagne1_RPCL_tp_L.j2k -p RPCL -u L -r 200,50,10
