@@ -1072,10 +1072,9 @@ bool PacketIter::next_pcrl(void) {
 	}
 	for (y = prog.ty0; y < prog.ty1;	y += dy - (y % dy)) {
 		for (x = prog.tx0; x < prog.tx1;	x += dx - (x % dx)) {
-			for (compno = prog.compS; compno < prog.compE; compno++) {
+			for (; compno < prog.compE; compno++) {
 				comp = &comps[compno];
-				for (resno = prog.resS; resno
-								< std::min<uint32_t>(prog.resE,comp->numresolutions); resno++) {
+				for (; resno< std::min<uint32_t>(prog.resE,comp->numresolutions); resno++) {
 					if (!generate_precinct_index())
 						continue;
 					for (layno = prog.layS; layno < prog.layE; layno++) {
@@ -1083,7 +1082,9 @@ bool PacketIter::next_pcrl(void) {
 							return true;
 					}
 				}
+				resno = prog.resS;
 			}
+			compno = prog.compS;
 		}
 	}
 
