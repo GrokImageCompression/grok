@@ -797,37 +797,37 @@ bool j2k_write_poc(CodeStream *codeStream) {
 		return false;
 
 	for (uint32_t i = 0; i < nb_poc; ++i) {
-		auto current_poc = tcp->pocs + i;
+		auto current_prog = tcp->progression + i;
 		/* RSpoc_i */
-		if (!stream->write_byte((uint8_t) current_poc->resS))
+		if (!stream->write_byte((uint8_t) current_prog->resS))
 			return false;
 		/* CSpoc_i */
-		if (!stream->write_byte((uint8_t) current_poc->compS))
+		if (!stream->write_byte((uint8_t) current_prog->compS))
 			return false;
 		/* LYEpoc_i */
-		if (!stream->write_short((uint16_t) current_poc->layE))
+		if (!stream->write_short((uint16_t) current_prog->layE))
 			return false;
 		/* REpoc_i */
-		if (!stream->write_byte((uint8_t) current_poc->resE))
+		if (!stream->write_byte((uint8_t) current_prog->resE))
 			return false;
 		/* CEpoc_i */
 		if (poc_room == 2) {
-			if (!stream->write_short((uint16_t) current_poc->compE))
+			if (!stream->write_short((uint16_t) current_prog->compE))
 				return false;
 		} else {
-			if (!stream->write_byte((uint8_t) current_poc->compE))
+			if (!stream->write_byte((uint8_t) current_prog->compE))
 				return false;
 		}
 		/* Ppoc_i */
-		if (!stream->write_byte((uint8_t) current_poc->prg))
+		if (!stream->write_byte((uint8_t) current_prog->prg))
 			return false;
 
 		/* change the value of the max layer according to the actual number of layers in the file, components and resolutions*/
-		current_poc->layE = std::min<uint16_t>(current_poc->layE,
+		current_prog->layE = std::min<uint16_t>(current_prog->layE,
 				tcp->numlayers);
-		current_poc->resE = std::min<uint8_t>(current_poc->resE,
+		current_prog->resE = std::min<uint8_t>(current_prog->resE,
 				tccp->numresolutions);
-		current_poc->compE = std::min<uint16_t>(current_poc->compE,
+		current_prog->compE = std::min<uint16_t>(current_prog->compE,
 				nb_comp);
 	}
 
@@ -867,53 +867,52 @@ bool j2k_read_poc(CodeStream *codeStream, uint8_t *p_header_data,
 		GRK_ERROR("Error reading POC marker");
 		return false;
 	}
-
-
 	old_poc_nb = tcp->POC ? tcp->numpocs + 1 : 0;
 	current_poc_nb += old_poc_nb;
-
-	if (current_poc_nb >= 32) {
-		GRK_ERROR("read_poc: too many POCs %u", current_poc_nb);
+	if (current_poc_nb >= GRK_J2K_MAXRLVLS) {
+		GRK_ERROR("read_poc: number of POCs %u exceeds Grok max %d", current_poc_nb, GRK_J2K_MAXRLVLS);
 		return false;
 	}
-	assert(current_poc_nb < 32);
 
 	/* now poc is in use.*/
 	tcp->POC = true;
 
 	for (uint32_t i = old_poc_nb; i < current_poc_nb; ++i) {
-		auto current_poc = tcp->pocs + i;
+		auto current_prog = tcp->progression + i;
 		/* RSpoc_i */
-		grk_read<uint8_t>(p_header_data, &current_poc->resS);
+		grk_read<uint8_t>(p_header_data, &current_prog->resS);
 		++p_header_data;
-		if (current_poc->resS >= GRK_J2K_MAXRLVLS){
-			GRK_ERROR("read_poc: invalid POC start resolution number %d", current_poc->resS);
-			return false;
-		}
-		if (current_poc->resS >= maxNumResLevels){
-			GRK_ERROR("read_poc: invalid POC start resolution number %d", current_poc->resS);
+		if (current_prog->resS >= maxNumResLevels){
+			GRK_ERROR("read_poc: invalid POC start resolution number %d", current_prog->resS);
 			return false;
 		}
 		/* CSpoc_i */
-		grk_read<uint16_t>(p_header_data, &(current_poc->compS), comp_room);
+		grk_read<uint16_t>(p_header_data, &(current_prog->compS), comp_room);
 		p_header_data += comp_room;
-		if (current_poc->compS > image->numcomps){
-			GRK_ERROR("read_poc: invalid POC start component %d", current_poc->compS);
+		if (current_prog->compS > image->numcomps){
+			GRK_ERROR("read_poc: invalid POC start component %d", current_prog->compS);
 			return false;
 		}
 		/* LYEpoc_i */
-		grk_read<uint16_t>(p_header_data, &(current_poc->layE));
+		grk_read<uint16_t>(p_header_data, &(current_prog->layE));
 		/* make sure layer end is in acceptable bounds */
-		current_poc->layE = std::min<uint16_t>(current_poc->layE,
-				tcp->numlayers);
+		current_prog->layE = std::min<uint16_t>(current_prog->layE, tcp->numlayers);
 		p_header_data += 2;
 		/* REpoc_i */
-		grk_read<uint8_t>(p_header_data, &current_poc->resE);
+		grk_read<uint8_t>(p_header_data, &current_prog->resE);
 		++p_header_data;
+		if (current_prog->resE <= current_prog->resS){
+			GRK_ERROR("read_poc: invalid POC end resolution %d", current_prog->compS);
+			return false;
+		}
 		/* CEpoc_i */
-		grk_read<uint16_t>(p_header_data, &(current_poc->compE), comp_room);
+		grk_read<uint16_t>(p_header_data, &(current_prog->compE), comp_room);
 		p_header_data += comp_room;
-		current_poc->compE = std::min<uint16_t>(current_poc->compE,	nb_comp);
+		current_prog->compE = std::min<uint16_t>(current_prog->compE,	nb_comp);
+		if (current_prog->compE <= current_prog->compS){
+			GRK_ERROR("read_poc: invalid POC end component %d", current_prog->compS);
+			return false;
+		}
 		/* Ppoc_i */
 		uint8_t tmp;
 		grk_read<uint8_t>(p_header_data++, &tmp);
@@ -921,7 +920,7 @@ bool j2k_read_poc(CodeStream *codeStream, uint8_t *p_header_data,
 			GRK_ERROR("read_poc: unknown POC progression order %d", tmp);
 			return false;
 		}
-		current_poc->prg = (GRK_PROG_ORDER) tmp;
+		current_prog->prg = (GRK_PROG_ORDER) tmp;
 	}
 	tcp->numpocs = current_poc_nb - 1;
 	return true;

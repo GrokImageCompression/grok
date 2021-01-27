@@ -644,7 +644,7 @@ static uint64_t j2k_get_num_tp(CodingParams *cp, uint32_t pino,	uint16_t tileno)
 	auto tcp = &cp->tcps[tileno];
 	assert(tcp != nullptr);
 
-	auto current_poc = &(tcp->pocs[pino]);
+	auto current_poc = &(tcp->progression[pino]);
 	assert(current_poc != 0);
 
 	/* get the progression order as a character string */
@@ -1500,7 +1500,7 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 			uint32_t numpocs_tile = 0;
 			for (uint32_t i = 0; i < parameters->numpocs; i++) {
 				if (tileno + 1 == parameters->progression[i].tileno) {
-					auto tcp_poc = &tcp->pocs[numpocs_tile];
+					auto tcp_poc = &tcp->progression[numpocs_tile];
 
 					tcp_poc->resS = parameters->progression[numpocs_tile].resS;
 					tcp_poc->compS = parameters->progression[numpocs_tile].compS;

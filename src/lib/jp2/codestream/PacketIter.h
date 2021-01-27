@@ -53,6 +53,80 @@ struct grk_pi_comp {
 	grk_pi_resolution *resolutions;
 };
 
+struct ResBuf;
+struct IncludeTracker;
+struct PacketIter;
+
+/** @name Exported functions */
+/*@{*/
+/* ----------------------------------------------------------------------- */
+/**
+ * Creates a packet iterator for compressing.
+ *
+ * @param	image		the image being encoded.
+ * @param	cp		the coding parameters.
+ * @param	tileno	index of the tile being encoded.
+ * @param	t2_mode	the type of pass for generating the packet iterator
+ * @param 	include	vector of include buffers, one per layer
+ *
+ * @return	a list of packet iterator that points to the first packet of the tile (not true).
+ */
+PacketIter* pi_create_compress(const grk_image *image,
+								CodingParams *cp,
+								uint16_t tileno,
+								J2K_T2_MODE t2_mode,
+								IncludeTracker *include);
+
+/**
+ * Updates the compressing parameters of the codec.
+ *
+ * @param	p_image		the image being encoded.
+ * @param	p_cp		the coding parameters.
+ * @param	tile_no	index of the tile being encoded.
+ */
+void pi_update_encoding_parameters(const grk_image *p_image,
+									CodingParams *p_cp,
+									uint16_t tile_no);
+
+/**
+ Modify the packet iterator for enabling tile part generation
+ @param pi 		Handle to the packet iterator generated in pi_create_compress
+ @param cp 		Coding parameters
+ @param tileno 	Number that identifies the tile for which to list the packets
+ @param pino   	packet iterator number
+ @param first_poc_tile_part true for first POC tile part
+ @param tppos 	The position of the tile part flag in the progression order
+ @param t2_mode T2 mode
+ */
+void pi_enable_tile_part_generation(PacketIter *pi,
+									CodingParams *cp,
+									uint16_t tileno,
+									uint32_t pino,
+									bool first_poc_tile_part,
+									uint32_t tppos,
+									J2K_T2_MODE t2_mode);
+
+/**
+ Create a packet iterator for Decoder
+ @param image Raw image for which the packets will be listed
+ @param cp Coding parameters
+ @param tileno Number that identifies the tile for which to list the packets
+ @param include	vector of include buffers, one per layer
+ @return a packet iterator that points to the first packet of the tile
+ @see pi_destroy
+ */
+PacketIter* pi_create_decompress(grk_image *image,
+								CodingParams *cp,
+								uint16_t tileno,
+								IncludeTracker *include);
+/**
+ * Destroys a packet iterator array.
+ *
+ * @param	p_pi			the packet iterator array to destroy.
+ */
+void pi_destroy(PacketIter *p_pi);
+
+
 struct ResBuf{
 	ResBuf(){
 		for (uint8_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
@@ -66,7 +140,6 @@ struct ResBuf{
 
 	uint8_t* buffers[GRK_J2K_MAXRLVLS];
 };
-
 struct IncludeTracker {
 
 	IncludeTracker(uint16_t numcomponents) : numcomps(numcomponents),
@@ -135,6 +208,7 @@ struct IncludeTracker {
 	uint64_t precincts[GRK_J2K_MAXRLVLS];
 	std::map<uint16_t, ResBuf*> *include;
 };
+
 
 
 /**
@@ -226,75 +300,6 @@ struct PacketIter {
 	/** packet sub-sampling factors */
 	uint32_t dx, dy;
 };
-
-/** @name Exported functions */
-/*@{*/
-/* ----------------------------------------------------------------------- */
-/**
- * Creates a packet iterator for compressing.
- *
- * @param	image		the image being encoded.
- * @param	cp		the coding parameters.
- * @param	tileno	index of the tile being encoded.
- * @param	t2_mode	the type of pass for generating the packet iterator
- * @param 	include	vector of include buffers, one per layer
- *
- * @return	a list of packet iterator that points to the first packet of the tile (not true).
- */
-PacketIter* pi_create_compress(const grk_image *image,
-								CodingParams *cp,
-								uint16_t tileno,
-								J2K_T2_MODE t2_mode,
-								IncludeTracker *include);
-
-/**
- * Updates the compressing parameters of the codec.
- *
- * @param	p_image		the image being encoded.
- * @param	p_cp		the coding parameters.
- * @param	tile_no	index of the tile being encoded.
- */
-void pi_update_encoding_parameters(const grk_image *p_image,
-									CodingParams *p_cp,
-									uint16_t tile_no);
-
-/**
- Modify the packet iterator for enabling tile part generation
- @param pi 		Handle to the packet iterator generated in pi_create_compress
- @param cp 		Coding parameters
- @param tileno 	Number that identifies the tile for which to list the packets
- @param pino   	packet iterator number
- @param first_poc_tile_part true for first POC tile part
- @param tppos 	The position of the tile part flag in the progression order
- @param t2_mode T2 mode
- */
-void pi_enable_tile_part_generation(PacketIter *pi,
-									CodingParams *cp,
-									uint16_t tileno,
-									uint32_t pino,
-									bool first_poc_tile_part,
-									uint32_t tppos,
-									J2K_T2_MODE t2_mode);
-
-/**
- Create a packet iterator for Decoder
- @param image Raw image for which the packets will be listed
- @param cp Coding parameters
- @param tileno Number that identifies the tile for which to list the packets
- @param include	vector of include buffers, one per layer
- @return a packet iterator that points to the first packet of the tile
- @see pi_destroy
- */
-PacketIter* pi_create_decompress(grk_image *image,
-								CodingParams *cp,
-								uint16_t tileno,
-								IncludeTracker *include);
-/**
- * Destroys a packet iterator array.
- *
- * @param	p_pi			the packet iterator array to destroy.
- */
-void pi_destroy(PacketIter *p_pi);
 
 
 /* ----------------------------------------------------------------------- */

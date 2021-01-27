@@ -463,7 +463,7 @@ typedef struct _grk_cparameters {
 	/** progression order (default GRK_LRCP) */
 	GRK_PROG_ORDER prog_order;
 	/** progressions */
-	grk_progression progression[32];
+	grk_progression progression[GRK_J2K_MAXRLVLS];
 	/** number of progression order changes (POCs), default to 0 */
 	uint32_t numpocs;
 	/** number of layers */
