@@ -1154,19 +1154,48 @@ bool PacketIter::next_rlcp(void) {
 				"total number of components %d",compno , numcomps);
 		return false;
 	}
-	for (resno = poc.resS; resno < poc.resE; resno++) {
-		for (layno = poc.layS; layno < poc.layE;	layno++) {
-			for (compno = poc.compS; compno < poc.compE;compno++) {
-				comp = comps + compno;
-				if (resno >= comp->numresolutions)
-					continue;
-				res = comp->resolutions + resno;
-				precE = (uint64_t)res->pw * res->ph;
-				if (tp_on)
-					precE = std::min<uint64_t>(precE, poc.precE);
-				for (precinctIndex = poc.precS; precinctIndex < precE;	precinctIndex++) {
-					if (update_include())
+	if (numpocs == 0) {
+		for (; resno < poc.resE; resno++) {
+			for (; layno < poc.layE;	layno++) {
+				for (; compno < poc.compE;compno++) {
+					comp = comps + compno;
+					if (resno >= comp->numresolutions)
+						continue;
+					res = comp->resolutions + resno;
+					precE = (uint64_t)res->pw * res->ph;
+					if (tp_on)
+						precE = std::min<uint64_t>(precE, poc.precE);
+					if (first && precE > poc.precS){
+						first = false;
 						return true;
+					}
+					if (++precinctIndex < precE){
+						if (precinctIndex < precE)
+							return true;
+					}
+					precinctIndex = poc.precS;
+					first = true;
+				}
+				compno = poc.compS;
+			}
+			layno = poc.layS;
+		}
+
+	}else {
+		for (resno = poc.resS; resno < poc.resE; resno++) {
+			for (layno = poc.layS; layno < poc.layE;	layno++) {
+				for (compno = poc.compS; compno < poc.compE;compno++) {
+					comp = comps + compno;
+					if (resno >= comp->numresolutions)
+						continue;
+					res = comp->resolutions + resno;
+					precE = (uint64_t)res->pw * res->ph;
+					if (tp_on)
+						precE = std::min<uint64_t>(precE, poc.precE);
+					for (precinctIndex = poc.precS; precinctIndex < precE;	precinctIndex++) {
+						if (update_include())
+							return true;
+					}
 				}
 			}
 		}
@@ -1182,20 +1211,41 @@ bool PacketIter::next_rpcl(void) {
 		poc.ty1 = ty1;
 		poc.tx1 = tx1;
 	}
-	for (resno = poc.resS; resno < poc.resE; resno++) {
-		for (y = poc.ty0; y < poc.ty1;	y += dy - (y % dy)) {
-			for (x = poc.tx0; x < poc.tx1;	x += dx - (x % dx)) {
-				for (compno = poc.compS; compno < poc.compE; compno++) {
-					if (!next_l())
-						continue;
-					for (layno = poc.layS; layno < poc.layE; layno++) {
-						if (update_include())
-							return true;
+	if (numpocs == 0) {
+		for (; resno < poc.resE; resno++) {
+			for (; y < poc.ty1;	y += dy - (y % dy)) {
+				for (; x < poc.tx1;	x += dx - (x % dx)) {
+					for (; compno < poc.compE; compno++) {
+						if (!next_l())
+							continue;
+						for (layno = poc.layS; layno < poc.layE; layno++) {
+							if (update_include())
+								return true;
+						}
+					}
+					compno = poc.compS;
+				}
+				x = poc.tx0;
+			}
+			y = poc.ty0;
+		}
+	} else {
+		for (resno = poc.resS; resno < poc.resE; resno++) {
+			for (y = poc.ty0; y < poc.ty1;	y += dy - (y % dy)) {
+				for (x = poc.tx0; x < poc.tx1;	x += dx - (x % dx)) {
+					for (compno = poc.compS; compno < poc.compE; compno++) {
+						if (!next_l())
+							continue;
+						for (layno = poc.layS; layno < poc.layE; layno++) {
+							if (update_include())
+								return true;
+						}
 					}
 				}
 			}
 		}
 	}
+
 
 	return false;
 }
