@@ -50,7 +50,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 	bool truncatedTile = false;
 	for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
 		auto current_pi = pi + pino;
-		if (current_pi->poc.prg == GRK_PROG_UNKNOWN) {
+		if (current_pi->prog.prg == GRK_PROG_UNKNOWN) {
 			pi_destroy(pi);
 			GRK_ERROR("decompress_packets: Unknown progression order");
 			return false;

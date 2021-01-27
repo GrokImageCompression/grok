@@ -154,7 +154,7 @@ struct PacketIter {
 	 */
 	bool next_cprl(void);
 
-	bool next_l(void);
+	bool generate_precinct_index(void);
 
 	/**
 	 Get next packet in precinct-component-resolution-layer order.
@@ -213,7 +213,7 @@ struct PacketIter {
 	/** true if the first packet */
 	bool first;
 	/** progression order change information */
-	 grk_poc  poc;
+	 grk_progression  prog;
 	 uint32_t numpocs;
 	/** number of components in the image */
 	uint16_t numcomps;

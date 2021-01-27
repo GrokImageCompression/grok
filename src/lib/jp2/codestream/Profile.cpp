@@ -878,7 +878,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
  * Cinema Profile
  *****************/
 
-void Profile::initialise_4K_poc(grk_poc *POC, uint8_t numres) {
+void Profile::initialise_4K_poc(grk_progression *POC, uint8_t numres) {
 	assert(numres > 0);
 	POC[0].tileno = 1;
 	POC[0].resS = 0;
@@ -990,7 +990,7 @@ void Profile::set_cinema_parameters(grk_cparameters *parameters,
 
 	/* Progression order changes for 4K, disallowed for 2K */
 	if (parameters->rsiz == GRK_PROFILE_CINEMA_4K) {
-		 Profile::initialise_4K_poc(parameters->POC,
+		 Profile::initialise_4K_poc(parameters->progression,
 				parameters->numresolution);
 		 parameters->numpocs = 2;
 	} else {

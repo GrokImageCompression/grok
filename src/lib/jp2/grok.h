@@ -369,7 +369,7 @@ typedef void (*grk_msg_callback)(const char *msg, void *client_data);
  * Progression order change
  *
  */
-typedef struct _grk_poc {
+typedef struct _grk_progression {
 	/** progression order bounds specified by POC */
 	uint16_t layS;
 	uint16_t layE;
@@ -413,7 +413,7 @@ typedef struct _grk_poc {
 	uint64_t prec_temp;
 	uint32_t tx0_temp;
 	uint32_t ty0_temp;
-} grk_poc;
+} grk_progression;
 
 /**@name RAW component compress parameters */
 /*@{*/
@@ -462,8 +462,8 @@ typedef struct _grk_cparameters {
 	uint8_t csty;
 	/** progression order (default GRK_LRCP) */
 	GRK_PROG_ORDER prog_order;
-	/** progression order changes */
-	grk_poc POC[32];
+	/** progressions */
+	grk_progression progression[32];
 	/** number of progression order changes (POCs), default to 0 */
 	uint32_t numpocs;
 	/** number of layers */

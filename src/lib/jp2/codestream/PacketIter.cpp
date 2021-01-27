@@ -436,21 +436,21 @@ PacketIter* pi_create_decompress(grk_image *image,
 	for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
 		auto piter = pi + pino;
 		auto current_poc 		= tcp->pocs + pino;
-		piter->poc.prg 	= poc ? current_poc->prg : tcp->prg; /* Progression Order #0 */
-		piter->poc.layS 	= 0;
-		piter->poc.layE 	= poc ? std::min<uint16_t>(current_poc->layE,
+		piter->prog.prg 	= poc ? current_poc->prg : tcp->prg; /* Progression Order #0 */
+		piter->prog.layS 	= 0;
+		piter->prog.layE 	= poc ? std::min<uint16_t>(current_poc->layE,
 				tcp->numlayers) : tcp->numlayers; /* Layer Index #0 (End) */
-		piter->poc.resS 	= poc ? current_poc->resS : 0; /* Resolution Level Index #0 (Start) */
-		piter->poc.resE 	= poc ? current_poc->resE : max_res; /* Resolution Level Index #0 (End) */
-		piter->poc.compS 	= poc ? current_poc->compS : 0; /* Component Index #0 (Start) */
-		piter->poc.compE 	= poc ? current_poc->compE : piter->numcomps; /* Component Index #0 (End) */
-		piter->poc.precS 	= 0;
-		piter->poc.precE = max_precincts;
+		piter->prog.resS 	= poc ? current_poc->resS : 0; /* Resolution Level Index #0 (Start) */
+		piter->prog.resE 	= poc ? current_poc->resE : max_res; /* Resolution Level Index #0 (End) */
+		piter->prog.compS 	= poc ? current_poc->compS : 0; /* Component Index #0 (Start) */
+		piter->prog.compE 	= poc ? current_poc->compE : piter->numcomps; /* Component Index #0 (End) */
+		piter->prog.precS 	= 0;
+		piter->prog.precE = max_precincts;
 
-		piter->layno = piter->poc.layS;
-		piter->resno = piter->poc.resS;
-		piter->compno = piter->poc.compS;
-		piter->precinctIndex = piter->poc.precS;
+		piter->layno = piter->prog.layS;
+		piter->resno = piter->prog.resS;
+		piter->compno = piter->prog.compS;
+		piter->precinctIndex = piter->prog.precS;
 
 	}
 
@@ -582,10 +582,10 @@ PacketIter* pi_create_compress(const grk_image *image,
 			}
 		}
 
-		piter->layno = piter->poc.layS;
-		piter->resno = piter->poc.resS;
-		piter->compno = piter->poc.compS;
-		piter->precinctIndex = piter->poc.precS;
+		piter->layno = piter->prog.layS;
+		piter->resno = piter->prog.resS;
+		piter->compno = piter->prog.compS;
+		piter->precinctIndex = piter->prog.precS;
 	}
 	grk_free(tmp_data);
 	tmp_data = nullptr;
@@ -609,49 +609,49 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 	auto poc = tcps->pocs + pino;
 	auto prog = j2k_convert_progression_order(poc->prg);
 
-	pi[pino].poc.prg = poc->prg;
+	pi[pino].prog.prg = poc->prg;
 
 	if (!(cp->m_coding_params.m_enc.m_tp_on
 			&& ((!GRK_IS_CINEMA(cp->rsiz) && !GRK_IS_IMF(cp->rsiz)	&& t2_mode == FINAL_PASS) || GRK_IS_CINEMA(cp->rsiz)|| GRK_IS_IMF(cp->rsiz)))) {
-		pi[pino].poc.layS = 0;
-		pi[pino].poc.layE = poc->tpLayE;
-		pi[pino].poc.resS = poc->tpResS;
-		pi[pino].poc.resE = poc->tpResE;
-		pi[pino].poc.compS = poc->tpCompS;
-		pi[pino].poc.compE = poc->tpCompE;
-		pi[pino].poc.precS = 0;
-		pi[pino].poc.precE = poc->tpPrecE;
-		pi[pino].poc.tx0 = poc->tp_txS;
-		pi[pino].poc.ty0 = poc->tp_tyS;
-		pi[pino].poc.tx1 = poc->tp_txE;
-		pi[pino].poc.ty1 = poc->tp_tyE;
+		pi[pino].prog.layS = 0;
+		pi[pino].prog.layE = poc->tpLayE;
+		pi[pino].prog.resS = poc->tpResS;
+		pi[pino].prog.resE = poc->tpResE;
+		pi[pino].prog.compS = poc->tpCompS;
+		pi[pino].prog.compE = poc->tpCompE;
+		pi[pino].prog.precS = 0;
+		pi[pino].prog.precE = poc->tpPrecE;
+		pi[pino].prog.tx0 = poc->tp_txS;
+		pi[pino].prog.ty0 = poc->tp_tyS;
+		pi[pino].prog.tx1 = poc->tp_txE;
+		pi[pino].prog.ty1 = poc->tp_tyE;
 	} else {
 		for (uint32_t i = tppos + 1; i < 4; i++) {
 			switch (prog[i]) {
 			case 'R':
-				pi[pino].poc.resS = poc->tpResS;
-				pi[pino].poc.resE = poc->tpResE;
+				pi[pino].prog.resS = poc->tpResS;
+				pi[pino].prog.resE = poc->tpResE;
 				break;
 			case 'C':
-				pi[pino].poc.compS = poc->tpCompS;
-				pi[pino].poc.compE = poc->tpCompE;
+				pi[pino].prog.compS = poc->tpCompS;
+				pi[pino].prog.compE = poc->tpCompE;
 				break;
 			case 'L':
-				pi[pino].poc.layS = 0;
-				pi[pino].poc.layE = poc->tpLayE;
+				pi[pino].prog.layS = 0;
+				pi[pino].prog.layE = poc->tpLayE;
 				break;
 			case 'P':
 				switch (poc->prg) {
 				case GRK_LRCP:
 				case GRK_RLCP:
-					pi[pino].poc.precS = 0;
-					pi[pino].poc.precE = poc->tpPrecE;
+					pi[pino].prog.precS = 0;
+					pi[pino].prog.precE = poc->tpPrecE;
 					break;
 				default:
-					pi[pino].poc.tx0 = poc->tp_txS;
-					pi[pino].poc.ty0 = poc->tp_tyS;
-					pi[pino].poc.tx1 = poc->tp_txE;
-					pi[pino].poc.ty1 = poc->tp_tyE;
+					pi[pino].prog.tx0 = poc->tp_txS;
+					pi[pino].prog.ty0 = poc->tp_tyS;
+					pi[pino].prog.tx1 = poc->tp_txE;
+					pi[pino].prog.ty1 = poc->tp_tyE;
 					break;
 				}
 				break;
@@ -663,20 +663,20 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 				switch (prog[i]) {
 				case 'C':
 					poc->comp_temp = poc->tpCompS;
-					pi[pino].poc.compS = poc->comp_temp;
-					pi[pino].poc.compE = poc->comp_temp + 1;
+					pi[pino].prog.compS = poc->comp_temp;
+					pi[pino].prog.compE = poc->comp_temp + 1;
 					poc->comp_temp += 1;
 					break;
 				case 'R':
 					poc->res_temp = poc->tpResS;
-					pi[pino].poc.resS = poc->res_temp;
-					pi[pino].poc.resE = poc->res_temp + 1;
+					pi[pino].prog.resS = poc->res_temp;
+					pi[pino].prog.resE = poc->res_temp + 1;
 					poc->res_temp += 1;
 					break;
 				case 'L':
 					poc->lay_temp = 0;
-					pi[pino].poc.layS = poc->lay_temp;
-					pi[pino].poc.layE = poc->lay_temp + 1;
+					pi[pino].prog.layS = poc->lay_temp;
+					pi[pino].prog.layE = poc->lay_temp + 1;
 					poc->lay_temp += 1;
 					break;
 				case 'P':
@@ -684,21 +684,21 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 					case GRK_LRCP:
 					case GRK_RLCP:
 						poc->prec_temp = 0;
-						pi[pino].poc.precS = poc->prec_temp;
-						pi[pino].poc.precE = poc->prec_temp + 1;
+						pi[pino].prog.precS = poc->prec_temp;
+						pi[pino].prog.precE = poc->prec_temp + 1;
 						poc->prec_temp += 1;
 						break;
 					default:
 						poc->tx0_temp = poc->tp_txS;
 						poc->ty0_temp = poc->tp_tyS;
-						pi[pino].poc.tx0 = poc->tx0_temp;
-						pi[pino].poc.tx1 = (poc->tx0_temp + poc->dx
+						pi[pino].prog.tx0 = poc->tx0_temp;
+						pi[pino].prog.tx1 = (poc->tx0_temp + poc->dx
 								- (poc->tx0_temp % poc->dx));
-						pi[pino].poc.ty0 = poc->ty0_temp;
-						pi[pino].poc.ty1 = (poc->ty0_temp + poc->dy
+						pi[pino].prog.ty0 = poc->ty0_temp;
+						pi[pino].prog.ty1 = (poc->ty0_temp + poc->dy
 								- (poc->ty0_temp % poc->dy));
-						poc->tx0_temp = pi[pino].poc.tx1;
-						poc->ty0_temp = pi[pino].poc.ty1;
+						poc->tx0_temp = pi[pino].prog.tx1;
+						poc->ty0_temp = pi[pino].prog.ty1;
 						break;
 					}
 					break;
@@ -710,31 +710,31 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 			for (int32_t i = (int32_t) tppos; i >= 0; i--) {
 				switch (prog[i]) {
 				case 'C':
-					pi[pino].poc.compS = poc->comp_temp - 1;
-					pi[pino].poc.compE = poc->comp_temp;
+					pi[pino].prog.compS = poc->comp_temp - 1;
+					pi[pino].prog.compE = poc->comp_temp;
 					break;
 				case 'R':
-					pi[pino].poc.resS = poc->res_temp - 1;
-					pi[pino].poc.resE = poc->res_temp;
+					pi[pino].prog.resS = poc->res_temp - 1;
+					pi[pino].prog.resE = poc->res_temp;
 					break;
 				case 'L':
-					pi[pino].poc.layS = poc->lay_temp - 1;
-					pi[pino].poc.layE = poc->lay_temp;
+					pi[pino].prog.layS = poc->lay_temp - 1;
+					pi[pino].prog.layE = poc->lay_temp;
 					break;
 				case 'P':
 					switch (poc->prg) {
 					case GRK_LRCP:
 					case GRK_RLCP:
-						pi[pino].poc.precS = poc->prec_temp - 1;
-						pi[pino].poc.precE = poc->prec_temp;
+						pi[pino].prog.precS = poc->prec_temp - 1;
+						pi[pino].prog.precE = poc->prec_temp;
 						break;
 					default:
-						pi[pino].poc.tx0 = (poc->tx0_temp - poc->dx
+						pi[pino].prog.tx0 = (poc->tx0_temp - poc->dx
 								- (poc->tx0_temp % poc->dx));
-						pi[pino].poc.tx1 = poc->tx0_temp;
-						pi[pino].poc.ty0 = (poc->ty0_temp - poc->dy
+						pi[pino].prog.tx1 = poc->tx0_temp;
+						pi[pino].prog.ty0 = (poc->ty0_temp - poc->dy
 								- (poc->ty0_temp % poc->dy));
-						pi[pino].poc.ty1 = poc->ty0_temp;
+						pi[pino].prog.ty1 = poc->ty0_temp;
 						break;
 					}
 					break;
@@ -745,16 +745,16 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 						if (poc->res_temp == poc->tpResE) {
 							if (pi_check_next_for_valid_progression(i - 1, cp, tileno, pino,prog)) {
 								poc->res_temp = poc->tpResS;
-								pi[pino].poc.resS = poc->res_temp;
-								pi[pino].poc.resE = poc->res_temp + 1;
+								pi[pino].prog.resS = poc->res_temp;
+								pi[pino].prog.resE = poc->res_temp + 1;
 								poc->res_temp += 1;
 								incr_top = 1;
 							} else {
 								incr_top = 0;
 							}
 						} else {
-							pi[pino].poc.resS = poc->res_temp;
-							pi[pino].poc.resE = poc->res_temp + 1;
+							pi[pino].prog.resS = poc->res_temp;
+							pi[pino].prog.resE = poc->res_temp + 1;
 							poc->res_temp += 1;
 							incr_top = 0;
 						}
@@ -763,16 +763,16 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 						if (poc->comp_temp == poc->tpCompE) {
 							if (pi_check_next_for_valid_progression(i - 1, cp, tileno, pino,prog)) {
 								poc->comp_temp = poc->tpCompS;
-								pi[pino].poc.compS = poc->comp_temp;
-								pi[pino].poc.compE = poc->comp_temp + 1;
+								pi[pino].prog.compS = poc->comp_temp;
+								pi[pino].prog.compE = poc->comp_temp + 1;
 								poc->comp_temp += 1;
 								incr_top = 1;
 							} else {
 								incr_top = 0;
 							}
 						} else {
-							pi[pino].poc.compS = poc->comp_temp;
-							pi[pino].poc.compE = poc->comp_temp + 1;
+							pi[pino].prog.compS = poc->comp_temp;
+							pi[pino].prog.compE = poc->comp_temp + 1;
 							poc->comp_temp += 1;
 							incr_top = 0;
 						}
@@ -781,16 +781,16 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 						if (poc->lay_temp == poc->tpLayE) {
 							if (pi_check_next_for_valid_progression(i - 1, cp, tileno, pino,prog)) {
 								poc->lay_temp = 0;
-								pi[pino].poc.layS = poc->lay_temp;
-								pi[pino].poc.layE = poc->lay_temp + 1;
+								pi[pino].prog.layS = poc->lay_temp;
+								pi[pino].prog.layE = poc->lay_temp + 1;
 								poc->lay_temp += 1;
 								incr_top = 1;
 							} else {
 								incr_top = 0;
 							}
 						} else {
-							pi[pino].poc.layS = poc->lay_temp;
-							pi[pino].poc.layE = poc->lay_temp + 1;
+							pi[pino].prog.layS = poc->lay_temp;
+							pi[pino].prog.layE = poc->lay_temp + 1;
 							poc->lay_temp += 1;
 							incr_top = 0;
 						}
@@ -802,16 +802,16 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 							if (poc->prec_temp == poc->tpPrecE) {
 								if (pi_check_next_for_valid_progression(i - 1, cp, tileno, pino,prog)) {
 									poc->prec_temp = 0;
-									pi[pino].poc.precS = poc->prec_temp;
-									pi[pino].poc.precE = poc->prec_temp + 1;
+									pi[pino].prog.precS = poc->prec_temp;
+									pi[pino].prog.precE = poc->prec_temp + 1;
 									poc->prec_temp += 1;
 									incr_top = 1;
 								} else {
 									incr_top = 0;
 								}
 							} else {
-								pi[pino].poc.precS = poc->prec_temp;
-								pi[pino].poc.precE = poc->prec_temp + 1;
+								pi[pino].prog.precS = poc->prec_temp;
+								pi[pino].prog.precE = poc->prec_temp + 1;
 								poc->prec_temp += 1;
 								incr_top = 0;
 							}
@@ -821,10 +821,10 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 								if (poc->ty0_temp >= poc->tp_tyE) {
 									if (pi_check_next_for_valid_progression(i - 1, cp, tileno,pino, prog)) {
 										poc->ty0_temp = poc->tp_tyS;
-										pi[pino].poc.ty0 = poc->ty0_temp;
-										pi[pino].poc.ty1 =
+										pi[pino].prog.ty0 = poc->ty0_temp;
+										pi[pino].prog.ty1 =
 												(uint32_t) (poc->ty0_temp + poc->dy - (poc->ty0_temp % poc->dy));
-										poc->ty0_temp = pi[pino].poc.ty1;
+										poc->ty0_temp = pi[pino].prog.ty1;
 										incr_top = 1;
 										resetX = 1;
 									} else {
@@ -832,22 +832,22 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 										resetX = 0;
 									}
 								} else {
-									pi[pino].poc.ty0 = poc->ty0_temp;
-									pi[pino].poc.ty1 = (poc->ty0_temp + poc->dy - (poc->ty0_temp % poc->dy));
-									poc->ty0_temp = pi[pino].poc.ty1;
+									pi[pino].prog.ty0 = poc->ty0_temp;
+									pi[pino].prog.ty1 = (poc->ty0_temp + poc->dy - (poc->ty0_temp % poc->dy));
+									poc->ty0_temp = pi[pino].prog.ty1;
 									incr_top = 0;
 									resetX = 1;
 								}
 								if (resetX == 1) {
 									poc->tx0_temp = poc->tp_txS;
-									pi[pino].poc.tx0 = poc->tx0_temp;
-									pi[pino].poc.tx1 = (uint32_t) (poc->tx0_temp + poc->dx - (poc->tx0_temp % poc->dx));
-									poc->tx0_temp = pi[pino].poc.tx1;
+									pi[pino].prog.tx0 = poc->tx0_temp;
+									pi[pino].prog.tx1 = (uint32_t) (poc->tx0_temp + poc->dx - (poc->tx0_temp % poc->dx));
+									poc->tx0_temp = pi[pino].prog.tx1;
 								}
 							} else {
-								pi[pino].poc.tx0 = poc->tx0_temp;
-								pi[pino].poc.tx1 = (uint32_t) (poc->tx0_temp + poc->dx - (poc->tx0_temp % poc->dx));
-								poc->tx0_temp = pi[pino].poc.tx1;
+								pi[pino].prog.tx0 = poc->tx0_temp;
+								pi[pino].prog.tx1 = (uint32_t) (poc->tx0_temp + poc->dx - (poc->tx0_temp % poc->dx));
+								poc->tx0_temp = pi[pino].prog.tx1;
 								incr_top = 0;
 							}
 							break;
@@ -955,7 +955,7 @@ PacketIter::PacketIter() : tp_on(false),
 							dx(0),
 							dy(0)
 {
-	memset(&poc, 0, sizeof(poc));
+	memset(&prog, 0, sizeof(prog));
 }
 
 PacketIter::~PacketIter(){
@@ -974,23 +974,23 @@ bool PacketIter::next_cprl(void) {
 		return false;
 	}
 
-	for (compno = poc.compS; compno < poc.compE; compno++) {
+	for (compno = prog.compS; compno < prog.compE; compno++) {
 		comp = &comps[compno];
 		dx = 0;
 		dy = 0;
 		update_dxy_for_comp(comp);
 		if (!tp_on) {
-			poc.ty0 = ty0;
-			poc.tx0 = tx0;
-			poc.ty1 = ty1;
-			poc.tx1 = tx1;
+			prog.ty0 = ty0;
+			prog.tx0 = tx0;
+			prog.ty1 = ty1;
+			prog.tx1 = tx1;
 		}
-		for (y = poc.ty0; y < poc.ty1;	y += dy - (y % dy)) {
-			for (x = poc.tx0; x < poc.tx1;	x += dx - (x % dx)) {
-				for (resno = poc.resS; resno < std::min<uint32_t>(poc.resE, comp->numresolutions); resno++) {
-					if (!next_l())
+		for (y = prog.ty0; y < prog.ty1;	y += dy - (y % dy)) {
+			for (x = prog.tx0; x < prog.tx1;	x += dx - (x % dx)) {
+				for (resno = prog.resS; resno < std::min<uint32_t>(prog.resE, comp->numresolutions); resno++) {
+					if (!generate_precinct_index())
 						continue;
-					for (layno = poc.layS; layno < poc.layE; layno++) {
+					for (layno = prog.layS; layno < prog.layE; layno++) {
 						if (update_include())
 							return true;
 					}
@@ -1002,7 +1002,7 @@ bool PacketIter::next_cprl(void) {
 	return false;
 }
 
-bool PacketIter::next_l(void){
+bool PacketIter::generate_precinct_index(void){
 	if (compno >= numcomps){
 		GRK_ERROR("Packet iterator component %d must be strictly less than "
 				"total number of components %d",compno , numcomps);
@@ -1062,20 +1062,20 @@ bool PacketIter::next_pcrl(void) {
 	}
 	update_dxy();
 	if (!tp_on) {
-		poc.ty0 = ty0;
-		poc.tx0 = tx0;
-		poc.ty1 = ty1;
-		poc.tx1 = tx1;
+		prog.ty0 = ty0;
+		prog.tx0 = tx0;
+		prog.ty1 = ty1;
+		prog.tx1 = tx1;
 	}
-	for (y = poc.ty0; y < poc.ty1;	y += dy - (y % dy)) {
-		for (x = poc.tx0; x < poc.tx1;	x += dx - (x % dx)) {
-			for (compno = poc.compS; compno < poc.compE; compno++) {
+	for (y = prog.ty0; y < prog.ty1;	y += dy - (y % dy)) {
+		for (x = prog.tx0; x < prog.tx1;	x += dx - (x % dx)) {
+			for (compno = prog.compS; compno < prog.compE; compno++) {
 				comp = &comps[compno];
-				for (resno = poc.resS; resno
-								< std::min<uint32_t>(poc.resE,comp->numresolutions); resno++) {
-					if (!next_l())
+				for (resno = prog.resS; resno
+								< std::min<uint32_t>(prog.resE,comp->numresolutions); resno++) {
+					if (!generate_precinct_index())
 						continue;
-					for (layno = poc.layS; layno < poc.layE; layno++) {
+					for (layno = prog.layS; layno < prog.layE; layno++) {
 						if (update_include())
 							return true;
 					}
@@ -1093,9 +1093,9 @@ bool PacketIter::next_lrcp(void) {
 	uint64_t precE;
 
 	if (numpocs == 0) {
-		for (; layno < poc.layE; layno++) {
-			for (; resno < poc.resE;resno++) {
-				for (; compno < poc.compE;compno++) {
+		for (; layno < prog.layE; layno++) {
+			for (; resno < prog.resE;resno++) {
+				for (; compno < prog.compE;compno++) {
 					comp = comps + compno;
 					//skip resolutions greater than current component resolution
 					if (resno >= comp->numresolutions)
@@ -1103,8 +1103,8 @@ bool PacketIter::next_lrcp(void) {
 					res = comp->resolutions + resno;
 					precE = (uint64_t)res->pw * res->ph;
 					if (tp_on)
-						precE = std::min<uint64_t>(precE, poc.precE);
-					if (first && precE > poc.precS){
+						precE = std::min<uint64_t>(precE, prog.precE);
+					if (first && precE > prog.precS){
 						first = false;
 						return true;
 					}
@@ -1112,17 +1112,17 @@ bool PacketIter::next_lrcp(void) {
 						if (precinctIndex < precE)
 							return true;
 					}
-					precinctIndex = poc.precS;
+					precinctIndex = prog.precS;
 					first = true;
 				}
-				compno = poc.compS;
+				compno = prog.compS;
 			}
-			resno = poc.resS;
+			resno = prog.resS;
 		}
 	} else {
-		for (; layno < poc.layE; layno++) {
-			for (; resno < poc.resE;resno++) {
-				for (; compno < poc.compE;compno++) {
+		for (; layno < prog.layE; layno++) {
+			for (; resno < prog.resE;resno++) {
+				for (; compno < prog.compE;compno++) {
 					comp = comps + compno;
 					//skip resolutions greater than current component resolution
 					if (resno >= comp->numresolutions)
@@ -1130,15 +1130,15 @@ bool PacketIter::next_lrcp(void) {
 					res = comp->resolutions + resno;
 					precE = (uint64_t)res->pw * res->ph;
 					if (tp_on)
-						precE = std::min<uint64_t>(precE, poc.precE);
-					for (precinctIndex = poc.precS; precinctIndex < precE;	precinctIndex++) {
+						precE = std::min<uint64_t>(precE, prog.precE);
+					for (precinctIndex = prog.precS; precinctIndex < precE;	precinctIndex++) {
 						if (update_include())
 							return true;
 					}
 				}
-				compno = poc.compS;
+				compno = prog.compS;
 			}
-			resno = poc.resS;
+			resno = prog.resS;
 		}
 	}
 	return false;
@@ -1155,17 +1155,17 @@ bool PacketIter::next_rlcp(void) {
 		return false;
 	}
 	if (numpocs == 0) {
-		for (; resno < poc.resE; resno++) {
-			for (; layno < poc.layE;	layno++) {
-				for (; compno < poc.compE;compno++) {
+		for (; resno < prog.resE; resno++) {
+			for (; layno < prog.layE;	layno++) {
+				for (; compno < prog.compE;compno++) {
 					comp = comps + compno;
 					if (resno >= comp->numresolutions)
 						continue;
 					res = comp->resolutions + resno;
 					precE = (uint64_t)res->pw * res->ph;
 					if (tp_on)
-						precE = std::min<uint64_t>(precE, poc.precE);
-					if (first && precE > poc.precS){
+						precE = std::min<uint64_t>(precE, prog.precE);
+					if (first && precE > prog.precS){
 						first = false;
 						return true;
 					}
@@ -1173,26 +1173,26 @@ bool PacketIter::next_rlcp(void) {
 						if (precinctIndex < precE)
 							return true;
 					}
-					precinctIndex = poc.precS;
+					precinctIndex = prog.precS;
 					first = true;
 				}
-				compno = poc.compS;
+				compno = prog.compS;
 			}
-			layno = poc.layS;
+			layno = prog.layS;
 		}
 
 	}else {
-		for (resno = poc.resS; resno < poc.resE; resno++) {
-			for (layno = poc.layS; layno < poc.layE;	layno++) {
-				for (compno = poc.compS; compno < poc.compE;compno++) {
+		for (resno = prog.resS; resno < prog.resE; resno++) {
+			for (layno = prog.layS; layno < prog.layE;	layno++) {
+				for (compno = prog.compS; compno < prog.compE;compno++) {
 					comp = comps + compno;
 					if (resno >= comp->numresolutions)
 						continue;
 					res = comp->resolutions + resno;
 					precE = (uint64_t)res->pw * res->ph;
 					if (tp_on)
-						precE = std::min<uint64_t>(precE, poc.precE);
-					for (precinctIndex = poc.precS; precinctIndex < precE;	precinctIndex++) {
+						precE = std::min<uint64_t>(precE, prog.precE);
+					for (precinctIndex = prog.precS; precinctIndex < precE;	precinctIndex++) {
 						if (update_include())
 							return true;
 					}
@@ -1206,37 +1206,52 @@ bool PacketIter::next_rlcp(void) {
 bool PacketIter::next_rpcl(void) {
 	update_dxy();
 	if (!tp_on) {
-		poc.ty0 = ty0;
-		poc.tx0 = tx0;
-		poc.ty1 = ty1;
-		poc.tx1 = tx1;
+		prog.ty0 = ty0;
+		prog.tx0 = tx0;
+		prog.ty1 = ty1;
+		prog.tx1 = tx1;
 	}
 	if (numpocs == 0) {
-		for (; resno < poc.resE; resno++) {
-			for (; y < poc.ty1;	y += dy - (y % dy)) {
-				for (; x < poc.tx1;	x += dx - (x % dx)) {
-					for (; compno < poc.compE; compno++) {
-						if (!next_l())
+		for (; resno < prog.resE; resno++) {
+			for (; y < prog.ty1;	y += dy - (y % dy)) {
+				for (; x < prog.tx1;	x += dx - (x % dx)) {
+					for (; compno < prog.compE; compno++) {
+						if (!generate_precinct_index()){
+							layno = prog.layS;
+							first = true;
 							continue;
-						for (layno = poc.layS; layno < poc.layE; layno++) {
+						}
+/*
+						if (first){
+							first = false;
+							return true;
+						}
+						if (++layno < poc.layE){
+							if (layno < poc.layE)
+								return true;
+						}
+						layno = poc.layS;
+						first = true;
+*/
+						for (layno = prog.layS; layno < prog.layE; layno++) {
 							if (update_include())
 								return true;
 						}
 					}
-					compno = poc.compS;
+					compno = prog.compS;
 				}
-				x = poc.tx0;
+				x = prog.tx0;
 			}
-			y = poc.ty0;
+			y = prog.ty0;
 		}
 	} else {
-		for (resno = poc.resS; resno < poc.resE; resno++) {
-			for (y = poc.ty0; y < poc.ty1;	y += dy - (y % dy)) {
-				for (x = poc.tx0; x < poc.tx1;	x += dx - (x % dx)) {
-					for (compno = poc.compS; compno < poc.compE; compno++) {
-						if (!next_l())
+		for (resno = prog.resS; resno < prog.resE; resno++) {
+			for (y = prog.ty0; y < prog.ty1;	y += dy - (y % dy)) {
+				for (x = prog.tx0; x < prog.tx1;	x += dx - (x % dx)) {
+					for (compno = prog.compS; compno < prog.compE; compno++) {
+						if (!generate_precinct_index())
 							continue;
-						for (layno = poc.layS; layno < poc.layE; layno++) {
+						for (layno = prog.layS; layno < prog.layE; layno++) {
 							if (update_include())
 								return true;
 						}
@@ -1251,7 +1266,7 @@ bool PacketIter::next_rpcl(void) {
 }
 
 bool PacketIter::next(void) {
-	switch (poc.prg) {
+	switch (prog.prg) {
 		case GRK_LRCP:
 			return next_lrcp();
 		case GRK_RLCP:

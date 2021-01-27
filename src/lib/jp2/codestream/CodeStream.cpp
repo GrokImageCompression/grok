@@ -133,7 +133,7 @@ static bool j2k_init_info(CodeStream *codeStream);
  *
  * @return      true if the pocs are valid.
  */
-static bool j2k_check_poc_val(const  grk_poc  *p_pocs, uint32_t nb_pocs,
+static bool j2k_check_poc_val(const  grk_progression  *p_pocs, uint32_t nb_pocs,
 		uint32_t nb_resolutions, uint32_t numcomps, uint32_t numlayers);
 
 /**
@@ -381,7 +381,7 @@ static bool j2k_decompress_tile(CodeStream *codeStream) {
 	return codeStream->decompress_tile();
 }
 
-bool j2k_check_poc_val(const grk_poc *p_pocs, uint32_t nb_pocs,
+bool j2k_check_poc_val(const grk_progression *p_pocs, uint32_t nb_pocs,
 		uint32_t nb_resolutions, uint32_t num_comps, uint32_t num_layers) {
 	uint32_t index, resno, compno, layno;
 	uint32_t i;
@@ -1372,7 +1372,7 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 
 	if (parameters->numpocs) {
 		/* initialisation of POC */
-		if (!j2k_check_poc_val(parameters->POC, parameters->numpocs,
+		if (!j2k_check_poc_val(parameters->progression, parameters->numpocs,
 				parameters->numresolution, image->numcomps,
 				parameters->tcp_numlayers)) {
 			GRK_ERROR("Failed to initialize POC");
@@ -1499,16 +1499,16 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 			tcp->POC = true;
 			uint32_t numpocs_tile = 0;
 			for (uint32_t i = 0; i < parameters->numpocs; i++) {
-				if (tileno + 1 == parameters->POC[i].tileno) {
+				if (tileno + 1 == parameters->progression[i].tileno) {
 					auto tcp_poc = &tcp->pocs[numpocs_tile];
 
-					tcp_poc->resS = parameters->POC[numpocs_tile].resS;
-					tcp_poc->compS = parameters->POC[numpocs_tile].compS;
-					tcp_poc->layE = parameters->POC[numpocs_tile].layE;
-					tcp_poc->resE = parameters->POC[numpocs_tile].resE;
-					tcp_poc->compE = parameters->POC[numpocs_tile].compE;
-					tcp_poc->prg1 = parameters->POC[numpocs_tile].prg1;
-					tcp_poc->tileno = parameters->POC[numpocs_tile].tileno;
+					tcp_poc->resS = parameters->progression[numpocs_tile].resS;
+					tcp_poc->compS = parameters->progression[numpocs_tile].compS;
+					tcp_poc->layE = parameters->progression[numpocs_tile].layE;
+					tcp_poc->resE = parameters->progression[numpocs_tile].resE;
+					tcp_poc->compE = parameters->progression[numpocs_tile].compE;
+					tcp_poc->prg1 = parameters->progression[numpocs_tile].prg1;
+					tcp_poc->tileno = parameters->progression[numpocs_tile].tileno;
 					numpocs_tile++;
 				}
 			}

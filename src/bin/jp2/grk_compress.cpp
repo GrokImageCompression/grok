@@ -1003,42 +1003,42 @@ static int parse_cmdline_compressor_ex(int argc,
 
 		if (pocArg.isSet()) {
 			uint32_t numpocs = 0; /* number of progression order change (POC) default 0 */
-			grk_poc *POC = nullptr; /* POC : used in case of Progression order change */
+			grk_progression *progression = nullptr; /* POC : used in case of Progression order change */
 
 			char *s = (char*) pocArg.getValue().c_str();
-			POC = parameters->POC;
+			progression = parameters->progression;
 			uint32_t resS, compS,layE,resE, compE;
 
-			while (sscanf(s, "T%u=%u,%u,%u,%u,%u,%4s", &POC[numpocs].tileno,
+			while (sscanf(s, "T%u=%u,%u,%u,%u,%u,%4s", &progression[numpocs].tileno,
 					&resS, &compS,&layE, &resE,
-					&compE, POC[numpocs].progorder) == 7) {
-				POC[numpocs].resS = (uint8_t)resS;
-				POC[numpocs].compS = (uint16_t)compS;
-				POC[numpocs].layE = (uint16_t)layE;
-				POC[numpocs].resE = (uint8_t)resE;
-				POC[numpocs].compE = (uint16_t)compE;
-				POC[numpocs].prg1 = give_progression(POC[numpocs].progorder);
+					&compE, progression[numpocs].progorder) == 7) {
+				progression[numpocs].resS = (uint8_t)resS;
+				progression[numpocs].compS = (uint16_t)compS;
+				progression[numpocs].layE = (uint16_t)layE;
+				progression[numpocs].resE = (uint8_t)resE;
+				progression[numpocs].compE = (uint16_t)compE;
+				progression[numpocs].prg1 = give_progression(progression[numpocs].progorder);
 				// sanity check on layer
-				if (POC[numpocs].layE > parameters->tcp_numlayers){
+				if (progression[numpocs].layE > parameters->tcp_numlayers){
 					spdlog::warn("End layer {} in POC {} is greater than"
 								" total number of layers {}. Truncating.",
-								POC[numpocs].layE,
+								progression[numpocs].layE,
 								numpocs,
 								parameters->tcp_numlayers );
-					POC[numpocs].layE = parameters->tcp_numlayers;
+					progression[numpocs].layE = parameters->tcp_numlayers;
 				}
-				if (POC[numpocs].resE > parameters->numresolution){
+				if (progression[numpocs].resE > parameters->numresolution){
 					spdlog::warn("POC end resolution {} cannot be greater than"
 								"the number of resolutions {}",
-								POC[numpocs].resE,
+								progression[numpocs].resE,
 								parameters->numresolution );
-						POC[numpocs].resE = parameters->numresolution-1;
+						progression[numpocs].resE = parameters->numresolution-1;
 				}
-				if (POC[numpocs].resS >= POC[numpocs].resE){
+				if (progression[numpocs].resS >= progression[numpocs].resE){
 					spdlog::error("POC beginning resolution must be strictly less than end resolution");
 					return 1;
 				}
-				if (POC[numpocs].compS >= POC[numpocs].compE){
+				if (progression[numpocs].compS >= progression[numpocs].compE){
 					spdlog::error("POC beginning component must be strictly less than end component");
 					return 1;
 				}
@@ -1609,7 +1609,7 @@ static int parse_cmdline_compressor_ex(int argc,
 	}
 
 	for (uint32_t i = 0; i < parameters->numpocs; i++) {
-		if (parameters->POC[i].prg == -1) {
+		if (parameters->progression[i].prg == -1) {
 			spdlog::error(
 					"Unrecognized progression order in option -P (POC n {}) [LRCP, RLCP, RPCL, PCRL, CPRL] ",
 					i + 1);

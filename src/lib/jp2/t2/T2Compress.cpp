@@ -47,7 +47,7 @@ bool T2Compress::compress_packets(uint16_t tile_no, uint16_t max_layers,
 	pi_enable_tile_part_generation(pi, cp, tile_no, pino, first_poc_tile_part, tp_pos, FINAL_PASS);
 
 	auto current_pi = &pi[pino];
-	if (current_pi->poc.prg == GRK_PROG_UNKNOWN) {
+	if (current_pi->prog.prg == GRK_PROG_UNKNOWN) {
 		pi_destroy(pi);
 		GRK_ERROR("compress_packets: Unknown progression order");
 		return false;
@@ -100,7 +100,7 @@ bool T2Compress::compress_packets_simulate(uint16_t tile_no, uint16_t max_layers
 			// 2. why is tile part generation initialized for each progression order change ?
 			pi_enable_tile_part_generation(pi, cp, tile_no, poc, (compno == 0), tp_pos, THRESH_CALC);
 
-			if (current_pi->poc.prg == GRK_PROG_UNKNOWN) {
+			if (current_pi->prog.prg == GRK_PROG_UNKNOWN) {
 				pi_destroy(pi);
 				GRK_ERROR(
 						"decompress_packets_simulate: Unknown progression order");
