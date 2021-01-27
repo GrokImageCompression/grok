@@ -432,18 +432,24 @@ PacketIter* pi_create_decompress(grk_image *image,
 	bool poc = tcp->POC;
 
 	for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
-		auto current_pi = pi + pino;
+		auto piter = pi + pino;
 		auto current_poc 		= tcp->pocs + pino;
-		current_pi->poc.prg 	= poc ? current_poc->prg : tcp->prg; /* Progression Order #0 */
-		current_pi->poc.layS 	= 0;
-		current_pi->poc.layE 	= poc ? std::min<uint16_t>(current_poc->layE,
+		piter->poc.prg 	= poc ? current_poc->prg : tcp->prg; /* Progression Order #0 */
+		piter->poc.layS 	= 0;
+		piter->poc.layE 	= poc ? std::min<uint16_t>(current_poc->layE,
 				tcp->numlayers) : tcp->numlayers; /* Layer Index #0 (End) */
-		current_pi->poc.resS 	= poc ? current_poc->resS : 0; /* Resolution Level Index #0 (Start) */
-		current_pi->poc.resE 	= poc ? current_poc->resE : max_res; /* Resolution Level Index #0 (End) */
-		current_pi->poc.compS 	= poc ? current_poc->compS : 0; /* Component Index #0 (Start) */
-		current_pi->poc.compE 	= poc ? current_poc->compE : current_pi->numcomps; /* Component Index #0 (End) */
-		current_pi->poc.precS 	= 0;
-		current_pi->poc.precE = max_precincts;
+		piter->poc.resS 	= poc ? current_poc->resS : 0; /* Resolution Level Index #0 (Start) */
+		piter->poc.resE 	= poc ? current_poc->resE : max_res; /* Resolution Level Index #0 (End) */
+		piter->poc.compS 	= poc ? current_poc->compS : 0; /* Component Index #0 (Start) */
+		piter->poc.compE 	= poc ? current_poc->compE : piter->numcomps; /* Component Index #0 (End) */
+		piter->poc.precS 	= 0;
+		piter->poc.precE = max_precincts;
+
+		piter->layno = piter->poc.layS;
+		piter->resno = piter->poc.resS;
+		piter->compno = piter->poc.compS;
+		piter->precinctIndex = piter->poc.precS;
+
 	}
 
 	return pi;
@@ -506,25 +512,25 @@ PacketIter* pi_create_compress(const grk_image *image,
 
 	/* set values for first packet iterator*/
 	pi->tp_on = p_cp->m_coding_params.m_enc.m_tp_on;
-	auto current_pi = pi;
+	auto piter = pi;
 
 	/* special treatment for the first packet iterator*/
-	current_pi->tx0 = tileBounds.x0;
-	current_pi->ty0 = tileBounds.y0;
-	current_pi->tx1 = tileBounds.x1;
-	current_pi->ty1 = tileBounds.y1;
-	current_pi->dx = dx_min;
-	current_pi->dy = dy_min;
-	current_pi->step_p = step_p;
-	current_pi->step_c = step_c;
-	current_pi->step_r = step_r;
-	current_pi->step_l = step_l;
+	piter->tx0 = tileBounds.x0;
+	piter->ty0 = tileBounds.y0;
+	piter->tx1 = tileBounds.x1;
+	piter->ty1 = tileBounds.y1;
+	piter->dx = dx_min;
+	piter->dy = dy_min;
+	piter->step_p = step_p;
+	piter->step_c = step_c;
+	piter->step_r = step_r;
+	piter->step_l = step_l;
 
 	/* allocation for components and number of components has already been calculated by pi_create */
-	for (uint32_t compno = 0; compno < current_pi->numcomps; ++compno) {
+	for (uint32_t compno = 0; compno < piter->numcomps; ++compno) {
 		encoding_value_ptr = tmp_ptr[compno];
 
-		auto current_comp = current_pi->comps + compno;
+		auto current_comp = piter->comps + compno;
 		auto img_comp = image->comps + compno;
 
 		current_comp->dx = img_comp->dx;
@@ -541,23 +547,23 @@ PacketIter* pi_create_compress(const grk_image *image,
 		}
 	}
 	for (uint32_t pino = 1; pino < bound; ++pino) {
-		current_pi = pi + pino;
+		piter = pi + pino;
 
-		current_pi->tx0 = tileBounds.x0;
-		current_pi->ty0 = tileBounds.y0;
-		current_pi->tx1 = tileBounds.x1;
-		current_pi->ty1 = tileBounds.y1;
-		current_pi->dx = dx_min;
-		current_pi->dy = dy_min;
-		current_pi->step_p = step_p;
-		current_pi->step_c = step_c;
-		current_pi->step_r = step_r;
-		current_pi->step_l = step_l;
+		piter->tx0 = tileBounds.x0;
+		piter->ty0 = tileBounds.y0;
+		piter->tx1 = tileBounds.x1;
+		piter->ty1 = tileBounds.y1;
+		piter->dx = dx_min;
+		piter->dy = dy_min;
+		piter->step_p = step_p;
+		piter->step_c = step_c;
+		piter->step_r = step_r;
+		piter->step_l = step_l;
 
 		/* allocation for components and number of components
 		 *  has already been calculated by pi_create */
-		for (uint32_t compno = 0; compno < current_pi->numcomps; ++compno) {
-			auto current_comp = current_pi->comps + compno;
+		for (uint32_t compno = 0; compno < piter->numcomps; ++compno) {
+			auto current_comp = piter->comps + compno;
 			auto img_comp = image->comps + compno;
 
 			encoding_value_ptr = tmp_ptr[compno];
@@ -573,6 +579,11 @@ PacketIter* pi_create_compress(const grk_image *image,
 				res->ph = *(encoding_value_ptr++);
 			}
 		}
+
+		piter->layno = piter->poc.layS;
+		piter->resno = piter->poc.resS;
+		piter->compno = piter->poc.compS;
+		piter->precinctIndex = piter->poc.precS;
 	}
 	grk_free(tmp_data);
 	tmp_data = nullptr;
@@ -929,6 +940,7 @@ PacketIter::PacketIter() : tp_on(false),
 							resno(0),
 							precinctIndex(0),
 							layno(0),
+							first(true),
 							numcomps(0),
 							comps(nullptr),
 							tx0(0),
@@ -1072,12 +1084,36 @@ bool PacketIter::next_pcrl(void) {
 	return false;
 }
 
-
 bool PacketIter::next_lrcp(void) {
 	grk_pi_comp *comp = nullptr;
 	grk_pi_resolution *res = nullptr;
 	uint64_t precE;
-
+/*
+ 	for (; layno < poc.layE; layno++) {
+		for (; resno < poc.resE;resno++) {
+			for (; compno < poc.compE;compno++) {
+				comp = comps + compno;
+				//skip resolutions greater than current component resolution
+				if (resno >= comp->numresolutions)
+					continue;
+				res = comp->resolutions + resno;
+				precE = (uint64_t)res->pw * res->ph;
+				if (tp_on)
+					precE = std::min<uint64_t>(precE, poc.precE);
+				if (first){
+					first = false;
+					return true;
+				}
+				if (++precinctIndex < precE)
+					return true;
+				precinctIndex = poc.precS;
+				first = true;
+			}
+			compno = poc.compS;
+		}
+		resno = poc.resS;
+	}
+ */
 	for (layno = poc.layS; layno < poc.layE; layno++) {
 		for (resno = poc.resS; resno < poc.resE;resno++) {
 			for (compno = poc.compS; compno < poc.compE;compno++) {
@@ -1096,8 +1132,6 @@ bool PacketIter::next_lrcp(void) {
 			}
 		}
 	}
-
-
 
 	return false;
 }
