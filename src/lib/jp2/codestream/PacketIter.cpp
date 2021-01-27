@@ -189,8 +189,10 @@ static PacketIter* pi_create(const grk_image *image,
 	uint32_t poc_bound = tcp->numpocs + 1;
 	auto pi = new PacketIter[poc_bound];
 
-	for (uint32_t i = 0; i < poc_bound; ++i)
+	for (uint32_t i = 0; i < poc_bound; ++i){
 		pi[i].includeTracker = include;
+		pi[i].numpocs = tcp->numpocs;
+	}
 	for (uint32_t pino = 0; pino < poc_bound; ++pino) {
 		auto current_pi = pi + pino;
 		current_pi->comps = (grk_pi_comp*) grk_calloc(image->numcomps,
@@ -941,6 +943,7 @@ PacketIter::PacketIter() : tp_on(false),
 							precinctIndex(0),
 							layno(0),
 							first(true),
+							numpocs(0),
 							numcomps(0),
 							comps(nullptr),
 							tx0(0),
@@ -1088,51 +1091,56 @@ bool PacketIter::next_lrcp(void) {
 	grk_pi_comp *comp = nullptr;
 	grk_pi_resolution *res = nullptr;
 	uint64_t precE;
-/*
- 	for (; layno < poc.layE; layno++) {
-		for (; resno < poc.resE;resno++) {
-			for (; compno < poc.compE;compno++) {
-				comp = comps + compno;
-				//skip resolutions greater than current component resolution
-				if (resno >= comp->numresolutions)
-					continue;
-				res = comp->resolutions + resno;
-				precE = (uint64_t)res->pw * res->ph;
-				if (tp_on)
-					precE = std::min<uint64_t>(precE, poc.precE);
-				if (first){
-					first = false;
-					return true;
-				}
-				if (++precinctIndex < precE)
-					return true;
-				precinctIndex = poc.precS;
-				first = true;
-			}
-			compno = poc.compS;
-		}
-		resno = poc.resS;
-	}
- */
-	for (layno = poc.layS; layno < poc.layE; layno++) {
-		for (resno = poc.resS; resno < poc.resE;resno++) {
-			for (compno = poc.compS; compno < poc.compE;compno++) {
-				comp = comps + compno;
-				//skip resolutions greater than current component resolution
-				if (resno >= comp->numresolutions)
-					continue;
-				res = comp->resolutions + resno;
-				precE = (uint64_t)res->pw * res->ph;
-				if (tp_on)
-					precE = std::min<uint64_t>(precE, poc.precE);
-				for (precinctIndex = poc.precS; precinctIndex < precE;	precinctIndex++) {
-					if (update_include())
-						return true;
-				}
-			}
-		}
-	}
 
+	if (numpocs == 0) {
+		for (; layno < poc.layE; layno++) {
+			for (; resno < poc.resE;resno++) {
+				for (; compno < poc.compE;compno++) {
+					comp = comps + compno;
+					//skip resolutions greater than current component resolution
+					if (resno >= comp->numresolutions)
+						continue;
+					res = comp->resolutions + resno;
+					precE = (uint64_t)res->pw * res->ph;
+					if (tp_on)
+						precE = std::min<uint64_t>(precE, poc.precE);
+					if (first && precE > poc.precS){
+						first = false;
+						return true;
+					}
+					if (++precinctIndex < precE){
+						if (precinctIndex < precE)
+							return true;
+					}
+					precinctIndex = poc.precS;
+					first = true;
+				}
+				compno = poc.compS;
+			}
+			resno = poc.resS;
+		}
+	} else {
+		for (; layno < poc.layE; layno++) {
+			for (; resno < poc.resE;resno++) {
+				for (; compno < poc.compE;compno++) {
+					comp = comps + compno;
+					//skip resolutions greater than current component resolution
+					if (resno >= comp->numresolutions)
+						continue;
+					res = comp->resolutions + resno;
+					precE = (uint64_t)res->pw * res->ph;
+					if (tp_on)
+						precE = std::min<uint64_t>(precE, poc.precE);
+					for (precinctIndex = poc.precS; precinctIndex < precE;	precinctIndex++) {
+						if (update_include())
+							return true;
+					}
+				}
+				compno = poc.compS;
+			}
+			resno = poc.resS;
+		}
+	}
 	return false;
 }
 

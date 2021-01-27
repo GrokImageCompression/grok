@@ -214,6 +214,7 @@ struct PacketIter {
 	bool first;
 	/** progression order change information */
 	 grk_poc  poc;
+	 uint32_t numpocs;
 	/** number of components in the image */
 	uint16_t numcomps;
 	/** Components*/
