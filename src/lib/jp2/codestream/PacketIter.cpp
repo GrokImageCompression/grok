@@ -974,7 +974,7 @@ bool PacketIter::next_cprl(void) {
 		return false;
 	}
 
-	for (compno = prog.compS; compno < prog.compE; compno++) {
+	for (; compno < prog.compE; compno++) {
 		comp = &comps[compno];
 		dx = 0;
 		dy = 0;
@@ -985,9 +985,9 @@ bool PacketIter::next_cprl(void) {
 			prog.ty1 = ty1;
 			prog.tx1 = tx1;
 		}
-		for (y = prog.ty0; y < prog.ty1;	y += dy - (y % dy)) {
-			for (x = prog.tx0; x < prog.tx1;	x += dx - (x % dx)) {
-				for (resno = prog.resS; resno < std::min<uint32_t>(prog.resE, comp->numresolutions); resno++) {
+		for (; y < prog.ty1;	y += dy - (y % dy)) {
+			for (; x < prog.tx1;	x += dx - (x % dx)) {
+				for (; resno < std::min<uint32_t>(prog.resE, comp->numresolutions); resno++) {
 					if (!generate_precinct_index())
 						continue;
 					for (layno = prog.layS; layno < prog.layE; layno++) {
@@ -995,8 +995,11 @@ bool PacketIter::next_cprl(void) {
 							return true;
 					}
 				}
+				resno = prog.resS;
 			}
+			x = prog.tx0;
 		}
+		y = prog.ty0;
 	}
 
 	return false;
@@ -1108,10 +1111,8 @@ bool PacketIter::next_lrcp(void) {
 						first = false;
 						return true;
 					}
-					if (++precinctIndex < precE){
-						if (precinctIndex < precE)
-							return true;
-					}
+					if (++precinctIndex < precE)
+						return true;
 					precinctIndex = prog.precS;
 					first = true;
 				}
@@ -1169,10 +1170,8 @@ bool PacketIter::next_rlcp(void) {
 						first = false;
 						return true;
 					}
-					if (++precinctIndex < precE){
-						if (precinctIndex < precE)
-							return true;
-					}
+					if (++precinctIndex < precE)
+						return true;
 					precinctIndex = prog.precS;
 					first = true;
 				}
