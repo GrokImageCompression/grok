@@ -18,7 +18,7 @@ matrix:
     sudo: required
     compiler: g++-10
     env: 
-      - GROK_CI_BUILD_CONFIGURATION=Release GROK_CI_INCLUDE_IF_DEPLOY=1 GROK_NONCOMMERCIAL=1
+      - GROK_CI_BUILD_CONFIGURATION=Release GROK_CI_INCLUDE_IF_DEPLOY=1
       - MATRIX_EVAL="CC=gcc-10 && CXX=g++-10"
     addons:
       apt:
