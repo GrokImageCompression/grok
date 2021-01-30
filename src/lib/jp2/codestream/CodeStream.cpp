@@ -2594,22 +2594,7 @@ bool CodeStream::decompress_tile() {
 	if (!decompress_tile_t2t1(tileProcessor, false))
 		goto cleanup;
 
-
-	if (tileProcessor->m_tile_index == tile_index_to_decompress) {
-		/* move into the code stream to the first SOT (FIXME or not move?)*/
-		if (!(m_stream->seek(cstr_index->main_head_end + 2))) {
-			GRK_ERROR("Problem with seek function");
-			goto cleanup;
-		}
-	} else {
-		GRK_ERROR(
-				"Tile read, decompressed and updated is not the desired one (%u vs %u).",
-				tileProcessor->m_tile_index + 1, tile_index_to_decompress + 1);
-		goto cleanup;
-	}
-
 	rc = true;
-
 cleanup:
 	for(auto &pr : m_processors){
 		delete pr.second;
