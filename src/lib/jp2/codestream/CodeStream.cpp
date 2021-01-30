@@ -2143,41 +2143,6 @@ bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 		if (!m_decompressor.m_skip_tile_data) {
 			if (!m_tileProcessor->prepare_sod_decoding(this))
 				return false;
-
-/*
-			if (m_decompressor.last_tile_part_was_read
-					&& !m_nb_tile_parts_correction_checked) {
-				//Issue 254
-				bool correction_needed;
-
-				m_nb_tile_parts_correction_checked = true;
-				auto cache = m_curr_marker;
-				auto tp = m_tileProcessor;
-				if (!need_nb_tile_parts_correction(&correction_needed)) {
-					GRK_ERROR("j2k_apply_nb_tile_parts_correction error");
-					goto fail;
-				}
-				if (correction_needed) {
-					uint32_t nb_tiles = m_cp.t_grid_width
-							* m_cp.t_grid_height;
-
-					m_decompressor.last_tile_part_was_read = false;
-					m_nb_tile_parts_correction = 1;
-					// correct tiles
-					for (uint32_t tile_no = 0U; tile_no < nb_tiles; ++tile_no) {
-						if (m_cp.tcps[tile_no].m_nb_tile_parts != 0U) {
-							m_cp.tcps[tile_no].m_nb_tile_parts =
-									(uint8_t) (m_cp.tcps[tile_no].m_nb_tile_parts
-											+ 1);
-						}
-					}
-					GRK_WARN("Non conformant code stream TPsot==TNsot.");
-				} else {
-					m_tileProcessor = tp;
-				}
-				m_curr_marker = cache;
-			}
-*/
 			if (!m_decompressor.last_tile_part_was_read) {
 				if (!read_marker()){
 					m_decompressor.m_state = J2K_DEC_STATE_NO_EOC;
@@ -2534,30 +2499,23 @@ bool CodeStream::decompress_tile() {
 
 	/* Move into the code stream to the first SOT used to decompress the desired tile */
 	uint16_t tile_index_to_decompress =	(uint16_t) (tileIndexToDecode());
-	if (cstr_index->tile_index) {
-		if (cstr_index->tile_index->tp_index) {
-			if (!cstr_index->tile_index[tile_index_to_decompress].nb_tps) {
-				/* the index for this tile has not been built,
-				 *  so move to the last SOT read */
-				if (!(m_stream->seek(
-						m_decompressor.m_last_sot_read_pos
-								+ 2))) {
-					GRK_ERROR("Problem with seek function");
-					return false;
-				}
-			} else {
-				if (!(m_stream->seek(
-						cstr_index->tile_index[tile_index_to_decompress].tp_index[0].start_pos
-								+ 2))) {
-					GRK_ERROR("Problem with seek function");
-					return false;
-				}
+	if (cstr_index->tile_index && cstr_index->tile_index->tp_index) {
+		if (!cstr_index->tile_index[tile_index_to_decompress].nb_tps) {
+			/* the index for this tile has not been built,
+			 *  so move to the last SOT read */
+			if (!(m_stream->seek(m_decompressor.m_last_sot_read_pos	+ 2))) {
+				GRK_ERROR("Problem with seek function");
+				return false;
 			}
-			/* Special case if we have previously read the EOC marker (if the previous tile decompressed is the last ) */
-			if (m_decompressor.m_state == J2K_DEC_STATE_EOC)
-				m_decompressor.m_state =
-						J2K_DEC_STATE_TPH_SOT;
+		} else {
+			if (!(m_stream->seek(cstr_index->tile_index[tile_index_to_decompress].tp_index[0].start_pos	+ 2))) {
+				GRK_ERROR("Problem with seek function");
+				return false;
+			}
 		}
+		/* Special case if we have previously read the EOC marker (if the previous tile decompressed is the last ) */
+		if (m_decompressor.m_state == J2K_DEC_STATE_EOC)
+			m_decompressor.m_state = J2K_DEC_STATE_TPH_SOT;
 	}
 
 	// if we have a TLM marker, then we can skip tiles until
@@ -3100,78 +3058,6 @@ bool CodeStream::compress_validation() {
 	/* PARAMETER VALIDATION */
 	return is_valid;
 }
-
-
-bool CodeStream::need_nb_tile_parts_correction(bool *p_correction_needed) {
-	uint8_t header_data[10];
-	auto stream = getStream();
-	uint8_t current_part, num_parts;
-
-	/* initialize to no correction needed */
-	*p_correction_needed = false;
-
-	/* We can't do much in this case, seek is needed */
-	if (!stream->has_seek())
-		return true;
-
-	uint64_t stream_pos_backup = stream->tell();
-	while (true) {
-		if (!read_marker())
-			/* assume all is OK */
-			return stream->seek(stream_pos_backup);
-
-		if (m_curr_marker != J2K_MS_SOT)
-			/* assume all is OK */
-			return stream->seek(stream_pos_backup);
-
-		uint16_t marker_size;
-		if (!read_short(&marker_size)) {
-			GRK_ERROR("Stream too short");
-			return false;
-		}
-		/* Check marker size for SOT Marker */
-		if (marker_size != 10) {
-			GRK_ERROR("Inconsistent marker size");
-			return false;
-		}
-		marker_size = (uint16_t)(marker_size - 2); /* Subtract the size of the marker ID already read */
-
-		if (stream->read(header_data, marker_size) != marker_size) {
-			GRK_ERROR("Stream too short");
-			return false;
-		}
-
-		uint16_t read_tile_no;
-		uint32_t tot_len;
-		SOTMarker sotMarker(this);
-		auto cachedProcessor = m_tileProcessor;
-		if (!sotMarker.get_sot_values(header_data, marker_size, &read_tile_no,
-				&tot_len, &current_part, &num_parts))
-			return false;
-
-
-		/* we found what we were looking for */
-		if (read_tile_no == cachedProcessor->m_tile_index)
-			break;
-
-		if (tot_len < 14U) {
-			/* last SOT until EOC or invalid Psot value */
-			/* assume all is OK */
-			return stream->seek(stream_pos_backup);
-		}
-		tot_len -= sot_marker_segment_len;
-		/* look for next SOT marker */
-		if (!stream->skip((int64_t) (tot_len)))
-			return stream->seek(stream_pos_backup);
-	}
-
-	/* check for correction */
-	if (num_parts && (current_part == num_parts))
-		*p_correction_needed = true;
-
-	return stream->seek(stream_pos_backup);
-}
-
 
 bool CodeStream::mct_validation(void) {
 	bool is_valid = true;

@@ -1398,8 +1398,7 @@ bool TileProcessor::prepare_sod_decoding(CodeStream *codeStream) {
 	// note: we subtract 2 to account for SOD marker
 	auto tcp = codeStream->get_current_decode_tcp();
 	if (codeStream->m_decompressor.m_last_tile_part_in_code_stream) {
-		tile_part_data_length =
-				(uint32_t) (m_stream->get_number_byte_left() - 2);
+		tile_part_data_length =	(uint32_t) (m_stream->get_number_byte_left() - 2);
 	} else {
 		if (tile_part_data_length >= 2)
 			tile_part_data_length -= 2;
@@ -1426,7 +1425,7 @@ bool TileProcessor::prepare_sod_decoding(CodeStream *codeStream) {
 		}
 	}
 	/* Index */
-	grk_codestream_index *cstr_index = codeStream->cstr_index;
+	auto cstr_index = codeStream->cstr_index;
 	if (cstr_index) {
 		uint64_t current_pos = m_stream->tell();
 		if (current_pos < 2) {
