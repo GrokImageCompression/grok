@@ -23,8 +23,6 @@
 
 namespace grk {
 
-
-
 struct j2k_prog_order {
 	GRK_PROG_ORDER enum_prog;
 	char str_prog[5];
@@ -119,7 +117,6 @@ static bool j2k_end_encoding(CodeStream *codeStream);
 static bool j2k_init_info(CodeStream *codeStream);
 
 
-
 /**
  * Checks the progression order changes values. Tells of the poc given as input are valid.
  * A nice message is outputted at errors.
@@ -190,13 +187,11 @@ static void lupInvert(float *pSrcMatrix, float *pDestMatrix, uint32_t nb_compo,
  * @param n size of the matrix
  * @return true if the inversion is successful, false if the matrix is singular.
  */
-static bool matrix_inversion_f(float *pSrcMatrix, float *pDestMatrix,
-		uint32_t n);
+static bool matrix_inversion_f(float *pSrcMatrix, float *pDestMatrix,uint32_t n);
 
 grk_image *  grk_image_create0(void) {
 	return (grk_image * ) grk_calloc(1, sizeof(grk_image));
 }
-
 bool grk_image_single_component_data_alloc(
 		 grk_image_comp  *comp) {
 	if (!comp)
@@ -216,7 +211,6 @@ bool grk_image_single_component_data_alloc(
 	comp->owns_data = true;
 	return true;
 }
-
 
 /**
  * Copy only header of image and its component header (no data are copied)
@@ -285,8 +279,7 @@ static void grk_copy_image_header(const grk_image *image_src,grk_image *image_de
 	return;
 }
 
-static bool update_image_dimensions(grk_image* image, uint32_t reduce)
-{
+static bool update_image_dimensions(grk_image* image, uint32_t reduce){
     for (uint32_t compno = 0; compno < image->numcomps; ++compno) {
         auto img_comp = image->comps + compno;
         uint32_t temp1,temp2;
@@ -353,12 +346,10 @@ static void transfer_image_data(grk_image *src, grk_image *dest) {
 	}
 }
 
-
 static bool j2k_decompress_validation(CodeStream *codeStream) {
 
 	return codeStream->decompress_validation();
 }
-
 static bool j2k_read_header_procedure(CodeStream *codeStream) {
 	bool rc = false;
 	try {
@@ -369,18 +360,12 @@ static bool j2k_read_header_procedure(CodeStream *codeStream) {
 	}
 	return rc;
 }
-
 static bool j2k_decompress_tiles(CodeStream *codeStream) {
 	return codeStream->decompress_tiles();
 }
-
-/*
- * Read and decompress one tile.
- */
 static bool j2k_decompress_tile(CodeStream *codeStream) {
 	return codeStream->decompress_tile();
 }
-
 bool j2k_check_poc_val(const grk_progression *p_pocs, uint32_t nb_pocs,
 		uint32_t nb_resolutions, uint32_t num_comps, uint32_t num_layers) {
 	uint32_t index, resno, compno, layno;
@@ -398,15 +383,11 @@ bool j2k_check_poc_val(const grk_progression *p_pocs, uint32_t nb_pocs,
 	for (i = 0; i < nb_pocs; ++i) {
 		index = step_r * p_pocs->resS;
 		/* take each resolution for each poc */
-		for (resno = p_pocs->resS;
-				resno < std::min<uint32_t>(p_pocs->resE, nb_resolutions);
-				++resno) {
+		for (resno = p_pocs->resS;	resno < std::min<uint32_t>(p_pocs->resE, nb_resolutions);++resno) {
 			uint32_t res_index = index + p_pocs->compS * step_c;
 
 			/* take each comp of each resolution for each poc */
-			for (compno = p_pocs->compS;
-					compno < std::min<uint32_t>(p_pocs->compE, num_comps);
-					++compno) {
+			for (compno = p_pocs->compS;compno < std::min<uint32_t>(p_pocs->compE, num_comps);	++compno) {
 				uint32_t comp_index = res_index + 0 * step_l;
 
 				/* and finally take each layer of each res of ... */
@@ -439,16 +420,12 @@ bool j2k_check_poc_val(const grk_progression *p_pocs, uint32_t nb_pocs,
 
 	return !loss;
 }
-
-
 static bool j2k_mct_validation(CodeStream *codeStream) {
 	return codeStream->mct_validation();
 }
-
 static bool j2k_compress_validation(CodeStream *codeStream) {
 	return codeStream->compress_validation();
 }
-
 bool j2k_init_mct_encoding(TileCodingParams *p_tcp, grk_image *p_image) {
 	uint32_t i;
 	uint32_t indix = 1;
@@ -597,7 +574,6 @@ static bool j2k_end_encoding(CodeStream *codeStream) {
 	(void) codeStream;
 	return true;
 }
-
 static bool j2k_init_info(CodeStream *codeStream) {
 	assert(codeStream);
 
@@ -609,20 +585,12 @@ static bool j2k_init_info(CodeStream *codeStream) {
 static bool j2k_get_end_header(CodeStream *codeStream) {
 	return codeStream->get_end_header();
 }
-
-/**
- * @param codeStream 	code stream
- *
- * @return
- */
 static bool j2k_copy_default_tcp(CodeStream *codeStream) {
 	return codeStream->copy_default_tcp();
 }
-
 static bool j2k_update_rates(CodeStream *codeStream) {
 	return codeStream->update_rates();
 }
-
 char* j2k_convert_progression_order(GRK_PROG_ORDER prg_order) {
 	j2k_prog_order *po;
 	for (po = j2k_prog_order_list; po->enum_prog != -1; po++) {
@@ -632,7 +600,6 @@ char* j2k_convert_progression_order(GRK_PROG_ORDER prg_order) {
 
 	return po->str_prog;
 }
-
 static uint64_t j2k_get_num_tp(CodingParams *cp, uint32_t pino,	uint16_t tileno) {
 	uint64_t num_tp = 1;
 
@@ -720,7 +687,6 @@ static bool j2k_calculate_tp(CodingParams *cp, uint16_t *p_nb_tile_parts,
 	return true;
 }
 
-
 /*
  ==========================================================
  Matric inversion interface
@@ -757,7 +723,6 @@ static bool matrix_inversion_f(float *pSrcMatrix, float *pDestMatrix,
 
 	return true;
 }
-
 
 static bool lupDecompose(float *matrix, uint32_t *permutations,
 		float *p_swap_area, uint32_t nb_compo) {
@@ -942,8 +907,7 @@ CodeStream::CodeStream(bool decompress, BufferedStream *stream) : m_input_image(
 																wholeTileDecompress(true),
 																current_plugin_tile(nullptr),
 																 m_nb_tile_parts_correction_checked(false),
-																 m_nb_tile_parts_correction(0)
-{
+																 m_nb_tile_parts_correction(0){
     memset(&m_cp, 0 , sizeof(CodingParams));
     if (decompress){
 		m_decompressor.m_default_tcp = new TileCodingParams();
@@ -980,8 +944,6 @@ CodeStream::CodeStream(bool decompress, BufferedStream *stream) : m_input_image(
     {J2K_MS_MCC, new marker_handler(J2K_MS_MCC,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mcc )},
     {J2K_MS_MCO, new marker_handler(J2K_MS_MCO,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mco )}
     };
-
-
 }
 CodeStream::~CodeStream(){
 	delete m_decompressor.m_default_tcp;
@@ -989,10 +951,9 @@ CodeStream::~CodeStream(){
 	j2k_destroy_cstr_index(cstr_index);
 	grk_image_destroy(m_input_image);
 	grk_image_destroy(m_output_image);
-	grk_free(m_marker_scratch);
-	for(auto &pr : m_processors){
+	delete[] m_marker_scratch;
+	for(auto &pr : m_processors)
 		delete pr.second;
-	}
 	for (auto &val : marker_map)
 		delete val.second;
 }
@@ -1019,14 +980,12 @@ TileProcessor* CodeStream::currentProcessor(void){
 	return m_tileProcessor;
 }
 
-
 /** Main header reading function handler */
 bool CodeStream::read_header(grk_header_info  *header_info, grk_image **p_image){
 	/* create an empty image header */
 	m_input_image = grk_image_create0();
-	if (!m_input_image) {
+	if (!m_input_image)
 		return false;
-	}
 
 	/* customization of the validation */
 	m_validation_list.push_back((j2k_procedure) j2k_decompress_validation);
@@ -1087,9 +1046,8 @@ bool CodeStream::read_header(grk_header_info  *header_info, grk_image **p_image)
 		}
 	}
 	*p_image = grk_image_create0();
-	if (!(*p_image)) {
+	if (!(*p_image))
 		return false;
-	}
 	/* Copy code stream image information to the output image */
 	grk_copy_image_header(m_input_image, *p_image);
 	if (cstr_index) {
@@ -1229,12 +1187,9 @@ bool CodeStream::start_compress(void){
 }
 
 bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
-
-	CodingParams *cp = nullptr;
-
-	if (!parameters || !image) {
+	if (!parameters || !image)
 		return false;
-	}
+
 	//sanity check on image
 	if (image->numcomps < 1 || image->numcomps > max_num_components) {
 		GRK_ERROR(
@@ -1385,7 +1340,7 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 	 */
 
 	/* keep a link to cp so that we can destroy it later in j2k_destroy_compress */
-	cp = &(m_cp);
+	auto cp = &(m_cp);
 
 	/* set default values for cp */
 	cp->t_grid_width = 1;
@@ -1687,8 +1642,7 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 }
 
 bool CodeStream::compress(grk_plugin_tile* tile){
-	uint32_t nb_tiles = (uint32_t) m_cp.t_grid_height
-			* m_cp.t_grid_width;
+	uint32_t nb_tiles = (uint32_t) m_cp.t_grid_height* m_cp.t_grid_width;
 	if (nb_tiles > max_num_tiles) {
 		GRK_ERROR("Number of tiles %u is greater than %u max tiles "
 				"allowed by the standard.", nb_tiles, max_num_tiles);
@@ -1772,14 +1726,12 @@ cleanup:
 }
 
 bool CodeStream::compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t uncompressed_data_size){
-
 	if (!p_data)
 		return false;
 	bool rc = false;
 
 	m_tileProcessor = new TileProcessor(this,m_stream);
 	m_tileProcessor->m_tile_index = tile_index;
-
 
 	if (!m_tileProcessor->pre_write_tile()) {
 		GRK_ERROR("Error while pre_write_tile with tile index = %u",
@@ -1806,7 +1758,6 @@ cleanup:
 }
 
 bool CodeStream::end_compress(void){
-
 	/* customization of the compressing */
 	m_procedure_list.push_back((j2k_procedure) j2k_write_eoc);
 	if (m_cp.m_coding_params.m_enc.writeTLM)
@@ -1818,7 +1769,6 @@ bool CodeStream::end_compress(void){
 }
 
 bool CodeStream::set_decompress_window(grk_image *output_image,grk_rect_u32 window) {
-
 	auto cp = &(m_cp);
 	auto image = m_input_image;
 	auto decompressor = &m_decompressor;
@@ -1904,71 +1854,39 @@ bool CodeStream::set_decompress_window(grk_image *output_image,grk_rect_u32 wind
 	return true;
 }
 
-
 void CodeStream::dump(uint32_t flag, FILE *out_stream){
 	j2k_dump(this, flag, out_stream);
 }
 
 grk_codestream_info_v2* CodeStream::get_cstr_info(void){
-
 	return j2k_get_cstr_info(this);
 }
 
 grk_codestream_index* CodeStream::get_cstr_index(void){
-
 	return j2k_get_cstr_index(this);
 }
 
-
-
 bool CodeStream::process_marker(const marker_handler* marker_handler, uint16_t marker_size){
-
 	if (!m_marker_scratch) {
-		m_marker_scratch = (uint8_t*) grk_calloc(1, default_header_size);
-		if (!m_marker_scratch)
-			return false;
+		m_marker_scratch = new uint8_t[default_header_size];
 		m_marker_scratch_size = default_header_size;
 	}
-
-	// need more scratch memory
 	if (marker_size > m_marker_scratch_size) {
-		uint8_t *new_header_data = nullptr;
 		if (marker_size > m_stream->get_number_byte_left()) {
 			GRK_ERROR("Marker size inconsistent with stream length");
 			return false;
 		}
-		new_header_data = (uint8_t*) grk_realloc(
-				m_marker_scratch, marker_size);
-		if (!new_header_data) {
-			grk_free(m_marker_scratch);
-			m_marker_scratch = nullptr;
-			m_marker_scratch_size = 0;
-			GRK_ERROR("Not enough memory to read header");
-			return false;
-		}
-		m_marker_scratch = new_header_data;
-		m_marker_scratch_size = marker_size;
+		delete[] m_marker_scratch;
+		m_marker_scratch = new uint8_t[2 * marker_size];
+		m_marker_scratch_size = 2 * marker_size;
 	}
-
-	if (m_stream->read(m_marker_scratch, marker_size)
-			!= marker_size) {
+	if (m_stream->read(m_marker_scratch, marker_size) != marker_size) {
 		GRK_ERROR("Stream too short");
 		return false;
 	}
 
-	/* Handle the marker */
-	if (!marker_handler->callback) {
-		/* See issue #175 */
-		GRK_ERROR("Not sure how that happened.");
-		return false;
-	}
-	if (!(*(marker_handler->callback))(this,	m_marker_scratch, marker_size)) {
-		return false;
-	}
-
-	return true;
+	return (*(marker_handler->callback))(this,	m_marker_scratch, marker_size);
 }
-
 
 bool CodeStream::isDecodingTilePartHeader() {
 	return (m_decompressor.m_state & J2K_DEC_STATE_TPH);
@@ -1980,7 +1898,6 @@ TileCodingParams* CodeStream::get_current_decode_tcp() {
 			m_cp.tcps + tileProcessor->m_tile_index :
 			m_decompressor.m_default_tcp;
 }
-
 
 bool CodeStream::read_short(uint16_t *val){
 	uint8_t temp[2];
@@ -2034,7 +1951,6 @@ const marker_handler* CodeStream::get_marker_handler(	uint16_t id) {
 	}
 }
 
-
 bool CodeStream::read_marker(){
 	if (!read_short(&m_curr_marker))
 		return false;
@@ -2048,7 +1964,6 @@ bool CodeStream::read_marker(){
 
 	return true;
 }
-
 
 bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 	if (m_decompressor.m_state == J2K_DEC_STATE_EOC) {
@@ -2113,30 +2028,24 @@ bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 					return false;
 				}
 			}
-
-			// Cache position of last SOT marker read
 			if (marker_handler->id == J2K_MS_SOT) {
 				uint64_t sot_pos = m_stream->tell() - marker_size - grk_marker_length;
 				if (sot_pos > m_decompressor.m_last_sot_read_pos)
 					m_decompressor.m_last_sot_read_pos = sot_pos;
-			}
-
-			if (m_decompressor.m_skip_tile_data) {
-				// Skip the rest of the tile part
-				if (!m_stream->skip(m_tileProcessor->tile_part_data_length)) {
-					GRK_ERROR("Stream too short");
-					return false;
+				if (m_decompressor.m_skip_tile_data) {
+					if (!m_stream->skip(m_tileProcessor->tile_part_data_length)) {
+						GRK_ERROR("Stream too short");
+						return false;
+					}
+					break;
 				}
-				break;
-			} else {
-				if (!read_marker())
-					return false;
 			}
+			if (!read_marker())
+				return false;
 		}
 
 		// no bytes left and no EOC marker : we're done!
-		if (!m_stream->get_number_byte_left()
-				&& m_decompressor.m_state == J2K_DEC_STATE_NO_EOC)
+		if (!m_stream->get_number_byte_left() && m_decompressor.m_state == J2K_DEC_STATE_NO_EOC)
 			break;
 
 		/* If we didn't skip data before, we need to read the SOD marker*/
@@ -2180,13 +2089,9 @@ bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 			return false;
 		}
 	}
-
-
-
 	// do QCD marker quantization step size sanity check
 	// see page 553 of Taubman and Marcellin for more details on this check
 	if (tcp->main_qcd_qntsty != J2K_CCP_QNTSTY_SIQNT) {
-
 		//1. Check main QCD
 		uint8_t maxDecompositions = 0;
 		for (uint32_t k = 0; k < numComps; ++k) {
@@ -2211,7 +2116,6 @@ bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 					tcp->main_qcd_numStepSizes, maxDecompositions);
 			return false;
 		}
-
 		//2. Check Tile QCD
 		TileComponentCodingParams *qcd_comp = nullptr;
 		for (uint32_t k = 0; k < numComps; ++k) {
@@ -2261,7 +2165,6 @@ bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 			return true;
 		}
 	}
-
 	if (!j2k_merge_ppt(
 			m_cp.tcps + m_tileProcessor->m_tile_index)) {
 		GRK_ERROR("Failed to merge PPT data");
@@ -2387,11 +2290,9 @@ bool CodeStream::read_header_procedure(void) {
 				return false;
 			}
 		}
-
 		// read next marker
 		if (!read_marker())
 			return false;
-
 	}
 	if (!has_siz) {
 		GRK_ERROR("required SIZ marker not found in main header");
@@ -2416,7 +2317,6 @@ bool CodeStream::read_header_procedure(void) {
 	return true;
 }
 
-
 bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor, bool multi_tile) {
 	auto decompressor = &m_decompressor;
 	uint16_t tile_index = tileProcessor->m_tile_index;
@@ -2425,31 +2325,24 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor, bool multi_t
 		tcp->destroy();
 		return false;
 	}
-
 	if (!tileProcessor->decompress_tile_t2(tcp->m_tile_data)) {
 		tcp->destroy();
 		decompressor->m_state |= J2K_DEC_STATE_ERR;
 		return false;
 	}
-
-
 	if (tileProcessor->m_corrupt_packet){
 		GRK_WARN("Tile %d was not decompressed", tileProcessor->m_tile_index+1);
 		return true;
 	}
-
 	bool rc = true;
 	bool doPost = !tileProcessor->current_plugin_tile
 			|| (tileProcessor->current_plugin_tile->decompress_flags
 					& GRK_DECODE_POST_T1);
-
-	// T1 decompress of previous tile
 	if (!tileProcessor->decompress_tile_t1()) {
 		tcp->destroy();
 		decompressor->m_state |= J2K_DEC_STATE_ERR;
 		return false;
 	}
-
 	if (doPost) {
 		if (m_output_image) {
 			if (multi_tile) {
@@ -2476,8 +2369,6 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor, bool multi_t
 
 	return rc;
 }
-
-
 
 /*
  * Read and decompress one tile.
@@ -2525,18 +2416,14 @@ bool CodeStream::decompress_tile() {
 	    auto tl = m_cp.tlm_markers->getNext();
 	    //GRK_INFO("TLM : index: %u, length : %u", tl.tile_number, tl.length);
 	    uint16_t tileNumber = 0;
-	    while (m_stream->get_number_byte_left() != 0 &&
-	    		tileNumber != tileIndexToDecode()){
+	    while (m_stream->get_number_byte_left() != 0 &&	tileNumber != tileIndexToDecode()){
 	    	if (tl.length == 0){
 	    		GRK_ERROR("j2k_decompress_tile: corrupt TLM marker");
 	    		return false;
 	    	}
 	    	m_stream->skip(tl.length);
 	    	tl = m_cp.tlm_markers->getNext();
-	    	if (tl.has_tile_number)
-	    		tileNumber = tl.tile_number;
-	    	else
-	    		tileNumber++;
+	    	tileNumber = tl.has_tile_number ? tl.tile_number : tileNumber+1;
 	    }
 	}
 	bool rc = false;
@@ -2561,7 +2448,6 @@ cleanup:
 
 	return rc;
 }
-
 bool CodeStream::exec(std::vector<j2k_procedure> &procs) {
     bool result = std::all_of(procs.begin(), procs.end(),
 		   [&](const j2k_procedure &proc){ return proc(this); });
@@ -2569,7 +2455,6 @@ bool CodeStream::exec(std::vector<j2k_procedure> &procs) {
 
 	return result;
 }
-
 bool CodeStream::decompress_tile_t2(TileProcessor *tileProcessor) {
 	auto decompressor = &m_decompressor;
 
@@ -2583,7 +2468,6 @@ bool CodeStream::decompress_tile_t2(TileProcessor *tileProcessor) {
 		tcp->destroy();
 		return false;
 	}
-
 	// find next tile
 	bool rc = true;
 	bool doPost = !tileProcessor->current_plugin_tile
@@ -2594,7 +2478,6 @@ bool CodeStream::decompress_tile_t2(TileProcessor *tileProcessor) {
 	}
 	return rc;
 }
-
 bool CodeStream::decompress_tiles(void) {
 	bool go_on = true;
 	uint32_t num_tiles_to_decompress = m_cp.t_grid_height
@@ -2619,16 +2502,13 @@ bool CodeStream::decompress_tiles(void) {
 			success = false;
 			goto cleanup;
 		}
-
 		if (!go_on)
 			break;
-
 		if (!m_tileProcessor){
 			GRK_ERROR("Missing SOT marker in tile %d", tileno);
 			success = false;
 			goto cleanup;
 		}
-
 		//2. T2 decompress
 		auto processor = m_tileProcessor;
 		m_tileProcessor = nullptr;
@@ -2687,21 +2567,14 @@ bool CodeStream::decompress_tiles(void) {
 			if (!success)
 				goto cleanup;
 		}
-
 		if (breakAfterT1)
 			break;
-
-		if (m_stream->get_number_byte_left() == 0
-				|| m_decompressor.m_state
-						== J2K_DEC_STATE_NO_EOC)
+		if (m_stream->get_number_byte_left() == 0|| m_decompressor.m_state == J2K_DEC_STATE_NO_EOC)
 			break;
-
 	}
-
 	for(auto &result: results){
 		result.get();
 	}
-
 	// check if there is another tile that has not been processed
 	// we will reject if it has the TPSot problem (https://github.com/uclouvain/openjpeg/issues/254)
 	if (m_curr_marker == J2K_MS_SOT && m_stream->get_number_byte_left()){
@@ -2722,7 +2595,6 @@ bool CodeStream::decompress_tiles(void) {
 			goto cleanup;
 		}
 	}
-
 	// sanity checks
 	if (num_tiles_decoded == 0) {
 		GRK_ERROR("No tiles were decompressed.");
@@ -2733,7 +2605,6 @@ bool CodeStream::decompress_tiles(void) {
 		GRK_WARN("Only %u out of %u tiles were decompressed", decompressed,
 				num_tiles_to_decompress);
 	}
-
 cleanup:
 	for(auto &pr : m_processors){
 		delete pr.second;
@@ -2741,31 +2612,21 @@ cleanup:
 	m_processors.clear();
 	return success;
 }
-
 bool CodeStream::decompress_validation(void) {
 	bool is_valid = true;
-
-	/* STATE checking */
-	/* make sure the state is at 0 */
 	is_valid &=	(m_decompressor.m_state == J2K_DEC_STATE_NONE);
 
-	/* PARAMETER VALIDATION */
 	return is_valid;
 }
-
-
 bool CodeStream::write_tile_part(TileProcessor *tileProcessor) {
 	uint16_t currentTileNumber = tileProcessor->m_tile_index;
 	auto cp = &m_cp;
 	bool firstTilePart = tileProcessor->m_tile_part_index == 0;
-
 	//1. write SOT
 	SOTMarker sot(this);
-
 	if (!sot.write())
 		return false;
 	uint32_t tile_part_bytes_written = sot_marker_segment_len;
-
 	//2. write POC (only in first tile part)
 	if (firstTilePart) {
 		if (!GRK_IS_CINEMA(cp->rsiz)) {
@@ -2784,17 +2645,14 @@ bool CodeStream::write_tile_part(TileProcessor *tileProcessor) {
 		 */
 		tileProcessor->tile->packno = 0;
 	}
-
 	// 3. compress tile part
 	if (!tileProcessor->compress_tile_part(&tile_part_bytes_written)) {
 		GRK_ERROR("Cannot compress tile");
 		return false;
 	}
-
 	/* 4. write Psot in SOT marker */
 	if (!sot.write_psot(tile_part_bytes_written))
 		return false;
-
 	// 5. update TLM
 	if (m_cp.tlm_markers)
 		j2k_update_tlm(this, currentTileNumber, tile_part_bytes_written);
@@ -2802,7 +2660,6 @@ bool CodeStream::write_tile_part(TileProcessor *tileProcessor) {
 
 	return true;
 }
-
 bool CodeStream::post_write_tile(TileProcessor *tileProcessor) {
 	m_tileProcessor = tileProcessor;
 	assert(tileProcessor->m_tile_part_index == 0);
@@ -2812,13 +2669,10 @@ bool CodeStream::post_write_tile(TileProcessor *tileProcessor) {
 	tileProcessor->m_first_poc_tile_part = true;
 	if (!write_tile_part(tileProcessor))
 		return false;
-
 	//2. write the other tile parts
 	uint32_t pino;
-
 	auto cp = &(m_cp);
 	auto tcp = cp->tcps + tileProcessor->m_tile_index;
-
 	// write tile parts for first progression order
 	uint64_t num_tp = j2k_get_num_tp(cp, 0, tileProcessor->m_tile_index);
 	if (num_tp > max_num_tile_parts_per_tile){
@@ -2830,11 +2684,9 @@ bool CodeStream::post_write_tile(TileProcessor *tileProcessor) {
 		if (!write_tile_part(tileProcessor))
 			return false;
 	}
-
 	// write tile parts for remaining progression orders
 	for (pino = 1; pino <= tcp->numpocs; ++pino) {
 		tileProcessor->pino = pino;
-
 		num_tp = j2k_get_num_tp(cp, pino,
 				tileProcessor->m_tile_index);
 		if (num_tp > max_num_tile_parts_per_tile){
@@ -2852,13 +2704,11 @@ bool CodeStream::post_write_tile(TileProcessor *tileProcessor) {
 
 	return true;
 }
-
 bool CodeStream::get_end_header(void) {
 	cstr_index->main_head_end = m_stream->tell();
 
 	return true;
 }
-
 bool CodeStream::copy_default_tcp(void) {
 	auto image = m_input_image;
 	uint32_t nb_tiles = m_cp.t_grid_height * m_cp.t_grid_width;
@@ -2950,20 +2800,16 @@ bool CodeStream::copy_default_tcp(void) {
 				dest_mcc_rec->m_offset_array = tcp->m_mct_records + offset;
 			}
 		}
-
 		/* Copy all the dflt_tile_compo_cp to the current tile cp */
 		memcpy(current_tccp, default_tcp->tccps, tccp_size);
 	}
 
 	return true;
 }
-
-
 bool CodeStream::update_rates(void) {
 	auto cp = &(m_cp);
 	auto image = m_input_image;
 	auto tcp = cp->tcps;
-
 	auto width = image->x1 - image->x0;
 	auto height = image->y1 - image->y0;
 	if (width <= 0 || height <= 0)
@@ -3027,14 +2873,9 @@ bool CodeStream::update_rates(void) {
 	return true;
 }
 
-
 bool CodeStream::compress_validation() {
 	bool is_valid = true;
-
-	/* STATE checking */
-	/* make sure the state is at 0 */
-	is_valid &=
-			(m_decompressor.m_state == J2K_DEC_STATE_NONE);
+	is_valid &=	(m_decompressor.m_state == J2K_DEC_STATE_NONE);
 
 	/* ISO 15444-1:2004 states between 1 & 33
 	 * ergo (number of decomposition levels between 0 -> 32) */
@@ -3044,21 +2885,17 @@ bool CodeStream::compress_validation() {
 				m_cp.tcps->tccps->numresolutions, GRK_J2K_MAXRLVLS);
 		return false;
 	}
-
 	if (m_cp.t_width == 0) {
 		GRK_ERROR("Tile x dimension must be greater than zero ");
 		return false;
 	}
-
 	if (m_cp.t_height == 0) {
 		GRK_ERROR("Tile y dimension must be greater than zero ");
 		return false;
 	}
 
-	/* PARAMETER VALIDATION */
 	return is_valid;
 }
-
 bool CodeStream::mct_validation(void) {
 	bool is_valid = true;
 	if ((m_cp.rsiz & 0x8200) == 0x8200) {
@@ -3078,7 +2915,6 @@ bool CodeStream::mct_validation(void) {
 
 	return is_valid;
 }
-
 bool CodeStream::read_unk(uint16_t *output_marker) {
 	const marker_handler *marker_handler = nullptr;
 	uint32_t size_unk = 2;
@@ -3098,7 +2934,6 @@ bool CodeStream::read_unk(uint16_t *output_marker) {
 				if (cstr_index && marker_handler->id != J2K_MS_SOT) {
 					bool res = j2k_add_mhmarker(cstr_index,
 					J2K_MS_UNK, m_stream->tell() - size_unk, size_unk);
-
 					if (res == false) {
 						GRK_ERROR("Not enough memory to add mh marker");
 						return false;
@@ -3112,10 +2947,8 @@ bool CodeStream::read_unk(uint16_t *output_marker) {
 		GRK_ERROR("Unable to read unknown marker");
 		return false;
 	}
-
 	*output_marker = marker_handler->id;
 
 	return true;
 }
-
 }
