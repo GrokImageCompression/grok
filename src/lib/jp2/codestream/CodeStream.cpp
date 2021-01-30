@@ -1062,7 +1062,7 @@ bool CodeStream::read_header(grk_header_info  *header_info, grk_image **p_image)
 			m_headerError = true;
 			return false;
 		}
-		/* Copy code stream image information to the output image */
+		/* Copy code stream image information to the user image */
 		grk_copy_image_header(m_input_image, *p_image);
 		if (cstr_index) {
 			/*Allocate and initialize some elements of codestrem index*/
@@ -1074,30 +1074,31 @@ bool CodeStream::read_header(grk_header_info  *header_info, grk_image **p_image)
 	}
 	return true;
 }
-bool CodeStream::do_decompress(grk_image *p_image){
+bool CodeStream::do_decompress(grk_image *image){
+
+	if (!m_output_image) {
+		m_output_image = grk_image_create0();
+		if (!(m_output_image))
+			return false;
+		grk_copy_image_header(image, m_output_image);
+	}
+
 	/* Decompress the code stream */
 	if (!exec(m_procedure_list))
 		return false;
 
-	/* Move data and information from codec output image to user output image*/
-	transfer_image_data(m_output_image, p_image);
+	/* Move data and information from codec output image to user image*/
+	transfer_image_data(m_output_image, image);
 
 	return true;
 }
 
 bool CodeStream::decompress( grk_plugin_tile *tile,	 grk_image *p_image){
-
 	if (!p_image)
 		return false;
 
-	m_output_image = grk_image_create0();
-	if (!(m_output_image))
-		return false;
-	grk_copy_image_header(p_image, m_output_image);
-
 	/* customization of the decoding */
 	m_procedure_list.push_back((j2k_procedure) j2k_decompress_tiles);
-
 	current_plugin_tile = tile;
 
 	return do_decompress(p_image);
@@ -1149,12 +1150,6 @@ bool CodeStream::decompress_tile(grk_image *image,uint16_t tile_index){
 		comp->w = reducedCompBounds.width();
 		comp->h = reducedCompBounds.height();
 	}
-	if (m_output_image)
-		grk_image_destroy(m_output_image);
-	m_output_image = grk_image_create0();
-	if (!(m_output_image))
-		return false;
-	grk_copy_image_header(image, m_output_image);
 	m_tile_ind_to_dec = (int32_t) tile_index;
 
 	// reset tile part numbers, in case we are re-using the same codec object
