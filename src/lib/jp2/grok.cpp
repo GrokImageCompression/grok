@@ -141,77 +141,14 @@ const char* GRK_CALLCONV grk_version(void) {
 	return GRK_PACKAGE_VERSION;
 }
 
-
 grk_image *  GRK_CALLCONV grk_image_create(uint16_t numcmpts,
 		 grk_image_cmptparm  *cmptparms, GRK_COLOR_SPACE clrspc, bool allocData) {
-	auto image = (grk_image * ) grk::grk_calloc(1, sizeof(grk_image));
-
-	if (image) {
-		image->color_space = clrspc;
-		image->numcomps = numcmpts;
-		/* allocate memory for the per-component information */
-		image->comps = ( grk_image_comp  * ) grk::grk_calloc(1,
-				image->numcomps * sizeof( grk_image_comp) );
-		if (!image->comps) {
-			grk::GRK_ERROR("Unable to allocate memory for image.");
-			grk_image_destroy(image);
-			return nullptr;
-		}
-		/* create the individual image components */
-		for (uint32_t compno = 0; compno < numcmpts; compno++) {
-			auto comp = &image->comps[compno];
-
-			assert(cmptparms[compno].dx);
-			assert(cmptparms[compno].dy);
-			comp->dx = cmptparms[compno].dx;
-			comp->dy = cmptparms[compno].dy;
-			comp->w = cmptparms[compno].w;
-			comp->h = cmptparms[compno].h;
-			comp->x0 = cmptparms[compno].x0;
-			comp->y0 = cmptparms[compno].y0;
-			comp->prec = cmptparms[compno].prec;
-			comp->sgnd = cmptparms[compno].sgnd;
-			if (allocData && !grk::grk_image_single_component_data_alloc(comp)) {
-				grk::GRK_ERROR("Unable to allocate memory for image.");
-				grk_image_destroy(image);
-				return nullptr;
-			}
-			comp->type = GRK_COMPONENT_TYPE_COLOUR;
-			switch(compno){
-			case 0:
-				comp->association = GRK_COMPONENT_ASSOC_COLOUR_1;
-				break;
-			case 1:
-				comp->association = GRK_COMPONENT_ASSOC_COLOUR_2;
-				break;
-			case 2:
-				comp->association = GRK_COMPONENT_ASSOC_COLOUR_3;
-				break;
-			default:
-				comp->association = GRK_COMPONENT_ASSOC_UNASSOCIATED;
-				comp->type = GRK_COMPONENT_TYPE_UNSPECIFIED;
-				break;
-			}
-		}
-	}
-
-	return image;
+	return image_create(numcmpts, cmptparms, clrspc, allocData);
 }
 
 void GRK_CALLCONV grk_image_destroy(grk_image *image) {
-	if (image) {
-		if (image->comps) {
-			grk_image_all_components_data_free(image);
-			grk::grk_free(image->comps);
-		}
-		FileFormat::free_color(&image->color);
-		delete[] image->iptc_buf;
-		delete[] image->xmp_buf;
-		grk::grk_free(image);
-	}
+	image_destroy(image);
 }
-
-
 
 /* ---------------------------------------------------------------------- */
 /* DECOMPRESSION FUNCTIONS*/

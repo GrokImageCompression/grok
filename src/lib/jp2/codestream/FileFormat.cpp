@@ -2490,7 +2490,7 @@ bool FileFormat::apply_palette_clr(grk_image *image, grk_color *color) {
 		}
 
 		/* Palette mapping: */
-		if (!grk_image_single_component_data_alloc(new_comps + i)) {
+		if (!image_single_component_data_alloc(new_comps + i)) {
 			while (i > 0) {
 				--i;
 				grk_aligned_free(new_comps[i].data);

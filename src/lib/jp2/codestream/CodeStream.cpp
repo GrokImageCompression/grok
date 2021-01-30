@@ -175,177 +175,6 @@ static void lupInvert(float *pSrcMatrix, float *pDestMatrix, uint32_t nb_compo,
 		uint32_t *pPermutations, float *p_src_temp, float *p_dest_temp,
 		float *p_swap_area);
 
-
-/**
- * Calculate a n x n double matrix inversion with a LUP method.
- * Data is aligned, rows after rows (or columns after columns).
- * The function does not take ownership of any memory block,
- * data must be freed by the user.
- *
- * @param pSrcMatrix	the matrix to invert.
- * @param pDestMatrix	data to store the inverted matrix.
- * @param n size of the matrix
- * @return true if the inversion is successful, false if the matrix is singular.
- */
-static bool matrix_inversion_f(float *pSrcMatrix, float *pDestMatrix,uint32_t n);
-
-grk_image *  grk_image_create0(void) {
-	return (grk_image * ) grk_calloc(1, sizeof(grk_image));
-}
-bool grk_image_single_component_data_alloc(
-		 grk_image_comp  *comp) {
-	if (!comp)
-		return false;
-	comp->stride = grk_make_aligned_width(comp->w);
-	assert(comp->stride);
-
-	size_t dataSize = (uint64_t) comp->stride * comp->h * sizeof(uint32_t);
-	auto data = (int32_t*) grk_aligned_malloc(dataSize);
-	if (!data) {
-		grk::GRK_ERROR("Failed to allocate aligned memory buffer of dimensions %u x %u "
-				"@ alignment %d",comp->stride, comp->h, grk::default_align);
-		return false;
-	}
-	grk_image_single_component_data_free(comp);
-	comp->data = data;
-	comp->owns_data = true;
-	return true;
-}
-
-/**
- * Copy only header of image and its component header (no data are copied)
- * if dest image have data, they will be freed
- *
- * @param	image_src		the src image
- * @param	image_dest	the dest image
- *
- */
-static void grk_copy_image_header(const grk_image *image_src,grk_image *image_dest) {
-	assert(image_src != nullptr);
-	assert(image_dest != nullptr);
-
-	image_dest->x0 = image_src->x0;
-	image_dest->y0 = image_src->y0;
-	image_dest->x1 = image_src->x1;
-	image_dest->y1 = image_src->y1;
-
-	if (image_dest->comps) {
-		grk_image_all_components_data_free(image_dest);
-		grk_free(image_dest->comps);
-		image_dest->comps = nullptr;
-	}
-	image_dest->numcomps = image_src->numcomps;
-	image_dest->comps = ( grk_image_comp  * ) grk_malloc(
-			image_dest->numcomps * sizeof( grk_image_comp) );
-	if (!image_dest->comps) {
-		image_dest->comps = nullptr;
-		image_dest->numcomps = 0;
-		return;
-	}
-
-	for (uint32_t compno = 0; compno < image_dest->numcomps; compno++) {
-		memcpy(&(image_dest->comps[compno]), &(image_src->comps[compno]),
-				sizeof( grk_image_comp) );
-		image_dest->comps[compno].data = nullptr;
-	}
-
-	image_dest->color_space = image_src->color_space;
-	auto color_dest = &image_dest->color;
-	auto color_src = &image_src->color;
-	delete [] color_dest->icc_profile_buf;
-	color_dest->icc_profile_len = color_src->icc_profile_len;
-	if (color_dest->icc_profile_len) {
-		color_dest->icc_profile_buf = new uint8_t[color_dest->icc_profile_len];
-		memcpy(color_dest->icc_profile_buf, color_src->icc_profile_buf,
-				color_src->icc_profile_len);
-	} else
-		color_dest->icc_profile_buf = nullptr;
-	if (image_src->color.palette){
-		auto pal_src = image_src->color.palette;
-		if (pal_src->num_channels && pal_src->num_entries){
-			FileFormat::alloc_palette(&image_dest->color, pal_src->num_channels, pal_src->num_entries);
-			auto pal_dest = image_dest->color.palette;
-			memcpy(pal_dest->channel_prec, pal_src->channel_prec, pal_src->num_channels * sizeof(uint8_t) );
-			memcpy(pal_dest->channel_sign, pal_src->channel_sign, pal_src->num_channels * sizeof(bool) );
-
-			pal_dest->component_mapping = new grk_component_mapping_comp[pal_dest->num_channels];
-			memcpy(pal_dest->component_mapping, pal_src->component_mapping,
-									pal_src->num_channels * sizeof(grk_component_mapping_comp));
-
-			memcpy(pal_dest->lut, pal_src->lut, pal_src->num_channels * pal_src->num_entries * sizeof(uint32_t));
-		}
-	}
-
-	return;
-}
-
-static bool update_image_dimensions(grk_image* image, uint32_t reduce){
-    for (uint32_t compno = 0; compno < image->numcomps; ++compno) {
-        auto img_comp = image->comps + compno;
-        uint32_t temp1,temp2;
-
-        if (image->x0 > (uint32_t)INT_MAX ||
-                image->y0 > (uint32_t)INT_MAX ||
-                image->x1 > (uint32_t)INT_MAX ||
-                image->y1 > (uint32_t)INT_MAX) {
-            GRK_ERROR("Image coordinates above INT_MAX are not supported.");
-            return false;
-        }
-
-        img_comp->x0 = ceildiv<uint32_t>(image->x0,img_comp->dx);
-        img_comp->y0 = ceildiv<uint32_t>(image->y0, img_comp->dy);
-        uint32_t comp_x1 = ceildiv<uint32_t>(image->x1, img_comp->dx);
-        uint32_t comp_y1 = ceildiv<uint32_t>(image->y1, img_comp->dy);
-
-        temp1 = ceildivpow2<uint32_t>(comp_x1, reduce);
-        temp2 = ceildivpow2<uint32_t>(img_comp->x0, reduce);
-        if (temp1 <= temp2) {
-            GRK_ERROR("Size x of the decompressed component image is incorrect (comp[%u].w=%u).",
-                          compno, (int32_t)temp1 - (int32_t)temp2);
-            return false;
-        }
-        img_comp->w  = (uint32_t)(temp1 - temp2);
-        assert(img_comp->w);
-
-        temp1 = ceildivpow2<uint32_t>(comp_y1, reduce);
-        temp2 = ceildivpow2<uint32_t>(img_comp->y0, reduce);
-         if (temp1 <= temp2) {
-            GRK_ERROR("Size y of the decompressed component image is incorrect (comp[%u].h=%u).",
-                          compno, (int32_t)temp1 - (int32_t)temp2);
-            return false;
-        }
-        img_comp->h = (uint32_t)(temp1 - temp2);
-        assert(img_comp->h);
-    }
-
-    return true;
-}
-
-
-/**
- Transfer data from src to dest for each component, and null out src data.
- Assumption:  src and dest have the same number of components
- */
-static void transfer_image_data(grk_image *src, grk_image *dest) {
-	if (!src || !dest || !src->comps || !dest->comps
-			|| src->numcomps != dest->numcomps)
-		return;
-
-	for (uint32_t compno = 0; compno < src->numcomps; compno++) {
-		auto src_comp = src->comps + compno;
-		auto dest_comp = dest->comps + compno;
-
-		grk_image_single_component_data_free(dest_comp);
-		dest_comp->data = src_comp->data;
-		dest_comp->owns_data = src_comp->owns_data;
-		if (src_comp->stride){
-			dest_comp->stride = src_comp->stride;
-			assert(dest_comp->stride >= dest_comp->w);
-		}
-		src_comp->data = nullptr;
-	}
-}
-
 static bool j2k_decompress_validation(CodeStream *codeStream) {
 
 	return codeStream->decompress_validation();
@@ -979,10 +808,10 @@ TileProcessor* CodeStream::allocateProcessor(uint16_t tile_index){
 		tileProcessor = new TileProcessor(this,m_stream);
 		tileProcessor->m_tile_index = tile_index;
 		if (!m_output_image) {
-			m_output_image = grk_image_create0();
+			m_output_image = (grk_image * ) grk_calloc(1, sizeof(grk_image));
 			if (!(m_output_image))
 				return nullptr;
-			grk_copy_image_header(getCompositeImage(), m_output_image);
+			copy_image_header(getCompositeImage(), m_output_image);
 		}
 		m_tileCache->put(tile_index, new TileCacheEntry(tileProcessor, nullptr));
 	}
@@ -1007,7 +836,7 @@ bool CodeStream::read_header(grk_header_info  *header_info){
 		return false;
 
 	if (!m_input_image) {
-		m_input_image = grk_image_create0();
+		m_input_image = (grk_image * ) grk_calloc(1, sizeof(grk_image));
 		if (!m_input_image){
 			m_headerError = true;
 			return false;
@@ -1076,7 +905,7 @@ bool CodeStream::read_header(grk_header_info  *header_info){
 	}
 
 	/* Copy code stream image information to the user image */
-	grk_copy_image_header(m_input_image, getCompositeImage());
+	copy_image_header(m_input_image, getCompositeImage());
 	if (cstr_index) {
 		/*Allocate and initialize some elements of codestrem index*/
 		if (!j2k_allocate_tile_element_cstr_index(this)) {
@@ -1230,12 +1059,12 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 	}
 
 	// create private sanitized copy of image
-	m_input_image = grk_image_create0();
+	m_input_image = (grk_image * ) grk_calloc(1, sizeof(grk_image));
 	if (!m_input_image) {
 		GRK_ERROR("Failed to allocate image header.");
 		return false;
 	}
-	grk_copy_image_header(image, m_input_image);
+	copy_image_header(image, m_input_image);
 	if (image->comps) {
 		for (uint32_t compno = 0; compno < image->numcomps; compno++) {
 			if (image->comps[compno].data) {
@@ -1942,7 +1771,7 @@ bool CodeStream::alloc_multi_tile_output_data(grk_image *p_output_image){
 
 		/* Allocate output component buffer if necessary */
 		if (!comp_dest->data) {
-			if (!grk_image_single_component_data_alloc(comp_dest)){
+			if (!image_single_component_data_alloc(comp_dest)){
 				GRK_ERROR("Failed to allocate pixel data for component %d, with dimensions %u x %u",
 						i, comp_dest->w, comp_dest->h);
 				return false;

@@ -97,14 +97,6 @@ const uint32_t default_number_mct_records = 10;
 
 #define J2K_MS_UNK 0		/**< UNKNOWN marker value */
 
-
-/**
- * Allocate data for single image component
- *
- * @param image         image
- */
-bool grk_image_single_component_data_alloc(	grk_image_comp *image);
-
 struct TileProcessor;
 typedef bool (*j2k_procedure)(CodeStream *codeStream);
 

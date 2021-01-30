@@ -157,6 +157,7 @@ static inline long grk_lrintf(float f) {
 #include "GrkMappedFile.h"
 #include "MemManager.h"
 #include "util.h"
+#include "GrkImage.h"
 #include "grk_exceptions.h"
 #include "ChunkBuffer.h"
 #include "BitIO.h"
