@@ -28,10 +28,10 @@ TileCache::~TileCache() {
 	delete tileComposite;
 }
 
-void TileCache::put(uint16_t tileIndex, TileProcessor *processor){
+void TileCache::put(uint16_t tileIndex, TileCacheEntry *entry){
 	if (m_processors.find(tileIndex) != m_processors.end())
 		delete m_processors[tileIndex];
-	m_processors[tileIndex] = new TileCacheEntry(processor);
+	m_processors[tileIndex] = entry;
 }
 
 TileCacheEntry* TileCache::get(uint16_t tileIndex){

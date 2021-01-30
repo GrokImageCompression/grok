@@ -170,15 +170,15 @@ public:
 	*
 	* @return	true			if the area could be set.
   */
-   bool set_decompress_window(grk_image *p_image, grk_rect_u32 window);
-   bool decompress( grk_plugin_tile *tile,	grk_image *p_image);
+   bool set_decompress_window(grk_rect_u32 window);
+   bool decompress( grk_plugin_tile *tile);
    bool end_decompress(void);
    bool init_compress(grk_cparameters  *p_param,grk_image *p_image);
    bool start_compress(void);
    bool compress(grk_plugin_tile* tile);
    bool compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size);
    bool end_compress(void);
-   bool decompress_tile(grk_image *p_image,uint16_t tile_index);
+   bool decompress_tile(uint16_t tile_index);
    void dump(uint32_t flag, FILE *out_stream);
    grk_codestream_info_v2* get_cstr_info(void);
    grk_codestream_index* get_cstr_index(void);
@@ -288,7 +288,7 @@ public:
 
 	bool m_headerError;
 private:
-	bool postDecompress( grk_image *p_image);
+	bool postDecompress(void);
 };
 
 

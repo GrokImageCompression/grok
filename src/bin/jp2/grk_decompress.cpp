@@ -1222,7 +1222,7 @@ int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 		}
 	}
 
-	if (!grk_set_decompress_window(info->l_codec, info->image, parameters->DA_x0,
+	if (!grk_set_decompress_window(info->l_codec, parameters->DA_x0,
 			parameters->DA_y0, parameters->DA_x1, parameters->DA_y1)) {
 		spdlog::error("grk_decompress: failed to set the decompressed area");
 		goto cleanup;
@@ -1230,15 +1230,14 @@ int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 
 	// decompress all tiles
 	if (!parameters->nb_tile_to_decompress) {
-		if (!(grk_decompress(info->l_codec, info->tile, info->image)
+		if (!(grk_decompress(info->l_codec, info->tile)
 				&& grk_end_decompress(info->l_codec))) {
 			goto cleanup;
 		}
 	}
 	// or, decompress one particular tile
 	else {
-		if (!grk_decompress_tile(info->l_codec, info->image,
-				parameters->tile_index)) {
+		if (!grk_decompress_tile(info->l_codec, parameters->tile_index)) {
 			spdlog::error("grk_decompress: failed to decompress tile");
 			goto cleanup;
 		}

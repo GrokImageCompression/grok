@@ -42,7 +42,7 @@ public:
 	TileCache(void);
 	virtual ~TileCache();
 
-	void put(uint16_t tileIndex, TileProcessor *processor);
+	void put(uint16_t tileIndex, TileCacheEntry *entry);
 	TileCacheEntry* get(uint16_t tileIndex);
 
 	void setStrategy(GRK_TILE_CACHE_STRATEGY strategy);

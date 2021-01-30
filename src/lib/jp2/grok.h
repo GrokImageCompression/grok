@@ -1507,7 +1507,6 @@ GRK_API bool GRK_CALLCONV grk_read_header(grk_codec codec,
  *  right after grk_read_header is called, and before any tile header is read.
  *
  * @param	codec			JPEG 2000 code stream.
- * @param	image         	image created by grk_read_header
  * @param	start_x		    left position of the rectangle to decompress (in image coordinates).
  * @param	end_x			the right position of the rectangle to decompress (in image coordinates).
  * @param	start_y		    up position of the rectangle to decompress (in image coordinates).
@@ -1516,7 +1515,7 @@ GRK_API bool GRK_CALLCONV grk_read_header(grk_codec codec,
  * @return	true			if the area could be set.
  */
 GRK_API bool GRK_CALLCONV grk_set_decompress_window(grk_codec codec,
-		grk_image *image, uint32_t start_x, uint32_t start_y, uint32_t end_x,
+		uint32_t start_x, uint32_t start_y, uint32_t end_x,
 		uint32_t end_y);
 
 /**
@@ -1524,23 +1523,19 @@ GRK_API bool GRK_CALLCONV grk_set_decompress_window(grk_codec codec,
  *
  * @param p_decompressor 	decompressor handle
  * @param tile			 	tile struct from plugin
- * @param image 			the decompressed image
  * @return 					true if success, otherwise false
  * */
-GRK_API bool GRK_CALLCONV grk_decompress(grk_codec p_decompressor,
-		grk_plugin_tile *tile, grk_image *image);
+GRK_API bool GRK_CALLCONV grk_decompress(grk_codec p_decompressor,	grk_plugin_tile *tile);
 
 /**
  * Decompress a specific tile
  *
  * @param	codec			JPEG 2000 code stream
- * @param	image			output image
  * @param	tile_index		index of the tile to be decompressed
  *
  * @return					true if success, otherwise false
  */
-GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_codec codec,
-		grk_image *image, uint16_t tile_index);
+GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_codec codec, uint16_t tile_index);
 
 /**
  * End decompression

@@ -97,7 +97,8 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 		return false;
 	}
 
-	m_codeStream->allocateProcessor(tile_index);
+	if (!m_codeStream->allocateProcessor(tile_index))
+		return false;
 	if (tile_no)
 		*tile_no = tile_index;
 	*p_tot_len = len;

@@ -267,34 +267,31 @@ bool GRK_CALLCONV grk_read_header( grk_codec p_codec,  grk_header_info  *header_
 	return false;
 }
 
-bool GRK_CALLCONV grk_decompress( grk_codec p_codec, grk_plugin_tile *tile,
-		 grk_image *p_image) {
+bool GRK_CALLCONV grk_decompress( grk_codec p_codec, grk_plugin_tile *tile) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
 		assert(codec->is_decompressor);
 
-		return codec->m_codeStreamBase->decompress(tile, p_image);
+		return codec->m_codeStreamBase->decompress(tile);
 	}
 	return false;
 }
 bool GRK_CALLCONV grk_set_decompress_window( grk_codec p_codec,
-		grk_image *p_image, uint32_t start_x, uint32_t start_y,
+		uint32_t start_x, uint32_t start_y,
 		uint32_t end_x, uint32_t end_y) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
 		assert(codec->is_decompressor);
-		return codec->m_codeStreamBase->set_decompress_window(p_image,
-										grk_rect_u32(start_x, start_y, end_x,end_y));
+		return codec->m_codeStreamBase->set_decompress_window(grk_rect_u32(start_x, start_y, end_x,end_y));
 	}
 	return false;
 }
-bool GRK_CALLCONV grk_decompress_tile( grk_codec p_codec,
-		 grk_image *p_image, uint16_t tile_index) {
+bool GRK_CALLCONV grk_decompress_tile( grk_codec p_codec,uint16_t tile_index) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
 		assert(codec->is_decompressor);
 
-		return codec->m_codeStreamBase->decompress_tile(p_image,tile_index);
+		return codec->m_codeStreamBase->decompress_tile(tile_index);
 	}
 	return false;
 }

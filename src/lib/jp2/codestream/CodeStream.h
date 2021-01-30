@@ -129,10 +129,10 @@ struct ICodeStream {
 	/** Main header reading function handler */
    virtual bool read_header(grk_header_info  *header_info, grk_image **p_image) = 0;
 
-   virtual bool decompress( grk_plugin_tile *tile,	grk_image *p_image) = 0;
+   virtual bool decompress( grk_plugin_tile *tile) = 0;
 
 	/** decompress tile*/
-   virtual bool decompress_tile(grk_image *p_image,	uint16_t tile_index) = 0;
+   virtual bool decompress_tile(uint16_t tile_index) = 0;
 
 	/** Reading function used after code stream if necessary */
    virtual bool end_decompress(void) = 0;
@@ -141,7 +141,7 @@ struct ICodeStream {
    virtual void init_decompress(grk_dparameters  *p_param) = 0;
 
 	/** Set decompress window function handler */
-   virtual bool set_decompress_window(grk_image *p_image, grk_rect_u32 window) = 0;
+   virtual bool set_decompress_window(grk_rect_u32 window) = 0;
 
    virtual bool start_compress(void) = 0;
 
@@ -170,10 +170,10 @@ struct CodeStream : public ICodeStream {
 	/** Main header reading function handler */
    bool read_header(grk_header_info  *header_info, grk_image **p_image);
 
-   bool decompress( grk_plugin_tile *tile,grk_image *p_image);
+   bool decompress( grk_plugin_tile *tile);
 
 	/** decompress tile*/
-   bool decompress_tile(grk_image *p_image,	uint16_t tile_index);
+   bool decompress_tile(uint16_t tile_index);
 
 	/** Reading function used after code stream if necessary */
    bool end_decompress(void);
@@ -210,12 +210,11 @@ struct CodeStream : public ICodeStream {
 	 * Sets the given area to be decompressed. This function should be called right after grk_read_header
 	 * and before any tile header reading.
 	 *
-	 * @param	p_image     image
 	 * @param	window		decompress window
 	 *
 	 * @return	true			if the area could be set.
 	 */
-	bool set_decompress_window(grk_image *p_image, grk_rect_u32 window);
+	bool set_decompress_window(grk_rect_u32 window);
 
 
 	/**
@@ -233,7 +232,7 @@ struct CodeStream : public ICodeStream {
 
 	bool read_header_procedure(void);
 
-	bool do_decompress(grk_image *p_image);
+	bool do_decompress();
 
 	bool decompress_tile_t2t1(TileProcessor *tileProcessor, bool multi_tile) ;
 
@@ -294,6 +293,8 @@ struct CodeStream : public ICodeStream {
 
 	/** internal/private encoded / decompressed image */
 	grk_image *m_input_image;
+
+	grk_image *m_user_image;
 
 	/* output image (for decompress) */
 	grk_image *m_output_image;

@@ -182,12 +182,12 @@ int main(int argc, char *argv[]) {
 		goto beach;
 	}
 
-	if (!grk_set_decompress_window(codec, image, da_x0, da_y0, da_x1, da_y1)) {
+	if (!grk_set_decompress_window(codec, da_x0, da_y0, da_x1, da_y1)) {
 		spdlog::error("grk_set_decompress_window: failed to set decompress window\n");
 		goto beach;
 	}
 
-	if (!grk_decompress_tile(codec, image, tile_index))
+	if (!grk_decompress_tile(codec, tile_index))
 		goto beach;
 	/** now should inspect image to know the reduction factor and then how to behave with data */
 

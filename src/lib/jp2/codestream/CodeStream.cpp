@@ -896,6 +896,7 @@ static void lupInvert(float *pSrcMatrix, float *pDestMatrix, uint32_t nb_compo,
 }
 
 CodeStream::CodeStream(bool decompress, BufferedStream *stream) : m_input_image(nullptr),
+																m_user_image(nullptr),
 																m_output_image(nullptr),
 																cstr_index(nullptr),
 																m_tileProcessor(nullptr),
@@ -973,9 +974,16 @@ TileProcessor* CodeStream::allocateProcessor(uint16_t tile_index){
 	if (!tileProcessor){
 		tileProcessor = new TileProcessor(this,m_stream);
 		tileProcessor->m_tile_index = tile_index;
-		m_tileCache->put(tile_index, tileProcessor);
+		if (!m_output_image) {
+			m_output_image = grk_image_create0();
+			if (!(m_output_image))
+				return nullptr;
+			grk_copy_image_header(m_user_image, m_output_image);
+		}
+		m_tileCache->put(tile_index, new TileCacheEntry(tileProcessor));
 	}
 	m_tileProcessor = tileProcessor;
+
 
 	return m_tileProcessor;
 }
@@ -1062,6 +1070,7 @@ bool CodeStream::read_header(grk_header_info  *header_info, grk_image **p_image)
 			m_headerError = true;
 			return false;
 		}
+		m_user_image = *p_image;
 		/* Copy code stream image information to the user image */
 		grk_copy_image_header(m_input_image, *p_image);
 		if (cstr_index) {
@@ -1074,37 +1083,28 @@ bool CodeStream::read_header(grk_header_info  *header_info, grk_image **p_image)
 	}
 	return true;
 }
-bool CodeStream::do_decompress(grk_image *image){
-
-	if (!m_output_image) {
-		m_output_image = grk_image_create0();
-		if (!(m_output_image))
-			return false;
-		grk_copy_image_header(image, m_output_image);
-	}
+bool CodeStream::do_decompress(void){
 
 	/* Decompress the code stream */
 	if (!exec(m_procedure_list))
 		return false;
 
 	/* Move data and information from codec output image to user image*/
-	transfer_image_data(m_output_image, image);
+	transfer_image_data(m_output_image, m_user_image);
 
 	return true;
 }
 
-bool CodeStream::decompress( grk_plugin_tile *tile,	 grk_image *p_image){
-	if (!p_image)
-		return false;
-
+bool CodeStream::decompress( grk_plugin_tile *tile){
 	/* customization of the decoding */
 	m_procedure_list.push_back((j2k_procedure) j2k_decompress_tiles);
 	current_plugin_tile = tile;
 
-	return do_decompress(p_image);
+	return do_decompress();
 }
 
-bool CodeStream::decompress_tile(grk_image *image,uint16_t tile_index){
+bool CodeStream::decompress_tile(uint16_t tile_index){
+	auto image = m_user_image;
 	if (!image) {
 		GRK_ERROR("decompress tile: image is null");
 		return false;
@@ -1161,7 +1161,7 @@ bool CodeStream::decompress_tile(grk_image *image,uint16_t tile_index){
 	/* customization of the decoding */
 	m_procedure_list.push_back((j2k_procedure) j2k_decompress_tile);
 
-	return do_decompress(image);
+	return do_decompress();
 }
 
 /** Reading function used after code stream if necessary */
@@ -1779,9 +1779,10 @@ bool CodeStream::end_compress(void){
 	return  exec(m_procedure_list);
 }
 
-bool CodeStream::set_decompress_window(grk_image *output_image,grk_rect_u32 window) {
+bool CodeStream::set_decompress_window(grk_rect_u32 window) {
 	auto cp = &(m_cp);
 	auto image = m_input_image;
+	auto output_image = m_user_image;
 	auto decompressor = &m_decompressor;
 
 	/* Check if we have read the main header */
@@ -2189,7 +2190,7 @@ bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 	*can_decode_tile_data = true;
 	m_decompressor.m_state |= J2K_DEC_STATE_DATA;
 
-	return m_tileProcessor != nullptr;
+	return true;
 }
 
 bool CodeStream::init_header_writing(void) {
@@ -2355,21 +2356,19 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor, bool multi_t
 		return false;
 	}
 	if (doPost) {
-		if (m_output_image) {
-			if (multi_tile) {
-				if (!tileProcessor->copy_decompressed_tile_to_output_image(m_output_image))
-					return false;
-			} else {
-				/* transfer data from tile component to output image */
-				uint32_t compno = 0;
-				for (compno = 0; compno < m_output_image->numcomps;	compno++) {
-					auto tilec = tileProcessor->tile->comps + compno;
-					auto comp = m_output_image->comps + compno;
+		if (multi_tile) {
+			if (!tileProcessor->copy_decompressed_tile_to_output_image(m_output_image))
+				return false;
+		} else {
+			/* transfer data from tile component to output image */
+			uint32_t compno = 0;
+			for (compno = 0; compno < m_output_image->numcomps;	compno++) {
+				auto tilec = tileProcessor->tile->comps + compno;
+				auto comp = m_output_image->comps + compno;
 
-					//transfer memory from tile component to output image
-					tilec->getBuffer()->transfer(&comp->data, &comp->owns_data, &comp->stride);
-					assert(comp->stride >= comp->w);
-				}
+				//transfer memory from tile component to output image
+				tilec->getBuffer()->transfer(&comp->data, &comp->owns_data, &comp->stride);
+				assert(comp->stride >= comp->w);
 			}
 		}
 		// destroy compressed data

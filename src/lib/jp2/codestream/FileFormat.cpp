@@ -873,49 +873,43 @@ bool FileFormat::read_header(grk_header_info  *header_info, grk_image **p_image)
 }
 
 
-bool FileFormat::decompress_tile(grk_image *p_image,uint16_t tile_index) {
-	if (!p_image)
-		return false;
-
-	if (!codeStream->decompress_tile(p_image, tile_index)) {
+bool FileFormat::decompress_tile(uint16_t tile_index) {
+	if (!codeStream->decompress_tile(tile_index)) {
 		GRK_ERROR("Failed to decompress JP2 file");
 		return false;
 	}
 
-	return postDecompress(p_image);
+	return postDecompress();
 }
 
-bool FileFormat::postDecompress( grk_image *p_image){
+bool FileFormat::postDecompress(void){
 	if (color.palette) {
 		/* Part 1, I.5.3.4: Either both or none : */
 		if (!color.palette->component_mapping)
 			free_palette_clr(&(color));
 		else {
-			if (!apply_palette_clr(p_image, &(color)))
+			if (!apply_palette_clr(codeStream->m_user_image, &(color)))
 				return false;
 		}
 	}
 
 	/* Apply channel definitions if needed */
 	if (color.channel_definition)
-		apply_channel_definition(p_image, &(color));
+		apply_channel_definition(codeStream->m_user_image, &(color));
 
 	return true;
 }
 
 
-bool FileFormat::decompress( grk_plugin_tile *tile,	 grk_image *p_image){
-
-	if (!p_image)
-		return false;
+bool FileFormat::decompress( grk_plugin_tile *tile){
 
 	/* J2K decoding */
-	if (!codeStream->decompress(tile, p_image)) {
+	if (!codeStream->decompress(tile)) {
 		GRK_ERROR("Failed to decompress JP2 file");
 		return false;
 	}
 
-	return postDecompress(p_image);
+	return postDecompress();
 }
 
 /** Reading function used after code stream if necessary */
@@ -940,8 +934,8 @@ void FileFormat::init_decompress(grk_dparameters  *parameters){
 	color.has_colour_specification_box = false;
 }
 
-bool FileFormat::set_decompress_window(grk_image *p_image,	grk_rect_u32 window){
-	return codeStream->set_decompress_window(p_image, window);
+bool FileFormat::set_decompress_window(grk_rect_u32 window){
+	return codeStream->set_decompress_window(window);
 }
 
 bool FileFormat::start_compress(void){

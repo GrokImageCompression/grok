@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
         bSuccess = grk_read_header(d_codec,nullptr, &image);
         assert( bSuccess );
 
-        bSuccess = grk_decompress(l_codec, nullptr, image);
+        bSuccess = grk_decompress(l_codec, nullptr);
         assert( bSuccess );
 
         bSuccess = grk_end_decompress(l_codec);
