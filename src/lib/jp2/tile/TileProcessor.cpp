@@ -1205,12 +1205,10 @@ bool TileProcessor::rate_allocate() {
  *
  * @return:
  */
-bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_image) {
-	auto image_src = image;
-	for (uint32_t i = 0; i < image_src->numcomps; i++) {
+bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *output) {
+	for (uint32_t i = 0; i < tile->numcomps; i++) {
 		auto tilec = tile->comps + i;
-		auto comp_src = image_src->comps + i;
-		auto comp_dest = p_output_image->comps + i;
+		auto comp_dest = output->comps + i;
 
 		/* Border of the current output component. (x0_dest,y0_dest)
 		 * corresponds to origin of dest buffer */
@@ -1272,7 +1270,7 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_
 		}
 		if (width_dest > comp_dest->w || height_dest > comp_dest->h)
 			return false;
-		if (width_src > comp_src->w || height_src > comp_src->h)
+		if (width_src > tilec->width() || height_src > tilec->height())
 			return false;
 
 		size_t src_ind = 0;

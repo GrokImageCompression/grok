@@ -200,7 +200,6 @@ int main(int argc, char *argv[]) {
 	beach:
 	grk_stream_destroy(stream);
 	grk_destroy_codec(codec);
-	grk_image_destroy(image);
 
 	return rc;
 }

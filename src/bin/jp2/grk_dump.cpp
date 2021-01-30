@@ -490,7 +490,6 @@ int main(int argc, char *argv[]) {
 
 		/* destroy the image header */
 		if (image) {
-			grk_image_destroy(image);
 			image = nullptr;
 		}
 
@@ -518,10 +517,6 @@ int main(int argc, char *argv[]) {
 	if (l_codec) {
 		grk_destroy_codec(l_codec);
 	}
-
-	/* destroy the image header */
-	if (image)
-		grk_image_destroy(image);
 
 	if (fout)
 		fclose(fout);

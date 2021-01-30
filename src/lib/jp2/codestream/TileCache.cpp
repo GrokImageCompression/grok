@@ -29,7 +29,7 @@ TileCache::TileCache() : TileCache(GRK_TILE_CACHE_NONE){
 TileCache::~TileCache() {
 	for (auto &proc : m_processors)
 		delete proc.second;
-	//delete tileComposite;
+	grk_image_destroy( tileComposite );
 }
 
 void TileCache::put(uint16_t tileIndex, TileCacheEntry *entry){

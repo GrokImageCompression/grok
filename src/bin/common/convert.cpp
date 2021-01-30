@@ -135,7 +135,6 @@ grk_image* convert_gray_to_rgb(grk_image *original) {
 	if (new_image == nullptr) {
 		spdlog::error(
 				"grk_decompress: failed to allocate memory for RGB image.");
-		grk_image_destroy(original);
 		return nullptr;
 	}
 
@@ -158,7 +157,6 @@ grk_image* convert_gray_to_rgb(grk_image *original) {
 		memcpy(new_image->comps[compno + 2U].data, original->comps[compno].data,
 				original->comps[compno].stride * original->comps[compno].h 	* sizeof(int32_t));
 	}
-	grk_image_destroy(original);
 
 	return new_image;
 }
@@ -210,7 +208,6 @@ grk_image* upsample_image_components(grk_image *original) {
 	if (new_image == nullptr) {
 		spdlog::error(
 				"grk_decompress: failed to allocate memory for upsampled components.");
-		grk_image_destroy(original);
 		return nullptr;
 	}
 
@@ -234,7 +231,6 @@ grk_image* upsample_image_components(grk_image *original) {
 			uint32_t yoff = org_cmp->dy * org_cmp->y0 - original->y0;
 			if ((xoff >= org_cmp->dx) || (yoff >= org_cmp->dy)) {
 				spdlog::error("upsample: Invalid image/component parameters found when upsampling");
-				grk_image_destroy(original);
 				grk_image_destroy(new_image);
 				return nullptr;
 			}
@@ -294,7 +290,6 @@ grk_image* upsample_image_components(grk_image *original) {
 			memcpy(new_cmp->data, org_cmp->data, org_cmp->stride * org_cmp->h * sizeof(int32_t));
 		}
 	}
-	grk_image_destroy(original);
 
 	return new_image;
 }

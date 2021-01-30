@@ -1503,12 +1503,12 @@ GRK_API bool GRK_CALLCONV grk_read_header(grk_codec codec,grk_header_info *heade
 
 
 /**
- * Decompress JPEG 2000 header
+ * Get decompressed image
  *
  * @param	codec				JPEG 2000 code stream to read.
  * @param	tileIndex			tile index
  *
- * @return pointer to image
+ * @return pointer to decompressed image
  */
 GRK_API grk_image* GRK_CALLCONV grk_get_image(grk_codec codec,uint16_t tileIndex);
 
@@ -1525,8 +1525,7 @@ GRK_API grk_image* GRK_CALLCONV grk_get_image(grk_codec codec,uint16_t tileIndex
  * @return	true			if the area could be set.
  */
 GRK_API bool GRK_CALLCONV grk_set_decompress_window(grk_codec codec,
-		uint32_t start_x, uint32_t start_y, uint32_t end_x,
-		uint32_t end_y);
+		uint32_t start_x, uint32_t start_y, uint32_t end_x,	uint32_t end_y);
 
 /**
  * Decompress image from a JPEG 2000 code stream
@@ -1564,8 +1563,7 @@ GRK_API bool GRK_CALLCONV grk_end_decompress(grk_codec codec);
  * @return 				Returns a handle to a compressor if successful,
  * 						returns nullptr otherwise
  */
-GRK_API grk_codec GRK_CALLCONV grk_create_compress(GRK_CODEC_FORMAT format,
-		grk_stream *stream);
+GRK_API grk_codec GRK_CALLCONV grk_create_compress(GRK_CODEC_FORMAT format,	grk_stream *stream);
 
 /**
  Set compressing parameters to default values, that means :

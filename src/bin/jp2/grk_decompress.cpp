@@ -824,14 +824,20 @@ int GrkDecompress::decompress(const char *fileName, DecompressInitParams *initPa
 	info.decompressor_parameters = &initParams->parameters;
 	info.user_data = this;
 
-	if (preDecompress(&info))
+	if (preDecompress(&info)){
+		grk_destroy_codec(info.l_codec);
 		return 0;
-	if (postDecompress(&info))
+	}
+	if (postDecompress(&info)){
+		grk_destroy_codec(info.l_codec);
 		return 0;
+	}
 #ifdef GROK_HAVE_EXIFTOOL
 		if (initParams->transferExifTags && initParams->parameters.decod_format == GRK_JP2_FMT)
 			transferExifTags(initParams->parameters.infile, initParams->parameters.outfile);
 #endif
+	grk_destroy_codec(info.l_codec);
+	info.l_codec = nullptr;
 	return 1;
 }
 
@@ -991,7 +997,6 @@ int decompress_callback(grk_plugin_decompress_callback_info *info) {
 			grk_destroy_codec(info->l_codec);
 		info->l_codec = nullptr;
 		if (info->image && !info->plugin_owns_image) {
-			grk_image_destroy(info->image);
 			info->image = nullptr;
 		}
 		rc = 0;
@@ -1249,10 +1254,7 @@ int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 cleanup:
 	grk_stream_destroy(info->l_stream);
 	info->l_stream = nullptr;
-	grk_destroy_codec(info->l_codec);
-	info->l_codec = nullptr;
 	if (failed) {
-		grk_image_destroy(info->image);
 		info->image = nullptr;
 		delete imageFormat;
 		imageFormat = nullptr;
@@ -1284,6 +1286,7 @@ int GrkDecompress::postDecompress(grk_plugin_decompress_callback_info *info) {
 
 	bool failed = true;
 	bool canStoreICC = false;
+	bool imageNeedsDestroy = false;
 	bool isTiff = info->decompressor_parameters->cod_format == GRK_TIF_FMT;
 	grk_decompress_parameters *parameters = info->decompressor_parameters;
 	auto image = info->image;
@@ -1423,7 +1426,10 @@ int GrkDecompress::postDecompress(grk_plugin_decompress_callback_info *info) {
 		}
 	}
 	if (parameters->upsample) {
-		image = upsample_image_components(image);
+		auto tmp = upsample_image_components(image);
+		if (tmp != image)
+			imageNeedsDestroy = true;
+		image = tmp;
 		if (image == nullptr) {
 			spdlog::error(
 					"grk_decompress: failed to upsample image components.");
@@ -1436,12 +1442,17 @@ int GrkDecompress::postDecompress(grk_plugin_decompress_callback_info *info) {
 		case GRK_CLRSPC_SRGB:
 			break;
 		case GRK_CLRSPC_GRAY:
-			image = convert_gray_to_rgb(image);
+		{
+			auto tmp = convert_gray_to_rgb(image);
+			if (imageNeedsDestroy)
+				grk_image_destroy(image);
+			imageNeedsDestroy = true;
+			image = tmp;
+		}
 			break;
 		default:
 			spdlog::error(
 					"grk_decompress: don't know how to convert image to RGB colorspace.");
-			grk_image_destroy(image);
 			image = nullptr;
 			goto cleanup;
 		}
@@ -1479,7 +1490,7 @@ int GrkDecompress::postDecompress(grk_plugin_decompress_callback_info *info) {
 	info->l_stream = nullptr;
 	grk_destroy_codec(info->l_codec);
 	info->l_codec = nullptr;
-	if (image && !info->plugin_owns_image) {
+	if (image && imageNeedsDestroy) {
 		grk_image_destroy(image);
 		info->image = nullptr;
 	}

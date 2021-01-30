@@ -165,9 +165,6 @@ int32_t main(int argc, char **argv) {
 		/* Close the byte stream */
 		grk_stream_destroy(stream);
 
-		/* Free image data structure */
-		grk_image_destroy(image);
-
 		if (rc)
 			goto cleanup;
 	}

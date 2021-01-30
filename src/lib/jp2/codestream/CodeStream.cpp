@@ -996,6 +996,8 @@ TileProcessor* CodeStream::currentProcessor(void){
 }
 
 grk_image* CodeStream::get_image(uint16_t tileIndex){
+	(void) tileIndex;
+
 	return getCompositeImage();
 }
 
@@ -2348,22 +2350,20 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor, bool multi_t
 		return true;
 	}
 	bool rc = true;
-	bool doPost = !tileProcessor->current_plugin_tile
-			|| (tileProcessor->current_plugin_tile->decompress_flags
-					& GRK_DECODE_POST_T1);
+	bool doPost = !tileProcessor->current_plugin_tile ||
+			(tileProcessor->current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
 	if (!tileProcessor->decompress_tile_t1()) {
 		tcp->destroy();
 		decompressor->m_state |= J2K_DEC_STATE_ERR;
 		return false;
 	}
 	if (doPost) {
+		/* copy/transfer data from tile component to output image */
 		if (multi_tile) {
 			if (!tileProcessor->copy_decompressed_tile_to_output_image(m_output_image))
 				return false;
 		} else {
-			/* transfer data from tile component to output image */
-			uint32_t compno = 0;
-			for (compno = 0; compno < m_output_image->numcomps;	compno++) {
+			for (uint16_t compno = 0; compno < m_output_image->numcomps; compno++) {
 				auto tilec = tileProcessor->tile->comps + compno;
 				auto comp = m_output_image->comps + compno;
 
