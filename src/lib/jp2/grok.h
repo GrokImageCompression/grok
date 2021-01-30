@@ -1499,8 +1499,18 @@ GRK_API bool GRK_CALLCONV grk_init_decompress(grk_codec codec,
  * @return true					if the main header of the code stream and the JP2 header
  * 							 	is correctly read.
  */
-GRK_API bool GRK_CALLCONV grk_read_header(grk_codec codec,
-		grk_header_info *header_info, grk_image **image);
+GRK_API bool GRK_CALLCONV grk_read_header(grk_codec codec,grk_header_info *header_info);
+
+
+/**
+ * Decompress JPEG 2000 header
+ *
+ * @param	codec				JPEG 2000 code stream to read.
+ * @param	tileIndex			tile index
+ *
+ * @return pointer to image
+ */
+GRK_API grk_image* GRK_CALLCONV grk_get_image(grk_codec codec,uint16_t tileIndex);
 
 /**
  * Set the given area to be decompressed. This function should be called

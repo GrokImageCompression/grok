@@ -1152,10 +1152,12 @@ int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 	// 2. read header
 	if (info->decompress_flags & GRK_DECODE_HEADER) {
 		// Read the main header of the code stream (j2k) and also JP2 boxes (jp2)
-		if (!grk_read_header(info->l_codec, &info->header_info, &info->image)) {
+		if (!grk_read_header(info->l_codec, &info->header_info)) {
 			spdlog::error("grk_decompress: failed to read the header");
 			goto cleanup;
 		}
+
+		info->image = grk_get_image(info->l_codec,0);
 
 		// do not allow odd top left window coordinates for SYCC
 		if (info->image->color_space == GRK_CLRSPC_SYCC){

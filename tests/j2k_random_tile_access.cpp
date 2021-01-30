@@ -136,7 +136,7 @@ int32_t main(int argc, char **argv) {
 		}
 
 		/* Read the main header of the codestream and if necessary the JP2 boxes*/
-		if (!grk_read_header(codec, nullptr, &image)) {
+		if (!grk_read_header(codec, nullptr)) {
 			spdlog::error("randome tile processor : failed to read header");
 			goto cleanup;
 		}
@@ -152,7 +152,9 @@ int32_t main(int argc, char **argv) {
 		tile[2] = (uint16_t) (cstr_info->t_grid_width * cstr_info->t_grid_height - 1);
 		tile[3] = (uint16_t) (tile[2] - cstr_info->t_grid_width);
 
+		image = grk_get_image(codec,0);
 		rc = test_tile(tile[i], image, stream, codec);
+
 
 		/* Destroy code stream info */
 		grk_destroy_cstr_info(&cstr_info);

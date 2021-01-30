@@ -257,15 +257,24 @@ bool GRK_CALLCONV grk_init_decompress( grk_codec p_codec,
 	}
 	return false;
 }
-bool GRK_CALLCONV grk_read_header( grk_codec p_codec,  grk_header_info  *header_info,
-		grk_image **p_image) {
+bool GRK_CALLCONV grk_read_header( grk_codec p_codec,  grk_header_info  *header_info) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
 		assert(codec->is_decompressor);
-		return codec->m_codeStreamBase->read_header( header_info, p_image);
+		return codec->m_codeStreamBase->read_header( header_info);
 	}
 	return false;
 }
+
+grk_image* GRK_CALLCONV grk_get_image( grk_codec p_codec, uint16_t tileIndex) {
+	if (p_codec) {
+		auto codec = (grk_codec_private*) p_codec;
+		assert(codec->is_decompressor);
+		return codec->m_codeStreamBase->get_image(tileIndex);
+	}
+	return nullptr;
+}
+
 
 bool GRK_CALLCONV grk_decompress( grk_codec p_codec, grk_plugin_tile *tile) {
 	if (p_codec) {

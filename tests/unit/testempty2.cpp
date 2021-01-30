@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
         l_stream = grk_stream_create_file_stream(outputfile,1024*1024, 1);
         assert( l_stream );
 
-        bSuccess = grk_read_header(d_codec,nullptr, &image);
+        bSuccess = grk_read_header(d_codec,nullptr);
         assert( bSuccess );
 
         bSuccess = grk_decompress(l_codec, nullptr);

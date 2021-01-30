@@ -177,7 +177,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	/* Read the main header of the codestream and if necessary the JP2 boxes*/
-	if (!grk_read_header(codec, nullptr, &image)) {
+	if (!grk_read_header(codec, nullptr)) {
 		spdlog::error("test tile decoder: failed to read the header\n");
 		goto beach;
 	}

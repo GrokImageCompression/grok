@@ -127,7 +127,9 @@ struct ICodeStream {
    virtual ~ICodeStream(){}
 
 	/** Main header reading function handler */
-   virtual bool read_header(grk_header_info  *header_info, grk_image **p_image) = 0;
+   virtual bool read_header(grk_header_info  *header_info) = 0;
+
+   virtual grk_image* get_image(uint16_t tileIndex) = 0;
 
    virtual bool decompress( grk_plugin_tile *tile) = 0;
 
@@ -168,7 +170,9 @@ struct CodeStream : public ICodeStream {
 	~CodeStream();
 
 	/** Main header reading function handler */
-   bool read_header(grk_header_info  *header_info, grk_image **p_image);
+   bool read_header(grk_header_info  *header_info);
+
+   grk_image* get_image(uint16_t tileIndex);
 
    bool decompress( grk_plugin_tile *tile);
 

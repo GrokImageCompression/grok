@@ -991,8 +991,12 @@ TileProcessor* CodeStream::currentProcessor(void){
 	return m_tileProcessor;
 }
 
+grk_image* CodeStream::get_image(uint16_t tileIndex){
+	return m_user_image;
+}
+
 /** Main header reading function handler */
-bool CodeStream::read_header(grk_header_info  *header_info, grk_image **p_image){
+bool CodeStream::read_header(grk_header_info  *header_info){
 	if (m_headerError)
 		return false;
 
@@ -1064,15 +1068,14 @@ bool CodeStream::read_header(grk_header_info  *header_info, grk_image **p_image)
 			header_info->isBinaryComment[i] = m_cp.isBinaryComment[i];
 		}
 	}
-	if (!*p_image) {
-		*p_image = grk_image_create0();
-		if (!(*p_image)){
+	if (!m_user_image) {
+		m_user_image = grk_image_create0();
+		if (!m_user_image){
 			m_headerError = true;
 			return false;
 		}
-		m_user_image = *p_image;
 		/* Copy code stream image information to the user image */
-		grk_copy_image_header(m_input_image, *p_image);
+		grk_copy_image_header(m_input_image, m_user_image);
 		if (cstr_index) {
 			/*Allocate and initialize some elements of codestrem index*/
 			if (!j2k_allocate_tile_element_cstr_index(this)) {

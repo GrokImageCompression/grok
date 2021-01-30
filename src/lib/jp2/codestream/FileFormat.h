@@ -155,7 +155,9 @@ public:
 	~FileFormat();
 
    /** Main header reading function handler */
-   bool read_header(grk_header_info  *header_info, grk_image **p_image);
+   bool read_header(grk_header_info  *header_info);
+
+   grk_image* get_image(uint16_t tileIndex);
 
    /** Set up decompressor function handler */
    void init_decompress(grk_dparameters  *p_param);

@@ -731,9 +731,12 @@ void FileFormat::serializeAsoc(AsocBox *asoc,
 		serializeAsoc(child, serial_asocs, num_asocs, level+1);
 }
 
+grk_image* FileFormat::get_image(uint16_t tileIndex){
+	return codeStream->get_image(tileIndex);
+}
 
 /** Main header reading function handler */
-bool FileFormat::read_header(grk_header_info  *header_info, grk_image **p_image){
+bool FileFormat::read_header(grk_header_info  *header_info){
 	if (m_headerError)
 		return false;
 
@@ -762,13 +765,13 @@ bool FileFormat::read_header(grk_header_info  *header_info, grk_image **p_image)
 	}
 
 
-	if (!codeStream->read_header(header_info, p_image)){
+	if (!codeStream->read_header(header_info)){
 		m_headerError = true;
 		return false;
 	}
 
 	if (needsHeaderRead) {
-		auto image = *p_image;
+		auto image = codeStream->m_user_image;
 		if (!check_color(image, &color)){
 			m_headerError = true;
 			return false;
