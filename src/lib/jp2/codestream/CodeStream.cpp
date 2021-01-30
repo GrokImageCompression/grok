@@ -968,13 +968,14 @@ int32_t CodeStream::tileIndexToDecode(){
 }
 
 TileProcessor* CodeStream::allocateProcessor(uint16_t tile_index){
-	auto proc = m_tileCache->get(tile_index);
-	if (!proc){
-		proc = new TileProcessor(this,m_stream);
-		proc->m_tile_index = tile_index;
-		m_tileCache->put(tile_index, proc);
+	auto tileCache = m_tileCache->get(tile_index);
+	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
+	if (!tileProcessor){
+		tileProcessor = new TileProcessor(this,m_stream);
+		tileProcessor->m_tile_index = tile_index;
+		m_tileCache->put(tile_index, tileProcessor);
 	}
-	m_tileProcessor = proc;
+	m_tileProcessor = tileProcessor;
 
 	return m_tileProcessor;
 }
@@ -1102,10 +1103,9 @@ bool CodeStream::decompress( grk_plugin_tile *tile,	 grk_image *p_image){
 	return do_decompress(p_image);
 }
 
-/** decompress tile*/
 bool CodeStream::decompress_tile(grk_image *image,uint16_t tile_index){
 	if (!image) {
-		GRK_ERROR("Image is null");
+		GRK_ERROR("decompress tile: image is null");
 		return false;
 	}
 
@@ -2377,7 +2377,7 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor, bool multi_t
 				}
 			}
 		}
-		/* we only destroy the data, which will be re-read in read_tile_header*/
+		// destroy compressed data
 		delete tcp->m_tile_data;
 		tcp->m_tile_data = nullptr;
 	}
@@ -2389,78 +2389,89 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor, bool multi_t
  * Read and decompress one tile.
  */
 bool CodeStream::decompress_tile() {
-	bool go_on = true;
-	TileProcessor *tileProcessor = nullptr;
-
-	/*Allocate and initialize some elements of code stream index if not already done*/
-	if (!cstr_index->tile_index) {
-		if (!j2k_allocate_tile_element_cstr_index(this))
-			return false;
-	}
 	if (tileIndexToDecode() == -1) {
 		GRK_ERROR("j2k_decompress_tile: Unable to decompress tile "
 				"since first tile SOT has not been detected");
 		return false;
 	}
-
-	/* Move into the code stream to the first SOT used to decompress the desired tile */
-	uint16_t tile_index_to_decompress =	(uint16_t) (tileIndexToDecode());
-	if (cstr_index->tile_index && cstr_index->tile_index->tp_index) {
-		if (!cstr_index->tile_index[tile_index_to_decompress].nb_tps) {
-			/* the index for this tile has not been built,
-			 *  so move to the last SOT read */
-			if (!(m_stream->seek(m_decompressor.m_last_sot_read_pos	+ 2))) {
-				GRK_ERROR("Problem with seek function");
-				return false;
-			}
-		} else {
-			if (!(m_stream->seek(cstr_index->tile_index[tile_index_to_decompress].tp_index[0].start_pos	+ 2))) {
-				GRK_ERROR("Problem with seek function");
-				return false;
-			}
-		}
-		/* Special case if we have previously read the EOC marker (if the previous tile decompressed is the last ) */
-		if (m_decompressor.m_state == J2K_DEC_STATE_EOC)
-			m_decompressor.m_state = J2K_DEC_STATE_TPH_SOT;
-	}
-
-	// if we have a TLM marker, then we can skip tiles until
-	// we get to desired tile
-	if (m_cp.tlm_markers){
-		m_cp.tlm_markers->getInit();
-	    auto tl = m_cp.tlm_markers->getNext();
-	    //GRK_INFO("TLM : index: %u, length : %u", tl.tile_number, tl.length);
-	    uint16_t tileNumber = 0;
-	    while (m_stream->get_number_byte_left() != 0 &&	tileNumber != tileIndexToDecode()){
-	    	if (tl.length == 0){
-	    		GRK_ERROR("j2k_decompress_tile: corrupt TLM marker");
-	    		return false;
-	    	}
-	    	m_stream->skip(tl.length);
-	    	tl = m_cp.tlm_markers->getNext();
-	    	tileNumber = tl.has_tile_number ? tl.tile_number : tileNumber+1;
-	    }
+	auto tileCache = m_tileCache->get((uint32_t)tileIndexToDecode());
+	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
+	uint32_t num_tiles_to_decompress = m_cp.t_grid_height * m_cp.t_grid_width;
+	// no need to decompress a single tile twice
+	if (tileProcessor && num_tiles_to_decompress == 1){
+		return true;
 	}
 	bool rc = false;
-	try {
-		if (!parse_tile_header_markers(&go_on))
-			goto cleanup;
-	} catch (InvalidMarkerException &ime){
-		GRK_ERROR("Found invalid marker : 0x%x", ime.m_marker);
-		goto cleanup;
-	}
+	if (!tileProcessor) {
+		/*Allocate and initialize some elements of code stream index if not already done*/
+		if (!cstr_index->tile_index) {
+			if (!j2k_allocate_tile_element_cstr_index(this))
+				return false;
+		}
 
-	tileProcessor = m_tileProcessor;
-	if (!decompress_tile_t2t1(tileProcessor, false))
-		goto cleanup;
+		/* Move into the code stream to the first SOT used to decompress the desired tile */
+		uint16_t tile_index_to_decompress =	(uint16_t) (tileIndexToDecode());
+		if (cstr_index->tile_index && cstr_index->tile_index->tp_index) {
+			if (!cstr_index->tile_index[tile_index_to_decompress].nb_tps) {
+				/* the index for this tile has not been built,
+				 *  so move to the last SOT read */
+				if (!(m_stream->seek(m_decompressor.m_last_sot_read_pos	+ 2))) {
+					GRK_ERROR("Problem with seek function");
+					return false;
+				}
+			} else {
+				if (!(m_stream->seek(cstr_index->tile_index[tile_index_to_decompress].tp_index[0].start_pos	+ 2))) {
+					GRK_ERROR("Problem with seek function");
+					return false;
+				}
+			}
+			/* Special case if we have previously read the EOC marker
+			 * (if the previous tile decompressed is the last ) */
+			if (m_decompressor.m_state == J2K_DEC_STATE_EOC)
+				m_decompressor.m_state = J2K_DEC_STATE_TPH_SOT;
+		}
+
+		// if we have a TLM marker, then we can skip tiles until
+		// we get to desired tile
+		if (m_cp.tlm_markers){
+			m_cp.tlm_markers->getInit();
+			auto tl = m_cp.tlm_markers->getNext();
+			//GRK_INFO("TLM : index: %u, length : %u", tl.tile_number, tl.length);
+			uint16_t tileNumber = 0;
+			while (m_stream->get_number_byte_left() != 0 &&	tileNumber != tileIndexToDecode()){
+				if (tl.length == 0){
+					GRK_ERROR("j2k_decompress_tile: corrupt TLM marker");
+					return false;
+				}
+				m_stream->skip(tl.length);
+				tl = m_cp.tlm_markers->getNext();
+				tileNumber = tl.has_tile_number ? tl.tile_number : tileNumber+1;
+			}
+		}
+		bool go_on = true;
+		try {
+			if (!parse_tile_header_markers(&go_on))
+				goto cleanup;
+		} catch (InvalidMarkerException &ime){
+			GRK_ERROR("Found invalid marker : 0x%x", ime.m_marker);
+			goto cleanup;
+		}
+
+		tileProcessor = m_tileProcessor;
+		if (!decompress_tile_t2t1(tileProcessor, false))
+			goto cleanup;
+	} else {
+
+	}
 
 	rc = true;
 cleanup:
 	return rc;
 }
 bool CodeStream::exec(std::vector<j2k_procedure> &procs) {
-    bool result = std::all_of(procs.begin(), procs.end(),
-		   [&](const j2k_procedure &proc){ return proc(this); });
+    bool result = std::all_of(procs.begin(), procs.end(),[&](const j2k_procedure &proc){
+    	return proc(this);
+    });
 	procs.clear();
 
 	return result;

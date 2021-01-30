@@ -22,18 +22,31 @@ namespace grk {
 
 struct TileProcessor;
 
+struct TileCacheEntry{
+	explicit TileCacheEntry(TileProcessor *p) : processor(p), image(nullptr)
+	{}
+	TileCacheEntry() : TileCacheEntry(nullptr)
+	{}
+	~TileCacheEntry()
+	{
+		delete processor;
+		delete image;
+	}
+	TileProcessor* processor;
+	grk_image *image;
+};
+
 class TileCache {
 public:
 	TileCache();
 	virtual ~TileCache();
 
-	void clear(void);
-	void clear(uint32_t tileIndex);
 	void put(uint32_t tileIndex, TileProcessor *processor);
-	TileProcessor* get(uint32_t tileIndex);
+	TileCacheEntry* get(uint32_t tileIndex);
 
 private:
-	std::map<uint32_t, TileProcessor*> m_processors;
+	grk_image *tileComposite;
+	std::map<uint32_t, TileCacheEntry*> m_processors;
 };
 
 }

@@ -18,30 +18,21 @@
 
 namespace grk {
 
-TileCache::TileCache() {
+TileCache::TileCache() : tileComposite(nullptr){
 }
 
 TileCache::~TileCache() {
-	clear();
-}
-
-void TileCache::clear(void){
 	for (auto &proc : m_processors)
 		delete proc.second;
-	m_processors.clear();
-}
-
-void TileCache::clear(uint32_t tileIndex){
-	m_processors.erase(tileIndex);
 }
 
 void TileCache::put(uint32_t tileIndex, TileProcessor *processor){
 	if (m_processors.find(tileIndex) != m_processors.end())
 		delete m_processors[tileIndex];
-	m_processors[tileIndex] = processor;
+	m_processors[tileIndex] = new TileCacheEntry(processor);
 }
 
-TileProcessor* TileCache::get(uint32_t tileIndex){
+TileCacheEntry* TileCache::get(uint32_t tileIndex){
 	if (m_processors.find(tileIndex) != m_processors.end())
 		return m_processors[tileIndex];
 
