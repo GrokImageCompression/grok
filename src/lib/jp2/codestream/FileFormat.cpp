@@ -771,7 +771,7 @@ bool FileFormat::read_header(grk_header_info  *header_info){
 	}
 
 	if (needsHeaderRead) {
-		auto image = codeStream->m_user_image;
+		auto image = codeStream->getCompositeImage();
 		if (!check_color(image, &color)){
 			m_headerError = true;
 			return false;
@@ -891,14 +891,14 @@ bool FileFormat::postDecompress(void){
 		if (!color.palette->component_mapping)
 			free_palette_clr(&(color));
 		else {
-			if (!apply_palette_clr(codeStream->m_user_image, &(color)))
+			if (!apply_palette_clr(codeStream->getCompositeImage(), &(color)))
 				return false;
 		}
 	}
 
 	/* Apply channel definitions if needed */
 	if (color.channel_definition)
-		apply_channel_definition(codeStream->m_user_image, &(color));
+		apply_channel_definition(codeStream->getCompositeImage(), &(color));
 
 	return true;
 }

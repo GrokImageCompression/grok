@@ -896,9 +896,9 @@ static void lupInvert(float *pSrcMatrix, float *pDestMatrix, uint32_t nb_compo,
 }
 
 CodeStream::CodeStream(bool decompress, BufferedStream *stream) : m_input_image(nullptr),
-																m_user_image(nullptr),
 																m_output_image(nullptr),
 																cstr_index(nullptr),
+																m_user_image(nullptr),
 																m_tileProcessor(nullptr),
 																m_tileCache(new TileCache()),
 																m_stream(stream),
@@ -968,6 +968,10 @@ int32_t CodeStream::tileIndexToDecode(){
 	return m_tile_ind_to_dec;
 }
 
+grk_image* CodeStream::getCompositeImage(){
+	return m_tileCache->getComposite();
+}
+
 TileProcessor* CodeStream::allocateProcessor(uint16_t tile_index){
 	auto tileCache = m_tileCache->get(tile_index);
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
@@ -978,9 +982,9 @@ TileProcessor* CodeStream::allocateProcessor(uint16_t tile_index){
 			m_output_image = grk_image_create0();
 			if (!(m_output_image))
 				return nullptr;
-			grk_copy_image_header(m_user_image, m_output_image);
+			grk_copy_image_header(getCompositeImage(), m_output_image);
 		}
-		m_tileCache->put(tile_index, new TileCacheEntry(tileProcessor));
+		m_tileCache->put(tile_index, new TileCacheEntry(tileProcessor, nullptr));
 	}
 	m_tileProcessor = tileProcessor;
 
@@ -992,7 +996,7 @@ TileProcessor* CodeStream::currentProcessor(void){
 }
 
 grk_image* CodeStream::get_image(uint16_t tileIndex){
-	return m_user_image;
+	return getCompositeImage();
 }
 
 /** Main header reading function handler */
@@ -1068,20 +1072,14 @@ bool CodeStream::read_header(grk_header_info  *header_info){
 			header_info->isBinaryComment[i] = m_cp.isBinaryComment[i];
 		}
 	}
-	if (!m_user_image) {
-		m_user_image = grk_image_create0();
-		if (!m_user_image){
+
+	/* Copy code stream image information to the user image */
+	grk_copy_image_header(m_input_image, getCompositeImage());
+	if (cstr_index) {
+		/*Allocate and initialize some elements of codestrem index*/
+		if (!j2k_allocate_tile_element_cstr_index(this)) {
 			m_headerError = true;
 			return false;
-		}
-		/* Copy code stream image information to the user image */
-		grk_copy_image_header(m_input_image, m_user_image);
-		if (cstr_index) {
-			/*Allocate and initialize some elements of codestrem index*/
-			if (!j2k_allocate_tile_element_cstr_index(this)) {
-				m_headerError = true;
-				return false;
-			}
 		}
 	}
 	return true;
@@ -1093,7 +1091,7 @@ bool CodeStream::do_decompress(void){
 		return false;
 
 	/* Move data and information from codec output image to user image*/
-	transfer_image_data(m_output_image, m_user_image);
+	transfer_image_data(m_output_image, getCompositeImage());
 
 	return true;
 }
@@ -1107,7 +1105,7 @@ bool CodeStream::decompress( grk_plugin_tile *tile){
 }
 
 bool CodeStream::decompress_tile(uint16_t tile_index){
-	auto image = m_user_image;
+	auto image = getCompositeImage();
 	if (!image) {
 		GRK_ERROR("decompress tile: image is null");
 		return false;
@@ -1785,7 +1783,7 @@ bool CodeStream::end_compress(void){
 bool CodeStream::set_decompress_window(grk_rect_u32 window) {
 	auto cp = &(m_cp);
 	auto image = m_input_image;
-	auto output_image = m_user_image;
+	auto output_image = getCompositeImage();
 	auto decompressor = &m_decompressor;
 
 	/* Check if we have read the main header */

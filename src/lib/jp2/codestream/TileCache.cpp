@@ -19,13 +19,17 @@
 namespace grk {
 
 TileCache::TileCache(GRK_TILE_CACHE_STRATEGY strategy) : tileComposite(nullptr), m_strategy(strategy){
+	tileComposite = (grk_image * ) grk_calloc(1, sizeof(grk_image));
+	if (!tileComposite){
+		throw std::runtime_error("Out of memory");
+	}
 }
 TileCache::TileCache() : TileCache(GRK_TILE_CACHE_NONE){
 }
 TileCache::~TileCache() {
 	for (auto &proc : m_processors)
 		delete proc.second;
-	delete tileComposite;
+	//delete tileComposite;
 }
 
 void TileCache::put(uint16_t tileIndex, TileCacheEntry *entry){
@@ -61,6 +65,10 @@ void TileCache::flush(uint16_t tileIndex){
 			break;
 	}
 
+}
+
+grk_image* TileCache::getComposite(){
+	return tileComposite;
 }
 
 }

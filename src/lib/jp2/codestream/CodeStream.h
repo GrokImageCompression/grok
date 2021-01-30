@@ -290,6 +290,8 @@ struct CodeStream : public ICodeStream {
 	 */
 	bool read_unk(uint16_t *output_marker);
 
+	grk_image* getCompositeImage();
+
 
 	// state of decompressor/compressor
 	DecoderState m_decompressor;
@@ -297,8 +299,6 @@ struct CodeStream : public ICodeStream {
 
 	/** internal/private encoded / decompressed image */
 	grk_image *m_input_image;
-
-	grk_image *m_user_image;
 
 	/* output image (for decompress) */
 	grk_image *m_output_image;
@@ -323,6 +323,8 @@ struct CodeStream : public ICodeStream {
 	BufferedStream* getStream();
 
 private:
+
+	grk_image *m_user_image;
 
 	/**
 	 * Reads the lookup table containing all the marker, status and action,

@@ -23,9 +23,11 @@ namespace grk {
 struct TileProcessor;
 
 struct TileCacheEntry{
-	explicit TileCacheEntry(TileProcessor *p) : processor(p), image(nullptr)
+	TileCacheEntry(TileProcessor *p, grk_image *img) : processor(p), image(img)
 	{}
-	TileCacheEntry() : TileCacheEntry(nullptr)
+	explicit TileCacheEntry(TileProcessor *p) : TileCacheEntry(p,nullptr)
+	{}
+	TileCacheEntry() : TileCacheEntry(nullptr,nullptr)
 	{}
 	~TileCacheEntry()
 	{
@@ -47,6 +49,8 @@ public:
 
 	void setStrategy(GRK_TILE_CACHE_STRATEGY strategy);
 	void flush(uint16_t tileIndex);
+
+	grk_image* getComposite();
 
 private:
 	grk_image *tileComposite;
