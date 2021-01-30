@@ -160,6 +160,8 @@ struct ICodeStream {
    virtual grk_codestream_index* get_cstr_index(void) = 0;
 };
 
+class TileCache;
+
 struct CodeStream : public ICodeStream {
 
 	CodeStream(bool decompress, BufferedStream *stream);
@@ -331,6 +333,8 @@ private:
 
 	/** current TileProcessor **/
 	TileProcessor *m_tileProcessor;
+
+	TileCache *m_tileCache;
 
 	BufferedStream *m_stream;
 

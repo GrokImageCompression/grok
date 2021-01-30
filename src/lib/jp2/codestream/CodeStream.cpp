@@ -899,6 +899,7 @@ CodeStream::CodeStream(bool decompress, BufferedStream *stream) : m_input_image(
 																m_output_image(nullptr),
 																cstr_index(nullptr),
 																m_tileProcessor(nullptr),
+																m_tileCache(new TileCache()),
 																m_stream(stream),
 																m_tile_ind_to_dec(-1),
 																m_marker_scratch(nullptr),
@@ -952,8 +953,7 @@ CodeStream::~CodeStream(){
 	grk_image_destroy(m_input_image);
 	grk_image_destroy(m_output_image);
 	delete[] m_marker_scratch;
-	for(auto &pr : m_processors)
-		delete pr.second;
+	delete m_tileCache;
 	for (auto &val : marker_map)
 		delete val.second;
 }
@@ -967,13 +967,14 @@ int32_t CodeStream::tileIndexToDecode(){
 }
 
 TileProcessor* CodeStream::allocateProcessor(uint16_t tile_index){
-	if (m_processors.find(tile_index) == m_processors.end()){
-		m_tileProcessor = new TileProcessor(this,m_stream);
-		m_tileProcessor->m_tile_index = tile_index;
-		m_processors[tile_index] = m_tileProcessor;
-	} else {
-		m_tileProcessor = m_processors[tile_index];
+	auto proc = m_tileCache->get(tile_index);
+	if (!proc){
+		proc = new TileProcessor(this,m_stream);
+		proc->m_tile_index = tile_index;
+		m_tileCache->put(tile_index, proc);
 	}
+	m_tileProcessor = proc;
+
 	return m_tileProcessor;
 }
 TileProcessor* CodeStream::currentProcessor(void){
@@ -2441,11 +2442,6 @@ bool CodeStream::decompress_tile() {
 
 	rc = true;
 cleanup:
-	for(auto &pr : m_processors){
-		delete pr.second;
-	}
-	m_processors.clear();
-
 	return rc;
 }
 bool CodeStream::exec(std::vector<j2k_procedure> &procs) {
@@ -2512,7 +2508,6 @@ bool CodeStream::decompress_tiles(void) {
 		//2. T2 decompress
 		auto processor = m_tileProcessor;
 		m_tileProcessor = nullptr;
-		m_processors.erase(processor->m_tile_index);
 		bool breakAfterT1 = false;
 		try {
 			if (!decompress_tile_t2(processor)){
@@ -2520,7 +2515,6 @@ bool CodeStream::decompress_tiles(void) {
 							processor->m_tile_index + 1,
 							num_tiles_to_decompress);
 					success = false;
-					delete processor;
 					goto cleanup;
 			}
 		}  catch (DecodeUnknownMarkerAtEndOfTileException &e){
@@ -2529,7 +2523,6 @@ bool CodeStream::decompress_tiles(void) {
 		if (!allocatedOutputImage && multi_tile && m_output_image) {
 			if (!alloc_multi_tile_output_data(m_output_image)){
 				success = false;
-				delete processor;
 				goto cleanup;
 			}
 			allocatedOutputImage = true;
@@ -2551,7 +2544,6 @@ bool CodeStream::decompress_tiles(void) {
 							num_tiles_decoded++;
 						}
 					}
-					delete processor;
 					return 0;
 				})
 			);
@@ -2563,7 +2555,6 @@ bool CodeStream::decompress_tiles(void) {
 			} else {
 				num_tiles_decoded++;
 			}
-			delete processor;
 			if (!success)
 				goto cleanup;
 		}
@@ -2575,6 +2566,7 @@ bool CodeStream::decompress_tiles(void) {
 	for(auto &result: results){
 		result.get();
 	}
+	results.clear();
 	// check if there is another tile that has not been processed
 	// we will reject if it has the TPSot problem (https://github.com/uclouvain/openjpeg/issues/254)
 	if (m_curr_marker == J2K_MS_SOT && m_stream->get_number_byte_left()){
@@ -2606,10 +2598,9 @@ bool CodeStream::decompress_tiles(void) {
 				num_tiles_to_decompress);
 	}
 cleanup:
-	for(auto &pr : m_processors){
-		delete pr.second;
+	for(auto &result: results){
+		result.get();
 	}
-	m_processors.clear();
 	return success;
 }
 bool CodeStream::decompress_validation(void) {
