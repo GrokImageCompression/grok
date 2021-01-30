@@ -18,25 +18,49 @@
 
 namespace grk {
 
-TileCache::TileCache() : tileComposite(nullptr){
+TileCache::TileCache(GRK_TILE_CACHE_STRATEGY strategy) : tileComposite(nullptr), m_strategy(strategy){
 }
-
+TileCache::TileCache() : TileCache(GRK_TILE_CACHE_NONE){
+}
 TileCache::~TileCache() {
 	for (auto &proc : m_processors)
 		delete proc.second;
+	delete tileComposite;
 }
 
-void TileCache::put(uint32_t tileIndex, TileProcessor *processor){
+void TileCache::put(uint16_t tileIndex, TileProcessor *processor){
 	if (m_processors.find(tileIndex) != m_processors.end())
 		delete m_processors[tileIndex];
 	m_processors[tileIndex] = new TileCacheEntry(processor);
 }
 
-TileCacheEntry* TileCache::get(uint32_t tileIndex){
+TileCacheEntry* TileCache::get(uint16_t tileIndex){
 	if (m_processors.find(tileIndex) != m_processors.end())
 		return m_processors[tileIndex];
 
 	return nullptr;
+}
+
+void TileCache::setStrategy(GRK_TILE_CACHE_STRATEGY strategy){
+	m_strategy = strategy;
+}
+
+void TileCache::flush(uint16_t tileIndex){
+	if (m_processors.find(tileIndex) == m_processors.end())
+		return;
+	switch(m_strategy){
+		case GRK_TILE_CACHE_NONE:
+		{
+			auto cache = m_processors[tileIndex];
+			delete cache->image;
+			cache->image = nullptr;
+		}
+			break;
+		case GRK_TILE_CACHE_ALL:
+
+			break;
+	}
+
 }
 
 }

@@ -1179,6 +1179,7 @@ void CodeStream::init_decompress(grk_dparameters  *parameters){
 	if (parameters) {
 		m_cp.m_coding_params.m_dec.m_layer = parameters->cp_layer;
 		m_cp.m_coding_params.m_dec.m_reduce = parameters->cp_reduce;
+		m_tileCache->setStrategy(parameters->tileCacheStrategy);
 	}
 }
 
@@ -2366,8 +2367,7 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor, bool multi_t
 			} else {
 				/* transfer data from tile component to output image */
 				uint32_t compno = 0;
-				for (compno = 0; compno < m_output_image->numcomps;
-						compno++) {
+				for (compno = 0; compno < m_output_image->numcomps;	compno++) {
 					auto tilec = tileProcessor->tile->comps + compno;
 					auto comp = m_output_image->comps + compno;
 
@@ -2394,7 +2394,7 @@ bool CodeStream::decompress_tile() {
 				"since first tile SOT has not been detected");
 		return false;
 	}
-	auto tileCache = m_tileCache->get((uint32_t)tileIndexToDecode());
+	auto tileCache = m_tileCache->get((uint16_t)tileIndexToDecode());
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
 	uint32_t num_tiles_to_decompress = m_cp.t_grid_height * m_cp.t_grid_width;
 	// no need to decompress a single tile twice

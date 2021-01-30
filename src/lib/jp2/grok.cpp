@@ -244,6 +244,7 @@ void GRK_CALLCONV grk_set_default_decompress_params(
 		 grk_dparameters  *parameters) {
 	if (parameters) {
 		memset(parameters, 0, sizeof( grk_dparameters) );
+		parameters->tileCacheStrategy = GRK_TILE_CACHE_NONE;
 	}
 }
 bool GRK_CALLCONV grk_init_decompress( grk_codec p_codec,

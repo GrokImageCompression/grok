@@ -351,6 +351,11 @@ typedef enum _GRK_CODEC_FORMAT {
 #define  GRK_NUM_ASOC_BOXES_SUPPORTED 256
 #define GRK_MAX_COMMENT_LENGTH (UINT16_MAX-2)
 
+typedef enum GRK_TILE_CACHE_STRATEGY {
+	GRK_TILE_CACHE_NONE,
+	GRK_TILE_CACHE_ALL,
+} GRK_TILE_CACHE_STRATEGY;
+
 /**
  * Callback function prototype for logging
  *
@@ -718,6 +723,7 @@ typedef struct _grk_dparameters {
 	/** Number of tiles to decompress */
 	uint32_t nb_tile_to_decompress;
 	uint32_t flags;
+	GRK_TILE_CACHE_STRATEGY tileCacheStrategy;
 } grk_dparameters;
 
 /**

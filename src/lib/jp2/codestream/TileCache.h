@@ -38,15 +38,20 @@ struct TileCacheEntry{
 
 class TileCache {
 public:
-	TileCache();
+	TileCache(GRK_TILE_CACHE_STRATEGY strategy);
+	TileCache(void);
 	virtual ~TileCache();
 
-	void put(uint32_t tileIndex, TileProcessor *processor);
-	TileCacheEntry* get(uint32_t tileIndex);
+	void put(uint16_t tileIndex, TileProcessor *processor);
+	TileCacheEntry* get(uint16_t tileIndex);
+
+	void setStrategy(GRK_TILE_CACHE_STRATEGY strategy);
+	void flush(uint16_t tileIndex);
 
 private:
 	grk_image *tileComposite;
 	std::map<uint32_t, TileCacheEntry*> m_processors;
+	GRK_TILE_CACHE_STRATEGY m_strategy;
 };
 
 }

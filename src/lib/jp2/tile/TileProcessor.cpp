@@ -888,7 +888,7 @@ bool TileProcessor::decompress_tile_t1(void) {
 					return false;
 			}
 
-			tilec->release_mem();
+			tilec->release_mem(false);
 		}
 	}
 
@@ -1285,6 +1285,7 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *p_output_
 			dest_ind += width_dest + line_off_dest;
 			src_ind  += width_dest + life_off_src;
 		}
+		tilec->release_mem(true);
 	}
 
 	return true;

@@ -41,10 +41,9 @@ TileComponent::TileComponent() :resolutions(nullptr),
 {}
 
 TileComponent::~TileComponent(){
-	release_mem();
-	delete buf;
+	release_mem(true);
 }
-void TileComponent::release_mem(){
+void TileComponent::release_mem(bool releaseBuffer){
 	if (resolutions) {
 		for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 			auto res = resolutions + resno;
@@ -60,6 +59,10 @@ void TileComponent::release_mem(){
 	}
 	delete m_sa;
 	m_sa = nullptr;
+	if (releaseBuffer) {
+		delete buf;
+		buf = nullptr;
+	}
 }
 
 /**
@@ -263,9 +266,11 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
     m_sa = sa;
 }
 
-
 bool TileComponent::create_buffer(grk_rect_u32 *unreducedImageComp,
 									grk_rect_u32 unreducedTileOrImageCompWindow) {
+	if (buf)
+		return true;
+
 	// calculate band
 	for (uint8_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
