@@ -459,30 +459,25 @@ grk_codestream_index* j2k_get_cstr_index(CodeStream *codeStream) {
 }
 
 bool j2k_allocate_tile_element_cstr_index(CodeStream *codeStream) {
-	codeStream->cstr_index->nb_of_tiles = codeStream->m_cp.t_grid_width
-			* codeStream->m_cp.t_grid_height;
-	codeStream->cstr_index->tile_index = (grk_tile_index*) grk_calloc(
-			codeStream->cstr_index->nb_of_tiles, sizeof(grk_tile_index));
-	if (!codeStream->cstr_index->tile_index)
-		return false;
-
-	for (uint32_t i = 0; i < codeStream->cstr_index->nb_of_tiles;
-			i++) {
-		codeStream->cstr_index->tile_index[i].maxmarknum = 100;
-		codeStream->cstr_index->tile_index[i].marknum = 0;
-		codeStream->cstr_index->tile_index[i].marker =
-				(grk_marker_info*) grk_calloc(
-						codeStream->cstr_index->tile_index[i].maxmarknum,
-						sizeof(grk_marker_info));
-		if (!codeStream->cstr_index->tile_index[i].marker)
+	if (!codeStream->cstr_index->tile_index){
+		codeStream->cstr_index->nb_of_tiles = codeStream->m_cp.t_grid_width	* codeStream->m_cp.t_grid_height;
+		codeStream->cstr_index->tile_index = (grk_tile_index*) grk_calloc(codeStream->cstr_index->nb_of_tiles, sizeof(grk_tile_index));
+		if (!codeStream->cstr_index->tile_index)
 			return false;
+
+		for (uint32_t i = 0; i < codeStream->cstr_index->nb_of_tiles;i++) {
+			codeStream->cstr_index->tile_index[i].maxmarknum = 100;
+			codeStream->cstr_index->tile_index[i].marknum = 0;
+			codeStream->cstr_index->tile_index[i].marker =	(grk_marker_info*) grk_calloc(codeStream->cstr_index->tile_index[i].maxmarknum,	sizeof(grk_marker_info));
+			if (!codeStream->cstr_index->tile_index[i].marker)
+				return false;
+		}
 	}
 	return true;
 }
 
 grk_codestream_index* j2k_create_cstr_index(void) {
-	auto cstr_index = (grk_codestream_index*) grk_calloc(1,
-			sizeof(grk_codestream_index));
+	auto cstr_index = (grk_codestream_index*) grk_calloc(1,	sizeof(grk_codestream_index));
 	if (!cstr_index)
 		return nullptr;
 

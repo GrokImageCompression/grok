@@ -285,6 +285,8 @@ public:
 	uint32_t numUuids;
 
 	AsocBox root_asoc;
+
+	bool m_headerError;
 private:
 	bool postDecompress( grk_image *p_image);
 };

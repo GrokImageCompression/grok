@@ -908,7 +908,8 @@ CodeStream::CodeStream(bool decompress, BufferedStream *stream) : m_input_image(
 																wholeTileDecompress(true),
 																current_plugin_tile(nullptr),
 																 m_nb_tile_parts_correction_checked(false),
-																 m_nb_tile_parts_correction(0){
+																 m_nb_tile_parts_correction(0),
+																 m_headerError(false){
     memset(&m_cp, 0 , sizeof(CodingParams));
     if (decompress){
 		m_decompressor.m_default_tcp = new TileCodingParams();
@@ -983,27 +984,35 @@ TileProcessor* CodeStream::currentProcessor(void){
 
 /** Main header reading function handler */
 bool CodeStream::read_header(grk_header_info  *header_info, grk_image **p_image){
-	/* create an empty image header */
-	m_input_image = grk_image_create0();
-	if (!m_input_image)
+	if (m_headerError)
 		return false;
 
-	/* customization of the validation */
-	m_validation_list.push_back((j2k_procedure) j2k_decompress_validation);
+	if (!m_input_image) {
+		m_input_image = grk_image_create0();
+		if (!m_input_image){
+			m_headerError = true;
+			return false;
+		}
 
-	/* validation of the parameters codec */
-	if (!exec(m_validation_list))
-		return false;
+		/* customization of the validation */
+		m_validation_list.push_back((j2k_procedure) j2k_decompress_validation);
 
-	m_procedure_list.push_back(
-			(j2k_procedure) j2k_read_header_procedure);
-	// custom procedures here
-	m_procedure_list.push_back(
-			(j2k_procedure) j2k_copy_default_tcp);
+		/* validation of the parameters codec */
+		if (!exec(m_validation_list)){
+			m_headerError = true;
+			return false;
+		}
 
-	/* read header */
-	if (!exec(m_procedure_list))
-		return false;
+		m_procedure_list.push_back(	(j2k_procedure) j2k_read_header_procedure);
+		// custom procedures here
+		m_procedure_list.push_back(	(j2k_procedure) j2k_copy_default_tcp);
+
+		/* read header */
+		if (!exec(m_procedure_list)){
+			m_headerError = true;
+			return false;
+		}
+	}
 
 	if (header_info) {
 		CodingParams *cp = nullptr;
@@ -1046,15 +1055,20 @@ bool CodeStream::read_header(grk_header_info  *header_info, grk_image **p_image)
 			header_info->isBinaryComment[i] = m_cp.isBinaryComment[i];
 		}
 	}
-	*p_image = grk_image_create0();
-	if (!(*p_image))
-		return false;
-	/* Copy code stream image information to the output image */
-	grk_copy_image_header(m_input_image, *p_image);
-	if (cstr_index) {
-		/*Allocate and initialize some elements of codestrem index*/
-		if (!j2k_allocate_tile_element_cstr_index(this)) {
+	if (!*p_image) {
+		*p_image = grk_image_create0();
+		if (!(*p_image)){
+			m_headerError = true;
 			return false;
+		}
+		/* Copy code stream image information to the output image */
+		grk_copy_image_header(m_input_image, *p_image);
+		if (cstr_index) {
+			/*Allocate and initialize some elements of codestrem index*/
+			if (!j2k_allocate_tile_element_cstr_index(this)) {
+				m_headerError = true;
+				return false;
+			}
 		}
 	}
 	return true;

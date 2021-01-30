@@ -376,18 +376,6 @@ static const BoxReadHandler jp2_img_header[] = {
 };
 
 
-/**
- * Sets up the validation ,i.e. adds the procedures to launch to make sure the codec parameters
- * are valid. Developers wanting to extend the library can add their own validation procedures.
- */
-static bool jp2_init_decompress_validation(FileFormat *fileFormat);
-
-/**
- * Sets up the procedures to do on reading header.
- * Developers wanting to extend the library can add their own writing procedures.
- */
-static bool jp2_init_header_reading(FileFormat *fileFormat);
-
 static bool jp2_read_ihdr(FileFormat *fileFormat, uint8_t *p_image_header_data,
 		uint32_t image_header_size) {
 	assert(p_image_header_data != nullptr);
@@ -649,14 +637,6 @@ static bool jp2_init_compress_validation(FileFormat *fileFormat) {
 	return true;
 }
 
-static bool jp2_init_decompress_validation(FileFormat *fileFormat) {
-	(void) fileFormat;
-	assert(fileFormat != nullptr);
-
-	/* add your custom validation procedure */
-
-	return true;
-}
 
 static bool jp2_init_header_writing(FileFormat *fileFormat) {
 
@@ -667,15 +647,6 @@ static bool jp2_init_header_writing(FileFormat *fileFormat) {
 	fileFormat->m_procedure_list->push_back((jp2_procedure) jp2_write_jp2h);
 	fileFormat->m_procedure_list->push_back((jp2_procedure) jp2_write_uuids);
 	fileFormat->m_procedure_list->push_back((jp2_procedure) jp2_skip_jp2c);
-	//custom procedures here
-
-	return true;
-}
-
-static bool jp2_init_header_reading(FileFormat *fileFormat) {
-	assert(fileFormat != nullptr);
-
-	fileFormat->m_procedure_list->push_back((jp2_procedure) jp2_read_header_procedure);
 	//custom procedures here
 
 	return true;
@@ -706,7 +677,8 @@ FileFormat::FileFormat(bool isDecoder, BufferedStream *stream) : codeStream(new 
 										jp2_img_state(0),
 										has_capture_resolution(false),
 										has_display_resolution(false),
-										numUuids(0)
+										numUuids(0),
+										m_headerError(false)
 {
 	for (uint32_t i = 0; i < 2; ++i) {
 		capture_resolution[i] = 0;
@@ -762,118 +734,134 @@ void FileFormat::serializeAsoc(AsocBox *asoc,
 
 /** Main header reading function handler */
 bool FileFormat::read_header(grk_header_info  *header_info, grk_image **p_image){
-	/* customization of the validation */
-	if (!jp2_init_decompress_validation(this))
+	if (m_headerError)
 		return false;
 
-	/* customization of the compressing */
-	if (!jp2_init_header_reading(this))
-		return false;
+	bool needsHeaderRead = !codeStream->m_input_image;
+	if (needsHeaderRead) {
 
-	/* validation of the parameters codec */
-	if (!jp2_exec(this, m_validation_list))
-		return false;
+		m_procedure_list->push_back((jp2_procedure) jp2_read_header_procedure);
 
-	/* read header */
-	if (!jp2_exec(this, m_procedure_list))
-		return false;
+		/* validation of the parameters codec */
+		if (!jp2_exec(this, m_validation_list)){
+			m_headerError = true;
+			return false;
+		}
+
+		/* read header */
+		if (!jp2_exec(this, m_procedure_list)){
+			m_headerError = true;
+			return false;
+		}
+
+	}
 
 	if (header_info) {
 		header_info->xml_data = xml.buf;
 		header_info->xml_data_len = xml.len;
 	}
-	if (!codeStream->read_header(header_info, p_image))
+
+
+	if (!codeStream->read_header(header_info, p_image)){
+		m_headerError = true;
 		return false;
-
-	auto image = *p_image;
-	if (!check_color(image, &color))
-		return false;
-
-
-	if (has_capture_resolution) {
-		image->has_capture_resolution = true;
-		for (int i = 0; i < 2; ++i)
-			image->capture_resolution[i] = capture_resolution[i];
 	}
 
-	if (has_display_resolution) {
-		image->has_display_resolution = true;
-		for (int i = 0; i < 2; ++i)
-			image->display_resolution[i] = display_resolution[i];
-	}
-
-	/* Set Image Color Space */
-	switch (enumcs) {
-	case GRK_ENUM_CLRSPC_CMYK:
-		image->color_space = GRK_CLRSPC_CMYK;
-		break;
-	case GRK_ENUM_CLRSPC_CIE:
-		if (color.icc_profile_buf) {
-			if (((uint32_t*) color.icc_profile_buf)[1]
-					== GRK_DEFAULT_CIELAB_SPACE)
-				image->color_space = GRK_CLRSPC_DEFAULT_CIE;
-			else
-				image->color_space = GRK_CLRSPC_CUSTOM_CIE;
-		} else {
-			GRK_ERROR("CIE Lab image requires ICC profile buffer set");
+	if (needsHeaderRead) {
+		auto image = *p_image;
+		if (!check_color(image, &color)){
+			m_headerError = true;
 			return false;
 		}
-		break;
-	case GRK_ENUM_CLRSPC_SRGB:
-		image->color_space = GRK_CLRSPC_SRGB;
-		break;
-	case GRK_ENUM_CLRSPC_GRAY:
-		image->color_space = GRK_CLRSPC_GRAY;
-		break;
-	case GRK_ENUM_CLRSPC_SYCC:
-		image->color_space = GRK_CLRSPC_SYCC;
-		break;
-	case GRK_ENUM_CLRSPC_EYCC:
-		image->color_space = GRK_CLRSPC_EYCC;
-		break;
-	default:
-		image->color_space = GRK_CLRSPC_UNKNOWN;
-		break;
-	}
-	if (meth == 2 && color.icc_profile_buf)
-		image->color_space = GRK_CLRSPC_ICC;
 
-	// check RGB subsampling
-	if (image->color_space == GRK_CLRSPC_SRGB){
-		for (uint16_t i = 1; i < image->numcomps; ++i){
-			auto comp = image->comps+i;
-			if (comp->dx != image->comps->dx || comp->dy != image->comps->dy){
-				GRK_ERROR("sRGB colour space mandates uniform sampling in all three components");
+
+		if (has_capture_resolution) {
+			image->has_capture_resolution = true;
+			for (int i = 0; i < 2; ++i)
+				image->capture_resolution[i] = capture_resolution[i];
+		}
+
+		if (has_display_resolution) {
+			image->has_display_resolution = true;
+			for (int i = 0; i < 2; ++i)
+				image->display_resolution[i] = display_resolution[i];
+		}
+
+		/* Set Image Color Space */
+		switch (enumcs) {
+		case GRK_ENUM_CLRSPC_CMYK:
+			image->color_space = GRK_CLRSPC_CMYK;
+			break;
+		case GRK_ENUM_CLRSPC_CIE:
+			if (color.icc_profile_buf) {
+				if (((uint32_t*) color.icc_profile_buf)[1]
+						== GRK_DEFAULT_CIELAB_SPACE)
+					image->color_space = GRK_CLRSPC_DEFAULT_CIE;
+				else
+					image->color_space = GRK_CLRSPC_CUSTOM_CIE;
+			} else {
+				GRK_ERROR("CIE Lab image requires ICC profile buffer set");
+				m_headerError = true;
 				return false;
 			}
+			break;
+		case GRK_ENUM_CLRSPC_SRGB:
+			image->color_space = GRK_CLRSPC_SRGB;
+			break;
+		case GRK_ENUM_CLRSPC_GRAY:
+			image->color_space = GRK_CLRSPC_GRAY;
+			break;
+		case GRK_ENUM_CLRSPC_SYCC:
+			image->color_space = GRK_CLRSPC_SYCC;
+			break;
+		case GRK_ENUM_CLRSPC_EYCC:
+			image->color_space = GRK_CLRSPC_EYCC;
+			break;
+		default:
+			image->color_space = GRK_CLRSPC_UNKNOWN;
+			break;
 		}
-	}
+		if (meth == 2 && color.icc_profile_buf)
+			image->color_space = GRK_CLRSPC_ICC;
 
-	// retrieve icc profile
-	if (color.icc_profile_buf) {
-		image->color.icc_profile_buf = color.icc_profile_buf;
-		image->color.icc_profile_len = color.icc_profile_len;
-		color.icc_profile_buf = nullptr;
-		color.icc_profile_len = 0;
-	}
+		// check RGB subsampling
+		if (image->color_space == GRK_CLRSPC_SRGB){
+			for (uint16_t i = 1; i < image->numcomps; ++i){
+				auto comp = image->comps+i;
+				if (comp->dx != image->comps->dx || comp->dy != image->comps->dy){
+					GRK_ERROR("sRGB colour space mandates uniform sampling in all three components");
+					m_headerError = true;
+					return false;
+				}
+			}
+		}
 
-	for (int i = 0; i < 2; ++i) {
-		image->capture_resolution[i] = capture_resolution[i];
-		image->display_resolution[i] = display_resolution[i];
-	}
-	// retrieve special uuids
-	for (uint32_t i = 0; i < numUuids; ++i) {
-		auto uuid = uuids + i;
-		if (memcmp(uuid->uuid, IPTC_UUID, 16) == 0) {
-			image->iptc_buf = uuid->buf;
-			image->iptc_len = uuid->len;
-			uuid->buf = nullptr;
-			uuid->len = 0;
-		} else if (memcmp(uuid->uuid, XMP_UUID, 16) == 0) {
-			image->xmp_buf = uuid->buf;
-			image->xmp_len = uuid->len;
-			uuid->buf = nullptr;
-			uuid->len = 0;
+		// retrieve icc profile
+		if (color.icc_profile_buf) {
+			image->color.icc_profile_buf = color.icc_profile_buf;
+			image->color.icc_profile_len = color.icc_profile_len;
+			color.icc_profile_buf = nullptr;
+			color.icc_profile_len = 0;
+		}
+
+		for (int i = 0; i < 2; ++i) {
+			image->capture_resolution[i] = capture_resolution[i];
+			image->display_resolution[i] = display_resolution[i];
+		}
+		// retrieve special uuids
+		for (uint32_t i = 0; i < numUuids; ++i) {
+			auto uuid = uuids + i;
+			if (memcmp(uuid->uuid, IPTC_UUID, 16) == 0) {
+				image->iptc_buf = uuid->buf;
+				image->iptc_len = uuid->len;
+				uuid->buf = nullptr;
+				uuid->len = 0;
+			} else if (memcmp(uuid->uuid, XMP_UUID, 16) == 0) {
+				image->xmp_buf = uuid->buf;
+				image->xmp_len = uuid->len;
+				uuid->buf = nullptr;
+				uuid->len = 0;
+			}
 		}
 	}
 
@@ -1350,8 +1338,7 @@ bool FileFormat::read_header_procedure(void) {
 			auto current_handler_misplaced = jp2_img_find_handler(box.type);
 			current_data_size = (uint32_t) (box.length - nb_bytes_read);
 
-			if ((current_handler != nullptr)
-					|| (current_handler_misplaced != nullptr)) {
+			if (current_handler || current_handler_misplaced) {
 				if (current_handler == nullptr) {
 					GRK_WARN("Found a misplaced '%c%c%c%c' box outside jp2h box",
 							(uint8_t) (box.type >> 24),
@@ -1390,8 +1377,7 @@ bool FileFormat::read_header_procedure(void) {
 					goto cleanup;
 				}
 				if (current_data_size > last_data_size) {
-					uint8_t *new_current_data = (uint8_t*) grk_realloc(
-							current_data, current_data_size);
+					uint8_t *new_current_data = (uint8_t*) grk_realloc(current_data, current_data_size);
 					if (!new_current_data) {
 						GRK_ERROR("Not enough memory to handle JPEG 2000 box");
 						goto cleanup;
@@ -1403,16 +1389,13 @@ bool FileFormat::read_header_procedure(void) {
 					GRK_ERROR("Problem with reading JPEG2000 box, stream error");
 					goto cleanup;
 				}
-
 				nb_bytes_read = (uint32_t) stream->read(current_data,
 						current_data_size);
 				if (nb_bytes_read != current_data_size) {
 					GRK_ERROR("Problem with reading JPEG2000 box, stream error");
 					goto cleanup;
 				}
-
-				if (!current_handler->handler(this, current_data,
-						current_data_size)) {
+				if (!current_handler->handler(this, current_data,current_data_size)) {
 					goto cleanup;
 				}
 			} else {
@@ -1423,7 +1406,6 @@ bool FileFormat::read_header_procedure(void) {
 				if (!(jp2_state & JP2_STATE_FILE_TYPE)) {
 					GRK_ERROR("Malformed JP2 file format: second box must be file type box");
 					goto cleanup;
-
 				}
 				jp2_state |= JP2_STATE_UNKNOWN;
 				if (!stream->skip(current_data_size)) {
@@ -2715,7 +2697,7 @@ bool FileFormat::read_palette_clr( uint8_t *p_pclr_header_data,	uint32_t pclr_he
 		grk_read<uint8_t>(p_pclr_header_data++, &val); /* Bi */
 		jp2_pclr->channel_prec[i] = (uint8_t) ((val & 0x7f) + 1);
 		if (jp2_pclr->channel_prec[i]> 32){
-			GRK_ERROR("Palette channel precision %d is greater than supported palette channel precision (32) ",
+			GRK_ERROR("Palette : channel precision %d is greater than supported palette channel precision (32) ",
 					jp2_pclr->channel_prec[i]);
 			return false;
 		}
@@ -2730,11 +2712,10 @@ bool FileFormat::read_palette_clr( uint8_t *p_pclr_header_data,	uint32_t pclr_he
 	for (uint16_t j = 0; j < num_entries; ++j) {
 		for (uint8_t i = 0; i < num_channels; ++i) {
 			uint32_t bytes_to_read = (uint32_t) ((jp2_pclr->channel_prec[i] + 7) >> 3);
-			if ((ptrdiff_t) pclr_header_size
-					< (ptrdiff_t) (p_pclr_header_data - orig_header_data)
-							+ (ptrdiff_t) bytes_to_read)
+			if ((ptrdiff_t) pclr_header_size < (ptrdiff_t) (p_pclr_header_data - orig_header_data)	+ (ptrdiff_t) bytes_to_read){
+				GRK_ERROR("Palette : box too short");
 				return false;
-
+			}
 			grk_read<uint32_t>(p_pclr_header_data, lut++, bytes_to_read); /* Cji */
 			p_pclr_header_data += bytes_to_read;
 		}
