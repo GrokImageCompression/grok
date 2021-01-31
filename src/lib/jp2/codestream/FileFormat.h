@@ -291,7 +291,7 @@ public:
 
 	bool m_headerError;
 private:
-	bool postDecompress(void);
+	bool applyColour(GrkImage *img);
 };
 
 

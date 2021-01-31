@@ -900,7 +900,9 @@ bool FileFormat::decompress( grk_plugin_tile *tile){
 		return false;
 	}
 
-	return postDecompress();
+	applyColour(codeStream->getCompositeImage());
+
+	return true;
 }
 
 bool FileFormat::decompress_tile(uint16_t tile_index) {
@@ -908,8 +910,8 @@ bool FileFormat::decompress_tile(uint16_t tile_index) {
 		GRK_ERROR("Failed to decompress JP2 file");
 		return false;
 	}
-
-	return postDecompress();
+	applyColour(codeStream->getCompositeImage());
+	return true;
 }
 
 
@@ -925,21 +927,25 @@ bool FileFormat::end_decompress(void){
 
 	return codeStream->end_decompress();
 }
-bool FileFormat::postDecompress(void){
+bool FileFormat::applyColour(GrkImage *img){
+	if (img->color_applied)
+		return true;
+
 	if (color.palette) {
 		/* Part 1, I.5.3.4: Either both or none : */
 		if (!color.palette->component_mapping)
 			free_palette_clr(&(color));
 		else {
-			if (!apply_palette_clr(codeStream->getCompositeImage(), &(color)))
+			if (!apply_palette_clr(img, &(color)))
 				return false;
 		}
 	}
 
 	/* Apply channel definitions if needed */
 	if (color.channel_definition)
-		apply_channel_definition(codeStream->getCompositeImage(), &(color));
+		apply_channel_definition(img, &(color));
 
+	img->color_applied = true;
 	return true;
 }
 bool FileFormat::start_compress(void){
@@ -2052,10 +2058,6 @@ void FileFormat::apply_channel_definition(GrkImage *image, grk_color *color) {
 			}
 		}
 	}
-
-	delete[] color->channel_definition->descriptions;
-	delete color->channel_definition;
-	color->channel_definition = nullptr;
 }
 
 bool FileFormat::read_channel_definition( uint8_t *p_cdef_header_data,

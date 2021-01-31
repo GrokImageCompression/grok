@@ -907,6 +907,7 @@ typedef struct _grk_image {
 	/** image components */
 	grk_image_comp *comps;
 	grk_color color;
+	bool color_applied;
 	bool has_capture_resolution;
 	double capture_resolution[2];
 	bool has_display_resolution;
