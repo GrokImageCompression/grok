@@ -214,16 +214,6 @@ struct CodeStream : public ICodeStream {
 	 */
 	bool set_decompress_window(grk_rect_u32 window);
 
-
-	/**
-	 * Allocate output buffer for multiple tile decompress
-	 *
-	 * @param p_output_image output image
-	 *
-	 * @return true if successful
-	 */
-	bool alloc_multi_tile_output_data(GrkImage *p_output_image);
-
 	bool parse_tile_header_markers(bool *can_decode_tile_data);
 
 	bool init_header_writing(void);
@@ -317,8 +307,6 @@ struct CodeStream : public ICodeStream {
 	BufferedStream* getStream();
 
 private:
-
-	GrkImage *m_user_image;
 
 	/**
 	 * Reads the lookup table containing all the marker, status and action,

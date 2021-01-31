@@ -108,13 +108,8 @@ struct TileProcessor {
 	 * Copies tile data from the given memory block onto the system.
 	 */
 	bool copy_uncompressed_data_to_tile(uint8_t *p_src, uint64_t src_length);
-
 	bool needs_rate_control();
-
-	bool copy_decompressed_tile_to_output_image(GrkImage *p_output_image);
-
 	void copy_image_to_tile();
-
 	bool prepare_sod_decoding(CodeStream *codeStream);
 
 	/** index of tile being currently compressed/decompressed */

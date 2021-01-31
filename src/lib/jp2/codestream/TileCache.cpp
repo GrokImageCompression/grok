@@ -54,7 +54,7 @@ void TileCache::put(uint16_t tileIndex, GrkImage* src_image, grk_tile *src_tile)
 			break;
 		case GRK_TILE_CACHE_ALL:
 			{
-			auto copy = src_image->make_copy(src_tile);
+			auto copy = src_image->duplicate(src_tile);
 			m_processors[tileIndex]->image = copy;
 			}
 			break;

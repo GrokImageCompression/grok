@@ -727,7 +727,6 @@ static void lupInvert(float *pSrcMatrix, float *pDestMatrix, uint32_t nb_compo,
 CodeStream::CodeStream(bool decompress, BufferedStream *stream) : m_input_image(nullptr),
 																m_output_image(nullptr),
 																cstr_index(nullptr),
-																m_user_image(nullptr),
 																m_tileProcessor(nullptr),
 																m_tileCache(new TileCache()),
 																m_stream(stream),
@@ -809,7 +808,7 @@ TileProcessor* CodeStream::allocateProcessor(uint16_t tile_index){
 		tileProcessor->m_tile_index = tile_index;
 		if (!m_output_image) {
 			m_output_image = new GrkImage();
-			getCompositeImage()->copy_image_header(m_output_image);
+			getCompositeImage()->copyHeader(m_output_image);
 		}
 		m_tileCache->put(tile_index, new TileCacheEntry(tileProcessor, nullptr));
 	}
@@ -899,7 +898,7 @@ bool CodeStream::read_header(grk_header_info  *header_info){
 	}
 
 	/* Copy code stream image information to the user image */
-	m_input_image->copy_image_header(getCompositeImage());
+	m_input_image->copyHeader(getCompositeImage());
 	if (cstr_index) {
 		/*Allocate and initialize some elements of codestrem index*/
 		if (!j2k_allocate_tile_element_cstr_index(this)) {
@@ -916,7 +915,7 @@ bool CodeStream::do_decompress(void){
 		return false;
 
 	/* Move data and information from codec output image to user image*/
-	m_output_image->transfer_image_data(getCompositeImage());
+	m_output_image->transferData(getCompositeImage());
 
 	return true;
 }
@@ -1054,7 +1053,7 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,GrkImage *image){
 
 	// create private sanitized copy of image
 	m_input_image = new GrkImage();
-	if (!image->copy_image_header(m_input_image)){
+	if (!image->copyHeader(m_input_image)){
 		GRK_ERROR("Failed to copy image header.");
 		return false;
 	}
@@ -1682,7 +1681,7 @@ bool CodeStream::set_decompress_window(grk_rect_u32 window) {
 		output_image->y1 = end_y;
 	}
 	wholeTileDecompress = false;
-	if (!output_image->update_image_dimensions(cp->m_coding_params.m_dec.m_reduce))
+	if (!output_image->reduceDimensions(cp->m_coding_params.m_dec.m_reduce))
 		return false;
 
 	GRK_INFO("Decompress window set to (%d,%d,%d,%d)", window.x0,window.y0,window.x1,window.y1);
@@ -1742,39 +1741,6 @@ bool CodeStream::read_short(uint16_t *val){
 
 	grk_read<uint16_t>(temp, val);
 	return true;
-}
-/**
- * Allocate output buffer for multiple tile decompress
- *
- * @param p_output_image output image
- *
- * @return true if successful
- */
-bool CodeStream::alloc_multi_tile_output_data(GrkImage *p_output_image){
-	auto image_src = m_input_image;
-	for (uint32_t i = 0; i < image_src->numcomps; i++) {
-		auto comp_dest = p_output_image->comps + i;
-
-		if (comp_dest->w  == 0 || comp_dest->h == 0) {
-			GRK_ERROR("Output component %d has invalid dimensions %u x %u",
-					i, comp_dest->w, comp_dest->h);
-			return false;
-		}
-
-		/* Allocate output component buffer if necessary */
-		if (!comp_dest->data) {
-			if (!GrkImage::image_single_component_data_alloc(comp_dest)){
-				GRK_ERROR("Failed to allocate pixel data for component %d, with dimensions %u x %u",
-						i, comp_dest->w, comp_dest->h);
-				return false;
-			}
-			memset(comp_dest->data, 0,
-						(uint64_t)comp_dest->stride * comp_dest->h * sizeof(int32_t));
-		}
-	}
-
-	return true;
-
 }
 
 const marker_handler* CodeStream::get_marker_handler(	uint16_t id) {
@@ -2181,7 +2147,7 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor, bool multi_t
 	if (doPost) {
 		/* copy/transfer data from tile component to output image */
 		if (multi_tile) {
-			if (!tileProcessor->copy_decompressed_tile_to_output_image(m_output_image))
+			if (!m_output_image->copy(tileProcessor->tile, tileProcessor->m_cp))
 				return false;
 		} else {
 			m_tileCache->put(tile_index, m_output_image, tileProcessor->tile);
@@ -2363,7 +2329,7 @@ bool CodeStream::decompress_tiles(void) {
 			breakAfterT1 = true;
 		}
 		if (!allocatedOutputImage && multi_tile && m_output_image) {
-			if (!alloc_multi_tile_output_data(m_output_image)){
+			if (!m_output_image->allocMirrorData(m_input_image)){
 				success = false;
 				goto cleanup;
 			}

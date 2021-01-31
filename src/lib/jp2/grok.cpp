@@ -143,7 +143,7 @@ const char* GRK_CALLCONV grk_version(void) {
 
 grk_image *  GRK_CALLCONV grk_image_create(uint16_t numcmpts,
 		 grk_image_cmptparm  *cmptparms, GRK_COLOR_SPACE clrspc, bool allocData) {
-	return GrkImage::image_create(numcmpts, cmptparms, clrspc, allocData);
+	return GrkImage::create(numcmpts, cmptparms, clrspc, allocData);
 }
 
 void GRK_CALLCONV grk_image_destroy(grk_image *image) {
