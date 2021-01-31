@@ -1503,14 +1503,24 @@ GRK_API bool GRK_CALLCONV grk_read_header(grk_codec codec,grk_header_info *heade
 
 
 /**
- * Get decompressed image
+ * Get decompressed tile image
  *
  * @param	codec				JPEG 2000 code stream to read.
  * @param	tileIndex			tile index
  *
  * @return pointer to decompressed image
  */
-GRK_API grk_image* GRK_CALLCONV grk_get_image(grk_codec codec,uint16_t tileIndex);
+GRK_API grk_image* GRK_CALLCONV grk_get_tile_image(grk_codec codec,uint16_t tileIndex);
+
+/**
+ * Get decompressed composite image
+ *
+ * @param	codec				JPEG 2000 code stream to read.
+ *
+ * @return pointer to decompressed image
+ */
+GRK_API grk_image* GRK_CALLCONV grk_get_composited_image(grk_codec codec);
+
 
 /**
  * Set the given area to be decompressed. This function should be called

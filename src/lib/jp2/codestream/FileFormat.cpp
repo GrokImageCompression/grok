@@ -735,6 +735,10 @@ GrkImage* FileFormat::get_image(uint16_t tileIndex){
 	return codeStream->get_image(tileIndex);
 }
 
+GrkImage* FileFormat::get_image(void){
+	return codeStream->get_image();
+}
+
 /** Main header reading function handler */
 bool FileFormat::read_header(grk_header_info  *header_info){
 	if (m_headerError)

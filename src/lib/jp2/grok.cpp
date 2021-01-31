@@ -264,7 +264,7 @@ bool GRK_CALLCONV grk_set_MCT( grk_cparameters  *parameters,
 			l_dc_shift_size);
 	return true;
 }
-grk_image* GRK_CALLCONV grk_get_image( grk_codec p_codec, uint16_t tileIndex) {
+grk_image* GRK_CALLCONV grk_get_tile_image( grk_codec p_codec, uint16_t tileIndex) {
 	if (p_codec) {
 		auto codec = (grk_codec_private*) p_codec;
 		assert(codec->is_decompressor);
@@ -272,6 +272,16 @@ grk_image* GRK_CALLCONV grk_get_image( grk_codec p_codec, uint16_t tileIndex) {
 	}
 	return nullptr;
 }
+
+grk_image* GRK_CALLCONV grk_get_composited_image( grk_codec p_codec) {
+	if (p_codec) {
+		auto codec = (grk_codec_private*) p_codec;
+		assert(codec->is_decompressor);
+		return codec->m_codeStreamBase->get_image();
+	}
+	return nullptr;
+}
+
 
 /* ---------------------------------------------------------------------- */
 /* COMPRESSION FUNCTIONS*/

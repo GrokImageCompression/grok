@@ -156,7 +156,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len){
     uint32_t x0,y0,width,height;
     if (!grk_read_header(codec, &header_info))
         goto cleanup;
-    psImage = grk_get_image(codec,0);
+    psImage = grk_get_composited_image(codec);
     width = psImage->x1 - psImage->x0;
     if (width > 1024)
         width = 1024;

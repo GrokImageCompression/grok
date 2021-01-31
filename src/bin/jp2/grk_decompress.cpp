@@ -1162,7 +1162,7 @@ int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 			goto cleanup;
 		}
 
-		info->image = grk_get_image(info->l_codec,0);
+		info->image = grk_get_composited_image(info->l_codec);
 
 		// do not allow odd top left window coordinates for SYCC
 		if (info->image->color_space == GRK_CLRSPC_SYCC){

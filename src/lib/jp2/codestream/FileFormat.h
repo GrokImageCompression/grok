@@ -158,6 +158,7 @@ public:
    bool read_header(grk_header_info  *header_info);
 
    GrkImage* get_image(uint16_t tileIndex);
+   GrkImage* get_image(void);
 
    /** Set up decompressor function handler */
    void init_decompress(grk_dparameters  *p_param);

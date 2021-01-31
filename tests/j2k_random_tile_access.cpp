@@ -152,7 +152,7 @@ int32_t main(int argc, char **argv) {
 		tile[2] = (uint16_t) (cstr_info->t_grid_width * cstr_info->t_grid_height - 1);
 		tile[3] = (uint16_t) (tile[2] - cstr_info->t_grid_width);
 
-		image = grk_get_image(codec,0);
+		image = grk_get_composited_image(codec);
 		rc = test_tile(tile[i], image, stream, codec);
 
 

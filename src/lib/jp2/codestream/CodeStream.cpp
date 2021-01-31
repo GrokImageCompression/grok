@@ -840,6 +840,10 @@ GrkImage* CodeStream::get_image(uint16_t tileIndex){
 	return getCompositeImage();
 }
 
+GrkImage* CodeStream::get_image(){
+	return getCompositeImage();
+}
+
 /** Main header reading function handler */
 bool CodeStream::read_header(grk_header_info  *header_info){
 	if (m_headerError)

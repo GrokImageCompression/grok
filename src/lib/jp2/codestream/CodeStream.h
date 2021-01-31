@@ -125,6 +125,8 @@ struct ICodeStream {
 
    virtual GrkImage* get_image(uint16_t tileIndex) = 0;
 
+   virtual GrkImage* get_image(void) = 0;
+
    virtual bool decompress( grk_plugin_tile *tile) = 0;
 
 	/** decompress tile*/
@@ -167,6 +169,7 @@ struct CodeStream : public ICodeStream {
    bool read_header(grk_header_info  *header_info);
 
    GrkImage* get_image(uint16_t tileIndex);
+   GrkImage* get_image(void);
 
    bool decompress( grk_plugin_tile *tile);
 
