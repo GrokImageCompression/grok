@@ -69,7 +69,7 @@ static void pi_update_compress(CodingParams *p_cp,
  * @param	dy_min		minimum dy of all the components of all the resolutions for the tile.
  * @param	p_resolutions	pointer to an area corresponding to the one described above.
  */
-static void pi_get_encoding_params(const grk_image *image,
+static void pi_get_encoding_params(const GrkImage *image,
 											const CodingParams *p_cp,
 											uint16_t tileno,
 											grk_rect_u32 *tileBounds,
@@ -87,7 +87,7 @@ static void pi_get_encoding_params(const grk_image *image,
  * @param	p_cp		the coding parameters.
  * @param	tileno	the index of the tile from which creating the packet iterator.
  */
-static PacketIter* pi_create(const grk_image *p_image,
+static PacketIter* pi_create(const GrkImage *p_image,
 								const CodingParams *p_cp,
 								uint16_t tileno,
 								IncludeTracker *include);
@@ -110,7 +110,7 @@ static bool pi_check_next_for_valid_progression(int32_t prog,
  local functions
  ==========================================================
  */
-static void pi_get_encoding_params(const grk_image *image,
+static void pi_get_encoding_params(const GrkImage *image,
 											const CodingParams *p_cp,
 											uint16_t tileno,
 											grk_rect_u32 *tileBounds,
@@ -178,7 +178,7 @@ static void pi_get_encoding_params(const grk_image *image,
 	}
 }
 
-static PacketIter* pi_create(const grk_image *image,
+static PacketIter* pi_create(const GrkImage *image,
 							const CodingParams *cp,
 							uint16_t tileno,
 							IncludeTracker *include) {
@@ -304,7 +304,7 @@ static bool pi_check_next_for_valid_progression(int32_t prog,
 	return false;
 }
 
-PacketIter* pi_create_decompress(grk_image *image,
+PacketIter* pi_create_decompress(GrkImage *image,
 								CodingParams *p_cp,
 								uint16_t tile_no,
 								IncludeTracker *include) {
@@ -452,7 +452,7 @@ PacketIter* pi_create_decompress(grk_image *image,
 	return pi;
 }
 
-PacketIter* pi_create_compress(const grk_image *image,
+PacketIter* pi_create_compress(const GrkImage *image,
 								CodingParams *p_cp,
 								uint16_t tile_no,
 								J2K_T2_MODE p_t2_mode,
@@ -862,7 +862,7 @@ void pi_destroy(PacketIter *p_pi) {
 	}
 }
 
-void pi_update_encoding_parameters(const grk_image *image,
+void pi_update_encoding_parameters(const GrkImage *image,
 									CodingParams *p_cp,
 									uint16_t tileno) {
 	assert(p_cp != nullptr);

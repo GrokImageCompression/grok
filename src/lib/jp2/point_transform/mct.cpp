@@ -106,7 +106,7 @@ void mct::compress_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 
 
 
-void mct::decompress_dc_shift_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno) {
+void mct::decompress_dc_shift_irrev(grk_tile *tile, GrkImage *image,TileComponentCodingParams *tccps, uint32_t compno) {
 	size_t i = 0;
 #ifdef GRK_DEBUG_VALGRIND
 /*
@@ -183,7 +183,7 @@ void mct::decompress_dc_shift_irrev(grk_tile *tile, grk_image *image,TileCompone
 /* <summary> */
 /* Inverse irreversible MCT. */
 /* </summary> */
-void mct::decompress_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps) {
+void mct::decompress_irrev(grk_tile *tile, GrkImage *image,TileComponentCodingParams *tccps) {
 	uint64_t i = 0;
 	uint64_t n = tile->comps->getBuffer()->strided_area();
 
@@ -294,7 +294,7 @@ void mct::decompress_irrev(grk_tile *tile, grk_image *image,TileComponentCodingP
 }
 
 
-void mct::decompress_dc_shift_rev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno) {
+void mct::decompress_dc_shift_rev(grk_tile *tile, GrkImage *image,TileComponentCodingParams *tccps, uint32_t compno) {
 	size_t i = 0;
 	int32_t *GRK_RESTRICT c0 = tile->comps[compno].getBuffer()->getWindow()->data;
 
@@ -366,7 +366,7 @@ void mct::decompress_dc_shift_rev(grk_tile *tile, grk_image *image,TileComponent
 /* <summary> */
 /* Inverse reversible MCT. */
 /* </summary> */
-void mct::decompress_rev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps) {
+void mct::decompress_rev(grk_tile *tile, GrkImage *image,TileComponentCodingParams *tccps) {
 	size_t i = 0;
 	int32_t *GRK_RESTRICT c0 = tile->comps[0].getBuffer()->getWindow()->data;
 	int32_t *GRK_RESTRICT c1 = tile->comps[1].getBuffer()->getWindow()->data;

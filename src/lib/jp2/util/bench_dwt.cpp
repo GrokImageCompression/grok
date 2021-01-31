@@ -76,7 +76,7 @@ bool init_tilec(TileComponent * tilec,
                 uint32_t x1,
                 uint32_t y1,
                 uint32_t numresolutions,
-				grk_image *output_image){
+				GrkImage *output_image){
     tilec->numresolutions = numresolutions;
     tilec->resolutions_to_decompress = numresolutions;
     tilec->resolutions = new Resolution[tilec->numresolutions];
@@ -135,8 +135,8 @@ public:
 int main(int argc, char** argv)
 {
     uint32_t num_threads = 0;
-    grk_image image;
-    grk_image output_image;
+    GrkImage image;
+    GrkImage output_image;
     grk_tile tile;
     TileComponent tilec;
     grk_image_comp image_comp;

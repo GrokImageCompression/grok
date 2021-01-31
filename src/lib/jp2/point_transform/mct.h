@@ -41,7 +41,7 @@ public:
 	 @param image image
 	 @param tccps tile component coding parameters
 	 */
-	static void decompress_rev(grk_tile *tile, grk_image *image,
+	static void decompress_rev(grk_tile *tile, GrkImage *image,
 			TileComponentCodingParams *tccps);
 
 	/**
@@ -64,7 +64,7 @@ public:
 	 @param image image
 	 @param tccps tile component coding parameters
 	 */
-	static void decompress_irrev(grk_tile *tile, grk_image *image,
+	static void decompress_irrev(grk_tile *tile, GrkImage *image,
 			TileComponentCodingParams *tccps);
 
 	/**
@@ -108,7 +108,7 @@ public:
 	 @param image image
 	 @param tccps tile component coding parameters
 	 */
-	static void decompress_dc_shift_rev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno);
+	static void decompress_dc_shift_rev(grk_tile *tile, GrkImage *image,TileComponentCodingParams *tccps, uint32_t compno);
 
 	/**
 	 Apply an irreversible inverse dc shift to an image
@@ -116,7 +116,7 @@ public:
 	 @param image image
 	 @param tccps tile component coding parameters
 	 */
-	static void decompress_dc_shift_irrev(grk_tile *tile, grk_image *image,TileComponentCodingParams *tccps, uint32_t compno);
+	static void decompress_dc_shift_irrev(grk_tile *tile, GrkImage *image,TileComponentCodingParams *tccps, uint32_t compno);
 
 };
 

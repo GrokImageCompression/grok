@@ -225,7 +225,7 @@ static void j2k_dump_MH_info(CodeStream *codeStream, FILE *out_stream) {
 	fprintf(out_stream, "}\n");
 }
 
-void j2k_dump_image_header(grk_image *img_header, bool dev_dump_flag,
+void j2k_dump_image_header(GrkImage *img_header, bool dev_dump_flag,
 		FILE *out_stream) {
 	char tab[2];
 

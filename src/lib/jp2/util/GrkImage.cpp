@@ -1,10 +1,24 @@
-#include <GrkImage.h>
+#include <grk_includes.h>
 
 namespace grk {
 
-grk_image *  image_create(uint16_t numcmpts,
+GrkImage::GrkImage(){
+	memset((grk_image*)(this), 0, sizeof(grk_image));
+}
+GrkImage::~GrkImage(){
+	// delete parent
+	if (comps) {
+		grk_image_all_components_data_free(this);
+		grk::grk_free(comps);
+	}
+	FileFormat::free_color(&color);
+	delete[] iptc_buf;
+	delete[] xmp_buf;
+}
+
+GrkImage *  GrkImage::image_create(uint16_t numcmpts,
 		 grk_image_cmptparm  *cmptparms, GRK_COLOR_SPACE clrspc, bool allocData) {
-	auto image = (grk_image * ) grk::grk_calloc(1, sizeof(grk_image));
+	auto image = new GrkImage();
 
 	if (image) {
 		image->color_space = clrspc;
@@ -58,57 +72,42 @@ grk_image *  image_create(uint16_t numcmpts,
 	return image;
 }
 
-void image_destroy(grk_image *image) {
-	if (image) {
-		if (image->comps) {
-			grk_image_all_components_data_free(image);
-			grk::grk_free(image->comps);
-		}
-		FileFormat::free_color(&image->color);
-		delete[] image->iptc_buf;
-		delete[] image->xmp_buf;
-		grk::grk_free(image);
-	}
-}
-
 /**
  * Copy only header of image and its component header (no data are copied)
  * if dest image have data, they will be freed
  *
- * @param	image_src		the src image
- * @param	image_dest	the dest image
+ * @param	dest	the dest image
  *
  */
-bool copy_image_header(const grk_image *image_src,grk_image *image_dest) {
-	assert(image_src != nullptr);
-	assert(image_dest != nullptr);
+bool GrkImage::copy_image_header(GrkImage *dest) {
+	assert(dest != nullptr);
 
-	image_dest->x0 = image_src->x0;
-	image_dest->y0 = image_src->y0;
-	image_dest->x1 = image_src->x1;
-	image_dest->y1 = image_src->y1;
+	dest->x0 = x0;
+	dest->y0 = y0;
+	dest->x1 = x1;
+	dest->y1 = y1;
 
-	if (image_dest->comps) {
-		grk_image_all_components_data_free(image_dest);
-		grk_free(image_dest->comps);
-		image_dest->comps = nullptr;
+	if (dest->comps) {
+		grk_image_all_components_data_free(dest);
+		grk_free(dest->comps);
+		dest->comps = nullptr;
 	}
-	image_dest->numcomps = image_src->numcomps;
-	image_dest->comps = ( grk_image_comp  * ) grk_malloc(image_dest->numcomps * sizeof( grk_image_comp) );
-	if (!image_dest->comps) {
-		image_dest->comps = nullptr;
-		image_dest->numcomps = 0;
+	dest->numcomps = numcomps;
+	dest->comps = ( grk_image_comp  * ) grk_malloc(dest->numcomps * sizeof( grk_image_comp) );
+	if (!dest->comps) {
+		dest->comps = nullptr;
+		dest->numcomps = 0;
 		return false;
 	}
 
-	for (uint32_t compno = 0; compno < image_dest->numcomps; compno++) {
-		memcpy(&(image_dest->comps[compno]), &(image_src->comps[compno]),sizeof( grk_image_comp) );
-		image_dest->comps[compno].data = nullptr;
+	for (uint32_t compno = 0; compno < dest->numcomps; compno++) {
+		memcpy(&(dest->comps[compno]), &(comps[compno]),sizeof( grk_image_comp) );
+		dest->comps[compno].data = nullptr;
 	}
 
-	image_dest->color_space = image_src->color_space;
-	auto color_dest = &image_dest->color;
-	auto color_src = &image_src->color;
+	dest->color_space = color_space;
+	auto color_dest = &dest->color;
+	auto color_src = &color;
 	delete [] color_dest->icc_profile_buf;
 	color_dest->icc_profile_len = color_src->icc_profile_len;
 	if (color_dest->icc_profile_len) {
@@ -117,11 +116,11 @@ bool copy_image_header(const grk_image *image_src,grk_image *image_dest) {
 				color_src->icc_profile_len);
 	} else
 		color_dest->icc_profile_buf = nullptr;
-	if (image_src->color.palette){
-		auto pal_src = image_src->color.palette;
+	if (color.palette){
+		auto pal_src = color.palette;
 		if (pal_src->num_channels && pal_src->num_entries){
-			FileFormat::alloc_palette(&image_dest->color, pal_src->num_channels, pal_src->num_entries);
-			auto pal_dest = image_dest->color.palette;
+			FileFormat::alloc_palette(&dest->color, pal_src->num_channels, pal_src->num_entries);
+			auto pal_dest = dest->color.palette;
 			memcpy(pal_dest->channel_prec, pal_src->channel_prec, pal_src->num_channels * sizeof(uint8_t) );
 			memcpy(pal_dest->channel_sign, pal_src->channel_sign, pal_src->num_channels * sizeof(bool) );
 
@@ -137,7 +136,7 @@ bool copy_image_header(const grk_image *image_src,grk_image *image_dest) {
 }
 
 
-bool image_single_component_data_alloc(grk_image_comp  *comp) {
+bool GrkImage::image_single_component_data_alloc(grk_image_comp  *comp) {
 	if (!comp)
 		return false;
 	comp->stride = grk_make_aligned_width(comp->w);
@@ -156,23 +155,23 @@ bool image_single_component_data_alloc(grk_image_comp  *comp) {
 	return true;
 }
 
-bool update_image_dimensions(grk_image* image, uint32_t reduce){
-    for (uint32_t compno = 0; compno < image->numcomps; ++compno) {
-        auto img_comp = image->comps + compno;
+bool GrkImage::update_image_dimensions(uint32_t reduce){
+    for (uint32_t compno = 0; compno < numcomps; ++compno) {
+        auto img_comp = comps + compno;
         uint32_t temp1,temp2;
 
-        if (image->x0 > (uint32_t)INT_MAX ||
-                image->y0 > (uint32_t)INT_MAX ||
-                image->x1 > (uint32_t)INT_MAX ||
-                image->y1 > (uint32_t)INT_MAX) {
+        if (x0 > (uint32_t)INT_MAX ||
+                y0 > (uint32_t)INT_MAX ||
+                x1 > (uint32_t)INT_MAX ||
+                y1 > (uint32_t)INT_MAX) {
             GRK_ERROR("Image coordinates above INT_MAX are not supported.");
             return false;
         }
 
-        img_comp->x0 = ceildiv<uint32_t>(image->x0,img_comp->dx);
-        img_comp->y0 = ceildiv<uint32_t>(image->y0, img_comp->dy);
-        uint32_t comp_x1 = ceildiv<uint32_t>(image->x1, img_comp->dx);
-        uint32_t comp_y1 = ceildiv<uint32_t>(image->y1, img_comp->dy);
+        img_comp->x0 = ceildiv<uint32_t>(x0,img_comp->dx);
+        img_comp->y0 = ceildiv<uint32_t>(y0, img_comp->dy);
+        uint32_t comp_x1 = ceildiv<uint32_t>(x1, img_comp->dx);
+        uint32_t comp_y1 = ceildiv<uint32_t>(y1, img_comp->dy);
 
         temp1 = ceildivpow2<uint32_t>(comp_x1, reduce);
         temp2 = ceildivpow2<uint32_t>(img_comp->x0, reduce);
@@ -203,13 +202,13 @@ bool update_image_dimensions(grk_image* image, uint32_t reduce){
  Transfer data from src to dest for each component, and null out src data.
  Assumption:  src and dest have the same number of components
  */
-void transfer_image_data(grk_image *src, grk_image *dest) {
-	if (!src || !dest || !src->comps || !dest->comps
-			|| src->numcomps != dest->numcomps)
+void GrkImage::transfer_image_data(GrkImage *dest) {
+	if (!dest || !comps || !dest->comps
+			|| numcomps != dest->numcomps)
 		return;
 
-	for (uint32_t compno = 0; compno < src->numcomps; compno++) {
-		auto src_comp = src->comps + compno;
+	for (uint32_t compno = 0; compno < numcomps; compno++) {
+		auto src_comp = comps + compno;
 		auto dest_comp = dest->comps + compno;
 
 		grk_image_single_component_data_free(dest_comp);
@@ -223,15 +222,15 @@ void transfer_image_data(grk_image *src, grk_image *dest) {
 	}
 }
 
-grk_image* make_copy(const grk_image *src){
-	auto dest = (grk_image * ) grk::grk_calloc(1, sizeof(grk_image));
+GrkImage* GrkImage::make_copy(void){
+	auto dest = new GrkImage();
 
-	if (!copy_image_header(src,dest)) {
-		image_destroy(dest);
+	if (!copy_image_header(dest)) {
+		delete dest;
 		return nullptr;
 	}
-	for (uint32_t compno = 0; compno < src->numcomps; ++compno){
-		auto src_comp = src->comps + compno;
+	for (uint32_t compno = 0; compno < numcomps; ++compno){
+		auto src_comp = comps + compno;
 		auto dest_comp = dest->comps + compno;
 		if (src_comp->data)
 			memcpy(dest_comp->data, src_comp->data, src_comp->w * src_comp->stride);
@@ -240,11 +239,11 @@ grk_image* make_copy(const grk_image *src){
 	return dest;
 }
 
-grk_image* make_copy(const grk_image *src, const grk_tile* tile_src){
-	auto dest = (grk_image * ) grk::grk_calloc(1, sizeof(grk_image));
+GrkImage* GrkImage::make_copy(const grk_tile* tile_src){
+	auto dest = new GrkImage();
 
-	if (!copy_image_header(src,dest)) {
-		image_destroy(dest);
+	if (!copy_image_header(dest)) {
+		delete dest;
 		return nullptr;
 	}
 	for (uint32_t compno = 0; compno < tile_src->numcomps; ++compno){
@@ -253,7 +252,7 @@ grk_image* make_copy(const grk_image *src, const grk_tile* tile_src){
 		if (!src_comp->getBuffer()->getWindow()->data)
 			continue;
 		if (!image_single_component_data_alloc(dest_comp)){
-			image_destroy(dest);
+			delete dest;
 			return nullptr;
 		}
 		src_comp->getBuffer()->getWindow()->copy_data(dest_comp->data, dest_comp->w, dest_comp->h, dest_comp->stride);

@@ -1907,7 +1907,7 @@ bool j2k_read_mco(CodeStream *codeStream, uint8_t *p_header_data,
 	return true;
 }
 
-bool j2k_add_mct(TileCodingParams *p_tcp, grk_image *p_image, uint32_t index) {
+bool j2k_add_mct(TileCodingParams *p_tcp, GrkImage *p_image, uint32_t index) {
 	uint32_t i;
 	assert(p_tcp != nullptr);
 	auto mcc_record = p_tcp->m_mcc_records;

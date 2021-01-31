@@ -46,7 +46,7 @@ void j2k_dump(CodeStream *codeStream, uint32_t flag, FILE *out_stream);
  *@param dev_dump_flag		flag to describe if we are in the case of this function is use outside j2k_dump function
  *@param out_stream			output stream where dump the elements.
  */
-void j2k_dump_image_header(grk_image *image, bool dev_dump_flag,
+void j2k_dump_image_header(GrkImage *image, bool dev_dump_flag,
 		FILE *out_stream);
 
 /**

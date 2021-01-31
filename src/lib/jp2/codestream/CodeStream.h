@@ -98,6 +98,8 @@ const uint32_t default_number_mct_records = 10;
 #define J2K_MS_UNK 0		/**< UNKNOWN marker value */
 
 struct TileProcessor;
+class GrkImage;
+
 typedef bool (*j2k_procedure)(CodeStream *codeStream);
 
 typedef bool (*marker_callback)(CodeStream *codeStream, uint8_t *p_header_data, uint16_t header_size);
@@ -121,7 +123,7 @@ struct ICodeStream {
 	/** Main header reading function handler */
    virtual bool read_header(grk_header_info  *header_info) = 0;
 
-   virtual grk_image* get_image(uint16_t tileIndex) = 0;
+   virtual GrkImage* get_image(uint16_t tileIndex) = 0;
 
    virtual bool decompress( grk_plugin_tile *tile) = 0;
 
@@ -139,7 +141,7 @@ struct ICodeStream {
 
    virtual bool start_compress(void) = 0;
 
-   virtual bool init_compress(grk_cparameters  *p_param,grk_image *p_image) = 0;
+   virtual bool init_compress(grk_cparameters  *p_param,GrkImage *p_image) = 0;
 
    virtual bool compress(grk_plugin_tile* tile) = 0;
 
@@ -164,7 +166,7 @@ struct CodeStream : public ICodeStream {
 	/** Main header reading function handler */
    bool read_header(grk_header_info  *header_info);
 
-   grk_image* get_image(uint16_t tileIndex);
+   GrkImage* get_image(uint16_t tileIndex);
 
    bool decompress( grk_plugin_tile *tile);
 
@@ -179,7 +181,7 @@ struct CodeStream : public ICodeStream {
 
    bool start_compress(void);
 
-   bool init_compress(grk_cparameters  *p_param,grk_image *p_image);
+   bool init_compress(grk_cparameters  *p_param,GrkImage *p_image);
 
    bool compress(grk_plugin_tile* tile);
 
@@ -220,7 +222,7 @@ struct CodeStream : public ICodeStream {
 	 *
 	 * @return true if successful
 	 */
-	bool alloc_multi_tile_output_data(grk_image *p_output_image);
+	bool alloc_multi_tile_output_data(GrkImage *p_output_image);
 
 	bool parse_tile_header_markers(bool *can_decode_tile_data);
 
@@ -282,7 +284,7 @@ struct CodeStream : public ICodeStream {
 	 */
 	bool read_unk(uint16_t *output_marker);
 
-	grk_image* getCompositeImage();
+	GrkImage* getCompositeImage();
 
 
 	// state of decompressor/compressor
@@ -290,10 +292,10 @@ struct CodeStream : public ICodeStream {
 	EncoderState m_encoder;
 
 	/** internal/private encoded / decompressed image */
-	grk_image *m_input_image;
+	GrkImage *m_input_image;
 
 	/* output image (for decompress) */
-	grk_image *m_output_image;
+	GrkImage *m_output_image;
 
 	/** Coding parameters */
 	CodingParams m_cp;
@@ -316,7 +318,7 @@ struct CodeStream : public ICodeStream {
 
 private:
 
-	grk_image *m_user_image;
+	GrkImage *m_user_image;
 
 	/**
 	 * Reads the lookup table containing all the marker, status and action,
@@ -374,8 +376,8 @@ char* j2k_convert_progression_order(GRK_PROG_ORDER prg_order);
 
 /*@}*/
 
-bool j2k_decompress_tile(CodeStream *codeStream, grk_image *p_image, uint16_t tile_index);
+bool j2k_decompress_tile(CodeStream *codeStream, GrkImage *p_image, uint16_t tile_index);
 
-bool j2k_init_mct_encoding(TileCodingParams *p_tcp, grk_image *p_image);
+bool j2k_init_mct_encoding(TileCodingParams *p_tcp, GrkImage *p_image);
 
 }

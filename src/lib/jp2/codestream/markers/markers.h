@@ -513,7 +513,7 @@ bool j2k_write_mco(CodeStream *codeStream);
 bool j2k_read_mco(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
 
-bool j2k_add_mct(TileCodingParams *p_tcp, grk_image *p_image, uint32_t index);
+bool j2k_add_mct(TileCodingParams *p_tcp, GrkImage *p_image, uint32_t index);
 
 
 /**

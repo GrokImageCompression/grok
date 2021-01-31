@@ -29,7 +29,7 @@ namespace grk {
 static const uint16_t tabMaxSubLevelFromMainLevel[] = { 15, /* unspecified */
 1, 1, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 
-int Profile::get_imf_max_NL(grk_cparameters *parameters, grk_image *image) {
+int Profile::get_imf_max_NL(grk_cparameters *parameters, GrkImage *image) {
 	/* Decomposition levels */
 	const uint16_t rsiz = parameters->rsiz;
 	const uint16_t profile = GRK_GET_IMF_OR_BROADCAST_PROFILE(rsiz);
@@ -77,7 +77,7 @@ int Profile::get_imf_max_NL(grk_cparameters *parameters, grk_image *image) {
 }
 
 void Profile::set_imf_parameters(grk_cparameters *parameters,
-		grk_image *image) {
+		GrkImage *image) {
 	const uint16_t rsiz = parameters->rsiz;
 	const uint16_t profile = GRK_GET_IMF_OR_BROADCAST_PROFILE(rsiz);
 
@@ -145,7 +145,7 @@ void Profile::set_imf_parameters(grk_cparameters *parameters,
 }
 
 bool Profile::is_imf_compliant(grk_cparameters *parameters,
-		grk_image *image) {
+		GrkImage *image) {
 	assert(parameters->numresolution > 0);
 	if (parameters->numresolution == 0)
 		return false;
@@ -547,7 +547,7 @@ bool Profile::is_imf_compliant(grk_cparameters *parameters,
 //////////////////////////////////////////////////////////////
 
 int Profile::get_broadcast_max_NL(grk_cparameters *parameters,
-		grk_image *image) {
+		GrkImage *image) {
 	/* Decomposition levels */
 	const uint16_t rsiz = parameters->rsiz;
 	const uint16_t profile = GRK_GET_IMF_OR_BROADCAST_PROFILE(rsiz);
@@ -636,7 +636,7 @@ void Profile::set_broadcast_parameters(grk_cparameters *parameters) {
 }
 
 bool Profile::is_broadcast_compliant(grk_cparameters *parameters,
-		grk_image *image) {
+		GrkImage *image) {
 	assert(parameters->numresolution > 0);
 	if (parameters->numresolution == 0 || image->numcomps == 0)
 		return false;
@@ -897,7 +897,7 @@ void Profile::initialise_4K_poc(grk_progression *POC, uint8_t numres) {
 }
 
 void Profile::set_cinema_parameters(grk_cparameters *parameters,
-		grk_image *image) {
+		GrkImage *image) {
 	/* No tiling */
 	parameters->tile_size_on = false;
 	parameters->t_width = 1;
@@ -1036,7 +1036,7 @@ void Profile::set_cinema_parameters(grk_cparameters *parameters,
 
 }
 
-bool Profile::is_cinema_compliant(grk_image *image, uint16_t rsiz) {
+bool Profile::is_cinema_compliant(GrkImage *image, uint16_t rsiz) {
 	/* Number of components */
 	if (image->numcomps != 3) {
 		GRK_WARN("JPEG 2000 profile 3 (2k digital cinema) requires:\n"

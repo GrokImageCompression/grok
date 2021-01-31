@@ -18,18 +18,26 @@
 
 namespace grk {
 
+TileCacheEntry::TileCacheEntry(TileProcessor *p, GrkImage *img) : processor(p), image(img)
+{}
+TileCacheEntry::TileCacheEntry(TileProcessor *p) : TileCacheEntry(p,nullptr)
+{}
+TileCacheEntry::TileCacheEntry() : TileCacheEntry(nullptr,nullptr)
+{}
+TileCacheEntry::~TileCacheEntry(){
+	delete processor;
+	delete image;
+}
+
 TileCache::TileCache(GRK_TILE_CACHE_STRATEGY strategy) : tileComposite(nullptr), m_strategy(strategy){
-	tileComposite = (grk_image * ) grk_calloc(1, sizeof(grk_image));
-	if (!tileComposite){
-		throw std::runtime_error("Out of memory");
-	}
+	tileComposite = new GrkImage();
 }
 TileCache::TileCache() : TileCache(GRK_TILE_CACHE_NONE){
 }
 TileCache::~TileCache() {
 	for (auto &proc : m_processors)
 		delete proc.second;
-	grk_image_destroy( tileComposite );
+	delete tileComposite;
 }
 
 void TileCache::put(uint16_t tileIndex, TileCacheEntry *entry){
@@ -38,7 +46,7 @@ void TileCache::put(uint16_t tileIndex, TileCacheEntry *entry){
 	m_processors[tileIndex] = entry;
 }
 
-void TileCache::put(uint16_t tileIndex, grk_image* src_image, grk_tile *src_tile){
+void TileCache::put(uint16_t tileIndex, GrkImage* src_image, grk_tile *src_tile){
 	if (m_processors.find(tileIndex) == m_processors.end())
 		return;
 	switch(m_strategy){
@@ -46,7 +54,7 @@ void TileCache::put(uint16_t tileIndex, grk_image* src_image, grk_tile *src_tile
 			break;
 		case GRK_TILE_CACHE_ALL:
 			{
-			auto copy = make_copy(src_image, src_tile);
+			auto copy = src_image->make_copy(src_tile);
 			m_processors[tileIndex]->image = copy;
 			}
 			break;
@@ -66,7 +74,7 @@ TileCacheEntry* TileCache::get(uint16_t tileIndex){
 void TileCache::setStrategy(GRK_TILE_CACHE_STRATEGY strategy){
 	m_strategy = strategy;
 }
-grk_image* TileCache::getComposite(){
+GrkImage* TileCache::getComposite(){
 	return tileComposite;
 }
 

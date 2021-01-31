@@ -646,7 +646,7 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 	}
 }
 
-bool TileProcessor::init(grk_image *output_image,bool isCompressor) {
+bool TileProcessor::init(GrkImage *output_image,bool isCompressor) {
 	uint32_t state = grk_plugin_get_debug_state();
 	auto tcp = &(m_cp->tcps[m_tile_index]);
 
@@ -1205,7 +1205,7 @@ bool TileProcessor::rate_allocate() {
  *
  * @return:
  */
-bool TileProcessor::copy_decompressed_tile_to_output_image(	grk_image *output) {
+bool TileProcessor::copy_decompressed_tile_to_output_image(	GrkImage *output) {
 	for (uint32_t i = 0; i < tile->numcomps; i++) {
 		auto tilec = tile->comps + i;
 		auto comp_dest = output->comps + i;

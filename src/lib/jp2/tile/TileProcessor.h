@@ -71,7 +71,7 @@ struct TileProcessor {
 	 *
 	 * @return	true if the remaining data is sufficient.
 	 */
-	 bool init(grk_image *output_image, bool isCompressor);
+	 bool init(GrkImage *output_image, bool isCompressor);
 
 	 bool pre_write_tile(void);
 
@@ -111,7 +111,7 @@ struct TileProcessor {
 
 	bool needs_rate_control();
 
-	bool copy_decompressed_tile_to_output_image(grk_image *p_output_image);
+	bool copy_decompressed_tile_to_output_image(GrkImage *p_output_image);
 
 	void copy_image_to_tile();
 
@@ -144,7 +144,7 @@ struct TileProcessor {
 	/** info on image tile */
 	grk_tile *tile;
 	/** image header */
-	grk_image *image;
+	GrkImage *image;
 	grk_plugin_tile *current_plugin_tile;
 
     // true if whole tile will be decoded; false if tile window will be decoded

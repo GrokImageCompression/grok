@@ -731,7 +731,7 @@ void FileFormat::serializeAsoc(AsocBox *asoc,
 		serializeAsoc(child, serial_asocs, num_asocs, level+1);
 }
 
-grk_image* FileFormat::get_image(uint16_t tileIndex){
+GrkImage* FileFormat::get_image(uint16_t tileIndex){
 	return codeStream->get_image(tileIndex);
 }
 
@@ -971,7 +971,7 @@ bool FileFormat::start_compress(void){
 	return codeStream->start_compress();
 }
 
-bool FileFormat::init_compress(grk_cparameters  *parameters,grk_image *image){
+bool FileFormat::init_compress(grk_cparameters  *parameters,GrkImage *image){
 	uint32_t i;
 	uint8_t depth_0;
 	uint32_t sign = 0;
@@ -1999,7 +1999,7 @@ uint8_t* FileFormat::write_channel_definition( uint32_t *p_nb_bytes_written) {
 	return cdef_data;
 }
 
-void FileFormat::apply_channel_definition(grk_image *image, grk_color *color) {
+void FileFormat::apply_channel_definition(GrkImage *image, grk_color *color) {
 	auto info = color->channel_definition->descriptions;
 	uint16_t n = color->channel_definition->num_channel_descriptions;
 
@@ -2316,7 +2316,7 @@ bool FileFormat::read_colr( uint8_t *p_colr_header_data,
 	}
 	return true;
 }
-bool FileFormat::check_color(grk_image *image, grk_color *color) {
+bool FileFormat::check_color(GrkImage *image, grk_color *color) {
 	uint16_t i;
 
 	/* testcase 4149.pdf.SIGSEGV.cf7.3501 */
@@ -2447,7 +2447,7 @@ bool FileFormat::check_color(grk_image *image, grk_color *color) {
 	return true;
 }
 
-bool FileFormat::apply_palette_clr(grk_image *image, grk_color *color) {
+bool FileFormat::apply_palette_clr(GrkImage *image, grk_color *color) {
 	uint16_t num_channels, component_index, palette_column;
 	int32_t k, top_k;
 
@@ -2490,7 +2490,7 @@ bool FileFormat::apply_palette_clr(grk_image *image, grk_color *color) {
 		}
 
 		/* Palette mapping: */
-		if (!image_single_component_data_alloc(new_comps + i)) {
+		if (!GrkImage::image_single_component_data_alloc(new_comps + i)) {
 			while (i > 0) {
 				--i;
 				grk_aligned_free(new_comps[i].data);

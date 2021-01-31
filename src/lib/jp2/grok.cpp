@@ -143,11 +143,11 @@ const char* GRK_CALLCONV grk_version(void) {
 
 grk_image *  GRK_CALLCONV grk_image_create(uint16_t numcmpts,
 		 grk_image_cmptparm  *cmptparms, GRK_COLOR_SPACE clrspc, bool allocData) {
-	return image_create(numcmpts, cmptparms, clrspc, allocData);
+	return GrkImage::image_create(numcmpts, cmptparms, clrspc, allocData);
 }
 
 void GRK_CALLCONV grk_image_destroy(grk_image *image) {
-	image_destroy(image);
+	delete (GrkImage*)image;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -304,7 +304,7 @@ bool GRK_CALLCONV grk_init_compress( grk_codec p_codec,
 		auto codec = (grk_codec_private*) p_codec;
 		assert(!codec->is_decompressor);
 		if (!codec->is_decompressor) {
-			return codec->m_codeStreamBase->init_compress(parameters, p_image);
+			return codec->m_codeStreamBase->init_compress(parameters, (GrkImage*)p_image);
 		}
 	}
 	return false;

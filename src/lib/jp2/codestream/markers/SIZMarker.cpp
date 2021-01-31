@@ -29,7 +29,7 @@ namespace grk {
  * @param image_header	the image header to update.
  * @param p_cp			the coding parameters from which to update the image.
  */
-static void grk_update_image_comp_header_from_coding_params(grk_image *image_header,
+static void grk_update_image_comp_header_from_coding_params(GrkImage *image_header,
 		const CodingParams *p_cp) {
 
 	//1. calculate canvas coordinates of image

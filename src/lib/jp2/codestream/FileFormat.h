@@ -157,7 +157,7 @@ public:
    /** Main header reading function handler */
    bool read_header(grk_header_info  *header_info);
 
-   grk_image* get_image(uint16_t tileIndex);
+   GrkImage* get_image(uint16_t tileIndex);
 
    /** Set up decompressor function handler */
    void init_decompress(grk_dparameters  *p_param);
@@ -175,7 +175,7 @@ public:
    bool set_decompress_window(grk_rect_u32 window);
    bool decompress( grk_plugin_tile *tile);
    bool end_decompress(void);
-   bool init_compress(grk_cparameters  *p_param,grk_image *p_image);
+   bool init_compress(grk_cparameters  *p_param,GrkImage *p_image);
    bool start_compress(void);
    bool compress(grk_plugin_tile* tile);
    bool compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size);
@@ -212,14 +212,14 @@ public:
    uint8_t* write_bpc( uint32_t *p_nb_bytes_written);
    bool read_bpc( uint8_t *p_bpc_header_data,uint32_t bpc_header_size);
    uint8_t* write_channel_definition( uint32_t *p_nb_bytes_written);
-   void apply_channel_definition(grk_image *image, grk_color *color);
+   void apply_channel_definition(GrkImage *image, grk_color *color);
    bool read_channel_definition( uint8_t *p_cdef_header_data,
    		uint32_t cdef_header_size);
    uint8_t* write_colr( uint32_t *p_nb_bytes_written);
    bool read_colr( uint8_t *p_colr_header_data,
    		uint32_t colr_header_size);
-   bool check_color(grk_image *image, grk_color *color);
-   bool apply_palette_clr(grk_image *image, grk_color *color);
+   bool check_color(GrkImage *image, grk_color *color);
+   bool apply_palette_clr(GrkImage *image, grk_color *color);
    bool read_component_mapping( uint8_t *component_mapping_header_data,
    		uint32_t component_mapping_header_size);
    uint8_t* write_component_mapping( uint32_t *p_nb_bytes_written);

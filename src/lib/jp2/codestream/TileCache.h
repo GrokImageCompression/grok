@@ -21,21 +21,18 @@
 namespace grk {
 
 struct TileProcessor;
+class GrkImage;
+
+#include "GrkImage.h"
 
 struct TileCacheEntry{
-	TileCacheEntry(TileProcessor *p, grk_image *img) : processor(p), image(img)
-	{}
-	explicit TileCacheEntry(TileProcessor *p) : TileCacheEntry(p,nullptr)
-	{}
-	TileCacheEntry() : TileCacheEntry(nullptr,nullptr)
-	{}
-	~TileCacheEntry()
-	{
-		delete processor;
-		delete image;
-	}
+	TileCacheEntry(TileProcessor *p, GrkImage *img);
+	explicit TileCacheEntry(TileProcessor *p);
+	TileCacheEntry();
+	~TileCacheEntry();
+
 	TileProcessor* processor;
-	grk_image *image;
+	GrkImage *image;
 };
 
 class TileCache {
@@ -46,12 +43,12 @@ public:
 
 	void setStrategy(GRK_TILE_CACHE_STRATEGY strategy);
 	void put(uint16_t tileIndex, TileCacheEntry *entry);
-	void put(uint16_t tileIndex, grk_image* src_image, grk_tile *src_tile);
+	void put(uint16_t tileIndex, GrkImage* src_image, grk_tile *src_tile);
 	void put(uint16_t tileIndex, grk_tile *tile);
 	TileCacheEntry* get(uint16_t tileIndex);
-	grk_image* getComposite();
+	GrkImage* getComposite();
 private:
-	grk_image *tileComposite;
+	GrkImage *tileComposite;
 	std::map<uint32_t, TileCacheEntry*> m_processors;
 	GRK_TILE_CACHE_STRATEGY m_strategy;
 };

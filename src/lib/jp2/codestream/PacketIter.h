@@ -71,7 +71,7 @@ struct PacketIter;
  *
  * @return	a list of packet iterator that points to the first packet of the tile (not true).
  */
-PacketIter* pi_create_compress(const grk_image *image,
+PacketIter* pi_create_compress(const GrkImage *image,
 								CodingParams *cp,
 								uint16_t tileno,
 								J2K_T2_MODE t2_mode,
@@ -84,7 +84,7 @@ PacketIter* pi_create_compress(const grk_image *image,
  * @param	p_cp		the coding parameters.
  * @param	tile_no	index of the tile being encoded.
  */
-void pi_update_encoding_parameters(const grk_image *p_image,
+void pi_update_encoding_parameters(const GrkImage *p_image,
 									CodingParams *p_cp,
 									uint16_t tile_no);
 
@@ -115,7 +115,7 @@ void pi_enable_tile_part_generation(PacketIter *pi,
  @return a packet iterator that points to the first packet of the tile
  @see pi_destroy
  */
-PacketIter* pi_create_decompress(grk_image *image,
+PacketIter* pi_create_decompress(GrkImage *image,
 								CodingParams *cp,
 								uint16_t tileno,
 								IncludeTracker *include);
