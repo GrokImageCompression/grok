@@ -810,7 +810,7 @@ TileProcessor* CodeStream::allocateProcessor(uint16_t tile_index){
 			m_output_image = new GrkImage();
 			getCompositeImage()->copyHeader(m_output_image);
 		}
-		m_tileCache->put(tile_index, new TileCacheEntry(tileProcessor, nullptr));
+		m_tileCache->put(tile_index, tileProcessor);
 	}
 	m_tileProcessor = tileProcessor;
 
@@ -914,8 +914,8 @@ bool CodeStream::do_decompress(void){
 	if (!exec(m_procedure_list))
 		return false;
 
-	/* Move data and information from codec output image to user image*/
-	m_output_image->transferData(getCompositeImage());
+	/* Move data from output image to composite image*/
+	m_output_image->transferDataTo(getCompositeImage());
 
 	return true;
 }
@@ -2147,22 +2147,12 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor, bool multi_t
 	if (doPost) {
 		/* copy/transfer data from tile component to output image */
 		if (multi_tile) {
-			if (!m_output_image->copy(tileProcessor->tile, tileProcessor->m_cp))
+			if (!m_output_image->compositeFrom(tileProcessor->tile, tileProcessor->m_cp))
 				return false;
 		} else {
 			m_tileCache->put(tile_index, m_output_image, tileProcessor->tile);
-			for (uint16_t compno = 0; compno < m_output_image->numcomps; compno++) {
-				auto tilec = tileProcessor->tile->comps + compno;
-				auto comp = m_output_image->comps + compno;
-
-				//transfer memory from tile component to output image
-				tilec->getBuffer()->transfer(&comp->data, &comp->owns_data, &comp->stride);
-				assert(comp->stride >= comp->w);
-			}
+			m_output_image->transferDataFrom(tileProcessor->tile);
 		}
-		// destroy compressed data
-		delete tcp->m_tile_data;
-		tcp->m_tile_data = nullptr;
 	}
 
 	return rc;

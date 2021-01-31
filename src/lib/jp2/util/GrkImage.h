@@ -13,6 +13,8 @@ public:
 	GrkImage();
 	~GrkImage();
 
+	bool reduceDimensions(uint32_t reduce);
+
 	/**
 	* Create image
 	*
@@ -47,18 +49,6 @@ public:
 	 */
 	bool allocMirrorData(GrkImage *src);
 
-
-	/**
-	 * tile_data stores only the decompressed resolutions, in the actual precision
-	 * of the decompressed image. This method copies a sub-region of this region
-	 * into p_output_image (which stores data in 32 bit precision)
-	 *
-	 * @param p_output_image:
-	 *
-	 * @return:
-	 */
-	bool copy(grk_tile *tile,CodingParams *cp);
-
 	/**
 	 * Copy only header of image and its component header (no data are copied)
 	 * if dest image have data, they will be freed
@@ -71,15 +61,32 @@ public:
 	bool copyHeader(GrkImage *dest);
 
 	GrkImage* duplicate();
-	GrkImage* duplicate(const grk_tile* tile_src);
-
-	bool reduceDimensions(uint32_t reduce);
 
 	/**
 	 Transfer data to dest for each component, and null out "this" data.
 	 Assumption:  "this" and dest have the same number of components
 	 */
-	void transferData(GrkImage *dest);
+	void transferDataTo(GrkImage *dest);
+
+
+	void transferDataFrom(const grk_tile* tile_src_data);
+
+	GrkImage* duplicate(const grk_tile* tile_src);
+
+
+	/**
+	 * Copy tile to composite image
+	 *
+	 * tile_data stores only the decompressed resolutions, in the actual precision
+	 * of the decompressed image. This method copies a sub-region of this region
+	 * into p_output_image (which stores data in 32 bit precision)
+	 *
+	 * @param src_tile 	source tile
+	 * @param cp		coding parameters
+	 *
+	 * @return:			true if successful
+	 */
+	bool compositeFrom(grk_tile *tile,CodingParams *cp);
 };
 
 

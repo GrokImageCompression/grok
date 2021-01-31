@@ -28,6 +28,7 @@ class GrkImage;
 struct TileCacheEntry{
 	TileCacheEntry(TileProcessor *p, GrkImage *img);
 	explicit TileCacheEntry(TileProcessor *p);
+	explicit TileCacheEntry(GrkImage *img);
 	TileCacheEntry();
 	~TileCacheEntry();
 
@@ -42,9 +43,8 @@ public:
 	virtual ~TileCache();
 
 	void setStrategy(GRK_TILE_CACHE_STRATEGY strategy);
-	void put(uint16_t tileIndex, TileCacheEntry *entry);
 	void put(uint16_t tileIndex, GrkImage* src_image, grk_tile *src_tile);
-	void put(uint16_t tileIndex, grk_tile *tile);
+	void put(uint16_t tileIndex, TileProcessor *processor);
 	TileCacheEntry* get(uint16_t tileIndex);
 	GrkImage* getComposite();
 private:
