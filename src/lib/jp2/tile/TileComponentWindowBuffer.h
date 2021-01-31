@@ -29,6 +29,10 @@ namespace grk {
  */
 template<typename T> struct ResWindow {
 
+	// note:
+	// 1. any variable with 'tile' in its name is in canvas coordinates
+	// 2. band windows are relative to band origin
+	// 3. res windows are relate to LL band windows
 	ResWindow(uint8_t numresolutions,
 				uint8_t resno,
 				grk_buffer_2d<T> *resWindowTopLevel,
@@ -46,12 +50,12 @@ template<typename T> struct ResWindow {
 	{
 	  (void)tileCompUnreduced;
 	  for (uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
-			m_splitWindow[i] = nullptr;
+			m_splitResWindow[i] = nullptr;
 	  if (FILTER_WIDTH) {
 
 		for (uint8_t orient = 0; orient < ( (resno) > 0 ? BAND_NUM_ORIENTATIONS : 1); orient++) {
 			grk_rect_u32 temp = getTileCompBandWindow(numresolutions, resno, orient,tileCompWindowUnreduced);
-			m_paddedBandWindow.push_back(temp.grow(2 * FILTER_WIDTH));
+			m_paddedTileBandWindow.push_back(temp.grow(2 * FILTER_WIDTH));
 		}
 
 		if (m_tileCompResLower) {
@@ -76,18 +80,18 @@ template<typename T> struct ResWindow {
 			m_resWindow->y1 	= min<uint32_t>(max<uint32_t>(2 * win_low->y1, 2 * win_high->y1 + 1), m_tileCompRes->height());
 
 			// two windows formed by horizontal pass and used as input for vertical pass
-			grk_rect_u32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
-			splitWindowRect[SPLIT_L] = grk_rect_u32(m_resWindow->x0,
+			grk_rect_u32 splitResWindowRect[SPLIT_NUM_ORIENTATIONS];
+			splitResWindowRect[SPLIT_L] = grk_rect_u32(m_resWindow->x0,
 													  unpaddedBandWindows[BAND_ORIENT_LL]->y0,
 													  m_resWindow->x1,
 													  unpaddedBandWindows[BAND_ORIENT_LL]->y1);
-			m_splitWindow[SPLIT_L] = new grk_buffer_2d<T>(splitWindowRect[SPLIT_L]);
+			m_splitResWindow[SPLIT_L] = new grk_buffer_2d<T>(splitResWindowRect[SPLIT_L]);
 
-			splitWindowRect[SPLIT_H] = grk_rect_u32(m_resWindow->x0,
+			splitResWindowRect[SPLIT_H] = grk_rect_u32(m_resWindow->x0,
 														unpaddedBandWindows[BAND_ORIENT_LH]->y0 + m_tileCompResLower->height(),
 														m_resWindow->x1,
 														unpaddedBandWindows[BAND_ORIENT_LH]->y1 + m_tileCompResLower->height());
-			m_splitWindow[SPLIT_H] = new grk_buffer_2d<T>(splitWindowRect[SPLIT_H]);
+			m_splitResWindow[SPLIT_H] = new grk_buffer_2d<T>(splitResWindowRect[SPLIT_H]);
 
 			for (auto &b : unpaddedBandWindows)
 				delete b;
@@ -103,10 +107,10 @@ template<typename T> struct ResWindow {
 				}
 				for (uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i) {
 					auto b = &tileCompWindow;
-					m_splitWindow[i] = new grk_buffer_2d<T>(b->width(), b->height());
+					m_splitResWindow[i] = new grk_buffer_2d<T>(b->width(), b->height());
 				}
-				m_splitWindow[SPLIT_L]->y1 = tileCompWindow.y0 + tileCompAtLowerRes->height();
-				m_splitWindow[SPLIT_H]->y0 = m_splitWindow[SPLIT_L]->y1;
+				m_splitResWindow[SPLIT_L]->y1 = tileCompWindow.y0 + tileCompAtLowerRes->height();
+				m_splitResWindow[SPLIT_H]->y0 = m_splitResWindow[SPLIT_L]->y1;
 			}
 		}
 	}
@@ -115,7 +119,7 @@ template<typename T> struct ResWindow {
 		for (auto &b : m_bandWindowBufferDim)
 			delete b;
 		for (uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
-			delete m_splitWindow[i];
+			delete m_splitResWindow[i];
 	}
 
 	bool alloc(bool clear){
@@ -157,8 +161,8 @@ template<typename T> struct ResWindow {
 						break;
 					}
 				}
-				m_splitWindow[SPLIT_L]->attach(m_resWindowTopLevel->data, m_resWindowTopLevel->stride);
-				m_splitWindow[SPLIT_H]->attach(m_resWindowTopLevel->data + m_tileCompResLower->height() * m_resWindowTopLevel->stride,
+				m_splitResWindow[SPLIT_L]->attach(m_resWindowTopLevel->data, m_resWindowTopLevel->stride);
+				m_splitResWindow[SPLIT_H]->attach(m_resWindowTopLevel->data + m_tileCompResLower->height() * m_resWindowTopLevel->stride,
 											m_resWindowTopLevel->stride);
 			}
 		} else {
@@ -175,8 +179,8 @@ template<typename T> struct ResWindow {
 					return false;
 			}
 			if (m_tileCompResLower){
-				m_splitWindow[SPLIT_L]->attach(m_resWindow->data, m_resWindow->stride);
-				m_splitWindow[SPLIT_H]->attach(m_resWindow->data + m_tileCompResLower->height() * m_resWindow->stride,m_resWindow->stride);
+				m_splitResWindow[SPLIT_L]->attach(m_resWindow->data, m_resWindow->stride);
+				m_splitResWindow[SPLIT_H]->attach(m_resWindow->data + m_tileCompResLower->height() * m_resWindow->stride,m_resWindow->stride);
 			}
 		}
 		m_allocated = true;
@@ -188,8 +192,8 @@ template<typename T> struct ResWindow {
 	Resolution *m_tileCompRes;   	// when non-null, it triggers creation of band window buffers
 	Resolution *m_tileCompResLower; // null for lowest resolution
 	std::vector< grk_buffer_2d<T>* > m_bandWindowBufferDim;	 	// coordinates are relative to band origin
-	std::vector< grk_rect_u32 > m_paddedBandWindow; 	 		// canvas coordinates
-	grk_buffer_2d<T> *m_splitWindow[SPLIT_NUM_ORIENTATIONS]; 	// resolution coordinates
+	std::vector< grk_rect_u32 > m_paddedTileBandWindow; 	 		// canvas coordinates
+	grk_buffer_2d<T> *m_splitResWindow[SPLIT_NUM_ORIENTATIONS]; 	// resolution coordinates
 	grk_buffer_2d<T> *m_resWindow;					 		 	// resolution coordinates
 	grk_buffer_2d<T> *m_resWindowTopLevel;					 	// resolution coordinates
 	uint32_t m_filterWidth;
@@ -331,9 +335,9 @@ template<typename T> struct TileComponentWindowBuffer {
 	}
 
 	const grk_rect_u32 getPaddedTileBandWindow(uint8_t resno,eBandOrientation orientation) const{
-		if (m_resWindows[resno]->m_paddedBandWindow.empty())
+		if (m_resWindows[resno]->m_paddedTileBandWindow.empty())
 			return grk_rect_u32();
-		return m_resWindows[resno]->m_paddedBandWindow[orientation];
+		return m_resWindows[resno]->m_paddedTileBandWindow[orientation];
 	}
 
 	/*
@@ -344,7 +348,7 @@ template<typename T> struct TileComponentWindowBuffer {
 	const grk_buffer_2d<T>*  getSplitWindow(uint8_t resno,eSplitOrientation orientation) const{
 		assert(resno > 0 && resno < m_tileCompResolutions.size());
 
-		return m_resWindows[resno]->m_splitWindow[orientation];
+		return m_resWindows[resno]->m_splitResWindow[orientation];
 	}
 
 	/**
