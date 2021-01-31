@@ -202,26 +202,6 @@ bool GRK_CALLCONV grk_read_header( grk_codec p_codec,  grk_header_info  *header_
 	}
 	return false;
 }
-
-grk_image* GRK_CALLCONV grk_get_image( grk_codec p_codec, uint16_t tileIndex) {
-	if (p_codec) {
-		auto codec = (grk_codec_private*) p_codec;
-		assert(codec->is_decompressor);
-		return codec->m_codeStreamBase->get_image(tileIndex);
-	}
-	return nullptr;
-}
-
-
-bool GRK_CALLCONV grk_decompress( grk_codec p_codec, grk_plugin_tile *tile) {
-	if (p_codec) {
-		auto codec = (grk_codec_private*) p_codec;
-		assert(codec->is_decompressor);
-
-		return codec->m_codeStreamBase->decompress(tile);
-	}
-	return false;
-}
 bool GRK_CALLCONV grk_set_decompress_window( grk_codec p_codec,
 		uint32_t start_x, uint32_t start_y,
 		uint32_t end_x, uint32_t end_y) {
@@ -229,6 +209,15 @@ bool GRK_CALLCONV grk_set_decompress_window( grk_codec p_codec,
 		auto codec = (grk_codec_private*) p_codec;
 		assert(codec->is_decompressor);
 		return codec->m_codeStreamBase->set_decompress_window(grk_rect_u32(start_x, start_y, end_x,end_y));
+	}
+	return false;
+}
+bool GRK_CALLCONV grk_decompress( grk_codec p_codec, grk_plugin_tile *tile) {
+	if (p_codec) {
+		auto codec = (grk_codec_private*) p_codec;
+		assert(codec->is_decompressor);
+
+		return codec->m_codeStreamBase->decompress(tile);
 	}
 	return false;
 }
@@ -240,6 +229,48 @@ bool GRK_CALLCONV grk_decompress_tile( grk_codec p_codec,uint16_t tile_index) {
 		return codec->m_codeStreamBase->decompress_tile(tile_index);
 	}
 	return false;
+}
+bool GRK_CALLCONV grk_end_decompress( grk_codec p_codec) {
+	if (p_codec) {
+		auto codec = (grk_codec_private*) p_codec;
+		assert(codec->is_decompressor);
+		return codec->m_codeStreamBase->end_decompress();
+	}
+	return false;
+}
+
+bool GRK_CALLCONV grk_set_MCT( grk_cparameters  *parameters,
+		float *pEncodingMatrix, int32_t *p_dc_shift, uint32_t pNbComp) {
+	uint32_t l_matrix_size = pNbComp * pNbComp * (uint32_t) sizeof(float);
+	uint32_t l_dc_shift_size = pNbComp * (uint32_t) sizeof(int32_t);
+	uint32_t l_mct_total_size = l_matrix_size + l_dc_shift_size;
+
+	/* add MCT capability */
+	if (GRK_IS_PART2(parameters->rsiz)) {
+		parameters->rsiz |= GRK_EXTENSION_MCT;
+	} else {
+		parameters->rsiz = ((GRK_PROFILE_PART2) | (GRK_EXTENSION_MCT));
+	}
+	parameters->irreversible = true;
+
+	/* use array based MCT */
+	parameters->tcp_mct = 2;
+	parameters->mct_data = grk_malloc(l_mct_total_size);
+	if (!parameters->mct_data) {
+		return false;
+	}
+	memcpy(parameters->mct_data, pEncodingMatrix, l_matrix_size);
+	memcpy(((uint8_t*) parameters->mct_data) + l_matrix_size, p_dc_shift,
+			l_dc_shift_size);
+	return true;
+}
+grk_image* GRK_CALLCONV grk_get_image( grk_codec p_codec, uint16_t tileIndex) {
+	if (p_codec) {
+		auto codec = (grk_codec_private*) p_codec;
+		assert(codec->is_decompressor);
+		return codec->m_codeStreamBase->get_image(tileIndex);
+	}
+	return nullptr;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -342,40 +373,6 @@ bool GRK_CALLCONV grk_end_compress( grk_codec p_codec) {
 		}
 	}
 	return false;
-}
-bool GRK_CALLCONV grk_end_decompress( grk_codec p_codec) {
-	if (p_codec) {
-		auto codec = (grk_codec_private*) p_codec;
-		assert(codec->is_decompressor);
-		return codec->m_codeStreamBase->end_decompress();
-	}
-	return false;
-}
-
-bool GRK_CALLCONV grk_set_MCT( grk_cparameters  *parameters,
-		float *pEncodingMatrix, int32_t *p_dc_shift, uint32_t pNbComp) {
-	uint32_t l_matrix_size = pNbComp * pNbComp * (uint32_t) sizeof(float);
-	uint32_t l_dc_shift_size = pNbComp * (uint32_t) sizeof(int32_t);
-	uint32_t l_mct_total_size = l_matrix_size + l_dc_shift_size;
-
-	/* add MCT capability */
-	if (GRK_IS_PART2(parameters->rsiz)) {
-		parameters->rsiz |= GRK_EXTENSION_MCT;
-	} else {
-		parameters->rsiz = ((GRK_PROFILE_PART2) | (GRK_EXTENSION_MCT));
-	}
-	parameters->irreversible = true;
-
-	/* use array based MCT */
-	parameters->tcp_mct = 2;
-	parameters->mct_data = grk_malloc(l_mct_total_size);
-	if (!parameters->mct_data) {
-		return false;
-	}
-	memcpy(parameters->mct_data, pEncodingMatrix, l_matrix_size);
-	memcpy(((uint8_t*) parameters->mct_data) + l_matrix_size, p_dc_shift,
-			l_dc_shift_size);
-	return true;
 }
 bool GRK_CALLCONV grk_compress_tile( grk_codec p_codec, uint16_t tile_index,
 		uint8_t *p_data, uint64_t data_size) {

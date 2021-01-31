@@ -874,7 +874,30 @@ bool FileFormat::read_header(grk_header_info  *header_info){
 
 	return true;
 }
+bool FileFormat::set_decompress_window(grk_rect_u32 window){
+	return codeStream->set_decompress_window(window);
+}
 
+/** Set up decompressor function handler */
+void FileFormat::init_decompress(grk_dparameters  *parameters){
+	/* set up the J2K codec */
+	codeStream->init_decompress(parameters);
+
+	/* further JP2 initializations go here */
+	color.has_colour_specification_box = false;
+}
+
+
+bool FileFormat::decompress( grk_plugin_tile *tile){
+
+	/* J2K decoding */
+	if (!codeStream->decompress(tile)) {
+		GRK_ERROR("Failed to decompress JP2 file");
+		return false;
+	}
+
+	return postDecompress();
+}
 
 bool FileFormat::decompress_tile(uint16_t tile_index) {
 	if (!codeStream->decompress_tile(tile_index)) {
@@ -885,6 +908,19 @@ bool FileFormat::decompress_tile(uint16_t tile_index) {
 	return postDecompress();
 }
 
+
+/** Reading function used after code stream if necessary */
+bool FileFormat::end_decompress(void){
+	/* customization of the end compressing */
+	if (!jp2_init_end_header_reading(this))
+		return false;
+
+	/* write header */
+	if (!jp2_exec(this, m_procedure_list))
+		return false;
+
+	return codeStream->end_decompress();
+}
 bool FileFormat::postDecompress(void){
 	if (color.palette) {
 		/* Part 1, I.5.3.4: Either both or none : */
@@ -902,45 +938,6 @@ bool FileFormat::postDecompress(void){
 
 	return true;
 }
-
-
-bool FileFormat::decompress( grk_plugin_tile *tile){
-
-	/* J2K decoding */
-	if (!codeStream->decompress(tile)) {
-		GRK_ERROR("Failed to decompress JP2 file");
-		return false;
-	}
-
-	return postDecompress();
-}
-
-/** Reading function used after code stream if necessary */
-bool FileFormat::end_decompress(void){
-	/* customization of the end compressing */
-	if (!jp2_init_end_header_reading(this))
-		return false;
-
-	/* write header */
-	if (!jp2_exec(this, m_procedure_list))
-		return false;
-
-	return codeStream->end_decompress();
-}
-
-/** Set up decompressor function handler */
-void FileFormat::init_decompress(grk_dparameters  *parameters){
-	/* set up the J2K codec */
-	codeStream->init_decompress(parameters);
-
-	/* further JP2 initializations go here */
-	color.has_colour_specification_box = false;
-}
-
-bool FileFormat::set_decompress_window(grk_rect_u32 window){
-	return codeStream->set_decompress_window(window);
-}
-
 bool FileFormat::start_compress(void){
 	/* customization of the validation */
 	if (!jp2_init_compress_validation(this))

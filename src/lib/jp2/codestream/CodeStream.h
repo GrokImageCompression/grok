@@ -220,9 +220,9 @@ struct CodeStream : public ICodeStream {
 
 	bool read_header_procedure(void);
 
-	bool do_decompress();
+	bool exec_decompress();
 
-	bool decompress_tile_t2t1(TileProcessor *tileProcessor, bool multi_tile) ;
+	bool decompress_tile_t2t1(TileProcessor *tileProcessor) ;
 
 	bool decompress_tile();
 
@@ -339,6 +339,8 @@ private:
 	uint8_t *m_marker_scratch;
 	uint16_t m_marker_scratch_size;
     /** Only valid for decoding. Whether the whole tile is decompressed, or just the window in win_x0/win_y0/win_x1/win_y1 */
+
+	bool m_multiTile;
 
 public:
 	uint16_t m_curr_marker;
