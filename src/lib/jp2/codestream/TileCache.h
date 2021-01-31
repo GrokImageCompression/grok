@@ -43,8 +43,8 @@ public:
 	virtual ~TileCache();
 
 	void setStrategy(GRK_TILE_CACHE_STRATEGY strategy);
-	void put(uint16_t tileIndex, GrkImage* src_image, grk_tile *src_tile);
-	void put(uint16_t tileIndex, TileProcessor *processor);
+	TileCacheEntry*  put(uint16_t tileIndex, GrkImage* src_image, grk_tile *src_tile);
+	TileCacheEntry*  put(uint16_t tileIndex, TileProcessor *processor);
 	TileCacheEntry* get(uint16_t tileIndex);
 	GrkImage* getComposite();
 	std::vector<GrkImage*> getAllImages(void);

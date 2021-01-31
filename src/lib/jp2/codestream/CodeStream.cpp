@@ -733,6 +733,7 @@ CodeStream::CodeStream(bool decompress, BufferedStream *stream) : m_output_image
 																m_tile_ind_to_dec(-1),
 																m_marker_scratch(nullptr),
 																m_marker_scratch_size(0),
+																m_multiTile(false),
 																m_curr_marker(0),
 																wholeTileDecompress(true),
 																current_plugin_tile(nullptr),

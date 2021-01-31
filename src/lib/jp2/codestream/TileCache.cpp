@@ -42,24 +42,29 @@ TileCache::~TileCache() {
 	delete tileComposite;
 }
 
-void TileCache::put(uint16_t tileIndex, TileProcessor *processor){
+TileCacheEntry*  TileCache::put(uint16_t tileIndex, TileProcessor *processor){
+	TileCacheEntry *entry = nullptr;
 	if (m_cache.find(tileIndex) != m_cache.end()) {
-		auto entry =  m_cache[tileIndex];
+		entry =  m_cache[tileIndex];
 		entry->processor = processor;
 	}
 	else {
-		auto entry = new TileCacheEntry(processor);
+		entry = new TileCacheEntry(processor);
 		m_cache[tileIndex] = entry;
 	}
+
+	return entry;
 }
 
-void TileCache::put(uint16_t tileIndex, GrkImage* src_image, grk_tile *src_tile){
+TileCacheEntry* TileCache::put(uint16_t tileIndex, GrkImage* src_image, grk_tile *src_tile){
 	TileCacheEntry *entry = nullptr;
 	if (m_cache.find(tileIndex) != m_cache.end())
 		entry = m_cache[tileIndex];
 	else
 		entry = new TileCacheEntry();
 	entry->image = src_image->duplicate(src_tile);
+
+	return entry;
 }
 
 TileCacheEntry* TileCache::get(uint16_t tileIndex){
