@@ -72,7 +72,6 @@ static void info_callback(const char *msg, void *client_data) {
 int main(int argc, char *argv[]) {
 	grk_dparameters param;
 	grk_codec codec = nullptr;
-	grk_image *image = nullptr;
 	grk_stream *stream = nullptr;
 	uint16_t tile_index=0;
 	int32_t rc = EXIT_FAILURE;
@@ -189,7 +188,7 @@ int main(int argc, char *argv[]) {
 
 	if (!grk_decompress_tile(codec, tile_index))
 		goto beach;
-	/** now should inspect image to know the reduction factor and then how to behave with data */
+	// ToDo: inspect data
 
 	if (!grk_end_decompress(codec))
 		goto beach;
