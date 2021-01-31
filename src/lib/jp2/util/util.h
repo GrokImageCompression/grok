@@ -154,6 +154,13 @@ template<typename T> struct grk_rectangle {
     bool isContainedIn(const grk_rectangle<T> rhs) const{
     	return (intersection(&rhs)== *this);
     }
+    void clip(const grk_rectangle<T> *rhs){
+    	*this = grk_rectangle<T>(std::max<T>(x0,rhs->x0),
+    							std::max<T>(y0,rhs->y0),
+								std::min<T>(x1,rhs->x1),
+								std::min<T>(y1,rhs->y1));
+    }
+
     grk_rectangle<T> intersection(const grk_rectangle<T> *rhs) const{
     	return grk_rectangle<T>(std::max<T>(x0,rhs->x0),
     							std::max<T>(y0,rhs->y0),
@@ -389,6 +396,19 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 			owns_data = false;
 			*strd = stride;
 		}
+	}
+
+	bool copy_data(T* dest, uint32_t dest_w, uint32_t dest_h, uint32_t dest_stride) const{
+		assert(dest_w == width());
+		assert(dest_h == height());
+		assert(dest_stride == stride);
+		if (dest_w != width() || dest_h != height() || dest_stride != stride)
+			return false;
+		if (!data)
+			return false;
+		memcpy(dest,data, stride * height() * sizeof(T));
+
+		return true;
 	}
 
 	// rhs coordinates are in "this" coordinate system

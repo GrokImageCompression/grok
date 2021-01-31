@@ -38,6 +38,14 @@ void TileCache::put(uint16_t tileIndex, TileCacheEntry *entry){
 	m_processors[tileIndex] = entry;
 }
 
+void TileCache::put(uint16_t tileIndex, grk_image* src_image, grk_tile *src_tile){
+	if (m_processors.find(tileIndex) == m_processors.end())
+		return;
+	auto copy = make_copy(src_image, src_tile);
+
+
+}
+
 TileCacheEntry* TileCache::get(uint16_t tileIndex){
 	if (m_processors.find(tileIndex) != m_processors.end())
 		return m_processors[tileIndex];

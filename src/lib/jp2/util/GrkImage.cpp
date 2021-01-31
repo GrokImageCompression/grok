@@ -79,7 +79,7 @@ void image_destroy(grk_image *image) {
  * @param	image_dest	the dest image
  *
  */
-void copy_image_header(const grk_image *image_src,grk_image *image_dest) {
+bool copy_image_header(const grk_image *image_src,grk_image *image_dest) {
 	assert(image_src != nullptr);
 	assert(image_dest != nullptr);
 
@@ -94,17 +94,15 @@ void copy_image_header(const grk_image *image_src,grk_image *image_dest) {
 		image_dest->comps = nullptr;
 	}
 	image_dest->numcomps = image_src->numcomps;
-	image_dest->comps = ( grk_image_comp  * ) grk_malloc(
-			image_dest->numcomps * sizeof( grk_image_comp) );
+	image_dest->comps = ( grk_image_comp  * ) grk_malloc(image_dest->numcomps * sizeof( grk_image_comp) );
 	if (!image_dest->comps) {
 		image_dest->comps = nullptr;
 		image_dest->numcomps = 0;
-		return;
+		return false;
 	}
 
 	for (uint32_t compno = 0; compno < image_dest->numcomps; compno++) {
-		memcpy(&(image_dest->comps[compno]), &(image_src->comps[compno]),
-				sizeof( grk_image_comp) );
+		memcpy(&(image_dest->comps[compno]), &(image_src->comps[compno]),sizeof( grk_image_comp) );
 		image_dest->comps[compno].data = nullptr;
 	}
 
@@ -135,12 +133,11 @@ void copy_image_header(const grk_image *image_src,grk_image *image_dest) {
 		}
 	}
 
-	return;
+	return true;
 }
 
 
-bool image_single_component_data_alloc(
-		 grk_image_comp  *comp) {
+bool image_single_component_data_alloc(grk_image_comp  *comp) {
 	if (!comp)
 		return false;
 	comp->stride = grk_make_aligned_width(comp->w);
@@ -224,6 +221,43 @@ void transfer_image_data(grk_image *src, grk_image *dest) {
 		}
 		src_comp->data = nullptr;
 	}
+}
+
+grk_image* make_copy(const grk_image *src){
+	auto dest = (grk_image * ) grk::grk_calloc(1, sizeof(grk_image));
+
+	if (!copy_image_header(src,dest)) {
+		image_destroy(dest);
+		return nullptr;
+	}
+	for (uint32_t compno = 0; compno < src->numcomps; ++compno){
+		auto src_comp = src->comps + compno;
+		auto dest_comp = dest->comps + compno;
+		if (src_comp->data)
+			memcpy(dest_comp->data, src_comp->data, src_comp->w * src_comp->stride);
+	}
+
+	return dest;
+}
+
+grk_image* make_copy(const grk_image *src, const grk_tile* tile_src){
+	auto dest = (grk_image * ) grk::grk_calloc(1, sizeof(grk_image));
+
+	if (!copy_image_header(src,dest)) {
+		image_destroy(dest);
+		return nullptr;
+	}
+	for (uint32_t compno = 0; compno < tile_src->numcomps; ++compno){
+		auto src_comp = tile_src->comps + compno;
+		auto dest_comp = dest->comps + compno;
+		if (!image_single_component_data_alloc(dest_comp)){
+			image_destroy(dest);
+			return nullptr;
+		}
+		src_comp->getBuffer()->getWindow()->copy_data(dest_comp->data, dest_comp->w, dest_comp->h, dest_comp->stride);
+	}
+
+	return dest;
 }
 
 

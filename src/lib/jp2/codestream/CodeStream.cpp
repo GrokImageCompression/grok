@@ -1064,7 +1064,10 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,grk_image *image){
 		GRK_ERROR("Failed to allocate image header.");
 		return false;
 	}
-	copy_image_header(image, m_input_image);
+	if (!copy_image_header(image, m_input_image)){
+		GRK_ERROR("Failed to copy image header.");
+		return false;
+	}
 	if (image->comps) {
 		for (uint32_t compno = 0; compno < image->numcomps; compno++) {
 			if (image->comps[compno].data) {
@@ -2192,6 +2195,7 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor, bool multi_t
 			if (!tileProcessor->copy_decompressed_tile_to_output_image(m_output_image))
 				return false;
 		} else {
+			//m_tileCache->put(tile_index, m_output_image, tileProcessor->tile);
 			for (uint16_t compno = 0; compno < m_output_image->numcomps; compno++) {
 				auto tilec = tileProcessor->tile->comps + compno;
 				auto comp = m_output_image->comps + compno;

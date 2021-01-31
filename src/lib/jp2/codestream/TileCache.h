@@ -45,12 +45,16 @@ public:
 	virtual ~TileCache();
 
 	void put(uint16_t tileIndex, TileCacheEntry *entry);
+	void put(uint16_t tileIndex, grk_image* src_image, grk_tile *src_tile);
+
 	TileCacheEntry* get(uint16_t tileIndex);
 
 	void setStrategy(GRK_TILE_CACHE_STRATEGY strategy);
 	void flush(uint16_t tileIndex);
 
 	grk_image* getComposite();
+
+	void put(uint16_t tileIndex, grk_tile *tile);
 
 private:
 	grk_image *tileComposite;
