@@ -204,6 +204,37 @@ bool GrkImage::allocData(grk_image_comp  *comp) {
 }
 
 /**
+ * Allocate data buffer to mirror "mirror" image
+ *
+ * @param mirror mirror image
+ *
+ * @return true if successful
+ */
+bool GrkImage::allocData(void){
+	for (uint32_t i = 0; i < numcomps; i++) {
+		auto comp_dest = comps + i;
+
+		if (comp_dest->w  == 0 || comp_dest->h == 0) {
+			GRK_ERROR("Output component %d has invalid dimensions %u x %u",
+					i, comp_dest->w, comp_dest->h);
+			return false;
+		}
+		if (!comp_dest->data) {
+			if (!GrkImage::allocData(comp_dest)){
+				GRK_ERROR("Failed to allocate pixel data for component %d, with dimensions %u x %u",
+						i, comp_dest->w, comp_dest->h);
+				return false;
+			}
+			memset(comp_dest->data, 0,	(uint64_t)comp_dest->stride * comp_dest->h * sizeof(int32_t));
+		}
+	}
+
+	return true;
+
+}
+
+
+/**
  Transfer data to dest for each component, and null out this data.
  Assumption:  this and dest have the same number of components
  */
@@ -242,39 +273,6 @@ GrkImage* GrkImage::duplicate(void){
 
 	return dest;
 }
-
-/**
- * Allocate data buffer to mirror "mirror" image
- *
- * @param mirror mirror image
- *
- * @return true if successful
- */
-bool GrkImage::allocMirrorData(GrkImage* mirror){
-	assert(numcomps == mirror->numcomps);
-
-	for (uint32_t i = 0; i < numcomps; i++) {
-		auto comp_dest = comps + i;
-
-		if (comp_dest->w  == 0 || comp_dest->h == 0) {
-			GRK_ERROR("Output component %d has invalid dimensions %u x %u",
-					i, comp_dest->w, comp_dest->h);
-			return false;
-		}
-		if (!comp_dest->data) {
-			if (!GrkImage::allocData(comp_dest)){
-				GRK_ERROR("Failed to allocate pixel data for component %d, with dimensions %u x %u",
-						i, comp_dest->w, comp_dest->h);
-				return false;
-			}
-			memset(comp_dest->data, 0,	(uint64_t)comp_dest->stride * comp_dest->h * sizeof(int32_t));
-		}
-	}
-
-	return true;
-
-}
-
 
 /**
  * Create new image and copy tile buffer data in

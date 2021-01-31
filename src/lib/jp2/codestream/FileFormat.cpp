@@ -740,7 +740,7 @@ bool FileFormat::read_header(grk_header_info  *header_info){
 	if (m_headerError)
 		return false;
 
-	bool needsHeaderRead = !codeStream->m_input_image;
+	bool needsHeaderRead = !codeStream->getHeaderImage();
 	if (needsHeaderRead) {
 
 		m_procedure_list->push_back((jp2_procedure) jp2_read_header_procedure);
@@ -952,7 +952,7 @@ bool FileFormat::start_compress(void){
 		return false;
 
 	// estimate if codec stream may be larger than 2^32 bytes
-	auto p_image = codeStream->m_input_image;
+	auto p_image = codeStream->getHeaderImage();
 	uint64_t image_size = 0;
 	for (auto i = 0U; i < p_image->numcomps; ++i) {
 		auto comp = p_image->comps + i;
@@ -1199,14 +1199,15 @@ void FileFormat::alloc_palette(grk_color *color, uint8_t num_channels, uint16_t 
 	assert(num_channels);
 	assert(num_entries);
 
-	auto jp2_pclr = new grk_palette_data();
-	jp2_pclr->channel_sign = new bool[num_channels];
-	jp2_pclr->channel_prec = new uint8_t[num_channels];
-	jp2_pclr->lut = new uint32_t[num_channels * num_entries];
-	jp2_pclr->num_entries = num_entries;
-	jp2_pclr->num_channels = num_channels;
+	free_palette_clr(color);
+	auto jp2_pclr 			= new grk_palette_data();
+	jp2_pclr->channel_sign 	= new bool[num_channels];
+	jp2_pclr->channel_prec 	= new uint8_t[num_channels];
+	jp2_pclr->lut 			= new uint32_t[num_channels * num_entries];
+	jp2_pclr->num_entries 	= num_entries;
+	jp2_pclr->num_channels 	= num_channels;
 	jp2_pclr->component_mapping = nullptr;
-	color->palette = jp2_pclr;
+	color->palette 				= jp2_pclr;
 }
 
 uint32_t FileFormat::read_asoc(AsocBox *parent,

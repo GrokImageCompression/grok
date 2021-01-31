@@ -407,8 +407,8 @@ static bool j2k_init_info(CodeStream *codeStream) {
 	assert(codeStream);
 
 	return j2k_calculate_tp(&codeStream->m_cp,
-			&codeStream->m_encoder.m_total_tile_parts,
-			codeStream->m_input_image);
+							&codeStream->m_encoder.m_total_tile_parts,
+							codeStream->getHeaderImage());
 }
 
 static bool j2k_get_end_header(CodeStream *codeStream) {
@@ -724,9 +724,9 @@ static void lupInvert(float *pSrcMatrix, float *pDestMatrix, uint32_t nb_compo,
 	}
 }
 
-CodeStream::CodeStream(bool decompress, BufferedStream *stream) : m_input_image(nullptr),
-																m_output_image(nullptr),
+CodeStream::CodeStream(bool decompress, BufferedStream *stream) : m_output_image(nullptr),
 																cstr_index(nullptr),
+																m_headerImage(nullptr),
 																m_tileProcessor(nullptr),
 																m_tileCache(new TileCache()),
 																m_stream(stream),
@@ -780,7 +780,7 @@ CodeStream::~CodeStream(){
 	delete m_decompressor.m_default_tcp;
 	m_cp.destroy();
 	j2k_destroy_cstr_index(cstr_index);
-	delete m_input_image;
+	delete m_headerImage;
 	delete m_output_image;
 	delete[] m_marker_scratch;
 	delete m_tileCache;
@@ -799,6 +799,10 @@ bool CodeStream::exec(std::vector<j2k_procedure> &procs) {
 
 BufferedStream* CodeStream::getStream(){
 	return m_stream;
+}
+
+GrkImage* CodeStream::getHeaderImage(void){
+	return m_headerImage;
 }
 
 int32_t CodeStream::tileIndexToDecode(){
@@ -841,8 +845,8 @@ bool CodeStream::read_header(grk_header_info  *header_info){
 	if (m_headerError)
 		return false;
 
-	if (!m_input_image) {
-		m_input_image = new GrkImage();
+	if (!m_headerImage) {
+		m_headerImage = new GrkImage();
 
 		/* customization of the validation */
 		m_validation_list.push_back((j2k_procedure) j2k_decompress_validation);
@@ -906,8 +910,8 @@ bool CodeStream::read_header(grk_header_info  *header_info){
 		}
 	}
 
-	/* Copy code stream image information to the user image */
-	m_input_image->copyHeader(getCompositeImage());
+	/* Copy code stream image information to composite image */
+	m_headerImage->copyHeader(getCompositeImage());
 	if (cstr_index) {
 		/*Allocate and initialize some elements of codestrem index*/
 		if (!j2k_allocate_tile_element_cstr_index(this)) {
@@ -921,7 +925,7 @@ bool CodeStream::read_header(grk_header_info  *header_info){
 
 bool CodeStream::set_decompress_window(grk_rect_u32 window) {
 	auto cp = &(m_cp);
-	auto image = m_input_image;
+	auto image = m_headerImage;
 	auto output_image = getCompositeImage();
 	auto decompressor = &m_decompressor;
 
@@ -1183,7 +1187,7 @@ bool CodeStream::decompress_tiles(void) {
 			breakAfterT1 = true;
 		}
 		if (!allocatedOutputImage && m_multiTile && m_output_image) {
-			if (!m_output_image->allocMirrorData(m_input_image)){
+			if (!m_output_image->allocData()){
 				success = false;
 				goto cleanup;
 			}
@@ -1566,7 +1570,7 @@ bool CodeStream::mct_validation(void) {
 			auto tcp = m_cp.tcps + i;
 			if (tcp->mct == 2) {
 				is_valid &= (tcp->m_mct_coding_matrix != nullptr);
-				for (uint32_t j = 0; j < m_input_image->numcomps; ++j) {
+				for (uint32_t j = 0; j < m_headerImage->numcomps; ++j) {
 					auto tccp = tcp->tccps + j;
 					is_valid &= !(tccp->qmfbid & 1);
 				}
@@ -1675,15 +1679,15 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,GrkImage *image){
 	}
 
 	// create private sanitized copy of image
-	m_input_image = new GrkImage();
-	if (!image->copyHeader(m_input_image)){
+	m_headerImage = new GrkImage();
+	if (!image->copyHeader(m_headerImage)){
 		GRK_ERROR("Failed to copy image header.");
 		return false;
 	}
 	if (image->comps) {
 		for (uint32_t compno = 0; compno < image->numcomps; compno++) {
 			if (image->comps[compno].data) {
-				m_input_image->comps[compno].data =
+				m_headerImage->comps[compno].data =
 						image->comps[compno].data;
 				image->comps[compno].data = nullptr;
 
@@ -2338,7 +2342,7 @@ bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 
 	// ensure lossy wavelet has quantization set
 	auto tcp = get_current_decode_tcp();
-	auto numComps = m_input_image->numcomps;
+	auto numComps = m_headerImage->numcomps;
 	for (uint32_t k = 0; k < numComps; ++k) {
 		auto tccp = tcp->tccps + k;
 		if (tccp->qmfbid == 0 && tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) {
@@ -2488,7 +2492,7 @@ bool CodeStream::write_tile_part(TileProcessor *tileProcessor) {
 		if (!GRK_IS_CINEMA(cp->rsiz)) {
 			if (cp->tcps[currentTileNumber].numpocs) {
 				auto tcp = m_cp.tcps + currentTileNumber;
-				auto image = m_input_image;
+				auto image = m_headerImage;
 				uint32_t nb_comp = image->numcomps;
 				if (!j2k_write_poc(this))
 					return false;
@@ -2562,7 +2566,7 @@ bool CodeStream::post_write_tile(TileProcessor *tileProcessor) {
 }
 
 bool CodeStream::copy_default_tcp(void) {
-	auto image = m_input_image;
+	auto image = m_headerImage;
 	uint32_t nb_tiles = m_cp.t_grid_height * m_cp.t_grid_width;
 	uint32_t tccp_size = image->numcomps * (uint32_t) sizeof(TileComponentCodingParams);
 	auto default_tcp = m_decompressor.m_default_tcp;
@@ -2660,7 +2664,7 @@ bool CodeStream::copy_default_tcp(void) {
 }
 bool CodeStream::update_rates(void) {
 	auto cp = &(m_cp);
-	auto image = m_input_image;
+	auto image = m_headerImage;
 	auto tcp = cp->tcps;
 	auto width = image->x1 - image->x0;
 	auto height = image->y1 - image->y0;

@@ -74,7 +74,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 	uint16_t nb_tiles;
 	auto decompressor = &codeStream->m_decompressor;
 
-	auto image = codeStream->m_input_image;
+	auto image = codeStream->getHeaderImage();
 	auto cp = &(codeStream->m_cp);
 
 	/* minimum size == 39 - 3 (= minimum component parameter) */
@@ -303,7 +303,7 @@ bool SIZMarker::write(CodeStream *codeStream, BufferedStream *stream){
 	assert(stream != nullptr);
 	assert(codeStream != nullptr);
 
-	auto image = codeStream->m_input_image;
+	auto image = codeStream->getHeaderImage();
 	auto cp = &(codeStream->m_cp);
 	size_len = 40 + 3U * image->numcomps;
 	/* write SOC identifier */

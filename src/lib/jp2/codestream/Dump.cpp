@@ -93,23 +93,23 @@ void j2k_dump(CodeStream *codeStream, uint32_t flag, FILE *out_stream) {
 
 	/* Dump the image_header */
 	if (flag & GRK_IMG_INFO) {
-		if (codeStream->m_input_image)
-			j2k_dump_image_header(codeStream->m_input_image, 0, out_stream);
+		if (codeStream->getHeaderImage())
+			j2k_dump_image_header(codeStream->getHeaderImage(), 0, out_stream);
 	}
 
 	/* Dump the code stream info from main header */
 	if (flag & GRK_J2K_MH_INFO) {
-		if (codeStream->m_input_image)
+		if (codeStream->getHeaderImage())
 			j2k_dump_MH_info(codeStream, out_stream);
 	}
 	/* Dump all tile/code stream info */
 	if (flag & GRK_J2K_TCH_INFO) {
 		uint32_t nb_tiles = codeStream->m_cp.t_grid_height
 				* codeStream->m_cp.t_grid_width;
-		if (codeStream->m_input_image) {
+		if (codeStream->getHeaderImage()) {
 			for (uint32_t i = 0; i < nb_tiles; ++i) {
 				auto tcp = codeStream->m_cp.tcps + i;
-				j2k_dump_tile_info(tcp, codeStream->m_input_image->numcomps,
+				j2k_dump_tile_info(tcp, codeStream->getHeaderImage()->numcomps,
 						out_stream);
 			}
 		}
@@ -221,7 +221,7 @@ static void j2k_dump_MH_info(CodeStream *codeStream, FILE *out_stream) {
 	fprintf(out_stream, "\t tw=%d, th=%d\n", codeStream->m_cp.t_grid_width,
 			codeStream->m_cp.t_grid_height);
 	j2k_dump_tile_info(codeStream->m_decompressor.m_default_tcp,
-			codeStream->m_input_image->numcomps, out_stream);
+			codeStream->getHeaderImage()->numcomps, out_stream);
 	fprintf(out_stream, "}\n");
 }
 
@@ -281,13 +281,13 @@ void j2k_dump_image_comp_header(grk_image_comp *comp_header, bool dev_dump_flag,
 
 grk_codestream_info_v2* j2k_get_cstr_info(CodeStream *codeStream) {
 	uint32_t compno;
-	uint32_t numcomps = codeStream->m_input_image->numcomps;
+	uint32_t numcomps = codeStream->getHeaderImage()->numcomps;
 	auto cstr_info = (grk_codestream_info_v2*) grk_calloc(1,
 			sizeof(grk_codestream_info_v2));
 	if (!cstr_info)
 		return nullptr;
 
-	cstr_info->nbcomps = codeStream->m_input_image->numcomps;
+	cstr_info->nbcomps = codeStream->getHeaderImage()->numcomps;
 
 	cstr_info->tx0 = codeStream->m_cp.tx0;
 	cstr_info->ty0 = codeStream->m_cp.ty0;

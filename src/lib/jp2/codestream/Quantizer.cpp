@@ -94,7 +94,7 @@ bool Quantizer::write_SQcd_SQcc(CodeStream *codeStream,
 	auto tcp = &cp->tcps[0];
 	auto tccp = &tcp->tccps[comp_no];
 
-	assert(comp_no < codeStream->m_input_image->numcomps);
+	assert(comp_no < codeStream->getHeaderImage()->numcomps);
 
 	uint32_t num_bands =
 			(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
@@ -131,7 +131,7 @@ uint32_t Quantizer::get_SQcd_SQcc_size(CodeStream *codeStream,
 	auto tcp = &cp->tcps[0];
 	auto tccp = &tcp->tccps[comp_no];
 
-	assert(comp_no < codeStream->m_input_image->numcomps);
+	assert(comp_no < codeStream->getHeaderImage()->numcomps);
 
 	uint32_t num_bands =
 			(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
@@ -190,7 +190,7 @@ bool Quantizer::read_SQcd_SQcc(CodeStream *codeStream,
 								uint8_t *p_header_data, uint16_t *header_size) {
 	assert(codeStream != nullptr);
 	assert(p_header_data != nullptr);
-	assert(comp_no < codeStream->m_input_image->numcomps);
+	assert(comp_no < codeStream->getHeaderImage()->numcomps);
 	if (*header_size < 1) {
 		GRK_ERROR( "Error reading SQcd or SQcc element");
 		return false;

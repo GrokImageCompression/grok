@@ -276,13 +276,12 @@ struct CodeStream : public ICodeStream {
 
 	GrkImage* getCompositeImage();
 
+	GrkImage* getHeaderImage(void);
+
 
 	// state of decompressor/compressor
 	DecoderState m_decompressor;
 	EncoderState m_encoder;
-
-	/** internal/private encoded / decompressed image */
-	GrkImage *m_input_image;
 
 	/* output image (for decompress) */
 	GrkImage *m_output_image;
@@ -307,6 +306,9 @@ struct CodeStream : public ICodeStream {
 	BufferedStream* getStream();
 
 private:
+
+	// stores header image information (decompress/compress)
+	GrkImage *m_headerImage;
 
 	/**
 	 * Reads the lookup table containing all the marker, status and action,

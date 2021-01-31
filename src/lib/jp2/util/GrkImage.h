@@ -41,13 +41,12 @@ public:
 
 
 	/**
-	 * Allocate data buffer to mirror "mirror" image
+	 * Allocate data
 	 *
-	 * @param mirror mirror image
 	 *
 	 * @return true if successful
 	 */
-	bool allocMirrorData(GrkImage *src);
+	bool allocData();
 
 	/**
 	 * Copy only header of image and its component header (no data are copied)

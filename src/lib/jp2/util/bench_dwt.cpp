@@ -206,7 +206,7 @@ int main(int argc, char** argv)
 		begin = 1;
 
 	CodeStream codeStream(!forwardArg.isSet(),nullptr);
-	codeStream.m_input_image = &image;
+	codeStream.m_headerImage = &image;
 
    for (size_t k = begin; k <= end; ++k) {
 		memset(&image, 0, sizeof(image));
@@ -324,7 +324,7 @@ int main(int argc, char** argv)
 		grk_deinitialize();
    }
 
-   codeStream.m_input_image = nullptr;
+   codeStream.m_headerImage = nullptr;
    return 0;
 }
 

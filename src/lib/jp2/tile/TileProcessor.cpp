@@ -33,7 +33,7 @@ TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream) :
 				totnum_tp(0),
 				pino(0),
 				tile(nullptr),
-				image(codeStream->m_input_image),
+				image(codeStream->getHeaderImage()),
 				current_plugin_tile(codeStream->current_plugin_tile),
 				wholeTileDecompress(codeStream->wholeTileDecompress),
 				plt_markers(nullptr),

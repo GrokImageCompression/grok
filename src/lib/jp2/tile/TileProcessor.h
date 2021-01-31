@@ -26,15 +26,23 @@ namespace grk {
 
 struct TileComponent;
 
-// tile
+/*
+ * Tile structure.
+ *
+ * Tile bounds are relative to origin, and are equal to the unreduced
+ * tile dimensions, while the component dimensions are reduced
+ * if there is a resolution reduction.
+ *
+ */
 struct grk_tile : public grk_rect_u32 {
 	grk_tile();
 	~grk_tile();
-	uint32_t numcomps; /* number of components in tile */
-	TileComponent *comps; /* Components information */
+
+	uint32_t 		numcomps;
+	TileComponent 	*comps;
 	double distotile;
 	double distolayer[100];
-	uint64_t packno; /* packet number */
+	uint64_t packno;
 };
 
 struct PacketTracker{
