@@ -250,6 +250,8 @@ grk_image* make_copy(const grk_image *src, const grk_tile* tile_src){
 	for (uint32_t compno = 0; compno < tile_src->numcomps; ++compno){
 		auto src_comp = tile_src->comps + compno;
 		auto dest_comp = dest->comps + compno;
+		if (!src_comp->getBuffer()->getWindow()->data)
+			continue;
 		if (!image_single_component_data_alloc(dest_comp)){
 			image_destroy(dest);
 			return nullptr;

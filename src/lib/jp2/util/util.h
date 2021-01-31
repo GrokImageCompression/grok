@@ -399,15 +399,20 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 	}
 
 	bool copy_data(T* dest, uint32_t dest_w, uint32_t dest_h, uint32_t dest_stride) const{
-		assert(dest_w == width());
-		assert(dest_h == height());
-		assert(dest_stride == stride);
-		if (dest_w != width() || dest_h != height() || dest_stride != stride)
+		assert(dest_w <= width());
+		assert(dest_h <= height());
+		assert(dest_stride <= stride);
+		if (dest_w > width() || dest_h > height() || dest_stride > stride)
 			return false;
 		if (!data)
 			return false;
-		memcpy(dest,data, stride * height() * sizeof(T));
-
+		auto src_ptr = data;
+		auto dest_ptr = dest;
+		for (uint32_t j = 0; j < dest_h; ++j) {
+			memcpy(dest_ptr,src_ptr, dest_w* sizeof(T));
+			dest_ptr += dest_stride;
+			src_ptr += stride;
+		}
 		return true;
 	}
 

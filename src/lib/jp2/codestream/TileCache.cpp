@@ -41,8 +41,18 @@ void TileCache::put(uint16_t tileIndex, TileCacheEntry *entry){
 void TileCache::put(uint16_t tileIndex, grk_image* src_image, grk_tile *src_tile){
 	if (m_processors.find(tileIndex) == m_processors.end())
 		return;
-	auto copy = make_copy(src_image, src_tile);
-
+	switch(m_strategy){
+		case GRK_TILE_CACHE_NONE:
+			break;
+		case GRK_TILE_CACHE_ALL:
+			{
+			auto copy = make_copy(src_image, src_tile);
+			m_processors[tileIndex]->image = copy;
+			}
+			break;
+		default:
+			break;
+	}
 
 }
 
@@ -56,25 +66,6 @@ TileCacheEntry* TileCache::get(uint16_t tileIndex){
 void TileCache::setStrategy(GRK_TILE_CACHE_STRATEGY strategy){
 	m_strategy = strategy;
 }
-
-void TileCache::flush(uint16_t tileIndex){
-	if (m_processors.find(tileIndex) == m_processors.end())
-		return;
-	switch(m_strategy){
-		case GRK_TILE_CACHE_NONE:
-		{
-			auto cache = m_processors[tileIndex];
-			delete cache->image;
-			cache->image = nullptr;
-		}
-			break;
-		case GRK_TILE_CACHE_ALL:
-
-			break;
-	}
-
-}
-
 grk_image* TileCache::getComposite(){
 	return tileComposite;
 }

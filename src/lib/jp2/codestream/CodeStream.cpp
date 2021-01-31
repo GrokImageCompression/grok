@@ -2195,7 +2195,7 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor, bool multi_t
 			if (!tileProcessor->copy_decompressed_tile_to_output_image(m_output_image))
 				return false;
 		} else {
-			//m_tileCache->put(tile_index, m_output_image, tileProcessor->tile);
+			m_tileCache->put(tile_index, m_output_image, tileProcessor->tile);
 			for (uint16_t compno = 0; compno < m_output_image->numcomps; compno++) {
 				auto tilec = tileProcessor->tile->comps + compno;
 				auto comp = m_output_image->comps + compno;
