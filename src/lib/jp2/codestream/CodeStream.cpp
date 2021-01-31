@@ -844,6 +844,10 @@ GrkImage* CodeStream::get_image(){
 	return getCompositeImage();
 }
 
+std::vector<GrkImage*> CodeStream::getAllImages(void){
+	return m_tileCache->getAllImages();
+}
+
 /** Main header reading function handler */
 bool CodeStream::read_header(grk_header_info  *header_info){
 	if (m_headerError)

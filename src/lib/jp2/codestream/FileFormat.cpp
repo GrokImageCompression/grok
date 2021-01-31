@@ -900,7 +900,9 @@ bool FileFormat::decompress( grk_plugin_tile *tile){
 		return false;
 	}
 
-	applyColour(codeStream->getCompositeImage());
+	auto images = codeStream->getAllImages();
+	for (auto &img : images)
+		applyColour(img);
 
 	return true;
 }
@@ -910,7 +912,11 @@ bool FileFormat::decompress_tile(uint16_t tile_index) {
 		GRK_ERROR("Failed to decompress JP2 file");
 		return false;
 	}
-	applyColour(codeStream->getCompositeImage());
+
+	auto images = codeStream->getAllImages();
+	for (auto &img : images)
+		applyColour(img);
+
 	return true;
 }
 
@@ -928,7 +934,7 @@ bool FileFormat::end_decompress(void){
 	return codeStream->end_decompress();
 }
 bool FileFormat::applyColour(GrkImage *img){
-	if (img->color_applied)
+	if (!img || img->color_applied)
 		return true;
 
 	if (color.palette) {

@@ -170,6 +170,7 @@ struct CodeStream : public ICodeStream {
 
    GrkImage* get_image(uint16_t tileIndex);
    GrkImage* get_image(void);
+   std::vector<GrkImage*> getAllImages(void);
 
    bool decompress( grk_plugin_tile *tile);
 

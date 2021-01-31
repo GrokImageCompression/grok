@@ -47,9 +47,10 @@ public:
 	void put(uint16_t tileIndex, TileProcessor *processor);
 	TileCacheEntry* get(uint16_t tileIndex);
 	GrkImage* getComposite();
+	std::vector<GrkImage*> getAllImages(void);
 private:
 	GrkImage *tileComposite;
-	std::map<uint32_t, TileCacheEntry*> m_processors;
+	std::map<uint32_t, TileCacheEntry*> m_cache;
 	GRK_TILE_CACHE_STRATEGY m_strategy;
 };
 

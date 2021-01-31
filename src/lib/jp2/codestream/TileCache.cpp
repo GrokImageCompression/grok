@@ -37,34 +37,34 @@ TileCache::TileCache(GRK_TILE_CACHE_STRATEGY strategy) : tileComposite(nullptr),
 TileCache::TileCache() : TileCache(GRK_TILE_CACHE_NONE){
 }
 TileCache::~TileCache() {
-	for (auto &proc : m_processors)
+	for (auto &proc : m_cache)
 		delete proc.second;
 	delete tileComposite;
 }
 
 void TileCache::put(uint16_t tileIndex, TileProcessor *processor){
-	if (m_processors.find(tileIndex) != m_processors.end()) {
-		auto entry =  m_processors[tileIndex];
+	if (m_cache.find(tileIndex) != m_cache.end()) {
+		auto entry =  m_cache[tileIndex];
 		entry->processor = processor;
 	}
 	else {
 		auto entry = new TileCacheEntry(processor);
-		m_processors[tileIndex] = entry;
+		m_cache[tileIndex] = entry;
 	}
 }
 
 void TileCache::put(uint16_t tileIndex, GrkImage* src_image, grk_tile *src_tile){
 	TileCacheEntry *entry = nullptr;
-	if (m_processors.find(tileIndex) != m_processors.end())
-		entry = m_processors[tileIndex];
+	if (m_cache.find(tileIndex) != m_cache.end())
+		entry = m_cache[tileIndex];
 	else
 		entry = new TileCacheEntry();
 	entry->image = src_image->duplicate(src_tile);
 }
 
 TileCacheEntry* TileCache::get(uint16_t tileIndex){
-	if (m_processors.find(tileIndex) != m_processors.end())
-		return m_processors[tileIndex];
+	if (m_cache.find(tileIndex) != m_cache.end())
+		return m_cache[tileIndex];
 
 	return nullptr;
 }
@@ -74,6 +74,15 @@ void TileCache::setStrategy(GRK_TILE_CACHE_STRATEGY strategy){
 }
 GrkImage* TileCache::getComposite(){
 	return tileComposite;
+}
+
+std::vector<GrkImage*> TileCache::getAllImages(void){
+	std::vector<GrkImage*> rc;
+	rc.push_back(tileComposite);
+	for (auto &entry : m_cache)
+		rc.push_back(entry.second->image);
+
+	return rc;
 }
 
 }
