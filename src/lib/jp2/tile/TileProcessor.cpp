@@ -343,8 +343,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 									&numPix);
 						}
 						if (!single_lossless) {
-							for (passno = 0; passno < cblk->numPassesTotal;
-									passno++) {
+							for (passno = 0; passno < cblk->numPassesTotal;	passno++) {
 								CodePass *pass = &cblk->passes[passno];
 								int32_t dr;
 								double dd, rdslope;
@@ -353,11 +352,8 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 									dr = (int32_t) pass->rate;
 									dd = pass->distortiondec;
 								} else {
-									dr = (int32_t) (pass->rate
-											- cblk->passes[passno - 1].rate);
-									dd =
-											pass->distortiondec
-													- cblk->passes[passno - 1].distortiondec;
+									dr = (int32_t) (pass->rate - cblk->passes[passno - 1].rate);
+									dd = pass->distortiondec   - cblk->passes[passno - 1].distortiondec;
 								}
 
 								if (dr == 0)
@@ -387,8 +383,11 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 			auto t2 = new T2Compress(this);
 			uint32_t sim_all_packets_len = 0;
 			t2->compress_packets_simulate(m_tile_index,
-										0 + 1, &sim_all_packets_len, UINT_MAX,
-										tp_pos, plt_markers);
+											0 + 1,
+											&sim_all_packets_len,
+											UINT_MAX,
+											tp_pos,
+											plt_markers);
 			delete t2;
 		}
 
@@ -400,9 +399,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 	for (layno = 0; layno < m_tcp->numlayers; layno++) {
 		if (layer_needs_rate_control(layno)) {
 			double lowerBound = min_slope;
-			uint32_t maxlen =
-					m_tcp->rates[layno] > 0.0f ?
-							(uint32_t) ceil(m_tcp->rates[layno]) :	UINT_MAX;
+			uint32_t maxlen =	m_tcp->rates[layno] > 0.0f ? (uint32_t) ceil(m_tcp->rates[layno]) :	UINT_MAX;
 
 			/* Threshold for Marcela Index */
 			// start by including everything in this layer
@@ -411,37 +408,30 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 			// thresh from previous iteration - starts off uninitialized
 			// used to bail out if difference with current thresh is small enough
 			double prevthresh = -1;
-			double distotarget =
-					tile->distotile
-							- ((K * maxSE)
-									/ pow(10.0, m_tcp->distoratio[layno] / 10.0));
+			double distotarget = tile->distotile- ((K * maxSE)	/ pow(10.0, m_tcp->distoratio[layno] / 10.0));
 
 			auto t2 = new T2Compress(this);
 			double thresh;
 			for (uint32_t i = 0; i < 128; ++i) {
-				thresh =
-						(upperBound == -1) ?
-								lowerBound : (lowerBound + upperBound) / 2;
+				thresh = (upperBound == -1) ?	lowerBound : (lowerBound + upperBound) / 2;
 				make_layer_simple(layno, thresh, false);
 				if (prevthresh != -1 && (fabs(prevthresh - thresh)) < 0.001)
 					break;
 				prevthresh = thresh;
 				if (m_cp->m_coding_params.m_enc.m_fixed_quality) {
-					double distoachieved =
-							layno == 0 ?
-									tile->distolayer[0] :
-									cumdisto[layno - 1]
-											+ tile->distolayer[layno];
-
+					double distoachieved =	layno == 0 ? tile->distolayer[0] :	cumdisto[layno - 1]	+ tile->distolayer[layno];
 					if (distoachieved < distotarget) {
 						upperBound = thresh;
 						continue;
 					}
 					lowerBound = thresh;
 				} else {
-					if (!t2->compress_packets_simulate(m_tile_index, layno + 1,
-							all_packets_len, maxlen,
-							tp_pos, nullptr)) {
+					if (!t2->compress_packets_simulate(m_tile_index,
+														layno + 1,
+														all_packets_len,
+														maxlen,
+														tp_pos,
+														nullptr)) {
 						lowerBound = thresh;
 						continue;
 					}
@@ -453,10 +443,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 			delete t2;
 
 			make_layer_simple(layno, goodthresh, true);
-			cumdisto[layno] =
-					(layno == 0) ?
-							tile->distolayer[0] :
-							(cumdisto[layno - 1] + tile->distolayer[layno]);
+			cumdisto[layno] =	(layno == 0) ? tile->distolayer[0] : (cumdisto[layno - 1] + tile->distolayer[layno]);
 
 			// upper bound for next layer will equal lowerBound for previous layer, minus one
 			upperBound = lowerBound - 1;
@@ -493,18 +480,14 @@ void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 						auto cblk = prc->getCompressedBlockPtr() + cblkno;
 						auto layer = cblk->layers + layno;
 						uint32_t cumulative_included_passes_in_block;
+
 						if (layno == 0)
 							prepareBlockForFirstLayer(cblk);
 						if (thresh == 0) {
-							cumulative_included_passes_in_block =
-									cblk->numPassesTotal;
+							cumulative_included_passes_in_block =cblk->numPassesTotal;
 						} else {
-							cumulative_included_passes_in_block =
-									cblk->numPassesInPreviousPackets;
-							for (uint32_t passno =
-									cblk->numPassesInPreviousPackets;
-									passno < cblk->numPassesTotal;
-									passno++) {
+							cumulative_included_passes_in_block =	cblk->numPassesInPreviousPackets;
+							for (uint32_t passno =	cblk->numPassesInPreviousPackets;	passno < cblk->numPassesTotal;passno++) {
 								uint32_t dr;
 								double dd;
 								CodePass *pass = &cblk->passes[passno];
@@ -512,32 +495,22 @@ void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 									dr = pass->rate;
 									dd = pass->distortiondec;
 								} else {
-									dr =
-											pass->rate
-													- cblk->passes[cumulative_included_passes_in_block
-															- 1].rate;
-									dd =
-											pass->distortiondec
-													- cblk->passes[cumulative_included_passes_in_block
-															- 1].distortiondec;
+									dr = pass->rate - cblk->passes[cumulative_included_passes_in_block- 1].rate;
+									dd = pass->distortiondec- cblk->passes[cumulative_included_passes_in_block- 1].distortiondec;
 								}
 
 								if (!dr) {
 									if (dd != 0)
-										cumulative_included_passes_in_block =
-												passno + 1;
+										cumulative_included_passes_in_block =passno + 1;
 									continue;
 								}
 								auto slope = dd / dr;
 								/* do not rely on float equality, check with DBL_EPSILON margin */
 								if (thresh - slope < DBL_EPSILON)
-									cumulative_included_passes_in_block = passno
-											+ 1;
+									cumulative_included_passes_in_block = passno + 1;
 							}
 						}
-
-						layer->numpasses = cumulative_included_passes_in_block
-								- cblk->numPassesInPreviousPackets;
+						layer->numpasses = cumulative_included_passes_in_block - cblk->numPassesInPreviousPackets;
 						if (!layer->numpasses) {
 							layer->disto = 0;
 							continue;
@@ -545,30 +518,17 @@ void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 
 						// update layer
 						if (cblk->numPassesInPreviousPackets == 0) {
-							layer->len =
-									cblk->passes[cumulative_included_passes_in_block
-											- 1].rate;
-							layer->data = cblk->paddedCompressedStream;
-							layer->disto =
-									cblk->passes[cumulative_included_passes_in_block
-											- 1].distortiondec;
+							layer->len 		= cblk->passes[cumulative_included_passes_in_block- 1].rate;
+							layer->data 	= cblk->paddedCompressedStream;
+							layer->disto 	= cblk->passes[cumulative_included_passes_in_block- 1].distortiondec;
 						} else {
-							layer->len =
-									cblk->passes[cumulative_included_passes_in_block
-											- 1].rate
-											- cblk->passes[cblk->numPassesInPreviousPackets
-													- 1].rate;
-							layer->data =
-									cblk->paddedCompressedStream
-											+ cblk->passes[cblk->numPassesInPreviousPackets
-													- 1].rate;
-							layer->disto =
-									cblk->passes[cumulative_included_passes_in_block
-											- 1].distortiondec
-											- cblk->passes[cblk->numPassesInPreviousPackets
-													- 1].distortiondec;
+							layer->len = cblk->passes[cumulative_included_passes_in_block- 1].rate
+											- cblk->passes[cblk->numPassesInPreviousPackets	- 1].rate;
+							layer->data = cblk->paddedCompressedStream
+												+ cblk->passes[cblk->numPassesInPreviousPackets	- 1].rate;
+							layer->disto =	cblk->passes[cumulative_included_passes_in_block- 1].distortiondec
+												- cblk->passes[cblk->numPassesInPreviousPackets- 1].distortiondec;
 						}
-
 						tile->distolayer[layno] += layer->disto;
 						if (final)
 							cblk->numPassesInPreviousPackets =
