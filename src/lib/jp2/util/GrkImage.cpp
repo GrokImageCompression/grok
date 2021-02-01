@@ -292,6 +292,10 @@ GrkImage* GrkImage::duplicate(const grk_tile* tile_src_data){
 	for (uint32_t compno = 0; compno < tile_src_data->numcomps; ++compno){
 		auto src_comp = tile_src_data->comps + compno;
 		auto dest_comp = dest->comps + compno;
+		auto tileBounds = src_comp->getBuffer()->bounds();
+		// ! force component dimensions to tile dimensions
+		dest_comp->w = tileBounds.width();
+		dest_comp->h = tileBounds.height();
 		if (!src_comp->getBuffer()->getWindow()->data)
 			continue;
 		if (!allocData(dest_comp)){

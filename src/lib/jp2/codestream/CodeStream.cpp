@@ -1447,11 +1447,11 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor) {
 	}
 	if (doPost) {
 		/* copy/transfer data from tile component to output image */
+		m_tileCache->put(tile_index, m_output_image, tileProcessor->tile);
 		if (m_multiTile) {
 			if (!m_output_image->compositeFrom(tileProcessor->tile, tileProcessor->m_cp))
 				return false;
 		} else {
-			m_tileCache->put(tile_index, m_output_image, tileProcessor->tile);
 			m_output_image->transferDataFrom(tileProcessor->tile);
 		}
 	}
