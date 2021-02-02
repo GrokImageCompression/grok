@@ -2196,8 +2196,8 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno, uint8_t *p_he
 		return false;
 	}
 	++tccp->numresolutions;
-	if (codeStream->m_cp.pcap && !tcp->isHT) {
-		tcp->isHT = true;
+	if (codeStream->m_cp.pcap && !tcp->getIsHT()) {
+		tcp->setIsHT(true);
 		tcp->qcd.generate(tccp->numgbits, tccp->numresolutions - 1,
 				tccp->qmfbid == 1, codeStream->getHeaderImage()->comps[compno].prec,
 				tcp->mct > 0, codeStream->getHeaderImage()->comps[compno].sgnd);

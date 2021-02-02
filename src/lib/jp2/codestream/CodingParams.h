@@ -124,6 +124,9 @@ struct TileCodingParams {
 
 	void destroy();
 
+	void setIsHT(bool ht);
+	bool getIsHT(void);
+
 	/** coding style */
 	uint8_t csty;
 	/** progression order */
@@ -195,9 +198,9 @@ struct TileCodingParams {
 	bool ppt;
 	/** indicates if a POC marker has been used*/
 	bool POC;
-
-	bool isHT;
 	param_qcd qcd;
+private:
+	bool isHT;
 };
 
 struct EncodingParams {

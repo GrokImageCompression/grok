@@ -1902,7 +1902,7 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,GrkImage *image){
 	cp->tcps = new TileCodingParams[cp->t_grid_width * cp->t_grid_height];
 	for (uint32_t tileno = 0; tileno < cp->t_grid_width * cp->t_grid_height; tileno++) {
 		TileCodingParams *tcp = cp->tcps + tileno;
-		tcp->isHT = parameters->isHT;
+		tcp->setIsHT(parameters->isHT);
 		tcp->qcd.generate(numgbits, (uint32_t) (parameters->numresolution - 1),
 				!parameters->irreversible, image->comps[0].prec, tcp->mct > 0,
 				image->comps[0].sgnd);
@@ -2047,11 +2047,8 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,GrkImage *image){
 			tccp->cblkh = (uint8_t)floorlog2<uint32_t>(parameters->cblockh_init);
 			tccp->cblk_sty = parameters->cblk_sty;
 			tccp->qmfbid = parameters->irreversible ? 0 : 1;
-			tccp->qntsty = parameters->irreversible ?
-			J2K_CCP_QNTSTY_SEQNT :
-														J2K_CCP_QNTSTY_NOQNT;
+			tccp->qntsty = parameters->irreversible ? J2K_CCP_QNTSTY_SEQNT : J2K_CCP_QNTSTY_NOQNT;
 			tccp->numgbits = numgbits;
-
 			if ((int32_t) i == parameters->roi_compno)
 				tccp->roishift = (uint8_t)parameters->roi_shift;
 			else
@@ -2079,10 +2076,8 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,GrkImage *image){
 						uint32_t res_spec = parameters->res_spec;
 						uint32_t size_prcw = 0;
 						uint32_t size_prch = 0;
-						size_prcw = parameters->prcw_init[res_spec - 1]
-								>> (p - (res_spec - 1));
-						size_prch = parameters->prch_init[res_spec - 1]
-								>> (p - (res_spec - 1));
+						size_prcw = parameters->prcw_init[res_spec - 1]	>> (p - (res_spec - 1));
+						size_prch = parameters->prch_init[res_spec - 1]	>> (p - (res_spec - 1));
 						if (size_prcw < 1) {
 							tccp->prcw_exp[it_res] = 1;
 						} else {
@@ -2459,7 +2454,7 @@ bool CodeStream::init_header_writing(void) {
 	m_procedure_list.push_back((j2k_procedure) j2k_init_info);
 	m_procedure_list.push_back((j2k_procedure) j2k_write_soc);
 	m_procedure_list.push_back((j2k_procedure) j2k_write_siz);
-	if (m_cp.tcps[0].isHT)
+	if (m_cp.tcps[0].getIsHT())
 		m_procedure_list.push_back((j2k_procedure) j2k_write_cap);
 	m_procedure_list.push_back((j2k_procedure) j2k_write_cod);
 	m_procedure_list.push_back((j2k_procedure) j2k_write_qcd);

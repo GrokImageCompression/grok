@@ -197,7 +197,7 @@ static const float dwt_gamma = -0.882911075f; /*  -7233 */
 static const float dwt_delta = -0.443506852f; /*  -3633 */
 
 static const float K      = 1.230174105f; /*  10078 */
-static const float c13318 = 1.625732422f;
+static const float twice_invK = 1.625732422f;
 
 static void  decompress_h_cas0_53(int32_t* buf,
                                int32_t* bandL, /* even */
@@ -1068,7 +1068,7 @@ static void decompress_step_97(dwt_data<vec4f>* GRK_RESTRICT dwt)
             return;
 
     decompress_step1_97(makeParams97(dwt,true,true),  K);
-    decompress_step1_97(makeParams97(dwt,false,true), c13318);
+    decompress_step1_97(makeParams97(dwt,false,true), twice_invK);
     decompress_step2_97(makeParams97(dwt,true,false), dwt_delta);
     decompress_step2_97(makeParams97(dwt,false,false),dwt_gamma);
     decompress_step2_97(makeParams97(dwt,true,false), dwt_beta);

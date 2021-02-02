@@ -64,6 +64,7 @@ struct T1 {
 	/* Maximum size available in cblkdatabuffer */
 	uint32_t cblkdatabuffersize;
 
+	static double getnorm(uint32_t level, uint8_t orientation, bool reversible);
 
 private:
 
@@ -142,8 +143,6 @@ private:
 	 @return the norm of the 9-7 wavelet
 	 */
 	double getnorm_97(uint32_t level, uint8_t orientation);
-
-	double getnorm(uint32_t level, uint8_t orientation, bool reversible);
 
 	double getwmsedec(int32_t nmsedec, uint32_t compno, uint32_t level,
 											uint8_t orientation, int32_t bpno,

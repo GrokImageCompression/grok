@@ -108,6 +108,15 @@ TileCodingParams::~TileCodingParams(){
 	destroy();
 }
 
+void TileCodingParams::setIsHT(bool ht){
+	isHT = ht;
+	qcd.setIsHT(ht);
+}
+
+bool TileCodingParams::getIsHT(void){
+	return isHT;
+}
+
 void TileCodingParams::destroy() {
 	if (ppt_markers != nullptr) {
 		for (uint32_t i = 0U; i < ppt_markers_count; ++i)

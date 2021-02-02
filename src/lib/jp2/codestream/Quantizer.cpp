@@ -31,16 +31,16 @@ bool Quantizer::setBandStepSizeAndBps(TileCodingParams *tcp,
 							uint8_t image_precision,
 							bool compress){
 
-	uint32_t gain = 0;
+	uint32_t log2_gain = 0;
 	if (tccp->qmfbid == 1) {
 		if (band->orientation == 0)
-			gain = 0;
+			log2_gain = 0;
 		else if (band->orientation < 3)
-			gain = 1;
+			log2_gain = 1;
 		else
-			gain = 2;
+			log2_gain = 2;
 	}
-	uint32_t numbps = image_precision + gain;
+	uint32_t numbps = image_precision + log2_gain;
 	auto offset = (resno == 0) ? 0 : 3*resno - 2;
 	auto step_size = tccp->stepsizes + offset + bandIndex;
 	band->stepsize = (float) (((1.0 + step_size->mant / 2048.0)
@@ -53,7 +53,7 @@ bool Quantizer::setBandStepSizeAndBps(TileCodingParams *tcp,
 	//assert(band->numbps <= k_max_bit_planes);
 	band->inv_step = (uint32_t)((8192.0/band->stepsize) + 0.5f);
 
-	if (tcp->isHT){
+	if (tcp->getIsHT()){
 		// lossy decompress
 		 if (!compress && tccp->qmfbid == 0){
 			 if (band->numbps > 31){

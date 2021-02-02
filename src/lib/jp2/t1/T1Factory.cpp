@@ -33,8 +33,7 @@ T1Interface* T1Factory::get_t1(bool isCompressor,
 								TileCodingParams *tcp,
 								uint32_t maxCblkW,
 								uint32_t maxCblkH) {
-	bool isHT = tcp->isHT;
-	if (isHT)
+	if (tcp->getIsHT())
 		return new t1_ht::T1HT(isCompressor, tcp, maxCblkW, maxCblkH);
 	else
 		return new t1_part1::T1Part1(isCompressor, maxCblkW, maxCblkH);

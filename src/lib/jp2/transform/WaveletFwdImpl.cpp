@@ -110,7 +110,7 @@ static const float dwt_beta = 0.052980118f; /*    434 */
 static const float dwt_gamma = -0.882911075f; /*  -7233 */
 static const float dwt_delta = -0.443506852f; /*  -3633 */
 static const float dwt_K = 1.230174105f; /*  10078 */
-static const float dwt_c13318 = 1.625732422f;
+static const float dwt_twice_invK = 1.625732422f;
 #endif
 
 /***************************************************************************************
