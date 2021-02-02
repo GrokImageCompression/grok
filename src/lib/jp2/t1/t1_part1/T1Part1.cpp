@@ -81,7 +81,7 @@ void T1Part1::preCompress(CompressBlockExec *block, grk_tile *tile,
 	} else {
 		for (auto j = 0U; j < h; ++j) {
 			for (auto i = 0U; i < w; ++i) {
-				int32_t temp = int_fix_mul_t1(tiledp[tileIndex], block->inv_step);
+				int32_t temp = int_fix_mul_t1((int32_t)tiledp[tileIndex], (int32_t)(8092.0f/block->stepsize));
 				temp = (int32_t)to_smr(temp);
 				maximum = max((uint32_t)smr_abs(temp), maximum);
 				t1->data[cblk_index] = temp;

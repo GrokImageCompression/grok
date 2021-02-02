@@ -479,38 +479,38 @@ void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 					for (uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++) {
 						auto cblk = prc->getCompressedBlockPtr() + cblkno;
 						auto layer = cblk->layers + layno;
-						uint32_t cumulative_included_passes_in_block;
+						uint32_t included_blk_passes;
 
 						if (layno == 0)
 							prepareBlockForFirstLayer(cblk);
 						if (thresh == 0) {
-							cumulative_included_passes_in_block =cblk->numPassesTotal;
+							included_blk_passes =cblk->numPassesTotal;
 						} else {
-							cumulative_included_passes_in_block =	cblk->numPassesInPreviousPackets;
+							included_blk_passes =	cblk->numPassesInPreviousPackets;
 							for (uint32_t passno =	cblk->numPassesInPreviousPackets;	passno < cblk->numPassesTotal;passno++) {
 								uint32_t dr;
 								double dd;
 								CodePass *pass = &cblk->passes[passno];
-								if (cumulative_included_passes_in_block == 0) {
+								if (included_blk_passes == 0) {
 									dr = pass->rate;
 									dd = pass->distortiondec;
 								} else {
-									dr = pass->rate - cblk->passes[cumulative_included_passes_in_block- 1].rate;
-									dd = pass->distortiondec- cblk->passes[cumulative_included_passes_in_block- 1].distortiondec;
+									dr = pass->rate - cblk->passes[included_blk_passes- 1].rate;
+									dd = pass->distortiondec- cblk->passes[included_blk_passes- 1].distortiondec;
 								}
 
 								if (!dr) {
 									if (dd != 0)
-										cumulative_included_passes_in_block =passno + 1;
+										included_blk_passes =passno + 1;
 									continue;
 								}
 								auto slope = dd / dr;
 								/* do not rely on float equality, check with DBL_EPSILON margin */
 								if (thresh - slope < DBL_EPSILON)
-									cumulative_included_passes_in_block = passno + 1;
+									included_blk_passes = passno + 1;
 							}
 						}
-						layer->numpasses = cumulative_included_passes_in_block - cblk->numPassesInPreviousPackets;
+						layer->numpasses = included_blk_passes - cblk->numPassesInPreviousPackets;
 						if (!layer->numpasses) {
 							layer->disto = 0;
 							continue;
@@ -518,21 +518,20 @@ void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 
 						// update layer
 						if (cblk->numPassesInPreviousPackets == 0) {
-							layer->len 		= cblk->passes[cumulative_included_passes_in_block- 1].rate;
+							layer->len 		= cblk->passes[included_blk_passes- 1].rate;
 							layer->data 	= cblk->paddedCompressedStream;
-							layer->disto 	= cblk->passes[cumulative_included_passes_in_block- 1].distortiondec;
+							layer->disto 	= cblk->passes[included_blk_passes- 1].distortiondec;
 						} else {
-							layer->len = cblk->passes[cumulative_included_passes_in_block- 1].rate
+							layer->len = cblk->passes[included_blk_passes- 1].rate
 											- cblk->passes[cblk->numPassesInPreviousPackets	- 1].rate;
 							layer->data = cblk->paddedCompressedStream
 												+ cblk->passes[cblk->numPassesInPreviousPackets	- 1].rate;
-							layer->disto =	cblk->passes[cumulative_included_passes_in_block- 1].distortiondec
+							layer->disto =	cblk->passes[included_blk_passes- 1].distortiondec
 												- cblk->passes[cblk->numPassesInPreviousPackets- 1].distortiondec;
 						}
 						tile->distolayer[layno] += layer->disto;
 						if (final)
-							cblk->numPassesInPreviousPackets =
-									cumulative_included_passes_in_block;
+							cblk->numPassesInPreviousPackets =	included_blk_passes;
 					}
 				}
 			}
@@ -555,50 +554,31 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 						auto layer = cblk->layers + layno;
 						if (layno == 0)
 							prepareBlockForFirstLayer(cblk);
-						uint32_t cumulative_included_passes_in_block =
-								cblk->numPassesInPreviousPackets;
-						if (cblk->numPassesTotal
-								> cblk->numPassesInPreviousPackets)
-							cumulative_included_passes_in_block =
-									cblk->numPassesTotal;
+						uint32_t included_blk_passes = cblk->numPassesInPreviousPackets;
+						if (cblk->numPassesTotal > cblk->numPassesInPreviousPackets)
+							included_blk_passes =	cblk->numPassesTotal;
 
-						layer->numpasses = cumulative_included_passes_in_block
-								- cblk->numPassesInPreviousPackets;
-
+						layer->numpasses = included_blk_passes- cblk->numPassesInPreviousPackets;
 						if (!layer->numpasses) {
 							layer->disto = 0;
 							continue;
 						}
 						// update layer
 						if (cblk->numPassesInPreviousPackets == 0) {
-							layer->len =
-									cblk->passes[cumulative_included_passes_in_block
-											- 1].rate;
+							layer->len = cblk->passes[included_blk_passes- 1].rate;
 							layer->data = cblk->paddedCompressedStream;
-							layer->disto =
-									cblk->passes[cumulative_included_passes_in_block
-											- 1].distortiondec;
+							layer->disto =	cblk->passes[included_blk_passes- 1].distortiondec;
 						} else {
 							layer->len =
-									cblk->passes[cumulative_included_passes_in_block
-											- 1].rate
-											- cblk->passes[cblk->numPassesInPreviousPackets
-													- 1].rate;
+									cblk->passes[included_blk_passes- 1].rate- cblk->passes[cblk->numPassesInPreviousPackets- 1].rate;
 							layer->data =
-									cblk->paddedCompressedStream
-											+ cblk->passes[cblk->numPassesInPreviousPackets
-													- 1].rate;
+									cblk->paddedCompressedStream + cblk->passes[cblk->numPassesInPreviousPackets- 1].rate;
 							layer->disto =
-									cblk->passes[cumulative_included_passes_in_block
-											- 1].distortiondec
-											- cblk->passes[cblk->numPassesInPreviousPackets
-													- 1].distortiondec;
+									cblk->passes[included_blk_passes- 1].distortiondec- cblk->passes[cblk->numPassesInPreviousPackets- 1].distortiondec;
 						}
 						tile->distolayer[layno] += layer->disto;
-						cblk->numPassesInPreviousPackets =
-								cumulative_included_passes_in_block;
-						assert(cblk->numPassesInPreviousPackets
-										== cblk->numPassesTotal);
+						cblk->numPassesInPreviousPackets =	included_blk_passes;
+						assert(cblk->numPassesInPreviousPackets	== cblk->numPassesTotal);
 					}
 				}
 			}
@@ -962,17 +942,23 @@ bool TileProcessor::dc_level_shift_encode() {
 		auto tccp = m_tcp->tccps + compno;
 		auto current_ptr = tile_comp->getBuffer()->getWindow()->data;
 		uint64_t samples = tile_comp->getBuffer()->strided_area();
-		if (tccp->m_dc_level_shift == 0)
-			continue;
-		for (uint64_t i = 0; i < samples; ++i) {
-			*current_ptr -= tccp->m_dc_level_shift;
-			++current_ptr;
+		if (!m_tcp->mct && tccp->qmfbid ==0){
+			for (uint64_t i = 0; i < samples; ++i) {
+				*current_ptr = (*current_ptr - tccp->m_dc_level_shift) * 2048;
+				++current_ptr;
+			}
+		} else {
+			if (tccp->m_dc_level_shift == 0)
+				continue;
+			for (uint64_t i = 0; i < samples; ++i) {
+				*current_ptr -= tccp->m_dc_level_shift;
+				++current_ptr;
+			}
 		}
 	}
 
 	return true;
 }
-
 
 bool TileProcessor::mct_encode() {
 	uint64_t samples = tile->comps->getBuffer()->strided_area();

@@ -69,7 +69,6 @@ void T1CompressScheduler::scheduleCompress(TileCodingParams *tcp,
 						block->cblk_sty = tccp->cblk_sty;
 						block->qmfbid = tccp->qmfbid;
 						block->resno = resno;
-						block->inv_step = (int32_t)band->inv_step;
 						block->inv_step_ht = 1.0f/band->stepsize;
 						block->stepsize = band->stepsize;
 						block->mct_norms = mct_norms;

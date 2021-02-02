@@ -222,9 +222,6 @@ struct Subband : public grk_rect_u32 {
 	uint64_t numPrecincts;
 	uint32_t numbps;
 	float stepsize;
-	// inverse step size in 13 bit fixed point
-	uint32_t inv_step;
-
 };
 
 // resolution
@@ -293,8 +290,6 @@ struct CompressBlockExec : public BlockExec{
 	uint8_t resno;
 	uint64_t precinctIndex;
 	uint64_t cblkno;
-	// inverse step size in 13 bit fixed point
-	int32_t inv_step;
 	float inv_step_ht;
 	const double *mct_norms;
 #ifdef DEBUG_LOSSLESS_T1

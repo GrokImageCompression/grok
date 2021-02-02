@@ -469,7 +469,7 @@ void mct::decompress_rev(grk_tile *tile, GrkImage *image,TileComponentCodingPara
 void mct::compress_irrev( int* GRK_RESTRICT chan0,
 		int* GRK_RESTRICT chan1,
 		int* GRK_RESTRICT chan2,
-						uint64_t n)
+		uint64_t n)
 {
     size_t i = 0;
 

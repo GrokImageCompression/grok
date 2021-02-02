@@ -464,8 +464,7 @@ Subband::Subband() :
 				orientation(BAND_ORIENT_LL),
 				numPrecincts(0),
 				numbps(0),
-				stepsize(0),
-				inv_step(0) {
+				stepsize(0) {
 }
 
 //note: don't copy precinct array
@@ -473,8 +472,7 @@ Subband::Subband(const Subband &rhs) : grk_rect_u32(rhs),
 										orientation(rhs.orientation),
 										numPrecincts(0),
 										numbps(rhs.numbps),
-										stepsize(rhs.stepsize),
-										inv_step(rhs.inv_step)
+										stepsize(rhs.stepsize)
 {
 }
 
@@ -631,7 +629,6 @@ CompressBlockExec::CompressBlockExec() :
 					resno(0),
 					precinctIndex(0),
 					cblkno(0),
-					inv_step(0),
 					inv_step_ht(0),
 					mct_norms(nullptr),
 #ifdef DEBUG_LOSSLESS_T1
