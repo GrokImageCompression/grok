@@ -6,6 +6,10 @@ DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
 # as per upstream request:
 export DEB_CXXFLAGS_MAINT_APPEND = -fvisibility=hidden
 
+ifneq (,$(filter $(DEB_HOST_ARCH), armel m68k mips mipsel powerpc sh4))
+  export DEB_LDFLAGS_MAINT_APPEND += -Wl,--no-as-needed -latomic -Wl,--as-needed
+endif
+
 %:
 	dh $@
 
@@ -18,6 +22,7 @@ CMAKE_EXTRA_FLAGS += -DCMAKE_SKIP_RPATH=ON \
   -DBUILD_TESTING:BOOL=OFF \
   -DBUILD_DOC:BOOL=ON \
   -DBUILD_THIRDPARTY:BOOL=OFF \
+  -DAVX2_FOUND:BOOL=OFF \
   -DGRK_USE_LIBJPEG:BOOL=ON
 
 override_dh_auto_configure:
@@ -30,7 +35,7 @@ pkg_bin = grokj2k-tools
 
 override_dh_missing:
 	# annoying cmake-fatal-error export stuff:
-	sed -i -e "s/FATAL_ERROR/STATUS/g" debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/cmake/grok-7.6/GrokTargets*.cmake
+	sed -i -e "s/FATAL_ERROR/STATUS/g" debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/cmake/grok-8.0/GrokTargets*.cmake
 	dh_missing --list-missing
 
 VER_FULL = $(shell dpkg-parsechangelog -Sversion | cut -d - -f 1)
