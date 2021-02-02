@@ -682,3 +682,5 @@ grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_issue_92_
 grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_issue_92_PCRL.j2k -r 700,53.8246894469852,38.6958466880406,27.8193625692756,20,1 -c [256,256],[256,256],[128,128],[128,128],[128,128],[128,128] -p PCRL -n 6 -t 1024,1024 -b 64,64 -SOP -EPH -M 1
 grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_issue_92_CPRL.j2k -r 700,53.8246894469852,38.6958466880406,27.8193625692756,20,1 -c [256,256],[256,256],[128,128],[128,128],[128,128],[128,128] -p CPRL -n 6 -t 1024,1024 -b 64,64 -SOP -EPH -M 1
 grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_issue_92_RLCP.j2k -r 700,53.8246894469852,38.6958466880406,27.8193625692756,20,1 -c [256,256],[256,256],[128,128],[128,128],[128,128],[128,128] -p RLCP -n 6 -t 1024,1024 -b 64,64 -SOP -EPH -M 1
+grk_compress -i @INPUT_NR_PATH@/246094.png -o @TEMP_PATH@/246094_rev_q40.jp2 -q 40
+grk_compress -i @INPUT_NR_PATH@/246094.png -o @TEMP_PATH@/246094_irrev_q40.jp2 -q 40 -I
