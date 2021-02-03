@@ -212,20 +212,20 @@ bool GrkImage::allocData(grk_image_comp  *comp) {
  */
 bool GrkImage::allocData(void){
 	for (uint32_t i = 0; i < numcomps; i++) {
-		auto comp_dest = comps + i;
+		auto dest_comp = comps + i;
 
-		if (comp_dest->w  == 0 || comp_dest->h == 0) {
+		if (dest_comp->w  == 0 || dest_comp->h == 0) {
 			GRK_ERROR("Output component %d has invalid dimensions %u x %u",
-					i, comp_dest->w, comp_dest->h);
+					i, dest_comp->w, dest_comp->h);
 			return false;
 		}
-		if (!comp_dest->data) {
-			if (!GrkImage::allocData(comp_dest)){
+		if (!dest_comp->data) {
+			if (!GrkImage::allocData(dest_comp)){
 				GRK_ERROR("Failed to allocate pixel data for component %d, with dimensions %u x %u",
-						i, comp_dest->w, comp_dest->h);
+						i, dest_comp->w, dest_comp->h);
 				return false;
 			}
-			memset(comp_dest->data, 0,	(uint64_t)comp_dest->stride * comp_dest->h * sizeof(int32_t));
+			memset(dest_comp->data, 0,	(uint64_t)dest_comp->stride * dest_comp->h * sizeof(int32_t));
 		}
 	}
 
@@ -310,12 +310,12 @@ GrkImage* GrkImage::duplicate(const grk_tile* tile_src_data){
 
 void GrkImage::transferDataFrom(const grk_tile* tile_src_data){
 	for (uint16_t compno = 0; compno < numcomps; compno++) {
-		auto tilec = tile_src_data->comps + compno;
-		auto comp = comps + compno;
+		auto src_comp = tile_src_data->comps + compno;
+		auto dest_comp = comps + compno;
 
 		//transfer memory from tile component to output image
-		tilec->getBuffer()->transfer(&comp->data, &comp->owns_data, &comp->stride);
-		assert(comp->stride >= comp->w);
+		src_comp->getBuffer()->transfer(&dest_comp->data, &dest_comp->owns_data, &dest_comp->stride);
+		assert(dest_comp->stride >= dest_comp->w);
 	}
 }
 
@@ -334,83 +334,69 @@ void GrkImage::transferDataFrom(const grk_tile* tile_src_data){
  */
 bool GrkImage::compositeFrom(grk_tile *src_tile,CodingParams *cp) {
 	for (uint32_t i = 0; i < src_tile->numcomps; i++) {
-		auto tilec = src_tile->comps + i;
-		auto comp_dest = comps + i;
+		auto src_comp = src_tile->comps + i;
+		auto dest_comp = comps + i;
 
+		grk_rect_u32 src,dest,dest_win;
+		uint32_t src_stride = (src_comp->getBuffer()->getWindow())->stride;
+
+		src = src_comp->getBuffer()->bounds();
+		assert( src.width() <= src_comp->width() && src.height() <= src_comp->height());
+
+		/* Compute the area (0, 0, src_x1, src_y1)
+		 * of the input buffer (decompressed tile component) which will be copied
+		 * to the output buffer.
+		 *
+		 * Compute the area of the output buffer (dest_win_x0, dest_win_y0, dest_width, dest_height)
+		 * which will be modified by this input area.
+		 *
+	     */
 		/* Border of the current output component. (x0_dest,y0_dest)
 		 * corresponds to origin of dest buffer */
 		auto reduce = cp->m_coding_params.m_dec.m_reduce;
-		uint32_t x0_dest = ceildivpow2<uint32_t>(comp_dest->x0, reduce);
-		uint32_t y0_dest = ceildivpow2<uint32_t>(comp_dest->y0, reduce);
+		dest.x0 = ceildivpow2<uint32_t>(dest_comp->x0, reduce);
+		dest.y0 = ceildivpow2<uint32_t>(dest_comp->y0, reduce);
 		/* can't overflow given that image->x1 is uint32 */
-		uint32_t x1_dest = x0_dest + comp_dest->w;
-		uint32_t y1_dest = y0_dest + comp_dest->h;
+		dest.x1 = dest.x0 + dest_comp->w;
+		dest.y1 = dest.y0 + dest_comp->h;
 
-		grk_rect_u32 src_dim = tilec->getBuffer()->bounds();
-		uint32_t width_src = (uint32_t) src_dim.width();
-		uint32_t stride_src = tilec->getBuffer()->getWindow()->stride;
-		uint32_t height_src = (uint32_t) src_dim.height();
-
-		/* Compute the area (0, 0, off_x1_src, off_y1_src)
-		 * of the input buffer (decompressed tile component) which will be copied
-		 * to the output buffer. Compute the area of the output buffer (off_x0_dest,
-		 * off_y0_dest, width_dest, height_dest)  which will be modified
-		 * by this input area.
-		 * */
-		uint32_t life_off_src = stride_src - width_src;
-		uint32_t off_x0_dest = 0;
-		uint32_t width_dest = 0;
-		if (x0_dest < src_dim.x0) {
-			off_x0_dest = (uint32_t) (src_dim.x0 - x0_dest);
-			if (x1_dest >= src_dim.x1) {
-				width_dest = width_src;
+		uint32_t src_line_off = src_stride - src.width();
+		if (dest.x0 < src.x0) {
+			dest_win.x0 = (uint32_t) (src.x0 - dest.x0);
+			if (dest.x1 >= src.x1) {
+				dest_win.x1 = dest_win.x0 + src.width();
 			} else {
-				width_dest = (uint32_t) (x1_dest - src_dim.x0);
-				life_off_src = stride_src - width_dest;
+				dest_win.x1 = dest_win.x0 + (uint32_t) (dest.x1 - src.x0);
+				src_line_off = src_stride - dest_win.width();
 			}
 		} else {
-			off_x0_dest = 0U;
-			if (x1_dest >= src_dim.x1) {
-				width_dest = width_src;
+			dest_win.x0 = 0U;
+			if (dest.x1 >= src.x1) {
+				dest_win.x1 = dest_win.x0 + src.width();
 			} else {
-				width_dest = comp_dest->w;
-				life_off_src = (uint32_t) (src_dim.x1 - x1_dest);
+				dest_win.x1 = dest_win.x0 + dest_comp->w;
+				src_line_off = (uint32_t) (src.x1 - dest.x1);
 			}
 		}
-
-		uint32_t off_y0_dest = 0;
-		uint32_t height_dest = 0;
-		if (y0_dest < src_dim.y0) {
-			off_y0_dest = (uint32_t) (src_dim.y0 - y0_dest);
-			if (y1_dest >= src_dim.y1) {
-				height_dest = height_src;
-			} else {
-				height_dest = (uint32_t) (y1_dest - src_dim.y0);
-			}
+		if (dest.y0 < src.y0) {
+			dest_win.y0 = (uint32_t) (src.y0 - dest.y0);
+			dest_win.y1 = dest_win.y0 + ((dest.y1 >= src.y1) ?  src.height() : (uint32_t) (dest.y1 - src.y0));
 		} else {
-			off_y0_dest = 0;
-			if (y1_dest >= src_dim.y1) {
-				height_dest = height_src;
-			} else {
-				height_dest = comp_dest->h;
-			}
+			dest_win.y1 = dest_win.y0 + src.height();
 		}
-		if (width_dest > comp_dest->w || height_dest > comp_dest->h)
-			return false;
-		if (width_src > tilec->width() || height_src > tilec->height())
+		if (dest_win.width() > dest_comp->w || dest_win.height() > dest_comp->h)
 			return false;
 
 		size_t src_ind = 0;
-		auto dest_ind = (size_t) off_x0_dest
-				  	  + (size_t) off_y0_dest * comp_dest->stride;
-		size_t line_off_dest =  (size_t) comp_dest->stride - (size_t) width_dest;
-		auto src_ptr = tilec->getBuffer()->getWindow()->data;
-		for (uint32_t j = 0; j < height_dest; ++j) {
-			memcpy(comp_dest->data + dest_ind, src_ptr + src_ind,width_dest * sizeof(int32_t));
-			dest_ind += width_dest + line_off_dest;
-			src_ind  += width_dest + life_off_src;
+		auto dest_ind = (size_t) dest_win.x0  + (size_t) dest_win.y0 * dest_comp->stride;
+		size_t dest_line_off =  (size_t) dest_comp->stride - (size_t) dest_win.width();
+		auto src_ptr = src_comp->getBuffer()->getWindow()->data;
+		for (uint32_t j = 0; j < dest_win.height(); ++j) {
+			memcpy(dest_comp->data + dest_ind, src_ptr + src_ind,dest_win.width() * sizeof(int32_t));
+			dest_ind += dest_win.width() + dest_line_off;
+			src_ind  += dest_win.width() + src_line_off;
 		}
-		tilec->release_mem(true);
+		src_comp->release_mem(true);
 	}
 
 	return true;
