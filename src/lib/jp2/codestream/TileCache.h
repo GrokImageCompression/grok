@@ -49,6 +49,7 @@ public:
 	GrkImage* getComposite();
 	std::vector<GrkImage*> getAllImages(void);
 private:
+	// each component is sub-sampled and resolution-reduced
 	GrkImage *tileComposite;
 	std::map<uint32_t, TileCacheEntry*> m_cache;
 	GRK_TILE_CACHE_STRATEGY m_strategy;

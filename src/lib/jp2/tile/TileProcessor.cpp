@@ -586,7 +586,7 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 	}
 }
 
-bool TileProcessor::init(GrkImage *output_image,bool isCompressor) {
+bool TileProcessor::init(const GrkImage *output_image,bool isCompressor) {
 	uint32_t state = grk_plugin_get_debug_state();
 	auto tcp = &(m_cp->tcps[m_tile_index]);
 

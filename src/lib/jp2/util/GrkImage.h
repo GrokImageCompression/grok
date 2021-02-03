@@ -6,14 +6,14 @@ namespace grk {
 
 struct grk_tile;
 struct CodingParams;
-
+struct TileComponent;
 
 class GrkImage : public grk_image {
 public:
 	GrkImage();
 	~GrkImage();
 
-	bool reduceDimensions(uint32_t reduce);
+	bool subsampleAndReduce(uint32_t reduce);
 
 	/**
 	* Create image
@@ -81,11 +81,32 @@ public:
 	 * into p_output_image (which stores data in 32 bit precision)
 	 *
 	 * @param src_tile 	source tile
-	 * @param cp		coding parameters
 	 *
 	 * @return:			true if successful
 	 */
-	bool compositeFrom(grk_tile *tile,CodingParams *cp);
+	bool compositeFrom(const grk_tile *src_tile);
+	bool compositeFrom(const GrkImage *src_img);
+
+	bool generateCompositeBounds(const TileComponent *src_comp,
+								uint16_t compno,
+								grk_rect_u32 *src,
+								grk_rect_u32 *dest,
+								grk_rect_u32 *dest_win,
+								uint32_t *src_line_off);
+
+	bool generateCompositeBounds(const grk_image_comp *src_comp,
+								uint16_t compno,
+								grk_rect_u32 *src,
+								grk_rect_u32 *dest,
+								grk_rect_u32 *dest_win,
+								uint32_t *src_line_off);
+
+	bool generateCompositeBounds(uint16_t compno,
+								grk_rect_u32 *src,
+								uint32_t src_stride,
+								grk_rect_u32 *dest,
+								grk_rect_u32 *dest_win,
+								uint32_t *src_line_off);
 };
 
 

@@ -312,6 +312,7 @@ struct CodeStream : public ICodeStream {
 private:
 
 	// stores header image information (decompress/compress)
+	// decompress: components are subsampled and resolution-reduced
 	GrkImage *m_headerImage;
 
 	/**

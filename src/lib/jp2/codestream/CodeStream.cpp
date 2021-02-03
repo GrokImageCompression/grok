@@ -935,7 +935,7 @@ bool CodeStream::read_header(grk_header_info  *header_info){
 bool CodeStream::set_decompress_window(grk_rect_u32 window) {
 	auto cp = &(m_cp);
 	auto image = m_headerImage;
-	auto output_image = getCompositeImage();
+	auto compositeImage = getCompositeImage();
 	auto decompressor = &m_decompressor;
 
 	/* Check if we have read the main header */
@@ -965,7 +965,7 @@ bool CodeStream::set_decompress_window(grk_rect_u32 window) {
 		return false;
 	} else {
 		decompressor->m_start_tile_x_index = (start_x - cp->tx0) / cp->t_width;
-		output_image->x0 = start_x;
+		compositeImage->x0 = start_x;
 	}
 
 	/* Up */
@@ -975,7 +975,7 @@ bool CodeStream::set_decompress_window(grk_rect_u32 window) {
 		return false;
 	} else {
 		decompressor->m_start_tile_y_index = (start_y - cp->ty0) / cp->t_height;
-		output_image->y0 = start_y;
+		compositeImage->y0 = start_y;
 	}
 
 	/* Right */
@@ -985,14 +985,14 @@ bool CodeStream::set_decompress_window(grk_rect_u32 window) {
 		GRK_WARN("Right position of the decompress window (%u)"
 				" is outside the image area (Xsiz=%u).", end_x, image->x1);
 		decompressor->m_end_tile_x_index = cp->t_grid_width;
-		output_image->x1 = image->x1;
+		compositeImage->x1 = image->x1;
 	} else {
 		// avoid divide by zero
 		if (cp->t_width == 0)
 			return false;
 		decompressor->m_end_tile_x_index = ceildiv<uint32_t>(end_x - cp->tx0,
 				cp->t_width);
-		output_image->x1 = end_x;
+		compositeImage->x1 = end_x;
 	}
 
 	/* Bottom */
@@ -1000,17 +1000,17 @@ bool CodeStream::set_decompress_window(grk_rect_u32 window) {
 		GRK_WARN("Bottom position of the decompress window (%u)"
 				" is outside of the image area (Ysiz=%u).", end_y, image->y1);
 		decompressor->m_end_tile_y_index = cp->t_grid_height;
-		output_image->y1 = image->y1;
+		compositeImage->y1 = image->y1;
 	} else {
 		// avoid divide by zero
 		if (cp->t_height == 0)
 			return false;
 		decompressor->m_end_tile_y_index = ceildiv<uint32_t>(end_y - cp->ty0,
 				cp->t_height);
-		output_image->y1 = end_y;
+		compositeImage->y1 = end_y;
 	}
 	wholeTileDecompress = false;
-	if (!output_image->reduceDimensions(cp->m_coding_params.m_dec.m_reduce))
+	if (!compositeImage->subsampleAndReduce(cp->m_coding_params.m_dec.m_reduce))
 		return false;
 
 	GRK_INFO("Decompress window set to (%d,%d,%d,%d)", window.x0,window.y0,window.x1,window.y1);
@@ -1280,8 +1280,8 @@ cleanup:
 
 
 bool CodeStream::decompress_tile(uint16_t tile_index){
-	auto image = getCompositeImage();
-	if (!image) {
+	auto compositeImage = getCompositeImage();
+	if (!compositeImage) {
 		GRK_ERROR("decompress tile: image is null");
 		return false;
 	}
@@ -1296,18 +1296,18 @@ bool CodeStream::decompress_tile(uint16_t tile_index){
 	uint32_t tile_x = tile_index % m_cp.t_grid_width;
 	uint32_t tile_y = tile_index / m_cp.t_grid_width;
 
-	auto imageBounds = grk_rect_u32(image->x0,
-									image->y0,
-									image->x1,
-									image->y1);
-	auto tileBounds = m_cp.getTileBounds(image, tile_x, tile_y);
+	auto imageBounds = grk_rect_u32(compositeImage->x0,
+									compositeImage->y0,
+									compositeImage->x1,
+									compositeImage->y1);
+	auto tileBounds = m_cp.getTileBounds(compositeImage, tile_x, tile_y);
 	// crop tile bounds with image bounds
 	auto croppedImageBounds = imageBounds.intersection(tileBounds);
 	if (imageBounds.non_empty() && tileBounds.non_empty() && croppedImageBounds.non_empty()) {
-		image->x0 = (uint32_t) croppedImageBounds.x0;
-		image->y0 = (uint32_t) croppedImageBounds.y0;
-		image->x1 = (uint32_t) croppedImageBounds.x1;
-		image->y1 = (uint32_t) croppedImageBounds.y1;
+		compositeImage->x0 = (uint32_t) croppedImageBounds.x0;
+		compositeImage->y0 = (uint32_t) croppedImageBounds.y0;
+		compositeImage->x1 = (uint32_t) croppedImageBounds.x1;
+		compositeImage->y1 = (uint32_t) croppedImageBounds.y1;
 	} else {
 		GRK_WARN("Decompress bounds <%u,%u,%u,%u> do not overlap with requested tile %u. Decompressing full image",
 				imageBounds.x0,
@@ -1319,10 +1319,12 @@ bool CodeStream::decompress_tile(uint16_t tile_index){
 	}
 
 	auto reduce = m_cp.m_coding_params.m_dec.m_reduce;
-	for (uint32_t compno = 0; compno < image->numcomps; ++compno) {
-		auto comp = image->comps + compno;
+	for (uint32_t compno = 0; compno < compositeImage->numcomps; ++compno) {
+		auto comp = compositeImage->comps + compno;
 		auto compBounds = croppedImageBounds.rectceildiv(comp->dx,comp->dy);
 		auto reducedCompBounds = compBounds.rectceildivpow2(reduce);
+		comp->x0 = reducedCompBounds.x0;
+		comp->y0 = reducedCompBounds.y0;
 		comp->w = reducedCompBounds.width();
 		comp->h = reducedCompBounds.height();
 	}
@@ -1446,13 +1448,18 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor) {
 		return false;
 	}
 	if (doPost) {
+		auto tile = tileProcessor->tile;
 		/* copy/transfer data from tile component to output image */
-		m_tileCache->put(tile_index, m_output_image, tileProcessor->tile);
+		m_tileCache->put(tile_index, m_output_image, tile);
 		if (m_multiTile) {
-			if (!m_output_image->compositeFrom(tileProcessor->tile, tileProcessor->m_cp))
+			auto img = m_tileCache->get(tile_index)->image;
+			if (!m_output_image->compositeFrom(img))
 				return false;
+			// now release tile memory
+			for (uint16_t compno = 0; compno < tile->numcomps; ++compno)
+				(tile->comps + compno)->release_mem(true);
 		} else {
-			m_output_image->transferDataFrom(tileProcessor->tile);
+			m_output_image->transferDataFrom(tile);
 		}
 	}
 

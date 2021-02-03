@@ -79,7 +79,7 @@ struct TileProcessor {
 	 *
 	 * @return	true if the remaining data is sufficient.
 	 */
-	 bool init(GrkImage *output_image, bool isCompressor);
+	 bool init(const GrkImage *output_image, bool isCompressor);
 
 	 bool pre_write_tile(void);
 

@@ -24,40 +24,38 @@ namespace grk {
 
 
 /**
- * Updates the components characteristics of the image from the coding parameters.
+ * Apply resolution reduction to header image components
  *
- * @param image_header	the image header to update.
+ * @param headerImage	header image
  * @param p_cp			the coding parameters from which to update the image.
  */
-static void grk_update_image_comp_header_from_coding_params(GrkImage *image_header,
+void SIZMarker::subsampleAndReduceHeaderImageComponents(GrkImage *headerImage,
 		const CodingParams *p_cp) {
 
 	//1. calculate canvas coordinates of image
-	uint32_t x0 = std::max<uint32_t>(p_cp->tx0, image_header->x0);
-	uint32_t y0 = std::max<uint32_t>(p_cp->ty0, image_header->y0);
+	uint32_t x0 = std::max<uint32_t>(p_cp->tx0, headerImage->x0);
+	uint32_t y0 = std::max<uint32_t>(p_cp->ty0, headerImage->y0);
 
 	/* validity of p_cp members used here checked in j2k_read_siz. Can't overflow. */
 	uint32_t x1 = p_cp->tx0 + (p_cp->t_grid_width - 1U) * p_cp->t_width;
 	uint32_t y1 = p_cp->ty0 + (p_cp->t_grid_height - 1U) * p_cp->t_height;
 
 	 /* use add saturated to prevent overflow */
-	x1 = std::min<uint32_t>(sat_add<uint32_t>(x1, p_cp->t_width), image_header->x1);
-	y1 = std::min<uint32_t>(sat_add<uint32_t>(y1, p_cp->t_height), image_header->y1);
+	x1 = std::min<uint32_t>(sat_add<uint32_t>(x1, p_cp->t_width), headerImage->x1);
+	y1 = std::min<uint32_t>(sat_add<uint32_t>(y1, p_cp->t_height), headerImage->y1);
 
 	auto imageBounds = grk_rect_u32(x0,y0,x1,y1);
 
 	// 2. convert from canvas to tile coordinates, taking into account
 	// resolution reduction
 	uint32_t reduce = p_cp->m_coding_params.m_dec.m_reduce;
-	for (uint32_t i = 0; i < image_header->numcomps; ++i) {
-		auto comp = image_header->comps + i;
+	for (uint32_t i = 0; i < headerImage->numcomps; ++i) {
+		auto comp = headerImage->comps + i;
 		auto compBounds = imageBounds.rectceildiv(comp->dx, comp->dy);
-		uint32_t width = ceildivpow2<uint32_t>(compBounds.width(),reduce);
-		uint32_t height = ceildivpow2<uint32_t>(compBounds.height(),reduce);
-		comp->w = width;
-		comp->h = height;
-		comp->x0 = compBounds.x0;
-		comp->y0 = compBounds.y0;
+		comp->w  = ceildivpow2<uint32_t>(compBounds.width(),reduce);
+		comp->h  = ceildivpow2<uint32_t>(compBounds.height(),reduce);
+		comp->x0 = ceildivpow2<uint32_t>(compBounds.x0, reduce);
+		comp->y0 = ceildivpow2<uint32_t>(compBounds.y0, reduce);
 	}
 }
 
@@ -290,7 +288,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		current_tile_param->tccps = new TileComponentCodingParams[image->numcomps];
 	}
 	decompressor->m_state = J2K_DEC_STATE_MH;
-	grk_update_image_comp_header_from_coding_params(image, cp);
+	subsampleAndReduceHeaderImageComponents(image, cp);
 
 	return true;
 

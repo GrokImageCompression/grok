@@ -45,6 +45,10 @@ public:
 	 */
 	bool write(CodeStream *codeStream, BufferedStream *stream);
 
+private:
+	void subsampleAndReduceHeaderImageComponents(GrkImage *headerImage,	const CodingParams *p_cp);
+
+
 };
 
 
