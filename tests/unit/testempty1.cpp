@@ -68,7 +68,7 @@ int main(int argc, char *argv[]){
     (void)argc;
     (void)argv;
 
-    grk_set_default_compress_params(&parameters);
+    grk_compress_set_default_params(&parameters);
     parameters.cod_format = GRK_J2K_FMT;
     puts(v);
     cmptparm.prec = 8;
@@ -96,14 +96,14 @@ int main(int argc, char *argv[]){
     l_stream = grk_stream_create_file_stream("testempty1.j2k", 1024*1024, false);
     assert(l_stream);
 
-    l_codec = grk_create_compress(GRK_CODEC_J2K, l_stream);
+    l_codec = grk_compress_create(GRK_CODEC_J2K, l_stream);
     grk_set_info_handler(info_callback,nullptr);
     grk_set_warning_handler(warning_callback,nullptr);
     grk_set_error_handler(error_callback,nullptr);
 
-    grk_init_compress(l_codec, &parameters, image);
+    grk_compress_init(l_codec, &parameters, image);
 
-    bSuccess = grk_start_compress(l_codec);
+    bSuccess = grk_compress_start(l_codec);
     if( !bSuccess ) {
         grk_stream_destroy(l_stream);
         grk_destroy_codec(l_codec);
@@ -114,7 +114,7 @@ int main(int argc, char *argv[]){
     assert( bSuccess );
     bSuccess = grk_compress(l_codec);
     assert( bSuccess );
-    bSuccess = grk_end_compress(l_codec);
+    bSuccess = grk_compress_end(l_codec);
     assert( bSuccess );
 
     grk_stream_destroy(l_stream);

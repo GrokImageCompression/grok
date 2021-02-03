@@ -144,19 +144,19 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len){
     grk_stream_set_read_function(pStream, ReadCallback);
     grk_stream_set_seek_function(pStream, SeekCallback);
     grk_stream_set_user_data(pStream, &memFile, NULL);
-    auto codec = grk_create_decompress(eCodecFormat, pStream);
+    auto codec = grk_decompress_create(eCodecFormat, pStream);
     grk_set_info_handler(InfoCallback, NULL);
     grk_set_warning_handler(WarningCallback, NULL);
     grk_set_error_handler(ErrorCallback, NULL);
     grk_dparameters parameters;
-    grk_set_default_decompress_params(&parameters);
-    grk_init_decompress(codec, &parameters);
+    grk_decompress_set_default_params(&parameters);
+    grk_decompress_init(codec, &parameters);
     grk_image * psImage = NULL;
     grk_header_info  header_info;
     uint32_t x0,y0,width,height;
-    if (!grk_read_header(codec, &header_info))
+    if (!grk_decompress_read_header(codec, &header_info))
         goto cleanup;
-    psImage = grk_get_composited_image(codec);
+    psImage = grk_decompress_get_composited_image(codec);
     width = psImage->x1 - psImage->x0;
     if (width > 1024)
         width = 1024;
@@ -169,7 +169,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len){
     y0=10;
     if (y0 >= height)
     	y0 = 0;
-    if (grk_set_decompress_window(codec,
+    if (grk_decompress_set_window(codec,
                             x0,
 							y0,
                             width,
@@ -178,7 +178,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len){
         	goto cleanup;
     }
 
-    grk_end_decompress(codec);
+    grk_decompress_end(codec);
 cleanup:
     grk_stream_destroy(pStream);
     grk_destroy_codec(codec);

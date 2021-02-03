@@ -2044,10 +2044,10 @@ static bool plugin_compress_callback(grk_plugin_compress_user_callback_info *inf
 
 	switch (parameters->cod_format) {
 	case GRK_J2K_FMT: /* JPEG 2000 code stream */
-		codec = grk_create_compress(GRK_CODEC_J2K, stream);
+		codec = grk_compress_create(GRK_CODEC_J2K, stream);
 		break;
 	case GRK_JP2_FMT: /* JPEG 2000 compressed image data */
-		codec = grk_create_compress(GRK_CODEC_JP2, stream);
+		codec = grk_compress_create(GRK_CODEC_JP2, stream);
 		break;
 	default:
 		bSuccess = false;
@@ -2061,16 +2061,16 @@ static bool plugin_compress_callback(grk_plugin_compress_user_callback_info *inf
 	}
 	grk_set_error_handler(error_callback, nullptr);
 
-	if (!grk_init_compress(codec, parameters, image)) {
-		spdlog::error("failed to compress image: grk_init_compress");
+	if (!grk_compress_init(codec, parameters, image)) {
+		spdlog::error("failed to compress image: grk_compress_init");
 		bSuccess = false;
 		goto cleanup;
 	}
 
 	/* compress the image */
-	bSuccess = grk_start_compress(codec);
+	bSuccess = grk_compress_start(codec);
 	if (!bSuccess) {
-		spdlog::error("failed to compress image: grk_start_compress");
+		spdlog::error("failed to compress image: grk_compress_start");
 		bSuccess = false;
 		goto cleanup;
 	}
@@ -2082,9 +2082,9 @@ static bool plugin_compress_callback(grk_plugin_compress_user_callback_info *inf
 		goto cleanup;
 	}
 
-	bSuccess = bSuccess && grk_end_compress(codec);
+	bSuccess = bSuccess && grk_compress_end(codec);
 	if (!bSuccess) {
-		spdlog::error("failed to compress image: grk_end_compress");
+		spdlog::error("failed to compress image: grk_compress_end");
 		bSuccess = false;
 		goto cleanup;
 	}
@@ -2139,7 +2139,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 	uint32_t state= 0;
 
 	/* set compressing parameters to default values */
-	grk_set_default_compress_params(&initParams->parameters);
+	grk_compress_set_default_params(&initParams->parameters);
 	/* parse input and get user compressing parameters */
 	initParams->parameters.tcp_mct = 255; /* This will be set later according to the input image or the provided option */
 	initParams->parameters.rateControlAlgorithm = 255;

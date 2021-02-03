@@ -1468,7 +1468,7 @@ GRK_API bool GRK_CALLCONV grk_set_error_handler(grk_msg_callback p_callback,
  *
  * @return a handle to a decompressor if successful, otherwise nullptr
  * */
-GRK_API grk_codec GRK_CALLCONV grk_create_decompress(GRK_CODEC_FORMAT format,
+GRK_API grk_codec GRK_CALLCONV grk_decompress_create(GRK_CODEC_FORMAT format,
 		grk_stream *stream);
 
 /**
@@ -1476,7 +1476,7 @@ GRK_API grk_codec GRK_CALLCONV grk_create_decompress(GRK_CODEC_FORMAT format,
  *
  * @param parameters decompression parameters
  */
-GRK_API void GRK_CALLCONV grk_set_default_decompress_params(
+GRK_API void GRK_CALLCONV grk_decompress_set_default_params(
 		grk_dparameters *parameters);
 
 /**
@@ -1487,7 +1487,7 @@ GRK_API void GRK_CALLCONV grk_set_default_decompress_params(
  *
  * @return true			if the decompressor is correctly set
  */
-GRK_API bool GRK_CALLCONV grk_init_decompress(grk_codec codec,
+GRK_API bool GRK_CALLCONV grk_decompress_init(grk_codec codec,
 		grk_dparameters *parameters);
 
 /**
@@ -1500,7 +1500,7 @@ GRK_API bool GRK_CALLCONV grk_init_decompress(grk_codec codec,
  * @return true					if the main header of the code stream and the JP2 header
  * 							 	is correctly read.
  */
-GRK_API bool GRK_CALLCONV grk_read_header(grk_codec codec,grk_header_info *header_info);
+GRK_API bool GRK_CALLCONV grk_decompress_read_header(grk_codec codec,grk_header_info *header_info);
 
 
 /**
@@ -1511,7 +1511,7 @@ GRK_API bool GRK_CALLCONV grk_read_header(grk_codec codec,grk_header_info *heade
  *
  * @return pointer to decompressed image
  */
-GRK_API grk_image* GRK_CALLCONV grk_get_tile_image(grk_codec codec,uint16_t tileIndex);
+GRK_API grk_image* GRK_CALLCONV grk_decompress_get_tile_image(grk_codec codec,uint16_t tileIndex);
 
 /**
  * Get decompressed composite image
@@ -1520,12 +1520,12 @@ GRK_API grk_image* GRK_CALLCONV grk_get_tile_image(grk_codec codec,uint16_t tile
  *
  * @return pointer to decompressed image
  */
-GRK_API grk_image* GRK_CALLCONV grk_get_composited_image(grk_codec codec);
+GRK_API grk_image* GRK_CALLCONV grk_decompress_get_composited_image(grk_codec codec);
 
 
 /**
  * Set the given area to be decompressed. This function should be called
- *  right after grk_read_header is called, and before any tile header is read.
+ *  right after grk_decompress_read_header is called, and before any tile header is read.
  *
  * @param	codec			JPEG 2000 code stream.
  * @param	start_x		    left position of the rectangle to decompress (in image coordinates).
@@ -1535,7 +1535,7 @@ GRK_API grk_image* GRK_CALLCONV grk_get_composited_image(grk_codec codec);
  *
  * @return	true			if the area could be set.
  */
-GRK_API bool GRK_CALLCONV grk_set_decompress_window(grk_codec codec,
+GRK_API bool GRK_CALLCONV grk_decompress_set_window(grk_codec codec,
 		uint32_t start_x, uint32_t start_y, uint32_t end_x,	uint32_t end_y);
 
 /**
@@ -1562,7 +1562,7 @@ GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_codec codec, uint16_t tile_ind
  *
  * @param	codec			JPEG 2000 code stream
  */
-GRK_API bool GRK_CALLCONV grk_end_decompress(grk_codec codec);
+GRK_API bool GRK_CALLCONV grk_decompress_end(grk_codec codec);
 
 
 /* COMPRESSION FUNCTIONS*/
@@ -1574,7 +1574,7 @@ GRK_API bool GRK_CALLCONV grk_end_decompress(grk_codec codec);
  * @return 				Returns a handle to a compressor if successful,
  * 						returns nullptr otherwise
  */
-GRK_API grk_codec GRK_CALLCONV grk_create_compress(GRK_CODEC_FORMAT format,	grk_stream *stream);
+GRK_API grk_codec GRK_CALLCONV grk_compress_create(GRK_CODEC_FORMAT format,	grk_stream *stream);
 
 /**
  Set compressing parameters to default values, that means :
@@ -1597,7 +1597,7 @@ GRK_API grk_codec GRK_CALLCONV grk_create_compress(GRK_CODEC_FORMAT format,	grk_
 
  @param parameters Compression parameters
  */
-GRK_API void GRK_CALLCONV grk_set_default_compress_params(
+GRK_API void GRK_CALLCONV grk_compress_set_default_params(
 		grk_cparameters *parameters);
 
 /**
@@ -1607,7 +1607,7 @@ GRK_API void GRK_CALLCONV grk_set_default_compress_params(
  * @param parameters 	compression parameters
  * @param image 		input image
  */
-GRK_API bool GRK_CALLCONV grk_init_compress(grk_codec codec,
+GRK_API bool GRK_CALLCONV grk_compress_init(grk_codec codec,
 		grk_cparameters *parameters, grk_image *image);
 
 /**
@@ -1616,7 +1616,7 @@ GRK_API bool GRK_CALLCONV grk_init_compress(grk_codec codec,
  * @param codec 		Compressor handle
  *
  */
-GRK_API bool GRK_CALLCONV grk_start_compress(grk_codec codec);
+GRK_API bool GRK_CALLCONV grk_compress_start(grk_codec codec);
 
 /**
  * Encode an image into a JPEG 2000 code stream
@@ -1628,7 +1628,7 @@ GRK_API bool GRK_CALLCONV grk_compress(grk_codec codec);
 
 /**
  * Compress uncompressed data stored in a buffer.
- * This method should be called right after grk_start_compress,
+ * This method should be called right after grk_compress_start,
  * and before grk_end_compress.
  *
  * @param	codec		    JPEG 2000 code stream
@@ -1665,7 +1665,7 @@ GRK_API bool GRK_CALLCONV grk_compress_with_plugin(grk_codec codec,
  * End to compress the current image.
  * @param codec 		Compressor handle
  */
-GRK_API bool GRK_CALLCONV grk_end_compress(grk_codec codec);
+GRK_API bool GRK_CALLCONV grk_compress_end(grk_codec codec);
 
 
 /**
@@ -1674,14 +1674,6 @@ GRK_API bool GRK_CALLCONV grk_end_compress(grk_codec codec);
  * @param	codec			JPEG 2000 code stream
  */
 GRK_API void GRK_CALLCONV grk_destroy_codec(grk_codec codec);
-
-
-/**
- Destroy Codestream information after compression or decompression
- @param cstr_info Codestream information structure
- */
-GRK_API void GRK_CALLCONV grk_destroy_cstr_info(
-		grk_codestream_info_v2 **cstr_info);
 
 /**
  * Dump codec information to file
@@ -1704,6 +1696,15 @@ GRK_API void GRK_CALLCONV grk_dump_codec(grk_codec codec, uint32_t info_flag,
  */
 GRK_API grk_codestream_info_v2* GRK_CALLCONV grk_get_cstr_info(
 		grk_codec codec);
+
+
+/**
+ Destroy Codestream information after compression or decompression
+ @param cstr_info Codestream information structure
+ */
+GRK_API void GRK_CALLCONV grk_destroy_cstr_info(
+		grk_codestream_info_v2 **cstr_info);
+
 
 /**
  * Get the code stream index from the codec

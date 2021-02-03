@@ -134,7 +134,7 @@ int main(int argc, char *argv[]) {
 	for (i = 0; i < data_size; ++i)
 		data[i] = (uint8_t) i;
 
-	grk_set_default_compress_params(&param);
+	grk_compress_set_default_params(&param);
 	/** you may here add custom encoding parameters */
 	/* rate specifications */
 	/** number of quality layers in the stream */
@@ -233,9 +233,9 @@ int main(int argc, char *argv[]) {
 	/* should we do j2k or jp2 ?*/
 	len = strlen(output_file);
 	if (strcmp(output_file + len - 4, ".jp2") == 0) {
-		codec = grk_create_compress(GRK_CODEC_JP2, stream);
+		codec = grk_compress_create(GRK_CODEC_JP2, stream);
 	} else {
-		codec = grk_create_compress(GRK_CODEC_J2K, stream);
+		codec = grk_compress_create(GRK_CODEC_J2K, stream);
 	}
 	if (!codec) {
 		rc = 1;
@@ -259,12 +259,12 @@ int main(int argc, char *argv[]) {
 	image->y1 = image_height;
 	image->color_space = GRK_CLRSPC_SRGB;
 
-	if (!grk_init_compress(codec, &param, image)) {
+	if (!grk_compress_init(codec, &param, image)) {
 		spdlog::error("test_tile_encoder: failed to setup the codec");
 		rc = 1;
 		goto cleanup;
 	}
-	if (!grk_start_compress(codec)) {
+	if (!grk_compress_start(codec)) {
 		spdlog::error("test_tile_encoder: failed to start compress");
 		rc = 1;
 		goto cleanup;
@@ -279,7 +279,7 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	if (!grk_end_compress(codec)) {
+	if (!grk_compress_end(codec)) {
 		spdlog::error("test_tile_encoder: failed to end compress");
 		rc = 1;
 		goto cleanup;

@@ -356,7 +356,7 @@ int main(int argc, char *argv[]) {
 	grk_set_error_handler(error_callback, nullptr);
 
 	/* Set decoding parameters to default values */
-	grk_set_default_decompress_params(&parameters);
+	grk_decompress_set_default_params(&parameters);
 
 	/* Initialize img_fol */
 	memset(&img_fol, 0, sizeof(img_fol));
@@ -442,12 +442,12 @@ int main(int argc, char *argv[]) {
 		switch (parameters.decod_format) {
 		case GRK_J2K_FMT: { /* JPEG 2000 code stream */
 			/* Get a decompressor handle */
-			l_codec = grk_create_decompress(GRK_CODEC_J2K, l_stream);
+			l_codec = grk_decompress_create(GRK_CODEC_J2K, l_stream);
 			break;
 		}
 		case GRK_JP2_FMT: { /* JPEG 2000 compressed image data */
 			/* Get a decompressor handle */
-			l_codec = grk_create_decompress(GRK_CODEC_JP2, l_stream);
+			l_codec = grk_decompress_create(GRK_CODEC_JP2, l_stream);
 			break;
 		}
 		default:
@@ -457,14 +457,14 @@ int main(int argc, char *argv[]) {
 		}
 
 		/* Setup the decompressor decoding parameters using user parameters */
-		if (!grk_init_decompress(l_codec, &parameters)) {
+		if (!grk_decompress_init(l_codec, &parameters)) {
 			spdlog::error("grk_dump: failed to set up the decompressor");
 			rc = EXIT_FAILURE;
 			goto cleanup;
 		}
 
 		/* Read the main header of the code stream and if necessary the JP2 boxes*/
-		if (!grk_read_header(l_codec, nullptr)) {
+		if (!grk_decompress_read_header(l_codec, nullptr)) {
 			spdlog::error("grk_dump: failed to read the header");
 			rc = EXIT_FAILURE;
 			goto cleanup;

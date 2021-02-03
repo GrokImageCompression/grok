@@ -778,7 +778,7 @@ void GrkDecompress::set_default_parameters(grk_decompress_parameters *parameters
 		parameters->cod_format = GRK_UNK_FMT;
 
 		/* default decoding parameters (core) */
-		grk_set_default_decompress_params(&(parameters->core));
+		grk_decompress_set_default_params(&(parameters->core));
 		parameters->deviceId = 0;
 		parameters->repeats = 1;
 		parameters->compressionLevel = GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
@@ -1128,12 +1128,12 @@ int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 	if (!info->l_codec) {
 		switch (decod_format) {
 		case GRK_J2K_FMT: { /* JPEG 2000 code stream */
-			info->l_codec = grk_create_decompress(GRK_CODEC_J2K,
+			info->l_codec = grk_decompress_create(GRK_CODEC_J2K,
 					info->l_stream);
 			break;
 		}
 		case GRK_JP2_FMT: { /* JPEG 2000 compressed image data */
-			info->l_codec = grk_create_decompress(GRK_CODEC_JP2,
+			info->l_codec = grk_decompress_create(GRK_CODEC_JP2,
 					info->l_stream);
 			break;
 		}
@@ -1148,7 +1148,7 @@ int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 		}
 		grk_set_error_handler(error_callback, nullptr);
 
-		if (!grk_init_decompress(info->l_codec, &(parameters->core))) {
+		if (!grk_decompress_init(info->l_codec, &(parameters->core))) {
 			spdlog::error("grk_decompress: failed to set up the decompressor");
 			goto cleanup;
 		}
@@ -1157,12 +1157,12 @@ int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 	// 2. read header
 	if (info->decompress_flags & GRK_DECODE_HEADER) {
 		// Read the main header of the code stream (j2k) and also JP2 boxes (jp2)
-		if (!grk_read_header(info->l_codec, &info->header_info)) {
+		if (!grk_decompress_read_header(info->l_codec, &info->header_info)) {
 			spdlog::error("grk_decompress: failed to read the header");
 			goto cleanup;
 		}
 
-		info->image = grk_get_composited_image(info->l_codec);
+		info->image = grk_decompress_get_composited_image(info->l_codec);
 
 		// do not allow odd top left window coordinates for SYCC
 		if (info->image->color_space == GRK_CLRSPC_SYCC){
@@ -1229,7 +1229,7 @@ int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 		}
 	}
 
-	if (!grk_set_decompress_window(info->l_codec, parameters->DA_x0,
+	if (!grk_decompress_set_window(info->l_codec, parameters->DA_x0,
 			parameters->DA_y0, parameters->DA_x1, parameters->DA_y1)) {
 		spdlog::error("grk_decompress: failed to set the decompressed area");
 		goto cleanup;
@@ -1238,7 +1238,7 @@ int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 	// decompress all tiles
 	if (!parameters->nb_tile_to_decompress) {
 		if (!(grk_decompress(info->l_codec, info->tile)
-				&& grk_end_decompress(info->l_codec))) {
+				&& grk_decompress_end(info->l_codec))) {
 			goto cleanup;
 		}
 	}

@@ -165,7 +165,7 @@ public:
 
   /**
   	* Sets the given area to be decompressed, relative to image origin.
-  	* This function should be called right after grk_read_header
+  	* This function should be called right after grk_decompress_read_header
 	* and before any tile header reading.
 	*
 	* @param	p_image     image

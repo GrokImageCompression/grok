@@ -209,7 +209,7 @@ struct CodeStream : public ICodeStream {
 	bool process_marker(const marker_handler* marker_handler, uint16_t marker_size);
 
 	/**
-	 * Sets the given area to be decompressed. This function should be called right after grk_read_header
+	 * Sets the given area to be decompressed. This function should be called right after grk_decompress_read_header
 	 * and before any tile header reading.
 	 *
 	 * @param	window		decompress window
