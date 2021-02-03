@@ -1012,5 +1012,38 @@ void alloc_palette(grk_color *color, uint8_t num_channels, uint16_t num_entries)
 }
 
 
+bool validate_icc(GRK_COLOR_SPACE colourSpace, uint8_t *iccbuf, uint32_t icclen){
+	bool rc = true;
+#ifdef GROK_HAVE_LIBLCMS
+	auto in_prof = cmsOpenProfileFromMem(iccbuf,icclen);
+	if (in_prof) {
+		auto cmsColorSpaceSignature = cmsGetColorSpace(in_prof);
+		switch(cmsColorSpaceSignature){
+		case cmsSigLabData:
+			rc = (colourSpace == GRK_CLRSPC_DEFAULT_CIE || colourSpace == GRK_CLRSPC_CUSTOM_CIE);
+			break;
+		case cmsSigYCbCrData:
+			rc = (colourSpace == GRK_CLRSPC_SYCC || colourSpace == GRK_CLRSPC_EYCC);
+			break;
+		case cmsSigRgbData:
+			rc = colourSpace == GRK_CLRSPC_SRGB;
+			break;
+		case cmsSigGrayData:
+			rc = colourSpace == GRK_CLRSPC_GRAY;
+			break;
+		case cmsSigCmykData:
+			rc = colourSpace == GRK_CLRSPC_CMYK;
+			break;
+		default:
+			rc = false;
+			break;
+		}
+		cmsCloseProfile(in_prof);
+	}
+#endif
+	return rc;
+}
+
+
 
 }

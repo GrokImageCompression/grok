@@ -800,15 +800,19 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 			goto cleanup;
 
 		//allocate buffer
-		image->color.icc_profile_buf = new uint8_t[Info_h.biIccProfileSize];
-		if (!readFromFile(image->color.icc_profile_buf,Info_h.biIccProfileSize)){
+		auto iccbuf = new uint8_t[Info_h.biIccProfileSize];
+		if (!readFromFile(iccbuf,Info_h.biIccProfileSize)){
 			spdlog::warn("Unable to read full ICC profile. Profile will be ignored.");
-			delete[] image->color.icc_profile_buf;
-			image->color.icc_profile_buf = nullptr;
+			delete[] iccbuf;
 			goto cleanup;
 		}
-		image->color.icc_profile_len = Info_h.biIccProfileSize;
-		image->color_space = GRK_CLRSPC_ICC;
+		if (grk::validate_icc(colour_space, iccbuf, Info_h.biIccProfileSize)) {
+			image->color.icc_profile_buf = iccbuf;
+			image->color.icc_profile_len = Info_h.biIccProfileSize;
+			image->color_space = GRK_CLRSPC_ICC;
+		} else {
+			spdlog::warn("ICC profile does not match underlying colour space. Ignoring");
+		}
 	}
 	if (numcmpts == 4U) {
 		image->comps[3].type = GRK_COMPONENT_TYPE_OPACITY;

@@ -1172,10 +1172,14 @@ grk_image* TIFFFormat::decode(const std::string &filename,
 	if (!isCIE) {
 		if ((TIFFGetFieldDefaulted(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1)
 				&& icclen > 0 && icclen < grk::maxICCProfileBufferLen) {
-			image->color.icc_profile_buf = new uint8_t[icclen];
-			memcpy(image->color.icc_profile_buf, iccbuf, icclen);
-			image->color.icc_profile_len = icclen;
-			image->color_space = GRK_CLRSPC_ICC;
+			if (grk::validate_icc(color_space, iccbuf, icclen)) {
+				image->color.icc_profile_buf = new uint8_t[icclen];
+				memcpy(image->color.icc_profile_buf, iccbuf, icclen);
+				image->color.icc_profile_len = icclen;
+				image->color_space = GRK_CLRSPC_ICC;
+			} else {
+				spdlog::warn("ICC profile does not match underlying colour space. Ignoring");
+			}
 		}
 	}
 	// 7. extract IPTC meta-data

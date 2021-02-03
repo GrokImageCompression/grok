@@ -20,6 +20,7 @@
 #include "grok.h"
 #include "JPEGFormat.h"
 #include "convert.h"
+#include "color.h"
 #include <cstring>
 
 #ifndef GROK_HAVE_LIBJPEG
@@ -202,10 +203,14 @@ grk_image* JPEGFormat::jpegtoimage(const char *filename,
 		goto cleanup;
 	}
 	if (icc_data_ptr && icc_data_len) {
-		m_image->color.icc_profile_buf = new uint8_t[icc_data_len];
-		memcpy(m_image->color.icc_profile_buf, icc_data_ptr, icc_data_len);
-		m_image->color.icc_profile_len = icc_data_len;
-		icc_data_len = 0;
+		if (grk::validate_icc(color_space, icc_data_ptr, icc_data_len)) {
+			m_image->color.icc_profile_buf = new uint8_t[icc_data_len];
+			memcpy(m_image->color.icc_profile_buf, icc_data_ptr, icc_data_len);
+			m_image->color.icc_profile_len = icc_data_len;
+			icc_data_len = 0;
+		} else {
+			spdlog::warn("ICC profile does not match underlying colour space. Ignoring");
+		}
 	}
 	if (icc_data_ptr)
 		free(icc_data_ptr);

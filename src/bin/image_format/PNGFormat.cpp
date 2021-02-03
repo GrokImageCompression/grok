@@ -25,6 +25,7 @@
 #include "grok.h"
 #include "PNGFormat.h"
 #include "convert.h"
+#include "color.h"
 #include <cstring>
 
 #ifdef GROK_HAVE_LIBLCMS
@@ -266,10 +267,14 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 		png_charp ProfileName = nullptr;
 		if (png_get_iCCP(png, m_info, &ProfileName, &Compression,
 				&ProfileData, &ProfileLen) == PNG_INFO_iCCP) {
-			m_image->color.icc_profile_buf = new uint8_t[ProfileLen];
-			memcpy(m_image->color.icc_profile_buf, ProfileData, ProfileLen);
-			m_image->color.icc_profile_len = ProfileLen;
-			m_image->color_space = GRK_CLRSPC_ICC;
+			if (grk::validate_icc(m_colorSpace, ProfileData, ProfileLen)) {
+				m_image->color.icc_profile_buf = new uint8_t[ProfileLen];
+				memcpy(m_image->color.icc_profile_buf, ProfileData, ProfileLen);
+				m_image->color.icc_profile_len = ProfileLen;
+				m_image->color_space = GRK_CLRSPC_ICC;
+			} else {
+				spdlog::warn("ICC profile does not match underlying colour space. Ignoring");
+			}
 		}
 	}
 
