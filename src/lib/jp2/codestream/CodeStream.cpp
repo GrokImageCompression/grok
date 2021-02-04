@@ -836,9 +836,8 @@ TileProcessor* CodeStream::currentProcessor(void){
 }
 
 GrkImage* CodeStream::get_image(uint16_t tileIndex){
-	(void) tileIndex;
-
-	return getCompositeImage();
+	auto entry = m_tileCache->get(tileIndex);
+	return entry ? entry->image : nullptr;
 }
 
 GrkImage* CodeStream::get_image(){
@@ -1151,17 +1150,15 @@ bool CodeStream::exec_decompress(void){
 
 bool CodeStream::decompress_tiles(void) {
 	bool go_on = true;
-	uint32_t num_tiles_to_decompress = m_cp.t_grid_height
-			* m_cp.t_grid_width;
+	uint16_t num_tiles_to_decompress = (uint16_t)(m_cp.t_grid_height* m_cp.t_grid_width);
 	m_multiTile = num_tiles_to_decompress > 1;
 	std::atomic<bool> success(true);
 	std::atomic<uint32_t> num_tiles_decoded(0);
 	ThreadPool pool(std::min<uint32_t>((uint32_t)ThreadPool::get()->num_threads(), num_tiles_to_decompress));
 	std::vector< std::future<int> > results;
-	bool allocatedOutputImage = false;
 
 	// parse header and perform T2 followed by asynch T1
-	for (uint32_t tileno = 0; tileno < num_tiles_to_decompress; tileno++) {
+	for (uint16_t tileno = 0; tileno < num_tiles_to_decompress; tileno++) {
 		//1. read header
 		try {
 			if (!parse_tile_header_markers(&go_on)){
@@ -1194,13 +1191,6 @@ bool CodeStream::decompress_tiles(void) {
 			}
 		}  catch (DecodeUnknownMarkerAtEndOfTileException &e){
 			breakAfterT1 = true;
-		}
-		if (!allocatedOutputImage && m_multiTile && m_output_image) {
-			if (!m_output_image->allocData()){
-				success = false;
-				goto cleanup;
-			}
-			allocatedOutputImage = true;
 		}
 		// once we schedule a processor for T1 compression, we will destroy it
 		// regardless of success or not
@@ -1241,6 +1231,23 @@ bool CodeStream::decompress_tiles(void) {
 		result.get();
 	}
 	results.clear();
+	if (m_multiTile && m_output_image) {
+		if (!m_output_image->allocData()){
+			success = false;
+			goto cleanup;
+		}
+	}
+	for (uint16_t tileno = 0; tileno < num_tiles_to_decompress; tileno++) {
+		auto entry = m_tileCache->get(tileno);
+		if (!entry)
+			continue;
+		auto img = entry->image;
+		if (!img)
+			continue;
+		if (!m_output_image->compositeFrom(img))
+			return false;
+	}
+
 	// check if there is another tile that has not been processed
 	// we will reject if it has the TPSot problem (https://github.com/uclouvain/openjpeg/issues/254)
 	if (m_curr_marker == J2K_MS_SOT && m_stream->get_number_byte_left()){
@@ -1452,10 +1459,6 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor) {
 		/* copy/transfer data from tile component to output image */
 		m_tileCache->put(tile_index, m_output_image, tile);
 		if (m_multiTile) {
-			auto img = m_tileCache->get(tile_index)->image;
-			if (!m_output_image->compositeFrom(img))
-				return false;
-			// now release tile memory
 			for (uint16_t compno = 0; compno < tile->numcomps; ++compno)
 				(tile->comps + compno)->release_mem(true);
 		} else {

@@ -81,6 +81,19 @@ GrkImage* TileCache::getComposite(){
 	return tileComposite;
 }
 
+GrkImage* TileCache::getFinalComposite(GrkImage *outputImage){
+	auto all = getAllImages();
+	if (all.size() == 1)
+		return all[0];
+	for (auto &img : all){
+		if (!outputImage->compositeFrom(img))
+			return nullptr;
+	}
+
+	return outputImage;
+
+}
+
 std::vector<GrkImage*> TileCache::getAllImages(void){
 	std::vector<GrkImage*> rc;
 	rc.push_back(tileComposite);
