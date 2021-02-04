@@ -1307,11 +1307,6 @@ bool CodeStream::decompress_tile(uint16_t tile_index){
 	}
 
 	auto compositeImage = getCompositeImage();
-	if (!compositeImage) {
-		GRK_ERROR("decompress tile: image is null");
-		return false;
-	}
-
 	if (tile_index >= m_cp.t_grid_width * m_cp.t_grid_height) {
 		GRK_ERROR(	"Tile index %u is greater than maximum tile index %u",	tile_index,
 				      m_cp.t_grid_width * m_cp.t_grid_height - 1);
@@ -1725,8 +1720,7 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,GrkImage *image){
 	if (image->comps) {
 		for (uint32_t compno = 0; compno < image->numcomps; compno++) {
 			if (image->comps[compno].data) {
-				m_headerImage->comps[compno].data =
-						image->comps[compno].data;
+				m_headerImage->comps[compno].data =	image->comps[compno].data;
 				image->comps[compno].data = nullptr;
 
 			}

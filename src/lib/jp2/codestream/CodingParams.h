@@ -305,24 +305,13 @@ enum J2K_STATUS {
 
 
 struct DecoderState {
-	DecoderState() : m_state(J2K_DEC_STATE_NONE),
-					m_default_tcp(nullptr),
-					m_start_tile_x_index(0),
-					m_start_tile_y_index(0),
-					m_end_tile_x_index(0),
-					m_end_tile_y_index(0),
-					m_last_sot_read_pos(0),
-					m_last_tile_part_in_code_stream(false),
-					last_tile_part_was_read(false),
-					m_skip_tile_data(false)
-	{}
-
-
+	DecoderState();
 	bool findNextTile(CodeStream *codeStream);
+	uint16_t getState(void);
+	void     setState(uint16_t state);
+	void     orState(uint16_t state);
+	void     andState(uint16_t state);
 
-	/** Decoder state: used to indicate in which part of the code stream
-	 *  the decompressor is (main header, tile header, end) */
-	uint16_t m_state;
 
 	//store decoding parameters common to all tiles (information
 	// like COD, COC and RGN in main header)
@@ -348,6 +337,11 @@ struct DecoderState {
 	bool last_tile_part_was_read;
 
 	bool m_skip_tile_data;
+
+
+	/** Decoder state: used to indicate in which part of the code stream
+	 *  the decompressor is (main header, tile header, end) */
+	uint16_t m_state;
 
 };
 

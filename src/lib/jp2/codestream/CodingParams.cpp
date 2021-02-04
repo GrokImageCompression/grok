@@ -180,6 +180,31 @@ TileComponentCodingParams::TileComponentCodingParams() : csty(0),
 	}
 }
 
+DecoderState::DecoderState() : m_default_tcp(nullptr),
+				m_start_tile_x_index(0),
+				m_start_tile_y_index(0),
+				m_end_tile_x_index(0),
+				m_end_tile_y_index(0),
+				m_last_sot_read_pos(0),
+				m_last_tile_part_in_code_stream(false),
+				last_tile_part_was_read(false),
+				m_skip_tile_data(false),
+				m_state(J2K_DEC_STATE_NONE)
+{}
+
+uint16_t DecoderState::getState(void){
+	return m_state;
+}
+void     DecoderState::setState(uint16_t state){
+   m_state = state;
+}
+void     DecoderState::orState(uint16_t state){
+   m_state |= state;
+}
+void     DecoderState::andState(uint16_t state){
+   m_state &= state;
+}
+
 bool DecoderState::findNextTile(CodeStream *codeStream){
 	auto stream = codeStream->getStream();
 	last_tile_part_was_read = false;

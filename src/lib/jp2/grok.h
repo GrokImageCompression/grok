@@ -597,7 +597,7 @@ typedef struct _grk_component_mapping_comp {
  Palette data
  */
 typedef struct _grk_palette_data {
-	uint32_t *lut;
+	int32_t *lut;
 	uint16_t num_entries;
 	grk_component_mapping_comp *component_mapping;
 	uint8_t num_channels;

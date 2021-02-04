@@ -1219,7 +1219,7 @@ void FileFormat::alloc_palette(grk_color *color, uint8_t num_channels, uint16_t 
 	auto jp2_pclr 			= new grk_palette_data();
 	jp2_pclr->channel_sign 	= new bool[num_channels];
 	jp2_pclr->channel_prec 	= new uint8_t[num_channels];
-	jp2_pclr->lut 			= new uint32_t[num_channels * num_entries];
+	jp2_pclr->lut 			= new int32_t[num_channels * num_entries];
 	jp2_pclr->num_entries 	= num_entries;
 	jp2_pclr->num_channels 	= num_channels;
 	jp2_pclr->component_mapping = nullptr;
@@ -2458,18 +2458,15 @@ bool FileFormat::check_color(GrkImage *image, grk_color *color) {
 }
 
 bool FileFormat::apply_palette_clr(GrkImage *image, grk_color *color) {
-	uint16_t num_channels, component_index, palette_column;
-	int32_t k, top_k;
-
 	auto channel_prec = color->palette->channel_prec;
 	auto channel_sign = color->palette->channel_sign;
 	auto lut = color->palette->lut;
 	auto component_mapping = color->palette->component_mapping;
-	num_channels = color->palette->num_channels;
+	uint16_t num_channels = color->palette->num_channels;
 
 	for (uint16_t i = 0; i < num_channels; ++i) {
 		/* Palette mapping: */
-		component_index = component_mapping[i].component_index;
+		uint16_t component_index = component_mapping[i].component_index;
 		if (image->comps[component_index].data == nullptr) {
 			GRK_ERROR("image->comps[%u].data == nullptr"
 					" in apply_palette_clr().",i);
@@ -2478,15 +2475,14 @@ bool FileFormat::apply_palette_clr(GrkImage *image, grk_color *color) {
 	}
 
 	auto old_comps = image->comps;
-	auto new_comps =
-			(grk_image_comp*) grk_malloc(num_channels * sizeof(grk_image_comp));
+	auto new_comps = (grk_image_comp*) grk_malloc(num_channels * sizeof(grk_image_comp));
 	if (!new_comps) {
 		GRK_ERROR("Memory allocation failure in apply_palette_clr().");
 		return false;
 	}
 	for (uint16_t i = 0; i < num_channels; ++i) {
-		palette_column = component_mapping[i].palette_column;
-		component_index = component_mapping[i].component_index;
+		uint16_t palette_column = component_mapping[i].palette_column;
+		uint16_t component_index = component_mapping[i].component_index;
 
 		/* Direct use */
 		if (component_mapping[i].mapping_type == 0) {
@@ -2513,12 +2509,11 @@ bool FileFormat::apply_palette_clr(GrkImage *image, grk_color *color) {
 		new_comps[i].sgnd = channel_sign[i];
 	}
 
-	top_k = color->palette->num_entries - 1;
-
+	int32_t top_k = color->palette->num_entries - 1;
 	for (uint16_t i = 0; i < num_channels; ++i) {
 		/* Palette mapping: */
-		component_index = component_mapping[i].component_index;
-		palette_column = component_mapping[i].palette_column;
+		uint16_t component_index = component_mapping[i].component_index;
+		uint16_t palette_column = component_mapping[i].palette_column;
 		auto src = old_comps[component_index].data;
 		assert(src);
 		size_t num_pixels = (size_t)new_comps[palette_column].stride * new_comps[palette_column].h;
@@ -2535,13 +2530,18 @@ bool FileFormat::apply_palette_clr(GrkImage *image, grk_color *color) {
 			assert(i == palette_column);
 			auto dst = new_comps[palette_column].data;
 			assert(dst);
-			for (size_t j = 0; j < num_pixels; ++j) {
-				/* The index */
-				if ((k = src[j]) < 0)
-					k = 0;
-				else if (k > top_k)
-					k = top_k;
-				dst[j] = (int32_t) lut[k * num_channels + palette_column];
+			uint32_t diff = (uint32_t)(new_comps[palette_column].stride - new_comps[palette_column].w);
+			size_t ind = 0;
+			for (uint32_t n = 0; n < new_comps[palette_column].h; ++n) {
+				int32_t k = 0;
+				for (uint32_t m = 0; m < new_comps[palette_column].w; ++m){
+					if ((k = src[ind]) < 0)
+						k = 0;
+					else if (k > top_k)
+						k = top_k;
+					dst[ind++] = (int32_t) lut[k * num_channels + palette_column];
+				}
+				ind += diff;
 			}
 		}
 	}
@@ -2654,11 +2654,11 @@ uint8_t* FileFormat::write_palette_clr( uint32_t *p_nb_bytes_written) {
 	}
 
 	// LUT values for all components
-	uint32_t *lut_ptr =  palette->lut;
+	auto lut_ptr =  palette->lut;
 	for (uint16_t j = 0; j < palette->num_entries; ++j) {
 		for (uint8_t i = 0; i < palette->num_channels; ++i) {
 			uint32_t bytes_to_write = (uint32_t) ((palette->channel_prec[i] + 7) >> 3);
-			grk_write<uint32_t>(palette_ptr, *lut_ptr, bytes_to_write); /* Cji */
+			grk_write<int32_t>(palette_ptr, *lut_ptr, bytes_to_write); /* Cji */
 			lut_ptr++;
 			palette_ptr += bytes_to_write;
 		}
@@ -2723,7 +2723,7 @@ bool FileFormat::read_palette_clr( uint8_t *p_pclr_header_data,	uint32_t pclr_he
 				GRK_ERROR("Palette : box too short");
 				return false;
 			}
-			grk_read<uint32_t>(p_pclr_header_data, lut++, bytes_to_read); /* Cji */
+			grk_read<int32_t>(p_pclr_header_data, lut++, bytes_to_read); /* Cji */
 			p_pclr_header_data += bytes_to_read;
 		}
 	}

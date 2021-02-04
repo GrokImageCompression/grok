@@ -160,7 +160,7 @@ bool j2k_read_soc(CodeStream *codeStream) {
 		return false;
 
 	/* Next marker should be a SIZ marker in the main header */
-	codeStream->m_decompressor.m_state = J2K_DEC_STATE_MH_SIZ;
+	codeStream->m_decompressor.setState(J2K_DEC_STATE_MH_SIZ);
 
 	if (codeStream->cstr_index) {
 		/* FIXME move it in a index structure included in codeStream*/

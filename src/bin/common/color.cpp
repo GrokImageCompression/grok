@@ -1004,7 +1004,7 @@ void alloc_palette(grk_color *color, uint8_t num_channels, uint16_t num_entries)
 	auto jp2_pclr = new grk_palette_data();
 	jp2_pclr->channel_sign = new bool[num_channels];
 	jp2_pclr->channel_prec = new uint8_t[num_channels];
-	jp2_pclr->lut = new uint32_t[num_channels * num_entries];
+	jp2_pclr->lut = new int32_t[num_channels * num_entries];
 	jp2_pclr->num_entries = num_entries;
 	jp2_pclr->num_channels = num_channels;
 	jp2_pclr->component_mapping = nullptr;
