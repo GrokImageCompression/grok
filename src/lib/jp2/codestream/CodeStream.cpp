@@ -1287,6 +1287,10 @@ cleanup:
 
 
 bool CodeStream::decompress_tile(uint16_t tile_index){
+	auto entry = m_tileCache->get(tile_index);
+	if (entry)
+		return true;
+
 	auto compositeImage = getCompositeImage();
 	if (!compositeImage) {
 		GRK_ERROR("decompress tile: image is null");
