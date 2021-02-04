@@ -877,13 +877,6 @@ bool CodeStream::read_header(grk_header_info  *header_info){
 
 		/* Copy code stream image information to composite image */
 		m_headerImage->copyHeader(getCompositeImage());
-		if (cstr_index) {
-			/*Allocate and initialize some elements of codestrem index*/
-			if (!j2k_allocate_tile_element_cstr_index(this)) {
-				m_headerError = true;
-				return false;
-			}
-		}
 	}
 
 	if (header_info) {
@@ -1157,6 +1150,14 @@ bool CodeStream::decompress_tiles(void) {
 	ThreadPool pool(std::min<uint32_t>((uint32_t)ThreadPool::get()->num_threads(), num_tiles_to_decompress));
 	std::vector< std::future<int> > results;
 
+	if (cstr_index) {
+		/*Allocate and initialize some elements of codestream index*/
+		if (!j2k_allocate_tile_element_cstr_index(this)) {
+			m_headerError = true;
+			return false;
+		}
+	}
+
 	// parse header and perform T2 followed by asynch T1
 	for (uint16_t tileno = 0; tileno < num_tiles_to_decompress; tileno++) {
 		//1. read header
@@ -1290,6 +1291,20 @@ bool CodeStream::decompress_tile(uint16_t tile_index){
 	auto entry = m_tileCache->get(tile_index);
 	if (entry)
 		return true;
+
+	// another tile has already been decoded
+	if (m_output_image){
+		/* Copy code stream image information to composite image */
+		m_headerImage->copyHeader(getCompositeImage());
+	}
+
+	if (cstr_index) {
+		/*Allocate and initialize some elements of codestream index*/
+		if (!j2k_allocate_tile_element_cstr_index(this)) {
+			m_headerError = true;
+			return false;
+		}
+	}
 
 	auto compositeImage = getCompositeImage();
 	if (!compositeImage) {

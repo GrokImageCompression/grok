@@ -126,14 +126,13 @@ bool GrkImage::subsampleAndReduce(uint32_t reduce){
  *
  */
 bool GrkImage::copyHeader(GrkImage *dest) {
-	assert(dest != nullptr);
+	if (!dest)
+		return false;
 
 	dest->x0 = x0;
 	dest->y0 = y0;
 	dest->x1 = x1;
 	dest->y1 = y1;
-
-	assert(!dest->comps);
 
 	if (dest->comps) {
 		grk_image_all_components_data_free(dest);
@@ -160,8 +159,7 @@ bool GrkImage::copyHeader(GrkImage *dest) {
 	color_dest->icc_profile_len = color_src->icc_profile_len;
 	if (color_dest->icc_profile_len) {
 		color_dest->icc_profile_buf = new uint8_t[color_dest->icc_profile_len];
-		memcpy(color_dest->icc_profile_buf, color_src->icc_profile_buf,
-				color_src->icc_profile_len);
+		memcpy(color_dest->icc_profile_buf, color_src->icc_profile_buf,	color_src->icc_profile_len);
 	} else
 		color_dest->icc_profile_buf = nullptr;
 	if (color.palette){
@@ -171,11 +169,9 @@ bool GrkImage::copyHeader(GrkImage *dest) {
 			auto pal_dest = dest->color.palette;
 			memcpy(pal_dest->channel_prec, pal_src->channel_prec, pal_src->num_channels * sizeof(uint8_t) );
 			memcpy(pal_dest->channel_sign, pal_src->channel_sign, pal_src->num_channels * sizeof(bool) );
-
 			pal_dest->component_mapping = new grk_component_mapping_comp[pal_dest->num_channels];
 			memcpy(pal_dest->component_mapping, pal_src->component_mapping,
 									pal_src->num_channels * sizeof(grk_component_mapping_comp));
-
 			memcpy(pal_dest->lut, pal_src->lut, pal_src->num_channels * pal_src->num_entries * sizeof(uint32_t));
 		}
 	}
