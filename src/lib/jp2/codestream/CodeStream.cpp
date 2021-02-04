@@ -874,6 +874,16 @@ bool CodeStream::read_header(grk_header_info  *header_info){
 			m_headerError = true;
 			return false;
 		}
+
+		/* Copy code stream image information to composite image */
+		m_headerImage->copyHeader(getCompositeImage());
+		if (cstr_index) {
+			/*Allocate and initialize some elements of codestrem index*/
+			if (!j2k_allocate_tile_element_cstr_index(this)) {
+				m_headerError = true;
+				return false;
+			}
+		}
 	}
 
 	if (header_info) {
@@ -915,16 +925,6 @@ bool CodeStream::read_header(grk_header_info  *header_info){
 			header_info->comment[i] = m_cp.comment[i];
 			header_info->comment_len[i] = m_cp.comment_len[i];
 			header_info->isBinaryComment[i] = m_cp.isBinaryComment[i];
-		}
-	}
-
-	/* Copy code stream image information to composite image */
-	m_headerImage->copyHeader(getCompositeImage());
-	if (cstr_index) {
-		/*Allocate and initialize some elements of codestrem index*/
-		if (!j2k_allocate_tile_element_cstr_index(this)) {
-			m_headerError = true;
-			return false;
 		}
 	}
 	return true;
