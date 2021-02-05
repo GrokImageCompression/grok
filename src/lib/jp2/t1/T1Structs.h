@@ -165,6 +165,8 @@ public:
 	}
 	~ChunkedArray(void){
 		for (auto &ch : chunks){
+			for (size_t i = 0; i < m_chunkSize; ++i)
+				delete ch.second[i];
 			delete[] ch.second;
 		}
 	}
@@ -172,28 +174,31 @@ public:
 		uint64_t chunkIndex = index / m_chunkSize;
 		uint64_t itemIndex =  index % m_chunkSize;
 
-		if (m_currChunk != nullptr && chunkIndex == m_currChunkIndex){
-			m_blockInitializer->initBlock(m_currChunk + itemIndex, index);
-			return m_currChunk + itemIndex;
+		if (m_currChunk == nullptr || chunkIndex != m_currChunkIndex){
+			m_currChunkIndex = chunkIndex;
+			auto iter = chunks.find(chunkIndex);
+			if (iter != chunks.end()){
+				m_currChunk =  iter->second;
+			} else {
+				m_currChunk = new T*[m_chunkSize];
+				memset(m_currChunk, 0, m_chunkSize * sizeof(T*));
+				chunks[chunkIndex] = m_currChunk;
+			}
 		}
 
-		m_currChunkIndex = chunkIndex;
-		auto iter = chunks.find(chunkIndex);
-		if (iter != chunks.end()){
-			m_currChunk =  iter->second;
-		} else {
-			m_currChunk = new T[m_chunkSize];
-			chunks[chunkIndex] = m_currChunk;
+		auto item = m_currChunk[itemIndex];
+		if (!item){
+			item = new T();
+			m_blockInitializer->initBlock(item, index);
+			m_currChunk[itemIndex] = item;
 		}
-
-		m_blockInitializer->initBlock(m_currChunk + itemIndex, index);
-		return m_currChunk + itemIndex;
+		return item;
 	}
 private:
-	std::map<uint64_t, T*> chunks;
+	std::map<uint64_t, T**> chunks;
 	P *m_blockInitializer;
 	uint64_t m_chunkSize;
-	T* m_currChunk;
+	T** m_currChunk;
 	uint64_t m_currChunkIndex;
 };
 
