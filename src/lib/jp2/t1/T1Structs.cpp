@@ -52,7 +52,6 @@ Layer::Layer() :
 Precinct::Precinct(const grk_rect_u32 &bounds, bool isCompressor, grk_pt cblk_expn) : grk_rect_u32(bounds),
 		precinctIndex(0),
 		impl(new PrecinctImpl(isCompressor, this, cblk_expn)),
-		m_isCompressor(isCompressor),
 		m_cblk_expn(cblk_expn)
 {
 }

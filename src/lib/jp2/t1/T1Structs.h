@@ -241,7 +241,6 @@ struct Precinct : public grk_rect_u32 {
 	uint64_t precinctIndex;
 private:
 	PrecinctImpl *impl;
-	bool m_isCompressor;
 	grk_pt m_cblk_expn;
 	PrecinctImpl* getImpl(void);
 };

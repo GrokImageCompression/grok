@@ -820,6 +820,10 @@ TileProcessor* CodeStream::allocateProcessor(uint16_t tile_index){
 	if (!tileProcessor){
 		tileProcessor = new TileProcessor(this,m_stream);
 		tileProcessor->m_tile_index = tile_index;
+		if (!m_multiTile){
+			delete m_output_image;
+			m_output_image = nullptr;
+		}
 		if (!m_output_image) {
 			m_output_image = new GrkImage();
 			getCompositeImage()->copyHeader(m_output_image);
