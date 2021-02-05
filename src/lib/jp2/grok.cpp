@@ -226,7 +226,9 @@ bool GRK_CALLCONV grk_decompress_tile( grk_codec p_codec,uint16_t tile_index) {
 		auto codec = (grk_codec_private*) p_codec;
 		assert(codec->is_decompressor);
 
-		return codec->m_codeStreamBase->decompress_tile(tile_index);
+		bool rc =  codec->m_codeStreamBase->decompress_tile(tile_index);
+		//rc =  codec->m_codeStreamBase->decompress_tile(tile_index+1);
+		return rc;
 	}
 	return false;
 }

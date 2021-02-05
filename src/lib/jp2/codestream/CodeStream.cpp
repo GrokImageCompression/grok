@@ -1432,6 +1432,14 @@ bool CodeStream::decompress_tile() {
 		}
 
 		tileProcessor = m_tileProcessor;
+		try {
+			if (!decompress_tile_t2(tileProcessor)){
+					GRK_ERROR("Failed to decompress tile %u",
+							tileProcessor->m_tile_index + 1);
+					goto cleanup;
+			}
+		}  catch (DecodeUnknownMarkerAtEndOfTileException &e){
+		}
 		if (!decompress_tile_t2t1(tileProcessor))
 			goto cleanup;
 	} else {
