@@ -103,17 +103,18 @@ void j2k_write_float_to_float64(const void *p_src_data, void *p_dest_data,
 /**************************
  * Read/Write Markers
  *************************/
-bool j2k_add_mhmarker(grk_codestream_index *cstr_index, uint32_t type,
-		uint64_t pos, uint32_t len) {
+bool j2k_add_mhmarker(grk_codestream_index *cstr_index,
+						uint16_t id,
+						uint64_t pos,
+						uint32_t len) {
 	assert(cstr_index != nullptr);
 
 	/* expand the list? */
 	if ((cstr_index->marknum + 1) > cstr_index->maxmarknum) {
 		grk_marker_info *new_marker;
-		cstr_index->maxmarknum = (uint32_t) (100
-				+ (float) cstr_index->maxmarknum);
+		cstr_index->maxmarknum = (uint32_t) (100 + cstr_index->maxmarknum);
 		new_marker = (grk_marker_info*) grk_realloc(cstr_index->marker,
-				cstr_index->maxmarknum * sizeof(grk_marker_info));
+								cstr_index->maxmarknum * sizeof(grk_marker_info));
 		if (!new_marker) {
 			grk_free(cstr_index->marker);
 			cstr_index->marker = nullptr;
@@ -125,10 +126,12 @@ bool j2k_add_mhmarker(grk_codestream_index *cstr_index, uint32_t type,
 		cstr_index->marker = new_marker;
 	}
 
+	auto marker = cstr_index->marker + cstr_index->marknum;
+
 	/* add the marker */
-	cstr_index->marker[cstr_index->marknum].type = (uint16_t) type;
-	cstr_index->marker[cstr_index->marknum].pos = (uint64_t) pos;
-	cstr_index->marker[cstr_index->marknum].len = (uint32_t) len;
+	marker->id = id;
+	marker->pos = pos;
+	marker->len = len;
 	cstr_index->marknum++;
 	return true;
 }

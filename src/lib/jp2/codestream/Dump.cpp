@@ -147,7 +147,7 @@ static void j2k_dump_MH_index(CodeStream *codeStream, FILE *out_stream) {
 	if (cstr_index->marker) {
 		for (uint32_t it_marker = 0; it_marker < cstr_index->marknum; it_marker++) {
 			fprintf(out_stream, "\t\t type=%#x, pos=%" PRIu64", len=%d\n",
-					cstr_index->marker[it_marker].type,
+					cstr_index->marker[it_marker].id,
 					cstr_index->marker[it_marker].pos,
 					cstr_index->marker[it_marker].len);
 
@@ -195,7 +195,7 @@ static void j2k_dump_MH_index(CodeStream *codeStream, FILE *out_stream) {
 							it_marker++) {
 						ss.clear();
 						ss << "\t\t type="
-								<< cstr_index->tile_index[i].marker[it_marker].type
+								<< cstr_index->tile_index[i].marker[it_marker].id
 								<< "," << " pos="
 								<< cstr_index->tile_index[i].marker[it_marker].pos
 								<< "," << " len="

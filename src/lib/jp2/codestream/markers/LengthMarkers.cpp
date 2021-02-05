@@ -219,14 +219,13 @@ bool TileLengthMarkers::writeEnd(void) {
 
 bool TileLengthMarkers::addToIndex(uint16_t tileno,
 									grk_codestream_index *codestreamIndex,
-									uint16_t type,
+									uint16_t id,
 									uint64_t pos,
 									uint32_t len) {
 	assert(codestreamIndex != nullptr);
 	assert(codestreamIndex->tile_index != nullptr);
 	auto tileIndex = codestreamIndex->tile_index + tileno;
 	auto marknum = tileIndex->marknum;
-
 	if (marknum + 1 > tileIndex->maxmarknum) {
 		tileIndex->maxmarknum += 100U;
 		auto new_marker = (grk_marker_info*) grk_realloc(tileIndex->marker,
@@ -241,12 +240,17 @@ bool TileLengthMarkers::addToIndex(uint16_t tileno,
 		}
 		tileIndex->marker = new_marker;
 	}
-	tileIndex->marker[marknum].type = type;
-	tileIndex->marker[marknum].pos = pos;
-	tileIndex->marker[marknum].len =len;
+	auto tileMarker = tileIndex->marker + marknum;
+	// avoid duplicates
+	if (tileMarker->id != 0)
+		return true;
+
+	tileMarker->id = id;
+	tileMarker->pos = pos;
+	tileMarker->len =len;
 	tileIndex->marknum++;
 
-	if (type == J2K_MS_SOT) {
+	if (id == J2K_MS_SOT) {
 		uint32_t current_tile_part = tileIndex->current_tpsno;
 		if (tileIndex->tp_index)
 			tileIndex->tp_index[current_tile_part].start_pos =	pos;

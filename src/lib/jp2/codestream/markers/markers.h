@@ -60,12 +60,14 @@ void j2k_write_float_to_float64(const void *p_src_data,
 /**
  Add main header marker information
  @param cstr_index    Codestream information structure
- @param type         marker type
+ @param id           marker id
  @param pos          byte offset of marker segment
  @param len          length of marker segment
  */
-bool j2k_add_mhmarker( grk_codestream_index  *cstr_index, uint32_t type,
-		uint64_t pos, uint32_t len);
+bool j2k_add_mhmarker( grk_codestream_index  *cstr_index,
+						uint16_t id,
+						uint64_t pos,
+						uint32_t len);
 
 /**
  * Writes the SOC marker (Start Of Codestream)

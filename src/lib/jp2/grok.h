@@ -968,8 +968,8 @@ typedef struct _grk_packet_info {
  * Marker info
  * */
 typedef struct _grk_marker_info {
-	/** marker type */
-	uint16_t type;
+	/** marker id */
+	uint16_t id;
 	/** position in code stream */
 	uint64_t pos;
 	/** length, marker value included */
