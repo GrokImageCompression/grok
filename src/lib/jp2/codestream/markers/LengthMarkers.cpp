@@ -148,6 +148,7 @@ bool TileLengthMarkers::skipTo(uint16_t skipTileIndex, BufferedStream *stream,ui
 	assert(stream);
 	if (!stream->seek(firstSotPos))
 		return false;
+	getInit();
 	auto tl = getNext();
 	uint16_t tileNumber = 0;
 	int64_t skip = 0;

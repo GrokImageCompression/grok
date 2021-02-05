@@ -1110,9 +1110,6 @@ bool CodeStream::read_header_procedure(void) {
 	// we don't include the SOC marker, therefore subtract 2
 	if (cstr_index)
 		cstr_index->main_head_end = (uint32_t) m_stream->tell() - 2;
-	// prepare TLM marker reading
-	if (m_cp.tlm_markers)
-		m_cp.tlm_markers->getInit();
 
 	/* Next step: read a tile-part header */
 	m_decompressor.setState(J2K_DEC_STATE_TPH_SOT);
