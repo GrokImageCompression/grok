@@ -49,8 +49,11 @@ void T1CompressScheduler::scheduleCompress(TileCodingParams *tcp,
 			for (bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 				auto band = &res->band[bandIndex];
 				for (auto prc : band->precincts){
+					auto nominalBlockSize = prc->getNominalBlockSize();
 					for (uint64_t cblkno = 0; cblkno < prc->getNumCblks();	++cblkno) {
-						auto cblk = prc->getCompressedBlockPtr() + cblkno;
+						auto cblk = prc->getCompressedBlockPtr(cblkno);
+						if (!cblk->alloc_data(nominalBlockSize))
+							continue;
 						auto block = new CompressBlockExec();
 						block->tile = tile;
 						block->doRateControl = needsRateControl;

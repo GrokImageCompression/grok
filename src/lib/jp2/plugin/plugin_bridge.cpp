@@ -43,7 +43,7 @@ void decompress_synch_plugin_with_host(TileProcessor *tcd) {
 						assert(plugin_prc->numBlocks == prc->getNumCblks());
 						for (uint64_t cblkno = 0; cblkno < prc->getNumCblks();
 								cblkno++) {
-							auto cblk = &prc->getDecompressedBlockPtr()[cblkno];
+							auto cblk = prc->getDecompressedBlockPtr(cblkno);
 							if (!cblk->numSegments)
 								continue;
 							// sanity check
@@ -119,7 +119,7 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tile *p_tile) {
 						return false;
 					}
 					for (uint64_t cblkno = 0; cblkno < numBlocks; ++cblkno) {
-						auto cblk = precinct->getDecompressedBlockPtr() + cblkno;
+						auto cblk = precinct->getDecompressedBlockPtr(cblkno);
 						auto plugin_cblk =
 								plugin_precinct->blocks[cblkno];
 						if (cblk->x0 != plugin_cblk->x0
@@ -262,7 +262,7 @@ void set_context_stream(TileProcessor *p_tileProcessor) {
 				for (auto prc : band->precincts){
 					for (uint64_t cblkno = 0; cblkno < prc->getNumCblks();
 							cblkno++) {
-						auto cblk = &prc->getCompressedBlockPtr()[cblkno];
+						auto cblk = prc->getCompressedBlockPtr(cblkno);
 						if (p_tileProcessor->current_plugin_tile
 								&& p_tileProcessor->current_plugin_tile->tileComponents) {
 							auto comp =

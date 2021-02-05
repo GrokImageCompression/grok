@@ -106,7 +106,7 @@ void TileProcessor::makelayer_feasible(uint32_t layno, uint16_t thresh,
 				auto band = res->band + bandIndex;
 	            for (auto prc : band->precincts) {
 					for (cblkno = 0; cblkno < prc->getNumCblks(); cblkno++) {
-						auto cblk = prc->getCompressedBlockPtr() + cblkno;
+						auto cblk = prc->getCompressedBlockPtr(cblkno);
 						auto layer = cblk->layers + layno;
 						uint32_t cumulative_included_passes_in_block;
 
@@ -200,7 +200,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 				for (auto prc : band->precincts) {
 					for (uint64_t cblkno = 0; cblkno < prc->getNumCblks();
 							cblkno++) {
-						auto cblk = &prc->getCompressedBlockPtr()[cblkno];
+						auto cblk = prc->getCompressedBlockPtr(cblkno);
 						uint32_t numPix = (uint32_t)cblk->area();
 						if (!(state & GRK_PLUGIN_STATE_PRE_TR1)) {
 							compress_synch_with_plugin(this, compno, resno,
@@ -335,7 +335,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 				auto band = &res->band[bandIndex];
 				for (auto prc : band->precincts){
 					for (cblkno = 0; cblkno < prc->getNumCblks(); cblkno++) {
-						auto cblk = &prc->getCompressedBlockPtr()[cblkno];
+						auto cblk = prc->getCompressedBlockPtr(cblkno);
 						uint32_t numPix = (uint32_t)cblk->area();
 						if (!(state & GRK_PLUGIN_STATE_PRE_TR1)) {
 							compress_synch_with_plugin(this, compno, resno,
@@ -477,7 +477,7 @@ void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 				auto band = res->band + bandIndex;
 				for (auto prc : band->precincts){
 					for (uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++) {
-						auto cblk = prc->getCompressedBlockPtr() + cblkno;
+						auto cblk = prc->getCompressedBlockPtr(cblkno);
 						auto layer = cblk->layers + layno;
 						uint32_t included_blk_passes;
 
@@ -550,7 +550,7 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 				auto band = res->band + bandIndex;
 				for (auto prc : band->precincts){
 					for (uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++) {
-						auto cblk = prc->getCompressedBlockPtr() + cblkno;
+						auto cblk = prc->getCompressedBlockPtr(cblkno);
 						auto layer = cblk->layers + layno;
 						if (layno == 0)
 							prepareBlockForFirstLayer(cblk);

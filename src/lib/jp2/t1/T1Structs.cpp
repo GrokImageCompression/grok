@@ -49,130 +49,108 @@ Layer::Layer() :
 		numpasses(0), len(0), disto(0), data(nullptr) {
 }
 
-Precinct::Precinct() :
+Precinct::Precinct(const grk_rect_u32 &bounds, bool isCompressor, grk_pt cblk_expn) : grk_rect_u32(bounds),
 		precinctIndex(0),
-		impl(nullptr),
-		initialized(false)
+		impl(new PrecinctImpl(isCompressor, this, cblk_expn)),
+		m_isCompressor(isCompressor),
+		m_cblk_expn(cblk_expn)
 {
 }
 Precinct::~Precinct(){
 	delete impl;
 }
 
-bool Precinct::init(bool isCompressor,
-					grk_pt cblk_expn,
-					grk_plugin_tile *current_plugin_tile){
-	if (initialized)
-		return true;
-	impl = new PrecinctImpl();
-	initialized =  impl->init(isCompressor,this,cblk_expn,current_plugin_tile);
-
-	return initialized;
-
-}
-
 void Precinct::deleteTagTrees() {
-	if (impl)
-		impl->deleteTagTrees();
+	impl->deleteTagTrees();
 }
 
 void Precinct::initTagTrees() {
-	if (impl)
-		impl->initTagTrees();
+	impl->initTagTrees();
+}
+TagTree* Precinct::getInclTree(void){
+	return  impl->incltree;
+}
+TagTree* Precinct::getImsbTree(void){
+	return  impl->imsbtree;
 }
 
 uint32_t Precinct::getCblkGridwidth(void){
-	return impl ? impl->cblk_grid_width : 0;
+	return impl->m_cblk_grid.width();
 }
 uint32_t Precinct::getCblkGridHeight(void){
-	return impl ? impl->cblk_grid_height : 0;
-}
-uint64_t Precinct::getNumCblks(void){
-	return impl ? (uint64_t)impl->cblk_grid_width * impl->cblk_grid_height : 0;
-}
-CompressCodeblock* Precinct::getCompressedBlockPtr(void){
-	return impl ? impl->enc : nullptr;
-}
-DecompressCodeblock* Precinct::getDecompressedBlockPtr(void){
-	return impl ? impl->dec : nullptr;
-}
-TagTree* Precinct::getInclTree(void){
-	return impl ? impl->incltree : nullptr;
-}
-TagTree* Precinct::getImsbTree(void){
-	return impl ? impl->imsbtree : nullptr;
+	return impl->m_cblk_grid.height();
 }
 
-PrecinctImpl::PrecinctImpl() :
-		cblk_grid_width(0), cblk_grid_height(0),
-		enc(nullptr), dec(nullptr),
-		incltree(nullptr), imsbtree(nullptr) {
+uint32_t Precinct::getNominalBlockSize(void){
+	return (uint32_t)(1 << impl->m_cblk_expn.x) * (1 << impl->m_cblk_expn.y);
+}
+
+PrecinctImpl* Precinct::getImpl(void){
+	impl->initBlocks(this);
+	return impl;
+}
+uint64_t Precinct::getNumCblks(void){
+	return impl->m_cblk_grid.area();
+}
+CompressCodeblock* Precinct::getCompressedBlockPtr(uint64_t cblkno){
+	return getImpl()->enc->get(cblkno);
+}
+DecompressCodeblock* Precinct::getDecompressedBlockPtr(uint64_t cblkno){
+	return  getImpl()->dec->get(cblkno);
+}
+grk_pt Precinct::getCblkExpn(void){
+	return m_cblk_expn;
+}
+grk_rect_u32 Precinct::getCblkGrid(void){
+	return impl->m_cblk_grid;
+}
+PrecinctImpl::PrecinctImpl(bool isCompressor, grk_rect_u32 *bounds,grk_pt cblk_expn) :
+		enc(nullptr),
+		dec(nullptr),
+		incltree(nullptr),
+		imsbtree(nullptr),
+		m_bounds(*bounds),
+		m_cblk_expn(cblk_expn),
+		m_isCompressor(isCompressor)
+{
+	m_cblk_grid = grk_rect_u32(uint_floordivpow2(bounds->x0,cblk_expn.x),
+									uint_floordivpow2(bounds->y0,cblk_expn.y),
+									ceildivpow2<uint32_t>(bounds->x1,cblk_expn.x),
+									ceildivpow2<uint32_t>(bounds->y1,cblk_expn.y));
 }
 PrecinctImpl::~PrecinctImpl(){
 	deleteTagTrees();
-	delete[] enc;
-	delete[] dec;
+	delete enc;
+	delete dec;
 }
-
-bool PrecinctImpl::init(bool isCompressor,
-					grk_rect_u32 *bounds,
-					grk_pt cblk_expn,
-					grk_plugin_tile *current_plugin_tile){
-
-
-	auto cblk_grid = grk_rect_u32(
-			uint_floordivpow2(bounds->x0,cblk_expn.x),
-			uint_floordivpow2(bounds->y0,cblk_expn.y),
-			ceildivpow2<uint32_t>(bounds->x1,cblk_expn.x),
-			ceildivpow2<uint32_t>(bounds->y1,cblk_expn.y));
-
-
-	uint32_t state = grk_plugin_get_debug_state();
-	uint32_t nominalBlockSize = (uint32_t)(1 << cblk_expn.x) * (1 << cblk_expn.y);
-	cblk_grid_width 	= cblk_grid.width();
-	cblk_grid_height 	= cblk_grid.height();
-
-
-	uint64_t nb_code_blocks = cblk_grid.area();
-	if (!nb_code_blocks)
+bool PrecinctImpl::initBlocks(grk_rect_u32 *bounds){
+	if ((m_isCompressor && enc) || (!m_isCompressor && dec))
 		return true;
 
-	if (isCompressor)
-		enc = new CompressCodeblock[nb_code_blocks];
+	m_bounds = *bounds;
+	auto numBlocks = m_cblk_grid.area();
+	if (!numBlocks)
+		return true;
+	if (m_isCompressor)
+		enc =  new ChunkedArray<CompressCodeblock, PrecinctImpl>(this,numBlocks);
 	else
-		dec = new DecompressCodeblock[nb_code_blocks];
+		dec =  new ChunkedArray<DecompressCodeblock, PrecinctImpl>(this,numBlocks);
 	initTagTrees();
 
-	for (uint64_t cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
-		auto cblk_start = grk_pt(	(cblk_grid.x0  + (uint32_t) (cblkno % cblk_grid_width)) << cblk_expn.x,
-									(cblk_grid.y0  + (uint32_t) (cblkno / cblk_grid_width)) << cblk_expn.y);
-		auto cblk_bounds = grk_rect_u32(cblk_start.x,
-										cblk_start.y,
-										cblk_start.x + (1 << cblk_expn.x),
-										cblk_start.y + (1 << cblk_expn.y));
-
-		auto cblk_dims = (isCompressor) ?
-									(grk_rect_u32*)(enc + cblkno) :
-									(grk_rect_u32*)(dec + cblkno);
-		if (isCompressor) {
-			auto code_block = enc + cblkno;
-			if (!code_block->alloc())
-				return false;
-			if (!current_plugin_tile
-					|| (state & GRK_PLUGIN_STATE_DEBUG)) {
-				if (!code_block->alloc_data(nominalBlockSize))
-					return false;
-			}
-		} else {
-			auto code_block = dec + cblkno;
-			if (!current_plugin_tile
-					|| (state & GRK_PLUGIN_STATE_DEBUG)) {
-				if (!code_block->alloc())
-					return false;
-			}
-		}
-		*cblk_dims = cblk_bounds.intersection(bounds);
-	}
+	return true;
+}
+template<typename T> bool PrecinctImpl::initBlock(T* block, uint64_t cblkno){
+	if (block->non_empty())
+		return true;
+	if (!block->alloc())
+		return false;
+	auto cblk_start = grk_pt(	(m_cblk_grid.x0  + (uint32_t) (cblkno % m_cblk_grid.width())) << m_cblk_expn.x,
+								(m_cblk_grid.y0  + (uint32_t) (cblkno / m_cblk_grid.width())) << m_cblk_expn.y);
+	auto cblk_bounds = grk_rect_u32(cblk_start.x,
+									cblk_start.y,
+									cblk_start.x + (1 << m_cblk_expn.x),
+									cblk_start.y + (1 << m_cblk_expn.y));
+	(*(grk_rect_u32*)block) = cblk_bounds.intersection(&m_bounds);
 
 	return true;
 }
@@ -189,15 +167,17 @@ void PrecinctImpl::initTagTrees() {
 	// if cw == 0 or ch == 0,
 	// then the precinct has no code blocks, therefore
 	// no need for inclusion and msb tag trees
-	if (cblk_grid_width > 0 && cblk_grid_height > 0) {
+	auto grid_width = m_cblk_grid.width();
+	auto grid_height = m_cblk_grid.height();
+	if (grid_width > 0 && grid_height > 0) {
 		if (!incltree) {
 			try {
-				incltree = new TagTree(cblk_grid_width, cblk_grid_height);
+				incltree = new TagTree(grid_width, grid_height);
 			} catch (std::exception &e) {
 				GRK_WARN("No incltree created.");
 			}
 		} else {
-			if (!incltree->init(cblk_grid_width, cblk_grid_height)) {
+			if (!incltree->init(grid_width, grid_height)) {
 				GRK_WARN("Failed to re-initialize incltree.");
 				delete incltree;
 				incltree = nullptr;
@@ -206,12 +186,12 @@ void PrecinctImpl::initTagTrees() {
 
 		if (!imsbtree) {
 			try {
-				imsbtree = new TagTree(cblk_grid_width, cblk_grid_height);
+				imsbtree = new TagTree(grid_width, grid_height);
 			} catch (std::exception &e) {
 				GRK_WARN("No imsbtree created.");
 			}
 		} else {
-			if (!imsbtree->init(cblk_grid_width, cblk_grid_height)) {
+			if (!imsbtree->init(grid_width, grid_height)) {
 				GRK_WARN("Failed to re-initialize imsbtree.");
 				delete imsbtree;
 				imsbtree = nullptr;
@@ -312,7 +292,6 @@ void CompressCodeblock::clear(){
 }
 bool CompressCodeblock::alloc() {
 	if (!layers) {
-		/* no memset since data */
 		layers = (Layer*) grk_calloc(100, sizeof(Layer));
 		if (!layers)
 			return false;
@@ -505,8 +484,7 @@ Precinct* Subband::createPrecinct(bool isCompressor,
 					grk_pt precinct_start,
 					grk_pt precinct_expn,
 					uint32_t pw,
-					grk_pt cblk_expn,
-					grk_plugin_tile *current_plugin_tile){
+					grk_pt cblk_expn){
 
 	auto temp = precinctMap.find(precinctIndex);
 	if (temp != precinctMap.end())
@@ -520,16 +498,7 @@ Precinct* Subband::createPrecinct(bool isCompressor,
 			band_precinct_start.x + (1 << precinct_expn.x),
 			band_precinct_start.y + (1 << precinct_expn.y)).intersection(this);
 
-	auto current_precinct = new Precinct();
-	current_precinct->set_rect(precinct_dim);
-
-	if (isCompressor) {
-		if (!current_precinct->init(isCompressor,cblk_expn,current_plugin_tile)){
-			delete current_precinct;
-			return nullptr;
-		}
-	}
-
+	auto current_precinct = new Precinct(precinct_dim, isCompressor,cblk_expn);
 	current_precinct->precinctIndex = precinctIndex;
 	precincts.push_back(current_precinct);
 	precinctMap[precinctIndex] = precincts.size()-1;
@@ -595,8 +564,7 @@ bool Resolution::init(bool isCompressor,
 									precinct_start,
 									precinct_expn,
 									pw,
-									cblk_expn,
-									current_plugin_tile))
+									cblk_expn))
 					return false;
 
 			}

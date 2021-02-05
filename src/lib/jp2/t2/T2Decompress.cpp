@@ -29,8 +29,9 @@ T2Decompress::T2Decompress(TileProcessor *tileProc) :
 		tileProcessor(tileProc) {
 }
 
-bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
-		uint64_t *p_data_read) {
+bool T2Decompress::decompress_packets(uint16_t tile_no,
+										ChunkBuffer *src_buf,
+										uint64_t *p_data_read) {
 
 	auto cp = tileProcessor->m_cp;
 	auto image = tileProcessor->image;
@@ -78,8 +79,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 									res->precinct_start,
 									res->precinct_expn,
 									res->pw,
-									res->cblk_expn,
-									res->current_plugin_tile))
+									res->cblk_expn))
 					return false;
 
 			}
@@ -148,8 +148,10 @@ bool T2Decompress::decompress_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 }
 
 
-bool T2Decompress::decompress_packet(TileCodingParams *p_tcp, const PacketIter *p_pi, ChunkBuffer *src_buf,
-		uint64_t *p_data_read) {
+bool T2Decompress::decompress_packet(TileCodingParams *p_tcp,
+									const PacketIter *p_pi,
+									ChunkBuffer *src_buf,
+									uint64_t *p_data_read) {
 	auto p_tile = tileProcessor->tile;
 	auto res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
 	bool read_data;
@@ -177,8 +179,7 @@ void T2Decompress::init_seg(DecompressCodeblock *cblk, uint32_t index, uint8_t c
 	uint32_t nb_segs = index + 1;
 
 	if (nb_segs > cblk->numSegmentsAllocated) {
-		auto new_segs = new Segment[cblk->numSegmentsAllocated
-				+ cblk->numSegmentsAllocated];
+		auto new_segs = new Segment[cblk->numSegmentsAllocated	+ cblk->numSegmentsAllocated];
 		for (uint32_t i = 0; i < cblk->numSegmentsAllocated; ++i)
 			new_segs[i] = cblk->segs[i];
 		cblk->numSegmentsAllocated += default_numbers_segments;
@@ -198,8 +199,7 @@ void T2Decompress::init_seg(DecompressCodeblock *cblk, uint32_t index, uint8_t c
 		} else {
 			auto last_seg = seg - 1;
 			seg->maxpasses =
-					((last_seg->maxpasses == 1) || (last_seg->maxpasses == 10)) ?
-							2 : 1;
+					((last_seg->maxpasses == 1) || (last_seg->maxpasses == 10)) ?	2 : 1;
 		}
 	} else {
 		seg->maxpasses = max_passes_per_segment;
@@ -207,40 +207,17 @@ void T2Decompress::init_seg(DecompressCodeblock *cblk, uint32_t index, uint8_t c
 }
 
 
-bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, const PacketIter *p_pi,
-		bool *p_is_data_present, ChunkBuffer *src_buf, uint64_t *p_data_read) {
+bool T2Decompress::read_packet_header(TileCodingParams *p_tcp,
+									const PacketIter *p_pi,
+									bool *p_is_data_present,
+									ChunkBuffer *src_buf,
+									uint64_t *p_data_read) {
 	auto p_tile = tileProcessor->tile;
 	auto res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
 	auto p_src_data = src_buf->get_cur_chunk_ptr();
 	uint64_t available_bytes = src_buf->get_cur_chunk_len();
 	auto active_src = p_src_data;
 
-	if (p_pi->layno == 0) {
-		/* reset tagtrees */
-		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-			auto band = res->band + bandIndex;
-			if (band->isEmpty())
-				continue;
-			auto prc = band->getPrecinct(p_pi->precinctIndex);
-			if (!prc)
-				continue;
-			if (p_pi->precinctIndex >= (band->numPrecincts)) {
-				GRK_ERROR("Invalid precinct");
-				return false;
-			}
-			prc->init(false, res->cblk_expn, tileProcessor->current_plugin_tile);
-			if (prc->getInclTree())
-				prc->getInclTree()->reset();
-			if (prc->getImsbTree())
-				prc->getImsbTree()->reset();
-			for (uint64_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno) {
-				auto cblk = prc->getDecompressedBlockPtr() + cblkno;
-				cblk->numSegments = 0;
-			}
-		}
-	}
-
-	/* SOP markers */
 	if (p_tcp->csty & J2K_CP_CSTY_SOP) {
 		if (available_bytes < 6)
 			throw TruncatedPacketHeaderException();
@@ -248,8 +225,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, const PacketIter 
 		if (marker != J2K_MS_SOP) {
 			GRK_WARN("Expected SOP marker, but found 0x%x", marker);
 		} else {
-			uint16_t packno = (uint16_t) (((uint16_t) active_src[4] << 8)
-					| active_src[5]);
+			uint16_t packno = (uint16_t) (((uint16_t) active_src[4] << 8) | active_src[5]);
 			if (packno != (p_tile->packno % 0x10000)) {
 				GRK_ERROR("SOP marker packet counter %u does not match expected counter %u",
 						packno, p_tile->packno);
@@ -259,13 +235,6 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, const PacketIter 
 			available_bytes -= 6;
 		}
 	}
-
-	/*
-	 When the marker PPT/PPM is used the packet header are store in PPT/PPM marker
-	 This part deal with this characteristic
-	 step 1: Read packet header in the saved structure
-	 step 2: Return to code stream for decoding
-	 */
 	uint8_t *header_data = nullptr;
 	uint8_t **header_data_start = nullptr;
 	size_t *modified_length_ptr = nullptr;
@@ -293,7 +262,6 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, const PacketIter 
 		remaining_length = available_bytes;
 		modified_length_ptr = &remaining_length;
 	}
-
 	if (*modified_length_ptr==0)
 		throw TruncatedPacketHeaderException();
 
@@ -313,33 +281,24 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, const PacketIter 
 					continue;
 				for (uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++) {
 					uint32_t included = 0, increment = 0;
-					auto cblk = prc->getDecompressedBlockPtr() + cblkno;
+					auto cblk = prc->getDecompressedBlockPtr(cblkno);
 
 					/* if cblk not yet included before --> inclusion tagtree */
 					if (!cblk->numSegments) {
 						uint64_t value;
-						prc->getInclTree()->decodeValue(bio.get(), cblkno,
-								p_pi->layno + 1, &value);
-
-						if (value != tag_tree_uninitialized_node_value
-								&& value != p_pi->layno) {
+						prc->getInclTree()->decodeValue(bio.get(), cblkno, p_pi->layno + 1, &value);
+						if (value != tag_tree_uninitialized_node_value	&& value != p_pi->layno) {
 							GRK_WARN("Tile number: %u",tileProcessor->m_tile_index+1);
 							std::string msg =
-									"Illegal inclusion tag tree found when decoding packet header.\n";
-							msg +=
-									"This problem can occur if empty packets are used (i.e., packets whose first header\n";
-							msg +=
-									"bit is 0) and the value coded by the inclusion tag tree in a subsequent packet\n";
-							msg +=
-									"is not exactly equal to the index of the quality layer in which each code-block\n";
-							msg +=
-									"makes its first contribution.  Such an error may occur from a\n";
-							msg +=
-									"mis-interpretation of the standard.  The problem may also occur as a result of\n";
-							msg += "a corrupted code-stream";
+								  "Illegal inclusion tag tree found when decoding packet header.\n";
+							msg +="This problem can occur if empty packets are used (i.e., packets whose first header\n";
+							msg +="bit is 0) and the value coded by the inclusion tag tree in a subsequent packet\n";
+							msg +="is not exactly equal to the index of the quality layer in which each code-block\n";
+							msg +="makes its first contribution.  Such an error may occur from a\n";
+							msg +="mis-interpretation of the standard.  The problem may also occur as a result of\n";
+							msg +="a corrupted code-stream";
 							GRK_WARN("%s", msg.c_str());
 							tileProcessor->m_corrupt_packet = true;
-
 						}
 		#ifdef DEBUG_LOSSLESS_T2
 						 cblk->included = value;
@@ -353,14 +312,12 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, const PacketIter 
 						 cblk->included = included;
 		#endif
 					}
-
 					/* if cblk not included */
 					if (!included) {
 						cblk->numPassesInPacket = 0;
 						//GRK_INFO("included=%u ", included);
 						continue;
 					}
-
 					/* if cblk not yet included --> zero-bitplane tagtree */
 					if (!cblk->numSegments) {
 						uint32_t K_msbs = 0;
@@ -368,12 +325,10 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, const PacketIter 
 
 						// see Taubman + Marcellin page 388
 						// loop below stops at (# of missing bit planes  + 1)
-						prc->getImsbTree()->decompress(bio.get(), cblkno,
-												K_msbs, &value);
+						prc->getImsbTree()->decompress(bio.get(), cblkno,K_msbs, &value);
 						while (!value) {
 							++K_msbs;
-							prc->getImsbTree()->decompress(bio.get(), cblkno,
-													K_msbs, &value);
+							prc->getImsbTree()->decompress(bio.get(), cblkno,K_msbs, &value);
 						}
 						assert(K_msbs >= 1);
 						K_msbs--;
@@ -388,8 +343,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, const PacketIter 
 							cblk->numbps = band->numbps - K_msbs;
 						}
 						// BIBO analysis gives sanity check on number of bit planes
-						if (cblk->numbps
-								> max_precision_jpeg_2000 + GRK_J2K_MAXRLVLS * 5) {
+						if (cblk->numbps > max_precision_jpeg_2000 + GRK_J2K_MAXRLVLS * 5) {
 							GRK_WARN("Number of bit planes %u is impossibly large.",
 									cblk->numbps);
 							return false;
@@ -409,8 +363,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, const PacketIter 
 						init_seg(cblk, segno,p_tcp->tccps[p_pi->compno].cblk_sty, true);
 					} else {
 						segno = cblk->numSegments - 1;
-						if (cblk->segs[segno].numpasses
-								== cblk->segs[segno].maxpasses) {
+						if (cblk->segs[segno].numpasses	== cblk->segs[segno].maxpasses) {
 							++segno;
 							init_seg(cblk, segno,p_tcp->tccps[p_pi->compno].cblk_sty, false);
 						}
@@ -420,8 +373,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, const PacketIter 
 						auto seg = cblk->segs + segno;
 						/* sanity check when there is no mode switch */
 						if (seg->maxpasses == max_passes_per_segment) {
-							if (blockPassesInPacket
-									> (int32_t) max_passes_per_segment) {
+							if (blockPassesInPacket	> (int32_t) max_passes_per_segment) {
 								GRK_WARN("Number of code block passes (%u) in packet is suspiciously large.",
 										blockPassesInPacket);
 								// TODO - we are truncating the number of passes at an arbitrary value of
@@ -438,8 +390,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, const PacketIter 
 									(int32_t) (seg->maxpasses - seg->numpasses),
 									blockPassesInPacket);
 						}
-						uint32_t bits_to_read = cblk->numlenbits
-								+ floorlog2<uint32_t>(seg->numPassesInPacket);
+						uint32_t bits_to_read = cblk->numlenbits+ floorlog2<uint32_t>(seg->numPassesInPacket);
 						if (bits_to_read > 32) {
 							GRK_ERROR("read_packet_header: too many bits in segment length ");
 							return false;
@@ -464,18 +415,15 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, const PacketIter 
 				}
 			}
 		}
-
 		bio->inalign();
 		header_data += bio->numbytes();
-
 	} catch (InvalidMarkerException &ex){
 		return false;
 	}
 
 	/* EPH markers */
 	if (p_tcp->csty & J2K_CP_CSTY_EPH) {
-		if ((*modified_length_ptr
-				- (uint32_t) (header_data - *header_data_start)) < 2U)
+		if ((*modified_length_ptr	- (uint32_t) (header_data - *header_data_start)) < 2U)
 			//GRK_WARN("Not enough space for expected EPH marker");
 			throw TruncatedPacketHeaderException();
 		uint16_t marker = (uint16_t)(((uint16_t)(*header_data) << 8) | (uint16_t)(*(header_data + 1)));
@@ -502,15 +450,17 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp, const PacketIter 
 	return true;
 }
 
-bool T2Decompress::read_packet_data(Resolution *res, const PacketIter *p_pi,
-		ChunkBuffer *src_buf, uint64_t *p_data_read) {
+bool T2Decompress::read_packet_data(Resolution *res,
+									const PacketIter *p_pi,
+									ChunkBuffer *src_buf,
+									uint64_t *p_data_read) {
 	for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 		auto band = res->band + bandIndex;
 		auto prc = band->getPrecinct(p_pi->precinctIndex);
 		if (!prc)
 			continue;
 		for (uint64_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno) {
-			auto cblk = prc->getDecompressedBlockPtr() + cblkno;
+			auto cblk = prc->getDecompressedBlockPtr(cblkno);
 			if (!cblk->numPassesInPacket) {
 				++cblk;
 				continue;
@@ -580,8 +530,10 @@ bool T2Decompress::read_packet_data(Resolution *res, const PacketIter *p_pi,
 
 	return true;
 }
-bool T2Decompress::skip_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkBuffer *src_buf,
-		uint64_t *p_data_read) {
+bool T2Decompress::skip_packet(TileCodingParams *p_tcp,
+								PacketIter *p_pi,
+								ChunkBuffer *src_buf,
+								uint64_t *p_data_read) {
 	uint64_t max_length = (uint64_t) src_buf->get_cur_chunk_len();
 	auto p_tile = tileProcessor->tile;
 
@@ -608,8 +560,10 @@ bool T2Decompress::skip_packet(TileCodingParams *p_tcp, PacketIter *p_pi, ChunkB
 	return true;
 }
 
-bool T2Decompress::skip_packet_data(Resolution *res, PacketIter *p_pi,
-		uint64_t *p_data_read, uint64_t max_length) {
+bool T2Decompress::skip_packet_data(Resolution *res,
+									PacketIter *p_pi,
+									uint64_t *p_data_read,
+									uint64_t max_length) {
 	*p_data_read = 0;
 	for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 		if (max_length - *p_data_read == 0)
@@ -624,7 +578,7 @@ bool T2Decompress::skip_packet_data(Resolution *res, PacketIter *p_pi,
 		for (uint64_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno) {
 			if (max_length - *p_data_read == 0)
 				return true;
-			auto cblk = prc->getDecompressedBlockPtr() + cblkno;
+			auto cblk = prc->getDecompressedBlockPtr(cblkno);
 			if (!cblk->numPassesInPacket) {
 				/* nothing to do */
 				++cblk;

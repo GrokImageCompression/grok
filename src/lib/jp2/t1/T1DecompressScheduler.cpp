@@ -47,7 +47,7 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent *tilec, Tile
 					continue;
 				}
 				for (uint64_t cblkno = 0; cblkno < precinct->getNumCblks();	++cblkno) {
-					auto cblk = precinct->getDecompressedBlockPtr() + cblkno;
+					auto cblk = precinct->getDecompressedBlockPtr(cblkno);
 					if (tilec->subbandIntersectsAOI(resno,
 													band->orientation,
 													cblk)){

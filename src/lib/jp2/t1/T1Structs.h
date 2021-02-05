@@ -154,47 +154,91 @@ struct DecompressCodeblock: public Codeblock {
 
 };
 
+const size_t kChunkSize = 1024;
+template <typename T, typename P> class ChunkedArray{
+public:
+	ChunkedArray(P *blockInitializer, uint64_t maxChunkSize) : m_blockInitializer(blockInitializer),
+																m_chunkSize(std::min<uint64_t>(maxChunkSize, kChunkSize)),
+																m_currChunk(nullptr),
+																m_currChunkIndex(0)
+	{
+	}
+	~ChunkedArray(void){
+		for (auto &ch : chunks){
+			delete[] ch.second;
+		}
+	}
+	T* get(uint64_t index){
+		uint64_t chunkIndex = index / m_chunkSize;
+		uint64_t itemIndex =  index % m_chunkSize;
+
+		if (m_currChunk != nullptr && chunkIndex == m_currChunkIndex){
+			m_blockInitializer->initBlock(m_currChunk + itemIndex, index);
+			return m_currChunk + itemIndex;
+		}
+
+		m_currChunkIndex = chunkIndex;
+		auto iter = chunks.find(chunkIndex);
+		if (iter != chunks.end()){
+			m_currChunk =  iter->second;
+		} else {
+			m_currChunk = new T[m_chunkSize];
+			chunks[chunkIndex] = m_currChunk;
+		}
+
+		m_blockInitializer->initBlock(m_currChunk + itemIndex, index);
+		return m_currChunk + itemIndex;
+	}
+private:
+	std::map<uint64_t, T*> chunks;
+	P *m_blockInitializer;
+	uint64_t m_chunkSize;
+	T* m_currChunk;
+	uint64_t m_currChunkIndex;
+};
+
+
 struct PrecinctImpl {
-	PrecinctImpl();
+	PrecinctImpl(bool isCompressor, grk_rect_u32 *bounds,grk_pt cblk_expn);
 	~PrecinctImpl();
 	void initTagTrees();
 	void deleteTagTrees();
-	bool init(bool isCompressor,
-				grk_rect_u32 *bounds,
-				grk_pt cblk_expn,
-				grk_plugin_tile *current_plugin_tile);
-
-	uint32_t cblk_grid_width;
-	uint32_t cblk_grid_height;
-	CompressCodeblock *enc;
-	DecompressCodeblock *dec;
+	bool initBlocks(grk_rect_u32 *bounds);
+	template<typename T> bool initBlock(T* block, uint64_t cblkno);
+	ChunkedArray<CompressCodeblock, PrecinctImpl> *enc;
+	ChunkedArray<DecompressCodeblock, PrecinctImpl> *dec;
 	TagTree *incltree; /* inclusion tree */
 	TagTree *imsbtree; /* IMSB tree */
+	grk_rect_u32 m_cblk_grid;
+	grk_rect_u32 m_bounds;
+	grk_pt m_cblk_expn;
+	bool m_isCompressor;
 };
 
 
 // precinct
 struct Precinct : public grk_rect_u32 {
-	Precinct(void);
+	Precinct(const grk_rect_u32 &bounds, bool isCompressor, grk_pt cblk_expn);
 	~Precinct(void);
-	bool init(bool isCompressor,
-				grk_pt cblk_expn,
-				grk_plugin_tile *current_plugin_tile);
-
 	void initTagTrees(void);
 	void deleteTagTrees(void);
 	uint32_t getCblkGridwidth(void);
 	uint32_t getCblkGridHeight(void);
 	uint64_t getNumCblks(void);
-	CompressCodeblock* getCompressedBlockPtr(void);
-	DecompressCodeblock* getDecompressedBlockPtr(void);
+	CompressCodeblock* getCompressedBlockPtr(uint64_t cblkno);
+	DecompressCodeblock* getDecompressedBlockPtr(uint64_t cblkno);
 	TagTree* getInclTree(void);
 	TagTree* getImsbTree(void);
+	uint32_t getNominalBlockSize(void);
+	grk_pt getCblkExpn(void);
+	grk_rect_u32 getCblkGrid(void);
 
 	uint64_t precinctIndex;
 private:
 	PrecinctImpl *impl;
-	bool initialized;
+	bool m_isCompressor;
+	grk_pt m_cblk_expn;
+	PrecinctImpl* getImpl(void);
 };
 
 
@@ -212,8 +256,7 @@ struct Subband : public grk_rect_u32 {
 						grk_pt precinct_start,
 						grk_pt precinct_expn,
 						uint32_t pw,
-						grk_pt cblk_expn,
-						grk_plugin_tile *current_plugin_tile);
+						grk_pt cblk_expn);
 
 	eBandOrientation orientation;
 	std::vector<Precinct*> precincts;

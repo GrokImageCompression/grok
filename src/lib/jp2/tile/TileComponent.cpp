@@ -192,11 +192,21 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
         auto res = &resolutions[resno];
         for (uint8_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
           	auto band = res->band + bandIndex;
+          	auto roi = buf->getPaddedTileBandWindow(resno, band->orientation);
             for (auto precinct : band->precincts) {
-                for (uint64_t cblkno = 0; cblkno < precinct->getNumCblks(); ++cblkno) {
-                    auto cblk = precinct->getDecompressedBlockPtr() + cblkno;
-					// check overlap in canvas coordinates
-					if (subbandIntersectsAOI(resno,	band->orientation,	cblk)){
+            	auto cblk_grid = precinct->getCblkGrid();
+            	auto cblk_expn = precinct->getCblkExpn();
+				grk_rect_u32 roi_grid = grk_rect_u32( uint_floordivpow2(roi.x0,  cblk_expn.x),
+													 uint_floordivpow2(roi.y0,  cblk_expn.y),
+													 ceildivpow2(roi.x1,  cblk_expn.x),
+													 ceildivpow2(roi.y1,  cblk_expn.y));
+				roi_grid.clip(&cblk_grid);
+				auto w = cblk_grid.width();
+				for (uint32_t j = cblk_grid.y0; j < cblk_grid.y1; ++j) {
+					uint64_t cblkno = (roi_grid.x0 - cblk_grid.x0)  + (uint64_t)(j - cblk_grid.y0 ) * w;
+					for (uint32_t i = roi_grid.x0; i < roi_grid.x1; ++i){
+						 auto cblk = precinct->getDecompressedBlockPtr(cblkno);
+
 						// transform from canvas coordinates
 						// to coordinates relative to current resolution
 						uint32_t x = cblk->x0 - band->x0;
@@ -217,8 +227,9 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
 						else {
 							temp = temp.rect_union(grk_rect_u32(x,y, x + cblk->width(),y + cblk->height()));
 						}
+						cblkno++;
 					}
-                }
+				}
             }
         }
     }
@@ -231,11 +242,21 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
         auto res = &resolutions[resno];
         for (uint8_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
           	auto band = res->band + bandIndex;
+          	auto roi = buf->getPaddedTileBandWindow(resno, band->orientation);
             for (auto precinct : band->precincts) {
-                for (uint64_t cblkno = 0; cblkno < precinct->getNumCblks(); ++cblkno) {
-                    auto cblk = precinct->getDecompressedBlockPtr() + cblkno;
-					// check overlap in canvas coordinates
-					if (subbandIntersectsAOI(resno,	band->orientation,	cblk)){
+            	auto cblk_grid = precinct->getCblkGrid();
+            	auto cblk_expn = precinct->getCblkExpn();
+				grk_rect_u32 roi_grid = grk_rect_u32( uint_floordivpow2(roi.x0,  cblk_expn.x),
+													 uint_floordivpow2(roi.y0,  cblk_expn.y),
+													 ceildivpow2(roi.x1,  cblk_expn.x),
+													 ceildivpow2(roi.y1,  cblk_expn.y));
+				roi_grid.clip(&cblk_grid);
+				auto w = cblk_grid.width();
+				for (uint32_t j = cblk_grid.y0; j < cblk_grid.y1; ++j) {
+					uint64_t cblkno = (roi_grid.x0 - cblk_grid.x0)  + (uint64_t)(j - cblk_grid.y0 ) * w;
+					for (uint32_t i = roi_grid.x0; i < roi_grid.x1; ++i){
+						 auto cblk = precinct->getDecompressedBlockPtr(cblkno);
+
 						// transform from canvas coordinates
 						// to coordinates relative to current resolution
 						uint32_t x = cblk->x0 - band->x0;
@@ -256,8 +277,9 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
 							delete sa;
 							throw runtime_error("unable to allocate sparse array");
 						}
+						cblkno++;
 					}
-                }
+				}
             }
         }
     }

@@ -202,7 +202,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 			if (prc->getImsbTree())
 				prc->getImsbTree()->reset();
 			for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
-				auto cblk = prc->getCompressedBlockPtr() + cblkno;
+				auto cblk = prc->getCompressedBlockPtr(cblkno);
 				cblk->numPassesInPacket = 0;
 				assert(band->numbps >= cblk->numbps);
 				if (band->numbps < cblk->numbps) {
@@ -235,7 +235,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 		}
 
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
-			auto cblk = prc->getCompressedBlockPtr() + cblkno;
+			auto cblk = prc->getCompressedBlockPtr(cblkno);
 			auto layer = cblk->layers + layno;
 
 			if (!cblk->numPassesInPacket
@@ -244,8 +244,8 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 			}
 		}
 
-		auto cblk = prc->getCompressedBlockPtr();
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; cblkno++) {
+			auto cblk = prc->getCompressedBlockPtr(cblkno);
 			auto layer = cblk->layers + layno;
 			uint32_t increment = 0;
 			uint32_t nump = 0;
@@ -271,7 +271,6 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 
 			/* if cblk not included, go to next cblk  */
 			if (!layer->numpasses) {
-				++cblk;
 				continue;
 			}
 
@@ -332,7 +331,6 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 				}
 				++pass;
 			}
-			++cblk;
 		}
 	}
 
@@ -359,8 +357,8 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 			continue;
 		}
 
-		auto cblk = prc->getCompressedBlockPtr();
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
+			auto cblk = prc->getCompressedBlockPtr(cblkno);
 			auto cblk_layer = cblk->layers + layno;
 			if (!cblk_layer->numpasses) {
 				++cblk;
@@ -372,7 +370,6 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 					return false;
 			}
 			cblk->numPassesInPacket += cblk_layer->numpasses;
-			++cblk;
 		}
 	}
 	*packet_bytes_written += (uint32_t)(stream->tell() - stream_start);
@@ -610,7 +607,7 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 
 			nb_blocks = prc->getNumCblks();
 			for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
-				auto cblk = prc->getCompressedBlockPtr() + cblkno;
+				auto cblk = prc->getCompressedBlockPtr(cblkno);
 				cblk->numPassesInPacket = 0;
 				if (band->numbps < cblk->numbps) {
 					GRK_WARN(
@@ -637,7 +634,7 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 
 		nb_blocks = prc->getNumCblks();
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
-			auto cblk = prc->getCompressedBlockPtr() + cblkno;
+			auto cblk = prc->getCompressedBlockPtr(cblkno);
 			auto layer = cblk->layers + layno;
 			if (!cblk->numPassesInPacket
 					&& layer->numpasses) {
@@ -645,7 +642,7 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 			}
 		}
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; cblkno++) {
-			auto cblk = prc->getCompressedBlockPtr() + cblkno;
+			auto cblk = prc->getCompressedBlockPtr(cblkno);
 			auto layer = cblk->layers + layno;
 			uint32_t increment = 0;
 			uint32_t nump = 0;
@@ -744,7 +741,7 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 
 		nb_blocks = prc->getNumCblks();
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
-			auto cblk = prc->getCompressedBlockPtr() + cblkno;
+			auto cblk = prc->getCompressedBlockPtr(cblkno);
 			auto layer = cblk->layers + layno;
 
 			if (!layer->numpasses)
