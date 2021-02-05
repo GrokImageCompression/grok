@@ -47,6 +47,7 @@ struct TileLengthMarkers {
 	bool read(uint8_t *p_header_data, uint16_t header_size);
 	void getInit(void);
 	grk_tl_info getNext(void);
+	bool skipTo(uint16_t skipTileIndex, BufferedStream *stream, uint64_t firstSotPos);
 
 	bool writeBegin(uint16_t totalTileParts);
 	void writeUpdate(uint16_t tileIndex, uint32_t tile_part_size);
@@ -68,7 +69,7 @@ private:
 	void push(uint8_t i_TLM, grk_tl_info curr_vec);
 	TL_MAP *m_markers;
 	uint8_t m_markerIndex;
-	uint8_t m_tilePartIndex;
+	uint8_t m_markerTilePartIndex;
 	TL_INFO_VEC *m_curr_vec;
 	BufferedStream *m_stream;
 	uint64_t m_tlm_start_stream_position;

@@ -1108,9 +1108,13 @@ bool CodeStream::read_header_procedure(void) {
 		GRK_ERROR("Failed to merge PPM data");
 		return false;
 	}
-	/* Position of the last element if the main header */
+	// we don't include the SOC marker, therefore subtract 2
 	if (cstr_index)
 		cstr_index->main_head_end = (uint32_t) m_stream->tell() - 2;
+	// prepare TLM marker reading
+	if (m_cp.tlm_markers)
+		m_cp.tlm_markers->getInit();
+
 	/* Next step: read a tile-part header */
 	m_decompressor.setState(J2K_DEC_STATE_TPH_SOT);
 
@@ -1410,19 +1414,10 @@ bool CodeStream::decompressTile() {
 		// if we have a TLM marker, then we can skip tiles until
 		// we get to desired tile
 		if (m_cp.tlm_markers){
-			m_cp.tlm_markers->getInit();
-			auto tl = m_cp.tlm_markers->getNext();
-			//GRK_INFO("TLM : index: %u, length : %u", tl.tile_number, tl.length);
-			uint16_t tileNumber = 0;
-			while (m_stream->get_number_byte_left() != 0 &&	tileNumber != tileIndexToDecode()){
-				if (tl.length == 0){
-					GRK_ERROR("j2k_decompress_tile: corrupt TLM marker");
-					return false;
-				}
-				m_stream->skip(tl.length);
-				tl = m_cp.tlm_markers->getNext();
-				tileNumber = tl.has_tile_number ? tl.tile_number : tileNumber+1;
-			}
+			// for first SOT position, we add two to skip SOC marker
+			if (!m_cp.tlm_markers->skipTo((uint16_t)tileIndexToDecode(),
+											m_stream,cstr_index->main_head_end+2))
+				return false;
 		}
 		bool go_on = true;
 		try {
