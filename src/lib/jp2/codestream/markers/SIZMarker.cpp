@@ -287,7 +287,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		auto current_tile_param = cp->tcps + i;
 		current_tile_param->tccps = new TileComponentCodingParams[image->numcomps];
 	}
-	decompressor->m_state = J2K_DEC_STATE_MH;
+	decompressor->setState(J2K_DEC_STATE_MH);
 	subsampleAndReduceHeaderImageComponents(image, cp);
 
 	return true;

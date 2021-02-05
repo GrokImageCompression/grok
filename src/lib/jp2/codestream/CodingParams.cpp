@@ -204,20 +204,19 @@ void     DecoderState::orState(uint16_t state){
 void     DecoderState::andState(uint16_t state){
    m_state &= state;
 }
-
 bool DecoderState::findNextTile(CodeStream *codeStream){
 	auto stream = codeStream->getStream();
 	last_tile_part_was_read = false;
-	m_state &= (uint16_t) (~J2K_DEC_STATE_DATA);
+	andState((uint16_t) (~J2K_DEC_STATE_DATA));
 
 	// if there is no EOC marker and there is also no data left, then simply return true
 	if (stream->get_number_byte_left() == 0
-			&& m_state == J2K_DEC_STATE_NO_EOC) {
+			&& getState() == J2K_DEC_STATE_NO_EOC) {
 		return true;
 	}
 	// if EOC marker has not been read yet, then try to read the next marker
 	// (should be EOC or SOT)
-	if (m_state != J2K_DEC_STATE_EOC) {
+	if (getState() != J2K_DEC_STATE_EOC) {
 		try {
 		if (!codeStream->read_marker()) {
 			GRK_WARN("findNextTile: Not enough data to read another marker.\n"
@@ -225,7 +224,7 @@ bool DecoderState::findNextTile(CodeStream *codeStream){
 			return true;
 		}
 		} catch (InvalidMarkerException &ume){
-			m_state = J2K_DEC_STATE_NO_EOC;
+			setState( J2K_DEC_STATE_NO_EOC);
 			GRK_WARN("findNextTile: expected EOC or SOT "
 					"but found invalid marker 0x%x.", codeStream->m_curr_marker);
 			throw DecodeUnknownMarkerAtEndOfTileException();
@@ -234,7 +233,7 @@ bool DecoderState::findNextTile(CodeStream *codeStream){
 		// we found the EOC marker - set state accordingly and return true;
 		// we can ignore all data after EOC
 		case J2K_MS_EOC:
-			m_state = J2K_DEC_STATE_EOC;
+			setState(J2K_DEC_STATE_EOC);
 			return true;
 			break;
 			// start of another tile
@@ -243,7 +242,7 @@ bool DecoderState::findNextTile(CodeStream *codeStream){
 			break;
 		default: {
 			auto bytesLeft = stream->get_number_byte_left();
-			m_state = J2K_DEC_STATE_NO_EOC;
+			setState(J2K_DEC_STATE_NO_EOC);
 			GRK_WARN("findNextTile: expected EOC or SOT "
 					"but found marker 0x%x.\nIgnoring %d bytes "
 					"remaining in the stream.", codeStream->m_curr_marker, bytesLeft+2);

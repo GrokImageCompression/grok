@@ -1325,9 +1325,9 @@ bool TileProcessor::prepare_sod_decoding(CodeStream *codeStream) {
 
 	}
 	if (current_read_size != tile_part_data_length)
-		codeStream->m_decompressor.m_state = J2K_DEC_STATE_NO_EOC;
+		codeStream->m_decompressor.setState(J2K_DEC_STATE_NO_EOC);
 	else
-		codeStream->m_decompressor.m_state = J2K_DEC_STATE_TPH_SOT;
+		codeStream->m_decompressor.setState(J2K_DEC_STATE_TPH_SOT);
 
 	return true;
 }

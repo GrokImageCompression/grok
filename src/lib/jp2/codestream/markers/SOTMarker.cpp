@@ -222,7 +222,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 		m_codeStream->currentProcessor()->tile_part_data_length = 0;
 	}
 
-	m_codeStream->m_decompressor.m_state = J2K_DEC_STATE_TPH;
+	m_codeStream->m_decompressor.setState(J2K_DEC_STATE_TPH);
 
 	/* Check if the current tile is outside the area we want
 	 *  decompress or not corresponding to the tile index*/

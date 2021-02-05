@@ -312,7 +312,6 @@ struct DecoderState {
 	void     orState(uint16_t state);
 	void     andState(uint16_t state);
 
-
 	//store decoding parameters common to all tiles (information
 	// like COD, COC and RGN in main header)
 	TileCodingParams *m_default_tcp;
@@ -338,6 +337,7 @@ struct DecoderState {
 
 	bool m_skip_tile_data;
 
+private:
 
 	/** Decoder state: used to indicate in which part of the code stream
 	 *  the decompressor is (main header, tile header, end) */

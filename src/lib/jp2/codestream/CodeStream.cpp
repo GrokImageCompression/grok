@@ -931,7 +931,7 @@ bool CodeStream::set_decompress_window(grk_rect_u32 window) {
 	auto decompressor = &m_decompressor;
 
 	/* Check if we have read the main header */
-	if (decompressor->m_state != J2K_DEC_STATE_TPH_SOT) {
+	if (decompressor->getState() != J2K_DEC_STATE_TPH_SOT) {
 		GRK_ERROR("Need to decompress the main header before setting decompress window");
 		return false;
 	}
@@ -1016,7 +1016,7 @@ bool CodeStream::read_header_procedure(void) {
 	bool has_qcd = false;
 
 	/*  We enter in the main header */
-	m_decompressor.m_state = J2K_DEC_STATE_MH_SOC;
+	m_decompressor.setState(J2K_DEC_STATE_MH_SOC);
 
 	/* Try to read the SOC marker, the code stream must begin with SOC marker */
 	if (!j2k_read_soc(this)) {
@@ -1056,7 +1056,7 @@ bool CodeStream::read_header_procedure(void) {
 			has_qcd = true;
 
 		/* Check if the marker is known and if it is in the correct location (main, tile, end of code stream)*/
-		if (!(m_decompressor.m_state & marker_handler->states)) {
+		if (!(m_decompressor.getState() & marker_handler->states)) {
 			GRK_ERROR("Marker %d is not compliant with its position",m_curr_marker);
 			return false;
 		}
@@ -1108,7 +1108,7 @@ bool CodeStream::read_header_procedure(void) {
 	if (cstr_index)
 		cstr_index->main_head_end = (uint32_t) m_stream->tell() - 2;
 	/* Next step: read a tile-part header */
-	m_decompressor.m_state = J2K_DEC_STATE_TPH_SOT;
+	m_decompressor.setState(J2K_DEC_STATE_TPH_SOT);
 
 	return true;
 }
@@ -1225,7 +1225,7 @@ bool CodeStream::decompress_tiles(void) {
 		}
 		if (breakAfterT1)
 			break;
-		if (m_stream->get_number_byte_left() == 0|| m_decompressor.m_state == J2K_DEC_STATE_NO_EOC)
+		if (m_stream->get_number_byte_left() == 0|| m_decompressor.getState() == J2K_DEC_STATE_NO_EOC)
 			break;
 	}
 	for(auto &result: results){
@@ -1259,7 +1259,7 @@ bool CodeStream::decompress_tiles(void) {
 		}
 		marker_size = (uint16_t)(marker_size - 2); /* Subtract the size of the marker ID already read */
 		auto marker_handler = get_marker_handler(m_curr_marker);
-		if (!(m_decompressor.m_state & marker_handler->states)) {
+		if (!(m_decompressor.getState() & marker_handler->states)) {
 			GRK_ERROR("Marker %d is not compliant with its position",m_curr_marker);
 			success = false;
 			goto cleanup;
@@ -1401,8 +1401,8 @@ bool CodeStream::decompress_tile() {
 			}
 			/* Special case if we have previously read the EOC marker
 			 * (if the previous tile decompressed is the last ) */
-			if (m_decompressor.m_state == J2K_DEC_STATE_EOC)
-				m_decompressor.m_state = J2K_DEC_STATE_TPH_SOT;
+			if (m_decompressor.getState() == J2K_DEC_STATE_EOC)
+				m_decompressor.setState(J2K_DEC_STATE_TPH_SOT);
 		}
 
 		// if we have a TLM marker, then we can skip tiles until
@@ -1453,7 +1453,7 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor) {
 	}
 	if (!tileProcessor->decompress_tile_t2(tcp->m_tile_data)) {
 		tcp->destroy();
-		decompressor->m_state |= J2K_DEC_STATE_ERR;
+		decompressor->orState(J2K_DEC_STATE_ERR);
 		return false;
 	}
 	if (tileProcessor->m_corrupt_packet){
@@ -1465,7 +1465,7 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor) {
 			(tileProcessor->current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
 	if (!tileProcessor->decompress_tile_t1()) {
 		tcp->destroy();
-		decompressor->m_state |= J2K_DEC_STATE_ERR;
+		decompressor->orState(J2K_DEC_STATE_ERR);
 		return false;
 	}
 	if (doPost) {
@@ -1485,7 +1485,7 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor) {
 bool CodeStream::decompress_tile_t2(TileProcessor *tileProcessor) {
 	auto decompressor = &m_decompressor;
 
-	if (!(decompressor->m_state & J2K_DEC_STATE_DATA)){
+	if (!(decompressor->getState() & J2K_DEC_STATE_DATA)){
 	   GRK_ERROR("j2k_decompress_tile: no data.");
 	   return false;
 	}
@@ -1507,7 +1507,7 @@ bool CodeStream::decompress_tile_t2(TileProcessor *tileProcessor) {
 }
 bool CodeStream::decompress_validation(void) {
 	bool is_valid = true;
-	is_valid &=	(m_decompressor.m_state == J2K_DEC_STATE_NONE);
+	is_valid &=	(m_decompressor.getState() == J2K_DEC_STATE_NONE);
 
 	return is_valid;
 }
@@ -1547,7 +1547,7 @@ bool CodeStream::process_marker(const marker_handler* marker_handler, uint16_t m
 }
 
 bool CodeStream::isDecodingTilePartHeader() {
-	return (m_decompressor.m_state & J2K_DEC_STATE_TPH);
+	return (m_decompressor.getState() & J2K_DEC_STATE_TPH);
 }
 TileCodingParams* CodeStream::get_current_decode_tcp() {
     auto tileProcessor = m_tileProcessor;
@@ -1624,7 +1624,7 @@ bool CodeStream::read_unk(uint16_t *output_marker) {
 		if (marker_handler == nullptr)	{
 			size_unk += 2;
 		} else {
-			if (!(m_decompressor.m_state	& marker_handler->states)) {
+			if (!(m_decompressor.getState() & marker_handler->states)) {
 				GRK_ERROR("Marker %d is not compliant with its position",m_curr_marker);
 				return false;
 			} else {
@@ -2258,12 +2258,12 @@ bool CodeStream::end_compress(void){
 }
 
 bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
-	if (m_decompressor.m_state == J2K_DEC_STATE_EOC) {
+	if (m_decompressor.getState() == J2K_DEC_STATE_EOC) {
 		m_curr_marker = J2K_MS_EOC;
 		return true;
 	}
 	/* We need to encounter a SOT marker (a new tile-part header) */
-	if (m_decompressor.m_state != J2K_DEC_STATE_TPH_SOT){
+	if (m_decompressor.getState() != J2K_DEC_STATE_TPH_SOT){
 		GRK_ERROR("parse_markers: no SOT marker found");
 		return false;
 	}
@@ -2276,7 +2276,7 @@ bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 		while (m_curr_marker != J2K_MS_SOD) {
 			// end of stream with no EOC
 			if (m_stream->get_number_byte_left() == 0) {
-				m_decompressor.m_state = J2K_DEC_STATE_NO_EOC;
+				m_decompressor.setState(J2K_DEC_STATE_NO_EOC);
 				break;
 			}
 			uint16_t marker_size;
@@ -2292,7 +2292,7 @@ bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 			}
 
 			// subtract tile part header and header marker size
-			if (m_decompressor.m_state & J2K_DEC_STATE_TPH)
+			if (m_decompressor.getState() & J2K_DEC_STATE_TPH)
 				m_tileProcessor->tile_part_data_length -= (marker_size + 2);
 
 			marker_size = (uint16_t)(marker_size - 2); /* Subtract the size of the marker ID already read */
@@ -2302,7 +2302,7 @@ bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 				GRK_ERROR("Unknown marker encountered while seeking SOT marker");
 				return false;
 			}
-			if (!(m_decompressor.m_state & marker_handler->states)) {
+			if (!(m_decompressor.getState() & marker_handler->states)) {
 				GRK_ERROR("Marker 0x%x is not compliant with its expected position", m_curr_marker);
 				return false;
 			}
@@ -2337,7 +2337,7 @@ bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 		}
 
 		// no bytes left and no EOC marker : we're done!
-		if (!m_stream->get_number_byte_left() && m_decompressor.m_state == J2K_DEC_STATE_NO_EOC)
+		if (!m_stream->get_number_byte_left() && m_decompressor.getState() == J2K_DEC_STATE_NO_EOC)
 			break;
 
 		/* If we didn't skip data before, we need to read the SOD marker*/
@@ -2346,19 +2346,19 @@ bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 				return false;
 			if (!m_decompressor.last_tile_part_was_read) {
 				if (!read_marker()){
-					m_decompressor.m_state = J2K_DEC_STATE_NO_EOC;
+					m_decompressor.setState(J2K_DEC_STATE_NO_EOC);
 					break;
 				}
 			}
 		} else {
 			if (!read_marker()){
-				m_decompressor.m_state = J2K_DEC_STATE_NO_EOC;
+				m_decompressor.setState(J2K_DEC_STATE_NO_EOC);
 				break;
 			}
 			/* Indicate we will try to read a new tile-part header*/
 			m_decompressor.m_skip_tile_data = false;
 			m_decompressor.last_tile_part_was_read = false;
-			m_decompressor.m_state = J2K_DEC_STATE_TPH_SOT;
+			m_decompressor.setState(J2K_DEC_STATE_TPH_SOT);
 		}
 	}
 
@@ -2445,8 +2445,8 @@ bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 		}
 	}
 	/* Current marker is the EOC marker ?*/
-	if (m_curr_marker == J2K_MS_EOC && m_decompressor.m_state != J2K_DEC_STATE_EOC)
-		m_decompressor.m_state = J2K_DEC_STATE_EOC;
+	if (m_curr_marker == J2K_MS_EOC && m_decompressor.getState() != J2K_DEC_STATE_EOC)
+		m_decompressor.setState( J2K_DEC_STATE_EOC);
 
 	//if we are not ready to decompress tile part data,
     // then skip tiles with no tile data i.e. no SOD marker
@@ -2468,7 +2468,7 @@ bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 		return false;
 	}
 	*can_decode_tile_data = true;
-	m_decompressor.m_state |= J2K_DEC_STATE_DATA;
+	m_decompressor.orState(J2K_DEC_STATE_DATA);
 
 	return true;
 }
@@ -2758,7 +2758,7 @@ bool CodeStream::update_rates(void) {
 
 bool CodeStream::compress_validation() {
 	bool is_valid = true;
-	is_valid &=	(m_decompressor.m_state == J2K_DEC_STATE_NONE);
+	is_valid &=	(m_decompressor.getState() == J2K_DEC_STATE_NONE);
 
 	/* ISO 15444-1:2004 states between 1 & 33
 	 * ergo (number of decomposition levels between 0 -> 32) */
