@@ -130,7 +130,7 @@ struct ICodeStream {
    virtual bool decompress( grk_plugin_tile *tile) = 0;
 
 	/** decompress tile*/
-   virtual bool decompress_tile(uint16_t tile_index) = 0;
+   virtual bool decompressTile(uint16_t tile_index) = 0;
 
 	/** Reading function used after code stream if necessary */
    virtual bool end_decompress(void) = 0;
@@ -175,7 +175,7 @@ struct CodeStream : public ICodeStream {
    bool decompress( grk_plugin_tile *tile);
 
 	/** decompress tile*/
-   bool decompress_tile(uint16_t tile_index);
+   bool decompressTile(uint16_t tile_index);
 
 	/** Reading function used after code stream if necessary */
    bool end_decompress(void);
@@ -228,11 +228,11 @@ struct CodeStream : public ICodeStream {
 
 	bool decompress_tile_t2t1(TileProcessor *tileProcessor) ;
 
-	bool decompress_tile();
+	bool decompressTile();
 
-	bool decompress_tile_t2(TileProcessor *tileProcessor);
+	bool findNextTile(TileProcessor *tileProcessor);
 
-	bool decompress_tiles(void);
+	bool decompressTiles(void);
 
 	bool decompress_validation(void);
 

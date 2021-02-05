@@ -2067,18 +2067,18 @@ bool j2k_write_tlm_begin(CodeStream *codeStream) {
 	if (!codeStream->m_cp.tlm_markers)
 		codeStream->m_cp.tlm_markers = new TileLengthMarkers(codeStream->getStream());
 
-	return codeStream->m_cp.tlm_markers->write_begin(
+	return codeStream->m_cp.tlm_markers->writeBegin(
 			codeStream->m_encoder.m_total_tile_parts);
 }
 
 void j2k_update_tlm(CodeStream *codeStream, uint16_t tile_index, uint32_t tile_part_size) {
 	assert(codeStream->m_cp.tlm_markers);
-	codeStream->m_cp.tlm_markers->write_update(	tile_index, tile_part_size);
+	codeStream->m_cp.tlm_markers->writeUpdate(	tile_index, tile_part_size);
 }
 
 bool j2k_write_tlm_end(CodeStream *codeStream) {
 	assert(codeStream);
-	return codeStream->m_cp.tlm_markers->write_end();
+	return codeStream->m_cp.tlm_markers->writeEnd();
 }
 
 uint32_t j2k_get_SPCod_SPCoc_size(CodeStream *codeStream, uint32_t comp_no) {

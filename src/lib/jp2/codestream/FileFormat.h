@@ -181,7 +181,7 @@ public:
    bool compress(grk_plugin_tile* tile);
    bool compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size);
    bool end_compress(void);
-   bool decompress_tile(uint16_t tile_index);
+   bool decompressTile(uint16_t tile_index);
    void dump(uint32_t flag, FILE *out_stream);
    grk_codestream_info_v2* get_cstr_info(void);
    grk_codestream_index* get_cstr_index(void);

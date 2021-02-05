@@ -48,9 +48,9 @@ struct TileLengthMarkers {
 	void getInit(void);
 	grk_tl_info getNext(void);
 
-	bool write_begin(uint16_t totalTileParts);
-	void write_update(uint16_t tileIndex, uint32_t tile_part_size);
-	bool write_end(void);
+	bool writeBegin(uint16_t totalTileParts);
+	void writeUpdate(uint16_t tileIndex, uint32_t tile_part_size);
+	bool writeEnd(void);
 	/**
 	 Add tile header marker information
 	 @param tileno       tile index number
@@ -59,8 +59,11 @@ struct TileLengthMarkers {
 	 @param pos          byte offset of marker segment
 	 @param len          length of marker segment
 	 */
-	static bool add_to_index(uint16_t tileno, grk_codestream_index *cstr_index,
-			uint32_t type, uint64_t pos, uint32_t len);
+	static bool addToIndex(uint16_t tileno,
+							grk_codestream_index *cstr_index,
+							uint16_t type,
+							uint64_t pos,
+							uint32_t len);
 private:
 	void push(uint8_t i_TLM, grk_tl_info curr_vec);
 	TL_MAP *m_markers;

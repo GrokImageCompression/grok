@@ -210,45 +210,45 @@ bool DecoderState::findNextTile(CodeStream *codeStream){
 	andState((uint16_t) (~J2K_DEC_STATE_DATA));
 
 	// if there is no EOC marker and there is also no data left, then simply return true
-	if (stream->get_number_byte_left() == 0
-			&& getState() == J2K_DEC_STATE_NO_EOC) {
+	if (stream->get_number_byte_left() == 0	&& getState() == J2K_DEC_STATE_NO_EOC) {
 		return true;
 	}
 	// if EOC marker has not been read yet, then try to read the next marker
 	// (should be EOC or SOT)
 	if (getState() != J2K_DEC_STATE_EOC) {
 		try {
-		if (!codeStream->read_marker()) {
-			GRK_WARN("findNextTile: Not enough data to read another marker.\n"
-							"Tile may be truncated.");
-			return true;
+			if (!codeStream->read_marker()) {
+				GRK_WARN("findNextTile: Not enough data to read another marker.\n"
+								"Tile may be truncated.");
+				return true;
 		}
 		} catch (InvalidMarkerException &ume){
-			setState( J2K_DEC_STATE_NO_EOC);
-			GRK_WARN("findNextTile: expected EOC or SOT "
-					"but found invalid marker 0x%x.", codeStream->m_curr_marker);
-			throw DecodeUnknownMarkerAtEndOfTileException();
+				setState( J2K_DEC_STATE_NO_EOC);
+				GRK_WARN("findNextTile: expected EOC or SOT "
+						"but found invalid marker 0x%x.", codeStream->m_curr_marker);
+				throw DecodeUnknownMarkerAtEndOfTileException();
 		}
+
 		switch (codeStream->m_curr_marker) {
-		// we found the EOC marker - set state accordingly and return true;
-		// we can ignore all data after EOC
-		case J2K_MS_EOC:
-			setState(J2K_DEC_STATE_EOC);
-			return true;
-			break;
+			// we found the EOC marker - set state accordingly and return true;
+			// we can ignore all data after EOC
+			case J2K_MS_EOC:
+				setState(J2K_DEC_STATE_EOC);
+				return true;
+				break;
 			// start of another tile
-		case J2K_MS_SOT:
-			return true;
-			break;
-		default: {
-			auto bytesLeft = stream->get_number_byte_left();
-			setState(J2K_DEC_STATE_NO_EOC);
-			GRK_WARN("findNextTile: expected EOC or SOT "
-					"but found marker 0x%x.\nIgnoring %d bytes "
-					"remaining in the stream.", codeStream->m_curr_marker, bytesLeft+2);
-			throw DecodeUnknownMarkerAtEndOfTileException();
-		}
-			break;
+			case J2K_MS_SOT:
+				return true;
+				break;
+			default: {
+				auto bytesLeft = stream->get_number_byte_left();
+				setState(J2K_DEC_STATE_NO_EOC);
+				GRK_WARN("findNextTile: expected EOC or SOT "
+						"but found marker 0x%x.\nIgnoring %d bytes "
+						"remaining in the stream.", codeStream->m_curr_marker, bytesLeft+2);
+				throw DecodeUnknownMarkerAtEndOfTileException();
+				}
+				break;
 		}
 	}
 

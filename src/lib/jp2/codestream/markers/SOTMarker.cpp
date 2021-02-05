@@ -108,21 +108,22 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	return true;
 }
 
- bool SOTMarker::read(uint8_t *p_header_data,
-		uint16_t header_size){
+ bool SOTMarker::read(uint8_t *p_header_data,uint16_t header_size){
 	uint32_t tot_len = 0;
 	uint8_t num_parts = 0;
 	uint8_t current_part;
 	uint32_t tile_x, tile_y;
 
-	if (!get_sot_values(p_header_data, header_size,
-			nullptr, &tot_len,
-			&current_part, &num_parts)) {
+	if (!get_sot_values(p_header_data,
+						header_size,
+						nullptr,
+						&tot_len,
+						&current_part,
+						&num_parts)) {
 		GRK_ERROR("Error reading SOT marker");
 		return false;
 	}
 	auto tile_number = m_codeStream->currentProcessor()->m_tile_index;
-
 	auto cp = &(m_codeStream->m_cp);
 
 	/* testcase 2.pdf.SIGFPE.706.1112 */
@@ -162,8 +163,6 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 
 	/* Ref A.4.2: Psot may equal zero if it is the last tile-part of the code stream.*/
 	if (!tot_len) {
-		//GRK_WARN( "Psot value of the current tile-part is equal to zero; "
-		//              "we assume it is the last tile-part of the code stream.");
 		m_codeStream->m_decompressor.m_last_tile_part_in_code_stream = true;
 	}
 
@@ -173,23 +172,19 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 		/* Fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=2851 */
 		GRK_ERROR(
 				"Current tile part number (%u) read from SOT marker is greater\n than total "
-						"number of tile-parts (%u).", current_part,
-				tcp->m_nb_tile_parts);
+						"number of tile-parts (%u).", current_part,	tcp->m_nb_tile_parts);
 		m_codeStream->m_decompressor.m_last_tile_part_in_code_stream = true;
 		return false;
 	}
 
-	if (num_parts != 0) { /* Number of tile-part header is provided
-	 by this tile-part header */
-		num_parts = (uint8_t) (num_parts
-				+ m_codeStream->m_nb_tile_parts_correction);
+	if (num_parts != 0) { /* Number of tile-part header is provided by this tile-part header */
+		num_parts = (uint8_t) (num_parts + m_codeStream->m_nb_tile_parts_correction);
 		/* Useful to manage the case of textGBR.jp2 file because two values
 		 *  of TNSot are allowed: the correct numbers of
 		 * tile-parts for that tile and zero (A.4.2 of 15444-1 : 2002). */
 		if (tcp->m_nb_tile_parts) {
 			if (current_part >= tcp->m_nb_tile_parts) {
-				GRK_ERROR(
-						"In SOT marker, TPSot (%u) is not valid with regards to the current "
+				GRK_ERROR("In SOT marker, TPSot (%u) is not valid with regards to the current "
 								"number of tile-part (%u)",
 						current_part, tcp->m_nb_tile_parts);
 				m_codeStream->m_decompressor.m_last_tile_part_in_code_stream = true;
@@ -198,10 +193,8 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 		}
 		if (current_part >= num_parts) {
 			/* testcase 451.pdf.SIGSEGV.ce9.3723 */
-			GRK_ERROR(
-					"In SOT marker, TPSot (%u) is not valid with regards to the current "
-							"number of tile-part (header) (%u)",
-					current_part, num_parts);
+			GRK_ERROR("In SOT marker, TPSot (%u) is not valid with regards to the current "
+							"number of tile-part (header) (%u)",current_part, num_parts);
 			m_codeStream->m_decompressor.m_last_tile_part_in_code_stream = true;
 			return false;
 		}
@@ -216,8 +209,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 
 	if (!m_codeStream->m_decompressor.m_last_tile_part_in_code_stream) {
 		/* Keep the size of data to skip after this marker */
-		m_codeStream->currentProcessor()->tile_part_data_length = tot_len
-				- sot_marker_segment_len;
+		m_codeStream->currentProcessor()->tile_part_data_length = tot_len - sot_marker_segment_len;
 	} else {
 		m_codeStream->currentProcessor()->tile_part_data_length = 0;
 	}
@@ -225,16 +217,13 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	m_codeStream->m_decompressor.setState(J2K_DEC_STATE_TPH);
 
 	/* Check if the current tile is outside the area we want
-	 *  decompress or not corresponding to the tile index*/
+	 *  to decompress or not, corresponding to the tile index*/
 	if (m_codeStream->tileIndexToDecode() == -1) {
 		m_codeStream->m_decompressor.m_skip_tile_data =
-				(tile_x < m_codeStream->m_decompressor.m_start_tile_x_index)
-						|| (tile_x
-								>= m_codeStream->m_decompressor.m_end_tile_x_index)
-						|| (tile_y
-								< m_codeStream->m_decompressor.m_start_tile_y_index)
-						|| (tile_y
-								>= m_codeStream->m_decompressor.m_end_tile_y_index);
+						   (tile_x < m_codeStream->m_decompressor.m_start_tile_x_index)
+						|| (tile_x	>= m_codeStream->m_decompressor.m_end_tile_x_index)
+						|| (tile_y	< m_codeStream->m_decompressor.m_start_tile_y_index)
+						|| (tile_y	>= m_codeStream->m_decompressor.m_end_tile_y_index);
 	} else {
 		m_codeStream->m_decompressor.m_skip_tile_data = (tile_number
 				!= (uint32_t) m_codeStream->tileIndexToDecode());
@@ -248,13 +237,11 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 
 		if (num_parts != 0) {
 			m_codeStream->cstr_index->tile_index[tile_number].nb_tps = num_parts;
-			m_codeStream->cstr_index->tile_index[tile_number].current_nb_tps =
-					num_parts;
+			m_codeStream->cstr_index->tile_index[tile_number].current_nb_tps =	num_parts;
 
 			if (!m_codeStream->cstr_index->tile_index[tile_number].tp_index) {
 				m_codeStream->cstr_index->tile_index[tile_number].tp_index =
-						(grk_tp_index*) grk_calloc(num_parts,
-								sizeof(grk_tp_index));
+						(grk_tp_index*) grk_calloc(num_parts,sizeof(grk_tp_index));
 				if (!m_codeStream->cstr_index->tile_index[tile_number].tp_index) {
 					GRK_ERROR("Not enough memory to read SOT marker. "
 							"Tile index allocation failed");
@@ -265,8 +252,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 						m_codeStream->cstr_index->tile_index[tile_number].tp_index,
 						num_parts * sizeof(grk_tp_index));
 				if (!new_tp_index) {
-					grk_free(
-							m_codeStream->cstr_index->tile_index[tile_number].tp_index);
+					grk_free(m_codeStream->cstr_index->tile_index[tile_number].tp_index);
 					m_codeStream->cstr_index->tile_index[tile_number].tp_index =
 							nullptr;
 					GRK_ERROR("Not enough memory to read SOT marker. "
@@ -284,8 +270,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 								m_codeStream->cstr_index->tile_index[tile_number].current_nb_tps,
 								sizeof(grk_tp_index));
 				if (!m_codeStream->cstr_index->tile_index[tile_number].tp_index) {
-					m_codeStream->cstr_index->tile_index[tile_number].current_nb_tps =
-							0;
+					m_codeStream->cstr_index->tile_index[tile_number].current_nb_tps =	0;
 					GRK_ERROR("Not enough memory to read SOT marker. "
 							"Tile index allocation failed");
 					return false;
@@ -295,29 +280,22 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 			if (current_part
 					>= m_codeStream->cstr_index->tile_index[tile_number].current_nb_tps) {
 				grk_tp_index *new_tp_index;
-				m_codeStream->cstr_index->tile_index[tile_number].current_nb_tps =
-						current_part + 1;
+				m_codeStream->cstr_index->tile_index[tile_number].current_nb_tps =	current_part + 1;
 				new_tp_index =
-						(grk_tp_index*) grk_realloc(
-								m_codeStream->cstr_index->tile_index[tile_number].tp_index,
+						(grk_tp_index*) grk_realloc(m_codeStream->cstr_index->tile_index[tile_number].tp_index,
 								m_codeStream->cstr_index->tile_index[tile_number].current_nb_tps
 										* sizeof(grk_tp_index));
 				if (!new_tp_index) {
-					grk_free(
-							m_codeStream->cstr_index->tile_index[tile_number].tp_index);
+					grk_free(m_codeStream->cstr_index->tile_index[tile_number].tp_index);
 					m_codeStream->cstr_index->tile_index[tile_number].tp_index =
 							nullptr;
-					m_codeStream->cstr_index->tile_index[tile_number].current_nb_tps =
-							0;
-					GRK_ERROR(
-							"Not enough memory to read SOT marker. Tile index allocation failed");
+					m_codeStream->cstr_index->tile_index[tile_number].current_nb_tps =	0;
+					GRK_ERROR("Not enough memory to read SOT marker. Tile index allocation failed");
 					return false;
 				}
-				m_codeStream->cstr_index->tile_index[tile_number].tp_index =
-						new_tp_index;
+				m_codeStream->cstr_index->tile_index[tile_number].tp_index = new_tp_index;
 			}
 		}
-
 	}
 
 	return true;

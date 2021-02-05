@@ -1293,7 +1293,7 @@ bool TileProcessor::prepare_sod_decoding(CodeStream *codeStream) {
 		cstr_index->tile_index[m_tile_index].tp_index[current_tile_part].end_pos =
 				current_pos + tile_part_data_length + 2;
 
-		if (!TileLengthMarkers::add_to_index(
+		if (!TileLengthMarkers::addToIndex(
 				m_tile_index, cstr_index,
 				J2K_MS_SOD, current_pos, 0)) {
 			GRK_ERROR("Not enough memory to add tl marker");
