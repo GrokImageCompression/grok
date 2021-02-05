@@ -820,18 +820,17 @@ TileProcessor* CodeStream::allocateProcessor(uint16_t tile_index){
 	if (!tileProcessor){
 		tileProcessor = new TileProcessor(this,m_stream);
 		tileProcessor->m_tile_index = tile_index;
-		if (!m_multiTile){
-			delete m_output_image;
-			m_output_image = nullptr;
-		}
-		if (!m_output_image) {
-			m_output_image = new GrkImage();
-			getCompositeImage()->copyHeader(m_output_image);
-		}
 		m_tileCache->put(tile_index, tileProcessor);
 	}
 	m_tileProcessor = tileProcessor;
-
+	if (!m_multiTile){
+		delete m_output_image;
+		m_output_image = nullptr;
+	}
+	if (!m_output_image) {
+		m_output_image = new GrkImage();
+		getCompositeImage()->copyHeader(m_output_image);
+	}
 
 	return m_tileProcessor;
 }
@@ -1389,28 +1388,6 @@ bool CodeStream::decompressTile() {
 				return false;
 		}
 
-		/* Move into the code stream to the first SOT used to decompress the desired tile */
-		uint16_t tile_index_to_decompress =	(uint16_t) (tileIndexToDecode());
-		if (cstr_index->tile_index && cstr_index->tile_index->tp_index) {
-			if (!cstr_index->tile_index[tile_index_to_decompress].nb_tps) {
-				/* the index for this tile has not been built,
-				 *  so move to the last SOT read */
-				if (!(m_stream->seek(m_decompressor.m_last_sot_read_pos	+ 2))) {
-					GRK_ERROR("Problem with seek function");
-					return false;
-				}
-			} else {
-				if (!(m_stream->seek(cstr_index->tile_index[tile_index_to_decompress].tp_index[0].start_pos	+ 2))) {
-					GRK_ERROR("Problem with seek function");
-					return false;
-				}
-			}
-			/* Special case if we have previously read the EOC marker
-			 * (if the previous tile decompressed is the last ) */
-			if (m_decompressor.getState() == J2K_DEC_STATE_EOC)
-				m_decompressor.setState(J2K_DEC_STATE_TPH_SOT);
-		}
-
 		// if we have a TLM marker, then we can skip tiles until
 		// we get to desired tile
 		if (m_cp.tlm_markers){
@@ -1418,7 +1395,31 @@ bool CodeStream::decompressTile() {
 			if (!m_cp.tlm_markers->skipTo((uint16_t)tileIndexToDecode(),
 											m_stream,cstr_index->main_head_end+2))
 				return false;
+		} else {
+			/* Move into the code stream to the first SOT used to decompress the desired tile */
+			uint16_t tile_index_to_decompress =	(uint16_t) (tileIndexToDecode());
+			if (cstr_index->tile_index && cstr_index->tile_index->tp_index) {
+				if (!cstr_index->tile_index[tile_index_to_decompress].nb_tps) {
+					/* the index for this tile has not been built,
+					 *  so move to the last SOT read */
+					if (!(m_stream->seek(m_decompressor.m_last_sot_read_pos	+ 2))) {
+						GRK_ERROR("Problem with seek function");
+						return false;
+					}
+				} else {
+					if (!(m_stream->seek(cstr_index->tile_index[tile_index_to_decompress].tp_index[0].start_pos	+ 2))) {
+						GRK_ERROR("Problem with seek function");
+						return false;
+					}
+				}
+			}
 		}
+
+		/* Special case if we have previously read the EOC marker
+		 * (if the previous tile decompressed is the last ) */
+		if (m_decompressor.getState() == J2K_DEC_STATE_EOC)
+			m_decompressor.setState(J2K_DEC_STATE_TPH_SOT);
+
 		bool go_on = true;
 		try {
 			if (!parse_tile_header_markers(&go_on))

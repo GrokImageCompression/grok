@@ -229,9 +229,8 @@ bool GRK_CALLCONV grk_decompress_tile( grk_codec p_codec,uint16_t tile_index) {
 		bool rc =  codec->m_codeStreamBase->decompressTile(tile_index);
 /*
 		rc =  codec->m_codeStreamBase->decompressTile(tile_index+2);
-		rc =  codec->m_codeStreamBase->decompressTile(tile_index+6);
+		rc =  codec->m_codeStreamBase->decompressTile(tile_index+4);
 		rc =  codec->m_codeStreamBase->decompressTile(tile_index+1);
-
 		rc =  codec->m_codeStreamBase->decompressTile(tile_index+1);
 */
 		return rc;
