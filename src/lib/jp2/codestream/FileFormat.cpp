@@ -2629,7 +2629,7 @@ uint8_t* FileFormat::write_palette_clr( uint32_t *p_nb_bytes_written) {
 	for (uint32_t i = 0; i < palette->num_channels; ++i)
 		bytesPerEntry += ((palette->channel_prec[i] + 7U)/8U);
 
-	uint32_t boxSize = 4 + 4 + 2 + 1 +  palette->num_channels + bytesPerEntry * palette->num_entries;
+	uint32_t boxSize = 4U + 4U + 2U + 1U +  palette->num_channels + bytesPerEntry * palette->num_entries;
 
 	uint8_t *paletteBuf = (uint8_t*)grk_malloc(boxSize);
 	uint8_t *palette_ptr = paletteBuf;
@@ -2650,14 +2650,14 @@ uint8_t* FileFormat::write_palette_clr( uint32_t *p_nb_bytes_written) {
 	grk_write<uint8_t>(palette_ptr++, palette->num_channels);
 
 	for (uint8_t i = 0; i < palette->num_channels; ++i) {
-		grk_write<uint8_t>(palette_ptr++, (uint8_t)(palette->channel_prec[i]-1)); //Bi
+		grk_write<uint8_t>(palette_ptr++, (uint8_t)(palette->channel_prec[i]-1U)); //Bi
 	}
 
 	// LUT values for all components
 	auto lut_ptr =  palette->lut;
 	for (uint16_t j = 0; j < palette->num_entries; ++j) {
 		for (uint8_t i = 0; i < palette->num_channels; ++i) {
-			uint32_t bytes_to_write = (uint32_t) ((palette->channel_prec[i] + 7) >> 3);
+			uint32_t bytes_to_write = (uint32_t) ((palette->channel_prec[i] + 7U) >> 3);
 			grk_write<int32_t>(palette_ptr, *lut_ptr, bytes_to_write); /* Cji */
 			lut_ptr++;
 			palette_ptr += bytes_to_write;
