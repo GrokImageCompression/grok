@@ -1032,7 +1032,7 @@ static int parse_cmdline_compressor_ex(int argc,
 								"the number of resolutions {}",
 								progression[numpocs].resE,
 								parameters->numresolution );
-						progression[numpocs].resE = parameters->numresolution-1;
+						progression[numpocs].resE = (uint8_t)(parameters->numresolution-1U);
 				}
 				if (progression[numpocs].resS >= progression[numpocs].resE){
 					spdlog::error("POC beginning resolution must be strictly less than end resolution");
@@ -1937,8 +1937,7 @@ static bool plugin_compress_callback(grk_plugin_compress_user_callback_info *inf
 			uint64_t imageSize = ((
 					(uint64_t)(image->x1 - image->x0) *
 					(uint64_t)(image->y1 - image->y0) *
-					image->numcomps	*
-					((image->comps[0].prec + 7) / 8U)) * 3U) / 2U;
+					image->numcomps	*	((image->comps[0].prec + 7U) / 8U)) * 3U) / 2U;
 			info->compressBufferLen =
 					(size_t) fileLength > imageSize ?
 							(size_t) fileLength : imageSize;

@@ -279,7 +279,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 					lowerBound = thresh;
 				} else {
 					if (!t2->compress_packets_simulate(m_tile_index,
-							layno + 1, all_packets_len, maxlen,
+							(uint16_t)(layno + 1U), all_packets_len, maxlen,
 							tp_pos, nullptr)) {
 						lowerBound = thresh;
 						continue;
@@ -427,7 +427,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 					lowerBound = thresh;
 				} else {
 					if (!t2->compress_packets_simulate(m_tile_index,
-														layno + 1,
+														(uint16_t)(layno + 1U),
 														all_packets_len,
 														maxlen,
 														tp_pos,
@@ -749,7 +749,7 @@ bool TileProcessor::is_whole_tilecomp_decoding(uint32_t compno) {
 
 	auto dims = tilec->getBuffer()->bounds().intersection(tilec);
 
-	uint32_t shift = tilec->numresolutions - tilec->resolutions_to_decompress;
+	uint32_t shift = (uint32_t)(tilec->numresolutions - tilec->resolutions_to_decompress);
 	/* Tolerate small margin within the reduced resolution factor to consider if */
 	/* the whole tile path must be taken */
 	return (dims.is_valid() &&
@@ -801,7 +801,7 @@ bool TileProcessor::decompress_tile_t1(void) {
 
 			if (!wholeTileDecompress) {
 				try {
-					tilec->allocSparseBuffer(tilec->resolutions_decompressed + 1);
+					tilec->allocSparseBuffer(tilec->resolutions_decompressed + 1U);
 				} catch (runtime_error &ex) {
 					GRK_ERROR("decompress_tile_t1: %s", ex.what());
 					return false;
@@ -823,7 +823,7 @@ bool TileProcessor::decompress_tile_t1(void) {
 										tilec,
 										compno,
 										tilec->getBuffer()->unreduced_bounds(),
-										tilec->resolutions_decompressed + 1,
+										tilec->resolutions_decompressed + 1U,
 										tccp->qmfbid))
 					return false;
 			}

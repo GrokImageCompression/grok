@@ -297,7 +297,7 @@ bool j2k_init_mct_encoding(TileCodingParams *p_tcp, GrkImage *p_image) {
 		mct_deco_data->m_index = indix++;
 		mct_deco_data->m_array_type = MCT_TYPE_DECORRELATION;
 		mct_deco_data->m_element_type = MCT_TYPE_FLOAT;
-		nb_elem = p_image->numcomps * p_image->numcomps;
+		nb_elem = (uint32_t)p_image->numcomps * p_image->numcomps;
 		mct_size = nb_elem * MCT_ELEMENT_SIZE[mct_deco_data->m_element_type];
 		mct_deco_data->m_data = (uint8_t*) grk_malloc(mct_size);
 
@@ -891,8 +891,8 @@ bool CodeStream::read_header(grk_header_info  *header_info){
 		tcp = m_decompressor.m_default_tcp;
 		tccp = &tcp->tccps[0];
 
-		header_info->cblockw_init = 1 << tccp->cblkw;
-		header_info->cblockh_init = 1 << tccp->cblkh;
+		header_info->cblockw_init = 1U << tccp->cblkw;
+		header_info->cblockh_init = 1U << tccp->cblkh;
 		header_info->irreversible = tccp->qmfbid == 0;
 		header_info->mct = tcp->mct;
 		header_info->rsiz = cp->rsiz;
@@ -902,8 +902,8 @@ bool CodeStream::read_header(grk_header_info  *header_info){
 		// !!! assume that mode switch is constant across all tiles
 		header_info->cblk_sty = tccp->cblk_sty;
 		for (uint32_t i = 0; i < header_info->numresolutions; ++i) {
-			header_info->prcw_init[i] = 1 << tccp->prcw_exp[i];
-			header_info->prch_init[i] = 1 << tccp->prch_exp[i];
+			header_info->prcw_init[i] = 1U << tccp->prcw_exp[i];
+			header_info->prch_init[i] = 1U << tccp->prch_exp[i];
 		}
 		header_info->tx0 = m_cp.tx0;
 		header_info->ty0 = m_cp.ty0;
@@ -1084,7 +1084,7 @@ bool CodeStream::read_header_procedure(void) {
 		if (cstr_index) {
 			/* Add the marker to the code stream index*/
 			if (!j2k_add_mhmarker(cstr_index, marker_handler->id,
-					m_stream->tell() - marker_size - 4, marker_size + 4)) {
+					m_stream->tell() - marker_size - 4U, marker_size + 4U)) {
 				GRK_ERROR("Not enough memory to add mh marker");
 				return false;
 			}
@@ -1540,7 +1540,7 @@ bool CodeStream::process_marker(const marker_handler* marker_handler, uint16_t m
 		}
 		delete[] m_marker_scratch;
 		m_marker_scratch = new uint8_t[2 * marker_size];
-		m_marker_scratch_size = 2 * marker_size;
+		m_marker_scratch_size = (uint16_t)(2U * marker_size);
 	}
 	if (m_stream->read(m_marker_scratch, marker_size) != marker_size) {
 		GRK_ERROR("Stream too short");
@@ -1977,8 +1977,7 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,GrkImage *image){
 		tcp->tccps = new TileComponentCodingParams[image->numcomps];
 		if (parameters->mct_data) {
 
-			uint32_t lMctSize = image->numcomps * image->numcomps
-					* (uint32_t) sizeof(float);
+			uint32_t lMctSize = (uint32_t)image->numcomps * image->numcomps * (uint32_t)sizeof(float);
 			auto lTmpBuf = (float*) grk_malloc(lMctSize);
 			auto dc_shift = (int32_t*) ((uint8_t*) parameters->mct_data
 					+ lMctSize);
@@ -2297,7 +2296,7 @@ bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 
 			// subtract tile part header and header marker size
 			if (m_decompressor.getState() & J2K_DEC_STATE_TPH)
-				m_tileProcessor->tile_part_data_length -= (marker_size + 2);
+				m_tileProcessor->tile_part_data_length -= (uint32_t)(marker_size + 2);
 
 			marker_size = (uint16_t)(marker_size - 2); /* Subtract the size of the marker ID already read */
 
@@ -2600,7 +2599,7 @@ bool CodeStream::copy_default_tcp(void) {
 	uint32_t nb_tiles = m_cp.t_grid_height * m_cp.t_grid_width;
 	uint32_t tccp_size = image->numcomps * (uint32_t) sizeof(TileComponentCodingParams);
 	auto default_tcp = m_decompressor.m_default_tcp;
-	uint32_t mct_size = image->numcomps * image->numcomps * (uint32_t) sizeof(float);
+	uint32_t mct_size = (uint32_t)image->numcomps * image->numcomps * (uint32_t) sizeof(float);
 
 	/* For each tile */
 	for (uint32_t i = 0; i < nb_tiles; ++i) {
@@ -2702,7 +2701,7 @@ bool CodeStream::update_rates(void) {
 		return false;
 
 	uint32_t bits_empty = 8 * image->comps->dx * image->comps->dy;
-	uint32_t size_pixel = image->numcomps * image->comps->prec;
+	uint32_t size_pixel = (uint32_t)image->numcomps * image->comps->prec;
 	auto header_size = (double) m_stream->tell();
 
 	for (uint32_t tile_y = 0; tile_y < cp->t_grid_height; ++tile_y) {

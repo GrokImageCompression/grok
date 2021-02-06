@@ -74,7 +74,7 @@ private:
 template<typename T> class RoiShiftHTFilter {
 public:
 	RoiShiftHTFilter(DecompressBlockExec *block) : roiShift(block->roishift),
-													 shift(31 - (block->k_msbs + 1))
+													 shift(31U - (block->k_msbs + 1U))
 	{}
 	inline void copy(T* dest,T* src, uint32_t len){
 		T thresh = 1 << roiShift;
@@ -93,7 +93,7 @@ private:
 };
 template<typename T> class ShiftHTFilter {
 public:
-	ShiftHTFilter(DecompressBlockExec *block) :  shift(31 - (block->k_msbs + 1)){}
+	ShiftHTFilter(DecompressBlockExec *block) :  shift(31U - (block->k_msbs + 1U)){}
 	inline void copy(T* dest,T* src, uint32_t len){
 		for (uint32_t i = 0; i < len; ++i){
 			T val = src[i];

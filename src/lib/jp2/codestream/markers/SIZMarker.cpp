@@ -81,7 +81,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		return false;
 	}
 
-	remaining_size = header_size - 36;
+	remaining_size = header_size - 36U;
 	nb_comp = remaining_size / 3;
 	nb_comp_remain = remaining_size % 3;
 	if (nb_comp_remain != 0) {

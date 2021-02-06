@@ -886,8 +886,8 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
 							vert,
 							vert.sn,
 							// LL
-							tilec->getBuffer()->getWindow(res-1)->data,
-							tilec->getBuffer()->getWindow(res-1)->stride,
+							tilec->getBuffer()->getWindow(res-1U)->data,
+							tilec->getBuffer()->getWindow(res-1U)->stride,
 							// HL
 							tilec->getBuffer()->getWindow(res, BAND_ORIENT_HL)->data,
 							tilec->getBuffer()->getWindow(res,BAND_ORIENT_HL)->stride,
@@ -1389,8 +1389,8 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 							horiz,
 							vert.sn,
 							// LL
-							(float*) tilec->getBuffer()->getWindow(res-1)->data,
-							tilec->getBuffer()->getWindow(res-1)->stride,
+							(float*) tilec->getBuffer()->getWindow(res-1U)->data,
+							tilec->getBuffer()->getWindow(res-1U)->stride,
 							// HL
 							(float*) tilec->getBuffer()->getWindow(res, BAND_ORIENT_HL)->data,
 							tilec->getBuffer()->getWindow(res,BAND_ORIENT_HL)->stride,
@@ -1932,7 +1932,7 @@ template <typename T,
     const uint32_t pad = FILTER_WIDTH * std::max<uint32_t>(HORIZ_PASS_HEIGHT,VERT_PASS_WIDTH) * sizeof(T)/sizeof(int32_t);
 
 	auto synthesisWindow = bounds;
-	synthesisWindow = synthesisWindow.rectceildivpow2(numresolutions - 1 - (numres-1));
+	synthesisWindow = synthesisWindow.rectceildivpow2(numresolutions - 1U - (numres-1U));
 
 	assert(fullResTopLevel->intersection(synthesisWindow) == synthesisWindow);
     synthesisWindow = synthesisWindow.pan(-(int64_t)fullResTopLevel->x0,-(int64_t)fullResTopLevel->y0);

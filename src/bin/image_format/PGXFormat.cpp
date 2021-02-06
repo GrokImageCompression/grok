@@ -149,10 +149,10 @@ static grk_image* pgxtoimage(const char *filename,
 	cmptparm.sgnd = sign == '-';
 	if (prec < 8) {
 		force8 = true;
-		ushift = (uint32_t)(8 - prec);
+		ushift = (uint32_t)(8U - prec);
 		dshift = (uint32_t)(prec - ushift);
 		if (cmptparm.sgnd)
-			adjustS = (1 << (prec - 1));
+			adjustS = (1U << (prec - 1));
 		else
 			adjustS = 0;
 		cmptparm.sgnd = false;

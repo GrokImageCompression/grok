@@ -81,7 +81,7 @@ uint32_t Precinct::getCblkGridHeight(void){
 }
 
 uint32_t Precinct::getNominalBlockSize(void){
-	return (uint32_t)(1 << impl->m_cblk_expn.x) * (1 << impl->m_cblk_expn.y);
+	return (1U << impl->m_cblk_expn.x) * (1U << impl->m_cblk_expn.y);
 }
 
 PrecinctImpl* Precinct::getImpl(void){
@@ -147,8 +147,8 @@ template<typename T> bool PrecinctImpl::initBlock(T* block, uint64_t cblkno){
 								(m_cblk_grid.y0  + (uint32_t) (cblkno / m_cblk_grid.width())) << m_cblk_expn.y);
 	auto cblk_bounds = grk_rect_u32(cblk_start.x,
 									cblk_start.y,
-									cblk_start.x + (1 << m_cblk_expn.x),
-									cblk_start.y + (1 << m_cblk_expn.y));
+									cblk_start.x + (1U << m_cblk_expn.x),
+									cblk_start.y + (1U << m_cblk_expn.y));
 	(*(grk_rect_u32*)block) = cblk_bounds.intersection(&m_bounds);
 
 	return true;
@@ -494,8 +494,8 @@ Precinct* Subband::createPrecinct(bool isCompressor,
 	auto precinct_dim = grk_rect_u32(
 			band_precinct_start.x,
 			band_precinct_start.y,
-			band_precinct_start.x + (1 << precinct_expn.x),
-			band_precinct_start.y + (1 << precinct_expn.y)).intersection(this);
+			band_precinct_start.x + (1U << precinct_expn.x),
+			band_precinct_start.y + (1U << precinct_expn.y)).intersection(this);
 
 	auto current_precinct = new Precinct(precinct_dim, isCompressor,cblk_expn);
 	current_precinct->precinctIndex = precinctIndex;

@@ -617,7 +617,7 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB) {
 		max = (size_t)w * h;
 		nr_samples = max * 3 * (cmsUInt32Number) sizeof(uint8_t);
 		grk_image_comp *comps = (grk_image_comp*) realloc(image->comps,
-				(image->numcomps + 2) * sizeof(grk_image_comp));
+				(size_t)(image->numcomps + 2) * sizeof(grk_image_comp));
 		if (!comps)
 			goto cleanup;
 		image->comps = comps;
@@ -657,7 +657,7 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB) {
 		new_image = nullptr;
 
 		if (forceRGB)
-			image->numcomps += 2;
+			image->numcomps = (uint16_t)(2 + image->numcomps);
 
 		auto r = image->comps[0].data;
 
@@ -921,7 +921,7 @@ bool color_cmyk_to_rgb(grk_image *image) {
 	image->comps[0].prec = 8;
 	image->comps[1].prec = 8;
 	image->comps[2].prec = 8;
-	image->numcomps -= 1;
+	image->numcomps = (uint16_t)(image->numcomps - 1U);
 	image->color_space = GRK_CLRSPC_SRGB;
 
 	for (uint32_t i = 3; i < image->numcomps; ++i) {

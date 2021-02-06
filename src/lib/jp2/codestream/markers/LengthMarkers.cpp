@@ -159,7 +159,7 @@ bool TileLengthMarkers::skipTo(uint16_t skipTileIndex, BufferedStream *stream,ui
 		}
 		skip += tl.length;
 		tl = getNext();
-		tileNumber = tl.has_tile_number ? tl.tile_number : tileNumber+1;
+		tileNumber = tl.has_tile_number ? tl.tile_number : tileNumber+1U;
 	}
 	stream->skip(skip);
 

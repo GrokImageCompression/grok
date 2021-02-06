@@ -215,7 +215,7 @@ bool j2k_read_cap(CodeStream *codeStream,  uint8_t *p_header_data,
 	p_header_data += sizeof(uint32_t);
 	cp->pcap = tmp;
     uint32_t count = ojph::population_count(cp->pcap);
-    uint32_t expected_size = sizeof(cp->pcap) + 2 * count;
+    uint32_t expected_size = (uint32_t)sizeof(cp->pcap) + 2U * count;
 	if (header_size != expected_size) {
 	  GRK_ERROR("CAP marker size %d != expected size %d",header_size, expected_size);
 	  return false;
@@ -1936,7 +1936,7 @@ bool j2k_add_mct(TileCodingParams *p_tcp, GrkImage *p_image, uint32_t index) {
 		if (deco_array->m_data_size != data_size)
 			return false;
 
-		uint32_t nb_elem = p_image->numcomps * p_image->numcomps;
+		uint32_t nb_elem = (uint32_t)p_image->numcomps * p_image->numcomps;
 		uint32_t mct_size = nb_elem * (uint32_t) sizeof(float);
 		p_tcp->m_mct_decoding_matrix = (float*) grk_malloc(mct_size);
 
@@ -1982,14 +1982,14 @@ bool j2k_write_cbd(CodeStream *codeStream) {
 	assert(codeStream != nullptr);
 	auto stream = codeStream->getStream();
 	auto image = codeStream->getHeaderImage();
-	uint16_t cbd_size = 6 + codeStream->getHeaderImage()->numcomps;
+	uint16_t cbd_size = (uint16_t)(6U + codeStream->getHeaderImage()->numcomps);
 
 	/* CBD */
 	if (!stream->write_short(J2K_MS_CBD))
 		return false;
 
 	/* L_CBD */
-	if (!stream->write_short(cbd_size - 2))
+	if (!stream->write_short((uint16_t)(cbd_size - 2U)))
 		return false;
 
 	/* Ncbd */
@@ -2040,8 +2040,8 @@ bool j2k_read_cbd(CodeStream *codeStream, uint8_t *p_header_data,
 		uint8_t comp_def;
 		grk_read<uint8_t>(p_header_data++, &comp_def);
 		auto comp = codeStream->getHeaderImage()->comps + i;
-		comp->sgnd = (comp_def >> 7) & 1;
-		comp->prec = (comp_def & 0x7f) + 1;
+		comp->sgnd = ((uint32_t)(comp_def >> 7U) & 1U);
+		comp->prec = (uint8_t)((comp_def & 0x7f) + 1U);
 	}
 
 	return true;
@@ -2201,7 +2201,7 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno, uint8_t *p_he
 	++tccp->numresolutions;
 	if (codeStream->m_cp.pcap && !tcp->getIsHT()) {
 		tcp->setIsHT(true);
-		tcp->qcd.generate(tccp->numgbits, tccp->numresolutions - 1,
+		tcp->qcd.generate(tccp->numgbits, tccp->numresolutions - 1U,
 				tccp->qmfbid == 1, codeStream->getHeaderImage()->comps[compno].prec,
 				tcp->mct > 0, codeStream->getHeaderImage()->comps[compno].sgnd);
 		tcp->qcd.push(tccp->stepsizes, tccp->qmfbid == 1);
@@ -2230,8 +2230,8 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno, uint8_t *p_he
 		return false;
 	}
 
-	tccp->cblkw += 2;
-	tccp->cblkh += 2;
+	tccp->cblkw = (uint8_t)(tccp->cblkw + 2U);
+	tccp->cblkh = (uint8_t)(tccp->cblkh + 2U);
 
 	/* SPcoc (G) */
 	tccp->cblk_sty = *current_ptr++;
@@ -2240,7 +2240,7 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno, uint8_t *p_he
 				"set (HT block coder), the other mode flags from the original J2K block coder must be 0.",tccp->cblk_sty);
 		return false;
 	}
-	uint8_t high_bits = tccp->cblk_sty >> 6;
+	uint8_t high_bits = (uint8_t)(tccp->cblk_sty >> 6U);
 	if (high_bits == 2) {
 		GRK_ERROR("Unrecognized code-block style byte 0x%x found in COD/COC marker segment. "
 				"Most significant 2 bits can be 00, 01 or 11, but not 10",tccp->cblk_sty );
@@ -2274,7 +2274,7 @@ bool j2k_read_SPCod_SPCoc(CodeStream *codeStream, uint32_t compno, uint8_t *p_he
 				return false;
 			}
 			tccp->prcw_exp[i] = tmp & 0xf;
-			tccp->prch_exp[i] = tmp >> 4;
+			tccp->prch_exp[i] = (uint32_t)(tmp >> 4U);
 		}
 
 		*header_size = (uint16_t) (*header_size - tccp->numresolutions);

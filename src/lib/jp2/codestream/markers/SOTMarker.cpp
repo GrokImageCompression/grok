@@ -280,7 +280,7 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 			if (current_part
 					>= m_codeStream->cstr_index->tile_index[tile_number].current_nb_tps) {
 				grk_tp_index *new_tp_index;
-				m_codeStream->cstr_index->tile_index[tile_number].current_nb_tps =	current_part + 1;
+				m_codeStream->cstr_index->tile_index[tile_number].current_nb_tps =	current_part + 1U;
 				new_tp_index =
 						(grk_tp_index*) grk_realloc(m_codeStream->cstr_index->tile_index[tile_number].tp_index,
 								m_codeStream->cstr_index->tile_index[tile_number].current_nb_tps

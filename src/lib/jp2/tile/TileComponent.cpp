@@ -100,7 +100,7 @@ bool TileComponent::init(bool isCompressor,
 		if (resno == numresolutions - 1){
 			dim = unreducedTileComp;
 		} else {
-			dim = getTileCompBandWindow(numresolutions,resno+1,BAND_ORIENT_LL,unreducedTileComp);
+			dim = getTileCompBandWindow(numresolutions,(uint8_t)(resno+1U),BAND_ORIENT_LL,unreducedTileComp);
 		}
 		res->set_rect(dim);
 

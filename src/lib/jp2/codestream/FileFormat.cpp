@@ -1020,7 +1020,7 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,GrkImage *image){
 	sign = image->comps[0].sgnd;
 	bpc = (uint8_t)(depth_0 + (sign << 7));
 	for (i = 1; i < image->numcomps; i++) {
-		uint32_t depth = image->comps[i].prec - 1;
+		uint32_t depth = image->comps[i].prec - 1U;
 		sign = image->comps[i].sgnd;
 		if (depth_0 != depth)
 			bpc = 0xFF;
@@ -1922,7 +1922,7 @@ uint8_t* FileFormat::write_bpc( uint32_t *p_nb_bytes_written) {
 
 	uint32_t i;
 	/* room for 8 bytes for box and 1 byte for each component */
-	uint32_t bpcc_size = 8 + numcomps;
+	uint32_t bpcc_size = 8U + numcomps;
 
 
 	auto bpcc_data = (uint8_t*) grk_calloc(1, bpcc_size);
@@ -2627,7 +2627,7 @@ uint8_t* FileFormat::write_palette_clr( uint32_t *p_nb_bytes_written) {
 
 	uint32_t bytesPerEntry = 0;
 	for (uint32_t i = 0; i < palette->num_channels; ++i)
-		bytesPerEntry += ((palette->channel_prec[i] + 7)/8U);
+		bytesPerEntry += ((palette->channel_prec[i] + 7U)/8U);
 
 	uint32_t boxSize = 4 + 4 + 2 + 1 +  palette->num_channels + bytesPerEntry * palette->num_entries;
 

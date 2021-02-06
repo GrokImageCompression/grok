@@ -968,13 +968,13 @@ grk_image* TIFFFormat::decode(const std::string &filename,
 		break;
 	case PHOTOMETRIC_RGB:
 		color_space = GRK_CLRSPC_SRGB;
-		numcomps += 3;
+		numcomps = (uint16_t)(numcomps+3);
 		break;
 	case PHOTOMETRIC_CIELAB:
 	case PHOTOMETRIC_ICCLAB:
 		isCIE = true;
 		color_space = GRK_CLRSPC_DEFAULT_CIE;
-		numcomps += 3;
+		numcomps = (uint16_t)(numcomps+3);
 		break;
 	case PHOTOMETRIC_YCBCR:
 		// jpeg library is needed to convert from YCbCr to RGB
@@ -990,7 +990,7 @@ grk_image* TIFFFormat::decode(const std::string &filename,
 			   goto cleanup;
 		}
 		color_space = GRK_CLRSPC_SYCC;
-		numcomps += 3;
+		numcomps = (uint16_t)(numcomps + 3);
 		TIFFGetFieldDefaulted( tif, TIFFTAG_YCBCRSUBSAMPLING, &chroma_subsample_x, &chroma_subsample_y);
 		if (chroma_subsample_x != 1 || chroma_subsample_y != 1){
 		   if (isSigned) {
@@ -1008,7 +1008,7 @@ grk_image* TIFFFormat::decode(const std::string &filename,
 		break;
 	case PHOTOMETRIC_SEPARATED:
 		color_space = GRK_CLRSPC_CMYK;
-		numcomps += 4;
+		numcomps = (uint16_t)(numcomps + 4);
 		break;
 	default:
 		spdlog::error("tiftoimage: Unsupported colour space {}.",tiPhoto );
@@ -1107,7 +1107,7 @@ grk_image* TIFFFormat::decode(const std::string &filename,
 
 	for (uint32_t j = 0; j < numcomps; j++) {
 		// handle non-colour channel
-		uint16_t numColourChannels = numcomps - extrasamples;
+		uint16_t numColourChannels = (uint16_t)(numcomps - extrasamples);
 		auto comp = image->comps + j;
 
 		if (extrasamples > 0 && j >= numColourChannels) {

@@ -228,7 +228,7 @@ template<typename T> struct TileComponentWindowBuffer {
 																	m_wholeTileDecompress(wholeTileDecompress) {
 		if (!m_compress) {
 			auto unreducedImageCompWindow =  unreducedTileOrImageCompWindow;
-			m_bounds = unreducedImageCompWindow.rectceildivpow2(m_numResolutions - reducedNumResolutions);
+			m_bounds = unreducedImageCompWindow.rectceildivpow2((uint32_t)(m_numResolutions - reducedNumResolutions));
 			m_bounds = m_bounds.intersection(tileCompReduced);
 			assert(m_bounds.is_valid());
 			m_unreducedBounds = unreducedImageCompWindow.intersection(tileCompUnreduced);
@@ -243,7 +243,7 @@ template<typename T> struct TileComponentWindowBuffer {
 		auto tileCompAtLowerRes =	reducedNumResolutions > 1 ?	tileCompResolutions + reducedNumResolutions - 2 : nullptr;
 		// create resolution buffers
 		auto topLevel = new ResWindow<T>(numresolutions,
-										reducedNumResolutions - 1,
+										(uint8_t)(reducedNumResolutions - 1U),
 										nullptr,
 										tileCompAtRes,
 										tileCompAtLowerRes,
@@ -301,7 +301,7 @@ template<typename T> struct TileComponentWindowBuffer {
 		y -= band->y0;
 
 		if (useResCoordsForCodeBlock() && resno > 0){
-			auto resLower = m_tileCompResolutions[ resno - 1];
+			auto resLower = m_tileCompResolutions[ resno - 1U];
 
 			if (orientation & 1)
 				x += resLower->width();

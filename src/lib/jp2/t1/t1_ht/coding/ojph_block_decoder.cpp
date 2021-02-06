@@ -882,21 +882,21 @@ namespace ojph {
                                           // exhausted
 
       // we accumulate in t and keep a count of the number of bits in bits
-      ui32 bits = 8 - msp->unstuff;        // if previous byte was 0xFF
+      ui32 bits = 8U - msp->unstuff;        // if previous byte was 0xFF
       // get next byte, if bitstream is exhausted, replace it with X
       ui32 t = msp->size-- > 0 ? (val & 0xFF) : X;
       bool unstuff = ((val & 0xFF) == 0xFF);  // Do we need unstuffing next?
 
       t |= (msp->size-- > 0 ? ((val >> 8) & 0xFF) : X) << bits;
-      bits += 8 - unstuff;
+      bits += 8U - unstuff;
       unstuff = (((val >> 8) & 0xFF) == 0xFF);
 
       t |= (msp->size-- > 0 ? ((val >> 16) & 0xFF) : X) << bits;
-      bits += 8 - unstuff;
+      bits += 8U - unstuff;
       unstuff = (((val >> 16) & 0xFF) == 0xFF);
 
       t |= (msp->size-- > 0 ? ((val >> 24) & 0xFF) : X) << bits;
-      bits += 8 - unstuff;
+      bits += 8U - unstuff;
       msp->unstuff = (((val >> 24) & 0xFF) == 0xFF); // for next byte
 
       msp->tmp |= ((ui64)t) << msp->bits;  // move data to msp->tmp
@@ -932,7 +932,7 @@ namespace ojph {
         //read a byte if the buffer is not exhausted, otherwise set it to X
         d = msp->size-- > 0 ? *msp->data++ : X;
         msp->tmp |= (d << msp->bits);      // store data in msp->tmp
-        msp->bits += 8 - msp->unstuff;     // number of bits added to msp->tmp
+        msp->bits += 8U - msp->unstuff;     // number of bits added to msp->tmp
         msp->unstuff = ((d & 0xFF) == 0xFF); // unstuffing for next byte
       }
       frwd_read<X>(msp); // read 32 bits more
@@ -1363,8 +1363,8 @@ namespace ojph {
           //first quad
           // get context, eqn. 2 ITU T.814
           // c_q has \sigma^W | \sigma^SW
-          c_q |= (ls0 >> 7);          //\sigma^NW | \sigma^N
-          c_q |= (lsp[1] >> 5) & 0x4; //\sigma^NE | \sigma^NF
+          c_q |= ui32(ls0 >> 7U);          //\sigma^NW | \sigma^N
+          c_q |= (lsp[1] >> 5U) & 0x4; //\sigma^NE | \sigma^NF
 
           //the following is very similar to previous code, so please refer to 
           // that
@@ -1398,9 +1398,9 @@ namespace ojph {
           qinf[1] = 0;
           if (x + 2 < width)
           {
-            c_q |= (lsp[1] >> 7);
-            c_q |= (lsp[2] >> 5) & 0x4;
-            qinf[1] = vlc_tbl1[(c_q << 7) | (vlc_val & 0x7F)];
+            c_q |= ui32(lsp[1] >> 7U);
+            c_q |= ui32(lsp[2] >> 5U) & 0x4;
+            qinf[1] = vlc_tbl1[(c_q << 7U) | (vlc_val & 0x7F)];
             if (c_q == 0) //zero context
             {
               run -= 2;
@@ -1617,7 +1617,7 @@ namespace ojph {
             ui32 *cur_sig = y & 0x4 ? sigma1 : sigma2;
             // the address of the data that needs updating
             ui32 *dpp = decoded_data + (y - 4) * stride;
-            ui32 half = 1 << (p - 2); // half the center of the bin
+            ui32 half = 1U << (p - 2U); // half the center of the bin
             for (ui32 i = 0; i < width; i += 8)
             {
               //Process one entry from sigma array at a time
@@ -1909,7 +1909,7 @@ namespace ojph {
         {//do magref
           ui32 *cur_sig = height & 0x4 ? sigma2 : sigma1; //reversed
           ui32 *dpp = decoded_data + (height & 0xFFFFFFFCu) * stride;
-          ui32 half = 1 << (p - 2);
+          ui32 half = 1U << (p - 2);
           for (ui32 i = 0; i < width; i += 8)
           {
             ui32 cwd = rev_fetch_mrp(&magref);

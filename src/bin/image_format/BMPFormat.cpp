@@ -334,7 +334,7 @@ bool BMPFormat::read_rle4_data(uint8_t *pData, uint32_t stride,
 			for (j = 0;
 					(j < c) && (x < width) && ((size_t) pix < (size_t) beyond);
 					j++, x++, pix++) {
-				*pix = (uint8_t) ((j & 1) ? (c1 & 0x0fU) : ((c1 >> 4) & 0x0fU));
+				*pix = (uint8_t) ((j & 1) ? (c1 & 0x0fU) : ((uint8_t)(c1 >> 4) & 0x0fU));
 				written++;
 			}
 		} else { /* absolute mode */
@@ -360,7 +360,7 @@ bool BMPFormat::read_rle4_data(uint8_t *pData, uint32_t stride,
 						j++, x++, pix++) {
 					if ((j & 1) == 0)
 						c1 = *pixels_ptr++;
-					*pix = (uint8_t) ((j & 1) ? (c1 & 0x0fU) : ((c1 >> 4) & 0x0fU));
+					*pix = (uint8_t) ((j & 1) ? (c1 & 0x0fU) : ((uint8_t)(c1 >> 4) & 0x0fU));
 					written++;
 				}
 				 /* skip padding byte */
@@ -436,7 +436,7 @@ bool BMPFormat::encodeHeader(grk_image *image, const std::string &filename, uint
 		}
 	}
 	colours_used = (m_image->numcomps == 3) ? 0 : 256 ;
-	lut_size = colours_used * sizeof(uint32_t) ;
+	lut_size = colours_used * (uint32_t)sizeof(uint32_t) ;
 	full_header_size = fileHeaderSize + BITMAPINFOHEADER_LENGTH;
 	if (m_image->color.icc_profile_buf){
 		full_header_size = fileHeaderSize + sizeof(GRK_BITMAPINFOHEADER);
@@ -707,11 +707,11 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	if (Info_h.biBitCount > ((uint32_t)((uint32_t) -1) - 31) / (uint32_t)Info_h.biWidth)
 		goto cleanup;
 
-	bmpStride = (((uint32_t)Info_h.biWidth * Info_h.biBitCount + 31U) / 32U) * sizeof(uint32_t); /* rows are aligned on 32bits */
+	bmpStride = (((uint32_t)Info_h.biWidth * Info_h.biBitCount + 31U) / 32U) * (uint32_t)sizeof(uint32_t); /* rows are aligned on 32bits */
 	if (Info_h.biBitCount == 4 && Info_h.biCompression == 2) { /* RLE 4 gets decoded as 8 bits data for now... */
 		if (8 > ((uint32_t)((uint32_t) -1) - 31) / (uint32_t)Info_h.biWidth)
 			goto cleanup;
-		bmpStride = (((uint32_t)Info_h.biWidth * 8U + 31U) / 32U) * sizeof(uint32_t);
+		bmpStride = (((uint32_t)Info_h.biWidth * 8U + 31U) / 32U) * (uint32_t)sizeof(uint32_t);
 	}
 
 	if (bmpStride > ((uint32_t)(uint32_t) -1) / sizeof(uint8_t) / (uint32_t)Info_h.biHeight)

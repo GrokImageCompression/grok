@@ -659,20 +659,20 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 				case 'C':
 					poc->comp_temp = poc->tpCompS;
 					cur_pi->prog.compS = poc->comp_temp;
-					cur_pi->prog.compE = poc->comp_temp + 1;
-					poc->comp_temp += 1;
+					cur_pi->prog.compE = uint16_t(poc->comp_temp + 1U);
+					poc->comp_temp = uint16_t(poc->comp_temp + 1);
 					break;
 				case 'R':
 					poc->res_temp = poc->tpResS;
 					cur_pi->prog.resS = poc->res_temp;
-					cur_pi->prog.resE = poc->res_temp + 1;
-					poc->res_temp += 1;
+					cur_pi->prog.resE = uint8_t(poc->res_temp + 1U);
+					poc->res_temp = uint8_t(poc->res_temp + 1U);
 					break;
 				case 'L':
 					poc->lay_temp = 0;
 					cur_pi->prog.layS = poc->lay_temp;
-					cur_pi->prog.layE = poc->lay_temp + 1;
-					poc->lay_temp += 1;
+					cur_pi->prog.layE = (uint16_t)(poc->lay_temp + 1U);
+					poc->lay_temp = uint16_t(poc->lay_temp + 1);
 					break;
 				case 'P':
 					switch (poc->prg) {
@@ -705,15 +705,15 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 			for (int32_t i = (int32_t) tppos; i >= 0; i--) {
 				switch (prog[i]) {
 				case 'C':
-					cur_pi->prog.compS = poc->comp_temp - 1;
+					cur_pi->prog.compS = uint16_t(poc->comp_temp - 1);
 					cur_pi->prog.compE = poc->comp_temp;
 					break;
 				case 'R':
-					cur_pi->prog.resS = poc->res_temp - 1;
+					cur_pi->prog.resS = uint8_t(poc->res_temp - 1);
 					cur_pi->prog.resE = poc->res_temp;
 					break;
 				case 'L':
-					cur_pi->prog.layS = poc->lay_temp - 1;
+					cur_pi->prog.layS = uint16_t(poc->lay_temp - 1);
 					cur_pi->prog.layE = poc->lay_temp;
 					break;
 				case 'P':
@@ -741,16 +741,16 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 							if (pi_check_next_for_valid_progression(i - 1, cp, tileno, pino,prog)) {
 								poc->res_temp = poc->tpResS;
 								cur_pi->prog.resS = poc->res_temp;
-								cur_pi->prog.resE = poc->res_temp + 1;
-								poc->res_temp += 1;
+								cur_pi->prog.resE = uint8_t(poc->res_temp + 1);
+								poc->res_temp = uint8_t(poc->res_temp + 1);
 								incr_top = 1;
 							} else {
 								incr_top = 0;
 							}
 						} else {
 							cur_pi->prog.resS = poc->res_temp;
-							cur_pi->prog.resE = poc->res_temp + 1;
-							poc->res_temp += 1;
+							cur_pi->prog.resE = uint8_t(poc->res_temp + 1);
+							poc->res_temp = uint8_t(poc->res_temp + 1);
 							incr_top = 0;
 						}
 						break;
@@ -759,16 +759,16 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 							if (pi_check_next_for_valid_progression(i - 1, cp, tileno, pino,prog)) {
 								poc->comp_temp = poc->tpCompS;
 								cur_pi->prog.compS = poc->comp_temp;
-								cur_pi->prog.compE = poc->comp_temp + 1;
-								poc->comp_temp += 1;
+								cur_pi->prog.compE = uint16_t(poc->comp_temp + 1);
+								poc->comp_temp = uint16_t(poc->comp_temp + 1);
 								incr_top = 1;
 							} else {
 								incr_top = 0;
 							}
 						} else {
 							cur_pi->prog.compS = poc->comp_temp;
-							cur_pi->prog.compE = poc->comp_temp + 1;
-							poc->comp_temp += 1;
+							cur_pi->prog.compE = uint16_t(poc->comp_temp + 1);
+							poc->comp_temp = uint16_t(poc->comp_temp + 1);
 							incr_top = 0;
 						}
 						break;
@@ -777,16 +777,16 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 							if (pi_check_next_for_valid_progression(i - 1, cp, tileno, pino,prog)) {
 								poc->lay_temp = 0;
 								cur_pi->prog.layS = poc->lay_temp;
-								cur_pi->prog.layE = poc->lay_temp + 1;
-								poc->lay_temp += 1;
+								cur_pi->prog.layE =  uint16_t(poc->lay_temp + 1U);
+								poc->lay_temp = uint16_t(poc->lay_temp + 1U);
 								incr_top = 1;
 							} else {
 								incr_top = 0;
 							}
 						} else {
 							cur_pi->prog.layS = poc->lay_temp;
-							cur_pi->prog.layE = poc->lay_temp + 1;
-							poc->lay_temp += 1;
+							cur_pi->prog.layE = uint16_t(poc->lay_temp + 1U);
+							poc->lay_temp = uint16_t(poc->lay_temp + 1U);
 							incr_top = 0;
 						}
 						break;
@@ -901,7 +901,7 @@ void pi_update_encoding_parameters(const GrkImage *image,
 			if (dy < UINT_MAX)
 				dy_min = std::min<uint32_t>(dy_min, (uint32_t) dy);
 
-			uint32_t level_no = tccp->numresolutions - 1 - resno;
+			uint32_t level_no = tccp->numresolutions - 1U - resno;
 			auto resBounds = tileCompBounds.rectceildivpow2(level_no);
 			uint32_t px0 = uint_floordivpow2(resBounds.x0, pdx) << pdx;
 			uint32_t py0 = uint_floordivpow2(resBounds.y0, pdy) << pdy;

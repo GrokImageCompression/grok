@@ -37,7 +37,7 @@ grk_rect_u32 getTileCompBandWindow(uint8_t num_res,
 	assert(resno > 0 || orientation == 0);
 
     // Compute number of decomposition for this band. See table F-1
-    uint32_t num_decomps = (resno == 0) ? num_res - 1 :num_res - resno;
+    uint32_t num_decomps = (resno == 0) ? (uint32_t)(num_res - 1U) : (uint32_t)(num_res - resno);
 
     uint32_t tcx0 = unreducedTileCompWindow.x0;
 	uint32_t tcy0 = unreducedTileCompWindow.y0;
@@ -47,7 +47,7 @@ grk_rect_u32 getTileCompBandWindow(uint8_t num_res,
      * sub-band-based coordinates, i.e. origin is at tile origin  */
     /* See equation B-15 of the standard. */
     uint32_t x0b = orientation & 1;
-    uint32_t y0b = orientation >> 1;
+    uint32_t y0b = (uint32_t)(orientation >> 1U);
 	uint32_t band_x0 = (num_decomps == 0) ? tcx0 :
 			(tcx0 <= (1U << (num_decomps - 1)) * x0b) ? 0 :
 			ceildivpow2<uint32_t>(tcx0 - (1U << (num_decomps - 1)) * x0b, num_decomps);

@@ -135,7 +135,7 @@ void Profile::set_imf_parameters(grk_cparameters *parameters,
 			parameters->prcw_init[0] = 128;
 			parameters->prch_init[0] = 128;
 		} else {
-			parameters->res_spec = parameters->numresolution - 1;
+			parameters->res_spec = (uint32_t)(parameters->numresolution - 1);
 			for (uint32_t i = 0; i < parameters->res_spec; i++) {
 				parameters->prcw_init[i] = 256;
 				parameters->prch_init[i] = 256;
@@ -626,7 +626,7 @@ void Profile::set_broadcast_parameters(grk_cparameters *parameters) {
 			parameters->prcw_init[0] = 128;
 			parameters->prch_init[0] = 128;
 		} else {
-			parameters->res_spec = parameters->numresolution - 1;
+			parameters->res_spec = (uint32_t)(parameters->numresolution - 1);
 			for (uint32_t i = 0; i < parameters->res_spec; i++) {
 				parameters->prcw_init[i] = 256;
 				parameters->prch_init[i] = 256;
@@ -979,7 +979,7 @@ void Profile::set_cinema_parameters(grk_cparameters *parameters,
 
 	/* Precincts */
 	parameters->csty |= J2K_CP_CSTY_PRT;
-	parameters->res_spec = parameters->numresolution - 1;
+	parameters->res_spec = (uint32_t)(parameters->numresolution - 1);
 	for (uint32_t i = 0; i < parameters->res_spec; i++) {
 		parameters->prcw_init[i] = 256;
 		parameters->prch_init[i] = 256;
