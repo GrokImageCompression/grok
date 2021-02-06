@@ -146,12 +146,10 @@ grk_tl_info TileLengthMarkers::getNext(void){
 
 bool TileLengthMarkers::skipTo(uint16_t skipTileIndex, BufferedStream *stream,uint64_t firstSotPos){
 	assert(stream);
-	if (!stream->seek(firstSotPos))
-		return false;
 	getInit();
 	auto tl = getNext();
 	uint16_t tileNumber = 0;
-	int64_t skip = 0;
+	uint64_t skip = 0;
 	while (tileNumber != skipTileIndex){
 		if (tl.length == 0){
 			GRK_ERROR("corrupt TLM marker");
@@ -159,11 +157,10 @@ bool TileLengthMarkers::skipTo(uint16_t skipTileIndex, BufferedStream *stream,ui
 		}
 		skip += tl.length;
 		tl = getNext();
-		tileNumber = tl.has_tile_number ? tl.tile_number : tileNumber+1U;
+		tileNumber = (uint16_t)(tl.has_tile_number ? tl.tile_number : tileNumber+1U);
 	}
-	stream->skip(skip);
 
-	return true;
+	return stream->seek(firstSotPos + skip);
 }
 
 bool TileLengthMarkers::writeBegin(uint16_t totalTileParts) {
