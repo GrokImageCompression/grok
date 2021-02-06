@@ -315,12 +315,12 @@ uint32_t param_qcd::get_MAGBp() const{
   uint32_t irrev = Sqcd & 0x1F;
   if (irrev == 0) //reversible
 	for (uint32_t i = 0; i < 3 * num_decomps + 1; ++i)
-        B = max(B, (u8_SPqcd[i] >> 3U) + get_num_guard_bits() - 1U);
+        B = max(B, uint32_t(u8_SPqcd[i] >> 3U) + get_num_guard_bits() - 1U);
   else if (irrev == 2) //scalar expounded
 	for (uint32_t i = 0; i < 3 * num_decomps + 1; ++i)
     {
       uint32_t nb = num_decomps - (i ? (i - 1) / 3 : 0); //decomposition level
-      B = max(B, (u16_SPqcd[i] >> 11U) + get_num_guard_bits() - nb);
+      B = max(B, uint32_t(u16_SPqcd[i] >> 11U) + get_num_guard_bits() - nb);
     }
   else
 	assert(0);
@@ -328,7 +328,7 @@ uint32_t param_qcd::get_MAGBp() const{
   return B;
 }
 uint32_t param_qcd::get_num_guard_bits() const {
-  return (Sqcd >> 5U);
+  return uint32_t(Sqcd >> 5U);
 }
 
 
