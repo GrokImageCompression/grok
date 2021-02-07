@@ -831,7 +831,7 @@ typedef void (*grk_stream_free_user_data_fn)(void *user_data);
 /*
  * JPEG 2000 stream.
  */
-typedef grk_object* grk_stream;
+typedef grk_object grk_stream;
 
 /*
  ==============================
@@ -1345,15 +1345,6 @@ GRK_API grk_stream* GRK_CALLCONV grk_stream_create(size_t buffer_size,
 		bool is_input);
 
 /**
- * Destroy a stream created by grk_create_stream. This function does NOT
- * close the abstract stream. If needed the user must
- * close their own implementation of the stream.
- *
- * @param	stream	the stream to destroy.
- */
-GRK_API void GRK_CALLCONV grk_stream_destroy(grk_stream *stream);
-
-/**
  * Set the given function to be used as a read function.
  *
  * @param		stream	the stream to modify
@@ -1385,7 +1376,7 @@ GRK_API void GRK_CALLCONV grk_stream_set_seek_function(grk_stream *stream,
  *
  * @param		stream	the stream to modify
  * @param		data		the data to set.
- * @param		p_function	the function to free data when grk_stream_destroy() is called.
+ * @param		p_function	the function to free data when grk_object_unref() is called.
  */
 GRK_API void GRK_CALLCONV grk_stream_set_user_data(grk_stream *stream,
 		void *data, grk_stream_free_user_data_fn p_function);

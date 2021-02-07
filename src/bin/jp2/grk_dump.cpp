@@ -451,7 +451,7 @@ int main(int argc, char *argv[]) {
 			break;
 		}
 		default:
-			grk_stream_destroy(l_stream);
+			grk_object_unref(l_stream);
 			l_stream = nullptr;
 			continue;
 		}
@@ -478,7 +478,7 @@ int main(int argc, char *argv[]) {
 
 		/* close the byte stream */
 		if (l_stream) {
-			grk_stream_destroy(l_stream);
+			grk_object_unref(l_stream);
 			l_stream = nullptr;
 		}
 
@@ -511,7 +511,7 @@ int main(int argc, char *argv[]) {
 
 	/* close the byte stream */
 	if (l_stream)
-		grk_stream_destroy(l_stream);
+		grk_object_unref(l_stream);
 
 	/* free remaining structures */
 	if (l_codec) {

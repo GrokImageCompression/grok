@@ -163,7 +163,7 @@ int32_t main(int argc, char **argv) {
 		grk_destroy_codec(codec);
 
 		/* Close the byte stream */
-		grk_stream_destroy(stream);
+		grk_object_unref(stream);
 
 		if (rc)
 			goto cleanup;

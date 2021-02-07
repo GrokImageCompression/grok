@@ -82,4 +82,5 @@ struct IBufferedStream {
 
 };
 
+
 }

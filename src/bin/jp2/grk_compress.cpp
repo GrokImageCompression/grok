@@ -2110,7 +2110,7 @@ static bool plugin_compress_callback(grk_plugin_compress_user_callback_info *inf
 	}
 	cleanup:
 	if (stream)
-		grk_stream_destroy(stream);
+		grk_object_unref(stream);
 	if (codec)
 		grk_destroy_codec(codec);
 	if (createdImage)

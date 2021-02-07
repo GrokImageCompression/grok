@@ -105,7 +105,7 @@ static bool seek_from_mem(uint64_t nb_bytes, MemStream *src) {
  */
 static void grk_stream_set_zero_copy_read_function(grk_stream *stream,
 		grk_stream_zero_copy_read_fn p_function) {
-	auto streamImpl = (grk::BufferedStream*) stream;
+	auto streamImpl = BufferedStream::getStreamImpl(stream);
 	if ((!streamImpl) || (!(streamImpl->m_status & GROK_STREAM_STATUS_INPUT)))
 		return;
 	streamImpl->m_zero_copy_read_fn = p_function;
@@ -127,7 +127,7 @@ void set_up_mem_stream(grk_stream *l_stream, size_t len, bool is_read_stream) {
 size_t get_mem_stream_offset(grk_stream *stream) {
 	if (!stream)
 		return 0;
-	auto bufferedStream = (BufferedStream*) stream;
+	auto bufferedStream = BufferedStream::getStreamImpl(stream);
 	if (!bufferedStream->m_user_data)
 		return 0;
 	auto buf = (MemStream*) bufferedStream->m_user_data;
@@ -141,7 +141,8 @@ grk_stream* create_mem_stream(uint8_t *buf, size_t len, bool ownsBuffer,
 		return nullptr;
 	}
 	auto memStream = new MemStream(buf, 0, len, ownsBuffer);
-	auto l_stream = new BufferedStream(buf, len, is_read_stream);
+	auto streamImpl = new BufferedStream(buf, len, is_read_stream);
+	auto l_stream = streamImpl->getStreamWrapper();
 	grk_stream_set_user_data((grk_stream*) l_stream, memStream, free_mem);
 	set_up_mem_stream((grk_stream*) l_stream, memStream->len,
 			is_read_stream);

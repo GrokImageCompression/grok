@@ -40,12 +40,14 @@ BufferedStream::BufferedStream(uint8_t *buffer, size_t buffer_size,
 	m_buf = new grk_buf(
 			(!buffer && buffer_size) ? new uint8_t[buffer_size] : buffer,
 			buffer_size, buffer == nullptr);
+	obj.wrappee = new GrkBufferedStreamObject(this);
 }
 
 BufferedStream::~BufferedStream() {
 	if (m_free_user_data_fn)
 		m_free_user_data_fn(m_user_data);
 	delete m_buf;
+	delete (GrkBufferedStreamObject*)obj.wrappee;
 }
 //note: passing in nullptr for p_buffer will execute a zero-copy read
 size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
@@ -419,6 +421,15 @@ bool BufferedStream::has_seek(void) {
 bool BufferedStream::isMemStream() {
 	return !m_buf->owns_data;
 }
+
+BufferedStream* BufferedStream::getStreamImpl(grk_stream *stream){
+	return ((GrkBufferedStreamObject*)stream->wrappee)->getStream();
+}
+
+grk_stream* BufferedStream::getStreamWrapper(void){
+	return &obj;
+}
+
 
 }
 

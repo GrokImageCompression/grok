@@ -286,7 +286,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	cleanup:
-	grk_stream_destroy(stream);
+	grk_object_unref(stream);
 	grk_destroy_codec(codec);
 	grk_object_unref(&image->obj);
 

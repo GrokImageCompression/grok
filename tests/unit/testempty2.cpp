@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
         fprintf( stderr, "Something went wrong during creation of stream\n" );
         grk_destroy_codec(l_codec);
         grk_object_unref(&image->obj);
-        grk_stream_destroy(l_stream);
+        grk_object_unref(l_stream);
         return 1;
     }
 
@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
     assert(l_stream);
     bSuccess = grk_compress_start(l_codec);
     if( !bSuccess ) {
-        grk_stream_destroy(l_stream);
+        grk_object_unref(l_stream);
         grk_destroy_codec(l_codec);
         grk_object_unref(&image->obj);
         return 0;
@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
     bSuccess = grk_compress_end(l_codec);
     assert( bSuccess );
 
-    grk_stream_destroy(l_stream);
+    grk_object_unref(l_stream);
 
     grk_destroy_codec(l_codec);
     grk_object_unref(&image->obj);
@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
         bSuccess = grk_decompress_end(l_codec);
         assert( bSuccess );
 
-        grk_stream_destroy(l_stream);
+        grk_object_unref(l_stream);
 
         grk_destroy_codec(d_codec);
 

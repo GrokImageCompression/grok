@@ -197,7 +197,7 @@ int main(int argc, char *argv[]) {
 	grk_deinitialize();
 
 	beach:
-	grk_stream_destroy(stream);
+	grk_object_unref(stream);
 	grk_destroy_codec(codec);
 
 	return rc;

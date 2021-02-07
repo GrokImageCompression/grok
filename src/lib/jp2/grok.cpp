@@ -167,7 +167,6 @@ grk_image_meta *  GRK_CALLCONV grk_image_meta_new(void){
 
 /* ---------------------------------------------------------------------- */
 /* DECOMPRESSION FUNCTIONS*/
-
  grk_codec   GRK_CALLCONV grk_decompress_create(GRK_CODEC_FORMAT p_format,
 		 grk_stream  *stream) {
 	auto codec =
@@ -180,10 +179,10 @@ grk_image_meta *  GRK_CALLCONV grk_image_meta_new(void){
 
 	switch (p_format) {
 	case GRK_CODEC_J2K:
-		codec->m_codeStreamBase = new CodeStream(true,(BufferedStream*)stream);
+		codec->m_codeStreamBase = new CodeStream(true,BufferedStream::getStreamImpl(stream));
 		break;
 	case GRK_CODEC_JP2:
-		codec->m_codeStreamBase = new FileFormat(true,(BufferedStream*)stream);
+		codec->m_codeStreamBase = new FileFormat(true,BufferedStream::getStreamImpl(stream));
 		break;
 	case GRK_CODEC_UNKNOWN:
 	default:
@@ -314,10 +313,10 @@ grk_image* GRK_CALLCONV grk_decompress_get_composited_image( grk_codec p_codec) 
 
 	switch (p_format) {
 	case GRK_CODEC_J2K:
-		codec->m_codeStreamBase = new CodeStream(false,(BufferedStream*)stream);
+		codec->m_codeStreamBase = new CodeStream(false,BufferedStream::getStreamImpl(stream));
 		break;
 	case GRK_CODEC_JP2:
-		codec->m_codeStreamBase = new FileFormat(false,(BufferedStream*)stream);
+		codec->m_codeStreamBase = new FileFormat(false,BufferedStream::getStreamImpl(stream));
 		break;
 	case GRK_CODEC_UNKNOWN:
 	default:
@@ -805,14 +804,14 @@ void GRK_CALLCONV grk_plugin_stop_batch_decompress(void) {
 }
 
 grk_stream* GRK_CALLCONV grk_stream_create(size_t buffer_size, bool is_input) {
-	return (grk_stream*) (new grk::BufferedStream(nullptr, buffer_size,	is_input));
+	auto streamImpl = new BufferedStream(nullptr, buffer_size,	is_input);
+
+	return streamImpl->getStreamWrapper();
 }
-void GRK_CALLCONV grk_stream_destroy(grk_stream *stream) {
-	delete (grk::BufferedStream*) (stream);
-}
+
 void GRK_CALLCONV grk_stream_set_read_function(grk_stream *stream,
 		grk_stream_read_fn p_function) {
-	auto streamImpl = (grk::BufferedStream*) stream;
+	auto streamImpl = BufferedStream::getStreamImpl(stream);
 	if ((!streamImpl) || (!(streamImpl->m_status & GROK_STREAM_STATUS_INPUT)))
 		return;
 	streamImpl->m_read_fn = p_function;
@@ -820,13 +819,13 @@ void GRK_CALLCONV grk_stream_set_read_function(grk_stream *stream,
 
 void GRK_CALLCONV grk_stream_set_seek_function(grk_stream *stream,
 		grk_stream_seek_fn p_function) {
-	auto streamImpl = (grk::BufferedStream*) stream;
+	auto streamImpl = BufferedStream::getStreamImpl(stream);
 	if (streamImpl)
 		streamImpl->m_seek_fn = p_function;
 }
 void GRK_CALLCONV grk_stream_set_write_function(grk_stream *stream,
 		grk_stream_write_fn p_function) {
-	auto streamImpl = (grk::BufferedStream*) stream;
+	auto streamImpl = BufferedStream::getStreamImpl(stream);
 	if ((!streamImpl) || (!(streamImpl->m_status & GROK_STREAM_STATUS_OUTPUT)))
 		return;
 
@@ -835,7 +834,7 @@ void GRK_CALLCONV grk_stream_set_write_function(grk_stream *stream,
 
 void GRK_CALLCONV grk_stream_set_user_data(grk_stream *stream, void *p_data,
 		grk_stream_free_user_data_fn p_function) {
-	auto streamImpl = (grk::BufferedStream*) stream;
+	auto streamImpl = BufferedStream::getStreamImpl(stream);
 	if (!streamImpl)
 		return;
 	streamImpl->m_user_data = p_data;
@@ -843,7 +842,7 @@ void GRK_CALLCONV grk_stream_set_user_data(grk_stream *stream, void *p_data,
 }
 void GRK_CALLCONV grk_stream_set_user_data_length(grk_stream *stream,
 		uint64_t data_length) {
-	auto streamImpl = (grk::BufferedStream*) stream;
+	auto streamImpl = BufferedStream::getStreamImpl(stream);
 	if (streamImpl)
 		streamImpl->m_user_data_length = data_length;
 }

@@ -991,7 +991,7 @@ int decompress_callback(grk_plugin_decompress_callback_info *info) {
 	}
 	if (info->decompress_flags & GRK_PLUGIN_DECODE_CLEAN) {
 		if (info->l_stream)
-			grk_stream_destroy(info->l_stream);
+			grk_object_unref(info->l_stream);
 		info->l_stream = nullptr;
 		if (info->l_codec)
 			grk_destroy_codec(info->l_codec);
@@ -1252,7 +1252,7 @@ int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 	}
 	failed = false;
 cleanup:
-	grk_stream_destroy(info->l_stream);
+	grk_object_unref(info->l_stream);
 	info->l_stream = nullptr;
 	if (failed) {
 		info->image = nullptr;
@@ -1482,7 +1482,7 @@ int GrkDecompress::postDecompress(grk_plugin_decompress_callback_info *info) {
 	}
 	failed = false;
 	cleanup:
-	grk_stream_destroy(info->l_stream);
+	grk_object_unref(info->l_stream);
 	info->l_stream = nullptr;
 	grk_destroy_codec(info->l_codec);
 	info->l_codec = nullptr;

@@ -40,6 +40,8 @@ struct BufferedStream: public IBufferedStream {
 	BufferedStream(uint8_t *buffer, size_t buffer_size, bool l_is_input);
 	~BufferedStream();
 
+	grk_object obj;
+
 	/**
 	 * user data
 	 */
@@ -159,6 +161,8 @@ struct BufferedStream: public IBufferedStream {
 	bool supportsZeroCopy() ;
 	uint8_t* getCurrentPtr();
 
+	static BufferedStream* getStreamImpl(grk_stream *stream);
+	grk_stream* getStreamWrapper(void);
 private:
 
 	/**
@@ -213,6 +217,21 @@ private:
 	uint64_t m_stream_offset;
 
 };
+
+
+class GrkBufferedStreamObject : public GrkObject {
+public:
+	explicit GrkBufferedStreamObject(BufferedStream *str) : stream(str)
+	{}
+	virtual ~GrkBufferedStreamObject(void){}
+	virtual void release(void){
+		delete stream;
+	}
+	BufferedStream *getStream(){ return stream;}
+private:
+	BufferedStream *stream;
+};
+
 
 template<typename TYPE> void grk_write(uint8_t *p_buffer, TYPE value,
 		uint32_t nb_bytes) {
