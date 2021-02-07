@@ -30,10 +30,10 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB);
 #endif
 bool color_cmyk_to_rgb(grk_image *image);
 bool color_esycc_to_rgb(grk_image *image);
-
 void alloc_palette(grk_color *color, uint8_t num_channels, uint16_t num_entries);
-
 bool validate_icc(GRK_COLOR_SPACE color_space, uint8_t *iccbuf, uint32_t icclen);
+void copy_icc(grk_image *dest, uint8_t *iccbuf, uint32_t icclen);
+void create_meta(grk_image *img);
 
 }
 

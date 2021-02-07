@@ -775,7 +775,7 @@ bool FileFormat::read_header(grk_header_info  *header_info){
 	}
 
 	if (needsHeaderRead) {
-		auto image = codeStream->getCompositeImage();
+		auto image = (GrkImage*)codeStream->getCompositeImage();
 		if (!check_color(image, &color)){
 			m_headerError = true;
 			return false;
@@ -845,8 +845,9 @@ bool FileFormat::read_header(grk_header_info  *header_info){
 
 		// retrieve icc profile
 		if (color.icc_profile_buf) {
-			image->color.icc_profile_buf = color.icc_profile_buf;
-			image->color.icc_profile_len = color.icc_profile_len;
+			image->createMeta();
+			image->meta->color.icc_profile_buf = color.icc_profile_buf;
+			image->meta->color.icc_profile_len = color.icc_profile_len;
 			color.icc_profile_buf = nullptr;
 			color.icc_profile_len = 0;
 		}
@@ -859,13 +860,15 @@ bool FileFormat::read_header(grk_header_info  *header_info){
 		for (uint32_t i = 0; i < numUuids; ++i) {
 			auto uuid = uuids + i;
 			if (memcmp(uuid->uuid, IPTC_UUID, 16) == 0) {
-				image->iptc_buf = uuid->buf;
-				image->iptc_len = uuid->len;
+				image->createMeta();
+				image->meta->iptc_buf = uuid->buf;
+				image->meta->iptc_len = uuid->len;
 				uuid->buf = nullptr;
 				uuid->len = 0;
 			} else if (memcmp(uuid->uuid, XMP_UUID, 16) == 0) {
-				image->xmp_buf = uuid->buf;
-				image->xmp_len = uuid->len;
+				image->createMeta();
+				image->meta->xmp_buf = uuid->buf;
+				image->meta->xmp_len = uuid->len;
 				uuid->buf = nullptr;
 				uuid->len = 0;
 			}
@@ -1040,16 +1043,16 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,GrkImage *image){
 	if (image->color_space == GRK_CLRSPC_ICC) {
 		meth = 2;
 		enumcs = GRK_ENUM_CLRSPC_UNKNOWN;
-		if (image->color.icc_profile_buf) {
+		if (image->meta && image->meta->color.icc_profile_buf) {
 			// clean up existing icc profile in this struct
 			if (color.icc_profile_buf) {
 				delete[] color.icc_profile_buf;
 				color.icc_profile_buf = nullptr;
 			}
 			// copy icc profile from image to this struct
-			color.icc_profile_len = image->color.icc_profile_len;
+			color.icc_profile_len = image->meta->color.icc_profile_len;
 			color.icc_profile_buf = new uint8_t[color.icc_profile_len];
-			memcpy(color.icc_profile_buf, image->color.icc_profile_buf,
+			memcpy(color.icc_profile_buf, image->meta->color.icc_profile_buf,
 					color.icc_profile_len);
 		}
 	} else {
@@ -1073,19 +1076,21 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,GrkImage *image){
 	}
 
 	//transfer buffer to uuid
-	if (image->iptc_len && image->iptc_buf) {
-		uuids[numUuids++] = UUIDBox(IPTC_UUID, image->iptc_buf,
-				image->iptc_len, true);
-		image->iptc_buf = nullptr;
-		image->iptc_len = 0;
-	}
+	if (image->meta) {
+		if (image->meta->iptc_len && image->meta->iptc_buf) {
+			uuids[numUuids++] = UUIDBox(IPTC_UUID, image->meta->iptc_buf,
+					image->meta->iptc_len, true);
+			image->meta->iptc_buf = nullptr;
+			image->meta->iptc_len = 0;
+		}
 
-	//transfer buffer to uuid
-	if (image->xmp_len && image->xmp_buf) {
-		uuids[numUuids++] = UUIDBox(XMP_UUID, image->xmp_buf,
-				image->xmp_len, true);
-		image->xmp_buf = nullptr;
-		image->xmp_len = 0;
+		//transfer buffer to uuid
+		if (image->meta->xmp_len && image->meta->xmp_buf) {
+			uuids[numUuids++] = UUIDBox(XMP_UUID, image->meta->xmp_buf,
+					image->meta->xmp_len, true);
+			image->meta->xmp_buf = nullptr;
+			image->meta->xmp_len = 0;
+		}
 	}
 
 	/* Channel Definition box */
@@ -1137,9 +1142,9 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,GrkImage *image){
 		}
 	}
 
-	if (image->color.palette){
-		color.palette = image->color.palette;
-		image->color.palette = nullptr;
+	if (image->meta && image->meta->color.palette){
+		color.palette = image->meta->color.palette;
+		image->meta->color.palette = nullptr;
 	}
 
 	precedence = 0; /* PRECEDENCE */

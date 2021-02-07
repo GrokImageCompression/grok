@@ -268,10 +268,7 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 		if (png_get_iCCP(png, m_info, &ProfileName, &Compression,
 				&ProfileData, &ProfileLen) == PNG_INFO_iCCP) {
 			if (grk::validate_icc(m_colorSpace, ProfileData, ProfileLen)) {
-				m_image->color.icc_profile_buf = new uint8_t[ProfileLen];
-				memcpy(m_image->color.icc_profile_buf, ProfileData, ProfileLen);
-				m_image->color.icc_profile_len = ProfileLen;
-				m_image->color_space = GRK_CLRSPC_ICC;
+				grk::copy_icc(m_image, ProfileData, ProfileLen);
 			} else {
 				spdlog::warn("ICC profile does not match underlying colour space. Ignoring");
 			}
@@ -311,10 +308,11 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 
 			} else if (!strcmp(key, "XML:com.adobe.xmp")) {
 				if (text_ptr[i].text_length) {
-					m_image->xmp_len = text_ptr[i].text_length;
-					m_image->xmp_buf = new uint8_t[m_image->xmp_len];
-					memcpy(m_image->xmp_buf, text_ptr[i].text,
-							m_image->xmp_len);
+					grk::create_meta(m_image);
+					m_image->meta->xmp_len = text_ptr[i].text_length;
+					m_image->meta->xmp_buf = new uint8_t[m_image->meta->xmp_len];
+					memcpy(m_image->meta->xmp_buf, text_ptr[i].text,
+							m_image->meta->xmp_len);
 				}
 			}
 			// other comments
@@ -549,13 +547,13 @@ bool PNGFormat::encodeHeader(grk_image *img, const std::string &filename,
 	/* png_set_sRGB(png, info, PNG_sRGB_INTENT_PERCEPTUAL); */
 
 	// Set iCCP chunk
-	if (m_image->color.icc_profile_buf && m_image->color.icc_profile_len) {
+	if (m_image->meta && m_image->meta->color.icc_profile_buf && m_image->meta->color.icc_profile_len) {
 		std::string profileName = "Unknown";
 		// if lcms is present, try to extract the description tag from the ICC header,
 		// and use this tag as the profile name
 #if defined(GROK_HAVE_LIBLCMS)
-		auto in_prof = cmsOpenProfileFromMem(m_image->color.icc_profile_buf,
-				m_image->color.icc_profile_len);
+		auto in_prof = cmsOpenProfileFromMem(m_image->meta->color.icc_profile_buf,
+				m_image->meta->color.icc_profile_len);
 		if (in_prof) {
 			cmsUInt32Number bufferSize = cmsGetProfileInfoASCII(in_prof,
 					cmsInfoDescription, cmsNoLanguage, cmsNoCountry, nullptr,
@@ -573,16 +571,16 @@ bool PNGFormat::encodeHeader(grk_image *img, const std::string &filename,
 		}
 #endif
 		png_set_iCCP(png, m_info, profileName.c_str(),
-		PNG_COMPRESSION_TYPE_BASE, m_image->color.icc_profile_buf,
-				m_image->color.icc_profile_len);
+		PNG_COMPRESSION_TYPE_BASE, m_image->meta->color.icc_profile_buf,
+				m_image->meta->color.icc_profile_len);
 	}
 
-	if (m_image->xmp_buf && m_image->xmp_len) {
+	if (m_image->meta && m_image->meta->xmp_buf && m_image->meta->xmp_len) {
 		png_text txt;
 		txt.key = (png_charp) "XML:com.adobe.xmp";
 		txt.compression = PNG_ITXT_COMPRESSION_NONE;
-		txt.text_length = m_image->xmp_len;
-		txt.text = (png_charp) m_image->xmp_buf;
+		txt.text_length = m_image->meta->xmp_len;
+		txt.text = (png_charp) m_image->meta->xmp_buf;
 		txt.lang = NULL;
 		txt.lang_key = NULL;
 		png_set_text(png, m_info, &txt, 1);

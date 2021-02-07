@@ -401,8 +401,8 @@ template<typename T> struct TileComponentWindowBuffer {
 		getTileBuf()->attach(buffer,stride);
 	}
 	// transfer data to buf, and cease owning it
-	void transfer(T** buffer, bool* owns, uint32_t *stride){
-		getTileBuf()->transfer(buffer,owns,stride);
+	void transfer(T** buffer, uint32_t *stride){
+		getTileBuf()->transfer(buffer,stride);
 	}
 
 

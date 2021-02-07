@@ -147,11 +147,8 @@ static bool sycc444_to_rgb(grk_image *src_img) {
 
 	grk_image_all_components_data_free(src_img);
 	src_img->comps[0].data = d0;
-	src_img->comps[0].owns_data = true;
 	src_img->comps[1].data = d1;
-	src_img->comps[1].owns_data = true;
 	src_img->comps[2].data = d2;
-	src_img->comps[2].owns_data = true;
 	src_img->color_space = GRK_CLRSPC_SRGB;
 
 	for (uint32_t i = 0; i < src_img->numcomps; ++i)
@@ -218,11 +215,8 @@ static bool sycc422_to_rgb(grk_image *src_img, bool oddFirstX) {
 	grk_image_all_components_data_free(src_img);
 
 	src_img->comps[0].data = d0;
-	src_img->comps[0].owns_data = true;
 	src_img->comps[1].data = d1;
-	src_img->comps[1].owns_data = true;
 	src_img->comps[2].data = d2;
-	src_img->comps[2].owns_data = true;
 
 	src_img->comps[1].w = src_img->comps[2].w = src_img->comps[0].w;
 	src_img->comps[1].h = src_img->comps[2].h = src_img->comps[0].h;
@@ -332,7 +326,6 @@ static bool sycc420_to_rgb(grk_image *src_img, bool oddFirstX, bool oddFirstY) {
 	grk_image_all_components_data_free(src_img);
 	for (uint32_t k = 0; k < 3; ++k){
 		src_img->comps[k].data = dest[k];
-		src_img->comps[k].owns_data = true;
 		src_img->comps[k].stride = dest_img->comps[k].stride;
 	}
 
@@ -401,8 +394,10 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB) {
 	grk_image *new_image = nullptr;
 	if (image->numcomps == 0 || !grk::all_components_sanity_check(image,true))
 		return;
-	in_prof = cmsOpenProfileFromMem(image->color.icc_profile_buf,
-			image->color.icc_profile_len);
+	if (!image->meta)
+		return;
+	in_prof = cmsOpenProfileFromMem(image->meta->color.icc_profile_buf,
+			image->meta->color.icc_profile_len);
 #ifdef DEBUG_PROFILE
     FILE *icm = fopen("debug.icm","wb");
     fwrite( image->color.icc_profile_buf,1, image->color.icc_profile_len,icm);
@@ -646,9 +641,7 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB) {
 		image->comps[2] = image->comps[0];
 
 		image->comps[1].data = new_image->comps[0].data;
-		image->comps[1].owns_data = true;
 		image->comps[2].data = new_image->comps[1].data;
-		image->comps[2].owns_data = true;
 
 		new_image->comps[0].data = nullptr;
 		new_image->comps[1].data = nullptr;
@@ -708,6 +701,8 @@ bool color_cielab_to_rgb(grk_image *src_img) {
 	// sanity checks
 	if (src_img->numcomps == 0 || !grk::all_components_sanity_check(src_img,true))
 		return false;
+	if (!src_img->meta)
+		return false;
 	size_t i;
 	for (i = 1U; i < src_img->numcomps; ++i) {
 		auto comp0 = src_img->comps;
@@ -725,7 +720,7 @@ bool color_cielab_to_rgb(grk_image *src_img) {
 		return false;
 	}
 
-	auto row = (uint32_t*) src_img->color.icc_profile_buf;
+	auto row = (uint32_t*) src_img->meta->color.icc_profile_buf;
 	GRK_ENUM_COLOUR_SPACE enumcs = (GRK_ENUM_COLOUR_SPACE)row[0];
 	if (enumcs != GRK_ENUM_CLRSPC_CIE) { /* CIELab */
 		spdlog::warn("{}:{}:\n\tenumCS {} not handled. Ignoring.", __FILE__,
@@ -870,7 +865,6 @@ bool color_cielab_to_rgb(grk_image *src_img) {
 		auto comp = src_img->comps + i;
 		grk_image_single_component_data_free(comp);
 		comp->data = dst[i];
-		comp->owns_data = true;
 		comp->prec = 16;
 	}
 	src_img->color_space = GRK_CLRSPC_SRGB;
@@ -1011,6 +1005,19 @@ void alloc_palette(grk_color *color, uint8_t num_channels, uint16_t num_entries)
 	color->palette = jp2_pclr;
 }
 
+void copy_icc(grk_image *dest, uint8_t *iccbuf, uint32_t icclen){
+	create_meta(dest);
+	dest->meta->color.icc_profile_buf = new uint8_t[icclen];
+	memcpy(dest->meta->color.icc_profile_buf, iccbuf, icclen);
+	dest->meta->color.icc_profile_len = icclen;
+	dest->color_space = GRK_CLRSPC_ICC;
+}
+void create_meta(grk_image *img){
+	if (img && !img->meta) {
+		img->meta = new grk_image_meta();
+		img->ownsMeta = true;
+	}
+}
 
 bool validate_icc(GRK_COLOR_SPACE colourSpace, uint8_t *iccbuf, uint32_t icclen){
 	bool rc = true;

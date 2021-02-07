@@ -388,12 +388,10 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
 		stride = strd;
 	}
 	// transfer data to buf, and cease owning it
-	void transfer(T** buffer, bool* owns, uint32_t *strd){
-		if (buffer && owns){
+	void transfer(T** buffer, uint32_t *strd){
+		if (buffer){
 			*buffer = data;
 			data = nullptr;
-			*owns = owns_data;
-			owns_data = false;
 			*strd = stride;
 		}
 	}

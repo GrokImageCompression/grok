@@ -639,35 +639,37 @@ bool TIFFFormat::encodeHeader(grk_image *image, const std::string &filename,
 			TIFFSetField(tif, TIFFTAG_COMPRESSION, compressionParam);
 	 }
 
-	if (m_image->color.icc_profile_buf) {
-		if (m_image->color_space == GRK_CLRSPC_ICC)
-			TIFFSetField(tif, TIFFTAG_ICCPROFILE, m_image->color.icc_profile_len,
-					m_image->color.icc_profile_buf);
-	}
-
-	if (m_image->xmp_buf && m_image->xmp_len)
-		TIFFSetField(tif, TIFFTAG_XMLPACKET, m_image->xmp_len, m_image->xmp_buf);
-
-	if (m_image->iptc_buf && m_image->iptc_len) {
-		auto iptc_buf = m_image->iptc_buf;
-		auto iptc_len = m_image->iptc_len;
-
-		// length must be multiple of 4
-		uint8_t *new_iptf_buf = nullptr;
-		iptc_len += (4 - (iptc_len & 0x03));
-		if (iptc_len != m_image->iptc_len) {
-			new_iptf_buf = (uint8_t*) calloc(iptc_len, 1);
-			if (!new_iptf_buf)
-				goto cleanup;
-			memcpy(new_iptf_buf, m_image->iptc_buf, m_image->iptc_len);
-			iptc_buf = new_iptf_buf;
+	if (m_image->meta) {
+		if (m_image->meta->color.icc_profile_buf) {
+			if (m_image->color_space == GRK_CLRSPC_ICC)
+				TIFFSetField(tif, TIFFTAG_ICCPROFILE, m_image->meta->color.icc_profile_len,
+						m_image->meta->color.icc_profile_buf);
 		}
 
-		// Tag is of type TIFF_LONG, so byte length is divided by four
-		if (TIFFIsByteSwapped(tif))
-			TIFFSwabArrayOfLong((uint32_t*) iptc_buf, (tmsize_t)(iptc_len / 4));
-		TIFFSetField(tif, TIFFTAG_RICHTIFFIPTC, (uint32_t) (iptc_len / 4),
-				(void*) iptc_buf);
+		if (m_image->meta->xmp_buf && m_image->meta->xmp_len)
+			TIFFSetField(tif, TIFFTAG_XMLPACKET, m_image->meta->xmp_len, m_image->meta->xmp_buf);
+
+		if (m_image->meta->iptc_buf && m_image->meta->iptc_len) {
+			auto iptc_buf = m_image->meta->iptc_buf;
+			auto iptc_len = m_image->meta->iptc_len;
+
+			// length must be multiple of 4
+			uint8_t *new_iptf_buf = nullptr;
+			iptc_len += (4 - (iptc_len & 0x03));
+			if (iptc_len != m_image->meta->iptc_len) {
+				new_iptf_buf = (uint8_t*) calloc(iptc_len, 1);
+				if (!new_iptf_buf)
+					goto cleanup;
+				memcpy(new_iptf_buf, m_image->meta->iptc_buf, m_image->meta->iptc_len);
+				iptc_buf = new_iptf_buf;
+			}
+
+			// Tag is of type TIFF_LONG, so byte length is divided by four
+			if (TIFFIsByteSwapped(tif))
+				TIFFSwabArrayOfLong((uint32_t*) iptc_buf, (tmsize_t)(iptc_len / 4));
+			TIFFSetField(tif, TIFFTAG_RICHTIFFIPTC, (uint32_t) (iptc_len / 4),
+					(void*) iptc_buf);
+		}
 	}
 
 	if (m_image->capture_resolution[0] > 0 && m_image->capture_resolution[1] > 0) {
@@ -1086,17 +1088,18 @@ grk_image* TIFFFormat::decode(const std::string &filename,
 		}
 		uint16_t palette_num_entries = (uint16_t)(1U << tiBps);
 		uint8_t num_channels = 3U;
-		grk::alloc_palette(&image->color, num_channels,  (uint16_t)palette_num_entries);
+		grk::create_meta(image);
+		grk::alloc_palette(&image->meta->color, num_channels,  (uint16_t)palette_num_entries);
 		auto cmap = new _grk_component_mapping_comp[num_channels];
 		for (uint8_t i = 0; i < num_channels; ++i){
 			cmap[i].component_index = 0;
 			cmap[i].mapping_type = 1;
 			cmap[i].palette_column = i;
-			image->color.palette->channel_prec[i] = 16;
-			image->color.palette->channel_sign[i] = false;
+			image->meta->color.palette->channel_prec[i] = 16;
+			image->meta->color.palette->channel_sign[i] = false;
 		}
-		image->color.palette->component_mapping = cmap;
-		auto lut_ptr = image->color.palette->lut;
+		image->meta->color.palette->component_mapping = cmap;
+		auto lut_ptr = image->meta->color.palette->lut;
 		for (uint16_t i = 0; i < palette_num_entries; i++){
 			*lut_ptr++ = red_orig[i];
 			*lut_ptr++ = green_orig[i];
@@ -1173,10 +1176,7 @@ grk_image* TIFFFormat::decode(const std::string &filename,
 		if ((TIFFGetFieldDefaulted(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1)
 				&& icclen > 0 && icclen < grk::maxICCProfileBufferLen) {
 			if (grk::validate_icc(color_space, iccbuf, icclen)) {
-				image->color.icc_profile_buf = new uint8_t[icclen];
-				memcpy(image->color.icc_profile_buf, iccbuf, icclen);
-				image->color.icc_profile_len = icclen;
-				image->color_space = GRK_CLRSPC_ICC;
+				grk::copy_icc(image, iccbuf, icclen);
 			} else {
 				spdlog::warn("ICC profile does not match underlying colour space. Ignoring");
 			}
@@ -1188,15 +1188,17 @@ grk_image* TIFFFormat::decode(const std::string &filename,
 			TIFFSwabArrayOfLong((uint32*) iptc_buf, iptc_len);
 		// since TIFFTAG_RICHTIFFIPTC is of type TIFF_LONG, we must multiply
 		// by 4 to get the length in bytes
-		image->iptc_len = iptc_len * 4;
-		image->iptc_buf = new uint8_t[iptc_len];
-		memcpy(image->iptc_buf, iptc_buf, iptc_len);
+		grk::create_meta(image);
+		image->meta->iptc_len = iptc_len * 4;
+		image->meta->iptc_buf = new uint8_t[iptc_len];
+		memcpy(image->meta->iptc_buf, iptc_buf, iptc_len);
 	}
 	// 8. extract XML meta-data
 	if (TIFFGetFieldDefaulted(tif, TIFFTAG_XMLPACKET, &xmp_len, &xmp_buf) == 1) {
-		image->xmp_len = xmp_len;
-		image->xmp_buf = new uint8_t[xmp_len];
-		memcpy(image->xmp_buf, xmp_buf, xmp_len);
+		grk::create_meta(image);
+		image->meta->xmp_len = xmp_len;
+		image->meta->xmp_buf = new uint8_t[xmp_len];
+		memcpy(image->meta->xmp_buf, xmp_buf, xmp_len);
 	}
 	// 9. read pixel data
 	if (isSigned) {

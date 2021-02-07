@@ -880,11 +880,19 @@ typedef struct _grk_image_comp {
 	bool sgnd;
 	/** image component data */
 	int32_t *data;
-	// if true, then image will manage data, otherwise up to caller
-	bool owns_data;
 	GRK_COMPONENT_TYPE type;
 	GRK_COMPONENT_ASSOC association;
 } grk_image_comp;
+
+typedef struct _grk_image_meta {
+	// colour, IPTC and XMP meta data
+	grk_color color;
+	uint8_t *iptc_buf;
+	size_t iptc_len;
+	uint8_t *xmp_buf;
+	size_t xmp_len;
+} grk_image_meta;
+
 
 /**
  * Image
@@ -902,20 +910,15 @@ typedef struct _grk_image {
 	uint32_t y1;
 	/** number of components in the image */
 	uint16_t numcomps;
-	/** color space: sRGB, Greyscale or YUV */
 	GRK_COLOR_SPACE color_space;
-	/** image components */
-	grk_image_comp *comps;
-	grk_color color;
 	bool color_applied;
 	bool has_capture_resolution;
 	double capture_resolution[2];
 	bool has_display_resolution;
 	double display_resolution[2];
-	uint8_t *iptc_buf;
-	size_t iptc_len;
-	uint8_t *xmp_buf;
-	size_t xmp_len;
+	grk_image_meta *meta;
+	bool ownsMeta;
+	grk_image_comp *comps;
 } grk_image;
 
 /**

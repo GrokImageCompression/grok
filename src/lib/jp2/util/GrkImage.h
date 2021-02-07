@@ -107,6 +107,9 @@ public:
 								grk_rect_u32 *dest,
 								grk_rect_u32 *dest_win,
 								uint32_t *src_line_off);
+	void createMeta();
+private:
+	bool ownsData;
 };
 
 

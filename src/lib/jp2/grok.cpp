@@ -518,11 +518,10 @@ void GRK_CALLCONV grk_image_all_components_data_free(grk_image *image) {
 }
 
 void GRK_CALLCONV grk_image_single_component_data_free( grk_image_comp  *comp) {
-	if (!comp || !comp->data || !comp->owns_data)
+	if (!comp || !comp->data)
 		return;
 	grk_aligned_free(comp->data);
 	comp->data = nullptr;
-	comp->owns_data = false;
 }
 
 /**********************************************************************

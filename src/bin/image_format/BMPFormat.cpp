@@ -438,9 +438,9 @@ bool BMPFormat::encodeHeader(grk_image *image, const std::string &filename, uint
 	colours_used = (m_image->numcomps == 3) ? 0 : 256 ;
 	lut_size = colours_used * (uint32_t)sizeof(uint32_t) ;
 	full_header_size = fileHeaderSize + BITMAPINFOHEADER_LENGTH;
-	if (m_image->color.icc_profile_buf){
+	if (m_image->meta && m_image->meta->color.icc_profile_buf){
 		full_header_size = fileHeaderSize + sizeof(GRK_BITMAPINFOHEADER);
-		icc_size = m_image->color.icc_profile_len;
+		icc_size = m_image->meta->color.icc_profile_len;
 	}
 	info_header_size = full_header_size - fileHeaderSize;
 	header_plus_lut = full_header_size + lut_size;
@@ -469,7 +469,7 @@ bool BMPFormat::encodeHeader(grk_image *image, const std::string &filename, uint
 	}
 	put_int((uint32_t**)(&header_ptr), colours_used);
 	put_int((uint32_t**)(&header_ptr), colours_used);
-	if (m_image->color.icc_profile_buf){
+	if (m_image->meta && m_image->meta->color.icc_profile_buf){
 		put_int((uint32_t**)(&header_ptr), 0U);
 		put_int((uint32_t**)(&header_ptr), 0U);
 		put_int((uint32_t**)(&header_ptr), 0U);
@@ -482,7 +482,7 @@ bool BMPFormat::encodeHeader(grk_image *image, const std::string &filename, uint
 		put_int((uint32_t**)(&header_ptr), 0U);
 		put_int((uint32_t**)(&header_ptr), 0U);
 		put_int((uint32_t**)(&header_ptr), info_header_size +  lut_size + image_size);
-		put_int((uint32_t**)(&header_ptr), m_image->color.icc_profile_len);
+		put_int((uint32_t**)(&header_ptr), m_image->meta->color.icc_profile_len);
 		put_int((uint32_t**)(&header_ptr), 0U);
 	}
 	// 1024-byte LUT
@@ -606,8 +606,8 @@ cleanup:
 	return ret;
 }
 bool BMPFormat::encodeFinish(void){
-	if (m_image->color.icc_profile_buf) {
-		if (!writeToFile(m_image->color.icc_profile_buf,m_image->color.icc_profile_len))
+	if (m_image->meta && m_image->meta->color.icc_profile_buf) {
+		if (!writeToFile(m_image->meta->color.icc_profile_buf,m_image->meta->color.icc_profile_len))
 			return false;
 	}
 
@@ -769,17 +769,19 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 
 	if (palette){
 		uint8_t num_channels = palette_has_colour ? 3U : 1U;
-		grk::alloc_palette(&image->color, num_channels,  (uint16_t)palette_num_entries);
+		grk::create_meta(image);
+		auto meta = image->meta;
+		grk::alloc_palette(&meta->color, num_channels,  (uint16_t)palette_num_entries);
 		auto cmap = new _grk_component_mapping_comp[num_channels];
 		for (uint8_t i = 0; i < num_channels; ++i){
 			cmap[i].component_index = 0;
 			cmap[i].mapping_type = 1;
 			cmap[i].palette_column = i;
-			image->color.palette->channel_prec[i] = 8U;
-			image->color.palette->channel_sign[i] = false;
+			meta->color.palette->channel_prec[i] = 8U;
+			meta->color.palette->channel_sign[i] = false;
 		}
-		image->color.palette->component_mapping = cmap;
-		auto lut_ptr = image->color.palette->lut;
+		meta->color.palette->component_mapping = cmap;
+		auto lut_ptr = meta->color.palette->lut;
 		for (uint16_t i = 0; i < palette_num_entries; i++){
 			*lut_ptr++ = lut_R[i];
 			if (num_channels == 3) {
@@ -807,9 +809,7 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 			goto cleanup;
 		}
 		if (grk::validate_icc(colour_space, iccbuf, Info_h.biIccProfileSize)) {
-			image->color.icc_profile_buf = iccbuf;
-			image->color.icc_profile_len = Info_h.biIccProfileSize;
-			image->color_space = GRK_CLRSPC_ICC;
+			grk::copy_icc(image, iccbuf, Info_h.biIccProfileSize);
 		} else {
 			spdlog::warn("ICC profile does not match underlying colour space. Ignoring");
 		}

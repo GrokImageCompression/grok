@@ -204,9 +204,7 @@ grk_image* JPEGFormat::jpegtoimage(const char *filename,
 	}
 	if (icc_data_ptr && icc_data_len) {
 		if (grk::validate_icc(color_space, icc_data_ptr, icc_data_len)) {
-			m_image->color.icc_profile_buf = new uint8_t[icc_data_len];
-			memcpy(m_image->color.icc_profile_buf, icc_data_ptr, icc_data_len);
-			m_image->color.icc_profile_len = icc_data_len;
+			grk::copy_icc(m_image, icc_data_ptr, icc_data_len);
 			icc_data_len = 0;
 		} else {
 			spdlog::warn("ICC profile does not match underlying colour space. Ignoring");
@@ -543,9 +541,9 @@ bool JPEGFormat::encodeHeader(grk_image *image, const std::string &filename,
 	 * Pass TRUE unless you are very sure of what you're doing.
 	 */
 	jpeg_start_compress(&cinfo, (boolean) TRUE);
-	if (m_image->color.icc_profile_buf) {
-		write_icc_profile(&cinfo, m_image->color.icc_profile_buf,
-				m_image->color.icc_profile_len);
+	if (m_image->meta && m_image->meta->color.icc_profile_buf) {
+		write_icc_profile(&cinfo, m_image->meta->color.icc_profile_buf,
+				m_image->meta->color.icc_profile_len);
 	}
 
     return true;

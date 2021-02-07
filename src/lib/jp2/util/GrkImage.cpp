@@ -2,17 +2,20 @@
 
 namespace grk {
 
-GrkImage::GrkImage(){
+GrkImage::GrkImage() : ownsData(true){
 	memset((grk_image*)(this), 0, sizeof(grk_image));
 }
 GrkImage::~GrkImage(){
-	if (comps) {
+	if (ownsData && comps) {
 		grk_image_all_components_data_free(this);
 		grk::grk_free(comps);
 	}
-	FileFormat::free_color(&color);
-	delete[] iptc_buf;
-	delete[] xmp_buf;
+	if (meta && ownsMeta) {
+		FileFormat::free_color(&meta->color);
+		delete[] meta->iptc_buf;
+		delete[] meta->xmp_buf;
+		delete meta;
+	}
 }
 
 GrkImage *  GrkImage::create(uint16_t numcmpts,
@@ -153,32 +156,25 @@ bool GrkImage::copyHeader(GrkImage *dest) {
 	}
 
 	dest->color_space = color_space;
-	auto color_dest = &dest->color;
-	auto color_src = &color;
-	delete [] color_dest->icc_profile_buf;
-	color_dest->icc_profile_len = color_src->icc_profile_len;
-	if (color_dest->icc_profile_len) {
-		color_dest->icc_profile_buf = new uint8_t[color_dest->icc_profile_len];
-		memcpy(color_dest->icc_profile_buf, color_src->icc_profile_buf,	color_src->icc_profile_len);
-	} else
-		color_dest->icc_profile_buf = nullptr;
-	if (color.palette){
-		auto pal_src = color.palette;
-		if (pal_src->num_channels && pal_src->num_entries){
-			FileFormat::alloc_palette(&dest->color, pal_src->num_channels, pal_src->num_entries);
-			auto pal_dest = dest->color.palette;
-			memcpy(pal_dest->channel_prec, pal_src->channel_prec, pal_src->num_channels * sizeof(uint8_t) );
-			memcpy(pal_dest->channel_sign, pal_src->channel_sign, pal_src->num_channels * sizeof(bool) );
-			pal_dest->component_mapping = new grk_component_mapping_comp[pal_dest->num_channels];
-			memcpy(pal_dest->component_mapping, pal_src->component_mapping,
-									pal_src->num_channels * sizeof(grk_component_mapping_comp));
-			memcpy(pal_dest->lut, pal_src->lut, (size_t)pal_src->num_channels * pal_src->num_entries * sizeof(uint32_t));
-		}
+	if (has_capture_resolution){
+		dest->capture_resolution[0] = capture_resolution[0];
+		dest->capture_resolution[1] = capture_resolution[1];
 	}
-
+	if (has_display_resolution){
+		dest->display_resolution[0] = display_resolution[0];
+		dest->display_resolution[1] = display_resolution[1];
+	}
+	if (meta)
+		dest->meta = meta;
 	return true;
 }
 
+void GrkImage::createMeta(){
+	if (!meta) {
+		meta = new grk_image_meta();
+		ownsMeta = true;
+	}
+}
 
 bool GrkImage::allocData(grk_image_comp  *comp) {
 	if (!comp || comp->w == 0 || comp->h == 0)
@@ -196,7 +192,6 @@ bool GrkImage::allocData(grk_image_comp  *comp) {
 	}
 	grk_image_single_component_data_free(comp);
 	comp->data = data;
-	comp->owns_data = true;
 	return true;
 }
 
@@ -245,7 +240,6 @@ void GrkImage::transferDataTo(GrkImage *dest) {
 
 		grk_image_single_component_data_free(dest_comp);
 		dest_comp->data = src_comp->data;
-		dest_comp->owns_data = src_comp->owns_data;
 		if (src_comp->stride){
 			dest_comp->stride = src_comp->stride;
 			assert(dest_comp->stride >= dest_comp->w);
@@ -317,7 +311,7 @@ void GrkImage::transferDataFrom(const grk_tile* tile_src_data){
 		auto dest_comp = comps + compno;
 
 		//transfer memory from tile component to output image
-		src_comp->getBuffer()->transfer(&dest_comp->data, &dest_comp->owns_data, &dest_comp->stride);
+		src_comp->getBuffer()->transfer(&dest_comp->data, &dest_comp->stride);
 		assert(dest_comp->stride >= dest_comp->w);
 	}
 }

@@ -1332,74 +1332,69 @@ int GrkDecompress::postDecompress(grk_plugin_decompress_callback_info *info) {
 				spdlog::warn("grk_decompress: CMYK to RGB colour conversion failed");
 		}
 	}
-	if (image->xmp_buf) {
-		bool canStoreXMP = (info->decompressor_parameters->cod_format == GRK_TIF_FMT
-				|| info->decompressor_parameters->cod_format == GRK_PNG_FMT);
-		if (!canStoreXMP) {
-			spdlog::warn(
-					" Input file `{}` contains XMP meta-data,\nbut the file format for output file `{}` does not support storage of this data.",
-					infile, outfile);
+	if (image->meta) {
+		if (image->meta->xmp_buf) {
+			bool canStoreXMP = (info->decompressor_parameters->cod_format == GRK_TIF_FMT
+					|| info->decompressor_parameters->cod_format == GRK_PNG_FMT);
+			if (!canStoreXMP) {
+				spdlog::warn(
+						" Input file `{}` contains XMP meta-data,\nbut the file format for output file `{}` does not support storage of this data.",
+						infile, outfile);
+			}
 		}
-	}
-	if (image->iptc_buf) {
-		bool canStoreIPTC_IIM = (info->decompressor_parameters->cod_format
-				== GRK_TIF_FMT);
-		if (!canStoreIPTC_IIM) {
-			spdlog::warn(
-					" Input file `{}` contains legacy IPTC-IIM meta-data,\nbut the file format for output file `{}` does not support storage of this data.",
-					infile, outfile);
+		if (image->meta->iptc_buf) {
+			bool canStoreIPTC_IIM = (info->decompressor_parameters->cod_format
+					== GRK_TIF_FMT);
+			if (!canStoreIPTC_IIM) {
+				spdlog::warn(
+						" Input file `{}` contains legacy IPTC-IIM meta-data,\nbut the file format for output file `{}` does not support storage of this data.",
+						infile, outfile);
+			}
 		}
-	}
-	if (image->color.icc_profile_buf) {
-		if (isCIE) {
-			if (!canStoreCIE || info->decompressor_parameters->force_rgb) {
+		if (image->meta->color.icc_profile_buf) {
+			if (isCIE) {
+				if (!canStoreCIE || info->decompressor_parameters->force_rgb) {
 #if defined(GROK_HAVE_LIBLCMS)
-				if (!info->decompressor_parameters->force_rgb)
-					spdlog::warn(
-							" Input file `{}` is in CIE colour space,\n"
-							"but the codec is unable to store this information in the "
-							"output file `{}`.\n"
-							"The output image will therefore be converted to sRGB before saving.",
-							infile, outfile);
-				if (color_cielab_to_rgb(image)){
-					delete[] image->color.icc_profile_buf;
-					image->color.icc_profile_buf = nullptr;
-					image->color.icc_profile_len = 0;
-				} else {
-					spdlog::warn("Unable to convert L*a*b image to sRGB");
-				}
+					if (!info->decompressor_parameters->force_rgb)
+						spdlog::warn(
+								" Input file `{}` is in CIE colour space,\n"
+								"but the codec is unable to store this information in the "
+								"output file `{}`.\n"
+								"The output image will therefore be converted to sRGB before saving.",
+								infile, outfile);
+					if (!color_cielab_to_rgb(image))
+						spdlog::warn("Unable to convert L*a*b image to sRGB");
 #else
-			spdlog::warn(" Input file is stored in CIELab colour space,"
-					" but the lcms library is not linked, so the library is unable to convert L*a*b to sRGB");
+				spdlog::warn(" Input file is stored in CIELab colour space,"
+						" but the lcms library is not linked, so the library is unable to convert L*a*b to sRGB");
 #endif
-			}
-		} else {
-			// A TIFF,PNG or JPEG image can store the ICC profile,
-			// so no need to apply it in this case,
-			// (unless we are forcing to RGB).
-			// Otherwise, we apply the profile
-			canStoreICC = (info->decompressor_parameters->cod_format == GRK_TIF_FMT
-					|| info->decompressor_parameters->cod_format == GRK_PNG_FMT
-					|| info->decompressor_parameters->cod_format == GRK_JPG_FMT
-					|| info->decompressor_parameters->cod_format == GRK_BMP_FMT);
-			if (info->decompressor_parameters->force_rgb || !canStoreICC) {
-#if defined(GROK_HAVE_LIBLCMS)
-				if (!info->decompressor_parameters->force_rgb)
-					spdlog::warn(
-							" Input file `{}` contains a color profile,\n"
-							"but the codec is unable to store this profile"
-							" in the output file `{}`.\n"
-							"The profile will therefore be applied to the output"
-							" image before saving.",
-							infile, outfile);
-				color_apply_icc_profile(image,
-						info->decompressor_parameters->force_rgb);
-				delete[] image->color.icc_profile_buf;
-				image->color.icc_profile_buf = nullptr;
-				image->color.icc_profile_len = 0;
-#endif
+				}
+			} else {
+				// A TIFF,PNG or JPEG image can store the ICC profile,
+				// so no need to apply it in this case,
+				// (unless we are forcing to RGB).
+				// Otherwise, we apply the profile
+				canStoreICC = (info->decompressor_parameters->cod_format == GRK_TIF_FMT
+						|| info->decompressor_parameters->cod_format == GRK_PNG_FMT
+						|| info->decompressor_parameters->cod_format == GRK_JPG_FMT
+						|| info->decompressor_parameters->cod_format == GRK_BMP_FMT);
+				if (info->decompressor_parameters->force_rgb || !canStoreICC) {
+	#if defined(GROK_HAVE_LIBLCMS)
+					if (!info->decompressor_parameters->force_rgb)
+						spdlog::warn(
+								" Input file `{}` contains a color profile,\n"
+								"but the codec is unable to store this profile"
+								" in the output file `{}`.\n"
+								"The profile will therefore be applied to the output"
+								" image before saving.",
+								infile, outfile);
+					color_apply_icc_profile(image,
+							info->decompressor_parameters->force_rgb);
+	#endif
+				}
 			}
 		}
+
 	}
 
 	if (parameters->precision != nullptr) {
