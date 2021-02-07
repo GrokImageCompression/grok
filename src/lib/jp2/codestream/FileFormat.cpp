@@ -896,18 +896,12 @@ void FileFormat::init_decompress(grk_dparameters  *parameters){
 
 
 bool FileFormat::decompress( grk_plugin_tile *tile){
-
-	/* J2K decoding */
 	if (!codeStream->decompress(tile)) {
 		GRK_ERROR("Failed to decompress JP2 file");
 		return false;
 	}
 
-	auto images = codeStream->getAllImages();
-	for (auto &img : images)
-		applyColour(img);
-
-	return true;
+	return applyColour();
 }
 
 bool FileFormat::decompressTile(uint16_t tile_index) {
@@ -916,25 +910,28 @@ bool FileFormat::decompressTile(uint16_t tile_index) {
 		return false;
 	}
 
-	auto images = codeStream->getAllImages();
-	for (auto &img : images)
-		applyColour(img);
-
-	return true;
+	return applyColour();
 }
 
 
 /** Reading function used after code stream if necessary */
 bool FileFormat::end_decompress(void){
-	/* customization of the end compressing */
 	if (!jp2_init_end_header_reading(this))
 		return false;
-
-	/* write header */
 	if (!jp2_exec(this, m_procedure_list))
 		return false;
 
 	return codeStream->end_decompress();
+}
+bool FileFormat::applyColour(void){
+	auto images = codeStream->getAllImages();
+	for (auto &img : images){
+		if (!applyColour(img))
+			return false;
+	}
+
+	return true;
+
 }
 bool FileFormat::applyColour(GrkImage *img){
 	if (!img || img->color_applied)
@@ -952,7 +949,7 @@ bool FileFormat::applyColour(GrkImage *img){
 
 	/* Apply channel definitions if needed */
 	if (color.channel_definition)
-		apply_channel_definition(img, &(color));
+		apply_channel_definition(img, &color);
 
 	img->color_applied = true;
 	return true;

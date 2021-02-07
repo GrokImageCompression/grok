@@ -292,6 +292,7 @@ public:
 	bool m_headerError;
 private:
 	bool applyColour(GrkImage *img);
+	bool applyColour(void);
 };
 
 
