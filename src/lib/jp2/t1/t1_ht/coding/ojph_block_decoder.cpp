@@ -1015,6 +1015,8 @@ namespace ojph {
         return false;        // 32 bits are not enough to decode this
       else if (missing_msbs == 29) // if p is 1, then num_passes must be 1
         num_passes = 1;
+      if (num_passes > 1 && lengths2 == 0)
+    	  num_passes = 1;
       ui32 p = 30 - missing_msbs; // The least significant bitplane for CUP
       // There is a way to handle the case of p == 0, but a different path
       // is required
@@ -1023,6 +1025,20 @@ namespace ojph {
       int lcup, scup;
       lcup = (int)lengths1;  // length of CUP
       //scup is the length of MEL + VLC
+/*
+      fprintf(stderr,"Missing msbs: %d\n",missing_msbs);
+      fprintf(stderr,"Number of passes: %d\n",num_passes);
+      fprintf(stderr,"CUP length : %d\n",lcup);
+      fprintf(stderr,"decoded data: \n");
+      fprintf(stderr,"[ ");
+      for (uint32_t k=0; k < lcup; ++k){
+    	  if (k == lcup - 1)
+    		  fprintf(stderr,"0x%x ]",coded_data[k]);
+    	  else
+    		  fprintf(stderr,"0x%x, ",coded_data[k]);
+      }
+      fprintf(stderr,"\n");
+*/
       scup = (((int)coded_data[lcup-1]) << 4) + (coded_data[lcup-2] & 0xF);
       if (scup < 2 || scup > lcup || scup > 4079) //something is wrong
         return false;
