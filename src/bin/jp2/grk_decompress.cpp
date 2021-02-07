@@ -1271,132 +1271,140 @@ int GrkDecompress::postDecompress(grk_plugin_decompress_callback_info *info) {
 		return -1;
 	bool oddFirstX = info->full_image_x0 & 1;
 	bool oddFirstY = info->full_image_y0 & 1;
-
 	bool regionDecode = info->decompressor_parameters->DA_x1 > info->decompressor_parameters->DA_x0 &&
 							info->decompressor_parameters->DA_y1 > info->decompressor_parameters->DA_y0;
-
 	if (regionDecode) {
 		if (info->decompressor_parameters->DA_x0 != info->image->x0 )
 			oddFirstX = false;
 		if (info->decompressor_parameters->DA_y0 != info->image->y0 )
 			oddFirstY = false;
 	}
-
 	auto fmt = imageFormat;
-
 	bool failed = true;
-	bool canStoreICC = false;
 	bool imageNeedsDestroy = false;
 	bool isTiff = info->decompressor_parameters->cod_format == GRK_TIF_FMT;
-	grk_decompress_parameters *parameters = info->decompressor_parameters;
+	auto parameters = info->decompressor_parameters;
 	auto image = info->image;
 	bool canStoreCIE = isTiff && image->color_space == GRK_CLRSPC_DEFAULT_CIE;
-	bool isCIE = image->color_space == GRK_CLRSPC_DEFAULT_CIE
-			|| image->color_space == GRK_CLRSPC_CUSTOM_CIE;
+	bool isCIE = image->color_space == GRK_CLRSPC_DEFAULT_CIE || image->color_space == GRK_CLRSPC_CUSTOM_CIE;
 	const char *infile =
-			info->decompressor_parameters->infile[0] ?
-					info->decompressor_parameters->infile : info->input_file_name;
+			info->decompressor_parameters->infile[0] ?	info->decompressor_parameters->infile : info->input_file_name;
 	const char *outfile =
-			info->decompressor_parameters->outfile[0] ?
-					info->decompressor_parameters->outfile : info->output_file_name;
+			info->decompressor_parameters->outfile[0] ?	info->decompressor_parameters->outfile : info->output_file_name;
 
 	GRK_SUPPORTED_FILE_FMT cod_format = (GRK_SUPPORTED_FILE_FMT) (
-			info->cod_format != GRK_UNK_FMT ?
-					info->cod_format : parameters->cod_format);
+			info->cod_format != GRK_UNK_FMT ?	info->cod_format : parameters->cod_format);
 
 	if (image->color_space != GRK_CLRSPC_SYCC && image->numcomps == 3
-			&& image->comps[0].dx == image->comps[0].dy
-			&& image->comps[1].dx != 1)
+												&& image->comps[0].dx == image->comps[0].dy
+												&& image->comps[1].dx != 1){
 		image->color_space = GRK_CLRSPC_SYCC;
+	}
 	else if (image->numcomps <= 2)
 		image->color_space = GRK_CLRSPC_GRAY;
-	if (image->color_space == GRK_CLRSPC_SYCC ||
-			image->color_space == GRK_CLRSPC_EYCC){
+
+	switch(image->color_space){
+	case GRK_CLRSPC_SYCC:
 		if (image->numcomps != 3){
-			spdlog::error("grk_decompress: YCC: number of components {} "
-					"not equal to 3 ", image->numcomps);
+			spdlog::error("grk_decompress: YCC: number of components {} ""not equal to 3 ", image->numcomps);
 			goto cleanup;
 		}
-	}
-	if (image->color_space == GRK_CLRSPC_SYCC) {
 		if (!isTiff || info->decompressor_parameters->force_rgb) {
 			if (!grk::color_sycc_to_rgb(image, oddFirstX, oddFirstY))
 				spdlog::warn("grk_decompress: sYCC to RGB colour conversion failed");
 		}
-	} else if (image->color_space == GRK_CLRSPC_EYCC) {
-		if (!grk::color_esycc_to_rgb(image))
-			spdlog::warn("grk_decompress: eYCC to RGB colour conversion failed");
-	} else if (image->color_space == GRK_CLRSPC_CMYK) {
+		break;
+	case GRK_CLRSPC_EYCC:
+		if (image->numcomps != 3){
+			spdlog::error("grk_decompress: YCC: number of components {} ""not equal to 3 ", image->numcomps);
+			goto cleanup;
+		}
+		if (!isTiff || info->decompressor_parameters->force_rgb) {
+			if (!grk::color_esycc_to_rgb(image))
+				spdlog::warn("grk_decompress: eYCC to RGB colour conversion failed");
+		}
+		break;
+	case GRK_CLRSPC_CMYK:
+		if (image->numcomps != 4){
+			spdlog::error("grk_decompress: CMYK: number of components {} ""not equal to 4 ", image->numcomps);
+			goto cleanup;
+		}
 		if (!isTiff || info->decompressor_parameters->force_rgb) {
 			if (!grk::color_cmyk_to_rgb(image))
 				spdlog::warn("grk_decompress: CMYK to RGB colour conversion failed");
 		}
+		break;
+	default:
+		break;
 	}
-	if (image->meta) {
-		if (image->meta->xmp_buf) {
-			bool canStoreXMP = (info->decompressor_parameters->cod_format == GRK_TIF_FMT
-					|| info->decompressor_parameters->cod_format == GRK_PNG_FMT);
-			if (!canStoreXMP) {
-				spdlog::warn(
-						" Input file `{}` contains XMP meta-data,\nbut the file format for output file `{}` does not support storage of this data.",
-						infile, outfile);
-			}
-		}
-		if (image->meta->iptc_buf) {
-			bool canStoreIPTC_IIM = (info->decompressor_parameters->cod_format
-					== GRK_TIF_FMT);
-			if (!canStoreIPTC_IIM) {
-				spdlog::warn(
-						" Input file `{}` contains legacy IPTC-IIM meta-data,\nbut the file format for output file `{}` does not support storage of this data.",
-						infile, outfile);
-			}
-		}
-		if (image->meta->color.icc_profile_buf) {
-			if (isCIE) {
-				if (!canStoreCIE || info->decompressor_parameters->force_rgb) {
+	if (image->meta && image->meta->color.icc_profile_buf) {
+		if (isCIE) {
+			if (!canStoreCIE || info->decompressor_parameters->force_rgb) {
 #if defined(GROK_HAVE_LIBLCMS)
-					if (!info->decompressor_parameters->force_rgb)
-						spdlog::warn(
-								" Input file `{}` is in CIE colour space,\n"
-								"but the codec is unable to store this information in the "
-								"output file `{}`.\n"
-								"The output image will therefore be converted to sRGB before saving.",
-								infile, outfile);
-					if (!color_cielab_to_rgb(image))
-						spdlog::warn("Unable to convert L*a*b image to sRGB");
+				if (!info->decompressor_parameters->force_rgb)
+					spdlog::warn(" Input file `{}` is in CIE colour space,\n"
+							"but the codec is unable to store this information in the "
+							"output file `{}`.\n"
+							"The output image will therefore be converted to sRGB before saving.",
+							infile, outfile);
+				if (!color_cielab_to_rgb(image))
+					spdlog::warn("Unable to convert L*a*b image to sRGB");
 #else
-				spdlog::warn(" Input file is stored in CIELab colour space,"
-						" but the lcms library is not linked, so the library is unable to convert L*a*b to sRGB");
+			spdlog::warn(" Input file is stored in CIELab colour space,"
+					" but the lcms library is not linked, so the library is unable to convert L*a*b to sRGB");
 #endif
+			}
+		} else {
+			// A TIFF,PNG, BMP or JPEG image can store the ICC profile,
+			// so no need to apply it in this case,
+			// (unless we are forcing to RGB).
+			// Otherwise, we apply the profile
+			bool canStoreICC = (info->decompressor_parameters->cod_format == GRK_TIF_FMT
+							|| info->decompressor_parameters->cod_format == GRK_PNG_FMT
+							|| info->decompressor_parameters->cod_format == GRK_JPG_FMT
+							|| info->decompressor_parameters->cod_format == GRK_BMP_FMT);
+			if (info->decompressor_parameters->force_rgb || !canStoreICC) {
+#if defined(GROK_HAVE_LIBLCMS)
+				if (!info->decompressor_parameters->force_rgb){
+					spdlog::warn(" Input file `{}` contains a color profile,\n"
+							"but the codec is unable to store this profile"
+							" in the output file `{}`.\n"
+							"The profile will therefore be applied to the output"
+							" image before saving.",
+							infile, outfile);
 				}
-			} else {
-				// A TIFF,PNG or JPEG image can store the ICC profile,
-				// so no need to apply it in this case,
-				// (unless we are forcing to RGB).
-				// Otherwise, we apply the profile
-				canStoreICC = (info->decompressor_parameters->cod_format == GRK_TIF_FMT
-						|| info->decompressor_parameters->cod_format == GRK_PNG_FMT
-						|| info->decompressor_parameters->cod_format == GRK_JPG_FMT
-						|| info->decompressor_parameters->cod_format == GRK_BMP_FMT);
-				if (info->decompressor_parameters->force_rgb || !canStoreICC) {
-	#if defined(GROK_HAVE_LIBLCMS)
-					if (!info->decompressor_parameters->force_rgb)
-						spdlog::warn(
-								" Input file `{}` contains a color profile,\n"
-								"but the codec is unable to store this profile"
-								" in the output file `{}`.\n"
-								"The profile will therefore be applied to the output"
-								" image before saving.",
-								infile, outfile);
-					color_apply_icc_profile(image,
-							info->decompressor_parameters->force_rgb);
-	#endif
-				}
+				color_apply_icc_profile(image,info->decompressor_parameters->force_rgb);
+#else
+			spdlog::warn(" Input file has an ICC profile,"
+					" but the lcms2 library is not linked, so the library is unable to perform the conversion");
+#endif
 			}
 		}
-
 	}
 
+	if (parameters->force_rgb) {
+		switch (image->color_space) {
+		case GRK_CLRSPC_SRGB:
+			break;
+		case GRK_CLRSPC_GRAY:
+		{
+			auto tmp = convert_gray_to_rgb(image);
+			if (imageNeedsDestroy)
+				grk_image_destroy(image);
+			imageNeedsDestroy = true;
+			image = tmp;
+		}
+			break;
+		default:
+			spdlog::error("grk_decompress: don't know how to convert image to RGB colorspace.");
+			image = nullptr;
+			goto cleanup;
+		}
+		if (image == nullptr) {
+			spdlog::error("grk_decompress: failed to convert to RGB image.");
+			goto cleanup;
+		}
+	}
 	if (parameters->precision != nullptr) {
 		uint32_t compno;
 		for (compno = 0; compno < image->numcomps; ++compno) {
@@ -1431,29 +1439,22 @@ int GrkDecompress::postDecompress(grk_plugin_decompress_callback_info *info) {
 			goto cleanup;
 		}
 	}
-
-	if (parameters->force_rgb) {
-		switch (image->color_space) {
-		case GRK_CLRSPC_SRGB:
-			break;
-		case GRK_CLRSPC_GRAY:
-		{
-			auto tmp = convert_gray_to_rgb(image);
-			if (imageNeedsDestroy)
-				grk_image_destroy(image);
-			imageNeedsDestroy = true;
-			image = tmp;
+	if (image->meta) {
+		if (image->meta->xmp_buf) {
+			bool canStoreXMP = (info->decompressor_parameters->cod_format == GRK_TIF_FMT
+							 || info->decompressor_parameters->cod_format == GRK_PNG_FMT);
+			if (!canStoreXMP) {
+				spdlog::warn(" Input file `{}` contains XMP meta-data,\nbut the file format for "
+						"output file `{}` does not support storage of this data.",	infile, outfile);
+			}
 		}
-			break;
-		default:
-			spdlog::error(
-					"grk_decompress: don't know how to convert image to RGB colorspace.");
-			image = nullptr;
-			goto cleanup;
-		}
-		if (image == nullptr) {
-			spdlog::error("grk_decompress: failed to convert to RGB image.");
-			goto cleanup;
+		if (image->meta->iptc_buf) {
+			bool canStoreIPTC_IIM = (info->decompressor_parameters->cod_format
+					== GRK_TIF_FMT);
+			if (!canStoreIPTC_IIM) {
+				spdlog::warn(" Input file `{}` contains legacy IPTC-IIM meta-data,\nbut the file format "
+							"for output file `{}` does not support storage of this data.",	infile, outfile);
+			}
 		}
 	}
 
