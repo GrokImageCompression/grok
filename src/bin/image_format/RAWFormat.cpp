@@ -275,7 +275,7 @@ grk_image* RAWFormat::rawtoimage(const char *filename,
 		}
 	}
 	/* create the image */
-	image = grk_image_create(numcomps, &cmptparm[0], color_space,true);
+	image = grk_image_new(numcomps, &cmptparm[0], color_space,true);
 	free(cmptparm);
 	if (!image) {
 		success = false;
@@ -336,12 +336,12 @@ grk_image* RAWFormat::rawtoimage(const char *filename,
 	}
 	cleanup: if (m_fileStream && !m_useStdIO) {
 		if (!grk::safe_fclose(m_fileStream)) {
-			grk_image_destroy(image);
+			grk_object_unref(&image->obj);
 			image = nullptr;
 		}
 	}
 	if (!success) {
-		grk_image_destroy(image);
+		grk_object_unref(&image->obj);
 		image = nullptr;
 	}
 	return image;

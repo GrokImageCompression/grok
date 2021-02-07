@@ -364,11 +364,16 @@ typedef enum GRK_TILE_CACHE_STRATEGY {
  * */
 typedef void (*grk_msg_callback)(const char *msg, void *client_data);
 
-/*
- ==========================================================
- codec structures
- ==========================================================
+
+/**
+ *
+ * Base Grok ref-counted object
+ *
  */
+typedef struct _grk_object{
+	void* wrappee;
+} grk_object;
+
 
 /**
  * Progression order change
@@ -826,7 +831,7 @@ typedef void (*grk_stream_free_user_data_fn)(void *user_data);
 /*
  * JPEG 2000 stream.
  */
-typedef void *grk_stream;
+typedef grk_object* grk_stream;
 
 /*
  ==============================
@@ -859,6 +864,7 @@ typedef enum GRK_COMPONENT_ASSOC{
  * Image component
  * */
 typedef struct _grk_image_comp {
+	grk_object obj;
 	/** XRsiz: horizontal separation of a sample of with component with respect to the reference grid */
 	uint32_t dx;
 	/** YRsiz: vertical separation of a sample of with component with respect to the reference grid */
@@ -885,6 +891,7 @@ typedef struct _grk_image_comp {
 } grk_image_comp;
 
 typedef struct _grk_image_meta {
+	grk_object obj;
 	// colour, IPTC and XMP meta data
 	grk_color color;
 	uint8_t *iptc_buf;
@@ -898,6 +905,7 @@ typedef struct _grk_image_meta {
  * Image
  * */
 typedef struct _grk_image {
+	grk_object obj;
 	/** XOsiz: horizontal offset from the origin of the reference grid
 	 *  to the left side of the image area */
 	uint32_t x0;
@@ -917,7 +925,6 @@ typedef struct _grk_image {
 	bool has_display_resolution;
 	double display_resolution[2];
 	grk_image_meta *meta;
-	bool ownsMeta;
 	grk_image_comp *comps;
 } grk_image;
 
@@ -1279,6 +1286,9 @@ GRK_API bool GRK_CALLCONV grk_initialize(const char *plugin_path,
  */
 GRK_API void GRK_CALLCONV grk_deinitialize();
 
+
+GRK_API void GRK_CALLCONV grk_object_ref(grk_object *obj);
+GRK_API void GRK_CALLCONV grk_object_unref(grk_object *obj);
 /*
  ============================
  image function definitions
@@ -1295,16 +1305,10 @@ GRK_API void GRK_CALLCONV grk_deinitialize();
  *
  * @return returns      a new image if successful, otherwise nullptr
  * */
-GRK_API grk_image* GRK_CALLCONV grk_image_create(uint16_t numcmpts,
+GRK_API grk_image* GRK_CALLCONV grk_image_new(uint16_t numcmpts,
 		grk_image_cmptparm *cmptparms, GRK_COLOR_SPACE clrspc, bool allocData);
 
-/**
- * Deallocate all resources associated with an image
- *
- * @param image         image
- */
-GRK_API void GRK_CALLCONV grk_image_destroy(grk_image *image);
-
+GRK_API  grk_image_meta *  GRK_CALLCONV grk_image_meta_new(void);
 
 /**
  * Deallocate all component data for an image

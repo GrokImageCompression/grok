@@ -781,8 +781,8 @@ CodeStream::~CodeStream(){
 	delete m_decompressor.m_default_tcp;
 	m_cp.destroy();
 	j2k_destroy_cstr_index(cstr_index);
-	delete m_headerImage;
-	delete m_output_image;
+	grk_object_unref(&m_headerImage->obj);
+	grk_object_unref(&m_output_image->obj);
 	delete[] m_marker_scratch;
 	delete m_tileCache;
 	for (auto &val : marker_map)

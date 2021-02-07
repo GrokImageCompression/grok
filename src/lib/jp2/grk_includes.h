@@ -148,7 +148,7 @@ static inline long grk_lrintf(float f) {
 #endif
 
 #define GRK_UNUSED(x) (void)x
-
+#include "GrkObject.h"
 #include "logger.h"
 #include "testing.h"
 #include "ThreadPool.hpp"

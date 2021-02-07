@@ -241,7 +241,7 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 		img_comp->h = grk::ceildiv<uint32_t>(height, img_comp->dy);
 	}
 
-	m_image = grk_image_create(nr_comp, &cmptparm[0],
+	m_image = grk_image_new(nr_comp, &cmptparm[0],
 			m_colorSpace,true);
 	if (m_image == nullptr)
 		goto beach;
@@ -357,7 +357,7 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 		png_destroy_read_struct(&png, &m_info, nullptr);
 	if (!m_useStdIO && m_fileStream) {
 		if (!grk::safe_fclose(m_fileStream)) {
-			grk_image_destroy(m_image);
+			grk_object_unref(&m_image->obj);
 			m_image = nullptr;
 		}
 	}

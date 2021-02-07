@@ -204,7 +204,7 @@ static grk_image* readImageFromFilePPM(const char *filename, uint16_t nbFilename
 		dest_data[fileno] = (int32_t*) malloc(src_param[fileno].h * src_param[fileno].stride
 												* sizeof(int32_t));
 		if (!dest_data[fileno]) {
-			grk_image_destroy(src);
+			grk_object_unref(&src->obj);
 			free(filenameComponentPGX);
 			goto cleanup;
 		}
@@ -212,11 +212,11 @@ static grk_image* readImageFromFilePPM(const char *filename, uint16_t nbFilename
 				src->comps->h * src->comps->stride * sizeof(int));
 
 		/* Free memory*/
-		grk_image_destroy(src);
+		grk_object_unref(&src->obj);
 		free(filenameComponentPGX);
 	}
 
-	dest = grk_image_create((uint16_t) nbFilenamePGX, src_param,GRK_CLRSPC_UNKNOWN,true);
+	dest = grk_image_new((uint16_t) nbFilenamePGX, src_param,GRK_CLRSPC_UNKNOWN,true);
 	if (!dest || !dest->comps)
 		goto cleanup;
 	for (fileno = 0; fileno < nbFilenamePGX; fileno++) {
@@ -377,11 +377,11 @@ static grk_image* readImageFromFilePGX(const char *filename, uint16_t nbFilename
 				src->comps->h * src->comps->stride * sizeof(int));
 
 		/* Free memory*/
-		grk_image_destroy(src);
+		grk_object_unref(&src->obj);
 		free(filenameComponentPGX);
 	}
 
-	dest = grk_image_create(nbFilenamePGX, dest_param,
+	dest = grk_image_new(nbFilenamePGX, dest_param,
 			GRK_CLRSPC_UNKNOWN,true);
 	if (!dest || !dest->comps)
 		goto cleanup;
@@ -421,7 +421,7 @@ static int imageToPNG(const grk_image *src, const char *filename, uint16_t compn
 	dest_param.prec = src_comp->prec;
 	dest_param.sgnd = src_comp->sgnd;
 
-	auto dest = grk_image_create(1u, &dest_param, GRK_CLRSPC_GRAY,true);
+	auto dest = grk_image_new(1u, &dest_param, GRK_CLRSPC_GRAY,true);
 	auto dest_comp = dest->comps;
 	uint32_t src_diff = src_comp->stride - src_comp->w;
 	uint32_t dest_diff = dest_comp->stride - dest_comp->w;
@@ -439,7 +439,7 @@ static int imageToPNG(const grk_image *src, const char *filename, uint16_t compn
 	if (!png.encodeFinish())
 		return EXIT_FAILURE;
 
-	grk_image_destroy(dest);
+	grk_object_unref(&dest->obj);
 
 	return EXIT_SUCCESS;
 }
@@ -886,7 +886,7 @@ int main(int argc, char **argv) {
 
 	}
 
-	imageDiff = grk_image_create(imageBase->numcomps, param_image_diff,
+	imageDiff = grk_image_new(imageBase->numcomps, param_image_diff,
 			GRK_CLRSPC_UNKNOWN,true);
 	/* Free memory*/
 	free(param_image_diff);
@@ -1048,9 +1048,9 @@ int main(int argc, char **argv) {
 	failed = 0;
 	cleanup:
 	free(param_image_diff);
-	grk_image_destroy(imageBase);
-	grk_image_destroy(imageTest);
-	grk_image_destroy(imageDiff);
+	grk_object_unref(&imageBase->obj);
+	grk_object_unref(&imageTest->obj);
+	grk_object_unref(&imageDiff->obj);
 
 	free(filenamePNGbase);
 	free(filenamePNGtest);

@@ -1059,7 +1059,7 @@ grk_image* TIFFFormat::decode(const std::string &filename,
 		img_comp->w = grk::ceildiv<uint32_t>(w, img_comp->dx);
 		img_comp->h = grk::ceildiv<uint32_t>(h, img_comp->dy);
 	}
-	image = grk_image_create(numcomps, &cmptparm[0], color_space,true);
+	image = grk_image_new(numcomps, &cmptparm[0], color_space,true);
 	if (!image)
 		goto cleanup;
 
@@ -1229,7 +1229,7 @@ grk_image* TIFFFormat::decode(const std::string &filename,
 		return image;
 	}
 	if (image)
-		grk_image_destroy(image);
+		grk_object_unref(&image->obj);
 
 	return nullptr;
 }

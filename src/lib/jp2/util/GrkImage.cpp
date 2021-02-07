@@ -4,18 +4,15 @@ namespace grk {
 
 GrkImage::GrkImage() : ownsData(true){
 	memset((grk_image*)(this), 0, sizeof(grk_image));
+	obj.wrappee = new GrkImageObject(this);
 }
 GrkImage::~GrkImage(){
 	if (ownsData && comps) {
 		grk_image_all_components_data_free(this);
 		grk::grk_free(comps);
 	}
-	if (meta && ownsMeta) {
-		FileFormat::free_color(&meta->color);
-		delete[] meta->iptc_buf;
-		delete[] meta->xmp_buf;
-		delete meta;
-	}
+	grk_object_unref(&meta->obj);
+	delete (GrkObject*)obj.wrappee;
 }
 
 GrkImage *  GrkImage::create(uint16_t numcmpts,
@@ -32,7 +29,7 @@ GrkImage *  GrkImage::create(uint16_t numcmpts,
 				image->numcomps * sizeof( grk_image_comp) );
 		if (!image->comps) {
 			grk::GRK_ERROR("Unable to allocate memory for image.");
-			grk_image_destroy(image);
+			delete image;
 			return nullptr;
 		}
 		/* create the individual image components */
@@ -51,7 +48,7 @@ GrkImage *  GrkImage::create(uint16_t numcmpts,
 			comp->sgnd = cmptparms[compno].sgnd;
 			if (doAllocation && !allocData(comp)) {
 				grk::GRK_ERROR("Unable to allocate memory for image.");
-				grk_image_destroy(image);
+				delete image;
 				return nullptr;
 			}
 			comp->type = GRK_COMPONENT_TYPE_COLOUR;
@@ -164,16 +161,17 @@ bool GrkImage::copyHeader(GrkImage *dest) {
 		dest->display_resolution[0] = display_resolution[0];
 		dest->display_resolution[1] = display_resolution[1];
 	}
-	if (meta)
+	if (meta){
+		GrkImageMeta *temp = (GrkImageMeta*)meta;
+		grk_object_ref(&temp->obj);
 		dest->meta = meta;
+	}
 	return true;
 }
 
 void GrkImage::createMeta(){
-	if (!meta) {
-		meta = new grk_image_meta();
-		ownsMeta = true;
-	}
+	if (!meta)
+		meta = new GrkImageMeta();
 }
 
 bool GrkImage::allocData(grk_image_comp  *comp) {
@@ -464,6 +462,22 @@ bool GrkImage::compositeFrom(const GrkImage *src_image) {
 	}
 
 	return true;
+}
+
+GrkImageMeta::GrkImageMeta() {
+	obj.wrappee = new GrkImageMetaObject(this);
+	iptc_buf = nullptr;
+	iptc_len = 0;
+	xmp_buf = nullptr;
+	xmp_len = 0;
+	memset(&color, 0, sizeof(color));
+}
+
+GrkImageMeta::~GrkImageMeta(){
+	FileFormat::free_color(&color);
+	delete[] iptc_buf;
+	delete[] xmp_buf;
+	delete (GrkObject*)obj.wrappee;
 }
 
 }

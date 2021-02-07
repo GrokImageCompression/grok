@@ -247,7 +247,7 @@ int main(int argc, char *argv[]) {
 	grk_set_warning_handler(warning_callback, nullptr);
 	grk_set_error_handler(error_callback, nullptr);
 
-	image = grk_image_create(num_comps, params, GRK_CLRSPC_SRGB,true);
+	image = grk_image_new(num_comps, params, GRK_CLRSPC_SRGB,true);
 	if (!image) {
 		rc = 1;
 		goto cleanup;
@@ -288,7 +288,7 @@ int main(int argc, char *argv[]) {
 	cleanup:
 	grk_stream_destroy(stream);
 	grk_destroy_codec(codec);
-	grk_image_destroy(image);
+	grk_object_unref(&image->obj);
 
 	free(data);
 	grk_deinitialize();

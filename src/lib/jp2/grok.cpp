@@ -68,6 +68,21 @@ GRK_API void GRK_CALLCONV grk_deinitialize() {
 	ThreadPool::release();
 }
 
+GRK_API void GRK_CALLCONV grk_object_ref(grk_object *obj){
+	if (!obj)
+		return;
+	GrkObject* object = (GrkObject*)obj->wrappee;
+
+	object->ref();
+
+}
+GRK_API void GRK_CALLCONV grk_object_unref(grk_object *obj){
+	if (!obj)
+		return;
+	GrkObject* object = (GrkObject*)obj->wrappee;
+	object->unref();
+}
+
 /* ---------------------------------------------------------------------- */
 /* Functions to set the message handlers */
 
@@ -141,13 +156,13 @@ const char* GRK_CALLCONV grk_version(void) {
 	return GRK_PACKAGE_VERSION;
 }
 
-grk_image *  GRK_CALLCONV grk_image_create(uint16_t numcmpts,
+grk_image *  GRK_CALLCONV grk_image_new(uint16_t numcmpts,
 		 grk_image_cmptparm  *cmptparms, GRK_COLOR_SPACE clrspc, bool allocData) {
 	return GrkImage::create(numcmpts, cmptparms, clrspc, allocData);
 }
 
-void GRK_CALLCONV grk_image_destroy(grk_image *image) {
-	delete (GrkImage*)image;
+grk_image_meta *  GRK_CALLCONV grk_image_meta_new(void){
+	return (grk_image_meta*)(new GrkImageMeta());
 }
 
 /* ---------------------------------------------------------------------- */
@@ -787,4 +802,48 @@ void GRK_CALLCONV grk_plugin_stop_batch_decompress(void) {
 		if (func)
 			func();
 	}
+}
+
+grk_stream* GRK_CALLCONV grk_stream_create(size_t buffer_size, bool is_input) {
+	return (grk_stream*) (new grk::BufferedStream(nullptr, buffer_size,	is_input));
+}
+void GRK_CALLCONV grk_stream_destroy(grk_stream *stream) {
+	delete (grk::BufferedStream*) (stream);
+}
+void GRK_CALLCONV grk_stream_set_read_function(grk_stream *stream,
+		grk_stream_read_fn p_function) {
+	auto streamImpl = (grk::BufferedStream*) stream;
+	if ((!streamImpl) || (!(streamImpl->m_status & GROK_STREAM_STATUS_INPUT)))
+		return;
+	streamImpl->m_read_fn = p_function;
+}
+
+void GRK_CALLCONV grk_stream_set_seek_function(grk_stream *stream,
+		grk_stream_seek_fn p_function) {
+	auto streamImpl = (grk::BufferedStream*) stream;
+	if (streamImpl)
+		streamImpl->m_seek_fn = p_function;
+}
+void GRK_CALLCONV grk_stream_set_write_function(grk_stream *stream,
+		grk_stream_write_fn p_function) {
+	auto streamImpl = (grk::BufferedStream*) stream;
+	if ((!streamImpl) || (!(streamImpl->m_status & GROK_STREAM_STATUS_OUTPUT)))
+		return;
+
+	streamImpl->m_write_fn = p_function;
+}
+
+void GRK_CALLCONV grk_stream_set_user_data(grk_stream *stream, void *p_data,
+		grk_stream_free_user_data_fn p_function) {
+	auto streamImpl = (grk::BufferedStream*) stream;
+	if (!streamImpl)
+		return;
+	streamImpl->m_user_data = p_data;
+	streamImpl->m_free_user_data_fn = p_function;
+}
+void GRK_CALLCONV grk_stream_set_user_data_length(grk_stream *stream,
+		uint64_t data_length) {
+	auto streamImpl = (grk::BufferedStream*) stream;
+	if (streamImpl)
+		streamImpl->m_user_data_length = data_length;
 }

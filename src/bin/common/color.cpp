@@ -58,7 +58,7 @@ static grk_image* create_rgb_no_subsample_image(uint16_t numcmpts, uint32_t w, u
 		cmptparms[compno].prec = prec;
 		cmptparms[compno].sgnd = 0U;
 	}
-	auto img = grk_image_create(numcmpts, (grk_image_cmptparm*) cmptparms,
+	auto img = grk_image_new(numcmpts, (grk_image_cmptparm*) cmptparms,
 			GRK_CLRSPC_SRGB,true);
 	free(cmptparms);
 	return img;
@@ -153,7 +153,7 @@ static bool sycc444_to_rgb(grk_image *src_img) {
 
 	for (uint32_t i = 0; i < src_img->numcomps; ++i)
 		src_img->comps[i].stride = dest_img->comps[i].stride;
-	grk_image_destroy(dest_img);
+	grk_object_unref(&dest_img->obj);
 	dest_img = nullptr;
 
 	return true;
@@ -226,7 +226,7 @@ static bool sycc422_to_rgb(grk_image *src_img, bool oddFirstX) {
 
 	for (uint32_t i = 0; i < src_img->numcomps; ++i)
 		src_img->comps[i].stride = dest_img->comps[i].stride;
-	grk_image_destroy(dest_img);
+	grk_object_unref(&dest_img->obj);
 	dest_img = nullptr;
 
 	return true;
@@ -335,7 +335,7 @@ static bool sycc420_to_rgb(grk_image *src_img, bool oddFirstX, bool oddFirstY) {
 	src_img->comps[1].dy = src_img->comps[2].dy = src_img->comps[0].dy;
 	src_img->color_space = GRK_CLRSPC_SRGB;
 
-	grk_image_destroy(dest_img);
+	grk_object_unref(&dest_img->obj);
 	dest_img = nullptr;
 
 	return true;
@@ -646,7 +646,7 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB) {
 		new_image->comps[0].data = nullptr;
 		new_image->comps[1].data = nullptr;
 
-		grk_image_destroy(new_image);
+		grk_object_unref(&new_image->obj);
 		new_image = nullptr;
 
 		if (forceRGB)
@@ -807,7 +807,7 @@ bool color_cielab_to_rgb(grk_image *src_img) {
 	cmsCloseProfile(in);
 	cmsCloseProfile(out);
 	if (transform == nullptr) {
-		grk_image_destroy(dest_img);
+		grk_object_unref(&dest_img->obj);
 		return false;
 	}
 
@@ -823,7 +823,7 @@ bool color_cielab_to_rgb(grk_image *src_img) {
 	dest_img->comps[1].data = nullptr;
 	dest_img->comps[2].data = nullptr;
 
-	grk_image_destroy(dest_img);
+	grk_object_unref(&dest_img->obj);
 	dest_img = nullptr;
 
 	minL = -(r_L * o_L) / (pow(2, prec_L) - 1);
@@ -1013,10 +1013,8 @@ void copy_icc(grk_image *dest, uint8_t *iccbuf, uint32_t icclen){
 	dest->color_space = GRK_CLRSPC_ICC;
 }
 void create_meta(grk_image *img){
-	if (img && !img->meta) {
-		img->meta = new grk_image_meta();
-		img->ownsMeta = true;
-	}
+	if (img && !img->meta)
+		img->meta = grk_image_meta_new();
 }
 
 bool validate_icc(GRK_COLOR_SPACE colourSpace, uint8_t *iccbuf, uint32_t icclen){

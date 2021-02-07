@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
     cmptparm.h = image_height;
     strncpy(parameters.outfile, outputfile, sizeof(parameters.outfile)-1);
 
-    image = grk_image_create(numcomps, &cmptparm, color_space,true);
+    image = grk_image_new(numcomps, &cmptparm, color_space,true);
     assert( image );
 
     for (i = 0; i < image_width * image_height; i++) {
@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
     if( !l_stream ) {
         fprintf( stderr, "Something went wrong during creation of stream\n" );
         grk_destroy_codec(l_codec);
-        grk_image_destroy(image);
+        grk_object_unref(&image->obj);
         grk_stream_destroy(l_stream);
         return 1;
     }
@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
     if( !bSuccess ) {
         grk_stream_destroy(l_stream);
         grk_destroy_codec(l_codec);
-        grk_image_destroy(image);
+        grk_object_unref(&image->obj);
         return 0;
     }
 
@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
     grk_stream_destroy(l_stream);
 
     grk_destroy_codec(l_codec);
-    grk_image_destroy(image);
+    grk_object_unref(&image->obj);
 
 
     /* read back the generated file */
@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
 
         grk_destroy_codec(d_codec);
 
-        grk_image_destroy(image);
+        grk_object_unref(&image->obj);
     }
 
     puts( "end" );

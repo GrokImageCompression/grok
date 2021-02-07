@@ -129,7 +129,7 @@ grk_image* convert_gray_to_rgb(grk_image *original) {
 		new_components[compno + 2U].y0 = original->comps[compno].y0;
 	}
 
-	auto new_image = grk_image_create((uint16_t)(original->numcomps + 2U), new_components,
+	auto new_image = grk_image_new((uint16_t)(original->numcomps + 2U), new_components,
 			GRK_CLRSPC_SRGB,true);
 	delete[] new_components;
 	if (new_image == nullptr) {
@@ -203,7 +203,7 @@ grk_image* upsample_image_components(grk_image *original) {
 			new_cmp->h = original->y1 - original->y0;
 	}
 
-	new_image = grk_image_create(original->numcomps, new_components,original->color_space,true);
+	new_image = grk_image_new(original->numcomps, new_components,original->color_space,true);
 	delete[] new_components;
 	if (new_image == nullptr) {
 		spdlog::error(
@@ -231,7 +231,7 @@ grk_image* upsample_image_components(grk_image *original) {
 			uint32_t yoff = org_cmp->dy * org_cmp->y0 - original->y0;
 			if ((xoff >= org_cmp->dx) || (yoff >= org_cmp->dy)) {
 				spdlog::error("upsample: Invalid image/component parameters found when upsampling");
-				grk_image_destroy(new_image);
+				grk_object_unref(&new_image->obj);
 				return nullptr;
 			}
 

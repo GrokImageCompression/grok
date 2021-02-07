@@ -1390,7 +1390,7 @@ int GrkDecompress::postDecompress(grk_plugin_decompress_callback_info *info) {
 		{
 			auto tmp = convert_gray_to_rgb(image);
 			if (imageNeedsDestroy)
-				grk_image_destroy(image);
+				grk_object_unref(&image->obj);
 			imageNeedsDestroy = true;
 			image = tmp;
 		}
@@ -1487,7 +1487,7 @@ int GrkDecompress::postDecompress(grk_plugin_decompress_callback_info *info) {
 	grk_destroy_codec(info->l_codec);
 	info->l_codec = nullptr;
 	if (image && imageNeedsDestroy) {
-		grk_image_destroy(image);
+		grk_object_unref(&image->obj);
 		info->image = nullptr;
 	}
 	delete imageFormat;

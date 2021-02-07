@@ -197,7 +197,7 @@ grk_image* JPEGFormat::jpegtoimage(const char *filename,
 		cmptparm[j].h = h;
 	}
 
-	m_image = grk_image_create((uint16_t)numcomps, &cmptparm[0], color_space,true);
+	m_image = grk_image_new((uint16_t)numcomps, &cmptparm[0], color_space,true);
 	if (!m_image) {
 		success = false;
 		goto cleanup;
@@ -308,7 +308,7 @@ grk_image* JPEGFormat::jpegtoimage(const char *filename,
 	}
 
 	if (!success) {
-		grk_image_destroy(m_image);
+		grk_object_unref(&m_image->obj);
 		m_image = nullptr;
 	}
 	/* After finish_decompress, we can close the input file.
@@ -318,7 +318,7 @@ grk_image* JPEGFormat::jpegtoimage(const char *filename,
 	 */
 	if (m_fileStream && !readFromStdin) {
 		if (!grk::safe_fclose(m_fileStream)) {
-			grk_image_destroy(m_image);
+			grk_object_unref(&m_image->obj);
 			m_image = nullptr;
 		}
 	}

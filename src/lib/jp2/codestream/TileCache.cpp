@@ -28,7 +28,7 @@ TileCacheEntry::TileCacheEntry() : TileCacheEntry(nullptr,nullptr)
 {}
 TileCacheEntry::~TileCacheEntry(){
 	delete processor;
-	delete image;
+	grk_object_unref(&image->obj);
 }
 
 TileCache::TileCache(GRK_TILE_CACHE_STRATEGY strategy) : tileComposite(nullptr), m_strategy(strategy){
@@ -39,7 +39,7 @@ TileCache::TileCache() : TileCache(GRK_TILE_CACHE_NONE){
 TileCache::~TileCache() {
 	for (auto &proc : m_cache)
 		delete proc.second;
-	delete tileComposite;
+	grk_object_unref(&tileComposite->obj);
 }
 
 TileCacheEntry*  TileCache::put(uint16_t tileIndex, TileProcessor *processor){

@@ -379,7 +379,7 @@ static grk_image* pnmtoimage(const char *filename,
 		cmptparm[i].w = w;
 		cmptparm[i].h = h;
 	}
-	image = grk_image_create(numcomps, &cmptparm[0], color_space,true);
+	image = grk_image_new(numcomps, &cmptparm[0], color_space,true);
 	if (!image) {
 		spdlog::error("pnmtoimage: Failed to create image");
 		goto cleanup;
@@ -516,7 +516,7 @@ static grk_image* pnmtoimage(const char *filename,
 	}
 	success = true;
 	cleanup: if (!grk::safe_fclose(fp) || !success) {
-		grk_image_destroy(image);
+		grk_object_unref(&image->obj);
 		image = nullptr;
 	}
 	return image;

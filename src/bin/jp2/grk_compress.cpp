@@ -2114,7 +2114,7 @@ static bool plugin_compress_callback(grk_plugin_compress_user_callback_info *inf
 	if (codec)
 		grk_destroy_codec(codec);
 	if (createdImage)
-		grk_image_destroy(image);
+		grk_object_unref(&image->obj);
 	if (!bSuccess) {
 		spdlog::error("failed to compress image");
 		if (parameters->outfile[0]){

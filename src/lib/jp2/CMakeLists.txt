@@ -88,7 +88,8 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/testing.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkImage.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkImage.h
-
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkObject.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkObject.h
   
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin/minpf_dynamic_library.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin/minpf_dynamic_library.h

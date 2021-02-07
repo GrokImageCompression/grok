@@ -167,7 +167,7 @@ static grk_image* pgxtoimage(const char *filename,
 	cmptparm.dy = parameters->subsampling_dy;
 
 	/* create the image */
-	image = grk_image_create(numcomps, &cmptparm, color_space,true);
+	image = grk_image_new(numcomps, &cmptparm, color_space,true);
 	if (!image) {
 		goto cleanup;
 	}
@@ -209,7 +209,7 @@ static grk_image* pgxtoimage(const char *filename,
 		index +=stride_diff;
 	}
 	cleanup: if (!grk::safe_fclose(f)) {
-		grk_image_destroy(image);
+		grk_object_unref(&image->obj);
 		image = nullptr;
 	}
 	return image;
