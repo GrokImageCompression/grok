@@ -62,7 +62,7 @@ int main(int argc, char *argv[]){
 
      grk_image_cmptparm  cmptparm;
     grk_image *image;
-     grk_codec   l_codec = nullptr;
+     grk_codec   *codec = nullptr;
     bool bSuccess;
      grk_stream  *l_stream = nullptr;
     (void)argc;
@@ -96,30 +96,30 @@ int main(int argc, char *argv[]){
     l_stream = grk_stream_create_file_stream("testempty1.j2k", 1024*1024, false);
     assert(l_stream);
 
-    l_codec = grk_compress_create(GRK_CODEC_J2K, l_stream);
+    codec = grk_compress_create(GRK_CODEC_J2K, l_stream);
     grk_set_info_handler(info_callback,nullptr);
     grk_set_warning_handler(warning_callback,nullptr);
     grk_set_error_handler(error_callback,nullptr);
 
-    grk_compress_init(l_codec, &parameters, image);
+    grk_compress_init(codec, &parameters, image);
 
-    bSuccess = grk_compress_start(l_codec);
+    bSuccess = grk_compress_start(codec);
     if( !bSuccess ) {
         grk_object_unref(l_stream);
-        grk_destroy_codec(l_codec);
+        grk_object_unref(codec);
         grk_object_unref(&image->obj);
         return 0;
     }
 
     assert( bSuccess );
-    bSuccess = grk_compress(l_codec);
+    bSuccess = grk_compress(codec);
     assert( bSuccess );
-    bSuccess = grk_compress_end(l_codec);
+    bSuccess = grk_compress_end(codec);
     assert( bSuccess );
 
     grk_object_unref(l_stream);
 
-    grk_destroy_codec(l_codec);
+    grk_object_unref(codec);
     grk_object_unref(&image->obj);
 
     puts( "end" );

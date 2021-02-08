@@ -57,7 +57,7 @@ static void info_callback(const char *msg, void *client_data) {
 
 
 static int32_t test_tile( uint16_t tile_index, grk_image *image, grk_stream *stream,
-								grk_codec codec) {
+								grk_codec *codec) {
 	spdlog::info("Decompressing tile {} ...", tile_index);
 	if(!grk_decompress_tile(codec, tile_index )){
 		spdlog::error("random tile processor: failed to decompress tile {}", tile_index);
@@ -100,7 +100,7 @@ int32_t main(int argc, char **argv) {
 	}
 
 	for (uint32_t i = 0; i < 4; ++i){
-		grk_codec codec = nullptr; /* Handle to a decompressor */
+		grk_codec *codec = nullptr; /* Handle to a decompressor */
 		grk_codestream_info_v2 *cstr_info = nullptr;
 		grk_image *image = nullptr;
 
@@ -160,7 +160,7 @@ int32_t main(int argc, char **argv) {
 		grk_destroy_cstr_info(&cstr_info);
 
 		/* Free remaining structures */
-		grk_destroy_codec(codec);
+		grk_object_unref(codec);
 
 		/* Close the byte stream */
 		grk_object_unref(stream);

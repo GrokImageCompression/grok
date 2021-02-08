@@ -71,7 +71,7 @@ static void info_callback(const char *msg, void *client_data) {
 
 int main(int argc, char *argv[]) {
 	grk_dparameters param;
-	grk_codec codec = nullptr;
+	grk_codec *codec = nullptr;
 	grk_stream *stream = nullptr;
 	uint16_t tile_index=0;
 	int32_t rc = EXIT_FAILURE;
@@ -198,7 +198,7 @@ int main(int argc, char *argv[]) {
 
 	beach:
 	grk_object_unref(stream);
-	grk_destroy_codec(codec);
+	grk_object_unref(codec);
 
 	return rc;
 }

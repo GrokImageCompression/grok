@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 
      grk_image_cmptparm  cmptparm;
     grk_image *image;
-     grk_codec   l_codec = nullptr;
+     grk_codec   *codec = nullptr;
     bool bSuccess;
      grk_stream  *l_stream = nullptr;
     (void)argc;
@@ -104,40 +104,40 @@ int main(int argc, char *argv[])
     l_stream = grk_stream_create_file_stream(parameters.outfile, 1024*1024, false);
     if( !l_stream ) {
         fprintf( stderr, "Something went wrong during creation of stream\n" );
-        grk_destroy_codec(l_codec);
+        grk_object_unref(codec);
         grk_object_unref(&image->obj);
         grk_object_unref(l_stream);
         return 1;
     }
 
-    l_codec = grk_compress_create(GRK_CODEC_J2K, l_stream);
-    grk_compress_init(l_codec, &parameters, image);
+    codec = grk_compress_create(GRK_CODEC_J2K, l_stream);
+    grk_compress_init(codec, &parameters, image);
 
 
     assert(l_stream);
-    bSuccess = grk_compress_start(l_codec);
+    bSuccess = grk_compress_start(codec);
     if( !bSuccess ) {
         grk_object_unref(l_stream);
-        grk_destroy_codec(l_codec);
+        grk_object_unref(codec);
         grk_object_unref(&image->obj);
         return 0;
     }
 
     assert( bSuccess );
-    bSuccess = grk_compress(l_codec);
+    bSuccess = grk_compress(codec);
     assert( bSuccess );
-    bSuccess = grk_compress_end(l_codec);
+    bSuccess = grk_compress_end(codec);
     assert( bSuccess );
 
     grk_object_unref(l_stream);
 
-    grk_destroy_codec(l_codec);
+    grk_object_unref(codec);
     grk_object_unref(&image->obj);
 
 
     /* read back the generated file */
     {
-         grk_codec   d_codec = nullptr;
+         grk_codec   *d_codec = nullptr;
          grk_dparameters  dparameters;
 
          bSuccess = grk_decompress_init(d_codec, &dparameters);
@@ -149,15 +149,15 @@ int main(int argc, char *argv[])
         bSuccess = grk_decompress_read_header(d_codec,nullptr);
         assert( bSuccess );
 
-        bSuccess = grk_decompress(l_codec, nullptr);
+        bSuccess = grk_decompress(codec, nullptr);
         assert( bSuccess );
 
-        bSuccess = grk_decompress_end(l_codec);
+        bSuccess = grk_decompress_end(codec);
         assert( bSuccess );
 
         grk_object_unref(l_stream);
 
-        grk_destroy_codec(d_codec);
+        grk_object_unref(d_codec);
 
         grk_object_unref(&image->obj);
     }

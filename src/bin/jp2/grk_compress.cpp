@@ -1746,7 +1746,7 @@ static bool plugin_compress_callback(grk_plugin_compress_user_callback_info *inf
 	auto parameters = info->compressor_parameters;
 	bool bSuccess = true;
 	grk_stream *stream = nullptr;
-	grk_codec codec = nullptr;
+	grk_codec *codec = nullptr;
 	grk_image *image = info->image;
 	char outfile[3 * GRK_PATH_LEN];
 	char temp_ofname[GRK_PATH_LEN];
@@ -2111,8 +2111,7 @@ static bool plugin_compress_callback(grk_plugin_compress_user_callback_info *inf
 	cleanup:
 	if (stream)
 		grk_object_unref(stream);
-	if (codec)
-		grk_destroy_codec(codec);
+	grk_object_unref(codec);
 	if (createdImage)
 		grk_object_unref(&image->obj);
 	if (!bSuccess) {

@@ -161,8 +161,8 @@ struct BufferedStream: public IBufferedStream {
 	bool supportsZeroCopy() ;
 	uint8_t* getCurrentPtr();
 
-	static BufferedStream* getStreamImpl(grk_stream *stream);
-	grk_stream* getStreamWrapper(void);
+	static BufferedStream* getImpl(grk_stream *stream);
+	grk_stream* getWrapper(void);
 private:
 
 	/**

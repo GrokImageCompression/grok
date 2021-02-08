@@ -215,7 +215,7 @@ grk_stream* create_mapped_file_read_stream(const char *fname) {
 	// now treat mapped file like any other memory stream
 	auto streamImpl = new BufferedStream(memStream->buf,
 			memStream->len, true);
-	auto l_stream = streamImpl->getStreamWrapper();
+	auto l_stream = streamImpl->getWrapper();
 	grk_stream_set_user_data(l_stream, memStream,
 			(grk_stream_free_user_data_fn) mem_map_free);
 	set_up_mem_stream(l_stream, memStream->len, true);
@@ -247,7 +247,7 @@ grk_stream* create_mapped_file_write_stream(const char *fname) {
 	// now treat mapped file like any other memory stream
 	auto streamImpl = new BufferedStream(memStream->buf,
 			memStream->len, true);
-	auto l_stream = streamImpl->getStreamWrapper();
+	auto l_stream = streamImpl->getWrapper();
 	grk_stream_set_user_data(l_stream, memStream,
 			(grk_stream_free_user_data_fn) mem_map_free);
 	set_up_mem_stream(l_stream, memStream->len, false);

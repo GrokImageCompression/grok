@@ -422,11 +422,11 @@ bool BufferedStream::isMemStream() {
 	return !m_buf->owns_data;
 }
 
-BufferedStream* BufferedStream::getStreamImpl(grk_stream *stream){
+BufferedStream* BufferedStream::getImpl(grk_stream *stream){
 	return ((GrkBufferedStreamObject*)stream->wrappee)->getStream();
 }
 
-grk_stream* BufferedStream::getStreamWrapper(void){
+grk_stream* BufferedStream::getWrapper(void){
 	return &obj;
 }
 

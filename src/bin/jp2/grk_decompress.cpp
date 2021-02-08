@@ -825,19 +825,19 @@ int GrkDecompress::decompress(const char *fileName, DecompressInitParams *initPa
 	info.user_data = this;
 
 	if (preDecompress(&info)){
-		grk_destroy_codec(info.l_codec);
+		grk_object_unref(info.codec);
 		return 0;
 	}
 	if (postDecompress(&info)){
-		grk_destroy_codec(info.l_codec);
+		grk_object_unref(info.codec);
 		return 0;
 	}
 #ifdef GROK_HAVE_EXIFTOOL
 		if (initParams->transferExifTags && initParams->parameters.decod_format == GRK_JP2_FMT)
 			transferExifTags(initParams->parameters.infile, initParams->parameters.outfile);
 #endif
-	grk_destroy_codec(info.l_codec);
-	info.l_codec = nullptr;
+	grk_object_unref(info.codec);
+	info.codec = nullptr;
 	return 1;
 }
 
@@ -993,9 +993,8 @@ int decompress_callback(grk_plugin_decompress_callback_info *info) {
 		if (info->l_stream)
 			grk_object_unref(info->l_stream);
 		info->l_stream = nullptr;
-		if (info->l_codec)
-			grk_destroy_codec(info->l_codec);
-		info->l_codec = nullptr;
+		grk_object_unref(info->codec);
+		info->codec = nullptr;
 		if (info->image && !info->plugin_owns_image) {
 			info->image = nullptr;
 		}
@@ -1125,15 +1124,15 @@ int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 		goto cleanup;
 	}
 
-	if (!info->l_codec) {
+	if (!info->codec) {
 		switch (decod_format) {
 		case GRK_J2K_FMT: { /* JPEG 2000 code stream */
-			info->l_codec = grk_decompress_create(GRK_CODEC_J2K,
+			info->codec = grk_decompress_create(GRK_CODEC_J2K,
 					info->l_stream);
 			break;
 		}
 		case GRK_JP2_FMT: { /* JPEG 2000 compressed image data */
-			info->l_codec = grk_decompress_create(GRK_CODEC_JP2,
+			info->codec = grk_decompress_create(GRK_CODEC_JP2,
 					info->l_stream);
 			break;
 		}
@@ -1148,7 +1147,7 @@ int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 		}
 		grk_set_error_handler(error_callback, nullptr);
 
-		if (!grk_decompress_init(info->l_codec, &(parameters->core))) {
+		if (!grk_decompress_init(info->codec, &(parameters->core))) {
 			spdlog::error("grk_decompress: failed to set up the decompressor");
 			goto cleanup;
 		}
@@ -1157,12 +1156,12 @@ int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 	// 2. read header
 	if (info->decompress_flags & GRK_DECODE_HEADER) {
 		// Read the main header of the code stream (j2k) and also JP2 boxes (jp2)
-		if (!grk_decompress_read_header(info->l_codec, &info->header_info)) {
+		if (!grk_decompress_read_header(info->codec, &info->header_info)) {
 			spdlog::error("grk_decompress: failed to read the header");
 			goto cleanup;
 		}
 
-		info->image = grk_decompress_get_composited_image(info->l_codec);
+		info->image = grk_decompress_get_composited_image(info->codec);
 
 		// do not allow odd top left window coordinates for SYCC
 		if (info->image->color_space == GRK_CLRSPC_SYCC){
@@ -1229,7 +1228,7 @@ int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 		}
 	}
 
-	if (!grk_decompress_set_window(info->l_codec, parameters->DA_x0,
+	if (!grk_decompress_set_window(info->codec, parameters->DA_x0,
 			parameters->DA_y0, parameters->DA_x1, parameters->DA_y1)) {
 		spdlog::error("grk_decompress: failed to set the decompressed area");
 		goto cleanup;
@@ -1237,14 +1236,14 @@ int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
 
 	// decompress all tiles
 	if (!parameters->nb_tile_to_decompress) {
-		if (!(grk_decompress(info->l_codec, info->tile)
-				&& grk_decompress_end(info->l_codec))) {
+		if (!(grk_decompress(info->codec, info->tile)
+				&& grk_decompress_end(info->codec))) {
 			goto cleanup;
 		}
 	}
 	// or, decompress one particular tile
 	else {
-		if (!grk_decompress_tile(info->l_codec, parameters->tile_index)) {
+		if (!grk_decompress_tile(info->codec, parameters->tile_index)) {
 			spdlog::error("grk_decompress: failed to decompress tile");
 			goto cleanup;
 		}
@@ -1484,8 +1483,8 @@ int GrkDecompress::postDecompress(grk_plugin_decompress_callback_info *info) {
 	cleanup:
 	grk_object_unref(info->l_stream);
 	info->l_stream = nullptr;
-	grk_destroy_codec(info->l_codec);
-	info->l_codec = nullptr;
+	grk_object_unref(info->codec);
+	info->codec = nullptr;
 	if (image && imageNeedsDestroy) {
 		grk_object_unref(&image->obj);
 		info->image = nullptr;

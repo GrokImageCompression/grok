@@ -181,7 +181,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len){
     grk_decompress_end(codec);
 cleanup:
     grk_object_unref(pStream);
-    grk_destroy_codec(codec);
+    grk_object_unref(codec);
 
     return 0;
 }

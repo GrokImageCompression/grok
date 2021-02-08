@@ -339,7 +339,7 @@ int main(int argc, char *argv[]) {
 
 	grk_dparameters parameters; /* Decompression parameters */
 	grk_image *image = nullptr; /* Image structure */
-	grk_codec l_codec = nullptr; /* Handle to a decompressor */
+	grk_codec *codec = nullptr; /* Handle to a decompressor */
 	grk_stream *l_stream = nullptr; /* Stream */
 	grk_codestream_info_v2 *cstr_info = nullptr;
 	grk_codestream_index *cstr_index = nullptr;
@@ -442,12 +442,12 @@ int main(int argc, char *argv[]) {
 		switch (parameters.decod_format) {
 		case GRK_J2K_FMT: { /* JPEG 2000 code stream */
 			/* Get a decompressor handle */
-			l_codec = grk_decompress_create(GRK_CODEC_J2K, l_stream);
+			codec = grk_decompress_create(GRK_CODEC_J2K, l_stream);
 			break;
 		}
 		case GRK_JP2_FMT: { /* JPEG 2000 compressed image data */
 			/* Get a decompressor handle */
-			l_codec = grk_decompress_create(GRK_CODEC_JP2, l_stream);
+			codec = grk_decompress_create(GRK_CODEC_JP2, l_stream);
 			break;
 		}
 		default:
@@ -457,24 +457,24 @@ int main(int argc, char *argv[]) {
 		}
 
 		/* Setup the decompressor decoding parameters using user parameters */
-		if (!grk_decompress_init(l_codec, &parameters)) {
+		if (!grk_decompress_init(codec, &parameters)) {
 			spdlog::error("grk_dump: failed to set up the decompressor");
 			rc = EXIT_FAILURE;
 			goto cleanup;
 		}
 
 		/* Read the main header of the code stream and if necessary the JP2 boxes*/
-		if (!grk_decompress_read_header(l_codec, nullptr)) {
+		if (!grk_decompress_read_header(codec, nullptr)) {
 			spdlog::error("grk_dump: failed to read the header");
 			rc = EXIT_FAILURE;
 			goto cleanup;
 		}
 
-		grk_dump_codec(l_codec, img_fol.flag, fout);
+		grk_dump_codec(codec, img_fol.flag, fout);
 
-		cstr_info = grk_get_cstr_info(l_codec);
+		cstr_info = grk_get_cstr_info(codec);
 
-		cstr_index = grk_get_cstr_index(l_codec);
+		cstr_index = grk_get_cstr_index(codec);
 
 		/* close the byte stream */
 		if (l_stream) {
@@ -483,9 +483,9 @@ int main(int argc, char *argv[]) {
 		}
 
 		/* free remaining structures */
-		if (l_codec) {
-			grk_destroy_codec(l_codec);
-			l_codec = nullptr;
+		if (codec) {
+			grk_object_unref(codec);
+			codec = nullptr;
 		}
 
 		/* destroy the image header */
@@ -514,8 +514,8 @@ int main(int argc, char *argv[]) {
 		grk_object_unref(l_stream);
 
 	/* free remaining structures */
-	if (l_codec) {
-		grk_destroy_codec(l_codec);
+	if (codec) {
+		grk_object_unref(codec);
 	}
 
 	if (fout)
