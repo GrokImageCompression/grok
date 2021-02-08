@@ -59,23 +59,6 @@ void j2k_dump_image_header(GrkImage *image, bool dev_dump_flag,
 void j2k_dump_image_comp_header( grk_image_comp  *comp, bool dev_dump_flag,
 		FILE *out_stream);
 
-/**
- * Get the code stream info from a JPEG2000 codec.
- *
- *@param	codeStream				the component image header to dump.
- *
- *@return	the code stream information extract from the jpg2000 codec
- */
- grk_codestream_info_v2  *  j2k_get_cstr_info(CodeStream *codeStream);
-
-/**
- * Get the code stream index from a JPEG2000 codec.
- *
- *@param	codeStream				the component image header to dump.
- *
- *@return	the code stream index extract from the jpg2000 codec
- */
- grk_codestream_index  *  j2k_get_cstr_index(CodeStream *codeStream);
 
  grk_codestream_index  *  j2k_create_cstr_index(void);
 
@@ -98,23 +81,6 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp, bool dev_dump_flag,
   */
  void jp2_dump(FileFormat *fileFormat, uint32_t flag, FILE *out_stream);
 
- /**
-  * Get the code stream info from a JPEG2000 codec.
-  *
-  *@param  fileFormat        jp2 codec.
-  *
-  *@return  the code stream information extract from the jpg2000 codec
-  */
-  grk_codestream_info_v2  *  jp2_get_cstr_info(FileFormat *fileFormat);
-
- /**
-  * Get the code stream index from a JPEG2000 codec.
-  *
-  *@param  fileFormat        jp2 codec.
-  *
-  *@return  the code stream index extract from the jpg2000 codec
-  */
-  grk_codestream_index  *  jp2_get_cstr_index(FileFormat *fileFormat);
 
 
 }

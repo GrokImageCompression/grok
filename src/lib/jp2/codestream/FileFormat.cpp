@@ -1307,16 +1307,6 @@ void FileFormat::dump(uint32_t flag, FILE *out_stream){
 	j2k_dump(codeStream, flag, out_stream);
 }
 
-grk_codestream_info_v2* FileFormat::get_cstr_info(void){
-
-	return j2k_get_cstr_info(codeStream);
-}
-
-grk_codestream_index* FileFormat::get_cstr_index(void){
-
-	return j2k_get_cstr_index(codeStream);
-}
-
 bool FileFormat::read_header_procedure(void) {
 	FileFormatBox box;
 	uint32_t nb_bytes_read;

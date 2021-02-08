@@ -183,8 +183,6 @@ public:
    bool end_compress(void);
    bool decompressTile(uint16_t tile_index);
    void dump(uint32_t flag, FILE *out_stream);
-   grk_codestream_info_v2* get_cstr_info(void);
-   grk_codestream_index* get_cstr_index(void);
    static void free_color(grk_color *color);
    static void alloc_palette(grk_color *color, uint8_t num_channels, uint16_t num_entries);
    static void free_palette_clr(grk_color *color);
@@ -245,12 +243,17 @@ public:
 					   uint32_t *num_asocs,
 					   uint32_t level);
 
+
+
 	/** handle to the J2K codec  */
 	CodeStream *codeStream;
 	/** list of validation procedures */
 	std::vector<jp2_procedure> *m_validation_list;
 	/** list of execution procedures */
 	std::vector<jp2_procedure> *m_procedure_list;
+
+	AsocBox root_asoc;
+private:
 
 	/* width of image */
 	uint32_t w;
@@ -287,10 +290,8 @@ public:
 	UUIDBox uuids[JP2_MAX_NUM_UUIDS];
 	uint32_t numUuids;
 
-	AsocBox root_asoc;
-
 	bool m_headerError;
-private:
+
 	bool applyColour(GrkImage *img);
 	bool applyColour(void);
 };

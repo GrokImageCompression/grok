@@ -1520,14 +1520,6 @@ void CodeStream::dump(uint32_t flag, FILE *out_stream){
 	j2k_dump(this, flag, out_stream);
 }
 
-grk_codestream_info_v2* CodeStream::get_cstr_info(void){
-	return j2k_get_cstr_info(this);
-}
-
-grk_codestream_index* CodeStream::get_cstr_index(void){
-	return j2k_get_cstr_index(this);
-}
-
 bool CodeStream::process_marker(const marker_handler* marker_handler, uint16_t marker_size){
 	if (!m_marker_scratch) {
 		m_marker_scratch = new uint8_t[default_header_size];

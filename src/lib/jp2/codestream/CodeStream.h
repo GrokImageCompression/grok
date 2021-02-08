@@ -153,9 +153,6 @@ struct ICodeStream {
 
    virtual void dump(uint32_t flag, FILE *out_stream) = 0;
 
-   virtual grk_codestream_info_v2* get_cstr_info(void) = 0;
-
-   virtual grk_codestream_index* get_cstr_index(void) = 0;
 };
 
 class TileCache;
@@ -196,9 +193,6 @@ struct CodeStream : public ICodeStream {
    void dump(uint32_t flag, FILE *out_stream);
 
    grk_codestream_info_v2* get_cstr_info(void);
-
-   grk_codestream_index* get_cstr_index();
-
 
    bool isDecodingTilePartHeader() ;
 	TileCodingParams* get_current_decode_tcp(void);
