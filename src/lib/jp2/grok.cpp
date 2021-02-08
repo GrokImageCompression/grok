@@ -445,38 +445,6 @@ void GRK_CALLCONV grk_dump_codec( grk_codec *codecWrapper, uint32_t info_flag,
 		codec->m_codeStreamBase->dump(info_flag, output_stream);
 	}
 }
- grk_codestream_info_v2  *  GRK_CALLCONV grk_get_cstr_info( grk_codec *codecWrapper) {
-	if (codecWrapper) {
-		auto codec = GrkCodec::getImpl(codecWrapper);
-		return codec->m_codeStreamBase->get_cstr_info();
-	}
-	return nullptr;
-}
-void GRK_CALLCONV grk_destroy_cstr_info( grk_codestream_info_v2  **cstr_info) {
-	if (cstr_info) {
-		if ((*cstr_info)->m_default_tile_info.tccp_info)
-			grk_free((*cstr_info)->m_default_tile_info.tccp_info);
-		grk_free((*cstr_info));
-		(*cstr_info) = nullptr;
-	}
-}
-
- grk_codestream_index  *  GRK_CALLCONV grk_get_cstr_index( grk_codec *codecWrapper) {
-	if (codecWrapper) {
-		auto codec = GrkCodec::getImpl(codecWrapper);
-		return codec->m_codeStreamBase->get_cstr_index();
-	}
-	return nullptr;
-}
-void GRK_CALLCONV grk_destroy_cstr_index(
-		 grk_codestream_index  **p_cstr_index) {
-	if (*p_cstr_index) {
-		j2k_destroy_cstr_index(*p_cstr_index);
-		(*p_cstr_index) = nullptr;
-	}
-}
-
-/* ---------------------------------------------------------------------- */
 
 static void grk_free_file(void *p_user_data) {
 	if (p_user_data)

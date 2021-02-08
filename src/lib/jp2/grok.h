@@ -1677,44 +1677,6 @@ GRK_API void GRK_CALLCONV grk_dump_codec(grk_codec *codec, uint32_t info_flag,
 		FILE *output_stream);
 
 /**
- * Get code stream information from codec
- *
- * @param	codec			JPEG 2000 code stream
- *
- * @return					pointer to a code stream information structure.
- *
- */
-GRK_API grk_codestream_info_v2* GRK_CALLCONV grk_get_cstr_info(
-		grk_codec *codec);
-
-
-/**
- Destroy Codestream information after compression or decompression
- @param cstr_info Codestream information structure
- */
-GRK_API void GRK_CALLCONV grk_destroy_cstr_info(
-		grk_codestream_info_v2 **cstr_info);
-
-
-/**
- * Get the code stream index from the codec
- *
- * @param	codec			JPEG 2000 code stream.
- *
- * @return					pointer to a code stream index structure.
- *
- */
-GRK_API grk_codestream_index* GRK_CALLCONV grk_get_cstr_index(grk_codec *codec);
-
-/**
- * Destroy code stream index
- *
- * @param p_cstr_index		code stream index
- */
-GRK_API void GRK_CALLCONV grk_destroy_cstr_index(
-		grk_codestream_index **p_cstr_index);
-
-/**
  * Set the MCT matrix to use.
  *
  * @param	parameters		the parameters to change.

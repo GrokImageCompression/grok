@@ -101,7 +101,6 @@ int32_t main(int argc, char **argv) {
 
 	for (uint32_t i = 0; i < 4; ++i){
 		grk_codec *codec = nullptr; /* Handle to a decompressor */
-		grk_codestream_info_v2 *cstr_info = nullptr;
 		grk_image *image = nullptr;
 
 		/* Index of corner tiles */
@@ -135,29 +134,25 @@ int32_t main(int argc, char **argv) {
 			goto cleanup;
 		}
 
+
 		/* Read the main header of the codestream and if necessary the JP2 boxes*/
-		if (!grk_decompress_read_header(codec, nullptr)) {
+		grk_header_info headerInfo;
+		if (!grk_decompress_read_header(codec, &headerInfo)) {
 			spdlog::error("randome tile processor : failed to read header");
 			goto cleanup;
 		}
 
-		/* Extract some info from the code stream */
-		cstr_info = grk_get_cstr_info(codec);
 
-		spdlog::info("The file contains {}x{} tiles", cstr_info->t_grid_width,
-				cstr_info->t_grid_height);
+		spdlog::info("The file contains {}x{} tiles", headerInfo.t_grid_width,
+				headerInfo.t_grid_height);
 
 		tile[0] = 0;
-		tile[1] = (uint16_t) (cstr_info->t_grid_width - 1);
-		tile[2] = (uint16_t) (cstr_info->t_grid_width * cstr_info->t_grid_height - 1);
-		tile[3] = (uint16_t) (tile[2] - cstr_info->t_grid_width);
+		tile[1] = (uint16_t) (headerInfo.t_grid_width - 1);
+		tile[2] = (uint16_t) (headerInfo.t_grid_width * headerInfo.t_grid_height - 1);
+		tile[3] = (uint16_t) (tile[2] - headerInfo.t_grid_width);
 
 		image = grk_decompress_get_composited_image(codec);
 		rc = test_tile(tile[i], image, stream, codec);
-
-
-		/* Destroy code stream info */
-		grk_destroy_cstr_info(&cstr_info);
 
 		/* Free remaining structures */
 		grk_object_unref(codec);

@@ -341,8 +341,6 @@ int main(int argc, char *argv[]) {
 	grk_image *image = nullptr; /* Image structure */
 	grk_codec *codec = nullptr; /* Handle to a decompressor */
 	grk_stream *l_stream = nullptr; /* Stream */
-	grk_codestream_info_v2 *cstr_info = nullptr;
-	grk_codestream_index *cstr_index = nullptr;
 
 	size_t num_images, imageno;
 	img_fol img_fol;
@@ -471,11 +469,6 @@ int main(int argc, char *argv[]) {
 		}
 
 		grk_dump_codec(codec, img_fol.flag, fout);
-
-		cstr_info = grk_get_cstr_info(codec);
-
-		cstr_index = grk_get_cstr_index(codec);
-
 		/* close the byte stream */
 		if (l_stream) {
 			grk_object_unref(l_stream);
@@ -492,12 +485,6 @@ int main(int argc, char *argv[]) {
 		if (image) {
 			image = nullptr;
 		}
-
-		/* destroy the code stream index */
-		grk_destroy_cstr_index(&cstr_index);
-
-		/* destroy the code stream info */
-		grk_destroy_cstr_info(&cstr_info);
 
 	}
 

@@ -282,8 +282,7 @@ void j2k_dump_image_comp_header(grk_image_comp *comp_header, bool dev_dump_flag,
 grk_codestream_info_v2* j2k_get_cstr_info(CodeStream *codeStream) {
 	uint32_t compno;
 	uint32_t numcomps = codeStream->getHeaderImage()->numcomps;
-	auto cstr_info = (grk_codestream_info_v2*) grk_calloc(1,
-			sizeof(grk_codestream_info_v2));
+	auto cstr_info = (grk_codestream_info_v2*) grk_calloc(1,sizeof(grk_codestream_info_v2));
 	if (!cstr_info)
 		return nullptr;
 
@@ -302,10 +301,9 @@ grk_codestream_info_v2* j2k_get_cstr_info(CodeStream *codeStream) {
 	cstr_info->m_default_tile_info.numlayers = default_tile->numlayers;
 	cstr_info->m_default_tile_info.mct = default_tile->mct;
 
-	cstr_info->m_default_tile_info.tccp_info = (grk_tccp_info*) grk_calloc(
-			cstr_info->nbcomps, sizeof(grk_tccp_info));
+	cstr_info->m_default_tile_info.tccp_info = (grk_tccp_info*) grk_calloc(cstr_info->nbcomps, sizeof(grk_tccp_info));
 	if (!cstr_info->m_default_tile_info.tccp_info) {
-		grk_destroy_cstr_info(&cstr_info);
+		grk_free(cstr_info);
 		return nullptr;
 	}
 
@@ -350,8 +348,7 @@ grk_codestream_info_v2* j2k_get_cstr_info(CodeStream *codeStream) {
 }
 
 grk_codestream_index* j2k_get_cstr_index(CodeStream *codeStream) {
-	auto cstr_index = (grk_codestream_index*) grk_calloc(1,
-			sizeof(grk_codestream_index));
+	auto cstr_index = (grk_codestream_index*) grk_calloc(1,	sizeof(grk_codestream_index));
 	if (!cstr_index)
 		return nullptr;
 
