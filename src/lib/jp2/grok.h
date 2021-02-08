@@ -1286,8 +1286,15 @@ GRK_API bool GRK_CALLCONV grk_initialize(const char *plugin_path,
  */
 GRK_API void GRK_CALLCONV grk_deinitialize();
 
-
+/**
+ * Increment ref count
+ */
 GRK_API void GRK_CALLCONV grk_object_ref(grk_object *obj);
+
+/*
+ * Decrement ref count
+ *
+ */
 GRK_API void GRK_CALLCONV grk_object_unref(grk_object *obj);
 /*
  ============================
@@ -1341,7 +1348,7 @@ GRK_API void GRK_CALLCONV grk_image_single_component_data_free(
  *
  * @return	stream object.
  */
-GRK_API grk_stream* GRK_CALLCONV grk_stream_create(size_t buffer_size,
+GRK_API grk_stream* GRK_CALLCONV grk_stream_new(size_t buffer_size,
 		bool is_input);
 
 /**
@@ -1540,7 +1547,7 @@ GRK_API bool GRK_CALLCONV grk_decompress_set_window(grk_codec *codec,
  *
  * @param p_decompressor 	decompressor handle
  * @param tile			 	tile struct from plugin
- * @return 					true if success, otherwise false
+ * @return 					true if successful, otherwise false
  * */
 GRK_API bool GRK_CALLCONV grk_decompress(grk_codec *p_decompressor,	grk_plugin_tile *tile);
 
@@ -1550,7 +1557,7 @@ GRK_API bool GRK_CALLCONV grk_decompress(grk_codec *p_decompressor,	grk_plugin_t
  * @param	codec			JPEG 2000 code stream
  * @param	tile_index		index of the tile to be decompressed
  *
- * @return					true if success, otherwise false
+ * @return					true if successful, otherwise false
  */
 GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_codec *codec, uint16_t tile_index);
 
@@ -1689,7 +1696,7 @@ GRK_API void GRK_CALLCONV grk_dump_codec(grk_codec *codec, uint32_t info_flag,
 GRK_API bool GRK_CALLCONV grk_set_MCT(grk_cparameters *parameters,
 		float *pEncodingMatrix, int32_t *p_dc_shift, uint32_t pNbComp);
 
-/*****************
+/******************
  Plugin Interface
  ******************/
 

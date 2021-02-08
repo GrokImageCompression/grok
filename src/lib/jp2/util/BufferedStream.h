@@ -127,7 +127,7 @@ struct BufferedStream: public IBufferedStream {
 	 * Skip bytes in stream.
 	 * @param		p_size		the number of bytes to skip.
 	 
-	 * @return		true if success, otherwise false
+	 * @return		true if successful, otherwise false
 	 */
 	bool skip(int64_t p_size);
 
@@ -169,7 +169,7 @@ private:
 	 * Skip bytes in write stream.
 	 * @param		p_size		the number of bytes to skip.
 	 
-	 * @return		true if success, otherwise false
+	 * @return		true if successful, otherwise false
 	 */
 	bool write_skip(int64_t p_size);
 
@@ -177,7 +177,7 @@ private:
 	 * Skip bytes in read stream.
 	 * @param		p_size		the number of bytes to skip.
 	 
-	 * @return		true if success, otherwise false
+	 * @return		true if successful, otherwise false
 	 */
 	bool read_skip(int64_t p_size);
 
@@ -185,14 +185,14 @@ private:
 	 * Absolute seek in read stream.
 	 * @param		offset		absolute offset
 	 
-	 * @return		true if success, otherwise false
+	 * @return		true if successful, otherwise false
 	 */
 	bool read_seek(uint64_t offset);
 
 	/**
 	 * Absolute seek in write stream.
 	 * @param		offset		absolute offset
-	 * @return		true if success, otherwise false
+	 * @return		true if successful, otherwise false
 	 */
 	bool write_seek(uint64_t offset);
 

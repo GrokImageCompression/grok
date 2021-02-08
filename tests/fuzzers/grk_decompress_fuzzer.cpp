@@ -135,7 +135,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len){
     } else {
         return 0;
     }
-    auto pStream = grk_stream_create(1024, true);
+    auto pStream = grk_stream_new(1024, true);
     MemFile memFile;
     memFile.pabyData = buf;
     memFile.nLength = len;

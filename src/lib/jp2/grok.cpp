@@ -466,7 +466,7 @@ static void grk_free_file(void *p_user_data) {
 			return nullptr;
 		}
 	}
-	auto stream = grk_stream_create(p_size, is_read_stream);
+	auto stream = grk_stream_new(p_size, is_read_stream);
 	if (!stream) {
 		if (!stdin_stdout)
 			fclose(p_file);
@@ -784,7 +784,7 @@ void GRK_CALLCONV grk_plugin_stop_batch_decompress(void) {
 	}
 }
 
-grk_stream* GRK_CALLCONV grk_stream_create(size_t buffer_size, bool is_input) {
+grk_stream* GRK_CALLCONV grk_stream_new(size_t buffer_size, bool is_input) {
 	auto streamImpl = new BufferedStream(nullptr, buffer_size,	is_input);
 
 	return streamImpl->getWrapper();
