@@ -218,21 +218,6 @@ private:
 
 };
 
-
-class GrkBufferedStreamObject : public GrkObject {
-public:
-	explicit GrkBufferedStreamObject(BufferedStream *str) : stream(str)
-	{}
-	virtual ~GrkBufferedStreamObject(void){}
-	virtual void release(void){
-		delete stream;
-	}
-	BufferedStream *getStream(){ return stream;}
-private:
-	BufferedStream *stream;
-};
-
-
 template<typename TYPE> void grk_write(uint8_t *p_buffer, TYPE value,
 		uint32_t nb_bytes) {
 	if (nb_bytes == 0)

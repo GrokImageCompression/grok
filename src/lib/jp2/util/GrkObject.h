@@ -14,7 +14,23 @@ public:
 	virtual void release(void) = 0;
 private:
 	uint32_t ref_count;
-	void *wrappee;
 };
+
+
+template<typename T> class GrkObjectImpl : public GrkObject {
+public:
+	explicit GrkObjectImpl(T *wrap) : wrappee(wrap)
+	{}
+	virtual ~GrkObjectImpl(void){}
+	virtual void release(void){
+		delete wrappee;
+	}
+	T* getWrappee(void){
+		return wrappee;
+	}
+private:
+	T *wrappee;
+};
+
 
 }

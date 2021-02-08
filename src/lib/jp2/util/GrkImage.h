@@ -15,17 +15,6 @@ public:
 	virtual ~GrkImageMeta();
 };
 
-class GrkImageMetaObject : public GrkObject {
-public:
-	explicit GrkImageMetaObject(GrkImageMeta *m) : meta(m)
-	{}
-	virtual void release(void){
-		delete meta;
-	}
-private:
-	GrkImageMeta *meta;
-};
-
 
 class GrkImage : public grk_image {
 public:
@@ -131,16 +120,6 @@ private:
 	bool ownsData;
 };
 
-class GrkImageObject : public GrkObject {
-public:
-	explicit GrkImageObject(GrkImage *image) : img(image)
-	{}
-	virtual void release(void){
-		delete img;
-	}
-private:
-	GrkImage *img;
-};
 
 
 }
