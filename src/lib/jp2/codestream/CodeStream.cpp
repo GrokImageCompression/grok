@@ -1138,6 +1138,18 @@ bool CodeStream::exec_decompress(void){
 	if (!exec(m_procedure_list))
 		return false;
 
+
+	if (m_multiTile) {
+		if (!m_output_image->allocData()){
+			return false;
+		}
+		auto images = m_tileCache->getTileImages();
+		for (auto &img : images) {
+			if (!m_output_image->compositeFrom(img))
+				return false;
+		}
+	}
+
 	/* Move data from output image to composite image*/
 	m_output_image->transferDataTo(getCompositeImage());
 
@@ -1236,23 +1248,6 @@ bool CodeStream::decompressTiles(void) {
 		result.get();
 	}
 	results.clear();
-	if (m_multiTile && m_output_image) {
-		if (!m_output_image->allocData()){
-			success = false;
-			goto cleanup;
-		}
-		for (uint16_t tileno = 0; tileno < numTilesToDecompress; tileno++) {
-			auto entry = m_tileCache->get(tileno);
-			if (!entry)
-				continue;
-			auto img = entry->image;
-			if (!img)
-				continue;
-			if (!m_output_image->compositeFrom(img))
-				return false;
-		}
-	}
-
 	// check if there is another tile that has not been processed
 	// we will reject if it has the TPSot problem
 	// (https://github.com/uclouvain/openjpeg/issues/254)

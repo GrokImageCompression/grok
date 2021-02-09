@@ -48,6 +48,7 @@ public:
 	TileCacheEntry* get(uint16_t tileIndex);
 	GrkImage* getComposite(void);
 	std::vector<GrkImage*> getAllImages(void);
+	std::vector<GrkImage*> getTileImages(void);
 	GrkImage* getFinalComposite(GrkImage *outputImage);
 private:
 	// each component is sub-sampled and resolution-reduced

@@ -103,4 +103,14 @@ std::vector<GrkImage*> TileCache::getAllImages(void){
 	return rc;
 }
 
+std::vector<GrkImage*> TileCache::getTileImages(void){
+	std::vector<GrkImage*> rc;
+	for (auto &entry : m_cache)
+		if (entry.second->image)
+			rc.push_back(entry.second->image);
+
+	return rc;
+}
+
+
 }
