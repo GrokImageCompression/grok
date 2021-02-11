@@ -490,7 +490,7 @@ static bool j2k_calculate_tp(CodingParams *cp, uint16_t *p_nb_tile_parts,
 	auto tcp = cp->tcps;
 	for (uint16_t tileno = 0; tileno < nb_tiles; ++tileno) {
 		uint8_t totnum_tp = 0;
-		pi_update_encoding_parameters(image, cp, tileno);
+		pi_update_params_compress(image, cp, tileno);
 		for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
 			uint64_t num_tp = j2k_get_num_tp(cp, pino, tileno);
 			if (num_tp > max_num_tile_parts_per_tile){

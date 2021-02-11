@@ -38,7 +38,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no,
 	auto tcp = cp->tcps + tile_no;
 	auto p_tile = tileProcessor->tile;
 	IncludeTracker include(image->numcomps);
-	auto pi = pi_create_decompress(image, cp, tile_no, &include);
+	auto pi = pi_create_compress_decompress(false,image, cp, tile_no,FINAL_PASS, &include);
 	if (!pi)
 		return false;
 
