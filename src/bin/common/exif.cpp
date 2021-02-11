@@ -17,7 +17,7 @@
 #include "grk_apps_config.h"
 #ifdef GROK_HAVE_EXIFTOOL
 #pragma GCC diagnostic push
-//#pragma GCC diagnostic ignored "-Wvolatile"
+#pragma GCC diagnostic ignored "-Wvolatile"
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #define PERL_NO_GET_CONTEXT
