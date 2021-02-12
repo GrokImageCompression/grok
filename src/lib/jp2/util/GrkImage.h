@@ -62,10 +62,9 @@ public:
 	 *
 	 * @param	dest	the dest image
 	 *
-	 * @return 	true if successful
 	 *
 	 */
-	bool copyHeader(GrkImage *dest);
+	void copyHeader(GrkImage *dest);
 
 	GrkImage* duplicate();
 

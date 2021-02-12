@@ -9,7 +9,7 @@ GrkImage::GrkImage() : ownsData(true){
 GrkImage::~GrkImage(){
 	if (ownsData && comps) {
 		grk_image_all_components_data_free(this);
-		grk::grk_free(comps);
+		delete[] comps;
 	}
 	grk_object_unref(&meta->obj);
 	delete (GrkObject*)obj.wrappee;
@@ -122,12 +122,11 @@ bool GrkImage::subsampleAndReduce(uint32_t reduce){
  *
  * @param	dest	the dest image
  *
- * @return true if successful
  *
  */
-bool GrkImage::copyHeader(GrkImage *dest) {
+void GrkImage::copyHeader(GrkImage *dest) {
 	if (!dest)
-		return false;
+		return;
 
 	dest->x0 = x0;
 	dest->y0 = y0;
@@ -136,17 +135,11 @@ bool GrkImage::copyHeader(GrkImage *dest) {
 
 	if (dest->comps) {
 		grk_image_all_components_data_free(dest);
-		grk_free(dest->comps);
+		delete[] dest->comps;
 		dest->comps = nullptr;
 	}
 	dest->numcomps = numcomps;
-	dest->comps = ( grk_image_comp  * ) grk_malloc(dest->numcomps * sizeof( grk_image_comp) );
-	if (!dest->comps) {
-		dest->comps = nullptr;
-		dest->numcomps = 0;
-		return false;
-	}
-
+	dest->comps =  new grk_image_comp[dest->numcomps];
 	for (uint32_t compno = 0; compno < dest->numcomps; compno++) {
 		memcpy(&(dest->comps[compno]), &(comps[compno]),sizeof( grk_image_comp) );
 		dest->comps[compno].data = nullptr;
@@ -166,7 +159,6 @@ bool GrkImage::copyHeader(GrkImage *dest) {
 		grk_object_ref(&temp->obj);
 		dest->meta = meta;
 	}
-	return true;
 }
 
 void GrkImage::createMeta(){
@@ -248,11 +240,7 @@ void GrkImage::transferDataTo(GrkImage *dest) {
 
 GrkImage* GrkImage::duplicate(void){
 	auto dest = new GrkImage();
-
-	if (!copyHeader(dest)) {
-		delete dest;
-		return nullptr;
-	}
+	copyHeader(dest);
 	for (uint32_t compno = 0; compno < numcomps; ++compno){
 		auto src_comp = comps + compno;
 		auto dest_comp = dest->comps + compno;
@@ -273,10 +261,7 @@ GrkImage* GrkImage::duplicate(void){
  */
 GrkImage* GrkImage::duplicate(const grk_tile* src_tile){
 	auto destImage = new GrkImage();
-	if (!copyHeader(destImage)) {
-		delete destImage;
-		return nullptr;
-	}
+	copyHeader(destImage);
 	destImage->x0 = src_tile->x0;
 	destImage->y0 = src_tile->y0;
 	destImage->x1 = src_tile->x1;

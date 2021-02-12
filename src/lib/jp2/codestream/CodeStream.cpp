@@ -1704,10 +1704,7 @@ bool CodeStream::init_compress(grk_cparameters  *parameters,GrkImage *image){
 
 	// create private sanitized copy of image
 	m_headerImage = new GrkImage();
-	if (!image->copyHeader(m_headerImage)){
-		GRK_ERROR("Failed to copy image header.");
-		return false;
-	}
+	image->copyHeader(m_headerImage);
 	if (image->comps) {
 		for (uint32_t compno = 0; compno < image->numcomps; compno++) {
 			if (image->comps[compno].data) {
