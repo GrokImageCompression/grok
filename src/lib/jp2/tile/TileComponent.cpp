@@ -194,6 +194,8 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
           	auto band = res->band + bandIndex;
           	auto roi = buf->getPaddedTileBandWindow(resno, band->orientation);
             for (auto precinct : band->precincts) {
+            	if (!precinct->non_empty())
+            		continue;
             	auto cblk_grid = precinct->getCblkGrid();
             	auto cblk_expn = precinct->getCblkExpn();
 				grk_rect_u32 roi_grid = grk_rect_u32( uint_floordivpow2(roi.x0,  cblk_expn.x),
@@ -202,7 +204,7 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
 													 ceildivpow2(roi.y1,  cblk_expn.y));
 				roi_grid.clip(&cblk_grid);
 				auto w = cblk_grid.width();
-				for (uint32_t j = cblk_grid.y0; j < cblk_grid.y1; ++j) {
+				for (uint32_t j = roi_grid.y0; j < roi_grid.y1; ++j) {
 					uint64_t cblkno = (roi_grid.x0 - cblk_grid.x0)  + (uint64_t)(j - cblk_grid.y0 ) * w;
 					for (uint32_t i = roi_grid.x0; i < roi_grid.x1; ++i){
 						 auto cblk = precinct->getDecompressedBlockPtr(cblkno);
@@ -244,6 +246,8 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
           	auto band = res->band + bandIndex;
           	auto roi = buf->getPaddedTileBandWindow(resno, band->orientation);
             for (auto precinct : band->precincts) {
+            	if (!precinct->non_empty())
+            		continue;
             	auto cblk_grid = precinct->getCblkGrid();
             	auto cblk_expn = precinct->getCblkExpn();
 				grk_rect_u32 roi_grid = grk_rect_u32( uint_floordivpow2(roi.x0,  cblk_expn.x),
