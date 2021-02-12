@@ -200,6 +200,21 @@ grk_image_meta *  GRK_CALLCONV grk_image_meta_new(void){
 	return (grk_image_meta*)(new GrkImageMeta());
 }
 
+void GRK_CALLCONV grk_image_all_components_data_free(grk_image *image) {
+	uint32_t i;
+	if (!image || !image->comps)
+		return;
+	for (i = 0; i < image->numcomps; ++i)
+		grk_image_single_component_data_free(image->comps + i);
+}
+
+void GRK_CALLCONV grk_image_single_component_data_free( grk_image_comp  *comp) {
+	if (!comp || !comp->data)
+		return;
+	grk_aligned_free(comp->data);
+	comp->data = nullptr;
+}
+
 /* ---------------------------------------------------------------------- */
 /* DECOMPRESSION FUNCTIONS*/
  grk_codec*   GRK_CALLCONV grk_decompress_create(GRK_CODEC_FORMAT p_format,
@@ -504,20 +519,6 @@ GRK_API size_t GRK_CALLCONV grk_stream_get_write_mem_stream_length( grk_stream  
 		 return create_mapped_file_write_stream(fname);
 }
 /* ---------------------------------------------------------------------- */
-void GRK_CALLCONV grk_image_all_components_data_free(grk_image *image) {
-	uint32_t i;
-	if (!image || !image->comps)
-		return;
-	for (i = 0; i < image->numcomps; ++i)
-		grk_image_single_component_data_free(image->comps + i);
-}
-
-void GRK_CALLCONV grk_image_single_component_data_free( grk_image_comp  *comp) {
-	if (!comp || !comp->data)
-		return;
-	grk_aligned_free(comp->data);
-	comp->data = nullptr;
-}
 
 /**********************************************************************
  Plugin interface implementation

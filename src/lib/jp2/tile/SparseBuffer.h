@@ -199,15 +199,9 @@ public:
 									grid_off_y + grid_height);
 	    auto block_count = grid_bounds.area();
 	    data_blocks = new SparseBlock*[block_count];
-	    for (uint64_t i = 0; i < block_count; ++i){
+	    for (uint64_t i = 0; i < block_count; ++i)
 	    	data_blocks[i] = nullptr;
-	    }
-
-#ifdef GRK_DEBUG_VALGRIND
-	    validate = grk_rect_u32(278,50,288,51);
-#endif
 	}
-
 
 	/** Creates a new sparse buffer.
 	 *
@@ -411,12 +405,12 @@ private:
 	            auto src_block = getBlock(block_x, block_y);
             	//all blocks should be allocated first before read/write is called
 	            if (!src_block){
-	            	GRK_WARN("Sparse buffer %s op: missing block (%d,%d,%d,%d) for %s (%d,%d,%d,%d)",
-	            			is_read_op ? "read" : "write",
-	            			block_x*block_width,
-						   block_y*block_height,
-						   block_x*block_width + x_incr,
-						   block_y*block_height + y_incr,
+					GRK_WARN("Sparse buffer %s op: missing block (%d,%d,%d,%d) for %s (%d,%d,%d,%d)",
+							is_read_op ? "read" : "write",
+						   bounds.x0 + block_x*block_width,
+						   bounds.y0 + block_y*block_height,
+						   bounds.x0 + (block_x+1)*block_width,
+						   bounds.y0 + (block_y+1)*block_height,
 						   is_read_op ? "read" : "write",
 						   x0,y0,x1,y1);
 	            	continue;
@@ -432,12 +426,10 @@ private:
 						for (uint32_t k = 0; k < x_incr; k++){
 #ifdef GRK_DEBUG_VALGRIND
 							grk_pt pt((uint32_t)(x+k), y_);
-							//if (validate.contains(pt)) {
-								size_t val = grk_memcheck<int32_t>(src_ptr+k,1);
-								if (val != grk_mem_ok)
-								   GRK_ERROR("sparse buffer read block(%d,%d) : uninitialized at location (%d,%d)",
-										   block_x, block_y, x+k,y_);
-							//}
+							size_t val = grk_memcheck<int32_t>(src_ptr+k,1);
+							if (val != grk_mem_ok)
+							   GRK_ERROR("sparse buffer read block(%d,%d) : uninitialized at location (%d,%d)",
+									   block_x, block_y, x+k,y_);
 #endif
 							dest_ptr[ind] = src_ptr[k];
 							ind += col_stride;
@@ -456,12 +448,10 @@ private:
 						for (uint32_t k = 0; k < x_incr; k++) {
 #ifdef GRK_DEBUG_VALGRIND
 							grk_pt pt((uint32_t)(x+k), y_);
-							//if (validate.contains(pt)) {
-								size_t val = grk_memcheck<int32_t>(src_ptr+ind,1);
-								if (val != grk_mem_ok)
-								   GRK_ERROR("sparse buffer write block(%d,%d): uninitialized at location (%d,%d)",
-										   block_x, block_y, x+k,y_);
-							//}
+							size_t val = grk_memcheck<int32_t>(src_ptr+ind,1);
+							if (val != grk_mem_ok)
+							   GRK_ERROR("sparse buffer write block(%d,%d): uninitialized at location (%d,%d)",
+									   block_x, block_y, x+k,y_);
 #endif
 							dest_ptr[k] = src_ptr[ind];
 							ind += col_stride;
@@ -482,9 +472,6 @@ private:
     SparseBlock** data_blocks;
     grk_rect_u32 bounds;
     grk_rect_u32 grid_bounds;
-#ifdef GRK_DEBUG_VALGRIND
-    grk_rect_u32 validate;
-#endif
 };
 
 }

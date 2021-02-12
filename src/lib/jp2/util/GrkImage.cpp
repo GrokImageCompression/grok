@@ -25,13 +25,9 @@ GrkImage *  GrkImage::create(uint16_t numcmpts,
 		image->color_space = clrspc;
 		image->numcomps = numcmpts;
 		/* allocate memory for the per-component information */
-		image->comps = ( grk_image_comp  * ) grk::grk_calloc(1,
-				image->numcomps * sizeof( grk_image_comp) );
-		if (!image->comps) {
-			grk::GRK_ERROR("Unable to allocate memory for image.");
-			delete image;
-			return nullptr;
-		}
+		image->comps = new grk_image_comp[image->numcomps];
+		memset(image->comps,0,image->numcomps * sizeof(grk_image_comp));
+
 		/* create the individual image components */
 		for (uint32_t compno = 0; compno < numcmpts; compno++) {
 			auto comp = &image->comps[compno];

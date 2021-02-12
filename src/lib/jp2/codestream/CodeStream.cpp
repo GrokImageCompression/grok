@@ -1008,7 +1008,11 @@ bool CodeStream::set_decompress_window(grk_rect_u32 window) {
 	if (!compositeImage->subsampleAndReduce(cp->m_coding_params.m_dec.m_reduce))
 		return false;
 
-	GRK_INFO("Decompress window set to (%d,%d,%d,%d)", window.x0,window.y0,window.x1,window.y1);
+	GRK_INFO("Decompress window set to (%d,%d,%d,%d)",
+			compositeImage->x0 - image->x0,
+			compositeImage->y0 - image->y0,
+			compositeImage->x1 - image->x0,
+			compositeImage->y1 - image->y0);
 
 	return true;
 }

@@ -180,14 +180,8 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 	}
 
 	/* Allocate the resulting image components */
-	image->comps = (grk_image_comp*) grk_calloc(image->numcomps,
-			sizeof(grk_image_comp));
-	if (image->comps == nullptr) {
-		image->numcomps = 0;
-		GRK_ERROR("Not enough memory to take in charge SIZ marker");
-		return false;
-	}
-
+	image->comps = new grk_image_comp[image->numcomps];
+	memset(image->comps,0,image->numcomps * sizeof(grk_image_comp));
 	auto img_comp = image->comps;
 
 	/* Read the component information */
