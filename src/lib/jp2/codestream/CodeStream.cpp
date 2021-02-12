@@ -1469,9 +1469,9 @@ bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor) {
 	}
 	if (doPost) {
 		auto tile = tileProcessor->tile;
-		/* copy/transfer data from tile component to output image */
-		m_tileCache->put(tile_index, m_output_image, tile);
 		if (m_multiTile) {
+			// make a copy and put in cache
+			m_tileCache->put(tile_index, m_output_image, tile);
 			for (uint16_t compno = 0; compno < tile->numcomps; ++compno)
 				(tile->comps + compno)->release_mem(true);
 		} else {
