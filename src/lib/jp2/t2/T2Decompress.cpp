@@ -235,38 +235,27 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp,
 			available_bytes -= 6;
 		}
 	}
-	uint8_t *header_data = nullptr;
-	uint8_t **header_data_start = nullptr;
-	size_t *modified_length_ptr = nullptr;
-	size_t remaining_length = 0;
+	uint8_t **header_data_start = &active_src;
+	size_t *remaining_length 	= &available_bytes;
 	auto cp = tileProcessor->m_cp;
-	if (cp->ppm_marker) { /* PPM */
+	if (cp->ppm_marker) {
 		if (tileProcessor->m_tile_index >= cp->ppm_marker->m_tile_packet_headers.size()){
 			GRK_ERROR("PPM marker has no packed packet header data for tile %d",
 					tileProcessor->m_tile_index+1);
 			return false;
 		}
-		auto tile_packet_header =
-				&cp->ppm_marker->m_tile_packet_headers[tileProcessor->m_tile_index];
-		header_data_start = &tile_packet_header->buf;
-		header_data = *header_data_start;
-		remaining_length = tile_packet_header->len;
-		modified_length_ptr = &remaining_length;
-	} else if (p_tcp->ppt) { /* PPT */
-		header_data_start = &(p_tcp->ppt_data);
-		header_data = *header_data_start;
-		modified_length_ptr = &(p_tcp->ppt_len);
-	} else { /* Normal Case */
-		header_data_start = &active_src;
-		header_data = *header_data_start;
-		remaining_length = available_bytes;
-		modified_length_ptr = &remaining_length;
+		auto tile_packet_header = &cp->ppm_marker->m_tile_packet_headers[tileProcessor->m_tile_index];
+		header_data_start 	= &tile_packet_header->buf;
+		remaining_length 	= &tile_packet_header->len;
+	} else if (p_tcp->ppt) {
+		header_data_start 	= &p_tcp->ppt_data;
+		remaining_length 	= &p_tcp->ppt_len;
 	}
-	if (*modified_length_ptr==0)
+	if (*remaining_length==0)
 		throw TruncatedPacketHeaderException();
-
+	uint8_t *header_data 	= *header_data_start;
 	uint32_t present = 0;
-	std::unique_ptr<BitIO> bio(new BitIO(header_data, *modified_length_ptr, false));
+	std::unique_ptr<BitIO> bio(new BitIO(header_data, *remaining_length, false));
 	try {
 		bio->read(&present, 1);
 
@@ -423,7 +412,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp,
 
 	/* EPH markers */
 	if (p_tcp->csty & J2K_CP_CSTY_EPH) {
-		if ((*modified_length_ptr	- (uint32_t) (header_data - *header_data_start)) < 2U)
+		if ((*remaining_length	- (uint32_t) (header_data - *header_data_start)) < 2U)
 			//GRK_WARN("Not enough space for expected EPH marker");
 			throw TruncatedPacketHeaderException();
 		uint16_t marker = (uint16_t)(((uint16_t)(*header_data) << 8) | (uint16_t)(*(header_data + 1)));
@@ -438,10 +427,10 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp,
 	auto header_length = (size_t) (header_data - *header_data_start);
 	//GRK_INFO("hdrlen=%u ", header_length);
 	//GRK_INFO("packet body\n");
-	*modified_length_ptr -= header_length;
-	*header_data_start += header_length;
-	*p_is_data_present = present;
-	*p_data_read = (uint32_t) (active_src - p_src_data);
+	*remaining_length  -= header_length;
+	*header_data_start 	  += header_length;
+	*p_is_data_present 	  = present;
+	*p_data_read 		  = (uint32_t) (active_src - p_src_data);
 	src_buf->incr_cur_chunk_offset(*p_data_read);
 
 	if (!present && !*p_data_read)

@@ -31,18 +31,14 @@ PPMMarker::PPMMarker() : markers_count(0),
 
 PPMMarker::~PPMMarker(){
 	if (markers != nullptr) {
-			for (uint32_t i = 0U; i < markers_count; ++i) {
-				if (markers[i].m_data != nullptr) {
-					grk_free(markers[i].m_data);
-				}
-			}
-			markers_count = 0U;
-			grk_free(markers);
-			markers = nullptr;
+		for (uint32_t i = 0U; i < markers_count; ++i) {
+			if (markers[i].m_data != nullptr)
+				grk_free(markers[i].m_data);
 		}
-		grk_free(buffer);
-		buffer = nullptr;
-
+		markers_count = 0U;
+		grk_free(markers);
+	}
+	delete[] buffer;
 }
 
 bool PPMMarker::read(uint8_t *p_header_data,
@@ -106,15 +102,13 @@ bool PPMMarker::read(uint8_t *p_header_data,
 	return true;
 }
 bool PPMMarker::merge(){
-	uint32_t i, total_data_size, N_ppm_remaining;
 	assert(buffer == nullptr);
-
 	if (!markers)
 		return true;
 
-	total_data_size = 0U;
-	N_ppm_remaining = 0U;
-	for (i = 0U; i < markers_count; ++i) {
+	uint32_t total_data_size = 0U;
+	uint32_t N_ppm_remaining = 0U;
+	for (uint32_t i = 0U; i < markers_count; ++i) {
 		if (markers[i].m_data != nullptr) { /* standard doesn't seem to require contiguous Zppm */
 			uint32_t data_size = markers[i].m_data_size;
 			const uint8_t *data = markers[i].m_data;
@@ -140,8 +134,9 @@ bool PPMMarker::merge(){
 					data += 4;
 					data_size -= 4;
 					m_tile_packet_headers.push_back(grk_buf(nullptr,total_data_size, N_ppm,false));
-					total_data_size += N_ppm; /* can't overflow, max 256 markers of max 65536 bytes, that is when PPM markers are not corrupted which is checked elsewhere */
-
+					total_data_size += N_ppm; /* can't overflow, max 256 markers of max 65536 bytes,
+					 	 	 	 	 	 	 	 that is when PPM markers are not corrupted
+					 	 	 	 	 	 	 	  which is checked elsewhere */
 					if (data_size >= N_ppm) {
 						data_size -= N_ppm;
 						data += N_ppm;
@@ -158,11 +153,7 @@ bool PPMMarker::merge(){
 		GRK_ERROR("Corrupted PPM markers");
 		return false;
 	}
-	buffer = (uint8_t*) grk_malloc(total_data_size);
-	if (buffer == nullptr) {
-		GRK_ERROR("Not enough memory to read PPM marker");
-		return false;
-	}
+	buffer = new uint8_t[total_data_size];
 	for (auto &b : m_tile_packet_headers){
 		b.buf = buffer + b.offset;
 		b.offset = 0;
@@ -170,7 +161,7 @@ bool PPMMarker::merge(){
 
 	total_data_size = 0U;
 	N_ppm_remaining = 0U;
-	for (i = 0U; i < markers_count; ++i) {
+	for (uint32_t i = 0U; i < markers_count; ++i) {
 		if (markers[i].m_data != nullptr) { /* standard doesn't seem to require contiguous Zppm */
 			uint32_t data_size = markers[i].m_data_size;
 			const uint8_t *data = markers[i].m_data;
