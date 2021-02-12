@@ -264,7 +264,7 @@ GrkImage* GrkImage::duplicate(void){
 }
 
 /**
- * Create new image and copy tile buffer data in
+ * Create new image and transfer tile buffer data
  *
  * @param tile_src_data	tile source data
  *
@@ -292,13 +292,9 @@ GrkImage* GrkImage::duplicate(const grk_tile* src_tile){
 		dest_comp->y0 = src_bounds.y0;
 		dest_comp->w = src_bounds.width();
 		dest_comp->h = src_bounds.height();
-
-		if (!src_buffer->getWindow()->data)
-			continue;
-		if (!allocData(dest_comp))
-			continue;
-		src_buffer->getWindow()->copy_data(dest_comp->data, dest_comp->w, dest_comp->h, dest_comp->stride);
 	}
+
+	destImage->transferDataFrom(src_tile);
 
 	return destImage;
 }
@@ -310,7 +306,8 @@ void GrkImage::transferDataFrom(const grk_tile* tile_src_data){
 
 		//transfer memory from tile component to output image
 		src_comp->getBuffer()->transfer(&dest_comp->data, &dest_comp->stride);
-		assert(dest_comp->stride >= dest_comp->w);
+		if (dest_comp->data)
+			assert(dest_comp->stride >= dest_comp->w);
 	}
 }
 
