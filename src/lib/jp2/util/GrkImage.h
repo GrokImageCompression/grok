@@ -66,8 +66,6 @@ public:
 	 */
 	void copyHeader(GrkImage *dest);
 
-	GrkImage* duplicate();
-
 	/**
 	 Transfer data to dest for each component, and null out "this" data.
 	 Assumption:  "this" and dest have the same number of components

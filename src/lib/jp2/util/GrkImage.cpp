@@ -238,19 +238,6 @@ void GrkImage::transferDataTo(GrkImage *dest) {
 	}
 }
 
-GrkImage* GrkImage::duplicate(void){
-	auto dest = new GrkImage();
-	copyHeader(dest);
-	for (uint32_t compno = 0; compno < numcomps; ++compno){
-		auto src_comp = comps + compno;
-		auto dest_comp = dest->comps + compno;
-		if (src_comp->data)
-			memcpy(dest_comp->data, src_comp->data, src_comp->w * src_comp->stride);
-	}
-
-	return dest;
-}
-
 /**
  * Create new image and transfer tile buffer data
  *
