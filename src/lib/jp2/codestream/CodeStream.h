@@ -150,7 +150,7 @@ class TileCache;
 class CodeStream : public ICodeStream {
 public:
 	CodeStream(bool decompress, BufferedStream *stream);
-	~CodeStream();
+	virtual ~CodeStream();
 
 	/** Main header reading function handler */
    bool readHeader(grk_header_info  *header_info);
@@ -237,17 +237,8 @@ public:
 	DecoderState m_decompressor;
 	EncoderState m_encoder;
 
-	/* output image (for decompress) */
-	GrkImage *m_output_image;
-
 	/** Coding parameters */
 	CodingParams m_cp;
-
-	/** the list of procedures to exec **/
-	std::vector<j2k_procedure> m_procedure_list;
-
-	/** the list of validation procedures to follow to make sure the code is valid **/
-	std::vector<j2k_procedure> m_validation_list;
 
 	/** helper used to write the index file */
 	 grk_codestream_index  *cstr_index;
@@ -261,6 +252,16 @@ public:
     bool   isWholeTileDecompress();
     grk_plugin_tile* getCurrentPluginTile();
 private:
+	/* output image (for decompress) */
+	GrkImage *m_output_image;
+
+	/** the list of procedures to exec **/
+	std::vector<j2k_procedure> m_procedure_list;
+
+	/** the list of validation procedures to follow to make sure the code is valid **/
+	std::vector<j2k_procedure> m_validation_list;
+
+
 	// stores header image information (decompress/compress)
 	// decompress: components are subsampled and resolution-reduced
 	GrkImage *m_headerImage;

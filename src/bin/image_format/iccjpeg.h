@@ -19,10 +19,6 @@
 #include <stdio.h>		/* needed to define "FILE", "nullptr" */
 #include "jpeglib.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /*
  * This routine writes the given ICC profile data into a JPEG file.
  * It *must* be called AFTER calling jpeg_start_compress() and BEFORE
@@ -71,10 +67,7 @@ extern void setup_read_icc_profile JPP((j_decompress_ptr cinfo));
  * will prefer to have the data stick around after decompression finishes.)
  */
 
-extern boolean read_icc_profile JPP((j_decompress_ptr cinfo,
+extern bool read_icc_profile JPP((j_decompress_ptr cinfo,
 				     JOCTET **icc_data_ptr,
 				     unsigned int *icc_data_len));
 
-#ifdef __cplusplus
-}
-#endif

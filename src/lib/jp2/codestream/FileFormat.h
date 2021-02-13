@@ -152,15 +152,20 @@ typedef bool (*jp2_procedure)(FileFormat *fileFormat);
 class FileFormat : public ICodeStream {
 public:
 	FileFormat(bool isDecoder, BufferedStream *stream);
-	~FileFormat();
+	virtual ~FileFormat();
+
+   static void free_color(grk_color *color);
+   static void alloc_palette(grk_color *color, uint8_t num_channels, uint16_t num_entries);
+   static void free_palette_clr(grk_color *color);
+   CodeStream* getCodeStream(void);
+   bool exec( std::vector<jp2_procedure> *procs);
+
+   ////////////////////////////////////////////////////////////////////////
 
    /** Main header reading function handler */
    bool readHeader(grk_header_info  *header_info);
-
    GrkImage* getImage(uint16_t tileIndex);
    GrkImage* getImage(void);
-
-   /** Set up decompressor function handler */
    void initDecompress(grk_dparameters  *p_param);
 
   /**
@@ -176,60 +181,33 @@ public:
    bool setDecompressWindow(grk_rect_u32 window);
    bool decompress( grk_plugin_tile *tile);
    bool endDecompress(void);
-   bool initCompress(grk_cparameters  *p_param,GrkImage *p_image);
-   bool start_compress(void);
-   bool compress(grk_plugin_tile* tile);
-   bool compressTile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size);
-   bool endCompress(void);
    bool decompressTile(uint16_t tile_index);
    void dump(uint32_t flag, FILE *out_stream);
-   static void free_color(grk_color *color);
-   static void alloc_palette(grk_color *color, uint8_t num_channels, uint16_t num_entries);
-   static void free_palette_clr(grk_color *color);
    uint32_t read_asoc(AsocBox *parent,
 		   	   	   	   uint8_t **header_data,
 					   uint32_t *header_data_size,
 					   uint32_t asocSize);
    bool readHeaderProcedure(void);
-   bool default_validation(void);
    bool read_box_hdr(FileFormatBox *box, uint32_t *p_number_bytes_read,BufferedStream *stream);
    bool read_ihdr( uint8_t *p_image_header_data,uint32_t image_header_size);
-   uint8_t* write_ihdr( uint32_t *p_nb_bytes_written);
-   uint8_t* write_buffer(uint32_t boxId, grk_buf *buffer,uint32_t *p_nb_bytes_written);
    bool read_xml( uint8_t *p_xml_data, uint32_t xml_size);
-   uint8_t* write_xml( uint32_t *p_nb_bytes_written);
    bool read_uuid( uint8_t *p_header_data,uint32_t header_size);
-   double calc_res(uint16_t num, uint16_t den, uint8_t exponent);
    bool read_res_box(uint32_t *id, uint32_t *num, uint32_t *den,
    		uint32_t *exponent, uint8_t **p_resolution_data);
    bool read_res( uint8_t *p_resolution_data,
    		uint32_t resolution_size);
-   void find_cf(double x, uint32_t *num, uint32_t *den);
-   void write_res_box(double resx, double resy, uint32_t box_id,
-   		uint8_t **current_res_ptr);
-   uint8_t* write_res( uint32_t *p_nb_bytes_written);
-   uint8_t* write_bpc( uint32_t *p_nb_bytes_written);
+   double calc_res(uint16_t num, uint16_t den, uint8_t exponent);
    bool read_bpc( uint8_t *p_bpc_header_data,uint32_t bpc_header_size);
-   uint8_t* write_channel_definition( uint32_t *p_nb_bytes_written);
    void apply_channel_definition(GrkImage *image, grk_color *color);
    bool read_channel_definition( uint8_t *p_cdef_header_data,
    		uint32_t cdef_header_size);
-   uint8_t* write_colr( uint32_t *p_nb_bytes_written);
    bool read_colr( uint8_t *p_colr_header_data,
    		uint32_t colr_header_size);
    bool check_color(GrkImage *image, grk_color *color);
    bool apply_palette_clr(GrkImage *image, grk_color *color);
    bool read_component_mapping( uint8_t *component_mapping_header_data,
    		uint32_t component_mapping_header_size);
-   uint8_t* write_component_mapping( uint32_t *p_nb_bytes_written);
-   uint8_t* write_palette_clr( uint32_t *p_nb_bytes_written);
    bool read_palette_clr( uint8_t *p_pclr_header_data,	uint32_t pclr_header_size);
-   bool write_jp2h(void);
-   bool write_uuids(void);
-   bool write_ftyp(void);
-   bool write_jp2c(void);
-   bool write_jp(void);
-   bool exec( std::vector<jp2_procedure> *procs) ;
    const BoxReadHandler* find_handler(uint32_t id);
    const BoxReadHandler* img_find_handler(uint32_t id);
    bool read_jp( uint8_t *p_header_data,uint32_t header_size);
@@ -243,15 +221,41 @@ public:
 		   	   	   	   grk_asoc *serial_asocs,
 					   uint32_t *num_asocs,
 					   uint32_t level);
-
-   void init_header_writing();
    void init_end_header_reading(void);
+
+   //////////////////////////////////////////////////////////////////////
+
+
+   bool initCompress(grk_cparameters  *p_param,GrkImage *p_image);
+   bool start_compress(void);
+   bool compress(grk_plugin_tile* tile);
+   bool compressTile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size);
+   bool endCompress(void);
+   void find_cf(double x, uint32_t *num, uint32_t *den);
+   void write_res_box(double resx, double resy, uint32_t box_id,
+   		uint8_t **current_res_ptr);
+   uint8_t* write_res( uint32_t *p_nb_bytes_written);
+   uint8_t* write_bpc( uint32_t *p_nb_bytes_written);
+   uint8_t* write_colr( uint32_t *p_nb_bytes_written);
+   uint8_t* write_component_mapping( uint32_t *p_nb_bytes_written);
+   uint8_t* write_palette_clr( uint32_t *p_nb_bytes_written);
+   uint8_t* write_channel_definition( uint32_t *p_nb_bytes_written);
+   bool write_jp2h(void);
+   uint8_t* write_ihdr( uint32_t *p_nb_bytes_written);
+   uint8_t* write_buffer(uint32_t boxId, grk_buf *buffer,uint32_t *p_nb_bytes_written);
+   bool write_uuids(void);
+   bool write_ftyp(void);
+   bool write_jp2c(void);
+   bool write_jp(void);
+   bool default_validation(void);
+   void init_header_writing();
    void init_end_header_writing(void);
    void init_compress_validation(void);
+   uint8_t* write_xml( uint32_t *p_nb_bytes_written);
 
-	/** handle to the J2K codec  */
+protected:
 	CodeStream *codeStream;
-private:
+
 	/** list of validation procedures */
 	std::vector<jp2_procedure> *m_validation_list;
 	/** list of execution procedures */

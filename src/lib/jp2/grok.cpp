@@ -355,10 +355,10 @@ grk_image* GRK_CALLCONV grk_decompress_get_composited_image( grk_codec *codecWra
 
 	switch (p_format) {
 	case GRK_CODEC_J2K:
-		codec->m_codeStreamBase = new CodeStream(false,BufferedStream::getImpl(stream));
+		codec->m_codeStreamBase = new CodeStreamCompress(BufferedStream::getImpl(stream));
 		break;
 	case GRK_CODEC_JP2:
-		codec->m_codeStreamBase = new FileFormat(false,BufferedStream::getImpl(stream));
+		codec->m_codeStreamBase = new FileFormatCompress(BufferedStream::getImpl(stream));
 		break;
 	case GRK_CODEC_UNKNOWN:
 	default:

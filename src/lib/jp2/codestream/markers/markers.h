@@ -437,11 +437,6 @@ bool j2k_compare_SQcd_SQcc(CodeStream *codeStream,
 bool j2k_write_SQcd_SQcc(CodeStream *codeStream,uint32_t comp_no);
 
 /**
- * Updates the Tile Length Marker.
- */
-void j2k_update_tlm(CodeStream *codeStream, uint16_t tile_index, uint32_t tile_part_size);
-
-/**
  * Reads a SQcd or SQcc element, i.e. the quantization values of a band
  * in the QCD or QCC.
  *
@@ -563,8 +558,6 @@ bool j2k_write_regions(CodeStream *codeStream);
  * @param       codeStream          JPEG 2000 code stream
  */
 bool j2k_write_epc(CodeStream *codeStream);
-
-void j2k_update_tlm(CodeStream *codeStream, uint16_t tile_index, uint32_t tile_part_size) ;
 
 /**
  * Writes the RGN marker (Region Of Interest)

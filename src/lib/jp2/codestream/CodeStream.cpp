@@ -724,8 +724,8 @@ static void lupInvert(float *pSrcMatrix, float *pDestMatrix, uint32_t nb_compo,
 	}
 }
 
-CodeStream::CodeStream(bool decompress, BufferedStream *stream) : m_output_image(nullptr),
-																cstr_index(nullptr),
+CodeStream::CodeStream(bool decompress, BufferedStream *stream) : cstr_index(nullptr),
+																m_output_image(nullptr),
 																m_headerImage(nullptr),
 																m_tileProcessor(nullptr),
 																m_tileCache(new TileCache()),
@@ -2541,7 +2541,7 @@ bool CodeStream::write_tile_part(TileProcessor *tileProcessor) {
 		return false;
 	// 5. update TLM
 	if (m_cp.tlm_markers)
-		j2k_update_tlm(this, currentTileNumber, tile_part_bytes_written);
+		m_cp.tlm_markers->writeUpdate(currentTileNumber, tile_part_bytes_written);
 	++tileProcessor->m_tile_part_index;
 
 	return true;

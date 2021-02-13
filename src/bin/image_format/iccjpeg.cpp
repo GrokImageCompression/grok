@@ -11,10 +11,6 @@
  * This code depends on new features added to the IJG JPEG library as of
  * IJG release 6b; it will not compile or work with older IJG versions.
  *
- * NOTE: this code would need surgery to work on 16-bit-int machines
- * with ICC profiles exceeding 64K bytes in size.  If you need to do that,
- * change all the "unsigned int" variables to "INT32".  You'll also need
- * to find a malloc() replacement that can allocate more than 64K.
  */
 
 #include "iccjpeg.h"
@@ -117,7 +113,7 @@ void setup_read_icc_profile(j_decompress_ptr cinfo) {
  * Handy subroutine to test whether a saved marker is an ICC profile marker.
  */
 
-static boolean marker_is_icc(jpeg_saved_marker_ptr marker) {
+static bool marker_is_icc(jpeg_saved_marker_ptr marker) {
 	return marker->marker == ICC_MARKER
 			&& marker->data_length >= ICC_OVERHEAD_LEN &&
 			/* verify the identifying string */
@@ -154,7 +150,7 @@ static boolean marker_is_icc(jpeg_saved_marker_ptr marker) {
  * return FALSE.  You might want to issue an error message instead.
  */
 
-boolean read_icc_profile(j_decompress_ptr cinfo, JOCTET **icc_data_ptr,
+bool read_icc_profile(j_decompress_ptr cinfo, JOCTET **icc_data_ptr,
 		unsigned int *icc_data_len) {
 	jpeg_saved_marker_ptr marker;
 	int num_markers = 0;

@@ -2073,12 +2073,6 @@ bool j2k_write_tlm_begin(CodeStream *codeStream) {
 	return codeStream->m_cp.tlm_markers->writeBegin(
 			codeStream->m_encoder.m_total_tile_parts);
 }
-
-void j2k_update_tlm(CodeStream *codeStream, uint16_t tile_index, uint32_t tile_part_size) {
-	assert(codeStream->m_cp.tlm_markers);
-	codeStream->m_cp.tlm_markers->writeUpdate(	tile_index, tile_part_size);
-}
-
 bool j2k_write_tlm_end(CodeStream *codeStream) {
 	assert(codeStream);
 	return codeStream->m_cp.tlm_markers->writeEnd();
