@@ -55,7 +55,8 @@ template<typename T> struct ResWindow {
 
 		for (uint8_t orient = 0; orient < ( (resno) > 0 ? BAND_NUM_ORIENTATIONS : 1); orient++) {
 			grk_rect_u32 temp = getTileCompBandWindow(numresolutions, resno, orient,tileCompWindowUnreduced);
-			m_paddedTileBandWindow.push_back(temp.grow(2 * FILTER_WIDTH));
+			// Factor of 4 is necessary, otherwise https://github.com/GrokImageCompression/grok/issues/225
+			m_paddedTileBandWindow.push_back(temp.grow(4 * FILTER_WIDTH));
 		}
 
 		if (m_tileCompResLower) {
