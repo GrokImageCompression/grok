@@ -107,7 +107,7 @@ void setup_signal_handler() {
 	struct sigaction sa;
 	sa.sa_handler = &sig_handler;
 	sigfillset(&sa.sa_mask);
-	sigaction(SIGHUP, &sa, NULL);
+	sigaction(SIGHUP, &sa, nullptr);
 #endif  
 }
 
@@ -1147,7 +1147,7 @@ static int parse_cmdline_compressor_ex(int argc,
 				}
 
 				comma = strchr(arg, ',');
-				if (comma != NULL) {
+				if (comma != nullptr) {
 					*comma = 0;
 				}
 
@@ -1225,7 +1225,7 @@ static int parse_cmdline_compressor_ex(int argc,
 				}
 
 				comma = strchr(arg, ',');
-				if (comma != NULL) {
+				if (comma != nullptr) {
 					*comma = 0;
 				}
 

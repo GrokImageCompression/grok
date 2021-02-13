@@ -50,10 +50,10 @@ public:
 		    )x"};
 	    constexpr int NUM_ARGS = 3;
 	    const char* embedding[NUM_ARGS] = { "", "-e", "0" };
-	    PERL_SYS_INIT3(NULL,NULL,NULL);
+	    PERL_SYS_INIT3(nullptr,nullptr,nullptr);
 	    perlInterp = perl_alloc();
 	    perl_construct( perlInterp );
-	    int res = perl_parse(perlInterp, NULL, NUM_ARGS, (char**)embedding, NULL);
+	    int res = perl_parse(perlInterp, nullptr, NUM_ARGS, (char**)embedding, nullptr);
 	    assert(!res);
 	    (void)res;
 	    perl_run(perlInterp);
@@ -82,7 +82,7 @@ void transferExifTags(std::string src, std::string dest){
 #ifdef GROK_HAVE_EXIFTOOL
 	dTHX;
 	PerlScriptRunner::instance();
-    char *args[] = {(char*)src.c_str(), (char*)dest.c_str(), NULL};
+    char *args[] = {(char*)src.c_str(), (char*)dest.c_str(), nullptr};
     call_argv("transfer", G_DISCARD, args);
 #else
     (void)src;

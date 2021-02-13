@@ -124,7 +124,7 @@ bool FileUringIO::open(std::string fileName, std::string mode){
 
 	m_fd = ::open(name, m, 0666);
 	if (m_fd < 0) {
-		if (errno > 0 && strerror(errno) != NULL ) {
+		if (errno > 0 && strerror(errno) != nullptr ) {
 			spdlog::error("{}: {}", name, strerror(errno) );
 		} else {
 			spdlog::error("{}: Cannot open", name);

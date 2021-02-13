@@ -16,7 +16,7 @@
  * for details.
  */
 
-#include <stdio.h>		/* needed to define "FILE", "NULL" */
+#include <stdio.h>		/* needed to define "FILE", "nullptr" */
 #include "jpeglib.h"
 
 #ifdef __cplusplus

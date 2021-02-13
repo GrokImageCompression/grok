@@ -143,15 +143,15 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len){
     grk_stream_set_user_data_length(pStream, len);
     grk_stream_set_read_function(pStream, ReadCallback);
     grk_stream_set_seek_function(pStream, SeekCallback);
-    grk_stream_set_user_data(pStream, &memFile, NULL);
+    grk_stream_set_user_data(pStream, &memFile, nullptr);
     auto codec = grk_decompress_create(eCodecFormat, pStream);
-    grk_set_info_handler(InfoCallback, NULL);
-    grk_set_warning_handler(WarningCallback, NULL);
-    grk_set_error_handler(ErrorCallback, NULL);
+    grk_set_info_handler(InfoCallback, nullptr);
+    grk_set_warning_handler(WarningCallback, nullptr);
+    grk_set_error_handler(ErrorCallback, nullptr);
     grk_dparameters parameters;
     grk_decompress_set_default_params(&parameters);
     grk_decompress_init(codec, &parameters);
-    grk_image * psImage = NULL;
+    grk_image * psImage = nullptr;
     grk_header_info  header_info;
     uint32_t x0,y0,width,height;
     if (!grk_decompress_read_header(codec, &header_info))

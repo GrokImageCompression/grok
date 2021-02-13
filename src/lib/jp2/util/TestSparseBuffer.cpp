@@ -67,7 +67,7 @@ int main()
 			sa = new SparseBuffer<2,2>(0, 2);
 		} catch (std::exception& ex){
 		}
-		assert(sa == NULL);
+		assert(sa == nullptr);
     }
 
     {
@@ -76,7 +76,7 @@ int main()
 			sa = new SparseBuffer<2,0>(2, 0);
 		} catch (std::exception& ex){
 		}
-		assert(sa == NULL);
+		assert(sa == nullptr);
     }
 
     {
@@ -85,7 +85,7 @@ int main()
 			sa = new SparseBuffer<0,2>(2, 2);
 		 } catch (std::exception& ex){
 		 }
-		 assert(sa == NULL);
+		 assert(sa == nullptr);
 
     }
 
@@ -95,7 +95,7 @@ int main()
 			sa = new SparseBuffer<2,0>(2, 2);
 		  } catch (std::exception& ex){
 		  }
-		  assert(sa == NULL);
+		  assert(sa == nullptr);
     }
 
     {

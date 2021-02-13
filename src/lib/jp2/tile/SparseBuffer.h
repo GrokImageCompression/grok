@@ -179,7 +179,7 @@ public:
 	 *
 	 * @param bds bounds
 	 *
-	 * @return a new sparse buffer instance, or NULL in case of failure.
+	 * @return a new sparse buffer instance, or nullptr in case of failure.
 	 */
 	SparseBuffer(grk_rect_u32 bds) :	block_width(1<<LBW),
 										block_height(1<<LBH),
@@ -208,7 +208,7 @@ public:
 	 * @param width total width of the array.
 	 * @param height total height of the array
 	 *
-	 * @return a new sparse buffer instance, or NULL in case of failure.
+	 * @return a new sparse buffer instance, or nullptr in case of failure.
 	 */
 	SparseBuffer(uint32_t width,uint32_t height) : SparseBuffer(grk_rect_u32(0,0,width,height))
 	{}

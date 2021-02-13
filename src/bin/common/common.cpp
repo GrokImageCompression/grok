@@ -286,7 +286,7 @@ char* actual_path(const char *outfile, bool *mem_allocated) {
 #ifdef _WIN32
 	return (char*)outfile;
 #else
-	char *actualpath = realpath(outfile, NULL);
+	char *actualpath = realpath(outfile, nullptr);
 	if (actualpath != nullptr){
 		if (mem_allocated)
 			*mem_allocated = true;

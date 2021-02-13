@@ -296,7 +296,7 @@ grk_image* PNGFormat::do_decode(const char *read_idf, grk_cparameters *params) {
 	 }
 	 */
 
-	num_comments = png_get_text(png, m_info, &text_ptr, NULL);
+	num_comments = png_get_text(png, m_info, &text_ptr, nullptr);
 	if (num_comments) {
 		for (int i = 0; i < num_comments; ++i) {
 			const char *key = text_ptr[i].key;
@@ -581,8 +581,8 @@ bool PNGFormat::encodeHeader(grk_image *img, const std::string &filename,
 		txt.compression = PNG_ITXT_COMPRESSION_NONE;
 		txt.text_length = m_image->meta->xmp_len;
 		txt.text = (png_charp) m_image->meta->xmp_buf;
-		txt.lang = NULL;
-		txt.lang_key = NULL;
+		txt.lang = nullptr;
+		txt.lang_key = nullptr;
 		png_set_text(png, m_info, &txt, 1);
 	}
 
