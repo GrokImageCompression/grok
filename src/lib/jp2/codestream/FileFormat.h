@@ -143,7 +143,6 @@ struct BoxWriteHandler {
 	uint32_t m_size;
 };
 
-class FileFormat;
 typedef bool (*jp2_procedure)(FileFormat *fileFormat);
 
 /**

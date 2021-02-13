@@ -203,7 +203,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 
 		if (img_comp->prec == 0 || img_comp->prec > max_supported_precision) {
 			GRK_ERROR(
-					"Unsupported precision for comp = %u : prec=%u (Grok only supportes precision between 1 and %u)",
+					"Unsupported precision for comp = %u : prec=%u (this library only supports precisions between 1 and %u)",
 					i, img_comp->prec, max_supported_precision);
 			return false;
 		}
@@ -221,10 +221,10 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 				cp->t_grid_width, cp->t_grid_height);
 		return false;
 	}
-	if (cp->t_grid_width * cp->t_grid_height > max_num_tiles) {
+	if ((uint64_t)cp->t_grid_width * cp->t_grid_height > (uint64_t)max_num_tiles) {
 		GRK_ERROR(
 				"Invalid grid of tiles : %u x %u.  JPEG 2000 standard specifies maximum of %u tiles",
-				max_num_tiles, cp->t_grid_width, cp->t_grid_height);
+				cp->t_grid_width, cp->t_grid_height, max_num_tiles);
 		return false;
 	}
 	nb_tiles = (uint16_t)(cp->t_grid_width * cp->t_grid_height);

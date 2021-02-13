@@ -2289,12 +2289,12 @@ bool FileFormat::read_jp2h( uint8_t *p_header_data,	uint32_t header_size) {
 }
 
 bool FileFormat::read_box(FileFormatBox *box, uint8_t *p_data,
-		uint32_t *p_number_bytes_read, uint64_t p_box_max_size) {
+		uint32_t *p_number_bytes_read, uint64_t maxBoxSize) {
 	assert(p_data != nullptr);
 	assert(box != nullptr);
 	assert(p_number_bytes_read != nullptr);
 
-	if (p_box_max_size < 8) {
+	if (maxBoxSize < 8) {
 		GRK_ERROR("box must be at least 8 bytes in size");
 		return false;
 	}
@@ -2312,7 +2312,7 @@ bool FileFormat::read_box(FileFormatBox *box, uint8_t *p_data,
 
 	/* read XL parameter */
 	if (box->length == 1) {
-		if (p_box_max_size < 16) {
+		if (maxBoxSize < 16) {
 			GRK_ERROR("Cannot handle XL box of less than 16 bytes");
 			return false;
 		}
@@ -2332,8 +2332,9 @@ bool FileFormat::read_box(FileFormatBox *box, uint8_t *p_data,
 		GRK_ERROR("Box length is inconsistent.");
 		return false;
 	}
-	if (box->length > p_box_max_size) {
-		GRK_ERROR("Stream error while reading JP2 Header box: box length is inconsistent.");
+	if (box->length > maxBoxSize) {
+		GRK_ERROR("Stream error while reading JP2 Header box: box length %" PRIu64" is larger than "
+				"maximum box length %" PRIu64".", box->length, maxBoxSize);
 		return false;
 	}
 	return true;
