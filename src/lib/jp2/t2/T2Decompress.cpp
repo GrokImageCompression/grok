@@ -215,7 +215,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp,
 	auto p_tile = tileProcessor->tile;
 	auto res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
 	auto p_src_data = src_buf->get_cur_chunk_ptr();
-	uint64_t available_bytes = src_buf->get_cur_chunk_len();
+	size_t available_bytes = src_buf->get_cur_chunk_len();
 	auto active_src = p_src_data;
 
 	if (p_tcp->csty & J2K_CP_CSTY_SOP) {
