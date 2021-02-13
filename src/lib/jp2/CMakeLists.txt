@@ -59,7 +59,6 @@ include_directories(
 
 # Defines the source code for executables
 set(GROK_EXECUTABLES_SRCS
-  ${CMAKE_CURRENT_SOURCE_DIR}/util/TestSparseBuffer.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/bench_dwt.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_generate_luts.cpp
 )
@@ -296,9 +295,5 @@ if(BUILD_UNIT_TESTS)
 				    ${GROK_SOURCE_DIR}/src/bin/common/spdlog/file_sinks.cpp )
     if(UNIX)
         target_link_libraries(bench_dwt m ${GROK_LIBRARY_NAME})
-    endif()
-    add_executable(TestSparseBuffer util/TestSparseBuffer.cpp)
-    if(UNIX)
-        target_link_libraries(TestSparseBuffer m ${GROK_LIBRARY_NAME})
     endif()
 endif(BUILD_UNIT_TESTS)
