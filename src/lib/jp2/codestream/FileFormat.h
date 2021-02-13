@@ -155,13 +155,13 @@ public:
 	~FileFormat();
 
    /** Main header reading function handler */
-   bool read_header(grk_header_info  *header_info);
+   bool readHeader(grk_header_info  *header_info);
 
-   GrkImage* get_image(uint16_t tileIndex);
-   GrkImage* get_image(void);
+   GrkImage* getImage(uint16_t tileIndex);
+   GrkImage* getImage(void);
 
    /** Set up decompressor function handler */
-   void init_decompress(grk_dparameters  *p_param);
+   void initDecompress(grk_dparameters  *p_param);
 
   /**
   	* Sets the given area to be decompressed, relative to image origin.
@@ -173,14 +173,14 @@ public:
 	*
 	* @return	true			if the area could be set.
   */
-   bool set_decompress_window(grk_rect_u32 window);
+   bool setDecompressWindow(grk_rect_u32 window);
    bool decompress( grk_plugin_tile *tile);
-   bool end_decompress(void);
-   bool init_compress(grk_cparameters  *p_param,GrkImage *p_image);
+   bool endDecompress(void);
+   bool initCompress(grk_cparameters  *p_param,GrkImage *p_image);
    bool start_compress(void);
    bool compress(grk_plugin_tile* tile);
-   bool compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size);
-   bool end_compress(void);
+   bool compressTile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size);
+   bool endCompress(void);
    bool decompressTile(uint16_t tile_index);
    void dump(uint32_t flag, FILE *out_stream);
    static void free_color(grk_color *color);
@@ -190,7 +190,7 @@ public:
 		   	   	   	   uint8_t **header_data,
 					   uint32_t *header_data_size,
 					   uint32_t asocSize);
-   bool read_header_procedure(void);
+   bool readHeaderProcedure(void);
    bool default_validation(void);
    bool read_box_hdr(FileFormatBox *box, uint32_t *p_number_bytes_read,BufferedStream *stream);
    bool read_ihdr( uint8_t *p_image_header_data,uint32_t image_header_size);
@@ -238,22 +238,26 @@ public:
    bool read_jp2h( uint8_t *p_header_data,	uint32_t header_size);
    bool read_box(FileFormatBox *box, uint8_t *p_data,
    		uint32_t *p_number_bytes_read, uint64_t p_box_max_size);
+   bool read_asoc(uint8_t *header_data, uint32_t header_data_size);
    void serializeAsoc(AsocBox *asoc,
 		   	   	   	   grk_asoc *serial_asocs,
 					   uint32_t *num_asocs,
 					   uint32_t level);
 
-
+   void init_header_writing();
+   void init_end_header_reading(void);
+   void init_end_header_writing(void);
+   void init_compress_validation(void);
 
 	/** handle to the J2K codec  */
 	CodeStream *codeStream;
+private:
 	/** list of validation procedures */
 	std::vector<jp2_procedure> *m_validation_list;
 	/** list of execution procedures */
 	std::vector<jp2_procedure> *m_procedure_list;
 
 	AsocBox root_asoc;
-private:
 
 	/* width of image */
 	uint32_t w;

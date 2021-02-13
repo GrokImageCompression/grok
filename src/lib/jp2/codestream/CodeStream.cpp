@@ -182,7 +182,7 @@ static bool j2k_decompress_validation(CodeStream *codeStream) {
 static bool j2k_read_header_procedure(CodeStream *codeStream) {
 	bool rc = false;
 	try {
-		rc = codeStream->read_header_procedure();
+		rc = codeStream->readHeaderProcedure();
 	} catch (InvalidMarkerException &ime){
 		GRK_ERROR("Found invalid marker : 0x%x", ime.m_marker);
 		rc = false;
@@ -847,12 +847,12 @@ TileProcessor* CodeStream::currentProcessor(void){
 	return m_tileProcessor;
 }
 
-GrkImage* CodeStream::get_image(uint16_t tileIndex){
+GrkImage* CodeStream::getImage(uint16_t tileIndex){
 	auto entry = m_tileCache->get(tileIndex);
 	return entry ? entry->image : nullptr;
 }
 
-GrkImage* CodeStream::get_image(){
+GrkImage* CodeStream::getImage(){
 	return getCompositeImage();
 }
 
@@ -861,7 +861,7 @@ std::vector<GrkImage*> CodeStream::getAllImages(void){
 }
 
 /** Main header reading function handler */
-bool CodeStream::read_header(grk_header_info  *header_info){
+bool CodeStream::readHeader(grk_header_info  *header_info){
 	if (m_headerError)
 		return false;
 
@@ -936,7 +936,7 @@ bool CodeStream::read_header(grk_header_info  *header_info){
 }
 
 
-bool CodeStream::set_decompress_window(grk_rect_u32 window) {
+bool CodeStream::setDecompressWindow(grk_rect_u32 window) {
 	auto cp = &(m_cp);
 	auto image = m_headerImage;
 	auto compositeImage = getCompositeImage();
@@ -1026,7 +1026,7 @@ bool CodeStream::set_decompress_window(grk_rect_u32 window) {
 	return true;
 }
 
-bool CodeStream::read_header_procedure(void) {
+bool CodeStream::readHeaderProcedure(void) {
 	bool has_siz = false;
 	bool has_cod = false;
 	bool has_qcd = false;
@@ -1131,7 +1131,7 @@ bool CodeStream::read_header_procedure(void) {
 }
 
 /** Set up decompressor function handler */
-void CodeStream::init_decompress(grk_dparameters  *parameters){
+void CodeStream::initDecompress(grk_dparameters  *parameters){
 	if (parameters) {
 		m_cp.m_coding_params.m_dec.m_layer = parameters->cp_layer;
 		m_cp.m_coding_params.m_dec.m_reduce = parameters->cp_reduce;
@@ -1663,7 +1663,7 @@ bool CodeStream::read_unk(uint16_t *output_marker) {
 
 
 /** Reading function used after code stream if necessary */
-bool CodeStream::end_decompress(void){
+bool CodeStream::endDecompress(void){
 	return true;
 }
 
@@ -1686,7 +1686,7 @@ bool CodeStream::start_compress(void){
 	return exec(m_procedure_list);
 }
 
-bool CodeStream::init_compress(grk_cparameters  *parameters,GrkImage *image){
+bool CodeStream::initCompress(grk_cparameters  *parameters,GrkImage *image){
 	if (!parameters || !image)
 		return false;
 
@@ -2214,7 +2214,7 @@ cleanup:
 	return rc;
 }
 
-bool CodeStream::compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t uncompressed_data_size){
+bool CodeStream::compressTile(uint16_t tile_index,	uint8_t *p_data, uint64_t uncompressed_data_size){
 	if (!p_data)
 		return false;
 	bool rc = false;
@@ -2246,7 +2246,7 @@ cleanup:
 	return rc;
 }
 
-bool CodeStream::end_compress(void){
+bool CodeStream::endCompress(void){
 	/* customization of the compressing */
 	m_procedure_list.push_back((j2k_procedure) j2k_write_eoc);
 	if (m_cp.m_coding_params.m_enc.writeTLM)

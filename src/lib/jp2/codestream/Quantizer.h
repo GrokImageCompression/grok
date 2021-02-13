@@ -27,8 +27,6 @@
 namespace grk {
 
 
-struct CodeStream;
-
 /**
  * Quantization stepsize
  */
@@ -43,7 +41,7 @@ struct grk_stepsize {
 
 
 
-struct CodeStream;
+class CodeStream;
 struct TileComponentCodingParams;
 struct BufferedStream;
 struct Subband;

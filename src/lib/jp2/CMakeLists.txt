@@ -109,8 +109,16 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Dump.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodeStream.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodeStream.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodeStreamCompress.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodeStreamCompress.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodeStreamDecompress.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodeStreamDecompress.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/FileFormat.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/FileFormat.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/FileFormatCompress.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/FileFormatCompress.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/FileFormatDecompress.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/FileFormatDecompress.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodingParams.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodingParams.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/PacketIter.cpp

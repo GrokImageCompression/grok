@@ -394,21 +394,7 @@ static uint8_t* jp2_write_ihdr(FileFormat *fileFormat, uint32_t *p_nb_bytes_writ
 
 static bool jp2_read_asoc(FileFormat *fileFormat, uint8_t *header_data, uint32_t header_data_size) {
     assert(fileFormat);
-    assert(header_data);
-
-    // 12 == sizoef(asoc tag) + sizeof(child size) + sizeof(child tag)
-    if (header_data_size <= 12) {
-        GRK_ERROR("ASOC super box can't be empty");
-        return false;
-    }
-
-    try {
-    	fileFormat->read_asoc(&fileFormat->root_asoc, &header_data,&header_data_size,header_data_size);
-    } catch (BadAsocException &bae){
-    	return false;
-    }
-
-    return true;
+    return fileFormat->read_asoc(header_data, header_data_size);
 }
 
 static bool jp2_read_xml(FileFormat *fileFormat, uint8_t *p_xml_data, uint32_t xml_size) {
@@ -511,18 +497,14 @@ static bool jp2_write_jp(FileFormat *fileFormat) {
 
 static bool jp2_init_end_header_writing(FileFormat *fileFormat) {
 	assert(fileFormat != nullptr);
-
-	fileFormat->m_procedure_list->push_back((jp2_procedure) jp2_write_jp2c);
-	//custom procedures here
+	fileFormat->init_end_header_writing();
 
 	return true;
 }
 
 static bool jp2_init_end_header_reading(FileFormat *fileFormat) {
 	assert(fileFormat != nullptr);
-
-	fileFormat->m_procedure_list->push_back((jp2_procedure) jp2_read_header_procedure);
-	//custom procedures here
+	fileFormat->init_end_header_reading();
 
 	return true;
 }
@@ -534,7 +516,7 @@ static bool jp2_default_validation(FileFormat *fileFormat) {
 
 static bool jp2_read_header_procedure(FileFormat *fileFormat) {
 	assert(fileFormat != nullptr);
-	return fileFormat->read_header_procedure();
+	return fileFormat->readHeaderProcedure();
 }
 
 /**
@@ -632,7 +614,7 @@ static bool jp2_read_jp2h(FileFormat *fileFormat, uint8_t *p_header_data,
 
 static bool jp2_init_compress_validation(FileFormat *fileFormat) {
 	assert(fileFormat != nullptr);
-	fileFormat->m_validation_list->push_back((jp2_procedure) jp2_default_validation);
+	fileFormat->init_compress_validation();
 
 	return true;
 }
@@ -641,13 +623,7 @@ static bool jp2_init_compress_validation(FileFormat *fileFormat) {
 static bool jp2_init_header_writing(FileFormat *fileFormat) {
 
 	assert(fileFormat != nullptr);
-
-	fileFormat->m_procedure_list->push_back((jp2_procedure) jp2_write_jp);
-	fileFormat->m_procedure_list->push_back((jp2_procedure) jp2_write_ftyp);
-	fileFormat->m_procedure_list->push_back((jp2_procedure) jp2_write_jp2h);
-	fileFormat->m_procedure_list->push_back((jp2_procedure) jp2_write_uuids);
-	fileFormat->m_procedure_list->push_back((jp2_procedure) jp2_skip_jp2c);
-	//custom procedures here
+	fileFormat->init_header_writing();
 
 	return true;
 }
@@ -706,6 +682,47 @@ FileFormat::~FileFormat() {
 		(uuids + i)->dealloc();
 }
 
+void FileFormat::init_end_header_reading(void) {
+	m_procedure_list->push_back((jp2_procedure) jp2_read_header_procedure);
+}
+
+void FileFormat::init_end_header_writing(void) {
+	m_procedure_list->push_back((jp2_procedure) jp2_write_jp2c);
+}
+
+
+void FileFormat::init_compress_validation(void) {
+	m_validation_list->push_back((jp2_procedure) jp2_default_validation);
+}
+
+
+
+void FileFormat::init_header_writing(void) {
+	m_procedure_list->push_back((jp2_procedure) jp2_write_jp);
+	m_procedure_list->push_back((jp2_procedure) jp2_write_ftyp);
+	m_procedure_list->push_back((jp2_procedure) jp2_write_jp2h);
+	m_procedure_list->push_back((jp2_procedure) jp2_write_uuids);
+	m_procedure_list->push_back((jp2_procedure) jp2_skip_jp2c);
+}
+
+bool FileFormat::read_asoc(uint8_t *header_data, uint32_t header_data_size) {
+    assert(header_data);
+
+    // 12 == sizoef(asoc tag) + sizeof(child size) + sizeof(child tag)
+    if (header_data_size <= 12) {
+        GRK_ERROR("ASOC super box can't be empty");
+        return false;
+    }
+
+    try {
+    	read_asoc(&root_asoc, &header_data,&header_data_size,header_data_size);
+    } catch (BadAsocException &bae){
+    	return false;
+    }
+
+    return true;
+}
+
 void FileFormat::serializeAsoc(AsocBox *asoc,
 								grk_asoc *serial_asocs,
 								uint32_t *num_asocs,
@@ -731,16 +748,16 @@ void FileFormat::serializeAsoc(AsocBox *asoc,
 		serializeAsoc(child, serial_asocs, num_asocs, level+1);
 }
 
-GrkImage* FileFormat::get_image(uint16_t tileIndex){
-	return codeStream->get_image(tileIndex);
+GrkImage* FileFormat::getImage(uint16_t tileIndex){
+	return codeStream->getImage(tileIndex);
 }
 
-GrkImage* FileFormat::get_image(void){
-	return codeStream->get_image();
+GrkImage* FileFormat::getImage(void){
+	return codeStream->getImage();
 }
 
 /** Main header reading function handler */
-bool FileFormat::read_header(grk_header_info  *header_info){
+bool FileFormat::readHeader(grk_header_info  *header_info){
 	if (m_headerError)
 		return false;
 
@@ -769,7 +786,7 @@ bool FileFormat::read_header(grk_header_info  *header_info){
 	}
 
 
-	if (!codeStream->read_header(header_info)){
+	if (!codeStream->readHeader(header_info)){
 		m_headerError = true;
 		return false;
 	}
@@ -881,14 +898,14 @@ bool FileFormat::read_header(grk_header_info  *header_info){
 
 	return true;
 }
-bool FileFormat::set_decompress_window(grk_rect_u32 window){
-	return codeStream->set_decompress_window(window);
+bool FileFormat::setDecompressWindow(grk_rect_u32 window){
+	return codeStream->setDecompressWindow(window);
 }
 
 /** Set up decompressor function handler */
-void FileFormat::init_decompress(grk_dparameters  *parameters){
+void FileFormat::initDecompress(grk_dparameters  *parameters){
 	/* set up the J2K codec */
-	codeStream->init_decompress(parameters);
+	codeStream->initDecompress(parameters);
 
 	/* further JP2 initializations go here */
 	color.has_colour_specification_box = false;
@@ -915,13 +932,13 @@ bool FileFormat::decompressTile(uint16_t tile_index) {
 
 
 /** Reading function used after code stream if necessary */
-bool FileFormat::end_decompress(void){
+bool FileFormat::endDecompress(void){
 	if (!jp2_init_end_header_reading(this))
 		return false;
 	if (!jp2_exec(this, m_procedure_list))
 		return false;
 
-	return codeStream->end_decompress();
+	return codeStream->endDecompress();
 }
 bool FileFormat::applyColour(void){
 	auto images = codeStream->getAllImages();
@@ -984,7 +1001,7 @@ bool FileFormat::start_compress(void){
 	return codeStream->start_compress();
 }
 
-bool FileFormat::init_compress(grk_cparameters  *parameters,GrkImage *image){
+bool FileFormat::initCompress(grk_cparameters  *parameters,GrkImage *image){
 	uint32_t i;
 	uint8_t depth_0;
 	uint32_t sign = 0;
@@ -994,7 +1011,7 @@ bool FileFormat::init_compress(grk_cparameters  *parameters,GrkImage *image){
 	if (!parameters || !image)
 		return false;
 
-	if (codeStream->init_compress(parameters, image) == false)
+	if (codeStream->initCompress(parameters, image) == false)
 		return false;
 
 
@@ -1183,16 +1200,16 @@ bool FileFormat::compress(grk_plugin_tile* tile){
 	return codeStream->compress(tile);
 }
 
-bool FileFormat::compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size){
+bool FileFormat::compressTile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size){
 
-	return codeStream->compress_tile(tile_index, p_data, data_size);
+	return codeStream->compressTile(tile_index, p_data, data_size);
 }
 
-bool FileFormat::end_compress(void){
+bool FileFormat::endCompress(void){
 	/* customization of the end compressing */
 	if (!jp2_init_end_header_writing(this))
 		return false;
-	if (!codeStream->end_compress())
+	if (!codeStream->endCompress())
 		return false;
 
 	/* write header */
@@ -1307,7 +1324,7 @@ void FileFormat::dump(uint32_t flag, FILE *out_stream){
 	j2k_dump(codeStream, flag, out_stream);
 }
 
-bool FileFormat::read_header_procedure(void) {
+bool FileFormat::readHeaderProcedure(void) {
 	FileFormatBox box;
 	uint32_t nb_bytes_read;
 	uint64_t last_data_size = GRK_BOX_SIZE;

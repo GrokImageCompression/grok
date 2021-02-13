@@ -27,7 +27,8 @@
 namespace grk {
 
 class FileFormat;
-
+class FileFormatCompress;
+class FileFormatDecompress;
 
 /**
  * Dump some elements from the J2K decompression structure .

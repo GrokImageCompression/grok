@@ -116,90 +116,67 @@ struct  marker_handler  {
 	marker_callback callback;
 } ;
 
-struct ICodeStream {
 
-   virtual ~ICodeStream(){}
-
-	/** Main header reading function handler */
-   virtual bool read_header(grk_header_info  *header_info) = 0;
-
-   virtual GrkImage* get_image(uint16_t tileIndex) = 0;
-
-   virtual GrkImage* get_image(void) = 0;
-
-   virtual bool decompress( grk_plugin_tile *tile) = 0;
-
-	/** decompress tile*/
-   virtual bool decompressTile(uint16_t tile_index) = 0;
-
-	/** Reading function used after code stream if necessary */
-   virtual bool end_decompress(void) = 0;
-
-	/** Set up decompressor function handler */
-   virtual void init_decompress(grk_dparameters  *p_param) = 0;
-
-	/** Set decompress window function handler */
-   virtual bool set_decompress_window(grk_rect_u32 window) = 0;
-
+struct ICodeStreamCompress {
+   virtual ~ICodeStreamCompress(){}
+   virtual bool initCompress(grk_cparameters  *p_param,GrkImage *p_image) = 0;
    virtual bool start_compress(void) = 0;
-
-   virtual bool init_compress(grk_cparameters  *p_param,GrkImage *p_image) = 0;
-
    virtual bool compress(grk_plugin_tile* tile) = 0;
+   virtual bool compressTile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size) = 0;
+   virtual bool endCompress(void) = 0;
+};
 
-   virtual bool compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size) = 0;
+class ICodeStreamDecompress {
+public:
+   virtual ~ICodeStreamDecompress(){}
+   virtual bool readHeader(grk_header_info  *header_info) = 0;
+   virtual GrkImage* getImage(uint16_t tileIndex) = 0;
+   virtual GrkImage* getImage(void) = 0;
+   virtual void initDecompress(grk_dparameters  *p_param) = 0;
+   virtual bool setDecompressWindow(grk_rect_u32 window) = 0;
+   virtual bool decompress( grk_plugin_tile *tile) = 0;
+   virtual bool decompressTile(uint16_t tile_index) = 0;
+   virtual bool endDecompress(void) = 0;
+};
 
-   virtual bool end_compress(void) = 0;
-
+class ICodeStream : public ICodeStreamCompress, public ICodeStreamDecompress {
+public:
+   virtual ~ICodeStream(){}
    virtual void dump(uint32_t flag, FILE *out_stream) = 0;
-
 };
 
 class TileCache;
 
-struct CodeStream : public ICodeStream {
-
+class CodeStream : public ICodeStream {
+public:
 	CodeStream(bool decompress, BufferedStream *stream);
 	~CodeStream();
 
 	/** Main header reading function handler */
-   bool read_header(grk_header_info  *header_info);
+   bool readHeader(grk_header_info  *header_info);
 
-   GrkImage* get_image(uint16_t tileIndex);
-   GrkImage* get_image(void);
+   GrkImage* getImage(uint16_t tileIndex);
+   GrkImage* getImage(void);
    std::vector<GrkImage*> getAllImages(void);
 
    bool decompress( grk_plugin_tile *tile);
-
-	/** decompress tile*/
    bool decompressTile(uint16_t tile_index);
-
-	/** Reading function used after code stream if necessary */
-   bool end_decompress(void);
-
-	/** Set up decompressor function handler */
-   void init_decompress(grk_dparameters  *p_param);
+   bool endDecompress(void);
+   void initDecompress(grk_dparameters  *p_param);
 
    bool start_compress(void);
-
-   bool init_compress(grk_cparameters  *p_param,GrkImage *p_image);
-
+   bool initCompress(grk_cparameters  *p_param,GrkImage *p_image);
    bool compress(grk_plugin_tile* tile);
-
-   bool compress_tile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size);
-
-   bool end_compress(void);
+   bool compressTile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size);
+   bool endCompress(void);
 
    void dump(uint32_t flag, FILE *out_stream);
-
-   grk_codestream_info_v2* get_cstr_info(void);
 
    bool isDecodingTilePartHeader() ;
 	TileCodingParams* get_current_decode_tcp(void);
 
 	bool read_marker(void);
 	bool read_short(uint16_t *val);
-
 	bool process_marker(const marker_handler* marker_handler, uint16_t marker_size);
 
 	/**
@@ -210,36 +187,21 @@ struct CodeStream : public ICodeStream {
 	 *
 	 * @return	true			if the area could be set.
 	 */
-	bool set_decompress_window(grk_rect_u32 window);
-
+	bool setDecompressWindow(grk_rect_u32 window);
 	bool parse_tile_header_markers(bool *can_decode_tile_data);
-
 	bool init_header_writing(void);
-
-	bool read_header_procedure(void);
-
+	bool readHeaderProcedure(void);
 	bool exec_decompress();
-
 	bool decompress_tile_t2t1(TileProcessor *tileProcessor) ;
-
 	bool decompressTile();
-
 	bool findNextTile(TileProcessor *tileProcessor);
-
 	bool decompressTiles(void);
-
 	bool decompress_validation(void);
-
 	bool write_tile_part(TileProcessor *tileProcessor);
-
 	bool post_write_tile(TileProcessor *tileProcessor);
-
 	bool get_end_header(void);
-
 	bool copy_default_tcp(void);
-
 	bool update_rates(void);
-
 	bool compress_validation(void);
 	/**
 	 * Executes the given procedures on the given codec.
@@ -249,8 +211,6 @@ struct CodeStream : public ICodeStream {
 	 * @return      true                            if all the procedures were successfully executed.
 	 */
 	bool exec(std::vector<j2k_procedure> &p_procedure_list);
-
-
 	/**
 	 * Checks for invalid number of tile-parts in SOT marker (TPsot==TNsot). See issue 254.
 	 *
@@ -261,7 +221,6 @@ struct CodeStream : public ICodeStream {
 	 */
 
 	bool need_nb_tile_parts_correction(bool *p_correction_needed);
-
 	bool mct_validation(void);
 
 	/**
@@ -271,11 +230,8 @@ struct CodeStream : public ICodeStream {
 	 * @return      true                  if the marker could be read
 	 */
 	bool read_unk(uint16_t *output_marker);
-
 	GrkImage* getCompositeImage();
-
 	GrkImage* getHeaderImage(void);
-
 
 	// state of decompressor/compressor
 	DecoderState m_decompressor;
@@ -300,15 +256,11 @@ struct CodeStream : public ICodeStream {
 
 	TileProcessor* allocateProcessor(uint16_t tile_index);
 	TileProcessor* currentProcessor(void);
-
 	BufferedStream* getStream();
-
 	uint16_t getCurrentMarker();
     bool   isWholeTileDecompress();
     grk_plugin_tile* getCurrentPluginTile();
-
 private:
-
 	// stores header image information (decompress/compress)
 	// decompress: components are subsampled and resolution-reduced
 	GrkImage *m_headerImage;
@@ -320,7 +272,6 @@ private:
 	 *
 	 * @return      the handler associated with the id.
 	 */
-
 	const marker_handler* get_marker_handler(	uint16_t id);
 
 	std::map<uint16_t, marker_handler*>  marker_map;
@@ -331,27 +282,21 @@ private:
 	TileCache *m_tileCache;
 
 	BufferedStream *m_stream;
-
-
 	std::map<uint32_t, TileProcessor*> m_processors;
-
 
 	/** index of single tile to decompress;
 	 *  !!! initialized to -1 !!! */
 	int32_t m_tile_ind_to_dec;
 
-
 	uint8_t *m_marker_scratch;
 	uint16_t m_marker_scratch_size;
-    /** Only valid for decoding. Whether the whole tile is decompressed, or just the window in win_x0/win_y0/win_x1/win_y1 */
-
-	bool m_multiTile;
-
+    bool m_multiTile;
 	uint16_t m_curr_marker;
-    bool   wholeTileDecompress;
+	/** Only valid for decoding. Whether the whole tile is decompressed,
+	 *  or just the window in win_x0/win_y0/win_x1/win_y1 */
+	bool   wholeTileDecompress;
 	grk_plugin_tile *current_plugin_tile;
 	bool m_headerError;
-
 };
 
 /** @name Exported functions */
