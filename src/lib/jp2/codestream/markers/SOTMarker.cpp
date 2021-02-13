@@ -178,7 +178,6 @@ bool SOTMarker::get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	}
 
 	if (num_parts != 0) { /* Number of tile-part header is provided by this tile-part header */
-		num_parts = (uint8_t) (num_parts + m_codeStream->m_nb_tile_parts_correction);
 		/* Useful to manage the case of textGBR.jp2 file because two values
 		 *  of TNSot are allowed: the correct numbers of
 		 * tile-parts for that tile and zero (A.4.2 of 15444-1 : 2002). */

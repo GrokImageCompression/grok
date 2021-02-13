@@ -230,7 +230,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 	nb_tiles = (uint16_t)(cp->t_grid_width * cp->t_grid_height);
 
 	/* Define the tiles which will be decompressed */
-	if (!codeStream->wholeTileDecompress) {
+	if (!codeStream->isWholeTileDecompress()) {
 		decompressor->m_start_tile_x_index = (decompressor->m_start_tile_x_index - cp->tx0) / cp->t_width;
 		decompressor->m_start_tile_y_index = (decompressor->m_start_tile_y_index - cp->ty0) / cp->t_height;
 		decompressor->m_end_tile_x_index   = ceildiv<uint32_t>((decompressor->m_end_tile_x_index	- cp->tx0), cp->t_width);
@@ -239,8 +239,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 		decompressor->m_start_tile_x_index = 0;
 		decompressor->m_start_tile_y_index = 0;
 		decompressor->m_end_tile_x_index = cp->t_grid_width;
-		decompressor->m_end_tile_y_index =
-				cp->t_grid_height;
+		decompressor->m_end_tile_y_index =	cp->t_grid_height;
 	}
 
 	/* memory allocations */

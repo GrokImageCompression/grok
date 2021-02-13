@@ -225,11 +225,11 @@ bool DecoderState::findNextTile(CodeStream *codeStream){
 		} catch (InvalidMarkerException &ume){
 				setState( J2K_DEC_STATE_NO_EOC);
 				GRK_WARN("findNextTile: expected EOC or SOT "
-						"but found invalid marker 0x%x.", codeStream->m_curr_marker);
+						"but found invalid marker 0x%x.", codeStream->getCurrentMarker());
 				throw DecodeUnknownMarkerAtEndOfTileException();
 		}
 
-		switch (codeStream->m_curr_marker) {
+		switch (codeStream->getCurrentMarker()) {
 			// we found the EOC marker - set state accordingly and return true;
 			// we can ignore all data after EOC
 			case J2K_MS_EOC:
@@ -245,7 +245,7 @@ bool DecoderState::findNextTile(CodeStream *codeStream){
 				setState(J2K_DEC_STATE_NO_EOC);
 				GRK_WARN("findNextTile: expected EOC or SOT "
 						"but found marker 0x%x.\nIgnoring %d bytes "
-						"remaining in the stream.", codeStream->m_curr_marker, bytesLeft+2);
+						"remaining in the stream.", codeStream->getCurrentMarker(), bytesLeft+2);
 				throw DecodeUnknownMarkerAtEndOfTileException();
 				}
 				break;

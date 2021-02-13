@@ -737,9 +737,7 @@ CodeStream::CodeStream(bool decompress, BufferedStream *stream) : m_output_image
 																m_curr_marker(0),
 																wholeTileDecompress(true),
 																current_plugin_tile(nullptr),
-																 m_nb_tile_parts_correction_checked(false),
-																 m_nb_tile_parts_correction(0),
-																 m_headerError(false){
+															    m_headerError(false){
     memset(&m_cp, 0 , sizeof(CodingParams));
     if (decompress){
 		m_decompressor.m_default_tcp = new TileCodingParams();
@@ -796,6 +794,17 @@ bool CodeStream::exec(std::vector<j2k_procedure> &procs) {
 	procs.clear();
 
 	return result;
+}
+
+uint16_t CodeStream::getCurrentMarker(){
+	return m_curr_marker;
+}
+bool   CodeStream::isWholeTileDecompress(){
+	return wholeTileDecompress;
+}
+
+grk_plugin_tile* CodeStream::getCurrentPluginTile(){
+	return current_plugin_tile;
 }
 
 BufferedStream* CodeStream::getStream(){

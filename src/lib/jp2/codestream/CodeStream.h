@@ -303,6 +303,10 @@ struct CodeStream : public ICodeStream {
 
 	BufferedStream* getStream();
 
+	uint16_t getCurrentMarker();
+    bool   isWholeTileDecompress();
+    grk_plugin_tile* getCurrentPluginTile();
+
 private:
 
 	// stores header image information (decompress/compress)
@@ -343,12 +347,9 @@ private:
 
 	bool m_multiTile;
 
-public:
 	uint16_t m_curr_marker;
     bool   wholeTileDecompress;
 	grk_plugin_tile *current_plugin_tile;
-	bool m_nb_tile_parts_correction_checked;
-	uint32_t m_nb_tile_parts_correction;
 	bool m_headerError;
 
 };
