@@ -1901,7 +1901,7 @@ bool FileFormat::apply_palette_clr(GrkImage *image, grk_color *color) {
 	}
 
 	auto old_comps = image->comps;
-	auto new_comps = (grk_image_comp*) grk_malloc(num_channels * sizeof(grk_image_comp));
+	auto new_comps = new grk_image_comp[num_channels];
 	if (!new_comps) {
 		GRK_ERROR("Memory allocation failure in apply_palette_clr().");
 		return false;
@@ -1927,7 +1927,7 @@ bool FileFormat::apply_palette_clr(GrkImage *image, grk_color *color) {
 				--i;
 				grk_aligned_free(new_comps[i].data);
 			}
-			grk_free(new_comps);
+			delete[] new_comps;
 			GRK_ERROR("Memory allocation failure in apply_palette_clr().");
 			return false;
 		}
@@ -1973,7 +1973,7 @@ bool FileFormat::apply_palette_clr(GrkImage *image, grk_color *color) {
 	}
 	for (uint16_t i = 0; i < image->numcomps; ++i)
 		grk_image_single_component_data_free(old_comps + i);
-	grk_free(old_comps);
+	delete[] old_comps;
 	image->comps = new_comps;
 	image->numcomps = num_channels;
 
