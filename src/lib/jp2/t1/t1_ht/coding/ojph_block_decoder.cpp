@@ -250,7 +250,7 @@ namespace ojph {
       // of 4 boundary.  It reads 1,2,3 up to 4 bytes from the MEL segment
       int num = 4 - (int)(intptr_t(melp->data) & 0x3);
       for (int i = 0; i < num; ++i) { // this code is similar to mel_read
-        assert(melp->unstuff == false || melp->data[0] <= 0x8F);
+        //assert(melp->unstuff == false || melp->data[0] <= 0x8F);
         ui64 d = (melp->size > 0) ? *melp->data : 0xFF;//if buffer is consumed
                                                        //set data to 0xFF
         if (melp->size == 1) d |= 0xF; //if this is MEL+VLC-1, set LSBs to 0xF
@@ -446,7 +446,7 @@ namespace ojph {
      */
     inline ui32 rev_advance(rev_struct *vlcp, ui32 num_bits)
     {
-      assert(num_bits <= vlcp->bits); // vlcp->tmp must have more than num_bits
+      //assert(num_bits <= vlcp->bits); // vlcp->tmp must have more than num_bits
       vlcp->tmp >>= num_bits;         // remove bits
       vlcp->bits -= num_bits;         // decrement the number of bits
       return (ui32)vlcp->tmp;
@@ -571,7 +571,7 @@ namespace ojph {
      */
     inline ui32 rev_advance_mrp(rev_struct *mrp, ui32 num_bits)
     {
-      assert(num_bits <= mrp->bits); // we must not consume more than mrp->bits
+      //assert(num_bits <= mrp->bits); // we must not consume more than mrp->bits
       mrp->tmp >>= num_bits;  // discard the lowest num_bits bits
       mrp->bits -= num_bits;
       return (ui32)mrp->tmp;  // return data after consumption
@@ -623,7 +623,7 @@ namespace ojph {
           if (tbl0[j].c_q == c_q) // this is an and operation
             if (tbl0[j].cwd == (cwd & ((1 << tbl0[j].cwd_len) - 1)))
             {
-              if (debug) assert(vlc_tbl0[i] == 0);
+              //if (debug) assert(vlc_tbl0[i] == 0);
               // Put this entry into the table
               vlc_tbl0[i] = (ui16)((tbl0[j].rho << 4) | (tbl0[j].u_off << 3)
                 | (tbl0[j].e_k << 12) | (tbl0[j].e_1 << 8) | tbl0[j].cwd_len);
@@ -641,7 +641,7 @@ namespace ojph {
           if (tbl1[j].c_q == c_q) // this is an and operation
             if (tbl1[j].cwd == (cwd & ((1 << tbl1[j].cwd_len) - 1)))
             {
-              if (debug) assert(vlc_tbl1[i] == 0);
+              //if (debug) assert(vlc_tbl1[i] == 0);
               vlc_tbl1[i] = (ui16)((tbl1[j].rho << 4) | (tbl1[j].u_off << 3)
                 | (tbl1[j].e_k << 12) | (tbl1[j].e_1 << 8) | tbl1[j].cwd_len);
             }
@@ -874,7 +874,7 @@ namespace ojph {
     template<int X>
     void frwd_read(frwd_struct *msp)
     {
-      assert(msp->bits <= 32); // assert that there is a space for 32 bits
+      //assert(msp->bits <= 32); // assert that there is a space for 32 bits
 
       ui32 val;
       val = *(ui32*)msp->data;            // read 32 bits
@@ -946,7 +946,7 @@ namespace ojph {
      */
     inline void frwd_advance(frwd_struct *msp, ui32 num_bits)
     {
-      assert(num_bits <= msp->bits);
+      //assert(num_bits <= msp->bits);
       msp->tmp >>= num_bits;  // consume num_bits
       msp->bits -= num_bits;
     }
@@ -1653,7 +1653,7 @@ namespace ojph {
 
                     if (sig & sample_mask) //if LSB is set
                     {
-                      assert(dp[0] != 0); // decoded value cannot be zero
+                      //assert(dp[0] != 0); // decoded value cannot be zero
                       ui32 sym = cwd & 1; // get it value
                       // remove center of bin if sym is 0
                       dp[0] ^= (1 - sym) << (p - 1);
@@ -1664,7 +1664,7 @@ namespace ojph {
 
                     if (sig & sample_mask)
                     {
-                      assert(dp[stride] != 0);
+                      //assert(dp[stride] != 0);
                       ui32 sym = cwd & 1;
                       dp[stride] ^= (1 - sym) << (p - 1);
                       dp[stride] |= half;
@@ -1674,7 +1674,7 @@ namespace ojph {
 
                     if (sig & sample_mask)
                     {
-                      assert(dp[2 * stride] != 0);
+                      //assert(dp[2 * stride] != 0);
                       ui32 sym = cwd & 1;
                       dp[2 * stride] ^= (1 - sym) << (p - 1);
                       dp[2 * stride] |= half;
@@ -1684,7 +1684,7 @@ namespace ojph {
 
                     if (sig & sample_mask)
                     {
-                      assert(dp[3 * stride] != 0);
+                      //assert(dp[3 * stride] != 0);
                       ui32 sym = cwd & 1;
                       dp[3 * stride] ^= (1 - sym) << (p - 1);
                       dp[3 * stride] |= half;
@@ -1788,7 +1788,7 @@ namespace ojph {
                     ui32 sample_mask = 0x11111111u & col_mask; // LSB
                     if (mbr & sample_mask)
                     {
-                      assert(dp[0] == 0); // the sample must have been 0
+                      //assert(dp[0] == 0); // the sample must have been 0
                       if (cwd & 1) //if this sample has become significant
                       { // must propagate it to nearby samples
                         new_sig |= sample_mask;  // new significant samples
@@ -1802,7 +1802,7 @@ namespace ojph {
                     sample_mask += sample_mask;  // next row
                     if (mbr & sample_mask)
                     {
-                      assert(dp[stride] == 0);
+                      //assert(dp[stride] == 0);
                       if (cwd & 1)
                       {
                         new_sig |= sample_mask;
@@ -1815,7 +1815,7 @@ namespace ojph {
                     sample_mask += sample_mask;
                     if (mbr & sample_mask)
                     {
-                      assert(dp[2 * stride] == 0);
+                      //assert(dp[2 * stride] == 0);
                       if (cwd & 1)
                       {
                         new_sig |= sample_mask;
@@ -1828,7 +1828,7 @@ namespace ojph {
                     sample_mask += sample_mask;
                     if (mbr & sample_mask)
                     {
-                      assert(dp[3 * stride] == 0);
+                      //assert(dp[3 * stride] == 0);
                       if (cwd & 1)
                       {
                         new_sig |= sample_mask;
@@ -1855,7 +1855,7 @@ namespace ojph {
                       ui32 sample_mask = 0x11111111u & col_mask;
                       if (new_sig & sample_mask)
                       {
-                        assert(dp[0] == 0);
+                        //assert(dp[0] == 0);
                         dp[0] |= ((cwd & 1) << 31) | val; //put value and sign
                         cwd >>= 1; ++cnt; //consume bit and increment number
                                           //of consumed bits
@@ -1864,7 +1864,7 @@ namespace ojph {
                       sample_mask += sample_mask;
                       if (new_sig & sample_mask)
                       {
-                        assert(dp[stride] == 0);
+                        //assert(dp[stride] == 0);
                         dp[stride] |= ((cwd & 1) << 31) | val;
                         cwd >>= 1; ++cnt;
                       }
@@ -1872,7 +1872,7 @@ namespace ojph {
                       sample_mask += sample_mask;
                       if (new_sig & sample_mask)
                       {
-                        assert(dp[2 * stride] == 0);
+                        //assert(dp[2 * stride] == 0);
                         dp[2 * stride] |= ((cwd & 1) << 31) | val;
                         cwd >>= 1; ++cnt;
                       }
@@ -1880,7 +1880,7 @@ namespace ojph {
                       sample_mask += sample_mask;
                       if (new_sig & sample_mask)
                       {
-                        assert(dp[3 * stride] == 0);
+                        //assert(dp[3 * stride] == 0);
                         dp[3 * stride] |= ((cwd & 1) << 31) | val;
                         cwd >>= 1; ++cnt;
                       }
@@ -1942,7 +1942,7 @@ namespace ojph {
 
                   if (sig & sample_mask)
                   {
-                    assert(dp[0] != 0);
+                    //assert(dp[0] != 0);
                     ui32 sym = cwd & 1;
                     dp[0] ^= (1 - sym) << (p - 1);
                     dp[0] |= half;
@@ -1952,7 +1952,7 @@ namespace ojph {
 
                   if (sig & sample_mask)
                   {
-                    assert(dp[stride] != 0);
+                    //assert(dp[stride] != 0);
                     ui32 sym = cwd & 1;
                     dp[stride] ^= (1 - sym) << (p - 1);
                     dp[stride] |= half;
@@ -1962,7 +1962,7 @@ namespace ojph {
 
                   if (sig & sample_mask)
                   {
-                    assert(dp[2 * stride] != 0);
+                    //assert(dp[2 * stride] != 0);
                     ui32 sym = cwd & 1;
                     dp[2 * stride] ^= (1 - sym) << (p - 1);
                     dp[2 * stride] |= half;
@@ -1972,7 +1972,7 @@ namespace ojph {
 
                   if (sig & sample_mask)
                   {
-                    assert(dp[3 * stride] != 0);
+                    //assert(dp[3 * stride] != 0);
                     ui32 sym = cwd & 1;
                     dp[3 * stride] ^= (1 - sym) << (p - 1);
                     dp[3 * stride] |= half;
@@ -2085,7 +2085,7 @@ namespace ojph {
                   ui32 sample_mask = 0x11111111u & col_mask;
                   if (mbr & sample_mask)
                   {
-                    assert(dp[0] == 0);
+                    //assert(dp[0] == 0);
                     if (cwd & 1)
                     {
                       new_sig |= sample_mask;
@@ -2098,7 +2098,7 @@ namespace ojph {
                   sample_mask += sample_mask;
                   if (mbr & sample_mask)
                   {
-                    assert(dp[stride] == 0);
+                    //assert(dp[stride] == 0);
                     if (cwd & 1)
                     {
                       new_sig |= sample_mask;
@@ -2111,7 +2111,7 @@ namespace ojph {
                   sample_mask += sample_mask;
                   if (mbr & sample_mask)
                   {
-                    assert(dp[2 * stride] == 0);
+                    //assert(dp[2 * stride] == 0);
                     if (cwd & 1)
                     {
                       new_sig |= sample_mask;
@@ -2124,7 +2124,7 @@ namespace ojph {
                   sample_mask += sample_mask;
                   if (mbr & sample_mask)
                   {
-                    assert(dp[3 * stride] == 0);
+                    //assert(dp[3 * stride] == 0);
                     if (cwd & 1)
                     {
                       new_sig |= sample_mask;
@@ -2151,7 +2151,7 @@ namespace ojph {
                     ui32 sample_mask = 0x11111111u & col_mask;
                     if (new_sig & sample_mask)
                     {
-                      assert(dp[0] == 0);
+                      //assert(dp[0] == 0);
                       dp[0] |= ((cwd & 1) << 31) | val;
                       cwd >>= 1; ++cnt;
                     }
@@ -2159,7 +2159,7 @@ namespace ojph {
                     sample_mask += sample_mask;
                     if (new_sig & sample_mask)
                     {
-                      assert(dp[stride] == 0);
+                      //assert(dp[stride] == 0);
                       dp[stride] |= ((cwd & 1) << 31) | val;
                       cwd >>= 1; ++cnt;
                     }
@@ -2167,7 +2167,7 @@ namespace ojph {
                     sample_mask += sample_mask;
                     if (new_sig & sample_mask)
                     {
-                      assert(dp[2 * stride] == 0);
+                      //assert(dp[2 * stride] == 0);
                       dp[2 * stride] |= ((cwd & 1) << 31) | val;
                       cwd >>= 1; ++cnt;
                     }
@@ -2175,7 +2175,7 @@ namespace ojph {
                     sample_mask += sample_mask;
                     if (new_sig & sample_mask)
                     {
-                      assert(dp[3 * stride] == 0);
+                      //assert(dp[3 * stride] == 0);
                       dp[3 * stride] |= ((cwd & 1) << 31) | val;
                       cwd >>= 1; ++cnt;
                     }
