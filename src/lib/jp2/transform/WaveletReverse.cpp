@@ -2211,11 +2211,12 @@ template <typename T,
 	if (compno == debug_compno) {
 		for (uint32_t j = 0; j < synthesisWindow.height();j++) {
 			auto bufPtr = tilec->getBuffer()->getWindow()->data + j * tilec->getBuffer()->getWindow()->stride;
-			for (uint32_t i = 0; i < synthesisWindow.height();i++) {
+			for (uint32_t i = 0; i < synthesisWindow.width();i++) {
 				auto val = grk_memcheck(bufPtr,1);
 				if (val != grk_mem_ok){
-					GRK_ERROR("Partial wavelet after final read: uninitialized memory at offset %d", val);
+					GRK_ERROR("***** Partial wavelet after final read: uninitialized memory at (x,y) =  (%d,%d) ******", i,j);
 				}
+				bufPtr += tilec->getBuffer()->getWindow()->stride;
 			}
 		}
 	}
