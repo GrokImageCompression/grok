@@ -83,25 +83,23 @@ bool TileComponent::init(bool isCompressor,
 	wholeTileDecompress = whole_tile;
 	m_tccp = tccp;
 
-	// 1. calculate resolutions
+	// 1. calculate resolution bounds and precinct grid and bounds
 	numresolutions = m_tccp->numresolutions;
 	if (numresolutions < cp->m_coding_params.m_dec.m_reduce) {
 		resolutions_to_decompress = 1;
 	} else {
-		resolutions_to_decompress =
-				(uint8_t)(numresolutions - cp->m_coding_params.m_dec.m_reduce);
+		resolutions_to_decompress =	(uint8_t)(numresolutions - cp->m_coding_params.m_dec.m_reduce);
 	}
 	resolutions = new Resolution[numresolutions];
 	for (uint8_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
 
-		/* border for each resolution level (global) */
+		/* border for each resolution level (in canvas coordinates) */
 		grk_rect_u32 dim;
-		if (resno == numresolutions - 1){
+		if (resno == numresolutions - 1)
 			dim = unreducedTileComp;
-		} else {
+		else
 			dim = getTileCompBandWindow(numresolutions,(uint8_t)(resno+1U),BAND_ORIENT_LL,unreducedTileComp);
-		}
 		res->set_rect(dim);
 
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
@@ -130,21 +128,25 @@ bool TileComponent::init(bool isCompressor,
 			std::cout << "res: " << resno << " ";
 			res->print();
 		}
-		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-			auto band = res->band + bandIndex;
-			eBandOrientation orientation = (resno ==0) ? BAND_ORIENT_LL : (eBandOrientation)(bandIndex+1);
-			band->orientation = orientation;
-		}
 	}
 
-	//2. calculate region band
+	//2. set tile component and band bounds
 	auto highestNumberOfResolutions =
 			(!m_is_encoder) ? resolutions_to_decompress : numresolutions;
 	auto hightestResolution =  resolutions + highestNumberOfResolutions - 1;
 	set_rect(hightestResolution);
+	for (uint8_t resno = 0; resno < numresolutions; ++resno) {
+		auto res = resolutions + resno;
+		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
+			auto band = res->band + bandIndex;
+			eBandOrientation orientation = (resno ==0) ? BAND_ORIENT_LL : (eBandOrientation)(bandIndex+1);
+			band->orientation = orientation;
+			band->set_rect(getTileCompBandWindow(numresolutions, resno, band->orientation,unreducedTileComp));
+		}
+	}
 
 	//3. create window buffer
-	if (!create_buffer(&unreducedTileComp, unreducedTileOrImageCompWindow))
+	if (!create_buffer(unreducedTileOrImageCompWindow))
 		return false;
 
 	// set band step size
@@ -292,21 +294,9 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
     m_sa = sa;
 }
 
-bool TileComponent::create_buffer(grk_rect_u32 *unreducedImageComp,
-									grk_rect_u32 unreducedTileOrImageCompWindow) {
+bool TileComponent::create_buffer(grk_rect_u32 unreducedTileOrImageCompWindow) {
 	if (buf)
 		return true;
-
-	// calculate band
-	for (uint8_t resno = 0; resno < numresolutions; ++resno) {
-		auto res = resolutions + resno;
-		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-			auto band = res->band + bandIndex;
-			band->set_rect(getTileCompBandWindow(numresolutions, resno, band->orientation,*unreducedImageComp));
-		}
-	}
-
-	delete buf;
 	auto highestNumberOfResolutions =
 			(!m_is_encoder) ? resolutions_to_decompress : numresolutions;
 	auto maxResolution = resolutions + numresolutions - 1;

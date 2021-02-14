@@ -53,10 +53,15 @@ template<typename T> struct ResWindow {
 			m_splitResWindow[i] = nullptr;
 	  if (FILTER_WIDTH) {
 
+		// m_paddedTileBandWindow is only used for determining which precincts and code blocks overlap
+		// the window of interest, in each respective resolution
 		for (uint8_t orient = 0; orient < ( (resno) > 0 ? BAND_NUM_ORIENTATIONS : 1); orient++) {
-			grk_rect_u32 temp = getTileCompBandWindow(numresolutions, resno, orient,tileCompWindowUnreduced);
-			// Factor of 4 is necessary, otherwise https://github.com/GrokImageCompression/grok/issues/225
-			m_paddedTileBandWindow.push_back(temp.grow(4 * FILTER_WIDTH));
+			grk_rect_u32 tileBandWindow = getTileCompBandWindow(numresolutions, resno, orient,tileCompWindowUnreduced);
+			// note: we don't need to clip the padded tile band windows, since no precincts or code blocks
+			// will be out of bounds of the full tile band
+
+			// note 2: Factor of 4 is necessary, otherwise https://github.com/GrokImageCompression/grok/issues/225
+			m_paddedTileBandWindow.push_back(tileBandWindow.grow(4 * FILTER_WIDTH));
 		}
 
 		if (m_tileCompResLower) {

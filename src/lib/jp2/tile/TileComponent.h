@@ -31,7 +31,7 @@ struct TileComponent : public grk_rect_u32 {
 	TileComponent();
 	~TileComponent();
 
-	bool create_buffer(grk_rect_u32 *unreducedTileComp,grk_rect_u32 unreducedTileOrImageCompWindow);
+	bool create_buffer(grk_rect_u32 unreducedTileOrImageCompWindow);
 	bool init(bool isCompressor,
 			bool whole_tile,
 			grk_rect_u32 unreducedTileComp,
