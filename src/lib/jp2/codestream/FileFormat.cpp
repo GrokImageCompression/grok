@@ -2255,7 +2255,6 @@ bool FileFormat::read_jp2h( uint8_t *p_header_data,	uint32_t header_size) {
 		uint32_t box_size = 0;
 		FileFormatBox box;
 		if (!read_box(&box, p_header_data, &box_size, (uint64_t)header_size)) {
-			GRK_ERROR("Stream error while reading JP2 Header box");
 			return false;
 		}
 		uint32_t box_data_length = (uint32_t) (box.length - box_size);
@@ -2520,11 +2519,9 @@ bool FileFormat::write_jp2h(void) {
 
 	/* write super box size */
 	if (!stream->write_int(jp2h_size)) {
-		GRK_ERROR("Stream error while writing JP2 Header box");
 		result = false;
 	}
 	if (!stream->write_int(JP2_JP2H)) {
-		GRK_ERROR("Stream error while writing JP2 Header box");
 		result = false;
 	}
 
@@ -2533,7 +2530,6 @@ bool FileFormat::write_jp2h(void) {
 			auto current_writer = writers + i;
 			if (stream->write_bytes(current_writer->m_data,
 					current_writer->m_size) != current_writer->m_size) {
-				GRK_ERROR("Stream error while writing JP2 Header box");
 				result = false;
 				break;
 			}
