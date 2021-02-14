@@ -1286,7 +1286,7 @@ bool CodeStream::decompressTiles(void) {
 		GRK_ERROR("No tiles were decompressed.");
 		success = false;
 		goto cleanup;
-	} else if (numTilesDecompressed < numTilesToDecompress) {
+	} else if (numTilesDecompressed < numTilesToDecompress && wholeTileDecompress) {
 		uint32_t decompressed = numTilesDecompressed;
 		GRK_WARN("Only %u out of %u tiles were decompressed", decompressed,	numTilesToDecompress);
 	}

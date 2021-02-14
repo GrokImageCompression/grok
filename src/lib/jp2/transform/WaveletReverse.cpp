@@ -1477,28 +1477,34 @@ public:
 		uint32_t shift_low_left = dwt->win_l.x0 > FILTER_WIDTH ? FILTER_WIDTH : dwt->win_l.x0;
 		uint32_t shift_high_left = dwt->win_h.x0 > FILTER_WIDTH ? FILTER_WIDTH : dwt->win_h.x0;
 		for (uint32_t i = 0; i < height; i++) {
+			bool ret = false;
+
 	    	// read one row of L band and write interleaved
-	        bool ret = sa->read(dwt->resno,
-	        					grk_rect_u32(dwt->win_l.x0 - shift_low_left,
-							  	  	  	  	  y_offset + i,
-											  std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn),
-											  y_offset + i + 1),
-							  (int32_t*)dwt->memL + i - shift_low_left * 2 * h_chunk,
-							  2 * h_chunk,
-							  0,
-							  true);
-	        assert(ret);
+			if (dwt->sn) {
+				ret = sa->read(dwt->resno,
+									grk_rect_u32(dwt->win_l.x0 - shift_low_left,
+												  y_offset + i,
+												  std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn),
+												  y_offset + i + 1),
+								  (int32_t*)dwt->memL + i - shift_low_left * 2 * h_chunk,
+								  2 * h_chunk,
+								  0,
+								  true);
+				assert(ret);
+			}
 	        // read one row of H band and write interleaved
-	        ret = sa->read(dwt->resno,
-	        				grk_rect_u32(dwt->sn + dwt->win_h.x0 - shift_high_left,
-							  	  	  	 y_offset + i,
-										 dwt->sn + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn),
-										 y_offset + i + 1),
-							  (int32_t*)dwt->memH + i - shift_high_left * 2 * h_chunk,
-							  2 * h_chunk,
-							  0,
-							  true);
-	        assert(ret);
+			if (dwt->dn) {
+				ret = sa->read(dwt->resno,
+								grk_rect_u32(dwt->sn + dwt->win_h.x0 - shift_high_left,
+											 y_offset + i,
+											 dwt->sn + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn),
+											 y_offset + i + 1),
+								  (int32_t*)dwt->memH + i - shift_high_left * 2 * h_chunk,
+								  2 * h_chunk,
+								  0,
+								  true);
+				assert(ret);
+			}
 	        GRK_UNUSED(ret);
 	    }
 	}
@@ -1514,27 +1520,33 @@ public:
 		uint32_t shift_low_left = dwt->win_l.x0 > FILTER_WIDTH ? FILTER_WIDTH : dwt->win_l.x0;
 		uint32_t shift_high_left = dwt->win_h.x0 > FILTER_WIDTH ? FILTER_WIDTH : dwt->win_h.x0;
     	// read one vertical strip (of width x_num_elements <= v_chunk) of L band and write interleaved
-	    bool ret = sa->read(dwt->resno,
-	    					grk_rect_u32(x_offset,
-	    								dwt->win_l.x0 - shift_low_left,
+		bool ret = false;
+
+		if (dwt->sn) {
+			ret = sa->read(dwt->resno,
+								grk_rect_u32(x_offset,
+											dwt->win_l.x0 - shift_low_left,
+											x_offset + x_num_elements,
+											std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn)),
+								(int32_t*)dwt->memL - shift_low_left * 2 * v_chunk,
+								1,
+								2 * v_chunk,
+								true);
+			assert(ret);
+		}
+    	// read one vertical strip (of width x_num_elements <= v_chunk) of H band and write interleaved
+		if (dwt->dn) {
+			ret = sa->read(dwt->resno,
+							grk_rect_u32(x_offset,
+										dwt->sn + dwt->win_h.x0 - shift_high_left,
 										x_offset + x_num_elements,
-										std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn)),
-							(int32_t*)dwt->memL - shift_low_left * 2 * v_chunk,
+										dwt->sn + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn)),
+							(int32_t*)dwt->memH - shift_high_left * 2 * v_chunk,
 							1,
 							2 * v_chunk,
 							true);
-	    assert(ret);
-    	// read one vertical strip (of width x_num_elements <= v_chunk) of H band and write interleaved
-	    ret = sa->read(dwt->resno,
-	    				grk_rect_u32(x_offset,
-	    							dwt->sn + dwt->win_h.x0 - shift_high_left,
-									x_offset + x_num_elements,
-									dwt->sn + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn)),
-						(int32_t*)dwt->memH - shift_high_left * 2 * v_chunk,
-						1,
-						2 * v_chunk,
-						true);
-	    assert(ret);
+			assert(ret);
+		}
 	    GRK_UNUSED(ret);
 	}
 };
