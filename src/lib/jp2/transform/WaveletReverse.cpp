@@ -2232,7 +2232,7 @@ template <typename T,
 
 #ifdef GRK_DEBUG_VALGRIND
 	GRK_INFO("Final synthesis window for component %d", compno);
-	synthesisWindow.print();
+	synthesisWindow.pan(tilec->x0, tilec->y0).print();
 	if (compno == debug_compno) {
 		for (uint32_t j = 0; j < synthesisWindow.height();j++) {
 			auto bufPtr = tilec->getBuffer()->getWindow()->data + j * tilec->getBuffer()->getWindow()->stride;
