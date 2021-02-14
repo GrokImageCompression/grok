@@ -57,7 +57,7 @@ public:
 					TileComponent* tilec,
 					uint16_t compno,
 					grk_rect_u32 window,
-					uint32_t numres,
+					uint8_t numres,
 					uint8_t qmfbid);
 
 };

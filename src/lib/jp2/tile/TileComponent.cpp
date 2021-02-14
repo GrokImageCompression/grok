@@ -381,9 +381,9 @@ template<typename F> bool TileComponent::postDecompressImpl(int32_t *srcData, De
 	}
 	else {
 		src.set_rect(grk_rect_u32(block->x,
-										block->y,
-										block->x + cblk->width(),
-										block->y + cblk->height()));
+								block->y,
+								block->x + cblk->width(),
+								block->y + cblk->height()));
 		dest = buf->getCodeBlockDestWindow(block->resno,block->band_orientation);
 	}
 
@@ -391,14 +391,15 @@ template<typename F> bool TileComponent::postDecompressImpl(int32_t *srcData, De
 	dest.copy<F>(src, f);
 
 	if (m_sa){
-		if (!m_sa->write(block->x,
-							  block->y,
-							  block->x + cblk->width(),
-							  block->y + cblk->height(),
-							  srcData,
-							  1,
-							  cblk->width(),
-							  true)) {
+		if (!m_sa->write(block->resno,
+						grk_rect_u32(block->x,
+									  block->y,
+									  block->x + cblk->width(),
+									  block->y + cblk->height()),
+						  srcData,
+						  1,
+						  cblk->width(),
+						  true)) {
 			  return false;
 		}
 	}

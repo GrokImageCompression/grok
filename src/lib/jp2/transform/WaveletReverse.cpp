@@ -116,7 +116,8 @@ template <typename T> struct dwt_data {
 				 memH(nullptr),
 		         dn(0),
 				 sn(0),
-				 parity(0)
+				 parity(0),
+				 resno(0)
 	{}
 
 	dwt_data(const dwt_data& rhs) : allocatedMem(nullptr),
@@ -129,7 +130,8 @@ template <typename T> struct dwt_data {
 									sn ( rhs.sn),
 									parity ( rhs.parity),
 									win_l ( rhs.win_l),
-									win_h ( rhs.win_h)
+									win_h ( rhs.win_h),
+									resno ( rhs.resno )
 	{}
 
 	bool alloc(size_t len) {
@@ -173,6 +175,7 @@ template <typename T> struct dwt_data {
     uint32_t parity;  /* 0 = start on even coord, 1 = start on odd coord */
     grk_u32_line  win_l;
     grk_u32_line  win_h;
+    uint8_t resno;
 };
 
 struct Params97{
@@ -1467,28 +1470,30 @@ public:
 	 * interleaved data is laid out in the dwt->mem buffer in increments of h_chunk
 	 */
 	void interleave_h(dwt_data<T>* dwt,
-								ISparseBuffer* sa,
-								uint32_t y_offset,
-								uint32_t height){
+					ISparseBuffer* sa,
+					uint32_t y_offset,
+					uint32_t height){
 		const uint32_t h_chunk = (uint32_t)(sizeof(T)/sizeof(int32_t));
 		uint32_t shift_low_left = dwt->win_l.x0 > FILTER_WIDTH ? FILTER_WIDTH : dwt->win_l.x0;
 		uint32_t shift_high_left = dwt->win_h.x0 > FILTER_WIDTH ? FILTER_WIDTH : dwt->win_h.x0;
 		for (uint32_t i = 0; i < height; i++) {
 	    	// read one row of L band and write interleaved
-	        bool ret = sa->read(dwt->win_l.x0 - shift_low_left,
-							  y_offset + i,
-							  std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn),
-							  y_offset + i + 1,
+	        bool ret = sa->read(dwt->resno,
+	        					grk_rect_u32(dwt->win_l.x0 - shift_low_left,
+							  	  	  	  	  y_offset + i,
+											  std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn),
+											  y_offset + i + 1),
 							  (int32_t*)dwt->memL + i - shift_low_left * 2 * h_chunk,
 							  2 * h_chunk,
 							  0,
 							  true);
 	        assert(ret);
 	        // read one row of H band and write interleaved
-	        ret = sa->read(dwt->sn + dwt->win_h.x0 - shift_high_left,
-							  y_offset + i,
-							  dwt->sn + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn),
-							  y_offset + i + 1,
+	        ret = sa->read(dwt->resno,
+	        				grk_rect_u32(dwt->sn + dwt->win_h.x0 - shift_high_left,
+							  	  	  	 y_offset + i,
+										 dwt->sn + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn),
+										 y_offset + i + 1),
 							  (int32_t*)dwt->memH + i - shift_high_left * 2 * h_chunk,
 							  2 * h_chunk,
 							  0,
@@ -1509,20 +1514,22 @@ public:
 		uint32_t shift_low_left = dwt->win_l.x0 > FILTER_WIDTH ? FILTER_WIDTH : dwt->win_l.x0;
 		uint32_t shift_high_left = dwt->win_h.x0 > FILTER_WIDTH ? FILTER_WIDTH : dwt->win_h.x0;
     	// read one vertical strip (of width x_num_elements <= v_chunk) of L band and write interleaved
-	    bool ret = sa->read(x_offset,
-	    					dwt->win_l.x0 - shift_low_left,
-							x_offset + x_num_elements,
-							 std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn),
+	    bool ret = sa->read(dwt->resno,
+	    					grk_rect_u32(x_offset,
+	    								dwt->win_l.x0 - shift_low_left,
+										x_offset + x_num_elements,
+										std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn)),
 							(int32_t*)dwt->memL - shift_low_left * 2 * v_chunk,
 							1,
 							2 * v_chunk,
 							true);
 	    assert(ret);
     	// read one vertical strip (of width x_num_elements <= v_chunk) of H band and write interleaved
-	    ret = sa->read(x_offset,
-	    				dwt->sn + dwt->win_h.x0 - shift_high_left,
-						x_offset + x_num_elements,
-						 dwt->sn + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn),
+	    ret = sa->read(dwt->resno,
+	    				grk_rect_u32(x_offset,
+	    							dwt->sn + dwt->win_h.x0 - shift_high_left,
+									x_offset + x_num_elements,
+									dwt->sn + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn)),
 						(int32_t*)dwt->memH - shift_high_left * 2 * v_chunk,
 						1,
 						2 * v_chunk,
@@ -1914,7 +1921,7 @@ template <typename T,
    bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec,
 		   	   	   	   	   uint16_t compno,
 		   	   	   	   	   grk_rect_u32 bounds,
-		   	   	   	   	   uint32_t numres,
+		   	   	   	   	   uint8_t numres,
 						   ISparseBuffer *sa) {
 
 	bool rc = false;
@@ -1939,7 +1946,8 @@ template <typename T,
 
     if (numres == 1U) {
         // simply copy into tile component buffer
-    	bool ret = sa->read(synthesisWindow,
+    	bool ret = sa->read(0,
+    					synthesisWindow,
 					   tilec->getBuffer()->getWindow()->data,
                        1,
 					   tilec->getBuffer()->getWindow()->stride,
@@ -2032,10 +2040,11 @@ template <typename T,
 				}
 
 #endif
-				 if (!sa->write( resWindowRect.x0,
-								  j,
-								  resWindowRect.x1,
-								  j + height,
+				 if (!sa->write(resno,
+						 	 	 grk_rect_u32(resWindowRect.x0,
+											  j,
+											  resWindowRect.x1,
+											  j + height),
 								  (int32_t*)(job->data.mem + (int64_t)resWindowRect.x0 - 2 * (int64_t)job->data.win_l.x0),
 								  HORIZ_PASS_HEIGHT,
 								  1,
@@ -2088,10 +2097,11 @@ template <typename T,
 				}
 
 #endif
-				if (!sa->write(j,
-							  resWindowRect.y0,
-							  j + width,
-							  resWindowRect.y0 + job->data.win_l.length() + job->data.win_h.length(),
+				if (!sa->write(resno,
+							grk_rect_u32(j,
+										resWindowRect.y0,
+										j + width,
+										resWindowRect.y0 + job->data.win_l.length() + job->data.win_h.length()),
 							  (int32_t*)(job->data.mem + ((int64_t)resWindowRect.y0 - 2 * (int64_t)job->data.win_l.x0) * VERT_PASS_WIDTH),
 							  1,
 							  VERT_PASS_WIDTH * sizeof(T)/sizeof(int32_t),
@@ -2110,6 +2120,7 @@ template <typename T,
 		//3. calculate synthesis
         horiz.win_l = bandWindowRect[BAND_ORIENT_LL].dimX();
         horiz.win_h = bandWindowRect[BAND_ORIENT_HL].dimX();
+		horiz.resno = resno;
         size_t data_size = (splitWindowRect[0].width() + 2 * FILTER_WIDTH) * HORIZ_PASS_HEIGHT;
 
 		for (uint32_t k = 0; k < 2; ++k) {
@@ -2152,6 +2163,7 @@ template <typename T,
 
 		vert.win_l = bandWindowRect[BAND_ORIENT_LL].dimY();
 		vert.win_h = bandWindowRect[BAND_ORIENT_LH].dimY();
+		vert.resno = resno;
 		uint32_t num_jobs = (uint32_t)num_threads;
 		uint32_t num_cols = resWindowRect.width();
 		if (num_cols < num_jobs)
@@ -2197,11 +2209,12 @@ template <typename T,
 #endif
 
     //final read into tile buffer
-	ret = sa->read(synthesisWindow,
-					   tilec->getBuffer()->getWindow()->data,
-					   1,
-					   tilec->getBuffer()->getWindow()->stride,
-					   true);
+	ret = sa->read(numres-1,
+					synthesisWindow,
+				   tilec->getBuffer()->getWindow()->data,
+				   1,
+				   tilec->getBuffer()->getWindow()->stride,
+				   true);
 	assert(ret);
 	GRK_UNUSED(ret);
 
@@ -2232,7 +2245,7 @@ bool WaveletReverse::decompress(TileProcessor *p_tcd,
 						TileComponent* tilec,
 						uint16_t compno,
 						grk_rect_u32 window,
-                        uint32_t numres,
+                        uint8_t numres,
 						uint8_t qmfbid){
 
 	if (qmfbid == 1) {

@@ -79,42 +79,19 @@ public:
 	 *
 	 * Windows not written with write() are read as 0.
 	 *
-	 * @param x0 left x coordinate of the window to read in the sparse buffer.
-	 * @param y0 top x coordinate of the window to read in the sparse buffer.
-	 * @param x1 right x coordinate (not included) of the window to read in the sparse buffer. Must be greater than x0.
-	 * @param y1 bottom y coordinate (not included) of the window to read in the sparse buffer. Must be greater than y0.
+	 * @param window window to read from sparse buffer.
 	 * @param dest user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * dest_line_stride + (x1 - x0 - 1) * dest_col_stride + 1) bytes large.
 	 * @param dest_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
 	 * @param dest_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
 	 * @param forgiving if set to TRUE and the window is invalid, true will still be returned.
 	 * @return true in case of success.
 	 */
-	virtual bool read(uint32_t x0,
-					 uint32_t y0,
-					 uint32_t x1,
-					 uint32_t y1,
+	virtual bool read(uint8_t resno,
+					  grk_rect_u32 window,
 					 int32_t* dest,
 					 const uint32_t dest_col_stride,
 					 const uint32_t dest_line_stride,
 					 bool forgiving) = 0;
-
-	/** Read the content of a rectangular window of the sparse buffer into a
-	 * user buffer.
-	 *
-	 * Windows not written with write() are read as 0.
-	 *
-	 * @param window window to read in the sparse buffer.
-	 * @param dest user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * dest_line_stride + (x1 - x0 - 1) * dest_col_stride + 1) bytes large.
-	 * @param dest_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
-	 * @param dest_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
-	 * @param forgiving if set to TRUE and the window is invalid, true will still be returned.
-	 * @return true in case of success.
-	 */
-	virtual bool read(grk_rect_u32 window,
-						 int32_t* dest,
-						 const uint32_t dest_col_stride,
-						 const uint32_t dest_line_stride,
-						 bool forgiving) = 0;
 
 
 	/** Write the content of a rectangular window into the sparse buffer from a
@@ -122,24 +99,19 @@ public:
 	 *
 	 * Blocks intersecting the window are allocated, if not already done.
 	 *
-	 * @param x0 left x coordinate of the window to write into the sparse buffer.
-	 * @param y0 top x coordinate of the window to write into the sparse buffer.
-	 * @param x1 right x coordinate (not included) of the window to write into the sparse buffer. Must be greater than x0.
-	 * @param y1 bottom y coordinate (not included) of the window to write into the sparse buffer. Must be greater than y0.
+	 * @param window : window to write to buffer
 	 * @param src user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * src_line_stride + (x1 - x0 - 1) * src_col_stride + 1) bytes large.
 	 * @param src_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
 	 * @param src_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
 	 * @param forgiving if set to TRUE and the window is invalid, true will still be returned.
 	 * @return true in case of success.
 	 */
-	virtual bool write(uint32_t x0,
-						  uint32_t y0,
-						  uint32_t x1,
-						  uint32_t y1,
-						  const int32_t* src,
-						  const uint32_t src_col_stride,
-						  const uint32_t src_line_stride,
-						  bool forgiving) = 0;
+	virtual bool write(uint8_t resno,
+					  grk_rect_u32 window,
+					  const int32_t* src,
+					  const uint32_t src_col_stride,
+					  const uint32_t src_line_stride,
+					  bool forgiving) = 0;
 
 
 	/** Allocate all blocks for a rectangular window into the sparse buffer from a
@@ -227,80 +199,52 @@ public:
 			delete[] data_blocks;
 		}
 	}
-	bool read(uint32_t x0,
-			 uint32_t y0,
-			 uint32_t x1,
-			 uint32_t y1,
+	bool read(uint8_t resno,
+			 grk_rect_u32 window,
 			 int32_t* dest,
 			 const uint32_t dest_col_stride,
 			 const uint32_t dest_line_stride,
-			 bool forgiving)
-	{
-	    return read_or_write( x0, y0, x1, y1,
-							   dest,
-							   dest_col_stride,
-							   dest_line_stride,
-							   forgiving,
-							   true);
-	}
-
-	bool read(grk_rect_u32 window,
-			 int32_t* dest,
-			 const uint32_t dest_col_stride,
-			 const uint32_t dest_line_stride,
-			 bool forgiving)
-	{
-		return read(window.x0,
-				window.y0,
-				window.x1,
-				window.y1,
+			 bool forgiving)	{
+		return read_or_write(resno,
+				window,
 				dest,
 				dest_col_stride,
 				dest_line_stride,
-				forgiving);
+				forgiving,
+				true);
 	}
 
-	bool write(uint32_t x0,
-			  uint32_t y0,
-			  uint32_t x1,
-			  uint32_t y1,
+	bool write(uint8_t resno,
+			  grk_rect_u32 window,
 			  const int32_t* src,
 			  const uint32_t src_col_stride,
 			  const uint32_t src_line_stride,
-			  bool forgiving)
-	{
-	    return read_or_write(x0, y0, x1, y1,
+			  bool forgiving)	{
+	    return read_or_write(resno,
+	    		window,
 	            (int32_t*)src,
 	            src_col_stride,
 	            src_line_stride,
 	            forgiving,
 	            false);
 	}
-
-	bool alloc( grk_rect_u32 window){
-		return alloc(window.x0, window.y0, window.x1, window.y1);
-	}
-private:
-
-	bool alloc( uint32_t x0,
-				  uint32_t y0,
-				  uint32_t x1,
-				  uint32_t y1){
-	    if (!SparseBuffer::is_window_valid(x0, y0, x1, y1))
+	bool alloc( grk_rect_u32 win){
+	    if (!SparseBuffer::is_window_valid(win))
 	        return true;
 
 	    uint32_t y_incr = 0;
-	    uint32_t block_y = y0 >> LBH;
-	    for (uint32_t y = y0; y < y1; block_y ++, y += y_incr) {
-	        y_incr = (y == y0) ? block_height - (y0 & (block_height-1)) : block_height;
-	        y_incr = min<uint32_t>(y_incr, y1 - y);
-	        uint32_t block_x = x0 >>  LBW;
+	    uint32_t block_y = win.y0 >> LBH;
+	    for (uint32_t y = win.y0; y < win.y1; block_y ++, y += y_incr) {
+	        y_incr = (y == win.y0) ? block_height - (win.y0 & (block_height-1)) : block_height;
+	        y_incr = min<uint32_t>(y_incr, win.y1 - y);
+	        uint32_t block_x = win.x0 >>  LBW;
 	        uint32_t x_incr = 0;
-	        for (uint32_t x = x0; x < x1; block_x ++, x += x_incr) {
-	            x_incr = (x == x0) ? block_width - (x0 & (block_width-1)) : block_width;
-	            x_incr = min<uint32_t>(x_incr, x1 - x);
+	        for (uint32_t x = win.x0; x < win.x1; block_x ++, x += x_incr) {
+	            x_incr = (x == win.x0) ? block_width - (win.x0 & (block_width-1)) : block_width;
+	            x_incr = min<uint32_t>(x_incr, win.x1 - x);
 	    		if (!grid_bounds.contains(grk_pt(block_x,block_y))){
-	    			GRK_ERROR("Attempt to allocate a block (%d,%d) outside block grid bounds", block_x, block_y);
+	    			GRK_ERROR("sparse buffer : attempt to allocate a block (%d,%d) outside block grid bounds",
+	    					block_x, block_y);
 	    			return false;
 	    		}
 	            auto src_block = getBlock(block_x, block_y);
@@ -318,31 +262,11 @@ private:
 
 	    return true;
 	}
+private:
 
 	inline SparseBlock* getBlock(uint32_t block_x, uint32_t block_y){
 		uint64_t index = (uint64_t)(block_y - grid_bounds.y0) * grid_bounds.width() + (block_x - grid_bounds.x0);
-		auto b =  data_blocks[index];
-#ifdef GRK_DEBUG_VALGRIND
-/*
-	if (b) {
-		size_t val = VALGRIND_CHECK_MEM_IS_DEFINED(b->data,block_width*block_height * sizeof(int32_t));
-		if (val) {
-		   for (size_t i = 0; i < block_width*block_height; ++i){
-		   	   size_t val = grk_memcheck<int32_t>(b->data + i,1);
-			   if (val != grk_mem_ok) {
-				   uint32_t x = block_x * block_width + i % block_width;
-				   uint32_t y = block_y * block_height + i / block_width;
-				   printf("sparse buffer get block (%d.%d): uninitialized at location (%d,%d)\n",
-						    block_x, block_y, x,y );
-			   }
-		   }
-
-		}
-	}
-*/
-#endif
-
-		return b;
+		return data_blocks[index];
 	}
 
 	/** Returns whether window bounds are valid (non empty and within array bounds)
@@ -352,30 +276,26 @@ private:
 	 * @param y1 bottom y coordinate (not included) of the window. Must be greater than y0.
 	 * @return true or false.
 	 */
-	bool is_window_valid(uint32_t x0,
-						uint32_t y0,
-						uint32_t x1,
-						uint32_t y1){
-	    return !(x0 >= bounds.width() || x1 <= x0 || x1 > bounds.width() ||
-	             y0 >= bounds.height() || y1 <= y0 || y1 > bounds.height());
+	bool is_window_valid(grk_rect_u32 win){
+	    return !(win.x0 >= bounds.width() || win.x1 <= win.x0 || win.x1 > bounds.width() ||
+	             win.y0 >= bounds.height() || win.y1 <= win.y0 || win.y1 > bounds.height());
 	}
 
-	bool read_or_write(uint32_t x0,
-						uint32_t y0,
-						uint32_t x1,
-						uint32_t y1,
+	bool read_or_write(uint8_t resno,
+						grk_rect_u32 win,
 						int32_t* buf,
 						const uint32_t buf_col_stride,
 						const uint32_t buf_line_stride,
 						bool forgiving,
 						bool is_read_op){
-	    if (!is_window_valid(x0, y0, x1, y1)){
+	    if (!is_window_valid(win)){
 	    	// fill the client buffer with zeros in this case
 	    	if (forgiving && is_read_op){
-	    		//GRK_WARN("Sparse buffer: attempt to read invalid window (%d,%d,%d,%d). Filling with zeros.", x0,y0,x1,y1);
-	    		for (uint32_t y = y0; y < y1; ++y){
-	    	    	int32_t *bufPtr = buf + (y - y0)  * buf_line_stride;
-		    		for (uint32_t x = x0; x < x1; ++x){
+	    		GRK_WARN("Sparse buffer @ res %d, attempt to read invalid window (%d,%d,%d,%d). Filling with zeros.",
+	    				resno,win.x0,win.y0,win.x1,win.y1);
+	    		for (uint32_t y = win.y0; y < win.y1; ++y){
+	    	    	int32_t *bufPtr = buf + (y - win.y0)  * buf_line_stride;
+		    		for (uint32_t x = win.x0; x < win.x1; ++x){
 		    			*bufPtr = 0;
 		    			bufPtr += buf_col_stride;
 		    		}
@@ -386,40 +306,41 @@ private:
 
 	    const uint64_t line_stride 	= buf_line_stride;
 	    const uint64_t col_stride 	= buf_col_stride;
-	    uint32_t block_y 			= y0 >>  LBH;
+	    uint32_t block_y 			= win.y0 >>  LBH;
 	    uint32_t y_incr = 0;
-	    for (uint32_t y = y0; y < y1; block_y ++, y += y_incr) {
-	        y_incr = (y == y0) ? block_height - (y0 & (block_height-1)) : block_height;
+	    for (uint32_t y = win.y0; y < win.y1; block_y ++, y += y_incr) {
+	        y_incr = (y == win.y0) ? block_height - (win.y0 & (block_height-1)) : block_height;
 	        uint32_t block_y_offset = block_height - y_incr;
-	        y_incr = min<uint32_t>(y_incr, y1 - y);
-	        uint32_t block_x = x0 >> LBW;
+	        y_incr = min<uint32_t>(y_incr, win.y1 - y);
+	        uint32_t block_x = win.x0 >> LBW;
 	        uint32_t x_incr = 0;
-	        for (uint32_t x = x0; x < x1; block_x ++, x += x_incr) {
-	            x_incr = (x == x0) ? block_width - (x0 & (block_width-1) ) : block_width;
+	        for (uint32_t x = win.x0; x < win.x1; block_x ++, x += x_incr) {
+	            x_incr = (x == win.x0) ? block_width - (win.x0 & (block_width-1) ) : block_width;
 	            uint32_t block_x_offset = block_width - x_incr;
-	            x_incr = min<uint32_t>(x_incr, x1 - x);
+	            x_incr = min<uint32_t>(x_incr, win.x1 - x);
 	    		if (!grid_bounds.contains(grk_pt(block_x,block_y))){
-	    			GRK_ERROR("Attempt to access a block (%d,%d) outside block grid bounds", block_x, block_y);
+	    			GRK_ERROR("sparse buffer @ resno %d, Attempt to access a block (%d,%d) outside block grid bounds", resno,block_x, block_y);
 	    			return false;
 	    		}
 	            auto src_block = getBlock(block_x, block_y);
             	//all blocks should be allocated first before read/write is called
 	            if (!src_block){
-					GRK_WARN("Sparse buffer %s op: missing block (%d,%d,%d,%d) for %s (%d,%d,%d,%d)",
+					GRK_WARN("sparse buffer @ resno %d, %s op: missing block (%d,%d,%d,%d) for %s (%d,%d,%d,%d)",
+							resno,
 							is_read_op ? "read" : "write",
 						   bounds.x0 + block_x*block_width,
 						   bounds.y0 + block_y*block_height,
 						   bounds.x0 + (block_x+1)*block_width,
 						   bounds.y0 + (block_y+1)*block_height,
 						   is_read_op ? "read" : "write",
-						   x0,y0,x1,y1);
+						   win.x0,win.y0,win.x1,win.y1);
 	            	continue;
 	            }
 	            if (is_read_op) {
 					const int32_t* GRK_RESTRICT src_ptr =
 							src_block->data + ((uint64_t)block_y_offset << LBW) + block_x_offset;
-					int32_t* GRK_RESTRICT dest_ptr = buf + (y - y0) * line_stride +
-													   (x - x0) * col_stride;
+					int32_t* GRK_RESTRICT dest_ptr = buf + (y - win.y0) * line_stride +
+													   (x - win.x0) * col_stride;
 					uint32_t y_ = y;
 					for (uint32_t j = 0; j < y_incr; j++) {
 						uint64_t ind = 0;
@@ -428,8 +349,8 @@ private:
 							grk_pt pt((uint32_t)(x+k), y_);
 							size_t val = grk_memcheck<int32_t>(src_ptr+k,1);
 							if (val != grk_mem_ok)
-							   GRK_ERROR("sparse buffer read block(%d,%d) : uninitialized at location (%d,%d)",
-									   block_x, block_y, x+k,y_);
+							   GRK_ERROR("sparse buffer @resno %d, read block(%d,%d) : uninitialized at location (%d,%d)",
+									   resno, block_x, block_y, x+k,y_);
 #endif
 							dest_ptr[ind] = src_ptr[k];
 							ind += col_stride;
@@ -439,7 +360,7 @@ private:
 						src_ptr  += block_width;
 					}
 	            } else {
-                    const int32_t* GRK_RESTRICT src_ptr = buf + (y - y0) * line_stride + (x - x0) * col_stride;
+                    const int32_t* GRK_RESTRICT src_ptr = buf + (y - win.y0) * line_stride + (x - win.x0) * col_stride;
                     int32_t* GRK_RESTRICT dest_ptr = src_block->data + ((uint64_t)block_y_offset << LBW) + block_x_offset;
 
 					uint32_t y_ = y;
@@ -450,8 +371,8 @@ private:
 							grk_pt pt((uint32_t)(x+k), y_);
 							size_t val = grk_memcheck<int32_t>(src_ptr+ind,1);
 							if (val != grk_mem_ok)
-							   GRK_ERROR("sparse buffer write block(%d,%d): uninitialized at location (%d,%d)",
-									   block_x, block_y, x+k,y_);
+							   GRK_ERROR("sparse buffer @ resno %d,  write block(%d,%d): uninitialized at location (%d,%d)",
+									   resno, block_x, block_y, x+k,y_);
 #endif
 							dest_ptr[k] = src_ptr[ind];
 							ind += col_stride;
