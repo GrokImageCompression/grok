@@ -104,16 +104,18 @@ typedef bool (*j2k_procedure)(CodeStream *codeStream);
 
 typedef bool (*marker_callback)(CodeStream *codeStream, uint8_t *p_header_data, uint16_t header_size);
 
+typedef std::function<bool(void)>  PROCEDURE_FUNC;
+typedef std::function<bool(uint8_t *p_header_data, uint16_t header_size)>  DECOMPRESS_MARKER_FUNC;
+
 struct  marker_handler  {
-	marker_handler(uint16_t ID, uint32_t flags, marker_callback cb) :
-		id(ID), states(flags), callback(cb)
+	marker_handler(uint16_t ID, uint32_t flags, DECOMPRESS_MARKER_FUNC f) :
+		id(ID), states(flags), func(f)
 	{}
 	/** marker value */
 	uint16_t id;
 	/** value of the state when the marker can appear */
 	uint32_t states;
-	/** action linked to the marker */
-	marker_callback callback;
+	DECOMPRESS_MARKER_FUNC func;
 } ;
 
 

@@ -823,27 +823,46 @@ CodeStream::CodeStream(bool decompress, BufferedStream *stream) : cstr_index(nul
     }
 
     marker_map = {
-    {J2K_MS_SOT, new marker_handler(J2K_MS_SOT,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH_SOT, j2k_read_sot )},
-    {J2K_MS_COD, new marker_handler(J2K_MS_COD,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_cod )},
-    {J2K_MS_COC, new marker_handler(J2K_MS_COC,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_coc )},
-    {J2K_MS_RGN, new marker_handler(J2K_MS_RGN,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_rgn )},
-    {J2K_MS_QCD, new marker_handler(J2K_MS_QCD,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_qcd )},
-    {J2K_MS_QCC, new marker_handler(J2K_MS_QCC,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_qcc )},
-    {J2K_MS_POC, new marker_handler(J2K_MS_POC,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_poc )},
-    {J2K_MS_SIZ, new marker_handler(J2K_MS_SIZ,J2K_DEC_STATE_MH_SIZ, j2k_read_siz )},
-    {J2K_MS_CAP, new marker_handler(J2K_MS_CAP,J2K_DEC_STATE_MH,j2k_read_cap )},
-    {J2K_MS_TLM, new marker_handler(J2K_MS_TLM,J2K_DEC_STATE_MH, j2k_read_tlm )},
-    {J2K_MS_PLM, new marker_handler(J2K_MS_PLM,J2K_DEC_STATE_MH, j2k_read_plm )},
-    {J2K_MS_PLT, new marker_handler(J2K_MS_PLT,J2K_DEC_STATE_TPH, j2k_read_plt )},
-    {J2K_MS_PPM, new marker_handler(J2K_MS_PPM,J2K_DEC_STATE_MH,j2k_read_ppm )},
-    {J2K_MS_PPT, new marker_handler(J2K_MS_PPT,J2K_DEC_STATE_TPH, j2k_read_ppt )},
-    {J2K_MS_SOP, new marker_handler(J2K_MS_SOP,0, nullptr )},
-    {J2K_MS_CRG, new marker_handler(J2K_MS_CRG,J2K_DEC_STATE_MH, j2k_read_crg )},
-    {J2K_MS_COM, new marker_handler(J2K_MS_COM,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_com )},
-    {J2K_MS_MCT, new marker_handler(J2K_MS_MCT,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mct )},
-    {J2K_MS_CBD, new marker_handler(J2K_MS_CBD,J2K_DEC_STATE_MH, j2k_read_cbd )},
-    {J2K_MS_MCC, new marker_handler(J2K_MS_MCC,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mcc )},
-    {J2K_MS_MCO, new marker_handler(J2K_MS_MCO,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mco )}
+    {J2K_MS_SOT, new marker_handler(J2K_MS_SOT,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH_SOT,
+			[this](uint8_t *data, uint16_t len) { return read_sot(data, len); } )},
+    {J2K_MS_COD, new marker_handler(J2K_MS_COD,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH,
+			[this](uint8_t *data, uint16_t len) { return read_cod(data, len); })},
+    {J2K_MS_COC, new marker_handler(J2K_MS_COC,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH,
+			[this](uint8_t *data, uint16_t len) { return read_coc(data, len); })},
+    {J2K_MS_RGN, new marker_handler(J2K_MS_RGN,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH,
+			[this](uint8_t *data, uint16_t len) { return read_rgn(data, len); })},
+    {J2K_MS_QCD, new marker_handler(J2K_MS_QCD,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH,
+			[this](uint8_t *data, uint16_t len) { return read_qcd(data, len); })},
+    {J2K_MS_QCC, new marker_handler(J2K_MS_QCC,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH,
+			[this](uint8_t *data, uint16_t len) { return read_qcc(data, len); })},
+    {J2K_MS_POC, new marker_handler(J2K_MS_POC,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH,
+			[this](uint8_t *data, uint16_t len) { return read_poc(data, len); })},
+    {J2K_MS_SIZ, new marker_handler(J2K_MS_SIZ,J2K_DEC_STATE_MH_SIZ,
+			[this](uint8_t *data, uint16_t len) { return read_siz(data, len); })},
+    {J2K_MS_CAP, new marker_handler(J2K_MS_CAP,J2K_DEC_STATE_MH,
+			[this](uint8_t *data, uint16_t len) { return read_cap(data, len); })},
+    {J2K_MS_TLM, new marker_handler(J2K_MS_TLM,J2K_DEC_STATE_MH,
+			[this](uint8_t *data, uint16_t len) { return read_tlm(data, len); })},
+    {J2K_MS_PLM, new marker_handler(J2K_MS_PLM,J2K_DEC_STATE_MH,
+			[this](uint8_t *data, uint16_t len) { return read_plm(data, len); })},
+    {J2K_MS_PLT, new marker_handler(J2K_MS_PLT,J2K_DEC_STATE_TPH,
+			[this](uint8_t *data, uint16_t len) { return read_plt(data, len); })},
+    {J2K_MS_PPM, new marker_handler(J2K_MS_PPM,J2K_DEC_STATE_MH,
+			[this](uint8_t *data, uint16_t len) { return read_ppm(data, len); })},
+    {J2K_MS_PPT, new marker_handler(J2K_MS_PPT,J2K_DEC_STATE_TPH,
+			[this](uint8_t *data, uint16_t len) { return read_ppt(data, len); })},
+    {J2K_MS_CRG, new marker_handler(J2K_MS_CRG,J2K_DEC_STATE_MH,
+			[this](uint8_t *data, uint16_t len) { return read_crg(data, len); })},
+    {J2K_MS_COM, new marker_handler(J2K_MS_COM,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH,
+			[this](uint8_t *data, uint16_t len) { return read_com(data, len); })},
+    {J2K_MS_MCT, new marker_handler(J2K_MS_MCT,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH,
+			[this](uint8_t *data, uint16_t len) { return read_mct(data, len); })},
+    {J2K_MS_CBD, new marker_handler(J2K_MS_CBD,J2K_DEC_STATE_MH,
+			[this](uint8_t *data, uint16_t len) { return read_cbd(data, len); })},
+    {J2K_MS_MCC, new marker_handler(J2K_MS_MCC,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH,
+			[this](uint8_t *data, uint16_t len) { return read_mcc(data, len); })},
+    {J2K_MS_MCO, new marker_handler(J2K_MS_MCO,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH,
+			[this](uint8_t *data, uint16_t len) { return read_mco(data, len); })}
     };
 }
 CodeStream::~CodeStream(){
@@ -1106,7 +1125,7 @@ bool CodeStream::readHeaderProcedure(void) {
 	m_decompressor.setState(J2K_DEC_STATE_MH_SOC);
 
 	/* Try to read the SOC marker, the code stream must begin with SOC marker */
-	if (!j2k_read_soc(this)) {
+	if (!read_soc()) {
 		GRK_ERROR("Code stream must begin with SOC marker ");
 		return false;
 	}
@@ -1618,7 +1637,7 @@ bool CodeStream::process_marker(const marker_handler* marker_handler, uint16_t m
 		return false;
 	}
 
-	return (*(marker_handler->callback))(this,	m_marker_scratch, marker_size);
+	return marker_handler->func(m_marker_scratch, marker_size);
 }
 
 bool CodeStream::isDecodingTilePartHeader() {
