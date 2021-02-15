@@ -132,13 +132,8 @@ struct SparseBlock{
 	~SparseBlock() {
 		delete[] data;
 	}
-	bool alloc(uint32_t block_area){
+	void alloc(uint32_t block_area){
 		data = new int32_t[block_area];
-		// note: we need to zero out each source block, in case
-		// some code blocks are missing from the compressed stream.
-		// In this case, zero is the best default value for the block.
-		memset(data, 0, block_area * sizeof(int32_t));
-		return true;
 	}
 	int32_t *data;
 };
@@ -250,8 +245,7 @@ public:
 	            auto src_block = getBlock(block_x, block_y);
 				if (!src_block) {
 					auto b = new SparseBlock();
-					if (!b->alloc(block_width*block_height))
-						return false;
+					b->alloc(block_width*block_height);
 					assert(grid_bounds.contains(grk_pt(block_x,block_y)));
 					assert(b->data);
 					uint64_t index = (uint64_t)(block_y - grid_bounds.y0) * grid_bounds.width() + (block_x - grid_bounds.x0);
@@ -360,7 +354,9 @@ private:
 						src_ptr  += block_width;
 					}
 	            } else {
-                    const int32_t* GRK_RESTRICT src_ptr = buf + (y - win.y0) * line_stride + (x - win.x0) * col_stride;
+                    const int32_t* GRK_RESTRICT src_ptr = nullptr;
+                    if (buf)
+                    	src_ptr = buf + (y - win.y0) * line_stride + (x - win.x0) * col_stride;
                     int32_t* GRK_RESTRICT dest_ptr = src_block->data + ((uint64_t)block_y_offset << LBW) + block_x_offset;
 
 					uint32_t y_ = y;
@@ -368,16 +364,19 @@ private:
 						uint64_t ind = 0;
 						for (uint32_t k = 0; k < x_incr; k++) {
 #ifdef GRK_DEBUG_VALGRIND
-							grk_pt pt((uint32_t)(x+k), y_);
-							size_t val = grk_memcheck<int32_t>(src_ptr+ind,1);
-							if (val != grk_mem_ok)
-							   GRK_ERROR("sparse buffer @ resno %d,  write block(%d,%d): uninitialized at location (%d,%d)",
-									   resno, block_x, block_y, x+k,y_);
+							if (src_ptr) {
+								grk_pt pt((uint32_t)(x+k), y_);
+								size_t val = grk_memcheck<int32_t>(src_ptr+ind,1);
+								if (val != grk_mem_ok)
+								   GRK_ERROR("sparse buffer @ resno %d,  write block(%d,%d): uninitialized at location (%d,%d)",
+										   resno, block_x, block_y, x+k,y_);
+							}
 #endif
-							dest_ptr[k] = src_ptr[ind];
+							dest_ptr[k] = src_ptr ? src_ptr[ind] : 0;
 							ind += col_stride;
 						}
-						src_ptr  += line_stride;
+						if (src_ptr)
+							src_ptr  += line_stride;
 						y_ ++;
 						dest_ptr += block_width;
 					}

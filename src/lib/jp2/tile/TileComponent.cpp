@@ -392,7 +392,7 @@ template<typename F> bool TileComponent::postDecompressImpl(int32_t *srcData, De
 		srcData = nullptr;
 	}
 
-	if (m_sa && srcData){
+	if (m_sa ){
 		if (!m_sa->write(block->resno,
 						grk_rect_u32(block->x,
 									  block->y,
