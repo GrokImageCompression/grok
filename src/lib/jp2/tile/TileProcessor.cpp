@@ -811,10 +811,9 @@ bool TileProcessor::decompress_tile_t1(void) {
 			auto scheduler = std::unique_ptr<T1DecompressScheduler>(new T1DecompressScheduler());
 			if (!scheduler->prepareScheduleDecompress(tilec, tccp, &blocks))
 				return false;
-			// !!! assume that code block dimensions do not change over components
 			if (!scheduler->scheduleDecompress(m_tcp,
-					(uint16_t) m_tcp->tccps->cblkw,
-					(uint16_t) m_tcp->tccps->cblkh, &blocks))
+					(uint16_t) tccp->cblkw,
+					(uint16_t) tccp->cblkh, &blocks))
 				return false;
 
 			if (doPostT1){

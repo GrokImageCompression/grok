@@ -211,8 +211,8 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
 					for (uint32_t i = roi_grid.x0; i < roi_grid.x1; ++i){
 						 auto cblk = precinct->getDecompressedBlockPtr(cblkno);
 
-						// transform from canvas coordinates
-						// to coordinates relative to current resolution
+						// transform from band coordinates
+						// to canvas coordinates
 						uint32_t x = cblk->x0 - band->x0;
 						uint32_t y = cblk->y0 - band->y0;
 						if (band->orientation & 1) {
@@ -263,8 +263,8 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
 					for (uint32_t i = roi_grid.x0; i < roi_grid.x1; ++i){
 						 auto cblk = precinct->getDecompressedBlockPtr(cblkno);
 
-						// transform from canvas coordinates
-						// to coordinates relative to current resolution
+						// transform from band coordinates
+						// to canvas coordinates
 						uint32_t x = cblk->x0 - band->x0;
 						uint32_t y = cblk->y0 - band->y0;
 						if (band->orientation & 1) {
