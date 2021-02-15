@@ -370,12 +370,10 @@ bool TileComponent::postDecompress(int32_t *srcData, DecompressBlockExec *block,
 
 template<typename F> bool TileComponent::postDecompressImpl(int32_t *srcData, DecompressBlockExec *block){
 	auto cblk = block->cblk;
-	if (cblk->seg_buffers.empty())
-		return true;
 
 	grk_buffer_2d<int32_t> dest;
 	grk_buffer_2d<int32_t> src = grk_buffer_2d<int32_t>(srcData, false, cblk->width(), cblk->width(), cblk->height());
-	buf->transform(block->resno,block->band_orientation,block->x,block->y);
+	buf->transformToCanvasCoordinates(block->resno,block->band_orientation,block->x,block->y);
 	if (m_sa) {
 		dest = src;
 	}
@@ -387,10 +385,14 @@ template<typename F> bool TileComponent::postDecompressImpl(int32_t *srcData, De
 		dest = buf->getCodeBlockDestWindow(block->resno,block->band_orientation);
 	}
 
-	F f(block);
-	dest.copy<F>(src, f);
+	if (!cblk->seg_buffers.empty()){
+		F f(block);
+		dest.copy<F>(src, f);
+	} else {
+		srcData = nullptr;
+	}
 
-	if (m_sa){
+	if (m_sa && srcData){
 		if (!m_sa->write(block->resno,
 						grk_rect_u32(block->x,
 									  block->y,

@@ -285,7 +285,7 @@ template<typename T> struct TileComponentWindowBuffer {
 	}
 
 	/**
-	 * Tranform code block offsets to either band coordinates or resolution coordinates
+	 * Tranform code block offsets to canvas coordinates
 	 *
 	 * @param resno resolution number
 	 * @param orientation band orientation {LL,HL,LH,HH}
@@ -293,7 +293,7 @@ template<typename T> struct TileComponentWindowBuffer {
 	 * @param offsety y offset of code block in tile component coordinates
 	 *
 	 */
-	void transform(uint8_t resno,eBandOrientation orientation, uint32_t &offsetx, uint32_t &offsety) const {
+	void transformToCanvasCoordinates(uint8_t resno,eBandOrientation orientation, uint32_t &offsetx, uint32_t &offsety) const {
 		assert(resno < m_tileCompResolutions.size());
 
 		auto res = m_tileCompResolutions[resno];
