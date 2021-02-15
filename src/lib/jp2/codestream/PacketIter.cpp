@@ -292,7 +292,7 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 									J2K_T2_MODE t2_mode) {
 	auto tcps = cp->tcps + tileno;
 	auto poc = tcps->progression + pino;
-	auto prog = j2k_convert_progression_order(poc->prg);
+	auto prog = CodeStream::convert_progression_order(poc->prg);
 	auto cur_pi = pi + pino;
 	auto cur_pi_prog = &cur_pi->prog;
 	cur_pi_prog->prg = poc->prg;

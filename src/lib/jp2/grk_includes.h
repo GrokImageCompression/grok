@@ -174,7 +174,6 @@ static inline long grk_lrintf(float f) {
 #include "FileFormat.h"
 #include "FileFormatCompress.h"
 #include "FileFormatDecompress.h"
-#include "markers.h"
 #include "Dump.h"
 #include "BitIO.h"
 #include "TagTree.h"

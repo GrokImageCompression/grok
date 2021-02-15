@@ -100,10 +100,6 @@ const uint32_t default_number_mct_records = 10;
 struct TileProcessor;
 class GrkImage;
 
-typedef bool (*j2k_procedure)(CodeStream *codeStream);
-
-typedef bool (*marker_callback)(CodeStream *codeStream, uint8_t *p_header_data, uint16_t header_size);
-
 typedef std::function<bool(void)>  PROCEDURE_FUNC;
 typedef std::function<bool(uint8_t *p_header_data, uint16_t header_size)>  DECOMPRESS_MARKER_FUNC;
 
@@ -212,7 +208,7 @@ public:
 	 *
 	 * @return      true                            if all the procedures were successfully executed.
 	 */
-	bool exec(std::vector<j2k_procedure> &p_procedure_list);
+	bool exec(std::vector<PROCEDURE_FUNC> &p_procedure_list);
 	/**
 	 * Checks for invalid number of tile-parts in SOT marker (TPsot==TNsot). See issue 254.
 	 *
@@ -799,17 +795,81 @@ public:
 
     void copy_tile_component_parameters(void);
 
+    /**
+     Converts an enum type progression order to string type
+     */
+    static char* convert_progression_order(GRK_PROG_ORDER prg_order);
 
+   /**
+      * Calculates the total number of tile parts needed by the compressor to
+      * compress such an image. If not enough memory is available, then the function return false.
+      *
+      * @param       cp              coding parameters for the image.
+      * @param       p_nb_tile_parts total number of tile parts in whole image.
+      * @param       image           image to compress.
+
+      *
+      * @return true if the function was successful, false else.
+      */
+     bool calculate_tp(CodingParams *cp, uint16_t *p_nb_tile_parts, GrkImage *image);
+
+     bool read_header_procedure(void);
 
 private:
+
+
+     bool matrix_inversion_f(float *pSrcMatrix, float *pDestMatrix,
+     		uint32_t nb_compo);
+
+     void lupInvert(float *pSrcMatrix, float *pDestMatrix, uint32_t nb_compo,
+     		uint32_t *pPermutations, float *p_src_temp, float *p_dest_temp,
+     		float *p_swap_area);
+
+     bool lupDecompose(float *matrix, uint32_t *permutations,
+     		float *p_swap_area, uint32_t nb_compo);
+
+     void lupSolve(float *pResult, float *pMatrix, float *pVector,
+     		uint32_t *pPermutations, uint32_t nb_compo,
+     		float *p_intermediate_data);
+
+     /**
+      * Gets the number of tile parts used for the given change of progression (if any) and the given tile.
+      *
+      * @param               cp                      the coding parameters.
+      * @param               pino            the offset of the given poc (i.e. its position in the coding parameter).
+      * @param               tileno          the given tile.
+      *
+      * @return              the number of tile parts.
+      */
+     uint64_t get_num_tp(CodingParams *cp, uint32_t pino, uint16_t tileno);
+
+
+    /**
+     * Checks the progression order changes values. Tells of the poc given as input are valid.
+     * A nice message is outputted at errors.
+     *
+     * @param       p_pocs                the progression order changes.
+     * @param       nb_pocs               the number of progression order changes.
+     * @param       nb_resolutions        the number of resolutions.
+     * @param       numcomps              the number of components
+     * @param       numlayers             the number of layers.
+
+     *
+     * @return      true if the pocs are valid.
+     */
+    bool check_poc_val(const  grk_progression  *p_pocs, uint32_t nb_pocs,
+    		uint32_t nb_resolutions, uint32_t numcomps, uint32_t numlayers);
+
+    bool init_mct_encoding(TileCodingParams *p_tcp, GrkImage *p_image);
+
 	/* output image (for decompress) */
 	GrkImage *m_output_image;
 
 	/** the list of procedures to exec **/
-	std::vector<j2k_procedure> m_procedure_list;
+	std::vector<PROCEDURE_FUNC> m_procedure_list;
 
 	/** the list of validation procedures to follow to make sure the code is valid **/
-	std::vector<j2k_procedure> m_validation_list;
+	std::vector<PROCEDURE_FUNC> m_validation_list;
 
 
 	// stores header image information (decompress/compress)
@@ -854,10 +914,7 @@ private:
 /*@{*/
 /* ----------------------------------------------------------------------- */
 
-/**
- Converts an enum type progression order to string type
- */
-char* j2k_convert_progression_order(GRK_PROG_ORDER prg_order);
+
 
 /* ----------------------------------------------------------------------- */
 /*@}*/
@@ -866,6 +923,5 @@ char* j2k_convert_progression_order(GRK_PROG_ORDER prg_order);
 
 bool j2k_decompress_tile(CodeStream *codeStream, GrkImage *p_image, uint16_t tile_index);
 
-bool j2k_init_mct_encoding(TileCodingParams *p_tcp, GrkImage *p_image);
 
 }

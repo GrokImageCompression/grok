@@ -18,20 +18,14 @@
  *    Please see the LICENSE file in the root directory for details.
  *
  */
-
 #include "grk_includes.h"
 #include "ojph_arch.h"
 
 namespace grk {
 
+const uint32_t MCT_ELEMENT_SIZE[] = { 2, 4, 4, 8 };
 
-static const j2k_mct_function j2k_mct_read_functions_to_float[] = {
-		j2k_read_int16_to_float, j2k_read_int32_to_float,
-		j2k_read_float32_to_float, j2k_read_float64_to_float };
-
-static const j2k_mct_function j2k_mct_read_functions_to_int32[] = {
-		j2k_read_int16_to_int32, j2k_read_int32_to_int32,
-		j2k_read_float32_to_int32, j2k_read_float64_to_int32 };
+typedef void (*j2k_mct_function)(const void *p_src_data, void *p_dest_data,	uint64_t nb_elem);
 
 template<typename S, typename D> void j2k_write(const void *p_src_data,
 		void *p_dest_data, uint64_t nb_elem) {
@@ -44,55 +38,49 @@ template<typename S, typename D> void j2k_write(const void *p_src_data,
 	}
 }
 
-void j2k_read_int16_to_float(const void *p_src_data, void *p_dest_data,
-		uint64_t nb_elem) {
+void j2k_read_int16_to_float(const void *p_src_data, void *p_dest_data,	uint64_t nb_elem) {
 	j2k_write<int16_t, float>(p_src_data, p_dest_data, nb_elem);
 }
-void j2k_read_int32_to_float(const void *p_src_data, void *p_dest_data,
-		uint64_t nb_elem) {
+void j2k_read_int32_to_float(const void *p_src_data, void *p_dest_data,	uint64_t nb_elem) {
 	j2k_write<int32_t, float>(p_src_data, p_dest_data, nb_elem);
 }
-void j2k_read_float32_to_float(const void *p_src_data, void *p_dest_data,
-		uint64_t nb_elem) {
+void j2k_read_float32_to_float(const void *p_src_data, void *p_dest_data,uint64_t nb_elem) {
 	j2k_write<float, float>(p_src_data, p_dest_data, nb_elem);
 }
-void j2k_read_float64_to_float(const void *p_src_data, void *p_dest_data,
-		uint64_t nb_elem) {
+void j2k_read_float64_to_float(const void *p_src_data, void *p_dest_data,uint64_t nb_elem) {
 	j2k_write<double, float>(p_src_data, p_dest_data, nb_elem);
 }
-void j2k_read_int16_to_int32(const void *p_src_data, void *p_dest_data,
-		uint64_t nb_elem) {
+void j2k_read_int16_to_int32(const void *p_src_data, void *p_dest_data,uint64_t nb_elem) {
 	j2k_write<int16_t, int32_t>(p_src_data, p_dest_data, nb_elem);
 }
-void j2k_read_int32_to_int32(const void *p_src_data, void *p_dest_data,
-		uint64_t nb_elem) {
+void j2k_read_int32_to_int32(const void *p_src_data, void *p_dest_data,uint64_t nb_elem) {
 	j2k_write<int32_t, int32_t>(p_src_data, p_dest_data, nb_elem);
 }
-void j2k_read_float32_to_int32(const void *p_src_data, void *p_dest_data,
-		uint64_t nb_elem) {
+void j2k_read_float32_to_int32(const void *p_src_data, void *p_dest_data,uint64_t nb_elem) {
 	j2k_write<float, int32_t>(p_src_data, p_dest_data, nb_elem);
 }
-void j2k_read_float64_to_int32(const void *p_src_data, void *p_dest_data,
-		uint64_t nb_elem) {
+void j2k_read_float64_to_int32(const void *p_src_data, void *p_dest_data,uint64_t nb_elem) {
 	j2k_write<double, int32_t>(p_src_data, p_dest_data, nb_elem);
 }
-void j2k_write_float_to_int16(const void *p_src_data, void *p_dest_data,
-		uint64_t nb_elem) {
+void j2k_write_float_to_int16(const void *p_src_data, void *p_dest_data,uint64_t nb_elem) {
 	j2k_write<float, int16_t>(p_src_data, p_dest_data, nb_elem);
 }
-void j2k_write_float_to_int32(const void *p_src_data, void *p_dest_data,
-		uint64_t nb_elem) {
+void j2k_write_float_to_int32(const void *p_src_data, void *p_dest_data,uint64_t nb_elem) {
 	j2k_write<float, int32_t>(p_src_data, p_dest_data, nb_elem);
 }
-void j2k_write_float_to_float(const void *p_src_data, void *p_dest_data,
-		uint64_t nb_elem) {
+void j2k_write_float_to_float(const void *p_src_data, void *p_dest_data,uint64_t nb_elem) {
 	j2k_write<float, float>(p_src_data, p_dest_data, nb_elem);
 }
-void j2k_write_float_to_float64(const void *p_src_data, void *p_dest_data,
-		uint64_t nb_elem) {
+void j2k_write_float_to_float64(const void *p_src_data, void *p_dest_data,uint64_t nb_elem) {
 	j2k_write<float, double>(p_src_data, p_dest_data, nb_elem);
 }
 
+static const j2k_mct_function j2k_mct_read_functions_to_float[] = {
+		j2k_read_int16_to_float, j2k_read_int32_to_float,
+		j2k_read_float32_to_float, j2k_read_float64_to_float };
+static const j2k_mct_function j2k_mct_read_functions_to_int32[] = {
+		j2k_read_int16_to_int32, j2k_read_int32_to_int32,
+		j2k_read_float32_to_int32, j2k_read_float64_to_int32 };
 
 struct j2k_prog_order {
 	GRK_PROG_ORDER enum_prog;
@@ -103,697 +91,10 @@ static j2k_prog_order j2k_prog_order_list[] = { { GRK_CPRL, "CPRL" }, {
 		GRK_LRCP, "LRCP" }, { GRK_PCRL, "PCRL" }, { GRK_RLCP, "RLCP" }, {
 		GRK_RPCL, "RPCL" }, { (GRK_PROG_ORDER) -1, "" } };
 
-
 static const j2k_mct_function j2k_mct_write_functions_from_float[] = {
 		j2k_write_float_to_int16, j2k_write_float_to_int32,
 		j2k_write_float_to_float, j2k_write_float_to_float64 };
 
-/**
- * The read header procedure.
- *
- * @param       codeStream          JPEG 2000 code stream
- *
- */
-static bool j2k_read_header_procedure(CodeStream *codeStream);
-
-/**
- * The default compressing validation procedure without any extension.
- *
- * @param       codeStream          JPEG 2000 code stream
- *
- * @return true if the parameters are correct.
- */
-static bool j2k_compress_validation(CodeStream *codeStream);
-
-/**
- * The default decoding validation procedure without any extension.
- *
- * @param       codeStream          JPEG 2000 code stream
- *
- * @return true if the parameters are correct.
- */
-static bool j2k_decompress_validation(CodeStream *codeStream);
-
-/**
- * The mct compressing validation procedure.
- *
- * @param       codeStream          JPEG 2000 code stream
- *
- * @return true if the parameters are correct.
- */
-static bool j2k_mct_validation(CodeStream *codeStream);
-
-
-/**
- * Updates the rates of the tcp.
- *
- * @param       codeStream          JPEG 2000 code stream
- */
-static bool j2k_update_rates(CodeStream *codeStream);
-
-/**
- * Copies the decoding tile parameters onto all the tile parameters.
- * Creates also the tile decompressor.
- *
- * @param       codeStream          JPEG 2000 code stream
- */
-static bool j2k_copy_default_tcp(CodeStream *codeStream);
-
-/**
- * Read the tiles.
- *
- * @param       codeStream          JPEG 2000 code stream
- */
-static bool j2k_decompress_tiles(CodeStream *codeStream);
-
-/**
- * Gets the offset of the header.
- *
- * @param       codeStream          JPEG 2000 code stream
- */
-static bool j2k_get_end_header(CodeStream *codeStream);
-
-/**
- * Ends the compressing, i.e. frees memory.
- *
- * @param       codeStream          JPEG 2000 code stream
- */
-static bool j2k_end_encoding(CodeStream *codeStream);
-
-/**
- * Inits the Info
- *
- * @param       codeStream          JPEG 2000 code stream
- */
-static bool j2k_init_info(CodeStream *codeStream);
-
-
-/**
- * Checks the progression order changes values. Tells of the poc given as input are valid.
- * A nice message is outputted at errors.
- *
- * @param       p_pocs                the progression order changes.
- * @param       nb_pocs               the number of progression order changes.
- * @param       nb_resolutions        the number of resolutions.
- * @param       numcomps              the number of components
- * @param       numlayers             the number of layers.
-
- *
- * @return      true if the pocs are valid.
- */
-static bool j2k_check_poc_val(const  grk_progression  *p_pocs, uint32_t nb_pocs,
-		uint32_t nb_resolutions, uint32_t numcomps, uint32_t numlayers);
-
-/**
- * Gets the number of tile parts used for the given change of progression (if any) and the given tile.
- *
- * @param               cp                      the coding parameters.
- * @param               pino            the offset of the given poc (i.e. its position in the coding parameter).
- * @param               tileno          the given tile.
- *
- * @return              the number of tile parts.
- */
-static uint64_t j2k_get_num_tp(CodingParams *cp, uint32_t pino, uint16_t tileno);
-
-/**
- * Calculates the total number of tile parts needed by the compressor to
- * compress such an image. If not enough memory is available, then the function return false.
- *
- * @param       cp              coding parameters for the image.
- * @param       p_nb_tile_parts total number of tile parts in whole image.
- * @param       image           image to compress.
-
- *
- * @return true if the function was successful, false else.
- */
-static bool j2k_calculate_tp(CodingParams *cp, uint16_t *p_nb_tile_parts, GrkImage *image);
-
-/**
- * LUP decomposition
- */
-static bool lupDecompose(float *matrix, uint32_t *permutations,
-		float *p_swap_area, uint32_t nb_compo);
-/**
- * LUP solving
- */
-static void lupSolve(float *pResult, float *pMatrix, float *pVector,
-		uint32_t *pPermutations, uint32_t nb_compo, float *p_intermediate_data);
-
-/**
- *LUP inversion (call with the result of lupDecompose)
- */
-static void lupInvert(float *pSrcMatrix, float *pDestMatrix, uint32_t nb_compo,
-		uint32_t *pPermutations, float *p_src_temp, float *p_dest_temp,
-		float *p_swap_area);
-
-static bool j2k_decompress_validation(CodeStream *codeStream) {
-
-	return codeStream->decompress_validation();
-}
-static bool j2k_read_header_procedure(CodeStream *codeStream) {
-	bool rc = false;
-	try {
-		rc = codeStream->readHeaderProcedure();
-	} catch (InvalidMarkerException &ime){
-		GRK_ERROR("Found invalid marker : 0x%x", ime.m_marker);
-		rc = false;
-	}
-	return rc;
-}
-static bool j2k_decompress_tiles(CodeStream *codeStream) {
-	return codeStream->decompressTiles();
-}
-static bool j2k_decompress_tile(CodeStream *codeStream) {
-	return codeStream->decompressTile();
-}
-bool j2k_check_poc_val(const grk_progression *p_pocs, uint32_t nb_pocs,
-		uint32_t nb_resolutions, uint32_t num_comps, uint32_t num_layers) {
-	uint32_t index, resno, compno, layno;
-	uint32_t i;
-	uint32_t step_c = 1;
-	uint32_t step_r = num_comps * step_c;
-	uint32_t step_l = nb_resolutions * step_r;
-	if (nb_pocs == 0)
-		return true;
-
-	auto packet_array = new uint32_t[step_l * num_layers];
-	memset(packet_array, 0, step_l * num_layers * sizeof(uint32_t));
-
-	/* iterate through all the pocs */
-	for (i = 0; i < nb_pocs; ++i) {
-		index = step_r * p_pocs->resS;
-		/* take each resolution for each poc */
-		for (resno = p_pocs->resS;	resno < std::min<uint32_t>(p_pocs->resE, nb_resolutions);++resno) {
-			uint32_t res_index = index + p_pocs->compS * step_c;
-
-			/* take each comp of each resolution for each poc */
-			for (compno = p_pocs->compS;compno < std::min<uint32_t>(p_pocs->compE, num_comps);	++compno) {
-				uint32_t comp_index = res_index + 0 * step_l;
-
-				/* and finally take each layer of each res of ... */
-				for (layno = 0;
-						layno < std::min<uint32_t>(p_pocs->layE, num_layers);
-						++layno) {
-					/*index = step_r * resno + step_c * compno + step_l * layno;*/
-					packet_array[comp_index] = 1;
-					comp_index += step_l;
-				}
-				res_index += step_c;
-			}
-			index += step_r;
-		}
-		++p_pocs;
-	}
-	bool loss = false;
-	index = 0;
-	for (layno = 0; layno < num_layers; ++layno) {
-		for (resno = 0; resno < nb_resolutions; ++resno) {
-			for (compno = 0; compno < num_comps; ++compno) {
-				loss |= (packet_array[index] != 1);
-				index += step_c;
-			}
-		}
-	}
-	if (loss)
-		GRK_ERROR("Missing packets possible loss of data");
-	delete[] packet_array;
-
-	return !loss;
-}
-static bool j2k_mct_validation(CodeStream *codeStream) {
-	return codeStream->mct_validation();
-}
-static bool j2k_compress_validation(CodeStream *codeStream) {
-	return codeStream->compress_validation();
-}
-bool j2k_init_mct_encoding(TileCodingParams *p_tcp, GrkImage *p_image) {
-	uint32_t i;
-	uint32_t indix = 1;
-	grk_mct_data *mct_deco_data = nullptr, *mct_offset_data = nullptr;
-	grk_simple_mcc_decorrelation_data *mcc_data;
-	uint32_t mct_size, nb_elem;
-	float *data, *current_data;
-	TileComponentCodingParams *tccp;
-
-	assert(p_tcp != nullptr);
-
-	if (p_tcp->mct != 2)
-		return true;
-
-	if (p_tcp->m_mct_decoding_matrix) {
-		if (p_tcp->m_nb_mct_records == p_tcp->m_nb_max_mct_records) {
-			p_tcp->m_nb_max_mct_records += default_number_mct_records;
-
-			auto new_mct_records = (grk_mct_data*) grk_realloc(p_tcp->m_mct_records,
-					p_tcp->m_nb_max_mct_records * sizeof(grk_mct_data));
-			if (!new_mct_records) {
-				grk_free(p_tcp->m_mct_records);
-				p_tcp->m_mct_records = nullptr;
-				p_tcp->m_nb_max_mct_records = 0;
-				p_tcp->m_nb_mct_records = 0;
-				/* GRK_ERROR( "Not enough memory to set up mct compressing"); */
-				return false;
-			}
-			p_tcp->m_mct_records = new_mct_records;
-			mct_deco_data = p_tcp->m_mct_records + p_tcp->m_nb_mct_records;
-
-			memset(mct_deco_data, 0,
-					(p_tcp->m_nb_max_mct_records - p_tcp->m_nb_mct_records)
-							* sizeof(grk_mct_data));
-		}
-		mct_deco_data = p_tcp->m_mct_records + p_tcp->m_nb_mct_records;
-		grk_free(mct_deco_data->m_data);
-		mct_deco_data->m_data = nullptr;
-
-		mct_deco_data->m_index = indix++;
-		mct_deco_data->m_array_type = MCT_TYPE_DECORRELATION;
-		mct_deco_data->m_element_type = MCT_TYPE_FLOAT;
-		nb_elem = (uint32_t)p_image->numcomps * p_image->numcomps;
-		mct_size = nb_elem * MCT_ELEMENT_SIZE[mct_deco_data->m_element_type];
-		mct_deco_data->m_data = (uint8_t*) grk_malloc(mct_size);
-
-		if (!mct_deco_data->m_data)
-			return false;
-
-		j2k_mct_write_functions_from_float[mct_deco_data->m_element_type](
-				p_tcp->m_mct_decoding_matrix, mct_deco_data->m_data, nb_elem);
-
-		mct_deco_data->m_data_size = mct_size;
-		++p_tcp->m_nb_mct_records;
-	}
-
-	if (p_tcp->m_nb_mct_records == p_tcp->m_nb_max_mct_records) {
-		grk_mct_data *new_mct_records;
-		p_tcp->m_nb_max_mct_records += default_number_mct_records;
-		new_mct_records = (grk_mct_data*) grk_realloc(p_tcp->m_mct_records,
-				p_tcp->m_nb_max_mct_records * sizeof(grk_mct_data));
-		if (!new_mct_records) {
-			grk_free(p_tcp->m_mct_records);
-			p_tcp->m_mct_records = nullptr;
-			p_tcp->m_nb_max_mct_records = 0;
-			p_tcp->m_nb_mct_records = 0;
-			/* GRK_ERROR( "Not enough memory to set up mct compressing"); */
-			return false;
-		}
-		p_tcp->m_mct_records = new_mct_records;
-		mct_offset_data = p_tcp->m_mct_records + p_tcp->m_nb_mct_records;
-
-		memset(mct_offset_data, 0,
-				(p_tcp->m_nb_max_mct_records - p_tcp->m_nb_mct_records)
-						* sizeof(grk_mct_data));
-		if (mct_deco_data)
-			mct_deco_data = mct_offset_data - 1;
-	}
-	mct_offset_data = p_tcp->m_mct_records + p_tcp->m_nb_mct_records;
-	if (mct_offset_data->m_data) {
-		grk_free(mct_offset_data->m_data);
-		mct_offset_data->m_data = nullptr;
-	}
-	mct_offset_data->m_index = indix++;
-	mct_offset_data->m_array_type = MCT_TYPE_OFFSET;
-	mct_offset_data->m_element_type = MCT_TYPE_FLOAT;
-	nb_elem = p_image->numcomps;
-	mct_size = nb_elem * MCT_ELEMENT_SIZE[mct_offset_data->m_element_type];
-	mct_offset_data->m_data = (uint8_t*) grk_malloc(mct_size);
-	if (!mct_offset_data->m_data)
-		return false;
-
-	data = (float*) grk_malloc(nb_elem * sizeof(float));
-	if (!data) {
-		grk_free(mct_offset_data->m_data);
-		mct_offset_data->m_data = nullptr;
-		return false;
-	}
-	tccp = p_tcp->tccps;
-	current_data = data;
-
-	for (i = 0; i < nb_elem; ++i) {
-		*(current_data++) = (float) (tccp->m_dc_level_shift);
-		++tccp;
-	}
-	j2k_mct_write_functions_from_float[mct_offset_data->m_element_type](data,
-			mct_offset_data->m_data, nb_elem);
-	grk_free(data);
-	mct_offset_data->m_data_size = mct_size;
-	++p_tcp->m_nb_mct_records;
-
-	if (p_tcp->m_nb_mcc_records == p_tcp->m_nb_max_mcc_records) {
-		grk_simple_mcc_decorrelation_data *new_mcc_records;
-		p_tcp->m_nb_max_mcc_records += default_number_mct_records;
-		new_mcc_records = (grk_simple_mcc_decorrelation_data*) grk_realloc(
-				p_tcp->m_mcc_records,
-				p_tcp->m_nb_max_mcc_records
-						* sizeof(grk_simple_mcc_decorrelation_data));
-		if (!new_mcc_records) {
-			grk_free(p_tcp->m_mcc_records);
-			p_tcp->m_mcc_records = nullptr;
-			p_tcp->m_nb_max_mcc_records = 0;
-			p_tcp->m_nb_mcc_records = 0;
-			/* GRK_ERROR( "Not enough memory to set up mct compressing"); */
-			return false;
-		}
-		p_tcp->m_mcc_records = new_mcc_records;
-		mcc_data = p_tcp->m_mcc_records + p_tcp->m_nb_mcc_records;
-		memset(mcc_data, 0,
-				(p_tcp->m_nb_max_mcc_records - p_tcp->m_nb_mcc_records)
-						* sizeof(grk_simple_mcc_decorrelation_data));
-
-	}
-	mcc_data = p_tcp->m_mcc_records + p_tcp->m_nb_mcc_records;
-	mcc_data->m_decorrelation_array = mct_deco_data;
-	mcc_data->m_is_irreversible = 1;
-	mcc_data->m_nb_comps = p_image->numcomps;
-	mcc_data->m_index = indix++;
-	mcc_data->m_offset_array = mct_offset_data;
-	++p_tcp->m_nb_mcc_records;
-
-	return true;
-}
-
-static bool j2k_end_encoding(CodeStream *codeStream) {
-	(void) codeStream;
-	return true;
-}
-static bool j2k_init_info(CodeStream *codeStream) {
-	assert(codeStream);
-
-	return j2k_calculate_tp(&codeStream->m_cp,
-							&codeStream->m_encoder.m_total_tile_parts,
-							codeStream->getHeaderImage());
-}
-
-static bool j2k_get_end_header(CodeStream *codeStream) {
-	return codeStream->get_end_header();
-}
-static bool j2k_copy_default_tcp(CodeStream *codeStream) {
-	return codeStream->copy_default_tcp();
-}
-static bool j2k_update_rates(CodeStream *codeStream) {
-	return codeStream->update_rates();
-}
-char* j2k_convert_progression_order(GRK_PROG_ORDER prg_order) {
-	j2k_prog_order *po;
-	for (po = j2k_prog_order_list; po->enum_prog != -1; po++) {
-		if (po->enum_prog == prg_order)
-			return (char*) po->str_prog;
-	}
-
-	return po->str_prog;
-}
-static uint64_t j2k_get_num_tp(CodingParams *cp, uint32_t pino,	uint16_t tileno) {
-	uint64_t num_tp = 1;
-
-	/*  preconditions */
-	assert(tileno < (cp->t_grid_width * cp->t_grid_height));
-	assert(pino < (cp->tcps[tileno].numpocs + 1));
-
-	/* get the given tile coding parameter */
-	auto tcp = &cp->tcps[tileno];
-	assert(tcp != nullptr);
-
-	auto current_poc = &(tcp->progression[pino]);
-	assert(current_poc != 0);
-
-	/* get the progression order as a character string */
-	auto prog = j2k_convert_progression_order(tcp->prg);
-	assert(strlen(prog) > 0);
-
-	if (cp->m_coding_params.m_enc.m_tp_on) {
-		for (uint32_t i = 0; i < 4; ++i) {
-			switch (prog[i]) {
-			/* component wise */
-			case 'C':
-				num_tp *= current_poc->tpCompE;
-				break;
-				/* resolution wise */
-			case 'R':
-				num_tp *= current_poc->tpResE;
-				break;
-				/* precinct wise */
-			case 'P':
-				num_tp *= current_poc->tpPrecE;
-				break;
-				/* layer wise */
-			case 'L':
-				num_tp *= current_poc->tpLayE;
-				break;
-			}
-			//we start a new tile part with every progression change
-			if (cp->m_coding_params.m_enc.m_tp_flag == prog[i]) {
-				cp->m_coding_params.m_enc.m_tp_pos = i;
-				break;
-			}
-		}
-	} else {
-		num_tp = 1;
-	}
-	return num_tp;
-}
-
-static bool j2k_calculate_tp(CodingParams *cp, uint16_t *p_nb_tile_parts,
-		GrkImage *image) {
-	assert(p_nb_tile_parts != nullptr);
-	assert(cp != nullptr);
-	assert(image != nullptr);
-
-	uint32_t nb_tiles = (uint16_t) (cp->t_grid_width * cp->t_grid_height);
-	*p_nb_tile_parts = 0;
-	auto tcp = cp->tcps;
-	for (uint16_t tileno = 0; tileno < nb_tiles; ++tileno) {
-		uint8_t totnum_tp = 0;
-		pi_update_params_compress(image, cp, tileno);
-		for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
-			uint64_t num_tp = j2k_get_num_tp(cp, pino, tileno);
-			if (num_tp > max_num_tile_parts_per_tile){
-				GRK_ERROR("Number of tile parts %d exceeds maximum number of "
-						"tile parts %d", num_tp,max_num_tile_parts_per_tile );
-				return false;
-			}
-
-			uint64_t total = num_tp + *p_nb_tile_parts;
-			if (total > max_num_tile_parts){
-				GRK_ERROR("Total number of tile parts %d exceeds maximum total number of "
-						"tile parts %d", total,max_num_tile_parts );
-				return false;
-			}
-
-			*p_nb_tile_parts = (uint16_t)(*p_nb_tile_parts + num_tp);
-			totnum_tp = (uint8_t) (totnum_tp + num_tp);
-		}
-		tcp->m_nb_tile_parts = totnum_tp;
-		++tcp;
-	}
-
-	return true;
-}
-
-/*
- ==========================================================
- Matric inversion interface
- ==========================================================
- */
-/**
- * Matrix inversion.
- */
-static bool matrix_inversion_f(float *pSrcMatrix, float *pDestMatrix,
-		uint32_t nb_compo) {
-	uint8_t *data = nullptr;
-	uint32_t permutation_size = nb_compo * (uint32_t) sizeof(uint32_t);
-	uint32_t swap_size = nb_compo * (uint32_t) sizeof(float);
-	uint32_t total_size = permutation_size + 3 * swap_size;
-	uint32_t *lPermutations = nullptr;
-	float *double_data = nullptr;
-
- data = (uint8_t*) grk_malloc(total_size);
-	if (data == 0) {
-		return false;
-	}
-	lPermutations = (uint32_t*) data;
- double_data = (float*) (data + permutation_size);
-	memset(lPermutations, 0, permutation_size);
-
-	if (!lupDecompose(pSrcMatrix, lPermutations, double_data, nb_compo)) {
-		grk_free(data);
-		return false;
-	}
-
-	lupInvert(pSrcMatrix, pDestMatrix, nb_compo, lPermutations, double_data,
-		 double_data + nb_compo, double_data + 2 * nb_compo);
-	grk_free(data);
-
-	return true;
-}
-
-static bool lupDecompose(float *matrix, uint32_t *permutations,
-		float *p_swap_area, uint32_t nb_compo) {
-	uint32_t *tmpPermutations = permutations;
-	uint32_t *dstPermutations;
-	uint32_t k2 = 0, t;
-	float temp;
-	uint32_t i, j, k;
-	uint32_t lLastColum = nb_compo - 1;
-	uint32_t lSwapSize = nb_compo * (uint32_t) sizeof(float);
-	auto lTmpMatrix = matrix;
-	uint32_t offset = 1;
-	uint32_t lStride = nb_compo - 1;
-
-	/*initialize permutations */
-	for (i = 0; i < nb_compo; ++i) {
-		*tmpPermutations++ = i;
-	}
-	/* now make a pivot with column switch */
-	tmpPermutations = permutations;
-	for (k = 0; k < lLastColum; ++k) {
-		float p = 0.0;
-
-		/* take the middle element */
-		auto lColumnMatrix = lTmpMatrix + k;
-
-		/* make permutation with the biggest value in the column */
-		for (i = k; i < nb_compo; ++i) {
-			temp = ((*lColumnMatrix > 0) ? *lColumnMatrix : -(*lColumnMatrix));
-			if (temp > p) {
-				p = temp;
-				k2 = i;
-			}
-			/* next line */
-			lColumnMatrix += nb_compo;
-		}
-
-		/* a whole rest of 0 -> non singular */
-		if (p == 0.0) {
-			return false;
-		}
-
-		/* should we permute ? */
-		if (k2 != k) {
-			/*exchange of line */
-			/* k2 > k */
-			dstPermutations = tmpPermutations + k2 - k;
-			/* swap indices */
-			t = *tmpPermutations;
-			*tmpPermutations = *dstPermutations;
-			*dstPermutations = t;
-
-			/* and swap entire line. */
-			lColumnMatrix = lTmpMatrix + (k2 - k) * nb_compo;
-			memcpy(p_swap_area, lColumnMatrix, lSwapSize);
-			memcpy(lColumnMatrix, lTmpMatrix, lSwapSize);
-			memcpy(lTmpMatrix, p_swap_area, lSwapSize);
-		}
-
-		/* now update data in the rest of the line and line after */
-		auto lDestMatrix = lTmpMatrix + k;
-		lColumnMatrix = lDestMatrix + nb_compo;
-		/* take the middle element */
-		temp = *(lDestMatrix++);
-
-		/* now compute up data (i.e. coeff up of the diagonal). */
-		for (i = offset; i < nb_compo; ++i) {
-			/*lColumnMatrix; */
-			/* divide the lower column elements by the diagonal value */
-
-			/* matrix[i][k] /= matrix[k][k]; */
-			/* p = matrix[i][k] */
-			p = *lColumnMatrix / temp;
-			*(lColumnMatrix++) = p;
-
-			for (j = /* k + 1 */offset; j < nb_compo; ++j) {
-				/* matrix[i][j] -= matrix[i][k] * matrix[k][j]; */
-				*(lColumnMatrix++) -= p * (*(lDestMatrix++));
-			}
-			/* come back to the k+1th element */
-			lDestMatrix -= lStride;
-			/* go to kth element of the next line */
-			lColumnMatrix += k;
-		}
-
-		/* offset is now k+2 */
-		++offset;
-		/* 1 element less for stride */
-		--lStride;
-		/* next line */
-		lTmpMatrix += nb_compo;
-		/* next permutation element */
-		++tmpPermutations;
-	}
-	return true;
-}
-
-static void lupSolve(float *pResult, float *pMatrix, float *pVector,
-		uint32_t *pPermutations, uint32_t nb_compo,
-		float *p_intermediate_data) {
-	int32_t k;
-	uint32_t i, j;
-	float sum;
-	uint32_t lStride = nb_compo + 1;
-	float *lCurrentPtr;
-	float *lIntermediatePtr;
-	float *lDestPtr;
-	float *lTmpMatrix;
-	float *lLineMatrix = pMatrix;
-	float *lBeginPtr = pResult + nb_compo - 1;
-	float *lGeneratedData;
-	uint32_t *lCurrentPermutationPtr = pPermutations;
-
-	lIntermediatePtr = p_intermediate_data;
-	lGeneratedData = p_intermediate_data + nb_compo - 1;
-
-	for (i = 0; i < nb_compo; ++i) {
-		sum = 0.0;
-		lCurrentPtr = p_intermediate_data;
-		lTmpMatrix = lLineMatrix;
-		for (j = 1; j <= i; ++j) {
-			/* sum += matrix[i][j-1] * y[j-1]; */
-			sum += (*(lTmpMatrix++)) * (*(lCurrentPtr++));
-		}
-		/*y[i] = pVector[pPermutations[i]] - sum; */
-		*(lIntermediatePtr++) = pVector[*(lCurrentPermutationPtr++)] - sum;
-		lLineMatrix += nb_compo;
-	}
-
-	/* we take the last point of the matrix */
-	lLineMatrix = pMatrix + nb_compo * nb_compo - 1;
-
-	/* and we take after the last point of the destination vector */
-	lDestPtr = pResult + nb_compo;
-
-	assert(nb_compo != 0);
-	for (k = (int32_t) nb_compo - 1; k != -1; --k) {
-		sum = 0.0;
-		lTmpMatrix = lLineMatrix;
-		float u = *(lTmpMatrix++);
-		lCurrentPtr = lDestPtr--;
-		for (j = (uint32_t) (k + 1); j < nb_compo; ++j) {
-			/* sum += matrix[k][j] * x[j] */
-			sum += (*(lTmpMatrix++)) * (*(lCurrentPtr++));
-		}
-		/*x[k] = (y[k] - sum) / u; */
-		*(lBeginPtr--) = (*(lGeneratedData--) - sum) / u;
-		lLineMatrix -= lStride;
-	}
-}
-
-static void lupInvert(float *pSrcMatrix, float *pDestMatrix, uint32_t nb_compo,
-		uint32_t *pPermutations, float *p_src_temp, float *p_dest_temp,
-		float *p_swap_area) {
-	uint32_t j, i;
-	auto lLineMatrix = pDestMatrix;
-	uint32_t lSwapSize = nb_compo * (uint32_t) sizeof(float);
-
-	for (j = 0; j < nb_compo; ++j) {
-		auto lCurrentPtr = lLineMatrix++;
-		memset(p_src_temp, 0, lSwapSize);
-		p_src_temp[j] = 1.0;
-		lupSolve(p_dest_temp, pSrcMatrix, p_src_temp, pPermutations, nb_compo,
-				p_swap_area);
-
-		for (i = 0; i < nb_compo; ++i) {
-			*(lCurrentPtr) = p_dest_temp[i];
-			lCurrentPtr += nb_compo;
-		}
-	}
-}
 
 CodeStream::CodeStream(bool decompress, BufferedStream *stream) : cstr_index(nullptr),
 																m_output_image(nullptr),
@@ -876,23 +177,20 @@ CodeStream::~CodeStream(){
 	for (auto &val : marker_map)
 		delete val.second;
 }
-
-bool CodeStream::exec(std::vector<j2k_procedure> &procs) {
-    bool result = std::all_of(procs.begin(), procs.end(),[&](const j2k_procedure &proc){
-    	return proc(this);
+bool CodeStream::exec(std::vector<PROCEDURE_FUNC> &procs) {
+    bool result = std::all_of(procs.begin(), procs.end(),[](const PROCEDURE_FUNC &proc){
+    	return proc();
     });
 	procs.clear();
 
 	return result;
 }
-
 uint16_t CodeStream::getCurrentMarker(){
 	return m_curr_marker;
 }
 bool   CodeStream::isWholeTileDecompress(){
 	return wholeTileDecompress;
 }
-
 grk_plugin_tile* CodeStream::getCurrentPluginTile(){
 	return current_plugin_tile;
 }
@@ -900,19 +198,15 @@ grk_plugin_tile* CodeStream::getCurrentPluginTile(){
 BufferedStream* CodeStream::getStream(){
 	return m_stream;
 }
-
 GrkImage* CodeStream::getHeaderImage(void){
 	return m_headerImage;
 }
-
 int32_t CodeStream::tileIndexToDecode(){
 	return m_tile_ind_to_dec;
 }
-
 GrkImage* CodeStream::getCompositeImage(){
 	return m_tileCache->getComposite();
 }
-
 TileProcessor* CodeStream::allocateProcessor(uint16_t tile_index){
 	auto tileCache = m_tileCache->get(tile_index);
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
@@ -936,12 +230,10 @@ TileProcessor* CodeStream::allocateProcessor(uint16_t tile_index){
 TileProcessor* CodeStream::currentProcessor(void){
 	return m_tileProcessor;
 }
-
 GrkImage* CodeStream::getImage(uint16_t tileIndex){
 	auto entry = m_tileCache->get(tileIndex);
 	return entry ? entry->image : nullptr;
 }
-
 GrkImage* CodeStream::getImage(){
 	return getCompositeImage();
 }
@@ -949,7 +241,6 @@ GrkImage* CodeStream::getImage(){
 std::vector<GrkImage*> CodeStream::getAllImages(void){
 	return m_tileCache->getAllImages();
 }
-
 /** Main header reading function handler */
 bool CodeStream::readHeader(grk_header_info  *header_info){
 	if (m_headerError)
@@ -959,7 +250,7 @@ bool CodeStream::readHeader(grk_header_info  *header_info){
 		m_headerImage = new GrkImage();
 
 		/* customization of the validation */
-		m_validation_list.push_back((j2k_procedure) j2k_decompress_validation);
+		m_validation_list.push_back([this] {return decompress_validation();});
 
 		/* validation of the parameters codec */
 		if (!exec(m_validation_list)){
@@ -967,9 +258,9 @@ bool CodeStream::readHeader(grk_header_info  *header_info){
 			return false;
 		}
 
-		m_procedure_list.push_back(	(j2k_procedure) j2k_read_header_procedure);
+		m_procedure_list.push_back([this] {return read_header_procedure();});
 		// custom procedures here
-		m_procedure_list.push_back(	(j2k_procedure) j2k_copy_default_tcp);
+		m_procedure_list.push_back([this] {return copy_default_tcp();});
 
 		/* read header */
 		if (!exec(m_procedure_list)){
@@ -1024,8 +315,6 @@ bool CodeStream::readHeader(grk_header_info  *header_info){
 	}
 	return true;
 }
-
-
 bool CodeStream::setDecompressWindow(grk_rect_u32 window) {
 	auto cp = &(m_cp);
 	auto image = m_headerImage;
@@ -1115,7 +404,16 @@ bool CodeStream::setDecompressWindow(grk_rect_u32 window) {
 
 	return true;
 }
-
+bool CodeStream::read_header_procedure(void) {
+	bool rc = false;
+	try {
+		rc = readHeaderProcedure();
+	} catch (InvalidMarkerException &ime){
+		GRK_ERROR("Found invalid marker : 0x%x", ime.m_marker);
+		rc = false;
+	}
+	return rc;
+}
 bool CodeStream::readHeaderProcedure(void) {
 	bool has_siz = false;
 	bool has_cod = false;
@@ -1230,7 +528,7 @@ void CodeStream::initDecompress(grk_dparameters  *parameters){
 }
 bool CodeStream::decompress( grk_plugin_tile *tile){
 	/* customization of the decoding */
-	m_procedure_list.push_back((j2k_procedure) j2k_decompress_tiles);
+	m_procedure_list.push_back([this] {return decompressTiles();});
 	current_plugin_tile = tile;
 
 	return exec_decompress();
@@ -1258,8 +556,6 @@ bool CodeStream::exec_decompress(void){
 
 	return true;
 }
-
-
 bool CodeStream::decompressTiles(void) {
 	bool go_on = true;
 	uint16_t numTilesToDecompress = (uint16_t)(m_cp.t_grid_height* m_cp.t_grid_width);
@@ -1386,8 +682,6 @@ cleanup:
 	}
 	return success;
 }
-
-
 bool CodeStream::decompressTile(uint16_t tile_index){
 	auto entry = m_tileCache->get(tile_index);
 	if (entry && entry->processor && entry->image)
@@ -1459,11 +753,10 @@ bool CodeStream::decompressTile(uint16_t tile_index){
 		m_cp.tcps[i].m_tile_part_index = -1;
 
 	/* customization of the decoding */
-	m_procedure_list.push_back((j2k_procedure) j2k_decompress_tile);
+	m_procedure_list.push_back([this] {return decompressTile();});
 
 	return exec_decompress();
 }
-
 /*
  * Read and decompress one tile.
  */
@@ -1543,7 +836,6 @@ bool CodeStream::decompressTile() {
 cleanup:
 	return rc;
 }
-
 bool CodeStream::decompress_tile_t2t1(TileProcessor *tileProcessor) {
 	auto decompressor = &m_decompressor;
 	uint16_t tile_index = tileProcessor->m_tile_index;
@@ -1613,11 +905,9 @@ bool CodeStream::decompress_validation(void) {
 
 	return is_valid;
 }
-
 void CodeStream::dump(uint32_t flag, FILE *out_stream){
 	j2k_dump(this, flag, out_stream);
 }
-
 bool CodeStream::process_marker(const marker_handler* marker_handler, uint16_t marker_size){
 	if (!m_marker_scratch) {
 		m_marker_scratch = new uint8_t[default_header_size];
@@ -1639,7 +929,6 @@ bool CodeStream::process_marker(const marker_handler* marker_handler, uint16_t m
 
 	return marker_handler->func(m_marker_scratch, marker_size);
 }
-
 bool CodeStream::isDecodingTilePartHeader() {
 	return (m_decompressor.getState() & J2K_DEC_STATE_TPH);
 }
@@ -1650,7 +939,6 @@ TileCodingParams* CodeStream::get_current_decode_tcp() {
 			m_cp.tcps + tileProcessor->m_tile_index :
 			m_decompressor.m_default_tcp;
 }
-
 bool CodeStream::read_short(uint16_t *val){
 	uint8_t temp[2];
 	if (m_stream->read(temp, 2) != 2)
@@ -1659,7 +947,6 @@ bool CodeStream::read_short(uint16_t *val){
 	grk_read<uint16_t>(temp, val);
 	return true;
 }
-
 const marker_handler* CodeStream::get_marker_handler(	uint16_t id) {
 	auto iter = marker_map.find(id);
 	if (iter != marker_map.end())
@@ -1669,7 +956,6 @@ const marker_handler* CodeStream::get_marker_handler(	uint16_t id) {
 		return nullptr;
 	}
 }
-
 bool CodeStream::read_marker(){
 	if (!read_short(&m_curr_marker))
 		return false;
@@ -1743,15 +1029,6 @@ bool CodeStream::read_unk(uint16_t *output_marker) {
 
 	return true;
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
-
 /** Reading function used after code stream if necessary */
 bool CodeStream::endDecompress(void){
 	return true;
@@ -1759,10 +1036,9 @@ bool CodeStream::endDecompress(void){
 
 bool CodeStream::start_compress(void){
 	/* customization of the validation */
-	m_validation_list.push_back(
-			(j2k_procedure) j2k_compress_validation);
+	m_validation_list.push_back([this] {return compress_validation();});
 	//custom validation here
-	m_validation_list.push_back((j2k_procedure) j2k_mct_validation);
+	m_validation_list.push_back([this] {return mct_validation();});
 
 	/* validation of the parameters codec */
 	if (!exec(m_validation_list))
@@ -1775,7 +1051,6 @@ bool CodeStream::start_compress(void){
 	/* write header */
 	return exec(m_procedure_list);
 }
-
 bool CodeStream::initCompress(grk_cparameters  *parameters,GrkImage *image){
 	if (!parameters || !image)
 		return false;
@@ -1912,7 +1187,7 @@ bool CodeStream::initCompress(grk_cparameters  *parameters,GrkImage *image){
 
 	if (parameters->numpocs) {
 		/* initialisation of POC */
-		if (!j2k_check_poc_val(parameters->progression, parameters->numpocs,
+		if (!check_poc_val(parameters->progression, parameters->numpocs,
 				parameters->numresolution, image->numcomps,
 				parameters->tcp_numlayers)) {
 			GRK_ERROR("Failed to initialize POC");
@@ -2119,7 +1394,7 @@ bool CodeStream::initCompress(grk_cparameters  *parameters,GrkImage *image){
 				tccp->m_dc_level_shift = dc_shift[i];
 			}
 
-			if (j2k_init_mct_encoding(tcp, image) == false) {
+			if (init_mct_encoding(tcp, image) == false) {
 				/* free will be handled by j2k_destroy */
 				GRK_ERROR("Failed to set up j2k mct compressing");
 				return false;
@@ -2219,7 +1494,6 @@ bool CodeStream::initCompress(grk_cparameters  *parameters,GrkImage *image){
 
 	return true;
 }
-
 bool CodeStream::compress(grk_plugin_tile* tile){
 	uint32_t nb_tiles = (uint32_t) m_cp.t_grid_height* m_cp.t_grid_width;
 	if (nb_tiles > max_num_tiles) {
@@ -2303,7 +1577,6 @@ cleanup:
 
 	return rc;
 }
-
 bool CodeStream::compressTile(uint16_t tile_index,	uint8_t *p_data, uint64_t uncompressed_data_size){
 	if (!p_data)
 		return false;
@@ -2335,18 +1608,15 @@ cleanup:
 
 	return rc;
 }
-
 bool CodeStream::endCompress(void){
 	/* customization of the compressing */
-	m_procedure_list.push_back((j2k_procedure) j2k_write_eoc);
+	m_procedure_list.push_back([this] {return write_eoc();});
 	if (m_cp.m_coding_params.m_enc.writeTLM)
-		m_procedure_list.push_back((j2k_procedure) j2k_write_tlm_end);
-	m_procedure_list.push_back((j2k_procedure) j2k_write_epc);
-	m_procedure_list.push_back((j2k_procedure) j2k_end_encoding);
+		m_procedure_list.push_back([this] {return write_tlm_end();});
+	m_procedure_list.push_back([this] {return write_epc();});
 
 	return  exec(m_procedure_list);
 }
-
 bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 	if (m_decompressor.getState() == J2K_DEC_STATE_EOC) {
 		m_curr_marker = J2K_MS_EOC;
@@ -2561,36 +1831,34 @@ bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 
 	return true;
 }
-
 bool CodeStream::init_header_writing(void) {
-	m_procedure_list.push_back((j2k_procedure) j2k_init_info);
-	m_procedure_list.push_back((j2k_procedure) j2k_write_soc);
-	m_procedure_list.push_back((j2k_procedure) j2k_write_siz);
+	m_procedure_list.push_back([this] {return calculate_tp(&m_cp,&m_encoder.m_total_tile_parts,getHeaderImage());});
+	m_procedure_list.push_back([this] {return write_soc();});
+	m_procedure_list.push_back([this] {return write_siz();});
 	if (m_cp.tcps[0].getIsHT())
-		m_procedure_list.push_back((j2k_procedure) j2k_write_cap);
-	m_procedure_list.push_back((j2k_procedure) j2k_write_cod);
-	m_procedure_list.push_back((j2k_procedure) j2k_write_qcd);
-	m_procedure_list.push_back((j2k_procedure) j2k_write_all_coc);
-	m_procedure_list.push_back((j2k_procedure) j2k_write_all_qcc);
+		m_procedure_list.push_back([this] {return write_cap();});
+	m_procedure_list.push_back([this] {return write_cod();});
+	m_procedure_list.push_back([this] {return write_qcd();});
+	m_procedure_list.push_back([this] {return write_all_coc();});
+	m_procedure_list.push_back([this] {return write_all_qcc();});
 
 	if (m_cp.m_coding_params.m_enc.writeTLM)
-		m_procedure_list.push_back((j2k_procedure) j2k_write_tlm_begin);
+		m_procedure_list.push_back([this] {return write_tlm_begin();});
 	if (m_cp.rsiz == GRK_PROFILE_CINEMA_4K)
-		m_procedure_list.push_back((j2k_procedure) j2k_write_poc);
+		m_procedure_list.push_back([this] {return write_poc();});
 
-	m_procedure_list.push_back((j2k_procedure) j2k_write_regions);
-	m_procedure_list.push_back((j2k_procedure) j2k_write_com);
+	m_procedure_list.push_back([this] {return write_regions();});
+	m_procedure_list.push_back([this] {return write_com();});
 	//begin custom procedures
 	if ((m_cp.rsiz & (GRK_PROFILE_PART2 | GRK_EXTENSION_MCT))
 			== (GRK_PROFILE_PART2 | GRK_EXTENSION_MCT)) {
-		m_procedure_list.push_back(
-				(j2k_procedure) j2k_write_mct_data_group);
+		m_procedure_list.push_back([this] {return write_mct_data_group();});
 	}
 	//end custom procedures
 
 	if (cstr_index)
-		m_procedure_list.push_back((j2k_procedure) j2k_get_end_header);
-	m_procedure_list.push_back((j2k_procedure) j2k_update_rates);
+		m_procedure_list.push_back([this] {return get_end_header();});
+	m_procedure_list.push_back([this] {return update_rates();});
 
 	return true;
 }
@@ -2610,7 +1878,7 @@ bool CodeStream::write_tile_part(TileProcessor *tileProcessor) {
 				auto tcp = m_cp.tcps + currentTileNumber;
 				auto image = m_headerImage;
 				uint32_t nb_comp = image->numcomps;
-				if (!j2k_write_poc(this))
+				if (!write_poc())
 					return false;
 				tile_part_bytes_written += getPocSize(nb_comp,
 						1 + tcp->numpocs);
@@ -2650,7 +1918,7 @@ bool CodeStream::post_write_tile(TileProcessor *tileProcessor) {
 	auto cp = &(m_cp);
 	auto tcp = cp->tcps + tileProcessor->m_tile_index;
 	// write tile parts for first progression order
-	uint64_t num_tp = j2k_get_num_tp(cp, 0, tileProcessor->m_tile_index);
+	uint64_t num_tp = get_num_tp(cp, 0, tileProcessor->m_tile_index);
 	if (num_tp > max_num_tile_parts_per_tile){
 		GRK_ERROR("Number of tile parts %d for first POC exceeds maximum number of tile parts %d", num_tp,max_num_tile_parts_per_tile );
 		return false;
@@ -2663,7 +1931,7 @@ bool CodeStream::post_write_tile(TileProcessor *tileProcessor) {
 	// write tile parts for remaining progression orders
 	for (pino = 1; pino <= tcp->numpocs; ++pino) {
 		tileProcessor->pino = pino;
-		num_tp = j2k_get_num_tp(cp, pino,
+		num_tp = get_num_tp(cp, pino,
 				tileProcessor->m_tile_index);
 		if (num_tp > max_num_tile_parts_per_tile){
 			GRK_ERROR("Number of tile parts %d exceeds maximum number of "
@@ -2680,7 +1948,6 @@ bool CodeStream::post_write_tile(TileProcessor *tileProcessor) {
 
 	return true;
 }
-
 bool CodeStream::copy_default_tcp(void) {
 	auto image = m_headerImage;
 	uint32_t nb_tiles = m_cp.t_grid_height * m_cp.t_grid_width;
@@ -2844,7 +2111,6 @@ bool CodeStream::update_rates(void) {
 
 	return true;
 }
-
 bool CodeStream::compress_validation() {
 	bool is_valid = true;
 	is_valid &=	(m_decompressor.getState() == J2K_DEC_STATE_NONE);
@@ -2868,10 +2134,6 @@ bool CodeStream::compress_validation() {
 
 	return is_valid;
 }
-
-
-
-
 
 /**************************
  * Read/Write Markers
@@ -2910,13 +2172,8 @@ bool CodeStream::add_mhmarker(grk_codestream_index *cstr_index,
 }
 
 bool CodeStream::write_soc() {
-
-	auto stream = getStream();
-	(void) this;
-
-	return stream->write_short(J2K_MS_SOC);
+	return m_stream->write_short(J2K_MS_SOC);
 }
-
 /**
  * Reads a SOC marker (Start of Codestream)
  * @param       this    JPEG 2000 code stream.
@@ -2924,11 +2181,7 @@ bool CodeStream::write_soc() {
 bool CodeStream::read_soc() {
 	uint8_t data[2];
 	uint16_t marker;
-
-
-	auto stream = getStream();
-
-	if (stream->read(data, 2) != 2)
+	if (m_stream->read(data, 2) != 2)
 		return false;
 
 	grk_read<uint16_t>(data, &marker);
@@ -2940,7 +2193,7 @@ bool CodeStream::read_soc() {
 
 	if (cstr_index) {
 		/* FIXME move it in a index structure included in this*/
-		cstr_index->main_head_start = stream->tell() - 2;
+		cstr_index->main_head_start = m_stream->tell() - 2;
 		/* Add the marker to the code stream index*/
 		if (!CodeStream::add_mhmarker(cstr_index, J2K_MS_SOC,
 				cstr_index->main_head_start, 2)) {
@@ -2950,14 +2203,11 @@ bool CodeStream::read_soc() {
 	}
 	return true;
 }
-
 bool CodeStream::write_siz() {
 	SIZMarker siz;
-	auto stream = getStream();
 
-	return siz.write(this,stream);
+	return siz.write(this,m_stream);
 }
-
 /**
  * Reads a CAP marker
  *
@@ -2969,7 +2219,6 @@ bool CodeStream::write_siz() {
 bool CodeStream::read_cap(  uint8_t *p_header_data,
 		uint16_t header_size) {
 	CodingParams *cp = &(m_cp);
-
 	if (header_size < sizeof(cp->pcap)) {
 		GRK_ERROR("Error with SIZ marker size");
 		return false;
@@ -2999,11 +2248,7 @@ bool CodeStream::read_cap(  uint8_t *p_header_data,
 
 	return true;
 }
-
 bool CodeStream::write_cap() {
-
-
-	auto stream = getStream();
 	auto cp = &(m_cp);
 	auto tcp = &cp->tcps[0];
 	auto tccp0 = &tcp->tccps[0];
@@ -3035,23 +2280,22 @@ bool CodeStream::write_cap() {
 	Ccap[0] = (uint16_t) (Ccap[0] | Bp);
 
 	/* CAP */
-	if (!stream->write_short(J2K_MS_CAP)) {
+	if (!m_stream->write_short(J2K_MS_CAP)) {
 		return false;
 	}
 
 	/* L_CAP */
-	if (!stream->write_short(Lcap))
+	if (!m_stream->write_short(Lcap))
 		return false;
 	/* PCAP */
-	if (!stream->write_int(Pcap))
+	if (!m_stream->write_int(Pcap))
 		return false;
 	/* CCAP */
-	if (!stream->write_short(Ccap[0]))
+	if (!m_stream->write_short(Ccap[0]))
 		return false;
 
 	return true;
 }
-
 /**
  * Reads a SIZ marker (image and tile size)
  *
@@ -3059,17 +2303,13 @@ bool CodeStream::write_cap() {
  * @param       p_header_data   header data
  * @param       header_size     size of header data
  */
-bool CodeStream::read_siz( uint8_t *p_header_data,
-		uint16_t header_size) {
+bool CodeStream::read_siz( uint8_t *p_header_data,	uint16_t header_size) {
 	SIZMarker siz;
 
 	return siz.read(this, p_header_data, header_size);
 }
 
 bool CodeStream::write_com() {
-
-	auto stream = getStream();
-
 	for (uint32_t i = 0; i < m_cp.num_comments; ++i) {
 		const char *comment = m_cp.comment[i];
 		uint16_t comment_size = m_cp.comment_len[i];
@@ -3086,20 +2326,19 @@ bool CodeStream::write_com() {
 		uint32_t totacom_size = (uint32_t) comment_size + 6;
 
 		/* COM */
-		if (!stream->write_short(J2K_MS_COM))
+		if (!m_stream->write_short(J2K_MS_COM))
 			return false;
 		/* L_COM */
-		if (!stream->write_short((uint16_t) (totacom_size - 2)))
+		if (!m_stream->write_short((uint16_t) (totacom_size - 2)))
 			return false;
-		if (!stream->write_short(m_cp.isBinaryComment[i] ? 0 : 1))
+		if (!m_stream->write_short(m_cp.isBinaryComment[i] ? 0 : 1))
 			return false;
-		if (!stream->write_bytes((uint8_t*) comment, comment_size))
+		if (!m_stream->write_bytes((uint8_t*) comment, comment_size))
 			return false;
 	}
 
 	return true;
 }
-
 /**
  * Reads a COM marker (comments)
  *
@@ -3108,12 +2347,9 @@ bool CodeStream::write_com() {
  * @param       header_size     size of header data
  *
  */
-bool CodeStream::read_com( uint8_t *p_header_data,
-		uint16_t header_size) {
-
+bool CodeStream::read_com( uint8_t *p_header_data,	uint16_t header_size) {
 	assert(p_header_data != nullptr);
 	assert(header_size != 0);
-
 	if (header_size < 2) {
 		GRK_ERROR("CodeStream::read_com: Corrupt COM segment ");
 		return false;
@@ -3160,31 +2396,28 @@ bool CodeStream::read_com( uint8_t *p_header_data,
 
 bool CodeStream::write_cod() {
 	uint32_t code_size;
-
-	auto stream = getStream();
-
 	auto cp = &(m_cp);
 	auto tcp = &cp->tcps[0];
 	code_size = 9
 			+ get_SPCod_SPCoc_size(0);
 
 	/* COD */
-	if (!stream->write_short(J2K_MS_COD))
+	if (!m_stream->write_short(J2K_MS_COD))
 		return false;
 	/* L_COD */
-	if (!stream->write_short((uint16_t) (code_size - 2)))
+	if (!m_stream->write_short((uint16_t) (code_size - 2)))
 		return false;
 	/* Scod */
-	if (!stream->write_byte((uint8_t) tcp->csty))
+	if (!m_stream->write_byte((uint8_t) tcp->csty))
 		return false;
 	/* SGcod (A) */
-	if (!stream->write_byte((uint8_t) tcp->prg))
+	if (!m_stream->write_byte((uint8_t) tcp->prg))
 		return false;
 	/* SGcod (B) */
-	if (!stream->write_short((uint16_t) tcp->numlayers))
+	if (!m_stream->write_short((uint16_t) tcp->numlayers))
 		return false;
 	/* SGcod (C) */
-	if (!stream->write_byte((uint8_t) tcp->mct))
+	if (!m_stream->write_byte((uint8_t) tcp->mct))
 		return false;
 	if (!write_SPCod_SPCoc(0)) {
 		GRK_ERROR("Error writing COD marker");
@@ -3193,8 +2426,6 @@ bool CodeStream::write_cod() {
 
 	return true;
 }
-
-
 /**
  * Reads a COD marker (Coding Style defaults)
  *
@@ -3203,13 +2434,9 @@ bool CodeStream::write_cod() {
  * @param       header_size     size of header data
  *
  */
-bool CodeStream::read_cod(uint8_t *p_header_data,
-		uint16_t header_size) {
-	/* loop */
+bool CodeStream::read_cod(uint8_t *p_header_data,	uint16_t header_size) {
 	uint32_t i;
 	assert(p_header_data != nullptr);
-
-
 	auto image = getHeaderImage();
 	auto cp = &(m_cp);
 
@@ -3283,13 +2510,10 @@ bool CodeStream::read_cod(uint8_t *p_header_data,
 
 	return true;
 }
-
 void CodeStream::copy_tile_component_parameters() {
 	/* loop */
 	uint32_t i;
 	uint32_t prc_size;
-
-
 	auto tcp = get_current_decode_tcp();
 	auto ref_tccp = &tcp->tccps[0];
 	prc_size = ref_tccp->numresolutions * (uint32_t) sizeof(uint32_t);
@@ -3306,13 +2530,9 @@ void CodeStream::copy_tile_component_parameters() {
 		memcpy(copied_tccp->prch_exp, ref_tccp->prch_exp, prc_size);
 	}
 }
-
 bool CodeStream::write_coc( uint32_t comp_no) {
-
 	uint32_t coc_size;
 	uint32_t comp_room;
-	auto stream = getStream();
-
 	auto cp = &(m_cp);
 	auto tcp = &cp->tcps[0];
 	auto image = getHeaderImage();
@@ -3321,32 +2541,28 @@ bool CodeStream::write_coc( uint32_t comp_no) {
 			+ get_SPCod_SPCoc_size(comp_no);
 
 	/* COC */
-	if (!stream->write_short(J2K_MS_COC))
+	if (!m_stream->write_short(J2K_MS_COC))
 		return false;
 	/* L_COC */
-	if (!stream->write_short((uint16_t) (coc_size - 2)))
+	if (!m_stream->write_short((uint16_t) (coc_size - 2)))
 		return false;
 	/* Ccoc */
 	if (comp_room == 2) {
-		if (!stream->write_short((uint16_t) comp_no))
+		if (!m_stream->write_short((uint16_t) comp_no))
 			return false;
 	} else {
-		if (!stream->write_byte((uint8_t) comp_no))
+		if (!m_stream->write_byte((uint8_t) comp_no))
 			return false;
 	}
 
 	/* Scoc */
-	if (!stream->write_byte((uint8_t) tcp->tccps[comp_no].csty))
+	if (!m_stream->write_byte((uint8_t) tcp->tccps[comp_no].csty))
 		return false;
 
 	return write_SPCod_SPCoc(0);
 
 }
-
-bool CodeStream::compare_coc( uint32_t first_comp_no,
-		uint32_t second_comp_no) {
-
-
+bool CodeStream::compare_coc( uint32_t first_comp_no,	uint32_t second_comp_no) {
 	auto cp = &(m_cp);
 	auto tcp = &cp->tcps[0];
 
@@ -3355,7 +2571,6 @@ bool CodeStream::compare_coc( uint32_t first_comp_no,
 
 	return compare_SPCod_SPCoc(first_comp_no,second_comp_no);
 }
-
 /**
  * Reads a COC marker (Coding Style Component)
  *
@@ -3364,14 +2579,10 @@ bool CodeStream::compare_coc( uint32_t first_comp_no,
  * @param       header_size     size of header data
 
  */
-bool CodeStream::read_coc( uint8_t *p_header_data,
-		uint16_t header_size) {
+bool CodeStream::read_coc( uint8_t *p_header_data,	uint16_t header_size) {
 	uint32_t comp_room;
 	uint32_t comp_no;
-
 	assert(p_header_data != nullptr);
-
-
 	auto tcp = get_current_decode_tcp();
 	auto image = getHeaderImage();
 
@@ -3403,20 +2614,15 @@ bool CodeStream::read_coc( uint8_t *p_header_data,
 	}
 	return true;
 }
-
 bool CodeStream::write_qcd() {
 	uint32_t qcd_size;
-
-	auto stream = getStream();
-
-	qcd_size = 4
-			+ get_SQcd_SQcc_size(0);
+	qcd_size = 4 + get_SQcd_SQcc_size(0);
 
 	/* QCD */
-	if (!stream->write_short(J2K_MS_QCD))
+	if (!m_stream->write_short(J2K_MS_QCD))
 		return false;
 	/* L_QCD */
-	if (!stream->write_short((uint16_t) (qcd_size - 2)))
+	if (!m_stream->write_short((uint16_t) (qcd_size - 2)))
 		return false;
 	if (!write_SQcd_SQcc(0)) {
 		GRK_ERROR("Error writing QCD marker");
@@ -3425,7 +2631,6 @@ bool CodeStream::write_qcd() {
 
 	return true;
 }
-
 /**
  * Reads a QCD marker (Quantization defaults)
  *
@@ -3436,8 +2641,6 @@ bool CodeStream::write_qcd() {
 bool CodeStream::read_qcd( uint8_t *p_header_data,
 		uint16_t header_size) {
 	assert(p_header_data != nullptr);
-
-
 	if (!read_SQcd_SQcc(false, 0, p_header_data, &header_size)) {
 		return false;
 	}
@@ -3456,16 +2659,11 @@ bool CodeStream::read_qcd( uint8_t *p_header_data,
 	}
 	return true;
 }
-
 bool CodeStream::write_qcc( uint32_t comp_no) {
-
-	auto stream = getStream();
-
-	uint32_t qcc_size = 6
-			+ get_SQcd_SQcc_size(comp_no);
+	uint32_t qcc_size = 6 + get_SQcd_SQcc_size(comp_no);
 
 	/* QCC */
-	if (!stream->write_short(J2K_MS_QCC)) {
+	if (!m_stream->write_short(J2K_MS_QCC)) {
 		return false;
 	}
 
@@ -3473,28 +2671,26 @@ bool CodeStream::write_qcc( uint32_t comp_no) {
 		--qcc_size;
 
 		/* L_QCC */
-		if (!stream->write_short((uint16_t) (qcc_size - 2)))
+		if (!m_stream->write_short((uint16_t) (qcc_size - 2)))
 			return false;
 		/* Cqcc */
-		if (!stream->write_byte((uint8_t) comp_no))
+		if (!m_stream->write_byte((uint8_t) comp_no))
 			return false;
 	} else {
 		/* L_QCC */
-		if (!stream->write_short((uint16_t) (qcc_size - 2)))
+		if (!m_stream->write_short((uint16_t) (qcc_size - 2)))
 			return false;
 		/* Cqcc */
-		if (!stream->write_short((uint16_t) comp_no))
+		if (!m_stream->write_short((uint16_t) comp_no))
 			return false;
 	}
 
 	return write_SQcd_SQcc(comp_no);
 }
-
 bool CodeStream::compare_qcc(  uint32_t first_comp_no,
 		uint32_t second_comp_no) {
 	return compare_SQcd_SQcc(first_comp_no,second_comp_no);
 }
-
 /**
  * Reads a QCC marker (Quantization component)
  *
@@ -3505,8 +2701,6 @@ bool CodeStream::compare_qcc(  uint32_t first_comp_no,
 bool CodeStream::read_qcc( uint8_t *p_header_data,
 		uint16_t header_size) {
 	assert(p_header_data != nullptr);
-
-
 	uint32_t comp_no;
 	uint16_t num_comp = getHeaderImage()->numcomps;
 	if (num_comp <= 256) {
@@ -3545,16 +2739,12 @@ bool CodeStream::read_qcc( uint8_t *p_header_data,
 
 	return true;
 }
-
 uint16_t getPocSize(uint32_t nb_comp, uint32_t nb_poc) {
 	uint32_t poc_room = (nb_comp <= 256) ? 1 : 2;
 
 	return (uint16_t) (4 + (5 + 2 * poc_room) * nb_poc);
 }
-
 bool CodeStream::write_poc() {
-
-	auto stream = getStream();
 	auto tcp = &m_cp.tcps[0];
 	auto tccp = &tcp->tccps[0];
 	auto image = getHeaderImage();
@@ -3565,37 +2755,37 @@ bool CodeStream::write_poc() {
 	auto poc_size = getPocSize(nb_comp, 1 + tcp->numpocs);
 
 	/* POC  */
-	if (!stream->write_short(J2K_MS_POC))
+	if (!m_stream->write_short(J2K_MS_POC))
 		return false;
 
 	/* Lpoc */
-	if (!stream->write_short((uint16_t) (poc_size - 2)))
+	if (!m_stream->write_short((uint16_t) (poc_size - 2)))
 		return false;
 
 	for (uint32_t i = 0; i < nb_poc; ++i) {
 		auto current_prog = tcp->progression + i;
 		/* RSpoc_i */
-		if (!stream->write_byte((uint8_t) current_prog->resS))
+		if (!m_stream->write_byte((uint8_t) current_prog->resS))
 			return false;
 		/* CSpoc_i */
-		if (!stream->write_byte((uint8_t) current_prog->compS))
+		if (!m_stream->write_byte((uint8_t) current_prog->compS))
 			return false;
 		/* LYEpoc_i */
-		if (!stream->write_short((uint16_t) current_prog->layE))
+		if (!m_stream->write_short((uint16_t) current_prog->layE))
 			return false;
 		/* REpoc_i */
-		if (!stream->write_byte((uint8_t) current_prog->resE))
+		if (!m_stream->write_byte((uint8_t) current_prog->resE))
 			return false;
 		/* CEpoc_i */
 		if (poc_room == 2) {
-			if (!stream->write_short((uint16_t) current_prog->compE))
+			if (!m_stream->write_short((uint16_t) current_prog->compE))
 				return false;
 		} else {
-			if (!stream->write_byte((uint8_t) current_prog->compE))
+			if (!m_stream->write_byte((uint8_t) current_prog->compE))
 				return false;
 		}
 		/* Ppoc_i */
-		if (!stream->write_byte((uint8_t) current_prog->prg))
+		if (!m_stream->write_byte((uint8_t) current_prog->prg))
 			return false;
 
 		/* change the value of the max layer according to the actual number of layers in the file, components and resolutions*/
@@ -3609,7 +2799,6 @@ bool CodeStream::write_poc() {
 
 	return true;
 }
-
 /**
  * Reads a POC marker (Progression Order Change)
  *
@@ -3621,11 +2810,8 @@ bool CodeStream::read_poc( uint8_t *p_header_data,
 		uint16_t header_size) {
 	uint32_t old_poc_nb, current_poc_nb, current_poc_remaining;
 	uint32_t chunk_size, comp_room;
-
 	assert(p_header_data != nullptr);
-
 	auto image = getHeaderImage();
-
 	uint16_t maxNumResLevels = 0;
 	auto tcp = get_current_decode_tcp();
 	for (uint16_t i = 0; i < image->numcomps; ++i){
@@ -3701,7 +2887,6 @@ bool CodeStream::read_poc( uint8_t *p_header_data,
 	tcp->numpocs = current_poc_nb - 1;
 	return true;
 }
-
 /**
  * Reads a CRG marker (Component registration)
  *
@@ -3713,9 +2898,7 @@ bool CodeStream::read_poc( uint8_t *p_header_data,
 bool CodeStream::read_crg( uint8_t *p_header_data,
 		uint16_t header_size) {
 	assert(p_header_data != nullptr);
-
 	uint32_t nb_comp = getHeaderImage()->numcomps;
-
 	if (header_size != nb_comp * 4) {
 		GRK_ERROR("Error reading CRG marker");
 		return false;
@@ -3731,7 +2914,6 @@ bool CodeStream::read_crg( uint8_t *p_header_data,
 	}
 	return true;
 }
-
 /**
  * Reads a PLM marker (Packet length, main header marker)
  *
@@ -3743,13 +2925,11 @@ bool CodeStream::read_crg( uint8_t *p_header_data,
 bool CodeStream::read_plm( uint8_t *p_header_data,
 		uint16_t header_size) {
 	assert(p_header_data != nullptr);
-
 	if (!m_cp.plm_markers)
 		m_cp.plm_markers = new PacketLengthMarkers();
 
 	return m_cp.plm_markers->readPLM(p_header_data, header_size);
 }
-
 /**
  * Reads a PLT marker (Packet length, tile-part header)
  *
@@ -3758,17 +2938,14 @@ bool CodeStream::read_plm( uint8_t *p_header_data,
  * @param       header_size   the size of the data contained in the PLT marker.
 
  */
-bool CodeStream::read_plt( uint8_t *p_header_data,
-		uint16_t header_size) {
+bool CodeStream::read_plt( uint8_t *p_header_data,	uint16_t header_size) {
 	assert(p_header_data != nullptr);
-
 	auto tileProcessor = currentProcessor();
 	if (!tileProcessor->plt_markers)
 		tileProcessor->plt_markers = new PacketLengthMarkers();
 
 	return tileProcessor->plt_markers->readPLT(p_header_data,header_size);
 }
-
 /**
  * Reads a PPM marker (Packed packet headers, main header)
  *
@@ -3777,7 +2954,6 @@ bool CodeStream::read_plt( uint8_t *p_header_data,
  * @param       header_size     size of header data
  *
  */
-
 bool CodeStream::read_ppm(  uint8_t *p_header_data,
 		uint16_t header_size) {
     if (!m_cp.ppm_marker) {
@@ -3785,7 +2961,6 @@ bool CodeStream::read_ppm(  uint8_t *p_header_data,
     }
 	return m_cp.ppm_marker->read(p_header_data, header_size);
 }
-
 /**
  * Merges all PPM markers read (Packed headers, main header)
  *
@@ -3795,7 +2970,6 @@ bool CodeStream::read_ppm(  uint8_t *p_header_data,
 bool CodeStream::merge_ppm(CodingParams *p_cp) {
 	return p_cp->ppm_marker ? p_cp->ppm_marker->merge() : true;
 }
-
 /**
  * Reads a PPT marker (Packed packet headers, tile-part header)
  *
@@ -3807,8 +2981,6 @@ bool CodeStream::merge_ppm(CodingParams *p_cp) {
 bool CodeStream::read_ppt( uint8_t *p_header_data,
 		uint16_t header_size) {
 	assert(p_header_data != nullptr);
-
-
 	uint32_t Z_ppt;
 	auto tileProcessor = currentProcessor();
 
@@ -3875,7 +3047,6 @@ bool CodeStream::read_ppt( uint8_t *p_header_data,
 	memcpy(tcp->ppt_markers[Z_ppt].m_data, p_header_data, header_size);
 	return true;
 }
-
 /**
  * Merges all PPT markers read (Packed packet headers, tile-part header)
  *
@@ -3885,7 +3056,6 @@ bool CodeStream::read_ppt( uint8_t *p_header_data,
 bool CodeStream::merge_ppt(TileCodingParams *p_tcp) {
 	assert(p_tcp != nullptr);
 	assert(p_tcp->ppt_buffer == nullptr);
-
 	if (!p_tcp->ppt)
 		return true;
 
@@ -3943,10 +3113,6 @@ bool CodeStream::read_sot( uint8_t *p_header_data,
 bool CodeStream::write_rgn( uint16_t tile_no, uint32_t comp_no,
 		uint32_t nb_comps) {
 	uint32_t rgn_size;
-
-
-	auto stream = getStream();
-
 	auto cp = &(m_cp);
 	auto tcp = &cp->tcps[tile_no];
 	auto tccp = &tcp->tccps[comp_no];
@@ -3954,39 +3120,33 @@ bool CodeStream::write_rgn( uint16_t tile_no, uint32_t comp_no,
 	rgn_size = 6 + comp_room;
 
 	/* RGN  */
-	if (!stream->write_short(J2K_MS_RGN))
+	if (!m_stream->write_short(J2K_MS_RGN))
 		return false;
 	/* Lrgn */
-	if (!stream->write_short((uint16_t) (rgn_size - 2)))
+	if (!m_stream->write_short((uint16_t) (rgn_size - 2)))
 		return false;
 	/* Crgn */
 	if (comp_room == 2) {
-		if (!stream->write_short((uint16_t) comp_no))
+		if (!m_stream->write_short((uint16_t) comp_no))
 			return false;
 	} else {
-		if (!stream->write_byte((uint8_t) comp_no))
+		if (!m_stream->write_byte((uint8_t) comp_no))
 			return false;
 	}
 	/* Srgn */
-	if (!stream->write_byte(0))
+	if (!m_stream->write_byte(0))
 		return false;
 
 	/* SPrgn */
-	return stream->write_byte((uint8_t) tccp->roishift);
+	return m_stream->write_byte((uint8_t) tccp->roishift);
 }
 
 bool CodeStream::write_eoc() {
-
-	(void) this;
-
-	auto stream = getStream();
-
-	if (!stream->write_short(J2K_MS_EOC))
+	if (!m_stream->write_short(J2K_MS_EOC))
 		return false;
 
-	return stream->flush();
+	return m_stream->flush();
 }
-
 /**
  * Reads a RGN marker (Region Of Interest)
  *
@@ -3997,10 +3157,7 @@ bool CodeStream::write_eoc() {
 bool CodeStream::read_rgn(  uint8_t *p_header_data,
 		uint16_t header_size) {
 	uint32_t comp_no, roi_sty;
-
 	assert(p_header_data != nullptr);
-
-
 	auto image = getHeaderImage();
 	uint32_t nb_comp = image->numcomps;
 	uint32_t comp_room = (nb_comp <= 256) ? 1 : 2;
@@ -4038,12 +3195,8 @@ bool CodeStream::read_rgn(  uint8_t *p_header_data,
 
 	return true;
 }
-
 bool CodeStream::write_mct_data_group() {
 	uint32_t i;
-
-	auto stream = getStream();
-
 	if (!write_cbd())
 		return false;
 
@@ -4051,26 +3204,22 @@ bool CodeStream::write_mct_data_group() {
 	auto mct_record = tcp->m_mct_records;
 
 	for (i = 0; i < tcp->m_nb_mct_records; ++i) {
-		if (!write_mct_record(mct_record, stream))
+		if (!write_mct_record(mct_record, m_stream))
 			return false;
 		++mct_record;
 	}
 
 	auto mcc_record = tcp->m_mcc_records;
 	for (i = 0; i < tcp->m_nb_mcc_records; ++i) {
-		if (!write_mcc_record(mcc_record, stream))
+		if (!write_mcc_record(mcc_record, m_stream))
 			return false;
 		++mcc_record;
 	}
 
 	return write_mco();
 }
-
 bool CodeStream::write_all_coc() {
-	uint32_t compno;
-
-
-	for (compno = 1; compno < getHeaderImage()->numcomps; ++compno) {
+	for (uint16_t compno = 1; compno < getHeaderImage()->numcomps; ++compno) {
 		/* cod is first component of first tile */
 		if (!compare_coc(0, compno)) {
 			if (!write_coc(compno))
@@ -4080,12 +3229,8 @@ bool CodeStream::write_all_coc() {
 
 	return true;
 }
-
 bool CodeStream::write_all_qcc() {
-	uint32_t compno;
-
-
-	for (compno = 1; compno < getHeaderImage()->numcomps; ++compno) {
+	for (uint16_t compno = 1; compno < getHeaderImage()->numcomps; ++compno) {
 		/* qcd is first component of first tile */
 		if (!compare_qcc(0, compno)) {
 			if (!write_qcc(compno))
@@ -4094,12 +3239,8 @@ bool CodeStream::write_all_qcc() {
 	}
 	return true;
 }
-
 bool CodeStream::write_regions() {
-	uint32_t compno;
-
-
-	for (compno = 0; compno < getHeaderImage()->numcomps; ++compno) {
+	for (uint16_t compno = 0; compno < getHeaderImage()->numcomps; ++compno) {
 		auto tccp = m_cp.tcps->tccps + compno;
 		if (tccp->roishift) {
 			if (!write_rgn(0, compno,
@@ -4110,13 +3251,9 @@ bool CodeStream::write_regions() {
 
 	return true;
 }
-
 bool CodeStream::write_epc() {
-
-	auto stream = getStream();
-
 	if (cstr_index) {
-		cstr_index->codestream_size = (uint64_t) stream->tell();
+		cstr_index->codestream_size = (uint64_t) m_stream->tell();
 		/* The following adjustment is done to adjust the code stream size */
 		/* if SOD is not at 0 in the buffer. Useful in case of JP2, where */
 		/* the first bunch of bytes is not in the code stream              */
@@ -4125,7 +3262,6 @@ bool CodeStream::write_epc() {
 	}
 	return true;
 }
-
 bool CodeStream::write_mct_record(grk_mct_data *p_mct_record, BufferedStream *stream) {
 	uint32_t mct_size;
 	uint32_t tmp;
@@ -4155,7 +3291,6 @@ bool CodeStream::write_mct_record(grk_mct_data *p_mct_record, BufferedStream *st
 
 	return stream->write_bytes(p_mct_record->m_data, p_mct_record->m_data_size);
 }
-
 /**
  * Reads a MCT marker (Multiple Component Transform)
  *
@@ -4164,15 +3299,11 @@ bool CodeStream::write_mct_record(grk_mct_data *p_mct_record, BufferedStream *st
  * @param       header_size     size of header data
  *
  */
-bool CodeStream::read_mct( uint8_t *p_header_data,
-		uint16_t header_size) {
+bool CodeStream::read_mct( uint8_t *p_header_data,	uint16_t header_size) {
 	uint32_t i;
 	uint32_t tmp;
 	uint32_t indix;
-
 	assert(p_header_data != nullptr);
-
-
 	auto tcp = get_current_decode_tcp();
 
 	if (header_size < 2) {
@@ -4286,9 +3417,7 @@ bool CodeStream::read_mct( uint8_t *p_header_data,
 
 	return true;
 }
-
-bool CodeStream::write_mcc_record(grk_simple_mcc_decorrelation_data *p_mcc_record,
-		BufferedStream *stream) {
+bool CodeStream::write_mcc_record(grk_simple_mcc_decorrelation_data *p_mcc_record,	BufferedStream *stream) {
 	uint32_t i;
 	uint32_t mcc_size;
 	uint32_t nb_bytes_for_comp;
@@ -4371,7 +3500,6 @@ bool CodeStream::write_mcc_record(grk_simple_mcc_decorrelation_data *p_mcc_recor
 	/* Tmcci : use MCT defined as number 1 and irreversible array based. */
 	return stream->write_24(tmcc);
 }
-
 /**
  * Reads a MCC marker (Multiple Component Collection)
  *
@@ -4597,38 +3725,33 @@ bool CodeStream::read_mcc( uint8_t *p_header_data,
 
 	return true;
 }
-
 bool CodeStream::write_mco() {
-
-
 	uint32_t mco_size;
 	uint32_t i;
-	auto stream = getStream();
 	auto tcp = &(m_cp.tcps[0]);
 	mco_size = 5 + tcp->m_nb_mcc_records;
 
 	/* MCO */
-	if (!stream->write_short(J2K_MS_MCO))
+	if (!m_stream->write_short(J2K_MS_MCO))
 		return false;
 
 	/* Lmco */
-	if (!stream->write_short((uint16_t) (mco_size - 2)))
+	if (!m_stream->write_short((uint16_t) (mco_size - 2)))
 		return false;
 
 	/* Nmco : only one transform stage*/
-	if (!stream->write_byte((uint8_t) tcp->m_nb_mcc_records))
+	if (!m_stream->write_byte((uint8_t) tcp->m_nb_mcc_records))
 		return false;
 
 	auto mcc_record = tcp->m_mcc_records;
 	for (i = 0; i < tcp->m_nb_mcc_records; ++i) {
 		/* Imco -> use the mcc indicated by 1*/
-		if (!stream->write_byte((uint8_t) mcc_record->m_index))
+		if (!m_stream->write_byte((uint8_t) mcc_record->m_index))
 			return false;
 		++mcc_record;
 	}
 	return true;
 }
-
 /**
  * Reads a MCO marker (Multiple Component Transform Ordering)
  *
@@ -4642,8 +3765,6 @@ bool CodeStream::read_mco( uint8_t *p_header_data,
 	uint32_t tmp, i;
 	uint32_t nb_stages;
 	assert(p_header_data != nullptr);
-
-
 	auto image = getHeaderImage();
 	auto tcp = get_current_decode_tcp();
 
@@ -4681,7 +3802,6 @@ bool CodeStream::read_mco( uint8_t *p_header_data,
 
 	return true;
 }
-
 bool CodeStream::add_mct(TileCodingParams *p_tcp, GrkImage *p_image, uint32_t index) {
 	uint32_t i;
 	assert(p_tcp != nullptr);
@@ -4748,24 +3868,21 @@ bool CodeStream::add_mct(TileCodingParams *p_tcp, GrkImage *p_image, uint32_t in
 
 	return true;
 }
-
 bool CodeStream::write_cbd() {
 	uint32_t i;
-
-	auto stream = getStream();
 	auto image = getHeaderImage();
 	uint16_t cbd_size = (uint16_t)(6U + getHeaderImage()->numcomps);
 
 	/* CBD */
-	if (!stream->write_short(J2K_MS_CBD))
+	if (!m_stream->write_short(J2K_MS_CBD))
 		return false;
 
 	/* L_CBD */
-	if (!stream->write_short((uint16_t)(cbd_size - 2U)))
+	if (!m_stream->write_short((uint16_t)(cbd_size - 2U)))
 		return false;
 
 	/* Ncbd */
-	if (!stream->write_short(image->numcomps))
+	if (!m_stream->write_short(image->numcomps))
 		return false;
 
 	for (i = 0; i < image->numcomps; ++i) {
@@ -4774,12 +3891,11 @@ bool CodeStream::write_cbd() {
 		uint8_t bpc = (uint8_t) (comp->prec - 1);
 		if (comp->sgnd)
 			bpc = (uint8_t)(bpc + (1 << 7));
-		if (!stream->write_byte(bpc))
+		if (!m_stream->write_byte(bpc))
 			return false;
 	}
 	return true;
 }
-
 /**
  * Reads a CBD marker (Component bit depth definition)
  *
@@ -4788,11 +3904,8 @@ bool CodeStream::write_cbd() {
  * @param       header_size     size of header data
  *
  */
-bool CodeStream::read_cbd( uint8_t *p_header_data,
-		uint16_t header_size) {
+bool CodeStream::read_cbd( uint8_t *p_header_data,uint16_t header_size) {
 	assert(p_header_data != nullptr);
-
-
 	if (header_size < 2 || (header_size - 2) != getHeaderImage()->numcomps) {
 		GRK_ERROR("Error reading CBD marker");
 		return false;
@@ -4818,7 +3931,6 @@ bool CodeStream::read_cbd( uint8_t *p_header_data,
 
 	return true;
 }
-
 /**
  * Reads a TLM marker (Tile Length Marker)
  *
@@ -4827,36 +3939,27 @@ bool CodeStream::read_cbd( uint8_t *p_header_data,
  * @param       header_size     size of header data
  *
  */
-bool CodeStream::read_tlm( uint8_t *p_header_data,
-		uint16_t header_size) {
-	assert(this);
-
+bool CodeStream::read_tlm( uint8_t *p_header_data,	uint16_t header_size) {
 	if (!m_cp.tlm_markers)
 		m_cp.tlm_markers = new TileLengthMarkers();
 
 	return m_cp.tlm_markers->read(p_header_data, header_size);
 }
-
 bool CodeStream::write_tlm_begin() {
-
 	if (!m_cp.tlm_markers)
-		m_cp.tlm_markers = new TileLengthMarkers(getStream());
+		m_cp.tlm_markers = new TileLengthMarkers(m_stream);
 
 	return m_cp.tlm_markers->writeBegin(
 			m_encoder.m_total_tile_parts);
 }
 bool CodeStream::write_tlm_end() {
-	assert(this);
+
 	return m_cp.tlm_markers->writeEnd();
 }
-
 uint32_t CodeStream::get_SPCod_SPCoc_size( uint32_t comp_no) {
-
-
 	auto cp = &(m_cp);
 	auto tcp = &cp->tcps[0];
 	auto tccp = &tcp->tccps[comp_no];
-
 	assert(comp_no < getHeaderImage()->numcomps);
 
 	uint32_t rc = SPCod_SPCoc_len;
@@ -4865,11 +3968,8 @@ uint32_t CodeStream::get_SPCod_SPCoc_size( uint32_t comp_no) {
 
 	return rc;
 }
-
 bool CodeStream::compare_SPCod_SPCoc(
-		uint32_t first_comp_no, uint32_t second_comp_no) {
-
-
+	uint32_t first_comp_no, uint32_t second_comp_no) {
 	auto cp = &(m_cp);
 	auto tcp = &cp->tcps[0];
 	auto tccp0 = &tcp->tccps[first_comp_no];
@@ -4898,9 +3998,6 @@ bool CodeStream::compare_SPCod_SPCoc(
 }
 
 bool CodeStream::write_SPCod_SPCoc(uint32_t comp_no) {
-
-	auto stream = getStream();
-
 	auto cp = &(m_cp);
 	auto tcp = &cp->tcps[0];
 	auto tccp = &tcp->tccps[comp_no];
@@ -4908,25 +4005,25 @@ bool CodeStream::write_SPCod_SPCoc(uint32_t comp_no) {
 	assert(comp_no < (getHeaderImage()->numcomps));
 
 	/* SPcoc (D) */
-	if (!stream->write_byte((uint8_t) (tccp->numresolutions - 1)))
+	if (!m_stream->write_byte((uint8_t) (tccp->numresolutions - 1)))
 		return false;
 	/* SPcoc (E) */
-	if (!stream->write_byte((uint8_t) (tccp->cblkw - 2)))
+	if (!m_stream->write_byte((uint8_t) (tccp->cblkw - 2)))
 		return false;
 	/* SPcoc (F) */
-	if (!stream->write_byte((uint8_t) (tccp->cblkh - 2)))
+	if (!m_stream->write_byte((uint8_t) (tccp->cblkh - 2)))
 		return false;
 	/* SPcoc (G) */
-	if (!stream->write_byte(tccp->cblk_sty))
+	if (!m_stream->write_byte(tccp->cblk_sty))
 		return false;
 	/* SPcoc (H) */
-	if (!stream->write_byte((uint8_t) tccp->qmfbid))
+	if (!m_stream->write_byte((uint8_t) tccp->qmfbid))
 		return false;
 
 	if (tccp->csty & J2K_CCP_CSTY_PRT) {
 		for (uint32_t i = 0; i < tccp->numresolutions; ++i) {
 			/* SPcoc (I_i) */
-			if (!stream->write_byte(
+			if (!m_stream->write_byte(
 					(uint8_t) (tccp->prcw_exp[i] + (tccp->prch_exp[i] << 4)))) {
 				return false;
 			}
@@ -4935,10 +4032,8 @@ bool CodeStream::write_SPCod_SPCoc(uint32_t comp_no) {
 
 	return true;
 }
-
 bool CodeStream::read_SPCod_SPCoc( uint32_t compno, uint8_t *p_header_data, uint16_t *header_size) {
 	uint32_t i;
-
 	assert(p_header_data != nullptr);
 	assert(compno < getHeaderImage()->numcomps);
 
@@ -5054,20 +4149,14 @@ bool CodeStream::read_SPCod_SPCoc( uint32_t compno, uint8_t *p_header_data, uint
 
 	return true;
 }
-
 uint32_t CodeStream::get_SQcd_SQcc_size( uint32_t comp_no) {
-
-
 	auto cp = &(m_cp);
 	auto tcp = &cp->tcps[0];
 	auto tccp = &tcp->tccps[comp_no];
 
 	return tccp->quant.get_SQcd_SQcc_size(this, comp_no);
 }
-
 bool CodeStream::compare_SQcd_SQcc(	uint32_t first_comp_no, uint32_t second_comp_no) {
-
-
 	auto cp = &(m_cp);
 	auto tcp = &cp->tcps[0];
 	auto tccp0 = &tcp->tccps[first_comp_no];
@@ -5075,21 +4164,15 @@ bool CodeStream::compare_SQcd_SQcc(	uint32_t first_comp_no, uint32_t second_comp
 	return tccp0->quant.compare_SQcd_SQcc(this, first_comp_no,
 			second_comp_no);
 }
-
 bool CodeStream::write_SQcd_SQcc( uint32_t comp_no) {
-
-	auto stream = getStream();
-
 	auto cp = &(m_cp);
 	auto tcp = &cp->tcps[0];
 	auto tccp = &tcp->tccps[comp_no];
 
-	return tccp->quant.write_SQcd_SQcc(this, comp_no, stream);
+	return tccp->quant.write_SQcd_SQcc(this, comp_no, m_stream);
 }
-
 bool CodeStream::read_SQcd_SQcc( bool fromQCC,uint32_t comp_no,
 		uint8_t *p_header_data, uint16_t *header_size) {
-
 	assert(p_header_data != nullptr);
 	assert(comp_no < getHeaderImage()->numcomps);
 	auto tcp = get_current_decode_tcp();
@@ -5098,12 +4181,504 @@ bool CodeStream::read_SQcd_SQcc( bool fromQCC,uint32_t comp_no,
 	return tccp->quant.read_SQcd_SQcc(this, fromQCC, comp_no, p_header_data,
 			header_size);
 }
-
 uint16_t CodeStream::getPocSize(uint32_t nb_comp, uint32_t nb_poc) {
 	uint32_t poc_room = (nb_comp <= 256) ? 1 : 2;
 
 	return (uint16_t) (4 + (5 + 2 * poc_room) * nb_poc);
 }
+bool CodeStream::check_poc_val(const grk_progression *p_pocs, uint32_t nb_pocs,
+		uint32_t nb_resolutions, uint32_t num_comps, uint32_t num_layers) {
+	uint32_t index, resno, compno, layno;
+	uint32_t i;
+	uint32_t step_c = 1;
+	uint32_t step_r = num_comps * step_c;
+	uint32_t step_l = nb_resolutions * step_r;
+	if (nb_pocs == 0)
+		return true;
 
+	auto packet_array = new uint32_t[step_l * num_layers];
+	memset(packet_array, 0, step_l * num_layers * sizeof(uint32_t));
+
+	/* iterate through all the pocs */
+	for (i = 0; i < nb_pocs; ++i) {
+		index = step_r * p_pocs->resS;
+		/* take each resolution for each poc */
+		for (resno = p_pocs->resS;	resno < std::min<uint32_t>(p_pocs->resE, nb_resolutions);++resno) {
+			uint32_t res_index = index + p_pocs->compS * step_c;
+
+			/* take each comp of each resolution for each poc */
+			for (compno = p_pocs->compS;compno < std::min<uint32_t>(p_pocs->compE, num_comps);	++compno) {
+				uint32_t comp_index = res_index + 0 * step_l;
+
+				/* and finally take each layer of each res of ... */
+				for (layno = 0;
+						layno < std::min<uint32_t>(p_pocs->layE, num_layers);
+						++layno) {
+					/*index = step_r * resno + step_c * compno + step_l * layno;*/
+					packet_array[comp_index] = 1;
+					comp_index += step_l;
+				}
+				res_index += step_c;
+			}
+			index += step_r;
+		}
+		++p_pocs;
+	}
+	bool loss = false;
+	index = 0;
+	for (layno = 0; layno < num_layers; ++layno) {
+		for (resno = 0; resno < nb_resolutions; ++resno) {
+			for (compno = 0; compno < num_comps; ++compno) {
+				loss |= (packet_array[index] != 1);
+				index += step_c;
+			}
+		}
+	}
+	if (loss)
+		GRK_ERROR("Missing packets possible loss of data");
+	delete[] packet_array;
+
+	return !loss;
+}
+bool CodeStream::init_mct_encoding(TileCodingParams *p_tcp, GrkImage *p_image) {
+	uint32_t i;
+	uint32_t indix = 1;
+	grk_mct_data *mct_deco_data = nullptr, *mct_offset_data = nullptr;
+	grk_simple_mcc_decorrelation_data *mcc_data;
+	uint32_t mct_size, nb_elem;
+	float *data, *current_data;
+	TileComponentCodingParams *tccp;
+
+	assert(p_tcp != nullptr);
+
+	if (p_tcp->mct != 2)
+		return true;
+
+	if (p_tcp->m_mct_decoding_matrix) {
+		if (p_tcp->m_nb_mct_records == p_tcp->m_nb_max_mct_records) {
+			p_tcp->m_nb_max_mct_records += default_number_mct_records;
+
+			auto new_mct_records = (grk_mct_data*) grk_realloc(p_tcp->m_mct_records,
+					p_tcp->m_nb_max_mct_records * sizeof(grk_mct_data));
+			if (!new_mct_records) {
+				grk_free(p_tcp->m_mct_records);
+				p_tcp->m_mct_records = nullptr;
+				p_tcp->m_nb_max_mct_records = 0;
+				p_tcp->m_nb_mct_records = 0;
+				/* GRK_ERROR( "Not enough memory to set up mct compressing"); */
+				return false;
+			}
+			p_tcp->m_mct_records = new_mct_records;
+			mct_deco_data = p_tcp->m_mct_records + p_tcp->m_nb_mct_records;
+
+			memset(mct_deco_data, 0,
+					(p_tcp->m_nb_max_mct_records - p_tcp->m_nb_mct_records)
+							* sizeof(grk_mct_data));
+		}
+		mct_deco_data = p_tcp->m_mct_records + p_tcp->m_nb_mct_records;
+		grk_free(mct_deco_data->m_data);
+		mct_deco_data->m_data = nullptr;
+
+		mct_deco_data->m_index = indix++;
+		mct_deco_data->m_array_type = MCT_TYPE_DECORRELATION;
+		mct_deco_data->m_element_type = MCT_TYPE_FLOAT;
+		nb_elem = (uint32_t)p_image->numcomps * p_image->numcomps;
+		mct_size = nb_elem * MCT_ELEMENT_SIZE[mct_deco_data->m_element_type];
+		mct_deco_data->m_data = (uint8_t*) grk_malloc(mct_size);
+
+		if (!mct_deco_data->m_data)
+			return false;
+
+		j2k_mct_write_functions_from_float[mct_deco_data->m_element_type](
+				p_tcp->m_mct_decoding_matrix, mct_deco_data->m_data, nb_elem);
+
+		mct_deco_data->m_data_size = mct_size;
+		++p_tcp->m_nb_mct_records;
+	}
+
+	if (p_tcp->m_nb_mct_records == p_tcp->m_nb_max_mct_records) {
+		grk_mct_data *new_mct_records;
+		p_tcp->m_nb_max_mct_records += default_number_mct_records;
+		new_mct_records = (grk_mct_data*) grk_realloc(p_tcp->m_mct_records,
+				p_tcp->m_nb_max_mct_records * sizeof(grk_mct_data));
+		if (!new_mct_records) {
+			grk_free(p_tcp->m_mct_records);
+			p_tcp->m_mct_records = nullptr;
+			p_tcp->m_nb_max_mct_records = 0;
+			p_tcp->m_nb_mct_records = 0;
+			/* GRK_ERROR( "Not enough memory to set up mct compressing"); */
+			return false;
+		}
+		p_tcp->m_mct_records = new_mct_records;
+		mct_offset_data = p_tcp->m_mct_records + p_tcp->m_nb_mct_records;
+
+		memset(mct_offset_data, 0,
+				(p_tcp->m_nb_max_mct_records - p_tcp->m_nb_mct_records)
+						* sizeof(grk_mct_data));
+		if (mct_deco_data)
+			mct_deco_data = mct_offset_data - 1;
+	}
+	mct_offset_data = p_tcp->m_mct_records + p_tcp->m_nb_mct_records;
+	if (mct_offset_data->m_data) {
+		grk_free(mct_offset_data->m_data);
+		mct_offset_data->m_data = nullptr;
+	}
+	mct_offset_data->m_index = indix++;
+	mct_offset_data->m_array_type = MCT_TYPE_OFFSET;
+	mct_offset_data->m_element_type = MCT_TYPE_FLOAT;
+	nb_elem = p_image->numcomps;
+	mct_size = nb_elem * MCT_ELEMENT_SIZE[mct_offset_data->m_element_type];
+	mct_offset_data->m_data = (uint8_t*) grk_malloc(mct_size);
+	if (!mct_offset_data->m_data)
+		return false;
+
+	data = (float*) grk_malloc(nb_elem * sizeof(float));
+	if (!data) {
+		grk_free(mct_offset_data->m_data);
+		mct_offset_data->m_data = nullptr;
+		return false;
+	}
+	tccp = p_tcp->tccps;
+	current_data = data;
+
+	for (i = 0; i < nb_elem; ++i) {
+		*(current_data++) = (float) (tccp->m_dc_level_shift);
+		++tccp;
+	}
+	j2k_mct_write_functions_from_float[mct_offset_data->m_element_type](data,
+			mct_offset_data->m_data, nb_elem);
+	grk_free(data);
+	mct_offset_data->m_data_size = mct_size;
+	++p_tcp->m_nb_mct_records;
+
+	if (p_tcp->m_nb_mcc_records == p_tcp->m_nb_max_mcc_records) {
+		grk_simple_mcc_decorrelation_data *new_mcc_records;
+		p_tcp->m_nb_max_mcc_records += default_number_mct_records;
+		new_mcc_records = (grk_simple_mcc_decorrelation_data*) grk_realloc(
+				p_tcp->m_mcc_records,
+				p_tcp->m_nb_max_mcc_records
+						* sizeof(grk_simple_mcc_decorrelation_data));
+		if (!new_mcc_records) {
+			grk_free(p_tcp->m_mcc_records);
+			p_tcp->m_mcc_records = nullptr;
+			p_tcp->m_nb_max_mcc_records = 0;
+			p_tcp->m_nb_mcc_records = 0;
+			/* GRK_ERROR( "Not enough memory to set up mct compressing"); */
+			return false;
+		}
+		p_tcp->m_mcc_records = new_mcc_records;
+		mcc_data = p_tcp->m_mcc_records + p_tcp->m_nb_mcc_records;
+		memset(mcc_data, 0,
+				(p_tcp->m_nb_max_mcc_records - p_tcp->m_nb_mcc_records)
+						* sizeof(grk_simple_mcc_decorrelation_data));
+
+	}
+	mcc_data = p_tcp->m_mcc_records + p_tcp->m_nb_mcc_records;
+	mcc_data->m_decorrelation_array = mct_deco_data;
+	mcc_data->m_is_irreversible = 1;
+	mcc_data->m_nb_comps = p_image->numcomps;
+	mcc_data->m_index = indix++;
+	mcc_data->m_offset_array = mct_offset_data;
+	++p_tcp->m_nb_mcc_records;
+
+	return true;
+}
+char* CodeStream::convert_progression_order(GRK_PROG_ORDER prg_order) {
+	j2k_prog_order *po;
+	for (po = j2k_prog_order_list; po->enum_prog != -1; po++) {
+		if (po->enum_prog == prg_order)
+			return (char*) po->str_prog;
+	}
+	return po->str_prog;
+}
+uint64_t CodeStream::get_num_tp(CodingParams *cp, uint32_t pino,	uint16_t tileno) {
+	uint64_t num_tp = 1;
+
+	/*  preconditions */
+	assert(tileno < (cp->t_grid_width * cp->t_grid_height));
+	assert(pino < (cp->tcps[tileno].numpocs + 1));
+
+	/* get the given tile coding parameter */
+	auto tcp = &cp->tcps[tileno];
+	assert(tcp != nullptr);
+
+	auto current_poc = &(tcp->progression[pino]);
+	assert(current_poc != 0);
+
+	/* get the progression order as a character string */
+	auto prog = convert_progression_order(tcp->prg);
+	assert(strlen(prog) > 0);
+
+	if (cp->m_coding_params.m_enc.m_tp_on) {
+		for (uint32_t i = 0; i < 4; ++i) {
+			switch (prog[i]) {
+			/* component wise */
+			case 'C':
+				num_tp *= current_poc->tpCompE;
+				break;
+				/* resolution wise */
+			case 'R':
+				num_tp *= current_poc->tpResE;
+				break;
+				/* precinct wise */
+			case 'P':
+				num_tp *= current_poc->tpPrecE;
+				break;
+				/* layer wise */
+			case 'L':
+				num_tp *= current_poc->tpLayE;
+				break;
+			}
+			//we start a new tile part with every progression change
+			if (cp->m_coding_params.m_enc.m_tp_flag == prog[i]) {
+				cp->m_coding_params.m_enc.m_tp_pos = i;
+				break;
+			}
+		}
+	} else {
+		num_tp = 1;
+	}
+	return num_tp;
+}
+bool CodeStream::calculate_tp(CodingParams *cp, uint16_t *p_nb_tile_parts,
+		GrkImage *image) {
+	assert(p_nb_tile_parts != nullptr);
+	assert(cp != nullptr);
+	assert(image != nullptr);
+
+	uint32_t nb_tiles = (uint16_t) (cp->t_grid_width * cp->t_grid_height);
+	*p_nb_tile_parts = 0;
+	auto tcp = cp->tcps;
+	for (uint16_t tileno = 0; tileno < nb_tiles; ++tileno) {
+		uint8_t totnum_tp = 0;
+		pi_update_params_compress(image, cp, tileno);
+		for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
+			uint64_t num_tp = get_num_tp(cp, pino, tileno);
+			if (num_tp > max_num_tile_parts_per_tile){
+				GRK_ERROR("Number of tile parts %d exceeds maximum number of "
+						"tile parts %d", num_tp,max_num_tile_parts_per_tile );
+				return false;
+			}
+
+			uint64_t total = num_tp + *p_nb_tile_parts;
+			if (total > max_num_tile_parts){
+				GRK_ERROR("Total number of tile parts %d exceeds maximum total number of "
+						"tile parts %d", total,max_num_tile_parts );
+				return false;
+			}
+
+			*p_nb_tile_parts = (uint16_t)(*p_nb_tile_parts + num_tp);
+			totnum_tp = (uint8_t) (totnum_tp + num_tp);
+		}
+		tcp->m_nb_tile_parts = totnum_tp;
+		++tcp;
+	}
+
+	return true;
+}
+/*
+ ==========================================================
+ Matric inversion interface
+ ==========================================================
+ */
+/**
+ * Matrix inversion.
+ */
+bool CodeStream::matrix_inversion_f(float *pSrcMatrix, float *pDestMatrix,
+		uint32_t nb_compo) {
+	uint8_t *data = nullptr;
+	uint32_t permutation_size = nb_compo * (uint32_t) sizeof(uint32_t);
+	uint32_t swap_size = nb_compo * (uint32_t) sizeof(float);
+	uint32_t total_size = permutation_size + 3 * swap_size;
+	uint32_t *lPermutations = nullptr;
+	float *double_data = nullptr;
+
+ data = (uint8_t*) grk_malloc(total_size);
+	if (data == 0) {
+		return false;
+	}
+	lPermutations = (uint32_t*) data;
+ double_data = (float*) (data + permutation_size);
+	memset(lPermutations, 0, permutation_size);
+
+	if (!lupDecompose(pSrcMatrix, lPermutations, double_data, nb_compo)) {
+		grk_free(data);
+		return false;
+	}
+
+	lupInvert(pSrcMatrix, pDestMatrix, nb_compo, lPermutations, double_data,
+		 double_data + nb_compo, double_data + 2 * nb_compo);
+	grk_free(data);
+
+	return true;
+}
+bool CodeStream::lupDecompose(float *matrix, uint32_t *permutations,
+		float *p_swap_area, uint32_t nb_compo) {
+	uint32_t *tmpPermutations = permutations;
+	uint32_t *dstPermutations;
+	uint32_t k2 = 0, t;
+	float temp;
+	uint32_t i, j, k;
+	uint32_t lLastColum = nb_compo - 1;
+	uint32_t lSwapSize = nb_compo * (uint32_t) sizeof(float);
+	auto lTmpMatrix = matrix;
+	uint32_t offset = 1;
+	uint32_t lStride = nb_compo - 1;
+
+	/*initialize permutations */
+	for (i = 0; i < nb_compo; ++i) {
+		*tmpPermutations++ = i;
+	}
+	/* now make a pivot with column switch */
+	tmpPermutations = permutations;
+	for (k = 0; k < lLastColum; ++k) {
+		float p = 0.0;
+
+		/* take the middle element */
+		auto lColumnMatrix = lTmpMatrix + k;
+
+		/* make permutation with the biggest value in the column */
+		for (i = k; i < nb_compo; ++i) {
+			temp = ((*lColumnMatrix > 0) ? *lColumnMatrix : -(*lColumnMatrix));
+			if (temp > p) {
+				p = temp;
+				k2 = i;
+			}
+			/* next line */
+			lColumnMatrix += nb_compo;
+		}
+
+		/* a whole rest of 0 -> non singular */
+		if (p == 0.0) {
+			return false;
+		}
+
+		/* should we permute ? */
+		if (k2 != k) {
+			/*exchange of line */
+			/* k2 > k */
+			dstPermutations = tmpPermutations + k2 - k;
+			/* swap indices */
+			t = *tmpPermutations;
+			*tmpPermutations = *dstPermutations;
+			*dstPermutations = t;
+
+			/* and swap entire line. */
+			lColumnMatrix = lTmpMatrix + (k2 - k) * nb_compo;
+			memcpy(p_swap_area, lColumnMatrix, lSwapSize);
+			memcpy(lColumnMatrix, lTmpMatrix, lSwapSize);
+			memcpy(lTmpMatrix, p_swap_area, lSwapSize);
+		}
+
+		/* now update data in the rest of the line and line after */
+		auto lDestMatrix = lTmpMatrix + k;
+		lColumnMatrix = lDestMatrix + nb_compo;
+		/* take the middle element */
+		temp = *(lDestMatrix++);
+
+		/* now compute up data (i.e. coeff up of the diagonal). */
+		for (i = offset; i < nb_compo; ++i) {
+			/*lColumnMatrix; */
+			/* divide the lower column elements by the diagonal value */
+
+			/* matrix[i][k] /= matrix[k][k]; */
+			/* p = matrix[i][k] */
+			p = *lColumnMatrix / temp;
+			*(lColumnMatrix++) = p;
+
+			for (j = /* k + 1 */offset; j < nb_compo; ++j) {
+				/* matrix[i][j] -= matrix[i][k] * matrix[k][j]; */
+				*(lColumnMatrix++) -= p * (*(lDestMatrix++));
+			}
+			/* come back to the k+1th element */
+			lDestMatrix -= lStride;
+			/* go to kth element of the next line */
+			lColumnMatrix += k;
+		}
+
+		/* offset is now k+2 */
+		++offset;
+		/* 1 element less for stride */
+		--lStride;
+		/* next line */
+		lTmpMatrix += nb_compo;
+		/* next permutation element */
+		++tmpPermutations;
+	}
+	return true;
+}
+void CodeStream::lupSolve(float *pResult, float *pMatrix, float *pVector,
+		uint32_t *pPermutations, uint32_t nb_compo,
+		float *p_intermediate_data) {
+	int32_t k;
+	uint32_t i, j;
+	float sum;
+	uint32_t lStride = nb_compo + 1;
+	float *lCurrentPtr;
+	float *lIntermediatePtr;
+	float *lDestPtr;
+	float *lTmpMatrix;
+	float *lLineMatrix = pMatrix;
+	float *lBeginPtr = pResult + nb_compo - 1;
+	float *lGeneratedData;
+	uint32_t *lCurrentPermutationPtr = pPermutations;
+
+	lIntermediatePtr = p_intermediate_data;
+	lGeneratedData = p_intermediate_data + nb_compo - 1;
+
+	for (i = 0; i < nb_compo; ++i) {
+		sum = 0.0;
+		lCurrentPtr = p_intermediate_data;
+		lTmpMatrix = lLineMatrix;
+		for (j = 1; j <= i; ++j) {
+			/* sum += matrix[i][j-1] * y[j-1]; */
+			sum += (*(lTmpMatrix++)) * (*(lCurrentPtr++));
+		}
+		/*y[i] = pVector[pPermutations[i]] - sum; */
+		*(lIntermediatePtr++) = pVector[*(lCurrentPermutationPtr++)] - sum;
+		lLineMatrix += nb_compo;
+	}
+
+	/* we take the last point of the matrix */
+	lLineMatrix = pMatrix + nb_compo * nb_compo - 1;
+
+	/* and we take after the last point of the destination vector */
+	lDestPtr = pResult + nb_compo;
+
+	assert(nb_compo != 0);
+	for (k = (int32_t) nb_compo - 1; k != -1; --k) {
+		sum = 0.0;
+		lTmpMatrix = lLineMatrix;
+		float u = *(lTmpMatrix++);
+		lCurrentPtr = lDestPtr--;
+		for (j = (uint32_t) (k + 1); j < nb_compo; ++j) {
+			/* sum += matrix[k][j] * x[j] */
+			sum += (*(lTmpMatrix++)) * (*(lCurrentPtr++));
+		}
+		/*x[k] = (y[k] - sum) / u; */
+		*(lBeginPtr--) = (*(lGeneratedData--) - sum) / u;
+		lLineMatrix -= lStride;
+	}
+}
+void CodeStream::lupInvert(float *pSrcMatrix, float *pDestMatrix, uint32_t nb_compo,
+		uint32_t *pPermutations, float *p_src_temp, float *p_dest_temp,
+		float *p_swap_area) {
+	uint32_t j, i;
+	auto lLineMatrix = pDestMatrix;
+	uint32_t lSwapSize = nb_compo * (uint32_t) sizeof(float);
+
+	for (j = 0; j < nb_compo; ++j) {
+		auto lCurrentPtr = lLineMatrix++;
+		memset(p_src_temp, 0, lSwapSize);
+		p_src_temp[j] = 1.0;
+		lupSolve(p_dest_temp, pSrcMatrix, p_src_temp, pPermutations, nb_compo,
+				p_swap_area);
+
+		for (i = 0; i < nb_compo; ++i) {
+			*(lCurrentPtr) = p_dest_temp[i];
+			lCurrentPtr += nb_compo;
+		}
+	}
+}
 
 }
