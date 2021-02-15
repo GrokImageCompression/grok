@@ -83,7 +83,8 @@ bool TileComponent::init(bool isCompressor,
 	wholeTileDecompress = whole_tile;
 	m_tccp = tccp;
 
-	// 1. calculate resolution bounds and precinct grid and bounds
+	// 1. calculate resolution bounds, precinct bounds and precinct grid
+	// all in canvas coordinates (with subsampling)
 	numresolutions = m_tccp->numresolutions;
 	if (numresolutions < cp->m_coding_params.m_dec.m_reduce) {
 		resolutions_to_decompress = 1;
@@ -94,7 +95,6 @@ bool TileComponent::init(bool isCompressor,
 	for (uint8_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = resolutions + resno;
 
-		/* border for each resolution level (in canvas coordinates) */
 		grk_rect_u32 dim;
 		if (resno == numresolutions - 1)
 			dim = unreducedTileComp;

@@ -53,10 +53,10 @@ struct TileComponent : public grk_rect_u32 {
 	 ISparseBuffer* getSparseBuffer();
 	 bool postDecompress(int32_t *srcData, DecompressBlockExec *block, bool isHT);
 
-	Resolution *resolutions; /* resolutions information */
-	uint8_t numresolutions; /* number of resolution levels */
-	uint8_t resolutions_to_decompress; /* number of resolutions level to decompress (at max)*/
-	uint8_t resolutions_decompressed;
+	Resolution *resolutions;  // in canvas coordinates
+	uint8_t numresolutions;
+	uint8_t resolutions_to_decompress; // desired number of resolutions to decompress
+	uint8_t resolutions_decompressed;  // actual number of resolutions decompressed
 #ifdef DEBUG_LOSSLESS_T2
 	Resolution* round_trip_resolutions;  /* round trip resolution information */
 #endif

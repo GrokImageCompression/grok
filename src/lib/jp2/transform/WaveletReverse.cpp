@@ -2231,21 +2231,23 @@ template <typename T,
 	GRK_UNUSED(ret);
 
 #ifdef GRK_DEBUG_VALGRIND
+	{
 	GRK_INFO("Final synthesis window for component %d", compno);
-	synthesisWindow.pan(tilec->x0, tilec->y0).print();
+	auto tileSynthesisWindow = synthesisWindow.pan(tilec->x0, tilec->y0);
 	if (compno == debug_compno) {
-		for (uint32_t j = 0; j < synthesisWindow.height();j++) {
+		for (uint32_t j = 0; j < tileSynthesisWindow.height();j++) {
 			auto bufPtr = tilec->getBuffer()->getWindow()->data + j * tilec->getBuffer()->getWindow()->stride;
-			for (uint32_t i = 0; i < synthesisWindow.width();i++) {
+			for (uint32_t i = 0; i < tileSynthesisWindow.width();i++) {
 				auto val = grk_memcheck(bufPtr,1);
 				if (val != grk_mem_ok){
-					GRK_ERROR("***** Partial wavelet after final read: uninitialized memory at (x,y) =  (%d,%d) ******", i,j);
+					GRK_ERROR("***** Partial wavelet after final read: uninitialized memory at (x,y) =  (%d,%d) ******",
+							tileSynthesisWindow.x0 + i,tileSynthesisWindow.y0 + j);
 				}
 				bufPtr += tilec->getBuffer()->getWindow()->stride;
 			}
 		}
 	}
-
+	}
 #endif
 	rc = true;
 
