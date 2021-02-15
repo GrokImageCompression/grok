@@ -251,6 +251,554 @@ public:
 	uint16_t getCurrentMarker();
     bool   isWholeTileDecompress();
     grk_plugin_tile* getCurrentPluginTile();
+
+
+    /**
+     Add main header marker information
+     @param cstr_index    Codestream information structure
+     @param id           marker id
+     @param pos          byte offset of marker segment
+     @param len          length of marker segment
+     */
+    bool add_mhmarker( grk_codestream_index  *cstr_index,
+    						uint16_t id,
+    						uint64_t pos,
+    						uint32_t len);
+
+    /**
+     * Writes the SOC marker (Start Of Codestream)
+     *
+     * @param       codeStream          JPEG 2000 code stream
+     */
+    bool write_soc();
+
+    /**
+     * Reads a SOC marker (Start of Codestream)
+     * @param       codeStream           JPEG 2000 code stream.
+     */
+    bool read_soc();
+
+    /**
+     * Writes the SIZ marker (image and tile size)
+     *
+     * @param       codeStream          JPEG 2000 code stream
+     */
+    bool write_siz();
+
+    /**
+     * Reads a SIZ marker (image and tile size)
+     *
+     * @param       codeStream      JPEG 2000 code stream
+     * @param       p_header_data   header data
+     * @param       header_size     size of header data
+     */
+    bool read_siz( uint8_t *p_header_data,
+    		uint16_t header_size);
+
+    /**
+     * Reads a CAP marker
+     *
+     * @param       codeStream      JPEG 2000 code stream
+     * @param       p_header_data   header data
+     * @param       header_size     size of header data
+     */
+    bool read_cap( uint8_t *p_header_data,
+    		uint16_t header_size);
+
+    /**
+     * Writes the CAP marker
+     *
+     * @param       codeStream          JPEG 2000 code stream
+     */
+    bool write_cap();
+
+    /**
+     * Writes the COM marker (comment)
+     *
+     * @param       codeStream      JPEG 2000 code stream
+     */
+    bool write_com();
+
+    /**
+     * Reads a COM marker (comments)
+     *
+     * @param       codeStream      JPEG 2000 code stream
+     * @param       p_header_data   header data
+     * @param       header_size     size of header data
+     *
+     */
+    bool read_com( uint8_t *p_header_data,
+    		uint16_t header_size);
+    /**
+     * Writes the COD marker (Coding style default)
+     *
+     * @param       codeStream          JPEG 2000 code stream
+     */
+    bool write_cod();
+
+    /**
+     * Reads a COD marker (Coding Style defaults)
+     *
+     * @param       codeStream      JPEG 2000 code stream
+     * @param       p_header_data   header data
+     * @param       header_size     size of header data
+     *
+     */
+    bool read_cod( uint8_t *p_header_data,uint16_t header_size);
+
+    /**
+     * Compares 2 COC markers (Coding style component)
+     *
+     * @param       codeStream            JPEG 2000 code stream
+     * @param       first_comp_no  the index of the first component to compare.
+     * @param       second_comp_no the index of the second component to compare.
+     *
+     * @return      true if equals
+     */
+    bool compare_coc(  uint32_t first_comp_no,
+    		uint32_t second_comp_no);
+
+    /**
+     * Writes the COC marker (Coding style component)
+     *
+     * @param       codeStream  JPEG 2000 code stream
+     * @param       comp_no   the index of the component to output.
+     * @param       stream    buffered stream.
+
+     */
+    bool write_coc( uint32_t comp_no,
+    		BufferedStream *stream);
+
+    bool write_coc(uint32_t comp_no);
+
+    /**
+     * Reads a COC marker (Coding Style Component)
+     *
+     * @param       codeStream      JPEG 2000 code stream
+     * @param       p_header_data   header data
+     * @param       header_size     size of header data
+     *
+     */
+    bool read_coc( uint8_t *p_header_data,
+    		uint16_t header_size);
+
+    /**
+     * Writes the QCD marker (quantization default)
+     *
+     * @param       codeStream          JPEG 2000 code stream
+     */
+    bool write_qcd();
+
+    /**
+     * Reads a QCD marker (Quantization defaults)
+     *
+     * @param       codeStream      JPEG 2000 code stream
+     * @param       p_header_data   header data
+     * @param       header_size     size of header data
+     */
+    bool read_qcd( uint8_t *p_header_data,
+    		uint16_t header_size);
+
+    /**
+     * Compare QCC markers (quantization component)
+     *
+     * @param       codeStream                 JPEG 2000 code stream
+     * @param       first_comp_no       the index of the first component to compare.
+     * @param       second_comp_no      the index of the second component to compare.
+     *
+     * @return true if equals.
+     */
+    bool compare_qcc( uint32_t first_comp_no,
+    		uint32_t second_comp_no);
+
+    /**
+     * Writes the QCC marker (quantization component)
+     *
+     * @param       codeStream  JPEG 2000 code stream
+     * @param 		tile_index 	current tile index
+     * @param       comp_no     the index of the component to output.
+     * @param       stream      buffered stream.
+
+     */
+    bool write_qcc( uint16_t tile_index, uint32_t comp_no,
+    		BufferedStream *stream);
+
+    bool write_qcc(uint32_t comp_no);
+    /**
+     * Reads a QCC marker (Quantization component)
+     *
+     * @param       codeStream      JPEG 2000 code stream
+     * @param       p_header_data   header data
+     * @param       header_size     size of header data
+
+     */
+    bool read_qcc( uint8_t *p_header_data,
+    		uint16_t header_size);
+
+    uint16_t getPocSize(uint32_t l_nb_comp, uint32_t l_nb_poc);
+
+    /**
+     * Writes the POC marker (Progression Order Change)
+     *
+     * @param       codeStream          JPEG 2000 code stream
+     */
+    bool write_poc();
+
+
+    /**
+     * Reads a POC marker (Progression Order Change)
+     *
+     * @param       codeStream      JPEG 2000 code stream
+     * @param       p_header_data   header data
+     * @param       header_size     size of header data
+     */
+    bool read_poc( uint8_t *p_header_data,
+    		uint16_t header_size);
+
+    /**
+     * Reads a CRG marker (Component registration)
+     *
+     * @param       codeStream      JPEG 2000 code stream
+     * @param       p_header_data   header data
+     * @param       header_size     size of header data
+     *
+     */
+    bool read_crg( uint8_t *p_header_data,
+    		uint16_t header_size);
+    /**
+     * Reads a TLM marker (Tile Length Marker)
+     *
+     * @param       codeStream      JPEG 2000 code stream
+     * @param       p_header_data   header data
+     * @param       header_size     size of header data
+     */
+    bool read_tlm( uint8_t *p_header_data,
+    		uint16_t header_size);
+
+    /**
+     * End writing the updated tlm.
+     *
+     * @param       codeStream          JPEG 2000 code stream
+     */
+    bool write_tlm_end();
+
+
+    /**
+     * Begin writing the TLM marker (Tile Length Marker)
+     *
+     * @param       codeStream          JPEG 2000 code stream
+     */
+    bool write_tlm_begin();
+
+
+    /**
+     * Reads a PLM marker (Packet length, main header marker)
+     *
+     * @param       codeStream      JPEG 2000 code stream
+      * @param       p_header_data   header data
+     * @param       header_size     size of header data
+     *
+     */
+    bool read_plm( uint8_t *p_header_data,
+    		uint16_t header_size);
+    /**
+     * Reads a PLT marker (Packet length, tile-part header)
+     *
+     * @param       codeStream      JPEG 2000 code stream
+     * @param       p_header_data   header data
+     * @param       header_size     size of header data
+     *
+     */
+    bool read_plt( uint8_t *p_header_data,
+    		uint16_t header_size);
+
+    /**
+     * Reads a PPM marker (Packed headers, main header)
+     *
+     * @param       codeStream      JPEG 2000 code stream
+     * @param       p_header_data   header data
+     * @param       header_size     size of header data
+     *
+     */
+
+    bool read_ppm( uint8_t *p_header_data,
+    		uint16_t header_size);
+
+    /**
+     * Merges all PPM markers read (Packed headers, main header)
+     *
+     * @param       p_cp      main coding parameters.
+
+     */
+    bool merge_ppm(CodingParams *p_cp);
+
+    /**
+     * Reads a PPT marker (Packed packet headers, tile-part header)
+     *
+     * @param       codeStream      JPEG 2000 code stream
+     * @param       p_header_data   header data
+     * @param       header_size     size of header data
+     *
+     */
+    bool read_ppt( uint8_t *p_header_data,
+    		uint16_t header_size);
+
+    /**
+     * Merges all PPT markers read (Packed headers, tile-part header)
+     *
+     * @param       p_tcp   the tile.
+
+     */
+    bool merge_ppt(TileCodingParams *p_tcp);
+
+    /**
+     * Read SOT (Start of tile part) marker
+     *
+     * @param       codeStream      JPEG 2000 code stream
+     * @param       p_header_data   header data.
+     * @param       header_size     size of header data
+     *
+     */
+    bool read_sot(	uint8_t *p_header_data, uint16_t header_size);
+
+
+    /**
+     * Compare 2 a SPCod/ SPCoc elements, i.e. the coding style of a given component of a tile.
+     *
+     * @param       codeStream            JPEG 2000 code stream
+     * @param       first_comp_no  The 1st component number to compare.
+     * @param       second_comp_no The 1st component number to compare.
+     *
+     * @return true if SPCdod are equals.
+     */
+    bool compare_SPCod_SPCoc(
+    		uint32_t first_comp_no, uint32_t second_comp_no);
+
+    /**
+     * Writes a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
+     *
+     * @param       codeStream           JPEG 2000 code stream
+     * @param       comp_no       the component number to output.
+     *
+     * @return true if successful
+     */
+    bool write_SPCod_SPCoc( 	uint32_t comp_no);
+
+    /**
+     * Gets the size taken by writing a SPCod or SPCoc for the given tile and component.
+     *
+     * @param       codeStream                   the JPEG 2000 code stream
+     * @param       comp_no               the component being outputted.
+     *
+     * @return      the number of bytes taken by the SPCod element.
+     */
+    uint32_t get_SPCod_SPCoc_size( uint32_t comp_no);
+
+    /**
+     * Reads a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
+     * @param       codeStream           JPEG 2000 code stream
+     * @param       compno          component number
+     * @param       p_header_data   the data contained in the COM box.
+     * @param       header_size   the size of the data contained in the COM marker.
+
+     */
+    bool read_SPCod_SPCoc(
+    		uint32_t compno, uint8_t *p_header_data, uint16_t *header_size);
+
+    /**
+     * Gets the size taken by writing SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
+     *
+     * @param       codeStream                   the JPEG 2000 code stream
+     * @param       comp_no               the component being output.
+     *
+     * @return      the number of bytes taken by the SPCod element.
+     */
+    uint32_t get_SQcd_SQcc_size(	uint32_t comp_no);
+
+    /**
+     * Compares 2 SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
+     *
+     * @param       codeStream                   JPEG 2000 code stream
+     * @param       first_comp_no         the first component number to compare.
+     * @param       second_comp_no        the second component number to compare.
+     *
+     * @return true if equals.
+     */
+    bool compare_SQcd_SQcc(
+    		uint32_t first_comp_no, uint32_t second_comp_no);
+
+    /**
+     * Writes a SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
+     *
+     * @param       codeStream                   JPEG 2000 code stream
+     * @param       comp_no               the component number to output.
+     *
+     */
+    bool write_SQcd_SQcc(uint32_t comp_no);
+
+    /**
+     * Reads a SQcd or SQcc element, i.e. the quantization values of a band
+     * in the QCD or QCC.
+     *
+     * @param       codeStream           JPEG 2000 code stream
+     * @param		fromQCC			true if reading QCC, otherwise false (reading QCD)
+     * @param       compno          the component number to output.
+     * @param       p_header_data   the data buffer.
+     * @param       header_size   pointer to the size of the data buffer,
+     *              it is changed by the function.
+     *
+     */
+    bool read_SQcd_SQcc( bool fromQCC,uint32_t compno,
+    		uint8_t *p_header_data, uint16_t *header_size);
+
+    /**
+     * Writes the MCT marker (Multiple Component Transform)
+     *
+     * @param       p_mct_record  MCT record
+     * @param       stream        buffered stream.
+
+     */
+    bool write_mct_record(grk_mct_data *p_mct_record, BufferedStream *stream);
+
+    /**
+     * Reads a MCT marker (Multiple Component Transform)
+     *
+     * @param       codeStream      JPEG 2000 code stream
+     * @param       p_header_data   header data
+     * @param       header_size     size of header data
+     *
+     */
+    bool read_mct( uint8_t *p_header_data,
+    		uint16_t header_size);
+
+    /**
+     * Writes the MCC marker (Multiple Component Collection)
+     *
+     * @param       p_mcc_record          MCC record
+     * @param       stream                buffered stream.
+
+     */
+    bool write_mcc_record(grk_simple_mcc_decorrelation_data *p_mcc_record,
+    		BufferedStream *stream);
+
+    /**
+     * Reads a MCC marker (Multiple Component Collection)
+     *
+     * @param       codeStream      JPEG 2000 code stream
+     * @param       p_header_data   header data
+     * @param       header_size     size of header data
+     *
+     */
+    bool read_mcc( uint8_t *p_header_data,
+    		uint16_t header_size);
+
+    /**
+     * Writes the MCO marker (Multiple component transformation ordering)
+     *
+     * @param       codeStream      JPEG 2000 code stream
+     */
+    bool write_mco();
+
+    /**
+     * Reads a MCO marker (Multiple Component Transform Ordering)
+     *
+     * @param       codeStream      JPEG 2000 code stream
+     * @param       p_header_data   header data.
+     * @param       header_size     size of header data
+     *
+     */
+    bool read_mco( uint8_t *p_header_data,
+    		uint16_t header_size);
+
+    bool add_mct(TileCodingParams *p_tcp, GrkImage *p_image, uint32_t index);
+
+
+    /**
+     * Writes the CBD marker (Component bit depth definition)
+     *
+     * @param       codeStream                           JPEG 2000 code stream
+     */
+    bool write_cbd();
+
+    /**
+     * Reads a CBD marker (Component bit depth definition)
+     *
+     * @param       codeStream      JPEG 2000 code stream
+     * @param       p_header_data   header data
+     * @param       header_size     size of header data
+     *
+     */
+    bool read_cbd( uint8_t *p_header_data,
+    		uint16_t header_size);
+
+    /**
+     * Writes COC marker for each component.
+     *
+     * @param       codeStream          JPEG 2000 code stream
+      */
+    bool write_all_coc();
+
+    /**
+     * Writes QCC marker for each component.
+     *
+     * @param       codeStream          JPEG 2000 code stream
+     */
+    bool write_all_qcc();
+
+    /**
+     * Writes regions of interests.
+     *
+     * @param       codeStream          JPEG 2000 code stream
+     */
+    bool write_regions();
+
+    /**
+     * Writes EPC ????
+     *
+     * @param       codeStream          JPEG 2000 code stream
+     */
+    bool write_epc();
+
+    /**
+     * Writes the RGN marker (Region Of Interest)
+     *
+     * @param       tile_no               the tile to output
+     * @param       comp_no               the component to output
+     * @param       nb_comps                the number of components
+     * @param       codeStream                   JPEG 2000 code stream
+
+     */
+    bool write_rgn( uint16_t tile_no, uint32_t comp_no,
+    		uint32_t nb_comps);
+
+    /**
+     * Reads a RGN marker (Region Of Interest)
+     *
+     * @param       codeStream      JPEG 2000 code stream
+     * @param       p_header_data   header data
+     * @param       header_size     size of header data
+     */
+    bool read_rgn( uint8_t *p_header_data,
+    		uint16_t header_size);
+
+    /**
+     * Writes the EOC marker (End of Codestream)
+     *
+     * @param       codeStream          JPEG 2000 code stream
+     */
+    bool write_eoc();
+
+    /**
+     * Writes the CBD-MCT-MCC-MCO markers (Multi components transform)
+     *
+     * @param       codeStream          JPEG 2000 code stream
+     */
+    bool write_mct_data_group();
+
+    void copy_tile_component_parameters(void);
+
+
+
 private:
 	/* output image (for decompress) */
 	GrkImage *m_output_image;

@@ -57,17 +57,7 @@ void j2k_write_float_to_float(const void *p_src_data, void *p_dest_data,
 void j2k_write_float_to_float64(const void *p_src_data,
 		void *p_dest_data, uint64_t nb_elem);
 
-/**
- Add main header marker information
- @param cstr_index    Codestream information structure
- @param id           marker id
- @param pos          byte offset of marker segment
- @param len          length of marker segment
- */
-bool j2k_add_mhmarker( grk_codestream_index  *cstr_index,
-						uint16_t id,
-						uint64_t pos,
-						uint32_t len);
+
 
 /**
  * Writes the SOC marker (Start Of Codestream)
@@ -235,7 +225,6 @@ bool j2k_write_qcc(CodeStream *codeStream, uint16_t tile_index, uint32_t comp_no
 bool j2k_read_qcc(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
 
-uint16_t getPocSize(uint32_t l_nb_comp, uint32_t l_nb_poc);
 
 /**
  * Writes the POC marker (Progression Order Change)
@@ -323,14 +312,6 @@ bool j2k_read_plt(CodeStream *codeStream, uint8_t *p_header_data,
 
 bool j2k_read_ppm(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
-
-/**
- * Merges all PPM markers read (Packed headers, main header)
- *
- * @param       p_cp      main coding parameters.
-
- */
-bool j2k_merge_ppm(CodingParams *p_cp);
 
 /**
  * Reads a PPT marker (Packed packet headers, tile-part header)
@@ -451,14 +432,6 @@ bool j2k_write_SQcd_SQcc(CodeStream *codeStream,uint32_t comp_no);
 bool j2k_read_SQcd_SQcc(CodeStream *codeStream, bool fromQCC,uint32_t compno,
 		uint8_t *p_header_data, uint16_t *header_size);
 
-/**
- * Writes the MCT marker (Multiple Component Transform)
- *
- * @param       p_mct_record  MCT record
- * @param       stream        buffered stream.
-
- */
-bool j2k_write_mct_record(grk_mct_data *p_mct_record, BufferedStream *stream);
 
 /**
  * Reads a MCT marker (Multiple Component Transform)
@@ -471,15 +444,7 @@ bool j2k_write_mct_record(grk_mct_data *p_mct_record, BufferedStream *stream);
 bool j2k_read_mct(CodeStream *codeStream, uint8_t *p_header_data,
 		uint16_t header_size);
 
-/**
- * Writes the MCC marker (Multiple Component Collection)
- *
- * @param       p_mcc_record          MCC record
- * @param       stream                buffered stream.
 
- */
-bool j2k_write_mcc_record(grk_simple_mcc_decorrelation_data *p_mcc_record,
-		BufferedStream *stream);
 
 /**
  * Reads a MCC marker (Multiple Component Collection)
