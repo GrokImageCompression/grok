@@ -250,7 +250,7 @@ bool CodeStream::readHeader(grk_header_info  *header_info){
 		m_headerImage = new GrkImage();
 
 		/* customization of the validation */
-		m_validation_list.push_back([this] {return decompress_validation();});
+		m_validation_list.push_back(std::bind(&CodeStream::decompress_validation, this));
 
 		/* validation of the parameters codec */
 		if (!exec(m_validation_list)){
@@ -258,9 +258,9 @@ bool CodeStream::readHeader(grk_header_info  *header_info){
 			return false;
 		}
 
-		m_procedure_list.push_back([this] {return read_header_procedure();});
+		m_procedure_list.push_back(std::bind(&CodeStream::read_header_procedure, this));
 		// custom procedures here
-		m_procedure_list.push_back([this] {return copy_default_tcp();});
+		m_procedure_list.push_back(std::bind(&CodeStream::copy_default_tcp, this));
 
 		/* read header */
 		if (!exec(m_procedure_list)){
@@ -528,7 +528,7 @@ void CodeStream::initDecompress(grk_dparameters  *parameters){
 }
 bool CodeStream::decompress( grk_plugin_tile *tile){
 	/* customization of the decoding */
-	m_procedure_list.push_back([this] {return decompressTiles();});
+	m_procedure_list.push_back(std::bind(&CodeStream::decompressTiles,this));
 	current_plugin_tile = tile;
 
 	return exec_decompress();
@@ -753,7 +753,7 @@ bool CodeStream::decompressTile(uint16_t tile_index){
 		m_cp.tcps[i].m_tile_part_index = -1;
 
 	/* customization of the decoding */
-	m_procedure_list.push_back([this] {return decompressTile();});
+	m_procedure_list.push_back([this] {return decompressTile();}   );
 
 	return exec_decompress();
 }
@@ -1036,9 +1036,9 @@ bool CodeStream::endDecompress(void){
 
 bool CodeStream::start_compress(void){
 	/* customization of the validation */
-	m_validation_list.push_back([this] {return compress_validation();});
+	m_validation_list.push_back(std::bind(&CodeStream::compress_validation, this));
 	//custom validation here
-	m_validation_list.push_back([this] {return mct_validation();});
+	m_validation_list.push_back(std::bind(&CodeStream::mct_validation, this));
 
 	/* validation of the parameters codec */
 	if (!exec(m_validation_list))
@@ -1610,10 +1610,10 @@ cleanup:
 }
 bool CodeStream::endCompress(void){
 	/* customization of the compressing */
-	m_procedure_list.push_back([this] {return write_eoc();});
+	m_procedure_list.push_back(std::bind(&CodeStream::write_eoc,this));
 	if (m_cp.m_coding_params.m_enc.writeTLM)
-		m_procedure_list.push_back([this] {return write_tlm_end();});
-	m_procedure_list.push_back([this] {return write_epc();});
+		m_procedure_list.push_back(std::bind(&CodeStream::write_tlm_end,this));
+	m_procedure_list.push_back(std::bind(&CodeStream::write_epc,this));
 
 	return  exec(m_procedure_list);
 }
@@ -1833,32 +1833,33 @@ bool CodeStream::parse_tile_header_markers(bool *can_decode_tile_data) {
 }
 bool CodeStream::init_header_writing(void) {
 	m_procedure_list.push_back([this] {return calculate_tp(&m_cp,&m_encoder.m_total_tile_parts,getHeaderImage());});
-	m_procedure_list.push_back([this] {return write_soc();});
-	m_procedure_list.push_back([this] {return write_siz();});
+
+	m_procedure_list.push_back(std::bind(&CodeStream::write_soc,this));
+	m_procedure_list.push_back(std::bind(&CodeStream::write_siz,this));
 	if (m_cp.tcps[0].getIsHT())
-		m_procedure_list.push_back([this] {return write_cap();});
-	m_procedure_list.push_back([this] {return write_cod();});
-	m_procedure_list.push_back([this] {return write_qcd();});
-	m_procedure_list.push_back([this] {return write_all_coc();});
-	m_procedure_list.push_back([this] {return write_all_qcc();});
+		m_procedure_list.push_back(std::bind(&CodeStream::write_cap,this));
+	m_procedure_list.push_back(std::bind(&CodeStream::write_cod,this));
+	m_procedure_list.push_back(std::bind(&CodeStream::write_qcd,this));
+	m_procedure_list.push_back(std::bind(&CodeStream::write_all_coc,this));
+	m_procedure_list.push_back(std::bind(&CodeStream::write_all_qcc,this));
 
 	if (m_cp.m_coding_params.m_enc.writeTLM)
-		m_procedure_list.push_back([this] {return write_tlm_begin();});
+		m_procedure_list.push_back(std::bind(&CodeStream::write_tlm_begin,this));
 	if (m_cp.rsiz == GRK_PROFILE_CINEMA_4K)
-		m_procedure_list.push_back([this] {return write_poc();});
+		m_procedure_list.push_back(std::bind(&CodeStream::write_poc,this));
 
-	m_procedure_list.push_back([this] {return write_regions();});
-	m_procedure_list.push_back([this] {return write_com();});
+	m_procedure_list.push_back(std::bind(&CodeStream::write_regions,this));
+	m_procedure_list.push_back(std::bind(&CodeStream::write_com,this));
 	//begin custom procedures
 	if ((m_cp.rsiz & (GRK_PROFILE_PART2 | GRK_EXTENSION_MCT))
 			== (GRK_PROFILE_PART2 | GRK_EXTENSION_MCT)) {
-		m_procedure_list.push_back([this] {return write_mct_data_group();});
+		m_procedure_list.push_back(std::bind(&CodeStream::write_mct_data_group,this));
 	}
 	//end custom procedures
 
 	if (cstr_index)
-		m_procedure_list.push_back([this] {return get_end_header();});
-	m_procedure_list.push_back([this] {return update_rates();});
+		m_procedure_list.push_back(std::bind(&CodeStream::get_end_header,this));
+	m_procedure_list.push_back(std::bind(&CodeStream::update_rates,this));
 
 	return true;
 }

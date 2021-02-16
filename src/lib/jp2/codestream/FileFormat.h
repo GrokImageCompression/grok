@@ -98,7 +98,7 @@ struct ComponentInfo {
 };
 
 typedef std::function<bool(uint8_t *p_header_data, uint32_t header_size)>  BOX_FUNC;
-
+typedef std::function<uint8_t*(uint32_t* len)>  WRITE_FUNC;
 /**
 	Association box (defined in ITU 15444-2 Annex M 11.1 )
 */
@@ -134,13 +134,10 @@ struct UUIDBox: public FileFormatBox, grk_buf {
 
 class FileFormat;
 
-struct BoxReadHandler {
-	uint32_t id;
-	bool (*handler)(FileFormat *fileFormat, uint8_t *p_header_data, uint32_t header_size);
-};
-
 struct BoxWriteHandler {
-	uint8_t* (*handler)(FileFormat *fileFormat, uint32_t *data_size);
+	BoxWriteHandler() : handler(nullptr),m_data(nullptr), m_size(0)
+	{}
+	WRITE_FUNC handler;
 	uint8_t *m_data;
 	uint32_t m_size;
 };
@@ -162,7 +159,7 @@ public:
    static void alloc_palette(grk_color *color, uint8_t num_channels, uint16_t num_entries);
    static void free_palette_clr(grk_color *color);
    CodeStream* getCodeStream(void);
-   bool exec( std::vector<jp2_procedure> *procs);
+   bool exec( std::vector<PROCEDURE_FUNC> *procs);
 
    ////////////////////////////////////////////////////////////////////////
 
@@ -262,9 +259,9 @@ protected:
 	CodeStream *codeStream;
 
 	/** list of validation procedures */
-	std::vector<jp2_procedure> *m_validation_list;
+	std::vector<PROCEDURE_FUNC> *m_validation_list;
 	/** list of execution procedures */
-	std::vector<jp2_procedure> *m_procedure_list;
+	std::vector<PROCEDURE_FUNC> *m_procedure_list;
 
 	AsocBox root_asoc;
 

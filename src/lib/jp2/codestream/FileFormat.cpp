@@ -18,235 +18,17 @@
  *    Please see the LICENSE file in the root directory for details.
  *
  */
-
 #include "grk_includes.h"
 #include <string>
 
 namespace grk {
 
-/** @defgroup JP2 JP2 - JPEG 2000 file format reader/writer */
-/*@{*/
-
 #define GRK_BOX_SIZE	1024
 #define GRK_RESOLUTION_BOX_SIZE (4+4+10)
 
-
-/*@}*/
-
-/*@}*/
-
-
-/**
- * Reads a JPEG 2000 file header structure.
- *
- * @param fileFormat the JPEG 2000 file header structure.
- *
- * @return true if the box is valid.
- */
-static bool jp2_read_header_procedure(FileFormat *fileFormat);
-
-/**
- * Sets up the procedures to do on reading header after the code stream.
- * Developers wanting to extend the library can add their own writing procedures.
- */
-static bool jp2_init_end_header_reading(FileFormat *fileFormat);
-
-static bool jp2_init_end_header_reading(FileFormat *fileFormat) {
-	assert(fileFormat != nullptr);
-	fileFormat->init_end_header_reading();
-
-	return true;
-}
-static bool jp2_read_header_procedure(FileFormat *fileFormat) {
-	assert(fileFormat != nullptr);
-	return fileFormat->readHeaderProcedure();
-}
-
-static bool jp2_skip_jp2c(FileFormat *fileFormat) {
-	assert(fileFormat != nullptr);
-	return fileFormat->skip_jp2c();
-}
-
-
-static bool jp2_default_validation(FileFormat *fileFormat);
-/**
- * Writes the Image Header box - Image Header box.
- *
- * @param fileFormat					JPEG 2000 file codec.
- * @param p_nb_bytes_written	pointer to store the nb of bytes written by the function.
- *
- * @return	the data being copied.
- */
-static uint8_t* jp2_write_ihdr(FileFormat *fileFormat, uint32_t *p_nb_bytes_written);
-
-/**
- * Write XML box
- *
- * @param fileFormat				JPEG 2000 file codec.
- * @param p_nb_bytes_written		pointer to store the nb of bytes written by the function.
- *
- * @return	the data being copied.
- */
-static uint8_t* jp2_write_xml(FileFormat *fileFormat, uint32_t *p_nb_bytes_written);
-
-/**
- * Writes the Resolution box
- *
- * @param fileFormat			JPEG 2000 file codec.
- * @param p_nb_bytes_written	pointer to store the nb of bytes written by the function.
- *
- * @return	the data being copied.
- */
-static uint8_t* jp2_write_res(FileFormat *fileFormat, uint32_t *p_nb_bytes_written);
-
-/**
- * Writes the Bit per Component box.
- *
- * @param	fileFormat				JPEG 2000 file codec.
- * @param	p_nb_bytes_written		pointer to store the nb of bytes written by the function.
- *
- * @return	the data being copied.
- */
-static uint8_t* jp2_write_bpc(FileFormat *fileFormat, uint32_t *p_nb_bytes_written);
-
-
-/**
- * Writes the Channel Definition box.
- *
- * @param fileFormat			JPEG 2000 file codec.
- * @param p_nb_bytes_written	pointer to store the nb of bytes written by the function.
- *
- * @return	the data being copied.
- */
-static uint8_t* jp2_write_channel_definition(FileFormat *fileFormat, uint32_t *p_nb_bytes_written);
-
-/**
- * Writes the Colour Specification box.
- *
- * @param fileFormat			JPEG 2000 file codec.
- * @param p_nb_bytes_written	pointer to store the nb of bytes written by the function.
- *
- * @return	the data being copied.
- */
-static uint8_t* jp2_write_colr(FileFormat *fileFormat, uint32_t *p_nb_bytes_written);
-
-/**
- * Writes a FTYP box - File type box
- *
- * @param	fileFormat			JPEG 2000 code stream.
-
- *
- * @return	true if writing was successful.
- */
-static bool jp2_write_ftyp(FileFormat *fileFormat);
-static bool jp2_write_uuids(FileFormat *fileFormat);
-
-/**
- * Writes a JPEG 2000 file signature box.
- *
- * @param	fileFormat			JPEG 2000 code stream.
-
- *
- * @return true if writing was successful.
- */
-static bool jp2_write_jp(FileFormat *fileFormat);
-static uint8_t* jp2_write_palette_clr(FileFormat *fileFormat, uint32_t *p_nb_bytes_written);
-static uint8_t* jp2_write_component_mapping(FileFormat *fileFormat, uint32_t *p_nb_bytes_written);
-/**
- * Sets up the procedures to do on writing header after the code stream.
- * Developers wanting to extend the library can add their own writing procedures.
- */
-static bool jp2_init_end_header_writing(FileFormat *fileFormat);
-/**
- * Sets up the validation ,i.e. adds the procedures to launch to make sure the codec parameters
- * are valid. Developers wanting to extend the library can add their own validation procedures.
- */
-static bool jp2_init_compress_validation(FileFormat *fileFormat);
-/**
- * Sets up the procedures to do on writing header.
- * Developers wanting to extend the library can add their own writing procedures.
- */
-static bool jp2_init_header_writing(FileFormat *fileFormat);
-
-static bool jp2_default_validation(FileFormat *fileFormat) {
-	assert(fileFormat != nullptr);
-	return fileFormat->default_validation();
-}
-static bool jp2_init_compress_validation(FileFormat *fileFormat) {
-	assert(fileFormat != nullptr);
-	fileFormat->init_compress_validation();
-
-	return true;
-}
-static bool jp2_init_header_writing(FileFormat *fileFormat) {
-	assert(fileFormat != nullptr);
-	fileFormat->init_header_writing();
-
-	return true;
-}
-static bool jp2_write_jp2h(FileFormat *fileFormat) {
-	return fileFormat->write_jp2h();
-}
-static bool jp2_write_uuids(FileFormat *fileFormat) {
-	assert(fileFormat != nullptr);
-	return fileFormat->write_uuids();
-}
-static bool jp2_write_ftyp(FileFormat *fileFormat) {
-	assert(fileFormat != nullptr);
-	return fileFormat->write_ftyp();
-}
-
-static bool jp2_write_jp2c(FileFormat *fileFormat) {
-	assert(fileFormat != nullptr);
-	return fileFormat->write_jp2c();
-}
-static bool jp2_write_jp(FileFormat *fileFormat) {
-	assert(fileFormat != nullptr);
-	return fileFormat->write_jp();
-}
-static bool jp2_init_end_header_writing(FileFormat *fileFormat) {
-	assert(fileFormat != nullptr);
-	fileFormat->init_end_header_writing();
-
-	return true;
-}
-static uint8_t* jp2_write_component_mapping(FileFormat *fileFormat, uint32_t *p_nb_bytes_written) {
-	return fileFormat->write_component_mapping(p_nb_bytes_written);
-}
-static uint8_t* jp2_write_palette_clr(FileFormat *fileFormat, uint32_t *p_nb_bytes_written) {
-	return fileFormat->write_palette_clr(p_nb_bytes_written);
-}
-static uint8_t* jp2_write_colr(FileFormat *fileFormat, uint32_t *p_nb_bytes_written) {
-	return fileFormat->write_colr(p_nb_bytes_written);
-}
-static uint8_t* jp2_write_channel_definition(FileFormat *fileFormat, uint32_t *p_nb_bytes_written) {
-	return fileFormat->write_channel_definition(p_nb_bytes_written);
-}
-static uint8_t* jp2_write_res(FileFormat *fileFormat, uint32_t *p_nb_bytes_written) {
-	return fileFormat->write_res(p_nb_bytes_written);
-}
-static uint8_t* jp2_write_bpc(FileFormat *fileFormat, uint32_t *p_nb_bytes_written) {
-	assert(fileFormat != nullptr);
-
-	return fileFormat->write_bpc(p_nb_bytes_written);
-}
-static uint8_t* jp2_write_xml(FileFormat *fileFormat, uint32_t *p_nb_bytes_written) {
-	assert(fileFormat != nullptr);
-
-	return fileFormat->write_xml(p_nb_bytes_written);
-}
-static uint8_t* jp2_write_ihdr(FileFormat *fileFormat, uint32_t *p_nb_bytes_written) {
-	assert(fileFormat != nullptr);
-
-	return fileFormat->write_ihdr(p_nb_bytes_written);
-}
-
-
-
-
 FileFormat::FileFormat(bool isDecoder, BufferedStream *stream) : codeStream(new CodeStream(isDecoder,stream)),
-										m_validation_list(new std::vector<jp2_procedure>()),
-										m_procedure_list(new std::vector<jp2_procedure>()),
+										m_validation_list(new std::vector<PROCEDURE_FUNC>()),
+										m_procedure_list(new std::vector<PROCEDURE_FUNC>()),
 										w(0),
 										h(0),
 										numcomps(0),
@@ -303,7 +85,6 @@ FileFormat::FileFormat(bool isDecoder, BufferedStream *stream) : codeStream(new 
 			{ JP2_RES,	[this](uint8_t *data, uint32_t len ) { return read_res(data, len);} } };
 
 }
-
 FileFormat::~FileFormat() {
 	delete codeStream;
 	delete[] comps;
@@ -342,7 +123,6 @@ void FileFormat::free_palette_clr(grk_color *color) {
 		}
 	}
 }
-
 void FileFormat::free_color(grk_color *color){
 	assert(color);
 	free_palette_clr(color);
@@ -355,18 +135,12 @@ void FileFormat::free_color(grk_color *color){
 		color->channel_definition = nullptr;
 	}
 }
-
 CodeStream* FileFormat::getCodeStream(void){
 	return codeStream;
 }
-
-
-
-
 void FileFormat::init_end_header_reading(void) {
-	m_procedure_list->push_back((jp2_procedure) jp2_read_header_procedure);
+	m_procedure_list->push_back(std::bind(&FileFormat::readHeaderProcedure,this));
 }
-
 bool FileFormat::read_asoc(uint8_t *header_data, uint32_t header_data_size) {
     assert(header_data);
 
@@ -384,7 +158,6 @@ bool FileFormat::read_asoc(uint8_t *header_data, uint32_t header_data_size) {
 
     return true;
 }
-
 void FileFormat::serializeAsoc(AsocBox *asoc,
 								grk_asoc *serial_asocs,
 								uint32_t *num_asocs,
@@ -409,15 +182,12 @@ void FileFormat::serializeAsoc(AsocBox *asoc,
 	for (auto &child : asoc->children)
 		serializeAsoc(child, serial_asocs, num_asocs, level+1);
 }
-
 GrkImage* FileFormat::getImage(uint16_t tileIndex){
 	return codeStream->getImage(tileIndex);
 }
-
 GrkImage* FileFormat::getImage(void){
 	return codeStream->getImage();
 }
-
 /** Main header reading function handler */
 bool FileFormat::readHeader(grk_header_info  *header_info){
 	if (m_headerError)
@@ -426,7 +196,7 @@ bool FileFormat::readHeader(grk_header_info  *header_info){
 	bool needsHeaderRead = !codeStream->getHeaderImage();
 	if (needsHeaderRead) {
 
-		m_procedure_list->push_back((jp2_procedure) jp2_read_header_procedure);
+		m_procedure_list->push_back(std::bind(&FileFormat::readHeaderProcedure,this));
 
 		/* validation of the parameters codec */
 		if (!exec(m_validation_list)){
@@ -563,7 +333,6 @@ bool FileFormat::readHeader(grk_header_info  *header_info){
 bool FileFormat::setDecompressWindow(grk_rect_u32 window){
 	return codeStream->setDecompressWindow(window);
 }
-
 /** Set up decompressor function handler */
 void FileFormat::initDecompress(grk_dparameters  *parameters){
 	/* set up the J2K codec */
@@ -572,8 +341,6 @@ void FileFormat::initDecompress(grk_dparameters  *parameters){
 	/* further JP2 initializations go here */
 	color.has_colour_specification_box = false;
 }
-
-
 bool FileFormat::decompress( grk_plugin_tile *tile){
 	if (!codeStream->decompress(tile)) {
 		GRK_ERROR("Failed to decompress JP2 file");
@@ -582,7 +349,6 @@ bool FileFormat::decompress( grk_plugin_tile *tile){
 
 	return applyColour();
 }
-
 bool FileFormat::decompressTile(uint16_t tile_index) {
 	if (!codeStream->decompressTile(tile_index)) {
 		GRK_ERROR("Failed to decompress JP2 file");
@@ -591,12 +357,9 @@ bool FileFormat::decompressTile(uint16_t tile_index) {
 
 	return applyColour();
 }
-
-
 /** Reading function used after code stream if necessary */
 bool FileFormat::endDecompress(void){
-	if (!jp2_init_end_header_reading(this))
-		return false;
+	init_end_header_reading();
 	if (!exec(m_procedure_list))
 		return false;
 
@@ -633,7 +396,6 @@ bool FileFormat::applyColour(GrkImage *img){
 	img->color_applied = true;
 	return true;
 }
-
 uint32_t FileFormat::read_asoc(AsocBox *parent,
 								uint8_t **header_data,
 								uint32_t *header_data_size,
@@ -707,12 +469,9 @@ uint32_t FileFormat::read_asoc(AsocBox *parent,
 
 	return asocBytesUsed;
 }
-
-
 void FileFormat::dump(uint32_t flag, FILE *out_stream){
 	j2k_dump(codeStream, flag, out_stream);
 }
-
 bool FileFormat::readHeaderProcedure(void) {
 	FileFormatBox box;
 	uint32_t nb_bytes_read;
@@ -834,7 +593,6 @@ cleanup:
 	grk_free(current_data);
 	return rc;
 }
-
 bool FileFormat::default_validation(void) {
 	bool is_valid = true;
 	uint32_t i;
@@ -875,8 +633,6 @@ bool FileFormat::default_validation(void) {
 
 	return is_valid;
 }
-
-
 /***
  * Read box length and type only
  *
@@ -926,7 +682,6 @@ bool FileFormat::read_box_hdr(FileFormatBox *box, uint32_t *p_number_bytes_read,
 	}
 	return true;
 }
-
 bool FileFormat::read_ihdr( uint8_t *p_image_header_data,
 		uint32_t image_header_size) {
 	assert(p_image_header_data != nullptr);
@@ -1009,10 +764,6 @@ bool FileFormat::read_ihdr( uint8_t *p_image_header_data,
 
 	return true;
 }
-
-
-
-
 bool FileFormat::read_xml( uint8_t *p_xml_data, uint32_t xml_size) {
 	if (!p_xml_data || !xml_size) {
 		return false;
@@ -1025,7 +776,6 @@ bool FileFormat::read_xml( uint8_t *p_xml_data, uint32_t xml_size) {
 	memcpy(xml.buf, p_xml_data, xml_size);
 	return true;
 }
-
 bool FileFormat::read_uuid( uint8_t *p_header_data,
 		uint32_t header_size) {
 	if (!p_header_data || header_size < 16)
@@ -1047,9 +797,6 @@ bool FileFormat::read_uuid( uint8_t *p_header_data,
 	return true;
 
 }
-
-// resolution //////////////
-
 double FileFormat::calc_res(uint16_t num, uint16_t den, uint8_t exponent) {
 	if (den == 0)
 		return 0;
@@ -1124,11 +871,6 @@ bool FileFormat::read_res( uint8_t *p_resolution_data,
 	}
 	return true;
 }
-
-
-///// Component and Colour //////
-
-
 bool FileFormat::read_bpc( uint8_t *p_bpc_header_data,
 		uint32_t bpc_header_size) {
 	assert(p_bpc_header_data != nullptr);
@@ -1151,9 +893,6 @@ bool FileFormat::read_bpc( uint8_t *p_bpc_header_data,
 
 	return true;
 }
-
-
-
 void FileFormat::apply_channel_definition(GrkImage *image, grk_color *color) {
 	auto info = color->channel_definition->descriptions;
 	uint16_t n = color->channel_definition->num_channel_descriptions;
@@ -1206,7 +945,6 @@ void FileFormat::apply_channel_definition(GrkImage *image, grk_color *color) {
 		}
 	}
 }
-
 bool FileFormat::read_channel_definition( uint8_t *p_cdef_header_data,
 		uint32_t cdef_header_size) {
 	uint16_t i;
@@ -1298,8 +1036,6 @@ bool FileFormat::read_channel_definition( uint8_t *p_cdef_header_data,
 
 	return true;
 }
-
-
 bool FileFormat::read_colr( uint8_t *p_colr_header_data,
 		uint32_t colr_header_size) {
 	assert(p_colr_header_data != nullptr);
@@ -1542,7 +1278,6 @@ bool FileFormat::check_color(GrkImage *image, grk_color *color) {
 
 	return true;
 }
-
 bool FileFormat::apply_palette_clr(GrkImage *image, grk_color *color) {
 	auto channel_prec = color->palette->channel_prec;
 	auto channel_sign = color->palette->channel_sign;
@@ -1640,7 +1375,6 @@ bool FileFormat::apply_palette_clr(GrkImage *image, grk_color *color) {
 	return true;
 
 }
-
 bool FileFormat::read_component_mapping( uint8_t *component_mapping_header_data,
 		uint32_t component_mapping_header_size) {
 	uint8_t i, num_channels;
@@ -1677,7 +1411,6 @@ bool FileFormat::read_component_mapping( uint8_t *component_mapping_header_data,
 
 	return true;
 }
-
 bool FileFormat::read_palette_clr( uint8_t *p_pclr_header_data,	uint32_t pclr_header_size) {
 	auto orig_header_data = p_pclr_header_data;
 	assert(p_pclr_header_data != nullptr);
@@ -1739,7 +1472,6 @@ bool FileFormat::read_palette_clr( uint8_t *p_pclr_header_data,	uint32_t pclr_he
 
 	return true;
 }
-
 /**
  * Executes the given procedures on the given codec.
  *
@@ -1747,24 +1479,22 @@ bool FileFormat::read_palette_clr( uint8_t *p_pclr_header_data,	uint32_t pclr_he
  *
  * @return	true				if all the procedures were successfully executed.
  */
-bool FileFormat::exec( std::vector<jp2_procedure> *procs) {
+bool FileFormat::exec( std::vector<PROCEDURE_FUNC> *procs) {
 	bool result = true;
 	assert(procs);
 
 	for (auto it = procs->begin(); it != procs->end(); ++it) {
-		auto p = (jp2_procedure) *it;
-		result = result && (p)(this);
+		auto p = *it;
+		result = result && (p)();
 	}
 	procs->clear();
 
 	return result;
 }
-
 const BOX_FUNC FileFormat::find_handler(uint32_t id) {
 	auto res = header.find(id);
 	return (res != header.end() ? res->second : nullptr);
 }
-
 /**
  * Finds the image execution function related to the given box id.
  *
@@ -1776,7 +1506,6 @@ const BOX_FUNC FileFormat::img_find_handler(uint32_t id) {
 	auto res = img_header.find(id);
 	return (res != img_header.end() ? res->second : nullptr);
 }
-
 /**
  * Reads a JPEG 2000 file signature box.
  *
@@ -1810,7 +1539,6 @@ bool FileFormat::read_jp( uint8_t *p_header_data,uint32_t header_size)	{
 
 	return true;
 }
-
 /**
  * Reads a a FTYP box - File type box
  *
@@ -1866,7 +1594,6 @@ bool FileFormat::read_ftyp( uint8_t *p_header_data,	uint32_t header_size) {
 
 	return true;
 }
-
 bool FileFormat::skip_jp2c(void) {
     auto stream = codeStream->getStream();
 	assert(stream != nullptr);
@@ -1876,7 +1603,6 @@ bool FileFormat::skip_jp2c(void) {
 
 	return stream->skip(skip_bytes);
 }
-
 /**
  * Reads the Jpeg2000 file Header box - JP2 Header box (warning, this is a super box).
  *
@@ -1931,7 +1657,6 @@ bool FileFormat::read_jp2h( uint8_t *p_header_data,	uint32_t header_size) {
 
 	return true;
 }
-
 bool FileFormat::read_box(FileFormatBox *box, uint8_t *p_data,
 		uint32_t *p_number_bytes_read, uint64_t maxBoxSize) {
 	assert(p_data != nullptr);
@@ -1983,10 +1708,6 @@ bool FileFormat::read_box(FileFormatBox *box, uint8_t *p_data,
 	}
 	return true;
 }
-
-/////////////////////////////////////////////////////
-
-
 bool FileFormat::write_jp(void) {
     auto stream = codeStream->getStream();
 	assert(stream != nullptr);
@@ -2002,7 +1723,6 @@ bool FileFormat::write_jp(void) {
 		return false;
 	return true;
 }
-
 bool FileFormat::write_jp2c(void) {
     auto stream = codeStream->getStream();
 	assert(stream != nullptr);
@@ -2042,9 +1762,6 @@ bool FileFormat::write_jp2c(void) {
 
 	return true;
 }
-
-
-
 bool FileFormat::write_ftyp(void) {
     auto stream = codeStream->getStream();
 	assert(stream != nullptr);
@@ -2083,8 +1800,6 @@ bool FileFormat::write_ftyp(void) {
 		GRK_ERROR("Error while writing ftyp data to stream");
 	return result;
 }
-
-
 bool FileFormat::write_uuids(void) {
     auto stream = codeStream->getStream();
 	assert(stream != nullptr);;
@@ -2108,7 +1823,6 @@ bool FileFormat::write_uuids(void) {
 	}
 	return true;
 }
-
 bool FileFormat::write_jp2h(void) {
 	BoxWriteHandler writers[32];
 	int32_t i, nb_writers = 0;
@@ -2118,17 +1832,15 @@ bool FileFormat::write_jp2h(void) {
 	auto stream = codeStream->getStream();
 	assert(stream != nullptr);
 
-	memset(writers, 0, sizeof(writers));
-
-	writers[nb_writers++].handler = jp2_write_ihdr;
+	writers[nb_writers++].handler = std::bind(&FileFormat::write_ihdr,this,std::placeholders::_1);
 	if (bpc == 0xFF)
-		writers[nb_writers++].handler = jp2_write_bpc;
-	writers[nb_writers++].handler = jp2_write_colr;
+		writers[nb_writers++].handler = std::bind(&FileFormat::write_bpc,this,std::placeholders::_1);
+	writers[nb_writers++].handler = std::bind(&FileFormat::write_colr,this,std::placeholders::_1);
 	if (color.channel_definition)
-		writers[nb_writers++].handler = jp2_write_channel_definition;
+		writers[nb_writers++].handler = std::bind(&FileFormat::write_channel_definition,this,std::placeholders::_1);
 	if (color.palette){
-		writers[nb_writers++].handler = jp2_write_palette_clr;
-		writers[nb_writers++].handler = jp2_write_component_mapping;
+		writers[nb_writers++].handler = std::bind(&FileFormat::write_palette_clr,this,std::placeholders::_1);
+		writers[nb_writers++].handler = std::bind(&FileFormat::write_component_mapping,this,std::placeholders::_1);
 	}
 	if (has_display_resolution || has_capture_resolution) {
 		bool storeCapture = capture_resolution[0] > 0
@@ -2136,14 +1848,13 @@ bool FileFormat::write_jp2h(void) {
 		bool storeDisplay = display_resolution[0] > 0
 				&& display_resolution[1] > 0;
 		if (storeCapture || storeDisplay)
-			writers[nb_writers++].handler = jp2_write_res;
+			writers[nb_writers++].handler = std::bind(&FileFormat::write_res,this,std::placeholders::_1);
 	}
 	if (xml.buf && xml.len)
-		writers[nb_writers++].handler = jp2_write_xml;
+		writers[nb_writers++].handler = std::bind(&FileFormat::write_xml,this,std::placeholders::_1);
 	for (i = 0; i < nb_writers; ++i) {
 		auto current_writer = writers + i;
-		current_writer->m_data = current_writer->handler(this,
-				&(current_writer->m_size));
+		current_writer->m_data = current_writer->handler(&(current_writer->m_size));
 		if (current_writer->m_data == nullptr) {
 			GRK_ERROR("Not enough memory to hold JP2 Header data");
 			result = false;
@@ -2188,9 +1899,6 @@ bool FileFormat::write_jp2h(void) {
 
 	return result;
 }
-
-
-
 uint8_t* FileFormat::write_palette_clr( uint32_t *p_nb_bytes_written) {
 	auto palette = color.palette;
 	assert(palette);
@@ -2238,8 +1946,6 @@ uint8_t* FileFormat::write_palette_clr( uint32_t *p_nb_bytes_written) {
 
 	return paletteBuf;
 }
-
-
 uint8_t* FileFormat::write_component_mapping( uint32_t *p_nb_bytes_written) {
 	auto palette = color.palette;
 	uint32_t boxSize = 4 + 4 + palette->num_channels * 4U;
@@ -2267,8 +1973,6 @@ uint8_t* FileFormat::write_component_mapping( uint32_t *p_nb_bytes_written) {
 
 	return cmapBuf;
 }
-
-
 uint8_t* FileFormat::write_colr( uint32_t *p_nb_bytes_written) {
 	/* room for 8 bytes for box 3 for common data and variable upon profile*/
 	uint32_t colr_size = 11;
@@ -2324,8 +2028,6 @@ uint8_t* FileFormat::write_colr( uint32_t *p_nb_bytes_written) {
 
 	return colr_data;
 }
-
-
 uint8_t* FileFormat::write_channel_definition( uint32_t *p_nb_bytes_written) {
 	/* 8 bytes for box, 2 for n */
 	uint32_t cdef_size = 10;
@@ -2369,7 +2071,6 @@ uint8_t* FileFormat::write_channel_definition( uint32_t *p_nb_bytes_written) {
 
 	return cdef_data;
 }
-
 uint8_t* FileFormat::write_bpc( uint32_t *p_nb_bytes_written) {
 	assert(p_nb_bytes_written != nullptr);
 
@@ -2398,8 +2099,6 @@ uint8_t* FileFormat::write_bpc( uint32_t *p_nb_bytes_written) {
 
 	return bpcc_data;
 }
-
-
 uint8_t* FileFormat::write_res( uint32_t *p_nb_bytes_written) {
 	uint8_t *res_data = nullptr, *current_res_ptr = nullptr;
 	assert(p_nb_bytes_written);
@@ -2443,7 +2142,6 @@ uint8_t* FileFormat::write_res( uint32_t *p_nb_bytes_written) {
 
 	return res_data;
 }
-
 void FileFormat::find_cf(double x, uint32_t *num, uint32_t *den) {
 	// number of terms in continued fraction.
 	// 15 is the max without precision errors for M_PI
@@ -2511,13 +2209,9 @@ void FileFormat::write_res_box(double resx, double resy, uint32_t box_id,
 		*current_res_ptr += 1;
 	}
 }
-
-
 uint8_t* FileFormat::write_xml( uint32_t *p_nb_bytes_written) {
 	return write_buffer(JP2_XML, &xml, p_nb_bytes_written);
 }
-
-
 uint8_t* FileFormat::write_buffer(uint32_t boxId, grk_buf *buffer,
 		uint32_t *p_nb_bytes_written) {
 	assert(p_nb_bytes_written != nullptr);
@@ -2545,9 +2239,6 @@ uint8_t* FileFormat::write_buffer(uint32_t boxId, grk_buf *buffer,
 
 	return data;
 }
-
-
-
 uint8_t* FileFormat::write_ihdr( uint32_t *p_nb_bytes_written) {
 	assert(p_nb_bytes_written != nullptr);
 
@@ -2595,19 +2286,16 @@ uint8_t* FileFormat::write_ihdr( uint32_t *p_nb_bytes_written) {
 
 	return ihdr_data;
 }
-
 bool FileFormat::start_compress(void){
 	/* customization of the validation */
-	if (!jp2_init_compress_validation(this))
-		return false;
+	init_compress_validation();
 
 	/* validation of the parameters codec */
 	if (!exec(m_validation_list))
 		return false;
 
 	/* customization of the compressing */
-	if (!jp2_init_header_writing(this))
-		return false;
+	init_header_writing();
 
 	// estimate if codec stream may be larger than 2^32 bytes
 	auto p_image = codeStream->getHeaderImage();
@@ -2819,47 +2507,35 @@ bool FileFormat::initCompress(grk_cparameters  *parameters,GrkImage *image){
 
 	return true;
 }
-
 bool FileFormat::compress(grk_plugin_tile* tile){
 
 	return codeStream->compress(tile);
 }
-
 bool FileFormat::compressTile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size){
 
 	return codeStream->compressTile(tile_index, p_data, data_size);
 }
-
 bool FileFormat::endCompress(void){
 	/* customization of the end compressing */
-	if (!jp2_init_end_header_writing(this))
-		return false;
+	init_end_header_writing();
 	if (!codeStream->endCompress())
 		return false;
 
 	/* write header */
 	return exec(m_procedure_list);
 }
-
-
 void FileFormat::init_end_header_writing(void) {
-	m_procedure_list->push_back((jp2_procedure) jp2_write_jp2c);
+	m_procedure_list->push_back(std::bind(&FileFormat::write_jp2c,this));
 }
-
-
 void FileFormat::init_compress_validation(void) {
-	m_validation_list->push_back((jp2_procedure) jp2_default_validation);
+	m_validation_list->push_back(std::bind(&FileFormat::default_validation,this));
 }
-
-
-
 void FileFormat::init_header_writing(void) {
-	m_procedure_list->push_back((jp2_procedure) jp2_write_jp);
-	m_procedure_list->push_back((jp2_procedure) jp2_write_ftyp);
-	m_procedure_list->push_back((jp2_procedure) jp2_write_jp2h);
-	m_procedure_list->push_back((jp2_procedure) jp2_write_uuids);
-	m_procedure_list->push_back((jp2_procedure) jp2_skip_jp2c);
+	m_procedure_list->push_back(std::bind(&FileFormat::write_jp,this));
+	m_procedure_list->push_back(std::bind(&FileFormat::write_ftyp,this));
+	m_procedure_list->push_back(std::bind(&FileFormat::write_jp2h,this));
+	m_procedure_list->push_back(std::bind(&FileFormat::write_uuids,this));
+	m_procedure_list->push_back(std::bind(&FileFormat::skip_jp2c,this));
 }
-
 
 }
