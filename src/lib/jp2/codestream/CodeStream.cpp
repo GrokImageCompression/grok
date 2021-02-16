@@ -4476,10 +4476,5 @@ bool CodeStream::calculate_tp(CodingParams *cp, uint16_t *p_nb_tile_parts,
 
 	return true;
 }
-/*
- ==========================================================
- Matric inversion interface
- ==========================================================
- */
 
 }

@@ -97,6 +97,8 @@ struct ComponentInfo {
 	uint8_t bpc;
 };
 
+typedef std::function<bool(uint8_t *p_header_data, uint32_t header_size)>  BOX_FUNC;
+
 /**
 	Association box (defined in ITU 15444-2 Annex M 11.1 )
 */
@@ -144,6 +146,9 @@ struct BoxWriteHandler {
 };
 
 typedef bool (*jp2_procedure)(FileFormat *fileFormat);
+
+class FileFormatCompress;
+class FileFormatDecompress;
 
 /**
  JPEG 2000 file format reader/writer
@@ -207,8 +212,8 @@ public:
    bool read_component_mapping( uint8_t *component_mapping_header_data,
    		uint32_t component_mapping_header_size);
    bool read_palette_clr( uint8_t *p_pclr_header_data,	uint32_t pclr_header_size);
-   const BoxReadHandler* find_handler(uint32_t id);
-   const BoxReadHandler* img_find_handler(uint32_t id);
+   const BOX_FUNC find_handler(uint32_t id);
+   const BOX_FUNC img_find_handler(uint32_t id);
    bool read_jp( uint8_t *p_header_data,uint32_t header_size);
    bool read_ftyp( uint8_t *p_header_data,	uint32_t header_size) ;
    bool skip_jp2c(void);
@@ -253,6 +258,7 @@ public:
    uint8_t* write_xml( uint32_t *p_nb_bytes_written);
 
 protected:
+
 	CodeStream *codeStream;
 
 	/** list of validation procedures */
@@ -298,6 +304,12 @@ protected:
 	uint32_t numUuids;
 
 	bool m_headerError;
+
+	std::map<uint32_t, BOX_FUNC> header;
+	std::map<uint32_t, BOX_FUNC> img_header;
+
+	FileFormatCompress* m_compress;
+	FileFormatDecompress* m_decompress;
 
 	bool applyColour(GrkImage *img);
 	bool applyColour(void);

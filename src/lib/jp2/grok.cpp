@@ -225,10 +225,10 @@ void GRK_CALLCONV grk_image_single_component_data_free( grk_image_comp  *comp) {
 
 	switch (p_format) {
 	case GRK_CODEC_J2K:
-		codec->m_codeStreamBase = new CodeStreamDecompress(BufferedStream::getImpl(stream));
+		codec->m_codeStreamBase = new CodeStream(true,BufferedStream::getImpl(stream));
 		break;
 	case GRK_CODEC_JP2:
-		codec->m_codeStreamBase = new FileFormatDecompress(BufferedStream::getImpl(stream));
+		codec->m_codeStreamBase = new FileFormat(true,BufferedStream::getImpl(stream));
 		break;
 	case GRK_CODEC_UNKNOWN:
 	default:
@@ -355,10 +355,10 @@ grk_image* GRK_CALLCONV grk_decompress_get_composited_image( grk_codec *codecWra
 
 	switch (p_format) {
 	case GRK_CODEC_J2K:
-		codec->m_codeStreamBase = new CodeStreamCompress(BufferedStream::getImpl(stream));
+		codec->m_codeStreamBase = new CodeStream(false,BufferedStream::getImpl(stream));
 		break;
 	case GRK_CODEC_JP2:
-		codec->m_codeStreamBase = new FileFormatCompress(BufferedStream::getImpl(stream));
+		codec->m_codeStreamBase = new FileFormat(false,BufferedStream::getImpl(stream));
 		break;
 	case GRK_CODEC_UNKNOWN:
 	default:

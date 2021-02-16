@@ -30,170 +30,6 @@ namespace grk {
 #define GRK_BOX_SIZE	1024
 #define GRK_RESOLUTION_BOX_SIZE (4+4+10)
 
-/** @name Local static functions */
-/*@{*/
-
-/**
- * Reads a IHDR box - Image Header box
- *
- * @param	p_image_header_data			pointer to actual data (already read from file)
- * @param	fileFormat							JPEG 2000 code stream.
- * @param	image_header_size			the size of the image header
- 
- *
- * @return	true if the image header is valid, false otherwise.
- */
-static bool jp2_read_ihdr(FileFormat *fileFormat, uint8_t *p_image_header_data,
-		uint32_t image_header_size);
-
-
-/**
- * Read XML box
- *
- * @param	fileFormat			JPEG 2000 file codec.
- * @param	p_xml_data			pointer to actual data (already read from file)
- * @param	xml_size			size of the xml data
- 
- *
- * @return	true if the image header is valid, false otherwise.
- */
-static bool jp2_read_xml(FileFormat *fileFormat, uint8_t *p_xml_data, uint32_t xml_size);
-
-/**
- * Read Associated data
- *
- * @param	fileFormat			JPEG 2000 file codec.
- * @param	header_data			pointer to actual data (already read from file)
- * @param	header_data_size	size of the data
-
- *
- * @return	true if the image header is valid, false otherwise.
- */
-static bool jp2_read_asoc(FileFormat *fileFormat, uint8_t *header_data, uint32_t header_data_size);
-
-/**
- * Read a UUID box
- *
- * @param	fileFormat			JPEG 2000 file codec.
- * @param	p_header_data		pointer to actual data (already read from file)
- * @param	header_data_size	size of data
- 
- *
- * @return	true if the image header is valid, false otherwise.
- */
-static bool jp2_read_uuid(FileFormat *fileFormat, uint8_t *p_header_data,
-		uint32_t header_data_size);
-
-/**
- * Reads a Resolution box
- *
- * @param	p_resolution_data		pointer to actual data (already read from file)
- * @param	fileFormat				JPEG 2000 code stream.
- * @param	resolution_size			the size of the image header
- 
- *
- * @return	true if the image header is valid, false otherwise.
- */
-static bool jp2_read_res(FileFormat *fileFormat, uint8_t *p_resolution_data,
-		uint32_t resolution_size);
-
-
-/**
- * Reads a Bit per Component box.
- *
- * @param	p_bpc_header_data		pointer to actual data (already read from file)
- * @param	fileFormat				JPEG 2000 code stream.
- * @param	bpc_header_size			the size of the bpc header
- 
- *
- * @return	true if the bpc header is valid, false otherwise.
- */
-static bool jp2_read_bpc(FileFormat *fileFormat, uint8_t *p_bpc_header_data,
-		uint32_t bpc_header_size);
-
-static bool jp2_read_channel_definition(FileFormat *fileFormat, uint8_t *p_cdef_header_data,
-		uint32_t cdef_header_size);
-
-/**
- * Reads a a FTYP box - File type box
- *
- * @param	fileFormat		JPEG 2000 code stream.
- * @param	p_header_data	the data contained in the FTYP box.
- * @param	header_size		size of the data contained in the FTYP box.
- .
- *
- * @return true if the FTYP box is valid.
- */
-static bool jp2_read_ftyp(FileFormat *fileFormat, uint8_t *p_header_data,
-		uint32_t header_size);
-
-static bool jp2_skip_jp2c(FileFormat *fileFormat);
-
-/**
- * Reads the Jpeg2000 file Header box - JP2 Header box (warning, this is a super box).
- *
- * @param	fileFormat		JPEG 2000 code stream.
- * @param	p_header_data	the data contained in the file header box.
- * @param	header_size		size of the data contained in the file header box.
- .
- *
- * @return true if the JP2 Header box was successfully recognized.
- */
-static bool jp2_read_jp2h(FileFormat *fileFormat, uint8_t *p_header_data,
-		uint32_t header_size);
-
-/**
- * Reads a JPEG 2000 file signature box.
- *
- * @param	fileFormat		JPEG 2000 code stream.
- * @param	p_header_data	the data contained in the signature box.
- * @param	header_size		size of the data contained in the signature box.
- .
- *
- * @return true if the file signature box is valid.
- */
-static bool jp2_read_jp(FileFormat *fileFormat, uint8_t *p_header_data,
-		uint32_t header_size);
-
-/**
- * Collect palette data
- *
- * @param fileFormat 			JP2 file format
- * @param p_pclr_header_data    pclr header data
- * @param pclr_header_size    	pclr header data size
- *
- * @return true if successful
- */
-static bool jp2_read_palette_clr(FileFormat *fileFormat, uint8_t *p_pclr_header_data,
-		uint32_t pclr_header_size);
-
-/**
- * Collect component mapping data
- *
- * @param fileFormat          				JP2 file format
- * @param component_mapping_header_data  	component_mapping header data
- * @param component_mapping_header_size 	component_mapping header data size
-
- *
- * @return true if successful
- */
-
-static bool jp2_read_component_mapping(FileFormat *fileFormat, uint8_t *component_mapping_header_data,
-		uint32_t component_mapping_header_size);
-
-/**
- * Reads the Color Specification box.
- *
- * @param	p_colr_header_data			pointer to actual data (already read from file)
- * @param	fileFormat					JPEG 2000 code stream.
- * @param	colr_header_size			the size of the color header
- 
- *
- * @return	true if the bpc header is valid, false otherwise.
- */
-static bool jp2_read_colr(FileFormat *fileFormat, uint8_t *p_colr_header_data,
-		uint32_t colr_header_size);
-
 
 /*@}*/
 
@@ -210,101 +46,11 @@ static bool jp2_read_colr(FileFormat *fileFormat, uint8_t *p_colr_header_data,
 static bool jp2_read_header_procedure(FileFormat *fileFormat);
 
 /**
- * Executes the given procedures on the given codec.
- *
- * @param	fileFormat			JPEG 2000 code stream to execute the procedures on.
- *  @param	procs	the list of procedures to execute
- *
- * @return	true				if all the procedures were successfully executed.
- */
-static bool jp2_exec(FileFormat *fileFormat, std::vector<jp2_procedure> *procs);
-
-
-/**
- * Finds the image execution function related to the given box id.
- *
- * @param	id	the id of the handler to fetch.
- *
- * @return	the given handler or nullptr if it could not be found.
- */
-static const BoxReadHandler* jp2_img_find_handler(uint32_t id);
-
-/**
- * Finds the execution function related to the given box id.
- *
- * @param	id	the id of the handler to fetch.
- *
- * @return	the given handler or nullptr if it could not be found.
- */
-static const BoxReadHandler* jp2_find_handler(uint32_t id);
-
-/**
  * Sets up the procedures to do on reading header after the code stream.
  * Developers wanting to extend the library can add their own writing procedures.
  */
 static bool jp2_init_end_header_reading(FileFormat *fileFormat);
 
-
-static const BoxReadHandler jp2_header[] = {
-		{ JP2_JP, jp2_read_jp },
-		{ JP2_FTYP, jp2_read_ftyp },
-		{ JP2_JP2H, jp2_read_jp2h },
-		{ JP2_XML, jp2_read_xml },
-		{ JP2_UUID, jp2_read_uuid },
-		{ JP2_ASOC, jp2_read_asoc }};
-
-static const BoxReadHandler jp2_img_header[] = {
-		{ JP2_IHDR,	jp2_read_ihdr },
-		{ JP2_COLR, jp2_read_colr },
-		{ JP2_BPCC, jp2_read_bpc },
-		{ JP2_PCLR, jp2_read_palette_clr },
-		{ JP2_CMAP,	jp2_read_component_mapping },
-		{ JP2_CDEF, jp2_read_channel_definition },
-		{ JP2_RES,	jp2_read_res }
-};
-static bool jp2_read_ihdr(FileFormat *fileFormat, uint8_t *p_image_header_data,
-		uint32_t image_header_size) {
-	assert(p_image_header_data != nullptr);
-	assert(fileFormat != nullptr);
-
-	return fileFormat->read_ihdr(p_image_header_data, image_header_size);
-}
-static bool jp2_read_asoc(FileFormat *fileFormat, uint8_t *header_data, uint32_t header_data_size) {
-    assert(fileFormat);
-    return fileFormat->read_asoc(header_data, header_data_size);
-}
-static bool jp2_read_xml(FileFormat *fileFormat, uint8_t *p_xml_data, uint32_t xml_size) {
-	return fileFormat->read_xml(p_xml_data, xml_size);
-}
-static bool jp2_read_uuid(FileFormat *fileFormat, uint8_t *p_header_data,
-		uint32_t header_size) {
-	return fileFormat->read_uuid(p_header_data, header_size);
-}
-static bool jp2_read_res(FileFormat *fileFormat, uint8_t *p_resolution_data,
-		uint32_t resolution_size) {
-	return fileFormat->read_res(p_resolution_data, resolution_size);
-}
-static bool jp2_read_bpc(FileFormat *fileFormat, uint8_t *p_bpc_header_data,
-		uint32_t bpc_header_size) {
-	return fileFormat->read_bpc(p_bpc_header_data, bpc_header_size);
-}
-static bool jp2_read_channel_definition(FileFormat *fileFormat, uint8_t *p_cdef_header_data,
-		uint32_t cdef_header_size) {
-	return fileFormat->read_channel_definition(p_cdef_header_data, cdef_header_size);
-}
-static bool jp2_read_colr(FileFormat *fileFormat, uint8_t *p_colr_header_data,
-		uint32_t colr_header_size) {
-	assert(fileFormat != nullptr);
-	return fileFormat->read_colr(p_colr_header_data, colr_header_size);
-}
-static bool jp2_read_component_mapping(FileFormat *fileFormat, uint8_t *component_mapping_header_data,
-		uint32_t component_mapping_header_size) {
-	return fileFormat->read_component_mapping(component_mapping_header_data, component_mapping_header_size);
-}
-static bool jp2_read_palette_clr(FileFormat *fileFormat, uint8_t *p_pclr_header_data,
-		uint32_t pclr_header_size) {
-	return fileFormat->read_palette_clr(p_pclr_header_data, pclr_header_size);
-}
 static bool jp2_init_end_header_reading(FileFormat *fileFormat) {
 	assert(fileFormat != nullptr);
 	fileFormat->init_end_header_reading();
@@ -315,105 +61,11 @@ static bool jp2_read_header_procedure(FileFormat *fileFormat) {
 	assert(fileFormat != nullptr);
 	return fileFormat->readHeaderProcedure();
 }
-/**
- * Executes the given procedures on the given codec.
- *
- * @param	fileFormat			JPEG 2000 code stream to execute the procedures on.
- * @param	procs	the list of procedures to execute
- *
- * @return	true				if all the procedures were successfully executed.
- */
-static bool jp2_exec(FileFormat *fileFormat, std::vector<jp2_procedure> *procs) {
-	return fileFormat->exec(procs);
-}
-static const BoxReadHandler* jp2_find_handler(uint32_t id) {
-	auto handler_size =
-			sizeof(jp2_header) / sizeof(BoxReadHandler);
 
-	for (uint32_t i = 0; i < handler_size; ++i) {
-		if (jp2_header[i].id == id)
-			return &jp2_header[i];
-	}
-
-	return nullptr;
-}
-/**
- * Finds the image execution function related to the given box id.
- *
- * @param	id	the id of the handler to fetch.
- *
- * @return	the given handler or nullptr if it could not be found.
- */
-static const BoxReadHandler* jp2_img_find_handler(uint32_t id) {
-	auto handler_size =
-			sizeof(jp2_img_header) / sizeof(BoxReadHandler);
-
-	for (uint32_t i = 0; i < handler_size; ++i) {
-		if (jp2_img_header[i].id == id)
-			return &jp2_img_header[i];
-	}
-
-	return nullptr;
-}
-/**
- * Reads a JPEG 2000 file signature box.
- *
- * @param	fileFormat				JPEG 2000 code stream.
- * @param	p_header_data	the data contained in the signature box.
- * @param	header_size	the size of the data contained in the signature box.
- *
- * @return true if the file signature box is valid.
- */
-static bool jp2_read_jp(FileFormat *fileFormat, uint8_t *p_header_data,
-		uint32_t header_size)	{
-	return fileFormat->read_jp(p_header_data, header_size);
-}
-/**
- * Reads a a FTYP box - File type box
- *
- * @param	fileFormat				JPEG 2000 code stream.
- * @param	p_header_data	the data contained in the FTYP box.
- * @param	header_size	the size of the data contained in the FTYP box.
- *
- * @return true if the FTYP box is valid.
- */
-static bool jp2_read_ftyp(FileFormat *fileFormat, uint8_t *p_header_data,
-		uint32_t header_size) {
-	return fileFormat->read_ftyp(p_header_data, header_size);
-}
 static bool jp2_skip_jp2c(FileFormat *fileFormat) {
 	assert(fileFormat != nullptr);
 	return fileFormat->skip_jp2c();
 }
-/**
- * Reads the Jpeg2000 file Header box - JP2 Header box (warning, this is a super box).
- *
- * @param	fileFormat				JPEG 2000 code stream.
- * @param	p_header_data	the data contained in the file header box.
- * @param	header_size	the size of the data contained in the file header box.
- *
- * @return true if the JP2 Header box was successfully recognized.
- */
-static bool jp2_read_jp2h(FileFormat *fileFormat, uint8_t *p_header_data,
-		uint32_t header_size) {
-	assert(p_header_data != nullptr);
-	assert(fileFormat != nullptr);
-
-	return fileFormat->read_jp2h(p_header_data, header_size);
-}
-
-/////////////////////////////////
-
-
-
-
-
-
-
-
-
-
-
 
 
 static bool jp2_default_validation(FileFormat *fileFormat);
@@ -592,16 +244,6 @@ static uint8_t* jp2_write_ihdr(FileFormat *fileFormat, uint32_t *p_nb_bytes_writ
 
 
 
-
-
-
-
-
-
-
-
-
-
 FileFormat::FileFormat(bool isDecoder, BufferedStream *stream) : codeStream(new CodeStream(isDecoder,stream)),
 										m_validation_list(new std::vector<jp2_procedure>()),
 										m_procedure_list(new std::vector<jp2_procedure>()),
@@ -628,7 +270,9 @@ FileFormat::FileFormat(bool isDecoder, BufferedStream *stream) : codeStream(new 
 										has_capture_resolution(false),
 										has_display_resolution(false),
 										numUuids(0),
-										m_headerError(false)
+										m_headerError(false),
+										m_compress(nullptr),
+										m_decompress(nullptr)
 {
 	for (uint32_t i = 0; i < 2; ++i) {
 		capture_resolution[i] = 0;
@@ -641,6 +285,22 @@ FileFormat::FileFormat(bool isDecoder, BufferedStream *stream) : codeStream(new 
 	color.channel_definition = nullptr;
 	color.palette = nullptr;
 	color.has_colour_specification_box = false;
+
+	header = {	{ JP2_JP, [this](uint8_t *data, uint32_t len ) { return read_jp(data, len);}  },
+			{ JP2_FTYP, [this](uint8_t *data, uint32_t len ) { return read_ftyp(data, len);}  },
+			{ JP2_JP2H, [this](uint8_t *data, uint32_t len ) { return read_jp2h(data, len);} },
+			{ JP2_XML, [this](uint8_t *data, uint32_t len ) { return read_xml(data, len); } },
+			{ JP2_UUID, [this](uint8_t *data, uint32_t len ) { return read_uuid(data, len); } },
+			{ JP2_ASOC, [this](uint8_t *data, uint32_t len ) { return read_asoc(data, len); } }};
+
+	img_header = {
+			{ JP2_IHDR,	[this](uint8_t *data, uint32_t len ) { return read_ihdr(data, len);}  },
+			{ JP2_COLR, [this](uint8_t *data, uint32_t len ) { return read_colr(data, len);} },
+			{ JP2_BPCC, [this](uint8_t *data, uint32_t len ) { return read_bpc(data, len);} },
+			{ JP2_PCLR, [this](uint8_t *data, uint32_t len ) { return read_palette_clr(data, len);} },
+			{ JP2_CMAP,	[this](uint8_t *data, uint32_t len ) { return read_component_mapping(data, len);} },
+			{ JP2_CDEF, [this](uint8_t *data, uint32_t len ) { return read_channel_definition(data, len);} },
+			{ JP2_RES,	[this](uint8_t *data, uint32_t len ) { return read_res(data, len);} } };
 
 }
 
@@ -769,13 +429,13 @@ bool FileFormat::readHeader(grk_header_info  *header_info){
 		m_procedure_list->push_back((jp2_procedure) jp2_read_header_procedure);
 
 		/* validation of the parameters codec */
-		if (!jp2_exec(this, m_validation_list)){
+		if (!exec(m_validation_list)){
 			m_headerError = true;
 			return false;
 		}
 
 		/* read header */
-		if (!jp2_exec(this, m_procedure_list)){
+		if (!exec(m_procedure_list)){
 			m_headerError = true;
 			return false;
 		}
@@ -937,7 +597,7 @@ bool FileFormat::decompressTile(uint16_t tile_index) {
 bool FileFormat::endDecompress(void){
 	if (!jp2_init_end_header_reading(this))
 		return false;
-	if (!jp2_exec(this, m_procedure_list))
+	if (!exec(m_procedure_list))
 		return false;
 
 	return codeStream->endDecompress();
@@ -1083,8 +743,8 @@ bool FileFormat::readHeaderProcedure(void) {
 				}
 			}
 
-			auto current_handler = jp2_find_handler(box.type);
-			auto current_handler_misplaced = jp2_img_find_handler(box.type);
+			auto current_handler = find_handler(box.type);
+			auto current_handler_misplaced = img_find_handler(box.type);
 			current_data_size = (uint32_t) (box.length - nb_bytes_read);
 
 			if (current_handler || current_handler_misplaced) {
@@ -1144,7 +804,7 @@ bool FileFormat::readHeaderProcedure(void) {
 					GRK_ERROR("Problem with reading JPEG2000 box, stream error");
 					goto cleanup;
 				}
-				if (!current_handler->handler(this, current_data,current_data_size)) {
+				if (!current_handler(current_data,current_data_size)) {
 					goto cleanup;
 				}
 			} else {
@@ -2100,16 +1760,9 @@ bool FileFormat::exec( std::vector<jp2_procedure> *procs) {
 	return result;
 }
 
-const BoxReadHandler* FileFormat::find_handler(uint32_t id) {
-	auto handler_size =
-			sizeof(jp2_header) / sizeof(BoxReadHandler);
-
-	for (uint32_t i = 0; i < handler_size; ++i) {
-		if (jp2_header[i].id == id)
-			return &jp2_header[i];
-	}
-
-	return nullptr;
+const BOX_FUNC FileFormat::find_handler(uint32_t id) {
+	auto res = header.find(id);
+	return (res != header.end() ? res->second : nullptr);
 }
 
 /**
@@ -2119,16 +1772,9 @@ const BoxReadHandler* FileFormat::find_handler(uint32_t id) {
  *
  * @return	the given handler or nullptr if it could not be found.
  */
-const BoxReadHandler* FileFormat::img_find_handler(uint32_t id) {
-	auto handler_size =
-			sizeof(jp2_img_header) / sizeof(BoxReadHandler);
-
-	for (uint32_t i = 0; i < handler_size; ++i) {
-		if (jp2_img_header[i].id == id)
-			return &jp2_img_header[i];
-	}
-
-	return nullptr;
+const BOX_FUNC FileFormat::img_find_handler(uint32_t id) {
+	auto res = img_header.find(id);
+	return (res != img_header.end() ? res->second : nullptr);
 }
 
 /**
@@ -2260,10 +1906,9 @@ bool FileFormat::read_jp2h( uint8_t *p_header_data,	uint32_t header_size) {
 		uint32_t box_data_length = (uint32_t) (box.length - box_size);
 		p_header_data += box_size;
 
-		auto current_handler = jp2_img_find_handler(box.type);
+		auto current_handler = img_find_handler(box.type);
 		if (current_handler != nullptr) {
-			if (!current_handler->handler(this, p_header_data,
-					box_data_length)) {
+			if (!current_handler( p_header_data,box_data_length)) {
 				return false;
 			}
 		} else {
@@ -2957,7 +2602,7 @@ bool FileFormat::start_compress(void){
 		return false;
 
 	/* validation of the parameters codec */
-	if (!jp2_exec(this, m_validation_list))
+	if (!exec(m_validation_list))
 		return false;
 
 	/* customization of the compressing */
@@ -2975,7 +2620,7 @@ bool FileFormat::start_compress(void){
 			(image_size > (uint64_t) 1 << 30) ? true : false;
 
 	/* write header */
-	if (!jp2_exec(this, m_procedure_list))
+	if (!exec(m_procedure_list))
 		return false;
 
 	return codeStream->start_compress();
@@ -3193,7 +2838,7 @@ bool FileFormat::endCompress(void){
 		return false;
 
 	/* write header */
-	return jp2_exec(this, m_procedure_list);
+	return exec(m_procedure_list);
 }
 
 
