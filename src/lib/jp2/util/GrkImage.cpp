@@ -91,7 +91,7 @@ bool GrkImage::subsampleAndReduce(uint32_t reduce){
         uint32_t comp_x1 = ceildiv<uint32_t>(x1, comp->dx);
         comp_x1 = ceildivpow2<uint32_t>(comp_x1, reduce);
         if (comp_x1 <= comp->x0) {
-            GRK_ERROR("component: x1 (%d) is <= x0 (%d).",
+            GRK_ERROR("component %d: x1 (%d) is <= x0 (%d).",
                           compno, comp_x1, comp->x0);
             return false;
         }
@@ -101,7 +101,7 @@ bool GrkImage::subsampleAndReduce(uint32_t reduce){
         uint32_t comp_y1 = ceildiv<uint32_t>(y1, comp->dy);
         comp_y1 = ceildivpow2<uint32_t>(comp_y1, reduce);
          if (comp_y1 <= comp->y0) {
-             GRK_ERROR("component: y1 (%d) is <= y0 (%d).",
+             GRK_ERROR("component %d: y1 (%d) is <= y0 (%d).",
                            compno, comp_y1, comp->y0);
             return false;
         }
