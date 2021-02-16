@@ -2467,7 +2467,7 @@ bool CodeStream::read_cod(uint8_t *p_header_data,	uint16_t header_size) {
 	uint8_t tmp;
 	grk_read<uint8_t>(p_header_data++, &tmp); /* SGcod (A) */
 	/* Make sure progression order is valid */
-	if (tmp > GRK_CPRL) {
+	if (tmp >= GRK_NUM_PROGRESSION_ORDERS) {
 		GRK_ERROR("Unknown progression order %d in COD marker", tmp);
 		return false;
 	}

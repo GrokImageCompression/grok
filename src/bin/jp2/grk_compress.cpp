@@ -330,21 +330,16 @@ static void compress_help_display(void) {
 }
 
 static GRK_PROG_ORDER give_progression(const char progression[4]) {
-	if (strncmp(progression, "LRCP", 4) == 0) {
+	if (strncmp(progression, "LRCP", 4) == 0)
 		return GRK_LRCP;
-	}
-	if (strncmp(progression, "RLCP", 4) == 0) {
+	if (strncmp(progression, "RLCP", 4) == 0)
 		return GRK_RLCP;
-	}
-	if (strncmp(progression, "RPCL", 4) == 0) {
+	if (strncmp(progression, "RPCL", 4) == 0)
 		return GRK_RPCL;
-	}
-	if (strncmp(progression, "PCRL", 4) == 0) {
+	if (strncmp(progression, "PCRL", 4) == 0)
 		return GRK_PCRL;
-	}
-	if (strncmp(progression, "CPRL", 4) == 0) {
+	if (strncmp(progression, "CPRL", 4) == 0)
 		return GRK_CPRL;
-	}
 
 	return GRK_PROG_UNKNOWN;
 }

@@ -890,9 +890,9 @@ typedef struct _grk_image_comp {
 	GRK_COMPONENT_ASSOC association;
 } grk_image_comp;
 
+// colour, IPTC and XMP meta data
 typedef struct _grk_image_meta {
 	grk_object obj;
-	// colour, IPTC and XMP meta data
 	grk_color color;
 	uint8_t *iptc_buf;
 	size_t iptc_len;
@@ -980,10 +980,10 @@ typedef struct _grk_packet_info {
 typedef struct _grk_marker_info {
 	/** marker id */
 	uint16_t id;
+	/** length, marker id included */
+	uint32_t len;
 	/** position in code stream */
 	uint64_t pos;
-	/** length, marker value included */
-	uint32_t len;
 } grk_marker_info;
 
 
@@ -1102,8 +1102,8 @@ typedef struct _grk_tile_v2_info {
 	/** number of layers */
 	uint16_t numlayers;
 	/** multi-component transform identifier */
-	uint32_t mct;
-	/** information concerning tile component parameters*/
+	uint8_t mct;
+	/** tile component coding parameters*/
 	grk_tccp_info *tccp_info;
 
 } grk_tile_info_v2;
@@ -1112,7 +1112,6 @@ typedef struct _grk_tile_v2_info {
  * Code stream info v2
  */
 typedef struct _grk_codestream_info_v2 {
-	/* Tile info */
 	/** tile origin in x = XTOsiz */
 	uint32_t tx0;
 	/** tile origin in y = YTOsiz */
@@ -1155,11 +1154,11 @@ typedef struct _grk_tile_index {
 	uint32_t current_nb_tps;
 	/** current tile-part index */
 	uint32_t current_tpsno;
-	/** information concerning tile parts */
+	/** tile part index */
 	grk_tp_index *tp_index;
 	/** number of markers */
 	uint32_t marknum;
-	/** list of markers */
+	/** array of markers */
 	grk_marker_info *marker;
 	/** actual size of markers array */
 	uint32_t maxmarknum;
