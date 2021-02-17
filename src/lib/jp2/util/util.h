@@ -23,7 +23,8 @@
 #include <iostream>
 #include <cstdint>
 #include "grk_intmath.h"
-#include <limits>       // std::numeric_limits
+#include <limits>
+#include <sstream>
 
 namespace grk {
 
@@ -95,6 +96,11 @@ template<typename T> struct grk_rectangle {
     void print(void) const{
     	std::cout << "[" << x0 << "," << y0 << "," << x1 << "," << y1 << "]"
     			<< std::endl;
+    }
+    std::string boundsString() {
+    	std::ostringstream os;
+    	os << "[" << x0 << "," << y0 << "," << x1 << "," << y1 << "]";
+    	return os.str();
     }
     bool is_valid(void) const {
     	return x0 <= x1 && y0 <= y1;

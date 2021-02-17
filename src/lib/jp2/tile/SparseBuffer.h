@@ -298,6 +298,9 @@ private:
 	        return forgiving;
 	    }
 
+        if (!buf)
+        	GRK_WARN("Empty block at %s, res: %d",win.boundsString().c_str(), resno);
+
 	    const uint64_t line_stride 	= buf_line_stride;
 	    const uint64_t col_stride 	= buf_col_stride;
 	    uint32_t block_y 			= win.y0 >>  LBH;
