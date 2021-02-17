@@ -1473,8 +1473,8 @@ public:
 					ISparseBuffer* sa,
 					uint32_t y_offset,
 					uint32_t height){
-		const uint32_t h_chunk = (uint32_t)(sizeof(T)/sizeof(int32_t));
-		uint32_t shift_low_left = dwt->win_l.x0 > FILTER_WIDTH ? FILTER_WIDTH : dwt->win_l.x0;
+		const uint32_t h_chunk   = (uint32_t)(sizeof(T)/sizeof(int32_t));
+		uint32_t shift_low_left  = dwt->win_l.x0 > FILTER_WIDTH ? FILTER_WIDTH : dwt->win_l.x0;
 		uint32_t shift_high_left = dwt->win_h.x0 > FILTER_WIDTH ? FILTER_WIDTH : dwt->win_h.x0;
 		for (uint32_t i = 0; i < height; i++) {
 			bool ret = false;
@@ -1672,7 +1672,7 @@ public:
 		#define D_sgnd_off_(buf,i,off) 	(((i)<(-win_h_x0)	? get_D_off(buf,-win_h_x0,off)    : D_off_(buf,i,off)))
 
 		// case == 1
-		#define SS_sgnd_off_(buf,i,off)  ((i)<(-win_h_x0)   ? get_S_off(buf,-win_l_x0,off)    : ((i)>=dn ? get_S_off(buf,dn-1,off) : get_S_off(buf,i,off)))
+		#define SS_sgnd_off_(buf,i,off)  ((i)<(-win_h_x0)   ? get_S_off(buf,-win_h_x0,off)    : ((i)>=dn ? get_S_off(buf,dn-1,off) : get_S_off(buf,i,off)))
 		#define DD_sgnd_off_(buf,i,off)  ((i)<(-win_l_x0)   ? get_D_off(buf,-win_l_x0,off)    : ((i)>=sn ? get_D_off(buf,sn-1,off) : get_D_off(buf,i,off)))
 
 		#define SS_off_(buf,i,off) 		(((i)>=dn ? get_S_off(buf,dn-1,off) : get_S_off(buf,i,off)))

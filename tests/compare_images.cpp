@@ -845,12 +845,12 @@ int main(int argc, char **argv) {
 
 		if (inParam.regionSet) {
 			if (testComp->w != inParam.region[2] - inParam.region[0]) {
-				spdlog::error("test image component {} width doesn't match region width {}",
+				spdlog::error("test image component width {} doesn't match region width {}",
 						testComp->w, inParam.region[2] - inParam.region[0]);
 				goto cleanup;
 			}
 			if (testComp->h != inParam.region[3] - inParam.region[1]) {
-				spdlog::error("test image component {} height doesn't match region height {}",
+				spdlog::error("test image component height {} doesn't match region height {}",
 						testComp->h, inParam.region[3] - inParam.region[1]);
 				goto cleanup;
 			}
