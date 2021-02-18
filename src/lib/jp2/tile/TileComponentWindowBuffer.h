@@ -59,9 +59,7 @@ template<typename T> struct ResWindow {
 			grk_rect_u32 tileBandWindow = getTileCompBandWindow(numresolutions, resno, orient,tileCompWindowUnreduced);
 			// note: we don't need to clip the padded tile band windows, since no precincts or code blocks
 			// will be out of bounds of the full tile band
-
-			// note 2: Factor of 4 is necessary, otherwise https://github.com/GrokImageCompression/grok/issues/225
-			m_paddedTileBandWindow.push_back(tileBandWindow.grow(4 * FILTER_WIDTH));
+			m_paddedTileBandWindow.push_back(tileBandWindow.grow(2 * FILTER_WIDTH));
 		}
 
 		if (m_tileCompResLower) {
