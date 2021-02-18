@@ -66,6 +66,18 @@ template<typename T> struct ResWindow {
 
 			std::vector< grk_buffer_2d<T>* > unpaddedBandWindows;
 
+/*
+			auto b0 = getTileCompBandWindow(numresolutions,resno,BAND_ORIENT_LL,tileCompWindowUnreduced);
+			auto b1 = getTileCompBandWindow(numresolutions,resno,BAND_ORIENT_HL,tileCompWindowUnreduced);
+			auto b2 = getTileCompBandWindow(numresolutions,resno,BAND_ORIENT_LH,tileCompWindowUnreduced);
+			auto b3 = getTileCompBandWindow(numresolutions,resno,BAND_ORIENT_HH,tileCompWindowUnreduced);
+
+			assert(b0.width() + b1.width() == tileCompWindow.width());
+			assert(b2.width() + b3.width() == tileCompWindow.width());
+			assert(b0.height() + b2.height() == tileCompWindow.height());
+			assert(b1.height() + b3.height() == tileCompWindow.height());
+*/
+
 			// 1. set up windows for horizontal and vertical passes
 			for (uint8_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i) {
 				auto bandWindow = getTileCompBandWindow(numresolutions,resno,i,tileCompWindowUnreduced);
@@ -261,7 +273,7 @@ template<typename T> struct TileComponentWindowBuffer {
 
 		for (uint8_t resno = 0; resno < reducedNumResolutions - 1; ++resno) {
 			// resolution window ==  next resolution band window at orientation 0
-			auto res_dims = getTileCompBandWindow(m_numResolutions, (uint8_t) ((resno + 1)), 0,	unreducedTileOrImageCompWindow);
+			auto res_dims = getTileCompBandWindow(m_numResolutions, (uint8_t) ((resno + 1)), 0,	m_unreducedBounds);
 			m_resWindows.push_back(
 					new ResWindow<T>(numresolutions,
 									resno,
