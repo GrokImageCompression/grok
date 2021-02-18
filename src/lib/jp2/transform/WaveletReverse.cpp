@@ -1474,19 +1474,17 @@ public:
 					uint32_t y_offset,
 					uint32_t height){
 		const uint32_t h_chunk   = (uint32_t)(sizeof(T)/sizeof(int32_t));
-		uint32_t shift_low_left  = dwt->win_l.x0 > FILTER_WIDTH ? FILTER_WIDTH : dwt->win_l.x0;
-		uint32_t shift_high_left = dwt->win_h.x0 > FILTER_WIDTH ? FILTER_WIDTH : dwt->win_h.x0;
 		for (uint32_t i = 0; i < height; i++) {
 			bool ret = false;
 
 	    	// read one row of L band and write interleaved
 			if (dwt->sn) {
 				ret = sa->read(dwt->resno,
-									grk_rect_u32(dwt->win_l.x0 - shift_low_left,
+									grk_rect_u32(dwt->win_l.x0,
 												  y_offset + i,
-												  std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn),
+												  std::min<uint32_t>(dwt->win_l.x1, dwt->sn),
 												  y_offset + i + 1),
-								  (int32_t*)dwt->memL + i - shift_low_left * 2 * h_chunk,
+								  (int32_t*)dwt->memL + i,
 								  2 * h_chunk,
 								  0,
 								  true);
@@ -1495,11 +1493,11 @@ public:
 	        // read one row of H band and write interleaved
 			if (dwt->dn) {
 				ret = sa->read(dwt->resno,
-								grk_rect_u32(dwt->sn + dwt->win_h.x0 - shift_high_left,
+								grk_rect_u32(dwt->sn + dwt->win_h.x0,
 											 y_offset + i,
-											 dwt->sn + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn),
+											 dwt->sn + std::min<uint32_t>(dwt->win_h.x1, dwt->dn),
 											 y_offset + i + 1),
-								  (int32_t*)dwt->memH + i - shift_high_left * 2 * h_chunk,
+								  (int32_t*)dwt->memH + i,
 								  2 * h_chunk,
 								  0,
 								  true);
@@ -1517,18 +1515,16 @@ public:
 								uint32_t x_offset,
 								uint32_t x_num_elements){
 		const uint32_t v_chunk = (uint32_t)(sizeof(T)/sizeof(int32_t)) * VERT_PASS_WIDTH;
-		uint32_t shift_low_left = dwt->win_l.x0 > FILTER_WIDTH ? FILTER_WIDTH : dwt->win_l.x0;
-		uint32_t shift_high_left = dwt->win_h.x0 > FILTER_WIDTH ? FILTER_WIDTH : dwt->win_h.x0;
     	// read one vertical strip (of width x_num_elements <= v_chunk) of L band and write interleaved
 		bool ret = false;
 
 		if (dwt->sn) {
 			ret = sa->read(dwt->resno,
 								grk_rect_u32(x_offset,
-											dwt->win_l.x0 - shift_low_left,
+											dwt->win_l.x0,
 											x_offset + x_num_elements,
-											std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn)),
-								(int32_t*)dwt->memL - shift_low_left * 2 * v_chunk,
+											std::min<uint32_t>(dwt->win_l.x1, dwt->sn)),
+								(int32_t*)dwt->memL,
 								1,
 								2 * v_chunk,
 								true);
@@ -1538,10 +1534,10 @@ public:
 		if (dwt->dn) {
 			ret = sa->read(dwt->resno,
 							grk_rect_u32(x_offset,
-										dwt->sn + dwt->win_h.x0 - shift_high_left,
+										dwt->sn + dwt->win_h.x0,
 										x_offset + x_num_elements,
-										dwt->sn + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn)),
-							(int32_t*)dwt->memH - shift_high_left * 2 * v_chunk,
+										dwt->sn + std::min<uint32_t>(dwt->win_h.x1, dwt->dn)),
+							(int32_t*)dwt->memH,
 							1,
 							2 * v_chunk,
 							true);
