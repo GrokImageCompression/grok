@@ -107,8 +107,8 @@ bool TileComponent::init(bool isCompressor,
 		uint32_t pdy = m_tccp->prch_exp[resno];
 		/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
 		grk_rect_u32 precinct_grid;
-		precinct_grid.x0 = uint_floordivpow2(res->x0, pdx) << pdx;
-		precinct_grid.y0 = uint_floordivpow2(res->y0, pdy) << pdy;
+		precinct_grid.x0 = floordivpow2(res->x0, pdx) << pdx;
+		precinct_grid.y0 = floordivpow2(res->y0, pdy) << pdy;
 		uint64_t temp = (uint64_t)ceildivpow2<uint32_t>(res->x1, pdx) << pdx;
 		if (temp > UINT_MAX){
 			GRK_ERROR("Resolution x1 value %u must be less than 2^32", temp);
@@ -200,8 +200,8 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
             		continue;
             	auto cblk_grid = precinct->getCblkGrid();
             	auto cblk_expn = precinct->getCblkExpn();
-				grk_rect_u32 roi_grid = grk_rect_u32( uint_floordivpow2(roi.x0,  cblk_expn.x),
-													 uint_floordivpow2(roi.y0,  cblk_expn.y),
+				grk_rect_u32 roi_grid = grk_rect_u32( floordivpow2(roi.x0,  cblk_expn.x),
+													 floordivpow2(roi.y0,  cblk_expn.y),
 													 ceildivpow2(roi.x1,  cblk_expn.x),
 													 ceildivpow2(roi.y1,  cblk_expn.y));
 				roi_grid.clip(&cblk_grid);
@@ -252,8 +252,8 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
             		continue;
             	auto cblk_grid = precinct->getCblkGrid();
             	auto cblk_expn = precinct->getCblkExpn();
-				grk_rect_u32 roi_grid = grk_rect_u32( uint_floordivpow2(roi.x0,  cblk_expn.x),
-													 uint_floordivpow2(roi.y0,  cblk_expn.y),
+				grk_rect_u32 roi_grid = grk_rect_u32( floordivpow2(roi.x0,  cblk_expn.x),
+													 floordivpow2(roi.y0,  cblk_expn.y),
 													 ceildivpow2(roi.x1,  cblk_expn.x),
 													 ceildivpow2(roi.y1,  cblk_expn.y));
 				roi_grid.clip(&cblk_grid);

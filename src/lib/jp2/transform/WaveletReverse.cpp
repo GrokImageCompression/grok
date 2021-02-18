@@ -1635,7 +1635,7 @@ public:
 		} else {
 			if (sn_global == 0  && dn_global == 1) {
 				// only do L band (high pass)
-					S(buf,0) /= 2;
+					S(buf,0) >>= 1;
 			} else {
 				for (i = 0; i < win_l_x1 - win_l_x0; i++)
 					D(buf,i) -= (SS_(buf,i) + SS_(buf,i + 1) + 2) >> 2;
@@ -1778,7 +1778,7 @@ public:
 			if (sn_global == 0  && dn_global == 1) {
 				// edge case at origin
 				for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
-					S_off(buf,0, off) /= 2;
+					S_off(buf,0, off) >>= 1;
 			} else {
 				assert( (uint64_t)(dwt->memL + (win_l_x1 - win_l_x0) * VERT_PASS_WIDTH) - (uint64_t)dwt->allocatedMem < dwt->m_lenBytes);
 				for (i = 0; i < win_l_x1 - win_l_x0; i++) {

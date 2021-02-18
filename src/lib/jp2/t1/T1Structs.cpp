@@ -112,8 +112,8 @@ PrecinctImpl::PrecinctImpl(bool isCompressor, grk_rect_u32 *bounds,grk_pt cblk_e
 		m_cblk_expn(cblk_expn),
 		m_isCompressor(isCompressor)
 {
-	m_cblk_grid = grk_rect_u32(uint_floordivpow2(bounds->x0,cblk_expn.x),
-									uint_floordivpow2(bounds->y0,cblk_expn.y),
+	m_cblk_grid = grk_rect_u32(floordivpow2(bounds->x0,cblk_expn.x),
+									floordivpow2(bounds->y0,cblk_expn.y),
 									ceildivpow2<uint32_t>(bounds->x1,cblk_expn.x),
 									ceildivpow2<uint32_t>(bounds->y1,cblk_expn.y));
 }
@@ -537,8 +537,8 @@ bool Resolution::init(bool isCompressor,
 	precinct_expn = grk_pt(tccp->prcw_exp[resno],tccp->prch_exp[resno]);
 
 	/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
-	precinct_start = grk_pt(uint_floordivpow2(x0, precinct_expn.x) << precinct_expn.x,
-							uint_floordivpow2(y0, precinct_expn.y) << precinct_expn.y);
+	precinct_start = grk_pt(floordivpow2(x0, precinct_expn.x) << precinct_expn.x,
+							floordivpow2(y0, precinct_expn.y) << precinct_expn.y);
 
 	uint64_t num_precincts = (uint64_t)pw * ph;
 	if (mult_will_overflow(num_precincts, sizeof(Precinct))) {

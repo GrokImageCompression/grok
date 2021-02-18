@@ -125,33 +125,33 @@ void dwt97::compress_line(int32_t* GRK_RESTRICT a, int32_t d_n, int32_t s_n, uin
 	if (!parity) {
 	  if ((d_n > 0) || (s_n > 1)) { /* NEW :  CASE ONE ELEMENT */
 		for (int32_t i = 0; i < d_n; i++)
-			GROK_D(i)-= int_fix_mul(GROK_S_(i) + GROK_S_(i + 1), 12994);
+			GROK_D(i)-= fix_mul(GROK_S_(i) + GROK_S_(i + 1), 12994);
 		for (int32_t i = 0; i < s_n; i++)
-			GROK_S(i) -= int_fix_mul(GROK_D_(i - 1) + GROK_D_(i), 434);
+			GROK_S(i) -= fix_mul(GROK_D_(i - 1) + GROK_D_(i), 434);
 		for (int32_t i = 0; i < d_n; i++)
-			GROK_D(i) += int_fix_mul(GROK_S_(i) + GROK_S_(i + 1), 7233);
+			GROK_D(i) += fix_mul(GROK_S_(i) + GROK_S_(i + 1), 7233);
 		for (int32_t i = 0; i < s_n; i++)
-			GROK_S(i) += int_fix_mul(GROK_D_(i - 1) + GROK_D_(i), 3633);
+			GROK_S(i) += fix_mul(GROK_D_(i - 1) + GROK_D_(i), 3633);
 		for (int32_t i = 0; i < d_n; i++)
-			GROK_D(i) = int_fix_mul(GROK_D(i), 5039);
+			GROK_D(i) = fix_mul(GROK_D(i), 5039);
 		for (int32_t i = 0; i < s_n; i++)
-			GROK_S(i) = int_fix_mul(GROK_S(i), 6659);
+			GROK_S(i) = fix_mul(GROK_S(i), 6659);
 	  }
 	}
 	else {
 		if ((s_n > 0) || (d_n > 1)) { /* NEW :  CASE ONE ELEMENT */
 			for (int32_t i = 0; i < d_n; i++)
-				GROK_S(i) -= int_fix_mul(GROK_DD_(i) + GROK_DD_(i - 1), 12994);
+				GROK_S(i) -= fix_mul(GROK_DD_(i) + GROK_DD_(i - 1), 12994);
 			for (int32_t i = 0; i < s_n; i++)
-				GROK_D(i) -= int_fix_mul(GROK_SS_(i) + GROK_SS_(i + 1), 434);
+				GROK_D(i) -= fix_mul(GROK_SS_(i) + GROK_SS_(i + 1), 434);
 			for (int32_t i = 0; i < d_n; i++)
-				GROK_S(i) += int_fix_mul(GROK_DD_(i) + GROK_DD_(i - 1), 7233);
+				GROK_S(i) += fix_mul(GROK_DD_(i) + GROK_DD_(i - 1), 7233);
 			for (int32_t i = 0; i < s_n; i++)
-				GROK_D(i) += int_fix_mul(GROK_SS_(i) + GROK_SS_(i + 1), 3633);
+				GROK_D(i) += fix_mul(GROK_SS_(i) + GROK_SS_(i + 1), 3633);
 			for (int32_t i = 0; i < d_n; i++)
-				GROK_S(i) = int_fix_mul(GROK_S(i), 5039);
+				GROK_S(i) = fix_mul(GROK_S(i), 5039);
 			for (int32_t i = 0; i < s_n; i++)
-				GROK_D(i) = int_fix_mul(GROK_D(i), 6659);
+				GROK_D(i) = fix_mul(GROK_D(i), 6659);
 		}
 	}
 }

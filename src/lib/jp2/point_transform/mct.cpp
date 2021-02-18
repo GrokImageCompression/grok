@@ -590,7 +590,7 @@ bool mct::compress_custom(uint8_t *mct_matrix, uint64_t n, uint8_t **pData,
 			auto MctPtr = CurrentMatrix;
 			*(data[j]) = 0;
 			for (uint32_t k = 0; k < pNbComp; ++k) {
-				*(data[j]) += int_fix_mul(*MctPtr, CurrentData[k]);
+				*(data[j]) += fix_mul(*MctPtr, CurrentData[k]);
 				++MctPtr;
 			}
 			++data[j];

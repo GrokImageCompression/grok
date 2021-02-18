@@ -610,8 +610,8 @@ static void pi_get_params(const GrkImage *image,
 			if (dy < UINT_MAX)
 				*dy_min = std::min<uint32_t>(*dy_min, (uint32_t) dy);
 			auto resBounds 	= tileCompBounds.rectceildivpow2(tccp->numresolutions - 1U - resno);
-			uint32_t px0 	= uint_floordivpow2(resBounds.x0, pdx) << pdx;
-			uint32_t py0 	= uint_floordivpow2(resBounds.y0, pdy) << pdy;
+			uint32_t px0 	= floordivpow2(resBounds.x0, pdx) << pdx;
+			uint32_t py0 	= floordivpow2(resBounds.y0, pdy) << pdy;
 			uint32_t px1 	= ceildivpow2<uint32_t>(resBounds.x1, pdx) << pdx;
 			uint32_t py1 	= ceildivpow2<uint32_t>(resBounds.y1, pdy) << pdy;
 			uint32_t pw 	= (resBounds.width()==0) ? 0 : ((px1 - px0) >> pdx);
@@ -983,10 +983,10 @@ bool PacketIter::generate_precinct_index(void){
 	if ((trx0 == trx1) || (try0 == try1))
 		return false;
 
-	uint32_t prci = uint_floordivpow2(ceildiv<uint64_t>((uint64_t) x,	((uint64_t) comp->dx << levelno)), res->pdx)
-			- uint_floordivpow2(trx0, res->pdx);
-	uint32_t prcj = uint_floordivpow2(	ceildiv<uint64_t>((uint64_t) y,	((uint64_t) comp->dy << levelno)), res->pdy)
-			- uint_floordivpow2(try0, res->pdy);
+	uint32_t prci = floordivpow2(ceildiv<uint64_t>((uint64_t) x,	((uint64_t) comp->dx << levelno)), res->pdx)
+			- floordivpow2(trx0, res->pdx);
+	uint32_t prcj = floordivpow2(	ceildiv<uint64_t>((uint64_t) y,	((uint64_t) comp->dy << levelno)), res->pdy)
+			- floordivpow2(try0, res->pdy);
 	precinctIndex = (prci + (uint64_t)prcj * res->pw);
 	//skip precinct numbers greater than total number of precincts
 	// for this resolution

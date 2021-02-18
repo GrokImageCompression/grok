@@ -156,8 +156,8 @@ public:
 	    if (!bounds.width()  || !bounds.height()  || !LBW || !LBH) {
 	    	throw std::runtime_error("invalid window for sparse buffer");
 		}
-	    uint32_t grid_off_x = uint_floordivpow2(bounds.x0, LBW);
-	    uint32_t grid_off_y = uint_floordivpow2(bounds.y0, LBH);
+	    uint32_t grid_off_x = floordivpow2(bounds.x0, LBW);
+	    uint32_t grid_off_y = floordivpow2(bounds.y0, LBH);
 	    uint32_t grid_width = ceildivpow2<uint32_t>(bounds.width(), LBW);
 	    uint32_t grid_height = ceildivpow2<uint32_t>(bounds.height(), LBH);
 	    grid_bounds = grk_rect_u32(grid_off_x,

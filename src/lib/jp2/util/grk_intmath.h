@@ -37,22 +37,11 @@ template<typename T> uint32_t ceildiv(T a, T b) {
 template<typename T> T ceildivpow2(T a, uint32_t b) {
 	return (T)((a + ((uint64_t) 1 << b) - 1) >> b);
 }
-
-/**
- Divide a 64-bit integer by a power of 2 and round upwards
- @param  a 64-bit integer
- @param  b power of two
- @return a divided by 2^b
- */
-static inline uint32_t uint64_ceildivpow2(uint64_t a, uint32_t b) {
-	return (uint32_t)((a + ((uint64_t) 1 << b) - 1) >> b);
-}
-
 /**
  Divide an unsigned integer by a power of 2 and round downwards
  @return a divided by 2^b
  */
-static inline uint32_t uint_floordivpow2(uint32_t a, uint32_t b) {
+static inline uint32_t floordivpow2(uint32_t a, uint32_t b) {
 	return a >> b;
 }
 /**
@@ -74,7 +63,7 @@ template<typename T> T floorlog2(uint32_t a) {
  @param  b 13-bit precision fixed point number
  @return a * b in N-bit precision fixed point
  */
-static inline int32_t int_fix_mul(int32_t a, int32_t b) {
+static inline int32_t fix_mul(int32_t a, int32_t b) {
 #if defined(_MSC_VER) && (_MSC_VER >= 1400) && !defined(__INTEL_COMPILER) && defined(_M_IX86)
     int64_t temp = __emul(a, b);
 #else
