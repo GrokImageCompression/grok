@@ -1586,6 +1586,7 @@ public:
 
 		assert(dwt->win_l.x1 <= sn_global && dwt->win_h.x1 <= dn_global);
 
+		auto buf	 = dwt->mem;
 		if (!parity) {
 			if ((dn_global != 0) || (sn_global > 1)) {
 				/* Naive version is :
@@ -1598,8 +1599,6 @@ public:
 				but the compiler doesn't manage to unroll it to avoid bound
 				checking in S_ and D_ macros
 				*/
-
-				auto buf	 = dwt->memL;
 				i = 0;
 				int64_t i_max = win_l_x1 - win_l_x0;
 				if (i < i_max) {
@@ -1618,8 +1617,6 @@ public:
 						S(buf,i) -= (D_(buf,i - 1) + D_(buf,i) + 2) >> 2;
 					}
 				}
-
-				buf	 = dwt->memH;
 				i = 0;
 				i_max = win_h_x1 - win_h_x0;
 				if (i < i_max) {
@@ -1638,13 +1635,10 @@ public:
 		} else {
 			if (sn_global == 0  && dn_global == 1) {
 				// only do L band (high pass)
-				auto buf = dwt->memL;
-				S(buf,0) /= 2;
+					S(buf,0) /= 2;
 			} else {
-				auto buf = dwt->memL;
 				for (i = 0; i < win_l_x1 - win_l_x0; i++)
 					D(buf,i) -= (SS_(buf,i) + SS_(buf,i + 1) + 2) >> 2;
-				buf = dwt->memH;
 				for (i = 0; i < win_h_x1 - win_h_x0; i++)
 					S(buf,i) += (DD_(buf,i) + DD_(buf,i - 1)) >> 1;
 			}
@@ -1689,6 +1683,7 @@ public:
 
 		assert(dwt->win_l.x1 <= sn_global && dwt->win_h.x1 <= dn_global);
 
+		auto buf	 = dwt->mem;
 		if (!parity) {
 			if ((dn_global != 0) || (sn_global > 1)) {
 				/* Naive version is :
@@ -1703,7 +1698,6 @@ public:
 				*/
 
 				// 1. low pass
-				auto buf   = dwt->memL;
 				i = 0;
 				int64_t i_max = win_l_x1 - win_l_x0;
 				assert(win_l_x1 >=  win_l_x0);
@@ -1745,7 +1739,6 @@ public:
 				}
 
 				// 2. high pass
-				buf = dwt->memH;
 				i = 0;
 				assert(win_h_x1 >=  win_h_x0);
 				i_max = win_h_x1 - win_h_x0;
@@ -1784,17 +1777,14 @@ public:
 		} else {
 			if (sn_global == 0  && dn_global == 1) {
 				// edge case at origin
-				auto buf   = dwt->memL;
 				for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 					S_off(buf,0, off) /= 2;
 			} else {
-				auto buf   = dwt->memL;
 				assert( (uint64_t)(dwt->memL + (win_l_x1 - win_l_x0) * VERT_PASS_WIDTH) - (uint64_t)dwt->allocatedMem < dwt->m_lenBytes);
 				for (i = 0; i < win_l_x1 - win_l_x0; i++) {
 					for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 						D_off(buf,i, off) -= (SS_off_(buf,i, off) + SS_off_(buf,i + 1, off) + 2) >> 2;
 				}
-				buf   = dwt->memH;
 				assert( (uint64_t)(dwt->memH + (win_h_x1 - win_h_x0) * VERT_PASS_WIDTH) - (uint64_t)dwt->allocatedMem < dwt->m_lenBytes);
 				for (i = 0; i < win_h_x1 - win_h_x0; i++) {
 					for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
@@ -2206,16 +2196,6 @@ template <typename T,
 		if (blockError)
 			goto cleanup;
     }
-
-#ifdef GRK_DEBUG_VALGRIND
-/*
-	auto val = grk_memcheck(tilec->getBuffer()->getWindow()->data,tilec->getBuffer()->strided_area() );
-	if (val != grk_mem_ok){
-		GRK_ERROR("Partial wavelet before final read: uninitialized memory at offset %d", val);
-	}
-*/
-#endif
-
     //final read into tile buffer
 	ret = sa->read(numres-1,
 					synthesisWindow,
