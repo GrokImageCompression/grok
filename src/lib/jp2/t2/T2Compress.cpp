@@ -144,7 +144,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 	uint32_t layno = pi->layno;
 	auto tile = tileProcessor->tile;
 	auto tilec = &tile->comps[compno];
-	auto res = &tilec->resolutions[resno];
+	auto res = &tilec->tileCompResolution[resno];
 	size_t stream_start = stream->tell();
 
 	if (compno >= tile->numcomps) {
@@ -565,7 +565,7 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 	uint64_t nb_blocks;
 	auto tile = tileProcessor->tile;
 	auto tilec = tile->comps + compno;
-	auto res = tilec->resolutions + resno;
+	auto res = tilec->tileCompResolution + resno;
 
 	if (compno >= tile->numcomps) {
 		GRK_ERROR("compress packet simulate: component number %d must be less than total number "

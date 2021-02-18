@@ -70,7 +70,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no,
 			uint32_t pltMarkerLen = 0;
 			if (usePlt)
 				pltMarkerLen = packetLengths->getNext();
-			auto res = tilec->resolutions + current_pi->resno;
+			auto res = tilec->tileCompResolution + current_pi->resno;
 			// create precincts
 			for (uint32_t bandIndex = 0;	bandIndex < res->numBandWindows; ++bandIndex) {
 				auto band = res->band + bandIndex;
@@ -153,7 +153,7 @@ bool T2Decompress::decompress_packet(TileCodingParams *p_tcp,
 									ChunkBuffer *src_buf,
 									uint64_t *p_data_read) {
 	auto p_tile = tileProcessor->tile;
-	auto res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
+	auto res = &p_tile->comps[p_pi->compno].tileCompResolution[p_pi->resno];
 	bool read_data;
 	uint64_t nb_bytes_read = 0;
 	uint64_t nb_total_bytes_read = 0;
@@ -213,7 +213,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp,
 									ChunkBuffer *src_buf,
 									uint64_t *p_data_read) {
 	auto p_tile = tileProcessor->tile;
-	auto res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
+	auto res = &p_tile->comps[p_pi->compno].tileCompResolution[p_pi->resno];
 	auto p_src_data = src_buf->get_cur_chunk_ptr();
 	size_t available_bytes = src_buf->get_cur_chunk_len();
 	auto active_src = p_src_data;
@@ -537,7 +537,7 @@ bool T2Decompress::skip_packet(TileCodingParams *p_tcp,
 	/* we should read data for the packet */
 	if (read_data) {
 		nb_bytes_read = 0;
-		if (!skip_packet_data(&p_tile->comps[p_pi->compno].resolutions[p_pi->resno], p_pi,
+		if (!skip_packet_data(&p_tile->comps[p_pi->compno].tileCompResolution[p_pi->resno], p_pi,
 				&nb_bytes_read, max_length)) {
 			return false;
 		}

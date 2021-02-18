@@ -36,7 +36,7 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent *tilec, Tile
 		return false;
 	}
 	for (uint8_t resno = 0; resno < tilec->resolutions_to_decompress; ++resno) {
-		auto res = &tilec->resolutions[resno];
+		auto res = &tilec->tileCompResolution[resno];
 		for (uint8_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
 			Subband *GRK_RESTRICT band = res->band + bandIndex;
 			for (auto precinct : band->precincts) {

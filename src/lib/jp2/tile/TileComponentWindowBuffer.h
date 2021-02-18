@@ -235,7 +235,7 @@ template<typename T> struct TileComponentWindowBuffer {
 								grk_rect_u32 tileCompUnreduced,
 								grk_rect_u32 tileCompReduced,
 								grk_rect_u32 unreducedTileOrImageCompWindow,
-								Resolution *tileCompResolutions,
+								Resolution *tileCompResolution,
 								uint8_t numresolutions,
 								uint8_t reducedNumResolutions) : 	m_unreducedBounds(tileCompUnreduced),
 																	m_bounds(tileCompReduced),
@@ -253,10 +253,10 @@ template<typename T> struct TileComponentWindowBuffer {
 		// fill resolutions vector
 		assert(reducedNumResolutions > 0);
 		for (uint32_t resno = 0; resno < reducedNumResolutions; ++resno)
-			m_tileCompResolutions.push_back(tileCompResolutions + resno);
+			m_tileCompResolutions.push_back(tileCompResolution + resno);
 
-		auto tileCompAtRes = tileCompResolutions + reducedNumResolutions - 1;
-		auto tileCompAtLowerRes =	reducedNumResolutions > 1 ?	tileCompResolutions + reducedNumResolutions - 2 : nullptr;
+		auto tileCompAtRes = tileCompResolution + reducedNumResolutions - 1;
+		auto tileCompAtLowerRes =	reducedNumResolutions > 1 ?	tileCompResolution + reducedNumResolutions - 2 : nullptr;
 		// create resolution buffers
 		auto topLevel = new ResWindow<T>(numresolutions,
 										(uint8_t)(reducedNumResolutions - 1U),
@@ -278,8 +278,8 @@ template<typename T> struct TileComponentWindowBuffer {
 					new ResWindow<T>(numresolutions,
 									resno,
 									useBandWindows() ? nullptr : topLevel->m_resWindow,
-									tileCompResolutions + resno,
-									resno > 0 ? tileCompResolutions + resno - 1 : nullptr,
+									tileCompResolution + resno,
+									resno > 0 ? tileCompResolution + resno - 1 : nullptr,
 									res_dims,
 									m_unreducedBounds,
 									tileCompUnreduced,

@@ -103,7 +103,7 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 	if (tilec->numresolutions == 1U)
 		return true;
 
-	size_t l_data_size = max_resolution(tilec->resolutions,
+	size_t l_data_size = max_resolution(tilec->tileCompResolution,
 			tilec->numresolutions) * sizeof(int32_t);
 	/* overflow check */
 	if (l_data_size > SIZE_MAX) {
@@ -119,7 +119,7 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 	uint32_t stride = tilec->getBuffer()->getWindow()->stride;
 	uint32_t num_decomps = (uint32_t) (tilec->numresolutions - 1);
 	auto a = tilec->getBuffer()->getWindow()->data;
-	auto cur_res = tilec->resolutions + num_decomps;
+	auto cur_res = tilec->tileCompResolution + num_decomps;
 	auto next_res = cur_res - 1;
 
 	int32_t** bj_array = new int32_t*[ThreadPool::get()->num_threads()];

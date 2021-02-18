@@ -855,7 +855,7 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
     if (numres == 1U)
         return true;
 
-    auto tr = tilec->resolutions;
+    auto tr = tilec->tileCompResolution;
     uint32_t rw = tr->width();
     uint32_t rh = tr->height();
 
@@ -1362,7 +1362,7 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
     if (numres == 1U)
         return true;
 
-    auto tr = tilec->resolutions;
+    auto tr = tilec->tileCompResolution;
     uint32_t rw = tr->width();
     uint32_t rh = tr->height();
 
@@ -1939,8 +1939,8 @@ template <typename T,
 	bool rc = false;
 	bool ret = false;
 	uint8_t numresolutions = tilec->numresolutions;
-    auto fullRes 	= tilec->resolutions;
-    auto fullResTopLevel = tilec->resolutions + numres - 1;
+    auto fullRes 	= tilec->tileCompResolution;
+    auto fullResTopLevel = tilec->tileCompResolution + numres - 1;
     if (!fullResTopLevel->width() || !fullResTopLevel->height()){
         return true;
     }

@@ -79,11 +79,11 @@ bool init_tilec(TileComponent * tilec,
 				GrkImage *output_image){
     tilec->numresolutions = numresolutions;
     tilec->resolutions_to_decompress = numresolutions;
-    tilec->resolutions = new Resolution[tilec->numresolutions];
+    tilec->tileCompResolution = new Resolution[tilec->numresolutions];
     for (auto i = 0; i < tilec->numresolutions; ++i)
-    	memset(tilec->resolutions+i,0,sizeof(Resolution));
+    	memset(tilec->tileCompResolution+i,0,sizeof(Resolution));
     uint32_t leveno = tilec->numresolutions-1;
-    auto res = tilec->resolutions;
+    auto res = tilec->tileCompResolution;
 
     /* Adapted from grk_init_tile() */
     for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
@@ -98,7 +98,7 @@ bool init_tilec(TileComponent * tilec,
     bool isCompressor = (output_image == nullptr);
 	auto highestNumberOfResolutions =
 			(!isCompressor) ? tilec->resolutions_to_decompress : numresolutions;
-	auto hightestResolution =  tilec->resolutions + highestNumberOfResolutions - 1;
+	auto hightestResolution =  tilec->tileCompResolution + highestNumberOfResolutions - 1;
 	tilec->set_rect(hightestResolution);
     grk_rect_u32 unreduced_tile_comp_window_dims;
 	if (!isCompressor) {
