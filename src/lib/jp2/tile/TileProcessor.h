@@ -209,6 +209,7 @@ private:
 	 void makelayer_feasible(uint32_t layno, uint16_t thresh,
 			bool final);
 
+	 bool truncated;
 
 };
 

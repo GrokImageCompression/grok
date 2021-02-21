@@ -37,7 +37,8 @@ struct T2Decompress {
 	 */
 	bool decompress_packets(uint16_t tileno,
 							ChunkBuffer *src_buf,
-							uint64_t *data_read);
+							uint64_t *data_read,
+							bool *truncated);
 
 private:
 	TileProcessor *tileProcessor;

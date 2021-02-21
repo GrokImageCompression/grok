@@ -41,7 +41,8 @@ TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream) :
 				m_stream(stream),
 				m_corrupt_packet(false),
 				tp_pos(0),
-				m_tcp(nullptr)
+				m_tcp(nullptr),
+				truncated(false)
 {
 	tile = new grk_tile();
 	tile->comps = new TileComponent[image->numcomps];
@@ -801,7 +802,7 @@ bool TileProcessor::decompress_tile_t1(void) {
 
 			if (!wholeTileDecompress) {
 				try {
-					tilec->allocSparseBuffer(tilec->resolutions_decompressed + 1U);
+					tilec->allocSparseBuffer(tilec->resolutions_decompressed + 1U, truncated);
 				} catch (runtime_error &ex) {
 					GRK_ERROR("decompress_tile_t1: %s", ex.what());
 					return false;
@@ -864,7 +865,7 @@ void TileProcessor::copy_image_to_tile() {
 bool TileProcessor::t2_decompress(ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
 	auto t2 = new T2Decompress(this);
-	bool rc = t2->decompress_packets(m_tile_index, src_buf, p_data_read);
+	bool rc = t2->decompress_packets(m_tile_index, src_buf, p_data_read,&truncated);
 	delete t2;
 
 	return rc;

@@ -120,10 +120,11 @@ public:
 	 * Blocks intersecting the window are allocated
 	 *
 	 * @param window window to write into the sparse buffer.
+	 * @param zeroOutBuffer memset buffer to zero if true
 	 *
 	 * @return true in case of success.
 	 */
-	virtual bool alloc( grk_rect_u32 window) = 0;
+	virtual bool alloc( grk_rect_u32 window, bool zeroOutBuffer) = 0;
 };
 
 struct SparseBlock{
@@ -132,8 +133,10 @@ struct SparseBlock{
 	~SparseBlock() {
 		delete[] data;
 	}
-	void alloc(uint32_t block_area){
+	void alloc(uint32_t block_area, bool zeroOutBuffer){
 		data = new int32_t[block_area];
+		if (zeroOutBuffer)
+			memset(data, 0, block_area * sizeof(int32_t));
 	}
 	int32_t *data;
 };
@@ -223,7 +226,7 @@ public:
 	            forgiving,
 	            false);
 	}
-	bool alloc( grk_rect_u32 win){
+	bool alloc( grk_rect_u32 win, bool zeroOutBuffer){
 	    if (!SparseBuffer::is_window_valid(win))
 	        return true;
 
@@ -245,7 +248,7 @@ public:
 	            auto src_block = getBlock(block_x, block_y);
 				if (!src_block) {
 					auto b = new SparseBlock();
-					b->alloc(block_width*block_height);
+					b->alloc(block_width*block_height, zeroOutBuffer);
 					assert(grid_bounds.contains(grk_pt(block_x,block_y)));
 					assert(b->data);
 					uint64_t index = (uint64_t)(block_y - grid_bounds.y0) * grid_bounds.width() + (block_x - grid_bounds.x0);

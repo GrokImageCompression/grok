@@ -186,7 +186,7 @@ bool TileComponent::subbandIntersectsAOI(uint8_t resno,
     return buf->getPaddedTileBandWindow(resno, orient).intersection(aoi).non_empty();
 }
 
-void TileComponent::allocSparseBuffer(uint32_t numres){
+void TileComponent::allocSparseBuffer(uint32_t numres, bool truncatedTile){
 	grk_rect_u32 temp(0,0,0,0);
 	bool first = true;
 
@@ -279,7 +279,8 @@ void TileComponent::allocSparseBuffer(uint32_t numres){
 						if (!sa->alloc(grk_rect_u32(x,
 												  y,
 												  x + cblk->width(),
-												  y + cblk->height()))) {
+												  y + cblk->height()),
+												  truncatedTile)) {
 							delete sa;
 							throw runtime_error("unable to allocate sparse array");
 						}

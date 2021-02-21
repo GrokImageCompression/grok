@@ -31,13 +31,15 @@ T2Decompress::T2Decompress(TileProcessor *tileProc) :
 
 bool T2Decompress::decompress_packets(uint16_t tile_no,
 										ChunkBuffer *src_buf,
-										uint64_t *p_data_read) {
+										uint64_t *p_data_read,
+										bool *truncated) {
 
 	auto cp = tileProcessor->m_cp;
 	auto image = tileProcessor->image;
 	auto tcp = cp->tcps + tile_no;
 	auto p_tile = tileProcessor->tile;
 	IncludeTracker include(image->numcomps);
+	*truncated = false;
 	auto pi = pi_create_compress_decompress(false,image, cp, tile_no,FINAL_PASS, &include);
 	if (!pi)
 		return false;
@@ -48,7 +50,6 @@ bool T2Decompress::decompress_packets(uint16_t tile_no,
 	bool usePlt = packetLengths && !cp->plm_markers;
 	if (usePlt)
 		packetLengths->getInit();
-	bool truncatedTile = false;
 	for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
 		auto current_pi = pi + pino;
 		if (current_pi->prog.prg == GRK_PROG_UNKNOWN) {
@@ -59,7 +60,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no,
 		while (current_pi->next()) {
 			if (src_buf->get_cur_chunk_len() == 0){
 				GRK_WARN("Tile %d is truncated.", tile_no);
-				truncatedTile = true;
+				*truncated = true;
 				break;
 			}
 			auto tilec = p_tile->comps + current_pi->compno;
@@ -138,7 +139,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no,
 			}
 			*p_data_read += nb_bytes_read;
 		}
-		if (truncatedTile)
+		if (*truncated)
 			break;
 	}
 	pi_destroy(pi);

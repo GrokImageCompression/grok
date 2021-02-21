@@ -1985,11 +1985,11 @@ template <typename T,
         // 2. pre-allocate sparse blocks
         for (uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i){
         	auto temp = tileBandWindowRect[i];
-            if (!sa->alloc(temp.grow(FILTER_WIDTH, fullRes->width(),  fullRes->height())))
+            if (!sa->alloc(temp.grow(FILTER_WIDTH, fullRes->width(),  fullRes->height()),false))
     			 goto cleanup;
         }
         auto resWindowRect = *((grk_rect_u32*)tilec->getBuffer()->getWindow(resno));
-        if (!sa->alloc(resWindowRect))
+        if (!sa->alloc(resWindowRect,false))
 			goto cleanup;
         // two windows formed by horizontal pass and used as input for vertical pass
         grk_rect_u32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
@@ -1997,7 +1997,7 @@ template <typename T,
         splitWindowRect[SPLIT_H] = *((grk_rect_u32*)tilec->getBuffer()->getSplitWindow(resno,SPLIT_H ));
 		for (uint32_t k = 0; k < SPLIT_NUM_ORIENTATIONS; ++k) {
 			 auto temp = splitWindowRect[k];
-			 if (!sa->alloc(temp.grow(FILTER_WIDTH, fullRes->width(),  fullRes->height())))
+			 if (!sa->alloc(temp.grow(FILTER_WIDTH, fullRes->width(),  fullRes->height()),false))
 					goto cleanup;
 		}
 
