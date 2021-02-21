@@ -1,16 +1,14 @@
-## Install from a Package Manager
+## Install from Package Manager
 
-1. Debian. Grok has been accepted into Debian unstable. Package status can be
-found [here](https://tracker.debian.org/pkg/libgrokj2k)
+1. **Debian** Grok .deb packages can be found [here](https://tracker.debian.org/pkg/libgrokj2k)
 
-1. Archlinux: Grok has a [package in Archlinux](https://aur.archlinux.org/packages/grok-jpeg2000/)
+1. **Archlinux** Grok Archlinux packages can be found [here](https://aur.archlinux.org/packages/grok-jpeg2000/)
 
-1. Homebrew: Grok has a [brew formula PR](https://github.com/Homebrew/homebrew-core/pull/68156)
+1. **Homebrew** Grok can be installed using the `grokj2k` brew formula
 
-## Install from a Release
+## Install from Release
 
-Grok releases are archived [here](https://github.com/GrokImageCompression/grok/releases)
-
+Grok releases can be found [here](https://github.com/GrokImageCompression/grok/releases)
 
 ## Install from Source
 
@@ -24,7 +22,7 @@ To configure a build using the defaults:
    $ cmake /PATH/TO/SOURCE
 ```
 
-The `cmake` GUI is recommended, in order to easily view all cmake options. On headless systems, `ccmake` (an ncurses application) may be used to configure the build.
+The `cmake` GUI is recommended, in order to easily view all `cmake` options. On headless systems, `ccmake` (an ncurses application) may be used to configure the build.
 
 
 ### *NIX
@@ -86,19 +84,16 @@ Important `cmake` flags:
  `-DBUILD_SHARED_LIBS:bool=on` (default: `ON`)
 
   Note: when using this option, static libraries are not built and executables are dynamically linked.
-* To build the CODEC executables: `-DBUILD_CODEC:bool=on` (default: `ON`)
+* To build the core codec : `-DBUILD_CODEC:bool=on` (default: `ON`)
 * To build the documentation: `-DBUILD_DOC:bool=on` (default: `OFF`)
-* To enable testing (and automatic result upload to http://my.cdash.org/index.php?project=grok)
+* To enable testing (with results automatically uploaded to http://my.cdash.org/index.php?project=grok)
 
       $  cmake . -DBUILD_TESTING:BOOL=ON -DGRK_DATA_ROOT:PATH='path/to/the/data/directory'
       $  make
       $  make Experimental
 
-Note : JPEG2000 test files can be cloned [here](https://github.com/GrokImageCompression/grok-test-data.git)
-
-
+Note : JPEG 2000 test files can be cloned [here](https://github.com/GrokImageCompression/grok-test-data.git)
 If the `-DGRK_DATA_ROOT:PATH` option is omitted, test files will be automatically searched for in
-
  `${CMAKE_SOURCE_DIR}/../grok-test-data`
 
 
@@ -134,7 +129,6 @@ cmake -DCMAKE_CXX_FLAGS="-O3 -march=native -DNDEBUG" ..
 ## OSX
 
 OSX builds are configured similar to Unix builds.
-
 The Xcode project files can be generated using:
 
 `$ cmake -G Xcode ....`
@@ -149,7 +143,7 @@ The `BUILD_SHARED_LIBS` `cmake` flag determines if the `grk_compress` and `grk_d
 
 ### Compile
 
-cmake can generate project files for various IDEs: Visual Studio, NMake, etc.
+`cmake` can generate project files for various IDEs: Visual Studio, Eclipse CDT, NMake, etc.
 
 Type `cmake --help` for available generators on your platform.
 
@@ -159,19 +153,16 @@ Make sure to build the third party libs (`libpng`, `zlib` etc.) :
 
   `-DBUILD_THIRDPARTY:BOOL=ON`
 
- #### JPEG Support
+#### JPEG Support
 
-To open JPEG files, a `libjpeg` compatible library (-dev version) must be installed.
-Recommended : `libjpeg-turbo`
-
-https://github.com/libjpeg-turbo/libjpeg-turbo .
-
-On debian systems, the `libjpeg-turbo8-dev` package will provide a development
+To encode and decode JPEG files, a `libjpeg`-compatible library (`-dev` version) must be installed.
+Recommended library : [libjpeg-turbo](https://github.com/libjpeg-turbo/libjpeg-turbo)
+On Debian systems, the `libjpeg-turbo8-dev` package will provide a development
 version of the library.
 
 ##### Grok dynamic build with JPEG support (Windows)
 
-`libjpeg-turbo` must be built with the `WITH_CRT_DLL` flag on, to ensure that the dynamic version of the C runtime libraries is used. Also, if Grok is linking with dynamic build of `libjpeg-turbo`, (cmake flag `JPEG_LIBRARY` is set to `LIBJPEG_INSTALL_DIRECTORY/jpeg.lib`), then make sure that `LIBJPEG_INSTALL_DIRECTORY/bin` is on the path.
+`libjpeg-turbo` must be built with the `WITH_CRT_DLL` flag on, to ensure that the dynamic version of the C runtime libraries is used. Also, if Grok is linking with dynamic build of `libjpeg-turbo`, (`cmake` flag `JPEG_LIBRARY` is set to `LIBJPEG_INSTALL_DIRECTORY/jpeg.lib`), then make sure that `LIBJPEG_INSTALL_DIRECTORY/bin` is on the path.
 
 ##### Grok static build with JPEG support (Windows)
 
