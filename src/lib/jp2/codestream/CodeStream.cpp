@@ -1034,7 +1034,7 @@ bool CodeStream::endDecompress(void){
 	return true;
 }
 
-bool CodeStream::start_compress(void){
+bool CodeStream::startCompress(void){
 	/* customization of the validation */
 	m_validation_list.push_back(std::bind(&CodeStream::compress_validation, this));
 	//custom validation here

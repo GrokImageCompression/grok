@@ -439,7 +439,7 @@ GrkImageMeta::GrkImageMeta() {
 }
 
 GrkImageMeta::~GrkImageMeta(){
-	FileFormat::free_color(&color);
+	FileFormatDecompress::free_color(&color);
 	delete[] iptc_buf;
 	delete[] xmp_buf;
 	delete (GrkObject*)obj.wrappee;

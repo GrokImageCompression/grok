@@ -18,7 +18,6 @@
  *    Please see the LICENSE file in the root directory for details.
  *
  */
-
 #pragma once
 
 namespace grk {
@@ -27,7 +26,36 @@ class FileFormatCompress : public FileFormat {
 public:
 	FileFormatCompress( BufferedStream *stream);
 	virtual ~FileFormatCompress();
-};
 
+   bool initCompress(grk_cparameters  *p_param,GrkImage *p_image);
+   bool startCompress(void);
+   bool compress(grk_plugin_tile* tile);
+   bool compressTile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size);
+   bool endCompress(void);
+
+   bool exec( std::vector<PROCEDURE_FUNC> *procs);
+   void find_cf(double x, uint32_t *num, uint32_t *den);
+   void write_res_box(double resx, double resy, uint32_t box_id,
+		uint8_t **current_res_ptr);
+   uint8_t* write_res( uint32_t *p_nb_bytes_written);
+   uint8_t* write_bpc( uint32_t *p_nb_bytes_written);
+   uint8_t* write_colr( uint32_t *p_nb_bytes_written);
+   uint8_t* write_component_mapping( uint32_t *p_nb_bytes_written);
+   uint8_t* write_palette_clr( uint32_t *p_nb_bytes_written);
+   uint8_t* write_channel_definition( uint32_t *p_nb_bytes_written);
+   bool write_jp2h(void);
+   uint8_t* write_ihdr( uint32_t *p_nb_bytes_written);
+   uint8_t* write_buffer(uint32_t boxId, grk_buf *buffer,uint32_t *p_nb_bytes_written);
+   bool write_uuids(void);
+   bool write_ftyp(void);
+   bool write_jp2c(void);
+   bool write_jp(void);
+   bool default_validation(void);
+   void init_header_writing();
+   void init_end_header_writing(void);
+   void init_compress_validation(void);
+   uint8_t* write_xml( uint32_t *p_nb_bytes_written);
+   bool skip_jp2c(void);
+};
 
 }

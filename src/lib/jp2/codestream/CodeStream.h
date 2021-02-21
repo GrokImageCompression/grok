@@ -118,7 +118,7 @@ struct  marker_handler  {
 struct ICodeStreamCompress {
    virtual ~ICodeStreamCompress(){}
    virtual bool initCompress(grk_cparameters  *p_param,GrkImage *p_image) = 0;
-   virtual bool start_compress(void) = 0;
+   virtual bool startCompress(void) = 0;
    virtual bool compress(grk_plugin_tile* tile) = 0;
    virtual bool compressTile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size) = 0;
    virtual bool endCompress(void) = 0;
@@ -162,7 +162,7 @@ public:
    bool endDecompress(void);
    void initDecompress(grk_dparameters  *p_param);
 
-   bool start_compress(void);
+   bool startCompress(void);
    bool initCompress(grk_cparameters  *p_param,GrkImage *p_image);
    bool compress(grk_plugin_tile* tile);
    bool compressTile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size);
@@ -815,7 +815,7 @@ public:
 
      bool read_header_procedure(void);
 
-private:
+protected:
 
 
      /**

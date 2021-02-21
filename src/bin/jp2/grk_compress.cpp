@@ -375,8 +375,6 @@ struct CompressInitParams {
 };
 
 static int load_images(grk_dircnt *dirptr, char *imgdirpath) {
-	/*Reading the input images from given input directory*/
-
 	DIR *dir = opendir(imgdirpath);
 	if (!dir) {
 		spdlog::error("Could not open Folder {}", imgdirpath);
@@ -456,9 +454,6 @@ public:
 		compress_help_display();
 	}
 };
-
-/* ------------------------------------------------------------------------------------ */
-
 static bool checkCinema(TCLAP::ValueArg<uint32_t> *arg, uint16_t profile,
 		grk_cparameters *parameters) {
 	bool isValid = true;
@@ -936,11 +931,9 @@ static int parse_cmdline_compressor_ex(int argc,
 				int ret = sscanf(s, "[%d,%d]%c", &parameters->prcw_init[res_spec],
 						&parameters->prch_init[res_spec], &sep);
 				if (!(ret == 2 && sep == 0) && !(ret == 3 && sep == ',')) {
-					spdlog::error(
-							"\n could not parse precinct dimension: '{}' {0:x}",
+					spdlog::error("Could not parse precinct dimension: '{}' {0:x}",
 							s, sep);
-					spdlog::error(
-							"Example: -i lena.raw -o lena.j2k -c [128,128],[128,128]");
+					spdlog::error("Example: -i lena.raw -o lena.j2k -c [128,128],[128,128]");
 					return 1;
 				}
 				parameters->csty |= 0x01;
@@ -954,15 +947,13 @@ static int parse_cmdline_compressor_ex(int argc,
 			int cblockw_init = 0, cblockh_init = 0;
 			if (sscanf(codeBlockDimArg.getValue().c_str(), "%d,%d",
 					&cblockw_init, &cblockh_init) == EOF) {
-				spdlog::error(
-						"sscanf failed for code block dimension argument");
+				spdlog::error("sscanf failed for code block dimension argument");
 				return 1;
 			}
 			if (cblockw_init * cblockh_init > 4096 || cblockw_init > 1024
 					|| cblockw_init < 4 || cblockh_init > 1024
 					|| cblockh_init < 4) {
-				spdlog::error(
-						"Size of code block error (option -b)\n\nRestriction :\n"
+				spdlog::error("Size of code block error (option -b)\n\nRestriction :\n"
 								"    * width*height<=4096\n    * 4<=width,height<= 1024");
 				return 1;
 			}
