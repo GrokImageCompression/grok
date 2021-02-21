@@ -582,7 +582,7 @@ static int parse_cmdline_compressor_ex(int argc,
 		TCLAP::ValueArg<uint32_t> resolutionArg("n", "Resolutions", "Resolution",
 				false, 0, "unsigned integer", cmd);
 
-		TCLAP::ValueArg<std::string> precinctDimArg("c", "PrecinctDim",
+		TCLAP::ValueArg<std::string> precinctDimArg("c", "PrecinctDims",
 				"Precinct dimensions", false, "", "string", cmd);
 
 		TCLAP::ValueArg<std::string> codeBlockDimArg("b", "CodeBlockDim",
