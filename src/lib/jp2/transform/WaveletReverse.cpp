@@ -181,13 +181,11 @@ template <typename T> struct dwt_data {
 struct Params97{
 	Params97() :dataPrev(nullptr),
 					data(nullptr),
-					absoluteStart(0),
 					len(0),
 					lenMax(0)
 	{}
 	vec4f* dataPrev;
 	vec4f* data;
-	uint32_t absoluteStart;
 	uint32_t len;
 	uint32_t lenMax;
 };
@@ -977,18 +975,15 @@ static void decompress_step2_sse_97(const Params97 &d, __m128 c){
     __m128* GRK_RESTRICT vec_data = (__m128*) d.data;
 
     uint32_t imax = min<uint32_t>(d.len, d.lenMax);
-    __m128 tmp1, tmp2, tmp3;
-    if (d.absoluteStart == 0) {
-        tmp1 = ((__m128*) d.dataPrev)[0];
-    } else {
-        tmp1 = vec_data[-3];
-    }
 
+    // initial tmp1 value is only necessary when
+    // absolute start of line is at 0
+    __m128 tmp1 = ((__m128*) d.dataPrev)[0];
     uint32_t i = 0;
     for (; i + 3 < imax; i += 4) {
         __m128 tmp4, tmp5, tmp6, tmp7, tmp8, tmp9;
-        tmp2 = vec_data[-1];
-        tmp3 = vec_data[ 0];
+        __m128 tmp2 = vec_data[-1];
+        __m128 tmp3 = vec_data[ 0];
         tmp4 = vec_data[ 1];
         tmp5 = vec_data[ 2];
         tmp6 = vec_data[ 3];
@@ -1004,8 +999,8 @@ static void decompress_step2_sse_97(const Params97 &d, __m128 c){
     }
 
     for (; i < imax; ++i) {
-        tmp2 = vec_data[-1];
-        tmp3 = vec_data[ 0];
+    	__m128 tmp2 = vec_data[-1];
+    	__m128 tmp3 = vec_data[ 0];
         vec_data[-1] = _mm_add_ps(tmp2, _mm_mul_ps(_mm_add_ps(tmp1, tmp3), c));
         tmp1 = tmp3;
         vec_data += 2;
@@ -1087,14 +1082,14 @@ static void interleave_h_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
     float* GRK_RESTRICT bi = (float*)(dwt->mem + dwt->parity);
     uint32_t x0 = dwt->win_l.x0;
     uint32_t x1 = dwt->win_l.x1;
-
+    const size_t vec4f_elts = sizeof(vec4f)/sizeof(float);
     for (uint32_t k = 0; k < 2; ++k) {
     	auto band = (k == 0) ? bandL : bandH;
     	uint32_t stride = (k == 0) ? strideL : strideH;
-        if (remaining_height >= 4 && ((size_t) band & 0x0f) == 0 &&
+        if (remaining_height >= vec4f_elts && ((size_t) band & 0x0f) == 0 &&
                 ((size_t) bi & 0x0f) == 0 && (stride & 0x0f) == 0) {
             /* Fast code path */
-            for (uint32_t i = x0; i < x1; ++i, bi+=8) {
+            for (uint32_t i = x0; i < x1; ++i, bi+=vec4f_elts*2) {
                 uint32_t j = i;
                 bi[0] = band[j];
                 j += stride;
@@ -1106,7 +1101,7 @@ static void interleave_h_97(dwt_data<vec4f>* GRK_RESTRICT dwt,
              }
         } else {
             /* Slow code path */
-            for (uint32_t i = x0; i < x1; ++i, bi+=8) {
+            for (uint32_t i = x0; i < x1; ++i, bi+=vec4f_elts*2) {
                 uint32_t j = i;
                 bi[0] = band[j];
                 j += stride;
@@ -1139,7 +1134,8 @@ static void decompress_h_strip_97(dwt_data<vec4f>* GRK_RESTRICT horiz,
 								   float* dest,
 								   const size_t strideDest){
 	uint32_t j;
-	for (j = 0; j< (rh & (uint32_t)(~3)); j += 4) {
+    const size_t vec4f_elts = sizeof(vec4f)/sizeof(float);
+	for (j = 0; j< (rh & (uint32_t)(~(vec4f_elts-1))); j += vec4f_elts) {
 		interleave_h_97(horiz, bandL,strideL, bandH, strideH, rh - j);
 		decompress_step_97(horiz);
 		for (uint32_t k = 0; k <  horiz->sn + horiz->dn; k++) {
@@ -1183,7 +1179,8 @@ static bool decompress_h_mt_97(uint32_t num_threads,
     if (rh < num_jobs)
         num_jobs = rh;
     uint32_t step_j = num_jobs ? (rh / num_jobs) : 0;
-    if (num_threads == 1 || step_j < 4) {
+    const size_t vec4f_elts = sizeof(vec4f)/sizeof(float);
+    if (num_threads == 1 || step_j < vec4f_elts) {
     	decompress_h_strip_97(&horiz, rh, bandL,strideL, bandH, strideH, dest, strideDest);
     } else {
 		std::vector< std::future<int> > results;
@@ -1259,20 +1256,21 @@ static void decompress_v_strip_97(dwt_data<vec4f>* GRK_RESTRICT vert,
 								   float* GRK_RESTRICT dest,
 								   const uint32_t strideDest){
     uint32_t j;
-	for (j = 0; j < (rw & (uint32_t)~3); j += 4) {
-		interleave_v_97(vert, bandL,strideL, bandH,strideH, 4);
+    const size_t vec4f_elts = sizeof(vec4f)/sizeof(float);
+	for (j = 0; j < (rw & (uint32_t)~(vec4f_elts-1)); j += vec4f_elts) {
+		interleave_v_97(vert, bandL,strideL, bandH,strideH, vec4f_elts);
 		decompress_step_97(vert);
 		auto destPtr = dest;
 		for (uint32_t k = 0; k < rh; ++k){
-			memcpy(destPtr, vert->mem+k, 4 * sizeof(float));
+			memcpy(destPtr, vert->mem+k, sizeof(vec4f));
 			destPtr += strideDest;
 		}
-		bandL += 4;
-		bandH += 4;
-		dest  += 4;
+		bandL += vec4f_elts;
+		bandH += vec4f_elts;
+		dest  += vec4f_elts;
 	}
 	if (j < rw) {
-		j = rw & 3;
+		j = rw & (vec4f_elts-1);
 		interleave_v_97(vert, bandL, strideL,bandH, strideH, j);
 		decompress_step_97(vert);
 		auto destPtr = dest;
@@ -1297,8 +1295,9 @@ static bool decompress_v_mt_97(uint32_t num_threads,
 	auto num_jobs = (uint32_t)num_threads;
 	if (rw < num_jobs)
 		num_jobs = rw;
+    const size_t vec4f_elts = sizeof(vec4f)/sizeof(float);
 	auto step_j = num_jobs ? (rw / num_jobs) : 0;
-	if (num_threads == 1 || step_j < 4) {
+	if (num_threads == 1 || step_j < vec4f_elts) {
 		decompress_v_strip_97(&vert,
 							rw,
 							rh,
@@ -1850,12 +1849,13 @@ static Params97 makeParams97(dwt_data<vec4f>* dwt,
 							bool isBandL,
 							bool step1){
 	Params97 rc;
-	uint32_t band_0 = isBandL ?  dwt->win_l.x0 :  dwt->win_h.x0;
-	uint32_t band_1 = isBandL ?  dwt->win_l.x1 :  dwt->win_h.x1;
+	// band_0 specifies absolute start of line buffer
+	int64_t band_0 = isBandL ?  dwt->win_l.x0 :  dwt->win_h.x0;
+	int64_t band_1 = isBandL ?  dwt->win_l.x1 :  dwt->win_h.x1;
 	auto memPartial = isBandL ? dwt->memL : dwt->memH;
-	uint32_t shift = isBandL ? dwt->parity : !dwt->parity;
-	int64_t lenMax = isBandL ? 	min<int64_t>((int64_t)dwt->sn, (int64_t)dwt->dn - (int64_t)shift) :
-									min<int64_t>((int64_t)dwt->dn, (int64_t)dwt->sn - (int64_t)(shift));
+	int64_t parityOffset = isBandL ? dwt->parity : !dwt->parity;
+	int64_t lenMax = isBandL ? 	min<int64_t>(dwt->sn, (int64_t)dwt->dn - parityOffset) :
+									min<int64_t>(dwt->dn, (int64_t)dwt->sn - parityOffset);
 	if (lenMax < 0)
 		lenMax = 0;
 	assert(lenMax >= band_0);
@@ -1863,16 +1863,14 @@ static Params97 makeParams97(dwt_data<vec4f>* dwt,
 	rc.data = memPartial? memPartial: dwt->mem;
 
 	assert(!memPartial || (dwt->win_l.x1 <= dwt->sn && dwt->win_h.x1 <= dwt->dn));
+	assert(band_1 >= band_0);
 
-	if (step1) {
-		rc.data += (int64_t)shift + (int64_t)band_0 - (int64_t)dwt->win_l.x0;
-		rc.len  = band_1 - band_0;
-	} else {
-		rc.data += (int64_t)shift + 1 + (int64_t)band_0 - (int64_t)dwt->win_l.x0;
-		rc.dataPrev = rc.data - 2 * shift;
-		rc.len = band_1 - band_0;
+	rc.data += parityOffset + band_0 - dwt->win_l.x0;
+	rc.len  = (uint32_t)(band_1 - band_0);
+	if (!step1) {
+		rc.data += 1;
+		rc.dataPrev = parityOffset ? rc.data - 2: rc.data;
 		rc.lenMax = (uint32_t)lenMax;
-		rc.absoluteStart = band_0;
 	}
 
 	if (memPartial) {
@@ -2017,26 +2015,20 @@ template <typename T,
 				 job->data.memH  =  job->data.mem + (int64_t)(!job->data.parity) + 2 * ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0);
 				 decompressor.interleave_h(&job->data, sa, j,height);
 #ifdef GRK_DEBUG_VALGRIND
-
 				 auto ptr = ((uint64_t)job->data.memL < (uint64_t)job->data.memH) ? job->data.memL : job->data.memH;
 				 if (grk_memcheck<T>(ptr, len) != grk_mem_ok) {
 					std::ostringstream ss;
 					ss << "H interleave uninitialized value: compno = " << (uint32_t)compno  << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
 					grk_memcheck_all<int32_t>((int32_t*)ptr, len, ss.str());
 				 }
-
 #endif
 				 job->data.memL  =  job->data.mem;
 				 job->data.memH  =  job->data.mem  + ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0);
 				 decompressor.decompress_h(&job->data);
 #ifdef GRK_DEBUG_VALGRIND
-
-				if (compno == debug_compno && resno == 2 && j == 1) {
-					std::ostringstream ss;
-					ss << "H decompress uninitialized value: compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
-					grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
-				}
-
+				std::ostringstream ss;
+				ss << "H decompress uninitialized value: compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
+				grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 #endif
 				 if (!sa->write(resno,
 						 	 	 grk_rect_u32(resWindowRect.x0,
@@ -2087,13 +2079,9 @@ template <typename T,
 				job->data.memH  =  job->data.mem  + ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0) * VERT_PASS_WIDTH;
 				decompressor.decompress_v(&job->data);
 #ifdef GRK_DEBUG_VALGRIND
-
-				if (compno == debug_compno && resno == 1 && j == 19) {
-					std::ostringstream ss;
-					ss << "V decompress uninitialized value: compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
-					grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
-				}
-
+				std::ostringstream ss;
+				ss << "V decompress uninitialized value: compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
+				grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 #endif
 				if (!sa->write(resno,
 							grk_rect_u32(j,
