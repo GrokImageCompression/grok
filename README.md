@@ -1,25 +1,31 @@
-# Grok
-
-Grok is a high performance JPEG 2000 codec.
-
-Library features include:
-
-* fast random access sub-image decoding, using `TLM` and `PLT` markers when available
-* full encode/decode support for `ICC` colour profiles
-* full encode/decode support for `XML`,`IPTC`, `XMP` and `EXIF` meta data
-* full encode/decode support for `mono`, `sRGB`, `palette`, `sYCC`, `eYCC`, `CIELab` and `CMYK` colour spaces
-* full encode/decode support for `JPEG`,`PNG`,`BMP`,`TIFF`,`RAW`,`PGM` and `PAM` image formats.
-* full encode/decode support for 1-16 bit precision.
-
-Please see:
-
-1. [LICENSE][link-license] for license and copyright information.
-1. [INSTALL](https://github.com/GrokImageCompression/grok/blob/master/INSTALL.md) for installation procedures.
-1. [Project Wiki](https://github.com/GrokImageCompression/grok/wiki) for library usage.
-
+## Grok is the leading open source JPEG 2000 codec
 
 [![badge-license]][link-license]
 
+<span>
+ <a href="https://jpeg.org/jpeg2000/htj2k.html" target="_blank">
+  <img src="https://jpeg.org/images/jpeg2000-logo.svg" width=200, height=200 />
+ </a>
+</span>
+<p>
+
+
+Features include:
+
+* support for new **High Throughput JPEG 2000 (HTJ2K)** standard
+* fast random-access sub-image decoding using `TLM` and `PLT` markers
+* full encode/decode support for `ICC` colour profiles
+* full encode/decode support for `XML`,`IPTC`, `XMP` and `EXIF` meta-data
+* full encode/decode support for `monochrome`, `sRGB`, `palette`, `YCC`, `extended YCC`, `CIELab` and `CMYK` colour spaces
+* full encode/decode support for `JPEG`,`PNG`,`BMP`,`TIFF`,`RAW`,`PNM` and `PAM` image formats.
+* full encode/decode support for 1-16 bit precision.
+
+
+Please see:
+
+1. [INSTALL](https://github.com/GrokImageCompression/grok/blob/master/INSTALL.md) for installation guide.
+1. [WIKI](https://github.com/GrokImageCompression/grok/wiki) for library usage.
+1. [LICENSE][link-license] for license and copyright information.
 
 ## Current Build Status
 [![badge-build]][link-build]
