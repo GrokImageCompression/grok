@@ -17,15 +17,15 @@ Features include:
 * full encode/decode support for `ICC` colour profiles
 * full encode/decode support for `XML`,`IPTC`, `XMP` and `EXIF` meta-data
 * full encode/decode support for `monochrome`, `sRGB`, `palette`, `YCC`, `extended YCC`, `CIELab` and `CMYK` colour spaces
-* full encode/decode support for `JPEG`,`PNG`,`BMP`,`TIFF`,`RAW`,`PNM` and `PAM` image formats.
-* full encode/decode support for 1-16 bit precision.
+* full encode/decode support for `JPEG`,`PNG`,`BMP`,`TIFF`,`RAW`,`PNM` and `PAM` image formats
+* full encode/decode support for 1-16 bit precision
 
 
 Please see:
 
-1. [INSTALL](https://github.com/GrokImageCompression/grok/blob/master/INSTALL.md) for installation guide.
-1. [WIKI](https://github.com/GrokImageCompression/grok/wiki) for library usage.
-1. [LICENSE][link-license] for license and copyright information.
+1. [INSTALL](https://github.com/GrokImageCompression/grok/blob/master/INSTALL.md) for installation guide
+1. [WIKI](https://github.com/GrokImageCompression/grok/wiki) for library usage
+1. [LICENSE][link-license] for license and copyright information
 
 ## Current Build Status
 [![badge-build]][link-build]
