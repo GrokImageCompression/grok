@@ -23,30 +23,33 @@
 
 namespace grk {
 
-class FileFormatDecompress : public FileFormat {
+typedef std::function<bool(uint8_t *p_header_data, uint32_t header_size)>  BOX_FUNC;
+
+class FileFormatDecompress : public FileFormat, public ICodeStreamDecompress {
 public:
 	FileFormatDecompress( BufferedStream *stream);
 	virtual ~FileFormatDecompress();
-   bool readHeader(grk_header_info  *header_info);
+
+	static void free_color(grk_color *color);
+
+	bool readHeader(grk_header_info  *header_info);
    GrkImage* getImage(uint16_t tileIndex);
    GrkImage* getImage(void);
    void initDecompress(grk_dparameters  *p_param);
    bool setDecompressWindow(grk_rect_u32 window);
    bool decompress( grk_plugin_tile *tile);
-   bool endDecompress(void);
    bool decompressTile(uint16_t tile_index);
+   bool endDecompress(void);
    void dump(uint32_t flag, FILE *out_stream);
 
-
-   static void free_color(grk_color *color);
+private:
    static void alloc_palette(grk_color *color, uint8_t num_channels, uint16_t num_entries);
    static void free_palette_clr(grk_color *color);
-   bool exec( std::vector<PROCEDURE_FUNC> *procs);
    uint32_t read_asoc(AsocBox *parent,
 					   uint8_t **header_data,
 					   uint32_t *header_data_size,
 					   uint32_t asocSize);
-   bool readHeaderProcedure(void);
+   bool readHeaderProcedureImpl(void);
    bool read_box_hdr(FileFormatBox *box, uint32_t *p_number_bytes_read,BufferedStream *stream);
    bool read_ihdr( uint8_t *p_image_header_data,uint32_t image_header_size);
    bool read_xml( uint8_t *p_xml_data, uint32_t xml_size);
@@ -83,12 +86,13 @@ public:
 
 	bool applyColour(GrkImage *img);
 	bool applyColour(void);
-private:
 	std::map<uint32_t, BOX_FUNC> header;
 	std::map<uint32_t, BOX_FUNC> img_header;
 
 	bool m_headerError;
 	AsocBox root_asoc;
+	CodeStreamDecompress *codeStream;
+	uint32_t jp2_state;
 };
 
 }

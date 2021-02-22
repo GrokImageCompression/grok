@@ -23,35 +23,28 @@
 
 namespace grk {
 
-FileFormat::FileFormat(bool isDecoder, BufferedStream *stream) : codeStream(new CodeStream(isDecoder,stream)),
-										m_validation_list(new std::vector<PROCEDURE_FUNC>()),
-										m_procedure_list(new std::vector<PROCEDURE_FUNC>()),
-										w(0),
-										h(0),
-										numcomps(0),
-										bpc(0),
-										C(0),
-										UnkC(0),
-										IPR(0),
-										meth(0),
-										approx(0),
-										enumcs(GRK_ENUM_CLRSPC_UNKNOWN),
-										precedence(0),
-										brand(0),
-										minversion(0),
-										numcl(0),
-										cl(nullptr),
-										comps(nullptr),
-										j2k_codestream_offset(0),
-										needs_xl_jp2c_box_length(false),
-										jp2_state(0),
-										jp2_img_state(0),
-										has_capture_resolution(false),
-										has_display_resolution(false),
-										numUuids(0),
-										m_compress(nullptr),
-										m_decompress(nullptr)
-{
+FileFormat::FileFormat(void) :
+						m_validation_list(new std::vector<PROCEDURE_FUNC>()),
+						m_procedure_list(new std::vector<PROCEDURE_FUNC>()),
+						w(0),
+						h(0),
+						numcomps(0),
+						bpc(0),
+						C(0),
+						UnkC(0),
+						IPR(0),
+						meth(0),
+						approx(0),
+						enumcs(GRK_ENUM_CLRSPC_UNKNOWN),
+						precedence(0),
+						brand(0),
+						minversion(0),
+						numcl(0),
+						cl(nullptr),
+						comps(nullptr),
+						has_capture_resolution(false),
+						has_display_resolution(false),
+						numUuids(0) {
 	for (uint32_t i = 0; i < 2; ++i) {
 		capture_resolution[i] = 0;
 		display_resolution[i] = 0;
@@ -66,7 +59,6 @@ FileFormat::FileFormat(bool isDecoder, BufferedStream *stream) : codeStream(new 
 
 }
 FileFormat::~FileFormat() {
-	delete codeStream;
 	delete[] comps;
 	grk_free(cl);
 	FileFormatDecompress::free_color(&color);
@@ -75,62 +67,19 @@ FileFormat::~FileFormat() {
 		(uuids + i)->dealloc();
 	delete m_validation_list;
 	delete m_procedure_list;
-	delete m_compress;
-	delete m_decompress;
 }
-CodeStream* FileFormat::getCodeStream(void){
-	return m_decompress->getCodeStream();
-}
-void FileFormat::createCompress(void){
-	m_compress = new FileFormatCompress(codeStream->getStream());
-}
-bool FileFormat::startCompress(void){
-	return m_compress->startCompress();
-}
-bool FileFormat::initCompress(grk_cparameters  *parameters,GrkImage *image){
-	  return m_compress->initCompress(parameters, image);
-}
-bool FileFormat::compress(grk_plugin_tile* tile){
-	return m_compress->compress(tile);
-}
-bool FileFormat::compressTile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size){
-	return m_compress->compressTile(tile_index, p_data, data_size);
-}
-bool FileFormat::endCompress(void){
-	return m_compress->endCompress();
-}
-void FileFormat::createDecompress(void){
-	m_decompress = new FileFormatDecompress(codeStream->getStream());
-}
-GrkImage* FileFormat::getImage(uint16_t tileIndex){
-	return m_decompress->getImage(tileIndex);
-}
-GrkImage* FileFormat::getImage(void){
-	return m_decompress->getImage();
-}
-/** Main header reading function handler */
-bool FileFormat::readHeader(grk_header_info  *header_info){
-	return m_decompress->readHeader(header_info);
-}
-bool FileFormat::setDecompressWindow(grk_rect_u32 window){
-	return m_decompress->setDecompressWindow(window);
-}
-/** Set up decompressor function handler */
-void FileFormat::initDecompress(grk_dparameters  *parameters){
-	return m_decompress->initDecompress(parameters);
-}
-bool FileFormat::decompress( grk_plugin_tile *tile){
-	return m_decompress->decompress(tile);
-}
-bool FileFormat::decompressTile(uint16_t tile_index) {
-	return m_decompress->decompressTile(tile_index);
-}
-/** Reading function used after code stream if necessary */
-bool FileFormat::endDecompress(void){
-	return m_decompress->endDecompress();
-}
-void FileFormat::dump(uint32_t flag, FILE *out_stream){
-	return m_decompress->dump(flag, out_stream);
+
+bool FileFormat::exec( std::vector<PROCEDURE_FUNC> *procs) {
+	bool result = true;
+	assert(procs);
+
+	for (auto it = procs->begin(); it != procs->end(); ++it) {
+		auto p = *it;
+		result = result && (p)();
+	}
+	procs->clear();
+
+	return result;
 }
 
 }

@@ -22,7 +22,7 @@
 
 namespace grk {
 
-class FileFormatCompress : public FileFormat {
+class FileFormatCompress : public FileFormat, public ICodeStreamCompress {
 public:
 	FileFormatCompress( BufferedStream *stream);
 	virtual ~FileFormatCompress();
@@ -33,7 +33,7 @@ public:
    bool compressTile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size);
    bool endCompress(void);
 
-   bool exec( std::vector<PROCEDURE_FUNC> *procs);
+private:
    void find_cf(double x, uint32_t *num, uint32_t *den);
    void write_res_box(double resx, double resy, uint32_t box_id,
 		uint8_t **current_res_ptr);
@@ -56,6 +56,10 @@ public:
    void init_compress_validation(void);
    uint8_t* write_xml( uint32_t *p_nb_bytes_written);
    bool skip_jp2c(void);
+
+	CodeStreamCompress *codeStream;
+	bool needs_xl_jp2c_box_length;
+	uint64_t j2k_codestream_offset;
 };
 
 }

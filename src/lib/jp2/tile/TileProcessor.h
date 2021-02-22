@@ -68,7 +68,7 @@ private:
  Tile compressor/decompressor
  */
 struct TileProcessor {
-	explicit TileProcessor(CodeStream *codeStream, BufferedStream *stream) ;
+	explicit TileProcessor(CodeStream *codeStream, BufferedStream *stream, bool isWholeTileDecompress) ;
 	~TileProcessor();
 
 	/**
@@ -118,7 +118,7 @@ struct TileProcessor {
 	bool copy_uncompressed_data_to_tile(uint8_t *p_src, uint64_t src_length);
 	bool needs_rate_control();
 	void copy_image_to_tile();
-	bool prepare_sod_decoding(CodeStream *codeStream);
+	bool prepare_sod_decoding(CodeStreamDecompress *codeStream);
 
 	/** index of tile being currently compressed/decompressed */
 	uint16_t m_tile_index;

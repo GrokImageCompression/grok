@@ -25,7 +25,7 @@ using namespace std;
 
 namespace grk {
 
-TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream) :
+TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream, bool isWholeTileDecompress) :
 				 m_tile_index(0),
 				 m_first_poc_tile_part(true),
 				 m_tile_part_index(0),
@@ -35,9 +35,9 @@ TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream) :
 				tile(nullptr),
 				image(codeStream->getHeaderImage()),
 				current_plugin_tile(codeStream->getCurrentPluginTile()),
-				wholeTileDecompress(codeStream->isWholeTileDecompress()),
+				wholeTileDecompress(isWholeTileDecompress),
 				plt_markers(nullptr),
-				m_cp(&codeStream->m_cp),
+				m_cp(codeStream->getCodingParams()),
 				m_stream(stream),
 				m_corrupt_packet(false),
 				tp_pos(0),
@@ -1244,12 +1244,12 @@ bool TileProcessor::copy_uncompressed_data_to_tile(uint8_t *p_src,
 	return true;
 }
 
-bool TileProcessor::prepare_sod_decoding(CodeStream *codeStream) {
+bool TileProcessor::prepare_sod_decoding(CodeStreamDecompress *codeStream) {
 	assert(codeStream);
 
 	// note: we subtract 2 to account for SOD marker
 	auto tcp = codeStream->get_current_decode_tcp();
-	if (codeStream->m_decompressor.m_last_tile_part_in_code_stream) {
+	if (codeStream->getDecompressorState()->m_last_tile_part_in_code_stream) {
 		tile_part_data_length =	(uint32_t) (m_stream->get_number_byte_left() - 2);
 	} else {
 		if (tile_part_data_length >= 2)
@@ -1277,7 +1277,7 @@ bool TileProcessor::prepare_sod_decoding(CodeStream *codeStream) {
 		}
 	}
 	/* Index */
-	auto cstr_index = codeStream->cstr_index;
+	auto cstr_index = codeStream->getIndex();
 	if (cstr_index) {
 		uint64_t current_pos = m_stream->tell();
 		if (current_pos < 2) {
@@ -1325,9 +1325,9 @@ bool TileProcessor::prepare_sod_decoding(CodeStream *codeStream) {
 
 	}
 	if (current_read_size != tile_part_data_length)
-		codeStream->m_decompressor.setState(J2K_DEC_STATE_NO_EOC);
+		codeStream->getDecompressorState()->setState(J2K_DEC_STATE_NO_EOC);
 	else
-		codeStream->m_decompressor.setState(J2K_DEC_STATE_TPH_SOT);
+		codeStream->getDecompressorState()->setState(J2K_DEC_STATE_TPH_SOT);
 
 	return true;
 }

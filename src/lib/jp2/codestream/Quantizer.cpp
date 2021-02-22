@@ -89,7 +89,7 @@ bool Quantizer::write_SQcd_SQcc(CodeStream *codeStream,
 		uint32_t comp_no, BufferedStream *stream) {
 	assert(codeStream != nullptr);
 
-	auto cp = &(codeStream->m_cp);
+	auto cp = codeStream->getCodingParams();
 	auto tcp = &cp->tcps[0];
 	auto tccp = &tcp->tccps[comp_no];
 
@@ -126,7 +126,7 @@ uint32_t Quantizer::get_SQcd_SQcc_size(CodeStream *codeStream,
 		uint32_t comp_no) {
 	assert(codeStream != nullptr);
 
-	auto cp = &(codeStream->m_cp);
+	auto cp = codeStream->getCodingParams();
 	auto tcp = &cp->tcps[0];
 	auto tccp = &tcp->tccps[comp_no];
 
@@ -147,7 +147,7 @@ bool Quantizer::compare_SQcd_SQcc(CodeStream *codeStream,
 		uint32_t first_comp_no, uint32_t second_comp_no) {
 	assert(codeStream != nullptr);
 
-	auto cp = &(codeStream->m_cp);
+	auto cp = codeStream->getCodingParams();
 	auto tcp = &cp->tcps[0];
 	auto tccp0 = &tcp->tccps[first_comp_no];
 	auto tccp1 = &tcp->tccps[second_comp_no];
@@ -184,7 +184,7 @@ bool Quantizer::compare_SQcd_SQcc(CodeStream *codeStream,
 	return true;
 }
 
-bool Quantizer::read_SQcd_SQcc(CodeStream *codeStream,
+bool Quantizer::read_SQcd_SQcc(CodeStreamDecompress *codeStream,
 								bool fromQCC, uint32_t comp_no,
 								uint8_t *p_header_data, uint16_t *header_size) {
 	assert(codeStream != nullptr);

@@ -24,19 +24,21 @@
 namespace grk {
 
 struct TileProcessor;
+class CodeStreamCompress;
+class CodeStreamDecompress;
 
 class SOTMarker {
 public:
 
-	SOTMarker(CodeStream *stream);
+	SOTMarker(void);
 
 	/**
 	 * Writes the SOT marker (Start of tile-part)
 	 *
 	 */
-	bool write(void);
+	bool write(CodeStreamCompress *codeStream);
 
-	bool write_psot(uint32_t tile_part_bytes_written);
+	bool write_psot(CodeStreamCompress *codeStream,uint32_t tile_part_bytes_written);
 
 	/**
 	 * Decompress a SOT marker (Start of tile-part)
@@ -45,7 +47,7 @@ public:
 	 * @param       header_size     the size of the data contained in the PPT marker.
 
 	 */
-	 bool read(uint8_t *p_header_data,
+	 bool read(CodeStreamDecompress *codeStream, uint8_t *p_header_data,
 			uint16_t header_size);
 
 	 /**
@@ -62,11 +64,11 @@ public:
 	  * @param       p_num_parts     TNsot.
 
 	  */
-	 bool get_sot_values(uint8_t *p_header_data, uint32_t header_size,
+	 bool get_sot_values(CodeStreamDecompress *codeStream,
+			 uint8_t *p_header_data, uint32_t header_size,
 	 		uint16_t *tile_no, uint32_t *p_tot_len, uint8_t *p_current_part,
 	 		uint8_t *p_num_parts);
 private:
-	 CodeStream *m_codeStream;
 	 uint64_t m_psot_location;
 
 };

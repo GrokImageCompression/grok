@@ -75,10 +75,6 @@ enum JP2_STATE {
 	JP2_STATE_UNKNOWN = 0x7fffffff /* ISO C restricts enumerator values to range of 'int' */
 };
 
-enum JP2_IMG_STATE {
-	JP2_IMG_STATE_NONE = 0x0, JP2_IMG_STATE_UNKNOWN = 0x7fffffff
-};
-
 struct FileFormatBox {
 	FileFormatBox() : length(0), type(0)
 	{}
@@ -91,9 +87,6 @@ struct ComponentInfo {
 	{}
 	uint8_t bpc;
 };
-
-typedef std::function<bool(uint8_t *p_header_data, uint32_t header_size)>  BOX_FUNC;
-typedef std::function<uint8_t*(uint32_t* len)>  WRITE_FUNC;
 
 /**
 	Association box (defined in ITU 15444-2 Annex M 11.1 )
@@ -125,57 +118,15 @@ struct UUIDBox: public FileFormatBox, grk_buf {
 	uint8_t uuid[16];
 };
 
-struct BoxWriteHandler {
-	BoxWriteHandler() : handler(nullptr),m_data(nullptr), m_size(0)
-	{}
-	WRITE_FUNC handler;
-	uint8_t *m_data;
-	uint32_t m_size;
-};
-
-class FileFormatCompress;
-class FileFormatDecompress;
-
 /**
  JPEG 2000 file format reader/writer
  */
-class FileFormat : public ICodeStream {
+class FileFormat {
 public:
-	FileFormat(bool isDecoder, BufferedStream *stream);
-	~FileFormat();
-   CodeStream* getCodeStream(void);
-
-	void createDecompress(void);
-   bool readHeader(grk_header_info  *header_info);
-   GrkImage* getImage(uint16_t tileIndex);
-   GrkImage* getImage(void);
-   void initDecompress(grk_dparameters  *p_param);
-  /**
-  	* Sets the given area to be decompressed, relative to image origin.
-  	* This function should be called right after grk_decompress_read_header
-	* and before any tile header reading.
-	*
-	* @param	p_image     image
-	* @param	window		decompress window
-	*
-	* @return	true			if the area could be set.
-  */
-   bool setDecompressWindow(grk_rect_u32 window);
-   bool decompress( grk_plugin_tile *tile);
-   bool endDecompress(void);
-   bool decompressTile(uint16_t tile_index);
-
-   void createCompress(void);
-   bool initCompress(grk_cparameters  *p_param,GrkImage *p_image);
-   bool startCompress(void);
-   bool compress(grk_plugin_tile* tile);
-   bool compressTile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size);
-   bool endCompress(void);
-
-   void dump(uint32_t flag, FILE *out_stream);
+	FileFormat(void);
+	virtual ~FileFormat();
 protected:
-	CodeStream *codeStream;
-
+	bool exec( std::vector<PROCEDURE_FUNC> *procs);
 	/** list of validation procedures */
 	std::vector<PROCEDURE_FUNC> *m_validation_list;
 	/** list of execution procedures */
@@ -200,10 +151,6 @@ protected:
 	uint32_t numcl;
 	uint32_t *cl;
 	ComponentInfo *comps;
-	uint64_t j2k_codestream_offset;
-	bool needs_xl_jp2c_box_length;
-	uint32_t jp2_state;
-	uint32_t jp2_img_state;
 	grk_color color;
 
 	bool has_capture_resolution;
@@ -215,10 +162,6 @@ protected:
 
 	UUIDBox uuids[JP2_MAX_NUM_UUIDS];
 	uint32_t numUuids;
-
-	FileFormatCompress* m_compress;
-	FileFormatDecompress* m_decompress;
-
 };
 
 

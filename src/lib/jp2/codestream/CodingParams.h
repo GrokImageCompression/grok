@@ -303,10 +303,11 @@ enum J2K_STATUS {
 	J2K_DEC_STATE_ERR = 0x0100 			/**< the decoding process has encountered an error */
 };
 
+class CodeStreamDecompress;
 
-struct DecoderState {
-	DecoderState();
-	bool findNextTile(CodeStream *codeStream);
+struct DecompressorState {
+	DecompressorState();
+	bool findNextTile(CodeStreamDecompress *codeStream);
 	uint16_t getState(void);
 	void     setState(uint16_t state);
 	void     orState(uint16_t state);
@@ -345,9 +346,9 @@ private:
 
 };
 
-struct EncoderState {
+struct CompressorState {
 
-	EncoderState() : m_total_tile_parts(0) {}
+	CompressorState() : m_total_tile_parts(0) {}
 
 	/** Total num of tile parts in whole image = num tiles* num tileparts in each tile*/
 	/** used in TLMmarker*/

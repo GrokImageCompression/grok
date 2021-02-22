@@ -23,21 +23,23 @@
 
 namespace grk {
 
-FileFormatCompress::FileFormatCompress( BufferedStream *stream) : FileFormat(false,stream)
+typedef std::function<uint8_t*(uint32_t* len)>  WRITE_FUNC;
+struct BoxWriteHandler {
+	BoxWriteHandler() : handler(nullptr),m_data(nullptr), m_size(0)
+	{}
+	WRITE_FUNC handler;
+	uint8_t *m_data;
+	uint32_t m_size;
+};
+
+
+FileFormatCompress::FileFormatCompress( BufferedStream *stream) : FileFormat(),
+																codeStream(new CodeStreamCompress(stream)),
+																needs_xl_jp2c_box_length(false),
+																j2k_codestream_offset(0)
 {}
 FileFormatCompress::~FileFormatCompress() {
-}
-bool FileFormatCompress::exec( std::vector<PROCEDURE_FUNC> *procs) {
-	bool result = true;
-	assert(procs);
-
-	for (auto it = procs->begin(); it != procs->end(); ++it) {
-		auto p = *it;
-		result = result && (p)();
-	}
-	procs->clear();
-
-	return result;
+	delete codeStream;
 }
 bool FileFormatCompress::write_jp(void) {
     auto stream = codeStream->getStream();
@@ -883,13 +885,6 @@ bool FileFormatCompress::default_validation(void) {
 	assert(stream != nullptr);
 
 	/* JPEG2000 codec validation */
-
-	/* STATE checking */
-	/* make sure the state is at 0 */
-	is_valid &= (jp2_state == JP2_STATE_NONE);
-
-	/* make sure not reading a jp2h ???? WEIRD */
-	is_valid &= (jp2_img_state == JP2_IMG_STATE_NONE);
 
 	/* POINTER validation */
 	/* make sure a j2k codec is present */

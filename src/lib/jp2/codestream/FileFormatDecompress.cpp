@@ -23,8 +23,10 @@
 
 namespace grk {
 
-FileFormatDecompress::FileFormatDecompress( BufferedStream *stream) : FileFormat(true,stream),
-																	m_headerError(false)
+FileFormatDecompress::FileFormatDecompress( BufferedStream *stream) : FileFormat(),
+																	m_headerError(false),
+																	codeStream(new CodeStreamDecompress(stream)),
+																	jp2_state(0)
 {
 	header = {	{ JP2_JP, [this](uint8_t *data, uint32_t len ) { return read_jp(data, len);}  },
 				{ JP2_FTYP, [this](uint8_t *data, uint32_t len ) { return read_ftyp(data, len);}  },
@@ -82,20 +84,8 @@ void FileFormatDecompress::free_color(grk_color *color){
 		color->channel_definition = nullptr;
 	}
 }
-bool FileFormatDecompress::exec( std::vector<PROCEDURE_FUNC> *procs) {
-	bool result = true;
-	assert(procs);
-
-	for (auto it = procs->begin(); it != procs->end(); ++it) {
-		auto p = *it;
-		result = result && (p)();
-	}
-	procs->clear();
-
-	return result;
-}
 void FileFormatDecompress::init_end_header_reading(void) {
-	m_procedure_list->push_back(std::bind(&FileFormatDecompress::readHeaderProcedure,this));
+	m_procedure_list->push_back(std::bind(&FileFormatDecompress::readHeaderProcedureImpl,this));
 }
 bool FileFormatDecompress::read_asoc(uint8_t *header_data, uint32_t header_data_size) {
     assert(header_data);
@@ -152,7 +142,7 @@ bool FileFormatDecompress::readHeader(grk_header_info  *header_info){
 	bool needsHeaderRead = !codeStream->getHeaderImage();
 	if (needsHeaderRead) {
 
-		m_procedure_list->push_back(std::bind(&FileFormatDecompress::readHeaderProcedure,this));
+		m_procedure_list->push_back(std::bind(&FileFormatDecompress::readHeaderProcedureImpl,this));
 
 		/* validation of the parameters codec */
 		if (!exec(m_validation_list)){
@@ -410,9 +400,9 @@ uint32_t FileFormatDecompress::read_asoc(AsocBox *parent,
 	return asocBytesUsed;
 }
 void FileFormatDecompress::dump(uint32_t flag, FILE *out_stream){
-	j2k_dump(codeStream, flag, out_stream);
+	codeStream->dump(flag, out_stream);
 }
-bool FileFormatDecompress::readHeaderProcedure(void) {
+bool FileFormatDecompress::readHeaderProcedureImpl(void) {
 	FileFormatBox box;
 	uint32_t nb_bytes_read;
 	uint64_t last_data_size = GRK_BOX_SIZE;
@@ -1430,7 +1420,6 @@ bool FileFormatDecompress::read_jp2h( uint8_t *p_header_data,	uint32_t header_si
 		GRK_ERROR("The  box must be the first box in the file.");
 		return false;
 	}
-	jp2_img_state = JP2_IMG_STATE_NONE;
 	bool has_ihdr = false;
 	/* iterate while remaining data */
 	while (header_size) {
@@ -1447,8 +1436,6 @@ bool FileFormatDecompress::read_jp2h( uint8_t *p_header_data,	uint32_t header_si
 			if (!current_handler( p_header_data,box_data_length)) {
 				return false;
 			}
-		} else {
-			jp2_img_state |= JP2_IMG_STATE_UNKNOWN;
 		}
 		if (box.type == JP2_IHDR)
 			has_ihdr = true;

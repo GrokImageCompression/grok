@@ -11,7 +11,8 @@ GrkImage::~GrkImage(){
 		grk_image_all_components_data_free(this);
 		delete[] comps;
 	}
-	grk_object_unref(&meta->obj);
+	if (meta)
+		grk_object_unref(&meta->obj);
 	delete (GrkObject*)obj.wrappee;
 }
 

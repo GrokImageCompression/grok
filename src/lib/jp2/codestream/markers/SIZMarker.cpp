@@ -60,7 +60,7 @@ void SIZMarker::subsampleAndReduceHeaderImageComponents(GrkImage *headerImage,
 }
 
 
-bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
+bool SIZMarker::read(CodeStreamDecompress *codeStream, uint8_t *p_header_data,
 		uint16_t header_size){
 	assert(codeStream != nullptr);
 	assert(p_header_data != nullptr);
@@ -70,10 +70,10 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 	uint32_t nb_comp_remain;
 	uint32_t remaining_size;
 	uint16_t nb_tiles;
-	auto decompressor = &codeStream->m_decompressor;
+	auto decompressor = codeStream->getDecompressorState();
 
 	auto image = codeStream->getHeaderImage();
-	auto cp = &(codeStream->m_cp);
+	auto cp = codeStream->getCodingParams();
 
 	/* minimum size == 39 - 3 (= minimum component parameter) */
 	if (header_size < 36) {
@@ -287,7 +287,7 @@ bool SIZMarker::read(CodeStream *codeStream, uint8_t *p_header_data,
 
 }
 
-bool SIZMarker::write(CodeStream *codeStream, BufferedStream *stream){
+bool SIZMarker::write(CodeStreamCompress *codeStream, BufferedStream *stream){
 	uint32_t i;
 	uint32_t size_len;
 
@@ -295,7 +295,7 @@ bool SIZMarker::write(CodeStream *codeStream, BufferedStream *stream){
 	assert(codeStream != nullptr);
 
 	auto image = codeStream->getHeaderImage();
-	auto cp = &(codeStream->m_cp);
+	auto cp = codeStream->getCodingParams();
 	size_len = 40 + 3U * image->numcomps;
 	/* write SOC identifier */
 

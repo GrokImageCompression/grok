@@ -103,13 +103,8 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin/plugin_bridge.h
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin/plugin_bridge.cpp
       
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/BitIO.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/BitIO.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/IBitIO.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Profile.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Profile.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Dump.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Dump.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodeStream.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodeStream.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodeStreamCompress.cpp
@@ -124,10 +119,6 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/FileFormatDecompress.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodingParams.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodingParams.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/PacketIter.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/PacketIter.h  
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/TagTree.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/TagTree.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Quantizer.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Quantizer.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/HTParams.h
@@ -154,6 +145,8 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/RateControl.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/RateInfo.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t2/RateInfo.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t2/PacketIter.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t2/PacketIter.h  
 
   ${CMAKE_CURRENT_SOURCE_DIR}/grok.h
   ${CMAKE_CURRENT_SOURCE_DIR}/grok.cpp
@@ -182,6 +175,11 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Factory.cpp  
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Factory.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Interface.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/TagTree.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/TagTree.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/BitIO.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/BitIO.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/IBitIO.h
 
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/T1HT.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/T1HT.cpp

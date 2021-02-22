@@ -23,6 +23,9 @@
 
 namespace grk {
 
+class CodeStreamDecompress;
+class CodeStreamCompress;
+
 class SIZMarker {
 public:
 
@@ -33,7 +36,7 @@ public:
 	 * @param       header_size   the size of the data contained in the SIZ marker.
 
 	 */
-	bool read(CodeStream *codeStream, uint8_t *p_header_data,
+	bool read(CodeStreamDecompress *codeStream, uint8_t *p_header_data,
 			uint16_t header_size);
 
 	/**
@@ -43,7 +46,7 @@ public:
 	 * @param       stream        buffered stream.
 
 	 */
-	bool write(CodeStream *codeStream, BufferedStream *stream);
+	bool write(CodeStreamCompress *codeStream, BufferedStream *stream);
 
 private:
 	void subsampleAndReduceHeaderImageComponents(GrkImage *headerImage,	const CodingParams *p_cp);

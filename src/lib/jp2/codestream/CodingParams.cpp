@@ -180,7 +180,7 @@ TileComponentCodingParams::TileComponentCodingParams() : csty(0),
 	}
 }
 
-DecoderState::DecoderState() : m_default_tcp(nullptr),
+DecompressorState::DecompressorState() : m_default_tcp(nullptr),
 				m_start_tile_x_index(0),
 				m_start_tile_y_index(0),
 				m_end_tile_x_index(0),
@@ -192,19 +192,19 @@ DecoderState::DecoderState() : m_default_tcp(nullptr),
 				m_state(J2K_DEC_STATE_NONE)
 {}
 
-uint16_t DecoderState::getState(void){
+uint16_t DecompressorState::getState(void){
 	return m_state;
 }
-void     DecoderState::setState(uint16_t state){
+void     DecompressorState::setState(uint16_t state){
    m_state = state;
 }
-void     DecoderState::orState(uint16_t state){
+void     DecompressorState::orState(uint16_t state){
    m_state |= state;
 }
-void     DecoderState::andState(uint16_t state){
+void     DecompressorState::andState(uint16_t state){
    m_state &= state;
 }
-bool DecoderState::findNextTile(CodeStream *codeStream){
+bool DecompressorState::findNextTile(CodeStreamDecompress *codeStream){
 	auto stream = codeStream->getStream();
 	last_tile_part_was_read = false;
 	andState((uint16_t) (~J2K_DEC_STATE_DATA));
@@ -217,7 +217,7 @@ bool DecoderState::findNextTile(CodeStream *codeStream){
 	// (should be EOC or SOT)
 	if (getState() != J2K_DEC_STATE_EOC) {
 		try {
-			if (!codeStream->read_marker()) {
+			if (!codeStream->readMarker()) {
 				GRK_WARN("findNextTile: Not enough data to read another marker.\n"
 								"Tile may be truncated.");
 				return true;
