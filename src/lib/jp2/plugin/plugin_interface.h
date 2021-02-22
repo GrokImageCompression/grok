@@ -96,7 +96,7 @@ struct PluginDecodeCallbackInfo {
 			outputFile(	output),
 			decod_format(format),
 			cod_format(GRK_UNK_FMT),
-			l_stream(nullptr),
+			stream(nullptr),
 			codec(nullptr),
 			decompressor_parameters(decompressorParameters),
 			image(nullptr),
@@ -117,7 +117,7 @@ struct PluginDecodeCallbackInfo {
 	GRK_SUPPORTED_FILE_FMT decod_format;
 	// output file format 0: PGX, 1: PxM, 2: BMP etc 
 	GRK_SUPPORTED_FILE_FMT cod_format;
-	 grk_stream  *l_stream;
+	 grk_stream  *stream;
 	 grk_codec  *codec;
 	grk_decompress_parameters *decompressor_parameters;
 	 grk_header_info  header_info;

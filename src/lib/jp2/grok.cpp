@@ -703,7 +703,7 @@ int32_t grk_plugin_internal_decode_callback(PluginDecodeCallbackInfo *info) {
 	grokInfo.decod_format = info->decod_format;
 	grokInfo.cod_format = info->cod_format;
 	grokInfo.decompressor_parameters = info->decompressor_parameters;
-	grokInfo.l_stream = info->l_stream;
+	grokInfo.stream = info->stream;
 	grokInfo.codec = info->codec;
 	grokInfo.image = info->image;
 	grokInfo.plugin_owns_image = info->plugin_owns_image;
@@ -713,7 +713,7 @@ int32_t grk_plugin_internal_decode_callback(PluginDecodeCallbackInfo *info) {
 		rc = decodeCallback(&grokInfo);
 	//synch
 	info->image = grokInfo.image;
-	info->l_stream = grokInfo.l_stream;
+	info->stream = grokInfo.stream;
 	info->codec = grokInfo.codec;
 	info->header_info = grokInfo.header_info;
 	return rc;

@@ -84,7 +84,7 @@ add_definitions(-DSPDLOG_COMPILED_LIB)
 
 
 # Loop over all executables:
-foreach(exe grk_decompress grk_compress grk_dump)
+foreach(exe grk_decompress grk_compress grk_dump grk_transcode)
   add_executable(${exe} ${exe}.cpp ${common_SRCS})
   target_compile_options(${exe} PRIVATE ${GROK_COMPILE_OPTIONS})
   if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")

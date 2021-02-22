@@ -39,7 +39,7 @@
 #include <sys/stat.h>
 #endif /* _WIN32 */
 
-#include "grk_decompress.h"
+#include "grk_transcode.h"
 
 #include "common.h"
 #include "grok.h"
@@ -212,7 +212,7 @@ static void decompress_help_display(void) {
 	fprintf(stdout, "\n");
 }
 
-void GrkDecompress::print_timing(uint32_t num_images, std::chrono::duration<double> elapsed){
+void GrkTranscode::print_timing(uint32_t num_images, std::chrono::duration<double> elapsed){
 	if (!num_images)
 		return;
 	std::string temp = (num_images > 1) ?  "ms/image" : "ms";
@@ -221,7 +221,7 @@ void GrkDecompress::print_timing(uint32_t num_images, std::chrono::duration<doub
 }
 
 
-bool GrkDecompress::parse_precision(const char *option,
+bool GrkTranscode::parse_precision(const char *option,
 		grk_decompress_parameters *parameters) {
 	const char *remaining = option;
 	bool result = true;
@@ -335,7 +335,7 @@ bool GrkDecompress::parse_precision(const char *option,
 	return result;
 }
 
-int GrkDecompress::load_images(grk_dircnt *dirptr, char *imgdirpath) {
+int GrkTranscode::load_images(grk_dircnt *dirptr, char *imgdirpath) {
 	DIR *dir;
 	struct dirent *content;
 	int i = 0;
@@ -360,7 +360,7 @@ int GrkDecompress::load_images(grk_dircnt *dirptr, char *imgdirpath) {
 	return 0;
 }
 
-char GrkDecompress::get_next_file(std::string image_filename, grk_img_fol *img_fol,
+char GrkTranscode::get_next_file(std::string image_filename, grk_img_fol *img_fol,
 		grk_img_fol *out_fol, grk_decompress_parameters *parameters) {
 	spdlog::info("File: \"{}\"", image_filename.c_str());
 	std::string infilename = img_fol->imgdirpath
@@ -402,7 +402,7 @@ public:
 /**
  * Convert compression string to compression code. (use TIFF codes)
  */
-uint32_t GrkDecompress::getCompressionCode(const std::string &compressionString){
+uint32_t GrkTranscode::getCompressionCode(const std::string &compressionString){
 	if (compressionString == "NONE")
 		return 0;
 	else if (compressionString == "LZW")
@@ -428,7 +428,7 @@ uint32_t GrkDecompress::getCompressionCode(const std::string &compressionString)
  * Parse the command line
  */
 /* -------------------------------------------------------------------------- */
-int GrkDecompress::parse_cmdline_decompressor(int argc,
+int GrkTranscode::parse_cmdline_decompressor(int argc,
 												char **argv,
 												DecompressInitParams *initParams) {
 
@@ -769,7 +769,7 @@ int GrkDecompress::parse_cmdline_decompressor(int argc,
 	}
 	return 0;
 }
-void GrkDecompress::set_default_parameters(grk_decompress_parameters *parameters) {
+void GrkTranscode::set_default_parameters(grk_decompress_parameters *parameters) {
 	if (parameters) {
 		memset(parameters, 0, sizeof(grk_decompress_parameters));
 
@@ -786,7 +786,7 @@ void GrkDecompress::set_default_parameters(grk_decompress_parameters *parameters
 
 }
 
-void GrkDecompress::destroy_parameters(grk_decompress_parameters *parameters) {
+void GrkTranscode::destroy_parameters(grk_decompress_parameters *parameters) {
 	if (parameters) {
 		if (parameters->precision) {
 			free(parameters->precision);
@@ -807,7 +807,7 @@ void MycmsLogErrorHandlerFunction(cmsContext ContextID,
 static int decompress_callback(grk_plugin_decompress_callback_info *info);
 
 // returns 0 for failure, 1 for success, and 2 if file is not suitable for decoding
-int GrkDecompress::decompress(const char *fileName, DecompressInitParams *initParams) {
+int GrkTranscode::decompress(const char *fileName, DecompressInitParams *initParams) {
 	if (initParams->img_fol.set_imgdir) {
 		if (get_next_file(fileName,
 						&initParams->img_fol,
@@ -842,7 +842,7 @@ int GrkDecompress::decompress(const char *fileName, DecompressInitParams *initPa
 }
 
 
-int GrkDecompress::plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
+int GrkTranscode::plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
 	uint32_t num_images = 0, imageno = 0;
 	grk_dircnt *dirptr = nullptr;
 	int32_t success = 0;
@@ -1000,7 +1000,7 @@ int decompress_callback(grk_plugin_decompress_callback_info *info) {
 		}
 		rc = 0;
 	}
-	auto decompressor = (GrkDecompress*)info->user_data;
+	auto decompressor = (GrkTranscode*)info->user_data;
 	if (info->decompress_flags & (GRK_DECODE_HEADER |
 									GRK_DECODE_T1 |
 									GRK_DECODE_T2)) {
@@ -1021,7 +1021,7 @@ enum grk_stream_type {
 grk_stream_type stream_type = GRK_MAPPED_FILE_STREAM;
 
 // return: 0 for success, non-zero for failure
-int GrkDecompress::preDecompress(grk_plugin_decompress_callback_info *info) {
+int GrkTranscode::preDecompress(grk_plugin_decompress_callback_info *info) {
 	if (!info)
 		return 1;
 	bool failed = true;
@@ -1265,7 +1265,7 @@ cleanup:
 /*
  Post-process decompressed image and store in selected image format
  */
-int GrkDecompress::postDecompress(grk_plugin_decompress_callback_info *info) {
+int GrkTranscode::postDecompress(grk_plugin_decompress_callback_info *info) {
 	if (!info)
 		return -1;
 	bool oddFirstX = info->full_image_x0 & 1;
@@ -1458,7 +1458,7 @@ int GrkDecompress::postDecompress(grk_plugin_decompress_callback_info *info) {
 	}
 
 
-	if (GrkDecompress::store_file_to_disk) {
+	if (GrkTranscode::store_file_to_disk) {
 		std::string outfileStr = outfile ? std::string(outfile) : "";
 		uint32_t compressionParam = 0;
 		if (cod_format == GRK_TIF_FMT)
@@ -1504,7 +1504,7 @@ int GrkDecompress::postDecompress(grk_plugin_decompress_callback_info *info) {
 	return failed ? 1 : 0;
 }
 
-int GrkDecompress::main(int argc, char **argv) {
+int GrkTranscode::main(int argc, char **argv) {
 	int rc = EXIT_SUCCESS;
 	uint32_t num_decompressed_images = 0;
 	DecompressInitParams initParams;
@@ -1563,13 +1563,13 @@ cleanup:
 	return rc;
 }
 
-GrkDecompress::GrkDecompress() : store_file_to_disk(true),
+GrkTranscode::GrkTranscode() : store_file_to_disk(true),
 								 imageFormat(nullptr)
 
 {
 }
 
-GrkDecompress::~GrkDecompress(void)
+GrkTranscode::~GrkTranscode(void)
 {
 	delete imageFormat;
 	imageFormat = nullptr;
@@ -1578,7 +1578,7 @@ GrkDecompress::~GrkDecompress(void)
 }
 
 int main(int argc, char **argv) {
-   grk::GrkDecompress decomp;
+   grk::GrkTranscode decomp;
    return decomp.main(argc,argv);
 
 }

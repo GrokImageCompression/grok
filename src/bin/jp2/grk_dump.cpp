@@ -310,21 +310,21 @@ static int parse_cmdline_decompressor(int argc, char **argv,
 /**
  sample error debug callback expecting no client object
  */
-static void error_callback(const char *msg, void *client_data) {
+static void errorCallback(const char *msg, void *client_data) {
 	(void) client_data;
 	spdlog::error(msg);
 }
 /**
  sample warning debug callback expecting no client object
  */
-static void warning_callback(const char *msg, void *client_data) {
+static void warningCallback(const char *msg, void *client_data) {
 	(void) client_data;
 	spdlog::warn(msg);
 }
 /**
  sample debug callback expecting no client object
  */
-static void info_callback(const char *msg, void *client_data) {
+static void infoCallback(const char *msg, void *client_data) {
 	(void) client_data;
 	spdlog::info(msg);
 }
@@ -340,7 +340,7 @@ int main(int argc, char *argv[]) {
 	grk_dparameters parameters; /* Decompression parameters */
 	grk_image *image = nullptr; /* Image structure */
 	grk_codec *codec = nullptr; /* Handle to a decompressor */
-	grk_stream *l_stream = nullptr; /* Stream */
+	grk_stream *stream = nullptr; /* Stream */
 
 	size_t num_images, imageno;
 	img_fol img_fol;
@@ -349,9 +349,9 @@ int main(int argc, char *argv[]) {
 
 	grk_initialize(nullptr, 0);
 
-	grk_set_info_handler(info_callback, nullptr);
-	grk_set_warning_handler(warning_callback, nullptr);
-	grk_set_error_handler(error_callback, nullptr);
+	grk_set_info_handler(infoCallback, nullptr);
+	grk_set_warning_handler(warningCallback, nullptr);
+	grk_set_error_handler(errorCallback, nullptr);
 
 	/* Set decoding parameters to default values */
 	grk_decompress_set_default_params(&parameters);
@@ -421,36 +421,25 @@ int main(int argc, char *argv[]) {
 				continue;
 			}
 		}
-
-		/* Read the input file and put it in memory */
-		/* ---------------------------------------- */
-
-		l_stream = grk_stream_create_file_stream(parameters.infile, 1024 * 1024,
-				1);
-		if (!l_stream) {
+		auto stream = grk_stream_create_file_stream(parameters.infile, 1024 * 1024,1);
+		if (!stream) {
 			spdlog::error("failed to create a stream from file {}",
 					parameters.infile);
 			rc = EXIT_FAILURE;
 			goto cleanup;
 		}
-
-		/* Read the JPEG2000 stream */
-		/* ------------------------ */
-
 		switch (parameters.decod_format) {
-		case GRK_J2K_FMT: { /* JPEG 2000 code stream */
-			/* Get a decompressor handle */
-			codec = grk_decompress_create(GRK_CODEC_J2K, l_stream);
+		case GRK_J2K_FMT: {
+			codec = grk_decompress_create(GRK_CODEC_J2K, stream);
 			break;
 		}
-		case GRK_JP2_FMT: { /* JPEG 2000 compressed image data */
-			/* Get a decompressor handle */
-			codec = grk_decompress_create(GRK_CODEC_JP2, l_stream);
+		case GRK_JP2_FMT: {
+			codec = grk_decompress_create(GRK_CODEC_JP2, stream);
 			break;
 		}
 		default:
-			grk_object_unref(l_stream);
-			l_stream = nullptr;
+			grk_object_unref(stream);
+			stream = nullptr;
 			continue;
 		}
 
@@ -470,9 +459,9 @@ int main(int argc, char *argv[]) {
 
 		grk_dump_codec(codec, img_fol.flag, fout);
 		/* close the byte stream */
-		if (l_stream) {
-			grk_object_unref(l_stream);
-			l_stream = nullptr;
+		if (stream) {
+			grk_object_unref(stream);
+			stream = nullptr;
 		}
 
 		/* free remaining structures */
@@ -485,29 +474,21 @@ int main(int argc, char *argv[]) {
 		if (image) {
 			image = nullptr;
 		}
-
 	}
-
-	cleanup: if (dirptr) {
+cleanup:
+	if (dirptr) {
 		if (dirptr->filename_buf)
 			free(dirptr->filename_buf);
 		if (dirptr->filename)
 			free(dirptr->filename);
 		free(dirptr);
 	}
-
 	/* close the byte stream */
-	if (l_stream)
-		grk_object_unref(l_stream);
-
+	grk_object_unref(stream);
 	/* free remaining structures */
-	if (codec) {
-		grk_object_unref(codec);
-	}
-
+	grk_object_unref(codec);
 	if (fout)
 		fclose(fout);
-
 	grk_deinitialize();
 
 	return rc;

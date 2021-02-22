@@ -111,17 +111,17 @@ static void grk_stream_set_zero_copy_read_function(grk_stream *stream,
 	streamImpl->m_zero_copy_read_fn = p_function;
 }
 
-void set_up_mem_stream(grk_stream *l_stream, size_t len, bool is_read_stream) {
-	grk_stream_set_user_data_length(l_stream, len);
+void set_up_mem_stream(grk_stream *stream, size_t len, bool is_read_stream) {
+	grk_stream_set_user_data_length(stream, len);
 	if (is_read_stream) {
-		grk_stream_set_read_function(l_stream,
+		grk_stream_set_read_function(stream,
 				(grk_stream_read_fn) read_from_mem);
-		grk_stream_set_zero_copy_read_function(l_stream,
+		grk_stream_set_zero_copy_read_function(stream,
 				(grk_stream_zero_copy_read_fn) zero_copy_read_from_mem);
 	} else
-		grk_stream_set_write_function(l_stream,
+		grk_stream_set_write_function(stream,
 				(grk_stream_write_fn) write_to_mem);
-	grk_stream_set_seek_function(l_stream, (grk_stream_seek_fn) seek_from_mem);
+	grk_stream_set_seek_function(stream, (grk_stream_seek_fn) seek_from_mem);
 }
 
 size_t get_mem_stream_offset(grk_stream *stream) {
@@ -142,12 +142,12 @@ grk_stream* create_mem_stream(uint8_t *buf, size_t len, bool ownsBuffer,
 	}
 	auto memStream = new MemStream(buf, 0, len, ownsBuffer);
 	auto streamImpl = new BufferedStream(buf, len, is_read_stream);
-	auto l_stream = streamImpl->getWrapper();
-	grk_stream_set_user_data((grk_stream*) l_stream, memStream, free_mem);
-	set_up_mem_stream((grk_stream*) l_stream, memStream->len,
+	auto stream = streamImpl->getWrapper();
+	grk_stream_set_user_data((grk_stream*) stream, memStream, free_mem);
+	set_up_mem_stream((grk_stream*) stream, memStream->len,
 			is_read_stream);
 
-	return (grk_stream*) l_stream;
+	return (grk_stream*) stream;
 }
 
 }

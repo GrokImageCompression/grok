@@ -100,7 +100,7 @@ void sig_handler(int signum) {
 }
 #endif 
 
-void setup_signal_handler() {
+void setUpSignalHandler() {
 #ifdef  _WIN32
 	SetConsoleCtrlHandler((PHANDLER_ROUTINE)sig_handler, TRUE);
 #else
@@ -114,21 +114,21 @@ void setup_signal_handler() {
 /**
  sample error debug callback expecting no client object
  */
-static void error_callback(const char *msg, void *client_data) {
+static void errorCallback(const char *msg, void *client_data) {
 	(void) client_data;
 	spdlog::default_logger()->error(msg);
 }
 /**
  sample warning debug callback expecting no client object
  */
-static void warning_callback(const char *msg, void *client_data) {
+static void warningCallback(const char *msg, void *client_data) {
 	(void) client_data;
 	spdlog::default_logger()->warn(msg);
 }
 /**
  sample debug callback expecting no client object
  */
-static void info_callback(const char *msg, void *client_data) {
+static void infoCallback(const char *msg, void *client_data) {
 	(void) client_data;
 	spdlog::default_logger()->info(msg);
 }
@@ -1269,9 +1269,9 @@ static int parse_cmdline_compressor_ex(int argc,
 
 			if (rsizArg.isSet()) {
 				if (cinema2KArg.isSet() || cinema4KArg.isSet()) {
-					warning_callback("Cinema profile set - RSIZ parameter ignored.",nullptr);
+					warningCallback("Cinema profile set - RSIZ parameter ignored.",nullptr);
 				} else if (IMFArg.isSet()) {
-					warning_callback("IMF profile set - RSIZ parameter ignored.",	nullptr);
+					warningCallback("IMF profile set - RSIZ parameter ignored.",	nullptr);
 				} else {
 					parameters->rsiz = rsizArg.getValue();
 				}
@@ -2041,10 +2041,10 @@ static bool plugin_compress_callback(grk_plugin_compress_user_callback_info *inf
 
 	/* catch events using our callbacks and give a local context */
 	if (parameters->verbose) {
-		grk_set_info_handler(info_callback, nullptr);
-		grk_set_warning_handler(warning_callback, nullptr);
+		grk_set_info_handler(infoCallback, nullptr);
+		grk_set_warning_handler(warningCallback, nullptr);
 	}
-	grk_set_error_handler(error_callback, nullptr);
+	grk_set_error_handler(errorCallback, nullptr);
 
 	if (!grk_compress_init(codec, parameters, image)) {
 		spdlog::error("failed to compress image: grk_compress_init");
@@ -2157,7 +2157,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 		isBatch = 0;
 	}
 	if (isBatch) {
-		setup_signal_handler();
+		setUpSignalHandler();
 		success = grk_plugin_batch_compress(initParams->img_fol.imgdirpath,
 											initParams->out_fol.imgdirpath,
 											&initParams->parameters,

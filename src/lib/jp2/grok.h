@@ -1827,7 +1827,7 @@ typedef struct _grk_plugin_decompress_callback_info {
 	GRK_SUPPORTED_FILE_FMT decod_format;
 	// output file format 0: PGX, 1: PxM, 2: BMP etc 
 	GRK_SUPPORTED_FILE_FMT cod_format;
-	grk_stream *l_stream;
+	grk_stream *stream;
 	grk_codec *codec;
 	grk_header_info header_info;
 	grk_decompress_parameters *decompressor_parameters;
