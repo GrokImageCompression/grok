@@ -804,8 +804,7 @@ bool TileProcessor::decompress_tile_t1(void) {
 				try {
 					tilec->allocSparseBuffer(tilec->resolutions_decompressed + 1U, truncated);
 				} catch (runtime_error &ex) {
-					GRK_ERROR("decompress_tile_t1: %s", ex.what());
-					return false;
+					continue;
 				}
 			}
 			std::vector<DecompressBlockExec*> blocks;

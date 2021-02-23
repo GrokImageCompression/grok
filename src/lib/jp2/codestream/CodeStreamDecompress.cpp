@@ -261,7 +261,7 @@ bool CodeStreamDecompress::setDecompressWindow(grk_rect_u32 window) {
 
 	/* Check if we have read the main header */
 	if (decompressor->getState() != J2K_DEC_STATE_TPH_SOT) {
-		GRK_ERROR("Need to decompress the main header before setting decompress window");
+		GRK_ERROR("Need to read the main header before setting decompress window");
 		return false;
 	}
 
@@ -356,6 +356,82 @@ bool CodeStreamDecompress::decompress( grk_plugin_tile *tile){
 
 	return exec_decompress();
 }
+bool CodeStreamDecompress::decompressTile(uint16_t tile_index){
+	auto entry = m_tileCache->get(tile_index);
+	if (entry && entry->processor && entry->image)
+		return true;
+
+	// another tile has already been decoded
+	if (m_output_image){
+		/* Copy code stream image information to composite image */
+		m_headerImage->copyHeader(getCompositeImage());
+	}
+
+	if (cstr_index) {
+		/*Allocate and initialize some elements of codestream index*/
+		if (!allocate_tile_element_cstr_index()) {
+			m_headerError = true;
+			return false;
+		}
+	}
+
+	auto compositeImage = getCompositeImage();
+	if (tile_index >= m_cp.t_grid_width * m_cp.t_grid_height) {
+		GRK_ERROR(	"Tile index %u is greater than maximum tile index %u",	tile_index,
+				      m_cp.t_grid_width * m_cp.t_grid_height - 1);
+		return false;
+	}
+
+	/* Compute the dimension of the desired tile*/
+	uint32_t tile_x = tile_index % m_cp.t_grid_width;
+	uint32_t tile_y = tile_index / m_cp.t_grid_width;
+
+	auto imageBounds = grk_rect_u32(compositeImage->x0,
+									compositeImage->y0,
+									compositeImage->x1,
+									compositeImage->y1);
+	auto tileBounds = m_cp.getTileBounds(compositeImage, tile_x, tile_y);
+	// crop tile bounds with image bounds
+	auto croppedImageBounds = imageBounds.intersection(tileBounds);
+	if (imageBounds.non_empty() && tileBounds.non_empty() && croppedImageBounds.non_empty()) {
+		compositeImage->x0 = (uint32_t) croppedImageBounds.x0;
+		compositeImage->y0 = (uint32_t) croppedImageBounds.y0;
+		compositeImage->x1 = (uint32_t) croppedImageBounds.x1;
+		compositeImage->y1 = (uint32_t) croppedImageBounds.y1;
+	} else {
+		GRK_WARN("Decompress bounds <%u,%u,%u,%u> do not overlap with requested tile %u. Decompressing full image",
+				imageBounds.x0,
+				imageBounds.y0,
+				imageBounds.x1,
+				imageBounds.y1,
+				tile_index);
+		croppedImageBounds = imageBounds;
+	}
+
+	auto reduce = m_cp.m_coding_params.m_dec.m_reduce;
+	for (uint32_t compno = 0; compno < compositeImage->numcomps; ++compno) {
+		auto comp = compositeImage->comps + compno;
+		auto compBounds = croppedImageBounds.rectceildiv(comp->dx,comp->dy);
+		auto reducedCompBounds = compBounds.rectceildivpow2(reduce);
+		comp->x0 = reducedCompBounds.x0;
+		comp->y0 = reducedCompBounds.y0;
+		comp->w = reducedCompBounds.width();
+		comp->h = reducedCompBounds.height();
+	}
+	m_tile_ind_to_dec = (int32_t) tile_index;
+
+	// reset tile part numbers, in case we are re-using the same codec object
+	// from previous decompress
+	uint32_t nb_tiles = m_cp.t_grid_width * m_cp.t_grid_height;
+	for (uint32_t i = 0; i < nb_tiles; ++i)
+		m_cp.tcps[i].m_tile_part_index = -1;
+
+	/* customization of the decoding */
+	m_procedure_list.push_back([this] {return decompressTile();}   );
+
+	return exec_decompress();
+}
+///////////////////////////////////////////////////////////////////////////////////////
 bool CodeStreamDecompress::decompressTiles(void) {
 	bool go_on = true;
 	uint16_t numTilesToDecompress = (uint16_t)(m_cp.t_grid_height* m_cp.t_grid_width);
@@ -482,82 +558,6 @@ cleanup:
 	}
 	return success;
 }
-bool CodeStreamDecompress::decompressTile(uint16_t tile_index){
-	auto entry = m_tileCache->get(tile_index);
-	if (entry && entry->processor && entry->image)
-		return true;
-
-	// another tile has already been decoded
-	if (m_output_image){
-		/* Copy code stream image information to composite image */
-		m_headerImage->copyHeader(getCompositeImage());
-	}
-
-	if (cstr_index) {
-		/*Allocate and initialize some elements of codestream index*/
-		if (!allocate_tile_element_cstr_index()) {
-			m_headerError = true;
-			return false;
-		}
-	}
-
-	auto compositeImage = getCompositeImage();
-	if (tile_index >= m_cp.t_grid_width * m_cp.t_grid_height) {
-		GRK_ERROR(	"Tile index %u is greater than maximum tile index %u",	tile_index,
-				      m_cp.t_grid_width * m_cp.t_grid_height - 1);
-		return false;
-	}
-
-	/* Compute the dimension of the desired tile*/
-	uint32_t tile_x = tile_index % m_cp.t_grid_width;
-	uint32_t tile_y = tile_index / m_cp.t_grid_width;
-
-	auto imageBounds = grk_rect_u32(compositeImage->x0,
-									compositeImage->y0,
-									compositeImage->x1,
-									compositeImage->y1);
-	auto tileBounds = m_cp.getTileBounds(compositeImage, tile_x, tile_y);
-	// crop tile bounds with image bounds
-	auto croppedImageBounds = imageBounds.intersection(tileBounds);
-	if (imageBounds.non_empty() && tileBounds.non_empty() && croppedImageBounds.non_empty()) {
-		compositeImage->x0 = (uint32_t) croppedImageBounds.x0;
-		compositeImage->y0 = (uint32_t) croppedImageBounds.y0;
-		compositeImage->x1 = (uint32_t) croppedImageBounds.x1;
-		compositeImage->y1 = (uint32_t) croppedImageBounds.y1;
-	} else {
-		GRK_WARN("Decompress bounds <%u,%u,%u,%u> do not overlap with requested tile %u. Decompressing full image",
-				imageBounds.x0,
-				imageBounds.y0,
-				imageBounds.x1,
-				imageBounds.y1,
-				tile_index);
-		croppedImageBounds = imageBounds;
-	}
-
-	auto reduce = m_cp.m_coding_params.m_dec.m_reduce;
-	for (uint32_t compno = 0; compno < compositeImage->numcomps; ++compno) {
-		auto comp = compositeImage->comps + compno;
-		auto compBounds = croppedImageBounds.rectceildiv(comp->dx,comp->dy);
-		auto reducedCompBounds = compBounds.rectceildivpow2(reduce);
-		comp->x0 = reducedCompBounds.x0;
-		comp->y0 = reducedCompBounds.y0;
-		comp->w = reducedCompBounds.width();
-		comp->h = reducedCompBounds.height();
-	}
-	m_tile_ind_to_dec = (int32_t) tile_index;
-
-	// reset tile part numbers, in case we are re-using the same codec object
-	// from previous decompress
-	uint32_t nb_tiles = m_cp.t_grid_width * m_cp.t_grid_height;
-	for (uint32_t i = 0; i < nb_tiles; ++i)
-		m_cp.tcps[i].m_tile_part_index = -1;
-
-	/* customization of the decoding */
-	m_procedure_list.push_back([this] {return decompressTile();}   );
-
-	return exec_decompress();
-}
-///////////////////////////////////////////////////////////////////////////////////////
 bool CodeStreamDecompress::copy_default_tcp(void) {
 	auto image = m_headerImage;
 	uint32_t nb_tiles = m_cp.t_grid_height * m_cp.t_grid_width;
