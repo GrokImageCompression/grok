@@ -51,7 +51,7 @@ struct TileComponent : public grk_rect_u32 {
 	 TileComponentWindowBuffer<int32_t>* getBuffer() const;
 	 bool isWholeTileDecoding();
 	 ISparseBuffer* getSparseBuffer();
-	 bool postDecompress(int32_t *srcData, DecompressBlockExec *block, bool isHT);
+	 bool postProcess(int32_t *srcData, DecompressBlockExec *block, bool isHT);
 
 	Resolution *tileCompResolution;  // in canvas coordinates
 	uint8_t numresolutions;

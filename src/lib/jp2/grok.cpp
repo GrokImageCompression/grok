@@ -86,11 +86,11 @@ ThreadPool* ThreadPool::singleton = nullptr;
 std::mutex ThreadPool::singleton_mutex;
 
 static bool is_plugin_initialized = false;
-bool GRK_CALLCONV grk_initialize(const char *plugin_path, uint32_t numthreads) {
+bool GRK_CALLCONV grk_initialize(const char *pluginPath, uint32_t numthreads) {
 	ThreadPool::instance(numthreads);
 	if (!is_plugin_initialized) {
 		grk_plugin_load_info info;
-		info.plugin_path = plugin_path;
+		info.pluginPath = pluginPath;
 		is_plugin_initialized = grk_plugin_load(info);
 	}
 	ojph::local::decode_vlc_init_tables();
@@ -542,7 +542,7 @@ static const char* get_path_separator() {
 
 bool pluginLoaded = false;
 bool GRK_CALLCONV grk_plugin_load(grk_plugin_load_info info) {
-	if (!info.plugin_path)
+	if (!info.pluginPath)
 		return false;
 
 	// form plugin name
@@ -554,7 +554,7 @@ bool GRK_CALLCONV grk_plugin_load(grk_plugin_load_info info) {
 			+ minpf_get_dynamic_library_extension();
 
 	// form absolute plugin path
-	auto pluginPath = std::string(info.plugin_path) + get_path_separator()
+	auto pluginPath = std::string(info.pluginPath) + get_path_separator()
 			+ pluginName;
 	int32_t rc = minpf_load_from_path(pluginPath.c_str(), nullptr);
 

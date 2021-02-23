@@ -12,42 +12,30 @@
  *
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+ *
+ *    This source code incorporates work covered by the BSD 2-clause license.
+ *    Please see the LICENSE file in the root directory for details.
  *
  */
-
 #pragma once
-#include "T1Interface.h"
-#include "stdint.h"
-#include "TileProcessor.h"
-#include "T1Interface.h"
 
+#include "common.h"
+#include "IImageFormat.h"
 
 namespace grk {
 
-struct TileCodingParams;
-
-namespace t1_ht {
-
-
-class T1HT: public T1Interface {
-public:
-	T1HT(bool isCompressor, TileCodingParams *tcp, uint32_t maxCblkW, uint32_t maxCblkH);
-	virtual ~T1HT();
-
-	bool compress(CompressBlockExec *block);
-	bool decompress(DecompressBlockExec *block);
-
-private:
-	void preCompress(CompressBlockExec *block, grk_tile *tile);
-	bool postProcess(DecompressBlockExec *block);
-
-	uint32_t coded_data_size;
-	uint8_t *coded_data;
-	uint32_t unencoded_data_size;
-	int32_t *unencoded_data;
-
-    mem_fixed_allocator *allocator;
-    mem_elastic_allocator *elastic_alloc;
+struct CompressInitParams {
+	CompressInitParams();
+	~CompressInitParams();
+	bool initialized;
+	grk_cparameters parameters;
+	char indexfilename[GRK_PATH_LEN]; /* index file name */
+	char pluginPath[GRK_PATH_LEN];
+	grk_img_fol inFolder;
+	grk_img_fol outFolder;
+	bool transferExifTags;
 };
-}
+
+
 }

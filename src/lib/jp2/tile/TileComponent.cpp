@@ -337,7 +337,7 @@ ISparseBuffer* TileComponent::getSparseBuffer(){
 	return m_sa;
 }
 
-bool TileComponent::postDecompress(int32_t *srcData, DecompressBlockExec *block, bool isHT) {
+bool TileComponent::postProcess(int32_t *srcData, DecompressBlockExec *block, bool isHT) {
 	if (isHT){
 		if (block->roishift) {
 			if (block->qmfbid == 1) {

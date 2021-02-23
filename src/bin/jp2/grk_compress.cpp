@@ -71,6 +71,8 @@ using namespace grk;
 #include "spdlog/sinks/basic_file_sink.h"
 #include "exif.h"
 
+#include "grk_compress.h"
+
 static bool plugin_compress_callback(
 		grk_plugin_compress_user_callback_info *info);
 
@@ -109,28 +111,6 @@ void setUpSignalHandler() {
 	sigfillset(&sa.sa_mask);
 	sigaction(SIGHUP, &sa, nullptr);
 #endif  
-}
-
-/**
- sample error debug callback expecting no client object
- */
-static void errorCallback(const char *msg, void *client_data) {
-	(void) client_data;
-	spdlog::default_logger()->error(msg);
-}
-/**
- sample warning debug callback expecting no client object
- */
-static void warningCallback(const char *msg, void *client_data) {
-	(void) client_data;
-	spdlog::default_logger()->warn(msg);
-}
-/**
- sample debug callback expecting no client object
- */
-static void infoCallback(const char *msg, void *client_data) {
-	(void) client_data;
-	spdlog::default_logger()->info(msg);
 }
 
 static void compress_help_display(void) {
@@ -329,7 +309,7 @@ static void compress_help_display(void) {
 					"    log to file. File name will be set to \"log file name\"\n");
 }
 
-static GRK_PROG_ORDER give_progression(const char progression[4]) {
+static GRK_PROG_ORDER getProgression(const char progression[4]) {
 	if (strncmp(progression, "LRCP", 4) == 0)
 		return GRK_LRCP;
 	if (strncmp(progression, "RLCP", 4) == 0)
@@ -343,44 +323,31 @@ static GRK_PROG_ORDER give_progression(const char progression[4]) {
 
 	return GRK_PROG_UNKNOWN;
 }
-
-struct CompressInitParams {
-	CompressInitParams() : initialized(false),
-							transferExifTags(false) {
-		plugin_path[0] = 0;
-		*indexfilename = 0;
-		memset(&img_fol, 0, sizeof(img_fol));
-		memset(&out_fol, 0, sizeof(out_fol));
+CompressInitParams::CompressInitParams() : initialized(false),
+						transferExifTags(false) {
+	pluginPath[0] = 0;
+	*indexfilename = 0;
+	memset(&inFolder, 0, sizeof(inFolder));
+	memset(&outFolder, 0, sizeof(outFolder));
+}
+CompressInitParams::~CompressInitParams() {
+	for (size_t i = 0; i < parameters.cp_num_comments; ++i) {
+		if (parameters.cp_comment[i])
+			delete[] ((uint8_t*) parameters.cp_comment[i]);
 	}
-	~CompressInitParams() {
-		for (size_t i = 0; i < parameters.cp_num_comments; ++i) {
-			if (parameters.cp_comment[i])
-				delete[] ((uint8_t*) parameters.cp_comment[i]);
-		}
-		if (parameters.raw_cp.comps)
-			free(parameters.raw_cp.comps);
-		if (img_fol.imgdirpath)
-			free(img_fol.imgdirpath);
-		if (out_fol.imgdirpath)
-			free(out_fol.imgdirpath);
-
-	}
-	bool initialized;
-	grk_cparameters parameters;
-	char indexfilename[GRK_PATH_LEN]; /* index file name */
-	char plugin_path[GRK_PATH_LEN];
-	grk_img_fol img_fol;
-	grk_img_fol out_fol;
-	bool transferExifTags;
-};
-
-static int load_images(grk_dircnt *dirptr, char *imgdirpath) {
+	if (parameters.raw_cp.comps)
+		free(parameters.raw_cp.comps);
+	if (inFolder.imgdirpath)
+		free(inFolder.imgdirpath);
+	if (outFolder.imgdirpath)
+		free(outFolder.imgdirpath);
+}
+static int loadImages(grk_dircnt *dirptr, char *imgdirpath) {
 	DIR *dir = opendir(imgdirpath);
 	if (!dir) {
 		spdlog::error("Could not open Folder {}", imgdirpath);
 		return 1;
 	}
-
 	struct dirent *content = nullptr;
 	int i = 0;
 	while ((content = readdir(dir)) != nullptr) {
@@ -394,12 +361,11 @@ static int load_images(grk_dircnt *dirptr, char *imgdirpath) {
 	closedir(dir);
 	return 0;
 }
-
-static char get_next_file(std::string image_filename, grk_img_fol *img_fol,
-		grk_img_fol *out_fol, grk_cparameters *parameters) {
+static char nextFile(std::string image_filename, grk_img_fol *inFolder,
+		grk_img_fol *outFolder, grk_cparameters *parameters) {
 
 	spdlog::info("File \"{}\"", image_filename.c_str());
-	std::string infilename = img_fol->imgdirpath
+	std::string infilename = inFolder->imgdirpath
 			+ std::string(grk::get_path_separator()) + image_filename;
 	if (parameters->decod_format == GRK_UNK_FMT) {
 		int fmt = get_file_format((char*) infilename.c_str());
@@ -418,10 +384,10 @@ static char get_next_file(std::string image_filename, grk_img_fol *img_fol,
 		output_root_filename = image_filename.substr(0, pos);
 	else
 		output_root_filename = image_filename;
-	if (img_fol->set_out_format) {
-		std::string outfilename = out_fol->imgdirpath
+	if (inFolder->set_out_format) {
+		std::string outfilename = outFolder->imgdirpath
 				+ std::string(grk::get_path_separator()) + output_root_filename
-				+ "." + img_fol->out_format;
+				+ "." + inFolder->out_format;
 		if (grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile),
 				outfilename.c_str()) != 0) {
 			return 1;
@@ -429,7 +395,6 @@ static char get_next_file(std::string image_filename, grk_img_fol *img_fol,
 	}
 	return 0;
 }
-
 static bool isDecodedFormatSupported(GRK_SUPPORTED_FILE_FMT format) {
 	switch (format) {
 	case GRK_PGX_FMT:
@@ -454,7 +419,7 @@ public:
 		compress_help_display();
 	}
 };
-static bool checkCinema(TCLAP::ValueArg<uint32_t> *arg, uint16_t profile,
+static bool validateCinema(TCLAP::ValueArg<uint32_t> *arg, uint16_t profile,
 		grk_cparameters *parameters) {
 	bool isValid = true;
 	if (arg->isSet()) {
@@ -477,15 +442,15 @@ static bool checkCinema(TCLAP::ValueArg<uint32_t> *arg, uint16_t profile,
 	}
 	return isValid;
 }
-static int parse_cmdline_compressor_ex(int argc,
+static int parseCommandLine(int argc,
 										char **argv,
 										CompressInitParams *initParams) {
 
 
 	grk_cparameters *parameters = &initParams->parameters;
-	grk_img_fol *img_fol = &initParams->img_fol;
-	grk_img_fol *out_fol = &initParams->out_fol;
-	char *plugin_path = initParams->plugin_path;
+	grk_img_fol *inFolder = &initParams->inFolder;
+	grk_img_fol *outFolder = &initParams->outFolder;
+	char *pluginPath = initParams->pluginPath;
 
 	try {
 		TCLAP::CmdLine cmd("grk_compress command line", ' ', grk_version());
@@ -636,7 +601,7 @@ static int parse_cmdline_compressor_ex(int argc,
 		    spdlog::set_default_logger(file_logger);
 		}
 
-		img_fol->set_out_format = false;
+		inFolder->set_out_format = false;
 		parameters->raw_cp.width = 0;
 
 		if (pltArg.isSet())
@@ -716,15 +681,15 @@ static int parse_cmdline_compressor_ex(int argc,
 			char outformat[50];
 			char *of = (char*) outForArg.getValue().c_str();
 			sprintf(outformat, ".%s", of);
-			img_fol->set_out_format = true;
+			inFolder->set_out_format = true;
 			parameters->cod_format = (GRK_SUPPORTED_FILE_FMT) get_file_format(
 					outformat);
 			switch (parameters->cod_format) {
 			case GRK_J2K_FMT:
-				img_fol->out_format = "j2k";
+				inFolder->out_format = "j2k";
 				break;
 			case GRK_JP2_FMT:
-				img_fol->out_format = "jp2";
+				inFolder->out_format = "jp2";
 				break;
 			default:
 				spdlog::error(
@@ -822,9 +787,7 @@ static int parse_cmdline_compressor_ex(int argc,
 				}
 				lastDistortion = distortion;
 			}
-
 		}
-
 		if (rawFormatArg.isSet()) {
 			bool wrong = false;
 			int width, height, bitdepth, ncomp;
@@ -967,7 +930,7 @@ static int parse_cmdline_compressor_ex(int argc,
 			bool recognized = false;
 			if (progressionOrderArg.getValue().length() == 4){
 				strncpy(progression, progressionOrderArg.getValue().c_str(), 4);
-				parameters->prog_order = give_progression(progression);
+				parameters->prog_order = getProgression(progression);
 				recognized = parameters->prog_order != -1;
 			}
 			if (!recognized) {
@@ -985,8 +948,6 @@ static int parse_cmdline_compressor_ex(int argc,
 				return 1;
 			}
 		}
-
-
 		if (pocArg.isSet()) {
 			uint32_t numpocs = 0; /* number of progression order change (POC) default 0 */
 			grk_progression *progression = nullptr; /* POC : used in case of Progression order change */
@@ -1003,7 +964,7 @@ static int parse_cmdline_compressor_ex(int argc,
 				progression[numpocs].layE = (uint16_t)layE;
 				progression[numpocs].resE = (uint8_t)resE;
 				progression[numpocs].compE = (uint16_t)compE;
-				progression[numpocs].prg1 = give_progression(progression[numpocs].progorder);
+				progression[numpocs].prg1 = getProgression(progression[numpocs].progorder);
 				// sanity check on layer
 				if (progression[numpocs].layE > parameters->tcp_numlayers){
 					spdlog::warn("End layer {} in POC {} is greater than"
@@ -1055,24 +1016,24 @@ static int parse_cmdline_compressor_ex(int argc,
 			parameters->irreversible = true;
 
 		if (pluginPathArg.isSet()) {
-			if (plugin_path)
-				strcpy(plugin_path, pluginPathArg.getValue().c_str());
+			if (pluginPath)
+				strcpy(pluginPath, pluginPathArg.getValue().c_str());
 		}
 
-		img_fol->set_imgdir = false;
+		inFolder->set_imgdir = false;
 		if (imgDirArg.isSet()) {
-			img_fol->imgdirpath = (char*) malloc(
+			inFolder->imgdirpath = (char*) malloc(
 					strlen(imgDirArg.getValue().c_str()) + 1);
-			strcpy(img_fol->imgdirpath, imgDirArg.getValue().c_str());
-			img_fol->set_imgdir = true;
+			strcpy(inFolder->imgdirpath, imgDirArg.getValue().c_str());
+			inFolder->set_imgdir = true;
 		}
-		if (out_fol) {
-			out_fol->set_imgdir = false;
+		if (outFolder) {
+			outFolder->set_imgdir = false;
 			if (outDirArg.isSet()) {
-				out_fol->imgdirpath = (char*) malloc(
+				outFolder->imgdirpath = (char*) malloc(
 						strlen(outDirArg.getValue().c_str()) + 1);
-				strcpy(out_fol->imgdirpath, outDirArg.getValue().c_str());
-				out_fol->set_imgdir = true;
+				strcpy(outFolder->imgdirpath, outDirArg.getValue().c_str());
+				outFolder->set_imgdir = true;
 			}
 		}
 		if (cblkSty.isSet()) {
@@ -1091,7 +1052,7 @@ static int parse_cmdline_compressor_ex(int argc,
 		// profiles
 		if (!parameters->isHT) {
 			if (cinema2KArg.isSet()) {
-				if (!checkCinema(&cinema2KArg, GRK_PROFILE_CINEMA_2K,
+				if (!validateCinema(&cinema2KArg, GRK_PROFILE_CINEMA_2K,
 						parameters)) {
 					return 1;
 				}
@@ -1100,7 +1061,7 @@ static int parse_cmdline_compressor_ex(int argc,
 							"Other options specified may be overridden");
 			}
 			else if (cinema4KArg.isSet()) {
-				if (!checkCinema(&cinema4KArg, GRK_PROFILE_CINEMA_4K,
+				if (!validateCinema(&cinema4KArg, GRK_PROFILE_CINEMA_4K,
 						parameters)) {
 					return 1;
 				}
@@ -1269,9 +1230,9 @@ static int parse_cmdline_compressor_ex(int argc,
 
 			if (rsizArg.isSet()) {
 				if (cinema2KArg.isSet() || cinema4KArg.isSet()) {
-					warningCallback("Cinema profile set - RSIZ parameter ignored.",nullptr);
+					grk::warningCallback("Cinema profile set - RSIZ parameter ignored.",nullptr);
 				} else if (IMFArg.isSet()) {
-					warningCallback("IMF profile set - RSIZ parameter ignored.",	nullptr);
+					grk::warningCallback("IMF profile set - RSIZ parameter ignored.",	nullptr);
 				} else {
 					parameters->rsiz = rsizArg.getValue();
 				}
@@ -1398,9 +1359,7 @@ static int parse_cmdline_compressor_ex(int argc,
 				return 1;
 			}
 		}
-
 		// Canvas coordinates
-
 		if (tilesArg.isSet()) {
 			int32_t t_width = 0, t_height = 0;
 			if (sscanf(tilesArg.getValue().c_str(), "%d,%d", &t_width,
@@ -1417,9 +1376,7 @@ static int parse_cmdline_compressor_ex(int argc,
 			parameters->t_width = (uint32_t) t_width;
 			parameters->t_height = (uint32_t) t_height;
 			parameters->tile_size_on = true;
-
 		}
-
 		if (tileOffsetArg.isSet()) {
 			int32_t off1,off2;
 			if (sscanf(tileOffsetArg.getValue().c_str(), "%d,%d",
@@ -1434,8 +1391,6 @@ static int parse_cmdline_compressor_ex(int argc,
 			parameters->tx0 = (uint32_t)off1;
 			parameters->ty0 = (uint32_t)off2;
 		}
-
-
 		if (imageOffsetArg.isSet()) {
 			int32_t off1,off2;
 			if (sscanf(imageOffsetArg.getValue().c_str(), "%d,%d",
@@ -1482,8 +1437,6 @@ static int parse_cmdline_compressor_ex(int argc,
 				}
     		}
 		}
-		/////////////////////////////////////////////////////////////////////
-
 		if (commentArg.isSet()) {
 			std::istringstream f(commentArg.getValue());
 			std::string s;
@@ -1511,7 +1464,6 @@ static int parse_cmdline_compressor_ex(int argc,
 				parameters->cp_num_comments++;
 			}
 		}
-
 		if (tpArg.isSet()) {
 			parameters->tp_flag = tpArg.getValue();
 			parameters->tp_on = 1;
@@ -1522,13 +1474,12 @@ static int parse_cmdline_compressor_ex(int argc,
 		std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
 		return 1;
 	}
-
-	if (img_fol->set_imgdir) {
+	if (inFolder->set_imgdir) {
 		if (!(parameters->infile[0] == 0)) {
 			spdlog::error("options -ImgDir and -i cannot be used together ");
 			return 1;
 		}
-		if (!img_fol->set_out_format) {
+		if (!inFolder->set_out_format) {
 			spdlog::error(
 					"When -ImgDir is used, -OutFor <FORMAT> must be used ");
 			spdlog::error(
@@ -1557,7 +1508,6 @@ static int parse_cmdline_compressor_ex(int argc,
 			return 1;
 		}
 	}
-
 	if ((parameters->decod_format == GRK_RAW_FMT
 			&& parameters->raw_cp.width == 0)
 			|| (parameters->decod_format == GRK_RAWL_FMT
@@ -1575,14 +1525,12 @@ static int parse_cmdline_compressor_ex(int argc,
 		spdlog::error("options -r and -q cannot be used together");
 		return 1;
 	}
-
 	/* if no rate was entered, then lossless by default */
 	if (parameters->tcp_numlayers == 0) {
 		parameters->tcp_rates[0] = 0;
 		parameters->tcp_numlayers = 1;
 		parameters->cp_disto_alloc = true;
 	}
-
 	if ((parameters->tx0 > 0
 			&& parameters->tx0 > parameters->image_offset_x0)
 			|| (parameters->ty0 > 0
@@ -1593,7 +1541,6 @@ static int parse_cmdline_compressor_ex(int argc,
 				parameters->ty0, parameters->image_offset_y0);
 		return 1;
 	}
-
 	for (uint32_t i = 0; i < parameters->numpocs; i++) {
 		if (parameters->progression[i].prg == -1) {
 			spdlog::error(
@@ -1601,7 +1548,6 @@ static int parse_cmdline_compressor_ex(int argc,
 					i + 1);
 		}
 	}
-
 	/* If subsampled image is provided, automatically disable MCT */
 	if (((parameters->decod_format == GRK_RAW_FMT)
 			|| (parameters->decod_format == GRK_RAWL_FMT))
@@ -1613,7 +1559,6 @@ static int parse_cmdline_compressor_ex(int argc,
 									|| (parameters->raw_cp.comps[2].dy > 1))))) {
 		parameters->tcp_mct = 0;
 	}
-
 	if (parameters->tcp_mct == 2 && !parameters->mct_data) {
 		spdlog::error(
 				"Custom MCT has been set but no array-based MCT has been provided.");
@@ -1624,7 +1569,7 @@ static int parse_cmdline_compressor_ex(int argc,
 }
 
 
-static int plugin_main(int argc, char **argv, CompressInitParams *initParams);
+static int pluginMain(int argc, char **argv, CompressInitParams *initParams);
 
 // returns 0 if failed, 1 if succeeded, 
 // and 2 if file is not suitable for compression
@@ -1635,10 +1580,10 @@ static int compress(const std::string &image_filename, CompressInitParams *initP
 	if (initParams->parameters.infile[0])
 		initParams->parameters.decod_format = GRK_UNK_FMT;
 
-	if (initParams->img_fol.set_imgdir) {
-		if (get_next_file(image_filename, &initParams->img_fol,
-				initParams->out_fol.set_imgdir ?
-						&initParams->out_fol : &initParams->img_fol,
+	if (initParams->inFolder.set_imgdir) {
+		if (nextFile(image_filename, &initParams->inFolder,
+				initParams->outFolder.set_imgdir ?
+						&initParams->outFolder : &initParams->inFolder,
 				&initParams->parameters)) {
 			return 2;
 		}
@@ -1652,78 +1597,6 @@ static int compress(const std::string &image_filename, CompressInitParams *initP
 	callbackInfo.transferExifTags = initParams->transferExifTags;
 
 	return plugin_compress_callback(&callbackInfo) ? 1 : 0;
-}
-
-/* -------------------------------------------------------------------------- */
-/**
- * GRK_COMPRESS MAIN
- */
-/* -------------------------------------------------------------------------- */
-int main(int argc, char **argv) {
-	CompressInitParams initParams;
-	int success = 0;
-	try {
-		// try to compress with plugin
-		int rc = plugin_main(argc, argv, &initParams);
-
-		// return immediately if either 
-		// initParams was not initialized (something was wrong with command line params)
-		// or
-		// plugin was successful
-		if (!initParams.initialized)
-			return 1;
-		if (!rc)
-			return 0;
-		size_t num_compressed_files = 0;
-
-		//cache certain settings
-		grk_cparameters parametersCache = initParams.parameters;
-		auto start = std::chrono::high_resolution_clock::now();
-		for (uint32_t i = 0; i < initParams.parameters.repeats; ++i) {
-			if (!initParams.img_fol.set_imgdir) {
-				initParams.parameters = parametersCache;
-				if (compress("", &initParams) == 0) {
-					success = 1;
-					goto cleanup;
-				}
-				num_compressed_files++;
-			} else {
-				auto dir = opendir(initParams.img_fol.imgdirpath);
-				if (!dir) {
-					spdlog::error("Could not open Folder {}",
-							initParams.img_fol.imgdirpath);
-					success = 1;
-					goto cleanup;
-				}
-				struct dirent *content = nullptr;
-				while ((content = readdir(dir)) != nullptr) {
-					if (strcmp(".", content->d_name) == 0
-							|| strcmp("..", content->d_name) == 0)
-						continue;
-					initParams.parameters = parametersCache;
-					if (compress(content->d_name, &initParams) == 1){
-						num_compressed_files++;
-					}
-				}
-				closedir(dir);
-			}
-		}
-		auto finish = std::chrono::high_resolution_clock::now();
-		std::chrono::duration<double> elapsed = finish - start;
-
-		if (num_compressed_files) {
-			spdlog::info("compress time: {} {}",
-					(elapsed.count() * 1000) / (double) num_compressed_files,
-					num_compressed_files > 1 ? "ms/image" : "ms");
-		}
-	} catch (std::bad_alloc &ba) {
-		spdlog::error(" Out of memory. Exiting.");
-		success = 1;
-		goto cleanup;
-	}
-	cleanup: grk_deinitialize();
-	return success;
-
 }
 
 grk_img_fol img_fol_plugin, out_fol_plugin;
@@ -2041,10 +1914,10 @@ static bool plugin_compress_callback(grk_plugin_compress_user_callback_info *inf
 
 	/* catch events using our callbacks and give a local context */
 	if (parameters->verbose) {
-		grk_set_info_handler(infoCallback, nullptr);
-		grk_set_warning_handler(warningCallback, nullptr);
+		grk_set_info_handler(grk::infoCallback, nullptr);
+		grk_set_warning_handler(grk::warningCallback, nullptr);
 	}
-	grk_set_error_handler(errorCallback, nullptr);
+	grk_set_error_handler(grk::errorCallback, nullptr);
 
 	if (!grk_compress_init(codec, parameters, image)) {
 		spdlog::error("failed to compress image: grk_compress_init");
@@ -2112,8 +1985,7 @@ static bool plugin_compress_callback(grk_plugin_compress_user_callback_info *inf
 	}
 	return bSuccess;
 }
-
-static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
+static int pluginMain(int argc, char **argv, CompressInitParams *initParams) {
 	if (!initParams)
 		return 1;
 	grk_dircnt *dirptr = nullptr;
@@ -2127,23 +1999,23 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 	/* parse input and get user compressing parameters */
 	initParams->parameters.tcp_mct = 255; /* This will be set later according to the input image or the provided option */
 	initParams->parameters.rateControlAlgorithm = 255;
-	if (parse_cmdline_compressor_ex(argc,argv,initParams) == 1) {
+	if (parseCommandLine(argc,argv,initParams) == 1) {
 		success = 1;
 		goto cleanup;
 	}
-	isBatch = initParams->img_fol.imgdirpath &&  initParams->out_fol.imgdirpath;
+	isBatch = initParams->inFolder.imgdirpath &&  initParams->outFolder.imgdirpath;
 	state = grk_plugin_get_debug_state();
 #ifdef GROK_HAVE_LIBTIFF
 	tiffSetErrorAndWarningHandlers(initParams->parameters.verbose);
 #endif
 	initParams->initialized = true;
 	// loads plugin but does not actually create codec
-	if (!grk_initialize(initParams->plugin_path, initParams->parameters.numThreads)) {
+	if (!grk_initialize(initParams->pluginPath, initParams->parameters.numThreads)) {
 		success = 1;
 		goto cleanup;
 	}
-	img_fol_plugin = initParams->img_fol;
-	out_fol_plugin = initParams->out_fol;
+	img_fol_plugin = initParams->inFolder;
+	out_fol_plugin = initParams->outFolder;
 
 	// create codec
 	grk_plugin_init_info initInfo;
@@ -2158,8 +2030,8 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 	}
 	if (isBatch) {
 		setUpSignalHandler();
-		success = grk_plugin_batch_compress(initParams->img_fol.imgdirpath,
-											initParams->out_fol.imgdirpath,
+		success = grk_plugin_batch_compress(initParams->inFolder.imgdirpath,
+											initParams->outFolder.imgdirpath,
 											&initParams->parameters,
 											plugin_compress_callback);
 		// if plugin successfully begins batch compress, then wait for batch to complete
@@ -2180,8 +2052,8 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 	} else {
 		// loop through all files
 		/* Read directory if necessary */
-		if (initParams->img_fol.set_imgdir) {
-			num_images = get_num_images(initParams->img_fol.imgdirpath);
+		if (initParams->inFolder.set_imgdir) {
+			num_images = get_num_images(initParams->inFolder.imgdirpath);
 			if (num_images == 0) {
 				spdlog::error("Folder is empty");
 				goto cleanup;
@@ -2206,7 +2078,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 				dirptr->filename[i] = dirptr->filename_buf
 						+ i * GRK_PATH_LEN;
 			}
-			if (load_images(dirptr, initParams->img_fol.imgdirpath) == 1) {
+			if (loadImages(dirptr, initParams->inFolder.imgdirpath) == 1) {
 				goto cleanup;
 			}
 		} else {
@@ -2217,11 +2089,11 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 		auto rateControlAlgorithm = initParams->parameters.rateControlAlgorithm;
 		/*Compressing image one by one*/
 		for (imageno = 0; imageno < num_images; imageno++) {
-			if (initParams->img_fol.set_imgdir) {
-				if (get_next_file(dirptr->filename[imageno],
-						&initParams->img_fol,
-						initParams->out_fol.imgdirpath ?
-								&initParams->out_fol : &initParams->img_fol,
+			if (initParams->inFolder.set_imgdir) {
+				if (nextFile(dirptr->filename[imageno],
+						&initParams->inFolder,
+						initParams->outFolder.imgdirpath ?
+								&initParams->outFolder : &initParams->inFolder,
 						&initParams->parameters)) {
 					continue;
 				}
@@ -2242,4 +2114,72 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 		free(dirptr);
 	}
 	return success;
+}
+
+
+int main(int argc, char **argv) {
+	CompressInitParams initParams;
+	int success = 0;
+	try {
+		// try to compress with plugin
+		int rc = pluginMain(argc, argv, &initParams);
+
+		// return immediately if either
+		// initParams was not initialized (something was wrong with command line params)
+		// or
+		// plugin was successful
+		if (!initParams.initialized)
+			return 1;
+		if (!rc)
+			return 0;
+		size_t num_compressed_files = 0;
+
+		//cache certain settings
+		grk_cparameters parametersCache = initParams.parameters;
+		auto start = std::chrono::high_resolution_clock::now();
+		for (uint32_t i = 0; i < initParams.parameters.repeats; ++i) {
+			if (!initParams.inFolder.set_imgdir) {
+				initParams.parameters = parametersCache;
+				if (compress("", &initParams) == 0) {
+					success = 1;
+					goto cleanup;
+				}
+				num_compressed_files++;
+			} else {
+				auto dir = opendir(initParams.inFolder.imgdirpath);
+				if (!dir) {
+					spdlog::error("Could not open Folder {}",
+							initParams.inFolder.imgdirpath);
+					success = 1;
+					goto cleanup;
+				}
+				struct dirent *content = nullptr;
+				while ((content = readdir(dir)) != nullptr) {
+					if (strcmp(".", content->d_name) == 0
+							|| strcmp("..", content->d_name) == 0)
+						continue;
+					initParams.parameters = parametersCache;
+					if (compress(content->d_name, &initParams) == 1){
+						num_compressed_files++;
+					}
+				}
+				closedir(dir);
+			}
+		}
+		auto finish = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double> elapsed = finish - start;
+
+		if (num_compressed_files) {
+			spdlog::info("compress time: {} {}",
+					(elapsed.count() * 1000) / (double) num_compressed_files,
+					num_compressed_files > 1 ? "ms/image" : "ms");
+		}
+	} catch (std::bad_alloc &ba) {
+		spdlog::error(" Out of memory. Exiting.");
+		success = 1;
+		goto cleanup;
+	}
+	cleanup: grk_deinitialize();
+	return success;
+
 }

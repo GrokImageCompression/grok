@@ -1274,10 +1274,10 @@ GRK_API const char* GRK_CALLCONV grk_version(void);
 /**
  * Initialize library
  *
- * @param plugin_path 	path to plugin
+ * @param pluginPath 	path to plugin
  * @param numthreads 	number of threads to use for compress/decompress
  */
-GRK_API bool GRK_CALLCONV grk_initialize(const char *plugin_path,
+GRK_API bool GRK_CALLCONV grk_initialize(const char *pluginPath,
 		uint32_t numthreads);
 
 /**
@@ -1704,7 +1704,7 @@ GRK_API bool GRK_CALLCONV grk_set_MCT(grk_cparameters *parameters,
  */
 
 typedef struct _grk_plugin_load_info {
-	const char *plugin_path;
+	const char *pluginPath;
 } grk_plugin_load_info;
 
 /**

@@ -430,5 +430,18 @@ int count_trailing_zeros(uint32_t val)
 #endif
 }
 
+void errorCallback(const char *msg, void *client_data) {
+	(void) client_data;
+	spdlog::default_logger()->error(msg);
+}
+void warningCallback(const char *msg, void *client_data) {
+	(void) client_data;
+	spdlog::default_logger()->warn(msg);
+}
+void infoCallback(const char *msg, void *client_data) {
+	(void) client_data;
+	spdlog::default_logger()->info(msg);
+}
+
 
 }

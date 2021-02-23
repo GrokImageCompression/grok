@@ -192,7 +192,7 @@ bool T1Part1::decompress(DecompressBlockExec *block) {
 			return false;
   	}
 
-	return block->tilec->postDecompress(t1->data, block,false);
+	return block->tilec->postProcess(t1->data, block,false);
 }
 
 }

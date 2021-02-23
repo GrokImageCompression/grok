@@ -175,7 +175,7 @@ bool T1HT::decompress(DecompressBlockExec *block) {
 	}
 
 
-	return block->tilec->postDecompress(unencoded_data, block,true);
+	return block->tilec->postProcess(unencoded_data, block,true);
 }
 
 }

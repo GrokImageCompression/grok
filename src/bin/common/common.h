@@ -205,4 +205,8 @@ int population_count(uint32_t val);
 int count_leading_zeros(uint32_t val);
 int count_trailing_zeros(uint32_t val);
 
+void errorCallback(const char *msg, void *client_data);
+void warningCallback(const char *msg, void *client_data) ;
+void infoCallback(const char *msg, void *client_data);
+
 }

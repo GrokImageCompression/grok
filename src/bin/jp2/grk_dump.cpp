@@ -65,15 +65,15 @@ typedef struct _img_folder {
 	bool set_out_format;
 
 	uint32_t flag;
-} img_fol;
+} inFolder;
 
 
 static uint32_t get_num_images(char *imgdirpath);
-static int load_images(dircnt *dirptr, char *imgdirpath);
-static char get_next_file(size_t imageno, dircnt *dirptr, img_fol *img_fol,
+static int loadImages(dircnt *dirptr, char *imgdirpath);
+static char nextFile(size_t imageno, dircnt *dirptr, inFolder *inFolder,
 		grk_dparameters *parameters);
-static int parse_cmdline_decompressor(int argc, char **argv,
-		grk_dparameters *parameters, img_fol *img_fol);
+static int parseCommandLine(int argc, char **argv,
+		grk_dparameters *parameters, inFolder *inFolder);
 
 /* -------------------------------------------------------------------------- */
 static void decompress_help_display(void) {
@@ -138,7 +138,7 @@ static uint32_t get_num_images(char *imgdirpath) {
 }
 
 /* -------------------------------------------------------------------------- */
-static int load_images(dircnt *dirptr, char *imgdirpath) {
+static int loadImages(dircnt *dirptr, char *imgdirpath) {
 	DIR *dir;
 	struct dirent *content;
 	int i = 0;
@@ -163,7 +163,7 @@ static int load_images(dircnt *dirptr, char *imgdirpath) {
 	return 0;
 }
 /* -------------------------------------------------------------------------- */
-static char get_next_file(size_t imageno, dircnt *dirptr, img_fol *img_fol,
+static char nextFile(size_t imageno, dircnt *dirptr, inFolder *inFolder,
 		grk_dparameters *parameters) {
 	char image_filename[GRK_PATH_LEN], infilename[3 * GRK_PATH_LEN],
 			temp_ofname[GRK_PATH_LEN];
@@ -173,7 +173,7 @@ static char get_next_file(size_t imageno, dircnt *dirptr, img_fol *img_fol,
 	spdlog::info("File Number {} \"{}\"", imageno, image_filename);
 	if (!grk::jpeg2000_file_format(image_filename, &parameters->decod_format))
 		return 1;
-	sprintf(infilename, "%s/%s", img_fol->imgdirpath, image_filename);
+	sprintf(infilename, "%s/%s", inFolder->imgdirpath, image_filename);
 	if (grk::strcpy_s(parameters->infile, sizeof(parameters->infile),
 			infilename) != 0) {
 		return 1;
@@ -185,10 +185,10 @@ static char get_next_file(size_t imageno, dircnt *dirptr, img_fol *img_fol,
 		strcat(temp_ofname, temp1);
 		sprintf(temp1, ".%s", temp_p);
 	}
-	if (img_fol->set_out_format) {
+	if (inFolder->set_out_format) {
 		char outfilename[3 * GRK_PATH_LEN];
-		sprintf(outfilename, "%s/%s.%s", img_fol->imgdirpath, temp_ofname,
-				img_fol->out_format);
+		sprintf(outfilename, "%s/%s.%s", inFolder->imgdirpath, temp_ofname,
+				inFolder->out_format);
 		if (grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile),
 				outfilename) != 0) {
 			return 1;
@@ -203,8 +203,8 @@ static char get_next_file(size_t imageno, dircnt *dirptr, img_fol *img_fol,
  * Parse the command line
  */
 /* -------------------------------------------------------------------------- */
-static int parse_cmdline_decompressor(int argc, char **argv,
-		grk_dparameters *parameters, img_fol *img_fol) {
+static int parseCommandLine(int argc, char **argv,
+		grk_dparameters *parameters, inFolder *inFolder) {
 
 
 	try {
@@ -253,11 +253,11 @@ static int parse_cmdline_decompressor(int argc, char **argv,
 		}
 
 		if (imgDirArg.isSet()){
-			img_fol->imgdirpath = (char*) malloc(imgDirArg.getValue().length() + 1);
-			if (!img_fol->imgdirpath)
+			inFolder->imgdirpath = (char*) malloc(imgDirArg.getValue().length() + 1);
+			if (!inFolder->imgdirpath)
 				return 1;
-			strcpy(img_fol->imgdirpath, imgDirArg.getValue().c_str());
-			img_fol->set_imgdir = true;
+			strcpy(inFolder->imgdirpath, imgDirArg.getValue().c_str());
+			inFolder->set_imgdir = true;
 		}
 
 		if (verboseArg.isSet()){
@@ -265,7 +265,7 @@ static int parse_cmdline_decompressor(int argc, char **argv,
 		}
 
 		if (flagArg.isSet()){
-			img_fol->flag = flagArg.getValue();
+			inFolder->flag = flagArg.getValue();
 		}
 
 	} catch (TCLAP::ArgException &e)  // catch any exceptions
@@ -276,12 +276,12 @@ static int parse_cmdline_decompressor(int argc, char **argv,
 
 
 	/* check for possible errors */
-	if (img_fol->set_imgdir) {
+	if (inFolder->set_imgdir) {
 		if (!(parameters->infile[0] == 0)) {
 			spdlog::error("options -ImgDir and -i cannot be used together.");
 			return 1;
 		}
-		if (!img_fol->set_out_format) {
+		if (!inFolder->set_out_format) {
 			spdlog::error(
 					"When -ImgDir is used, -OutFor <FORMAT> must be used.");
 			spdlog::error(
@@ -343,7 +343,7 @@ int main(int argc, char *argv[]) {
 	grk_stream *stream = nullptr; /* Stream */
 
 	size_t num_images, imageno;
-	img_fol img_fol;
+	inFolder inFolder;
 	dircnt *dirptr = nullptr;
 	int rc = EXIT_SUCCESS;
 
@@ -356,19 +356,19 @@ int main(int argc, char *argv[]) {
 	/* Set decoding parameters to default values */
 	grk_decompress_set_default_params(&parameters);
 
-	/* Initialize img_fol */
-	memset(&img_fol, 0, sizeof(img_fol));
-	img_fol.flag = GRK_IMG_INFO | GRK_J2K_MH_INFO | GRK_J2K_MH_IND;
+	/* Initialize inFolder */
+	memset(&inFolder, 0, sizeof(inFolder));
+	inFolder.flag = GRK_IMG_INFO | GRK_J2K_MH_INFO | GRK_J2K_MH_IND;
 
 	/* Parse input and get user compressing parameters */
-	if (parse_cmdline_decompressor(argc, argv, &parameters, &img_fol) == 1) {
+	if (parseCommandLine(argc, argv, &parameters, &inFolder) == 1) {
 		rc = EXIT_FAILURE;
 		goto cleanup;
 	}
 
 	/* Initialize reading of directory */
-	if (img_fol.set_imgdir) {
-		num_images = (size_t)get_num_images(img_fol.imgdirpath);
+	if (inFolder.set_imgdir) {
+		num_images = (size_t)get_num_images(inFolder.imgdirpath);
 		if (num_images == 0) {
 			spdlog::error("Folder is empty");
 			rc = EXIT_FAILURE;
@@ -393,7 +393,7 @@ int main(int argc, char *argv[]) {
 				dirptr->filename[i] = dirptr->filename_buf + i * GRK_PATH_LEN;
 			}
 		}
-		if (load_images(dirptr, img_fol.imgdirpath) == 1) {
+		if (loadImages(dirptr, inFolder.imgdirpath) == 1) {
 			rc = EXIT_FAILURE;
 			goto cleanup;
 		}
@@ -416,8 +416,8 @@ int main(int argc, char *argv[]) {
 
 	/* Read the header of each image one by one */
 	for (imageno = 0; imageno < num_images; imageno++) {
-		if (img_fol.set_imgdir) {
-			if (get_next_file(imageno, dirptr, &img_fol, &parameters)) {
+		if (inFolder.set_imgdir) {
+			if (nextFile(imageno, dirptr, &inFolder, &parameters)) {
 				continue;
 			}
 		}
@@ -457,7 +457,7 @@ int main(int argc, char *argv[]) {
 			goto cleanup;
 		}
 
-		grk_dump_codec(codec, img_fol.flag, fout);
+		grk_dump_codec(codec, inFolder.flag, fout);
 		/* close the byte stream */
 		if (stream) {
 			grk_object_unref(stream);
