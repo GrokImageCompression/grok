@@ -26,7 +26,6 @@
 #include "convert.h"
 #include <cstring>
 #include "common.h"
-#include <taskflow/taskflow.hpp>
 #include "FileUringIO.h"
 #include "color.h"
 
@@ -505,24 +504,6 @@ cleanup:
 
 bool BMPFormat::encodeStrip(uint32_t rows){
 	(void)rows;
-/*
-	  tf::Executor executor;
-	  tf::Taskflow taskflow;
-
-	  auto [A, B, C, D] = taskflow.emplace(
-	    [] () { std::cout << "TaskA\n"; },               //  task dependency graph
-	    [] () { std::cout << "TaskB\n"; },               //
-	    [] () { std::cout << "TaskC\n"; },               //          +---+
-	    [] () { std::cout << "TaskD\n"; }                //    +---->| B |-----+
-	  );                                                 //    |     +---+     |
-	                                                     //  +---+           +-v-+
-	  A.precede(B);  // A runs before B                  //  | A |           | D |
-	  A.precede(C);  // A runs before C                  //  +---+           +-^-+
-	  B.precede(D);  // B runs before D                  //    |     +---+     |
-	  C.precede(D);  // C runs before D                  //    +---->| C |-----+
-	                                                     //          +---+
-	  executor.run(taskflow).wait();
-*/
 	bool ret = false;
 	auto w = m_image->comps[0].w;
 	auto h = m_image->comps[0].h;

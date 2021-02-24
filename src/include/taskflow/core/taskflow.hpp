@@ -18,7 +18,7 @@ namespace tf {
 
 A %taskflow manages a task dependency graph where each task represents a 
 callable object (e.g., @std_lambda, @std_function) and an edge represents a 
-dependency between two tasks. A task is one of the following five types:
+dependency between two tasks. A task is one of the following types:
   
   1. static task: the callable constructible from 
                   @c std::function<void()>
@@ -28,9 +28,11 @@ dependency between two tasks. A task is one of the following five types:
                      @c std::function<int()>
   4. module task: the task constructed from tf::Taskflow::composed_of
   5. %cudaFlow task: the callable constructible from 
-                     @c std::function<void(tf::cudaFlow)> or
-                     @c std::function<void(tf::cudaFlowCapturer)>
+                     @c std::function<void(tf::cudaFlow&)> or
+                     @c std::function<void(tf::cudaFlowCapturer&)>
 
+Each task is a basic computation unit and is run by one worker thread
+from an executor.
 The following example creates a simple taskflow graph of four static tasks, 
 @c A, @c B, @c C, and @c D, where
 @c A runs before @c B and @c C and 
@@ -40,12 +42,10 @@ The following example creates a simple taskflow graph of four static tasks,
 tf::Executor executor;
 tf::Taskflow taskflow("simple");
 
-auto [A, B, C, D] = taskflow.emplace(
-  []() { std::cout << "TaskA\n"; },
-  []() { std::cout << "TaskB\n"; },
-  []() { std::cout << "TaskC\n"; },
-  []() { std::cout << "TaskD\n"; }
-);
+tf::Task A = taskflow.emplace([](){ std::cout << "TaskA\n"; }); 
+tf::Task B = taskflow.emplace([](){ std::cout << "TaskB\n"; });
+tf::Task C = taskflow.emplace([](){ std::cout << "TaskC\n"; });
+tf::Task D = taskflow.emplace([](){ std::cout << "TaskD\n"; });
 
 A.precede(B, C);  // A runs before B and C
 D.succeed(B, C);  // D runs after  B and C
@@ -53,8 +53,8 @@ D.succeed(B, C);  // D runs after  B and C
 executor.run(taskflow).wait();     
 @endcode
 
-Please refer to @ref Cookbook to learn more about each task type.
-
+Please refer to @ref Cookbook to learn more about each task type
+and how to submit a taskflow to an executor.
 */
 class Taskflow : public FlowBuilder {
 
@@ -80,8 +80,17 @@ class Taskflow : public FlowBuilder {
     Taskflow();
 
     /**
-    @brief dumps the taskflow to a DOT format through an output stream
-           using the stream insertion operator @c <<
+    @brief default destructor
+
+    When the destructor is called, all tasks and their associated data
+    (e.g., captured data) will be destroyed.
+    It is your responsibility to ensure all submitted execution of this 
+    taskflow have completed before destroying it.
+    */
+    ~Taskflow() = default;
+
+    /**
+    @brief dumps the taskflow to a DOT format through a std::ostream target
     */
     void dump(std::ostream& ostream) const;
     
@@ -91,7 +100,7 @@ class Taskflow : public FlowBuilder {
     std::string dump() const;
     
     /**
-    @brief queries the number of tasks in the taskflow
+    @brief queries the number of tasks
     */
     size_t num_tasks() const;
     
@@ -101,7 +110,7 @@ class Taskflow : public FlowBuilder {
     bool empty() const;
 
     /**
-    @brief sets the name of the taskflow
+    @brief assigns a name to the taskflow
     */
     void name(const std::string&); 
 
@@ -112,13 +121,17 @@ class Taskflow : public FlowBuilder {
     
     /**
     @brief clears the associated task dependency graph
+    
+    When you clear a taskflow, all tasks and their associated data
+    (e.g., captured data) will be destroyed.
+    You should never clean a taskflow while it is being run by an executor.
     */
     void clear();
 
     /**
-    @brief applies an visitor callable to each task in the taskflow
+    @brief applies a visitor to each task in the taskflow
 
-    The visitor is a callable that takes an argument of type tf::Task
+    A visitor is a callable that takes an argument of type tf::Task
     and returns nothing. The following example iterates each task in a
     taskflow and prints its name:
 
@@ -139,7 +152,7 @@ class Taskflow : public FlowBuilder {
 
     std::mutex _mtx;
 
-    std::list<std::shared_ptr<Topology>> _topologies;
+    std::queue<std::shared_ptr<Topology>> _topologies;
     
     void _dump(std::ostream&, const Taskflow*) const;
     void _dump(std::ostream&, const Node*, Dumper&) const;
@@ -238,11 +251,11 @@ inline void Taskflow::_dump(
   // shape for node
   switch(node->_handle.index()) {
 
-    case Node::CONDITION_TASK:
+    case Node::CONDITION:
       os << "shape=diamond color=black fillcolor=aquamarine style=filled";
     break;
 
-    case Node::CUDAFLOW_TASK:
+    case Node::CUDAFLOW:
       os << " style=\"filled\""
          << " color=\"black\" fillcolor=\"purple\""
          << " fontcolor=\"white\""
@@ -256,7 +269,7 @@ inline void Taskflow::_dump(
   os << "];\n";
   
   for(size_t s=0; s<node->_successors.size(); ++s) {
-    if(node->_handle.index() == Node::CONDITION_TASK) {
+    if(node->_handle.index() == Node::CONDITION) {
       // case edge is dashed
       os << 'p' << node << " -> p" << node->_successors[s] 
          << " [style=dashed label=\"" << s << "\"];\n";
@@ -273,8 +286,8 @@ inline void Taskflow::_dump(
 
   switch(node->_handle.index()) {
 
-    case Node::DYNAMIC_TASK: {
-      auto& sbg = std::get<Node::DynamicTask>(node->_handle).subgraph;
+    case Node::DYNAMIC: {
+      auto& sbg = std::get<Node::Dynamic>(node->_handle).subgraph;
       if(!sbg.empty()) {
         os << "subgraph cluster_p" << node << " {\nlabel=\"Subflow: ";
         if(node->_name.empty()) os << 'p' << node;
@@ -287,8 +300,8 @@ inline void Taskflow::_dump(
     }
     break;
     
-    case Node::CUDAFLOW_TASK: {
-      std::get<Node::cudaFlowTask>(node->_handle).graph->dump(
+    case Node::CUDAFLOW: {
+      std::get<Node::cudaFlow>(node->_handle).graph->dump(
         os, node, node->_name
       );
     }
@@ -307,13 +320,13 @@ inline void Taskflow::_dump(
   for(const auto& n : graph._nodes) {
 
     // regular task
-    if(n->_handle.index() != Node::MODULE_TASK) {
+    if(n->_handle.index() != Node::MODULE) {
       _dump(os, n, dumper);
     }
     // module task
     else {
 
-      auto module = std::get<Node::ModuleTask>(n->_handle).module;
+      auto module = std::get<Node::Module>(n->_handle).module;
 
       os << 'p' << n << "[shape=box3d, color=blue, label=\"";
       if(n->_name.empty()) os << n;
@@ -341,6 +354,8 @@ inline void Taskflow::_dump(
 
 /**
 @class Future
+
+@brief class to access the result of task execution
 
 tf::Future is a derived class from std::future that will eventually hold the
 execution result of a submitted taskflow (e.g., tf::Executor::run)
@@ -427,8 +442,6 @@ class Future : public std::future<T>  {
 
     template <typename P>
     Future(std::future<T>&&, P&&);
-
-    void _assign_future(std::future<T>&&);
 };
 
 template <typename T>
@@ -436,11 +449,6 @@ template <typename P>
 Future<T>::Future(std::future<T>&& fu, P&& p) :
   std::future<T> {std::move(fu)},
   _handle        {std::forward<P>(p)} {
-}
-
-template <typename T>
-void Future<T>::_assign_future(std::future<T>&& fu) {
-  std::future<T>::operator = (std::move(fu));
 }
 
 // Function: cancel

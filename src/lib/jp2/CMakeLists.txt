@@ -8,6 +8,8 @@ find_package(Threads REQUIRED)
 
 IF(MSVC)
     SET(CMAKE_CXX_FLAGS "/EHsc")
+ELSE(MSVC)
+    SET(CMAKE_CXX_FLAGS "-ftemplate-backtrace-limit=0")
 ENDIF(MSVC)
 
 if(BUILD_UNIT_TESTS)

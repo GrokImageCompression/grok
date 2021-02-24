@@ -18,45 +18,46 @@ namespace tf {
 
 @brief enumeration of all task types
 */
-enum TaskType {
-  PLACEHOLDER_TASK = Node::PLACEHOLDER_TASK,
-  CUDAFLOW_TASK    = Node::CUDAFLOW_TASK,
-  STATIC_TASK      = Node::STATIC_TASK,
-  DYNAMIC_TASK     = Node::DYNAMIC_TASK,
-  CONDITION_TASK   = Node::CONDITION_TASK,
-  MODULE_TASK      = Node::MODULE_TASK,
-  ASYNC_TASK       = Node::ASYNC_TASK
+enum class TaskType : int {
+  PLACEHOLDER = 0,
+  CUDAFLOW,
+  STATIC,
+  DYNAMIC,
+  CONDITION,
+  MODULE,
+  ASYNC,
+  UNDEFINED 
 };
 
 /**
 @brief array of all task types (used for iterating task types)
 */
 inline constexpr std::array<TaskType, 7> TASK_TYPES = {
-  PLACEHOLDER_TASK,
-  CUDAFLOW_TASK,
-  STATIC_TASK,
-  DYNAMIC_TASK,
-  CONDITION_TASK,
-  MODULE_TASK,
-  ASYNC_TASK
+  TaskType::PLACEHOLDER,
+  TaskType::CUDAFLOW,
+  TaskType::STATIC,
+  TaskType::DYNAMIC,
+  TaskType::CONDITION,
+  TaskType::MODULE,
+  TaskType::ASYNC
 };
 
 /**
 @brief convert a task type to a human-readable string
 */
-inline const char* task_type_to_string(TaskType type) {
+inline const char* to_string(TaskType type) {
 
   const char* val;
 
   switch(type) {
-    case PLACEHOLDER_TASK: val = "placeholder"; break;
-    case CUDAFLOW_TASK:    val = "cudaflow";    break;
-    case STATIC_TASK:      val = "static";      break;
-    case DYNAMIC_TASK:     val = "subflow";     break;
-    case CONDITION_TASK:   val = "condition";   break;
-    case MODULE_TASK:      val = "module";      break;
-    case ASYNC_TASK:       val = "async";       break;
-    default:               val = "undefined";   break;
+    case TaskType::PLACEHOLDER: val = "placeholder"; break;
+    case TaskType::CUDAFLOW:    val = "cudaflow";    break;
+    case TaskType::STATIC:      val = "static";      break;
+    case TaskType::DYNAMIC:     val = "subflow";     break;
+    case TaskType::CONDITION:   val = "condition";   break;
+    case TaskType::MODULE:      val = "module";      break;
+    case TaskType::ASYNC:       val = "async";       break;
+    default:                    val = "undefined";   break;
   }
 
   return val;
@@ -100,8 +101,6 @@ std::function<void(tf::cudaFlow&)> or std::function<void(tf::cudaFlowCapturer&)>
 template <typename C>
 constexpr bool is_cudaflow_task_v = std::is_invocable_r_v<void, C, cudaFlow&> ||
                                     std::is_invocable_r_v<void, C, cudaFlowCapturer&>;
-
-
 
 // ----------------------------------------------------------------------------
 // Task
@@ -324,7 +323,7 @@ Task& Task::succeed(Ts&&... tasks) {
 
 // Function: composed_of
 inline Task& Task::composed_of(Taskflow& tf) {
-  _node->_handle.emplace<Node::ModuleTask>(&tf);
+  _node->_handle.emplace<Node::Module>(&tf);
   return *this;
 }
 
@@ -359,7 +358,8 @@ inline Task& Task::name(const std::string& name) {
 // Function: acquire
 inline Task& Task::acquire(Semaphore& s) {
   if(!_node->_semaphores) {
-    _node->_semaphores.emplace();
+    //_node->_semaphores.emplace();
+    _node->_semaphores = std::make_unique<Node::Semaphores>();
   }
   _node->_semaphores->to_acquire.push_back(&s);
   return *this;
@@ -368,7 +368,8 @@ inline Task& Task::acquire(Semaphore& s) {
 // Function: release
 inline Task& Task::release(Semaphore& s) {
   if(!_node->_semaphores) {
-    _node->_semaphores.emplace();
+    //_node->_semaphores.emplace();
+    _node->_semaphores = std::make_unique<Node::Semaphores>();
   }
   _node->_semaphores->to_release.push_back(&s);
   return *this;
@@ -421,7 +422,17 @@ inline bool Task::has_work() const {
 
 // Function: task_type
 inline TaskType Task::type() const {
-  return static_cast<TaskType>(_node->_handle.index());
+  switch(_node->_handle.index()) {
+    case Node::PLACEHOLDER:  return TaskType::PLACEHOLDER;
+    case Node::STATIC:       return TaskType::STATIC;
+    case Node::DYNAMIC:      return TaskType::DYNAMIC;
+    case Node::CONDITION:    return TaskType::CONDITION;
+    case Node::MODULE:       return TaskType::MODULE;
+    case Node::ASYNC:        return TaskType::ASYNC;
+    case Node::SILENT_ASYNC: return TaskType::ASYNC;
+    case Node::CUDAFLOW:     return TaskType::CUDAFLOW;
+    default:                 return TaskType::UNDEFINED;
+  }
 }
 
 // Function: for_each_successor
@@ -450,23 +461,23 @@ inline void Task::dump(std::ostream& os) const {
   os << "task ";
   if(name().empty()) os << _node;
   else os << name();
-  os << " [type=" << task_type_to_string(type()) << ']';
+  os << " [type=" << to_string(type()) << ']';
 }
 
 // Function: work
 template <typename C>
 Task& Task::work(C&& c) {
   if constexpr(is_static_task_v<C>) {
-    _node->_handle.emplace<Node::StaticTask>(std::forward<C>(c));
+    _node->_handle.emplace<Node::Static>(std::forward<C>(c));
   }
   else if constexpr(is_dynamic_task_v<C>) {
-    _node->_handle.emplace<Node::DynamicTask>(std::forward<C>(c));
+    _node->_handle.emplace<Node::Dynamic>(std::forward<C>(c));
   }
   else if constexpr(is_condition_task_v<C>) {
-    _node->_handle.emplace<Node::ConditionTask>(std::forward<C>(c));
+    _node->_handle.emplace<Node::Condition>(std::forward<C>(c));
   }
   else if constexpr(is_cudaflow_task_v<C>) {
-    _node->_handle.emplace<Node::cudaFlowTask>(std::forward<C>(c));
+    _node->_handle.emplace<Node::cudaFlow>(std::forward<C>(c));
   }
   else {
     static_assert(dependent_false_v<C>, "invalid task callable");
@@ -540,6 +551,11 @@ class TaskView {
     @brief queries the task type
     */
     TaskType type() const;
+  
+    /**
+    @brief obtains a hash value of the underlying node
+    */
+    size_t hash_value() const;
     
   private:
     
@@ -580,7 +596,22 @@ inline size_t TaskView::num_successors() const {
 
 // Function: type
 inline TaskType TaskView::type() const {
-  return static_cast<TaskType>(_node._handle.index());
+  switch(_node._handle.index()) {
+    case Node::PLACEHOLDER:  return TaskType::PLACEHOLDER;
+    case Node::STATIC:       return TaskType::STATIC;
+    case Node::DYNAMIC:      return TaskType::DYNAMIC;
+    case Node::CONDITION:    return TaskType::CONDITION;
+    case Node::MODULE:       return TaskType::MODULE;
+    case Node::ASYNC:        return TaskType::ASYNC;
+    case Node::SILENT_ASYNC: return TaskType::ASYNC;
+    case Node::CUDAFLOW:     return TaskType::CUDAFLOW;
+    default:                 return TaskType::UNDEFINED;
+  }
+}
+  
+// Function: hash_value
+inline size_t TaskView::hash_value() const {
+  return std::hash<const Node*>{}(&_node);
 }
 
 // Function: for_each_successor
@@ -612,6 +643,18 @@ template <>
 struct hash<tf::Task> {
   auto operator() (const tf::Task& task) const noexcept {
     return task.hash_value();
+  }
+};
+
+/**
+@struct hash
+
+@brief hash specialization for std::hash<tf::TaskView>
+*/
+template <>
+struct hash<tf::TaskView> {
+  auto operator() (const tf::TaskView& task_view) const noexcept {
+    return task_view.hash_value();
   }
 };
 

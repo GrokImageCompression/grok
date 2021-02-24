@@ -3,6 +3,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 IF(MSVC)
     SET(CMAKE_CXX_FLAGS "/EHsc")
+ELSE(MSVC)
+    SET(CMAKE_CXX_FLAGS "-ftemplate-backtrace-limit=0")
 ENDIF(MSVC)
 
 # First thing define the common source:
@@ -68,7 +70,6 @@ include_directories(
   ${TIFF_INCLUDE_DIRNAME}
   ${JPEG_INCLUDE_DIRNAME}
   ${GROK_SOURCE_DIR}/src/include
-  ${GROK_SOURCE_DIR}/src/include/taskflow
   )
 
 if(WIN32)
