@@ -137,6 +137,8 @@ struct SparseBlock{
 		data = new int32_t[block_area];
 		if (zeroOutBuffer)
 			memset(data, 0, block_area * sizeof(int32_t));
+		//else
+		//	memset(data, 0xFF, block_area * sizeof(int32_t));
 	}
 	int32_t *data;
 };
@@ -346,7 +348,6 @@ private:
 						uint64_t ind = 0;
 						for (uint32_t k = 0; k < x_incr; k++){
 #ifdef GRK_DEBUG_VALGRIND
-							grk_pt pt((uint32_t)(x+k), y_);
 							size_t val = grk_memcheck<int32_t>(src_ptr+k,1);
 							if (val != grk_mem_ok)
 							   GRK_ERROR("sparse buffer @resno %d, read block(%d,%d) : uninitialized at location (%d,%d)",
