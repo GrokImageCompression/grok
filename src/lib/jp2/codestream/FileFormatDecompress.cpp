@@ -44,6 +44,7 @@ FileFormatDecompress::FileFormatDecompress( BufferedStream *stream) : FileFormat
 			{ JP2_RES,	[this](uint8_t *data, uint32_t len ) { return read_res(data, len);} } };
 }
 FileFormatDecompress::~FileFormatDecompress() {
+	delete codeStream;
 }
 void FileFormatDecompress::alloc_palette(grk_color *color, uint8_t num_channels, uint16_t num_entries){
 	assert(color);
