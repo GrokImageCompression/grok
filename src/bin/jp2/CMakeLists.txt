@@ -3,8 +3,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 IF(MSVC)
     SET(CMAKE_CXX_FLAGS "/EHsc")
-ELSE(MSVC)
-    SET(CMAKE_CXX_FLAGS "-ftemplate-backtrace-limit=0")
 ENDIF(MSVC)
 
 # First thing define the common source:
