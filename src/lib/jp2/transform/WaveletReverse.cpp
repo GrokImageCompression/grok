@@ -114,8 +114,8 @@ template <typename T> struct dwt_data {
 				 mem(nullptr),
 				 memL(nullptr),
 				 memH(nullptr),
-		         dn(0),
-				 sn(0),
+		         dn_full(0),
+				 sn_full(0),
 				 parity(0),
 				 resno(0)
 	{}
@@ -126,8 +126,8 @@ template <typename T> struct dwt_data {
 									mem(nullptr),
 									memL(nullptr),
 									memH(nullptr),
-									dn ( rhs.dn),
-									sn ( rhs.sn),
+									dn_full ( rhs.dn_full),
+									sn_full ( rhs.sn_full),
 									parity ( rhs.parity),
 									win_l ( rhs.win_l),
 									win_h ( rhs.win_h),
@@ -153,7 +153,7 @@ template <typename T> struct dwt_data {
 	        GRK_ERROR("Failed to allocate %d bytes", m_lenBytes);
 	        return false;
 	    }
-	    //memset(allocatedMem, 0xFF, m_lenBytes);
+	   // memset(allocatedMem, 128, m_lenBytes);
 	    mem = allocatedMem + m_paddingBytes / sizeof(T);
 		return (allocatedMem != nullptr) ? true : false;
 	}
@@ -170,8 +170,8 @@ template <typename T> struct dwt_data {
     T* mem;
     T* memL;
     T* memH;
-    uint32_t dn;   /* number of elements in high pass band */
-    uint32_t sn;   /* number of elements in low pass band */
+    uint32_t dn_full;   /* number of elements in high pass band */
+    uint32_t sn_full;   /* number of elements in low pass band */
     uint32_t parity;  /* 0 = start on even coord, 1 = start on odd coord */
     grk_u32_line  win_l;
     grk_u32_line  win_h;
@@ -581,19 +581,19 @@ static void decompress_h_53(const dwt_data<int32_t> *dwt,
 						 int32_t *bandH,
 						 int32_t *dest)
 {
-    const uint32_t total_width = dwt->sn + dwt->dn;
+    const uint32_t total_width = dwt->sn_full + dwt->dn_full;
     if (dwt->parity == 0) { /* Left-most sample is on even coordinate */
         if (total_width > 1) {
-            decompress_h_cas0_53(dwt->mem,bandL,dwt->sn, bandH, dwt->dn, dest);
+            decompress_h_cas0_53(dwt->mem,bandL,dwt->sn_full, bandH, dwt->dn_full, dest);
         } else if (total_width == 1) {
-        	assert(dwt->sn == 1);
+        	assert(dwt->sn_full == 1);
         	// only L op: only one sample in L band and H band is empty
         	dest[0] = bandL[0];
         }
     } else { /* Left-most sample is on odd coordinate */
     	assert(total_width != 0);
         if (total_width == 1) {
-        	assert(dwt->dn == 1);
+        	assert(dwt->dn_full == 1);
         	// only H op: only one sample in H band and L band is empty
         	dest[0] = bandH[0]/2;
         } else if (total_width == 2) {
@@ -601,7 +601,7 @@ static void decompress_h_53(const dwt_data<int32_t> *dwt,
             dest[0] = bandH[0] + dwt->mem[1];
             dest[1] = dwt->mem[1];
         } else if (total_width > 2) {
-            decompress_h_cas1_53(dwt->mem, bandL, dwt->sn, bandH,dwt->dn, dest);
+            decompress_h_cas1_53(dwt->mem, bandL, dwt->sn_full, bandH,dwt->dn_full, dest);
         }
     }
 }
@@ -618,7 +618,7 @@ static void decompress_v_53(const dwt_data<int32_t> *dwt,
 						 int32_t *dest,
 						 const uint32_t strideDest,
                          uint32_t nb_cols){
-    const uint32_t total_height = dwt->sn + dwt->dn;
+    const uint32_t total_height = dwt->sn_full + dwt->dn_full;
     if (dwt->parity == 0) {
         if (total_height == 1) {
             for (uint32_t c = 0; c < nb_cols; c++, bandL++,dest++)
@@ -630,14 +630,14 @@ static void decompress_v_53(const dwt_data<int32_t> *dwt,
 			if (total_height > 1 && nb_cols == PLL_COLS_53) {
 				/* Same as below general case, except that thanks to SSE2/AVX2 */
 				/* we can efficiently process 8/16 columns in parallel */
-				decompress_v_cas0_mcols_SSE2_OR_AVX2_53(dwt->mem, bandL,dwt->sn, strideL, bandH, dwt->dn, strideH, dest, strideDest);
+				decompress_v_cas0_mcols_SSE2_OR_AVX2_53(dwt->mem, bandL,dwt->sn_full, strideL, bandH, dwt->dn_full, strideH, dest, strideDest);
 				return;
 			}
 #endif
     	}
         if (total_height > 1) {
             for (uint32_t c = 0; c < nb_cols; c++, bandL++, bandH++,dest++)
-                decompress_v_cas0_53(dwt->mem, bandL,dwt->sn, strideL,bandH,dwt->dn, strideH, dest, strideDest);
+                decompress_v_cas0_53(dwt->mem, bandL,dwt->sn_full, strideL,bandH,dwt->dn_full, strideH, dest, strideDest);
             return;
         }
     } else {
@@ -660,13 +660,13 @@ static void decompress_v_53(const dwt_data<int32_t> *dwt,
 			if (nb_cols == PLL_COLS_53) {
 				/* Same as below general case, except that thanks to SSE2/AVX2 */
 				/* we can efficiently process 8/16 columns in parallel */
-				decompress_v_cas1_mcols_SSE2_OR_AVX2_53(dwt->mem, bandL,dwt->sn, strideL,bandH,dwt->dn, strideH, dest, strideDest);
+				decompress_v_cas1_mcols_SSE2_OR_AVX2_53(dwt->mem, bandL,dwt->sn_full, strideL,bandH,dwt->dn_full, strideH, dest, strideDest);
 				return;
 			}
 #endif
         }
 		for (uint32_t c = 0; c < nb_cols; c++, bandL++,bandH++,dest++)
-			decompress_v_cas1_53(dwt->mem, bandL,dwt->sn,strideL,bandH, dwt->dn, strideH, dest, strideDest);
+			decompress_v_cas1_53(dwt->mem, bandL,dwt->sn_full,strideL,bandH, dwt->dn_full, strideH, dest, strideDest);
     }
 }
 
@@ -872,20 +872,20 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
     data_size *= PLL_COLS_53 * sizeof(int32_t);
     bool rc = true;
     for (uint8_t res = 1; res < numres; ++res){
-        horiz.sn = rw;
-        vert.sn = rh;
+        horiz.sn_full = rw;
+        vert.sn_full = rh;
         ++tr;
         rw = tr->width();
         rh = tr->height();
         if (rw == 0 || rh == 0)
         	continue;
-        horiz.dn = rw - horiz.sn;
+        horiz.dn_full = rw - horiz.sn_full;
         horiz.parity = tr->x0 & 1;
     	if (!decompress_h_mt_53(num_threads,
     						data_size,
 							horiz,
 							vert,
-							vert.sn,
+							vert.sn_full,
 							// LL
 							tilec->getBuffer()->getWindow(res-1U)->data,
 							tilec->getBuffer()->getWindow(res-1U)->stride,
@@ -900,7 +900,7 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
     						data_size,
 							horiz,
 							vert,
-							rh -  vert.sn,
+							rh -  vert.sn_full,
 							// LH
 							tilec->getBuffer()->getWindow(res, BAND_ORIENT_LH)->data,
 							tilec->getBuffer()->getWindow(res,BAND_ORIENT_LH)->stride,
@@ -911,7 +911,7 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
     						tilec->getBuffer()->getSplitWindow(res,SPLIT_H)->data,
     						tilec->getBuffer()->getSplitWindow(res,SPLIT_H)->stride ))
     		return false;
-        vert.dn = rh - vert.sn;
+        vert.dn_full = rh - vert.sn_full;
         vert.parity = tr->y0 & 1;
     	if (!decompress_v_mt_53(num_threads,
     						data_size,
@@ -1061,8 +1061,8 @@ static void decompress_step2_97(const Params97 &d,float c){
 static void decompress_step_97(dwt_data<vec4f>* GRK_RESTRICT dwt)
 {
 
-    if ( (!dwt->parity && dwt->dn == 0 && dwt->sn <= 1) ||
-    	 ( dwt->parity && dwt->sn == 0 && dwt->dn >= 1) )
+    if ( (!dwt->parity && dwt->dn_full == 0 && dwt->sn_full <= 1) ||
+    	 ( dwt->parity && dwt->sn_full == 0 && dwt->dn_full >= 1) )
             return;
 
     decompress_step1_97(makeParams97(dwt,true,true),  K);
@@ -1138,7 +1138,7 @@ static void decompress_h_strip_97(dwt_data<vec4f>* GRK_RESTRICT horiz,
 	for (j = 0; j< (rh & (uint32_t)(~(vec4f_elts-1))); j += vec4f_elts) {
 		interleave_h_97(horiz, bandL,strideL, bandH, strideH, rh - j);
 		decompress_step_97(horiz);
-		for (uint32_t k = 0; k <  horiz->sn + horiz->dn; k++) {
+		for (uint32_t k = 0; k <  horiz->sn_full + horiz->dn_full; k++) {
 			dest[k      ] 					= horiz->mem[k].f[0];
 			dest[k + (size_t)strideDest  ] 	= horiz->mem[k].f[1];
 			dest[k + (size_t)strideDest * 2] 	= horiz->mem[k].f[2];
@@ -1151,7 +1151,7 @@ static void decompress_h_strip_97(dwt_data<vec4f>* GRK_RESTRICT horiz,
 	if (j < rh) {
 		interleave_h_97(horiz, bandL,strideL,bandH, strideH, rh - j);
 		decompress_step_97(horiz);
-		for (uint32_t k = 0; k < horiz->sn + horiz->dn; k++) {
+		for (uint32_t k = 0; k < horiz->sn_full + horiz->dn_full; k++) {
 			switch (rh - j) {
 			case 3:
 				dest[k + strideDest * 2] = horiz->mem[k].f[2];
@@ -1375,21 +1375,21 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
     vert.mem = horiz.mem;
     uint32_t num_threads = (uint32_t)ThreadPool::get()->num_threads();
     for (uint8_t res = 1; res < numres; ++res) {
-        horiz.sn = rw;
-        vert.sn = rh;
+        horiz.sn_full = rw;
+        vert.sn_full = rh;
         ++tr;
         rw = tr->width();
         rh = tr->height();
         if (rw == 0 || rh == 0)
         	continue;
-        horiz.dn = rw - horiz.sn;
+        horiz.dn_full = rw - horiz.sn_full;
         horiz.parity = tr->x0 & 1;
-        horiz.win_l = grk_u32_line(0, horiz.sn);
-        horiz.win_h = grk_u32_line(0, horiz.dn);
+        horiz.win_l = grk_u32_line(0, horiz.sn_full);
+        horiz.win_h = grk_u32_line(0, horiz.dn_full);
         if (!decompress_h_mt_97(num_threads,
         					data_size,
 							horiz,
-							vert.sn,
+							vert.sn_full,
 							// LL
 							(float*) tilec->getBuffer()->getWindow(res-1U)->data,
 							tilec->getBuffer()->getWindow(res-1U)->stride,
@@ -1403,7 +1403,7 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         if (!decompress_h_mt_97(num_threads,
         					data_size,
 							horiz,
-							rh-vert.sn,
+							rh-vert.sn_full,
 							// LH
 							(float*) tilec->getBuffer()->getWindow(res, BAND_ORIENT_LH)->data,
 							tilec->getBuffer()->getWindow(res,BAND_ORIENT_LH)->stride,
@@ -1414,10 +1414,10 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 							(float*) tilec->getBuffer()->getSplitWindow(res,SPLIT_H)->data,
 							tilec->getBuffer()->getSplitWindow(res,SPLIT_H)->stride ))
         	return false;
-        vert.dn = rh - vert.sn;
+        vert.dn_full = rh - vert.sn_full;
         vert.parity = tr->y0 & 1;
-        vert.win_l = grk_u32_line(0, vert.sn);
-        vert.win_h = grk_u32_line(0, vert.dn);
+        vert.win_l = grk_u32_line(0, vert.sn_full);
+        vert.win_h = grk_u32_line(0, vert.dn_full);
         if (!decompress_v_mt_97(num_threads,
         					data_size,
 							vert,
@@ -1477,11 +1477,11 @@ public:
 			bool ret = false;
 
 	    	// read one row of L band and write interleaved
-			if (dwt->sn) {
+			if (dwt->sn_full) {
 				ret = sa->read(dwt->resno,
 									grk_rect_u32(dwt->win_l.x0,
 												  y_offset + i,
-												  std::min<uint32_t>(dwt->win_l.x1, dwt->sn),
+												  std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn_full),
 												  y_offset + i + 1),
 								  (int32_t*)dwt->memL + i,
 								  2 * h_chunk,
@@ -1490,11 +1490,11 @@ public:
 				assert(ret);
 			}
 	        // read one row of H band and write interleaved
-			if (dwt->dn) {
+			if (dwt->dn_full) {
 				ret = sa->read(dwt->resno,
-								grk_rect_u32(dwt->sn + dwt->win_h.x0,
+								grk_rect_u32(dwt->sn_full + dwt->win_h.x0,
 											 y_offset + i,
-											 dwt->sn + std::min<uint32_t>(dwt->win_h.x1, dwt->dn),
+											 dwt->sn_full + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn_full),
 											 y_offset + i + 1),
 								  (int32_t*)dwt->memH + i,
 								  2 * h_chunk,
@@ -1517,12 +1517,12 @@ public:
     	// read one vertical strip (of width x_num_elements <= v_chunk) of L band and write interleaved
 		bool ret = false;
 
-		if (dwt->sn) {
+		if (dwt->sn_full) {
 			ret = sa->read(dwt->resno,
 								grk_rect_u32(x_offset,
 											dwt->win_l.x0,
 											x_offset + x_num_elements,
-											std::min<uint32_t>(dwt->win_l.x1, dwt->sn)),
+											std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn_full)),
 								(int32_t*)dwt->memL,
 								1,
 								2 * v_chunk,
@@ -1530,12 +1530,12 @@ public:
 			assert(ret);
 		}
     	// read one vertical strip (of width x_num_elements <= v_chunk) of H band and write interleaved
-		if (dwt->dn) {
+		if (dwt->dn_full) {
 			ret = sa->read(dwt->resno,
 							grk_rect_u32(x_offset,
-										dwt->sn + dwt->win_h.x0,
+										dwt->sn_full + dwt->win_h.x0,
 										x_offset + x_num_elements,
-										dwt->sn + std::min<uint32_t>(dwt->win_h.x1, dwt->dn)),
+										dwt->sn_full + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn_full)),
 							(int32_t*)dwt->memH,
 							1,
 							2 * v_chunk,
@@ -1574,20 +1574,20 @@ public:
 		int64_t win_l_x1 = dwt->win_l.x1;
 		int64_t win_h_x0 = dwt->win_h.x0;
 		int64_t win_h_x1 = dwt->win_h.x1;
-		assert(dwt->win_l.x0 <= dwt->sn);
-		int64_t sn 	  		= (int64_t)dwt->sn - (int64_t)dwt->win_l.x0;
-		int64_t sn_global  	= dwt->sn;
-		assert(dwt->win_h.x0 <= dwt->dn);
-		int64_t dn 	  		= (int64_t)dwt->dn - (int64_t)dwt->win_h.x0;
-		int64_t dn_global	= dwt->dn;
+		assert(dwt->win_l.x0 <= dwt->sn_full);
+		int64_t sn 	  		= (int64_t)dwt->sn_full - (int64_t)dwt->win_l.x0;
+		int64_t sn_full  	= dwt->sn_full;
+		assert(dwt->win_h.x0 <= dwt->dn_full);
+		int64_t dn 	  		= (int64_t)dwt->dn_full - (int64_t)dwt->win_h.x0;
+		int64_t dn_full	= dwt->dn_full;
 
-		adjust_bounds(dwt, sn_global,dn_global, &sn, &dn);
+		adjust_bounds(dwt, sn_full,dn_full, &sn, &dn);
 
-		assert(dwt->win_l.x1 <= sn_global && dwt->win_h.x1 <= dn_global);
+		assert(dwt->win_l.x1 <= sn_full && dwt->win_h.x1 <= dn_full);
 
 		auto buf	 = dwt->mem;
 		if (!parity) {
-			if ((dn_global != 0) || (sn_global > 1)) {
+			if ((dn_full != 0) || (sn_full > 1)) {
 				/* Naive version is :
 				for (i = win_l_x0; i < i_max; i++) {
 					S(i) -= (D_(i - 1) + D_(i) + 2) >> 2;
@@ -1632,7 +1632,7 @@ public:
 				}
 			}
 		} else {
-			if (sn_global == 0  && dn_global == 1) {
+			if (sn_full == 0  && dn_full == 1) {
 				// only do L band (high pass)
 					S(buf,0) >>= 1;
 			} else {
@@ -1673,18 +1673,18 @@ public:
 		int64_t win_l_x1 	= dwt->win_l.x1;
 		int64_t win_h_x0 	= dwt->win_h.x0;
 		int64_t win_h_x1 	= dwt->win_h.x1;
-		int64_t sn 	  		= (int64_t)dwt->sn - (int64_t)dwt->win_l.x0;
-		int64_t sn_global  	= dwt->sn;
-		int64_t dn 	  		= (int64_t)dwt->dn - (int64_t)dwt->win_h.x0;
-		int64_t dn_global	= dwt->dn;
+		int64_t sn 	  		= (int64_t)dwt->sn_full - (int64_t)dwt->win_l.x0;
+		int64_t sn_full  	= dwt->sn_full;
+		int64_t dn 	  		= (int64_t)dwt->dn_full - (int64_t)dwt->win_h.x0;
+		int64_t dn_full		= dwt->dn_full;
 
-		adjust_bounds(dwt, sn_global,dn_global, &sn, &dn);
+		adjust_bounds(dwt, sn_full,dn_full, &sn, &dn);
 
-		assert(dwt->win_l.x1 <= sn_global && dwt->win_h.x1 <= dn_global);
+		assert(dwt->win_l.x1 <= sn_full && dwt->win_h.x1 <= dn_full);
 
 		auto buf	 = dwt->mem;
 		if (!parity) {
-			if ((dn_global != 0) || (sn_global > 1)) {
+			if ((dn_full != 0) || (sn_full > 1)) {
 				/* Naive version is :
 				for (i = win_l_x0; i < i_max; i++) {
 					S(i) -= (D_(i - 1) + D_(i) + 2) >> 2;
@@ -1774,7 +1774,7 @@ public:
 				}
 			}
 		} else {
-			if (sn_global == 0  && dn_global == 1) {
+			if (sn_full == 0  && dn_full == 1) {
 				// edge case at origin
 				for (uint32_t off = 0; off < VERT_PASS_WIDTH; off++)
 					S_off(buf,0, off) >>= 1;
@@ -1794,15 +1794,15 @@ public:
 	}
 private:
 
-	void adjust_bounds(dwt_data<T>* dwt, int64_t sn_global, int64_t dn_global, int64_t *sn, int64_t *dn){
-		(void)sn_global;
-		(void)dn_global;
+	void adjust_bounds(dwt_data<T>* dwt, int64_t sn_full, int64_t dn_full, int64_t *sn, int64_t *dn){
+		(void)sn_full;
+		(void)dn_full;
 		if ((uint64_t)dwt->memH < (uint64_t)dwt->memL && *sn == *dn){
-			assert(dn_global == sn_global-1);
+			assert(dn_full == sn_full-1);
 			(*dn)--;
 		}
 		if ((uint64_t)dwt->memL < (uint64_t)dwt->memH && *sn == *dn){
-			assert(sn_global == dn_global-1);
+			assert(sn_full == dn_full-1);
 			(*sn)--;
 		}
 	}
@@ -1854,15 +1854,15 @@ static Params97 makeParams97(dwt_data<vec4f>* dwt,
 	int64_t band_1 = isBandL ?  dwt->win_l.x1 :  dwt->win_h.x1;
 	auto memPartial = isBandL ? dwt->memL : dwt->memH;
 	int64_t parityOffset = isBandL ? dwt->parity : !dwt->parity;
-	int64_t lenMax = isBandL ? 	min<int64_t>(dwt->sn, (int64_t)dwt->dn - parityOffset) :
-									min<int64_t>(dwt->dn, (int64_t)dwt->sn - parityOffset);
+	int64_t lenMax = isBandL ? 	min<int64_t>(dwt->sn_full, (int64_t)dwt->dn_full - parityOffset) :
+									min<int64_t>(dwt->dn_full, (int64_t)dwt->sn_full - parityOffset);
 	if (lenMax < 0)
 		lenMax = 0;
 	assert(lenMax >= band_0);
 	lenMax -= band_0;
 	rc.data = memPartial? memPartial: dwt->mem;
 
-	assert(!memPartial || (dwt->win_l.x1 <= dwt->sn && dwt->win_h.x1 <= dwt->dn));
+	assert(!memPartial || (dwt->win_l.x1 <= dwt->sn_full && dwt->win_h.x1 <= dwt->dn_full));
 	assert(band_1 >= band_0);
 
 	rc.data += parityOffset + band_0 - dwt->win_l.x0;
@@ -1961,12 +1961,12 @@ template <typename T,
     	dwt_data<T> horiz;
     	dwt_data<T> vert;
 
-        horiz.sn 	= fullResLower->width();
-        vert.sn 	= fullResLower->height();
+        horiz.sn_full 	= fullResLower->width();
+        vert.sn_full 	= fullResLower->height();
         ++fullRes;
-        horiz.dn 	= fullRes->width() - horiz.sn;
+        horiz.dn_full 	= fullRes->width() - horiz.sn_full;
         horiz.parity 	= fullRes->x0 & 1;
-        vert.dn 	= fullRes->height() - vert.sn;
+        vert.dn_full 	= fullRes->height() - vert.sn_full;
         vert.parity 	= fullRes->y0 & 1;
 
         // 1. set up windows for horizontal and vertical passes
@@ -1985,7 +1985,7 @@ template <typename T,
         // 2. pre-allocate sparse blocks
         for (uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i){
         	auto temp = tileBandWindowRect[i];
-            if (!sa->alloc(temp.grow(FILTER_WIDTH, fullRes->width(),  fullRes->height()),false))
+            if (!sa->alloc(temp.grow(2 * FILTER_WIDTH, fullRes->width(),  fullRes->height()),false))
     			 goto cleanup;
         }
         auto resWindowRect = *((grk_rect_u32*)tilec->getBuffer()->getWindow(resno));
@@ -1997,7 +1997,7 @@ template <typename T,
         splitWindowRect[SPLIT_H] = *((grk_rect_u32*)tilec->getBuffer()->getSplitWindow(resno,SPLIT_H ));
 		for (uint32_t k = 0; k < SPLIT_NUM_ORIENTATIONS; ++k) {
 			 auto temp = splitWindowRect[k];
-			 if (!sa->alloc(temp.grow(FILTER_WIDTH, fullRes->width(),  fullRes->height()),false))
+			 if (!sa->alloc(temp.grow(2 * FILTER_WIDTH, fullRes->width(),  fullRes->height()),false))
 					goto cleanup;
 		}
 
@@ -2010,23 +2010,21 @@ template <typename T,
 				 GRK_INFO("H: compno = %d, resno = %d,y begin = %d, height = %d,", compno, resno, j, height);
 				 uint32_t len = (job->data.win_l.length() + job->data.win_h.length()) * HORIZ_PASS_HEIGHT;
 				 (void)len;
+				std::ostringstream ss;
 #endif
 				 job->data.memL  =  job->data.mem +   job->data.parity;
 				 job->data.memH  =  job->data.mem + (int64_t)(!job->data.parity) + 2 * ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0);
 				 decompressor.interleave_h(&job->data, sa, j,height);
 #ifdef GRK_DEBUG_VALGRIND
 				 auto ptr = ((uint64_t)job->data.memL < (uint64_t)job->data.memH) ? job->data.memL : job->data.memH;
-				 if (grk_memcheck<T>(ptr, len) != grk_mem_ok) {
-					std::ostringstream ss;
-					ss << "H interleave uninitialized value: compno = " << (uint32_t)compno  << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
-					grk_memcheck_all<int32_t>((int32_t*)ptr, len, ss.str());
-				 }
+				ss << "H interleave : compno = " << (uint32_t)compno  << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
+				grk_memcheck_all<int32_t>((int32_t*)ptr, len, ss.str());
 #endif
 				 job->data.memL  =  job->data.mem;
 				 job->data.memH  =  job->data.mem  + ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0);
 				 decompressor.decompress_h(&job->data);
 #ifdef GRK_DEBUG_VALGRIND
-				std::ostringstream ss;
+				ss.clear();
 				ss << "H decompress uninitialized value: compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
 				grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 #endif
@@ -2059,28 +2057,23 @@ template <typename T,
 				GRK_INFO("V: compno = %d, resno = %d, x begin = %d, width = %d", compno, resno, j, width);
 				uint32_t len = (job->data.win_l.length() + job->data.win_h.length()) * VERT_PASS_WIDTH;
 				(void)len;
+				std::ostringstream ss;
 #endif
 				job->data.memL   =  job->data.mem +   (job->data.parity) * VERT_PASS_WIDTH;
 				job->data.memH  =
 						job->data.mem + ((!job->data.parity) + 2 * ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0)) * VERT_PASS_WIDTH;
 				decompressor.interleave_v(&job->data, sa, j, width);
-
 #ifdef GRK_DEBUG_VALGRIND
-				if (compno == debug_compno && resno == 1 && j == 19) {
-					 auto ptr = ((uint64_t)job->data.memL < (uint64_t)job->data.memH) ? job->data.memL : job->data.memH;
-					 if (grk_memcheck<T>(ptr, len) != grk_mem_ok) {
-						std::ostringstream ss;
-						ss <<  "V interleave uninitialized value: compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
-						grk_memcheck_all<int32_t>((int32_t*)ptr, len, ss.str());
-					 }
-				}
+				auto ptr = ((uint64_t)job->data.memL < (uint64_t)job->data.memH) ? job->data.memL : job->data.memH;
+				ss <<  "V interleave: compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
+				grk_memcheck_all<int32_t>((int32_t*)ptr, len, ss.str());
 #endif
 				job->data.memL  =  job->data.mem;
 				job->data.memH  =  job->data.mem  + ((int64_t)job->data.win_h.x0 - (int64_t)job->data.win_l.x0) * VERT_PASS_WIDTH;
 				decompressor.decompress_v(&job->data);
 #ifdef GRK_DEBUG_VALGRIND
-				std::ostringstream ss;
-				ss << "V decompress uninitialized value: compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
+				ss.clear();
+				ss << "V decompress: compno = " << (uint32_t)compno << ", resno= " << (uint32_t)(resno) << ", x begin = " << j << ", total samples = " << len;
 				grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 #endif
 				if (!sa->write(resno,
