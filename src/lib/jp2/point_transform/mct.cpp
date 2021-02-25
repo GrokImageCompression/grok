@@ -466,9 +466,9 @@ void mct::decompress_rev(grk_tile *tile, GrkImage *image,TileComponentCodingPara
 /* <summary> */
 /* Forward irreversible MCT. */
 /* </summary> */
-void mct::compress_irrev( int* GRK_RESTRICT chan0,
-		int* GRK_RESTRICT chan1,
-		int* GRK_RESTRICT chan2,
+void mct::compress_irrev( int32_t* GRK_RESTRICT chan0,
+		int32_t* GRK_RESTRICT chan1,
+		int32_t* GRK_RESTRICT chan2,
 		uint64_t n)
 {
     size_t i = 0;
@@ -490,6 +490,10 @@ void mct::compress_irrev( int* GRK_RESTRICT chan0,
 	    for(uint64_t tr = 0; tr < num_threads; ++tr) {
 	    	uint64_t index = tr;
 			auto compressor = [index, chunkSize, chan0,chan1,chan2]()	{
+			    float* GRK_RESTRICT chan0f = (float*)chan0;
+				float* GRK_RESTRICT chan1f = (float*)chan1;
+				float* GRK_RESTRICT chan2f = (float*)chan2;
+
 				const VREGF va_r = LOAD_CST_F(0.299f);
 				const VREGF va_g = LOAD_CST_F(0.587f);
 				const VREGF va_b = LOAD_CST_F(0.114f);
@@ -510,9 +514,9 @@ void mct::compress_irrev( int* GRK_RESTRICT chan0,
 					VREGF u = MULF(vcb, SUBF(b, y));
 					VREGF v = MULF(vcr, SUBF(r, y));
 
-					STORE(chan0 + j, _mm256_cvttps_epi32(y * 2048.0f));
-					STORE(chan1 + j, _mm256_cvttps_epi32(u * 2048.0f));
-					STORE(chan2 + j, _mm256_cvttps_epi32(v * 2048.0f));
+					STOREF(chan0f + j, y);
+					STOREF(chan1f + j, u);
+					STOREF(chan2f + j, v);
 				}
 				return 0;
 			};
@@ -529,6 +533,11 @@ void mct::compress_irrev( int* GRK_RESTRICT chan0,
 	}
 #endif
     }
+
+    float* GRK_RESTRICT chan0f = (float*)chan0;
+	float* GRK_RESTRICT chan1f = (float*)chan1;
+	float* GRK_RESTRICT chan2f = (float*)chan2;
+
     for(; i < n; ++i) {
         float r = (float)chan0[i];
         float g = (float)chan1[i];
@@ -538,13 +547,11 @@ void mct::compress_irrev( int* GRK_RESTRICT chan0,
         float u = cb * (b - y);
         float v = cr * (r - y);
 
-        chan0[i] = (int32_t)(y * 2048.0f);
-        chan1[i] = (int32_t)(u * 2048.0f);
-        chan2[i] = (int32_t)(v * 2048.0f);
+        chan0f[i] = y;
+        chan1f[i] = u;
+        chan2f[i] = v;
     }
 }
-
-
 
 void mct::calculate_norms(double *pNorms, uint32_t pNbComps, float *pMatrix) {
 	float CurrentValue;

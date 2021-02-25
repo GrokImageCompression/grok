@@ -31,20 +31,19 @@ bool Quantizer::setBandStepSizeAndBps(TileCodingParams *tcp,
 							uint8_t image_precision,
 							bool compress){
 
-	uint32_t log2_gain = 0;
-	if (tccp->qmfbid == 1) {
-		if (band->orientation == 0)
-			log2_gain = 0;
-		else if (band->orientation < 3)
-			log2_gain = 1;
-		else
-			log2_gain = 2;
-	}
+    /* Table E-1 - Sub-band gains */
+    /* BUG_WEIRD_TWO_INVK (look for this identifier in dwt.c): */
+    /* the test (!isEncoder && l_tccp->qmfbid == 0) is strongly */
+    /* linked to the use of two_invK instead of invK */
+    const uint32_t log2_gain = (!compress &&
+                                 tccp->qmfbid == 0) ? 0 : (band->orientation == 0) ? 0 :
+                                (band->orientation == 3) ? 2 : 1;
 	uint32_t numbps = image_precision + log2_gain;
 	auto offset = (resno == 0) ? 0 : 3*resno - 2;
 	auto step_size = tccp->stepsizes + offset + bandIndex;
 	band->stepsize = (float) (((1.0 + step_size->mant / 2048.0)
 			* pow(2.0, (int32_t) (numbps - step_size->expn))));
+    //printf("res=%d, band=%d, mant=%d,expn=%d, numbps=%d, step size= %f\n",resno,band->orientation,step_size->mant,step_size->expn,numbps, band->stepsize);
 
 	// see Taubman + Marcellin - Equation 10.22
 	band->numbps = tccp->roishift

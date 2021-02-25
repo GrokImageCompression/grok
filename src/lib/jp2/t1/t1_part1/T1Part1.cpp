@@ -62,7 +62,6 @@ void T1Part1::preCompress(CompressBlockExec *block, grk_tile *tile,
 		return;
 	t1->data_stride = w;
 	auto tileLineAdvance = (tile->comps + block->compno)->getBuffer()->getWindow()->stride - w;
-	auto tiledp = block->tiledp;
 	uint32_t tileIndex = 0;
 	uint32_t cblk_index = 0;
 	maximum = 0;
@@ -79,9 +78,10 @@ void T1Part1::preCompress(CompressBlockExec *block, grk_tile *tile,
 			tileIndex += tileLineAdvance;
 		}
 	} else {
+		auto tiledp = (float*)block->tiledp;
 		for (auto j = 0U; j < h; ++j) {
 			for (auto i = 0U; i < w; ++i) {
-				int32_t temp = int_fix_mul_t1((int32_t)tiledp[tileIndex], (int32_t)(8092.0f/block->stepsize));
+				int32_t temp = (int32_t)grk_lrintf((tiledp[tileIndex] /block->stepsize) * (1 << T1_NMSEDEC_FRACBITS));
 				temp = (int32_t)to_smr(temp);
 				maximum = max((uint32_t)smr_abs(temp), maximum);
 				t1->data[cblk_index] = temp;

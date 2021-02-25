@@ -42,6 +42,8 @@ Fuzzers created in `/tmp/*_fuzzer`, with `/tmp/*_fuzzer_seed_corpus.zip` corpus 
 
 ### Run oss-fuzz locally
 
+(make sure that `docker.io` is installed)
+
 #### Build grok image
 
 ```

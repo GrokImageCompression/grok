@@ -1609,7 +1609,7 @@ public:
 						i_max = dn;
 					for (; i < i_max; i++) {
 						/* No bound checking */
-						S(buf,i) -= (D(buf,i - 1) + D(buf,i) + 2) >> 2;
+						S(buf,i) -= (get_D(buf,i - 1) + get_D(buf,i) + 2) >> 2;
 					}
 					for (; i < win_l_x1 - win_l_x0; i++) {
 						/* Right-most case */
@@ -2007,7 +2007,7 @@ template <typename T,
 			 for (uint32_t j = job->min_j; j < job->max_j; j += HORIZ_PASS_HEIGHT) {
 				 auto height = std::min<uint32_t>((uint32_t)HORIZ_PASS_HEIGHT,job->max_j - j );
 #ifdef GRK_DEBUG_VALGRIND
-				 GRK_INFO("H: compno = %d, resno = %d,y begin = %d, height = %d,", compno, resno, j, height);
+				 //GRK_INFO("H: compno = %d, resno = %d,y begin = %d, height = %d,", compno, resno, j, height);
 				 uint32_t len = (job->data.win_l.length() + job->data.win_h.length()) * HORIZ_PASS_HEIGHT;
 				 (void)len;
 				std::ostringstream ss;
@@ -2054,7 +2054,7 @@ template <typename T,
 			 for (uint32_t j = job->min_j; j < job->max_j; j += VERT_PASS_WIDTH) {
 				auto width = std::min<uint32_t>(VERT_PASS_WIDTH,(job->max_j - j));
 #ifdef GRK_DEBUG_VALGRIND
-				GRK_INFO("V: compno = %d, resno = %d, x begin = %d, width = %d", compno, resno, j, width);
+				//GRK_INFO("V: compno = %d, resno = %d, x begin = %d, width = %d", compno, resno, j, width);
 				uint32_t len = (job->data.win_l.length() + job->data.win_h.length()) * VERT_PASS_WIDTH;
 				(void)len;
 				std::ostringstream ss;

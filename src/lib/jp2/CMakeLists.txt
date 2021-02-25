@@ -164,7 +164,6 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletFwdImpl.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletReverse.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletReverse.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletFwd.h
 
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Structs.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Structs.cpp  
