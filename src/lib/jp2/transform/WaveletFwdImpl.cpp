@@ -24,6 +24,8 @@
 #include <limits>
 #include <sstream>
 
+//#undef __SSE__
+
 namespace grk {
 
 template <typename T> struct dwt_line {
@@ -401,26 +403,27 @@ void dwt97::grk_v8dwt_encode_step2(float* fl,
         vw[-1] = _mm_add_ps(vw[-1], _mm_mul_ps(vw[-3], vcst));
     }
 #else
-    int32_t c;
+    uint32_t c;
+    const int64_t NB_ELTS = (int64_t)NB_ELTS_V8;
     if (imax > 0) {
-        for (c = 0; c < NB_ELTS_V8; c++) {
-            fw[-1 * NB_ELTS_V8 + c] += (fl[0 * NB_ELTS_V8 + c] + fw[0 * NB_ELTS_V8 + c]) *
+        for (c = 0; c < NB_ELTS; c++) {
+            fw[-1 * NB_ELTS + c] += (fl[0 * NB_ELTS + c] + fw[0 * NB_ELTS + c]) *
                                        cst;
         }
-        fw += 2 * NB_ELTS_V8;
+        fw += 2 * NB_ELTS;
         i = 1;
         for (; i < imax; ++i) {
-            for (c = 0; c < NB_ELTS_V8; c++) {
-                fw[-1 * NB_ELTS_V8 + c] += (fw[-2 * NB_ELTS_V8 + c] + fw[0 * NB_ELTS_V8 + c]) *
+            for (c = 0; c < NB_ELTS; c++) {
+                fw[-1 * NB_ELTS + c] += (fw[-2 * NB_ELTS + c] + fw[0 * NB_ELTS + c]) *
                                            cst;
             }
-            fw += 2 * NB_ELTS_V8;
+            fw += 2 * NB_ELTS;
         }
     }
     if (m < end) {
         assert(m + 1 == end);
-        for (c = 0; c < NB_ELTS_V8; c++) {
-            fw[-1 * NB_ELTS_V8 + c] += (2 * fw[-2 * NB_ELTS_V8 + c]) * cst;
+        for (c = 0; c < NB_ELTS; c++) {
+            fw[-1 * NB_ELTS + c] += (2 * fw[-2 * NB_ELTS + c]) * cst;
         }
     }
 #endif
