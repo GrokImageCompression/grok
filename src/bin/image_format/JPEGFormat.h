@@ -17,6 +17,11 @@
 #pragma once
 
 #include "ImageFormat.h"
+#ifdef _WIN32
+#define HAVE_BOOLEAN
+typedef unsigned char boolean;
+#include <basetsd.h>
+#endif
 #include "jpeglib.h"
 #include "iccjpeg.h"
 #include "convert.h"
