@@ -318,9 +318,7 @@ bool GrkImage::generateCompositeBounds(	uint16_t compno,
 	if (dest_win->width() > dest_comp->w || dest_win->height() > dest_comp->h)
 		return false;
 
-
 	return true;
-
 }
 
 
@@ -413,8 +411,19 @@ bool GrkImage::compositeFrom(const GrkImage *src_image) {
 		grk_rect_u32 src,dest,dest_win;
 		uint32_t src_line_off;
 
-		if (!generateCompositeBounds(src_comp,compno,&src,&dest,&dest_win,&src_line_off))
-			return false;
+		if (!generateCompositeBounds(src_comp,compno,&src,&dest,&dest_win,&src_line_off)){
+			GRK_WARN("GrkImage::compositeFrom: cannot generate composite bounds for component %d",compno);
+			continue;
+		}
+		if (!dest_comp->data){
+			GRK_WARN("GrkImage::compositeFrom: null data for destination component %d", compno);
+			continue;
+		}
+
+		if (!src_comp->data){
+			GRK_WARN("GrkImage::compositeFrom: null data for source component %d", compno);
+			continue;
+		}
 
 		size_t src_ind = 0;
 		auto dest_ind = (size_t) dest_win.x0  + (size_t) dest_win.y0 * dest_comp->stride;
