@@ -130,17 +130,20 @@ bool SIZMarker::read(CodeStreamDecompress *codeStream, uint8_t *p_header_data,
 	p_header_data += 4;
 	grk_read<uint32_t>(p_header_data, &tmp, 2); /* Csiz */
 	p_header_data += 2;
+	if (tmp ==0) {
+		GRK_ERROR("SIZ marker: number of components cannot be zero");
+		return false;
+	}
 	if (tmp <= max_num_components)
 		image->numcomps = (uint16_t) tmp;
 	else {
-		GRK_ERROR("Error in SIZ marker: number of component is illegal -> %u",
-				tmp);
+		GRK_ERROR("SIZ marker: number of components %u is greater than maximum allowed number of components %d",
+				tmp,max_num_components);
 		return false;
 	}
 
 	if (image->numcomps != nb_comp) {
-		GRK_ERROR(
-				"Error in SIZ marker: number of component is not compatible with the remaining number of parameters ( %u vs %u)",
+		GRK_ERROR("SIZ marker: signalled number of components is not compatible with remaining number of components ( %u vs %u)",
 				image->numcomps, nb_comp);
 		return false;
 	}
@@ -149,7 +152,7 @@ bool SIZMarker::read(CodeStreamDecompress *codeStream, uint8_t *p_header_data,
 	/* testcase issue427-null-image-size.jp2 */
 	if ((image->x0 >= image->x1) || (image->y0 >= image->y1)) {
 		std::stringstream ss;
-		ss << "Error in SIZ marker: negative or zero image dimensions ("
+		ss << "SIZ marker: negative or zero image dimensions ("
 				<< (int64_t) image->x1 - image->x0 << " x "
 				<< (int64_t) image->y1 - image->y0 << ")";
 		GRK_ERROR("%s", ss.str().c_str());
@@ -157,15 +160,14 @@ bool SIZMarker::read(CodeStreamDecompress *codeStream, uint8_t *p_header_data,
 	}
 	/* testcase 2539.pdf.SIGFPE.706.1712 (also 3622.pdf.SIGFPE.706.2916 and 4008.pdf.SIGFPE.706.3345 and maybe more) */
 	if ((cp->t_width == 0U) || (cp->t_height == 0U)) {
-		GRK_ERROR("Error in SIZ marker: invalid tile size (%u, %u)",
+		GRK_ERROR("SIZ marker: invalid tile size (%u, %u)",
 				cp->t_width, cp->t_height);
 		return false;
 	}
 
 	/* testcase issue427-illegal-tile-offset.jp2 */
 	if (cp->tx0 > image->x0 || cp->ty0 > image->y0) {
-		GRK_ERROR(
-				"Error in SIZ marker: tile origin (%u,%u) cannot lie in the region"
+		GRK_ERROR("SIZ marker: tile origin (%u,%u) cannot lie in the region"
 						" to the right and bottom of image origin (%u,%u)",
 				cp->tx0, cp->ty0, image->x0, image->y0);
 		return false;
@@ -173,7 +175,7 @@ bool SIZMarker::read(CodeStreamDecompress *codeStream, uint8_t *p_header_data,
 	uint32_t tx1 = sat_add<uint32_t>(cp->tx0, cp->t_width); /* manage overflow */
 	uint32_t ty1 = sat_add<uint32_t>(cp->ty0, cp->t_height); /* manage overflow */
 	if (tx1 <= image->x0 || ty1 <= image->y0) {
-		GRK_ERROR("Error in SIZ marker: first tile (%u,%u,%u,%u) must overlap"
+		GRK_ERROR("SIZ marker: first tile (%u,%u,%u,%u) must overlap"
 				" image (%u,%u,%u,%u)", cp->tx0, cp->ty0, tx1, ty1, image->x0,
 				image->y0, image->x1, image->y1);
 		return false;
@@ -195,15 +197,13 @@ bool SIZMarker::read(CodeStreamDecompress *codeStream, uint8_t *p_header_data,
 		img_comp->dy = tmp; /* should be between 1 and 255 */
 		if (img_comp->dx < 1 || img_comp->dx > 255 || img_comp->dy < 1
 				|| img_comp->dy > 255) {
-			GRK_ERROR(
-					"Invalid values for comp = %u : dx=%u dy=%u\n (should be between 1 and 255 according to the JPEG2000 standard)",
+			GRK_ERROR("Invalid values for comp = %u : dx=%u dy=%u\n (should be between 1 and 255 according to the JPEG2000 standard)",
 					i, img_comp->dx, img_comp->dy);
 			return false;
 		}
 
 		if (img_comp->prec == 0 || img_comp->prec > max_supported_precision) {
-			GRK_ERROR(
-					"Unsupported precision for comp = %u : prec=%u (this library only supports precisions between 1 and %u)",
+			GRK_ERROR("Unsupported precision for comp = %u : prec=%u (this library only supports precisions between 1 and %u)",
 					i, img_comp->prec, max_supported_precision);
 			return false;
 		}
@@ -216,14 +216,12 @@ bool SIZMarker::read(CodeStreamDecompress *codeStream, uint8_t *p_header_data,
 
 	/* Check that the number of tiles is valid */
 	if (cp->t_grid_width == 0 || cp->t_grid_height == 0) {
-		GRK_ERROR(
-				"Invalid grid of tiles: %u x %u. JPEG 2000 standard requires at least one tile in grid. ",
+		GRK_ERROR("Invalid grid of tiles: %u x %u. JPEG 2000 standard requires at least one tile in grid. ",
 				cp->t_grid_width, cp->t_grid_height);
 		return false;
 	}
 	if ((uint64_t)cp->t_grid_width * cp->t_grid_height > (uint64_t)max_num_tiles) {
-		GRK_ERROR(
-				"Invalid grid of tiles : %u x %u.  JPEG 2000 standard specifies maximum of %u tiles",
+		GRK_ERROR("Invalid grid of tiles : %u x %u.  JPEG 2000 standard specifies maximum of %u tiles",
 				cp->t_grid_width, cp->t_grid_height, max_num_tiles);
 		return false;
 	}
@@ -270,10 +268,9 @@ bool SIZMarker::read(CodeStreamDecompress *codeStream, uint8_t *p_header_data,
 
 	/* set up default dc level shift */
 	for (i = 0; i < image->numcomps; ++i) {
-		if (!image->comps[i].sgnd) {
+		if (!image->comps[i].sgnd)
 			decompressor->m_default_tcp->tccps[i].m_dc_level_shift =
 					1 << (image->comps[i].prec - 1);
-		}
 	}
 
 	for (i = 0; i < nb_tiles; ++i) {
@@ -284,7 +281,6 @@ bool SIZMarker::read(CodeStreamDecompress *codeStream, uint8_t *p_header_data,
 	subsampleAndReduceHeaderImageComponents(image, cp);
 
 	return true;
-
 }
 
 bool SIZMarker::write(CodeStreamCompress *codeStream, BufferedStream *stream){
