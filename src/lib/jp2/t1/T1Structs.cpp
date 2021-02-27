@@ -532,10 +532,6 @@ bool Resolution::init(bool isCompressor,
 							floordivpow2(y0, precinctExpn.y) << precinctExpn.y);
 
 	uint64_t num_precincts = (uint64_t)precinctGridWidth * precinctGridHeight;
-	if (mult_will_overflow(num_precincts, sizeof(Precinct))) {
-		GRK_ERROR(	"nb_precinct_size calculation would overflow ");
-		return false;
-	}
 	if (resno != 0) {
 		precinctStart=  grk_pt(ceildivpow2<uint32_t>(precinctStart.x, 1),
 								ceildivpow2<uint32_t>(precinctStart.y, 1));
