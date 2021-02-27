@@ -347,10 +347,10 @@ template<typename T> struct TileComponentWindowBuffer {
 		return getBandWindow(resno,orientation);
 	}
 
-	const grk_rect_u32 getPaddedTileBandWindow(uint8_t resno,eBandOrientation orientation) const{
+	const grk_rect_u32* getPaddedTileBandWindow(uint8_t resno,eBandOrientation orientation) const{
 		if (m_resWindows[resno]->m_paddedTileBandWindow.empty())
-			return grk_rect_u32();
-		return m_resWindows[resno]->m_paddedTileBandWindow[orientation];
+			return nullptr;
+		return &m_resWindows[resno]->m_paddedTileBandWindow[orientation];
 	}
 
 	/*

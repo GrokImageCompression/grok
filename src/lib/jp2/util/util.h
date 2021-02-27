@@ -174,6 +174,11 @@ template<typename T> struct grk_rectangle {
 								std::min<T>(y1,rhs->y1));
     }
 
+    inline bool non_empty_intersection(const grk_rectangle<T> *rhs) const{
+    	return std::max<T>(x0,rhs->x0) < std::min<T>(x1,rhs->x1) &&
+    			std::max<T>(y0,rhs->y0) < std::min<T>(y1,rhs->y1);
+    }
+
     grk_rectangle<T> rect_union(const grk_rectangle<T> *rhs) const{
     	return grk_rectangle<T>(std::min<T>(x0,rhs->x0),
     							std::min<T>(y0,rhs->y0),

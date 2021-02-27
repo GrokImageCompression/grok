@@ -1084,9 +1084,9 @@ typedef struct _grk_tccp_info {
 	/** Region Of Interest shift */
 	uint32_t roishift;
 	/** precinct width power of 2 exponent, < 16*/
-	uint32_t prcw_exp[GRK_J2K_MAXRLVLS];
+	uint32_t precinctGridWidthExp[GRK_J2K_MAXRLVLS];
 	/** precinct height power of 2 exponent, < 16 */
-	uint32_t prch_exp[GRK_J2K_MAXRLVLS];
+	uint32_t precinctGridHeightExp[GRK_J2K_MAXRLVLS];
 } grk_tccp_info;
 
 /**

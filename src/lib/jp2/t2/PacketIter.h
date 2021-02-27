@@ -39,6 +39,8 @@ enum J2K_T2_MODE {
  * Packet iterator resolution
  */
 struct grk_pi_resolution {
+	grk_pi_resolution() : pdx(0), pdy(0),pw(0),ph(0)
+	{}
 	uint32_t pdx, pdy;
 	uint32_t pw, ph;
 };
@@ -47,6 +49,8 @@ struct grk_pi_resolution {
  * Packet iterator component
  */
 struct grk_pi_comp {
+	grk_pi_comp() : dx(0), dy(0), numresolutions(0), resolutions(nullptr)
+	{}
 	uint32_t dx, dy;
 	/** number of resolution levels */
 	uint32_t numresolutions;
@@ -217,7 +221,7 @@ struct PacketIter {
 	 */
 	bool next_cprl(void);
 
-	bool generate_precinct_index(void);
+	bool generatePrecinctIndex(void);
 
 	/**
 	 Get next packet in precinct-component-resolution-layer order.

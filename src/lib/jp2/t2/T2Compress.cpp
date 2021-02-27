@@ -41,9 +41,6 @@ bool T2Compress::compress_packets(uint16_t tile_no, uint16_t max_layers,
 	auto tcp = &cp->tcps[tile_no];
 	IncludeTracker include(image->numcomps);
 	auto pi = pi_create_compress_decompress(true,image, cp, tile_no, FINAL_PASS, &include);
-	if (!pi)
-		return false;
-
 	pi_enable_tile_part_generation(pi, cp, tile_no, pino, first_poc_tile_part, tp_pos, FINAL_PASS);
 
 	auto current_pi = &pi[pino];
@@ -82,9 +79,6 @@ bool T2Compress::compress_packets_simulate(uint16_t tile_no, uint16_t max_layers
 			cp->m_coding_params.m_enc.m_max_comp_size > 0 ? image->numcomps : 1;
 	IncludeTracker include(image->numcomps);
 	auto pi = pi_create_compress_decompress(true,image, cp, tile_no, THRESH_CALC,&include);
-	if (!pi)
-		return false;
-
 	*all_packets_len = 0;
 
 	tileProcessor->m_packetTracker.clear();

@@ -35,29 +35,25 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent *tilec, Tile
 		GRK_ERROR( "Not enough memory for tile data");
 		return false;
 	}
+	bool wholeTileDecoding = tilec->isWholeTileDecoding();
 	for (uint8_t resno = 0; resno < tilec->resolutions_to_decompress; ++resno) {
 		auto res = &tilec->tileCompResolution[resno];
 		for (uint8_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-			Subband *GRK_RESTRICT band = res->band + bandIndex;
+			auto band = res->band + bandIndex;
+			auto paddedBandWindow = tilec->getBuffer()->getPaddedTileBandWindow(resno, band->orientation);
 			for (auto precinct : band->precincts) {
-				if (!tilec->subbandIntersectsAOI(resno,
-												band->orientation,
-												precinct)){
-
+				if (!wholeTileDecoding && !paddedBandWindow->non_empty_intersection(precinct))
 					continue;
-				}
 				for (uint64_t cblkno = 0; cblkno < precinct->getNumCblks();	++cblkno) {
 					auto cblk = precinct->getDecompressedBlockPtr(cblkno);
-					if (tilec->subbandIntersectsAOI(resno,
-													band->orientation,
-													cblk)){
+					if (wholeTileDecoding || paddedBandWindow->non_empty_intersection(cblk)){
 
 						auto block = new DecompressBlockExec();
 						block->x = cblk->x0;
 						block->y = cblk->y0;
 						block->tilec = tilec;
 						block->bandIndex = bandIndex;
-						block->band_orientation = band->orientation;
+						block->bandOrientation = band->orientation;
 						block->cblk = cblk;
 						block->cblk_sty = tccp->cblk_sty;
 						block->qmfbid = tccp->qmfbid;

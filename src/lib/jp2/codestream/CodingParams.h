@@ -80,10 +80,10 @@ struct TileComponentCodingParams {
 	uint8_t numgbits;
 	/** Region Of Interest shift */
 	uint8_t roishift;
-	/** precinct width (power of 2 exponent, < 16) */
-	uint32_t prcw_exp[GRK_J2K_MAXRLVLS];
-	/** precinct height (power of 2 exponent, < 16) */
-	uint32_t prch_exp[GRK_J2K_MAXRLVLS];
+	/** precinct grid width (power of 2 exponent, < 16) */
+	uint32_t precinctGridWidthExp[GRK_J2K_MAXRLVLS];
+	/** precinct grid height (power of 2 exponent, < 16) */
+	uint32_t precinctGridHeightExp[GRK_J2K_MAXRLVLS];
 	/** the dc_level_shift **/
 	int32_t m_dc_level_shift;
 };
@@ -260,6 +260,8 @@ struct CodingParams {
 	char *comment[GRK_NUM_COMMENTS_SUPPORTED];
 	uint16_t comment_len[GRK_NUM_COMMENTS_SUPPORTED];
 	bool isBinaryComment[GRK_NUM_COMMENTS_SUPPORTED];
+
+	// note: maximum number of tiles is 65535
 	/** number of tiles in width */
 	uint32_t t_grid_width;
 	/** number of tiles in height */

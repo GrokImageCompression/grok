@@ -204,7 +204,7 @@ private:
 
 
 struct PrecinctImpl {
-	PrecinctImpl(bool isCompressor, grk_rect_u32 *bounds,grk_pt cblk_expn);
+	PrecinctImpl(bool isCompressor, grk_rect_u32 *bounds,grk_pt cblkExpn);
 	~PrecinctImpl();
 	void initTagTrees();
 	void deleteTagTrees();
@@ -223,7 +223,7 @@ struct PrecinctImpl {
 
 // precinct
 struct Precinct : public grk_rect_u32 {
-	Precinct(const grk_rect_u32 &bounds, bool isCompressor, grk_pt cblk_expn);
+	Precinct(const grk_rect_u32 &bounds, bool isCompressor, grk_pt cblkExpn);
 	~Precinct(void);
 	void initTagTrees(void);
 	void deleteTagTrees(void);
@@ -257,10 +257,10 @@ struct Subband : public grk_rect_u32 {
 	Precinct* getPrecinct(uint64_t precinctIndex);
 	Precinct* createPrecinct(bool isCompressor,
 						uint64_t precinctIndex,
-						grk_pt precinct_start,
-						grk_pt precinct_expn,
+						grk_pt precinctStart,
+						grk_pt precinctExpn,
 						uint32_t pw,
-						grk_pt cblk_expn);
+						grk_pt cblkExpn);
 
 	eBandOrientation orientation;
 	std::vector<Precinct*> precincts;
@@ -285,9 +285,9 @@ struct Resolution : public grk_rect_u32 {
 									// (in canvas coords, but shifted to tile origin)
 	uint32_t numBandWindows;  // 1 or 3
 	uint32_t pw, ph; 	/* dimensions of precinct grid */
-	grk_pt cblk_expn;
-	grk_pt precinct_start;
-	grk_pt precinct_expn;
+	grk_pt cblkExpn;
+	grk_pt precinctStart;
+	grk_pt precinctExpn;
 	grk_plugin_tile *current_plugin_tile;
 
 };
@@ -297,7 +297,7 @@ struct BlockExec : public IOpenable {
 	BlockExec();
 	TileComponent *tilec;
 	uint8_t bandIndex;
-	eBandOrientation band_orientation;
+	eBandOrientation bandOrientation;
 	float stepsize;
 	uint32_t cblk_sty;
 	uint8_t qmfbid;

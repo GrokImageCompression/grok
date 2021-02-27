@@ -67,7 +67,7 @@ void T1CompressScheduler::scheduleCompress(TileCodingParams *tcp,
 						maxCblkH = std::max<uint32_t>(maxCblkH,
 								(uint32_t) (1 << tccp->cblkh));
 						block->compno = compno;
-						block->band_orientation = band->orientation;
+						block->bandOrientation = band->orientation;
 						block->cblk = cblk;
 						block->cblk_sty = tccp->cblk_sty;
 						block->qmfbid = tccp->qmfbid;

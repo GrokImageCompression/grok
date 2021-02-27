@@ -109,7 +109,7 @@ bool T1Part1::compress(CompressBlockExec *block) {
 
 	cblkexp.data = cblk->paddedCompressedStream;
 
-	auto disto = t1->compress_cblk(&cblkexp, max, block->band_orientation,
+	auto disto = t1->compress_cblk(&cblkexp, max, block->bandOrientation,
 			block->compno,
 			(uint8_t)((block->tile->comps + block->compno)->numresolutions - 1 - block->resno),
 			block->qmfbid,
@@ -184,7 +184,7 @@ bool T1Part1::decompress(DecompressBlockExec *block) {
 		cblkexp.numbps = cblk->numbps;
 
 		bool ret =t1->decompress_cblk(&cblkexp,
-									block->band_orientation,
+									block->bandOrientation,
 									block->cblk_sty);
 
 		delete[] segs;

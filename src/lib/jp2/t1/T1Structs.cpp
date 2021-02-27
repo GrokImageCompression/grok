@@ -534,11 +534,11 @@ bool Resolution::init(bool isCompressor,
 	this->current_plugin_tile = current_plugin_tile;
 
 	/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
-	precinct_expn = grk_pt(tccp->prcw_exp[resno],tccp->prch_exp[resno]);
+	precinctExpn = grk_pt(tccp->precinctGridWidthExp[resno],tccp->precinctGridHeightExp[resno]);
 
 	/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
-	precinct_start = grk_pt(floordivpow2(x0, precinct_expn.x) << precinct_expn.x,
-							floordivpow2(y0, precinct_expn.y) << precinct_expn.y);
+	precinctStart = grk_pt(floordivpow2(x0, precinctExpn.x) << precinctExpn.x,
+							floordivpow2(y0, precinctExpn.y) << precinctExpn.y);
 
 	uint64_t num_precincts = (uint64_t)pw * ph;
 	if (mult_will_overflow(num_precincts, sizeof(Precinct))) {
@@ -546,13 +546,13 @@ bool Resolution::init(bool isCompressor,
 		return false;
 	}
 	if (resno != 0) {
-		precinct_start=  grk_pt(ceildivpow2<uint32_t>(precinct_start.x, 1),
-								ceildivpow2<uint32_t>(precinct_start.y, 1));
-		precinct_expn.x--;
-		precinct_expn.y--;
+		precinctStart=  grk_pt(ceildivpow2<uint32_t>(precinctStart.x, 1),
+								ceildivpow2<uint32_t>(precinctStart.y, 1));
+		precinctExpn.x--;
+		precinctExpn.y--;
 	}
-	cblk_expn    =  grk_pt(std::min<uint32_t>(tccp->cblkw, precinct_expn.x),
-						   std::min<uint32_t>(tccp->cblkh, precinct_expn.y));
+	cblkExpn    =  grk_pt(std::min<uint32_t>(tccp->cblkw, precinctExpn.x),
+						   std::min<uint32_t>(tccp->cblkh, precinctExpn.y));
 	for (uint8_t bandIndex = 0; bandIndex < numBandWindows; ++bandIndex) {
 		auto curr_band = band + bandIndex;
 		curr_band->numPrecincts = num_precincts;
@@ -560,10 +560,10 @@ bool Resolution::init(bool isCompressor,
 			for (uint64_t precinctIndex = 0; precinctIndex < num_precincts; ++precinctIndex) {
 				if (!curr_band->createPrecinct(true,
 									precinctIndex,
-									precinct_start,
-									precinct_expn,
+									precinctStart,
+									precinctExpn,
 									pw,
-									cblk_expn))
+									cblkExpn))
 					return false;
 
 			}
@@ -576,7 +576,7 @@ bool Resolution::init(bool isCompressor,
 
 BlockExec::BlockExec() : 	tilec(nullptr),
 							bandIndex(0),
-							band_orientation(BAND_ORIENT_LL),
+							bandOrientation(BAND_ORIENT_LL),
 							stepsize(0),
 							cblk_sty(0),
 							qmfbid(0),

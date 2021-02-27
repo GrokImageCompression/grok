@@ -230,8 +230,8 @@ bool CodeStreamDecompress::readHeader(grk_header_info  *header_info){
 		// !!! assume that mode switch is constant across all tiles
 		header_info->cblk_sty = tccp->cblk_sty;
 		for (uint32_t i = 0; i < header_info->numresolutions; ++i) {
-			header_info->prcw_init[i] = 1U << tccp->prcw_exp[i];
-			header_info->prch_init[i] = 1U << tccp->prch_exp[i];
+			header_info->prcw_init[i] = 1U << tccp->precinctGridWidthExp[i];
+			header_info->prch_init[i] = 1U << tccp->precinctGridHeightExp[i];
 		}
 		header_info->tx0 = m_cp.tx0;
 		header_info->ty0 = m_cp.ty0;
@@ -1672,16 +1672,16 @@ bool CodeStreamDecompress::read_SPCod_SPCoc( uint32_t compno, uint8_t *p_header_
 				GRK_ERROR("Invalid precinct size");
 				return false;
 			}
-			tccp->prcw_exp[i] = tmp & 0xf;
-			tccp->prch_exp[i] = (uint32_t)(tmp >> 4U);
+			tccp->precinctGridWidthExp[i] = tmp & 0xf;
+			tccp->precinctGridHeightExp[i] = (uint32_t)(tmp >> 4U);
 		}
 
 		*header_size = (uint16_t) (*header_size - tccp->numresolutions);
 	} else {
 		/* set default size for the precinct width and height */
 		for (i = 0; i < tccp->numresolutions; ++i) {
-			tccp->prcw_exp[i] = 15;
-			tccp->prch_exp[i] = 15;
+			tccp->precinctGridWidthExp[i] = 15;
+			tccp->precinctGridHeightExp[i] = 15;
 		}
 	}
 
@@ -2386,8 +2386,8 @@ bool CodeStreamDecompress::read_cod(uint8_t *p_header_data,	uint16_t header_size
 		copied_tccp->cblkh = ref_tccp->cblkh;
 		copied_tccp->cblk_sty = ref_tccp->cblk_sty;
 		copied_tccp->qmfbid = ref_tccp->qmfbid;
-		memcpy(copied_tccp->prcw_exp, ref_tccp->prcw_exp, prc_size);
-		memcpy(copied_tccp->prch_exp, ref_tccp->prch_exp, prc_size);
+		memcpy(copied_tccp->precinctGridWidthExp, ref_tccp->precinctGridWidthExp, prc_size);
+		memcpy(copied_tccp->precinctGridHeightExp, ref_tccp->precinctGridHeightExp, prc_size);
 	}
 
 	return true;
@@ -2677,8 +2677,8 @@ void CodeStreamDecompress::dump_tile_info(TileCodingParams *default_tile,
 
 			fprintf(out_stream, "\t\t\t preccintsize (w,h)=");
 			for (resno = 0; resno < tccp->numresolutions; resno++) {
-				fprintf(out_stream, "(%d,%d) ", tccp->prcw_exp[resno],
-						tccp->prch_exp[resno]);
+				fprintf(out_stream, "(%d,%d) ", tccp->precinctGridWidthExp[resno],
+						tccp->precinctGridHeightExp[resno]);
 			}
 			fprintf(out_stream, "\n");
 

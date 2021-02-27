@@ -103,8 +103,8 @@ bool TileComponent::init(bool isCompressor,
 		res->set_rect(dim);
 
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
-		uint32_t pdx = m_tccp->prcw_exp[resno];
-		uint32_t pdy = m_tccp->prch_exp[resno];
+		uint32_t pdx = m_tccp->precinctGridWidthExp[resno];
+		uint32_t pdy = m_tccp->precinctGridHeightExp[resno];
 		/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
 		grk_rect_u32 precinct_grid;
 		precinct_grid.x0 = floordivpow2(res->x0, pdx) << pdx;
@@ -178,12 +178,8 @@ bool TileComponent::init(bool isCompressor,
 
 bool TileComponent::subbandIntersectsAOI(uint8_t resno,
 								eBandOrientation orient,
-								const grk_rect_u32 *aoi) const
-{
-	assert(resno < numresolutions);
-	if (wholeTileDecompress)
-		return true;
-    return buf->getPaddedTileBandWindow(resno, orient).intersection(aoi).non_empty();
+								const grk_rect_u32 *aoi) const {
+    return buf->getPaddedTileBandWindow(resno, orient)->non_empty_intersection(aoi);
 }
 
 void TileComponent::allocSparseBuffer(uint32_t numres, bool truncatedTile){
@@ -200,10 +196,10 @@ void TileComponent::allocSparseBuffer(uint32_t numres, bool truncatedTile){
             		continue;
             	auto cblk_grid = precinct->getCblkGrid();
             	auto cblk_expn = precinct->getCblkExpn();
-				grk_rect_u32 roi_grid = grk_rect_u32( floordivpow2(roi.x0,  cblk_expn.x),
-													 floordivpow2(roi.y0,  cblk_expn.y),
-													 ceildivpow2(roi.x1,  cblk_expn.x),
-													 ceildivpow2(roi.y1,  cblk_expn.y));
+				grk_rect_u32 roi_grid = grk_rect_u32( floordivpow2(roi->x0,  cblk_expn.x),
+													 floordivpow2(roi->y0,  cblk_expn.y),
+													 ceildivpow2(roi->x1,  cblk_expn.x),
+													 ceildivpow2(roi->y1,  cblk_expn.y));
 				roi_grid.clip(&cblk_grid);
 				auto w = cblk_grid.width();
 				for (uint32_t j = roi_grid.y0; j < roi_grid.y1; ++j) {
@@ -252,10 +248,10 @@ void TileComponent::allocSparseBuffer(uint32_t numres, bool truncatedTile){
             		continue;
             	auto cblk_grid = precinct->getCblkGrid();
             	auto cblk_expn = precinct->getCblkExpn();
-				grk_rect_u32 roi_grid = grk_rect_u32( floordivpow2(roi.x0,  cblk_expn.x),
-													 floordivpow2(roi.y0,  cblk_expn.y),
-													 ceildivpow2(roi.x1,  cblk_expn.x),
-													 ceildivpow2(roi.y1,  cblk_expn.y));
+				grk_rect_u32 roi_grid = grk_rect_u32( floordivpow2(roi->x0,  cblk_expn.x),
+													 floordivpow2(roi->y0,  cblk_expn.y),
+													 ceildivpow2(roi->x1,  cblk_expn.x),
+													 ceildivpow2(roi->y1,  cblk_expn.y));
 				roi_grid.clip(&cblk_grid);
 				auto w = cblk_grid.width();
 				for (uint32_t j = cblk_grid.y0; j < cblk_grid.y1; ++j) {
@@ -374,7 +370,7 @@ template<typename F> bool TileComponent::postDecompressImpl(int32_t *srcData, De
 
 	grk_buffer_2d<int32_t> dest;
 	grk_buffer_2d<int32_t> src = grk_buffer_2d<int32_t>(srcData, false, cblk->width(), cblk->width(), cblk->height());
-	buf->transformToCanvasCoordinates(block->resno,block->band_orientation,block->x,block->y);
+	buf->transformToCanvasCoordinates(block->resno,block->bandOrientation,block->x,block->y);
 	if (m_sa) {
 		dest = src;
 	}
@@ -383,7 +379,7 @@ template<typename F> bool TileComponent::postDecompressImpl(int32_t *srcData, De
 								block->y,
 								block->x + cblk->width(),
 								block->y + cblk->height()));
-		dest = buf->getCodeBlockDestWindow(block->resno,block->band_orientation);
+		dest = buf->getCodeBlockDestWindow(block->resno,block->bandOrientation);
 	}
 
 	if (!cblk->seg_buffers.empty()){

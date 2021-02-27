@@ -53,7 +53,7 @@ static void pi_update_tcp_progressions_compress(CodingParams *p_cp,
 									bool poc);
 
 /**
- * Gets the compression parameters needed to update the coding parameters and all the pocs.
+ * Get the compression parameters needed to update the coding parameters and all the pocs.
  * The precinct widths, heights, dx and dy for each component at each resolution will be stored as well.
  * the last parameter of the function should be an array of pointers of size nb components, each pointer leading
  * to an area of size 4 * max_res. The data is stored inside this area with the following pattern :
@@ -67,7 +67,7 @@ static void pi_update_tcp_progressions_compress(CodingParams *p_cp,
  * @param	max_res		maximum number of resolutions for all the poc inside the tile.
  * @param	dx_min		minimum dx of all the components of all the resolutions for the tile.
  * @param	dy_min		minimum dy of all the components of all the resolutions for the tile.
- * @param	p_resolutions	pointer to an area corresponding to the one described above.
+ * @param	precinctGridByComponent	stores log2 precinct grid dimensions by component
  */
 static void pi_get_params(const GrkImage *image,
 											const CodingParams *p_cp,
@@ -78,7 +78,7 @@ static void pi_get_params(const GrkImage *image,
 											uint64_t *precincts,
 											uint64_t *max_precincts,
 											uint8_t *max_res,
-											uint32_t **p_resolutions);
+											uint32_t **precinctGridByComponent);
 /**
  * Allocates memory for a packet iterator. Data and data sizes are set by this operation.
  * No other data is set. The include section of the packet  iterator is not allocated.
@@ -128,21 +128,12 @@ static PacketIter* pi_create(const GrkImage *image,
 	}
 	for (uint32_t pino = 0; pino < poc_bound; ++pino) {
 		auto current_pi = pi + pino;
-		current_pi->comps = (grk_pi_comp*) grk_calloc(image->numcomps,
-				sizeof(grk_pi_comp));
-		if (!current_pi->comps) {
-			pi_destroy(pi);
-			return nullptr;
-		}
+		current_pi->comps = new grk_pi_comp[image->numcomps];
 		current_pi->numcomps = image->numcomps;
 		for (uint32_t compno = 0; compno < image->numcomps; ++compno) {
 			auto comp = current_pi->comps + compno;
 			auto tccp = &tcp->tccps[compno];
-			comp->resolutions = (grk_pi_resolution*) grk_calloc(tccp->numresolutions, sizeof(grk_pi_resolution));
-			if (!comp->resolutions) {
-				pi_destroy(pi);
-				return nullptr;
-			}
+			comp->resolutions =  new grk_pi_resolution[tccp->numresolutions];
 			comp->numresolutions = tccp->numresolutions;
 		}
 	}
@@ -184,16 +175,14 @@ PacketIter* pi_create_compress_decompress(bool compression,
 
 	auto tcp = &p_cp->tcps[tileno];
 	auto pi = pi_create(image, p_cp, tileno,include);
-	if (!pi)
-		return nullptr;
 
 	uint32_t data_stride = 4 * GRK_J2K_MAXRLVLS;
-	auto tmp_data =  new uint32_t[data_stride * image->numcomps];
-	auto tmp_ptr = new uint32_t*[image->numcomps];
-	auto encoding_value_ptr = tmp_data;
+	auto precinctGrid =  new uint32_t[data_stride * image->numcomps];
+	auto precinctGridByComponent = new uint32_t*[image->numcomps];
+	auto resolutionPrecinctGrid = precinctGrid;
 	for (uint32_t compno = 0; compno < image->numcomps; ++compno) {
-		tmp_ptr[compno] = encoding_value_ptr;
-		encoding_value_ptr += data_stride;
+		precinctGridByComponent[compno] = resolutionPrecinctGrid;
+		resolutionPrecinctGrid += data_stride;
 	}
 
 	uint8_t max_res;
@@ -209,7 +198,7 @@ PacketIter* pi_create_compress_decompress(bool compression,
 				include->precincts,
 				&max_precincts,
 				&max_res,
-				tmp_ptr);
+				precinctGridByComponent);
 
 	if (!compression)
 		pi_initialize_progressions_decompress(tcp, pi, max_res,max_precincts);
@@ -247,25 +236,25 @@ PacketIter* pi_create_compress_decompress(bool compression,
 			auto current_comp = cur_pi->comps + compno;
 			auto img_comp = image->comps + compno;
 
-			encoding_value_ptr = tmp_ptr[compno];
+			resolutionPrecinctGrid = precinctGridByComponent[compno];
 			current_comp->dx = img_comp->dx;
 			current_comp->dy = img_comp->dy;
 			/* resolutions have already been initialized */
 			for (uint32_t resno = 0; resno < current_comp->numresolutions; resno++) {
 				auto res = current_comp->resolutions + resno;
 
-				res->pdx = *(encoding_value_ptr++);
-				res->pdy = *(encoding_value_ptr++);
-				res->pw = *(encoding_value_ptr++);
-				res->ph = *(encoding_value_ptr++);
+				res->pdx = *(resolutionPrecinctGrid++);
+				res->pdy = *(resolutionPrecinctGrid++);
+				res->pw = *(resolutionPrecinctGrid++);
+				res->ph = *(resolutionPrecinctGrid++);
 			}
 		}
 
 
 		cur_pi->update_dxy();
 	}
-	delete[] tmp_data;
-	delete[] tmp_ptr;
+	delete[] precinctGrid;
+	delete[] precinctGridByComponent;
 
 	if (compression) {
 		bool poc = tcp->POC && (GRK_IS_CINEMA(p_cp->rsiz) || p_t2_mode == FINAL_PASS);
@@ -562,7 +551,7 @@ static void pi_get_params(const GrkImage *image,
 								uint64_t *precincts,
 								uint64_t *max_precincts,
 								uint8_t *max_res,
-								uint32_t **p_resolutions) {
+								uint32_t **precinctGridByComponent) {
 	assert(p_cp != nullptr);
 	assert(image != nullptr);
 	assert(tileno < p_cp->t_grid_width * p_cp->t_grid_height);
@@ -583,9 +572,9 @@ static void pi_get_params(const GrkImage *image,
 	auto tcp = &p_cp->tcps[tileno];
 
 	for (uint32_t compno = 0; compno < image->numcomps; ++compno) {
-		uint32_t* resolution = nullptr;
-		if (p_resolutions)
-			resolution = p_resolutions[compno];
+		uint32_t* precinctGrid = nullptr;
+		if (precinctGridByComponent)
+			precinctGrid = precinctGridByComponent[compno];
 
 		auto tccp = tcp->tccps + compno;
 		auto comp = image->comps + compno;
@@ -596,31 +585,32 @@ static void pi_get_params(const GrkImage *image,
 
 		/* use custom size for precincts*/
 		for (uint32_t resno = 0; resno < tccp->numresolutions; ++resno) {
-			uint32_t pdx = tccp->prcw_exp[resno];
-			uint32_t pdy = tccp->prch_exp[resno];
-			if (resolution) {
-				*resolution++ = pdx;
-				*resolution++ = pdy;
+			uint32_t precinctGridWidthExp = tccp->precinctGridWidthExp[resno];
+			uint32_t precinctGridHeightExp = tccp->precinctGridHeightExp[resno];
+			if (precinctGrid) {
+				*precinctGrid++ = precinctGridWidthExp;
+				*precinctGrid++ = precinctGridHeightExp;
 			}
 
-			uint64_t dx = comp->dx * ((uint64_t) 1u << (pdx + tccp->numresolutions - 1U - resno));
-			uint64_t dy = comp->dy * ((uint64_t) 1u << (pdy + tccp->numresolutions - 1U - resno));
+			uint64_t dx = comp->dx * ((uint64_t) 1u << (precinctGridWidthExp + tccp->numresolutions - 1U - resno));
+			uint64_t dy = comp->dy * ((uint64_t) 1u << (precinctGridHeightExp + tccp->numresolutions - 1U - resno));
 			if (dx < UINT_MAX)
 				*dx_min = std::min<uint32_t>(*dx_min, (uint32_t) dx);
 			if (dy < UINT_MAX)
 				*dy_min = std::min<uint32_t>(*dy_min, (uint32_t) dy);
 			auto resBounds 	= tileCompBounds.rectceildivpow2(tccp->numresolutions - 1U - resno);
-			uint32_t px0 	= floordivpow2(resBounds.x0, pdx) << pdx;
-			uint32_t py0 	= floordivpow2(resBounds.y0, pdy) << pdy;
-			uint32_t px1 	= ceildivpow2<uint32_t>(resBounds.x1, pdx) << pdx;
-			uint32_t py1 	= ceildivpow2<uint32_t>(resBounds.y1, pdy) << pdy;
-			uint32_t pw 	= (resBounds.width()==0) ? 0 : ((px1 - px0) >> pdx);
-			uint32_t ph 	= (resBounds.height()==0) ? 0 : ((py1 - py0) >> pdy);
-			if (resolution) {
-				*resolution++ = pw;
-				*resolution++ = ph;
+			auto precinctGridDims = grk_rect_u32(floordivpow2(resBounds.x0, precinctGridWidthExp) << precinctGridWidthExp,
+											floordivpow2(resBounds.y0, precinctGridHeightExp) << precinctGridHeightExp,
+											ceildivpow2<uint32_t>(resBounds.x1, precinctGridWidthExp) << precinctGridWidthExp,
+											ceildivpow2<uint32_t>(resBounds.y1, precinctGridHeightExp) << precinctGridHeightExp);
+
+			precinctGridWidthExp	= (resBounds.width()==0) ? 0 : (precinctGridDims.width() >> precinctGridWidthExp);
+			precinctGridHeightExp	= (resBounds.height()==0) ? 0: (precinctGridDims.height() >> precinctGridHeightExp);
+			if (precinctGrid) {
+				*precinctGrid++ = precinctGridWidthExp;
+				*precinctGrid++ = precinctGridHeightExp;
 			}
-			uint64_t product = (uint64_t)pw * ph;
+			uint64_t product = (uint64_t)precinctGridWidthExp * precinctGridHeightExp;
 			if (precincts && product > precincts[resno])
 				precincts[resno] = product;
 			if (product > *max_precincts)
@@ -782,8 +772,8 @@ PacketIter::PacketIter() : tp_on(false),
 PacketIter::~PacketIter(){
 	if (comps) {
 		for (uint32_t compno = 0; compno < numcomps; compno++)
-			grk_free((comps + compno)->resolutions);
-		grk_free(comps);
+			delete[] (comps + compno)->resolutions;
+		delete[] comps;
 	}
 }
 
@@ -801,7 +791,7 @@ bool PacketIter::next_cprl(void) {
 		for (; y < prog.ty1;	y += dy - (y % dy)) {
 			for (; x < prog.tx1;	x += dx - (x % dx)) {
 				for (; resno < std::min<uint32_t>(prog.resE, comp->numresolutions); resno++) {
-					if (!generate_precinct_index())
+					if (!generatePrecinctIndex())
 						continue;
 					for (; layno < prog.layE; layno++) {
 						if (update_include())
@@ -830,7 +820,7 @@ bool PacketIter::next_pcrl(void) {
 			for (; compno < prog.compE; compno++) {
 				auto comp = comps + compno;
 				for (; resno< std::min<uint32_t>(prog.resE,comp->numresolutions); resno++) {
-					if (!generate_precinct_index())
+					if (!generatePrecinctIndex())
 						continue;
 					for (; layno < prog.layE; layno++) {
 						if (update_include())
@@ -909,7 +899,7 @@ bool PacketIter::next_rpcl(void) {
 		for (; y < prog.ty1;	y += dy - (y % dy)) {
 			for (; x < prog.tx1;	x += dx - (x % dx)) {
 				for (; compno < prog.compE; compno++) {
-					if (!generate_precinct_index()){
+					if (!generatePrecinctIndex()){
 						continue;
 					}
 					for (; layno < prog.layE; layno++) {
@@ -948,7 +938,7 @@ bool PacketIter::next(void) {
 }
 
 
-bool PacketIter::generate_precinct_index(void){
+bool PacketIter::generatePrecinctIndex(void){
 	if (compno >= numcomps){
 		GRK_ERROR("Packet iterator component %d must be strictly less than "
 				"total number of components %d",compno , numcomps);
@@ -983,11 +973,11 @@ bool PacketIter::generate_precinct_index(void){
 	if ((trx0 == trx1) || (try0 == try1))
 		return false;
 
-	uint32_t prci = floordivpow2(ceildiv<uint64_t>((uint64_t) x,	((uint64_t) comp->dx << levelno)), res->pdx)
+	uint32_t prcX = floordivpow2(ceildiv<uint64_t>((uint64_t) x,	((uint64_t) comp->dx << levelno)), res->pdx)
 			- floordivpow2(trx0, res->pdx);
-	uint32_t prcj = floordivpow2(	ceildiv<uint64_t>((uint64_t) y,	((uint64_t) comp->dy << levelno)), res->pdy)
+	uint32_t prcY = floordivpow2(	ceildiv<uint64_t>((uint64_t) y,	((uint64_t) comp->dy << levelno)), res->pdy)
 			- floordivpow2(try0, res->pdy);
-	precinctIndex = (prci + (uint64_t)prcj * res->pw);
+	precinctIndex = (prcX + (uint64_t)prcY * res->pw);
 	//skip precinct numbers greater than total number of precincts
 	// for this resolution
 	return (precinctIndex < (uint64_t)res->pw * res->ph);
