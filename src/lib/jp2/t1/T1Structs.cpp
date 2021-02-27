@@ -482,15 +482,15 @@ Precinct* Subband::createPrecinct(bool isCompressor,
 					uint64_t precinctIndex,
 					grk_pt precinct_start,
 					grk_pt precinct_expn,
-					uint32_t pw,
+					uint32_t precinctGridWidth,
 					grk_pt cblk_expn){
 
 	auto temp = precinctMap.find(precinctIndex);
 	if (temp != precinctMap.end())
 		return precincts[temp->second];
 
-	auto band_precinct_start = grk_pt(	precinct_start.x + (uint32_t)((precinctIndex % pw) << precinct_expn.x),
-			precinct_start.y + (uint32_t)((precinctIndex / pw) << precinct_expn.y));
+	auto band_precinct_start = grk_pt(	precinct_start.x + (uint32_t)((precinctIndex % precinctGridWidth) << precinct_expn.x),
+			precinct_start.y + (uint32_t)((precinctIndex / precinctGridWidth) << precinct_expn.y));
 	auto precinct_dim = grk_rect_u32(
 			band_precinct_start.x,
 			band_precinct_start.y,
@@ -510,8 +510,8 @@ Precinct* Subband::createPrecinct(bool isCompressor,
 Resolution::Resolution() :
 		initialized(false),
 		numBandWindows(0),
-		pw(0),
-		ph(0),
+		precinctGridWidth(0),
+		precinctGridHeight(0),
 		current_plugin_tile(nullptr)
 {}
 
@@ -534,13 +534,13 @@ bool Resolution::init(bool isCompressor,
 	this->current_plugin_tile = current_plugin_tile;
 
 	/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
-	precinctExpn = grk_pt(tccp->precinctGridWidthExp[resno],tccp->precinctGridHeightExp[resno]);
+	precinctExpn = grk_pt(tccp->precinctWidthExp[resno],tccp->precinctHeightExp[resno]);
 
 	/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
 	precinctStart = grk_pt(floordivpow2(x0, precinctExpn.x) << precinctExpn.x,
 							floordivpow2(y0, precinctExpn.y) << precinctExpn.y);
 
-	uint64_t num_precincts = (uint64_t)pw * ph;
+	uint64_t num_precincts = (uint64_t)precinctGridWidth * precinctGridHeight;
 	if (mult_will_overflow(num_precincts, sizeof(Precinct))) {
 		GRK_ERROR(	"nb_precinct_size calculation would overflow ");
 		return false;
@@ -562,7 +562,7 @@ bool Resolution::init(bool isCompressor,
 									precinctIndex,
 									precinctStart,
 									precinctExpn,
-									pw,
+									precinctGridWidth,
 									cblkExpn))
 					return false;
 

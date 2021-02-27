@@ -175,8 +175,8 @@ TileComponentCodingParams::TileComponentCodingParams() : csty(0),
 														m_dc_level_shift(0)
 {
 	for (uint32_t i = 0; i < GRK_J2K_MAXRLVLS; ++i){
-		precinctGridWidthExp[i] = 0;
-		precinctGridHeightExp[i] = 0;
+		precinctWidthExp[i] = 0;
+		precinctHeightExp[i] = 0;
 	}
 }
 

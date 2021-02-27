@@ -480,15 +480,15 @@ bool CodeStreamCompress::initCompress(grk_cparameters  *parameters,GrkImage *ima
 						it_res--) {
 					if (p < parameters->res_spec) {
 						if (parameters->prcw_init[p] < 1) {
-							tccp->precinctGridWidthExp[it_res] = 1;
+							tccp->precinctWidthExp[it_res] = 1;
 						} else {
-							tccp->precinctGridWidthExp[it_res] = floorlog2<uint32_t>(
+							tccp->precinctWidthExp[it_res] = floorlog2<uint32_t>(
 									parameters->prcw_init[p]);
 						}
 						if (parameters->prch_init[p] < 1) {
-							tccp->precinctGridHeightExp[it_res] = 1;
+							tccp->precinctHeightExp[it_res] = 1;
 						} else {
-							tccp->precinctGridHeightExp[it_res] = floorlog2<uint32_t>(
+							tccp->precinctHeightExp[it_res] = floorlog2<uint32_t>(
 									parameters->prch_init[p]);
 						}
 					} else {
@@ -498,23 +498,23 @@ bool CodeStreamCompress::initCompress(grk_cparameters  *parameters,GrkImage *ima
 						size_prcw = parameters->prcw_init[res_spec - 1]	>> (p - (res_spec - 1));
 						size_prch = parameters->prch_init[res_spec - 1]	>> (p - (res_spec - 1));
 						if (size_prcw < 1) {
-							tccp->precinctGridWidthExp[it_res] = 1;
+							tccp->precinctWidthExp[it_res] = 1;
 						} else {
-							tccp->precinctGridWidthExp[it_res] = floorlog2<uint32_t>(size_prcw);
+							tccp->precinctWidthExp[it_res] = floorlog2<uint32_t>(size_prcw);
 						}
 						if (size_prch < 1) {
-							tccp->precinctGridHeightExp[it_res] = 1;
+							tccp->precinctHeightExp[it_res] = 1;
 						} else {
-							tccp->precinctGridHeightExp[it_res] = floorlog2<uint32_t>(size_prch);
+							tccp->precinctHeightExp[it_res] = floorlog2<uint32_t>(size_prch);
 						}
 					}
 					p++;
-					/*printf("\nsize precinct for level %u : %u,%u\n", it_res,tccp->precinctGridWidthExp[it_res], tccp->precinctGridHeightExp[it_res]); */
+					/*printf("\nsize precinct for level %u : %u,%u\n", it_res,tccp->precinctWidthExp[it_res], tccp->precinctHeightExp[it_res]); */
 				} /*end for*/
 			} else {
 				for (uint32_t j = 0; j < tccp->numresolutions; j++) {
-					tccp->precinctGridWidthExp[j] = 15;
-					tccp->precinctGridHeightExp[j] = 15;
+					tccp->precinctWidthExp[j] = 15;
+					tccp->precinctHeightExp[j] = 15;
 				}
 			}
 			tcp->qcd.pull(tccp->stepsizes, !parameters->irreversible);
@@ -1442,9 +1442,9 @@ bool CodeStreamCompress::compare_SPCod_SPCoc(
 	if ((tccp0->csty & J2K_CCP_CSTY_PRT) != (tccp1->csty & J2K_CCP_CSTY_PRT))
 		return false;
 	for (uint32_t i = 0U; i < tccp0->numresolutions; ++i) {
-		if (tccp0->precinctGridWidthExp[i] != tccp1->precinctGridWidthExp[i])
+		if (tccp0->precinctWidthExp[i] != tccp1->precinctWidthExp[i])
 			return false;
-		if (tccp0->precinctGridHeightExp[i] != tccp1->precinctGridHeightExp[i])
+		if (tccp0->precinctHeightExp[i] != tccp1->precinctHeightExp[i])
 			return false;
 	}
 
@@ -1478,7 +1478,7 @@ bool CodeStreamCompress::write_SPCod_SPCoc(uint32_t comp_no) {
 		for (uint32_t i = 0; i < tccp->numresolutions; ++i) {
 			/* SPcoc (I_i) */
 			if (!m_stream->write_byte(
-					(uint8_t) (tccp->precinctGridWidthExp[i] + (tccp->precinctGridHeightExp[i] << 4)))) {
+					(uint8_t) (tccp->precinctWidthExp[i] + (tccp->precinctHeightExp[i] << 4)))) {
 				return false;
 			}
 		}

@@ -653,7 +653,7 @@ bool TileProcessor::init(const GrkImage *output_image,bool isCompressor) {
 			TileComponent *tilec = &tile->comps[compno];
 			for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
 				auto res = tilec->tileCompResolution + resno;
-				max_precincts = max<uint64_t>(max_precincts, (uint64_t)res->pw * res->ph);
+				max_precincts = max<uint64_t>(max_precincts, (uint64_t)res->precinctGridWidth * res->precinctGridHeight);
 			}
 		}
 		m_packetTracker.init(tile->numcomps,

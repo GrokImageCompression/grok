@@ -76,7 +76,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no,
 									curpi->precinctIndex,
 									res->precinctStart,
 									res->precinctExpn,
-									res->pw,
+									res->precinctGridWidth,
 									res->cblkExpn))
 					return false;
 

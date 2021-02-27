@@ -259,7 +259,7 @@ struct Subband : public grk_rect_u32 {
 						uint64_t precinctIndex,
 						grk_pt precinctStart,
 						grk_pt precinctExpn,
-						uint32_t pw,
+						uint32_t precinctGridWidth,
 						grk_pt cblkExpn);
 
 	eBandOrientation orientation;
@@ -284,7 +284,7 @@ struct Resolution : public grk_rect_u32 {
 	Subband band[BAND_NUM_INDICES]; // unreduced tile component bands
 									// (in canvas coords, but shifted to tile origin)
 	uint32_t numBandWindows;  // 1 or 3
-	uint32_t pw, ph; 	/* dimensions of precinct grid */
+	uint32_t precinctGridWidth, precinctGridHeight; 	/* dimensions of precinct grid */
 	grk_pt cblkExpn;
 	grk_pt precinctStart;
 	grk_pt precinctExpn;

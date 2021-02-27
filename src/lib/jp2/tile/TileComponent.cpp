@@ -103,26 +103,26 @@ bool TileComponent::init(bool isCompressor,
 		res->set_rect(dim);
 
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
-		uint32_t pdx = m_tccp->precinctGridWidthExp[resno];
-		uint32_t pdy = m_tccp->precinctGridHeightExp[resno];
+		uint32_t precinctWidthExp = m_tccp->precinctWidthExp[resno];
+		uint32_t precinctHeightExp = m_tccp->precinctHeightExp[resno];
 		/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
-		grk_rect_u32 precinct_grid;
-		precinct_grid.x0 = floordivpow2(res->x0, pdx) << pdx;
-		precinct_grid.y0 = floordivpow2(res->y0, pdy) << pdy;
-		uint64_t temp = (uint64_t)ceildivpow2<uint32_t>(res->x1, pdx) << pdx;
+		grk_rect_u32 allPrecinctsBounds;
+		allPrecinctsBounds.x0 = floordivpow2(res->x0, precinctWidthExp) << precinctWidthExp;
+		allPrecinctsBounds.y0 = floordivpow2(res->y0, precinctHeightExp) << precinctHeightExp;
+		uint64_t temp = (uint64_t)ceildivpow2<uint32_t>(res->x1, precinctWidthExp) << precinctWidthExp;
 		if (temp > UINT_MAX){
 			GRK_ERROR("Resolution x1 value %u must be less than 2^32", temp);
 			return false;
 		}
-		precinct_grid.x1 = (uint32_t)temp;
-		temp = (uint64_t)ceildivpow2<uint32_t>(res->y1, pdy) << pdy;
+		allPrecinctsBounds.x1 = (uint32_t)temp;
+		temp = (uint64_t)ceildivpow2<uint32_t>(res->y1, precinctHeightExp) << precinctHeightExp;
 		if (temp > UINT_MAX){
 			GRK_ERROR("Resolution y1 value %u must be less than 2^32", temp);
 			return false;
 		}
-		precinct_grid.y1 = (uint32_t)temp;
-		res->pw =	(res->x0 == res->x1) ?	0 : (precinct_grid.width() >> pdx);
-		res->ph =	(res->y0 == res->y1) ?	0 : (precinct_grid.height() >> pdy);
+		allPrecinctsBounds.y1 = (uint32_t)temp;
+		res->precinctGridWidth =	(res->x0 == res->x1) ?	0 : (allPrecinctsBounds.width() >> precinctWidthExp);
+		res->precinctGridHeight =	(res->y0 == res->y1) ?	0 : (allPrecinctsBounds.height() >> precinctHeightExp);
 		res->numBandWindows = (resno == 0) ? 1 : 3;
 		if (DEBUG_TILE_COMPONENT){
 			std::cout << "res: " << resno << " ";

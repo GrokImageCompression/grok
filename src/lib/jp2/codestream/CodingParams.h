@@ -80,10 +80,10 @@ struct TileComponentCodingParams {
 	uint8_t numgbits;
 	/** Region Of Interest shift */
 	uint8_t roishift;
-	/** precinct grid width (power of 2 exponent, < 16) */
-	uint32_t precinctGridWidthExp[GRK_J2K_MAXRLVLS];
-	/** precinct grid height (power of 2 exponent, < 16) */
-	uint32_t precinctGridHeightExp[GRK_J2K_MAXRLVLS];
+	/** precinct width (power of 2 exponent, < 16) */
+	uint32_t precinctWidthExp[GRK_J2K_MAXRLVLS];
+	/** precinct height (power of 2 exponent, < 16) */
+	uint32_t precinctHeightExp[GRK_J2K_MAXRLVLS];
 	/** the dc_level_shift **/
 	int32_t m_dc_level_shift;
 };

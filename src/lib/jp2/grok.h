@@ -1002,13 +1002,13 @@ typedef struct _grk_tile_info {
 	/** end position */
 	uint64_t end_pos;
 	/** precinct number for each resolution level (width) */
-	uint32_t pw[GRK_J2K_MAXRLVLS];
+	uint32_t precinctGridWidth[GRK_J2K_MAXRLVLS];
 	/** precinct number for each resolution level (height) */
-	uint32_t ph[GRK_J2K_MAXRLVLS];
+	uint32_t precinctGridHeight[GRK_J2K_MAXRLVLS];
 	/** precinct size (in power of 2), in X for each resolution level */
-	uint32_t pdx[GRK_J2K_MAXRLVLS];
+	uint32_t precinctWidthExp[GRK_J2K_MAXRLVLS];
 	/** precinct size (in power of 2), in Y for each resolution level */
-	uint32_t pdy[GRK_J2K_MAXRLVLS];
+	uint32_t precinctHeightExp[GRK_J2K_MAXRLVLS];
 	/** information concerning packets inside tile */
 	grk_packet_info *packet;
 	int64_t numpix;
@@ -1084,9 +1084,9 @@ typedef struct _grk_tccp_info {
 	/** Region Of Interest shift */
 	uint32_t roishift;
 	/** precinct width power of 2 exponent, < 16*/
-	uint32_t precinctGridWidthExp[GRK_J2K_MAXRLVLS];
+	uint32_t precinctWidthExp[GRK_J2K_MAXRLVLS];
 	/** precinct height power of 2 exponent, < 16 */
-	uint32_t precinctGridHeightExp[GRK_J2K_MAXRLVLS];
+	uint32_t precinctHeightExp[GRK_J2K_MAXRLVLS];
 } grk_tccp_info;
 
 /**

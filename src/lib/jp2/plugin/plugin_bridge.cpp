@@ -35,7 +35,7 @@ void decompress_synch_plugin_with_host(TileProcessor *tcd) {
 				for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; bandIndex++) {
 					auto band = &res->band[bandIndex];
 					auto plugin_band = plugin_res->band[bandIndex];
-					assert(plugin_band->numPrecincts == (uint64_t)res->pw * res->ph);
+					assert(plugin_band->numPrecincts == (uint64_t)res->precinctGridWidth * res->precinctGridHeight);
 					//!!!! plugin still uses stepsize/2
 					plugin_band->stepsize = band->stepsize/2;
 					for (auto prc : band->precincts){

@@ -39,10 +39,10 @@ enum J2K_T2_MODE {
  * Packet iterator resolution
  */
 struct grk_pi_resolution {
-	grk_pi_resolution() : pdx(0), pdy(0),pw(0),ph(0)
+	grk_pi_resolution() : precinctWidthExp(0), precinctHeightExp(0),precinctGridWidth(0),precinctGridHeight(0)
 	{}
-	uint32_t pdx, pdy;
-	uint32_t pw, ph;
+	uint32_t precinctWidthExp, precinctHeightExp;
+	uint32_t precinctGridWidth, precinctGridHeight;
 };
 
 /**
