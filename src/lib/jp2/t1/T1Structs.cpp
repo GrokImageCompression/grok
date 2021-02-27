@@ -451,25 +451,19 @@ Subband::Subband(const Subband &rhs) : grk_rect_u32(rhs),
 										numPrecincts(0),
 										numbps(rhs.numbps),
 										stepsize(rhs.stepsize)
-{
-}
-
+{}
 Subband& Subband::operator= (const Subband &rhs){
 	if (this != &rhs) { // self-assignment check expected
 		*this = Subband(rhs);
 	}
 	return *this;
 }
-
 void Subband::print(){
 	grk_rect_u32::print();
 }
-
-
 bool Subband::isEmpty() {
 	return ((x1 - x0 == 0) || (y1 - y0 == 0));
 }
-
 Precinct* Subband::getPrecinct(uint64_t precinctIndex){
 	if (precinctMap.find(precinctIndex) == precinctMap.end())
 		return nullptr;
@@ -477,35 +471,35 @@ Precinct* Subband::getPrecinct(uint64_t precinctIndex){
 
 	return precincts[index];
 }
-
+grk_rect_u32 Subband::generatePrecinctBounds(uint64_t precinctIndex,
+												grk_pt precinctRegionStart,
+												grk_pt precinct_expn,
+												uint32_t precinctGridWidth){
+	auto precinctStart = grk_pt(	precinctRegionStart.x + (uint32_t)((precinctIndex % precinctGridWidth) << precinct_expn.x),
+			precinctRegionStart.y + (uint32_t)((precinctIndex / precinctGridWidth) << precinct_expn.y));
+	return grk_rect_u32(precinctStart.x,
+						precinctStart.y,
+						precinctStart.x + (1U << precinct_expn.x),
+						precinctStart.y + (1U << precinct_expn.y)).intersection(this);
+}
 Precinct* Subband::createPrecinct(bool isCompressor,
-					uint64_t precinctIndex,
-					grk_pt precinct_start,
-					grk_pt precinct_expn,
-					uint32_t precinctGridWidth,
-					grk_pt cblk_expn){
-
+									uint64_t precinctIndex,
+									grk_pt precinctRegionStart,
+									grk_pt precinct_expn,
+									uint32_t precinctGridWidth,
+									grk_pt cblk_expn){
 	auto temp = precinctMap.find(precinctIndex);
 	if (temp != precinctMap.end())
 		return precincts[temp->second];
 
-	auto band_precinct_start = grk_pt(	precinct_start.x + (uint32_t)((precinctIndex % precinctGridWidth) << precinct_expn.x),
-			precinct_start.y + (uint32_t)((precinctIndex / precinctGridWidth) << precinct_expn.y));
-	auto precinct_dim = grk_rect_u32(
-			band_precinct_start.x,
-			band_precinct_start.y,
-			band_precinct_start.x + (1U << precinct_expn.x),
-			band_precinct_start.y + (1U << precinct_expn.y)).intersection(this);
-
-	auto current_precinct = new Precinct(precinct_dim, isCompressor,cblk_expn);
-	current_precinct->precinctIndex = precinctIndex;
-	precincts.push_back(current_precinct);
+	auto bandPrecinctBounds = generatePrecinctBounds(precinctIndex,precinctRegionStart,precinct_expn,precinctGridWidth);
+	auto currPrec = new Precinct(bandPrecinctBounds, isCompressor,cblk_expn);
+	currPrec->precinctIndex = precinctIndex;
+	precincts.push_back(currPrec);
 	precinctMap[precinctIndex] = precincts.size()-1;
 
-	return current_precinct;
+	return currPrec;
 }
-
-
 
 Resolution::Resolution() :
 		initialized(false),
@@ -514,7 +508,6 @@ Resolution::Resolution() :
 		precinctGridHeight(0),
 		current_plugin_tile(nullptr)
 {}
-
 void Resolution::print(){
 	grk_rect_u32::print();
 	for (uint32_t i = 0; i < numBandWindows; ++i){
@@ -522,12 +515,10 @@ void Resolution::print(){
 		band[i].print();
 	}
 }
-
 bool Resolution::init(bool isCompressor,
-			TileComponentCodingParams *tccp,
-			uint8_t resno,
-			grk_plugin_tile *current_plugin_tile){
-
+						TileComponentCodingParams *tccp,
+						uint8_t resno,
+						grk_plugin_tile *current_plugin_tile){
 	if (initialized)
 		return true;
 

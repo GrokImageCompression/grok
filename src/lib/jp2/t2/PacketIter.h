@@ -38,23 +38,32 @@ enum J2K_T2_MODE {
 /***
  * Packet iterator resolution
  */
-struct grk_pi_resolution {
-	grk_pi_resolution() : precinctWidthExp(0), precinctHeightExp(0),precinctGridWidth(0),precinctGridHeight(0)
+struct PiResolution {
+	PiResolution() : precinctWidthExp(0),
+					precinctHeightExp(0),
+					precinctGridWidth(0),
+					precinctGridHeight(0)
 	{}
-	uint32_t precinctWidthExp, precinctHeightExp;
-	uint32_t precinctGridWidth, precinctGridHeight;
+	uint32_t precinctWidthExp;
+	uint32_t precinctHeightExp;
+	uint32_t precinctGridWidth;
+	uint32_t precinctGridHeight;
 };
 
 /**
  * Packet iterator component
  */
-struct grk_pi_comp {
-	grk_pi_comp() : dx(0), dy(0), numresolutions(0), resolutions(nullptr)
+struct PiComp {
+	PiComp() : dx(0),
+				dy(0),
+				numresolutions(0),
+				resolutions(nullptr)
 	{}
-	uint32_t dx, dy;
-	/** number of resolution levels */
+	// component sub-sampling factors
+	uint32_t dx;
+	uint32_t dy;
 	uint32_t numresolutions;
-	grk_pi_resolution *resolutions;
+	PiResolution *resolutions;
 };
 
 struct ResBuf;
@@ -223,6 +232,8 @@ struct PacketIter {
 
 	bool generatePrecinctIndex(void);
 
+	grk_rect_u32 generatePrecinct(uint64_t precinctIndex);
+
 	/**
 	 Get next packet in precinct-component-resolution-layer order.
 	 @return returns false if pi pointed to the last packet or else returns true
@@ -253,7 +264,7 @@ struct PacketIter {
 	bool next(void);
 
 	void update_dxy(void);
-	void update_dxy_for_comp(grk_pi_comp *comp);
+	void update_dxy_for_comp(PiComp *comp);
 
 
 	/** Enabling Tile part generation*/
@@ -283,7 +294,7 @@ struct PacketIter {
 	/** number of components in the image */
 	uint16_t numcomps;
 	/** Components*/
-	grk_pi_comp *comps;
+	PiComp *comps;
 	/** tile coordinates*/
 	uint32_t tx0, ty0, tx1, ty1;
 	/** packet coordinates */

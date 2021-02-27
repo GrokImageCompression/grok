@@ -128,12 +128,12 @@ static PacketIter* pi_create(const GrkImage *image,
 	}
 	for (uint32_t pino = 0; pino < poc_bound; ++pino) {
 		auto current_pi = pi + pino;
-		current_pi->comps = new grk_pi_comp[image->numcomps];
+		current_pi->comps = new PiComp[image->numcomps];
 		current_pi->numcomps = image->numcomps;
 		for (uint32_t compno = 0; compno < image->numcomps; ++compno) {
 			auto comp = current_pi->comps + compno;
-			auto tccp = &tcp->tccps[compno];
-			comp->resolutions =  new grk_pi_resolution[tccp->numresolutions];
+			auto tccp = tcp->tccps + compno;
+			comp->resolutions =  new PiResolution[tccp->numresolutions];
 			comp->numresolutions = tccp->numresolutions;
 		}
 	}
@@ -899,9 +899,8 @@ bool PacketIter::next_rpcl(void) {
 		for (; y < prog.ty1;	y += dy - (y % dy)) {
 			for (; x < prog.tx1;	x += dx - (x % dx)) {
 				for (; compno < prog.compE; compno++) {
-					if (!generatePrecinctIndex()){
+					if (!generatePrecinctIndex())
 						continue;
-					}
 					for (; layno < prog.layE; layno++) {
 						if (update_include())
 							return true;
@@ -937,7 +936,6 @@ bool PacketIter::next(void) {
 	return false;
 }
 
-
 bool PacketIter::generatePrecinctIndex(void){
 	if (compno >= numcomps){
 		GRK_ERROR("Packet iterator component %d must be strictly less than "
@@ -950,36 +948,62 @@ bool PacketIter::generatePrecinctIndex(void){
 
 	auto res = comp->resolutions + resno;
 	uint32_t levelno = comp->numresolutions - 1 - resno;
+	assert(levelno < GRK_J2K_MAXRLVLS);
 	if (levelno >= GRK_J2K_MAXRLVLS)
 		return false;
-	uint32_t trx0 = ceildiv<uint64_t>((uint64_t) tx0,((uint64_t) comp->dx << levelno));
-	uint32_t try0 = ceildiv<uint64_t>((uint64_t) ty0,((uint64_t) comp->dy << levelno));
-	uint32_t trx1 = ceildiv<uint64_t>((uint64_t) tx1,((uint64_t) comp->dx << levelno));
-	uint32_t try1 = ceildiv<uint64_t>((uint64_t) ty1,((uint64_t) comp->dy << levelno));
+	grk_rect_u32 resBounds(ceildiv<uint64_t>((uint64_t) tx0,((uint64_t) comp->dx << levelno)),
+							ceildiv<uint64_t>((uint64_t) ty0,((uint64_t) comp->dy << levelno)),
+							ceildiv<uint64_t>((uint64_t) tx1,((uint64_t) comp->dx << levelno)),
+							 ceildiv<uint64_t>((uint64_t) ty1,((uint64_t) comp->dy << levelno)));
 	uint32_t rpx = res->precinctWidthExp + levelno;
 	uint32_t rpy = res->precinctHeightExp + levelno;
-	if (!(((uint64_t) y % ((uint64_t) comp->dy << rpy) == 0)
-			|| ((y == ty0)	&& (((uint64_t) try0 << levelno) % ((uint64_t) 1 << rpy))))) {
-		return false;
-	}
 	if (!(((uint64_t) x % ((uint64_t) comp->dx << rpx) == 0)
-			|| ((x == tx0)	&& (((uint64_t) trx0 << levelno) % ((uint64_t) 1 << rpx))))) {
+			|| ((x == tx0)	&& (((uint64_t) resBounds.x0 << levelno) % ((uint64_t) 1 << rpx))))) {
 		return false;
 	}
-
+	if (!(((uint64_t) y % ((uint64_t) comp->dy << rpy) == 0)
+			|| ((y == ty0)	&& (((uint64_t) resBounds.y0 << levelno) % ((uint64_t) 1 << rpy))))) {
+		return false;
+	}
 	if ((res->precinctGridWidth == 0) || (res->precinctGridHeight == 0))
 		return false;
-
-	if ((trx0 == trx1) || (try0 == try1))
+	if (resBounds.area() == 0)
 		return false;
-
 	uint32_t currPrecinctX0Grid = floordivpow2(ceildiv<uint64_t>((uint64_t) x,	((uint64_t) comp->dx << levelno)), res->precinctWidthExp)
-									- floordivpow2(trx0, res->precinctWidthExp);
+									- floordivpow2(resBounds.x0, res->precinctWidthExp);
 	uint32_t currPrecinctY0Grid = floordivpow2(	ceildiv<uint64_t>((uint64_t) y,	((uint64_t) comp->dy << levelno)), res->precinctHeightExp)
-									- floordivpow2(try0, res->precinctHeightExp);
+									- floordivpow2(resBounds.y0, res->precinctHeightExp);
 	precinctIndex = (currPrecinctX0Grid + (uint64_t)currPrecinctY0Grid * res->precinctGridWidth);
 
 	return true;
+}
+
+grk_rect_u32 PacketIter::generatePrecinct(uint64_t precinctIndex){
+	auto comp = comps + compno;
+	if (resno >= comp->numresolutions)
+		return grk_rect_u32(0,0,0,0);
+	auto res = comp->resolutions + resno;
+	uint32_t levelno = comp->numresolutions - 1 - resno;
+	assert(levelno < GRK_J2K_MAXRLVLS);
+	if (levelno >= GRK_J2K_MAXRLVLS)
+		return grk_rect_u32(0,0,0,0);
+	grk_rect_u32 resBounds(ceildiv<uint64_t>((uint64_t) tx0,((uint64_t) comp->dx << levelno)),
+							ceildiv<uint64_t>((uint64_t) ty0,((uint64_t) comp->dy << levelno)),
+							ceildiv<uint64_t>((uint64_t) tx1,((uint64_t) comp->dx << levelno)),
+							 ceildiv<uint64_t>((uint64_t) ty1,((uint64_t) comp->dy << levelno)));
+	uint64_t xGrid = precinctIndex % res->precinctGridWidth;
+	uint64_t yGrid = precinctIndex / res->precinctGridWidth;
+
+	uint32_t x = (uint32_t)((xGrid + floordivpow2(resBounds.x0, res->precinctWidthExp)) << res->precinctWidthExp) << ((uint64_t) comp->dx << levelno);
+	uint32_t y = (uint32_t)((yGrid + floordivpow2(resBounds.y0, res->precinctHeightExp)) << res->precinctHeightExp) << ((uint64_t) comp->dy << levelno);
+
+	auto rc =  grk_rect_u32(x,
+							y,
+							x + (1 << res->precinctWidthExp) ,
+							y + (1 << res->precinctHeightExp));
+	rc.clip(&resBounds);
+
+	return rc;
 }
 
 
@@ -990,7 +1014,7 @@ void PacketIter::update_dxy(void) {
 		update_dxy_for_comp(comps + compno);
 }
 
-void PacketIter::update_dxy_for_comp(grk_pi_comp *comp) {
+void PacketIter::update_dxy_for_comp(PiComp *comp) {
 	for (uint32_t resno = 0; resno < comp->numresolutions; resno++) {
 		auto res = comp->resolutions + resno;
 		uint64_t dx_temp = comp->dx	* ((uint64_t) 1u << (res->precinctWidthExp + comp->numresolutions - 1 - resno));

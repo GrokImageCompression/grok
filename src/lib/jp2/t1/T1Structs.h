@@ -255,6 +255,10 @@ struct Subband : public grk_rect_u32 {
 	bool isEmpty() ;
 	void print();
 	Precinct* getPrecinct(uint64_t precinctIndex);
+	grk_rect_u32 generatePrecinctBounds(uint64_t precinctIndex,
+										grk_pt precinctRegionStart,
+										grk_pt precinct_expn,
+										uint32_t precinctGridWidth);
 	Precinct* createPrecinct(bool isCompressor,
 						uint64_t precinctIndex,
 						grk_pt precinctStart,
@@ -279,7 +283,6 @@ struct Resolution : public grk_rect_u32 {
 				TileComponentCodingParams *tccp,
 				uint8_t resno,
 				grk_plugin_tile *current_plugin_tile);
-
 	bool initialized;
 	Subband band[BAND_NUM_INDICES]; // unreduced tile component bands
 									// (in canvas coords, but shifted to tile origin)
