@@ -42,7 +42,7 @@ struct TileComponent : public grk_rect_u32 {
 			TileComponentCodingParams* tccp,
 			grk_plugin_tile *current_plugin_tile);
 
-	 void allocSparseBuffer(uint32_t numres, bool truncatedTile);
+	 bool allocSparseBuffer(uint32_t numres, bool truncatedTile);
 	 void release_mem(bool releaseBuffer);
 	 bool subbandIntersectsAOI(uint8_t resno,
 	 								eBandOrientation orient,

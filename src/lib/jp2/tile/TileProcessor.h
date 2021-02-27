@@ -42,7 +42,8 @@ struct grk_tile : public grk_rect_u32 {
 	TileComponent 	*comps;
 	double distotile;
 	double distolayer[100];
-	uint64_t packno;
+	uint64_t numIteratedPackets;
+	uint64_t numDecompressedPackets;
 };
 
 struct PacketTracker{

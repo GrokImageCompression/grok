@@ -645,7 +645,7 @@ bool TileProcessor::init(const GrkImage *output_image,bool isCompressor) {
 				GRK_WARN("plugin tile differs from grok tile", nullptr);
 		}
 	}
-	tile->packno = 0;
+	tile->numIteratedPackets = 0;
 
 	if (isCompressor) {
         uint64_t max_precincts=0;
@@ -1299,7 +1299,7 @@ bool TileProcessor::prepare_sod_decoding(CodeStreamDecompress *codeStream) {
 			return false;
 		}
 
-		/*cstr_index->packno = 0;*/
+		/*cstr_index->numIteratedPackets = 0;*/
 	}
 	size_t current_read_size = 0;
 	if (tile_part_data_length) {
@@ -1334,7 +1334,8 @@ bool TileProcessor::prepare_sod_decoding(CodeStreamDecompress *codeStream) {
 grk_tile::grk_tile() : numcomps(0),
 			comps(nullptr),
 			distotile(0),
-			packno(0)
+			numIteratedPackets(0),
+			numDecompressedPackets(0)
 {
 	for (uint32_t i = 0; i < 100; ++i)
 		distolayer[i] = 0;

@@ -104,6 +104,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no,
 						return false;
 					}
 					tilec->resolutions_decompressed = std::max<uint8_t>(curpi->resno,tilec->resolutions_decompressed);
+					p_tile->numDecompressedPackets++;
 				} else {
 					if (pltMarkerLen) {
 						nb_bytes_read = pltMarkerLen;
@@ -114,7 +115,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no,
 						return false;
 					}
 				}
-				p_tile->packno++;
+				p_tile->numIteratedPackets++;
 			} 	catch (TruncatedPacketHeaderException &tex){
 				GRK_WARN("Truncated packet: tile=%d component=%02d resolution=%02d precinct=%03d layer=%02d",
 				 tile_no, curpi->compno, curpi->resno,
@@ -137,9 +138,9 @@ bool T2Decompress::decompress_packets(uint16_t tile_no,
 			break;
 	}
 	pi_destroy(pi);
-	if (p_tile->packno == 0)
-		GRK_ERROR("T2Decompress: no packets in tile were successfully decompressed");
-	return p_tile->packno > 0;
+	if (p_tile->numDecompressedPackets == 0)
+		GRK_WARN("T2Decompress: no packets for tile %d were successfully read",tile_no+1);
+	return p_tile->numDecompressedPackets > 0;
 }
 
 
@@ -220,10 +221,10 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp,
 		if (marker != J2K_MS_SOP) {
 			GRK_WARN("Expected SOP marker, but found 0x%x", marker);
 		} else {
-			uint16_t packno = (uint16_t) (((uint16_t) active_src[4] << 8) | active_src[5]);
-			if (packno != (p_tile->packno % 0x10000)) {
+			uint16_t numIteratedPackets = (uint16_t) (((uint16_t) active_src[4] << 8) | active_src[5]);
+			if (numIteratedPackets != (p_tile->numIteratedPackets % 0x10000)) {
 				GRK_ERROR("SOP marker packet counter %u does not match expected counter %u",
-						packno, p_tile->packno);
+						numIteratedPackets, p_tile->numIteratedPackets);
 				return false;
 			}
 			active_src += 6;

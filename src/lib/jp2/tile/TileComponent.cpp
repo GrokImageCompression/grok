@@ -182,7 +182,7 @@ bool TileComponent::subbandIntersectsAOI(uint8_t resno,
     return buf->getPaddedTileBandWindow(resno, orient)->non_empty_intersection(aoi);
 }
 
-void TileComponent::allocSparseBuffer(uint32_t numres, bool truncatedTile){
+bool TileComponent::allocSparseBuffer(uint32_t numres, bool truncatedTile){
 	grk_rect_u32 temp(0,0,0,0);
 	bool first = true;
 
@@ -289,6 +289,8 @@ void TileComponent::allocSparseBuffer(uint32_t numres, bool truncatedTile){
     if (m_sa)
     	delete m_sa;
     m_sa = sa;
+
+    return true;
 }
 
 bool TileComponent::create_buffer(grk_rect_u32 unreducedTileOrImageCompWindow) {

@@ -57,8 +57,7 @@ bool T2Compress::compress_packets(uint16_t tile_no, uint16_t max_layers,
 				return false;
 			}
 			*p_data_written += nb_bytes;
-			/* << INDEX */
-			++p_tile->packno;
+			p_tile->numIteratedPackets++;
 		}
 	}
 	pi_destroy(pi);
@@ -167,11 +166,11 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 			return false;
 		if (!stream->write_byte(4))
 			return false;
-		/* packno is uint32_t modulo 65536, in big endian format */
-		uint16_t packno = (uint16_t) (tile->packno % 0x10000);
-		if (!stream->write_byte((uint8_t) (packno >> 8)))
+		/* numIteratedPackets is uint32_t modulo 65536, in big endian format */
+		uint16_t numIteratedPackets = (uint16_t) (tile->numIteratedPackets % 0x10000);
+		if (!stream->write_byte((uint8_t) (numIteratedPackets >> 8)))
 			return false;
-		if (!stream->write_byte((uint8_t) (packno & 0xff)))
+		if (!stream->write_byte((uint8_t) (numIteratedPackets & 0xff)))
 			return false;
 	}
 

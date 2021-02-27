@@ -1030,7 +1030,7 @@ typedef struct _grk_codestream_info {
 	/** maximum distortion reduction on the whole image (add for Marcela) */
 	double D_max;
 	/** packet number */
-	uint32_t packno;
+	uint32_t numIteratedPackets;
 	/** writing the packet in the index with t2_encode_packets */
 	uint32_t index_write;
 	/** component numbers */

@@ -774,10 +774,10 @@ bool CodeStreamCompress::write_tile_part(TileProcessor *tileProcessor) {
 						1 + tcp->numpocs);
 			}
 		}
-		/* set packno to zero when writing the first tile part
-		 * (packno is used for SOP markers)
+		/* set numIteratedPackets to zero when writing the first tile part
+		 * (numIteratedPackets is used for SOP markers)
 		 */
-		tileProcessor->tile->packno = 0;
+		tileProcessor->tile->numIteratedPackets = 0;
 	}
 	// 3. compress tile part
 	if (!tileProcessor->compress_tile_part(&tile_part_bytes_written)) {

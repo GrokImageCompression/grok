@@ -925,12 +925,7 @@ bool CodeStreamDecompress::decompress_tile_t2t1(TileProcessor *tileProcessor) {
 		tcp->destroy();
 		return false;
 	}
-	if (!tileProcessor->decompress_tile_t2(tcp->m_tile_data)) {
-		tcp->destroy();
-		decompressor->orState(J2K_DEC_STATE_ERR);
-		return false;
-	}
-	if (tileProcessor->m_corrupt_packet){
+	if (!tileProcessor->decompress_tile_t2(tcp->m_tile_data) || tileProcessor->m_corrupt_packet){
 		GRK_WARN("Tile %d was not decompressed", tileProcessor->m_tile_index+1);
 		return true;
 	}
