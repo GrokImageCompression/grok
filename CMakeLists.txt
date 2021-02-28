@@ -18,7 +18,7 @@ include_regular_expression("^.*$")
 # GROK version number, useful for packaging and doxygen doc:
 set(GROK_VERSION_MAJOR 8)
 set(GROK_VERSION_MINOR 0)
-set(GROK_VERSION_BUILD 1)
+set(GROK_VERSION_BUILD 2)
 set(GROK_VERSION
   "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_BUILD}")
 set(PACKAGE_VERSION
@@ -41,6 +41,8 @@ set(PACKAGE_VERSION
 #   7.6.5 |  1
 #   7.6.6 |  1
 #   8.0.0 |  1
+#   8.0.1 |  1
+#   8.0.2 |  1
 if(NOT GROK_SOVERSION)
   set(GROK_SOVERSION 1)
 endif(NOT GROK_SOVERSION)
