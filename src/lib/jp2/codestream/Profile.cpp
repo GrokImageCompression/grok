@@ -886,14 +886,14 @@ void Profile::initialise_4K_poc(grk_progression *POC, uint8_t numres) {
 	POC[0].layE = 1;
 	POC[0].resE = (uint8_t) (numres - 1);
 	POC[0].compE = 3;
-	POC[0].prg1 = GRK_CPRL;
+	POC[0].specifiedCompressionPocProg = GRK_CPRL;
 	POC[1].tileno = 1;
 	POC[1].resS = (uint8_t) (numres - 1);
 	POC[1].compS = 0;
 	POC[1].layE = 1;
 	POC[1].resE = numres;
 	POC[1].compE = 3;
-	POC[1].prg1 = GRK_CPRL;
+	POC[1].specifiedCompressionPocProg = GRK_CPRL;
 }
 
 void Profile::set_cinema_parameters(grk_cparameters *parameters,

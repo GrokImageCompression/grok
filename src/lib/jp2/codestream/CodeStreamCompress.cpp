@@ -350,14 +350,14 @@ bool CodeStreamCompress::initCompress(grk_cparameters  *parameters,GrkImage *ima
 			uint32_t numpocs_tile = 0;
 			for (uint32_t i = 0; i < parameters->numpocs; i++) {
 				if (tileno + 1 == parameters->progression[i].tileno) {
-					auto tcp_poc = &tcp->progression[numpocs_tile];
+					auto tcp_poc = &tcp->progressionOrderChange[numpocs_tile];
 
 					tcp_poc->resS = parameters->progression[numpocs_tile].resS;
 					tcp_poc->compS = parameters->progression[numpocs_tile].compS;
 					tcp_poc->layE = parameters->progression[numpocs_tile].layE;
 					tcp_poc->resE = parameters->progression[numpocs_tile].resE;
 					tcp_poc->compE = parameters->progression[numpocs_tile].compE;
-					tcp_poc->prg1 = parameters->progression[numpocs_tile].prg1;
+					tcp_poc->specifiedCompressionPocProg = parameters->progression[numpocs_tile].specifiedCompressionPocProg;
 					tcp_poc->tileno = parameters->progression[numpocs_tile].tileno;
 					numpocs_tile++;
 				}
@@ -1155,7 +1155,7 @@ bool CodeStreamCompress::write_poc() {
 		return false;
 
 	for (uint32_t i = 0; i < nb_poc; ++i) {
-		auto current_prog = tcp->progression + i;
+		auto current_prog = tcp->progressionOrderChange + i;
 		/* RSpoc_i */
 		if (!m_stream->write_byte((uint8_t) current_prog->resS))
 			return false;
@@ -1177,7 +1177,7 @@ bool CodeStreamCompress::write_poc() {
 				return false;
 		}
 		/* Ppoc_i */
-		if (!m_stream->write_byte((uint8_t) current_prog->prg))
+		if (!m_stream->write_byte((uint8_t) current_prog->progression))
 			return false;
 
 		/* change the value of the max layer according to the actual number of layers in the file, components and resolutions*/
@@ -1721,7 +1721,7 @@ uint64_t CodeStreamCompress::get_num_tp(CodingParams *cp, uint32_t pino,	uint16_
 	auto tcp = &cp->tcps[tileno];
 	assert(tcp != nullptr);
 
-	auto current_poc = &(tcp->progression[pino]);
+	auto current_poc = &(tcp->progressionOrderChange[pino]);
 	assert(current_poc != 0);
 
 	/* get the progression order as a character string */

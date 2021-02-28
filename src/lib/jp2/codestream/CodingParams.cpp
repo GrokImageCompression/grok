@@ -101,7 +101,7 @@ TileCodingParams::TileCodingParams() :
 	for (auto i = 0; i < 100; ++i)
 		distoratio[i] = 0;
 	for (auto i = 0; i < 32; ++i)
-		memset(progression + i, 0, sizeof(grk_progression));
+		memset(progressionOrderChange + i, 0, sizeof(grk_progression));
 }
 
 TileCodingParams::~TileCodingParams(){

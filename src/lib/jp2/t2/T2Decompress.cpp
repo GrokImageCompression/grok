@@ -49,7 +49,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no,
 		packetLengths->getInit();
 	for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
 		auto currPi = pi + pino;
-		if (currPi->prog.prg == GRK_PROG_UNKNOWN) {
+		if (currPi->prog.progression == GRK_PROG_UNKNOWN) {
 			pi_destroy(pi);
 			GRK_ERROR("decompress_packets: Unknown progression order");
 			return false;

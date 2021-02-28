@@ -91,7 +91,6 @@ PacketIter* pi_create_compress_decompress(bool compression,
 								uint16_t tileno,
 								J2K_T2_MODE t2_mode,
 								IncludeTracker *include);
-
 /**
  * Updates the compressing parameters of the codec.
  *
@@ -102,7 +101,6 @@ PacketIter* pi_create_compress_decompress(bool compression,
 void pi_update_params_compress(const GrkImage *p_image,
 									CodingParams *p_cp,
 									uint16_t tile_no);
-
 /**
  Modify the packet iterator for enabling tile part generation
  @param pi 		Handle to the packet iterator generated in pi_create_compress
@@ -120,14 +118,12 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 									bool first_poc_tile_part,
 									uint32_t tppos,
 									J2K_T2_MODE t2_mode);
-
 /**
  * Destroys a packet iterator array.
  *
  * @param	p_pi			the packet iterator array to destroy.
  */
 void pi_destroy(PacketIter *p_pi);
-
 
 struct ResBuf{
 	ResBuf(){
@@ -138,23 +134,18 @@ struct ResBuf{
 		for (uint8_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
 			delete[] buffers[i];
 	}
-
-
 	uint8_t* buffers[GRK_J2K_MAXRLVLS];
 };
 struct IncludeTracker {
-
 	IncludeTracker(uint16_t numcomponents) : numcomps(numcomponents),
 											currentLayer(0),
 											currentResBuf(nullptr),
 											include(new std::map<uint16_t, ResBuf*>())
 	{}
-
 	~IncludeTracker() {
 		clear();
 		delete include;
 	}
-
 	uint8_t* get_include(uint16_t layerno,  uint8_t resno){
 		ResBuf* resBuf = nullptr;
 		if (layerno == currentLayer && currentResBuf) {
@@ -179,8 +170,6 @@ struct IncludeTracker {
 		}
 		return buf;
 	}
-
-
 	bool update(uint16_t layno, uint8_t resno, uint16_t compno, uint64_t precno) {
 		auto include = get_include(layno, resno);
 		auto numprecs = precincts[resno];
@@ -210,8 +199,6 @@ struct IncludeTracker {
 	uint64_t precincts[GRK_J2K_MAXRLVLS];
 	std::map<uint16_t, ResBuf*> *include;
 };
-
-
 
 /**
  Packet iterator
@@ -288,9 +275,8 @@ struct PacketIter {
 	uint64_t precinctIndex;
 	/** layer that identify the packet */
 	uint16_t layno;
-	/** progression order change information */
+	/** progression order  */
 	 grk_progression  prog;
-	 uint32_t numpocs;
 	/** number of components in the image */
 	uint16_t numcomps;
 	/** Components*/

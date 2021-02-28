@@ -391,10 +391,10 @@ typedef struct _grk_progression {
 	uint64_t precE;
 
 	/** Progression order enum*/
-	GRK_PROG_ORDER prg1;
-	GRK_PROG_ORDER prg;
+	GRK_PROG_ORDER specifiedCompressionPocProg;
+	GRK_PROG_ORDER progression;
 	/** Progression order string*/
-	char progorder[5];
+	char progressionString[5];
 	/** Tile number */
 	uint32_t tileno;
 	/** Start and end values for tile width and height*/

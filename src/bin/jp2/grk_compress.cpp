@@ -958,13 +958,13 @@ static int parseCommandLine(int argc,
 
 			while (sscanf(s, "T%u=%u,%u,%u,%u,%u,%4s", &progression[numpocs].tileno,
 					&resS, &compS,&layE, &resE,
-					&compE, progression[numpocs].progorder) == 7) {
+					&compE, progression[numpocs].progressionString) == 7) {
 				progression[numpocs].resS = (uint8_t)resS;
 				progression[numpocs].compS = (uint16_t)compS;
 				progression[numpocs].layE = (uint16_t)layE;
 				progression[numpocs].resE = (uint8_t)resE;
 				progression[numpocs].compE = (uint16_t)compE;
-				progression[numpocs].prg1 = getProgression(progression[numpocs].progorder);
+				progression[numpocs].specifiedCompressionPocProg = getProgression(progression[numpocs].progressionString);
 				// sanity check on layer
 				if (progression[numpocs].layE > parameters->tcp_numlayers){
 					spdlog::warn("End layer {} in POC {} is greater than"
@@ -1542,7 +1542,7 @@ static int parseCommandLine(int argc,
 		return 1;
 	}
 	for (uint32_t i = 0; i < parameters->numpocs; i++) {
-		if (parameters->progression[i].prg == -1) {
+		if (parameters->progression[i].progression == -1) {
 			spdlog::error(
 					"Unrecognized progression order in option -P (POC n {}) [LRCP, RLCP, RPCL, PCRL, CPRL] ",
 					i + 1);

@@ -141,7 +141,7 @@ struct TileCodingParams {
 	/** number of progression order changes */
 	uint32_t numpocs;
 	/** progression order changes */
-	grk_progression  progression[GRK_J2K_MAXRLVLS];
+	grk_progression  progressionOrderChange[GRK_J2K_MAXRLVLS];
 
 	/** number of ppt markers (reserved size) */
 	uint32_t ppt_markers_count;

@@ -124,7 +124,6 @@ static PacketIter* pi_create(const GrkImage *image,
 
 	for (uint32_t i = 0; i < poc_bound; ++i){
 		pi[i].includeTracker = include;
-		pi[i].numpocs = tcp->numpocs;
 	}
 	for (uint32_t pino = 0; pino < poc_bound; ++pino) {
 		auto current_pi = pi + pino;
@@ -147,10 +146,10 @@ static void pi_initialize_progressions_decompress(TileCodingParams *tcp,
 	bool poc = tcp->POC;
 	for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
 		auto cur_pi = pi + pino;
-		auto current_poc = tcp->progression + pino;
+		auto current_poc = tcp->progressionOrderChange + pino;
 		auto cur_pi_prog = &cur_pi->prog;
 
-		cur_pi_prog->prg 	= poc ? current_poc->prg : tcp->prg; /* Progression Order #0 */
+		cur_pi_prog->progression 	= poc ? current_poc->progression : tcp->prg; /* Progression Order #0 */
 		cur_pi_prog->layS 	= 0;
 		cur_pi_prog->layE 	= poc ? std::min<uint16_t>(current_poc->layE,
 				tcp->numlayers) : tcp->numlayers; /* Layer Index #0 (End) */
@@ -280,11 +279,11 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 									uint32_t tppos,
 									J2K_T2_MODE t2_mode) {
 	auto tcps = cp->tcps + tileno;
-	auto poc = tcps->progression + pino;
-	auto prog = CodeStreamCompress::convertProgressionOrder(poc->prg);
+	auto poc = tcps->progressionOrderChange + pino;
+	auto prog = CodeStreamCompress::convertProgressionOrder(poc->progression);
 	auto cur_pi = pi + pino;
 	auto cur_pi_prog = &cur_pi->prog;
-	cur_pi_prog->prg = poc->prg;
+	cur_pi_prog->progression = poc->progression;
 
 	if (cp->m_coding_params.m_enc.m_tp_on
 			&& (GRK_IS_CINEMA(cp->rsiz)|| GRK_IS_IMF(cp->rsiz) || t2_mode == FINAL_PASS)) {
@@ -303,7 +302,7 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 				cur_pi_prog->layE = poc->tpLayE;
 				break;
 			case 'P':
-				switch (poc->prg) {
+				switch (poc->progression) {
 				case GRK_LRCP:
 				case GRK_RLCP:
 					cur_pi_prog->precS = 0;
@@ -341,7 +340,7 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 					poc->lay_temp = uint16_t(poc->lay_temp + 1);
 					break;
 				case 'P':
-					switch (poc->prg) {
+					switch (poc->progression) {
 					case GRK_LRCP:
 					case GRK_RLCP:
 						poc->prec_temp = 0;
@@ -383,7 +382,7 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 					cur_pi_prog->layE = poc->lay_temp;
 					break;
 				case 'P':
-					switch (poc->prg) {
+					switch (poc->progression) {
 					case GRK_LRCP:
 					case GRK_RLCP:
 						cur_pi_prog->precS = poc->prec_temp - 1;
@@ -457,7 +456,7 @@ void pi_enable_tile_part_generation(PacketIter *pi,
 						}
 						break;
 					case 'P':
-						switch (poc->prg) {
+						switch (poc->progression) {
 						case GRK_LRCP:
 						case GRK_RLCP:
 							if (poc->prec_temp == poc->tpPrecE) {
@@ -633,8 +632,8 @@ static void pi_update_tcp_progressions_compress(CodingParams *p_cp,
 	assert(tileno < p_cp->t_grid_width * p_cp->t_grid_height);
 	auto tcp = &p_cp->tcps[tileno];
 	for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
-		auto cur_prog 		= tcp->progression + pino;
-		cur_prog->prg 		= poc ? cur_prog->prg1 : tcp->prg;
+		auto cur_prog 		= tcp->progressionOrderChange + pino;
+		cur_prog->progression 		= poc ? cur_prog->specifiedCompressionPocProg : tcp->prg;
 		cur_prog->tpLayE 	= poc ? cur_prog->layE : tcp->numlayers;
 		cur_prog->tpResS 	= poc ? cur_prog->resS : 0;
 		cur_prog->tpResE 	= poc ? cur_prog->resE : max_res;
@@ -695,7 +694,7 @@ static bool pi_check_next_for_valid_progression(int32_t prog,
 												uint32_t pino,
 												const char *progString) {
 	auto tcps = cp->tcps + tileno;
-	auto poc = tcps->progression + pino;
+	auto poc = tcps->progressionOrderChange + pino;
 
 	if (prog >= 0) {
 		switch (progString[prog]) {
@@ -718,7 +717,7 @@ static bool pi_check_next_for_valid_progression(int32_t prog,
 				return true;
 			break;
 		case 'P':
-			switch (poc->prg) {
+			switch (poc->progression) {
 			case GRK_LRCP: /* fall through */
 			case GRK_RLCP:
 				if (poc->prec_temp == poc->tpPrecE)
@@ -754,7 +753,6 @@ PacketIter::PacketIter() : tp_on(false),
 							resno(0),
 							precinctIndex(0),
 							layno(0),
-							numpocs(0),
 							numcomps(0),
 							comps(nullptr),
 							tx0(0),
@@ -918,7 +916,7 @@ bool PacketIter::next_rpcl(void) {
 }
 
 bool PacketIter::next(void) {
-	switch (prog.prg) {
+	switch (prog.progression) {
 		case GRK_LRCP:
 			return next_lrcp();
 		case GRK_RLCP:

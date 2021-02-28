@@ -44,7 +44,7 @@ bool T2Compress::compress_packets(uint16_t tile_no, uint16_t max_layers,
 	pi_enable_tile_part_generation(pi, cp, tile_no, pino, first_poc_tile_part, tp_pos, FINAL_PASS);
 
 	auto current_pi = &pi[pino];
-	if (current_pi->prog.prg == GRK_PROG_UNKNOWN) {
+	if (current_pi->prog.progression == GRK_PROG_UNKNOWN) {
 		pi_destroy(pi);
 		GRK_ERROR("compress_packets: Unknown progression order");
 		return false;
@@ -84,16 +84,16 @@ bool T2Compress::compress_packets_simulate(uint16_t tile_no, uint16_t max_layers
 #ifdef DEBUG_ENCODE_PACKETS
     GRK_INFO("simulate compress packets for layers below layno %u", max_layers);
 #endif
-    // assume CPRL progression, why ???
+    // todo: assume CPRL progression, why ???
 	for (uint32_t compno = 0; compno < max_comp; ++compno) {
 		uint64_t comp_len = 0;
 		for (uint32_t poc = 0; poc < pocno; ++poc) {
 			auto current_pi = pi + poc;
-			// 1. why is tile part number set to component number ?
-			// 2. why is tile part generation initialized for each progression order change ?
+			// todo: 1. why is tile part number set to component number ?
+			// todo: 2. why is tile part generation initialized for each progression order change ?
 			pi_enable_tile_part_generation(pi, cp, tile_no, poc, (compno == 0), tp_pos, THRESH_CALC);
 
-			if (current_pi->prog.prg == GRK_PROG_UNKNOWN) {
+			if (current_pi->prog.progression == GRK_PROG_UNKNOWN) {
 				pi_destroy(pi);
 				GRK_ERROR(
 						"decompress_packets_simulate: Unknown progression order");

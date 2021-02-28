@@ -1072,7 +1072,7 @@ bool CodeStreamDecompress::read_poc( uint8_t *p_header_data,
 	tcp->POC = true;
 
 	for (uint32_t i = old_poc_nb; i < current_poc_nb; ++i) {
-		auto current_prog = tcp->progression + i;
+		auto current_prog = tcp->progressionOrderChange + i;
 		/* RSpoc_i */
 		grk_read<uint8_t>(p_header_data, &current_prog->resS);
 		++p_header_data;
@@ -1114,7 +1114,7 @@ bool CodeStreamDecompress::read_poc( uint8_t *p_header_data,
 			GRK_ERROR("read_poc: unknown POC progression order %d", tmp);
 			return false;
 		}
-		current_prog->prg = (GRK_PROG_ORDER) tmp;
+		current_prog->progression = (GRK_PROG_ORDER) tmp;
 	}
 	tcp->numpocs = current_poc_nb - 1;
 	return true;
