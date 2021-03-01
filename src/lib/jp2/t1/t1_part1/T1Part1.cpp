@@ -49,7 +49,9 @@ void T1Part1::preCompress(CompressBlockExec *block, grk_tile *tile,
 			for (auto i = 0U; i < w; ++i) {
 				int32_t temp = (block->tiledp[tileIndex] *= (1<< T1_NMSEDEC_FRACBITS));
 				temp = (int32_t)to_smr(temp);
-				maximum = max((uint32_t)smr_abs(temp), maximum);
+				uint32_t mag = smr_abs(temp);
+				if (mag > maximum)
+					maximum = mag;
 				t1->data[cblk_index] = temp;
 				tileIndex++;
 				cblk_index++;
@@ -62,7 +64,9 @@ void T1Part1::preCompress(CompressBlockExec *block, grk_tile *tile,
 			for (auto i = 0U; i < w; ++i) {
 				int32_t temp = (int32_t)grk_lrintf((tiledp[tileIndex] /block->stepsize) * (1 << T1_NMSEDEC_FRACBITS));
 				temp = (int32_t)to_smr(temp);
-				maximum = max((uint32_t)smr_abs(temp), maximum);
+				uint32_t mag = smr_abs(temp);
+				if (mag > maximum)
+					maximum = mag;
 				t1->data[cblk_index] = temp;
 				tileIndex++;
 				cblk_index++;
