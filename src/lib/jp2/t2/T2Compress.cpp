@@ -222,17 +222,14 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 		auto prc = band->precincts[precinctIndex];
 		uint64_t nb_blocks = prc->getNumCblks();
 
-		if (band->isEmpty() || !nb_blocks) {
-			band++;
+		if (band->isEmpty() || !nb_blocks)
 			continue;
-		}
 
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 			auto cblk = prc->getCompressedBlockPtr(cblkno);
 			auto layer = cblk->layers + layno;
 
-			if (!cblk->numPassesInPacket
-					&& layer->numpasses) {
+			if (!cblk->numPassesInPacket && layer->numpasses) {
 				prc->getInclTree()->setvalue(cblkno, (int32_t) layno);
 			}
 		}
@@ -246,8 +243,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 
 			/* cblk inclusion bits */
 			if (!cblk->numPassesInPacket) {
-				bool rc = prc->getInclTree()->compress(bio.get(), cblkno,
-						(int32_t) (layno + 1));
+				bool rc = prc->getInclTree()->compress(bio.get(), cblkno,(int32_t) (layno + 1));
 				assert(rc);
 				if (!rc)
 				   return false;
@@ -263,29 +259,24 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 			}
 
 			/* if cblk not included, go to next cblk  */
-			if (!layer->numpasses) {
+			if (!layer->numpasses)
 				continue;
-			}
 
 			/* if first instance of cblk --> zero bit-planes information */
 			if (!cblk->numPassesInPacket) {
 				cblk->numlenbits = 3;
-				bool rc = prc->getImsbTree()->compress(bio.get(), cblkno,
-						tag_tree_uninitialized_node_value);
+				bool rc = prc->getImsbTree()->compress(bio.get(), cblkno,tag_tree_uninitialized_node_value);
 				assert(rc);
 				if (!rc)
 					return false;
 			}
 			/* number of coding passes included */
 			bio->putnumpasses(layer->numpasses);
-			uint32_t nb_passes = cblk->numPassesInPacket
-					+ layer->numpasses;
-			auto pass = cblk->passes
-					+ cblk->numPassesInPacket;
+			uint32_t nb_passes = cblk->numPassesInPacket+ layer->numpasses;
+			auto pass = cblk->passes+ cblk->numPassesInPacket;
 
 			/* computation of the increase of the length indicator and insertion in the header     */
-			for (uint32_t passno = cblk->numPassesInPacket;
-					passno < nb_passes; ++passno) {
+			for (uint32_t passno = cblk->numPassesInPacket;	passno < nb_passes; ++passno) {
 				++nump;
 				len += pass->len;
 
@@ -307,8 +298,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 
 			pass = cblk->passes + cblk->numPassesInPacket;
 			/* insertion of the codeword segment length */
-			for (uint32_t passno = cblk->numPassesInPacket;
-					passno < nb_passes; ++passno) {
+			for (uint32_t passno = cblk->numPassesInPacket;	passno < nb_passes; ++passno) {
 				nump++;
 				len += pass->len;
 
@@ -316,8 +306,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 #ifdef DEBUG_LOSSLESS_T2
 						cblk->packet_length_info.push_back(PacketLengthInfo(len, cblk->numlenbits + (uint32_t)floorlog2<int32_t>((int32_t)nump)));
 #endif
-					if (!bio->write(len,
-							cblk->numlenbits + (uint32_t) floorlog2<int32_t>(nump)))
+					if (!bio->write(len,cblk->numlenbits + (uint32_t) floorlog2<int32_t>(nump)))
 						return false;
 					len = 0;
 					nump = 0;
@@ -345,18 +334,14 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 		auto prc = band->precincts[precinctIndex];
 		uint64_t nb_blocks = prc->getNumCblks();
 
-		if (band->isEmpty() || !nb_blocks) {
-			band++;
+		if (band->isEmpty() || !nb_blocks)
 			continue;
-		}
 
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 			auto cblk = prc->getCompressedBlockPtr(cblkno);
 			auto cblk_layer = cblk->layers + layno;
-			if (!cblk_layer->numpasses) {
-				++cblk;
+			if (!cblk_layer->numpasses)
 				continue;
-			}
 
 			if (cblk_layer->len) {
 				if (!stream->write_bytes(cblk_layer->data, cblk_layer->len))
