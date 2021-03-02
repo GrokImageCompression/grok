@@ -34,8 +34,7 @@ namespace grk {
 #ifdef GROK_HAVE_EXIFTOOL
 class PerlInterp {
 public:
-	PerlInterp() : perlInterp(nullptr) {
-		 dTHX;
+	PerlInterp() : my_perl(nullptr) {
 		 std::string script {R"x(
 				use Image::ExifTool qw(ImageInfo);
 				use strict;
@@ -51,22 +50,23 @@ public:
 	    constexpr int NUM_ARGS = 3;
 	    const char* embedding[NUM_ARGS] = { "", "-e", "0" };
 	    PERL_SYS_INIT3(nullptr,nullptr,nullptr);
-	    perlInterp = perl_alloc();
-	    perl_construct( perlInterp );
-	    int res = perl_parse(perlInterp, nullptr, NUM_ARGS, (char**)embedding, nullptr);
+	    my_perl = perl_alloc();
+	    perl_construct( my_perl );
+	    int res = perl_parse(my_perl, nullptr, NUM_ARGS, (char**)embedding, nullptr);
 	    assert(!res);
 	    (void)res;
-	    perl_run(perlInterp);
+	    perl_run(my_perl);
 	    eval_pv(script.c_str(), TRUE);
 	}
 
 	~PerlInterp(){
-		dTHX;
-		perl_destruct(perlInterp);
-		perl_free(perlInterp);
-		PERL_SYS_TERM();
+		if (my_perl) {
+			perl_destruct(my_perl);
+			perl_free(my_perl);
+			PERL_SYS_TERM();
+		}
 	}
-	PerlInterpreter *perlInterp;
+	PerlInterpreter *my_perl;
 };
 
 class PerlScriptRunner{
@@ -80,8 +80,8 @@ public:
 
 void transferExifTags(std::string src, std::string dest){
 #ifdef GROK_HAVE_EXIFTOOL
-	dTHX;
 	PerlScriptRunner::instance();
+	dTHX;
     char *args[] = {(char*)src.c_str(), (char*)dest.c_str(), nullptr};
     call_argv("transfer", G_DISCARD, args);
 #else

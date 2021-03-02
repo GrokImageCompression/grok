@@ -107,7 +107,7 @@ foreach(exe grk_decompress grk_compress grk_dump grk_transcode)
   
   if (PERLLIBS_FOUND)
   	include_directories(${PERL_INCLUDE_PATH})
-  	target_link_libraries(${exe} ${PERL_LIBRARY} "crypt")
+   	target_link_libraries(${exe} ${PERL_LIBRARY} )
   endif()
   
   # Install exe

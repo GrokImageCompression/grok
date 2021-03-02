@@ -35,7 +35,7 @@ else(BUILD_THIRDPARTY)
     #   it is not necessary to invoke pkg_check_module on libpng, because libpng
     #   only depends on zlib, which is already checked.
     if(PNG_FOUND)
-      message(STATUS "The system seems to have a libpnb available, it will be used to support PNG files")
+      message(STATUS "The system seems to have a libpng available, it will be used to support PNG files")
       set(GROK_HAVE_LIBPNG 1 PARENT_SCOPE)
       set(PNG_LIBNAME ${PNG_LIBRARIES} PARENT_SCOPE)
       set(PNG_INCLUDE_DIRNAME ${PNG_PNG_INCLUDE_DIR} PARENT_SCOPE)
