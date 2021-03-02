@@ -243,8 +243,7 @@ else()
   target_link_libraries(${GROK_LIBRARY_NAME} PRIVATE hwy)
 endif()
 set_target_properties(${GROK_LIBRARY_NAME} PROPERTIES ${GROK_LIBRARY_PROPERTIES})
-target_compile_options(${GROK_LIBRARY_NAME} PRIVATE ${GROK_COMPILE_OPTIONS})
-
+target_compile_options(${GROK_LIBRARY_NAME} PRIVATE ${GROK_COMPILE_OPTIONS} PRIVATE ${HWY_FLAGS})
 
 # Install library
 install(TARGETS ${INSTALL_LIBS}
