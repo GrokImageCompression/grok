@@ -35,7 +35,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no,
 										bool *truncated) {
 
 	auto cp = tileProcessor->m_cp;
-	auto image = tileProcessor->image;
+	auto image = tileProcessor->headerImage;
 	auto tcp = cp->tcps + tile_no;
 	auto p_tile = tileProcessor->tile;
 	IncludeTracker include(image->numcomps);

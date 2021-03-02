@@ -36,9 +36,8 @@ namespace grk {
  Byte input-output stream.
  */
 struct BufferedStream: public IBufferedStream {
-
+	friend GrkObjectImpl<BufferedStream>;
 	BufferedStream(uint8_t *buffer, size_t buffer_size, bool l_is_input);
-	~BufferedStream();
 
 	grk_object obj;
 
@@ -164,7 +163,7 @@ struct BufferedStream: public IBufferedStream {
 	static BufferedStream* getImpl(grk_stream *stream);
 	grk_stream* getWrapper(void);
 private:
-
+	~BufferedStream();
 	/**
 	 * Skip bytes in write stream.
 	 * @param		p_size		the number of bytes to skip.

@@ -148,7 +148,7 @@ struct TileProcessor {
 	/** info on image tile */
 	grk_tile *tile;
 	/** image header */
-	GrkImage *image;
+	GrkImage *headerImage;
 	grk_plugin_tile *current_plugin_tile;
 
     // true if whole tile will be decoded; false if tile window will be decoded
@@ -164,6 +164,9 @@ struct TileProcessor {
 	PacketTracker m_packetTracker;
 	BufferedStream *m_stream;
 	bool m_corrupt_packet;
+
+	void generateImage(GrkImage* src_image, grk_tile *src_tile);
+	GrkImage* getImage(void);
 private:
 
 	/** position of the tile part flag in progression order*/
@@ -211,6 +214,8 @@ private:
 			bool final);
 
 	 bool truncated;
+
+	 GrkImage *m_image;
 
 };
 

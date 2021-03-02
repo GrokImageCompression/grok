@@ -52,7 +52,7 @@ void decompress_synch_plugin_with_host(TileProcessor *tcd) {
 										"Plugin does not handle code blocks with multiple segments. Image will be decompressed on CPU.");
 								throw PluginDecodeUnsupportedException();
 							}
-							uint32_t maxPasses = 3 	* (uint32_t)((tcd->image->comps[0].prec + BIBO_EXTRA_BITS) - 2);
+							uint32_t maxPasses = 3 	* (uint32_t)((tcd->headerImage->comps[0].prec + BIBO_EXTRA_BITS) - 2);
 							if (cblk->segs[0].numpasses > maxPasses) {
 								GRK_INFO(
 										"Number of passes %u in segment exceeds BIBO maximum %u. Image will be decompressed on CPU.",

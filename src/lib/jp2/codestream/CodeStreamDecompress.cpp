@@ -143,7 +143,8 @@ TileProcessor* CodeStreamDecompress::allocateProcessor(uint16_t tile_index){
 	}
 	m_tileProcessor = tileProcessor;
 	if (!m_multiTile){
-		delete m_output_image;
+		if (m_output_image)
+			grk_object_unref(&m_output_image->obj);
 		m_output_image = nullptr;
 	}
 	if (!m_output_image) {
@@ -172,7 +173,7 @@ DecompressorState* CodeStreamDecompress::getDecompressorState(void){
 }
 GrkImage* CodeStreamDecompress::getImage(uint16_t tileIndex){
 	auto entry = m_tileCache->get(tileIndex);
-	return entry ? entry->image : nullptr;
+	return entry ? entry->processor->getImage() : nullptr;
 }
 std::vector<GrkImage*> CodeStreamDecompress::getAllImages(void){
 	return m_tileCache->getAllImages();
@@ -358,7 +359,7 @@ bool CodeStreamDecompress::decompress( grk_plugin_tile *tile){
 }
 bool CodeStreamDecompress::decompressTile(uint16_t tile_index){
 	auto entry = m_tileCache->get(tile_index);
-	if (entry && entry->processor && entry->image)
+	if (entry && entry->processor && entry->processor->getImage())
 		return true;
 
 	// another tile has already been decoded
@@ -850,7 +851,7 @@ bool CodeStreamDecompress::decompressTile() {
 	auto tileCache = m_tileCache->get((uint16_t)tileIndexToDecode());
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
 	bool rc = false;
-	if (!tileCache || !tileCache->image) {
+	if (!tileCache || !tileCache->processor->getImage()) {
 		if (!cstr_index->tile_index) {
 			if (!allocate_tile_element_cstr_index())
 				return false;
@@ -941,7 +942,7 @@ bool CodeStreamDecompress::decompress_tile_t2t1(TileProcessor *tileProcessor) {
 		auto tile = tileProcessor->tile;
 		if (m_multiTile) {
 			// make a copy and put in cache
-			m_tileCache->put(tile_index, m_output_image, tile);
+			tileProcessor->generateImage(m_output_image, tile);
 			for (uint16_t compno = 0; compno < tile->numcomps; ++compno)
 				(tile->comps + compno)->release_mem(true);
 		} else {

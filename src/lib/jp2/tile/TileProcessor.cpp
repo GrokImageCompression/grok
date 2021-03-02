@@ -33,7 +33,7 @@ TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream, boo
 				totnum_tp(0),
 				pino(0),
 				tile(nullptr),
-				image(codeStream->getHeaderImage()),
+				headerImage(codeStream->getHeaderImage()),
 				current_plugin_tile(codeStream->getCurrentPluginTile()),
 				wholeTileDecompress(isWholeTileDecompress),
 				plt_markers(nullptr),
@@ -42,11 +42,12 @@ TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream, boo
 				m_corrupt_packet(false),
 				tp_pos(0),
 				m_tcp(nullptr),
-				truncated(false)
+				truncated(false),
+				m_image(nullptr)
 {
 	tile = new grk_tile();
-	tile->comps = new TileComponent[image->numcomps];
-	tile->numcomps = image->numcomps;
+	tile->comps = new TileComponent[headerImage->numcomps];
+	tile->numcomps = headerImage->numcomps;
 
 	tp_pos = m_cp->m_coding_params.m_enc.m_tp_pos;
 }
@@ -54,6 +55,17 @@ TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream, boo
 TileProcessor::~TileProcessor() {
 	delete tile;
 	delete plt_markers;
+	if (m_image)
+		grk_object_unref(&m_image->obj);
+}
+
+void TileProcessor::generateImage(GrkImage* src_image, grk_tile *src_tile){
+	if (m_image)
+		grk_object_unref(&m_image->obj);
+	m_image = src_image->duplicate(src_tile);
+}
+GrkImage* TileProcessor::getImage(void){
+	return m_image;
 }
 
 /*
@@ -221,8 +233,8 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 		} /* resno */
 
 		if (!single_lossless) {
-			maxSE += (double) (((uint64_t) 1 << image->comps[compno].prec) - 1)
-					* (double) (((uint64_t) 1 << image->comps[compno].prec) - 1)
+			maxSE += (double) (((uint64_t) 1 << headerImage->comps[compno].prec) - 1)
+					* (double) (((uint64_t) 1 << headerImage->comps[compno].prec) - 1)
 					* (double) numpix;
 		}
 	} /* compno */
@@ -374,8 +386,8 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 		} /* resno */
 
 		if (!single_lossless)
-			maxSE += (double) (((uint64_t) 1 << image->comps[compno].prec) - 1)
-					* (double) (((uint64_t) 1 << image->comps[compno].prec) - 1)
+			maxSE += (double) (((uint64_t) 1 << headerImage->comps[compno].prec) - 1)
+					* (double) (((uint64_t) 1 << headerImage->comps[compno].prec) - 1)
 					* (double) numpix;
 
 	} /* compno */
@@ -596,7 +608,7 @@ bool TileProcessor::init(const GrkImage *output_image,bool isCompressor) {
 
 	uint32_t tile_x = m_tile_index % m_cp->t_grid_width; /* tile coordinates */
 	uint32_t tile_y = m_tile_index / m_cp->t_grid_width;
-	*((grk_rect_u32*)tile) = m_cp->getTileBounds(image, tile_x, tile_y);
+	*((grk_rect_u32*)tile) = m_cp->getTileBounds(headerImage, tile_x, tile_y);
 
 	/* testcase 1888.pdf.asan.35.988 */
 	if (tcp->tccps->numresolutions == 0) {
@@ -605,7 +617,7 @@ bool TileProcessor::init(const GrkImage *output_image,bool isCompressor) {
 	}
 
 	for (uint32_t compno = 0; compno < tile->numcomps; ++compno) {
-		auto image_comp = image->comps + compno;
+		auto image_comp = headerImage->comps + compno;
 		/*fprintf(stderr, "compno = %u/%u\n", compno, tile->numcomps);*/
 		if (image_comp->dx == 0 || image_comp->dy == 0)
 			return false;
@@ -649,7 +661,7 @@ bool TileProcessor::init(const GrkImage *output_image,bool isCompressor) {
 
 	if (isCompressor) {
         uint64_t max_precincts=0;
-		for (uint32_t compno = 0; compno < image->numcomps; ++compno) {
+		for (uint32_t compno = 0; compno < headerImage->numcomps; ++compno) {
 			TileComponent *tilec = &tile->comps[compno];
 			for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
 				auto res = tilec->tileCompResolution + resno;
@@ -767,7 +779,7 @@ bool TileProcessor::decompress_tile_t2(ChunkBuffer *src_buf) {
 
 	// optimization for regions that are close to largest decompressed resolution
 	// (currently breaks tests, so disabled)
-	for (uint32_t compno = 0; compno < image->numcomps; compno++) {
+	for (uint32_t compno = 0; compno < headerImage->numcomps; compno++) {
 		if (!is_whole_tilecomp_decoding(compno)) {
 			wholeTileDecompress = false;
 			break;
@@ -842,12 +854,12 @@ bool TileProcessor::decompress_tile_t1(void) {
 
 
 void TileProcessor::copy_image_to_tile() {
-	for (uint32_t i = 0; i < image->numcomps; ++i) {
+	for (uint32_t i = 0; i < headerImage->numcomps; ++i) {
 		auto tilec = tile->comps + i;
-		auto img_comp = image->comps + i;
+		auto img_comp = headerImage->comps + i;
 
-		uint32_t offset_x = ceildiv<uint32_t>(image->x0, img_comp->dx);
-		uint32_t offset_y = ceildiv<uint32_t>(image->y0, img_comp->dy);
+		uint32_t offset_x = ceildiv<uint32_t>(headerImage->x0, img_comp->dx);
+		uint32_t offset_y = ceildiv<uint32_t>(headerImage->y0, img_comp->dy);
 		uint64_t image_offset = (tilec->x0 - offset_x)
 				+ (uint64_t) (tilec->y0 - offset_y) * img_comp->stride;
 		auto src = img_comp->data + image_offset;
@@ -908,14 +920,14 @@ bool TileProcessor::mct_decompress() {
 									samples,
 									data,
 									tile->numcomps,
-									image->comps->sgnd);
+									headerImage->comps->sgnd);
 		delete[] data;
 		return rc;
 	} else {
 		if (m_tcp->tccps->qmfbid == 1) {
-			mct::decompress_rev(tile,image,m_tcp->tccps);
+			mct::decompress_rev(tile,headerImage,m_tcp->tccps);
 		} else {
-			mct::decompress_irrev(tile,	image,m_tcp->tccps);
+			mct::decompress_irrev(tile,	headerImage,m_tcp->tccps);
 		}
 	}
 
@@ -927,9 +939,9 @@ bool TileProcessor::dc_level_shift_decompress() {
 		if (!need_mct_decompress(compno) || m_tcp->mct == 2 ) {
 			auto tccp = m_tcp->tccps + compno;
 			if (tccp->qmfbid == 1)
-				mct::decompress_dc_shift_rev(tile,image,m_tcp->tccps,compno);
+				mct::decompress_dc_shift_rev(tile,headerImage,m_tcp->tccps,compno);
 			else
-				mct::decompress_dc_shift_irrev(tile,image,m_tcp->tccps,compno);
+				mct::decompress_dc_shift_irrev(tile,headerImage,m_tcp->tccps,compno);
 		}
 	}
 	return true;
@@ -976,7 +988,7 @@ bool TileProcessor::mct_encode() {
 								samples,
 								data,
 								tile->numcomps,
-								image->comps->sgnd);
+								headerImage->comps->sgnd);
 		delete[] data;
 		return rc;
 	} else if (m_tcp->tccps->qmfbid == 0) {
@@ -1021,7 +1033,7 @@ void TileProcessor::t1_encode() {
 		else
 			mct_norms = mct::get_norms_rev();
 	} else {
-		mct_numcomps = image->numcomps;
+		mct_numcomps = headerImage->numcomps;
 		mct_norms = (const double*) (tcp->mct_norms);
 	}
 
@@ -1155,9 +1167,9 @@ bool TileProcessor::pre_write_tile() {
 
 		/* if we only have one tile, then simply set tile component data equal to
 		 * image component data. Otherwise, allocate tile data and copy */
-		for (uint32_t j = 0; j < image->numcomps; ++j) {
+		for (uint32_t j = 0; j < headerImage->numcomps; ++j) {
 			auto tilec = tile->comps + j;
-			auto imagec = image->comps + j;
+			auto imagec = headerImage->comps + j;
 			if (transfer_image_to_tile && imagec->data) {
 				tilec->getBuffer()->attach(imagec->data, imagec->stride);
 			} else {
@@ -1192,9 +1204,9 @@ template<typename T> void grk_copy_strided(uint32_t w, uint32_t stride, uint32_t
 bool TileProcessor::copy_uncompressed_data_to_tile(uint8_t *p_src,
 		uint64_t src_length) {
 	 uint64_t tile_size = 0;
-	for (uint32_t i = 0; i < image->numcomps; ++i) {
+	for (uint32_t i = 0; i < headerImage->numcomps; ++i) {
 		auto tilec = tile->comps + i;
-		auto img_comp = image->comps + i;
+		auto img_comp = headerImage->comps + i;
 		uint32_t size_comp = (uint32_t)((img_comp->prec + 7) >> 3);
 		tile_size += size_comp *tilec->area();
 	}
@@ -1202,10 +1214,10 @@ bool TileProcessor::copy_uncompressed_data_to_tile(uint8_t *p_src,
 
 	if (!p_src || (tile_size != src_length))
 		return false;
-	size_t length_per_component = src_length / image->numcomps;
-	for (uint32_t i = 0; i < image->numcomps; ++i) {
+	size_t length_per_component = src_length / headerImage->numcomps;
+	for (uint32_t i = 0; i < headerImage->numcomps; ++i) {
 		auto tilec = tile->comps + i;
-		auto img_comp = image->comps + i;
+		auto img_comp = headerImage->comps + i;
 
 		uint32_t size_comp = (uint32_t)((img_comp->prec + 7) >> 3);
 		auto dest_ptr = tilec->getBuffer()->getWindow()->data;

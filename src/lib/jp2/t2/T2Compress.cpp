@@ -36,7 +36,7 @@ bool T2Compress::compress_packets(uint16_t tile_no, uint16_t max_layers,
 		bool first_poc_tile_part, uint32_t tp_pos,
 		uint32_t pino) {
 	auto cp = tileProcessor->m_cp;
-	auto image = tileProcessor->image;
+	auto image = tileProcessor->headerImage;
 	auto p_tile = tileProcessor->tile;
 	auto tcp = &cp->tcps[tile_no];
 	IncludeTracker include(image->numcomps);
@@ -71,7 +71,7 @@ bool T2Compress::compress_packets_simulate(uint16_t tile_no, uint16_t max_layers
 
 	assert(all_packets_len);
 	auto cp = tileProcessor->m_cp;
-	auto image = tileProcessor->image;
+	auto image = tileProcessor->headerImage;
 	auto tcp = cp->tcps + tile_no;
 	uint32_t pocno = (cp->rsiz == GRK_PROFILE_CINEMA_4K) ? 2 : 1;
 	uint32_t max_comp =

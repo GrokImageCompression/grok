@@ -17,9 +17,9 @@ public:
 
 
 class GrkImage : public grk_image {
+friend GrkObjectImpl<GrkImage>;
 public:
 	GrkImage();
-	~GrkImage();
 
 	bool subsampleAndReduce(uint32_t reduce);
 
@@ -114,6 +114,7 @@ public:
 								uint32_t *src_line_off);
 	void createMeta();
 private:
+	~GrkImage();
 	bool ownsData;
 };
 
