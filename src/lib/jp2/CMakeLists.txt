@@ -55,6 +55,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/t2
   ${CMAKE_CURRENT_SOURCE_DIR}/tile
   ${CMAKE_CURRENT_SOURCE_DIR}/filters
+  ${CMAKE_CURRENT_SOURCE_DIR}/../highway
 )
 
 # Defines the source code for executables
@@ -238,6 +239,7 @@ endif()
 if(UNIX)
   target_link_libraries(${GROK_LIBRARY_NAME} ${CMAKE_THREAD_LIBS_INIT})
 endif()
+target_link_libraries(${GROK_LIBRARY_NAME}  ${${GROK_NAMESPACE}_BINARY_DIR}/bin/libhwy.a)
 set_target_properties(${GROK_LIBRARY_NAME} PROPERTIES ${GROK_LIBRARY_PROPERTIES})
 target_compile_options(${GROK_LIBRARY_NAME} PRIVATE ${GROK_COMPILE_OPTIONS})
 
@@ -261,32 +263,6 @@ if(BUILD_LUTS_GENERATOR)
 add_executable(t1_generate_luts ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_generate_luts.cpp)
   if(UNIX)
     target_link_libraries(t1_generate_luts)
-  endif()
-endif()
-
-# Experimental option; let's how cppcheck performs
-# Implementation details:
-# I could not figure out how to easily upload a file to CDash. Instead simply
-# pretend cppcheck is part of the Build step. Technically cppcheck can even
-# output gcc formatted error/warning report
-# Another implementation detail: I could not redirect error to the error
-# catching mechanism something is busted in cmake 2.8.5, I had to use the
-# warning regex to catch them.
-if(GROK_CPPCHECK)
-  find_package(CPPCHECK REQUIRED)
-  foreach(f ${GROK_EXECUTABLES_SRCS} ${GROK_LIBRARY_SRCS})
-    # cppcheck complains about too many configuration, pretend to be WIN32:
-    add_custom_command(TARGET ${GROK_LIBRARY_NAME}
-      COMMAND ${CPPCHECK_EXECUTABLE} -DWIN32 ${f})
-  endforeach()
-endif()
-
-if(GROK_USE_DSYMUTIL)
-  if(BUILD_SHARED_LIBS)
-    add_custom_command(TARGET ${GROK_LIBRARY_NAME} POST_BUILD
-    COMMAND "dsymutil" "$<TARGET_SONAME_FILE:${GROK_LIBRARY_NAME}>"
-    COMMENT "dsymutil $<TARGET_SONAME_FILE:${GROK_LIBRARY_NAME}>"
-    DEPENDS ${GROK_LIBRARY_NAME})
   endif()
 endif()
 
