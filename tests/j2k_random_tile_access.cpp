@@ -33,29 +33,6 @@
 #define _strnicmp strncasecmp
 #endif /* _WIN32 */
 
-/**
- sample error callback expecting a FILE* client object
- */
-static void error_callback(const char *msg, void *client_data) {
-	(void) client_data;
-	spdlog::error("{}", msg);
-}
-/**
- sample warning callback expecting a FILE* client object
- */
-static void warning_callback(const char *msg, void *client_data) {
-	(void) client_data;
-	spdlog::warn("{}", msg);
-}
-/**
- sample debug callback expecting no client object
- */
-static void info_callback(const char *msg, void *client_data) {
-	(void) client_data;
-	spdlog::info("{}", msg);
-}
-
-
 static int32_t test_tile( uint16_t tile_index, grk_image *image, grk_stream *stream,
 								grk_codec *codec) {
 	spdlog::info("Decompressing tile {} ...", tile_index);
@@ -73,7 +50,6 @@ static int32_t test_tile( uint16_t tile_index, grk_image *image, grk_stream *str
   return EXIT_SUCCESS;
 }
 
-
 int32_t main(int argc, char **argv) {
 	grk_dparameters parameters; /* decompression parameters */
 	int32_t ret = EXIT_FAILURE, rc;
@@ -84,12 +60,10 @@ int32_t main(int argc, char **argv) {
 	}
 
 	grk_initialize(nullptr, 0);
-	grk_set_info_handler(info_callback, nullptr);
-	grk_set_warning_handler(warning_callback, nullptr);
-	grk_set_error_handler(error_callback, nullptr);
-
+	grk_set_info_handler(grk::infoCallback, nullptr);
+	grk_set_warning_handler(grk::warningCallback, nullptr);
+	grk_set_error_handler(grk::errorCallback, nullptr);
 	grk_decompress_set_default_params(&parameters);
-
 	strncpy(parameters.infile, argv[1], GRK_PATH_LEN - 1);
 
 	if (!grk::jpeg2000_file_format(parameters.infile,
@@ -134,14 +108,12 @@ int32_t main(int argc, char **argv) {
 			goto cleanup;
 		}
 
-
 		/* Read the main header of the codestream and if necessary the JP2 boxes*/
 		grk_header_info headerInfo;
 		if (!grk_decompress_read_header(codec, &headerInfo)) {
 			spdlog::error("randome tile processor : failed to read header");
 			goto cleanup;
 		}
-
 
 		spdlog::info("The file contains {}x{} tiles", headerInfo.t_grid_width,
 				headerInfo.t_grid_height);
@@ -154,23 +126,14 @@ int32_t main(int argc, char **argv) {
 		image = grk_decompress_get_composited_image(codec);
 		rc = test_tile(tile[i], image, stream, codec);
 
-		/* Free remaining structures */
 		grk_object_unref(codec);
-
-		/* Close the byte stream */
 		grk_object_unref(stream);
-
 		if (rc)
 			goto cleanup;
 	}
-
 	ret = EXIT_SUCCESS;
-
 cleanup:
-
 	grk_deinitialize();
 
 	return ret;
 }
-/*end main*/
-

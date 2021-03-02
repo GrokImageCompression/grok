@@ -27,31 +27,6 @@
 #include "stdlib.h"
 #include <stdbool.h>
 
-/* -------------------------------------------------------------------------- */
-
-/**
- sample error debug callback expecting no client object
- */
-static void error_callback(const char *msg, void *client_data) {
-	(void) client_data;
-	spdlog::error("{}", msg);
-}
-/**
- sample warning debug callback expecting no client object
- */
-static void warning_callback(const char *msg, void *client_data) {
-	(void) client_data;
-	spdlog::warn("{}", msg);
-}
-/**
- sample debug callback expecting no client object
- */
-static void info_callback(const char *msg, void *client_data) {
-	(void) client_data;
-	spdlog::info("{}", msg);
-}
-
-/* -------------------------------------------------------------------------- */
 
 #define NUM_COMPS_MAX 4
 int main(int argc, char *argv[]) {
@@ -63,7 +38,7 @@ int main(int argc, char *argv[]) {
 	uint32_t nb_tiles = 0;
 	uint64_t data_size = 0;
 	size_t len = 0;
-	int rc = 0;
+	int rc = 1;
 
 #ifdef USING_MCT
     const float mct [] = {
@@ -112,23 +87,17 @@ int main(int argc, char *argv[]) {
 		irreversible = true;
 		output_file = "test.j2k";
 	}
-	if (num_comps > NUM_COMPS_MAX) {
-		rc = 1;
+	if (num_comps > NUM_COMPS_MAX)
 		goto cleanup;
-	}
+
 	nb_tiles = (image_width / tile_width) * (image_height / tile_height);
 	data_size = (uint64_t) tile_width * tile_height * num_comps
 			* ((comp_prec + 7) / 8);
-	if (!data_size) {
-		rc = 1;
+	if (!data_size)
 		goto cleanup;
-	}
 	data = (uint8_t*) malloc(data_size * sizeof(uint8_t));
-	if (!data) {
-		rc = 1;
+	if (!data)
 		goto cleanup;
-	}
-
 	spdlog::info(
 			"Compressing random values -> keep in mind that this is very hard to compress");
 	for (i = 0; i < data_size; ++i)
@@ -223,10 +192,8 @@ int main(int argc, char *argv[]) {
 
 	stream = grk_stream_create_file_stream(output_file, 1024 * 1024, false);
 	if (!stream) {
-		spdlog::error(
-				"test_tile_encoder: failed to create a stream from file {}",
+		spdlog::error("test_tile_encoder: failed to create a stream from file {}",
 				output_file);
-		rc = 1;
 		goto cleanup;
 	}
 
@@ -238,20 +205,17 @@ int main(int argc, char *argv[]) {
 		codec = grk_compress_create(GRK_CODEC_J2K, stream);
 	}
 	if (!codec) {
-		rc = 1;
 		goto cleanup;
 	}
 
 	/* catch events using our callbacks and give a local context */
-	grk_set_info_handler(info_callback, nullptr);
-	grk_set_warning_handler(warning_callback, nullptr);
-	grk_set_error_handler(error_callback, nullptr);
+	grk_set_info_handler(grk::infoCallback, nullptr);
+	grk_set_warning_handler(grk::warningCallback, nullptr);
+	grk_set_error_handler(grk::errorCallback, nullptr);
 
 	image = grk_image_new(num_comps, params, GRK_CLRSPC_SRGB,true);
-	if (!image) {
-		rc = 1;
+	if (!image)
 		goto cleanup;
-	}
 
 	image->x0 = 0;
 	image->y0 = 0;
@@ -261,31 +225,26 @@ int main(int argc, char *argv[]) {
 
 	if (!grk_compress_init(codec, &param, image)) {
 		spdlog::error("test_tile_encoder: failed to setup the codec");
-		rc = 1;
 		goto cleanup;
 	}
 	if (!grk_compress_start(codec)) {
 		spdlog::error("test_tile_encoder: failed to start compress");
-		rc = 1;
 		goto cleanup;
 	}
 
 	for (i = 0; i < nb_tiles; ++i) {
 		if (!grk_compress_tile(codec, (uint16_t) i, data, data_size)) {
-			spdlog::error("test_tile_encoder: failed to write the tile {}",
-					i);
-			rc = 1;
+			spdlog::error("test_tile_encoder: failed to write the tile {}",	i);
 			goto cleanup;
 		}
 	}
 
 	if (!grk_compress_end(codec)) {
 		spdlog::error("test_tile_encoder: failed to end compress");
-		rc = 1;
 		goto cleanup;
 	}
-
-	cleanup:
+	rc = 0;
+cleanup:
 	grk_object_unref(stream);
 	grk_object_unref(codec);
 	grk_object_unref(&image->obj);
@@ -295,4 +254,3 @@ int main(int argc, char *argv[]) {
 
 	return rc;
 }
-

@@ -7,7 +7,6 @@ IF(MSVC)
     SET(CMAKE_CXX_FLAGS "/EHsc")
 ENDIF(MSVC)
 
-
 include_directories(
   ${GROK_BINARY_DIR}/src/lib/jp2 # grk_config.h
   ${GROK_BINARY_DIR}/src/bin/common # grk_apps_config.h
@@ -33,7 +32,6 @@ include_directories(
 endif()
 
 
-# First thing define the common source:
 set(compare_images_SRCS compare_images.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/color.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/color.h
@@ -51,7 +49,7 @@ set(compare_images_SRCS compare_images.cpp
   ${GROK_SOURCE_DIR}/src/bin/image_format/PNGFormat.h
   )
 
- if(GROK_HAVE_LIBTIFF)
+if(GROK_HAVE_LIBTIFF)
  	list(APPEND compare_images_SRCS ${GROK_SOURCE_DIR}/src/bin/image_format/TIFFFormat.h)
 	list(APPEND compare_images_SRCS ${GROK_SOURCE_DIR}/src/bin/image_format/TIFFFormat.cpp)
 endif()
@@ -66,7 +64,6 @@ if(GROK_HAVE_LIBPNG)
 endif()
 
 set(compare_dump_files_SRCS compare_dump_files.cpp)
-
 set(compare_raw_files_SRCS compare_raw_files.cpp)
 
 add_executable(compare_images ${compare_images_SRCS})
@@ -75,26 +72,19 @@ target_link_libraries(compare_images
   ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT}
   )
 
-
-# To support universal exe:
 if(ZLIB_FOUND AND APPLE)
   target_link_libraries(compare_images z)
 else(ZLIB_FOUND AND APPLE)
   target_link_libraries(compare_images ${Z_LIBNAME})
 endif()
- # liburing
- if(URING)
+if(URING)
   target_link_libraries(compare_images uring)
- endif()
-
+endif()
 
 add_executable(compare_dump_files ${compare_dump_files_SRCS})
-
 add_executable(j2k_random_tile_access j2k_random_tile_access.cpp ${GROK_SOURCE_DIR}/src/bin/common/common.cpp)
 target_link_libraries(j2k_random_tile_access ${GROK_LIBRARY_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
-
 add_executable(compare_raw_files ${compare_raw_files_SRCS})
-
 add_executable(test_tile_encoder test_tile_encoder.cpp ${GROK_SOURCE_DIR}/src/bin/common/common.cpp)
 target_link_libraries(test_tile_encoder ${GROK_LIBRARY_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
 
@@ -133,13 +123,12 @@ set_property(TEST rta4 APPEND PROPERTY DEPENDS tte4)
 add_test(NAME rta5 COMMAND j2k_random_tile_access tte5.j2k)
 set_property(TEST rta5 APPEND PROPERTY DEPENDS tte5)
 
-# No image send to the dashboard if lib PNG is not available.
+# No image is sent to dashboard if libpng is not available.
 if(NOT GROK_HAVE_LIBPNG)
-  message(WARNING "Lib PNG seems to be not available: if you want run the non-regression tests with images reported to the dashboard, you need it (try BUILD_THIRDPARTY)")
+  message(WARNING "libpng seems to be not available: if you want run the non-regression tests with images reported to the dashboard, you need BUILD_THIRDPARTY")
 endif()
 
 add_subdirectory(conformance)
 add_subdirectory(nonregression)
 add_subdirectory(unit)
-
 #add_executable(pdf2jp2 pdf2jp2.c)

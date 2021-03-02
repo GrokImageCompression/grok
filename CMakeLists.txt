@@ -1,10 +1,9 @@
-# option to set custom grok name space
+# option to set custom Grok name space
 #set(GROK_NAMESPACE "FOO")
 cmake_minimum_required(VERSION 3.12)
 
 if(NOT GROK_NAMESPACE)
   set(GROK_NAMESPACE "GROK")
-  set(GROK_STANDALONE 1)
 endif()
 set(GROK_LIBRARY_NAME grokj2k)
 set(GROK_PLUGIN_NAME grokj2k_plugin)
@@ -105,7 +104,7 @@ include (${CMAKE_ROOT}/Modules/TestBigEndian.cmake)
 TEST_BIG_ENDIAN(GROK_BIG_ENDIAN)
 
 #-----------------------------------------------------------------------------
-# Setup file for setting custom ctest vars
+# Set up file for setting custom ctest vars
 configure_file(
   ${${GROK_NAMESPACE}_SOURCE_DIR}/cmake/CTestCustom.cmake.in
   ${${GROK_NAMESPACE}_BINARY_DIR}/CTestCustom.cmake
@@ -133,7 +132,7 @@ ENDIF(NOT ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
 #-----------------------------------------------------------------------------
 # grk_config.h generation (1/2)
 
-# Option Choose whether to use static runtime
+# Option choose whether to use static runtime
 include(ucm)
 if(BUILD_SHARED_LIBS)
     ucm_set_runtime(DYNAMIC)

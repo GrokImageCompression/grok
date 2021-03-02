@@ -45,29 +45,6 @@
 #include <strings.h>
 #endif /* _WIN32 */
 
-/**
- sample error debug callback expecting no client object
- */
-static void error_callback(const char *msg, void *client_data) {
-	(void) client_data;
-	spdlog::error("{}", msg);
-}
-/**
- sample warning debug callback expecting no client object
- */
-static void warning_callback(const char *msg, void *client_data) {
-	(void) client_data;
-	spdlog::warn("{}", msg);
-}
-/**
- sample debug callback expecting no client object
- */
-static void info_callback(const char *msg, void *client_data) {
-	(void) client_data;
-	spdlog::info("{}", msg);
-}
-
-/* -------------------------------------------------------------------------- */
 
 int main(int argc, char *argv[]) {
 	grk_dparameters param;
@@ -165,9 +142,9 @@ int main(int argc, char *argv[]) {
 	}
 
 	/* catch events using our callbacks and give a local context */
-	grk_set_info_handler(info_callback, nullptr);
-	grk_set_warning_handler(warning_callback, nullptr);
-	grk_set_error_handler(error_callback, nullptr);
+	grk_set_info_handler(grk::infoCallback, nullptr);
+	grk_set_warning_handler(grk::warningCallback, nullptr);
+	grk_set_error_handler(grk::errorCallback, nullptr);
 
 	/* Set up the decompress parameters using user parameters */
 	if (!grk_decompress_init(codec, &param)) {
