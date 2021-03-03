@@ -7,11 +7,9 @@ if [ "$OUT" == "" ]; then
     exit 1
 fi
 
-SRC_DIR=$(dirname $0)/../..
 
-CONF_DIR=$SRC_DIR/data/input/conformance
-NR_DIR=$SRC_DIR/data/input/nonregression
+CONF_DIR=$SRC/grok-data/input/conformance
+NR_DIR=$SRC/grok-data/input/nonregression
 
 rm -f $OUT/grk_decompress_fuzzer_seed_corpus.zip
 zip $OUT/grk_decompress_fuzzer_seed_corpus.zip $CONF_DIR/*.jp2 $CONF_DIR/*.j2k $NR_DIR/*.jp2 $NR_DIR/*.j2k 
-cd $OLDPWD
