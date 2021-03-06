@@ -58,16 +58,10 @@ template<typename T> struct ResWindow {
 		/*
 		m_paddedTileBandWindow is only used for determining which precincts and code blocks overlap
 		the window of interest, in each respective resolution
-		Notes :
-		1: we don't need to clip the padded tile band windows, since no precincts or code blocks
-		will be out of bounds of the full tile band
-		2. we pad by 2* FILTER_WIDTH because we perform DWT transform on regions padded by FILTER_WIDTH,
-		so we need another layer of padding to ensure we don't pull uninitialized locations (need to verify this)
 		*/
 		for (uint8_t orient = 0; orient < ( (resno) > 0 ? BAND_NUM_ORIENTATIONS : 1); orient++) {
-			auto tileBandWindow = getTileCompBandWindow(numDecomps, orient,tileCompWindowUnreduced);
-			auto tileBandFull = getTileCompBandWindow(numDecomps, orient,tileCompUnreduced);
-			m_paddedTileBandWindow.push_back(tileBandWindow.grow(2 * FILTER_WIDTH).intersection(&tileBandFull));
+			m_paddedTileBandWindow.push_back(
+					getTileCompBandWindow(numDecomps, orient,tileCompWindowUnreduced, tileCompUnreduced, FILTER_WIDTH));
 		}
 
 		if (m_tileCompResLower) {
@@ -85,8 +79,9 @@ template<typename T> struct ResWindow {
 */
 			// 1. set up windows for horizontal and vertical passes
 			for (uint8_t orient = 0; orient < BAND_NUM_ORIENTATIONS; ++orient) {
-				auto bandWindow = getTileCompBandWindow(numDecomps,orient,tileCompWindowUnreduced);
+				auto bandWindow = getTileCompBandWindow(numDecomps,orient,tileCompWindowUnreduced,tileCompUnreduced,FILTER_WIDTH);
 				auto band = orient == BAND_ORIENT_LL ? *((grk_rect_u32*)m_tileCompResLower) : m_tileCompRes->band[orient-1];
+				//assert(bandWindow.intersection(band) == bandWindow);
 				m_bandWindowBufferDim.push_back(new grk_buffer_2d<T>(bandWindow.grow(2 * FILTER_WIDTH, band).pan(-(int64_t)band.x0, -(int64_t)band.y0)));
 				unpaddedBandWindows.push_back(new grk_buffer_2d<T>(bandWindow.pan(-(int64_t)band.x0, -(int64_t)band.y0)));
 			}

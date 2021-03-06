@@ -20,8 +20,8 @@
 namespace grk {
 
 /**
- * Get band window in tile component coordinates for specified resolution
- * and band orientation
+ * Get band window in tile component coordinates for specified number
+ * of decompositions
  *
  * Note: if num_res is zero, then the band window (and there is only one)
  * is equal to the unreduced tile component window
@@ -46,25 +46,21 @@ grk_rect_u32 getTileCompBandWindow(uint32_t numDecomps,
     /* Map above tile-based coordinates to
      * sub-band-based coordinates, i.e. origin is at tile origin  */
     /* See equation B-15 of the standard. */
-    uint32_t x0b = orientation & 1;
-    uint32_t y0b = (uint32_t)(orientation >> 1U);
+    uint32_t bx0 = orientation & 1;
+    uint32_t by0 = (uint32_t)(orientation >> 1U);
 
-    uint32_t x0bShift = (1U << (numDecomps - 1)) * x0b;
-    uint32_t y0bShift = (1U << (numDecomps - 1)) * y0b;
+    uint32_t bx0Shift = (1U << (numDecomps - 1)) * bx0;
+    uint32_t by0Shift = (1U << (numDecomps - 1)) * by0;
 
-    auto fullDecomp =
-    	grk_rect_u32((tcx0 <= x0bShift) ? 0 : ceildivpow2<uint32_t>(tcx0 - x0bShift, numDecomps),
-					 (tcy0 <= y0bShift) ? 0 : ceildivpow2<uint32_t>(tcy0 - y0bShift, numDecomps),
-					 (tcx1 <= x0bShift) ? 0 : ceildivpow2<uint32_t>(tcx1 - x0bShift, numDecomps),
-					 (tcy1 <= y0bShift) ? 0 : ceildivpow2<uint32_t>(tcy1 - y0bShift, numDecomps));
-
-	return fullDecomp;
+    return grk_rect_u32((tcx0 <= bx0Shift) ? 0 : ceildivpow2<uint32_t>(tcx0 - bx0Shift, numDecomps),
+					 (tcy0 <= by0Shift) ? 0 : ceildivpow2<uint32_t>(tcy0 - by0Shift, numDecomps),
+					 (tcx1 <= bx0Shift) ? 0 : ceildivpow2<uint32_t>(tcx1 - bx0Shift, numDecomps),
+					 (tcy1 <= by0Shift) ? 0 : ceildivpow2<uint32_t>(tcy1 - by0Shift, numDecomps));
 }
 
-
 /**
- * Get band window in tile component coordinates for specified resolution
- * and band orientation
+ * Get band window in tile component coordinates for specified number
+ * of decompositions
  *
  * Note: if num_res is zero, then the band window (and there is only one)
  * is equal to the unreduced tile component window
@@ -75,16 +71,20 @@ grk_rect_u32 getTileCompBandWindow(uint32_t numDecomps,
 							grk_rect_u32 unreducedTileComp,
 							uint32_t padding){
 	assert(orientation < BAND_NUM_ORIENTATIONS);
-    if (numDecomps == 0) {
+    if (numDecomps == 0){
+    	assert(orientation==0);
     	return unreducedTileCompWindow.grow(padding).intersection(&unreducedTileComp);
-    } else if (numDecomps == 1){
-    	auto temp =  unreducedTileCompWindow.grow(2 * padding).intersection(&unreducedTileComp);
-    	return getTileCompBandWindow(1,orientation,temp);
+    }
+
+    if (numDecomps == 1){
+    	return getTileCompBandWindow(1,orientation,
+    			unreducedTileCompWindow.grow(2 * padding).intersection(&unreducedTileComp));
     } else {
-    	auto almostFullDecompWindow = getTileCompBandWindow(numDecomps-1,orientation,unreducedTileCompWindow);
-    	auto almostFullDecomp = getTileCompBandWindow(numDecomps-1,orientation,unreducedTileComp);
-    	almostFullDecompWindow= almostFullDecompWindow.grow(2 * padding).intersection(&almostFullDecomp);
-    	return getTileCompBandWindow(1,orientation,almostFullDecomp);
+    	auto almostFullDecompWindow = getTileCompBandWindow(numDecomps-1,0,unreducedTileCompWindow);
+    	auto almostFullDecomp = getTileCompBandWindow(numDecomps-1,0,unreducedTileComp);
+    	almostFullDecompWindow.grow(2 * padding).clip(&almostFullDecomp);
+
+    	return getTileCompBandWindow(1,orientation,almostFullDecompWindow);
     }
 }
 
