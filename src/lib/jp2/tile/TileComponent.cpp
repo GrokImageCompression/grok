@@ -95,12 +95,7 @@ bool TileComponent::init(bool isCompressor,
 	for (uint8_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = tileCompResolution + resno;
 
-		grk_rect_u32 dim;
-		if (resno == numresolutions - 1)
-			dim = unreducedTileComp;
-		else
-			dim = getTileCompBandWindow((uint32_t)(numresolutions - 1 - resno),BAND_ORIENT_LL,unreducedTileComp);
-		res->set_rect(dim);
+		res->set_rect(getTileCompBandWindow((uint32_t)(numresolutions - (resno+1)),BAND_ORIENT_LL,unreducedTileComp));
 
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
 		uint32_t precinctWidthExp = m_tccp->precinctWidthExp[resno];
