@@ -37,7 +37,7 @@ namespace grk {
 
 const uint32_t grk_alignment = 32;
 
-uint32_t grk_make_aligned_width(uint32_t width){
+uint32_t grkMakeAlignedWidth(uint32_t width){
 	assert(width);
 	return (uint32_t)((((uint64_t)width + grk_alignment - 1)/grk_alignment) * grk_alignment);
 }
@@ -116,11 +116,11 @@ void* grk_calloc(size_t num, size_t size) {
 	return calloc(num, size);
 }
 
-void* grk_aligned_malloc(size_t size) {
+void* grkAlignedMalloc(size_t size) {
 	return grk_aligned_alloc_n(default_align, size);
 }
 
-void grk_aligned_free(void *ptr) {
+void grkAlignedFree(void *ptr) {
 #if defined(GROK_HAVE_POSIX_MEMALIGN) || defined(GROK_HAVE_ALIGNED_ALLOC) ||  defined(GROK_HAVE_MEMALIGN)
 	free(ptr);
 #elif defined(GROK_HAVE__ALIGNED_MALLOC)

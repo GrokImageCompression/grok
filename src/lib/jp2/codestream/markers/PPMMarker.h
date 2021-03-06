@@ -51,7 +51,7 @@ public:
 	 */
 	bool merge(void);
 
-	std::vector<grk_buf> m_tile_packet_headers;
+	std::vector<grkBufferU8> m_tile_packet_headers;
 
 private:
 

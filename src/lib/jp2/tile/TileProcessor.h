@@ -34,7 +34,7 @@ struct TileComponent;
  * if there is a resolution reduction.
  *
  */
-struct grk_tile : public grk_rect_u32 {
+struct grk_tile : public grkRectU32 {
 	grk_tile();
 	~grk_tile();
 

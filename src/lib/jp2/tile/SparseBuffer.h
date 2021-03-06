@@ -87,7 +87,7 @@ public:
 	 * @return true in case of success.
 	 */
 	virtual bool read(uint8_t resno,
-					  grk_rect_u32 window,
+					  grkRectU32 window,
 					 int32_t* dest,
 					 const uint32_t dest_col_stride,
 					 const uint32_t dest_line_stride,
@@ -107,7 +107,7 @@ public:
 	 * @return true in case of success.
 	 */
 	virtual bool write(uint8_t resno,
-					  grk_rect_u32 window,
+					  grkRectU32 window,
 					  const int32_t* src,
 					  const uint32_t src_col_stride,
 					  const uint32_t src_line_stride,
@@ -124,7 +124,7 @@ public:
 	 *
 	 * @return true in case of success.
 	 */
-	virtual bool alloc( grk_rect_u32 window, bool zeroOutBuffer) = 0;
+	virtual bool alloc( grkRectU32 window, bool zeroOutBuffer) = 0;
 };
 
 struct SparseBlock{
@@ -153,7 +153,7 @@ public:
 	 *
 	 * @return a new sparse buffer instance, or nullptr in case of failure.
 	 */
-	SparseBuffer(grk_rect_u32 bds) :	block_width(1<<LBW),
+	SparseBuffer(grkRectU32 bds) :	block_width(1<<LBW),
 										block_height(1<<LBH),
 										data_blocks(nullptr),
 										bounds(bds)
@@ -165,7 +165,7 @@ public:
 	    uint32_t grid_off_y = floordivpow2(bounds.y0, LBH);
 	    uint32_t grid_width = ceildivpow2<uint32_t>(bounds.width(), LBW);
 	    uint32_t grid_height = ceildivpow2<uint32_t>(bounds.height(), LBH);
-	    grid_bounds = grk_rect_u32(grid_off_x,
+	    grid_bounds = grkRectU32(grid_off_x,
 	    							grid_off_y,
 									grid_off_x+grid_width,
 									grid_off_y + grid_height);
@@ -182,7 +182,7 @@ public:
 	 *
 	 * @return a new sparse buffer instance, or nullptr in case of failure.
 	 */
-	SparseBuffer(uint32_t width,uint32_t height) : SparseBuffer(grk_rect_u32(0,0,width,height))
+	SparseBuffer(uint32_t width,uint32_t height) : SparseBuffer(grkRectU32(0,0,width,height))
 	{}
 
 
@@ -200,7 +200,7 @@ public:
 		}
 	}
 	bool read(uint8_t resno,
-			 grk_rect_u32 window,
+			 grkRectU32 window,
 			 int32_t* dest,
 			 const uint32_t dest_col_stride,
 			 const uint32_t dest_line_stride,
@@ -215,7 +215,7 @@ public:
 	}
 
 	bool write(uint8_t resno,
-			  grk_rect_u32 window,
+			  grkRectU32 window,
 			  const int32_t* src,
 			  const uint32_t src_col_stride,
 			  const uint32_t src_line_stride,
@@ -228,7 +228,7 @@ public:
 	            forgiving,
 	            false);
 	}
-	bool alloc( grk_rect_u32 win, bool zeroOutBuffer){
+	bool alloc( grkRectU32 win, bool zeroOutBuffer){
 	    if (!SparseBuffer::is_window_valid(win))
 	        return true;
 
@@ -242,7 +242,7 @@ public:
 	        for (uint32_t x = win.x0; x < win.x1; block_x ++, x += x_incr) {
 	            x_incr = (x == win.x0) ? block_width - (win.x0 & (block_width-1)) : block_width;
 	            x_incr = min<uint32_t>(x_incr, win.x1 - x);
-	    		if (!grid_bounds.contains(grk_pt(block_x,block_y))){
+	    		if (!grid_bounds.contains(grkPointU32(block_x,block_y))){
 	    			GRK_ERROR("sparse buffer : attempt to allocate a block (%d,%d) outside block grid bounds",
 	    					block_x, block_y);
 	    			return false;
@@ -251,7 +251,7 @@ public:
 				if (!src_block) {
 					auto b = new SparseBlock();
 					b->alloc(block_width*block_height, zeroOutBuffer);
-					assert(grid_bounds.contains(grk_pt(block_x,block_y)));
+					assert(grid_bounds.contains(grkPointU32(block_x,block_y)));
 					assert(b->data);
 					uint64_t index = (uint64_t)(block_y - grid_bounds.y0) * grid_bounds.width() + (block_x - grid_bounds.x0);
 					data_blocks[index] = b;
@@ -275,13 +275,13 @@ private:
 	 * @param y1 bottom y coordinate (not included) of the window. Must be greater than y0.
 	 * @return true or false.
 	 */
-	bool is_window_valid(grk_rect_u32 win){
+	bool is_window_valid(grkRectU32 win){
 	    return !(win.x0 >= bounds.width() || win.x1 <= win.x0 || win.x1 > bounds.width() ||
 	             win.y0 >= bounds.height() || win.y1 <= win.y0 || win.y1 > bounds.height());
 	}
 
 	bool read_or_write(uint8_t resno,
-						grk_rect_u32 win,
+						grkRectU32 win,
 						int32_t* buf,
 						const uint32_t buf_col_stride,
 						const uint32_t buf_line_stride,
@@ -320,7 +320,7 @@ private:
 	            x_incr = (x == win.x0) ? block_width - (win.x0 & (block_width-1) ) : block_width;
 	            uint32_t block_x_offset = block_width - x_incr;
 	            x_incr = min<uint32_t>(x_incr, win.x1 - x);
-	    		if (!grid_bounds.contains(grk_pt(block_x,block_y))){
+	    		if (!grid_bounds.contains(grkPointU32(block_x,block_y))){
 	    			GRK_ERROR("sparse buffer @ resno %d, Attempt to access a block (%d,%d) outside block grid bounds", resno,block_x, block_y);
 	    			return false;
 	    		}
@@ -372,7 +372,7 @@ private:
 						for (uint32_t k = 0; k < x_incr; k++) {
 #ifdef GRK_DEBUG_VALGRIND
 							if (src_ptr) {
-								grk_pt pt((uint32_t)(x+k), y_);
+								grkPointU32 pt((uint32_t)(x+k), y_);
 								size_t val = grk_memcheck<int32_t>(src_ptr+ind,1);
 								if (val != grk_mem_ok)
 								   GRK_ERROR("sparse buffer @ resno %d,  write block(%d,%d): uninitialized at location (%d,%d)",
@@ -397,8 +397,8 @@ private:
     const uint32_t block_width;
     const uint32_t block_height;
     SparseBlock** data_blocks;
-    grk_rect_u32 bounds;
-    grk_rect_u32 grid_bounds;
+    grkRectU32 bounds;
+    grkRectU32 grid_bounds;
 };
 
 }

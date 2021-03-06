@@ -91,7 +91,7 @@ size_t ChunkBuffer::skip(size_t nb_bytes) {
 	bytes_remaining = nb_bytes;
 	while (cur_chunk_id < chunks.size() && bytes_remaining > 0) {
 
-		grk_buf *cur_chunk = chunks[cur_chunk_id];
+		grkBufferU8 *cur_chunk = chunks[cur_chunk_id];
 		size_t bytes_in_current_chunk = (size_t) (cur_chunk->len - cur_chunk->offset);
 
 		/* hoover up all the bytes in this chunk, and move to the next one */
@@ -110,14 +110,14 @@ size_t ChunkBuffer::skip(size_t nb_bytes) {
 	return nb_bytes;
 }
 
-grk_buf* ChunkBuffer::push_back(uint8_t *buf, size_t len, bool ownsData) {
-	auto new_chunk = new grk_buf(buf, len, ownsData);
+grkBufferU8* ChunkBuffer::push_back(uint8_t *buf, size_t len, bool ownsData) {
+	auto new_chunk = new grkBufferU8(buf, len, ownsData);
 	push_back(new_chunk);
 
 	return new_chunk;
 }
 
-void ChunkBuffer::push_back(grk_buf *chunk) {
+void ChunkBuffer::push_back(grkBufferU8 *chunk) {
 	if (!chunk)
 		return;
 	chunks.push_back(chunk);
@@ -133,7 +133,7 @@ void ChunkBuffer::cleanup(void) {
 
 void ChunkBuffer::rewind(void) {
 	for (size_t i = 0; i < chunks.size(); ++i) {
-		grk_buf *chunk = chunks[i];
+		grkBufferU8 *chunk = chunks[i];
 		if (chunk)
 			chunk->offset = 0;
 	}
@@ -156,7 +156,7 @@ bool ChunkBuffer::alloc_and_push_back(size_t len) {
 void ChunkBuffer::incr_cur_chunk_offset(size_t offset) {
 	auto cur_chunk = chunks[cur_chunk_id];
 
-	cur_chunk->incr_offset((ptrdiff_t) offset);
+	cur_chunk->incrementOffset((ptrdiff_t) offset);
 	if (cur_chunk->offset == cur_chunk->len)
 		increment();
 }
@@ -198,13 +198,13 @@ bool ChunkBuffer::copy_to_contiguous_buffer(uint8_t *buffer) {
 uint8_t* ChunkBuffer::get_cur_chunk_ptr(void) {
 	auto cur_chunk = chunks[cur_chunk_id];
 
-	return (cur_chunk) ? cur_chunk->curr_ptr() : nullptr;
+	return (cur_chunk) ? cur_chunk->currPtr() : nullptr;
 }
 
 size_t ChunkBuffer::get_cur_chunk_len(void) {
 	auto cur_chunk = chunks[cur_chunk_id];
 
-	return (cur_chunk) ? cur_chunk->get_remaining_length() : 0;
+	return (cur_chunk) ? cur_chunk->remainingLength() : 0;
 }
 
 size_t ChunkBuffer::get_cur_chunk_offset(void) {
@@ -217,7 +217,7 @@ size_t ChunkBuffer::get_global_offset(void) {
 	size_t offset = 0;
 
 	for (size_t i = 0; i < cur_chunk_id; ++i) {
-		grk_buf *chunk = chunks[i];
+		grkBufferU8 *chunk = chunks[i];
 		offset += chunk->len;
 	}
 

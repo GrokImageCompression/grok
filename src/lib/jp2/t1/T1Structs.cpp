@@ -49,7 +49,7 @@ Layer::Layer() :
 		numpasses(0), len(0), disto(0), data(nullptr) {
 }
 
-Precinct::Precinct(const grk_rect_u32 &bounds, bool isCompressor, grk_pt cblk_expn) : grk_rect_u32(bounds),
+Precinct::Precinct(const grkRectU32 &bounds, bool isCompressor, grkPointU32 cblk_expn) : grkRectU32(bounds),
 		precinctIndex(0),
 		impl(new PrecinctImpl(isCompressor, this, cblk_expn)),
 		m_cblk_expn(cblk_expn)
@@ -97,13 +97,13 @@ CompressCodeblock* Precinct::getCompressedBlockPtr(uint64_t cblkno){
 DecompressCodeblock* Precinct::getDecompressedBlockPtr(uint64_t cblkno){
 	return  getImpl()->dec->get(cblkno);
 }
-grk_pt Precinct::getCblkExpn(void){
+grkPointU32 Precinct::getCblkExpn(void){
 	return m_cblk_expn;
 }
-grk_rect_u32 Precinct::getCblkGrid(void){
+grkRectU32 Precinct::getCblkGrid(void){
 	return impl->m_cblk_grid;
 }
-PrecinctImpl::PrecinctImpl(bool isCompressor, grk_rect_u32 *bounds,grk_pt cblk_expn) :
+PrecinctImpl::PrecinctImpl(bool isCompressor, grkRectU32 *bounds,grkPointU32 cblk_expn) :
 		enc(nullptr),
 		dec(nullptr),
 		incltree(nullptr),
@@ -112,7 +112,7 @@ PrecinctImpl::PrecinctImpl(bool isCompressor, grk_rect_u32 *bounds,grk_pt cblk_e
 		m_cblk_expn(cblk_expn),
 		m_isCompressor(isCompressor)
 {
-	m_cblk_grid = grk_rect_u32(floordivpow2(bounds->x0,cblk_expn.x),
+	m_cblk_grid = grkRectU32(floordivpow2(bounds->x0,cblk_expn.x),
 									floordivpow2(bounds->y0,cblk_expn.y),
 									ceildivpow2<uint32_t>(bounds->x1,cblk_expn.x),
 									ceildivpow2<uint32_t>(bounds->y1,cblk_expn.y));
@@ -122,7 +122,7 @@ PrecinctImpl::~PrecinctImpl(){
 	delete enc;
 	delete dec;
 }
-bool PrecinctImpl::initBlocks(grk_rect_u32 *bounds){
+bool PrecinctImpl::initBlocks(grkRectU32 *bounds){
 	if ((m_isCompressor && enc) || (!m_isCompressor && dec))
 		return true;
 
@@ -143,13 +143,13 @@ template<typename T> bool PrecinctImpl::initBlock(T* block, uint64_t cblkno){
 		return true;
 	if (!block->alloc())
 		return false;
-	auto cblk_start = grk_pt(	(m_cblk_grid.x0  + (uint32_t) (cblkno % m_cblk_grid.width())) << m_cblk_expn.x,
+	auto cblk_start = grkPointU32(	(m_cblk_grid.x0  + (uint32_t) (cblkno % m_cblk_grid.width())) << m_cblk_expn.x,
 								(m_cblk_grid.y0  + (uint32_t) (cblkno / m_cblk_grid.width())) << m_cblk_expn.y);
-	auto cblk_bounds = grk_rect_u32(cblk_start.x,
+	auto cblk_bounds = grkRectU32(cblk_start.x,
 									cblk_start.y,
 									cblk_start.x + (1U << m_cblk_expn.x),
 									cblk_start.y + (1U << m_cblk_expn.y));
-	(*(grk_rect_u32*)block) = cblk_bounds.intersection(&m_bounds);
+	(*(grkRectU32*)block) = cblk_bounds.intersection(&m_bounds);
 
 	return true;
 }
@@ -210,7 +210,7 @@ Codeblock::Codeblock():
 {
 }
 
-Codeblock::Codeblock(const Codeblock &rhs): grk_rect_u32(rhs),
+Codeblock::Codeblock(const Codeblock &rhs): grkRectU32(rhs),
 											compressedStream(rhs.compressedStream),
 											numbps(rhs.numbps),
 											numlenbits(rhs.numlenbits),
@@ -420,7 +420,7 @@ void DecompressCodeblock::cleanup_seg_buffers(){
 }
 
 size_t DecompressCodeblock::getSegBuffersLen(){
-	return std::accumulate(seg_buffers.begin(), seg_buffers.end(), (size_t)0, [](const size_t s, grk_buf *a){
+	return std::accumulate(seg_buffers.begin(), seg_buffers.end(), (size_t)0, [](const size_t s, grkBufferU8 *a){
 	   return (s + a->len);
 	});
 }
@@ -446,7 +446,7 @@ Subband::Subband() :
 }
 
 //note: don't copy precinct array
-Subband::Subband(const Subband &rhs) : grk_rect_u32(rhs),
+Subband::Subband(const Subband &rhs) : grkRectU32(rhs),
 										orientation(rhs.orientation),
 										numPrecincts(0),
 										numbps(rhs.numbps),
@@ -459,7 +459,7 @@ Subband& Subband::operator= (const Subband &rhs){
 	return *this;
 }
 void Subband::print(){
-	grk_rect_u32::print();
+	grkRectU32::print();
 }
 bool Subband::isEmpty() {
 	return ((x1 - x0 == 0) || (y1 - y0 == 0));
@@ -471,23 +471,23 @@ Precinct* Subband::getPrecinct(uint64_t precinctIndex){
 
 	return precincts[index];
 }
-grk_rect_u32 Subband::generatePrecinctBounds(uint64_t precinctIndex,
-												grk_pt precinctRegionStart,
-												grk_pt precinct_expn,
+grkRectU32 Subband::generatePrecinctBounds(uint64_t precinctIndex,
+												grkPointU32 precinctRegionStart,
+												grkPointU32 precinct_expn,
 												uint32_t precinctGridWidth){
-	auto precinctStart = grk_pt(	precinctRegionStart.x + (uint32_t)((precinctIndex % precinctGridWidth) << precinct_expn.x),
+	auto precinctStart = grkPointU32(	precinctRegionStart.x + (uint32_t)((precinctIndex % precinctGridWidth) << precinct_expn.x),
 			precinctRegionStart.y + (uint32_t)((precinctIndex / precinctGridWidth) << precinct_expn.y));
-	return grk_rect_u32(precinctStart.x,
+	return grkRectU32(precinctStart.x,
 						precinctStart.y,
 						precinctStart.x + (1U << precinct_expn.x),
 						precinctStart.y + (1U << precinct_expn.y)).intersection(this);
 }
 Precinct* Subband::createPrecinct(bool isCompressor,
 									uint64_t precinctIndex,
-									grk_pt precinctRegionStart,
-									grk_pt precinct_expn,
+									grkPointU32 precinctRegionStart,
+									grkPointU32 precinct_expn,
 									uint32_t precinctGridWidth,
-									grk_pt cblk_expn){
+									grkPointU32 cblk_expn){
 	auto temp = precinctMap.find(precinctIndex);
 	if (temp != precinctMap.end())
 		return precincts[temp->second];
@@ -503,16 +503,16 @@ Precinct* Subband::createPrecinct(bool isCompressor,
 
 Resolution::Resolution() :
 		initialized(false),
-		numBandWindows(0),
+		numTileBandWindows(0),
 		precinctGridWidth(0),
 		precinctGridHeight(0),
 		current_plugin_tile(nullptr)
 {}
 void Resolution::print(){
-	grk_rect_u32::print();
-	for (uint32_t i = 0; i < numBandWindows; ++i){
+	grkRectU32::print();
+	for (uint32_t i = 0; i < numTileBandWindows; ++i){
 		std::cout << "band " << i << " : ";
-		band[i].print();
+		tileBand[i].print();
 	}
 }
 bool Resolution::init(bool isCompressor,
@@ -525,23 +525,23 @@ bool Resolution::init(bool isCompressor,
 	this->current_plugin_tile = current_plugin_tile;
 
 	/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
-	precinctExpn = grk_pt(tccp->precinctWidthExp[resno],tccp->precinctHeightExp[resno]);
+	precinctExpn = grkPointU32(tccp->precinctWidthExp[resno],tccp->precinctHeightExp[resno]);
 
 	/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
-	precinctStart = grk_pt(floordivpow2(x0, precinctExpn.x) << precinctExpn.x,
+	precinctStart = grkPointU32(floordivpow2(x0, precinctExpn.x) << precinctExpn.x,
 							floordivpow2(y0, precinctExpn.y) << precinctExpn.y);
 
 	uint64_t num_precincts = (uint64_t)precinctGridWidth * precinctGridHeight;
 	if (resno != 0) {
-		precinctStart=  grk_pt(ceildivpow2<uint32_t>(precinctStart.x, 1),
+		precinctStart=  grkPointU32(ceildivpow2<uint32_t>(precinctStart.x, 1),
 								ceildivpow2<uint32_t>(precinctStart.y, 1));
 		precinctExpn.x--;
 		precinctExpn.y--;
 	}
-	cblkExpn    =  grk_pt(std::min<uint32_t>(tccp->cblkw, precinctExpn.x),
+	cblkExpn    =  grkPointU32(std::min<uint32_t>(tccp->cblkw, precinctExpn.x),
 						   std::min<uint32_t>(tccp->cblkh, precinctExpn.y));
-	for (uint8_t bandIndex = 0; bandIndex < numBandWindows; ++bandIndex) {
-		auto curr_band = band + bandIndex;
+	for (uint8_t bandIndex = 0; bandIndex < numTileBandWindows; ++bandIndex) {
+		auto curr_band = tileBand + bandIndex;
 		curr_band->numPrecincts = num_precincts;
 		if (isCompressor) {
 			for (uint64_t precinctIndex = 0; precinctIndex < num_precincts; ++precinctIndex) {

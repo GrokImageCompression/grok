@@ -23,10 +23,11 @@
 
 namespace grk {
 
-grk_rect_u32 CodingParams::getTileBounds(const GrkImage *p_image,
+// (canvas coordinates)
+grkRectU32 CodingParams::getTileBounds(const GrkImage *p_image,
 										uint32_t tile_x,
 										uint32_t tile_y) const{
-	grk_rect_u32 rc;
+	grkRectU32 rc;
 
 	/* find extent of tile */
 	assert(tx0 + (uint64_t)tile_x * t_width < UINT_MAX);

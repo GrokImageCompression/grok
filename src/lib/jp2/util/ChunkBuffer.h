@@ -32,7 +32,7 @@ struct ChunkBuffer {
 
 
 
-	grk_buf* push_back(uint8_t *buf, size_t len, bool ownsData);
+	grkBufferU8* push_back(uint8_t *buf, size_t len, bool ownsData);
 
 	/*
 	 Allocate array and add to the back of the chunk buffer
@@ -95,11 +95,11 @@ private:
 	 */
 	size_t get_cur_chunk_offset(void);
 
-	void push_back(grk_buf *chunk);
+	void push_back(grkBufferU8 *chunk);
 
 	size_t data_len; /* total length of all chunks*/
 	size_t cur_chunk_id; /* current index into chunk vector */
-	std::vector<grk_buf*> chunks;
+	std::vector<grkBufferU8*> chunks;
 };
 
 }

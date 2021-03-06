@@ -46,8 +46,8 @@ void T1CompressScheduler::scheduleCompress(TileCodingParams *tcp,
 		auto tccp = tcp->tccps + compno;
 		for (resno = 0; resno < tilec->numresolutions; ++resno) {
 			auto res = &tilec->tileCompResolution[resno];
-			for (bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-				auto band = &res->band[bandIndex];
+			for (bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
+				auto band = &res->tileBand[bandIndex];
 				for (auto prc : band->precincts){
 					auto nominalBlockSize = prc->getNominalBlockSize();
 					for (uint64_t cblkno = 0; cblkno < prc->getNumCblks();	++cblkno) {
@@ -59,7 +59,7 @@ void T1CompressScheduler::scheduleCompress(TileCodingParams *tcp,
 						block->doRateControl = needsRateControl;
 						block->x = cblk->x0;
 						block->y = cblk->y0;
-						tilec->getBuffer()->transformToCanvasCoordinates(resno,band->orientation,block->x,block->y);
+						tilec->getBuffer()->transformToTileCoordinates(resno,band->orientation,block->x,block->y);
 						block->tiledp = tilec->getBuffer()->getWindow()->data + (uint64_t) block->x +
 											block->y * (uint64_t) tilec->getBuffer()->getWindow()->stride;
 						maxCblkW = std::max<uint32_t>(maxCblkW,

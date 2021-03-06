@@ -27,15 +27,15 @@
 namespace grk {
 
 // tile component
-struct TileComponent : public grk_rect_u32 {
+struct TileComponent : public grkRectU32 {
 	TileComponent();
 	~TileComponent();
 
-	bool create_buffer(grk_rect_u32 unreducedTileOrImageCompWindow);
+	bool create_buffer(grkRectU32 unreducedTileOrImageCompWindow);
 	bool init(bool isCompressor,
 			bool whole_tile,
-			grk_rect_u32 unreducedTileComp,
-			grk_rect_u32 unreducedTileOrImageCompWindow,
+			grkRectU32 unreducedTileComp,
+			grkRectU32 unreducedTileOrImageCompWindow,
 			uint8_t prec,
 			CodingParams *cp,
 			TileCodingParams *tcp,
@@ -46,7 +46,7 @@ struct TileComponent : public grk_rect_u32 {
 	 void release_mem(bool releaseBuffer);
 	 bool subbandIntersectsAOI(uint8_t resno,
 	 								eBandOrientation orient,
-	 								const grk_rect_u32 *aoi) const;
+	 								const grkRectU32 *aoi) const;
 
 	 TileComponentWindowBuffer<int32_t>* getBuffer() const;
 	 bool isWholeTileDecoding();

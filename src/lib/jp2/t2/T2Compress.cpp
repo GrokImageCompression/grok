@@ -176,8 +176,8 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 
 	// initialize precinct and code blocks if this is the first layer
 	if (!layno) {
-		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-			auto band = res->band + bandIndex;
+		for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
+			auto band = res->tileBand + bandIndex;
 			if (precinctIndex >= band->precincts.size()) {
 				GRK_ERROR("compress packet simulate: precinct index %d must be less than total "
 						"number of precincts %d", precinctIndex, band->precincts.size());
@@ -217,8 +217,8 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 		return false;
 
 	/* Writing Packet header */
-	for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-		auto band = res->band + bandIndex;
+	for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
+		auto band = res->tileBand + bandIndex;
 		auto prc = band->precincts[precinctIndex];
 		uint64_t nb_blocks = prc->getNumCblks();
 
@@ -329,8 +329,8 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 			return false;
 	}
 	/* Writing the packet body */
-	for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; bandIndex++) {
-		auto band = res->band + bandIndex;
+	for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++) {
+		auto band = res->tileBand + bandIndex;
 		auto prc = band->precincts[precinctIndex];
 		uint64_t nb_blocks = prc->getNumCblks();
 
@@ -376,13 +376,13 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 			if (numHeaderBytes != nb_bytes_read) {
 				printf("compress_packet: round trip header bytes %u differs from original %u\n", (uint32_t)l_nb_bytes_read, (uint32_t)numHeaderBytes);
 			}
-			for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-				auto band = res->band + bandIndex;
-				auto roundTripBand = roundRes->band + bandIndex;
-				if (!band->precincts)
+			for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
+				auto tileBand = res->tileBand + bandIndex;
+				auto roundTripBand = roundRes->tileBand + bandIndex;
+				if (!tileBand->precincts)
 					continue;
-				for (uint64_t pno = 0; pno < band->numPrecincts; ++pno) {
-					auto prec = band->precincts + pno;
+				for (uint64_t pno = 0; pno < tileBand->numPrecincts; ++pno) {
+					auto prec = tileBand->precincts + pno;
 					auto roundTripPrec = roundTripBand->precincts + pno;
 					for (uint64_t cblkno = 0; cblkno < (uint64_t)prec->cblk_grid_width * prec->cblk_grid_height; ++cblkno) {
 						auto originalCblk = prec->getCompressedBlockPtr() + cblkno;
@@ -470,13 +470,13 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 						printf("compress_packet: round trip data bytes %u differs from original %u\n", (uint32_t)l_nb_bytes_read, (uint32_t)originalDataBytes);
 					}
 
-					for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-						auto band = res->band + bandIndex;
-						auto roundTripBand = roundRes->band + bandIndex;
-						if (!band->precincts)
+					for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
+						auto tileBand = res->tileBand + bandIndex;
+						auto roundTripBand = roundRes->tileBand + bandIndex;
+						if (!tileBand->precincts)
 							continue;
-						for (uint64_t pno = 0; pno < band->numPrecincts; ++pno) {
-							auto prec = band->precincts + pno;
+						for (uint64_t pno = 0; pno < tileBand->numPrecincts; ++pno) {
+							auto prec = tileBand->precincts + pno;
 							auto roundTripPrec = roundTripBand->precincts + pno;
 							for (uint32_t cblkno = 0; cblkno < (uint64_t)prec->cblk_grid_width * prec->cblk_grid_height; ++cblkno) {
 								auto originalCblk = prec->getCompressedBlockPtr() + cblkno;
@@ -503,7 +503,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 									bool needs_delete = false;
 									/* if there is only one segment, then it is already contiguous, so no need to make a copy*/
 									if (roundTripTotalSegLen == 1 && roundTripCblk->seg_buffers.get(0)) {
-										roundTripData = ((grk_buf*)(roundTripCblk->seg_buffers.get(0)))->getBuffer();
+										roundTripData = ((grkBufferU8*)(roundTripCblk->seg_buffers.get(0)))->getBuffer();
 									}
 									else {
 										needs_delete = true;
@@ -569,8 +569,8 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 	/* </SOP> */
 
 	if (!layno) {
-		for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-			auto band = res->band + bandIndex;
+		for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
+			auto band = res->tileBand + bandIndex;
 			if (precinctIndex >= band->precincts.size()) {
 				GRK_ERROR("compress packet simulate: precinct index %d must be less than total "
 						"number of precincts %d", precinctIndex, band->precincts.size());
@@ -606,8 +606,8 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 		return false;
 
 	/* Writing Packet header */
-	for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-		auto band = res->band + bandIndex;
+	for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
+		auto band = res->tileBand + bandIndex;
 		auto prc = band->precincts[precinctIndex];
 
 		nb_blocks = prc->getNumCblks();
@@ -713,8 +713,8 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 	/* </EPH> */
 
 	/* Writing the packet body */
-	for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; bandIndex++) {
-		auto band = res->band + bandIndex;
+	for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++) {
+		auto band = res->tileBand + bandIndex;
 		auto prc = band->precincts[precinctIndex];
 
 		nb_blocks = prc->getNumCblks();

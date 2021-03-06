@@ -31,9 +31,9 @@ void decompress_synch_plugin_with_host(TileProcessor *tcd) {
 			for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
 				auto res = &tilec->tileCompResolution[resno];
 				auto plugin_res = plugin_tilec->resolutions[resno];
-				assert(plugin_res->numBands == res->numBandWindows);
-				for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; bandIndex++) {
-					auto band = &res->band[bandIndex];
+				assert(plugin_res->numBands == res->numTileBandWindows);
+				for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++) {
+					auto band = &res->tileBand[bandIndex];
 					auto plugin_band = plugin_res->band[bandIndex];
 					assert(plugin_band->numPrecincts == (uint64_t)res->precinctGridWidth * res->precinctGridHeight);
 					//!!!! plugin still uses stepsize/2
@@ -102,10 +102,10 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tile *p_tile) {
 			auto resolution = tilecomp->tileCompResolution + resno;
 			auto plugin_resolution =
 					plugin_tilecomp->resolutions[resno];
-			if (resolution->numBandWindows != plugin_resolution->numBands)
+			if (resolution->numTileBandWindows != plugin_resolution->numBands)
 				return false;
-			for (uint32_t bandIndex = 0; bandIndex < resolution->numBandWindows; ++bandIndex) {
-				auto band = resolution->band + bandIndex;
+			for (uint32_t bandIndex = 0; bandIndex < resolution->numTileBandWindows; ++bandIndex) {
+				auto band = resolution->tileBand + bandIndex;
 				auto plugin_band =
 						plugin_resolution->band[bandIndex];
 				size_t num_precincts = band->numPrecincts;
@@ -257,8 +257,8 @@ void set_context_stream(TileProcessor *p_tileProcessor) {
 		auto tilec = p_tileProcessor->tile->comps + compno;
 		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
 			auto res = &tilec->tileCompResolution[resno];
-			for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; bandIndex++) {
-				auto band = &res->band[bandIndex];
+			for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++) {
+				auto band = &res->tileBand[bandIndex];
 				for (auto prc : band->precincts){
 					for (uint64_t cblkno = 0; cblkno < prc->getNumCblks();
 							cblkno++) {

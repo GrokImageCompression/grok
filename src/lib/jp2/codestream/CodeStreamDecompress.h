@@ -50,7 +50,7 @@ public:
    GrkImage* getImage(uint16_t tileIndex);
    GrkImage* getImage(void);
    std::vector<GrkImage*> getAllImages(void);
-   bool setDecompressWindow(grk_rect_u32 window);
+   bool setDecompressWindow(grkRectU32 window);
    bool decompress( grk_plugin_tile *tile);
    bool decompressTile(uint16_t tile_index);
    bool endDecompress(void);

@@ -36,7 +36,7 @@ public:
    GrkImage* getImage(uint16_t tileIndex);
    GrkImage* getImage(void);
    void initDecompress(grk_dparameters  *p_param);
-   bool setDecompressWindow(grk_rect_u32 window);
+   bool setDecompressWindow(grkRectU32 window);
    bool decompress( grk_plugin_tile *tile);
    bool decompressTile(uint16_t tile_index);
    bool endDecompress(void);

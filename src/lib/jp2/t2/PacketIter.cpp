@@ -45,7 +45,7 @@ namespace grk {
 static void pi_update_tcp_progressions_compress(CodingParams *p_cp,
 									uint16_t num_comps,
 									uint16_t tileno,
-									grk_rect_u32 tileBounds,
+									grkRectU32 tileBounds,
 									uint64_t max_precincts,
 									uint8_t max_res,
 									uint32_t dx_min,
@@ -72,7 +72,7 @@ static void pi_update_tcp_progressions_compress(CodingParams *p_cp,
 static void pi_get_params(const GrkImage *image,
 											const CodingParams *p_cp,
 											uint16_t tileno,
-											grk_rect_u32 *tileBounds,
+											grkRectU32 *tileBounds,
 											uint32_t *dx_min,
 											uint32_t *dy_min,
 											uint64_t *precincts,
@@ -186,7 +186,7 @@ PacketIter* pi_create_compress_decompress(bool compression,
 
 	uint8_t max_res;
 	uint64_t max_precincts;
-	grk_rect_u32 tileBounds;
+	grkRectU32 tileBounds;
 	uint32_t dx_min, dy_min;
 	pi_get_params(image,
 				p_cp,
@@ -544,7 +544,7 @@ void pi_destroy(PacketIter *p_pi) {
 static void pi_get_params(const GrkImage *image,
 								const CodingParams *p_cp,
 								uint16_t tileno,
-								grk_rect_u32 *tileBounds,
+								grkRectU32 *tileBounds,
 								uint32_t *dx_min,
 								uint32_t *dy_min,
 								uint64_t *precincts,
@@ -598,7 +598,7 @@ static void pi_get_params(const GrkImage *image,
 			if (dy < UINT_MAX)
 				*dy_min = std::min<uint32_t>(*dy_min, (uint32_t) dy);
 			auto resBounds 	= tileCompBounds.rectceildivpow2(tccp->numresolutions - 1U - resno);
-			auto precinctDims = grk_rect_u32(floordivpow2(resBounds.x0, precinctWidthExp) << precinctWidthExp,
+			auto precinctDims = grkRectU32(floordivpow2(resBounds.x0, precinctWidthExp) << precinctWidthExp,
 											floordivpow2(resBounds.y0, precinctHeightExp) << precinctHeightExp,
 											ceildivpow2<uint32_t>(resBounds.x1, precinctWidthExp) << precinctWidthExp,
 											ceildivpow2<uint32_t>(resBounds.y1, precinctHeightExp) << precinctHeightExp);
@@ -622,7 +622,7 @@ static void pi_get_params(const GrkImage *image,
 static void pi_update_tcp_progressions_compress(CodingParams *p_cp,
 									uint16_t num_comps,
 									uint16_t tileno,
-									grk_rect_u32 tileBounds,
+									grkRectU32 tileBounds,
 									uint64_t max_precincts,
 									uint8_t max_res,
 									uint32_t dx_min,
@@ -660,7 +660,7 @@ void pi_update_params_compress(const GrkImage *image,
 
 	uint8_t max_res;
 	uint64_t max_precincts;
-	grk_rect_u32 tileBounds;
+	grkRectU32 tileBounds;
 	uint32_t dx_min, dy_min;
 	pi_get_params(image,
 				p_cp,
@@ -949,7 +949,7 @@ bool PacketIter::generatePrecinctIndex(void){
 	assert(levelno < GRK_J2K_MAXRLVLS);
 	if (levelno >= GRK_J2K_MAXRLVLS)
 		return false;
-	grk_rect_u32 resBounds(ceildiv<uint64_t>((uint64_t) tx0,((uint64_t) comp->dx << levelno)),
+	grkRectU32 resBounds(ceildiv<uint64_t>((uint64_t) tx0,((uint64_t) comp->dx << levelno)),
 							ceildiv<uint64_t>((uint64_t) ty0,((uint64_t) comp->dy << levelno)),
 							ceildiv<uint64_t>((uint64_t) tx1,((uint64_t) comp->dx << levelno)),
 							 ceildiv<uint64_t>((uint64_t) ty1,((uint64_t) comp->dy << levelno)));
@@ -976,16 +976,16 @@ bool PacketIter::generatePrecinctIndex(void){
 	return true;
 }
 
-grk_rect_u32 PacketIter::generatePrecinct(uint64_t precinctIndex){
+grkRectU32 PacketIter::generatePrecinct(uint64_t precinctIndex){
 	auto comp = comps + compno;
 	if (resno >= comp->numresolutions)
-		return grk_rect_u32(0,0,0,0);
+		return grkRectU32(0,0,0,0);
 	auto res = comp->resolutions + resno;
 	uint32_t levelno = comp->numresolutions - 1 - resno;
 	assert(levelno < GRK_J2K_MAXRLVLS);
 	if (levelno >= GRK_J2K_MAXRLVLS)
-		return grk_rect_u32(0,0,0,0);
-	grk_rect_u32 resBounds(ceildiv<uint64_t>((uint64_t) tx0,((uint64_t) comp->dx << levelno)),
+		return grkRectU32(0,0,0,0);
+	grkRectU32 resBounds(ceildiv<uint64_t>((uint64_t) tx0,((uint64_t) comp->dx << levelno)),
 							ceildiv<uint64_t>((uint64_t) ty0,((uint64_t) comp->dy << levelno)),
 							ceildiv<uint64_t>((uint64_t) tx1,((uint64_t) comp->dx << levelno)),
 							 ceildiv<uint64_t>((uint64_t) ty1,((uint64_t) comp->dy << levelno)));
@@ -995,7 +995,7 @@ grk_rect_u32 PacketIter::generatePrecinct(uint64_t precinctIndex){
 	uint32_t x = (uint32_t)((xGrid + floordivpow2(resBounds.x0, res->precinctWidthExp)) << res->precinctWidthExp) << ((uint64_t) comp->dx << levelno);
 	uint32_t y = (uint32_t)((yGrid + floordivpow2(resBounds.y0, res->precinctHeightExp)) << res->precinctHeightExp) << ((uint64_t) comp->dy << levelno);
 
-	auto rc =  grk_rect_u32(x,
+	auto rc =  grkRectU32(x,
 							y,
 							x + (1 << res->precinctWidthExp) ,
 							y + (1 << res->precinctHeightExp));

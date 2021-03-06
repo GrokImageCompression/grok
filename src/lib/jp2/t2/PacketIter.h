@@ -219,7 +219,7 @@ struct PacketIter {
 
 	bool generatePrecinctIndex(void);
 
-	grk_rect_u32 generatePrecinct(uint64_t precinctIndex);
+	grkRectU32 generatePrecinct(uint64_t precinctIndex);
 
 	/**
 	 Get next packet in precinct-component-resolution-layer order.
@@ -281,11 +281,11 @@ struct PacketIter {
 	uint16_t numcomps;
 	/** Components*/
 	PiComp *comps;
-	/** tile coordinates*/
+	/** tile bounds in canvas coordinates */
 	uint32_t tx0, ty0, tx1, ty1;
 	/** packet coordinates */
 	uint32_t x, y;
-	/** packet sub-sampling factors */
+	/** component sub-sampling */
 	uint32_t dx, dy;
 };
 

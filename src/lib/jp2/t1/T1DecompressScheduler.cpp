@@ -38,8 +38,8 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent *tilec, Tile
 	bool wholeTileDecoding = tilec->isWholeTileDecoding();
 	for (uint8_t resno = 0; resno < tilec->resolutions_to_decompress; ++resno) {
 		auto res = &tilec->tileCompResolution[resno];
-		for (uint8_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-			auto band = res->band + bandIndex;
+		for (uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
+			auto band = res->tileBand + bandIndex;
 			auto paddedBandWindow = tilec->getBuffer()->getPaddedTileBandWindow(resno, band->orientation);
 			for (auto precinct : band->precincts) {
 				if (!wholeTileDecoding && !paddedBandWindow->non_empty_intersection(precinct))

@@ -45,7 +45,7 @@ private:
    uint8_t* write_channel_definition( uint32_t *p_nb_bytes_written);
    bool write_jp2h(void);
    uint8_t* write_ihdr( uint32_t *p_nb_bytes_written);
-   uint8_t* write_buffer(uint32_t boxId, grk_buf *buffer,uint32_t *p_nb_bytes_written);
+   uint8_t* write_buffer(uint32_t boxId, grkBufferU8 *buffer,uint32_t *p_nb_bytes_written);
    bool write_uuids(void);
    bool write_ftyp(void);
    bool write_jp2c(void);

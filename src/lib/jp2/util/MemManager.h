@@ -27,7 +27,7 @@ namespace grk {
 
 const size_t default_align = 64;
 
-uint32_t grk_make_aligned_width(uint32_t width);
+uint32_t grkMakeAlignedWidth(uint32_t width);
 
 /**
  Allocate an uninitialized memory block
@@ -49,8 +49,8 @@ void* grk_calloc(size_t numOfElements, size_t sizeOfElements);
  @param size Bytes to allocate
  @return a void pointer to the allocated space, or nullptr if there is insufficient memory available
  */
-void* grk_aligned_malloc(size_t size);
-void grk_aligned_free(void *ptr);
+void* grkAlignedMalloc(size_t size);
+void grkAlignedFree(void *ptr);
 
 /**
  Reallocate memory blocks.

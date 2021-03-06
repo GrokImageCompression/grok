@@ -237,7 +237,7 @@ struct DecodingParams {
  */
 struct CodingParams {
 
-	grk_rect_u32 getTileBounds( const GrkImage *p_image,
+	grkRectU32 getTileBounds( const GrkImage *p_image,
 								uint32_t tile_x,
 								uint32_t tile_y) const;
 

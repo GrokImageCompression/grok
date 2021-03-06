@@ -545,7 +545,7 @@ void FileFormatCompress::write_res_box(double resx, double resy, uint32_t box_id
 uint8_t* FileFormatCompress::write_xml( uint32_t *p_nb_bytes_written) {
 	return write_buffer(JP2_XML, &xml, p_nb_bytes_written);
 }
-uint8_t* FileFormatCompress::write_buffer(uint32_t boxId, grk_buf *buffer,
+uint8_t* FileFormatCompress::write_buffer(uint32_t boxId, grkBufferU8 *buffer,
 		uint32_t *p_nb_bytes_written) {
 	assert(p_nb_bytes_written != nullptr);
 

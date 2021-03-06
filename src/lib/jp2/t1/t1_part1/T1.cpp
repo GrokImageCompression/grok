@@ -315,9 +315,9 @@ bool T1::allocate_buffers(uint32_t width, uint32_t height) {
 	uint32_t newDataSize = width * height;
 
 	if (newDataSize > datasize) {
-		grk::grk_aligned_free(data);
+		grk::grkAlignedFree(data);
 		data =
-				(int32_t*) grk::grk_aligned_malloc(newDataSize * sizeof(int32_t));
+				(int32_t*) grk::grkAlignedMalloc(newDataSize * sizeof(int32_t));
 		if (!data) {
 			GRK_ERROR("Out of memory");
 			return false;
@@ -336,8 +336,8 @@ bool T1::allocate_buffers(uint32_t width, uint32_t height) {
 
 	if (newflagssize > flagssize) {
 
-		grk::grk_aligned_free(flags);
-		flags = (grk_flag*) grk::grk_aligned_malloc(
+		grk::grkAlignedFree(flags);
+		flags = (grk_flag*) grk::grkAlignedMalloc(
 				newflagssize * sizeof(grk_flag));
 		if (!flags) {
 			GRK_ERROR("Out of memory");
@@ -399,10 +399,10 @@ T1::T1(bool isCompressor,uint32_t maxCblkW,uint32_t maxCblkH) : data(nullptr),
 }
 
 T1::~T1(){
-	grk::grk_aligned_free(data);
+	grk::grkAlignedFree(data);
 	data = nullptr;
 
-	grk_aligned_free(flags);
+	grkAlignedFree(flags);
 	flags = nullptr;
 
 	grk::grk_free(cblkdatabuffer);

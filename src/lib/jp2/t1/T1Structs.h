@@ -14,7 +14,6 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
 #pragma once
 
 #include "grk_includes.h"
@@ -32,7 +31,6 @@ enum eSplitOrientation{
 	SPLIT_NUM_ORIENTATIONS
 };
 
-
 enum eBandOrientation{
 	BAND_ORIENT_LL,
 	BAND_ORIENT_HL,
@@ -40,10 +38,6 @@ enum eBandOrientation{
 	BAND_ORIENT_HH,
 	BAND_NUM_ORIENTATIONS
 };
-
-
-//////////////////////////////////////////////
-// Band Indices
 
 // LL band index when resolution == 0
 const uint32_t BAND_RES_ZERO_INDEX_LL = 0;
@@ -55,20 +49,17 @@ enum eBandIndex{
 	BAND_INDEX_HH,
 	BAND_NUM_INDICES
 };
-/////////////////////////////////////////////
-
 
 // code segment (code block can be encoded into multiple segments)
 struct Segment {
 	Segment();
-
 	void clear();
-	uint32_t dataindex;		      // segment data offset in contiguous memory block
-	uint32_t numpasses;		    	// number of passes in segment
+	uint32_t dataindex;		    // segment data offset in contiguous memory block
+	uint32_t numpasses;		   	// number of passes in segment
 	uint32_t len;               // total length of segment
-	uint32_t maxpasses;			  	// maximum number of passes in segment
-	uint32_t numPassesInPacket;	  // number of passes contributed by current packet
-	uint32_t numBytesInPacket;      // number of bytes contributed by current packet
+	uint32_t maxpasses;			// maximum number of passes in segment
+	uint32_t numPassesInPacket;	// number of passes contributed by current packet
+	uint32_t numBytesInPacket;  // number of bytes contributed by current packet
 };
 
 struct PacketLengthInfo {
@@ -92,19 +83,20 @@ struct CodePass {
 //quality layer
 struct Layer {
 	Layer();
-	uint32_t numpasses; /* Number of passes in the layer */
-	uint32_t len; /* len of information */
-	double disto; /* add for index (Cfr. Marcela) */
-	uint8_t *data; /* data buffer (points to code block data) */
+	uint32_t numpasses; // Number of passes in the layer
+	uint32_t len; 		// number of bytes in layer
+	double disto; 		// layer distortion decrease
+	uint8_t *data; 		// compressed layer data
 };
 
-struct Codeblock : public grk_rect_u32 {
+// note: block lives in canvas coordinates
+struct Codeblock : public grkRectU32 {
     Codeblock(const Codeblock &rhs);
     Codeblock();
     Codeblock& operator=(const Codeblock& other);
     virtual ~Codeblock(){}
     virtual void clear();
-	grk_buf compressedStream;
+	grkBufferU8 compressedStream;
 	uint32_t numbps;
 	uint32_t numlenbits;
 	uint32_t numPassesInPacket; 	/* number of passes encoded in current packet */
@@ -114,13 +106,11 @@ struct Codeblock : public grk_rect_u32 {
 #endif
 };
 
-// compressor code block
 struct CompressCodeblock : public Codeblock {
 	CompressCodeblock();
 	~CompressCodeblock();
 	CompressCodeblock(const CompressCodeblock &rhs);
 	CompressCodeblock& operator=(const CompressCodeblock& other);
-
 	void clear() override;
 	bool alloc();
 	bool alloc_data(size_t nominalBlockSize);
@@ -133,7 +123,6 @@ struct CompressCodeblock : public Codeblock {
 	uint32_t *contextStream;
 };
 
-//decompressor code block
 struct DecompressCodeblock: public Codeblock {
 	DecompressCodeblock();
 	~DecompressCodeblock();
@@ -147,11 +136,10 @@ struct DecompressCodeblock: public Codeblock {
 	void cleanup_seg_buffers();
 	size_t getSegBuffersLen();
 	bool copy_to_contiguous_buffer(uint8_t *buffer);
-	std::vector<grk_buf*> seg_buffers;
+	std::vector<grkBufferU8*> seg_buffers;
 	Segment *segs; 					/* information on segments */
 	uint32_t numSegments; 			/* number of segment in block*/
 	uint32_t numSegmentsAllocated; 	// number of segments allocated for segs array
-
 };
 
 const size_t kChunkSize = 1024;
@@ -161,8 +149,7 @@ public:
 																m_chunkSize(std::min<uint64_t>(maxChunkSize, kChunkSize)),
 																m_currChunk(nullptr),
 																m_currChunkIndex(0)
-	{
-	}
+	{}
 	~ChunkedArray(void){
 		for (auto &ch : chunks){
 			for (size_t i = 0; i < m_chunkSize; ++i)
@@ -173,7 +160,6 @@ public:
 	T* get(uint64_t index){
 		uint64_t chunkIndex = index / m_chunkSize;
 		uint64_t itemIndex =  index % m_chunkSize;
-
 		if (m_currChunk == nullptr || chunkIndex != m_currChunkIndex){
 			m_currChunkIndex = chunkIndex;
 			auto iter = chunks.find(chunkIndex);
@@ -185,7 +171,6 @@ public:
 				chunks[chunkIndex] = m_currChunk;
 			}
 		}
-
 		auto item = m_currChunk[itemIndex];
 		if (!item){
 			item = new T();
@@ -202,28 +187,25 @@ private:
 	uint64_t m_currChunkIndex;
 };
 
-
 struct PrecinctImpl {
-	PrecinctImpl(bool isCompressor, grk_rect_u32 *bounds,grk_pt cblkExpn);
+	PrecinctImpl(bool isCompressor, grkRectU32 *bounds,grkPointU32 cblkExpn);
 	~PrecinctImpl();
 	void initTagTrees();
 	void deleteTagTrees();
-	bool initBlocks(grk_rect_u32 *bounds);
+	bool initBlocks(grkRectU32 *bounds);
 	template<typename T> bool initBlock(T* block, uint64_t cblkno);
 	ChunkedArray<CompressCodeblock, PrecinctImpl> *enc;
 	ChunkedArray<DecompressCodeblock, PrecinctImpl> *dec;
 	TagTree *incltree; /* inclusion tree */
 	TagTree *imsbtree; /* IMSB tree */
-	grk_rect_u32 m_cblk_grid;
-	grk_rect_u32 m_bounds;
-	grk_pt m_cblk_expn;
+	grkRectU32 m_cblk_grid;
+	grkRectU32 m_bounds;
+	grkPointU32 m_cblk_expn;
 	bool m_isCompressor;
 };
 
-
-// precinct
-struct Precinct : public grk_rect_u32 {
-	Precinct(const grk_rect_u32 &bounds, bool isCompressor, grk_pt cblkExpn);
+struct Precinct : public grkRectU32 {
+	Precinct(const grkRectU32 &bounds, bool isCompressor, grkPointU32 cblkExpn);
 	~Precinct(void);
 	void initTagTrees(void);
 	void deleteTagTrees(void);
@@ -235,36 +217,32 @@ struct Precinct : public grk_rect_u32 {
 	TagTree* getInclTree(void);
 	TagTree* getImsbTree(void);
 	uint32_t getNominalBlockSize(void);
-	grk_pt getCblkExpn(void);
-	grk_rect_u32 getCblkGrid(void);
-
+	grkPointU32 getCblkExpn(void);
+	grkRectU32 getCblkGrid(void);
 	uint64_t precinctIndex;
 private:
 	PrecinctImpl *impl;
-	grk_pt m_cblk_expn;
+	grkPointU32 m_cblk_expn;
 	PrecinctImpl* getImpl(void);
 };
 
-
-
-// band
-struct Subband : public grk_rect_u32 {
+struct Subband : public grkRectU32 {
 	Subband();
 	Subband(const Subband &rhs);
 	Subband& operator= (const Subband &rhs);
 	bool isEmpty() ;
 	void print();
 	Precinct* getPrecinct(uint64_t precinctIndex);
-	grk_rect_u32 generatePrecinctBounds(uint64_t precinctIndex,
-										grk_pt precinctRegionStart,
-										grk_pt precinct_expn,
+	grkRectU32 generatePrecinctBounds(uint64_t precinctIndex,
+										grkPointU32 precinctRegionStart,
+										grkPointU32 precinct_expn,
 										uint32_t precinctGridWidth);
 	Precinct* createPrecinct(bool isCompressor,
 						uint64_t precinctIndex,
-						grk_pt precinctStart,
-						grk_pt precinctExpn,
+						grkPointU32 precinctStart,
+						grkPointU32 precinctExpn,
 						uint32_t precinctGridWidth,
-						grk_pt cblkExpn);
+						grkPointU32 cblkExpn);
 
 	eBandOrientation orientation;
 	std::vector<Precinct*> precincts;
@@ -275,8 +253,7 @@ struct Subband : public grk_rect_u32 {
 	float stepsize;
 };
 
-// resolution
-struct Resolution : public grk_rect_u32 {
+struct Resolution : public grkRectU32 {
 	Resolution();
 	void print();
 	bool init(bool isCompressor,
@@ -284,19 +261,16 @@ struct Resolution : public grk_rect_u32 {
 				uint8_t resno,
 				grk_plugin_tile *current_plugin_tile);
 	bool initialized;
-	Subband band[BAND_NUM_INDICES]; // unreduced tile component bands
-									// (in canvas coords, but shifted to tile origin)
-	uint32_t numBandWindows;  // 1 or 3
+	Subband tileBand[BAND_NUM_INDICES]; // unreduced tile component bands in canvas coordinates
+	uint32_t numTileBandWindows;  // 1 or 3
 	uint32_t precinctGridWidth, precinctGridHeight; 	/* dimensions of precinct grid */
-	grk_pt cblkExpn;
-	grk_pt precinctStart;
-	grk_pt precinctExpn;
+	grkPointU32 cblkExpn;
+	grkPointU32 precinctStart;
+	grkPointU32 precinctExpn;
 	grk_plugin_tile *current_plugin_tile;
-
 };
 
 struct BlockExec : public IOpenable {
-
 	BlockExec();
 	TileComponent *tilec;
 	uint8_t bandIndex;
@@ -304,16 +278,13 @@ struct BlockExec : public IOpenable {
 	float stepsize;
 	uint32_t cblk_sty;
 	uint8_t qmfbid;
-	/* code block offset in tile coordinates*/
+	/* code block offset in resolution coordinates*/
 	uint32_t x;
 	uint32_t y;
 	// missing bit planes for all blocks in band
 	uint8_t k_msbs;
 	bool isOpen;
 };
-
-
-struct TileComponent;
 
 struct DecompressBlockExec : public BlockExec {
 	DecompressBlockExec();
@@ -323,14 +294,12 @@ struct DecompressBlockExec : public BlockExec {
 	DecompressCodeblock *cblk;
 	uint8_t resno;
 	uint32_t roishift;
-
 };
 
 struct CompressBlockExec : public BlockExec{
 	CompressBlockExec();
 	bool open(T1Interface *t1);
 	void close(void);
-
 	CompressCodeblock *cblk;
 	grk_tile *tile;
 	bool doRateControl;
@@ -346,8 +315,6 @@ struct CompressBlockExec : public BlockExec{
 	int32_t* unencodedData;
 #endif
 	uint16_t mct_numcomps;
-
 };
-
 
 }

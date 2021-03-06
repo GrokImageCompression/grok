@@ -264,7 +264,7 @@ bool FileFormatDecompress::readHeader(grk_header_info  *header_info){
 
 	return true;
 }
-bool FileFormatDecompress::setDecompressWindow(grk_rect_u32 window){
+bool FileFormatDecompress::setDecompressWindow(grkRectU32 window){
 	return codeStream->setDecompressWindow(window);
 }
 /** Set up decompressor function handler */
@@ -1168,7 +1168,7 @@ bool FileFormatDecompress::apply_palette_clr(GrkImage *image, grk_color *color) 
 		if (!GrkImage::allocData(new_comps + i)) {
 			while (i > 0) {
 				--i;
-				grk_aligned_free(new_comps[i].data);
+				grkAlignedFree(new_comps[i].data);
 			}
 			delete[] new_comps;
 			GRK_ERROR("Memory allocation failure in apply_palette_clr().");

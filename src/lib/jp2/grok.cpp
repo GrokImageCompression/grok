@@ -213,7 +213,7 @@ void GRK_CALLCONV grk_image_all_components_data_free(grk_image *image) {
 void GRK_CALLCONV grk_image_single_component_data_free( grk_image_comp  *comp) {
 	if (!comp || !comp->data)
 		return;
-	grk_aligned_free(comp->data);
+	grkAlignedFree(comp->data);
 	comp->data = nullptr;
 }
 
@@ -276,7 +276,7 @@ bool GRK_CALLCONV grk_decompress_set_window( grk_codec *codecWrapper,
 	if (codecWrapper) {
 		auto codec = GrkCodec::getImpl(codecWrapper);
 		return codec->m_decompressor ?
-				codec->m_decompressor->setDecompressWindow(grk_rect_u32(start_x, start_y, end_x,end_y))  : false;
+				codec->m_decompressor->setDecompressWindow(grkRectU32(start_x, start_y, end_x,end_y))  : false;
 	}
 	return false;
 }

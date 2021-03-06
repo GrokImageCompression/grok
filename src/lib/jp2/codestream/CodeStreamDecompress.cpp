@@ -254,7 +254,7 @@ bool CodeStreamDecompress::readHeader(grk_header_info  *header_info){
 	}
 	return true;
 }
-bool CodeStreamDecompress::setDecompressWindow(grk_rect_u32 window) {
+bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window) {
 	auto cp = &(m_cp);
 	auto image = m_headerImage;
 	auto compositeImage = getCompositeImage();
@@ -266,7 +266,7 @@ bool CodeStreamDecompress::setDecompressWindow(grk_rect_u32 window) {
 		return false;
 	}
 
-	if (window == grk_rect_u32(0,0,0,0)) {
+	if (window == grkRectU32(0,0,0,0)) {
 		decompressor->m_start_tile_x_index = 0;
 		decompressor->m_start_tile_y_index = 0;
 		decompressor->m_end_tile_x_index = cp->t_grid_width;
@@ -387,7 +387,7 @@ bool CodeStreamDecompress::decompressTile(uint16_t tile_index){
 	uint32_t tile_x = tile_index % m_cp.t_grid_width;
 	uint32_t tile_y = tile_index / m_cp.t_grid_width;
 
-	auto imageBounds = grk_rect_u32(compositeImage->x0,
+	auto imageBounds = grkRectU32(compositeImage->x0,
 									compositeImage->y0,
 									compositeImage->x1,
 									compositeImage->y1);

@@ -73,8 +73,8 @@ bool T2Decompress::decompress_packets(uint16_t tile_no,
 			if (!skipPacket) {
 				if (!tilec->isWholeTileDecoding()) {
 					skipPacket = true;
-					for (uint8_t bandIndex = 0;	bandIndex < res->numBandWindows; ++bandIndex) {
-						auto band = res->band + bandIndex;
+					for (uint8_t bandIndex = 0;	bandIndex < res->numTileBandWindows; ++bandIndex) {
+						auto band = res->tileBand + bandIndex;
 						auto paddedBandWindow = tilecBuffer->getPaddedTileBandWindow(currPi->resno, band->orientation);
 						auto prec = band->generatePrecinctBounds(currPi->precinctIndex,
 													res->precinctStart,
@@ -88,8 +88,8 @@ bool T2Decompress::decompress_packets(uint16_t tile_no,
 				}
 			}
 			if (!skipPacket || !usePlt) {
-				for (uint32_t bandIndex = 0;	bandIndex < res->numBandWindows; ++bandIndex) {
-					auto band = res->band + bandIndex;
+				for (uint32_t bandIndex = 0;	bandIndex < res->numTileBandWindows; ++bandIndex) {
+					auto band = res->tileBand + bandIndex;
 					if (!band->createPrecinct(false,
 												currPi->precinctIndex,
 												res->precinctStart,
@@ -260,8 +260,8 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp,
 
 		//GRK_INFO("present=%u ", present);
 		if (present) {
-			for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-				auto band = res->band + bandIndex;
+			for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
+				auto band = res->tileBand + bandIndex;
 				if (band->isEmpty())
 					continue;
 				auto prc = band->getPrecinct(p_pi->precinctIndex);
@@ -442,8 +442,8 @@ bool T2Decompress::read_packet_data(Resolution *res,
 									const PacketIter *p_pi,
 									ChunkBuffer *src_buf,
 									uint64_t *p_data_read) {
-	for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
-		auto band = res->band + bandIndex;
+	for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
+		auto band = res->tileBand + bandIndex;
 		auto prc = band->getPrecinct(p_pi->precinctIndex);
 		if (!prc)
 			continue;
@@ -499,7 +499,7 @@ bool T2Decompress::read_packet_data(Resolution *res,
 					// correct for truncated packet
 					if (seg->numBytesInPacket > max_seg_len)
 						seg->numBytesInPacket = (uint32_t)max_seg_len;
-					cblk->seg_buffers.push_back(new grk_buf(src_buf->get_cur_chunk_ptr(),
+					cblk->seg_buffers.push_back(new grkBufferU8(src_buf->get_cur_chunk_ptr(),
 							seg->numBytesInPacket, false));
 					*(p_data_read) += seg->numBytesInPacket;
 					src_buf->incr_cur_chunk_offset(seg->numBytesInPacket);
@@ -553,10 +553,10 @@ bool T2Decompress::skip_packet_data(Resolution *res,
 									uint64_t *p_data_read,
 									uint64_t max_length) {
 	*p_data_read = 0;
-	for (uint32_t bandIndex = 0; bandIndex < res->numBandWindows; ++bandIndex) {
+	for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
 		if (max_length - *p_data_read == 0)
 			return true;
-		auto band = res->band + bandIndex;
+		auto band = res->tileBand + bandIndex;
 		if (band->isEmpty())
 			continue;
 

@@ -201,7 +201,7 @@ private:
 
 	bool isMemStream();
 
-	grk_buf *m_buf;
+	grkBufferU8 *m_buf;
 
 	// number of bytes read in, or slated for write
 	size_t m_buffered_bytes;

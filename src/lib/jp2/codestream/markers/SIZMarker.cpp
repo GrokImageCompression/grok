@@ -40,14 +40,13 @@ void SIZMarker::subsampleAndReduceHeaderImageComponents(GrkImage *headerImage,
 	uint32_t x1 = p_cp->tx0 + (p_cp->t_grid_width - 1U) * p_cp->t_width;
 	uint32_t y1 = p_cp->ty0 + (p_cp->t_grid_height - 1U) * p_cp->t_height;
 
-	 /* use add saturated to prevent overflow */
-	x1 = std::min<uint32_t>(sat_add<uint32_t>(x1, p_cp->t_width), headerImage->x1);
-	y1 = std::min<uint32_t>(sat_add<uint32_t>(y1, p_cp->t_height), headerImage->y1);
+	 /* (use saturated add to prevent overflow) */
+	x1 = std::min<uint32_t>(satAdd<uint32_t>(x1, p_cp->t_width), headerImage->x1);
+	y1 = std::min<uint32_t>(satAdd<uint32_t>(y1, p_cp->t_height), headerImage->y1);
 
-	auto imageBounds = grk_rect_u32(x0,y0,x1,y1);
+	auto imageBounds = grkRectU32(x0,y0,x1,y1);
 
-	// 2. convert from canvas to tile coordinates, taking into account
-	// resolution reduction
+	// 2. sub-sample and apply resolution reduction
 	uint32_t reduce = p_cp->m_coding_params.m_dec.m_reduce;
 	for (uint32_t i = 0; i < headerImage->numcomps; ++i) {
 		auto comp = headerImage->comps + i;
@@ -172,8 +171,8 @@ bool SIZMarker::read(CodeStreamDecompress *codeStream, uint8_t *p_header_data,
 				cp->tx0, cp->ty0, image->x0, image->y0);
 		return false;
 	}
-	uint32_t tx1 = sat_add<uint32_t>(cp->tx0, cp->t_width); /* manage overflow */
-	uint32_t ty1 = sat_add<uint32_t>(cp->ty0, cp->t_height); /* manage overflow */
+	uint32_t tx1 = satAdd<uint32_t>(cp->tx0, cp->t_width); /* manage overflow */
+	uint32_t ty1 = satAdd<uint32_t>(cp->ty0, cp->t_height); /* manage overflow */
 	if (tx1 <= image->x0 || ty1 <= image->y0) {
 		GRK_ERROR("SIZ marker: first tile (%u,%u,%u,%u) must overlap"
 				" image (%u,%u,%u,%u)", cp->tx0, cp->ty0, tx1, ty1, image->x0,

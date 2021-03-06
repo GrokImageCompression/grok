@@ -56,7 +56,7 @@ public:
 	bool decompress(TileProcessor *p_tcd,
 					TileComponent* tilec,
 					uint16_t compno,
-					grk_rect_u32 window,
+					grkRectU32 window,
 					uint8_t numres,
 					uint8_t qmfbid);
 

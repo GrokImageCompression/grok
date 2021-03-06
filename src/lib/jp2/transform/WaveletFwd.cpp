@@ -231,7 +231,7 @@ template <typename T, typename DWT> void encode_h_func(encode_h_job<T,DWT> *job)
 												job->rw,
                            	   	   	   	   	   	job->h.parity == 0 ? true : false);
     }
-    grk_aligned_free(job->h.mem);
+    grkAlignedFree(job->h.mem);
     delete job;
 }
 
@@ -264,7 +264,7 @@ template <typename T, typename DWT> void encode_v_func(encode_v_job<T,DWT> *job)
                                             job->max_j - j);
     }
 
-    grk_aligned_free(job->v.mem);
+    grkAlignedFree(job->v.mem);
     delete job;
 }
 
@@ -458,7 +458,7 @@ template<typename T, typename DWT> bool WaveletFwdImpl::encode_procedure(TileCom
         return false;
     }
     dataSize *= NB_ELTS_V8 * sizeof(int32_t);
-    bj = (T*)grk_aligned_malloc(dataSize);
+    bj = (T*)grkAlignedMalloc(dataSize);
     /* dataSize is equal to 0 when numresolutions == 1 but bj is not used */
     /* in that case, so do not error out */
     if (dataSize != 0 && ! bj) {
@@ -519,10 +519,10 @@ template<typename T, typename DWT> bool WaveletFwdImpl::encode_procedure(TileCom
 			std::vector< std::future<int> > results;
             for (uint32_t j = 0; j < num_jobs; j++) {
                 auto job = new encode_v_job<T, DWT>();
-                job->v.mem = (T*)grk_aligned_malloc(dataSize);
+                job->v.mem = (T*)grkAlignedMalloc(dataSize);
                 if (!job->v.mem) {
                     delete job;
-                    grk_aligned_free(bj);
+                    grkAlignedFree(bj);
                     rc = false;
                     break;
                 }
@@ -570,10 +570,10 @@ template<typename T, typename DWT> bool WaveletFwdImpl::encode_procedure(TileCom
 			std::vector< std::future<int> > results;
             for (uint32_t j = 0; j < num_jobs; j++) {
                 auto job = new encode_h_job<T, DWT>();
-                job->h.mem = (T*)grk_aligned_malloc(dataSize);
+                job->h.mem = (T*)grkAlignedMalloc(dataSize);
                 if (!job->h.mem) {
                     delete job;
-                    grk_aligned_free(bj);
+                    grkAlignedFree(bj);
                     rc = false;
                     break;
                 }
@@ -604,7 +604,7 @@ template<typename T, typename DWT> bool WaveletFwdImpl::encode_procedure(TileCom
         --lastRes;
     }
 
-    grk_aligned_free(bj);
+    grkAlignedFree(bj);
     return true;
 }
 

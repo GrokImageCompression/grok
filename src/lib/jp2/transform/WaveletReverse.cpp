@@ -146,9 +146,9 @@ template <typename T> struct dwt_data {
 	        GRK_ERROR("data size overflow");
 	        return false;
 	    }
-	    m_paddingBytes = grk_make_aligned_width((uint32_t)padding * 2 + 32) * sizeof(T);
+	    m_paddingBytes = grkMakeAlignedWidth((uint32_t)padding * 2 + 32) * sizeof(T);
 	    m_lenBytes = len  * sizeof(T) +  2 * m_paddingBytes;
-	    allocatedMem = (T*)grk_aligned_malloc(m_lenBytes);
+	    allocatedMem = (T*)grkAlignedMalloc(m_lenBytes);
 	    if (!allocatedMem){
 	        GRK_ERROR("Failed to allocate %d bytes", m_lenBytes);
 	        return false;
@@ -158,7 +158,7 @@ template <typename T> struct dwt_data {
 		return (allocatedMem != nullptr) ? true : false;
 	}
 	void release(){
-		grk_aligned_free(allocatedMem);
+		grkAlignedFree(allocatedMem);
 		allocatedMem = nullptr;
 		mem = nullptr;
 		memL = nullptr;
@@ -173,8 +173,8 @@ template <typename T> struct dwt_data {
     uint32_t dn_full;   /* number of elements in high pass band */
     uint32_t sn_full;   /* number of elements in low pass band */
     uint32_t parity;  /* 0 = start on even coord, 1 = start on odd coord */
-    grk_u32_line  win_l;
-    grk_u32_line  win_h;
+    grkLineU32  win_l;
+    grkLineU32  win_h;
     uint8_t resno;
 };
 
@@ -1384,8 +1384,8 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         	continue;
         horiz.dn_full = rw - horiz.sn_full;
         horiz.parity = tr->x0 & 1;
-        horiz.win_l = grk_u32_line(0, horiz.sn_full);
-        horiz.win_h = grk_u32_line(0, horiz.dn_full);
+        horiz.win_l = grkLineU32(0, horiz.sn_full);
+        horiz.win_h = grkLineU32(0, horiz.dn_full);
         if (!decompress_h_mt_97(num_threads,
         					data_size,
 							horiz,
@@ -1416,8 +1416,8 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         	return false;
         vert.dn_full = rh - vert.sn_full;
         vert.parity = tr->y0 & 1;
-        vert.win_l = grk_u32_line(0, vert.sn_full);
-        vert.win_h = grk_u32_line(0, vert.dn_full);
+        vert.win_l = grkLineU32(0, vert.sn_full);
+        vert.win_h = grkLineU32(0, vert.dn_full);
         if (!decompress_v_mt_97(num_threads,
         					data_size,
 							vert,
@@ -1479,7 +1479,7 @@ public:
 	    	// read one row of L band and write interleaved
 			if (dwt->sn_full) {
 				ret = sa->read(dwt->resno,
-									grk_rect_u32(dwt->win_l.x0,
+									grkRectU32(dwt->win_l.x0,
 												  y_offset + i,
 												  std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn_full),
 												  y_offset + i + 1),
@@ -1492,7 +1492,7 @@ public:
 	        // read one row of H band and write interleaved
 			if (dwt->dn_full) {
 				ret = sa->read(dwt->resno,
-								grk_rect_u32(dwt->sn_full + dwt->win_h.x0,
+								grkRectU32(dwt->sn_full + dwt->win_h.x0,
 											 y_offset + i,
 											 dwt->sn_full + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn_full),
 											 y_offset + i + 1),
@@ -1519,7 +1519,7 @@ public:
 
 		if (dwt->sn_full) {
 			ret = sa->read(dwt->resno,
-								grk_rect_u32(x_offset,
+								grkRectU32(x_offset,
 											dwt->win_l.x0,
 											x_offset + x_num_elements,
 											std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn_full)),
@@ -1532,7 +1532,7 @@ public:
     	// read one vertical strip (of width x_num_elements <= v_chunk) of H band and write interleaved
 		if (dwt->dn_full) {
 			ret = sa->read(dwt->resno,
-							grk_rect_u32(x_offset,
+							grkRectU32(x_offset,
 										dwt->sn_full + dwt->win_h.x0,
 										x_offset + x_num_elements,
 										dwt->sn_full + std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn_full)),
@@ -1916,7 +1916,7 @@ template <typename T,
 
    bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec,
 		   	   	   	   	   uint16_t compno,
-		   	   	   	   	   grk_rect_u32 bounds,
+		   	   	   	   	   grkRectU32 bounds,
 		   	   	   	   	   uint8_t numres,
 						   ISparseBuffer *sa) {
 
@@ -1970,31 +1970,31 @@ template <typename T,
         vert.parity 	= fullRes->y0 & 1;
 
         // 1. set up windows for horizontal and vertical passes
-        grk_rect_u32 bandWindowRect[BAND_NUM_ORIENTATIONS];
-        bandWindowRect[BAND_ORIENT_LL] = *((grk_rect_u32*)tilec->getBuffer()->getWindow(resno,BAND_ORIENT_LL ));
-        bandWindowRect[BAND_ORIENT_HL] = *((grk_rect_u32*)tilec->getBuffer()->getWindow(resno,BAND_ORIENT_HL ));
-        bandWindowRect[BAND_ORIENT_LH] = *((grk_rect_u32*)tilec->getBuffer()->getWindow(resno,BAND_ORIENT_LH ));
-        bandWindowRect[BAND_ORIENT_HH] = *((grk_rect_u32*)tilec->getBuffer()->getWindow(resno,BAND_ORIENT_HH ));
+        grkRectU32 bandWindowRect[BAND_NUM_ORIENTATIONS];
+        bandWindowRect[BAND_ORIENT_LL] = *((grkRectU32*)tilec->getBuffer()->getWindow(resno,BAND_ORIENT_LL ));
+        bandWindowRect[BAND_ORIENT_HL] = *((grkRectU32*)tilec->getBuffer()->getWindow(resno,BAND_ORIENT_HL ));
+        bandWindowRect[BAND_ORIENT_LH] = *((grkRectU32*)tilec->getBuffer()->getWindow(resno,BAND_ORIENT_LH ));
+        bandWindowRect[BAND_ORIENT_HH] = *((grkRectU32*)tilec->getBuffer()->getWindow(resno,BAND_ORIENT_HH ));
 
-        // band windows in tile coordinates - needed to pre-allocate sparse blocks
-        grk_rect_u32 tileBandWindowRect[BAND_NUM_ORIENTATIONS];
+        // band windows in band coordinates - needed to pre-allocate sparse blocks
+        grkRectU32 tileBandWindowRect[BAND_NUM_ORIENTATIONS];
         tileBandWindowRect[BAND_ORIENT_LL]  =  bandWindowRect[BAND_ORIENT_LL];
-        tileBandWindowRect[BAND_ORIENT_HL]  =  bandWindowRect[BAND_ORIENT_HL].pan(fullRes->band[BAND_INDEX_LH].width(),0);
-        tileBandWindowRect[BAND_ORIENT_LH]  =  bandWindowRect[BAND_ORIENT_LH].pan(0,fullRes->band[BAND_INDEX_HL].height());
-        tileBandWindowRect[BAND_ORIENT_HH]  =  bandWindowRect[BAND_ORIENT_HH].pan(fullRes->band[BAND_INDEX_LH].width(),fullRes->band[BAND_INDEX_HL].height());
+        tileBandWindowRect[BAND_ORIENT_HL]  =  bandWindowRect[BAND_ORIENT_HL].pan(fullRes->tileBand[BAND_INDEX_LH].width(),0);
+        tileBandWindowRect[BAND_ORIENT_LH]  =  bandWindowRect[BAND_ORIENT_LH].pan(0,fullRes->tileBand[BAND_INDEX_HL].height());
+        tileBandWindowRect[BAND_ORIENT_HH]  =  bandWindowRect[BAND_ORIENT_HH].pan(fullRes->tileBand[BAND_INDEX_LH].width(),fullRes->tileBand[BAND_INDEX_HL].height());
         // 2. pre-allocate sparse blocks
         for (uint32_t i = 0; i < BAND_NUM_ORIENTATIONS; ++i){
         	auto temp = tileBandWindowRect[i];
             if (!sa->alloc(temp.grow(2 * FILTER_WIDTH, fullRes->width(),  fullRes->height()),false))
     			 goto cleanup;
         }
-        auto resWindowRect = *((grk_rect_u32*)tilec->getBuffer()->getWindow(resno));
+        auto resWindowRect = *((grkRectU32*)tilec->getBuffer()->getWindow(resno));
         if (!sa->alloc(resWindowRect,false))
 			goto cleanup;
         // two windows formed by horizontal pass and used as input for vertical pass
-        grk_rect_u32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
-        splitWindowRect[SPLIT_L] = *((grk_rect_u32*)tilec->getBuffer()->getSplitWindow(resno,SPLIT_L ));
-        splitWindowRect[SPLIT_H] = *((grk_rect_u32*)tilec->getBuffer()->getSplitWindow(resno,SPLIT_H ));
+        grkRectU32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
+        splitWindowRect[SPLIT_L] = *((grkRectU32*)tilec->getBuffer()->getSplitWindow(resno,SPLIT_L ));
+        splitWindowRect[SPLIT_H] = *((grkRectU32*)tilec->getBuffer()->getSplitWindow(resno,SPLIT_H ));
 		for (uint32_t k = 0; k < SPLIT_NUM_ORIENTATIONS; ++k) {
 			 auto temp = splitWindowRect[k];
 			 if (!sa->alloc(temp.grow(2 * FILTER_WIDTH, fullRes->width(),  fullRes->height()),false))
@@ -2029,7 +2029,7 @@ template <typename T,
 				grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 #endif
 				 if (!sa->write(resno,
-						 	 	 grk_rect_u32(resWindowRect.x0,
+						 	 	 grkRectU32(resWindowRect.x0,
 											  j,
 											  resWindowRect.x1,
 											  j + height),
@@ -2077,7 +2077,7 @@ template <typename T,
 				grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 #endif
 				if (!sa->write(resno,
-							grk_rect_u32(j,
+							grkRectU32(j,
 										resWindowRect.y0,
 										j + width,
 										resWindowRect.y0 + job->data.win_l.length() + job->data.win_h.length()),
@@ -2215,7 +2215,7 @@ cleanup:
 bool WaveletReverse::decompress(TileProcessor *p_tcd,
 						TileComponent* tilec,
 						uint16_t compno,
-						grk_rect_u32 window,
+						grkRectU32 window,
                         uint8_t numres,
 						uint8_t qmfbid){
 

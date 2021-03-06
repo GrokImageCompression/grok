@@ -29,26 +29,25 @@ namespace grk {
  */
 template<typename T> struct ResWindow {
 
-	// note:
-	// 1. any variable with 'tile' in its name is in canvas coordinates
+	// Note :
+	// 1. variables with 'tile' in their name are in canvas coordinates
 	// 2. band windows are relative to band origin
-	// 3. res windows are relate to LL band windows
+	// 3. res windows are relative to LL band window origin (which coincides with resolution origin)
 	ResWindow(uint8_t numresolutions,
 				uint8_t resno,
-				grk_buffer_2d<T> *resWindowTopLevel,
+				grkBuffer2d<T> *resWindowTopLevel,
 				Resolution *tileCompAtRes,
 				Resolution *tileCompAtLowerRes,
-				grk_rect_u32 tileCompWindow,
-				grk_rect_u32 tileCompWindowUnreduced,
-				grk_rect_u32 tileCompUnreduced,
+				grkRectU32 tileCompWindow,
+				grkRectU32 tileCompWindowUnreduced,
+				grkRectU32 tileCompUnreduced,
 				uint32_t FILTER_WIDTH) : m_allocated(false),
 										m_tileCompRes(tileCompAtRes),
 										m_tileCompResLower(tileCompAtLowerRes),
-										m_resWindow(new grk_buffer_2d<T>(tileCompWindow.width(), tileCompWindow.height())),
+										m_resWindow(new grkBuffer2d<T>(tileCompWindow.width(), tileCompWindow.height())),
 										m_resWindowTopLevel(resWindowTopLevel),
 										m_filterWidth(FILTER_WIDTH)
 	{
-	  (void)tileCompUnreduced;
 	  for (uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
 			m_splitResWindow[i] = nullptr;
 	  // windowed decompression
@@ -62,62 +61,56 @@ template<typename T> struct ResWindow {
 		*/
 		for (uint8_t orient = 0; orient < ( (resno) > 0 ? BAND_NUM_ORIENTATIONS : 1); orient++) {
 			m_paddedTileBandWindow.push_back(
-					getTileCompBandWindow(numDecomps, orient,tileCompWindowUnreduced, tileCompUnreduced, FILTER_WIDTH));
+					getTileCompBandWindow(numDecomps, orient,tileCompWindowUnreduced, tileCompUnreduced, 2 * FILTER_WIDTH));
 		}
 
 		if (m_tileCompResLower) {
-/*
-			auto b0 = getTileCompBandWindow(numresolutions,resno,BAND_ORIENT_LL,tileCompWindowUnreduced);
-			auto b1 = getTileCompBandWindow(numresolutions,resno,BAND_ORIENT_HL,tileCompWindowUnreduced);
-			auto b2 = getTileCompBandWindow(numresolutions,resno,BAND_ORIENT_LH,tileCompWindowUnreduced);
-			auto b3 = getTileCompBandWindow(numresolutions,resno,BAND_ORIENT_HH,tileCompWindowUnreduced);
-
-			assert(b0.width() + b1.width() == tileCompWindow.width());
-			assert(b2.width() + b3.width() == tileCompWindow.width());
-			assert(b0.height() + b2.height() == tileCompWindow.height());
-			assert(b1.height() + b3.height() == tileCompWindow.height());
-*/
-			for (uint8_t orient = 0; orient < BAND_NUM_ORIENTATIONS; ++orient) {
+			for (uint8_t orient = 0; orient < BAND_NUM_ORIENTATIONS; orient++) {
+				// todo: should only need padding equal to FILTER_WIDTH, not 2*FILTER_WIDTH
 				auto tileBandWindow = getTileCompBandWindow(numDecomps,orient,tileCompWindowUnreduced,tileCompUnreduced,2*FILTER_WIDTH);
-				auto tileBand = orient == BAND_ORIENT_LL ? *((grk_rect_u32*)m_tileCompResLower) : m_tileCompRes->band[orient-1];
+				auto tileBand = orient == BAND_ORIENT_LL ? *((grkRectU32*)m_tileCompResLower) : m_tileCompRes->tileBand[orient-1];
 				auto bandWindow = tileBandWindow.pan(-(int64_t)tileBand.x0, -(int64_t)tileBand.y0);
-				m_paddedBandWindowBuffer.push_back(new grk_buffer_2d<T>(bandWindow));
+				m_paddedBandWindowBuffer.push_back(new grkBuffer2d<T>(bandWindow));
 			}
-			auto win_low 		= m_paddedBandWindowBuffer[BAND_ORIENT_LL];
-			auto win_high 		= m_paddedBandWindowBuffer[BAND_ORIENT_HL];
-			m_resWindow->x0 	= min<uint32_t>(2 * win_low->x0, 2 * win_high->x0 + 1);
-			m_resWindow->x1 	= min<uint32_t>(max<uint32_t>(2 * win_low->x1, 2 * win_high->x1 + 1), m_tileCompRes->width());
-			win_low 			= m_paddedBandWindowBuffer[BAND_ORIENT_LL];
-			win_high 			= m_paddedBandWindowBuffer[BAND_ORIENT_LH];
-			m_resWindow->y0 	= min<uint32_t>(2 * win_low->y0, 2 * win_high->y0 + 1);
-			m_resWindow->y1 	= min<uint32_t>(max<uint32_t>(2 * win_low->y1, 2 * win_high->y1 + 1), m_tileCompRes->height());
+			auto winLow 		= m_paddedBandWindowBuffer[BAND_ORIENT_LL];
+			auto winHigh 		= m_paddedBandWindowBuffer[BAND_ORIENT_HL];
+			m_resWindow->x0 	= min<uint32_t>(2 * winLow->x0, 2 * winHigh->x0 + 1);
+			m_resWindow->x1 	= max<uint32_t>(2 * winLow->x1, 2 * winHigh->x1 + 1);
+			winLow 				= m_paddedBandWindowBuffer[BAND_ORIENT_LL];
+			winHigh 			= m_paddedBandWindowBuffer[BAND_ORIENT_LH];
+			m_resWindow->y0 	= min<uint32_t>(2 * winLow->y0, 2 * winHigh->y0 + 1);
+			m_resWindow->y1 	= max<uint32_t>(2 * winLow->y1, 2 * winHigh->y1 + 1);
+
+			//todo: shouldn't need to clip
+			auto resBounds = grkRectU32(0,0,m_tileCompRes->width(),m_tileCompRes->height());
+			m_resWindow->clip(&resBounds);
 
 			// two windows formed by horizontal pass and used as input for vertical pass
-			grk_rect_u32 splitResWindowRect[SPLIT_NUM_ORIENTATIONS];
-			splitResWindowRect[SPLIT_L] = grk_rect_u32(m_resWindow->x0,
+			grkRectU32 splitResWindowRect[SPLIT_NUM_ORIENTATIONS];
+			splitResWindowRect[SPLIT_L] = grkRectU32(m_resWindow->x0,
 													  m_paddedBandWindowBuffer[BAND_ORIENT_LL]->y0,
 													  m_resWindow->x1,
 													  m_paddedBandWindowBuffer[BAND_ORIENT_LL]->y1);
-			m_splitResWindow[SPLIT_L] = new grk_buffer_2d<T>(splitResWindowRect[SPLIT_L]);
-			splitResWindowRect[SPLIT_H] = grk_rect_u32(m_resWindow->x0,
+			m_splitResWindow[SPLIT_L] = new grkBuffer2d<T>(splitResWindowRect[SPLIT_L]);
+			splitResWindowRect[SPLIT_H] = grkRectU32(m_resWindow->x0,
 														m_paddedBandWindowBuffer[BAND_ORIENT_LH]->y0 + m_tileCompResLower->height(),
 														m_resWindow->x1,
 														m_paddedBandWindowBuffer[BAND_ORIENT_LH]->y1 + m_tileCompResLower->height());
-			m_splitResWindow[SPLIT_H] = new grk_buffer_2d<T>(splitResWindowRect[SPLIT_H]);
+			m_splitResWindow[SPLIT_H] = new grkBuffer2d<T>(splitResWindowRect[SPLIT_H]);
 		}
 	   // compression or full tile decompression
 	   } else {
 			// dummy LL band window
-			m_paddedBandWindowBuffer.push_back( new grk_buffer_2d<T>( 0,0) );
-			assert(tileCompAtRes->numBandWindows == 3 || !tileCompAtLowerRes);
+			m_paddedBandWindowBuffer.push_back( new grkBuffer2d<T>( 0,0) );
+			assert(tileCompAtRes->numTileBandWindows == 3 || !tileCompAtLowerRes);
 			if (m_tileCompResLower) {
-				for (uint32_t i = 0; i < tileCompAtRes->numBandWindows; ++i){
-					auto b = tileCompAtRes->band + i;
-					m_paddedBandWindowBuffer.push_back( new grk_buffer_2d<T>(b->width(),b->height() ) );
+				for (uint32_t i = 0; i < tileCompAtRes->numTileBandWindows; ++i){
+					auto b = tileCompAtRes->tileBand + i;
+					m_paddedBandWindowBuffer.push_back( new grkBuffer2d<T>(b->width(),b->height() ) );
 				}
 				for (uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i) {
 					auto b = &tileCompWindow;
-					m_splitResWindow[i] = new grk_buffer_2d<T>(b->width(), b->height());
+					m_splitResWindow[i] = new grkBuffer2d<T>(b->width(), b->height());
 				}
 				m_splitResWindow[SPLIT_L]->y1 = tileCompWindow.y0 + tileCompAtLowerRes->height();
 				m_splitResWindow[SPLIT_H]->y0 = m_splitResWindow[SPLIT_L]->y1;
@@ -200,11 +193,11 @@ template<typename T> struct ResWindow {
 	bool m_allocated;
 	Resolution *m_tileCompRes;   	// when non-null, it triggers creation of band window buffers
 	Resolution *m_tileCompResLower; // null for lowest resolution
-	std::vector< grk_buffer_2d<T>* > m_paddedBandWindowBuffer;	 	// coordinates are relative to band origin
-	std::vector< grk_rect_u32 > m_paddedTileBandWindow; 	 		// canvas coordinates
-	grk_buffer_2d<T> *m_splitResWindow[SPLIT_NUM_ORIENTATIONS]; 	// resolution coordinates
-	grk_buffer_2d<T> *m_resWindow;					 		 	// resolution coordinates
-	grk_buffer_2d<T> *m_resWindowTopLevel;					 	// resolution coordinates
+	std::vector< grkBuffer2d<T>* > m_paddedBandWindowBuffer;	// coordinates are relative to band origin
+	std::vector< grkRectU32 > m_paddedTileBandWindow; 	 		// canvas coordinates
+	grkBuffer2d<T> *m_splitResWindow[SPLIT_NUM_ORIENTATIONS]; 	// resolution coordinates
+	grkBuffer2d<T> *m_resWindow;					 		 	// resolution coordinates
+	grkBuffer2d<T> *m_resWindowTopLevel;					 	// resolution coordinates
 	uint32_t m_filterWidth;
 };
 
@@ -218,16 +211,16 @@ template<typename T> struct ResWindow {
 
  3) Resolution coordinate system: coordinates relative to a particular resolution's top left hand corner
 
- 4) Sub-band coordinate system: coordinates relative to a particular sub-band's top left hand corner
+ 4) Band coordinate system: coordinates relative to a particular sub-band's top left hand corner
 
  */
 template<typename T> struct TileComponentWindowBuffer {
 	TileComponentWindowBuffer(bool isCompressor,
 								bool lossless,
 								bool wholeTileDecompress,
-								grk_rect_u32 tileCompUnreduced,
-								grk_rect_u32 tileCompReduced,
-								grk_rect_u32 unreducedTileOrImageCompWindow,
+								grkRectU32 tileCompUnreduced,
+								grkRectU32 tileCompReduced,
+								grkRectU32 unreducedTileOrImageCompWindow,
 								Resolution *tileCompResolution,
 								uint8_t numresolutions,
 								uint8_t reducedNumResolutions) : 	m_unreducedBounds(tileCompUnreduced),
@@ -288,7 +281,8 @@ template<typename T> struct TileComponentWindowBuffer {
 	}
 
 	/**
-	 * Tranform code block offsets to canvas coordinates
+	 * Tranform code block offsets from canvas coordinates
+	 * to tile coordinates i.e. relative to tile origin
 	 *
 	 * @param resno resolution number
 	 * @param orientation band orientation {LL,HL,LH,HH}
@@ -296,11 +290,14 @@ template<typename T> struct TileComponentWindowBuffer {
 	 * @param offsety y offset of code block in tile component coordinates
 	 *
 	 */
-	void transformToCanvasCoordinates(uint8_t resno,eBandOrientation orientation, uint32_t &offsetx, uint32_t &offsety) const {
+	void transformToTileCoordinates(uint8_t resno,
+										eBandOrientation orientation,
+										uint32_t &offsetx,
+										uint32_t &offsety) const {
 		assert(resno < m_tileCompResolutions.size());
 
 		auto res = m_tileCompResolutions[resno];
-		auto band = res->band + getBandIndex(resno,orientation);
+		auto band = res->tileBand + getBandIndex(resno,orientation);
 
 		uint32_t x = offsetx;
 		uint32_t y = offsety;
@@ -328,7 +325,7 @@ template<typename T> struct TileComponentWindowBuffer {
 	 * @param orientation band orientation {LL,HL,LH,HH}
 	 *
 	 */
-	const grk_buffer_2d<T>* getCodeBlockDestWindow(uint8_t resno,eBandOrientation orientation) const {
+	const grkBuffer2d<T>* getCodeBlockDestWindow(uint8_t resno,eBandOrientation orientation) const {
 		return (useResCoordsForCodeBlock()) ? getTileBuf() : getBandWindow(resno,orientation);
 	}
 
@@ -339,11 +336,11 @@ template<typename T> struct TileComponentWindowBuffer {
 	 * @param orientation band orientation {0,1,2,3} for {LL,HL,LH,HH} band windows
 	 *
 	 */
-	const grk_buffer_2d<T>*  getWindow(uint8_t resno,eBandOrientation orientation) const{
+	const grkBuffer2d<T>*  getWindow(uint8_t resno,eBandOrientation orientation) const{
 		return getBandWindow(resno,orientation);
 	}
 
-	const grk_rect_u32* getPaddedTileBandWindow(uint8_t resno,eBandOrientation orientation) const{
+	const grkRectU32* getPaddedTileBandWindow(uint8_t resno,eBandOrientation orientation) const{
 		if (m_resWindows[resno]->m_paddedTileBandWindow.empty())
 			return nullptr;
 		return &m_resWindows[resno]->m_paddedTileBandWindow[orientation];
@@ -354,7 +351,7 @@ template<typename T> struct TileComponentWindowBuffer {
 	 *
 	 * @param orientation 0 for upper split window, and 1 for lower split window
 	 */
-	const grk_buffer_2d<T>*  getSplitWindow(uint8_t resno,eSplitOrientation orientation) const{
+	const grkBuffer2d<T>*  getSplitWindow(uint8_t resno,eSplitOrientation orientation) const{
 		assert(resno > 0 && resno < m_tileCompResolutions.size());
 
 		return m_resWindows[resno]->m_splitResWindow[orientation];
@@ -366,7 +363,7 @@ template<typename T> struct TileComponentWindowBuffer {
 	 * @param resno resolution number
 	 *
 	 */
-	const grk_buffer_2d<T>*  getWindow(uint32_t resno) const{
+	const grkBuffer2d<T>*  getWindow(uint32_t resno) const{
 		return m_resWindows[resno]->m_resWindow;
 	}
 
@@ -375,7 +372,7 @@ template<typename T> struct TileComponentWindowBuffer {
 	 *
 	 *
 	 */
-	const grk_buffer_2d<T>*  getWindow(void) const{
+	const grkBuffer2d<T>*  getWindow(void) const{
 		return getTileBuf();
 	}
 
@@ -393,11 +390,11 @@ template<typename T> struct TileComponentWindowBuffer {
 	 * decompress: reduced tile component coordinates of window
 	 * compress: unreduced tile component coordinates of entire tile
 	 */
-	grk_rect_u32 bounds() const{
+	grkRectU32 bounds() const{
 		return m_bounds;
 	}
 
-	grk_rect_u32 unreduced_bounds() const{
+	grkRectU32 unreduced_bounds() const{
 		return m_unreducedBounds;
 	}
 
@@ -438,22 +435,22 @@ private:
 	/**
 	 * If resno is > 0, return LL,HL,LH or HH band window, otherwise return LL resolution window
 	 */
-	grk_buffer_2d<T>* getBandWindow(uint8_t resno,eBandOrientation orientation) const{
+	grkBuffer2d<T>* getBandWindow(uint8_t resno,eBandOrientation orientation) const{
 		assert(resno < m_tileCompResolutions.size());
 
 		return resno > 0 ? m_resWindows[resno]->m_paddedBandWindowBuffer[orientation] : m_resWindows[0]->m_resWindow;
 	}
 
 	// top-level buffer
-	grk_buffer_2d<T>* getTileBuf() const{
+	grkBuffer2d<T>* getTileBuf() const{
 		return m_resWindows.back()->m_resWindow;
 	}
 
 	/******************************************************/
 	// decompress: unreduced/reduced image component window
 	// compress:  unreduced/reduced tile component
-	grk_rect_u32 m_unreducedBounds;
-	grk_rect_u32 m_bounds;
+	grkRectU32 m_unreducedBounds;
+	grkRectU32 m_bounds;
 	/******************************************************/
 
 	// tile component coords

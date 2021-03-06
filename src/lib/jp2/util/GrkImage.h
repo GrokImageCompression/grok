@@ -94,23 +94,23 @@ public:
 
 	bool generateCompositeBounds(const TileComponent *src_comp,
 								uint16_t compno,
-								grk_rect_u32 *src,
-								grk_rect_u32 *dest,
-								grk_rect_u32 *dest_win,
+								grkRectU32 *src,
+								grkRectU32 *dest,
+								grkRectU32 *dest_win,
 								uint32_t *src_line_off);
 
 	bool generateCompositeBounds(const grk_image_comp *src_comp,
 								uint16_t compno,
-								grk_rect_u32 *src,
-								grk_rect_u32 *dest,
-								grk_rect_u32 *dest_win,
+								grkRectU32 *src,
+								grkRectU32 *dest,
+								grkRectU32 *dest_win,
 								uint32_t *src_line_off);
 
 	bool generateCompositeBounds(uint16_t compno,
-								grk_rect_u32 *src,
+								grkRectU32 *src,
 								uint32_t src_stride,
-								grk_rect_u32 *dest,
-								grk_rect_u32 *dest_win,
+								grkRectU32 *dest,
+								grkRectU32 *dest_win,
 								uint32_t *src_line_off);
 	void createMeta();
 private:

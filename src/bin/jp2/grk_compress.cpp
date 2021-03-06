@@ -925,10 +925,10 @@ static int parseCommandLine(int argc,
 		}
 
 		if (progressionOrderArg.isSet()) {
-			char progression[5];
-			progression[4] = 0;
 			bool recognized = false;
 			if (progressionOrderArg.getValue().length() == 4){
+				char progression[5];
+				progression[4] = 0;
 				strncpy(progression, progressionOrderArg.getValue().c_str(), 4);
 				parameters->prog_order = getProgression(progression);
 				recognized = parameters->prog_order != -1;

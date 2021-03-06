@@ -166,12 +166,12 @@ void GrkImage::createMeta(){
 bool GrkImage::allocData(grk_image_comp  *comp) {
 	if (!comp || comp->w == 0 || comp->h == 0)
 		return false;
-	comp->stride = grk_make_aligned_width(comp->w);
+	comp->stride = grkMakeAlignedWidth(comp->w);
 	assert(comp->stride);
 	assert(!comp->data);
 
 	size_t dataSize = (uint64_t) comp->stride * comp->h * sizeof(uint32_t);
-	auto data = (int32_t*) grk_aligned_malloc(dataSize);
+	auto data = (int32_t*) grkAlignedMalloc(dataSize);
 	if (!data) {
 		grk::GRK_ERROR("Failed to allocate aligned memory buffer of dimensions %u x %u "
 				"@ alignment %d",comp->stride, comp->h, grk::default_align);
@@ -281,13 +281,13 @@ void GrkImage::transferDataFrom(const grk_tile* tile_src_data){
 }
 
 bool GrkImage::generateCompositeBounds(	uint16_t compno,
-										grk_rect_u32 *src,
+										grkRectU32 *src,
 										uint32_t src_stride,
-										grk_rect_u32 *dest,
-										grk_rect_u32 *dest_win,
+										grkRectU32 *dest,
+										grkRectU32 *dest_win,
 										uint32_t *src_line_off){
 	auto dest_comp = comps + compno;
-	*dest = grk_rect_u32(dest_comp->x0,
+	*dest = grkRectU32(dest_comp->x0,
 						dest_comp->y0,
 						dest_comp->x0 + dest_comp->w,
 						dest_comp->y0 + dest_comp->h);
@@ -324,11 +324,11 @@ bool GrkImage::generateCompositeBounds(	uint16_t compno,
 
 bool GrkImage::generateCompositeBounds(const grk_image_comp *src_comp,
 										uint16_t compno,
-										grk_rect_u32 *src,
-										grk_rect_u32 *dest,
-										grk_rect_u32 *dest_win,
+										grkRectU32 *src,
+										grkRectU32 *dest,
+										grkRectU32 *dest_win,
 										uint32_t *src_line_off){
-	*src = grk_rect_u32(src_comp->x0,
+	*src = grkRectU32(src_comp->x0,
 						src_comp->y0,
 						src_comp->x0 + src_comp->w,
 						src_comp->y0 + src_comp->h);
@@ -344,9 +344,9 @@ bool GrkImage::generateCompositeBounds(const grk_image_comp *src_comp,
 
 bool GrkImage::generateCompositeBounds(const TileComponent *src_comp,
 										uint16_t compno,
-										grk_rect_u32 *src,
-										grk_rect_u32 *dest,
-										grk_rect_u32 *dest_win,
+										grkRectU32 *src,
+										grkRectU32 *dest,
+										grkRectU32 *dest_win,
 										uint32_t *src_line_off){
 	*src = src_comp->getBuffer()->bounds();
 	assert( src->width() <= src_comp->width() && src->height() <= src_comp->height());
@@ -376,7 +376,7 @@ bool GrkImage::compositeFrom(const grk_tile *src_tile) {
 		auto src_comp 	= src_tile->comps + compno;
 		auto dest_comp 	= comps + compno;
 
-		grk_rect_u32 src,dest,dest_win;
+		grkRectU32 src,dest,dest_win;
 		uint32_t src_line_off;
 
 		if (!generateCompositeBounds(src_comp,compno,&src,&dest,&dest_win,&src_line_off))
@@ -408,7 +408,7 @@ bool GrkImage::compositeFrom(const GrkImage *src_image) {
 		auto src_comp 	= src_image->comps + compno;
 		auto dest_comp 	= comps + compno;
 
-		grk_rect_u32 src,dest,dest_win;
+		grkRectU32 src,dest,dest_win;
 		uint32_t src_line_off;
 
 		if (!generateCompositeBounds(src_comp,compno,&src,&dest,&dest_win,&src_line_off)){
