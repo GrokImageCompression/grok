@@ -81,39 +81,39 @@ template<typename T> struct ResWindow {
 				auto tileBandWindow = getTileCompBandWindow(numDecomps,orient,tileCompWindowUnreduced,tileCompUnreduced,2*FILTER_WIDTH);
 				auto tileBand = orient == BAND_ORIENT_LL ? *((grk_rect_u32*)m_tileCompResLower) : m_tileCompRes->band[orient-1];
 				auto bandWindow = tileBandWindow.pan(-(int64_t)tileBand.x0, -(int64_t)tileBand.y0);
-				m_bandWindowBufferDim.push_back(new grk_buffer_2d<T>(bandWindow));
+				m_paddedBandWindowBuffer.push_back(new grk_buffer_2d<T>(bandWindow));
 			}
-			auto win_low 		= m_bandWindowBufferDim[BAND_ORIENT_LL];
-			auto win_high 		= m_bandWindowBufferDim[BAND_ORIENT_HL];
+			auto win_low 		= m_paddedBandWindowBuffer[BAND_ORIENT_LL];
+			auto win_high 		= m_paddedBandWindowBuffer[BAND_ORIENT_HL];
 			m_resWindow->x0 	= min<uint32_t>(2 * win_low->x0, 2 * win_high->x0 + 1);
 			m_resWindow->x1 	= min<uint32_t>(max<uint32_t>(2 * win_low->x1, 2 * win_high->x1 + 1), m_tileCompRes->width());
-			win_low 			= m_bandWindowBufferDim[BAND_ORIENT_LL];
-			win_high 			= m_bandWindowBufferDim[BAND_ORIENT_LH];
+			win_low 			= m_paddedBandWindowBuffer[BAND_ORIENT_LL];
+			win_high 			= m_paddedBandWindowBuffer[BAND_ORIENT_LH];
 			m_resWindow->y0 	= min<uint32_t>(2 * win_low->y0, 2 * win_high->y0 + 1);
 			m_resWindow->y1 	= min<uint32_t>(max<uint32_t>(2 * win_low->y1, 2 * win_high->y1 + 1), m_tileCompRes->height());
 
 			// two windows formed by horizontal pass and used as input for vertical pass
 			grk_rect_u32 splitResWindowRect[SPLIT_NUM_ORIENTATIONS];
 			splitResWindowRect[SPLIT_L] = grk_rect_u32(m_resWindow->x0,
-													  m_bandWindowBufferDim[BAND_ORIENT_LL]->y0,
+													  m_paddedBandWindowBuffer[BAND_ORIENT_LL]->y0,
 													  m_resWindow->x1,
-													  m_bandWindowBufferDim[BAND_ORIENT_LL]->y1);
+													  m_paddedBandWindowBuffer[BAND_ORIENT_LL]->y1);
 			m_splitResWindow[SPLIT_L] = new grk_buffer_2d<T>(splitResWindowRect[SPLIT_L]);
 			splitResWindowRect[SPLIT_H] = grk_rect_u32(m_resWindow->x0,
-														m_bandWindowBufferDim[BAND_ORIENT_LH]->y0 + m_tileCompResLower->height(),
+														m_paddedBandWindowBuffer[BAND_ORIENT_LH]->y0 + m_tileCompResLower->height(),
 														m_resWindow->x1,
-														m_bandWindowBufferDim[BAND_ORIENT_LH]->y1 + m_tileCompResLower->height());
+														m_paddedBandWindowBuffer[BAND_ORIENT_LH]->y1 + m_tileCompResLower->height());
 			m_splitResWindow[SPLIT_H] = new grk_buffer_2d<T>(splitResWindowRect[SPLIT_H]);
 		}
 	   // compression or full tile decompression
 	   } else {
 			// dummy LL band window
-			m_bandWindowBufferDim.push_back( new grk_buffer_2d<T>( 0,0) );
+			m_paddedBandWindowBuffer.push_back( new grk_buffer_2d<T>( 0,0) );
 			assert(tileCompAtRes->numBandWindows == 3 || !tileCompAtLowerRes);
 			if (m_tileCompResLower) {
 				for (uint32_t i = 0; i < tileCompAtRes->numBandWindows; ++i){
 					auto b = tileCompAtRes->band + i;
-					m_bandWindowBufferDim.push_back( new grk_buffer_2d<T>(b->width(),b->height() ) );
+					m_paddedBandWindowBuffer.push_back( new grk_buffer_2d<T>(b->width(),b->height() ) );
 				}
 				for (uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i) {
 					auto b = &tileCompWindow;
@@ -126,7 +126,7 @@ template<typename T> struct ResWindow {
 	}
 	~ResWindow(){
 		delete m_resWindow;
-		for (auto &b : m_bandWindowBufferDim)
+		for (auto &b : m_paddedBandWindowBuffer)
 			delete b;
 		for (uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
 			delete m_splitResWindow[i];
@@ -151,18 +151,18 @@ template<typename T> struct ResWindow {
 
 			// m_tileCompResLower is null for lowest resolution
 			if (m_tileCompResLower) {
-				for (uint8_t orientation = 0; orientation < m_bandWindowBufferDim.size(); ++orientation){
+				for (uint8_t orientation = 0; orientation < m_paddedBandWindowBuffer.size(); ++orientation){
 					switch(orientation){
 					case BAND_ORIENT_HL:
-						m_bandWindowBufferDim[orientation]->attach(m_resWindowTopLevel->data + m_tileCompResLower->width(),
+						m_paddedBandWindowBuffer[orientation]->attach(m_resWindowTopLevel->data + m_tileCompResLower->width(),
 												m_resWindowTopLevel->stride);
 						break;
 					case BAND_ORIENT_LH:
-						m_bandWindowBufferDim[orientation]->attach(m_resWindowTopLevel->data + m_tileCompResLower->height() * m_resWindowTopLevel->stride,
+						m_paddedBandWindowBuffer[orientation]->attach(m_resWindowTopLevel->data + m_tileCompResLower->height() * m_resWindowTopLevel->stride,
 												m_resWindowTopLevel->stride);
 						break;
 					case BAND_ORIENT_HH:
-						m_bandWindowBufferDim[orientation]->attach(m_resWindowTopLevel->data + m_tileCompResLower->width() +
+						m_paddedBandWindowBuffer[orientation]->attach(m_resWindowTopLevel->data + m_tileCompResLower->width() +
 													m_tileCompResLower->height() * m_resWindowTopLevel->stride,
 														m_resWindowTopLevel->stride);
 						break;
@@ -183,7 +183,7 @@ template<typename T> struct ResWindow {
 				return true;
 
 			// band windows are allocated if present
-			for (auto &b : m_bandWindowBufferDim){
+			for (auto &b : m_paddedBandWindowBuffer){
 				if (!b->alloc(clear))
 					return false;
 			}
@@ -200,7 +200,7 @@ template<typename T> struct ResWindow {
 	bool m_allocated;
 	Resolution *m_tileCompRes;   	// when non-null, it triggers creation of band window buffers
 	Resolution *m_tileCompResLower; // null for lowest resolution
-	std::vector< grk_buffer_2d<T>* > m_bandWindowBufferDim;	 	// coordinates are relative to band origin
+	std::vector< grk_buffer_2d<T>* > m_paddedBandWindowBuffer;	 	// coordinates are relative to band origin
 	std::vector< grk_rect_u32 > m_paddedTileBandWindow; 	 		// canvas coordinates
 	grk_buffer_2d<T> *m_splitResWindow[SPLIT_NUM_ORIENTATIONS]; 	// resolution coordinates
 	grk_buffer_2d<T> *m_resWindow;					 		 	// resolution coordinates
@@ -441,7 +441,7 @@ private:
 	grk_buffer_2d<T>* getBandWindow(uint8_t resno,eBandOrientation orientation) const{
 		assert(resno < m_tileCompResolutions.size());
 
-		return resno > 0 ? m_resWindows[resno]->m_bandWindowBufferDim[orientation] : m_resWindows[0]->m_resWindow;
+		return resno > 0 ? m_resWindows[resno]->m_paddedBandWindowBuffer[orientation] : m_resWindows[0]->m_resWindow;
 	}
 
 	// top-level buffer
