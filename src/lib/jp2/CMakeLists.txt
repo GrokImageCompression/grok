@@ -161,8 +161,8 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/tile/TileProcessor.h
   ${CMAKE_CURRENT_SOURCE_DIR}/tile/SparseBuffer.h
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletFwdImpl.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletFwdImpl.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletFwd.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletFwd.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletReverse.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletReverse.h
 
