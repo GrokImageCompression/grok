@@ -99,7 +99,7 @@ bool TileComponent::init(bool isCompressor,
 		if (resno == numresolutions - 1)
 			dim = unreducedTileComp;
 		else
-			dim = getTileCompBandWindow(numresolutions,(uint8_t)(resno+1U),BAND_ORIENT_LL,unreducedTileComp);
+			dim = getTileCompBandWindow((uint32_t)(numresolutions - 1 - resno),BAND_ORIENT_LL,unreducedTileComp);
 		res->set_rect(dim);
 
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
@@ -141,7 +141,9 @@ bool TileComponent::init(bool isCompressor,
 			auto band = res->band + bandIndex;
 			eBandOrientation orientation = (resno ==0) ? BAND_ORIENT_LL : (eBandOrientation)(bandIndex+1);
 			band->orientation = orientation;
-			band->set_rect(getTileCompBandWindow(numresolutions, resno, band->orientation,unreducedTileComp));
+			uint32_t numDecomps = (resno == 0) ?
+			    	(uint32_t)(numresolutions - 1U) : (uint32_t)(numresolutions - resno);
+			band->set_rect(getTileCompBandWindow(numDecomps, band->orientation,unreducedTileComp));
 		}
 	}
 

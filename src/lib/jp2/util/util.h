@@ -446,10 +446,14 @@ template <typename T> struct grk_buffer_2d : public grk_rect_u32 {
     uint32_t stride;
 } ;
 
-grk_rect_u32 getTileCompBandWindow(uint8_t num_res,
-							uint8_t resno,
+grk_rect_u32 getTileCompBandWindow(uint32_t numDecomps,
 							uint8_t orientation,
 							grk_rect_u32 unreducedTileCompWindow);
 
+grk_rect_u32 getTileCompBandWindow(uint32_t numDecomps,
+							uint8_t orientation,
+							grk_rect_u32 unreducedTileCompWindow,
+							grk_rect_u32 unreducedTileComp,
+							uint32_t padding);
 
 }

@@ -52,6 +52,8 @@ template<typename T> struct ResWindow {
 	  for (uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
 			m_splitResWindow[i] = nullptr;
 	  if (FILTER_WIDTH) {
+		uint32_t numDecomps = (resno == 0) ?
+				(uint32_t)(numresolutions - 1U) : (uint32_t)(numresolutions - resno);
 
 		/*
 		m_paddedTileBandWindow is only used for determining which precincts and code blocks overlap
@@ -63,8 +65,9 @@ template<typename T> struct ResWindow {
 		so we need another layer of padding to ensure we don't pull uninitialized locations (need to verify this)
 		*/
 		for (uint8_t orient = 0; orient < ( (resno) > 0 ? BAND_NUM_ORIENTATIONS : 1); orient++) {
-			grk_rect_u32 tileBandWindow = getTileCompBandWindow(numresolutions, resno, orient,tileCompWindowUnreduced);
-			m_paddedTileBandWindow.push_back(tileBandWindow.grow(2 * FILTER_WIDTH));
+			auto tileBandWindow = getTileCompBandWindow(numDecomps, orient,tileCompWindowUnreduced);
+			auto tileBandFull = getTileCompBandWindow(numDecomps, orient,tileCompUnreduced);
+			m_paddedTileBandWindow.push_back(tileBandWindow.grow(2 * FILTER_WIDTH).intersection(&tileBandFull));
 		}
 
 		if (m_tileCompResLower) {
@@ -82,7 +85,7 @@ template<typename T> struct ResWindow {
 */
 			// 1. set up windows for horizontal and vertical passes
 			for (uint8_t orient = 0; orient < BAND_NUM_ORIENTATIONS; ++orient) {
-				auto bandWindow = getTileCompBandWindow(numresolutions,resno,orient,tileCompWindowUnreduced);
+				auto bandWindow = getTileCompBandWindow(numDecomps,orient,tileCompWindowUnreduced);
 				auto band = orient == BAND_ORIENT_LL ? *((grk_rect_u32*)m_tileCompResLower) : m_tileCompRes->band[orient-1];
 				m_bandWindowBufferDim.push_back(new grk_buffer_2d<T>(bandWindow.grow(2 * FILTER_WIDTH, band).pan(-(int64_t)band.x0, -(int64_t)band.y0)));
 				unpaddedBandWindows.push_back(new grk_buffer_2d<T>(bandWindow.pan(-(int64_t)band.x0, -(int64_t)band.y0)));
@@ -270,7 +273,7 @@ template<typename T> struct TileComponentWindowBuffer {
 
 		for (uint8_t resno = 0; resno < reducedNumResolutions - 1; ++resno) {
 			// resolution window ==  next resolution band window at orientation 0
-			auto res_dims = getTileCompBandWindow(m_numResolutions, (uint8_t) ((resno + 1)), 0,	m_unreducedBounds);
+			auto res_dims = getTileCompBandWindow((uint32_t)(numresolutions - 1 - resno), 0,	m_unreducedBounds);
 			m_resWindows.push_back(
 					new ResWindow<T>(numresolutions,
 									resno,
