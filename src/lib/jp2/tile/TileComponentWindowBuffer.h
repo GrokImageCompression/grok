@@ -55,12 +55,12 @@ template<typename T> struct ResWindow {
 				uint32_t FILTER_WIDTH) : m_allocated(false),
 										m_tileCompRes(tileCompAtRes),
 										m_tileCompResLower(tileCompAtLowerRes),
-										m_resWindowREL(new grkBuffer2d<T>(tileCompWindow.width(), tileCompWindow.height())),
-										m_resWindowTopLevelREL(resWindowTopLevelREL),
+										m_resWindowBufferREL(new grkBuffer2d<T>(tileCompWindow.width(), tileCompWindow.height())),
+										m_resWindowTopLevelBufferREL(resWindowTopLevelREL),
 										m_filterWidth(FILTER_WIDTH)
 	{
 	  for (uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
-			m_splitResWindowREL[i] = nullptr;
+			m_splitResWindowBufferREL[i] = nullptr;
 	  // windowed decompression
 	  if (FILTER_WIDTH) {
 		uint32_t numDecomps = (resno == 0) ?
@@ -86,29 +86,29 @@ template<typename T> struct ResWindow {
 			}
 			auto winLow 		= m_paddedBandWindowBufferREL[BAND_ORIENT_LL];
 			auto winHigh 		= m_paddedBandWindowBufferREL[BAND_ORIENT_HL];
-			m_resWindowREL->x0 	= min<uint32_t>(2 * winLow->x0, 2 * winHigh->x0 + 1);
-			m_resWindowREL->x1 	= max<uint32_t>(2 * winLow->x1, 2 * winHigh->x1 + 1);
+			m_resWindowBufferREL->x0 	= min<uint32_t>(2 * winLow->x0, 2 * winHigh->x0 + 1);
+			m_resWindowBufferREL->x1 	= max<uint32_t>(2 * winLow->x1, 2 * winHigh->x1 + 1);
 			winLow 				= m_paddedBandWindowBufferREL[BAND_ORIENT_LL];
 			winHigh 			= m_paddedBandWindowBufferREL[BAND_ORIENT_LH];
-			m_resWindowREL->y0 	= min<uint32_t>(2 * winLow->y0, 2 * winHigh->y0 + 1);
-			m_resWindowREL->y1 	= max<uint32_t>(2 * winLow->y1, 2 * winHigh->y1 + 1);
+			m_resWindowBufferREL->y0 	= min<uint32_t>(2 * winLow->y0, 2 * winHigh->y0 + 1);
+			m_resWindowBufferREL->y1 	= max<uint32_t>(2 * winLow->y1, 2 * winHigh->y1 + 1);
 
 			//todo: shouldn't need to clip
 			auto resBounds = grkRectU32(0,0,m_tileCompRes->width(),m_tileCompRes->height());
-			m_resWindowREL->clip(&resBounds);
+			m_resWindowBufferREL->clip(&resBounds);
 
 			// two windows formed by horizontal pass and used as input for vertical pass
 			grkRectU32 splitResWindowREL[SPLIT_NUM_ORIENTATIONS];
-			splitResWindowREL[SPLIT_L] = grkRectU32(m_resWindowREL->x0,
+			splitResWindowREL[SPLIT_L] = grkRectU32(m_resWindowBufferREL->x0,
 													  m_paddedBandWindowBufferREL[BAND_ORIENT_LL]->y0,
-													  m_resWindowREL->x1,
+													  m_resWindowBufferREL->x1,
 													  m_paddedBandWindowBufferREL[BAND_ORIENT_LL]->y1);
-			m_splitResWindowREL[SPLIT_L] = new grkBuffer2d<T>(splitResWindowREL[SPLIT_L]);
-			splitResWindowREL[SPLIT_H] = grkRectU32(m_resWindowREL->x0,
+			m_splitResWindowBufferREL[SPLIT_L] = new grkBuffer2d<T>(splitResWindowREL[SPLIT_L]);
+			splitResWindowREL[SPLIT_H] = grkRectU32(m_resWindowBufferREL->x0,
 														m_paddedBandWindowBufferREL[BAND_ORIENT_LH]->y0 + m_tileCompResLower->height(),
-														m_resWindowREL->x1,
+														m_resWindowBufferREL->x1,
 														m_paddedBandWindowBufferREL[BAND_ORIENT_LH]->y1 + m_tileCompResLower->height());
-			m_splitResWindowREL[SPLIT_H] = new grkBuffer2d<T>(splitResWindowREL[SPLIT_H]);
+			m_splitResWindowBufferREL[SPLIT_H] = new grkBuffer2d<T>(splitResWindowREL[SPLIT_H]);
 		}
 	   // compression or full tile decompression
 	   } else {
@@ -120,30 +120,27 @@ template<typename T> struct ResWindow {
 					auto b = tileCompAtRes->tileBand + i;
 					m_paddedBandWindowBufferREL.push_back( new grkBuffer2d<T>(b->width(),b->height() ) );
 				}
-				for (uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i) {
-					auto b = &tileCompWindow;
-					m_splitResWindowREL[i] = new grkBuffer2d<T>(b->width(), b->height());
-				}
-				m_splitResWindowREL[SPLIT_L]->y1 = tileCompWindow.y0 + tileCompAtLowerRes->height();
-				m_splitResWindowREL[SPLIT_H]->y0 = m_splitResWindowREL[SPLIT_L]->y1;
+				// note: only dimensions of split resolution windows matter, not coordinates
+				for (uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
+					m_splitResWindowBufferREL[i] = new grkBuffer2d<T>(tileCompWindow.width(), tileCompWindow.height()/2);
 			}
 		}
 	}
 	~ResWindow(){
-		delete m_resWindowREL;
+		delete m_resWindowBufferREL;
 		for (auto &b : m_paddedBandWindowBufferREL)
 			delete b;
 		for (uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
-			delete m_splitResWindowREL[i];
+			delete m_splitResWindowBufferREL[i];
 	}
 	bool alloc(bool clear){
 		if (m_allocated)
 			return true;
 
 		// if top level window is present, then all buffers attach to this window
-		if (m_resWindowTopLevelREL) {
+		if (m_resWindowTopLevelBufferREL) {
 			// ensure that top level window is allocated
-			if (!m_resWindowTopLevelREL->alloc(clear))
+			if (!m_resWindowTopLevelBufferREL->alloc(clear))
 				return false;
 
 			// for now, we don't allocate bandWindows for windowed decompression
@@ -151,37 +148,37 @@ template<typename T> struct ResWindow {
 				return true;
 
 			// attach to top level window
-			if (m_resWindowREL != m_resWindowTopLevelREL)
-				m_resWindowREL->attach(m_resWindowTopLevelREL->data, m_resWindowTopLevelREL->stride);
+			if (m_resWindowBufferREL != m_resWindowTopLevelBufferREL)
+				m_resWindowBufferREL->attach(m_resWindowTopLevelBufferREL->data, m_resWindowTopLevelBufferREL->stride);
 
 			// m_tileCompResLower is null for lowest resolution
 			if (m_tileCompResLower) {
 				for (uint8_t orientation = 0; orientation < m_paddedBandWindowBufferREL.size(); ++orientation){
 					switch(orientation){
 					case BAND_ORIENT_HL:
-						m_paddedBandWindowBufferREL[orientation]->attach(m_resWindowTopLevelREL->data + m_tileCompResLower->width(),
-												m_resWindowTopLevelREL->stride);
+						m_paddedBandWindowBufferREL[orientation]->attach(m_resWindowTopLevelBufferREL->data + m_tileCompResLower->width(),
+												m_resWindowTopLevelBufferREL->stride);
 						break;
 					case BAND_ORIENT_LH:
-						m_paddedBandWindowBufferREL[orientation]->attach(m_resWindowTopLevelREL->data + m_tileCompResLower->height() * m_resWindowTopLevelREL->stride,
-												m_resWindowTopLevelREL->stride);
+						m_paddedBandWindowBufferREL[orientation]->attach(m_resWindowTopLevelBufferREL->data + m_tileCompResLower->height() * m_resWindowTopLevelBufferREL->stride,
+												m_resWindowTopLevelBufferREL->stride);
 						break;
 					case BAND_ORIENT_HH:
-						m_paddedBandWindowBufferREL[orientation]->attach(m_resWindowTopLevelREL->data + m_tileCompResLower->width() +
-													m_tileCompResLower->height() * m_resWindowTopLevelREL->stride,
-														m_resWindowTopLevelREL->stride);
+						m_paddedBandWindowBufferREL[orientation]->attach(m_resWindowTopLevelBufferREL->data + m_tileCompResLower->width() +
+													m_tileCompResLower->height() * m_resWindowTopLevelBufferREL->stride,
+														m_resWindowTopLevelBufferREL->stride);
 						break;
 					default:
 						break;
 					}
 				}
-				m_splitResWindowREL[SPLIT_L]->attach(m_resWindowTopLevelREL->data, m_resWindowTopLevelREL->stride);
-				m_splitResWindowREL[SPLIT_H]->attach(m_resWindowTopLevelREL->data + m_tileCompResLower->height() * m_resWindowTopLevelREL->stride,
-											m_resWindowTopLevelREL->stride);
+				m_splitResWindowBufferREL[SPLIT_L]->attach(m_resWindowTopLevelBufferREL->data, m_resWindowTopLevelBufferREL->stride);
+				m_splitResWindowBufferREL[SPLIT_H]->attach(m_resWindowTopLevelBufferREL->data + m_tileCompResLower->height() * m_resWindowTopLevelBufferREL->stride,
+											m_resWindowTopLevelBufferREL->stride);
 			}
 		} else {
 			// resolution window is always allocated
-			if (!m_resWindowREL->alloc(clear))
+			if (!m_resWindowBufferREL->alloc(clear))
 				return false;
 			// for now, we don't allocate bandWindows for windowed decode
 			if (m_filterWidth)
@@ -193,8 +190,8 @@ template<typename T> struct ResWindow {
 					return false;
 			}
 			if (m_tileCompResLower){
-				m_splitResWindowREL[SPLIT_L]->attach(m_resWindowREL->data, m_resWindowREL->stride);
-				m_splitResWindowREL[SPLIT_H]->attach(m_resWindowREL->data + m_tileCompResLower->height() * m_resWindowREL->stride,m_resWindowREL->stride);
+				m_splitResWindowBufferREL[SPLIT_L]->attach(m_resWindowBufferREL->data, m_resWindowBufferREL->stride);
+				m_splitResWindowBufferREL[SPLIT_H]->attach(m_resWindowBufferREL->data + m_tileCompResLower->height() * m_resWindowBufferREL->stride,m_resWindowBufferREL->stride);
 			}
 		}
 		m_allocated = true;
@@ -207,9 +204,9 @@ template<typename T> struct ResWindow {
 	Resolution *m_tileCompResLower; // null for lowest resolution
 	std::vector< grkBuffer2d<T>* > m_paddedBandWindowBufferREL;		// coordinates are relative to band origin
 	std::vector< grkRectU32 > m_paddedBandWindow; 	 				// canvas coordinates
-	grkBuffer2d<T> *m_splitResWindowREL[SPLIT_NUM_ORIENTATIONS]; 	// resolution coordinates
-	grkBuffer2d<T> *m_resWindowREL;					 		 		// resolution coordinates
-	grkBuffer2d<T> *m_resWindowTopLevelREL;					 		// tile coordinates
+	grkBuffer2d<T> *m_splitResWindowBufferREL[SPLIT_NUM_ORIENTATIONS]; 	// resolution coordinates
+	grkBuffer2d<T> *m_resWindowBufferREL;					 		 		// resolution coordinates
+	grkBuffer2d<T> *m_resWindowTopLevelBufferREL;					 		// tile coordinates
 	uint32_t m_filterWidth;
 };
 
@@ -255,7 +252,7 @@ template<typename T> struct TileComponentWindowBuffer {
 										wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless));
 		// setting top level prevents allocation of tileCompBandWindows buffers
 		if (!useBandWindows())
-			topLevel->m_resWindowTopLevelREL = topLevel->m_resWindowREL;
+			topLevel->m_resWindowTopLevelBufferREL = topLevel->m_resWindowBufferREL;
 
 		for (uint8_t resno = 0; resno < reducedNumResolutions - 1; ++resno) {
 			// resolution window ==  next resolution band window at orientation 0
@@ -263,7 +260,7 @@ template<typename T> struct TileComponentWindowBuffer {
 			m_resWindowREL.push_back(
 					new ResWindow<T>(numresolutions,
 									resno,
-									useBandWindows() ? nullptr : topLevel->m_resWindowREL,
+									useBandWindows() ? nullptr : topLevel->m_resWindowBufferREL,
 									tileCompResolution + resno,
 									resno > 0 ? tileCompResolution + resno - 1 : nullptr,
 									resDims,
@@ -344,7 +341,7 @@ template<typename T> struct TileComponentWindowBuffer {
 		assert(resno > 0 || orientation == BAND_ORIENT_LL);
 
 		if (resno==0 && (m_compress || m_wholeTileDecompress) )
-			return m_resWindowREL[0]->m_resWindowREL ;
+			return m_resWindowREL[0]->m_resWindowBufferREL ;
 
 		return m_resWindowREL[resno]->m_paddedBandWindowBufferREL[orientation];
 	}
@@ -370,7 +367,7 @@ template<typename T> struct TileComponentWindowBuffer {
 	const grkBuffer2d<T>*  getSplitWindowREL(uint8_t resno,eSplitOrientation orientation) const{
 		assert(resno > 0 && resno < m_resolution.size());
 
-		return m_resWindowREL[resno]->m_splitResWindowREL[orientation];
+		return m_resWindowREL[resno]->m_splitResWindowBufferREL[orientation];
 	}
 
 	/**
@@ -380,7 +377,7 @@ template<typename T> struct TileComponentWindowBuffer {
 	 *
 	 */
 	const grkBuffer2d<T>*  getResWindowREL(uint32_t resno) const{
-		return m_resWindowREL[resno]->m_resWindowREL;
+		return m_resWindowREL[resno]->m_resWindowBufferREL;
 	}
 
 	/**
@@ -390,7 +387,7 @@ template<typename T> struct TileComponentWindowBuffer {
 	 *
 	 */
 	grkBuffer2d<T>*  getTileWindowREL(void) const{
-		return m_resWindowREL.back()->m_resWindowREL;
+		return m_resWindowREL.back()->m_resWindowBufferREL;
 	}
 
 	bool alloc(){
