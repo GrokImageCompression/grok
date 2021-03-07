@@ -611,11 +611,15 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB) {
 
 		max = (size_t)w * h;
 		nr_samples = max * 3 * (cmsUInt32Number) sizeof(uint8_t);
-		grk_image_comp *comps = (grk_image_comp*) realloc(image->comps,
-				(size_t)(image->numcomps + 2) * sizeof(grk_image_comp));
-		if (!comps)
-			goto cleanup;
-		image->comps = comps;
+		auto newComps = new  grk_image_comp[image->numcomps + 2U];
+		for (uint32_t i = 0; i < image->numcomps + 2U; ++i){
+			if (i < image->numcomps)
+				newComps[i] = image->comps[i];
+			else
+				memset(newComps+1,0,sizeof(grk_image_comp));
+		}
+		delete[] image->comps;
+		image->comps = newComps;
 
 		in = inbuf = (uint8_t*) malloc(nr_samples);
 		if (!in)
