@@ -421,7 +421,7 @@ int main(int argc, char *argv[]) {
 				continue;
 			}
 		}
-		auto stream = grk_stream_create_file_stream(parameters.infile, 1024 * 1024,1);
+		stream = grk_stream_create_file_stream(parameters.infile, 1024 * 1024,1);
 		if (!stream) {
 			spdlog::error("failed to create a stream from file {}",
 					parameters.infile);
