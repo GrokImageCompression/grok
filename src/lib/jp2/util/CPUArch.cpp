@@ -18,7 +18,7 @@
 #include <util/CPUArch.h>
 
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <iostream>
 #include <vector>
 #include <bitset>
