@@ -794,6 +794,7 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 		} else {
 			spdlog::warn("ICC profile does not match underlying colour space. Ignoring");
 		}
+		delete[] iccbuf;
 	}
 	if (numcmpts == 4U) {
 		image->comps[3].type = GRK_COMPONENT_TYPE_OPACITY;
