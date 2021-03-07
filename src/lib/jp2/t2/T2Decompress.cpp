@@ -75,7 +75,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no,
 					skipPacket = true;
 					for (uint8_t bandIndex = 0;	bandIndex < res->numTileBandWindows; ++bandIndex) {
 						auto band = res->tileBand + bandIndex;
-						auto paddedBandWindow = tilecBuffer->getPaddedTileBandWindow(currPi->resno, band->orientation);
+						auto paddedBandWindow = tilecBuffer->getPaddedBandWindow(currPi->resno, band->orientation);
 						auto prec = band->generatePrecinctBounds(currPi->precinctIndex,
 													res->precinctStart,
 													res->precinctExpn,

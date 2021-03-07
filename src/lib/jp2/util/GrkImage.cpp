@@ -353,7 +353,7 @@ bool GrkImage::generateCompositeBounds(const TileComponent *src_comp,
 
 	return generateCompositeBounds(compno,
 									src,
-									(src_comp->getBuffer()->getWindow())->stride,
+									(src_comp->getBuffer()->getTileWindowREL())->stride,
 									dest,
 									dest_win,
 									src_line_off);
@@ -385,7 +385,7 @@ bool GrkImage::compositeFrom(const grk_tile *src_tile) {
 		size_t src_ind = 0;
 		auto dest_ind = (size_t) dest_win.x0  + (size_t) dest_win.y0 * dest_comp->stride;
 		size_t dest_line_off =  (size_t) dest_comp->stride - (size_t) dest_win.width();
-		auto src_ptr = src_comp->getBuffer()->getWindow()->data;
+		auto src_ptr = src_comp->getBuffer()->getTileWindowREL()->data;
 		for (uint32_t j = 0; j < dest_win.height(); ++j) {
 			memcpy(dest_comp->data + dest_ind, src_ptr + src_ind,dest_win.width() * sizeof(int32_t));
 			dest_ind += dest_win.width() + dest_line_off;

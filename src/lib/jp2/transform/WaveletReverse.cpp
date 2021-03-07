@@ -887,14 +887,14 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
 							vert,
 							vert.sn_full,
 							// LL
-							tilec->getBuffer()->getWindow(res-1U)->data,
-							tilec->getBuffer()->getWindow(res-1U)->stride,
+							tilec->getBuffer()->getResWindowREL(res-1U)->data,
+							tilec->getBuffer()->getResWindowREL(res-1U)->stride,
 							// HL
-							tilec->getBuffer()->getWindow(res, BAND_ORIENT_HL)->data,
-							tilec->getBuffer()->getWindow(res,BAND_ORIENT_HL)->stride,
+							tilec->getBuffer()->getBandWindowREL(res, BAND_ORIENT_HL)->data,
+							tilec->getBuffer()->getBandWindowREL(res,BAND_ORIENT_HL)->stride,
 							// lower split window
-							tilec->getBuffer()->getSplitWindow(res,SPLIT_L)->data,
-							tilec->getBuffer()->getSplitWindow(res,SPLIT_L)->stride))
+							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_L)->data,
+							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_L)->stride))
     		return false;
     	if (!decompress_h_mt_53(num_threads,
     						data_size,
@@ -902,14 +902,14 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
 							vert,
 							rh -  vert.sn_full,
 							// LH
-							tilec->getBuffer()->getWindow(res, BAND_ORIENT_LH)->data,
-							tilec->getBuffer()->getWindow(res,BAND_ORIENT_LH)->stride,
+							tilec->getBuffer()->getBandWindowREL(res, BAND_ORIENT_LH)->data,
+							tilec->getBuffer()->getBandWindowREL(res,BAND_ORIENT_LH)->stride,
 							// HH
-							tilec->getBuffer()->getWindow(res, BAND_ORIENT_HH)->data,
-							tilec->getBuffer()->getWindow(res,BAND_ORIENT_HH)->stride,
+							tilec->getBuffer()->getBandWindowREL(res, BAND_ORIENT_HH)->data,
+							tilec->getBuffer()->getBandWindowREL(res,BAND_ORIENT_HH)->stride,
 							// higher split window
-    						tilec->getBuffer()->getSplitWindow(res,SPLIT_H)->data,
-    						tilec->getBuffer()->getSplitWindow(res,SPLIT_H)->stride ))
+    						tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->data,
+    						tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->stride ))
     		return false;
         vert.dn_full = rh - vert.sn_full;
         vert.parity = tr->y0 & 1;
@@ -919,14 +919,14 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
 							vert,
 							rw,
 							// lower split window
-							tilec->getBuffer()->getSplitWindow(res,SPLIT_L)->data,
-							tilec->getBuffer()->getSplitWindow(res,SPLIT_L)->stride,
+							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_L)->data,
+							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_L)->stride,
 							// higher split window
-							tilec->getBuffer()->getSplitWindow(res,SPLIT_H)->data,
-							tilec->getBuffer()->getSplitWindow(res,SPLIT_H)->stride,
+							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->data,
+							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->stride,
 							// resolution buffer
-							tilec->getBuffer()->getWindow(res)->data,
-							tilec->getBuffer()->getWindow(res)->stride))
+							tilec->getBuffer()->getResWindowREL(res)->data,
+							tilec->getBuffer()->getResWindowREL(res)->stride))
     		return false;
     }
     horiz.release();
@@ -1391,28 +1391,28 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 							horiz,
 							vert.sn_full,
 							// LL
-							(float*) tilec->getBuffer()->getWindow(res-1U)->data,
-							tilec->getBuffer()->getWindow(res-1U)->stride,
+							(float*) tilec->getBuffer()->getResWindowREL(res-1U)->data,
+							tilec->getBuffer()->getResWindowREL(res-1U)->stride,
 							// HL
-							(float*) tilec->getBuffer()->getWindow(res, BAND_ORIENT_HL)->data,
-							tilec->getBuffer()->getWindow(res,BAND_ORIENT_HL)->stride,
+							(float*) tilec->getBuffer()->getBandWindowREL(res, BAND_ORIENT_HL)->data,
+							tilec->getBuffer()->getBandWindowREL(res,BAND_ORIENT_HL)->stride,
 							// lower split window
-							(float*) tilec->getBuffer()->getSplitWindow(res,SPLIT_L)->data,
-							tilec->getBuffer()->getSplitWindow(res,SPLIT_L)->stride))
+							(float*) tilec->getBuffer()->getSplitWindowREL(res,SPLIT_L)->data,
+							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_L)->stride))
         	return false;
         if (!decompress_h_mt_97(num_threads,
         					data_size,
 							horiz,
 							rh-vert.sn_full,
 							// LH
-							(float*) tilec->getBuffer()->getWindow(res, BAND_ORIENT_LH)->data,
-							tilec->getBuffer()->getWindow(res,BAND_ORIENT_LH)->stride,
+							(float*) tilec->getBuffer()->getBandWindowREL(res, BAND_ORIENT_LH)->data,
+							tilec->getBuffer()->getBandWindowREL(res,BAND_ORIENT_LH)->stride,
 							// HH
-							(float*) tilec->getBuffer()->getWindow(res, BAND_ORIENT_HH)->data,
-							tilec->getBuffer()->getWindow(res,BAND_ORIENT_HH)->stride,
+							(float*) tilec->getBuffer()->getBandWindowREL(res, BAND_ORIENT_HH)->data,
+							tilec->getBuffer()->getBandWindowREL(res,BAND_ORIENT_HH)->stride,
 							// higher split window
-							(float*) tilec->getBuffer()->getSplitWindow(res,SPLIT_H)->data,
-							tilec->getBuffer()->getSplitWindow(res,SPLIT_H)->stride ))
+							(float*) tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->data,
+							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->stride ))
         	return false;
         vert.dn_full = rh - vert.sn_full;
         vert.parity = tr->y0 & 1;
@@ -1424,14 +1424,14 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 							rw,
 							rh,
 							// lower split window
-							(float*) tilec->getBuffer()->getSplitWindow(res,SPLIT_L)->data,
-							tilec->getBuffer()->getSplitWindow(res,SPLIT_L)->stride,
+							(float*) tilec->getBuffer()->getSplitWindowREL(res,SPLIT_L)->data,
+							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_L)->stride,
 							// higher split window
-							(float*) tilec->getBuffer()->getSplitWindow(res,SPLIT_H)->data,
-							tilec->getBuffer()->getSplitWindow(res,SPLIT_H)->stride,
+							(float*) tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->data,
+							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->stride,
 							// resolution window
-							(float*) tilec->getBuffer()->getWindow(res)->data,
-							tilec->getBuffer()->getWindow(res)->stride))
+							(float*) tilec->getBuffer()->getResWindowREL(res)->data,
+							tilec->getBuffer()->getResWindowREL(res)->stride))
         	return false;
     }
     horiz.release();
@@ -1944,9 +1944,9 @@ template <typename T,
         // simply copy into tile component buffer
     	bool ret = sa->read(0,
     					synthesisWindow,
-					   tilec->getBuffer()->getWindow()->data,
+					   tilec->getBuffer()->getTileWindowREL()->data,
                        1,
-					   tilec->getBuffer()->getWindow()->stride,
+					   tilec->getBuffer()->getTileWindowREL()->stride,
                        true);
         assert(ret);
         GRK_UNUSED(ret);
@@ -1971,10 +1971,10 @@ template <typename T,
 
         // 1. set up windows for horizontal and vertical passes
         grkRectU32 bandWindowRect[BAND_NUM_ORIENTATIONS];
-        bandWindowRect[BAND_ORIENT_LL] = *((grkRectU32*)tilec->getBuffer()->getWindow(resno,BAND_ORIENT_LL ));
-        bandWindowRect[BAND_ORIENT_HL] = *((grkRectU32*)tilec->getBuffer()->getWindow(resno,BAND_ORIENT_HL ));
-        bandWindowRect[BAND_ORIENT_LH] = *((grkRectU32*)tilec->getBuffer()->getWindow(resno,BAND_ORIENT_LH ));
-        bandWindowRect[BAND_ORIENT_HH] = *((grkRectU32*)tilec->getBuffer()->getWindow(resno,BAND_ORIENT_HH ));
+        bandWindowRect[BAND_ORIENT_LL] = *((grkRectU32*)tilec->getBuffer()->getBandWindowREL(resno,BAND_ORIENT_LL ));
+        bandWindowRect[BAND_ORIENT_HL] = *((grkRectU32*)tilec->getBuffer()->getBandWindowREL(resno,BAND_ORIENT_HL ));
+        bandWindowRect[BAND_ORIENT_LH] = *((grkRectU32*)tilec->getBuffer()->getBandWindowREL(resno,BAND_ORIENT_LH ));
+        bandWindowRect[BAND_ORIENT_HH] = *((grkRectU32*)tilec->getBuffer()->getBandWindowREL(resno,BAND_ORIENT_HH ));
 
         // band windows in band coordinates - needed to pre-allocate sparse blocks
         grkRectU32 tileBandWindowRect[BAND_NUM_ORIENTATIONS];
@@ -1988,13 +1988,13 @@ template <typename T,
             if (!sa->alloc(temp.grow(2 * FILTER_WIDTH, fullRes->width(),  fullRes->height()),false))
     			 goto cleanup;
         }
-        auto resWindowRect = *((grkRectU32*)tilec->getBuffer()->getWindow(resno));
+        auto resWindowRect = *((grkRectU32*)tilec->getBuffer()->getResWindowREL(resno));
         if (!sa->alloc(resWindowRect,false))
 			goto cleanup;
         // two windows formed by horizontal pass and used as input for vertical pass
         grkRectU32 splitWindowRect[SPLIT_NUM_ORIENTATIONS];
-        splitWindowRect[SPLIT_L] = *((grkRectU32*)tilec->getBuffer()->getSplitWindow(resno,SPLIT_L ));
-        splitWindowRect[SPLIT_H] = *((grkRectU32*)tilec->getBuffer()->getSplitWindow(resno,SPLIT_H ));
+        splitWindowRect[SPLIT_L] = *((grkRectU32*)tilec->getBuffer()->getSplitWindowREL(resno,SPLIT_L ));
+        splitWindowRect[SPLIT_H] = *((grkRectU32*)tilec->getBuffer()->getSplitWindowREL(resno,SPLIT_H ));
 		for (uint32_t k = 0; k < SPLIT_NUM_ORIENTATIONS; ++k) {
 			 auto temp = splitWindowRect[k];
 			 if (!sa->alloc(temp.grow(2 * FILTER_WIDTH, fullRes->width(),  fullRes->height()),false))
@@ -2180,9 +2180,9 @@ template <typename T,
     //final read into tile buffer
 	ret = sa->read(numres-1,
 					synthesisWindow,
-				   tilec->getBuffer()->getWindow()->data,
+				   tilec->getBuffer()->getTileWindowREL()->data,
 				   1,
-				   tilec->getBuffer()->getWindow()->stride,
+				   tilec->getBuffer()->getTileWindowREL()->stride,
 				   true);
 	assert(ret);
 	GRK_UNUSED(ret);
@@ -2193,14 +2193,14 @@ template <typename T,
 	auto tileSynthesisWindow = synthesisWindow.pan(tilec->x0, tilec->y0);
 	if (compno == debug_compno) {
 		for (uint32_t j = 0; j < tileSynthesisWindow.height();j++) {
-			auto bufPtr = tilec->getBuffer()->getWindow()->data + j * tilec->getBuffer()->getWindow()->stride;
+			auto bufPtr = tilec->getBuffer()->getTileWindowREL()->data + j * tilec->getBuffer()->getTileWindowREL()->stride;
 			for (uint32_t i = 0; i < tileSynthesisWindow.width();i++) {
 				auto val = grk_memcheck(bufPtr,1);
 				if (val != grk_mem_ok){
 					GRK_ERROR("***** Partial wavelet after final read: uninitialized memory at (x,y) =  (%d,%d) ******",
 							tileSynthesisWindow.x0 + i,tileSynthesisWindow.y0 + j);
 				}
-				bufPtr += tilec->getBuffer()->getWindow()->stride;
+				bufPtr += tilec->getBuffer()->getTileWindowREL()->stride;
 			}
 		}
 	}

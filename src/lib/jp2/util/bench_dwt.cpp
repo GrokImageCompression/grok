@@ -110,7 +110,7 @@ bool init_tilec(TileComponent * tilec,
     tilec->create_buffer(tilec,unreduced_tile_comp_window_dims);
     tilec->getBuffer()->alloc();
 	auto data = tilec->getBuffer()->ptr();
-    for (size_t i = 0; i < tilec->getBuffer()->strided_area(); i++)
+    for (size_t i = 0; i < tilec->getBuffer()->stridedArea(); i++)
         data[i] = getValue((uint32_t)i);
     return true;
 
@@ -274,7 +274,7 @@ int main(int argc, char** argv)
 			rc = w.compress(&tilec,lossy ? 0 : 1 );
 		} else {
 			WaveletReverse w;
-			rc = w.decompress(tileProcessor.get(), &tilec, tilec.getBuffer()->unreduced_bounds(), tilec.numresolutions, lossy ? 0 : 1);
+			rc = w.decompress(tileProcessor.get(), &tilec, tilec.getBuffer()->unreducedBounds(), tilec.numresolutions, lossy ? 0 : 1);
 		}
 		assert(rc);
 		finish = std::chrono::high_resolution_clock::now();

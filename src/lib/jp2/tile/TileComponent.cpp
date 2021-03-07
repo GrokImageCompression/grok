@@ -176,7 +176,7 @@ bool TileComponent::init(bool isCompressor,
 bool TileComponent::subbandIntersectsAOI(uint8_t resno,
 								eBandOrientation orient,
 								const grkRectU32 *aoi) const {
-    return buf->getPaddedTileBandWindow(resno, orient)->non_empty_intersection(aoi);
+    return buf->getPaddedBandWindow(resno, orient)->non_empty_intersection(aoi);
 }
 
 bool TileComponent::allocSparseBuffer(uint32_t numres, bool truncatedTile){
@@ -187,7 +187,7 @@ bool TileComponent::allocSparseBuffer(uint32_t numres, bool truncatedTile){
         auto res = &tileCompResolution[resno];
         for (uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
           	auto band = res->tileBand + bandIndex;
-          	auto roi = buf->getPaddedTileBandWindow(resno, band->orientation);
+          	auto roi = buf->getPaddedBandWindow(resno, band->orientation);
             for (auto precinct : band->precincts) {
             	if (!precinct->non_empty())
             		continue;
@@ -239,7 +239,7 @@ bool TileComponent::allocSparseBuffer(uint32_t numres, bool truncatedTile){
         auto res = &tileCompResolution[resno];
         for (uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
           	auto band = res->tileBand + bandIndex;
-          	auto roi = buf->getPaddedTileBandWindow(resno, band->orientation);
+          	auto roi = buf->getPaddedBandWindow(resno, band->orientation);
             for (auto precinct : band->precincts) {
             	if (!precinct->non_empty())
             		continue;
@@ -369,7 +369,7 @@ template<typename F> bool TileComponent::postDecompressImpl(int32_t *srcData, De
 
 	grkBuffer2d<int32_t> dest;
 	grkBuffer2d<int32_t> src = grkBuffer2d<int32_t>(srcData, false, cblk->width(), cblk->width(), cblk->height());
-	buf->transformToTileCoordinates(block->resno,block->bandOrientation,block->x,block->y);
+	buf->toRelativeCoordinates(block->resno,block->bandOrientation,block->x,block->y);
 	if (m_sa) {
 		dest = src;
 	}
@@ -378,7 +378,7 @@ template<typename F> bool TileComponent::postDecompressImpl(int32_t *srcData, De
 								block->y,
 								block->x + cblk->width(),
 								block->y + cblk->height()));
-		dest = buf->getCodeBlockDestWindow(block->resno,block->bandOrientation);
+		dest = buf->getCodeBlockDestWindowREL(block->resno,block->bandOrientation);
 	}
 
 	if (!cblk->seg_buffers.empty()){

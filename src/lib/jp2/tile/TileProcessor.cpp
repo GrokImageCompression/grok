@@ -830,7 +830,7 @@ bool TileProcessor::decompress_tile_t1(void) {
 				if (!w.decompress(this,
 										tilec,
 										compno,
-										tilec->getBuffer()->unreduced_bounds(),
+										tilec->getBuffer()->unreducedBounds(),
 										tilec->resolutions_decompressed + 1U,
 										tccp->qmfbid))
 					return false;
@@ -860,12 +860,12 @@ void TileProcessor::copy_image_to_tile() {
 		uint64_t image_offset = (tilec->x0 - offset_x)
 				+ (uint64_t) (tilec->y0 - offset_y) * img_comp->stride;
 		auto src = img_comp->data + image_offset;
-		auto dest = tilec->getBuffer()->getWindow()->data;
+		auto dest = tilec->getBuffer()->getTileWindowREL()->data;
 
 		for (uint32_t j = 0; j < tilec->height(); ++j) {
 			memcpy(dest, src, tilec->width() * sizeof(int32_t));
 			src += img_comp->stride;
-			dest += tilec->getBuffer()->getWindow()->stride;
+			dest += tilec->getBuffer()->getTileWindowREL()->stride;
 		}
 	}
 }
@@ -888,9 +888,9 @@ bool TileProcessor::need_mct_decompress(uint32_t compno){
 		return false;
 	}
 	/* testcase 1336.pdf.asan.47.376 */
-	uint64_t samples = tile->comps->getBuffer()->strided_area();
-	if (tile->comps[1].getBuffer()->strided_area()	!= samples
-			|| tile->comps[2].getBuffer()->strided_area()	!= samples) {
+	uint64_t samples = tile->comps->getBuffer()->stridedArea();
+	if (tile->comps[1].getBuffer()->stridedArea()	!= samples
+			|| tile->comps[2].getBuffer()->stridedArea()	!= samples) {
 		GRK_WARN("Not all tiles components have the same dimension: skipping MCT.");
 		return false;
 	}
@@ -910,9 +910,9 @@ bool TileProcessor::mct_decompress() {
 		auto data = new uint8_t*[tile->numcomps];
 		for (uint32_t i = 0; i < tile->numcomps; ++i) {
 			auto tile_comp = tile->comps + i;
-			data[i] = (uint8_t*) tile_comp->getBuffer()->getWindow()->data;
+			data[i] = (uint8_t*) tile_comp->getBuffer()->getTileWindowREL()->data;
 		}
-		uint64_t samples = tile->comps->getBuffer()->strided_area();
+		uint64_t samples = tile->comps->getBuffer()->stridedArea();
 		bool rc = mct::decompress_custom((uint8_t*) m_tcp->m_mct_decoding_matrix,
 									samples,
 									data,
@@ -948,8 +948,8 @@ bool TileProcessor::dc_level_shift_encode() {
 	for (uint32_t compno = 0; compno < tile->numcomps; compno++) {
 		auto tile_comp = tile->comps + compno;
 		auto tccp = m_tcp->tccps + compno;
-		auto current_ptr = tile_comp->getBuffer()->getWindow()->data;
-		uint64_t samples = tile_comp->getBuffer()->strided_area();
+		auto current_ptr = tile_comp->getBuffer()->getTileWindowREL()->data;
+		uint64_t samples = tile_comp->getBuffer()->stridedArea();
 		if (!m_tcp->mct && tccp->qmfbid ==0){
 			for (uint64_t i = 0; i < samples; ++i) {
 				*current_ptr = (*current_ptr - tccp->m_dc_level_shift) * 2048;
@@ -969,7 +969,7 @@ bool TileProcessor::dc_level_shift_encode() {
 }
 
 bool TileProcessor::mct_encode() {
-	uint64_t samples = tile->comps->getBuffer()->strided_area();
+	uint64_t samples = tile->comps->getBuffer()->stridedArea();
 
 	if (!m_tcp->mct)
 		return true;
@@ -979,7 +979,7 @@ bool TileProcessor::mct_encode() {
 		auto data = new uint8_t*[tile->numcomps];
 		for (uint32_t i = 0; i < tile->numcomps; ++i) {
 			auto tile_comp = tile->comps + i;
-			data[i] = (uint8_t*) tile_comp->getBuffer()->getWindow()->data;
+			data[i] = (uint8_t*) tile_comp->getBuffer()->getTileWindowREL()->data;
 		}
 		bool rc = mct::compress_custom((uint8_t*) m_tcp->m_mct_coding_matrix,
 								samples,
@@ -989,13 +989,13 @@ bool TileProcessor::mct_encode() {
 		delete[] data;
 		return rc;
 	} else if (m_tcp->tccps->qmfbid == 0) {
-		mct::compress_irrev(tile->comps[0].getBuffer()->getWindow()->data,
-				tile->comps[1].getBuffer()->getWindow()->data,
-				tile->comps[2].getBuffer()->getWindow()->data, samples);
+		mct::compress_irrev(tile->comps[0].getBuffer()->getTileWindowREL()->data,
+				tile->comps[1].getBuffer()->getTileWindowREL()->data,
+				tile->comps[2].getBuffer()->getTileWindowREL()->data, samples);
 	} else {
-		mct::compress_rev(tile->comps[0].getBuffer()->getWindow()->data,
-				tile->comps[1].getBuffer()->getWindow()->data,
-				tile->comps[2].getBuffer()->getWindow()->data, samples);
+		mct::compress_rev(tile->comps[0].getBuffer()->getTileWindowREL()->data,
+				tile->comps[1].getBuffer()->getTileWindowREL()->data,
+				tile->comps[2].getBuffer()->getTileWindowREL()->data, samples);
 	}
 
 	return true;
@@ -1217,10 +1217,10 @@ bool TileProcessor::copy_uncompressed_data_to_tile(uint8_t *p_src,
 		auto img_comp = headerImage->comps + i;
 
 		uint32_t size_comp = (uint32_t)((img_comp->prec + 7) >> 3);
-		auto dest_ptr = tilec->getBuffer()->getWindow()->data;
+		auto dest_ptr = tilec->getBuffer()->getTileWindowREL()->data;
 		uint32_t w = (uint32_t)tilec->getBuffer()->bounds().width();
 		uint32_t h = (uint32_t)tilec->getBuffer()->bounds().height();
-		uint32_t stride = tilec->getBuffer()->getWindow()->stride;
+		uint32_t stride = tilec->getBuffer()->getTileWindowREL()->stride;
 		switch (size_comp) {
 		case 1:
 			if (img_comp->sgnd) {
