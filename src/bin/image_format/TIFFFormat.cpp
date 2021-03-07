@@ -683,7 +683,7 @@ bool TIFFFormat::encodeHeader(grk_image *image, const std::string &filename,
 	}
 
 	if (numExtraChannels) {
-		std::unique_ptr<uint16[]> out(new uint16[numExtraChannels]);
+		std::unique_ptr<uint16_t[]> out(new uint16_t[numExtraChannels]);
 		numExtraChannels = 0;
 		for (uint32_t i = 0U; i < numcomps; ++i) {
 			auto comp = m_image->comps + i;
@@ -860,9 +860,9 @@ grk_image* TIFFFormat::decode(const std::string &filename,
 	bool is_cinema = GRK_IS_CINEMA(parameters->rsiz);
 	bool success = false;
 	bool isCIE = false;
-	uint16 compress;
+	uint16_t compress;
 	float *luma = nullptr, *refBlackWhite= nullptr;
-	uint16 *red_orig=nullptr, *green_orig=nullptr, *blue_orig=nullptr;
+	uint16_t *red_orig=nullptr, *green_orig=nullptr, *blue_orig=nullptr;
 
 	tif = TIFFOpen(filename.c_str(), "r");
 	if (!tif) {
@@ -891,8 +891,8 @@ grk_image* TIFFFormat::decode(const std::string &filename,
 	uint32_t iptc_len = 0;
 	uint8_t *xmp_buf = nullptr;
 	uint32_t xmp_len = 0;
-	uint16 *sampleinfo = nullptr;
-	uint16 extrasamples = 0;
+	uint16_t *sampleinfo = nullptr;
+	uint16_t extrasamples = 0;
 	bool hasXRes = false, hasYRes = false, hasResUnit = false;
 	bool isSigned = (tiSf == SAMPLEFORMAT_INT);
 
@@ -1185,7 +1185,7 @@ grk_image* TIFFFormat::decode(const std::string &filename,
 	// 7. extract IPTC meta-data
 	if (TIFFGetFieldDefaulted(tif, TIFFTAG_RICHTIFFIPTC, &iptc_len, &iptc_buf) == 1) {
 		if (TIFFIsByteSwapped(tif))
-			TIFFSwabArrayOfLong((uint32*) iptc_buf, iptc_len);
+			TIFFSwabArrayOfLong((uint32_t*) iptc_buf, iptc_len);
 		// since TIFFTAG_RICHTIFFIPTC is of type TIFF_LONG, we must multiply
 		// by 4 to get the length in bytes
 		grk::create_meta(image);
@@ -1597,4 +1597,4 @@ static void convert_tif_16uto32s(const uint16_t *pSrc, int32_t *pDst, size_t len
 		pDst[i] = INV(pSrc[i], 0xFFFF, invert);
 }
 
-
+ 
