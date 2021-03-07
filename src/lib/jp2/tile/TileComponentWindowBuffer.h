@@ -120,7 +120,7 @@ template<typename T> struct ResWindow {
 					auto b = tileCompAtRes->tileBand + i;
 					m_paddedBandWindowBufferREL.push_back( new grkBuffer2d<T>(b->width(),b->height() ) );
 				}
-				// note: only dimensions of split resolution windows matter, not coordinates
+				// note: only dimensions of split resolution window buffer matter, not actual coordinates
 				for (uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
 					m_splitResWindowBufferREL[i] = new grkBuffer2d<T>(tileCompWindow.width(), tileCompWindow.height()/2);
 			}

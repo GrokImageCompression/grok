@@ -225,6 +225,7 @@ bool TileLengthMarkers::addToIndex(uint16_t tileno,
 	auto tileIndex = codestreamIndex->tile_index + tileno;
 	auto marknum = tileIndex->marknum;
 	if (marknum + 1 > tileIndex->maxmarknum) {
+		auto oldMax = tileIndex->maxmarknum;
 		tileIndex->maxmarknum += 100U;
 		auto new_marker = (grk_marker_info*) grk_realloc(tileIndex->marker,
 													tileIndex->maxmarknum* sizeof(grk_marker_info));
@@ -237,6 +238,8 @@ bool TileLengthMarkers::addToIndex(uint16_t tileno,
 			return false;
 		}
 		tileIndex->marker = new_marker;
+		for (uint32_t i = oldMax; i < tileIndex->maxmarknum; ++i)
+			memset(tileIndex->marker+i,0,sizeof(grk_marker_info));
 	}
 	auto tileMarker = tileIndex->marker + marknum;
 	// avoid duplicates

@@ -106,13 +106,11 @@ private:
 
    /**
     Add main header marker information
-    @param cstr_index    Codestream information structure
     @param id           marker id
     @param pos          byte offset of marker segment
     @param len          length of marker segment
     */
-   bool add_mhmarker( grk_codestream_index  *cstr_index,
-   						uint16_t id,
+   bool add_mhmarker(	uint16_t id,
    						uint64_t pos,
    						uint32_t len);
    /**

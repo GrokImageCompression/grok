@@ -656,16 +656,18 @@ bool CodeStreamDecompress::copy_default_tcp(void) {
 
 	return true;
 }
-bool CodeStreamDecompress::add_mhmarker(grk_codestream_index *cstr_index,
-						uint16_t id,
-						uint64_t pos,
-						uint32_t len) {
+
+
+bool CodeStreamDecompress::add_mhmarker(uint16_t id,
+										uint64_t pos,
+										uint32_t len) {
 	assert(cstr_index != nullptr);
 
 	/* expand the list? */
 	if ((cstr_index->marknum + 1) > cstr_index->maxmarknum) {
 		grk_marker_info *new_marker;
-		cstr_index->maxmarknum = (uint32_t) (100 + cstr_index->maxmarknum);
+		uint32_t oldMax = cstr_index->maxmarknum;
+		cstr_index->maxmarknum += 100U;
 		new_marker = (grk_marker_info*) grk_realloc(cstr_index->marker,
 								cstr_index->maxmarknum * sizeof(grk_marker_info));
 		if (!new_marker) {
@@ -677,6 +679,8 @@ bool CodeStreamDecompress::add_mhmarker(grk_codestream_index *cstr_index,
 			return false;
 		}
 		cstr_index->marker = new_marker;
+		for (uint32_t i = oldMax; i < cstr_index->maxmarknum; ++i)
+			memset(cstr_index->marker+i, 0, sizeof(grk_marker_info));
 	}
 
 	auto marker = cstr_index->marker + cstr_index->marknum;
@@ -782,7 +786,7 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void) {
 
 		if (cstr_index) {
 			/* Add the marker to the code stream index*/
-			if (!add_mhmarker(cstr_index, marker_handler->id,
+			if (!add_mhmarker(marker_handler->id,
 					m_stream->tell() - marker_size - 4U, marker_size + 4U)) {
 				GRK_ERROR("Not enough memory to add mh marker");
 				return false;
@@ -2052,8 +2056,7 @@ bool CodeStreamDecompress::read_unk(uint16_t *output_marker) {
 			} else {
 				/* Add the marker to the code stream index*/
 				if (cstr_index && marker_handler->id != J2K_MS_SOT) {
-					bool res = add_mhmarker(cstr_index,
-					J2K_MS_UNK, m_stream->tell() - size_unk, size_unk);
+					bool res = add_mhmarker(J2K_MS_UNK, m_stream->tell() - size_unk, size_unk);
 					if (res == false) {
 						GRK_ERROR("Not enough memory to add mh marker");
 						return false;
@@ -2528,7 +2531,7 @@ bool CodeStreamDecompress::read_soc() {
 		/* FIXME move it in a index structure included in this*/
 		cstr_index->main_head_start = m_stream->tell() - 2;
 		/* Add the marker to the code stream index*/
-		if (!CodeStreamDecompress::add_mhmarker(cstr_index, J2K_MS_SOC,
+		if (!add_mhmarker(J2K_MS_SOC,
 				cstr_index->main_head_start, 2)) {
 			GRK_ERROR("Not enough memory to add mh marker");
 			return false;
