@@ -16,6 +16,8 @@
 
 #include "grk_includes.h"
 
+namespace grk {
+  
 FileFormatTranscode::FileFormatTranscode() {
 
 }
@@ -24,3 +26,4 @@ FileFormatTranscode::~FileFormatTranscode() {
 
 }
 
+}
