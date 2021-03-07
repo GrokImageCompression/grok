@@ -65,18 +65,18 @@ _tiffReadProc(thandle_t fd, void* buf, tmsize_t size)
 	/* tmsize_t is 64bit on 64bit systems, but the WinAPI ReadFile takes
 	 * 32bit sizes, so we loop through the data in suitable 32bit sized
 	 * chunks */
-	uint8* ma;
-	uint64 mb;
+	uint8_t* ma;
+	uint64_t mb;
 	DWORD n;
 	DWORD o;
 	tmsize_t p;
-	ma=(uint8*)buf;
+	ma=(uint8_t*)buf;
 	mb=size;
 	p=0;
 	while (mb>0)
 	{
 		n=0x80000000UL;
-		if ((uint64)n>mb)
+		if ((uint64_t)n>mb)
 			n=(DWORD)mb;
 		if (!ReadFile(fd,(LPVOID)ma,n,&o,NULL))
 			return(0);
@@ -95,18 +95,18 @@ _tiffWriteProc(thandle_t fd, void* buf, tmsize_t size)
 	/* tmsize_t is 64bit on 64bit systems, but the WinAPI WriteFile takes
 	 * 32bit sizes, so we loop through the data in suitable 32bit sized
 	 * chunks */
-	uint8* ma;
-	uint64 mb;
+	uint8_t* ma;
+	uint64_t mb;
 	DWORD n;
 	DWORD o;
 	tmsize_t p;
-	ma=(uint8*)buf;
+	ma=(uint8_t*)buf;
 	mb=size;
 	p=0;
 	while (mb>0)
 	{
 		n=0x80000000UL;
-		if ((uint64)n>mb)
+		if ((uint64_t)n>mb)
 			n=(DWORD)mb;
 		if (!WriteFile(fd,(LPVOID)ma,n,&o,NULL))
 			return(0);
@@ -119,8 +119,8 @@ _tiffWriteProc(thandle_t fd, void* buf, tmsize_t size)
 	return(p);
 }
 
-static uint64
-_tiffSeekProc(thandle_t fd, uint64 off, int whence)
+static uint64_t
+_tiffSeekProc(thandle_t fd, uint64_t off, int whence)
 {
 	LARGE_INTEGER offli;
 	DWORD dwMoveMethod;
@@ -152,7 +152,7 @@ _tiffCloseProc(thandle_t fd)
 	return (CloseHandle(fd) ? 0 : -1);
 }
 
-static uint64
+static uint64_t
 _tiffSizeProc(thandle_t fd)
 {
 	LARGE_INTEGER m;
@@ -185,13 +185,13 @@ _tiffDummyMapProc(thandle_t fd, void** pbase, toff_t* psize)
 static int
 _tiffMapProc(thandle_t fd, void** pbase, toff_t* psize)
 {
-	uint64 size;
+	uint64_t size;
 	tmsize_t sizem;
 	HANDLE hMapFile;
 
 	size = _tiffSizeProc(fd);
 	sizem = (tmsize_t)size;
-	if (!size || (uint64)sizem!=size)
+	if (!size || (uint64_t)sizem!=size)
 		return (0);
 
 	/* By passing in 0 for the maximum file size, it specifies that we
@@ -403,10 +403,6 @@ _TIFFmemcmp(const void* p1, const void* p2, tmsize_t c)
 }
 
 #ifndef _WIN32_WCE
-
-#if (_MSC_VER < 1500)
-#  define vsnprintf _vsnprintf
-#endif
 
 static void
 Win32WarningHandler(const char* module, const char* fmt, va_list ap)
