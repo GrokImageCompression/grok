@@ -9,7 +9,7 @@ set(LIBTARGET "lcms2")
 add_library(${LIBTARGET} STATIC ${SRCS} ${HDRS})
 if(MSVC)
   set_target_properties(${LIBTARGET} PROPERTIES PREFIX "lib")
-else()
+elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
   target_compile_options(${LIBTARGET} PRIVATE -Wstringop-truncation -Wno-stringop-truncation)
 endif()
 set_target_properties(${LIBTARGET}
