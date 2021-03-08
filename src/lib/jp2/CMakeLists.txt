@@ -7,7 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_package(Threads REQUIRED)
 
 IF(MSVC)
-    SET(CMAKE_CXX_FLAGS "/EHsc")
+    string(APPEND CMAKE_CXX_FLAGS " /EHsc")
 ENDIF(MSVC)
 
 if(BUILD_UNIT_TESTS)

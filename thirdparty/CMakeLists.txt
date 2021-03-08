@@ -1,6 +1,3 @@
-# Find CMake modules in cmake/
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
-
 if(NOT BUILD_THIRDPARTY)
   include(FindPkgConfig)
 endif(NOT BUILD_THIRDPARTY)

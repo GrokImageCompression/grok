@@ -2,7 +2,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 IF(MSVC)
-    SET(CMAKE_CXX_FLAGS "/EHsc")
+    string(APPEND CMAKE_CXX_FLAGS " /EHsc")
 ENDIF(MSVC)
 
 # First thing define the common source:

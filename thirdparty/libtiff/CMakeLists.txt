@@ -22,6 +22,8 @@
 # LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
 # OF THIS SOFTWARE.
 
+# Find CMake modules in cmake/
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 # Disable deprecated features to ensure clean build
 add_definitions(-DTIFF_DISABLE_DEPRECATED)
@@ -166,6 +168,10 @@ target_sources(tiff PRIVATE
         tif_write.c
         tif_zip.c
         tif_zstd.c)
+        
+IF(MSVC)
+    string(APPEND CMAKE_CXX_FLAGS " /EHsc")
+ENDIF(MSVC)
 
 if(USE_WIN32_FILEIO)
   target_sources(tiff PRIVATE tif_win32.c)
