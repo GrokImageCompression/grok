@@ -26,7 +26,9 @@
 #include "convert.h"
 #include <cstring>
 #include "common.h"
+#ifdef GROK_HAVE_URING
 #include "FileUringIO.h"
+#endif
 #include "color.h"
 
 // `MBED` in big endian format
