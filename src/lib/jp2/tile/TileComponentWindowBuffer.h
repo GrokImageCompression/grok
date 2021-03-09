@@ -27,14 +27,16 @@ namespace grk {
 
  1) Canvas coordinates:  JPEG 2000 global image coordinates. For tile component, sub-sampling is applied.
 
- 2) Tile coordinates:  coordinates relative to highest resolution's origin
+ 2) Resolution coordinates: coordinates relative to a specified resolution's origin
 
- 3) Resolution coordinates: coordinates relative to a specified resolution's origin
+ 3) Band coordinates: coordinates relative to a specified sub-band's origin
 
- 4) Band coordinates: coordinates relative to a specified sub-band's origin
+ 4) Buffer coordinates: coordinate system where all resolutions are translated
+    to common origin (0,0). If each code block is put into resolution coordinates for the resolution
+    that **it belongs to**, then the blocks are all in the buffer coordinate system
 
  Note: the name of any method or variable returning non canvas coordinates is appended
- with "REL", for relative coordinates.
+ with "REL", to signify relative coordinates.
 
  */
 
@@ -204,7 +206,7 @@ template<typename T> struct ResWindow {
 	std::vector< grkRectU32 > m_paddedBandWindow; 	 				// canvas coordinates
 	grkBuffer2d<T> *m_splitResWindowBufferREL[SPLIT_NUM_ORIENTATIONS]; 	// resolution coordinates
 	grkBuffer2d<T> *m_resWindowBufferREL;					 		 		// resolution coordinates
-	grkBuffer2d<T> *m_resWindowTopLevelBufferREL;					 		// tile coordinates
+	grkBuffer2d<T> *m_resWindowTopLevelBufferREL;					 		// (highest) resolution coordinates
 	uint32_t m_filterWidth;
 };
 template<typename T> struct TileComponentWindowBuffer {
@@ -276,7 +278,7 @@ template<typename T> struct TileComponentWindowBuffer {
 	/**
 	 * Transform code block offsets from canvas coordinates
 	 * to either band coordinates (relative to sub band origin)
-	 * or tile coordinates (relative to tile origin)
+	 * or resolution coordinates (relative to resolution origin)
 	 *
 	 * @param resno resolution number
 	 * @param orientation band orientation {LL,HL,LH,HH}
@@ -319,7 +321,7 @@ template<typename T> struct TileComponentWindowBuffer {
 	 *
 	 */
 	const grkBuffer2d<T>* getCodeBlockDestWindowREL(uint8_t resno,eBandOrientation orientation) const {
-		return (useTileCoordinatesForCodeblock()) ? getTileWindowREL() : getBandWindowREL(resno,orientation);
+		return (useTileCoordinatesForCodeblock()) ? getHighestResWindowREL() : getBandWindowREL(resno,orientation);
 	}
 	/**
 	 * Get band window, in relative band coordinates
@@ -371,12 +373,11 @@ template<typename T> struct TileComponentWindowBuffer {
 		return m_resWindowREL[resno]->m_resWindowBufferREL;
 	}
 	/**
-	 * Get tile window i.e. highest resolution window,
-	 * in tile coordinates
+	 * Get highest resolution window, in resolution coordinates
 	 *
 	 *
 	 */
-	grkBuffer2d<T>*  getTileWindowREL(void) const{
+	grkBuffer2d<T>*  getHighestResWindowREL(void) const{
 		return m_resWindowREL.back()->m_resWindowBufferREL;
 	}
 	bool alloc(){
@@ -388,7 +389,7 @@ template<typename T> struct TileComponentWindowBuffer {
 		return true;
 	}
 	/**
-	 * Get bounds of tile component
+	 * Get bounds of tile component (canvas coordinates)
 	 * decompress: reduced canvas coordinates of window
 	 * compress: unreduced canvas coordinates of entire tile
 	 */
@@ -399,16 +400,16 @@ template<typename T> struct TileComponentWindowBuffer {
 		return m_unreducedBounds;
 	}
 	uint64_t stridedArea(void) const{
-		return getTileWindowREL()->stride * m_bounds.height();
+		return getHighestResWindowREL()->stride * m_bounds.height();
 	}
 
 	// set data to buf without owning it
 	void attach(T* buffer,uint32_t stride){
-		getTileWindowREL()->attach(buffer,stride);
+		getHighestResWindowREL()->attach(buffer,stride);
 	}
 	// transfer data to buf, and cease owning it
 	void transfer(T** buffer, uint32_t *stride){
-		getTileWindowREL()->transfer(buffer,stride);
+		getHighestResWindowREL()->transfer(buffer,stride);
 	}
 private:
 	bool useBandWindows() const{

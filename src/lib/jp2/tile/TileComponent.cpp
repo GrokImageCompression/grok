@@ -202,12 +202,12 @@ bool TileComponent::allocSparseBuffer(uint32_t numres, bool truncatedTile){
 				for (uint32_t j = roi_grid.y0; j < roi_grid.y1; ++j) {
 					uint64_t cblkno = (roi_grid.x0 - cblk_grid.x0)  + (uint64_t)(j - cblk_grid.y0 ) * w;
 					for (uint32_t i = roi_grid.x0; i < roi_grid.x1; ++i){
-						 auto cblk = precinct->getDecompressedBlockPtr(cblkno);
+						 auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
 
 						// transform from canvas coordinates
 						// to resolution coordinates (relative to resolution origin)
-						uint32_t x = cblk->x0 - band->x0;
-						uint32_t y = cblk->y0 - band->y0;
+						uint32_t x = cblkBounds.x0 - band->x0;
+						uint32_t y = cblkBounds.y0 - band->y0;
 						if (band->orientation & 1) {
 							auto prev_res = tileCompResolution + resno - 1;
 							x += prev_res->width();
@@ -218,11 +218,11 @@ bool TileComponent::allocSparseBuffer(uint32_t numres, bool truncatedTile){
 						}
 						// add to union of code block bounds
 						if (first) {
-							temp = grkRectU32(x,y,x + cblk->width(), y + cblk->height());
+							temp = grkRectU32(x,y,x + cblkBounds.width(), y + cblkBounds.height());
 							first = false;
 						}
 						else {
-							temp = temp.rectUnion(grkRectU32(x,y, x + cblk->width(),y + cblk->height()));
+							temp = temp.rectUnion(grkRectU32(x,y, x + cblkBounds.width(),y + cblkBounds.height()));
 						}
 						cblkno++;
 					}
@@ -254,12 +254,12 @@ bool TileComponent::allocSparseBuffer(uint32_t numres, bool truncatedTile){
 				for (uint32_t j = cblk_grid.y0; j < cblk_grid.y1; ++j) {
 					uint64_t cblkno = (roi_grid.x0 - cblk_grid.x0)  + (uint64_t)(j - cblk_grid.y0 ) * w;
 					for (uint32_t i = roi_grid.x0; i < roi_grid.x1; ++i){
-						 auto cblk = precinct->getDecompressedBlockPtr(cblkno);
+						 auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
 
 						// transform from canvas coordinates
 						// to resolution coordinates (relative to resolution origin)
-						uint32_t x = cblk->x0 - band->x0;
-						uint32_t y = cblk->y0 - band->y0;
+						uint32_t x = cblkBounds.x0 - band->x0;
+						uint32_t y = cblkBounds.y0 - band->y0;
 						if (band->orientation & 1) {
 							auto prev_res = tileCompResolution + resno - 1;
 							x += prev_res->width();
@@ -271,8 +271,8 @@ bool TileComponent::allocSparseBuffer(uint32_t numres, bool truncatedTile){
 
 						if (!sa->alloc(grkRectU32(x,
 												  y,
-												  x + cblk->width(),
-												  y + cblk->height()),
+												  x + cblkBounds.width(),
+												  y + cblkBounds.height()),
 												  truncatedTile)) {
 							delete sa;
 							throw runtime_error("unable to allocate sparse array");

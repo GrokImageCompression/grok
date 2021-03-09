@@ -40,7 +40,7 @@ void T1Part1::preCompress(CompressBlockExec *block, grk_tile *tile,
 	if (!t1->allocate_buffers(w,h))
 		return;
 	t1->data_stride = w;
-	auto tileLineAdvance = (tile->comps + block->compno)->getBuffer()->getTileWindowREL()->stride - w;
+	auto tileLineAdvance = (tile->comps + block->compno)->getBuffer()->getHighestResWindowREL()->stride - w;
 	uint32_t tileIndex = 0;
 	uint32_t cblk_index = 0;
 	maximum = 0;
@@ -151,12 +151,12 @@ bool T1Part1::decompress(DecompressBlockExec *block) {
 		cblkexp.y1 = cblkexp.y0 + cblk->height();
 		assert(cblk->width() > 0);
 		assert(cblk->height() > 0);
-		cblkexp.numSegments = cblk->numSegments;
-		auto segs = new seg[cblk->numSegments];
-		for (uint32_t i = 0; i < cblk->numSegments; ++i){
+		cblkexp.numSegments = cblk->getNumSegments();
+		auto segs = new seg[cblk->getNumSegments()];
+		for (uint32_t i = 0; i < cblk->getNumSegments(); ++i){
 			auto segp = segs + i;
 			memset(segp, 0, sizeof(seg));
-			auto sgrk = cblk->segs + i;
+			auto sgrk = cblk->getSegment(i);
 			segp->len = sgrk->len;
 			assert(segp->len <= total_seg_len);
 			segp->numpasses = sgrk->numpasses;

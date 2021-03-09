@@ -44,19 +44,19 @@ void decompress_synch_plugin_with_host(TileProcessor *tcd) {
 						for (uint64_t cblkno = 0; cblkno < prc->getNumCblks();
 								cblkno++) {
 							auto cblk = prc->getDecompressedBlockPtr(cblkno);
-							if (!cblk->numSegments)
+							if (!cblk->getNumSegments())
 								continue;
 							// sanity check
-							if (cblk->numSegments != 1) {
+							if (cblk->getNumSegments() != 1) {
 								GRK_INFO(
 										"Plugin does not handle code blocks with multiple segments. Image will be decompressed on CPU.");
 								throw PluginDecodeUnsupportedException();
 							}
 							uint32_t maxPasses = 3 	* (uint32_t)((tcd->headerImage->comps[0].prec + BIBO_EXTRA_BITS) - 2);
-							if (cblk->segs[0].numpasses > maxPasses) {
+							if (cblk->getSegment(0)->numpasses > maxPasses) {
 								GRK_INFO(
 										"Number of passes %u in segment exceeds BIBO maximum %u. Image will be decompressed on CPU.",
-										cblk->segs[0].numpasses, maxPasses);
+										cblk->getSegment(0)->numpasses, maxPasses);
 								throw PluginDecodeUnsupportedException();
 							}
 
@@ -73,7 +73,7 @@ void decompress_synch_plugin_with_host(TileProcessor *tcd) {
 							cblk->compressedStream.len = plugin_cblk->compressedDataLength;
 							cblk->compressedStream.owns_data = false;
 							plugin_cblk->numBitPlanes = cblk->numbps;
-							plugin_cblk->numPasses = cblk->segs[0].numpasses;
+							plugin_cblk->numPasses = cblk->getSegment(0)->numpasses;
 						}
 					}
 				}

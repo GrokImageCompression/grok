@@ -62,7 +62,7 @@ void T1HT::preCompress(CompressBlockExec *block, grk_tile *tile) {
 	auto cblk = block->cblk;
 	uint16_t w =  (uint16_t)cblk->width();
 	uint16_t h =  (uint16_t)cblk->height();
-	uint32_t tile_width = (tile->comps + block->compno)->getBuffer()->getTileWindowREL()->stride;
+	uint32_t tile_width = (tile->comps + block->compno)->getBuffer()->getHighestResWindowREL()->stride;
 	auto tileLineAdvance = tile_width - w;
 	uint32_t tileIndex = 0;
 	uint32_t cblk_index = 0;
@@ -148,8 +148,8 @@ bool T1HT::decompress(DecompressBlockExec *block) {
 		}
 
 		size_t num_passes = 0;
-		for (uint32_t i = 0; i < cblk->numSegments; ++i){
-			auto sgrk = cblk->segs + i;
+		for (uint32_t i = 0; i < cblk->getNumSegments(); ++i){
+			auto sgrk = cblk->getSegment(i);
 			num_passes += sgrk->numpasses;
 		}
 

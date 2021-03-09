@@ -30,7 +30,6 @@ enum eSplitOrientation{
 	SPLIT_H,
 	SPLIT_NUM_ORIENTATIONS
 };
-
 enum eBandOrientation{
 	BAND_ORIENT_LL,
 	BAND_ORIENT_HL,
@@ -38,7 +37,6 @@ enum eBandOrientation{
 	BAND_ORIENT_HH,
 	BAND_NUM_ORIENTATIONS
 };
-
 // LL band index when resolution == 0
 const uint32_t BAND_RES_ZERO_INDEX_LL = 0;
 
@@ -49,7 +47,6 @@ enum eBandIndex{
 	BAND_INDEX_HH,
 	BAND_NUM_INDICES
 };
-
 // code segment (code block can be encoded into multiple segments)
 struct Segment {
 	Segment();
@@ -61,7 +58,6 @@ struct Segment {
 	uint32_t numPassesInPacket;	// number of passes contributed by current packet
 	uint32_t numBytesInPacket;  // number of bytes contributed by current packet
 };
-
 struct PacketLengthInfo {
 	PacketLengthInfo(uint32_t mylength, uint32_t bits);
 	PacketLengthInfo();
@@ -69,7 +65,6 @@ struct PacketLengthInfo {
 	uint32_t len;
 	uint32_t len_bits;
 };
-
 // compressing/decoding pass
 struct CodePass {
 	CodePass();
@@ -79,7 +74,6 @@ struct CodePass {
 	uint8_t term;
 	uint16_t slope;  //ln(slope) in 8.8 fixed point
 };
-
 //quality layer
 struct Layer {
 	Layer();
@@ -88,14 +82,12 @@ struct Layer {
 	double disto; 		// layer distortion decrease
 	uint8_t *data; 		// compressed layer data
 };
-
 // note: block lives in canvas coordinates
 struct Codeblock : public grkRectU32 {
     Codeblock(const Codeblock &rhs);
     Codeblock();
     Codeblock& operator=(const Codeblock& other);
     virtual ~Codeblock(){}
-    virtual void clear();
 	grkBufferU8 compressedStream;
 	uint32_t numbps;
 	uint32_t numlenbits;
@@ -105,16 +97,11 @@ struct Codeblock : public grkRectU32 {
 	std::vector<PacketLengthInfo> packet_length_info;
 #endif
 };
-
 struct CompressCodeblock : public Codeblock {
 	CompressCodeblock();
 	~CompressCodeblock();
-	CompressCodeblock(const CompressCodeblock &rhs);
-	CompressCodeblock& operator=(const CompressCodeblock& other);
-	void clear() override;
 	bool alloc();
-	bool alloc_data(size_t nominalBlockSize);
-	void cleanup();
+	bool allocData(size_t nominalBlockSize);
 	uint8_t *paddedCompressedStream;
 	Layer *layers;
 	CodePass *passes;
@@ -122,26 +109,23 @@ struct CompressCodeblock : public Codeblock {
 	uint32_t numPassesTotal; 			/* total number of passes in all layers */
 	uint32_t *contextStream;
 };
-
 struct DecompressCodeblock: public Codeblock {
 	DecompressCodeblock();
 	~DecompressCodeblock();
-	DecompressCodeblock(const DecompressCodeblock &rhs);
-	DecompressCodeblock& operator=(const DecompressCodeblock& other);
-
-	void clear() override;
-	void init();
+	Segment* getSegment(uint32_t segmentIndex);
+	Segment* getCurrentSegment(void);
+	Segment* nextSegment(void);
+	uint32_t getNumSegments(void);
 	bool alloc();
-	void cleanup();
 	void cleanup_seg_buffers();
 	size_t getSegBuffersLen();
 	bool copy_to_contiguous_buffer(uint8_t *buffer);
 	std::vector<grkBufferU8*> seg_buffers;
+private:
 	Segment *segs; 					/* information on segments */
 	uint32_t numSegments; 			/* number of segment in block*/
 	uint32_t numSegmentsAllocated; 	// number of segments allocated for segs array
 };
-
 const size_t kChunkSize = 1024;
 template <typename T, typename P> class ChunkedArray{
 public:
@@ -174,7 +158,7 @@ public:
 		auto item = m_currChunk[itemIndex];
 		if (!item){
 			item = new T();
-			m_blockInitializer->initBlock(item, index);
+			m_blockInitializer->initCodeBlock(item, index);
 			m_currChunk[itemIndex] = item;
 		}
 		return item;
@@ -186,14 +170,14 @@ private:
 	T** m_currChunk;
 	uint64_t m_currChunkIndex;
 };
-
 struct PrecinctImpl {
 	PrecinctImpl(bool isCompressor, grkRectU32 *bounds,grkPointU32 cblkExpn);
 	~PrecinctImpl();
+	grkRectU32 getCodeBlockBounds(uint64_t cblkno);
 	void initTagTrees();
 	void deleteTagTrees();
-	bool initBlocks(grkRectU32 *bounds);
-	template<typename T> bool initBlock(T* block, uint64_t cblkno);
+	bool initCodeBlocks(grkRectU32 *bounds);
+	template<typename T> bool initCodeBlock(T* block, uint64_t cblkno);
 	ChunkedArray<CompressCodeblock, PrecinctImpl> *enc;
 	ChunkedArray<DecompressCodeblock, PrecinctImpl> *dec;
 	TagTree *incltree; /* inclusion tree */
@@ -203,10 +187,10 @@ struct PrecinctImpl {
 	grkPointU32 m_cblk_expn;
 	bool m_isCompressor;
 };
-
 struct Precinct : public grkRectU32 {
 	Precinct(const grkRectU32 &bounds, bool isCompressor, grkPointU32 cblkExpn);
 	~Precinct(void);
+	grkRectU32 getCodeBlockBounds(uint64_t cblkno);
 	void initTagTrees(void);
 	void deleteTagTrees(void);
 	uint32_t getCblkGridwidth(void);
@@ -225,7 +209,6 @@ private:
 	grkPointU32 m_cblk_expn;
 	PrecinctImpl* getImpl(void);
 };
-
 struct Subband : public grkRectU32 {
 	Subband();
 	Subband(const Subband &rhs);
@@ -252,7 +235,6 @@ struct Subband : public grkRectU32 {
 	uint32_t numbps;
 	float stepsize;
 };
-
 struct Resolution : public grkRectU32 {
 	Resolution();
 	void print();
@@ -269,7 +251,6 @@ struct Resolution : public grkRectU32 {
 	grkPointU32 precinctExpn;
 	grk_plugin_tile *current_plugin_tile;
 };
-
 struct BlockExec : public IOpenable {
 	BlockExec();
 	TileComponent *tilec;
@@ -285,17 +266,14 @@ struct BlockExec : public IOpenable {
 	uint8_t k_msbs;
 	bool isOpen;
 };
-
 struct DecompressBlockExec : public BlockExec {
 	DecompressBlockExec();
 	bool open(T1Interface *t1);
 	void close(void);
-
 	DecompressCodeblock *cblk;
 	uint8_t resno;
 	uint32_t roishift;
 };
-
 struct CompressBlockExec : public BlockExec{
 	CompressBlockExec();
 	bool open(T1Interface *t1);

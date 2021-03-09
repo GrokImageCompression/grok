@@ -20,15 +20,11 @@ namespace grk {
 
 T1DecompressScheduler::T1DecompressScheduler() :success(true),
 												decodeBlocks(nullptr){
-
 }
-
 T1DecompressScheduler::~T1DecompressScheduler() {
-	for (auto &t : t1Implementations) {
+	for (auto &t : t1Implementations)
 		delete t;
-	}
 }
-
 bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent *tilec, TileComponentCodingParams *tccp,
 		std::vector<DecompressBlockExec*> *blocks) {
 	if (!tilec->getBuffer()->alloc()) {
@@ -45,9 +41,9 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent *tilec, Tile
 				if (!wholeTileDecoding && !paddedBandWindow->non_empty_intersection(precinct))
 					continue;
 				for (uint64_t cblkno = 0; cblkno < precinct->getNumCblks();	++cblkno) {
-					auto cblk = precinct->getDecompressedBlockPtr(cblkno);
-					if (wholeTileDecoding || paddedBandWindow->non_empty_intersection(cblk)){
-
+					 auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
+					if (wholeTileDecoding || paddedBandWindow->non_empty_intersection(&cblkBounds)){
+						auto cblk = precinct->getDecompressedBlockPtr(cblkno);
 						auto block = new DecompressBlockExec();
 						block->x = cblk->x0;
 						block->y = cblk->y0;
@@ -60,11 +56,9 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent *tilec, Tile
 						block->resno = resno;
 						block->roishift = tccp->roishift;
 						block->stepsize = band->stepsize;
-
 						block->k_msbs = (uint8_t)(band->numbps - cblk->numbps);
 						blocks->push_back(block);
 					}
-
 				}
 			}
 		}

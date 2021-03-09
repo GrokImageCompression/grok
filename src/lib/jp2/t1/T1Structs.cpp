@@ -62,6 +62,9 @@ Precinct::~Precinct(){
 void Precinct::deleteTagTrees() {
 	impl->deleteTagTrees();
 }
+grkRectU32 Precinct::getCodeBlockBounds(uint64_t cblkno){
+	return impl->getCodeBlockBounds(cblkno);
+}
 
 void Precinct::initTagTrees() {
 	impl->initTagTrees();
@@ -85,7 +88,7 @@ uint32_t Precinct::getNominalBlockSize(void){
 }
 
 PrecinctImpl* Precinct::getImpl(void){
-	impl->initBlocks(this);
+	impl->initCodeBlocks(this);
 	return impl;
 }
 uint64_t Precinct::getNumCblks(void){
@@ -122,10 +125,18 @@ PrecinctImpl::~PrecinctImpl(){
 	delete enc;
 	delete dec;
 }
-bool PrecinctImpl::initBlocks(grkRectU32 *bounds){
+grkRectU32 PrecinctImpl::getCodeBlockBounds(uint64_t cblkno){
+	auto cblk_start = grkPointU32(	(m_cblk_grid.x0  + (uint32_t) (cblkno % m_cblk_grid.width())) << m_cblk_expn.x,
+								(m_cblk_grid.y0  + (uint32_t) (cblkno / m_cblk_grid.width())) << m_cblk_expn.y);
+	auto cblk_bounds = grkRectU32(cblk_start.x,
+									cblk_start.y,
+									cblk_start.x + (1U << m_cblk_expn.x),
+									cblk_start.y + (1U << m_cblk_expn.y));
+	return  cblk_bounds.intersection(&m_bounds);
+}
+bool PrecinctImpl::initCodeBlocks(grkRectU32 *bounds){
 	if ((m_isCompressor && enc) || (!m_isCompressor && dec))
 		return true;
-
 	m_bounds = *bounds;
 	auto numBlocks = m_cblk_grid.area();
 	if (!numBlocks)
@@ -138,31 +149,22 @@ bool PrecinctImpl::initBlocks(grkRectU32 *bounds){
 
 	return true;
 }
-template<typename T> bool PrecinctImpl::initBlock(T* block, uint64_t cblkno){
+template<typename T> bool PrecinctImpl::initCodeBlock(T* block, uint64_t cblkno){
 	if (block->non_empty())
 		return true;
 	if (!block->alloc())
 		return false;
-	auto cblk_start = grkPointU32(	(m_cblk_grid.x0  + (uint32_t) (cblkno % m_cblk_grid.width())) << m_cblk_expn.x,
-								(m_cblk_grid.y0  + (uint32_t) (cblkno / m_cblk_grid.width())) << m_cblk_expn.y);
-	auto cblk_bounds = grkRectU32(cblk_start.x,
-									cblk_start.y,
-									cblk_start.x + (1U << m_cblk_expn.x),
-									cblk_start.y + (1U << m_cblk_expn.y));
-	(*(grkRectU32*)block) = cblk_bounds.intersection(&m_bounds);
+	(*(grkRectU32*)block) = getCodeBlockBounds(cblkno);
 
 	return true;
 }
-
 void PrecinctImpl::deleteTagTrees() {
 	delete incltree;
 	incltree = nullptr;
 	delete imsbtree;
 	imsbtree = nullptr;
 }
-
 void PrecinctImpl::initTagTrees() {
-
 	// if cw == 0 or ch == 0,
 	// then the precinct has no code blocks, therefore
 	// no need for inclusion and msb tag trees
@@ -198,8 +200,6 @@ void PrecinctImpl::initTagTrees() {
 		}
 	}
 }
-
-
 Codeblock::Codeblock():
 		numbps(0),
 		numlenbits(0),
@@ -207,9 +207,7 @@ Codeblock::Codeblock():
 #ifdef DEBUG_LOSSLESS_T2
 		,included(false),
 #endif
-{
-}
-
+{}
 Codeblock::Codeblock(const Codeblock &rhs): grkRectU32(rhs),
 											compressedStream(rhs.compressedStream),
 											numbps(rhs.numbps),
@@ -218,8 +216,7 @@ Codeblock::Codeblock(const Codeblock &rhs): grkRectU32(rhs),
 #ifdef DEBUG_LOSSLESS_T2
 	,included(0)
 #endif
-{
-}
+{}
 Codeblock& Codeblock::operator=(const Codeblock& rhs){
 	if (this != &rhs) { // self-assignment check expected
 		x0 = rhs.x0;
@@ -237,10 +234,6 @@ Codeblock& Codeblock::operator=(const Codeblock& rhs){
 	}
 	return *this;
 }
-void Codeblock::clear(){
-	compressedStream.buf = nullptr;
-	compressedStream.owns_data = false;
-}
 CompressCodeblock::CompressCodeblock() :
 				paddedCompressedStream(nullptr),
 				layers(	nullptr),
@@ -248,46 +241,11 @@ CompressCodeblock::CompressCodeblock() :
 				numPassesInPreviousPackets(0),
 				numPassesTotal(0),
 				contextStream(nullptr)
-{
-}
-CompressCodeblock::CompressCodeblock(const CompressCodeblock &rhs) :
-						Codeblock(rhs),
-						paddedCompressedStream(rhs.paddedCompressedStream),
-						layers(	rhs.layers),
-						passes(rhs.passes),
-						numPassesInPreviousPackets(rhs.numPassesInPreviousPackets),
-						numPassesTotal(rhs.numPassesTotal),
-						contextStream(rhs.contextStream)
 {}
-
-CompressCodeblock& CompressCodeblock::operator=(const CompressCodeblock& rhs){
-	if (this != &rhs) { // self-assignment check expected
-		Codeblock::operator = (rhs);
-		paddedCompressedStream = rhs.paddedCompressedStream;
-		layers = rhs.layers;
-		passes = rhs.passes;
-		numPassesInPreviousPackets = rhs.numPassesInPreviousPackets;
-		numPassesTotal = rhs.numPassesTotal;
-		contextStream = rhs.contextStream;
-#ifdef DEBUG_LOSSLESS_T2
-		packet_length_info = rhs.packet_length_info;
-#endif
-
-	}
-	return *this;
-}
-
 CompressCodeblock::~CompressCodeblock() {
-	cleanup();
-}
-void CompressCodeblock::clear(){
-	Codeblock::clear();
-	layers = nullptr;
-	passes = nullptr;
-	contextStream = nullptr;
-#ifdef DEBUG_LOSSLESS_T2
-	packet_length_info.clear();
-#endif
+	compressedStream.dealloc();
+	grk_free(layers);
+	grk_free(passes);
 }
 bool CompressCodeblock::alloc() {
 	if (!layers) {
@@ -303,14 +261,13 @@ bool CompressCodeblock::alloc() {
 
 	return true;
 }
-
 /**
  * Allocates data memory for an compressing code block.
  * We actually allocate 2 more bytes than specified, and then offset data by +2.
  * This is done so that we can safely initialize the MQ coder pointer to data-1,
  * without risk of accessing uninitialized memory.
  */
-bool CompressCodeblock::alloc_data(size_t nominalBlockSize) {
+bool CompressCodeblock::allocData(size_t nominalBlockSize) {
 	uint32_t desired_data_size = (uint32_t) (nominalBlockSize * sizeof(uint32_t));
 	// we add two fake zero bytes at beginning of buffer, so that mq coder
 	//can be initialized to data[-1] == actualData[1], and still point
@@ -326,105 +283,59 @@ bool CompressCodeblock::alloc_data(size_t nominalBlockSize) {
 
 	return true;
 }
-
-void CompressCodeblock::cleanup() {
-	compressedStream.dealloc();
-	paddedCompressedStream = nullptr;
-	grk_free(layers);
-	layers = nullptr;
-	grk_free(passes);
-	passes = nullptr;
-}
-
-DecompressCodeblock::DecompressCodeblock() {
-	init();
-}
-
-DecompressCodeblock::~DecompressCodeblock(){
-    cleanup();
-}
-void DecompressCodeblock::clear(){
-	Codeblock::clear();
-	segs = nullptr;
-	cleanup_seg_buffers();
-}
-
-DecompressCodeblock::DecompressCodeblock(const DecompressCodeblock &rhs) :
-				Codeblock(rhs),
-				segs(rhs.segs), numSegments(rhs.numSegments),
-				numSegmentsAllocated(rhs.numSegmentsAllocated)
+DecompressCodeblock::DecompressCodeblock() : 	segs(nullptr),
+												numSegments(0),
+												#ifdef DEBUG_LOSSLESS_T2
+												included(0),
+												#endif
+												numSegmentsAllocated(0)
 {}
-
-DecompressCodeblock& DecompressCodeblock::operator=(const DecompressCodeblock& rhs){
-	if (this != &rhs) { // self-assignment check expected
-		*this = DecompressCodeblock(rhs);
-	}
-	return *this;
-}
-
-bool DecompressCodeblock::alloc() {
-	if (!segs) {
-		segs = new Segment[default_numbers_segments];
-		/*fprintf(stderr, "Allocate %u elements of code_block->data\n", default_numbers_segments * sizeof(Segment));*/
-
-		numSegmentsAllocated = default_numbers_segments;
-
-		/*fprintf(stderr, "Allocate 8192 elements of code_block->data\n");*/
-		/*fprintf(stderr, "numSegmentsAllocated of code_block->data = %u\n", p_code_block->numSegmentsAllocated);*/
-
-	} else {
-		/* sanitize */
-		auto l_segs = segs;
-		uint32_t l_current_max_segs = numSegmentsAllocated;
-
-		/* Note: since seg_buffers simply holds references to another data buffer,
-		 we do not need to copy it to the sanitized block  */
-		cleanup_seg_buffers();
-		init();
-		segs = l_segs;
-		numSegmentsAllocated = l_current_max_segs;
-	}
-	return true;
-}
-
-void DecompressCodeblock::init() {
-	compressedStream.dealloc();
-	segs = nullptr;
-	x0 = 0;
-	y0 = 0;
-	x1 = 0;
-	y1 = 0;
-	numbps = 0;
-	numlenbits = 0;
-	numPassesInPacket = 0;
-	numSegments = 0;
-#ifdef DEBUG_LOSSLESS_T2
-	included = 0;
-#endif
-	numSegmentsAllocated = 0;
-}
-
-void DecompressCodeblock::cleanup() {
+DecompressCodeblock::~DecompressCodeblock(){
 	compressedStream.dealloc();
 	cleanup_seg_buffers();
 	delete[] segs;
-	segs = nullptr;
 }
+Segment* DecompressCodeblock::getSegment(uint32_t segmentIndex){
+	if (!segs) {
+		numSegmentsAllocated = 1;
+		segs = new Segment[numSegmentsAllocated];
+		numSegmentsAllocated = 1;
+	} else if (segmentIndex >= numSegmentsAllocated){
+		auto new_segs = new Segment[2*numSegmentsAllocated];
+		for (uint32_t i = 0; i < numSegmentsAllocated; ++i)
+			new_segs[i] = segs[i];
+		numSegmentsAllocated *= 2;;
+		delete[] segs;
+		segs = new_segs;
+	}
 
+	return segs + segmentIndex;
+}
+bool DecompressCodeblock::alloc(){
+	return true;
+}
+uint32_t  DecompressCodeblock::getNumSegments(void){
+	return numSegments;
+}
+Segment* DecompressCodeblock::getCurrentSegment(void){
+	return numSegments ? getSegment(numSegments-1) : nullptr;
+}
+Segment* DecompressCodeblock::nextSegment(void){
+	numSegments++;
+	return getCurrentSegment();
+}
 void DecompressCodeblock::cleanup_seg_buffers(){
-
 	for (auto& b : seg_buffers)
 		delete b;
 	seg_buffers.clear();
+	numSegments = 0;
 
 }
-
 size_t DecompressCodeblock::getSegBuffersLen(){
 	return std::accumulate(seg_buffers.begin(), seg_buffers.end(), (size_t)0, [](const size_t s, grkBufferU8 *a){
 	   return (s + a->len);
 	});
 }
-
 bool DecompressCodeblock::copy_to_contiguous_buffer(uint8_t *buffer) {
 	if (!buffer)
 		return false;
@@ -437,7 +348,6 @@ bool DecompressCodeblock::copy_to_contiguous_buffer(uint8_t *buffer) {
 	}
 	return true;
 }
-
 Subband::Subband() :
 				orientation(BAND_ORIENT_LL),
 				numPrecincts(0),
@@ -500,7 +410,6 @@ Precinct* Subband::createPrecinct(bool isCompressor,
 
 	return currPrec;
 }
-
 Resolution::Resolution() :
 		initialized(false),
 		numTileBandWindows(0),
@@ -560,7 +469,6 @@ bool Resolution::init(bool isCompressor,
 
 	return true;
 }
-
 BlockExec::BlockExec() : 	tilec(nullptr),
 							bandIndex(0),
 							bandOrientation(BAND_ORIENT_LL),
@@ -572,7 +480,6 @@ BlockExec::BlockExec() : 	tilec(nullptr),
 							k_msbs(0),
 							isOpen(false)
 {}
-
 CompressBlockExec::CompressBlockExec() :
 		            cblk(nullptr),
 					tile(nullptr),
@@ -590,29 +497,24 @@ CompressBlockExec::CompressBlockExec() :
 #endif
 				mct_numcomps(0)
 {}
-
 bool CompressBlockExec::open(T1Interface *t1){
 	isOpen = t1->compress(this);
 
 	return isOpen;
 }
 void CompressBlockExec::close(void){
-
 }
-
 DecompressBlockExec::DecompressBlockExec() :
 				cblk(nullptr),
 				resno(0),
 				roishift(0)
-{	}
-
+{}
 bool DecompressBlockExec::open(T1Interface *t1){
 	isOpen =  t1->decompress(this);
 
 	return isOpen;
 }
 void DecompressBlockExec::close(void){
-
 }
 
 }

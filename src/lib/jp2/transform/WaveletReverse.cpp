@@ -1944,9 +1944,9 @@ template <typename T,
         // simply copy into tile component buffer
     	bool ret = sa->read(0,
     					synthesisWindow,
-					   tilec->getBuffer()->getTileWindowREL()->data,
+					   tilec->getBuffer()->getHighestResWindowREL()->data,
                        1,
-					   tilec->getBuffer()->getTileWindowREL()->stride,
+					   tilec->getBuffer()->getHighestResWindowREL()->stride,
                        true);
         assert(ret);
         GRK_UNUSED(ret);
@@ -2180,9 +2180,9 @@ template <typename T,
     //final read into tile buffer
 	ret = sa->read(numres-1,
 					synthesisWindow,
-				   tilec->getBuffer()->getTileWindowREL()->data,
+				   tilec->getBuffer()->getHighestResWindowREL()->data,
 				   1,
-				   tilec->getBuffer()->getTileWindowREL()->stride,
+				   tilec->getBuffer()->getHighestResWindowREL()->stride,
 				   true);
 	assert(ret);
 	GRK_UNUSED(ret);
@@ -2193,14 +2193,14 @@ template <typename T,
 	auto tileSynthesisWindow = synthesisWindow.pan(tilec->x0, tilec->y0);
 	if (compno == debug_compno) {
 		for (uint32_t j = 0; j < tileSynthesisWindow.height();j++) {
-			auto bufPtr = tilec->getBuffer()->getTileWindowREL()->data + j * tilec->getBuffer()->getTileWindowREL()->stride;
+			auto bufPtr = tilec->getBuffer()->getHighestResWindowREL()->data + j * tilec->getBuffer()->getHighestResWindowREL()->stride;
 			for (uint32_t i = 0; i < tileSynthesisWindow.width();i++) {
 				auto val = grk_memcheck(bufPtr,1);
 				if (val != grk_mem_ok){
 					GRK_ERROR("***** Partial wavelet after final read: uninitialized memory at (x,y) =  (%d,%d) ******",
 							tileSynthesisWindow.x0 + i,tileSynthesisWindow.y0 + j);
 				}
-				bufPtr += tilec->getBuffer()->getTileWindowREL()->stride;
+				bufPtr += tilec->getBuffer()->getHighestResWindowREL()->stride;
 			}
 		}
 	}

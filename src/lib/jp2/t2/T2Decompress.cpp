@@ -175,19 +175,7 @@ bool T2Decompress::decompress_packet(TileCodingParams *p_tcp,
 
 void T2Decompress::init_seg(DecompressCodeblock *cblk, uint32_t index, uint8_t cblk_sty,
 		bool first) {
-	uint32_t nb_segs = index + 1;
-
-	if (nb_segs > cblk->numSegmentsAllocated) {
-		auto new_segs = new Segment[cblk->numSegmentsAllocated	+ cblk->numSegmentsAllocated];
-		for (uint32_t i = 0; i < cblk->numSegmentsAllocated; ++i)
-			new_segs[i] = cblk->segs[i];
-		cblk->numSegmentsAllocated += default_numbers_segments;
-		if (cblk->segs)
-			delete[] cblk->segs;
-		cblk->segs = new_segs;
-	}
-
-	auto seg = &cblk->segs[index];
+	auto seg = cblk->getSegment(index);
 	seg->clear();
 
 	if (cblk_sty & GRK_CBLKSTY_TERMALL) {
@@ -272,7 +260,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp,
 					auto cblk = prc->getDecompressedBlockPtr(cblkno);
 
 					/* if cblk not yet included before --> inclusion tagtree */
-					if (!cblk->numSegments) {
+					if (!cblk->getNumSegments()) {
 						uint64_t value;
 						prc->getInclTree()->decodeValue(bio.get(), cblkno, p_pi->layno + 1, &value);
 						if (value != tag_tree_uninitialized_node_value	&& value != p_pi->layno) {
@@ -307,7 +295,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp,
 						continue;
 					}
 					/* if cblk not yet included --> zero-bitplane tagtree */
-					if (!cblk->numSegments) {
+					if (!cblk->getNumSegments()) {
 						uint32_t K_msbs = 0;
 						uint8_t value;
 
@@ -347,18 +335,18 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp,
 					cblk->numlenbits += increment;
 					uint32_t segno = 0;
 
-					if (!cblk->numSegments) {
+					if (!cblk->getNumSegments()) {
 						init_seg(cblk, segno,p_tcp->tccps[p_pi->compno].cblk_sty, true);
 					} else {
-						segno = cblk->numSegments - 1;
-						if (cblk->segs[segno].numpasses	== cblk->segs[segno].maxpasses) {
+						segno = cblk->getNumSegments() - 1;
+						if (cblk->getSegment(segno)->numpasses	== cblk->getSegment(segno)->maxpasses) {
 							++segno;
 							init_seg(cblk, segno,p_tcp->tccps[p_pi->compno].cblk_sty, false);
 						}
 					}
 					auto blockPassesInPacket = (int32_t) cblk->numPassesInPacket;
 					do {
-						auto seg = cblk->segs + segno;
+						auto seg = cblk->getSegment(segno);
 						/* sanity check when there is no mode switch */
 						if (seg->maxpasses == max_passes_per_segment) {
 							if (blockPassesInPacket	> (int32_t) max_passes_per_segment) {
@@ -454,15 +442,13 @@ bool T2Decompress::read_packet_data(Resolution *res,
 				continue;
 			}
 			Segment *seg = nullptr;
-			if (!cblk->numSegments) {
-				seg = cblk->segs;
-				++cblk->numSegments;
+			if (!cblk->getNumSegments()) {
+				seg = cblk->nextSegment();
 				cblk->compressedStream.len = 0;
 			} else {
-				seg = &cblk->segs[cblk->numSegments - 1];
+				seg = cblk->getCurrentSegment();
 				if (seg->numpasses == seg->maxpasses) {
-					++seg;
-					++cblk->numSegments;
+					seg = cblk->nextSegment();
 				}
 			}
 
@@ -476,7 +462,6 @@ bool T2Decompress::read_packet_data(Resolution *res,
 					// HT doesn't tolerate truncated code blocks since decoding runs both forward and reverse.
 					// So, in this case, we ignore the entire code block
 					if (tileProcessor->m_cp->tcps[0].getIsHT()){
-						cblk->numSegments = 0;
 						cblk->cleanup_seg_buffers();
 					}
 					seg->numBytesInPacket = 0;
@@ -508,10 +493,8 @@ bool T2Decompress::read_packet_data(Resolution *res,
 				}
 				seg->numpasses += seg->numPassesInPacket;
 				numPassesInPacket -= seg->numPassesInPacket;
-				if (numPassesInPacket > 0) {
-					++seg;
-					++cblk->numSegments;
-				}
+				if (numPassesInPacket > 0)
+					seg = cblk->nextSegment();
 			} while (numPassesInPacket > 0);
 		} /* next code_block */
 	}
@@ -573,16 +556,13 @@ bool T2Decompress::skip_packet_data(Resolution *res,
 				continue;
 			}
 			Segment *seg = nullptr;
-			if (!cblk->numSegments) {
-				seg = cblk->segs;
-				++cblk->numSegments;
+			if (!cblk->getNumSegments()) {
+				seg = cblk->nextSegment();
 				cblk->compressedStream.len = 0;
 			} else {
-				seg = &cblk->segs[cblk->numSegments - 1];
-				if (seg->numpasses == seg->maxpasses) {
-					++seg;
-					++cblk->numSegments;
-				}
+				seg = cblk->getCurrentSegment();
+				if (seg->numpasses == seg->maxpasses)
+					seg = cblk->nextSegment();
 			}
 			uint32_t numPassesInPacket = cblk->numPassesInPacket;
 			do {
@@ -601,10 +581,8 @@ bool T2Decompress::skip_packet_data(Resolution *res,
 				*(p_data_read) += seg->numBytesInPacket;
 				seg->numpasses += seg->numPassesInPacket;
 				numPassesInPacket -= seg->numPassesInPacket;
-				if (numPassesInPacket > 0) {
-					++seg;
-					++cblk->numSegments;
-				}
+				if (numPassesInPacket > 0)
+					seg = cblk->nextSegment();
 			} while (numPassesInPacket > 0);
 		}
 	}
