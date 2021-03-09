@@ -1,7 +1,7 @@
 # UNIT TESTS
 
 IF(MSVC)
-    SET(CMAKE_CXX_FLAGS "/EHsc")
+    string(APPEND CMAKE_CXX_FLAGS " /EHsc")
 ENDIF(MSVC)
 
 include_directories(
