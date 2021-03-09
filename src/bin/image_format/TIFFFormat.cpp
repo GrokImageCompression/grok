@@ -650,25 +650,23 @@ bool TIFFFormat::encodeHeader(grk_image *image, const std::string &filename,
 			TIFFSetField(tif, TIFFTAG_XMLPACKET, m_image->meta->xmp_len, m_image->meta->xmp_buf);
 
 		if (m_image->meta->iptc_buf && m_image->meta->iptc_len) {
-			auto iptc_buf = m_image->meta->iptc_buf;
 			auto iptc_len = m_image->meta->iptc_len;
-
 			// length must be multiple of 4
-			uint8_t *new_iptf_buf = nullptr;
 			iptc_len += (4 - (iptc_len & 0x03));
-			if (iptc_len != m_image->meta->iptc_len) {
-				new_iptf_buf = (uint8_t*) calloc(iptc_len, 1);
-				if (!new_iptf_buf)
-					goto cleanup;
+			if (iptc_len > m_image->meta->iptc_len) {
+				auto new_iptf_buf = new uint8_t[iptc_len];
+				memset(new_iptf_buf,0,iptc_len);
 				memcpy(new_iptf_buf, m_image->meta->iptc_buf, m_image->meta->iptc_len);
-				iptc_buf = new_iptf_buf;
+				delete[] m_image->meta->iptc_buf;
+				m_image->meta->iptc_buf = new_iptf_buf;
+				m_image->meta->iptc_len = iptc_len;
 			}
 
 			// Tag is of type TIFF_LONG, so byte length is divided by four
 			if (TIFFIsByteSwapped(tif))
-				TIFFSwabArrayOfLong((uint32_t*) iptc_buf, (tmsize_t)(iptc_len / 4));
-			TIFFSetField(tif, TIFFTAG_RICHTIFFIPTC, (uint32_t) (iptc_len / 4),
-					(void*) iptc_buf);
+				TIFFSwabArrayOfLong((uint32_t*) m_image->meta->iptc_buf, (tmsize_t)(m_image->meta->iptc_len / 4));
+			TIFFSetField(tif, TIFFTAG_RICHTIFFIPTC, (uint32_t) (m_image->meta->iptc_len / 4),
+					(void*) m_image->meta->iptc_buf);
 		}
 	}
 
