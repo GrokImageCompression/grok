@@ -41,7 +41,6 @@ namespace grk {
 /**
  *  Class to manage multiple buffers needed to perform DWT transform
  *
- *
  */
 template<typename T> struct ResWindow {
 	ResWindow(uint8_t numresolutions,
@@ -198,7 +197,6 @@ template<typename T> struct ResWindow {
 
 		return true;
 	}
-
 	bool m_allocated;
 	Resolution *m_tileCompRes;   	// when non-null, it triggers creation of band window buffers
 	Resolution *m_tileCompResLower; // null for lowest resolution
@@ -209,7 +207,6 @@ template<typename T> struct ResWindow {
 	grkBuffer2d<T> *m_resWindowTopLevelBufferREL;					 		// tile coordinates
 	uint32_t m_filterWidth;
 };
-
 template<typename T> struct TileComponentWindowBuffer {
 	TileComponentWindowBuffer(bool isCompressor,
 								bool lossless,
@@ -271,7 +268,6 @@ template<typename T> struct TileComponentWindowBuffer {
 		}
 		m_resWindowREL.push_back(topLevel);
 	}
-
 	~TileComponentWindowBuffer(){
 		for (auto& b : m_resWindowREL)
 			delete b;
@@ -315,7 +311,6 @@ template<typename T> struct TileComponentWindowBuffer {
 		offsetx = x;
 		offsety = y;
 	}
-
 	/**
 	 * Get code block destination window
 	 *
@@ -326,7 +321,6 @@ template<typename T> struct TileComponentWindowBuffer {
 	const grkBuffer2d<T>* getCodeBlockDestWindowREL(uint8_t resno,eBandOrientation orientation) const {
 		return (useTileCoordinatesForCodeblock()) ? getTileWindowREL() : getBandWindowREL(resno,orientation);
 	}
-
 	/**
 	 * Get band window, in relative band coordinates
 	 *
@@ -345,7 +339,6 @@ template<typename T> struct TileComponentWindowBuffer {
 
 		return m_resWindowREL[resno]->m_paddedBandWindowBufferREL[orientation];
 	}
-
 	/**
 	 * Get padded band window, in canvas coordinates
 	 *
@@ -358,7 +351,6 @@ template<typename T> struct TileComponentWindowBuffer {
 			return nullptr;
 		return &m_resWindowREL[resno]->m_paddedBandWindow[orientation];
 	}
-
 	/*
 	 * Get intermediate split window, in resolution coordinates
 	 *
@@ -369,7 +361,6 @@ template<typename T> struct TileComponentWindowBuffer {
 
 		return m_resWindowREL[resno]->m_splitResWindowBufferREL[orientation];
 	}
-
 	/**
 	 * Get resolution window, in resolution coordinates
 	 *
@@ -379,7 +370,6 @@ template<typename T> struct TileComponentWindowBuffer {
 	const grkBuffer2d<T>*  getResWindowREL(uint32_t resno) const{
 		return m_resWindowREL[resno]->m_resWindowBufferREL;
 	}
-
 	/**
 	 * Get tile window i.e. highest resolution window,
 	 * in tile coordinates
@@ -389,7 +379,6 @@ template<typename T> struct TileComponentWindowBuffer {
 	grkBuffer2d<T>*  getTileWindowREL(void) const{
 		return m_resWindowREL.back()->m_resWindowBufferREL;
 	}
-
 	bool alloc(){
 		for (auto& b : m_resWindowREL) {
 			if (!b->alloc(!m_compress))
@@ -398,7 +387,6 @@ template<typename T> struct TileComponentWindowBuffer {
 
 		return true;
 	}
-
 	/**
 	 * Get bounds of tile component
 	 * decompress: reduced canvas coordinates of window
@@ -407,11 +395,9 @@ template<typename T> struct TileComponentWindowBuffer {
 	grkRectU32 bounds() const{
 		return m_bounds;
 	}
-
 	grkRectU32 unreducedBounds() const{
 		return m_unreducedBounds;
 	}
-
 	uint64_t stridedArea(void) const{
 		return getTileWindowREL()->stride * m_bounds.height();
 	}
@@ -424,19 +410,14 @@ template<typename T> struct TileComponentWindowBuffer {
 	void transfer(T** buffer, uint32_t *stride){
 		getTileWindowREL()->transfer(buffer,stride);
 	}
-
-
 private:
-
 	bool useBandWindows() const{
 		//return !m_compress && m_wholeTileDecompress;
 		return false;
 	}
-
 	bool useTileCoordinatesForCodeblock() const {
 		return m_compress || !m_wholeTileDecompress;
 	}
-
 	uint8_t getBandIndex(uint8_t resno, eBandOrientation orientation) const{
 		uint8_t index = 0;
 		if (resno > 0) {
@@ -445,23 +426,17 @@ private:
 		}
 		return index;
 	}
-
 	/******************************************************/
 	// decompress: unreduced/reduced image component window
 	// compress:  unreduced/reduced tile component
 	grkRectU32 m_unreducedBounds;
 	grkRectU32 m_bounds;
 	/******************************************************/
-
-	// tile component coords
 	std::vector<Resolution*> m_resolution;
-
 	// windowed bounds for windowed decompress, otherwise full bounds
 	std::vector<ResWindow<T>* > m_resWindowREL;
-
 	// unreduced number of resolutions
 	uint8_t m_numResolutions;
-
 	bool m_compress;
 	bool m_wholeTileDecompress;
 };

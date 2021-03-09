@@ -49,38 +49,24 @@
 
 #pragma once
 
-/**
-@file SparseBuffer.h
-@brief Sparse buffer management
-
-The functions in this file manage sparse buffers. sparse buffers are arrays with
-potentially large dimensions, but with very few samples actually set. Such sparse
-arrays require allocating a small amount of memory, by just allocating memory
-for blocks of the array that are set. The minimum memory allocation unit is a
-a block. There is a trade-off to pick up an appropriate dimension for blocks.
-If it is too big, and pixels set are far from each other, too much memory will
-be used. If blocks are too small, the book-keeping costs of blocks will rise.
-*/
-
-/** @defgroup SparseBuffer SPARSE BUFFER - Sparse buffers */
-/*@{*/
-
 #include <cstdint>
+
+// SparseBuffer stores blocks in the canvas coordinate system. It covers the active sub-bands for all
+// (reduced) resolutions
 
 namespace grk {
 
 class ISparseBuffer {
 public:
-
 	virtual ~ISparseBuffer(){};
-
 	/** Read the content of a rectangular window of the sparse buffer into a
 	 * user buffer.
 	 *
 	 * Windows not written with write() are read as 0.
 	 *
 	 * @param window window to read from sparse buffer.
-	 * @param dest user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * dest_line_stride + (x1 - x0 - 1) * dest_col_stride + 1) bytes large.
+	 * @param dest user buffer to fill. Must be at least
+	 * sizeof(int32) * ( (y1 - y0 - 1) * dest_line_stride + (x1 - x0 - 1) * dest_col_stride + 1) bytes large.
 	 * @param dest_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
 	 * @param dest_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
 	 * @param forgiving if set to TRUE and the window is invalid, true will still be returned.
@@ -92,15 +78,14 @@ public:
 					 const uint32_t dest_col_stride,
 					 const uint32_t dest_line_stride,
 					 bool forgiving) = 0;
-
-
 	/** Write the content of a rectangular window into the sparse buffer from a
 	 * user buffer.
 	 *
 	 * Blocks intersecting the window are allocated, if not already done.
 	 *
 	 * @param window : window to write to buffer
-	 * @param src user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * src_line_stride + (x1 - x0 - 1) * src_col_stride + 1) bytes large.
+	 * @param src user buffer to fill. Must be at least
+	 * sizeof(int32) * ( (y1 - y0 - 1) * src_line_stride + (x1 - x0 - 1) * src_col_stride + 1) bytes large.
 	 * @param src_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
 	 * @param src_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
 	 * @param forgiving if set to TRUE and the window is invalid, true will still be returned.
@@ -112,8 +97,6 @@ public:
 					  const uint32_t src_col_stride,
 					  const uint32_t src_line_stride,
 					  bool forgiving) = 0;
-
-
 	/** Allocate all blocks for a rectangular window into the sparse buffer from a
 	 * user buffer.
 	 *
@@ -126,7 +109,6 @@ public:
 	 */
 	virtual bool alloc( grkRectU32 window, bool zeroOutBuffer) = 0;
 };
-
 struct SparseBlock{
 	SparseBlock(void) : data(nullptr)
 	{}
@@ -144,10 +126,9 @@ struct SparseBlock{
 };
 
 template<uint32_t LBW, uint32_t LBH> class SparseBuffer : public ISparseBuffer {
-
 public:
-
-	/** Creates a new sparse buffer.
+	/**
+	 * SparseBuffer constructor
 	 *
 	 * @param bds bounds
 	 *
@@ -163,6 +144,8 @@ public:
 		}
 	    uint32_t grid_off_x = floordivpow2(bounds.x0, LBW);
 	    uint32_t grid_off_y = floordivpow2(bounds.y0, LBH);
+	    assert(grid_off_x == 0);
+	    assert(grid_off_y == 0);
 	    uint32_t grid_width = ceildivpow2<uint32_t>(bounds.width(), LBW);
 	    uint32_t grid_height = ceildivpow2<uint32_t>(bounds.height(), LBH);
 	    grid_bounds = grkRectU32(grid_off_x,
@@ -174,8 +157,9 @@ public:
 	    for (uint64_t i = 0; i < block_count; ++i)
 	    	data_blocks[i] = nullptr;
 	}
-
-	/** Creates a new sparse buffer.
+	/**
+	 *
+	 * SparseBuffer constructor
 	 *
 	 * @param width total width of the array.
 	 * @param height total height of the array
@@ -184,11 +168,6 @@ public:
 	 */
 	SparseBuffer(uint32_t width,uint32_t height) : SparseBuffer(grkRectU32(0,0,width,height))
 	{}
-
-
-	/** Frees a sparse buffer.
-	 *
-	 */
 	~SparseBuffer()
 	{
 		if (data_blocks) {
@@ -213,7 +192,6 @@ public:
 				forgiving,
 				true);
 	}
-
 	bool write(uint8_t resno,
 			  grkRectU32 window,
 			  const int32_t* src,
@@ -262,12 +240,10 @@ public:
 	    return true;
 	}
 private:
-
 	inline SparseBlock* getBlock(uint32_t block_x, uint32_t block_y){
 		uint64_t index = (uint64_t)(block_y - grid_bounds.y0) * grid_bounds.width() + (block_x - grid_bounds.x0);
 		return data_blocks[index];
 	}
-
 	/** Returns whether window bounds are valid (non empty and within array bounds)
 	 * @param x0 left x coordinate of the window.
 	 * @param y0 top x coordinate of the window.
@@ -279,7 +255,6 @@ private:
 	    return !(win.x0 >= bounds.width() || win.x1 <= win.x0 || win.x1 > bounds.width() ||
 	             win.y0 >= bounds.height() || win.y1 <= win.y0 || win.y1 > bounds.height());
 	}
-
 	bool read_or_write(uint8_t resno,
 						grkRectU32 win,
 						int32_t* buf,
@@ -302,10 +277,8 @@ private:
 	    	}
 	        return forgiving;
 	    }
-
         //if (!buf)
         //	GRK_WARN("Empty block at %s, res: %d",win.boundsString().c_str(), resno);
-
 	    const uint64_t line_stride 	= buf_line_stride;
 	    const uint64_t col_stride 	= buf_col_stride;
 	    uint32_t block_y 			= win.y0 >>  LBH;
@@ -402,6 +375,3 @@ private:
 };
 
 }
-
-/*@}*/
-
