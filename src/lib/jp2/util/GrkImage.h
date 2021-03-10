@@ -17,7 +17,7 @@ public:
 
 
 class GrkImage : public grk_image {
-friend GrkObjectImpl<GrkImage>;
+friend GrkObjectWrapperImpl<GrkImage>;
 public:
 	GrkImage();
 

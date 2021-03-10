@@ -2,23 +2,23 @@
 
 namespace grk {
 
-GrkObject::GrkObject() : ref_count(1){
+GrkObjectWrapper::GrkObjectWrapper() : ref_count(1){
 }
 
-GrkObject::~GrkObject(){
+GrkObjectWrapper::~GrkObjectWrapper(){
 
 }
 
-uint32_t GrkObject::refcount(void){
+uint32_t GrkObjectWrapper::refcount(void){
 	return ref_count;
 }
 
-GrkObject* GrkObject::ref(void){
+GrkObjectWrapper* GrkObjectWrapper::ref(void){
 	ref_count++;
 
 	return this;
 }
-GrkObject* GrkObject::unref(void){
+GrkObjectWrapper* GrkObjectWrapper::unref(void){
 	if (ref_count == 0){
 		GRK_WARN("Attempt to uref an object with ref count 0");
 	} else {

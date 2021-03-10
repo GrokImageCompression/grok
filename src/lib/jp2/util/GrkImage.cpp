@@ -4,7 +4,7 @@ namespace grk {
 
 GrkImage::GrkImage() : ownsData(true){
 	memset((grk_image*)(this), 0, sizeof(grk_image));
-	obj.wrapper = new GrkObjectImpl(this);
+	obj.wrapper = new GrkObjectWrapperImpl(this);
 }
 GrkImage::~GrkImage(){
 	if (ownsData && comps) {
@@ -439,7 +439,7 @@ bool GrkImage::compositeFrom(const GrkImage *src_image) {
 }
 
 GrkImageMeta::GrkImageMeta() {
-	obj.wrapper = new GrkObjectImpl(this);
+	obj.wrapper = new GrkObjectWrapperImpl(this);
 	iptc_buf = nullptr;
 	iptc_len = 0;
 	xmp_buf = nullptr;

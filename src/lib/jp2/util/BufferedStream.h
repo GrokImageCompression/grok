@@ -36,7 +36,7 @@ namespace grk {
  Byte input-output stream.
  */
 struct BufferedStream: public IBufferedStream {
-	friend GrkObjectImpl<BufferedStream>;
+	friend GrkObjectWrapperImpl<BufferedStream>;
 	BufferedStream(uint8_t *buffer, size_t buffer_size, bool l_is_input);
 
 	grk_object obj;

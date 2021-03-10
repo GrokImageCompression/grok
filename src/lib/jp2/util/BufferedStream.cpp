@@ -40,7 +40,7 @@ BufferedStream::BufferedStream(uint8_t *buffer, size_t buffer_size,
 	m_buf = new grkBufferU8(
 			(!buffer && buffer_size) ? new uint8_t[buffer_size] : buffer,
 			buffer_size, buffer == nullptr);
-	obj.wrapper = new GrkObjectImpl(this);
+	obj.wrapper = new GrkObjectWrapperImpl(this);
 }
 
 BufferedStream::~BufferedStream() {
@@ -422,7 +422,7 @@ bool BufferedStream::isMemStream() {
 }
 
 BufferedStream* BufferedStream::getImpl(grk_stream *stream){
-	return ((GrkObjectImpl<BufferedStream>*)stream->wrapper)->getWrappee();
+	return ((GrkObjectWrapperImpl<BufferedStream>*)stream->wrapper)->getWrappee();
 }
 
 grk_stream* BufferedStream::getWrapper(void){

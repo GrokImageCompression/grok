@@ -37,7 +37,7 @@ using namespace grk;
 
 struct GrkCodec;
 
-class GrkCodecObject : public GrkObject {
+class GrkCodecObject : public GrkObjectWrapper {
 public:
 	explicit GrkCodecObject(GrkCodec *cdc) : codec(cdc)
 	{}
@@ -107,7 +107,7 @@ GRK_API void GRK_CALLCONV grk_deinitialize() {
 GRK_API void GRK_CALLCONV grk_object_ref(grk_object *obj){
 	if (!obj)
 		return;
-	GrkObject* object = (GrkObject*)obj->wrapper;
+	GrkObjectWrapper* object = (GrkObjectWrapper*)obj->wrapper;
 
 	object->ref();
 
@@ -115,7 +115,7 @@ GRK_API void GRK_CALLCONV grk_object_ref(grk_object *obj){
 GRK_API void GRK_CALLCONV grk_object_unref(grk_object *obj){
 	if (!obj)
 		return;
-	GrkObject* object = (GrkObject*)obj->wrapper;
+	GrkObjectWrapper* object = (GrkObjectWrapper*)obj->wrapper;
 	assert(object->refcount());
 	object->unref();
 	if (object->refcount() == 0)

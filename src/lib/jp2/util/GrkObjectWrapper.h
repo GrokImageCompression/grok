@@ -4,12 +4,12 @@ namespace grk {
 
 #include "grok.h"
 
-class GrkObject {
+class GrkObjectWrapper {
 public:
-	explicit GrkObject(void);
-	virtual ~GrkObject(void);
-	GrkObject* ref(void);
-	GrkObject* unref(void);
+	explicit GrkObjectWrapper(void);
+	virtual ~GrkObjectWrapper(void);
+	GrkObjectWrapper* ref(void);
+	GrkObjectWrapper* unref(void);
 	uint32_t refcount(void);
 	virtual void release(void) = 0;
 private:
@@ -17,11 +17,11 @@ private:
 };
 
 
-template<typename T> class GrkObjectImpl : public GrkObject {
+template<typename T> class GrkObjectWrapperImpl : public GrkObjectWrapper {
 public:
-	explicit GrkObjectImpl(T *wrap) : wrappee(wrap)
+	explicit GrkObjectWrapperImpl(T *wrap) : wrappee(wrap)
 	{}
-	virtual ~GrkObjectImpl(void){}
+	virtual ~GrkObjectWrapperImpl(void){}
 	virtual void release(void){
 		assert(wrappee);
 		delete wrappee;
