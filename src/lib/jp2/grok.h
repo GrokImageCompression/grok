@@ -371,7 +371,7 @@ typedef void (*grk_msg_callback)(const char *msg, void *client_data);
  *
  */
 typedef struct _grk_object{
-	void* wrappee;
+	void* wrapper;
 } grk_object;
 
 

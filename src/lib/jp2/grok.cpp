@@ -53,7 +53,7 @@ struct GrkCodec {
 	~GrkCodec();
 
 	static GrkCodec* getImpl(grk_codec *codec){
-		return ((GrkCodecObject*)codec->wrappee)->getCodec();
+		return ((GrkCodecObject*)codec->wrapper)->getCodec();
 	}
 	grk_codec* getWrapper(void){
 		return &obj;
@@ -69,7 +69,7 @@ GrkCodec::GrkCodec() :
 			m_compressor(nullptr),
 			m_decompressor(nullptr),
 			m_stream(nullptr){
-	obj.wrappee = new GrkCodecObject(this);
+	obj.wrapper = new GrkCodecObject(this);
 }
 
 void GrkCodecObject::release(void){
@@ -107,7 +107,7 @@ GRK_API void GRK_CALLCONV grk_deinitialize() {
 GRK_API void GRK_CALLCONV grk_object_ref(grk_object *obj){
 	if (!obj)
 		return;
-	GrkObject* object = (GrkObject*)obj->wrappee;
+	GrkObject* object = (GrkObject*)obj->wrapper;
 
 	object->ref();
 
@@ -115,7 +115,7 @@ GRK_API void GRK_CALLCONV grk_object_ref(grk_object *obj){
 GRK_API void GRK_CALLCONV grk_object_unref(grk_object *obj){
 	if (!obj)
 		return;
-	GrkObject* object = (GrkObject*)obj->wrappee;
+	GrkObject* object = (GrkObject*)obj->wrapper;
 	assert(object->refcount());
 	object->unref();
 	if (object->refcount() == 0)
