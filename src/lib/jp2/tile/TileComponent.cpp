@@ -205,7 +205,7 @@ bool TileComponent::allocSparseBuffer(uint32_t numres, bool truncatedTile){
 						 auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
 
 						// transform from canvas coordinates
-						// to resolution coordinates (relative to resolution origin)
+						// to buffer coordinates (relative to associated resolution origin)
 						uint32_t x = cblkBounds.x0 - band->x0;
 						uint32_t y = cblkBounds.y0 - band->y0;
 						if (band->orientation & 1) {
@@ -257,7 +257,7 @@ bool TileComponent::allocSparseBuffer(uint32_t numres, bool truncatedTile){
 						 auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
 
 						// transform from canvas coordinates
-						// to resolution coordinates (relative to resolution origin)
+						// to buffer coordinates (relative to associated resolution origin)
 						uint32_t x = cblkBounds.x0 - band->x0;
 						uint32_t y = cblkBounds.y0 - band->y0;
 						if (band->orientation & 1) {

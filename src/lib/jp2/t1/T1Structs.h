@@ -259,7 +259,7 @@ struct BlockExec : public IOpenable {
 	float stepsize;
 	uint32_t cblk_sty;
 	uint8_t qmfbid;
-	/* code block offset in resolution coordinates*/
+	/* code block offset in buffer coordinates*/
 	uint32_t x;
 	uint32_t y;
 	// missing bit planes for all blocks in band

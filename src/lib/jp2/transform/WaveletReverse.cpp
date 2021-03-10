@@ -887,8 +887,8 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
 							vert,
 							vert.sn_full,
 							// LL
-							tilec->getBuffer()->getResWindowREL(res-1U)->data,
-							tilec->getBuffer()->getResWindowREL(res-1U)->stride,
+							tilec->getBuffer()->getBufferResWindowREL(res-1U)->data,
+							tilec->getBuffer()->getBufferResWindowREL(res-1U)->stride,
 							// HL
 							tilec->getBuffer()->getBandWindowREL(res, BAND_ORIENT_HL)->data,
 							tilec->getBuffer()->getBandWindowREL(res,BAND_ORIENT_HL)->stride,
@@ -925,8 +925,8 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
 							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->data,
 							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->stride,
 							// resolution buffer
-							tilec->getBuffer()->getResWindowREL(res)->data,
-							tilec->getBuffer()->getResWindowREL(res)->stride))
+							tilec->getBuffer()->getBufferResWindowREL(res)->data,
+							tilec->getBuffer()->getBufferResWindowREL(res)->stride))
     		return false;
     }
     horiz.release();
@@ -1391,8 +1391,8 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 							horiz,
 							vert.sn_full,
 							// LL
-							(float*) tilec->getBuffer()->getResWindowREL(res-1U)->data,
-							tilec->getBuffer()->getResWindowREL(res-1U)->stride,
+							(float*) tilec->getBuffer()->getBufferResWindowREL(res-1U)->data,
+							tilec->getBuffer()->getBufferResWindowREL(res-1U)->stride,
 							// HL
 							(float*) tilec->getBuffer()->getBandWindowREL(res, BAND_ORIENT_HL)->data,
 							tilec->getBuffer()->getBandWindowREL(res,BAND_ORIENT_HL)->stride,
@@ -1430,8 +1430,8 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 							(float*) tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->data,
 							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->stride,
 							// resolution window
-							(float*) tilec->getBuffer()->getResWindowREL(res)->data,
-							tilec->getBuffer()->getResWindowREL(res)->stride))
+							(float*) tilec->getBuffer()->getBufferResWindowREL(res)->data,
+							tilec->getBuffer()->getBufferResWindowREL(res)->stride))
         	return false;
     }
     horiz.release();
@@ -1944,9 +1944,9 @@ template <typename T,
         // simply copy into tile component buffer
     	bool ret = sa->read(0,
     					synthesisWindow,
-					   tilec->getBuffer()->getHighestResWindowREL()->data,
+					   tilec->getBuffer()->getHighestBufferResWindowREL()->data,
                        1,
-					   tilec->getBuffer()->getHighestResWindowREL()->stride,
+					   tilec->getBuffer()->getHighestBufferResWindowREL()->stride,
                        true);
         assert(ret);
         GRK_UNUSED(ret);
@@ -1988,7 +1988,7 @@ template <typename T,
             if (!sa->alloc(temp.grow(2 * FILTER_WIDTH, fullRes->width(),  fullRes->height()),false))
     			 goto cleanup;
         }
-        auto resWindowRect = *((grkRectU32*)tilec->getBuffer()->getResWindowREL(resno));
+        auto resWindowRect = *((grkRectU32*)tilec->getBuffer()->getBufferResWindowREL(resno));
         if (!sa->alloc(resWindowRect,false))
 			goto cleanup;
         // two windows formed by horizontal pass and used as input for vertical pass
@@ -2180,9 +2180,9 @@ template <typename T,
     //final read into tile buffer
 	ret = sa->read(numres-1,
 					synthesisWindow,
-				   tilec->getBuffer()->getHighestResWindowREL()->data,
+				   tilec->getBuffer()->getHighestBufferResWindowREL()->data,
 				   1,
-				   tilec->getBuffer()->getHighestResWindowREL()->stride,
+				   tilec->getBuffer()->getHighestBufferResWindowREL()->stride,
 				   true);
 	assert(ret);
 	GRK_UNUSED(ret);
@@ -2193,14 +2193,14 @@ template <typename T,
 	auto tileSynthesisWindow = synthesisWindow.pan(tilec->x0, tilec->y0);
 	if (compno == debug_compno) {
 		for (uint32_t j = 0; j < tileSynthesisWindow.height();j++) {
-			auto bufPtr = tilec->getBuffer()->getHighestResWindowREL()->data + j * tilec->getBuffer()->getHighestResWindowREL()->stride;
+			auto bufPtr = tilec->getBuffer()->getHighestBufferResWindowREL()->data + j * tilec->getBuffer()->getHighestBufferResWindowREL()->stride;
 			for (uint32_t i = 0; i < tileSynthesisWindow.width();i++) {
 				auto val = grk_memcheck(bufPtr,1);
 				if (val != grk_mem_ok){
 					GRK_ERROR("***** Partial wavelet after final read: uninitialized memory at (x,y) =  (%d,%d) ******",
 							tileSynthesisWindow.x0 + i,tileSynthesisWindow.y0 + j);
 				}
-				bufPtr += tilec->getBuffer()->getHighestResWindowREL()->stride;
+				bufPtr += tilec->getBuffer()->getHighestBufferResWindowREL()->stride;
 			}
 		}
 	}
