@@ -10,7 +10,7 @@ public:
 	virtual ~GrkObject(void);
 	GrkObject* ref(void);
 	GrkObject* unref(void);
-	uint32_t getRefCount(void);
+	uint32_t refcount(void);
 	virtual void release(void) = 0;
 private:
 	uint32_t ref_count;
@@ -23,9 +23,12 @@ public:
 	{}
 	virtual ~GrkObjectImpl(void){}
 	virtual void release(void){
+		assert(wrappee);
 		delete wrappee;
+		wrappee = nullptr;
 	}
 	T* getWrappee(void){
+		assert(wrappee);
 		return wrappee;
 	}
 private:

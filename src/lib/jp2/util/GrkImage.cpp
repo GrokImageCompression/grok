@@ -13,7 +13,6 @@ GrkImage::~GrkImage(){
 	}
 	if (meta)
 		grk_object_unref(&meta->obj);
-	delete (GrkObject*)obj.wrappee;
 }
 
 GrkImage *  GrkImage::create(uint16_t numcmpts,
@@ -452,7 +451,6 @@ GrkImageMeta::~GrkImageMeta(){
 	FileFormatDecompress::free_color(&color);
 	delete[] iptc_buf;
 	delete[] xmp_buf;
-	delete (GrkObject*)obj.wrappee;
 }
 
 }

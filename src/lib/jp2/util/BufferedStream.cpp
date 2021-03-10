@@ -47,7 +47,6 @@ BufferedStream::~BufferedStream() {
 	if (m_free_user_data_fn)
 		m_free_user_data_fn(m_user_data);
 	delete m_buf;
-	delete (GrkObjectImpl<BufferedStream>*)obj.wrappee;
 }
 //note: passing in nullptr for p_buffer will execute a zero-copy read
 size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {

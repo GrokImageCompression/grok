@@ -79,7 +79,6 @@ void GrkCodecObject::release(void){
 GrkCodec::~GrkCodec(){
 	delete m_compressor;
 	delete m_decompressor;
-	delete (GrkCodecObject*)obj.wrappee;
 }
 
 ThreadPool* ThreadPool::singleton = nullptr;
@@ -117,7 +116,11 @@ GRK_API void GRK_CALLCONV grk_object_unref(grk_object *obj){
 	if (!obj)
 		return;
 	GrkObject* object = (GrkObject*)obj->wrappee;
+	assert(object->refcount());
 	object->unref();
+	if (object->refcount() == 0)
+		delete object;
+
 }
 
 /* ---------------------------------------------------------------------- */

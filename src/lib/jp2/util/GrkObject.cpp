@@ -9,7 +9,7 @@ GrkObject::~GrkObject(){
 
 }
 
-uint32_t GrkObject::getRefCount(void){
+uint32_t GrkObject::refcount(void){
 	return ref_count;
 }
 
