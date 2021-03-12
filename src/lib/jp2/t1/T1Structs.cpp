@@ -209,14 +209,15 @@ Codeblock::Codeblock():
 #endif
 {}
 Codeblock::Codeblock(const Codeblock &rhs): grkRectU32(rhs),
-											compressedStream(rhs.compressedStream),
 											numbps(rhs.numbps),
 											numlenbits(rhs.numlenbits),
 											numPassesInPacket(rhs.numPassesInPacket)
 #ifdef DEBUG_LOSSLESS_T2
 	,included(0)
 #endif
-{}
+{
+	compressedStream = rhs.compressedStream;
+}
 Codeblock& Codeblock::operator=(const Codeblock& rhs){
 	if (this != &rhs) { // self-assignment check expected
 		x0 = rhs.x0;
@@ -288,12 +289,14 @@ DecompressCodeblock::DecompressCodeblock() : 	segs(nullptr),
 												#ifdef DEBUG_LOSSLESS_T2
 												included(0),
 												#endif
-												numSegmentsAllocated(0)
+												numSegmentsAllocated(0),
+												uncompressedData(nullptr)
 {}
 DecompressCodeblock::~DecompressCodeblock(){
 	compressedStream.dealloc();
 	cleanup_seg_buffers();
 	delete[] segs;
+	delete uncompressedData;
 }
 Segment* DecompressCodeblock::getSegment(uint32_t segmentIndex){
 	if (!segs) {
@@ -329,7 +332,6 @@ void DecompressCodeblock::cleanup_seg_buffers(){
 		delete b;
 	seg_buffers.clear();
 	numSegments = 0;
-
 }
 size_t DecompressCodeblock::getSegBuffersLen(){
 	return std::accumulate(seg_buffers.begin(), seg_buffers.end(), (size_t)0, [](const size_t s, grkBufferU8 *a){
@@ -354,7 +356,6 @@ Subband::Subband() :
 				numbps(0),
 				stepsize(0) {
 }
-
 //note: don't copy precinct array
 Subband::Subband(const Subband &rhs) : grkRectU32(rhs),
 										orientation(rhs.orientation),

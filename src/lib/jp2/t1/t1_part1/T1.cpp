@@ -315,18 +315,17 @@ bool T1::allocate_buffers(uint32_t width, uint32_t height) {
 	uint32_t newDataSize = width * height;
 
 	if (newDataSize > datasize) {
-		grk::grkAlignedFree(data);
-		data =
-				(int32_t*) grk::grkAlignedMalloc(newDataSize * sizeof(int32_t));
-		if (!data) {
+		grk::grkAlignedFree(uncompressedData);
+		uncompressedData =	(int32_t*) grk::grkAlignedMalloc(newDataSize * sizeof(int32_t));
+		if (!uncompressedData) {
 			GRK_ERROR("Out of memory");
 			return false;
 		}
 		datasize = newDataSize;
 	}
 	/* memset first arg is declared to never be null by gcc */
-	if (data && !compressor)
-		memset(data, 0, newDataSize * sizeof(int32_t));
+	if (uncompressedData && !compressor)
+		memset(uncompressedData, 0, newDataSize * sizeof(int32_t));
 
 	flags_stride = width + 2U; /* can't be 0U */
 	newflagssize = (height + 3U) / 4U + 2U;
@@ -379,12 +378,12 @@ bool T1::allocate_buffers(uint32_t width, uint32_t height) {
 }
 
 
-T1::T1(bool isCompressor,uint32_t maxCblkW,uint32_t maxCblkH) : data(nullptr),
+T1::T1(bool isCompressor,uint32_t maxCblkW,uint32_t maxCblkH) : uncompressedData(nullptr),
 															w(0),
 															h(0),
 															data_stride(0),
-															cblkdatabuffer(nullptr),
-															cblkdatabuffersize(0),
+															compressedDataBuffer(nullptr),
+															compressedDataBufferLen(0),
 															flags(nullptr),
 															datasize(0),
 															flagssize(0),
@@ -392,20 +391,20 @@ T1::T1(bool isCompressor,uint32_t maxCblkW,uint32_t maxCblkH) : data(nullptr),
 {
 	memset(&coder, 0, sizeof(coder));
 	if (!isCompressor) {
-	   cblkdatabuffersize = maxCblkW * maxCblkH * (uint32_t)sizeof(int32_t);
-	   cblkdatabuffer = (uint8_t*)grk_malloc(cblkdatabuffersize);
+	   compressedDataBufferLen = maxCblkW * maxCblkH * (uint32_t)sizeof(int32_t);
+	   compressedDataBuffer = (uint8_t*)grk_malloc(compressedDataBufferLen);
    }
 
 }
 
 T1::~T1(){
-	grk::grkAlignedFree(data);
-	data = nullptr;
+	grk::grkAlignedFree(uncompressedData);
+	uncompressedData = nullptr;
 
 	grkAlignedFree(flags);
 	flags = nullptr;
 
-	grk::grk_free(cblkdatabuffer);
+	grk::grk_free(compressedDataBuffer);
 }
 
 
@@ -526,10 +525,10 @@ void T1::enc_sigpass(int32_t bpno, int32_t *nmsedec,
 				flagsp++;
 				continue;
 			}
-			 enc_sigpass_step_macro(&data[((k + 0) * data_stride) + i], 0, cblksty & GRK_CBLKSTY_VSC);
-			 enc_sigpass_step_macro(&data[((k + 1) * data_stride) + i], 3, 0);
-			 enc_sigpass_step_macro(&data[((k + 2) * data_stride) + i], 6, 0);
-			 enc_sigpass_step_macro(&data[((k + 3) * data_stride) + i], 9, 0);
+			 enc_sigpass_step_macro(&uncompressedData[((k + 0) * data_stride) + i], 0, cblksty & GRK_CBLKSTY_VSC);
+			 enc_sigpass_step_macro(&uncompressedData[((k + 1) * data_stride) + i], 3, 0);
+			 enc_sigpass_step_macro(&uncompressedData[((k + 2) * data_stride) + i], 6, 0);
+			 enc_sigpass_step_macro(&uncompressedData[((k + 3) * data_stride) + i], 9, 0);
 			++flagsp;
 		}
 		flagsp += extra;
@@ -542,7 +541,7 @@ void T1::enc_sigpass(int32_t bpno, int32_t *nmsedec,
 				flagsp++;
 				continue;
 			}
-			int32_t* pdata = data + k* data_stride + i;
+			int32_t* pdata = uncompressedData + k* data_stride + i;
 			for (uint32_t j = k;	j < h; 	++j) {
 			 enc_sigpass_step_macro(pdata,	 3*(j - k),
 						(j == k && (cblksty & GRK_CBLKSTY_VSC) != 0));
@@ -594,10 +593,10 @@ void T1::enc_refpass(int32_t bpno, int32_t *nmsedec,uint8_t type) {
 				flagsp++;
 				continue;
 			}
-			 enc_refpass_step_macro(	&data[((k + 0) * data_stride) + i],  0);
-			 enc_refpass_step_macro(	&data[((k + 1) * data_stride) + i], 3);
-			 enc_refpass_step_macro(	&data[((k + 2) * data_stride) + i], 6);
-			 enc_refpass_step_macro(	&data[((k + 3) * data_stride) + i], 9);
+			 enc_refpass_step_macro(	&uncompressedData[((k + 0) * data_stride) + i],  0);
+			 enc_refpass_step_macro(	&uncompressedData[((k + 1) * data_stride) + i], 3);
+			 enc_refpass_step_macro(	&uncompressedData[((k + 2) * data_stride) + i], 6);
+			 enc_refpass_step_macro(	&uncompressedData[((k + 3) * data_stride) + i], 9);
 			++flagsp;
 		}
 		flagsp += extra;
@@ -611,7 +610,7 @@ void T1::enc_refpass(int32_t bpno, int32_t *nmsedec,uint8_t type) {
 				continue;
 			}
 			for (j = k; j < h; ++j)
-			 enc_refpass_step_macro(&data[(j * data_stride) + i],3*(j - k));
+			 enc_refpass_step_macro(&uncompressedData[(j * data_stride) + i],3*(j - k));
 			++flagsp;
 		}
 	}
@@ -632,7 +631,7 @@ void T1::enc_clnpass(int32_t bpno, int32_t *nmsedec,	uint32_t cblksty) {
 			uint32_t runlen = 0;
 			if (agg) {
 				for (; runlen < 4; ++runlen) {
-					if (smr_abs(data[((k + runlen) * data_stride) + i])	& (uint32_t)one)
+					if (smr_abs(uncompressedData[((k + runlen) * data_stride) + i])	& (uint32_t)one)
 						break;
 				}
 				curctx = mqc->ctxs + T1_CTXNO_AGG;
@@ -643,7 +642,7 @@ void T1::enc_clnpass(int32_t bpno, int32_t *nmsedec,	uint32_t cblksty) {
 				mqc_encode_macro(mqc,curctx,a,c, ct,  runlen >> 1);
 				mqc_encode_macro(mqc,curctx,a,c, ct, runlen & 1);
 			}
-			auto datap = &data[((k + runlen) * data_stride) + i];
+			auto datap = &uncompressedData[((k + runlen) * data_stride) + i];
 			const uint32_t check = (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 |
 					T1_SIGMA_13	| T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
 			bool stage_2 = true;
@@ -702,7 +701,7 @@ void T1::enc_clnpass(int32_t bpno, int32_t *nmsedec,	uint32_t cblksty) {
 	if (k < h) {
 		uint32_t runlen = 0;
 		for (uint32_t i = 0; i < w; ++i,++flagsp) {
-			auto datap = &data[((k + runlen) * data_stride) + i];
+			auto datap = &uncompressedData[((k + runlen) * data_stride) + i];
 			const uint32_t check = (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 |
 					T1_SIGMA_13	| T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
 			bool stage_2 = true;
@@ -956,7 +955,7 @@ void T1::dec_clnpass_step(grk_flag *flagsp, int32_t *datap,
     uint32_t i, j, k; \
     const uint32_t l_w = w; \
     auto mqc = &(t1->coder); \
-    auto data = t1->data; \
+    auto data = t1->uncompressedData; \
     auto flagsp = &t1->flags[flags_stride + 1]; \
  \
     DOWNLOAD_MQC_VARIABLES(mqc); \
@@ -1130,7 +1129,7 @@ void T1::dec_sigpass_raw(int32_t bpno, int32_t cblksty) {
 	int32_t one, half, oneplushalf;
 	auto flagsp = flags + 1 + (w+2);
 	const uint32_t l_w = w;
-	auto dataPtr = data;
+	auto dataPtr = uncompressedData;
 
 	one = 1 << bpno;
 	half = one >> 1;
@@ -1171,7 +1170,7 @@ void T1::dec_sigpass_raw(int32_t bpno, int32_t cblksty) {
 { \
         int32_t one, half, oneplushalf; \
         uint32_t i, j, k; \
-        auto dataPtr = data; \
+        auto dataPtr = uncompressedData; \
         auto flagsp = &flags[(flags_stride) + 1]; \
         const uint32_t l_w = w; \
         auto mqc = &(coder); \
@@ -1260,7 +1259,7 @@ inline void T1::dec_refpass_step_mqc(mqcoder *mqc, grk_flag *flagsp,
 
 void T1::dec_refpass_raw(int32_t bpno) {
 	int32_t one, poshalf;
-	auto dataPtr = data;
+	auto dataPtr = uncompressedData;
 	auto flagsp = flags + 1 + (w+2);
 	const uint32_t l_w = w;
 
@@ -1292,7 +1291,7 @@ void T1::dec_refpass_raw(int32_t bpno) {
 { \
         int32_t one, poshalf; \
         uint32_t i, j, k; \
-        auto dataPtr = data; \
+        auto dataPtr = uncompressedData; \
         auto flagsp = &flags[flags_stride + 1]; \
         const uint32_t l_w = w; \
         auto mqc = &(coder); \
@@ -1339,7 +1338,10 @@ void T1::dec_refpass_mqc(int32_t bpno) {
 	}
 }
 
-bool T1::decompress_cblk(cblk_dec *cblk, uint8_t orientation, uint32_t cblksty) {
+bool T1::decompress_cblk(DecompressCodeblock *cblk,
+						uint8_t *compressedDataBuffer,
+						uint8_t orientation,
+						uint32_t cblksty) {
 	auto mqc = &coder;
 	uint32_t cblkdataindex = 0;
 	bool check_pterm = cblksty & GRK_CBLKSTY_PTERM;
@@ -1360,10 +1362,9 @@ bool T1::decompress_cblk(cblk_dec *cblk, uint8_t orientation, uint32_t cblksty) 
 	uint32_t passtype = 2;
 
 	mqc_resetstates(mqc);
-	auto cblkdata = cblk->seg_buffers[0].buf;
 
-	for (uint32_t segno = 0; segno < cblk->numSegments; ++segno) {
-		auto seg = cblk->segs + segno;
+	for (uint32_t segno = 0; segno < cblk->getNumSegments(); ++segno) {
+		auto seg = cblk->getSegment(segno);
 
 		/* BYPASS mode */
 		uint8_t type = ((bpno_plus_one <= ((int32_t) (cblk->numbps)) - 4)
@@ -1371,9 +1372,9 @@ bool T1::decompress_cblk(cblk_dec *cblk, uint8_t orientation, uint32_t cblksty) 
 				T1_TYPE_RAW : T1_TYPE_MQ;
 
 		if (type == T1_TYPE_RAW) {
-			mqc_raw_init_dec(mqc, cblkdata + cblkdataindex, seg->len);
+			mqc_raw_init_dec(mqc, compressedDataBuffer + cblkdataindex, seg->len);
 		} else {
-			mqc_init_dec(mqc, cblkdata + cblkdataindex, seg->len);
+			mqc_init_dec(mqc, compressedDataBuffer + cblkdataindex, seg->len);
 		}
 		cblkdataindex += seg->len;
 

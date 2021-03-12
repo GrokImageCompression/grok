@@ -81,7 +81,7 @@ private:
 
 class WaveletFwdImpl {
 public:
-	virtual ~WaveletFwdImpl(){}
+	virtual ~WaveletFwdImpl() = default;
 	bool compress(TileComponent *tile_comp, uint8_t qmfbid);
 private:
 	template<typename T, typename DWT> bool encode_procedure(TileComponent * tilec);

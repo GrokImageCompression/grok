@@ -58,7 +58,7 @@ namespace grk {
 
 class ISparseBuffer {
 public:
-	virtual ~ISparseBuffer(){};
+	virtual ~ISparseBuffer() = default;
 	/** Read the content of a rectangular window of the sparse buffer into a
 	 * user buffer.
 	 *

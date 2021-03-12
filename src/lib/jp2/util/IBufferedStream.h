@@ -20,8 +20,7 @@ namespace grk {
 
 struct IBufferedStream {
 
-	virtual ~IBufferedStream() {
-	}
+	virtual ~IBufferedStream() = default;
 
 	// low level write methods
 	virtual bool write_byte(uint8_t value)=0;

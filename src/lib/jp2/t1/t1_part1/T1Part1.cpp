@@ -52,7 +52,7 @@ void T1Part1::preCompress(CompressBlockExec *block, grk_tile *tile,
 				uint32_t mag = smr_abs(temp);
 				if (mag > maximum)
 					maximum = mag;
-				t1->data[cblk_index] = temp;
+				t1->uncompressedData[cblk_index] = temp;
 				tileIndex++;
 				cblk_index++;
 			}
@@ -67,7 +67,7 @@ void T1Part1::preCompress(CompressBlockExec *block, grk_tile *tile,
 				uint32_t mag = smr_abs(temp);
 				if (mag > maximum)
 					maximum = mag;
-				t1->data[cblk_index] = temp;
+				t1->uncompressedData[cblk_index] = temp;
 				tileIndex++;
 				cblk_index++;
 			}
@@ -124,58 +124,30 @@ bool T1Part1::compress(CompressBlockExec *block) {
 bool T1Part1::decompress(DecompressBlockExec *block) {
 	auto cblk = block->cblk;
   	if (!cblk->seg_buffers.empty()) {
-		size_t total_seg_len = cblk->getSegBuffersLen() + grk_cblk_dec_compressed_data_pad_right;
-		if (t1->cblkdatabuffersize < total_seg_len) {
-			auto new_block = (uint8_t*) grk_realloc(t1->cblkdatabuffer,
-					total_seg_len);
+		size_t totalSegLen = cblk->getSegBuffersLen() + grk_cblk_dec_compressed_data_pad_right;
+		if (t1->compressedDataBufferLen < totalSegLen) {
+			auto new_block = (uint8_t*) grk_realloc(t1->compressedDataBuffer,
+					totalSegLen);
 			if (!new_block)
 				return false;
-			t1->cblkdatabuffer = new_block;
-			t1->cblkdatabuffersize = (uint32_t)total_seg_len;
+			t1->compressedDataBuffer = new_block;
+			t1->compressedDataBufferLen = (uint32_t)totalSegLen;
 		}
 		size_t offset = 0;
 		for (auto& b : cblk->seg_buffers) {
-			memcpy(t1->cblkdatabuffer + offset, b->buf, b->len);
+			memcpy(t1->compressedDataBuffer + offset, b->buf, b->len);
 			offset += b->len;
 		}
-		seg_data_chunk chunk;
-		chunk.len = t1->cblkdatabuffersize;
-		chunk.buf = t1->cblkdatabuffer;
-
-		cblk_dec cblkexp;
-		memset(&cblkexp, 0, sizeof(cblk_dec));
-		cblkexp.seg_buffers = &chunk;
-		cblkexp.x0 = block->cblk->x0;
-		cblkexp.y0 = block->cblk->y0;
-		cblkexp.x1 = cblkexp.x0 + cblk->width();
-		cblkexp.y1 = cblkexp.y0 + cblk->height();
-		assert(cblk->width() > 0);
-		assert(cblk->height() > 0);
-		cblkexp.numSegments = cblk->getNumSegments();
-		auto segs = new seg[cblk->getNumSegments()];
-		for (uint32_t i = 0; i < cblk->getNumSegments(); ++i){
-			auto segp = segs + i;
-			memset(segp, 0, sizeof(seg));
-			auto sgrk = cblk->getSegment(i);
-			segp->len = sgrk->len;
-			assert(segp->len <= total_seg_len);
-			segp->numpasses = sgrk->numpasses;
-		}
-		cblkexp.segs = segs;
-		// subtract roishift as it was added when packet was parsed
-		// and exp uses subtracted value
-		cblkexp.numbps = cblk->numbps;
-
-		bool ret =t1->decompress_cblk(&cblkexp,
+		bool ret =t1->decompress_cblk(cblk,
+									t1->compressedDataBuffer,
 									block->bandOrientation,
 									block->cblk_sty);
 
-		delete[] segs;
 		if (!ret)
 			return false;
   	}
 
-	return block->tilec->postProcess(t1->data, block,false);
+	return block->tilec->postProcess(t1->uncompressedData, block,false);
 }
 
 }

@@ -445,7 +445,7 @@ template<typename T, typename DWT> bool WaveletFwdImpl::encode_procedure(TileCom
     Resolution * lastRes = nullptr;
     //const int num_threads = grk_thread_pool_get_thread_count(tp);
 	uint32_t stride = tilec->getBuffer()->getHighestBufferResWindowREL()->stride;
-    T * GRK_RESTRICT tiledp = (T*)tilec->getBuffer()->getHighestBufferResWindowREL()->data;
+    T * GRK_RESTRICT tiledp = (T*)tilec->getBuffer()->getHighestBufferResWindowREL()->buf;
 
     maxNumResolutions = (int32_t)tilec->numresolutions - 1;
     currentRes = tilec->tileCompResolution + maxNumResolutions;

@@ -117,7 +117,7 @@ class GrkImage;
 typedef std::function<bool(void)>  PROCEDURE_FUNC;
 
 struct ICodeStreamCompress {
-   virtual ~ICodeStreamCompress(){}
+   virtual ~ICodeStreamCompress() = default;
    virtual bool initCompress(grk_cparameters  *p_param,GrkImage *p_image) = 0;
    virtual bool startCompress(void) = 0;
    virtual bool compress(grk_plugin_tile* tile) = 0;
@@ -127,7 +127,7 @@ struct ICodeStreamCompress {
 
 struct ICodeStreamDecompress {
 public:
-   virtual ~ICodeStreamDecompress(){}
+   virtual ~ICodeStreamDecompress() = default;
    virtual bool readHeader(grk_header_info  *header_info) = 0;
    virtual GrkImage* getImage(uint16_t tileIndex) = 0;
    virtual GrkImage* getImage(void) = 0;

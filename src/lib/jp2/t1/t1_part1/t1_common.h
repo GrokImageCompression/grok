@@ -84,23 +84,6 @@ struct cblk_enc {
     uint32_t numPassesTotal;
 };
 
-struct seg_data_chunk {
-    uint8_t * buf;
-    uint32_t len;
-};
-
-struct seg {
-    uint32_t len;
-    uint32_t numpasses;
-};
-
-struct cblk_dec {
-    seg* segs;
-    seg_data_chunk* seg_buffers;
-    uint32_t x0, y0, x1, y1;
-    uint32_t numbps;
-    uint32_t numSegments;
-};
 
 /* Macros to deal with signed integer with just MSB bit set for
  * negative values (smr = signed magnitude representation) */

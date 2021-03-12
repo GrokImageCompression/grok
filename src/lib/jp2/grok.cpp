@@ -41,7 +41,7 @@ class GrkCodecObject : public GrkObjectWrapper {
 public:
 	explicit GrkCodecObject(GrkCodec *cdc) : codec(cdc)
 	{}
-	virtual ~GrkCodecObject(void){}
+	virtual ~GrkCodecObject(void) = default;
 	virtual void release(void);
 	GrkCodec *getCodec(){ return codec;}
 private:

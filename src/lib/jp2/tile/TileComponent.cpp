@@ -367,8 +367,8 @@ bool TileComponent::postProcess(int32_t *srcData, DecompressBlockExec *block, bo
 template<typename F> bool TileComponent::postDecompressImpl(int32_t *srcData, DecompressBlockExec *block){
 	auto cblk = block->cblk;
 
-	grkBuffer2d<int32_t> dest;
-	grkBuffer2d<int32_t> src = grkBuffer2d<int32_t>(srcData, false, cblk->width(), cblk->width(), cblk->height());
+	grkBuffer2d<int32_t, AllocatorAligned> dest;
+	grkBuffer2d<int32_t, AllocatorAligned> src = grkBuffer2d<int32_t, AllocatorAligned>(srcData, false, cblk->width(), cblk->width(), cblk->height());
 	buf->toRelativeCoordinates(block->resno,block->bandOrientation,block->x,block->y);
 	if (m_sa) {
 		dest = src;

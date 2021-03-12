@@ -20,13 +20,9 @@
  */
 
 #pragma once
-
-
 #include "grk_includes.h"
 
-
 namespace grk {
-
 /** Flags for 4 consecutive rows of a column */
 typedef uint32_t grk_flag;
 
@@ -35,7 +31,8 @@ struct T1 {
 	T1(bool isCompressor, uint32_t maxCblkW,	uint32_t maxCblkH);
 	~T1();
 
-	bool decompress_cblk(cblk_dec *cblk,
+	bool decompress_cblk(DecompressCodeblock *cblk,
+						uint8_t *compressedDataBuffer,
 						uint8_t orientation,
 						uint32_t cblksty);
 	void code_block_enc_deallocate(cblk_enc *p_code_block);
@@ -51,21 +48,20 @@ struct T1 {
 							const double *mct_norms,
 							uint16_t mct_numcomps,
 							bool doRateControl);
-
-	/** MQC component */
 	mqcoder coder;
 
-	int32_t *data;
+	int32_t *uncompressedData;
 	uint32_t w;
 	uint32_t h;
 	uint32_t data_stride;
-	/* Temporary buffer to concatenate all chunks of a codebock */
-	uint8_t *cblkdatabuffer;
-	/* Maximum size available in cblkdatabuffer */
-	uint32_t cblkdatabuffersize;
+
+	//////////////////////////
+	// decompress only
+	uint8_t *compressedDataBuffer;  	/* Temporary buffer to concatenate all chunks of a codebock */
+	uint32_t compressedDataBufferLen;	/* Maximum size available in compressedDataBuffer */
+	/////////////////////////////////////
 
 	static double getnorm(uint32_t level, uint8_t orientation, bool reversible);
-
 private:
 
 	/** Flags used by decompressor and compressor.
@@ -74,7 +70,6 @@ private:
 	 This array avoids too much cache trashing when processing by 4 vertical samples
 	 as done in the various decoding steps. */
 	grk_flag *flags;
-
 	uint32_t datasize;
 	uint32_t flagssize;
 	bool compressor;
@@ -127,8 +122,6 @@ private:
 						int32_t bpno,
 						uint32_t passtype);
 	bool code_block_enc_allocate(cblk_enc *p_code_block);
-
-
 	/**
 	 Get the norm of a wavelet function of a subband at a specified level for the reversible 5-3 DWT.
 	 @param level Level of the wavelet function

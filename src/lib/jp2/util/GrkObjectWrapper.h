@@ -21,7 +21,7 @@ template<typename T> class GrkObjectWrapperImpl : public GrkObjectWrapper {
 public:
 	explicit GrkObjectWrapperImpl(T *wrap) : wrappee(wrap)
 	{}
-	virtual ~GrkObjectWrapperImpl(void){}
+	virtual ~GrkObjectWrapperImpl(void) = default;
 	virtual void release(void){
 		assert(wrappee);
 		delete wrappee;

@@ -22,7 +22,7 @@ namespace grk {
 
 class T1Interface {
 public:
-	virtual ~T1Interface() {}
+	virtual ~T1Interface() = default;
 
 	virtual bool compress(CompressBlockExec *block)=0;
 	virtual bool decompress(DecompressBlockExec *block)=0;

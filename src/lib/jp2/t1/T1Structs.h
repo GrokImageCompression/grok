@@ -87,7 +87,7 @@ struct Codeblock : public grkRectU32 {
     Codeblock(const Codeblock &rhs);
     Codeblock();
     Codeblock& operator=(const Codeblock& other);
-    virtual ~Codeblock(){}
+    virtual ~Codeblock() = default;
 	grkBufferU8 compressedStream;
 	uint32_t numbps;
 	uint32_t numlenbits;
@@ -125,6 +125,7 @@ private:
 	Segment *segs; 					/* information on segments */
 	uint32_t numSegments; 			/* number of segment in block*/
 	uint32_t numSegmentsAllocated; 	// number of segments allocated for segs array
+	int32_t *uncompressedData;
 };
 const size_t kChunkSize = 1024;
 template <typename T, typename P> class ChunkedArray{
