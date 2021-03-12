@@ -772,7 +772,7 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void) {
 			return false;
 		/* Check marker size (does not include marker ID but includes marker size) */
 		else if (marker_size < 2) {
-			GRK_ERROR("Inconsistent marker size");
+			GRK_ERROR("Marker size %d for marker 0x%x is less than 2",marker_size, marker_handler->id);
 			return false;
 		}
 		else if (marker_size == 2) {
@@ -2104,7 +2104,7 @@ bool CodeStreamDecompress::parse_tile_header_markers(bool *can_decode_tile_data)
 			if (!read_short(&marker_size))
 				return false;
 			else if (marker_size < 2) {
-				GRK_ERROR("Inconsistent marker size");
+				GRK_ERROR("Marker size %d for marker 0x%x is less than 2",marker_size, m_curr_marker);
 				return false;
 			}
 			else if (marker_size == 2) {

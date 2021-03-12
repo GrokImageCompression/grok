@@ -644,7 +644,6 @@ bool CodeStreamCompress::endCompress(void){
 	m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_eoc,this));
 	if (m_cp.m_coding_params.m_enc.writeTLM)
 		m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_tlm_end,this));
-	m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_epc,this));
 
 	return  exec(m_procedure_list);
 }
@@ -1246,17 +1245,6 @@ bool CodeStreamCompress::write_regions() {
 		}
 	}
 
-	return true;
-}
-bool CodeStreamCompress::write_epc() {
-	if (cstr_index) {
-		cstr_index->codestream_size = (uint64_t) m_stream->tell();
-		/* The following adjustment is done to adjust the code stream size */
-		/* if SOD is not at 0 in the buffer. Useful in case of JP2, where */
-		/* the first bunch of bytes is not in the code stream              */
-		cstr_index->codestream_size -= (uint64_t) cstr_index->main_head_start;
-
-	}
 	return true;
 }
 bool CodeStreamCompress::write_mcc_record(grk_simple_mcc_decorrelation_data *p_mcc_record,	BufferedStream *stream) {

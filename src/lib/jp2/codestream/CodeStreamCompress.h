@@ -286,13 +286,6 @@ private:
     bool write_regions();
 
     /**
-     * Writes EPC ????
-     *
-     * @param       codeStream          JPEG 2000 code stream
-     */
-    bool write_epc();
-
-    /**
      * Writes the RGN marker (Region Of Interest)
      *
      * @param       tile_no               the tile to output

@@ -1049,8 +1049,6 @@ typedef struct _grk_codestream_info {
 	uint64_t main_head_start;
 	/** main header position */
 	uint64_t main_head_end;
-	/** code stream's size */
-	uint64_t codestream_size;
 	/** information regarding tiles inside image */
 	grk_tile_info *tile;
 } grk_codestream_info;
@@ -1172,8 +1170,6 @@ typedef struct _grk_codestream_index {
 	uint64_t main_head_start;
 	/** main header end position (first SOT position) */
 	uint64_t main_head_end;
-	/** code stream's size */
-	uint64_t codestream_size;
 	/** number of markers */
 	uint32_t marknum;
 	/** list of markers */
