@@ -226,14 +226,13 @@ template <typename T, template <typename TT> typename A> struct grkBuffer2d : pu
 	    return *this;
 	}
 	virtual ~grkBuffer2d() = default;
-	bool alloc(bool clear){
+	bool alloc2d(bool clear){
 		if (!this->buf && width() && height()) {
 			if (!stride)
 				stride = grkMakeAlignedWidth(width());
 			uint64_t data_size_needed = (uint64_t)stride * height() * sizeof(T);
 			if (!data_size_needed)
 			  return true;
-			grkBuffer<T, A >::alloc(data_size_needed);
 			if (!grkBuffer<T, A >::alloc(data_size_needed)) {
 				grk::GRK_ERROR("Failed to allocate aligned memory buffer of dimensions %u x %u "
 						"@ alignment %d",stride, height(), grk::default_align);

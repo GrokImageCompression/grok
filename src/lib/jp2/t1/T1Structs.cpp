@@ -242,7 +242,7 @@ void Codeblock::setRect(grkRectU32 r){
 	uncompressedData = grkBuffer2d<int32_t, AllocatorAligned>(width(),height());
 }
 bool Codeblock::allocUncompressedData(bool clear){
-	return uncompressedData.alloc(clear);
+	return uncompressedData.alloc2d(clear);
 }
 int32_t* Codeblock::getUncomressedDataPtr(void){
 	return uncompressedData.currPtr();

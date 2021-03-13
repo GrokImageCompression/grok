@@ -139,7 +139,7 @@ template<typename T> struct BufferResWindow {
 		// if top level window is present, then all buffers attach to this window
 		if (m_bufferResWindowTopLevelBufferREL) {
 			// ensure that top level window is allocated
-			if (!m_bufferResWindowTopLevelBufferREL->alloc(clear))
+			if (!m_bufferResWindowTopLevelBufferREL->alloc2d(clear))
 				return false;
 
 			// for now, we don't allocate bandWindows for windowed decompression
@@ -177,7 +177,7 @@ template<typename T> struct BufferResWindow {
 			}
 		} else {
 			// resolution window is always allocated
-			if (!m_bufferResWindowBufferREL->alloc(clear))
+			if (!m_bufferResWindowBufferREL->alloc2d(clear))
 				return false;
 			// for now, we don't allocate bandWindows for windowed decode
 			if (m_filterWidth)
@@ -185,7 +185,7 @@ template<typename T> struct BufferResWindow {
 
 			// band windows are allocated if present
 			for (auto &b : m_paddedBandWindowBufferREL){
-				if (!b->alloc(clear))
+				if (!b->alloc2d(clear))
 					return false;
 			}
 			if (m_tileCompResLower){
