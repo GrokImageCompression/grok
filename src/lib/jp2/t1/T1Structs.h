@@ -22,7 +22,7 @@
 namespace grk {
 
 class ISparseBuffer;
-struct grk_tile;
+struct Tile;
 struct TileComponent;
 
 enum eSplitOrientation{
@@ -286,7 +286,7 @@ struct CompressBlockExec : public BlockExec{
 	bool open(T1Interface *t1);
 	void close(void);
 	CompressCodeblock *cblk;
-	grk_tile *tile;
+	Tile *tile;
 	bool doRateControl;
 	double distortion;
 	int32_t *tiledp;

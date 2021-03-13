@@ -41,7 +41,7 @@ TileProcessor::TileProcessor(CodeStream *codeStream, BufferedStream *stream, boo
 				truncated(false),
 				m_image(nullptr)
 {
-	tile = new grk_tile();
+	tile = new Tile();
 	tile->comps = new TileComponent[headerImage->numcomps];
 	tile->numcomps = headerImage->numcomps;
 
@@ -53,7 +53,7 @@ TileProcessor::~TileProcessor() {
 	if (m_image)
 		grk_object_unref(&m_image->obj);
 }
-void TileProcessor::generateImage(GrkImage* src_image, grk_tile *src_tile){
+void TileProcessor::generateImage(GrkImage* src_image, Tile *src_tile){
 	if (m_image)
 		grk_object_unref(&m_image->obj);
 	m_image = src_image->duplicate(src_tile);
@@ -1301,7 +1301,7 @@ bool TileProcessor::prepare_sod_decoding(CodeStreamDecompress *codeStream) {
 
 	return true;
 }
-grk_tile::grk_tile() : numcomps(0),
+Tile::Tile() : numcomps(0),
 			comps(nullptr),
 			distotile(0),
 			numIteratedPackets(0),
@@ -1310,7 +1310,7 @@ grk_tile::grk_tile() : numcomps(0),
 	for (uint32_t i = 0; i < 100; ++i)
 		distolayer[i] = 0;
 }
-grk_tile::~grk_tile()
+Tile::~Tile()
 {
 	delete[] comps;
 }

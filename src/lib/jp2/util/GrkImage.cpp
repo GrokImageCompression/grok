@@ -242,7 +242,7 @@ void GrkImage::transferDataTo(GrkImage *dest) {
  * @return new GrkImage if successful
  *
  */
-GrkImage* GrkImage::duplicate(const grk_tile* src_tile){
+GrkImage* GrkImage::duplicate(const Tile* src_tile){
 	auto destImage = new GrkImage();
 	copyHeader(destImage);
 	destImage->x0 = src_tile->x0;
@@ -267,7 +267,7 @@ GrkImage* GrkImage::duplicate(const grk_tile* src_tile){
 	return destImage;
 }
 
-void GrkImage::transferDataFrom(const grk_tile* tile_src_data){
+void GrkImage::transferDataFrom(const Tile* tile_src_data){
 	for (uint16_t compno = 0; compno < numcomps; compno++) {
 		auto src_comp = tile_src_data->comps + compno;
 		auto dest_comp = comps + compno;
@@ -370,7 +370,7 @@ bool GrkImage::generateCompositeBounds(const TileComponent *src_comp,
  *
  * @return:			true if successful
  */
-bool GrkImage::compositeFrom(const grk_tile *src_tile) {
+bool GrkImage::compositeFrom(const Tile *src_tile) {
 	for (uint16_t compno = 0; compno < src_tile->numcomps; compno++) {
 		auto src_comp 	= src_tile->comps + compno;
 		auto dest_comp 	= comps + compno;

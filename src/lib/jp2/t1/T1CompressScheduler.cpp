@@ -19,7 +19,7 @@
 
 namespace grk {
 
-T1CompressScheduler::T1CompressScheduler(grk_tile *tile,
+T1CompressScheduler::T1CompressScheduler(Tile *tile,
 										bool needsRateControl) :  tile(tile),
 																	needsRateControl(needsRateControl),
 																	encodeBlocks(nullptr),

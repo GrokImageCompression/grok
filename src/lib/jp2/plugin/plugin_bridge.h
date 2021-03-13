@@ -39,7 +39,7 @@ void compress_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t re
 		uint32_t bandIndex, uint64_t precinctIndex, uint64_t cblkno, Subband *band,
 		CompressCodeblock *cblk, uint32_t *numPix);
 
-bool tile_equals(grk_plugin_tile *plugin_tile, grk_tile *p_tile);
+bool tile_equals(grk_plugin_tile *plugin_tile, Tile *p_tile);
 
 // set context stream for debugging purposes
 void set_context_stream(TileProcessor *p_tileProcessor);

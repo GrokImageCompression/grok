@@ -55,7 +55,7 @@ T1HT::~T1HT() {
    delete allocator;
    delete elastic_alloc;
 }
-void T1HT::preCompress(CompressBlockExec *block, grk_tile *tile) {
+void T1HT::preCompress(CompressBlockExec *block, Tile *tile) {
 	(void)block;
 	(void)tile;
 

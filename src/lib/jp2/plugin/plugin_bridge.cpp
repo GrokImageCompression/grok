@@ -82,7 +82,7 @@ void decompress_synch_plugin_with_host(TileProcessor *tcd) {
 	}
 }
 
-bool tile_equals(grk_plugin_tile *plugin_tile, grk_tile *p_tile) {
+bool tile_equals(grk_plugin_tile *plugin_tile, Tile *p_tile) {
 	uint32_t state = grk_plugin_get_debug_state();
 	if (!(state & GRK_PLUGIN_STATE_DEBUG))
 		return true;

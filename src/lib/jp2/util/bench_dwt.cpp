@@ -137,7 +137,7 @@ int main(int argc, char** argv)
     uint32_t num_threads = 0;
     GrkImage image;
     GrkImage output_image;
-    grk_tile tile;
+    Tile tile;
     TileComponent tilec;
     grk_image_comp image_comp;
     grk_image_comp output_image_comp;

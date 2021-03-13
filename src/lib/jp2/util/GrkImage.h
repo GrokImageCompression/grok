@@ -4,7 +4,7 @@
 
 namespace grk {
 
-struct grk_tile;
+struct Tile;
 struct CodingParams;
 struct TileComponent;
 
@@ -63,8 +63,8 @@ public:
 	 Assumption:  "this" and dest have the same number of components
 	 */
 	void transferDataTo(GrkImage *dest);
-	void transferDataFrom(const grk_tile* tile_src_data);
-	GrkImage* duplicate(const grk_tile* tile_src);
+	void transferDataFrom(const Tile* tile_src_data);
+	GrkImage* duplicate(const Tile* tile_src);
 	/**
 	 * Copy tile to composite image
 	 *
@@ -76,7 +76,7 @@ public:
 	 *
 	 * @return:			true if successful
 	 */
-	bool compositeFrom(const grk_tile *src_tile);
+	bool compositeFrom(const Tile *src_tile);
 	bool compositeFrom(const GrkImage *src_img);
 	bool generateCompositeBounds(const TileComponent *src_comp,
 								uint16_t compno,

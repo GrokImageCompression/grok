@@ -23,7 +23,7 @@ namespace grk {
 
 class T1CompressScheduler {
 public:
-	T1CompressScheduler(grk_tile *tile, bool needsRateControl);
+	T1CompressScheduler(Tile *tile, bool needsRateControl);
 	~T1CompressScheduler();
 	void compress(std::vector<CompressBlockExec*> *blocks);
 
@@ -34,7 +34,7 @@ private:
 	bool compress(size_t threadId, uint64_t maxBlocks);
 	void compress(T1Interface *impl, CompressBlockExec *block);
 
-	grk_tile *tile;
+	Tile *tile;
 	std::vector<T1Interface*> t1Implementations;
 	mutable std::mutex distortion_mutex;
 	bool needsRateControl;

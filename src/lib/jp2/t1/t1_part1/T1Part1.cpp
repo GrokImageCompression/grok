@@ -32,7 +32,7 @@ T1Part1::T1Part1(bool isCompressor, uint32_t maxCblkW,	uint32_t maxCblkH) : t1(n
 T1Part1::~T1Part1() {
 	delete t1;
 }
-void T1Part1::preCompress(CompressBlockExec *block, grk_tile *tile,
+void T1Part1::preCompress(CompressBlockExec *block, Tile *tile,
 		uint32_t &maximum) {
 	auto cblk = block->cblk;
 	auto w = cblk->width();

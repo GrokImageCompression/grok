@@ -34,9 +34,9 @@ struct TileComponent;
  * if there is a resolution reduction.
  *
  */
-struct grk_tile : public grkRectU32 {
-	grk_tile();
-	~grk_tile();
+struct Tile : public grkRectU32 {
+	Tile();
+	~Tile();
 
 	uint32_t 		numcomps;
 	TileComponent 	*comps;
@@ -131,7 +131,7 @@ struct TileProcessor {
 	 *  Current packet iterator number */
 	uint32_t pino;
 	/** info on image tile */
-	grk_tile *tile;
+	Tile *tile;
 	/** image header */
 	GrkImage *headerImage;
 	grk_plugin_tile *current_plugin_tile;
@@ -145,7 +145,7 @@ struct TileProcessor {
 	PacketTracker m_packetTracker;
 	BufferedStream *m_stream;
 	bool m_corrupt_packet;
-	void generateImage(GrkImage* src_image, grk_tile *src_tile);
+	void generateImage(GrkImage* src_image, Tile *src_tile);
 	GrkImage* getImage(void);
 private:
 	/** position of the tile part flag in progression order*/
