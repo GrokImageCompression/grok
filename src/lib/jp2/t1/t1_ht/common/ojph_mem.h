@@ -63,7 +63,7 @@ namespace ojph {
     }
 
     template<typename T>
-    void pre_alloc_data(size_t num_ele, ui32 pre_size)
+    void pre_alloc_data(size_t num_ele, int pre_size)
     {
       pre_alloc_local<T, byte_alignment>(num_ele, pre_size, size_data);
     }
@@ -86,7 +86,7 @@ namespace ojph {
     }
 
     template<typename T>
-    T* post_alloc_data(size_t num_ele, ui32 pre_size)
+    T* post_alloc_data(size_t num_ele, int pre_size)
     {
       return post_alloc_local<T, byte_alignment>
         (num_ele, pre_size, avail_size_data, avail_data);
@@ -101,7 +101,7 @@ namespace ojph {
 
   private:
     template<typename T, int N>
-    void pre_alloc_local(size_t num_ele, ui32 pre_size, size_t& sz)
+    void pre_alloc_local(size_t num_ele, int pre_size, size_t& sz)
     {
       assert(store == NULL);
       num_ele = calc_aligned_size<T, N>(num_ele);
@@ -112,7 +112,7 @@ namespace ojph {
     }
 
     template<typename T, int N>
-    T* post_alloc_local(size_t num_ele, ui32 pre_size,
+    T* post_alloc_local(size_t num_ele, int pre_size,
                         size_t& avail_sz, void*& avail_p)
     {
       assert(store != NULL);
@@ -135,7 +135,7 @@ namespace ojph {
   struct line_buf
   {
     template<typename T>
-    void pre_alloc(mem_fixed_allocator *p, size_t num_ele, ui32 pre_size)
+    void pre_alloc(mem_fixed_allocator *p, size_t num_ele, int pre_size)
     {
       memset(this, 0, sizeof(line_buf));
       p->pre_alloc_data<T>(num_ele, pre_size);
@@ -147,10 +147,10 @@ namespace ojph {
     void finalize_alloc(mem_fixed_allocator *p);
 
     template<typename T>
-    void wrap(T *buffer, size_t num_ele, ui32 pre_size);
+    void wrap(T *buffer, size_t num_ele, int pre_size);
 
     size_t size;
-    ui32 pre_size;
+    int pre_size;
     union {
       si32* i32;
       float* f32;
@@ -160,7 +160,7 @@ namespace ojph {
   /////////////////////////////////////////////////////////////////////////////
   struct coded_lists
   {
-    coded_lists(ui32 size)
+    coded_lists(int size)
     {
       next_list = NULL;
       avail_size = buf_size = size;
@@ -168,8 +168,8 @@ namespace ojph {
     }
 
     coded_lists* next_list;
-    ui32 buf_size;
-    ui32 avail_size;
+    int buf_size;
+    int avail_size;
     ui8* buf;
   };
 
@@ -181,7 +181,7 @@ namespace ojph {
     */
 
   public:
-    mem_elastic_allocator(ui32 chunk_size)
+    mem_elastic_allocator(int chunk_size)
     : chunk_size(chunk_size)
     { cur_store = store = NULL; total_allocated = 0; }
 
@@ -194,25 +194,25 @@ namespace ojph {
       }
     }
 
-    void get_buffer(ui32 needed_bytes, coded_lists*& p);
+    void get_buffer(int needed_bytes, coded_lists*& p);
 
   private:
     struct stores_list
     {
-      stores_list(ui32 chunk_size)
+      stores_list(int chunk_size)
       {
         this->next_store = NULL;
-        this->available = chunk_size - (ui32)sizeof(stores_list);
+        this->available = chunk_size - (int)sizeof(stores_list);
         this->data = (char*)this + sizeof(stores_list);
       }
       stores_list *next_store;
-      ui32 available;
+      int available;
       char* data;
     };
 
     stores_list *store, *cur_store;
-    size_t total_allocated;
-    const ui32 chunk_size;
+    int total_allocated;
+    const int chunk_size;
   };
 
 

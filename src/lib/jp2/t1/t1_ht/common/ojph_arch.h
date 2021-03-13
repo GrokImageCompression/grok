@@ -41,9 +41,6 @@
 
 #include <cstdio>
 #include <cstdint>
-#ifdef _MSC_VER
-#define _USE_MATH_DEFINES // for C++
-#endif
 #include <cmath>
 
 #include "ojph_defs.h"
@@ -70,12 +67,12 @@ namespace ojph {
   #endif
 
   /////////////////////////////////////////////////////////////////////////////
-  static inline ui32 population_count(ui32 val)
+  static inline int population_count(ui32 val)
   {
   #ifdef OJPH_COMPILER_MSVC
-    return (ui32)__popcnt(val);
+    return __popcnt(val);
   #elif (defined OJPH_COMPILER_GNUC)
-    return (ui32)__builtin_popcount(val);
+    return __builtin_popcount(val);
   #else
     val -= ((val >> 1) & 0x55555555);
     val = (((val >> 2) & 0x33333333) + (val & 0x33333333));
@@ -90,14 +87,14 @@ namespace ojph {
 #ifdef OJPH_COMPILER_MSVC
   #pragma intrinsic(_BitScanReverse)
 #endif
-  static inline ui32 count_leading_zeros(ui32 val)
+  static inline int count_leading_zeros(ui32 val)
   {
   #ifdef OJPH_COMPILER_MSVC
     unsigned long result = 0;
     _BitScanReverse(&result, val);
-    return 31 ^ (ui32)result;
+    return 31 ^ (int)result;
   #elif (defined OJPH_COMPILER_GNUC)
-    return (ui32)__builtin_clz(val);
+    return __builtin_clz(val);
   #else
     val |= (val >> 1);
     val |= (val >> 2);
@@ -112,14 +109,14 @@ namespace ojph {
 #ifdef OJPH_COMPILER_MSVC
   #pragma intrinsic(_BitScanForward)
 #endif
-  static inline ui32 count_trailing_zeros(ui32 val)
+  static inline int count_trailing_zeros(ui32 val)
   {
   #ifdef OJPH_COMPILER_MSVC
     unsigned long result = 0;
     _BitScanForward(&result, val);
-    return (ui32)result;
+    return (int)result;
   #elif (defined OJPH_COMPILER_GNUC)
-    return (ui32)__builtin_ctz(val);
+    return __builtin_ctz(val);
   #else
     val |= (val << 1);
     val |= (val << 2);
@@ -157,9 +154,9 @@ namespace ojph {
   ////////////////////////////////////////////////////////////////////////////
   // constants
   ////////////////////////////////////////////////////////////////////////////
-  const ui32 byte_alignment = 32; //32 bytes == 256 bits
-  const ui32 log_byte_alignment = 31 - count_leading_zeros(byte_alignment);
-  const ui32 object_alignment = 8;
+  const int byte_alignment = 32; //32 bytes == 256 bits
+  const int log_byte_alignment = 31 - count_leading_zeros(byte_alignment);
+  const int object_alignment = 8;
 
   ////////////////////////////////////////////////////////////////////////////
   // templates for alignment
@@ -181,7 +178,7 @@ namespace ojph {
   inline T *align_ptr(T *ptr) {
     intptr_t p = reinterpret_cast<intptr_t>(ptr);
     p += N - 1;
-    p &= ~((intptr_t)(1ULL << (31 - count_leading_zeros(N))) - 1);
+    p &= ~((1ULL << (31 - count_leading_zeros(N))) - 1);
     return reinterpret_cast<T *>(p);
   }
 

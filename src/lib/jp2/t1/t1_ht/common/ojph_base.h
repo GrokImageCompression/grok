@@ -46,18 +46,18 @@ namespace ojph {
   /////////////////////////////////////////////////////////////////////////////
   struct size
   {
-    explicit size(ui32 w = 0, ui32 h = 0) : w(w), h(h) {}
-    ui32 w; //width
-    ui32 h; //height
+    explicit size(int w = 0, int h = 0) : w(w), h(h) {}
+    si32 w; //width
+    si32 h; //height
 
-    ui64 area() const { return (ui64)w * (ui64)h; }
+    si64 area() const { return (si64)w * (si64)h; }
   };
 
   /////////////////////////////////////////////////////////////////////////////
   struct point
   {
-    explicit point(ui32 x = 0, ui32 y = 0) : x(x), y(y) {}
-    ui32 x, y;
+    explicit point(int x = 0, int y = 0) : x(x), y(y) {}
+    si32 x, y;
   };
 
   /////////////////////////////////////////////////////////////////////////////
