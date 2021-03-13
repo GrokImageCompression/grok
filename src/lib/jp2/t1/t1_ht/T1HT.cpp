@@ -110,8 +110,8 @@ bool T1HT::compress(CompressBlockExec *block) {
 	uint16_t w =  (uint16_t)cblk->width();
 	uint16_t h =  (uint16_t)cblk->height();
 
-	  uint32_t pass_length[2] = {0,0};
-	 ojph_encode_codeblock((uint32_t*)unencoded_data, block->k_msbs,1,
+	 int pass_length[2] = {0,0};
+	 ojph_encode_codeblock((ojph::si32*)unencoded_data, block->k_msbs,1,
 							   w, h, w,
 							   pass_length,
 							   elastic_alloc,
@@ -156,7 +156,7 @@ bool T1HT::decompress(DecompressBlockExec *block) {
 	   bool rc = false;
 	   if (num_passes && offset) {
 		   rc = ojph_decode_codeblock(actual_coded_data,
-								   (uint32_t*)unencoded_data,
+								   (ojph::si32*)unencoded_data,
 								   block->k_msbs,
 								   (uint32_t)num_passes,
 								   (uint32_t)offset,
