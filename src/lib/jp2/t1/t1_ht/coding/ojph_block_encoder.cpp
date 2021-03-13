@@ -66,7 +66,7 @@ namespace ojph {
     static int ulvc_cwd_suf_len[33];
 
     /////////////////////////////////////////////////////////////////////////
-    bool encode_vlc_init_tables()
+    static bool vlc_init_tables()
     {
       struct vlc_src_table { int c_q, rho, u_off, e_k, e_1, cwd, cwd_len; };
       vlc_src_table tbl0[] = {
@@ -74,9 +74,9 @@ namespace ojph {
       };
       size_t tbl0_size = sizeof(tbl0) / sizeof(vlc_src_table);
 
-      si32 pattern_popcnt[16];
-      for (ui32 i = 0; i < 16; ++i)
-        pattern_popcnt[i] = (si32)population_count(i);
+      int pattern_popcnt[16];
+      for (int i = 0; i < 16; ++i)
+        pattern_popcnt[i] = population_count(i);
 
       vlc_src_table* src_tbl = tbl0;
       ui16 *tgt_tbl = vlc_tbl0;
@@ -186,7 +186,7 @@ namespace ojph {
     }
 
     /////////////////////////////////////////////////////////////////////////
-    bool encode_uvlc_init_tables()
+    static bool uvlc_init_tables()
     {
       //code goes from 0 to 31, extension and 32 are not supported here
       ulvc_cwd_pre[0] = 0; ulvc_cwd_pre[1] = 1; ulvc_cwd_pre[2] = 2;
@@ -210,15 +210,17 @@ namespace ojph {
     }
 
     /////////////////////////////////////////////////////////////////////////
+    static bool vlc_tables_initialized = vlc_init_tables();
+    static bool uvlc_tables_initialized = uvlc_init_tables();
 
     /////////////////////////////////////////////////////////////////////////
     //
     /////////////////////////////////////////////////////////////////////////
     struct mel_struct {
       //storage
-      ui8* buf;      //pointer to data buffer
-      ui32 pos;      //position of next writing within buf
-      ui32 buf_size; //size of buffer, which we must not exceed
+      ui8* buf;     //pointer to data buffer
+      int pos;      //position of next writing within buf
+      int buf_size; //size of buffer, which we must not exceed
 
       // all these can be replaced by bytes
       int remaining_bits; //number of empty bits in tmp
@@ -230,7 +232,7 @@ namespace ojph {
 
     //////////////////////////////////////////////////////////////////////////
     static inline void
-    mel_init(mel_struct* melp, ui32 buffer_size, ui8* data)
+    mel_init(mel_struct* melp, int buffer_size, ui8* data)
     {
       melp->buf = data;
       melp->pos = 0;
@@ -295,9 +297,9 @@ namespace ojph {
     /////////////////////////////////////////////////////////////////////////
     struct vlc_struct {
       //storage
-      ui8* buf;      //pointer to data buffer
-      ui32 pos;      //position of next writing within buf
-      ui32 buf_size; //size of buffer, which we must not exceed
+      ui8* buf;     //pointer to data buffer
+      int pos;      //position of next writing within buf
+      int buf_size; //size of buffer, which we must not exceed
 
       int used_bits; //number of occupied bits in tmp
       int tmp;       //temporary storage of coded bits
@@ -306,7 +308,7 @@ namespace ojph {
 
     //////////////////////////////////////////////////////////////////////////
     static inline void
-    vlc_init(vlc_struct* vlcp, ui32 buffer_size, ui8* data)
+    vlc_init(vlc_struct* vlcp, int buffer_size, ui8* data)
     {
       vlcp->buf = data + buffer_size - 1; //points to last byte
       vlcp->pos = 1;                      //locations will be all -pos
@@ -341,7 +343,7 @@ namespace ojph {
             vlcp->last_greater_than_8F = false;
             continue; //one empty bit remaining
           }
-          *(vlcp->buf - vlcp->pos) = (ui8)(vlcp->tmp);
+          vlcp->buf[-vlcp->pos] = (ui8)(vlcp->tmp);
           vlcp->pos++;
           vlcp->last_greater_than_8F = vlcp->tmp > 0x8F;
           vlcp->tmp = 0;
@@ -379,7 +381,7 @@ namespace ojph {
         if (vlcp->pos >= vlcp->buf_size)
           OJPH_ERROR(0x00020004, "vlc encoder's buffer is full");
         melp->buf[melp->pos++] = (ui8)melp->tmp; //melp->tmp cannot be 0xFF
-        *(vlcp->buf - vlcp->pos) = (ui8)vlcp->tmp;
+        vlcp->buf[-vlcp->pos] = (ui8)vlcp->tmp;
         vlcp->pos++;
       }
     }
@@ -389,9 +391,9 @@ namespace ojph {
     /////////////////////////////////////////////////////////////////////////
     struct ms_struct {
       //storage
-      ui8* buf;      //pointer to data buffer
-      ui32 pos;      //position of next writing within buf
-      ui32 buf_size; //size of buffer, which we must not exceed
+      ui8* buf;     //pointer to data buffer
+      int pos;      //position of next writing within buf
+      int buf_size; //size of buffer, which we must not exceed
 
       int max_bits;  //maximum number of bits that can be store in tmp
       int used_bits; //number of occupied bits in tmp
@@ -400,7 +402,7 @@ namespace ojph {
 
     //////////////////////////////////////////////////////////////////////////
     static inline void
-    ms_init(ms_struct* msp, ui32 buffer_size, ui8* data)
+    ms_init(ms_struct* msp, int buffer_size, ui8* data)
     {
       msp->buf = data;
       msp->pos = 0;
@@ -412,14 +414,14 @@ namespace ojph {
 
     //////////////////////////////////////////////////////////////////////////
     static inline void
-    ms_encode(ms_struct* msp, ui32 cwd, int cwd_len)
+    ms_encode(ms_struct* msp, int cwd, int cwd_len)
     {
       while (cwd_len > 0)
       {
         if (msp->pos >= msp->buf_size)
           OJPH_ERROR(0x00020005, "magnitude sign encoder's buffer is full");
         int t = ojph_min(msp->max_bits - msp->used_bits, cwd_len);
-        msp->tmp = (int)((ui32)msp->tmp | ((cwd & ((1U << t) - 1)) << msp->used_bits));
+        msp->tmp |= (cwd & ((1 << t) - 1)) << msp->used_bits;
         msp->used_bits += t;
         cwd >>= t;
         cwd_len -= t;
@@ -460,14 +462,13 @@ namespace ojph {
     //
     //
     //////////////////////////////////////////////////////////////////////////
-    void ojph_encode_codeblock(ui32* buf, ui32 missing_msbs, ui32 num_passes,
-                               ui32 width, ui32 height, ui32 stride,
-                               ui32* lengths,
+    void ojph_encode_codeblock(si32* buf, int missing_msbs, int num_passes,
+                               int width, int height, int stride,
+                               int* lengths,
                                ojph::mem_elastic_allocator *elastic,
                                ojph::coded_lists *& coded)
     {
       assert(num_passes == 1);
-      (void)num_passes;
       const int ms_size = 16384;         //more than enough
       ui8 ms_buf[ms_size];
       const int mel_vlc_size = 3072;     //more than enough
@@ -484,7 +485,7 @@ namespace ojph {
       ms_struct ms;
       ms_init(&ms, ms_size, ms_buf);
 
-      ui32 p = 30 - missing_msbs;
+      int p = 30 - missing_msbs;
 
       //e_val: E values for a line (these are the highest set bit)
       //cx_val: is the context values
@@ -505,19 +506,19 @@ namespace ojph {
       int rho[2] = {0,0};
       int c_q0 = 0;
       ui32 s[8] = {0,0,0,0,0,0,0,0}, val, t;
-      ui32 y = 0;
-      ui32 *sp = buf;
-      for (ui32 x = 0; x < width; x += 4)
+      int y = 0;
+      si32 *sp = buf;
+      for (int x = 0; x < width; x += 4)
       {
         //prepare two quads
         t = sp[0];
         val = t + t; //multiply by 2 and get rid of sign
-        val >>= p;  // 2 \mu_p + x
-        val &= ~1u; // 2 \mu_p
+        val >>= p; // 2 \mu_p + x
+        val &= ~1; // 2 \mu_p
         if (val)
         {
           rho[0] = 1;
-          e_q[0] = 32 - (int)count_leading_zeros(--val); //2\mu_p - 1
+          e_q[0] = 32 - count_leading_zeros(--val); //2\mu_p - 1
           e_qmax[0] = e_q[0];
           s[0] = --val + (t >> 31); //v_n = 2(\mu_p-1) + s_n
         }
@@ -526,11 +527,11 @@ namespace ojph {
         ++sp;
         val = t + t; //multiply by 2 and get rid of sign
         val >>= p; // 2 \mu_p + x
-        val &= ~1u;// 2 \mu_p
+        val &= ~1; // 2 \mu_p
         if (val)
         {
           rho[0] += 2;
-          e_q[1] = 32 - (int)count_leading_zeros(--val); //2\mu_p - 1
+          e_q[1] = 32 - count_leading_zeros(--val); //2\mu_p - 1
           e_qmax[0] = ojph_max(e_qmax[0], e_q[1]);
           s[1] = --val + (t >> 31); //v_n = 2(\mu_p-1) + s_n
         }
@@ -540,11 +541,11 @@ namespace ojph {
           t = sp[0];
           val = t + t; //multiply by 2 and get rid of sign
           val >>= p; // 2 \mu_p + x
-          val &= ~1u;// 2 \mu_p
+          val &= ~1; // 2 \mu_p
           if (val)
           {
             rho[0] += 4;
-            e_q[2] = 32 - (int)count_leading_zeros(--val); //2\mu_p - 1
+            e_q[2] = 32 - count_leading_zeros(--val); //2\mu_p - 1
             e_qmax[0] = ojph_max(e_qmax[0], e_q[2]);
             s[2] = --val + (t >> 31); //v_n = 2(\mu_p-1) + s_n
           }
@@ -553,11 +554,11 @@ namespace ojph {
           ++sp;
           val = t + t; //multiply by 2 and get rid of sign
           val >>= p; // 2 \mu_p + x
-          val &= ~1u;// 2 \mu_p
+          val &= ~1; // 2 \mu_p
           if (val)
           {
             rho[0] += 8;
-            e_q[3] = 32 - (int)count_leading_zeros(--val); //2\mu_p - 1
+            e_q[3] = 32 - count_leading_zeros(--val); //2\mu_p - 1
             e_qmax[0] = ojph_max(e_qmax[0], e_q[3]);
             s[3] = --val + (t >> 31); //v_n = 2(\mu_p-1) + s_n
           }
@@ -576,7 +577,7 @@ namespace ojph {
         }
         lep[0] = ojph_max(lep[0], (ui8)e_q[1]); lep++;
         lep[0] = (ui8)e_q[3];
-        lcxp[0] = (ui8)(lcxp[0] | (ui8)((rho[0] & 2) >> 1)); lcxp++;
+        lcxp[0] |= (ui8)((rho[0] & 2) >> 1); lcxp++;
         lcxp[0] = (ui8)((rho[0] & 8) >> 3);
 
         ui16 tuple0 = vlc_tbl0[(c_q0 << 8) + (rho[0] << 4) + eps0];
@@ -586,24 +587,24 @@ namespace ojph {
             mel_encode(&mel, rho[0] != 0);
 
         int m = (rho[0] & 1) ? Uq0 - (tuple0 & 1) : 0;
-        ms_encode(&ms, s[0] & ((ui32)(1<<m)-1), m);
+        ms_encode(&ms, s[0] & ((1<<m)-1), m);
         m = (rho[0] & 2) ? Uq0 - ((tuple0 & 2) >> 1) : 0;
-        ms_encode(&ms, s[1] & ((ui32)(1<<m)-1), m);
+        ms_encode(&ms, s[1] & ((1<<m)-1), m);
         m = (rho[0] & 4) ? Uq0 - ((tuple0 & 4) >> 2) : 0;
-        ms_encode(&ms, s[2] & ((ui32)(1<<m)-1), m);
+        ms_encode(&ms, s[2] & ((1<<m)-1), m);
         m = (rho[0] & 8) ? Uq0 - ((tuple0 & 8) >> 3) : 0;
-        ms_encode(&ms, s[3] & ((ui32)(1<<m)-1), m);
+        ms_encode(&ms, s[3] & ((1<<m)-1), m);
 
         if (x+2 < width)
         {
           t = sp[0];
           val = t + t; //multiply by 2 and get rid of sign
           val >>= p; // 2 \mu_p + x
-          val &= ~1u;// 2 \mu_p
+          val &= ~1; // 2 \mu_p
           if (val)
           {
             rho[1] = 1;
-            e_q[4] = 32 - (int)count_leading_zeros(--val); //2\mu_p - 1
+            e_q[4] = 32 - count_leading_zeros(--val); //2\mu_p - 1
             e_qmax[1] = e_q[4];
             s[4] = --val + (t >> 31); //v_n = 2(\mu_p-1) + s_n
           }
@@ -612,11 +613,11 @@ namespace ojph {
           ++sp;
           val = t + t; //multiply by 2 and get rid of sign
           val >>= p; // 2 \mu_p + x
-          val &= ~1u;// 2 \mu_p
+          val &= ~1; // 2 \mu_p
           if (val)
           {
             rho[1] += 2;
-            e_q[5] = 32 - (int)count_leading_zeros(--val); //2\mu_p - 1
+            e_q[5] = 32 - count_leading_zeros(--val); //2\mu_p - 1
             e_qmax[1] = ojph_max(e_qmax[1], e_q[5]);
             s[5] = --val + (t >> 31); //v_n = 2(\mu_p-1) + s_n
           }
@@ -626,11 +627,11 @@ namespace ojph {
             t = sp[0];
             val = t + t; //multiply by 2 and get rid of sign
             val >>= p; // 2 \mu_p + x
-            val &= ~1u;// 2 \mu_p
+            val &= ~1; // 2 \mu_p
             if (val)
             {
               rho[1] += 4;
-              e_q[6] = 32 - (int)count_leading_zeros(--val); //2\mu_p - 1
+              e_q[6] = 32 - count_leading_zeros(--val); //2\mu_p - 1
               e_qmax[1] = ojph_max(e_qmax[1], e_q[6]);
               s[6] = --val + (t >> 31); //v_n = 2(\mu_p-1) + s_n
             }
@@ -639,11 +640,11 @@ namespace ojph {
             ++sp;
             val = t + t; //multiply by 2 and get rid of sign
             val >>= p; // 2 \mu_p + x
-            val &= ~1u;// 2 \mu_p
+            val &= ~1; // 2 \mu_p
             if (val)
             {
               rho[1] += 8;
-              e_q[7] = 32 - (int)count_leading_zeros(--val); //2\mu_p - 1
+              e_q[7] = 32 - count_leading_zeros(--val); //2\mu_p - 1
               e_qmax[1] = ojph_max(e_qmax[1], e_q[7]);
               s[7] = --val + (t >> 31); //v_n = 2(\mu_p-1) + s_n
             }
@@ -663,7 +664,7 @@ namespace ojph {
           }
           lep[0] = ojph_max(lep[0], (ui8)e_q[5]); lep++;
           lep[0] = (ui8)e_q[7];
-          lcxp[0] |= (ui8)(lcxp[0] | (ui8)((rho[1] & 2) >> 1)); lcxp++;
+          lcxp[0] |= (ui8)((rho[1] & 2) >> 1); lcxp++;
           lcxp[0] = (ui8)((rho[1] & 8) >> 3);
           ui16 tuple1 = vlc_tbl0[(c_q1 << 8) + (rho[1] << 4) + eps1];
           vlc_encode(&vlc, tuple1 >> 8, (tuple1 >> 4) & 7);
@@ -672,13 +673,13 @@ namespace ojph {
             mel_encode(&mel, rho[1] != 0);
 
           int m = (rho[1] & 1) ? Uq1 - (tuple1 & 1) : 0;
-          ms_encode(&ms, s[4] & ((ui32)(1<<m)-1), m);
+          ms_encode(&ms, s[4] & ((1<<m)-1), m);
           m = (rho[1] & 2) ? Uq1 - ((tuple1 & 2) >> 1) : 0;
-          ms_encode(&ms, s[5] & ((ui32)(1<<m)-1), m);
+          ms_encode(&ms, s[5] & ((1<<m)-1), m);
           m = (rho[1] & 4) ? Uq1 - ((tuple1 & 4) >> 2) : 0;
-          ms_encode(&ms, s[6] & ((ui32)(1<<m)-1), m);
+          ms_encode(&ms, s[6] & ((1<<m)-1), m);
           m = (rho[1] & 8) ? Uq1 - ((tuple1 & 8) >> 3) : 0;
-          ms_encode(&ms, s[7] & ((ui32)(1<<m)-1), m);
+          ms_encode(&ms, s[7] & ((1<<m)-1), m);
         }
 
         if (u_q0 > 0 && u_q1 > 0)
@@ -724,17 +725,17 @@ namespace ojph {
         lcxp[0] = 0;
 
         sp = buf + y * stride;
-        for (ui32 x = 0; x < width; x += 4)
+        for (int x = 0; x < width; x += 4)
         {
           //prepare two quads
           t = sp[0];
           val = t + t; //multiply by 2 and get rid of sign
           val >>= p; // 2 \mu_p + x
-          val &= ~1u;// 2 \mu_p
+          val &= ~1; // 2 \mu_p
           if (val)
           {
             rho[0] = 1;
-            e_q[0] = 32 - (int)count_leading_zeros(--val); //2\mu_p - 1
+            e_q[0] = 32 - count_leading_zeros(--val); //2\mu_p - 1
             e_qmax[0] = e_q[0];
             s[0] = --val + (t >> 31); //v_n = 2(\mu_p-1) + s_n
           }
@@ -743,11 +744,11 @@ namespace ojph {
           ++sp;
           val = t + t; //multiply by 2 and get rid of sign
           val >>= p; // 2 \mu_p + x
-          val &= ~1u;// 2 \mu_p
+          val &= ~1; // 2 \mu_p
           if (val)
           {
             rho[0] += 2;
-            e_q[1] = 32 - (int)count_leading_zeros(--val); //2\mu_p - 1
+            e_q[1] = 32 - count_leading_zeros(--val); //2\mu_p - 1
             e_qmax[0] = ojph_max(e_qmax[0], e_q[1]);
             s[1] = --val + (t >> 31); //v_n = 2(\mu_p-1) + s_n
           }
@@ -757,11 +758,11 @@ namespace ojph {
             t = sp[0];
             val = t + t; //multiply by 2 and get rid of sign
             val >>= p; // 2 \mu_p + x
-            val &= ~1u;// 2 \mu_p
+            val &= ~1; // 2 \mu_p
             if (val)
             {
               rho[0] += 4;
-              e_q[2] = 32 - (int)count_leading_zeros(--val); //2\mu_p - 1
+              e_q[2] = 32 - count_leading_zeros(--val); //2\mu_p - 1
               e_qmax[0] = ojph_max(e_qmax[0], e_q[2]);
               s[2] = --val + (t >> 31); //v_n = 2(\mu_p-1) + s_n
             }
@@ -770,11 +771,11 @@ namespace ojph {
             ++sp;
             val = t + t; //multiply by 2 and get rid of sign
             val >>= p; // 2 \mu_p + x
-            val &= ~1u;// 2 \mu_p
+            val &= ~1; // 2 \mu_p
             if (val)
             {
               rho[0] += 8;
-              e_q[3] = 32 - (int)count_leading_zeros(--val); //2\mu_p - 1
+              e_q[3] = 32 - count_leading_zeros(--val); //2\mu_p - 1
               e_qmax[0] = ojph_max(e_qmax[0], e_q[3]);
               s[3] = --val + (t >> 31); //v_n = 2(\mu_p-1) + s_n
             }
@@ -795,7 +796,7 @@ namespace ojph {
           lep[0] = ojph_max(lep[0], (ui8)e_q[1]); lep++;
           max_e = ojph_max(lep[0], lep[1]) - 1;
           lep[0] = (ui8)e_q[3];
-          lcxp[0] = (ui8)(lcxp[0] | (ui8)((rho[0] & 2) >> 1)); lcxp++;
+          lcxp[0] |= (ui8)((rho[0] & 2) >> 1); lcxp++;
           int c_q1 = lcxp[0] + (lcxp[1] << 2);
           lcxp[0] = (ui8)((rho[0] & 8) >> 3);
           ui16 tuple0 = vlc_tbl1[(c_q0 << 8) + (rho[0] << 4) + eps0];
@@ -805,24 +806,24 @@ namespace ojph {
               mel_encode(&mel, rho[0] != 0);
 
           int m = (rho[0] & 1) ? Uq0 - (tuple0 & 1) : 0;
-          ms_encode(&ms, s[0] & ((ui32)(1<<m)-1), m);
+          ms_encode(&ms, s[0] & ((1<<m)-1), m);
           m = (rho[0] & 2) ? Uq0 - ((tuple0 & 2) >> 1) : 0;
-          ms_encode(&ms, s[1] & ((ui32)(1<<m)-1), m);
+          ms_encode(&ms, s[1] & ((1<<m)-1), m);
           m = (rho[0] & 4) ? Uq0 - ((tuple0 & 4) >> 2) : 0;
-          ms_encode(&ms, s[2] & ((ui32)(1<<m)-1), m);
+          ms_encode(&ms, s[2] & ((1<<m)-1), m);
           m = (rho[0] & 8) ? Uq0 - ((tuple0 & 8) >> 3) : 0;
-          ms_encode(&ms, s[3] & ((ui32)(1<<m)-1), m);
+          ms_encode(&ms, s[3] & ((1<<m)-1), m);
 
           if (x+2 < width)
           {
             t = sp[0];
             val = t + t; //multiply by 2 and get rid of sign
             val >>= p; // 2 \mu_p + x
-            val &= ~1u;// 2 \mu_p
+            val &= ~1; // 2 \mu_p
             if (val)
             {
               rho[1] = 1;
-              e_q[4] = 32 - (int)count_leading_zeros(--val); //2\mu_p - 1
+              e_q[4] = 32 - count_leading_zeros(--val); //2\mu_p - 1
               e_qmax[1] = e_q[4];
               s[4] = --val + (t >> 31); //v_n = 2(\mu_p-1) + s_n
             }
@@ -831,11 +832,11 @@ namespace ojph {
             ++sp;
             val = t + t; //multiply by 2 and get rid of sign
             val >>= p; // 2 \mu_p + x
-            val &= ~1u;// 2 \mu_p
+            val &= ~1; // 2 \mu_p
             if (val)
             {
               rho[1] += 2;
-              e_q[5] = 32 - (int)count_leading_zeros(--val); //2\mu_p - 1
+              e_q[5] = 32 - count_leading_zeros(--val); //2\mu_p - 1
               e_qmax[1] = ojph_max(e_qmax[1], e_q[5]);
               s[5] = --val + (t >> 31); //v_n = 2(\mu_p-1) + s_n
             }
@@ -845,11 +846,11 @@ namespace ojph {
               t = sp[0];
               val = t + t; //multiply by 2 and get rid of sign
               val >>= p; // 2 \mu_p + x
-              val &= ~1u;// 2 \mu_p
+              val &= ~1; // 2 \mu_p
               if (val)
               {
                 rho[1] += 4;
-                e_q[6] = 32 - (int)count_leading_zeros(--val); //2\mu_p - 1
+                e_q[6] = 32 - count_leading_zeros(--val); //2\mu_p - 1
                 e_qmax[1] = ojph_max(e_qmax[1], e_q[6]);
                 s[6] = --val + (t >> 31); //v_n = 2(\mu_p-1) + s_n
               }
@@ -858,11 +859,11 @@ namespace ojph {
               ++sp;
               val = t + t; //multiply by 2 and get rid of sign
               val >>= p; // 2 \mu_p + x
-              val &= ~1u;// 2 \mu_p
+              val &= ~1; // 2 \mu_p
               if (val)
               {
                 rho[1] += 8;
-                e_q[7] = 32 - (int)count_leading_zeros(--val); //2\mu_p - 1
+                e_q[7] = 32 - count_leading_zeros(--val); //2\mu_p - 1
                 e_qmax[1] = ojph_max(e_qmax[1], e_q[7]);
                 s[7] = --val + (t >> 31); //v_n = 2(\mu_p-1) + s_n
               }
@@ -884,7 +885,7 @@ namespace ojph {
             lep[0] = ojph_max(lep[0], (ui8)e_q[5]); lep++;
             max_e = ojph_max(lep[0], lep[1]) - 1;
             lep[0] = (ui8)e_q[7];
-            lcxp[0] = (ui8)(lcxp[0] | (ui8)((rho[1] & 2) >> 1)); lcxp++;
+            lcxp[0] |= (ui8)((rho[1] & 2) >> 1); lcxp++;
             c_q0 = lcxp[0] + (lcxp[1] << 2);
             lcxp[0] = (ui8)((rho[1] & 8) >> 3);
             ui16 tuple1 = vlc_tbl1[(c_q1 << 8) + (rho[1] << 4) + eps1];
@@ -894,13 +895,13 @@ namespace ojph {
               mel_encode(&mel, rho[1] != 0);
 
             int m = (rho[1] & 1) ? Uq1 - (tuple1 & 1) : 0;
-            ms_encode(&ms, s[4] & ((ui32)(1<<m)-1), m);
+            ms_encode(&ms, s[4] & ((1<<m)-1), m);
             m = (rho[1] & 2) ? Uq1 - ((tuple1 & 2) >> 1) : 0;
-            ms_encode(&ms, s[5] & ((ui32)(1<<m)-1), m);
+            ms_encode(&ms, s[5] & ((1<<m)-1), m);
             m = (rho[1] & 4) ? Uq1 - ((tuple1 & 4) >> 2) : 0;
-            ms_encode(&ms, s[6] & ((ui32)(1<<m)-1), m);
+            ms_encode(&ms, s[6] & ((1<<m)-1), m);
             m = (rho[1] & 8) ? Uq1 - ((tuple1 & 8) >> 3) : 0;
-            ms_encode(&ms, s[7] & ((ui32)(1<<m)-1), m);
+            ms_encode(&ms, s[7] & ((1<<m)-1), m);
           }
 
           vlc_encode(&vlc, ulvc_cwd_pre[u_q0], ulvc_cwd_pre_len[u_q0]);
@@ -928,7 +929,7 @@ namespace ojph {
       memcpy(coded->buf + ms.pos + mel.pos, vlc.buf - vlc.pos + 1, vlc.pos);
 
       // put in the interface locator word
-      ui32 num_bytes = mel.pos + vlc.pos;
+      int num_bytes = mel.pos + vlc.pos;
       coded->buf[lengths[0]-1] = (ui8)(num_bytes >> 4);
       coded->buf[lengths[0]-2] = coded->buf[lengths[0]-2] & 0xF0;
       coded->buf[lengths[0]-2] = 
