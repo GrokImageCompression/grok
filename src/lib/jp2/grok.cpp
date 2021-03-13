@@ -92,9 +92,6 @@ bool GRK_CALLCONV grk_initialize(const char *pluginPath, uint32_t numthreads) {
 		info.pluginPath = pluginPath;
 		is_plugin_initialized = grk_plugin_load(info);
 	}
-	ojph::local::decode_vlc_init_tables();
-    ojph::local::encode_vlc_init_tables();
-    ojph::local::encode_uvlc_init_tables();
 
 	return is_plugin_initialized;
 }
