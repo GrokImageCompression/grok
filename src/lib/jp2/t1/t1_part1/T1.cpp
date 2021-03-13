@@ -18,12 +18,9 @@
  *    Please see the LICENSE file in the root directory for details.
  *
  */
-
 #include "grk_includes.h"
 #include "t1_common.h"
 #include "logger.h"
-
-using namespace std;
 
 namespace grk {
 
@@ -84,8 +81,6 @@ namespace grk {
 #define T1_CHI_5    (1U << 31)
 #define T1_CHI_5_I  31
 
-
-
 /** As an example, the bits T1_SIGMA_3, T1_SIGMA_4 and T1_SIGMA_5
  *  indicate the significance state of the west neighbour of data point zero
  *  of our four, the point itself, and its east neighbour respectively.
@@ -139,13 +134,9 @@ namespace grk {
 #define setcurctx(curctx, ctxno)  curctx = &(mqc)->ctxs[(uint32_t)(ctxno)]
 static INLINE void 	 update_flags(grk_flag *flagsp, uint32_t ci, uint32_t s,
 										uint32_t stride, uint32_t vsc);
-
 // ENCODE
-
 static int16_t 		 getnmsedec_sig(uint32_t x, uint32_t bitpos);
 static int16_t 		 getnmsedec_ref(uint32_t x, uint32_t bitpos);
-
-
 // DECODE
 static INLINE uint8_t  getctxno_zc(mqcoder *mqc, uint32_t f);
 static INLINE uint32_t  getctxno_mag(uint32_t f);
@@ -155,7 +146,6 @@ static INLINE uint8_t getspb(uint32_t lu);
 static INLINE uint8_t  getctxno_zc(mqcoder *mqc, uint32_t f) {
 	return mqc->lut_ctxno_zc_orient[(f & T1_SIGMA_NEIGHBOURS)];
 }
-
 static INLINE uint32_t getctxtno_sc_or_spb_index(uint32_t fX, uint32_t pfX,
 		uint32_t nfX, uint32_t ci) {
 	/*
@@ -168,7 +158,6 @@ static INLINE uint32_t getctxtno_sc_or_spb_index(uint32_t fX, uint32_t pfX,
 	 6  fX T1_CHI_(THIS + 1)     T1_LUT_SGN_S
 	 7 tfX T1_SIGMA_7            T1_LUT_SIG_S
 	 */
-
 	uint32_t lu = (fX >> (ci)) & (T1_SIGMA_1 | T1_SIGMA_3 | T1_SIGMA_5 |
 	T1_SIGMA_7);
 
@@ -182,11 +171,9 @@ static INLINE uint32_t getctxtno_sc_or_spb_index(uint32_t fX, uint32_t pfX,
 	lu |= (fX >> (T1_CHI_2_I - 6U + (ci))) & (1U << 6);
 	return lu;
 }
-
 static INLINE uint8_t getctxno_sc(uint32_t lu) {
 	return lut_ctxno_sc[lu];
 }
-
 static INLINE uint32_t getctxno_mag(uint32_t f) {
 	uint32_t tmp = (f & T1_SIGMA_NEIGHBOURS) ? T1_CTXNO_MAG + 1 : T1_CTXNO_MAG;
 	uint32_t tmp2 = (f & T1_MU_0) ? T1_CTXNO_MAG + 2 : tmp;
@@ -208,7 +195,6 @@ static int16_t getnmsedec_ref(uint32_t x, uint32_t bitpos) {
 
 	return lut_nmsedec_ref0[x & ((1 << T1_NMSEDEC_BITS) - 1)];
 }
-
 #define update_flags_macro(flags, flagsp, ci, s, stride, vsc) \
 { \
     /* east */ \
@@ -232,13 +218,10 @@ static int16_t getnmsedec_ref(uint32_t x, uint32_t bitpos) {
         south[1] |= T1_SIGMA_0; \
     } \
 }
-
 static INLINE void update_flags(grk_flag *flagsp, uint32_t ci, uint32_t s,
 									uint32_t stride, uint32_t vsc) {
  update_flags_macro(*flagsp, flagsp, ci, s, stride, vsc);
 }
-
-
 static const double dwt_norms[4][10] = {
     {1.000, 1.500, 2.750, 5.375, 10.68, 21.34, 42.67, 85.33, 170.7, 341.3},
     {1.038, 1.592, 2.919, 5.703, 11.33, 22.64, 45.25, 90.48, 180.9},
@@ -251,8 +234,27 @@ static const double dwt_norms_real[4][10] = {
     {2.022, 3.989, 8.355, 17.04, 34.27, 68.63, 137.3, 274.6, 549.0},
     {2.080, 3.865, 8.307, 17.18, 34.71, 69.59, 139.3, 278.6, 557.2}
 };
-
-
+T1::T1(bool isCompressor,uint32_t maxCblkW,uint32_t maxCblkH) : uncompressedData(nullptr),
+															uncompressedDataLen(0),
+															ownsUncompressedData(false),
+															w(0),
+															h(0),
+															uncompressedDataStride(0),
+															compressedData(nullptr),
+															compressedDataLen(0),
+															flags(nullptr),
+															flagssize(0),
+															compressor(isCompressor)
+{
+	memset(&coder, 0, sizeof(coder));
+	if (!isCompressor)
+		allocCompressedData(maxCblkW * maxCblkH * (uint32_t)sizeof(int32_t));
+}
+T1::~T1(){
+	deallocUncompressedData();
+	grkAlignedFree(flags);
+	delete[] compressedData;
+}
 double T1::getnorm(uint32_t level, uint8_t orientation, bool reversible) {
    assert(orientation <= 3);
    if (orientation == 0 && level > 9) {
@@ -260,47 +262,61 @@ double T1::getnorm(uint32_t level, uint8_t orientation, bool reversible) {
    } else if (orientation > 0 && level > 8) {
         level = 8;
    }
+
    return reversible ? dwt_norms[orientation][level] : dwt_norms_real[orientation][level];
-
-/*
-	switch(orientation){
-	case 0:
-		return sqrt_energy_gains::get_gain_l(level,reversible) *
-				sqrt_energy_gains::get_gain_l(level,reversible);
-		break;
-	case 1:
-	case 2:
-		return sqrt_energy_gains::get_gain_l(level+1,reversible) *
-				sqrt_energy_gains::get_gain_h(level,reversible);
-		break;
-	case 3:
-		return sqrt_energy_gains::get_gain_h(level,reversible) *
-				sqrt_energy_gains::get_gain_h(level,reversible);
-		break;
-	default:
-		return 0;
-
-	}
-*/
 }
-
-
-
 /* <summary>                */
 /* Get norm of 5-3 wavelet. */
 /* </summary>               */
 double T1::getnorm_53(uint32_t level, uint8_t orientation) {
 	return getnorm(level,orientation,true);
 }
-
 /* <summary>                */
 /* Get norm of 9-7 wavelet. */
 /* </summary>               */
 double T1::getnorm_97(uint32_t level, uint8_t orientation) {
 	return getnorm(level,orientation,false);
 }
+uint8_t* T1::getCompressedDataBuffer(void){
+	return compressedData;
+}
+void T1::allocCompressedData(size_t len){
+	if (compressedData && compressedDataLen > len)
+		return;
+	delete[]  compressedData;
+	compressedData = new uint8_t[len];
+	compressedDataLen = len;
+}
+int32_t* T1::getUncompressedData(void){
+	return uncompressedData;
+}
+bool T1::allocUncompressedData(size_t len){
+	if (uncompressedData && uncompressedDataLen > len)
+		return true;
+	deallocUncompressedData();
+	uncompressedData =	(int32_t*) grk::grkAlignedMalloc(len);
+	if (!uncompressedData) {
+		GRK_ERROR("Out of memory");
+		return false;
+	}
+	ownsUncompressedData = true;
+	uncompressedDataLen = len;
 
-
+	return true;
+}
+void T1::deallocUncompressedData(void){
+	if (ownsUncompressedData)
+		grk::grkAlignedFree(uncompressedData);
+	uncompressedData = nullptr;
+	ownsUncompressedData = false;
+}
+void T1::attachUncompressedData(int32_t *data, uint32_t width, uint32_t stride, uint32_t height){
+	assert(width == w && height == h && stride == uncompressedDataStride);
+	if (width == w && height == h && stride == uncompressedDataStride){
+		deallocUncompressedData();
+		uncompressedData = data;
+	}
+}
 bool T1::allocate_buffers(uint32_t width, uint32_t height) {
 	uint32_t newflagssize;
 	uint32_t flags_stride;
@@ -310,31 +326,21 @@ bool T1::allocate_buffers(uint32_t width, uint32_t height) {
 	assert(width <= 1024);
 	assert(height <= 1024);
 	assert(width * height <= 4096);
-
 	/* compressor uses tile buffer, so no need to allocate */
-	uint32_t newDataSize = width * height;
-
-	if (newDataSize > datasize) {
-		grk::grkAlignedFree(uncompressedData);
-		uncompressedData =	(int32_t*) grk::grkAlignedMalloc(newDataSize * sizeof(int32_t));
-		if (!uncompressedData) {
-			GRK_ERROR("Out of memory");
-			return false;
-		}
-		datasize = newDataSize;
-	}
-	/* memset first arg is declared to never be null by gcc */
-	if (uncompressedData && !compressor)
-		memset(uncompressedData, 0, newDataSize * sizeof(int32_t));
-
+	uint32_t newDataSize = width * height * sizeof(int32_t);
+	if (!allocUncompressedData(newDataSize))
+		return false;
+	w = width;
+	h = height;
+	uncompressedDataStride = width;
+	if (!compressor)
+		memset(uncompressedData, 0, newDataSize );
 	flags_stride = width + 2U; /* can't be 0U */
 	newflagssize = (height + 3U) / 4U + 2U;
 	newflagssize *= flags_stride;
 	uint32_t x;
 	uint32_t flags_height = (height + 3U) / 4U;
-
 	if (newflagssize > flagssize) {
-
 		grk::grkAlignedFree(flags);
 		flags = (grk_flag*) grk::grkAlignedMalloc(
 				newflagssize * sizeof(grk_flag));
@@ -344,73 +350,31 @@ bool T1::allocate_buffers(uint32_t width, uint32_t height) {
 		}
 	}
 	flagssize = newflagssize;
-
 	memset(flags, 0, newflagssize * sizeof(grk_flag));
 	auto p = &flags[0];
-	for (x = 0; x < flags_stride; ++x) {
-		/* magic value to hopefully stop any passes being interested in this entry */
+	/* magic value to hopefully stop any passes being interested in this entry */
+	for (x = 0; x < flags_stride; ++x)
 		*p++ = (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
-	}
 	p = &flags[((flags_height + 1) * flags_stride)];
-	for (x = 0; x < flags_stride; ++x) {
-		/* magic value to hopefully stop any passes being interested in this entry */
+	/* magic value to hopefully stop any passes being interested in this entry */
+	for (x = 0; x < flags_stride; ++x)
 		*p++ = (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
-	}
 	if (height % 4) {
 		uint32_t v = 0;
 		p = &flags[((flags_height) * flags_stride)];
-		if ((height&3) == 1) {
+		if ((height&3) == 1)
 			v |= T1_PI_1 | T1_PI_2 | T1_PI_3;
-		} else if ((height&3) == 2) {
+		else if ((height&3) == 2)
 			v |= T1_PI_2 | T1_PI_3;
-		} else if ((height&3) == 3) {
+		else if ((height&3) == 3)
 			v |= T1_PI_3;
-		}
-		for (x = 0; x < flags_stride; ++x) {
+		for (x = 0; x < flags_stride; ++x)
 			*p++ = v;
-		}
 	}
-
-	w = width;
-	h = height;
 
 	return true;
 }
-
-
-T1::T1(bool isCompressor,uint32_t maxCblkW,uint32_t maxCblkH) : uncompressedData(nullptr),
-															w(0),
-															h(0),
-															data_stride(0),
-															compressedDataBuffer(nullptr),
-															compressedDataBufferLen(0),
-															flags(nullptr),
-															datasize(0),
-															flagssize(0),
-															compressor(isCompressor)
-{
-	memset(&coder, 0, sizeof(coder));
-	if (!isCompressor) {
-	   compressedDataBufferLen = maxCblkW * maxCblkH * (uint32_t)sizeof(int32_t);
-	   compressedDataBuffer = (uint8_t*)grk_malloc(compressedDataBufferLen);
-   }
-
-}
-
-T1::~T1(){
-	grk::grkAlignedFree(uncompressedData);
-	uncompressedData = nullptr;
-
-	grkAlignedFree(flags);
-	flags = nullptr;
-
-	grk::grk_free(compressedDataBuffer);
-}
-
-
-
 /// ENCODE ////////////////////////////////////////////////////
-
 /**
  * Deallocate the compressing data of the given precinct.
  */
@@ -427,8 +391,6 @@ bool T1::code_block_enc_allocate(cblk_enc *p_code_block) {
 	}
 	return true;
 }
-
-
 double T1::getwmsedec(int32_t nmsedec,
 							uint32_t compno, uint32_t level,
 							uint8_t orientation, int32_t bpno,
@@ -450,7 +412,6 @@ double T1::getwmsedec(int32_t nmsedec,
 
 	return wmsedec;
 }
-
 int T1::enc_is_term_pass(cblk_enc *cblk, uint32_t cblksty,
 								int32_t bpno, uint32_t passtype) {
 	/* Is it the last cleanup pass ? */
@@ -472,7 +433,6 @@ int T1::enc_is_term_pass(cblk_enc *cblk, uint32_t cblksty,
 
 	return false;
 }
-
 #define enc_sigpass_step_macro(datap, ci, vsc) { \
 	uint32_t v; \
 	uint32_t const flags = *flagsp; \
@@ -505,7 +465,6 @@ int T1::enc_is_term_pass(cblk_enc *cblk, uint32_t cblksty,
 		*flagsp |= T1_PI_THIS << (ci); \
 	} \
 }
-
 void T1::enc_sigpass(int32_t bpno, int32_t *nmsedec,
 							uint8_t type, uint32_t cblksty) {
 	uint32_t i, k;
@@ -517,7 +476,6 @@ void T1::enc_sigpass(int32_t bpno, int32_t *nmsedec,
 	uint32_t const extra = 2;
 	if (nmsedec)
 		*nmsedec = 0;
-
 	for (k = 0; k < (h & ~3U); k += 4) {
 		for (i = 0; i < w; ++i) {
 			if (*flagsp == 0U) {
@@ -525,15 +483,14 @@ void T1::enc_sigpass(int32_t bpno, int32_t *nmsedec,
 				flagsp++;
 				continue;
 			}
-			 enc_sigpass_step_macro(&uncompressedData[((k + 0) * data_stride) + i], 0, cblksty & GRK_CBLKSTY_VSC);
-			 enc_sigpass_step_macro(&uncompressedData[((k + 1) * data_stride) + i], 3, 0);
-			 enc_sigpass_step_macro(&uncompressedData[((k + 2) * data_stride) + i], 6, 0);
-			 enc_sigpass_step_macro(&uncompressedData[((k + 3) * data_stride) + i], 9, 0);
+			 enc_sigpass_step_macro(&uncompressedData[((k + 0) * uncompressedDataStride) + i], 0, cblksty & GRK_CBLKSTY_VSC);
+			 enc_sigpass_step_macro(&uncompressedData[((k + 1) * uncompressedDataStride) + i], 3, 0);
+			 enc_sigpass_step_macro(&uncompressedData[((k + 2) * uncompressedDataStride) + i], 6, 0);
+			 enc_sigpass_step_macro(&uncompressedData[((k + 3) * uncompressedDataStride) + i], 9, 0);
 			++flagsp;
 		}
 		flagsp += extra;
 	}
-
 	if (k < h) {
 		for (i = 0; i < w; ++i) {
 			if (*flagsp == 0U) {
@@ -541,18 +498,17 @@ void T1::enc_sigpass(int32_t bpno, int32_t *nmsedec,
 				flagsp++;
 				continue;
 			}
-			int32_t* pdata = uncompressedData + k* data_stride + i;
+			int32_t* pdata = uncompressedData + k* uncompressedDataStride + i;
 			for (uint32_t j = k;	j < h; 	++j) {
 			 enc_sigpass_step_macro(pdata,	 3*(j - k),
 						(j == k && (cblksty & GRK_CBLKSTY_VSC) != 0));
-				pdata += data_stride;
+				pdata += uncompressedDataStride;
 			}
 			++flagsp;
 		}
 	}
 	UPLOAD_MQC_VARIABLES(mqc,curctx);
 }
-
 #define enc_refpass_step_macro(datap, ci) { \
 	uint32_t v;  \
 	uint32_t const shift_flags = (*flagsp >> (ci));  \
@@ -571,7 +527,6 @@ void T1::enc_sigpass(int32_t bpno, int32_t *nmsedec,
 		*flagsp |= T1_MU_THIS << (ci);  \
 	} \
 }
-
 void T1::enc_refpass(int32_t bpno, int32_t *nmsedec,uint8_t type) {
 	uint32_t i, k;
 	const int32_t one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
@@ -593,10 +548,10 @@ void T1::enc_refpass(int32_t bpno, int32_t *nmsedec,uint8_t type) {
 				flagsp++;
 				continue;
 			}
-			 enc_refpass_step_macro(	&uncompressedData[((k + 0) * data_stride) + i],  0);
-			 enc_refpass_step_macro(	&uncompressedData[((k + 1) * data_stride) + i], 3);
-			 enc_refpass_step_macro(	&uncompressedData[((k + 2) * data_stride) + i], 6);
-			 enc_refpass_step_macro(	&uncompressedData[((k + 3) * data_stride) + i], 9);
+			 enc_refpass_step_macro(	&uncompressedData[((k + 0) * uncompressedDataStride) + i],  0);
+			 enc_refpass_step_macro(	&uncompressedData[((k + 1) * uncompressedDataStride) + i], 3);
+			 enc_refpass_step_macro(	&uncompressedData[((k + 2) * uncompressedDataStride) + i], 6);
+			 enc_refpass_step_macro(	&uncompressedData[((k + 3) * uncompressedDataStride) + i], 9);
 			++flagsp;
 		}
 		flagsp += extra;
@@ -610,13 +565,12 @@ void T1::enc_refpass(int32_t bpno, int32_t *nmsedec,uint8_t type) {
 				continue;
 			}
 			for (j = k; j < h; ++j)
-			 enc_refpass_step_macro(&uncompressedData[(j * data_stride) + i],3*(j - k));
+			 enc_refpass_step_macro(&uncompressedData[(j * uncompressedDataStride) + i],3*(j - k));
 			++flagsp;
 		}
 	}
 	UPLOAD_MQC_VARIABLES(mqc,curctx);
 }
-
 void T1::enc_clnpass(int32_t bpno, int32_t *nmsedec,	uint32_t cblksty) {
 	const int32_t one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
 	auto mqc = &coder;
@@ -631,7 +585,7 @@ void T1::enc_clnpass(int32_t bpno, int32_t *nmsedec,	uint32_t cblksty) {
 			uint32_t runlen = 0;
 			if (agg) {
 				for (; runlen < 4; ++runlen) {
-					if (smr_abs(uncompressedData[((k + runlen) * data_stride) + i])	& (uint32_t)one)
+					if (smr_abs(uncompressedData[((k + runlen) * uncompressedDataStride) + i])	& (uint32_t)one)
 						break;
 				}
 				curctx = mqc->ctxs + T1_CTXNO_AGG;
@@ -642,7 +596,7 @@ void T1::enc_clnpass(int32_t bpno, int32_t *nmsedec,	uint32_t cblksty) {
 				mqc_encode_macro(mqc,curctx,a,c, ct,  runlen >> 1);
 				mqc_encode_macro(mqc,curctx,a,c, ct, runlen & 1);
 			}
-			auto datap = &uncompressedData[((k + runlen) * data_stride) + i];
+			auto datap = &uncompressedData[((k + runlen) * uncompressedDataStride) + i];
 			const uint32_t check = (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 |
 					T1_SIGMA_13	| T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
 			bool stage_2 = true;
@@ -694,14 +648,14 @@ void T1::enc_clnpass(int32_t bpno, int32_t *nmsedec,	uint32_t cblksty) {
 				 update_flags(flagsp, ci, v, w + 2U, vsc);
 				}
 				*flagsp &= ~(T1_PI_THIS << (ci));
-				datap += data_stride;
+				datap += uncompressedDataStride;
 			}
 		}
 	}
 	if (k < h) {
 		uint32_t runlen = 0;
 		for (uint32_t i = 0; i < w; ++i,++flagsp) {
-			auto datap = &uncompressedData[((k + runlen) * data_stride) + i];
+			auto datap = &uncompressedData[((k + runlen) * uncompressedDataStride) + i];
 			const uint32_t check = (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 |
 					T1_SIGMA_13	| T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
 			bool stage_2 = true;
@@ -751,15 +705,13 @@ void T1::enc_clnpass(int32_t bpno, int32_t *nmsedec,	uint32_t cblksty) {
 				 update_flags(flagsp, ci, v, w + 2U, vsc);
 				}
 				*flagsp &= ~(T1_PI_THIS << (ci));
-				datap += data_stride;
+				datap += uncompressedDataStride;
 			}
 		}
 	}
 
 	UPLOAD_MQC_VARIABLES(mqc,curctx);
 }
-
-
 double T1::compress_cblk(cblk_enc *cblk,
 						uint32_t max,
 						uint8_t orientation,
@@ -772,7 +724,6 @@ double T1::compress_cblk(cblk_enc *cblk,
 						bool doRateControl) {
 	if (!code_block_enc_allocate(cblk))
 		return 0;
-
 	auto mqc = &coder;
 	mqc_init_enc(mqc, cblk->data);
 
@@ -796,10 +747,8 @@ double T1::compress_cblk(cblk_enc *cblk,
 		cblk->numPassesTotal = 0;
 		return 0;
 	}
-
 	bpno = (int32_t) (cblk->numbps - 1);
 	passtype = 2;
-
 	mqc_resetstates(mqc);
 	mqc_init_enc(mqc, cblk->data);
 
@@ -831,14 +780,12 @@ double T1::compress_cblk(cblk_enc *cblk,
 				mqc_segmark_enc(mqc);
 			break;
 		}
-
 		if (doRateControl) {
 			tempwmsedec = getwmsedec(nmsedec, compno, level, orientation, bpno,
 					qmfbid, stepsize, mct_norms, mct_numcomps);
 			cumwmsedec += tempwmsedec;
 			pass->distortiondec = cumwmsedec;
 		}
-
 		if (enc_is_term_pass(cblk, cblksty, bpno, passtype)) {
 			if (type == T1_TYPE_RAW) {
 				mqc_bypass_flush_enc(mqc, cblksty & GRK_CBLKSTY_PTERM);
@@ -879,9 +826,7 @@ double T1::compress_cblk(cblk_enc *cblk,
 		if (cblksty & GRK_CBLKSTY_RESET)
 			mqc_resetstates(mqc);
 	}
-
 	cblk->numPassesTotal = passno;
-
 	if (cblk->numPassesTotal) {
 		/* Make sure that pass rates are increasing */
 		uint32_t last_pass_rate = mqc_numbytes_enc(mqc);
@@ -893,7 +838,6 @@ double T1::compress_cblk(cblk_enc *cblk,
 				last_pass_rate = pass->rate;
 		}
 	}
-
 	for (passno = 0; passno < cblk->numPassesTotal; passno++) {
 		auto pass = cblk->passes + passno;
 
@@ -906,10 +850,7 @@ double T1::compress_cblk(cblk_enc *cblk,
 	}
 	return cumwmsedec;
 }
-
 ////// DECODE  ///////////////////////////
-
-
 #define dec_clnpass_step_macro(check_flags, partial, \
                                       flags, flagsp, flags_stride, data, \
                                       data_stride, ciorig, ci, mqc, curctx, \
@@ -937,7 +878,6 @@ double T1::compress_cblk(cblk_enc *cblk,
         } while(0); \
     } \
 }
-
 void T1::dec_clnpass_step(grk_flag *flagsp, int32_t *datap,
 		int32_t oneplushalf, uint32_t ciorig, uint32_t ci, uint32_t vsc) {
 	uint32_t v;
@@ -947,7 +887,6 @@ void T1::dec_clnpass_step(grk_flag *flagsp, int32_t *datap,
 			0, ciorig, ci, mqc, mqc->curctx, v, mqc->a, mqc->c, mqc->ct, oneplushalf,
 			vsc);
 }
-
 #define dec_clnpass_internal(t1, bpno, vsc, w, h, flags_stride) \
 { \
     int32_t one, half, oneplushalf; \
@@ -1035,7 +974,6 @@ void T1::dec_clnpass_step(grk_flag *flagsp, int32_t *datap,
         } \
     } \
 }
-
 void T1::dec_clnpass_check_segsym(int32_t cblksty) {
 	if (cblksty & GRK_CBLKSTY_SEGSYM) {
 		auto mqc = &coder;
@@ -1054,11 +992,9 @@ void T1::dec_clnpass_check_segsym(int32_t cblksty) {
 		}
 	}
 }
-
 template <uint32_t w, uint32_t h, bool vsc> void T1::dec_clnpass(int32_t bpno) {
  dec_clnpass_internal(this, bpno, vsc, w, h, w+2);
 }
-
 void T1::dec_clnpass(int32_t bpno, int32_t cblksty) {
 	if (w == 64 && h == 64) {
 		if (cblksty & GRK_CBLKSTY_VSC)
@@ -1070,8 +1006,6 @@ void T1::dec_clnpass(int32_t bpno, int32_t cblksty) {
 	}
     dec_clnpass_check_segsym(cblksty);
 }
-
-
 inline void T1::dec_sigpass_step_raw(grk_flag *flagsp,
 		int32_t *datap, int32_t oneplushalf, uint32_t vsc, uint32_t ci) {
 	auto mqc = &(coder);
@@ -1087,7 +1021,6 @@ inline void T1::dec_sigpass_step_raw(grk_flag *flagsp,
 		*flagsp |= T1_PI_THIS << (ci);
 	}
 }
-
 #define dec_sigpass_step_mqc_macro(flags, flagsp, flags_stride, data, \
                                           data_stride, ciorig, ci, mqc, curctx, \
                                           v, a, c, ct, oneplushalf, vsc) \
@@ -1113,7 +1046,6 @@ inline void T1::dec_sigpass_step_raw(grk_flag *flagsp,
         flags |= T1_PI_THIS << (ci); \
     } \
 }
-
 inline void T1::dec_sigpass_step_mqc(grk_flag *flagsp,
 								int32_t *datap, int32_t oneplushalf,
 								uint32_t ci, uint32_t flags_stride,
@@ -1124,7 +1056,6 @@ inline void T1::dec_sigpass_step_mqc(grk_flag *flagsp,
  dec_sigpass_step_mqc_macro(*flagsp, flagsp, flags_stride, datap, 0, ci, 3*ci,
 			mqc, mqc->curctx, v, mqc->a, mqc->c, mqc->ct, oneplushalf, vsc);
 }
-
 void T1::dec_sigpass_raw(int32_t bpno, int32_t cblksty) {
 	int32_t one, half, oneplushalf;
 	auto flagsp = flags + 1 + (w+2);
@@ -1165,7 +1096,6 @@ void T1::dec_sigpass_raw(int32_t bpno, int32_t cblksty) {
 		}
 	}
 }
-
 #define dec_sigpass_mqc_internal(bpno, vsc, w, h, flags_stride) \
 { \
         int32_t one, half, oneplushalf; \
@@ -1210,7 +1140,6 @@ void T1::dec_sigpass_raw(int32_t bpno, int32_t cblksty) {
             } \
         } \
 }
-
 void T1::dec_sigpass_mqc(int32_t bpno, int32_t cblksty) {
 	if (w == 64 && h == 64) {
 		if (cblksty & GRK_CBLKSTY_VSC){
@@ -1223,8 +1152,6 @@ void T1::dec_sigpass_mqc(int32_t bpno, int32_t cblksty) {
 	 dec_sigpass_mqc_internal(bpno, cblksty & GRK_CBLKSTY_VSC, w, h, w + 2U);
 	}
 }
-
-
 inline void T1::dec_refpass_step_raw(grk_flag *flagsp,
 		int32_t *datap, int32_t poshalf, uint32_t ci) {
 	auto mqc = &(coder);
@@ -1236,7 +1163,6 @@ inline void T1::dec_refpass_step_raw(grk_flag *flagsp,
 		*flagsp |= T1_MU_THIS << (ci);
 	}
 }
-
 #define dec_refpass_step_mqc_macro(flags, data, data_stride, ciorig, ci, \
                                           mqc, curctx, v, a, c, ct, poshalf) \
 { \
@@ -1249,14 +1175,12 @@ inline void T1::dec_refpass_step_raw(grk_flag *flagsp,
         flags |= T1_MU_THIS << (ci); \
     } \
 }
-
 inline void T1::dec_refpass_step_mqc(mqcoder *mqc, grk_flag *flagsp,
 											int32_t *datap, int32_t poshalf, uint32_t ci) {
 	uint32_t v;
  dec_refpass_step_mqc_macro(*flagsp, datap, 0, ci, ci*3, mqc, mqc->curctx, v,
 			mqc->a, mqc->c, mqc->ct, poshalf);
 }
-
 void T1::dec_refpass_raw(int32_t bpno) {
 	int32_t one, poshalf;
 	auto dataPtr = uncompressedData;
@@ -1286,7 +1210,6 @@ void T1::dec_refpass_raw(int32_t bpno) {
 		}
 	}
 }
-
 #define dec_refpass_mqc_internal(bpno, w, h, flags_stride) \
 { \
         int32_t one, poshalf; \
@@ -1329,7 +1252,6 @@ void T1::dec_refpass_raw(int32_t bpno) {
             } \
         } \
 }
-
 void T1::dec_refpass_mqc(int32_t bpno) {
 	if (w == 64 && h == 64) {
 	 dec_refpass_mqc_internal(bpno, 64, 64, 66);
@@ -1337,22 +1259,17 @@ void T1::dec_refpass_mqc(int32_t bpno) {
 	 dec_refpass_mqc_internal(bpno, w, h, w + 2U);
 	}
 }
-
 bool T1::decompress_cblk(DecompressCodeblock *cblk,
-						uint8_t *compressedDataBuffer,
+						uint8_t *compressedData,
 						uint8_t orientation,
 						uint32_t cblksty) {
 	auto mqc = &coder;
 	uint32_t cblkdataindex = 0;
 	bool check_pterm = cblksty & GRK_CBLKSTY_PTERM;
-
 	mqc->lut_ctxno_zc_orient = lut_ctxno_zc + (orientation << 9);
-
 	if (!allocate_buffers((uint32_t) (cblk->x1 - cblk->x0),
 							(uint32_t) (cblk->y1 - cblk->y0)))
 		return false;
-
-
 	int32_t bpno_plus_one = (int32_t) (cblk->numbps);
 	if (bpno_plus_one >= (int32_t)k_max_bit_planes) {
 		grk::GRK_ERROR("unsupported number of bit planes: %u > %u",
@@ -1360,24 +1277,21 @@ bool T1::decompress_cblk(DecompressCodeblock *cblk,
 		return false;
 	}
 	uint32_t passtype = 2;
-
 	mqc_resetstates(mqc);
 
 	for (uint32_t segno = 0; segno < cblk->getNumSegments(); ++segno) {
 		auto seg = cblk->getSegment(segno);
-
 		/* BYPASS mode */
 		uint8_t type = ((bpno_plus_one <= ((int32_t) (cblk->numbps)) - 4)
 				&& (passtype < 2) && (cblksty & GRK_CBLKSTY_LAZY)) ?
 				T1_TYPE_RAW : T1_TYPE_MQ;
 
 		if (type == T1_TYPE_RAW) {
-			mqc_raw_init_dec(mqc, compressedDataBuffer + cblkdataindex, seg->len);
+			mqc_raw_init_dec(mqc, compressedData + cblkdataindex, seg->len);
 		} else {
-			mqc_init_dec(mqc, compressedDataBuffer + cblkdataindex, seg->len);
+			mqc_init_dec(mqc, compressedData + cblkdataindex, seg->len);
 		}
 		cblkdataindex += seg->len;
-
 		for (uint32_t passno = 0;
 				(passno < seg->numpasses) && (bpno_plus_one >= 1);
 				++passno) {
@@ -1408,7 +1322,6 @@ bool T1::decompress_cblk(DecompressCodeblock *cblk,
 		}
 		mqc_finish_dec(mqc);
 	}
-
 	if (check_pterm) {
 		if (mqc->bp + 2 < mqc->end) {
 			grk::GRK_WARN(
@@ -1425,7 +1338,5 @@ bool T1::decompress_cblk(DecompressCodeblock *cblk,
 
 	return true;
 }
-
-
 
 }

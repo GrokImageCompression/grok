@@ -32,7 +32,7 @@ struct T1 {
 	~T1();
 
 	bool decompress_cblk(DecompressCodeblock *cblk,
-						uint8_t *compressedDataBuffer,
+						uint8_t *compressedData,
 						uint8_t orientation,
 						uint32_t cblksty);
 	void code_block_enc_deallocate(cblk_enc *p_code_block);
@@ -50,19 +50,26 @@ struct T1 {
 							bool doRateControl);
 	mqcoder coder;
 
+	int32_t* getUncompressedData(void);
+	void attachUncompressedData(int32_t *data, uint32_t w, uint32_t stride, uint32_t h);
+	void allocCompressedData(size_t len);
+	uint8_t* getCompressedDataBuffer(void);
+	static double getnorm(uint32_t level, uint8_t orientation, bool reversible);
+private:
+	bool allocUncompressedData(size_t len);
+	void deallocUncompressedData(void);
 	int32_t *uncompressedData;
+	size_t uncompressedDataLen;
+	bool ownsUncompressedData;
 	uint32_t w;
 	uint32_t h;
-	uint32_t data_stride;
+	uint32_t uncompressedDataStride;
 
 	//////////////////////////
 	// decompress only
-	uint8_t *compressedDataBuffer;  	/* Temporary buffer to concatenate all chunks of a codebock */
-	uint32_t compressedDataBufferLen;	/* Maximum size available in compressedDataBuffer */
+	uint8_t *compressedData;  	/* Temporary buffer to concatenate all chunks of a codebock */
+	size_t compressedDataLen;	/* Maximum size available in compressedData */
 	/////////////////////////////////////
-
-	static double getnorm(uint32_t level, uint8_t orientation, bool reversible);
-private:
 
 	/** Flags used by decompressor and compressor.
 	 * Such that flags[1+0] is for state of col=0,row=0..3,
@@ -70,7 +77,6 @@ private:
 	 This array avoids too much cache trashing when processing by 4 vertical samples
 	 as done in the various decoding steps. */
 	grk_flag *flags;
-	uint32_t datasize;
 	uint32_t flagssize;
 	bool compressor;
 

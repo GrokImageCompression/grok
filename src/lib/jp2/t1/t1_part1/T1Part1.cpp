@@ -39,11 +39,11 @@ void T1Part1::preCompress(CompressBlockExec *block, grk_tile *tile,
 	auto h = cblk->height();
 	if (!t1->allocate_buffers(w,h))
 		return;
-	t1->data_stride = w;
 	auto tileLineAdvance = (tile->comps + block->compno)->getBuffer()->getHighestBufferResWindowREL()->stride - w;
 	uint32_t tileIndex = 0;
 	uint32_t cblk_index = 0;
 	maximum = 0;
+	auto uncompressedData = t1->getUncompressedData();
 	if (block->qmfbid == 1) {
 		for (auto j = 0U; j < h; ++j) {
 			for (auto i = 0U; i < w; ++i) {
@@ -52,7 +52,7 @@ void T1Part1::preCompress(CompressBlockExec *block, grk_tile *tile,
 				uint32_t mag = smr_abs(temp);
 				if (mag > maximum)
 					maximum = mag;
-				t1->uncompressedData[cblk_index] = temp;
+				uncompressedData[cblk_index] = temp;
 				tileIndex++;
 				cblk_index++;
 			}
@@ -67,7 +67,7 @@ void T1Part1::preCompress(CompressBlockExec *block, grk_tile *tile,
 				uint32_t mag = smr_abs(temp);
 				if (mag > maximum)
 					maximum = mag;
-				t1->uncompressedData[cblk_index] = temp;
+				uncompressedData[cblk_index] = temp;
 				tileIndex++;
 				cblk_index++;
 			}
@@ -125,21 +125,15 @@ bool T1Part1::decompress(DecompressBlockExec *block) {
 	auto cblk = block->cblk;
   	if (!cblk->seg_buffers.empty()) {
 		size_t totalSegLen = cblk->getSegBuffersLen() + grk_cblk_dec_compressed_data_pad_right;
-		if (t1->compressedDataBufferLen < totalSegLen) {
-			auto new_block = (uint8_t*) grk_realloc(t1->compressedDataBuffer,
-					totalSegLen);
-			if (!new_block)
-				return false;
-			t1->compressedDataBuffer = new_block;
-			t1->compressedDataBufferLen = (uint32_t)totalSegLen;
-		}
+		t1->allocCompressedData(totalSegLen);
 		size_t offset = 0;
+		auto compressedData = t1->getCompressedDataBuffer();
 		for (auto& b : cblk->seg_buffers) {
-			memcpy(t1->compressedDataBuffer + offset, b->buf, b->len);
+			memcpy(compressedData+ offset, b->buf, b->len);
 			offset += b->len;
 		}
 		bool ret =t1->decompress_cblk(cblk,
-									t1->compressedDataBuffer,
+									compressedData,
 									block->bandOrientation,
 									block->cblk_sty);
 
@@ -147,7 +141,7 @@ bool T1Part1::decompress(DecompressBlockExec *block) {
 			return false;
   	}
 
-	return block->tilec->postProcess(t1->uncompressedData, block,false);
+	return block->tilec->postProcess(t1->getUncompressedData(), block,false);
 }
 
 }
