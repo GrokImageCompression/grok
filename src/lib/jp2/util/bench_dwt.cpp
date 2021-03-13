@@ -107,7 +107,7 @@ bool init_tilec(TileComponent * tilec,
 											ceildiv<uint32_t>(output_image->x1,1),
 											ceildiv<uint32_t>(output_image->y1,1));
 	}
-    tilec->create_buffer(tilec,unreduced_tile_comp_window_dims);
+    tilec->allocWindowBuffer(tilec,unreduced_tile_comp_window_dims);
     tilec->getBuffer()->alloc();
 	auto data = tilec->getBuffer()->ptr();
     for (size_t i = 0; i < tilec->getBuffer()->stridedArea(); i++)

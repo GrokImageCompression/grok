@@ -944,14 +944,11 @@ bool CodeStreamDecompress::decompress_tile_t2t1(TileProcessor *tileProcessor) {
 	}
 	if (doPost) {
 		auto tile = tileProcessor->tile;
-		if (m_multiTile) {
-			// make a copy and put in cache
+		if (m_multiTile)
 			tileProcessor->generateImage(m_output_image, tile);
-			for (uint16_t compno = 0; compno < tile->numcomps; ++compno)
-				(tile->comps + compno)->release_mem(true);
-		} else {
+		else
 			m_output_image->transferDataFrom(tile);
-		}
+		tileProcessor->deallocBuffers();
 	}
 
 	return rc;

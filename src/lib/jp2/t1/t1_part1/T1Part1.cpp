@@ -37,7 +37,7 @@ void T1Part1::preCompress(CompressBlockExec *block, grk_tile *tile,
 	auto cblk = block->cblk;
 	auto w = cblk->width();
 	auto h = cblk->height();
-	if (!t1->allocate_buffers(w,h))
+	if (!t1->alloc(w,h))
 		return;
 	auto tileLineAdvance = (tile->comps + block->compno)->getBuffer()->getHighestBufferResWindowREL()->stride - w;
 	uint32_t tileIndex = 0;
@@ -132,12 +132,15 @@ bool T1Part1::decompress(DecompressBlockExec *block) {
 			memcpy(compressedData+ offset, b->buf, b->len);
 			offset += b->len;
 		}
-		bool ret =t1->decompress_cblk(cblk,
-									compressedData,
-									block->bandOrientation,
-									block->cblk_sty);
-
-		if (!ret)
+		cblk->allocUncompressedData(true);
+		t1->attachUncompressedData(cblk->getUncomressedDataPtr(),
+									cblk->width(),
+									cblk->height());
+		cblk->m_failed = t1->decompress_cblk(cblk,
+						compressedData,
+						block->bandOrientation,
+						block->cblk_sty);
+		if (!cblk->m_failed)
 			return false;
   	}
 

@@ -118,6 +118,8 @@ template <typename T, template <typename TT> typename A > struct grkBuffer : A<T
 	    return *this;
 	}
 	virtual bool alloc(size_t length) {
+		if (buf && len > length)
+			return true;
 		dealloc();
 		buf = A<T>::alloc(length);
 		if (!buf)

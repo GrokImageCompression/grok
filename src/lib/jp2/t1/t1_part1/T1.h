@@ -36,7 +36,7 @@ struct T1 {
 						uint8_t orientation,
 						uint32_t cblksty);
 	void code_block_enc_deallocate(cblk_enc *p_code_block);
-	bool allocate_buffers(uint32_t w, uint32_t h);
+	bool alloc(uint32_t w, uint32_t h);
 	double compress_cblk(cblk_enc *cblk,
 							uint32_t max,
 							uint8_t orientation,
@@ -51,7 +51,7 @@ struct T1 {
 	mqcoder coder;
 
 	int32_t* getUncompressedData(void);
-	void attachUncompressedData(int32_t *data, uint32_t w, uint32_t stride, uint32_t h);
+	void attachUncompressedData(int32_t *data, uint32_t w,uint32_t h);
 	void allocCompressedData(size_t len);
 	uint8_t* getCompressedDataBuffer(void);
 	static double getnorm(uint32_t level, uint8_t orientation, bool reversible);

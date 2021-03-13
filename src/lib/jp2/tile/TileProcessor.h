@@ -71,7 +71,6 @@ private:
 struct TileProcessor {
 	explicit TileProcessor(CodeStream *codeStream, BufferedStream *stream, bool isWholeTileDecompress) ;
 	~TileProcessor();
-
 	/**
 	 * Initializes tile processor (no buffer memory is allocated)
 	 *
@@ -81,38 +80,31 @@ struct TileProcessor {
 	 * @return	true if the remaining data is sufficient.
 	 */
 	 bool init(const GrkImage *output_image, bool isCompressor);
-
+	 void deallocBuffers();
 	 bool pre_write_tile(void);
-
 	/**
 	 * Compress tile part
 	 * @param	tile_bytes_written	number of bytes written to stream
 	 * @return  true if the coding is successful.
 	 */
 	bool compress_tile_part(uint32_t *tile_bytes_written);
-
 	bool pre_compress_first_tile_part(void);
-
 	/**
 	 * Compress tile
 	 * @return  true if the coding is successful.
 	 */
 	bool do_compress(void);
-
-
 	/**
 	 T1 decompress
 	 @return true if successful
 	 */
 	bool decompress_tile_t1(void);
-
 	/**
 	 T2 decompress
 	 @param src_buf Source buffer
 	 @return true if successful
 	 */
 	bool decompress_tile_t2(ChunkBuffer *src_buf);
-
 	/**
 	 * Copies tile data from the given memory block onto the system.
 	 */
@@ -120,103 +112,66 @@ struct TileProcessor {
 	bool needs_rate_control();
 	void copy_image_to_tile();
 	bool prepare_sod_decoding(CodeStreamDecompress *codeStream);
-
 	/** index of tile being currently compressed/decompressed */
 	uint16_t m_tile_index;
-
 	/** Compressing Only
 	 *  true for first POC tile part, otherwise false*/
 	bool m_first_poc_tile_part;
-
 	/** Compressing Only
 	 *  index of tile part being currently coding.
 	 *  m_tile_part_index holds the total number of tile parts encoded thus far
 	 *  while the compressor is compressing the current tile part.*/
 	uint8_t m_tile_part_index;
-
 	// Decompressing Only
 	uint32_t tile_part_data_length;
-
 	/** Compressing Only
 	 * Total number of tile parts of the tile*/
 	uint8_t totnum_tp;
-
 	/** Compressing Only
 	 *  Current packet iterator number */
 	uint32_t pino;
-
 	/** info on image tile */
 	grk_tile *tile;
 	/** image header */
 	GrkImage *headerImage;
 	grk_plugin_tile *current_plugin_tile;
-
     // true if whole tile will be decoded; false if tile window will be decoded
     bool   wholeTileDecompress;
-
 	PacketLengthMarkers *plt_markers;
-
 	/** Coding parameters */
 	CodingParams *m_cp;
-
 	// Compressing only - track which packets have been already written
 	// to the code stream
 	PacketTracker m_packetTracker;
 	BufferedStream *m_stream;
 	bool m_corrupt_packet;
-
 	void generateImage(GrkImage* src_image, grk_tile *src_tile);
 	GrkImage* getImage(void);
 private:
-
 	/** position of the tile part flag in progression order*/
 	uint32_t tp_pos;
-
 	// coding/decoding parameters for this tile
 	TileCodingParams *m_tcp;
-
 	 bool t2_decompress(ChunkBuffer *src_buf,	uint64_t *p_data_read);
-
 	 bool is_whole_tilecomp_decoding( uint32_t compno);
-
 	 bool need_mct_decompress(uint32_t compno);
-
 	 bool mct_decompress();
-
 	 bool dc_level_shift_decompress();
-
 	 bool dc_level_shift_encode();
-
 	 bool mct_encode();
-
 	 bool dwt_encode();
-
 	 void t1_encode();
-
 	 bool t2_encode(uint32_t *packet_bytes_written);
-
 	 bool rate_allocate(void);
-
 	 bool layer_needs_rate_control(uint32_t layno);
-
 	 bool make_single_lossless_layer();
-
 	 void makelayer_final(uint32_t layno);
-
 	 bool pcrd_bisect_simple(uint32_t *p_data_written);
-
-	 void make_layer_simple(uint32_t layno, double thresh,
-			bool final);
-
+	 void make_layer_simple(uint32_t layno, double thresh,bool final);
 	 bool pcrd_bisect_feasible(uint32_t *p_data_written);
-
-	 void makelayer_feasible(uint32_t layno, uint16_t thresh,
-			bool final);
-
+	 void makelayer_feasible(uint32_t layno, uint16_t thresh,bool final);
 	 bool truncated;
-
 	 GrkImage *m_image;
-
 };
 
 }

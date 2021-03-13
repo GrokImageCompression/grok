@@ -18,20 +18,18 @@
  *    Please see the LICENSE file in the root directory for details.
  *
  */
-
 #pragma once
 #include <vector>
-
 #include "TileProcessor.h"
 
 namespace grk {
 
-// tile component
 struct TileComponent : public grkRectU32 {
 	TileComponent();
 	~TileComponent();
-
-	bool create_buffer(grkRectU32 unreducedTileOrImageCompWindow);
+	bool allocSparseBuffer(uint32_t numres, bool truncatedTile);
+	bool allocWindowBuffer(grkRectU32 unreducedTileOrImageCompWindow);
+	void deallocBuffers(void);
 	bool init(bool isCompressor,
 			bool whole_tile,
 			grkRectU32 unreducedTileComp,
@@ -41,9 +39,6 @@ struct TileComponent : public grkRectU32 {
 			TileCodingParams *tcp,
 			TileComponentCodingParams* tccp,
 			grk_plugin_tile *current_plugin_tile);
-
-	 bool allocSparseBuffer(uint32_t numres, bool truncatedTile);
-	 void release_mem(bool releaseBuffer);
 	 bool subbandIntersectsAOI(uint8_t resno,
 	 								eBandOrientation orient,
 	 								const grkRectU32 *aoi) const;
@@ -67,11 +62,6 @@ private:
 	bool m_is_encoder;
 	TileComponentWindowBuffer<int32_t> *buf;
 	TileComponentCodingParams *m_tccp;
-
 };
 
 }
-
-
-
-

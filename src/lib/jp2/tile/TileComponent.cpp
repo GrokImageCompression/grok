@@ -41,9 +41,6 @@ TileComponent::TileComponent() :tileCompResolution(nullptr),
 {}
 
 TileComponent::~TileComponent(){
-	release_mem(true);
-}
-void TileComponent::release_mem(bool releaseBuffer){
 	if (tileCompResolution) {
 		for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 			auto res = tileCompResolution + resno;
@@ -55,16 +52,15 @@ void TileComponent::release_mem(bool releaseBuffer){
 			}
 		}
 		delete[] tileCompResolution;
-		tileCompResolution = nullptr;
 	}
+	deallocBuffers();
+}
+void TileComponent::deallocBuffers(void){
 	delete m_sa;
 	m_sa = nullptr;
-	if (releaseBuffer) {
-		delete buf;
-		buf = nullptr;
-	}
+	delete buf;
+	buf = nullptr;
 }
-
 /**
  * Initialize tile component in unreduced tile component coordinates
  * (tile component coordinates take sub-sampling into account).
@@ -143,7 +139,7 @@ bool TileComponent::init(bool isCompressor,
 	}
 
 	//3. create window buffer
-	if (!create_buffer(unreducedTileOrImageCompWindow))
+	if (!allocWindowBuffer(unreducedTileOrImageCompWindow))
 		return false;
 
 	// set band step size
@@ -172,13 +168,11 @@ bool TileComponent::init(bool isCompressor,
 
 	return true;
 }
-
 bool TileComponent::subbandIntersectsAOI(uint8_t resno,
 								eBandOrientation orient,
 								const grkRectU32 *aoi) const {
     return buf->getPaddedBandWindow(resno, orient)->non_empty_intersection(aoi);
 }
-
 bool TileComponent::allocSparseBuffer(uint32_t numres, bool truncatedTile){
 	grkRectU32 temp(0,0,0,0);
 	bool first = true;
@@ -289,8 +283,7 @@ bool TileComponent::allocSparseBuffer(uint32_t numres, bool truncatedTile){
 
     return true;
 }
-
-bool TileComponent::create_buffer(grkRectU32 unreducedTileOrImageCompWindow) {
+bool TileComponent::allocWindowBuffer(grkRectU32 unreducedTileOrImageCompWindow) {
 	if (buf)
 		return true;
 	auto highestNumberOfResolutions =
@@ -320,18 +313,15 @@ bool TileComponent::create_buffer(grkRectU32 unreducedTileOrImageCompWindow) {
 
 	return true;
 }
-
 TileComponentWindowBuffer<int32_t>* TileComponent::getBuffer() const{
 	return buf;
 }
-
 bool TileComponent::isWholeTileDecoding() {
 	return wholeTileDecompress;
 }
 ISparseBuffer* TileComponent::getSparseBuffer(){
 	return m_sa;
 }
-
 bool TileComponent::postProcess(int32_t *srcData, DecompressBlockExec *block, bool isHT) {
 	if (isHT){
 		if (block->roishift) {
@@ -363,7 +353,6 @@ bool TileComponent::postProcess(int32_t *srcData, DecompressBlockExec *block, bo
 		}
 	}
 }
-
 template<typename F> bool TileComponent::postDecompressImpl(int32_t *srcData, DecompressBlockExec *block){
 	auto cblk = block->cblk;
 

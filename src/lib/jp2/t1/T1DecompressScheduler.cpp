@@ -44,6 +44,8 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent *tilec, Tile
 					 auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
 					if (wholeTileDecoding || paddedBandWindow->non_empty_intersection(&cblkBounds)){
 						auto cblk = precinct->getDecompressedBlockPtr(cblkno);
+						if (!cblk->needsDecompress())
+							continue;
 						auto block = new DecompressBlockExec();
 						block->x = cblk->x0;
 						block->y = cblk->y0;
@@ -65,17 +67,15 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent *tilec, Tile
 	}
 	return true;
 }
-
-
 bool T1DecompressScheduler::scheduleDecompress(TileCodingParams *tcp,
 		                    uint16_t blockw, uint16_t blockh,
 		                    std::vector<DecompressBlockExec*> *blocks) {
 	// nominal code block dimensions
 	uint16_t codeblock_width = (uint16_t) (blockw ? (uint32_t) 1 << blockw : 0);
 	uint16_t codeblock_height = (uint16_t) (blockh ? (uint32_t) 1 << blockh : 0);
-	for (auto i = 0U; i < ThreadPool::get()->num_threads(); ++i) {
+	for (auto i = 0U; i < ThreadPool::get()->num_threads(); ++i)
 		t1Implementations.push_back(T1Factory::get_t1(false, tcp, codeblock_width,codeblock_height));
-	}
+
 	return decompress(blocks);
 }
 bool T1DecompressScheduler::decompressBlock(T1Interface *impl, DecompressBlockExec *block){
@@ -91,7 +91,6 @@ bool T1DecompressScheduler::decompressBlock(T1Interface *impl, DecompressBlockEx
 
 	return true;
 }
-
 bool T1DecompressScheduler::decompress(std::vector<DecompressBlockExec*> *blocks) {
 	if (!blocks || !blocks->size())
 		return true;
@@ -124,7 +123,7 @@ bool T1DecompressScheduler::decompress(std::vector<DecompressBlockExec*> *blocks
                 while (true) {
                 	uint64_t index = (uint64_t)++blockCount;
                 	//note: even after failure, we continue to read and delete
-                	//blocks unil index is out of bounds. Otherwise, we leak blocks.
+                	//blocks until index is out of bounds. Otherwise, we leak blocks.
                 	if (index >= maxBlocks)
                 		return 0;
 					auto block = decodeBlocks[index];

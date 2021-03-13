@@ -20,9 +20,7 @@ class GrkImage : public grk_image {
 friend GrkObjectWrapperImpl<GrkImage>;
 public:
 	GrkImage();
-
 	bool subsampleAndReduce(uint32_t reduce);
-
 	/**
 	* Create image
 	*
@@ -37,7 +35,6 @@ public:
 			 	 	 	 	 	grk_image_cmptparm  *cmptparms,
 								GRK_COLOR_SPACE clrspc,
 								bool doAllocation);
-
 	/**
 	 * Allocate data for single image component
 	 *
@@ -46,16 +43,12 @@ public:
 	 * @return 		      true if successful
 	 */
 	static bool allocData(	grk_image_comp *image);
-
-
 	/**
 	 * Allocate data
-	 *
 	 *
 	 * @return true if successful
 	 */
 	bool allocData();
-
 	/**
 	 * Copy only header of image and its component header (no data are copied)
 	 * if dest image have data, they will be freed
@@ -65,19 +58,13 @@ public:
 	 *
 	 */
 	void copyHeader(GrkImage *dest);
-
 	/**
 	 Transfer data to dest for each component, and null out "this" data.
 	 Assumption:  "this" and dest have the same number of components
 	 */
 	void transferDataTo(GrkImage *dest);
-
-
 	void transferDataFrom(const grk_tile* tile_src_data);
-
 	GrkImage* duplicate(const grk_tile* tile_src);
-
-
 	/**
 	 * Copy tile to composite image
 	 *
@@ -91,7 +78,6 @@ public:
 	 */
 	bool compositeFrom(const grk_tile *src_tile);
 	bool compositeFrom(const GrkImage *src_img);
-
 	bool generateCompositeBounds(const TileComponent *src_comp,
 								uint16_t compno,
 								grkRectU32 *src,
@@ -105,7 +91,6 @@ public:
 								grkRectU32 *dest,
 								grkRectU32 *dest_win,
 								uint32_t *src_line_off);
-
 	bool generateCompositeBounds(uint16_t compno,
 								grkRectU32 *src,
 								uint32_t src_stride,
@@ -117,7 +102,5 @@ private:
 	~GrkImage();
 	bool ownsData;
 };
-
-
 
 }

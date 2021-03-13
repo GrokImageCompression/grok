@@ -154,7 +154,7 @@ template<typename T> bool PrecinctImpl::initCodeBlock(T* block, uint64_t cblkno)
 		return true;
 	if (!block->alloc())
 		return false;
-	(*(grkRectU32*)block) = getCodeBlockBounds(cblkno);
+	block->setRect(getCodeBlockBounds(cblkno));
 
 	return true;
 }
@@ -205,13 +205,15 @@ Codeblock::Codeblock():
 		numlenbits(0),
 		numPassesInPacket(0)
 #ifdef DEBUG_LOSSLESS_T2
-		,included(false),
+		,included(false)
 #endif
+		,m_failed(false)
 {}
 Codeblock::Codeblock(const Codeblock &rhs): grkRectU32(rhs),
 											numbps(rhs.numbps),
 											numlenbits(rhs.numlenbits),
-											numPassesInPacket(rhs.numPassesInPacket)
+											numPassesInPacket(rhs.numPassesInPacket),
+											m_failed(rhs.m_failed)
 #ifdef DEBUG_LOSSLESS_T2
 	,included(0)
 #endif
@@ -234,6 +236,16 @@ Codeblock& Codeblock::operator=(const Codeblock& rhs){
 #endif
 	}
 	return *this;
+}
+void Codeblock::setRect(grkRectU32 r){
+	(*(grkRectU32*)this) = r;
+	uncompressedData = grkBuffer2d<int32_t, AllocatorAligned>(width(),height());
+}
+bool Codeblock::allocUncompressedData(bool clear){
+	return uncompressedData.alloc(clear);
+}
+int32_t* Codeblock::getUncomressedDataPtr(void){
+	return uncompressedData.currPtr();
 }
 CompressCodeblock::CompressCodeblock() :
 				paddedCompressedStream(nullptr),
@@ -289,14 +301,12 @@ DecompressCodeblock::DecompressCodeblock() : 	segs(nullptr),
 												#ifdef DEBUG_LOSSLESS_T2
 												included(0),
 												#endif
-												numSegmentsAllocated(0),
-												uncompressedData(nullptr)
+												numSegmentsAllocated(0)
 {}
 DecompressCodeblock::~DecompressCodeblock(){
 	compressedStream.dealloc();
 	cleanup_seg_buffers();
 	delete[] segs;
-	delete uncompressedData;
 }
 Segment* DecompressCodeblock::getSegment(uint32_t segmentIndex){
 	if (!segs) {
@@ -349,6 +359,9 @@ bool DecompressCodeblock::copy_to_contiguous_buffer(uint8_t *buffer) {
 		}
 	}
 	return true;
+}
+bool DecompressCodeblock::needsDecompress(void){
+	return !m_failed && !getUncomressedDataPtr();
 }
 Subband::Subband() :
 				orientation(BAND_ORIENT_LL),

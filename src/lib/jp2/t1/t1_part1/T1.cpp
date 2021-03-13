@@ -310,14 +310,13 @@ void T1::deallocUncompressedData(void){
 	uncompressedData = nullptr;
 	ownsUncompressedData = false;
 }
-void T1::attachUncompressedData(int32_t *data, uint32_t width, uint32_t stride, uint32_t height){
-	assert(width == w && height == h && stride == uncompressedDataStride);
-	if (width == w && height == h && stride == uncompressedDataStride){
-		deallocUncompressedData();
-		uncompressedData = data;
-	}
+void T1::attachUncompressedData(int32_t *data, uint32_t width, uint32_t height){
+	deallocUncompressedData();
+	uncompressedData = data;
+	alloc(width,height);
+
 }
-bool T1::allocate_buffers(uint32_t width, uint32_t height) {
+bool T1::alloc(uint32_t width, uint32_t height) {
 	uint32_t newflagssize;
 	uint32_t flags_stride;
 
@@ -326,15 +325,16 @@ bool T1::allocate_buffers(uint32_t width, uint32_t height) {
 	assert(width <= 1024);
 	assert(height <= 1024);
 	assert(width * height <= 4096);
-	/* compressor uses tile buffer, so no need to allocate */
-	uint32_t newDataSize = width * height * sizeof(int32_t);
-	if (!allocUncompressedData(newDataSize))
-		return false;
+	if (compressor){
+		uint32_t newDataSize = width * height * sizeof(int32_t);
+		if (!allocUncompressedData(newDataSize))
+			return false;
+		if (!compressor)
+			memset(uncompressedData, 0, newDataSize );
+	}
 	w = width;
 	h = height;
 	uncompressedDataStride = width;
-	if (!compressor)
-		memset(uncompressedData, 0, newDataSize );
 	flags_stride = width + 2U; /* can't be 0U */
 	newflagssize = (height + 3U) / 4U + 2U;
 	newflagssize *= flags_stride;
@@ -1267,9 +1267,6 @@ bool T1::decompress_cblk(DecompressCodeblock *cblk,
 	uint32_t cblkdataindex = 0;
 	bool check_pterm = cblksty & GRK_CBLKSTY_PTERM;
 	mqc->lut_ctxno_zc_orient = lut_ctxno_zc + (orientation << 9);
-	if (!allocate_buffers((uint32_t) (cblk->x1 - cblk->x0),
-							(uint32_t) (cblk->y1 - cblk->y0)))
-		return false;
 	int32_t bpno_plus_one = (int32_t) (cblk->numbps);
 	if (bpno_plus_one >= (int32_t)k_max_bit_planes) {
 		grk::GRK_ERROR("unsupported number of bit planes: %u > %u",

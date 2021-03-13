@@ -88,14 +88,20 @@ struct Codeblock : public grkRectU32 {
     Codeblock();
     Codeblock& operator=(const Codeblock& other);
     virtual ~Codeblock() = default;
+    void setRect(grkRectU32 r);
 	grkBufferU8 compressedStream;
 	uint32_t numbps;
 	uint32_t numlenbits;
 	uint32_t numPassesInPacket; 	/* number of passes encoded in current packet */
+	int32_t* getUncomressedDataPtr(void);
+	bool allocUncompressedData(bool clear);
+	bool m_failed;
+protected:
 #ifdef DEBUG_LOSSLESS_T2
 	uint32_t included;
 	std::vector<PacketLengthInfo> packet_length_info;
 #endif
+	grkBuffer2d<int32_t, AllocatorAligned> uncompressedData;
 };
 struct CompressCodeblock : public Codeblock {
 	CompressCodeblock();
@@ -120,12 +126,12 @@ struct DecompressCodeblock: public Codeblock {
 	void cleanup_seg_buffers();
 	size_t getSegBuffersLen();
 	bool copy_to_contiguous_buffer(uint8_t *buffer);
+	bool needsDecompress(void);
 	std::vector<grkBufferU8*> seg_buffers;
 private:
 	Segment *segs; 					/* information on segments */
 	uint32_t numSegments; 			/* number of segment in block*/
 	uint32_t numSegmentsAllocated; 	// number of segments allocated for segs array
-	int32_t *uncompressedData;
 };
 const size_t kChunkSize = 1024;
 template <typename T, typename P> class ChunkedArray{
