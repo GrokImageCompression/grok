@@ -97,7 +97,7 @@ private:
 	bool parseTileHeaderMarkers(bool *can_decode_tile_data);
 	bool readHeaderProcedureImpl(void);
 	bool exec_decompress();
-	bool decompressTileT2T1(TileProcessor *tileProcessor) ;
+	bool decompressT2T1(TileProcessor *tileProcessor) ;
 	bool decompressTile();
 	bool findNextTile(TileProcessor *tileProcessor);
 	bool decompressTiles(void);

@@ -33,10 +33,10 @@ PPMMarker::~PPMMarker(){
 	if (markers != nullptr) {
 		for (uint32_t i = 0U; i < markers_count; ++i) {
 			if (markers[i].m_data != nullptr)
-				grk_free(markers[i].m_data);
+				grkFree(markers[i].m_data);
 		}
 		markers_count = 0U;
-		grk_free(markers);
+		grkFree(markers);
 	}
 	delete[] buffer;
 }
@@ -63,7 +63,7 @@ bool PPMMarker::read(uint8_t *p_header_data,
 		uint32_t newCount = i_ppm + 1U;
 		assert(markers_count == 0U);
 
-		markers = (grk_ppx*) grk_calloc(newCount, sizeof(grk_ppx));
+		markers = (grk_ppx*) grkCalloc(newCount, sizeof(grk_ppx));
 		if (markers == nullptr) {
 			GRK_ERROR("Not enough memory to read PPM marker");
 			return false;
@@ -71,7 +71,7 @@ bool PPMMarker::read(uint8_t *p_header_data,
 		markers_count = newCount;
 	} else if (markers_count <= i_ppm) {
 		uint32_t newCount = i_ppm + 1U;
-		auto new_ppm_markers = (grk_ppx*) grk_realloc(markers,
+		auto new_ppm_markers = (grk_ppx*) grkRealloc(markers,
 				newCount * sizeof(grk_ppx));
 		if (new_ppm_markers == nullptr) {
 			/* clean up to be done on cp destruction */
@@ -90,7 +90,7 @@ bool PPMMarker::read(uint8_t *p_header_data,
 		return false;
 	}
 
-	markers[i_ppm].m_data = (uint8_t*) grk_malloc(header_size);
+	markers[i_ppm].m_data = (uint8_t*) grkMalloc(header_size);
 	if (markers[i_ppm].m_data == nullptr) {
 		/* clean up to be done on cp destruction */
 		GRK_ERROR("Not enough memory to read PPM marker");
@@ -206,13 +206,13 @@ bool PPMMarker::merge(){
 					}
 				} while (data_size > 0U);
 			}
-			grk_free(markers[i].m_data);
+			grkFree(markers[i].m_data);
 			markers[i].m_data = nullptr;
 			markers[i].m_data_size = 0U;
 		}
 	}
 	markers_count = 0U;
-	grk_free(markers);
+	grkFree(markers);
 	markers = nullptr;
 
 	return true;

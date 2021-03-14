@@ -39,7 +39,6 @@ TileCache::~TileCache() {
 bool TileCache::empty(){
 	return m_cache.empty();
 }
-
 TileCacheEntry*  TileCache::put(uint16_t tileIndex, TileProcessor *processor){
 	TileCacheEntry *entry = nullptr;
 	if (m_cache.find(tileIndex) != m_cache.end()) {
@@ -59,7 +58,6 @@ TileCacheEntry* TileCache::get(uint16_t tileIndex){
 
 	return nullptr;
 }
-
 void TileCache::setStrategy(GRK_TILE_CACHE_STRATEGY strategy){
 	m_strategy = strategy;
 }

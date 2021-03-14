@@ -379,12 +379,12 @@ bool T1::alloc(uint32_t width, uint32_t height) {
  * Deallocate the compressing data of the given precinct.
  */
 void T1::code_block_enc_deallocate(cblk_enc *code_block) {
-	grk::grk_free(code_block->passes);
+	grk::grkFree(code_block->passes);
 	code_block->passes = nullptr;
 }
 bool T1::code_block_enc_allocate(cblk_enc *p_code_block) {
 	if (!p_code_block->passes) {
-		p_code_block->passes = (pass_enc*) grk::grk_calloc(100,
+		p_code_block->passes = (pass_enc*) grk::grkCalloc(100,
 				sizeof(pass_enc));
 		if (!p_code_block->passes)
 			return false;

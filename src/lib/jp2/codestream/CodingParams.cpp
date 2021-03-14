@@ -83,7 +83,7 @@ TileCodingParams::TileCodingParams() :
 								tccps(nullptr),
 								m_tile_part_index(-1),
 								m_nb_tile_parts(0),
-								m_tile_data(nullptr),
+								m_compressedTileData(nullptr),
 								mct_norms(nullptr),
 								m_mct_decoding_matrix(nullptr),
 								m_mct_coding_matrix(nullptr),
@@ -121,9 +121,9 @@ bool TileCodingParams::getIsHT(void){
 void TileCodingParams::destroy() {
 	if (ppt_markers != nullptr) {
 		for (uint32_t i = 0U; i < ppt_markers_count; ++i)
-			grk_free(ppt_markers[i].m_data);
+			grkFree(ppt_markers[i].m_data);
 		ppt_markers_count = 0U;
-		grk_free(ppt_markers);
+		grkFree(ppt_markers);
 		ppt_markers = nullptr;
 	}
 
@@ -131,13 +131,13 @@ void TileCodingParams::destroy() {
 	ppt_buffer = nullptr;
 	delete[] tccps;
 	tccps = nullptr;
-	grk_free(m_mct_coding_matrix);
+	grkFree(m_mct_coding_matrix);
 	m_mct_coding_matrix = nullptr;
-	grk_free(m_mct_decoding_matrix);
+	grkFree(m_mct_decoding_matrix);
 	m_mct_decoding_matrix = nullptr;
 
 	if (m_mcc_records) {
-		grk_free(m_mcc_records);
+		grkFree(m_mcc_records);
 		m_mcc_records = nullptr;
 		m_nb_max_mcc_records = 0;
 		m_nb_mcc_records = 0;
@@ -146,16 +146,16 @@ void TileCodingParams::destroy() {
 	if (m_mct_records) {
 		auto mct_data = m_mct_records;
 		for (uint32_t i = 0; i < m_nb_mct_records; ++i) {
-			grk_free(mct_data->m_data);
+			grkFree(mct_data->m_data);
 			++mct_data;
 		}
-		grk_free(m_mct_records);
+		grkFree(m_mct_records);
 		m_mct_records = nullptr;
 	}
-	grk_free(mct_norms);
+	grkFree(mct_norms);
 	mct_norms = nullptr;
-	delete m_tile_data;
-	m_tile_data = nullptr;
+	delete m_compressedTileData;
+	m_compressedTileData = nullptr;
 }
 
 

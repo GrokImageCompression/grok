@@ -242,7 +242,7 @@ void GRK_CALLCONV grk_image_single_component_data_free( grk_image_comp  *comp) {
 		break;
 	case GRK_CODEC_UNKNOWN:
 	default:
-		grk_free(codec);
+		grkFree(codec);
 		return nullptr;
 	}
 	return &codec->obj;
@@ -337,7 +337,7 @@ bool GRK_CALLCONV grk_set_MCT( grk_cparameters  *parameters,
 
 	/* use array based MCT */
 	parameters->tcp_mct = 2;
-	parameters->mct_data = grk_malloc(l_mct_total_size);
+	parameters->mct_data = grkMalloc(l_mct_total_size);
 	if (!parameters->mct_data) {
 		return false;
 	}
@@ -383,7 +383,7 @@ grk_image* GRK_CALLCONV grk_decompress_get_composited_image( grk_codec *codecWra
 		break;
 	case GRK_CODEC_UNKNOWN:
 	default:
-		grk_free(codec);
+		grkFree(codec);
 		return nullptr;
 	}
 	return &codec->obj;
@@ -459,7 +459,7 @@ bool GRK_CALLCONV grk_compress_tile( grk_codec *codecWrapper, uint16_t tile_inde
 	return false;
 }
 
-static void grk_free_file(void *p_user_data) {
+static void grkFree_file(void *p_user_data) {
 	if (p_user_data)
 		fclose((FILE*) p_user_data);
 }
@@ -487,7 +487,7 @@ static void grk_free_file(void *p_user_data) {
 	}
 	grk_stream_set_user_data(stream, (void*) p_file,
 			(grk_stream_free_user_data_fn) (
-					stdin_stdout ? nullptr : grk_free_file));
+					stdin_stdout ? nullptr : grkFree_file));
 	if (is_read_stream)
 		grk_stream_set_user_data_length(stream,
 				grk_get_data_length_from_file(p_file));

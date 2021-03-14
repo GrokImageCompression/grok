@@ -123,7 +123,7 @@ bool T1Part1::compress(CompressBlockExec *block) {
 
 bool T1Part1::decompress(DecompressBlockExec *block) {
 	auto cblk = block->cblk;
-	if (cblk->needsDecompress()) {
+	if (cblk->isClosed()) {
 		cblk->allocUncompressedData(true);
 		if (!cblk->seg_buffers.empty()) {
 			size_t totalSegLen = cblk->getSegBuffersLen() + grk_cblk_dec_compressed_data_pad_right;
@@ -141,7 +141,7 @@ bool T1Part1::decompress(DecompressBlockExec *block) {
 					compressedData,
 					block->bandOrientation,
 					block->cblk_sty);
-			cblk->setSuccess(ret);
+			cblk->setCacheState(ret ? GRK_CACHE_STATE_OPEN : GRK_CACHE_STATE_ERROR);
 			if (!ret)
 				return false;
 		}

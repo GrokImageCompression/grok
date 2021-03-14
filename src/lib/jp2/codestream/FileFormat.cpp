@@ -60,7 +60,7 @@ FileFormat::FileFormat(void) :
 }
 FileFormat::~FileFormat() {
 	delete[] comps;
-	grk_free(cl);
+	grkFree(cl);
 	FileFormatDecompress::free_color(&color);
 	xml.dealloc();
 	for (uint32_t i = 0; i < numUuids; ++i)
