@@ -44,6 +44,8 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent *tilec, Tile
 					 auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
 					if (wholeTileDecoding || paddedBandWindow->non_empty_intersection(&cblkBounds)){
 						auto cblk = precinct->getDecompressedBlockPtr(cblkno);
+						if (!cblk->needsDecompress())
+							continue;
 						auto block = new DecompressBlockExec();
 						block->x = cblk->x0;
 						block->y = cblk->y0;

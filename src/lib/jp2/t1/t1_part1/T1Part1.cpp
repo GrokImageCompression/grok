@@ -123,8 +123,6 @@ bool T1Part1::compress(CompressBlockExec *block) {
 
 bool T1Part1::decompress(DecompressBlockExec *block) {
 	auto cblk = block->cblk;
-	if (!cblk->needsDecompress())
-		return true;
 	cblk->allocUncompressedData(true);
   	if (!cblk->seg_buffers.empty()) {
 		size_t totalSegLen = cblk->getSegBuffersLen() + grk_cblk_dec_compressed_data_pad_right;

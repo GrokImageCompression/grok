@@ -286,7 +286,9 @@ bool GRK_CALLCONV grk_decompress_set_window( grk_codec *codecWrapper,
 bool GRK_CALLCONV grk_decompress( grk_codec *codecWrapper, grk_plugin_tile *tile) {
 	if (codecWrapper) {
 		auto codec = GrkCodec::getImpl(codecWrapper);
-		return codec->m_decompressor ? codec->m_decompressor->decompress(tile) : false;
+		bool rc =  codec->m_decompressor ? codec->m_decompressor->decompress(tile) : false;
+		//rc =  codec->m_decompressor ? codec->m_decompressor->decompress(tile) : false;
+		return rc;
 	}
 	return false;
 }

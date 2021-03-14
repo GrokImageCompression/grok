@@ -260,8 +260,10 @@ struct Resolution : public grkRectU32 {
 	grkPointU32 precinctExpn;
 	grk_plugin_tile *current_plugin_tile;
 };
-struct BlockExec : public IOpenable {
+struct BlockExec {
 	BlockExec();
+	virtual bool open(T1Interface *t1) = 0;
+	virtual ~BlockExec() = default;
 	TileComponent *tilec;
 	uint8_t bandIndex;
 	eBandOrientation bandOrientation;
@@ -277,7 +279,7 @@ struct BlockExec : public IOpenable {
 };
 struct DecompressBlockExec : public BlockExec {
 	DecompressBlockExec();
-	bool open(T1Interface *t1);
+	bool open(T1Interface *t1) override;
 	void close(void);
 	DecompressCodeblock *cblk;
 	uint8_t resno;
@@ -285,7 +287,7 @@ struct DecompressBlockExec : public BlockExec {
 };
 struct CompressBlockExec : public BlockExec{
 	CompressBlockExec();
-	bool open(T1Interface *t1);
+	bool open(T1Interface *t1) override;
 	void close(void);
 	CompressCodeblock *cblk;
 	Tile *tile;

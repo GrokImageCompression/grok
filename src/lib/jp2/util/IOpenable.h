@@ -7,7 +7,7 @@ class T1Interface;
 class IOpenable{
 public:
 	virtual ~IOpenable() = default;
-	virtual bool open(T1Interface *t1) = 0;
+	virtual bool open(void) = 0;
 	virtual void close(void) = 0;
 };
 
