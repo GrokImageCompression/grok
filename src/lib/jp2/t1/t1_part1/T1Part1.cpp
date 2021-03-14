@@ -123,6 +123,9 @@ bool T1Part1::compress(CompressBlockExec *block) {
 
 bool T1Part1::decompress(DecompressBlockExec *block) {
 	auto cblk = block->cblk;
+	if (!cblk->needsDecompress())
+		return true;
+	cblk->allocUncompressedData(true);
   	if (!cblk->seg_buffers.empty()) {
 		size_t totalSegLen = cblk->getSegBuffersLen() + grk_cblk_dec_compressed_data_pad_right;
 		t1->allocCompressedData(totalSegLen);
@@ -132,15 +135,15 @@ bool T1Part1::decompress(DecompressBlockExec *block) {
 			memcpy(compressedData+ offset, b->buf, b->len);
 			offset += b->len;
 		}
-		cblk->allocUncompressedData(true);
 		t1->attachUncompressedData(cblk->getUncomressedDataPtr(),
 									cblk->width(),
 									cblk->height());
-		cblk->m_failed = t1->decompress_cblk(cblk,
-						compressedData,
-						block->bandOrientation,
-						block->cblk_sty);
-		if (!cblk->m_failed)
+		bool ret = t1->decompress_cblk(cblk,
+				compressedData,
+				block->bandOrientation,
+				block->cblk_sty);
+		cblk->setSuccess(ret);
+		if (!ret)
 			return false;
   	}
 

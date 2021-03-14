@@ -209,6 +209,36 @@ Codeblock::Codeblock():
 #endif
 		,m_failed(false)
 {}
+Codeblock::~Codeblock(){
+	compressedStream.dealloc();
+}
+CompressCodeblock::CompressCodeblock() :
+				paddedCompressedStream(nullptr),
+				layers(	nullptr),
+				passes(nullptr),
+				numPassesInPreviousPackets(0),
+				numPassesTotal(0),
+				contextStream(nullptr)
+{}
+CompressCodeblock::~CompressCodeblock() {
+	compressedStream.dealloc();
+	grk_free(layers);
+	grk_free(passes);
+}
+bool CompressCodeblock::alloc() {
+	if (!layers) {
+		layers = (Layer*) grk_calloc(100, sizeof(Layer));
+		if (!layers)
+			return false;
+	}
+	if (!passes) {
+		passes = (CodePass*) grk_calloc(100, sizeof(CodePass));
+		if (!passes)
+			return false;
+	}
+
+	return true;
+}
 Codeblock::Codeblock(const Codeblock &rhs): grkRectU32(rhs),
 											numbps(rhs.numbps),
 											numlenbits(rhs.numlenbits),
@@ -247,32 +277,11 @@ bool Codeblock::allocUncompressedData(bool clear){
 int32_t* Codeblock::getUncomressedDataPtr(void){
 	return uncompressedData.currPtr();
 }
-CompressCodeblock::CompressCodeblock() :
-				paddedCompressedStream(nullptr),
-				layers(	nullptr),
-				passes(nullptr),
-				numPassesInPreviousPackets(0),
-				numPassesTotal(0),
-				contextStream(nullptr)
-{}
-CompressCodeblock::~CompressCodeblock() {
-	compressedStream.dealloc();
-	grk_free(layers);
-	grk_free(passes);
-}
-bool CompressCodeblock::alloc() {
-	if (!layers) {
-		layers = (Layer*) grk_calloc(100, sizeof(Layer));
-		if (!layers)
-			return false;
+void Codeblock::setSuccess(bool succeeded){
+	m_failed = !succeeded;
+	if (m_failed){
+		uncompressedData.dealloc();
 	}
-	if (!passes) {
-		passes = (CodePass*) grk_calloc(100, sizeof(CodePass));
-		if (!passes)
-			return false;
-	}
-
-	return true;
 }
 /**
  * Allocates data memory for an compressing code block.
@@ -304,7 +313,6 @@ DecompressCodeblock::DecompressCodeblock() : 	segs(nullptr),
 												numSegmentsAllocated(0)
 {}
 DecompressCodeblock::~DecompressCodeblock(){
-	compressedStream.dealloc();
 	cleanup_seg_buffers();
 	delete[] segs;
 }

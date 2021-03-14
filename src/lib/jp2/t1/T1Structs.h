@@ -87,7 +87,7 @@ struct Codeblock : public grkRectU32 {
     Codeblock(const Codeblock &rhs);
     Codeblock();
     Codeblock& operator=(const Codeblock& other);
-    virtual ~Codeblock() = default;
+    virtual ~Codeblock();
     void setRect(grkRectU32 r);
 	grkBufferU8 compressedStream;
 	uint32_t numbps;
@@ -95,6 +95,8 @@ struct Codeblock : public grkRectU32 {
 	uint32_t numPassesInPacket; 	/* number of passes encoded in current packet */
 	int32_t* getUncomressedDataPtr(void);
 	bool allocUncompressedData(bool clear);
+	void setSuccess(bool succeeded);
+protected:
 	bool m_failed;
 protected:
 #ifdef DEBUG_LOSSLESS_T2
@@ -105,7 +107,7 @@ protected:
 };
 struct CompressCodeblock : public Codeblock {
 	CompressCodeblock();
-	~CompressCodeblock();
+	virtual ~CompressCodeblock();
 	bool alloc();
 	bool allocData(size_t nominalBlockSize);
 	uint8_t *paddedCompressedStream;
@@ -117,7 +119,7 @@ struct CompressCodeblock : public Codeblock {
 };
 struct DecompressCodeblock: public Codeblock {
 	DecompressCodeblock();
-	~DecompressCodeblock();
+	virtual ~DecompressCodeblock();
 	Segment* getSegment(uint32_t segmentIndex);
 	Segment* getCurrentSegment(void);
 	Segment* nextSegment(void);
