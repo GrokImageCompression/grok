@@ -18,7 +18,6 @@
  *    Please see the LICENSE file in the root directory for details.
  *
  */
-
 #include "grk_includes.h"
 
 //#define DEBUG_DECOMPRESS_PACKETS
@@ -28,12 +27,10 @@ namespace grk {
 T2Decompress::T2Decompress(TileProcessor *tileProc) :
 		tileProcessor(tileProc) {
 }
-
-bool T2Decompress::decompress_packets(uint16_t tile_no,
+bool T2Decompress::decompressPackets(uint16_t tile_no,
 										ChunkBuffer *srcBuf,
 										uint64_t *dataRead,
 										bool *truncated) {
-
 	auto cp = tileProcessor->m_cp;
 	auto image = tileProcessor->headerImage;
 	auto tcp = cp->tcps + tile_no;
@@ -51,7 +48,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no,
 		auto currPi = pi + pino;
 		if (currPi->prog.progression == GRK_PROG_UNKNOWN) {
 			pi_destroy(pi);
-			GRK_ERROR("decompress_packets: Unknown progression order");
+			GRK_ERROR("decompressPackets: Unknown progression order");
 			return false;
 		}
 		while (currPi->next()) {
@@ -62,17 +59,16 @@ bool T2Decompress::decompress_packets(uint16_t tile_no,
 			}
 			auto tilec = p_tile->comps + currPi->compno;
 			auto tilecBuffer = tilec->getBuffer();
-			auto skipPacket = currPi->layno >= tcp->num_layers_to_decompress
+			auto doSkipPacket = currPi->layno >= tcp->num_layers_to_decompress
 										|| currPi->resno >= tilec->resolutions_to_decompress;
 
 			uint32_t pltMarkerLen = 0;
 			if (usePlt)
 				pltMarkerLen = packetLengths->getNext();
 			auto res = tilec->tileCompResolution + currPi->resno;
-
-			if (!skipPacket) {
+			if (!doSkipPacket) {
 				if (!tilec->isWholeTileDecoding()) {
-					skipPacket = true;
+					doSkipPacket = true;
 					for (uint8_t bandIndex = 0;	bandIndex < res->numTileBandWindows; ++bandIndex) {
 						auto band = res->tileBand + bandIndex;
 						auto paddedBandWindow = tilecBuffer->getPaddedBandWindow(currPi->resno, band->orientation);
@@ -81,13 +77,13 @@ bool T2Decompress::decompress_packets(uint16_t tile_no,
 													res->precinctExpn,
 													res->precinctGridWidth);
 						if (paddedBandWindow->non_empty_intersection(&prec)) {
-							skipPacket = false;
+							doSkipPacket = false;
 							break;
 						}
 					}
 				}
 			}
-			if (!skipPacket || !usePlt) {
+			if (!doSkipPacket || !usePlt) {
 				for (uint32_t bandIndex = 0;	bandIndex < res->numTileBandWindows; ++bandIndex) {
 					auto band = res->tileBand + bandIndex;
 					if (!band->createPrecinct(false,
@@ -101,8 +97,8 @@ bool T2Decompress::decompress_packets(uint16_t tile_no,
 			}
 			uint64_t nb_bytes_read = 0;
 			try {
-				if (!skipPacket) {
-					if (!decompress_packet(tcp, currPi, srcBuf, &nb_bytes_read)) {
+				if (!doSkipPacket) {
+					if (!decompressPacket(tcp, currPi, srcBuf, &nb_bytes_read)) {
 						pi_destroy(pi);
 						return false;
 					}
@@ -112,7 +108,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no,
 					if (pltMarkerLen) {
 						nb_bytes_read = pltMarkerLen;
 						srcBuf->incr_cur_chunk_offset(nb_bytes_read);
-					} else if (!skip_packet(tcp, currPi, srcBuf,
+					} else if (!skipPacket(tcp, currPi, srcBuf,
 							&nb_bytes_read)) {
 						pi_destroy(pi);
 						return false;
@@ -128,7 +124,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no,
 #ifdef DEBUG_DECOMPRESS_PACKETS
 			GRK_INFO("packet cmptno=%02d rlvlno=%02d prcno=%03d layrno=%02d -> %s",
 			currPi->compno, currPi->resno,
-			currPi->precinctIndex, currPi->layno, skipPacket ? "skipped" : "decompressed");
+			currPi->precinctIndex, currPi->layno, doSkipPacket ? "skipped" : "decompressed");
 			GRK_INFO("T2Decompress Packet length: %u", nb_bytes_read);
 			if (pltMarkerLen) {
 				if (nb_bytes_read != pltMarkerLen)
@@ -145,9 +141,7 @@ bool T2Decompress::decompress_packets(uint16_t tile_no,
 		GRK_WARN("T2Decompress: no packets for tile %d were successfully read",tile_no+1);
 	return p_tile->numDecompressedPackets > 0;
 }
-
-
-bool T2Decompress::decompress_packet(TileCodingParams *p_tcp,
+bool T2Decompress::decompressPacket(TileCodingParams *p_tcp,
 									const PacketIter *p_pi,
 									ChunkBuffer *src_buf,
 									uint64_t *p_data_read) {
@@ -157,14 +151,14 @@ bool T2Decompress::decompress_packet(TileCodingParams *p_tcp,
 	uint64_t nb_bytes_read = 0;
 	uint64_t nb_total_bytes_read = 0;
 	*p_data_read = 0;
-	if (!read_packet_header(p_tcp, p_pi, &read_data, src_buf, &nb_bytes_read))
+	if (!readPacketHeader(p_tcp, p_pi, &read_data, src_buf, &nb_bytes_read))
 		return false;
 	nb_total_bytes_read += nb_bytes_read;
 
 	/* we should read data for the packet */
 	if (read_data) {
 		nb_bytes_read = 0;
-		if (!read_packet_data(res, p_pi, src_buf, &nb_bytes_read)) {
+		if (!readPacketData(res, p_pi, src_buf, &nb_bytes_read)) {
 			return false;
 		}
 		nb_total_bytes_read += nb_bytes_read;
@@ -172,8 +166,7 @@ bool T2Decompress::decompress_packet(TileCodingParams *p_tcp,
 	*p_data_read = nb_total_bytes_read;
 	return true;
 }
-
-void T2Decompress::init_seg(DecompressCodeblock *cblk, uint32_t index, uint8_t cblk_sty,
+void T2Decompress::initSegment(DecompressCodeblock *cblk, uint32_t index, uint8_t cblk_sty,
 		bool first) {
 	auto seg = cblk->getSegment(index);
 	seg->clear();
@@ -192,9 +185,7 @@ void T2Decompress::init_seg(DecompressCodeblock *cblk, uint32_t index, uint8_t c
 		seg->maxpasses = max_passes_per_segment;
 	}
 }
-
-
-bool T2Decompress::read_packet_header(TileCodingParams *p_tcp,
+bool T2Decompress::readPacketHeader(TileCodingParams *p_tcp,
 									const PacketIter *p_pi,
 									bool *p_is_data_present,
 									ChunkBuffer *src_buf,
@@ -245,7 +236,6 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp,
 	std::unique_ptr<BitIO> bio(new BitIO(header_data, *remaining_length, false));
 	try {
 		bio->read(&present, 1);
-
 		//GRK_INFO("present=%u ", present);
 		if (present) {
 			for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
@@ -326,22 +316,19 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp,
 						}
 						cblk->numlenbits = 3;
 					}
-
 					/* number of coding passes */
 					bio->getnumpasses(&cblk->numPassesInPacket);
 					bio->getcommacode(&increment);
-
 					/* length indicator increment */
 					cblk->numlenbits += increment;
 					uint32_t segno = 0;
-
 					if (!cblk->getNumSegments()) {
-						init_seg(cblk, segno,p_tcp->tccps[p_pi->compno].cblk_sty, true);
+						initSegment(cblk, segno,p_tcp->tccps[p_pi->compno].cblk_sty, true);
 					} else {
 						segno = cblk->getNumSegments() - 1;
 						if (cblk->getSegment(segno)->numpasses	== cblk->getSegment(segno)->maxpasses) {
 							++segno;
-							init_seg(cblk, segno,p_tcp->tccps[p_pi->compno].cblk_sty, false);
+							initSegment(cblk, segno,p_tcp->tccps[p_pi->compno].cblk_sty, false);
 						}
 					}
 					auto blockPassesInPacket = (int32_t) cblk->numPassesInPacket;
@@ -368,7 +355,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp,
 						}
 						uint32_t bits_to_read = cblk->numlenbits+ floorlog2<uint32_t>(seg->numPassesInPacket);
 						if (bits_to_read > 32) {
-							GRK_ERROR("read_packet_header: too many bits in segment length ");
+							GRK_ERROR("readPacketHeader: too many bits in segment length ");
 							return false;
 						}
 						bio->read(&seg->numBytesInPacket, bits_to_read);
@@ -385,7 +372,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp,
 						blockPassesInPacket -= (int32_t) seg->numPassesInPacket;
 						if (blockPassesInPacket > 0) {
 							++segno;
-							init_seg(cblk, segno,p_tcp->tccps[p_pi->compno].cblk_sty, false);
+							initSegment(cblk, segno,p_tcp->tccps[p_pi->compno].cblk_sty, false);
 						}
 					} while (blockPassesInPacket > 0);
 				}
@@ -396,7 +383,6 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp,
 	} catch (InvalidMarkerException &ex){
 		return false;
 	}
-
 	/* EPH markers */
 	if (p_tcp->csty & J2K_CP_CSTY_EPH) {
 		if ((*remaining_length	- (uint32_t) (header_data - *header_data_start)) < 2U)
@@ -425,8 +411,7 @@ bool T2Decompress::read_packet_header(TileCodingParams *p_tcp,
 
 	return true;
 }
-
-bool T2Decompress::read_packet_data(Resolution *res,
+bool T2Decompress::readPacketData(Resolution *res,
 									const PacketIter *p_pi,
 									ChunkBuffer *src_buf,
 									uint64_t *p_data_read) {
@@ -451,7 +436,6 @@ bool T2Decompress::read_packet_data(Resolution *res,
 					seg = cblk->nextSegment();
 				}
 			}
-
 			uint32_t numPassesInPacket = cblk->numPassesInPacket;
 			do {
 				size_t maxLen = src_buf->get_cur_chunk_len();
@@ -501,7 +485,7 @@ bool T2Decompress::read_packet_data(Resolution *res,
 
 	return true;
 }
-bool T2Decompress::skip_packet(TileCodingParams *p_tcp,
+bool T2Decompress::skipPacket(TileCodingParams *p_tcp,
 								PacketIter *p_pi,
 								ChunkBuffer *src_buf,
 								uint64_t *p_data_read) {
@@ -511,7 +495,7 @@ bool T2Decompress::skip_packet(TileCodingParams *p_tcp,
 	*p_data_read = 0;
 	uint64_t nb_bytes_read = 0;
 	bool read_data;
-	if (!read_packet_header(p_tcp, p_pi, &read_data, src_buf, &nb_bytes_read))
+	if (!readPacketHeader(p_tcp, p_pi, &read_data, src_buf, &nb_bytes_read))
 		return false;
 	uint64_t nb_totabytes_read = nb_bytes_read;
 	max_length -= nb_bytes_read;
@@ -519,7 +503,7 @@ bool T2Decompress::skip_packet(TileCodingParams *p_tcp,
 	/* we should read data for the packet */
 	if (read_data) {
 		nb_bytes_read = 0;
-		if (!skip_packet_data(&p_tile->comps[p_pi->compno].tileCompResolution[p_pi->resno], p_pi,
+		if (!skipPacketData(&p_tile->comps[p_pi->compno].tileCompResolution[p_pi->resno], p_pi,
 				&nb_bytes_read, max_length)) {
 			return false;
 		}
@@ -530,8 +514,7 @@ bool T2Decompress::skip_packet(TileCodingParams *p_tcp,
 
 	return true;
 }
-
-bool T2Decompress::skip_packet_data(Resolution *res,
+bool T2Decompress::skipPacketData(Resolution *res,
 									PacketIter *p_pi,
 									uint64_t *p_data_read,
 									uint64_t max_length) {
@@ -542,7 +525,6 @@ bool T2Decompress::skip_packet_data(Resolution *res,
 		auto band = res->tileBand + bandIndex;
 		if (band->isEmpty())
 			continue;
-
 		auto prc = band->getPrecinct(p_pi->precinctIndex);
 		if (!prc)
 			continue;

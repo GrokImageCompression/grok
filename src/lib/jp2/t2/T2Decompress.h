@@ -35,7 +35,7 @@ struct T2Decompress {
 	 @param data_read   amount of data read
 	 @return true if successful
 	 */
-	bool decompress_packets(uint16_t tileno,
+	bool decompressPackets(uint16_t tileno,
 							ChunkBuffer *src_buf,
 							uint64_t *data_read,
 							bool *truncated);
@@ -50,33 +50,33 @@ private:
 	 @param data_read   amount of data read
 	 @return  true if packet was successfully decompressed
 	 */
-	bool decompress_packet(TileCodingParams *tcp,
+	bool decompressPacket(TileCodingParams *tcp,
 							const PacketIter *pi,
 							ChunkBuffer *src_buf,
 							uint64_t *data_read);
 
-	bool skip_packet(TileCodingParams *p_tcp,
+	bool skipPacket(TileCodingParams *p_tcp,
 						PacketIter *p_pi,
 						ChunkBuffer *src_buf,
 						uint64_t *p_data_read);
 
-	bool read_packet_header(TileCodingParams *p_tcp,
+	bool readPacketHeader(TileCodingParams *p_tcp,
 							const PacketIter *p_pi,
 							bool *p_is_data_present,
 							ChunkBuffer *src_buf,
 							uint64_t *p_data_read);
 
-	bool read_packet_data(Resolution *l_res,
+	bool readPacketData(Resolution *l_res,
 							const PacketIter *p_pi,
 							ChunkBuffer *src_buf,
 							uint64_t *p_data_read);
 
-	bool skip_packet_data(Resolution *l_res,
+	bool skipPacketData(Resolution *l_res,
 							PacketIter *p_pi,
 							uint64_t *p_data_read,
 							uint64_t max_length);
 
-	void init_seg(DecompressCodeblock *cblk,
+	void initSegment(DecompressCodeblock *cblk,
 					uint32_t index,
 					uint8_t cblk_sty,
 					bool first);

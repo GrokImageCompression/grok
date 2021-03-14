@@ -18,20 +18,16 @@
  *    Please see the LICENSE file in the root directory for details.
  *
  */
-
 #include "grk_includes.h"
 
 //#define DEBUG_ENCODE_PACKETS
 
 namespace grk {
 
-
 T2Compress::T2Compress(TileProcessor *tileProc) :
 		tileProcessor(tileProc) {
 }
-
-
-bool T2Compress::compress_packets(uint16_t tile_no, uint16_t max_layers,
+bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers,
 		BufferedStream *stream, uint32_t *p_data_written,
 		bool first_poc_tile_part, uint32_t tp_pos,
 		uint32_t pino) {
@@ -46,13 +42,13 @@ bool T2Compress::compress_packets(uint16_t tile_no, uint16_t max_layers,
 	auto current_pi = &pi[pino];
 	if (current_pi->prog.progression == GRK_PROG_UNKNOWN) {
 		pi_destroy(pi);
-		GRK_ERROR("compress_packets: Unknown progression order");
+		GRK_ERROR("compressPackets: Unknown progression order");
 		return false;
 	}
 	while (current_pi->next()) {
 		if (current_pi->layno < max_layers) {
 			uint32_t nb_bytes = 0;
-			if (!compress_packet(tcp, current_pi, stream, &nb_bytes)) {
+			if (!compressPacket(tcp, current_pi, stream, &nb_bytes)) {
 				pi_destroy(pi);
 				return false;
 			}
@@ -64,8 +60,7 @@ bool T2Compress::compress_packets(uint16_t tile_no, uint16_t max_layers,
 
 	return true;
 }
-
-bool T2Compress::compress_packets_simulate(uint16_t tile_no, uint16_t max_layers,
+bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 		uint32_t *all_packets_len, uint32_t max_len, uint32_t tp_pos,
 		PacketLengthMarkers *markers) {
 
@@ -103,7 +98,7 @@ bool T2Compress::compress_packets_simulate(uint16_t tile_no, uint16_t max_layers
 				if (current_pi->layno < max_layers) {
 					uint32_t bytesInPacket = 0;
 
-					if (!compress_packet_simulate(tcp, current_pi, &bytesInPacket,
+					if (!compressPacketSimulate(tcp, current_pi, &bytesInPacket,
 							max_len, markers)) {
 						pi_destroy(pi);
 						return false;
@@ -114,7 +109,6 @@ bool T2Compress::compress_packets_simulate(uint16_t tile_no, uint16_t max_layers
 					*all_packets_len += bytesInPacket;
 				}
 			}
-
 			if (cp->m_coding_params.m_enc.m_max_comp_size) {
 				if (comp_len > cp->m_coding_params.m_enc.m_max_comp_size) {
 					pi_destroy(pi);
@@ -126,9 +120,7 @@ bool T2Compress::compress_packets_simulate(uint16_t tile_no, uint16_t max_layers
 	pi_destroy(pi);
 	return true;
 }
-
-//--------------------------------------------------------------------------------------------------
-bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
+bool T2Compress::compressPacket(TileCodingParams *tcp, PacketIter *pi,
 		BufferedStream *stream, uint32_t *packet_bytes_written) {
 	assert(stream);
 	uint32_t compno = pi->compno;
@@ -145,7 +137,6 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 				"of components %d",compno, tile->numcomps);
 		return false;
 	}
-
 	if (tileProcessor->m_packetTracker.is_packet_encoded(compno, resno, precinctIndex,
 			layno))
 		return true;
@@ -155,7 +146,6 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
     GRK_INFO("compress packet compono=%u, resno=%u, precinctIndex=%u, layno=%u",
              compno, resno, precinctIndex, layno);
 #endif
-
 	// SOP marker
 	if (tcp->csty & J2K_CP_CSTY_SOP) {
 		if (!stream->write_byte(J2K_MS_SOP >> 8))
@@ -173,7 +163,6 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 		if (!stream->write_byte((uint8_t) (numIteratedPackets & 0xff)))
 			return false;
 	}
-
 	// initialize precinct and code blocks if this is the first layer
 	if (!layno) {
 		for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
@@ -209,13 +198,11 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 			}
 		}
 	}
-
 	std::unique_ptr<BitIO> bio(new BitIO(stream, true));
 	// Empty header bit. Grok always sets this to 1,
 	// even though there is also an option to set it to zero.
 	if (!bio->write(1, 1))
 		return false;
-
 	/* Writing Packet header */
 	for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
 		auto band = res->tileBand + bandIndex;
@@ -224,7 +211,6 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 
 		if (band->isEmpty() || !nb_blocks)
 			continue;
-
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 			auto cblk = prc->getCompressedBlockPtr(cblkno);
 			auto layer = cblk->layers + layno;
@@ -233,7 +219,6 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 				prc->getInclTree()->setvalue(cblkno, (int32_t) layno);
 			}
 		}
-
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; cblkno++) {
 			auto cblk = prc->getCompressedBlockPtr(cblkno);
 			auto layer = cblk->layers + layno;
@@ -257,11 +242,9 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 				if (!bio->write(layer->numpasses != 0, 1))
 					return false;
 			}
-
 			/* if cblk not included, go to next cblk  */
 			if (!layer->numpasses)
 				continue;
-
 			/* if first instance of cblk --> zero bit-planes information */
 			if (!cblk->numPassesInPacket) {
 				cblk->numlenbits = 3;
@@ -292,7 +275,6 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 				++pass;
 			}
 			bio->putcommacode((int32_t) increment);
-
 			/* computation of the new Length indicator */
 			cblk->numlenbits += increment;
 
@@ -315,12 +297,10 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 			}
 		}
 	}
-
 	if (!bio->flush()) {
-		GRK_ERROR("compress_packet: Bit IO flush failed while compressing packet");
+		GRK_ERROR("compressPacket: Bit IO flush failed while compressing packet");
 		return false;
 	}
-
 	// EPH marker
 	if (tcp->csty & J2K_CP_CSTY_EPH) {
 		if (!stream->write_byte(J2K_MS_EPH >> 8))
@@ -336,7 +316,6 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 
 		if (band->isEmpty() || !nb_blocks)
 			continue;
-
 		for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 			auto cblk = prc->getCompressedBlockPtr(cblkno);
 			auto cblk_layer = cblk->layers + layno;
@@ -361,7 +340,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 
 		bool ret = true;
 		bool read_data;
-		if (!T2Compress::read_packet_header(p_t2,
+		if (!T2Compress::readPacketHeader(p_t2,
 			roundRes,
 			tcp,
 			pi,
@@ -374,7 +353,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 
 			// compare size of header
 			if (numHeaderBytes != nb_bytes_read) {
-				printf("compress_packet: round trip header bytes %u differs from original %u\n", (uint32_t)l_nb_bytes_read, (uint32_t)numHeaderBytes);
+				printf("compressPacket: round trip header bytes %u differs from original %u\n", (uint32_t)l_nb_bytes_read, (uint32_t)numHeaderBytes);
 			}
 			for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
 				auto tileBand = res->tileBand + bandIndex;
@@ -393,7 +372,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 						// compare number of passes
 						auto roundTripCblk = roundTripPrec->getDecompressedBlockPtr() + cblkno;
 						if (roundTripCblk->numPassesInPacket != layer->numpasses) {
-							printf("compress_packet: round trip layer numpasses %u differs from original num passes %u at layer %u, component %u, band %u, precinct %u, resolution %u\n",
+							printf("compressPacket: round trip layer numpasses %u differs from original num passes %u at layer %u, component %u, band %u, precinct %u, resolution %u\n",
 								roundTripCblk->numPassesInPacket,
 								layer->numpasses,
 								layno,
@@ -405,17 +384,17 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 						}
 						// compare number of bit planes
 						if (roundTripCblk->numbps != originalCblk->numbps) {
-							printf("compress_packet: round trip numbps %u differs from original %u\n", roundTripCblk->numbps, originalCblk->numbps);
+							printf("compressPacket: round trip numbps %u differs from original %u\n", roundTripCblk->numbps, originalCblk->numbps);
 						}
 
 						// compare number of length bits
 						if (roundTripCblk->numlenbits != originalCblk->numlenbits) {
-							printf("compress_packet: round trip numlenbits %u differs from original %u\n", roundTripCblk->numlenbits, originalCblk->numlenbits);
+							printf("compressPacket: round trip numlenbits %u differs from original %u\n", roundTripCblk->numlenbits, originalCblk->numlenbits);
 						}
 
 						// compare inclusion
 						if (roundTripCblk->included != originalCblk->included) {
-							printf("compress_packet: round trip inclusion %u differs from original inclusion %u at layer %u, component %u, band %u, precinct %u, resolution %u\n",
+							printf("compressPacket: round trip inclusion %u differs from original inclusion %u at layer %u, component %u, band %u, precinct %u, resolution %u\n",
 								roundTripCblk->included,
 								originalCblk->included,
 								layno,
@@ -427,7 +406,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 
 						// compare lengths
 						if (roundTripCblk->packet_length_info.size() != originalCblk->packet_length_info.size()) {
-							printf("compress_packet: round trip length size %u differs from original %u at layer %u, component %u, band %u, precinct %u, resolution %u\n",
+							printf("compressPacket: round trip length size %u differs from original %u at layer %u, component %u, band %u, precinct %u, resolution %u\n",
 								(uint32_t)roundTripCblk->packet_length_info.size(),
 								(uint32_t)originalCblk->packet_length_info.size(),
 								layno,
@@ -440,7 +419,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 								auto roundTrip = roundTripCblk->packet_length_info.operator[](i);
 								auto original = originalCblk->packet_length_info.operator[](i);
 								if (!(roundTrip ==original)) {
-									printf("compress_packet: round trip length size %u differs from original %u at layer %u, component %u, band %u, precinct %u, resolution %u\n",
+									printf("compressPacket: round trip length size %u differs from original %u at layer %u, component %u, band %u, precinct %u, resolution %u\n",
 										roundTrip.len,
 										original.len,
 										layno,
@@ -459,7 +438,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 			/* we should read data for the packet */
 			if (read_data) {
 			 nb_bytes_read = 0;
-				if (!T2Compress::read_packet_data(roundRes,
+				if (!T2Compress::readPacketData(roundRes,
 					pi,
 					src_buf.get(),
 					&nb_bytes_read)) {
@@ -467,7 +446,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 				}
 				else {
 					if (originalDataBytes != nb_bytes_read) {
-						printf("compress_packet: round trip data bytes %u differs from original %u\n", (uint32_t)l_nb_bytes_read, (uint32_t)originalDataBytes);
+						printf("compressPacket: round trip data bytes %u differs from original %u\n", (uint32_t)l_nb_bytes_read, (uint32_t)originalDataBytes);
 					}
 
 					for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
@@ -494,7 +473,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 								auto roundTripCblk = roundTripPrec->getDecompressedBlockPtr() + cblkno;
 								uint16_t roundTripTotalSegLen = min_buf_vec_get_len(&roundTripCblk->seg_buffers);
 								if (roundTripTotalSegLen != originalCumulativeLayerLength) {
-									printf("compress_packet: layer %u: round trip segment length %u differs from original %u\n", layno, roundTripTotalSegLen, originalCumulativeLayerLength);
+									printf("compressPacket: layer %u: round trip segment length %u differs from original %u\n", layno, roundTripTotalSegLen, originalCumulativeLayerLength);
 								}
 
 								// compare individual data points
@@ -512,7 +491,7 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 									}
 									for (uint32_t i = 0; i < originalCumulativeLayerLength; ++i) {
 										if (roundTripData[i] != originalCblk->data[i]) {
-											printf("compress_packet: layer %u: round trip data %x differs from original %x\n", layno, roundTripData[i], originalCblk->data[i]);
+											printf("compressPacket: layer %u: round trip data %x differs from original %x\n", layno, roundTripData[i], originalCblk->data[i]);
 										}
 									}
 									if (needs_delete)
@@ -526,14 +505,13 @@ bool T2Compress::compress_packet(TileCodingParams *tcp, PacketIter *pi,
 			}
 		}
 		else {
-			GRK_ERROR("compress_packet: decompress packet failed");
+			GRK_ERROR("compressPacket: decompress packet failed");
 		}
 		return ret;
 #endif
 	return true;
 }
-
-bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
+bool T2Compress::compressPacketSimulate(TileCodingParams *tcp, PacketIter *pi,
 		uint32_t *packet_bytes_written, uint32_t max_bytes_available,
 		PacketLengthMarkers *markers) {
 	uint32_t compno = pi->compno;
@@ -560,14 +538,10 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
     GRK_INFO("simulate compress packet compono=%u, resno=%u, precinctIndex=%u, layno=%u",
              compno, resno, precinctIndex, layno);
 #endif
-
-	/* <SOP 0xff91> */
 	if (tcp->csty & J2K_CP_CSTY_SOP) {
 		max_bytes_available -= 6;
 		*packet_bytes_written += 6;
 	}
-	/* </SOP> */
-
 	if (!layno) {
 		for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
 			auto band = res->tileBand + bandIndex;
@@ -577,12 +551,10 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 				return false;
 			}
 			auto prc = band->precincts[precinctIndex];
-
 			if (prc->getInclTree())
 				prc->getInclTree()->reset();
 			if (prc->getImsbTree())
 				prc->getImsbTree()->reset();
-
 			nb_blocks = prc->getNumCblks();
 			for (uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 				auto cblk = prc->getCompressedBlockPtr(cblkno);
@@ -598,13 +570,11 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 			}
 		}
 	}
-
 	std::unique_ptr<BitIO> bio(new BitIO(0, max_bytes_available, true));
 	bio->simulateOutput(true);
 	/* Empty header bit */
 	if (!bio->write(1, 1))
 		return false;
-
 	/* Writing Packet header */
 	for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
 		auto band = res->tileBand + bandIndex;
@@ -675,7 +645,6 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 				}
 			}
 			bio->putcommacode((int32_t) increment);
-
 			/* computation of the new Length indicator */
 			cblk->numlenbits += increment;
 			/* insertion of the codeword segment length */
@@ -698,20 +667,14 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 			}
 		}
 	}
-
 	if (!bio->flush())
 		return false;
-
 	*packet_bytes_written += (uint32_t) bio->numbytes();
 	max_bytes_available -= (uint32_t) bio->numbytes();
-
-	/* <EPH 0xff92> */
 	if (tcp->csty & J2K_CP_CSTY_EPH) {
 		max_bytes_available -= 2;
 		*packet_bytes_written += 2;
 	}
-	/* </EPH> */
-
 	/* Writing the packet body */
 	for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++) {
 		auto band = res->tileBand + bandIndex;
@@ -724,10 +687,8 @@ bool T2Compress::compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
 
 			if (!layer->numpasses)
 				continue;
-
 			if (layer->len > max_bytes_available)
 				return false;
-
 			cblk->numPassesInPacket += layer->numpasses;
 			*packet_bytes_written += layer->len;
 			max_bytes_available -= layer->len;

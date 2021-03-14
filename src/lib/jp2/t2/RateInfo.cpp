@@ -20,9 +20,7 @@ namespace grk {
 
 RateInfo::RateInfo() :
 		minimumSlope(USHRT_MAX), maximumSlope(0) {
-
 }
-
 /*
  Synchronize with code block
  */
@@ -43,7 +41,6 @@ void RateInfo::synch(CompressCodeblock *cblk) {
 			maximumSlope = s;
 	}
 }
-
 uint16_t RateInfo::getMinimumThresh() {
 	return minimumSlope;
 }

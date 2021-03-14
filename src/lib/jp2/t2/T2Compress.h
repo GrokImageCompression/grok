@@ -41,7 +41,7 @@ struct T2Compress {
 	 @param tppos            The position of the tile part flag in the progression order
 	 @param pino             packet iterator number
 	 */
-	bool compress_packets(uint16_t tileno, uint16_t maxlayers,
+	bool compressPackets(uint16_t tileno, uint16_t maxlayers,
 			BufferedStream *stream, uint32_t *p_data_written,
 			bool first_poc_tile_part, uint32_t tppos,
 			uint32_t pino);
@@ -55,7 +55,7 @@ struct T2Compress {
 	 @param tppos            position of the tile part flag in the progression order
 	 @param markers			 markers
 	 */
-	bool compress_packets_simulate(uint16_t tileno, uint16_t maxlayers,
+	bool compressPacketsSimulate(uint16_t tileno, uint16_t maxlayers,
 			uint32_t *p_data_written, uint32_t max_len, uint32_t tppos,
 			PacketLengthMarkers *markers);
 
@@ -70,7 +70,7 @@ private:
 	 @param p_data_written  amount of data written
 	 @return
 	 */
-	bool compress_packet(TileCodingParams *tcp, PacketIter *pi,
+	bool compressPacket(TileCodingParams *tcp, PacketIter *pi,
 			BufferedStream *stream, uint32_t *p_data_written);
 
 	/**
@@ -82,7 +82,7 @@ private:
 	 @param markers			packet length markers
 	 @return
 	 */
-	bool compress_packet_simulate(TileCodingParams *tcp, PacketIter *pi,
+	bool compressPacketSimulate(TileCodingParams *tcp, PacketIter *pi,
 			uint32_t *p_data_written, uint32_t len,
 			PacketLengthMarkers *markers);
 

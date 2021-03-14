@@ -233,7 +233,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 		if (plt_markers) {
 			auto t2 = new T2Compress(this);
 			uint32_t sim_all_packets_len = 0;
-			t2->compress_packets_simulate(m_tile_index,
+			t2->compressPacketsSimulate(m_tile_index,
 										0 + 1, &sim_all_packets_len, UINT_MAX,
 										tp_pos, plt_markers);
 			delete t2;
@@ -280,7 +280,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint32_t *all_packets_len) {
 					}
 					lowerBound = thresh;
 				} else {
-					if (!t2->compress_packets_simulate(m_tile_index,
+					if (!t2->compressPacketsSimulate(m_tile_index,
 							(uint16_t)(layno + 1U), all_packets_len, maxlen,
 							tp_pos, nullptr)) {
 						lowerBound = thresh;
@@ -383,7 +383,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 		if (plt_markers) {
 			auto t2 = new T2Compress(this);
 			uint32_t sim_all_packets_len = 0;
-			t2->compress_packets_simulate(m_tile_index,
+			t2->compressPacketsSimulate(m_tile_index,
 											0 + 1,
 											&sim_all_packets_len,
 											UINT_MAX,
@@ -425,7 +425,7 @@ bool TileProcessor::pcrd_bisect_simple(uint32_t *all_packets_len) {
 					}
 					lowerBound = thresh;
 				} else {
-					if (!t2->compress_packets_simulate(m_tile_index,
+					if (!t2->compressPacketsSimulate(m_tile_index,
 														(uint16_t)(layno + 1U),
 														all_packets_len,
 														maxlen,
@@ -850,7 +850,7 @@ void TileProcessor::copy_image_to_tile() {
 bool TileProcessor::t2_decompress(ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
 	auto t2 = new T2Decompress(this);
-	bool rc = t2->decompress_packets(m_tile_index, src_buf, p_data_read,&truncated);
+	bool rc = t2->decompressPackets(m_tile_index, src_buf, p_data_read,&truncated);
 	delete t2;
 
 	return rc;
@@ -1062,7 +1062,7 @@ bool TileProcessor::t2_encode(uint32_t *all_packet_bytes_written) {
 		}
 	}
 #endif
-	if (!l_t2->compress_packets(m_tile_index, m_tcp->numlayers, m_stream,
+	if (!l_t2->compressPackets(m_tile_index, m_tcp->numlayers, m_stream,
 			all_packet_bytes_written, m_first_poc_tile_part, tp_pos, pino)) {
 		delete l_t2;
 		return false;
