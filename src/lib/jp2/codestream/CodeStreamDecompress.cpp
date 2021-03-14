@@ -439,14 +439,6 @@ bool CodeStreamDecompress::endOfCodeStream(void){
 					m_stream->get_number_byte_left() == 0;
 }
 bool CodeStreamDecompress::decompressTiles(void) {
-	if (endOfCodeStream()){
-		if (m_tileCache->empty()){
-			GRK_ERROR("No tiles were decompressed.");
-			return false;
-		}
-		return true;
-	}
-
 	uint16_t numTilesToDecompress = (uint16_t)(m_cp.t_grid_height* m_cp.t_grid_width);
 	m_multiTile = numTilesToDecompress > 1;
 	if (cstr_index) {
@@ -455,12 +447,58 @@ bool CodeStreamDecompress::decompressTiles(void) {
 			return false;
 		}
 	}
-	bool canDecompress = true;
 	std::vector< std::future<int> > results;
 	std::atomic<bool> success(true);
 	std::atomic<uint32_t> numTilesDecompressed(0);
 	ThreadPool pool(std::min<uint32_t>((uint32_t)ThreadPool::get()->num_threads(), numTilesToDecompress));
 	bool breakAfterT1 = false;
+	bool canDecompress = true;
+	if (endOfCodeStream()){
+		if (m_tileCache->empty()){
+			GRK_ERROR("No tiles were decompressed.");
+			return false;
+		}
+		uint16_t nb_tiles = (uint16_t)(m_cp.t_grid_width * m_cp.t_grid_height);
+		for (uint16_t i = 0; i < nb_tiles; ++i){
+			auto entry = m_tileCache->get(i);
+			if (!entry || !entry->processor)
+				continue;
+			auto processor = entry->processor;
+			if (processor->isError())
+				continue;
+			auto exec = [this,processor,
+						  numTilesToDecompress,
+						  &numTilesDecompressed,
+						  &success] {
+				if (success) {
+					if (!decompressT2T1(processor)){
+						GRK_ERROR("Failed to decompress tile %u/%u",
+								processor->m_tile_index + 1,numTilesToDecompress);
+						success = false;
+					} else {
+						numTilesDecompressed++;
+					}
+
+				}
+				return 0;
+			};
+			if (pool.num_threads() > 1)
+				results.emplace_back(pool.enqueue(exec));
+			else {
+				exec();
+				if (!success)
+					goto cleanup;
+			}
+		}
+		for(auto &result: results){
+			result.get();
+		}
+		results.clear();
+		if (!success)
+			return false;
+
+		return true;
+	}
 	while (!endOfCodeStream() && !breakAfterT1) {
 		//1. read header
 		try {
@@ -526,7 +564,7 @@ bool CodeStreamDecompress::decompressTiles(void) {
 	}
 	results.clear();
 	if (!success)
-		goto cleanup;
+		return false;
 
 	// check if there is another tile that has not been processed
 	// we will reject if it has the TPSot problem

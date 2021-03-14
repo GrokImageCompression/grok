@@ -65,21 +65,18 @@ GrkImage* TileCache::getComposite(){
 	return tileComposite;
 }
 std::vector<GrkImage*> TileCache::getAllImages(void){
-	std::vector<GrkImage*> rc;
+	std::vector<GrkImage*> rc = getTileImages();
 	rc.push_back(tileComposite);
-	for (auto &entry : m_cache){
-		if (entry.second->processor->getImage())
-			rc.push_back(entry.second->processor->getImage());
-	}
 
 	return rc;
 }
 std::vector<GrkImage*> TileCache::getTileImages(void){
 	std::vector<GrkImage*> rc;
-	for (auto &entry : m_cache)
-		if (entry.second->processor->getImage())
-			rc.push_back(entry.second->processor->getImage());
-
+	for (auto &entry : m_cache){
+		auto image = entry.second->processor->getImage();
+		if (image)
+			rc.push_back(image);
+	}
 	return rc;
 }
 

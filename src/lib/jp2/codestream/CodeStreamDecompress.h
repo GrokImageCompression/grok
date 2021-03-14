@@ -40,12 +40,10 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress {
 public:
    CodeStreamDecompress( BufferedStream *stream);
    virtual ~CodeStreamDecompress();
-
    TileProcessor* allocateProcessor(uint16_t tile_index);
    DecompressorState* getDecompressorState(void);
    TileCodingParams* get_current_decode_tcp(void);
    bool isDecodingTilePartHeader();
-
    bool readHeader(grk_header_info  *header_info);
    GrkImage* getImage(uint16_t tileIndex);
    GrkImage* getImage(void);
@@ -57,13 +55,11 @@ public:
    void initDecompress(grk_dparameters  *p_param);
    grk_codestream_index* getIndex(void);
    GrkImage* getCompositeImage();
-
    bool readMarker(void);
    GrkImage* getHeaderImage(void);
    uint16_t getCurrentMarker();
    int32_t tileIndexToDecode();
    bool   isWholeTileDecompress();
-
    void dump(uint32_t flag, FILE *out_stream);
 protected:
  	void dump_MH_info(FILE *out_stream);
