@@ -373,7 +373,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters  *parameters,GrkImage *ima
 		tcp->tccps = new TileComponentCodingParams[image->numcomps];
 		if (parameters->mct_data) {
 			uint32_t lMctSize = (uint32_t)image->numcomps * image->numcomps * (uint32_t)sizeof(float);
-			auto lTmpBuf = (float*) grk_malloc(lMctSize);
+			auto lTmpBuf = (float*) grkMalloc(lMctSize);
 			auto dc_shift = (int32_t*) ((uint8_t*) parameters->mct_data
 					+ lMctSize);
 			if (!lTmpBuf) {
@@ -381,9 +381,9 @@ bool CodeStreamCompress::initCompress(grk_cparameters  *parameters,GrkImage *ima
 				return false;
 			}
 			tcp->mct = 2;
-			tcp->m_mct_coding_matrix = (float*) grk_malloc(lMctSize);
+			tcp->m_mct_coding_matrix = (float*) grkMalloc(lMctSize);
 			if (!tcp->m_mct_coding_matrix) {
-				grk_free(lTmpBuf);
+				grkFree(lTmpBuf);
 				lTmpBuf = nullptr;
 				GRK_ERROR(
 						"Not enough memory to allocate compressor MCT coding matrix ");
@@ -392,9 +392,9 @@ bool CodeStreamCompress::initCompress(grk_cparameters  *parameters,GrkImage *ima
 			memcpy(tcp->m_mct_coding_matrix, parameters->mct_data, lMctSize);
 			memcpy(lTmpBuf, parameters->mct_data, lMctSize);
 
-			tcp->m_mct_decoding_matrix = (float*) grk_malloc(lMctSize);
+			tcp->m_mct_decoding_matrix = (float*) grkMalloc(lMctSize);
 			if (!tcp->m_mct_decoding_matrix) {
-				grk_free(lTmpBuf);
+				grkFree(lTmpBuf);
 				lTmpBuf = nullptr;
 				GRK_ERROR(
 						"Not enough memory to allocate compressor MCT decoding matrix ");
@@ -402,23 +402,23 @@ bool CodeStreamCompress::initCompress(grk_cparameters  *parameters,GrkImage *ima
 			}
 			if (GrkMatrix().matrix_inversion_f(lTmpBuf, (tcp->m_mct_decoding_matrix),
 					image->numcomps) == false) {
-				grk_free(lTmpBuf);
+				grkFree(lTmpBuf);
 				lTmpBuf = nullptr;
 				GRK_ERROR("Failed to inverse compressor MCT decoding matrix ");
 				return false;
 			}
 
-			tcp->mct_norms = (double*) grk_malloc(
+			tcp->mct_norms = (double*) grkMalloc(
 					image->numcomps * sizeof(double));
 			if (!tcp->mct_norms) {
-				grk_free(lTmpBuf);
+				grkFree(lTmpBuf);
 				lTmpBuf = nullptr;
 				GRK_ERROR("Not enough memory to allocate compressor MCT norms ");
 				return false;
 			}
 			mct::calculate_norms(tcp->mct_norms, image->numcomps,
 					tcp->m_mct_decoding_matrix);
-			grk_free(lTmpBuf);
+			grkFree(lTmpBuf);
 
 			for (uint32_t i = 0; i < image->numcomps; i++) {
 				auto tccp = &tcp->tccps[i];
@@ -520,7 +520,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters  *parameters,GrkImage *ima
 			tcp->qcd.pull(tccp->stepsizes, !parameters->irreversible);
 		}
 	}
-	grk_free(parameters->mct_data);
+	grkFree(parameters->mct_data);
 	parameters->mct_data = nullptr;
 
 	return true;
@@ -613,29 +613,29 @@ bool CodeStreamCompress::compressTile(uint16_t tile_index,	uint8_t *p_data, uint
 		return false;
 	bool rc = false;
 
-	m_tileProcessor = new TileProcessor(this,m_stream,true,false);
-	m_tileProcessor->m_tile_index = tile_index;
+	m_currentTileProcessor = new TileProcessor(this,m_stream,true,false);
+	m_currentTileProcessor->m_tile_index = tile_index;
 
-	if (!m_tileProcessor->pre_write_tile()) {
+	if (!m_currentTileProcessor->pre_write_tile()) {
 		GRK_ERROR("Error while pre_write_tile with tile index = %u",
 				tile_index);
 		goto cleanup;
 	}
 	/* now copy data into the tile component */
-	if (!m_tileProcessor->ingestUncompressedData(p_data,	uncompressed_data_size)) {
+	if (!m_currentTileProcessor->ingestUncompressedData(p_data,	uncompressed_data_size)) {
 		GRK_ERROR("Size mismatch between tile data and sent data.");
 		goto cleanup;
 	}
-	if (!m_tileProcessor->do_compress())
+	if (!m_currentTileProcessor->do_compress())
 		goto cleanup;
-	if (!post_write_tile(m_tileProcessor)) {
+	if (!post_write_tile(m_currentTileProcessor)) {
 		GRK_ERROR("Error while j2k_post_write_tile with tile index = %u",
 				tile_index);
 		goto cleanup;
 	}
 	rc = true;
 cleanup:
-	delete m_tileProcessor;
+	delete m_currentTileProcessor;
 
 	return rc;
 }
@@ -794,7 +794,7 @@ bool CodeStreamCompress::write_tile_part(TileProcessor *tileProcessor) {
 	return true;
 }
 bool CodeStreamCompress::post_write_tile(TileProcessor *tileProcessor) {
-	m_tileProcessor = tileProcessor;
+	m_currentTileProcessor = tileProcessor;
 	assert(tileProcessor->m_tile_part_index == 0);
 
 	//1. write first tile part
@@ -1573,10 +1573,10 @@ bool CodeStreamCompress::init_mct_encoding(TileCodingParams *p_tcp, GrkImage *p_
 		if (p_tcp->m_nb_mct_records == p_tcp->m_nb_max_mct_records) {
 			p_tcp->m_nb_max_mct_records += default_number_mct_records;
 
-			auto new_mct_records = (grk_mct_data*) grk_realloc(p_tcp->m_mct_records,
+			auto new_mct_records = (grk_mct_data*) grkRealloc(p_tcp->m_mct_records,
 					p_tcp->m_nb_max_mct_records * sizeof(grk_mct_data));
 			if (!new_mct_records) {
-				grk_free(p_tcp->m_mct_records);
+				grkFree(p_tcp->m_mct_records);
 				p_tcp->m_mct_records = nullptr;
 				p_tcp->m_nb_max_mct_records = 0;
 				p_tcp->m_nb_mct_records = 0;
@@ -1591,7 +1591,7 @@ bool CodeStreamCompress::init_mct_encoding(TileCodingParams *p_tcp, GrkImage *p_
 							* sizeof(grk_mct_data));
 		}
 		mct_deco_data = p_tcp->m_mct_records + p_tcp->m_nb_mct_records;
-		grk_free(mct_deco_data->m_data);
+		grkFree(mct_deco_data->m_data);
 		mct_deco_data->m_data = nullptr;
 
 		mct_deco_data->m_index = indix++;
@@ -1599,7 +1599,7 @@ bool CodeStreamCompress::init_mct_encoding(TileCodingParams *p_tcp, GrkImage *p_
 		mct_deco_data->m_element_type = MCT_TYPE_FLOAT;
 		nb_elem = (uint32_t)p_image->numcomps * p_image->numcomps;
 		mct_size = nb_elem * MCT_ELEMENT_SIZE[mct_deco_data->m_element_type];
-		mct_deco_data->m_data = (uint8_t*) grk_malloc(mct_size);
+		mct_deco_data->m_data = (uint8_t*) grkMalloc(mct_size);
 
 		if (!mct_deco_data->m_data)
 			return false;
@@ -1614,10 +1614,10 @@ bool CodeStreamCompress::init_mct_encoding(TileCodingParams *p_tcp, GrkImage *p_
 	if (p_tcp->m_nb_mct_records == p_tcp->m_nb_max_mct_records) {
 		grk_mct_data *new_mct_records;
 		p_tcp->m_nb_max_mct_records += default_number_mct_records;
-		new_mct_records = (grk_mct_data*) grk_realloc(p_tcp->m_mct_records,
+		new_mct_records = (grk_mct_data*) grkRealloc(p_tcp->m_mct_records,
 				p_tcp->m_nb_max_mct_records * sizeof(grk_mct_data));
 		if (!new_mct_records) {
-			grk_free(p_tcp->m_mct_records);
+			grkFree(p_tcp->m_mct_records);
 			p_tcp->m_mct_records = nullptr;
 			p_tcp->m_nb_max_mct_records = 0;
 			p_tcp->m_nb_mct_records = 0;
@@ -1635,7 +1635,7 @@ bool CodeStreamCompress::init_mct_encoding(TileCodingParams *p_tcp, GrkImage *p_
 	}
 	mct_offset_data = p_tcp->m_mct_records + p_tcp->m_nb_mct_records;
 	if (mct_offset_data->m_data) {
-		grk_free(mct_offset_data->m_data);
+		grkFree(mct_offset_data->m_data);
 		mct_offset_data->m_data = nullptr;
 	}
 	mct_offset_data->m_index = indix++;
@@ -1643,13 +1643,13 @@ bool CodeStreamCompress::init_mct_encoding(TileCodingParams *p_tcp, GrkImage *p_
 	mct_offset_data->m_element_type = MCT_TYPE_FLOAT;
 	nb_elem = p_image->numcomps;
 	mct_size = nb_elem * MCT_ELEMENT_SIZE[mct_offset_data->m_element_type];
-	mct_offset_data->m_data = (uint8_t*) grk_malloc(mct_size);
+	mct_offset_data->m_data = (uint8_t*) grkMalloc(mct_size);
 	if (!mct_offset_data->m_data)
 		return false;
 
-	data = (float*) grk_malloc(nb_elem * sizeof(float));
+	data = (float*) grkMalloc(nb_elem * sizeof(float));
 	if (!data) {
-		grk_free(mct_offset_data->m_data);
+		grkFree(mct_offset_data->m_data);
 		mct_offset_data->m_data = nullptr;
 		return false;
 	}
@@ -1662,19 +1662,19 @@ bool CodeStreamCompress::init_mct_encoding(TileCodingParams *p_tcp, GrkImage *p_
 	}
 	j2k_mct_write_functions_from_float[mct_offset_data->m_element_type](data,
 			mct_offset_data->m_data, nb_elem);
-	grk_free(data);
+	grkFree(data);
 	mct_offset_data->m_data_size = mct_size;
 	++p_tcp->m_nb_mct_records;
 
 	if (p_tcp->m_nb_mcc_records == p_tcp->m_nb_max_mcc_records) {
 		grk_simple_mcc_decorrelation_data *new_mcc_records;
 		p_tcp->m_nb_max_mcc_records += default_number_mct_records;
-		new_mcc_records = (grk_simple_mcc_decorrelation_data*) grk_realloc(
+		new_mcc_records = (grk_simple_mcc_decorrelation_data*) grkRealloc(
 				p_tcp->m_mcc_records,
 				p_tcp->m_nb_max_mcc_records
 						* sizeof(grk_simple_mcc_decorrelation_data));
 		if (!new_mcc_records) {
-			grk_free(p_tcp->m_mcc_records);
+			grkFree(p_tcp->m_mcc_records);
 			p_tcp->m_mcc_records = nullptr;
 			p_tcp->m_nb_max_mcc_records = 0;
 			p_tcp->m_nb_mcc_records = 0;

@@ -75,7 +75,7 @@ private:
 	/*
 	 Copy all chunks, in sequence, into contiguous array
 	 */
-	bool copy_to_contiguous_buffer(uint8_t *buffer);
+	bool copyToContiguousBuffer(uint8_t *buffer);
 
 	/*
 	 Clean up internal resources

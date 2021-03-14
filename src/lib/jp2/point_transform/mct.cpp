@@ -580,7 +580,7 @@ bool mct::compress_custom(uint8_t *mct_matrix, uint64_t n, uint8_t **pData,
 	uint32_t Multiplicator = 1 << 13;
 	GRK_UNUSED(isSigned);
 
-	auto CurrentData = (int32_t*) grk_malloc(
+	auto CurrentData = (int32_t*) grkMalloc(
 			(pNbComp + NbMatCoeff) * sizeof(int32_t));
 	if (!CurrentData)
 		return false;
@@ -603,7 +603,7 @@ bool mct::compress_custom(uint8_t *mct_matrix, uint64_t n, uint8_t **pData,
 			++data[j];
 		}
 	}
-	grk_free(CurrentData);
+	grkFree(CurrentData);
 
 	return true;
 }

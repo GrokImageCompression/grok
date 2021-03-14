@@ -179,7 +179,7 @@ bool ChunkBuffer::zero_copy_read(uint8_t **ptr, size_t chunk_len) {
 	return false;
 }
 
-bool ChunkBuffer::copy_to_contiguous_buffer(uint8_t *buffer) {
+bool ChunkBuffer::copyToContiguousBuffer(uint8_t *buffer) {
 	size_t offset = 0;
 
 	if (!buffer)

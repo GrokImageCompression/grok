@@ -25,28 +25,22 @@
 
 namespace grk {
 
-
-
-
 const size_t default_align = 64;
 
 uint32_t grkMakeAlignedWidth(uint32_t width);
-
 /**
  Allocate an uninitialized memory block
  @param size Bytes to allocate
  @return a void pointer to the allocated space, or nullptr if there is insufficient memory available
  */
-void* grk_malloc(size_t size);
-
+void* grkMalloc(size_t size);
 /**
  Allocate a memory block with elements initialized to 0
  @param numOfElements  Blocks to allocate
  @param sizeOfElements Bytes per block to allocate
  @return a void pointer to the allocated space, or nullptr if there is insufficient memory available
  */
-void* grk_calloc(size_t numOfElements, size_t sizeOfElements);
-
+void* grkCalloc(size_t numOfElements, size_t sizeOfElements);
 /**
  Allocate memory aligned to a 16 byte boundary
  @param size Bytes to allocate
@@ -54,25 +48,22 @@ void* grk_calloc(size_t numOfElements, size_t sizeOfElements);
  */
 void* grkAlignedMalloc(size_t size);
 void grkAlignedFree(void *ptr);
-
 /**
  Reallocate memory blocks.
  @param m Pointer to previously allocated memory block
  @param s New size in bytes
  @return a void pointer to the reallocated (and possibly moved) memory block
  */
-void* grk_realloc(void *m, size_t s);
-
+void* grkRealloc(void *m, size_t s);
 /**
  Deallocates or frees a memory block.
  @param m Previously allocated memory block to be freed
  */
-void grk_free(void *m);
+void grkFree(void *m);
 
 #if defined(__GNUC__) && !defined(GROK_SKIP_POISON)
 #pragma GCC poison malloc calloc realloc free
 #endif
-
 
 template<typename T> struct AllocatorVanilla{
 	T* alloc(size_t length) {
@@ -193,7 +184,8 @@ template <typename T, template <typename TT> typename A > struct grkBuffer : A<T
     size_t offset;	/* current offset into array */
     size_t len;		/* length of array */
     bool owns_data;	/* true if buffer manages the buf array */
-} ;
+};
+
 using grkBufferU8 = grkBuffer<uint8_t, AllocatorVanilla >;
 using grkBufferU8Aligned = grkBuffer<uint8_t, AllocatorAligned >;
 
@@ -295,12 +287,5 @@ template <typename T, template <typename TT> typename A> struct grkBuffer2d : pu
 	}
     uint32_t stride;
 } ;
-
-
-
-/* ----------------------------------------------------------------------- */
-/*@}*/
-
-/*@}*/
 
 }

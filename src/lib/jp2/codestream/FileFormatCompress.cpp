@@ -200,7 +200,7 @@ bool FileFormatCompress::write_jp2h(void) {
 		for (i = 0; i < nb_writers; ++i) {
 			auto current_writer = writers + i;
 			if (current_writer->m_data != nullptr) {
-				grk_free(current_writer->m_data);
+				grkFree(current_writer->m_data);
 			}
 		}
 		return false;
@@ -227,7 +227,7 @@ bool FileFormatCompress::write_jp2h(void) {
 	/* cleanup */
 	for (i = 0; i < nb_writers; ++i) {
 		auto current_writer = writers + i;
-		grk_free(current_writer->m_data);
+		grkFree(current_writer->m_data);
 	}
 
 	return result;
@@ -242,7 +242,7 @@ uint8_t* FileFormatCompress::write_palette_clr( uint32_t *p_nb_bytes_written) {
 
 	uint32_t boxSize = 4U + 4U + 2U + 1U +  palette->num_channels + bytesPerEntry * palette->num_entries;
 
-	uint8_t *paletteBuf = (uint8_t*)grk_malloc(boxSize);
+	uint8_t *paletteBuf = (uint8_t*)grkMalloc(boxSize);
 	uint8_t *palette_ptr = paletteBuf;
 
 	/* box size */
@@ -283,7 +283,7 @@ uint8_t* FileFormatCompress::write_component_mapping( uint32_t *p_nb_bytes_writt
 	auto palette = color.palette;
 	uint32_t boxSize = 4 + 4 + palette->num_channels * 4U;
 
-	uint8_t *cmapBuf = (uint8_t*)grk_malloc(boxSize);
+	uint8_t *cmapBuf = (uint8_t*)grkMalloc(boxSize);
 	uint8_t *cmapPtr = cmapBuf;
 
 	/* box size */
@@ -324,7 +324,7 @@ uint8_t* FileFormatCompress::write_colr( uint32_t *p_nb_bytes_written) {
 		return nullptr;
 	}
 
-	auto colr_data = (uint8_t*) grk_calloc(1, colr_size);
+	auto colr_data = (uint8_t*) grkCalloc(1, colr_size);
 	if (!colr_data)
 		return nullptr;
 
@@ -371,7 +371,7 @@ uint8_t* FileFormatCompress::write_channel_definition( uint32_t *p_nb_bytes_writ
 
 	cdef_size += 6U * color.channel_definition->num_channel_descriptions;
 
-	auto cdef_data = (uint8_t*) grk_malloc(cdef_size);
+	auto cdef_data = (uint8_t*) grkMalloc(cdef_size);
 	if (!cdef_data)
 		return nullptr;
 
@@ -412,7 +412,7 @@ uint8_t* FileFormatCompress::write_bpc( uint32_t *p_nb_bytes_written) {
 	uint32_t bpcc_size = 8U + numcomps;
 
 
-	auto bpcc_data = (uint8_t*) grk_calloc(1, bpcc_size);
+	auto bpcc_data = (uint8_t*) grkCalloc(1, bpcc_size);
 	if (!bpcc_data)
 		return nullptr;
 
@@ -447,7 +447,7 @@ uint8_t* FileFormatCompress::write_res( uint32_t *p_nb_bytes_written) {
 		size += GRK_RESOLUTION_BOX_SIZE;
 	}
 
-	res_data = (uint8_t*) grk_calloc(1, size);
+	res_data = (uint8_t*) grkCalloc(1, size);
 	if (!res_data)
 		return nullptr;
 
@@ -551,7 +551,7 @@ uint8_t* FileFormatCompress::write_buffer(uint32_t boxId, grkBufferU8 *buffer,
 
 	/* need 8 bytes for box plus buffer->len bytes for buffer*/
 	uint32_t total_size = 8 + (uint32_t) buffer->len;
-	auto data = (uint8_t*) grk_calloc(1, total_size);
+	auto data = (uint8_t*) grkCalloc(1, total_size);
 	if (!data)
 		return nullptr;
 
@@ -576,7 +576,7 @@ uint8_t* FileFormatCompress::write_ihdr( uint32_t *p_nb_bytes_written) {
 	assert(p_nb_bytes_written != nullptr);
 
 	/* default image header is 22 bytes wide */
-	auto ihdr_data = (uint8_t*) grk_calloc(1, 22);
+	auto ihdr_data = (uint8_t*) grkCalloc(1, 22);
 	if (ihdr_data == nullptr)
 		return nullptr;
 
@@ -665,7 +665,7 @@ bool FileFormatCompress::initCompress(grk_cparameters  *parameters,GrkImage *ima
 	brand = JP2_JP2; /* BR */
 	minversion = 0; /* MinV */
 	numcl = 1;
-	cl = (uint32_t*) grk_malloc(sizeof(uint32_t));
+	cl = (uint32_t*) grkMalloc(sizeof(uint32_t));
 	if (!cl) {
 		GRK_ERROR("Not enough memory when set up the JP2 compressor");
 		return false;

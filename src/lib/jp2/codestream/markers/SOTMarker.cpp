@@ -242,18 +242,18 @@ bool SOTMarker::get_sot_values(CodeStreamDecompress *codeStream,
 
 			if (!index->tile_index[tile_number].tp_index) {
 				index->tile_index[tile_number].tp_index =
-						(grk_tp_index*) grk_calloc(num_parts,sizeof(grk_tp_index));
+						(grk_tp_index*) grkCalloc(num_parts,sizeof(grk_tp_index));
 				if (!index->tile_index[tile_number].tp_index) {
 					GRK_ERROR("Not enough memory to read SOT marker. "
 							"Tile index allocation failed");
 					return false;
 				}
 			} else {
-				auto new_tp_index = (grk_tp_index*) grk_realloc(
+				auto new_tp_index = (grk_tp_index*) grkRealloc(
 						index->tile_index[tile_number].tp_index,
 						num_parts * sizeof(grk_tp_index));
 				if (!new_tp_index) {
-					grk_free(index->tile_index[tile_number].tp_index);
+					grkFree(index->tile_index[tile_number].tp_index);
 					index->tile_index[tile_number].tp_index =
 							nullptr;
 					GRK_ERROR("Not enough memory to read SOT marker. "
@@ -267,7 +267,7 @@ bool SOTMarker::get_sot_values(CodeStreamDecompress *codeStream,
 			if (!index->tile_index[tile_number].tp_index) {
 				index->tile_index[tile_number].current_nb_tps = 10;
 				index->tile_index[tile_number].tp_index =
-						(grk_tp_index*) grk_calloc(
+						(grk_tp_index*) grkCalloc(
 								index->tile_index[tile_number].current_nb_tps,
 								sizeof(grk_tp_index));
 				if (!index->tile_index[tile_number].tp_index) {
@@ -283,11 +283,11 @@ bool SOTMarker::get_sot_values(CodeStreamDecompress *codeStream,
 				grk_tp_index *new_tp_index;
 				index->tile_index[tile_number].current_nb_tps =	current_part + 1U;
 				new_tp_index =
-						(grk_tp_index*) grk_realloc(index->tile_index[tile_number].tp_index,
+						(grk_tp_index*) grkRealloc(index->tile_index[tile_number].tp_index,
 								index->tile_index[tile_number].current_nb_tps
 										* sizeof(grk_tp_index));
 				if (!new_tp_index) {
-					grk_free(index->tile_index[tile_number].tp_index);
+					grkFree(index->tile_index[tile_number].tp_index);
 					index->tile_index[tile_number].tp_index =
 							nullptr;
 					index->tile_index[tile_number].current_nb_tps =	0;

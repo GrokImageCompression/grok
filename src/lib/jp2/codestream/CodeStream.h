@@ -160,7 +160,7 @@ protected:
 	// stores header image information (decompress/compress)
 	// decompress: components are subsampled and resolution-reduced
 	GrkImage *m_headerImage;
-	TileProcessor *m_tileProcessor;
+	TileProcessor *m_currentTileProcessor;
 	BufferedStream *m_stream;
 	std::map<uint32_t, TileProcessor*> m_processors;
     bool m_multiTile;

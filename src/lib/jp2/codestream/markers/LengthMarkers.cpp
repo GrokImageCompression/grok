@@ -227,10 +227,10 @@ bool TileLengthMarkers::addToIndex(uint16_t tileno,
 	if (marknum + 1 > tileIndex->maxmarknum) {
 		auto oldMax = tileIndex->maxmarknum;
 		tileIndex->maxmarknum += 100U;
-		auto new_marker = (grk_marker_info*) grk_realloc(tileIndex->marker,
+		auto new_marker = (grk_marker_info*) grkRealloc(tileIndex->marker,
 													tileIndex->maxmarknum* sizeof(grk_marker_info));
 		if (!new_marker) {
-			grk_free(tileIndex->marker);
+			grkFree(tileIndex->marker);
 			tileIndex->marker = nullptr;
 			tileIndex->maxmarknum = 0;
 			tileIndex->marknum = 0;

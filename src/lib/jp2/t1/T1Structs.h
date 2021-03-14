@@ -83,7 +83,7 @@ struct Layer {
 	uint8_t *data; 		// compressed layer data
 };
 // note: block lives in canvas coordinates
-struct Codeblock : public grkRectU32 {
+struct Codeblock : public grkRectU32, public ICacheable {
     Codeblock(const Codeblock &rhs);
     Codeblock();
     Codeblock& operator=(const Codeblock& other);
@@ -95,9 +95,6 @@ struct Codeblock : public grkRectU32 {
 	uint32_t numPassesInPacket; 	/* number of passes encoded in current packet */
 	int32_t* getUncomressedDataPtr(void);
 	bool allocUncompressedData(bool clear);
-	void setSuccess(bool succeeded);
-protected:
-	bool m_failed;
 protected:
 #ifdef DEBUG_LOSSLESS_T2
 	uint32_t included;
@@ -125,10 +122,9 @@ struct DecompressCodeblock: public Codeblock {
 	Segment* nextSegment(void);
 	uint32_t getNumSegments(void);
 	bool alloc();
-	void cleanup_seg_buffers();
+	void cleanUpSegBuffers();
 	size_t getSegBuffersLen();
-	bool copy_to_contiguous_buffer(uint8_t *buffer);
-	bool needsDecompress(void);
+	bool copyToContiguousBuffer(uint8_t *buffer);
 	std::vector<grkBufferU8*> seg_buffers;
 private:
 	Segment *segs; 					/* information on segments */
@@ -260,6 +256,8 @@ struct Resolution : public grkRectU32 {
 	grkPointU32 precinctExpn;
 	grk_plugin_tile *current_plugin_tile;
 };
+class T1Interface;
+
 struct BlockExec {
 	BlockExec();
 	virtual bool open(T1Interface *t1) = 0;
@@ -275,7 +273,6 @@ struct BlockExec {
 	uint32_t y;
 	// missing bit planes for all blocks in band
 	uint8_t k_msbs;
-	bool isOpen;
 };
 struct DecompressBlockExec : public BlockExec {
 	DecompressBlockExec();

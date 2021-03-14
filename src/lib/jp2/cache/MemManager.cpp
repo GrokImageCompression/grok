@@ -35,14 +35,13 @@
 
 namespace grk {
 
-const uint32_t grk_alignment = 32;
+const uint32_t GrkAlignment = 32;
 
 uint32_t grkMakeAlignedWidth(uint32_t width){
 	assert(width);
-	return (uint32_t)((((uint64_t)width + grk_alignment - 1)/grk_alignment) * grk_alignment);
+	return (uint32_t)((((uint64_t)width + GrkAlignment - 1)/GrkAlignment) * GrkAlignment);
 }
-
-static inline void* grk_aligned_alloc_n(size_t alignment, size_t size) {
+static inline void* grkAlignedAllocN(size_t alignment, size_t size) {
 	void *ptr;
 
 	/* alignment shall be power of 2 */
@@ -102,24 +101,22 @@ static inline void* grk_aligned_alloc_n(size_t alignment, size_t size) {
 #endif
 	return ptr;
 }
-void* grk_malloc(size_t size) {
+void* grkMalloc(size_t size) {
 	if (size == 0U) /* prevent implementation defined behavior of realloc */
 		return nullptr;
 
 	return malloc(size);
 }
-void* grk_calloc(size_t num, size_t size) {
+void* grkCalloc(size_t num, size_t size) {
 	if (num == 0 || size == 0)
 		/* prevent implementation defined behavior of realloc */
 		return nullptr;
 
 	return calloc(num, size);
 }
-
 void* grkAlignedMalloc(size_t size) {
-	return grk_aligned_alloc_n(default_align, size);
+	return grkAlignedAllocN(default_align, size);
 }
-
 void grkAlignedFree(void *ptr) {
 #if defined(GROK_HAVE_POSIX_MEMALIGN) || defined(GROK_HAVE_ALIGNED_ALLOC) ||  defined(GROK_HAVE_MEMALIGN)
 	free(ptr);
@@ -131,14 +128,13 @@ void grkAlignedFree(void *ptr) {
         free(((void**) ptr)[-1]);
 #endif
 }
-
-void* grk_realloc(void *ptr, size_t new_size) {
+void* grkRealloc(void *ptr, size_t new_size) {
 	if (new_size == 0U)/* prevent implementation defined behavior of realloc */
 		return nullptr;
 
 	return realloc(ptr, new_size);
 }
-void grk_free(void *ptr) {
+void grkFree(void *ptr) {
 	if (ptr)
 		free(ptr);
 }

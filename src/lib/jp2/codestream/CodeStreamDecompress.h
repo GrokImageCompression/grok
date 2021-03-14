@@ -96,8 +96,8 @@ private:
 	bool process_marker(const marker_handler* marker_handler, uint16_t marker_size);
 	bool parseTileHeaderMarkers(bool *can_decode_tile_data);
 	bool readHeaderProcedureImpl(void);
-	bool exec_decompress();
-	bool decompressTileT2T1(TileProcessor *tileProcessor) ;
+	bool decompressExec();
+	bool decompressT2T1(TileProcessor *tileProcessor) ;
 	bool decompressTile();
 	bool findNextTile(TileProcessor *tileProcessor);
 	bool decompressTiles(void);

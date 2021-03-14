@@ -243,7 +243,7 @@ bool SIZMarker::read(CodeStreamDecompress *codeStream, uint8_t *p_header_data,
 	cp->tcps = new TileCodingParams[nb_tiles];
 	decompressor->m_default_tcp->tccps = new  TileComponentCodingParams[image->numcomps];
 	decompressor->m_default_tcp->m_mct_records =
-			(grk_mct_data*) grk_calloc(default_number_mct_records,
+			(grk_mct_data*) grkCalloc(default_number_mct_records,
 					sizeof(grk_mct_data));
 
 	if (!decompressor->m_default_tcp->m_mct_records) {
@@ -254,7 +254,7 @@ bool SIZMarker::read(CodeStreamDecompress *codeStream, uint8_t *p_header_data,
 			default_number_mct_records;
 
 	decompressor->m_default_tcp->m_mcc_records =
-			(grk_simple_mcc_decorrelation_data*) grk_calloc(
+			(grk_simple_mcc_decorrelation_data*) grkCalloc(
 					default_number_mcc_records,
 					sizeof(grk_simple_mcc_decorrelation_data));
 

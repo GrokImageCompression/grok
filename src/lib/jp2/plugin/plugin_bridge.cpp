@@ -67,7 +67,7 @@ void decompress_synch_plugin_with_host(TileProcessor *tcd) {
 							// to plugin data buffer
 							plugin_cblk->compressedDataLength =
 									(uint32_t)cblk->getSegBuffersLen();
-							cblk->copy_to_contiguous_buffer(
+							cblk->copyToContiguousBuffer(
 									plugin_cblk->compressedData);
 							cblk->compressedStream.buf = plugin_cblk->compressedData;
 							cblk->compressedStream.len = plugin_cblk->compressedDataLength;

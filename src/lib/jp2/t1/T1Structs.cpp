@@ -207,7 +207,6 @@ Codeblock::Codeblock():
 #ifdef DEBUG_LOSSLESS_T2
 		,included(false)
 #endif
-		,m_failed(false)
 {}
 Codeblock::~Codeblock(){
 	compressedStream.dealloc();
@@ -222,17 +221,17 @@ CompressCodeblock::CompressCodeblock() :
 {}
 CompressCodeblock::~CompressCodeblock() {
 	compressedStream.dealloc();
-	grk_free(layers);
-	grk_free(passes);
+	grkFree(layers);
+	grkFree(passes);
 }
 bool CompressCodeblock::alloc() {
 	if (!layers) {
-		layers = (Layer*) grk_calloc(100, sizeof(Layer));
+		layers = (Layer*) grkCalloc(100, sizeof(Layer));
 		if (!layers)
 			return false;
 	}
 	if (!passes) {
-		passes = (CodePass*) grk_calloc(100, sizeof(CodePass));
+		passes = (CodePass*) grkCalloc(100, sizeof(CodePass));
 		if (!passes)
 			return false;
 	}
@@ -242,8 +241,7 @@ bool CompressCodeblock::alloc() {
 Codeblock::Codeblock(const Codeblock &rhs): grkRectU32(rhs),
 											numbps(rhs.numbps),
 											numlenbits(rhs.numlenbits),
-											numPassesInPacket(rhs.numPassesInPacket),
-											m_failed(rhs.m_failed)
+											numPassesInPacket(rhs.numPassesInPacket)
 #ifdef DEBUG_LOSSLESS_T2
 	,included(0)
 #endif
@@ -277,12 +275,6 @@ bool Codeblock::allocUncompressedData(bool clear){
 int32_t* Codeblock::getUncomressedDataPtr(void){
 	return uncompressedData.currPtr();
 }
-void Codeblock::setSuccess(bool succeeded){
-	m_failed = !succeeded;
-	if (m_failed){
-		uncompressedData.dealloc();
-	}
-}
 /**
  * Allocates data memory for an compressing code block.
  * We actually allocate 2 more bytes than specified, and then offset data by +2.
@@ -313,7 +305,7 @@ DecompressCodeblock::DecompressCodeblock() : 	segs(nullptr),
 												numSegmentsAllocated(0)
 {}
 DecompressCodeblock::~DecompressCodeblock(){
-	cleanup_seg_buffers();
+	cleanUpSegBuffers();
 	delete[] segs;
 }
 Segment* DecompressCodeblock::getSegment(uint32_t segmentIndex){
@@ -345,7 +337,7 @@ Segment* DecompressCodeblock::nextSegment(void){
 	numSegments++;
 	return getCurrentSegment();
 }
-void DecompressCodeblock::cleanup_seg_buffers(){
+void DecompressCodeblock::cleanUpSegBuffers(){
 	for (auto& b : seg_buffers)
 		delete b;
 	seg_buffers.clear();
@@ -356,7 +348,7 @@ size_t DecompressCodeblock::getSegBuffersLen(){
 	   return (s + a->len);
 	});
 }
-bool DecompressCodeblock::copy_to_contiguous_buffer(uint8_t *buffer) {
+bool DecompressCodeblock::copyToContiguousBuffer(uint8_t *buffer) {
 	if (!buffer)
 		return false;
 	size_t offset = 0;
@@ -367,9 +359,6 @@ bool DecompressCodeblock::copy_to_contiguous_buffer(uint8_t *buffer) {
 		}
 	}
 	return true;
-}
-bool DecompressCodeblock::needsDecompress(void){
-	return !m_failed && !getUncomressedDataPtr();
 }
 Subband::Subband() :
 				orientation(BAND_ORIENT_LL),
@@ -499,8 +488,7 @@ BlockExec::BlockExec() : 	tilec(nullptr),
 							qmfbid(0),
 							x(0),
 							y(0),
-							k_msbs(0),
-							isOpen(false)
+							k_msbs(0)
 {}
 CompressBlockExec::CompressBlockExec() :
 		            cblk(nullptr),
@@ -520,9 +508,7 @@ CompressBlockExec::CompressBlockExec() :
 				mct_numcomps(0)
 {}
 bool CompressBlockExec::open(T1Interface *t1){
-	isOpen = t1->compress(this);
-
-	return isOpen;
+	return t1->compress(this);
 }
 void CompressBlockExec::close(void){
 }
@@ -532,9 +518,7 @@ DecompressBlockExec::DecompressBlockExec() :
 				roishift(0)
 {}
 bool DecompressBlockExec::open(T1Interface *t1){
-	isOpen =  t1->decompress(this);
-
-	return isOpen;
+	return t1->decompress(this);
 }
 void DecompressBlockExec::close(void){
 }

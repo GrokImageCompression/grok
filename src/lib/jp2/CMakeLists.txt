@@ -56,6 +56,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/tile
   ${CMAKE_CURRENT_SOURCE_DIR}/filters
   ${CMAKE_CURRENT_SOURCE_DIR}/../highway
+  ${CMAKE_CURRENT_SOURCE_DIR}/cache
 )
 
 # Defines the source code for executables
@@ -76,8 +77,6 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/MemStream.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/MemStream.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/grk_intmath.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/util/MemManager.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/util/MemManager.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/util.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/util.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/CPUArch.h
@@ -132,8 +131,11 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/PPMMarker.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/SOTMarker.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/SOTMarker.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/TileCache.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/TileCache.h
+  
+  ${CMAKE_CURRENT_SOURCE_DIR}/cache/TileCache.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/cache/TileCache.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/cache/MemManager.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/cache/MemManager.h
 
   ${CMAKE_CURRENT_SOURCE_DIR}/point_transform/mct.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/point_transform/mct.h

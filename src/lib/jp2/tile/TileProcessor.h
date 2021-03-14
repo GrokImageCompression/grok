@@ -68,7 +68,8 @@ private:
 /**
  Tile processor for decompression and compression
  */
-struct TileProcessor {
+
+struct TileProcessor : public ICacheable {
 	explicit TileProcessor(CodeStream *codeStream,
 							BufferedStream *stream,
 							bool isCompressor,
@@ -83,6 +84,10 @@ struct TileProcessor {
 	bool do_compress(void);
 	bool decompressT1(void);
 	bool decompressT2(ChunkBuffer *src_buf);
+	bool decompressT2T1(TileCodingParams *tcp,
+							GrkImage *outputImage,
+							bool multiTile,
+							bool doPost);
 	bool ingestUncompressedData(uint8_t *p_src, uint64_t src_length);
 	bool needsRateControl();
 	void ingestImage();

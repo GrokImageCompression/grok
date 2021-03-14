@@ -590,8 +590,8 @@ bool TileProcessor::init(void) {
 	uint32_t state = grk_plugin_get_debug_state();
 	auto tcp = &(m_cp->tcps[m_tile_index]);
 
-	if (tcp->m_tile_data)
-		tcp->m_tile_data->rewind();
+	if (tcp->m_compressedTileData)
+		tcp->m_compressedTileData->rewind();
 
 	// generate tile bounds from tile grid coordinates
 	uint32_t tile_x = m_tile_index % m_cp->t_grid_width;
@@ -855,6 +855,35 @@ bool TileProcessor::decompressT1(void) {
 	}
 	return true;
 }
+bool TileProcessor::decompressT2T1(TileCodingParams *tcp,
+										GrkImage *outputImage,
+										bool multiTile,
+										bool doPost) {
+	if (!allocWindowBuffers(outputImage))
+		return false;
+	if (isClosed()) {
+		if (!decompressT2(tcp->m_compressedTileData) || m_corrupt_packet){
+			GRK_WARN("Tile %d was not decompressed", m_tile_index+1);
+			setCacheState(GRK_CACHE_STATE_ERROR);
+			return true;
+		}
+	}
+	if (!decompressT1()) {
+		setCacheState(GRK_CACHE_STATE_ERROR);
+		return false;
+	}
+	setCacheState(GRK_CACHE_STATE_OPEN);
+	if (doPost) {
+		if (multiTile)
+			generateImage(outputImage, tile);
+		else
+			outputImage->transferDataFrom(tile);
+		deallocBuffers();
+	}
+
+	return true;
+}
+
 void TileProcessor::ingestImage() {
 	for (uint32_t i = 0; i < headerImage->numcomps; ++i) {
 		auto tilec = tile->comps + i;
@@ -1295,8 +1324,8 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress *codeStream) {
 	}
 	size_t current_read_size = 0;
 	if (tile_part_data_length) {
-		if (!tcp->m_tile_data)
-			tcp->m_tile_data = new ChunkBuffer();
+		if (!tcp->m_compressedTileData)
+			tcp->m_compressedTileData = new ChunkBuffer();
 
 		auto len = tile_part_data_length;
 		uint8_t *buff = nullptr;
@@ -1312,7 +1341,7 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress *codeStream) {
 			buff = m_stream->getCurrentPtr();
 		}
 		current_read_size = m_stream->read(zeroCopy ? nullptr : buff, len);
-		tcp->m_tile_data->push_back(buff, len, !zeroCopy);
+		tcp->m_compressedTileData->push_back(buff, len, !zeroCopy);
 
 	}
 	if (current_read_size != tile_part_data_length)

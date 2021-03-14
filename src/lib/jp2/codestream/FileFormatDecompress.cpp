@@ -413,7 +413,7 @@ bool FileFormatDecompress::readHeaderProcedureImpl(void) {
 	assert(stream != nullptr);
 	bool rc = false;
 
-	auto current_data = (uint8_t*) grk_calloc(1, last_data_size);
+	auto current_data = (uint8_t*) grkCalloc(1, last_data_size);
 	if (!current_data) {
 		GRK_ERROR("Not enough memory to handle JPEG 2000 file header");
 		return false;
@@ -473,7 +473,7 @@ bool FileFormatDecompress::readHeaderProcedureImpl(void) {
 					goto cleanup;
 				}
 				if (current_data_size > last_data_size) {
-					uint8_t *new_current_data = (uint8_t*) grk_realloc(current_data, current_data_size);
+					uint8_t *new_current_data = (uint8_t*) grkRealloc(current_data, current_data_size);
 					if (!new_current_data) {
 						GRK_ERROR("Not enough memory to handle JPEG 2000 box");
 						goto cleanup;
@@ -518,7 +518,7 @@ bool FileFormatDecompress::readHeaderProcedureImpl(void) {
 		rc = false;
 	}
 cleanup:
-	grk_free(current_data);
+	grkFree(current_data);
 	return rc;
 }
 /***
@@ -1062,7 +1062,7 @@ bool FileFormatDecompress::check_color(GrkImage *image, grk_color *color) {
 				goto cleanup;
 			}
 		}
-		pcol_usage = (bool*) grk_calloc(num_channels, sizeof(bool));
+		pcol_usage = (bool*) grkCalloc(num_channels, sizeof(bool));
 		if (!pcol_usage) {
 			GRK_ERROR("Unexpected OOM.");
 			return false;
@@ -1121,7 +1121,7 @@ bool FileFormatDecompress::check_color(GrkImage *image, grk_color *color) {
 			}
 		}
 	cleanup:
-		grk_free(pcol_usage);
+		grkFree(pcol_usage);
 		if (!is_sane)
 			return false;
 	}
@@ -1391,7 +1391,7 @@ bool FileFormatDecompress::read_ftyp( uint8_t *p_header_data,	uint32_t header_si
 	/* div by 4 */
 	numcl = remaining_bytes >> 2;
 	if (numcl) {
-		cl = (uint32_t*) grk_calloc(numcl, sizeof(uint32_t));
+		cl = (uint32_t*) grkCalloc(numcl, sizeof(uint32_t));
 		if (cl == nullptr) {
 			GRK_ERROR("Not enough memory with FTYP Box");
 			return false;

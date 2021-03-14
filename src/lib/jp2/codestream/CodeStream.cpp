@@ -25,7 +25,7 @@ namespace grk {
 
 CodeStream::CodeStream(BufferedStream *stream) : cstr_index(nullptr),
 																m_headerImage(nullptr),
-																m_tileProcessor(nullptr),
+																m_currentTileProcessor(nullptr),
 																m_stream(stream),
 																m_multiTile(false),
 																current_plugin_tile(nullptr)
@@ -38,15 +38,15 @@ CodeStream::~CodeStream(){
 		grk_object_unref(&m_headerImage->obj);
 	m_cp.destroy();
 	if (cstr_index) {
-		grk_free(cstr_index->marker);
+		grkFree(cstr_index->marker);
 		if (cstr_index->tile_index) {
 			for (uint32_t i = 0; i < cstr_index->nb_of_tiles; i++) {
-				grk_free(cstr_index->tile_index[i].tp_index);
-				grk_free(cstr_index->tile_index[i].marker);
+				grkFree(cstr_index->tile_index[i].tp_index);
+				grkFree(cstr_index->tile_index[i].marker);
 			}
-			grk_free(cstr_index->tile_index);
+			grkFree(cstr_index->tile_index);
 		}
-		grk_free(cstr_index);
+		grkFree(cstr_index);
 	}
 }
 CodingParams* CodeStream::getCodingParams(void){
@@ -56,7 +56,7 @@ GrkImage* CodeStream::getHeaderImage(void){
 	return m_headerImage;
 }
 TileProcessor* CodeStream::currentProcessor(void){
-	return m_tileProcessor;
+	return m_currentTileProcessor;
 }
 bool CodeStream::exec(std::vector<PROCEDURE_FUNC> &procs) {
     bool result = std::all_of(procs.begin(), procs.end(),[](const PROCEDURE_FUNC &proc){

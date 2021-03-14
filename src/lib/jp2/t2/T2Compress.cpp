@@ -487,7 +487,7 @@ bool T2Compress::compressPacket(TileCodingParams *tcp, PacketIter *pi,
 									else {
 										needs_delete = true;
 										roundTripData = new uint8_t[roundTripTotalSegLen];
-										min_buf_vec_copy_to_contiguous_buffer(&roundTripCblk->seg_buffers, roundTripData);
+										min_buf_vec_copyToContiguousBuffer(&roundTripCblk->seg_buffers, roundTripData);
 									}
 									for (uint32_t i = 0; i < originalCumulativeLayerLength; ++i) {
 										if (roundTripData[i] != originalCblk->data[i]) {
