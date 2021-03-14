@@ -439,8 +439,13 @@ bool CodeStreamDecompress::endOfCodeStream(void){
 					m_stream->get_number_byte_left() == 0;
 }
 bool CodeStreamDecompress::decompressTiles(void) {
-	if (endOfCodeStream())
+	if (endOfCodeStream()){
+		if (m_tileCache->empty()){
+			GRK_ERROR("No tiles were decompressed.");
+			return false;
+		}
 		return true;
+	}
 
 	uint16_t numTilesToDecompress = (uint16_t)(m_cp.t_grid_height* m_cp.t_grid_width);
 	m_multiTile = numTilesToDecompress > 1;

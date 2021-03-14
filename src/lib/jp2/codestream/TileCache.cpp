@@ -36,6 +36,9 @@ TileCache::~TileCache() {
 	if (tileComposite)
 		grk_object_unref(&tileComposite->obj);
 }
+bool TileCache::empty(){
+	return m_cache.empty();
+}
 
 TileCacheEntry*  TileCache::put(uint16_t tileIndex, TileProcessor *processor){
 	TileCacheEntry *entry = nullptr;
