@@ -69,7 +69,6 @@ void TileComponent::deallocBuffers(void){
 bool TileComponent::init(bool isCompressor,
 						bool whole_tile,
 						grkRectU32 unreducedTileComp,
-						grkRectU32 unreducedTileOrImageCompWindow,
 						uint8_t prec,
 						CodingParams *cp,
 						TileCodingParams *tcp,
@@ -137,11 +136,6 @@ bool TileComponent::init(bool isCompressor,
 			band->set(getTileCompBandWindow(numDecomps, band->orientation,unreducedTileComp));
 		}
 	}
-
-	//3. create window buffer
-	if (!allocWindowBuffer(unreducedTileOrImageCompWindow))
-		return false;
-
 	// set band step size
 	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = tileCompResolution + resno;
@@ -284,8 +278,7 @@ bool TileComponent::allocSparseBuffer(uint32_t numres, bool truncatedTile){
     return true;
 }
 bool TileComponent::allocWindowBuffer(grkRectU32 unreducedTileOrImageCompWindow) {
-	if (buf)
-		return true;
+	deallocBuffers();
 	auto highestNumberOfResolutions =
 			(!m_is_encoder) ? resolutions_to_decompress : numresolutions;
 	auto maxResolution = tileCompResolution + numresolutions - 1;

@@ -552,7 +552,7 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile){
 								  tile_ind,
 								  &success] {
 						if (success) {
-							auto tileProcessor = new TileProcessor(this,m_stream,false);
+							auto tileProcessor = new TileProcessor(this,m_stream,true,false);
 							procs[tile_ind] = tileProcessor;
 							tileProcessor->m_tile_index = tile_ind;
 							tileProcessor->current_plugin_tile = tile;
@@ -569,7 +569,7 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile){
 		}
 	} else {
 		for (uint16_t i = 0; i < nb_tiles; ++i) {
-			auto tileProcessor = new TileProcessor(this,m_stream,false);
+			auto tileProcessor = new TileProcessor(this,m_stream,true,false);
 			tileProcessor->m_tile_index = i;
 			tileProcessor->current_plugin_tile = tile;
 			if (!tileProcessor->pre_write_tile()){
@@ -613,7 +613,7 @@ bool CodeStreamCompress::compressTile(uint16_t tile_index,	uint8_t *p_data, uint
 		return false;
 	bool rc = false;
 
-	m_tileProcessor = new TileProcessor(this,m_stream,false);
+	m_tileProcessor = new TileProcessor(this,m_stream,true,false);
 	m_tileProcessor->m_tile_index = tile_index;
 
 	if (!m_tileProcessor->pre_write_tile()) {
@@ -622,7 +622,7 @@ bool CodeStreamCompress::compressTile(uint16_t tile_index,	uint8_t *p_data, uint
 		goto cleanup;
 	}
 	/* now copy data into the tile component */
-	if (!m_tileProcessor->copy_uncompressed_data_to_tile(p_data,	uncompressed_data_size)) {
+	if (!m_tileProcessor->ingestUncompressedData(p_data,	uncompressed_data_size)) {
 		GRK_ERROR("Size mismatch between tile data and sent data.");
 		goto cleanup;
 	}
@@ -779,7 +779,7 @@ bool CodeStreamCompress::write_tile_part(TileProcessor *tileProcessor) {
 		tileProcessor->tile->numIteratedPackets = 0;
 	}
 	// 3. compress tile part
-	if (!tileProcessor->compress_tile_part(&tile_part_bytes_written)) {
+	if (!tileProcessor->compressTilePart(&tile_part_bytes_written)) {
 		GRK_ERROR("Cannot compress tile");
 		return false;
 	}

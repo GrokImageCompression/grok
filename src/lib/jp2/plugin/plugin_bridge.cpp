@@ -214,7 +214,7 @@ void compress_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t re
 			auto pluginPass = plugin_cblk->passes + passno;
 
 			// synch distortion, if applicable
-			if (tcd->needs_rate_control()) {
+			if (tcd->needsRateControl()) {
 				if (state & GRK_PLUGIN_STATE_DEBUG) {
 					if (fabs(
 							pass->distortiondec

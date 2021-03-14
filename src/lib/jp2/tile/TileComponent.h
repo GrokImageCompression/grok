@@ -33,7 +33,6 @@ struct TileComponent : public grkRectU32 {
 	bool init(bool isCompressor,
 			bool whole_tile,
 			grkRectU32 unreducedTileComp,
-			grkRectU32 unreducedTileOrImageCompWindow,
 			uint8_t prec,
 			CodingParams *cp,
 			TileCodingParams *tcp,

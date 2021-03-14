@@ -137,7 +137,7 @@ TileProcessor* CodeStreamDecompress::allocateProcessor(uint16_t tile_index){
 	auto tileCache = m_tileCache->get(tile_index);
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
 	if (!tileProcessor){
-		tileProcessor = new TileProcessor(this,m_stream,wholeTileDecompress);
+		tileProcessor = new TileProcessor(this,m_stream,false,wholeTileDecompress);
 		tileProcessor->m_tile_index = tile_index;
 		m_tileCache->put(tile_index, tileProcessor);
 	}
@@ -492,31 +492,25 @@ bool CodeStreamDecompress::decompressTiles(void) {
 		//3. T2 + T1 decompress
 		// once we schedule a processor for T1 compression, we will destroy it
 		// regardless of success or not
-		if (pool.num_threads() > 1) {
-			results.emplace_back(
-				pool.enqueue([this,processor,
-							  numTilesToDecompress,
-							  &numTilesDecompressed, &success] {
-					if (success) {
-						if (!decompressTileT2T1(processor)){
-							GRK_ERROR("Failed to decompress tile %u/%u",
-									processor->m_tile_index + 1,numTilesToDecompress);
-							success = false;
-						} else {
-							numTilesDecompressed++;
-						}
-					}
-					return 0;
-				})
-			);
-		} else {
-			if (!decompressTileT2T1(processor)){
+		auto exec = [this,processor,
+					  numTilesToDecompress,
+					  &numTilesDecompressed,
+					  &success] {
+			if (success) {
+				if (!decompressTileT2T1(processor)){
 					GRK_ERROR("Failed to decompress tile %u/%u",
 							processor->m_tile_index + 1,numTilesToDecompress);
 					success = false;
-			} else {
-				numTilesDecompressed++;
+				} else {
+					numTilesDecompressed++;
+				}
 			}
+			return 0;
+		};
+		if (pool.num_threads() > 1)
+			results.emplace_back(pool.enqueue(exec));
+		else {
+			exec();
 			if (!success)
 				goto cleanup;
 		}
@@ -525,6 +519,8 @@ bool CodeStreamDecompress::decompressTiles(void) {
 		result.get();
 	}
 	results.clear();
+	if (!success)
+		goto cleanup;
 
 	// check if there is another tile that has not been processed
 	// we will reject if it has the TPSot problem
@@ -926,14 +922,16 @@ bool CodeStreamDecompress::decompressTileT2T1(TileProcessor *tileProcessor) {
 		tcp->destroy();
 		return false;
 	}
-	if (!tileProcessor->decompress_tile_t2(tcp->m_tile_data) || tileProcessor->m_corrupt_packet){
+	if (!tileProcessor->allocWindowBuffers(m_output_image))
+		return false;
+	if (!tileProcessor->decompressT2(tcp->m_tile_data) || tileProcessor->m_corrupt_packet){
 		GRK_WARN("Tile %d was not decompressed", tileProcessor->m_tile_index+1);
 		return true;
 	}
 	bool rc = true;
 	bool doPost = !tileProcessor->current_plugin_tile ||
 			(tileProcessor->current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
-	if (!tileProcessor->decompress_tile_t1()) {
+	if (!tileProcessor->decompressT1()) {
 		tcp->destroy();
 		decompressor->orState(J2K_DEC_STATE_ERR);
 		return false;
@@ -2143,7 +2141,7 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool *canDecompress) {
 			break;
 		/* If we didn't skip data before, we need to read the SOD marker*/
 		if (!m_decompressorState.m_skip_tile_data) {
-			if (!m_tileProcessor->prepare_sod_decoding(this))
+			if (!m_tileProcessor->prepareSodDecompress(this))
 				return false;
 			if (!m_decompressorState.last_tile_part_was_read) {
 				if (!readMarker()){
@@ -2259,7 +2257,7 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool *canDecompress) {
 		GRK_ERROR("Failed to merge PPT data");
 		return false;
 	}
-	if (!m_tileProcessor->init(m_output_image, false)) {
+	if (!m_tileProcessor->init()) {
 		GRK_ERROR("Cannot decompress tile %u",
 				m_tileProcessor->m_tile_index);
 		return false;
