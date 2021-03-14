@@ -532,8 +532,8 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile){
 				"allowed by the standard.", nb_tiles, max_num_tiles);
 		return false;
 	}
-	auto pool_size = std::min<uint32_t>((uint32_t)ThreadPool::get()->num_threads(), nb_tiles);
-	ThreadPool pool(pool_size);
+	auto pool_size = std::min<uint32_t>((uint32_t)riften::Threadpool()._deques.size(), nb_tiles);
+	riften::Threadpool pool(pool_size);
 	std::vector< std::future<int> > results;
 	std::unique_ptr<TileProcessor*[]> procs = std::make_unique<TileProcessor*[]>(nb_tiles);
 	std::atomic<bool> success(true);
