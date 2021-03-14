@@ -123,27 +123,29 @@ bool T1Part1::compress(CompressBlockExec *block) {
 
 bool T1Part1::decompress(DecompressBlockExec *block) {
 	auto cblk = block->cblk;
-	cblk->allocUncompressedData(true);
-  	if (!cblk->seg_buffers.empty()) {
-		size_t totalSegLen = cblk->getSegBuffersLen() + grk_cblk_dec_compressed_data_pad_right;
-		t1->allocCompressedData(totalSegLen);
-		size_t offset = 0;
-		auto compressedData = t1->getCompressedDataBuffer();
-		for (auto& b : cblk->seg_buffers) {
-			memcpy(compressedData+ offset, b->buf, b->len);
-			offset += b->len;
+	if (cblk->needsDecompress()) {
+		cblk->allocUncompressedData(true);
+		if (!cblk->seg_buffers.empty()) {
+			size_t totalSegLen = cblk->getSegBuffersLen() + grk_cblk_dec_compressed_data_pad_right;
+			t1->allocCompressedData(totalSegLen);
+			size_t offset = 0;
+			auto compressedData = t1->getCompressedDataBuffer();
+			for (auto& b : cblk->seg_buffers) {
+				memcpy(compressedData+ offset, b->buf, b->len);
+				offset += b->len;
+			}
+			t1->attachUncompressedData(cblk->getUncomressedDataPtr(),
+										cblk->width(),
+										cblk->height());
+			bool ret = t1->decompress_cblk(cblk,
+					compressedData,
+					block->bandOrientation,
+					block->cblk_sty);
+			cblk->setSuccess(ret);
+			if (!ret)
+				return false;
 		}
-		t1->attachUncompressedData(cblk->getUncomressedDataPtr(),
-									cblk->width(),
-									cblk->height());
-		bool ret = t1->decompress_cblk(cblk,
-				compressedData,
-				block->bandOrientation,
-				block->cblk_sty);
-		cblk->setSuccess(ret);
-		if (!ret)
-			return false;
-  	}
+	}
 
 	return block->tilec->postProcess(t1->getUncompressedData(), block,false);
 }
