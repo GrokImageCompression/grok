@@ -71,7 +71,7 @@ bool T1DecompressScheduler::scheduleDecompress(TileCodingParams *tcp,
 	// nominal code block dimensions
 	uint16_t codeblock_width = (uint16_t) (blockw ? (uint32_t) 1 << blockw : 0);
 	uint16_t codeblock_height = (uint16_t) (blockh ? (uint32_t) 1 << blockh : 0);
-	for (auto i = 0U; i < ThreadPool::get()->num_threads(); ++i)
+	for (auto i = 0U; i < riften::Threadpool()._deques.size(); ++i)
 		t1Implementations.push_back(T1Factory::get_t1(false, tcp, codeblock_width,codeblock_height));
 
 	return decompress(blocks);
@@ -92,7 +92,7 @@ bool T1DecompressScheduler::decompressBlock(T1Interface *impl, DecompressBlockEx
 bool T1DecompressScheduler::decompress(std::vector<DecompressBlockExec*> *blocks) {
 	if (!blocks || !blocks->size())
 		return true;
-	size_t num_threads = ThreadPool::get()->num_threads();
+	size_t num_threads = riften::Threadpool()._deques.size();
 	success = true;
 	if (num_threads == 1){
 		for (size_t i = 0; i < blocks->size(); ++i){
@@ -115,8 +115,8 @@ bool T1DecompressScheduler::decompress(std::vector<DecompressBlockExec*> *blocks
     std::vector< std::future<int> > results;
     for(size_t i = 0; i < num_threads; ++i) {
         results.emplace_back(
-            ThreadPool::get()->enqueue([this, maxBlocks, &blockCount] {
-                auto threadnum =  ThreadPool::get()->thread_number(std::this_thread::get_id());
+            riften::Threadpool().enqueue([this, maxBlocks, &blockCount] {
+                auto threadnum =  riften::Threadpool().thread_number(std::this_thread::get_id());
                 assert(threadnum >= 0);
                 while (true) {
                 	uint64_t index = (uint64_t)++blockCount;
