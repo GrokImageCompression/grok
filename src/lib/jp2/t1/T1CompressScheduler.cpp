@@ -84,7 +84,7 @@ void T1CompressScheduler::scheduleCompress(TileCodingParams *tcp,
 			}
 		}
 	}
-	for (auto i = 0U; i < ThreadPool::get()->num_threads(); ++i)
+	for (auto i = 0U; i < riften::Threadpool()._deques.size(); ++i)
 		t1Implementations.push_back(T1Factory::get_t1(true, tcp, maxCblkW, maxCblkH));
 	compress(&blocks);
 }
@@ -93,7 +93,7 @@ void T1CompressScheduler::compress(std::vector<CompressBlockExec*> *blocks) {
 	if (!blocks || blocks->size() == 0)
 		return;
 
-	size_t num_threads = ThreadPool::get()->num_threads();
+	size_t num_threads = riften::Threadpool()._deques.size();
 	if (num_threads == 1){
 		auto impl = t1Implementations[0];
 		for (auto iter = blocks->begin(); iter != blocks->end(); ++iter){
@@ -110,8 +110,9 @@ void T1CompressScheduler::compress(std::vector<CompressBlockExec*> *blocks) {
     std::vector< std::future<int> > results;
     for(size_t i = 0; i < num_threads; ++i) {
           results.emplace_back(
-            ThreadPool::get()->enqueue([this, maxBlocks] {
-                auto threadnum =  ThreadPool::get()->thread_number(std::this_thread::get_id());
+            riften::Threadpool().enqueue([this, maxBlocks] {
+                auto threadnum =  riften::Threadpool().thread_number(std::this_thread::get_id());
+
                 while(compress((size_t)threadnum, maxBlocks)){
 
                 }
