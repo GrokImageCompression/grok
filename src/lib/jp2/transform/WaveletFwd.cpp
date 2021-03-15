@@ -465,7 +465,7 @@ template<typename T, typename DWT> bool WaveletFwdImpl::encode_procedure(TileCom
         return false;
     }
     i = maxNumResolutions;
-    uint32_t num_threads = ThreadPool::get()->num_threads() > 1 ? 2 : 1;
+    uint32_t num_threads = riften::Threadpool()._deques.size() > 1 ? 2 : 1;
 
     DWT dwt;
     while (i--) {
@@ -535,7 +535,7 @@ template<typename T, typename DWT> bool WaveletFwdImpl::encode_procedure(TileCom
                 job->min_j = j * step_j;
                 job->max_j = (j + 1 == num_jobs) ? rw : (j + 1) * step_j;
                 results.emplace_back(
-					ThreadPool::get()->enqueue([job] {
+					riften::Threadpool().enqueue([job] {
                 		encode_v_func<T>(job);
 						return 0;
 					})
@@ -589,7 +589,7 @@ template<typename T, typename DWT> bool WaveletFwdImpl::encode_procedure(TileCom
                     job->max_j = rh;
                 }
                 results.emplace_back(
-					ThreadPool::get()->enqueue([job] {
+					riften::Threadpool().enqueue([job] {
                 		encode_h_func<T, DWT>(job);
 						return 0;
 					})
