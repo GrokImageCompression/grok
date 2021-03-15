@@ -81,27 +81,38 @@ GrkCodec::~GrkCodec(){
 	delete m_decompressor;
 }
 
-ThreadPool* ThreadPool::singleton = nullptr;
-std::mutex ThreadPool::singleton_mutex;
+static riften::Threadpool* singleton;
+static std::mutex singleton_mutex;
+static riften::Threadpool* instance(uint32_t numthreads){
+	std::unique_lock<std::mutex> lock(singleton_mutex);
+	if (!singleton)
+		singleton = new riften::Threadpool(numthreads ? numthreads : std::thread::hardware_concurrency());
+	return singleton;
+}
+static void release(){
+	std::unique_lock<std::mutex> lock(singleton_mutex);
+	delete singleton;
+	singleton = nullptr;
+}
 
 static bool is_plugin_initialized = false;
 bool GRK_CALLCONV grk_initialize(const char *pluginPath, uint32_t numthreads) {
-	ThreadPool::instance(numthreads);
+	instance(numthreads);
 	if (!is_plugin_initialized) {
 		grk_plugin_load_info info;
 		info.pluginPath = pluginPath;
 		is_plugin_initialized = grk_plugin_load(info);
 	}
 	ojph::local::decode_vlc_init_tables();
-    ojph::local::encode_vlc_init_tables();
-    ojph::local::encode_uvlc_init_tables();
+	ojph::local::encode_vlc_init_tables();
+	ojph::local::encode_uvlc_init_tables();
 
 	return is_plugin_initialized;
 }
 
 GRK_API void GRK_CALLCONV grk_deinitialize() {
 	grk_plugin_cleanup();
-	ThreadPool::release();
+	release();
 }
 
 GRK_API void GRK_CALLCONV grk_object_ref(grk_object *obj){
@@ -412,7 +423,7 @@ void GRK_CALLCONV grk_compress_set_default_params(
 		parameters->writePLT = false;
 		parameters->writeTLM = false;
 		if (!parameters->numThreads)
-			parameters->numThreads = ThreadPool::hardware_concurrency();
+			parameters->numThreads = std::thread::hardware_concurrency();
 		parameters->deviceId = 0;
 		parameters->repeats = 1;
 	}
