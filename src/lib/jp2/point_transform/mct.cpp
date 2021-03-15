@@ -51,7 +51,7 @@ void mct::compress_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 
 	if (CPUArch::SSE2() || CPUArch::AVX2() ) {
 #if (defined(__SSE2__) || defined(__AVX2__))
-	size_t num_threads = ThreadPool::get()->num_threads();
+	size_t num_threads = riften::Threadpool()._deques.size();
     size_t chunkSize = n / num_threads;
     //ensure it is divisible by VREG_INT_COUNT
     chunkSize = (chunkSize/VREG_INT_COUNT) * VREG_INT_COUNT;
@@ -80,7 +80,7 @@ void mct::compress_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 			};
 
 			if (num_threads > 1)
-				results.emplace_back(ThreadPool::get()->enqueue(compressor));
+				results.emplace_back(riften::Threadpool().enqueue(compressor));
 			else
 				compressor();
 	    }
@@ -138,7 +138,7 @@ void mct::decompress_dc_shift_irrev(Tile *tile, GrkImage *image,TileComponentCod
 
 	if (CPUArch::AVX2() ) {
 #if defined(__AVX2__)
-	size_t num_threads = ThreadPool::get()->num_threads();
+	size_t num_threads = riften::Threadpool()._deques.size();
     size_t chunkSize = n / num_threads;
     //ensure it is divisible by VREG_INT_COUNT
     chunkSize = (chunkSize/VREG_INT_COUNT) * VREG_INT_COUNT;
@@ -159,7 +159,7 @@ void mct::decompress_dc_shift_irrev(Tile *tile, GrkImage *image,TileComponentCod
 	    	};
 
 	    	if (num_threads > 1)
-	    		results.emplace_back(ThreadPool::get()->enqueue(decompressor));
+	    		results.emplace_back(riften::Threadpool().enqueue(decompressor));
 	    	else
 	    		decompressor();
 
@@ -210,7 +210,7 @@ void mct::decompress_irrev(Tile *tile, GrkImage *image,TileComponentCodingParams
 
 	if (CPUArch::AVX2() ) {
 #if defined(__AVX2__)
-	size_t num_threads = ThreadPool::get()->num_threads();
+	size_t num_threads = riften::Threadpool()._deques.size();
 	size_t chunkSize = n / num_threads;
 	//ensure it is divisible by VREG_INT_COUNT
 	chunkSize = (chunkSize/VREG_INT_COUNT) * VREG_INT_COUNT;
@@ -252,7 +252,7 @@ void mct::decompress_irrev(Tile *tile, GrkImage *image,TileComponentCodingParams
 				return 0;
 			};
 			if (num_threads > 1)
-				results.emplace_back(ThreadPool::get()->enqueue(decompressor));
+				results.emplace_back(riften::Threadpool().enqueue(decompressor));
 			else
 				decompressor();
 		}
@@ -316,7 +316,7 @@ void mct::decompress_dc_shift_rev(Tile *tile, GrkImage *image,TileComponentCodin
 
 	if (CPUArch::AVX2() ) {
 #if (defined(__AVX2__))
-	size_t num_threads = ThreadPool::get()->num_threads();
+	size_t num_threads = riften::Threadpool()._deques.size();
     size_t chunkSize = n / num_threads;
     //ensure it is divisible by VREG_INT_COUNT
     chunkSize = (chunkSize/VREG_INT_COUNT) * VREG_INT_COUNT;
@@ -339,7 +339,7 @@ void mct::decompress_dc_shift_rev(Tile *tile, GrkImage *image,TileComponentCodin
 	    	};
 
 	    	if (num_threads > 1)
-	    		results.emplace_back(ThreadPool::get()->enqueue(decompressor));
+	    		results.emplace_back(riften::Threadpool().enqueue(decompressor));
 	    	else
 	    		decompressor();
 
@@ -392,7 +392,7 @@ void mct::decompress_rev(Tile *tile, GrkImage *image,TileComponentCodingParams *
 
 	if (CPUArch::AVX2() ) {
 #if (defined(__AVX2__))
-	size_t num_threads = ThreadPool::get()->num_threads();
+	size_t num_threads = riften::Threadpool()._deques.size();
     size_t chunkSize = n / num_threads;
     //ensure it is divisible by VREG_INT_COUNT
     chunkSize = (chunkSize/VREG_INT_COUNT) * VREG_INT_COUNT;
@@ -426,7 +426,7 @@ void mct::decompress_rev(Tile *tile, GrkImage *image,TileComponentCodingParams *
 	    	};
 
 	    	if (num_threads > 1)
-	    		results.emplace_back(ThreadPool::get()->enqueue(decompressor));
+	    		results.emplace_back(riften::Threadpool().enqueue(decompressor));
 	    	else
 	    		decompressor();
 
@@ -481,7 +481,7 @@ void mct::compress_irrev( int32_t* GRK_RESTRICT chan0,
 
 	if (CPUArch::AVX2() ) {
 #if ( defined(__AVX2__))
-	size_t num_threads = ThreadPool::get()->num_threads();
+	size_t num_threads = riften::Threadpool()._deques.size();
     size_t chunkSize = n / num_threads;
     //ensure it is divisible by VREG_INT_COUNT
     chunkSize = (chunkSize/VREG_INT_COUNT) * VREG_INT_COUNT;
@@ -522,7 +522,7 @@ void mct::compress_irrev( int32_t* GRK_RESTRICT chan0,
 			};
 
 			if (num_threads > 1)
-				results.emplace_back(ThreadPool::get()->enqueue(compressor));
+				results.emplace_back(riften::Threadpool().enqueue(compressor));
 			else
 				compressor();
 		}
