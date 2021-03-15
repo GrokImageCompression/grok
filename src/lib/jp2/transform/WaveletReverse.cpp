@@ -732,7 +732,7 @@ static bool decompress_h_mt_53(uint32_t num_threads,
                 return false;
             }
 			results.emplace_back(
-				ThreadPool::get()->enqueue([job] {
+				riften::Threadpool().enqueue([job] {
 					decompress_h_strip_53(&job->data,
 							job->min_j,
 							job->max_j,
@@ -823,7 +823,7 @@ static bool decompress_v_mt_53(uint32_t num_threads,
                 return false;
             }
 			results.emplace_back(
-				ThreadPool::get()->enqueue([job] {
+				riften::Threadpool().enqueue([job] {
 					decompress_v_strip_53(&job->data,
 							job->min_j,
 							job->max_j,
@@ -857,7 +857,7 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
     uint32_t rw = tr->width();
     uint32_t rh = tr->height();
 
-    uint32_t num_threads = (uint32_t)ThreadPool::get()->num_threads();
+    uint32_t num_threads = (uint32_t)riften::Threadpool()._deques.size();
     size_t data_size = max_resolution(tr, numres);
     /* overflow check */
     if (data_size > (SIZE_MAX / PLL_COLS_53 / sizeof(int32_t))) {
@@ -1205,7 +1205,7 @@ static bool decompress_h_mt_97(uint32_t num_threads,
 				return false;
 			}
 			results.emplace_back(
-				ThreadPool::get()->enqueue([job] {
+				riften::Threadpool().enqueue([job] {
 	        		decompress_h_strip_97(&job->data,
 	        				job->max_j,
 							job->bandLL,
@@ -1330,7 +1330,7 @@ static bool decompress_v_mt_97(uint32_t num_threads,
 				return false;
 			}
 			results.emplace_back(
-				ThreadPool::get()->enqueue([job,rh] {
+				riften::Threadpool().enqueue([job,rh] {
 					decompress_v_strip_97(&job->data,
 									job->max_j,
 									rh,
@@ -1373,7 +1373,7 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         return false;
     }
     vert.mem = horiz.mem;
-    uint32_t num_threads = (uint32_t)ThreadPool::get()->num_threads();
+    uint32_t num_threads = (uint32_t)riften::Threadpool()._deques.size();
     for (uint8_t res = 1; res < numres; ++res) {
         horiz.sn_full = rw;
         vert.sn_full = rh;
@@ -1954,7 +1954,7 @@ template <typename T,
     }
 
     D decompressor;
-    size_t num_threads = ThreadPool::get()->num_threads();
+    size_t num_threads = riften::Threadpool()._deques.size();
 
     for (uint8_t resno = 1; resno < numres; resno ++) {
     	auto fullResLower = fullRes;
@@ -2122,7 +2122,7 @@ template <typename T,
 				}
 				if (num_jobs > 1) {
 					results.emplace_back(
-						ThreadPool::get()->enqueue([job,executor_h] {
+						riften::Threadpool().enqueue([job,executor_h] {
 							return executor_h(job);
 						})
 					);
@@ -2162,7 +2162,7 @@ template <typename T,
 			}
 			if (num_jobs > 1) {
 				results.emplace_back(
-					ThreadPool::get()->enqueue([job,executor_v] {
+					riften::Threadpool().enqueue([job,executor_v] {
 						return executor_v(job);
 					})
 				);
