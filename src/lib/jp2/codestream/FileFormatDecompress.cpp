@@ -405,7 +405,7 @@ void FileFormatDecompress::dump(uint32_t flag, FILE *out_stream){
 }
 bool FileFormatDecompress::readHeaderProcedureImpl(void) {
 	FileFormatBox box;
-	uint32_t nb_bytes_read;
+	uint32_t bytesRead;
 	uint64_t last_data_size = GRK_BOX_SIZE;
 	uint32_t current_data_size;
 
@@ -419,7 +419,7 @@ bool FileFormatDecompress::readHeaderProcedureImpl(void) {
 		return false;
 	}
 	try {
-		while (read_box_hdr(&box, &nb_bytes_read, stream)) {
+		while (read_box_hdr(&box, &bytesRead, stream)) {
 			/* is it the code stream box ? */
 			if (box.type == JP2_JP2C) {
 				if (jp2_state & JP2_STATE_HEADER) {
@@ -433,7 +433,7 @@ bool FileFormatDecompress::readHeaderProcedureImpl(void) {
 			}
 			auto current_handler = find_handler(box.type);
 			auto current_handler_misplaced = img_find_handler(box.type);
-			current_data_size = (uint32_t) (box.length - nb_bytes_read);
+			current_data_size = (uint32_t) (box.length - bytesRead);
 			if (current_handler || current_handler_misplaced) {
 				if (current_handler == nullptr) {
 					GRK_WARN("Found a misplaced '%c%c%c%c' box outside jp2h box",
@@ -485,9 +485,9 @@ bool FileFormatDecompress::readHeaderProcedureImpl(void) {
 					GRK_ERROR("Problem with reading JPEG2000 box, stream error");
 					goto cleanup;
 				}
-				nb_bytes_read = (uint32_t) stream->read(current_data,
+				bytesRead = (uint32_t) stream->read(current_data,
 						current_data_size);
-				if (nb_bytes_read != current_data_size) {
+				if (bytesRead != current_data_size) {
 					GRK_ERROR("Problem with reading JPEG2000 box, stream error");
 					goto cleanup;
 				}
@@ -554,12 +554,12 @@ bool FileFormatDecompress::read_box_hdr(FileFormatBox *box, uint32_t *p_number_b
 	}
 	/* read XL  */
 	if (box->length == 1) {
-		uint32_t nb_bytes_read = (uint32_t) stream->read(data_header, 8);
+		uint32_t bytesRead = (uint32_t) stream->read(data_header, 8);
 		// we reached EOS
-		if (nb_bytes_read < 8)
+		if (bytesRead < 8)
 			return false;
 		grk_read<uint64_t>(data_header, &box->length);
-		*p_number_bytes_read += nb_bytes_read;
+		*p_number_bytes_read += bytesRead;
 	}
 	if (box->length < *p_number_bytes_read) {
 		GRK_ERROR("invalid box size %" PRIu64 " (%x)", box->length,

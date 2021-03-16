@@ -21,170 +21,125 @@ namespace grk {
 /* #define DEBUG_CHUNK_BUF */
 
 ChunkBuffer::ChunkBuffer() :
-		data_len(0), cur_chunk_id(0) {
+		dataLength(0), currentChunkId(0) {
 }
-
 ChunkBuffer::~ChunkBuffer() {
 	cleanup();
 }
-
 void ChunkBuffer::increment() {
-	if (chunks.size() == 0 || cur_chunk_id == (size_t) (chunks.size() - 1))
+	if (chunks.size() == 0 || currentChunkId == (size_t) (chunks.size() - 1))
 		return;
-
-	auto cur_chunk = chunks[cur_chunk_id];
-	if (cur_chunk->offset == cur_chunk->len
-			&& cur_chunk_id < (size_t) (chunks.size() - 1)) {
-		cur_chunk_id++;
+	auto currentChunk = chunks[currentChunkId];
+	if (currentChunk->offset == currentChunk->len
+			&& currentChunkId < (size_t) (chunks.size() - 1)) {
+		currentChunkId++;
 	}
 }
-
-size_t ChunkBuffer::read(void *p_buffer, size_t nb_bytes) {
-	if (p_buffer == nullptr || nb_bytes == 0)
+size_t ChunkBuffer::read(void *p_buffer, size_t numBytes) {
+	if (p_buffer == nullptr || numBytes == 0)
 		return 0;
-
 	/*don't try to read more bytes than are available */
-	size_t bytes_remaining_in_file = data_len - (size_t) get_global_offset();
-	if (nb_bytes > bytes_remaining_in_file) {
+	size_t contiguousBytesRemaining = dataLength - (size_t) getGlobalOffset();
+	if (numBytes > contiguousBytesRemaining) {
 #ifdef DEBUG_CHUNK_BUF
         GRK_WARN("attempt to read past end of chunk buffer");
 #endif
-		nb_bytes = bytes_remaining_in_file;
+		numBytes = contiguousBytesRemaining;
 	}
-
-	size_t total_bytes_read = 0;
-	size_t bytes_left_to_read = nb_bytes;
-	while (bytes_left_to_read > 0 && cur_chunk_id < chunks.size()) {
-		auto cur_chunk = chunks[cur_chunk_id];
-		size_t bytes_in_current_chunk = (cur_chunk->len
-				- (size_t) cur_chunk->offset);
-
+	size_t totalBytesRead = 0;
+	size_t bytesLeftToRead = numBytes;
+	while (bytesLeftToRead > 0 && currentChunkId < chunks.size()) {
+		auto currentChunk = chunks[currentChunkId];
+		size_t bytesInCurrentChunk = (currentChunk->len
+				- (size_t) currentChunk->offset);
 		size_t bytes_to_read =
-				(bytes_left_to_read < bytes_in_current_chunk) ?
-						bytes_left_to_read : bytes_in_current_chunk;
-
+				(bytesLeftToRead < bytesInCurrentChunk) ?
+						bytesLeftToRead : bytesInCurrentChunk;
 		if (p_buffer) {
-			memcpy((uint8_t*) p_buffer + total_bytes_read,
-					cur_chunk->buf + cur_chunk->offset, bytes_to_read);
+			memcpy((uint8_t*) p_buffer + totalBytesRead,
+					currentChunk->buf + currentChunk->offset, bytes_to_read);
 		}
-		incr_cur_chunk_offset(bytes_to_read);
-		total_bytes_read += bytes_to_read;
-		bytes_left_to_read -= bytes_to_read;
+		incrementCurrentChunkOffset(bytes_to_read);
+		totalBytesRead += bytes_to_read;
+		bytesLeftToRead -= bytes_to_read;
 	}
-
-	return total_bytes_read;
+	return totalBytesRead;
 }
-
-size_t ChunkBuffer::skip(size_t nb_bytes) {
+size_t ChunkBuffer::skip(size_t numBytes) {
 	size_t bytes_remaining;
-
-	if (nb_bytes + get_global_offset() > data_len) {
+	if (numBytes + getGlobalOffset() > dataLength) {
 #ifdef DEBUG_CHUNK_BUF
         GRK_WARN("attempt to skip past end of chunk buffer");
 #endif
-		return nb_bytes;
+		return numBytes;
 	}
-
-	if (nb_bytes == 0)
+	if (numBytes == 0)
 		return 0;
-
-	bytes_remaining = nb_bytes;
-	while (cur_chunk_id < chunks.size() && bytes_remaining > 0) {
-
-		grkBufferU8 *cur_chunk = chunks[cur_chunk_id];
-		size_t bytes_in_current_chunk = (size_t) (cur_chunk->len - cur_chunk->offset);
-
+	bytes_remaining = numBytes;
+	while (currentChunkId < chunks.size() && bytes_remaining > 0) {
+		grkBufferU8 *currentChunk = chunks[currentChunkId];
+		size_t bytesInCurrentChunk = (size_t) (currentChunk->len - currentChunk->offset);
 		/* hoover up all the bytes in this chunk, and move to the next one */
-		if (bytes_in_current_chunk > bytes_remaining) {
-
-			incr_cur_chunk_offset(bytes_in_current_chunk);
-
-			bytes_remaining -= bytes_in_current_chunk;
-			cur_chunk = chunks[cur_chunk_id];
+		if (bytesInCurrentChunk > bytes_remaining) {
+			incrementCurrentChunkOffset(bytesInCurrentChunk);
+			bytes_remaining -= bytesInCurrentChunk;
+			currentChunk = chunks[currentChunkId];
 		} else { /* bingo! we found the chunk */
-			incr_cur_chunk_offset(bytes_remaining);
-			return nb_bytes;
+			incrementCurrentChunkOffset(bytes_remaining);
+			return numBytes;
 		}
 	}
-
-	return nb_bytes;
+	return numBytes;
 }
-
-grkBufferU8* ChunkBuffer::push_back(uint8_t *buf, size_t len, bool ownsData) {
+grkBufferU8* ChunkBuffer::pushBack(uint8_t *buf, size_t len, bool ownsData) {
 	auto new_chunk = new grkBufferU8(buf, len, ownsData);
-	push_back(new_chunk);
-
+	pushBack(new_chunk);
 	return new_chunk;
 }
-
-void ChunkBuffer::push_back(grkBufferU8 *chunk) {
+void ChunkBuffer::pushBack(grkBufferU8 *chunk) {
 	if (!chunk)
 		return;
 	chunks.push_back(chunk);
-	cur_chunk_id = (size_t) (chunks.size() - 1);
-	data_len += chunk->len;
+	currentChunkId = (size_t) (chunks.size() - 1);
+	dataLength += chunk->len;
 }
-
 void ChunkBuffer::cleanup(void) {
 	for (size_t i = 0; i < chunks.size(); ++i)
 		delete chunks[i];
 	chunks.clear();
 }
-
 void ChunkBuffer::rewind(void) {
 	for (size_t i = 0; i < chunks.size(); ++i) {
 		grkBufferU8 *chunk = chunks[i];
 		if (chunk)
 			chunk->offset = 0;
 	}
-	cur_chunk_id = 0;
+	currentChunkId = 0;
 }
-
-bool ChunkBuffer::alloc_and_push_back(size_t len) {
-	if (!len)
-		return false;
-	auto buf = new uint8_t[len];
-	auto chunk = push_back(buf, len, true);
-	if (!chunk) {
-		delete[] buf;
-		return false;
-	}
-
-	return true;
-}
-
-void ChunkBuffer::incr_cur_chunk_offset(size_t offset) {
-	auto cur_chunk = chunks[cur_chunk_id];
-
-	cur_chunk->incrementOffset((ptrdiff_t) offset);
-	if (cur_chunk->offset == cur_chunk->len)
+void ChunkBuffer::incrementCurrentChunkOffset(size_t offset) {
+	auto currentChunk = chunks[currentChunkId];
+	currentChunk->incrementOffset((ptrdiff_t) offset);
+	if (currentChunk->offset == currentChunk->len)
 		increment();
 }
-
 /**
  * Zero copy read of contiguous chunk from current chunk.
  * Returns false if unable to get a contiguous chunk, true otherwise
  */
-bool ChunkBuffer::zero_copy_read(uint8_t **ptr, size_t chunk_len) {
-	auto cur_chunk = chunks[cur_chunk_id];
-
-	if (!cur_chunk)
+bool ChunkBuffer::zeroCopyRead(uint8_t **ptr, size_t chunk_len) {
+	auto currentChunk = chunks[currentChunkId];
+	if (!currentChunk)
 		return false;
-
-	if ((size_t) cur_chunk->offset + chunk_len <= cur_chunk->len) {
-		*ptr = cur_chunk->buf + cur_chunk->offset;
+	if ((size_t) currentChunk->offset + chunk_len <= currentChunk->len) {
+		*ptr = currentChunk->buf + currentChunk->offset;
 		return (read(nullptr, chunk_len) == chunk_len);
 	}
-
 	return false;
 }
-
 bool ChunkBuffer::copyToContiguousBuffer(uint8_t *buffer) {
 	size_t offset = 0;
-
 	if (!buffer)
 		return false;
-
 	for (size_t i = 0; i < chunks.size(); ++i) {
 		auto chunk = chunks[i];
 		if (chunk->len)
@@ -192,36 +147,26 @@ bool ChunkBuffer::copyToContiguousBuffer(uint8_t *buffer) {
 		offset += chunk->len;
 	}
 	return true;
-
 }
-
-uint8_t* ChunkBuffer::get_cur_chunk_ptr(void) {
-	auto cur_chunk = chunks[cur_chunk_id];
-
-	return (cur_chunk) ? cur_chunk->currPtr() : nullptr;
+uint8_t* ChunkBuffer::getCurrentChunkPtr(void) {
+	auto currentChunk = chunks[currentChunkId];
+	return (currentChunk) ? currentChunk->currPtr() : nullptr;
 }
-
-size_t ChunkBuffer::get_cur_chunk_len(void) {
-	auto cur_chunk = chunks[cur_chunk_id];
-
-	return (cur_chunk) ? cur_chunk->remainingLength() : 0;
+size_t ChunkBuffer::getCurrentChunkLength(void) {
+	auto currentChunk = chunks[currentChunkId];
+	return (currentChunk) ? currentChunk->remainingLength() : 0;
 }
-
-size_t ChunkBuffer::get_cur_chunk_offset(void) {
-	auto cur_chunk = chunks[cur_chunk_id];
-
-	return (cur_chunk) ? cur_chunk->offset : 0;
+size_t ChunkBuffer::getCurrentChunkOffset(void) {
+	auto currentChunk = chunks[currentChunkId];
+	return (currentChunk) ? currentChunk->offset : 0;
 }
-
-size_t ChunkBuffer::get_global_offset(void) {
+size_t ChunkBuffer::getGlobalOffset(void) {
 	size_t offset = 0;
-
-	for (size_t i = 0; i < cur_chunk_id; ++i) {
+	for (size_t i = 0; i < currentChunkId; ++i) {
 		grkBufferU8 *chunk = chunks[i];
 		offset += chunk->len;
 	}
-
-	return offset + get_cur_chunk_offset();
+	return offset + getCurrentChunkOffset();
 }
 
 }

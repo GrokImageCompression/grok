@@ -1341,7 +1341,7 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress *codeStream) {
 			buff = m_stream->getCurrentPtr();
 		}
 		current_read_size = m_stream->read(zeroCopy ? nullptr : buff, len);
-		tcp->m_compressedTileData->push_back(buff, len, !zeroCopy);
+		tcp->m_compressedTileData->pushBack(buff, len, !zeroCopy);
 
 	}
 	if (current_read_size != tile_part_data_length)

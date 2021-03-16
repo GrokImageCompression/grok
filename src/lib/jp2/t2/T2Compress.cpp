@@ -334,7 +334,7 @@ bool T2Compress::compressPacket(TileCodingParams *tcp, PacketIter *pi,
 #ifdef DEBUG_LOSSLESS_T2
 		auto originalDataBytes = *packet_bytes_written - numHeaderBytes;
 		auto roundRes = &tilec->round_trip_resolutions[resno];
-		size_t nb_bytes_read = 0;
+		size_t bytesRead = 0;
 		auto src_buf = std::unique_ptr<ChunkBuffer>(new ChunkBuffer());
 		seg_buf_push_back(src_buf.get(), dest, *packet_bytes_written);
 
@@ -346,13 +346,13 @@ bool T2Compress::compressPacket(TileCodingParams *tcp, PacketIter *pi,
 			pi,
 			&read_data,
 			src_buf.get(),
-			&nb_bytes_read)) {
+			&bytesRead)) {
 			ret = false;
 		}
 		if (rc) {
 
 			// compare size of header
-			if (numHeaderBytes != nb_bytes_read) {
+			if (numHeaderBytes != bytesRead) {
 				printf("compressPacket: round trip header bytes %u differs from original %u\n", (uint32_t)l_nb_bytes_read, (uint32_t)numHeaderBytes);
 			}
 			for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
@@ -437,15 +437,15 @@ bool T2Compress::compressPacket(TileCodingParams *tcp, PacketIter *pi,
 			}
 			/* we should read data for the packet */
 			if (read_data) {
-			 nb_bytes_read = 0;
+			 bytesRead = 0;
 				if (!T2Compress::readPacketData(roundRes,
 					pi,
 					src_buf.get(),
-					&nb_bytes_read)) {
+					&bytesRead)) {
 					rc = false;
 				}
 				else {
-					if (originalDataBytes != nb_bytes_read) {
+					if (originalDataBytes != bytesRead) {
 						printf("compressPacket: round trip data bytes %u differs from original %u\n", (uint32_t)l_nb_bytes_read, (uint32_t)originalDataBytes);
 					}
 
