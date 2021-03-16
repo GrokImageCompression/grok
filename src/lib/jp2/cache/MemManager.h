@@ -20,13 +20,42 @@
  */
 #pragma once
 
-#include <stddef.h>
+#if defined(__GNUC__) && !defined(GROK_SKIP_POISON)
+#pragma GCC poison malloc calloc realloc free
+#endif
 
+#include <cstddef>
 #ifdef _WIN32
 	#include <intrin.h>
 #elif defined(__x86_64__) || defined(__i386__)
 	#include <x86intrin.h>
 #endif
+#if defined(_MSC_VER)
+static inline long grk_lrintf(float f)
+{
+#ifdef _M_X64
+    return _mm_cvt_ss2si(_mm_load_ss(&f));
+#elif defined(_M_IX86)
+    int i;
+    _asm{
+        fld f
+        fistp i
+    };
+    return i;
+#else
+    return (long)((f>0.0f) ? (f + 0.5f) : (f - 0.5f));
+#endif
+}
+#else
+static inline long grk_lrintf(float f) {
+	return lrintf(f);
+}
+#endif
+/* MSVC x86 is really bad at doing int64 = int32 * int32 on its own. Use intrinsic. */
+#if defined(_MSC_VER) && (_MSC_VER >= 1400) && !defined(__INTEL_COMPILER) && defined(_M_IX86)
+#	pragma intrinsic(__emul)
+#endif
+
 
 namespace grk {
 
@@ -65,10 +94,6 @@ void* grkRealloc(void *m, size_t s);
  @param m Previously allocated memory block to be freed
  */
 void grkFree(void *m);
-
-#if defined(__GNUC__) && !defined(GROK_SKIP_POISON)
-#pragma GCC poison malloc calloc realloc free
-#endif
 
 template<typename T> struct AllocatorVanilla{
 	T* alloc(size_t length) {

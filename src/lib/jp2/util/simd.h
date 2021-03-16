@@ -21,7 +21,6 @@
 
 #pragma once
 
-#define GRK_SKIP_POISON
 #ifdef __SSE__
 #include <xmmintrin.h>
 #endif

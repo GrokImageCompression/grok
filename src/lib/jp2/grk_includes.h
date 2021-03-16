@@ -18,35 +18,26 @@
  *    Please see the LICENSE file in the root directory for details.
  *
  */
-
 #pragma once
-
-
 /*
  * This must be included before any system headers,
- * since they can react to macro defined there
+ * since they are affected by macros defined therein
  */
 #include "grk_config_private.h"
-
-/*
- ==========================================================
- Standard includes used by the library
- ==========================================================
- */
 #include <memory.h>
-#include <stdlib.h>
+#include <cstdlib>
 #include <string>
 #ifdef _MSC_VER
 #define _USE_MATH_DEFINES // for C++
 #endif
 #include <cmath>
-#include <float.h>
+#include <cfloat>
 #include <time.h>
-#include <stdio.h>
-#include <stdarg.h>
+#include <cstdio>
+#include <cstdarg>
 #include <ctype.h>
-#include <assert.h>
-#include <inttypes.h>
+#include <cassert>
+#include <cinttypes>
 #include <climits>
 #include <algorithm>
 #include <sstream>
@@ -54,7 +45,6 @@
 #include <vector>
 #include <algorithm>
 #include <numeric>
-
 /*
  Use fseeko() and ftello() if they are available since they use
  'int64_t' rather than 'long'.  It is wrong to use fseeko() and
@@ -65,7 +55,6 @@
 #  define fseek  fseeko
 #  define ftell  ftello
 #endif
-
 #if defined(_WIN32)
 #  define GROK_FSEEK(stream,offset,whence) _fseeki64(stream,/* __int64 */ offset,whence)
 #  define GROK_FSTAT(fildes,stat_buff) _fstati64(fildes,/* struct _stati64 */ stat_buff)
@@ -79,29 +68,11 @@
 #  define GROK_STAT_STRUCT_T struct stat
 #  define GROK_STAT(path,stat_buff) stat(path,stat_buff)
 #endif
-
-/*
- ==========================================================
- Grok interface
- ==========================================================
- */
-
-#include "minpf_plugin_manager.h"
-#include "plugin_interface.h"
-
-/*
- ==========================================================
- Grok modules
- ==========================================================
- */
-
 #if defined(__GNUC__)
 #define GRK_RESTRICT __restrict__
 #else
 #define GRK_RESTRICT /* GRK_RESTRICT */
 #endif
-
-
 #ifdef __has_attribute
 #if __has_attribute(no_sanitize)
 #define GROK_NOSANITIZE(kind) __attribute__((no_sanitize(kind)))
@@ -110,44 +81,14 @@
 #ifndef GROK_NOSANITIZE
 #define GROK_NOSANITIZE(kind)
 #endif
+#define GRK_UNUSED(x) (void)x
 
 #include "simd.h"
-
-#if defined(_MSC_VER)
-#include <intrin.h>
-static inline long grk_lrintf(float f)
-{
-#ifdef _M_X64
-    return _mm_cvt_ss2si(_mm_load_ss(&f));
-#elif defined(_M_IX86)
-    int i;
-    _asm{
-        fld f
-        fistp i
-    };
-
-    return i;
-#else
-    return (long)((f>0.0f) ? (f + 0.5f) : (f - 0.5f));
-#endif
-}
-#else
-static inline long grk_lrintf(float f) {
-	return lrintf(f);
-}
-#endif
-
-#if defined(_MSC_VER) && (_MSC_VER < 1400)
-#define vsnprintf _vsnprintf
-#endif
-
-/* MSVC x86 is really bad at doing int64 = int32 * int32 on its own. Use intrinsic. */
-#if defined(_MSC_VER) && (_MSC_VER >= 1400) && !defined(__INTEL_COMPILER) && defined(_M_IX86)
-#	include <intrin.h>
-#	pragma intrinsic(__emul)
-#endif
-
-#define GRK_UNUSED(x) (void)x
+#include <taskflow/taskflow.hpp>
+#include "util.h"
+#include "MemManager.h"
+#include "minpf_plugin_manager.h"
+#include "plugin_interface.h"
 #include "ICacheable.h"
 #include "GrkObjectWrapper.h"
 #include "logger.h"
@@ -155,8 +96,6 @@ static inline long grk_lrintf(float f) {
 #include "ThreadPool.hpp"
 #include "MemStream.h"
 #include "GrkMappedFile.h"
-#include "util.h"
-#include "MemManager.h"
 #include "GrkMatrix.h"
 #include "GrkImage.h"
 #include "grk_exceptions.h"
