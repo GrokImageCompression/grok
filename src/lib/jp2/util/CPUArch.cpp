@@ -13,10 +13,7 @@
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-
 #include <util/CPUArch.h>
-
 
 #ifdef _WIN32
 #include <iostream>
@@ -204,18 +201,14 @@ private:
         std::vector<std::array<int, 4>> extdata_;
     };
 };
-
 // Initialize static member data
 const InstructionSet::InstructionSet_Internal InstructionSet::CPU_Rep;
 
 #endif
 
-
-
-
 #if (defined(__x86_64__) || defined(__i386__))
 
-  ////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////
   // This snippet is borrowed from Intel; see for example
   // https://software.intel.com/en-us/articles/
   // how-to-detect-knl-instruction-support
@@ -236,8 +229,6 @@ const InstructionSet::InstructionSet_Internal InstructionSet::CPU_Rep;
   #endif
     return true;
   }
-
-  ////////////////////////////////////////////////////////////////////////////
   uint64_t read_xcr(uint32_t index)
   {
   #ifdef _MSC_VER
@@ -248,8 +239,6 @@ const InstructionSet::InstructionSet_Internal InstructionSet::CPU_Rep;
     return ((uint64_t)edx << 32) | eax;
   #endif
   }
-
-  /////////////////////////////////////////////////////////////////////////////
   bool init_cpu_ext_level(int& level)
   {
     uint32_t mmx_abcd[4];
@@ -324,27 +313,18 @@ const InstructionSet::InstructionSet_Internal InstructionSet::CPU_Rep;
     }
     return true;
   }
-
-  ////////////////////////////////////////////////////////////////////////////
   static int cpu_level;
   static bool cpu_level_initialized = init_cpu_ext_level(cpu_level);
-
 #else
-
-  ////////////////////////////////////////////////////////////////////////////
   static int cpu_level = 0;
   static bool cpu_level_initialized = true;
-
 #endif
 
-
-////////////////////////////////////////////////////////////////////////////
 int cpu_ext_level()
 {
 assert(cpu_level_initialized);
 return cpu_level;
 }
-
 
 namespace grk {
 

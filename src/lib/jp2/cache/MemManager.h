@@ -18,10 +18,15 @@
  *    Please see the LICENSE file in the root directory for details.
  *
  */
-
 #pragma once
 
 #include <stddef.h>
+
+#ifdef _WIN32
+	#include <intrin.h>
+#elif defined(__x86_64__) || defined(__i386__)
+	#include <x86intrin.h>
+#endif
 
 namespace grk {
 

@@ -18,16 +18,13 @@
  *    Please see the LICENSE file in the root directory for details.
  *
  */
-
 #define GROK_SKIP_POISON
 #include "grk_includes.h"
-
 
 // OSX is missing C++11 aligned_alloc (stdlib.h version)
 #if defined(__APPLE__)
 #undef GROK_HAVE_ALIGNED_ALLOC
 #endif
-
 
 #ifndef SIZE_MAX
 # define SIZE_MAX ((size_t) -1)
