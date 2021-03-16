@@ -861,18 +861,13 @@ bool TileProcessor::decompressT2T1(TileCodingParams *tcp,
 										bool doPost) {
 	if (!allocWindowBuffers(outputImage))
 		return false;
-	if (isClosed()) {
-		if (!decompressT2(tcp->m_compressedTileData) || m_corrupt_packet){
-			GRK_WARN("Tile %d was not decompressed", m_tile_index+1);
-			setCacheState(GRK_CACHE_STATE_ERROR);
-			return true;
-		}
+	if (!decompressT2(tcp->m_compressedTileData) || m_corrupt_packet){
+		GRK_WARN("Tile %d was not decompressed", m_tile_index+1);
+		return true;
 	}
 	if (!decompressT1()) {
-		setCacheState(GRK_CACHE_STATE_ERROR);
 		return false;
 	}
-	setCacheState(GRK_CACHE_STATE_OPEN);
 	if (doPost) {
 		if (multiTile)
 			generateImage(outputImage, tile);

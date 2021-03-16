@@ -464,8 +464,6 @@ bool CodeStreamDecompress::decompressTiles(void) {
 			if (!entry || !entry->processor)
 				continue;
 			auto processor = entry->processor;
-			if (processor->isError())
-				continue;
 			auto exec = [this,processor,
 						  numTilesToDecompress,
 						  &numTilesDecompressed,

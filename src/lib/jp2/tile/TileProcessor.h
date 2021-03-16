@@ -69,7 +69,7 @@ private:
  Tile processor for decompression and compression
  */
 
-struct TileProcessor : public ICacheable {
+struct TileProcessor {
 	explicit TileProcessor(CodeStream *codeStream,
 							BufferedStream *stream,
 							bool isCompressor,
