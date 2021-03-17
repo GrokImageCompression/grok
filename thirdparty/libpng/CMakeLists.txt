@@ -2,7 +2,8 @@ project(libpng C)
 
 include_directories(
   "${CMAKE_CURRENT_SOURCE_DIR}"
-  ${GROK_SOURCE_DIR}/thirdparty/include
+  ${GROK_SOURCE_DIR}/thirdparty/libz
+  ${GROK_BINARY_DIR}/thirdparty/libz
 )
 
 option(PNG_HARDWARE_OPTIMIZATIONS "Enable hardware optimizations" ON)
@@ -88,8 +89,8 @@ set(libpng_sources
     
 file(GLOB libpng_hdrs *.h)
 set(EXT_HDRS
- ${GROK_SOURCE_DIR}/thirdparty/include/zlib.h
- ${GROK_SOURCE_DIR}/thirdparty/include/zconf.h
+ ${GROK_SOURCE_DIR}/thirdparty/libz/zlib.h
+ ${CMAKE_BINARY_DIR}/thirdparty/libz/zconf.h
 )
 
 

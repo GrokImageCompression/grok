@@ -63,7 +63,6 @@ include_directories(
   ${GROK_SOURCE_DIR}/src/bin/image_format
   ${GROK_SOURCE_DIR}/src/bin/jp2
   ${LCMS_INCLUDE_DIRNAME}
-  ${Z_INCLUDE_DIRNAME}
   ${PNG_INCLUDE_DIRNAME}
   ${TIFF_INCLUDE_DIRNAME}
   ${JPEG_INCLUDE_DIRNAME}
