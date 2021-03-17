@@ -1049,6 +1049,10 @@ bool validate_icc(GRK_COLOR_SPACE colourSpace, uint8_t *iccbuf, uint32_t icclen)
 		}
 		cmsCloseProfile(in_prof);
 	}
+#else
+	GRK_UNUSED(colourSpace);
+	GRK_UNUSED(iccbuf);
+	GRK_UNUSED(icclen);
 #endif
 	return rc;
 }

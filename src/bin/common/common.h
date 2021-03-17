@@ -51,6 +51,8 @@
 #include "grok.h"
 #include <algorithm>
 
+#define GRK_UNUSED(x) (void)x
+
 namespace grk {
 
 template <typename ... Args>

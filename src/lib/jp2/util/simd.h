@@ -21,17 +21,29 @@
 
 #pragma once
 
-#ifdef __SSE__
-#include <xmmintrin.h>
+#ifdef _WIN32
+	#include <intrin.h>
+#elif defined(__x86_64__) || defined(__i386__)
+	#include <x86intrin.h>
+	#ifdef __SSE__
+		#include <xmmintrin.h>
+	#endif
+	#ifdef __SSE2__
+		#include <emmintrin.h>
+	#endif
+	#ifdef __SSSE3__
+		#include <tmmintrin.h>
+	#endif
+	#ifdef __AVX2__
+		#include <immintrin.h>
+	#endif
 #endif
-#ifdef __SSE2__
-#include <emmintrin.h>
-#endif
-#ifdef __SSSE3__
-#include <tmmintrin.h>
-#endif
-#ifdef __AVX2__
-#include <immintrin.h>
+
+#ifdef __clang__
+	#define _mm_set_pd1 _mm_set1_pd
+	#define _mm_store_pd1 _mm_store1_pd
+	#define _mm_cvtsi64x_si128 _mm_cvtsi64_si128
+	#define _mm_cvtsi128_si64x _mm_cvtsi128_si64
 #endif
 
 
