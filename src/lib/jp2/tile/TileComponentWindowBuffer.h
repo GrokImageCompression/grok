@@ -81,7 +81,7 @@ template<typename T> struct BufferResWindow {
 				auto tileBandWindow = getTileCompBandWindow(numDecomps,orient,tileCompWindowUnreduced,tileCompUnreduced,2*FILTER_WIDTH);
 				auto tileBand = orient == BAND_ORIENT_LL ? *((grkRectU32*)m_tileCompResLower) : m_tileCompRes->tileBand[orient-1];
 				auto bandWindowREL = tileBandWindow.pan(-(int64_t)tileBand.x0, -(int64_t)tileBand.y0);
-				m_paddedBandWindowBufferREL.push_back(new grkBuffer2d<T, AllocatorAligned>(bandWindowREL));
+				m_paddedBandWindowBufferREL.push_back(new grkBuffer2d<T, AllocatorAligned>(&bandWindowREL));
 			}
 			auto winLow 		= m_paddedBandWindowBufferREL[BAND_ORIENT_LL];
 			auto winHigh 		= m_paddedBandWindowBufferREL[BAND_ORIENT_HL];
@@ -102,12 +102,12 @@ template<typename T> struct BufferResWindow {
 													  m_paddedBandWindowBufferREL[BAND_ORIENT_LL]->y0,
 													  m_bufferResWindowBufferREL->x1,
 													  m_paddedBandWindowBufferREL[BAND_ORIENT_LL]->y1);
-			m_splitResWindowBufferREL[SPLIT_L] = new grkBuffer2d<T, AllocatorAligned>(splitResWindowREL[SPLIT_L]);
+			m_splitResWindowBufferREL[SPLIT_L] = new grkBuffer2d<T, AllocatorAligned>(&splitResWindowREL[SPLIT_L]);
 			splitResWindowREL[SPLIT_H] = grkRectU32(m_bufferResWindowBufferREL->x0,
 														m_paddedBandWindowBufferREL[BAND_ORIENT_LH]->y0 + m_tileCompResLower->height(),
 														m_bufferResWindowBufferREL->x1,
 														m_paddedBandWindowBufferREL[BAND_ORIENT_LH]->y1 + m_tileCompResLower->height());
-			m_splitResWindowBufferREL[SPLIT_H] = new grkBuffer2d<T, AllocatorAligned>(splitResWindowREL[SPLIT_H]);
+			m_splitResWindowBufferREL[SPLIT_H] = new grkBuffer2d<T, AllocatorAligned>(&splitResWindowREL[SPLIT_H]);
 		}
 	   // compression or full tile decompression
 	   } else {

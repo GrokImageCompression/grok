@@ -228,11 +228,15 @@ template <typename T, template <typename TT> typename A> struct grkBuffer2d : pu
 	{}
 	grkBuffer2d(uint32_t w, uint32_t h) : grkBuffer2d(w,0,h)
 	{}
-	explicit grkBuffer2d(grkRectU32 b) : 	grkBuffer<T, A >(nullptr,false),
-											grkRectU32(b.x0,b.y0,b.x1,b.y1),
-											stride(0)
+	explicit grkBuffer2d(const grkRectU32 *b) : grkBuffer<T, A >(nullptr,false),
+												grkRectU32(b->x0,b->y0,b->x1,b->y1),
+												stride(0)
 	{}
 	grkBuffer2d(void) : grkBuffer2d(nullptr,0,0,0,false)
+	{}
+	explicit grkBuffer2d(const grkBuffer2d& rhs) : grkBuffer<T, A >(rhs),
+													grkRectU32(rhs),
+													stride(rhs.stride)
 	{}
 	grkBuffer2d& operator=(const grkBuffer2d& rhs) // copy assignment
 	{
@@ -241,9 +245,9 @@ template <typename T, template <typename TT> typename A> struct grkBuffer2d : pu
 	grkBuffer2d& operator=(const grkBuffer2d* rhs) // copy assignment
 	{
 	    if (this != rhs) { // self-assignment check expected
-	    	this->grkBuffer<T, A >::operator =(rhs);
+	    	grkBuffer<T, A >::operator =(rhs);
+	    	grkRectU32::operator =(rhs);
 	    	stride = rhs->stride;
-	    	*((grkRectU32*)this) = *((grkRectU32*)rhs);
 	    }
 	    return *this;
 	}
@@ -301,7 +305,7 @@ template <typename T, template <typename TT> typename A> struct grkBuffer2d : pu
 		return true;
 	}
 	// rhs coordinates are in "this" coordinate system
-	template<typename F> void copy(grkBuffer2d &rhs, F filter){
+	template<typename F> void copy(const grkBuffer2d &rhs, F filter){
 		auto inter = this->intersection(rhs);
 		if (!inter.non_empty())
 			return;

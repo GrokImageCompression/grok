@@ -106,13 +106,15 @@ template<typename T> struct grkRect {
     	return pt.x >= x0 && pt.y >= y0 && pt.x < x1 && pt.y < y1;
     }
     grkRect<T>& operator= (const grkRect<T> &rhs)  {
-    	if (this != &rhs) { // self-assignment check expected
-			x0 = rhs.x0;
-			y0 = rhs.y0;
-			x1 = rhs.x1;
-			y1 = rhs.y1;
+    	return operator=(&rhs);
+    }
+    grkRect<T>& operator= (const grkRect<T> *rhs)  {
+    	if (this != rhs) { // self-assignment check expected
+			x0 = rhs->x0;
+			y0 = rhs->y0;
+			x1 = rhs->x1;
+			y1 = rhs->y1;
     	}
-
     	return *this;
     }
    bool operator== (const grkRect<T> &rhs) const    {
