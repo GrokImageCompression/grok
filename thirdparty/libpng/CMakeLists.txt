@@ -108,6 +108,5 @@ target_link_libraries(${LIBTARGET} ${Z_LIBNAME} ${M_LIBRARY})
 #
 set_target_properties(${LIBTARGET}
 	PROPERTIES
-    OUTPUT_NAME "${LIBTARGET}"
-	ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/thirdparty/lib)
+    OUTPUT_NAME "${LIBTARGET}")
 #
