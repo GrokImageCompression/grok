@@ -229,77 +229,8 @@ bool SOTMarker::get_sot_values(CodeStreamDecompress *codeStream,
 				!= (uint32_t) codeStream->tileIndexToDecode());
 	}
 
-	/* Index */
-	auto index = codeStream->getIndex();
-	if (index) {
-		assert(index->tileInfo != nullptr);
-		index->tileInfo[tileNumber].tileno = tileNumber;
-		index->tileInfo[tileNumber].currentTilePart = currentTilePart;
-
-		if (numTileParts != 0) {
-			index->tileInfo[tileNumber].numTileParts = numTileParts;
-			index->tileInfo[tileNumber].allocatedTileParts =	numTileParts;
-
-			if (!index->tileInfo[tileNumber].tilePartInfo) {
-				index->tileInfo[tileNumber].tilePartInfo =
-						(TilePartInfo*) grkCalloc(numTileParts,sizeof(TilePartInfo));
-				if (!index->tileInfo[tileNumber].tilePartInfo) {
-					GRK_ERROR("Not enough memory to read SOT marker. "
-							"Tile index allocation failed");
-					return false;
-				}
-			} else {
-				auto newTilePartIndex = (TilePartInfo*) grkRealloc(
-						index->tileInfo[tileNumber].tilePartInfo,
-						numTileParts * sizeof(TilePartInfo));
-				if (!newTilePartIndex) {
-					grkFree(index->tileInfo[tileNumber].tilePartInfo);
-					index->tileInfo[tileNumber].tilePartInfo =
-							nullptr;
-					GRK_ERROR("Not enough memory to read SOT marker. "
-							"Tile index allocation failed");
-					return false;
-				}
-				index->tileInfo[tileNumber].tilePartInfo =
-						newTilePartIndex;
-			}
-		} else {
-			if (!index->tileInfo[tileNumber].tilePartInfo) {
-				index->tileInfo[tileNumber].allocatedTileParts = 10;
-				index->tileInfo[tileNumber].tilePartInfo =
-						(TilePartInfo*) grkCalloc(
-								index->tileInfo[tileNumber].allocatedTileParts,
-								sizeof(TilePartInfo));
-				if (!index->tileInfo[tileNumber].tilePartInfo) {
-					index->tileInfo[tileNumber].allocatedTileParts =	0;
-					GRK_ERROR("Not enough memory to read SOT marker. "
-							"Tile index allocation failed");
-					return false;
-				}
-			}
-
-			if (currentTilePart
-					>= index->tileInfo[tileNumber].allocatedTileParts) {
-				TilePartInfo *newTilePartIndex;
-				index->tileInfo[tileNumber].allocatedTileParts =	currentTilePart + 1U;
-				newTilePartIndex =
-						(TilePartInfo*) grkRealloc(index->tileInfo[tileNumber].tilePartInfo,
-								index->tileInfo[tileNumber].allocatedTileParts
-										* sizeof(TilePartInfo));
-				if (!newTilePartIndex) {
-					grkFree(index->tileInfo[tileNumber].tilePartInfo);
-					index->tileInfo[tileNumber].tilePartInfo =
-							nullptr;
-					index->tileInfo[tileNumber].allocatedTileParts =	0;
-					GRK_ERROR("Not enough memory to read SOT marker. Tile index allocation failed");
-					return false;
-				}
-				index->tileInfo[tileNumber].tilePartInfo = newTilePartIndex;
-			}
-		}
-	}
-
-	return true;
+	auto codeStreamInfo = codeStream->getCodeStreamInfo();
+	return  (!codeStreamInfo || codeStreamInfo->update(tileNumber, currentTilePart, numTileParts));
  }
 
 

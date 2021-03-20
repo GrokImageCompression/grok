@@ -37,17 +37,7 @@ CodeStream::~CodeStream(){
 	if (m_headerImage)
 		grk_object_unref(&m_headerImage->obj);
 	m_cp.destroy();
-	if (codeStreamInfo) {
-		grkFree(codeStreamInfo->marker);
-		if (codeStreamInfo->tileInfo) {
-			for (uint32_t i = 0; i < codeStreamInfo->numTiles; i++) {
-				grkFree(codeStreamInfo->tileInfo[i].tilePartInfo);
-				grkFree(codeStreamInfo->tileInfo[i].markerInfo);
-			}
-			grkFree(codeStreamInfo->tileInfo);
-		}
-		grkFree(codeStreamInfo);
-	}
+	delete codeStreamInfo;
 }
 CodingParams* CodeStream::getCodingParams(void){
 	return &m_cp;

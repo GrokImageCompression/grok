@@ -38,6 +38,12 @@ MarkerInfo::MarkerInfo(uint16_t _id,
 										pos(_pos),
 										len(_len){
 }
+TilePartInfo::TilePartInfo(uint64_t start, uint64_t endHeader, uint64_t end) : startPosition(start),
+																				endHeaderPosition(endHeader),
+																				endPosition(end){
+}
+TilePartInfo::TilePartInfo(void) : TilePartInfo(0,0,0) {
+}
 TileInfo::TileInfo(void) : tileno(0),
 				numTileParts(0),
 				allocatedTileParts(0),
@@ -46,6 +52,28 @@ TileInfo::TileInfo(void) : tileno(0),
 				markerInfo(nullptr),
 				numMarkers(0),
 				allocatedMarkers(0){
+}
+
+bool TileInfo::checkResize(void){
+	if (numMarkers + 1 > allocatedMarkers) {
+		auto oldMax = allocatedMarkers;
+		allocatedMarkers += 100U;
+		auto new_marker = (MarkerInfo*) grkRealloc(markerInfo,
+													allocatedMarkers* sizeof(MarkerInfo));
+		if (!new_marker) {
+			grkFree(markerInfo);
+			markerInfo = nullptr;
+			allocatedMarkers = 0;
+			numMarkers = 0;
+			GRK_ERROR("Not enough memory to add TLM marker");
+			return false;
+		}
+		markerInfo = new_marker;
+		for (uint32_t i = oldMax; i < allocatedMarkers; ++i)
+			memset(markerInfo+i,0,sizeof(MarkerInfo));
+	}
+
+	return true;
 }
 CodeStreamInfo::CodeStreamInfo(): mainHeaderStart(0),
 								mainHeaderEnd(0),
@@ -56,9 +84,126 @@ CodeStreamInfo::CodeStreamInfo(): mainHeaderStart(0),
 								tileInfo(nullptr){
 	allocatedMarkers = 100;
 	numMarkers = 0;
+	marker = (MarkerInfo*) grkCalloc(allocatedMarkers,	sizeof(MarkerInfo));
 }
 CodeStreamInfo::~CodeStreamInfo(){
 	grkFree(marker);
+	if (tileInfo) {
+		for (uint32_t i = 0; i < numTiles; i++) {
+			grkFree(tileInfo[i].tilePartInfo);
+			grkFree(tileInfo[i].markerInfo);
+		}
+		grkFree(tileInfo);
+	}
+}
+bool CodeStreamInfo::checkResize(void) {
+	if ((numMarkers + 1) > allocatedMarkers) {
+		MarkerInfo *new_marker;
+		uint32_t oldMax = allocatedMarkers;
+		allocatedMarkers += 100U;
+		new_marker = (MarkerInfo*) grkRealloc(marker,
+								allocatedMarkers * sizeof(MarkerInfo));
+		if (!new_marker) {
+			grkFree(marker);
+			marker = nullptr;
+			allocatedMarkers = 0;
+			numMarkers = 0;
+			GRK_ERROR( "Not enough memory to add mh marker");
+			return false;
+		}
+		marker = new_marker;
+		for (uint32_t i = oldMax; i < allocatedMarkers; ++i)
+			memset(marker+i, 0, sizeof(MarkerInfo));
+	}
+
+	return true;
+}
+bool CodeStreamInfo::allocTileInfo(uint16_t ntiles){
+	if (tileInfo)
+		return true;
+	numTiles = ntiles;
+	tileInfo = (TileInfo*) grkCalloc(numTiles, sizeof(TileInfo));
+	if (!tileInfo)
+		return false;
+
+	for (uint32_t i = 0; i < numTiles;i++) {
+		tileInfo[i].allocatedMarkers = 100;
+		tileInfo[i].numMarkers = 0;
+		tileInfo[i].markerInfo =(MarkerInfo*) grkCalloc(tileInfo[i].allocatedMarkers,sizeof(MarkerInfo));
+		if (!tileInfo[i].markerInfo)
+			return false;
+	}
+
+	return true;
+}
+bool CodeStreamInfo::update(uint16_t tileNumber, uint8_t currentTilePart, uint8_t numTileParts){
+	assert(tileInfo != nullptr);
+	tileInfo[tileNumber].tileno = tileNumber;
+	tileInfo[tileNumber].currentTilePart = currentTilePart;
+
+	if (numTileParts != 0) {
+		tileInfo[tileNumber].numTileParts = numTileParts;
+		tileInfo[tileNumber].allocatedTileParts =	numTileParts;
+
+		if (!tileInfo[tileNumber].tilePartInfo) {
+			tileInfo[tileNumber].tilePartInfo =
+					(TilePartInfo*) grkCalloc(numTileParts,sizeof(TilePartInfo));
+			if (!tileInfo[tileNumber].tilePartInfo) {
+				GRK_ERROR("Not enough memory to read SOT marker. "
+						"Tile index allocation failed");
+				return false;
+			}
+		} else {
+			auto newTilePartIndex = (TilePartInfo*) grkRealloc(
+					tileInfo[tileNumber].tilePartInfo,
+					numTileParts * sizeof(TilePartInfo));
+			if (!newTilePartIndex) {
+				grkFree(tileInfo[tileNumber].tilePartInfo);
+				tileInfo[tileNumber].tilePartInfo =
+						nullptr;
+				GRK_ERROR("Not enough memory to read SOT marker. "
+						"Tile index allocation failed");
+				return false;
+			}
+			tileInfo[tileNumber].tilePartInfo =
+					newTilePartIndex;
+		}
+	} else {
+		if (!tileInfo[tileNumber].tilePartInfo) {
+			tileInfo[tileNumber].allocatedTileParts = 10;
+			tileInfo[tileNumber].tilePartInfo =
+					(TilePartInfo*) grkCalloc(
+							tileInfo[tileNumber].allocatedTileParts,
+							sizeof(TilePartInfo));
+			if (!tileInfo[tileNumber].tilePartInfo) {
+				tileInfo[tileNumber].allocatedTileParts =	0;
+				GRK_ERROR("Not enough memory to read SOT marker. "
+						"Tile index allocation failed");
+				return false;
+			}
+		}
+
+		if (currentTilePart
+				>= tileInfo[tileNumber].allocatedTileParts) {
+			TilePartInfo *newTilePartIndex;
+			tileInfo[tileNumber].allocatedTileParts =	currentTilePart + 1U;
+			newTilePartIndex =
+					(TilePartInfo*) grkRealloc(tileInfo[tileNumber].tilePartInfo,
+							tileInfo[tileNumber].allocatedTileParts
+									* sizeof(TilePartInfo));
+			if (!newTilePartIndex) {
+				grkFree(tileInfo[tileNumber].tilePartInfo);
+				tileInfo[tileNumber].tilePartInfo =
+						nullptr;
+				tileInfo[tileNumber].allocatedTileParts =	0;
+				GRK_ERROR("Not enough memory to read SOT marker. Tile index allocation failed");
+				return false;
+			}
+			tileInfo[tileNumber].tilePartInfo = newTilePartIndex;
+		}
+	}
+
+	return true;
 }
 TileLengthMarkers::TileLengthMarkers() :
 		m_markers(new TL_MAP()),
@@ -254,24 +399,9 @@ bool TileLengthMarkers::addTileMarkerInfo(uint16_t tileno,
 	assert(codestreamIndex != nullptr);
 	assert(codestreamIndex->tileInfo != nullptr);
 	auto currentTileInfo = codestreamIndex->tileInfo + tileno;
+	if (!currentTileInfo->checkResize())
+		return false;
 	auto numMarkers = currentTileInfo->numMarkers;
-	if (numMarkers + 1 > currentTileInfo->allocatedMarkers) {
-		auto oldMax = currentTileInfo->allocatedMarkers;
-		currentTileInfo->allocatedMarkers += 100U;
-		auto new_marker = (MarkerInfo*) grkRealloc(currentTileInfo->markerInfo,
-													currentTileInfo->allocatedMarkers* sizeof(MarkerInfo));
-		if (!new_marker) {
-			grkFree(currentTileInfo->markerInfo);
-			currentTileInfo->markerInfo = nullptr;
-			currentTileInfo->allocatedMarkers = 0;
-			currentTileInfo->numMarkers = 0;
-			GRK_ERROR("Not enough memory to add TLM marker");
-			return false;
-		}
-		currentTileInfo->markerInfo = new_marker;
-		for (uint32_t i = oldMax; i < currentTileInfo->allocatedMarkers; ++i)
-			memset(currentTileInfo->markerInfo+i,0,sizeof(MarkerInfo));
-	}
 	auto marker = currentTileInfo->markerInfo + numMarkers;
 	// avoid duplicates
 	if (marker->id != 0)

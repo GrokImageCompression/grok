@@ -24,8 +24,8 @@ namespace grk {
  * Marker info
  * */
 struct MarkerInfo {
-	MarkerInfo();
 	MarkerInfo(uint16_t _id,uint64_t _pos, uint32_t _len);
+	MarkerInfo();
 	/** marker id */
 	uint16_t id;
 	/** position in code stream */
@@ -37,6 +37,8 @@ struct MarkerInfo {
  * Tile part index info
  */
 struct TilePartInfo {
+	TilePartInfo(uint64_t start, uint64_t endHeader, uint64_t end);
+	TilePartInfo(void);
 	/** start position */
 	uint64_t startPosition;
 	/** end position of the header */
@@ -49,6 +51,7 @@ struct TilePartInfo {
  */
 struct TileInfo {
 	TileInfo(void);
+	bool checkResize(void);
 	/** tile index */
 	uint16_t tileno;
 	/** number of tile parts */
@@ -72,6 +75,9 @@ struct TileInfo {
 struct CodeStreamInfo {
 	CodeStreamInfo();
 	virtual ~CodeStreamInfo();
+	bool allocTileInfo(uint16_t numTiles);
+	bool checkResize(void);
+	bool update(uint16_t tileNumber, uint8_t currentTilePart, uint8_t numTileParts);
 
 	/** main header start position (SOC position) */
 	uint64_t mainHeaderStart;

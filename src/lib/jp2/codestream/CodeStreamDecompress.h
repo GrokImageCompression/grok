@@ -53,7 +53,7 @@ public:
    bool decompressTile(uint16_t tileIndex);
    bool endDecompress(void);
    void initDecompress(grk_dparameters  *p_param);
-   CodeStreamInfo* getIndex(void);
+   CodeStreamInfo* getCodeStreamInfo(void);
    GrkImage* getCompositeImage();
    bool readMarker(void);
    GrkImage* getHeaderImage(void);
@@ -84,8 +84,6 @@ protected:
  	 */
  	void dump_image_comp_header( grk_image_comp  *comp, bool dev_dump_flag,
  			FILE *out_stream);
- 	 CodeStreamInfo  *  create_cstr_index(void);
- 	 bool allocate_tile_element_cstr_index(void);
 private:
  	bool endOfCodeStream(void);
 	bool read_short(uint16_t *val);
@@ -107,7 +105,7 @@ private:
     @param pos          byte offset of marker segment
     @param len          length of marker segment
     */
-   bool add_mhmarker(	uint16_t id,
+   bool addMainHeaderMarker(	uint16_t id,
    						uint64_t pos,
    						uint32_t len);
    /**

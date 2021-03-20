@@ -1292,7 +1292,7 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress *codeStream) {
 		}
 	}
 	/* Index */
-	auto codeStreamInfo = codeStream->getIndex();
+	auto codeStreamInfo = codeStream->getCodeStreamInfo();
 	if (codeStreamInfo) {
 		uint64_t current_pos = m_stream->tell();
 		if (current_pos < 2) {
