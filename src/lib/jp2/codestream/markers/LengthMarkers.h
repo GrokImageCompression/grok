@@ -21,16 +21,16 @@ namespace grk {
 // tile part length
 struct grkTileInfo {
 	grkTileInfo() :
-			has_tile_number(false), tile_number(0), length(0) {
+			has_tile_number(false), tileNumber(0), length(0) {
 	}
 	grkTileInfo(uint32_t len) :
-			has_tile_number(false), tile_number(0), length(len) {
+			has_tile_number(false), tileNumber(0), length(len) {
 	}
 	grkTileInfo(uint16_t tileno, uint32_t len) :
-			has_tile_number(true), tile_number(tileno), length(len) {
+			has_tile_number(true), tileNumber(tileno), length(len) {
 	}
 	bool has_tile_number;
-	uint16_t tile_number;
+	uint16_t tileNumber;
 	uint32_t length;
 
 };
@@ -97,9 +97,9 @@ struct PacketLengthMarkers {
 private:
 	void readInitIndex(uint8_t index);
 	void readNext(uint8_t Iplm);
-	void write_marker_header(void);
-	void write_marker_length();
-	void write_increment(uint32_t bytes);
+	void writeMarkerHeader(void);
+	void writeMarkerLength();
+	void writeIncrement(uint32_t bytes);
 
 	PL_MAP *m_markers;
 	uint8_t m_markerIndex;

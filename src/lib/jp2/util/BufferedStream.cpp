@@ -208,7 +208,7 @@ template<typename TYPE> bool BufferedStream::write(TYPE value,
 		if (!m_seek_fn(m_stream_offset + numBytes, m_user_data))
 			return false;
 		grk_write(m_buf->currPtr(), value, numBytes);
-		write_increment(numBytes);
+		writeIncrement(numBytes);
 		return true;
 	}
 	size_t remaining_bytes = m_buf->len - m_buffered_bytes;
@@ -217,7 +217,7 @@ template<typename TYPE> bool BufferedStream::write(TYPE value,
 			return false;
 	}
 	grk_write(m_buf->currPtr(), value, numBytes);
-	write_increment(numBytes);
+	writeIncrement(numBytes);
 	return true;
 }
 size_t BufferedStream::write_bytes(const uint8_t *p_buffer, size_t p_size) {
@@ -233,7 +233,7 @@ size_t BufferedStream::write_bytes(const uint8_t *p_buffer, size_t p_size) {
 		/* we should do an actual write on the media */
 		auto current_write_nb_bytes = m_write_fn((uint8_t*) p_buffer, p_size,
 				m_user_data);
-		write_increment(current_write_nb_bytes);
+		writeIncrement(current_write_nb_bytes);
 
 		return current_write_nb_bytes;
 	}
@@ -245,7 +245,7 @@ size_t BufferedStream::write_bytes(const uint8_t *p_buffer, size_t p_size) {
 		if (remaining_bytes >= p_size) {
 			write_nb_bytes += p_size;
 			memcpy(m_buf->currPtr(), p_buffer, p_size);
-			write_increment(p_size);
+			writeIncrement(p_size);
 			return write_nb_bytes;
 		}
 
@@ -265,7 +265,7 @@ size_t BufferedStream::write_bytes(const uint8_t *p_buffer, size_t p_size) {
 
 	return write_nb_bytes;
 }
-void BufferedStream::write_increment(size_t p_size) {
+void BufferedStream::writeIncrement(size_t p_size) {
 	m_buf->incrementOffset((ptrdiff_t) p_size);
 	if (!isMemStream())
 		m_buffered_bytes += p_size;

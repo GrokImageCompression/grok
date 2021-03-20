@@ -195,7 +195,7 @@ private:
 	 */
 	bool write_seek(uint64_t offset);
 
-	void write_increment(size_t p_size);
+	void writeIncrement(size_t p_size);
 	template<typename TYPE> bool write(TYPE value, uint8_t numBytes);
 	void invalidate_buffer();
 

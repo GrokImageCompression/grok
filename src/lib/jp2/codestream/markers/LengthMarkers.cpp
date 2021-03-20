@@ -111,7 +111,6 @@ bool TileLengthMarkers::read(uint8_t *p_header_data, uint16_t header_size){
 
 	return true;
 }
-
 void TileLengthMarkers::push(uint8_t i_TLM, grkTileInfo info) {
 	auto pair = m_markers->find(i_TLM);
 
@@ -123,7 +122,6 @@ void TileLengthMarkers::push(uint8_t i_TLM, grkTileInfo info) {
 		m_markers->operator[](i_TLM) = vec;
 	}
 }
-
 void TileLengthMarkers::getInit(void){
 	m_markerIndex = 0;
 	m_markerTilePartIndex = 0;
@@ -152,7 +150,6 @@ grkTileInfo TileLengthMarkers::getNext(void){
 	}
 	return 0;
 }
-
 bool TileLengthMarkers::skipTo(uint16_t skipTileIndex, BufferedStream *stream,uint64_t firstSotPos){
 	assert(stream);
 	getInit();
@@ -166,12 +163,11 @@ bool TileLengthMarkers::skipTo(uint16_t skipTileIndex, BufferedStream *stream,ui
 		}
 		skip += tl.length;
 		tl = getNext();
-		tileNumber = (uint16_t)(tl.has_tile_number ? tl.tile_number : tileNumber+1U);
+		tileNumber = (uint16_t)(tl.has_tile_number ? tl.tileNumber : tileNumber+1U);
 	}
 
 	return stream->seek(firstSotPos + skip);
 }
-
 bool TileLengthMarkers::writeBegin(uint16_t totalTileParts) {
 	uint32_t tlm_size = tlm_marker_start_bytes 	+ tlm_len_per_tile_part * totalTileParts;
 
@@ -196,12 +192,10 @@ bool TileLengthMarkers::writeBegin(uint16_t totalTileParts) {
 	/* make room for tile part lengths */
 	return m_stream->skip(tlm_len_per_tile_part	* totalTileParts);
 }
-
 void TileLengthMarkers::writeUpdate(uint16_t tileIndex, uint32_t tile_part_size) {
 	assert(tileIndex <= 255);
     push(m_markerIndex,	grkTileInfo((uint8_t)tileIndex,	tile_part_size));
 }
-
 bool TileLengthMarkers::writeEnd(void) {
     uint64_t tlm_position = m_tlm_start_stream_position+ tlm_marker_start_bytes;
 	uint64_t current_position = m_stream->tell();
@@ -213,8 +207,8 @@ bool TileLengthMarkers::writeEnd(void) {
 		auto lengths = it->second;
 		for (auto info = lengths->begin(); info != lengths->end(); ++info ){
 			if (info->has_tile_number) {
-				assert(info->tile_number <= 255);
-				m_stream->write_byte((uint8_t)info->tile_number);
+				assert(info->tileNumber <= 255);
+				m_stream->write_byte((uint8_t)info->tileNumber);
 			}
 			m_stream->write_int(info->length);
 		}
@@ -222,8 +216,6 @@ bool TileLengthMarkers::writeEnd(void) {
 
 	return m_stream->seek(current_position);
 }
-
-
 bool TileLengthMarkers::addToIndex(uint16_t tileno,
 									grk_codestream_index *codestreamIndex,
 									uint16_t id,
@@ -301,11 +293,11 @@ void PacketLengthMarkers::writeNext(uint32_t len) {
 	assert(len);
 	m_curr_vec->push_back(len);
 }
-void PacketLengthMarkers::write_increment(uint32_t bytes) {
+void PacketLengthMarkers::writeIncrement(uint32_t bytes) {
 	m_marker_bytes_written += bytes;
 	m_total_bytes_written += bytes;
 }
-void PacketLengthMarkers::write_marker_length(){
+void PacketLengthMarkers::writeMarkerLength(){
 	// write marker length
 	if (m_marker_len_cache){
 		uint64_t current_pos = m_stream->tell();
@@ -319,38 +311,38 @@ void PacketLengthMarkers::write_marker_length(){
 	assert(m_marker_bytes_written == 0);
 }
 // check if we need to start a new marker
-void PacketLengthMarkers::write_marker_header() {
+void PacketLengthMarkers::writeMarkerHeader() {
 	// 5 bytes worst-case to store a packet length
 	if (m_total_bytes_written == 0
 			|| (m_marker_bytes_written >= available_packet_len_bytes_per_plt - 5)) {
 
 		// complete current marker
-		write_marker_length();
+		writeMarkerLength();
 
 		// begin new marker
 		m_stream->write_short(J2K_MS_PLT);
-		write_increment(2);
+		writeIncrement(2);
 
 		// cache location of marker length and skip over
 		m_marker_len_cache = m_stream->tell();
 		m_stream->skip(2);
-		write_increment(2);
+		writeIncrement(2);
 	}
 }
 uint32_t PacketLengthMarkers::write() {
-	write_marker_header();
+	writeMarkerHeader();
 	for (auto map_iter = m_markers->begin(); map_iter != m_markers->end();
 			++map_iter) {
 
 		// write index
 		m_stream->write_byte(map_iter->first);
-		write_increment(1);
+		writeIncrement(1);
 
 		// write marker lengths
 		for (auto val_iter = map_iter->second->begin();
 				val_iter != map_iter->second->end(); ++val_iter) {
 			//check if we need to start a new PLT marker segment
-			write_marker_header();
+			writeMarkerHeader();
 
 			// write from MSB down to LSB
 			uint32_t val = *val_iter;
@@ -374,11 +366,11 @@ uint32_t PacketLengthMarkers::write() {
 			uint32_t written = (uint32_t)m_stream->write_bytes(temp, numbytes);
 			assert(written == numbytes);
 			(void)written;
-			write_increment(numbytes);
+			writeIncrement(numbytes);
 		}
 	}
 	// write final marker length
-	write_marker_length();
+	writeMarkerLength();
 	return m_total_bytes_written;
 }
 

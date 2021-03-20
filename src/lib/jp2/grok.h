@@ -1131,14 +1131,14 @@ typedef struct _grk_codestream_info_v2 {
 /**
  * Tile part index info
  */
-typedef struct _grk_tp_index {
+typedef struct _grkTilePartIndex {
 	/** start position */
 	uint64_t start_pos;
 	/** end position of the header */
 	uint64_t end_header;
 	/** end position */
 	uint64_t end_pos;
-} grk_tp_index;
+} grkTilePartIndex;
 
 /**
  * Tile index info
@@ -1153,7 +1153,7 @@ typedef struct _grk_tile_index {
 	/** current tile-part index */
 	uint32_t currentTilePartIndex;
 	/** tile part index */
-	grk_tp_index *tilePartIndex;
+	grkTilePartIndex *tilePartIndex;
 	/** number of markers */
 	uint32_t numMarkers;
 	/** array of markers */
