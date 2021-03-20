@@ -68,25 +68,25 @@ struct Layer {
 };
 
 // note: block lives in canvas coordinates
-struct Codeblock : public grkRectU32, public ICacheable {
+struct Codeblock : public grkBuffer2d<int32_t, AllocatorAligned>, public ICacheable {
 	Codeblock():
 			numbps(0),
 			numlenbits(0),
 			numPassesInPacket(0)
-	#ifdef DEBUG_LOSSLESS_T2
+			#ifdef DEBUG_LOSSLESS_T2
 			,included(false)
-	#endif
+			#endif
 	{}
 	virtual ~Codeblock(){
 		compressedStream.dealloc();
 	}
-	Codeblock(const Codeblock &rhs): grkRectU32(rhs),
+	Codeblock(const Codeblock &rhs): grkBuffer2d<int32_t, AllocatorAligned>(rhs),
 									numbps(rhs.numbps),
 									numlenbits(rhs.numlenbits),
 									numPassesInPacket(rhs.numPassesInPacket)
-	#ifdef DEBUG_LOSSLESS_T2
-		,included(0)
-	#endif
+									#ifdef DEBUG_LOSSLESS_T2
+									,included(0)
+									#endif
 	{
 		compressedStream = rhs.compressedStream;
 	}
@@ -109,13 +109,6 @@ struct Codeblock : public grkRectU32, public ICacheable {
 	}
 	void setRect(grkRectU32 r){
 		(*(grkRectU32*)this) = r;
-		uncompressedData = grkBuffer2d<int32_t, AllocatorAligned>(width(),height());
-	}
-	bool allocUncompressedData(bool clear){
-		return uncompressedData.alloc2d(clear);
-	}
-	int32_t* getUncomressedDataPtr(void){
-		return uncompressedData.currPtr();
 	}
     grkBufferU8 compressedStream;
 	uint32_t numbps;
@@ -126,7 +119,6 @@ protected:
 	uint32_t included;
 	std::vector<PacketLengthInfo> packet_length_info;
 #endif
-	grkBuffer2d<int32_t, AllocatorAligned> uncompressedData;
 };
 
 struct CompressCodeblock : public Codeblock {

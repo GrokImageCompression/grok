@@ -121,6 +121,9 @@ template <typename T, template <typename TT> typename A > struct grkBuffer : A<T
 	virtual ~grkBuffer() {
 		dealloc();
 	}
+	explicit grkBuffer(const grkBuffer& rhs){
+		this->operator =(rhs);
+	}
 	grkBuffer& operator=(const grkBuffer& rhs) // copy assignment
 	{
 	    return operator=(&rhs);
@@ -129,6 +132,8 @@ template <typename T, template <typename TT> typename A > struct grkBuffer : A<T
 	{
 	    if (this != rhs) { // self-assignment check expected
 	    	buf = rhs->buf;
+	    	offset = rhs->offset;
+	    	len = rhs->len;
 	    	owns_data = false;
 	    }
 	    return *this;
