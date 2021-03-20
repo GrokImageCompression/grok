@@ -168,8 +168,7 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletReverse.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletReverse.h
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Structs.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Structs.cpp  
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/BlockExec.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1DecompressScheduler.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1DecompressScheduler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1CompressScheduler.h

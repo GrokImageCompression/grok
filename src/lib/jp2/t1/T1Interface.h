@@ -20,6 +20,9 @@
 
 namespace grk {
 
+struct CompressBlockExec;
+struct DecompressBlockExec;
+
 class T1Interface {
 public:
 	virtual ~T1Interface() = default;

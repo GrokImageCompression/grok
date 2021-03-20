@@ -38,6 +38,12 @@ namespace grk {
 
  */
 
+enum eSplitOrientation{
+	SPLIT_L,
+	SPLIT_H,
+	SPLIT_NUM_ORIENTATIONS
+};
+
 /**
  *  Class to manage multiple buffers needed to perform DWT transform
  *

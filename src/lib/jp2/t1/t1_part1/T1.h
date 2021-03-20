@@ -25,6 +25,7 @@
 namespace grk {
 /** Flags for 4 consecutive rows of a column */
 typedef uint32_t grk_flag;
+struct DecompressCodeblock;
 
 struct T1 {
 
