@@ -887,13 +887,13 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
 							vert,
 							vert.sn_full,
 							// LL
-							tilec->getBuffer()->getBufferResWindowREL(res-1U)->buf,
+							tilec->getBuffer()->getBufferResWindowREL(res-1U)->getBuffer(),
 							tilec->getBuffer()->getBufferResWindowREL(res-1U)->stride,
 							// HL
-							tilec->getBuffer()->getBandWindowREL(res, BAND_ORIENT_HL)->buf,
+							tilec->getBuffer()->getBandWindowREL(res, BAND_ORIENT_HL)->getBuffer(),
 							tilec->getBuffer()->getBandWindowREL(res,BAND_ORIENT_HL)->stride,
 							// lower split window
-							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_L)->buf,
+							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_L)->getBuffer(),
 							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_L)->stride))
     		return false;
     	if (!decompress_h_mt_53(num_threads,
@@ -902,13 +902,13 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
 							vert,
 							rh -  vert.sn_full,
 							// LH
-							tilec->getBuffer()->getBandWindowREL(res, BAND_ORIENT_LH)->buf,
+							tilec->getBuffer()->getBandWindowREL(res, BAND_ORIENT_LH)->getBuffer(),
 							tilec->getBuffer()->getBandWindowREL(res,BAND_ORIENT_LH)->stride,
 							// HH
-							tilec->getBuffer()->getBandWindowREL(res, BAND_ORIENT_HH)->buf,
+							tilec->getBuffer()->getBandWindowREL(res, BAND_ORIENT_HH)->getBuffer(),
 							tilec->getBuffer()->getBandWindowREL(res,BAND_ORIENT_HH)->stride,
 							// higher split window
-    						tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->buf,
+    						tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->getBuffer(),
     						tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->stride ))
     		return false;
         vert.dn_full = rh - vert.sn_full;
@@ -919,13 +919,13 @@ static bool decompress_tile_53( TileComponent* tilec, uint32_t numres){
 							vert,
 							rw,
 							// lower split window
-							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_L)->buf,
+							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_L)->getBuffer(),
 							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_L)->stride,
 							// higher split window
-							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->buf,
+							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->getBuffer(),
 							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->stride,
 							// resolution buffer
-							tilec->getBuffer()->getBufferResWindowREL(res)->buf,
+							tilec->getBuffer()->getBufferResWindowREL(res)->getBuffer(),
 							tilec->getBuffer()->getBufferResWindowREL(res)->stride))
     		return false;
     }
@@ -1391,13 +1391,13 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 							horiz,
 							vert.sn_full,
 							// LL
-							(float*) tilec->getBuffer()->getBufferResWindowREL(res-1U)->buf,
+							(float*) tilec->getBuffer()->getBufferResWindowREL(res-1U)->getBuffer(),
 							tilec->getBuffer()->getBufferResWindowREL(res-1U)->stride,
 							// HL
-							(float*) tilec->getBuffer()->getBandWindowREL(res, BAND_ORIENT_HL)->buf,
+							(float*) tilec->getBuffer()->getBandWindowREL(res, BAND_ORIENT_HL)->getBuffer(),
 							tilec->getBuffer()->getBandWindowREL(res,BAND_ORIENT_HL)->stride,
 							// lower split window
-							(float*) tilec->getBuffer()->getSplitWindowREL(res,SPLIT_L)->buf,
+							(float*) tilec->getBuffer()->getSplitWindowREL(res,SPLIT_L)->getBuffer(),
 							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_L)->stride))
         	return false;
         if (!decompress_h_mt_97(num_threads,
@@ -1405,13 +1405,13 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 							horiz,
 							rh-vert.sn_full,
 							// LH
-							(float*) tilec->getBuffer()->getBandWindowREL(res, BAND_ORIENT_LH)->buf,
+							(float*) tilec->getBuffer()->getBandWindowREL(res, BAND_ORIENT_LH)->getBuffer(),
 							tilec->getBuffer()->getBandWindowREL(res,BAND_ORIENT_LH)->stride,
 							// HH
-							(float*) tilec->getBuffer()->getBandWindowREL(res, BAND_ORIENT_HH)->buf,
+							(float*) tilec->getBuffer()->getBandWindowREL(res, BAND_ORIENT_HH)->getBuffer(),
 							tilec->getBuffer()->getBandWindowREL(res,BAND_ORIENT_HH)->stride,
 							// higher split window
-							(float*) tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->buf,
+							(float*) tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->getBuffer(),
 							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->stride ))
         	return false;
         vert.dn_full = rh - vert.sn_full;
@@ -1424,13 +1424,13 @@ bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 							rw,
 							rh,
 							// lower split window
-							(float*) tilec->getBuffer()->getSplitWindowREL(res,SPLIT_L)->buf,
+							(float*) tilec->getBuffer()->getSplitWindowREL(res,SPLIT_L)->getBuffer(),
 							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_L)->stride,
 							// higher split window
-							(float*) tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->buf,
+							(float*) tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->getBuffer(),
 							tilec->getBuffer()->getSplitWindowREL(res,SPLIT_H)->stride,
 							// resolution window
-							(float*) tilec->getBuffer()->getBufferResWindowREL(res)->buf,
+							(float*) tilec->getBuffer()->getBufferResWindowREL(res)->getBuffer(),
 							tilec->getBuffer()->getBufferResWindowREL(res)->stride))
         	return false;
     }
@@ -1944,7 +1944,7 @@ template <typename T,
         // simply copy into tile component buffer
     	bool ret = sa->read(0,
     					synthesisWindow,
-					   tilec->getBuffer()->getHighestBufferResWindowREL()->buf,
+					   tilec->getBuffer()->getHighestBufferResWindowREL()->getBuffer(),
                        1,
 					   tilec->getBuffer()->getHighestBufferResWindowREL()->stride,
                        true);
@@ -2180,7 +2180,7 @@ template <typename T,
     //final read into tile buffer
 	ret = sa->read(numres-1,
 					synthesisWindow,
-				   tilec->getBuffer()->getHighestBufferResWindowREL()->buf,
+				   tilec->getBuffer()->getHighestBufferResWindowREL()->getBuffer(),
 				   1,
 				   tilec->getBuffer()->getHighestBufferResWindowREL()->stride,
 				   true);

@@ -889,7 +889,7 @@ void TileProcessor::ingestImage() {
 		uint64_t image_offset = (tilec->x0 - offset_x)
 				+ (uint64_t) (tilec->y0 - offset_y) * img_comp->stride;
 		auto src = img_comp->data + image_offset;
-		auto dest = tilec->getBuffer()->getHighestBufferResWindowREL()->buf;
+		auto dest = tilec->getBuffer()->getHighestBufferResWindowREL()->getBuffer();
 
 		for (uint32_t j = 0; j < tilec->height(); ++j) {
 			memcpy(dest, src, tilec->width() * sizeof(int32_t));
@@ -928,7 +928,7 @@ bool TileProcessor::mctDecompress() {
 		auto data = new uint8_t*[tile->numcomps];
 		for (uint32_t i = 0; i < tile->numcomps; ++i) {
 			auto tile_comp = tile->comps + i;
-			data[i] = (uint8_t*) tile_comp->getBuffer()->getHighestBufferResWindowREL()->buf;
+			data[i] = (uint8_t*) tile_comp->getBuffer()->getHighestBufferResWindowREL()->getBuffer();
 		}
 		uint64_t samples = tile->comps->getBuffer()->stridedArea();
 		bool rc = mct::decompress_custom((uint8_t*) m_tcp->m_mct_decoding_matrix,
@@ -966,7 +966,7 @@ bool TileProcessor::dcLevelShiftCompress() {
 	for (uint32_t compno = 0; compno < tile->numcomps; compno++) {
 		auto tile_comp = tile->comps + compno;
 		auto tccp = m_tcp->tccps + compno;
-		auto current_ptr = tile_comp->getBuffer()->getHighestBufferResWindowREL()->buf;
+		auto current_ptr = tile_comp->getBuffer()->getHighestBufferResWindowREL()->getBuffer();
 		uint64_t samples = tile_comp->getBuffer()->stridedArea();
 		if (!m_tcp->mct && tccp->qmfbid ==0){
 			for (uint64_t i = 0; i < samples; ++i) {
@@ -996,7 +996,7 @@ bool TileProcessor::mct_encode() {
 		auto data = new uint8_t*[tile->numcomps];
 		for (uint32_t i = 0; i < tile->numcomps; ++i) {
 			auto tile_comp = tile->comps + i;
-			data[i] = (uint8_t*) tile_comp->getBuffer()->getHighestBufferResWindowREL()->buf;
+			data[i] = (uint8_t*) tile_comp->getBuffer()->getHighestBufferResWindowREL()->getBuffer();
 		}
 		bool rc = mct::compress_custom((uint8_t*) m_tcp->m_mct_coding_matrix,
 								samples,
@@ -1006,13 +1006,13 @@ bool TileProcessor::mct_encode() {
 		delete[] data;
 		return rc;
 	} else if (m_tcp->tccps->qmfbid == 0) {
-		mct::compress_irrev(tile->comps[0].getBuffer()->getHighestBufferResWindowREL()->buf,
-				tile->comps[1].getBuffer()->getHighestBufferResWindowREL()->buf,
-				tile->comps[2].getBuffer()->getHighestBufferResWindowREL()->buf, samples);
+		mct::compress_irrev(tile->comps[0].getBuffer()->getHighestBufferResWindowREL()->getBuffer(),
+				tile->comps[1].getBuffer()->getHighestBufferResWindowREL()->getBuffer(),
+				tile->comps[2].getBuffer()->getHighestBufferResWindowREL()->getBuffer(), samples);
 	} else {
-		mct::compress_rev(tile->comps[0].getBuffer()->getHighestBufferResWindowREL()->buf,
-				tile->comps[1].getBuffer()->getHighestBufferResWindowREL()->buf,
-				tile->comps[2].getBuffer()->getHighestBufferResWindowREL()->buf, samples);
+		mct::compress_rev(tile->comps[0].getBuffer()->getHighestBufferResWindowREL()->getBuffer(),
+				tile->comps[1].getBuffer()->getHighestBufferResWindowREL()->getBuffer(),
+				tile->comps[2].getBuffer()->getHighestBufferResWindowREL()->getBuffer(), samples);
 	}
 
 	return true;
@@ -1225,7 +1225,7 @@ bool TileProcessor::ingestUncompressedData(uint8_t *p_src,uint64_t src_length) {
 		auto img_comp = headerImage->comps + i;
 
 		uint32_t size_comp = (uint32_t)((img_comp->prec + 7) >> 3);
-		auto dest_ptr = tilec->getBuffer()->getHighestBufferResWindowREL()->buf;
+		auto dest_ptr = tilec->getBuffer()->getHighestBufferResWindowREL()->getBuffer();
 		uint32_t w = (uint32_t)tilec->getBuffer()->bounds().width();
 		uint32_t h = (uint32_t)tilec->getBuffer()->bounds().height();
 		uint32_t stride = tilec->getBuffer()->getHighestBufferResWindowREL()->stride;

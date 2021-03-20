@@ -205,7 +205,7 @@ template <typename T, template <typename TT> typename A > struct grkBuffer : A<T
 			}
 		}
 	}
-	T* currPtr(){
+	T* currPtr(void) const{
 		if (!buf)
 			return nullptr;
 		return buf + offset;
@@ -219,7 +219,7 @@ template <typename T, template <typename TT> typename A > struct grkBuffer : A<T
 using grkBufferU8 = grkBuffer<uint8_t, AllocatorVanilla >;
 using grkBufferU8Aligned = grkBuffer<uint8_t, AllocatorAligned >;
 
-template <typename T, template <typename TT> typename A> struct grkBuffer2d : public grkBuffer<T, A >, public grkRectU32 {
+template <typename T, template <typename TT> typename A> struct grkBuffer2d : private grkBuffer<T, A >, public grkRectU32 {
 	grkBuffer2d(T *buffer,bool ownsData, uint32_t w, uint32_t strd, uint32_t h) :   grkBuffer<T, A >(buffer,ownsData),
 																					grkRectU32(0,0,w,h),
 																					stride(strd)
@@ -318,6 +318,9 @@ template <typename T, template <typename TT> typename A> struct grkBuffer2d : pu
 			dest += stride;
 			src += rhs.stride;
 		}
+	}
+	T* getBuffer(void) const{
+		return this->currPtr();
 	}
     uint32_t stride;
 } ;

@@ -117,7 +117,7 @@ void mct::decompress_dc_shift_irrev(Tile *tile, GrkImage *image,TileComponentCod
 	 }
 */
 #endif
-	float *GRK_RESTRICT c0 = (float*) tile->comps[compno].getBuffer()->getHighestBufferResWindowREL()->buf;
+	float *GRK_RESTRICT c0 = (float*) tile->comps[compno].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
 	int32_t *c0_i = (int32_t*)c0;
 
 	int32_t _min;
@@ -187,9 +187,9 @@ void mct::decompress_irrev(Tile *tile, GrkImage *image,TileComponentCodingParams
 	uint64_t i = 0;
 	uint64_t n = tile->comps->getBuffer()->stridedArea();
 
-	float *GRK_RESTRICT c0 = (float*) tile->comps[0].getBuffer()->getHighestBufferResWindowREL()->buf;
-	float *GRK_RESTRICT c1 = (float*) tile->comps[1].getBuffer()->getHighestBufferResWindowREL()->buf;
-	float *GRK_RESTRICT c2 = (float*) tile->comps[2].getBuffer()->getHighestBufferResWindowREL()->buf;
+	float *GRK_RESTRICT c0 = (float*) tile->comps[0].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
+	float *GRK_RESTRICT c1 = (float*) tile->comps[1].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
+	float *GRK_RESTRICT c2 = (float*) tile->comps[2].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
 	int32_t *c0_i = (int32_t*)c0, *c1_i = (int32_t*)c1, *c2_i = (int32_t*)c2;
 
 	int32_t _min[3];
@@ -296,7 +296,7 @@ void mct::decompress_irrev(Tile *tile, GrkImage *image,TileComponentCodingParams
 
 void mct::decompress_dc_shift_rev(Tile *tile, GrkImage *image,TileComponentCodingParams *tccps, uint32_t compno) {
 	size_t i = 0;
-	int32_t *GRK_RESTRICT c0 = tile->comps[compno].getBuffer()->getHighestBufferResWindowREL()->buf;
+	int32_t *GRK_RESTRICT c0 = tile->comps[compno].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
 
 	int32_t _min;
     int32_t _max;
@@ -368,9 +368,9 @@ void mct::decompress_dc_shift_rev(Tile *tile, GrkImage *image,TileComponentCodin
 /* </summary> */
 void mct::decompress_rev(Tile *tile, GrkImage *image,TileComponentCodingParams *tccps) {
 	size_t i = 0;
-	int32_t *GRK_RESTRICT c0 = tile->comps[0].getBuffer()->getHighestBufferResWindowREL()->buf;
-	int32_t *GRK_RESTRICT c1 = tile->comps[1].getBuffer()->getHighestBufferResWindowREL()->buf;
-	int32_t *GRK_RESTRICT c2 = tile->comps[2].getBuffer()->getHighestBufferResWindowREL()->buf;
+	int32_t *GRK_RESTRICT c0 = tile->comps[0].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
+	int32_t *GRK_RESTRICT c1 = tile->comps[1].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
+	int32_t *GRK_RESTRICT c2 = tile->comps[2].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
 
 	int32_t _min[3];
     int32_t _max[3];

@@ -124,7 +124,7 @@ bool T1Part1::compress(CompressBlockExec *block) {
 bool T1Part1::decompress(DecompressBlockExec *block) {
 	auto cblk = block->cblk;
 	cblk->alloc2d(true);
-	t1->attachUncompressedData(cblk->currPtr(),
+	t1->attachUncompressedData(cblk->getBuffer(),
 								cblk->width(),
 								cblk->height());
 	if (cblk->isClosed()) {

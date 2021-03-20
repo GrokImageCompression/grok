@@ -154,22 +154,27 @@ template<typename T> struct BufferResWindow {
 
 			// attach to top level window
 			if (m_bufferResWindowBufferREL != m_bufferResWindowTopLevelBufferREL)
-				m_bufferResWindowBufferREL->attach(m_bufferResWindowTopLevelBufferREL->buf, m_bufferResWindowTopLevelBufferREL->stride);
+				m_bufferResWindowBufferREL->attach(
+						m_bufferResWindowTopLevelBufferREL->getBuffer(), m_bufferResWindowTopLevelBufferREL->stride);
 
 			// m_tileCompResLower is null for lowest resolution
 			if (m_tileCompResLower) {
 				for (uint8_t orientation = 0; orientation < m_paddedBandWindowBufferREL.size(); ++orientation){
 					switch(orientation){
 					case BAND_ORIENT_HL:
-						m_paddedBandWindowBufferREL[orientation]->attach(m_bufferResWindowTopLevelBufferREL->buf + m_tileCompResLower->width(),
+						m_paddedBandWindowBufferREL[orientation]->attach(
+								m_bufferResWindowTopLevelBufferREL->getBuffer() + m_tileCompResLower->width(),
 												m_bufferResWindowTopLevelBufferREL->stride);
 						break;
 					case BAND_ORIENT_LH:
-						m_paddedBandWindowBufferREL[orientation]->attach(m_bufferResWindowTopLevelBufferREL->buf + m_tileCompResLower->height() * m_bufferResWindowTopLevelBufferREL->stride,
+						m_paddedBandWindowBufferREL[orientation]->attach(
+								m_bufferResWindowTopLevelBufferREL->getBuffer() +
+									m_tileCompResLower->height() * m_bufferResWindowTopLevelBufferREL->stride,
 												m_bufferResWindowTopLevelBufferREL->stride);
 						break;
 					case BAND_ORIENT_HH:
-						m_paddedBandWindowBufferREL[orientation]->attach(m_bufferResWindowTopLevelBufferREL->buf + m_tileCompResLower->width() +
+						m_paddedBandWindowBufferREL[orientation]->attach(
+								m_bufferResWindowTopLevelBufferREL->getBuffer() + m_tileCompResLower->width() +
 													m_tileCompResLower->height() * m_bufferResWindowTopLevelBufferREL->stride,
 														m_bufferResWindowTopLevelBufferREL->stride);
 						break;
@@ -177,8 +182,11 @@ template<typename T> struct BufferResWindow {
 						break;
 					}
 				}
-				m_splitResWindowBufferREL[SPLIT_L]->attach(m_bufferResWindowTopLevelBufferREL->buf, m_bufferResWindowTopLevelBufferREL->stride);
-				m_splitResWindowBufferREL[SPLIT_H]->attach(m_bufferResWindowTopLevelBufferREL->buf + m_tileCompResLower->height() * m_bufferResWindowTopLevelBufferREL->stride,
+				m_splitResWindowBufferREL[SPLIT_L]->attach(
+						m_bufferResWindowTopLevelBufferREL->getBuffer(), m_bufferResWindowTopLevelBufferREL->stride);
+				m_splitResWindowBufferREL[SPLIT_H]->attach(
+						m_bufferResWindowTopLevelBufferREL->getBuffer() +
+								m_tileCompResLower->height() * m_bufferResWindowTopLevelBufferREL->stride,
 											m_bufferResWindowTopLevelBufferREL->stride);
 			}
 		} else {
@@ -195,8 +203,11 @@ template<typename T> struct BufferResWindow {
 					return false;
 			}
 			if (m_tileCompResLower){
-				m_splitResWindowBufferREL[SPLIT_L]->attach(m_bufferResWindowBufferREL->buf, m_bufferResWindowBufferREL->stride);
-				m_splitResWindowBufferREL[SPLIT_H]->attach(m_bufferResWindowBufferREL->buf + m_tileCompResLower->height() * m_bufferResWindowBufferREL->stride,m_bufferResWindowBufferREL->stride);
+				m_splitResWindowBufferREL[SPLIT_L]->attach(
+						m_bufferResWindowBufferREL->getBuffer(), m_bufferResWindowBufferREL->stride);
+				m_splitResWindowBufferREL[SPLIT_H]->attach(
+						m_bufferResWindowBufferREL->getBuffer() +
+							m_tileCompResLower->height() * m_bufferResWindowBufferREL->stride,m_bufferResWindowBufferREL->stride);
 			}
 		}
 		m_allocated = true;
