@@ -1302,10 +1302,10 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress *codeStream) {
 		current_pos = (uint64_t) (current_pos - 2);
 
 		uint32_t current_tile_part =
-				cstr_index->tile_index[m_tile_index].current_tpsno;
-		cstr_index->tile_index[m_tile_index].tp_index[current_tile_part].end_header =
+				cstr_index->tileIndex[m_tile_index].currentTilePartIndex;
+		cstr_index->tileIndex[m_tile_index].tilePartIndex[current_tile_part].end_header =
 				current_pos;
-		cstr_index->tile_index[m_tile_index].tp_index[current_tile_part].end_pos =
+		cstr_index->tileIndex[m_tile_index].tilePartIndex[current_tile_part].end_pos =
 				current_pos + tile_part_data_length + 2;
 
 		if (!TileLengthMarkers::addToIndex(

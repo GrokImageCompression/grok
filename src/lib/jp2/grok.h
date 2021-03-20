@@ -724,7 +724,7 @@ typedef struct _grk_dparameters {
 	/** Verbose mode */
 	bool m_verbose;
 	/** tile number of the decompressed tile*/
-	uint16_t tile_index;
+	uint16_t tileIndex;
 	/** Number of tiles to decompress */
 	uint32_t nb_tile_to_decompress;
 	uint32_t flags;
@@ -775,7 +775,7 @@ typedef struct _grk_decompress_params {
 	/** Verbose mode */
 	bool m_verbose;
 	/** tile number of the decompressed tile*/
-	uint16_t tile_index;
+	uint16_t tileIndex;
 	/** Number of tiles to decompress */
 	uint32_t nb_tile_to_decompress;
 	grk_precision *precision;
@@ -1014,11 +1014,11 @@ typedef struct _grk_tile_info {
 	int64_t numpix;
 	double distotile;
 	/** number of markers */
-	uint32_t marknum;
+	uint32_t numMarkers;
 	/** list of markers */
 	grk_marker_info *marker;
 	/** actual size of markers array */
-	uint32_t maxmarknum;
+	uint32_t allocatedMarkers;
 	/** number of tile parts */
 	uint32_t num_tps;
 } grk_tile_info;
@@ -1040,15 +1040,15 @@ typedef struct _grk_codestream_info {
 	/** number of decomposition for each component */
 	uint32_t *numdecompos;
 	/** number of markers */
-	uint32_t marknum;
+	uint32_t numMarkers;
 	/** list of markers */
 	grk_marker_info *marker;
 	/** actual size of markers array */
-	uint32_t maxmarknum;
+	uint32_t allocatedMarkers;
 	/** main header position */
-	uint64_t main_head_start;
+	uint64_t mainHeaderStart;
 	/** main header position */
-	uint64_t main_head_end;
+	uint64_t mainHeaderEnd;
 	/** information regarding tiles inside image */
 	grk_tile_info *tile;
 } grk_codestream_info;
@@ -1147,19 +1147,19 @@ typedef struct _grk_tile_index {
 	/** tile index */
 	uint16_t tileno;
 	/** number of tile parts */
-	uint32_t nb_tps;
+	uint32_t numTileParts;
 	/** current nb of tile part (allocated)*/
-	uint32_t current_nb_tps;
+	uint32_t allocatedTileParts;
 	/** current tile-part index */
-	uint32_t current_tpsno;
+	uint32_t currentTilePartIndex;
 	/** tile part index */
-	grk_tp_index *tp_index;
+	grk_tp_index *tilePartIndex;
 	/** number of markers */
-	uint32_t marknum;
+	uint32_t numMarkers;
 	/** array of markers */
 	grk_marker_info *marker;
 	/** actual size of markers array */
-	uint32_t maxmarknum;
+	uint32_t allocatedMarkers;
 } grk_tile_index;
 
 /**
@@ -1167,17 +1167,17 @@ typedef struct _grk_tile_index {
  */
 typedef struct _grk_codestream_index {
 	/** main header start position (SOC position) */
-	uint64_t main_head_start;
+	uint64_t mainHeaderStart;
 	/** main header end position (first SOT position) */
-	uint64_t main_head_end;
+	uint64_t mainHeaderEnd;
 	/** number of markers */
-	uint32_t marknum;
+	uint32_t numMarkers;
 	/** list of markers */
 	grk_marker_info *marker;
 	/** actual size of markers array */
-	uint32_t maxmarknum;
-	uint32_t nb_of_tiles;
-	grk_tile_index *tile_index;
+	uint32_t allocatedMarkers;
+	uint32_t numTiles;
+	grk_tile_index *tileIndex;
 } grk_codestream_index;
 
 ////////////////////////////////////////////////
@@ -1550,11 +1550,11 @@ GRK_API bool GRK_CALLCONV grk_decompress(grk_codec *p_decompressor,	grk_plugin_t
  * Decompress a specific tile
  *
  * @param	codec			JPEG 2000 code stream
- * @param	tile_index		index of the tile to be decompressed
+ * @param	tileIndex		index of the tile to be decompressed
  *
  * @return					true if successful, otherwise false
  */
-GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_codec *codec, uint16_t tile_index);
+GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_codec *codec, uint16_t tileIndex);
 
 /**
  * End decompression
@@ -1631,7 +1631,7 @@ GRK_API bool GRK_CALLCONV grk_compress(grk_codec *codec);
  * and before grk_end_compress.
  *
  * @param	codec		    JPEG 2000 code stream
- * @param	tile_index		the index of the tile to write. At the moment,
+ * @param	tileIndex		the index of the tile to write. At the moment,
  * 							the tiles must be written from 0 to n-1 in sequence.
  * @param	data			pointer to the data to write. Data is arranged in planar
  *  						sequence, data_comp0, data_comp1 etc,
@@ -1646,7 +1646,7 @@ GRK_API bool GRK_CALLCONV grk_compress(grk_codec *codec);
  * @return	true if the data could be written.
  */
 GRK_API bool GRK_CALLCONV grk_compress_tile(grk_codec *codec,
-		uint16_t tile_index, uint8_t *data, uint64_t data_size);
+		uint16_t tileIndex, uint8_t *data, uint64_t data_size);
 
 
 /**

@@ -660,7 +660,7 @@ int GrkDecompress::parseCommandLine(int argc,
 			parameters->core.cp_layer = layerArg.getValue();
 		}
 		if (tileArg.isSet()) {
-			parameters->tile_index = (uint16_t) tileArg.getValue();
+			parameters->tileIndex = (uint16_t) tileArg.getValue();
 			parameters->nb_tile_to_decompress = 1;
 		}
 		if (precisionArg.isSet()) {
@@ -1229,11 +1229,11 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info *info) {
 	}
 	// or, decompress one particular tile
 	else {
-		if (!grk_decompress_tile(info->codec, parameters->tile_index)) {
+		if (!grk_decompress_tile(info->codec, parameters->tileIndex)) {
 			spdlog::error("grk_decompress: failed to decompress tile");
 			goto cleanup;
 		}
-		//spdlog::info("Tile {} was decompressed.", parameters->tile_index);
+		//spdlog::info("Tile {} was decompressed.", parameters->tileIndex);
 	}
 	failed = false;
 cleanup:

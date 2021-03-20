@@ -133,13 +133,13 @@ CodeStreamDecompress::~CodeStreamDecompress() {
 GrkImage* CodeStreamDecompress::getCompositeImage(){
 	return m_tileCache->getComposite();
 }
-TileProcessor* CodeStreamDecompress::allocateProcessor(uint16_t tile_index){
-	auto tileCache = m_tileCache->get(tile_index);
+TileProcessor* CodeStreamDecompress::allocateProcessor(uint16_t tileIndex){
+	auto tileCache = m_tileCache->get(tileIndex);
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
 	if (!tileProcessor){
 		tileProcessor = new TileProcessor(this,m_stream,false,wholeTileDecompress);
-		tileProcessor->m_tile_index = tile_index;
-		m_tileCache->put(tile_index, tileProcessor);
+		tileProcessor->m_tile_index = tileIndex;
+		m_tileCache->put(tileIndex, tileProcessor);
 	}
 	m_currentTileProcessor = tileProcessor;
 	if (!m_multiTile){
@@ -357,8 +357,8 @@ bool CodeStreamDecompress::decompress( grk_plugin_tile *tile){
 
 	return decompressExec();
 }
-bool CodeStreamDecompress::decompressTile(uint16_t tile_index){
-	auto entry = m_tileCache->get(tile_index);
+bool CodeStreamDecompress::decompressTile(uint16_t tileIndex){
+	auto entry = m_tileCache->get(tileIndex);
 	if (entry && entry->processor && entry->processor->getImage())
 		return true;
 
@@ -377,15 +377,15 @@ bool CodeStreamDecompress::decompressTile(uint16_t tile_index){
 	}
 
 	auto compositeImage = getCompositeImage();
-	if (tile_index >= m_cp.t_grid_width * m_cp.t_grid_height) {
-		GRK_ERROR(	"Tile index %u is greater than maximum tile index %u",	tile_index,
+	if (tileIndex >= m_cp.t_grid_width * m_cp.t_grid_height) {
+		GRK_ERROR(	"Tile index %u is greater than maximum tile index %u",	tileIndex,
 				      m_cp.t_grid_width * m_cp.t_grid_height - 1);
 		return false;
 	}
 
 	/* Compute the dimension of the desired tile*/
-	uint32_t tile_x = tile_index % m_cp.t_grid_width;
-	uint32_t tile_y = tile_index / m_cp.t_grid_width;
+	uint32_t tile_x = tileIndex % m_cp.t_grid_width;
+	uint32_t tile_y = tileIndex / m_cp.t_grid_width;
 
 	auto imageBounds = grkRectU32(compositeImage->x0,
 									compositeImage->y0,
@@ -405,7 +405,7 @@ bool CodeStreamDecompress::decompressTile(uint16_t tile_index){
 				imageBounds.y0,
 				imageBounds.x1,
 				imageBounds.y1,
-				tile_index);
+				tileIndex);
 		croppedImageBounds = imageBounds;
 	}
 
@@ -419,7 +419,7 @@ bool CodeStreamDecompress::decompressTile(uint16_t tile_index){
 		comp->w = reducedCompBounds.width();
 		comp->h = reducedCompBounds.height();
 	}
-	m_tile_ind_to_dec = (int32_t) tile_index;
+	m_tile_ind_to_dec = (int32_t) tileIndex;
 
 	// reset tile part numbers, in case we are re-using the same codec object
 	// from previous decompress
@@ -704,32 +704,32 @@ bool CodeStreamDecompress::add_mhmarker(uint16_t id,
 	assert(cstr_index != nullptr);
 
 	/* expand the list? */
-	if ((cstr_index->marknum + 1) > cstr_index->maxmarknum) {
+	if ((cstr_index->numMarkers + 1) > cstr_index->allocatedMarkers) {
 		grk_marker_info *new_marker;
-		uint32_t oldMax = cstr_index->maxmarknum;
-		cstr_index->maxmarknum += 100U;
+		uint32_t oldMax = cstr_index->allocatedMarkers;
+		cstr_index->allocatedMarkers += 100U;
 		new_marker = (grk_marker_info*) grkRealloc(cstr_index->marker,
-								cstr_index->maxmarknum * sizeof(grk_marker_info));
+								cstr_index->allocatedMarkers * sizeof(grk_marker_info));
 		if (!new_marker) {
 			grkFree(cstr_index->marker);
 			cstr_index->marker = nullptr;
-			cstr_index->maxmarknum = 0;
-			cstr_index->marknum = 0;
+			cstr_index->allocatedMarkers = 0;
+			cstr_index->numMarkers = 0;
 			GRK_ERROR( "Not enough memory to add mh marker");
 			return false;
 		}
 		cstr_index->marker = new_marker;
-		for (uint32_t i = oldMax; i < cstr_index->maxmarknum; ++i)
+		for (uint32_t i = oldMax; i < cstr_index->allocatedMarkers; ++i)
 			memset(cstr_index->marker+i, 0, sizeof(grk_marker_info));
 	}
 
-	auto marker = cstr_index->marker + cstr_index->marknum;
+	auto marker = cstr_index->marker + cstr_index->numMarkers;
 
 	/* add the marker */
 	marker->id = id;
 	marker->pos = pos;
 	marker->len = len;
-	cstr_index->marknum++;
+	cstr_index->numMarkers++;
 	return true;
 }
 
@@ -852,7 +852,7 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void) {
 	}
 	// we don't include the SOC marker, therefore subtract 2
 	if (cstr_index)
-		cstr_index->main_head_end = (uint32_t) m_stream->tell() - 2;
+		cstr_index->mainHeaderEnd = (uint32_t) m_stream->tell() - 2;
 
 	/* Next step: read a tile-part header */
 	m_decompressorState.setState(J2K_DEC_STATE_TPH_SOT);
@@ -889,7 +889,7 @@ bool CodeStreamDecompress::decompressTile() {
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
 	bool rc = false;
 	if (!tileCache || !tileCache->processor->getImage()) {
-		if (!cstr_index->tile_index) {
+		if (!cstr_index->tileIndex) {
 			if (!allocate_tile_element_cstr_index())
 				return false;
 		}
@@ -898,13 +898,13 @@ bool CodeStreamDecompress::decompressTile() {
 		if (m_cp.tlm_markers){
 			// for first SOT position, we add two to skip SOC marker
 			if (!m_cp.tlm_markers->skipTo((uint16_t)tileIndexToDecode(),
-											m_stream,cstr_index->main_head_end+2))
+											m_stream,cstr_index->mainHeaderEnd+2))
 				return false;
 		} else {
 			/* Move into the code stream to the first SOT used to decompress the desired tile */
 			uint16_t tile_index_to_decompress =	(uint16_t) (tileIndexToDecode());
-			if (cstr_index->tile_index && cstr_index->tile_index->tp_index) {
-				if (!cstr_index->tile_index[tile_index_to_decompress].nb_tps) {
+			if (cstr_index->tileIndex && cstr_index->tileIndex->tilePartIndex) {
+				if (!cstr_index->tileIndex[tile_index_to_decompress].numTileParts) {
 					/* the index for this tile has not been built,
 					 *  so move to the last SOT read */
 					if (!(m_stream->seek(m_decompressorState.m_last_sot_read_pos	+ 2))) {
@@ -912,7 +912,7 @@ bool CodeStreamDecompress::decompressTile() {
 						return false;
 					}
 				} else {
-					if (!(m_stream->seek(cstr_index->tile_index[tile_index_to_decompress].tp_index[0].start_pos	+ 2))) {
+					if (!(m_stream->seek(cstr_index->tileIndex[tile_index_to_decompress].tilePartIndex[0].start_pos	+ 2))) {
 						GRK_ERROR("Problem with seek function");
 						return false;
 					}
@@ -2520,10 +2520,10 @@ bool CodeStreamDecompress::read_soc() {
 
 	if (cstr_index) {
 		/* FIXME move it in a index structure included in this*/
-		cstr_index->main_head_start = m_stream->tell() - 2;
+		cstr_index->mainHeaderStart = m_stream->tell() - 2;
 		/* Add the marker to the code stream index*/
 		if (!add_mhmarker(J2K_MS_SOC,
-				cstr_index->main_head_start, 2)) {
+				cstr_index->mainHeaderStart, 2)) {
 			GRK_ERROR("Not enough memory to add mh marker");
 			return false;
 		}
@@ -2743,15 +2743,15 @@ void CodeStreamDecompress::dump_MH_index(FILE *out_stream) {
 	fprintf(out_stream, "Codestream index from main header: {\n");
 
 	std::stringstream ss;
-	ss << "\t Main header start position=" << cstr_index->main_head_start
+	ss << "\t Main header start position=" << cstr_index->mainHeaderStart
 			<< std::endl << "\t Main header end position="
-			<< cstr_index->main_head_end << std::endl;
+			<< cstr_index->mainHeaderEnd << std::endl;
 
 	fprintf(out_stream, "%s", ss.str().c_str());
 	fprintf(out_stream, "\t Marker list: {\n");
 
 	if (cstr_index->marker) {
-		for (uint32_t it_marker = 0; it_marker < cstr_index->marknum; it_marker++) {
+		for (uint32_t it_marker = 0; it_marker < cstr_index->numMarkers; it_marker++) {
 			fprintf(out_stream, "\t\t type=%#x, pos=%" PRIu64", len=%d\n",
 					cstr_index->marker[it_marker].id,
 					cstr_index->marker[it_marker].pos,
@@ -2760,46 +2760,46 @@ void CodeStreamDecompress::dump_MH_index(FILE *out_stream) {
 	}
 
 	fprintf(out_stream, "\t }\n");
-	if (cstr_index->tile_index) {
+	if (cstr_index->tileIndex) {
 		/* Simple test to avoid to write empty information*/
 		uint32_t acc_nb_of_tile_part = 0;
-		for (uint32_t i = 0; i < cstr_index->nb_of_tiles; i++)
-			acc_nb_of_tile_part += cstr_index->tile_index[i].nb_tps;
+		for (uint32_t i = 0; i < cstr_index->numTiles; i++)
+			acc_nb_of_tile_part += cstr_index->tileIndex[i].numTileParts;
 		if (acc_nb_of_tile_part) {
 			fprintf(out_stream, "\t Tile index: {\n");
-			for (uint32_t i = 0; i < cstr_index->nb_of_tiles; i++) {
+			for (uint32_t i = 0; i < cstr_index->numTiles; i++) {
 				uint32_t nb_of_tile_part =
-						cstr_index->tile_index[i].nb_tps;
+						cstr_index->tileIndex[i].numTileParts;
 				fprintf(out_stream, "\t\t nb of tile-part in tile [%u]=%u\n",
 						i, nb_of_tile_part);
 
-				if (cstr_index->tile_index[i].tp_index) {
+				if (cstr_index->tileIndex[i].tilePartIndex) {
 					for (uint32_t it_tile_part = 0; it_tile_part < nb_of_tile_part;
 							it_tile_part++) {
 						ss.clear();
 						ss << "\t\t\t tile-part[" << it_tile_part << "]:"
 								<< " star_pos="
-								<< cstr_index->tile_index[i].tp_index[it_tile_part].start_pos
+								<< cstr_index->tileIndex[i].tilePartIndex[it_tile_part].start_pos
 								<< "," << " end_header="
-								<< cstr_index->tile_index[i].tp_index[it_tile_part].end_header
+								<< cstr_index->tileIndex[i].tilePartIndex[it_tile_part].end_header
 								<< "," << " end_pos="
-								<< cstr_index->tile_index[i].tp_index[it_tile_part].end_pos
+								<< cstr_index->tileIndex[i].tilePartIndex[it_tile_part].end_pos
 								<< std::endl;
 						fprintf(out_stream, "%s", ss.str().c_str());
 					}
 				}
 
-				if (cstr_index->tile_index[i].marker) {
+				if (cstr_index->tileIndex[i].marker) {
 					for (uint32_t it_marker = 0;
-							it_marker < cstr_index->tile_index[i].marknum;
+							it_marker < cstr_index->tileIndex[i].numMarkers;
 							it_marker++) {
 						ss.clear();
 						ss << "\t\t type="
-								<< cstr_index->tile_index[i].marker[it_marker].id
+								<< cstr_index->tileIndex[i].marker[it_marker].id
 								<< "," << " pos="
-								<< cstr_index->tile_index[i].marker[it_marker].pos
+								<< cstr_index->tileIndex[i].marker[it_marker].pos
 								<< "," << " len="
-								<< cstr_index->tile_index[i].marker[it_marker].len
+								<< cstr_index->tileIndex[i].marker[it_marker].len
 								<< std::endl;
 						fprintf(out_stream, "%s", ss.str().c_str());
 					}
@@ -2874,17 +2874,17 @@ void CodeStreamDecompress::dump_image_comp_header(grk_image_comp *comp_header, b
 bool CodeStreamDecompress::allocate_tile_element_cstr_index(void) {
 	auto index = getIndex();
 	auto cp = getCodingParams();
-	if (!index->tile_index){
-		index->nb_of_tiles = cp->t_grid_width * cp->t_grid_height;
-		index->tile_index = (grk_tile_index*) grkCalloc(index->nb_of_tiles, sizeof(grk_tile_index));
-		if (!index->tile_index)
+	if (!index->tileIndex){
+		index->numTiles = cp->t_grid_width * cp->t_grid_height;
+		index->tileIndex = (grk_tile_index*) grkCalloc(index->numTiles, sizeof(grk_tile_index));
+		if (!index->tileIndex)
 			return false;
 
-		for (uint32_t i = 0; i < index->nb_of_tiles;i++) {
-			index->tile_index[i].maxmarknum = 100;
-			index->tile_index[i].marknum = 0;
-			index->tile_index[i].marker =	(grk_marker_info*) grkCalloc(index->tile_index[i].maxmarknum,	sizeof(grk_marker_info));
-			if (!index->tile_index[i].marker)
+		for (uint32_t i = 0; i < index->numTiles;i++) {
+			index->tileIndex[i].allocatedMarkers = 100;
+			index->tileIndex[i].numMarkers = 0;
+			index->tileIndex[i].marker =	(grk_marker_info*) grkCalloc(index->tileIndex[i].allocatedMarkers,	sizeof(grk_marker_info));
+			if (!index->tileIndex[i].marker)
 				return false;
 		}
 	}
@@ -2895,15 +2895,15 @@ grk_codestream_index* CodeStreamDecompress::create_cstr_index(void) {
 	if (!cstr_index)
 		return nullptr;
 
-	cstr_index->maxmarknum = 100;
-	cstr_index->marknum = 0;
-	cstr_index->marker = (grk_marker_info*) grkCalloc(cstr_index->maxmarknum,
+	cstr_index->allocatedMarkers = 100;
+	cstr_index->numMarkers = 0;
+	cstr_index->marker = (grk_marker_info*) grkCalloc(cstr_index->allocatedMarkers,
 			sizeof(grk_marker_info));
 	if (!cstr_index->marker) {
 		grkFree(cstr_index);
 		return nullptr;
 	}
-	cstr_index->tile_index = nullptr;
+	cstr_index->tileIndex = nullptr;
 
 	return cstr_index;
 }

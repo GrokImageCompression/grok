@@ -38,7 +38,7 @@ public:
    void initDecompress(grk_dparameters  *p_param);
    bool setDecompressWindow(grkRectU32 window);
    bool decompress( grk_plugin_tile *tile);
-   bool decompressTile(uint16_t tile_index);
+   bool decompressTile(uint16_t tileIndex);
    bool endDecompress(void);
    void dump(uint32_t flag, FILE *out_stream);
 

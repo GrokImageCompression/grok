@@ -843,9 +843,9 @@ bool FileFormatCompress::compress(grk_plugin_tile* tile){
 
 	return codeStream->compress(tile);
 }
-bool FileFormatCompress::compressTile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size){
+bool FileFormatCompress::compressTile(uint16_t tileIndex,	uint8_t *p_data, uint64_t data_size){
 
-	return codeStream->compressTile(tile_index, p_data, data_size);
+	return codeStream->compressTile(tileIndex, p_data, data_size);
 }
 bool FileFormatCompress::endCompress(void){
 	/* customization of the end compressing */

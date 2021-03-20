@@ -110,7 +110,7 @@ struct PrecinctImpl {
 	template<typename T> bool initCodeBlock(T* block, uint64_t cblkno){
 		if (block->non_empty())
 			return true;
-		if (!block->alloc())
+		if (!block->init())
 			return false;
 		block->setRect(getCodeBlockBounds(cblkno));
 

@@ -39,12 +39,12 @@ CodeStream::~CodeStream(){
 	m_cp.destroy();
 	if (cstr_index) {
 		grkFree(cstr_index->marker);
-		if (cstr_index->tile_index) {
-			for (uint32_t i = 0; i < cstr_index->nb_of_tiles; i++) {
-				grkFree(cstr_index->tile_index[i].tp_index);
-				grkFree(cstr_index->tile_index[i].marker);
+		if (cstr_index->tileIndex) {
+			for (uint32_t i = 0; i < cstr_index->numTiles; i++) {
+				grkFree(cstr_index->tileIndex[i].tilePartIndex);
+				grkFree(cstr_index->tileIndex[i].marker);
 			}
-			grkFree(cstr_index->tile_index);
+			grkFree(cstr_index->tileIndex);
 		}
 		grkFree(cstr_index);
 	}

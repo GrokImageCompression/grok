@@ -18,6 +18,15 @@
 
 namespace grk {
 
+// bytes available in PLT marker to store packet lengths
+// (4 bytes are reserved for (marker + marker length), and 1 byte for index)
+const uint32_t available_packet_len_bytes_per_plt = USHRT_MAX - 1 - 4;
+
+// minimum number of packet lengths that can be stored in a full
+// length PLT marker
+// (5 is maximum number of bytes for a single packet length)
+const uint32_t min_packets_per_full_plt = available_packet_len_bytes_per_plt / 5;
+
 // TLM(2) + Ltlm(2) + Ztlm(1) + Stlm(1)
 const uint32_t tlm_marker_start_bytes = 6;
 
@@ -95,7 +104,7 @@ bool TileLengthMarkers::read(uint8_t *p_header_data, uint16_t header_size){
 		}
 		// read tile part length
 		grk_read<uint32_t>(p_header_data, &Ptlm_i, bytes_per_tile_part_length);
-		auto info =	L_iT ? grk_tl_info((uint16_t) Ttlm_i, Ptlm_i) : grk_tl_info(Ptlm_i);
+		auto info =	L_iT ? grkTileInfo((uint16_t) Ttlm_i, Ptlm_i) : grkTileInfo(Ptlm_i);
 		push(i_TLM, info);
 		p_header_data += bytes_per_tile_part_length;
 	}
@@ -103,7 +112,7 @@ bool TileLengthMarkers::read(uint8_t *p_header_data, uint16_t header_size){
 	return true;
 }
 
-void TileLengthMarkers::push(uint8_t i_TLM, grk_tl_info info) {
+void TileLengthMarkers::push(uint8_t i_TLM, grkTileInfo info) {
 	auto pair = m_markers->find(i_TLM);
 
 	if (pair != m_markers->end()) {
@@ -125,7 +134,7 @@ void TileLengthMarkers::getInit(void){
 			m_curr_vec = pair->second;
 	}
 }
-grk_tl_info TileLengthMarkers::getNext(void){
+grkTileInfo TileLengthMarkers::getNext(void){
 	if (!m_markers)
 		return 0;
 	if (m_curr_vec) {
@@ -190,7 +199,7 @@ bool TileLengthMarkers::writeBegin(uint16_t totalTileParts) {
 
 void TileLengthMarkers::writeUpdate(uint16_t tileIndex, uint32_t tile_part_size) {
 	assert(tileIndex <= 255);
-    push(m_markerIndex,	grk_tl_info((uint8_t)tileIndex,	tile_part_size));
+    push(m_markerIndex,	grkTileInfo((uint8_t)tileIndex,	tile_part_size));
 }
 
 bool TileLengthMarkers::writeEnd(void) {
@@ -221,27 +230,27 @@ bool TileLengthMarkers::addToIndex(uint16_t tileno,
 									uint64_t pos,
 									uint32_t len) {
 	assert(codestreamIndex != nullptr);
-	assert(codestreamIndex->tile_index != nullptr);
-	auto tileIndex = codestreamIndex->tile_index + tileno;
-	auto marknum = tileIndex->marknum;
-	if (marknum + 1 > tileIndex->maxmarknum) {
-		auto oldMax = tileIndex->maxmarknum;
-		tileIndex->maxmarknum += 100U;
+	assert(codestreamIndex->tileIndex != nullptr);
+	auto tileIndex = codestreamIndex->tileIndex + tileno;
+	auto numMarkers = tileIndex->numMarkers;
+	if (numMarkers + 1 > tileIndex->allocatedMarkers) {
+		auto oldMax = tileIndex->allocatedMarkers;
+		tileIndex->allocatedMarkers += 100U;
 		auto new_marker = (grk_marker_info*) grkRealloc(tileIndex->marker,
-													tileIndex->maxmarknum* sizeof(grk_marker_info));
+													tileIndex->allocatedMarkers* sizeof(grk_marker_info));
 		if (!new_marker) {
 			grkFree(tileIndex->marker);
 			tileIndex->marker = nullptr;
-			tileIndex->maxmarknum = 0;
-			tileIndex->marknum = 0;
+			tileIndex->allocatedMarkers = 0;
+			tileIndex->numMarkers = 0;
 			GRK_ERROR("Not enough memory to add TLM marker");
 			return false;
 		}
 		tileIndex->marker = new_marker;
-		for (uint32_t i = oldMax; i < tileIndex->maxmarknum; ++i)
+		for (uint32_t i = oldMax; i < tileIndex->allocatedMarkers; ++i)
 			memset(tileIndex->marker+i,0,sizeof(grk_marker_info));
 	}
-	auto tileMarker = tileIndex->marker + marknum;
+	auto tileMarker = tileIndex->marker + numMarkers;
 	// avoid duplicates
 	if (tileMarker->id != 0)
 		return true;
@@ -249,12 +258,12 @@ bool TileLengthMarkers::addToIndex(uint16_t tileno,
 	tileMarker->id = id;
 	tileMarker->pos = pos;
 	tileMarker->len =len;
-	tileIndex->marknum++;
+	tileIndex->numMarkers++;
 
 	if (id == J2K_MS_SOT) {
-		uint32_t current_tile_part = tileIndex->current_tpsno;
-		if (tileIndex->tp_index)
-			tileIndex->tp_index[current_tile_part].start_pos =	pos;
+		uint32_t current_tile_part = tileIndex->currentTilePartIndex;
+		if (tileIndex->tilePartIndex)
+			tileIndex->tilePartIndex[current_tile_part].start_pos =	pos;
 	}
 	return true;
 }

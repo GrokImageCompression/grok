@@ -135,7 +135,7 @@ struct CompressCodeblock : public Codeblock {
 		grkFree(layers);
 		grkFree(passes);
 	}
-	bool alloc() {
+	bool init() {
 		if (!layers) {
 			layers = (Layer*) grkCalloc(100, sizeof(Layer));
 			if (!layers)
@@ -208,7 +208,7 @@ struct DecompressCodeblock: public Codeblock {
 
 		return segs + segmentIndex;
 	}
-	bool alloc(){
+	bool init(){
 		return true;
 	}
 	uint32_t  getNumSegments(void){

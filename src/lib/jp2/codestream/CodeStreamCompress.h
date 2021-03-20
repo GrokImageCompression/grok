@@ -35,7 +35,7 @@ public:
    bool startCompress(void);
    bool initCompress(grk_cparameters  *p_param,GrkImage *p_image);
    bool compress(grk_plugin_tile* tile);
-   bool compressTile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size);
+   bool compressTile(uint16_t tileIndex,	uint8_t *p_data, uint64_t data_size);
    bool endCompress(void);
 private:
 	bool init_header_writing(void);
@@ -130,12 +130,12 @@ private:
      * Writes the QCC marker (quantization component)
      *
      * @param       codeStream  JPEG 2000 code stream
-     * @param 		tile_index 	current tile index
+     * @param 		tileIndex 	current tile index
      * @param       comp_no     the index of the component to output.
      * @param       stream      buffered stream.
 
      */
-    bool write_qcc( uint16_t tile_index, uint32_t comp_no,
+    bool write_qcc( uint16_t tileIndex, uint32_t comp_no,
     		BufferedStream *stream);
 
     bool write_qcc(uint32_t comp_no);

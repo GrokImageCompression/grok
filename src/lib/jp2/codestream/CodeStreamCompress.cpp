@@ -608,17 +608,17 @@ cleanup:
 
 	return rc;
 }
-bool CodeStreamCompress::compressTile(uint16_t tile_index,	uint8_t *p_data, uint64_t uncompressed_data_size){
+bool CodeStreamCompress::compressTile(uint16_t tileIndex,	uint8_t *p_data, uint64_t uncompressed_data_size){
 	if (!p_data)
 		return false;
 	bool rc = false;
 
 	auto currentTileProcessor = new TileProcessor(this,m_stream,true,false);
-	currentTileProcessor->m_tile_index = tile_index;
+	currentTileProcessor->m_tile_index = tileIndex;
 
 	if (!currentTileProcessor->pre_write_tile()) {
 		GRK_ERROR("Error while pre_write_tile with tile index = %u",
-				tile_index);
+				tileIndex);
 		goto cleanup;
 	}
 	/* now copy data into the tile component */
@@ -630,7 +630,7 @@ bool CodeStreamCompress::compressTile(uint16_t tile_index,	uint8_t *p_data, uint
 		goto cleanup;
 	if (!post_write_tile(currentTileProcessor)) {
 		GRK_ERROR("Error while j2k_post_write_tile with tile index = %u",
-				tile_index);
+				tileIndex);
 		goto cleanup;
 	}
 	rc = true;
@@ -715,7 +715,7 @@ bool CodeStreamCompress::write_mct_record(grk_mct_data *p_mct_record, BufferedSt
 	return stream->write_bytes(p_mct_record->m_data, p_mct_record->m_data_size);
 }
 bool CodeStreamCompress::get_end_header(void) {
-	cstr_index->main_head_end = m_stream->tell();
+	cstr_index->mainHeaderEnd = m_stream->tell();
 
 	return true;
 }

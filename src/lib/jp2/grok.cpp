@@ -292,11 +292,11 @@ bool GRK_CALLCONV grk_decompress( grk_codec *codecWrapper, grk_plugin_tile *tile
 	}
 	return false;
 }
-bool GRK_CALLCONV grk_decompress_tile( grk_codec *codecWrapper,uint16_t tile_index) {
+bool GRK_CALLCONV grk_decompress_tile( grk_codec *codecWrapper,uint16_t tileIndex) {
 	if (codecWrapper) {
 		auto codec = GrkCodec::getImpl(codecWrapper);
 		bool rc;
-		rc =  codec->m_decompressor ? codec->m_decompressor->decompressTile(tile_index) : false;
+		rc =  codec->m_decompressor ? codec->m_decompressor->decompressTile(tileIndex) : false;
 		return rc;
 	}
 	return false;
@@ -450,11 +450,11 @@ bool GRK_CALLCONV grk_compress_end( grk_codec *codecWrapper) {
 	}
 	return false;
 }
-bool GRK_CALLCONV grk_compress_tile( grk_codec *codecWrapper, uint16_t tile_index,
+bool GRK_CALLCONV grk_compress_tile( grk_codec *codecWrapper, uint16_t tileIndex,
 		uint8_t *p_data, uint64_t data_size) {
 	if (codecWrapper && p_data) {
 		auto codec = GrkCodec::getImpl(codecWrapper);
-		return codec->m_compressor ? codec->m_compressor->compressTile(tile_index, p_data, data_size) : false;
+		return codec->m_compressor ? codec->m_compressor->compressTile(tileIndex, p_data, data_size) : false;
 	}
 	return false;
 }

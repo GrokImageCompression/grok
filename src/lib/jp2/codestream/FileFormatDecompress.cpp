@@ -283,8 +283,8 @@ bool FileFormatDecompress::decompress( grk_plugin_tile *tile){
 
 	return applyColour();
 }
-bool FileFormatDecompress::decompressTile(uint16_t tile_index) {
-	if (!codeStream->decompressTile(tile_index)) {
+bool FileFormatDecompress::decompressTile(uint16_t tileIndex) {
+	if (!codeStream->decompressTile(tileIndex)) {
 		GRK_ERROR("Failed to decompress JP2 file");
 		return false;
 	}

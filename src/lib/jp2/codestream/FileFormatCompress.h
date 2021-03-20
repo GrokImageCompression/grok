@@ -30,7 +30,7 @@ public:
    bool initCompress(grk_cparameters  *p_param,GrkImage *p_image);
    bool startCompress(void);
    bool compress(grk_plugin_tile* tile);
-   bool compressTile(uint16_t tile_index,	uint8_t *p_data, uint64_t data_size);
+   bool compressTile(uint16_t tileIndex,	uint8_t *p_data, uint64_t data_size);
    bool endCompress(void);
 
 private:
