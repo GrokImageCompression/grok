@@ -80,7 +80,7 @@ struct Codeblock : public grkBuffer2d<int32_t, AllocatorAligned>, public ICachea
 	virtual ~Codeblock(){
 		compressedStream.dealloc();
 	}
-	Codeblock(const Codeblock &rhs): grkBuffer2d<int32_t, AllocatorAligned>(rhs),
+	Codeblock(const Codeblock &rhs): grkBuffer2d(rhs),
 									numbps(rhs.numbps),
 									numlenbits(rhs.numlenbits),
 									numPassesInPacket(rhs.numPassesInPacket)
@@ -100,10 +100,10 @@ struct Codeblock : public grkBuffer2d<int32_t, AllocatorAligned>, public ICachea
 			numbps = rhs.numbps;
 			numlenbits = rhs.numlenbits;
 			numPassesInPacket = rhs.numPassesInPacket;
-	#ifdef DEBUG_LOSSLESS_T2
+			#ifdef DEBUG_LOSSLESS_T2
 			included = rhs.included;
 			packet_length_info = rhs.packet_length_info;
-	#endif
+			#endif
 		}
 		return *this;
 	}

@@ -133,6 +133,7 @@ struct PrecinctImpl {
 				try {
 					incltree = new TagTree(grid_width, grid_height);
 				} catch (std::exception &e) {
+					GRK_UNUSED(e);
 					GRK_WARN("No incltree created.");
 				}
 			} else {
@@ -146,6 +147,7 @@ struct PrecinctImpl {
 				try {
 					imsbtree = new TagTree(grid_width, grid_height);
 				} catch (std::exception &e) {
+					GRK_UNUSED(e);
 					GRK_WARN("No imsbtree created.");
 				}
 			} else {
