@@ -53,7 +53,7 @@ public:
    bool decompressTile(uint16_t tileIndex);
    bool endDecompress(void);
    void initDecompress(grk_dparameters  *p_param);
-   grk_codestream_index* getIndex(void);
+   CodeStreamInfo* getIndex(void);
    GrkImage* getCompositeImage();
    bool readMarker(void);
    GrkImage* getHeaderImage(void);
@@ -84,7 +84,7 @@ protected:
  	 */
  	void dump_image_comp_header( grk_image_comp  *comp, bool dev_dump_flag,
  			FILE *out_stream);
- 	 grk_codestream_index  *  create_cstr_index(void);
+ 	 CodeStreamInfo  *  create_cstr_index(void);
  	 bool allocate_tile_element_cstr_index(void);
 private:
  	bool endOfCodeStream(void);

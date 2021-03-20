@@ -123,8 +123,6 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Quantizer.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/HTParams.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/HTParams.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/LengthMarkers.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/LengthMarkers.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/SIZMarker.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/SIZMarker.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/PPMMarker.h
@@ -136,6 +134,8 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/cache/TileCache.h
   ${CMAKE_CURRENT_SOURCE_DIR}/cache/MemManager.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/cache/MemManager.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/cache/LengthCache.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/cache/LengthCache.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/point_transform/mct.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/point_transform/mct.h

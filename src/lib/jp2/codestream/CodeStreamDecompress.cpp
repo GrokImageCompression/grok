@@ -71,8 +71,8 @@ CodeStreamDecompress::CodeStreamDecompress( BufferedStream *stream) :
 	m_decompressorState.m_last_sot_read_pos = 0;
 
 	/* code stream index creation */
-	cstr_index = create_cstr_index();
-	if (!cstr_index) {
+	codeStreamInfo = create_cstr_index();
+	if (!codeStreamInfo) {
 		delete m_decompressorState.m_default_tcp;
 		throw std::runtime_error("Out of memory");
 	}
@@ -162,8 +162,8 @@ TileCodingParams* CodeStreamDecompress::get_current_decode_tcp() {
 			m_cp.tcps + tileProcessor->m_tile_index :
 			m_decompressorState.m_default_tcp;
 }
-grk_codestream_index* CodeStreamDecompress::getIndex(void){
-	return cstr_index;
+CodeStreamInfo* CodeStreamDecompress::getIndex(void){
+	return codeStreamInfo;
 }
 bool CodeStreamDecompress::isDecodingTilePartHeader() {
 	return (m_decompressorState.getState() & J2K_DEC_STATE_TPH);
@@ -368,7 +368,7 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex){
 		m_headerImage->copyHeader(getCompositeImage());
 	}
 
-	if (cstr_index) {
+	if (codeStreamInfo) {
 		/*Allocate and initialize some elements of codestream index*/
 		if (!allocate_tile_element_cstr_index()) {
 			m_headerError = true;
@@ -441,7 +441,7 @@ bool CodeStreamDecompress::endOfCodeStream(void){
 bool CodeStreamDecompress::decompressTiles(void) {
 	uint16_t numTilesToDecompress = (uint16_t)(m_cp.t_grid_height* m_cp.t_grid_width);
 	m_multiTile = numTilesToDecompress > 1;
-	if (cstr_index) {
+	if (codeStreamInfo) {
 		if (!allocate_tile_element_cstr_index()) {
 			m_headerError = true;
 			return false;
@@ -701,35 +701,35 @@ bool CodeStreamDecompress::copy_default_tcp(void) {
 bool CodeStreamDecompress::add_mhmarker(uint16_t id,
 										uint64_t pos,
 										uint32_t len) {
-	assert(cstr_index != nullptr);
+	assert(codeStreamInfo != nullptr);
 
 	/* expand the list? */
-	if ((cstr_index->numMarkers + 1) > cstr_index->allocatedMarkers) {
-		grk_marker_info *new_marker;
-		uint32_t oldMax = cstr_index->allocatedMarkers;
-		cstr_index->allocatedMarkers += 100U;
-		new_marker = (grk_marker_info*) grkRealloc(cstr_index->marker,
-								cstr_index->allocatedMarkers * sizeof(grk_marker_info));
+	if ((codeStreamInfo->numMarkers + 1) > codeStreamInfo->allocatedMarkers) {
+		MarkerInfo *new_marker;
+		uint32_t oldMax = codeStreamInfo->allocatedMarkers;
+		codeStreamInfo->allocatedMarkers += 100U;
+		new_marker = (MarkerInfo*) grkRealloc(codeStreamInfo->marker,
+								codeStreamInfo->allocatedMarkers * sizeof(MarkerInfo));
 		if (!new_marker) {
-			grkFree(cstr_index->marker);
-			cstr_index->marker = nullptr;
-			cstr_index->allocatedMarkers = 0;
-			cstr_index->numMarkers = 0;
+			grkFree(codeStreamInfo->marker);
+			codeStreamInfo->marker = nullptr;
+			codeStreamInfo->allocatedMarkers = 0;
+			codeStreamInfo->numMarkers = 0;
 			GRK_ERROR( "Not enough memory to add mh marker");
 			return false;
 		}
-		cstr_index->marker = new_marker;
-		for (uint32_t i = oldMax; i < cstr_index->allocatedMarkers; ++i)
-			memset(cstr_index->marker+i, 0, sizeof(grk_marker_info));
+		codeStreamInfo->marker = new_marker;
+		for (uint32_t i = oldMax; i < codeStreamInfo->allocatedMarkers; ++i)
+			memset(codeStreamInfo->marker+i, 0, sizeof(MarkerInfo));
 	}
 
-	auto marker = cstr_index->marker + cstr_index->numMarkers;
+	auto marker = codeStreamInfo->marker + codeStreamInfo->numMarkers;
 
 	/* add the marker */
 	marker->id = id;
 	marker->pos = pos;
 	marker->len = len;
-	cstr_index->numMarkers++;
+	codeStreamInfo->numMarkers++;
 	return true;
 }
 
@@ -824,7 +824,7 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void) {
 		if (!process_marker(marker_handler, marker_size))
 			return false;
 
-		if (cstr_index) {
+		if (codeStreamInfo) {
 			/* Add the marker to the code stream index*/
 			if (!add_mhmarker(marker_handler->id,
 					m_stream->tell() - marker_size - 4U, marker_size + 4U)) {
@@ -851,8 +851,8 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void) {
 		return false;
 	}
 	// we don't include the SOC marker, therefore subtract 2
-	if (cstr_index)
-		cstr_index->mainHeaderEnd = (uint32_t) m_stream->tell() - 2;
+	if (codeStreamInfo)
+		codeStreamInfo->mainHeaderEnd = (uint32_t) m_stream->tell() - 2;
 
 	/* Next step: read a tile-part header */
 	m_decompressorState.setState(J2K_DEC_STATE_TPH_SOT);
@@ -889,7 +889,7 @@ bool CodeStreamDecompress::decompressTile() {
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
 	bool rc = false;
 	if (!tileCache || !tileCache->processor->getImage()) {
-		if (!cstr_index->tileIndex) {
+		if (!codeStreamInfo->tileInfo) {
 			if (!allocate_tile_element_cstr_index())
 				return false;
 		}
@@ -898,13 +898,13 @@ bool CodeStreamDecompress::decompressTile() {
 		if (m_cp.tlm_markers){
 			// for first SOT position, we add two to skip SOC marker
 			if (!m_cp.tlm_markers->skipTo((uint16_t)tileIndexToDecode(),
-											m_stream,cstr_index->mainHeaderEnd+2))
+											m_stream,codeStreamInfo->mainHeaderEnd+2))
 				return false;
 		} else {
 			/* Move into the code stream to the first SOT used to decompress the desired tile */
 			uint16_t tile_index_to_decompress =	(uint16_t) (tileIndexToDecode());
-			if (cstr_index->tileIndex && cstr_index->tileIndex->tilePartIndex) {
-				if (!cstr_index->tileIndex[tile_index_to_decompress].numTileParts) {
+			if (codeStreamInfo->tileInfo && codeStreamInfo->tileInfo->tilePartInfo) {
+				if (!codeStreamInfo->tileInfo[tile_index_to_decompress].numTileParts) {
 					/* the index for this tile has not been built,
 					 *  so move to the last SOT read */
 					if (!(m_stream->seek(m_decompressorState.m_last_sot_read_pos	+ 2))) {
@@ -912,7 +912,7 @@ bool CodeStreamDecompress::decompressTile() {
 						return false;
 					}
 				} else {
-					if (!(m_stream->seek(cstr_index->tileIndex[tile_index_to_decompress].tilePartIndex[0].start_pos	+ 2))) {
+					if (!(m_stream->seek(codeStreamInfo->tileInfo[tile_index_to_decompress].tilePartInfo[0].startPosition	+ 2))) {
 						GRK_ERROR("Problem with seek function");
 						return false;
 					}
@@ -2057,7 +2057,7 @@ bool CodeStreamDecompress::read_unk(uint16_t *output_marker) {
 				return false;
 			} else {
 				/* Add the marker to the code stream index*/
-				if (cstr_index && marker_handler->id != J2K_MS_SOT) {
+				if (codeStreamInfo && marker_handler->id != J2K_MS_SOT) {
 					bool res = add_mhmarker(J2K_MS_UNK, m_stream->tell() - size_unk, size_unk);
 					if (res == false) {
 						GRK_ERROR("Not enough memory to add mh marker");
@@ -2128,8 +2128,8 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool *canDecompress) {
 			if (!process_marker(marker_handler, marker_size))
 				return false;
 			/* Add the marker to the code stream index*/
-			if (cstr_index) {
-				if (!TileLengthMarkers::addToIndex(m_currentTileProcessor->m_tile_index, cstr_index,
+			if (codeStreamInfo) {
+				if (!TileLengthMarkers::addTileMarkerInfo(m_currentTileProcessor->m_tile_index, codeStreamInfo,
 													marker_handler->id,
 													(uint32_t) m_stream->tell() - marker_size - grk_marker_length,
 													marker_size + grk_marker_length)) {
@@ -2518,12 +2518,12 @@ bool CodeStreamDecompress::read_soc() {
 	/* Next marker should be a SIZ marker in the main header */
 	m_decompressorState.setState(J2K_DEC_STATE_MH_SIZ);
 
-	if (cstr_index) {
+	if (codeStreamInfo) {
 		/* FIXME move it in a index structure included in this*/
-		cstr_index->mainHeaderStart = m_stream->tell() - 2;
+		codeStreamInfo->mainHeaderStart = m_stream->tell() - 2;
 		/* Add the marker to the code stream index*/
 		if (!add_mhmarker(J2K_MS_SOC,
-				cstr_index->mainHeaderStart, 2)) {
+				codeStreamInfo->mainHeaderStart, 2)) {
 			GRK_ERROR("Not enough memory to add mh marker");
 			return false;
 		}
@@ -2743,63 +2743,63 @@ void CodeStreamDecompress::dump_MH_index(FILE *out_stream) {
 	fprintf(out_stream, "Codestream index from main header: {\n");
 
 	std::stringstream ss;
-	ss << "\t Main header start position=" << cstr_index->mainHeaderStart
+	ss << "\t Main header start position=" << codeStreamInfo->mainHeaderStart
 			<< std::endl << "\t Main header end position="
-			<< cstr_index->mainHeaderEnd << std::endl;
+			<< codeStreamInfo->mainHeaderEnd << std::endl;
 
 	fprintf(out_stream, "%s", ss.str().c_str());
 	fprintf(out_stream, "\t Marker list: {\n");
 
-	if (cstr_index->marker) {
-		for (uint32_t it_marker = 0; it_marker < cstr_index->numMarkers; it_marker++) {
+	if (codeStreamInfo->marker) {
+		for (uint32_t it_marker = 0; it_marker < codeStreamInfo->numMarkers; it_marker++) {
 			fprintf(out_stream, "\t\t type=%#x, pos=%" PRIu64", len=%d\n",
-					cstr_index->marker[it_marker].id,
-					cstr_index->marker[it_marker].pos,
-					cstr_index->marker[it_marker].len);
+					codeStreamInfo->marker[it_marker].id,
+					codeStreamInfo->marker[it_marker].pos,
+					codeStreamInfo->marker[it_marker].len);
 		}
 	}
 
 	fprintf(out_stream, "\t }\n");
-	if (cstr_index->tileIndex) {
+	if (codeStreamInfo->tileInfo) {
 		/* Simple test to avoid to write empty information*/
 		uint32_t acc_nb_of_tile_part = 0;
-		for (uint32_t i = 0; i < cstr_index->numTiles; i++)
-			acc_nb_of_tile_part += cstr_index->tileIndex[i].numTileParts;
+		for (uint32_t i = 0; i < codeStreamInfo->numTiles; i++)
+			acc_nb_of_tile_part += codeStreamInfo->tileInfo[i].numTileParts;
 		if (acc_nb_of_tile_part) {
 			fprintf(out_stream, "\t Tile index: {\n");
-			for (uint32_t i = 0; i < cstr_index->numTiles; i++) {
+			for (uint32_t i = 0; i < codeStreamInfo->numTiles; i++) {
 				uint32_t nb_of_tile_part =
-						cstr_index->tileIndex[i].numTileParts;
+						codeStreamInfo->tileInfo[i].numTileParts;
 				fprintf(out_stream, "\t\t nb of tile-part in tile [%u]=%u\n",
 						i, nb_of_tile_part);
 
-				if (cstr_index->tileIndex[i].tilePartIndex) {
+				if (codeStreamInfo->tileInfo[i].tilePartInfo) {
 					for (uint32_t it_tile_part = 0; it_tile_part < nb_of_tile_part;
 							it_tile_part++) {
 						ss.clear();
 						ss << "\t\t\t tile-part[" << it_tile_part << "]:"
 								<< " star_pos="
-								<< cstr_index->tileIndex[i].tilePartIndex[it_tile_part].start_pos
-								<< "," << " end_header="
-								<< cstr_index->tileIndex[i].tilePartIndex[it_tile_part].end_header
-								<< "," << " end_pos="
-								<< cstr_index->tileIndex[i].tilePartIndex[it_tile_part].end_pos
+								<< codeStreamInfo->tileInfo[i].tilePartInfo[it_tile_part].startPosition
+								<< "," << " endHeaderPosition="
+								<< codeStreamInfo->tileInfo[i].tilePartInfo[it_tile_part].endHeaderPosition
+								<< "," << " endPosition="
+								<< codeStreamInfo->tileInfo[i].tilePartInfo[it_tile_part].endPosition
 								<< std::endl;
 						fprintf(out_stream, "%s", ss.str().c_str());
 					}
 				}
 
-				if (cstr_index->tileIndex[i].marker) {
+				if (codeStreamInfo->tileInfo[i].markerInfo) {
 					for (uint32_t it_marker = 0;
-							it_marker < cstr_index->tileIndex[i].numMarkers;
+							it_marker < codeStreamInfo->tileInfo[i].numMarkers;
 							it_marker++) {
 						ss.clear();
 						ss << "\t\t type="
-								<< cstr_index->tileIndex[i].marker[it_marker].id
+								<< codeStreamInfo->tileInfo[i].markerInfo[it_marker].id
 								<< "," << " pos="
-								<< cstr_index->tileIndex[i].marker[it_marker].pos
+								<< codeStreamInfo->tileInfo[i].markerInfo[it_marker].pos
 								<< "," << " len="
-								<< cstr_index->tileIndex[i].marker[it_marker].len
+								<< codeStreamInfo->tileInfo[i].markerInfo[it_marker].len
 								<< std::endl;
 						fprintf(out_stream, "%s", ss.str().c_str());
 					}
@@ -2872,40 +2872,39 @@ void CodeStreamDecompress::dump_image_comp_header(grk_image_comp *comp_header, b
 		fprintf(out_stream, "}\n");
 }
 bool CodeStreamDecompress::allocate_tile_element_cstr_index(void) {
-	auto index = getIndex();
 	auto cp = getCodingParams();
-	if (!index->tileIndex){
-		index->numTiles = cp->t_grid_width * cp->t_grid_height;
-		index->tileIndex = (grk_tile_index*) grkCalloc(index->numTiles, sizeof(grk_tile_index));
-		if (!index->tileIndex)
+	if (!codeStreamInfo->tileInfo){
+		codeStreamInfo->numTiles = cp->t_grid_width * cp->t_grid_height;
+		codeStreamInfo->tileInfo = (TileInfo*) grkCalloc(codeStreamInfo->numTiles, sizeof(TileInfo));
+		if (!codeStreamInfo->tileInfo)
 			return false;
 
-		for (uint32_t i = 0; i < index->numTiles;i++) {
-			index->tileIndex[i].allocatedMarkers = 100;
-			index->tileIndex[i].numMarkers = 0;
-			index->tileIndex[i].marker =	(grk_marker_info*) grkCalloc(index->tileIndex[i].allocatedMarkers,	sizeof(grk_marker_info));
-			if (!index->tileIndex[i].marker)
+		for (uint32_t i = 0; i < codeStreamInfo->numTiles;i++) {
+			codeStreamInfo->tileInfo[i].allocatedMarkers = 100;
+			codeStreamInfo->tileInfo[i].numMarkers = 0;
+			codeStreamInfo->tileInfo[i].markerInfo =	(MarkerInfo*) grkCalloc(codeStreamInfo->tileInfo[i].allocatedMarkers,	sizeof(MarkerInfo));
+			if (!codeStreamInfo->tileInfo[i].markerInfo)
 				return false;
 		}
 	}
 	return true;
 }
-grk_codestream_index* CodeStreamDecompress::create_cstr_index(void) {
-	auto cstr_index = (grk_codestream_index*) grkCalloc(1,	sizeof(grk_codestream_index));
-	if (!cstr_index)
+CodeStreamInfo* CodeStreamDecompress::create_cstr_index(void) {
+	auto codeStreamInfo = (CodeStreamInfo*) grkCalloc(1,	sizeof(CodeStreamInfo));
+	if (!codeStreamInfo)
 		return nullptr;
 
-	cstr_index->allocatedMarkers = 100;
-	cstr_index->numMarkers = 0;
-	cstr_index->marker = (grk_marker_info*) grkCalloc(cstr_index->allocatedMarkers,
-			sizeof(grk_marker_info));
-	if (!cstr_index->marker) {
-		grkFree(cstr_index);
+	codeStreamInfo->allocatedMarkers = 100;
+	codeStreamInfo->numMarkers = 0;
+	codeStreamInfo->marker = (MarkerInfo*) grkCalloc(codeStreamInfo->allocatedMarkers,
+			sizeof(MarkerInfo));
+	if (!codeStreamInfo->marker) {
+		grkFree(codeStreamInfo);
 		return nullptr;
 	}
-	cstr_index->tileIndex = nullptr;
+	codeStreamInfo->tileInfo = nullptr;
 
-	return cstr_index;
+	return codeStreamInfo;
 }
 
 }

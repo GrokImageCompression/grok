@@ -154,7 +154,7 @@ public:
 protected:
     bool 			exec(std::vector<PROCEDURE_FUNC> &p_procedure_list);
  	 CodingParams m_cp;
- 	 grk_codestream_index  *cstr_index;
+ 	 CodeStreamInfo  *codeStreamInfo;
  	 std::vector<PROCEDURE_FUNC> m_procedure_list;
 	 std::vector<PROCEDURE_FUNC> m_validation_list;
 	// stores header image information (decompress/compress)

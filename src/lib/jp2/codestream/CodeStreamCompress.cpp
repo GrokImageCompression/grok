@@ -715,7 +715,7 @@ bool CodeStreamCompress::write_mct_record(grk_mct_data *p_mct_record, BufferedSt
 	return stream->write_bytes(p_mct_record->m_data, p_mct_record->m_data_size);
 }
 bool CodeStreamCompress::get_end_header(void) {
-	cstr_index->mainHeaderEnd = m_stream->tell();
+	codeStreamInfo->mainHeaderEnd = m_stream->tell();
 
 	return true;
 }
@@ -745,7 +745,7 @@ bool CodeStreamCompress::init_header_writing(void) {
 	}
 	//end custom procedures
 
-	if (cstr_index)
+	if (codeStreamInfo)
 		m_procedure_list.push_back(std::bind(&CodeStreamCompress::get_end_header,this));
 	m_procedure_list.push_back(std::bind(&CodeStreamCompress::update_rates,this));
 

@@ -694,7 +694,7 @@ typedef struct _grk_dparameters {
 	 Set the number of highest resolution levels to be discarded.
 	 The image resolution is effectively divided by 2 to the power of the number of discarded levels.
 	 The reduce factor is limited by the smallest total number of decomposition levels among tiles.
-	 if greater than zero, then image is deocded to original dimension divided by 2^(cp_reduce);
+	 if greater than zero, then image is decoded to original dimension divided by 2^(cp_reduce);
 	 if equal to zero or not used, image is decompressed to full resolution
 	 */
 	uint8_t cp_reduce;
@@ -890,7 +890,7 @@ typedef struct _grk_image_comp {
 	GRK_COMPONENT_ASSOC association;
 } grk_image_comp;
 
-// colour, IPTC and XMP meta data
+// Image meta data: colour, IPTC and XMP
 typedef struct _grk_image_meta {
 	grk_object obj;
 	grk_color color;
@@ -901,9 +901,6 @@ typedef struct _grk_image_meta {
 } grk_image_meta;
 
 
-/**
- * Image
- * */
 typedef struct _grk_image {
 	grk_object obj;
 	/** XOsiz: horizontal offset from the origin of the reference grid
@@ -953,232 +950,6 @@ typedef struct _grk_image_comptparm {
 	/** true if data is signed */
 	bool sgnd;
 } grk_image_cmptparm;
-
-/*
- ==========================================================
- Information about the JPEG 2000 code stream
- ==========================================================
- */
-
-/**
- * Packet info
- * */
-typedef struct _grk_packet_info {
-	/** packet start position (including SOP marker if it exists) */
-	uint64_t start_pos;
-	/** end of packet header position (including EPH marker if it exists)*/
-	uint64_t end_ph_pos;
-	/** packet end position */
-	uint64_t end_pos;
-	/** packet distortion */
-	double disto;
-} grk_packet_info;
-
-/**
- * Marker info
- * */
-typedef struct _grk_marker_info {
-	/** marker id */
-	uint16_t id;
-	/** length, marker id included */
-	uint32_t len;
-	/** position in code stream */
-	uint64_t pos;
-} grk_marker_info;
-
-
-/**
- * Tile info
- */
-typedef struct _grk_tile_info {
-	/** value of thresh for each layer by tile cfr. Marcela   */
-	double *thresh;
-	/** number of tile */
-	uint16_t tileno;
-	/** start position */
-	uint64_t start_pos;
-	/** end position of the header */
-	uint64_t end_header;
-	/** end position */
-	uint64_t end_pos;
-	/** precinct number for each resolution level (width) */
-	uint32_t precinctGridWidth[GRK_J2K_MAXRLVLS];
-	/** precinct number for each resolution level (height) */
-	uint32_t precinctGridHeight[GRK_J2K_MAXRLVLS];
-	/** precinct size (in power of 2), in X for each resolution level */
-	uint32_t precinctWidthExp[GRK_J2K_MAXRLVLS];
-	/** precinct size (in power of 2), in Y for each resolution level */
-	uint32_t precinctHeightExp[GRK_J2K_MAXRLVLS];
-	/** information concerning packets inside tile */
-	grk_packet_info *packet;
-	int64_t numpix;
-	double distotile;
-	/** number of markers */
-	uint32_t numMarkers;
-	/** list of markers */
-	grk_marker_info *marker;
-	/** actual size of markers array */
-	uint32_t allocatedMarkers;
-	/** number of tile parts */
-	uint32_t num_tps;
-} grk_tile_info;
-
-/**
- * Code stream info
- */
-typedef struct _grk_codestream_info {
-	/** maximum distortion reduction on the whole image (add for Marcela) */
-	double D_max;
-	/** packet number */
-	uint32_t numIteratedPackets;
-	/** writing the packet in the index with t2_encode_packets */
-	uint32_t index_write;
-	/** component numbers */
-	uint32_t numcomps;
-	/** number of layer */
-	uint32_t numlayers;
-	/** number of decomposition for each component */
-	uint32_t *numdecompos;
-	/** number of markers */
-	uint32_t numMarkers;
-	/** list of markers */
-	grk_marker_info *marker;
-	/** actual size of markers array */
-	uint32_t allocatedMarkers;
-	/** main header position */
-	uint64_t mainHeaderStart;
-	/** main header position */
-	uint64_t mainHeaderEnd;
-	/** information regarding tiles inside image */
-	grk_tile_info *tile;
-} grk_codestream_info;
-
-/**
- * Component coding parameters info
- */
-typedef struct _grk_tccp_info {
-	/** component index */
-	uint32_t compno;
-	/** coding style */
-	uint8_t csty;
-	/** number of resolutions */
-	uint32_t numresolutions;
-	/** code-blocks width */
-	uint32_t cblkw;
-	/** code-blocks height */
-	uint32_t cblkh;
-	/** code block mode */
-	uint8_t cblk_sty;
-	/** discrete wavelet transform identifier */
-	uint8_t qmfbid;
-	/** quantisation style */
-	uint8_t qntsty;
-	/** stepsizes used for quantization */
-	uint32_t stepsizes_mant[GRK_J2K_MAXBANDS];
-	/** stepsizes used for quantization */
-	uint32_t stepsizes_expn[GRK_J2K_MAXBANDS];
-	/** number of guard bits */
-	uint8_t numgbits;
-	/** Region Of Interest shift */
-	uint32_t roishift;
-	/** precinct width power of 2 exponent, < 16*/
-	uint32_t precinctWidthExp[GRK_J2K_MAXRLVLS];
-	/** precinct height power of 2 exponent, < 16 */
-	uint32_t precinctHeightExp[GRK_J2K_MAXRLVLS];
-} grk_tccp_info;
-
-/**
- * Tile coding parameter info
- */
-typedef struct _grk_tile_v2_info {
-	/** number (index) of tile */
-	uint16_t tileno;
-	/** coding style */
-	uint32_t csty;
-	/** progression order */
-	GRK_PROG_ORDER prg;
-	/** number of layers */
-	uint16_t numlayers;
-	/** multi-component transform identifier */
-	uint8_t mct;
-	/** tile component coding parameters*/
-	grk_tccp_info *tccp_info;
-
-} grk_tile_info_v2;
-
-/**
- * Code stream info v2
- */
-typedef struct _grk_codestream_info_v2 {
-	/** tile origin in x = XTOsiz */
-	uint32_t tx0;
-	/** tile origin in y = YTOsiz */
-	uint32_t ty0;
-	/** tile size in x = XTsiz */
-	uint32_t t_width;
-	/** tile size in y = YTsiz */
-	uint32_t t_height;
-	/** number of tiles in X */
-	uint32_t t_grid_width;
-	/** number of tiles in Y */
-	uint32_t t_grid_height;
-	/** number of components*/
-	uint32_t nbcomps;
-	/** Default information regarding tiles inside image */
-	grk_tile_info_v2 m_default_tile_info;
-} grk_codestream_info_v2;
-
-/**
- * Tile part index info
- */
-typedef struct _grkTilePartIndex {
-	/** start position */
-	uint64_t start_pos;
-	/** end position of the header */
-	uint64_t end_header;
-	/** end position */
-	uint64_t end_pos;
-} grkTilePartIndex;
-
-/**
- * Tile index info
- */
-typedef struct _grk_tile_index {
-	/** tile index */
-	uint16_t tileno;
-	/** number of tile parts */
-	uint32_t numTileParts;
-	/** current nb of tile part (allocated)*/
-	uint32_t allocatedTileParts;
-	/** current tile-part index */
-	uint32_t currentTilePartIndex;
-	/** tile part index */
-	grkTilePartIndex *tilePartIndex;
-	/** number of markers */
-	uint32_t numMarkers;
-	/** array of markers */
-	grk_marker_info *marker;
-	/** actual size of markers array */
-	uint32_t allocatedMarkers;
-} grk_tile_index;
-
-/**
- * Code stream index info
- */
-typedef struct _grk_codestream_index {
-	/** main header start position (SOC position) */
-	uint64_t mainHeaderStart;
-	/** main header end position (first SOT position) */
-	uint64_t mainHeaderEnd;
-	/** number of markers */
-	uint32_t numMarkers;
-	/** list of markers */
-	grk_marker_info *marker;
-	/** actual size of markers array */
-	uint32_t allocatedMarkers;
-	uint32_t numTiles;
-	grk_tile_index *tileIndex;
-} grk_codestream_index;
 
 ////////////////////////////////////////////////
 // Structs to pass data between grok and plugin
@@ -1291,11 +1062,32 @@ GRK_API void GRK_CALLCONV grk_object_ref(grk_object *obj);
  *
  */
 GRK_API void GRK_CALLCONV grk_object_unref(grk_object *obj);
-/*
- ============================
- image function definitions
- ============================
+
+
+/**
+ * Set info handler
+ *
+ * @param p_callback    the callback function which will be used
+ * @param user_data   client object where will be returned the message
  */
+GRK_API bool GRK_CALLCONV grk_set_info_handler(grk_msg_callback p_callback,
+		void *user_data);
+/**
+ * Set warning handler
+ *
+ * @param p_callback    the callback function which will be used
+ * @param user_data   client object where will be returned the message
+ */
+GRK_API bool GRK_CALLCONV grk_set_warning_handler(grk_msg_callback p_callback,
+		void *user_data);
+/**
+ * Set error handler
+ *
+ * @param p_callback    the callback function which will be used
+ * @param user_data   client object where will be returned the message
+ */
+GRK_API bool GRK_CALLCONV grk_set_error_handler(grk_msg_callback p_callback,
+		void *user_data);
 
 /**
  * Create image
@@ -1326,12 +1118,6 @@ GRK_API void GRK_CALLCONV grk_image_all_components_data_free(grk_image *image);
  */
 GRK_API void GRK_CALLCONV grk_image_single_component_data_free(
 		grk_image_comp *image);
-
-/*
- =================================
- stream function definitions
- =================================
- */
 
 /**
  * Create an abstract stream. This function does nothing except
@@ -1428,37 +1214,6 @@ GRK_API size_t GRK_CALLCONV grk_stream_get_write_mem_stream_length(
  */
 GRK_API grk_stream* GRK_CALLCONV grk_stream_create_mapped_file_stream(
 		const char *fname, bool read_stream);
-
-/*
- ========================================
- logger function definitions
- ========================================
- */
-/**
- * Set info handler
- *
- * @param p_callback    the callback function which will be used
- * @param user_data   client object where will be returned the message
- */
-GRK_API bool GRK_CALLCONV grk_set_info_handler(grk_msg_callback p_callback,
-		void *user_data);
-/**
- * Set warning handler
- *
- * @param p_callback    the callback function which will be used
- * @param user_data   client object where will be returned the message
- */
-GRK_API bool GRK_CALLCONV grk_set_warning_handler(grk_msg_callback p_callback,
-		void *user_data);
-/**
- * Set error handler
- *
- * @param p_callback    the callback function which will be used
- * @param user_data   client object where will be returned the message
- */
-GRK_API bool GRK_CALLCONV grk_set_error_handler(grk_msg_callback p_callback,
-		void *user_data);
-
 
 /**
  * Create J2K/JP2 decompression structure

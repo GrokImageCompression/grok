@@ -1292,8 +1292,8 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress *codeStream) {
 		}
 	}
 	/* Index */
-	auto cstr_index = codeStream->getIndex();
-	if (cstr_index) {
+	auto codeStreamInfo = codeStream->getIndex();
+	if (codeStreamInfo) {
 		uint64_t current_pos = m_stream->tell();
 		if (current_pos < 2) {
 			GRK_ERROR("Stream too short");
@@ -1302,20 +1302,20 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress *codeStream) {
 		current_pos = (uint64_t) (current_pos - 2);
 
 		uint32_t current_tile_part =
-				cstr_index->tileIndex[m_tile_index].currentTilePartIndex;
-		cstr_index->tileIndex[m_tile_index].tilePartIndex[current_tile_part].end_header =
+				codeStreamInfo->tileInfo[m_tile_index].currentTilePart;
+		codeStreamInfo->tileInfo[m_tile_index].tilePartInfo[current_tile_part].endHeaderPosition =
 				current_pos;
-		cstr_index->tileIndex[m_tile_index].tilePartIndex[current_tile_part].end_pos =
+		codeStreamInfo->tileInfo[m_tile_index].tilePartInfo[current_tile_part].endPosition =
 				current_pos + tile_part_data_length + 2;
 
-		if (!TileLengthMarkers::addToIndex(
-				m_tile_index, cstr_index,
+		if (!TileLengthMarkers::addTileMarkerInfo(
+				m_tile_index, codeStreamInfo,
 				J2K_MS_SOD, current_pos, 0)) {
 			GRK_ERROR("Not enough memory to add tl marker");
 			return false;
 		}
 
-		/*cstr_index->numIteratedPackets = 0;*/
+		/*codeStreamInfo->numIteratedPackets = 0;*/
 	}
 	size_t current_read_size = 0;
 	if (tile_part_data_length) {

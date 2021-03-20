@@ -155,7 +155,7 @@ static void decompress_help_display(void) {
 			"    \"Quality\" of compression. Currently only implemented for PNG format.\n"
 			"	Default value is set to 9 (Z_BEST_COMPRESSION).\n"
 			"	Other options are 0 (Z_NO_COMPRESSION) and 1 (Z_BEST_SPEED)\n");
-	fprintf(stdout, "  [-t | -TileIndex] <tile index>\n"
+	fprintf(stdout, "  [-t | -TileInfo] <tile index>\n"
 			"    Index of tile to be decompressed\n");
 	fprintf(stdout,
 			"  [-d | -DecodeWindow] <x0,y0,x1,y1>\n"
@@ -454,7 +454,7 @@ int GrkDecompress::parseCommandLine(int argc,
 				0, "unsigned integer", cmd);
 		TCLAP::ValueArg<uint16_t> layerArg("l", "Layer", "Layer", false, 0,
 				"unsigned integer", cmd);
-		TCLAP::ValueArg<uint32_t> tileArg("t", "TileIndex", "Input tile index", false,
+		TCLAP::ValueArg<uint32_t> tileArg("t", "TileInfo", "Input tile index", false,
 				0, "unsigned integer", cmd);
 		TCLAP::ValueArg<std::string> precisionArg("p", "Precision", "Force precision",
 				false, "", "string", cmd);

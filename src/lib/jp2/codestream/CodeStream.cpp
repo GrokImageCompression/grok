@@ -23,7 +23,7 @@
 
 namespace grk {
 
-CodeStream::CodeStream(BufferedStream *stream) : cstr_index(nullptr),
+CodeStream::CodeStream(BufferedStream *stream) : codeStreamInfo(nullptr),
 																m_headerImage(nullptr),
 																m_currentTileProcessor(nullptr),
 																m_stream(stream),
@@ -37,16 +37,16 @@ CodeStream::~CodeStream(){
 	if (m_headerImage)
 		grk_object_unref(&m_headerImage->obj);
 	m_cp.destroy();
-	if (cstr_index) {
-		grkFree(cstr_index->marker);
-		if (cstr_index->tileIndex) {
-			for (uint32_t i = 0; i < cstr_index->numTiles; i++) {
-				grkFree(cstr_index->tileIndex[i].tilePartIndex);
-				grkFree(cstr_index->tileIndex[i].marker);
+	if (codeStreamInfo) {
+		grkFree(codeStreamInfo->marker);
+		if (codeStreamInfo->tileInfo) {
+			for (uint32_t i = 0; i < codeStreamInfo->numTiles; i++) {
+				grkFree(codeStreamInfo->tileInfo[i].tilePartInfo);
+				grkFree(codeStreamInfo->tileInfo[i].markerInfo);
 			}
-			grkFree(cstr_index->tileIndex);
+			grkFree(codeStreamInfo->tileInfo);
 		}
-		grkFree(cstr_index);
+		grkFree(codeStreamInfo);
 	}
 }
 CodingParams* CodeStream::getCodingParams(void){
