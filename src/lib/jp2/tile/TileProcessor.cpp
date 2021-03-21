@@ -781,7 +781,7 @@ bool TileProcessor::isWholeTileDecompress(uint32_t compno) {
 
 }
 
-bool TileProcessor::decompressT2(ChunkBuffer *src_buf) {
+bool TileProcessor::decompressT2(SparseBuffer *src_buf) {
 	m_tcp = m_cp->tcps + m_tile_index;
 
 	// optimization for regions that are close to largest decompressed resolution
@@ -821,7 +821,7 @@ bool TileProcessor::decompressT1(void) {
 
 			if (!wholeTileDecompress) {
 				try {
-					tilec->allocSparseBuffer(tilec->resolutions_decompressed + 1U, truncated);
+					tilec->allocSparseCanvas(tilec->resolutions_decompressed + 1U, truncated);
 				} catch (runtime_error &ex) {
 					GRK_UNUSED(ex);
 					continue;
@@ -1320,7 +1320,7 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress *codeStream) {
 	size_t current_read_size = 0;
 	if (tile_part_data_length) {
 		if (!tcp->m_compressedTileData)
-			tcp->m_compressedTileData = new ChunkBuffer();
+			tcp->m_compressedTileData = new SparseBuffer();
 
 		auto len = tile_part_data_length;
 		uint8_t *buff = nullptr;

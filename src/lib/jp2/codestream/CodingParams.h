@@ -171,7 +171,7 @@ struct TileCodingParams {
 	/** number of tile parts for the tile. */
 	uint8_t m_nb_tile_parts;
 
-	ChunkBuffer *m_compressedTileData;
+	SparseBuffer *m_compressedTileData;
 
 	/** compressing norms */
 	double *mct_norms;

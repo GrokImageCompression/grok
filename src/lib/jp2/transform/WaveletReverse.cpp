@@ -1469,7 +1469,7 @@ public:
 	 * interleaved data is laid out in the dwt->mem buffer in increments of h_chunk
 	 */
 	void interleave_h(dwt_data<T>* dwt,
-					ISparseBuffer* sa,
+					ISparseCanvas* sa,
 					uint32_t y_offset,
 					uint32_t height){
 		const uint32_t h_chunk   = (uint32_t)(sizeof(T)/sizeof(int32_t));
@@ -1510,7 +1510,7 @@ public:
 	 * v_chunk lines
 	 */
 	void interleave_v(dwt_data<T>* GRK_RESTRICT dwt,
-								ISparseBuffer* sa,
+								ISparseCanvas* sa,
 								uint32_t x_offset,
 								uint32_t x_num_elements){
 		const uint32_t v_chunk = (uint32_t)(sizeof(T)/sizeof(int32_t)) * VERT_PASS_WIDTH;
@@ -1918,7 +1918,7 @@ template <typename T,
 		   	   	   	   	   uint16_t compno,
 		   	   	   	   	   grkRectU32 bounds,
 		   	   	   	   	   uint8_t numres,
-						   ISparseBuffer *sa) {
+						   ISparseCanvas *sa) {
 
 	bool rc = false;
 	bool ret = false;
@@ -2231,7 +2231,7 @@ bool WaveletReverse::decompress(TileProcessor *p_tcd,
 															compno,
 															window,
 															numres,
-															tilec->getSparseBuffer());
+															tilec->getSparseCanvas());
 	    }
 	} else {
 		 if (p_tcd->wholeTileDecompress)
@@ -2245,7 +2245,7 @@ bool WaveletReverse::decompress(TileProcessor *p_tcd,
 															compno,
 															window,
 															numres,
-															tilec->getSparseBuffer());
+															tilec->getSparseCanvas());
 		    }
 	}
 }

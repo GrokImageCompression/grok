@@ -19,15 +19,15 @@
 #pragma once
 namespace grk {
 
-/*  ChunkBuffer
+/*  SparseBuffer
 
  Store a list of buffers, or chunks, which can be treated as one single
  contiguous buffer.
 
  */
-struct ChunkBuffer {
-	ChunkBuffer();
-	~ChunkBuffer();
+struct SparseBuffer {
+	SparseBuffer();
+	~SparseBuffer();
 	grkBufferU8* pushBack(uint8_t *buf, size_t len, bool ownsData);
 	void incrementCurrentChunkOffset(size_t offset);
 	size_t getCurrentChunkLength(void);

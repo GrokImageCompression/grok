@@ -37,7 +37,7 @@ struct T2Decompress {
 	 @return true if successful
 	 */
 	bool decompressPackets(uint16_t tileno,
-							ChunkBuffer *src_buf,
+							SparseBuffer *src_buf,
 							uint64_t *data_read,
 							bool *truncated);
 
@@ -53,23 +53,23 @@ private:
 	 */
 	bool decompressPacket(TileCodingParams *tcp,
 							const PacketIter *pi,
-							ChunkBuffer *src_buf,
+							SparseBuffer *src_buf,
 							uint64_t *data_read);
 
 	bool skipPacket(TileCodingParams *p_tcp,
 						PacketIter *p_pi,
-						ChunkBuffer *src_buf,
+						SparseBuffer *src_buf,
 						uint64_t *p_data_read);
 
 	bool readPacketHeader(TileCodingParams *p_tcp,
 							const PacketIter *p_pi,
 							bool *p_is_data_present,
-							ChunkBuffer *src_buf,
+							SparseBuffer *src_buf,
 							uint64_t *p_data_read);
 
 	bool readPacketData(Resolution *l_res,
 							const PacketIter *p_pi,
-							ChunkBuffer *src_buf,
+							SparseBuffer *src_buf,
 							uint64_t *p_data_read);
 
 	bool skipPacketData(Resolution *l_res,

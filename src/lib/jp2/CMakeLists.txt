@@ -81,8 +81,8 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/util.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/CPUArch.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/CPUArch.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/util/ChunkBuffer.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/util/ChunkBuffer.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/SparseBuffer.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/SparseBuffer.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/grk_exceptions.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/testing.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkImage.cpp
@@ -161,7 +161,7 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/tile/TileComponent.h
   ${CMAKE_CURRENT_SOURCE_DIR}/tile/TileProcessor.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/tile/TileProcessor.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/tile/SparseBuffer.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/tile/SparseCanvas.h
 
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletFwd.h
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletFwd.cpp

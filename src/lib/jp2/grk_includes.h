@@ -99,7 +99,7 @@
 #include "GrkMatrix.h"
 #include "GrkImage.h"
 #include "grk_exceptions.h"
-#include "ChunkBuffer.h"
+#include <SparseBuffer.h>
 #include "BitIO.h"
 #include "BufferedStream.h"
 #include "Quantizer.h"
@@ -128,12 +128,12 @@
 #include "WaveletReverse.h"
 #include "TileComponentWindowBuffer.h"
 #include "PacketIter.h"
-#include "SparseBuffer.h"
+#include "SparseCanvas.h"
 #include "TileComponent.h"
 #include "TileProcessor.h"
 #include "TileCache.h"
 #include <WaveletFwd.h>
-#include "SparseBuffer.h"
+#include "SparseCanvas.h"
 #include "T2Compress.h"
 #include "T2Decompress.h"
 #include "mct.h"

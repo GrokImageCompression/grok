@@ -19,14 +19,14 @@
 namespace grk {
 
 const size_t kChunkSize = 1024;
-template <typename T, typename P> class ChunkedArray{
+template <typename T, typename P> class BlockCache{
 public:
-	ChunkedArray(P *blockInitializer, uint64_t maxChunkSize) : m_blockInitializer(blockInitializer),
+	BlockCache(P *blockInitializer, uint64_t maxChunkSize) : m_blockInitializer(blockInitializer),
 																m_chunkSize(std::min<uint64_t>(maxChunkSize, kChunkSize)),
 																m_currChunk(nullptr),
 																m_currChunkIndex(0)
 	{}
-	~ChunkedArray(void){
+	~BlockCache(void){
 		for (auto &ch : chunks){
 			for (size_t i = 0; i < m_chunkSize; ++i)
 				delete ch.second[i];
@@ -100,9 +100,9 @@ struct PrecinctImpl {
 		if (!numBlocks)
 			return true;
 		if (m_isCompressor)
-			enc =  new ChunkedArray<CompressCodeblock, PrecinctImpl>(this,numBlocks);
+			enc =  new BlockCache<CompressCodeblock, PrecinctImpl>(this,numBlocks);
 		else
-			dec =  new ChunkedArray<DecompressCodeblock, PrecinctImpl>(this,numBlocks);
+			dec =  new BlockCache<DecompressCodeblock, PrecinctImpl>(this,numBlocks);
 		initTagTrees();
 
 		return true;
@@ -159,8 +159,8 @@ struct PrecinctImpl {
 			}
 		}
 	}
-	ChunkedArray<CompressCodeblock, PrecinctImpl> *enc;
-	ChunkedArray<DecompressCodeblock, PrecinctImpl> *dec;
+	BlockCache<CompressCodeblock, PrecinctImpl> *enc;
+	BlockCache<DecompressCodeblock, PrecinctImpl> *dec;
 	TagTree *incltree; /* inclusion tree */
 	TagTree *imsbtree; /* IMSB tree */
 	grkRectU32 m_cblk_grid;

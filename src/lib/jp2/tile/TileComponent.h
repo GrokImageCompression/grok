@@ -27,7 +27,7 @@ namespace grk {
 struct TileComponent : public grkRectU32 {
 	TileComponent();
 	~TileComponent();
-	bool allocSparseBuffer(uint32_t numres, bool truncatedTile);
+	bool allocSparseCanvas(uint32_t numres, bool truncatedTile);
 	bool allocWindowBuffer(grkRectU32 unreducedTileOrImageCompWindow);
 	void deallocBuffers(void);
 	bool init(bool isCompressor,
@@ -44,7 +44,7 @@ struct TileComponent : public grkRectU32 {
 
 	 TileComponentWindowBuffer<int32_t>* getBuffer() const;
 	 bool isWholeTileDecoding();
-	 ISparseBuffer* getSparseBuffer();
+	 ISparseCanvas* getSparseCanvas();
 	 bool postProcess(int32_t *srcData, DecompressBlockExec *block, bool isHT);
 
 	Resolution *tileCompResolution;  // in canvas coordinates
@@ -56,7 +56,7 @@ struct TileComponent : public grkRectU32 {
 #endif
 private:
 	template<typename F> bool postDecompressImpl(int32_t *srcData, DecompressBlockExec *block);
-	ISparseBuffer *m_sa;
+	ISparseCanvas *m_sa;
     bool   wholeTileDecompress;
 	bool m_is_encoder;
 	TileComponentWindowBuffer<int32_t> *buf;

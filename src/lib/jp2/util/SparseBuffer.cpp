@@ -20,13 +20,13 @@ namespace grk {
 
 /* #define DEBUG_CHUNK_BUF */
 
-ChunkBuffer::ChunkBuffer() :
+SparseBuffer::SparseBuffer() :
 		dataLength(0), currentChunkId(0) {
 }
-ChunkBuffer::~ChunkBuffer() {
+SparseBuffer::~SparseBuffer() {
 	cleanup();
 }
-void ChunkBuffer::increment() {
+void SparseBuffer::increment() {
 	if (chunks.size() == 0 || currentChunkId == (size_t) (chunks.size() - 1))
 		return;
 	auto currentChunk = chunks[currentChunkId];
@@ -35,7 +35,7 @@ void ChunkBuffer::increment() {
 		currentChunkId++;
 	}
 }
-size_t ChunkBuffer::read(void *p_buffer, size_t numBytes) {
+size_t SparseBuffer::read(void *p_buffer, size_t numBytes) {
 	if (p_buffer == nullptr || numBytes == 0)
 		return 0;
 	/*don't try to read more bytes than are available */
@@ -65,7 +65,7 @@ size_t ChunkBuffer::read(void *p_buffer, size_t numBytes) {
 	}
 	return totalBytesRead;
 }
-size_t ChunkBuffer::skip(size_t numBytes) {
+size_t SparseBuffer::skip(size_t numBytes) {
 	size_t bytes_remaining;
 	if (numBytes + getGlobalOffset() > dataLength) {
 #ifdef DEBUG_CHUNK_BUF
@@ -91,24 +91,24 @@ size_t ChunkBuffer::skip(size_t numBytes) {
 	}
 	return numBytes;
 }
-grkBufferU8* ChunkBuffer::pushBack(uint8_t *buf, size_t len, bool ownsData) {
+grkBufferU8* SparseBuffer::pushBack(uint8_t *buf, size_t len, bool ownsData) {
 	auto new_chunk = new grkBufferU8(buf, len, ownsData);
 	pushBack(new_chunk);
 	return new_chunk;
 }
-void ChunkBuffer::pushBack(grkBufferU8 *chunk) {
+void SparseBuffer::pushBack(grkBufferU8 *chunk) {
 	if (!chunk)
 		return;
 	chunks.push_back(chunk);
 	currentChunkId = (size_t) (chunks.size() - 1);
 	dataLength += chunk->len;
 }
-void ChunkBuffer::cleanup(void) {
+void SparseBuffer::cleanup(void) {
 	for (size_t i = 0; i < chunks.size(); ++i)
 		delete chunks[i];
 	chunks.clear();
 }
-void ChunkBuffer::rewind(void) {
+void SparseBuffer::rewind(void) {
 	for (size_t i = 0; i < chunks.size(); ++i) {
 		grkBufferU8 *chunk = chunks[i];
 		if (chunk)
@@ -116,7 +116,7 @@ void ChunkBuffer::rewind(void) {
 	}
 	currentChunkId = 0;
 }
-void ChunkBuffer::incrementCurrentChunkOffset(size_t offset) {
+void SparseBuffer::incrementCurrentChunkOffset(size_t offset) {
 	auto currentChunk = chunks[currentChunkId];
 	currentChunk->incrementOffset((ptrdiff_t) offset);
 	if (currentChunk->offset == currentChunk->len)
@@ -126,7 +126,7 @@ void ChunkBuffer::incrementCurrentChunkOffset(size_t offset) {
  * Zero copy read of contiguous chunk from current chunk.
  * Returns false if unable to get a contiguous chunk, true otherwise
  */
-bool ChunkBuffer::zeroCopyRead(uint8_t **ptr, size_t chunk_len) {
+bool SparseBuffer::zeroCopyRead(uint8_t **ptr, size_t chunk_len) {
 	auto currentChunk = chunks[currentChunkId];
 	if (!currentChunk)
 		return false;
@@ -136,7 +136,7 @@ bool ChunkBuffer::zeroCopyRead(uint8_t **ptr, size_t chunk_len) {
 	}
 	return false;
 }
-bool ChunkBuffer::copyToContiguousBuffer(uint8_t *buffer) {
+bool SparseBuffer::copyToContiguousBuffer(uint8_t *buffer) {
 	size_t offset = 0;
 	if (!buffer)
 		return false;
@@ -148,19 +148,19 @@ bool ChunkBuffer::copyToContiguousBuffer(uint8_t *buffer) {
 	}
 	return true;
 }
-uint8_t* ChunkBuffer::getCurrentChunkPtr(void) {
+uint8_t* SparseBuffer::getCurrentChunkPtr(void) {
 	auto currentChunk = chunks[currentChunkId];
 	return (currentChunk) ? currentChunk->currPtr() : nullptr;
 }
-size_t ChunkBuffer::getCurrentChunkLength(void) {
+size_t SparseBuffer::getCurrentChunkLength(void) {
 	auto currentChunk = chunks[currentChunkId];
 	return (currentChunk) ? currentChunk->remainingLength() : 0;
 }
-size_t ChunkBuffer::getCurrentChunkOffset(void) {
+size_t SparseBuffer::getCurrentChunkOffset(void) {
 	auto currentChunk = chunks[currentChunkId];
 	return (currentChunk) ? currentChunk->offset : 0;
 }
-size_t ChunkBuffer::getGlobalOffset(void) {
+size_t SparseBuffer::getGlobalOffset(void) {
 	size_t offset = 0;
 	for (size_t i = 0; i < currentChunkId; ++i) {
 		grkBufferU8 *chunk = chunks[i];

@@ -51,14 +51,14 @@
 
 #include <cstdint>
 
-// SparseBuffer stores blocks in the canvas coordinate system. It covers the active sub-bands for all
+// SparseCanvas stores blocks in the canvas coordinate system. It covers the active sub-bands for all
 // (reduced) resolutions
 
 namespace grk {
 
-class ISparseBuffer {
+class ISparseCanvas {
 public:
-	virtual ~ISparseBuffer() = default;
+	virtual ~ISparseCanvas() = default;
 	/** Read the content of a rectangular window of the sparse buffer into a
 	 * user buffer.
 	 *
@@ -125,16 +125,16 @@ struct SparseBlock{
 	int32_t *data;
 };
 
-template<uint32_t LBW, uint32_t LBH> class SparseBuffer : public ISparseBuffer {
+template<uint32_t LBW, uint32_t LBH> class SparseCanvas : public ISparseCanvas {
 public:
 	/**
-	 * SparseBuffer constructor
+	 * SparseCanvas constructor
 	 *
 	 * @param bds bounds
 	 *
 	 * @return a new sparse buffer instance, or nullptr in case of failure.
 	 */
-	SparseBuffer(grkRectU32 bds) :	block_width(1<<LBW),
+	SparseCanvas(grkRectU32 bds) :	block_width(1<<LBW),
 										block_height(1<<LBH),
 										data_blocks(nullptr),
 										bounds(bds)
@@ -159,16 +159,16 @@ public:
 	}
 	/**
 	 *
-	 * SparseBuffer constructor
+	 * SparseCanvas constructor
 	 *
 	 * @param width total width of the array.
 	 * @param height total height of the array
 	 *
 	 * @return a new sparse buffer instance, or nullptr in case of failure.
 	 */
-	SparseBuffer(uint32_t width,uint32_t height) : SparseBuffer(grkRectU32(0,0,width,height))
+	SparseCanvas(uint32_t width,uint32_t height) : SparseCanvas(grkRectU32(0,0,width,height))
 	{}
-	~SparseBuffer()
+	~SparseCanvas()
 	{
 		if (data_blocks) {
 			for (uint64_t i = 0; i < (uint64_t)grid_bounds.width() * grid_bounds.height(); i++){
@@ -207,7 +207,7 @@ public:
 	            false);
 	}
 	bool alloc( grkRectU32 win, bool zeroOutBuffer){
-	    if (!SparseBuffer::is_window_valid(win))
+	    if (!SparseCanvas::is_window_valid(win))
 	        return true;
 
 	    uint32_t y_incr = 0;

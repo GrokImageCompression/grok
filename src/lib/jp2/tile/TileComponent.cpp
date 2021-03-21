@@ -167,7 +167,7 @@ bool TileComponent::subbandIntersectsAOI(uint8_t resno,
 								const grkRectU32 *aoi) const {
     return buf->getPaddedBandWindow(resno, orient)->non_empty_intersection(aoi);
 }
-bool TileComponent::allocSparseBuffer(uint32_t numres, bool truncatedTile){
+bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile){
 	grkRectU32 temp(0,0,0,0);
 	bool first = true;
 
@@ -221,7 +221,7 @@ bool TileComponent::allocSparseBuffer(uint32_t numres, bool truncatedTile){
 
     auto tr_max = tileCompResolution + numres - 1;
     temp.grow(5,tr_max->width(),tr_max->height());
-	auto sa = new SparseBuffer<6,6>(temp);
+	auto sa = new SparseCanvas<6,6>(temp);
 
     for (uint8_t resno = 0; resno < numres; ++resno) {
         auto res = &tileCompResolution[resno];
@@ -312,7 +312,7 @@ TileComponentWindowBuffer<int32_t>* TileComponent::getBuffer() const{
 bool TileComponent::isWholeTileDecoding() {
 	return wholeTileDecompress;
 }
-ISparseBuffer* TileComponent::getSparseBuffer(){
+ISparseCanvas* TileComponent::getSparseCanvas(){
 	return m_sa;
 }
 bool TileComponent::postProcess(int32_t *srcData, DecompressBlockExec *block, bool isHT) {

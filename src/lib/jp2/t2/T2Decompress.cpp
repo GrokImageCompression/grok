@@ -28,7 +28,7 @@ T2Decompress::T2Decompress(TileProcessor *tileProc) :
 		tileProcessor(tileProc) {
 }
 bool T2Decompress::decompressPackets(uint16_t tile_no,
-										ChunkBuffer *srcBuf,
+										SparseBuffer *srcBuf,
 										uint64_t *dataRead,
 										bool *truncated) {
 	auto cp = tileProcessor->m_cp;
@@ -144,7 +144,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no,
 }
 bool T2Decompress::decompressPacket(TileCodingParams *p_tcp,
 									const PacketIter *p_pi,
-									ChunkBuffer *src_buf,
+									SparseBuffer *src_buf,
 									uint64_t *p_data_read) {
 	auto p_tile = tileProcessor->tile;
 	auto res = &p_tile->comps[p_pi->compno].tileCompResolution[p_pi->resno];
@@ -189,7 +189,7 @@ void T2Decompress::initSegment(DecompressCodeblock *cblk, uint32_t index, uint8_
 bool T2Decompress::readPacketHeader(TileCodingParams *p_tcp,
 									const PacketIter *p_pi,
 									bool *p_is_data_present,
-									ChunkBuffer *src_buf,
+									SparseBuffer *src_buf,
 									uint64_t *p_data_read) {
 	auto p_tile = tileProcessor->tile;
 	auto res = &p_tile->comps[p_pi->compno].tileCompResolution[p_pi->resno];
@@ -415,7 +415,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams *p_tcp,
 }
 bool T2Decompress::readPacketData(Resolution *res,
 									const PacketIter *p_pi,
-									ChunkBuffer *src_buf,
+									SparseBuffer *src_buf,
 									uint64_t *p_data_read) {
 	for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
 		auto band = res->tileBand + bandIndex;
@@ -489,7 +489,7 @@ bool T2Decompress::readPacketData(Resolution *res,
 }
 bool T2Decompress::skipPacket(TileCodingParams *p_tcp,
 								PacketIter *p_pi,
-								ChunkBuffer *src_buf,
+								SparseBuffer *src_buf,
 								uint64_t *p_data_read) {
 	uint64_t max_length = (uint64_t) src_buf->getCurrentChunkLength();
 	auto p_tile = tileProcessor->tile;
