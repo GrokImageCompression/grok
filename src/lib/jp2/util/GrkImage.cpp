@@ -172,8 +172,7 @@ bool GrkImage::allocData(grk_image_comp  *comp) {
 	size_t dataSize = (uint64_t) comp->stride * comp->h * sizeof(uint32_t);
 	auto data = (int32_t*) grkAlignedMalloc(dataSize);
 	if (!data) {
-		grk::GRK_ERROR("Failed to allocate aligned memory buffer of dimensions %u x %u "
-				"@ alignment %d",comp->stride, comp->h, grk::default_align);
+		grk::GRK_ERROR("Failed to allocate aligned memory buffer of dimensions %u x %u",comp->stride, comp->h);
 		return false;
 	}
 	grk_image_single_component_data_free(comp);

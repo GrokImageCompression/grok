@@ -28,8 +28,6 @@
 
 namespace grk {
 
-const size_t default_align = 64;
-
 uint32_t grkMakeAlignedWidth(uint32_t width);
 /**
  Allocate an uninitialized memory block
@@ -234,8 +232,7 @@ template <typename T, template <typename TT> typename A> struct grkBuffer2d : pr
 			if (!data_size_needed)
 			  return true;
 			if (!grkBuffer<T, A >::alloc(data_size_needed)) {
-				grk::GRK_ERROR("Failed to allocate aligned memory buffer of dimensions %u x %u "
-						"@ alignment %d",stride, height(), grk::default_align);
+				grk::GRK_ERROR("Failed to allocate aligned memory buffer of dimensions %u x %u",stride, height());
 				return false;
 			}
 			if (clear)
