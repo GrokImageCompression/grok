@@ -633,7 +633,7 @@ bool TileProcessor::init(void) {
 				GRK_WARN("plugin tile differs from grok tile", nullptr);
 		}
 	}
-	tile->numIteratedPackets = 0;
+	tile->numProcessedPackets = 0;
 
 	if (m_isCompressor) {
         uint64_t max_precincts=0;
@@ -1315,7 +1315,7 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress *codeStream) {
 			return false;
 		}
 
-		/*codeStreamInfo->numIteratedPackets = 0;*/
+		/*codeStreamInfo->numProcessedPackets = 0;*/
 	}
 	size_t current_read_size = 0;
 	if (tile_part_data_length) {
@@ -1350,7 +1350,7 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress *codeStream) {
 Tile::Tile() : numcomps(0),
 			comps(nullptr),
 			distotile(0),
-			numIteratedPackets(0),
+			numProcessedPackets(0),
 			numDecompressedPackets(0)
 {
 	for (uint32_t i = 0; i < 100; ++i)

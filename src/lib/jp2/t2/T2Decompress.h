@@ -56,6 +56,10 @@ private:
 							SparseBuffer *src_buf,
 							uint64_t *data_read);
 
+	bool processPacket(TileCodingParams *tcp,
+							PacketIter *pi,
+							SparseBuffer *src_buf,
+							uint64_t *data_read);
 	bool skipPacket(TileCodingParams *p_tcp,
 						PacketIter *p_pi,
 						SparseBuffer *src_buf,

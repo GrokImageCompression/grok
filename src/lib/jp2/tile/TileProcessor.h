@@ -42,7 +42,7 @@ struct Tile : public grkRectU32 {
 	TileComponent 	*comps;
 	double distotile;
 	double distolayer[100];
-	uint64_t numIteratedPackets;
+	uint64_t numProcessedPackets;
 	uint64_t numDecompressedPackets;
 };
 

@@ -53,7 +53,7 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers,
 				return false;
 			}
 			*p_data_written += nb_bytes;
-			p_tile->numIteratedPackets++;
+			p_tile->numProcessedPackets++;
 		}
 	}
 	pi_destroy(pi);
@@ -156,11 +156,11 @@ bool T2Compress::compressPacket(TileCodingParams *tcp, PacketIter *pi,
 			return false;
 		if (!stream->write_byte(4))
 			return false;
-		/* numIteratedPackets is uint32_t modulo 65536, in big endian format */
-		uint16_t numIteratedPackets = (uint16_t) (tile->numIteratedPackets % 0x10000);
-		if (!stream->write_byte((uint8_t) (numIteratedPackets >> 8)))
+		/* numProcessedPackets is uint32_t modulo 65536, in big endian format */
+		uint16_t numProcessedPackets = (uint16_t) (tile->numProcessedPackets % 0x10000);
+		if (!stream->write_byte((uint8_t) (numProcessedPackets >> 8)))
 			return false;
-		if (!stream->write_byte((uint8_t) (numIteratedPackets & 0xff)))
+		if (!stream->write_byte((uint8_t) (numProcessedPackets & 0xff)))
 			return false;
 	}
 	// initialize precinct and code blocks if this is the first layer
