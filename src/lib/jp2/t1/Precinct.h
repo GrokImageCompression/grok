@@ -18,49 +18,20 @@
 
 namespace grk {
 
-const size_t kChunkSize = 1024;
-template <typename T, typename P> class BlockCache{
+template <typename T, typename P> class BlockCache : public ItemCache<T>{
 public:
-	BlockCache(P *blockInitializer, uint64_t maxChunkSize) : m_blockInitializer(blockInitializer),
-																m_chunkSize(std::min<uint64_t>(maxChunkSize, kChunkSize)),
-																m_currChunk(nullptr),
-																m_currChunkIndex(0)
+	BlockCache(uint64_t maxChunkSize,P *blockInitializer) : ItemCache<T>(maxChunkSize),
+															 m_blockInitializer(blockInitializer)
 	{}
-	~BlockCache(void){
-		for (auto &ch : chunks){
-			for (size_t i = 0; i < m_chunkSize; ++i)
-				delete ch.second[i];
-			delete[] ch.second;
-		}
-	}
-	T* get(uint64_t index){
-		uint64_t chunkIndex = index / m_chunkSize;
-		uint64_t itemIndex =  index % m_chunkSize;
-		if (m_currChunk == nullptr || chunkIndex != m_currChunkIndex){
-			m_currChunkIndex = chunkIndex;
-			auto iter = chunks.find(chunkIndex);
-			if (iter != chunks.end()){
-				m_currChunk =  iter->second;
-			} else {
-				m_currChunk = new T*[m_chunkSize];
-				memset(m_currChunk, 0, m_chunkSize * sizeof(T*));
-				chunks[chunkIndex] = m_currChunk;
-			}
-		}
-		auto item = m_currChunk[itemIndex];
-		if (!item){
-			item = new T();
-			m_blockInitializer->initCodeBlock(item, index);
-			m_currChunk[itemIndex] = item;
-		}
+	virtual ~BlockCache() = default;
+protected:
+	virtual T* create(uint64_t index) override{
+		auto item = new T();
+		m_blockInitializer->initCodeBlock(item, index);
 		return item;
 	}
 private:
-	std::map<uint64_t, T**> chunks;
 	P *m_blockInitializer;
-	uint64_t m_chunkSize;
-	T** m_currChunk;
-	uint64_t m_currChunkIndex;
 };
 
 struct PrecinctImpl {
@@ -100,9 +71,9 @@ struct PrecinctImpl {
 		if (!numBlocks)
 			return true;
 		if (m_isCompressor)
-			enc =  new BlockCache<CompressCodeblock, PrecinctImpl>(this,numBlocks);
+			enc =  new BlockCache<CompressCodeblock, PrecinctImpl>(numBlocks,this);
 		else
-			dec =  new BlockCache<DecompressCodeblock, PrecinctImpl>(this,numBlocks);
+			dec =  new BlockCache<DecompressCodeblock, PrecinctImpl>(numBlocks,this);
 		initTagTrees();
 
 		return true;

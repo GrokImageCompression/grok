@@ -85,6 +85,7 @@
 
 #include "simd.h"
 #include <taskflow/taskflow.hpp>
+#include "ItemCache.h"
 #include "util.h"
 #include "MemManager.h"
 #include "minpf_plugin_manager.h"
