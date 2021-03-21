@@ -73,7 +73,6 @@
 #  define GRK_STAT(path,stat_buff) stat(path,stat_buff)
 #endif
 
-
 #define GRK_UNUSED(x) (void)x
 
 namespace grk {
