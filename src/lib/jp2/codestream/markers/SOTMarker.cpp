@@ -27,11 +27,11 @@ SOTMarker::SOTMarker(void) : m_psot_location(0)
 {
 }
 bool SOTMarker::write_psot(CodeStreamCompress *codeStream,
-							uint32_t tile_part_bytes_written) {
+							uint32_t tilePartBytesWritten) {
 	auto stream = codeStream->getStream();
 	auto currentLocation = stream->tell();
 	stream->seek(m_psot_location);
-	if (!stream->write_int(tile_part_bytes_written))
+	if (!stream->write_int(tilePartBytesWritten))
 		return false;
 	stream->seek(currentLocation);
 
@@ -51,7 +51,7 @@ bool SOTMarker::write(CodeStreamCompress *codeStream){
 		return false;
 	/* Isot */
 	if (!stream->write_short(
-			(uint16_t) proc->m_tile_index))
+			(uint16_t) proc->m_tileIndex))
 		return false;
 
 	/* Psot  */
@@ -60,12 +60,12 @@ bool SOTMarker::write(CodeStreamCompress *codeStream){
 		return false;
 
 	/* TPsot */
-	if (!stream->write_byte(proc->m_tile_part_index))
+	if (!stream->write_byte(proc->m_tilePartIndex))
 		return false;
 
 	/* TNsot */
 	if (!stream->write_byte(
-			codeStream->getCodingParams()->tcps[proc->m_tile_index].m_nb_tile_parts))
+			codeStream->getCodingParams()->tcps[proc->m_tileIndex].m_nb_tile_parts))
 		return false;
 
 	return true;
@@ -124,18 +124,18 @@ bool SOTMarker::get_sot_values(CodeStreamDecompress *codeStream,
 		GRK_ERROR("Error reading SOT marker");
 		return false;
 	}
-	auto tileNumber = codeStream->currentProcessor()->m_tile_index;
+	auto tileIndex = codeStream->currentProcessor()->m_tileIndex;
 	auto cp = codeStream->getCodingParams();
 
 	/* testcase 2.pdf.SIGFPE.706.1112 */
-	if (tileNumber >= cp->t_grid_width * cp->t_grid_height) {
-		GRK_ERROR("Invalid tile number %u", tileNumber);
+	if (tileIndex >= cp->t_grid_width * cp->t_grid_height) {
+		GRK_ERROR("Invalid tile number %u", tileIndex);
 		return false;
 	}
 
-	auto tcp = &cp->tcps[tileNumber];
-	tile_x = tileNumber % cp->t_grid_width;
-	tile_y = tileNumber / cp->t_grid_width;
+	auto tcp = &cp->tcps[tileIndex];
+	tile_x = tileIndex % cp->t_grid_width;
+	tile_y = tileIndex / cp->t_grid_width;
 
 	/* Fixes issue with id_000020,sig_06,src_001958,op_flip4,pos_149 */
 	/* of https://github.com/uclouvain/openjpeg/issues/939 */
@@ -143,13 +143,13 @@ bool SOTMarker::get_sot_values(CodeStreamDecompress *codeStream,
 	/* to avoid various issues, like grk_j2k_merge_ppt being called several times. */
 	/* ISO 15444-1 A.4.2 Start of tile-part (SOT) mandates that tile parts */
 	/* should appear in increasing order. */
-	if (tcp->m_tile_part_index + 1 != (int32_t) currentTilePart) {
+	if (tcp->m_tilePartIndex + 1 != (int32_t) currentTilePart) {
 		GRK_ERROR("Invalid tile part index for tile number %u. "
-				"Got %u, expected %u", tileNumber, currentTilePart,
-				tcp->m_tile_part_index + 1);
+				"Got %u, expected %u", tileIndex, currentTilePart,
+				tcp->m_tilePartIndex + 1);
 		return false;
 	}
-	++tcp->m_tile_part_index;
+	++tcp->m_tilePartIndex;
 	/* PSot should be equal to zero or >=14 or <= 2^32-1 */
 	if ((tot_len != 0) && (tot_len < 14)) {
 		if (tot_len == sot_marker_segment_len) {
@@ -209,9 +209,9 @@ bool SOTMarker::get_sot_values(CodeStreamDecompress *codeStream,
 
 	if (!codeStream->getDecompressorState()->m_last_tile_part_in_code_stream) {
 		/* Keep the size of data to skip after this marker */
-		codeStream->currentProcessor()->tile_part_data_length = tot_len - sot_marker_segment_len;
+		codeStream->currentProcessor()->tilePartDataLength = tot_len - sot_marker_segment_len;
 	} else {
-		codeStream->currentProcessor()->tile_part_data_length = 0;
+		codeStream->currentProcessor()->tilePartDataLength = 0;
 	}
 
 	codeStream->getDecompressorState()->setState(J2K_DEC_STATE_TPH);
@@ -225,12 +225,12 @@ bool SOTMarker::get_sot_values(CodeStreamDecompress *codeStream,
 						|| (tile_y	< codeStream->getDecompressorState()->m_start_tile_y_index)
 						|| (tile_y	>= codeStream->getDecompressorState()->m_end_tile_y_index);
 	} else {
-		codeStream->getDecompressorState()->m_skip_tile_data = (tileNumber
+		codeStream->getDecompressorState()->m_skip_tile_data = (tileIndex
 				!= (uint32_t) codeStream->tileIndexToDecode());
 	}
 
 	auto codeStreamInfo = codeStream->getCodeStreamInfo();
-	return  (!codeStreamInfo || codeStreamInfo->updateTileInfo(tileNumber, currentTilePart, numTileParts));
+	return  (!codeStreamInfo || codeStreamInfo->updateTileInfo(tileIndex, currentTilePart, numTileParts));
  }
 
 

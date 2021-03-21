@@ -99,8 +99,8 @@ bool TileInfo::checkResize(void){
 bool TileInfo::hasTilePartInfo(void){
 	return tilePartInfo != nullptr;
 }
-bool TileInfo::update(uint16_t tileNumber,uint8_t currentTilePart, uint8_t numTileParts){
-	tileno = tileNumber;
+bool TileInfo::update(uint16_t tileIndex,uint8_t currentTilePart, uint8_t numTileParts){
+	tileno = tileIndex;
 	if (numTileParts != 0) {
 		allocatedTileParts =	numTileParts;
 		if (!tilePartInfo) {
@@ -200,13 +200,13 @@ bool CodeStreamInfo::allocTileInfo(uint16_t ntiles){
 	tileInfo = new TileInfo[numTiles];
 	return true;
 }
-bool CodeStreamInfo::updateTileInfo(uint16_t tileNumber, uint8_t currentTilePart, uint8_t numTileParts){
+bool CodeStreamInfo::updateTileInfo(uint16_t tileIndex, uint8_t currentTilePart, uint8_t numTileParts){
 	assert(tileInfo != nullptr);
-	return tileInfo[tileNumber].update(tileNumber, currentTilePart, numTileParts);
+	return tileInfo[tileIndex].update(tileIndex, currentTilePart, numTileParts);
 }
-TileInfo* CodeStreamInfo::getTileInfo(uint16_t tileNumber){
-	assert(tileNumber < numTiles);
-	return tileInfo + tileNumber;
+TileInfo* CodeStreamInfo::getTileInfo(uint16_t tileIndex){
+	assert(tileIndex < numTiles);
+	return tileInfo + tileIndex;
 }
 bool CodeStreamInfo::hasTileInfo(void){
 	return tileInfo != nullptr;
@@ -223,10 +223,10 @@ void CodeStreamInfo::dump(FILE *out_stream) {
 		m->dump(out_stream);
 	fprintf(out_stream, "\t }\n");
 	if (tileInfo) {
-		uint8_t totalTileParts = 0;
+		uint8_t numTilePartsTotal = 0;
 		for (uint16_t i = 0; i < numTiles; i++)
-			totalTileParts += getTileInfo(i)->numTileParts;
-		if (totalTileParts) {
+			numTilePartsTotal += getTileInfo(i)->numTileParts;
+		if (numTilePartsTotal) {
 			fprintf(out_stream, "\t Tile index: {\n");
 			for (uint16_t i = 0; i < numTiles; i++) {
 				auto tileInfo = getTileInfo(i);
@@ -298,7 +298,7 @@ bool TileLengthMarkers::read(uint8_t *p_header_data, uint16_t header_size){
 	 * 1 => 32 bit tile part lengths
 	 */
 	L_LTP = (L >> 6) & 0x1;
-	uint32_t bytes_per_tile_part_length = L_LTP ? 4U : 2U;
+	uint32_t bytesPerTilePartLength = L_LTP ? 4U : 2U;
 	/*
 	* 0 <= L_iT <= 2
 	*
@@ -307,14 +307,13 @@ bool TileLengthMarkers::read(uint8_t *p_header_data, uint16_t header_size){
 	* 2 => 2 byte tile part indices
 	*/
 	L_iT = ((L >> 4) & 0x3);
-	uint32_t quotient = bytes_per_tile_part_length + L_iT;
+	uint32_t quotient = bytesPerTilePartLength + L_iT;
 	if (header_size % quotient != 0) {
 		GRK_ERROR("Error reading TLM marker");
 		return false;
 	}
 	// note: each tile can have max 255 tile parts, but
-	// the whole image with multiple tiles can have more than
-	// 255
+	// the whole image with multiple tiles can have max 65535 tile parts
 	size_t num_tp = (uint8_t) (header_size / quotient);
 
 	uint32_t Ttlm_i = 0, Ptlm_i = 0;
@@ -325,10 +324,10 @@ bool TileLengthMarkers::read(uint8_t *p_header_data, uint16_t header_size){
 			p_header_data += L_iT;
 		}
 		// read tile part length
-		grk_read<uint32_t>(p_header_data, &Ptlm_i, bytes_per_tile_part_length);
+		grk_read<uint32_t>(p_header_data, &Ptlm_i, bytesPerTilePartLength);
 		auto info =	L_iT ? TilePartLengthInfo((uint16_t) Ttlm_i, Ptlm_i) : TilePartLengthInfo(Ptlm_i);
 		push(i_TLM, info);
-		p_header_data += bytes_per_tile_part_length;
+		p_header_data += bytesPerTilePartLength;
 	}
 
 	return true;
@@ -376,22 +375,22 @@ bool TileLengthMarkers::skipTo(uint16_t skipTileIndex, BufferedStream *stream,ui
 	assert(stream);
 	getInit();
 	auto tl = getNext();
-	uint16_t tileNumber = 0;
+	uint16_t tileIndex = 0;
 	uint64_t skip = 0;
-	while (tileNumber != skipTileIndex){
+	while (tileIndex != skipTileIndex){
 		if (tl.length == 0){
 			GRK_ERROR("corrupt TLM marker");
 			return false;
 		}
 		skip += tl.length;
 		tl = getNext();
-		tileNumber = (uint16_t)(tl.has_tile_number ? tl.tileNumber : tileNumber+1U);
+		tileIndex = (uint16_t)(tl.hasTileIndex ? tl.tileIndex : tileIndex+1U);
 	}
 
 	return stream->seek(firstSotPos + skip);
 }
-bool TileLengthMarkers::writeBegin(uint16_t totalTileParts) {
-	uint32_t tlm_size = tlm_marker_start_bytes 	+ tlm_len_per_tile_part * totalTileParts;
+bool TileLengthMarkers::writeBegin(uint16_t numTilePartsTotal) {
+	uint32_t tlm_size = tlm_marker_start_bytes 	+ tlmMarkerBytesPerTilePart * numTilePartsTotal;
 
 	m_tlm_start_stream_position = m_stream->tell();
 
@@ -408,15 +407,14 @@ bool TileLengthMarkers::writeBegin(uint16_t totalTileParts) {
 		return false;
 
 	/* Stlm ST=1(8bits-255 tiles max),SP=1(Ptlm=32bits) */
-	if (!m_stream->write_byte(0x50))
+	if (!m_stream->write_byte(0x60))
 		return false;
 
 	/* make room for tile part lengths */
-	return m_stream->skip(tlm_len_per_tile_part	* totalTileParts);
+	return m_stream->skip(tlmMarkerBytesPerTilePart	* numTilePartsTotal);
 }
 void TileLengthMarkers::writeUpdate(uint16_t tileIndex, uint32_t tile_part_size) {
-	assert(tileIndex <= 255);
-    push(m_markerIndex,	TilePartLengthInfo((uint8_t)tileIndex,	tile_part_size));
+    push(m_markerIndex,	TilePartLengthInfo(tileIndex,tile_part_size));
 }
 bool TileLengthMarkers::writeEnd(void) {
     uint64_t tlm_position = m_tlm_start_stream_position+ tlm_marker_start_bytes;
@@ -428,10 +426,8 @@ bool TileLengthMarkers::writeEnd(void) {
 	for (auto it = m_markers->begin(); it != m_markers->end(); it++) {
 		auto lengths = it->second;
 		for (auto info = lengths->begin(); info != lengths->end(); ++info ){
-			if (info->has_tile_number) {
-				assert(info->tileNumber <= 255);
-				m_stream->write_byte((uint8_t)info->tileNumber);
-			}
+			if (info->hasTileIndex)
+				m_stream->write_short(info->tileIndex);
 			m_stream->write_int(info->length);
 		}
 	}

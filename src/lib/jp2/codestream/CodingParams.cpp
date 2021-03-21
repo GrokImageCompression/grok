@@ -81,7 +81,7 @@ TileCodingParams::TileCodingParams() :
 								main_qcd_qntsty(0),
 								main_qcd_numStepSizes(0),
 								tccps(nullptr),
-								m_tile_part_index(-1),
+								m_tilePartIndex(-1),
 								m_nb_tile_parts(0),
 								m_compressedTileData(nullptr),
 								mct_norms(nullptr),

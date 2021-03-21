@@ -47,7 +47,7 @@ struct TileInfo {
 	~TileInfo(void);
 	bool checkResize(void);
 	bool hasTilePartInfo(void);
-	bool update(uint16_t tileNumber,uint8_t currentTilePart, uint8_t numTileParts);
+	bool update(uint16_t tileIndex,uint8_t currentTilePart, uint8_t numTileParts);
 	TilePartInfo* getTilePartInfo(uint8_t tilePart);
 	void dump(FILE *out_stream, uint16_t tileNum);
 	/** tile index */
@@ -72,8 +72,8 @@ struct CodeStreamInfo {
 	CodeStreamInfo();
 	virtual ~CodeStreamInfo();
 	bool allocTileInfo(uint16_t numTiles);
-	bool updateTileInfo(uint16_t tileNumber, uint8_t currentTilePart, uint8_t numTileParts);
-	TileInfo* getTileInfo(uint16_t tileNumber);
+	bool updateTileInfo(uint16_t tileIndex, uint8_t currentTilePart, uint8_t numTileParts);
+	TileInfo* getTileInfo(uint16_t tileIndex);
 	bool hasTileInfo(void);
 	void dump(FILE *out_stream);
 	void pushMarker(uint16_t id,uint64_t pos,uint32_t len);
@@ -92,20 +92,20 @@ private:
 	TileInfo *tileInfo;
 };
 struct TilePartLengthInfo {
-	TilePartLengthInfo() :	has_tile_number(false),
-			tileNumber(0),
+	TilePartLengthInfo() :	hasTileIndex(false),
+			tileIndex(0),
 			length(0) {
 	}
-	TilePartLengthInfo(uint32_t len) :	has_tile_number(false),
-								tileNumber(0),
+	TilePartLengthInfo(uint32_t len) :	hasTileIndex(false),
+								tileIndex(0),
 								length(len) {
 	}
-	TilePartLengthInfo(uint16_t tileno, uint32_t len) : has_tile_number(true),
-												tileNumber(tileno),
+	TilePartLengthInfo(uint16_t tileno, uint32_t len) : hasTileIndex(true),
+												tileIndex(tileno),
 												length(len) {
 	}
-	bool has_tile_number;
-	uint16_t tileNumber;
+	bool hasTileIndex;
+	uint16_t tileIndex;
 	uint32_t length;
 };
 typedef std::vector<TilePartLengthInfo> TL_INFO_VEC;
@@ -122,7 +122,7 @@ struct TileLengthMarkers {
 	TilePartLengthInfo getNext(void);
 	bool skipTo(uint16_t skipTileIndex, BufferedStream *stream, uint64_t firstSotPos);
 
-	bool writeBegin(uint16_t totalTileParts);
+	bool writeBegin(uint16_t numTilePartsTotal);
 	void writeUpdate(uint16_t tileIndex, uint32_t tile_part_size);
 	bool writeEnd(void);
 	/**

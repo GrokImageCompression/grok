@@ -166,7 +166,7 @@ struct TileCodingParams {
 	TileComponentCodingParams *tccps;
 	// current tile part number (-1 if not yet initialized
 	// NOTE: tile part index <= 254
-	int16_t m_tile_part_index;
+	int16_t m_tilePartIndex;
 
 	/** number of tile parts for the tile. */
 	uint8_t m_nb_tile_parts;
@@ -354,7 +354,7 @@ struct CompressorState {
 
 	/** Total num of tile parts in whole image = num tiles* num tileparts in each tile*/
 	/** used in TLMmarker*/
-	uint16_t m_total_tile_parts; /* totnum_tp */
+	uint16_t m_total_tile_parts; /* numTilePartsTotal */
 
 };
 

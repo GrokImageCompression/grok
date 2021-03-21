@@ -554,7 +554,7 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile){
 						if (success) {
 							auto tileProcessor = new TileProcessor(this,m_stream,true,false);
 							procs[tile_ind] = tileProcessor;
-							tileProcessor->m_tile_index = tile_ind;
+							tileProcessor->m_tileIndex = tile_ind;
 							tileProcessor->current_plugin_tile = tile;
 							if (!tileProcessor->pre_write_tile())
 								success = false;
@@ -570,7 +570,7 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile){
 	} else {
 		for (uint16_t i = 0; i < nb_tiles; ++i) {
 			auto tileProcessor = new TileProcessor(this,m_stream,true,false);
-			tileProcessor->m_tile_index = i;
+			tileProcessor->m_tileIndex = i;
 			tileProcessor->current_plugin_tile = tile;
 			if (!tileProcessor->pre_write_tile()){
 				delete tileProcessor;
@@ -614,7 +614,7 @@ bool CodeStreamCompress::compressTile(uint16_t tileIndex,	uint8_t *p_data, uint6
 	bool rc = false;
 
 	auto currentTileProcessor = new TileProcessor(this,m_stream,true,false);
-	currentTileProcessor->m_tile_index = tileIndex;
+	currentTileProcessor->m_tileIndex = tileIndex;
 
 	if (!currentTileProcessor->pre_write_tile()) {
 		GRK_ERROR("Error while pre_write_tile with tile index = %u",
@@ -752,24 +752,24 @@ bool CodeStreamCompress::init_header_writing(void) {
 	return true;
 }
 bool CodeStreamCompress::write_tile_part(TileProcessor *tileProcessor) {
-	uint16_t currentTileNumber = tileProcessor->m_tile_index;
+	uint16_t currentTileIndex = tileProcessor->m_tileIndex;
 	auto cp = &m_cp;
-	bool firstTilePart = tileProcessor->m_tile_part_index == 0;
+	bool firstTilePart = (tileProcessor->m_tilePartIndex == 0);
 	//1. write SOT
 	SOTMarker sot;
 	if (!sot.write(this))
 		return false;
-	uint32_t tile_part_bytes_written = sot_marker_segment_len;
+	uint32_t tilePartBytesWritten = sot_marker_segment_len;
 	//2. write POC (only in first tile part)
 	if (firstTilePart) {
 		if (!GRK_IS_CINEMA(cp->rsiz)) {
-			if (cp->tcps[currentTileNumber].numpocs) {
-				auto tcp = m_cp.tcps + currentTileNumber;
+			if (cp->tcps[currentTileIndex].numpocs) {
+				auto tcp = m_cp.tcps + currentTileIndex;
 				auto image = m_headerImage;
 				uint32_t nb_comp = image->numcomps;
 				if (!write_poc())
 					return false;
-				tile_part_bytes_written += getPocSize(nb_comp,
+				tilePartBytesWritten += getPocSize(nb_comp,
 						1 + tcp->numpocs);
 			}
 		}
@@ -779,23 +779,23 @@ bool CodeStreamCompress::write_tile_part(TileProcessor *tileProcessor) {
 		tileProcessor->tile->numProcessedPackets = 0;
 	}
 	// 3. compress tile part
-	if (!tileProcessor->compressTilePart(&tile_part_bytes_written)) {
+	if (!tileProcessor->compressTilePart(&tilePartBytesWritten)) {
 		GRK_ERROR("Cannot compress tile");
 		return false;
 	}
 	/* 4. write Psot in SOT marker */
-	if (!sot.write_psot(this,tile_part_bytes_written))
+	if (!sot.write_psot(this,tilePartBytesWritten))
 		return false;
 	// 5. update TLM
 	if (m_cp.tlm_markers)
-		m_cp.tlm_markers->writeUpdate(currentTileNumber, tile_part_bytes_written);
-	++tileProcessor->m_tile_part_index;
+		m_cp.tlm_markers->writeUpdate(currentTileIndex, tilePartBytesWritten);
+	++tileProcessor->m_tilePartIndex;
 
 	return true;
 }
 bool CodeStreamCompress::post_write_tile(TileProcessor *tileProcessor) {
 	m_currentTileProcessor = tileProcessor;
-	assert(tileProcessor->m_tile_part_index == 0);
+	assert(tileProcessor->m_tilePartIndex == 0);
 
 	//1. write first tile part
 	tileProcessor->pino = 0;
@@ -805,9 +805,9 @@ bool CodeStreamCompress::post_write_tile(TileProcessor *tileProcessor) {
 	//2. write the other tile parts
 	uint32_t pino;
 	auto cp = &(m_cp);
-	auto tcp = cp->tcps + tileProcessor->m_tile_index;
+	auto tcp = cp->tcps + tileProcessor->m_tileIndex;
 	// write tile parts for first progression order
-	uint64_t num_tp = get_num_tp(cp, 0, tileProcessor->m_tile_index);
+	uint64_t num_tp = get_num_tp(cp, 0, tileProcessor->m_tileIndex);
 	if (num_tp > max_num_tile_parts_per_tile){
 		GRK_ERROR("Number of tile parts %d for first POC exceeds maximum number of tile parts %d", num_tp,max_num_tile_parts_per_tile );
 		return false;
@@ -821,7 +821,7 @@ bool CodeStreamCompress::post_write_tile(TileProcessor *tileProcessor) {
 	for (pino = 1; pino <= tcp->numpocs; ++pino) {
 		tileProcessor->pino = pino;
 		num_tp = get_num_tp(cp, pino,
-				tileProcessor->m_tile_index);
+				tileProcessor->m_tileIndex);
 		if (num_tp > max_num_tile_parts_per_tile){
 			GRK_ERROR("Number of tile parts %d exceeds maximum number of "
 					"tile parts %d", num_tp,max_num_tile_parts_per_tile );
@@ -833,7 +833,7 @@ bool CodeStreamCompress::post_write_tile(TileProcessor *tileProcessor) {
 				return false;
 		}
 	}
-	++tileProcessor->m_tile_index;
+	++tileProcessor->m_tileIndex;
 
 	return true;
 }
@@ -1757,7 +1757,7 @@ bool CodeStreamCompress::calculate_tp(CodingParams *cp, uint16_t *p_nb_tile_part
 	*p_nb_tile_parts = 0;
 	auto tcp = cp->tcps;
 	for (uint16_t tileno = 0; tileno < nb_tiles; ++tileno) {
-		uint8_t totnum_tp = 0;
+		uint8_t numTilePartsTotal = 0;
 		pi_update_params_compress(image, cp, tileno);
 		for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
 			uint64_t num_tp = get_num_tp(cp, pino, tileno);
@@ -1775,9 +1775,9 @@ bool CodeStreamCompress::calculate_tp(CodingParams *cp, uint16_t *p_nb_tile_part
 			}
 
 			*p_nb_tile_parts = (uint16_t)(*p_nb_tile_parts + num_tp);
-			totnum_tp = (uint8_t) (totnum_tp + num_tp);
+			numTilePartsTotal = (uint8_t) (numTilePartsTotal + num_tp);
 		}
-		tcp->m_nb_tile_parts = totnum_tp;
+		tcp->m_nb_tile_parts = numTilePartsTotal;
 		++tcp;
 	}
 

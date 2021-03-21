@@ -38,7 +38,7 @@ public:
 	 */
 	bool write(CodeStreamCompress *codeStream);
 
-	bool write_psot(CodeStreamCompress *codeStream,uint32_t tile_part_bytes_written);
+	bool write_psot(CodeStreamCompress *codeStream,uint32_t tilePartBytesWritten);
 
 	/**
 	 * Decompress a SOT marker (Start of tile-part)

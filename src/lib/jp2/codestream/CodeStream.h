@@ -49,7 +49,7 @@ const uint32_t grk_marker_length = 4U;
 
 const uint32_t SPCod_SPCoc_len = 5U;
 const uint32_t cod_coc_len = 5U;
-const uint32_t tlm_len_per_tile_part = 5;
+const uint32_t tlmMarkerBytesPerTilePart = 6;
 
 
 const uint32_t  GRK_COMP_PARAM_DEFAULT_CBLOCKW  =      64;

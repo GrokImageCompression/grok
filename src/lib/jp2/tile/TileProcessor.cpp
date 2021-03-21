@@ -25,11 +25,11 @@ TileProcessor::TileProcessor(CodeStream *codeStream,
 							BufferedStream *stream,
 							bool isCompressor,
 							bool isWholeTileDecompress) :
-				 m_tile_index(0),
+				 m_tileIndex(0),
 				 m_first_poc_tile_part(true),
-				 m_tile_part_index(0),
-				 tile_part_data_length(0),
-				totnum_tp(0),
+				 m_tilePartIndex(0),
+				 tilePartDataLength(0),
+				numTilePartsTotal(0),
 				pino(0),
 				tile(nullptr),
 				headerImage(codeStream->getHeaderImage()),
@@ -237,7 +237,7 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t *all_packets_len) {
 		if (plt_markers) {
 			auto t2 = new T2Compress(this);
 			uint32_t sim_all_packets_len = 0;
-			t2->compressPacketsSimulate(m_tile_index,
+			t2->compressPacketsSimulate(m_tileIndex,
 										0 + 1, &sim_all_packets_len, UINT_MAX,
 										tp_pos, plt_markers);
 			delete t2;
@@ -284,7 +284,7 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t *all_packets_len) {
 					}
 					lowerBound = thresh;
 				} else {
-					if (!t2->compressPacketsSimulate(m_tile_index,
+					if (!t2->compressPacketsSimulate(m_tileIndex,
 							(uint16_t)(layno + 1U), all_packets_len, maxlen,
 							tp_pos, nullptr)) {
 						lowerBound = thresh;
@@ -387,7 +387,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t *all_packets_len) {
 		if (plt_markers) {
 			auto t2 = new T2Compress(this);
 			uint32_t sim_all_packets_len = 0;
-			t2->compressPacketsSimulate(m_tile_index,
+			t2->compressPacketsSimulate(m_tileIndex,
 											0 + 1,
 											&sim_all_packets_len,
 											UINT_MAX,
@@ -429,7 +429,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t *all_packets_len) {
 					}
 					lowerBound = thresh;
 				} else {
-					if (!t2->compressPacketsSimulate(m_tile_index,
+					if (!t2->compressPacketsSimulate(m_tileIndex,
 														(uint16_t)(layno + 1U),
 														all_packets_len,
 														maxlen,
@@ -588,14 +588,14 @@ void TileProcessor::makeLayerFinal(uint32_t layno) {
 }
 bool TileProcessor::init(void) {
 	uint32_t state = grk_plugin_get_debug_state();
-	auto tcp = &(m_cp->tcps[m_tile_index]);
+	auto tcp = &(m_cp->tcps[m_tileIndex]);
 
 	if (tcp->m_compressedTileData)
 		tcp->m_compressedTileData->rewind();
 
 	// generate tile bounds from tile grid coordinates
-	uint32_t tile_x = m_tile_index % m_cp->t_grid_width;
-	uint32_t tile_y = m_tile_index / m_cp->t_grid_width;
+	uint32_t tile_x = m_tileIndex % m_cp->t_grid_width;
+	uint32_t tile_y = m_tileIndex / m_cp->t_grid_width;
 	*((grkRectU32*)tile) = m_cp->getTileBounds(headerImage, tile_x, tile_y);
 
 	if (tcp->tccps->numresolutions == 0) {
@@ -692,7 +692,7 @@ bool TileProcessor::do_compress(void){
 	if (state & GRK_PLUGIN_STATE_DEBUG)
 		set_context_stream(this);
 
-	m_tcp = &m_cp->tcps[m_tile_index];
+	m_tcp = &m_cp->tcps[m_tileIndex];
 
 	// When debugging the compressor, we do all of T1 up to and including DWT
 	// in the plugin, and pass this in as image data.
@@ -723,7 +723,7 @@ bool TileProcessor::do_compress(void){
 	return true;
 }
 bool TileProcessor::preCompressFirstTilePart(void) {
-	if (m_tile_part_index == 0) {
+	if (m_tilePartIndex == 0) {
 
 		// 1. create PLT marker if required
 		delete plt_markers;
@@ -744,7 +744,7 @@ bool TileProcessor::preCompressFirstTilePart(void) {
 bool TileProcessor::compressTilePart(	uint32_t *tile_bytes_written) {
 
 	//4 write PLT for first tile part
-	if (m_tile_part_index == 0 && plt_markers){
+	if (m_tilePartIndex == 0 && plt_markers){
 		uint32_t written = plt_markers->write();
 		*tile_bytes_written += written;
 	}
@@ -782,7 +782,7 @@ bool TileProcessor::isWholeTileDecompress(uint32_t compno) {
 }
 
 bool TileProcessor::decompressT2(SparseBuffer *src_buf) {
-	m_tcp = m_cp->tcps + m_tile_index;
+	m_tcp = m_cp->tcps + m_tileIndex;
 
 	// optimization for regions that are close to largest decompressed resolution
 	// (currently breaks tests, so disabled)
@@ -799,7 +799,7 @@ bool TileProcessor::decompressT2(SparseBuffer *src_buf) {
 	if (doT2) {
 		uint64_t l_data_read = 0;
 		auto t2 = new T2Decompress(this);
-		bool rc = t2->decompressPackets(m_tile_index, src_buf, &l_data_read,&truncated);
+		bool rc = t2->decompressPackets(m_tileIndex, src_buf, &l_data_read,&truncated);
 		delete t2;
 		if (!rc)
 			return false;
@@ -863,7 +863,7 @@ bool TileProcessor::decompressT2T1(TileCodingParams *tcp,
 	if (!allocWindowBuffers(outputImage))
 		return false;
 	if (!decompressT2(tcp->m_compressedTileData) || m_corrupt_packet){
-		GRK_WARN("Tile %d was not decompressed", m_tile_index+1);
+		GRK_WARN("Tile %d was not decompressed", m_tileIndex+1);
 		return true;
 	}
 	if (!decompressT1()) {
@@ -1106,7 +1106,7 @@ bool TileProcessor::t2_encode(uint32_t *all_packet_bytes_written) {
 		}
 	}
 #endif
-	if (!l_t2->compressPackets(m_tile_index, m_tcp->numlayers, m_stream,
+	if (!l_t2->compressPackets(m_tileIndex, m_tcp->numlayers, m_stream,
 			all_packet_bytes_written, m_first_poc_tile_part, tp_pos, pino)) {
 		delete l_t2;
 		return false;
@@ -1162,8 +1162,8 @@ bool TileProcessor::rateAllocate() {
 	return true;
 }
 bool TileProcessor::pre_write_tile() {
-	m_tile_part_index = 0;
-	totnum_tp =	m_cp->tcps[m_tile_index].m_nb_tile_parts;
+	m_tilePartIndex = 0;
+	numTilePartsTotal =	m_cp->tcps[m_tileIndex].m_nb_tile_parts;
 	m_first_poc_tile_part = true;
 
 	/* initialization before tile compressing  */
@@ -1266,30 +1266,30 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress *codeStream) {
 	// note: we subtract 2 to account for SOD marker
 	auto tcp = codeStream->get_current_decode_tcp();
 	if (codeStream->getDecompressorState()->m_last_tile_part_in_code_stream) {
-		tile_part_data_length =	(uint32_t) (m_stream->get_number_byte_left() - 2);
+		tilePartDataLength =	(uint32_t) (m_stream->get_number_byte_left() - 2);
 	} else {
-		if (tile_part_data_length >= 2)
-			tile_part_data_length -= 2;
+		if (tilePartDataLength >= 2)
+			tilePartDataLength -= 2;
 	}
-	if (tile_part_data_length) {
+	if (tilePartDataLength) {
 		auto bytesLeftInStream = m_stream->get_number_byte_left();
 		if (bytesLeftInStream == 0){
 			GRK_ERROR("Tile %d, tile part %d: stream has been truncated and "
-					"there is no tile data available",m_tile_index,tcp->m_tile_part_index);
+					"there is no tile data available",m_tileIndex,tcp->m_tilePartIndex);
 			return false;
 		}
 		// check that there are enough bytes in stream to fill tile data
-		if (tile_part_data_length > bytesLeftInStream) {
+		if (tilePartDataLength > bytesLeftInStream) {
 			GRK_WARN("Tile part length %lld greater than "
 					"stream length %lld\n"
 					"(tile: %u, tile part: %d). Tile has been truncated.",
-					tile_part_data_length,
+					tilePartDataLength,
 					m_stream->get_number_byte_left(),
-					m_tile_index,
-					tcp->m_tile_part_index);
+					m_tileIndex,
+					tcp->m_tilePartIndex);
 
-			// sanitize tile_part_data_length
-			tile_part_data_length =	(uint32_t) bytesLeftInStream;
+			// sanitize tilePartDataLength
+			tilePartDataLength =	(uint32_t) bytesLeftInStream;
 		}
 	}
 	/* Index */
@@ -1302,14 +1302,14 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress *codeStream) {
 		}
 		current_pos = (uint64_t) (current_pos - 2);
 
-		auto tileInfo = codeStreamInfo->getTileInfo(m_tile_index);
+		auto tileInfo = codeStreamInfo->getTileInfo(m_tileIndex);
 		uint8_t current_tile_part = tileInfo->currentTilePart;
 		auto tilePartInfo = tileInfo->getTilePartInfo(current_tile_part);
 		tilePartInfo->endHeaderPosition = 	current_pos;
-		tilePartInfo->endPosition =		current_pos + tile_part_data_length + 2;
+		tilePartInfo->endPosition =		current_pos + tilePartDataLength + 2;
 
 		if (!TileLengthMarkers::addTileMarkerInfo(
-				m_tile_index, codeStreamInfo,
+				m_tileIndex, codeStreamInfo,
 				J2K_MS_SOD, current_pos, 0)) {
 			GRK_ERROR("Not enough memory to add tl marker");
 			return false;
@@ -1318,11 +1318,11 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress *codeStream) {
 		/*codeStreamInfo->numProcessedPackets = 0;*/
 	}
 	size_t current_read_size = 0;
-	if (tile_part_data_length) {
+	if (tilePartDataLength) {
 		if (!tcp->m_compressedTileData)
 			tcp->m_compressedTileData = new SparseBuffer();
 
-		auto len = tile_part_data_length;
+		auto len = tilePartDataLength;
 		uint8_t *buff = nullptr;
 		auto zeroCopy = m_stream->supportsZeroCopy();
 		if (!zeroCopy) {
@@ -1340,7 +1340,7 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress *codeStream) {
 		tcp->m_compressedTileData->pushBack(buff, len, !zeroCopy);
 
 	}
-	if (current_read_size != tile_part_data_length)
+	if (current_read_size != tilePartDataLength)
 		codeStream->getDecompressorState()->setState(J2K_DEC_STATE_NO_EOC);
 	else
 		codeStream->getDecompressorState()->setState(J2K_DEC_STATE_TPH_SOT);

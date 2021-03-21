@@ -93,20 +93,20 @@ struct TileProcessor {
 	void ingestImage();
 	bool prepareSodDecompress(CodeStreamDecompress *codeStream);
 	/** index of tile being currently compressed/decompressed */
-	uint16_t m_tile_index;
+	uint16_t m_tileIndex;
 	/** Compressing Only
 	 *  true for first POC tile part, otherwise false*/
 	bool m_first_poc_tile_part;
 	/** Compressing Only
 	 *  index of tile part being currently coding.
-	 *  m_tile_part_index holds the total number of tile parts encoded thus far
+	 *  m_tilePartIndex holds the total number of tile parts encoded thus far
 	 *  while the compressor is compressing the current tile part.*/
-	uint8_t m_tile_part_index;
+	uint8_t m_tilePartIndex;
 	// Decompressing Only
-	uint32_t tile_part_data_length;
+	uint32_t tilePartDataLength;
 	/** Compressing Only
 	 * Total number of tile parts of the tile*/
-	uint8_t totnum_tp;
+	uint8_t numTilePartsTotal;
 	/** Compressing Only
 	 *  Current packet iterator number */
 	uint32_t pino;
