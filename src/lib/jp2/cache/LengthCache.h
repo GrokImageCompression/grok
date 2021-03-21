@@ -20,46 +20,45 @@
 
 namespace grk {
 
-/**
- * Marker info
- * */
 struct MarkerInfo {
 	MarkerInfo(uint16_t _id,uint64_t _pos, uint32_t _len);
 	MarkerInfo();
+	void dump(FILE *out_stream);
 	/** marker id */
 	uint16_t id;
 	/** position in code stream */
 	uint64_t pos;
-	/** length, marker id included */
+	/** length (marker id included) */
 	uint32_t len;
 };
-/**
- * Tile part index info
- */
 struct TilePartInfo {
 	TilePartInfo(uint64_t start, uint64_t endHeader, uint64_t end);
 	TilePartInfo(void);
-	/** start position */
+	void dump(FILE *out_stream, uint8_t tilePart);
+	/** start position of tile part*/
 	uint64_t startPosition;
-	/** end position of the header */
+	/** end position of tile part header */
 	uint64_t endHeaderPosition;
-	/** end position */
+	/** end position of tile part */
 	uint64_t endPosition;
 };
-/**
- * Tile info
- */
 struct TileInfo {
 	TileInfo(void);
+	~TileInfo(void);
 	bool checkResize(void);
+	bool hasTilePartInfo(void);
+	bool update(uint16_t tileNumber,uint8_t currentTilePart, uint8_t numTileParts);
+	TilePartInfo* getTilePartInfo(uint8_t tilePart);
+	void dump(FILE *out_stream, uint16_t tileNum);
 	/** tile index */
 	uint16_t tileno;
 	/** number of tile parts */
-	uint32_t numTileParts;
+	uint8_t numTileParts;
 	/** current nb of tile part (allocated)*/
-	uint32_t allocatedTileParts;
+	uint8_t allocatedTileParts;
 	/** current tile-part index */
-	uint32_t currentTilePart;
+	uint8_t currentTilePart;
+private:
 	/** tile part index */
 	TilePartInfo *tilePartInfo;
 	/** array of markers */
@@ -69,30 +68,29 @@ struct TileInfo {
 	/** actual size of markers array */
 	uint32_t allocatedMarkers;
 };
-/**
- * Code stream index info
- */
 struct CodeStreamInfo {
 	CodeStreamInfo();
 	virtual ~CodeStreamInfo();
 	bool allocTileInfo(uint16_t numTiles);
-	bool checkResize(void);
-	bool update(uint16_t tileNumber, uint8_t currentTilePart, uint8_t numTileParts);
-
+	bool updateTileInfo(uint16_t tileNumber, uint8_t currentTilePart, uint8_t numTileParts);
+	TileInfo* getTileInfo(uint16_t tileNumber);
+	bool hasTileInfo(void);
+	void dump(FILE *out_stream);
+	void pushMarker(uint16_t id,uint64_t pos,uint32_t len);
+	uint64_t getMainHeaderStart(void);
+	void setMainHeaderStart(uint64_t start);
+	uint64_t getMainHeaderEnd(void);
+	void setMainHeaderEnd(uint64_t end);
+private:
 	/** main header start position (SOC position) */
 	uint64_t mainHeaderStart;
 	/** main header end position (first SOT position) */
 	uint64_t mainHeaderEnd;
-	/** number of markers */
-	uint32_t numMarkers;
 	/** list of markers */
-	MarkerInfo *marker;
-	/** actual size of markers array */
-	uint32_t allocatedMarkers;
-	uint32_t numTiles;
+	std::vector<MarkerInfo*> marker;
+	uint16_t numTiles;
 	TileInfo *tileInfo;
 };
-// tile part length
 struct TilePartLengthInfo {
 	TilePartLengthInfo() :	has_tile_number(false),
 			tileNumber(0),
@@ -151,6 +149,7 @@ private:
 };
 
 typedef std::vector<uint32_t> PL_INFO_VEC;
+
 // map of (PLT/PLM marker id) => (packet length vector)
 typedef std::map<uint8_t, PL_INFO_VEC*> PL_MAP;
 

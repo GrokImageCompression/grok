@@ -116,6 +116,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no,
 				}
 				p_tile->numIteratedPackets++;
 			} 	catch (TruncatedPacketHeaderException &tex){
+				GRK_UNUSED(tex);
 				GRK_WARN("Truncated packet: tile=%d component=%02d resolution=%02d precinct=%03d layer=%02d",
 				 tile_no, currPi->compno, currPi->resno,
 				 currPi->precinctIndex, currPi->layno);
@@ -381,6 +382,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams *p_tcp,
 		bio->inalign();
 		header_data += bio->numbytes();
 	} catch (InvalidMarkerException &ex){
+		GRK_UNUSED(ex);
 		return false;
 	}
 	/* EPH markers */

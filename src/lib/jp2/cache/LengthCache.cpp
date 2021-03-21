@@ -38,11 +38,26 @@ MarkerInfo::MarkerInfo(uint16_t _id,
 										pos(_pos),
 										len(_len){
 }
+void MarkerInfo::dump(FILE *out_stream){
+	fprintf(out_stream, "\t\t type=%#x, pos=%" PRIu64", len=%d\n",id,	pos,len);
+}
 TilePartInfo::TilePartInfo(uint64_t start, uint64_t endHeader, uint64_t end) : startPosition(start),
 																				endHeaderPosition(endHeader),
 																				endPosition(end){
 }
 TilePartInfo::TilePartInfo(void) : TilePartInfo(0,0,0) {
+}
+void TilePartInfo::dump(FILE *out_stream, uint8_t tilePart){
+	std::stringstream ss;
+	ss << "\t\t\t tile-part[" << tilePart << "]:"
+			<< " star_pos="
+			<< startPosition
+			<< "," << " endHeaderPosition="
+			<< endHeaderPosition
+			<< "," << " endPosition="
+			<< endPosition
+			<< std::endl;
+	fprintf(out_stream, "%s", ss.str().c_str());
 }
 TileInfo::TileInfo(void) : tileno(0),
 				numTileParts(0),
@@ -52,8 +67,14 @@ TileInfo::TileInfo(void) : tileno(0),
 				markerInfo(nullptr),
 				numMarkers(0),
 				allocatedMarkers(0){
+	allocatedMarkers = 100;
+	numMarkers = 0;
+	markerInfo =(MarkerInfo*) grkCalloc(allocatedMarkers,sizeof(MarkerInfo));
 }
-
+TileInfo::~TileInfo(void){
+	grkFree(tilePartInfo);
+	grkFree(markerInfo);
+}
 bool TileInfo::checkResize(void){
 	if (numMarkers + 1 > allocatedMarkers) {
 		auto oldMax = allocatedMarkers;
@@ -70,113 +91,50 @@ bool TileInfo::checkResize(void){
 		}
 		markerInfo = new_marker;
 		for (uint32_t i = oldMax; i < allocatedMarkers; ++i)
-			memset(markerInfo+i,0,sizeof(MarkerInfo));
+			markerInfo[i] = MarkerInfo();
 	}
 
 	return true;
 }
-CodeStreamInfo::CodeStreamInfo(): mainHeaderStart(0),
-								mainHeaderEnd(0),
-								numMarkers(0),
-								marker(nullptr),
-								allocatedMarkers(0),
-								numTiles(0),
-								tileInfo(nullptr){
-	allocatedMarkers = 100;
-	numMarkers = 0;
-	marker = (MarkerInfo*) grkCalloc(allocatedMarkers,	sizeof(MarkerInfo));
+bool TileInfo::hasTilePartInfo(void){
+	return tilePartInfo != nullptr;
 }
-CodeStreamInfo::~CodeStreamInfo(){
-	grkFree(marker);
-	if (tileInfo) {
-		for (uint32_t i = 0; i < numTiles; i++) {
-			grkFree(tileInfo[i].tilePartInfo);
-			grkFree(tileInfo[i].markerInfo);
-		}
-		grkFree(tileInfo);
-	}
-}
-bool CodeStreamInfo::checkResize(void) {
-	if ((numMarkers + 1) > allocatedMarkers) {
-		MarkerInfo *new_marker;
-		uint32_t oldMax = allocatedMarkers;
-		allocatedMarkers += 100U;
-		new_marker = (MarkerInfo*) grkRealloc(marker,
-								allocatedMarkers * sizeof(MarkerInfo));
-		if (!new_marker) {
-			grkFree(marker);
-			marker = nullptr;
-			allocatedMarkers = 0;
-			numMarkers = 0;
-			GRK_ERROR( "Not enough memory to add mh marker");
-			return false;
-		}
-		marker = new_marker;
-		for (uint32_t i = oldMax; i < allocatedMarkers; ++i)
-			memset(marker+i, 0, sizeof(MarkerInfo));
-	}
-
-	return true;
-}
-bool CodeStreamInfo::allocTileInfo(uint16_t ntiles){
-	if (tileInfo)
-		return true;
-	numTiles = ntiles;
-	tileInfo = (TileInfo*) grkCalloc(numTiles, sizeof(TileInfo));
-	if (!tileInfo)
-		return false;
-
-	for (uint32_t i = 0; i < numTiles;i++) {
-		tileInfo[i].allocatedMarkers = 100;
-		tileInfo[i].numMarkers = 0;
-		tileInfo[i].markerInfo =(MarkerInfo*) grkCalloc(tileInfo[i].allocatedMarkers,sizeof(MarkerInfo));
-		if (!tileInfo[i].markerInfo)
-			return false;
-	}
-
-	return true;
-}
-bool CodeStreamInfo::update(uint16_t tileNumber, uint8_t currentTilePart, uint8_t numTileParts){
-	assert(tileInfo != nullptr);
-	tileInfo[tileNumber].tileno = tileNumber;
-	tileInfo[tileNumber].currentTilePart = currentTilePart;
-
+bool TileInfo::update(uint16_t tileNumber,uint8_t currentTilePart, uint8_t numTileParts){
+	tileno = tileNumber;
 	if (numTileParts != 0) {
-		tileInfo[tileNumber].numTileParts = numTileParts;
-		tileInfo[tileNumber].allocatedTileParts =	numTileParts;
-
-		if (!tileInfo[tileNumber].tilePartInfo) {
-			tileInfo[tileNumber].tilePartInfo =
+		allocatedTileParts =	numTileParts;
+		if (!tilePartInfo) {
+			tilePartInfo =
 					(TilePartInfo*) grkCalloc(numTileParts,sizeof(TilePartInfo));
-			if (!tileInfo[tileNumber].tilePartInfo) {
+			if (!tilePartInfo) {
 				GRK_ERROR("Not enough memory to read SOT marker. "
 						"Tile index allocation failed");
 				return false;
 			}
 		} else {
 			auto newTilePartIndex = (TilePartInfo*) grkRealloc(
-					tileInfo[tileNumber].tilePartInfo,
+					tilePartInfo,
 					numTileParts * sizeof(TilePartInfo));
 			if (!newTilePartIndex) {
-				grkFree(tileInfo[tileNumber].tilePartInfo);
-				tileInfo[tileNumber].tilePartInfo =
+				grkFree(tilePartInfo);
+				tilePartInfo =
 						nullptr;
 				GRK_ERROR("Not enough memory to read SOT marker. "
 						"Tile index allocation failed");
 				return false;
 			}
-			tileInfo[tileNumber].tilePartInfo =
+			tilePartInfo =
 					newTilePartIndex;
 		}
 	} else {
-		if (!tileInfo[tileNumber].tilePartInfo) {
-			tileInfo[tileNumber].allocatedTileParts = 10;
-			tileInfo[tileNumber].tilePartInfo =
+		if (!tilePartInfo) {
+			allocatedTileParts = 10;
+			tilePartInfo =
 					(TilePartInfo*) grkCalloc(
-							tileInfo[tileNumber].allocatedTileParts,
+							allocatedTileParts,
 							sizeof(TilePartInfo));
-			if (!tileInfo[tileNumber].tilePartInfo) {
-				tileInfo[tileNumber].allocatedTileParts =	0;
+			if (!tilePartInfo) {
+				allocatedTileParts =	0;
 				GRK_ERROR("Not enough memory to read SOT marker. "
 						"Tile index allocation failed");
 				return false;
@@ -184,26 +142,115 @@ bool CodeStreamInfo::update(uint16_t tileNumber, uint8_t currentTilePart, uint8_
 		}
 
 		if (currentTilePart
-				>= tileInfo[tileNumber].allocatedTileParts) {
+				>= allocatedTileParts) {
 			TilePartInfo *newTilePartIndex;
-			tileInfo[tileNumber].allocatedTileParts =	currentTilePart + 1U;
+			allocatedTileParts =	currentTilePart + 1U;
 			newTilePartIndex =
-					(TilePartInfo*) grkRealloc(tileInfo[tileNumber].tilePartInfo,
-							tileInfo[tileNumber].allocatedTileParts
+					(TilePartInfo*) grkRealloc(tilePartInfo,
+							allocatedTileParts
 									* sizeof(TilePartInfo));
 			if (!newTilePartIndex) {
-				grkFree(tileInfo[tileNumber].tilePartInfo);
-				tileInfo[tileNumber].tilePartInfo =
+				grkFree(tilePartInfo);
+				tilePartInfo =
 						nullptr;
-				tileInfo[tileNumber].allocatedTileParts =	0;
+				allocatedTileParts =	0;
 				GRK_ERROR("Not enough memory to read SOT marker. Tile index allocation failed");
 				return false;
 			}
-			tileInfo[tileNumber].tilePartInfo = newTilePartIndex;
+			tilePartInfo = newTilePartIndex;
 		}
 	}
 
 	return true;
+}
+TilePartInfo* TileInfo::getTilePartInfo(uint8_t tilePart){
+	if (!tilePartInfo)
+		return nullptr;
+	return &tilePartInfo[tilePart];
+}
+void TileInfo::dump(FILE *out_stream, uint16_t tileNum){
+	fprintf(out_stream, "\t\t nb of tile-part in tile [%u]=%u\n",
+			tileNum, numTileParts);
+	if (hasTilePartInfo()) {
+		for (uint8_t tilePart = 0; tilePart < numTileParts;tilePart++) {
+			auto tilePartInfo = getTilePartInfo(tilePart);
+			tilePartInfo->dump(out_stream, tilePart);
+		}
+	}
+	if (markerInfo) {
+		for (uint32_t markerNum = 0;markerNum < numMarkers;markerNum++) {
+			markerInfo[markerNum].dump(out_stream);
+		}
+	}
+}
+CodeStreamInfo::CodeStreamInfo(): mainHeaderStart(0),
+								mainHeaderEnd(0),
+								numTiles(0),
+								tileInfo(nullptr){
+}
+CodeStreamInfo::~CodeStreamInfo(){
+	for (auto &m : marker)
+		delete m;
+	delete[] tileInfo;
+}
+bool CodeStreamInfo::allocTileInfo(uint16_t ntiles){
+	if (tileInfo)
+		return true;
+	numTiles = ntiles;
+	tileInfo = new TileInfo[numTiles];
+	return true;
+}
+bool CodeStreamInfo::updateTileInfo(uint16_t tileNumber, uint8_t currentTilePart, uint8_t numTileParts){
+	assert(tileInfo != nullptr);
+	return tileInfo[tileNumber].update(tileNumber, currentTilePart, numTileParts);
+}
+TileInfo* CodeStreamInfo::getTileInfo(uint16_t tileNumber){
+	assert(tileNumber < numTiles);
+	return tileInfo + tileNumber;
+}
+bool CodeStreamInfo::hasTileInfo(void){
+	return tileInfo != nullptr;
+}
+void CodeStreamInfo::dump(FILE *out_stream) {
+	fprintf(out_stream, "Codestream index from main header: {\n");
+	std::stringstream ss;
+	ss << "\t Main header start position=" << mainHeaderStart
+			<< std::endl << "\t Main header end position="
+			<< mainHeaderEnd << std::endl;
+	fprintf(out_stream, "%s", ss.str().c_str());
+	fprintf(out_stream, "\t Marker list: {\n");
+	for (auto &m : marker)
+		m->dump(out_stream);
+	fprintf(out_stream, "\t }\n");
+	if (tileInfo) {
+		uint8_t totalTileParts = 0;
+		for (uint16_t i = 0; i < numTiles; i++)
+			totalTileParts += getTileInfo(i)->numTileParts;
+		if (totalTileParts) {
+			fprintf(out_stream, "\t Tile index: {\n");
+			for (uint16_t i = 0; i < numTiles; i++) {
+				auto tileInfo = getTileInfo(i);
+				tileInfo->dump(out_stream, i);
+			}
+			fprintf(out_stream, "\t }\n");
+		}
+	}
+	fprintf(out_stream, "}\n");
+}
+void CodeStreamInfo::pushMarker(uint16_t id,uint64_t pos,uint32_t len){
+	marker.push_back(new MarkerInfo(id,pos,len));
+}
+uint64_t CodeStreamInfo::getMainHeaderStart(void){
+	return mainHeaderStart;
+}
+void CodeStreamInfo::setMainHeaderStart(uint64_t start){
+	this->mainHeaderStart = start;
+}
+uint64_t CodeStreamInfo::getMainHeaderEnd(void){
+	return mainHeaderEnd;
+}
+void CodeStreamInfo::setMainHeaderEnd(uint64_t end){
+	this->mainHeaderEnd = end;
 }
 TileLengthMarkers::TileLengthMarkers() :
 		m_markers(new TL_MAP()),
@@ -392,31 +439,22 @@ bool TileLengthMarkers::writeEnd(void) {
 	return m_stream->seek(current_position);
 }
 bool TileLengthMarkers::addTileMarkerInfo(uint16_t tileno,
-									CodeStreamInfo *codestreamIndex,
+									CodeStreamInfo *codestreamInfo,
 									uint16_t id,
 									uint64_t pos,
 									uint32_t len) {
-	assert(codestreamIndex != nullptr);
-	assert(codestreamIndex->tileInfo != nullptr);
-	auto currentTileInfo = codestreamIndex->tileInfo + tileno;
-	if (!currentTileInfo->checkResize())
-		return false;
-	auto numMarkers = currentTileInfo->numMarkers;
-	auto marker = currentTileInfo->markerInfo + numMarkers;
-	// avoid duplicates
-	if (marker->id != 0)
-		return true;
-
-	marker->id = id;
-	marker->pos = pos;
-	marker->len =len;
-	currentTileInfo->numMarkers++;
-
+	assert(codestreamInfo != nullptr);
+	assert(codestreamInfo->hasTileInfo());
+	auto currTileInfo = codestreamInfo->getTileInfo(tileno);
 	if (id == J2K_MS_SOT) {
-		uint32_t current_tile_part = currentTileInfo->currentTilePart;
-		if (currentTileInfo->tilePartInfo)
-			currentTileInfo->tilePartInfo[current_tile_part].startPosition =	pos;
+		uint8_t currTilePart = (uint8_t)currTileInfo->currentTilePart;
+		auto tilePartInfo = currTileInfo->getTilePartInfo(currTilePart);
+		if (tilePartInfo)
+			tilePartInfo->startPosition =	pos;
 	}
+
+	codestreamInfo->pushMarker(id, pos, len);
+
 	return true;
 }
 
@@ -570,10 +608,8 @@ bool PacketLengthMarkers::readPLT(uint8_t *p_header_data, uint16_t header_size){
 	}
 
 	/* Zplt */
-	uint8_t Zpl;
-	Zpl = *p_header_data++;
+	uint8_t Zpl = *p_header_data++;
 	--header_size;
-
 	readInitIndex(Zpl);
 	for (uint32_t i = 0; i < header_size; ++i) {
 		/* Iplt_ij */

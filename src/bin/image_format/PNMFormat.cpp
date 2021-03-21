@@ -87,8 +87,10 @@ int convert(std::string s) {
 	try {
 		return stoi(s);
 	} catch (std::invalid_argument const &e) {
+		GRK_UNUSED(e);
 		std::cout << "Bad input: std::invalid_argument thrown" << '\n';
 	} catch (std::out_of_range const &e) {
+		GRK_UNUSED(e);
 		std::cout << "Integer overflow: std::out_of_range thrown" << '\n';
 	}
 	return -1;

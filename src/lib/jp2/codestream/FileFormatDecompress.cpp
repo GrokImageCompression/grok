@@ -100,6 +100,7 @@ bool FileFormatDecompress::read_asoc(uint8_t *header_data, uint32_t header_data_
     try {
     	read_asoc(&root_asoc, &header_data,&header_data_size,header_data_size);
     } catch (BadAsocException &bae){
+    	GRK_UNUSED(bae);
     	return false;
     }
 
@@ -515,6 +516,7 @@ bool FileFormatDecompress::readHeaderProcedureImpl(void) {
 		}
 		rc = true;
 	} catch (CorruptJP2BoxException &ex) {
+		GRK_UNUSED(ex);
 		rc = false;
 	}
 cleanup:

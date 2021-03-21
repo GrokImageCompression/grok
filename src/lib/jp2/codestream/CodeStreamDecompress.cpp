@@ -118,9 +118,7 @@ CodeStreamDecompress::CodeStreamDecompress( BufferedStream *stream) :
 	{J2K_MS_MCO, new marker_handler(J2K_MS_MCO,J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH,
 			[this](uint8_t *data, uint16_t len) { return read_mco(data, len); })}
 	};
-
 }
-
 CodeStreamDecompress::~CodeStreamDecompress() {
 	for (auto &val : marker_map)
 		delete val.second;
@@ -154,7 +152,6 @@ TileProcessor* CodeStreamDecompress::allocateProcessor(uint16_t tileIndex){
 
 	return m_currentTileProcessor;
 }
-
 TileCodingParams* CodeStreamDecompress::get_current_decode_tcp() {
     auto tileProcessor = m_currentTileProcessor;
 
@@ -368,17 +365,18 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex){
 		m_headerImage->copyHeader(getCompositeImage());
 	}
 
+	uint16_t numTilesToDecompress = (uint16_t)(m_cp.t_grid_width * m_cp.t_grid_height);
 	if (codeStreamInfo) {
-		if (!codeStreamInfo->allocTileInfo(m_cp.t_grid_width * m_cp.t_grid_height)) {
+		if (!codeStreamInfo->allocTileInfo(numTilesToDecompress)) {
 			m_headerError = true;
 			return false;
 		}
 	}
 
 	auto compositeImage = getCompositeImage();
-	if (tileIndex >= m_cp.t_grid_width * m_cp.t_grid_height) {
+	if (tileIndex >= numTilesToDecompress) {
 		GRK_ERROR(	"Tile index %u is greater than maximum tile index %u",	tileIndex,
-				      m_cp.t_grid_width * m_cp.t_grid_height - 1);
+				numTilesToDecompress - 1);
 		return false;
 	}
 
@@ -422,8 +420,7 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex){
 
 	// reset tile part numbers, in case we are re-using the same codec object
 	// from previous decompress
-	uint32_t nb_tiles = m_cp.t_grid_width * m_cp.t_grid_height;
-	for (uint32_t i = 0; i < nb_tiles; ++i)
+	for (uint32_t i = 0; i < numTilesToDecompress; ++i)
 		m_cp.tcps[i].m_tile_part_index = -1;
 
 	/* customization of the decoding */
@@ -431,7 +428,6 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex){
 
 	return decompressExec();
 }
-///////////////////////////////////////////////////////////////////////////////////////
 bool CodeStreamDecompress::endOfCodeStream(void){
 	return m_decompressorState.getState() == J2K_DEC_STATE_EOC ||
 				m_decompressorState.getState() == J2K_DEC_STATE_NO_EOC ||
@@ -441,7 +437,7 @@ bool CodeStreamDecompress::decompressTiles(void) {
 	uint16_t numTilesToDecompress = (uint16_t)(m_cp.t_grid_height* m_cp.t_grid_width);
 	m_multiTile = numTilesToDecompress > 1;
 	if (codeStreamInfo) {
-		if (!codeStreamInfo->allocTileInfo(m_cp.t_grid_width * m_cp.t_grid_height)) {
+		if (!codeStreamInfo->allocTileInfo(numTilesToDecompress)) {
 			m_headerError = true;
 			return false;
 		}
@@ -457,8 +453,7 @@ bool CodeStreamDecompress::decompressTiles(void) {
 			GRK_ERROR("No tiles were decompressed.");
 			return false;
 		}
-		uint16_t nb_tiles = (uint16_t)(m_cp.t_grid_width * m_cp.t_grid_height);
-		for (uint16_t i = 0; i < nb_tiles; ++i){
+		for (uint16_t i = 0; i < numTilesToDecompress; ++i){
 			auto entry = m_tileCache->get(i);
 			if (!entry || !entry->processor)
 				continue;
@@ -527,6 +522,7 @@ bool CodeStreamDecompress::decompressTiles(void) {
 					goto cleanup;
 			}
 		}  catch (DecodeUnknownMarkerAtEndOfTileException &e){
+			GRK_UNUSED(e);
 			breakAfterT1 = true;
 		}
 		//3. T2 + T1 decompress
@@ -695,25 +691,12 @@ bool CodeStreamDecompress::copy_default_tcp(void) {
 
 	return true;
 }
-
-
-bool CodeStreamDecompress::addMainHeaderMarker(uint16_t id,
+void CodeStreamDecompress::addMainHeaderMarker(uint16_t id,
 										uint64_t pos,
 										uint32_t len) {
 	assert(codeStreamInfo != nullptr);
-	if (!codeStreamInfo->checkResize())
-		return false;
-
-	auto marker = codeStreamInfo->marker + codeStreamInfo->numMarkers;
-	/* add the marker */
-	marker->id = id;
-	marker->pos = pos;
-	marker->len = len;
-	codeStreamInfo->numMarkers++;
-	return true;
+	codeStreamInfo->pushMarker(id,pos,len);
 }
-
-
 uint16_t CodeStreamDecompress::getCurrentMarker(){
 	return m_curr_marker;
 }
@@ -806,11 +789,8 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void) {
 
 		if (codeStreamInfo) {
 			/* Add the marker to the code stream index*/
-			if (!addMainHeaderMarker(marker_handler->id,
-					m_stream->tell() - marker_size - 4U, marker_size + 4U)) {
-				GRK_ERROR("Not enough memory to add mh marker");
-				return false;
-			}
+			addMainHeaderMarker(marker_handler->id,
+					m_stream->tell() - marker_size - 4U, marker_size + 4U);
 		}
 		// read next marker
 		if (!readMarker())
@@ -832,7 +812,7 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void) {
 	}
 	// we don't include the SOC marker, therefore subtract 2
 	if (codeStreamInfo)
-		codeStreamInfo->mainHeaderEnd = (uint32_t) m_stream->tell() - 2;
+		codeStreamInfo->setMainHeaderEnd((uint32_t) m_stream->tell() - 2U);
 
 	/* Next step: read a tile-part header */
 	m_decompressorState.setState(J2K_DEC_STATE_TPH_SOT);
@@ -869,20 +849,21 @@ bool CodeStreamDecompress::decompressTile() {
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
 	bool rc = false;
 	if (!tileCache || !tileCache->processor->getImage()) {
-		if (!codeStreamInfo->allocTileInfo(m_cp.t_grid_width * m_cp.t_grid_height))
+		if (!codeStreamInfo->allocTileInfo((uint16_t)(m_cp.t_grid_width * m_cp.t_grid_height)))
 			return false;
 		// if we have a TLM marker, then we can skip tiles until
 		// we get to desired tile
 		if (m_cp.tlm_markers){
 			// for first SOT position, we add two to skip SOC marker
 			if (!m_cp.tlm_markers->skipTo((uint16_t)tileIndexToDecode(),
-											m_stream,codeStreamInfo->mainHeaderEnd+2))
+											m_stream,codeStreamInfo->getMainHeaderEnd()+2))
 				return false;
 		} else {
 			/* Move into the code stream to the first SOT used to decompress the desired tile */
 			uint16_t tile_index_to_decompress =	(uint16_t) (tileIndexToDecode());
-			if (codeStreamInfo->tileInfo && codeStreamInfo->tileInfo->tilePartInfo) {
-				if (!codeStreamInfo->tileInfo[tile_index_to_decompress].numTileParts) {
+			if (codeStreamInfo->hasTileInfo() && codeStreamInfo->getTileInfo(0)->hasTilePartInfo()) {
+				auto tileInfo = codeStreamInfo->getTileInfo(tile_index_to_decompress);
+				if (!tileInfo->numTileParts) {
 					/* the index for this tile has not been built,
 					 *  so move to the last SOT read */
 					if (!(m_stream->seek(m_decompressorState.m_last_sot_read_pos	+ 2))) {
@@ -890,7 +871,7 @@ bool CodeStreamDecompress::decompressTile() {
 						return false;
 					}
 				} else {
-					if (!(m_stream->seek(codeStreamInfo->tileInfo[tile_index_to_decompress].tilePartInfo[0].startPosition	+ 2))) {
+					if (!(m_stream->seek(tileInfo->getTilePartInfo(0)->startPosition	+ 2))) {
 						GRK_ERROR("Problem with seek function");
 						return false;
 					}
@@ -917,6 +898,7 @@ bool CodeStreamDecompress::decompressTile() {
 					goto cleanup;
 			}
 		}  catch (DecodeUnknownMarkerAtEndOfTileException &e){
+			GRK_UNUSED(e);
 		}
 		if (!decompressT2T1(tileProcessor))
 			goto cleanup;
@@ -2035,13 +2017,8 @@ bool CodeStreamDecompress::read_unk(uint16_t *output_marker) {
 				return false;
 			} else {
 				/* Add the marker to the code stream index*/
-				if (codeStreamInfo && marker_handler->id != J2K_MS_SOT) {
-					bool res = addMainHeaderMarker(J2K_MS_UNK, m_stream->tell() - size_unk, size_unk);
-					if (res == false) {
-						GRK_ERROR("Not enough memory to add mh marker");
-						return false;
-					}
-				}
+				if (codeStreamInfo && marker_handler->id != J2K_MS_SOT)
+					 addMainHeaderMarker(J2K_MS_UNK, m_stream->tell() - size_unk, size_unk);
 				break; /* next marker is known and located correctly  */
 			}
 		}
@@ -2497,14 +2474,8 @@ bool CodeStreamDecompress::read_soc() {
 	m_decompressorState.setState(J2K_DEC_STATE_MH_SIZ);
 
 	if (codeStreamInfo) {
-		/* FIXME move it in a index structure included in this*/
-		codeStreamInfo->mainHeaderStart = m_stream->tell() - 2;
-		/* Add the marker to the code stream index*/
-		if (!addMainHeaderMarker(J2K_MS_SOC,
-				codeStreamInfo->mainHeaderStart, 2)) {
-			GRK_ERROR("Not enough memory to add mh marker");
-			return false;
-		}
+		codeStreamInfo->setMainHeaderStart(m_stream->tell() - 2);
+		addMainHeaderMarker(J2K_MS_SOC,codeStreamInfo->getMainHeaderStart(), 2);
 	}
 	return true;
 }
@@ -2709,84 +2680,13 @@ void CodeStreamDecompress::dump(uint32_t flag, FILE *out_stream) {
 	}
 
 	/* Dump the code stream index from main header */
-	if (flag & GRK_J2K_MH_IND)
-		dump_MH_index(out_stream);
+	if ((flag & GRK_J2K_MH_IND) && codeStreamInfo)
+		codeStreamInfo->dump(out_stream);
 
 	/* Dump the code stream index of the current tile */
 	if (flag & GRK_J2K_TH_IND) {
 
 	}
-}
-void CodeStreamDecompress::dump_MH_index(FILE *out_stream) {
-	fprintf(out_stream, "Codestream index from main header: {\n");
-
-	std::stringstream ss;
-	ss << "\t Main header start position=" << codeStreamInfo->mainHeaderStart
-			<< std::endl << "\t Main header end position="
-			<< codeStreamInfo->mainHeaderEnd << std::endl;
-
-	fprintf(out_stream, "%s", ss.str().c_str());
-	fprintf(out_stream, "\t Marker list: {\n");
-
-	if (codeStreamInfo->marker) {
-		for (uint32_t it_marker = 0; it_marker < codeStreamInfo->numMarkers; it_marker++) {
-			fprintf(out_stream, "\t\t type=%#x, pos=%" PRIu64", len=%d\n",
-					codeStreamInfo->marker[it_marker].id,
-					codeStreamInfo->marker[it_marker].pos,
-					codeStreamInfo->marker[it_marker].len);
-		}
-	}
-
-	fprintf(out_stream, "\t }\n");
-	if (codeStreamInfo->tileInfo) {
-		/* Simple test to avoid to write empty information*/
-		uint32_t acc_nb_of_tile_part = 0;
-		for (uint32_t i = 0; i < codeStreamInfo->numTiles; i++)
-			acc_nb_of_tile_part += codeStreamInfo->tileInfo[i].numTileParts;
-		if (acc_nb_of_tile_part) {
-			fprintf(out_stream, "\t Tile index: {\n");
-			for (uint32_t i = 0; i < codeStreamInfo->numTiles; i++) {
-				uint32_t nb_of_tile_part =
-						codeStreamInfo->tileInfo[i].numTileParts;
-				fprintf(out_stream, "\t\t nb of tile-part in tile [%u]=%u\n",
-						i, nb_of_tile_part);
-
-				if (codeStreamInfo->tileInfo[i].tilePartInfo) {
-					for (uint32_t it_tile_part = 0; it_tile_part < nb_of_tile_part;
-							it_tile_part++) {
-						ss.clear();
-						ss << "\t\t\t tile-part[" << it_tile_part << "]:"
-								<< " star_pos="
-								<< codeStreamInfo->tileInfo[i].tilePartInfo[it_tile_part].startPosition
-								<< "," << " endHeaderPosition="
-								<< codeStreamInfo->tileInfo[i].tilePartInfo[it_tile_part].endHeaderPosition
-								<< "," << " endPosition="
-								<< codeStreamInfo->tileInfo[i].tilePartInfo[it_tile_part].endPosition
-								<< std::endl;
-						fprintf(out_stream, "%s", ss.str().c_str());
-					}
-				}
-
-				if (codeStreamInfo->tileInfo[i].markerInfo) {
-					for (uint32_t it_marker = 0;
-							it_marker < codeStreamInfo->tileInfo[i].numMarkers;
-							it_marker++) {
-						ss.clear();
-						ss << "\t\t type="
-								<< codeStreamInfo->tileInfo[i].markerInfo[it_marker].id
-								<< "," << " pos="
-								<< codeStreamInfo->tileInfo[i].markerInfo[it_marker].pos
-								<< "," << " len="
-								<< codeStreamInfo->tileInfo[i].markerInfo[it_marker].len
-								<< std::endl;
-						fprintf(out_stream, "%s", ss.str().c_str());
-					}
-				}
-			}
-			fprintf(out_stream, "\t }\n");
-		}
-	}
-	fprintf(out_stream, "}\n");
 }
 void CodeStreamDecompress::dump_MH_info(FILE *out_stream) {
 	fprintf(out_stream, "Codestream info from main header: {\n");

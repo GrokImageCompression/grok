@@ -230,7 +230,7 @@ bool SOTMarker::get_sot_values(CodeStreamDecompress *codeStream,
 	}
 
 	auto codeStreamInfo = codeStream->getCodeStreamInfo();
-	return  (!codeStreamInfo || codeStreamInfo->update(tileNumber, currentTilePart, numTileParts));
+	return  (!codeStreamInfo || codeStreamInfo->updateTileInfo(tileNumber, currentTilePart, numTileParts));
  }
 
 

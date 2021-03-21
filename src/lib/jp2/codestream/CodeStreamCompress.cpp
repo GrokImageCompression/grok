@@ -715,7 +715,7 @@ bool CodeStreamCompress::write_mct_record(grk_mct_data *p_mct_record, BufferedSt
 	return stream->write_bytes(p_mct_record->m_data, p_mct_record->m_data_size);
 }
 bool CodeStreamCompress::get_end_header(void) {
-	codeStreamInfo->mainHeaderEnd = m_stream->tell();
+	codeStreamInfo->setMainHeaderEnd(m_stream->tell());
 
 	return true;
 }

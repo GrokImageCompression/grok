@@ -63,7 +63,6 @@ public:
    void dump(uint32_t flag, FILE *out_stream);
 protected:
  	void dump_MH_info(FILE *out_stream);
- 	void dump_MH_index(FILE *out_stream);
  	/**
  	 * Dump an image header structure.
  	 *
@@ -105,7 +104,7 @@ private:
     @param pos          byte offset of marker segment
     @param len          length of marker segment
     */
-   bool addMainHeaderMarker(	uint16_t id,
+   void addMainHeaderMarker(	uint16_t id,
    						uint64_t pos,
    						uint32_t len);
    /**

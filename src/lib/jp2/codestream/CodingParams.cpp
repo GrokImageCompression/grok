@@ -224,6 +224,7 @@ bool DecompressorState::findNextTile(CodeStreamDecompress *codeStream){
 				return true;
 		}
 		} catch (InvalidMarkerException &ume){
+			    GRK_UNUSED(ume);
 				setState( J2K_DEC_STATE_NO_EOC);
 				GRK_WARN("findNextTile: expected EOC or SOT "
 						"but found invalid marker 0x%x.", codeStream->getCurrentMarker());

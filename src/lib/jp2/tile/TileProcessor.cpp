@@ -823,6 +823,7 @@ bool TileProcessor::decompressT1(void) {
 				try {
 					tilec->allocSparseBuffer(tilec->resolutions_decompressed + 1U, truncated);
 				} catch (runtime_error &ex) {
+					GRK_UNUSED(ex);
 					continue;
 				}
 			}
@@ -1301,12 +1302,11 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress *codeStream) {
 		}
 		current_pos = (uint64_t) (current_pos - 2);
 
-		uint32_t current_tile_part =
-				codeStreamInfo->tileInfo[m_tile_index].currentTilePart;
-		codeStreamInfo->tileInfo[m_tile_index].tilePartInfo[current_tile_part].endHeaderPosition =
-				current_pos;
-		codeStreamInfo->tileInfo[m_tile_index].tilePartInfo[current_tile_part].endPosition =
-				current_pos + tile_part_data_length + 2;
+		auto tileInfo = codeStreamInfo->getTileInfo(m_tile_index);
+		uint8_t current_tile_part = tileInfo->currentTilePart;
+		auto tilePartInfo = tileInfo->getTilePartInfo(current_tile_part);
+		tilePartInfo->endHeaderPosition = 	current_pos;
+		tilePartInfo->endPosition =		current_pos + tile_part_data_length + 2;
 
 		if (!TileLengthMarkers::addTileMarkerInfo(
 				m_tile_index, codeStreamInfo,
@@ -1329,6 +1329,7 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress *codeStream) {
 			try {
 				buff = new uint8_t[len];
 			} catch (std::bad_alloc &ex) {
+				GRK_UNUSED(ex);
 				GRK_ERROR("Not enough memory to allocate segment");
 				return false;
 			}
