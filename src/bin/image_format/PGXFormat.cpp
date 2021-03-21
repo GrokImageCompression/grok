@@ -95,7 +95,7 @@ static grk_image* pgxtoimage(const char *filename,
 		return nullptr;
 	}
 
-	if (fseek(f, 0, SEEK_SET))
+	if (GRK_FSEEK(f, 0, SEEK_SET))
 		goto cleanup;
 	if (fscanf(f, "PG%31[ \t]%c%c%31[ \t+-]%u%31[ \t]%u%31[ \t]%u", temp,
 			&endian1, &endian2, signtmp, &prec, temp, &w, temp, &h) != 9) {

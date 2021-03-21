@@ -677,4 +677,18 @@ uint32_t PacketLengthMarkers::getNext(void) {
 	return 0;
 }
 
+PacketInfo::PacketInfo(void) : PacketInfo(0,0,0){
+}
+PacketInfo::PacketInfo(uint64_t off,
+						uint32_t hdrlen,
+						uint32_t datalen) : offset(off),
+											headerLength(hdrlen),
+											dataLength(datalen)
+{}
+
+PacketInfoCache::~PacketInfoCache(){
+	for (auto &p : packetInfo)
+		delete p;
+}
+
 }

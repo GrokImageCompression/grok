@@ -153,9 +153,9 @@ static size_t grk_read_from_file(void *p_buffer, size_t nb_bytes,
 }
 
 static uint64_t grk_get_data_length_from_file(FILE *p_file) {
-	GROK_FSEEK(p_file, 0, SEEK_END);
-	int64_t file_length = (int64_t) GROK_FTELL(p_file);
-	GROK_FSEEK(p_file, 0, SEEK_SET);
+	GRK_FSEEK(p_file, 0, SEEK_END);
+	int64_t file_length = (int64_t) GRK_FTELL(p_file);
+	GRK_FSEEK(p_file, 0, SEEK_SET);
 	return (uint64_t) file_length;
 }
 static size_t grk_write_to_file(void *p_buffer, size_t nb_bytes,
@@ -163,7 +163,7 @@ static size_t grk_write_to_file(void *p_buffer, size_t nb_bytes,
 	return fwrite(p_buffer, 1, nb_bytes, p_file);
 }
 static bool grk_seek_in_file(int64_t nb_bytes, FILE *p_user_data) {
-	return GROK_FSEEK(p_user_data, nb_bytes, SEEK_SET) ? false : true;
+	return GRK_FSEEK(p_user_data, nb_bytes, SEEK_SET) ? false : true;
 }
 
 /* ---------------------------------------------------------------------- */

@@ -100,8 +100,8 @@ bool header_rewind(char *s, char *line, size_t lineLen,  FILE *reader){
     // if s points to ' ', then rewind file
 	// to two past current position of s
 	if (*s == ' ') {
-		ptrdiff_t len = (ptrdiff_t)s - (ptrdiff_t)line;
-		if (fseek(reader, (ptrdiff_t)(-lineLen) +len + 2, SEEK_CUR))
+		auto len = (int64_t)s - (int64_t)line;
+		if (GRK_FSEEK(reader, (int64_t)(-lineLen) +len + 2, SEEK_CUR))
 			return false;
 	}
 	return true;
@@ -461,15 +461,15 @@ static grk_image* pnmtoimage(const char *filename,
 			packed = true;
 		} else {
 			/* let's see if bits are packed into bytes or not */
-			int64_t currentPos = ftell(fp);
+			int64_t currentPos = GRK_FTELL(fp);
 			if (currentPos == -1)
 				goto cleanup;
-			if (fseek(fp, 0L, SEEK_END))
+			if (GRK_FSEEK(fp, 0L, SEEK_END))
 				goto cleanup;
-			int64_t endPos = ftell(fp);
+			int64_t endPos = GRK_FTELL(fp);
 			if (endPos == -1)
 				goto cleanup;
-			if (fseek(fp, currentPos, SEEK_SET))
+			if (GRK_FSEEK(fp, currentPos, SEEK_SET))
 				goto cleanup;
 			uint64_t pixels = (uint64_t)(endPos - currentPos);
 			if (pixels == packed_area)

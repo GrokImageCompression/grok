@@ -1022,8 +1022,8 @@ int GrkTranscode::preProcess(grk_plugin_decompress_callback_info *info) {
 			// Reading value from file
 			auto in = fopen(infile, "r");
 			if (in) {
-				fseek(in, 0L, SEEK_END);
-				long int sz = ftell(in);
+				GRK_FSEEK(in, 0U, SEEK_END);
+				int64_t sz = GRK_FTELL(in);
 				if (sz == -1){
 					spdlog::error("grk_decompress: ftell error from file {}", sz, infile);
 					goto cleanup;

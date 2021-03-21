@@ -21,6 +21,7 @@
 
 #pragma once
 
+
 #ifdef _WIN32
 #include <Windows.h>
 #include "windirent.h"
@@ -40,16 +41,38 @@
 #include <fcntl.h>
 #include <dirent.h>
 #endif /* _WIN32 */
-
-
 #include "spdlog/spdlog.h"
-
 #include <cstdint>
 #include <cstddef>
 #include <cstdio>
 #include <cassert>
 #include "grok.h"
 #include <algorithm>
+
+/*
+ Use fseeko() and ftello() if they are available since they use
+ 'int64_t' rather than 'long'.  It is wrong to use fseeko() and
+ ftello() only on systems with special LFS support since some systems
+ (e.g. FreeBSD) support a 64-bit int64_t by default.
+ */
+#if defined(GROK_HAVE_FSEEKO) && !defined(fseek)
+#  define fseek  fseeko
+#  define ftell  ftello
+#endif
+#if defined(_WIN32)
+#  define GRK_FSEEK(stream,offset,whence) _fseeki64(stream,/* __int64 */ offset,whence)
+#  define GRK_FSTAT(fildes,stat_buff) _fstati64(fildes,/* struct _stati64 */ stat_buff)
+#  define GRK_FTELL(stream) /* __int64 */ _ftelli64(stream)
+#  define GRK_STAT_STRUCT struct _stati64
+#  define GRK_STAT(path,stat_buff) _stati64(path,/* struct _stati64 */ stat_buff)
+#else
+#  define GRK_FSEEK(stream,offset,whence) fseek(stream,offset,whence)
+#  define GRK_FSTAT(fildes,stat_buff) fstat(fildes,stat_buff)
+#  define GRK_FTELL(stream) ftell(stream)
+#  define GRK_STAT_STRUCT struct stat
+#  define GRK_STAT(path,stat_buff) stat(path,stat_buff)
+#endif
+
 
 #define GRK_UNUSED(x) (void)x
 

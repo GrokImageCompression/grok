@@ -1286,11 +1286,11 @@ static int parseCommandLine(int argc,
 				goto cleanup;
 
 			/* Set size of file and read its content*/
-			if (fseek(lFile, 0, SEEK_END))
+			if (GRK_FSEEK(lFile, 0U, SEEK_END))
 				goto cleanup;
 
-			lStrLen = (size_t) ftell(lFile);
-			if (fseek(lFile, 0, SEEK_SET))
+			lStrLen = (size_t) GRK_FTELL(lFile);
+			if (GRK_FSEEK(lFile, 0U, SEEK_SET))
 				goto cleanup;
 
 			lMatrix = (char*) malloc(lStrLen + 1);
@@ -1773,7 +1773,7 @@ static bool plugin_compress_callback(grk_plugin_compress_user_callback_info *inf
 			goto cleanup;
 		}
 
-		auto rc = fseek(fp, 0, SEEK_END);
+		auto rc = GRK_FSEEK(fp, 0U, SEEK_END);
 		if (rc == -1) {
 			spdlog::error("grk_compress: unable to seek on file {}",
 					info->input_file_name);
@@ -1781,7 +1781,7 @@ static bool plugin_compress_callback(grk_plugin_compress_user_callback_info *inf
 			bSuccess = false;
 			goto cleanup;
 		}
-		auto fileLength = ftell(fp);
+		auto fileLength = GRK_FTELL(fp);
 		if (fileLength == -1) {
 			spdlog::error("grk_compress: unable to ftell on file {}",
 					info->input_file_name);
