@@ -20,13 +20,13 @@
 
 namespace grk {
 
-template <typename T> class SequentialItemCache{
+template <typename T> class SequentialCache{
 public:
-	SequentialItemCache(uint64_t maxChunkSize) : m_chunkSize(std::min<uint64_t>(maxChunkSize,1024 )),
+	SequentialCache(uint64_t maxChunkSize) : m_chunkSize(std::min<uint64_t>(maxChunkSize,1024 )),
 												m_currChunk(nullptr),
 												m_index(0)
 	{}
-	virtual ~SequentialItemCache(void){
+	virtual ~SequentialCache(void){
 		for (auto &ch : chunks){
 			for (auto &item : ch)
 				delete item;

@@ -18,9 +18,9 @@
 
 namespace grk {
 
-template <typename T, typename P> class BlockCache : public SparseItemCache<T>{
+template <typename T, typename P> class BlockCache : public SparseCache<T>{
 public:
-	BlockCache(uint64_t maxChunkSize,P *blockInitializer) : SparseItemCache<T>(maxChunkSize),
+	BlockCache(uint64_t maxChunkSize,P *blockInitializer) : SparseCache<T>(maxChunkSize),
 															 m_blockInitializer(blockInitializer)
 	{}
 	virtual ~BlockCache() = default;
