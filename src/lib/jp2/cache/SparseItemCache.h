@@ -21,13 +21,13 @@
 namespace grk {
 
 const size_t kChunkSize = 1024;
-template <typename T> class ItemCache{
+template <typename T> class SparseItemCache{
 public:
-	ItemCache(uint64_t maxChunkSize) : m_chunkSize(std::min<uint64_t>(maxChunkSize, kChunkSize)),
+	SparseItemCache(uint64_t maxChunkSize) : m_chunkSize(std::min<uint64_t>(maxChunkSize, kChunkSize)),
 											m_currChunk(nullptr),
 											m_currChunkIndex(0)
 	{}
-	virtual ~ItemCache(void){
+	virtual ~SparseItemCache(void){
 		for (auto &ch : chunks){
 			for (size_t i = 0; i < m_chunkSize; ++i)
 				delete ch.second[i];
