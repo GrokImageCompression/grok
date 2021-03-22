@@ -151,15 +151,20 @@ bool T2Decompress::decompressPacket(TileCodingParams *p_tcp,
 									const PacketIter *p_pi,
 									SparseBuffer *srcBuf,
 									uint32_t *bytesRead) {
-	auto p_tile = tileProcessor->tile;
-	auto res = &p_tile->comps[p_pi->compno].tileCompResolution[p_pi->resno];
+	auto tile = tileProcessor->tile;
+	auto res = &tile->comps[p_pi->compno].tileCompResolution[p_pi->resno];
 	bool dataPresent;
 	uint32_t totalBytesRead = 0;
+	auto packetInfo = tileProcessor->plt_markers  ? nullptr : tileProcessor->fakePlt.get();
 	if (!readPacketHeader(p_tcp, p_pi, &dataPresent, srcBuf, &totalBytesRead,nullptr))
 		return false;
+	if(packetInfo)
+		packetInfo->headerLength = totalBytesRead;
 	if (dataPresent && !readPacketData(res, p_pi, srcBuf, &totalBytesRead))
 		return false;
 	*bytesRead = totalBytesRead;
+	if(packetInfo)
+		packetInfo->dataLength = totalBytesRead - packetInfo->headerLength;
 	return true;
 }
 void T2Decompress::initSegment(DecompressCodeblock *cblk, uint32_t index, uint8_t cblk_sty,
@@ -483,7 +488,7 @@ bool T2Decompress::skipPacket(TileCodingParams *p_tcp,
 	if (!readPacketHeader(p_tcp, pi, &dataPresent, srcBuf, &tempBytesRead, &packetDataBytes))
 		return false;
 	if (packetInfo)
-		packetInfo->headerLength = (uint32_t)tempBytesRead;
+		packetInfo->headerLength = tempBytesRead;
 	maxDataLength -= tempBytesRead;
 	uint32_t packetBytes = tempBytesRead;
 	if (dataPresent) {
@@ -491,7 +496,7 @@ bool T2Decompress::skipPacket(TileCodingParams *p_tcp,
 		srcBuf->incrementCurrentChunkOffset(calculatedBytes);
 		packetBytes += calculatedBytes;
 		if (packetInfo)
-			packetInfo->dataLength = (uint32_t)calculatedBytes;
+			packetInfo->dataLength = calculatedBytes;
 	}
 	*bytesRead = packetBytes;
 
