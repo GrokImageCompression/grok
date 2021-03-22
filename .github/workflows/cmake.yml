@@ -5,6 +5,7 @@ on: [push]
 env:
   BUILD_TYPE: Release
   DATA_ROOT: ${{github.workspace}}/data
+  GENERATOR_PLATFORM:
 
 jobs:
   build:
@@ -44,6 +45,9 @@ jobs:
       if: startsWith(matrix.os, 'windows')
       run: |
         $env:Path += ";C:\Users\runneradmin\AppData\Roaming\Python\Python37\Scripts"
+        $generator= "-DCMAKE_GENERATOR_PLATFORM=x64"
+        echo "Generator: ${generator}"
+        echo "GENERATOR_PLATFORM=$generator" >> $env:GITHUB_ENV
 
     - name: Create Build Environment
       # Some projects don't allow in-source building, so create a separate build directory
@@ -58,7 +62,7 @@ jobs:
       # Note the current convention is to use the -S and -B options here to specify source 
       # and build directories, but this is only available with CMake 3.13 and higher.  
       # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_THIRDPARTY:BOOL=ON -DBUILD_TESTING:BOOL=ON -DGRK_DATA_ROOT=$DATA_ROOT
+      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DBUILD_THIRDPARTY:BOOL=ON -DBUILD_TESTING:BOOL=ON -DGRK_DATA_ROOT=$DATA_ROOT $GENERATOR_PLATFORM
 
     - name: Build
       working-directory: ${{github.workspace}}/build
