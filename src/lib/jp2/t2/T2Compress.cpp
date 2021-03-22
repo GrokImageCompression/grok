@@ -335,8 +335,8 @@ bool T2Compress::compressPacket(TileCodingParams *tcp, PacketIter *pi,
 		auto originalDataBytes = *packet_bytes_written - numHeaderBytes;
 		auto roundRes = &tilec->round_trip_resolutions[resno];
 		size_t bytesRead = 0;
-		auto src_buf = std::unique_ptr<SparseBuffer>(new SparseBuffer());
-		seg_buf_push_back(src_buf.get(), dest, *packet_bytes_written);
+		auto srcBuf = std::unique_ptr<SparseBuffer>(new SparseBuffer());
+		seg_buf_push_back(srcBuf.get(), dest, *packet_bytes_written);
 
 		bool ret = true;
 		bool read_data;
@@ -345,7 +345,7 @@ bool T2Compress::compressPacket(TileCodingParams *tcp, PacketIter *pi,
 			tcp,
 			pi,
 			&read_data,
-			src_buf.get(),
+			srcBuf.get(),
 			&bytesRead)) {
 			ret = false;
 		}
@@ -440,7 +440,7 @@ bool T2Compress::compressPacket(TileCodingParams *tcp, PacketIter *pi,
 			 bytesRead = 0;
 				if (!T2Compress::readPacketData(roundRes,
 					pi,
-					src_buf.get(),
+					srcBuf.get(),
 					&bytesRead)) {
 					rc = false;
 				}

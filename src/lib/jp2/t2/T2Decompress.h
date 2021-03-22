@@ -32,12 +32,12 @@ struct T2Decompress {
 	/**
 	 Decompress the packets of a tile from a source buffer
 	 @param tileno 		number that identifies the tile for which to decompress the packets
-	 @param src_buf     source buffer
+	 @param srcBuf     source buffer
 	 @param data_read   amount of data read
 	 @return true if successful
 	 */
 	bool decompressPackets(uint16_t tileno,
-							SparseBuffer *src_buf,
+							SparseBuffer *srcBuf,
 							uint64_t *data_read,
 							bool *truncated);
 
@@ -47,39 +47,35 @@ private:
 	 Decompress a packet of a tile from a source buffer
 	 @param tcp 		Tile coding parameters
 	 @param pi 			Packet iterator
-	 @param src_buf 	source buffer
+	 @param srcBuf 	source buffer
 	 @param data_read   amount of data read
 	 @return  true if packet was successfully decompressed
 	 */
 	bool decompressPacket(TileCodingParams *tcp,
 							const PacketIter *pi,
-							SparseBuffer *src_buf,
+							SparseBuffer *srcBuf,
 							uint64_t *data_read);
 
 	bool processPacket(TileCodingParams *tcp,
 							PacketIter *pi,
-							SparseBuffer *src_buf,
+							SparseBuffer *srcBuf,
 							uint64_t *data_read);
 	bool skipPacket(TileCodingParams *p_tcp,
 						PacketIter *p_pi,
-						SparseBuffer *src_buf,
+						SparseBuffer *srcBuf,
 						uint64_t *dataRead);
 
 	bool readPacketHeader(TileCodingParams *p_tcp,
 							const PacketIter *p_pi,
 							bool *p_is_data_present,
-							SparseBuffer *src_buf,
-							uint64_t *dataRead);
+							SparseBuffer *srcBuf,
+							uint64_t *dataRead,
+							uint64_t *packetDataBytes);
 
 	bool readPacketData(Resolution *l_res,
 							const PacketIter *p_pi,
-							SparseBuffer *src_buf,
+							SparseBuffer *srcBuf,
 							uint64_t *dataRead);
-
-	bool skipPacketData(Resolution *l_res,
-							PacketIter *p_pi,
-							uint64_t *dataRead,
-							uint64_t maxDataLength);
 
 	void initSegment(DecompressCodeblock *cblk,
 					uint32_t index,

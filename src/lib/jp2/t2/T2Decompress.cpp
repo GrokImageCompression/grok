@@ -151,27 +151,23 @@ bool T2Decompress::decompressPackets(uint16_t tile_no,
 }
 bool T2Decompress::decompressPacket(TileCodingParams *p_tcp,
 									const PacketIter *p_pi,
-									SparseBuffer *src_buf,
-									uint64_t *dataRead) {
+									SparseBuffer *srcBuf,
+									uint64_t *bytesRead) {
 	auto p_tile = tileProcessor->tile;
 	auto res = &p_tile->comps[p_pi->compno].tileCompResolution[p_pi->resno];
-	bool read_data;
-	uint64_t bytesRead = 0;
-	uint64_t nb_total_bytes_read = 0;
-	*dataRead = 0;
-	if (!readPacketHeader(p_tcp, p_pi, &read_data, src_buf, &bytesRead))
+	bool dataPresent;
+	uint64_t tempBytesRead = 0;
+	uint64_t totalBytesRead = 0;
+	if (!readPacketHeader(p_tcp, p_pi, &dataPresent, srcBuf, &tempBytesRead,nullptr))
 		return false;
-	nb_total_bytes_read += bytesRead;
-
-	/* we should read data for the packet */
-	if (read_data) {
-		bytesRead = 0;
-		if (!readPacketData(res, p_pi, src_buf, &bytesRead)) {
+	totalBytesRead += tempBytesRead;
+	if (dataPresent) {
+		tempBytesRead = 0;
+		if (!readPacketData(res, p_pi, srcBuf, &tempBytesRead))
 			return false;
-		}
-		nb_total_bytes_read += bytesRead;
+		totalBytesRead += tempBytesRead;
 	}
-	*dataRead = nb_total_bytes_read;
+	*bytesRead = totalBytesRead;
 	return true;
 }
 void T2Decompress::initSegment(DecompressCodeblock *cblk, uint32_t index, uint8_t cblk_sty,
@@ -196,12 +192,13 @@ void T2Decompress::initSegment(DecompressCodeblock *cblk, uint32_t index, uint8_
 bool T2Decompress::readPacketHeader(TileCodingParams *p_tcp,
 									const PacketIter *p_pi,
 									bool *p_is_data_present,
-									SparseBuffer *src_buf,
-									uint64_t *dataRead) {
+									SparseBuffer *srcBuf,
+									uint64_t *dataRead,
+									uint64_t *packetDataBytes) {
 	auto p_tile = tileProcessor->tile;
 	auto res = &p_tile->comps[p_pi->compno].tileCompResolution[p_pi->resno];
-	auto p_src_data = src_buf->getCurrentChunkPtr();
-	size_t available_bytes = src_buf->getCurrentChunkLength();
+	auto p_src_data = srcBuf->getCurrentChunkPtr();
+	size_t available_bytes = srcBuf->getCurrentChunkLength();
 	auto active_src = p_src_data;
 
 	if (p_tcp->csty & J2K_CP_CSTY_SOP) {
@@ -258,7 +255,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams *p_tcp,
 					auto cblk = prc->getDecompressedBlockPtr(cblkno);
 
 					/* if cblk not yet included before --> inclusion tagtree */
-					if (!cblk->getNumSegments()) {
+					if (!cblk->numlenbits) {
 						uint64_t value;
 						prc->getInclTree()->decodeValue(bio.get(), cblkno, p_pi->layno + 1, &value);
 						if (value != tag_tree_uninitialized_node_value	&& value != p_pi->layno) {
@@ -293,7 +290,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams *p_tcp,
 						continue;
 					}
 					/* if cblk not yet included --> zero-bitplane tagtree */
-					if (!cblk->getNumSegments()) {
+					if (!cblk->numlenbits) {
 						uint32_t K_msbs = 0;
 						uint8_t value;
 
@@ -367,6 +364,8 @@ bool T2Decompress::readPacketHeader(TileCodingParams *p_tcp,
 							return false;
 						}
 						bio->read(&seg->numBytesInPacket, bits_to_read);
+						if (packetDataBytes)
+							*packetDataBytes += seg->numBytesInPacket;
 		#ifdef DEBUG_LOSSLESS_T2
 					 cblk->packet_length_info.push_back(PacketLengthInfo(seg->numBytesInPacket,
 									 cblk->numlenbits + floorlog2<uint32_t>(seg->numPassesInPacket)));
@@ -413,7 +412,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams *p_tcp,
 	*header_data_start  += header_length;
 	*p_is_data_present  = present;
 	*dataRead 		    = (uint32_t) (active_src - p_src_data);
-	src_buf->incrementCurrentChunkOffset(*dataRead);
+	srcBuf->incrementCurrentChunkOffset(*dataRead);
 
 	if (!present && !*dataRead)
 		throw TruncatedPacketHeaderException();
@@ -422,7 +421,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams *p_tcp,
 }
 bool T2Decompress::readPacketData(Resolution *res,
 									const PacketIter *p_pi,
-									SparseBuffer *src_buf,
+									SparseBuffer *srcBuf,
 									uint64_t *dataRead) {
 	for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
 		auto band = res->tileBand + bandIndex;
@@ -441,7 +440,7 @@ bool T2Decompress::readPacketData(Resolution *res,
 				seg = cblk->nextSegment();
 			uint32_t numPassesInPacket = cblk->numPassesInPacket;
 			do {
-				size_t maxLen = src_buf->getCurrentChunkLength();
+				size_t maxLen = srcBuf->getCurrentChunkLength();
 				if (maxLen == 0)
 					return true;
 				if (((seg->numBytesInPacket) > maxLen)) {
@@ -460,12 +459,12 @@ bool T2Decompress::readPacketData(Resolution *res,
 								seg->numBytesInPacket, seg->len);
 						return false;
 					}
-					size_t maxSegmentLength = src_buf->getCurrentChunkLength();
+					size_t maxSegmentLength = srcBuf->getCurrentChunkLength();
 					// correct for truncated packet
 					if (seg->numBytesInPacket > maxSegmentLength)
 						seg->numBytesInPacket = (uint32_t)maxSegmentLength;
-					cblk->seg_buffers.push_back(new grkBufferU8(src_buf->getCurrentChunkPtr(),seg->numBytesInPacket, false));
-					src_buf->incrementCurrentChunkOffset(seg->numBytesInPacket);
+					cblk->seg_buffers.push_back(new grkBufferU8(srcBuf->getCurrentChunkPtr(),seg->numBytesInPacket, false));
+					srcBuf->incrementCurrentChunkOffset(seg->numBytesInPacket);
 					*dataRead 					+= seg->numBytesInPacket;
 					cblk->compressedStream.len 	+= seg->numBytesInPacket;
 					seg->len 					+= seg->numBytesInPacket;
@@ -481,73 +480,24 @@ bool T2Decompress::readPacketData(Resolution *res,
 	return true;
 }
 bool T2Decompress::skipPacket(TileCodingParams *p_tcp,
-								PacketIter *p_pi,
-								SparseBuffer *src_buf,
-								uint64_t *dataRead) {
-	uint64_t maxDataLength = (uint64_t) src_buf->getCurrentChunkLength();
-	auto p_tile = tileProcessor->tile;
-
-	*dataRead = 0;
-	uint64_t bytesRead = 0;
-	bool read_data;
-	if (!readPacketHeader(p_tcp, p_pi, &read_data, src_buf, &bytesRead))
+								PacketIter *pi,
+								SparseBuffer *srcBuf,
+								uint64_t *bytesRead) {
+	uint64_t maxDataLength = (uint64_t) srcBuf->getCurrentChunkLength();
+	uint64_t tempBytesRead = 0;
+	uint64_t packetDataBytes = 0;
+	bool dataPresent;
+	if (!readPacketHeader(p_tcp, pi, &dataPresent, srcBuf, &tempBytesRead, &packetDataBytes))
 		return false;
-	uint64_t totalBytesRead = bytesRead;
-	maxDataLength -= bytesRead;
-
-	/* we should read data for the packet */
-	if (read_data) {
-		bytesRead = 0;
-		if (!skipPacketData(&p_tile->comps[p_pi->compno].tileCompResolution[p_pi->resno], p_pi,
-				&bytesRead, maxDataLength)) {
-			return false;
-		}
-		src_buf->incrementCurrentChunkOffset(bytesRead);
-		totalBytesRead += bytesRead;
+	maxDataLength -= tempBytesRead;
+	uint64_t packetBytes = tempBytesRead;
+	if (dataPresent) {
+        uint64_t calculatedBytes = std::min<uint64_t>(maxDataLength, packetDataBytes);
+		srcBuf->incrementCurrentChunkOffset(calculatedBytes);
+		packetBytes += calculatedBytes;
 	}
-	*dataRead = totalBytesRead;
+	*bytesRead = packetBytes;
 
-	return true;
-}
-bool T2Decompress::skipPacketData(Resolution *res,
-									PacketIter *p_pi,
-									uint64_t *dataRead,
-									uint64_t maxDataLength) {
-	for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
-		if (*dataRead == maxDataLength)
-			return true;
-		auto band = res->tileBand + bandIndex;
-		if (band->isEmpty())
-			continue;
-		auto prc = band->getPrecinct(p_pi->precinctIndex);
-		if (!prc)
-			continue;
-		for (uint64_t cblkno = 0; cblkno < prc->getNumCblks(); ++cblkno) {
-			auto cblk = prc->getDecompressedBlockPtr(cblkno);
-			if (!cblk->numPassesInPacket)
-				continue;
-			auto seg = cblk->getCurrentSegment();
-			if (!seg || (seg->numpasses == seg->maxpasses))
-				seg = cblk->nextSegment();
-			uint32_t numPassesInPacket = cblk->numPassesInPacket;
-			do {
-				if (((*dataRead + seg->numBytesInPacket) > maxDataLength)) {
-					GRK_WARN("skip packet data: segment bytes (%u) too large for remaining stream bytes (%u) in "
-							"codeblock %u (p=%u, b=%u, r=%u, c=%u). Truncating segment",
-							seg->numBytesInPacket, maxDataLength - *dataRead, cblkno,
-							p_pi->precinctIndex, bandIndex, p_pi->resno, p_pi->compno);
-					seg->numBytesInPacket = (uint32_t)(maxDataLength - *dataRead);
-				}
-				*dataRead 		    += seg->numBytesInPacket;
-				seg->numpasses 		+= seg->numPassesInPacket;
-				numPassesInPacket 	-= seg->numPassesInPacket;
-				if (*dataRead == maxDataLength)
-					return true;
-				if (numPassesInPacket > 0)
-					seg = cblk->nextSegment();
-			} while (numPassesInPacket > 0);
-		}
-	}
 	return true;
 }
 

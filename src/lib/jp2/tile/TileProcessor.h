@@ -83,7 +83,7 @@ struct TileProcessor {
 	bool preCompressFirstTilePart(void);
 	bool do_compress(void);
 	bool decompressT1(void);
-	bool decompressT2(SparseBuffer *src_buf);
+	bool decompressT2(SparseBuffer *srcBuf);
 	bool decompressT2T1(TileCodingParams *tcp,
 							GrkImage *outputImage,
 							bool multiTile,

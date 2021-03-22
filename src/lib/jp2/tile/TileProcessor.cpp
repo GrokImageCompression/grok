@@ -781,7 +781,7 @@ bool TileProcessor::isWholeTileDecompress(uint32_t compno) {
 
 }
 
-bool TileProcessor::decompressT2(SparseBuffer *src_buf) {
+bool TileProcessor::decompressT2(SparseBuffer *srcBuf) {
 	m_tcp = m_cp->tcps + m_tileIndex;
 
 	// optimization for regions that are close to largest decompressed resolution
@@ -799,7 +799,7 @@ bool TileProcessor::decompressT2(SparseBuffer *src_buf) {
 	if (doT2) {
 		uint64_t l_data_read = 0;
 		auto t2 = new T2Decompress(this);
-		bool rc = t2->decompressPackets(m_tileIndex, src_buf, &l_data_read,&truncated);
+		bool rc = t2->decompressPackets(m_tileIndex, srcBuf, &l_data_read,&truncated);
 		delete t2;
 		if (!rc)
 			return false;
