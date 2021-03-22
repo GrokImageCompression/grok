@@ -25,14 +25,12 @@ struct Segment {
 		clear();
 	}
 	void clear() {
-		dataindex = 0;
 		numpasses = 0;
 		len = 0;
 		maxpasses = 0;
 		numPassesInPacket = 0;
 		numBytesInPacket = 0;
 	}
-	uint32_t dataindex;		    // segment data offset in contiguous memory block
 	uint32_t numpasses;		   	// number of passes in segment
 	uint32_t len;               // total length of segment
 	uint32_t maxpasses;			// maximum number of passes in segment

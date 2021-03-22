@@ -63,23 +63,23 @@ private:
 	bool skipPacket(TileCodingParams *p_tcp,
 						PacketIter *p_pi,
 						SparseBuffer *src_buf,
-						uint64_t *p_data_read);
+						uint64_t *dataRead);
 
 	bool readPacketHeader(TileCodingParams *p_tcp,
 							const PacketIter *p_pi,
 							bool *p_is_data_present,
 							SparseBuffer *src_buf,
-							uint64_t *p_data_read);
+							uint64_t *dataRead);
 
 	bool readPacketData(Resolution *l_res,
 							const PacketIter *p_pi,
 							SparseBuffer *src_buf,
-							uint64_t *p_data_read);
+							uint64_t *dataRead);
 
 	bool skipPacketData(Resolution *l_res,
 							PacketIter *p_pi,
-							uint64_t *p_data_read,
-							uint64_t max_length);
+							uint64_t *dataRead,
+							uint64_t maxDataLength);
 
 	void initSegment(DecompressCodeblock *cblk,
 					uint32_t index,
