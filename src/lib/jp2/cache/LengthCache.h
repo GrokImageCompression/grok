@@ -189,7 +189,6 @@ private:
 struct PacketInfo{
 	PacketInfo(void);
 	PacketInfo(uint32_t hdrlen, uint32_t datalen);
-private:
 	uint32_t headerLength;
 	uint32_t dataLength;
 };

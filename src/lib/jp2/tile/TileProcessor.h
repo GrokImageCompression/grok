@@ -118,6 +118,7 @@ struct TileProcessor {
     // true if whole tile will be decoded; false if tile window will be decoded
     bool   wholeTileDecompress;
 	PacketLengthMarkers *plt_markers;
+	SequentialCache<PacketInfo> fakePlt;
 	/** Coding parameters */
 	CodingParams *m_cp;
 	// Compressing only - track which packets have been already written

@@ -20,17 +20,20 @@
 
 namespace grk {
 
+const uint64_t kSequentialChunkSize = 1024;
 template <typename T> class SequentialCache{
 public:
-	SequentialCache(uint64_t maxChunkSize) : m_chunkSize(std::min<uint64_t>(maxChunkSize,1024 )),
+	SequentialCache(void) : SequentialCache(kSequentialChunkSize)
+	{}
+	SequentialCache(uint64_t maxChunkSize) : m_chunkSize(std::min<uint64_t>(maxChunkSize,kSequentialChunkSize )),
 												m_currChunk(nullptr),
 												m_index(0)
 	{}
 	virtual ~SequentialCache(void){
 		for (auto &ch : chunks){
-			for (auto &item : ch)
-				delete item;
-			delete[] ch.second;
+			for (size_t i = 0; i < m_chunkSize; ++i)
+				delete ch[i];
+			delete[] ch;
 		}
 	}
 	void rewind(void){

@@ -135,7 +135,6 @@
 #include "TileProcessor.h"
 #include "TileCache.h"
 #include <WaveletFwd.h>
-#include "SparseCanvas.h"
 #include "T2Compress.h"
 #include "T2Decompress.h"
 #include "mct.h"

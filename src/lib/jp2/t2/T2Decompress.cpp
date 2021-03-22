@@ -30,7 +30,7 @@ T2Decompress::T2Decompress(TileProcessor *tileProc) :
 bool T2Decompress::processPacket(TileCodingParams *tcp,
 								PacketIter *currPi,
 								SparseBuffer *srcBuf,
-								uint64_t *bytesRead){
+								uint32_t *bytesRead){
 	auto cp = tileProcessor->m_cp;
 	auto tilec = tileProcessor->tile->comps + currPi->compno;
 	auto tilecBuffer = tilec->getBuffer();
@@ -77,9 +77,8 @@ bool T2Decompress::processPacket(TileCodingParams *tcp,
 		}
 	}
 	if (!skip) {
-		if (!decompressPacket(tcp, currPi, srcBuf, bytesRead)) {
+		if (!decompressPacket(tcp, currPi, srcBuf, bytesRead))
 			return false;
-		}
 		tilec->resolutions_decompressed = std::max<uint8_t>(currPi->resno,tilec->resolutions_decompressed);
 		tileProcessor->tile->numDecompressedPackets++;
 	} else {
@@ -95,7 +94,7 @@ bool T2Decompress::processPacket(TileCodingParams *tcp,
 }
 bool T2Decompress::decompressPackets(uint16_t tile_no,
 										SparseBuffer *srcBuf,
-										uint64_t *dataRead,
+										uint32_t *dataRead,
 										bool *truncated) {
 	auto cp = tileProcessor->m_cp;
 	auto tcp = cp->tcps + tile_no;
@@ -115,7 +114,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no,
 				*truncated = true;
 				break;
 			}
-			uint64_t bytesRead = 0;
+			uint32_t bytesRead = 0;
 			try {
 				if (!processPacket(tcp, currPi, srcBuf, &bytesRead)) {
 					pi_destroy(pi);
@@ -151,21 +150,15 @@ bool T2Decompress::decompressPackets(uint16_t tile_no,
 bool T2Decompress::decompressPacket(TileCodingParams *p_tcp,
 									const PacketIter *p_pi,
 									SparseBuffer *srcBuf,
-									uint64_t *bytesRead) {
+									uint32_t *bytesRead) {
 	auto p_tile = tileProcessor->tile;
 	auto res = &p_tile->comps[p_pi->compno].tileCompResolution[p_pi->resno];
 	bool dataPresent;
-	uint64_t tempBytesRead = 0;
-	uint64_t totalBytesRead = 0;
-	if (!readPacketHeader(p_tcp, p_pi, &dataPresent, srcBuf, &tempBytesRead,nullptr))
+	uint32_t totalBytesRead = 0;
+	if (!readPacketHeader(p_tcp, p_pi, &dataPresent, srcBuf, &totalBytesRead,nullptr))
 		return false;
-	totalBytesRead += tempBytesRead;
-	if (dataPresent) {
-		tempBytesRead = 0;
-		if (!readPacketData(res, p_pi, srcBuf, &tempBytesRead))
-			return false;
-		totalBytesRead += tempBytesRead;
-	}
+	if (dataPresent && !readPacketData(res, p_pi, srcBuf, &totalBytesRead))
+		return false;
 	*bytesRead = totalBytesRead;
 	return true;
 }
@@ -192,8 +185,8 @@ bool T2Decompress::readPacketHeader(TileCodingParams *p_tcp,
 									const PacketIter *p_pi,
 									bool *p_is_data_present,
 									SparseBuffer *srcBuf,
-									uint64_t *dataRead,
-									uint64_t *packetDataBytes) {
+									uint32_t *dataRead,
+									uint32_t *packetDataBytes) {
 	auto p_tile = tileProcessor->tile;
 	auto res = &p_tile->comps[p_pi->compno].tileCompResolution[p_pi->resno];
 	auto p_src_data = srcBuf->getCurrentChunkPtr();
@@ -421,7 +414,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams *p_tcp,
 bool T2Decompress::readPacketData(Resolution *res,
 									const PacketIter *p_pi,
 									SparseBuffer *srcBuf,
-									uint64_t *dataRead) {
+									uint32_t *dataRead) {
 	for (uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
 		auto band = res->tileBand + bandIndex;
 		if (band->isEmpty())
@@ -481,19 +474,24 @@ bool T2Decompress::readPacketData(Resolution *res,
 bool T2Decompress::skipPacket(TileCodingParams *p_tcp,
 								PacketIter *pi,
 								SparseBuffer *srcBuf,
-								uint64_t *bytesRead) {
+								uint32_t *bytesRead) {
 	uint64_t maxDataLength = (uint64_t) srcBuf->getCurrentChunkLength();
-	uint64_t tempBytesRead = 0;
-	uint64_t packetDataBytes = 0;
+	uint32_t tempBytesRead = 0;
+	uint32_t packetDataBytes = 0;
 	bool dataPresent;
+	auto packetInfo = tileProcessor->plt_markers  ? nullptr : tileProcessor->fakePlt.get();
 	if (!readPacketHeader(p_tcp, pi, &dataPresent, srcBuf, &tempBytesRead, &packetDataBytes))
 		return false;
+	if (packetInfo)
+		packetInfo->headerLength = (uint32_t)tempBytesRead;
 	maxDataLength -= tempBytesRead;
-	uint64_t packetBytes = tempBytesRead;
+	uint32_t packetBytes = tempBytesRead;
 	if (dataPresent) {
-        uint64_t calculatedBytes = std::min<uint64_t>(maxDataLength, packetDataBytes);
+        uint32_t calculatedBytes = (uint32_t)std::min<uint64_t>(maxDataLength, (uint64_t)packetDataBytes);
 		srcBuf->incrementCurrentChunkOffset(calculatedBytes);
 		packetBytes += calculatedBytes;
+		if (packetInfo)
+			packetInfo->dataLength = (uint32_t)calculatedBytes;
 	}
 	*bytesRead = packetBytes;
 
