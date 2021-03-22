@@ -602,7 +602,7 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	uint8_t lut_R[256], lut_G[256], lut_B[256];
 	uint8_t const *pLUT[3];
 	grk_image *image = nullptr;
-	bool l_result = false;
+	bool result = false;
 	uint8_t *pData = nullptr;
 	uint32_t bmpStride;
 	pLUT[0] = lut_R;
@@ -709,24 +709,24 @@ grk_image *  BMPFormat::decode(const std::string &fname,  grk_cparameters  *para
 	case 0:
 	case 3:
 		/* read raw data */
-		l_result = read_raw_data(pData, bmpStride, (uint32_t)Info_h.biHeight);
+		result = read_raw_data(pData, bmpStride, (uint32_t)Info_h.biHeight);
 		break;
 	case 1:
 		/* read rle8 data */
-		l_result = read_rle8_data(pData, bmpStride, (uint32_t)Info_h.biWidth,
+		result = read_rle8_data(pData, bmpStride, (uint32_t)Info_h.biWidth,
 				(uint32_t)Info_h.biHeight);
 		break;
 	case 2:
 		/* read rle4 data */
-		l_result = read_rle4_data(pData, bmpStride, (uint32_t)Info_h.biWidth,
+		result = read_rle4_data(pData, bmpStride, (uint32_t)Info_h.biWidth,
 				(uint32_t)Info_h.biHeight);
 		break;
 	default:
 		spdlog::error("Unsupported BMP compression");
-		l_result = false;
+		result = false;
 		break;
 	}
-	if (!l_result) {
+	if (!result) {
 		goto cleanup;
 	}
 
@@ -1120,20 +1120,20 @@ void BMPFormat::bmp24toimage(const uint8_t *pData, uint32_t srcStride,
 
 void BMPFormat::mask_get_shift_and_prec(uint32_t mask, uint8_t *shift,
 		uint8_t *prec) {
-	uint8_t l_shift, l_prec;
-	l_shift = l_prec = 0U;
+	uint8_t tempShift, tempPrecision;
+	tempShift = tempPrecision = 0U;
 	if (mask != 0U) {
 		while ((mask & 1U) == 0U) {
 			mask >>= 1;
-			l_shift++;
+			tempShift++;
 		}
 		while (mask & 1U) {
 			mask >>= 1;
-			l_prec++;
+			tempPrecision++;
 		}
 	}
-	*shift = l_shift;
-	*prec = l_prec;
+	*shift = tempShift;
+	*prec = tempPrecision;
 }
 
 

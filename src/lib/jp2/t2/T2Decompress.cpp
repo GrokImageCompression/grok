@@ -86,8 +86,7 @@ bool T2Decompress::processPacket(TileCodingParams *tcp,
 		if (pltMarkerLen) {
 			*bytesRead = pltMarkerLen;
 			srcBuf->incrementCurrentChunkOffset(*bytesRead);
-		} else if (!skipPacket(tcp, currPi, srcBuf,
-				bytesRead)) {
+		} else if (!skipPacket(tcp, currPi, srcBuf,	bytesRead)) {
 			return false;
 		}
 	}

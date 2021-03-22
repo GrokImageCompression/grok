@@ -140,7 +140,7 @@ private:
 
     bool write_qcc(uint32_t comp_no);
 
-    uint16_t getPocSize(uint32_t l_nb_comp, uint32_t l_nb_poc);
+    uint16_t getPocSize(uint32_t numComponents, uint32_t l_nb_poc);
 
     /**
      * Writes the POC marker (Progression Order Change)

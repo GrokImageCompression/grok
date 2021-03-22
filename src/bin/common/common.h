@@ -78,14 +78,14 @@
 namespace grk {
 
 template <typename ... Args>
-void log(grk_msg_callback msg_handler, void *l_data, char const * const format, Args & ... args) noexcept
+void log(grk_msg_callback msg_handler, void *data, char const * const format, Args & ... args) noexcept
 {
     const int message_size = 512;
 	if ((format != nullptr)) {
 		char message[message_size];
 		memset(message, 0, message_size);
 		vsnprintf(message, message_size, format, args...);
-		msg_handler(message, l_data);
+		msg_handler(message, data);
 	}
 }
 
