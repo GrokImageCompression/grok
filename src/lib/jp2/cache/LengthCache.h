@@ -188,9 +188,8 @@ private:
 
 struct PacketInfo{
 	PacketInfo(void);
-	PacketInfo(uint64_t off, uint32_t hdrlen, uint32_t datalen);
+	PacketInfo(uint32_t hdrlen, uint32_t datalen);
 private:
-	uint64_t offset;
 	uint32_t headerLength;
 	uint32_t dataLength;
 };

@@ -20,51 +20,63 @@
 
 namespace grk {
 
-template <typename T> class SparseItemCache{
+template <typename T> class SequentialItemCache{
 public:
-	SparseItemCache(uint64_t maxChunkSize) : m_chunkSize(std::min<uint64_t>(maxChunkSize, 1024)),
-											m_currChunk(nullptr),
-											m_currChunkIndex(0)
+	SequentialItemCache(uint64_t maxChunkSize) : m_chunkSize(std::min<uint64_t>(maxChunkSize,1024 )),
+												m_currChunk(nullptr),
+												m_index(0)
 	{}
-	virtual ~SparseItemCache(void){
+	virtual ~SequentialItemCache(void){
 		for (auto &ch : chunks){
-			for (size_t i = 0; i < m_chunkSize; ++i)
-				delete ch.second[i];
+			for (auto &item : ch)
+				delete item;
 			delete[] ch.second;
 		}
 	}
-	T* get(uint64_t index){
-		uint64_t chunkIndex = index / m_chunkSize;
-		uint64_t itemIndex =  index % m_chunkSize;
-		if (m_currChunk == nullptr || (chunkIndex != m_currChunkIndex)){
-			m_currChunkIndex = chunkIndex;
-			auto iter = chunks.find(chunkIndex);
-			if (iter != chunks.end()){
-				m_currChunk =  iter->second;
-			} else {
+	void rewind(void){
+		if (chunks.empty())
+			return;
+		m_index=0;
+		m_currChunk = chunks[0];
+	}
+	T* get(){
+		uint64_t itemIndex = m_index % m_chunkSize;
+		uint64_t chunkIndex = m_index / m_chunkSize;
+		bool initialized = (m_currChunk != nullptr);
+		bool lastChunk = (chunkIndex == chunks.size() - 1);
+		bool endOfChunk = (itemIndex == m_chunkSize - 1);
+		bool createNew = !initialized || (lastChunk && endOfChunk);
+		itemIndex++;
+		if (createNew || endOfChunk){
+			itemIndex=0;
+			chunkIndex++;
+			if (createNew) {
 				m_currChunk = new T*[m_chunkSize];
 				memset(m_currChunk, 0, m_chunkSize * sizeof(T*));
-				chunks[chunkIndex] = m_currChunk;
+				chunks.push_back(m_currChunk);
+			} else {
+				m_currChunk = chunks[chunkIndex];
 			}
 		}
 		auto item = m_currChunk[itemIndex];
 		if (!item){
-			item = create(index);
+			item = create();
 			m_currChunk[itemIndex] = item;
 		}
+		if (initialized)
+			m_index++;
 		return item;
 	}
 protected:
-	virtual T* create(uint64_t index){
-		GRK_UNUSED(index);
+	virtual T* create(void){
 		auto item = new T();
 		return item;
 	}
 private:
-	std::map<uint64_t, T**> chunks;
+	std::vector<T**> chunks;
 	uint64_t m_chunkSize;
 	T** m_currChunk;
-	uint64_t m_currChunkIndex;
+	uint64_t m_index;
 };
 
 
