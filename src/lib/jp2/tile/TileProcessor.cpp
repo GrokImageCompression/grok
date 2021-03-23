@@ -1057,7 +1057,7 @@ bool TileProcessor::t2_encode(uint32_t *all_packet_bytes_written) {
 	auto l_t2 = new T2Compress(this);
 #ifdef DEBUG_LOSSLESS_T2
 	for (uint32_t compno = 0; compno < p_image->m_numcomps; ++compno) {
-		TileComponent *tilec = &p_tile->comps[compno];
+		TileComponent *tilec = &tilePtr->comps[compno];
 		tilec->round_trip_resolutions = new Resolution[tilec->numresolutions];
 		for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
 			auto res = tilec->tileCompResolution + resno;
@@ -1116,7 +1116,7 @@ bool TileProcessor::t2_encode(uint32_t *all_packet_bytes_written) {
 
 #ifdef DEBUG_LOSSLESS_T2
 	for (uint32_t compno = 0; compno < p_image->m_numcomps; ++compno) {
-		TileComponent *tilec = &p_tile->comps[compno];
+		TileComponent *tilec = &tilePtr->comps[compno];
 		for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
 			auto roundRes = tilec->round_trip_resolutions + resno;
 			for (uint32_t bandIndex = 0; bandIndex < roundRes->numTileBandWindows; ++bandIndex) {

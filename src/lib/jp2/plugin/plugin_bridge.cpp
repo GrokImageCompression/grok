@@ -82,18 +82,18 @@ void decompress_synch_plugin_with_host(TileProcessor *tcd) {
 	}
 }
 
-bool tile_equals(grk_plugin_tile *plugin_tile, Tile *p_tile) {
+bool tile_equals(grk_plugin_tile *plugin_tile, Tile *tilePtr) {
 	uint32_t state = grk_plugin_get_debug_state();
 	if (!(state & GRK_PLUGIN_STATE_DEBUG))
 		return true;
-	if ((!plugin_tile && p_tile) || (plugin_tile && !p_tile))
+	if ((!plugin_tile && tilePtr) || (plugin_tile && !tilePtr))
 		return false;
-	if (!plugin_tile && !p_tile)
+	if (!plugin_tile && !tilePtr)
 		return true;
-	if (plugin_tile->numComponents != p_tile->numcomps)
+	if (plugin_tile->numComponents != tilePtr->numcomps)
 		return false;
-	for (uint32_t compno = 0; compno < p_tile->numcomps; ++compno) {
-		auto tilecomp = p_tile->comps + compno;
+	for (uint32_t compno = 0; compno < tilePtr->numcomps; ++compno) {
+		auto tilecomp = tilePtr->comps + compno;
 		auto plugin_tilecomp =
 				plugin_tile->tileComponents[compno];
 		if (tilecomp->numresolutions != plugin_tilecomp->numResolutions)

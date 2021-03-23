@@ -33,7 +33,7 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers,
 		uint32_t pino) {
 	auto cp = tileProcessor->m_cp;
 	auto image = tileProcessor->headerImage;
-	auto p_tile = tileProcessor->tile;
+	auto tilePtr = tileProcessor->tile;
 	auto tcp = &cp->tcps[tile_no];
 	IncludeTracker include(image->numcomps);
 	auto pi = pi_create_compress_decompress(true,image, cp, tile_no, FINAL_PASS, &include);
@@ -53,7 +53,7 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers,
 				return false;
 			}
 			*p_data_written += nb_bytes;
-			p_tile->numProcessedPackets++;
+			tilePtr->numProcessedPackets++;
 		}
 	}
 	pi_destroy(pi);

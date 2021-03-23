@@ -54,7 +54,8 @@ private:
 	bool decompressPacket(TileCodingParams *tcp,
 							const PacketIter *pi,
 							SparseBuffer *srcBuf,
-							uint32_t *data_read);
+							uint32_t *data_read,
+							PacketInfo *packetInfo);
 
 	bool processPacket(TileCodingParams *tcp,
 							PacketIter *pi,
@@ -63,7 +64,8 @@ private:
 	bool skipPacket(TileCodingParams *p_tcp,
 						PacketIter *p_pi,
 						SparseBuffer *srcBuf,
-						uint32_t *dataRead);
+						uint32_t *dataRead,
+						PacketInfo *packetInfo);
 
 	bool readPacketHeader(TileCodingParams *p_tcp,
 							const PacketIter *p_pi,
