@@ -797,9 +797,8 @@ bool TileProcessor::decompressT2(SparseBuffer *srcBuf) {
 			|| (current_plugin_tile->decompress_flags & GRK_DECODE_T2);
 
 	if (doT2) {
-		uint32_t dataRead = 0;
 		auto t2 = new T2Decompress(this);
-		bool rc = t2->decompressPackets(m_tileIndex, srcBuf, &dataRead,&truncated);
+		bool rc = t2->decompressPackets(m_tileIndex, srcBuf,&truncated);
 		delete t2;
 		if (!rc)
 			return false;

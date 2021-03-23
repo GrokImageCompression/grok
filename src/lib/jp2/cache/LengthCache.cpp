@@ -677,10 +677,12 @@ PacketInfo::PacketInfo(void) :	headerLength(0),
 								packetLength(0),
 								parsedData(false)
 {}
-
 PacketInfoCache::~PacketInfoCache(){
 	for (auto &p : packetInfo)
 		delete p;
+}
+uint32_t PacketInfo::getPacketDataLength(void){
+	return packetLength - headerLength;
 }
 
 }

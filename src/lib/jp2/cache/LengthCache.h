@@ -188,6 +188,7 @@ private:
 
 struct PacketInfo{
 	PacketInfo(void);
+	uint32_t getPacketDataLength(void);
 	uint32_t headerLength;
 	uint32_t packetLength;
 	bool parsedData;
