@@ -16,11 +16,10 @@
 #pragma once
 #include "grk_includes.h"
 
-#include <map>
+#include <vector>
 
 namespace grk {
 
-const uint64_t kSequentialChunkSize = 1024;
 template <typename T> class SequentialCache{
 public:
 	SequentialCache(void) : SequentialCache(kSequentialChunkSize)
@@ -80,6 +79,7 @@ private:
 	uint64_t m_chunkSize;
 	T** m_currChunk;
 	uint64_t m_index;
+	static constexpr uint64_t kSequentialChunkSize = 1024;
 };
 
 
