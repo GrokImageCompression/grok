@@ -1145,10 +1145,10 @@ bool CodeStreamDecompress::read_plm( uint8_t *p_header_data,
 bool CodeStreamDecompress::read_plt( uint8_t *p_header_data,	uint16_t header_size) {
 	assert(p_header_data != nullptr);
 	auto tileProcessor = currentProcessor();
-	if (!tileProcessor->plt_markers)
-		tileProcessor->plt_markers = new PacketLengthMarkers();
+	if (!tileProcessor->pltMarkers)
+		tileProcessor->pltMarkers = new PacketLengthMarkers();
 
-	return tileProcessor->plt_markers->readPLT(p_header_data,header_size);
+	return tileProcessor->pltMarkers->readPLT(p_header_data,header_size);
 }
 /**
  * Reads a PPM marker (Packed packet headers, main header)

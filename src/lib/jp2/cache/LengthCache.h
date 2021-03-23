@@ -188,9 +188,9 @@ private:
 
 struct PacketInfo{
 	PacketInfo(void);
-	PacketInfo(uint32_t hdrlen, uint32_t datalen);
 	uint32_t headerLength;
-	uint32_t dataLength;
+	uint32_t packetLength;
+	bool parsedData;
 };
 
 struct PacketInfoCache {

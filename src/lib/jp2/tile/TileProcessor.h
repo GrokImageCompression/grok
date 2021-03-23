@@ -117,8 +117,8 @@ struct TileProcessor {
 	grk_plugin_tile *current_plugin_tile;
     // true if whole tile will be decoded; false if tile window will be decoded
     bool   wholeTileDecompress;
-	PacketLengthMarkers *plt_markers;
-	SequentialCache<PacketInfo> fakePlt;
+	PacketLengthMarkers *pltMarkers;
+	SequentialCache<PacketInfo> packetInfoCache;
 	/** Coding parameters */
 	CodingParams *m_cp;
 	// Compressing only - track which packets have been already written

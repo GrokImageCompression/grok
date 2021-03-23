@@ -35,7 +35,7 @@ TileProcessor::TileProcessor(CodeStream *codeStream,
 				headerImage(codeStream->getHeaderImage()),
 				current_plugin_tile(codeStream->getCurrentPluginTile()),
 				wholeTileDecompress(isWholeTileDecompress),
-				plt_markers(nullptr),
+				pltMarkers(nullptr),
 				m_cp(codeStream->getCodingParams()),
 				m_stream(stream),
 				m_corrupt_packet(false),
@@ -53,7 +53,7 @@ TileProcessor::TileProcessor(CodeStream *codeStream,
 }
 TileProcessor::~TileProcessor() {
 	delete tile;
-	delete plt_markers;
+	delete pltMarkers;
 	if (m_image)
 		grk_object_unref(&m_image->obj);
 }
@@ -234,12 +234,12 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t *all_packets_len) {
 
 	if (single_lossless) {
 		makeLayerFinal(0);
-		if (plt_markers) {
+		if (pltMarkers) {
 			auto t2 = new T2Compress(this);
 			uint32_t sim_all_packets_len = 0;
 			t2->compressPacketsSimulate(m_tileIndex,
 										0 + 1, &sim_all_packets_len, UINT_MAX,
-										tp_pos, plt_markers);
+										tp_pos, pltMarkers);
 			delete t2;
 		}
 		return true;
@@ -384,7 +384,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t *all_packets_len) {
 
 	} /* compno */
 	if (single_lossless){
-		if (plt_markers) {
+		if (pltMarkers) {
 			auto t2 = new T2Compress(this);
 			uint32_t sim_all_packets_len = 0;
 			t2->compressPacketsSimulate(m_tileIndex,
@@ -392,7 +392,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t *all_packets_len) {
 											&sim_all_packets_len,
 											UINT_MAX,
 											tp_pos,
-											plt_markers);
+											pltMarkers);
 			delete t2;
 		}
 
@@ -726,10 +726,10 @@ bool TileProcessor::preCompressFirstTilePart(void) {
 	if (m_tilePartIndex == 0) {
 
 		// 1. create PLT marker if required
-		delete plt_markers;
+		delete pltMarkers;
 		if (m_cp->m_coding_params.m_enc.writePLT){
 			if (!needsRateControl())
-				plt_markers = new PacketLengthMarkers(m_stream);
+				pltMarkers = new PacketLengthMarkers(m_stream);
 			else
 				GRK_WARN("PLT marker generation disabled due to rate control.");
 		}
@@ -744,8 +744,8 @@ bool TileProcessor::preCompressFirstTilePart(void) {
 bool TileProcessor::compressTilePart(	uint32_t *tile_bytes_written) {
 
 	//4 write PLT for first tile part
-	if (m_tilePartIndex == 0 && plt_markers){
-		uint32_t written = plt_markers->write();
+	if (m_tilePartIndex == 0 && pltMarkers){
+		uint32_t written = pltMarkers->write();
 		*tile_bytes_written += written;
 	}
 

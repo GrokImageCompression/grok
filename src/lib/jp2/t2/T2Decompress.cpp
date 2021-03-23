@@ -37,7 +37,7 @@ bool T2Decompress::processPacket(TileCodingParams *tcp,
 	auto skip = currPi->layno >= tcp->num_layers_to_decompress
 								|| currPi->resno >= tilec->resolutions_to_decompress;
 
-	auto packetLengths = tileProcessor->plt_markers;
+	auto packetLengths = tileProcessor->pltMarkers;
 	// we don't currently support PLM markers,
 	// so we disable packet length markers if we have both PLT and PLM
 	bool usePlt = packetLengths && !cp->plm_markers;
@@ -99,7 +99,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no,
 	IncludeTracker include(tileProcessor->headerImage->numcomps);
 	*truncated = false;
 	auto pi = pi_create_compress_decompress(false,tileProcessor->headerImage, cp, tile_no,FINAL_PASS, &include);
-	auto packetLengths = tileProcessor->plt_markers;
+	auto packetLengths = tileProcessor->pltMarkers;
 	// we don't currently support PLM markers,
 	// so we disable packet length markers if we have both PLT and PLM
 	bool usePlt = packetLengths && !cp->plm_markers;
@@ -159,7 +159,7 @@ bool T2Decompress::decompressPacket(TileCodingParams *p_tcp,
 	auto res = &tile->comps[p_pi->compno].tileCompResolution[p_pi->resno];
 	bool dataPresent;
 	uint32_t totalBytesRead = 0;
-	auto packetInfo = tileProcessor->plt_markers  ? nullptr : tileProcessor->fakePlt.get();
+	auto packetInfo = tileProcessor->pltMarkers  ? nullptr : tileProcessor->packetInfoCache.get();
 	if (!readPacketHeader(p_tcp, p_pi, &dataPresent, srcBuf, &totalBytesRead,nullptr))
 		return false;
 	if(packetInfo)
@@ -167,8 +167,10 @@ bool T2Decompress::decompressPacket(TileCodingParams *p_tcp,
 	if (dataPresent && !readPacketData(res, p_pi, srcBuf, &totalBytesRead))
 		return false;
 	*bytesRead = totalBytesRead;
-	if(packetInfo)
-		packetInfo->dataLength = totalBytesRead - packetInfo->headerLength;
+	if(packetInfo){
+		packetInfo->packetLength = totalBytesRead;
+		packetInfo->parsedData = true;
+	}
 	return true;
 }
 void T2Decompress::initSegment(DecompressCodeblock *cblk, uint32_t index, uint8_t cblk_sty,
@@ -488,7 +490,7 @@ bool T2Decompress::skipPacket(TileCodingParams *p_tcp,
 	uint32_t tempBytesRead = 0;
 	uint32_t packetDataBytes = 0;
 	bool dataPresent;
-	auto packetInfo = tileProcessor->plt_markers  ? nullptr : tileProcessor->fakePlt.get();
+	auto packetInfo = tileProcessor->pltMarkers  ? nullptr : tileProcessor->packetInfoCache.get();
 	if (!readPacketHeader(p_tcp, pi, &dataPresent, srcBuf, &tempBytesRead, &packetDataBytes))
 		return false;
 	if (packetInfo)
@@ -499,9 +501,9 @@ bool T2Decompress::skipPacket(TileCodingParams *p_tcp,
         uint32_t calculatedBytes = (uint32_t)std::min<uint64_t>(maxDataLength, (uint64_t)packetDataBytes);
 		srcBuf->incrementCurrentChunkOffset(calculatedBytes);
 		packetBytes += calculatedBytes;
-		if (packetInfo)
-			packetInfo->dataLength = calculatedBytes;
 	}
+	if (packetInfo)
+		packetInfo->packetLength = packetBytes;
 	*bytesRead = packetBytes;
 
 	return true;
