@@ -401,8 +401,8 @@ uint32_t FileFormatDecompress::read_asoc(AsocBox *parent,
 
 	return asocBytesUsed;
 }
-void FileFormatDecompress::dump(uint32_t flag, FILE *out_stream){
-	codeStream->dump(flag, out_stream);
+void FileFormatDecompress::dump(uint32_t flag, FILE *outputFileStream){
+	codeStream->dump(flag, outputFileStream);
 }
 bool FileFormatDecompress::readHeaderProcedureImpl(void) {
 	FileFormatBox box;

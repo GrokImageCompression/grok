@@ -136,7 +136,7 @@ public:
    virtual bool decompress( grk_plugin_tile *tile) = 0;
    virtual bool decompressTile(uint16_t tileIndex) = 0;
    virtual bool endDecompress(void) = 0;
-   virtual void dump(uint32_t flag, FILE *out_stream) = 0;
+   virtual void dump(uint32_t flag, FILE *outputFileStream) = 0;
 };
 
 class TileCache;

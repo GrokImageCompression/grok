@@ -136,6 +136,8 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/cache/MemManager.h
   ${CMAKE_CURRENT_SOURCE_DIR}/cache/LengthCache.h
   ${CMAKE_CURRENT_SOURCE_DIR}/cache/LengthCache.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/cache/PacketLengthMarkers.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/cache/PacketLengthMarkers.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/point_transform/mct.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/point_transform/mct.h

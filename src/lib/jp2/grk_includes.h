@@ -107,6 +107,7 @@
 #include "Quantizer.h"
 #include "Profile.h"
 #include "LengthCache.h"
+#include "PacketLengthMarkers.h"
 #include "SIZMarker.h"
 #include "PPMMarker.h"
 #include "SOTMarker.h"

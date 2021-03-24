@@ -186,10 +186,10 @@ DecompressorState::DecompressorState() : m_default_tcp(nullptr),
 				m_start_tile_y_index(0),
 				m_end_tile_x_index(0),
 				m_end_tile_y_index(0),
-				m_last_sot_read_pos(0),
-				m_last_tile_part_in_code_stream(false),
-				last_tile_part_was_read(false),
-				m_skip_tile_data(false),
+				lastSotReadPosition(0),
+				lastTilePartInCodeStream(false),
+				lastTilePartWasRead(false),
+				skipTileData(false),
 				m_state(J2K_DEC_STATE_NONE)
 {}
 
@@ -207,7 +207,7 @@ void     DecompressorState::andState(uint16_t state){
 }
 bool DecompressorState::findNextTile(CodeStreamDecompress *codeStream){
 	auto stream = codeStream->getStream();
-	last_tile_part_was_read = false;
+	lastTilePartWasRead = false;
 	andState((uint16_t) (~J2K_DEC_STATE_DATA));
 
 	// if there is no EOC marker and there is also no data left, then simply return true

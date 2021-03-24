@@ -40,7 +40,7 @@ public:
    bool decompress( grk_plugin_tile *tile);
    bool decompressTile(uint16_t tileIndex);
    bool endDecompress(void);
-   void dump(uint32_t flag, FILE *out_stream);
+   void dump(uint32_t flag, FILE *outputFileStream);
 
 private:
    static void alloc_palette(grk_color *color, uint8_t num_channels, uint16_t num_entries);

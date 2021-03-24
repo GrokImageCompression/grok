@@ -325,20 +325,20 @@ struct DecompressorState {
 	uint32_t m_end_tile_y_index;
 
 	/** Position of the last SOT marker read */
-	uint64_t m_last_sot_read_pos;
+	uint64_t lastSotReadPosition;
 
 	/**
 	 * Indicate that the current tile-part is assumed to be the last tile part of the code stream.
 	 * This is useful in the case when PSot is equal to zero. The SOT length will be computed in the
 	 * SOD reader function.
 	 */
-	bool m_last_tile_part_in_code_stream;
+	bool lastTilePartInCodeStream;
 
 	// Indicates that the last tile part header has been read, so that
 	// the tile's data can now be decompressed
-	bool last_tile_part_was_read;
+	bool lastTilePartWasRead;
 
-	bool m_skip_tile_data;
+	bool skipTileData;
 
 private:
 

@@ -68,10 +68,10 @@ CodeStreamDecompress::CodeStreamDecompress( BufferedStream *stream) :
 		m_tileCache(new TileCache())
 {
 	m_decompressorState.m_default_tcp = new TileCodingParams();
-	m_decompressorState.m_last_sot_read_pos = 0;
+	m_decompressorState.lastSotReadPosition = 0;
 
 	/* code stream index creation */
-	codeStreamInfo = new CodeStreamInfo();
+	codeStreamInfo = new CodeStreamInfo(stream);
 	if (!codeStreamInfo) {
 		delete m_decompressorState.m_default_tcp;
 		throw std::runtime_error("Out of memory");
@@ -860,18 +860,18 @@ bool CodeStreamDecompress::decompressTile() {
 				return false;
 		} else {
 			/* Move into the code stream to the first SOT used to decompress the desired tile */
-			uint16_t tile_index_to_decompress =	(uint16_t) (tileIndexToDecode());
+			uint16_t tileIndexToDecompress =	(uint16_t) (tileIndexToDecode());
 			if (codeStreamInfo->hasTileInfo() && codeStreamInfo->getTileInfo(0)->hasTilePartInfo()) {
-				auto tileInfo = codeStreamInfo->getTileInfo(tile_index_to_decompress);
+				auto tileInfo = codeStreamInfo->getTileInfo(tileIndexToDecompress);
 				if (!tileInfo->numTileParts) {
 					/* the index for this tile has not been built,
 					 *  so move to the last SOT read */
-					if (!(m_stream->seek(m_decompressorState.m_last_sot_read_pos	+ 2))) {
+					if (!(m_stream->seek(m_decompressorState.lastSotReadPosition+ 2))) {
 						GRK_ERROR("Problem with seek function");
 						return false;
 					}
 				} else {
-					if (!(m_stream->seek(tileInfo->getTilePartInfo(0)->startPosition	+ 2))) {
+					if (!(m_stream->seek(tileInfo->getTilePartInfo(0)->startPosition+ 2))) {
 						GRK_ERROR("Problem with seek function");
 						return false;
 					}
@@ -2047,7 +2047,7 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool *canDecompress) {
 	}
 	/* Seek in code stream for SOT marker specifying desired tile index.
 	 * If we don't find it, we stop when we read the EOC or run out of data */
-	while (!m_decompressorState.last_tile_part_was_read && (m_curr_marker != J2K_MS_EOC)) {
+	while (!m_decompressorState.lastTilePartWasRead && (m_curr_marker != J2K_MS_EOC)) {
 		/* read markers until SOD is detected */
 		while (m_curr_marker != J2K_MS_SOD) {
 			// end of stream with no EOC
@@ -2094,9 +2094,9 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool *canDecompress) {
 			}
 			if (marker_handler->id == J2K_MS_SOT) {
 				uint64_t sot_pos = m_stream->tell() - marker_size - grk_marker_length;
-				if (sot_pos > m_decompressorState.m_last_sot_read_pos)
-					m_decompressorState.m_last_sot_read_pos = sot_pos;
-				if (m_decompressorState.m_skip_tile_data) {
+				if (sot_pos > m_decompressorState.lastSotReadPosition)
+					m_decompressorState.lastSotReadPosition = sot_pos;
+				if (m_decompressorState.skipTileData) {
 					if (!m_stream->skip(m_currentTileProcessor->tilePartDataLength)) {
 						GRK_ERROR("Stream too short");
 						return false;
@@ -2111,10 +2111,10 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool *canDecompress) {
 		if (!m_stream->get_number_byte_left() && m_decompressorState.getState() == J2K_DEC_STATE_NO_EOC)
 			break;
 		/* If we didn't skip data before, we need to read the SOD marker*/
-		if (!m_decompressorState.m_skip_tile_data) {
+		if (!m_decompressorState.skipTileData) {
 			if (!m_currentTileProcessor->prepareSodDecompress(this))
 				return false;
-			if (!m_decompressorState.last_tile_part_was_read) {
+			if (!m_decompressorState.lastTilePartWasRead) {
 				if (!readMarker()){
 					m_decompressorState.setState(J2K_DEC_STATE_NO_EOC);
 					break;
@@ -2126,8 +2126,8 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool *canDecompress) {
 				break;
 			}
 			/* Indicate we will try to read a new tile-part header*/
-			m_decompressorState.m_skip_tile_data = false;
-			m_decompressorState.last_tile_part_was_read = false;
+			m_decompressorState.skipTileData = false;
+			m_decompressorState.lastTilePartWasRead = false;
 			m_decompressorState.setState(J2K_DEC_STATE_TPH_SOT);
 		}
 	}
@@ -2217,7 +2217,7 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool *canDecompress) {
 		m_decompressorState.setState( J2K_DEC_STATE_EOC);
 	//if we are not ready to decompress tile part data,
     // then skip tiles with no tile data i.e. no SOD marker
-	if (!m_decompressorState.last_tile_part_was_read) {
+	if (!m_decompressorState.lastTilePartWasRead) {
 		tcp = m_cp.tcps + m_currentTileProcessor->m_tileIndex;
 		if (!tcp->m_compressedTileData){
 			*canDecompress = false;
@@ -2587,15 +2587,15 @@ bool CodeStreamDecompress::read_com( uint8_t *p_header_data,	uint16_t header_siz
 }
 
 void CodeStreamDecompress::dump_tile_info(TileCodingParams *default_tile,
-		uint32_t numcomps, FILE *out_stream) {
+		uint32_t numcomps, FILE *outputFileStream) {
 	if (default_tile) {
 		uint32_t compno;
 
-		fprintf(out_stream, "\t default tile {\n");
-		fprintf(out_stream, "\t\t csty=%#x\n", default_tile->csty);
-		fprintf(out_stream, "\t\t prg=%#x\n", default_tile->prg);
-		fprintf(out_stream, "\t\t numlayers=%d\n", default_tile->numlayers);
-		fprintf(out_stream, "\t\t mct=%x\n", default_tile->mct);
+		fprintf(outputFileStream, "\t default tile {\n");
+		fprintf(outputFileStream, "\t\t csty=%#x\n", default_tile->csty);
+		fprintf(outputFileStream, "\t\t prg=%#x\n", default_tile->prg);
+		fprintf(outputFileStream, "\t\t numlayers=%d\n", default_tile->numlayers);
+		fprintf(outputFileStream, "\t\t mct=%x\n", default_tile->mct);
 
 		for (compno = 0; compno < numcomps; compno++) {
 			auto tccp = &(default_tile->tccps[compno]);
@@ -2605,61 +2605,61 @@ void CodeStreamDecompress::dump_tile_info(TileCodingParams *default_tile,
 			assert(tccp->numresolutions > 0);
 
 			/* coding style*/
-			fprintf(out_stream, "\t\t comp %u {\n", compno);
-			fprintf(out_stream, "\t\t\t csty=%#x\n", tccp->csty);
-			fprintf(out_stream, "\t\t\t numresolutions=%d\n",
+			fprintf(outputFileStream, "\t\t comp %u {\n", compno);
+			fprintf(outputFileStream, "\t\t\t csty=%#x\n", tccp->csty);
+			fprintf(outputFileStream, "\t\t\t numresolutions=%d\n",
 					tccp->numresolutions);
-			fprintf(out_stream, "\t\t\t cblkw=2^%d\n", tccp->cblkw);
-			fprintf(out_stream, "\t\t\t cblkh=2^%d\n", tccp->cblkh);
-			fprintf(out_stream, "\t\t\t cblksty=%#x\n", tccp->cblk_sty);
-			fprintf(out_stream, "\t\t\t qmfbid=%d\n", tccp->qmfbid);
+			fprintf(outputFileStream, "\t\t\t cblkw=2^%d\n", tccp->cblkw);
+			fprintf(outputFileStream, "\t\t\t cblkh=2^%d\n", tccp->cblkh);
+			fprintf(outputFileStream, "\t\t\t cblksty=%#x\n", tccp->cblk_sty);
+			fprintf(outputFileStream, "\t\t\t qmfbid=%d\n", tccp->qmfbid);
 
-			fprintf(out_stream, "\t\t\t preccintsize (w,h)=");
+			fprintf(outputFileStream, "\t\t\t preccintsize (w,h)=");
 			for (resno = 0; resno < tccp->numresolutions; resno++) {
-				fprintf(out_stream, "(%d,%d) ", tccp->precinctWidthExp[resno],
+				fprintf(outputFileStream, "(%d,%d) ", tccp->precinctWidthExp[resno],
 						tccp->precinctHeightExp[resno]);
 			}
-			fprintf(out_stream, "\n");
+			fprintf(outputFileStream, "\n");
 
 			/* quantization style*/
-			fprintf(out_stream, "\t\t\t qntsty=%d\n", tccp->qntsty);
-			fprintf(out_stream, "\t\t\t numgbits=%d\n", tccp->numgbits);
-			fprintf(out_stream, "\t\t\t stepsizes (m,e)=");
+			fprintf(outputFileStream, "\t\t\t qntsty=%d\n", tccp->qntsty);
+			fprintf(outputFileStream, "\t\t\t numgbits=%d\n", tccp->numgbits);
+			fprintf(outputFileStream, "\t\t\t stepsizes (m,e)=");
 			numBandWindows =
 					(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
 							1 : (uint32_t) (tccp->numresolutions * 3 - 2);
 			for (bandIndex = 0; bandIndex < numBandWindows; bandIndex++) {
-				fprintf(out_stream, "(%d,%d) ", tccp->stepsizes[bandIndex].mant,
+				fprintf(outputFileStream, "(%d,%d) ", tccp->stepsizes[bandIndex].mant,
 						tccp->stepsizes[bandIndex].expn);
 			}
-			fprintf(out_stream, "\n");
+			fprintf(outputFileStream, "\n");
 
 			/* RGN value*/
-			fprintf(out_stream, "\t\t\t roishift=%d\n", tccp->roishift);
+			fprintf(outputFileStream, "\t\t\t roishift=%d\n", tccp->roishift);
 
-			fprintf(out_stream, "\t\t }\n");
+			fprintf(outputFileStream, "\t\t }\n");
 		} /*end of component of default tile*/
-		fprintf(out_stream, "\t }\n"); /*end of default tile*/
+		fprintf(outputFileStream, "\t }\n"); /*end of default tile*/
 	}
 }
 
-void CodeStreamDecompress::dump(uint32_t flag, FILE *out_stream) {
+void CodeStreamDecompress::dump(uint32_t flag, FILE *outputFileStream) {
 	/* Check if the flag is compatible with j2k file*/
 	if ((flag & GRK_JP2_INFO) || (flag & GRK_JP2_IND)) {
-		fprintf(out_stream, "Wrong flag\n");
+		fprintf(outputFileStream, "Wrong flag\n");
 		return;
 	}
 
 	/* Dump the image_header */
 	if (flag & GRK_IMG_INFO) {
 		if (getHeaderImage())
-			dump_image_header(getHeaderImage(), 0, out_stream);
+			dump_image_header(getHeaderImage(), 0, outputFileStream);
 	}
 
 	/* Dump the code stream info from main header */
 	if (flag & GRK_J2K_MH_INFO) {
 		if (getHeaderImage())
-			dump_MH_info(out_stream);
+			dump_MH_info(outputFileStream);
 	}
 	/* Dump all tile/code stream info */
 	auto cp = getCodingParams();
@@ -2669,7 +2669,7 @@ void CodeStreamDecompress::dump(uint32_t flag, FILE *out_stream) {
 			for (uint32_t i = 0; i < nb_tiles; ++i) {
 				auto tcp = cp->tcps + i;
 				dump_tile_info(tcp, getHeaderImage()->numcomps,
-						out_stream);
+						outputFileStream);
 			}
 		}
 	}
@@ -2681,55 +2681,55 @@ void CodeStreamDecompress::dump(uint32_t flag, FILE *out_stream) {
 
 	/* Dump the code stream index from main header */
 	if ((flag & GRK_J2K_MH_IND) && codeStreamInfo)
-		codeStreamInfo->dump(out_stream);
+		codeStreamInfo->dump(outputFileStream);
 
 	/* Dump the code stream index of the current tile */
 	if (flag & GRK_J2K_TH_IND) {
 
 	}
 }
-void CodeStreamDecompress::dump_MH_info(FILE *out_stream) {
-	fprintf(out_stream, "Codestream info from main header: {\n");
-	fprintf(out_stream, "\t tx0=%d, ty0=%d\n", m_cp.tx0,
+void CodeStreamDecompress::dump_MH_info(FILE *outputFileStream) {
+	fprintf(outputFileStream, "Codestream info from main header: {\n");
+	fprintf(outputFileStream, "\t tx0=%d, ty0=%d\n", m_cp.tx0,
 			m_cp.ty0);
-	fprintf(out_stream, "\t tdx=%d, tdy=%d\n", m_cp.t_width,
+	fprintf(outputFileStream, "\t tdx=%d, tdy=%d\n", m_cp.t_width,
 			m_cp.t_height);
-	fprintf(out_stream, "\t tw=%d, th=%d\n", m_cp.t_grid_width,
+	fprintf(outputFileStream, "\t tw=%d, th=%d\n", m_cp.t_grid_width,
 			m_cp.t_grid_height);
 	CodeStreamDecompress::dump_tile_info(getDecompressorState()->m_default_tcp,
-			getHeaderImage()->numcomps, out_stream);
-	fprintf(out_stream, "}\n");
+			getHeaderImage()->numcomps, outputFileStream);
+	fprintf(outputFileStream, "}\n");
 }
 void CodeStreamDecompress::dump_image_header(GrkImage *img_header, bool dev_dump_flag,
-		FILE *out_stream) {
+		FILE *outputFileStream) {
 	char tab[2];
 
 	if (dev_dump_flag) {
 		fprintf(stdout, "[DEV] Dump an image_header struct {\n");
 		tab[0] = '\0';
 	} else {
-		fprintf(out_stream, "Image info {\n");
+		fprintf(outputFileStream, "Image info {\n");
 		tab[0] = '\t';
 		tab[1] = '\0';
 	}
-	fprintf(out_stream, "%s x0=%d, y0=%d\n", tab, img_header->x0,
+	fprintf(outputFileStream, "%s x0=%d, y0=%d\n", tab, img_header->x0,
 			img_header->y0);
-	fprintf(out_stream, "%s x1=%d, y1=%d\n", tab, img_header->x1,
+	fprintf(outputFileStream, "%s x1=%d, y1=%d\n", tab, img_header->x1,
 			img_header->y1);
-	fprintf(out_stream, "%s numcomps=%d\n", tab, img_header->numcomps);
+	fprintf(outputFileStream, "%s numcomps=%d\n", tab, img_header->numcomps);
 	if (img_header->comps) {
 		uint32_t compno;
 		for (compno = 0; compno < img_header->numcomps; compno++) {
-			fprintf(out_stream, "%s\t component %u {\n", tab, compno);
+			fprintf(outputFileStream, "%s\t component %u {\n", tab, compno);
 			CodeStreamDecompress::dump_image_comp_header(&(img_header->comps[compno]),
-					dev_dump_flag, out_stream);
-			fprintf(out_stream, "%s}\n", tab);
+					dev_dump_flag, outputFileStream);
+			fprintf(outputFileStream, "%s}\n", tab);
 		}
 	}
-	fprintf(out_stream, "}\n");
+	fprintf(outputFileStream, "}\n");
 }
 void CodeStreamDecompress::dump_image_comp_header(grk_image_comp *comp_header, bool dev_dump_flag,
-		FILE *out_stream) {
+		FILE *outputFileStream) {
 	char tab[3];
 
 	if (dev_dump_flag) {
@@ -2741,13 +2741,13 @@ void CodeStreamDecompress::dump_image_comp_header(grk_image_comp *comp_header, b
 		tab[2] = '\0';
 	}
 
-	fprintf(out_stream, "%s dx=%d, dy=%d\n", tab, comp_header->dx,
+	fprintf(outputFileStream, "%s dx=%d, dy=%d\n", tab, comp_header->dx,
 			comp_header->dy);
-	fprintf(out_stream, "%s prec=%d\n", tab, comp_header->prec);
-	fprintf(out_stream, "%s sgnd=%d\n", tab, comp_header->sgnd ? 1 : 0);
+	fprintf(outputFileStream, "%s prec=%d\n", tab, comp_header->prec);
+	fprintf(outputFileStream, "%s sgnd=%d\n", tab, comp_header->sgnd ? 1 : 0);
 
 	if (dev_dump_flag)
-		fprintf(out_stream, "}\n");
+		fprintf(outputFileStream, "}\n");
 }
 
 }

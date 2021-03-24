@@ -60,29 +60,29 @@ public:
    uint16_t getCurrentMarker();
    int32_t tileIndexToDecode();
    bool   isWholeTileDecompress();
-   void dump(uint32_t flag, FILE *out_stream);
+   void dump(uint32_t flag, FILE *outputFileStream);
 protected:
- 	void dump_MH_info(FILE *out_stream);
+ 	void dump_MH_info(FILE *outputFileStream);
  	/**
  	 * Dump an image header structure.
  	 *
  	 *@param image			the image header to dump.
  	 *@param dev_dump_flag		flag to describe if we are in the case of this function is use outside dump function
- 	 *@param out_stream			output stream where dump the elements.
+ 	 *@param outputFileStream			output stream where dump the elements.
  	 */
  	void dump_image_header(GrkImage *image, bool dev_dump_flag,
- 			FILE *out_stream);
+ 			FILE *outputFileStream);
  	void dump_tile_info(TileCodingParams *default_tile,
- 			uint32_t numcomps, FILE *out_stream);
+ 			uint32_t numcomps, FILE *outputFileStream);
  	/**
  	 * Dump a component image header structure.
  	 *
  	 *@param comp		the component image header to dump.
  	 *@param dev_dump_flag		flag to describe if we are in the case of this function is use outside dump function
- 	 *@param out_stream			output stream where dump the elements.
+ 	 *@param outputFileStream			output stream where dump the elements.
  	 */
  	void dump_image_comp_header( grk_image_comp  *comp, bool dev_dump_flag,
- 			FILE *out_stream);
+ 			FILE *outputFileStream);
 private:
  	bool endOfCodeStream(void);
 	bool read_short(uint16_t *val);

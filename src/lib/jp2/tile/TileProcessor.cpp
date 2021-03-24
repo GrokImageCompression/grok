@@ -1264,7 +1264,7 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress *codeStream) {
 
 	// note: we subtract 2 to account for SOD marker
 	auto tcp = codeStream->get_current_decode_tcp();
-	if (codeStream->getDecompressorState()->m_last_tile_part_in_code_stream) {
+	if (codeStream->getDecompressorState()->lastTilePartInCodeStream) {
 		tilePartDataLength =	(uint32_t) (m_stream->get_number_byte_left() - 2);
 	} else {
 		if (tilePartDataLength >= 2)

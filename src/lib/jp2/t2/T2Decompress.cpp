@@ -125,7 +125,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no,
 	// so we disable packet length markers if we have both PLT and PLM
 	bool usePlt = packetLengths && !cp->plm_markers;
 	if (usePlt)
-		packetLengths->getInit();
+		packetLengths->rewind();
 	for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
 		auto currPi = pi + pino;
 		if (currPi->prog.progression == GRK_PROG_UNKNOWN) {

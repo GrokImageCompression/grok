@@ -23,7 +23,7 @@ namespace grk {
 struct MarkerInfo {
 	MarkerInfo(uint16_t _id,uint64_t _pos, uint32_t _len);
 	MarkerInfo();
-	void dump(FILE *out_stream);
+	void dump(FILE *outputFileStream);
 	/** marker id */
 	uint16_t id;
 	/** position in code stream */
@@ -34,7 +34,7 @@ struct MarkerInfo {
 struct TilePartInfo {
 	TilePartInfo(uint64_t start, uint64_t endHeader, uint64_t end);
 	TilePartInfo(void);
-	void dump(FILE *out_stream, uint8_t tilePart);
+	void dump(FILE *outputFileStream, uint8_t tilePart);
 	/** start position of tile part*/
 	uint64_t startPosition;
 	/** end position of tile part header */
@@ -49,7 +49,7 @@ struct TileInfo {
 	bool hasTilePartInfo(void);
 	bool update(uint16_t tileIndex,uint8_t currentTilePart, uint8_t numTileParts);
 	TilePartInfo* getTilePartInfo(uint8_t tilePart);
-	void dump(FILE *out_stream, uint16_t tileNum);
+	void dump(FILE *outputFileStream, uint16_t tileNum);
 	/** tile index */
 	uint16_t tileno;
 	/** number of tile parts */
@@ -69,13 +69,13 @@ private:
 	uint32_t allocatedMarkers;
 };
 struct CodeStreamInfo {
-	CodeStreamInfo();
+	CodeStreamInfo(BufferedStream *str);
 	virtual ~CodeStreamInfo();
 	bool allocTileInfo(uint16_t numTiles);
 	bool updateTileInfo(uint16_t tileIndex, uint8_t currentTilePart, uint8_t numTileParts);
 	TileInfo* getTileInfo(uint16_t tileIndex);
 	bool hasTileInfo(void);
-	void dump(FILE *out_stream);
+	void dump(FILE *outputFileStream);
 	void pushMarker(uint16_t id,uint64_t pos,uint32_t len);
 	uint64_t getMainHeaderStart(void);
 	void setMainHeaderStart(uint64_t start);
@@ -90,6 +90,7 @@ private:
 	std::vector<MarkerInfo*> marker;
 	uint16_t numTiles;
 	TileInfo *tileInfo;
+	BufferedStream *stream;
 };
 struct TilePartLengthInfo {
 	TilePartLengthInfo() :	hasTileIndex(false),
@@ -118,7 +119,7 @@ struct TileLengthMarkers {
 	~TileLengthMarkers();
 
 	bool read(uint8_t *p_header_data, uint16_t header_size);
-	void getInit(void);
+	void rewind(void);
 	TilePartLengthInfo getNext(void);
 	bool skipTo(uint16_t skipTileIndex, BufferedStream *stream, uint64_t firstSotPos);
 
@@ -145,46 +146,9 @@ private:
 	uint8_t m_markerTilePartIndex;
 	TL_INFO_VEC *m_curr_vec;
 	BufferedStream *m_stream;
-	uint64_t m_tlm_start_stream_position;
+	uint64_t streamStart;
 };
 
-typedef std::vector<uint32_t> PL_INFO_VEC;
-
-// map of (PLT/PLM marker id) => (packet length vector)
-typedef std::map<uint8_t, PL_INFO_VEC*> PL_MAP;
-
-struct PacketLengthMarkers {
-	PacketLengthMarkers(void);
-	PacketLengthMarkers(BufferedStream *strm);
-	~PacketLengthMarkers(void);
-
-	// decompressor  packet lengths
-	bool readPLT(uint8_t *p_header_data, uint16_t header_size);
-	bool readPLM(uint8_t *p_header_data, uint16_t header_size);
-	void getInit(void);
-	uint32_t getNext(void);
-
-	// compressor packet lengths
-	void writeInit(void);
-	void writeNext(uint32_t len);
-	uint32_t write();
-private:
-	void readInitIndex(uint8_t index);
-	void readNext(uint8_t Iplm);
-	void writeMarkerHeader(void);
-	void writeMarkerLength();
-	void writeIncrement(uint32_t bytes);
-
-	PL_MAP *m_markers;
-	uint8_t m_markerIndex;
-	PL_INFO_VEC *m_curr_vec;
-	size_t m_packetIndex;
-	uint32_t m_packet_len;
-	uint32_t m_marker_bytes_written;
-	uint32_t m_total_bytes_written;
-	uint64_t m_marker_len_cache;
-	BufferedStream *m_stream;
-};
 
 struct PacketInfo{
 	PacketInfo(void);
