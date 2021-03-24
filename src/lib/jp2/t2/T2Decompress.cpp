@@ -52,14 +52,15 @@ bool T2Decompress::processPacket(TileCodingParams *tcp,
 	auto cp = tileProcessor->m_cp;
 	auto tilec = tileProcessor->tile->comps + currPi->compno;
 	auto tilecBuffer = tilec->getBuffer();
-	auto packetLengths = tileProcessor->pltMarkers;
-	// we don't currently support PLM markers,
-	// so we disable packet length markers if we have both PLT and PLM
-	bool usePlt = packetLengths && !cp->plm_markers;
-	uint32_t pltMarkerLen = 0;
-	if (usePlt)
-		pltMarkerLen = packetLengths->getNext();
 	auto packetInfo = tileProcessor->packetInfoCache.get();
+	if (!packetInfo->packetLength) {
+		// we don't currently support PLM markers,
+		// so we disable packet length markers if we have both PLT and PLM
+		auto packetLengths = tileProcessor->pltMarkers;
+		bool usePlt = packetLengths && !cp->plm_markers;
+		if (usePlt)
+			packetInfo->packetLength = packetLengths->getNext();
+	}
 	auto res = tilec->tileCompResolution + currPi->resno;
 	auto skipPacket = currPi->layno >= tcp->num_layers_to_decompress
 								|| currPi->resno >= tilec->resolutions_to_decompress;
@@ -82,7 +83,7 @@ bool T2Decompress::processPacket(TileCodingParams *tcp,
 			}
 		}
 	}
-	if (!skipPacket || !usePlt) {
+	if (!skipPacket || !packetInfo->packetLength) {
 		for (uint32_t bandIndex = 0;	bandIndex < res->numTileBandWindows; ++bandIndex) {
 			auto band = res->tileBand + bandIndex;
 			if (band->isEmpty())
@@ -102,13 +103,11 @@ bool T2Decompress::processPacket(TileCodingParams *tcp,
 		tilec->resolutions_decompressed = std::max<uint8_t>(currPi->resno,tilec->resolutions_decompressed);
 		tileProcessor->tile->numDecompressedPackets++;
 	} else {
-		if (pltMarkerLen) {
-			srcBuf->incrementCurrentChunkOffset(pltMarkerLen);
-			packetInfo->packetLength = pltMarkerLen;
-		} else {
+		if (packetInfo->packetLength)
+			srcBuf->incrementCurrentChunkOffset(packetInfo->packetLength);
+		else
 			if (!decompressPacket(tcp, currPi, srcBuf,packetInfo,true))
 				return false;
-		}
 	}
 	tileProcessor->tile->numProcessedPackets++;
 	return true;
