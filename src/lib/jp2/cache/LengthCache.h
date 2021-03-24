@@ -74,13 +74,13 @@ struct CodeStreamInfo {
 	bool allocTileInfo(uint16_t numTiles);
 	bool updateTileInfo(uint16_t tileIndex, uint8_t currentTilePart, uint8_t numTileParts);
 	TileInfo* getTileInfo(uint16_t tileIndex);
-	bool hasTileInfo(void);
 	void dump(FILE *outputFileStream);
 	void pushMarker(uint16_t id,uint64_t pos,uint32_t len);
 	uint64_t getMainHeaderStart(void);
 	void setMainHeaderStart(uint64_t start);
 	uint64_t getMainHeaderEnd(void);
 	void setMainHeaderEnd(uint64_t end);
+	bool skipToTile(uint16_t tileIndex, uint64_t lastSotReadPosition);
 private:
 	/** main header start position (SOC position) */
 	uint64_t mainHeaderStart;

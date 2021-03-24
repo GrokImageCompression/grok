@@ -849,34 +849,18 @@ bool CodeStreamDecompress::decompressTile() {
 	auto tileProcessor = tileCache ? tileCache->processor : nullptr;
 	bool rc = false;
 	if (!tileCache || !tileCache->processor->getImage()) {
-		if (!codeStreamInfo->allocTileInfo((uint16_t)(m_cp.t_grid_width * m_cp.t_grid_height)))
-			return false;
 		// if we have a TLM marker, then we can skip tiles until
 		// we get to desired tile
 		if (m_cp.tlm_markers){
 			// for first SOT position, we add two to skip SOC marker
-			if (!m_cp.tlm_markers->skipTo((uint16_t)tileIndexToDecode(),
+			if (!m_cp.tlm_markers->skipTo((uint16_t)m_tile_ind_to_dec,
 											m_stream,codeStreamInfo->getMainHeaderEnd()+2))
 				return false;
 		} else {
-			/* Move into the code stream to the first SOT used to decompress the desired tile */
-			uint16_t tileIndexToDecompress =	(uint16_t) (tileIndexToDecode());
-			if (codeStreamInfo->hasTileInfo() && codeStreamInfo->getTileInfo(0)->hasTilePartInfo()) {
-				auto tileInfo = codeStreamInfo->getTileInfo(tileIndexToDecompress);
-				if (!tileInfo->numTileParts) {
-					/* the index for this tile has not been built,
-					 *  so move to the last SOT read */
-					if (!(m_stream->seek(m_decompressorState.lastSotReadPosition+ 2))) {
-						GRK_ERROR("Problem with seek function");
-						return false;
-					}
-				} else {
-					if (!(m_stream->seek(tileInfo->getTilePartInfo(0)->startPosition+ 2))) {
-						GRK_ERROR("Problem with seek function");
-						return false;
-					}
-				}
-			}
+			if (!codeStreamInfo->allocTileInfo((uint16_t)(m_cp.t_grid_width * m_cp.t_grid_height)))
+				return false;
+			if (!codeStreamInfo->skipToTile((uint16_t)m_tile_ind_to_dec, m_decompressorState.lastSotReadPosition))
+				return false;
 		}
 		/* Special case if we have previously read the EOC marker
 		 * (if the previous tile decompressed is the last ) */

@@ -198,10 +198,8 @@ bool CodeStreamInfo::updateTileInfo(uint16_t tileIndex, uint8_t currentTilePart,
 }
 TileInfo* CodeStreamInfo::getTileInfo(uint16_t tileIndex){
 	assert(tileIndex < numTiles);
+	assert(tileInfo);
 	return tileInfo + tileIndex;
-}
-bool CodeStreamInfo::hasTileInfo(void){
-	return tileInfo != nullptr;
 }
 void CodeStreamInfo::dump(FILE *outputFileStream) {
 	fprintf(outputFileStream, "Codestream index from main header: {\n");
@@ -243,6 +241,26 @@ uint64_t CodeStreamInfo::getMainHeaderEnd(void){
 }
 void CodeStreamInfo::setMainHeaderEnd(uint64_t end){
 	this->mainHeaderEnd = end;
+}
+bool CodeStreamInfo::skipToTile(uint16_t tileIndex, uint64_t lastSotReadPosition){
+	if (tileInfo && tileInfo->hasTilePartInfo()) {
+		auto tileInfoForTile = getTileInfo(tileIndex);
+		if (!tileInfoForTile->numTileParts) {
+			/* the index for this tile has not been built,
+			 *  so move to the last SOT read */
+			if (!(stream->seek(lastSotReadPosition+ 2))) {
+				GRK_ERROR("Problem with seek function");
+				return false;
+			}
+		} else {
+			if (!(stream->seek(tileInfoForTile->getTilePartInfo(0)->startPosition+ 2))) {
+				GRK_ERROR("Problem with seek function");
+				return false;
+			}
+		}
+	}
+
+	return true;
 }
 TileLengthMarkers::TileLengthMarkers() :
 		m_markers(new TL_MAP()),
@@ -431,8 +449,7 @@ bool TileLengthMarkers::addTileMarkerInfo(uint16_t tileno,
 									uint16_t id,
 									uint64_t pos,
 									uint32_t len) {
-	assert(codestreamInfo != nullptr);
-	assert(codestreamInfo->hasTileInfo());
+	assert(codestreamInfo);
 	auto currTileInfo = codestreamInfo->getTileInfo(tileno);
 	if (id == J2K_MS_SOT) {
 		uint8_t currTilePart = (uint8_t)currTileInfo->currentTilePart;
