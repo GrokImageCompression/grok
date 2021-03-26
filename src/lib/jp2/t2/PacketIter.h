@@ -70,61 +70,6 @@ struct ResBuf;
 struct IncludeTracker;
 struct PacketIter;
 
-/** @name Exported functions */
-/*@{*/
-/* ----------------------------------------------------------------------- */
-/**
- * Creates a packet iterator for compression/decompression.
- *
- * @param   compression true if for compression, otherwise false
- * @param	image		the image being encoded.
- * @param	cp		the coding parameters.
- * @param	tileno	index of the tile being encoded.
- * @param	t2_mode	the type of pass for generating the packet iterator
- * @param 	include	vector of include buffers, one per layer
- *
- * @return	a list of packet iterator that points to the first packet of the tile (not true).
- */
-PacketIter* pi_create_compress_decompress(bool compression,
-								const GrkImage *image,
-								CodingParams *cp,
-								uint16_t tileno,
-								J2K_T2_MODE t2_mode,
-								IncludeTracker *include);
-/**
- * Updates the compressing parameters of the codec.
- *
- * @param	p_image		the image being encoded.
- * @param	p_cp		the coding parameters.
- * @param	tile_no	index of the tile being encoded.
- */
-void pi_update_params_compress(const GrkImage *p_image,
-									CodingParams *p_cp,
-									uint16_t tile_no);
-/**
- Modify the packet iterator for enabling tile part generation
- @param pi 		Handle to the packet iterator generated in pi_create_compress
- @param cp 		Coding parameters
- @param tileno 	Number that identifies the tile for which to list the packets
- @param pino   	packet iterator number
- @param first_poc_tile_part true for first POC tile part
- @param tppos 	The position of the tile part flag in the progression order
- @param t2_mode T2 mode
- */
-void pi_enable_tile_part_generation(PacketIter *pi,
-									CodingParams *cp,
-									uint16_t tileno,
-									uint32_t pino,
-									bool first_poc_tile_part,
-									uint32_t tppos,
-									J2K_T2_MODE t2_mode);
-/**
- * Destroys a packet iterator array.
- *
- * @param	p_pi			the packet iterator array to destroy.
- */
-void pi_destroy(PacketIter *p_pi);
-
 struct ResBuf{
 	ResBuf(){
 		for (uint8_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)

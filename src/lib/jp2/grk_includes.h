@@ -132,6 +132,7 @@
 #include "WaveletReverse.h"
 #include "TileComponentWindowBuffer.h"
 #include "PacketIter.h"
+#include "PacketManager.h"
 #include "SparseCanvas.h"
 #include "TileComponent.h"
 #include "TileProcessor.h"

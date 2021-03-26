@@ -35,13 +35,10 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers,
 	auto image = tileProcessor->headerImage;
 	auto tilePtr = tileProcessor->tile;
 	auto tcp = &cp->tcps[tile_no];
-	IncludeTracker include(image->numcomps);
-	auto pi = pi_create_compress_decompress(true,image, cp, tile_no, FINAL_PASS, &include);
-	pi_enable_tile_part_generation(pi, cp, tile_no, pino, first_poc_tile_part, tp_pos, FINAL_PASS);
-
-	auto current_pi = &pi[pino];
+	PacketManager packetManager(true,image, cp, tile_no, FINAL_PASS);
+	packetManager.enableTilePartGeneration(pino, first_poc_tile_part, tp_pos);
+	auto current_pi =packetManager.getPacketIter(pino);
 	if (current_pi->prog.progression == GRK_PROG_UNKNOWN) {
-		pi_destroy(pi);
 		GRK_ERROR("compressPackets: Unknown progression order");
 		return false;
 	}
@@ -49,14 +46,12 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers,
 		if (current_pi->layno < max_layers) {
 			uint32_t nb_bytes = 0;
 			if (!compressPacket(tcp, current_pi, stream, &nb_bytes)) {
-				pi_destroy(pi);
 				return false;
 			}
 			*p_data_written += nb_bytes;
 			tilePtr->numProcessedPackets++;
 		}
 	}
-	pi_destroy(pi);
 
 	return true;
 }
@@ -71,8 +66,7 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 	uint32_t pocno = (cp->rsiz == GRK_PROFILE_CINEMA_4K) ? 2 : 1;
 	uint32_t max_comp =
 			cp->m_coding_params.m_enc.m_max_comp_size > 0 ? image->numcomps : 1;
-	IncludeTracker include(image->numcomps);
-	auto pi = pi_create_compress_decompress(true,image, cp, tile_no, THRESH_CALC,&include);
+	PacketManager packetManager(true,image, cp, tile_no, THRESH_CALC);
 	*all_packets_len = 0;
 
 	tileProcessor->m_packetTracker.clear();
@@ -83,13 +77,12 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 	for (uint32_t compno = 0; compno < max_comp; ++compno) {
 		uint64_t comp_len = 0;
 		for (uint32_t poc = 0; poc < pocno; ++poc) {
-			auto current_pi = pi + poc;
+			auto current_pi = packetManager.getPacketIter(poc);
 			// todo: 1. why is tile part number set to component number ?
 			// todo: 2. why is tile part generation initialized for each progression order change ?
-			pi_enable_tile_part_generation(pi, cp, tile_no, poc, (compno == 0), tp_pos, THRESH_CALC);
+			packetManager.enableTilePartGeneration(poc, (compno == 0), tp_pos);
 
 			if (current_pi->prog.progression == GRK_PROG_UNKNOWN) {
-				pi_destroy(pi);
 				GRK_ERROR(
 						"decompress_packets_simulate: Unknown progression order");
 				return false;
@@ -100,7 +93,6 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 
 					if (!compressPacketSimulate(tcp, current_pi, &bytesInPacket,
 							max_len, markers)) {
-						pi_destroy(pi);
 						return false;
 					}
 
@@ -111,13 +103,11 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 			}
 			if (cp->m_coding_params.m_enc.m_max_comp_size) {
 				if (comp_len > cp->m_coding_params.m_enc.m_max_comp_size) {
-					pi_destroy(pi);
 					return false;
 				}
 			}
 		}
 	}
-	pi_destroy(pi);
 	return true;
 }
 bool T2Compress::compressPacket(TileCodingParams *tcp, PacketIter *pi,

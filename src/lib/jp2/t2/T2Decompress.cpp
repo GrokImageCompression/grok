@@ -108,14 +108,12 @@ bool T2Decompress::decompressPackets(uint16_t tile_no,
 										bool *truncated) {
 	auto cp = tileProcessor->m_cp;
 	auto tcp = cp->tcps + tile_no;
-	IncludeTracker include(tileProcessor->headerImage->numcomps);
 	*truncated = false;
-	auto pi = pi_create_compress_decompress(false,tileProcessor->headerImage, cp, tile_no,FINAL_PASS, &include);
+	PacketManager packetManager(false,tileProcessor->headerImage, cp, tile_no,FINAL_PASS);
 	tileProcessor->packetLengthCache.rewind();
 	for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
-		auto currPi = pi + pino;
+		auto currPi = packetManager.getPacketIter(pino);
 		if (currPi->prog.progression == GRK_PROG_UNKNOWN) {
-			pi_destroy(pi);
 			GRK_ERROR("decompressPackets: Unknown progression order");
 			return false;
 		}
@@ -127,7 +125,6 @@ bool T2Decompress::decompressPackets(uint16_t tile_no,
 			}
 			try {
 				if (!processPacket(tcp, currPi, srcBuf)) {
-					pi_destroy(pi);
 					return false;
 				}
 			} 	catch (TruncatedPacketHeaderException &tex){
@@ -151,7 +148,6 @@ bool T2Decompress::decompressPackets(uint16_t tile_no,
 		if (*truncated)
 			break;
 	}
-	pi_destroy(pi);
 	if (tileProcessor->tile->numDecompressedPackets == 0)
 		GRK_WARN("T2Decompress: no packets for tile %d were successfully read",tile_no+1);
 	return tileProcessor->tile->numDecompressedPackets > 0;
