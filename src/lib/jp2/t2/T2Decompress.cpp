@@ -49,7 +49,6 @@ void T2Decompress::initSegment(DecompressCodeblock *cblk, uint32_t index, uint8_
 bool T2Decompress::processPacket(TileCodingParams *tcp,
 								PacketIter *currPi,
 								SparseBuffer *srcBuf){
-	auto cp = tileProcessor->m_cp;
 	auto tilec = tileProcessor->tile->comps + currPi->compno;
 	auto tilecBuffer = tilec->getBuffer();
 	auto packetInfo = tileProcessor->packetLengthCache.next();

@@ -8,26 +8,16 @@ GrkObjectWrapper::GrkObjectWrapper() : ref_count(1){
 GrkObjectWrapper::~GrkObjectWrapper(){
 
 }
+int32_t GrkObjectWrapper::ref(void){
+	return ref_count++;
+}
+int32_t GrkObjectWrapper::unref(void){
+	if (ref_count == 0)
+		GRK_WARN("Attempt to uref a release object");
+	else if (--ref_count == 0)
+		release();
 
-uint32_t GrkObjectWrapper::refcount(void){
 	return ref_count;
-}
-
-GrkObjectWrapper* GrkObjectWrapper::ref(void){
-	ref_count++;
-
-	return this;
-}
-GrkObjectWrapper* GrkObjectWrapper::unref(void){
-	if (ref_count == 0){
-		GRK_WARN("Attempt to uref an object with ref count 0");
-	} else {
-		ref_count--;
-		if (ref_count == 0)
-			release();
-	}
-
-	return this;
 }
 
 }

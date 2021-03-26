@@ -8,12 +8,11 @@ class GrkObjectWrapper {
 public:
 	explicit GrkObjectWrapper(void);
 	virtual ~GrkObjectWrapper(void);
-	GrkObjectWrapper* ref(void);
-	GrkObjectWrapper* unref(void);
-	uint32_t refcount(void);
+	int32_t ref(void);
+	int32_t unref(void);
 	virtual void release(void) = 0;
 private:
-	uint32_t ref_count;
+	std::atomic<int32_t> ref_count;
 };
 
 
