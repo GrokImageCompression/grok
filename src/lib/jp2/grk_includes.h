@@ -108,6 +108,7 @@
 #include "Profile.h"
 #include "LengthCache.h"
 #include "PacketLengthMarkers.h"
+#include "PacketLengthCache.h"
 #include "SIZMarker.h"
 #include "PPMMarker.h"
 #include "SOTMarker.h"

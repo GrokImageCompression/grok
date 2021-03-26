@@ -52,15 +52,7 @@ bool T2Decompress::processPacket(TileCodingParams *tcp,
 	auto cp = tileProcessor->m_cp;
 	auto tilec = tileProcessor->tile->comps + currPi->compno;
 	auto tilecBuffer = tilec->getBuffer();
-	auto packetInfo = tileProcessor->packetInfoCache.get();
-	if (!packetInfo->packetLength) {
-		// we don't currently support PLM markers,
-		// so we disable packet length markers if we have both PLT and PLM
-		auto packetLengths = tileProcessor->pltMarkers;
-		bool usePlt = packetLengths && !cp->plm_markers;
-		if (usePlt)
-			packetInfo->packetLength = packetLengths->getNext();
-	}
+	auto packetInfo = tileProcessor->packetLengthCache.next();
 	auto res = tilec->tileCompResolution + currPi->resno;
 	auto skipPacket = currPi->layno >= tcp->num_layers_to_decompress
 								|| currPi->resno >= tilec->resolutions_to_decompress;
@@ -120,12 +112,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no,
 	IncludeTracker include(tileProcessor->headerImage->numcomps);
 	*truncated = false;
 	auto pi = pi_create_compress_decompress(false,tileProcessor->headerImage, cp, tile_no,FINAL_PASS, &include);
-	auto packetLengths = tileProcessor->pltMarkers;
-	// we don't currently support PLM markers,
-	// so we disable packet length markers if we have both PLT and PLM
-	bool usePlt = packetLengths && !cp->plm_markers;
-	if (usePlt)
-		packetLengths->rewind();
+	tileProcessor->packetLengthCache.rewind();
 	for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
 		auto currPi = pi + pino;
 		if (currPi->prog.progression == GRK_PROG_UNKNOWN) {

@@ -117,10 +117,8 @@ struct TileProcessor {
 	grk_plugin_tile *current_plugin_tile;
     // true if whole tile will be decoded; false if tile window will be decoded
     bool   wholeTileDecompress;
-	PacketLengthMarkers *pltMarkers;
-	SequentialCache<PacketInfo> packetInfoCache;
-	/** Coding parameters */
 	CodingParams *m_cp;
+    PacketLengthCache packetLengthCache;
 	// Compressing only - track which packets have been already written
 	// to the code stream
 	PacketTracker m_packetTracker;
