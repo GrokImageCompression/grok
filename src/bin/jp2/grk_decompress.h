@@ -29,19 +29,19 @@ struct DecompressInitParams {
 	DecompressInitParams() :initialized(false),
 							transferExifTags(false) 	{
 		pluginPath[0] = 0;
-		memset(&inFolder, 0, sizeof(inFolder));
+		memset(&inputFolder, 0, sizeof(inputFolder));
 		memset(&outFolder, 0, sizeof(outFolder));
 	}
 	~DecompressInitParams() {
-		if (inFolder.imgdirpath)
-			free(inFolder.imgdirpath);
+		if (inputFolder.imgdirpath)
+			free(inputFolder.imgdirpath);
 		if (outFolder.imgdirpath)
 			free(outFolder.imgdirpath);
 	}
 	bool initialized;
 	grk_decompress_parameters parameters;
 	char pluginPath[GRK_PATH_LEN];
-	grk_img_fol inFolder;
+	grk_img_fol inputFolder;
 	grk_img_fol outFolder;
 	bool transferExifTags;
 };
@@ -59,7 +59,7 @@ private:
 	int pluginMain(int argc, char **argv, DecompressInitParams *initParams);
 	bool parsePrecision(const char *option,	grk_decompress_parameters *parameters);
 	int loadImages(grk_dircnt *dirptr, char *imgdirpath);
-	char nextFile(std::string file_name, grk_img_fol *inFolder,
+	char nextFile(std::string file_name, grk_img_fol *inputFolder,
 					grk_img_fol *outFolder, grk_decompress_parameters *parameters);
 	int parseCommandLine(int argc, char **argv,DecompressInitParams *initParams);
 	uint32_t getCompressionCode(const std::string &compressionString);

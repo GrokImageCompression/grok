@@ -537,7 +537,7 @@ static const char *plugin_batch_decode_method_name = "plugin_batch_decompress";
 static const char *plugin_stop_batch_decode_method_name =
 		"plugin_stop_batch_decompress";
 
-static const char* get_path_separator() {
+static const char* pathSeparator() {
 #ifdef _WIN32
 	return "\\";
 #else
@@ -559,13 +559,13 @@ bool GRK_CALLCONV grk_plugin_load(grk_plugin_load_info info) {
 			+ minpf_get_dynamic_library_extension();
 
 	// form absolute plugin path
-	auto pluginPath = std::string(info.pluginPath) + get_path_separator()
+	auto pluginPath = std::string(info.pluginPath) + pathSeparator()
 			+ pluginName;
 	int32_t rc = minpf_load_from_path(pluginPath.c_str(), nullptr);
 
 	// if fails, try local path
 	if (rc) {
-		std::string localPlugin = std::string(".") + get_path_separator()
+		std::string localPlugin = std::string(".") + pathSeparator()
 				+ pluginName;
 		rc = minpf_load_from_path(localPlugin.c_str(), nullptr);
 	}

@@ -345,32 +345,33 @@ int GrkDecompress::loadImages(grk_dircnt *dirptr, char *imgdirpath) {
 	return 0;
 }
 
-char GrkDecompress::nextFile(std::string image_filename, grk_img_fol *inFolder,
-		grk_img_fol *outFolder, grk_decompress_parameters *parameters) {
-	spdlog::info("File: \"{}\"", image_filename.c_str());
-	std::string infilename = inFolder->imgdirpath
-			+ std::string(get_path_separator()) + image_filename;
+char GrkDecompress::nextFile(std::string inputFile,
+							grk_img_fol *inputFolder,
+							grk_img_fol *outFolder,
+							grk_decompress_parameters *parameters) {
+	spdlog::info("File: \"{}\"", inputFile.c_str());
+	std::string infilename = inputFolder->imgdirpath	+ std::string(pathSeparator()) + inputFile;
 	if (!grk::jpeg2000_file_format(infilename.c_str(),
 			(GRK_SUPPORTED_FILE_FMT*) &parameters->decod_format)
 			|| parameters->decod_format == GRK_UNK_FMT)
 		return 1;
-	if (grk::strcpy_s(parameters->infile, sizeof(parameters->infile),
-			infilename.c_str()) != 0) {
+	if (grk::strcpy_s(parameters->infile, sizeof(parameters->infile),infilename.c_str()) != 0)
 		return 1;
-	}
-	auto temp_ofname = image_filename;
-	auto pos = image_filename.find(".");
+
+	auto temp_ofname = inputFile;
+	auto pos = inputFile.find(".");
 	if (pos != std::string::npos)
-		temp_ofname = image_filename.substr(0, pos);
-	if (inFolder->set_out_format) {
+		temp_ofname = inputFile.substr(0, pos);
+	if (inputFolder->set_out_format) {
 		std::string outfilename = outFolder->imgdirpath
-				+ std::string(get_path_separator()) + temp_ofname + "."
-				+ inFolder->out_format;
+				+ std::string(pathSeparator()) + temp_ofname + "."
+				+ inputFolder->out_format;
 		if (grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile),
 				outfilename.c_str()) != 0) {
 			return 1;
 		}
 	}
+
 	return 0;
 }
 
@@ -419,7 +420,7 @@ int GrkDecompress::parseCommandLine(int argc,
 
 
 	grk_decompress_parameters *parameters = &initParams->parameters;
-	grk_img_fol *inFolder = &initParams->inFolder;
+	grk_img_fol *inputFolder = &initParams->inputFolder;
 	grk_img_fol *outFolder = &initParams->outFolder;
 	char *pluginPath = initParams->pluginPath;
 	try {
@@ -559,32 +560,32 @@ int GrkDecompress::parseCommandLine(int argc,
 			char outformat[50];
 			const char *of = outForArg.getValue().c_str();
 			sprintf(outformat, ".%s", of);
-			inFolder->set_out_format = true;
+			inputFolder->set_out_format = true;
 			parameters->cod_format = (GRK_SUPPORTED_FILE_FMT)get_file_format(outformat);
 			switch (parameters->cod_format) {
 			case GRK_PGX_FMT:
-				inFolder->out_format = "pgx";
+				inputFolder->out_format = "pgx";
 				break;
 			case GRK_PXM_FMT:
-				inFolder->out_format = "ppm";
+				inputFolder->out_format = "ppm";
 				break;
 			case GRK_BMP_FMT:
-				inFolder->out_format = "bmp";
+				inputFolder->out_format = "bmp";
 				break;
 			case GRK_JPG_FMT:
-				inFolder->out_format = "jpg";
+				inputFolder->out_format = "jpg";
 				break;
 			case GRK_TIF_FMT:
-				inFolder->out_format = "tif";
+				inputFolder->out_format = "tif";
 				break;
 			case GRK_RAW_FMT:
-				inFolder->out_format = "raw";
+				inputFolder->out_format = "raw";
 				break;
 			case GRK_RAWL_FMT:
-				inFolder->out_format = "rawl";
+				inputFolder->out_format = "rawl";
 				break;
 			case GRK_PNG_FMT:
-				inFolder->out_format = "png";
+				inputFolder->out_format = "png";
 				break;
 			default:
 				spdlog::error(
@@ -643,10 +644,10 @@ int GrkDecompress::parseCommandLine(int argc,
 		}
 
 		if (imgDirArg.isSet()) {
-			inFolder->imgdirpath = (char*) malloc(
+			inputFolder->imgdirpath = (char*) malloc(
 					strlen(imgDirArg.getValue().c_str()) + 1);
-			strcpy(inFolder->imgdirpath, imgDirArg.getValue().c_str());
-			inFolder->set_imgdir = true;
+			strcpy(inputFolder->imgdirpath, imgDirArg.getValue().c_str());
+			inputFolder->set_imgdir = true;
 		}
 
 		if (reduceArg.isSet()) {
@@ -682,7 +683,7 @@ int GrkDecompress::parseCommandLine(int argc,
 			ROI_values[0] = '\0';
 			memcpy(ROI_values, decodeRegionArg.getValue().c_str(), size_optarg);
 			/*printf("ROI_values = %s [%d / %d]\n", ROI_values, strlen(ROI_values), size_optarg ); */
-			int rc = parse_DA_values(ROI_values,
+			int rc = parseWindowBounds(ROI_values,
 									&parameters->DA_x0,
 									&parameters->DA_y0,
 									&parameters->DA_x1,
@@ -725,12 +726,12 @@ int GrkDecompress::parseCommandLine(int argc,
 #endif
 
 	/* check for possible errors */
-	if (inFolder->set_imgdir) {
+	if (inputFolder->set_imgdir) {
 		if (!(parameters->infile[0] == 0)) {
 			spdlog::error("options -ImgDir and -i cannot be used together.");
 			return 1;
 		}
-		if (!inFolder->set_out_format) {
+		if (!inputFolder->set_out_format) {
 			spdlog::error(
 					"When -ImgDir is used, -OutFor <FORMAT> must be used.");
 			spdlog::error(
@@ -793,10 +794,10 @@ static int decompress_callback(grk_plugin_decompress_callback_info *info);
 
 // returns 0 for failure, 1 for success, and 2 if file is not suitable for decoding
 int GrkDecompress::decompress(const char *fileName, DecompressInitParams *initParams) {
-	if (initParams->inFolder.set_imgdir) {
+	if (initParams->inputFolder.set_imgdir) {
 		if (nextFile(fileName,
-						&initParams->inFolder,
-						initParams->outFolder.set_imgdir ? &initParams->outFolder : &initParams->inFolder,
+						&initParams->inputFolder,
+						initParams->outFolder.set_imgdir ? &initParams->outFolder : &initParams->inputFolder,
 						&initParams->parameters)) {
 			return 2;
 		}
@@ -871,14 +872,14 @@ int GrkDecompress::pluginMain(int argc, char **argv, DecompressInitParams *initP
 		goto cleanup;
 	}
 
-	isBatch = initParams->inFolder.imgdirpath && initParams->outFolder.imgdirpath;
+	isBatch = initParams->inputFolder.imgdirpath && initParams->outFolder.imgdirpath;
 	if ((grk_plugin_get_debug_state() & GRK_PLUGIN_STATE_DEBUG)) {
 		isBatch = false;
 	}
 	if (isBatch) {
 		//initialize batch
 		setUpSignalHandler();
-		success = grk_plugin_init_batch_decompress(initParams->inFolder.imgdirpath,
+		success = grk_plugin_init_batch_decompress(initParams->inputFolder.imgdirpath,
 				initParams->outFolder.imgdirpath, &initParams->parameters,
 				decompress_callback);
 		//start batch
@@ -901,8 +902,8 @@ int GrkDecompress::pluginMain(int argc, char **argv, DecompressInitParams *initP
 		}
 	} else {
 		/* Initialize reading of directory */
-		if (initParams->inFolder.set_imgdir) {
-			num_images = get_num_images(initParams->inFolder.imgdirpath);
+		if (initParams->inputFolder.set_imgdir) {
+			num_images = get_num_images(initParams->inputFolder.imgdirpath);
 			if (num_images == 0) {
 				spdlog::error("Folder is empty");
 				success = 1;
@@ -927,7 +928,7 @@ int GrkDecompress::pluginMain(int argc, char **argv, DecompressInitParams *initP
 							+ i * GRK_PATH_LEN;
 				}
 			}
-			if (loadImages(dirptr, initParams->inFolder.imgdirpath) == 1) {
+			if (loadImages(dirptr, initParams->inputFolder.imgdirpath) == 1) {
 				success = 1;
 				goto cleanup;
 			}
@@ -940,10 +941,10 @@ int GrkDecompress::pluginMain(int argc, char **argv, DecompressInitParams *initP
 
 	/*Decompressing image one by one*/
 	for (imageno = 0; imageno < num_images; imageno++) {
-		if (initParams->inFolder.set_imgdir) {
-			if (nextFile(dirptr->filename[imageno], &initParams->inFolder,
+		if (initParams->inputFolder.set_imgdir) {
+			if (nextFile(dirptr->filename[imageno], &initParams->inputFolder,
 					initParams->outFolder.set_imgdir ?
-							&initParams->outFolder : &initParams->inFolder,
+							&initParams->outFolder : &initParams->inputFolder,
 					&initParams->parameters)) {
 				continue;
 			}
@@ -1507,7 +1508,7 @@ int GrkDecompress::main(int argc, char **argv) {
 		}
 		auto start = std::chrono::high_resolution_clock::now();
 		for (uint32_t i = 0; i < initParams.parameters.repeats; ++i) {
-			if (!initParams.inFolder.set_imgdir) {
+			if (!initParams.inputFolder.set_imgdir) {
 				if (decompress("", &initParams) == 1) {
 					num_decompressed_images++;
 				} else {
@@ -1515,10 +1516,10 @@ int GrkDecompress::main(int argc, char **argv) {
 					goto cleanup;
 				}
 			} else {
-				auto dir = opendir(initParams.inFolder.imgdirpath);
+				auto dir = opendir(initParams.inputFolder.imgdirpath);
 				if (!dir) {
 					spdlog::error("Could not open Folder {}",
-							initParams.inFolder.imgdirpath);
+							initParams.inputFolder.imgdirpath);
 					rc = EXIT_FAILURE;
 					goto cleanup;
 				}

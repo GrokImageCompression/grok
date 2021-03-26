@@ -12,30 +12,21 @@
  *
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
- *
- *    This source code incorporates work covered by the BSD 2-clause license.
- *    Please see the LICENSE file in the root directory for details.
- *
  */
+
 #pragma once
 
 #include "common.h"
-#include "IImageFormat.h"
 
 namespace grk {
 
-struct CompressInitParams {
-	CompressInitParams();
-	~CompressInitParams();
-	bool initialized;
-	grk_cparameters parameters;
-	char indexfilename[GRK_PATH_LEN]; /* index file name */
-	char pluginPath[GRK_PATH_LEN];
-	grk_img_fol inputFolder;
-	grk_img_fol outFolder;
-	bool transferExifTags;
+class FileProvider {
+public:
+	FileProvider(std::string directoryPath);
+	virtual ~FileProvider();
+	bool next(std::string &res);
+private:
+	DIR *dir;
 };
-
 
 }

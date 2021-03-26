@@ -91,7 +91,7 @@ std::string convertFileFmtToString(GRK_SUPPORTED_FILE_FMT fmt){
  * separator = ","
  */
 /* -------------------------------------------------------------------------- */
-int parse_DA_values(char *inArg, uint32_t *DA_x0, uint32_t *DA_y0,
+int parseWindowBounds(char *inArg, uint32_t *DA_x0, uint32_t *DA_y0,
 		uint32_t *DA_x1, uint32_t *DA_y1) {
 	int it = 0;
 	int values[4];
@@ -246,7 +246,7 @@ bool jpeg2000_file_format(const char *fname, GRK_SUPPORTED_FILE_FMT *fmt) {
 	return true;
 }
 
-const char* get_path_separator() {
+const char* pathSeparator() {
 #ifdef _WIN32
 	return "\\";
 #else

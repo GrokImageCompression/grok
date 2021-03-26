@@ -70,10 +70,11 @@ using namespace grk;
 #include <chrono>
 #include "spdlog/sinks/basic_file_sink.h"
 #include "exif.h"
+#include "FileProvider.h"
 
 #include "grk_compress.h"
 
-static bool plugin_compress_callback(
+static bool pluginCompressCallback(
 		grk_plugin_compress_user_callback_info *info);
 
 void exit_func() {
@@ -327,7 +328,7 @@ CompressInitParams::CompressInitParams() : initialized(false),
 						transferExifTags(false) {
 	pluginPath[0] = 0;
 	*indexfilename = 0;
-	memset(&inFolder, 0, sizeof(inFolder));
+	memset(&inputFolder, 0, sizeof(inputFolder));
 	memset(&outFolder, 0, sizeof(outFolder));
 }
 CompressInitParams::~CompressInitParams() {
@@ -337,36 +338,19 @@ CompressInitParams::~CompressInitParams() {
 	}
 	if (parameters.raw_cp.comps)
 		free(parameters.raw_cp.comps);
-	if (inFolder.imgdirpath)
-		free(inFolder.imgdirpath);
+	if (inputFolder.imgdirpath)
+		free(inputFolder.imgdirpath);
 	if (outFolder.imgdirpath)
 		free(outFolder.imgdirpath);
 }
-static int loadImages(grk_dircnt *dirptr, char *imgdirpath) {
-	DIR *dir = opendir(imgdirpath);
-	if (!dir) {
-		spdlog::error("Could not open Folder {}", imgdirpath);
-		return 1;
-	}
-	struct dirent *content = nullptr;
-	int i = 0;
-	while ((content = readdir(dir)) != nullptr) {
-		if (strcmp(".", content->d_name) == 0
-				|| strcmp("..", content->d_name) == 0)
-			continue;
+static char nextFile(std::string inputFile,
+					grk_img_fol *inputFolder,
+					grk_img_fol *outFolder,
+					grk_cparameters *parameters) {
 
-		strcpy(dirptr->filename[i], content->d_name);
-		i++;
-	}
-	closedir(dir);
-	return 0;
-}
-static char nextFile(std::string image_filename, grk_img_fol *inFolder,
-		grk_img_fol *outFolder, grk_cparameters *parameters) {
-
-	spdlog::info("File \"{}\"", image_filename.c_str());
-	std::string infilename = inFolder->imgdirpath
-			+ std::string(grk::get_path_separator()) + image_filename;
+	spdlog::info("File \"{}\"", inputFile.c_str());
+	std::string infilename = inputFolder->imgdirpath
+			+ std::string(grk::pathSeparator()) + inputFile;
 	if (parameters->decod_format == GRK_UNK_FMT) {
 		int fmt = get_file_format((char*) infilename.c_str());
 		if (fmt <= GRK_UNK_FMT)
@@ -377,19 +361,20 @@ static char nextFile(std::string image_filename, grk_img_fol *inFolder,
 			infilename.c_str()) != 0) {
 		return 1;
 	}
-	std::string output_root_filename;
+	std::string outputRootFile;
 	// if we don't find a file tag, then just use the full file name
-	auto pos = image_filename.find(".");
+	auto pos = inputFile.find(".");
 	if (pos != std::string::npos)
-		output_root_filename = image_filename.substr(0, pos);
+		outputRootFile = inputFile.substr(0, pos);
 	else
-		output_root_filename = image_filename;
-	if (inFolder->set_out_format) {
+		outputRootFile = inputFile;
+	if (inputFolder->set_out_format) {
 		std::string outfilename = outFolder->imgdirpath
-				+ std::string(grk::get_path_separator()) + output_root_filename
-				+ "." + inFolder->out_format;
-		if (grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile),
-				outfilename.c_str()) != 0) {
+				+ std::string(grk::pathSeparator()) + outputRootFile
+				+ "." + inputFolder->out_format;
+		if (grk::strcpy_s(parameters->outfile,
+							sizeof(parameters->outfile),
+							outfilename.c_str()) != 0) {
 			return 1;
 		}
 	}
@@ -443,12 +428,10 @@ static bool validateCinema(TCLAP::ValueArg<uint32_t> *arg, uint16_t profile,
 	return isValid;
 }
 static int parseCommandLine(int argc,
-										char **argv,
-										CompressInitParams *initParams) {
-
-
+							char **argv,
+							CompressInitParams *initParams) {
 	grk_cparameters *parameters = &initParams->parameters;
-	grk_img_fol *inFolder = &initParams->inFolder;
+	grk_img_fol *inputFolder = &initParams->inputFolder;
 	grk_img_fol *outFolder = &initParams->outFolder;
 	char *pluginPath = initParams->pluginPath;
 
@@ -601,7 +584,7 @@ static int parseCommandLine(int argc,
 		    spdlog::set_default_logger(file_logger);
 		}
 
-		inFolder->set_out_format = false;
+		inputFolder->set_out_format = false;
 		parameters->raw_cp.width = 0;
 
 		if (pltArg.isSet())
@@ -681,15 +664,15 @@ static int parseCommandLine(int argc,
 			char outformat[50];
 			char *of = (char*) outForArg.getValue().c_str();
 			sprintf(outformat, ".%s", of);
-			inFolder->set_out_format = true;
+			inputFolder->set_out_format = true;
 			parameters->cod_format = (GRK_SUPPORTED_FILE_FMT) get_file_format(
 					outformat);
 			switch (parameters->cod_format) {
 			case GRK_J2K_FMT:
-				inFolder->out_format = "j2k";
+				inputFolder->out_format = "j2k";
 				break;
 			case GRK_JP2_FMT:
-				inFolder->out_format = "jp2";
+				inputFolder->out_format = "jp2";
 				break;
 			default:
 				spdlog::error(
@@ -1020,12 +1003,12 @@ static int parseCommandLine(int argc,
 				strcpy(pluginPath, pluginPathArg.getValue().c_str());
 		}
 
-		inFolder->set_imgdir = false;
+		inputFolder->set_imgdir = false;
 		if (imgDirArg.isSet()) {
-			inFolder->imgdirpath = (char*) malloc(
+			inputFolder->imgdirpath = (char*) malloc(
 					strlen(imgDirArg.getValue().c_str()) + 1);
-			strcpy(inFolder->imgdirpath, imgDirArg.getValue().c_str());
-			inFolder->set_imgdir = true;
+			strcpy(inputFolder->imgdirpath, imgDirArg.getValue().c_str());
+			inputFolder->set_imgdir = true;
 		}
 		if (outFolder) {
 			outFolder->set_imgdir = false;
@@ -1474,12 +1457,12 @@ static int parseCommandLine(int argc,
 		std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
 		return 1;
 	}
-	if (inFolder->set_imgdir) {
+	if (inputFolder->set_imgdir) {
 		if (!(parameters->infile[0] == 0)) {
 			spdlog::error("options -ImgDir and -i cannot be used together ");
 			return 1;
 		}
-		if (!inFolder->set_out_format) {
+		if (!inputFolder->set_out_format) {
 			spdlog::error(
 					"When -ImgDir is used, -OutFor <FORMAT> must be used ");
 			spdlog::error(
@@ -1573,17 +1556,16 @@ static int pluginMain(int argc, char **argv, CompressInitParams *initParams);
 
 // returns 0 if failed, 1 if succeeded, 
 // and 2 if file is not suitable for compression
-static int compress(const std::string &image_filename, CompressInitParams *initParams) {
+static int compress(const std::string &inputFile, CompressInitParams *initParams) {
 	//clear for next file compress
 	initParams->parameters.write_capture_resolution_from_file = false;
 	// don't reset format if reading from STDIN
 	if (initParams->parameters.infile[0])
 		initParams->parameters.decod_format = GRK_UNK_FMT;
-
-	if (initParams->inFolder.set_imgdir) {
-		if (nextFile(image_filename, &initParams->inFolder,
+	if (initParams->inputFolder.set_imgdir) {
+		if (nextFile(inputFile, &initParams->inputFolder,
 				initParams->outFolder.set_imgdir ?
-						&initParams->outFolder : &initParams->inFolder,
+						&initParams->outFolder : &initParams->inputFolder,
 				&initParams->parameters)) {
 			return 2;
 		}
@@ -1596,12 +1578,12 @@ static int compress(const std::string &image_filename, CompressInitParams *initP
 	callbackInfo.input_file_name = initParams->parameters.infile;
 	callbackInfo.transferExifTags = initParams->transferExifTags;
 
-	return plugin_compress_callback(&callbackInfo) ? 1 : 0;
+	return pluginCompressCallback(&callbackInfo) ? 1 : 0;
 }
 
 grk_img_fol img_fol_plugin, out_fol_plugin;
 
-static bool plugin_compress_callback(grk_plugin_compress_user_callback_info *info) {
+static bool pluginCompressCallback(grk_plugin_compress_user_callback_info *info) {
 	auto parameters = info->compressor_parameters;
 	bool bSuccess = true;
 	grk_stream *stream = nullptr;
@@ -1622,7 +1604,7 @@ static bool plugin_compress_callback(grk_plugin_compress_user_callback_info *inf
 						out_fol_plugin.imgdirpath ?
 								out_fol_plugin.imgdirpath :
 								img_fol_plugin.imgdirpath,
-						grk::get_path_separator(), temp_ofname,
+						grk::pathSeparator(), temp_ofname,
 						img_fol_plugin.out_format);
 			}
 		} else {
@@ -1988,9 +1970,7 @@ static bool plugin_compress_callback(grk_plugin_compress_user_callback_info *inf
 static int pluginMain(int argc, char **argv, CompressInitParams *initParams) {
 	if (!initParams)
 		return 1;
-	grk_dircnt *dirptr = nullptr;
 	int32_t success = 0;
-	uint32_t num_images, imageno;
 	bool isBatch = false;
 	uint32_t state= 0;
 
@@ -2003,18 +1983,18 @@ static int pluginMain(int argc, char **argv, CompressInitParams *initParams) {
 		success = 1;
 		goto cleanup;
 	}
-	isBatch = initParams->inFolder.imgdirpath &&  initParams->outFolder.imgdirpath;
+	isBatch = initParams->inputFolder.imgdirpath &&  initParams->outFolder.imgdirpath;
 	state = grk_plugin_get_debug_state();
 #ifdef GROK_HAVE_LIBTIFF
 	tiffSetErrorAndWarningHandlers(initParams->parameters.verbose);
 #endif
 	initParams->initialized = true;
-	// loads plugin but does not actually create codec
+	// load plugin but do not actually create codec
 	if (!grk_initialize(initParams->pluginPath, initParams->parameters.numThreads)) {
 		success = 1;
 		goto cleanup;
 	}
-	img_fol_plugin = initParams->inFolder;
+	img_fol_plugin = initParams->inputFolder;
 	out_fol_plugin = initParams->outFolder;
 
 	// create codec
@@ -2025,15 +2005,14 @@ static int pluginMain(int argc, char **argv, CompressInitParams *initParams) {
 		success = 1;
 		goto cleanup;
 	}
-	if ((state & GRK_PLUGIN_STATE_DEBUG)|| (state & GRK_PLUGIN_STATE_PRE_TR1)) {
+	if ((state & GRK_PLUGIN_STATE_DEBUG)|| (state & GRK_PLUGIN_STATE_PRE_TR1))
 		isBatch = 0;
-	}
 	if (isBatch) {
 		setUpSignalHandler();
-		success = grk_plugin_batch_compress(initParams->inFolder.imgdirpath,
+		success = grk_plugin_batch_compress(initParams->inputFolder.imgdirpath,
 											initParams->outFolder.imgdirpath,
 											&initParams->parameters,
-											plugin_compress_callback);
+											pluginCompressCallback);
 		// if plugin successfully begins batch compress, then wait for batch to complete
 		if (success == 0) {
 			uint32_t slice = 100;	//ms
@@ -2043,79 +2022,39 @@ static int pluginMain(int argc, char **argv, CompressInitParams *initParams) {
 				seconds = UINT_MAX;
 			for (uint32_t i = 0U; i < seconds * slicesPerSecond; ++i) {
 				batch_sleep(1);
-				if (grk_plugin_is_batch_complete()) {
+				if (grk_plugin_is_batch_complete())
 					break;
-				}
 			}
 			grk_plugin_stop_batch_compress();
 		}
 	} else {
-		// loop through all files
-		/* Read directory if necessary */
-		if (initParams->inFolder.set_imgdir) {
-			num_images = get_num_images(initParams->inFolder.imgdirpath);
-			if (num_images == 0) {
-				spdlog::error("Folder is empty");
-				goto cleanup;
-			}
-			dirptr = (grk_dircnt*) malloc(sizeof(grk_dircnt));
-			if (!dirptr) {
-				success = 1;
-				goto cleanup;
-			}
-			dirptr->filename_buf = (char*) malloc(
-					num_images * GRK_PATH_LEN * sizeof(char));
-			if (!dirptr->filename_buf) {
-				success = 1;
-				goto cleanup;
-			}
-			dirptr->filename = (char**) malloc(num_images * sizeof(char*));
-			if (!dirptr->filename) {
-				success = 1;
-				goto cleanup;
-			}
-			for (uint32_t i = 0; i < num_images; i++) {
-				dirptr->filename[i] = dirptr->filename_buf
-						+ i * GRK_PATH_LEN;
-			}
-			if (loadImages(dirptr, initParams->inFolder.imgdirpath) == 1) {
-				goto cleanup;
-			}
+		if (!initParams->inputFolder.set_imgdir){
+			success = grk_plugin_compress(&initParams->parameters,pluginCompressCallback);
 		} else {
-			num_images = 1;
-		}
-		//cache certain settings
-		auto tcp_mct = initParams->parameters.tcp_mct;
-		auto rateControlAlgorithm = initParams->parameters.rateControlAlgorithm;
-		/*Compressing image one by one*/
-		for (imageno = 0; imageno < num_images; imageno++) {
-			if (initParams->inFolder.set_imgdir) {
-				if (nextFile(dirptr->filename[imageno],
-						&initParams->inFolder,
-						initParams->outFolder.imgdirpath ?
-								&initParams->outFolder : &initParams->inFolder,
-						&initParams->parameters)) {
-					continue;
+			std::string filename;
+			FileProvider provider(initParams->inputFolder.imgdirpath);
+			//cache certain settings
+			auto tcp_mct = initParams->parameters.tcp_mct;
+			auto rateControlAlgorithm = initParams->parameters.rateControlAlgorithm;
+			while (provider.next(filename)){
+				if (nextFile(filename,
+							&initParams->inputFolder,
+							initParams->outFolder.imgdirpath ?	&initParams->outFolder : &initParams->inputFolder,
+							&initParams->parameters)) {
+						continue;
 				}
+				//restore cached settings
+				initParams->parameters.tcp_mct = tcp_mct;
+				initParams->parameters.rateControlAlgorithm = rateControlAlgorithm;
+				success = grk_plugin_compress(&initParams->parameters,pluginCompressCallback);
+				if (success != 0)
+					break;
 			}
-			//restore cached settings
-			initParams->parameters.tcp_mct = tcp_mct;
-			initParams->parameters.rateControlAlgorithm = rateControlAlgorithm;
-			success = grk_plugin_compress(&initParams->parameters,plugin_compress_callback);
-			if (success != 0)
-				break;
 		}
 	}
-	cleanup: if (dirptr) {
-		if (dirptr->filename_buf)
-			free(dirptr->filename_buf);
-		if (dirptr->filename)
-			free(dirptr->filename);
-		free(dirptr);
-	}
+cleanup:
 	return success;
 }
-
 
 int main(int argc, char **argv) {
 	CompressInitParams initParams;
@@ -2126,53 +2065,40 @@ int main(int argc, char **argv) {
 
 		// return immediately if either
 		// initParams was not initialized (something was wrong with command line params)
-		// or
-		// plugin was successful
+		// or plugin was successful
 		if (!initParams.initialized)
 			return 1;
 		if (!rc)
 			return 0;
-		size_t num_compressed_files = 0;
+		size_t numCompressedFiles = 0;
 
 		//cache certain settings
 		grk_cparameters parametersCache = initParams.parameters;
 		auto start = std::chrono::high_resolution_clock::now();
 		for (uint32_t i = 0; i < initParams.parameters.repeats; ++i) {
-			if (!initParams.inFolder.set_imgdir) {
+			if (!initParams.inputFolder.set_imgdir) {
 				initParams.parameters = parametersCache;
 				if (compress("", &initParams) == 0) {
 					success = 1;
 					goto cleanup;
 				}
-				num_compressed_files++;
+				numCompressedFiles++;
 			} else {
-				auto dir = opendir(initParams.inFolder.imgdirpath);
-				if (!dir) {
-					spdlog::error("Could not open Folder {}",
-							initParams.inFolder.imgdirpath);
-					success = 1;
-					goto cleanup;
-				}
-				struct dirent *content = nullptr;
-				while ((content = readdir(dir)) != nullptr) {
-					if (strcmp(".", content->d_name) == 0
-							|| strcmp("..", content->d_name) == 0)
-						continue;
+				std::string filename;
+				FileProvider provider(initParams.inputFolder.imgdirpath);
+				while (provider.next(filename)){
 					initParams.parameters = parametersCache;
-					if (compress(content->d_name, &initParams) == 1){
-						num_compressed_files++;
-					}
+					if (compress(filename, &initParams) == 1)
+						numCompressedFiles++;
 				}
-				closedir(dir);
 			}
 		}
 		auto finish = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> elapsed = finish - start;
-
-		if (num_compressed_files) {
+		if (numCompressedFiles) {
 			spdlog::info("compress time: {} {}",
-					(elapsed.count() * 1000) / (double) num_compressed_files,
-					num_compressed_files > 1 ? "ms/image" : "ms");
+					(elapsed.count() * 1000) / (double) numCompressedFiles,
+					numCompressedFiles > 1 ? "ms/image" : "ms");
 		}
 	} catch (std::bad_alloc &ba) {
 		spdlog::error(" Out of memory. Exiting.");
@@ -2180,6 +2106,6 @@ int main(int argc, char **argv) {
 		goto cleanup;
 	}
 	cleanup: grk_deinitialize();
-	return success;
 
+	return success;
 }

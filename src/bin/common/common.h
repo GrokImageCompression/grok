@@ -110,7 +110,7 @@ struct grk_img_fol {
 };
 
 std::string convertFileFmtToString(GRK_SUPPORTED_FILE_FMT fmt);
-int parse_DA_values(char *inArg, uint32_t *DA_x0, uint32_t *DA_y0,
+int parseWindowBounds(char *inArg, uint32_t *DA_x0, uint32_t *DA_y0,
 		uint32_t *DA_x1, uint32_t *DA_y1);
 bool safe_fclose(FILE *fd);
 bool useStdio(const char *filename);
@@ -119,7 +119,7 @@ bool grk_open_for_output(FILE **fdest, const char* outfile, bool writeToStdout);
 bool grk_set_binary_mode(FILE* file);
 bool jpeg2000_file_format(const char *fname, GRK_SUPPORTED_FILE_FMT *fmt);
 GRK_SUPPORTED_FILE_FMT get_file_format(const char *filename);
-const char* get_path_separator();
+const char* pathSeparator();
 char* get_file_name(char *name);
 uint32_t get_num_images(char *imgdirpath);
 char* actual_path(const char *outfile, bool *mem_allocated);

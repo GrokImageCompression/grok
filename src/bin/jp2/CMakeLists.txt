@@ -36,7 +36,9 @@ set(common_SRCS
   ${GROK_SOURCE_DIR}/src/bin/common/spdlog/stdout_sinks.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/spdlog/fmt.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/spdlog/async.cpp     
-  ${GROK_SOURCE_DIR}/src/bin/common/spdlog/file_sinks.cpp    
+  ${GROK_SOURCE_DIR}/src/bin/common/spdlog/file_sinks.cpp
+  ${GROK_SOURCE_DIR}/src/bin/common/FileProvider.cpp  
+  ${GROK_SOURCE_DIR}/src/bin/common/FileProvider.h      
   )
 
 if(GROK_HAVE_LIBTIFF)

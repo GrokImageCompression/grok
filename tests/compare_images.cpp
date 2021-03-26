@@ -573,7 +573,7 @@ static int parse_cmdline_cmp(int argc, char **argv,
 		}
 		if (regionArg.isSet()) {
 			uint32_t x0 = 0, y0 = 0, x1 = 0, y1 = 0;
-			if (grk::parse_DA_values((char*) regionArg.getValue().c_str(),
+			if (grk::parseWindowBounds((char*) regionArg.getValue().c_str(),
 					&x0, &y0, &x1, &y1) == EXIT_SUCCESS) {
 				param->region[0] = x0;
 				param->region[1] = y0;
