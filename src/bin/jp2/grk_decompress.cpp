@@ -70,6 +70,7 @@
 #include <chrono>
 #include "spdlog/sinks/basic_file_sink.h"
 #include "exif.h"
+#include "FileProvider.h"
 
 namespace grk {
 
@@ -793,7 +794,7 @@ void MycmsLogErrorHandlerFunction(cmsContext ContextID,
 static int decompress_callback(grk_plugin_decompress_callback_info *info);
 
 // returns 0 for failure, 1 for success, and 2 if file is not suitable for decoding
-int GrkDecompress::decompress(const char *fileName, DecompressInitParams *initParams) {
+int GrkDecompress::decompress(std::string &fileName, DecompressInitParams *initParams) {
 	if (initParams->inputFolder.set_imgdir) {
 		if (nextFile(fileName,
 						&initParams->inputFolder,
@@ -830,25 +831,18 @@ int GrkDecompress::decompress(const char *fileName, DecompressInitParams *initPa
 
 
 int GrkDecompress::pluginMain(int argc, char **argv, DecompressInitParams *initParams) {
-	uint32_t num_images = 0, imageno = 0;
 	grk_dircnt *dirptr = nullptr;
 	int32_t success = 0;
-	uint32_t num_decompressed_images = 0;
+	uint32_t numDecompressed = 0;
 	bool isBatch = false;
 	std::chrono::time_point<std::chrono::high_resolution_clock> start;
+
 #ifdef GROK_HAVE_LIBLCMS
 	cmsSetLogErrorHandler(MycmsLogErrorHandlerFunction);
 #endif
-
-	/* set decoding parameters to default values */
 	setDefaultParams(&initParams->parameters);
-
-	/* parse input and get user compressing parameters */
-	if (parseCommandLine(argc, argv,initParams)== 1) {
+	if (parseCommandLine(argc, argv,initParams)== 1)
 		return EXIT_FAILURE;
-	}
-
-
 #ifdef GROK_HAVE_LIBTIFF
 	tiffSetErrorAndWarningHandlers(initParams->parameters.verbose);
 #endif
@@ -856,7 +850,6 @@ int GrkDecompress::pluginMain(int argc, char **argv, DecompressInitParams *initP
 	pngSetVerboseFlag(initParams->parameters.verbose);
 #endif
 	initParams->initialized = true;
-
 	// loads plugin but does not actually create codec
 	if (!grk_initialize(initParams->pluginPath,
 			initParams->parameters.numThreads)) {
@@ -871,11 +864,9 @@ int GrkDecompress::pluginMain(int argc, char **argv, DecompressInitParams *initP
 		success = 1;
 		goto cleanup;
 	}
-
 	isBatch = initParams->inputFolder.imgdirpath && initParams->outFolder.imgdirpath;
-	if ((grk_plugin_get_debug_state() & GRK_PLUGIN_STATE_DEBUG)) {
+	if ((grk_plugin_get_debug_state() & GRK_PLUGIN_STATE_DEBUG))
 		isBatch = false;
-	}
 	if (isBatch) {
 		//initialize batch
 		setUpSignalHandler();
@@ -901,63 +892,29 @@ int GrkDecompress::pluginMain(int argc, char **argv, DecompressInitParams *initP
 			grk_plugin_stop_batch_decompress();
 		}
 	} else {
-		/* Initialize reading of directory */
-		if (initParams->inputFolder.set_imgdir) {
-			num_images = get_num_images(initParams->inputFolder.imgdirpath);
-			if (num_images == 0) {
-				spdlog::error("Folder is empty");
-				success = 1;
-				goto cleanup;
-			}
-			dirptr = (grk_dircnt*) malloc(sizeof(grk_dircnt));
-			if (dirptr) {
-				dirptr->filename_buf = (char*) malloc(
-						(size_t) num_images * GRK_PATH_LEN); /* Stores at max 10 image file names*/
-				if (!dirptr->filename_buf) {
-					success = 1;
-					goto cleanup;
-				}
-				dirptr->filename = (char**) malloc((size_t)num_images * sizeof(char*));
-				if (!dirptr->filename) {
-					success = 1;
-					goto cleanup;
-				}
-
-				for (uint32_t i = 0; i < num_images; i++) {
-					dirptr->filename[i] = dirptr->filename_buf
-							+ i * GRK_PATH_LEN;
-				}
-			}
-			if (loadImages(dirptr, initParams->inputFolder.imgdirpath) == 1) {
-				success = 1;
-				goto cleanup;
-			}
+		start = std::chrono::high_resolution_clock::now();
+		if (!initParams->inputFolder.set_imgdir){
+			success = grk_plugin_decompress(&initParams->parameters, decompress_callback);
 		} else {
-			num_images = 1;
-		}
-	}
-
-	start = std::chrono::high_resolution_clock::now();
-
-	/*Decompressing image one by one*/
-	for (imageno = 0; imageno < num_images; imageno++) {
-		if (initParams->inputFolder.set_imgdir) {
-			if (nextFile(dirptr->filename[imageno], &initParams->inputFolder,
-					initParams->outFolder.set_imgdir ?
-							&initParams->outFolder : &initParams->inputFolder,
-					&initParams->parameters)) {
-				continue;
+			std::string filename;
+			FileProvider provider(initParams->inputFolder.imgdirpath);
+			while (provider.next(filename)){
+				if (nextFile(filename,
+							&initParams->inputFolder,
+							initParams->outFolder.imgdirpath ?	&initParams->outFolder : &initParams->inputFolder,
+							&initParams->parameters)) {
+						continue;
+				}
+				success = grk_plugin_decompress(&initParams->parameters, decompress_callback);
+				if (success != 0)
+					goto cleanup;
+				numDecompressed++;
+				if (success != 0)
+					break;
 			}
 		}
-
-		//1. try to decompress using plugin
-		success = grk_plugin_decompress(&initParams->parameters, decompress_callback);
-		if (success != 0)
-			goto cleanup;
-		num_decompressed_images++;
-
+		printTiming(numDecompressed,  std::chrono::high_resolution_clock::now() - start);
 	}
-	printTiming(num_decompressed_images,  std::chrono::high_resolution_clock::now() - start);
 	cleanup: if (dirptr) {
 		if (dirptr->filename_buf)
 			free(dirptr->filename_buf);
@@ -967,7 +924,6 @@ int GrkDecompress::pluginMain(int argc, char **argv, DecompressInitParams *initP
 	}
 	return success;
 }
-
 
 int decompress_callback(grk_plugin_decompress_callback_info *info) {
 	int rc = -1;
@@ -1021,11 +977,9 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info *info) {
 	int decod_format =
 			info->decod_format != GRK_UNK_FMT ?
 					info->decod_format : parameters->decod_format;
-
 	GRK_SUPPORTED_FILE_FMT cod_format = (GRK_SUPPORTED_FILE_FMT) (
 			info->cod_format != GRK_UNK_FMT ?
 					info->cod_format : parameters->cod_format);
-
 	switch (cod_format) {
 			case GRK_PXM_FMT:
 				imageFormat = new PNMFormat(parameters->split_pnm);
@@ -1052,7 +1006,6 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info *info) {
 				imageFormat = new JPEGFormat();
 				break;
 	#endif
-
 	#ifdef GROK_HAVE_LIBPNG
 			case GRK_PNG_FMT:
 				imageFormat = new PNGFormat();
@@ -1063,7 +1016,6 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info *info) {
 				goto cleanup;
 				break;
 	}
-
 
 	//1. initialize
 	if (!info->stream) {
@@ -1110,7 +1062,6 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info *info) {
 		spdlog::error("grk_decompress: failed to create a stream from file {}", infile);
 		goto cleanup;
 	}
-
 	if (!info->codec) {
 		switch (decod_format) {
 		case GRK_J2K_FMT: { /* JPEG 2000 code stream */
@@ -1139,7 +1090,6 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info *info) {
 			goto cleanup;
 		}
 	}
-
 	// 2. read header
 	if (info->decompress_flags & GRK_DECODE_HEADER) {
 		// Read the main header of the code stream (j2k) and also JP2 boxes (jp2)
@@ -1147,7 +1097,6 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info *info) {
 			spdlog::error("grk_decompress: failed to read the header");
 			goto cleanup;
 		}
-
 		info->image = grk_decompress_get_composited_image(info->codec);
 
 		// do not allow odd top left window coordinates for SYCC
@@ -1191,21 +1140,16 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info *info) {
 		if (info->init_decompressors_func)
 			return info->init_decompressors_func(&info->header_info, info->image);
 	}
-
 	if (info->image){
 		info->full_image_x0 = info->image->x0;
 		info->full_image_y0 = info->image->y0;
 	}
-
 	// header-only decompress
 	if (info->decompress_flags == GRK_DECODE_HEADER)
 		goto cleanup;
-
-
 	//3. decompress
 	if (info->tile)
 		info->tile->decompress_flags = info->decompress_flags;
-
 	// limit to 16 bit precision
 	for (uint32_t i = 0; i < info->image->numcomps; ++i) {
 		if (info->image->comps[i].prec > 16) {
@@ -1214,13 +1158,11 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info *info) {
 			goto cleanup;
 		}
 	}
-
 	if (!grk_decompress_set_window(info->codec, parameters->DA_x0,
 			parameters->DA_y0, parameters->DA_x1, parameters->DA_y1)) {
 		spdlog::error("grk_decompress: failed to set the decompressed area");
 		goto cleanup;
 	}
-
 	// decompress all tiles
 	if (!parameters->nb_tile_to_decompress) {
 		if (!(grk_decompress(info->codec, info->tile)
@@ -1488,7 +1430,7 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info *info) {
 }
 int GrkDecompress::main(int argc, char **argv) {
 	int rc = EXIT_SUCCESS;
-	uint32_t num_decompressed_images = 0;
+	uint32_t numDecompressed = 0;
 	DecompressInitParams initParams;
 	try {
 		// try to decompress with plugin
@@ -1508,32 +1450,23 @@ int GrkDecompress::main(int argc, char **argv) {
 		}
 		auto start = std::chrono::high_resolution_clock::now();
 		for (uint32_t i = 0; i < initParams.parameters.repeats; ++i) {
+			std::string filename;
 			if (!initParams.inputFolder.set_imgdir) {
-				if (decompress("", &initParams) == 1) {
-					num_decompressed_images++;
+				if (decompress(filename, &initParams) == 1) {
+					numDecompressed++;
 				} else {
 					rc = EXIT_FAILURE;
 					goto cleanup;
 				}
 			} else {
-				auto dir = opendir(initParams.inputFolder.imgdirpath);
-				if (!dir) {
-					spdlog::error("Could not open Folder {}",
-							initParams.inputFolder.imgdirpath);
-					rc = EXIT_FAILURE;
-					goto cleanup;
+				FileProvider provider(initParams.inputFolder.imgdirpath);
+				while (provider.next(filename)){
+					if (decompress(filename, &initParams) == 1)
+						numDecompressed++;
 				}
-				struct dirent *content = nullptr;
-				while ((content = readdir(dir)) != nullptr) {
-					if (strcmp(".", content->d_name) == 0 || strcmp("..", content->d_name) == 0)
-						continue;
-					if (decompress(content->d_name, &initParams) == 1)
-						num_decompressed_images++;
-				}
-				closedir(dir);
 			}
 		}
-		printTiming(num_decompressed_images,  std::chrono::high_resolution_clock::now() - start);
+		printTiming(numDecompressed,  std::chrono::high_resolution_clock::now() - start);
 	} catch (std::bad_alloc &ba) {
 		spdlog::error("Out of memory. Exiting.");
 		rc = 1;

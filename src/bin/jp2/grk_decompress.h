@@ -55,7 +55,7 @@ public:
 	int postProcess(grk_plugin_decompress_callback_info *info);
 private:
 	// returns 0 for failure, 1 for success, and 2 if file is not suitable for decoding
-	int decompress(const char *fileName, DecompressInitParams *initParams);
+	int decompress(std::string &fileName, DecompressInitParams *initParams);
 	int pluginMain(int argc, char **argv, DecompressInitParams *initParams);
 	bool parsePrecision(const char *option,	grk_decompress_parameters *parameters);
 	int loadImages(grk_dircnt *dirptr, char *imgdirpath);

@@ -68,7 +68,6 @@ typedef struct _img_folder {
 } inputFolder;
 
 
-static uint32_t get_num_images(char *imgdirpath);
 static int loadImages(dircnt *dirptr, char *imgdirpath);
 static char nextFile(size_t imageno, dircnt *dirptr, inputFolder *inputFolder,
 		grk_dparameters *parameters);
@@ -113,29 +112,6 @@ public:
 };
 
 
-/* -------------------------------------------------------------------------- */
-static uint32_t get_num_images(char *imgdirpath) {
-	DIR *dir;
-	struct dirent *content;
-	uint32_t num_images = 0;
-
-	/*Reading the input images from given input directory*/
-
-	dir = opendir(imgdirpath);
-	if (!dir) {
-		spdlog::error("Could not open Folder {}", imgdirpath);
-		return 0;
-	}
-
-	while ((content = readdir(dir)) != nullptr) {
-		if (strcmp(".", content->d_name) == 0
-				|| strcmp("..", content->d_name) == 0)
-			continue;
-		num_images++;
-	}
-	closedir(dir);
-	return num_images;
-}
 
 /* -------------------------------------------------------------------------- */
 static int loadImages(dircnt *dirptr, char *imgdirpath) {
@@ -368,7 +344,7 @@ int main(int argc, char *argv[]) {
 
 	/* Initialize reading of directory */
 	if (inputFolder.set_imgdir) {
-		num_images = (size_t)get_num_images(inputFolder.imgdirpath);
+		num_images = (size_t)grk::get_num_images(inputFolder.imgdirpath);
 		if (num_images == 0) {
 			spdlog::error("Folder is empty");
 			rc = EXIT_FAILURE;

@@ -808,7 +808,7 @@ int GrkTranscode::pluginMain(int argc, char **argv, TranscodeInitParams *initPar
 	uint32_t num_images = 0, imageno = 0;
 	grk_dircnt *dirptr = nullptr;
 	int32_t success = 0;
-	uint32_t num_decompressed_images = 0;
+	uint32_t numDecompressed = 0;
 	bool isBatch = false;
 	std::chrono::time_point<std::chrono::high_resolution_clock> start;
 	setDefaultParams(&initParams->parameters);
@@ -909,10 +909,10 @@ int GrkTranscode::pluginMain(int argc, char **argv, TranscodeInitParams *initPar
 		success = grk_plugin_decompress(&initParams->parameters, decompress_callback);
 		if (success != 0)
 			goto cleanup;
-		num_decompressed_images++;
+		numDecompressed++;
 
 	}
-	printTiming(num_decompressed_images,  std::chrono::high_resolution_clock::now() - start);
+	printTiming(numDecompressed,  std::chrono::high_resolution_clock::now() - start);
 	cleanup: if (dirptr) {
 		if (dirptr->filename_buf)
 			free(dirptr->filename_buf);
@@ -1437,7 +1437,7 @@ int GrkTranscode::postProcess(grk_plugin_decompress_callback_info *info) {
 }
 int GrkTranscode::main(int argc, char **argv) {
 	int rc = EXIT_SUCCESS;
-	uint32_t num_decompressed_images = 0;
+	uint32_t numDecompressed = 0;
 	TranscodeInitParams initParams;
 	try {
 		// try to decompress with plugin
@@ -1459,7 +1459,7 @@ int GrkTranscode::main(int argc, char **argv) {
 		for (uint32_t i = 0; i < initParams.parameters.repeats; ++i) {
 			if (!initParams.inputFolder.set_imgdir) {
 				if (decompress("", &initParams) == 1) {
-					num_decompressed_images++;
+					numDecompressed++;
 				} else {
 					rc = EXIT_FAILURE;
 					goto cleanup;
@@ -1477,12 +1477,12 @@ int GrkTranscode::main(int argc, char **argv) {
 					if (strcmp(".", content->d_name) == 0 || strcmp("..", content->d_name) == 0)
 						continue;
 					if (decompress(content->d_name, &initParams) == 1)
-						num_decompressed_images++;
+						numDecompressed++;
 				}
 				closedir(dir);
 			}
 		}
-		printTiming(num_decompressed_images,  std::chrono::high_resolution_clock::now() - start);
+		printTiming(numDecompressed,  std::chrono::high_resolution_clock::now() - start);
 	} catch (std::bad_alloc &ba) {
 		spdlog::error("Out of memory. Exiting.");
 		rc = 1;
