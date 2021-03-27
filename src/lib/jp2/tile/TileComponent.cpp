@@ -81,11 +81,10 @@ bool TileComponent::init(bool isCompressor,
 	// 1. calculate resolution bounds, precinct bounds and precinct grid
 	// all in canvas coordinates (with subsampling)
 	numresolutions = m_tccp->numresolutions;
-	if (numresolutions < cp->m_coding_params.m_dec.m_reduce) {
+	if (numresolutions < cp->m_coding_params.m_dec.m_reduce)
 		resolutions_to_decompress = 1;
-	} else {
+	else
 		resolutions_to_decompress =	(uint8_t)(numresolutions - cp->m_coding_params.m_dec.m_reduce);
-	}
 	tileCompResolution = new Resolution[numresolutions];
 	for (uint8_t resno = 0; resno < numresolutions; ++resno) {
 		auto res = tileCompResolution + resno;

@@ -69,7 +69,7 @@ TileCodingParams::TileCodingParams() :
 								csty(0),
 								prg(GRK_PROG_UNKNOWN),
 								numlayers(0),
-								num_layers_to_decompress(0),
+								numLayersToDecompress(0),
 								mct(0),
 								numpocs(0),
 								ppt_markers_count(0),

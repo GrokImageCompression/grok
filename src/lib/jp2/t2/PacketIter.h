@@ -154,6 +154,8 @@ struct PacketIter {
 	PacketIter();
 	~PacketIter();
 
+	void init(PacketManager *packetMan);
+
 	uint8_t* get_include(uint16_t layerIndex);
 	bool update_include(void);
 	void destroy_include(void);
@@ -233,10 +235,10 @@ struct PacketIter {
 	/** component sub-sampling */
 	uint32_t dx, dy;
 	bool handledFirstInner;
-	PacketManager *packetManager;
 private:
 	bool isSingleProgression(void);
-
+	PacketManager *packetManager;
+	uint8_t maxNumDecompositionResolutions;
 };
 
 

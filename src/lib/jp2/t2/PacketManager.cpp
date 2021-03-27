@@ -40,7 +40,7 @@ PacketManager::PacketManager(bool compression,
 	uint32_t numProgressions = tcp->numpocs + 1;
 	m_pi = new PacketIter[numProgressions];
 	for (uint32_t i = 0; i < numProgressions; ++i)
-		m_pi[i].packetManager = this;
+		m_pi[i].init(this);
 	for (uint32_t pino = 0; pino < numProgressions; ++pino) {
 		auto curPi = m_pi + pino;
 		curPi->comps = new PiComp[image->numcomps];

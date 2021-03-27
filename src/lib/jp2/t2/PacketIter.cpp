@@ -45,7 +45,8 @@ PacketIter::PacketIter() : tp_on(false),
 							dx(0),
 							dy(0),
 							handledFirstInner(false),
-							packetManager(nullptr)
+							packetManager(nullptr),
+							maxNumDecompositionResolutions(0)
 {
 	memset(&prog, 0, sizeof(prog));
 }
@@ -55,6 +56,10 @@ PacketIter::~PacketIter(){
 			delete[] (comps + compno)->resolutions;
 		delete[] comps;
 	}
+}
+void PacketIter::init(PacketManager *packetMan){
+	packetManager = packetMan;
+	maxNumDecompositionResolutions = packetManager->getTileProcessor()->getMaxNumDecompressResolutions();
 }
 bool PacketIter::next_cprl(void) {
 	if (compno >= numcomps){
@@ -133,6 +138,11 @@ bool PacketIter::next_pcrl(void) {
 }
 bool PacketIter::next_lrcp(void) {
 	for (; layno < prog.layE; layno++) {
+		if (isSingleProgression()){
+		    auto maxLayer = packetManager->getTileProcessor()->getTileCodingParams()->numLayersToDecompress;
+			if (maxLayer > 0 && layno >= maxLayer)
+				return false;
+		}
 		for (; resno < prog.resE;resno++) {
 			for (; compno < prog.compE;compno++) {
 				auto comp = comps + compno;
@@ -167,6 +177,10 @@ bool PacketIter::next_rlcp(void) {
 		return false;
 	}
 	for (; resno < prog.resE; resno++) {
+		if (isSingleProgression()){
+			if (resno >= maxNumDecompositionResolutions)
+				return false;
+		}
 		for (; layno < prog.layE;	layno++) {
 			for (; compno < prog.compE;compno++) {
 				auto comp = comps + compno;
@@ -195,6 +209,10 @@ bool PacketIter::next_rlcp(void) {
 }
 bool PacketIter::next_rpcl(void) {
 	for (; resno < prog.resE; resno++) {
+		if (isSingleProgression()){
+			if (resno >= maxNumDecompositionResolutions)
+				return false;
+		}
 		for (; y < prog.ty1;	y += dy - (y % dy)) {
 			for (; x < prog.tx1;	x += dx - (x % dx)) {
 				for (; compno < prog.compE; compno++) {

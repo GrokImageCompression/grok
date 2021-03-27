@@ -2276,9 +2276,9 @@ bool CodeStreamDecompress::read_cod(uint8_t *p_header_data,	uint16_t header_size
 
 	/* If user didn't set a number layer to decompress take the max specify in the code stream. */
 	if (cp->m_coding_params.m_dec.m_layer) {
-		tcp->num_layers_to_decompress = cp->m_coding_params.m_dec.m_layer;
+		tcp->numLayersToDecompress = cp->m_coding_params.m_dec.m_layer;
 	} else {
-		tcp->num_layers_to_decompress = tcp->numlayers;
+		tcp->numLayersToDecompress = tcp->numlayers;
 	}
 
 	grk_read<uint8_t>(p_header_data++, &tcp->mct); /* SGcod (C) */

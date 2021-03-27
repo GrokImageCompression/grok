@@ -95,6 +95,8 @@ struct TileProcessor {
 	void setCorruptPacket(void);
 	PacketTracker* getPacketTracker(void);
 	grkRectU32 getUnreducedTileWindow(void);
+	TileCodingParams* getTileCodingParams(void);
+	uint8_t getMaxNumDecompressResolutions(void);
 
 	/** index of tile being currently compressed/decompressed */
 	uint16_t m_tileIndex;

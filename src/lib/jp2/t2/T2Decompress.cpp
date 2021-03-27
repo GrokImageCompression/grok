@@ -53,7 +53,7 @@ bool T2Decompress::processPacket(TileCodingParams *tcp,
 	auto tilecBuffer 	= tilec->getBuffer();
 	auto packetInfo 	= tileProcessor->packetLengthCache.next();
 	auto res 			= tilec->tileCompResolution + currPi->resno;
-	auto skipPacket 	= currPi->layno >= tcp->num_layers_to_decompress
+	auto skipPacket 	= currPi->layno >= tcp->numLayersToDecompress
 								|| currPi->resno >= tilec->resolutions_to_decompress;
 	if (!skipPacket) {
 		if (!tilec->isWholeTileDecoding()) {

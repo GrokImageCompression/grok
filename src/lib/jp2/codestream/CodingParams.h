@@ -133,7 +133,7 @@ struct TileCodingParams {
 	GRK_PROG_ORDER prg;
 	/** number of layers */
 	uint16_t numlayers;
-	uint16_t num_layers_to_decompress;
+	uint16_t numLayersToDecompress;
 	/** multi-component transform identifier */
 	uint8_t mct;
 	/** rates of layers */
@@ -191,7 +191,6 @@ struct TileCodingParams {
 	uint32_t m_nb_mcc_records;
 	/** the max number of mct records. */
 	uint32_t m_nb_max_mcc_records;
-
 	/** If cod == true --> there was a COD marker for the present tile */
 	bool cod;
 	/** If ppt == true --> there was a PPT marker for the present tile */

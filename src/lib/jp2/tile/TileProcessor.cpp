@@ -70,6 +70,24 @@ void TileProcessor::setCorruptPacket(void){
 PacketTracker* TileProcessor::getPacketTracker(void){
 	return &m_packetTracker;
 }
+TileCodingParams* TileProcessor::getTileCodingParams(void){
+	return m_cp->tcps + m_tileIndex;
+}
+uint8_t TileProcessor::getMaxNumDecompressResolutions(void){
+	uint8_t rc = 0;
+	auto tcp = m_cp->tcps + m_tileIndex;
+	for (uint16_t compno = 0; compno < tile->numcomps; ++compno) {
+		auto tccp = tcp->tccps + compno;
+		auto numresolutions = tccp->numresolutions;
+		uint8_t resToDecomp;
+		if (numresolutions < m_cp->m_coding_params.m_dec.m_reduce)
+			resToDecomp = 1;
+		else
+			resToDecomp =	(uint8_t)(numresolutions - m_cp->m_coding_params.m_dec.m_reduce);
+		rc = std::max<uint8_t>(rc, resToDecomp);
+	}
+	return rc;
+}
 /*
  if
  - r xx, yy, zz, 0   (disto_alloc == 1 and rates == 0)
