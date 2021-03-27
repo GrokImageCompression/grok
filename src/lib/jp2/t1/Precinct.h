@@ -56,11 +56,12 @@ struct PrecinctImpl {
 	}
 	grkRectU32 getCodeBlockBounds(uint64_t cblkno){
 		auto cblk_start = grkPointU32(	(m_cblk_grid.x0  + (uint32_t) (cblkno % m_cblk_grid.width())) << m_cblk_expn.x,
-									(m_cblk_grid.y0  + (uint32_t) (cblkno / m_cblk_grid.width())) << m_cblk_expn.y);
+									    (m_cblk_grid.y0  + (uint32_t) (cblkno / m_cblk_grid.width())) << m_cblk_expn.y);
 		auto cblk_bounds = grkRectU32(cblk_start.x,
 										cblk_start.y,
 										cblk_start.x + (1U << m_cblk_expn.x),
 										cblk_start.y + (1U << m_cblk_expn.y));
+
 		return  cblk_bounds.intersection(&m_bounds);
 	}
 	bool initCodeBlocks(grkRectU32 *bounds){
@@ -141,11 +142,10 @@ struct PrecinctImpl {
 };
 struct Precinct : public grkRectU32 {
 	Precinct(const grkRectU32 &bounds, bool isCompressor, grkPointU32 cblk_expn) : grkRectU32(bounds),
-			precinctIndex(0),
-			impl(new PrecinctImpl(isCompressor, this, cblk_expn)),
-			m_cblk_expn(cblk_expn)
-	{
-	}
+																					precinctIndex(0),
+																					impl(new PrecinctImpl(isCompressor, this, cblk_expn)),
+																					m_cblk_expn(cblk_expn)
+	{}
 	~Precinct(){
 		delete impl;
 	}

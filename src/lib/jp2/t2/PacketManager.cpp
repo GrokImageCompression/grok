@@ -27,7 +27,7 @@ PacketManager::PacketManager(bool compression,
 							J2K_T2_MODE t2_mode) : image(img),
 															  cp(cparams),
 															  tileno(tilenumber),
-															  include(new IncludeTracker(image->numcomps)),
+															  includeTracker(new IncludeTracker(image->numcomps)),
 															  m_pi(nullptr),
 															  t2Mode(t2_mode)
 {
@@ -39,7 +39,7 @@ PacketManager::PacketManager(bool compression,
 	m_pi = new PacketIter[poc_bound];
 
 	for (uint32_t i = 0; i < poc_bound; ++i){
-		m_pi[i].includeTracker = include;
+		m_pi[i].includeTracker = includeTracker;
 	}
 	for (uint32_t pino = 0; pino < poc_bound; ++pino) {
 		auto current_pi = m_pi + pino;
@@ -70,7 +70,7 @@ PacketManager::PacketManager(bool compression,
 				&tileBounds,
 				&dx_min,
 				&dy_min,
-				include->precincts,
+				includeTracker->numPrecinctsPerRes,
 				&max_precincts,
 				&max_res,
 				precinctByComponent);
@@ -147,7 +147,7 @@ PacketManager::~PacketManager() {
 		m_pi->destroy_include();
 		delete[] m_pi;
 	}
-	delete include;
+	delete includeTracker;
 }
 PacketIter* PacketManager::getPacketIter(uint32_t poc) const{
 	return m_pi + poc;
@@ -437,7 +437,7 @@ void PacketManager::getParams(const GrkImage *image,
 								grkRectU32 *tileBounds,
 								uint32_t *dx_min,
 								uint32_t *dy_min,
-								uint64_t *precincts,
+								uint64_t *numPrecinctsPerRes,
 								uint64_t *max_precincts,
 								uint8_t *max_res,
 								uint32_t **precinctByComponent) {
@@ -453,9 +453,9 @@ void PacketManager::getParams(const GrkImage *image,
 	*dx_min = UINT_MAX;
 	*dy_min = UINT_MAX;
 
-	if (precincts) {
+	if (numPrecinctsPerRes) {
 		for (uint32_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
-			precincts[i] = 0;
+			numPrecinctsPerRes[i] = 0;
 	}
 	auto tcp = &p_cp->tcps[tileno];
 	for (uint32_t compno = 0; compno < image->numcomps; ++compno) {
@@ -497,8 +497,8 @@ void PacketManager::getParams(const GrkImage *image,
 				*precinct++ = precinctHeightExp;
 			}
 			uint64_t product = (uint64_t)precinctWidthExp * precinctHeightExp;
-			if (precincts && product > precincts[resno])
-				precincts[resno] = product;
+			if (numPrecinctsPerRes && product > numPrecinctsPerRes[resno])
+				numPrecinctsPerRes[resno] = product;
 			if (product > *max_precincts)
 				*max_precincts = product;
 		}

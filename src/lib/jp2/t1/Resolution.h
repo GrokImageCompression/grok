@@ -36,9 +36,9 @@ struct Resolution : public grkRectU32 {
 		}
 	}
 	bool init(bool isCompressor,
-							TileComponentCodingParams *tccp,
-							uint8_t resno,
-							grk_plugin_tile *current_plugin_tile){
+			TileComponentCodingParams *tccp,
+			uint8_t resno,
+			grk_plugin_tile *current_plugin_tile){
 		if (initialized)
 			return true;
 

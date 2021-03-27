@@ -109,7 +109,7 @@ private:
 	GrkImage *image;
 	CodingParams *cp;
 	uint16_t tileno;
-	IncludeTracker *include;
+	IncludeTracker *includeTracker;
 	PacketIter *m_pi;
 	J2K_T2_MODE t2Mode;
 };

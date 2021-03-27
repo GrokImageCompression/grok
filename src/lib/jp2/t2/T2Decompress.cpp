@@ -49,11 +49,11 @@ void T2Decompress::initSegment(DecompressCodeblock *cblk, uint32_t index, uint8_
 bool T2Decompress::processPacket(TileCodingParams *tcp,
 								PacketIter *currPi,
 								SparseBuffer *srcBuf){
-	auto tilec = tileProcessor->tile->comps + currPi->compno;
-	auto tilecBuffer = tilec->getBuffer();
-	auto packetInfo = tileProcessor->packetLengthCache.next();
-	auto res = tilec->tileCompResolution + currPi->resno;
-	auto skipPacket = currPi->layno >= tcp->num_layers_to_decompress
+	auto tilec 			= tileProcessor->tile->comps + currPi->compno;
+	auto tilecBuffer 	= tilec->getBuffer();
+	auto packetInfo 	= tileProcessor->packetLengthCache.next();
+	auto res 			= tilec->tileCompResolution + currPi->resno;
+	auto skipPacket 	= currPi->layno >= tcp->num_layers_to_decompress
 								|| currPi->resno >= tilec->resolutions_to_decompress;
 	if (!skipPacket) {
 		if (!tilec->isWholeTileDecoding()) {
@@ -101,6 +101,7 @@ bool T2Decompress::processPacket(TileCodingParams *tcp,
 				return false;
 	}
 	tileProcessor->tile->numProcessedPackets++;
+
 	return true;
 }
 bool T2Decompress::decompressPackets(uint16_t tile_no,
@@ -124,9 +125,8 @@ bool T2Decompress::decompressPackets(uint16_t tile_no,
 				break;
 			}
 			try {
-				if (!processPacket(tcp, currPi, srcBuf)) {
+				if (!processPacket(tcp, currPi, srcBuf))
 					return false;
-				}
 			} 	catch (TruncatedPacketHeaderException &tex){
 				GRK_UNUSED(tex);
 				GRK_WARN("Truncated packet: tile=%d component=%02d resolution=%02d precinct=%03d layer=%02d",
@@ -150,6 +150,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no,
 	}
 	if (tileProcessor->tile->numDecompressedPackets == 0)
 		GRK_WARN("T2Decompress: no packets for tile %d were successfully read",tile_no+1);
+
 	return tileProcessor->tile->numDecompressedPackets > 0;
 }
 bool T2Decompress::decompressPacket(TileCodingParams *tcp,

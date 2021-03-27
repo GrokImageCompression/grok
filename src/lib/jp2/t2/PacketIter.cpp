@@ -92,6 +92,9 @@ bool PacketIter::next_pcrl(void) {
 				"total number of components %d",compno , numcomps);
 		return false;
 	}
+	// ToDo: if windowed with single progression order, then bail
+	// after we are outside the bottom right hand
+	// corner of the padded window, expanded to sit in the precinct grid
 	for (; y < prog.ty1;	y += dy - (y % dy)) {
 		for (; x < prog.tx1;	x += dx - (x % dx)) {
 			for (; compno < prog.compE; compno++) {

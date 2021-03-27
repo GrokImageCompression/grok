@@ -72,22 +72,22 @@ struct Subband : public grkRectU32 {
 		return precincts[index];
 	}
 	grkRectU32 generatePrecinctBounds(uint64_t precinctIndex,
-													grkPointU32 precinctRegionStart,
-													grkPointU32 precinct_expn,
-													uint32_t precinctGridWidth){
-		auto precinctStart = grkPointU32(	precinctRegionStart.x + (uint32_t)((precinctIndex % precinctGridWidth) << precinct_expn.x),
-				precinctRegionStart.y + (uint32_t)((precinctIndex / precinctGridWidth) << precinct_expn.y));
-		return grkRectU32(precinctStart.x,
-							precinctStart.y,
-							precinctStart.x + (1U << precinct_expn.x),
-							precinctStart.y + (1U << precinct_expn.y)).intersection(this);
-	}
-	Precinct* createPrecinct(bool isCompressor,
-										uint64_t precinctIndex,
 										grkPointU32 precinctRegionStart,
 										grkPointU32 precinct_expn,
-										uint32_t precinctGridWidth,
-										grkPointU32 cblk_expn){
+										uint32_t precinctGridWidth){
+		auto precinctStart = grkPointU32(precinctRegionStart.x + (uint32_t)((precinctIndex % precinctGridWidth) << precinct_expn.x),
+										 precinctRegionStart.y + (uint32_t)((precinctIndex / precinctGridWidth) << precinct_expn.y));
+		return grkRectU32(precinctStart.x,
+						  precinctStart.y,
+						  precinctStart.x + (1U << precinct_expn.x),
+						  precinctStart.y + (1U << precinct_expn.y)).intersection(this);
+	}
+	Precinct* createPrecinct(bool isCompressor,
+							uint64_t precinctIndex,
+							grkPointU32 precinctRegionStart,
+							grkPointU32 precinct_expn,
+							uint32_t precinctGridWidth,
+							grkPointU32 cblk_expn){
 		auto temp = precinctMap.find(precinctIndex);
 		if (temp != precinctMap.end())
 			return precincts[temp->second];

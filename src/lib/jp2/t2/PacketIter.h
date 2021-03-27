@@ -107,7 +107,7 @@ struct IncludeTracker {
 		}
 		auto buf = resBuf->buffers[resno];
 		if (!buf){
-			auto numprecs = precincts[resno];
+			auto numprecs = numPrecinctsPerRes[resno];
 			auto len = (numprecs * numcomps + 7)/8;
 			buf = new uint8_t[len];
 			memset(buf, 0, len);
@@ -117,7 +117,7 @@ struct IncludeTracker {
 	}
 	bool update(uint16_t layno, uint8_t resno, uint16_t compno, uint64_t precno) {
 		auto include = get_include(layno, resno);
-		auto numprecs = precincts[resno];
+		auto numprecs = numPrecinctsPerRes[resno];
 		uint64_t index = compno * numprecs + precno;
 		uint64_t include_index 	= (index >> 3);
 		uint32_t shift 	= (index & 7);
@@ -141,7 +141,7 @@ struct IncludeTracker {
 	uint16_t numcomps;
 	uint16_t currentLayer;
 	ResBuf* currentResBuf;
-	uint64_t precincts[GRK_J2K_MAXRLVLS];
+	uint64_t numPrecinctsPerRes[GRK_J2K_MAXRLVLS];
 	std::map<uint16_t, ResBuf*> *include;
 };
 
