@@ -230,7 +230,7 @@ template<typename T> struct TileComponentWindowBuffer {
 								bool wholeTileDecompress,
 								grkRectU32 tileCompUnreduced,
 								grkRectU32 tileCompReduced,
-								grkRectU32 unreducedTileOrImageCompWindow,
+								grkRectU32 unreducedTileCompOrImageCompWindow,
 								Resolution *tileCompResolution,
 								uint8_t numresolutions,
 								uint8_t reducedNumResolutions) : 	m_unreducedBounds(tileCompUnreduced),
@@ -240,7 +240,7 @@ template<typename T> struct TileComponentWindowBuffer {
 																	m_wholeTileDecompress(wholeTileDecompress) {
 		if (!m_compress) {
 			// for decompress, we are passed the unreduced image component window
-			auto unreducedImageCompWindow =  unreducedTileOrImageCompWindow;
+			auto unreducedImageCompWindow =  unreducedTileCompOrImageCompWindow;
 			m_bounds = unreducedImageCompWindow.rectceildivpow2((uint32_t)(m_numResolutions - reducedNumResolutions));
 			m_bounds = m_bounds.intersection(tileCompReduced);
 			assert(m_bounds.is_valid());

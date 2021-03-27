@@ -24,24 +24,22 @@
 
 namespace grk {
 
-struct TileComponent;
-
 /*
  * Tile structure.
  *
- * Tile bounds are relative to origin, and are equal to the unreduced
- * tile dimensions, while the component dimensions are reduced
+ * Tile bounds are in canvas coordinates, and are equal to the
+ * full, non-windowed, unreduced tile dimensions,
+ * while the component dimensions are reduced
  * if there is a resolution reduction.
  *
  */
 struct Tile : public grkRectU32 {
 	Tile();
 	~Tile();
-
-	uint32_t 		numcomps;
+	uint16_t 		numcomps;
 	TileComponent 	*comps;
-	double distotile;
-	double distolayer[100];
+	double distortion;
+	double layerDistoration[100];
 	uint64_t numProcessedPackets;
 	uint64_t numDecompressedPackets;
 };
@@ -76,7 +74,7 @@ struct TileProcessor {
 							bool isWholeTileDecompress) ;
 	~TileProcessor();
 	 bool init(void);
-	 bool allocWindowBuffers(const GrkImage *output_image);
+	 bool allocWindowBuffers(const GrkImage *outputImage);
 	 void deallocBuffers();
 	 bool pre_write_tile(void);
 	bool compressTilePart(uint32_t *tile_bytes_written);
@@ -92,6 +90,11 @@ struct TileProcessor {
 	bool needsRateControl();
 	void ingestImage();
 	bool prepareSodDecompress(CodeStreamDecompress *codeStream);
+	void generateImage(GrkImage* src_image, Tile *src_tile);
+	GrkImage* getImage(void);
+	void setCorruptPacket(void);
+	PacketTracker* getPacketTracker(void);
+
 	/** index of tile being currently compressed/decompressed */
 	uint16_t m_tileIndex;
 	/** Compressing Only
@@ -110,23 +113,19 @@ struct TileProcessor {
 	/** Compressing Only
 	 *  Current packet iterator number */
 	uint32_t pino;
-	/** info on image tile */
 	Tile *tile;
-	/** image header */
 	GrkImage *headerImage;
 	grk_plugin_tile *current_plugin_tile;
     // true if whole tile will be decoded; false if tile window will be decoded
     bool   wholeTileDecompress;
 	CodingParams *m_cp;
-    PacketLengthCache packetLengthCache;
-	// Compressing only - track which packets have been already written
+	PacketLengthCache packetLengthCache;
+private:
+	// Compressing only - track which packets have already been written
 	// to the code stream
 	PacketTracker m_packetTracker;
 	BufferedStream *m_stream;
 	bool m_corrupt_packet;
-	void generateImage(GrkImage* src_image, Tile *src_tile);
-	GrkImage* getImage(void);
-private:
 	/** position of the tile part flag in progression order*/
 	uint32_t tp_pos;
 	// coding/decoding parameters for this tile

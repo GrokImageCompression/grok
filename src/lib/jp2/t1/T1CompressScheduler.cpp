@@ -36,7 +36,7 @@ void T1CompressScheduler::scheduleCompress(TileCodingParams *tcp,
 
 	uint16_t compno;
 	uint8_t resno, bandIndex;
-	tile->distotile = 0;
+	tile->distortion = 0;
 	std::vector<CompressBlockExec*> blocks;
 	uint32_t maxCblkW = 0;
 	uint32_t maxCblkH = 0;
@@ -139,7 +139,7 @@ void T1CompressScheduler::compress(T1Interface *impl, CompressBlockExec *block){
 	block->open(impl);
 	if (needsRateControl) {
 		std::unique_lock<std::mutex> lk(distortion_mutex);
-		tile->distotile += block->distortion;
+		tile->distortion += block->distortion;
 	}
 }
 

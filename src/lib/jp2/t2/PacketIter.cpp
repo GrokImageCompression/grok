@@ -26,7 +26,6 @@ namespace grk {
 /*@{*/
 
 PacketIter::PacketIter() : tp_on(false),
-							includeTracker(nullptr),
 							step_l(0),
 							step_r(0),
 							step_c(0),
@@ -46,7 +45,7 @@ PacketIter::PacketIter() : tp_on(false),
 							dx(0),
 							dy(0),
 							handledFirstInner(false),
-							numProgressions(0)
+							packetManager(nullptr)
 {
 	memset(&prog, 0, sizeof(prog));
 }
@@ -98,6 +97,7 @@ bool PacketIter::next_pcrl(void) {
 				"total number of components %d",compno , numcomps);
 		return false;
 	}
+	//auto b = packetManager->getTileProcessor()->tile->
 	// ToDo: if windowed with single progression order, then bail
 	// after we are outside the bottom right hand
 	// corner of the padded window, expanded to sit in the precinct grid
@@ -319,15 +319,15 @@ void PacketIter::update_dxy_for_comp(PiComp *comp) {
 	}
 }
 uint8_t* PacketIter::get_include(uint16_t layerno){
-	return includeTracker->get_include(layerno, resno);
+	return packetManager->getIncludeTracker()->get_include(layerno, resno);
 }
 bool PacketIter::update_include(void){
-	if (numProgressions == 1)
+	if (packetManager->getNumProgressions() == 1)
 		return true;
-	return includeTracker->update(layno, resno, compno, precinctIndex);
+	return packetManager->getIncludeTracker()->update(layno, resno, compno, precinctIndex);
 }
 void PacketIter::destroy_include(void){
-	includeTracker->clear();
+	packetManager->getIncludeTracker()->clear();
 }
 
 }

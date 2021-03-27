@@ -76,7 +76,7 @@ bool init_tilec(TileComponent * tilec,
                 uint32_t x1,
                 uint32_t y1,
                 uint32_t numresolutions,
-				GrkImage *output_image){
+				GrkImage *outputImage){
     tilec->numresolutions = numresolutions;
     tilec->resolutions_to_decompress = numresolutions;
     tilec->tileCompResolution = new Resolution[tilec->numresolutions];
@@ -95,17 +95,17 @@ bool init_tilec(TileComponent * tilec,
         ++res;
         --leveno;
     }
-    bool isCompressor = (output_image == nullptr);
+    bool isCompressor = (outputImage == nullptr);
 	auto highestNumberOfResolutions =
 			(!isCompressor) ? tilec->resolutions_to_decompress : numresolutions;
 	auto hightestResolution =  tilec->tileCompResolution + highestNumberOfResolutions - 1;
 	tilec->set(hightestResolution);
     grkRectU32 unreduced_tile_comp_window_dims;
 	if (!isCompressor) {
-		unreduced_tile_comp_window_dims = grkRectU32(ceildiv<uint32_t>(output_image->x0,1),
-											ceildiv<uint32_t>(output_image->y0,1),
-											ceildiv<uint32_t>(output_image->x1,1),
-											ceildiv<uint32_t>(output_image->y1,1));
+		unreduced_tile_comp_window_dims = grkRectU32(ceildiv<uint32_t>(outputImage->x0,1),
+											ceildiv<uint32_t>(outputImage->y0,1),
+											ceildiv<uint32_t>(outputImage->x1,1),
+											ceildiv<uint32_t>(outputImage->y1,1));
 	}
     tilec->allocWindowBuffer(tilec,unreduced_tile_comp_window_dims);
     tilec->getBuffer()->alloc();
@@ -136,10 +136,10 @@ int main(int argc, char** argv)
 {
     uint32_t num_threads = 0;
     GrkImage image;
-    GrkImage output_image;
+    GrkImage outputImage;
     Tile tile;
     TileComponent tilec;
-    grk_image_comp image_comp;
+    grk_image_comp imageComp;
     grk_image_comp output_image_comp;
     int32_t i, j;
     bool display = false;
@@ -215,21 +215,21 @@ int main(int argc, char** argv)
 		image.y0 = offset_y;
 		image.x1 = offset_x + size;
 		image.y1 = offset_y + size;
-		image.comps = &image_comp;
-		memset(&image_comp, 0, sizeof(image_comp));
-		image_comp.dx = 1;
-		image_comp.dy = 1;
-		image_comp.w = size;
-		image_comp.stride = size;
-		image_comp.h = size;
+		image.comps = &imageComp;
+		memset(&imageComp, 0, sizeof(imageComp));
+		imageComp.dx = 1;
+		imageComp.dy = 1;
+		imageComp.w = size;
+		imageComp.stride = size;
+		imageComp.h = size;
 
-		memset(&output_image, 0, sizeof(output_image));
-		output_image.numcomps = 1;
-		output_image.x0 = offset_x;
-		output_image.y0 = offset_y;
-		output_image.x1 = offset_x + size;
-		output_image.y1 = offset_y + size;
-		output_image.comps = &output_image_comp;
+		memset(&outputImage, 0, sizeof(outputImage));
+		outputImage.numcomps = 1;
+		outputImage.x0 = offset_x;
+		outputImage.y0 = offset_y;
+		outputImage.x1 = offset_x + size;
+		outputImage.y1 = offset_y + size;
+		outputImage.comps = &output_image_comp;
 		memset(&output_image_comp, 0, sizeof(output_image_comp));
 		output_image_comp.dx = 1;
 		output_image_comp.dy = 1;

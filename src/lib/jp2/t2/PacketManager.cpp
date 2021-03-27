@@ -24,30 +24,29 @@ PacketManager::PacketManager(bool compression,
 							GrkImage *img,
 							CodingParams *cparams,
 							uint16_t tilenumber,
-							J2K_T2_MODE t2_mode) : image(img),
-															  cp(cparams),
-															  tileno(tilenumber),
-															  includeTracker(new IncludeTracker(image->numcomps)),
-															  m_pi(nullptr),
-															  t2Mode(t2_mode)
+							J2K_T2_MODE t2_mode,
+							TileProcessor *tileProc) : image(img),
+												  cp(cparams),
+												  tileno(tilenumber),
+												  includeTracker(new IncludeTracker(image->numcomps)),
+												  m_pi(nullptr),
+												  t2Mode(t2_mode),
+												  tileProcessor(tileProc)
 {
 	assert(cp != nullptr);
 	assert(image != nullptr);
 	assert(tileno < cp->t_grid_width * cp->t_grid_height);
-	auto tcp = &cp->tcps[tileno];
+	auto tcp = cp->tcps + tileno;
 	uint32_t numProgressions = tcp->numpocs + 1;
 	m_pi = new PacketIter[numProgressions];
-
-	for (uint32_t i = 0; i < numProgressions; ++i){
-		m_pi[i].includeTracker = includeTracker;
-		m_pi[i].numProgressions = numProgressions;
-	}
+	for (uint32_t i = 0; i < numProgressions; ++i)
+		m_pi[i].packetManager = this;
 	for (uint32_t pino = 0; pino < numProgressions; ++pino) {
-		auto current_pi = m_pi + pino;
-		current_pi->comps = new PiComp[image->numcomps];
-		current_pi->numcomps = image->numcomps;
+		auto curPi = m_pi + pino;
+		curPi->comps = new PiComp[image->numcomps];
+		curPi->numcomps = image->numcomps;
 		for (uint32_t compno = 0; compno < image->numcomps; ++compno) {
-			auto comp = current_pi->comps + compno;
+			auto comp = curPi->comps + compno;
 			auto tccp = tcp->tccps + compno;
 			comp->resolutions =  new PiResolution[tccp->numresolutions];
 			comp->numresolutions = tccp->numresolutions;
@@ -142,7 +141,6 @@ PacketManager::PacketManager(bool compression,
 											poc);
 	}
 }
-
 PacketManager::~PacketManager() {
 	if (m_pi){
 		m_pi->destroy_include();
@@ -150,8 +148,16 @@ PacketManager::~PacketManager() {
 	}
 	delete includeTracker;
 }
+uint32_t PacketManager::getNumProgressions(void){
+	auto tcp = cp->tcps + tileno;
+
+	return tcp->numpocs + 1;
+}
 PacketIter* PacketManager::getPacketIter(uint32_t poc) const{
 	return m_pi + poc;
+}
+TileProcessor *PacketManager::getTileProcessor(void){
+	return tileProcessor;
 }
 
 void PacketManager::init(TileCodingParams *tcp,
@@ -621,6 +627,10 @@ bool PacketManager::checkForRemainingValidProgression(int32_t prog,
 		}
 	}
 	return false;
+}
+
+IncludeTracker* PacketManager::getIncludeTracker(void){
+	return includeTracker;
 }
 
 }

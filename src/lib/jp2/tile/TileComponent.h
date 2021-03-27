@@ -28,7 +28,7 @@ struct TileComponent : public grkRectU32 {
 	TileComponent();
 	~TileComponent();
 	bool allocSparseCanvas(uint32_t numres, bool truncatedTile);
-	bool allocWindowBuffer(grkRectU32 unreducedTileOrImageCompWindow);
+	bool allocWindowBuffer(grkRectU32 unreducedTileCompOrImageCompWindow);
 	void deallocBuffers(void);
 	bool init(bool isCompressor,
 			bool whole_tile,

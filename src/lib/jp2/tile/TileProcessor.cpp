@@ -64,6 +64,12 @@ void TileProcessor::generateImage(GrkImage* src_image, Tile *src_tile){
 GrkImage* TileProcessor::getImage(void){
 	return m_image;
 }
+void TileProcessor::setCorruptPacket(void){
+	m_corrupt_packet = true;
+}
+PacketTracker* TileProcessor::getPacketTracker(void){
+	return &m_packetTracker;
+}
 /*
  if
  - r xx, yy, zz, 0   (disto_alloc == 1 and rates == 0)
@@ -103,7 +109,7 @@ void TileProcessor::makeLayerFeasible(uint32_t layno, uint16_t thresh,
 	uint32_t compno, resno, bandIndex;
 	uint64_t cblkno;
 	uint32_t passno;
-	tile->distolayer[layno] = 0;
+	tile->layerDistoration[layno] = 0;
 	for (compno = 0; compno < tile->numcomps; compno++) {
 		auto tilec = tile->comps + compno;
 		for (resno = 0; resno < tilec->numresolutions; resno++) {
@@ -170,7 +176,7 @@ void TileProcessor::makeLayerFeasible(uint32_t layno, uint16_t thresh,
 													- 1].distortiondec;
 						}
 
-						tile->distolayer[layno] += layer->disto;
+						tile->layerDistoration[layno] += layer->disto;
 						if (final)
 							cblk->numPassesInPreviousPackets =
 									cumulative_included_passes_in_block;
@@ -260,7 +266,7 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t *all_packets_len) {
 			// thresh from previous iteration - starts off uninitialized
 			// used to bail out if difference with current thresh is small enough
 			uint32_t prevthresh = 0;
-			double distotarget = tile->distotile
+			double distotarget = tile->distortion
 					- ((K * maxSE)
 							/ pow(10.0, tcp->distoratio[layno] / 10.0));
 
@@ -273,9 +279,9 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t *all_packets_len) {
 				if (m_cp->m_coding_params.m_enc.m_fixed_quality) {
 					double distoachieved =
 							layno == 0 ?
-									tile->distolayer[0] :
+									tile->layerDistoration[0] :
 									cumdisto[layno - 1]
-											+ tile->distolayer[layno];
+											+ tile->layerDistoration[layno];
 
 					if (distoachieved < distotarget) {
 						upperBound = thresh;
@@ -301,8 +307,8 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t *all_packets_len) {
 			makeLayerFeasible(layno, (uint16_t) goodthresh, true);
 			cumdisto[layno] =
 					(layno == 0) ?
-							tile->distolayer[0] :
-							(cumdisto[layno - 1] + tile->distolayer[layno]);
+							tile->layerDistoration[0] :
+							(cumdisto[layno - 1] + tile->layerDistoration[layno]);
 			// upper bound for next layer is initialized to lowerBound for current layer, minus one
 			upperBound = lowerBound - 1;
 			;
@@ -410,7 +416,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t *all_packets_len) {
 			// thresh from previous iteration - starts off uninitialized
 			// used to bail out if difference with current thresh is small enough
 			double prevthresh = -1;
-			double distotarget = tile->distotile- ((K * maxSE)	/ pow(10.0, m_tcp->distoratio[layno] / 10.0));
+			double distotarget = tile->distortion- ((K * maxSE)	/ pow(10.0, m_tcp->distoratio[layno] / 10.0));
 
 			auto t2 = new T2Compress(this);
 			double thresh;
@@ -421,7 +427,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t *all_packets_len) {
 					break;
 				prevthresh = thresh;
 				if (m_cp->m_coding_params.m_enc.m_fixed_quality) {
-					double distoachieved =	layno == 0 ? tile->distolayer[0] :	cumdisto[layno - 1]	+ tile->distolayer[layno];
+					double distoachieved =	layno == 0 ? tile->layerDistoration[0] :	cumdisto[layno - 1]	+ tile->layerDistoration[layno];
 					if (distoachieved < distotarget) {
 						upperBound = thresh;
 						continue;
@@ -445,7 +451,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t *all_packets_len) {
 			delete t2;
 
 			makeLayerSimple(layno, goodthresh, true);
-			cumdisto[layno] =	(layno == 0) ? tile->distolayer[0] : (cumdisto[layno - 1] + tile->distolayer[layno]);
+			cumdisto[layno] =	(layno == 0) ? tile->layerDistoration[0] : (cumdisto[layno - 1] + tile->layerDistoration[layno]);
 
 			// upper bound for next layer will equal lowerBound for previous layer, minus one
 			upperBound = lowerBound - 1;
@@ -469,7 +475,7 @@ static void prepareBlockForFirstLayer(CompressCodeblock *cblk) {
  */
 void TileProcessor::makeLayerSimple(uint32_t layno, double thresh,
 		bool final) {
-	tile->distolayer[layno] = 0;
+	tile->layerDistoration[layno] = 0;
 	for (uint32_t compno = 0; compno < tile->numcomps; compno++) {
 		auto tilec = tile->comps + compno;
 		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
@@ -530,7 +536,7 @@ void TileProcessor::makeLayerSimple(uint32_t layno, double thresh,
 							layer->disto =	cblk->passes[included_blk_passes- 1].distortiondec
 												- cblk->passes[cblk->numPassesInPreviousPackets- 1].distortiondec;
 						}
-						tile->distolayer[layno] += layer->disto;
+						tile->layerDistoration[layno] += layer->disto;
 						if (final)
 							cblk->numPassesInPreviousPackets =	included_blk_passes;
 					}
@@ -541,7 +547,7 @@ void TileProcessor::makeLayerSimple(uint32_t layno, double thresh,
 }
 // Add all remaining passes to this layer
 void TileProcessor::makeLayerFinal(uint32_t layno) {
-	tile->distolayer[layno] = 0;
+	tile->layerDistoration[layno] = 0;
 	for (uint32_t compno = 0; compno < tile->numcomps; compno++) {
 		auto tilec = tile->comps + compno;
 		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
@@ -576,7 +582,7 @@ void TileProcessor::makeLayerFinal(uint32_t layno) {
 							layer->disto =
 									cblk->passes[included_blk_passes- 1].distortiondec- cblk->passes[cblk->numPassesInPreviousPackets- 1].distortiondec;
 						}
-						tile->distolayer[layno] += layer->disto;
+						tile->layerDistoration[layno] += layer->disto;
 						cblk->numPassesInPreviousPackets =	included_blk_passes;
 						assert(cblk->numPassesInPreviousPackets	== cblk->numPassesTotal);
 					}
@@ -603,20 +609,20 @@ bool TileProcessor::init(void) {
 	}
 
 	for (uint32_t compno = 0; compno < tile->numcomps; ++compno) {
-		auto image_comp = headerImage->comps + compno;
+		auto imageComp = headerImage->comps + compno;
 		/*fprintf(stderr, "compno = %u/%u\n", compno, tile->numcomps);*/
-		if (image_comp->dx == 0 || image_comp->dy == 0)
+		if (imageComp->dx == 0 || imageComp->dy == 0)
 			return false;
 		auto tilec = tile->comps + compno;
 		grkRectU32 unreducedTileComp =
-						grkRectU32(ceildiv<uint32_t>(tile->x0, image_comp->dx),
-									ceildiv<uint32_t>(tile->y0, image_comp->dy),
-									ceildiv<uint32_t>(tile->x1, image_comp->dx),
-									ceildiv<uint32_t>(tile->y1, image_comp->dy));
+						grkRectU32(ceildiv<uint32_t>(tile->x0, imageComp->dx),
+									ceildiv<uint32_t>(tile->y0, imageComp->dy),
+									ceildiv<uint32_t>(tile->x1, imageComp->dx),
+									ceildiv<uint32_t>(tile->y1, imageComp->dy));
 		if (!tilec->init(m_isCompressor,
 						wholeTileDecompress,
 						unreducedTileComp,
-						image_comp->prec,
+						imageComp->prec,
 						m_cp,
 						tcp,
 						tcp->tccps + compno,
@@ -652,28 +658,20 @@ bool TileProcessor::init(void) {
 
 	return true;
 }
-bool TileProcessor::allocWindowBuffers(const GrkImage *output_image){
+bool TileProcessor::allocWindowBuffers(const GrkImage *outputImage){
 	for (uint32_t compno = 0; compno < tile->numcomps; ++compno) {
-		auto image_comp = headerImage->comps + compno;
+		auto imageComp = headerImage->comps + compno;
 		/*fprintf(stderr, "compno = %u/%u\n", compno, tile->numcomps);*/
-		if (image_comp->dx == 0 || image_comp->dy == 0)
+		if (imageComp->dx == 0 || imageComp->dy == 0)
 			return false;
 		auto tilec = tile->comps + compno;
-		grkRectU32 unreducedTileComp =
-						grkRectU32(ceildiv<uint32_t>(tile->x0, image_comp->dx),
-									ceildiv<uint32_t>(tile->y0, image_comp->dy),
-									ceildiv<uint32_t>(tile->x1, image_comp->dx),
-									ceildiv<uint32_t>(tile->y1, image_comp->dy));
-
-		//create window buffer
-		auto unreducedTileOrImageCompWindow = unreducedTileComp;
-		if (!m_isCompressor)
-		 unreducedTileOrImageCompWindow =
-				 grkRectU32(ceildiv<uint32_t>(output_image->x0, image_comp->dx),
-											ceildiv<uint32_t>(output_image->y0, image_comp->dy),
-											ceildiv<uint32_t>(output_image->x1, image_comp->dx),
-											ceildiv<uint32_t>(output_image->y1, image_comp->dy));
-		if (!tilec->allocWindowBuffer(unreducedTileOrImageCompWindow))
+		grkRectU32 unreducedTileCompOrImageCompWindow;
+		auto rct = m_isCompressor ? *((grkRectU32*)tile) : grkRectU32(outputImage->x0,
+																	outputImage->y0,
+																	outputImage->x1,
+																	outputImage->y1);
+		unreducedTileCompOrImageCompWindow = rct.rectceildiv(imageComp->dx, imageComp->dy);
+		if (!tilec->allocWindowBuffer(unreducedTileCompOrImageCompWindow))
 			return false;
 	}
 
@@ -1347,12 +1345,12 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress *codeStream) {
 }
 Tile::Tile() : numcomps(0),
 			comps(nullptr),
-			distotile(0),
+			distortion(0),
 			numProcessedPackets(0),
 			numDecompressedPackets(0)
 {
 	for (uint32_t i = 0; i < 100; ++i)
-		distolayer[i] = 0;
+		layerDistoration[i] = 0;
 }
 Tile::~Tile()
 {

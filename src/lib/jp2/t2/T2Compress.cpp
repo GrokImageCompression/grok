@@ -35,7 +35,12 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers,
 	auto image = tileProcessor->headerImage;
 	auto tilePtr = tileProcessor->tile;
 	auto tcp = &cp->tcps[tile_no];
-	PacketManager packetManager(true,image, cp, tile_no, FINAL_PASS);
+	PacketManager packetManager(true,
+								image,
+								cp,
+								tile_no,
+								FINAL_PASS,
+								tileProcessor);
 	packetManager.enableTilePartGeneration(pino, first_poc_tile_part, tp_pos);
 	auto current_pi =packetManager.getPacketIter(pino);
 	if (current_pi->prog.progression == GRK_PROG_UNKNOWN) {
@@ -66,10 +71,15 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 	uint32_t pocno = (cp->rsiz == GRK_PROFILE_CINEMA_4K) ? 2 : 1;
 	uint32_t max_comp =
 			cp->m_coding_params.m_enc.m_max_comp_size > 0 ? image->numcomps : 1;
-	PacketManager packetManager(true,image, cp, tile_no, THRESH_CALC);
+	PacketManager packetManager(true,
+								image,
+								cp,
+								tile_no,
+								THRESH_CALC,
+								tileProcessor);
 	*all_packets_len = 0;
 
-	tileProcessor->m_packetTracker.clear();
+	tileProcessor->getPacketTracker()->clear();
 #ifdef DEBUG_ENCODE_PACKETS
     GRK_INFO("simulate compress packets for layers below layno %u", max_layers);
 #endif
@@ -127,10 +137,10 @@ bool T2Compress::compressPacket(TileCodingParams *tcp, PacketIter *pi,
 				"of components %d",compno, tile->numcomps);
 		return false;
 	}
-	if (tileProcessor->m_packetTracker.is_packet_encoded(compno, resno, precinctIndex,
+	if (tileProcessor->getPacketTracker()->is_packet_encoded(compno, resno, precinctIndex,
 			layno))
 		return true;
-	tileProcessor->m_packetTracker.packet_encoded(compno, resno, precinctIndex, layno);
+	tileProcessor->getPacketTracker()->packet_encoded(compno, resno, precinctIndex, layno);
 
 #ifdef DEBUG_ENCODE_PACKETS
     GRK_INFO("compress packet compono=%u, resno=%u, precinctIndex=%u, layno=%u",
@@ -519,10 +529,10 @@ bool T2Compress::compressPacketSimulate(TileCodingParams *tcp, PacketIter *pi,
 		return false;
 	}
 	*packet_bytes_written = 0;
-	if (tileProcessor->m_packetTracker.is_packet_encoded(compno, resno, precinctIndex,
+	if (tileProcessor->getPacketTracker()->is_packet_encoded(compno, resno, precinctIndex,
 			layno))
 		return true;
-	tileProcessor->m_packetTracker.packet_encoded(compno, resno, precinctIndex, layno);
+	tileProcessor->getPacketTracker()->packet_encoded(compno, resno, precinctIndex, layno);
 
 #ifdef DEBUG_ENCODE_PACKETS
     GRK_INFO("simulate compress packet compono=%u, resno=%u, precinctIndex=%u, layno=%u",

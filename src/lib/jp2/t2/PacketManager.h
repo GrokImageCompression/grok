@@ -19,13 +19,15 @@
 
 namespace grk {
 
+
 class PacketManager {
 public:
 	PacketManager(bool compression,
 				GrkImage *img,
 				CodingParams *cparams,
 				uint16_t tilenumber,
-				J2K_T2_MODE t2_mode);
+				J2K_T2_MODE t2_mode,
+				TileProcessor *tileProc);
 	virtual ~PacketManager();
 	PacketIter* getPacketIter(uint32_t poc) const;
 	/**
@@ -47,6 +49,10 @@ public:
 	static void updateCompressParams(const GrkImage *p_image,
 										CodingParams *p_cp,
 										uint16_t tile_no);
+
+	IncludeTracker* getIncludeTracker(void);
+	uint32_t getNumProgressions(void);
+	TileProcessor *getTileProcessor(void);
 private:
 	/**
 	 * Updates the coding parameters
@@ -112,6 +118,7 @@ private:
 	IncludeTracker *includeTracker;
 	PacketIter *m_pi;
 	J2K_T2_MODE t2Mode;
+	TileProcessor *tileProcessor;
 };
 
 }

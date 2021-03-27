@@ -277,17 +277,17 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile){
 
     return true;
 }
-bool TileComponent::allocWindowBuffer(grkRectU32 unreducedTileOrImageCompWindow) {
+bool TileComponent::allocWindowBuffer(grkRectU32 unreducedTileCompOrImageCompWindow) {
 	deallocBuffers();
 	auto highestNumberOfResolutions =
 			(!m_is_encoder) ? resolutions_to_decompress : numresolutions;
 	auto maxResolution = tileCompResolution + numresolutions - 1;
-	if (!maxResolution->intersection(unreducedTileOrImageCompWindow).is_valid()){
+	if (!maxResolution->intersection(unreducedTileCompOrImageCompWindow).is_valid()){
 		GRK_ERROR("Decompress window (%d,%d,%d,%d) must overlap image bounds (%d,%d,%d,%d)",
-				unreducedTileOrImageCompWindow.x0,
-				unreducedTileOrImageCompWindow.y0,
-				unreducedTileOrImageCompWindow.x1,
-				unreducedTileOrImageCompWindow.y1,
+				unreducedTileCompOrImageCompWindow.x0,
+				unreducedTileCompOrImageCompWindow.y0,
+				unreducedTileCompOrImageCompWindow.x1,
+				unreducedTileCompOrImageCompWindow.y1,
 				maxResolution->x0,
 				maxResolution->y0,
 				maxResolution->x1,
@@ -299,7 +299,7 @@ bool TileComponent::allocWindowBuffer(grkRectU32 unreducedTileOrImageCompWindow)
 											wholeTileDecompress,
 											*(grkRectU32*)maxResolution,
 											*(grkRectU32*)this,
-											unreducedTileOrImageCompWindow,
+											unreducedTileCompOrImageCompWindow,
 											tileCompResolution,
 											numresolutions,
 											highestNumberOfResolutions);

@@ -110,7 +110,12 @@ bool T2Decompress::decompressPackets(uint16_t tile_no,
 	auto cp = tileProcessor->m_cp;
 	auto tcp = cp->tcps + tile_no;
 	*truncated = false;
-	PacketManager packetManager(false,tileProcessor->headerImage, cp, tile_no,FINAL_PASS);
+	PacketManager packetManager(false,
+								tileProcessor->headerImage,
+								cp,
+								tile_no,
+								FINAL_PASS,
+								tileProcessor);
 	tileProcessor->packetLengthCache.rewind();
 	for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
 		auto currPi = packetManager.getPacketIter(pino);
@@ -268,7 +273,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams *p_tcp,
 							msg +="mis-interpretation of the standard.  The problem may also occur as a result of\n";
 							msg +="a corrupted code-stream";
 							GRK_WARN("%s", msg.c_str());
-							tileProcessor->m_corrupt_packet = true;
+							tileProcessor->setCorruptPacket();
 						}
 		#ifdef DEBUG_LOSSLESS_T2
 						 cblk->included = value;

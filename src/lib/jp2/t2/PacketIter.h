@@ -145,6 +145,8 @@ struct IncludeTracker {
 	std::map<uint16_t, ResBuf*> *include;
 };
 
+class PacketManager;
+
 /**
  Packet iterator
  */
@@ -202,8 +204,6 @@ struct PacketIter {
 	/** Enabling Tile part generation*/
 	bool  tp_on;
 
-	IncludeTracker *includeTracker;
-
 	/** layer step used to localize the packet in the include vector */
 	uint64_t step_l;
 	/** resolution step used to localize the packet in the include vector */
@@ -233,7 +233,7 @@ struct PacketIter {
 	/** component sub-sampling */
 	uint32_t dx, dy;
 	bool handledFirstInner;
-	uint32_t numProgressions;
+	PacketManager *packetManager;
 };
 
 
