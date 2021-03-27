@@ -232,6 +232,8 @@ struct PacketIter {
 	uint32_t x, y;
 	/** component sub-sampling */
 	uint32_t dx, dy;
+	bool handledFirstInner;
+	uint32_t numProgressions;
 };
 
 

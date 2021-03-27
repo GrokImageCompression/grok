@@ -35,13 +35,14 @@ PacketManager::PacketManager(bool compression,
 	assert(image != nullptr);
 	assert(tileno < cp->t_grid_width * cp->t_grid_height);
 	auto tcp = &cp->tcps[tileno];
-	uint32_t poc_bound = tcp->numpocs + 1;
-	m_pi = new PacketIter[poc_bound];
+	uint32_t numProgressions = tcp->numpocs + 1;
+	m_pi = new PacketIter[numProgressions];
 
-	for (uint32_t i = 0; i < poc_bound; ++i){
+	for (uint32_t i = 0; i < numProgressions; ++i){
 		m_pi[i].includeTracker = includeTracker;
+		m_pi[i].numProgressions = numProgressions;
 	}
-	for (uint32_t pino = 0; pino < poc_bound; ++pino) {
+	for (uint32_t pino = 0; pino < numProgressions; ++pino) {
 		auto current_pi = m_pi + pino;
 		current_pi->comps = new PiComp[image->numcomps];
 		current_pi->numcomps = image->numcomps;

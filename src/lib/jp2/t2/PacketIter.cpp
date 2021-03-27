@@ -44,7 +44,9 @@ PacketIter::PacketIter() : tp_on(false),
 							x(0),
 							y(0),
 							dx(0),
-							dy(0)
+							dy(0),
+							handledFirstInner(false),
+							numProgressions(0)
 {
 	memset(&prog, 0, sizeof(prog));
 }
@@ -71,11 +73,15 @@ bool PacketIter::next_cprl(void) {
 				for (; resno < std::min<uint32_t>(prog.resE, comp->numresolutions); resno++) {
 					if (!generatePrecinctIndex())
 						continue;
-					for (; layno < prog.layE; layno++) {
+					if (handledFirstInner)
+						layno++;
+					if (layno < prog.layE) {
+						handledFirstInner = true;
 						if (update_include())
 							return true;
 					}
 					layno = prog.layS;
+					handledFirstInner = false;
 				}
 				resno = prog.resS;
 			}
@@ -102,11 +108,15 @@ bool PacketIter::next_pcrl(void) {
 				for (; resno< std::min<uint32_t>(prog.resE,comp->numresolutions); resno++) {
 					if (!generatePrecinctIndex())
 						continue;
-					for (; layno < prog.layE; layno++) {
+					if (handledFirstInner)
+						layno++;
+					if (layno < prog.layE) {
+						handledFirstInner = true;
 						if (update_include())
 							return true;
 					}
 					layno = prog.layS;
+					handledFirstInner = false;
 				}
 				resno = prog.resS;
 			}
@@ -129,11 +139,15 @@ bool PacketIter::next_lrcp(void) {
 				auto precE = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
 				if (tp_on)
 					precE = std::min<uint64_t>(precE, prog.precE);
-				for (; precinctIndex < precE;	precinctIndex++) {
+				if (handledFirstInner)
+					precinctIndex++;
+				if (precinctIndex < precE) {
+					handledFirstInner = true;
 					if (update_include())
 						return true;
 				}
 				precinctIndex = prog.precS;
+				handledFirstInner = false;
 			}
 			compno = prog.compS;
 		}
@@ -158,11 +172,15 @@ bool PacketIter::next_rlcp(void) {
 				auto precE = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
 				if (tp_on)
 					precE = std::min<uint64_t>(precE, prog.precE);
-				for (; precinctIndex < precE;	precinctIndex++) {
+				if (handledFirstInner)
+					precinctIndex++;
+				if (precinctIndex < precE) {
+					handledFirstInner = true;
 					if (update_include())
 						return true;
 				}
 				precinctIndex = prog.precS;
+				handledFirstInner = false;
 			}
 			compno = prog.compS;
 		}
@@ -178,11 +196,15 @@ bool PacketIter::next_rpcl(void) {
 				for (; compno < prog.compE; compno++) {
 					if (!generatePrecinctIndex())
 						continue;
-					for (; layno < prog.layE; layno++) {
+					if (handledFirstInner)
+						layno++;
+					if (layno < prog.layE) {
+						handledFirstInner = true;
 						if (update_include())
 							return true;
 					}
 					layno = prog.layS;
+					handledFirstInner = false;
 				}
 				compno = prog.compS;
 			}
@@ -300,6 +322,8 @@ uint8_t* PacketIter::get_include(uint16_t layerno){
 	return includeTracker->get_include(layerno, resno);
 }
 bool PacketIter::update_include(void){
+	if (numProgressions == 1)
+		return true;
 	return includeTracker->update(layno, resno, compno, precinctIndex);
 }
 void PacketIter::destroy_include(void){
