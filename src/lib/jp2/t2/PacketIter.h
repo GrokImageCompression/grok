@@ -234,6 +234,9 @@ struct PacketIter {
 	uint32_t dx, dy;
 	bool handledFirstInner;
 	PacketManager *packetManager;
+private:
+	bool isSingleProgression(void);
+
 };
 
 

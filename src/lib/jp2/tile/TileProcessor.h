@@ -94,6 +94,7 @@ struct TileProcessor {
 	GrkImage* getImage(void);
 	void setCorruptPacket(void);
 	PacketTracker* getPacketTracker(void);
+	grkRectU32 getUnreducedTileWindow(void);
 
 	/** index of tile being currently compressed/decompressed */
 	uint16_t m_tileIndex;
@@ -150,6 +151,7 @@ private:
 	 bool truncated;
 	 GrkImage *m_image;
 	 bool m_isCompressor;
+	 grkRectU32 unreducedTileWindow;
 };
 
 }

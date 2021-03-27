@@ -661,21 +661,28 @@ bool TileProcessor::init(void) {
 bool TileProcessor::allocWindowBuffers(const GrkImage *outputImage){
 	for (uint32_t compno = 0; compno < tile->numcomps; ++compno) {
 		auto imageComp = headerImage->comps + compno;
-		/*fprintf(stderr, "compno = %u/%u\n", compno, tile->numcomps);*/
 		if (imageComp->dx == 0 || imageComp->dy == 0)
 			return false;
-		auto tilec = tile->comps + compno;
-		grkRectU32 unreducedTileCompOrImageCompWindow;
-		auto rct = m_isCompressor ? *((grkRectU32*)tile) : grkRectU32(outputImage->x0,
-																	outputImage->y0,
-																	outputImage->x1,
-																	outputImage->y1);
-		unreducedTileCompOrImageCompWindow = rct.rectceildiv(imageComp->dx, imageComp->dy);
-		if (!tilec->allocWindowBuffer(unreducedTileCompOrImageCompWindow))
+		grkRectU32 rct;
+		if (m_isCompressor){
+			rct = *((grkRectU32*)tile);
+		} else {
+			rct = grkRectU32(outputImage->x0,
+							outputImage->y0,
+							outputImage->x1,
+							outputImage->y1);
+			unreducedTileWindow = rct.intersection(tile);
+		}
+		grkRectU32 unreducedTileCompOrImageCompWindow = rct.rectceildiv(imageComp->dx, imageComp->dy);
+		if (!(tile->comps + compno)->allocWindowBuffer(unreducedTileCompOrImageCompWindow))
 			return false;
 	}
 
 	return true;
+}
+
+grkRectU32 TileProcessor::getUnreducedTileWindow(void){
+	return unreducedTileWindow;
 }
 
 void TileProcessor::deallocBuffers() {

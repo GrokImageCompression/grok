@@ -97,12 +97,16 @@ bool PacketIter::next_pcrl(void) {
 				"total number of components %d",compno , numcomps);
 		return false;
 	}
-	//auto b = packetManager->getTileProcessor()->tile->
-	// ToDo: if windowed with single progression order, then bail
-	// after we are outside the bottom right hand
-	// corner of the padded window, expanded to sit in the precinct grid
 	for (; y < prog.ty1;	y += dy - (y % dy)) {
 		for (; x < prog.tx1;	x += dx - (x % dx)) {
+			// windowed decode:
+			// bail out if we reach a precinct which is past the
+			// bottom, right hand corner of the tile window
+			if (isSingleProgression()){
+				auto win = packetManager->getTileProcessor()->getUnreducedTileWindow();
+				if (win.non_empty() && (y >= win.y1 || (win.y1 > 0 && y == win.y1-1 && x >= win.x1)))
+					return false;
+			}
 			for (; compno < prog.compE; compno++) {
 				auto comp = comps + compno;
 				for (; resno< std::min<uint32_t>(prog.resE,comp->numresolutions); resno++) {
@@ -322,12 +326,15 @@ uint8_t* PacketIter::get_include(uint16_t layerno){
 	return packetManager->getIncludeTracker()->get_include(layerno, resno);
 }
 bool PacketIter::update_include(void){
-	if (packetManager->getNumProgressions() == 1)
+	if (isSingleProgression())
 		return true;
 	return packetManager->getIncludeTracker()->update(layno, resno, compno, precinctIndex);
 }
 void PacketIter::destroy_include(void){
 	packetManager->getIncludeTracker()->clear();
+}
+bool PacketIter::isSingleProgression(void){
+	return packetManager->getNumProgressions() == 1;
 }
 
 }
