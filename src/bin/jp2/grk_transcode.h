@@ -23,19 +23,21 @@
 #include "common.h"
 #include "IImageFormat.h"
 
-namespace grk {
-
-struct TranscodeInitParams {
-	TranscodeInitParams() :initialized(false),
-							transferExifTags(false) 	{
+namespace grk
+{
+struct TranscodeInitParams
+{
+	TranscodeInitParams() : initialized(false), transferExifTags(false)
+	{
 		pluginPath[0] = 0;
 		memset(&inputFolder, 0, sizeof(inputFolder));
 		memset(&outFolder, 0, sizeof(outFolder));
 	}
-	~TranscodeInitParams() {
-		if (inputFolder.imgdirpath)
+	~TranscodeInitParams()
+	{
+		if(inputFolder.imgdirpath)
 			free(inputFolder.imgdirpath);
-		if (outFolder.imgdirpath)
+		if(outFolder.imgdirpath)
 			free(outFolder.imgdirpath);
 	}
 	bool initialized;
@@ -46,30 +48,32 @@ struct TranscodeInitParams {
 	bool transferExifTags;
 };
 
-class GrkTranscode{
-public:
+class GrkTranscode
+{
+  public:
 	GrkTranscode(void);
 	~GrkTranscode(void);
-	int main(int argc, char **argv);
-	int preProcess(grk_plugin_decompress_callback_info *info);
-	int postProcess(grk_plugin_decompress_callback_info *info);
-private:
-	int pluginMain(int argc, char **argv, TranscodeInitParams *initParams);
+	int main(int argc, char** argv);
+	int preProcess(grk_plugin_decompress_callback_info* info);
+	int postProcess(grk_plugin_decompress_callback_info* info);
+
+  private:
+	int pluginMain(int argc, char** argv, TranscodeInitParams* initParams);
 
 	// returns 0 for failure, 1 for success, and 2 if file is not suitable for decoding
-	int decompress(const char *fileName, TranscodeInitParams *initParams);
-	bool parsePrecision(const char *option,	grk_decompress_parameters *parameters);
-	int loadImages(grk_dircnt *dirptr, char *imgdirpath);
-	char nextFile(std::string file_name, grk_img_fol *inputFolder,
-					grk_img_fol *outFolder, grk_decompress_parameters *parameters);
-	int parseCommandLine(int argc, char **argv,TranscodeInitParams *initParams);
-	uint32_t getCompressionCode(const std::string &compressionString);
-	void setDefaultParams(grk_decompress_parameters *parameters);
-	void destoryParams(grk_decompress_parameters *parameters);
+	int decompress(const char* fileName, TranscodeInitParams* initParams);
+	bool parsePrecision(const char* option, grk_decompress_parameters* parameters);
+	int loadImages(grk_dircnt* dirptr, char* imgdirpath);
+	char nextFile(std::string file_name, grk_img_fol* inputFolder, grk_img_fol* outFolder,
+				  grk_decompress_parameters* parameters);
+	int parseCommandLine(int argc, char** argv, TranscodeInitParams* initParams);
+	uint32_t getCompressionCode(const std::string& compressionString);
+	void setDefaultParams(grk_decompress_parameters* parameters);
+	void destoryParams(grk_decompress_parameters* parameters);
 	void printTiming(uint32_t num_images, std::chrono::duration<double> elapsed);
 
 	bool storeToDisk;
-	IImageFormat *imageFormat;
+	IImageFormat* imageFormat;
 };
 
-}
+} // namespace grk

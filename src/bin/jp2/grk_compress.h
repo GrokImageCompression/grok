@@ -23,9 +23,10 @@
 #include "common.h"
 #include "IImageFormat.h"
 
-namespace grk {
-
-struct CompressInitParams {
+namespace grk
+{
+struct CompressInitParams
+{
 	CompressInitParams();
 	~CompressInitParams();
 	bool initialized;
@@ -37,5 +38,4 @@ struct CompressInitParams {
 	bool transferExifTags;
 };
 
-
-}
+} // namespace grk

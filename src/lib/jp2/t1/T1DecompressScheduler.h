@@ -19,31 +19,30 @@
 
 #include "grk_includes.h"
 
-namespace grk {
-
+namespace grk
+{
 struct DecompressBlockExec;
 class T1Interface;
 
-class T1DecompressScheduler {
-public:
+class T1DecompressScheduler
+{
+  public:
 	T1DecompressScheduler(void);
 	~T1DecompressScheduler();
-	bool decompress(std::vector<DecompressBlockExec*> *blocks);
+	bool decompress(std::vector<DecompressBlockExec*>* blocks);
 
-	bool prepareScheduleDecompress(TileComponent *tilec, TileComponentCodingParams *tccp,
-			std::vector<DecompressBlockExec*> *blocks);
+	bool prepareScheduleDecompress(TileComponent* tilec, TileComponentCodingParams* tccp,
+								   std::vector<DecompressBlockExec*>* blocks);
 
-	bool scheduleDecompress(TileCodingParams *tcp,
-						uint16_t blockw,
-						uint16_t blockh,
-						std::vector<DecompressBlockExec*> *blocks);
+	bool scheduleDecompress(TileCodingParams* tcp, uint16_t blockw, uint16_t blockh,
+							std::vector<DecompressBlockExec*>* blocks);
 
-private:
-	bool decompressBlock(T1Interface *impl, DecompressBlockExec *block);
+  private:
+	bool decompressBlock(T1Interface* impl, DecompressBlockExec* block);
 	std::vector<T1Interface*> t1Implementations;
 	std::atomic_bool success;
 
 	DecompressBlockExec** decodeBlocks;
 };
 
-}
+} // namespace grk

@@ -23,16 +23,17 @@
 
 #include <vector>
 
-namespace grk {
-
-struct grk_ppx {
-	uint8_t *m_data; /* m_data == nullptr => Zppx not read yet */
+namespace grk
+{
+struct grk_ppx
+{
+	uint8_t* m_data; /* m_data == nullptr => Zppx not read yet */
 	uint32_t m_data_size;
 };
 
-
-class PPMMarker {
-public:
+class PPMMarker
+{
+  public:
 	PPMMarker();
 	~PPMMarker();
 
@@ -43,7 +44,7 @@ public:
 	 * @param       header_size   the size of the data contained in the POC marker.
 
 	 */
-	bool read(uint8_t *p_header_data,	uint16_t header_size);
+	bool read(uint8_t* p_header_data, uint16_t header_size);
 
 	/**
 	 * Merges all PPM markers read (Packed headers, main header)
@@ -53,16 +54,14 @@ public:
 
 	std::vector<grkBufferU8> m_tile_packet_headers;
 
-private:
-
+  private:
 	/** number of ppm markers (reserved size) */
 	uint32_t markers_count;
 	/** ppm markers data (table indexed by Zppm) */
-	grk_ppx *markers;
+	grk_ppx* markers;
 
 	/** packet header storage original buffer */
-	uint8_t *buffer;
+	uint8_t* buffer;
 };
 
 } /* namespace grk */
-

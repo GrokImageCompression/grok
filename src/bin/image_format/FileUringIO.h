@@ -20,20 +20,20 @@
 
 #include "IFileIO.h"
 
-class FileUringIO : public IFileIO {
-public:
+class FileUringIO : public IFileIO
+{
+  public:
 	FileUringIO();
 	virtual ~FileUringIO() override;
 	bool open(std::string fileName, std::string mode) override;
 	bool close(void) override;
-	bool write(uint8_t *buf, size_t len) override;
-	bool read(uint8_t *buf, size_t len) override;
+	bool write(uint8_t* buf, size_t len) override;
+	bool read(uint8_t* buf, size_t len) override;
 	bool seek(int64_t pos) override;
 
-private:
+  private:
 	int m_fd;
 	std::string m_fileName;
 	int64_t m_off;
 	size_t m_writeCount;
 };
-

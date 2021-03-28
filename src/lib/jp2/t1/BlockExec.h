@@ -17,22 +17,17 @@
 #pragma once
 #include "grk_includes.h"
 
-namespace grk {
-
-struct BlockExec {
-	BlockExec() : 	tilec(nullptr),
-								bandIndex(0),
-								bandOrientation(BAND_ORIENT_LL),
-								stepsize(0),
-								cblk_sty(0),
-								qmfbid(0),
-								x(0),
-								y(0),
-								k_msbs(0)
+namespace grk
+{
+struct BlockExec
+{
+	BlockExec()
+		: tilec(nullptr), bandIndex(0), bandOrientation(BAND_ORIENT_LL), stepsize(0), cblk_sty(0),
+		  qmfbid(0), x(0), y(0), k_msbs(0)
 	{}
-	virtual bool open(T1Interface *t1) = 0;
+	virtual bool open(T1Interface* t1) = 0;
 	virtual ~BlockExec() = default;
-	TileComponent *tilec;
+	TileComponent* tilec;
 	uint8_t bandIndex;
 	eBandOrientation bandOrientation;
 	float stepsize;
@@ -44,58 +39,48 @@ struct BlockExec {
 	// missing bit planes for all blocks in band
 	uint8_t k_msbs;
 };
-struct DecompressBlockExec : public BlockExec {
-	DecompressBlockExec() :	cblk(nullptr),
-					resno(0),
-					roishift(0)
-	{}
-	bool open(T1Interface *t1){
+struct DecompressBlockExec : public BlockExec
+{
+	DecompressBlockExec() : cblk(nullptr), resno(0), roishift(0) {}
+	bool open(T1Interface* t1)
+	{
 		return t1->decompress(this);
 	}
-	void close(void){
-	}
-	DecompressCodeblock *cblk;
+	void close(void) {}
+	DecompressCodeblock* cblk;
 	uint8_t resno;
 	uint32_t roishift;
 };
-struct CompressBlockExec : public BlockExec{
-	CompressBlockExec() :
-			            cblk(nullptr),
-						tile(nullptr),
-						doRateControl(false),
-						distortion(0),
-						tiledp(nullptr),
-						compno(0),
-						resno(0),
-						precinctIndex(0),
-						cblkno(0),
-						inv_step_ht(0),
-						mct_norms(nullptr),
-	#ifdef DEBUG_LOSSLESS_T1
-		unencodedData(nullptr),
-	#endif
-					mct_numcomps(0)
+struct CompressBlockExec : public BlockExec
+{
+	CompressBlockExec()
+		: cblk(nullptr), tile(nullptr), doRateControl(false), distortion(0), tiledp(nullptr),
+		  compno(0), resno(0), precinctIndex(0), cblkno(0), inv_step_ht(0), mct_norms(nullptr),
+#ifdef DEBUG_LOSSLESS_T1
+		  unencodedData(nullptr),
+#endif
+		  mct_numcomps(0)
 	{}
-	bool open(T1Interface *t1){
+	bool open(T1Interface* t1)
+	{
 		return t1->compress(this);
 	}
-	void close(void){
-	}
-	CompressCodeblock *cblk;
-	Tile *tile;
+	void close(void) {}
+	CompressCodeblock* cblk;
+	Tile* tile;
 	bool doRateControl;
 	double distortion;
-	int32_t *tiledp;
+	int32_t* tiledp;
 	uint16_t compno;
 	uint8_t resno;
 	uint64_t precinctIndex;
 	uint64_t cblkno;
 	float inv_step_ht;
-	const double *mct_norms;
+	const double* mct_norms;
 #ifdef DEBUG_LOSSLESS_T1
 	int32_t* unencodedData;
 #endif
 	uint16_t mct_numcomps;
 };
 
-}
+} // namespace grk

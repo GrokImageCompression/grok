@@ -19,63 +19,69 @@
 #include <FileStreamIO.h>
 #include "common.h"
 
-
-FileStreamIO::FileStreamIO()  : m_fileHandle(nullptr)
-{
-}
+FileStreamIO::FileStreamIO() : m_fileHandle(nullptr) {}
 
 FileStreamIO::~FileStreamIO()
 {
 	close();
 }
 
-bool FileStreamIO::open(std::string fileName, std::string mode){
+bool FileStreamIO::open(std::string fileName, std::string mode)
+{
 	bool useStdio = grk::useStdio(fileName.c_str());
-	switch(mode[0]){
-	case 'r':
-		if (useStdio) {
-			if (!grk::grk_set_binary_mode(stdin))
-				return false;
-			m_fileHandle = stdin;
-		} else {
-			m_fileHandle = fopen(fileName.c_str(), "rb");
-			if (!m_fileHandle) {
-				spdlog::error("Failed to open {} for reading", fileName);
-				return false;
+	switch(mode[0])
+	{
+		case 'r':
+			if(useStdio)
+			{
+				if(!grk::grk_set_binary_mode(stdin))
+					return false;
+				m_fileHandle = stdin;
 			}
-		}
-		break;
-	case 'w':
-		if (!grk::grk_open_for_output(&m_fileHandle, fileName.c_str(),useStdio))
-			return false;
-		break;
+			else
+			{
+				m_fileHandle = fopen(fileName.c_str(), "rb");
+				if(!m_fileHandle)
+				{
+					spdlog::error("Failed to open {} for reading", fileName);
+					return false;
+				}
+			}
+			break;
+		case 'w':
+			if(!grk::grk_open_for_output(&m_fileHandle, fileName.c_str(), useStdio))
+				return false;
+			break;
 	}
 	m_fileName = fileName;
 
 	return true;
-
 }
-bool FileStreamIO::close(void){
+bool FileStreamIO::close(void)
+{
 	bool rc = true;
-	if (!grk::useStdio(m_fileName.c_str()) && m_fileHandle)
-		rc =  grk::safe_fclose(m_fileHandle);
+	if(!grk::useStdio(m_fileName.c_str()) && m_fileHandle)
+		rc = grk::safe_fclose(m_fileHandle);
 	m_fileHandle = nullptr;
 	return rc;
 }
-bool FileStreamIO::write(uint8_t *buf, size_t len){
+bool FileStreamIO::write(uint8_t* buf, size_t len)
+{
 	auto actual = fwrite(buf, 1, len, m_fileHandle);
-	if (actual < len)
-		spdlog::error("wrote fewer bytes {} than expected number of bytes {}.",actual, len);
+	if(actual < len)
+		spdlog::error("wrote fewer bytes {} than expected number of bytes {}.", actual, len);
 
 	return actual == len;
 }
-bool FileStreamIO::read(uint8_t *buf, size_t len){
+bool FileStreamIO::read(uint8_t* buf, size_t len)
+{
 	auto actual = fread(buf, 1, len, m_fileHandle);
-	if (actual < len)
-		spdlog::error("read fewer bytes {} than expected number of bytes {}.",actual, len);
+	if(actual < len)
+		spdlog::error("read fewer bytes {} than expected number of bytes {}.", actual, len);
 
 	return actual == len;
 }
-bool FileStreamIO::seek(int64_t pos){
-	return  GRK_FSEEK(m_fileHandle, pos, SEEK_SET) == 0;
+bool FileStreamIO::seek(int64_t pos)
+{
+	return GRK_FSEEK(m_fileHandle, pos, SEEK_SET) == 0;
 }

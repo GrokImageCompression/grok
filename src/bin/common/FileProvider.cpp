@@ -16,36 +16,38 @@
 
 #include <FileProvider.h>
 
-
-namespace grk {
-
-FileProvider::FileProvider(std::string directoryPath) : dir(nullptr) {
+namespace grk
+{
+FileProvider::FileProvider(std::string directoryPath) : dir(nullptr)
+{
 	dir = opendir(directoryPath.c_str());
-	if (!dir)
+	if(!dir)
 		spdlog::error("Could not open Folder {}", directoryPath);
 }
 
-FileProvider::~FileProvider() {
-	if (dir)
+FileProvider::~FileProvider()
+{
+	if(dir)
 		closedir(dir);
 }
-bool FileProvider::next(std::string &res){
-	if (!dir)
+bool FileProvider::next(std::string& res)
+{
+	if(!dir)
 		return false;
 
-	dirent *content;
-	while ((content = readdir(dir)) != nullptr) {
-		if (strcmp(".", content->d_name) == 0
-				|| strcmp("..", content->d_name) == 0)
+	dirent* content;
+	while((content = readdir(dir)) != nullptr)
+	{
+		if(strcmp(".", content->d_name) == 0 || strcmp("..", content->d_name) == 0)
 			continue;
-		res =  content->d_name;
+		res = content->d_name;
 		return true;
 	}
-	if (dir)
+	if(dir)
 		closedir(dir);
 	dir = nullptr;
 
 	return false;
 }
 
-}
+} // namespace grk

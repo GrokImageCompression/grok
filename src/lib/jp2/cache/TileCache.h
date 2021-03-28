@@ -18,41 +18,42 @@
 
 #include <map>
 
-namespace grk {
-
+namespace grk
+{
 struct TileProcessor;
 class GrkImage;
 
 #include "GrkImage.h"
 
-struct TileCacheEntry{
-	explicit TileCacheEntry(TileProcessor *p);
+struct TileCacheEntry
+{
+	explicit TileCacheEntry(TileProcessor* p);
 	TileCacheEntry();
 	~TileCacheEntry();
 
 	TileProcessor* processor;
 };
 
-class TileCache {
-public:
+class TileCache
+{
+  public:
 	TileCache(GRK_TILE_CACHE_STRATEGY strategy);
 	TileCache(void);
 	virtual ~TileCache();
 
 	bool empty(void);
 	void setStrategy(GRK_TILE_CACHE_STRATEGY strategy);
-	TileCacheEntry*  put(uint16_t tileIndex, TileProcessor *processor);
+	TileCacheEntry* put(uint16_t tileIndex, TileProcessor* processor);
 	TileCacheEntry* get(uint16_t tileIndex);
 	GrkImage* getComposite(void);
 	std::vector<GrkImage*> getAllImages(void);
 	std::vector<GrkImage*> getTileImages(void);
-private:
+
+  private:
 	// each component is sub-sampled and resolution-reduced
-	GrkImage *tileComposite;
+	GrkImage* tileComposite;
 	std::map<uint32_t, TileCacheEntry*> m_cache;
 	GRK_TILE_CACHE_STRATEGY m_strategy;
 };
 
-}
-
-
+} // namespace grk

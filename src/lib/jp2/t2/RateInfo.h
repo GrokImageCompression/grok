@@ -16,20 +16,19 @@
  */
 
 #pragma once
-namespace grk {
-
-class RateInfo {
-public:
+namespace grk
+{
+class RateInfo
+{
+  public:
 	RateInfo();
-	void synch(CompressCodeblock *cblk);
+	void synch(CompressCodeblock* cblk);
 
 	uint16_t getMinimumThresh();
 
-private:
-
+  private:
 	uint16_t minimumSlope;
 	uint16_t maximumSlope;
-
 };
 
-}
+} // namespace grk

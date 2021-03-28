@@ -21,31 +21,17 @@
 #include "grk_includes.h"
 #include <string>
 
-namespace grk {
-
-FileFormat::FileFormat(void) :
-						m_validation_list(new std::vector<PROCEDURE_FUNC>()),
-						m_procedure_list(new std::vector<PROCEDURE_FUNC>()),
-						w(0),
-						h(0),
-						numcomps(0),
-						bpc(0),
-						C(0),
-						UnkC(0),
-						IPR(0),
-						meth(0),
-						approx(0),
-						enumcs(GRK_ENUM_CLRSPC_UNKNOWN),
-						precedence(0),
-						brand(0),
-						minversion(0),
-						numcl(0),
-						cl(nullptr),
-						comps(nullptr),
-						has_capture_resolution(false),
-						has_display_resolution(false),
-						numUuids(0) {
-	for (uint32_t i = 0; i < 2; ++i) {
+namespace grk
+{
+FileFormat::FileFormat(void)
+	: m_validation_list(new std::vector<PROCEDURE_FUNC>()),
+	  m_procedure_list(new std::vector<PROCEDURE_FUNC>()), w(0), h(0), numcomps(0), bpc(0), C(0),
+	  UnkC(0), IPR(0), meth(0), approx(0), enumcs(GRK_ENUM_CLRSPC_UNKNOWN), precedence(0), brand(0),
+	  minversion(0), numcl(0), cl(nullptr), comps(nullptr), has_capture_resolution(false),
+	  has_display_resolution(false), numUuids(0)
+{
+	for(uint32_t i = 0; i < 2; ++i)
+	{
 		capture_resolution[i] = 0;
 		display_resolution[i] = 0;
 	}
@@ -56,24 +42,26 @@ FileFormat::FileFormat(void) :
 	color.channel_definition = nullptr;
 	color.palette = nullptr;
 	color.has_colour_specification_box = false;
-
 }
-FileFormat::~FileFormat() {
+FileFormat::~FileFormat()
+{
 	delete[] comps;
 	grkFree(cl);
 	FileFormatDecompress::free_color(&color);
 	xml.dealloc();
-	for (uint32_t i = 0; i < numUuids; ++i)
+	for(uint32_t i = 0; i < numUuids; ++i)
 		(uuids + i)->dealloc();
 	delete m_validation_list;
 	delete m_procedure_list;
 }
 
-bool FileFormat::exec( std::vector<PROCEDURE_FUNC> *procs) {
+bool FileFormat::exec(std::vector<PROCEDURE_FUNC>* procs)
+{
 	bool result = true;
 	assert(procs);
 
-	for (auto it = procs->begin(); it != procs->end(); ++it) {
+	for(auto it = procs->begin(); it != procs->end(); ++it)
+	{
 		auto p = *it;
 		result = result && (p)();
 	}
@@ -82,4 +70,4 @@ bool FileFormat::exec( std::vector<PROCEDURE_FUNC> *procs) {
 	return result;
 }
 
-}
+} // namespace grk

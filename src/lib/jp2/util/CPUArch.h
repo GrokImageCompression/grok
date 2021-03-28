@@ -16,13 +16,13 @@
 
 #pragma once
 
-
 #include "grk_includes.h"
 
-namespace grk {
-
-class CPUArch {
-public:
+namespace grk
+{
+class CPUArch
+{
+  public:
 	static bool AVX2();
 	static bool AVX();
 	static bool SSE4_1();
@@ -30,8 +30,6 @@ public:
 	static bool SSE2();
 	static bool BMI1();
 	static bool BMI2();
-
 };
 
-}
-
+} // namespace grk

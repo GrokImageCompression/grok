@@ -20,12 +20,13 @@
 
 #include <string>
 
-class IFileIO {
-public:
+class IFileIO
+{
+  public:
 	virtual ~IFileIO() = default;
-	virtual bool open(std::string fileName, std::string mode)=0;
-	virtual bool close(void)=0;
-	virtual bool write(uint8_t *buf, size_t len)=0;
-	virtual bool read(uint8_t *buf, size_t len)=0;
-	virtual bool seek(int64_t pos)=0;
+	virtual bool open(std::string fileName, std::string mode) = 0;
+	virtual bool close(void) = 0;
+	virtual bool write(uint8_t* buf, size_t len) = 0;
+	virtual bool read(uint8_t* buf, size_t len) = 0;
+	virtual bool seek(int64_t pos) = 0;
 };

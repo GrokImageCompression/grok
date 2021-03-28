@@ -18,21 +18,22 @@
 #pragma once
 #include "T1Interface.h"
 
-namespace grk {
+namespace grk
+{
+namespace t1_part1
+{
+	class T1Part1 : public T1Interface
+	{
+	  public:
+		T1Part1(bool isCompressor, uint32_t maxCblkW, uint32_t maxCblkH);
+		virtual ~T1Part1();
 
-namespace t1_part1 {
+		bool compress(CompressBlockExec* block);
+		bool decompress(DecompressBlockExec* block);
 
-class T1Part1: public T1Interface {
-public:
-	T1Part1(bool isCompressor, uint32_t maxCblkW, uint32_t maxCblkH);
-	virtual ~T1Part1();
-
-	bool compress(CompressBlockExec *block);
-	bool decompress(DecompressBlockExec *block);
-
-private:
-	void preCompress(CompressBlockExec *block, Tile *tile, uint32_t &max);
-	T1 *t1;
-};
-}
-}
+	  private:
+		void preCompress(CompressBlockExec* block, Tile* tile, uint32_t& max);
+		T1* t1;
+	};
+} // namespace t1_part1
+} // namespace grk

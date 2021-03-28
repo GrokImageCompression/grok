@@ -16,15 +16,16 @@
  */
 
 #pragma once
-namespace grk {
-
-class RateControl {
-public:
-	static void convexHull(CodePass *pass, uint32_t numPasses);
+namespace grk
+{
+class RateControl
+{
+  public:
+	static void convexHull(CodePass* pass, uint32_t numPasses);
 	static uint16_t slopeToLog(double slope);
 	static double slopeFromLog(uint16_t logSlope);
-private:
 
+  private:
 };
 
-}
+} // namespace grk

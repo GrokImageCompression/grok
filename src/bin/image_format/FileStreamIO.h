@@ -20,19 +20,22 @@
 
 #include "IFileIO.h"
 
-class FileStreamIO : public IFileIO {
-public:
+class FileStreamIO : public IFileIO
+{
+  public:
 	FileStreamIO();
 	virtual ~FileStreamIO() override;
 	bool open(std::string fileName, std::string mode) override;
 	bool close(void) override;
-	bool write(uint8_t *buf, size_t len) override;
-	bool read(uint8_t *buf, size_t len) override;
+	bool write(uint8_t* buf, size_t len) override;
+	bool read(uint8_t* buf, size_t len) override;
 	bool seek(int64_t pos) override;
-	FILE* getFileStream(){ return m_fileHandle;}
+	FILE* getFileStream()
+	{
+		return m_fileHandle;
+	}
 
-private:
-	FILE *m_fileHandle;
+  private:
+	FILE* m_fileHandle;
 	std::string m_fileName;
 };
-

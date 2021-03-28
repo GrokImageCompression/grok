@@ -21,24 +21,24 @@
 
 #pragma once
 
-namespace grk {
-
+namespace grk
+{
 struct TileProcessor;
 class CodeStreamCompress;
 class CodeStreamDecompress;
 
-class SOTMarker {
-public:
-
+class SOTMarker
+{
+  public:
 	SOTMarker(void);
 
 	/**
 	 * Writes the SOT marker (Start of tile-part)
 	 *
 	 */
-	bool write(CodeStreamCompress *codeStream);
+	bool write(CodeStreamCompress* codeStream);
 
-	bool write_psot(CodeStreamCompress *codeStream,uint32_t tilePartBytesWritten);
+	bool write_psot(CodeStreamCompress* codeStream, uint32_t tilePartBytesWritten);
 
 	/**
 	 * Decompress a SOT marker (Start of tile-part)
@@ -47,31 +47,28 @@ public:
 	 * @param       header_size     the size of the data contained in the PPT marker.
 
 	 */
-	 bool read(CodeStreamDecompress *codeStream, uint8_t *p_header_data,
-			uint16_t header_size);
+	bool read(CodeStreamDecompress* codeStream, uint8_t* p_header_data, uint16_t header_size);
 
-	 /**
-	  * Reads values from a SOT marker (Start of tile-part)
-	  *
-	  * the j2k decompressor state is not affected. No side effects,
-	  *  no checks except for header_size.
-	  *
-	  * @param       p_header_data   the data contained in the SOT marker.
-	  * @param       header_size   the size of the data contained in the SOT marker.
-	  * @param       tile_no       Isot.
-	  * @param       p_tot_len       Psot.
-	  * @param       p_current_part  TPsot.
-	  * @param       p_num_parts     TNsot.
+	/**
+	 * Reads values from a SOT marker (Start of tile-part)
+	 *
+	 * the j2k decompressor state is not affected. No side effects,
+	 *  no checks except for header_size.
+	 *
+	 * @param       p_header_data   the data contained in the SOT marker.
+	 * @param       header_size   the size of the data contained in the SOT marker.
+	 * @param       tile_no       Isot.
+	 * @param       p_tot_len       Psot.
+	 * @param       p_current_part  TPsot.
+	 * @param       p_num_parts     TNsot.
 
-	  */
-	 bool get_sot_values(CodeStreamDecompress *codeStream,
-			 uint8_t *p_header_data, uint32_t header_size,
-	 		uint16_t *tile_no, uint32_t *p_tot_len, uint8_t *p_current_part,
-	 		uint8_t *p_num_parts);
-private:
-	 uint64_t m_psot_location;
+	 */
+	bool get_sot_values(CodeStreamDecompress* codeStream, uint8_t* p_header_data,
+						uint32_t header_size, uint16_t* tile_no, uint32_t* p_tot_len,
+						uint8_t* p_current_part, uint8_t* p_num_parts);
 
+  private:
+	uint64_t m_psot_location;
 };
 
 } /* namespace grk */
-

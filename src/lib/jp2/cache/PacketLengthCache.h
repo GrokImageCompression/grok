@@ -18,22 +18,23 @@
 #include <vector>
 #include <map>
 
-namespace grk {
-
-class PacketLengthCache {
-public:
-	PacketLengthCache(CodingParams *cp);
+namespace grk
+{
+class PacketLengthCache
+{
+  public:
+	PacketLengthCache(CodingParams* cp);
 	virtual ~PacketLengthCache();
-	PacketLengthMarkers* createMarkers(BufferedStream *strm);
+	PacketLengthMarkers* createMarkers(BufferedStream* strm);
 	PacketLengthMarkers* getMarkers(void);
 	void deleteMarkers(void);
 	PacketInfo* next(void);
 	void rewind(void);
 
-private:
-	PacketLengthMarkers *pltMarkers;
+  private:
+	PacketLengthMarkers* pltMarkers;
 	SequentialCache<PacketInfo> packetInfoCache;
-	CodingParams *m_cp;
+	CodingParams* m_cp;
 };
 
-}
+} // namespace grk

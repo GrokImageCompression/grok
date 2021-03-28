@@ -24,17 +24,16 @@
 #include "IBitIO.h"
 #include "IBufferedStream.h"
 
-namespace grk {
-
+namespace grk
+{
 /*
  Bit input/output
  */
-class BitIO: public IBitIO {
-
-public:
-
-	BitIO(uint8_t *bp, uint64_t len, bool isCompressor);
-	BitIO(IBufferedStream *stream, bool isCompressor);
+class BitIO : public IBitIO
+{
+  public:
+	BitIO(uint8_t* bp, uint64_t len, bool isCompressor);
+	BitIO(IBufferedStream* stream, bool isCompressor);
 
 	/*
 	 Number of bytes written.
@@ -52,7 +51,7 @@ public:
 	 Read bits
 	 @param n Number of bits to read
 	 */
-	void read(uint32_t *bits, uint32_t n);
+	void read(uint32_t* bits, uint32_t n);
 	/*
 	 Flush bits
 	 @return true if successful, returns false otherwise
@@ -63,19 +62,19 @@ public:
 	 */
 	void inalign();
 
-	void simulateOutput(bool doSimulate) {
+	void simulateOutput(bool doSimulate)
+	{
 		sim_out = doSimulate;
 	}
 
 	void putcommacode(int32_t n);
-	void getcommacode(uint32_t *n);
+	void getcommacode(uint32_t* n);
 	void putnumpasses(uint32_t n);
-	void getnumpasses(uint32_t *numpasses);
+	void getnumpasses(uint32_t* numpasses);
 
-private:
-
+  private:
 	/* pointer to the start of the buffer */
-	uint8_t *start;
+	uint8_t* start;
 
 	size_t offset;
 	size_t buf_len;
@@ -87,7 +86,7 @@ private:
 
 	bool sim_out;
 
-	IBufferedStream *stream;
+	IBufferedStream* stream;
 
 	bool read0xFF;
 
@@ -101,7 +100,7 @@ private:
 	 Read a bit
 	 @param bio BIO handle
 	 */
-	void getbit(uint32_t *bits, uint8_t pos);
+	void getbit(uint32_t* bits, uint8_t pos);
 	/*
 	 Write a byte
 	 @param bio BIO handle
@@ -120,8 +119,6 @@ private:
 	 @param bio BIO handle
 	 */
 	void bytein();
-
 };
 
-}
-
+} // namespace grk

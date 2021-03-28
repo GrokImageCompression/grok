@@ -19,29 +19,28 @@
 
 #include <thread>
 
-namespace grk {
-
-class T1CompressScheduler {
-public:
-	T1CompressScheduler(Tile *tile, bool needsRateControl);
+namespace grk
+{
+class T1CompressScheduler
+{
+  public:
+	T1CompressScheduler(Tile* tile, bool needsRateControl);
 	~T1CompressScheduler();
-	void compress(std::vector<CompressBlockExec*> *blocks);
+	void compress(std::vector<CompressBlockExec*>* blocks);
 
-	void scheduleCompress(TileCodingParams *tcp,
-						const double *mct_norms,
-						uint16_t mct_numcomps);
-private:
+	void scheduleCompress(TileCodingParams* tcp, const double* mct_norms, uint16_t mct_numcomps);
+
+  private:
 	bool compress(size_t threadId, uint64_t maxBlocks);
-	void compress(T1Interface *impl, CompressBlockExec *block);
+	void compress(T1Interface* impl, CompressBlockExec* block);
 
-	Tile *tile;
+	Tile* tile;
 	std::vector<T1Interface*> t1Implementations;
 	mutable std::mutex distortion_mutex;
 	bool needsRateControl;
 	mutable std::mutex block_mutex;
 	CompressBlockExec** encodeBlocks;
 	std::atomic<int64_t> blockCount;
-
 };
 
-}
+} // namespace grk

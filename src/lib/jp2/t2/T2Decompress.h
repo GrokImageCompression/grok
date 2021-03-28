@@ -18,16 +18,16 @@
 
 #pragma once
 
-namespace grk {
-
+namespace grk
+{
 struct TileProcessor;
-
 
 /**
  Tier-2 decoding
  */
-struct T2Decompress {
-	T2Decompress(TileProcessor *tileProc);
+struct T2Decompress
+{
+	T2Decompress(TileProcessor* tileProc);
 
 	/**
 	 Decompress the packets of a tile from a source buffer
@@ -35,11 +35,10 @@ struct T2Decompress {
 	 @param srcBuf     source buffer
 	 @return true if successful
 	 */
-	bool decompressPackets(uint16_t tileno,
-							SparseBuffer *srcBuf,
-							bool *truncated);
-private:
-	TileProcessor *tileProcessor;
+	bool decompressPackets(uint16_t tileno, SparseBuffer* srcBuf, bool* truncated);
+
+  private:
+	TileProcessor* tileProcessor;
 	/**
 	 Decompress a packet of a tile from a source buffer
 	 @param tcp 		Tile coding parameters
@@ -47,27 +46,13 @@ private:
 	 @param srcBuf 	source buffer
 	 @return  true if packet was successfully decompressed
 	 */
-	bool decompressPacket(TileCodingParams *tcp,
-							const PacketIter *pi,
-							SparseBuffer *srcBuf,
-							PacketInfo *packetInfo,
-							bool skipData);
-	bool processPacket(TileCodingParams *tcp,
-							PacketIter *pi,
-							SparseBuffer *srcBuf);
-	bool readPacketHeader(TileCodingParams *p_tcp,
-							const PacketIter *p_pi,
-							bool *dataPresent,
-							SparseBuffer *srcBuf,
-							uint32_t *dataRead,
-							uint32_t *packetDataBytes);
-	bool readPacketData(Resolution *l_res,
-							const PacketIter *p_pi,
-							SparseBuffer *srcBuf);
-	void initSegment(DecompressCodeblock *cblk,
-					uint32_t index,
-					uint8_t cblk_sty,
-					bool first);
+	bool decompressPacket(TileCodingParams* tcp, const PacketIter* pi, SparseBuffer* srcBuf,
+						  PacketInfo* packetInfo, bool skipData);
+	bool processPacket(TileCodingParams* tcp, PacketIter* pi, SparseBuffer* srcBuf);
+	bool readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p_pi, bool* dataPresent,
+						  SparseBuffer* srcBuf, uint32_t* dataRead, uint32_t* packetDataBytes);
+	bool readPacketData(Resolution* l_res, const PacketIter* p_pi, SparseBuffer* srcBuf);
+	void initSegment(DecompressCodeblock* cblk, uint32_t index, uint8_t cblk_sty, bool first);
 };
 
-}
+} // namespace grk

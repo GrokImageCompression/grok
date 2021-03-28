@@ -14,23 +14,22 @@
 
 #include "grk_includes.h"
 
-namespace grk {
-
+namespace grk
+{
 logger logger::m_logger;
 
-logger::logger() : m_error_data(nullptr),
-					m_warning_data(nullptr),
-					m_info_data(nullptr),
-					error_handler(nullptr),
-					warning_handler(nullptr),
-					info_handler(nullptr)
+logger::logger()
+	: m_error_data(nullptr), m_warning_data(nullptr), m_info_data(nullptr), error_handler(nullptr),
+	  warning_handler(nullptr), info_handler(nullptr)
 {}
 
-template <typename ... Args>
-void log(grk_msg_callback msg_handler, void *l_data, char const * const format, Args & ... args) noexcept
+template<typename... Args>
+void log(grk_msg_callback msg_handler, void* l_data, char const* const format,
+		 Args&... args) noexcept
 {
-    const int message_size = 512;
-	if ((format != nullptr)) {
+	const int message_size = 512;
+	if((format != nullptr))
+	{
 		char message[message_size];
 		memset(message, 0, message_size);
 		vsnprintf(message, message_size, format, args...);
@@ -38,24 +37,27 @@ void log(grk_msg_callback msg_handler, void *l_data, char const * const format, 
 	}
 }
 
-void GRK_INFO(const char *fmt,	...){
-	if (!logger::m_logger.info_handler)
+void GRK_INFO(const char* fmt, ...)
+{
+	if(!logger::m_logger.info_handler)
 		return;
 	va_list arg;
 	va_start(arg, fmt);
 	log(logger::m_logger.info_handler, logger::m_logger.m_info_data, fmt, arg);
 	va_end(arg);
 }
-void GRK_WARN(const char *fmt,	...){
-	if (!logger::m_logger.warning_handler)
+void GRK_WARN(const char* fmt, ...)
+{
+	if(!logger::m_logger.warning_handler)
 		return;
 	va_list arg;
 	va_start(arg, fmt);
 	log(logger::m_logger.warning_handler, logger::m_logger.m_warning_data, fmt, arg);
 	va_end(arg);
 }
-void GRK_ERROR(const char *fmt,...){
-	if (!logger::m_logger.error_handler)
+void GRK_ERROR(const char* fmt, ...)
+{
+	if(!logger::m_logger.error_handler)
 		return;
 	va_list arg;
 	va_start(arg, fmt);
@@ -63,4 +65,4 @@ void GRK_ERROR(const char *fmt,...){
 	va_end(arg);
 }
 
-}
+} // namespace grk

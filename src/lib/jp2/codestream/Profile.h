@@ -21,22 +21,24 @@
 
 #include "grk_includes.h"
 
-namespace grk {
-
+namespace grk
+{
 class GrkImage;
 
-class Profile {
-public:
-	static void initialise_4K_poc(grk_progression *POC, uint8_t numres);
-	static void set_cinema_parameters(grk_cparameters *parameters, GrkImage *image);
-	static bool is_cinema_compliant(GrkImage *image, uint16_t rsiz);
-	static void set_imf_parameters(grk_cparameters *parameters, GrkImage *image);
-	static bool is_imf_compliant(grk_cparameters *parameters, GrkImage *image);
-	static void set_broadcast_parameters(grk_cparameters *parameters);
-	static bool is_broadcast_compliant(grk_cparameters *parameters, GrkImage *image);
-private:
-static int get_imf_max_NL(grk_cparameters *parameters, GrkImage *image);
-static int get_broadcast_max_NL(grk_cparameters *parameters, GrkImage *image);
+class Profile
+{
+  public:
+	static void initialise_4K_poc(grk_progression* POC, uint8_t numres);
+	static void set_cinema_parameters(grk_cparameters* parameters, GrkImage* image);
+	static bool is_cinema_compliant(GrkImage* image, uint16_t rsiz);
+	static void set_imf_parameters(grk_cparameters* parameters, GrkImage* image);
+	static bool is_imf_compliant(grk_cparameters* parameters, GrkImage* image);
+	static void set_broadcast_parameters(grk_cparameters* parameters);
+	static bool is_broadcast_compliant(grk_cparameters* parameters, GrkImage* image);
+
+  private:
+	static int get_imf_max_NL(grk_cparameters* parameters, GrkImage* image);
+	static int get_broadcast_max_NL(grk_cparameters* parameters, GrkImage* image);
 };
 
-}
+} // namespace grk

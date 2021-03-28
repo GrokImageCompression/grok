@@ -12,18 +12,14 @@
  *
  *    You should have received a copy of the GNU Affero General Public License
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
+ */
 
 #include "grk_includes.h"
 
-namespace grk {
+namespace grk
+{
+CodeStreamTranscode::CodeStreamTranscode() {}
 
-CodeStreamTranscode::CodeStreamTranscode() {
+CodeStreamTranscode::~CodeStreamTranscode() {}
 
-}
-
-CodeStreamTranscode::~CodeStreamTranscode() {
-
-}
-
-}
+} // namespace grk

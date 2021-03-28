@@ -17,17 +17,13 @@
 
 #pragma once
 
-namespace grk {
-
-
-class PacketManager {
-public:
-	PacketManager(bool compression,
-				GrkImage *img,
-				CodingParams *cparams,
-				uint16_t tilenumber,
-				J2K_T2_MODE t2_mode,
-				TileProcessor *tileProc);
+namespace grk
+{
+class PacketManager
+{
+  public:
+	PacketManager(bool compression, GrkImage* img, CodingParams* cparams, uint16_t tilenumber,
+				  J2K_T2_MODE t2_mode, TileProcessor* tileProc);
 	virtual ~PacketManager();
 	PacketIter* getPacketIter(uint32_t poc) const;
 	/**
@@ -36,9 +32,7 @@ public:
 	 @param first_poc_tile_part true for first POC tile part
 	 @param tppos 	The position of the tile part flag in the progression order
 	 */
-	void enableTilePartGeneration(uint32_t pino,
-								bool first_poc_tile_part,
-								uint32_t tppos);
+	void enableTilePartGeneration(uint32_t pino, bool first_poc_tile_part, uint32_t tppos);
 	/**
 	 * Updates the compressing parameters of the codec.
 	 *
@@ -46,14 +40,13 @@ public:
 	 * @param	p_cp		the coding parameters.
 	 * @param	tile_no	index of the tile being encoded.
 	 */
-	static void updateCompressParams(const GrkImage *p_image,
-										CodingParams *p_cp,
-										uint16_t tile_no);
+	static void updateCompressParams(const GrkImage* p_image, CodingParams* p_cp, uint16_t tile_no);
 
 	IncludeTracker* getIncludeTracker(void);
 	uint32_t getNumProgressions(void);
-	TileProcessor *getTileProcessor(void);
-private:
+	TileProcessor* getTileProcessor(void);
+
+  private:
 	/**
 	 * Updates the coding parameters
 	 *
@@ -63,24 +56,22 @@ private:
 	 * @param	tileBounds tile bounds
 	 * @param	max_precincts	the maximum number of precincts for all the bands of the tile
 	 * @param	max_res	the maximum number of resolutions for all the poc inside the tile.
-	 * @param	dx_min		the minimum dx of all the components of all the resolutions for the tile.
-	 * @param	dy_min		the minimum dy of all the components of all the resolutions for the tile.
+	 * @param	dx_min		the minimum dx of all the components of all the resolutions for the
+	 * tile.
+	 * @param	dy_min		the minimum dy of all the components of all the resolutions for the
+	 * tile.
 	 */
-	static void updateCompressTcpProgressions(CodingParams *p_cp,
-												uint16_t num_comps,
-												uint16_t tileno,
-												grkRectU32 tileBounds,
-												uint64_t max_precincts,
-												uint8_t max_res,
-												uint32_t dx_min,
-												uint32_t dy_min,
-												bool poc);
+	static void updateCompressTcpProgressions(CodingParams* p_cp, uint16_t num_comps,
+											  uint16_t tileno, grkRectU32 tileBounds,
+											  uint64_t max_precincts, uint8_t max_res,
+											  uint32_t dx_min, uint32_t dy_min, bool poc);
 	/**
 	 * Get the compression parameters needed to update the coding parameters and all the pocs.
-	 * The precinct widths, heights, dx and dy for each component at each resolution will be stored as well.
-	 * the last parameter of the function should be an array of pointers of size nb components, each pointer leading
-	 * to an area of size 4 * max_res. The data is stored inside this area with the following pattern :
-	 * dx_compi_res0 , dy_compi_res0 , w_compi_res0, h_compi_res0 , dx_compi_res1 , dy_compi_res1 , w_compi_res1, h_compi_res1 , ...
+	 * The precinct widths, heights, dx and dy for each component at each resolution will be stored
+	 * as well. the last parameter of the function should be an array of pointers of size nb
+	 * components, each pointer leading to an area of size 4 * max_res. The data is stored inside
+	 * this area with the following pattern : dx_compi_res0 , dy_compi_res0 , w_compi_res0,
+	 * h_compi_res0 , dx_compi_res1 , dy_compi_res1 , w_compi_res1, h_compi_res1 , ...
 	 *
 	 * @param	p_image		the image being encoded.
 	 * @param	p_cp		the coding parameters.
@@ -92,33 +83,23 @@ private:
 	 * @param	dy_min		minimum dy of all the components of all the resolutions for the tile.
 	 * @param	precinctByComponent	stores log2 precinct grid dimensions by component
 	 */
-	static void getParams(const GrkImage *image,
-							const CodingParams *p_cp,
-							uint16_t tileno,
-							grkRectU32 *tileBounds,
-							uint32_t *dx_min,
-							uint32_t *dy_min,
-							uint64_t *precincts,
-							uint64_t *max_precincts,
-							uint8_t *max_res,
-							uint32_t **precinctByComponent);
+	static void getParams(const GrkImage* image, const CodingParams* p_cp, uint16_t tileno,
+						  grkRectU32* tileBounds, uint32_t* dx_min, uint32_t* dy_min,
+						  uint64_t* precincts, uint64_t* max_precincts, uint8_t* max_res,
+						  uint32_t** precinctByComponent);
 	/**
-	* Check if there is a remaining valid progression order
+	 * Check if there is a remaining valid progression order
 	 */
-	bool checkForRemainingValidProgression(int32_t prog,
-											uint32_t pino,
-											const char *progString);
+	bool checkForRemainingValidProgression(int32_t prog, uint32_t pino, const char* progString);
 
-	void init(TileCodingParams *tcp,
-				uint8_t max_res,
-				uint64_t max_precincts);
-	GrkImage *image;
-	CodingParams *cp;
+	void init(TileCodingParams* tcp, uint8_t max_res, uint64_t max_precincts);
+	GrkImage* image;
+	CodingParams* cp;
 	uint16_t tileno;
-	IncludeTracker *includeTracker;
-	PacketIter *m_pi;
+	IncludeTracker* includeTracker;
+	PacketIter* m_pi;
 	J2K_T2_MODE t2Mode;
-	TileProcessor *tileProcessor;
+	TileProcessor* tileProcessor;
 };
 
-}
+} // namespace grk

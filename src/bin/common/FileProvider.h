@@ -18,15 +18,17 @@
 
 #include "common.h"
 
-namespace grk {
-
-class FileProvider {
-public:
+namespace grk
+{
+class FileProvider
+{
+  public:
 	FileProvider(std::string directoryPath);
 	virtual ~FileProvider();
-	bool next(std::string &res);
-private:
-	DIR *dir;
+	bool next(std::string& res);
+
+  private:
+	DIR* dir;
 };
 
-}
+} // namespace grk

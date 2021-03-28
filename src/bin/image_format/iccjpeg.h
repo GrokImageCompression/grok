@@ -16,7 +16,7 @@
  * for details.
  */
 
-#include <stdio.h>		/* needed to define "FILE", "nullptr" */
+#include <stdio.h> /* needed to define "FILE", "nullptr" */
 #include "jpeglib.h"
 
 /*
@@ -27,10 +27,8 @@
  * SOI and JFIF or Adobe markers, but before all else.)
  */
 
-extern void write_icc_profile JPP((j_compress_ptr cinfo,
-				   const JOCTET *icc_data_ptr,
-				   unsigned int icc_data_len));
-
+extern void write_icc_profile JPP((j_compress_ptr cinfo, const JOCTET* icc_data_ptr,
+								   unsigned int icc_data_len));
 
 /*
  * Reading a JPEG file that may contain an ICC profile requires two steps:
@@ -43,13 +41,11 @@ extern void write_icc_profile JPP((j_compress_ptr cinfo,
  *    whether there was a profile and obtain it if so.
  */
 
-
 /*
  * Prepare for reading an ICC profile
  */
 
 extern void setup_read_icc_profile JPP((j_decompress_ptr cinfo));
-
 
 /*
  * See if there was an ICC profile in the JPEG file being read;
@@ -67,7 +63,5 @@ extern void setup_read_icc_profile JPP((j_decompress_ptr cinfo));
  * will prefer to have the data stick around after decompression finishes.)
  */
 
-extern bool read_icc_profile JPP((j_decompress_ptr cinfo,
-				     JOCTET **icc_data_ptr,
-				     unsigned int *icc_data_len));
-
+extern bool read_icc_profile JPP((j_decompress_ptr cinfo, JOCTET** icc_data_ptr,
+								  unsigned int* icc_data_len));

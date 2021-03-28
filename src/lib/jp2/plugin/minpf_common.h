@@ -21,12 +21,11 @@
 #include <cstdint>
 
 #ifdef _WIN32
-#define MINPF_FILE_SEPARATOR   "\\"
+#define MINPF_FILE_SEPARATOR "\\"
 #else
-#define MINPF_FILE_SEPARATOR   "/"
+#define MINPF_FILE_SEPARATOR "/"
 #endif
 
 #define MINPF_MAX_PATH_LEN 4096
 
 #include <plugin/minpf_plugin.h>
-

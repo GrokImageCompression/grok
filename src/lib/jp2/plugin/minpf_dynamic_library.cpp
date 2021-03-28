@@ -21,21 +21,23 @@
 
 #ifdef _WIN32
 #include <string>
-//Returns the last Win32 error, in string format. Returns an empty string if there is no error.
+// Returns the last Win32 error, in string format. Returns an empty string if there is no error.
 static std::string GetLastErrorAsString()
 {
-	//Get the error message, if any.
+	// Get the error message, if any.
 	DWORD errorMessageID = ::GetLastError();
-	if (errorMessageID == 0)
-		return std::string(); //No error message has been recorded
+	if(errorMessageID == 0)
+		return std::string(); // No error message has been recorded
 
 	LPSTR messageBuffer = nullptr;
-	size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-		nullptr, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
+	size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+									 FORMAT_MESSAGE_IGNORE_INSERTS,
+								 nullptr, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+								 (LPSTR)&messageBuffer, 0, nullptr);
 
 	std::string message(messageBuffer, size);
 
-	//Free the buffer.
+	// Free the buffer.
 	LocalFree(messageBuffer);
 
 	return message;
@@ -43,21 +45,24 @@ static std::string GetLastErrorAsString()
 
 #endif
 
-namespace grk {
-
-bool minpf_get_full_path(const char *path, void *addr, dynamic_handle_t handle,
-		char *fullPath, size_t fullPathLen) {
+namespace grk
+{
+bool minpf_get_full_path(const char* path, void* addr, dynamic_handle_t handle, char* fullPath,
+						 size_t fullPathLen)
+{
 #ifdef GRK_BUILD_PLUGIN_LOADER
-	if (!path || !addr || !fullPath || !fullPathLen) {
+	if(!path || !addr || !fullPath || !fullPathLen)
+	{
 		return false;
 	}
 
 #ifdef _WIN32
 	auto dwLength = GetModuleFileName(handle, fullPath, (DWORD)fullPathLen);
-	if (dwLength == 0) {
+	if(dwLength == 0)
+	{
 		auto error = GetLastErrorAsString();
 		error = "GetModuleFileName failed: " + error + "\n";
-		fprintf(stderr, "%s",error.c_str());
+		fprintf(stderr, "%s", error.c_str());
 		return false;
 	}
 	return true;
@@ -65,7 +70,8 @@ bool minpf_get_full_path(const char *path, void *addr, dynamic_handle_t handle,
 	(void)handle;
 	Dl_info dl_info;
 	memset(&dl_info, 0, sizeof(dl_info));
-	if (dladdr(addr, &dl_info) && strlen(dl_info.dli_fname) < fullPathLen) {
+	if(dladdr(addr, &dl_info) && strlen(dl_info.dli_fname) < fullPathLen)
+	{
 		strcpy(fullPath, dl_info.dli_fname);
 		return true;
 	}
@@ -75,22 +81,23 @@ bool minpf_get_full_path(const char *path, void *addr, dynamic_handle_t handle,
 #endif
 
 #else
-	(void) path;
-	(void) addr;
-	(void) handle;
-	(void) fullPath;
-	(void) fullPathLen;
+	(void)path;
+	(void)addr;
+	(void)handle;
+	(void)fullPath;
+	(void)fullPathLen;
 	return false;
 #endif
 }
 
-bool minpf_unload_dynamic_library(minpf_dynamic_library *library) {
+bool minpf_unload_dynamic_library(minpf_dynamic_library* library)
+{
 #ifdef GRK_BUILD_PLUGIN_LOADER
-	if (!library)
+	if(!library)
 		return true;
 	bool rc = false;
 #ifdef _WIN32
-	rc =  FreeLibrary(library->handle) ? true : false;
+	rc = FreeLibrary(library->handle) ? true : false;
 #else
 	dlclose(library->handle);
 	rc = true;
@@ -98,79 +105,81 @@ bool minpf_unload_dynamic_library(minpf_dynamic_library *library) {
 	free(library);
 	return rc;
 #else
-	(void) library;
+	(void)library;
 	return false;
 #endif
 }
 
-minpf_dynamic_library* minpf_load_dynamic_library(const char *path,
-		char *error) {
-	(void) error;
+minpf_dynamic_library* minpf_load_dynamic_library(const char* path, char* error)
+{
+	(void)error;
 #ifdef GRK_BUILD_PLUGIN_LOADER
-    minpf_dynamic_library* lib = nullptr;
+	minpf_dynamic_library* lib = nullptr;
 	dynamic_handle_t handle = nullptr;
 
-    if (!path)
-        return nullptr;
+	if(!path)
+		return nullptr;
 
 #ifdef _WIN32
-    handle = LoadLibrary(path);
-    if (handle == nullptr) {
-		//TODO report error
-        return nullptr;
-    }
+	handle = LoadLibrary(path);
+	if(handle == nullptr)
+	{
+		// TODO report error
+		return nullptr;
+	}
 #else
-    handle = dlopen(path, RTLD_NOW);
-    if (!handle) {
-        //TODO report error
-        return nullptr;
-    }
+	handle = dlopen(path, RTLD_NOW);
+	if(!handle)
+	{
+		// TODO report error
+		return nullptr;
+	}
 
 #endif
 
-    lib = (minpf_dynamic_library*)calloc(1, sizeof(minpf_dynamic_library));
-	if (!lib) {
+	lib = (minpf_dynamic_library*)calloc(1, sizeof(minpf_dynamic_library));
+	if(!lib)
+	{
 #ifdef _WIN32
 		FreeLibrary(handle);
 #else
 		dlclose(handle);
 #endif
 		return nullptr;
-
 	}
 	strcpy(lib->path, path);
-    lib->handle = handle;
-    return lib;
+	lib->handle = handle;
+	return lib;
 #else
-	(void) path;
+	(void)path;
 	return nullptr;
 #endif
 }
 
-void* minpf_get_symbol(minpf_dynamic_library *library, const char *symbol) {
+void* minpf_get_symbol(minpf_dynamic_library* library, const char* symbol)
+{
 #ifdef GRK_BUILD_PLUGIN_LOADER
-    if (!library || !library->handle)
-        return nullptr;
+	if(!library || !library->handle)
+		return nullptr;
 
-    void* rc = nullptr;
+	void* rc = nullptr;
 
 #ifdef _WIN32
-    rc =  GetProcAddress((HMODULE)library->handle, symbol);
-    if (!rc) {
-
-        int err = GetLastError();
-    }
+	rc = GetProcAddress((HMODULE)library->handle, symbol);
+	if(!rc)
+	{
+		int err = GetLastError();
+	}
 #else
-    rc =  dlsym(library->handle, symbol);
+	rc = dlsym(library->handle, symbol);
 #endif
 
-    return rc;
+	return rc;
 #else
-	(void) library;
-	(void) symbol;
+	(void)library;
+	(void)symbol;
 	return nullptr;
 #endif
-
 }
 
-}
+} // namespace grk

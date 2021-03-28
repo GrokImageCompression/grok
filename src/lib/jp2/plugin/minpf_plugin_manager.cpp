@@ -25,53 +25,53 @@
 #include <dirent.h>
 #endif /* _WIN32 */
 
-namespace grk {
+namespace grk
+{
+minpf_plugin_manager* managerInstance;
 
-minpf_plugin_manager *managerInstance;
+static int32_t minpf_post_load_plugin(const char* pluginPath, minpf_post_load_func initFunc);
+static const char* get_filename_ext(const char* filename);
+static int32_t minpf_load(const char* path);
 
-static int32_t minpf_post_load_plugin(const char *pluginPath,
-		minpf_post_load_func initFunc);
-static const char* get_filename_ext(const char *filename);
-static int32_t minpf_load(const char *path);
-
-static uint32_t minpf_is_valid_plugin(const char *id,
-		const minpf_register_params *params) {
-	if (!id || id[0] == '\0')
+static uint32_t minpf_is_valid_plugin(const char* id, const minpf_register_params* params)
+{
+	if(!id || id[0] == '\0')
 		return 0;
-	if (!params || !params->createFunc || !params->destroyFunc)
+	if(!params || !params->createFunc || !params->destroyFunc)
 		return 0;
 
 	return 1;
 }
 
-int32_t minpf_register_object(const char *id,
-		const minpf_register_params *params) {
+int32_t minpf_register_object(const char* id, const minpf_register_params* params)
+{
 	minpf_plugin_api_version v;
-	minpf_plugin_manager *pluginManager = minpf_get_plugin_manager();
-	minpf_register_params *registered_params = nullptr;
+	minpf_plugin_manager* pluginManager = minpf_get_plugin_manager();
+	minpf_register_params* registered_params = nullptr;
 
-	if (!id || id[0] == '\0' || !params)
+	if(!id || id[0] == '\0' || !params)
 		return -1;
 
-	if (!minpf_is_valid_plugin(id, params))
+	if(!minpf_is_valid_plugin(id, params))
 		return -1;
 
 	v = pluginManager->platformServices.version;
-	if (v.major != params->version.major)
+	if(v.major != params->version.major)
 		return -1;
 
 	// check if plugin is already registered
-	if (pluginManager->plugins->find(id) != pluginManager->plugins->end()) {
+	if(pluginManager->plugins->find(id) != pluginManager->plugins->end())
+	{
 		delete pluginManager->plugins->operator[](id);
 	}
 	registered_params = new minpf_register_params();
 	*registered_params = *params;
 	pluginManager->plugins->operator[](id) = registered_params;
 	return 0;
-
 }
 
-const char* minpf_get_dynamic_library_extension(void) {
+const char* minpf_get_dynamic_library_extension(void)
+{
 #ifdef _WIN32
 	return "dll";
 #else
@@ -83,8 +83,9 @@ const char* minpf_get_dynamic_library_extension(void) {
 #endif /* _WIN32 */
 }
 
-void minpf_initialize_plugin_manager(minpf_plugin_manager *manager) {
-	if (!manager)
+void minpf_initialize_plugin_manager(minpf_plugin_manager* manager)
+{
+	if(!manager)
 		return;
 	manager->platformServices.version.major = 1;
 	manager->platformServices.version.minor = 0;
@@ -92,37 +93,40 @@ void minpf_initialize_plugin_manager(minpf_plugin_manager *manager) {
 	manager->platformServices.registerObject = minpf_register_object;
 
 	manager->plugins = new std::map<const char*, minpf_register_params*>();
-
 }
 
-minpf_plugin_manager* minpf_get_plugin_manager(void) {
-	if (!managerInstance) {
-		managerInstance = (minpf_plugin_manager*) calloc(1,
-				sizeof(minpf_plugin_manager));
-		if (!managerInstance)
+minpf_plugin_manager* minpf_get_plugin_manager(void)
+{
+	if(!managerInstance)
+	{
+		managerInstance = (minpf_plugin_manager*)calloc(1, sizeof(minpf_plugin_manager));
+		if(!managerInstance)
 			return nullptr;
 		minpf_initialize_plugin_manager(managerInstance);
 	}
 	return managerInstance;
-
 }
 
-void minpf_cleanup_plugin_manager(void) {
-	if (managerInstance) {
+void minpf_cleanup_plugin_manager(void)
+{
+	if(managerInstance)
+	{
 		size_t i = 0;
 
-		for (i = 0; i < managerInstance->num_exit_functions; ++i)
+		for(i = 0; i < managerInstance->num_exit_functions; ++i)
 			managerInstance->exit_functions[i]();
 
-		for (i = 0; i < managerInstance->num_libraries; ++i) {
-			if (managerInstance->dynamic_libraries[i]) {
-				minpf_unload_dynamic_library(
-						managerInstance->dynamic_libraries[i]);
+		for(i = 0; i < managerInstance->num_libraries; ++i)
+		{
+			if(managerInstance->dynamic_libraries[i])
+			{
+				minpf_unload_dynamic_library(managerInstance->dynamic_libraries[i]);
 			}
 		}
 
-		for (auto plug = managerInstance->plugins->begin();
-				plug != managerInstance->plugins->end(); ++plug) {
+		for(auto plug = managerInstance->plugins->begin(); plug != managerInstance->plugins->end();
+			++plug)
+		{
 			delete plug->second;
 		}
 		delete managerInstance->plugins;
@@ -131,45 +135,50 @@ void minpf_cleanup_plugin_manager(void) {
 	managerInstance = nullptr;
 }
 
-static int32_t minpf_load(const char *path) {
+static int32_t minpf_load(const char* path)
+{
 	minpf_post_load_func postLoadFunc = nullptr;
-	minpf_dynamic_library *lib = nullptr;
+	minpf_dynamic_library* lib = nullptr;
 
-	minpf_plugin_manager *mgr = minpf_get_plugin_manager();
-	if (!mgr || mgr->num_libraries == MINPF_MAX_PLUGINS) {
+	minpf_plugin_manager* mgr = minpf_get_plugin_manager();
+	if(!mgr || mgr->num_libraries == MINPF_MAX_PLUGINS)
+	{
 		return -1;
 	}
 	lib = minpf_load_dynamic_library(path, nullptr);
-	if (!lib) {
+	if(!lib)
+	{
 		return -1;
 	}
-	postLoadFunc = (minpf_post_load_func) (minpf_get_symbol(lib,
-			"minpf_post_load_plugin"));
-	if (!postLoadFunc) {
+	postLoadFunc = (minpf_post_load_func)(minpf_get_symbol(lib, "minpf_post_load_plugin"));
+	if(!postLoadFunc)
+	{
 		minpf_unload_dynamic_library(lib);
 		return -1;
 	}
 
 	char fullPath[4096];
-	if (minpf_get_full_path(path, (void*) postLoadFunc, lib->handle, fullPath,
-			4096)) {
-	} else {
+	if(minpf_get_full_path(path, (void*)postLoadFunc, lib->handle, fullPath, 4096))
+	{
+	}
+	else
+	{
 		minpf_unload_dynamic_library(lib);
 		return -1;
 	}
 
 	mgr->dynamic_libraries[mgr->num_libraries++] = lib;
 	auto rc = minpf_post_load_plugin(fullPath, postLoadFunc);
-	if (rc)
+	if(rc)
 		fprintf(stderr, "Plugin %s failed to initialize \n", fullPath);
 	return rc;
-
 }
 
-int32_t minpf_load_from_path(const char *path, minpf_invoke_service_func func) {
-	minpf_plugin_manager *mgr = minpf_get_plugin_manager();
+int32_t minpf_load_from_path(const char* path, minpf_invoke_service_func func)
+{
+	minpf_plugin_manager* mgr = minpf_get_plugin_manager();
 
-	if (!path || path[0] == '\0') // Check that the path is non-empty.
+	if(!path || path[0] == '\0') // Check that the path is non-empty.
 		return -1;
 
 	mgr->platformServices.invokeService = func;
@@ -177,39 +186,38 @@ int32_t minpf_load_from_path(const char *path, minpf_invoke_service_func func) {
 	return minpf_load(path);
 }
 
-int32_t minpf_load_from_dir(const char *directory_path,
-		minpf_invoke_service_func func) {
-	DIR *dir;
-	struct dirent *content;
+int32_t minpf_load_from_dir(const char* directory_path, minpf_invoke_service_func func)
+{
+	DIR* dir;
+	struct dirent* content;
 	char libraryPath[MINPF_MAX_PATH_LEN];
-	minpf_plugin_manager *mgr = minpf_get_plugin_manager();
+	minpf_plugin_manager* mgr = minpf_get_plugin_manager();
 
-	if (!directory_path || directory_path[0] == '\0') // Check that the path is non-empty.
+	if(!directory_path || directory_path[0] == '\0') // Check that the path is non-empty.
 		return -1;
 
 	mgr->platformServices.invokeService = func;
 
 	dir = opendir(directory_path);
-	if (!dir) {
+	if(!dir)
+	{
 		fprintf(stderr, "Unable to open folder %s\n", directory_path);
 		return -1;
 	}
 
 	int32_t rc = -1;
-	while ((content = readdir(dir)) != nullptr) {
-
-		if (strcmp(".", content->d_name) == 0
-				|| strcmp("..", content->d_name) == 0)
+	while((content = readdir(dir)) != nullptr)
+	{
+		if(strcmp(".", content->d_name) == 0 || strcmp("..", content->d_name) == 0)
 			continue;
 
-		//ignore files with incorrect extensions
-		if (strcmp(get_filename_ext(content->d_name),
-				minpf_get_dynamic_library_extension()) != 0)
+		// ignore files with incorrect extensions
+		if(strcmp(get_filename_ext(content->d_name), minpf_get_dynamic_library_extension()) != 0)
 			continue;
 		strcpy(libraryPath, directory_path);
 		strcat(libraryPath, MINPF_FILE_SEPARATOR);
 		strcat(libraryPath, content->d_name);
-		if (minpf_load(libraryPath) != 0)
+		if(minpf_load(libraryPath) != 0)
 			continue;
 		rc = 0;
 	}
@@ -217,23 +225,24 @@ int32_t minpf_load_from_dir(const char *directory_path,
 	return rc || dir_rc;
 }
 
-static int32_t minpf_post_load_plugin(const char *pluginPath,
-		minpf_post_load_func postLoadFunc) {
-	minpf_plugin_manager *mgr = minpf_get_plugin_manager();
+static int32_t minpf_post_load_plugin(const char* pluginPath, minpf_post_load_func postLoadFunc)
+{
+	minpf_plugin_manager* mgr = minpf_get_plugin_manager();
 
 	minpf_exit_func exitFunc = postLoadFunc(pluginPath, &mgr->platformServices);
-	if (!exitFunc)
+	if(!exitFunc)
 		return -1;
 
 	mgr->exit_functions[mgr->num_exit_functions++] = exitFunc;
 	return 0;
 }
 
-static const char* get_filename_ext(const char *filename) {
-	const char *dot = strrchr(filename, '.');
-	if (!dot || dot == filename)
+static const char* get_filename_ext(const char* filename)
+{
+	const char* dot = strrchr(filename, '.');
+	if(!dot || dot == filename)
 		return "";
 	return dot + 1;
 }
 
-}
+} // namespace grk

@@ -21,15 +21,16 @@
 
 #pragma once
 
-namespace grk {
-
+namespace grk
+{
 struct TileProcessor;
 
 /**
  Tier-2 coding
  */
-struct T2Compress {
-	T2Compress(TileProcessor *tileProc);
+struct T2Compress
+{
+	T2Compress(TileProcessor* tileProc);
 
 	/*
 	 Encode the packets of a tile to a destination buffer
@@ -41,10 +42,9 @@ struct T2Compress {
 	 @param tppos            The position of the tile part flag in the progression order
 	 @param pino             packet iterator number
 	 */
-	bool compressPackets(uint16_t tileno, uint16_t maxlayers,
-			BufferedStream *stream, uint32_t *p_data_written,
-			bool first_poc_tile_part, uint32_t tppos,
-			uint32_t pino);
+	bool compressPackets(uint16_t tileno, uint16_t maxlayers, BufferedStream* stream,
+						 uint32_t* p_data_written, bool first_poc_tile_part, uint32_t tppos,
+						 uint32_t pino);
 
 	/**
 	 Simulate compressing packets of a tile to a destination buffer
@@ -55,12 +55,11 @@ struct T2Compress {
 	 @param tppos            position of the tile part flag in the progression order
 	 @param markers			 markers
 	 */
-	bool compressPacketsSimulate(uint16_t tileno, uint16_t maxlayers,
-			uint32_t *p_data_written, uint32_t max_len, uint32_t tppos,
-			PacketLengthMarkers *markers);
+	bool compressPacketsSimulate(uint16_t tileno, uint16_t maxlayers, uint32_t* p_data_written,
+								 uint32_t max_len, uint32_t tppos, PacketLengthMarkers* markers);
 
-private:
-	TileProcessor *tileProcessor;
+  private:
+	TileProcessor* tileProcessor;
 
 	/**
 	 Encode a packet of a tile to a destination buffer
@@ -70,8 +69,8 @@ private:
 	 @param p_data_written  amount of data written
 	 @return
 	 */
-	bool compressPacket(TileCodingParams *tcp, PacketIter *pi,
-			BufferedStream *stream, uint32_t *p_data_written);
+	bool compressPacket(TileCodingParams* tcp, PacketIter* pi, BufferedStream* stream,
+						uint32_t* p_data_written);
 
 	/**
 	 Encode a packet of a tile to a destination buffer
@@ -82,10 +81,8 @@ private:
 	 @param markers			packet length markers
 	 @return
 	 */
-	bool compressPacketSimulate(TileCodingParams *tcp, PacketIter *pi,
-			uint32_t *p_data_written, uint32_t len,
-			PacketLengthMarkers *markers);
-
+	bool compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi, uint32_t* p_data_written,
+								uint32_t len, PacketLengthMarkers* markers);
 };
 
-}
+} // namespace grk

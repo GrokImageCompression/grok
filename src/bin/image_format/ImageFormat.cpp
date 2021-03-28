@@ -20,27 +20,20 @@
 #include "common.h"
 #include "FileStreamIO.h"
 
-ImageFormat::ImageFormat() : m_image(nullptr),
-							m_rowCount(0),
-							m_rowsPerStrip(0),
-							m_numStrips(0),
-							m_fileIO(new FileStreamIO()),
-							m_fileStream(nullptr),
-							m_useStdIO(false)
-{
-}
-ImageFormat::ImageFormat(const ImageFormat& rhs) :
-								    m_image(rhs.m_image),
-									m_rowCount(rhs.m_rowCount),
-									m_rowsPerStrip(rhs.m_rowsPerStrip),
-									m_numStrips(rhs.m_numStrips),
-									m_fileIO(nullptr),
-									m_fileStream(nullptr),
-									m_useStdIO(rhs.m_useStdIO)
+ImageFormat::ImageFormat()
+	: m_image(nullptr), m_rowCount(0), m_rowsPerStrip(0), m_numStrips(0),
+	  m_fileIO(new FileStreamIO()), m_fileStream(nullptr), m_useStdIO(false)
+{}
+ImageFormat::ImageFormat(const ImageFormat& rhs)
+	: m_image(rhs.m_image), m_rowCount(rhs.m_rowCount), m_rowsPerStrip(rhs.m_rowsPerStrip),
+	  m_numStrips(rhs.m_numStrips), m_fileIO(nullptr), m_fileStream(nullptr),
+	  m_useStdIO(rhs.m_useStdIO)
 {}
 
-ImageFormat& ImageFormat::operator=(const ImageFormat& rhs){
-	if (this != &rhs) { // self-assignment check expected
+ImageFormat& ImageFormat::operator=(const ImageFormat& rhs)
+{
+	if(this != &rhs)
+	{ // self-assignment check expected
 		m_image = rhs.m_image;
 		m_rowCount = rhs.m_rowCount;
 		m_rowsPerStrip = rhs.m_rowsPerStrip;
@@ -48,46 +41,52 @@ ImageFormat& ImageFormat::operator=(const ImageFormat& rhs){
 		m_fileIO = nullptr;
 		m_fileStream = nullptr;
 		m_useStdIO = rhs.m_useStdIO;
-   }
-   return *this;
-  }
+	}
+	return *this;
+}
 
-ImageFormat::~ImageFormat() {
+ImageFormat::~ImageFormat()
+{
 	delete m_fileIO;
 }
 
-
-bool ImageFormat::encodeHeader(grk_image *  image, const std::string &filename, uint32_t compressionParam){
+bool ImageFormat::encodeHeader(grk_image* image, const std::string& filename,
+							   uint32_t compressionParam)
+{
 	(void)compressionParam;
 	m_image = image;
 
 	return m_fileIO->open(filename, "w");
 }
 
-bool ImageFormat::encodeFinish(void){
-	bool rc =  m_fileIO->close();
+bool ImageFormat::encodeFinish(void)
+{
+	bool rc = m_fileIO->close();
 	delete m_fileIO;
 	m_fileIO = nullptr;
 
 	return rc;
 }
-bool ImageFormat::openFile(std::string fileName, std::string mode){
+bool ImageFormat::openFile(std::string fileName, std::string mode)
+{
 	return m_fileIO->open(fileName, mode);
 }
 
-bool ImageFormat::writeToFile(uint8_t *buf, size_t len){
+bool ImageFormat::writeToFile(uint8_t* buf, size_t len)
+{
 	return m_fileIO->write(buf, len);
 }
-bool ImageFormat::readFromFile(uint8_t *buf, size_t len){
-	return m_fileIO->read(buf,len);
+bool ImageFormat::readFromFile(uint8_t* buf, size_t len)
+{
+	return m_fileIO->read(buf, len);
 }
 
-bool ImageFormat::seekInFile(int64_t pos){
+bool ImageFormat::seekInFile(int64_t pos)
+{
 	return m_fileIO->seek(pos);
 }
 
-
-uint32_t ImageFormat::maxY(uint32_t rows){
+uint32_t ImageFormat::maxY(uint32_t rows)
+{
 	return std::min<uint32_t>(m_rowCount + rows, m_image->comps[0].h);
 }
-

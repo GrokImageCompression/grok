@@ -1,18 +1,18 @@
 /*
-*    Copyright (C) 2016 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
+ *    Copyright (C) 2016 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
  */
 #pragma once
 
@@ -26,24 +26,23 @@ typedef unsigned char boolean;
 #include "iccjpeg.h"
 #include "convert.h"
 
-
-class JPEGFormat : public ImageFormat {
-public:
+class JPEGFormat : public ImageFormat
+{
+  public:
 	JPEGFormat(void);
-	bool encodeHeader(grk_image *  image, const std::string &filename, uint32_t compressionParam) override;
+	bool encodeHeader(grk_image* image, const std::string& filename,
+					  uint32_t compressionParam) override;
 	bool encodeStrip(uint32_t rows) override;
 	bool encodeFinish(void) override;
-	grk_image *  decode(const std::string &filename,  grk_cparameters  *parameters) override;
+	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 
-private:
-	grk_image* jpegtoimage(const char *filename,
-			grk_cparameters *parameters);
-	bool imagetojpeg(grk_image *image, const char *filename,
-			uint32_t compressionParam);
+  private:
+	grk_image* jpegtoimage(const char* filename, grk_cparameters* parameters);
+	bool imagetojpeg(grk_image* image, const char* filename, uint32_t compressionParam);
 
 	bool success;
-	uint8_t *buffer;
-	int32_t *buffer32s;
+	uint8_t* buffer;
+	int32_t* buffer32s;
 	J_COLOR_SPACE color_space;
 	int32_t adjust;
 	bool readFromStdin;
@@ -55,8 +54,7 @@ private:
 	 * to any one struct (and its associated working data) as a "JPEG object".
 	 */
 	struct jpeg_compress_struct cinfo;
-	int32_t const *planes[3];
+	int32_t const* planes[3];
 	cvtPlanarToInterleaved cvtPxToCx;
 	cvtFrom32 cvtTo8bpp;
-
 };

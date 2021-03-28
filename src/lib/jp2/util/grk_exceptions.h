@@ -19,19 +19,28 @@
 #pragma once
 #include <stdexcept>
 
-namespace grk {
-
-class DecodeUnknownMarkerAtEndOfTileException: public std::exception {};
-class PluginDecodeUnsupportedException: public std::exception {};
-class CorruptJP2BoxException: public std::exception {};
-class TruncatedPacketHeaderException: public std::exception {};
-class InvalidMarkerException: public std::exception {
-public:
-	explicit InvalidMarkerException(uint16_t marker) : m_marker(marker)
-	{}
+namespace grk
+{
+class DecodeUnknownMarkerAtEndOfTileException : public std::exception
+{
+};
+class PluginDecodeUnsupportedException : public std::exception
+{
+};
+class CorruptJP2BoxException : public std::exception
+{
+};
+class TruncatedPacketHeaderException : public std::exception
+{
+};
+class InvalidMarkerException : public std::exception
+{
+  public:
+	explicit InvalidMarkerException(uint16_t marker) : m_marker(marker) {}
 
 	uint16_t m_marker;
-
 };
-class BadAsocException: public std::exception {};
-}
+class BadAsocException : public std::exception
+{
+};
+} // namespace grk

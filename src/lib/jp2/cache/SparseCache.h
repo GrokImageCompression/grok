@@ -18,54 +18,66 @@
 
 #include <map>
 
-namespace grk {
-
-template <typename T> class SparseCache{
-public:
-	SparseCache(uint64_t maxChunkSize) : m_chunkSize(std::min<uint64_t>(maxChunkSize, 1024)),
-											m_currChunk(nullptr),
-											m_currChunkIndex(0)
+namespace grk
+{
+template<typename T>
+class SparseCache
+{
+  public:
+	SparseCache(uint64_t maxChunkSize)
+		: m_chunkSize(std::min<uint64_t>(maxChunkSize, 1024)), m_currChunk(nullptr),
+		  m_currChunkIndex(0)
 	{}
-	virtual ~SparseCache(void){
-		for (auto &ch : chunks){
-			for (size_t i = 0; i < m_chunkSize; ++i)
+	virtual ~SparseCache(void)
+	{
+		for(auto& ch : chunks)
+		{
+			for(size_t i = 0; i < m_chunkSize; ++i)
 				delete ch.second[i];
 			delete[] ch.second;
 		}
 	}
-	T* get(uint64_t index){
+	T* get(uint64_t index)
+	{
 		uint64_t chunkIndex = index / m_chunkSize;
-		uint64_t itemIndex =  index % m_chunkSize;
-		if (m_currChunk == nullptr || (chunkIndex != m_currChunkIndex)){
+		uint64_t itemIndex = index % m_chunkSize;
+		if(m_currChunk == nullptr || (chunkIndex != m_currChunkIndex))
+		{
 			m_currChunkIndex = chunkIndex;
 			auto iter = chunks.find(chunkIndex);
-			if (iter != chunks.end()){
-				m_currChunk =  iter->second;
-			} else {
+			if(iter != chunks.end())
+			{
+				m_currChunk = iter->second;
+			}
+			else
+			{
 				m_currChunk = new T*[m_chunkSize];
 				memset(m_currChunk, 0, m_chunkSize * sizeof(T*));
 				chunks[chunkIndex] = m_currChunk;
 			}
 		}
 		auto item = m_currChunk[itemIndex];
-		if (!item){
+		if(!item)
+		{
 			item = create(index);
 			m_currChunk[itemIndex] = item;
 		}
 		return item;
 	}
-protected:
-	virtual T* create(uint64_t index){
+
+  protected:
+	virtual T* create(uint64_t index)
+	{
 		GRK_UNUSED(index);
 		auto item = new T();
 		return item;
 	}
-private:
+
+  private:
 	std::map<uint64_t, T**> chunks;
 	uint64_t m_chunkSize;
 	T** m_currChunk;
 	uint64_t m_currChunkIndex;
 };
 
-
-}
+} // namespace grk

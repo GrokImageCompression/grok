@@ -24,18 +24,20 @@
 #include <errno.h>
 #include <string.h>
 
-namespace grk {
-
+namespace grk
+{
 /* strnlen is not standard, strlen_s is C11... */
 /* keep in mind there still is a buffer read overflow possible */
-static size_t strnlen_s(const char *src, size_t max_len)
+static size_t strnlen_s(const char* src, size_t max_len)
 {
 	size_t len;
 
-	if (src == nullptr) {
+	if(src == nullptr)
+	{
 		return 0U;
 	}
-	for (len = 0U; (*src != '\0') && (len < max_len); src++, len++);
+	for(len = 0U; (*src != '\0') && (len < max_len); src++, len++)
+		;
 	return len;
 }
 
@@ -44,15 +46,18 @@ static size_t strnlen_s(const char *src, size_t max_len)
 static int strcpy_s(char* dst, size_t dst_size, const char* src)
 {
 	size_t src_len = 0U;
-	if ((dst == nullptr) || (dst_size == 0U)) {
+	if((dst == nullptr) || (dst_size == 0U))
+	{
 		return EINVAL;
 	}
-	if (src == nullptr) {
+	if(src == nullptr)
+	{
 		dst[0] = '\0';
 		return EINVAL;
 	}
 	src_len = strnlen_s(src, dst_size);
-	if (src_len >= dst_size) {
+	if(src_len >= dst_size)
+	{
 		return ERANGE;
 	}
 	memcpy(dst, src, src_len);
@@ -60,6 +65,4 @@ static int strcpy_s(char* dst, size_t dst_size, const char* src)
 	return 0;
 }
 
-}
-
-
+} // namespace grk

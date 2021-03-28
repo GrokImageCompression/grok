@@ -52,21 +52,21 @@
  (e.g. FreeBSD) support a 64-bit int64_t by default.
  */
 #if defined(GROK_HAVE_FSEEKO) && !defined(fseek)
-#  define fseek  fseeko
-#  define ftell  ftello
+#define fseek fseeko
+#define ftell ftello
 #endif
 #if defined(_WIN32)
-#  define GRK_FSEEK(stream,offset,whence) _fseeki64(stream,/* __int64 */ offset,whence)
-#  define GRK_FSTAT(fildes,stat_buff) _fstati64(fildes,/* struct _stati64 */ stat_buff)
-#  define GRK_FTELL(stream) /* __int64 */ _ftelli64(stream)
-#  define GRK_STAT_STRUCT struct _stati64
-#  define GRK_STAT(path,stat_buff) _stati64(path,/* struct _stati64 */ stat_buff)
+#define GRK_FSEEK(stream, offset, whence) _fseeki64(stream, /* __int64 */ offset, whence)
+#define GRK_FSTAT(fildes, stat_buff) _fstati64(fildes, /* struct _stati64 */ stat_buff)
+#define GRK_FTELL(stream) /* __int64 */ _ftelli64(stream)
+#define GRK_STAT_STRUCT struct _stati64
+#define GRK_STAT(path, stat_buff) _stati64(path, /* struct _stati64 */ stat_buff)
 #else
-#  define GRK_FSEEK(stream,offset,whence) fseek(stream,offset,whence)
-#  define GRK_FSTAT(fildes,stat_buff) fstat(fildes,stat_buff)
-#  define GRK_FTELL(stream) ftell(stream)
-#  define GRK_STAT_STRUCT struct stat
-#  define GRK_STAT(path,stat_buff) stat(path,stat_buff)
+#define GRK_FSEEK(stream, offset, whence) fseek(stream, offset, whence)
+#define GRK_FSTAT(fildes, stat_buff) fstat(fildes, stat_buff)
+#define GRK_FTELL(stream) ftell(stream)
+#define GRK_STAT_STRUCT struct stat
+#define GRK_STAT(path, stat_buff) stat(path, stat_buff)
 #endif
 #if defined(__GNUC__)
 #define GRK_RESTRICT __restrict__

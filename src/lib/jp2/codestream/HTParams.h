@@ -52,7 +52,6 @@
 // Date: 28 August 2019
 //***************************************************************************/
 
-
 #pragma once
 
 #include <algorithm>
@@ -60,63 +59,60 @@
 #include <cstring>
 using namespace std;
 
-namespace grk {
-
+namespace grk
+{
 class sqrt_energy_gains
 {
-public:
-  static float get_gain_l(uint32_t num_decomp, bool reversible);
-  static float get_gain_h(uint32_t num_decomp, bool reversible);
-private:
-  static const float gain_9x7_l[34];
-  static const float gain_9x7_h[34];
-  static const float gain_5x3_l[34];
-  static const float gain_5x3_h[34];
+  public:
+	static float get_gain_l(uint32_t num_decomp, bool reversible);
+	static float get_gain_h(uint32_t num_decomp, bool reversible);
+
+  private:
+	static const float gain_9x7_l[34];
+	static const float gain_9x7_h[34];
+	static const float gain_5x3_l[34];
+	static const float gain_5x3_h[34];
 };
 
 struct param_qcd
 {
-public:
-  param_qcd() :	  Sqcd(0),
-			  	  num_decomps(0),
-				  base_delta(-1.0f),
-				  isHT(false)
-  {
-	memset(u8_SPqcd, 0, GRK_J2K_MAXBANDS);
-	memset(u16_SPqcd, 0, GRK_J2K_MAXBANDS *sizeof(short));
-  }
+  public:
+	param_qcd() : Sqcd(0), num_decomps(0), base_delta(-1.0f), isHT(false)
+	{
+		memset(u8_SPqcd, 0, GRK_J2K_MAXBANDS);
+		memset(u16_SPqcd, 0, GRK_J2K_MAXBANDS * sizeof(short));
+	}
 
-  void setIsHT(bool ht){ isHT = ht; }
-  void set_delta(float delta) { base_delta = delta; }
-  void set_rev_quant(uint32_t bit_depth, bool is_employing_color_transform);
-  void set_irrev_quant();
+	void setIsHT(bool ht)
+	{
+		isHT = ht;
+	}
+	void set_delta(float delta)
+	{
+		base_delta = delta;
+	}
+	void set_rev_quant(uint32_t bit_depth, bool is_employing_color_transform);
+	void set_irrev_quant();
 
-  void generate(uint8_t guard_bits,
-		  	  uint32_t decomps,
-			  bool is_reversible,
-			  uint32_t max_bit_depth,
-			  bool color_transform,
-			  bool is_signed );
+	void generate(uint8_t guard_bits, uint32_t decomps, bool is_reversible, uint32_t max_bit_depth,
+				  bool color_transform, bool is_signed);
 
-  uint32_t get_num_guard_bits() const;
-  uint32_t get_MAGBp() const;
+	uint32_t get_num_guard_bits() const;
+	uint32_t get_MAGBp() const;
 
-  void pull(grk_stepsize* stepptr, bool reversible);
-  void push(grk_stepsize* stepptr, bool reversible);
+	void pull(grk_stepsize* stepptr, bool reversible);
+	void push(grk_stepsize* stepptr, bool reversible);
 
-private:
-  uint8_t Sqcd;
-  union
-  {
-	uint8_t u8_SPqcd[97];
-	uint16_t u16_SPqcd[97];
-  };
-  uint32_t num_decomps;
-  float base_delta;
-  bool isHT;
+  private:
+	uint8_t Sqcd;
+	union
+	{
+		uint8_t u8_SPqcd[97];
+		uint16_t u16_SPqcd[97];
+	};
+	uint32_t num_decomps;
+	float base_delta;
+	bool isHT;
 };
 
-}
-
-
-
+} // namespace grk

@@ -17,47 +17,43 @@
 
 #include <cstdint>
 
-namespace grk {
-
+namespace grk
+{
 /**
  Bit input/output
  */
-class IBitIO {
-
-public:
-
-	virtual ~IBitIO() {
-	}
+class IBitIO
+{
+  public:
+	virtual ~IBitIO() {}
 
 	/**
 	 Number of bytes written.
 	 @return the number of bytes written
 	 */
-	virtual size_t numbytes()=0;
+	virtual size_t numbytes() = 0;
 
 	/**
 	 Write bits
 	 @param v Value of bits
 	 @param n Number of bits to write
 	 */
-	virtual bool write(uint32_t v, uint32_t n)= 0;
+	virtual bool write(uint32_t v, uint32_t n) = 0;
 	/**
 	 Read bits
 	 @param bits pointer to bits buffer
 	 @param n Number of bits to read
 	 */
-	virtual void read(uint32_t *bits, uint32_t n)= 0;
+	virtual void read(uint32_t* bits, uint32_t n) = 0;
 	/**
 	 Flush bits
 	 @return true if successful, returns false otherwise
 	 */
-	virtual bool flush()= 0;
+	virtual bool flush() = 0;
 	/**
 	 Passes the ending bits (coming from flushing)
 	 */
-	virtual void inalign()= 0;
-
+	virtual void inalign() = 0;
 };
 
-}
-
+} // namespace grk

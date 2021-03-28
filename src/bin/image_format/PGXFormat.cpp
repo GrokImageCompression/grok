@@ -35,54 +35,57 @@
 #include <cstring>
 #include <cassert>
 
-static uint8_t readuchar(FILE *f) {
+static uint8_t readuchar(FILE* f)
+{
 	uint8_t c1;
-	if (!fread(&c1, 1, 1, f)) {
-		spdlog::error(
-				" fread return a number of element different from the expected.");
+	if(!fread(&c1, 1, 1, f))
+	{
+		spdlog::error(" fread return a number of element different from the expected.");
 		return 0;
 	}
 	return c1;
 }
 
-static unsigned short readushort(FILE *f, bool bigendian) {
+static unsigned short readushort(FILE* f, bool bigendian)
+{
 	uint8_t c1, c2;
-	if (!fread(&c1, 1, 1, f)) {
-		spdlog::error(
-				"  fread return a number of element different from the expected.");
+	if(!fread(&c1, 1, 1, f))
+	{
+		spdlog::error("  fread return a number of element different from the expected.");
 		return 0;
 	}
-	if (!fread(&c2, 1, 1, f)) {
-		spdlog::error(
-				"  fread return a number of element different from the expected.");
+	if(!fread(&c2, 1, 1, f))
+	{
+		spdlog::error("  fread return a number of element different from the expected.");
 		return 0;
 	}
-	if (bigendian)
-		return (unsigned short) ((c1 << 8) + c2);
+	if(bigendian)
+		return (unsigned short)((c1 << 8) + c2);
 	else
-		return (unsigned short) ((c2 << 8) + c1);
+		return (unsigned short)((c2 << 8) + c1);
 }
 
-static grk_image* pgxtoimage(const char *filename,
-		grk_cparameters *parameters) {
-	FILE *f = nullptr;
-	uint32_t w, stride_diff,h;
+static grk_image* pgxtoimage(const char* filename, grk_cparameters* parameters)
+{
+	FILE* f = nullptr;
+	uint32_t w, stride_diff, h;
 	uint16_t numcomps;
 	uint32_t prec;
 	int32_t max;
 	uint64_t i, index;
 	GRK_COLOR_SPACE color_space;
 	grk_image_cmptparm cmptparm; /* maximum of 1 component  */
-	grk_image *image = nullptr;
+	grk_image* image = nullptr;
 	uint32_t adjustS, ushift, dshift;
-	bool force8 = false;;
+	bool force8 = false;
+	;
 	int c;
 	char endian1, endian2, sign;
 	char signtmp[32];
 
 	char temp[32];
 	bool bigendian;
-	grk_image_comp *comp = nullptr;
+	grk_image_comp* comp = nullptr;
 
 	numcomps = 1;
 	color_space = GRK_CLRSPC_GRAY;
@@ -90,41 +93,49 @@ static grk_image* pgxtoimage(const char *filename,
 	memset(&cmptparm, 0, sizeof(grk_image_cmptparm));
 	max = 0;
 	f = fopen(filename, "rb");
-	if (!f) {
+	if(!f)
+	{
 		spdlog::error("Failed to open {} for reading.", filename);
 		return nullptr;
 	}
 
-	if (GRK_FSEEK(f, 0, SEEK_SET))
+	if(GRK_FSEEK(f, 0, SEEK_SET))
 		goto cleanup;
-	if (fscanf(f, "PG%31[ \t]%c%c%31[ \t+-]%u%31[ \t]%u%31[ \t]%u", temp,
-			&endian1, &endian2, signtmp, &prec, temp, &w, temp, &h) != 9) {
-		spdlog::error(
-				" Failed to read the right number of element from the fscanf() function.");
+	if(fscanf(f, "PG%31[ \t]%c%c%31[ \t+-]%u%31[ \t]%u%31[ \t]%u", temp, &endian1, &endian2,
+			  signtmp, &prec, temp, &w, temp, &h) != 9)
+	{
+		spdlog::error(" Failed to read the right number of element from the fscanf() function.");
 		goto cleanup;
 	}
 
-	if (prec < 4){
+	if(prec < 4)
+	{
 		spdlog::error("Precision must be >= 4");
 		goto cleanup;
 	}
 
 	i = 0;
 	sign = '+';
-	while (signtmp[i] != '\0') {
-		if (signtmp[i] == '-')
+	while(signtmp[i] != '\0')
+	{
+		if(signtmp[i] == '-')
 			sign = '-';
 		i++;
 	}
 
 	c = fgetc(f);
-	if (c == EOF)
+	if(c == EOF)
 		goto cleanup;
-	if (endian1 == 'M' && endian2 == 'L') {
+	if(endian1 == 'M' && endian2 == 'L')
+	{
 		bigendian = true;
-	} else if (endian2 == 'M' && endian1 == 'L') {
+	}
+	else if(endian2 == 'M' && endian1 == 'L')
+	{
 		bigendian = false;
-	} else {
+	}
+	else
+	{
 		spdlog::error("Bad pgx header, please check input file");
 		goto cleanup;
 	}
@@ -133,32 +144,27 @@ static grk_image* pgxtoimage(const char *filename,
 
 	cmptparm.x0 = parameters->image_offset_x0;
 	cmptparm.y0 = parameters->image_offset_y0;
-	cmptparm.w =
-			!cmptparm.x0 ?
-					((w - 1) * parameters->subsampling_dx + 1) :
-					cmptparm.x0
-							+ (uint32_t) (w - 1) * parameters->subsampling_dx
-							+ 1;
-	cmptparm.h =
-			!cmptparm.y0 ?
-					((h - 1) * parameters->subsampling_dy + 1) :
-					cmptparm.y0
-							+ (uint32_t) (h - 1) * parameters->subsampling_dy
-							+ 1;
+	cmptparm.w = !cmptparm.x0 ? ((w - 1) * parameters->subsampling_dx + 1)
+							  : cmptparm.x0 + (uint32_t)(w - 1) * parameters->subsampling_dx + 1;
+	cmptparm.h = !cmptparm.y0 ? ((h - 1) * parameters->subsampling_dy + 1)
+							  : cmptparm.y0 + (uint32_t)(h - 1) * parameters->subsampling_dy + 1;
 
 	cmptparm.sgnd = sign == '-';
-	if (prec < 8) {
+	if(prec < 8)
+	{
 		force8 = true;
 		ushift = (uint32_t)(8U - prec);
 		dshift = (uint32_t)(prec - ushift);
-		if (cmptparm.sgnd)
+		if(cmptparm.sgnd)
 			adjustS = (1U << (prec - 1));
 		else
 			adjustS = 0;
 		cmptparm.sgnd = false;
 		prec = 8;
-	} else{
-		ushift = dshift =  adjustS = 0;
+	}
+	else
+	{
+		ushift = dshift = adjustS = 0;
 		force8 = false;
 	}
 
@@ -167,8 +173,9 @@ static grk_image* pgxtoimage(const char *filename,
 	cmptparm.dy = parameters->subsampling_dy;
 
 	/* create the image */
-	image = grk_image_new(numcomps, &cmptparm, color_space,true);
-	if (!image) {
+	image = grk_image_new(numcomps, &cmptparm, color_space, true);
+	if(!image)
+	{
 		goto cleanup;
 	}
 	/* set image offset and reference grid */
@@ -181,82 +188,103 @@ static grk_image* pgxtoimage(const char *filename,
 	comp = &image->comps[0];
 	index = 0;
 	stride_diff = comp->stride - w;
-	for (uint32_t j = 0; j < h; ++j) {
-		for (uint32_t k = 0; k <  w; ++k) {
+	for(uint32_t j = 0; j < h; ++j)
+	{
+		for(uint32_t k = 0; k < w; ++k)
+		{
 			int32_t v = 0;
-			if (force8) {
+			if(force8)
+			{
 				v = (int32_t)(readuchar(f) + adjustS);
 				v = (v << ushift) + (v >> dshift);
-			} else  {
-				if (comp->prec == 8) {
-					if (!comp->sgnd) {
-						v = (int32_t)readuchar(f);
-					} else {
+			}
+			else
+			{
+				if(comp->prec == 8)
+				{
+					if(!comp->sgnd)
+					{
 						v = (int32_t)readuchar(f);
 					}
-				} else {
-					if (!comp->sgnd) {
+					else
+					{
+						v = (int32_t)readuchar(f);
+					}
+				}
+				else
+				{
+					if(!comp->sgnd)
+					{
 						v = (int32_t)readushort(f, bigendian);
-					} else {
+					}
+					else
+					{
 						v = (int32_t)readushort(f, bigendian);
 					}
 				}
 			}
-			if (v > max)
+			if(v > max)
 				max = v;
 			comp->data[index++] = v;
 		}
-		index +=stride_diff;
+		index += stride_diff;
 	}
-	cleanup: if (!grk::safe_fclose(f)) {
+cleanup:
+	if(!grk::safe_fclose(f))
+	{
 		grk_object_unref(&image->obj);
 		image = nullptr;
 	}
 	return image;
 }
 
-bool PGXFormat::encodeHeader(grk_image *image, const std::string &filename,
-		uint32_t compressionParam) {
-	(void) compressionParam;
+bool PGXFormat::encodeHeader(grk_image* image, const std::string& filename,
+							 uint32_t compressionParam)
+{
+	(void)compressionParam;
 	m_image = image;
 	m_fileName = filename;
-	if (!grk::all_components_sanity_check(m_image,false))
+	if(!grk::all_components_sanity_check(m_image, false))
 		return false;
 
 	return true;
 }
-bool PGXFormat::encodeStrip(uint32_t rows){
+bool PGXFormat::encodeStrip(uint32_t rows)
+{
 	(void)rows;
 
 	const char* outfile = m_fileName.c_str();
 	bool success = false;
-	for (uint32_t compno = 0; compno < m_image->numcomps; compno++) {
+	for(uint32_t compno = 0; compno < m_image->numcomps; compno++)
+	{
 		auto comp = &m_image->comps[compno];
 		char bname[4096]; /* buffer for name */
 		bname[4095] = '\0';
 		int nbytes = 0;
 		const size_t olen = strlen(outfile);
-		if (olen > 4096) {
-			spdlog::error(
-					" imagetopgx: output file name size larger than 4096.");
+		if(olen > 4096)
+		{
+			spdlog::error(" imagetopgx: output file name size larger than 4096.");
 			goto beach;
 		}
-		if (olen < 4) {
+		if(olen < 4)
+		{
 			spdlog::error(" imagetopgx: output file name size less than 4.");
 			goto beach;
 		}
 		const size_t dotpos = olen - 4;
-		if (outfile[dotpos] != '.') {
-			spdlog::error(
-					" pgx was recognized but there was no dot at expected position .");
+		if(outfile[dotpos] != '.')
+		{
+			spdlog::error(" pgx was recognized but there was no dot at expected position .");
 			goto beach;
 		}
-		//copy root outfile name to "name"
+		// copy root outfile name to "name"
 		memcpy(bname, outfile, dotpos);
-		//add new tag
+		// add new tag
 		sprintf(bname + dotpos, "_%u.pgx", compno);
 		m_fileStream = fopen(bname, "wb");
-		if (!m_fileStream) {
+		if(!m_fileStream)
+		{
 			spdlog::error("failed to open {} for writing", bname);
 			goto beach;
 		}
@@ -264,63 +292,75 @@ bool PGXFormat::encodeStrip(uint32_t rows){
 		uint32_t w = comp->w;
 		uint32_t h = comp->h;
 
-		fprintf(m_fileStream, "PG ML %c %u %u %u\n", comp->sgnd ? '-' : '+',
-				comp->prec, w, h);
+		fprintf(m_fileStream, "PG ML %c %u %u %u\n", comp->sgnd ? '-' : '+', comp->prec, w, h);
 
-		if (comp->prec <= 8)
+		if(comp->prec <= 8)
 			nbytes = 1;
-		else if (comp->prec <= 16)
+		else if(comp->prec <= 16)
 			nbytes = 2;
 
 		const size_t bufSize = 4096;
 		size_t outCount = 0;
 		size_t index = 0;
 		uint32_t stride_diff = comp->stride - w;
-		if (nbytes == 1){
+		if(nbytes == 1)
+		{
 			uint8_t buf[bufSize];
-			uint8_t *outPtr = buf;
-			for (uint32_t j = 0; j < h; ++j) {
-				for (uint32_t i = 0; i <  w; ++i) {
+			uint8_t* outPtr = buf;
+			for(uint32_t j = 0; j < h; ++j)
+			{
+				for(uint32_t i = 0; i < w; ++i)
+				{
 					const int val = comp->data[index++];
-					if (!grk::writeBytes<uint8_t>((uint8_t) val, buf, &outPtr,
-							&outCount, bufSize, true, m_fileStream)) {
+					if(!grk::writeBytes<uint8_t>((uint8_t)val, buf, &outPtr, &outCount, bufSize,
+												 true, m_fileStream))
+					{
 						spdlog::error("failed to write bytes for {}", bname);
 						goto beach;
 					}
 				}
 				index += stride_diff;
 			}
-			if (outCount) {
+			if(outCount)
+			{
 				size_t res = fwrite(buf, sizeof(uint8_t), outCount, m_fileStream);
-				if (res != outCount) {
-					spdlog::error("failed to write bytes for {}", bname);
-					goto beach;
-				}
-			}
-
-		} else {
-			uint16_t buf[bufSize];
-			uint16_t *outPtr = buf;
-			for (uint32_t j = 0; j < h; ++j) {
-				for (uint32_t i = 0; i <  w; ++i) {
-					const int val = m_image->comps[compno].data[index++];
-					if (!grk::writeBytes<uint16_t>((uint16_t) val, buf, &outPtr,
-							&outCount, bufSize, true, m_fileStream)) {
-						spdlog::error("failed to write bytes for {}", bname);
-						goto beach;
-					}
-				}
-				index += stride_diff;
-			}
-			if (outCount) {
-				size_t res = fwrite(buf, sizeof(uint16_t), outCount, m_fileStream);
-				if (res != outCount) {
+				if(res != outCount)
+				{
 					spdlog::error("failed to write bytes for {}", bname);
 					goto beach;
 				}
 			}
 		}
-		if (!grk::safe_fclose(m_fileStream)) {
+		else
+		{
+			uint16_t buf[bufSize];
+			uint16_t* outPtr = buf;
+			for(uint32_t j = 0; j < h; ++j)
+			{
+				for(uint32_t i = 0; i < w; ++i)
+				{
+					const int val = m_image->comps[compno].data[index++];
+					if(!grk::writeBytes<uint16_t>((uint16_t)val, buf, &outPtr, &outCount, bufSize,
+												  true, m_fileStream))
+					{
+						spdlog::error("failed to write bytes for {}", bname);
+						goto beach;
+					}
+				}
+				index += stride_diff;
+			}
+			if(outCount)
+			{
+				size_t res = fwrite(buf, sizeof(uint16_t), outCount, m_fileStream);
+				if(res != outCount)
+				{
+					spdlog::error("failed to write bytes for {}", bname);
+					goto beach;
+				}
+			}
+		}
+		if(!grk::safe_fclose(m_fileStream))
+		{
 			m_fileStream = nullptr;
 			goto beach;
 		}
@@ -330,10 +370,12 @@ bool PGXFormat::encodeStrip(uint32_t rows){
 beach:
 	return success;
 }
-bool PGXFormat::encodeFinish(void){
+bool PGXFormat::encodeFinish(void)
+{
 	bool success = true;
 
-	if (!grk::safe_fclose(m_fileStream)) {
+	if(!grk::safe_fclose(m_fileStream))
+	{
 		success = false;
 	}
 	m_fileStream = nullptr;
@@ -341,7 +383,7 @@ bool PGXFormat::encodeFinish(void){
 	return success;
 }
 
-grk_image* PGXFormat::decode(const std::string &filename,
-		grk_cparameters *parameters) {
+grk_image* PGXFormat::decode(const std::string& filename, grk_cparameters* parameters)
+{
 	return pgxtoimage(filename.c_str(), parameters);
 }

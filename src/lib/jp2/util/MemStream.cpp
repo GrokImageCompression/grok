@@ -16,32 +16,30 @@
  */
 #include "grk_includes.h"
 
-namespace grk {
-
-MemStream::MemStream(uint8_t *buffer, size_t offset, size_t length, bool owns) :	buf(buffer),
-																	off(offset),
-																	len(length),
-																	fd(0),
-																	ownsBuffer(owns)
+namespace grk
+{
+MemStream::MemStream(uint8_t* buffer, size_t offset, size_t length, bool owns)
+	: buf(buffer), off(offset), len(length), fd(0), ownsBuffer(owns)
 {}
-MemStream::MemStream() : MemStream(nullptr, 0, 0, false)
-{}
-MemStream::~MemStream() {
-	if (ownsBuffer)
+MemStream::MemStream() : MemStream(nullptr, 0, 0, false) {}
+MemStream::~MemStream()
+{
+	if(ownsBuffer)
 		delete[] buf;
 }
 
-static void free_mem(void *user_data) {
-	auto data = (MemStream*) user_data;
-	if (data)
+static void free_mem(void* user_data)
+{
+	auto data = (MemStream*)user_data;
+	if(data)
 		delete data;
 }
 
-static size_t zero_copy_read_from_mem(void **p_buffer, size_t nb_bytes,
-		MemStream *p_source_buffer) {
+static size_t zero_copy_read_from_mem(void** p_buffer, size_t nb_bytes, MemStream* p_source_buffer)
+{
 	size_t nb_read = 0;
 
-	if (((size_t) p_source_buffer->off + nb_bytes) < p_source_buffer->len)
+	if(((size_t)p_source_buffer->off + nb_bytes) < p_source_buffer->len)
 		nb_read = nb_bytes;
 
 	*p_buffer = p_source_buffer->buf + p_source_buffer->off;
@@ -51,43 +49,46 @@ static size_t zero_copy_read_from_mem(void **p_buffer, size_t nb_bytes,
 	return nb_read;
 }
 
-static size_t read_from_mem(void *p_buffer, size_t nb_bytes,
-		MemStream *p_source_buffer) {
+static size_t read_from_mem(void* p_buffer, size_t nb_bytes, MemStream* p_source_buffer)
+{
 	size_t nb_read;
 
-	if (!p_buffer)
+	if(!p_buffer)
 		return 0;
 
-	if (p_source_buffer->off + nb_bytes < p_source_buffer->len)
+	if(p_source_buffer->off + nb_bytes < p_source_buffer->len)
 		nb_read = nb_bytes;
 	else
-		nb_read = (size_t) (p_source_buffer->len - p_source_buffer->off);
+		nb_read = (size_t)(p_source_buffer->len - p_source_buffer->off);
 
-	if (nb_read) {
+	if(nb_read)
+	{
 		assert(p_source_buffer->off + nb_read <= p_source_buffer->len);
 		// (don't copy buffer into itself)
-		if (p_buffer != p_source_buffer->buf + p_source_buffer->off)
-			memcpy(p_buffer, p_source_buffer->buf + p_source_buffer->off,
-					nb_read);
+		if(p_buffer != p_source_buffer->buf + p_source_buffer->off)
+			memcpy(p_buffer, p_source_buffer->buf + p_source_buffer->off, nb_read);
 		p_source_buffer->off += nb_read;
 	}
 
 	return nb_read;
 }
 
-static size_t write_to_mem(void *dest, size_t nb_bytes, MemStream *src) {
-	if (src->off + nb_bytes >= src->len)
+static size_t write_to_mem(void* dest, size_t nb_bytes, MemStream* src)
+{
+	if(src->off + nb_bytes >= src->len)
 		return 0;
 
-	if (nb_bytes) {
-		memcpy(src->buf + (size_t) src->off, dest, nb_bytes);
+	if(nb_bytes)
+	{
+		memcpy(src->buf + (size_t)src->off, dest, nb_bytes);
 		src->off += nb_bytes;
 	}
 	return nb_bytes;
 }
 
-static bool seek_from_mem(uint64_t nb_bytes, MemStream *src) {
-	if (nb_bytes < src->len)
+static bool seek_from_mem(uint64_t nb_bytes, MemStream* src)
+{
+	if(nb_bytes < src->len)
 		src->off = nb_bytes;
 	else
 		src->off = src->len;
@@ -103,51 +104,54 @@ static bool seek_from_mem(uint64_t nb_bytes, MemStream *src) {
  * @param		stream	stream to modify
  * @param		p_function	function to use as read function.
  */
-static void grk_stream_set_zero_copy_read_function(grk_stream *stream,
-		grk_stream_zero_copy_read_fn p_function) {
+static void grk_stream_set_zero_copy_read_function(grk_stream* stream,
+												   grk_stream_zero_copy_read_fn p_function)
+{
 	auto streamImpl = BufferedStream::getImpl(stream);
-	if ((!streamImpl) || (!(streamImpl->m_status & GROK_STREAM_STATUS_INPUT)))
+	if((!streamImpl) || (!(streamImpl->m_status & GROK_STREAM_STATUS_INPUT)))
 		return;
 	streamImpl->m_zero_copy_read_fn = p_function;
 }
 
-void set_up_mem_stream(grk_stream *stream, size_t len, bool is_read_stream) {
+void set_up_mem_stream(grk_stream* stream, size_t len, bool is_read_stream)
+{
 	grk_stream_set_user_data_length(stream, len);
-	if (is_read_stream) {
-		grk_stream_set_read_function(stream,
-				(grk_stream_read_fn) read_from_mem);
-		grk_stream_set_zero_copy_read_function(stream,
-				(grk_stream_zero_copy_read_fn) zero_copy_read_from_mem);
-	} else
-		grk_stream_set_write_function(stream,
-				(grk_stream_write_fn) write_to_mem);
-	grk_stream_set_seek_function(stream, (grk_stream_seek_fn) seek_from_mem);
+	if(is_read_stream)
+	{
+		grk_stream_set_read_function(stream, (grk_stream_read_fn)read_from_mem);
+		grk_stream_set_zero_copy_read_function(
+			stream, (grk_stream_zero_copy_read_fn)zero_copy_read_from_mem);
+	}
+	else
+		grk_stream_set_write_function(stream, (grk_stream_write_fn)write_to_mem);
+	grk_stream_set_seek_function(stream, (grk_stream_seek_fn)seek_from_mem);
 }
 
-size_t get_mem_stream_offset(grk_stream *stream) {
-	if (!stream)
+size_t get_mem_stream_offset(grk_stream* stream)
+{
+	if(!stream)
 		return 0;
 	auto bufferedStream = BufferedStream::getImpl(stream);
-	if (!bufferedStream->m_user_data)
+	if(!bufferedStream->m_user_data)
 		return 0;
-	auto buf = (MemStream*) bufferedStream->m_user_data;
+	auto buf = (MemStream*)bufferedStream->m_user_data;
 
 	return buf->off;
 }
 
-grk_stream* create_mem_stream(uint8_t *buf, size_t len, bool ownsBuffer,
-		bool is_read_stream) {
-	if (!buf || !len) {
+grk_stream* create_mem_stream(uint8_t* buf, size_t len, bool ownsBuffer, bool is_read_stream)
+{
+	if(!buf || !len)
+	{
 		return nullptr;
 	}
 	auto memStream = new MemStream(buf, 0, len, ownsBuffer);
 	auto streamImpl = new BufferedStream(buf, len, is_read_stream);
 	auto stream = streamImpl->getWrapper();
-	grk_stream_set_user_data((grk_stream*) stream, memStream, free_mem);
-	set_up_mem_stream((grk_stream*) stream, memStream->len,
-			is_read_stream);
+	grk_stream_set_user_data((grk_stream*)stream, memStream, free_mem);
+	set_up_mem_stream((grk_stream*)stream, memStream->len, is_read_stream);
 
-	return (grk_stream*) stream;
+	return (grk_stream*)stream;
 }
 
-}
+} // namespace grk

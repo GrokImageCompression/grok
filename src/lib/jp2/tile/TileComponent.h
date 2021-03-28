@@ -22,45 +22,40 @@
 #include <vector>
 #include "TileProcessor.h"
 
-namespace grk {
-
-struct TileComponent : public grkRectU32 {
+namespace grk
+{
+struct TileComponent : public grkRectU32
+{
 	TileComponent();
 	~TileComponent();
 	bool allocSparseCanvas(uint32_t numres, bool truncatedTile);
 	bool allocWindowBuffer(grkRectU32 unreducedTileCompOrImageCompWindow);
 	void deallocBuffers(void);
-	bool init(bool isCompressor,
-			bool whole_tile,
-			grkRectU32 unreducedTileComp,
-			uint8_t prec,
-			CodingParams *cp,
-			TileCodingParams *tcp,
-			TileComponentCodingParams* tccp,
-			grk_plugin_tile *current_plugin_tile);
-	 bool subbandIntersectsAOI(uint8_t resno,
-	 								eBandOrientation orient,
-	 								const grkRectU32 *aoi) const;
+	bool init(bool isCompressor, bool whole_tile, grkRectU32 unreducedTileComp, uint8_t prec,
+			  CodingParams* cp, TileCodingParams* tcp, TileComponentCodingParams* tccp,
+			  grk_plugin_tile* current_plugin_tile);
+	bool subbandIntersectsAOI(uint8_t resno, eBandOrientation orient, const grkRectU32* aoi) const;
 
-	 TileComponentWindowBuffer<int32_t>* getBuffer() const;
-	 bool isWholeTileDecoding();
-	 ISparseCanvas* getSparseCanvas();
-	 bool postProcess(int32_t *srcData, DecompressBlockExec *block, bool isHT);
+	TileComponentWindowBuffer<int32_t>* getBuffer() const;
+	bool isWholeTileDecoding();
+	ISparseCanvas* getSparseCanvas();
+	bool postProcess(int32_t* srcData, DecompressBlockExec* block, bool isHT);
 
-	Resolution *tileCompResolution;  // in canvas coordinates
+	Resolution* tileCompResolution; // in canvas coordinates
 	uint8_t numresolutions;
 	uint8_t resolutions_to_decompress; // desired number of resolutions to decompress
-	uint8_t resolutions_decompressed;  // actual number of resolutions decompressed
+	uint8_t resolutions_decompressed; // actual number of resolutions decompressed
 #ifdef DEBUG_LOSSLESS_T2
-	Resolution* round_trip_resolutions;  /* round trip resolution information */
+	Resolution* round_trip_resolutions; /* round trip resolution information */
 #endif
-private:
-	template<typename F> bool postDecompressImpl(int32_t *srcData, DecompressBlockExec *block);
-	ISparseCanvas *m_sa;
-    bool   wholeTileDecompress;
+  private:
+	template<typename F>
+	bool postDecompressImpl(int32_t* srcData, DecompressBlockExec* block);
+	ISparseCanvas* m_sa;
+	bool wholeTileDecompress;
 	bool m_is_encoder;
-	TileComponentWindowBuffer<int32_t> *buf;
-	TileComponentCodingParams *m_tccp;
+	TileComponentWindowBuffer<int32_t>* buf;
+	TileComponentCodingParams* m_tccp;
 };
 
-}
+} // namespace grk

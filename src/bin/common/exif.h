@@ -16,10 +16,9 @@
 
 #include <string>
 
-namespace grk {
-
+namespace grk
+{
 // transfer metadata
 void transferExifTags(std::string src, std::string dest);
 
-
-}
+} // namespace grk

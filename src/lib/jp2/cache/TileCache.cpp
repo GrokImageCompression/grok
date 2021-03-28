@@ -16,68 +16,79 @@
 
 #include <grk_includes.h>
 
-namespace grk {
-
-TileCacheEntry::TileCacheEntry(TileProcessor *p) : processor(p)
-{}
-TileCacheEntry::TileCacheEntry() : TileCacheEntry(nullptr)
-{}
-TileCacheEntry::~TileCacheEntry(){
+namespace grk
+{
+TileCacheEntry::TileCacheEntry(TileProcessor* p) : processor(p) {}
+TileCacheEntry::TileCacheEntry() : TileCacheEntry(nullptr) {}
+TileCacheEntry::~TileCacheEntry()
+{
 	delete processor;
 }
-TileCache::TileCache(GRK_TILE_CACHE_STRATEGY strategy) : tileComposite(nullptr), m_strategy(strategy){
+TileCache::TileCache(GRK_TILE_CACHE_STRATEGY strategy)
+	: tileComposite(nullptr), m_strategy(strategy)
+{
 	tileComposite = new GrkImage();
 }
-TileCache::TileCache() : TileCache(GRK_TILE_CACHE_NONE){
-}
-TileCache::~TileCache() {
-	for (auto &proc : m_cache)
+TileCache::TileCache() : TileCache(GRK_TILE_CACHE_NONE) {}
+TileCache::~TileCache()
+{
+	for(auto& proc : m_cache)
 		delete proc.second;
-	if (tileComposite)
+	if(tileComposite)
 		grk_object_unref(&tileComposite->obj);
 }
-bool TileCache::empty(){
+bool TileCache::empty()
+{
 	return m_cache.empty();
 }
-TileCacheEntry*  TileCache::put(uint16_t tileIndex, TileProcessor *processor){
-	TileCacheEntry *entry = nullptr;
-	if (m_cache.find(tileIndex) != m_cache.end()) {
-		entry =  m_cache[tileIndex];
+TileCacheEntry* TileCache::put(uint16_t tileIndex, TileProcessor* processor)
+{
+	TileCacheEntry* entry = nullptr;
+	if(m_cache.find(tileIndex) != m_cache.end())
+	{
+		entry = m_cache[tileIndex];
 		entry->processor = processor;
 	}
-	else {
+	else
+	{
 		entry = new TileCacheEntry(processor);
 		m_cache[tileIndex] = entry;
 	}
 
 	return entry;
 }
-TileCacheEntry* TileCache::get(uint16_t tileIndex){
-	if (m_cache.find(tileIndex) != m_cache.end())
+TileCacheEntry* TileCache::get(uint16_t tileIndex)
+{
+	if(m_cache.find(tileIndex) != m_cache.end())
 		return m_cache[tileIndex];
 
 	return nullptr;
 }
-void TileCache::setStrategy(GRK_TILE_CACHE_STRATEGY strategy){
+void TileCache::setStrategy(GRK_TILE_CACHE_STRATEGY strategy)
+{
 	m_strategy = strategy;
 }
-GrkImage* TileCache::getComposite(){
+GrkImage* TileCache::getComposite()
+{
 	return tileComposite;
 }
-std::vector<GrkImage*> TileCache::getAllImages(void){
+std::vector<GrkImage*> TileCache::getAllImages(void)
+{
 	std::vector<GrkImage*> rc = getTileImages();
 	rc.push_back(tileComposite);
 
 	return rc;
 }
-std::vector<GrkImage*> TileCache::getTileImages(void){
+std::vector<GrkImage*> TileCache::getTileImages(void)
+{
 	std::vector<GrkImage*> rc;
-	for (auto &entry : m_cache){
+	for(auto& entry : m_cache)
+	{
 		auto image = entry.second->processor->getImage();
-		if (image)
+		if(image)
 			rc.push_back(image);
 	}
 	return rc;
 }
 
-}
+} // namespace grk

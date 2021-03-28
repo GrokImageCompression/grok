@@ -25,26 +25,27 @@
 #include "grk_config_private.h"
 #include "IBitIO.h"
 
-namespace grk {
-
-#define GROK_STREAM_STATUS_OUTPUT  0x1U
-#define GROK_STREAM_STATUS_INPUT   0x2U
-#define GROK_STREAM_STATUS_END     0x4U
-#define GROK_STREAM_STATUS_ERROR   0x8U
+namespace grk
+{
+#define GROK_STREAM_STATUS_OUTPUT 0x1U
+#define GROK_STREAM_STATUS_INPUT 0x2U
+#define GROK_STREAM_STATUS_END 0x4U
+#define GROK_STREAM_STATUS_ERROR 0x8U
 
 /**
  Byte input-output stream.
  */
-struct BufferedStream: public IBufferedStream {
+struct BufferedStream : public IBufferedStream
+{
 	friend GrkObjectWrapperImpl<BufferedStream>;
-	BufferedStream(uint8_t *buffer, size_t buffer_size, bool l_is_input);
+	BufferedStream(uint8_t* buffer, size_t buffer_size, bool l_is_input);
 
 	grk_object obj;
 
 	/**
 	 * user data
 	 */
-	void *m_user_data;
+	void* m_user_data;
 
 	/**
 	 * Pointer to function to free m_user_data (nullptr at initialization)
@@ -90,12 +91,12 @@ struct BufferedStream: public IBufferedStream {
 	 * @param		p_buffer	pointer to the data buffer
 	 * 							that will receive the data.
 	 * @param		p_size		number of bytes to read.
-	 
+
 	 * @return		the number of bytes read
 	 */
-	size_t read(uint8_t *p_buffer, size_t p_size);
+	size_t read(uint8_t* p_buffer, size_t p_size);
 
-	size_t read_data_zero_copy(uint8_t **p_buffer, size_t p_size);
+	size_t read_data_zero_copy(uint8_t** p_buffer, size_t p_size);
 
 	bool write_byte(uint8_t value);
 
@@ -110,14 +111,14 @@ struct BufferedStream: public IBufferedStream {
 	 * @param		p_buffer	pointer to the data buffer holds the data
 	 * 							to be written.
 	 * @param		p_size		number of bytes to write.
-	 
+
 	 * @return		the number of bytes written
 	 */
-	size_t write_bytes(const uint8_t *p_buffer, size_t p_size);
+	size_t write_bytes(const uint8_t* p_buffer, size_t p_size);
 
 	/**
 	 * Flush stream to disk
-	 
+
 	 * @return		true if the data could be flushed, otherwise false.
 	 */
 	bool flush();
@@ -125,7 +126,7 @@ struct BufferedStream: public IBufferedStream {
 	/**
 	 * Skip bytes in stream.
 	 * @param		p_size		the number of bytes to skip.
-	 
+
 	 * @return		true if successful, otherwise false
 	 */
 	bool skip(int64_t p_size);
@@ -157,17 +158,18 @@ struct BufferedStream: public IBufferedStream {
 	 */
 	bool has_seek();
 
-	bool supportsZeroCopy() ;
+	bool supportsZeroCopy();
 	uint8_t* getCurrentPtr();
 
-	static BufferedStream* getImpl(grk_stream *stream);
+	static BufferedStream* getImpl(grk_stream* stream);
 	grk_stream* getWrapper(void);
-private:
+
+  private:
 	~BufferedStream();
 	/**
 	 * Skip bytes in write stream.
 	 * @param		p_size		the number of bytes to skip.
-	 
+
 	 * @return		true if successful, otherwise false
 	 */
 	bool write_skip(int64_t p_size);
@@ -175,7 +177,7 @@ private:
 	/**
 	 * Skip bytes in read stream.
 	 * @param		p_size		the number of bytes to skip.
-	 
+
 	 * @return		true if successful, otherwise false
 	 */
 	bool read_skip(int64_t p_size);
@@ -183,7 +185,7 @@ private:
 	/**
 	 * Absolute seek in read stream.
 	 * @param		offset		absolute offset
-	 
+
 	 * @return		true if successful, otherwise false
 	 */
 	bool read_seek(uint64_t offset);
@@ -196,12 +198,13 @@ private:
 	bool write_seek(uint64_t offset);
 
 	void writeIncrement(size_t p_size);
-	template<typename TYPE> bool write(TYPE value, uint8_t numBytes);
+	template<typename TYPE>
+	bool write(TYPE value, uint8_t numBytes);
 	void invalidate_buffer();
 
 	bool isMemStream();
 
-	grkBufferU8 *m_buf;
+	grkBufferU8* m_buf;
 
 	// number of bytes read in, or slated for write
 	size_t m_buffered_bytes;
@@ -214,47 +217,52 @@ private:
 
 	// number of bytes read/written from the beginning of the stream
 	uint64_t m_stream_offset;
-
 };
 
-template<typename TYPE> void grk_write(uint8_t *p_buffer, TYPE value,
-		uint32_t nb_bytes) {
-	if (nb_bytes == 0)
+template<typename TYPE>
+void grk_write(uint8_t* p_buffer, TYPE value, uint32_t nb_bytes)
+{
+	if(nb_bytes == 0)
 		return;
 	assert(nb_bytes <= sizeof(TYPE));
 #if defined(GROK_BIG_ENDIAN)
-	const uint8_t * l_data_ptr = ((const uint8_t *)&value) + sizeof(TYPE) - nb_bytes;
+	const uint8_t* l_data_ptr = ((const uint8_t*)&value) + sizeof(TYPE) - nb_bytes;
 	memcpy(p_buffer, l_data_ptr, nb_bytes);
 #else
-	const uint8_t *l_data_ptr = ((const uint8_t*) &value)
-			+ (size_t)(nb_bytes - 1);
-	for (uint32_t i = 0; i < nb_bytes; ++i) {
+	const uint8_t* l_data_ptr = ((const uint8_t*)&value) + (size_t)(nb_bytes - 1);
+	for(uint32_t i = 0; i < nb_bytes; ++i)
+	{
 		*(p_buffer++) = *(l_data_ptr--);
 	}
 #endif
 }
 
-template<typename TYPE> void grk_write(uint8_t *p_buffer, TYPE value) {
+template<typename TYPE>
+void grk_write(uint8_t* p_buffer, TYPE value)
+{
 	grk_write<TYPE>(p_buffer, value, sizeof(TYPE));
 }
 
-template<typename TYPE> void grk_read(const uint8_t *p_buffer, TYPE *value,
-		uint32_t nb_bytes) {
+template<typename TYPE>
+void grk_read(const uint8_t* p_buffer, TYPE* value, uint32_t nb_bytes)
+{
 	assert(nb_bytes > 0 && nb_bytes <= sizeof(TYPE));
 #if defined(GROK_BIG_ENDIAN)
-	auto l_data_ptr = ((uint8_t *)value);
+	auto l_data_ptr = ((uint8_t*)value);
 	*value = 0;
 	memcpy(l_data_ptr + sizeof(TYPE) - nb_bytes, p_buffer, nb_bytes);
 #else
-	auto l_data_ptr = ((uint8_t*) value) + nb_bytes - 1;
+	auto l_data_ptr = ((uint8_t*)value) + nb_bytes - 1;
 	*value = 0;
-	for (uint32_t i = 0; i < nb_bytes; ++i)
+	for(uint32_t i = 0; i < nb_bytes; ++i)
 		*(l_data_ptr--) = *(p_buffer++);
 #endif
 }
 
-template<typename TYPE> void grk_read(const uint8_t *p_buffer, TYPE *value){
+template<typename TYPE>
+void grk_read(const uint8_t* p_buffer, TYPE* value)
+{
 	grk_read<TYPE>(p_buffer, value, sizeof(TYPE));
 }
 
-}
+} // namespace grk

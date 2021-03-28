@@ -17,18 +17,19 @@
 #include <vector>
 
 #pragma once
-namespace grk {
-
+namespace grk
+{
 /*  SparseBuffer
 
  Store a list of buffers, or chunks, which can be treated as one single
  contiguous buffer.
 
  */
-struct SparseBuffer {
+struct SparseBuffer
+{
 	SparseBuffer();
 	~SparseBuffer();
-	grkBufferU8* pushBack(uint8_t *buf, size_t len, bool ownsData);
+	grkBufferU8* pushBack(uint8_t* buf, size_t len, bool ownsData);
 	void incrementCurrentChunkOffset(size_t offset);
 	size_t getCurrentChunkLength(void);
 	/*
@@ -41,8 +42,9 @@ struct SparseBuffer {
 	void rewind(void);
 	size_t skip(size_t nb_bytes);
 	void increment(void);
-	size_t read(void *p_buffer, size_t nb_bytes);
-private:
+	size_t read(void* p_buffer, size_t nb_bytes);
+
+  private:
 	/*
 	 Treat segmented buffer as single contiguous buffer, and get current offset
 	 */
@@ -50,7 +52,7 @@ private:
 	/*
 	 Copy all chunks, in sequence, into contiguous array
 	 */
-	bool copyToContiguousBuffer(uint8_t *buffer);
+	bool copyToContiguousBuffer(uint8_t* buffer);
 	/*
 	 Clean up internal resources
 	 */
@@ -59,12 +61,12 @@ private:
 	 Return current pointer, stored in ptr variable, and advance chunk buffer
 	 offset by chunk_len
 	 */
-	bool zeroCopyRead(uint8_t **ptr, size_t chunk_len);
+	bool zeroCopyRead(uint8_t** ptr, size_t chunk_len);
 	size_t getCurrentChunkOffset(void);
-	void pushBack(grkBufferU8 *chunk);
+	void pushBack(grkBufferU8* chunk);
 	size_t dataLength; /* total length of all chunks*/
 	size_t currentChunkId; /* current index into chunk vector */
 	std::vector<grkBufferU8*> chunks;
 };
 
-}
+} // namespace grk

@@ -23,43 +23,40 @@
 
 #include <cstdint>
 
-namespace grk {
-
-
-struct  vec4f {
-	vec4f() : f{0}
-	{}
+namespace grk
+{
+struct vec4f
+{
+	vec4f() : f{0} {}
 	explicit vec4f(float m)
 	{
-		f[0]=m;
-		f[1]=m;
-		f[2]=m;
-		f[3]=m;
-
+		f[0] = m;
+		f[1] = m;
+		f[2] = m;
+		f[3] = m;
 	}
-    float f[4];
+	float f[4];
 };
 
-uint32_t max_resolution(Resolution *GRK_RESTRICT r, uint32_t i);
+uint32_t max_resolution(Resolution* GRK_RESTRICT r, uint32_t i);
 
-template<class T> constexpr T getFilterPad(bool lossless) {
-     return  lossless ? 1 : 2;
- }
-
-template<class T> constexpr T getHorizontalPassHeight(bool lossless){
-	return T(lossless ? (sizeof(int32_t)/sizeof(int32_t)) : (sizeof(vec4f) / sizeof(float)));
+template<class T>
+constexpr T getFilterPad(bool lossless)
+{
+	return lossless ? 1 : 2;
 }
 
-class WaveletReverse {
+template<class T>
+constexpr T getHorizontalPassHeight(bool lossless)
+{
+	return T(lossless ? (sizeof(int32_t) / sizeof(int32_t)) : (sizeof(vec4f) / sizeof(float)));
+}
 
-public:
-	bool decompress(TileProcessor *p_tcd,
-					TileComponent* tilec,
-					uint16_t compno,
-					grkRectU32 window,
-					uint8_t numres,
-					uint8_t qmfbid);
-
+class WaveletReverse
+{
+  public:
+	bool decompress(TileProcessor* p_tcd, TileComponent* tilec, uint16_t compno, grkRectU32 window,
+					uint8_t numres, uint8_t qmfbid);
 };
 
-}
+} // namespace grk

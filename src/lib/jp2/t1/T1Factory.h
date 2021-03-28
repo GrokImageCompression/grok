@@ -19,15 +19,13 @@
 
 #include "T1Interface.h"
 
-namespace grk {
-
-class T1Factory {
-public:
-	static T1Interface* get_t1(bool isCompressor,
-								TileCodingParams *tcp,
-								uint32_t maxCblkW,
-								uint32_t maxCblkH);
-
+namespace grk
+{
+class T1Factory
+{
+  public:
+	static T1Interface* get_t1(bool isCompressor, TileCodingParams* tcp, uint32_t maxCblkW,
+							   uint32_t maxCblkH);
 };
 
-}
+} // namespace grk

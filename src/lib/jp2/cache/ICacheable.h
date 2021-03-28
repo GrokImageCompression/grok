@@ -16,36 +16,39 @@
 
 #pragma once
 
-namespace grk {
-
-enum GrkCacheState {
+namespace grk
+{
+enum GrkCacheState
+{
 	GRK_CACHE_STATE_CLOSED,
 	GRK_CACHE_STATE_OPEN,
 	GRK_CACHE_STATE_ERROR
 };
 
-
-class ICacheable {
-public:
-	ICacheable() : m_state(GRK_CACHE_STATE_CLOSED)
-	{}
+class ICacheable
+{
+  public:
+	ICacheable() : m_state(GRK_CACHE_STATE_CLOSED) {}
 	virtual ~ICacheable() = default;
-	bool isOpen(void){
+	bool isOpen(void)
+	{
 		return m_state == GRK_CACHE_STATE_OPEN;
 	}
-	bool isClosed(void){
+	bool isClosed(void)
+	{
 		return m_state == GRK_CACHE_STATE_CLOSED;
 	}
-	bool isError(void){
+	bool isError(void)
+	{
 		return m_state == GRK_CACHE_STATE_ERROR;
 	}
-	void setCacheState(GrkCacheState state){
+	void setCacheState(GrkCacheState state)
+	{
 		m_state = state;
 	}
-private:
-	GrkCacheState m_state;
 
+  private:
+	GrkCacheState m_state;
 };
 
-}
-
+} // namespace grk

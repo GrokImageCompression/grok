@@ -17,18 +17,18 @@
 
 #pragma once
 
-
-namespace grk {
-
+namespace grk
+{
 struct CompressBlockExec;
 struct DecompressBlockExec;
 
-class T1Interface {
-public:
+class T1Interface
+{
+  public:
 	virtual ~T1Interface() = default;
 
-	virtual bool compress(CompressBlockExec *block)=0;
-	virtual bool decompress(DecompressBlockExec *block)=0;
+	virtual bool compress(CompressBlockExec* block) = 0;
+	virtual bool decompress(DecompressBlockExec* block) = 0;
 };
 
-}
+} // namespace grk

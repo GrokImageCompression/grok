@@ -21,41 +21,39 @@
 
 #pragma once
 
-#define INV(val, mask,invert)  ((invert) ? ((val)^(mask)) : (val))
+#define INV(val, mask, invert) ((invert) ? ((val) ^ (mask)) : (val))
 
 /* Component precision clipping */
-void clip_component( grk_image_comp  *  component, uint8_t precision);
+void clip_component(grk_image_comp* component, uint8_t precision);
 /* Component precision scaling */
-void scale_component( grk_image_comp  *  component, uint8_t precision);
+void scale_component(grk_image_comp* component, uint8_t precision);
 
-grk_image* convert_gray_to_rgb(grk_image *original);
-grk_image* upsample_image_components(grk_image *original);
+grk_image* convert_gray_to_rgb(grk_image* original);
+grk_image* upsample_image_components(grk_image* original);
 
 /* planar / interleaved conversions */
-typedef void(*cvtInterleavedToPlanar)(const int32_t* pSrc, int32_t* const* pDst, size_t length);
+typedef void (*cvtInterleavedToPlanar)(const int32_t* pSrc, int32_t* const* pDst, size_t length);
 extern const cvtInterleavedToPlanar cvtInterleavedToPlanar_LUT[10];
-typedef void(*cvtPlanarToInterleaved)(int32_t const* const* pSrc, int32_t* pDst, size_t length, int32_t adjust);
+typedef void (*cvtPlanarToInterleaved)(int32_t const* const* pSrc, int32_t* pDst, size_t length,
+									   int32_t adjust);
 extern const cvtPlanarToInterleaved cvtPlanarToInterleaved_LUT[10];
 
 /* bit depth conversions */
-typedef void(*cvtTo32)(const uint8_t* pSrc, int32_t* pDst, size_t length,bool invert);
+typedef void (*cvtTo32)(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert);
 extern const cvtTo32 cvtTo32_LUT[9]; /* up to 8bpp */
-typedef void(*cvtFrom32)(const int32_t* pSrc, uint8_t* pDst, size_t length);
+typedef void (*cvtFrom32)(const int32_t* pSrc, uint8_t* pDst, size_t length);
 extern const cvtFrom32 cvtFrom32_LUT[9]; /* up to 8bpp */
 
-void convert_16u32s_C1R(const uint8_t *pSrc, int32_t *pDst,
-		size_t length, bool invert);
+void convert_16u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert);
 
-void convert_tif_32sto3u(const int32_t *pSrc, uint8_t *pDst, size_t length);
-void convert_tif_32sto5u(const int32_t *pSrc, uint8_t *pDst, size_t length);
-void convert_tif_32sto7u(const int32_t *pSrc, uint8_t *pDst, size_t length);
-void convert_tif_32sto9u(const int32_t *pSrc, uint8_t *pDst, size_t length);
-void convert_tif_32sto10u(const int32_t *pSrc, uint8_t *pDst, size_t length);
-void convert_tif_32sto11u(const int32_t *pSrc, uint8_t *pDst, size_t length);
-void convert_tif_32sto12u(const int32_t *pSrc, uint8_t *pDst, size_t length);
-void convert_tif_32sto13u(const int32_t *pSrc, uint8_t *pDst, size_t length);
-void convert_tif_32sto14u(const int32_t *pSrc, uint8_t *pDst, size_t length);
-void convert_tif_32sto15u(const int32_t *pSrc, uint8_t *pDst, size_t length);
-void convert_tif_32sto16u(const int32_t *pSrc, uint8_t *pDst, size_t length);
-
-
+void convert_tif_32sto3u(const int32_t* pSrc, uint8_t* pDst, size_t length);
+void convert_tif_32sto5u(const int32_t* pSrc, uint8_t* pDst, size_t length);
+void convert_tif_32sto7u(const int32_t* pSrc, uint8_t* pDst, size_t length);
+void convert_tif_32sto9u(const int32_t* pSrc, uint8_t* pDst, size_t length);
+void convert_tif_32sto10u(const int32_t* pSrc, uint8_t* pDst, size_t length);
+void convert_tif_32sto11u(const int32_t* pSrc, uint8_t* pDst, size_t length);
+void convert_tif_32sto12u(const int32_t* pSrc, uint8_t* pDst, size_t length);
+void convert_tif_32sto13u(const int32_t* pSrc, uint8_t* pDst, size_t length);
+void convert_tif_32sto14u(const int32_t* pSrc, uint8_t* pDst, size_t length);
+void convert_tif_32sto15u(const int32_t* pSrc, uint8_t* pDst, size_t length);
+void convert_tif_32sto16u(const int32_t* pSrc, uint8_t* pDst, size_t length);

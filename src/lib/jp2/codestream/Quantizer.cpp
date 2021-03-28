@@ -21,61 +21,64 @@
 
 #include "grk_includes.h"
 
-namespace grk {
-
-bool Quantizer::setBandStepSizeAndBps(TileCodingParams *tcp,
-							Subband *band,
-		                   uint32_t resno,
-						   uint8_t bandIndex,
-							TileComponentCodingParams *tccp,
-							uint8_t image_precision,
-							bool compress){
-
-    /* Table E-1 - Sub-band gains */
-    /* BUG_WEIRD_TWO_INVK (look for this identifier in dwt.c): */
-    /* the test (!isEncoder && l_tccp->qmfbid == 0) is strongly */
-    /* linked to the use of two_invK instead of invK */
-    const uint32_t log2_gain = (!compress &&
-                                 tccp->qmfbid == 0) ? 0 : (band->orientation == 0) ? 0 :
-                                (band->orientation == 3) ? 2 : 1;
+namespace grk
+{
+bool Quantizer::setBandStepSizeAndBps(TileCodingParams* tcp, Subband* band, uint32_t resno,
+									  uint8_t bandIndex, TileComponentCodingParams* tccp,
+									  uint8_t image_precision, bool compress)
+{
+	/* Table E-1 - Sub-band gains */
+	/* BUG_WEIRD_TWO_INVK (look for this identifier in dwt.c): */
+	/* the test (!isEncoder && l_tccp->qmfbid == 0) is strongly */
+	/* linked to the use of two_invK instead of invK */
+	const uint32_t log2_gain = (!compress && tccp->qmfbid == 0) ? 0
+							   : (band->orientation == 0)		? 0
+							   : (band->orientation == 3)		? 2
+																: 1;
 	uint32_t numbps = image_precision + log2_gain;
-	auto offset = (resno == 0) ? 0 : 3*resno - 2;
+	auto offset = (resno == 0) ? 0 : 3 * resno - 2;
 	auto step_size = tccp->stepsizes + offset + bandIndex;
-	band->stepsize = (float) (((1.0 + step_size->mant / 2048.0)
-			* pow(2.0, (int32_t) (numbps - step_size->expn))));
-    //printf("res=%d, band=%d, mant=%d,expn=%d, numbps=%d, step size= %f\n",resno,band->orientation,step_size->mant,step_size->expn,numbps, band->stepsize);
+	band->stepsize =
+		(float)(((1.0 + step_size->mant / 2048.0) * pow(2.0, (int32_t)(numbps - step_size->expn))));
+	// printf("res=%d, band=%d, mant=%d,expn=%d, numbps=%d, step size=
+	// %f\n",resno,band->orientation,step_size->mant,step_size->expn,numbps, band->stepsize);
 
 	// see Taubman + Marcellin - Equation 10.22
-	band->numbps = tccp->roishift
-			+ (uint32_t)std::max<int32_t>(0,
-					step_size->expn + tccp->numgbits - 1);
-	//assert(band->numbps <= k_max_bit_planes);
+	band->numbps =
+		tccp->roishift + (uint32_t)std::max<int32_t>(0, step_size->expn + tccp->numgbits - 1);
+	// assert(band->numbps <= k_max_bit_planes);
 
-	if (tcp->getIsHT()){
+	if(tcp->getIsHT())
+	{
 		// lossy decompress
-		 if (!compress && tccp->qmfbid == 0){
-			 if (band->numbps > 31){
-				 GRK_ERROR("Unsupported number of band bps %u", band->numbps);
-				 return false;
-			 }
-			 band->stepsize /=(float)(1u << (31 - band->numbps));
-		 }
+		if(!compress && tccp->qmfbid == 0)
+		{
+			if(band->numbps > 31)
+			{
+				GRK_ERROR("Unsupported number of band bps %u", band->numbps);
+				return false;
+			}
+			band->stepsize /= (float)(1u << (31 - band->numbps));
+		}
 	}
 
 	return true;
 }
 
-void Quantizer::apply_quant(TileComponentCodingParams *src, TileComponentCodingParams *dest){
-	if (!src || !dest)
+void Quantizer::apply_quant(TileComponentCodingParams* src, TileComponentCodingParams* dest)
+{
+	if(!src || !dest)
 		return;
 
 	// respect the QCD/QCC scoping rules
 	bool ignore = false;
-	if (dest->fromQCC) {
-		if (!src->fromTileHeader || dest->fromTileHeader)
+	if(dest->fromQCC)
+	{
+		if(!src->fromTileHeader || dest->fromTileHeader)
 			ignore = true;
 	}
-	if (!ignore) {
+	if(!ignore)
+	{
 		dest->qntsty = src->qntsty;
 		dest->numgbits = src->numgbits;
 		auto size = GRK_J2K_MAXBANDS * sizeof(grk_stepsize);
@@ -83,9 +86,8 @@ void Quantizer::apply_quant(TileComponentCodingParams *src, TileComponentCodingP
 	}
 }
 
-
-bool Quantizer::write_SQcd_SQcc(CodeStream *codeStream,
-		uint32_t comp_no, BufferedStream *stream) {
+bool Quantizer::write_SQcd_SQcc(CodeStream* codeStream, uint32_t comp_no, BufferedStream* stream)
+{
 	assert(codeStream != nullptr);
 
 	auto cp = codeStream->getCodingParams();
@@ -95,24 +97,29 @@ bool Quantizer::write_SQcd_SQcc(CodeStream *codeStream,
 	assert(comp_no < codeStream->getHeaderImage()->numcomps);
 
 	uint32_t num_bands =
-			(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
-					1 : (tccp->numresolutions * 3U - 2);
+		(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ? 1 : (tccp->numresolutions * 3U - 2);
 
 	/* Sqcx */
-	if (!stream->write_byte(
-			(uint8_t) (tccp->qntsty + (tccp->numgbits << 5)))) {
+	if(!stream->write_byte((uint8_t)(tccp->qntsty + (tccp->numgbits << 5))))
+	{
 		return false;
 	}
 	/* SPqcx_i */
-	for (uint32_t band_no = 0; band_no < num_bands; ++band_no) {
+	for(uint32_t band_no = 0; band_no < num_bands; ++band_no)
+	{
 		uint32_t expn = tccp->stepsizes[band_no].expn;
 		uint32_t mant = tccp->stepsizes[band_no].mant;
-		if (tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) {
-			if (!stream->write_byte((uint8_t) (expn << 3))) {
+		if(tccp->qntsty == J2K_CCP_QNTSTY_NOQNT)
+		{
+			if(!stream->write_byte((uint8_t)(expn << 3)))
+			{
 				return false;
 			}
-		} else {
-			if (!stream->write_short((uint16_t) ((expn << 11) + mant))) {
+		}
+		else
+		{
+			if(!stream->write_short((uint16_t)((expn << 11) + mant)))
+			{
 				return false;
 			}
 		}
@@ -120,9 +127,8 @@ bool Quantizer::write_SQcd_SQcc(CodeStream *codeStream,
 	return true;
 }
 
-
-uint32_t Quantizer::get_SQcd_SQcc_size(CodeStream *codeStream,
-		uint32_t comp_no) {
+uint32_t Quantizer::get_SQcd_SQcc_size(CodeStream* codeStream, uint32_t comp_no)
+{
 	assert(codeStream != nullptr);
 
 	auto cp = codeStream->getCodingParams();
@@ -132,18 +138,21 @@ uint32_t Quantizer::get_SQcd_SQcc_size(CodeStream *codeStream,
 	assert(comp_no < codeStream->getHeaderImage()->numcomps);
 
 	uint32_t num_bands =
-			(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
-					1 : (tccp->numresolutions * 3U - 2);
+		(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ? 1 : (tccp->numresolutions * 3U - 2);
 
-	if (tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) {
+	if(tccp->qntsty == J2K_CCP_QNTSTY_NOQNT)
+	{
 		return 1 + num_bands;
-	} else {
+	}
+	else
+	{
 		return 1 + 2 * num_bands;
 	}
 }
 
-bool Quantizer::compare_SQcd_SQcc(CodeStream *codeStream,
-		uint32_t first_comp_no, uint32_t second_comp_no) {
+bool Quantizer::compare_SQcd_SQcc(CodeStream* codeStream, uint32_t first_comp_no,
+								  uint32_t second_comp_no)
+{
 	assert(codeStream != nullptr);
 
 	auto cp = codeStream->getCodingParams();
@@ -151,31 +160,40 @@ bool Quantizer::compare_SQcd_SQcc(CodeStream *codeStream,
 	auto tccp0 = &tcp->tccps[first_comp_no];
 	auto tccp1 = &tcp->tccps[second_comp_no];
 
-	if (tccp0->qntsty != tccp1->qntsty) {
+	if(tccp0->qntsty != tccp1->qntsty)
+	{
 		return false;
 	}
-	if (tccp0->numgbits != tccp1->numgbits) {
+	if(tccp0->numgbits != tccp1->numgbits)
+	{
 		return false;
 	}
 	uint32_t band_no, num_bands;
-	if (tccp0->qntsty == J2K_CCP_QNTSTY_SIQNT) {
+	if(tccp0->qntsty == J2K_CCP_QNTSTY_SIQNT)
+	{
 		num_bands = 1U;
-	} else {
+	}
+	else
+	{
 		num_bands = tccp0->numresolutions * 3U - 2U;
-		if (num_bands != (tccp1->numresolutions * 3U - 2U)) {
+		if(num_bands != (tccp1->numresolutions * 3U - 2U))
+		{
 			return false;
 		}
 	}
-	for (band_no = 0; band_no < num_bands; ++band_no) {
-		if (tccp0->stepsizes[band_no].expn
-				!= tccp1->stepsizes[band_no].expn) {
+	for(band_no = 0; band_no < num_bands; ++band_no)
+	{
+		if(tccp0->stepsizes[band_no].expn != tccp1->stepsizes[band_no].expn)
+		{
 			return false;
 		}
 	}
-	if (tccp0->qntsty != J2K_CCP_QNTSTY_NOQNT) {
-		for (band_no = 0; band_no < num_bands; ++band_no) {
-			if (tccp0->stepsizes[band_no].mant
-					!= tccp1->stepsizes[band_no].mant) {
+	if(tccp0->qntsty != J2K_CCP_QNTSTY_NOQNT)
+	{
+		for(band_no = 0; band_no < num_bands; ++band_no)
+		{
+			if(tccp0->stepsizes[band_no].mant != tccp1->stepsizes[band_no].mant)
+			{
 				return false;
 			}
 		}
@@ -183,14 +201,15 @@ bool Quantizer::compare_SQcd_SQcc(CodeStream *codeStream,
 	return true;
 }
 
-bool Quantizer::read_SQcd_SQcc(CodeStreamDecompress *codeStream,
-								bool fromQCC, uint32_t comp_no,
-								uint8_t *p_header_data, uint16_t *header_size) {
+bool Quantizer::read_SQcd_SQcc(CodeStreamDecompress* codeStream, bool fromQCC, uint32_t comp_no,
+							   uint8_t* p_header_data, uint16_t* header_size)
+{
 	assert(codeStream != nullptr);
 	assert(p_header_data != nullptr);
 	assert(comp_no < codeStream->getHeaderImage()->numcomps);
-	if (*header_size < 1) {
-		GRK_ERROR( "Error reading SQcd or SQcc element");
+	if(*header_size < 1)
+	{
+		GRK_ERROR("Error reading SQcd or SQcc element");
 		return false;
 	}
 	/* Sqcx */
@@ -199,8 +218,9 @@ bool Quantizer::read_SQcd_SQcc(CodeStreamDecompress *codeStream,
 	grk_read<uint32_t>(current_ptr++, &tmp, 1);
 	uint8_t qntsty = tmp & 0x1f;
 	*header_size = (uint16_t)(*header_size - 1);
-	if (qntsty > J2K_CCP_QNTSTY_SEQNT){
-		GRK_ERROR( "Undefined quantization style %d", qntsty);
+	if(qntsty > J2K_CCP_QNTSTY_SEQNT)
+	{
+		GRK_ERROR("Undefined quantization style %d", qntsty);
 		return false;
 	}
 
@@ -211,63 +231,75 @@ bool Quantizer::read_SQcd_SQcc(CodeStreamDecompress *codeStream,
 	bool fromTileHeader = codeStream->isDecodingTilePartHeader();
 	bool mainQCD = !fromQCC && !fromTileHeader;
 
-	if (tccp->quantizationMarkerSet) {
+	if(tccp->quantizationMarkerSet)
+	{
 		bool tileHeaderQCC = fromQCC && fromTileHeader;
 		bool setMainQCD = !tccp->fromQCC && !tccp->fromTileHeader;
 		bool setMainQCC = tccp->fromQCC && !tccp->fromTileHeader;
 		bool setTileHeaderQCD = !tccp->fromQCC && tccp->fromTileHeader;
 		bool setTileHeaderQCC = tccp->fromQCC && tccp->fromTileHeader;
 
-		if (!fromTileHeader){
-			if (setMainQCC || (mainQCD && setMainQCD))
+		if(!fromTileHeader)
+		{
+			if(setMainQCC || (mainQCD && setMainQCD))
 				ignore = true;
-		} else {
-			if (setTileHeaderQCC)
+		}
+		else
+		{
+			if(setTileHeaderQCC)
 				ignore = true;
-			else if (setTileHeaderQCD && !tileHeaderQCC)
+			else if(setTileHeaderQCD && !tileHeaderQCC)
 				ignore = true;
 		}
 	}
 
-	if (!ignore) {
+	if(!ignore)
+	{
 		tccp->quantizationMarkerSet = true;
 		tccp->fromQCC = fromQCC;
 		tccp->fromTileHeader = fromTileHeader;
 		tccp->qntsty = qntsty;
-		if (mainQCD)
+		if(mainQCD)
 			tcp->main_qcd_qntsty = tccp->qntsty;
 		tccp->numgbits = (uint8_t)(tmp >> 5);
-		if (tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) {
+		if(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT)
+		{
 			tccp->numStepSizes = 1;
-		} else {
-			tccp->numStepSizes =
-					(tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) ?
-							(uint8_t)(*header_size) : (uint8_t)((*header_size) / 2);
-			if (tccp->numStepSizes > GRK_J2K_MAXBANDS) {
+		}
+		else
+		{
+			tccp->numStepSizes = (tccp->qntsty == J2K_CCP_QNTSTY_NOQNT)
+									 ? (uint8_t)(*header_size)
+									 : (uint8_t)((*header_size) / 2);
+			if(tccp->numStepSizes > GRK_J2K_MAXBANDS)
+			{
 				GRK_WARN("While reading QCD or QCC marker segment, "
-								"number of step sizes (%u) is greater"
-								" than GRK_J2K_MAXBANDS (%u).\n"
-								"So, number of elements stored is limited to "
-								"GRK_J2K_MAXBANDS (%u) and the rest are skipped.",
-						tccp->numStepSizes, GRK_J2K_MAXBANDS,
-						GRK_J2K_MAXBANDS);
+						 "number of step sizes (%u) is greater"
+						 " than GRK_J2K_MAXBANDS (%u).\n"
+						 "So, number of elements stored is limited to "
+						 "GRK_J2K_MAXBANDS (%u) and the rest are skipped.",
+						 tccp->numStepSizes, GRK_J2K_MAXBANDS, GRK_J2K_MAXBANDS);
 			}
 		}
-		if (mainQCD)
+		if(mainQCD)
 			tcp->main_qcd_numStepSizes = tccp->numStepSizes;
 	}
-	if (qntsty == J2K_CCP_QNTSTY_NOQNT) {
-		if (*header_size < tccp->numStepSizes) {
-			GRK_ERROR( "Error reading SQcd_SQcc marker");
+	if(qntsty == J2K_CCP_QNTSTY_NOQNT)
+	{
+		if(*header_size < tccp->numStepSizes)
+		{
+			GRK_ERROR("Error reading SQcd_SQcc marker");
 			return false;
 		}
-		for (uint32_t band_no = 0; band_no < tccp->numStepSizes;
-				band_no++) {
+		for(uint32_t band_no = 0; band_no < tccp->numStepSizes; band_no++)
+		{
 			/* SPqcx_i */
 			grk_read<uint32_t>(current_ptr++, &tmp, 1);
-			if (!ignore) {
-				if (band_no < GRK_J2K_MAXBANDS) {
-					//top 5 bits for exponent
+			if(!ignore)
+			{
+				if(band_no < GRK_J2K_MAXBANDS)
+				{
+					// top 5 bits for exponent
 					tccp->stepsizes[band_no].expn = (uint8_t)(tmp >> 3);
 					// mantissa = 0
 					tccp->stepsizes[band_no].mant = 0;
@@ -275,18 +307,23 @@ bool Quantizer::read_SQcd_SQcc(CodeStreamDecompress *codeStream,
 			}
 		}
 		*header_size = (uint16_t)(*header_size - tccp->numStepSizes);
-	} else {
-		if (*header_size < 2 * tccp->numStepSizes) {
-			GRK_ERROR( "Error reading SQcd_SQcc marker");
+	}
+	else
+	{
+		if(*header_size < 2 * tccp->numStepSizes)
+		{
+			GRK_ERROR("Error reading SQcd_SQcc marker");
 			return false;
 		}
-		for (uint32_t band_no = 0; band_no < tccp->numStepSizes;
-				band_no++) {
+		for(uint32_t band_no = 0; band_no < tccp->numStepSizes; band_no++)
+		{
 			/* SPqcx_i */
 			grk_read<uint32_t>(current_ptr, &tmp, 2);
 			current_ptr += 2;
-			if (!ignore) {
-				if (band_no < GRK_J2K_MAXBANDS) {
+			if(!ignore)
+			{
+				if(band_no < GRK_J2K_MAXBANDS)
+				{
 					// top 5 bits for exponent
 					tccp->stepsizes[band_no].expn = (uint8_t)(tmp >> 11);
 					// bottom 11 bits for mantissa
@@ -296,16 +333,18 @@ bool Quantizer::read_SQcd_SQcc(CodeStreamDecompress *codeStream,
 		}
 		*header_size = (uint16_t)(*header_size - 2 * tccp->numStepSizes);
 	}
-	if (!ignore) {
+	if(!ignore)
+	{
 		/* if scalar derived, then compute other stepsizes */
-		if (tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) {
-			for (uint32_t band_no = 1; band_no < GRK_J2K_MAXBANDS;
-					band_no++) {
+		if(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT)
+		{
+			for(uint32_t band_no = 1; band_no < GRK_J2K_MAXBANDS; band_no++)
+			{
 				uint8_t bandDividedBy3 = (uint8_t)((band_no - 1) / 3);
 				tccp->stepsizes[band_no].expn = 0;
-				if (tccp->stepsizes[0].expn > bandDividedBy3)
+				if(tccp->stepsizes[0].expn > bandDividedBy3)
 					tccp->stepsizes[band_no].expn =
-							(uint8_t)(tccp->stepsizes[0].expn - bandDividedBy3);
+						(uint8_t)(tccp->stepsizes[0].expn - bandDividedBy3);
 				tccp->stepsizes[band_no].mant = tccp->stepsizes[0].mant;
 			}
 		}
@@ -313,5 +352,4 @@ bool Quantizer::read_SQcd_SQcc(CodeStreamDecompress *codeStream,
 	return true;
 }
 
-}
-
+} // namespace grk

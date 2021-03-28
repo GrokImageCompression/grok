@@ -17,8 +17,8 @@
 
 #include "grk_includes.h"
 
-namespace grk {
-
+namespace grk
+{
 /*
  Calculate feasible truncation points for a given code block.
  The feasible truncation points lie on the convex hull of the
@@ -28,12 +28,13 @@ namespace grk {
  of convex hull algorithm.
 
  */
-void RateControl::convexHull(CodePass *pass, uint32_t numPasses) {
-
-	double *slope_cache = new double[numPasses];
+void RateControl::convexHull(CodePass* pass, uint32_t numPasses)
+{
+	double* slope_cache = new double[numPasses];
 
 	// search for feasible truncation points
-	for (auto p = 0U; p < numPasses; p++) {
+	for(auto p = 0U; p < numPasses; p++)
+	{
 		auto current_pass = pass + p;
 		double dd = 0;
 		double dr = 0;
@@ -48,20 +49,24 @@ void RateControl::convexHull(CodePass *pass, uint32_t numPasses) {
 		//    feasible-truncation conditions relative to this point
 		// 3. all intermediate points are processed, and pass is not rejected,
 		//    in which case current pass meets feasible-truncation conditions
-		while (1) {
+		while(1)
+		{
 			// calculate rate and distortion deltas
 			dr += intermed_pass->len;
-			if (p_intermed == 0) {
+			if(p_intermed == 0)
+			{
 				dd += intermed_pass->distortiondec;
-			} else {
-				dd += intermed_pass->distortiondec
-						- (intermed_pass - 1)->distortiondec;
+			}
+			else
+			{
+				dd += intermed_pass->distortiondec - (intermed_pass - 1)->distortiondec;
 			}
 
 			// reject current point: all intermediate distortion-rate slopes
 			// for feasible truncation point must be strictly positive
 			// (Corollary 8.3)
-			if (dd <= 0) {
+			if(dd <= 0)
+			{
 				current_pass->slope = 0;
 				break;
 			}
@@ -72,7 +77,8 @@ void RateControl::convexHull(CodePass *pass, uint32_t numPasses) {
 
 			// all intermediate points have been processed and current
 			// point has survived: mark current point as feasible
-			if (p_intermed == -1) {
+			if(p_intermed == -1)
+			{
 				// update slope for current point (Equation 8.8)
 				slope_cache[p] = dd / dr;
 				current_pass->slope = slopeToLog(slope_cache[p]);
@@ -80,23 +86,27 @@ void RateControl::convexHull(CodePass *pass, uint32_t numPasses) {
 			}
 
 			// skip previously-rejected intermediate point
-			if (intermed_pass->slope == 0) {
+			if(intermed_pass->slope == 0)
+			{
 				continue;
 			}
 
 			// reject intermediate point as non-feasible:
 			// distortion-rate slope must be finite
-			if (dr == 0) {
+			if(dr == 0)
+			{
 				intermed_pass->slope = 0;
 			}
 			// reject intermediate point as non-feasible:
 			// distortion-rate slope must be strictly monotone decreasing
 			// (Corollary 8.3)
-			else if ((slope_cache[p_intermed] * dr) <= dd) {
+			else if((slope_cache[p_intermed] * dr) <= dd)
+			{
 				intermed_pass->slope = 0;
 			}
 			// feasible truncation point
-			else {
+			else
+			{
 				// update slope for current point (Equation 8.8)
 				slope_cache[p] = dd / dr;
 				current_pass->slope = slopeToLog(slope_cache[p]);
@@ -104,7 +114,8 @@ void RateControl::convexHull(CodePass *pass, uint32_t numPasses) {
 				// switching to lower resolution log domain may break
 				// strict monotone condition on slopes. In this case, reject
 				// lower quality point
-				if (current_pass->slope >= intermed_pass->slope) {
+				if(current_pass->slope >= intermed_pass->slope)
+				{
 					intermed_pass->slope = 0;
 				}
 				break;
@@ -153,23 +164,25 @@ const double scale = 256 / log(2);
 const double invScale = log(2) / 256;
 const double shift = 1 << 16;
 
-uint16_t RateControl::slopeToLog(double slope) {
-	if (slope > slopeCutoff)
+uint16_t RateControl::slopeToLog(double slope)
+{
+	if(slope > slopeCutoff)
 		slope = slopeCutoff;
 	double logSlope = log(slope) * scale - log(slopeCutoff) * scale + shift;
-	if (logSlope < 1)
+	if(logSlope < 1)
 		logSlope = 1;
-	if (logSlope > 0xFFFF)
+	if(logSlope > 0xFFFF)
 		logSlope = 0xFFFF;
-	return (uint16_t) logSlope;
+	return (uint16_t)logSlope;
 }
 
 /* Convert from Q8.8 fixed point of log(slope) to slope
 
  See above discussion. We just need to reverse the formula above.
  */
-double RateControl::slopeFromLog(uint16_t logSlope) {
+double RateControl::slopeFromLog(uint16_t logSlope)
+{
 	return exp((logSlope + log(slopeCutoff) * scale - shift) * invScale);
 }
 
-}
+} // namespace grk

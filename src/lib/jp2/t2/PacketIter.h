@@ -20,8 +20,8 @@
  */
 
 #pragma once
-namespace grk {
-
+namespace grk
+{
 /**
  @file PacketIter.h
  @brief Implementation of a packet iterator (PI)
@@ -29,20 +29,19 @@ namespace grk {
  A packet iterator gets the next packet following the progression order
 */
 
-enum J2K_T2_MODE {
+enum J2K_T2_MODE
+{
 	THRESH_CALC = 0, /** Function called in rate allocation process*/
-	FINAL_PASS = 1 	/** Function called in Tier 2 process*/
+	FINAL_PASS = 1 /** Function called in Tier 2 process*/
 };
-
 
 /***
  * Packet iterator resolution
  */
-struct PiResolution {
-	PiResolution() : precinctWidthExp(0),
-					precinctHeightExp(0),
-					precinctGridWidth(0),
-					precinctGridHeight(0)
+struct PiResolution
+{
+	PiResolution()
+		: precinctWidthExp(0), precinctHeightExp(0), precinctGridWidth(0), precinctGridHeight(0)
 	{}
 	uint32_t precinctWidthExp;
 	uint32_t precinctHeightExp;
@@ -53,77 +52,88 @@ struct PiResolution {
 /**
  * Packet iterator component
  */
-struct PiComp {
-	PiComp() : dx(0),
-				dy(0),
-				numresolutions(0),
-				resolutions(nullptr)
-	{}
+struct PiComp
+{
+	PiComp() : dx(0), dy(0), numresolutions(0), resolutions(nullptr) {}
 	// component sub-sampling factors
 	uint32_t dx;
 	uint32_t dy;
 	uint32_t numresolutions;
-	PiResolution *resolutions;
+	PiResolution* resolutions;
 };
 
 struct ResBuf;
 struct IncludeTracker;
 struct PacketIter;
 
-struct ResBuf{
-	ResBuf(){
-		for (uint8_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
-			buffers[i]=nullptr;
+struct ResBuf
+{
+	ResBuf()
+	{
+		for(uint8_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
+			buffers[i] = nullptr;
 	}
-	~ResBuf(){
-		for (uint8_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
+	~ResBuf()
+	{
+		for(uint8_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
 			delete[] buffers[i];
 	}
 	uint8_t* buffers[GRK_J2K_MAXRLVLS];
 };
-struct IncludeTracker {
-	IncludeTracker(uint16_t numcomponents) : numcomps(numcomponents),
-											currentLayer(0),
-											currentResBuf(nullptr),
-											include(new std::map<uint16_t, ResBuf*>())
+struct IncludeTracker
+{
+	IncludeTracker(uint16_t numcomponents)
+		: numcomps(numcomponents), currentLayer(0), currentResBuf(nullptr),
+		  include(new std::map<uint16_t, ResBuf*>())
 	{}
-	~IncludeTracker() {
+	~IncludeTracker()
+	{
 		clear();
 		delete include;
 	}
-	uint8_t* get_include(uint16_t layerno,  uint8_t resno){
+	uint8_t* get_include(uint16_t layerno, uint8_t resno)
+	{
 		ResBuf* resBuf = nullptr;
-		if (layerno == currentLayer && currentResBuf) {
-			resBuf =  currentResBuf;
-		} else {
-			if (include->find(layerno) == include->end()){
+		if(layerno == currentLayer && currentResBuf)
+		{
+			resBuf = currentResBuf;
+		}
+		else
+		{
+			if(include->find(layerno) == include->end())
+			{
 				resBuf = new ResBuf;
 				include->operator[](layerno) = resBuf;
-			} else {
+			}
+			else
+			{
 				resBuf = include->operator[](layerno);
 			}
 			currentResBuf = resBuf;
 			currentLayer = layerno;
 		}
 		auto buf = resBuf->buffers[resno];
-		if (!buf){
+		if(!buf)
+		{
 			auto numprecs = numPrecinctsPerRes[resno];
-			auto len = (numprecs * numcomps + 7)/8;
+			auto len = (numprecs * numcomps + 7) / 8;
 			buf = new uint8_t[len];
 			memset(buf, 0, len);
 			resBuf->buffers[resno] = buf;
 		}
 		return buf;
 	}
-	bool update(uint16_t layno, uint8_t resno, uint16_t compno, uint64_t precno) {
+	bool update(uint16_t layno, uint8_t resno, uint16_t compno, uint64_t precno)
+	{
 		auto include = get_include(layno, resno);
 		auto numprecs = numPrecinctsPerRes[resno];
 		uint64_t index = compno * numprecs + precno;
-		uint64_t include_index 	= (index >> 3);
-		uint32_t shift 	= (index & 7);
+		uint64_t include_index = (index >> 3);
+		uint32_t shift = (index & 7);
 		bool rc = false;
 		uint8_t val = include[include_index];
-		if ( ((val >> shift)& 1) == 0 ) {
+		if(((val >> shift) & 1) == 0)
+		{
 			include[include_index] = (uint8_t)(val | (1 << shift));
 			rc = true;
 		}
@@ -131,8 +141,10 @@ struct IncludeTracker {
 		return rc;
 	}
 
-	void clear() {
-		for (auto it = include->begin(); it != include->end(); ++it){
+	void clear()
+	{
+		for(auto it = include->begin(); it != include->end(); ++it)
+		{
 			delete it->second;
 		}
 		include->clear();
@@ -142,7 +154,7 @@ struct IncludeTracker {
 	uint16_t currentLayer;
 	ResBuf* currentResBuf;
 	uint64_t numPrecinctsPerRes[GRK_J2K_MAXRLVLS];
-	std::map<uint16_t, ResBuf*> *include;
+	std::map<uint16_t, ResBuf*>* include;
 };
 
 class PacketManager;
@@ -150,11 +162,12 @@ class PacketManager;
 /**
  Packet iterator
  */
-struct PacketIter {
+struct PacketIter
+{
 	PacketIter();
 	~PacketIter();
 
-	void init(PacketManager *packetMan);
+	void init(PacketManager* packetMan);
 
 	uint8_t* get_include(uint16_t layerIndex);
 	bool update_include(void);
@@ -200,11 +213,10 @@ struct PacketIter {
 	bool next(void);
 
 	void update_dxy(void);
-	void update_dxy_for_comp(PiComp *comp);
-
+	void update_dxy_for_comp(PiComp* comp);
 
 	/** Enabling Tile part generation*/
-	bool  tp_on;
+	bool tp_on;
 
 	/** layer step used to localize the packet in the include vector */
 	uint64_t step_l;
@@ -223,11 +235,11 @@ struct PacketIter {
 	/** layer that identify the packet */
 	uint16_t layno;
 	/** progression order  */
-	 grk_progression  prog;
+	grk_progression prog;
 	/** number of components in the image */
 	uint16_t numcomps;
 	/** Components*/
-	PiComp *comps;
+	PiComp* comps;
 	/** tile bounds in canvas coordinates */
 	uint32_t tx0, ty0, tx1, ty1;
 	/** packet coordinates */
@@ -235,16 +247,16 @@ struct PacketIter {
 	/** component sub-sampling */
 	uint32_t dx, dy;
 	bool handledFirstInner;
-private:
+
+  private:
 	bool isSingleProgression(void);
-	PacketManager *packetManager;
+	PacketManager* packetManager;
 	uint8_t maxNumDecompositionResolutions;
 };
-
 
 /* ----------------------------------------------------------------------- */
 /*@}*/
 
 /*@}*/
 
-}
+} // namespace grk

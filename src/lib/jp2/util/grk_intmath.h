@@ -21,27 +21,32 @@
 
 #pragma once
 
-namespace grk {
-
+namespace grk
+{
 /**
  Divide an integer by another integer and round upwards
  @param  a integer of type T
  @param  b integer of type T
  @return a divided by b
  */
-template<typename T> uint32_t ceildiv(T a, T b) {
+template<typename T>
+uint32_t ceildiv(T a, T b)
+{
 	assert(b);
-	return (uint32_t)((a + (uint64_t) b - 1) / b);
+	return (uint32_t)((a + (uint64_t)b - 1) / b);
 }
 
-template<typename T> T ceildivpow2(T a, uint32_t b) {
-	return (T)((a + ((uint64_t) 1 << b) - 1) >> b);
+template<typename T>
+T ceildivpow2(T a, uint32_t b)
+{
+	return (T)((a + ((uint64_t)1 << b) - 1) >> b);
 }
 /**
  Divide an unsigned integer by a power of 2 and round downwards
  @return a divided by 2^b
  */
-static inline uint32_t floordivpow2(uint32_t a, uint32_t b) {
+static inline uint32_t floordivpow2(uint32_t a, uint32_t b)
+{
 	return a >> b;
 }
 /**
@@ -49,9 +54,12 @@ static inline uint32_t floordivpow2(uint32_t a, uint32_t b) {
  @param  a 32 bit integer
  @return log2(a)
  */
-template<typename T> T floorlog2(uint32_t a) {
+template<typename T>
+T floorlog2(uint32_t a)
+{
 	T l;
-	for (l = 0; a > 1; l++) {
+	for(l = 0; a > 1; l++)
+	{
 		a >>= 1;
 	}
 	return l;
@@ -63,17 +71,18 @@ template<typename T> T floorlog2(uint32_t a) {
  @param  b 13-bit precision fixed point number
  @return a * b in N-bit precision fixed point
  */
-static inline int32_t fix_mul(int32_t a, int32_t b) {
+static inline int32_t fix_mul(int32_t a, int32_t b)
+{
 #if defined(_MSC_VER) && (_MSC_VER >= 1400) && !defined(__INTEL_COMPILER) && defined(_M_IX86)
-    int64_t temp = __emul(a, b);
+	int64_t temp = __emul(a, b);
 #else
-	int64_t temp = (int64_t) a * (int64_t) b;
+	int64_t temp = (int64_t)a * (int64_t)b;
 #endif
-	temp += 4096;	//round by adding "0.5" in 13-bit fixed point
-	assert((temp >> 13) <= (int64_t) 0x7FFFFFFF);
-	assert((temp >> 13) >= (-(int64_t) 0x7FFFFFFF - (int64_t) 1));
+	temp += 4096; // round by adding "0.5" in 13-bit fixed point
+	assert((temp >> 13) <= (int64_t)0x7FFFFFFF);
+	assert((temp >> 13) >= (-(int64_t)0x7FFFFFFF - (int64_t)1));
 
 	// return to N-bit precision
 	return (int32_t)(temp >> 13);
 }
-}
+} // namespace grk

@@ -16,33 +16,41 @@
  */
 #include "grk_includes.h"
 
-namespace grk {
-
-T1DecompressScheduler::T1DecompressScheduler() :success(true),
-												decodeBlocks(nullptr){
-}
-T1DecompressScheduler::~T1DecompressScheduler() {
-	for (auto &t : t1Implementations)
+namespace grk
+{
+T1DecompressScheduler::T1DecompressScheduler() : success(true), decodeBlocks(nullptr) {}
+T1DecompressScheduler::~T1DecompressScheduler()
+{
+	for(auto& t : t1Implementations)
 		delete t;
 }
-bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent *tilec, TileComponentCodingParams *tccp,
-		std::vector<DecompressBlockExec*> *blocks) {
-	if (!tilec->getBuffer()->alloc()) {
-		GRK_ERROR( "Not enough memory for tile data");
+bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
+													  TileComponentCodingParams* tccp,
+													  std::vector<DecompressBlockExec*>* blocks)
+{
+	if(!tilec->getBuffer()->alloc())
+	{
+		GRK_ERROR("Not enough memory for tile data");
 		return false;
 	}
 	bool wholeTileDecoding = tilec->isWholeTileDecoding();
-	for (uint8_t resno = 0; resno < tilec->resolutions_to_decompress; ++resno) {
+	for(uint8_t resno = 0; resno < tilec->resolutions_to_decompress; ++resno)
+	{
 		auto res = &tilec->tileCompResolution[resno];
-		for (uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex) {
+		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
+		{
 			auto band = res->tileBand + bandIndex;
-			auto paddedBandWindow = tilec->getBuffer()->getPaddedBandWindow(resno, band->orientation);
-			for (auto precinct : band->precincts) {
-				if (!wholeTileDecoding && !paddedBandWindow->non_empty_intersection(precinct))
+			auto paddedBandWindow =
+				tilec->getBuffer()->getPaddedBandWindow(resno, band->orientation);
+			for(auto precinct : band->precincts)
+			{
+				if(!wholeTileDecoding && !paddedBandWindow->non_empty_intersection(precinct))
 					continue;
-				for (uint64_t cblkno = 0; cblkno < precinct->getNumCblks();	++cblkno) {
-					 auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
-					if (wholeTileDecoding || paddedBandWindow->non_empty_intersection(&cblkBounds)){
+				for(uint64_t cblkno = 0; cblkno < precinct->getNumCblks(); ++cblkno)
+				{
+					auto cblkBounds = precinct->getCodeBlockBounds(cblkno);
+					if(wholeTileDecoding || paddedBandWindow->non_empty_intersection(&cblkBounds))
+					{
 						auto cblk = precinct->getDecompressedBlockPtr(cblkno);
 						auto block = new DecompressBlockExec();
 						block->x = cblk->x0;
@@ -65,23 +73,29 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent *tilec, Tile
 	}
 	return true;
 }
-bool T1DecompressScheduler::scheduleDecompress(TileCodingParams *tcp,
-		                    uint16_t blockw, uint16_t blockh,
-		                    std::vector<DecompressBlockExec*> *blocks) {
+bool T1DecompressScheduler::scheduleDecompress(TileCodingParams* tcp, uint16_t blockw,
+											   uint16_t blockh,
+											   std::vector<DecompressBlockExec*>* blocks)
+{
 	// nominal code block dimensions
-	uint16_t codeblock_width = (uint16_t) (blockw ? (uint32_t) 1 << blockw : 0);
-	uint16_t codeblock_height = (uint16_t) (blockh ? (uint32_t) 1 << blockh : 0);
-	for (auto i = 0U; i < ThreadPool::get()->num_threads(); ++i)
-		t1Implementations.push_back(T1Factory::get_t1(false, tcp, codeblock_width,codeblock_height));
+	uint16_t codeblock_width = (uint16_t)(blockw ? (uint32_t)1 << blockw : 0);
+	uint16_t codeblock_height = (uint16_t)(blockh ? (uint32_t)1 << blockh : 0);
+	for(auto i = 0U; i < ThreadPool::get()->num_threads(); ++i)
+		t1Implementations.push_back(
+			T1Factory::get_t1(false, tcp, codeblock_width, codeblock_height));
 
 	return decompress(blocks);
 }
-bool T1DecompressScheduler::decompressBlock(T1Interface *impl, DecompressBlockExec *block){
-	try {
+bool T1DecompressScheduler::decompressBlock(T1Interface* impl, DecompressBlockExec* block)
+{
+	try
+	{
 		bool rc = block->open(impl);
 		delete block;
 		return rc;
-	} catch (std::runtime_error &rerr){
+	}
+	catch(std::runtime_error& rerr)
+	{
 		delete block;
 		GRK_ERROR(rerr.what());
 		return false;
@@ -89,19 +103,25 @@ bool T1DecompressScheduler::decompressBlock(T1Interface *impl, DecompressBlockEx
 
 	return true;
 }
-bool T1DecompressScheduler::decompress(std::vector<DecompressBlockExec*> *blocks) {
-	if (!blocks || !blocks->size())
+bool T1DecompressScheduler::decompress(std::vector<DecompressBlockExec*>* blocks)
+{
+	if(!blocks || !blocks->size())
 		return true;
 	size_t num_threads = ThreadPool::get()->num_threads();
 	success = true;
-	if (num_threads == 1){
-		for (size_t i = 0; i < blocks->size(); ++i){
+	if(num_threads == 1)
+	{
+		for(size_t i = 0; i < blocks->size(); ++i)
+		{
 			auto block = blocks->operator[](i);
-			if (!success){
+			if(!success)
+			{
 				delete block;
-			} else {
+			}
+			else
+			{
 				auto impl = t1Implementations[(size_t)0];
-				if (!decompressBlock(impl,block))
+				if(!decompressBlock(impl, block))
 					success = false;
 			}
 		}
@@ -109,40 +129,42 @@ bool T1DecompressScheduler::decompress(std::vector<DecompressBlockExec*> *blocks
 	}
 	auto maxBlocks = blocks->size();
 	decodeBlocks = new DecompressBlockExec*[maxBlocks];
-	for (uint64_t i = 0; i < maxBlocks; ++i)
+	for(uint64_t i = 0; i < maxBlocks; ++i)
 		decodeBlocks[i] = blocks->operator[](i);
 	std::atomic<int> blockCount(-1);
-    std::vector< std::future<int> > results;
-    for(size_t i = 0; i < num_threads; ++i) {
-        results.emplace_back(
-            ThreadPool::get()->enqueue([this, maxBlocks, &blockCount] {
-                auto threadnum =  ThreadPool::get()->thread_number(std::this_thread::get_id());
-                assert(threadnum >= 0);
-                while (true) {
-                	uint64_t index = (uint64_t)++blockCount;
-                	//note: even after failure, we continue to read and delete
-                	//blocks until index is out of bounds. Otherwise, we leak blocks.
-                	if (index >= maxBlocks)
-                		return 0;
-					auto block = decodeBlocks[index];
-					if (!success){
-						delete block;
-						continue;
-					}
-					auto impl = t1Implementations[(size_t)threadnum];
-					if (!decompressBlock(impl,block))
-						success = false;
-                }
-                return 0;
-            })
-        );
-    }
-    for(auto &result: results){
-        result.get();
-    }
+	std::vector<std::future<int>> results;
+	for(size_t i = 0; i < num_threads; ++i)
+	{
+		results.emplace_back(ThreadPool::get()->enqueue([this, maxBlocks, &blockCount] {
+			auto threadnum = ThreadPool::get()->thread_number(std::this_thread::get_id());
+			assert(threadnum >= 0);
+			while(true)
+			{
+				uint64_t index = (uint64_t)++blockCount;
+				// note: even after failure, we continue to read and delete
+				// blocks until index is out of bounds. Otherwise, we leak blocks.
+				if(index >= maxBlocks)
+					return 0;
+				auto block = decodeBlocks[index];
+				if(!success)
+				{
+					delete block;
+					continue;
+				}
+				auto impl = t1Implementations[(size_t)threadnum];
+				if(!decompressBlock(impl, block))
+					success = false;
+			}
+			return 0;
+		}));
+	}
+	for(auto& result : results)
+	{
+		result.get();
+	}
 	delete[] decodeBlocks;
 
 	return success;
 }
 
-}
+} // namespace grk

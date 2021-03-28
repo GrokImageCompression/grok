@@ -27,113 +27,124 @@
 #endif
 
 #ifndef SIZE_MAX
-# define SIZE_MAX ((size_t) -1)
+#define SIZE_MAX ((size_t)-1)
 #endif
 
-namespace grk {
-
+namespace grk
+{
 const uint32_t grkWidthAlignment = 32;
 const size_t grkBufferALignment = 64;
 
-uint32_t grkMakeAlignedWidth(uint32_t width){
+uint32_t grkMakeAlignedWidth(uint32_t width)
+{
 	assert(width);
-	return (uint32_t)((((uint64_t)width + grkWidthAlignment - 1)/grkWidthAlignment) * grkWidthAlignment);
+	return (uint32_t)((((uint64_t)width + grkWidthAlignment - 1) / grkWidthAlignment) *
+					  grkWidthAlignment);
 }
-static inline void* grkAlignedAllocN(size_t alignment, size_t size) {
-	void *ptr;
+static inline void* grkAlignedAllocN(size_t alignment, size_t size)
+{
+	void* ptr;
 
 	/* alignment shall be power of 2 */
 	assert((alignment != 0U) && ((alignment & (alignment - 1U)) == 0U));
 	/* alignment shall be at least sizeof(void*) */
 	assert(alignment >= sizeof(void*));
 
-	if (size == 0U)  /* prevent implementation defined behavior of realloc */
+	if(size == 0U) /* prevent implementation defined behavior of realloc */
 		return nullptr;
 
 	// make new_size a multiple of alignment
-	size = ((size + alignment - 1)/alignment) * alignment;
+	size = ((size + alignment - 1) / alignment) * alignment;
 
 #if defined(GROK_HAVE_ALIGNED_ALLOC)
 	ptr = aligned_alloc(alignment, size);
 #elif defined(GROK_HAVE_POSIX_MEMALIGN)
-    /* aligned_alloc requires c11, restrict to posix_memalign for now. Quote:
-     * This function was introduced in POSIX 1003.1d. Although this function is
-     * superseded by aligned_alloc, it is more portable to older POSIX systems
-     * that do not support ISO C11.  */
-    if (posix_memalign (&ptr, alignment, size))
-        ptr = nullptr;
-    /* older linux */
+	/* aligned_alloc requires c11, restrict to posix_memalign for now. Quote:
+	 * This function was introduced in POSIX 1003.1d. Although this function is
+	 * superseded by aligned_alloc, it is more portable to older POSIX systems
+	 * that do not support ISO C11.  */
+	if(posix_memalign(&ptr, alignment, size))
+		ptr = nullptr;
+		/* older linux */
 #elif defined(GROK_HAVE_MEMALIGN)
-    ptr = memalign( alignment, size );
-    /* _MSC_VER */
+	ptr = memalign(alignment, size);
+	/* _MSC_VER */
 #elif defined(GROK_HAVE__ALIGNED_MALLOC)
-    ptr = _aligned_malloc(size, alignment);
+	ptr = _aligned_malloc(size, alignment);
 #else
-    /*
-     * Generic aligned malloc implementation.
-     * Uses size_t offset for the integer manipulation of the pointer,
-     * as uintptr_t is not available in C89 to do
-     * bitwise operations on the pointer itself.
-     */
-    alignment--;
-    {
-        /* Room for padding and extra pointer stored in front of allocated area */
-        size_t overhead = alignment + sizeof(void *);
+	/*
+	 * Generic aligned malloc implementation.
+	 * Uses size_t offset for the integer manipulation of the pointer,
+	 * as uintptr_t is not available in C89 to do
+	 * bitwise operations on the pointer itself.
+	 */
+	alignment--;
+	{
+		/* Room for padding and extra pointer stored in front of allocated area */
+		size_t overhead = alignment + sizeof(void*);
 
-        /* let's be extra careful */
-        assert(alignment <= (SIZE_MAX - sizeof(void *)));
+		/* let's be extra careful */
+		assert(alignment <= (SIZE_MAX - sizeof(void*)));
 
-        /* Avoid integer overflow */
-        if (size > (SIZE_MAX - overhead))
-            return nullptr;
+		/* Avoid integer overflow */
+		if(size > (SIZE_MAX - overhead))
+			return nullptr;
 
-        uint8_t *mem = (uint8_t*)malloc(size + overhead);
-        if (mem == nullptr)
-            return mem;
-        /* offset = ((alignment + 1U) - ((size_t)(mem + sizeof(void*)) & alignment)) & alignment; */
-        /* Use the fact that alignment + 1U is a power of 2 */
-        size_t offset = ((alignment ^ ((size_t)(mem + sizeof(void*)) & alignment)) + 1U) & alignment;
-        ptr = (void *)(mem + sizeof(void*) + offset);
-        ((void**) ptr)[-1] = mem;
-    }
+		uint8_t* mem = (uint8_t*)malloc(size + overhead);
+		if(mem == nullptr)
+			return mem;
+		/* offset = ((alignment + 1U) - ((size_t)(mem + sizeof(void*)) & alignment)) & alignment; */
+		/* Use the fact that alignment + 1U is a power of 2 */
+		size_t offset =
+			((alignment ^ ((size_t)(mem + sizeof(void*)) & alignment)) + 1U) & alignment;
+		ptr = (void*)(mem + sizeof(void*) + offset);
+		((void**)ptr)[-1] = mem;
+	}
 #endif
 	return ptr;
 }
-void* grkMalloc(size_t size) {
-	if (size == 0U) /* prevent implementation defined behavior of realloc */
+void* grkMalloc(size_t size)
+{
+	if(size == 0U) /* prevent implementation defined behavior of realloc */
 		return nullptr;
 
 	return malloc(size);
 }
-void* grkCalloc(size_t num, size_t size) {
-	if (num == 0 || size == 0)
+void* grkCalloc(size_t num, size_t size)
+{
+	if(num == 0 || size == 0)
 		/* prevent implementation defined behavior of realloc */
 		return nullptr;
 
 	return calloc(num, size);
 }
-void* grkAlignedMalloc(size_t size) {
+void* grkAlignedMalloc(size_t size)
+{
 	return grkAlignedAllocN(grkBufferALignment, size);
 }
-void grkAlignedFree(void *ptr) {
-#if defined(GROK_HAVE_POSIX_MEMALIGN) || defined(GROK_HAVE_ALIGNED_ALLOC) ||  defined(GROK_HAVE_MEMALIGN)
+void grkAlignedFree(void* ptr)
+{
+#if defined(GROK_HAVE_POSIX_MEMALIGN) || defined(GROK_HAVE_ALIGNED_ALLOC) || \
+	defined(GROK_HAVE_MEMALIGN)
 	free(ptr);
 #elif defined(GROK_HAVE__ALIGNED_MALLOC)
-    _aligned_free( ptr );
+	_aligned_free(ptr);
 #else
-    /* Generic implementation has malloced pointer stored in front of used area */
-    if (ptr != nullptr)
-        free(((void**) ptr)[-1]);
+	/* Generic implementation has malloced pointer stored in front of used area */
+	if(ptr != nullptr)
+		free(((void**)ptr)[-1]);
 #endif
 }
-void* grkRealloc(void *ptr, size_t new_size) {
-	if (new_size == 0U)/* prevent implementation defined behavior of realloc */
+void* grkRealloc(void* ptr, size_t new_size)
+{
+	if(new_size == 0U) /* prevent implementation defined behavior of realloc */
 		return nullptr;
 
 	return realloc(ptr, new_size);
 }
-void grkFree(void *ptr) {
-	if (ptr)
+void grkFree(void* ptr)
+{
+	if(ptr)
 		free(ptr);
 }
-}
+} // namespace grk

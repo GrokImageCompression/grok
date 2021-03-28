@@ -16,8 +16,8 @@
  */
 
 #pragma once
-namespace grk {
-
+namespace grk
+{
 #ifdef _WIN32
 typedef void* grk_handle;
 #else
@@ -27,26 +27,22 @@ typedef int32_t grk_handle;
 /*
  * Callback function prototype for zero copy read function
  */
-typedef size_t (*grk_stream_zero_copy_read_fn)(void **p_buffer, size_t nb_bytes,
-		void *user_data);
+typedef size_t (*grk_stream_zero_copy_read_fn)(void** p_buffer, size_t nb_bytes, void* user_data);
 
-
-struct MemStream {
-	MemStream(uint8_t *buffer, size_t offset, size_t length, bool owns);
+struct MemStream
+{
+	MemStream(uint8_t* buffer, size_t offset, size_t length, bool owns);
 	MemStream();
-	~MemStream() ;
-	uint8_t *buf;
+	~MemStream();
+	uint8_t* buf;
 	size_t off;
 	size_t len;
-	grk_handle fd;		// for file mapping
+	grk_handle fd; // for file mapping
 	bool ownsBuffer;
 };
 
-void set_up_mem_stream(grk_stream *stream, size_t len,
-		bool is_read_stream);
-grk_stream  *  create_mem_stream(uint8_t *buf, size_t len, bool ownsBuffer,
-		bool is_read_stream);
-size_t get_mem_stream_offset( grk_stream  *stream);
+void set_up_mem_stream(grk_stream* stream, size_t len, bool is_read_stream);
+grk_stream* create_mem_stream(uint8_t* buf, size_t len, bool ownsBuffer, bool is_read_stream);
+size_t get_mem_stream_offset(grk_stream* stream);
 
-
-}
+} // namespace grk

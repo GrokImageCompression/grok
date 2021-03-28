@@ -16,14 +16,14 @@
 
 #pragma once
 
-namespace grk {
-
-struct logger {
-
+namespace grk
+{
+struct logger
+{
 	logger();
-	void *m_error_data;
-	void *m_warning_data;
-	void *m_info_data;
+	void* m_error_data;
+	void* m_warning_data;
+	void* m_info_data;
 	grk_msg_callback error_handler;
 	grk_msg_callback warning_handler;
 	grk_msg_callback info_handler;
@@ -31,11 +31,8 @@ struct logger {
 	static logger m_logger;
 };
 
+void GRK_INFO(const char* fmt, ...);
+void GRK_WARN(const char* fmt, ...);
+void GRK_ERROR(const char* fmt, ...);
 
-void GRK_INFO(const char *fmt,	...);
-void GRK_WARN(const char *fmt,	...);
-void GRK_ERROR(const char *fmt,...);
-
-
-
-}
+} // namespace grk

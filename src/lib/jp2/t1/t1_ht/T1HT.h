@@ -21,33 +21,32 @@
 #include "TileProcessor.h"
 #include "T1Interface.h"
 
-
-namespace grk {
-
+namespace grk
+{
 struct TileCodingParams;
 
-namespace t1_ht {
+namespace t1_ht
+{
+	class T1HT : public T1Interface
+	{
+	  public:
+		T1HT(bool isCompressor, TileCodingParams* tcp, uint32_t maxCblkW, uint32_t maxCblkH);
+		virtual ~T1HT();
 
+		bool compress(CompressBlockExec* block);
+		bool decompress(DecompressBlockExec* block);
 
-class T1HT: public T1Interface {
-public:
-	T1HT(bool isCompressor, TileCodingParams *tcp, uint32_t maxCblkW, uint32_t maxCblkH);
-	virtual ~T1HT();
+	  private:
+		void preCompress(CompressBlockExec* block, Tile* tile);
+		bool postProcess(DecompressBlockExec* block);
 
-	bool compress(CompressBlockExec *block);
-	bool decompress(DecompressBlockExec *block);
+		uint32_t coded_data_size;
+		uint8_t* coded_data;
+		uint32_t unencoded_data_size;
+		int32_t* unencoded_data;
 
-private:
-	void preCompress(CompressBlockExec *block, Tile *tile);
-	bool postProcess(DecompressBlockExec *block);
-
-	uint32_t coded_data_size;
-	uint8_t *coded_data;
-	uint32_t unencoded_data_size;
-	int32_t *unencoded_data;
-
-    mem_fixed_allocator *allocator;
-    mem_elastic_allocator *elastic_alloc;
-};
-}
-}
+		mem_fixed_allocator* allocator;
+		mem_elastic_allocator* elastic_alloc;
+	};
+} // namespace t1_ht
+} // namespace grk

@@ -21,20 +21,18 @@
 
 #pragma once
 
-namespace grk {
-
+namespace grk
+{
 const uint32_t tag_tree_uninitialized_node_value = 999;
 
 /**
  Tag node
  */
-struct TagTreeNode {
+struct TagTreeNode
+{
+	TagTreeNode() : parent(nullptr), value(0), low(0), known(0) {}
 
-	TagTreeNode() :
-			parent(nullptr), value(0), low(0), known(0) {
-	}
-
-	TagTreeNode *parent;
+	TagTreeNode* parent;
 	int64_t value;
 	int64_t low;
 	uint32_t known;
@@ -43,10 +41,9 @@ struct TagTreeNode {
 /**
  Tag tree
  */
-class TagTree {
-
-public:
-
+class TagTree
+{
+  public:
 	/**
 	 Create a tag tree
 	 @param numleafsh Width of the array of leafs of the tree
@@ -82,7 +79,7 @@ public:
 	 @param threshold Threshold to use when compressing value of the leaf
 	 @return true if successful, otherwise false
 	 */
-	bool compress(BitIO *bio, uint64_t leafno, int64_t threshold);
+	bool compress(BitIO* bio, uint64_t leafno, int64_t threshold);
 	/**
 	 Decompress the value of a leaf of the tag tree up to a given threshold
 	 @param bio Pointer to a BIO handle
@@ -90,8 +87,7 @@ public:
 	 @param threshold Threshold to use when decoding value of the leaf
 	 @param decompressed 1 if the node's value < threshold, 0 otherwise
 	 */
-	void decompress(BitIO *bio, uint64_t leafno, int64_t threshold,
-			uint8_t *decompressed);
+	void decompress(BitIO* bio, uint64_t leafno, int64_t threshold, uint8_t* decompressed);
 
 	/**
 	 Decompress the value of a leaf of the tag tree up to a given threshold
@@ -100,18 +96,14 @@ public:
 	 @param threshold Threshold to use when decoding value of the leaf
 	 @param value the node's value
 	 */
-	void decodeValue(BitIO *bio, uint64_t leafno, int64_t threshold,
-			uint64_t *value);
+	void decodeValue(BitIO* bio, uint64_t leafno, int64_t threshold, uint64_t* value);
 
-private:
-
+  private:
 	uint64_t numleafsh;
 	uint64_t numleafsv;
 	uint64_t numnodes;
-	TagTreeNode *nodes;
+	TagTreeNode* nodes;
 	uint64_t nodes_size; /* maximum size taken by nodes */
-
 };
 
-}
-
+} // namespace grk

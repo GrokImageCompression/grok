@@ -21,46 +21,48 @@
 #include "grk_includes.h"
 #include "ojph_arch.h"
 
-namespace grk {
-
-CodeStream::CodeStream(BufferedStream *stream) : codeStreamInfo(nullptr),
-																m_headerImage(nullptr),
-																m_currentTileProcessor(nullptr),
-																m_stream(stream),
-																m_multiTile(false),
-																current_plugin_tile(nullptr)
+namespace grk
 {
-    memset(&m_cp, 0 , sizeof(CodingParams));
-
+CodeStream::CodeStream(BufferedStream* stream)
+	: codeStreamInfo(nullptr), m_headerImage(nullptr), m_currentTileProcessor(nullptr),
+	  m_stream(stream), m_multiTile(false), current_plugin_tile(nullptr)
+{
+	memset(&m_cp, 0, sizeof(CodingParams));
 }
-CodeStream::~CodeStream(){
-	if (m_headerImage)
+CodeStream::~CodeStream()
+{
+	if(m_headerImage)
 		grk_object_unref(&m_headerImage->obj);
 	m_cp.destroy();
 	delete codeStreamInfo;
 }
-CodingParams* CodeStream::getCodingParams(void){
+CodingParams* CodeStream::getCodingParams(void)
+{
 	return &m_cp;
 }
-GrkImage* CodeStream::getHeaderImage(void){
+GrkImage* CodeStream::getHeaderImage(void)
+{
 	return m_headerImage;
 }
-TileProcessor* CodeStream::currentProcessor(void){
+TileProcessor* CodeStream::currentProcessor(void)
+{
 	return m_currentTileProcessor;
 }
-bool CodeStream::exec(std::vector<PROCEDURE_FUNC> &procs) {
-    bool result = std::all_of(procs.begin(), procs.end(),[](const PROCEDURE_FUNC &proc){
-    	return proc();
-    });
+bool CodeStream::exec(std::vector<PROCEDURE_FUNC>& procs)
+{
+	bool result =
+		std::all_of(procs.begin(), procs.end(), [](const PROCEDURE_FUNC& proc) { return proc(); });
 	procs.clear();
 
 	return result;
 }
-grk_plugin_tile* CodeStream::getCurrentPluginTile(){
+grk_plugin_tile* CodeStream::getCurrentPluginTile()
+{
 	return current_plugin_tile;
 }
-BufferedStream* CodeStream::getStream(){
+BufferedStream* CodeStream::getStream()
+{
 	return m_stream;
 }
 
-}
+} // namespace grk

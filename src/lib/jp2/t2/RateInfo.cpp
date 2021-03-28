@@ -16,33 +16,34 @@
  */
 #include "grk_includes.h"
 
-namespace grk {
-
-RateInfo::RateInfo() :
-		minimumSlope(USHRT_MAX), maximumSlope(0) {
-}
+namespace grk
+{
+RateInfo::RateInfo() : minimumSlope(USHRT_MAX), maximumSlope(0) {}
 /*
  Synchronize with code block
  */
-void RateInfo::synch(CompressCodeblock *cblk) {
-	for (auto passno = 0U; passno < cblk->numPassesTotal; passno++) {
-		CodePass *pass = &cblk->passes[passno];
+void RateInfo::synch(CompressCodeblock* cblk)
+{
+	for(auto passno = 0U; passno < cblk->numPassesTotal; passno++)
+	{
+		CodePass* pass = &cblk->passes[passno];
 
-		//2. only process feasible truncation points
-		if (pass->slope == 0)
+		// 2. only process feasible truncation points
+		if(pass->slope == 0)
 			continue;
 
 		uint16_t s = pass->slope;
 
-		//4. update min and max
-		if (s < minimumSlope)
+		// 4. update min and max
+		if(s < minimumSlope)
 			minimumSlope = s;
-		if (s > maximumSlope)
+		if(s > maximumSlope)
 			maximumSlope = s;
 	}
 }
-uint16_t RateInfo::getMinimumThresh() {
+uint16_t RateInfo::getMinimumThresh()
+{
 	return minimumSlope;
 }
 
-}
+} // namespace grk

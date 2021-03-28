@@ -16,56 +16,60 @@
 
 #include "grk_includes.h"
 
-namespace grk {
-
+namespace grk
+{
 #include "grk_includes.h"
 
-PacketLengthCache::PacketLengthCache(CodingParams *cp) : pltMarkers(nullptr),
-										 	 	 	 	 m_cp(cp){
-}
+PacketLengthCache::PacketLengthCache(CodingParams* cp) : pltMarkers(nullptr), m_cp(cp) {}
 
-PacketLengthCache::~PacketLengthCache() {
+PacketLengthCache::~PacketLengthCache()
+{
 	delete pltMarkers;
 }
 
-PacketLengthMarkers* PacketLengthCache::createMarkers(BufferedStream *strm){
-	if (!pltMarkers)
+PacketLengthMarkers* PacketLengthCache::createMarkers(BufferedStream* strm)
+{
+	if(!pltMarkers)
 		pltMarkers = strm ? new PacketLengthMarkers(strm) : new PacketLengthMarkers();
 
 	return pltMarkers;
 }
 
-PacketLengthMarkers* PacketLengthCache::getMarkers(void){
+PacketLengthMarkers* PacketLengthCache::getMarkers(void)
+{
 	return pltMarkers;
 }
 
-void PacketLengthCache::deleteMarkers(void){
+void PacketLengthCache::deleteMarkers(void)
+{
 	delete pltMarkers;
 	pltMarkers = nullptr;
 }
 
-PacketInfo* PacketLengthCache::next(void){
+PacketInfo* PacketLengthCache::next(void)
+{
 	auto packetInfo = packetInfoCache.get();
-	if (!packetInfo->packetLength) {
+	if(!packetInfo->packetLength)
+	{
 		// we don't currently support PLM markers,
 		// so we disable packet length markers if we have both PLT and PLM
 		auto packetLengths = pltMarkers;
 		bool usePlt = packetLengths && !m_cp->plm_markers;
-		if (usePlt)
+		if(usePlt)
 			packetInfo->packetLength = packetLengths->getNext();
 	}
 
 	return packetInfo;
 }
 
-void PacketLengthCache::rewind(void){
+void PacketLengthCache::rewind(void)
+{
 	auto packetLengths = pltMarkers;
 	// we don't currently support PLM markers,
 	// so we disable packet length markers if we have both PLT and PLM
 	bool usePlt = packetLengths && !m_cp->plm_markers;
-	if (usePlt)
+	if(usePlt)
 		packetLengths->rewind();
 }
 
-}
-
+} // namespace grk

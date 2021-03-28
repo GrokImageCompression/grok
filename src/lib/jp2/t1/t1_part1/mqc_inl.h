@@ -21,19 +21,18 @@
 
 #pragma once
 
-#define BYPASS_CT_INIT  0xDEADBEEF
+#define BYPASS_CT_INIT 0xDEADBEEF
 
-#define DOWNLOAD_MQC_VARIABLES(mqc) \
-         const mqc_state **curctx = mqc->curctx; \
-         uint32_t c = mqc->c; \
-         uint32_t a = mqc->a; \
-         uint32_t ct = mqc->ct
+#define DOWNLOAD_MQC_VARIABLES(mqc)         \
+	const mqc_state** curctx = mqc->curctx; \
+	uint32_t c = mqc->c;                    \
+	uint32_t a = mqc->a;                    \
+	uint32_t ct = mqc->ct
 
 #define UPLOAD_MQC_VARIABLES(mqc, curctx) \
-        mqc->curctx = curctx; \
-        mqc->c = c; \
-        mqc->a = a; \
-        mqc->ct = ct;
+	mqc->curctx = curctx;                 \
+	mqc->c = c;                           \
+	mqc->a = a;                           \
+	mqc->ct = ct;
 
-#define mqc_setcurctx(mqc, ctxno)   (mqc)->curctx = (mqc)->ctxs + (uint32_t)(ctxno)
-
+#define mqc_setcurctx(mqc, ctxno) (mqc)->curctx = (mqc)->ctxs + (uint32_t)(ctxno)

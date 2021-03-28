@@ -21,8 +21,8 @@
 #pragma once
 #include <string>
 
-namespace grk {
-
+namespace grk
+{
 /**
  @file FileFormat.h
  @brief The JPEG 2000 file format Reader/Writer (JP2)
@@ -32,40 +32,41 @@ namespace grk {
 /** @defgroup JP2 JP2 - JPEG 2000 file format reader/writer */
 /*@{*/
 
-#define JP2_JP   		0x6a502020    /**< JPEG 2000 signature box */
-#define JP2_FTYP 		0x66747970    /**< File type box */
-#define JP2_JP2H 		0x6a703268    /**< JP2 header box (super-box) */
-#define JP2_IHDR 		0x69686472    /**< Image header box */
-#define JP2_COLR 		0x636f6c72    /**< Colour specification box */
-#define JP2_JP2C 		0x6a703263    /**< Contiguous code stream box */
-#define JP2_PCLR 		0x70636c72    /**< Palette box */
-#define JP2_CMAP 		0x636d6170    /**< Component Mapping box */
-#define JP2_CDEF 		0x63646566    /**< Channel Definition box */
-#define JP2_DTBL 		0x6474626c    /**< Data Reference box */
-#define JP2_BPCC 		0x62706363    /**< Bits per component box */
-#define JP2_JP2  		0x6a703220    /**< File type fields */
-#define JP2_RES			0x72657320   /**< Resolution box (super-box) */
-#define JP2_CAPTURE_RES 0x72657363   /**< Capture resolution box */
-#define JP2_DISPLAY_RES 0x72657364   /**< Display resolution box */
-#define JP2_JP2I 		0x6a703269   /**< Intellectual property box */
-#define JP2_XML  		0x786d6c20   /**< XML box */
-#define JP2_UUID 		0x75756964   /**< UUID box */
-#define JP2_UINF 		0x75696e66   /**< UUID info box (super-box) */
-#define JP2_ULST 		0x756c7374   /**< UUID list box */
-#define JP2_URL  		0x75726c20   /**< Data entry URL box */
-#define JP2_ASOC 		0x61736f63   /**< Associated data box*/
-#define JP2_LBL  		0x6c626c20   /**< Label box*/
+#define JP2_JP 0x6a502020 /**< JPEG 2000 signature box */
+#define JP2_FTYP 0x66747970 /**< File type box */
+#define JP2_JP2H 0x6a703268 /**< JP2 header box (super-box) */
+#define JP2_IHDR 0x69686472 /**< Image header box */
+#define JP2_COLR 0x636f6c72 /**< Colour specification box */
+#define JP2_JP2C 0x6a703263 /**< Contiguous code stream box */
+#define JP2_PCLR 0x70636c72 /**< Palette box */
+#define JP2_CMAP 0x636d6170 /**< Component Mapping box */
+#define JP2_CDEF 0x63646566 /**< Channel Definition box */
+#define JP2_DTBL 0x6474626c /**< Data Reference box */
+#define JP2_BPCC 0x62706363 /**< Bits per component box */
+#define JP2_JP2 0x6a703220 /**< File type fields */
+#define JP2_RES 0x72657320 /**< Resolution box (super-box) */
+#define JP2_CAPTURE_RES 0x72657363 /**< Capture resolution box */
+#define JP2_DISPLAY_RES 0x72657364 /**< Display resolution box */
+#define JP2_JP2I 0x6a703269 /**< Intellectual property box */
+#define JP2_XML 0x786d6c20 /**< XML box */
+#define JP2_UUID 0x75756964 /**< UUID box */
+#define JP2_UINF 0x75696e66 /**< UUID info box (super-box) */
+#define JP2_ULST 0x756c7374 /**< UUID list box */
+#define JP2_URL 0x75726c20 /**< Data entry URL box */
+#define JP2_ASOC 0x61736f63 /**< Associated data box*/
+#define JP2_LBL 0x6c626c20 /**< Label box*/
 
-#define JP2_MAX_NUM_UUIDS	128
-const uint8_t IPTC_UUID[16] = { 0x33, 0xC7, 0xA4, 0xD2, 0xB8, 0x1D, 0x47, 0x23,
-		0xA0, 0xBA, 0xF1, 0xA3, 0xE0, 0x97, 0xAD, 0x38 };
-const uint8_t XMP_UUID[16] = { 0xBE, 0x7A, 0xCF, 0xCB, 0x97, 0xA9, 0x42, 0xE8,
-		0x9C, 0x71, 0x99, 0x94, 0x91, 0xE3, 0xAF, 0xAC };
+#define JP2_MAX_NUM_UUIDS 128
+const uint8_t IPTC_UUID[16] = {0x33, 0xC7, 0xA4, 0xD2, 0xB8, 0x1D, 0x47, 0x23,
+							   0xA0, 0xBA, 0xF1, 0xA3, 0xE0, 0x97, 0xAD, 0x38};
+const uint8_t XMP_UUID[16] = {0xBE, 0x7A, 0xCF, 0xCB, 0x97, 0xA9, 0x42, 0xE8,
+							  0x9C, 0x71, 0x99, 0x94, 0x91, 0xE3, 0xAF, 0xAC};
 
-#define GRK_BOX_SIZE	1024
-#define GRK_RESOLUTION_BOX_SIZE (4+4+10)
+#define GRK_BOX_SIZE 1024
+#define GRK_RESOLUTION_BOX_SIZE (4 + 4 + 10)
 
-enum JP2_STATE {
+enum JP2_STATE
+{
 	JP2_STATE_NONE = 0x0,
 	JP2_STATE_SIGNATURE = 0x1,
 	JP2_STATE_FILE_TYPE = 0x2,
@@ -75,44 +76,51 @@ enum JP2_STATE {
 	JP2_STATE_UNKNOWN = 0x7fffffff /* ISO C restricts enumerator values to range of 'int' */
 };
 
-struct FileFormatBox {
-	FileFormatBox() : length(0), type(0)
-	{}
+struct FileFormatBox
+{
+	FileFormatBox() : length(0), type(0) {}
 	uint64_t length;
 	uint32_t type;
 };
 
-struct ComponentInfo {
-	ComponentInfo() : bpc(0)
-	{}
+struct ComponentInfo
+{
+	ComponentInfo() : bpc(0) {}
 	uint8_t bpc;
 };
 
 /**
 	Association box (defined in ITU 15444-2 Annex M 11.1 )
 */
-struct AsocBox : FileFormatBox, grkBufferU8{
-	~AsocBox() override {
+struct AsocBox : FileFormatBox, grkBufferU8
+{
+	~AsocBox() override
+	{
 		dealloc();
 	}
-	void dealloc() override {
+	void dealloc() override
+	{
 		grkBufferU8::dealloc();
-		for (auto& as : children){
+		for(auto& as : children)
+		{
 			delete as;
 		}
 		children.clear();
 	}
-    std::string label;
-    std::vector<AsocBox*> children;
+	std::string label;
+	std::vector<AsocBox*> children;
 };
 
-struct UUIDBox: public FileFormatBox, grkBufferU8 {
-	UUIDBox()  {
+struct UUIDBox : public FileFormatBox, grkBufferU8
+{
+	UUIDBox()
+	{
 		memset(uuid, 0, sizeof(uuid));
 	}
-	UUIDBox(const uint8_t myuuid[16], uint8_t *buf, size_t size, bool owns) : FileFormatBox(),
-																			  grkBufferU8(buf, size, owns) {
-		for (int i = 0; i < 16; ++i)
+	UUIDBox(const uint8_t myuuid[16], uint8_t* buf, size_t size, bool owns)
+		: FileFormatBox(), grkBufferU8(buf, size, owns)
+	{
+		for(int i = 0; i < 16; ++i)
 			uuid[i] = myuuid[i];
 	}
 	uint8_t uuid[16];
@@ -121,16 +129,18 @@ struct UUIDBox: public FileFormatBox, grkBufferU8 {
 /**
  JPEG 2000 file format reader/writer
  */
-class FileFormat {
-public:
+class FileFormat
+{
+  public:
 	FileFormat(void);
 	virtual ~FileFormat();
-protected:
-	bool exec( std::vector<PROCEDURE_FUNC> *procs);
+
+  protected:
+	bool exec(std::vector<PROCEDURE_FUNC>* procs);
 	/** list of validation procedures */
-	std::vector<PROCEDURE_FUNC> *m_validation_list;
+	std::vector<PROCEDURE_FUNC>* m_validation_list;
 	/** list of execution procedures */
-	std::vector<PROCEDURE_FUNC> *m_procedure_list;
+	std::vector<PROCEDURE_FUNC>* m_procedure_list;
 
 	/* width of image */
 	uint32_t w;
@@ -149,8 +159,8 @@ protected:
 	uint32_t brand;
 	uint32_t minversion;
 	uint32_t numcl;
-	uint32_t *cl;
-	ComponentInfo *comps;
+	uint32_t* cl;
+	ComponentInfo* comps;
 	grk_color color;
 
 	bool has_capture_resolution;
@@ -164,7 +174,6 @@ protected:
 	uint32_t numUuids;
 };
 
-
 /** @name Exported functions */
 /*@{*/
 /* ----------------------------------------------------------------------- */
@@ -173,5 +182,4 @@ protected:
 
 /*@}*/
 
-}
-
+} // namespace grk

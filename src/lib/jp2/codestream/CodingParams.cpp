@@ -21,12 +21,12 @@
 
 #include "grk_includes.h"
 
-namespace grk {
-
+namespace grk
+{
 // (canvas coordinates)
-grkRectU32 CodingParams::getTileBounds(const GrkImage *p_image,
-										uint32_t tile_x,
-										uint32_t tile_y) const{
+grkRectU32 CodingParams::getTileBounds(const GrkImage* p_image, uint32_t tile_x,
+									   uint32_t tile_y) const
+{
 	grkRectU32 rc;
 
 	/* find extent of tile */
@@ -44,19 +44,23 @@ grkRectU32 CodingParams::getTileBounds(const GrkImage *p_image,
 	return rc;
 }
 
-void CodingParams::destroy() {
-	if (tcps != nullptr) {
+void CodingParams::destroy()
+{
+	if(tcps != nullptr)
+	{
 		uint32_t nb_tiles = t_grid_height * t_grid_width;
 
-		for (uint32_t i = 0U; i < nb_tiles; ++i) {
+		for(uint32_t i = 0U; i < nb_tiles; ++i)
+		{
 			auto current_tile = tcps + i;
 			current_tile->destroy();
 		}
 		delete[] tcps;
 		tcps = nullptr;
 	}
-	for (uint32_t i = 0; i < num_comments; ++i) {
-        delete[] ((uint8_t*) comment[i]);
+	for(uint32_t i = 0; i < num_comments; ++i)
+	{
+		delete[]((uint8_t*)comment[i]);
 		comment[i] = nullptr;
 	}
 	num_comments = 0;
@@ -65,62 +69,44 @@ void CodingParams::destroy() {
 	delete ppm_marker;
 }
 
-TileCodingParams::TileCodingParams() :
-								csty(0),
-								prg(GRK_PROG_UNKNOWN),
-								numlayers(0),
-								numLayersToDecompress(0),
-								mct(0),
-								numpocs(0),
-								ppt_markers_count(0),
-								ppt_markers(nullptr),
-								ppt_data(nullptr),
-								ppt_buffer(nullptr),
-								ppt_data_size(0),
-								ppt_len(0),
-								main_qcd_qntsty(0),
-								main_qcd_numStepSizes(0),
-								tccps(nullptr),
-								m_tilePartIndex(-1),
-								m_nb_tile_parts(0),
-								m_compressedTileData(nullptr),
-								mct_norms(nullptr),
-								m_mct_decoding_matrix(nullptr),
-								m_mct_coding_matrix(nullptr),
-								m_mct_records(nullptr),
-								m_nb_mct_records(0),
-								m_nb_max_mct_records(0),
-								m_mcc_records(nullptr),
-								m_nb_mcc_records(0),
-								m_nb_max_mcc_records(0),
-								cod(false),
-								ppt(false),
-								POC(false),
-								isHT(false) {
-	for (auto i = 0; i < 100; ++i)
+TileCodingParams::TileCodingParams()
+	: csty(0), prg(GRK_PROG_UNKNOWN), numlayers(0), numLayersToDecompress(0), mct(0), numpocs(0),
+	  ppt_markers_count(0), ppt_markers(nullptr), ppt_data(nullptr), ppt_buffer(nullptr),
+	  ppt_data_size(0), ppt_len(0), main_qcd_qntsty(0), main_qcd_numStepSizes(0), tccps(nullptr),
+	  m_tilePartIndex(-1), m_nb_tile_parts(0), m_compressedTileData(nullptr), mct_norms(nullptr),
+	  m_mct_decoding_matrix(nullptr), m_mct_coding_matrix(nullptr), m_mct_records(nullptr),
+	  m_nb_mct_records(0), m_nb_max_mct_records(0), m_mcc_records(nullptr), m_nb_mcc_records(0),
+	  m_nb_max_mcc_records(0), cod(false), ppt(false), POC(false), isHT(false)
+{
+	for(auto i = 0; i < 100; ++i)
 		rates[i] = 0.0;
-	for (auto i = 0; i < 100; ++i)
+	for(auto i = 0; i < 100; ++i)
 		distoratio[i] = 0;
-	for (auto i = 0; i < 32; ++i)
+	for(auto i = 0; i < 32; ++i)
 		memset(progressionOrderChange + i, 0, sizeof(grk_progression));
 }
 
-TileCodingParams::~TileCodingParams(){
+TileCodingParams::~TileCodingParams()
+{
 	destroy();
 }
 
-void TileCodingParams::setIsHT(bool ht){
+void TileCodingParams::setIsHT(bool ht)
+{
 	isHT = ht;
 	qcd.setIsHT(ht);
 }
 
-bool TileCodingParams::getIsHT(void){
+bool TileCodingParams::getIsHT(void)
+{
 	return isHT;
 }
 
-void TileCodingParams::destroy() {
-	if (ppt_markers != nullptr) {
-		for (uint32_t i = 0U; i < ppt_markers_count; ++i)
+void TileCodingParams::destroy()
+{
+	if(ppt_markers != nullptr)
+	{
+		for(uint32_t i = 0U; i < ppt_markers_count; ++i)
 			grkFree(ppt_markers[i].m_data);
 		ppt_markers_count = 0U;
 		grkFree(ppt_markers);
@@ -136,16 +122,19 @@ void TileCodingParams::destroy() {
 	grkFree(m_mct_decoding_matrix);
 	m_mct_decoding_matrix = nullptr;
 
-	if (m_mcc_records) {
+	if(m_mcc_records)
+	{
 		grkFree(m_mcc_records);
 		m_mcc_records = nullptr;
 		m_nb_max_mcc_records = 0;
 		m_nb_mcc_records = 0;
 	}
 
-	if (m_mct_records) {
+	if(m_mct_records)
+	{
 		auto mct_data = m_mct_records;
-		for (uint32_t i = 0; i < m_nb_mct_records; ++i) {
+		for(uint32_t i = 0; i < m_nb_mct_records; ++i)
+		{
 			grkFree(mct_data->m_data);
 			++mct_data;
 		}
@@ -158,80 +147,77 @@ void TileCodingParams::destroy() {
 	m_compressedTileData = nullptr;
 }
 
-
-
-TileComponentCodingParams::TileComponentCodingParams() : csty(0),
-														numresolutions(0),
-														cblkw(0),
-														cblkh(0),
-														cblk_sty(0),
-														qmfbid(0),
-														quantizationMarkerSet(false),
-														fromQCC(false),
-														fromTileHeader(false),
-														qntsty(0),
-														numStepSizes(0),
-														numgbits(0),
-														roishift(0),
-														m_dc_level_shift(0)
+TileComponentCodingParams::TileComponentCodingParams()
+	: csty(0), numresolutions(0), cblkw(0), cblkh(0), cblk_sty(0), qmfbid(0),
+	  quantizationMarkerSet(false), fromQCC(false), fromTileHeader(false), qntsty(0),
+	  numStepSizes(0), numgbits(0), roishift(0), m_dc_level_shift(0)
 {
-	for (uint32_t i = 0; i < GRK_J2K_MAXRLVLS; ++i){
+	for(uint32_t i = 0; i < GRK_J2K_MAXRLVLS; ++i)
+	{
 		precinctWidthExp[i] = 0;
 		precinctHeightExp[i] = 0;
 	}
 }
 
-DecompressorState::DecompressorState() : m_default_tcp(nullptr),
-				m_start_tile_x_index(0),
-				m_start_tile_y_index(0),
-				m_end_tile_x_index(0),
-				m_end_tile_y_index(0),
-				lastSotReadPosition(0),
-				lastTilePartInCodeStream(false),
-				lastTilePartWasRead(false),
-				skipTileData(false),
-				m_state(J2K_DEC_STATE_NONE)
+DecompressorState::DecompressorState()
+	: m_default_tcp(nullptr), m_start_tile_x_index(0), m_start_tile_y_index(0),
+	  m_end_tile_x_index(0), m_end_tile_y_index(0), lastSotReadPosition(0),
+	  lastTilePartInCodeStream(false), lastTilePartWasRead(false), skipTileData(false),
+	  m_state(J2K_DEC_STATE_NONE)
 {}
 
-uint16_t DecompressorState::getState(void){
+uint16_t DecompressorState::getState(void)
+{
 	return m_state;
 }
-void     DecompressorState::setState(uint16_t state){
-   m_state = state;
+void DecompressorState::setState(uint16_t state)
+{
+	m_state = state;
 }
-void     DecompressorState::orState(uint16_t state){
-   m_state |= state;
+void DecompressorState::orState(uint16_t state)
+{
+	m_state |= state;
 }
-void     DecompressorState::andState(uint16_t state){
-   m_state &= state;
+void DecompressorState::andState(uint16_t state)
+{
+	m_state &= state;
 }
-bool DecompressorState::findNextTile(CodeStreamDecompress *codeStream){
+bool DecompressorState::findNextTile(CodeStreamDecompress* codeStream)
+{
 	auto stream = codeStream->getStream();
 	lastTilePartWasRead = false;
-	andState((uint16_t) (~J2K_DEC_STATE_DATA));
+	andState((uint16_t)(~J2K_DEC_STATE_DATA));
 
 	// if there is no EOC marker and there is also no data left, then simply return true
-	if (stream->get_number_byte_left() == 0	&& getState() == J2K_DEC_STATE_NO_EOC) {
+	if(stream->get_number_byte_left() == 0 && getState() == J2K_DEC_STATE_NO_EOC)
+	{
 		return true;
 	}
 	// if EOC marker has not been read yet, then try to read the next marker
 	// (should be EOC or SOT)
-	if (getState() != J2K_DEC_STATE_EOC) {
-		try {
-			if (!codeStream->readMarker()) {
+	if(getState() != J2K_DEC_STATE_EOC)
+	{
+		try
+		{
+			if(!codeStream->readMarker())
+			{
 				GRK_WARN("findNextTile: Not enough data to read another marker.\n"
-								"Tile may be truncated.");
+						 "Tile may be truncated.");
 				return true;
+			}
 		}
-		} catch (InvalidMarkerException &ume){
-			    GRK_UNUSED(ume);
-				setState( J2K_DEC_STATE_NO_EOC);
-				GRK_WARN("findNextTile: expected EOC or SOT "
-						"but found invalid marker 0x%x.", codeStream->getCurrentMarker());
-				throw DecodeUnknownMarkerAtEndOfTileException();
+		catch(InvalidMarkerException& ume)
+		{
+			GRK_UNUSED(ume);
+			setState(J2K_DEC_STATE_NO_EOC);
+			GRK_WARN("findNextTile: expected EOC or SOT "
+					 "but found invalid marker 0x%x.",
+					 codeStream->getCurrentMarker());
+			throw DecodeUnknownMarkerAtEndOfTileException();
 		}
 
-		switch (codeStream->getCurrentMarker()) {
+		switch(codeStream->getCurrentMarker())
+		{
 			// we found the EOC marker - set state accordingly and return true;
 			// we can ignore all data after EOC
 			case J2K_MS_EOC:
@@ -246,16 +232,16 @@ bool DecompressorState::findNextTile(CodeStreamDecompress *codeStream){
 				auto bytesLeft = stream->get_number_byte_left();
 				setState(J2K_DEC_STATE_NO_EOC);
 				GRK_WARN("findNextTile: expected EOC or SOT "
-						"but found marker 0x%x.\nIgnoring %d bytes "
-						"remaining in the stream.", codeStream->getCurrentMarker(), bytesLeft+2);
+						 "but found marker 0x%x.\nIgnoring %d bytes "
+						 "remaining in the stream.",
+						 codeStream->getCurrentMarker(), bytesLeft + 2);
 				throw DecodeUnknownMarkerAtEndOfTileException();
-				}
-				break;
+			}
+			break;
 		}
 	}
 
 	return true;
 }
 
-
-}
+} // namespace grk
