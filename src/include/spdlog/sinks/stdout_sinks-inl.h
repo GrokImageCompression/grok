@@ -32,8 +32,13 @@ SPDLOG_INLINE stdout_sink_base<ConsoleMutex>::stdout_sink_base(FILE *file)
 {
 #ifdef _WIN32
     // get windows handle from the FILE* object
-    handle_ = (HANDLE)::_get_osfhandle(::_fileno(file_));
-    if (handle_ == INVALID_HANDLE_VALUE)
+    
+    handle_ = (HANDLE)::_get_osfhandle(::_fileno(file_));    
+        
+    // don't throw to support cases where no console is attached,
+    // and let the log method to do nothing if (handle_ == INVALID_HANDLE_VALUE).
+    // throw only if non stdout/stderr target is requested (probably regular file and not console).
+    if (handle_ == INVALID_HANDLE_VALUE && file != stdout && file != stderr)
     {
         throw_spdlog_ex("spdlog::stdout_sink_base: _get_osfhandle() failed", errno);
     }
@@ -43,10 +48,14 @@ SPDLOG_INLINE stdout_sink_base<ConsoleMutex>::stdout_sink_base(FILE *file)
 template<typename ConsoleMutex>
 SPDLOG_INLINE void stdout_sink_base<ConsoleMutex>::log(const details::log_msg &msg)
 {
+#ifdef _WIN32
+    if (handle_ == INVALID_HANDLE_VALUE)
+    {        
+        return;
+    }
     std::lock_guard<mutex_t> lock(mutex_);
     memory_buf_t formatted;
     formatter_->format(msg, formatted);
-#ifdef _WIN32
     ::fflush(file_); // flush in case there is somthing in this file_ already
     auto size = static_cast<DWORD>(formatted.size());
     DWORD bytes_written = 0;
@@ -56,6 +65,9 @@ SPDLOG_INLINE void stdout_sink_base<ConsoleMutex>::log(const details::log_msg &m
         throw_spdlog_ex("stdout_sink_base: WriteFile() failed. GetLastError(): " + std::to_string(::GetLastError()));
     }
 #else
+    std::lock_guard<mutex_t> lock(mutex_);
+    memory_buf_t formatted;
+    formatter_->format(msg, formatted);
     ::fwrite(formatted.data(), sizeof(char), formatted.size(), file_);
     ::fflush(file_); // flush every line to terminal
 #endif // WIN32    

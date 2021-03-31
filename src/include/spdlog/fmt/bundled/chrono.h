@@ -1069,7 +1069,7 @@ struct formatter<std::chrono::duration<Rep, Period>, Char> {
     if (begin == end) return {begin, begin};
     if (*begin == '.') {
       if (std::is_floating_point<Rep>::value)
-        begin = detail::parsePrecision(begin, end, handler);
+        begin = detail::parse_precision(begin, end, handler);
       else
         handler.on_error("precision not allowed for this argument type");
     }

@@ -2852,7 +2852,7 @@ FMT_CONSTEXPR const Char* parse_width(const Char* begin, const Char* end,
 }
 
 template <typename Char, typename Handler>
-FMT_CONSTEXPR const Char* parsePrecision(const Char* begin, const Char* end,
+FMT_CONSTEXPR const Char* parse_precision(const Char* begin, const Char* end,
                                           Handler&& handler) {
   ++begin;
   auto c = begin != end ? *begin : Char();
@@ -2916,7 +2916,7 @@ FMT_CONSTEXPR const Char* parse_format_specs(const Char* begin, const Char* end,
 
   // Parse precision.
   if (*begin == '.') {
-    begin = parsePrecision(begin, end, handler);
+    begin = parse_precision(begin, end, handler);
   }
 
   // Parse type.
