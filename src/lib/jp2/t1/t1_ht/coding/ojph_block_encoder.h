@@ -57,9 +57,6 @@ namespace ojph {
                             ui32* lengths, 
                             ojph::mem_elastic_allocator *elastic,
                             ojph::coded_lists *& coded);
-
-    bool encode_vlc_init_tables();
-    bool encode_uvlc_init_tables();
   }
 }
 

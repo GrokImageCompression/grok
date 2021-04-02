@@ -35,6 +35,11 @@
 // Date: 17 September 2019
 //***************************************************************************/
 
+//***************************************************************************/
+/** @file ojph_block_encoder.cpp
+ *  @brief implements HTJ2K block encoder
+ */
+
 #include <cassert>
 #include <cstring>
 #include <cstdint>
@@ -66,7 +71,7 @@ namespace ojph {
     static int ulvc_cwd_suf_len[33];
 
     /////////////////////////////////////////////////////////////////////////
-    bool encode_vlc_init_tables()
+    static bool vlc_init_tables()
     {
       struct vlc_src_table { int c_q, rho, u_off, e_k, e_1, cwd, cwd_len; };
       vlc_src_table tbl0[] = {
@@ -186,7 +191,7 @@ namespace ojph {
     }
 
     /////////////////////////////////////////////////////////////////////////
-    bool encode_uvlc_init_tables()
+    static bool uvlc_init_tables()
     {
       //code goes from 0 to 31, extension and 32 are not supported here
       ulvc_cwd_pre[0] = 0; ulvc_cwd_pre[1] = 1; ulvc_cwd_pre[2] = 2;
@@ -210,6 +215,8 @@ namespace ojph {
     }
 
     /////////////////////////////////////////////////////////////////////////
+    static bool vlc_tables_initialized = vlc_init_tables();
+    static bool uvlc_tables_initialized = uvlc_init_tables();
 
     /////////////////////////////////////////////////////////////////////////
     //
@@ -467,7 +474,6 @@ namespace ojph {
                                ojph::coded_lists *& coded)
     {
       assert(num_passes == 1);
-      (void)num_passes;
       const int ms_size = 16384;         //more than enough
       ui8 ms_buf[ms_size];
       const int mel_vlc_size = 3072;     //more than enough
@@ -586,13 +592,13 @@ namespace ojph {
             mel_encode(&mel, rho[0] != 0);
 
         int m = (rho[0] & 1) ? Uq0 - (tuple0 & 1) : 0;
-        ms_encode(&ms, s[0] & ((ui32)(1<<m)-1), m);
+        ms_encode(&ms, s[0] & ((1U<<m)-1), m);
         m = (rho[0] & 2) ? Uq0 - ((tuple0 & 2) >> 1) : 0;
-        ms_encode(&ms, s[1] & ((ui32)(1<<m)-1), m);
+        ms_encode(&ms, s[1] & ((1U<<m)-1), m);
         m = (rho[0] & 4) ? Uq0 - ((tuple0 & 4) >> 2) : 0;
-        ms_encode(&ms, s[2] & ((ui32)(1<<m)-1), m);
+        ms_encode(&ms, s[2] & ((1U<<m)-1), m);
         m = (rho[0] & 8) ? Uq0 - ((tuple0 & 8) >> 3) : 0;
-        ms_encode(&ms, s[3] & ((ui32)(1<<m)-1), m);
+        ms_encode(&ms, s[3] & ((1U<<m)-1), m);
 
         if (x+2 < width)
         {
@@ -672,13 +678,13 @@ namespace ojph {
             mel_encode(&mel, rho[1] != 0);
 
           int m = (rho[1] & 1) ? Uq1 - (tuple1 & 1) : 0;
-          ms_encode(&ms, s[4] & ((ui32)(1<<m)-1), m);
+          ms_encode(&ms, s[4] & ((1U<<m)-1), m);
           m = (rho[1] & 2) ? Uq1 - ((tuple1 & 2) >> 1) : 0;
-          ms_encode(&ms, s[5] & ((ui32)(1<<m)-1), m);
+          ms_encode(&ms, s[5] & ((1U<<m)-1), m);
           m = (rho[1] & 4) ? Uq1 - ((tuple1 & 4) >> 2) : 0;
-          ms_encode(&ms, s[6] & ((ui32)(1<<m)-1), m);
+          ms_encode(&ms, s[6] & ((1U<<m)-1), m);
           m = (rho[1] & 8) ? Uq1 - ((tuple1 & 8) >> 3) : 0;
-          ms_encode(&ms, s[7] & ((ui32)(1<<m)-1), m);
+          ms_encode(&ms, s[7] & ((1U<<m)-1), m);
         }
 
         if (u_q0 > 0 && u_q1 > 0)
@@ -805,13 +811,13 @@ namespace ojph {
               mel_encode(&mel, rho[0] != 0);
 
           int m = (rho[0] & 1) ? Uq0 - (tuple0 & 1) : 0;
-          ms_encode(&ms, s[0] & ((ui32)(1<<m)-1), m);
+          ms_encode(&ms, s[0] & ((1U<<m)-1), m);
           m = (rho[0] & 2) ? Uq0 - ((tuple0 & 2) >> 1) : 0;
-          ms_encode(&ms, s[1] & ((ui32)(1<<m)-1), m);
+          ms_encode(&ms, s[1] & ((1U<<m)-1), m);
           m = (rho[0] & 4) ? Uq0 - ((tuple0 & 4) >> 2) : 0;
-          ms_encode(&ms, s[2] & ((ui32)(1<<m)-1), m);
+          ms_encode(&ms, s[2] & ((1U<<m)-1), m);
           m = (rho[0] & 8) ? Uq0 - ((tuple0 & 8) >> 3) : 0;
-          ms_encode(&ms, s[3] & ((ui32)(1<<m)-1), m);
+          ms_encode(&ms, s[3] & ((1U<<m)-1), m);
 
           if (x+2 < width)
           {
@@ -894,13 +900,13 @@ namespace ojph {
               mel_encode(&mel, rho[1] != 0);
 
             int m = (rho[1] & 1) ? Uq1 - (tuple1 & 1) : 0;
-            ms_encode(&ms, s[4] & ((ui32)(1<<m)-1), m);
+            ms_encode(&ms, s[4] & ((1U<<m)-1), m);
             m = (rho[1] & 2) ? Uq1 - ((tuple1 & 2) >> 1) : 0;
-            ms_encode(&ms, s[5] & ((ui32)(1<<m)-1), m);
+            ms_encode(&ms, s[5] & ((1U<<m)-1), m);
             m = (rho[1] & 4) ? Uq1 - ((tuple1 & 4) >> 2) : 0;
-            ms_encode(&ms, s[6] & ((ui32)(1<<m)-1), m);
+            ms_encode(&ms, s[6] & ((1U<<m)-1), m);
             m = (rho[1] & 8) ? Uq1 - ((tuple1 & 8) >> 3) : 0;
-            ms_encode(&ms, s[7] & ((ui32)(1<<m)-1), m);
+            ms_encode(&ms, s[7] & ((1U<<m)-1), m);
           }
 
           vlc_encode(&vlc, ulvc_cwd_pre[u_q0], ulvc_cwd_pre_len[u_q0]);

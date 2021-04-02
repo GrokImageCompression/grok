@@ -250,7 +250,7 @@ namespace ojph {
       // of 4 boundary.  It reads 1,2,3 up to 4 bytes from the MEL segment
       int num = 4 - (int)(intptr_t(melp->data) & 0x3);
       for (int i = 0; i < num; ++i) { // this code is similar to mel_read
-        //assert(melp->unstuff == false || melp->data[0] <= 0x8F);
+        assert(melp->unstuff == false || melp->data[0] <= 0x8F);
         ui64 d = (melp->size > 0) ? *melp->data : 0xFF;//if buffer is consumed
                                                        //set data to 0xFF
         if (melp->size == 1) d |= 0xF; //if this is MEL+VLC-1, set LSBs to 0xF
@@ -446,7 +446,7 @@ namespace ojph {
      */
     inline ui32 rev_advance(rev_struct *vlcp, ui32 num_bits)
     {
-      //assert(num_bits <= vlcp->bits); // vlcp->tmp must have more than num_bits
+      assert(num_bits <= vlcp->bits); // vlcp->tmp must have more than num_bits
       vlcp->tmp >>= num_bits;         // remove bits
       vlcp->bits -= num_bits;         // decrement the number of bits
       return (ui32)vlcp->tmp;
@@ -571,7 +571,7 @@ namespace ojph {
      */
     inline ui32 rev_advance_mrp(rev_struct *mrp, ui32 num_bits)
     {
-      //assert(num_bits <= mrp->bits); // we must not consume more than mrp->bits
+      assert(num_bits <= mrp->bits); // we must not consume more than mrp->bits
       mrp->tmp >>= num_bits;  // discard the lowest num_bits bits
       mrp->bits -= num_bits;
       return (ui32)mrp->tmp;  // return data after consumption
@@ -582,7 +582,7 @@ namespace ojph {
      *  @brief Initializes vlc_tbl0 and vlc_tbl1 tables, from table0.h and
      *         table1.h
      */
-    bool decode_vlc_init_tables()
+    static bool vlc_init_tables()
     {
       const bool debug = false; //useful for checking 
 
@@ -623,7 +623,7 @@ namespace ojph {
           if (tbl0[j].c_q == c_q) // this is an and operation
             if (tbl0[j].cwd == (cwd & ((1 << tbl0[j].cwd_len) - 1)))
             {
-              //if (debug) assert(vlc_tbl0[i] == 0);
+              if (debug) assert(vlc_tbl0[i] == 0);
               // Put this entry into the table
               vlc_tbl0[i] = (ui16)((tbl0[j].rho << 4) | (tbl0[j].u_off << 3)
                 | (tbl0[j].e_k << 12) | (tbl0[j].e_1 << 8) | tbl0[j].cwd_len);
@@ -641,7 +641,7 @@ namespace ojph {
           if (tbl1[j].c_q == c_q) // this is an and operation
             if (tbl1[j].cwd == (cwd & ((1 << tbl1[j].cwd_len) - 1)))
             {
-              //if (debug) assert(vlc_tbl1[i] == 0);
+              if (debug) assert(vlc_tbl1[i] == 0);
               vlc_tbl1[i] = (ui16)((tbl1[j].rho << 4) | (tbl1[j].u_off << 3)
                 | (tbl1[j].e_k << 12) | (tbl1[j].e_1 << 8) | tbl1[j].cwd_len);
             }
@@ -839,7 +839,7 @@ namespace ojph {
     /** @ingroup vlc_decoding_tables_grp
      *  @brief Initializes VLC tables vlc_tbl0 and vlc_tbl1
      */
-    //static bool vlc_tables_initialized = vlc_init_tables();
+    static bool vlc_tables_initialized = vlc_init_tables();
 
     //************************************************************************/
     /** @brief State structure for reading and unstuffing of forward-growing 
@@ -870,11 +870,11 @@ namespace ojph {
      *  @tparam       X is the value fed in when the bitstream is exhausted
      *  @param  [in]  msp is a pointer to frwd_struct structure
      *
-     */
+     */ 
     template<int X>
     void frwd_read(frwd_struct *msp)
     {
-      //assert(msp->bits <= 32); // assert that there is a space for 32 bits
+      assert(msp->bits <= 32); // assert that there is a space for 32 bits
 
       ui32 val;
       val = *(ui32*)msp->data;            // read 32 bits
@@ -882,21 +882,21 @@ namespace ojph {
                                           // exhausted
 
       // we accumulate in t and keep a count of the number of bits in bits
-      ui32 bits = 8U - msp->unstuff;        // if previous byte was 0xFF
+      ui32 bits = 8 - msp->unstuff;        // if previous byte was 0xFF
       // get next byte, if bitstream is exhausted, replace it with X
       ui32 t = msp->size-- > 0 ? (val & 0xFF) : X;
       bool unstuff = ((val & 0xFF) == 0xFF);  // Do we need unstuffing next?
 
       t |= (msp->size-- > 0 ? ((val >> 8) & 0xFF) : X) << bits;
-      bits += 8U - unstuff;
+      bits += 8 - unstuff;
       unstuff = (((val >> 8) & 0xFF) == 0xFF);
 
       t |= (msp->size-- > 0 ? ((val >> 16) & 0xFF) : X) << bits;
-      bits += 8U - unstuff;
+      bits += 8 - unstuff;
       unstuff = (((val >> 16) & 0xFF) == 0xFF);
 
       t |= (msp->size-- > 0 ? ((val >> 24) & 0xFF) : X) << bits;
-      bits += 8U - unstuff;
+      bits += 8 - unstuff;
       msp->unstuff = (((val >> 24) & 0xFF) == 0xFF); // for next byte
 
       msp->tmp |= ((ui64)t) << msp->bits;  // move data to msp->tmp
@@ -932,7 +932,7 @@ namespace ojph {
         //read a byte if the buffer is not exhausted, otherwise set it to X
         d = msp->size-- > 0 ? *msp->data++ : X;
         msp->tmp |= (d << msp->bits);      // store data in msp->tmp
-        msp->bits += 8U - msp->unstuff;     // number of bits added to msp->tmp
+        msp->bits += 8 - msp->unstuff;     // number of bits added to msp->tmp
         msp->unstuff = ((d & 0xFF) == 0xFF); // unstuffing for next byte
       }
       frwd_read<X>(msp); // read 32 bits more
@@ -946,7 +946,7 @@ namespace ojph {
      */
     inline void frwd_advance(frwd_struct *msp, ui32 num_bits)
     {
-      //assert(num_bits <= msp->bits);
+      assert(num_bits <= msp->bits);
       msp->tmp >>= num_bits;  // consume num_bits
       msp->bits -= num_bits;
     }
@@ -1011,12 +1011,25 @@ namespace ojph {
       ui32 *sip = sigma1; //pointers to arrays to be used interchangeably
       int sip_shift = 0;  //the amount of shift needed for sigma
 
+      if (num_passes > 1 && lengths2 == 0)
+      {
+        OJPH_WARN(0x00010001, "A malformed codeblock that has more than "
+                              "one coding pass, but zero length for "
+                              "2nd and potential 3rd pass.\n");
+        num_passes = 1;
+      }
+      if (num_passes > 3)
+      {
+        OJPH_ERROR(0x00010002, "We do not support more than 3 coding passes; "
+                               "This codeblocks has %d passes.\n",
+                               num_passes);
+        return false;
+      }
+
       if (missing_msbs > 29) // p < 1
         return false;        // 32 bits are not enough to decode this
       else if (missing_msbs == 29) // if p is 1, then num_passes must be 1
         num_passes = 1;
-      if (num_passes > 1 && lengths2 == 0)
-    	  num_passes = 1;
       ui32 p = 30 - missing_msbs; // The least significant bitplane for CUP
       // There is a way to handle the case of p == 0, but a different path
       // is required
@@ -1025,20 +1038,6 @@ namespace ojph {
       int lcup, scup;
       lcup = (int)lengths1;  // length of CUP
       //scup is the length of MEL + VLC
-/*
-      fprintf(stderr,"Missing msbs: %d\n",missing_msbs);
-      fprintf(stderr,"Number of passes: %d\n",num_passes);
-      fprintf(stderr,"CUP length : %d\n",lcup);
-      fprintf(stderr,"decoded data: \n");
-      fprintf(stderr,"[ ");
-      for (uint32_t k=0; k < lcup; ++k){
-    	  if (k == lcup - 1)
-    		  fprintf(stderr,"0x%x ]",coded_data[k]);
-    	  else
-    		  fprintf(stderr,"0x%x, ",coded_data[k]);
-      }
-      fprintf(stderr,"\n");
-*/
       scup = (((int)coded_data[lcup-1]) << 4) + (coded_data[lcup-2] & 0xF);
       if (scup < 2 || scup > lcup || scup > 4079) //something is wrong
         return false;
@@ -1191,7 +1190,7 @@ namespace ojph {
         }
         //decode uvlc_mode to get u for both quads
         ui32 consumed_bits = decode_init_uvlc(vlc_val, uvlc_mode, U_q);
-        if (U_q[0] > missing_msbs || U_q[1] > missing_msbs)
+        if (U_q[0] > missing_msbs + 1 || U_q[1] > missing_msbs + 1)
           return false;
 
         //consume u bits in the VLC code
@@ -1257,7 +1256,7 @@ namespace ojph {
           m_n = U_q[0] - ((qinf[0] >> 14) & 1); 
           frwd_advance(&magsgn, m_n);
           ui32 val = ms_val << 31;
-          v_n = ms_val & (ui32)((1 << m_n) - 1);
+          v_n = ms_val & ((1U << m_n) - 1);
           v_n |= (((qinf[0] & 0x400) >> 10) << m_n);
           v_n |= 1; 
           sp[0] = val | ((v_n + 2) << (p - 1));
@@ -1363,7 +1362,7 @@ namespace ojph {
       for (ui32 y = 2; y < height; /*done at the end of loop*/)
       {
         sip_shift ^= 0x2;  // shift sigma to the upper half od the nibble
-        sip_shift = (int)((ui32)sip_shift & 0xFFFFFFEF); // move back to 0 (it might have been at 0x10)
+        sip_shift = (int)((uint32_t)sip_shift & 0xFFFFFFEF); // move back to 0 (it might have been at 0x10)
         ui32 *sip = y & 0x4 ? sigma2 : sigma1; //choose sigma array
 
         lsp = line_state;
@@ -1379,8 +1378,8 @@ namespace ojph {
           //first quad
           // get context, eqn. 2 ITU T.814
           // c_q has \sigma^W | \sigma^SW
-          c_q |= ui32(ls0 >> 7U);          //\sigma^NW | \sigma^N
-          c_q |= (lsp[1] >> 5U) & 0x4; //\sigma^NE | \sigma^NF
+          c_q |= (ls0 >> 7);          //\sigma^NW | \sigma^N
+          c_q |= (lsp[1] >> 5) & 0x4; //\sigma^NE | \sigma^NF
 
           //the following is very similar to previous code, so please refer to 
           // that
@@ -1414,9 +1413,9 @@ namespace ojph {
           qinf[1] = 0;
           if (x + 2 < width)
           {
-            c_q |= ui32(lsp[1] >> 7U);
-            c_q |= ui32(lsp[2] >> 5U) & 0x4;
-            qinf[1] = vlc_tbl1[(c_q << 7U) | (vlc_val & 0x7F)];
+            c_q |= (lsp[1] >> 7);
+            c_q |= (lsp[2] >> 5) & 0x4;
+            qinf[1] = vlc_tbl1[(c_q << 7) | (vlc_val & 0x7F)];
             if (c_q == 0) //zero context
             {
               run -= 2;
@@ -1441,8 +1440,6 @@ namespace ojph {
           ui32 U_q[2];
           ui32 uvlc_mode = ((qinf[0] & 0x8) >> 3) | ((qinf[1] & 0x8) >> 2);
           ui32 consumed_bits = decode_noninit_uvlc(vlc_val, uvlc_mode, U_q);
-          if (U_q[0] > missing_msbs || U_q[1] > missing_msbs)
-            return false;
           vlc_val = rev_advance(&vlc, consumed_bits);
 
           //calculate E^max and add it to U_q, eqns 5 and 6 in ITU T.814
@@ -1461,6 +1458,9 @@ namespace ojph {
             //since U_q alread has u_q + 1, we subtract 2 instead of 1
             U_q[1] += E > 2 ? E - 2 : 0;
           }
+
+          if (U_q[0] > missing_msbs + 1 || U_q[1] > missing_msbs + 1)
+            return false;
 
           ls0 = lsp[2]; //for next double quad
           lsp[1] = lsp[2] = 0;
@@ -1633,7 +1633,7 @@ namespace ojph {
             ui32 *cur_sig = y & 0x4 ? sigma1 : sigma2;
             // the address of the data that needs updating
             ui32 *dpp = decoded_data + (y - 4) * stride;
-            ui32 half = 1U << (p - 2U); // half the center of the bin
+            ui32 half = 1 << (p - 2); // half the center of the bin
             for (ui32 i = 0; i < width; i += 8)
             {
               //Process one entry from sigma array at a time
@@ -1653,7 +1653,7 @@ namespace ojph {
 
                     if (sig & sample_mask) //if LSB is set
                     {
-                      //assert(dp[0] != 0); // decoded value cannot be zero
+                      assert(dp[0] != 0); // decoded value cannot be zero
                       ui32 sym = cwd & 1; // get it value
                       // remove center of bin if sym is 0
                       dp[0] ^= (1 - sym) << (p - 1);
@@ -1664,7 +1664,7 @@ namespace ojph {
 
                     if (sig & sample_mask)
                     {
-                      //assert(dp[stride] != 0);
+                      assert(dp[stride] != 0);
                       ui32 sym = cwd & 1;
                       dp[stride] ^= (1 - sym) << (p - 1);
                       dp[stride] |= half;
@@ -1674,7 +1674,7 @@ namespace ojph {
 
                     if (sig & sample_mask)
                     {
-                      //assert(dp[2 * stride] != 0);
+                      assert(dp[2 * stride] != 0);
                       ui32 sym = cwd & 1;
                       dp[2 * stride] ^= (1 - sym) << (p - 1);
                       dp[2 * stride] |= half;
@@ -1684,7 +1684,7 @@ namespace ojph {
 
                     if (sig & sample_mask)
                     {
-                      //assert(dp[3 * stride] != 0);
+                      assert(dp[3 * stride] != 0);
                       ui32 sym = cwd & 1;
                       dp[3 * stride] ^= (1 - sym) << (p - 1);
                       dp[3 * stride] |= half;
@@ -1788,7 +1788,7 @@ namespace ojph {
                     ui32 sample_mask = 0x11111111u & col_mask; // LSB
                     if (mbr & sample_mask)
                     {
-                      //assert(dp[0] == 0); // the sample must have been 0
+                      assert(dp[0] == 0); // the sample must have been 0
                       if (cwd & 1) //if this sample has become significant
                       { // must propagate it to nearby samples
                         new_sig |= sample_mask;  // new significant samples
@@ -1802,7 +1802,7 @@ namespace ojph {
                     sample_mask += sample_mask;  // next row
                     if (mbr & sample_mask)
                     {
-                      //assert(dp[stride] == 0);
+                      assert(dp[stride] == 0);
                       if (cwd & 1)
                       {
                         new_sig |= sample_mask;
@@ -1815,7 +1815,7 @@ namespace ojph {
                     sample_mask += sample_mask;
                     if (mbr & sample_mask)
                     {
-                      //assert(dp[2 * stride] == 0);
+                      assert(dp[2 * stride] == 0);
                       if (cwd & 1)
                       {
                         new_sig |= sample_mask;
@@ -1828,7 +1828,7 @@ namespace ojph {
                     sample_mask += sample_mask;
                     if (mbr & sample_mask)
                     {
-                      //assert(dp[3 * stride] == 0);
+                      assert(dp[3 * stride] == 0);
                       if (cwd & 1)
                       {
                         new_sig |= sample_mask;
@@ -1855,7 +1855,7 @@ namespace ojph {
                       ui32 sample_mask = 0x11111111u & col_mask;
                       if (new_sig & sample_mask)
                       {
-                        //assert(dp[0] == 0);
+                        assert(dp[0] == 0);
                         dp[0] |= ((cwd & 1) << 31) | val; //put value and sign
                         cwd >>= 1; ++cnt; //consume bit and increment number
                                           //of consumed bits
@@ -1864,7 +1864,7 @@ namespace ojph {
                       sample_mask += sample_mask;
                       if (new_sig & sample_mask)
                       {
-                        //assert(dp[stride] == 0);
+                        assert(dp[stride] == 0);
                         dp[stride] |= ((cwd & 1) << 31) | val;
                         cwd >>= 1; ++cnt;
                       }
@@ -1872,7 +1872,7 @@ namespace ojph {
                       sample_mask += sample_mask;
                       if (new_sig & sample_mask)
                       {
-                        //assert(dp[2 * stride] == 0);
+                        assert(dp[2 * stride] == 0);
                         dp[2 * stride] |= ((cwd & 1) << 31) | val;
                         cwd >>= 1; ++cnt;
                       }
@@ -1880,7 +1880,7 @@ namespace ojph {
                       sample_mask += sample_mask;
                       if (new_sig & sample_mask)
                       {
-                        //assert(dp[3 * stride] == 0);
+                        assert(dp[3 * stride] == 0);
                         dp[3 * stride] |= ((cwd & 1) << 31) | val;
                         cwd >>= 1; ++cnt;
                       }
@@ -1925,7 +1925,7 @@ namespace ojph {
         {//do magref
           ui32 *cur_sig = height & 0x4 ? sigma2 : sigma1; //reversed
           ui32 *dpp = decoded_data + (height & 0xFFFFFFFCu) * stride;
-          ui32 half = 1U << (p - 2);
+          ui32 half = 1 << (p - 2);
           for (ui32 i = 0; i < width; i += 8)
           {
             ui32 cwd = rev_fetch_mrp(&magref);
@@ -1942,7 +1942,7 @@ namespace ojph {
 
                   if (sig & sample_mask)
                   {
-                    //assert(dp[0] != 0);
+                    assert(dp[0] != 0);
                     ui32 sym = cwd & 1;
                     dp[0] ^= (1 - sym) << (p - 1);
                     dp[0] |= half;
@@ -1952,7 +1952,7 @@ namespace ojph {
 
                   if (sig & sample_mask)
                   {
-                    //assert(dp[stride] != 0);
+                    assert(dp[stride] != 0);
                     ui32 sym = cwd & 1;
                     dp[stride] ^= (1 - sym) << (p - 1);
                     dp[stride] |= half;
@@ -1962,7 +1962,7 @@ namespace ojph {
 
                   if (sig & sample_mask)
                   {
-                    //assert(dp[2 * stride] != 0);
+                    assert(dp[2 * stride] != 0);
                     ui32 sym = cwd & 1;
                     dp[2 * stride] ^= (1 - sym) << (p - 1);
                     dp[2 * stride] |= half;
@@ -1972,7 +1972,7 @@ namespace ojph {
 
                   if (sig & sample_mask)
                   {
-                    //assert(dp[3 * stride] != 0);
+                    assert(dp[3 * stride] != 0);
                     ui32 sym = cwd & 1;
                     dp[3 * stride] ^= (1 - sym) << (p - 1);
                     dp[3 * stride] |= half;
@@ -2085,7 +2085,7 @@ namespace ojph {
                   ui32 sample_mask = 0x11111111u & col_mask;
                   if (mbr & sample_mask)
                   {
-                    //assert(dp[0] == 0);
+                    assert(dp[0] == 0);
                     if (cwd & 1)
                     {
                       new_sig |= sample_mask;
@@ -2098,7 +2098,7 @@ namespace ojph {
                   sample_mask += sample_mask;
                   if (mbr & sample_mask)
                   {
-                    //assert(dp[stride] == 0);
+                    assert(dp[stride] == 0);
                     if (cwd & 1)
                     {
                       new_sig |= sample_mask;
@@ -2111,7 +2111,7 @@ namespace ojph {
                   sample_mask += sample_mask;
                   if (mbr & sample_mask)
                   {
-                    //assert(dp[2 * stride] == 0);
+                    assert(dp[2 * stride] == 0);
                     if (cwd & 1)
                     {
                       new_sig |= sample_mask;
@@ -2124,7 +2124,7 @@ namespace ojph {
                   sample_mask += sample_mask;
                   if (mbr & sample_mask)
                   {
-                    //assert(dp[3 * stride] == 0);
+                    assert(dp[3 * stride] == 0);
                     if (cwd & 1)
                     {
                       new_sig |= sample_mask;
@@ -2151,7 +2151,7 @@ namespace ojph {
                     ui32 sample_mask = 0x11111111u & col_mask;
                     if (new_sig & sample_mask)
                     {
-                      //assert(dp[0] == 0);
+                      assert(dp[0] == 0);
                       dp[0] |= ((cwd & 1) << 31) | val;
                       cwd >>= 1; ++cnt;
                     }
@@ -2159,7 +2159,7 @@ namespace ojph {
                     sample_mask += sample_mask;
                     if (new_sig & sample_mask)
                     {
-                      //assert(dp[stride] == 0);
+                      assert(dp[stride] == 0);
                       dp[stride] |= ((cwd & 1) << 31) | val;
                       cwd >>= 1; ++cnt;
                     }
@@ -2167,7 +2167,7 @@ namespace ojph {
                     sample_mask += sample_mask;
                     if (new_sig & sample_mask)
                     {
-                      //assert(dp[2 * stride] == 0);
+                      assert(dp[2 * stride] == 0);
                       dp[2 * stride] |= ((cwd & 1) << 31) | val;
                       cwd >>= 1; ++cnt;
                     }
@@ -2175,7 +2175,7 @@ namespace ojph {
                     sample_mask += sample_mask;
                     if (new_sig & sample_mask)
                     {
-                      //assert(dp[3 * stride] == 0);
+                      assert(dp[3 * stride] == 0);
                       dp[3 * stride] |= ((cwd & 1) << 31) | val;
                       cwd >>= 1; ++cnt;
                     }
