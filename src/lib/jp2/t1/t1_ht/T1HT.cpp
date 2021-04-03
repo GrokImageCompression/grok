@@ -181,7 +181,7 @@ namespace t1_ht
 			}
 		}
 
-		return block->tilec->postProcess(unencoded_data, block, true);
+		return block->tilec->postProcessHT(unencoded_data, block);
 	}
 
 } // namespace t1_ht

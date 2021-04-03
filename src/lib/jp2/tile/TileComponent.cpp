@@ -329,56 +329,53 @@ ISparseCanvas* TileComponent::getSparseCanvas()
 {
 	return m_sa;
 }
-bool TileComponent::postProcess(int32_t* srcData, DecompressBlockExec* block, bool isHT)
+bool TileComponent::postProcess(int32_t* srcData, DecompressBlockExec* block)
 {
-	if(isHT)
+	if(block->roishift)
 	{
-		if(block->roishift)
+		if(block->qmfbid == 1)
 		{
-			if(block->qmfbid == 1)
-			{
-				return postDecompressImpl<RoiShiftHTFilter<int32_t>>(srcData, block);
-			}
-			else
-			{
-				return postDecompressImpl<RoiScaleHTFilter<int32_t>>(srcData, block);
-			}
+			return postDecompressImpl<RoiShiftFilter<int32_t>>(srcData, block);
 		}
 		else
 		{
-			if(block->qmfbid == 1)
-			{
-				return postDecompressImpl<ShiftHTFilter<int32_t>>(srcData, block);
-			}
-			else
-			{
-				return postDecompressImpl<ScaleHTFilter<int32_t>>(srcData, block);
-			}
+			return postDecompressImpl<RoiScaleFilter<int32_t>>(srcData, block);
 		}
 	}
 	else
 	{
-		if(block->roishift)
+		if(block->qmfbid == 1)
 		{
-			if(block->qmfbid == 1)
-			{
-				return postDecompressImpl<RoiShiftFilter<int32_t>>(srcData, block);
-			}
-			else
-			{
-				return postDecompressImpl<RoiScaleFilter<int32_t>>(srcData, block);
-			}
+			return postDecompressImpl<ShiftFilter<int32_t>>(srcData, block);
 		}
 		else
 		{
-			if(block->qmfbid == 1)
-			{
-				return postDecompressImpl<ShiftFilter<int32_t>>(srcData, block);
-			}
-			else
-			{
-				return postDecompressImpl<ScaleFilter<int32_t>>(srcData, block);
-			}
+			return postDecompressImpl<ScaleFilter<int32_t>>(srcData, block);
+		}
+	}
+}
+bool TileComponent::postProcessHT(int32_t* srcData, DecompressBlockExec* block)
+{
+	if(block->roishift)
+	{
+		if(block->qmfbid == 1)
+		{
+			return postDecompressImpl<RoiShiftHTFilter<int32_t>>(srcData, block);
+		}
+		else
+		{
+			return postDecompressImpl<RoiScaleHTFilter<int32_t>>(srcData, block);
+		}
+	}
+	else
+	{
+		if(block->qmfbid == 1)
+		{
+			return postDecompressImpl<ShiftHTFilter<int32_t>>(srcData, block);
+		}
+		else
+		{
+			return postDecompressImpl<ScaleHTFilter<int32_t>>(srcData, block);
 		}
 	}
 }

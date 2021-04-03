@@ -157,7 +157,7 @@ namespace t1_part1
 			}
 		}
 
-		return block->tilec->postProcess(t1->getUncompressedData(), block, false);
+		return block->tilec->postProcess(t1->getUncompressedData(), block);
 	}
 
 } // namespace t1_part1
