@@ -179,8 +179,13 @@ bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 			return false;
 		}
 	}
+	// set file format fields in header info
 	if(header_info)
 	{
+		// retrieve ASOCs
+		header_info->num_asocs = 0;
+		if(!root_asoc.children.empty())
+			serializeAsoc(&root_asoc, header_info->asocs, &header_info->num_asocs, 0);
 		header_info->xml_data = xml.buf;
 		header_info->xml_data_len = xml.len;
 	}
@@ -300,9 +305,6 @@ bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 			}
 		}
 	}
-	// retrieve ASOCs
-	if(!root_asoc.children.empty() && header_info)
-		serializeAsoc(&root_asoc, header_info->asocs, &header_info->num_asocs, 0);
 
 	return true;
 }
