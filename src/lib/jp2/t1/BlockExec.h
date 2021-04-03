@@ -31,7 +31,7 @@ struct BlockExec
 	uint8_t bandIndex;
 	eBandOrientation bandOrientation;
 	float stepsize;
-	uint32_t cblk_sty;
+	uint8_t cblk_sty;
 	uint8_t qmfbid;
 	/* code block offset in buffer coordinates*/
 	uint32_t x;
@@ -49,7 +49,7 @@ struct DecompressBlockExec : public BlockExec
 	void close(void) {}
 	DecompressCodeblock* cblk;
 	uint8_t resno;
-	uint32_t roishift;
+	uint8_t roishift;
 };
 struct CompressBlockExec : public BlockExec
 {
