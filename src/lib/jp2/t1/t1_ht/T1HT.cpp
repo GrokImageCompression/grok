@@ -136,7 +136,7 @@ namespace t1_ht
 		auto cblk = block->cblk;
 		if(!cblk->area())
 			return true;
-		uint16_t stride = uint16_t(((uint16_t)cblk->width() + 7U)/8U) * 8U;
+		uint16_t stride = (uint16_t)cblk->width();
 		if(!cblk->seg_buffers.empty())
 		{
 			size_t total_seg_len =
