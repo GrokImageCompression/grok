@@ -335,58 +335,58 @@ bool TileComponent::postProcess(int32_t* srcData, DecompressBlockExec* block)
 	{
 		if(block->qmfbid == 1)
 		{
-			return postDecompressImpl<RoiShiftFilter<int32_t>>(srcData, block);
+			return postDecompressImpl<RoiShiftFilter<int32_t>>(srcData, block, block->cblk->width());
 		}
 		else
 		{
-			return postDecompressImpl<RoiScaleFilter<int32_t>>(srcData, block);
+			return postDecompressImpl<RoiScaleFilter<int32_t>>(srcData, block, block->cblk->width());
 		}
 	}
 	else
 	{
 		if(block->qmfbid == 1)
 		{
-			return postDecompressImpl<ShiftFilter<int32_t>>(srcData, block);
+			return postDecompressImpl<ShiftFilter<int32_t>>(srcData, block, block->cblk->width());
 		}
 		else
 		{
-			return postDecompressImpl<ScaleFilter<int32_t>>(srcData, block);
+			return postDecompressImpl<ScaleFilter<int32_t>>(srcData, block, block->cblk->width());
 		}
 	}
 }
-bool TileComponent::postProcessHT(int32_t* srcData, DecompressBlockExec* block)
+bool TileComponent::postProcessHT(int32_t* srcData, DecompressBlockExec* block, uint16_t stride)
 {
 	if(block->roishift)
 	{
 		if(block->qmfbid == 1)
 		{
-			return postDecompressImpl<RoiShiftHTFilter<int32_t>>(srcData, block);
+			return postDecompressImpl<RoiShiftHTFilter<int32_t>>(srcData, block,stride);
 		}
 		else
 		{
-			return postDecompressImpl<RoiScaleHTFilter<int32_t>>(srcData, block);
+			return postDecompressImpl<RoiScaleHTFilter<int32_t>>(srcData, block,stride);
 		}
 	}
 	else
 	{
 		if(block->qmfbid == 1)
 		{
-			return postDecompressImpl<ShiftHTFilter<int32_t>>(srcData, block);
+			return postDecompressImpl<ShiftHTFilter<int32_t>>(srcData, block,stride);
 		}
 		else
 		{
-			return postDecompressImpl<ScaleHTFilter<int32_t>>(srcData, block);
+			return postDecompressImpl<ScaleHTFilter<int32_t>>(srcData, block,stride);
 		}
 	}
 }
 template<typename F>
-bool TileComponent::postDecompressImpl(int32_t* srcData, DecompressBlockExec* block)
+bool TileComponent::postDecompressImpl(int32_t* srcData, DecompressBlockExec* block, uint16_t stride)
 {
 	auto cblk = block->cblk;
 
 	grkBuffer2d<int32_t, AllocatorAligned> dest;
 	grkBuffer2d<int32_t, AllocatorAligned> src = grkBuffer2d<int32_t, AllocatorAligned>(
-		srcData, false, cblk->width(), cblk->width(), cblk->height());
+		srcData, false, cblk->width(), stride, cblk->height());
 	buf->toRelativeCoordinates(block->resno, block->bandOrientation, block->x, block->y);
 	if(m_sa)
 	{

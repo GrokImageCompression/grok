@@ -22,6 +22,7 @@
 #include "ojph_mem.h"
 using namespace ojph;
 using namespace ojph::local;
+using namespace ojph::local2;
 
 #include "grk_includes.h"
 #include "T1HT.h"
@@ -135,6 +136,7 @@ namespace t1_ht
 		auto cblk = block->cblk;
 		if(!cblk->area())
 			return true;
+		uint16_t stride = uint16_t(((uint16_t)cblk->width() + 7U)/8U) * 8U;
 		if(!cblk->seg_buffers.empty())
 		{
 			size_t total_seg_len =
@@ -168,11 +170,11 @@ namespace t1_ht
 			{
 				rc = ojph_decode_codeblock(actual_coded_data, (uint32_t*)unencoded_data,
 										   block->k_msbs, (uint32_t)num_passes, (uint32_t)offset, 0,
-										   cblk->width(), cblk->height(), cblk->width());
+										   cblk->width(), cblk->height(), stride);
 			}
 			else
 			{
-				memset(unencoded_data, 0, cblk->area() * sizeof(int32_t));
+				memset(unencoded_data, 0, stride * cblk->height() * sizeof(int32_t));
 			}
 			if(!rc)
 			{
@@ -181,7 +183,7 @@ namespace t1_ht
 			}
 		}
 
-		return block->tilec->postProcessHT(unencoded_data, block);
+		return block->tilec->postProcessHT(unencoded_data, block, stride);
 	}
 
 } // namespace t1_ht
