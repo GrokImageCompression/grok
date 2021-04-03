@@ -643,11 +643,11 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 					procs[tile_ind] = tileProcessor;
 					tileProcessor->m_tileIndex = tile_ind;
 					tileProcessor->current_plugin_tile = tile;
-					if(!tileProcessor->pre_write_tile())
+					if(!tileProcessor->preCompressTile())
 						success = false;
 					else
 					{
-						if(!tileProcessor->do_compress())
+						if(!tileProcessor->doCompress())
 							success = false;
 					}
 				}
@@ -662,22 +662,20 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 			auto tileProcessor = new TileProcessor(this, m_stream, true, false);
 			tileProcessor->m_tileIndex = i;
 			tileProcessor->current_plugin_tile = tile;
-			if(!tileProcessor->pre_write_tile())
+			if(!tileProcessor->preCompressTile())
 			{
 				delete tileProcessor;
 				goto cleanup;
 			}
-			if(!tileProcessor->do_compress())
+			if(!tileProcessor->doCompress())
 			{
 				delete tileProcessor;
 				goto cleanup;
 			}
-			if(!post_write_tile(tileProcessor))
-			{
-				delete tileProcessor;
-				goto cleanup;
-			}
+			bool write_success = writeTileParts(tileProcessor);
 			delete tileProcessor;
+			if(!write_success)
+				goto cleanup;
 		}
 	}
 	if(pool_size > 1)
@@ -690,7 +688,7 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 			goto cleanup;
 		for(uint16_t i = 0; i < nb_tiles; ++i)
 		{
-			bool write_success = post_write_tile(procs[i]);
+			bool write_success = writeTileParts(procs[i]);
 			delete procs[i];
 			procs[i] = nullptr;
 			if(!write_success)
@@ -714,9 +712,9 @@ bool CodeStreamCompress::compressTile(uint16_t tileIndex, uint8_t* p_data,
 	auto currentTileProcessor = new TileProcessor(this, m_stream, true, false);
 	currentTileProcessor->m_tileIndex = tileIndex;
 
-	if(!currentTileProcessor->pre_write_tile())
+	if(!currentTileProcessor->preCompressTile())
 	{
-		GRK_ERROR("Error while pre_write_tile with tile index = %u", tileIndex);
+		GRK_ERROR("Error while preCompressTile with tile index = %u", tileIndex);
 		goto cleanup;
 	}
 	/* now copy data into the tile component */
@@ -725,9 +723,9 @@ bool CodeStreamCompress::compressTile(uint16_t tileIndex, uint8_t* p_data,
 		GRK_ERROR("Size mismatch between tile data and sent data.");
 		goto cleanup;
 	}
-	if(!currentTileProcessor->do_compress())
+	if(!currentTileProcessor->doCompress())
 		goto cleanup;
-	if(!post_write_tile(currentTileProcessor))
+	if(!writeTileParts(currentTileProcessor))
 	{
 		GRK_ERROR("Error while j2k_post_write_tile with tile index = %u", tileIndex);
 		goto cleanup;
@@ -860,7 +858,7 @@ bool CodeStreamCompress::init_header_writing(void)
 
 	return true;
 }
-bool CodeStreamCompress::write_tile_part(TileProcessor* tileProcessor)
+bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 {
 	uint16_t currentTileIndex = tileProcessor->m_tileIndex;
 	auto cp = &m_cp;
@@ -891,7 +889,7 @@ bool CodeStreamCompress::write_tile_part(TileProcessor* tileProcessor)
 		tileProcessor->tile->numProcessedPackets = 0;
 	}
 	// 3. compress tile part
-	if(!tileProcessor->compressTilePart(&tilePartBytesWritten))
+	if(!tileProcessor->writeTilePartT2(&tilePartBytesWritten))
 	{
 		GRK_ERROR("Cannot compress tile");
 		return false;
@@ -906,7 +904,7 @@ bool CodeStreamCompress::write_tile_part(TileProcessor* tileProcessor)
 
 	return true;
 }
-bool CodeStreamCompress::post_write_tile(TileProcessor* tileProcessor)
+bool CodeStreamCompress::writeTileParts(TileProcessor* tileProcessor)
 {
 	m_currentTileProcessor = tileProcessor;
 	assert(tileProcessor->m_tilePartIndex == 0);
@@ -914,7 +912,7 @@ bool CodeStreamCompress::post_write_tile(TileProcessor* tileProcessor)
 	// 1. write first tile part
 	tileProcessor->pino = 0;
 	tileProcessor->m_first_poc_tile_part = true;
-	if(!write_tile_part(tileProcessor))
+	if(!writeTilePart(tileProcessor))
 		return false;
 	// 2. write the other tile parts
 	uint32_t pino;
@@ -931,7 +929,7 @@ bool CodeStreamCompress::post_write_tile(TileProcessor* tileProcessor)
 	tileProcessor->m_first_poc_tile_part = false;
 	for(uint8_t tilepartno = 1; tilepartno < (uint8_t)num_tp; ++tilepartno)
 	{
-		if(!write_tile_part(tileProcessor))
+		if(!writeTilePart(tileProcessor))
 			return false;
 	}
 	// write tile parts for remaining progression orders
@@ -949,7 +947,7 @@ bool CodeStreamCompress::post_write_tile(TileProcessor* tileProcessor)
 		for(uint8_t tilepartno = 0; tilepartno < num_tp; ++tilepartno)
 		{
 			tileProcessor->m_first_poc_tile_part = (tilepartno == 0);
-			if(!write_tile_part(tileProcessor))
+			if(!writeTilePart(tileProcessor))
 				return false;
 		}
 	}

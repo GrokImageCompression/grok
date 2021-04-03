@@ -79,10 +79,10 @@ struct TileProcessor
 	bool init(void);
 	bool allocWindowBuffers(const GrkImage* outputImage);
 	void deallocBuffers();
-	bool pre_write_tile(void);
-	bool compressTilePart(uint32_t* tile_bytes_written);
+	bool preCompressTile(void);
+	bool writeTilePartT2(uint32_t* tileBytesWritten);
 	bool preCompressFirstTilePart(void);
-	bool do_compress(void);
+	bool doCompress(void);
 	bool decompressT1(void);
 	bool decompressT2(SparseBuffer* srcBuf);
 	bool decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage, bool multiTile, bool doPost);
@@ -142,7 +142,7 @@ struct TileProcessor
 	bool mct_encode();
 	bool dwt_encode();
 	void t1_encode();
-	bool t2_encode(uint32_t* packet_bytes_written);
+	bool encodeT2(uint32_t* packet_bytes_written);
 	bool rateAllocate(void);
 	bool layerNeedsRateControl(uint32_t layno);
 	bool makeSingleLosslessLayer();

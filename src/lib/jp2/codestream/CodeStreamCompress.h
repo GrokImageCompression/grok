@@ -42,8 +42,8 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
   private:
 	bool init_header_writing(void);
 	bool get_end_header(void);
-	bool write_tile_part(TileProcessor* tileProcessor);
-	bool post_write_tile(TileProcessor* tileProcessor);
+	bool writeTilePart(TileProcessor* tileProcessor);
+	bool writeTileParts(TileProcessor* tileProcessor);
 	bool update_rates(void);
 	bool compress_validation(void);
 	bool mct_validation(void);

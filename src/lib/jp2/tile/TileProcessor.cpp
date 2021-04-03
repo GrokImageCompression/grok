@@ -771,7 +771,7 @@ void TileProcessor::deallocBuffers()
 		tile_comp->deallocBuffers();
 	}
 }
-bool TileProcessor::do_compress(void)
+bool TileProcessor::doCompress(void)
 {
 	uint32_t state = grk_plugin_get_debug_state();
 	if(state & GRK_PLUGIN_STATE_DEBUG)
@@ -832,22 +832,22 @@ bool TileProcessor::preCompressFirstTilePart(void)
 
 	return true;
 }
-bool TileProcessor::compressTilePart(uint32_t* tile_bytes_written)
+bool TileProcessor::writeTilePartT2(uint32_t* tileBytesWritten)
 {
 	// 4 write PLT for first tile part
 	if(m_tilePartIndex == 0 && packetLengthCache.getMarkers())
 	{
 		uint32_t written = packetLengthCache.getMarkers()->write();
-		*tile_bytes_written += written;
+		*tileBytesWritten += written;
 	}
 
 	// 3 write SOD
 	if(!m_stream->write_short(J2K_MS_SOD))
 		return false;
 
-	*tile_bytes_written += 2;
+	*tileBytesWritten += 2;
 
-	return t2_encode(tile_bytes_written);
+	return encodeT2(tileBytesWritten);
 }
 /** Returns whether a tile component should be fully decompressed,
  * taking into account win_* members.
@@ -1183,7 +1183,7 @@ void TileProcessor::t1_encode()
 		std::unique_ptr<T1CompressScheduler>(new T1CompressScheduler(tile, needsRateControl()));
 	scheduler->scheduleCompress(tcp, mct_norms, mct_numcomps);
 }
-bool TileProcessor::t2_encode(uint32_t* all_packet_bytes_written)
+bool TileProcessor::encodeT2(uint32_t* all_packet_bytes_written)
 {
 	auto l_t2 = new T2Compress(this);
 #ifdef DEBUG_LOSSLESS_T2
@@ -1315,7 +1315,7 @@ bool TileProcessor::rateAllocate()
 
 	return true;
 }
-bool TileProcessor::pre_write_tile()
+bool TileProcessor::preCompressTile()
 {
 	m_tilePartIndex = 0;
 	numTilePartsTotal = m_cp->tcps[m_tileIndex].m_nb_tile_parts;
