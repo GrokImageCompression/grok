@@ -115,7 +115,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 		return false;
 
 	// sanity check on image
-	if(image->numcomps < 1 || image->numcomps > max_num_components)
+	if(image->numcomps < 1 || image->numcomps > maxNumComponentsJ2K)
 	{
 		GRK_ERROR("Invalid number of components specified while setting up JP2 compressor");
 		return false;
@@ -614,11 +614,11 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 {
 	uint32_t nb_tiles = (uint32_t)m_cp.t_grid_height * m_cp.t_grid_width;
-	if(nb_tiles > max_num_tiles)
+	if(nb_tiles > maxNumTilesJ2K)
 	{
 		GRK_ERROR("Number of tiles %u is greater than %u max tiles "
 				  "allowed by the standard.",
-				  nb_tiles, max_num_tiles);
+				  nb_tiles, maxNumTilesJ2K);
 		return false;
 	}
 	auto pool_size = std::min<uint32_t>((uint32_t)ThreadPool::get()->num_threads(), nb_tiles);
@@ -922,10 +922,10 @@ bool CodeStreamCompress::post_write_tile(TileProcessor* tileProcessor)
 	auto tcp = cp->tcps + tileProcessor->m_tileIndex;
 	// write tile parts for first progression order
 	uint64_t num_tp = get_num_tp(cp, 0, tileProcessor->m_tileIndex);
-	if(num_tp > max_num_tile_parts_per_tile)
+	if(num_tp > maxTilePartsPerTileJ2K)
 	{
 		GRK_ERROR("Number of tile parts %d for first POC exceeds maximum number of tile parts %d",
-				  num_tp, max_num_tile_parts_per_tile);
+				  num_tp, maxTilePartsPerTileJ2K);
 		return false;
 	}
 	tileProcessor->m_first_poc_tile_part = false;
@@ -939,11 +939,11 @@ bool CodeStreamCompress::post_write_tile(TileProcessor* tileProcessor)
 	{
 		tileProcessor->pino = pino;
 		num_tp = get_num_tp(cp, pino, tileProcessor->m_tileIndex);
-		if(num_tp > max_num_tile_parts_per_tile)
+		if(num_tp > maxTilePartsPerTileJ2K)
 		{
 			GRK_ERROR("Number of tile parts %d exceeds maximum number of "
 					  "tile parts %d",
-					  num_tp, max_num_tile_parts_per_tile);
+					  num_tp, maxTilePartsPerTileJ2K);
 			return false;
 		}
 		for(uint8_t tilepartno = 0; tilepartno < num_tp; ++tilepartno)
@@ -1978,20 +1978,20 @@ bool CodeStreamCompress::calculate_tp(CodingParams* cp, uint16_t* p_nb_tile_part
 		for(uint32_t pino = 0; pino <= tcp->numpocs; ++pino)
 		{
 			uint64_t num_tp = get_num_tp(cp, pino, tileno);
-			if(num_tp > max_num_tile_parts_per_tile)
+			if(num_tp > maxTilePartsPerTileJ2K)
 			{
 				GRK_ERROR("Number of tile parts %d exceeds maximum number of "
 						  "tile parts %d",
-						  num_tp, max_num_tile_parts_per_tile);
+						  num_tp, maxTilePartsPerTileJ2K);
 				return false;
 			}
 
 			uint64_t total = num_tp + *p_nb_tile_parts;
-			if(total > max_num_tile_parts)
+			if(total > maxTotalTilePartsJ2K)
 			{
 				GRK_ERROR("Total number of tile parts %d exceeds maximum total number of "
 						  "tile parts %d",
-						  total, max_num_tile_parts);
+						  total, maxTotalTilePartsJ2K);
 				return false;
 			}
 

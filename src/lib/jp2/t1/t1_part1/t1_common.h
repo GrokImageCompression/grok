@@ -47,8 +47,6 @@ const uint8_t grk_cblk_enc_compressed_data_pad_left = 2;
 
 namespace grk
 {
-#define T1_NMSEDEC_BITS 7
-#define T1_NMSEDEC_FRACBITS (T1_NMSEDEC_BITS - 1)
 
 #define T1_NUMCTXS_ZC 9
 #define T1_NUMCTXS_SC 5
@@ -63,11 +61,6 @@ namespace grk
 #define T1_CTXNO_UNI (T1_CTXNO_AGG + T1_NUMCTXS_AGG)
 #define T1_NUMCTXS (T1_CTXNO_UNI + T1_NUMCTXS_UNI)
 
-// We can have a maximum 31 bits in each 32 bit wavelet coefficient
-// as the most significant bit is reserved for the sign.
-// Since we need T1_NMSEDEC_FRACBITS fixed point fractional bits,
-// we can only support a maximum of (31-T1_NMSEDEC_FRACBITS) bit planes
-const uint32_t k_max_bit_planes = 31 - T1_NMSEDEC_FRACBITS;
 
 struct pass_enc
 {

@@ -49,7 +49,7 @@ void T2Decompress::initSegment(DecompressCodeblock* cblk, uint32_t index, uint8_
 	}
 	else
 	{
-		seg->maxpasses = max_passes_per_segment;
+		seg->maxpasses = maxPassesPerSegmentJ2K;
 	}
 }
 bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* currPi, SparseBuffer* srcBuf)
@@ -357,17 +357,16 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 									 K_msbs, band->numbps);
 							// since we don't know how many bit planes are in this block, we
 							// set numbps to max - the t1 decoder will sort it out
-							cblk->numbps = max_bit_planes;
+							cblk->numbps = maxBitPlanesGRK;
 						}
 						else
 						{
 							cblk->numbps = band->numbps - K_msbs;
 						}
-						// BIBO analysis gives sanity check on number of bit planes
-						if(cblk->numbps > max_bit_planes_bibo)
+						if(cblk->numbps > maxBitPlanesGRK)
 						{
-							GRK_WARN("Number of bit planes %u is impossibly large.", cblk->numbps);
-							return false;
+							GRK_WARN("Number of bit planes %u is larger than maximum %u", cblk->numbps,maxBitPlanesGRK);
+							cblk->numbps = maxBitPlanesGRK;
 						}
 						cblk->numlenbits = 3;
 					}
@@ -393,18 +392,18 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 					{
 						auto seg = cblk->getSegment(segno);
 						/* sanity check when there is no mode switch */
-						if(seg->maxpasses == max_passes_per_segment)
+						if(seg->maxpasses == maxPassesPerSegmentJ2K)
 						{
-							if(blockPassesInPacket > (int32_t)max_passes_per_segment)
+							if(blockPassesInPacket > (int32_t)maxPassesPerSegmentJ2K)
 							{
 								GRK_WARN("Number of code block passes (%u) in packet is "
 										 "suspiciously large.",
 										 blockPassesInPacket);
 								// TODO - we are truncating the number of passes at an arbitrary
-								// value of max_passes_per_segment. We should probably either skip
+								// value of maxPassesPerSegmentJ2K. We should probably either skip
 								// the rest of this block, if possible, or do further sanity check
 								// on packet
-								seg->numPassesInPacket = max_passes_per_segment;
+								seg->numPassesInPacket = maxPassesPerSegmentJ2K;
 							}
 							else
 							{

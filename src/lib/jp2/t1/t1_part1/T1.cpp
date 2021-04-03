@@ -1370,10 +1370,10 @@ bool T1::decompress_cblk(DecompressCodeblock* cblk, uint8_t* compressedData, uin
 	bool check_pterm = cblksty & GRK_CBLKSTY_PTERM;
 	mqc->lut_ctxno_zc_orient = lut_ctxno_zc + (orientation << 9);
 	int32_t bpno_plus_one = (int32_t)(cblk->numbps);
-	if(bpno_plus_one >= (int32_t)k_max_bit_planes)
+	if(bpno_plus_one >= (int32_t)maxBitPlanesGRK)
 	{
 		grk::GRK_ERROR("unsupported number of bit planes: %u > %u", bpno_plus_one,
-					   k_max_bit_planes);
+					   maxBitPlanesGRK);
 		return false;
 	}
 	uint32_t passtype = 2;

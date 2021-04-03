@@ -30,27 +30,30 @@ namespace grk
 {
 
 // Limits defined in JPEG 2000 standard ///
-const uint32_t max_num_components = 16384;
-const uint32_t max_precision_jpeg_2000 = 38;
-const uint32_t max_num_tiles = 65535;
-const uint32_t max_num_tile_parts_per_tile = 255;
-const uint32_t max_num_tile_parts = 65535;
+const uint32_t maxNumComponentsJ2K = 16384;
+const uint32_t maxPrecisionJ2K = 38;
+const uint32_t maxPassesPerSegmentJ2K = (maxPrecisionJ2K - 1) * 3 + 1;
+const uint32_t maxNumTilesJ2K = 65535;
+const uint32_t maxTilePartsPerTileJ2K = 255;
+const uint32_t maxTotalTilePartsJ2K = 65535;
 // note: includes tile part header
-const uint32_t max_tile_part_size = UINT_MAX;
-const uint32_t max_bit_planes = max_precision_jpeg_2000;
+const uint32_t maxTilePartSizeJ2K = UINT_MAX;
 
 // Limits in Grok library  //
-//using BIBO analysis
-const uint32_t max_supported_precision = 16; // maximum supported precision for Grok library
-const uint32_t max_bit_planes_bibo = max_precision_jpeg_2000 + GRK_J2K_MAXRLVLS * 5;
-const uint32_t max_passes = (max_bit_planes - 1) * 3 + 1;
-const uint32_t max_passes_per_segment = max_passes;
-const uint32_t max_segments_per_block = max_passes;
+const uint32_t maxSupportedPrecisionGRK = 16; // maximum supported precision for Grok library
+// We can have a maximum 31 bits in each 32 bit wavelet coefficient
+// as the most significant bit is reserved for the sign.
+// Since we need T1_NMSEDEC_FRACBITS fixed point fractional bits,
+// we can only support a maximum of (31-T1_NMSEDEC_FRACBITS) bit planes
+#define T1_NMSEDEC_BITS 7
+#define T1_NMSEDEC_FRACBITS (T1_NMSEDEC_BITS - 1)
+const uint32_t maxBitPlanesGRK = 31 - T1_NMSEDEC_FRACBITS;
+//const uint32_t max_bit_planes_bibo = maxSupportedPrecisionGRK + GRK_J2K_MAXRLVLS * 5;
+
 const uint32_t default_numbers_segments = 10;
 const uint32_t default_header_size = 4096;
 const uint32_t default_number_mcc_records = 10;
 const uint32_t default_number_mct_records = 10;
-
 
 // includes marker and marker length (4 bytes)
 const uint32_t sot_marker_segment_len = 12U;
@@ -64,7 +67,6 @@ const uint32_t GRK_COMP_PARAM_DEFAULT_CBLOCKW = 64;
 const uint32_t GRK_COMP_PARAM_DEFAULT_CBLOCKH = 64;
 const GRK_PROG_ORDER GRK_COMP_PARAM_DEFAULT_PROG_ORDER = GRK_LRCP;
 const uint32_t GRK_COMP_PARAM_DEFAULT_NUMRESOLUTION = 6;
-
 
 #define J2K_CP_CSTY_PRT 0x01
 #define J2K_CP_CSTY_SOP 0x02
@@ -99,7 +101,6 @@ const uint32_t GRK_COMP_PARAM_DEFAULT_NUMRESOLUTION = 6;
 #define J2K_MS_MCC 0xff75 /**< MCC marker value */
 #define J2K_MS_MCT 0xff74 /**< MCT marker value */
 #define J2K_MS_MCO 0xff77 /**< MCO marker value */
-
 #define J2K_MS_UNK 0 /**< UNKNOWN marker value */
 
 class GrkImage;
@@ -118,11 +119,7 @@ void j2k_write(const void* p_src_data, void* p_dest_data, uint64_t nb_elem)
 }
 
 const uint32_t MCT_ELEMENT_SIZE[] = {2, 4, 4, 8};
-
 typedef void (*j2k_mct_function)(const void* p_src_data, void* p_dest_data, uint64_t nb_elem);
-
-
-
 typedef std::function<bool(void)> PROCEDURE_FUNC;
 
 struct ICodeStreamCompress

@@ -681,7 +681,7 @@ bool FileFormatDecompress::read_ihdr(uint8_t* p_image_header_data, uint32_t imag
 	}
 	grk_read<uint16_t>(p_image_header_data, &numcomps); /* NC */
 	p_image_header_data += 2;
-	if((numcomps == 0) || (numcomps > max_num_components))
+	if((numcomps == 0) || (numcomps > maxNumComponentsJ2K))
 	{
 		GRK_ERROR("JP2 IHDR box: num components=%u does not conform to standard", numcomps);
 		return false;
@@ -697,7 +697,7 @@ bool FileFormatDecompress::read_ihdr(uint8_t* p_image_header_data, uint32_t imag
 	// Otherwise, low 7 bits of bpc determine bits per component,
 	// and high bit set indicates signed data,
 	// unset indicates unsigned data
-	if(((bpc != 0xFF) && ((bpc & 0x7F) > (max_supported_precision - 1))))
+	if(((bpc != 0xFF) && ((bpc & 0x7F) > (maxSupportedPrecisionGRK - 1))))
 	{
 		GRK_ERROR("JP2 IHDR box: bpc=%u not supported.", bpc);
 		return false;

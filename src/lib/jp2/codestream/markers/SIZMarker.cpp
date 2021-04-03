@@ -139,13 +139,13 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* p_header_data, u
 		GRK_ERROR("SIZ marker: number of components cannot be zero");
 		return false;
 	}
-	if(tmp <= max_num_components)
+	if(tmp <= maxNumComponentsJ2K)
 		image->numcomps = (uint16_t)tmp;
 	else
 	{
 		GRK_ERROR("SIZ marker: number of components %u is greater than maximum allowed number of "
 				  "components %d",
-				  tmp, max_num_components);
+				  tmp, maxNumComponentsJ2K);
 		return false;
 	}
 
@@ -216,11 +216,11 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* p_header_data, u
 			return false;
 		}
 
-		if(img_comp->prec == 0 || img_comp->prec > max_supported_precision)
+		if(img_comp->prec == 0 || img_comp->prec > maxSupportedPrecisionGRK)
 		{
 			GRK_ERROR("Unsupported precision for comp = %u : prec=%u (this library only supports "
 					  "precisions between 1 and %u)",
-					  i, img_comp->prec, max_supported_precision);
+					  i, img_comp->prec, maxSupportedPrecisionGRK);
 			return false;
 		}
 		++img_comp;
@@ -238,11 +238,11 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* p_header_data, u
 				  cp->t_grid_width, cp->t_grid_height);
 		return false;
 	}
-	if((uint64_t)cp->t_grid_width * cp->t_grid_height > (uint64_t)max_num_tiles)
+	if((uint64_t)cp->t_grid_width * cp->t_grid_height > (uint64_t)maxNumTilesJ2K)
 	{
 		GRK_ERROR(
 			"Invalid grid of tiles : %u x %u.  JPEG 2000 standard specifies maximum of %u tiles",
-			cp->t_grid_width, cp->t_grid_height, max_num_tiles);
+			cp->t_grid_width, cp->t_grid_height, maxNumTilesJ2K);
 		return false;
 	}
 	nb_tiles = (uint16_t)(cp->t_grid_width * cp->t_grid_height);
