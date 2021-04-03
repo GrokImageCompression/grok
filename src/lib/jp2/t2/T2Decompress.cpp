@@ -357,14 +357,14 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 									 K_msbs, band->numbps);
 							// since we don't know how many bit planes are in this block, we
 							// set numbps to max - the t1 decoder will sort it out
-							cblk->numbps = max_precision_jpeg_2000 * 3 - 2;
+							cblk->numbps = max_bit_planes;
 						}
 						else
 						{
 							cblk->numbps = band->numbps - K_msbs;
 						}
 						// BIBO analysis gives sanity check on number of bit planes
-						if(cblk->numbps > max_precision_jpeg_2000 + GRK_J2K_MAXRLVLS * 5)
+						if(cblk->numbps > max_bit_planes_bibo)
 						{
 							GRK_WARN("Number of bit planes %u is impossibly large.", cblk->numbps);
 							return false;

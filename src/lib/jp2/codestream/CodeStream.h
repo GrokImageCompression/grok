@@ -28,22 +28,29 @@
 
 namespace grk
 {
-template<typename S, typename D>
-void j2k_write(const void* p_src_data, void* p_dest_data, uint64_t nb_elem)
-{
-	uint8_t* dest_data = (uint8_t*)p_dest_data;
-	S* src_data = (S*)p_src_data;
-	for(uint32_t i = 0; i < nb_elem; ++i)
-	{
-		D temp = (D) * (src_data++);
-		grk_write<D>(dest_data, temp, sizeof(D));
-		dest_data += sizeof(D);
-	}
-}
 
-const uint32_t MCT_ELEMENT_SIZE[] = {2, 4, 4, 8};
+// Limits defined in JPEG 2000 standard ///
+const uint32_t max_num_components = 16384;
+const uint32_t max_precision_jpeg_2000 = 38;
+const uint32_t max_num_tiles = 65535;
+const uint32_t max_num_tile_parts_per_tile = 255;
+const uint32_t max_num_tile_parts = 65535;
+// note: includes tile part header
+const uint32_t max_tile_part_size = UINT_MAX;
+const uint32_t max_bit_planes = max_precision_jpeg_2000;
 
-typedef void (*j2k_mct_function)(const void* p_src_data, void* p_dest_data, uint64_t nb_elem);
+// Limits in Grok library  //
+//using BIBO analysis
+const uint32_t max_supported_precision = 16; // maximum supported precision for Grok library
+const uint32_t max_bit_planes_bibo = max_precision_jpeg_2000 + GRK_J2K_MAXRLVLS * 5;
+const uint32_t max_passes = (max_bit_planes - 1) * 3 + 1;
+const uint32_t max_passes_per_segment = max_passes;
+const uint32_t max_segments_per_block = max_passes;
+const uint32_t default_numbers_segments = 10;
+const uint32_t default_header_size = 4096;
+const uint32_t default_number_mcc_records = 10;
+const uint32_t default_number_mct_records = 10;
+
 
 // includes marker and marker length (4 bytes)
 const uint32_t sot_marker_segment_len = 12U;
@@ -58,23 +65,6 @@ const uint32_t GRK_COMP_PARAM_DEFAULT_CBLOCKH = 64;
 const GRK_PROG_ORDER GRK_COMP_PARAM_DEFAULT_PROG_ORDER = GRK_LRCP;
 const uint32_t GRK_COMP_PARAM_DEFAULT_NUMRESOLUTION = 6;
 
-// limits defined in JPEG 2000 standard
-const uint32_t max_precision_jpeg_2000 =
-	38; // maximum number of magnitude bits, according to ISO standard
-const uint32_t max_num_components = 16384; // maximum allowed number components
-const uint32_t max_passes_per_segment = (max_precision_jpeg_2000 - 1) * 3 + 1;
-const uint32_t max_num_tiles = 65535;
-const uint32_t max_num_tile_parts_per_tile = 255;
-const uint32_t max_num_tile_parts = 65535;
-// includes tile part header
-const uint32_t max_tile_part_size = UINT_MAX;
-
-// limits in Grok library
-const uint32_t max_supported_precision = 16; // maximum supported precision for Grok library
-const uint32_t default_numbers_segments = 10;
-const uint32_t default_header_size = 4096;
-const uint32_t default_number_mcc_records = 10;
-const uint32_t default_number_mct_records = 10;
 
 #define J2K_CP_CSTY_PRT 0x01
 #define J2K_CP_CSTY_SOP 0x02
@@ -83,8 +73,6 @@ const uint32_t default_number_mct_records = 10;
 #define J2K_CCP_QNTSTY_NOQNT 0 // no quantization
 #define J2K_CCP_QNTSTY_SIQNT 1 // derived quantization
 #define J2K_CCP_QNTSTY_SEQNT 2 // expounded quantization
-
-#define GRK_J2K_DEFAULT_CBLK_DATA_SIZE 8192
 
 #define J2K_MS_SOC 0xff4f /**< SOC marker value */
 #define J2K_MS_SOT 0xff90 /**< SOT marker value */
@@ -115,6 +103,25 @@ const uint32_t default_number_mct_records = 10;
 #define J2K_MS_UNK 0 /**< UNKNOWN marker value */
 
 class GrkImage;
+
+template<typename S, typename D>
+void j2k_write(const void* p_src_data, void* p_dest_data, uint64_t nb_elem)
+{
+	uint8_t* dest_data = (uint8_t*)p_dest_data;
+	S* src_data = (S*)p_src_data;
+	for(uint32_t i = 0; i < nb_elem; ++i)
+	{
+		D temp = (D) * (src_data++);
+		grk_write<D>(dest_data, temp, sizeof(D));
+		dest_data += sizeof(D);
+	}
+}
+
+const uint32_t MCT_ELEMENT_SIZE[] = {2, 4, 4, 8};
+
+typedef void (*j2k_mct_function)(const void* p_src_data, void* p_dest_data, uint64_t nb_elem);
+
+
 
 typedef std::function<bool(void)> PROCEDURE_FUNC;
 
