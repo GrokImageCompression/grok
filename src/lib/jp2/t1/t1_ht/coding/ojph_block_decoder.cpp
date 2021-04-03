@@ -1013,10 +1013,10 @@ namespace ojph {
 
       if (num_passes > 1 && lengths2 == 0)
       {
-        OJPH_WARN(0x00010001, "A malformed codeblock that has more than "
+    	OJPH_ERROR(0x00010001, "A malformed codeblock that has more than "
                               "one coding pass, but zero length for "
                               "2nd and potential 3rd pass.\n");
-        num_passes = 1;
+        return false;
       }
       if (num_passes > 3)
       {
