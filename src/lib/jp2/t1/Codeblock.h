@@ -262,7 +262,7 @@ struct DecompressCodeblock : public Codeblock
   private:
 	Segment* segs; /* information on segments */
 	uint8_t numSegments; /* number of segment in block*/
-	uint8_t numSegmentsAllocated; // number of segments allocated for segs array
+	uint16_t numSegmentsAllocated; // number of segments allocated for segs array
 };
 
 } // namespace grk

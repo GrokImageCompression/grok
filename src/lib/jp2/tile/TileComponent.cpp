@@ -335,22 +335,22 @@ bool TileComponent::postProcess(int32_t* srcData, DecompressBlockExec* block)
 	{
 		if(block->qmfbid == 1)
 		{
-			return postDecompressImpl<RoiShiftFilter<int32_t>>(srcData, block, block->cblk->width());
+			return postDecompressImpl<RoiShiftFilter<int32_t>>(srcData, block, (uint16_t)block->cblk->width());
 		}
 		else
 		{
-			return postDecompressImpl<RoiScaleFilter<int32_t>>(srcData, block, block->cblk->width());
+			return postDecompressImpl<RoiScaleFilter<int32_t>>(srcData, block, (uint16_t)block->cblk->width());
 		}
 	}
 	else
 	{
 		if(block->qmfbid == 1)
 		{
-			return postDecompressImpl<ShiftFilter<int32_t>>(srcData, block, block->cblk->width());
+			return postDecompressImpl<ShiftFilter<int32_t>>(srcData, block, (uint16_t)block->cblk->width());
 		}
 		else
 		{
-			return postDecompressImpl<ScaleFilter<int32_t>>(srcData, block, block->cblk->width());
+			return postDecompressImpl<ScaleFilter<int32_t>>(srcData, block, (uint16_t)block->cblk->width());
 		}
 	}
 }
