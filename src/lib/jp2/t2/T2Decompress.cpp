@@ -295,7 +295,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 					{
 						uint16_t value;
 						prc->getInclTree()->decodeValue(bio.get(), cblkno, p_pi->layno + 1, &value);
-						if(value != tag_tree_uninitialized_node_value && value != p_pi->layno)
+						if(value != prc->getInclTree()->getUninitializedValue() && value != p_pi->layno)
 						{
 							GRK_WARN("Tile number: %u", tileProcessor->m_tileIndex + 1);
 							std::string msg =
@@ -333,7 +333,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 						cblk = prc->getDecompressedBlockPtr(cblkno);
 					if(!cblk->numlenbits)
 					{
-						uint32_t K_msbs = 0;
+						uint8_t K_msbs = 0;
 						uint8_t value;
 
 						// see Taubman + Marcellin page 388

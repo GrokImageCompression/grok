@@ -263,7 +263,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, BufferedS
 			{
 				cblk->numlenbits = 3;
 				bool rc = prc->getImsbTree()->compress(bio.get(), cblkno,
-													   tag_tree_uninitialized_node_value);
+						prc->getImsbTree()->getUninitializedValue());
 				assert(rc);
 				if(!rc)
 					return false;
@@ -564,7 +564,7 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 	uint32_t compno = pi->compno;
 	uint32_t resno = pi->resno;
 	uint64_t precinctIndex = pi->precinctIndex;
-	uint32_t layno = pi->layno;
+	uint16_t layno = pi->layno;
 	uint64_t nb_blocks;
 	auto tile = tileProcessor->tile;
 	auto tilec = tile->comps + compno;
@@ -675,7 +675,7 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 			{
 				cblk->numlenbits = 3;
 				if(!prc->getImsbTree()->compress(bio.get(), cblkno,
-												 tag_tree_uninitialized_node_value))
+						prc->getImsbTree()->getUninitializedValue()))
 					return false;
 			}
 

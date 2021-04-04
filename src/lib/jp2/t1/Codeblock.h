@@ -109,7 +109,7 @@ struct Codeblock : public grkBuffer2d<int32_t, AllocatorAligned>, public ICachea
 		(*(grkRectU32*)this) = r;
 	}
 	grkBufferU8 compressedStream;
-	uint32_t numbps;
+	uint8_t numbps;
 	uint32_t numlenbits;
 	uint32_t numPassesInPacket; /* number of passes encoded in current packet */
   protected:

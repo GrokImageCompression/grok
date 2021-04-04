@@ -108,7 +108,7 @@ struct Subband : public grkRectU32
 	// maps global precinct index to vector index
 	std::map<uint64_t, uint64_t> precinctMap;
 	uint64_t numPrecincts;
-	uint32_t numbps;
+	uint8_t numbps;
 	float stepsize;
 };
 

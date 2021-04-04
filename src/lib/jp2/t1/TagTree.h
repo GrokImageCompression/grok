@@ -21,9 +21,10 @@
 
 #pragma once
 
+#include <limits>
+
 namespace grk
 {
-const uint32_t tag_tree_uninitialized_node_value = 999;
 
 /**
  Tag node
@@ -119,6 +120,10 @@ template<typename T> class TagTree
 		delete[] nodes;
 	}
 
+	constexpr T getUninitializedValue(void){
+		return std::numeric_limits<T>::max();
+	}
+
 	/**
 	 * Reinitialises a tag tree
 	 *
@@ -209,7 +214,7 @@ template<typename T> class TagTree
 		for(uint64_t i = 0; i < numnodes; ++i)
 		{
 			auto current_node = nodes + i;
-			current_node->value = T(tag_tree_uninitialized_node_value);
+			current_node->value = getUninitializedValue();
 			current_node->low = 0;
 			current_node->known = false;
 		}
@@ -302,7 +307,7 @@ template<typename T> class TagTree
 	void decodeValue(BitIO* bio, uint64_t leafno, T threshold, T* value)
 	{
 		TagTreeNode<T>* stk[31];
-		*value = T(tag_tree_uninitialized_node_value);
+		*value = getUninitializedValue();
 		auto stkptr = stk;
 		auto node = nodes + leafno;
 		while(node->parent)

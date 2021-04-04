@@ -75,7 +75,7 @@ struct cblk_enc
 	uint8_t* data;
 	pass_enc* passes;
 	uint32_t x0, y0, x1, y1;
-	uint32_t numbps;
+	uint8_t numbps;
 	uint32_t numPassesTotal;
 };
 
