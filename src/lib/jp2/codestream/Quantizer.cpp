@@ -100,7 +100,7 @@ bool Quantizer::write_SQcd_SQcc(CodeStream* codeStream, uint32_t comp_no, Buffer
 		(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ? 1 : (tccp->numresolutions * 3U - 2);
 
 	/* Sqcx */
-	if(!stream->write_byte((uint8_t)(tccp->qntsty + (tccp->numgbits << 5))))
+	if(!stream->writeByte((uint8_t)(tccp->qntsty + (tccp->numgbits << 5))))
 	{
 		return false;
 	}
@@ -111,14 +111,14 @@ bool Quantizer::write_SQcd_SQcc(CodeStream* codeStream, uint32_t comp_no, Buffer
 		uint32_t mant = tccp->stepsizes[band_no].mant;
 		if(tccp->qntsty == J2K_CCP_QNTSTY_NOQNT)
 		{
-			if(!stream->write_byte((uint8_t)(expn << 3)))
+			if(!stream->writeByte((uint8_t)(expn << 3)))
 			{
 				return false;
 			}
 		}
 		else
 		{
-			if(!stream->write_short((uint16_t)((expn << 11) + mant)))
+			if(!stream->writeShort((uint16_t)((expn << 11) + mant)))
 			{
 				return false;
 			}

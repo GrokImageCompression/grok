@@ -533,14 +533,14 @@ bool FileFormatDecompress::readHeaderProcedureImpl(void)
 						continue;
 					}
 				}
-				if(current_data_size > stream->get_number_byte_left())
+				if(current_data_size > stream->numBytesLeft())
 				{
 					/* do not even try to malloc if we can't read */
 					GRK_ERROR("Invalid box size %" PRIu64
 							  " for box '%c%c%c%c'. Need %u bytes, %" PRIu64 " bytes remaining ",
 							  box.length, (uint8_t)(box.type >> 24), (uint8_t)(box.type >> 16),
 							  (uint8_t)(box.type >> 8), (uint8_t)(box.type >> 0), current_data_size,
-							  stream->get_number_byte_left());
+							  stream->numBytesLeft());
 					goto cleanup;
 				}
 				if(current_data_size > last_data_size)
@@ -636,7 +636,7 @@ bool FileFormatDecompress::read_box_hdr(FileFormatBox* box, uint32_t* p_number_b
 	grk_read<uint32_t>(data_header + 4, &(box->type));
 	if(box->length == 0)
 	{ /* last box */
-		box->length = stream->get_number_byte_left() + 8U;
+		box->length = stream->numBytesLeft() + 8U;
 		return true;
 	}
 	/* read XL  */

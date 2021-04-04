@@ -54,7 +54,7 @@ bool BitIO::byteout()
 
 bool BitIO::byteout_stream()
 {
-	if(!stream->write_byte(buf))
+	if(!stream->writeByte(buf))
 		return false;
 	ct = buf == 0xff ? 7 : 8;
 	buf = 0;

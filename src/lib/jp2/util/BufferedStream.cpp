@@ -44,6 +44,31 @@ BufferedStream::~BufferedStream()
 		m_free_user_data_fn(m_user_data);
 	delete m_buf;
 }
+void  BufferedStream::setUserData(void* data, grk_stream_free_user_data_fn freeUserDataFun){
+	m_user_data = data;
+	m_free_user_data_fn = freeUserDataFun;
+}
+void*  BufferedStream::getUserData(void){
+	return m_user_data;
+}
+void  BufferedStream::setUserDataLength(uint64_t len){
+	m_user_data_length = len;
+}
+uint32_t  BufferedStream::getStatus(void){
+	return m_status;
+}
+void  BufferedStream::setReadFunction(grk_stream_read_fn fn){
+	m_read_fn = fn;
+}
+void  BufferedStream::setZeroCopyReadFunction(grk_stream_zero_copy_read_fn fn){
+	m_zero_copy_read_fn = fn;
+}
+void  BufferedStream::setWriteFunction(grk_stream_write_fn fn){
+	m_write_fn = fn;
+}
+void  BufferedStream::setSeekFunction(grk_stream_seek_fn fn){
+	m_seek_fn = fn;
+}
 // note: passing in nullptr for p_buffer will execute a zero-copy read
 size_t BufferedStream::read(uint8_t* p_buffer, size_t p_size)
 {
@@ -169,39 +194,23 @@ size_t BufferedStream::read(uint8_t* p_buffer, size_t p_size)
 	}
 	return 0;
 }
-size_t BufferedStream::read_data_zero_copy(uint8_t** p_buffer, size_t p_size)
+bool BufferedStream::writeByte(uint8_t value)
 {
-	size_t read_nb_bytes = m_zero_copy_read_fn((void**)p_buffer, p_size, m_user_data);
-
-	if(read_nb_bytes == 0)
-	{
-		m_status |= GROK_STREAM_STATUS_END;
-		return 0;
-	}
-	else
-	{
-		m_stream_offset += read_nb_bytes;
-		assert(m_stream_offset <= m_user_data_length);
-		return read_nb_bytes;
-	}
+	return writeBytes(&value, 1) == 1;
 }
-bool BufferedStream::write_byte(uint8_t value)
-{
-	return write_bytes(&value, 1) == 1;
-}
-bool BufferedStream::write_short(uint16_t value)
+bool BufferedStream::writeShort(uint16_t value)
 {
 	return write<uint16_t>(value, sizeof(uint16_t));
 }
-bool BufferedStream::write_24(uint32_t value)
+bool BufferedStream::write24(uint32_t value)
 {
 	return write<uint32_t>(value, 3);
 }
-bool BufferedStream::write_int(uint32_t value)
+bool BufferedStream::writeInt(uint32_t value)
 {
 	return write<uint32_t>(value, sizeof(uint32_t));
 }
-bool BufferedStream::write_64(uint64_t value)
+bool BufferedStream::write64(uint64_t value)
 {
 	return write<uint64_t>(value, sizeof(uint64_t));
 }
@@ -233,7 +242,7 @@ bool BufferedStream::write(TYPE value, uint8_t numBytes)
 	writeIncrement(numBytes);
 	return true;
 }
-size_t BufferedStream::write_bytes(const uint8_t* p_buffer, size_t p_size)
+size_t BufferedStream::writeBytes(const uint8_t* p_buffer, size_t p_size)
 {
 	assert(p_size);
 	if(!p_size || !p_buffer)
@@ -357,7 +366,7 @@ uint64_t BufferedStream::tell()
 {
 	return m_stream_offset;
 }
-uint64_t BufferedStream::get_number_byte_left(void)
+uint64_t BufferedStream::numBytesLeft(void)
 {
 	assert(m_stream_offset <= m_user_data_length);
 	return m_user_data_length ? (uint64_t)(m_user_data_length - m_stream_offset) : 0;
@@ -447,7 +456,7 @@ bool BufferedStream::seek(uint64_t offset)
 	else
 		return write_seek(offset);
 }
-bool BufferedStream::has_seek(void)
+bool BufferedStream::hasSeek(void)
 {
 	return m_seek_fn != nullptr;
 }

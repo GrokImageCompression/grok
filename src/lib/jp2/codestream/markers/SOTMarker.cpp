@@ -29,7 +29,7 @@ bool SOTMarker::write_psot(CodeStreamCompress* codeStream, uint32_t tilePartByte
 	auto stream = codeStream->getStream();
 	auto currentLocation = stream->tell();
 	stream->seek(m_psot_location);
-	if(!stream->write_int(tilePartBytesWritten))
+	if(!stream->writeInt(tilePartBytesWritten))
 		return false;
 	stream->seek(currentLocation);
 
@@ -42,14 +42,14 @@ bool SOTMarker::write(CodeStreamCompress* codeStream)
 	auto proc = codeStream->currentProcessor();
 
 	/* SOT */
-	if(!stream->write_short(J2K_MS_SOT))
+	if(!stream->writeShort(J2K_MS_SOT))
 		return false;
 
 	/* Lsot */
-	if(!stream->write_short(10))
+	if(!stream->writeShort(10))
 		return false;
 	/* Isot */
-	if(!stream->write_short((uint16_t)proc->m_tileIndex))
+	if(!stream->writeShort((uint16_t)proc->m_tileIndex))
 		return false;
 
 	/* Psot  */
@@ -58,11 +58,11 @@ bool SOTMarker::write(CodeStreamCompress* codeStream)
 		return false;
 
 	/* TPsot */
-	if(!stream->write_byte(proc->m_tilePartIndex))
+	if(!stream->writeByte(proc->m_tilePartIndex))
 		return false;
 
 	/* TNsot */
-	if(!stream->write_byte(codeStream->getCodingParams()->tcps[proc->m_tileIndex].m_nb_tile_parts))
+	if(!stream->writeByte(codeStream->getCodingParams()->tcps[proc->m_tileIndex].m_nb_tile_parts))
 		return false;
 
 	return true;

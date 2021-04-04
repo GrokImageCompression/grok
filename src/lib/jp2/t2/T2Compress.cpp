@@ -148,19 +148,19 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, BufferedS
 	// SOP marker
 	if(tcp->csty & J2K_CP_CSTY_SOP)
 	{
-		if(!stream->write_byte(J2K_MS_SOP >> 8))
+		if(!stream->writeByte(J2K_MS_SOP >> 8))
 			return false;
-		if(!stream->write_byte(J2K_MS_SOP & 0xff))
+		if(!stream->writeByte(J2K_MS_SOP & 0xff))
 			return false;
-		if(!stream->write_byte(0))
+		if(!stream->writeByte(0))
 			return false;
-		if(!stream->write_byte(4))
+		if(!stream->writeByte(4))
 			return false;
 		/* numProcessedPackets is uint32_t modulo 65536, in big endian format */
 		uint16_t numProcessedPackets = (uint16_t)(tile->numProcessedPackets % 0x10000);
-		if(!stream->write_byte((uint8_t)(numProcessedPackets >> 8)))
+		if(!stream->writeByte((uint8_t)(numProcessedPackets >> 8)))
 			return false;
-		if(!stream->write_byte((uint8_t)(numProcessedPackets & 0xff)))
+		if(!stream->writeByte((uint8_t)(numProcessedPackets & 0xff)))
 			return false;
 	}
 	// initialize precinct and code blocks if this is the first layer
@@ -324,9 +324,9 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, BufferedS
 	// EPH marker
 	if(tcp->csty & J2K_CP_CSTY_EPH)
 	{
-		if(!stream->write_byte(J2K_MS_EPH >> 8))
+		if(!stream->writeByte(J2K_MS_EPH >> 8))
 			return false;
-		if(!stream->write_byte(J2K_MS_EPH & 0xff))
+		if(!stream->writeByte(J2K_MS_EPH & 0xff))
 			return false;
 	}
 	/* Writing the packet body */
@@ -347,7 +347,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, BufferedS
 
 			if(cblk_layer->len)
 			{
-				if(!stream->write_bytes(cblk_layer->data, cblk_layer->len))
+				if(!stream->writeBytes(cblk_layer->data, cblk_layer->len))
 					return false;
 			}
 			cblk->numPassesInPacket += cblk_layer->numpasses;

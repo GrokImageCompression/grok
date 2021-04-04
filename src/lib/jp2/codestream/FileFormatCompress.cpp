@@ -46,13 +46,13 @@ bool FileFormatCompress::write_jp(void)
 	assert(stream != nullptr);
 
 	/* write box length */
-	if(!stream->write_int(12))
+	if(!stream->writeInt(12))
 		return false;
 	/* writes box type */
-	if(!stream->write_int(JP2_JP))
+	if(!stream->writeInt(JP2_JP))
 		return false;
 	/* writes magic number*/
-	if(!stream->write_int(0x0d0a870a))
+	if(!stream->writeInt(0x0d0a870a))
 		return false;
 	return true;
 }
@@ -61,7 +61,7 @@ bool FileFormatCompress::write_jp2c(void)
 	auto stream = codeStream->getStream();
 	assert(stream != nullptr);
 
-	assert(stream->has_seek());
+	assert(stream->hasSeek());
 
 	uint64_t j2k_codestream_exit = stream->tell();
 	if(!stream->seek(j2k_codestream_offset))
@@ -82,14 +82,14 @@ bool FileFormatCompress::write_jp2c(void)
 		if(actualLength < (uint64_t)1 << 32)
 			signaledLength = (uint32_t)actualLength;
 	}
-	if(!stream->write_int(signaledLength))
+	if(!stream->writeInt(signaledLength))
 		return false;
-	if(!stream->write_int(JP2_JP2C))
+	if(!stream->writeInt(JP2_JP2C))
 		return false;
 	// XL box
 	if(signaledLength == 1)
 	{
-		if(!stream->write_64(actualLength))
+		if(!stream->write64(actualLength))
 			return false;
 	}
 	if(!stream->seek(j2k_codestream_exit))
@@ -109,23 +109,23 @@ bool FileFormatCompress::write_ftyp(void)
 	uint32_t ftyp_size = 16 + 4 * numcl;
 	bool result = true;
 
-	if(!stream->write_int(ftyp_size))
+	if(!stream->writeInt(ftyp_size))
 	{
 		result = false;
 		goto end;
 	}
-	if(!stream->write_int(JP2_FTYP))
+	if(!stream->writeInt(JP2_FTYP))
 	{
 		result = false;
 		goto end;
 	}
-	if(!stream->write_int(brand))
+	if(!stream->writeInt(brand))
 	{
 		result = false;
 		goto end;
 	}
 	/* MinV */
-	if(!stream->write_int(minversion))
+	if(!stream->writeInt(minversion))
 	{
 		result = false;
 		goto end;
@@ -134,7 +134,7 @@ bool FileFormatCompress::write_ftyp(void)
 	/* CL */
 	for(i = 0; i < numcl; i++)
 	{
-		if(!stream->write_int(cl[i]))
+		if(!stream->writeInt(cl[i]))
 		{
 			result = false;
 			goto end;
@@ -159,16 +159,16 @@ bool FileFormatCompress::write_uuids(void)
 		if(uuid->buf && uuid->len)
 		{
 			/* write box size */
-			stream->write_int((uint32_t)(8 + 16 + uuid->len));
+			stream->writeInt((uint32_t)(8 + 16 + uuid->len));
 
 			/* JP2_UUID */
-			stream->write_int(JP2_UUID);
+			stream->writeInt(JP2_UUID);
 
 			/* uuid  */
-			stream->write_bytes(uuid->uuid, 16);
+			stream->writeBytes(uuid->uuid, 16);
 
 			/* uuid data */
-			stream->write_bytes(uuid->buf, (uint32_t)uuid->len);
+			stream->writeBytes(uuid->buf, (uint32_t)uuid->len);
 		}
 	}
 	return true;
@@ -238,11 +238,11 @@ bool FileFormatCompress::write_jp2h(void)
 	}
 
 	/* write super box size */
-	if(!stream->write_int(jp2h_size))
+	if(!stream->writeInt(jp2h_size))
 	{
 		result = false;
 	}
-	if(!stream->write_int(JP2_JP2H))
+	if(!stream->writeInt(JP2_JP2H))
 	{
 		result = false;
 	}
@@ -252,7 +252,7 @@ bool FileFormatCompress::write_jp2h(void)
 		for(i = 0; i < nb_writers; ++i)
 		{
 			auto current_writer = writers + i;
-			if(stream->write_bytes(current_writer->m_data, current_writer->m_size) !=
+			if(stream->writeBytes(current_writer->m_data, current_writer->m_size) !=
 			   current_writer->m_size)
 			{
 				result = false;
@@ -1001,7 +1001,7 @@ bool FileFormatCompress::default_validation(void)
 
 	/* stream validation */
 	/* back and forth is needed */
-	is_valid &= stream->has_seek();
+	is_valid &= stream->hasSeek();
 
 	return is_valid;
 }

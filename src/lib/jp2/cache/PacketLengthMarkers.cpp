@@ -71,7 +71,7 @@ void PacketLengthMarkers::writeMarkerLength()
 		uint64_t current_pos = m_stream->tell();
 		m_stream->seek(m_marker_len_cache);
 		// do not include 2 bytes for marker itself
-		m_stream->write_short((uint16_t)(m_marker_bytes_written - 2));
+		m_stream->writeShort((uint16_t)(m_marker_bytes_written - 2));
 		m_stream->seek(current_pos);
 		m_marker_len_cache = 0;
 		m_marker_bytes_written = 0;
@@ -89,7 +89,7 @@ void PacketLengthMarkers::writeMarkerHeader()
 		writeMarkerLength();
 
 		// begin new marker
-		m_stream->write_short(J2K_MS_PLT);
+		m_stream->writeShort(J2K_MS_PLT);
 		writeIncrement(2);
 
 		// cache location of marker length and skip over
@@ -104,7 +104,7 @@ uint32_t PacketLengthMarkers::write()
 	for(auto map_iter = m_markers->begin(); map_iter != m_markers->end(); ++map_iter)
 	{
 		// write index
-		m_stream->write_byte(map_iter->first);
+		m_stream->writeByte(map_iter->first);
 		writeIncrement(1);
 
 		// write marker lengths
@@ -134,7 +134,7 @@ uint32_t PacketLengthMarkers::write()
 				val = (uint32_t)(val >> 7);
 			}
 			assert(counter == -1);
-			uint32_t written = (uint32_t)m_stream->write_bytes(temp, numbytes);
+			uint32_t written = (uint32_t)m_stream->writeBytes(temp, numbytes);
 			assert(written == numbytes);
 			(void)written;
 			writeIncrement(numbytes);

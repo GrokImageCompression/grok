@@ -842,7 +842,7 @@ bool TileProcessor::writeTilePartT2(uint32_t* tileBytesWritten)
 	}
 
 	// 3 write SOD
-	if(!m_stream->write_short(J2K_MS_SOD))
+	if(!m_stream->writeShort(J2K_MS_SOD))
 		return false;
 
 	*tileBytesWritten += 2;
@@ -1438,7 +1438,7 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 	auto tcp = codeStream->get_current_decode_tcp();
 	if(codeStream->getDecompressorState()->lastTilePartInCodeStream)
 	{
-		tilePartDataLength = (uint32_t)(m_stream->get_number_byte_left() - 2);
+		tilePartDataLength = (uint32_t)(m_stream->numBytesLeft() - 2);
 	}
 	else
 	{
@@ -1447,7 +1447,7 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 	}
 	if(tilePartDataLength)
 	{
-		auto bytesLeftInStream = m_stream->get_number_byte_left();
+		auto bytesLeftInStream = m_stream->numBytesLeft();
 		if(bytesLeftInStream == 0)
 		{
 			GRK_ERROR("Tile %d, tile part %d: stream has been truncated and "
@@ -1461,7 +1461,7 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 			GRK_WARN("Tile part length %lld greater than "
 					 "stream length %lld\n"
 					 "(tile: %u, tile part: %d). Tile has been truncated.",
-					 tilePartDataLength, m_stream->get_number_byte_left(), m_tileIndex,
+					 tilePartDataLength, m_stream->numBytesLeft(), m_tileIndex,
 					 tcp->m_tilePartIndex);
 
 			// sanitize tilePartDataLength

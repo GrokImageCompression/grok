@@ -444,19 +444,19 @@ bool TileLengthMarkers::writeBegin(uint16_t numTilePartsTotal)
 	streamStart = m_stream->tell();
 
 	/* TLM */
-	if(!m_stream->write_short(J2K_MS_TLM))
+	if(!m_stream->writeShort(J2K_MS_TLM))
 		return false;
 
 	/* Ltlm */
-	if(!m_stream->write_short((uint16_t)(tlm_size - 2)))
+	if(!m_stream->writeShort((uint16_t)(tlm_size - 2)))
 		return false;
 
 	/* Ztlm=0*/
-	if(!m_stream->write_byte(0))
+	if(!m_stream->writeByte(0))
 		return false;
 
 	/* Stlm ST=1(8bits-255 tiles max),SP=1(Ptlm=32bits) */
-	if(!m_stream->write_byte(0x60))
+	if(!m_stream->writeByte(0x60))
 		return false;
 
 	/* make room for tile part lengths */
@@ -480,8 +480,8 @@ bool TileLengthMarkers::writeEnd(void)
 		for(auto info = lengths->begin(); info != lengths->end(); ++info)
 		{
 			if(info->hasTileIndex)
-				m_stream->write_short(info->tileIndex);
-			m_stream->write_int(info->length);
+				m_stream->writeShort(info->tileIndex);
+			m_stream->writeInt(info->length);
 		}
 	}
 

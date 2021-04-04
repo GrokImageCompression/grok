@@ -23,10 +23,10 @@ struct IBufferedStream
 	virtual ~IBufferedStream() = default;
 
 	// low level write methods
-	virtual bool write_byte(uint8_t value) = 0;
-	virtual bool write_short(uint16_t value) = 0;
-	virtual bool write_24(uint32_t value) = 0;
-	virtual bool write_int(uint32_t value) = 0;
+	virtual bool writeByte(uint8_t value) = 0;
+	virtual bool writeShort(uint16_t value) = 0;
+	virtual bool write24(uint32_t value) = 0;
+	virtual bool writeInt(uint32_t value) = 0;
 
 	/**
 	 * Write bytes to the stream.
@@ -35,7 +35,7 @@ struct IBufferedStream
 	 *
 	 * @return		the number of bytes written, or -1 if an error occurred.
 	 */
-	virtual size_t write_bytes(const uint8_t* p_buffer, size_t p_size) = 0;
+	virtual size_t writeBytes(const uint8_t* p_buffer, size_t p_size) = 0;
 
 	/**
 	 * Flush write stream to disk
@@ -61,7 +61,7 @@ struct IBufferedStream
 	 * Get number of bytes left before end of the stream
 	 * @return		Number of bytes left.
 	 */
-	virtual uint64_t get_number_byte_left(void) = 0;
+	virtual uint64_t numBytesLeft(void) = 0;
 
 	/**
 	 * Seek to absolute offset in stream.
@@ -77,7 +77,7 @@ struct IBufferedStream
 	 *
 	 * @return	 true if stream is seekable, otherwise false
 	 */
-	virtual bool has_seek() = 0;
+	virtual bool hasSeek() = 0;
 };
 
 } // namespace grk

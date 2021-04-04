@@ -189,7 +189,7 @@ bool DecompressorState::findNextTile(CodeStreamDecompress* codeStream)
 	andState((uint16_t)(~J2K_DEC_STATE_DATA));
 
 	// if there is no EOC marker and there is also no data left, then simply return true
-	if(stream->get_number_byte_left() == 0 && getState() == J2K_DEC_STATE_NO_EOC)
+	if(stream->numBytesLeft() == 0 && getState() == J2K_DEC_STATE_NO_EOC)
 	{
 		return true;
 	}
@@ -229,7 +229,7 @@ bool DecompressorState::findNextTile(CodeStreamDecompress* codeStream)
 				return true;
 				break;
 			default: {
-				auto bytesLeft = stream->get_number_byte_left();
+				auto bytesLeft = stream->numBytesLeft();
 				setState(J2K_DEC_STATE_NO_EOC);
 				GRK_WARN("findNextTile: expected EOC or SOT "
 						 "but found marker 0x%x.\nIgnoring %d bytes "

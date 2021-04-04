@@ -495,7 +495,7 @@ bool CodeStreamDecompress::endOfCodeStream(void)
 {
 	return m_decompressorState.getState() == J2K_DEC_STATE_EOC ||
 		   m_decompressorState.getState() == J2K_DEC_STATE_NO_EOC ||
-		   m_stream->get_number_byte_left() == 0;
+		   m_stream->numBytesLeft() == 0;
 }
 bool CodeStreamDecompress::decompressTiles(void)
 {
@@ -646,7 +646,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 	// check if there is another tile that has not been processed
 	// we will reject if it has the TPSot problem
 	// (https://github.com/uclouvain/openjpeg/issues/254)
-	if(m_curr_marker == J2K_MS_SOT && m_stream->get_number_byte_left())
+	if(m_curr_marker == J2K_MS_SOT && m_stream->numBytesLeft())
 	{
 		uint16_t marker_size;
 		if(!read_short(&marker_size))
@@ -1089,7 +1089,7 @@ bool CodeStreamDecompress::process_marker(const marker_handler* marker_handler,
 	}
 	if(marker_size > m_marker_scratch_size)
 	{
-		if(marker_size > m_stream->get_number_byte_left())
+		if(marker_size > m_stream->numBytesLeft())
 		{
 			GRK_ERROR("Marker size inconsistent with stream length");
 			return false;
@@ -2310,7 +2310,7 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 		while(m_curr_marker != J2K_MS_SOD)
 		{
 			// end of stream with no EOC
-			if(m_stream->get_number_byte_left() == 0)
+			if(m_stream->numBytesLeft() == 0)
 			{
 				m_decompressorState.setState(J2K_DEC_STATE_NO_EOC);
 				break;
@@ -2379,7 +2379,7 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 				return false;
 		}
 		// no bytes left and no EOC marker : we're done!
-		if(!m_stream->get_number_byte_left() &&
+		if(!m_stream->numBytesLeft() &&
 		   m_decompressorState.getState() == J2K_DEC_STATE_NO_EOC)
 			break;
 		/* If we didn't skip data before, we need to read the SOD marker*/

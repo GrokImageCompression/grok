@@ -308,41 +308,41 @@ bool SIZMarker::write(CodeStreamCompress* codeStream, BufferedStream* stream)
 	/* write SOC identifier */
 
 	/* SIZ */
-	if(!stream->write_short(J2K_MS_SIZ))
+	if(!stream->writeShort(J2K_MS_SIZ))
 		return false;
 
 	/* L_SIZ */
-	if(!stream->write_short((uint16_t)(size_len - 2)))
+	if(!stream->writeShort((uint16_t)(size_len - 2)))
 		return false;
 	/* Rsiz (capabilities) */
-	if(!stream->write_short(cp->rsiz))
+	if(!stream->writeShort(cp->rsiz))
 		return false;
 	/* Xsiz */
-	if(!stream->write_int(image->x1))
+	if(!stream->writeInt(image->x1))
 		return false;
 	/* Ysiz */
-	if(!stream->write_int(image->y1))
+	if(!stream->writeInt(image->y1))
 		return false;
 	/* X0siz */
-	if(!stream->write_int(image->x0))
+	if(!stream->writeInt(image->x0))
 		return false;
 	/* Y0siz */
-	if(!stream->write_int(image->y0))
+	if(!stream->writeInt(image->y0))
 		return false;
 	/* XTsiz */
-	if(!stream->write_int(cp->t_width))
+	if(!stream->writeInt(cp->t_width))
 		return false;
 	/* YTsiz */
-	if(!stream->write_int(cp->t_height))
+	if(!stream->writeInt(cp->t_height))
 		return false;
 	/* XT0siz */
-	if(!stream->write_int(cp->tx0))
+	if(!stream->writeInt(cp->tx0))
 		return false;
 	/* YT0siz */
-	if(!stream->write_int(cp->ty0))
+	if(!stream->writeInt(cp->ty0))
 		return false;
 	/* Csiz */
-	if(!stream->write_short((uint16_t)image->numcomps))
+	if(!stream->writeShort((uint16_t)image->numcomps))
 		return false;
 	for(i = 0; i < image->numcomps; ++i)
 	{
@@ -351,13 +351,13 @@ bool SIZMarker::write(CodeStreamCompress* codeStream, BufferedStream* stream)
 		uint8_t bpc = (uint8_t)(comp->prec - 1);
 		if(comp->sgnd)
 			bpc = (uint8_t)(bpc + (1 << 7));
-		if(!stream->write_byte(bpc))
+		if(!stream->writeByte(bpc))
 			return false;
 		/* XRsiz_i */
-		if(!stream->write_byte((uint8_t)comp->dx))
+		if(!stream->writeByte((uint8_t)comp->dx))
 			return false;
 		/* YRsiz_i */
-		if(!stream->write_byte((uint8_t)comp->dy))
+		if(!stream->writeByte((uint8_t)comp->dy))
 			return false;
 	}
 

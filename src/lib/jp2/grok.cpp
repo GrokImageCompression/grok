@@ -833,24 +833,24 @@ grk_stream* GRK_CALLCONV grk_stream_new(size_t buffer_size, bool is_input)
 void GRK_CALLCONV grk_stream_set_read_function(grk_stream* stream, grk_stream_read_fn p_function)
 {
 	auto streamImpl = BufferedStream::getImpl(stream);
-	if((!streamImpl) || (!(streamImpl->m_status & GROK_STREAM_STATUS_INPUT)))
+	if((!streamImpl) || (!(streamImpl->getStatus() & GROK_STREAM_STATUS_INPUT)))
 		return;
-	streamImpl->m_read_fn = p_function;
+	streamImpl->setReadFunction(p_function);
 }
 
 void GRK_CALLCONV grk_stream_set_seek_function(grk_stream* stream, grk_stream_seek_fn p_function)
 {
 	auto streamImpl = BufferedStream::getImpl(stream);
 	if(streamImpl)
-		streamImpl->m_seek_fn = p_function;
+		streamImpl->setSeekFunction(p_function);
 }
 void GRK_CALLCONV grk_stream_set_write_function(grk_stream* stream, grk_stream_write_fn p_function)
 {
 	auto streamImpl = BufferedStream::getImpl(stream);
-	if((!streamImpl) || (!(streamImpl->m_status & GROK_STREAM_STATUS_OUTPUT)))
+	if((!streamImpl) || (!(streamImpl->getStatus() & GROK_STREAM_STATUS_OUTPUT)))
 		return;
 
-	streamImpl->m_write_fn = p_function;
+	streamImpl->setWriteFunction( p_function);
 }
 
 void GRK_CALLCONV grk_stream_set_user_data(grk_stream* stream, void* p_data,
@@ -859,12 +859,11 @@ void GRK_CALLCONV grk_stream_set_user_data(grk_stream* stream, void* p_data,
 	auto streamImpl = BufferedStream::getImpl(stream);
 	if(!streamImpl)
 		return;
-	streamImpl->m_user_data = p_data;
-	streamImpl->m_free_user_data_fn = p_function;
+	streamImpl->setUserData(p_data, p_function);
 }
 void GRK_CALLCONV grk_stream_set_user_data_length(grk_stream* stream, uint64_t data_length)
 {
 	auto streamImpl = BufferedStream::getImpl(stream);
 	if(streamImpl)
-		streamImpl->m_user_data_length = data_length;
+		streamImpl->setUserDataLength(data_length);
 }

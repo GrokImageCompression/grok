@@ -764,33 +764,33 @@ bool CodeStreamCompress::write_rgn(uint16_t tile_no, uint32_t comp_no, uint32_t 
 	rgn_size = 6 + comp_room;
 
 	/* RGN  */
-	if(!m_stream->write_short(J2K_MS_RGN))
+	if(!m_stream->writeShort(J2K_MS_RGN))
 		return false;
 	/* Lrgn */
-	if(!m_stream->write_short((uint16_t)(rgn_size - 2)))
+	if(!m_stream->writeShort((uint16_t)(rgn_size - 2)))
 		return false;
 	/* Crgn */
 	if(comp_room == 2)
 	{
-		if(!m_stream->write_short((uint16_t)comp_no))
+		if(!m_stream->writeShort((uint16_t)comp_no))
 			return false;
 	}
 	else
 	{
-		if(!m_stream->write_byte((uint8_t)comp_no))
+		if(!m_stream->writeByte((uint8_t)comp_no))
 			return false;
 	}
 	/* Srgn */
-	if(!m_stream->write_byte(0))
+	if(!m_stream->writeByte(0))
 		return false;
 
 	/* SPrgn */
-	return m_stream->write_byte((uint8_t)tccp->roishift);
+	return m_stream->writeByte((uint8_t)tccp->roishift);
 }
 
 bool CodeStreamCompress::write_eoc()
 {
-	if(!m_stream->write_short(J2K_MS_EOC))
+	if(!m_stream->writeShort(J2K_MS_EOC))
 		return false;
 
 	return m_stream->flush();
@@ -803,26 +803,26 @@ bool CodeStreamCompress::write_mct_record(grk_mct_data* p_mct_record, BufferedSt
 	mct_size = 10 + p_mct_record->m_data_size;
 
 	/* MCT */
-	if(!stream->write_short(J2K_MS_MCT))
+	if(!stream->writeShort(J2K_MS_MCT))
 		return false;
 	/* Lmct */
-	if(!stream->write_short((uint16_t)(mct_size - 2)))
+	if(!stream->writeShort((uint16_t)(mct_size - 2)))
 		return false;
 	/* Zmct */
-	if(!stream->write_short(0))
+	if(!stream->writeShort(0))
 		return false;
 	/* only one marker atm */
 	tmp = (p_mct_record->m_index & 0xff) | (uint32_t)(p_mct_record->m_array_type << 8) |
 		  (uint32_t)(p_mct_record->m_element_type << 10);
 
-	if(!stream->write_short((uint16_t)tmp))
+	if(!stream->writeShort((uint16_t)tmp))
 		return false;
 
 	/* Ymct */
-	if(!stream->write_short(0))
+	if(!stream->writeShort(0))
 		return false;
 
-	return stream->write_bytes(p_mct_record->m_data, p_mct_record->m_data_size);
+	return stream->writeBytes(p_mct_record->m_data, p_mct_record->m_data_size);
 }
 bool CodeStreamCompress::get_end_header(void)
 {
@@ -1068,7 +1068,7 @@ bool CodeStreamCompress::compress_validation()
 }
 bool CodeStreamCompress::write_soc()
 {
-	return m_stream->write_short(J2K_MS_SOC);
+	return m_stream->writeShort(J2K_MS_SOC);
 }
 bool CodeStreamCompress::write_siz()
 {
@@ -1109,19 +1109,19 @@ bool CodeStreamCompress::write_cap()
 	Ccap[0] = (uint16_t)(Ccap[0] | Bp);
 
 	/* CAP */
-	if(!m_stream->write_short(J2K_MS_CAP))
+	if(!m_stream->writeShort(J2K_MS_CAP))
 	{
 		return false;
 	}
 
 	/* L_CAP */
-	if(!m_stream->write_short(Lcap))
+	if(!m_stream->writeShort(Lcap))
 		return false;
 	/* PCAP */
-	if(!m_stream->write_int(Pcap))
+	if(!m_stream->writeInt(Pcap))
 		return false;
 	/* CCAP */
-	if(!m_stream->write_short(Ccap[0]))
+	if(!m_stream->writeShort(Ccap[0]))
 		return false;
 
 	return true;
@@ -1147,14 +1147,14 @@ bool CodeStreamCompress::write_com()
 		uint32_t totacom_size = (uint32_t)comment_size + 6;
 
 		/* COM */
-		if(!m_stream->write_short(J2K_MS_COM))
+		if(!m_stream->writeShort(J2K_MS_COM))
 			return false;
 		/* L_COM */
-		if(!m_stream->write_short((uint16_t)(totacom_size - 2)))
+		if(!m_stream->writeShort((uint16_t)(totacom_size - 2)))
 			return false;
-		if(!m_stream->write_short(m_cp.isBinaryComment[i] ? 0 : 1))
+		if(!m_stream->writeShort(m_cp.isBinaryComment[i] ? 0 : 1))
 			return false;
-		if(!m_stream->write_bytes((uint8_t*)comment, comment_size))
+		if(!m_stream->writeBytes((uint8_t*)comment, comment_size))
 			return false;
 	}
 
@@ -1168,22 +1168,22 @@ bool CodeStreamCompress::write_cod()
 	code_size = 9 + get_SPCod_SPCoc_size(0);
 
 	/* COD */
-	if(!m_stream->write_short(J2K_MS_COD))
+	if(!m_stream->writeShort(J2K_MS_COD))
 		return false;
 	/* L_COD */
-	if(!m_stream->write_short((uint16_t)(code_size - 2)))
+	if(!m_stream->writeShort((uint16_t)(code_size - 2)))
 		return false;
 	/* Scod */
-	if(!m_stream->write_byte((uint8_t)tcp->csty))
+	if(!m_stream->writeByte((uint8_t)tcp->csty))
 		return false;
 	/* SGcod (A) */
-	if(!m_stream->write_byte((uint8_t)tcp->prg))
+	if(!m_stream->writeByte((uint8_t)tcp->prg))
 		return false;
 	/* SGcod (B) */
-	if(!m_stream->write_short((uint16_t)tcp->numlayers))
+	if(!m_stream->writeShort((uint16_t)tcp->numlayers))
 		return false;
 	/* SGcod (C) */
-	if(!m_stream->write_byte((uint8_t)tcp->mct))
+	if(!m_stream->writeByte((uint8_t)tcp->mct))
 		return false;
 	if(!write_SPCod_SPCoc(0))
 	{
@@ -1204,25 +1204,25 @@ bool CodeStreamCompress::write_coc(uint32_t comp_no)
 	coc_size = cod_coc_len + comp_room + get_SPCod_SPCoc_size(comp_no);
 
 	/* COC */
-	if(!m_stream->write_short(J2K_MS_COC))
+	if(!m_stream->writeShort(J2K_MS_COC))
 		return false;
 	/* L_COC */
-	if(!m_stream->write_short((uint16_t)(coc_size - 2)))
+	if(!m_stream->writeShort((uint16_t)(coc_size - 2)))
 		return false;
 	/* Ccoc */
 	if(comp_room == 2)
 	{
-		if(!m_stream->write_short((uint16_t)comp_no))
+		if(!m_stream->writeShort((uint16_t)comp_no))
 			return false;
 	}
 	else
 	{
-		if(!m_stream->write_byte((uint8_t)comp_no))
+		if(!m_stream->writeByte((uint8_t)comp_no))
 			return false;
 	}
 
 	/* Scoc */
-	if(!m_stream->write_byte((uint8_t)tcp->tccps[comp_no].csty))
+	if(!m_stream->writeByte((uint8_t)tcp->tccps[comp_no].csty))
 		return false;
 
 	return write_SPCod_SPCoc(0);
@@ -1244,10 +1244,10 @@ bool CodeStreamCompress::write_qcd()
 	qcd_size = 4 + get_SQcd_SQcc_size(0);
 
 	/* QCD */
-	if(!m_stream->write_short(J2K_MS_QCD))
+	if(!m_stream->writeShort(J2K_MS_QCD))
 		return false;
 	/* L_QCD */
-	if(!m_stream->write_short((uint16_t)(qcd_size - 2)))
+	if(!m_stream->writeShort((uint16_t)(qcd_size - 2)))
 		return false;
 	if(!write_SQcd_SQcc(0))
 	{
@@ -1262,7 +1262,7 @@ bool CodeStreamCompress::write_qcc(uint32_t comp_no)
 	uint32_t qcc_size = 6 + get_SQcd_SQcc_size(comp_no);
 
 	/* QCC */
-	if(!m_stream->write_short(J2K_MS_QCC))
+	if(!m_stream->writeShort(J2K_MS_QCC))
 	{
 		return false;
 	}
@@ -1272,19 +1272,19 @@ bool CodeStreamCompress::write_qcc(uint32_t comp_no)
 		--qcc_size;
 
 		/* L_QCC */
-		if(!m_stream->write_short((uint16_t)(qcc_size - 2)))
+		if(!m_stream->writeShort((uint16_t)(qcc_size - 2)))
 			return false;
 		/* Cqcc */
-		if(!m_stream->write_byte((uint8_t)comp_no))
+		if(!m_stream->writeByte((uint8_t)comp_no))
 			return false;
 	}
 	else
 	{
 		/* L_QCC */
-		if(!m_stream->write_short((uint16_t)(qcc_size - 2)))
+		if(!m_stream->writeShort((uint16_t)(qcc_size - 2)))
 			return false;
 		/* Cqcc */
-		if(!m_stream->write_short((uint16_t)comp_no))
+		if(!m_stream->writeShort((uint16_t)comp_no))
 			return false;
 	}
 
@@ -1306,41 +1306,41 @@ bool CodeStreamCompress::write_poc()
 	auto poc_size = getPocSize(nb_comp, 1 + tcp->numpocs);
 
 	/* POC  */
-	if(!m_stream->write_short(J2K_MS_POC))
+	if(!m_stream->writeShort(J2K_MS_POC))
 		return false;
 
 	/* Lpoc */
-	if(!m_stream->write_short((uint16_t)(poc_size - 2)))
+	if(!m_stream->writeShort((uint16_t)(poc_size - 2)))
 		return false;
 
 	for(uint32_t i = 0; i < nb_poc; ++i)
 	{
 		auto current_prog = tcp->progressionOrderChange + i;
 		/* RSpoc_i */
-		if(!m_stream->write_byte((uint8_t)current_prog->resS))
+		if(!m_stream->writeByte((uint8_t)current_prog->resS))
 			return false;
 		/* CSpoc_i */
-		if(!m_stream->write_byte((uint8_t)current_prog->compS))
+		if(!m_stream->writeByte((uint8_t)current_prog->compS))
 			return false;
 		/* LYEpoc_i */
-		if(!m_stream->write_short((uint16_t)current_prog->layE))
+		if(!m_stream->writeShort((uint16_t)current_prog->layE))
 			return false;
 		/* REpoc_i */
-		if(!m_stream->write_byte((uint8_t)current_prog->resE))
+		if(!m_stream->writeByte((uint8_t)current_prog->resE))
 			return false;
 		/* CEpoc_i */
 		if(poc_room == 2)
 		{
-			if(!m_stream->write_short((uint16_t)current_prog->compE))
+			if(!m_stream->writeShort((uint16_t)current_prog->compE))
 				return false;
 		}
 		else
 		{
-			if(!m_stream->write_byte((uint8_t)current_prog->compE))
+			if(!m_stream->writeByte((uint8_t)current_prog->compE))
 				return false;
 		}
 		/* Ppoc_i */
-		if(!m_stream->write_byte((uint8_t)current_prog->progression))
+		if(!m_stream->writeByte((uint8_t)current_prog->progression))
 			return false;
 
 		/* change the value of the max layer according to the actual number of layers in the file,
@@ -1445,30 +1445,30 @@ bool CodeStreamCompress::write_mcc_record(grk_simple_mcc_decorrelation_data* p_m
 	mcc_size = p_mcc_record->m_nb_comps * 2 * nb_bytes_for_comp + 19;
 
 	/* MCC */
-	if(!stream->write_short(J2K_MS_MCC))
+	if(!stream->writeShort(J2K_MS_MCC))
 		return false;
 	/* Lmcc */
-	if(!stream->write_short((uint16_t)(mcc_size - 2)))
+	if(!stream->writeShort((uint16_t)(mcc_size - 2)))
 		return false;
 	/* first marker */
 	/* Zmcc */
-	if(!stream->write_short(0))
+	if(!stream->writeShort(0))
 		return false;
 	/* Imcc -> no need for other values, take the first */
-	if(!stream->write_byte((uint8_t)p_mcc_record->m_index))
+	if(!stream->writeByte((uint8_t)p_mcc_record->m_index))
 		return false;
 	/* only one marker atm */
 	/* Ymcc */
-	if(!stream->write_short(0))
+	if(!stream->writeShort(0))
 		return false;
 	/* Qmcc -> number of collections -> 1 */
-	if(!stream->write_short(1))
+	if(!stream->writeShort(1))
 		return false;
 	/* Xmcci type of component transformation -> array based decorrelation */
-	if(!stream->write_byte(0x1))
+	if(!stream->writeByte(0x1))
 		return false;
 	/* Nmcci number of input components involved and size for each component offset = 8 bits */
-	if(!stream->write_short((uint16_t)(p_mcc_record->m_nb_comps | mask)))
+	if(!stream->writeShort((uint16_t)(p_mcc_record->m_nb_comps | mask)))
 		return false;
 
 	for(i = 0; i < p_mcc_record->m_nb_comps; ++i)
@@ -1476,18 +1476,18 @@ bool CodeStreamCompress::write_mcc_record(grk_simple_mcc_decorrelation_data* p_m
 		/* Cmccij Component offset*/
 		if(nb_bytes_for_comp == 2)
 		{
-			if(!stream->write_short((uint16_t)i))
+			if(!stream->writeShort((uint16_t)i))
 				return false;
 		}
 		else
 		{
-			if(!stream->write_byte((uint8_t)i))
+			if(!stream->writeByte((uint8_t)i))
 				return false;
 		}
 	}
 
 	/* Mmcci number of output components involved and size for each component offset = 8 bits */
-	if(!stream->write_short((uint16_t)(p_mcc_record->m_nb_comps | mask)))
+	if(!stream->writeShort((uint16_t)(p_mcc_record->m_nb_comps | mask)))
 		return false;
 
 	for(i = 0; i < p_mcc_record->m_nb_comps; ++i)
@@ -1495,12 +1495,12 @@ bool CodeStreamCompress::write_mcc_record(grk_simple_mcc_decorrelation_data* p_m
 		/* Wmccij Component offset*/
 		if(nb_bytes_for_comp == 2)
 		{
-			if(!stream->write_short((uint16_t)i))
+			if(!stream->writeShort((uint16_t)i))
 				return false;
 		}
 		else
 		{
-			if(!stream->write_byte((uint8_t)i))
+			if(!stream->writeByte((uint8_t)i))
 				return false;
 		}
 	}
@@ -1514,7 +1514,7 @@ bool CodeStreamCompress::write_mcc_record(grk_simple_mcc_decorrelation_data* p_m
 		tmcc |= ((p_mcc_record->m_offset_array->m_index) << 8);
 
 	/* Tmcci : use MCT defined as number 1 and irreversible array based. */
-	return stream->write_24(tmcc);
+	return stream->write24(tmcc);
 }
 bool CodeStreamCompress::write_mco()
 {
@@ -1524,22 +1524,22 @@ bool CodeStreamCompress::write_mco()
 	mco_size = 5 + tcp->m_nb_mcc_records;
 
 	/* MCO */
-	if(!m_stream->write_short(J2K_MS_MCO))
+	if(!m_stream->writeShort(J2K_MS_MCO))
 		return false;
 
 	/* Lmco */
-	if(!m_stream->write_short((uint16_t)(mco_size - 2)))
+	if(!m_stream->writeShort((uint16_t)(mco_size - 2)))
 		return false;
 
 	/* Nmco : only one transform stage*/
-	if(!m_stream->write_byte((uint8_t)tcp->m_nb_mcc_records))
+	if(!m_stream->writeByte((uint8_t)tcp->m_nb_mcc_records))
 		return false;
 
 	auto mcc_record = tcp->m_mcc_records;
 	for(i = 0; i < tcp->m_nb_mcc_records; ++i)
 	{
 		/* Imco -> use the mcc indicated by 1*/
-		if(!m_stream->write_byte((uint8_t)mcc_record->m_index))
+		if(!m_stream->writeByte((uint8_t)mcc_record->m_index))
 			return false;
 		++mcc_record;
 	}
@@ -1553,15 +1553,15 @@ bool CodeStreamCompress::write_cbd()
 	uint16_t cbd_size = (uint16_t)(6U + getHeaderImage()->numcomps);
 
 	/* CBD */
-	if(!m_stream->write_short(J2K_MS_CBD))
+	if(!m_stream->writeShort(J2K_MS_CBD))
 		return false;
 
 	/* L_CBD */
-	if(!m_stream->write_short((uint16_t)(cbd_size - 2U)))
+	if(!m_stream->writeShort((uint16_t)(cbd_size - 2U)))
 		return false;
 
 	/* Ncbd */
-	if(!m_stream->write_short(image->numcomps))
+	if(!m_stream->writeShort(image->numcomps))
 		return false;
 
 	for(i = 0; i < image->numcomps; ++i)
@@ -1571,7 +1571,7 @@ bool CodeStreamCompress::write_cbd()
 		uint8_t bpc = (uint8_t)(comp->prec - 1);
 		if(comp->sgnd)
 			bpc = (uint8_t)(bpc + (1 << 7));
-		if(!m_stream->write_byte(bpc))
+		if(!m_stream->writeByte(bpc))
 			return false;
 	}
 	return true;
@@ -1640,19 +1640,19 @@ bool CodeStreamCompress::write_SPCod_SPCoc(uint32_t comp_no)
 	assert(comp_no < (getHeaderImage()->numcomps));
 
 	/* SPcoc (D) */
-	if(!m_stream->write_byte((uint8_t)(tccp->numresolutions - 1)))
+	if(!m_stream->writeByte((uint8_t)(tccp->numresolutions - 1)))
 		return false;
 	/* SPcoc (E) */
-	if(!m_stream->write_byte((uint8_t)(tccp->cblkw - 2)))
+	if(!m_stream->writeByte((uint8_t)(tccp->cblkw - 2)))
 		return false;
 	/* SPcoc (F) */
-	if(!m_stream->write_byte((uint8_t)(tccp->cblkh - 2)))
+	if(!m_stream->writeByte((uint8_t)(tccp->cblkh - 2)))
 		return false;
 	/* SPcoc (G) */
-	if(!m_stream->write_byte(tccp->cblk_sty))
+	if(!m_stream->writeByte(tccp->cblk_sty))
 		return false;
 	/* SPcoc (H) */
-	if(!m_stream->write_byte((uint8_t)tccp->qmfbid))
+	if(!m_stream->writeByte((uint8_t)tccp->qmfbid))
 		return false;
 
 	if(tccp->csty & J2K_CCP_CSTY_PRT)
@@ -1660,7 +1660,7 @@ bool CodeStreamCompress::write_SPCod_SPCoc(uint32_t comp_no)
 		for(uint32_t i = 0; i < tccp->numresolutions; ++i)
 		{
 			/* SPcoc (I_i) */
-			if(!m_stream->write_byte(
+			if(!m_stream->writeByte(
 				   (uint8_t)(tccp->precinctWidthExp[i] + (tccp->precinctHeightExp[i] << 4))))
 			{
 				return false;

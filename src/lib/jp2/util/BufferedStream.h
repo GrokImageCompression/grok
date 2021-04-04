@@ -32,60 +32,22 @@ namespace grk
 #define GROK_STREAM_STATUS_END 0x4U
 #define GROK_STREAM_STATUS_ERROR 0x8U
 
-/**
- Byte input-output stream.
- */
 struct BufferedStream : public IBufferedStream
 {
 	friend GrkObjectWrapperImpl<BufferedStream>;
 	BufferedStream(uint8_t* buffer, size_t buffer_size, bool l_is_input);
 
-	grk_object obj;
+	static BufferedStream* getImpl(grk_stream* stream);
+	grk_stream* getWrapper(void);
 
-	/**
-	 * user data
-	 */
-	void* m_user_data;
-
-	/**
-	 * Pointer to function to free m_user_data (nullptr at initialization)
-	 * when destroying the stream. If pointer is nullptr the function is not
-	 * called and the m_user_data is not freed (even if it isn't nullptr).
-	 */
-	grk_stream_free_user_data_fn m_free_user_data_fn;
-
-	/**
-	 * User data length.
-	 * Currently set to size of file for file read stream,
-	 * and size of buffer for buffer read/write stream
-	 */
-	uint64_t m_user_data_length;
-
-	/**
-	 * Pointer to actual read function (nullptr at initialization).
-	 */
-	grk_stream_read_fn m_read_fn;
-
-	/**
-	 * Pointer to actual zero copy read function (nullptr at initialization).
-	 */
-	grk_stream_zero_copy_read_fn m_zero_copy_read_fn;
-
-	/**
-	 * Pointer to actual write function (nullptr at initialization).
-	 */
-	grk_stream_write_fn m_write_fn;
-
-	/**
-	 * Pointer to actual seek function (if available).
-	 */
-	grk_stream_seek_fn m_seek_fn;
-
-	/**
-	 * Stream status flags
-	 */
-	uint32_t m_status;
-
+	void setUserData(void* data, grk_stream_free_user_data_fn freeUserDataFun);
+	void* getUserData(void);
+	void setUserDataLength(uint64_t len);
+	uint32_t getStatus(void);
+	void setReadFunction(grk_stream_read_fn fn);
+	void setZeroCopyReadFunction(grk_stream_zero_copy_read_fn fn);
+	void setWriteFunction(grk_stream_write_fn fn);
+	void setSeekFunction(grk_stream_seek_fn fn);
 	/**
 	 * Reads some bytes from the stream.
 	 * @param		p_buffer	pointer to the data buffer
@@ -96,16 +58,14 @@ struct BufferedStream : public IBufferedStream
 	 */
 	size_t read(uint8_t* p_buffer, size_t p_size);
 
-	size_t read_data_zero_copy(uint8_t** p_buffer, size_t p_size);
+	// low-level write methods (endian taken into account)
+	bool writeShort(uint16_t value);
+	bool write24(uint32_t value);
+	bool writeInt(uint32_t value);
+	bool write64(uint64_t value);
 
-	bool write_byte(uint8_t value);
-
-	// low-level write methods that take endian into account
-	bool write_short(uint16_t value);
-	bool write_24(uint32_t value);
-	bool write_int(uint32_t value);
-	bool write_64(uint64_t value);
-
+	// low-level write methods (endian NOT taken into account)
+	bool writeByte(uint8_t value);
 	/**
 	 * Write bytes to stream (no correction for endian!).
 	 * @param		p_buffer	pointer to the data buffer holds the data
@@ -114,7 +74,7 @@ struct BufferedStream : public IBufferedStream
 
 	 * @return		the number of bytes written
 	 */
-	size_t write_bytes(const uint8_t* p_buffer, size_t p_size);
+	size_t writeBytes(const uint8_t* p_buffer, size_t p_size);
 
 	/**
 	 * Flush stream to disk
@@ -122,7 +82,6 @@ struct BufferedStream : public IBufferedStream
 	 * @return		true if the data could be flushed, otherwise false.
 	 */
 	bool flush();
-
 	/**
 	 * Skip bytes in stream.
 	 * @param		p_size		the number of bytes to skip.
@@ -130,21 +89,18 @@ struct BufferedStream : public IBufferedStream
 	 * @return		true if successful, otherwise false
 	 */
 	bool skip(int64_t p_size);
-
 	/**
 	 * Tells byte offset of stream (similar to ftell).
 	 *
 	 * @return		the current position of the stream.
 	 */
 	uint64_t tell(void);
-
 	/**
 	 * Get the number of bytes left before end of stream
 	 *
 	 * @return		Number of bytes left before the end of the stream.
 	 */
-	uint64_t get_number_byte_left(void);
-
+	uint64_t numBytesLeft(void);
 	/**
 	 * Seek bytes from the stream (absolute)
 	 * @param		offset		the number of bytes to skip.
@@ -152,19 +108,13 @@ struct BufferedStream : public IBufferedStream
 	 * @return		true if successful, otherwise false
 	 */
 	bool seek(uint64_t offset);
-
 	/**
 	 * Check if stream is seekable.
 	 */
-	bool has_seek();
-
+	bool hasSeek();
 	bool supportsZeroCopy();
 	uint8_t* getCurrentPtr();
-
-	static BufferedStream* getImpl(grk_stream* stream);
-	grk_stream* getWrapper(void);
-
-  private:
+private:
 	~BufferedStream();
 	/**
 	 * Skip bytes in write stream.
@@ -203,6 +153,45 @@ struct BufferedStream : public IBufferedStream
 	void invalidate_buffer();
 
 	bool isMemStream();
+
+	grk_object obj;
+
+	/**
+	 * user data
+	 */
+	void* m_user_data;
+	/**
+	 * Pointer to function to free m_user_data (nullptr at initialization)
+	 * when destroying the stream. If pointer is nullptr the function is not
+	 * called and the m_user_data is not freed (even if it isn't nullptr).
+	 */
+	grk_stream_free_user_data_fn m_free_user_data_fn;
+	/**
+	 * User data length.
+	 * Currently set to size of file for file read stream,
+	 * and size of buffer for buffer read/write stream
+	 */
+	uint64_t m_user_data_length;
+	/**
+	 * Pointer to actual read function (nullptr at initialization).
+	 */
+	grk_stream_read_fn m_read_fn;
+	/**
+	 * Pointer to actual zero copy read function (nullptr at initialization).
+	 */
+	grk_stream_zero_copy_read_fn m_zero_copy_read_fn;
+	/**
+	 * Pointer to actual write function (nullptr at initialization).
+	 */
+	grk_stream_write_fn m_write_fn;
+	/**
+	 * Pointer to actual seek function (if available).
+	 */
+	grk_stream_seek_fn m_seek_fn;
+	/**
+	 * Stream status flags
+	 */
+	uint32_t m_status;
 
 	grkBufferU8* m_buf;
 
