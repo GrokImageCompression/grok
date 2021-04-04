@@ -58,17 +58,17 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers, IBuffere
 	return true;
 }
 bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
-										 uint32_t* all_packets_len, uint32_t max_len,
+										 uint32_t* lengthOfAllPackets, uint32_t max_len,
 										 uint32_t tp_pos, PacketLengthMarkers* markers)
 {
-	assert(all_packets_len);
+	assert(lengthOfAllPackets);
 	auto cp = tileProcessor->m_cp;
 	auto image = tileProcessor->headerImage;
 	auto tcp = cp->tcps + tile_no;
 	uint32_t pocno = (cp->rsiz == GRK_PROFILE_CINEMA_4K) ? 2 : 1;
 	uint32_t max_comp = cp->m_coding_params.m_enc.m_max_comp_size > 0 ? image->numcomps : 1;
 	PacketManager packetManager(true, image, cp, tile_no, THRESH_CALC, tileProcessor);
-	*all_packets_len = 0;
+	*lengthOfAllPackets = 0;
 
 	tileProcessor->getPacketTracker()->clear();
 #ifdef DEBUG_ENCODE_PACKETS
@@ -103,7 +103,7 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 
 					comp_len += bytesInPacket;
 					max_len -= bytesInPacket;
-					*all_packets_len += bytesInPacket;
+					*lengthOfAllPackets += bytesInPacket;
 				}
 			}
 			if(cp->m_coding_params.m_enc.m_max_comp_size)
