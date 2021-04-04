@@ -1702,9 +1702,9 @@ uint16_t CodeStreamCompress::getPocSize(uint32_t nb_comp, uint32_t nb_poc)
 }
 bool CodeStreamCompress::check_poc_val(const grk_progression* p_pocs, uint32_t nb_pocs,
 									   uint32_t nb_resolutions, uint32_t num_comps,
-									   uint32_t num_layers)
+									   uint16_t num_layers)
 {
-	uint32_t index, resno, compno, layno;
+	uint32_t resno, compno, layno;
 	uint32_t i;
 	uint32_t step_c = 1;
 	uint32_t step_r = num_comps * step_c;
@@ -1712,23 +1712,23 @@ bool CodeStreamCompress::check_poc_val(const grk_progression* p_pocs, uint32_t n
 	if(nb_pocs == 0)
 		return true;
 
-	auto packet_array = new uint32_t[step_l * num_layers];
-	memset(packet_array, 0, step_l * num_layers * sizeof(uint32_t));
+	auto packet_array = new uint32_t[(size_t)step_l * num_layers];
+	memset(packet_array, 0, (size_t)step_l * num_layers * sizeof(uint32_t));
 
 	/* iterate through all the pocs */
 	for(i = 0; i < nb_pocs; ++i)
 	{
-		index = step_r * p_pocs->resS;
+		size_t index = step_r * p_pocs->resS;
 		/* take each resolution for each poc */
 		for(resno = p_pocs->resS; resno < std::min<uint32_t>(p_pocs->resE, nb_resolutions); ++resno)
 		{
-			uint32_t res_index = index + p_pocs->compS * step_c;
+			size_t res_index = index + p_pocs->compS * step_c;
 
 			/* take each comp of each resolution for each poc */
 			for(compno = p_pocs->compS; compno < std::min<uint32_t>(p_pocs->compE, num_comps);
 				++compno)
 			{
-				uint32_t comp_index = res_index + 0 * step_l;
+				size_t comp_index = res_index + 0 * step_l;
 
 				/* and finally take each layer of each res of ... */
 				for(layno = 0; layno < std::min<uint32_t>(p_pocs->layE, num_layers); ++layno)
@@ -1744,7 +1744,7 @@ bool CodeStreamCompress::check_poc_val(const grk_progression* p_pocs, uint32_t n
 		++p_pocs;
 	}
 	bool loss = false;
-	index = 0;
+	size_t index = 0;
 	for(layno = 0; layno < num_layers; ++layno)
 	{
 		for(resno = 0; resno < nb_resolutions; ++resno)

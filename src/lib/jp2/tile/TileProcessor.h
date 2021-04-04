@@ -42,7 +42,7 @@ struct Tile : public grkRectU32
 	uint16_t numcomps;
 	TileComponent* comps;
 	double distortion;
-	double layerDistoration[100];
+	double layerDistoration[maxCompressLayersGRK];
 	uint64_t numProcessedPackets;
 	uint64_t numDecompressedPackets;
 };

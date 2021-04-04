@@ -78,9 +78,9 @@ TileCodingParams::TileCodingParams()
 	  m_nb_mct_records(0), m_nb_max_mct_records(0), m_mcc_records(nullptr), m_nb_mcc_records(0),
 	  m_nb_max_mcc_records(0), cod(false), ppt(false), POC(false), isHT(false)
 {
-	for(auto i = 0; i < 100; ++i)
+	for(auto i = 0; i < maxCompressLayersGRK; ++i)
 		rates[i] = 0.0;
-	for(auto i = 0; i < 100; ++i)
+	for(auto i = 0; i < maxCompressLayersGRK; ++i)
 		distoratio[i] = 0;
 	for(auto i = 0; i < 32; ++i)
 		memset(progressionOrderChange + i, 0, sizeof(grk_progression));

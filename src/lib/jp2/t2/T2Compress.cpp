@@ -124,7 +124,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, BufferedS
 	uint32_t compno = pi->compno;
 	uint32_t resno = pi->resno;
 	uint64_t precinctIndex = pi->precinctIndex;
-	uint32_t layno = pi->layno;
+	uint16_t layno = pi->layno;
 	auto tile = tileProcessor->tile;
 	auto tilec = &tile->comps[compno];
 	auto res = &tilec->tileCompResolution[resno];

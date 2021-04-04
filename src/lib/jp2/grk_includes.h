@@ -87,6 +87,7 @@
 #include <taskflow/taskflow.hpp>
 #include "SequentialCache.h"
 #include "SparseCache.h"
+#include "CodeStreamLimits.h"
 #include "util.h"
 #include "MemManager.h"
 #include "minpf_plugin_manager.h"

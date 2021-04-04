@@ -135,7 +135,7 @@ struct CompressCodeblock : public Codeblock
 	{
 		if(!layers)
 		{
-			layers = (Layer*)grkCalloc(100, sizeof(Layer));
+			layers = (Layer*)grkCalloc(maxCompressLayersGRK, sizeof(Layer));
 			if(!layers)
 				return false;
 		}

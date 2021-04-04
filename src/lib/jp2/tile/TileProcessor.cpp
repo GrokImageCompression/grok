@@ -205,7 +205,7 @@ void TileProcessor::makeLayerFeasible(uint32_t layno, uint16_t thresh, bool fina
 bool TileProcessor::pcrdBisectFeasible(uint32_t* all_packets_len)
 {
 	bool single_lossless = makeSingleLosslessLayer();
-	double cumdisto[100];
+	double cumdisto[maxCompressLayersGRK];
 	const double K = 1;
 	double maxSE = 0;
 
@@ -348,7 +348,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* all_packets_len)
 	uint16_t layno;
 	uint64_t cblkno;
 	uint32_t passno;
-	double cumdisto[100];
+	double cumdisto[maxCompressLayersGRK];
 	const double K = 1;
 	double maxSE = 0;
 
@@ -1534,7 +1534,7 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 Tile::Tile()
 	: numcomps(0), comps(nullptr), distortion(0), numProcessedPackets(0), numDecompressedPackets(0)
 {
-	for(uint32_t i = 0; i < 100; ++i)
+	for(uint32_t i = 0; i < maxCompressLayersGRK; ++i)
 		layerDistoration[i] = 0;
 }
 Tile::~Tile()

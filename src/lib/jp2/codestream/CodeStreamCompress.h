@@ -338,7 +338,7 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	 * @return      true if the pocs are valid.
 	 */
 	bool check_poc_val(const grk_progression* p_pocs, uint32_t nb_pocs, uint32_t nb_resolutions,
-					   uint32_t numcomps, uint32_t numlayers);
+					   uint32_t numcomps, uint16_t numlayers);
 
 	bool init_mct_encoding(TileCodingParams* p_tcp, GrkImage* p_image);
 

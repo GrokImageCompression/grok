@@ -141,7 +141,7 @@ struct TileCodingParams
 	/** multi-component transform identifier */
 	uint8_t mct;
 	/** rates of layers */
-	double rates[100];
+	double rates[maxCompressLayersGRK];
 	/** number of progression order changes */
 	uint32_t numpocs;
 	/** progression order changes */
@@ -161,7 +161,7 @@ struct TileCodingParams
 	/** size of ppt_data*/
 	size_t ppt_len;
 	/** fixed_quality */
-	double distoratio[100];
+	double distoratio[maxCompressLayersGRK];
 	// quantization style as read from main QCD marker
 	uint32_t main_qcd_qntsty;
 	// number of step sizes as read from main QCD marker
