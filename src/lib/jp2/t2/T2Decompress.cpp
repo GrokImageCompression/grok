@@ -293,7 +293,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 					uint32_t included = 0, increment = 0;
 					if(!cblk || !cblk->numlenbits)
 					{
-						uint64_t value;
+						uint16_t value;
 						prc->getInclTree()->decodeValue(bio.get(), cblkno, p_pi->layno + 1, &value);
 						if(value != tag_tree_uninitialized_node_value && value != p_pi->layno)
 						{

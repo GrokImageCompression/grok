@@ -101,7 +101,7 @@ struct PrecinctImpl
 		delete imsbtree;
 		imsbtree = nullptr;
 	}
-	TagTree* getIncludeTagTree(void){
+	TagTreeU16* getIncludeTagTree(void){
 		// if cw == 0 or ch == 0,
 		// then the precinct has no code blocks, therefore
 		// no need for inclusion and msb tag trees
@@ -113,7 +113,7 @@ struct PrecinctImpl
 			{
 				try
 				{
-					incltree = new TagTree(grid_width, grid_height);
+					incltree = new TagTreeU16(grid_width, grid_height);
 				}
 				catch(std::exception& e)
 				{
@@ -131,7 +131,7 @@ struct PrecinctImpl
 		}
 		return nullptr;
 	}
-	TagTree* getIMsbTagTree(void){
+	TagTreeU8* getIMsbTagTree(void){
 		// if cw == 0 or ch == 0,
 		// then the precinct has no code blocks, therefore
 		// no need for inclusion and msb tag trees
@@ -143,7 +143,7 @@ struct PrecinctImpl
 			{
 				try
 				{
-					imsbtree = new TagTree(grid_width, grid_height);
+					imsbtree = new TagTreeU8(grid_width, grid_height);
 				}
 				catch(std::exception& e)
 				{
@@ -168,8 +168,8 @@ struct PrecinctImpl
 	grkPointU32 m_cblk_expn;
 	bool m_isCompressor;
 private:
-	TagTree* incltree; /* inclusion tree */
-	TagTree* imsbtree; /* IMSB tree */
+	TagTreeU16* incltree; /* inclusion tree */
+	TagTreeU8* imsbtree; /* IMSB tree */
 };
 struct Precinct : public grkRectU32
 {
@@ -189,11 +189,11 @@ struct Precinct : public grkRectU32
 	{
 		return impl->getCodeBlockBounds(cblkno);
 	}
-	TagTree* getInclTree(void)
+	TagTreeU16* getInclTree(void)
 	{
 		return impl->getIncludeTagTree();
 	}
-	TagTree* getImsbTree(void)
+	TagTreeU8* getImsbTree(void)
 	{
 		return impl->getIMsbTagTree();
 	}
