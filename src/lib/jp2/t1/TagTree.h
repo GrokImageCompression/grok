@@ -121,7 +121,7 @@ template<typename T> class TagTree
 	}
 
 	constexpr T getUninitializedValue(void){
-		return std::numeric_limits<T>::max();
+		return (std::numeric_limits<T>::max)();
 	}
 
 	/**

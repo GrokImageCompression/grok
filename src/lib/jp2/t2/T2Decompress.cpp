@@ -342,6 +342,12 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 						while(!value)
 						{
 							++K_msbs;
+							if (K_msbs > maxBitPlanesGRK){
+								GRK_WARN("More missing code block bit planes (%u)"
+										" than supported number of missing bit planes (%u) in library.",
+										K_msbs, sizeof(int32_t));
+								break;
+							}
 							prc->getImsbTree()->decompress(bio.get(), cblkno, K_msbs, &value);
 						}
 						assert(K_msbs >= 1);

@@ -214,7 +214,7 @@ void compress_synch_with_plugin(TileProcessor* tcd, uint32_t compno, uint32_t re
 			cblk->paddedCompressedStream = plugin_cblk->compressedData;
 		cblk->compressedStream.len = (uint32_t)(plugin_cblk->compressedDataLength);
 		cblk->compressedStream.owns_data = false;
-		cblk->numbps = (uint32_t)plugin_cblk->numBitPlanes;
+		cblk->numbps = plugin_cblk->numBitPlanes;
 		if(state & GRK_PLUGIN_STATE_DEBUG)
 		{
 			if(cblk->x0 != plugin_cblk->x0 || cblk->y0 != plugin_cblk->y0 ||
