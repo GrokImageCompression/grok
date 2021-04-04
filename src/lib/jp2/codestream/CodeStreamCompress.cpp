@@ -613,6 +613,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 }
 bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 {
+	TileProcessorMinHeap heap;
 	uint32_t nb_tiles = (uint32_t)m_cp.t_grid_height * m_cp.t_grid_width;
 	if(nb_tiles > maxNumTilesJ2K)
 	{
@@ -624,24 +625,18 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 	auto pool_size = std::min<uint32_t>((uint32_t)ThreadPool::get()->num_threads(), nb_tiles);
 	ThreadPool pool(pool_size);
 	std::vector<std::future<int>> results;
-	std::unique_ptr<TileProcessor*[]> procs = std::make_unique<TileProcessor*[]>(nb_tiles);
 	std::atomic<bool> success(true);
 	bool rc = false;
-
-	for(uint16_t i = 0; i < nb_tiles; ++i)
-		procs[i] = nullptr;
-
 	if(pool_size > 1)
 	{
 		for(uint16_t i = 0; i < nb_tiles; ++i)
 		{
-			uint16_t tile_ind = i;
-			results.emplace_back(pool.enqueue([this, &procs, tile, tile_ind, &success] {
+			uint16_t tileIndex = i;
+			results.emplace_back(pool.enqueue([this, tile, tileIndex, &heap,&success] {
 				if(success)
 				{
 					auto tileProcessor = new TileProcessor(this, m_stream, true, false);
-					procs[tile_ind] = tileProcessor;
-					tileProcessor->m_tileIndex = tile_ind;
+					tileProcessor->m_tileIndex = tileIndex;
 					tileProcessor->current_plugin_tile = tile;
 					if(!tileProcessor->preCompressTile())
 						success = false;
@@ -649,6 +644,20 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 					{
 						if(!tileProcessor->doCompress())
 							success = false;
+					}
+					if (success) {
+					    heap.push(tileProcessor);
+					    /*
+						auto completeTileProcessor = heap.pop();
+						while (completeTileProcessor){
+							bool write_success = writeTileParts(completeTileProcessor);
+							delete completeTileProcessor;
+							if (!write_success){
+								success = false;
+							}
+							completeTileProcessor = heap.pop();
+						}
+						*/
 					}
 				}
 				return 0;
@@ -686,20 +695,19 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 		}
 		if(!success)
 			goto cleanup;
-		for(uint16_t i = 0; i < nb_tiles; ++i)
-		{
-			bool write_success = writeTileParts(procs[i]);
-			delete procs[i];
-			procs[i] = nullptr;
-			if(!write_success)
-				goto cleanup;
-		}
 	}
 	rc = true;
 cleanup:
-	for(uint16_t i = 0; i < nb_tiles; ++i)
-		delete procs[i];
-
+	auto completeTileProcessor = heap.pop();
+	while (completeTileProcessor){
+		if (success) {
+			bool write_success = writeTileParts(completeTileProcessor);
+			if (!write_success)
+				success = false;
+		}
+		delete completeTileProcessor;
+		completeTileProcessor = heap.pop();
+	}
 	return rc;
 }
 bool CodeStreamCompress::compressTile(uint16_t tileIndex, uint8_t* p_data,

@@ -21,6 +21,8 @@
 
 #pragma once
 #include "grk_includes.h"
+#include <queue>
+#include <mutex>
 
 namespace grk
 {
@@ -156,5 +158,46 @@ struct TileProcessor
 	bool m_isCompressor;
 	grkRectU32 unreducedTileWindow;
 };
+
+struct TileProcessorComparator
+{
+    bool operator () ( const TileProcessor* a, const TileProcessor* b ) const
+    {
+        return a->m_tileIndex > b->m_tileIndex;
+    }
+};
+
+class TileProcessorMinHeap {
+public:
+	TileProcessorMinHeap() : nextTileIndex(0)
+	{}
+	void push(TileProcessor* val){
+	    std::lock_guard<std::mutex> lock(queue_mutex);
+	    queue.push(val);
+	}
+	TileProcessor* pop(void){
+	    std::lock_guard<std::mutex> lock(queue_mutex);
+	    if (queue.empty())
+	    	return nullptr;
+	    auto val = queue.top();
+	    if (val->m_tileIndex <= nextTileIndex) {
+	    	queue.pop();
+	    	if (val->m_tileIndex == nextTileIndex)
+	    		nextTileIndex++;
+	    	return val;
+	    }
+	    return nullptr;
+	}
+	bool empty(void){
+	    std::lock_guard<std::mutex> lock(queue_mutex);
+	    return queue.empty();
+	}
+private:
+	std::priority_queue<TileProcessor*, std::vector<TileProcessor*>, TileProcessorComparator > queue;
+	std::mutex queue_mutex;
+	uint16_t nextTileIndex;
+};
+
+
 
 } // namespace grk
