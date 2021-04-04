@@ -42,8 +42,9 @@ class BlockCache : public SparseCache<T>
 struct PrecinctImpl
 {
 	PrecinctImpl(bool isCompressor, grkRectU32* bounds, grkPointU32 cblk_expn)
-		: enc(nullptr), dec(nullptr), incltree(nullptr), imsbtree(nullptr), m_bounds(*bounds),
-		  m_cblk_expn(cblk_expn), m_isCompressor(isCompressor)
+		: enc(nullptr), dec(nullptr), m_bounds(*bounds),
+		  m_cblk_expn(cblk_expn), m_isCompressor(isCompressor),
+		  incltree(nullptr), imsbtree(nullptr)
 	{
 		m_cblk_grid =
 			grkRectU32(floordivpow2(bounds->x0, cblk_expn.x), floordivpow2(bounds->y0, cblk_expn.y),
@@ -79,7 +80,6 @@ struct PrecinctImpl
 			enc = new BlockCache<CompressCodeblock, PrecinctImpl>(numBlocks, this);
 		else
 			dec = new BlockCache<DecompressCodeblock, PrecinctImpl>(numBlocks, this);
-		initTagTrees();
 
 		return true;
 	}
@@ -101,8 +101,7 @@ struct PrecinctImpl
 		delete imsbtree;
 		imsbtree = nullptr;
 	}
-	void initTagTrees()
-	{
+	TagTree* getIncludeTagTree(void){
 		// if cw == 0 or ch == 0,
 		// then the precinct has no code blocks, therefore
 		// no need for inclusion and msb tag trees
@@ -121,16 +120,25 @@ struct PrecinctImpl
 					GRK_UNUSED(e);
 					GRK_WARN("No incltree created.");
 				}
-			}
-			else
-			{
-				if(!incltree->init(grid_width, grid_height))
+				if(incltree && !incltree->init(grid_width, grid_height))
 				{
 					GRK_WARN("Failed to re-initialize incltree.");
 					delete incltree;
 					incltree = nullptr;
 				}
 			}
+			return incltree;
+		}
+		return nullptr;
+	}
+	TagTree* getIMsbTagTree(void){
+		// if cw == 0 or ch == 0,
+		// then the precinct has no code blocks, therefore
+		// no need for inclusion and msb tag trees
+		auto grid_width = m_cblk_grid.width();
+		auto grid_height = m_cblk_grid.height();
+		if(grid_width > 0 && grid_height > 0)
+		{
 			if(!imsbtree)
 			{
 				try
@@ -142,26 +150,26 @@ struct PrecinctImpl
 					GRK_UNUSED(e);
 					GRK_WARN("No imsbtree created.");
 				}
-			}
-			else
-			{
-				if(!imsbtree->init(grid_width, grid_height))
+				if(imsbtree && !imsbtree->init(grid_width, grid_height))
 				{
 					GRK_WARN("Failed to re-initialize imsbtree.");
 					delete imsbtree;
 					imsbtree = nullptr;
 				}
 			}
+			return imsbtree;
 		}
+		return nullptr;
 	}
 	BlockCache<CompressCodeblock, PrecinctImpl>* enc;
 	BlockCache<DecompressCodeblock, PrecinctImpl>* dec;
-	TagTree* incltree; /* inclusion tree */
-	TagTree* imsbtree; /* IMSB tree */
 	grkRectU32 m_cblk_grid;
 	grkRectU32 m_bounds;
 	grkPointU32 m_cblk_expn;
 	bool m_isCompressor;
+private:
+	TagTree* incltree; /* inclusion tree */
+	TagTree* imsbtree; /* IMSB tree */
 };
 struct Precinct : public grkRectU32
 {
@@ -181,17 +189,13 @@ struct Precinct : public grkRectU32
 	{
 		return impl->getCodeBlockBounds(cblkno);
 	}
-	void initTagTrees()
-	{
-		impl->initTagTrees();
-	}
 	TagTree* getInclTree(void)
 	{
-		return impl->incltree;
+		return impl->getIncludeTagTree();
 	}
 	TagTree* getImsbTree(void)
 	{
-		return impl->imsbtree;
+		return impl->getIMsbTagTree();
 	}
 	uint32_t getCblkGridwidth(void)
 	{

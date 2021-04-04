@@ -199,7 +199,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, BufferedS
 				}
 				else
 				{
-					prc->getImsbTree()->setvalue(cblkno, (int64_t)(band->numbps - cblk->numbps));
+					prc->getImsbTree()->setvalue(cblkno, band->numbps - cblk->numbps);
 				}
 			}
 		}
@@ -225,7 +225,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, BufferedS
 
 			if(!cblk->numPassesInPacket && layer->numpasses)
 			{
-				prc->getInclTree()->setvalue(cblkno, (int32_t)layno);
+				prc->getInclTree()->setvalue(cblkno, layno);
 			}
 		}
 		for(uint64_t cblkno = 0; cblkno < nb_blocks; cblkno++)
@@ -239,7 +239,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, BufferedS
 			/* cblk inclusion bits */
 			if(!cblk->numPassesInPacket)
 			{
-				bool rc = prc->getInclTree()->compress(bio.get(), cblkno, (int32_t)(layno + 1));
+				bool rc = prc->getInclTree()->compress(bio.get(), cblkno, layno + 1);
 				assert(rc);
 				if(!rc)
 					return false;
@@ -619,7 +619,7 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 				}
 				else
 				{
-					prc->getImsbTree()->setvalue(cblkno, (int64_t)(band->numbps - cblk->numbps));
+					prc->getImsbTree()->setvalue(cblkno, band->numbps - cblk->numbps);
 				}
 			}
 		}
@@ -642,7 +642,7 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 			auto layer = cblk->layers + layno;
 			if(!cblk->numPassesInPacket && layer->numpasses)
 			{
-				prc->getInclTree()->setvalue(cblkno, (int32_t)layno);
+				prc->getInclTree()->setvalue(cblkno, layno);
 			}
 		}
 		for(uint64_t cblkno = 0; cblkno < nb_blocks; cblkno++)
@@ -657,7 +657,7 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 			/* cblk inclusion bits */
 			if(!cblk->numPassesInPacket)
 			{
-				if(!prc->getInclTree()->compress(bio.get(), cblkno, (int32_t)(layno + 1)))
+				if(!prc->getInclTree()->compress(bio.get(), cblkno, layno + 1))
 					return false;
 			}
 			else
