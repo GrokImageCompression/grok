@@ -54,7 +54,7 @@ static j2k_prog_order j2k_prog_order_list[] = {{GRK_CPRL, "CPRL"}, {GRK_LRCP, "L
 											   {GRK_PCRL, "PCRL"}, {GRK_RLCP, "RLCP"},
 											   {GRK_RPCL, "RPCL"}, {(GRK_PROG_ORDER)-1, ""}};
 
-CodeStreamCompress::CodeStreamCompress(BufferedStream* stream) : CodeStream(stream) {}
+CodeStreamCompress::CodeStreamCompress(IBufferedStream* stream) : CodeStream(stream) {}
 
 CodeStreamCompress::~CodeStreamCompress() {}
 char* CodeStreamCompress::convertProgressionOrder(GRK_PROG_ORDER prg_order)
@@ -795,7 +795,7 @@ bool CodeStreamCompress::write_eoc()
 
 	return m_stream->flush();
 }
-bool CodeStreamCompress::write_mct_record(grk_mct_data* p_mct_record, BufferedStream* stream)
+bool CodeStreamCompress::write_mct_record(grk_mct_data* p_mct_record, IBufferedStream* stream)
 {
 	uint32_t mct_size;
 	uint32_t tmp;
@@ -1421,7 +1421,7 @@ bool CodeStreamCompress::write_regions()
 	return true;
 }
 bool CodeStreamCompress::write_mcc_record(grk_simple_mcc_decorrelation_data* p_mcc_record,
-										  BufferedStream* stream)
+										  IBufferedStream* stream)
 {
 	uint32_t i;
 	uint32_t mcc_size;

@@ -21,7 +21,7 @@
 #include "grk_includes.h"
 namespace grk
 {
-TileProcessor::TileProcessor(CodeStream* codeStream, BufferedStream* stream, bool isCompressor,
+TileProcessor::TileProcessor(CodeStream* codeStream, IBufferedStream* stream, bool isCompressor,
 							 bool isWholeTileDecompress)
 	: m_tileIndex(0), m_first_poc_tile_part(true), m_tilePartIndex(0), tilePartDataLength(0),
 	  numTilePartsTotal(0), pino(0), tile(nullptr), headerImage(codeStream->getHeaderImage()),
@@ -1504,8 +1504,11 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 		auto len = tilePartDataLength;
 		uint8_t* buff = nullptr;
 		auto zeroCopy = m_stream->supportsZeroCopy();
-		if(!zeroCopy)
+		if(zeroCopy)
 		{
+			buff = m_stream->getZeroCopyPtr();
+		}
+		else {
 			try
 			{
 				buff = new uint8_t[len];
@@ -1516,10 +1519,6 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 				GRK_ERROR("Not enough memory to allocate segment");
 				return false;
 			}
-		}
-		else
-		{
-			buff = m_stream->getCurrentPtr();
 		}
 		current_read_size = m_stream->read(zeroCopy ? nullptr : buff, len);
 		tcp->m_compressedTileData->pushBack(buff, len, !zeroCopy);

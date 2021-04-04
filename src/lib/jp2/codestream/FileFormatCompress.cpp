@@ -32,7 +32,7 @@ struct BoxWriteHandler
 	uint32_t m_size;
 };
 
-FileFormatCompress::FileFormatCompress(BufferedStream* stream)
+FileFormatCompress::FileFormatCompress(IBufferedStream* stream)
 	: FileFormat(), codeStream(new CodeStreamCompress(stream)), needs_xl_jp2c_box_length(false),
 	  j2k_codestream_offset(0)
 {}

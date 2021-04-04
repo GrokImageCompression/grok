@@ -64,7 +64,7 @@ static const j2k_mct_function j2k_mct_read_functions_to_int32[] = {
 	j2k_read_int16_to_int32, j2k_read_int32_to_int32, j2k_read_float32_to_int32,
 	j2k_read_float64_to_int32};
 
-CodeStreamDecompress::CodeStreamDecompress(BufferedStream* stream)
+CodeStreamDecompress::CodeStreamDecompress(IBufferedStream* stream)
 	: CodeStream(stream), wholeTileDecompress(true), m_curr_marker(0), m_headerError(false),
 	  m_tile_ind_to_dec(-1), m_marker_scratch(nullptr), m_marker_scratch_size(0),
 	  m_output_image(nullptr), m_tileCache(new TileCache())

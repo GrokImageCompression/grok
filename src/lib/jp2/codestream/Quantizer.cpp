@@ -86,7 +86,7 @@ void Quantizer::apply_quant(TileComponentCodingParams* src, TileComponentCodingP
 	}
 }
 
-bool Quantizer::write_SQcd_SQcc(CodeStream* codeStream, uint32_t comp_no, BufferedStream* stream)
+bool Quantizer::write_SQcd_SQcc(CodeStream* codeStream, uint32_t comp_no, IBufferedStream* stream)
 {
 	assert(codeStream != nullptr);
 

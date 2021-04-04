@@ -32,7 +32,7 @@ PacketLengthMarkers::PacketLengthMarkers()
 	  m_packet_len(0), m_marker_bytes_written(0), m_total_bytes_written(0), m_marker_len_cache(0),
 	  m_stream(nullptr)
 {}
-PacketLengthMarkers::PacketLengthMarkers(BufferedStream* strm) : PacketLengthMarkers()
+PacketLengthMarkers::PacketLengthMarkers(IBufferedStream* strm) : PacketLengthMarkers()
 {
 	m_stream = strm;
 	writeInit();

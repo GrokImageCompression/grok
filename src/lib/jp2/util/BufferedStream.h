@@ -113,7 +113,7 @@ struct BufferedStream : public IBufferedStream
 	 */
 	bool hasSeek();
 	bool supportsZeroCopy();
-	uint8_t* getCurrentPtr();
+	uint8_t* getZeroCopyPtr();
 private:
 	~BufferedStream();
 	/**

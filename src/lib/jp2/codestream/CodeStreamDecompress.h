@@ -37,7 +37,7 @@ struct marker_handler
 class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 {
   public:
-	CodeStreamDecompress(BufferedStream* stream);
+	CodeStreamDecompress(IBufferedStream* stream);
 	virtual ~CodeStreamDecompress();
 	TileProcessor* allocateProcessor(uint16_t tileIndex);
 	DecompressorState* getDecompressorState(void);

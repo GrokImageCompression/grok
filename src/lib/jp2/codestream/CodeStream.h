@@ -131,11 +131,11 @@ class TileCache;
 class CodeStream
 {
   public:
-	CodeStream(BufferedStream* stream);
+	CodeStream(IBufferedStream* stream);
 	virtual ~CodeStream();
 
 	TileProcessor* currentProcessor(void);
-	BufferedStream* getStream();
+	IBufferedStream* getStream();
 	GrkImage* getHeaderImage(void);
 	grk_plugin_tile* getCurrentPluginTile();
 	CodingParams* getCodingParams(void);
@@ -150,7 +150,7 @@ class CodeStream
 	// decompress: components are subsampled and resolution-reduced
 	GrkImage* m_headerImage;
 	TileProcessor* m_currentTileProcessor;
-	BufferedStream* m_stream;
+	IBufferedStream* m_stream;
 	std::map<uint32_t, TileProcessor*> m_processors;
 	bool m_multiTile;
 	grk_plugin_tile* current_plugin_tile;

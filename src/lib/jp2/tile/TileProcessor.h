@@ -75,7 +75,7 @@ struct PacketTracker
 
 struct TileProcessor
 {
-	explicit TileProcessor(CodeStream* codeStream, BufferedStream* stream, bool isCompressor,
+	explicit TileProcessor(CodeStream* codeStream, IBufferedStream* stream, bool isCompressor,
 						   bool isWholeTileDecompress);
 	~TileProcessor();
 	bool init(void);
@@ -130,7 +130,7 @@ struct TileProcessor
 	// Compressing only - track which packets have already been written
 	// to the code stream
 	PacketTracker m_packetTracker;
-	BufferedStream* m_stream;
+	IBufferedStream* m_stream;
 	bool m_corrupt_packet;
 	/** position of the tile part flag in progression order*/
 	uint32_t tp_pos;

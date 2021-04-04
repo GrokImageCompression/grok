@@ -28,7 +28,7 @@ class CodeStream;
 class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 {
   public:
-	CodeStreamCompress(BufferedStream* stream);
+	CodeStreamCompress(IBufferedStream* stream);
 	virtual ~CodeStreamCompress();
 
 	static char* convertProgressionOrder(GRK_PROG_ORDER prg_order);
@@ -102,7 +102,7 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	 * @param       stream    buffered stream.
 
 	 */
-	bool write_coc(uint32_t comp_no, BufferedStream* stream);
+	bool write_coc(uint32_t comp_no, IBufferedStream* stream);
 
 	bool write_coc(uint32_t comp_no);
 
@@ -133,7 +133,7 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	 * @param       stream      buffered stream.
 
 	 */
-	bool write_qcc(uint16_t tileIndex, uint32_t comp_no, BufferedStream* stream);
+	bool write_qcc(uint16_t tileIndex, uint32_t comp_no, IBufferedStream* stream);
 
 	bool write_qcc(uint32_t comp_no);
 
@@ -229,7 +229,7 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	 * @param       stream        buffered stream.
 
 	 */
-	bool write_mct_record(grk_mct_data* p_mct_record, BufferedStream* stream);
+	bool write_mct_record(grk_mct_data* p_mct_record, IBufferedStream* stream);
 
 	/**
 	 * Writes the MCC marker (Multiple Component Collection)
@@ -238,7 +238,7 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	 * @param       stream                buffered stream.
 
 	 */
-	bool write_mcc_record(grk_simple_mcc_decorrelation_data* p_mcc_record, BufferedStream* stream);
+	bool write_mcc_record(grk_simple_mcc_decorrelation_data* p_mcc_record, IBufferedStream* stream);
 
 	/**
 	 * Writes the MCO marker (Multiple component transformation ordering)

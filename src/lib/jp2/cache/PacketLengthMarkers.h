@@ -28,7 +28,7 @@ typedef std::map<uint8_t, PL_INFO_VEC*> PL_MAP;
 struct PacketLengthMarkers
 {
 	PacketLengthMarkers(void);
-	PacketLengthMarkers(BufferedStream* strm);
+	PacketLengthMarkers(IBufferedStream* strm);
 	~PacketLengthMarkers(void);
 
 	// decompressor  packet lengths
@@ -57,7 +57,7 @@ struct PacketLengthMarkers
 	uint32_t m_marker_bytes_written;
 	uint32_t m_total_bytes_written;
 	uint64_t m_marker_len_cache;
-	BufferedStream* m_stream;
+	IBufferedStream* m_stream;
 };
 
 } // namespace grk

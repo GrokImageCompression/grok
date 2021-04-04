@@ -173,7 +173,7 @@ void TileInfo::dump(FILE* outputFileStream, uint16_t tileNum)
 		}
 	}
 }
-CodeStreamInfo::CodeStreamInfo(BufferedStream* str)
+CodeStreamInfo::CodeStreamInfo(IBufferedStream* str)
 	: mainHeaderStart(0), mainHeaderEnd(0), numTiles(0), tileInfo(nullptr), stream(str)
 {}
 CodeStreamInfo::~CodeStreamInfo()
@@ -282,7 +282,7 @@ TileLengthMarkers::TileLengthMarkers()
 	: m_markers(new TL_MAP()), m_markerIndex(0), m_markerTilePartIndex(0), m_curr_vec(nullptr),
 	  m_stream(nullptr), streamStart(0)
 {}
-TileLengthMarkers::TileLengthMarkers(BufferedStream* stream) : TileLengthMarkers()
+TileLengthMarkers::TileLengthMarkers(IBufferedStream* stream) : TileLengthMarkers()
 {
 	m_stream = stream;
 }
@@ -416,7 +416,7 @@ TilePartLengthInfo TileLengthMarkers::getNext(void)
 	}
 	return 0;
 }
-bool TileLengthMarkers::skipTo(uint16_t skipTileIndex, BufferedStream* stream, uint64_t firstSotPos)
+bool TileLengthMarkers::skipTo(uint16_t skipTileIndex, IBufferedStream* stream, uint64_t firstSotPos)
 {
 	assert(stream);
 	rewind();

@@ -25,7 +25,7 @@
 namespace grk
 {
 T2Compress::T2Compress(TileProcessor* tileProc) : tileProcessor(tileProc) {}
-bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers, BufferedStream* stream,
+bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers, IBufferedStream* stream,
 								 uint32_t* p_data_written, bool first_poc_tile_part,
 								 uint32_t tp_pos, uint32_t pino)
 {
@@ -117,7 +117,7 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 	}
 	return true;
 }
-bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, BufferedStream* stream,
+bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBufferedStream* stream,
 								uint32_t* packet_bytes_written)
 {
 	assert(stream);

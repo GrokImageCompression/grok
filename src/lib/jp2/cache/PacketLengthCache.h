@@ -25,7 +25,7 @@ class PacketLengthCache
   public:
 	PacketLengthCache(CodingParams* cp);
 	virtual ~PacketLengthCache();
-	PacketLengthMarkers* createMarkers(BufferedStream* strm);
+	PacketLengthMarkers* createMarkers(IBufferedStream* strm);
 	PacketLengthMarkers* getMarkers(void);
 	void deleteMarkers(void);
 	PacketInfo* next(void);

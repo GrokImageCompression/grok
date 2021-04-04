@@ -27,7 +27,7 @@ PacketLengthCache::~PacketLengthCache()
 	delete pltMarkers;
 }
 
-PacketLengthMarkers* PacketLengthCache::createMarkers(BufferedStream* strm)
+PacketLengthMarkers* PacketLengthCache::createMarkers(IBufferedStream* strm)
 {
 	if(!pltMarkers)
 		pltMarkers = strm ? new PacketLengthMarkers(strm) : new PacketLengthMarkers();

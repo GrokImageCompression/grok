@@ -340,7 +340,7 @@ bool BufferedStream::supportsZeroCopy()
 {
 	return isMemStream() && (m_status & GROK_STREAM_STATUS_INPUT);
 }
-uint8_t* BufferedStream::getCurrentPtr()
+uint8_t* BufferedStream::getZeroCopyPtr()
 {
 	return m_buf->currPtr();
 }

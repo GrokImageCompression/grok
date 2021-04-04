@@ -22,12 +22,27 @@ struct IBufferedStream
 {
 	virtual ~IBufferedStream() = default;
 
+	virtual bool supportsZeroCopy() = 0;
+	virtual uint8_t* getZeroCopyPtr() = 0;
+	/**
+	 * Reads some bytes from the stream.
+	 * @param		p_buffer	pointer to the data buffer
+	 * 							that will receive the data.
+	 * 							If null, then a zero copy read
+	 * 							is performed
+	 * @param		p_size		number of bytes to read.
+
+	 * @return		the number of bytes read
+	 */
+	virtual size_t read(uint8_t* p_buffer, size_t p_size) = 0;
+
 	// low level write methods
-	virtual bool writeByte(uint8_t value) = 0;
 	virtual bool writeShort(uint16_t value) = 0;
 	virtual bool write24(uint32_t value) = 0;
 	virtual bool writeInt(uint32_t value) = 0;
+	virtual bool write64(uint64_t value)=0;
 
+	virtual bool writeByte(uint8_t value) = 0;
 	/**
 	 * Write bytes to the stream.
 	 * @param		p_buffer	pointer to the data buffer to be written.
