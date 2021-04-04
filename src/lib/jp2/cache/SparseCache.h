@@ -37,6 +37,28 @@ class SparseCache
 			delete[] ch.second;
 		}
 	}
+
+	T* tryGet(uint64_t index)
+	{
+		uint64_t chunkIndex = index / m_chunkSize;
+		uint64_t itemIndex = index % m_chunkSize;
+		if(m_currChunk == nullptr || (chunkIndex != m_currChunkIndex))
+		{
+			m_currChunkIndex = chunkIndex;
+			auto iter = chunks.find(chunkIndex);
+			if(iter != chunks.end())
+			{
+				m_currChunk = iter->second;
+			}
+			else
+			{
+				return nullptr;
+			}
+		}
+		return m_currChunk[itemIndex];
+	}
+
+
 	T* get(uint64_t index)
 	{
 		uint64_t chunkIndex = index / m_chunkSize;

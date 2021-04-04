@@ -217,6 +217,10 @@ struct Precinct : public grkRectU32
 	{
 		return getImpl()->dec->get(cblkno);
 	}
+	DecompressCodeblock* tryGetDecompressedBlockPtr(uint64_t cblkno)
+	{
+		return getImpl()->dec->tryGet(cblkno);
+	}
 	grkPointU32 getCblkExpn(void)
 	{
 		return m_cblk_expn;

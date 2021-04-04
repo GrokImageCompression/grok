@@ -31,13 +31,11 @@ TagTree::TagTree(uint64_t mynumleafsh, uint64_t mynumleafsv)
 	int64_t nplv[32];
 	uint64_t i;
 	int64_t j, k;
-	uint64_t numlvls;
-	uint64_t n;
-
-	numlvls = 0;
+	uint64_t numlvls = 0;
 	nplh[0] = (int64_t)numleafsh;
 	nplv[0] = (int64_t)numleafsv;
 	numnodes = 0;
+	uint64_t n;
 	do
 	{
 		n = (uint64_t)(nplh[numlvls] * nplv[numlvls]);
@@ -107,7 +105,6 @@ bool TagTree::init(uint64_t num_leafs_h, uint64_t num_leafs_v)
 {
 	int64_t nplh[32];
 	int64_t nplv[32];
-
 	if((numleafsh != num_leafs_h) || (numleafsv != num_leafs_v))
 	{
 		numleafsh = num_leafs_h;
@@ -193,7 +190,6 @@ void TagTree::reset()
 void TagTree::setvalue(uint64_t leafno, int64_t value)
 {
 	auto node = &nodes[leafno];
-
 	while(node && node->value > value)
 	{
 		node->value = value;
@@ -204,21 +200,17 @@ void TagTree::setvalue(uint64_t leafno, int64_t value)
 bool TagTree::compress(BitIO* bio, uint64_t leafno, int64_t threshold)
 {
 	TagTreeNode* stk[31];
-	TagTreeNode** stkptr;
-	int64_t low;
-
-	stkptr = stk;
-	auto node = &nodes[leafno];
+	auto stkptr = stk;
+	auto node = nodes + leafno;
 	while(node->parent)
 	{
 		*stkptr++ = node;
 		node = node->parent;
 	}
-
-	low = 0;
+	int64_t low = 0;
 	while(true)
 	{
-		if(low > node->low)
+		if(node->low < low)
 			node->low = low;
 		else
 			low = node->low;
@@ -258,21 +250,18 @@ void TagTree::decompress(BitIO* bio, uint64_t leafno, int64_t threshold, uint8_t
 void TagTree::decodeValue(BitIO* bio, uint64_t leafno, int64_t threshold, uint64_t* value)
 {
 	TagTreeNode* stk[31];
-	TagTreeNode** stkptr;
-	int64_t low;
-
 	*value = tag_tree_uninitialized_node_value;
-	stkptr = stk;
-	auto node = &nodes[leafno];
+	auto stkptr = stk;
+	auto node = nodes + leafno;
 	while(node->parent)
 	{
 		*stkptr++ = node;
 		node = node->parent;
 	}
-	low = 0;
-	for(;;)
+	int64_t low = 0;
+	while(true)
 	{
-		if(low > node->low)
+		if(node->low <  low)
 			node->low = low;
 		else
 			low = node->low;
@@ -280,10 +269,13 @@ void TagTree::decodeValue(BitIO* bio, uint64_t leafno, int64_t threshold, uint64
 		{
 			uint32_t temp = 0;
 			bio->read(&temp, 1);
-			if(temp)
+			if(temp) {
 				node->value = low;
-			else
+				break;
+			}
+			else {
 				++low;
+			}
 		}
 		node->low = low;
 		if(stkptr == stk)

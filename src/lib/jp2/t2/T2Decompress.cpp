@@ -287,11 +287,11 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 					continue;
 				for(uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
 				{
-					uint32_t included = 0, increment = 0;
-					auto cblk = prc->getDecompressedBlockPtr(cblkno);
+					auto cblk = prc->tryGetDecompressedBlockPtr(cblkno);
 
 					/* if cblk not yet included before --> inclusion tagtree */
-					if(!cblk->numlenbits)
+					uint32_t included = 0, increment = 0;
+					if(!cblk || !cblk->numlenbits)
 					{
 						uint64_t value;
 						prc->getInclTree()->decodeValue(bio.get(), cblkno, p_pi->layno + 1, &value);
@@ -314,26 +314,23 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 							GRK_WARN("%s", msg.c_str());
 							tileProcessor->setCorruptPacket();
 						}
-#ifdef DEBUG_LOSSLESS_T2
-						cblk->included = value;
-#endif
 						included = (value <= p_pi->layno) ? 1 : 0;
 					}
 					/* else one bit */
 					else
 					{
 						bio->read(&included, 1);
-#ifdef DEBUG_LOSSLESS_T2
-						cblk->included = included;
-#endif
 					}
 					if(!included)
 					{
-						cblk->numPassesInPacket = 0;
+						if (cblk)
+							cblk->numPassesInPacket = 0;
 						// GRK_INFO("included=%u ", included);
 						continue;
 					}
 					/* if cblk not yet included --> zero-bitplane tagtree */
+					if (!cblk)
+						cblk = prc->getDecompressedBlockPtr(cblkno);
 					if(!cblk->numlenbits)
 					{
 						uint32_t K_msbs = 0;
