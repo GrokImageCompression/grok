@@ -51,23 +51,21 @@ template<typename T> class TagTree
 	 @param numleafsv Height of the array of leafs of the tree
 	 @return a new tag tree if successful, returns nullptr otherwise
 	 */
-	TagTree(uint64_t mynumleafsh, uint64_t mynumleafsv)
+	TagTree(uint32_t mynumleafsh, uint32_t mynumleafsv)
 		: numleafsh(mynumleafsh), numleafsv(mynumleafsv), numnodes(0), nodes(nullptr)
 	{
-		int64_t nplh[32];
-		int64_t nplv[32];
-		uint64_t i;
-		int64_t j, k;
-		uint64_t numlvls = 0;
-		nplh[0] = (int64_t)numleafsh;
-		nplv[0] = (int64_t)numleafsv;
+		uint32_t nplh[32];
+		uint32_t nplv[32];
+		int8_t numlvls = 0;
+		nplh[0] = numleafsh;
+		nplv[0] = numleafsv;
 		numnodes = 0;
 		uint64_t n;
 		do
 		{
-			n = (uint64_t)(nplh[numlvls] * nplv[numlvls]);
-			nplh[numlvls + 1] = (nplh[numlvls] + 1) / 2;
-			nplv[numlvls + 1] = (nplv[numlvls] + 1) / 2;
+			n = (uint64_t)nplh[numlvls] * nplv[numlvls];
+			nplh[numlvls + 1] = (uint32_t)(((uint64_t)nplh[numlvls] + 1) / 2);
+			nplv[numlvls + 1] = (uint32_t)(((uint64_t)nplv[numlvls] + 1) / 2);
 			numnodes += n;
 			++numlvls;
 		} while(n > 1);
@@ -80,14 +78,14 @@ template<typename T> class TagTree
 
 		nodes = new TagTreeNode<T>[numnodes];
 		auto node = nodes;
-		auto parent_node = &nodes[numleafsh * numleafsv];
+		auto parent_node = nodes + (uint64_t)numleafsh * numleafsv;
 		auto parent_node0 = parent_node;
 
-		for(i = 0; i < numlvls - 1; ++i)
+		for(int8_t i = 0; i < numlvls - 1; ++i)
 		{
-			for(j = 0; j < nplv[i]; ++j)
+			for(uint32_t j = 0; j < nplv[i]; ++j)
 			{
-				k = nplh[i];
+				int64_t k = nplh[i];
 				while(--k >= 0)
 				{
 					node->parent = parent_node;
@@ -141,7 +139,7 @@ template<typename T> class TagTree
 	 */
 	void setvalue(uint64_t leafno, T value)
 	{
-		auto node = &nodes[leafno];
+		auto node = nodes + leafno;
 		while(node && node->value > value)
 		{
 			node->value = value;
@@ -197,7 +195,6 @@ template<typename T> class TagTree
 		}
 		return true;
 	}
-
 	/**
 	 Decompress the value of a leaf of the tag tree up to a given threshold
 	 @param bio Pointer to a BIO handle
@@ -242,12 +239,9 @@ template<typename T> class TagTree
 		}
 		*value = node->value;
 	}
-
-
-
   private:
-	uint64_t numleafsh;
-	uint64_t numleafsv;
+	uint32_t numleafsh;
+	uint32_t numleafsv;
 	uint64_t numnodes;
 	TagTreeNode<T>* nodes;
 };
