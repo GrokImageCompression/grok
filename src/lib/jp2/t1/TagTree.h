@@ -52,7 +52,7 @@ template<typename T> class TagTree
 	 @return a new tag tree if successful, returns nullptr otherwise
 	 */
 	TagTree(uint64_t mynumleafsh, uint64_t mynumleafsv)
-		: numleafsh(mynumleafsh), numleafsv(mynumleafsv), numnodes(0), nodes(nullptr), nodes_size(0)
+		: numleafsh(mynumleafsh), numleafsv(mynumleafsv), numnodes(0), nodes(nullptr)
 	{
 		int64_t nplh[32];
 		int64_t nplv[32];
@@ -79,8 +79,6 @@ template<typename T> class TagTree
 		}
 
 		nodes = new TagTreeNode<T>[numnodes];
-		nodes_size = numnodes * sizeof(TagTreeNode<T>);
-
 		auto node = nodes;
 		auto parent_node = &nodes[numleafsh * numleafsv];
 		auto parent_node0 = parent_node;
@@ -123,89 +121,6 @@ template<typename T> class TagTree
 	constexpr T getUninitializedValue(void){
 		return (std::numeric_limits<T>::max)();
 	}
-
-	/**
-	 * Reinitialises a tag tree
-	 *
-	 * @param	num_leafs_h		the width of the array of leafs of the tree
-	 * @param	num_leafs_v		the height of the array of leafs of the tree
-	 * @return	true if successful, false otherwise
-	 */
-	bool init(uint64_t num_leafs_h, uint64_t num_leafs_v)
-	{
-		int64_t nplh[32];
-		int64_t nplv[32];
-		if((numleafsh != num_leafs_h) || (numleafsv != num_leafs_v))
-		{
-			numleafsh = num_leafs_h;
-			numleafsv = num_leafs_v;
-
-			uint64_t num_levels = 0;
-			nplh[0] = (int64_t)num_leafs_h;
-			nplv[0] = (int64_t)num_leafs_v;
-			numnodes = 0;
-			uint64_t n;
-			do
-			{
-				n = (uint64_t)(nplh[num_levels] * nplv[num_levels]);
-				nplh[num_levels + 1] = (nplh[num_levels] + 1) / 2;
-				nplv[num_levels + 1] = (nplv[num_levels] + 1) / 2;
-				numnodes += n;
-				++num_levels;
-			} while(n > 1);
-
-			if(numnodes == 0)
-			{
-				return false;
-			}
-			uint64_t node_size = numnodes * sizeof(TagTreeNode<T>);
-
-			if(node_size > nodes_size)
-			{
-				auto new_nodes = new TagTreeNode<T>[numnodes];
-				for(uint64_t i = 0; i < nodes_size / sizeof(TagTreeNode<T>); ++i)
-					new_nodes[i] = nodes[i];
-				delete[] nodes;
-				nodes = new_nodes;
-				nodes_size = node_size;
-			}
-			auto node = nodes;
-			auto parent_node = &nodes[numleafsh * numleafsv];
-			auto parent_node0 = parent_node;
-
-			for(uint64_t i = 0; i < num_levels - 1; ++i)
-			{
-				for(int64_t j = 0; j < nplv[i]; ++j)
-				{
-					int64_t k = nplh[i];
-					while(--k >= 0)
-					{
-						node->parent = parent_node;
-						++node;
-						if(--k >= 0)
-						{
-							node->parent = parent_node;
-							++node;
-						}
-						++parent_node;
-					}
-					if((j & 1) || j == nplv[i] - 1)
-					{
-						parent_node0 = parent_node;
-					}
-					else
-					{
-						parent_node = parent_node0;
-						parent_node0 += nplh[i];
-					}
-				}
-			}
-			node->parent = 0;
-		}
-		reset();
-		return true;
-	}
-
 	/**
 	 Reset a tag tree (set all leaves to 0)
 	 */
@@ -282,20 +197,6 @@ template<typename T> class TagTree
 		}
 		return true;
 	}
-	/**
-	 Decompress the value of a leaf of the tag tree up to a given threshold
-	 @param bio Pointer to a BIO handle
-	 @param leafno Number that identifies the leaf to decompress
-	 @param threshold Threshold to use when decoding value of the leaf
-	 @param decompressed 1 if the node's value < threshold, 0 otherwise
-	 */
-	void decompress(BitIO* bio, uint64_t leafno, T threshold, uint8_t* decompressed)
-	{
-		T value;
-		decodeValue(bio, leafno, threshold, &value);
-		*decompressed = (value < threshold) ? 1 : 0;
-	}
-
 
 	/**
 	 Decompress the value of a leaf of the tag tree up to a given threshold
@@ -339,7 +240,7 @@ template<typename T> class TagTree
 				break;
 			node = *--stkptr;
 		}
-		*value = (uint64_t)node->value;
+		*value = node->value;
 	}
 
 
@@ -349,7 +250,6 @@ template<typename T> class TagTree
 	uint64_t numleafsv;
 	uint64_t numnodes;
 	TagTreeNode<T>* nodes;
-	uint64_t nodes_size; /* maximum size taken by nodes */
 };
 
 typedef TagTree<uint8_t> TagTreeU8;

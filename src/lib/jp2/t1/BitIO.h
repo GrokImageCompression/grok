@@ -67,8 +67,8 @@ class BitIO : public IBitIO
 		sim_out = doSimulate;
 	}
 
-	void putcommacode(int32_t n);
-	void getcommacode(uint32_t* n);
+	void putcommacode(uint8_t n);
+	void getcommacode(uint8_t* n);
 	void putnumpasses(uint32_t n);
 	void getnumpasses(uint32_t* numpasses);
 

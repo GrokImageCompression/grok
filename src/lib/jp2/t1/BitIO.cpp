@@ -155,14 +155,15 @@ void BitIO::inalign()
 	ct = 0;
 }
 
-void BitIO::putcommacode(int32_t n)
+void BitIO::putcommacode(uint8_t n)
 {
-	while(--n >= 0)
+	int16_t nn = n;
+	while(--nn >= 0)
 		write(1, 1);
 	write(0, 1);
 }
 
-void BitIO::getcommacode(uint32_t* n)
+void BitIO::getcommacode(uint8_t* n)
 {
 	*n = 0;
 	uint32_t temp;

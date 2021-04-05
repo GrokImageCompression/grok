@@ -232,7 +232,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 		{
 			auto cblk = prc->getCompressedBlockPtr(cblkno);
 			auto layer = cblk->layers + layno;
-			uint32_t increment = 0;
+			uint8_t increment = 0;
 			uint32_t nump = 0;
 			uint32_t len = 0;
 
@@ -281,16 +281,15 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 
 				if(pass->term || passno == nb_passes - 1)
 				{
-					increment = (uint32_t)std::max<int32_t>(
-						(int32_t)increment,
-						floorlog2<int32_t>(len) + 1 -
-							((int32_t)cblk->numlenbits + floorlog2<int32_t>(nump)));
+					increment = (uint8_t)std::max<int8_t>(
+						(int8_t)increment,
+						int8_t(floorlog2(len) + 1 -(cblk->numlenbits + floorlog2(nump))));
 					len = 0;
 					nump = 0;
 				}
 				++pass;
 			}
-			bio->putcommacode((int32_t)increment);
+			bio->putcommacode(increment);
 			/* computation of the new Length indicator */
 			cblk->numlenbits += increment;
 
@@ -305,9 +304,9 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 				{
 #ifdef DEBUG_LOSSLESS_T2
 					cblk->packet_length_info.push_back(PacketLengthInfo(
-						len, cblk->numlenbits + (uint32_t)floorlog2<int32_t>((int32_t)nump)));
+						len, cblk->numlenbits + (uint32_t)floorlog2((int32_t)nump)));
 #endif
-					if(!bio->write(len, cblk->numlenbits + (uint32_t)floorlog2<int32_t>(nump)))
+					if(!bio->write(len, cblk->numlenbits + floorlog2(nump)))
 						return false;
 					len = 0;
 					nump = 0;
@@ -649,7 +648,7 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 		{
 			auto cblk = prc->getCompressedBlockPtr(cblkno);
 			auto layer = cblk->layers + layno;
-			uint32_t increment = 0;
+			uint8_t increment = 0;
 			uint32_t nump = 0;
 			uint32_t len = 0, passno;
 			uint32_t nb_passes;
@@ -691,15 +690,15 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 
 				if(pass->term || passno == (cblk->numPassesInPacket + layer->numpasses) - 1)
 				{
-					increment = (uint32_t)std::max<int32_t>(
-						(int32_t)increment,
-						floorlog2<int32_t>(len) + 1 -
-							((int32_t)cblk->numlenbits + floorlog2<int32_t>(nump)));
+					increment = (uint8_t)std::max<int8_t>(
+						(int8_t)increment,
+						int8_t(floorlog2(len) + 1 -
+							(cblk->numlenbits + floorlog2(nump))));
 					len = 0;
 					nump = 0;
 				}
 			}
-			bio->putcommacode((int32_t)increment);
+			bio->putcommacode(increment);
 			/* computation of the new Length indicator */
 			cblk->numlenbits += increment;
 			/* insertion of the codeword segment length */
@@ -710,7 +709,7 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 				len += pass->len;
 				if(pass->term || passno == (cblk->numPassesInPacket + layer->numpasses) - 1)
 				{
-					if(!bio->write(len, cblk->numlenbits + (uint32_t)floorlog2<int32_t>(nump)))
+					if(!bio->write(len, cblk->numlenbits + floorlog2(nump)))
 						return false;
 					len = 0;
 					nump = 0;

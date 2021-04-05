@@ -116,7 +116,7 @@ uint32_t PacketLengthMarkers::write()
 
 			// write from MSB down to LSB
 			uint32_t val = *val_iter;
-			uint32_t numbits = floorlog2<uint32_t>(val) + 1;
+			uint32_t numbits = floorlog2(val) + 1;
 			uint32_t numbytes = (numbits + 6) / 7;
 			assert(numbytes <= 5);
 

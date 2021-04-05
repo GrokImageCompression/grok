@@ -120,12 +120,6 @@ struct PrecinctImpl
 					GRK_UNUSED(e);
 					GRK_WARN("No incltree created.");
 				}
-				if(incltree && !incltree->init(grid_width, grid_height))
-				{
-					GRK_WARN("Failed to re-initialize incltree.");
-					delete incltree;
-					incltree = nullptr;
-				}
 			}
 			return incltree;
 		}
@@ -149,12 +143,6 @@ struct PrecinctImpl
 				{
 					GRK_UNUSED(e);
 					GRK_WARN("No imsbtree created.");
-				}
-				if(imsbtree && !imsbtree->init(grid_width, grid_height))
-				{
-					GRK_WARN("Failed to re-initialize imsbtree.");
-					delete imsbtree;
-					imsbtree = nullptr;
 				}
 			}
 			return imsbtree;

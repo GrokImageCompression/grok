@@ -77,6 +77,7 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/MemStream.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/MemStream.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/grk_intmath.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/grk_intmath.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/util.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/util.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/CPUArch.h

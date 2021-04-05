@@ -238,8 +238,8 @@ void param_qcd::generate(uint8_t guard_bits, uint32_t decomps, bool is_reversibl
 			}
 			uint32_t step = (uint32_t)floor(stepsize * 8192.0);
 			int32_t p, n;
-			p = (int32_t)floorlog2<uint32_t>(step) - 13;
-			n = 11 - (int32_t)floorlog2<uint32_t>(step);
+			p = floorlog2(step) - 13;
+			n = 11 - floorlog2(step);
 			uint32_t mant = (n < 0 ? step >> -n : step << n) & 0x7ff;
 			int32_t expn = (int32_t)(max_bit_depth + gain) - p;
 			assert(expn >= 0);

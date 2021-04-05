@@ -798,7 +798,7 @@ double T1::compress_cblk(cblk_enc* cblk, uint32_t max, uint8_t orientation, uint
 	cblk->numbps = 0;
 	if(max)
 	{
-		uint8_t temp = uint8_t(floorlog2<uint32_t>(max) + 1);
+		uint8_t temp = floorlog2(max) + 1;
 		if(temp <= T1_NMSEDEC_FRACBITS)
 			cblk->numbps = 0;
 		else

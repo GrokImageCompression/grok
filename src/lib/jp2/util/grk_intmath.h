@@ -54,16 +54,9 @@ static inline uint32_t floordivpow2(uint32_t a, uint32_t b)
  @param  a 32 bit integer
  @return log2(a)
  */
-template<typename T>
-T floorlog2(uint32_t a)
-{
-	T l;
-	for(l = 0; a > 1; l++)
-	{
-		a >>= 1;
-	}
-	return l;
-}
+
+uint8_t floorlog2(uint32_t a);
+
 
 /**
  Multiply two fixed-point numbers.

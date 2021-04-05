@@ -290,7 +290,8 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 					auto cblk = prc->tryGetDecompressedBlockPtr(cblkno);
 
 					/* if cblk not yet included before --> inclusion tagtree */
-					uint32_t included = 0, increment = 0;
+					uint32_t included = 0;
+					uint8_t increment = 0;
 					if(!cblk || !cblk->numlenbits)
 					{
 						uint16_t value;
@@ -338,8 +339,8 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 
 						// see Taubman + Marcellin page 388
 						// loop below stops at (# of missing bit planes  + 1)
-						prc->getImsbTree()->decompress(bio.get(), cblkno, K_msbs, &value);
-						while(!value)
+						prc->getImsbTree()->decodeValue(bio.get(), cblkno, K_msbs, &value);
+						while(value >= K_msbs)
 						{
 							++K_msbs;
 							if (K_msbs > maxBitPlanesGRK){
@@ -348,7 +349,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 										K_msbs, maxBitPlanesGRK);
 								break;
 							}
-							prc->getImsbTree()->decompress(bio.get(), cblkno, K_msbs, &value);
+							prc->getImsbTree()->decodeValue(bio.get(), cblkno, K_msbs, &value);
 						}
 						assert(K_msbs >= 1);
 						K_msbs--;
@@ -420,7 +421,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 								(int32_t)(seg->maxpasses - seg->numpasses), blockPassesInPacket);
 						}
 						uint32_t bits_to_read =
-							cblk->numlenbits + floorlog2<uint32_t>(seg->numPassesInPacket);
+							cblk->numlenbits + floorlog2(seg->numPassesInPacket);
 						if(bits_to_read > 32)
 						{
 							GRK_ERROR("readPacketHeader: too many bits in segment length ");
@@ -432,7 +433,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 #ifdef DEBUG_LOSSLESS_T2
 						cblk->packet_length_info.push_back(PacketLengthInfo(
 							seg->numBytesInPacket,
-							cblk->numlenbits + floorlog2<uint32_t>(seg->numPassesInPacket)));
+							cblk->numlenbits + floorlog2(seg->numPassesInPacket)));
 #endif
 						/*
 						 GRK_INFO(

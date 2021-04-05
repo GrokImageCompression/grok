@@ -528,8 +528,8 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 			/* 0 => one precinct || 1 => custom precinct  */
 			tccp->csty = parameters->csty & J2K_CP_CSTY_PRT;
 			tccp->numresolutions = parameters->numresolution;
-			tccp->cblkw = (uint8_t)floorlog2<uint32_t>(parameters->cblockw_init);
-			tccp->cblkh = (uint8_t)floorlog2<uint32_t>(parameters->cblockh_init);
+			tccp->cblkw = floorlog2(parameters->cblockw_init);
+			tccp->cblkh = floorlog2(parameters->cblockh_init);
 			tccp->cblk_sty = parameters->cblk_sty;
 			tccp->qmfbid = parameters->irreversible ? 0 : 1;
 			tccp->qntsty = parameters->irreversible ? J2K_CCP_QNTSTY_SEQNT : J2K_CCP_QNTSTY_NOQNT;
@@ -554,7 +554,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 						else
 						{
 							tccp->precinctWidthExp[it_res] =
-								floorlog2<uint32_t>(parameters->prcw_init[p]);
+								floorlog2(parameters->prcw_init[p]);
 						}
 						if(parameters->prch_init[p] < 1)
 						{
@@ -563,7 +563,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 						else
 						{
 							tccp->precinctHeightExp[it_res] =
-								floorlog2<uint32_t>(parameters->prch_init[p]);
+								floorlog2(parameters->prch_init[p]);
 						}
 					}
 					else
@@ -579,7 +579,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 						}
 						else
 						{
-							tccp->precinctWidthExp[it_res] = floorlog2<uint32_t>(size_prcw);
+							tccp->precinctWidthExp[it_res] = floorlog2(size_prcw);
 						}
 						if(size_prch < 1)
 						{
@@ -587,7 +587,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 						}
 						else
 						{
-							tccp->precinctHeightExp[it_res] = floorlog2<uint32_t>(size_prch);
+							tccp->precinctHeightExp[it_res] = floorlog2(size_prch);
 						}
 					}
 					p++;
