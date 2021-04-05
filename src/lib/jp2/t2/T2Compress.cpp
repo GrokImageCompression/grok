@@ -26,7 +26,7 @@ namespace grk
 {
 T2Compress::T2Compress(TileProcessor* tileProc) : tileProcessor(tileProc) {}
 bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers, IBufferedStream* stream,
-								 uint32_t* p_data_written, bool first_poc_tile_part,
+								 uint32_t* tileBytesWritten, bool first_poc_tile_part,
 								 uint32_t tp_pos, uint32_t pino)
 {
 	auto cp = tileProcessor->m_cp;
@@ -50,7 +50,7 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers, IBuffere
 			{
 				return false;
 			}
-			*p_data_written += nb_bytes;
+			*tileBytesWritten += nb_bytes;
 			tilePtr->numProcessedPackets++;
 		}
 	}
@@ -58,17 +58,17 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers, IBuffere
 	return true;
 }
 bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
-										 uint32_t* lengthOfAllPackets, uint32_t max_len,
+										 uint32_t* allPacketsBytes, uint32_t maxBytes,
 										 uint32_t tp_pos, PacketLengthMarkers* markers)
 {
-	assert(lengthOfAllPackets);
+	assert(allPacketsBytes);
 	auto cp = tileProcessor->m_cp;
 	auto image = tileProcessor->headerImage;
 	auto tcp = cp->tcps + tile_no;
 	uint32_t pocno = (cp->rsiz == GRK_PROFILE_CINEMA_4K) ? 2 : 1;
 	uint32_t max_comp = cp->m_coding_params.m_enc.m_max_comp_size > 0 ? image->numcomps : 1;
 	PacketManager packetManager(true, image, cp, tile_no, THRESH_CALC, tileProcessor);
-	*lengthOfAllPackets = 0;
+	*allPacketsBytes = 0;
 
 	tileProcessor->getPacketTracker()->clear();
 #ifdef DEBUG_ENCODE_PACKETS
@@ -77,7 +77,7 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 	// todo: assume CPRL progression, why ???
 	for(uint32_t compno = 0; compno < max_comp; ++compno)
 	{
-		uint64_t comp_len = 0;
+		uint64_t componentBytes = 0;
 		for(uint32_t poc = 0; poc < pocno; ++poc)
 		{
 			auto current_pi = packetManager.getPacketIter(poc);
@@ -96,19 +96,19 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 				{
 					uint32_t bytesInPacket = 0;
 
-					if(!compressPacketSimulate(tcp, current_pi, &bytesInPacket, max_len, markers))
+					if(!compressPacketSimulate(tcp, current_pi, &bytesInPacket, maxBytes, markers))
 					{
 						return false;
 					}
 
-					comp_len += bytesInPacket;
-					max_len -= bytesInPacket;
-					*lengthOfAllPackets += bytesInPacket;
+					componentBytes += bytesInPacket;
+					maxBytes -= bytesInPacket;
+					*allPacketsBytes += bytesInPacket;
 				}
 			}
 			if(cp->m_coding_params.m_enc.m_max_comp_size)
 			{
-				if(comp_len > cp->m_coding_params.m_enc.m_max_comp_size)
+				if(componentBytes > cp->m_coding_params.m_enc.m_max_comp_size)
 				{
 					return false;
 				}
