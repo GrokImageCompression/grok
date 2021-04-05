@@ -64,7 +64,7 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* p_header_data, u
 	assert(p_header_data != nullptr);
 
 	uint32_t i;
-	uint32_t nb_comp;
+	uint32_t numComps;
 	uint32_t nb_comp_remain;
 	uint32_t remaining_size;
 	uint16_t nb_tiles;
@@ -81,7 +81,7 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* p_header_data, u
 	}
 
 	remaining_size = header_size - 36U;
-	nb_comp = remaining_size / 3;
+	numComps = remaining_size / 3;
 	nb_comp_remain = remaining_size % 3;
 	if(nb_comp_remain != 0)
 	{
@@ -149,11 +149,11 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* p_header_data, u
 		return false;
 	}
 
-	if(image->numcomps != nb_comp)
+	if(image->numcomps != numComps)
 	{
 		GRK_ERROR("SIZ marker: signalled number of components is not compatible with remaining "
 				  "number of components ( %u vs %u)",
-				  image->numcomps, nb_comp);
+				  image->numcomps, numComps);
 		return false;
 	}
 

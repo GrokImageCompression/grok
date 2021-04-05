@@ -72,12 +72,12 @@ class mct
 	 @param p_coding_data    MCT data
 	 @param n                size of components
 	 @param p_data           components
-	 @param nb_comp          nb of components (i.e. size of p_data)
+	 @param numComps          nb of components (i.e. size of p_data)
 	 @param is_signed        indicates if the data is signed
 	 @return false if function encounter a problem, true otherwise
 	 */
 	static bool compress_custom(uint8_t* p_coding_data, uint64_t n, uint8_t** p_data,
-								uint32_t nb_comp, uint32_t is_signed);
+								uint32_t numComps, uint32_t is_signed);
 	/**
 	 Custom MCT decode
 	 @param pDecodingData    MCT data

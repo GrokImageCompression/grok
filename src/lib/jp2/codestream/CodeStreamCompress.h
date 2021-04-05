@@ -144,7 +144,7 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	 *
 	 * @param       codeStream          JPEG 2000 code stream
 	 */
-	bool write_poc();
+	bool writePoc();
 
 	/**
 	 * End writing the updated tlm.

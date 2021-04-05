@@ -1161,8 +1161,8 @@ bool CodeStreamDecompress::read_poc(uint8_t* p_header_data, uint16_t header_size
 			maxNumResLevels = tcp->tccps[i].numresolutions;
 	}
 
-	uint16_t nb_comp = image->numcomps;
-	comp_room = (nb_comp <= 256) ? 1 : 2;
+	uint16_t numComps = image->numcomps;
+	comp_room = (numComps <= 256) ? 1 : 2;
 	chunk_size = 5 + 2 * comp_room;
 	current_poc_nb = header_size / chunk_size;
 	current_poc_remaining = header_size % chunk_size;
@@ -1219,7 +1219,7 @@ bool CodeStreamDecompress::read_poc(uint8_t* p_header_data, uint16_t header_size
 		/* CEpoc_i */
 		grk_read<uint16_t>(p_header_data, &(current_prog->compE), comp_room);
 		p_header_data += comp_room;
-		current_prog->compE = std::min<uint16_t>(current_prog->compE, nb_comp);
+		current_prog->compE = std::min<uint16_t>(current_prog->compE, numComps);
 		if(current_prog->compE <= current_prog->compS)
 		{
 			GRK_ERROR("read_poc: invalid POC end component %d", current_prog->compS);
@@ -1249,13 +1249,13 @@ bool CodeStreamDecompress::read_poc(uint8_t* p_header_data, uint16_t header_size
 bool CodeStreamDecompress::read_crg(uint8_t* p_header_data, uint16_t header_size)
 {
 	assert(p_header_data != nullptr);
-	uint32_t nb_comp = getHeaderImage()->numcomps;
-	if(header_size != nb_comp * 4)
+	uint32_t numComps = getHeaderImage()->numcomps;
+	if(header_size != numComps * 4)
 	{
 		GRK_ERROR("Error reading CRG marker");
 		return false;
 	}
-	for(uint32_t i = 0; i < nb_comp; ++i)
+	for(uint32_t i = 0; i < numComps; ++i)
 	{
 		auto comp = getHeaderImage()->comps + i;
 		// Xcrg_i
@@ -1492,8 +1492,8 @@ bool CodeStreamDecompress::read_rgn(uint8_t* p_header_data, uint16_t header_size
 	uint32_t comp_no, roi_sty;
 	assert(p_header_data != nullptr);
 	auto image = getHeaderImage();
-	uint32_t nb_comp = image->numcomps;
-	uint32_t comp_room = (nb_comp <= 256) ? 1 : 2;
+	uint32_t numComps = image->numcomps;
+	uint32_t comp_room = (numComps <= 256) ? 1 : 2;
 
 	if(header_size != 2 + comp_room)
 	{
@@ -1515,10 +1515,10 @@ bool CodeStreamDecompress::read_rgn(uint8_t* p_header_data, uint16_t header_size
 	}
 
 	/* testcase 3635.pdf.asan.77.2930 */
-	if(comp_no >= nb_comp)
+	if(comp_no >= numComps)
 	{
 		GRK_ERROR("bad component number in RGN (%u is >= number of components %u)", comp_no,
-				  nb_comp);
+				  numComps);
 		return false;
 	}
 
@@ -1676,11 +1676,11 @@ bool CodeStreamDecompress::read_cbd(uint8_t* p_header_data, uint16_t header_size
 		return false;
 	}
 	/* Ncbd */
-	uint16_t nb_comp;
-	grk_read<uint16_t>(p_header_data, &nb_comp);
+	uint16_t numComps;
+	grk_read<uint16_t>(p_header_data, &numComps);
 	p_header_data += 2;
 
-	if(nb_comp != getHeaderImage()->numcomps)
+	if(numComps != getHeaderImage()->numcomps)
 	{
 		GRK_ERROR("Crror reading CBD marker");
 		return false;

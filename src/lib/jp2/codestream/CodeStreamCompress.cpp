@@ -848,7 +848,7 @@ bool CodeStreamCompress::init_header_writing(void)
 	if(m_cp.m_coding_params.m_enc.writeTLM)
 		m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_tlm_begin, this));
 	if(m_cp.rsiz == GRK_PROFILE_CINEMA_4K)
-		m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_poc, this));
+		m_procedure_list.push_back(std::bind(&CodeStreamCompress::writePoc, this));
 
 	m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_regions, this));
 	m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_com, this));
@@ -869,7 +869,6 @@ bool CodeStreamCompress::init_header_writing(void)
 bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 {
 	uint16_t currentTileIndex = tileProcessor->m_tileIndex;
-	auto cp = &m_cp;
 	bool firstTilePart = (tileProcessor->m_tilePartIndex == 0);
 	// 1. write SOT
 	SOTMarker sot;
@@ -879,16 +878,16 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 	// 2. write POC (only in first tile part)
 	if(firstTilePart)
 	{
-		if(!GRK_IS_CINEMA(cp->rsiz))
+		if(!GRK_IS_CINEMA(m_cp.rsiz))
 		{
-			if(cp->tcps[currentTileIndex].numpocs)
+			if(m_cp.tcps[currentTileIndex].numpocs)
 			{
 				auto tcp = m_cp.tcps + currentTileIndex;
 				auto image = m_headerImage;
-				uint32_t nb_comp = image->numcomps;
-				if(!write_poc())
+				uint32_t numComps = image->numcomps;
+				if(!writePoc())
 					return false;
-				tilePartBytesWritten += getPocSize(nb_comp, 1 + tcp->numpocs);
+				tilePartBytesWritten += getPocSize(numComps, 1 + tcp->numpocs);
 			}
 		}
 		/* set numProcessedPackets to zero when writing the first tile part
@@ -1294,16 +1293,16 @@ bool CodeStreamCompress::compare_qcc(uint32_t first_comp_no, uint32_t second_com
 {
 	return compare_SQcd_SQcc(first_comp_no, second_comp_no);
 }
-bool CodeStreamCompress::write_poc()
+bool CodeStreamCompress::writePoc()
 {
 	auto tcp = &m_cp.tcps[0];
 	auto tccp = &tcp->tccps[0];
 	auto image = getHeaderImage();
-	uint16_t nb_comp = image->numcomps;
-	uint32_t nb_poc = tcp->numpocs + 1;
-	uint32_t poc_room = (nb_comp <= 256) ? 1 : 2;
+	uint16_t numComps = image->numcomps;
+	uint32_t numPocs = tcp->numpocs + 1;
+	uint32_t pocRoom = (numComps <= 256) ? 1 : 2;
 
-	auto poc_size = getPocSize(nb_comp, 1 + tcp->numpocs);
+	auto poc_size = getPocSize(numComps, 1 + tcp->numpocs);
 
 	/* POC  */
 	if(!m_stream->writeShort(J2K_MS_POC))
@@ -1313,25 +1312,33 @@ bool CodeStreamCompress::write_poc()
 	if(!m_stream->writeShort((uint16_t)(poc_size - 2)))
 		return false;
 
-	for(uint32_t i = 0; i < nb_poc; ++i)
+	for(uint32_t i = 0; i < numPocs; ++i)
 	{
 		auto current_prog = tcp->progressionOrderChange + i;
 		/* RSpoc_i */
-		if(!m_stream->writeByte((uint8_t)current_prog->resS))
+		if(!m_stream->writeByte(current_prog->resS))
 			return false;
 		/* CSpoc_i */
-		if(!m_stream->writeByte((uint8_t)current_prog->compS))
-			return false;
+		if(pocRoom == 2)
+		{
+			if(!m_stream->writeShort(current_prog->compS))
+				return false;
+		}
+		else
+		{
+			if(!m_stream->writeByte((uint8_t)current_prog->compS))
+				return false;
+		}
 		/* LYEpoc_i */
-		if(!m_stream->writeShort((uint16_t)current_prog->layE))
+		if(!m_stream->writeShort(current_prog->layE))
 			return false;
 		/* REpoc_i */
-		if(!m_stream->writeByte((uint8_t)current_prog->resE))
+		if(!m_stream->writeByte(current_prog->resE))
 			return false;
 		/* CEpoc_i */
-		if(poc_room == 2)
+		if(pocRoom == 2)
 		{
-			if(!m_stream->writeShort((uint16_t)current_prog->compE))
+			if(!m_stream->writeShort(current_prog->compE))
 				return false;
 		}
 		else
@@ -1347,7 +1354,7 @@ bool CodeStreamCompress::write_poc()
 		 * components and resolutions*/
 		current_prog->layE = std::min<uint16_t>(current_prog->layE, tcp->numlayers);
 		current_prog->resE = std::min<uint8_t>(current_prog->resE, tccp->numresolutions);
-		current_prog->compE = std::min<uint16_t>(current_prog->compE, nb_comp);
+		current_prog->compE = std::min<uint16_t>(current_prog->compE, numComps);
 	}
 
 	return true;
@@ -1694,11 +1701,11 @@ bool CodeStreamCompress::write_SQcd_SQcc(uint32_t comp_no)
 
 	return tccp->quant.write_SQcd_SQcc(this, comp_no, m_stream);
 }
-uint16_t CodeStreamCompress::getPocSize(uint32_t nb_comp, uint32_t nb_poc)
+uint16_t CodeStreamCompress::getPocSize(uint32_t numComps, uint32_t numPocs)
 {
-	uint32_t poc_room = (nb_comp <= 256) ? 1 : 2;
+	uint32_t pocRoom = (numComps <= 256) ? 1 : 2;
 
-	return (uint16_t)(4 + (5 + 2 * poc_room) * nb_poc);
+	return (uint16_t)(4 + (5 + 2 * pocRoom) * numPocs);
 }
 bool CodeStreamCompress::check_poc_val(const grk_progression* p_pocs, uint32_t nb_pocs,
 									   uint32_t nb_resolutions, uint32_t num_comps,
