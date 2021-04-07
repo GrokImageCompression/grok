@@ -235,19 +235,16 @@ bool TileProcessor::doCompress(void)
 }
 bool TileProcessor::writeTilePartT2(uint32_t* tileBytesWritten)
 {
-	// 4 write PLT for first tile part
+	// write entire PLT marker in first tile part header
 	if(m_tilePartIndex == 0 && packetLengthCache.getMarkers())
-	{
-		uint32_t written = packetLengthCache.getMarkers()->write();
-		*tileBytesWritten += written;
-	}
+		*tileBytesWritten += packetLengthCache.getMarkers()->write();
 
-	// 3 write SOD
+	// write SOD
 	if(!m_stream->writeShort(J2K_MS_SOD))
 		return false;
-
 	*tileBytesWritten += 2;
 
+	// write tile packets
 	return encodeT2(tileBytesWritten);
 }
 /** Returns whether a tile component should be fully decompressed,

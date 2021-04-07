@@ -875,25 +875,21 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 	if(!sot.write(this))
 		return false;
 	uint32_t tilePartBytesWritten = sot_marker_segment_len;
-	// 2. write POC (only in first tile part)
+	// 2. write POC in first tile part)
 	if(firstTilePart)
 	{
+		// note: DCP standard does not allow POC marker
 		if(!GRK_IS_CINEMA(m_cp.rsiz))
 		{
 			if(m_cp.tcps[currentTileIndex].numpocs)
 			{
 				auto tcp = m_cp.tcps + currentTileIndex;
 				auto image = m_headerImage;
-				uint32_t numComps = image->numcomps;
 				if(!writePoc())
 					return false;
-				tilePartBytesWritten += getPocSize(numComps, 1 + tcp->numpocs);
+				tilePartBytesWritten += getPocSize(image->numcomps, 1 + tcp->numpocs);
 			}
 		}
-		/* set numProcessedPackets to zero when writing the first tile part
-		 * (numProcessedPackets is used for SOP markers)
-		 */
-		tileProcessor->tile->numProcessedPackets = 0;
 	}
 	// 3. compress tile part
 	if(!tileProcessor->writeTilePartT2(&tilePartBytesWritten))
