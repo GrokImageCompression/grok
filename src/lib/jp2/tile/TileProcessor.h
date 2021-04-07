@@ -144,7 +144,7 @@ struct TileProcessor
 	bool dwt_encode();
 	void t1_encode();
 	bool encodeT2(uint32_t* packet_bytes_written);
-	void rateAllocate(void);
+	void rateAllocate(uint32_t *allPacketsBytes);
 	bool layerNeedsRateControl(uint32_t layno);
 	bool makeSingleLosslessLayer();
 	void makeLayerFinal(uint32_t layno);

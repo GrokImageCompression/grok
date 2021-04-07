@@ -875,7 +875,7 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 	if(!sot.write(this))
 		return false;
 	uint32_t tilePartBytesWritten = sot_marker_segment_len;
-	// 2. write POC in first tile part)
+	// 2. write POC marker to first tile part
 	if(firstTilePart)
 	{
 		// note: DCP standard does not allow POC marker
@@ -891,13 +891,14 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 			}
 		}
 	}
-	// 3. compress tile part
+	// 3. compress tile part and write to stream
 	if(!tileProcessor->writeTilePartT2(&tilePartBytesWritten))
 	{
 		GRK_ERROR("Cannot compress tile");
 		return false;
 	}
-	/* 4. write Psot in SOT marker */
+	// 4. now that we know the tile part length, we can
+	// write the Psot in the SOT marker
 	if(!sot.write_psot(this, tilePartBytesWritten))
 		return false;
 	// 5. update TLM

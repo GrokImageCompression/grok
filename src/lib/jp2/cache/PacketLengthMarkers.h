@@ -40,12 +40,12 @@ struct PacketLengthMarkers
 	// compressor packet lengths
 	void writeInit(void);
 	void writeNext(uint32_t len);
-	uint32_t write();
+	uint32_t write(bool simulate);
 
   private:
 	void readInitIndex(uint8_t index);
 	void readNext(uint8_t Iplm);
-	void writeMarkerHeader(void);
+	void tryWriteMarkerHeader(bool simulate);
 	void writeMarkerLength();
 	void writeIncrement(uint32_t bytes);
 

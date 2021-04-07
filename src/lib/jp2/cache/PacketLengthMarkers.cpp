@@ -79,40 +79,48 @@ void PacketLengthMarkers::writeMarkerLength()
 	assert(m_marker_bytes_written == 0);
 }
 // check if we need to start a new marker
-void PacketLengthMarkers::writeMarkerHeader()
+void PacketLengthMarkers::tryWriteMarkerHeader(bool simulate)
 {
 	// 5 bytes worst-case to store a packet length
 	if(m_total_bytes_written == 0 ||
 	   (m_marker_bytes_written >= available_packet_len_bytes_per_plt - 5))
 	{
 		// complete current marker
-		writeMarkerLength();
+		if (!simulate)
+			writeMarkerLength();
 
 		// begin new marker
-		m_stream->writeShort(J2K_MS_PLT);
+		if (!simulate)
+			m_stream->writeShort(J2K_MS_PLT);
 		writeIncrement(2);
 
 		// cache location of marker length and skip over
-		m_marker_len_cache = m_stream->tell();
-		m_stream->skip(2);
+		if (!simulate) {
+			m_marker_len_cache = m_stream->tell();
+			m_stream->skip(2);
+		}
 		writeIncrement(2);
 	}
 }
-uint32_t PacketLengthMarkers::write()
+uint32_t PacketLengthMarkers::write(bool simulate)
 {
-	writeMarkerHeader();
+	m_total_bytes_written = 0;
+	m_marker_bytes_written = 0;
+	// write first marker header
+	tryWriteMarkerHeader(simulate);
 	for(auto map_iter = m_markers->begin(); map_iter != m_markers->end(); ++map_iter)
 	{
 		// write index
-		m_stream->writeByte(map_iter->first);
+		if (!simulate)
+			m_stream->writeByte(map_iter->first);
 		writeIncrement(1);
 
 		// write marker lengths
 		for(auto val_iter = map_iter->second->begin(); val_iter != map_iter->second->end();
 			++val_iter)
 		{
-			// check if we need to start a new PLT marker segment
-			writeMarkerHeader();
+			// check if we need to start a new PLT marker
+			tryWriteMarkerHeader(simulate);
 
 			// write from MSB down to LSB
 			uint32_t val = *val_iter;
@@ -120,28 +128,31 @@ uint32_t PacketLengthMarkers::write()
 			uint32_t numbytes = (numbits + 6) / 7;
 			assert(numbytes <= 5);
 
-			// write period
-			uint8_t temp[5];
-			int32_t counter = (int32_t)(numbytes - 1);
-			temp[counter--] = (val & 0x7F);
-			val = (uint32_t)(val >> 7);
-
-			// write commas (backwards from LSB to MSB)
-			while(val)
-			{
-				uint8_t b = (uint8_t)((val & 0x7F) | 0x80);
-				temp[counter--] = b;
+			if (!simulate) {
+				// write period
+				uint8_t temp[5];
+				int32_t counter = (int32_t)(numbytes - 1);
+				temp[counter--] = (val & 0x7F);
 				val = (uint32_t)(val >> 7);
+
+				// write commas (backwards from LSB to MSB)
+				while(val)
+				{
+					uint8_t b = (uint8_t)((val & 0x7F) | 0x80);
+					temp[counter--] = b;
+					val = (uint32_t)(val >> 7);
+				}
+				assert(counter == -1);
+				uint32_t written = (uint32_t)m_stream->writeBytes(temp, numbytes);
+				assert(written == numbytes);
+				(void)written;
 			}
-			assert(counter == -1);
-			uint32_t written = (uint32_t)m_stream->writeBytes(temp, numbytes);
-			assert(written == numbytes);
-			(void)written;
 			writeIncrement(numbytes);
 		}
 	}
 	// write final marker length
-	writeMarkerLength();
+	if (!simulate)
+		writeMarkerLength();
 	return m_total_bytes_written;
 }
 

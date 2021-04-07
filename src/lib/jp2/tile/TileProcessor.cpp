@@ -228,7 +228,8 @@ bool TileProcessor::doCompress(void)
 			GRK_WARN("PLT marker generation disabled due to rate control.");
 	}
 	// 2. rate control
-	rateAllocate();
+	uint32_t allPacketsBytes = 0;
+	rateAllocate(&allPacketsBytes);
 	m_packetTracker.clear();
 
 	return true;
@@ -237,7 +238,7 @@ bool TileProcessor::writeTilePartT2(uint32_t* tileBytesWritten)
 {
 	// write entire PLT marker in first tile part header
 	if(m_tilePartIndex == 0 && packetLengthCache.getMarkers())
-		*tileBytesWritten += packetLengthCache.getMarkers()->write();
+		*tileBytesWritten += packetLengthCache.getMarkers()->write(false);
 
 	// write SOD
 	if(!m_stream->writeShort(J2K_MS_SOD))
@@ -905,23 +906,19 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 	return true;
 }
 // RATE CONTROL ////////////////////////////////////////////
-void TileProcessor::rateAllocate()
+void TileProcessor::rateAllocate(uint32_t *allPacketsBytes)
 {
-	if(!m_cp->m_coding_params.m_enc.m_disto_alloc && !m_cp->m_coding_params.m_enc.m_fixed_quality)
-		return;
-
-	uint32_t allPacketsBytes = 0;
 	// rate control by rate/distortion or fixed quality
 	switch(m_cp->m_coding_params.m_enc.rateControlAlgorithm)
 	{
 		case 0:
-			pcrdBisectSimple(&allPacketsBytes);
+			pcrdBisectSimple(allPacketsBytes);
 			break;
 		case 1:
-			pcrdBisectFeasible(&allPacketsBytes);
+			pcrdBisectFeasible(allPacketsBytes);
 			break;
 		default:
-			pcrdBisectFeasible(&allPacketsBytes);
+			pcrdBisectFeasible(allPacketsBytes);
 			break;
 	}
 }
