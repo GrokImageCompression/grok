@@ -1597,8 +1597,8 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 		}
 		if(tpArg.isSet())
 		{
-			parameters->tp_flag = tpArg.getValue();
-			parameters->tp_on = 1;
+			parameters->newTilePartProgressionDivider = tpArg.getValue();
+			parameters->enableTilePartGeneration = 1;
 		}
 	}
 	catch(TCLAP::ArgException& e) // catch any exceptions

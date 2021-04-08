@@ -681,7 +681,7 @@ uint8_t* FileFormatCompress::write_ihdr(uint32_t* p_nb_bytes_written)
 bool FileFormatCompress::startCompress(void)
 {
 	/* customization of the validation */
-	init_compress_validation();
+	init_compressValidation();
 
 	/* validation of the parameters codec */
 	if(!exec(m_validation_list))
@@ -948,7 +948,7 @@ void FileFormatCompress::init_end_header_writing(void)
 {
 	m_procedure_list->push_back(std::bind(&FileFormatCompress::write_jp2c, this));
 }
-void FileFormatCompress::init_compress_validation(void)
+void FileFormatCompress::init_compressValidation(void)
 {
 	m_validation_list->push_back(std::bind(&FileFormatCompress::default_validation, this));
 }

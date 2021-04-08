@@ -690,13 +690,13 @@ cleanup:
 bool CodeStreamDecompress::copy_default_tcp(void)
 {
 	auto image = m_headerImage;
-	uint32_t nb_tiles = m_cp.t_grid_height * m_cp.t_grid_width;
+	uint32_t numTiles = m_cp.t_grid_height * m_cp.t_grid_width;
 	uint32_t tccp_size = image->numcomps * (uint32_t)sizeof(TileComponentCodingParams);
 	auto default_tcp = m_decompressorState.m_default_tcp;
 	uint32_t mct_size = (uint32_t)image->numcomps * image->numcomps * (uint32_t)sizeof(float);
 
 	/* For each tile */
-	for(uint32_t i = 0; i < nb_tiles; ++i)
+	for(uint32_t i = 0; i < numTiles; ++i)
 	{
 		auto tcp = m_cp.tcps + i;
 		/* keep the tile-compo coding parameters pointer of the current tile coding parameters*/
@@ -3008,10 +3008,10 @@ void CodeStreamDecompress::dump(uint32_t flag, FILE* outputFileStream)
 	auto cp = getCodingParams();
 	if(flag & GRK_J2K_TCH_INFO)
 	{
-		uint32_t nb_tiles = cp->t_grid_height * cp->t_grid_width;
+		uint32_t numTiles = cp->t_grid_height * cp->t_grid_width;
 		if(getHeaderImage())
 		{
-			for(uint32_t i = 0; i < nb_tiles; ++i)
+			for(uint32_t i = 0; i < numTiles; ++i)
 			{
 				auto tcp = cp->tcps + i;
 				dump_tile_info(tcp, getHeaderImage()->numcomps, outputFileStream);

@@ -216,7 +216,7 @@ struct PacketIter
 	void update_dxy_for_comp(PiComp* comp);
 
 	/** Enabling Tile part generation*/
-	bool tp_on;
+	bool enableTilePartGeneration;
 
 	/** layer step used to localize the packet in the include vector */
 	uint64_t step_l;

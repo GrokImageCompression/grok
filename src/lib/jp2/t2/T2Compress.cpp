@@ -27,14 +27,14 @@ namespace grk
 T2Compress::T2Compress(TileProcessor* tileProc) : tileProcessor(tileProc) {}
 bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers, IBufferedStream* stream,
 								 uint32_t* tileBytesWritten, bool first_poc_tile_part,
-								 uint32_t tp_pos, uint32_t pino)
+								 uint32_t newTilePartProgressionPosition, uint32_t pino)
 {
 	auto cp = tileProcessor->m_cp;
 	auto image = tileProcessor->headerImage;
 	auto tilePtr = tileProcessor->tile;
 	auto tcp = &cp->tcps[tile_no];
 	PacketManager packetManager(true, image, cp, tile_no, FINAL_PASS, tileProcessor);
-	packetManager.enableTilePartGeneration(pino, first_poc_tile_part, tp_pos);
+	packetManager.enableTilePartGeneration(pino, first_poc_tile_part, newTilePartProgressionPosition);
 	auto current_pi = packetManager.getPacketIter(pino);
 	if(current_pi->prog.progression == GRK_PROG_UNKNOWN)
 	{
@@ -59,7 +59,8 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers, IBuffere
 }
 bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 										 uint32_t* allPacketsBytes, uint32_t maxBytes,
-										 uint32_t tp_pos, PacketLengthMarkers* markers)
+										 uint32_t newTilePartProgressionPosition,
+										 PacketLengthMarkers* markers)
 {
 	assert(allPacketsBytes);
 	auto cp = tileProcessor->m_cp;
@@ -73,7 +74,6 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 
 	PacketManager packetManager(true, image, cp, tile_no, THRESH_CALC, tileProcessor);
 	*allPacketsBytes = 0;
-
 	tileProcessor->getPacketTracker()->clear();
 	for(uint32_t compno = 0; compno < max_comp; ++compno)
 	{
@@ -81,9 +81,8 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 		for(uint32_t poc = 0; poc < pocno; ++poc)
 		{
 			auto current_pi = packetManager.getPacketIter(poc);
-			// todo: 1. why is tile part number set to component number ?
-			// todo: 2. why is tile part generation initialized for each progression order change ?
-			packetManager.enableTilePartGeneration(poc, (compno == 0), tp_pos);
+			// todo: 1. why is a new tile part generated for each progression order change ?
+			packetManager.enableTilePartGeneration(poc, (compno == 0), newTilePartProgressionPosition);
 
 			if(current_pi->prog.progression == GRK_PROG_UNKNOWN)
 			{
@@ -95,11 +94,8 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 				if(current_pi->layno < max_layers)
 				{
 					uint32_t bytesInPacket = 0;
-
 					if(!compressPacketSimulate(tcp, current_pi, &bytesInPacket, maxBytes, markers))
-					{
 						return false;
-					}
 
 					componentBytes += bytesInPacket;
 					maxBytes -= bytesInPacket;

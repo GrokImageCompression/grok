@@ -104,7 +104,7 @@ namespace t1_part1
 
 		cblkexp.data = cblk->paddedCompressedStream;
 
-		auto disto = t1->compress_cblk(
+		auto distortion = t1->compress_cblk(
 			&cblkexp, max, block->bandOrientation, block->compno,
 			(uint8_t)((block->tile->comps + block->compno)->numresolutions - 1 - block->resno),
 			block->qmfbid, block->stepsize, block->cblk_sty, block->mct_norms, block->mct_numcomps,
@@ -125,7 +125,7 @@ namespace t1_part1
 		t1->code_block_enc_deallocate(&cblkexp);
 		cblkexp.data = nullptr;
 
-		block->distortion = disto;
+		block->distortion = distortion;
 
 		return true;
 	}

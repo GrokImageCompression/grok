@@ -98,6 +98,7 @@ struct TileProcessor
 	grkRectU32 getUnreducedTileWindow(void);
 	TileCodingParams* getTileCodingParams(void);
 	uint8_t getMaxNumDecompressResolutions(void);
+	IBufferedStream* getStream(void);
 
 	/** index of tile being currently compressed/decompressed */
 	uint16_t m_tileIndex;
@@ -132,7 +133,7 @@ struct TileProcessor
 	IBufferedStream* m_stream;
 	bool m_corrupt_packet;
 	/** position of the tile part flag in progression order*/
-	uint32_t tp_pos;
+	uint32_t newTilePartProgressionPosition;
 	// coding/decoding parameters for this tile
 	TileCodingParams* m_tcp;
 	bool isWholeTileDecompress(uint32_t compno);
@@ -156,6 +157,7 @@ struct TileProcessor
 	GrkImage* m_image;
 	bool m_isCompressor;
 	grkRectU32 unreducedTileWindow;
+	uint32_t compressTileLength;
 };
 
 struct TileProcessorComparator

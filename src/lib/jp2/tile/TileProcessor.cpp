@@ -28,19 +28,23 @@ TileProcessor::TileProcessor(CodeStream* codeStream, IBufferedStream* stream, bo
 	  current_plugin_tile(codeStream->getCurrentPluginTile()),
 	  wholeTileDecompress(isWholeTileDecompress), m_cp(codeStream->getCodingParams()),
 	  packetLengthCache(PacketLengthCache(m_cp)), m_stream(stream), m_corrupt_packet(false),
-	  tp_pos(0), m_tcp(nullptr), truncated(false), m_image(nullptr), m_isCompressor(isCompressor)
+	  newTilePartProgressionPosition(0), m_tcp(nullptr), truncated(false), m_image(nullptr), m_isCompressor(isCompressor),
+	  compressTileLength(0)
 {
 	tile = new Tile();
 	tile->comps = new TileComponent[headerImage->numcomps];
 	tile->numcomps = headerImage->numcomps;
 
-	tp_pos = m_cp->m_coding_params.m_enc.m_tp_pos;
+	newTilePartProgressionPosition = m_cp->m_coding_params.m_enc.newTilePartProgressionPosition;
 }
 TileProcessor::~TileProcessor()
 {
 	delete tile;
 	if(m_image)
 		grk_object_unref(&m_image->obj);
+}
+IBufferedStream* TileProcessor::getStream(void){
+	return m_stream;
 }
 void TileProcessor::generateImage(GrkImage* src_image, Tile* src_tile)
 {
@@ -227,9 +231,14 @@ bool TileProcessor::doCompress(void)
 		else
 			GRK_WARN("PLT marker generation disabled due to rate control.");
 	}
+	compressTileLength = 0;
+
+
+
 	// 2. rate control
 	uint32_t allPacketsBytes = 0;
 	rateAllocate(&allPacketsBytes);
+	compressTileLength += allPacketsBytes;
 	m_packetTracker.clear();
 
 	return true;
@@ -654,7 +663,7 @@ bool TileProcessor::encodeT2(uint32_t* tileBytesWritten)
 								m_stream,
 								tileBytesWritten,
 								m_first_poc_tile_part,
-								tp_pos,
+								newTilePartProgressionPosition,
 								pino))
 	{
 		delete l_t2;
@@ -695,7 +704,7 @@ bool TileProcessor::encodeT2(uint32_t* tileBytesWritten)
 bool TileProcessor::preCompressTile()
 {
 	m_tilePartIndex = 0;
-	numTilePartsTotal = m_cp->tcps[m_tileIndex].m_nb_tile_parts;
+	numTilePartsTotal = m_cp->tcps[m_tileIndex].numTileParts;
 	m_first_poc_tile_part = true;
 
 	/* initialization before tile compressing  */
@@ -705,8 +714,8 @@ bool TileProcessor::preCompressTile()
 	rc = allocWindowBuffers(nullptr);
 	if(!rc)
 		return false;
-	uint32_t nb_tiles = (uint32_t)m_cp->t_grid_height * m_cp->t_grid_width;
-	bool transfer_image_to_tile = (nb_tiles == 1);
+	uint32_t numTiles = (uint32_t)m_cp->t_grid_height * m_cp->t_grid_width;
+	bool transfer_image_to_tile = (numTiles == 1);
 
 	/* if we only have one tile, then simply set tile component data equal to
 	 * image component data. Otherwise, allocate tile data and copy */
@@ -926,7 +935,7 @@ void TileProcessor::rateAllocate(uint32_t *allPacketsBytes)
  if
  - r xx, yy, zz, 0   (disto_alloc == 1 and rates == 0)
  or
- - q xx, yy, zz, 0   (fixed_quality == 1 and distoratio == 0)
+ - q xx, yy, zz, 0   (fixed_quality == 1 and distortion == 0)
 
  then don't try to find an optimal threshold but rather take everything not included yet.
 
@@ -936,8 +945,8 @@ void TileProcessor::rateAllocate(uint32_t *allPacketsBytes)
 bool TileProcessor::layerNeedsRateControl(uint32_t layno)
 {
 	auto enc_params = &m_cp->m_coding_params.m_enc;
-	return (enc_params->m_disto_alloc && (m_tcp->rates[layno] > 0.0)) ||
-		   (enc_params->m_fixed_quality && (m_tcp->distoratio[layno] > 0.0f));
+	return (enc_params->m_allocationByRateDistortion && (m_tcp->rates[layno] > 0.0)) ||
+		   (enc_params->m_allocationByFixedQuality && (m_tcp->distortion[layno] > 0.0f));
 }
 bool TileProcessor::needsRateControl()
 {
@@ -959,24 +968,22 @@ bool TileProcessor::makeSingleLosslessLayer()
 	}
 	return false;
 }
-void TileProcessor::makeLayerFeasible(uint32_t layno, uint16_t thresh, bool final)
+void TileProcessor::makeLayerFeasible(uint32_t layno, uint16_t thresh, bool finalAttempt)
 {
-	uint16_t compno, resno, bandIndex;
-	uint64_t cblkno;
 	uint32_t passno;
 	tile->layerDistoration[layno] = 0;
-	for(compno = 0; compno < tile->numcomps; compno++)
+	for(uint16_t compno = 0; compno < tile->numcomps; compno++)
 	{
 		auto tilec = tile->comps + compno;
-		for(resno = 0; resno < tilec->numresolutions; resno++)
+		for(uint8_t resno = 0; resno < tilec->numresolutions; resno++)
 		{
 			auto res = tilec->tileCompResolution + resno;
-			for(bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
+			for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
 			{
 				auto band = res->tileBand + bandIndex;
 				for(auto prc : band->precincts)
 				{
-					for(cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
+					for(uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
 					{
 						auto cblk = prc->getCompressedBlockPtr(cblkno);
 						auto layer = cblk->layers + layno;
@@ -1006,7 +1013,7 @@ void TileProcessor::makeLayerFeasible(uint32_t layno, uint16_t thresh, bool fina
 
 						if(!layer->numpasses)
 						{
-							layer->disto = 0;
+							layer->distortion = 0;
 							continue;
 						}
 
@@ -1015,7 +1022,7 @@ void TileProcessor::makeLayerFeasible(uint32_t layno, uint16_t thresh, bool fina
 						{
 							layer->len = cblk->passes[cumulative_included_passes_in_block - 1].rate;
 							layer->data = cblk->paddedCompressedStream;
-							layer->disto =
+							layer->distortion =
 								cblk->passes[cumulative_included_passes_in_block - 1].distortiondec;
 						}
 						else
@@ -1025,14 +1032,14 @@ void TileProcessor::makeLayerFeasible(uint32_t layno, uint16_t thresh, bool fina
 								cblk->passes[cblk->numPassesInPreviousPackets - 1].rate;
 							layer->data = cblk->paddedCompressedStream +
 										  cblk->passes[cblk->numPassesInPreviousPackets - 1].rate;
-							layer->disto =
+							layer->distortion =
 								cblk->passes[cumulative_included_passes_in_block - 1]
 									.distortiondec -
 								cblk->passes[cblk->numPassesInPreviousPackets - 1].distortiondec;
 						}
 
-						tile->layerDistoration[layno] += layer->disto;
-						if(final)
+						tile->layerDistoration[layno] += layer->distortion;
+						if(finalAttempt)
 							cblk->numPassesInPreviousPackets = cumulative_included_passes_in_block;
 					}
 				}
@@ -1046,23 +1053,19 @@ void TileProcessor::makeLayerFeasible(uint32_t layno, uint16_t thresh, bool fina
 void TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 {
 	bool single_lossless = makeSingleLosslessLayer();
-	double cumdisto[maxCompressLayersGRK];
 	const double K = 1;
 	double maxSE = 0;
-
 	auto tcp = m_tcp;
-
 	uint32_t state = grk_plugin_get_debug_state();
-
 	RateInfo rateInfo;
 	for(uint16_t compno = 0; compno < tile->numcomps; compno++)
 	{
 		auto tilec = &tile->comps[compno];
 		uint64_t numpix = 0;
-		for(uint32_t resno = 0; resno < tilec->numresolutions; resno++)
+		for(uint8_t resno = 0; resno < tilec->numresolutions; resno++)
 		{
 			auto res = &tilec->tileCompResolution[resno];
-			for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
+			for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
 			{
 				auto band = &res->tileBand[bandIndex];
 				for(auto prc : band->precincts)
@@ -1103,7 +1106,7 @@ void TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 		if(packetLengthCache.getMarkers())
 		{
 			auto t2 = new T2Compress(this);
-			t2->compressPacketsSimulate(m_tileIndex, 0 + 1, allPacketBytes, UINT_MAX, tp_pos,
+			t2->compressPacketsSimulate(m_tileIndex, 0 + 1, allPacketBytes, UINT_MAX, newTilePartProgressionPosition,
 										packetLengthCache.getMarkers());
 			delete t2;
 		}
@@ -1112,12 +1115,12 @@ void TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 
 	uint32_t min_slope = rateInfo.getMinimumThresh();
 	uint32_t max_slope = USHRT_MAX;
-
+	double cumulativeDistortion[maxCompressLayersGRK];
 	uint32_t upperBound = max_slope;
 	for(uint16_t layno = 0; layno < tcp->numlayers; layno++)
 	{
 		uint32_t lowerBound = min_slope;
-		uint32_t maxlen = tcp->rates[layno] > 0.0f ? ((uint32_t)ceil(tcp->rates[layno])) : UINT_MAX;
+		uint32_t maxLayerLength = tcp->rates[layno] > 0.0f ? ((uint32_t)ceil(tcp->rates[layno])) : UINT_MAX;
 
 		if(layerNeedsRateControl(layno))
 		{
@@ -1125,8 +1128,8 @@ void TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 			// thresh from previous iteration - starts off uninitialized
 			// used to bail out if difference with current thresh is small enough
 			uint32_t prevthresh = 0;
-			double distotarget =
-				tile->distortion - ((K * maxSE) / pow(10.0, tcp->distoratio[layno] / 10.0));
+			double distortionTarget =
+				tile->distortion - ((K * maxSE) / pow(10.0, tcp->distortion[layno] / 10.0));
 
 			for(uint32_t i = 0; i < 128; ++i)
 			{
@@ -1135,13 +1138,13 @@ void TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 					break;
 				makeLayerFeasible(layno, (uint16_t)thresh, false);
 				prevthresh = thresh;
-				if(m_cp->m_coding_params.m_enc.m_fixed_quality)
+				if(m_cp->m_coding_params.m_enc.m_allocationByFixedQuality)
 				{
 					double distoachieved =
 						layno == 0 ? tile->layerDistoration[0]
-								   : cumdisto[layno - 1] + tile->layerDistoration[layno];
+								   : cumulativeDistortion[layno - 1] + tile->layerDistoration[layno];
 
-					if(distoachieved < distotarget)
+					if(distoachieved < distortionTarget)
 					{
 						upperBound = thresh;
 						continue;
@@ -1151,7 +1154,7 @@ void TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 				else
 				{
 					if(!t2->compressPacketsSimulate(m_tileIndex, (uint16_t)(layno + 1U),
-													allPacketBytes, maxlen, tp_pos, nullptr))
+													allPacketBytes, maxLayerLength, newTilePartProgressionPosition, nullptr))
 					{
 						lowerBound = thresh;
 						continue;
@@ -1166,8 +1169,8 @@ void TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 			delete t2;
 
 			makeLayerFeasible(layno, (uint16_t)goodthresh, true);
-			cumdisto[layno] = (layno == 0) ? tile->layerDistoration[0]
-										   : (cumdisto[layno - 1] + tile->layerDistoration[layno]);
+			cumulativeDistortion[layno] = (layno == 0) ? tile->layerDistoration[0]
+										   : (cumulativeDistortion[layno - 1] + tile->layerDistoration[layno]);
 			// upper bound for next layer is initialized to lowerBound for current layer, minus one
 			upperBound = lowerBound - 1;
 		}
@@ -1182,33 +1185,26 @@ void TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
  */
 void TileProcessor::pcrdBisectSimple(uint32_t* allPacketsBytes)
 {
-	uint32_t compno, resno, bandIndex;
-	uint16_t layno;
-	uint64_t cblkno;
 	uint32_t passno;
-	double cumdisto[maxCompressLayersGRK];
 	const double K = 1;
 	double maxSE = 0;
-
 	double min_slope = DBL_MAX;
 	double max_slope = -1;
-
 	uint32_t state = grk_plugin_get_debug_state();
 	bool single_lossless = makeSingleLosslessLayer();
-
-	for(compno = 0; compno < tile->numcomps; compno++)
+	for(uint16_t compno = 0; compno < tile->numcomps; compno++)
 	{
 		auto tilec = &tile->comps[compno];
 		uint64_t numpix = 0;
-		for(resno = 0; resno < tilec->numresolutions; resno++)
+		for(uint8_t resno = 0; resno < tilec->numresolutions; resno++)
 		{
 			auto res = &tilec->tileCompResolution[resno];
-			for(bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
+			for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
 			{
 				auto band = &res->tileBand[bandIndex];
 				for(auto prc : band->precincts)
 				{
-					for(cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
+					for(uint64_t cblkno = 0; cblkno < prc->getNumCblks(); cblkno++)
 					{
 						auto cblk = prc->getCompressedBlockPtr(cblkno);
 						uint32_t numPix = (uint32_t)cblk->area();
@@ -1265,20 +1261,21 @@ void TileProcessor::pcrdBisectSimple(uint32_t* allPacketsBytes)
 		if(packetLengthCache.getMarkers())
 		{
 			auto t2 = new T2Compress(this);
-			t2->compressPacketsSimulate(m_tileIndex, 0 + 1, allPacketsBytes, UINT_MAX, tp_pos,
+			t2->compressPacketsSimulate(m_tileIndex, 0 + 1, allPacketsBytes, UINT_MAX, newTilePartProgressionPosition,
 										packetLengthCache.getMarkers());
 			delete t2;
 		}
 
 		return;
 	}
+	double cumulativeDistortion[maxCompressLayersGRK];
 	double upperBound = max_slope;
-	for(layno = 0; layno < m_tcp->numlayers; layno++)
+	for(uint16_t layno = 0; layno < m_tcp->numlayers; layno++)
 	{
 		if(layerNeedsRateControl(layno))
 		{
 			double lowerBound = min_slope;
-			uint32_t maxlen =
+			uint32_t maxLayerLength =
 				m_tcp->rates[layno] > 0.0f ? (uint32_t)ceil(m_tcp->rates[layno]) : UINT_MAX;
 
 			/* Threshold for Marcela Index */
@@ -1288,8 +1285,8 @@ void TileProcessor::pcrdBisectSimple(uint32_t* allPacketsBytes)
 			// thresh from previous iteration - starts off uninitialized
 			// used to bail out if difference with current thresh is small enough
 			double prevthresh = -1;
-			double distotarget =
-				tile->distortion - ((K * maxSE) / pow(10.0, m_tcp->distoratio[layno] / 10.0));
+			double distortionTarget =
+				tile->distortion - ((K * maxSE) / pow(10.0, m_tcp->distortion[layno] / 10.0));
 
 			auto t2 = new T2Compress(this);
 			double thresh;
@@ -1300,12 +1297,12 @@ void TileProcessor::pcrdBisectSimple(uint32_t* allPacketsBytes)
 				if(prevthresh != -1 && (fabs(prevthresh - thresh)) < 0.001)
 					break;
 				prevthresh = thresh;
-				if(m_cp->m_coding_params.m_enc.m_fixed_quality)
+				if(m_cp->m_coding_params.m_enc.m_allocationByFixedQuality)
 				{
 					double distoachieved =
 						layno == 0 ? tile->layerDistoration[0]
-								   : cumdisto[layno - 1] + tile->layerDistoration[layno];
-					if(distoachieved < distotarget)
+								   : cumulativeDistortion[layno - 1] + tile->layerDistoration[layno];
+					if(distoachieved < distortionTarget)
 					{
 						upperBound = thresh;
 						continue;
@@ -1314,8 +1311,8 @@ void TileProcessor::pcrdBisectSimple(uint32_t* allPacketsBytes)
 				}
 				else
 				{
-					if(!t2->compressPacketsSimulate(m_tileIndex, (uint16_t)(layno + 1U),
-													allPacketsBytes, maxlen, tp_pos, nullptr))
+					if(!t2->compressPacketsSimulate(m_tileIndex, layno + 1U,
+													allPacketsBytes, maxLayerLength, newTilePartProgressionPosition, nullptr))
 					{
 						lowerBound = thresh;
 						continue;
@@ -1328,8 +1325,8 @@ void TileProcessor::pcrdBisectSimple(uint32_t* allPacketsBytes)
 			delete t2;
 
 			makeLayerSimple(layno, goodthresh, true);
-			cumdisto[layno] = (layno == 0) ? tile->layerDistoration[0]
-										   : (cumdisto[layno - 1] + tile->layerDistoration[layno]);
+			cumulativeDistortion[layno] = (layno == 0) ? tile->layerDistoration[0]
+										   : (cumulativeDistortion[layno - 1] + tile->layerDistoration[layno]);
 
 			// upper bound for next layer will equal lowerBound for previous layer, minus one
 			upperBound = lowerBound - 1;
@@ -1352,16 +1349,16 @@ static void prepareBlockForFirstLayer(CompressCodeblock* cblk)
 /*
  Form layer for bisect rate control algorithm
  */
-void TileProcessor::makeLayerSimple(uint32_t layno, double thresh, bool final)
+void TileProcessor::makeLayerSimple(uint32_t layno, double thresh, bool finalAttempt)
 {
 	tile->layerDistoration[layno] = 0;
 	for(uint16_t compno = 0; compno < tile->numcomps; compno++)
 	{
 		auto tilec = tile->comps + compno;
-		for(uint32_t resno = 0; resno < tilec->numresolutions; resno++)
+		for(uint8_t resno = 0; resno < tilec->numresolutions; resno++)
 		{
 			auto res = tilec->tileCompResolution + resno;
-			for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
+			for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
 			{
 				auto band = res->tileBand + bandIndex;
 				for(auto prc : band->precincts)
@@ -1414,7 +1411,7 @@ void TileProcessor::makeLayerSimple(uint32_t layno, double thresh, bool final)
 						layer->numpasses = included_blk_passes - cblk->numPassesInPreviousPackets;
 						if(!layer->numpasses)
 						{
-							layer->disto = 0;
+							layer->distortion = 0;
 							continue;
 						}
 
@@ -1423,7 +1420,7 @@ void TileProcessor::makeLayerSimple(uint32_t layno, double thresh, bool final)
 						{
 							layer->len = cblk->passes[included_blk_passes - 1].rate;
 							layer->data = cblk->paddedCompressedStream;
-							layer->disto = cblk->passes[included_blk_passes - 1].distortiondec;
+							layer->distortion = cblk->passes[included_blk_passes - 1].distortiondec;
 						}
 						else
 						{
@@ -1431,12 +1428,12 @@ void TileProcessor::makeLayerSimple(uint32_t layno, double thresh, bool final)
 										 cblk->passes[cblk->numPassesInPreviousPackets - 1].rate;
 							layer->data = cblk->paddedCompressedStream +
 										  cblk->passes[cblk->numPassesInPreviousPackets - 1].rate;
-							layer->disto =
+							layer->distortion =
 								cblk->passes[included_blk_passes - 1].distortiondec -
 								cblk->passes[cblk->numPassesInPreviousPackets - 1].distortiondec;
 						}
-						tile->layerDistoration[layno] += layer->disto;
-						if(final)
+						tile->layerDistoration[layno] += layer->distortion;
+						if(finalAttempt)
 							cblk->numPassesInPreviousPackets = included_blk_passes;
 					}
 				}
@@ -1451,10 +1448,10 @@ void TileProcessor::makeLayerFinal(uint32_t layno)
 	for(uint16_t compno = 0; compno < tile->numcomps; compno++)
 	{
 		auto tilec = tile->comps + compno;
-		for(uint32_t resno = 0; resno < tilec->numresolutions; resno++)
+		for(uint8_t resno = 0; resno < tilec->numresolutions; resno++)
 		{
 			auto res = tilec->tileCompResolution + resno;
-			for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
+			for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
 			{
 				auto band = res->tileBand + bandIndex;
 				for(auto prc : band->precincts)
@@ -1472,7 +1469,7 @@ void TileProcessor::makeLayerFinal(uint32_t layno)
 						layer->numpasses = included_blk_passes - cblk->numPassesInPreviousPackets;
 						if(!layer->numpasses)
 						{
-							layer->disto = 0;
+							layer->distortion = 0;
 							continue;
 						}
 						// update layer
@@ -1480,7 +1477,7 @@ void TileProcessor::makeLayerFinal(uint32_t layno)
 						{
 							layer->len = cblk->passes[included_blk_passes - 1].rate;
 							layer->data = cblk->paddedCompressedStream;
-							layer->disto = cblk->passes[included_blk_passes - 1].distortiondec;
+							layer->distortion = cblk->passes[included_blk_passes - 1].distortiondec;
 						}
 						else
 						{
@@ -1488,11 +1485,11 @@ void TileProcessor::makeLayerFinal(uint32_t layno)
 										 cblk->passes[cblk->numPassesInPreviousPackets - 1].rate;
 							layer->data = cblk->paddedCompressedStream +
 										  cblk->passes[cblk->numPassesInPreviousPackets - 1].rate;
-							layer->disto =
+							layer->distortion =
 								cblk->passes[included_blk_passes - 1].distortiondec -
 								cblk->passes[cblk->numPassesInPreviousPackets - 1].distortiondec;
 						}
-						tile->layerDistoration[layno] += layer->disto;
+						tile->layerDistoration[layno] += layer->distortion;
 						cblk->numPassesInPreviousPackets = included_blk_passes;
 						assert(cblk->numPassesInPreviousPackets == cblk->numPassesTotal);
 					}

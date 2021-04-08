@@ -67,7 +67,7 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* p_header_data, u
 	uint32_t numComps;
 	uint32_t nb_comp_remain;
 	uint32_t remaining_size;
-	uint16_t nb_tiles;
+	uint16_t numTiles;
 	auto decompressor = codeStream->getDecompressorState();
 
 	auto image = codeStream->getHeaderImage();
@@ -245,7 +245,7 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* p_header_data, u
 			cp->t_grid_width, cp->t_grid_height, maxNumTilesJ2K);
 		return false;
 	}
-	nb_tiles = (uint16_t)(cp->t_grid_width * cp->t_grid_height);
+	numTiles = (uint16_t)(cp->t_grid_width * cp->t_grid_height);
 
 	decompressor->m_start_tile_x_index = 0;
 	decompressor->m_start_tile_y_index = 0;
@@ -253,7 +253,7 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* p_header_data, u
 	decompressor->m_end_tile_y_index = cp->t_grid_height;
 
 	/* memory allocations */
-	cp->tcps = new TileCodingParams[nb_tiles];
+	cp->tcps = new TileCodingParams[numTiles];
 	decompressor->m_default_tcp->tccps = new TileComponentCodingParams[image->numcomps];
 	decompressor->m_default_tcp->m_mct_records =
 		(grk_mct_data*)grkCalloc(default_number_mct_records, sizeof(grk_mct_data));
@@ -283,7 +283,7 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* p_header_data, u
 																	 << (image->comps[i].prec - 1);
 	}
 
-	for(i = 0; i < nb_tiles; ++i)
+	for(i = 0; i < numTiles; ++i)
 	{
 		auto current_tile_param = cp->tcps + i;
 		current_tile_param->tccps = new TileComponentCodingParams[image->numcomps];

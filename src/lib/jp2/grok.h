@@ -545,9 +545,9 @@ typedef struct _grk_cparameters
 	 * */
 	uint32_t max_comp_size;
 	/** Tile part generation*/
-	uint8_t tp_on;
+	uint8_t enableTilePartGeneration;
 	/** Flag for tile part generation*/
-	uint8_t tp_flag;
+	uint8_t newTilePartProgressionDivider;
 	/** MCT (multiple component transform) */
 	uint8_t tcp_mct;
 	/** Naive implementation of MCT restricted to a single reversible array based

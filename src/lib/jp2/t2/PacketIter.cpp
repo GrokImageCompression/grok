@@ -26,7 +26,7 @@ namespace grk
 /*@{*/
 
 PacketIter::PacketIter()
-	: tp_on(false), step_l(0), step_r(0), step_c(0), step_p(0), compno(0), resno(0),
+	: enableTilePartGeneration(false), step_l(0), step_r(0), step_c(0), step_p(0), compno(0), resno(0),
 	  precinctIndex(0), layno(0), numcomps(0), comps(nullptr), tx0(0), ty0(0), tx1(0), ty1(0), x(0),
 	  y(0), dx(0), dy(0), handledFirstInner(false), packetManager(nullptr),
 	  maxNumDecompositionResolutions(0)
@@ -162,7 +162,7 @@ bool PacketIter::next_lrcp(void)
 					continue;
 				auto res = comp->resolutions + resno;
 				auto precE = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
-				if(tp_on)
+				if(enableTilePartGeneration)
 					precE = std::min<uint64_t>(precE, prog.precE);
 				if(handledFirstInner)
 					precinctIndex++;
@@ -207,7 +207,7 @@ bool PacketIter::next_rlcp(void)
 					continue;
 				auto res = comp->resolutions + resno;
 				auto precE = (uint64_t)res->precinctGridWidth * res->precinctGridHeight;
-				if(tp_on)
+				if(enableTilePartGeneration)
 					precE = std::min<uint64_t>(precE, prog.precE);
 				if(handledFirstInner)
 					precinctIndex++;

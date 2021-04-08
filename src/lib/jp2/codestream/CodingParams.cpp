@@ -48,9 +48,9 @@ void CodingParams::destroy()
 {
 	if(tcps != nullptr)
 	{
-		uint32_t nb_tiles = t_grid_height * t_grid_width;
+		uint32_t numTiles = t_grid_height * t_grid_width;
 
-		for(uint32_t i = 0U; i < nb_tiles; ++i)
+		for(uint32_t i = 0U; i < numTiles; ++i)
 		{
 			auto current_tile = tcps + i;
 			current_tile->destroy();
@@ -73,7 +73,7 @@ TileCodingParams::TileCodingParams()
 	: csty(0), prg(GRK_PROG_UNKNOWN), numlayers(0), numLayersToDecompress(0), mct(0), numpocs(0),
 	  ppt_markers_count(0), ppt_markers(nullptr), ppt_data(nullptr), ppt_buffer(nullptr),
 	  ppt_data_size(0), ppt_len(0), main_qcd_qntsty(0), main_qcd_numStepSizes(0), tccps(nullptr),
-	  m_tilePartIndex(-1), m_nb_tile_parts(0), m_compressedTileData(nullptr), mct_norms(nullptr),
+	  m_tilePartIndex(-1), numTileParts(0), m_compressedTileData(nullptr), mct_norms(nullptr),
 	  m_mct_decoding_matrix(nullptr), m_mct_coding_matrix(nullptr), m_mct_records(nullptr),
 	  m_nb_mct_records(0), m_nb_max_mct_records(0), m_mcc_records(nullptr), m_nb_mcc_records(0),
 	  m_nb_max_mcc_records(0), cod(false), ppt(false), POC(false), isHT(false)
@@ -81,7 +81,7 @@ TileCodingParams::TileCodingParams()
 	for(auto i = 0; i < maxCompressLayersGRK; ++i)
 		rates[i] = 0.0;
 	for(auto i = 0; i < maxCompressLayersGRK; ++i)
-		distoratio[i] = 0;
+		distortion[i] = 0;
 	for(auto i = 0; i < 32; ++i)
 		memset(progressionOrderChange + i, 0, sizeof(grk_progression));
 }

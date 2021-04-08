@@ -24,9 +24,8 @@
 namespace grk
 {
 SOTMarker::SOTMarker(void) : m_psot_location(0) {}
-bool SOTMarker::write_psot(CodeStreamCompress* codeStream, uint32_t tilePartBytesWritten)
+bool SOTMarker::write_psot(IBufferedStream* stream, uint32_t tilePartBytesWritten)
 {
-	auto stream = codeStream->getStream();
 	auto currentLocation = stream->tell();
 	stream->seek(m_psot_location);
 	if(!stream->writeInt(tilePartBytesWritten))
@@ -36,11 +35,9 @@ bool SOTMarker::write_psot(CodeStreamCompress* codeStream, uint32_t tilePartByte
 	return true;
 }
 
-bool SOTMarker::write(CodeStreamCompress* codeStream)
+bool SOTMarker::write(TileProcessor *proc)
 {
-	auto stream = codeStream->getStream();
-	auto proc = codeStream->currentProcessor();
-
+	auto stream = proc->getStream();
 	/* SOT */
 	if(!stream->writeShort(J2K_MS_SOT))
 		return false;
@@ -62,7 +59,7 @@ bool SOTMarker::write(CodeStreamCompress* codeStream)
 		return false;
 
 	/* TNsot */
-	if(!stream->writeByte(codeStream->getCodingParams()->tcps[proc->m_tileIndex].m_nb_tile_parts))
+	if(!stream->writeByte(proc->m_cp->tcps[proc->m_tileIndex].numTileParts))
 		return false;
 
 	return true;
@@ -169,12 +166,12 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* p_header_data, u
 
 	// ensure that current tile part number read from SOT marker
 	// is not larger than total number of tile parts
-	if(tcp->m_nb_tile_parts != 0 && currentTilePart >= tcp->m_nb_tile_parts)
+	if(tcp->numTileParts != 0 && currentTilePart >= tcp->numTileParts)
 	{
 		/* Fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=2851 */
 		GRK_ERROR("Current tile part number (%u) read from SOT marker is greater\n than total "
 				  "number of tile-parts (%u).",
-				  currentTilePart, tcp->m_nb_tile_parts);
+				  currentTilePart, tcp->numTileParts);
 		codeStream->getDecompressorState()->lastTilePartInCodeStream = true;
 		return false;
 	}
@@ -184,13 +181,13 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* p_header_data, u
 		/* Useful to manage the case of textGBR.jp2 file because two values
 		 *  of TNSot are allowed: the correct numbers of
 		 * tile-parts for that tile and zero (A.4.2 of 15444-1 : 2002). */
-		if(tcp->m_nb_tile_parts)
+		if(tcp->numTileParts)
 		{
-			if(currentTilePart >= tcp->m_nb_tile_parts)
+			if(currentTilePart >= tcp->numTileParts)
 			{
 				GRK_ERROR("In SOT marker, TPSot (%u) is not valid with regards to the current "
 						  "number of tile-part (%u)",
-						  currentTilePart, tcp->m_nb_tile_parts);
+						  currentTilePart, tcp->numTileParts);
 				codeStream->getDecompressorState()->lastTilePartInCodeStream = true;
 				return false;
 			}
@@ -204,11 +201,11 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* p_header_data, u
 			codeStream->getDecompressorState()->lastTilePartInCodeStream = true;
 			return false;
 		}
-		tcp->m_nb_tile_parts = numTileParts;
+		tcp->numTileParts = numTileParts;
 	}
 
 	/* If we know the number of tile part header we check whether we have read the last one*/
-	if(tcp->m_nb_tile_parts && (tcp->m_nb_tile_parts == (currentTilePart + 1)))
+	if(tcp->numTileParts && (tcp->numTileParts == (currentTilePart + 1)))
 	{
 		/* indicate that we are now ready to read the tile data */
 		codeStream->getDecompressorState()->lastTilePartWasRead = true;

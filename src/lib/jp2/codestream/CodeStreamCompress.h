@@ -42,10 +42,11 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
   private:
 	bool init_header_writing(void);
 	bool get_end_header(void);
+	bool canWritePocMarker(TileProcessor* tileProcessor);
 	bool writeTilePart(TileProcessor* tileProcessor);
 	bool writeTileParts(TileProcessor* tileProcessor);
-	bool update_rates(void);
-	bool compress_validation(void);
+	bool updateRates(void);
+	bool compressValidation(void);
 	bool mct_validation(void);
 
 	/**
@@ -311,7 +312,7 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	   *
 	   * @return true if the function was successful, false else.
 	   */
-	bool calculate_tp(CodingParams* cp, uint16_t* p_nb_tile_parts, GrkImage* image);
+	bool calculateTileParts(CodingParams* cp, uint16_t* p_nb_tile_parts, GrkImage* image);
 
 	/**
 	 * Gets the number of tile parts used for the given change of progression (if any) and the given
@@ -324,7 +325,7 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	 *
 	 * @return              the number of tile parts.
 	 */
-	uint64_t get_num_tp(CodingParams* cp, uint32_t pino, uint16_t tileno);
+	uint8_t getNumTileParts(CodingParams* cp, uint32_t pino, uint16_t tileno);
 
 	/**
 	 * Checks the progression order changes values. Tells of the poc given as input are valid.

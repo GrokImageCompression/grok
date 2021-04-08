@@ -54,10 +54,10 @@ struct CodePass
 // quality layer
 struct Layer
 {
-	Layer() : numpasses(0), len(0), disto(0), data(nullptr) {}
+	Layer() : numpasses(0), len(0), distortion(0), data(nullptr) {}
 	uint32_t numpasses; // Number of passes in the layer
 	uint32_t len; // number of bytes in layer
-	double disto; // layer distortion decrease
+	double distortion; // layer distortion decrease
 	uint8_t* data; // compressed layer data
 };
 

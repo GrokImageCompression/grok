@@ -161,7 +161,7 @@ struct TileCodingParams
 	/** size of ppt_data*/
 	size_t ppt_len;
 	/** fixed_quality */
-	double distoratio[maxCompressLayersGRK];
+	double distortion[maxCompressLayersGRK];
 	// quantization style as read from main QCD marker
 	uint32_t main_qcd_qntsty;
 	// number of step sizes as read from main QCD marker
@@ -173,7 +173,7 @@ struct TileCodingParams
 	int16_t m_tilePartIndex;
 
 	/** number of tile parts for the tile. */
-	uint8_t m_nb_tile_parts;
+	uint8_t numTileParts;
 
 	SparseBuffer* m_compressedTileData;
 
@@ -213,15 +213,15 @@ struct EncodingParams
 	 * If == 0, component size limitation is not considered */
 	size_t m_max_comp_size;
 	/** Position of tile part flag in progression order*/
-	uint32_t m_tp_pos;
+	uint32_t newTilePartProgressionPosition;
 	/** Flag determining tile part generation*/
-	uint8_t m_tp_flag;
+	uint8_t m_newTilePartProgressionDivider;
 	/** allocation by rate/distortion */
-	bool m_disto_alloc;
+	bool m_allocationByRateDistortion;
 	/** allocation by fixed_quality */
-	bool m_fixed_quality;
+	bool m_allocationByFixedQuality;
 	/** Enabling Tile part generation*/
-	bool m_tp_on;
+	bool m_enableTilePartGeneration;
 	/* write plt marker */
 	bool writePLT;
 

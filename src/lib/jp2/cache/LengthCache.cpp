@@ -344,10 +344,10 @@ bool TileLengthMarkers::read(uint8_t* p_header_data, uint16_t header_size)
 	}
 	// note: each tile can have max 255 tile parts, but
 	// the whole image with multiple tiles can have max 65535 tile parts
-	size_t num_tp = (uint8_t)(header_size / quotient);
+	size_t numTileParts = (uint8_t)(header_size / quotient);
 
 	uint32_t Ttlm_i = 0, Ptlm_i = 0;
-	for(size_t i = 0; i < num_tp; ++i)
+	for(size_t i = 0; i < numTileParts; ++i)
 	{
 		// read (global) tile part index
 		if(L_iT)

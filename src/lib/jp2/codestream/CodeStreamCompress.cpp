@@ -72,8 +72,8 @@ bool CodeStreamCompress::mct_validation(void)
 	bool is_valid = true;
 	if((m_cp.rsiz & 0x8200) == 0x8200)
 	{
-		uint32_t nb_tiles = m_cp.t_grid_height * m_cp.t_grid_width;
-		for(uint32_t i = 0; i < nb_tiles; ++i)
+		uint32_t numTiles = m_cp.t_grid_height * m_cp.t_grid_width;
+		for(uint32_t i = 0; i < numTiles; ++i)
 		{
 			auto tcp = m_cp.tcps + i;
 			if(tcp->mct == 2)
@@ -94,7 +94,7 @@ bool CodeStreamCompress::mct_validation(void)
 bool CodeStreamCompress::startCompress(void)
 {
 	/* customization of the validation */
-	m_validation_list.push_back(std::bind(&CodeStreamCompress::compress_validation, this));
+	m_validation_list.push_back(std::bind(&CodeStreamCompress::compressValidation, this));
 	// custom validation here
 	m_validation_list.push_back(std::bind(&CodeStreamCompress::mct_validation, this));
 
@@ -287,8 +287,8 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 
 	cp->m_coding_params.m_enc.m_max_comp_size = parameters->max_comp_size;
 	cp->rsiz = parameters->rsiz;
-	cp->m_coding_params.m_enc.m_disto_alloc = parameters->cp_disto_alloc;
-	cp->m_coding_params.m_enc.m_fixed_quality = parameters->cp_fixed_quality;
+	cp->m_coding_params.m_enc.m_allocationByRateDistortion = parameters->cp_disto_alloc;
+	cp->m_coding_params.m_enc.m_allocationByFixedQuality = parameters->cp_fixed_quality;
 	cp->m_coding_params.m_enc.writePLT = parameters->writePLT;
 	cp->m_coding_params.m_enc.writeTLM = parameters->writeTLM;
 	cp->m_coding_params.m_enc.rateControlAlgorithm = parameters->rateControlAlgorithm;
@@ -363,10 +363,10 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 		cp->t_width = image->x1 - cp->tx0;
 		cp->t_height = image->y1 - cp->ty0;
 	}
-	if(parameters->tp_on)
+	if(parameters->enableTilePartGeneration)
 	{
-		cp->m_coding_params.m_enc.m_tp_flag = parameters->tp_flag;
-		cp->m_coding_params.m_enc.m_tp_on = true;
+		cp->m_coding_params.m_enc.m_newTilePartProgressionDivider = parameters->newTilePartProgressionDivider;
+		cp->m_coding_params.m_enc.m_enableTilePartGeneration = true;
 	}
 	uint8_t numgbits = parameters->isHT ? 1 : 2;
 	cp->tcps = new TileCodingParams[cp->t_grid_width * cp->t_grid_height];
@@ -381,8 +381,8 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 
 		for(uint16_t j = 0; j < tcp->numlayers; j++)
 		{
-			if(cp->m_coding_params.m_enc.m_fixed_quality)
-				tcp->distoratio[j] = parameters->tcp_distoratio[j];
+			if(cp->m_coding_params.m_enc.m_allocationByFixedQuality)
+				tcp->distortion[j] = parameters->tcp_distoratio[j];
 			else
 				tcp->rates[j] = parameters->tcp_rates[j];
 		}
@@ -614,22 +614,22 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 {
 	TileProcessorMinHeap heap;
-	uint32_t nb_tiles = (uint32_t)m_cp.t_grid_height * m_cp.t_grid_width;
-	if(nb_tiles > maxNumTilesJ2K)
+	uint32_t numTiles = (uint32_t)m_cp.t_grid_height * m_cp.t_grid_width;
+	if(numTiles > maxNumTilesJ2K)
 	{
 		GRK_ERROR("Number of tiles %u is greater than %u max tiles "
 				  "allowed by the standard.",
-				  nb_tiles, maxNumTilesJ2K);
+				  numTiles, maxNumTilesJ2K);
 		return false;
 	}
-	auto pool_size = std::min<uint32_t>((uint32_t)ThreadPool::get()->num_threads(), nb_tiles);
+	auto pool_size = std::min<uint32_t>((uint32_t)ThreadPool::get()->num_threads(), numTiles);
 	ThreadPool pool(pool_size);
 	std::vector<std::future<int>> results;
 	std::atomic<bool> success(true);
 	bool rc = false;
 	if(pool_size > 1)
 	{
-		for(uint16_t i = 0; i < nb_tiles; ++i)
+		for(uint16_t i = 0; i < numTiles; ++i)
 		{
 			uint16_t tileIndex = i;
 			results.emplace_back(pool.enqueue([this, tile, tileIndex, &heap,&success] {
@@ -666,7 +666,7 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 	}
 	else
 	{
-		for(uint16_t i = 0; i < nb_tiles; ++i)
+		for(uint16_t i = 0; i < numTiles; ++i)
 		{
 			auto tileProcessor = new TileProcessor(this, m_stream, true, false);
 			tileProcessor->m_tileIndex = i;
@@ -833,7 +833,7 @@ bool CodeStreamCompress::get_end_header(void)
 bool CodeStreamCompress::init_header_writing(void)
 {
 	m_procedure_list.push_back([this] {
-		return calculate_tp(&m_cp, &m_compressorState.m_total_tile_parts, getHeaderImage());
+		return calculateTileParts(&m_cp, &m_compressorState.m_total_tile_parts, getHeaderImage());
 	});
 
 	m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_soc, this));
@@ -862,34 +862,32 @@ bool CodeStreamCompress::init_header_writing(void)
 
 	if(codeStreamInfo)
 		m_procedure_list.push_back(std::bind(&CodeStreamCompress::get_end_header, this));
-	m_procedure_list.push_back(std::bind(&CodeStreamCompress::update_rates, this));
+	m_procedure_list.push_back(std::bind(&CodeStreamCompress::updateRates, this));
 
 	return true;
+}
+bool CodeStreamCompress::canWritePocMarker(TileProcessor* tileProcessor){
+	uint16_t currentTileIndex = tileProcessor->m_tileIndex;
+	bool firstTilePart = (tileProcessor->m_tilePartIndex == 0);
+
+	// note: DCP standard does not allow POC marker
+	return m_cp.tcps[currentTileIndex].numpocs && firstTilePart && !GRK_IS_CINEMA(m_cp.rsiz);
 }
 bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 {
 	uint16_t currentTileIndex = tileProcessor->m_tileIndex;
-	bool firstTilePart = (tileProcessor->m_tilePartIndex == 0);
 	// 1. write SOT
 	SOTMarker sot;
-	if(!sot.write(this))
+	if(!sot.write(tileProcessor))
 		return false;
 	uint32_t tilePartBytesWritten = sot_marker_segment_len;
 	// 2. write POC marker to first tile part
-	if(firstTilePart)
+	if(canWritePocMarker(tileProcessor))
 	{
-		// note: DCP standard does not allow POC marker
-		if(!GRK_IS_CINEMA(m_cp.rsiz))
-		{
-			if(m_cp.tcps[currentTileIndex].numpocs)
-			{
-				auto tcp = m_cp.tcps + currentTileIndex;
-				auto image = m_headerImage;
-				if(!writePoc())
-					return false;
-				tilePartBytesWritten += getPocSize(image->numcomps, 1 + tcp->numpocs);
-			}
-		}
+		if(!writePoc())
+			return false;
+		auto tcp = m_cp.tcps + currentTileIndex;
+		tilePartBytesWritten += getPocSize(m_headerImage->numcomps, 1 + tcp->numpocs);
 	}
 	// 3. compress tile part and write to stream
 	if(!tileProcessor->writeTilePartT2(&tilePartBytesWritten))
@@ -899,7 +897,7 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 	}
 	// 4. now that we know the tile part length, we can
 	// write the Psot in the SOT marker
-	if(!sot.write_psot(this, tilePartBytesWritten))
+	if(!sot.write_psot(m_stream, tilePartBytesWritten))
 		return false;
 	// 5. update TLM
 	if(m_cp.tlm_markers)
@@ -923,15 +921,15 @@ bool CodeStreamCompress::writeTileParts(TileProcessor* tileProcessor)
 	auto cp = &(m_cp);
 	auto tcp = cp->tcps + tileProcessor->m_tileIndex;
 	// write tile parts for first progression order
-	uint64_t num_tp = get_num_tp(cp, 0, tileProcessor->m_tileIndex);
-	if(num_tp > maxTilePartsPerTileJ2K)
+	uint64_t numTileParts = getNumTileParts(cp, 0, tileProcessor->m_tileIndex);
+	if(numTileParts > maxTilePartsPerTileJ2K)
 	{
 		GRK_ERROR("Number of tile parts %d for first POC exceeds maximum number of tile parts %d",
-				  num_tp, maxTilePartsPerTileJ2K);
+				  numTileParts, maxTilePartsPerTileJ2K);
 		return false;
 	}
 	tileProcessor->m_first_poc_tile_part = false;
-	for(uint8_t tilepartno = 1; tilepartno < (uint8_t)num_tp; ++tilepartno)
+	for(uint8_t tilepartno = 1; tilepartno < (uint8_t)numTileParts; ++tilepartno)
 	{
 		if(!writeTilePart(tileProcessor))
 			return false;
@@ -940,15 +938,15 @@ bool CodeStreamCompress::writeTileParts(TileProcessor* tileProcessor)
 	for(pino = 1; pino <= tcp->numpocs; ++pino)
 	{
 		tileProcessor->pino = pino;
-		num_tp = get_num_tp(cp, pino, tileProcessor->m_tileIndex);
-		if(num_tp > maxTilePartsPerTileJ2K)
+		numTileParts = getNumTileParts(cp, pino, tileProcessor->m_tileIndex);
+		if(numTileParts > maxTilePartsPerTileJ2K)
 		{
 			GRK_ERROR("Number of tile parts %d exceeds maximum number of "
 					  "tile parts %d",
-					  num_tp, maxTilePartsPerTileJ2K);
+					  numTileParts, maxTilePartsPerTileJ2K);
 			return false;
 		}
-		for(uint8_t tilepartno = 0; tilepartno < num_tp; ++tilepartno)
+		for(uint8_t tilepartno = 0; tilepartno < numTileParts; ++tilepartno)
 		{
 			tileProcessor->m_first_poc_tile_part = (tilepartno == 0);
 			if(!writeTilePart(tileProcessor))
@@ -959,7 +957,7 @@ bool CodeStreamCompress::writeTileParts(TileProcessor* tileProcessor)
 
 	return true;
 }
-bool CodeStreamCompress::update_rates(void)
+bool CodeStreamCompress::updateRates(void)
 {
 	auto cp = &(m_cp);
 	auto image = m_headerImage;
@@ -978,8 +976,8 @@ bool CodeStreamCompress::update_rates(void)
 		for(uint32_t tile_x = 0; tile_x < cp->t_grid_width; ++tile_x)
 		{
 			double stride = 0;
-			if(cp->m_coding_params.m_enc.m_tp_on)
-				stride = (tcp->m_nb_tile_parts - 1) * 14;
+			if(cp->m_coding_params.m_enc.m_enableTilePartGeneration)
+				stride = (tcp->numTileParts - 1) * 14;
 			double offset = stride / tcp->numlayers;
 			auto tileBounds = cp->getTileBounds(image, tile_x, tile_y);
 			uint64_t numTilePixels = tileBounds.area();
@@ -1036,7 +1034,7 @@ bool CodeStreamCompress::update_rates(void)
 
 	return true;
 }
-bool CodeStreamCompress::compress_validation()
+bool CodeStreamCompress::compressValidation()
 {
 	bool is_valid = true;
 
@@ -1916,9 +1914,9 @@ bool CodeStreamCompress::init_mct_encoding(TileCodingParams* p_tcp, GrkImage* p_
 
 	return true;
 }
-uint64_t CodeStreamCompress::get_num_tp(CodingParams* cp, uint32_t pino, uint16_t tileno)
+uint8_t CodeStreamCompress::getNumTileParts(CodingParams* cp, uint32_t pino, uint16_t tileno)
 {
-	uint64_t num_tp = 1;
+	uint64_t numTileParts = 1;
 
 	/*  preconditions */
 	assert(tileno < (cp->t_grid_width * cp->t_grid_height));
@@ -1935,7 +1933,7 @@ uint64_t CodeStreamCompress::get_num_tp(CodingParams* cp, uint32_t pino, uint16_
 	auto prog = convertProgressionOrder(tcp->prg);
 	assert(strlen(prog) > 0);
 
-	if(cp->m_coding_params.m_enc.m_tp_on)
+	if(cp->m_coding_params.m_enc.m_enableTilePartGeneration)
 	{
 		for(uint32_t i = 0; i < 4; ++i)
 		{
@@ -1943,72 +1941,73 @@ uint64_t CodeStreamCompress::get_num_tp(CodingParams* cp, uint32_t pino, uint16_
 			{
 				/* component wise */
 				case 'C':
-					num_tp *= current_poc->tpCompE;
+					numTileParts *= current_poc->tpCompE;
 					break;
 					/* resolution wise */
 				case 'R':
-					num_tp *= current_poc->tpResE;
+					numTileParts *= current_poc->tpResE;
 					break;
 					/* precinct wise */
 				case 'P':
-					num_tp *= current_poc->tpPrecE;
+					numTileParts *= current_poc->tpPrecE;
 					break;
 					/* layer wise */
 				case 'L':
-					num_tp *= current_poc->tpLayE;
+					numTileParts *= current_poc->tpLayE;
 					break;
 			}
-			// we start a new tile part with every progression change
-			if(cp->m_coding_params.m_enc.m_tp_flag == prog[i])
+			// we start a new tile part when progression matches specified tile part
+			// generation division progression
+			if(cp->m_coding_params.m_enc.m_newTilePartProgressionDivider == prog[i])
 			{
-				cp->m_coding_params.m_enc.m_tp_pos = i;
+				cp->m_coding_params.m_enc.newTilePartProgressionPosition = i;
 				break;
 			}
 		}
 	}
 	else
 	{
-		num_tp = 1;
+		numTileParts = 1;
 	}
-	return num_tp;
+	assert(numTileParts < 256);
+
+	return (uint8_t)numTileParts;
 }
-bool CodeStreamCompress::calculate_tp(CodingParams* cp, uint16_t* p_nb_tile_parts, GrkImage* image)
+bool CodeStreamCompress::calculateTileParts(CodingParams* cp, uint16_t* numTilePartsForImage, GrkImage* image)
 {
-	assert(p_nb_tile_parts != nullptr);
+	assert(numTilePartsForImage != nullptr);
 	assert(cp != nullptr);
 	assert(image != nullptr);
 
-	uint32_t nb_tiles = (uint16_t)(cp->t_grid_width * cp->t_grid_height);
-	*p_nb_tile_parts = 0;
+	uint32_t numTiles = (uint16_t)(cp->t_grid_width * cp->t_grid_height);
+	*numTilePartsForImage = 0;
 	auto tcp = cp->tcps;
-	for(uint16_t tileno = 0; tileno < nb_tiles; ++tileno)
+	for(uint16_t tileno = 0; tileno < numTiles; ++tileno)
 	{
-		uint8_t numTilePartsTotal = 0;
+		uint8_t totalTilePartsForTile = 0;
 		PacketManager::updateCompressParams(image, cp, tileno);
 		for(uint32_t pino = 0; pino <= tcp->numpocs; ++pino)
 		{
-			uint64_t num_tp = get_num_tp(cp, pino, tileno);
-			if(num_tp > maxTilePartsPerTileJ2K)
+			uint8_t numTileParts = getNumTileParts(cp, pino, tileno);
+			if(numTileParts > maxTilePartsPerTileJ2K)
 			{
 				GRK_ERROR("Number of tile parts %d exceeds maximum number of "
 						  "tile parts %d",
-						  num_tp, maxTilePartsPerTileJ2K);
+						  numTileParts, maxTilePartsPerTileJ2K);
 				return false;
 			}
-
-			uint64_t total = num_tp + *p_nb_tile_parts;
-			if(total > maxTotalTilePartsJ2K)
+			uint32_t newTotalForImage = (uint32_t)(*numTilePartsForImage) + numTileParts;
+			if(newTotalForImage > maxTotalTilePartsJ2K)
 			{
-				GRK_ERROR("Total number of tile parts %d exceeds maximum total number of "
+				GRK_ERROR("Total number of tile parts %d for image exceeds JPEG 2000 maximum total number of "
 						  "tile parts %d",
-						  total, maxTotalTilePartsJ2K);
+						  newTotalForImage, maxTotalTilePartsJ2K);
 				return false;
 			}
-
-			*p_nb_tile_parts = (uint16_t)(*p_nb_tile_parts + num_tp);
-			numTilePartsTotal = (uint8_t)(numTilePartsTotal + num_tp);
+			*numTilePartsForImage = (uint16_t)newTotalForImage;
+			totalTilePartsForTile += numTileParts;
 		}
-		tcp->m_nb_tile_parts = numTilePartsTotal;
+		tcp->numTileParts = totalTilePartsForTile;
 		++tcp;
 	}
 

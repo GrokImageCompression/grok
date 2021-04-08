@@ -90,8 +90,8 @@ void Profile::set_imf_parameters(grk_cparameters* parameters, GrkImage* image)
 	}
 
 	/* One tile part for each component */
-	parameters->tp_flag = 'C';
-	parameters->tp_on = 1;
+	parameters->newTilePartProgressionDivider = 'C';
+	parameters->enableTilePartGeneration = 1;
 
 	if(parameters->prog_order == GRK_COMP_PARAM_DEFAULT_PROG_ORDER)
 	{
@@ -680,8 +680,8 @@ void Profile::set_broadcast_parameters(grk_cparameters* parameters)
 	parameters->prog_order = GRK_CPRL;
 
 	/* One tile part for each component */
-	parameters->tp_flag = 'C';
-	parameters->tp_on = 1;
+	parameters->newTilePartProgressionDivider = 'C';
+	parameters->enableTilePartGeneration = 1;
 
 	/* No ROI */
 	parameters->roi_compno = -1;
@@ -1015,8 +1015,8 @@ void Profile::set_cinema_parameters(grk_cparameters* parameters, GrkImage* image
 	parameters->t_height = 1;
 
 	/* One tile part for each component */
-	parameters->tp_flag = 'C';
-	parameters->tp_on = 1;
+	parameters->newTilePartProgressionDivider = 'C';
+	parameters->enableTilePartGeneration = 1;
 
 	/* Tile and Image shall be at (0,0) */
 	parameters->tx0 = 0;

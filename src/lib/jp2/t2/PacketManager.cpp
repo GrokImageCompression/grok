@@ -71,7 +71,7 @@ PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cpar
 	uint64_t step_l = max_res * step_r;
 
 	/* set values for first packet iterator*/
-	m_pi->tp_on = cp->m_coding_params.m_enc.m_tp_on;
+	m_pi->enableTilePartGeneration = cp->m_coding_params.m_enc.m_enableTilePartGeneration;
 	for(uint32_t pino = 0; pino <= tcp->numpocs; ++pino)
 	{
 		auto cur_pi = m_pi + pino;
@@ -173,7 +173,7 @@ void PacketManager::init(TileCodingParams* tcp, uint8_t max_res, uint64_t max_pr
 	}
 }
 void PacketManager::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_part,
-											 uint32_t tppos)
+											 uint32_t newTilePartProgressionPosition)
 {
 	auto tcps = cp->tcps + tileno;
 	auto poc = tcps->progressionOrderChange + pino;
@@ -182,10 +182,10 @@ void PacketManager::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_
 	auto cur_pi_prog = &cur_pi->prog;
 	cur_pi_prog->progression = poc->progression;
 
-	if(cp->m_coding_params.m_enc.m_tp_on &&
+	if(cp->m_coding_params.m_enc.m_enableTilePartGeneration &&
 	   (GRK_IS_CINEMA(cp->rsiz) || GRK_IS_IMF(cp->rsiz) || t2Mode == FINAL_PASS))
 	{
-		for(uint32_t i = tppos + 1; i < 4; i++)
+		for(uint32_t i = newTilePartProgressionPosition + 1; i < 4; i++)
 		{
 			switch(prog[i])
 			{
@@ -221,7 +221,7 @@ void PacketManager::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_
 		}
 		if(first_poc_tile_part)
 		{
-			for(int32_t i = (int32_t)tppos; i >= 0; i--)
+			for(int32_t i = (int32_t)newTilePartProgressionPosition; i >= 0; i--)
 			{
 				switch(prog[i])
 				{
@@ -274,7 +274,7 @@ void PacketManager::enableTilePartGeneration(uint32_t pino, bool first_poc_tile_
 		{
 			uint32_t incr_top = 1;
 			uint32_t resetX = 0;
-			for(int32_t i = (int32_t)tppos; i >= 0; i--)
+			for(int32_t i = (int32_t)newTilePartProgressionPosition; i >= 0; i--)
 			{
 				switch(prog[i])
 				{
