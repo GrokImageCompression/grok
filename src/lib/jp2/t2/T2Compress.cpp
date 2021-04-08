@@ -58,11 +58,11 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers, IBuffere
 	return true;
 }
 bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
-										 uint32_t* allPacketsBytes, uint32_t maxBytes,
+										 uint32_t* allPacketBytes, uint32_t maxBytes,
 										 uint32_t newTilePartProgressionPosition,
 										 PacketLengthMarkers* markers)
 {
-	assert(allPacketsBytes);
+	assert(allPacketBytes);
 	auto cp = tileProcessor->m_cp;
 	auto image = tileProcessor->headerImage;
 	auto tcp = cp->tcps + tile_no;
@@ -73,8 +73,10 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 	uint32_t max_comp = cp->m_coding_params.m_enc.m_max_comp_size > 0 ? image->numcomps : 1;
 
 	PacketManager packetManager(true, image, cp, tile_no, THRESH_CALC, tileProcessor);
-	*allPacketsBytes = 0;
+	*allPacketBytes = 0;
 	tileProcessor->getPacketTracker()->clear();
+	if(markers)
+		markers->writeInit();
 	for(uint32_t compno = 0; compno < max_comp; ++compno)
 	{
 		uint64_t componentBytes = 0;
@@ -99,7 +101,7 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 
 					componentBytes += bytesInPacket;
 					maxBytes -= bytesInPacket;
-					*allPacketsBytes += bytesInPacket;
+					*allPacketBytes += bytesInPacket;
 					if(cp->m_coding_params.m_enc.m_max_comp_size &&
 							componentBytes > cp->m_coding_params.m_enc.m_max_comp_size)
 						return false;
@@ -546,6 +548,8 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 	}
 	return ret;
 #endif
+
+	//GRK_INFO("Stream packet length: %d", *packet_bytes_written);
 	return true;
 }
 bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
