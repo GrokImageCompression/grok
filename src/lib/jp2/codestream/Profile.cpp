@@ -1105,10 +1105,12 @@ void Profile::set_cinema_parameters(grk_cparameters* parameters, GrkImage* image
 	{
 		Profile::initialise_4K_poc(parameters->progression, parameters->numresolution);
 		parameters->numpocs = 2;
+		parameters->numgbits = 2;
 	}
 	else
 	{
 		parameters->numpocs = 0;
+		parameters->numgbits = 1;
 	}
 
 	/* Limit bit-rate */
