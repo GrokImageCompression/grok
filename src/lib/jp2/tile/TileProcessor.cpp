@@ -944,17 +944,6 @@ void TileProcessor::rateAllocate(uint32_t *allPacketBytes)
 			break;
 	}
 }
-/*
- if
- - r xx, yy, zz, 0   (disto_alloc == 1 and rates == 0)
- or
- - q xx, yy, zz, 0   (fixed_quality == 1 and distortion == 0)
-
- then don't try to find an optimal threshold but rather take everything not included yet.
-
- It is possible to have some lossy layers and the last layer always lossless
-
- */
 bool TileProcessor::layerNeedsRateControl(uint32_t layno)
 {
 	auto enc_params = &m_cp->m_coding_params.m_enc;
@@ -1300,11 +1289,11 @@ void TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 	double upperBound = max_slope;
 	if(packetLengthCache.getMarkers())
 		packetLengthCache.getMarkers()->writeInit();
+	uint32_t maxLayerLength = UINT_MAX;
 	for(uint16_t layno = 0; layno < m_tcp->numlayers; layno++)
 	{
-		uint32_t maxLayerLength = UINT_MAX;
-		if (m_tcp->rates[layno] > 0.0f)
-			maxLayerLength = (uint32_t)ceil(m_tcp->rates[layno]);
+		maxLayerLength = (m_tcp->rates[layno] > 0.0f) ?
+				(uint32_t)ceil(m_tcp->rates[layno]) : UINT_MAX;
 		if(layerNeedsRateControl(layno))
 		{
 			double lowerBound = min_slope;
@@ -1358,16 +1347,6 @@ void TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 			// choose conservative value for goodthresh
 			goodthresh = (upperBound == -1) ? thresh : upperBound;
 			makeLayerSimple(layno, goodthresh, true);
-			// final simulation will generate correct PLT lengths
-			// and correct tile length
-			//GRK_INFO("Rate control final simulation");
-			t2.compressPacketsSimulate(m_tileIndex,
-										layno + 1U,
-										allPacketBytes,
-										maxLayerLength,
-										newTilePartProgressionPosition,
-										packetLengthCache.getMarkers());
-
 			cumulativeDistortion[layno] = (layno == 0) ? tile->layerDistoration[0]
 										   : (cumulativeDistortion[layno - 1] + tile->layerDistoration[layno]);
 
@@ -1380,6 +1359,15 @@ void TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 			assert(layno == m_tcp->numlayers - 1);
 		}
 	}
+	// final simulation will generate correct PLT lengths
+	// and correct tile length
+	//GRK_INFO("Rate control final simulation");
+	t2.compressPacketsSimulate(m_tileIndex,
+								m_tcp->numlayers,
+								allPacketBytes,
+								maxLayerLength,
+								newTilePartProgressionPosition,
+								packetLengthCache.getMarkers());
 }
 static void prepareBlockForFirstLayer(CompressCodeblock* cblk)
 {
