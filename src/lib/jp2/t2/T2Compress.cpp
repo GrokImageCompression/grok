@@ -47,9 +47,7 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers, IBuffere
 		{
 			uint32_t nb_bytes = 0;
 			if(!compressPacket(tcp, current_pi, stream, &nb_bytes))
-			{
 				return false;
-			}
 			*tileBytesWritten += nb_bytes;
 			tilePtr->numProcessedPackets++;
 		}
@@ -75,8 +73,6 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 	PacketManager packetManager(true, image, cp, tile_no, THRESH_CALC, tileProcessor);
 	*allPacketBytes = 0;
 	tileProcessor->getPacketTracker()->clear();
-	if(markers)
-		markers->writeInit();
 	for(uint32_t compno = 0; compno < max_comp; ++compno)
 	{
 		uint64_t componentBytes = 0;
@@ -115,13 +111,13 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 								uint32_t* packet_bytes_written)
 {
 	assert(stream);
+
 	uint32_t compno = pi->compno;
 	uint32_t resno = pi->resno;
 	uint64_t precinctIndex = pi->precinctIndex;
 	uint16_t layno = pi->layno;
 	auto tile = tileProcessor->tile;
-	auto tilec = &tile->comps[compno];
-	auto res = &tilec->tileCompResolution[resno];
+	auto tilec = tile->comps + compno;
 	size_t stream_start = stream->tell();
 
 	if(compno >= tile->numcomps)
@@ -158,9 +154,10 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 			return false;
 	}
 	// initialize precinct and code blocks if this is the first layer
-	if(!layno)
+	auto res = tilec->tileCompResolution  + resno;
+	if(layno == 0)
 	{
-		for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
+		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 		{
 			auto band = res->tileBand + bandIndex;
 			if(precinctIndex >= band->precincts.size())
@@ -174,10 +171,8 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 			uint64_t nb_blocks = prc->getNumCblks();
 
 			if(band->isEmpty() || !nb_blocks)
-			{
-				band++;
 				continue;
-			}
+
 			if(prc->getInclTree())
 				prc->getInclTree()->reset();
 			if(prc->getImsbTree())
@@ -188,23 +183,21 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 				cblk->numPassesInPacket = 0;
 				assert(band->numbps >= cblk->numbps);
 				if(band->numbps < cblk->numbps)
-				{
 					GRK_WARN("Code block %u bps greater than band bps. Skipping.", cblkno);
-				}
 				else
-				{
 					prc->getImsbTree()->setvalue(cblkno, band->numbps - cblk->numbps);
-				}
 			}
 		}
 	}
-	std::unique_ptr<BitIO> bio(new BitIO(stream, true));
+	std::unique_ptr<BitIO> bio;
+	bio = std::unique_ptr<BitIO>(new BitIO(stream, true));
+
 	// Empty header bit. Grok always sets this to 1,
 	// even though there is also an option to set it to zero.
 	if(!bio->write(1, 1))
 		return false;
 	/* Writing Packet header */
-	for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
+	for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 	{
 		auto band = res->tileBand + bandIndex;
 		auto prc = band->precincts[precinctIndex];
@@ -216,11 +209,8 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 		{
 			auto cblk = prc->getCompressedBlockPtr(cblkno);
 			auto layer = cblk->layers + layno;
-
 			if(!cblk->numPassesInPacket && layer->numpasses)
-			{
 				prc->getInclTree()->setvalue(cblkno, layno);
-			}
 		}
 		for(uint64_t cblkno = 0; cblkno < nb_blocks; cblkno++)
 		{
@@ -293,7 +283,6 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 			{
 				nump++;
 				len += pass->len;
-
 				if(pass->term || passno == nb_passes - 1)
 				{
 #ifdef DEBUG_LOSSLESS_T2
@@ -323,7 +312,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 			return false;
 	}
 	/* Writing the packet body */
-	for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
+	for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
 	{
 		auto band = res->tileBand + bandIndex;
 		auto prc = band->precincts[precinctIndex];
@@ -337,16 +326,213 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 			auto cblk_layer = cblk->layers + layno;
 			if(!cblk_layer->numpasses)
 				continue;
-
-			if(cblk_layer->len)
-			{
-				if(!stream->writeBytes(cblk_layer->data, cblk_layer->len))
+			if(cblk_layer->len && !stream->writeBytes(cblk_layer->data, cblk_layer->len))
 					return false;
-			}
 			cblk->numPassesInPacket += cblk_layer->numpasses;
 		}
 	}
 	*packet_bytes_written += (uint32_t)(stream->tell() - stream_start);
+	//GRK_INFO("Stream packet length: %d", *packet_bytes_written);
+	return true;
+}
+
+bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
+										uint32_t* packet_bytes_written,
+										uint32_t max_bytes_available,
+										PacketLengthMarkers* markers)
+{
+	uint32_t compno = pi->compno;
+	uint32_t resno = pi->resno;
+	uint64_t precinctIndex = pi->precinctIndex;
+	uint16_t layno = pi->layno;
+	uint64_t nb_blocks;
+	auto tile = tileProcessor->tile;
+	auto tilec = tile->comps + compno;
+	auto res = tilec->tileCompResolution + resno;
+
+	if(compno >= tile->numcomps)
+	{
+		GRK_ERROR("compress packet simulate: component number %d must be less than total number "
+				  "of components %d",
+				  compno, tile->numcomps);
+		return false;
+	}
+	*packet_bytes_written = 0;
+	if (max_bytes_available != UINT_MAX){
+		if(tileProcessor->getPacketTracker()->is_packet_encoded(compno, resno, precinctIndex, layno))
+			return true;
+		tileProcessor->getPacketTracker()->packet_encoded(compno, resno, precinctIndex, layno);
+	}
+#ifdef DEBUG_ENCODE_PACKETS
+	GRK_INFO("simulate compress packet compono=%u, resno=%u, precinctIndex=%u, layno=%u", compno,
+			 resno, precinctIndex, layno);
+#endif
+	if(tcp->csty & J2K_CP_CSTY_SOP)
+	{
+		max_bytes_available -= 6;
+		*packet_bytes_written += 6;
+	}
+	if(!layno)
+	{
+		for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
+		{
+			auto band = res->tileBand + bandIndex;
+			if(precinctIndex >= band->precincts.size())
+			{
+				GRK_ERROR("compress packet simulate: precinct index %d must be less than total "
+						  "number of precincts %d",
+						  precinctIndex, band->precincts.size());
+				return false;
+			}
+			auto prc = band->precincts[precinctIndex];
+			uint64_t nb_blocks = prc->getNumCblks();
+			if(band->isEmpty() || !nb_blocks)
+				continue;
+			if(prc->getInclTree())
+				prc->getInclTree()->reset();
+			if(prc->getImsbTree())
+				prc->getImsbTree()->reset();
+			for(uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno)
+			{
+				auto cblk = prc->getCompressedBlockPtr(cblkno);
+				cblk->numPassesInPacket = 0;
+				if(band->numbps < cblk->numbps)
+					GRK_WARN("Code block %u bps greater than band bps. Skipping.", cblkno);
+				else
+					prc->getImsbTree()->setvalue(cblkno, band->numbps - cblk->numbps);
+			}
+		}
+	}
+	std::unique_ptr<BitIO> bio(new BitIO(0, max_bytes_available, true));
+	bio->simulateOutput(true);
+	/* Empty header bit */
+	if(!bio->write(1, 1))
+		return false;
+	/* Writing Packet header */
+	for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
+	{
+		auto band = res->tileBand + bandIndex;
+		auto prc = band->precincts[precinctIndex];
+
+		nb_blocks = prc->getNumCblks();
+		for(uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno)
+		{
+			auto cblk = prc->getCompressedBlockPtr(cblkno);
+			auto layer = cblk->layers + layno;
+			if(!cblk->numPassesInPacket && layer->numpasses)
+			{
+				prc->getInclTree()->setvalue(cblkno, layno);
+			}
+		}
+		for(uint64_t cblkno = 0; cblkno < nb_blocks; cblkno++)
+		{
+			auto cblk = prc->getCompressedBlockPtr(cblkno);
+			auto layer = cblk->layers + layno;
+			uint8_t increment = 0;
+			uint32_t nump = 0;
+			uint32_t len = 0, passno;
+			uint32_t nb_passes;
+
+			/* cblk inclusion bits */
+			if(!cblk->numPassesInPacket)
+			{
+				if(!prc->getInclTree()->compress(bio.get(), cblkno, layno + 1))
+					return false;
+			}
+			else
+			{
+				if(!bio->write(layer->numpasses != 0, 1))
+					return false;
+			}
+
+			/* if cblk not included, go to the next cblk  */
+			if(!layer->numpasses)
+				continue;
+
+			/* if first instance of cblk --> zero bit-planes information */
+			if(!cblk->numPassesInPacket)
+			{
+				cblk->numlenbits = 3;
+				if(!prc->getImsbTree()->compress(bio.get(), cblkno,
+						prc->getImsbTree()->getUninitializedValue()))
+					return false;
+			}
+
+			/* number of coding passes included */
+			bio->putnumpasses(layer->numpasses);
+			nb_passes = cblk->numPassesInPacket + layer->numpasses;
+			/* computation of the increase of the length indicator and insertion in the header */
+			for(passno = cblk->numPassesInPacket; passno < nb_passes; ++passno)
+			{
+				auto pass = cblk->passes + cblk->numPassesInPacket + passno;
+				++nump;
+				len += pass->len;
+
+				if(pass->term || passno == (cblk->numPassesInPacket + layer->numpasses) - 1)
+				{
+					increment = (uint8_t)std::max<int8_t>(
+						(int8_t)increment,
+						int8_t(floorlog2(len) + 1 -
+							(cblk->numlenbits + floorlog2(nump))));
+					len = 0;
+					nump = 0;
+				}
+			}
+			bio->putcommacode(increment);
+			/* computation of the new Length indicator */
+			cblk->numlenbits += increment;
+			/* insertion of the codeword segment length */
+			for(passno = cblk->numPassesInPacket; passno < nb_passes; ++passno)
+			{
+				auto pass = cblk->passes + cblk->numPassesInPacket + passno;
+				nump++;
+				len += pass->len;
+				if(pass->term || passno == (cblk->numPassesInPacket + layer->numpasses) - 1)
+				{
+					if(!bio->write(len, cblk->numlenbits + floorlog2(nump)))
+						return false;
+					len = 0;
+					nump = 0;
+				}
+			}
+		}
+	}
+	if(!bio->flush())
+		return false;
+	*packet_bytes_written += (uint32_t)bio->numbytes();
+	max_bytes_available -= (uint32_t)bio->numbytes();
+	if(tcp->csty & J2K_CP_CSTY_EPH)
+	{
+		max_bytes_available -= 2;
+		*packet_bytes_written += 2;
+	}
+	/* Writing the packet body */
+	for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
+	{
+		auto band = res->tileBand + bandIndex;
+		auto prc = band->precincts[precinctIndex];
+
+		nb_blocks = prc->getNumCblks();
+		for(uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno)
+		{
+			auto cblk = prc->getCompressedBlockPtr(cblkno);
+			auto layer = cblk->layers + layno;
+
+			if(!layer->numpasses)
+				continue;
+			if(layer->len > max_bytes_available)
+				return false;
+			cblk->numPassesInPacket += layer->numpasses;
+			*packet_bytes_written += layer->len;
+			max_bytes_available -= layer->len;
+		}
+	}
+	if(markers)
+		markers->writeNext(*packet_bytes_written);
+
+	return true;
+}
+
 
 #ifdef DEBUG_LOSSLESS_T2
 	auto originalDataBytes = *packet_bytes_written - numHeaderBytes;
@@ -549,204 +735,5 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 	return ret;
 #endif
 
-	//GRK_INFO("Stream packet length: %d", *packet_bytes_written);
-	return true;
-}
-bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
-										uint32_t* packet_bytes_written,
-										uint32_t max_bytes_available, PacketLengthMarkers* markers)
-{
-	uint32_t compno = pi->compno;
-	uint32_t resno = pi->resno;
-	uint64_t precinctIndex = pi->precinctIndex;
-	uint16_t layno = pi->layno;
-	uint64_t nb_blocks;
-	auto tile = tileProcessor->tile;
-	auto tilec = tile->comps + compno;
-	auto res = tilec->tileCompResolution + resno;
-
-	if(compno >= tile->numcomps)
-	{
-		GRK_ERROR("compress packet simulate: component number %d must be less than total number "
-				  "of components %d",
-				  compno, tile->numcomps);
-		return false;
-	}
-	*packet_bytes_written = 0;
-	if(tileProcessor->getPacketTracker()->is_packet_encoded(compno, resno, precinctIndex, layno))
-		return true;
-	tileProcessor->getPacketTracker()->packet_encoded(compno, resno, precinctIndex, layno);
-
-#ifdef DEBUG_ENCODE_PACKETS
-	GRK_INFO("simulate compress packet compono=%u, resno=%u, precinctIndex=%u, layno=%u", compno,
-			 resno, precinctIndex, layno);
-#endif
-	if(tcp->csty & J2K_CP_CSTY_SOP)
-	{
-		max_bytes_available -= 6;
-		*packet_bytes_written += 6;
-	}
-	if(!layno)
-	{
-		for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
-		{
-			auto band = res->tileBand + bandIndex;
-			if(precinctIndex >= band->precincts.size())
-			{
-				GRK_ERROR("compress packet simulate: precinct index %d must be less than total "
-						  "number of precincts %d",
-						  precinctIndex, band->precincts.size());
-				return false;
-			}
-			auto prc = band->precincts[precinctIndex];
-			if(prc->getInclTree())
-				prc->getInclTree()->reset();
-			if(prc->getImsbTree())
-				prc->getImsbTree()->reset();
-			nb_blocks = prc->getNumCblks();
-			for(uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno)
-			{
-				auto cblk = prc->getCompressedBlockPtr(cblkno);
-				cblk->numPassesInPacket = 0;
-				if(band->numbps < cblk->numbps)
-				{
-					GRK_WARN("Code block %u bps greater than band bps. Skipping.", cblkno);
-				}
-				else
-				{
-					prc->getImsbTree()->setvalue(cblkno, band->numbps - cblk->numbps);
-				}
-			}
-		}
-	}
-	std::unique_ptr<BitIO> bio(new BitIO(0, max_bytes_available, true));
-	bio->simulateOutput(true);
-	/* Empty header bit */
-	if(!bio->write(1, 1))
-		return false;
-	/* Writing Packet header */
-	for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
-	{
-		auto band = res->tileBand + bandIndex;
-		auto prc = band->precincts[precinctIndex];
-
-		nb_blocks = prc->getNumCblks();
-		for(uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno)
-		{
-			auto cblk = prc->getCompressedBlockPtr(cblkno);
-			auto layer = cblk->layers + layno;
-			if(!cblk->numPassesInPacket && layer->numpasses)
-			{
-				prc->getInclTree()->setvalue(cblkno, layno);
-			}
-		}
-		for(uint64_t cblkno = 0; cblkno < nb_blocks; cblkno++)
-		{
-			auto cblk = prc->getCompressedBlockPtr(cblkno);
-			auto layer = cblk->layers + layno;
-			uint8_t increment = 0;
-			uint32_t nump = 0;
-			uint32_t len = 0, passno;
-			uint32_t nb_passes;
-
-			/* cblk inclusion bits */
-			if(!cblk->numPassesInPacket)
-			{
-				if(!prc->getInclTree()->compress(bio.get(), cblkno, layno + 1))
-					return false;
-			}
-			else
-			{
-				if(!bio->write(layer->numpasses != 0, 1))
-					return false;
-			}
-
-			/* if cblk not included, go to the next cblk  */
-			if(!layer->numpasses)
-				continue;
-
-			/* if first instance of cblk --> zero bit-planes information */
-			if(!cblk->numPassesInPacket)
-			{
-				cblk->numlenbits = 3;
-				if(!prc->getImsbTree()->compress(bio.get(), cblkno,
-						prc->getImsbTree()->getUninitializedValue()))
-					return false;
-			}
-
-			/* number of coding passes included */
-			bio->putnumpasses(layer->numpasses);
-			nb_passes = cblk->numPassesInPacket + layer->numpasses;
-			/* computation of the increase of the length indicator and insertion in the header */
-			for(passno = cblk->numPassesInPacket; passno < nb_passes; ++passno)
-			{
-				auto pass = cblk->passes + cblk->numPassesInPacket + passno;
-				++nump;
-				len += pass->len;
-
-				if(pass->term || passno == (cblk->numPassesInPacket + layer->numpasses) - 1)
-				{
-					increment = (uint8_t)std::max<int8_t>(
-						(int8_t)increment,
-						int8_t(floorlog2(len) + 1 -
-							(cblk->numlenbits + floorlog2(nump))));
-					len = 0;
-					nump = 0;
-				}
-			}
-			bio->putcommacode(increment);
-			/* computation of the new Length indicator */
-			cblk->numlenbits += increment;
-			/* insertion of the codeword segment length */
-			for(passno = cblk->numPassesInPacket; passno < nb_passes; ++passno)
-			{
-				auto pass = cblk->passes + cblk->numPassesInPacket + passno;
-				nump++;
-				len += pass->len;
-				if(pass->term || passno == (cblk->numPassesInPacket + layer->numpasses) - 1)
-				{
-					if(!bio->write(len, cblk->numlenbits + floorlog2(nump)))
-						return false;
-					len = 0;
-					nump = 0;
-				}
-			}
-		}
-	}
-	if(!bio->flush())
-		return false;
-	*packet_bytes_written += (uint32_t)bio->numbytes();
-	max_bytes_available -= (uint32_t)bio->numbytes();
-	if(tcp->csty & J2K_CP_CSTY_EPH)
-	{
-		max_bytes_available -= 2;
-		*packet_bytes_written += 2;
-	}
-	/* Writing the packet body */
-	for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
-	{
-		auto band = res->tileBand + bandIndex;
-		auto prc = band->precincts[precinctIndex];
-
-		nb_blocks = prc->getNumCblks();
-		for(uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno)
-		{
-			auto cblk = prc->getCompressedBlockPtr(cblkno);
-			auto layer = cblk->layers + layno;
-
-			if(!layer->numpasses)
-				continue;
-			if(layer->len > max_bytes_available)
-				return false;
-			cblk->numPassesInPacket += layer->numpasses;
-			*packet_bytes_written += layer->len;
-			max_bytes_available -= layer->len;
-		}
-	}
-	if(markers)
-		markers->writeNext(*packet_bytes_written);
-
-	return true;
-}
 
 } // namespace grk

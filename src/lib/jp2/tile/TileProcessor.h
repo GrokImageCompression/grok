@@ -82,6 +82,7 @@ struct TileProcessor
 	bool allocWindowBuffers(const GrkImage* outputImage);
 	void deallocBuffers();
 	bool preCompressTile(void);
+	bool canWritePocMarker(void);
 	bool writeTilePartT2(uint32_t* tileBytesWritten);
 	bool doCompress(void);
 	bool decompressT1(void);
@@ -99,6 +100,7 @@ struct TileProcessor
 	TileCodingParams* getTileCodingParams(void);
 	uint8_t getMaxNumDecompressResolutions(void);
 	IBufferedStream* getStream(void);
+	uint32_t getCompressTileLength(void);
 
 	/** index of tile being currently compressed/decompressed */
 	uint16_t m_tileIndex;

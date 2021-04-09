@@ -866,15 +866,9 @@ bool CodeStreamCompress::init_header_writing(void)
 
 	return true;
 }
-bool CodeStreamCompress::canWritePocMarker(TileProcessor* tileProcessor){
-	uint16_t currentTileIndex = tileProcessor->m_tileIndex;
-	bool firstTilePart = (tileProcessor->m_tilePartIndex == 0);
-
-	// note: DCP standard does not allow POC marker
-	return m_cp.tcps[currentTileIndex].numpocs && firstTilePart && !GRK_IS_CINEMA(m_cp.rsiz);
-}
 bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 {
+	//auto currentPos = m_stream->tell();
 	uint16_t currentTileIndex = tileProcessor->m_tileIndex;
 	// 1. write SOT
 	SOTMarker sot;
@@ -882,7 +876,7 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 		return false;
 	uint32_t tilePartBytesWritten = sot_marker_segment_len;
 	// 2. write POC marker to first tile part
-	if(canWritePocMarker(tileProcessor))
+	if(tileProcessor->canWritePocMarker())
 	{
 		if(!writePoc())
 			return false;
@@ -902,6 +896,10 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 	// 5. update TLM
 	if(m_cp.tlm_markers)
 		m_cp.tlm_markers->writeUpdate(currentTileIndex, tilePartBytesWritten);
+	//auto bytesWritten = m_stream->tell() - currentPos;
+	//auto calculatedBytesWritten = tileProcessor->getCompressTileLength();
+	//assert(bytesWritten == calculatedBytesWritten);
+
 	++tileProcessor->m_tilePartIndex;
 
 	return true;

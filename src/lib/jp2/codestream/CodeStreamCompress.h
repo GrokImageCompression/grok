@@ -32,6 +32,7 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	virtual ~CodeStreamCompress();
 
 	static char* convertProgressionOrder(GRK_PROG_ORDER prg_order);
+	static uint16_t getPocSize(uint32_t numComponents, uint32_t l_nb_poc);
 
 	bool startCompress(void);
 	bool initCompress(grk_cparameters* p_param, GrkImage* p_image);
@@ -42,7 +43,6 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
   private:
 	bool init_header_writing(void);
 	bool get_end_header(void);
-	bool canWritePocMarker(TileProcessor* tileProcessor);
 	bool writeTilePart(TileProcessor* tileProcessor);
 	bool writeTileParts(TileProcessor* tileProcessor);
 	bool updateRates(void);
@@ -137,8 +137,6 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	bool write_qcc(uint16_t tileIndex, uint32_t comp_no, IBufferedStream* stream);
 
 	bool write_qcc(uint32_t comp_no);
-
-	uint16_t getPocSize(uint32_t numComponents, uint32_t l_nb_poc);
 
 	/**
 	 * Writes the POC marker (Progression Order Change)
