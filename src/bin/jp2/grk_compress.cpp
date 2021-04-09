@@ -352,10 +352,10 @@ CompressInitParams::CompressInitParams() : initialized(false), transferExifTags(
 }
 CompressInitParams::~CompressInitParams()
 {
-	for(size_t i = 0; i < parameters.cp_num_comments; ++i)
+	for(size_t i = 0; i < parameters.num_comments; ++i)
 	{
-		if(parameters.cp_comment[i])
-			delete[]((uint8_t*)parameters.cp_comment[i]);
+		if(parameters.comment[i])
+			delete[]((uint8_t*)parameters.comment[i]);
 	}
 	if(parameters.raw_cp.comps)
 		free(parameters.raw_cp.comps);
@@ -431,33 +431,33 @@ class GrokOutput : public TCLAP::StdOutput
 static bool validateCinema(TCLAP::ValueArg<uint32_t>* arg, uint16_t profile,
 						   grk_cparameters* parameters)
 {
-	bool isValid = true;
 	if(arg->isSet())
 	{
-		uint32_t fps = arg->getValue();
+		uint16_t fps = (uint16_t)arg->getValue();
+		if (fps != 24 && fps != 48){
+			spdlog::warn("Incorrect digital cinema frame rate {} : "
+						 "		must be either 24 or 48. Ignoring", fps);
+			return false;
+		}
+		parameters->rsiz = profile;
+		parameters->framerate = fps;
 		if(fps == 24)
 		{
-			parameters->rsiz = profile;
-			parameters->framerate = 24;
 			parameters->max_comp_size = GRK_CINEMA_24_COMP;
 			parameters->max_cs_size = GRK_CINEMA_24_CS;
 		}
 		else if(fps == 48)
 		{
-			parameters->rsiz = profile;
-			parameters->framerate = 48;
 			parameters->max_comp_size = GRK_CINEMA_48_COMP;
 			parameters->max_cs_size = GRK_CINEMA_48_CS;
 		}
-		else
-		{
-			isValid = false;
-			spdlog::warn("Incorrect digital cinema frame rate {} : "
-						 "		must be either 24 or 48. Ignoring",
-						 fps);
+		if (profile == GRK_PROFILE_CINEMA_2K){
+			parameters->numgbits = 1;
+		} else {
+			parameters->numgbits = 2;
 		}
 	}
-	return isValid;
+	return true;
 }
 static int parseCommandLine(int argc, char** argv, CompressInitParams* initParams)
 {
@@ -579,7 +579,8 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 													false, "", "string", cmd);
 
 		TCLAP::ValueArg<uint32_t> cblkSty("M", "Mode", "Mode", false, 0, "unsigned integer", cmd);
-
+		TCLAP::ValueArg<uint32_t> guardBits("N", "GuardBits",
+				"Number of guard bits", false, 2, "unsigned integer", cmd);
 		TCLAP::ValueArg<std::string> commentArg("C", "Comment", "Add a comment", false, "",
 												"string", cmd);
 
@@ -738,10 +739,10 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 		if(compressionRatiosArg.isSet())
 		{
 			char* s = (char*)compressionRatiosArg.getValue().c_str();
-			parameters->tcp_numlayers = 0;
-			while(sscanf(s, "%lf", &parameters->tcp_rates[parameters->tcp_numlayers]) == 1)
+			parameters->numlayers = 0;
+			while(sscanf(s, "%lf", &parameters->layer_rate[parameters->numlayers]) == 1)
 			{
-				parameters->tcp_numlayers++;
+				parameters->numlayers++;
 				while(*s && *s != ',')
 				{
 					s++;
@@ -753,27 +754,27 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 
 			// sanity check on rates
 			double lastRate = DBL_MAX;
-			for(uint32_t i = 0; i < parameters->tcp_numlayers; ++i)
+			for(uint32_t i = 0; i < parameters->numlayers; ++i)
 			{
-				if(parameters->tcp_rates[i] > lastRate)
+				if(parameters->layer_rate[i] > lastRate)
 				{
 					spdlog::error("rates must be listed in descending order");
 					return 1;
 				}
-				if(parameters->tcp_rates[i] < 1.0)
+				if(parameters->layer_rate[i] < 1.0)
 				{
 					spdlog::error("rates must be greater than or equal to one");
 					return 1;
 				}
-				lastRate = parameters->tcp_rates[i];
+				lastRate = parameters->layer_rate[i];
 			}
 
-			parameters->cp_disto_alloc = true;
+			parameters->allocationByRateDistoration = true;
 			// set compression ratio of 1 equal to 0, to signal lossless layer
-			for(uint32_t i = 0; i < parameters->tcp_numlayers; ++i)
+			for(uint32_t i = 0; i < parameters->numlayers; ++i)
 			{
-				if(parameters->tcp_rates[i] == 1)
-					parameters->tcp_rates[i] = 0;
+				if(parameters->layer_rate[i] == 1)
+					parameters->layer_rate[i] = 0;
 			}
 		}
 
@@ -781,9 +782,9 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 		{
 			char* s = (char*)qualityArg.getValue().c_str();
 			;
-			while(sscanf(s, "%lf", &parameters->tcp_distoratio[parameters->tcp_numlayers]) == 1)
+			while(sscanf(s, "%lf", &parameters->layer_distortion[parameters->numlayers]) == 1)
 			{
-				parameters->tcp_numlayers++;
+				parameters->numlayers++;
 				while(*s && *s != ',')
 				{
 					s++;
@@ -792,20 +793,20 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 					break;
 				s++;
 			}
-			parameters->cp_fixed_quality = true;
+			parameters->allocationByQuality = true;
 
 			// sanity check on quality values
 			double lastDistortion = -1;
-			for(uint16_t i = 0; i < parameters->tcp_numlayers; ++i)
+			for(uint16_t i = 0; i < parameters->numlayers; ++i)
 			{
-				auto distortion = parameters->tcp_distoratio[i];
+				auto distortion = parameters->layer_distortion[i];
 				if(distortion < 0)
 				{
 					spdlog::error("PSNR values must be greater than or equal to zero");
 					return 1;
 				}
 				if(distortion < lastDistortion &&
-				   !(i == (uint16_t)(parameters->tcp_numlayers - 1) && distortion == 0))
+				   !(i == (uint16_t)(parameters->numlayers - 1) && distortion == 0))
 				{
 					spdlog::error("PSNR values must be listed in ascending order");
 					return 1;
@@ -1026,12 +1027,12 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 				progression[numpocs].specifiedCompressionPocProg =
 					getProgression(progression[numpocs].progressionString);
 				// sanity check on layer
-				if(progression[numpocs].layE > parameters->tcp_numlayers)
+				if(progression[numpocs].layE > parameters->numlayers)
 				{
 					spdlog::warn("End layer {} in POC {} is greater than"
 								 " total number of layers {}. Truncating.",
-								 progression[numpocs].layE, numpocs, parameters->tcp_numlayers);
-					progression[numpocs].layE = parameters->tcp_numlayers;
+								 progression[numpocs].layE, numpocs, parameters->numlayers);
+					progression[numpocs].layE = parameters->numlayers;
 				}
 				if(progression[numpocs].resE > parameters->numresolution)
 				{
@@ -1118,8 +1119,17 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 				else
 				{
 					parameters->isHT = true;
+					parameters->numgbits = 1;
 				}
 			}
+		}
+
+		if (guardBits.isSet()){
+			if (guardBits.getValue() > 7){
+				spdlog::error("Number of guard bits {} is greater than 7", guardBits.getValue());
+				return 1;
+			}
+			parameters->numgbits = (uint8_t)guardBits.getValue();
 		}
 		// profiles
 		if(!parameters->isHT)
@@ -1127,9 +1137,7 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 			if(cinema2KArg.isSet())
 			{
 				if(!validateCinema(&cinema2KArg, GRK_PROFILE_CINEMA_2K, parameters))
-				{
 					return 1;
-				}
 				parameters->writeTLM = true;
 				spdlog::warn("CINEMA 2K profile activated\n"
 							 "Other options specified may be overridden");
@@ -1349,7 +1357,6 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 		{
 			parameters->rsiz |= GRK_JPH_RSIZ_FLAG;
 		}
-
 		if(captureResArg.isSet())
 		{
 			if(sscanf(captureResArg.getValue().c_str(), "%lf,%lf", parameters->capture_resolution,
@@ -1379,7 +1386,7 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 				spdlog::error("Incorrect MCT value {}. Must be equal to 0, 1 or 2.", mct_mode);
 				return 1;
 			}
-			parameters->tcp_mct = (uint8_t)mct_mode;
+			parameters->mct = (uint8_t)mct_mode;
 		}
 
 		if(customMCTArg.isSet())
@@ -1579,7 +1586,7 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 						(uint32_t)s.length(), GRK_MAX_COMMENT_LENGTH);
 					continue;
 				}
-				size_t count = parameters->cp_num_comments;
+				size_t count = parameters->num_comments;
 				if(count == GRK_NUM_COMMENTS_SUPPORTED)
 				{
 					spdlog::warn(
@@ -1588,11 +1595,11 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 					break;
 				}
 				// ISO Latin comment
-				parameters->cp_is_binary_comment[count] = false;
-				parameters->cp_comment[count] = (char*)new uint8_t[s.length()];
-				memcpy(parameters->cp_comment[count], s.c_str(), s.length());
-				parameters->cp_comment_len[count] = (uint16_t)s.length();
-				parameters->cp_num_comments++;
+				parameters->is_binary_comment[count] = false;
+				parameters->comment[count] = (char*)new uint8_t[s.length()];
+				memcpy(parameters->comment[count], s.c_str(), s.length());
+				parameters->comment_len[count] = (uint16_t)s.length();
+				parameters->num_comments++;
 			}
 		}
 		if(tpArg.isSet())
@@ -1659,18 +1666,18 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 		return 1;
 	}
 
-	if((parameters->cp_disto_alloc || parameters->cp_fixed_quality) &&
-	   (!(parameters->cp_disto_alloc != parameters->cp_fixed_quality)))
+	if((parameters->allocationByRateDistoration || parameters->allocationByQuality) &&
+	   (!(parameters->allocationByRateDistoration != parameters->allocationByQuality)))
 	{
 		spdlog::error("options -r and -q cannot be used together");
 		return 1;
 	}
 	/* if no rate was entered, then lossless by default */
-	if(parameters->tcp_numlayers == 0)
+	if(parameters->numlayers == 0)
 	{
-		parameters->tcp_rates[0] = 0;
-		parameters->tcp_numlayers = 1;
-		parameters->cp_disto_alloc = true;
+		parameters->layer_rate[0] = 0;
+		parameters->numlayers = 1;
+		parameters->allocationByRateDistoration = true;
 	}
 	if((parameters->tx0 > 0 && parameters->tx0 > parameters->image_offset_x0) ||
 	   (parameters->ty0 > 0 && parameters->ty0 > parameters->image_offset_y0))
@@ -1697,9 +1704,9 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 		((parameters->raw_cp.numcomps > 2) &&
 		 ((parameters->raw_cp.comps[2].dx > 1) || (parameters->raw_cp.comps[2].dy > 1)))))
 	{
-		parameters->tcp_mct = 0;
+		parameters->mct = 0;
 	}
-	if(parameters->tcp_mct == 2 && !parameters->mct_data)
+	if(parameters->mct == 2 && !parameters->mct_data)
 	{
 		spdlog::error("Custom MCT has been set but no array-based MCT has been provided.");
 		return false;
@@ -1978,20 +1985,20 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 	}
 
 	/* Decide if MCT should be used */
-	if(parameters->tcp_mct == 255)
+	if(parameters->mct == 255)
 	{ /* mct mode has not been set in commandline */
-		parameters->tcp_mct = (image->numcomps >= 3) ? 1 : 0;
+		parameters->mct = (image->numcomps >= 3) ? 1 : 0;
 	}
 	else
 	{ /* mct mode has been set in commandline */
-		if((parameters->tcp_mct == 1) && (image->numcomps < 3))
+		if((parameters->mct == 1) && (image->numcomps < 3))
 		{
 			spdlog::error("RGB->YCC conversion cannot be used:");
 			spdlog::error("Input image has less than 3 components");
 			bSuccess = false;
 			goto cleanup;
 		}
-		if((parameters->tcp_mct == 2) && (!parameters->mct_data))
+		if((parameters->mct == 2) && (!parameters->mct_data))
 		{
 			spdlog::error("Custom MCT has been set but no array-based MCT");
 			spdlog::error("has been provided.");
@@ -2182,7 +2189,7 @@ static int pluginMain(int argc, char** argv, CompressInitParams* initParams)
 	/* set compressing parameters to default values */
 	grk_compress_set_default_params(&initParams->parameters);
 	/* parse input and get user compressing parameters */
-	initParams->parameters.tcp_mct =
+	initParams->parameters.mct =
 		255; /* This will be set later according to the input image or the provided option */
 	initParams->parameters.rateControlAlgorithm = 255;
 	if(parseCommandLine(argc, argv, initParams) == 1)
@@ -2250,7 +2257,7 @@ static int pluginMain(int argc, char** argv, CompressInitParams* initParams)
 			std::string filename;
 			FileProvider provider(initParams->inputFolder.imgdirpath);
 			// cache certain settings
-			auto tcp_mct = initParams->parameters.tcp_mct;
+			auto mct = initParams->parameters.mct;
 			auto rateControlAlgorithm = initParams->parameters.rateControlAlgorithm;
 			while(provider.next(filename))
 			{
@@ -2262,7 +2269,7 @@ static int pluginMain(int argc, char** argv, CompressInitParams* initParams)
 					continue;
 				}
 				// restore cached settings
-				initParams->parameters.tcp_mct = tcp_mct;
+				initParams->parameters.mct = mct;
 				initParams->parameters.rateControlAlgorithm = rateControlAlgorithm;
 				success = grk_plugin_compress(&initParams->parameters, pluginCompressCallback);
 				if(success != 0)

@@ -475,16 +475,18 @@ typedef struct _grk_cparameters
 	/** YTsiz */
 	uint32_t t_height;
 	/** allocation by rate/distortion */
-	bool cp_disto_alloc;
+	bool allocationByRateDistoration;
 	/** allocation by fixed_quality */
-	bool cp_fixed_quality;
+	bool allocationByQuality;
 	/** comment for coding */
-	char* cp_comment[GRK_NUM_COMMENTS_SUPPORTED];
-	uint16_t cp_comment_len[GRK_NUM_COMMENTS_SUPPORTED];
-	bool cp_is_binary_comment[GRK_NUM_COMMENTS_SUPPORTED];
-	size_t cp_num_comments;
+	char* comment[GRK_NUM_COMMENTS_SUPPORTED];
+	uint16_t comment_len[GRK_NUM_COMMENTS_SUPPORTED];
+	bool is_binary_comment[GRK_NUM_COMMENTS_SUPPORTED];
+	size_t num_comments;
 	/** csty : coding style */
 	uint8_t csty;
+	/* number of guard bits */
+	uint8_t numgbits;
 	/** progression order (default GRK_LRCP) */
 	GRK_PROG_ORDER prog_order;
 	/** progressions */
@@ -492,12 +494,12 @@ typedef struct _grk_cparameters
 	/** number of progression order changes (POCs), default to 0 */
 	uint32_t numpocs;
 	/** number of layers */
-	uint16_t tcp_numlayers;
+	uint16_t numlayers;
 	/** rates of layers, expressed as compression ratios.
 	 *  They might be subsequently limited by the max_cs_size field */
-	double tcp_rates[100];
+	double layer_rate[100];
 	/** different psnr for successive layers */
-	double tcp_distoratio[100];
+	double layer_distortion[100];
 	/** number of resolutions */
 	uint8_t numresolution;
 	/** initial code block width  (default to 64) */
@@ -549,14 +551,14 @@ typedef struct _grk_cparameters
 	/** Flag for tile part generation*/
 	uint8_t newTilePartProgressionDivider;
 	/** MCT (multiple component transform) */
-	uint8_t tcp_mct;
+	uint8_t mct;
 	/** Naive implementation of MCT restricted to a single reversible array based
 	 compressing without offset concerning all the components. */
 	void* mct_data;
 	/**
 	 * Maximum size (in bytes) for the whole code stream.
 	 * If equal to zero, code stream size limitation is not considered
-	 * If it does not comply with tcp_rates, max_cs_size prevails
+	 * If it does not comply with layer_rate, max_cs_size prevails
 	 * and a warning is issued.
 	 * */
 	uint64_t max_cs_size;
@@ -692,7 +694,7 @@ typedef struct _grk_header_info
 	/** tile grid height  */
 	uint32_t t_grid_height;
 	/** number of layers */
-	uint16_t tcp_numlayers;
+	uint16_t numlayers;
 
 	// note: xml_data will remain valid
 	// until codec is destroyed

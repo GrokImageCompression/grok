@@ -67,7 +67,8 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 	uint32_t pocno = (cp->rsiz == GRK_PROFILE_CINEMA_4K) ? 2 : 1;
 
 	// Cinema profile has CPRL progression and maximum component size specification,
-    // so in this case, we set max_comp to the number of components. Otherwise, set to 1.
+    // so in this case, we set max_comp to the number of components, so we can ensure that
+	// each component length meets spec. Otherwise, set to 1.
 	uint32_t max_comp = cp->m_coding_params.m_enc.m_max_comp_size > 0 ? image->numcomps : 1;
 
 	PacketManager packetManager(true, image, cp, tile_no, THRESH_CALC, tileProcessor);
@@ -79,7 +80,6 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 		for(uint32_t poc = 0; poc < pocno; ++poc)
 		{
 			auto current_pi = packetManager.getPacketIter(poc);
-			// todo: 1. why is a new tile part generated for each progression order change ?
 			packetManager.enableTilePartGeneration(poc, (compno == 0), newTilePartProgressionPosition);
 
 			if(current_pi->prog.progression == GRK_PROG_UNKNOWN)

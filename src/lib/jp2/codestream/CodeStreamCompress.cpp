@@ -164,20 +164,20 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 	}
 
 	if(GRK_IS_IMF(parameters->rsiz) && parameters->max_cs_size > 0 &&
-	   parameters->tcp_numlayers == 1 && parameters->tcp_rates[0] == 0)
+	   parameters->numlayers == 1 && parameters->layer_rate[0] == 0)
 	{
-		parameters->tcp_rates[0] = (float)(image->numcomps * image->comps[0].w * image->comps[0].h *
+		parameters->layer_rate[0] = (float)(image->numcomps * image->comps[0].w * image->comps[0].h *
 										   image->comps[0].prec) /
 								   (float)(((uint32_t)parameters->max_cs_size) * 8 *
 										   image->comps[0].dx * image->comps[0].dy);
 	}
 
 	/* if no rate entered, lossless by default */
-	if(parameters->tcp_numlayers == 0)
+	if(parameters->numlayers == 0)
 	{
-		parameters->tcp_rates[0] = 0;
-		parameters->tcp_numlayers = 1;
-		parameters->cp_disto_alloc = true;
+		parameters->layer_rate[0] = 0;
+		parameters->numlayers = 1;
+		parameters->allocationByRateDistoration = true;
 	}
 
 	/* see if max_codestream_size does limit input rate */
@@ -186,22 +186,22 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 		(8 * image->comps[0].dx * image->comps[0].dy);
 	if(parameters->max_cs_size == 0)
 	{
-		if(parameters->tcp_numlayers > 0 &&
-		   parameters->tcp_rates[parameters->tcp_numlayers - 1] > 0)
+		if(parameters->numlayers > 0 &&
+		   parameters->layer_rate[parameters->numlayers - 1] > 0)
 		{
 			parameters->max_cs_size =
-				(uint64_t)floor(image_bytes / parameters->tcp_rates[parameters->tcp_numlayers - 1]);
+				(uint64_t)floor(image_bytes / parameters->layer_rate[parameters->numlayers - 1]);
 		}
 	}
 	else
 	{
 		bool cap = false;
 		auto min_rate = image_bytes / (double)parameters->max_cs_size;
-		for(uint32_t i = 0; i < parameters->tcp_numlayers; i++)
+		for(uint32_t i = 0; i < parameters->numlayers; i++)
 		{
-			if(parameters->tcp_rates[i] < min_rate)
+			if(parameters->layer_rate[i] < min_rate)
 			{
-				parameters->tcp_rates[i] = min_rate;
+				parameters->layer_rate[i] = min_rate;
 				cap = true;
 			}
 		}
@@ -272,7 +272,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 	{
 		/* initialisation of POC */
 		if(!check_poc_val(parameters->progression, parameters->numpocs, parameters->numresolution,
-						  image->numcomps, parameters->tcp_numlayers))
+						  image->numcomps, parameters->numlayers))
 		{
 			GRK_ERROR("Failed to initialize POC");
 			return false;
@@ -287,8 +287,8 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 
 	cp->m_coding_params.m_enc.m_max_comp_size = parameters->max_comp_size;
 	cp->rsiz = parameters->rsiz;
-	cp->m_coding_params.m_enc.m_allocationByRateDistortion = parameters->cp_disto_alloc;
-	cp->m_coding_params.m_enc.m_allocationByFixedQuality = parameters->cp_fixed_quality;
+	cp->m_coding_params.m_enc.m_allocationByRateDistortion = parameters->allocationByRateDistoration;
+	cp->m_coding_params.m_enc.m_allocationByFixedQuality = parameters->allocationByQuality;
 	cp->m_coding_params.m_enc.writePLT = parameters->writePLT;
 	cp->m_coding_params.m_enc.writeTLM = parameters->writeTLM;
 	cp->m_coding_params.m_enc.rateControlAlgorithm = parameters->rateControlAlgorithm;
@@ -302,11 +302,11 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 	cp->ty0 = parameters->ty0;
 
 	/* comment string */
-	if(parameters->cp_num_comments)
+	if(parameters->num_comments)
 	{
-		for(size_t i = 0; i < parameters->cp_num_comments; ++i)
+		for(size_t i = 0; i < parameters->num_comments; ++i)
 		{
-			cp->comment_len[i] = parameters->cp_comment_len[i];
+			cp->comment_len[i] = parameters->comment_len[i];
 			if(!cp->comment_len[i])
 			{
 				GRK_WARN("Empty comment. Ignoring");
@@ -324,8 +324,8 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 				GRK_ERROR("Not enough memory to allocate copy of comment string");
 				return false;
 			}
-			memcpy(cp->comment[i], parameters->cp_comment[i], cp->comment_len[i]);
-			cp->isBinaryComment[i] = parameters->cp_is_binary_comment[i];
+			memcpy(cp->comment[i], parameters->comment[i], cp->comment_len[i]);
+			cp->isBinaryComment[i] = parameters->is_binary_comment[i];
 			cp->num_comments++;
 		}
 	}
@@ -368,7 +368,11 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 		cp->m_coding_params.m_enc.m_newTilePartProgressionDivider = parameters->newTilePartProgressionDivider;
 		cp->m_coding_params.m_enc.m_enableTilePartGeneration = true;
 	}
-	uint8_t numgbits = parameters->isHT ? 1 : 2;
+	uint8_t numgbits = parameters->numgbits;
+	if (parameters->numgbits > 7){
+		GRK_ERROR("Number of guard bits %d is greater than 7", numgbits);
+		return false;
+	}
 	cp->tcps = new TileCodingParams[cp->t_grid_width * cp->t_grid_height];
 	for(uint32_t tileno = 0; tileno < cp->t_grid_width * cp->t_grid_height; tileno++)
 	{
@@ -377,18 +381,18 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 		tcp->qcd.generate(numgbits, (uint32_t)(parameters->numresolution - 1),
 						  !parameters->irreversible, image->comps[0].prec, tcp->mct > 0,
 						  image->comps[0].sgnd);
-		tcp->numlayers = parameters->tcp_numlayers;
+		tcp->numlayers = parameters->numlayers;
 
 		for(uint16_t j = 0; j < tcp->numlayers; j++)
 		{
 			if(cp->m_coding_params.m_enc.m_allocationByFixedQuality)
-				tcp->distortion[j] = parameters->tcp_distoratio[j];
+				tcp->distortion[j] = parameters->layer_distortion[j];
 			else
-				tcp->rates[j] = parameters->tcp_rates[j];
+				tcp->rates[j] = parameters->layer_rate[j];
 		}
 		tcp->csty = parameters->csty;
 		tcp->prg = parameters->prog_order;
-		tcp->mct = parameters->tcp_mct;
+		tcp->mct = parameters->mct;
 		tcp->POC = false;
 		if(parameters->numpocs)
 		{

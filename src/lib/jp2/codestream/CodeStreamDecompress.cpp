@@ -280,7 +280,7 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 		header_info->t_grid_width = m_cp.t_grid_width;
 		header_info->t_grid_height = m_cp.t_grid_height;
 
-		header_info->tcp_numlayers = tcp->numlayers;
+		header_info->numlayers = tcp->numlayers;
 
 		header_info->num_comments = m_cp.num_comments;
 		for(size_t i = 0; i < header_info->num_comments; ++i)

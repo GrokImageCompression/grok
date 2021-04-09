@@ -439,12 +439,12 @@ bool Profile::is_imf_compliant(grk_cparameters* parameters, GrkImage* image)
 	}
 
 	/* Number of layers */
-	if(parameters->tcp_numlayers != 1)
+	if(parameters->numlayers != 1)
 	{
 		GRK_WARN("IMF 2K/4K/8K profiles require 1 single quality layer.\n"
 				 "-> Number of layers is %u.\n"
 				 "-> Non-IMF code stream will be generated",
-				 parameters->tcp_numlayers);
+				 parameters->numlayers);
 		ret = false;
 	}
 
@@ -935,12 +935,12 @@ bool Profile::is_broadcast_compliant(grk_cparameters* parameters, GrkImage* imag
 	}
 
 	/* Number of layers */
-	if(parameters->tcp_numlayers != 1)
+	if(parameters->numlayers != 1)
 	{
 		GRK_WARN("Broadcast profiles require 1 single quality layer.\n"
 				 "-> Number of layers is %u.\n"
 				 "-> Non-broadcast code stream will be generated",
-				 parameters->tcp_numlayers);
+				 parameters->numlayers);
 		ret = false;
 	}
 
@@ -1042,15 +1042,15 @@ void Profile::set_cinema_parameters(grk_cparameters* parameters, GrkImage* image
 	parameters->irreversible = true;
 
 	/* Number of layers */
-	if(parameters->tcp_numlayers > 1)
+	if(parameters->numlayers > 1)
 	{
 		GRK_WARN("JPEG 2000 profiles 3 and 4 (2k and 4k digital cinema) require:\n"
 				 "1 single quality layer"
 				 "-> Number of layers forced to 1 (rather than %u)\n"
 				 "-> Rate of the last layer (%3.1f) will be used",
-				 parameters->tcp_numlayers, parameters->tcp_rates[parameters->tcp_numlayers - 1]);
-		parameters->tcp_rates[0] = parameters->tcp_rates[parameters->tcp_numlayers - 1];
-		parameters->tcp_numlayers = 1;
+				 parameters->numlayers, parameters->layer_rate[parameters->numlayers - 1]);
+		parameters->layer_rate[0] = parameters->layer_rate[parameters->numlayers - 1];
+		parameters->numlayers = 1;
 	}
 
 	/* Resolution levels */
@@ -1112,7 +1112,7 @@ void Profile::set_cinema_parameters(grk_cparameters* parameters, GrkImage* image
 	}
 
 	/* Limit bit-rate */
-	parameters->cp_disto_alloc = true;
+	parameters->allocationByRateDistoration = true;
 	if(parameters->max_cs_size == 0)
 	{
 		/* No rate has been introduced for code stream, so 24 fps is assumed */
@@ -1145,7 +1145,7 @@ void Profile::set_cinema_parameters(grk_cparameters* parameters, GrkImage* image
 		parameters->max_comp_size = GRK_CINEMA_24_COMP;
 	}
 
-	parameters->tcp_rates[0] =
+	parameters->layer_rate[0] =
 		((double)image->numcomps * image->comps[0].w * image->comps[0].h * image->comps[0].prec) /
 		((double)parameters->max_cs_size * 8 * image->comps[0].dx * image->comps[0].dy);
 }

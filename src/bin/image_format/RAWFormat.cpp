@@ -259,11 +259,11 @@ grk_image* RAWFormat::rawtoimage(const char* filename, grk_cparameters* paramete
 	{
 		color_space = GRK_CLRSPC_GRAY;
 	}
-	else if((numcomps >= 3) && (parameters->tcp_mct == 0))
+	else if((numcomps >= 3) && (parameters->mct == 0))
 	{
 		color_space = GRK_CLRSPC_SYCC;
 	}
-	else if((numcomps >= 3) && (parameters->tcp_mct != 2))
+	else if((numcomps >= 3) && (parameters->mct != 2))
 	{
 		color_space = GRK_CLRSPC_SRGB;
 	}

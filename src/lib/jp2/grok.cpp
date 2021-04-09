@@ -346,7 +346,7 @@ bool GRK_CALLCONV grk_set_MCT(grk_cparameters* parameters, float* pEncodingMatri
 	parameters->irreversible = true;
 
 	/* use array based MCT */
-	parameters->tcp_mct = 2;
+	parameters->mct = 2;
 	parameters->mct_data = grkMalloc(l_mct_total_size);
 	if(!parameters->mct_data)
 	{
@@ -413,6 +413,7 @@ void GRK_CALLCONV grk_compress_set_default_params(grk_cparameters* parameters)
 		parameters->numresolution = GRK_COMP_PARAM_DEFAULT_NUMRESOLUTION;
 		parameters->cblockw_init = GRK_COMP_PARAM_DEFAULT_CBLOCKW;
 		parameters->cblockh_init = GRK_COMP_PARAM_DEFAULT_CBLOCKH;
+		parameters->numgbits = 2;
 		parameters->prog_order = GRK_COMP_PARAM_DEFAULT_PROG_ORDER;
 		parameters->roi_compno = -1; /* no ROI */
 		parameters->subsampling_dx = 1;
@@ -420,10 +421,10 @@ void GRK_CALLCONV grk_compress_set_default_params(grk_cparameters* parameters)
 		parameters->enableTilePartGeneration = 0;
 		parameters->decod_format = GRK_UNK_FMT;
 		parameters->cod_format = GRK_UNK_FMT;
-		parameters->tcp_rates[0] = 0;
-		parameters->tcp_numlayers = 0;
-		parameters->cp_disto_alloc = false;
-		parameters->cp_fixed_quality = false;
+		parameters->layer_rate[0] = 0;
+		parameters->numlayers = 0;
+		parameters->allocationByRateDistoration = false;
+		parameters->allocationByQuality = false;
 		parameters->writePLT = false;
 		parameters->writeTLM = false;
 		if(!parameters->numThreads)

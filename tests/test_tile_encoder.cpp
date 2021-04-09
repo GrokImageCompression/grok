@@ -107,9 +107,9 @@ int main(int argc, char *argv[]) {
 	/** you may here add custom encoding parameters */
 	/* rate specifications */
 	/** number of quality layers in the stream */
-	param.tcp_numlayers = 1;
-	param.cp_fixed_quality = true;
-	param.tcp_distoratio[0] = 20;
+	param.numlayers = 1;
+	param.allocationByQuality = true;
+	param.layer_distortion[0] = 20;
 	/* is using others way of calculation */
 	/* param.cp_disto_alloc = 1 or param.cp_fixed_alloc = 1 */
 	/* param.tcp_rates[0] = ... */
