@@ -376,16 +376,15 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 			max_bytes_available -= 6;
 		*packet_bytes_written += 6;
 	}
-	std::unique_ptr<BitIO> bio(new BitIO(0, max_bytes_available, true));
-	bio->simulateOutput(true);
+	std::unique_ptr<BitIO> bio(new BitIO(nullptr, max_bytes_available, true));
 	if (!compressHeader(bio.get(), res, layno, precinctIndex))
 		return false;
 
-	*packet_bytes_written += (uint32_t)bio->numbytes();
+	*packet_bytes_written += (uint32_t)bio->numBytes();
 	//if (max_bytes_available == UINT_MAX)
 	//	GRK_INFO("Simulated packet header bytes %d for layer %d", *packet_bytes_written,layno);
 	if (max_bytes_available != UINT_MAX)
-		max_bytes_available -= (uint32_t)bio->numbytes();
+		max_bytes_available -= (uint32_t)bio->numBytes();
 	if(tcp->csty & J2K_CP_CSTY_EPH)
 	{
 		if (max_bytes_available != UINT_MAX)

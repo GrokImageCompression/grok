@@ -454,7 +454,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 			}
 		}
 		bio->inalign();
-		header_data += bio->numbytes();
+		header_data += bio->numBytes();
 	}
 	catch(InvalidMarkerException& ex)
 	{

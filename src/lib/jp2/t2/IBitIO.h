@@ -31,7 +31,7 @@ class IBitIO
 	 Number of bytes written.
 	 @return the number of bytes written
 	 */
-	virtual size_t numbytes() = 0;
+	virtual size_t numBytes() = 0;
 
 	/**
 	 Write bits

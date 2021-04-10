@@ -141,13 +141,13 @@ uint32_t PacketLengthMarkers::write(bool simulate)
 			// write from MSB down to LSB
 			uint32_t val = *val_iter;
 			uint32_t numbits = floorlog2(val) + 1;
-			uint32_t numbytes = (numbits + 6) / 7;
-			assert(numbytes <= 5);
+			uint32_t numBytes = (numbits + 6) / 7;
+			assert(numBytes <= 5);
 
 			if (!simulate) {
 				// write period
 				uint8_t temp[5];
-				int32_t counter = (int32_t)(numbytes - 1);
+				int32_t counter = (int32_t)(numBytes - 1);
 				temp[counter--] = (val & 0x7F);
 				val = (uint32_t)(val >> 7);
 
@@ -159,11 +159,11 @@ uint32_t PacketLengthMarkers::write(bool simulate)
 					val = (uint32_t)(val >> 7);
 				}
 				assert(counter == -1);
-				uint32_t written = (uint32_t)m_stream->writeBytes(temp, numbytes);
-				assert(written == numbytes);
+				uint32_t written = (uint32_t)m_stream->writeBytes(temp, numBytes);
+				assert(written == numBytes);
 				(void)written;
 			}
-			writeIncrement(numbytes);
+			writeIncrement(numBytes);
 		}
 		finalMarkerInfo = &map_iter->second;
 	}

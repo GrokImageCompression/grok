@@ -39,7 +39,7 @@ class BitIO : public IBitIO
 	 Number of bytes written.
 	 @return the number of bytes written
 	 */
-	size_t numbytes();
+	size_t numBytes();
 
 	/*
 	 Write bits
@@ -61,11 +61,6 @@ class BitIO : public IBitIO
 	 Passes the ending bits (coming from flushing)
 	 */
 	void inalign();
-
-	void simulateOutput(bool doSimulate)
-	{
-		sim_out = doSimulate;
-	}
 
 	void putcommacode(uint8_t n);
 	void getcommacode(uint8_t* n);
@@ -106,14 +101,7 @@ class BitIO : public IBitIO
 	 @param bio BIO handle
 	 @return true if successful, returns false otherwise
 	 */
-	bool byteout();
-
-	/*
-	 Write a byte
-	 @param bio BIO handle
-	 @return true if successful, returns false otherwise
-	 */
-	bool byteout_stream();
+	bool writeByte();
 	/*
 	 Read a byte
 	 @param bio BIO handle

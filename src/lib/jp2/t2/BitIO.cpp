@@ -23,39 +23,35 @@
 namespace grk
 {
 BitIO::BitIO(uint8_t* bp, uint64_t len, bool isCompressor)
-	: start(bp), offset(0), buf_len(len), buf(0), ct(isCompressor ? 8 : 0), sim_out(false),
+	: start(bp), offset(0), buf_len(len), buf(0), ct(isCompressor ? 8 : 0), sim_out(isCompressor && !bp),
 	  stream(nullptr), read0xFF(false)
 {
 	assert(isCompressor || bp);
 }
 
 BitIO::BitIO(IBufferedStream* strm, bool isCompressor)
-	: start(nullptr), offset(0), buf_len(0), buf(0), ct(isCompressor ? 8 : 0), sim_out(false),
+	: start(nullptr), offset(0), buf_len(0), buf(0), ct(isCompressor ? 8 : 0), sim_out(isCompressor && !strm),
 	  stream(strm), read0xFF(false)
 {}
 
-bool BitIO::byteout()
+bool BitIO::writeByte()
 {
-	if(stream)
-		return byteout_stream();
-	if(offset == buf_len)
-	{
-		if(!sim_out)
-			assert(false);
-		return false;
+	if(stream || start) {
+		if (stream) {
+			if(!stream->writeByte(buf))
+				return false;
+		} else if (start){
+			start[offset++] = buf;
+		}
+	} else {
+		if (offset == buf_len)
+		{
+			if(!sim_out)
+				assert(false);
+			return false;
+		}
+		offset++;
 	}
-	ct = buf == 0xff ? 7 : 8;
-	if(!sim_out)
-		start[offset] = buf;
-	offset++;
-	buf = 0;
-	return true;
-}
-
-bool BitIO::byteout_stream()
-{
-	if(!stream->writeByte(buf))
-		return false;
 	ct = buf == 0xff ? 7 : 8;
 	buf = 0;
 	return true;
@@ -86,11 +82,8 @@ void BitIO::bytein()
 
 bool BitIO::putbit(uint8_t b)
 {
-	if(ct == 0)
-	{
-		if(!byteout())
-			return false;
-	}
+	if(ct == 0 && !writeByte())
+		return false;
 	ct--;
 	buf = static_cast<uint8_t>(buf | (b << ct));
 	return true;
@@ -105,7 +98,7 @@ void BitIO::getbit(uint32_t* bits, uint8_t pos)
 	*bits |= (uint32_t)(((buf >> ct) & 1) << pos);
 }
 
-size_t BitIO::numbytes()
+size_t BitIO::numBytes()
 {
 	return offset;
 }
@@ -138,14 +131,10 @@ void BitIO::read(uint32_t* bits, uint32_t n)
 
 bool BitIO::flush()
 {
-	if(!byteout())
+	if(!writeByte())
 		return false;
-	if(ct == 7)
-	{
-		if(!byteout())
-			return false;
-	}
-	return true;
+
+	return (ct == 7) ? writeByte() : true;
 }
 
 void BitIO::inalign()
