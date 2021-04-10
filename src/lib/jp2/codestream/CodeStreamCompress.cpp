@@ -907,7 +907,7 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 		tilePartBytesWritten = calculatedBytesWritten;
 	}
 	if(m_cp.tlm_markers)
-		m_cp.tlm_markers->writeUpdate(currentTileIndex, tilePartBytesWritten);
+		m_cp.tlm_markers->push(currentTileIndex, tilePartBytesWritten);
 	++tileProcessor->m_tilePartIndex;
 
 	return true;

@@ -125,7 +125,7 @@ struct TileLengthMarkers
 	bool skipTo(uint16_t skipTileIndex, IBufferedStream* stream, uint64_t firstSotPos);
 
 	bool writeBegin(uint16_t numTilePartsTotal);
-	void writeUpdate(uint16_t tileIndex, uint32_t tile_part_size);
+	void push(uint16_t tileIndex, uint32_t tile_part_size);
 	bool writeEnd(void);
 	/**
 	 Add tile header marker information

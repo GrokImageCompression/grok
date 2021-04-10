@@ -109,7 +109,43 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 	return true;
 }
 
-bool T2Compress::compress(BitIO* bio, Resolution *res, uint16_t layno, uint64_t precinctIndex){
+bool T2Compress::compressHeader(BitIO* bio, Resolution *res, uint16_t layno, uint64_t precinctIndex){
+
+	if(layno == 0)
+	{
+		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
+		{
+			auto band = res->tileBand + bandIndex;
+			if(precinctIndex >= band->precincts.size())
+			{
+				GRK_ERROR("compress packet simulate: precinct index %d must be less than total "
+						  "number of precincts %d",
+						  precinctIndex, band->precincts.size());
+				return false;
+			}
+			auto prc = band->precincts[precinctIndex];
+			uint64_t nb_blocks = prc->getNumCblks();
+
+			if(band->isEmpty() || !nb_blocks)
+				continue;
+
+			if(prc->getInclTree())
+				prc->getInclTree()->reset();
+			if(prc->getImsbTree())
+				prc->getImsbTree()->reset();
+			for(uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno)
+			{
+				auto cblk = prc->getCompressedBlockPtr(cblkno);
+				cblk->numPassesInPacket = 0;
+				assert(band->numbps >= cblk->numbps);
+				if(band->numbps < cblk->numbps)
+					GRK_WARN("Code block %u bps greater than band bps. Skipping.", cblkno);
+				else
+					prc->getImsbTree()->setvalue(cblkno, band->numbps - cblk->numbps);
+			}
+		}
+	}
+
 	// Empty header bit. Grok always sets this to 1,
 	// even though there is also an option to set it to zero.
 	if(!bio->write(1, 1))
@@ -263,46 +299,12 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 		if(!stream->writeByte((uint8_t)(numProcessedPackets & 0xff)))
 			return false;
 	}
-	// initialize precinct and code blocks if this is the first layer
-	auto res = tilec->tileCompResolution  + resno;
-	if(layno == 0)
-	{
-		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
-		{
-			auto band = res->tileBand + bandIndex;
-			if(precinctIndex >= band->precincts.size())
-			{
-				GRK_ERROR("compress packet simulate: precinct index %d must be less than total "
-						  "number of precincts %d",
-						  precinctIndex, band->precincts.size());
-				return false;
-			}
-			auto prc = band->precincts[precinctIndex];
-			uint64_t nb_blocks = prc->getNumCblks();
-
-			if(band->isEmpty() || !nb_blocks)
-				continue;
-
-			if(prc->getInclTree())
-				prc->getInclTree()->reset();
-			if(prc->getImsbTree())
-				prc->getImsbTree()->reset();
-			for(uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno)
-			{
-				auto cblk = prc->getCompressedBlockPtr(cblkno);
-				cblk->numPassesInPacket = 0;
-				assert(band->numbps >= cblk->numbps);
-				if(band->numbps < cblk->numbps)
-					GRK_WARN("Code block %u bps greater than band bps. Skipping.", cblkno);
-				else
-					prc->getImsbTree()->setvalue(cblkno, band->numbps - cblk->numbps);
-			}
-		}
-	}
 	std::unique_ptr<BitIO> bio;
 	bio = std::unique_ptr<BitIO>(new BitIO(stream, true));
 
-	if (!compress(bio.get(), res, layno, precinctIndex))
+	// initialize precinct and code blocks if this is the first layer
+	auto res = tilec->tileCompResolution  + resno;
+	if (!compressHeader(bio.get(), res, layno, precinctIndex))
 		return false;
 
 	// EPH marker
@@ -374,40 +376,9 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 			max_bytes_available -= 6;
 		*packet_bytes_written += 6;
 	}
-	if(!layno)
-	{
-		for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
-		{
-			auto band = res->tileBand + bandIndex;
-			if(precinctIndex >= band->precincts.size())
-			{
-				GRK_ERROR("compress packet simulate: precinct index %d must be less than total "
-						  "number of precincts %d",
-						  precinctIndex, band->precincts.size());
-				return false;
-			}
-			auto prc = band->precincts[precinctIndex];
-			uint64_t nb_blocks = prc->getNumCblks();
-			if(band->isEmpty() || !nb_blocks)
-				continue;
-			if(prc->getInclTree())
-				prc->getInclTree()->reset();
-			if(prc->getImsbTree())
-				prc->getImsbTree()->reset();
-			for(uint64_t cblkno = 0; cblkno < nb_blocks; ++cblkno)
-			{
-				auto cblk = prc->getCompressedBlockPtr(cblkno);
-				cblk->numPassesInPacket = 0;
-				if(band->numbps < cblk->numbps)
-					GRK_WARN("Code block %u bps greater than band bps. Skipping.", cblkno);
-				else
-					prc->getImsbTree()->setvalue(cblkno, band->numbps - cblk->numbps);
-			}
-		}
-	}
 	std::unique_ptr<BitIO> bio(new BitIO(0, max_bytes_available, true));
 	bio->simulateOutput(true);
-	if (!compress(bio.get(), res, layno, precinctIndex))
+	if (!compressHeader(bio.get(), res, layno, precinctIndex))
 		return false;
 
 	*packet_bytes_written += (uint32_t)bio->numbytes();

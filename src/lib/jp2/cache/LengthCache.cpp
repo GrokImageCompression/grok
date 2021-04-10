@@ -439,8 +439,6 @@ bool TileLengthMarkers::skipTo(uint16_t skipTileIndex, IBufferedStream* stream, 
 }
 bool TileLengthMarkers::writeBegin(uint16_t numTilePartsTotal)
 {
-	uint32_t tlm_size = tlm_marker_start_bytes + tlmMarkerBytesPerTilePart * numTilePartsTotal;
-
 	streamStart = m_stream->tell();
 
 	/* TLM */
@@ -448,6 +446,7 @@ bool TileLengthMarkers::writeBegin(uint16_t numTilePartsTotal)
 		return false;
 
 	/* Ltlm */
+	uint32_t tlm_size = tlm_marker_start_bytes + tlmMarkerBytesPerTilePart * numTilePartsTotal;
 	if(!m_stream->writeShort((uint16_t)(tlm_size - 2)))
 		return false;
 
@@ -462,25 +461,21 @@ bool TileLengthMarkers::writeBegin(uint16_t numTilePartsTotal)
 	/* make room for tile part lengths */
 	return m_stream->skip(tlmMarkerBytesPerTilePart * numTilePartsTotal);
 }
-void TileLengthMarkers::writeUpdate(uint16_t tileIndex, uint32_t tile_part_size)
+void TileLengthMarkers::push(uint16_t tileIndex, uint32_t tile_part_size)
 {
 	push(m_markerIndex, TilePartLengthInfo(tileIndex, tile_part_size));
 }
 bool TileLengthMarkers::writeEnd(void)
 {
-	uint64_t tlm_position = streamStart + tlm_marker_start_bytes;
 	uint64_t current_position = m_stream->tell();
-
-	if(!m_stream->seek(tlm_position))
+	if(!m_stream->seek(streamStart + tlm_marker_start_bytes))
 		return false;
-
 	for(auto it = m_markers->begin(); it != m_markers->end(); it++)
 	{
 		auto lengths = it->second;
 		for(auto info = lengths->begin(); info != lengths->end(); ++info)
 		{
-			if(info->hasTileIndex)
-				m_stream->writeShort(info->tileIndex);
+			m_stream->writeShort(info->tileIndex);
 			m_stream->writeInt(info->length);
 		}
 	}

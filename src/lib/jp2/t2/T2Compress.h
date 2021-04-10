@@ -84,7 +84,7 @@ struct T2Compress
 	bool compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi, uint32_t* p_data_written,
 								uint32_t len, PacketLengthMarkers* markers);
 
-	bool compress(BitIO* bio, Resolution *res, uint16_t layno, uint64_t precinctIndex);
+	bool compressHeader(BitIO* bio, Resolution *res, uint16_t layno, uint64_t precinctIndex);
 };
 
 } // namespace grk
