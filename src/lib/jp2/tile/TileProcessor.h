@@ -100,7 +100,8 @@ struct TileProcessor
 	TileCodingParams* getTileCodingParams(void);
 	uint8_t getMaxNumDecompressResolutions(void);
 	IBufferedStream* getStream(void);
-	uint32_t getCompressTileLength(void);
+	uint32_t getPreCalculatedTileLen(void);
+	bool canPreCalculateTileLen(void);
 
 	/** index of tile being currently compressed/decompressed */
 	uint16_t m_tileIndex;
@@ -159,7 +160,7 @@ struct TileProcessor
 	GrkImage* m_image;
 	bool m_isCompressor;
 	grkRectU32 unreducedTileWindow;
-	uint32_t compressTileLength;
+	uint32_t preCalculatedTileLen;
 };
 
 struct TileProcessorComparator

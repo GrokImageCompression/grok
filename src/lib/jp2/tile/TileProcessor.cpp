@@ -29,7 +29,7 @@ TileProcessor::TileProcessor(CodeStream* codeStream, IBufferedStream* stream, bo
 	  wholeTileDecompress(isWholeTileDecompress), m_cp(codeStream->getCodingParams()),
 	  packetLengthCache(PacketLengthCache(m_cp)), m_stream(stream), m_corrupt_packet(false),
 	  newTilePartProgressionPosition(0), m_tcp(nullptr), truncated(false), m_image(nullptr), m_isCompressor(isCompressor),
-	  compressTileLength(0)
+	  preCalculatedTileLen(0)
 {
 	tile = new Tile();
 	tile->comps = new TileComponent[headerImage->numcomps];
@@ -46,8 +46,11 @@ TileProcessor::~TileProcessor()
 IBufferedStream* TileProcessor::getStream(void){
 	return m_stream;
 }
-uint32_t TileProcessor::getCompressTileLength(void){
-	return compressTileLength;
+uint32_t TileProcessor::getPreCalculatedTileLen(void){
+	return preCalculatedTileLen;
+}
+bool TileProcessor::canPreCalculateTileLen(void){
+	return !m_cp->m_coding_params.m_enc.m_enableTilePartGeneration;
 }
 void TileProcessor::generateImage(GrkImage* src_image, Tile* src_tile)
 {
@@ -234,17 +237,17 @@ bool TileProcessor::doCompress(void)
 	m_packetTracker.clear();
 
 	// SOT marker
-	compressTileLength = sot_marker_segment_len;
+	preCalculatedTileLen = sot_marker_segment_len;
 	// POC marker
 	if (canWritePocMarker())
-		compressTileLength += CodeStreamCompress::getPocSize(tile->numcomps, 1 + m_tcp->numpocs);
+		preCalculatedTileLen += CodeStreamCompress::getPocSize(tile->numcomps, 1 + m_tcp->numpocs);
 	// calculate PLT marker length
 	if (packetLengthCache.getMarkers())
-		compressTileLength += packetLengthCache.getMarkers()->write(true);
+		preCalculatedTileLen += packetLengthCache.getMarkers()->write(true);
 	// calculate SOD marker length
-	compressTileLength += 2;
+	preCalculatedTileLen += 2;
 	// calculate packets length
-	compressTileLength += allPacketBytes;
+	preCalculatedTileLen += allPacketBytes;
 	return true;
 }
 bool TileProcessor::canWritePocMarker(void){
