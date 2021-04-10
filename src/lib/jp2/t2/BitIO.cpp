@@ -36,21 +36,18 @@ BitIO::BitIO(IBufferedStream* strm, bool isCompressor)
 
 bool BitIO::writeByte()
 {
-	if(stream || start) {
-		if (stream) {
-			if(!stream->writeByte(buf))
-				return false;
-		} else if (start){
-			start[offset++] = buf;
-		}
-	} else {
+	if (stream) {
+		if(!stream->writeByte(buf))
+			return false;
+	} else{
+		if (start)
+			start[offset] = buf;
+		offset++;
 		if (offset == buf_len)
 		{
-			if(!sim_out)
-				assert(false);
+			assert(sim_out);
 			return false;
 		}
-		offset++;
 	}
 	ct = buf == 0xff ? 7 : 8;
 	buf = 0;
