@@ -313,7 +313,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 		if(!stream->writeByte(J2K_MS_EPH & 0xff))
 			return false;
 	}
-	GRK_INFO("Written packet header bytes %d for layer %d", (uint32_t)(stream->tell() - stream_start),layno);
+	//GRK_INFO("Written packet header bytes %d for layer %d", (uint32_t)(stream->tell() - stream_start),layno);
 	/* Writing the packet body */
 	for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
 	{
@@ -335,7 +335,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 		}
 	}
 	*packet_bytes_written += (uint32_t)(stream->tell() - stream_start);
-	GRK_INFO("Written packet length: %d for layer %d", *packet_bytes_written,layno);
+	//GRK_INFO("Written packet length: %d for layer %d", *packet_bytes_written,layno);
 	return true;
 }
 
@@ -411,8 +411,8 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 		return false;
 
 	*packet_bytes_written += (uint32_t)bio->numbytes();
-	if (max_bytes_available == UINT_MAX)
-		GRK_INFO("Simulated packet header bytes %d for layer %d", *packet_bytes_written,layno);
+	//if (max_bytes_available == UINT_MAX)
+	//	GRK_INFO("Simulated packet header bytes %d for layer %d", *packet_bytes_written,layno);
 	if (max_bytes_available != UINT_MAX)
 		max_bytes_available -= (uint32_t)bio->numbytes();
 	if(tcp->csty & J2K_CP_CSTY_EPH)
@@ -446,8 +446,8 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 	if(markers)
 		markers->pushNextPacketLength(*packet_bytes_written);
 
-	if (max_bytes_available == UINT_MAX)
-		GRK_INFO("Simulated packet bytes %d for layer %d", *packet_bytes_written,layno);
+	//if (max_bytes_available == UINT_MAX)
+	//	GRK_INFO("Simulated packet bytes %d for layer %d", *packet_bytes_written,layno);
 
 	return true;
 }

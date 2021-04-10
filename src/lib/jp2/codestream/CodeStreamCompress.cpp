@@ -876,9 +876,10 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 	if (tileProcessor->canPreCalculateTileLen())
 		currentPos = m_stream->tell();
 	uint16_t currentTileIndex = tileProcessor->m_tileIndex;
+	auto calculatedBytesWritten = tileProcessor->getPreCalculatedTileLen();
 	// 1. write SOT
 	SOTMarker sot;
-	if(!sot.write(tileProcessor))
+	if(!sot.write(tileProcessor, calculatedBytesWritten))
 		return false;
 	uint32_t tilePartBytesWritten = sot_marker_segment_len;
 	// 2. write POC marker to first tile part
@@ -902,14 +903,11 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 	// 5. update TLM
 	if (tileProcessor->canPreCalculateTileLen()) {
 		auto bytesWritten = m_stream->tell() - currentPos;
-		auto calculatedBytesWritten = tileProcessor->getPreCalculatedTileLen();
 		assert(bytesWritten == calculatedBytesWritten);
-		if(m_cp.tlm_markers)
-			m_cp.tlm_markers->writeUpdate(currentTileIndex, calculatedBytesWritten);
-	} else {
-		if(m_cp.tlm_markers)
-			m_cp.tlm_markers->writeUpdate(currentTileIndex, tilePartBytesWritten);
+		tilePartBytesWritten = calculatedBytesWritten;
 	}
+	if(m_cp.tlm_markers)
+		m_cp.tlm_markers->writeUpdate(currentTileIndex, tilePartBytesWritten);
 	++tileProcessor->m_tilePartIndex;
 
 	return true;

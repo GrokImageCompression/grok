@@ -36,8 +36,8 @@ class SOTMarker
 	 * Writes the SOT marker (Start of tile-part)
 	 *
 	 */
-	bool write(TileProcessor *proc);
-	bool write_psot(IBufferedStream* stream, uint32_t tilePartBytesWritten);
+	bool write(TileProcessor *proc, uint32_t tileLength);
+	bool write_psot(IBufferedStream* stream, uint32_t tileLength);
 
 	/**
 	 * Decompress a SOT marker (Start of tile-part)
