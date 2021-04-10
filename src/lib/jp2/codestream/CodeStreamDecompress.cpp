@@ -1144,14 +1144,14 @@ bool CodeStreamDecompress::readMarker()
  * Reads a POC marker (Progression Order Change)
  *
  * @param       this      JPEG 2000 code stream
- * @param       p_header_data   header data
+ * @param       headerData   header data
  * @param       header_size     size of header data
  */
-bool CodeStreamDecompress::read_poc(uint8_t* p_header_data, uint16_t header_size)
+bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
 {
 	uint32_t old_poc_nb, current_poc_nb, current_poc_remaining;
 	uint32_t chunk_size, comp_room;
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 	auto image = getHeaderImage();
 	uint16_t maxNumResLevels = 0;
 	auto tcp = get_current_decode_tcp();
@@ -1188,37 +1188,37 @@ bool CodeStreamDecompress::read_poc(uint8_t* p_header_data, uint16_t header_size
 	{
 		auto current_prog = tcp->progressionOrderChange + i;
 		/* RSpoc_i */
-		grk_read<uint8_t>(p_header_data, &current_prog->resS);
-		++p_header_data;
+		grk_read<uint8_t>(headerData, &current_prog->resS);
+		++headerData;
 		if(current_prog->resS >= maxNumResLevels)
 		{
 			GRK_ERROR("read_poc: invalid POC start resolution number %d", current_prog->resS);
 			return false;
 		}
 		/* CSpoc_i */
-		grk_read<uint16_t>(p_header_data, &(current_prog->compS), comp_room);
-		p_header_data += comp_room;
+		grk_read<uint16_t>(headerData, &(current_prog->compS), comp_room);
+		headerData += comp_room;
 		if(current_prog->compS > image->numcomps)
 		{
 			GRK_ERROR("read_poc: invalid POC start component %d", current_prog->compS);
 			return false;
 		}
 		/* LYEpoc_i */
-		grk_read<uint16_t>(p_header_data, &(current_prog->layE));
+		grk_read<uint16_t>(headerData, &(current_prog->layE));
 		/* make sure layer end is in acceptable bounds */
 		current_prog->layE = std::min<uint16_t>(current_prog->layE, tcp->numlayers);
-		p_header_data += 2;
+		headerData += 2;
 		/* REpoc_i */
-		grk_read<uint8_t>(p_header_data, &current_prog->resE);
-		++p_header_data;
+		grk_read<uint8_t>(headerData, &current_prog->resE);
+		++headerData;
 		if(current_prog->resE <= current_prog->resS)
 		{
 			GRK_ERROR("read_poc: invalid POC end resolution %d", current_prog->compS);
 			return false;
 		}
 		/* CEpoc_i */
-		grk_read<uint16_t>(p_header_data, &(current_prog->compE), comp_room);
-		p_header_data += comp_room;
+		grk_read<uint16_t>(headerData, &(current_prog->compE), comp_room);
+		headerData += comp_room;
 		current_prog->compE = std::min<uint16_t>(current_prog->compE, numComps);
 		if(current_prog->compE <= current_prog->compS)
 		{
@@ -1227,7 +1227,7 @@ bool CodeStreamDecompress::read_poc(uint8_t* p_header_data, uint16_t header_size
 		}
 		/* Ppoc_i */
 		uint8_t tmp;
-		grk_read<uint8_t>(p_header_data++, &tmp);
+		grk_read<uint8_t>(headerData++, &tmp);
 		if(tmp >= GRK_NUM_PROGRESSION_ORDERS)
 		{
 			GRK_ERROR("read_poc: unknown POC progression order %d", tmp);
@@ -1242,13 +1242,13 @@ bool CodeStreamDecompress::read_poc(uint8_t* p_header_data, uint16_t header_size
  * Reads a CRG marker (Component registration)
  *
  * @param       this      JPEG 2000 code stream
- * @param       p_header_data   header data
+ * @param       headerData   header data
  * @param       header_size     size of header data
  *
  */
-bool CodeStreamDecompress::read_crg(uint8_t* p_header_data, uint16_t header_size)
+bool CodeStreamDecompress::read_crg(uint8_t* headerData, uint16_t header_size)
 {
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 	uint32_t numComps = getHeaderImage()->numcomps;
 	if(header_size != numComps * 4)
 	{
@@ -1259,11 +1259,11 @@ bool CodeStreamDecompress::read_crg(uint8_t* p_header_data, uint16_t header_size
 	{
 		auto comp = getHeaderImage()->comps + i;
 		// Xcrg_i
-		grk_read<uint16_t>(p_header_data, &comp->Xcrg);
-		p_header_data += 2;
+		grk_read<uint16_t>(headerData, &comp->Xcrg);
+		headerData += 2;
 		// Xcrg_i
-		grk_read<uint16_t>(p_header_data, &comp->Ycrg);
-		p_header_data += 2;
+		grk_read<uint16_t>(headerData, &comp->Ycrg);
+		headerData += 2;
 	}
 	return true;
 }
@@ -1271,49 +1271,49 @@ bool CodeStreamDecompress::read_crg(uint8_t* p_header_data, uint16_t header_size
  * Reads a PLM marker (Packet length, main header marker)
  *
  * @param       this      JPEG 2000 code stream
- * @param       p_header_data   header data
+ * @param       headerData   header data
  * @param       header_size     size of header data
  *
  */
-bool CodeStreamDecompress::read_plm(uint8_t* p_header_data, uint16_t header_size)
+bool CodeStreamDecompress::read_plm(uint8_t* headerData, uint16_t header_size)
 {
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 	if(!m_cp.plm_markers)
 		m_cp.plm_markers = new PacketLengthMarkers();
 
-	return m_cp.plm_markers->readPLM(p_header_data, header_size);
+	return m_cp.plm_markers->readPLM(headerData, header_size);
 }
 /**
  * Reads a PLT marker (Packet length, tile-part header)
  *
  * @param       this           JPEG 2000 code stream
- * @param       p_header_data   the data contained in the PLT box.
+ * @param       headerData   the data contained in the PLT box.
  * @param       header_size   the size of the data contained in the PLT marker.
 
  */
-bool CodeStreamDecompress::read_plt(uint8_t* p_header_data, uint16_t header_size)
+bool CodeStreamDecompress::read_plt(uint8_t* headerData, uint16_t header_size)
 {
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 	auto tileProcessor = currentProcessor();
 
-	return tileProcessor->packetLengthCache.createMarkers(nullptr)->readPLT(p_header_data,
+	return tileProcessor->packetLengthCache.createMarkers(nullptr)->readPLT(headerData,
 																			header_size);
 }
 /**
  * Reads a PPM marker (Packed packet headers, main header)
  *
  * @param       this      JPEG 2000 code stream
- * @param       p_header_data   header data
+ * @param       headerData   header data
  * @param       header_size     size of header data
  *
  */
-bool CodeStreamDecompress::read_ppm(uint8_t* p_header_data, uint16_t header_size)
+bool CodeStreamDecompress::read_ppm(uint8_t* headerData, uint16_t header_size)
 {
 	if(!m_cp.ppm_marker)
 	{
 		m_cp.ppm_marker = new PPMMarker();
 	}
-	return m_cp.ppm_marker->read(p_header_data, header_size);
+	return m_cp.ppm_marker->read(headerData, header_size);
 }
 /**
  * Merges all PPM markers read (Packed headers, main header)
@@ -1329,13 +1329,13 @@ bool CodeStreamDecompress::merge_ppm(CodingParams* p_cp)
  * Reads a PPT marker (Packed packet headers, tile-part header)
  *
  * @param       this      JPEG 2000 code stream
- * @param       p_header_data   header data
+ * @param       headerData   header data
  * @param       header_size     size of header data
  *
  */
-bool CodeStreamDecompress::read_ppt(uint8_t* p_header_data, uint16_t header_size)
+bool CodeStreamDecompress::read_ppt(uint8_t* headerData, uint16_t header_size)
 {
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 	uint32_t Z_ppt;
 	auto tileProcessor = currentProcessor();
 
@@ -1358,7 +1358,7 @@ bool CodeStreamDecompress::read_ppt(uint8_t* p_header_data, uint16_t header_size
 	tcp->ppt = true;
 
 	/* Z_ppt */
-	grk_read<uint32_t>(p_header_data++, &Z_ppt, 1);
+	grk_read<uint32_t>(headerData++, &Z_ppt, 1);
 	--header_size;
 
 	/* check allocation needed */
@@ -1407,7 +1407,7 @@ bool CodeStreamDecompress::read_ppt(uint8_t* p_header_data, uint16_t header_size
 		return false;
 	}
 	tcp->ppt_markers[Z_ppt].m_data_size = header_size;
-	memcpy(tcp->ppt_markers[Z_ppt].m_data, p_header_data, header_size);
+	memcpy(tcp->ppt_markers[Z_ppt].m_data, headerData, header_size);
 	return true;
 }
 /**
@@ -1469,28 +1469,28 @@ bool CodeStreamDecompress::merge_ppt(TileCodingParams* p_tcp)
  * Read SOT (Start of tile part) marker
  *
  * @param       this      JPEG 2000 code stream
- * @param       p_header_data   header data
+ * @param       headerData   header data
  * @param       header_size     size of header data
  *
  */
-bool CodeStreamDecompress::read_sot(uint8_t* p_header_data, uint16_t header_size)
+bool CodeStreamDecompress::read_sot(uint8_t* headerData, uint16_t header_size)
 {
 	SOTMarker sot;
 
-	return sot.read(this, p_header_data, header_size);
+	return sot.read(this, headerData, header_size);
 }
 
 /**
  * Reads a RGN marker (Region Of Interest)
  *
  * @param       this      JPEG 2000 code stream
- * @param       p_header_data   header data
+ * @param       headerData   header data
  * @param       header_size     size of header data
  */
-bool CodeStreamDecompress::read_rgn(uint8_t* p_header_data, uint16_t header_size)
+bool CodeStreamDecompress::read_rgn(uint8_t* headerData, uint16_t header_size)
 {
 	uint32_t comp_no, roi_sty;
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 	auto image = getHeaderImage();
 	uint32_t numComps = image->numcomps;
 	uint32_t comp_room = (numComps <= 256) ? 1 : 2;
@@ -1504,10 +1504,10 @@ bool CodeStreamDecompress::read_rgn(uint8_t* p_header_data, uint16_t header_size
 	auto tcp = get_current_decode_tcp();
 
 	/* Crgn */
-	grk_read<uint32_t>(p_header_data, &comp_no, comp_room);
-	p_header_data += comp_room;
+	grk_read<uint32_t>(headerData, &comp_no, comp_room);
+	headerData += comp_room;
 	/* Srgn */
-	grk_read<uint32_t>(p_header_data++, &roi_sty, 1);
+	grk_read<uint32_t>(headerData++, &roi_sty, 1);
 	if(roi_sty != 0)
 	{
 		GRK_ERROR("RGN marker RS value of %u is not supported by JPEG 2000 Part 1", roi_sty);
@@ -1523,7 +1523,7 @@ bool CodeStreamDecompress::read_rgn(uint8_t* p_header_data, uint16_t header_size
 	}
 
 	/* SPrgn */
-	grk_read<uint8_t>(p_header_data++, &(tcp->tccps[comp_no].roishift));
+	grk_read<uint8_t>(headerData++, &(tcp->tccps[comp_no].roishift));
 	if(tcp->tccps[comp_no].roishift >= 32)
 	{
 		GRK_ERROR("Unsupported ROI shift : %u", tcp->tccps[comp_no].roishift);
@@ -1536,15 +1536,15 @@ bool CodeStreamDecompress::read_rgn(uint8_t* p_header_data, uint16_t header_size
  * Reads a MCO marker (Multiple Component Transform Ordering)
  *
  * @param       this      JPEG 2000 code stream
- * @param       p_header_data   header data.
+ * @param       headerData   header data.
  * @param       header_size     size of header data
 
  */
-bool CodeStreamDecompress::read_mco(uint8_t* p_header_data, uint16_t header_size)
+bool CodeStreamDecompress::read_mco(uint8_t* headerData, uint16_t header_size)
 {
 	uint32_t tmp, i;
 	uint32_t nb_stages;
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 	auto image = getHeaderImage();
 	auto tcp = get_current_decode_tcp();
 
@@ -1554,8 +1554,8 @@ bool CodeStreamDecompress::read_mco(uint8_t* p_header_data, uint16_t header_size
 		return false;
 	}
 	/* Nmco : only one transform stage*/
-	grk_read<uint32_t>(p_header_data, &nb_stages, 1);
-	++p_header_data;
+	grk_read<uint32_t>(headerData, &nb_stages, 1);
+	++headerData;
 
 	if(nb_stages > 1)
 	{
@@ -1578,8 +1578,8 @@ bool CodeStreamDecompress::read_mco(uint8_t* p_header_data, uint16_t header_size
 
 	for(i = 0; i < nb_stages; ++i)
 	{
-		grk_read<uint32_t>(p_header_data, &tmp, 1);
-		++p_header_data;
+		grk_read<uint32_t>(headerData, &tmp, 1);
+		++headerData;
 
 		if(!CodeStreamDecompress::add_mct(tcp, getHeaderImage(), tmp))
 			return false;
@@ -1663,13 +1663,13 @@ bool CodeStreamDecompress::add_mct(TileCodingParams* p_tcp, GrkImage* p_image, u
  * Reads a CBD marker (Component bit depth definition)
  *
  * @param       this      JPEG 2000 code stream
- * @param       p_header_data   header data
+ * @param       headerData   header data
  * @param       header_size     size of header data
  *
  */
-bool CodeStreamDecompress::read_cbd(uint8_t* p_header_data, uint16_t header_size)
+bool CodeStreamDecompress::read_cbd(uint8_t* headerData, uint16_t header_size)
 {
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 	if(header_size < 2 || (header_size - 2) != getHeaderImage()->numcomps)
 	{
 		GRK_ERROR("Error reading CBD marker");
@@ -1677,8 +1677,8 @@ bool CodeStreamDecompress::read_cbd(uint8_t* p_header_data, uint16_t header_size
 	}
 	/* Ncbd */
 	uint16_t numComps;
-	grk_read<uint16_t>(p_header_data, &numComps);
-	p_header_data += 2;
+	grk_read<uint16_t>(headerData, &numComps);
+	headerData += 2;
 
 	if(numComps != getHeaderImage()->numcomps)
 	{
@@ -1690,7 +1690,7 @@ bool CodeStreamDecompress::read_cbd(uint8_t* p_header_data, uint16_t header_size
 	{
 		/* Component bit depth */
 		uint8_t comp_def;
-		grk_read<uint8_t>(p_header_data++, &comp_def);
+		grk_read<uint8_t>(headerData++, &comp_def);
 		auto comp = getHeaderImage()->comps + i;
 		comp->sgnd = ((uint32_t)(comp_def >> 7U) & 1U);
 		comp->prec = (uint8_t)((comp_def & 0x7f) + 1U);
@@ -1702,32 +1702,32 @@ bool CodeStreamDecompress::read_cbd(uint8_t* p_header_data, uint16_t header_size
  * Reads a TLM marker (Tile Length Marker)
  *
  * @param       this      JPEG 2000 code stream
- * @param       p_header_data   header data
+ * @param       headerData   header data
  * @param       header_size     size of header data
  *
  */
-bool CodeStreamDecompress::read_tlm(uint8_t* p_header_data, uint16_t header_size)
+bool CodeStreamDecompress::read_tlm(uint8_t* headerData, uint16_t header_size)
 {
 	if(!m_cp.tlm_markers)
 		m_cp.tlm_markers = new TileLengthMarkers();
 
-	return m_cp.tlm_markers->read(p_header_data, header_size);
+	return m_cp.tlm_markers->read(headerData, header_size);
 }
-bool CodeStreamDecompress::read_SQcd_SQcc(bool fromQCC, uint32_t comp_no, uint8_t* p_header_data,
+bool CodeStreamDecompress::read_SQcd_SQcc(bool fromQCC, uint32_t comp_no, uint8_t* headerData,
 										  uint16_t* header_size)
 {
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 	assert(comp_no < getHeaderImage()->numcomps);
 	auto tcp = get_current_decode_tcp();
 	auto tccp = tcp->tccps + comp_no;
 
-	return tccp->quant.read_SQcd_SQcc(this, fromQCC, comp_no, p_header_data, header_size);
+	return tccp->quant.read_SQcd_SQcc(this, fromQCC, comp_no, headerData, header_size);
 }
-bool CodeStreamDecompress::read_SPCod_SPCoc(uint32_t compno, uint8_t* p_header_data,
+bool CodeStreamDecompress::read_SPCod_SPCoc(uint32_t compno, uint8_t* headerData,
 											uint16_t* header_size)
 {
 	uint32_t i;
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 	assert(compno < getHeaderImage()->numcomps);
 
 	if(compno >= getHeaderImage()->numcomps)
@@ -1736,7 +1736,7 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint32_t compno, uint8_t* p_header_d
 	auto cp = &(m_cp);
 	auto tcp = get_current_decode_tcp();
 	auto tccp = &tcp->tccps[compno];
-	auto current_ptr = p_header_data;
+	auto current_ptr = headerData;
 
 	/* make sure room is sufficient */
 	if(*header_size < SPCod_SPCoc_len)
@@ -1867,11 +1867,11 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint32_t compno, uint8_t* p_header_d
  * Reads a MCC marker (Multiple Component Collection)
  *
  * @param       this      JPEG 2000 code stream
- * @param       p_header_data   header data
+ * @param       headerData   header data
  * @param       header_size     size of header data
  *
  */
-bool CodeStreamDecompress::read_mcc(uint8_t* p_header_data, uint16_t header_size)
+bool CodeStreamDecompress::read_mcc(uint8_t* headerData, uint16_t header_size)
 {
 	uint32_t i, j;
 	uint32_t tmp;
@@ -1879,7 +1879,7 @@ bool CodeStreamDecompress::read_mcc(uint8_t* p_header_data, uint16_t header_size
 	uint32_t nb_collections;
 	uint32_t nb_comps;
 
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 
 	auto tcp = get_current_decode_tcp();
 
@@ -1891,8 +1891,8 @@ bool CodeStreamDecompress::read_mcc(uint8_t* p_header_data, uint16_t header_size
 
 	/* first marker */
 	/* Zmcc */
-	grk_read<uint32_t>(p_header_data, &tmp, 2);
-	p_header_data += 2;
+	grk_read<uint32_t>(headerData, &tmp, 2);
+	headerData += 2;
 	if(tmp != 0)
 	{
 		GRK_WARN("Cannot take in charge multiple data spanning");
@@ -1904,9 +1904,9 @@ bool CodeStreamDecompress::read_mcc(uint8_t* p_header_data, uint16_t header_size
 		return false;
 	}
 
-	grk_read<uint32_t>(p_header_data, &indix,
+	grk_read<uint32_t>(headerData, &indix,
 					   1); /* Imcc -> no need for other values, take the first */
-	++p_header_data;
+	++headerData;
 
 	auto mcc_record = tcp->m_mcc_records;
 
@@ -1953,8 +1953,8 @@ bool CodeStreamDecompress::read_mcc(uint8_t* p_header_data, uint16_t header_size
 
 	/* only one marker atm */
 	/* Ymcc */
-	grk_read<uint32_t>(p_header_data, &tmp, 2);
-	p_header_data += 2;
+	grk_read<uint32_t>(headerData, &tmp, 2);
+	headerData += 2;
 	if(tmp != 0)
 	{
 		GRK_WARN("Cannot take in charge multiple data spanning");
@@ -1962,8 +1962,8 @@ bool CodeStreamDecompress::read_mcc(uint8_t* p_header_data, uint16_t header_size
 	}
 
 	/* Qmcc -> number of collections -> 1 */
-	grk_read<uint32_t>(p_header_data, &nb_collections, 2);
-	p_header_data += 2;
+	grk_read<uint32_t>(headerData, &nb_collections, 2);
+	headerData += 2;
 
 	if(nb_collections > 1)
 	{
@@ -1980,7 +1980,7 @@ bool CodeStreamDecompress::read_mcc(uint8_t* p_header_data, uint16_t header_size
 			return false;
 		}
 		grk_read<uint32_t>(
-			p_header_data++, &tmp,
+			headerData++, &tmp,
 			1); /* Xmcci type of component transformation -> array based decorrelation */
 
 		if(tmp != 1)
@@ -1988,9 +1988,9 @@ bool CodeStreamDecompress::read_mcc(uint8_t* p_header_data, uint16_t header_size
 			GRK_WARN("Cannot take in charge collections other than array decorrelation");
 			return true;
 		}
-		grk_read<uint32_t>(p_header_data, &nb_comps, 2);
+		grk_read<uint32_t>(headerData, &nb_comps, 2);
 
-		p_header_data += 2;
+		headerData += 2;
 		header_size = (uint16_t)(header_size - 3);
 
 		uint32_t nb_bytes_by_comp = 1 + (nb_comps >> 15);
@@ -2007,8 +2007,8 @@ bool CodeStreamDecompress::read_mcc(uint8_t* p_header_data, uint16_t header_size
 		for(j = 0; j < mcc_record->m_nb_comps; ++j)
 		{
 			/* Cmccij Component offset*/
-			grk_read<uint32_t>(p_header_data, &tmp, nb_bytes_by_comp);
-			p_header_data += nb_bytes_by_comp;
+			grk_read<uint32_t>(headerData, &tmp, nb_bytes_by_comp);
+			headerData += nb_bytes_by_comp;
 
 			if(tmp != j)
 			{
@@ -2017,8 +2017,8 @@ bool CodeStreamDecompress::read_mcc(uint8_t* p_header_data, uint16_t header_size
 			}
 		}
 
-		grk_read<uint32_t>(p_header_data, &nb_comps, 2);
-		p_header_data += 2;
+		grk_read<uint32_t>(headerData, &nb_comps, 2);
+		headerData += 2;
 
 		nb_bytes_by_comp = 1 + (nb_comps >> 15);
 		nb_comps &= 0x7fff;
@@ -2040,8 +2040,8 @@ bool CodeStreamDecompress::read_mcc(uint8_t* p_header_data, uint16_t header_size
 		for(j = 0; j < mcc_record->m_nb_comps; ++j)
 		{
 			/* Wmccij Component offset*/
-			grk_read<uint32_t>(p_header_data, &tmp, nb_bytes_by_comp);
-			p_header_data += nb_bytes_by_comp;
+			grk_read<uint32_t>(headerData, &tmp, nb_bytes_by_comp);
+			headerData += nb_bytes_by_comp;
 
 			if(tmp != j)
 			{
@@ -2050,8 +2050,8 @@ bool CodeStreamDecompress::read_mcc(uint8_t* p_header_data, uint16_t header_size
 			}
 		}
 		/* Wmccij Component offset*/
-		grk_read<uint32_t>(p_header_data, &tmp, 3);
-		p_header_data += 3;
+		grk_read<uint32_t>(headerData, &tmp, 3);
+		headerData += 3;
 
 		mcc_record->m_is_irreversible = !((tmp >> 16) & 1);
 		mcc_record->m_decorrelation_array = nullptr;
@@ -2115,16 +2115,16 @@ bool CodeStreamDecompress::read_mcc(uint8_t* p_header_data, uint16_t header_size
  * Reads a MCT marker (Multiple Component Transform)
  *
  * @param       this      JPEG 2000 code stream
- * @param       p_header_data   header data
+ * @param       headerData   header data
  * @param       header_size     size of header data
  *
  */
-bool CodeStreamDecompress::read_mct(uint8_t* p_header_data, uint16_t header_size)
+bool CodeStreamDecompress::read_mct(uint8_t* headerData, uint16_t header_size)
 {
 	uint32_t i;
 	uint32_t tmp;
 	uint32_t indix;
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 	auto tcp = get_current_decode_tcp();
 
 	if(header_size < 2)
@@ -2134,8 +2134,8 @@ bool CodeStreamDecompress::read_mct(uint8_t* p_header_data, uint16_t header_size
 	}
 	/* first marker */
 	/* Zmct */
-	grk_read<uint32_t>(p_header_data, &tmp, 2);
-	p_header_data += 2;
+	grk_read<uint32_t>(headerData, &tmp, 2);
+	headerData += 2;
 	if(tmp != 0)
 	{
 		GRK_WARN("Cannot take in charge mct data within multiple MCT records");
@@ -2144,8 +2144,8 @@ bool CodeStreamDecompress::read_mct(uint8_t* p_header_data, uint16_t header_size
 
 	/* Imct -> no need for other values, take the first,
 	 * type is double with decorrelation x0000 1101 0000 0000*/
-	grk_read<uint32_t>(p_header_data, &tmp, 2); /* Imct */
-	p_header_data += 2;
+	grk_read<uint32_t>(headerData, &tmp, 2); /* Imct */
+	headerData += 2;
 
 	indix = tmp & 0xff;
 	auto mct_data = tcp->m_mct_records;
@@ -2218,8 +2218,8 @@ bool CodeStreamDecompress::read_mct(uint8_t* p_header_data, uint16_t header_size
 	mct_data->m_array_type = (J2K_MCT_ARRAY_TYPE)((tmp >> 8) & 3);
 	mct_data->m_element_type = (J2K_MCT_ELEMENT_TYPE)((tmp >> 10) & 3);
 	/* Ymct */
-	grk_read<uint32_t>(p_header_data, &tmp, 2);
-	p_header_data += 2;
+	grk_read<uint32_t>(headerData, &tmp, 2);
+	headerData += 2;
 	if(tmp != 0)
 	{
 		GRK_WARN("Cannot take in charge multiple MCT markers");
@@ -2238,7 +2238,7 @@ bool CodeStreamDecompress::read_mct(uint8_t* p_header_data, uint16_t header_size
 		GRK_ERROR("Error reading MCT marker");
 		return false;
 	}
-	memcpy(mct_data->m_data, p_header_data, header_size);
+	memcpy(mct_data->m_data, headerData, header_size);
 	mct_data->m_data_size = header_size;
 	if(newmct)
 		++tcp->m_nb_mct_records;
@@ -2535,14 +2535,14 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
  * Reads a COD marker (Coding Style defaults)
  *
  * @param       this      JPEG 2000 code stream
- * @param       p_header_data   header data
+ * @param       headerData   header data
  * @param       header_size     size of header data
  *
  */
-bool CodeStreamDecompress::read_cod(uint8_t* p_header_data, uint16_t header_size)
+bool CodeStreamDecompress::read_cod(uint8_t* headerData, uint16_t header_size)
 {
 	uint32_t i;
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 	auto image = getHeaderImage();
 	auto cp = &(m_cp);
 
@@ -2564,7 +2564,7 @@ bool CodeStreamDecompress::read_cod(uint8_t* p_header_data, uint16_t header_size
 		GRK_ERROR("Error reading COD marker");
 		return false;
 	}
-	grk_read<uint8_t>(p_header_data++, &tcp->csty); /* Scod */
+	grk_read<uint8_t>(headerData++, &tcp->csty); /* Scod */
 	/* Make sure we know how to decompress this */
 	if((tcp->csty & ~(uint32_t)(J2K_CP_CSTY_PRT | J2K_CP_CSTY_SOP | J2K_CP_CSTY_EPH)) != 0U)
 	{
@@ -2572,7 +2572,7 @@ bool CodeStreamDecompress::read_cod(uint8_t* p_header_data, uint16_t header_size
 		return false;
 	}
 	uint8_t tmp;
-	grk_read<uint8_t>(p_header_data++, &tmp); /* SGcod (A) */
+	grk_read<uint8_t>(headerData++, &tmp); /* SGcod (A) */
 	/* Make sure progression order is valid */
 	if(tmp >= GRK_NUM_PROGRESSION_ORDERS)
 	{
@@ -2580,8 +2580,8 @@ bool CodeStreamDecompress::read_cod(uint8_t* p_header_data, uint16_t header_size
 		return false;
 	}
 	tcp->prg = (GRK_PROG_ORDER)tmp;
-	grk_read<uint16_t>(p_header_data, &tcp->numlayers); /* SGcod (B) */
-	p_header_data += 2;
+	grk_read<uint16_t>(headerData, &tcp->numlayers); /* SGcod (B) */
+	headerData += 2;
 
 	if(tcp->numlayers == 0)
 	{
@@ -2599,7 +2599,7 @@ bool CodeStreamDecompress::read_cod(uint8_t* p_header_data, uint16_t header_size
 		tcp->numLayersToDecompress = tcp->numlayers;
 	}
 
-	grk_read<uint8_t>(p_header_data++, &tcp->mct); /* SGcod (C) */
+	grk_read<uint8_t>(headerData++, &tcp->mct); /* SGcod (C) */
 	if(tcp->mct > 1)
 	{
 		GRK_ERROR("Invalid MCT value : %u. Should be either 0 or 1", tcp->mct);
@@ -2611,7 +2611,7 @@ bool CodeStreamDecompress::read_cod(uint8_t* p_header_data, uint16_t header_size
 		tcp->tccps[i].csty = tcp->csty & J2K_CCP_CSTY_PRT;
 	}
 
-	if(!read_SPCod_SPCoc(0, p_header_data, &header_size))
+	if(!read_SPCod_SPCoc(0, headerData, &header_size))
 	{
 		return false;
 	}
@@ -2646,15 +2646,15 @@ bool CodeStreamDecompress::read_cod(uint8_t* p_header_data, uint16_t header_size
  * Reads a COC marker (Coding Style Component)
  *
  * @param       this      JPEG 2000 code stream
- * @param       p_header_data   header data
+ * @param       headerData   header data
  * @param       header_size     size of header data
 
  */
-bool CodeStreamDecompress::read_coc(uint8_t* p_header_data, uint16_t header_size)
+bool CodeStreamDecompress::read_coc(uint8_t* headerData, uint16_t header_size)
 {
 	uint32_t comp_room;
 	uint32_t comp_no;
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 	auto tcp = get_current_decode_tcp();
 	auto image = getHeaderImage();
 
@@ -2668,17 +2668,17 @@ bool CodeStreamDecompress::read_coc(uint8_t* p_header_data, uint16_t header_size
 	}
 	header_size = (uint16_t)(header_size - (comp_room + 1));
 
-	grk_read<uint32_t>(p_header_data, &comp_no, comp_room); /* Ccoc */
-	p_header_data += comp_room;
+	grk_read<uint32_t>(headerData, &comp_no, comp_room); /* Ccoc */
+	headerData += comp_room;
 	if(comp_no >= image->numcomps)
 	{
 		GRK_ERROR("Error reading COC marker : invalid component number %d", comp_no);
 		return false;
 	}
 
-	tcp->tccps[comp_no].csty = *p_header_data++; /* Scoc */
+	tcp->tccps[comp_no].csty = *headerData++; /* Scoc */
 
-	if(!read_SPCod_SPCoc(comp_no, p_header_data, &header_size))
+	if(!read_SPCod_SPCoc(comp_no, headerData, &header_size))
 	{
 		return false;
 	}
@@ -2694,13 +2694,13 @@ bool CodeStreamDecompress::read_coc(uint8_t* p_header_data, uint16_t header_size
  * Reads a QCD marker (Quantization defaults)
  *
  * @param       this      JPEG 2000 code stream
- * @param       p_header_data   header data
+ * @param       headerData   header data
  * @param       header_size     size of header data
  */
-bool CodeStreamDecompress::read_qcd(uint8_t* p_header_data, uint16_t header_size)
+bool CodeStreamDecompress::read_qcd(uint8_t* headerData, uint16_t header_size)
 {
-	assert(p_header_data != nullptr);
-	if(!read_SQcd_SQcc(false, 0, p_header_data, &header_size))
+	assert(headerData != nullptr);
+	if(!read_SQcd_SQcc(false, 0, headerData, &header_size))
 	{
 		return false;
 	}
@@ -2725,12 +2725,12 @@ bool CodeStreamDecompress::read_qcd(uint8_t* p_header_data, uint16_t header_size
  * Reads a QCC marker (Quantization component)
  *
  * @param       this      JPEG 2000 code stream
- * @param       p_header_data   header data
+ * @param       headerData   header data
  * @param       header_size     size of header data
  */
-bool CodeStreamDecompress::read_qcc(uint8_t* p_header_data, uint16_t header_size)
+bool CodeStreamDecompress::read_qcc(uint8_t* headerData, uint16_t header_size)
 {
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 	uint32_t comp_no;
 	uint16_t num_comp = getHeaderImage()->numcomps;
 	if(num_comp <= 256)
@@ -2740,7 +2740,7 @@ bool CodeStreamDecompress::read_qcc(uint8_t* p_header_data, uint16_t header_size
 			GRK_ERROR("Error reading QCC marker");
 			return false;
 		}
-		grk_read<uint32_t>(p_header_data++, &comp_no, 1);
+		grk_read<uint32_t>(headerData++, &comp_no, 1);
 		--header_size;
 	}
 	else
@@ -2750,8 +2750,8 @@ bool CodeStreamDecompress::read_qcc(uint8_t* p_header_data, uint16_t header_size
 			GRK_ERROR("Error reading QCC marker");
 			return false;
 		}
-		grk_read<uint32_t>(p_header_data, &comp_no, 2);
-		p_header_data += 2;
+		grk_read<uint32_t>(headerData, &comp_no, 2);
+		headerData += 2;
 		header_size = (uint16_t)(header_size - 2);
 	}
 
@@ -2763,7 +2763,7 @@ bool CodeStreamDecompress::read_qcc(uint8_t* p_header_data, uint16_t header_size
 		return false;
 	}
 
-	if(!read_SQcd_SQcc(true, comp_no, p_header_data, &header_size))
+	if(!read_SQcd_SQcc(true, comp_no, headerData, &header_size))
 	{
 		return false;
 	}
@@ -2805,11 +2805,11 @@ bool CodeStreamDecompress::read_soc()
  * Reads a CAP marker
  *
  * @param       this      JPEG 2000 code stream
- * @param       p_header_data   header data
+ * @param       headerData   header data
  * @param       header_size     size of header data
  *
  */
-bool CodeStreamDecompress::read_cap(uint8_t* p_header_data, uint16_t header_size)
+bool CodeStreamDecompress::read_cap(uint8_t* headerData, uint16_t header_size)
 {
 	CodingParams* cp = &(m_cp);
 	if(header_size < sizeof(cp->pcap))
@@ -2819,7 +2819,7 @@ bool CodeStreamDecompress::read_cap(uint8_t* p_header_data, uint16_t header_size
 	}
 
 	uint32_t tmp;
-	grk_read<uint32_t>(p_header_data, &tmp); /* Pcap */
+	grk_read<uint32_t>(headerData, &tmp); /* Pcap */
 	if(tmp & 0xFFFDFFFF)
 	{
 		GRK_ERROR("Pcap in CAP marker has unsupported options.");
@@ -2830,7 +2830,7 @@ bool CodeStreamDecompress::read_cap(uint8_t* p_header_data, uint16_t header_size
 		GRK_ERROR("Pcap in CAP marker should have its 15th MSB set. ");
 		return false;
 	}
-	p_header_data += sizeof(uint32_t);
+	headerData += sizeof(uint32_t);
 	cp->pcap = tmp;
 	uint32_t count = ojph::population_count(cp->pcap);
 	uint32_t expected_size = (uint32_t)sizeof(cp->pcap) + 2U * count;
@@ -2841,7 +2841,7 @@ bool CodeStreamDecompress::read_cap(uint8_t* p_header_data, uint16_t header_size
 	}
 	for(uint32_t i = 0; i < count; ++i)
 	{
-		grk_read<uint16_t>(p_header_data, cp->ccap + i);
+		grk_read<uint16_t>(headerData, cp->ccap + i);
 	}
 
 	return true;
@@ -2850,26 +2850,26 @@ bool CodeStreamDecompress::read_cap(uint8_t* p_header_data, uint16_t header_size
  * Reads a SIZ marker (image and tile size)
  *
  * @param       this      JPEG 2000 code stream
- * @param       p_header_data   header data
+ * @param       headerData   header data
  * @param       header_size     size of header data
  */
-bool CodeStreamDecompress::read_siz(uint8_t* p_header_data, uint16_t header_size)
+bool CodeStreamDecompress::read_siz(uint8_t* headerData, uint16_t header_size)
 {
 	SIZMarker siz;
 
-	return siz.read(this, p_header_data, header_size);
+	return siz.read(this, headerData, header_size);
 }
 /**
  * Reads a COM marker (comments)
  *
  * @param       this      JPEG 2000 code stream
- * @param       p_header_data   header data
+ * @param       headerData   header data
  * @param       header_size     size of header data
  *
  */
-bool CodeStreamDecompress::read_com(uint8_t* p_header_data, uint16_t header_size)
+bool CodeStreamDecompress::read_com(uint8_t* headerData, uint16_t header_size)
 {
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 	assert(header_size != 0);
 	if(header_size < 2)
 	{
@@ -2889,7 +2889,7 @@ bool CodeStreamDecompress::read_com(uint8_t* p_header_data, uint16_t header_size
 	}
 
 	uint16_t commentType;
-	grk_read<uint16_t>(p_header_data, &commentType);
+	grk_read<uint16_t>(headerData, &commentType);
 	auto numComments = m_cp.num_comments;
 	m_cp.isBinaryComment[numComments] = (commentType == 0);
 	if(commentType > 1)
@@ -2899,7 +2899,7 @@ bool CodeStreamDecompress::read_com(uint8_t* p_header_data, uint16_t header_size
 				 commentType);
 	}
 
-	p_header_data += 2;
+	headerData += 2;
 	uint16_t commentSize = (uint16_t)(header_size - 2);
 	size_t commentSizeToAlloc = commentSize;
 	if(!m_cp.isBinaryComment[numComments])
@@ -2911,7 +2911,7 @@ bool CodeStreamDecompress::read_com(uint8_t* p_header_data, uint16_t header_size
 			"CodeStreamDecompress::read_com: Out of memory when allocating memory for comment ");
 		return false;
 	}
-	memcpy(m_cp.comment[numComments], p_header_data, commentSize);
+	memcpy(m_cp.comment[numComments], headerData, commentSize);
 	m_cp.comment_len[numComments] = commentSize;
 
 	// make null-terminated string

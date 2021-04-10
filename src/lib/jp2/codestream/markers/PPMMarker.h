@@ -40,11 +40,11 @@ class PPMMarker
 	/**
 	 * Read a PPM marker (Packed headers, main header)
 	 *
-	 * @param       p_header_data   the data contained in the POC box.
+	 * @param       headerData   the data contained in the POC box.
 	 * @param       header_size   the size of the data contained in the POC marker.
 
 	 */
-	bool read(uint8_t* p_header_data, uint16_t header_size);
+	bool read(uint8_t* headerData, uint16_t header_size);
 
 	/**
 	 * Merges all PPM markers read (Packed headers, main header)

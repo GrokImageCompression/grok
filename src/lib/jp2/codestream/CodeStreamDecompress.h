@@ -23,7 +23,7 @@
 
 namespace grk
 {
-typedef std::function<bool(uint8_t* p_header_data, uint16_t header_size)> MARKER_FUNC;
+typedef std::function<bool(uint8_t* headerData, uint16_t header_size)> MARKER_FUNC;
 struct marker_handler
 {
 	marker_handler(uint16_t ID, uint32_t flags, MARKER_FUNC f) : id(ID), states(flags), func(f) {}
@@ -109,47 +109,47 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	 * Reads a MCT marker (Multiple Component Transform)
 	 *
 	 * @param       codeStream      JPEG 2000 code stream
-	 * @param       p_header_data   header data
+	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 *
 	 */
-	bool read_mct(uint8_t* p_header_data, uint16_t header_size);
+	bool read_mct(uint8_t* headerData, uint16_t header_size);
 	/**
 	 * Reads a MCC marker (Multiple Component Collection)
 	 *
 	 * @param       codeStream      JPEG 2000 code stream
-	 * @param       p_header_data   header data
+	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 *
 	 */
-	bool read_mcc(uint8_t* p_header_data, uint16_t header_size);
+	bool read_mcc(uint8_t* headerData, uint16_t header_size);
 	/**
 	 * Reads a MCO marker (Multiple Component Transform Ordering)
 	 *
 	 * @param       codeStream      JPEG 2000 code stream
-	 * @param       p_header_data   header data.
+	 * @param       headerData   header data.
 	 * @param       header_size     size of header data
 	 *
 	 */
-	bool read_mco(uint8_t* p_header_data, uint16_t header_size);
+	bool read_mco(uint8_t* headerData, uint16_t header_size);
 	bool add_mct(TileCodingParams* p_tcp, GrkImage* p_image, uint32_t index);
 	/**
 	 * Reads a CBD marker (Component bit depth definition)
 	 *
 	 * @param       codeStream      JPEG 2000 code stream
-	 * @param       p_header_data   header data
+	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 *
 	 */
-	bool read_cbd(uint8_t* p_header_data, uint16_t header_size);
+	bool read_cbd(uint8_t* headerData, uint16_t header_size);
 	/**
 	 * Reads a RGN marker (Region Of Interest)
 	 *
 	 * @param       codeStream      JPEG 2000 code stream
-	 * @param       p_header_data   header data
+	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 */
-	bool read_rgn(uint8_t* p_header_data, uint16_t header_size);
+	bool read_rgn(uint8_t* headerData, uint16_t header_size);
 
 	bool readHeaderProcedure(void);
 	/**
@@ -161,115 +161,115 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	 * Reads a SIZ marker (image and tile size)
 	 *
 	 * @param       codeStream      JPEG 2000 code stream
-	 * @param       p_header_data   header data
+	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 */
-	bool read_siz(uint8_t* p_header_data, uint16_t header_size);
+	bool read_siz(uint8_t* headerData, uint16_t header_size);
 	/**
 	 * Reads a CAP marker
 	 *
 	 * @param       codeStream      JPEG 2000 code stream
-	 * @param       p_header_data   header data
+	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 */
-	bool read_cap(uint8_t* p_header_data, uint16_t header_size);
+	bool read_cap(uint8_t* headerData, uint16_t header_size);
 	/**
 	 * Reads a COM marker (comments)
 	 *
 	 * @param       codeStream      JPEG 2000 code stream
-	 * @param       p_header_data   header data
+	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 *
 	 */
-	bool read_com(uint8_t* p_header_data, uint16_t header_size);
+	bool read_com(uint8_t* headerData, uint16_t header_size);
 	/**
 	 * Reads a COD marker (Coding Style defaults)
 	 *
 	 * @param       codeStream      JPEG 2000 code stream
-	 * @param       p_header_data   header data
+	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 *
 	 */
-	bool read_cod(uint8_t* p_header_data, uint16_t header_size);
+	bool read_cod(uint8_t* headerData, uint16_t header_size);
 	/**
 	 * Reads a POC marker (Progression Order Change)
 	 *
 	 * @param       codeStream      JPEG 2000 code stream
-	 * @param       p_header_data   header data
+	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 */
-	bool read_poc(uint8_t* p_header_data, uint16_t header_size);
+	bool read_poc(uint8_t* headerData, uint16_t header_size);
 	/**
 	 * Reads a CRG marker (Component registration)
 	 *
 	 * @param       codeStream      JPEG 2000 code stream
-	 * @param       p_header_data   header data
+	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 *
 	 */
-	bool read_crg(uint8_t* p_header_data, uint16_t header_size);
+	bool read_crg(uint8_t* headerData, uint16_t header_size);
 	/**
 	 * Reads a TLM marker (Tile Length Marker)
 	 *
 	 * @param       codeStream      JPEG 2000 code stream
-	 * @param       p_header_data   header data
+	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 */
-	bool read_tlm(uint8_t* p_header_data, uint16_t header_size);
+	bool read_tlm(uint8_t* headerData, uint16_t header_size);
 	/**
 	 * Reads a PLM marker (Packet length, main header marker)
 	 *
 	 * @param       codeStream      JPEG 2000 code stream
-	 * @param       p_header_data   header data
+	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 *
 	 */
-	bool read_plm(uint8_t* p_header_data, uint16_t header_size);
+	bool read_plm(uint8_t* headerData, uint16_t header_size);
 	/**
 	 * Reads a PLT marker (Packet length, tile-part header)
 	 *
 	 * @param       codeStream      JPEG 2000 code stream
-	 * @param       p_header_data   header data
+	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 *
 	 */
-	bool read_plt(uint8_t* p_header_data, uint16_t header_size);
+	bool read_plt(uint8_t* headerData, uint16_t header_size);
 	/**
 	 * Reads a PPM marker (Packed headers, main header)
 	 *
 	 * @param       codeStream      JPEG 2000 code stream
-	 * @param       p_header_data   header data
+	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 *
 	 */
-	bool read_ppm(uint8_t* p_header_data, uint16_t header_size);
+	bool read_ppm(uint8_t* headerData, uint16_t header_size);
 	/**
 	 * Reads a PPT marker (Packed packet headers, tile-part header)
 	 *
 	 * @param       codeStream      JPEG 2000 code stream
-	 * @param       p_header_data   header data
+	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 *
 	 */
-	bool read_ppt(uint8_t* p_header_data, uint16_t header_size);
+	bool read_ppt(uint8_t* headerData, uint16_t header_size);
 	/**
 	 * Read SOT (Start of tile part) marker
 	 *
 	 * @param       codeStream      JPEG 2000 code stream
-	 * @param       p_header_data   header data.
+	 * @param       headerData   header data.
 	 * @param       header_size     size of header data
 	 *
 	 */
-	bool read_sot(uint8_t* p_header_data, uint16_t header_size);
+	bool read_sot(uint8_t* headerData, uint16_t header_size);
 	/**
 	 * Reads a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
 	 * @param       codeStream           JPEG 2000 code stream
 	 * @param       compno          component number
-	 * @param       p_header_data   the data contained in the COM box.
+	 * @param       headerData   the data contained in the COM box.
 	 * @param       header_size   the size of the data contained in the COM marker.
 
 	 */
-	bool read_SPCod_SPCoc(uint32_t compno, uint8_t* p_header_data, uint16_t* header_size);
+	bool read_SPCod_SPCoc(uint32_t compno, uint8_t* headerData, uint16_t* header_size);
 	/**
 	 * Reads a SQcd or SQcc element, i.e. the quantization values of a band
 	 * in the QCD or QCC.
@@ -277,12 +277,12 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	 * @param       codeStream           JPEG 2000 code stream
 	 * @param		fromQCC			true if reading QCC, otherwise false (reading QCD)
 	 * @param       compno          the component number to output.
-	 * @param       p_header_data   the data buffer.
+	 * @param       headerData   the data buffer.
 	 * @param       header_size   pointer to the size of the data buffer,
 	 *              it is changed by the function.
 	 *
 	 */
-	bool read_SQcd_SQcc(bool fromQCC, uint32_t compno, uint8_t* p_header_data,
+	bool read_SQcd_SQcc(bool fromQCC, uint32_t compno, uint8_t* headerData,
 						uint16_t* header_size);
 	/**
 	 * Merges all PPM markers read (Packed headers, main header)
@@ -302,28 +302,28 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	 * Reads a COC marker (Coding Style Component)
 	 *
 	 * @param       codeStream      JPEG 2000 code stream
-	 * @param       p_header_data   header data
+	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 *
 	 */
-	bool read_coc(uint8_t* p_header_data, uint16_t header_size);
+	bool read_coc(uint8_t* headerData, uint16_t header_size);
 	/**
 	 * Reads a QCD marker (Quantization defaults)
 	 *
 	 * @param       codeStream      JPEG 2000 code stream
-	 * @param       p_header_data   header data
+	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 */
-	bool read_qcd(uint8_t* p_header_data, uint16_t header_size);
+	bool read_qcd(uint8_t* headerData, uint16_t header_size);
 	/**
 	 * Reads a QCC marker (Quantization component)
 	 *
 	 * @param       codeStream      JPEG 2000 code stream
-	 * @param       p_header_data   header data
+	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 
 	 */
-	bool read_qcc(uint8_t* p_header_data, uint16_t header_size);
+	bool read_qcc(uint8_t* headerData, uint16_t header_size);
 
   private:
 	/**

@@ -32,18 +32,18 @@ struct PacketLengthMarkers
 	~PacketLengthMarkers(void);
 
 	// decompressor  packet lengths
-	bool readPLT(uint8_t* p_header_data, uint16_t header_size);
-	bool readPLM(uint8_t* p_header_data, uint16_t header_size);
+	bool readPLT(uint8_t* headerData, uint16_t header_size);
+	bool readPLM(uint8_t* headerData, uint16_t header_size);
 	void rewind(void);
 	uint32_t popNextPacketLength(void);
 
 	// compressor packet lengths
-	void writeInit(void);
+	void pushInit(void);
 	void pushNextPacketLength(uint32_t len);
 	uint32_t write(bool simulate);
 
   private:
-	void readInitIndex(uint8_t index);
+	void readInit(uint8_t index);
 	void readNext(uint8_t Iplm);
 	void tryWriteMarkerHeader(bool simulate);
 	void writeMarkerLength();

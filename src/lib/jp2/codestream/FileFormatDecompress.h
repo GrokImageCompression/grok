@@ -23,7 +23,7 @@
 
 namespace grk
 {
-typedef std::function<bool(uint8_t* p_header_data, uint32_t header_size)> BOX_FUNC;
+typedef std::function<bool(uint8_t* headerData, uint32_t header_size)> BOX_FUNC;
 
 class FileFormatDecompress : public FileFormat, public ICodeStreamDecompress
 {
@@ -52,7 +52,7 @@ class FileFormatDecompress : public FileFormat, public ICodeStreamDecompress
 	bool read_box_hdr(FileFormatBox* box, uint32_t* p_number_bytes_read, IBufferedStream* stream);
 	bool read_ihdr(uint8_t* p_image_header_data, uint32_t image_header_size);
 	bool read_xml(uint8_t* p_xml_data, uint32_t xml_size);
-	bool read_uuid(uint8_t* p_header_data, uint32_t header_size);
+	bool read_uuid(uint8_t* headerData, uint32_t header_size);
 	bool read_res_box(uint32_t* id, uint32_t* num, uint32_t* den, uint32_t* exponent,
 					  uint8_t** p_resolution_data);
 	bool read_res(uint8_t* p_resolution_data, uint32_t resolution_size);
@@ -68,9 +68,9 @@ class FileFormatDecompress : public FileFormat, public ICodeStreamDecompress
 	bool read_palette_clr(uint8_t* p_pclr_header_data, uint32_t pclr_header_size);
 	const BOX_FUNC find_handler(uint32_t id);
 	const BOX_FUNC img_find_handler(uint32_t id);
-	bool read_jp(uint8_t* p_header_data, uint32_t header_size);
-	bool read_ftyp(uint8_t* p_header_data, uint32_t header_size);
-	bool read_jp2h(uint8_t* p_header_data, uint32_t header_size);
+	bool read_jp(uint8_t* headerData, uint32_t header_size);
+	bool read_ftyp(uint8_t* headerData, uint32_t header_size);
+	bool read_jp2h(uint8_t* headerData, uint32_t header_size);
 	bool read_box(FileFormatBox* box, uint8_t* p_data, uint32_t* p_number_bytes_read,
 				  uint64_t p_box_max_size);
 	bool read_asoc(uint8_t* header_data, uint32_t header_data_size);

@@ -58,10 +58,10 @@ void SIZMarker::subsampleAndReduceHeaderImageComponents(GrkImage* headerImage,
 	}
 }
 
-bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* p_header_data, uint16_t header_size)
+bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint16_t header_size)
 {
 	assert(codeStream != nullptr);
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 
 	uint32_t i;
 	uint32_t numComps;
@@ -90,8 +90,8 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* p_header_data, u
 	}
 
 	uint32_t tmp;
-	grk_read<uint32_t>(p_header_data, &tmp, 2); /* Rsiz (capabilities) */
-	p_header_data += 2;
+	grk_read<uint32_t>(headerData, &tmp, 2); /* Rsiz (capabilities) */
+	headerData += 2;
 
 	// sanity check on RSIZ
 	if(tmp & GRK_PROFILE_PART2)
@@ -116,24 +116,24 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* p_header_data, u
 	}
 
 	cp->rsiz = (uint16_t)tmp;
-	grk_read<uint32_t>(p_header_data, &image->x1); /* Xsiz */
-	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &image->y1); /* Ysiz */
-	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &image->x0); /* X0siz */
-	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &image->y0); /* Y0siz */
-	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &cp->t_width); /* XTsiz */
-	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &cp->t_height); /* YTsiz */
-	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &cp->tx0); /* XT0siz */
-	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &cp->ty0); /* YT0siz */
-	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &tmp, 2); /* Csiz */
-	p_header_data += 2;
+	grk_read<uint32_t>(headerData, &image->x1); /* Xsiz */
+	headerData += 4;
+	grk_read<uint32_t>(headerData, &image->y1); /* Ysiz */
+	headerData += 4;
+	grk_read<uint32_t>(headerData, &image->x0); /* X0siz */
+	headerData += 4;
+	grk_read<uint32_t>(headerData, &image->y0); /* Y0siz */
+	headerData += 4;
+	grk_read<uint32_t>(headerData, &cp->t_width); /* XTsiz */
+	headerData += 4;
+	grk_read<uint32_t>(headerData, &cp->t_height); /* YTsiz */
+	headerData += 4;
+	grk_read<uint32_t>(headerData, &cp->tx0); /* XT0siz */
+	headerData += 4;
+	grk_read<uint32_t>(headerData, &cp->ty0); /* YT0siz */
+	headerData += 4;
+	grk_read<uint32_t>(headerData, &tmp, 2); /* Csiz */
+	headerData += 2;
 	if(tmp == 0)
 	{
 		GRK_ERROR("SIZ marker: number of components cannot be zero");
@@ -201,12 +201,12 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* p_header_data, u
 	/* Read the component information */
 	for(i = 0; i < image->numcomps; ++i)
 	{
-		grk_read<uint32_t>(p_header_data++, &tmp, 1); /* Ssiz_i */
+		grk_read<uint32_t>(headerData++, &tmp, 1); /* Ssiz_i */
 		img_comp->prec = (uint8_t)((tmp & 0x7f) + 1);
 		img_comp->sgnd = tmp >> 7;
-		grk_read<uint32_t>(p_header_data++, &tmp, 1); /* XRsiz_i */
+		grk_read<uint32_t>(headerData++, &tmp, 1); /* XRsiz_i */
 		img_comp->dx = tmp; /* should be between 1 and 255 */
-		grk_read<uint32_t>(p_header_data++, &tmp, 1); /* YRsiz_i */
+		grk_read<uint32_t>(headerData++, &tmp, 1); /* YRsiz_i */
 		img_comp->dy = tmp; /* should be between 1 and 255 */
 		if(img_comp->dx < 1 || img_comp->dx > 255 || img_comp->dy < 1 || img_comp->dy > 255)
 		{

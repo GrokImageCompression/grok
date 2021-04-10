@@ -297,7 +297,7 @@ TileLengthMarkers::~TileLengthMarkers()
 		delete m_markers;
 	}
 }
-bool TileLengthMarkers::read(uint8_t* p_header_data, uint16_t header_size)
+bool TileLengthMarkers::read(uint8_t* headerData, uint16_t header_size)
 {
 	if(header_size < tlm_marker_start_bytes)
 	{
@@ -310,10 +310,10 @@ bool TileLengthMarkers::read(uint8_t* p_header_data, uint16_t header_size)
 	// correct for length of marker
 	header_size = (uint16_t)(header_size - 2);
 	// read TLM marker segment index
-	i_TLM = *p_header_data++;
+	i_TLM = *headerData++;
 	// read and parse L parameter, which indicates number of bytes used to represent
 	// remaining parameters
-	L = *p_header_data++;
+	L = *headerData++;
 	// 0x70 ==  1110000
 	if((L & ~0x70) != 0)
 	{
@@ -352,15 +352,15 @@ bool TileLengthMarkers::read(uint8_t* p_header_data, uint16_t header_size)
 		// read (global) tile part index
 		if(L_iT)
 		{
-			grk_read<uint32_t>(p_header_data, &Ttlm_i, L_iT);
-			p_header_data += L_iT;
+			grk_read<uint32_t>(headerData, &Ttlm_i, L_iT);
+			headerData += L_iT;
 		}
 		// read tile part length
-		grk_read<uint32_t>(p_header_data, &Ptlm_i, bytesPerTilePartLength);
+		grk_read<uint32_t>(headerData, &Ptlm_i, bytesPerTilePartLength);
 		auto info =
 			L_iT ? TilePartLengthInfo((uint16_t)Ttlm_i, Ptlm_i) : TilePartLengthInfo(Ptlm_i);
 		push(i_TLM, info);
-		p_header_data += bytesPerTilePartLength;
+		headerData += bytesPerTilePartLength;
 	}
 
 	return true;

@@ -202,10 +202,10 @@ bool Quantizer::compare_SQcd_SQcc(CodeStream* codeStream, uint32_t first_comp_no
 }
 
 bool Quantizer::read_SQcd_SQcc(CodeStreamDecompress* codeStream, bool fromQCC, uint32_t comp_no,
-							   uint8_t* p_header_data, uint16_t* header_size)
+							   uint8_t* headerData, uint16_t* header_size)
 {
 	assert(codeStream != nullptr);
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 	assert(comp_no < codeStream->getHeaderImage()->numcomps);
 	if(*header_size < 1)
 	{
@@ -214,7 +214,7 @@ bool Quantizer::read_SQcd_SQcc(CodeStreamDecompress* codeStream, bool fromQCC, u
 	}
 	/* Sqcx */
 	uint32_t tmp = 0;
-	auto current_ptr = p_header_data;
+	auto current_ptr = headerData;
 	grk_read<uint32_t>(current_ptr++, &tmp, 1);
 	uint8_t qntsty = tmp & 0x1f;
 	*header_size = (uint16_t)(*header_size - 1);

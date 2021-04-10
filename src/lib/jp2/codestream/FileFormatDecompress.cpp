@@ -742,9 +742,9 @@ bool FileFormatDecompress::read_xml(uint8_t* p_xml_data, uint32_t xml_size)
 	memcpy(xml.buf, p_xml_data, xml_size);
 	return true;
 }
-bool FileFormatDecompress::read_uuid(uint8_t* p_header_data, uint32_t header_size)
+bool FileFormatDecompress::read_uuid(uint8_t* headerData, uint32_t header_size)
 {
-	if(!p_header_data || header_size < 16)
+	if(!headerData || header_size < 16)
 		return false;
 	if(numUuids == JP2_MAX_NUM_UUIDS)
 	{
@@ -753,10 +753,10 @@ bool FileFormatDecompress::read_uuid(uint8_t* p_header_data, uint32_t header_siz
 		return false;
 	}
 	auto uuid = uuids + numUuids;
-	memcpy(uuid->uuid, p_header_data, 16);
-	p_header_data += 16;
+	memcpy(uuid->uuid, headerData, 16);
+	headerData += 16;
 	uuid->alloc(header_size - 16);
-	memcpy(uuid->buf, p_header_data, uuid->len);
+	memcpy(uuid->buf, headerData, uuid->len);
 	numUuids++;
 
 	return true;
@@ -1521,15 +1521,15 @@ const BOX_FUNC FileFormatDecompress::img_find_handler(uint32_t id)
 /**
  * Reads a JPEG 2000 file signature box.
  *
- * @param	p_header_data	the data contained in the signature box.
+ * @param	headerData	the data contained in the signature box.
  * @param	header_size	the size of the data contained in the signature box.
  *
  * @return true if the file signature box is valid.
  */
-bool FileFormatDecompress::read_jp(uint8_t* p_header_data, uint32_t header_size)
+bool FileFormatDecompress::read_jp(uint8_t* headerData, uint32_t header_size)
 {
 	uint32_t magic_number;
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 
 	if(jp2_state != JP2_STATE_NONE)
 	{
@@ -1543,7 +1543,7 @@ bool FileFormatDecompress::read_jp(uint8_t* p_header_data, uint32_t header_size)
 		return false;
 	}
 	/* rearrange data */
-	grk_read<uint32_t>(p_header_data, &magic_number);
+	grk_read<uint32_t>(headerData, &magic_number);
 	if(magic_number != 0x0d0a870a)
 	{
 		GRK_ERROR("Error with JP Signature : bad magic number");
@@ -1556,15 +1556,15 @@ bool FileFormatDecompress::read_jp(uint8_t* p_header_data, uint32_t header_size)
 /**
  * Reads a a FTYP box - File type box
  *
- * @param	p_header_data	the data contained in the FTYP box.
+ * @param	headerData	the data contained in the FTYP box.
  * @param	header_size	the size of the data contained in the FTYP box.
  *
  * @return true if the FTYP box is valid.
  */
-bool FileFormatDecompress::read_ftyp(uint8_t* p_header_data, uint32_t header_size)
+bool FileFormatDecompress::read_ftyp(uint8_t* headerData, uint32_t header_size)
 {
 	uint32_t i, remaining_bytes;
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 
 	if(jp2_state != JP2_STATE_SIGNATURE)
 	{
@@ -1577,10 +1577,10 @@ bool FileFormatDecompress::read_ftyp(uint8_t* p_header_data, uint32_t header_siz
 		GRK_ERROR("Error with FTYP signature Box size");
 		return false;
 	}
-	grk_read<uint32_t>(p_header_data, &brand); /* BR */
-	p_header_data += 4;
-	grk_read<uint32_t>(p_header_data, &minversion); /* MinV */
-	p_header_data += 4;
+	grk_read<uint32_t>(headerData, &brand); /* BR */
+	headerData += 4;
+	grk_read<uint32_t>(headerData, &minversion); /* MinV */
+	headerData += 4;
 	remaining_bytes = header_size - 8;
 	/* the number of remaining bytes should be a multiple of 4 */
 	if((remaining_bytes & 0x3) != 0)
@@ -1601,8 +1601,8 @@ bool FileFormatDecompress::read_ftyp(uint8_t* p_header_data, uint32_t header_siz
 	}
 	for(i = 0; i < numcl; ++i)
 	{
-		grk_read<uint32_t>(p_header_data, &cl[i]); /* CLi */
-		p_header_data += 4;
+		grk_read<uint32_t>(headerData, &cl[i]); /* CLi */
+		headerData += 4;
 	}
 	jp2_state |= JP2_STATE_FILE_TYPE;
 
@@ -1611,14 +1611,14 @@ bool FileFormatDecompress::read_ftyp(uint8_t* p_header_data, uint32_t header_siz
 /**
  * Reads the Jpeg2000 file Header box - JP2 Header box (warning, this is a super box).
  *
- * @param	p_header_data	the data contained in the file header box.
+ * @param	headerData	the data contained in the file header box.
  * @param	header_size	the size of the data contained in the file header box.
  *
  * @return true if the JP2 Header box was successfully recognized.
  */
-bool FileFormatDecompress::read_jp2h(uint8_t* p_header_data, uint32_t header_size)
+bool FileFormatDecompress::read_jp2h(uint8_t* headerData, uint32_t header_size)
 {
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 
 	/* make sure the box is well placed */
 	if((jp2_state & JP2_STATE_FILE_TYPE) != JP2_STATE_FILE_TYPE)
@@ -1632,24 +1632,24 @@ bool FileFormatDecompress::read_jp2h(uint8_t* p_header_data, uint32_t header_siz
 	{
 		uint32_t box_size = 0;
 		FileFormatBox box;
-		if(!read_box(&box, p_header_data, &box_size, (uint64_t)header_size))
+		if(!read_box(&box, headerData, &box_size, (uint64_t)header_size))
 		{
 			return false;
 		}
 		uint32_t box_data_length = (uint32_t)(box.length - box_size);
-		p_header_data += box_size;
+		headerData += box_size;
 
 		auto current_handler = img_find_handler(box.type);
 		if(current_handler != nullptr)
 		{
-			if(!current_handler(p_header_data, box_data_length))
+			if(!current_handler(headerData, box_data_length))
 			{
 				return false;
 			}
 		}
 		if(box.type == JP2_IHDR)
 			has_ihdr = true;
-		p_header_data += box_data_length;
+		headerData += box_data_length;
 		// this will never overflow since "jp2_read_box" checks for overflow
 		header_size = header_size - (uint32_t)box.length;
 	}

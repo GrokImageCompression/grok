@@ -65,11 +65,11 @@ bool SOTMarker::write(TileProcessor *proc)
 	return true;
 }
 
-bool SOTMarker::get_sot_values(CodeStreamDecompress* codeStream, uint8_t* p_header_data,
+bool SOTMarker::get_sot_values(CodeStreamDecompress* codeStream, uint8_t* headerData,
 							   uint32_t header_size, uint16_t* tile_no, uint32_t* p_tot_len,
 							   uint8_t* p_current_part, uint8_t* p_num_parts)
 {
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 	if(header_size != sot_marker_segment_len - grk_marker_length)
 	{
 		GRK_ERROR("Error reading SOT marker");
@@ -78,12 +78,12 @@ bool SOTMarker::get_sot_values(CodeStreamDecompress* codeStream, uint8_t* p_head
 	uint32_t len;
 	uint16_t tileIndex;
 	uint8_t tile_part_index, num_tile_parts;
-	grk_read<uint16_t>(p_header_data, &tileIndex);
-	p_header_data += 2;
-	grk_read<uint32_t>(p_header_data, &len);
-	p_header_data += 4;
-	grk_read<uint8_t>(p_header_data++, &tile_part_index);
-	grk_read<uint8_t>(p_header_data++, &num_tile_parts);
+	grk_read<uint16_t>(headerData, &tileIndex);
+	headerData += 2;
+	grk_read<uint32_t>(headerData, &len);
+	headerData += 4;
+	grk_read<uint8_t>(headerData++, &tile_part_index);
+	grk_read<uint8_t>(headerData++, &num_tile_parts);
 
 	if(num_tile_parts && (tile_part_index == num_tile_parts))
 	{
@@ -103,14 +103,14 @@ bool SOTMarker::get_sot_values(CodeStreamDecompress* codeStream, uint8_t* p_head
 	return true;
 }
 
-bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* p_header_data, uint16_t header_size)
+bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint16_t header_size)
 {
 	uint32_t tot_len = 0;
 	uint8_t numTileParts = 0;
 	uint8_t currentTilePart;
 	uint32_t tile_x, tile_y;
 
-	if(!get_sot_values(codeStream, p_header_data, header_size, nullptr, &tot_len, &currentTilePart,
+	if(!get_sot_values(codeStream, headerData, header_size, nullptr, &tot_len, &currentTilePart,
 					   &numTileParts))
 	{
 		GRK_ERROR("Error reading SOT marker");

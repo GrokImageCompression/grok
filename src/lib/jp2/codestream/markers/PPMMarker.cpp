@@ -40,11 +40,11 @@ PPMMarker::~PPMMarker()
 	delete[] buffer;
 }
 
-bool PPMMarker::read(uint8_t* p_header_data, uint16_t header_size)
+bool PPMMarker::read(uint8_t* headerData, uint16_t header_size)
 {
 	uint8_t i_ppm;
 
-	assert(p_header_data != nullptr);
+	assert(headerData != nullptr);
 
 	/* We need to have the i_ppm element + 1 byte of Nppm/Ippm at minimum */
 	if(header_size < 2)
@@ -54,7 +54,7 @@ bool PPMMarker::read(uint8_t* p_header_data, uint16_t header_size)
 	}
 
 	/* i_ppm */
-	grk_read<uint8_t>(p_header_data++, &i_ppm);
+	grk_read<uint8_t>(headerData++, &i_ppm);
 	--header_size;
 
 	/* check allocation needed */
@@ -101,7 +101,7 @@ bool PPMMarker::read(uint8_t* p_header_data, uint16_t header_size)
 		return false;
 	}
 	markers[i_ppm].m_data_size = header_size;
-	memcpy(markers[i_ppm].m_data, p_header_data, header_size);
+	memcpy(markers[i_ppm].m_data, headerData, header_size);
 
 	return true;
 }

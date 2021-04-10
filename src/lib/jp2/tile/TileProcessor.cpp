@@ -1287,7 +1287,7 @@ void TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 	double cumulativeDistortion[maxCompressLayersGRK];
 	double upperBound = max_slope;
 	if(packetLengthCache.getMarkers())
-		packetLengthCache.getMarkers()->writeInit();
+		packetLengthCache.getMarkers()->pushInit();
 	uint32_t maxLayerLength = UINT_MAX;
 	for(uint16_t layno = 0; layno < m_tcp->numlayers; layno++)
 	{
