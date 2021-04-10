@@ -236,18 +236,20 @@ bool TileProcessor::doCompress(void)
 	rateAllocate(&allPacketBytes);
 	m_packetTracker.clear();
 
-	// SOT marker
-	preCalculatedTileLen = sot_marker_segment_len;
-	// POC marker
-	if (canWritePocMarker())
-		preCalculatedTileLen += CodeStreamCompress::getPocSize(tile->numcomps, 1 + m_tcp->numpocs);
-	// calculate PLT marker length
-	if (packetLengthCache.getMarkers())
-		preCalculatedTileLen += packetLengthCache.getMarkers()->write(true);
-	// calculate SOD marker length
-	preCalculatedTileLen += 2;
-	// calculate packets length
-	preCalculatedTileLen += allPacketBytes;
+	if (canPreCalculateTileLen()) {
+		// SOT marker
+		preCalculatedTileLen = sot_marker_segment_len;
+		// POC marker
+		if (canWritePocMarker())
+			preCalculatedTileLen += CodeStreamCompress::getPocSize(tile->numcomps, 1 + m_tcp->numpocs);
+		// calculate PLT marker length
+		if (packetLengthCache.getMarkers())
+			preCalculatedTileLen += packetLengthCache.getMarkers()->write(true);
+		// calculate SOD marker length
+		preCalculatedTileLen += 2;
+		// calculate packets length
+		preCalculatedTileLen += allPacketBytes;
+	}
 	return true;
 }
 bool TileProcessor::canWritePocMarker(void){
