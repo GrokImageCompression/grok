@@ -1117,10 +1117,11 @@ void TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 	uint32_t max_slope = USHRT_MAX;
 	double cumulativeDistortion[maxCompressLayersGRK];
 	uint32_t upperBound = max_slope;
+	uint32_t maxLayerLength = UINT_MAX;
 	for(uint16_t layno = 0; layno < tcp->numlayers; layno++)
 	{
 		uint32_t lowerBound = min_slope;
-		uint32_t maxLayerLength = tcp->rates[layno] > 0.0f ? ((uint32_t)ceil(tcp->rates[layno])) : UINT_MAX;
+		maxLayerLength = tcp->rates[layno] > 0.0f ? ((uint32_t)ceil(tcp->rates[layno])) : UINT_MAX;
 
 		if(layerNeedsRateControl(layno))
 		{
@@ -1182,8 +1183,6 @@ void TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 
 	// final simulation will generate correct PLT lengths
 	// and correct tile length
-	uint32_t maxLayerLength =
-			tcp->rates[tcp->numlayers-1] > 0.0f ? ((uint32_t)ceil(tcp->rates[tcp->numlayers-1])) : UINT_MAX;
 	t2.compressPacketsSimulate(m_tileIndex,
 								tcp->numlayers,
 								allPacketBytes,
