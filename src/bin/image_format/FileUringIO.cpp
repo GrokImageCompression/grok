@@ -15,15 +15,14 @@
  *
  *
  */
-
-#include <FileUringIO.h>
-#include "common.h"
 #include "grk_apps_config.h"
 
 #ifndef GROK_HAVE_URING
 #error GROK_HAVE_URING_NOT_DEFINED
 #endif
 
+#include "FileUringIO.h"
+#include "common.h"
 #include <strings.h>
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -45,9 +44,11 @@ struct io_uring ring;
 
 struct io_data
 {
-	io_data() : offset(0), iov{0, 0} {}
+	io_data() : offset(0),
+				iov{0, 0}
+	{}
 	int64_t offset;
-	struct iovec iov;
+	iovec iov;
 };
 
 static int setup_context(unsigned entries, io_uring* ring)
@@ -55,7 +56,7 @@ static int setup_context(unsigned entries, io_uring* ring)
 	int ret = io_uring_queue_init(entries, ring, 0);
 	if(ret < 0)
 	{
-		fprintf(stderr, "queue_init: %s\n", strerror(-ret));
+		spdlog::error("queue_init: %s\n", strerror(-ret));
 		return -1;
 	}
 
@@ -64,7 +65,7 @@ static int setup_context(unsigned entries, io_uring* ring)
 
 static void queue_prepped(io_uring* ring, io_data* data, int outfd)
 {
-	io_uring_sqe* sqe = io_uring_get_sqe(ring);
+	auto sqe = io_uring_get_sqe(ring);
 	assert(sqe);
 
 	io_uring_prep_writev(sqe, outfd, &data->iov, 1, data->offset);
@@ -77,7 +78,7 @@ static void queue_write(io_uring* ring, io_data* data, int outfd)
 	io_uring_submit(ring);
 }
 
-int _getMode(const char* mode)
+static int _getMode(const char* mode)
 {
 	int m = -1;
 
@@ -101,7 +102,9 @@ int _getMode(const char* mode)
 	return (m);
 }
 
-FileUringIO::FileUringIO() : m_fd(0), m_off(0), m_writeCount(0)
+FileUringIO::FileUringIO() : m_fd(0),
+							m_off(0),
+							m_writeCount(0)
 {
 	memset(&ring, 0, sizeof(ring));
 }
@@ -120,10 +123,8 @@ bool FileUringIO::open(std::string fileName, std::string mode)
 		m_fd = doRead ? STDIN_FILENO : STDOUT_FILENO;
 		return true;
 	}
-	int m = _getMode(mode.c_str());
-	const char* name = fileName.c_str();
-
-	m_fd = ::open(name, m, 0666);
+	auto name = fileName.c_str();
+	m_fd = ::open(name, _getMode(mode.c_str()), 0666);
 	if(m_fd < 0)
 	{
 		if(errno > 0 && strerror(errno) != nullptr)
@@ -147,29 +148,30 @@ bool FileUringIO::open(std::string fileName, std::string mode)
 
 int process_completion(struct io_uring* ring)
 {
-	struct io_uring_cqe* cqe;
+	io_uring_cqe* cqe;
 	int ret = io_uring_wait_cqe(ring, &cqe);
 
 	if(ret < 0)
 	{
-		perror("io_uring_wait_cqe");
+		spdlog::error("io_uring_wait_cqe");
 		return 1;
 	}
-
 	if(cqe->res < 0)
 	{
-		/* The system call invoked asynchonously failed */
+		spdlog::error("The system call invoked asynchonously failed");
 		return 1;
 	}
 
 	/* Retrieve user data from CQE */
 	io_data* data = (io_data*)io_uring_cqe_get_data(cqe);
-	delete[](uint8_t*) data->iov.iov_base;
-	delete data;
+
 	/* process this request here */
+	delete[] (uint8_t*) data->iov.iov_base;
+	delete data;
 
 	/* Mark this completion as seen */
 	io_uring_cqe_seen(ring, cqe);
+
 	return 0;
 }
 
