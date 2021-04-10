@@ -35,11 +35,11 @@ struct PacketLengthMarkers
 	bool readPLT(uint8_t* p_header_data, uint16_t header_size);
 	bool readPLM(uint8_t* p_header_data, uint16_t header_size);
 	void rewind(void);
-	uint32_t getNext(void);
+	uint32_t popNextPacketLength(void);
 
 	// compressor packet lengths
 	void writeInit(void);
-	void writeNext(uint32_t len);
+	void pushNextPacketLength(uint32_t len);
 	uint32_t write(bool simulate);
 
   private:

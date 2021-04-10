@@ -55,7 +55,7 @@ void PacketLengthMarkers::writeInit(void)
 	m_marker_len_cache = 0;
 	//GRK_INFO("Write init");
 }
-void PacketLengthMarkers::writeNext(uint32_t len)
+void PacketLengthMarkers::pushNextPacketLength(uint32_t len)
 {
 	assert(len);
 	//GRK_INFO("Push packet length: %d", len);
@@ -270,7 +270,7 @@ void PacketLengthMarkers::rewind(void)
 }
 // note: packet length must be at least 1, so 0 indicates
 // no packet length available
-uint32_t PacketLengthMarkers::getNext(void)
+uint32_t PacketLengthMarkers::popNextPacketLength(void)
 {
 	if(!m_markers)
 		return 0;

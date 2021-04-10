@@ -444,7 +444,7 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 		}
 	}
 	if(markers)
-		markers->writeNext(*packet_bytes_written);
+		markers->pushNextPacketLength(*packet_bytes_written);
 
 	if (max_bytes_available == UINT_MAX)
 		GRK_INFO("Simulated packet bytes %d for layer %d", *packet_bytes_written,layno);
