@@ -231,7 +231,7 @@ bool TileProcessor::doCompress(void)
 	// 2. rate control
 	uint32_t allPacketBytes = 0;
 	rateAllocate(&allPacketBytes);
-
+	m_packetTracker.clear();
 
 	// SOT marker
 	compressTileLength = sot_marker_segment_len;
@@ -245,9 +245,6 @@ bool TileProcessor::doCompress(void)
 	compressTileLength += 2;
 	// calculate packets length
 	compressTileLength += allPacketBytes;
-
-	m_packetTracker.clear();
-
 	return true;
 }
 bool TileProcessor::canWritePocMarker(void){
@@ -1603,8 +1600,8 @@ bool PacketTracker::is_packet_encoded(uint32_t comps, uint32_t res, uint64_t pre
 }
 uint64_t PacketTracker::index(uint32_t comps, uint32_t res, uint64_t prec, uint32_t layer)
 {
-	return layer + prec * m_numlayers + (uint64_t)res * m_numlayers * m_numprec +
-		   (uint64_t)comps * m_numres * m_numprec * m_numlayers;
+	return prec + (uint64_t)res * m_numprec + (uint64_t)comps * m_numres * m_numprec +
+		   (uint64_t)layer * m_numcomps * m_numres * m_numprec;
 }
 
 } // namespace grk
