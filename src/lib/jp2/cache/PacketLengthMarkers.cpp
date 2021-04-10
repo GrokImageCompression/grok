@@ -30,7 +30,7 @@ const uint32_t min_packets_per_full_plt = available_packet_len_bytes_per_plt / 5
 PacketLengthMarkers::PacketLengthMarkers()
 	: m_markers(new PL_MAP()), m_markerIndex(0), m_curr_vec(nullptr), m_packetIndex(0),
 	  m_packet_len(0), m_markerBytesWritten(0), m_totalBytesWritten(0), m_marker_len_cache(0),
-	  m_stream(nullptr), preCalculatedMarkerLengths(false)
+	  m_stream(nullptr),preCalculatedMarkerLengths(false)
 {}
 PacketLengthMarkers::PacketLengthMarkers(IBufferedStream* strm) : PacketLengthMarkers()
 {
@@ -86,8 +86,9 @@ void PacketLengthMarkers::writeMarkerLength(PacketLengthMarkerInfo *markerInfo)
 // check if we need to start a new marker
 void PacketLengthMarkers::tryWriteMarkerHeader(PacketLengthMarkerInfo *markerInfo, bool simulate)
 {
+	bool firstMarker = m_totalBytesWritten == 0;
 	// 5 bytes worst-case to store a packet length
-	if(m_totalBytesWritten == 0 ||
+	if(firstMarker ||
 	   (m_markerBytesWritten >= available_packet_len_bytes_per_plt - 5))
 	{
 		writeMarkerLength(simulate ? markerInfo : nullptr);
@@ -99,21 +100,29 @@ void PacketLengthMarkers::tryWriteMarkerHeader(PacketLengthMarkerInfo *markerInf
 		writeIncrement(2);
 
 		if (!simulate) {
-			// cache location of marker length and skip over
-			m_marker_len_cache = m_stream->tell();
-			m_stream->skip(2);
+			if (markerInfo->markerLength) {
+				m_stream->writeShort((uint16_t)(markerInfo->markerLength - 2));
+			} else {
+				// cache location of marker length and skip over
+				m_marker_len_cache = m_stream->tell();
+				m_stream->skip(2);
+			}
 		}
 		writeIncrement(2);
 	}
 }
 uint32_t PacketLengthMarkers::write(bool simulate)
 {
-	m_totalBytesWritten = 0;
-	m_markerBytesWritten = 0;
+	if (m_markers->empty())
+		return 0;
+
 	if (simulate)
 		preCalculatedMarkerLengths = true;
+
+	m_totalBytesWritten = 0;
+	m_markerBytesWritten = 0;
 	// write first marker header
-	tryWriteMarkerHeader(nullptr,simulate);
+	tryWriteMarkerHeader(&m_markers->begin()->second,simulate);
 	PacketLengthMarkerInfo* finalMarkerInfo = nullptr;
 	for(auto map_iter = m_markers->begin(); map_iter != m_markers->end(); ++map_iter)
 	{
