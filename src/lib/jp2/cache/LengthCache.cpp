@@ -486,11 +486,10 @@ bool TileLengthMarkers::addTileMarkerInfo(uint16_t tileno, CodeStreamInfo* codes
 										  uint16_t id, uint64_t pos, uint32_t len)
 {
 	assert(codestreamInfo);
-	auto currTileInfo = codestreamInfo->getTileInfo(tileno);
 	if(id == J2K_MS_SOT)
 	{
-		uint8_t currTilePart = (uint8_t)currTileInfo->currentTilePart;
-		auto tilePartInfo = currTileInfo->getTilePartInfo(currTilePart);
+		auto currTileInfo = codestreamInfo->getTileInfo(tileno);
+		auto tilePartInfo = currTileInfo->getTilePartInfo(currTileInfo->currentTilePart);
 		if(tilePartInfo)
 			tilePartInfo->startPosition = pos;
 	}

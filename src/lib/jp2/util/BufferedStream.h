@@ -50,13 +50,13 @@ struct BufferedStream : public IBufferedStream
 	void setSeekFunction(grk_stream_seek_fn fn);
 	/**
 	 * Reads some bytes from the stream.
-	 * @param		p_buffer	pointer to the data buffer
+	 * @param		buffer	pointer to the data buffer
 	 * 							that will receive the data.
 	 * @param		p_size		number of bytes to read.
 
 	 * @return		the number of bytes read
 	 */
-	size_t read(uint8_t* p_buffer, size_t p_size);
+	size_t read(uint8_t* buffer, size_t p_size);
 
 	// low-level write methods (endian taken into account)
 	bool writeShort(uint16_t value);
@@ -68,13 +68,13 @@ struct BufferedStream : public IBufferedStream
 	bool writeByte(uint8_t value);
 	/**
 	 * Write bytes to stream (no correction for endian!).
-	 * @param		p_buffer	pointer to the data buffer holds the data
+	 * @param		buffer	pointer to the data buffer holds the data
 	 * 							to be written.
 	 * @param		p_size		number of bytes to write.
 
 	 * @return		the number of bytes written
 	 */
-	size_t writeBytes(const uint8_t* p_buffer, size_t p_size);
+	size_t writeBytes(const uint8_t* buffer, size_t p_size);
 
 	/**
 	 * Flush stream to disk
@@ -209,49 +209,47 @@ private:
 };
 
 template<typename TYPE>
-void grk_write(uint8_t* p_buffer, TYPE value, uint32_t nb_bytes)
+void grk_write(uint8_t* buffer, TYPE value, uint32_t numBytes)
 {
-	if(nb_bytes == 0)
+	if(numBytes == 0)
 		return;
-	assert(nb_bytes <= sizeof(TYPE));
+	assert(numBytes <= sizeof(TYPE));
 #if defined(GROK_BIG_ENDIAN)
-	const uint8_t* l_data_ptr = ((const uint8_t*)&value) + sizeof(TYPE) - nb_bytes;
-	memcpy(p_buffer, l_data_ptr, nb_bytes);
+	const uint8_t* dataPtr = ((const uint8_t*)&value) + sizeof(TYPE) - numBytes;
+	memcpy(buffer, dataPtr, numBytes);
 #else
-	const uint8_t* l_data_ptr = ((const uint8_t*)&value) + (size_t)(nb_bytes - 1);
-	for(uint32_t i = 0; i < nb_bytes; ++i)
-	{
-		*(p_buffer++) = *(l_data_ptr--);
-	}
+	const uint8_t* dataPtr = ((const uint8_t*)&value) + (size_t)(numBytes - 1);
+	for(uint32_t i = 0; i < numBytes; ++i)
+		*(buffer++) = *(dataPtr--);
 #endif
 }
 
 template<typename TYPE>
-void grk_write(uint8_t* p_buffer, TYPE value)
+void grk_write(uint8_t* buffer, TYPE value)
 {
-	grk_write<TYPE>(p_buffer, value, sizeof(TYPE));
+	grk_write<TYPE>(buffer, value, sizeof(TYPE));
 }
 
 template<typename TYPE>
-void grk_read(const uint8_t* p_buffer, TYPE* value, uint32_t nb_bytes)
+void grk_read(const uint8_t* buffer, TYPE* value, uint32_t numBytes)
 {
-	assert(nb_bytes > 0 && nb_bytes <= sizeof(TYPE));
+	assert(numBytes > 0 && numBytes <= sizeof(TYPE));
 #if defined(GROK_BIG_ENDIAN)
-	auto l_data_ptr = ((uint8_t*)value);
+	auto dataPtr = ((uint8_t*)value);
 	*value = 0;
-	memcpy(l_data_ptr + sizeof(TYPE) - nb_bytes, p_buffer, nb_bytes);
+	memcpy(dataPtr + sizeof(TYPE) - numBytes, buffer, numBytes);
 #else
-	auto l_data_ptr = ((uint8_t*)value) + nb_bytes - 1;
+	auto dataPtr = ((uint8_t*)value) + numBytes - 1;
 	*value = 0;
-	for(uint32_t i = 0; i < nb_bytes; ++i)
-		*(l_data_ptr--) = *(p_buffer++);
+	for(uint32_t i = 0; i < numBytes; ++i)
+		*(dataPtr--) = *(buffer++);
 #endif
 }
 
 template<typename TYPE>
-void grk_read(const uint8_t* p_buffer, TYPE* value)
+void grk_read(const uint8_t* buffer, TYPE* value)
 {
-	grk_read<TYPE>(p_buffer, value, sizeof(TYPE));
+	grk_read<TYPE>(buffer, value, sizeof(TYPE));
 }
 
 } // namespace grk

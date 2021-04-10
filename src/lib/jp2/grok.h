@@ -841,16 +841,16 @@ typedef grk_object grk_codec;
  * Callback function prototype for read function
  *
  */
-typedef size_t (*grk_stream_read_fn)(void* p_buffer, size_t nb_bytes, void* user_data);
+typedef size_t (*grk_stream_read_fn)(void* buffer, size_t numBytes, void* user_data);
 
 /*
  * Callback function prototype for write function
  */
-typedef size_t (*grk_stream_write_fn)(void* p_buffer, size_t nb_bytes, void* user_data);
+typedef size_t (*grk_stream_write_fn)(void* buffer, size_t numBytes, void* user_data);
 /*
  * Callback function prototype for (absolute) seek function.
  */
-typedef bool (*grk_stream_seek_fn)(uint64_t nb_bytes, void* user_data);
+typedef bool (*grk_stream_seek_fn)(uint64_t numBytes, void* user_data);
 /*
  * Callback function prototype for free user data function
  */

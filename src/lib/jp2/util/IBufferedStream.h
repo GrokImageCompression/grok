@@ -26,7 +26,7 @@ struct IBufferedStream
 	virtual uint8_t* getZeroCopyPtr() = 0;
 	/**
 	 * Reads some bytes from the stream.
-	 * @param		p_buffer	pointer to the data buffer
+	 * @param		buffer	pointer to the data buffer
 	 * 							that will receive the data.
 	 * 							If null, then a zero copy read
 	 * 							is performed
@@ -34,7 +34,7 @@ struct IBufferedStream
 
 	 * @return		the number of bytes read
 	 */
-	virtual size_t read(uint8_t* p_buffer, size_t p_size) = 0;
+	virtual size_t read(uint8_t* buffer, size_t p_size) = 0;
 
 	// low level write methods
 	virtual bool writeShort(uint16_t value) = 0;
@@ -45,12 +45,12 @@ struct IBufferedStream
 	virtual bool writeByte(uint8_t value) = 0;
 	/**
 	 * Write bytes to the stream.
-	 * @param		p_buffer	pointer to the data buffer to be written.
+	 * @param		buffer	pointer to the data buffer to be written.
 	 * @param		p_size		number of bytes to write.
 	 *
 	 * @return		the number of bytes written, or -1 if an error occurred.
 	 */
-	virtual size_t writeBytes(const uint8_t* p_buffer, size_t p_size) = 0;
+	virtual size_t writeBytes(const uint8_t* buffer, size_t p_size) = 0;
 
 	/**
 	 * Flush write stream to disk

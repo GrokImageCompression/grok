@@ -35,9 +35,9 @@ void SparseBuffer::increment()
 		currentChunkId++;
 	}
 }
-size_t SparseBuffer::read(void* p_buffer, size_t numBytes)
+size_t SparseBuffer::read(void* buffer, size_t numBytes)
 {
-	if(p_buffer == nullptr || numBytes == 0)
+	if(buffer == nullptr || numBytes == 0)
 		return 0;
 	/*don't try to read more bytes than are available */
 	size_t contiguousBytesRemaining = dataLength - (size_t)getGlobalOffset();
@@ -56,9 +56,9 @@ size_t SparseBuffer::read(void* p_buffer, size_t numBytes)
 		size_t bytesInCurrentChunk = (currentChunk->len - (size_t)currentChunk->offset);
 		size_t bytes_to_read =
 			(bytesLeftToRead < bytesInCurrentChunk) ? bytesLeftToRead : bytesInCurrentChunk;
-		if(p_buffer)
+		if(buffer)
 		{
-			memcpy((uint8_t*)p_buffer + totalBytesRead, currentChunk->buf + currentChunk->offset,
+			memcpy((uint8_t*)buffer + totalBytesRead, currentChunk->buf + currentChunk->offset,
 				   bytes_to_read);
 		}
 		incrementCurrentChunkOffset(bytes_to_read);

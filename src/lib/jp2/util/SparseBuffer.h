@@ -40,9 +40,9 @@ struct SparseBuffer
 	 Reset all offsets to zero, and set current chunk to beginning of list
 	 */
 	void rewind(void);
-	size_t skip(size_t nb_bytes);
+	size_t skip(size_t numBytes);
 	void increment(void);
-	size_t read(void* p_buffer, size_t nb_bytes);
+	size_t read(void* buffer, size_t numBytes);
 
   private:
 	/*

@@ -134,9 +134,9 @@ bool GRK_CALLCONV grk_set_error_handler(grk_msg_callback p_callback, void* p_use
 }
 /* ---------------------------------------------------------------------- */
 
-static size_t grk_read_from_file(void* p_buffer, size_t nb_bytes, FILE* p_file)
+static size_t grk_read_from_file(void* buffer, size_t numBytes, FILE* p_file)
 {
-	return fread(p_buffer, 1, nb_bytes, p_file);
+	return fread(buffer, 1, numBytes, p_file);
 }
 
 static uint64_t grk_get_data_length_from_file(FILE* p_file)
@@ -146,13 +146,13 @@ static uint64_t grk_get_data_length_from_file(FILE* p_file)
 	GRK_FSEEK(p_file, 0, SEEK_SET);
 	return (uint64_t)file_length;
 }
-static size_t grk_write_to_file(void* p_buffer, size_t nb_bytes, FILE* p_file)
+static size_t grk_write_to_file(void* buffer, size_t numBytes, FILE* p_file)
 {
-	return fwrite(p_buffer, 1, nb_bytes, p_file);
+	return fwrite(buffer, 1, numBytes, p_file);
 }
-static bool grk_seek_in_file(int64_t nb_bytes, FILE* p_user_data)
+static bool grk_seek_in_file(int64_t numBytes, FILE* p_user_data)
 {
-	return GRK_FSEEK(p_user_data, nb_bytes, SEEK_SET) ? false : true;
+	return GRK_FSEEK(p_user_data, numBytes, SEEK_SET) ? false : true;
 }
 
 /* ---------------------------------------------------------------------- */

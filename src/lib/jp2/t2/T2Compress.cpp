@@ -45,10 +45,10 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers, IBuffere
 	{
 		if(current_pi->layno < max_layers)
 		{
-			uint32_t nb_bytes = 0;
-			if(!compressPacket(tcp, current_pi, stream, &nb_bytes))
+			uint32_t numBytes = 0;
+			if(!compressPacket(tcp, current_pi, stream, &numBytes))
 				return false;
-			*tileBytesWritten += nb_bytes;
+			*tileBytesWritten += numBytes;
 			tilePtr->numProcessedPackets++;
 		}
 	}
