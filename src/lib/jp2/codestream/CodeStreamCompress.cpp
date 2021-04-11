@@ -902,8 +902,8 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 		return false;
 	// 5. update TLM
 	if (tileProcessor->canPreCalculateTileLen()) {
-		auto bytesWritten = m_stream->tell() - currentPos;
-		assert(bytesWritten == calculatedBytesWritten);
+		assert(m_stream->tell() - currentPos == calculatedBytesWritten);
+		(void)currentPos;
 		tilePartBytesWritten = calculatedBytesWritten;
 	}
 	if(m_cp.tlm_markers)
