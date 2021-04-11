@@ -31,6 +31,37 @@
 #include <algorithm>
 #include <limits>
 
+
+#ifdef _WIN32
+#include <intrin.h>
+#endif
+
+#if defined(_MSC_VER)
+long grk_lrintf(float f)
+{
+#ifdef _M_X64
+	return _mm_cvt_ss2si(_mm_load_ss(&f));
+#elif defined(_M_IX86)
+	int i;
+	_asm {
+        fld f
+        fistp i
+	}
+	;
+	return i;
+#else
+	return (long)((f > 0.0f) ? (f + 0.5f) : (f - 0.5f));
+#endif
+}
+#else
+long grk_lrintf(float f)
+{
+	return lrintf(f);
+}
+#endif
+
+
+
 /* Component clipping */
 template<typename T>
 void clip(grk_image_comp* component, uint8_t precision)

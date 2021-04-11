@@ -57,3 +57,5 @@ void convert_tif_32sto13u(const int32_t* pSrc, uint8_t* pDst, size_t length);
 void convert_tif_32sto14u(const int32_t* pSrc, uint8_t* pDst, size_t length);
 void convert_tif_32sto15u(const int32_t* pSrc, uint8_t* pDst, size_t length);
 void convert_tif_32sto16u(const int32_t* pSrc, uint8_t* pDst, size_t length);
+
+long grk_lrintf(float f);

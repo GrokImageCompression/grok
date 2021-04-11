@@ -572,19 +572,12 @@ bool BMPFormat::encodeStrip(uint32_t rows)
 	uint32_t w_dest = getPaddedWidth();
 	uint32_t pad_dest = (4 - (((uint64_t)numcomps * w) & 3)) & 3;
 
-	int trunc[4] = {0, 0, 0, 0};
 	float scale[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 	int32_t shift[4] = {0, 0, 0, 0};
 
 	for(uint32_t compno = 0; compno < numcomps; ++compno)
 	{
-		if(m_image->comps[compno].prec > 8)
-		{
-			trunc[compno] = (int)m_image->comps[compno].prec - 8;
-			spdlog::warn("BMP conversion: truncating component {} from {} bits to 8 bits", compno,
-						 m_image->comps[compno].prec);
-		}
-		else if(m_image->comps[0].prec < 8)
+		if(m_image->comps[0].prec != 8)
 		{
 			scale[compno] = 255.0f / (float)(1U << m_image->comps[compno].prec);
 			spdlog::warn("BMP conversion: scaling component {} from {} bits to 8 bits", compno,
@@ -617,12 +610,9 @@ bool BMPFormat::encodeStrip(uint32_t rows)
 				{
 					int32_t r = m_image->comps[compno].data[m_srcIndex + i];
 					r += shift[compno];
-					if(trunc[compno] || (scale[compno] != 1.0f))
+					if(scale[compno] != 1.0f)
 					{
-						if(trunc[compno])
-							r = ((r >> trunc[compno]) + ((r >> (trunc[compno] - 1)) % 2));
-						else
-							r = (int32_t)(((float)r * scale[compno]) + 0.5f);
+						r = (int32_t)grk_lrintf(((float)r * scale[compno]));
 						if(r > 255)
 							r = 255;
 						else if(r < 0)
