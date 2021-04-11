@@ -25,7 +25,7 @@ const uint32_t available_packet_len_bytes_per_plt = USHRT_MAX - 1 - 4;
 // minimum number of packet lengths that can be stored in a full
 // length PLT marker
 // (5 is maximum number of bytes for a single packet length)
-const uint32_t min_packets_per_full_plt = available_packet_len_bytes_per_plt / 5;
+//const uint32_t min_packets_per_full_plt = available_packet_len_bytes_per_plt / 5;
 
 PacketLengthMarkers::PacketLengthMarkers()
 	: m_markers(new PL_MAP()), m_markerIndex(0), m_curr_vec(nullptr), m_packetIndex(0),
