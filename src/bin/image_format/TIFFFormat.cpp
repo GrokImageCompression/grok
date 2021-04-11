@@ -552,8 +552,10 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 		}
 	}
 
-	if(!grk::all_components_sanity_check(m_image, true))
+	if(!grk::all_components_sanity_check(m_image, true)){
+		spdlog::error("TIFFFormat::encodeHeader: Image sanity check failed.");
 		goto cleanup;
+	}
 
 	cvtPxToCx = cvtPlanarToInterleaved_LUT[numcomps];
 	switch(bps)
