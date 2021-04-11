@@ -102,11 +102,12 @@ void scale_component_up(grk_image_comp* component, uint8_t precision)
 										: (((T)1U << component->prec) - 1U);
 	auto data = component->data;
 	size_t index = 0;
+	float scale = (float)newMax/(float)oldMax;
 	for(uint32_t j = 0; j < component->h; ++j)
 	{
 		for(uint32_t i = 0; i < component->w; ++i)
 		{
-			data[index] = (int32_t)(((T)data[index] * newMax) / oldMax);
+			data[index] = (int32_t)grk_lrintf((float)data[index] * scale);
 			index++;
 		}
 		index += stride_diff;
@@ -134,6 +135,7 @@ void scale_component(grk_image_comp* component, uint8_t precision)
 		{
 			for(uint32_t i = 0; i < component->w; ++i)
 			{
+				// we use truncation for down-scaling
 				data[index] = (int32_t)(data[index] / (int32_t)scale);
 				index++;
 			}
