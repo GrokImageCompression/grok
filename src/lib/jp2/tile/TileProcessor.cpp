@@ -233,7 +233,8 @@ bool TileProcessor::doCompress(void)
 		packetLengthCache.createMarkers(m_stream);
 	// 2. rate control
 	uint32_t allPacketBytes = 0;
-	rateAllocate(&allPacketBytes);
+	if (!rateAllocate(&allPacketBytes))
+		return false;
 	m_packetTracker.clear();
 
 	if (canPreCalculateTileLen()) {
@@ -930,19 +931,19 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 	return true;
 }
 // RATE CONTROL ////////////////////////////////////////////
-void TileProcessor::rateAllocate(uint32_t *allPacketBytes)
+bool TileProcessor::rateAllocate(uint32_t *allPacketBytes)
 {
 	// rate control by rate/distortion or fixed quality
 	switch(m_cp->m_coding_params.m_enc.rateControlAlgorithm)
 	{
 		case 0:
-			pcrdBisectSimple(allPacketBytes);
+			return pcrdBisectSimple(allPacketBytes);
 			break;
 		case 1:
-			pcrdBisectFeasible(allPacketBytes);
+			return pcrdBisectFeasible(allPacketBytes);
 			break;
 		default:
-			pcrdBisectFeasible(allPacketBytes);
+			return pcrdBisectFeasible(allPacketBytes);
 			break;
 	}
 }
@@ -1054,7 +1055,7 @@ void TileProcessor::makeLayerFeasible(uint32_t layno, uint16_t thresh, bool fina
 /*
  Hybrid rate control using bisect algorithm with optimal truncation points
  */
-void TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
+bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 {
 	bool single_lossless = makeSingleLosslessLayer();
 	const double K = 1;
@@ -1109,13 +1110,12 @@ void TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 	{
 		// simulation will generate correct PLT lengths
 		// and correct tile length
-		t2.compressPacketsSimulate(m_tileIndex,
+		return t2.compressPacketsSimulate(m_tileIndex,
 									0 + 1U,
 									allPacketBytes,
 									UINT_MAX,
 									newTilePartProgressionPosition,
 									packetLengthCache.getMarkers());
-		return;
 	}
 
 	uint32_t min_slope = rateInfo.getMinimumThresh();
@@ -1188,7 +1188,7 @@ void TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 
 	// final simulation will generate correct PLT lengths
 	// and correct tile length
-	t2.compressPacketsSimulate(m_tileIndex,
+	return t2.compressPacketsSimulate(m_tileIndex,
 								tcp->numlayers,
 								allPacketBytes,
 								maxLayerLength,
@@ -1198,7 +1198,7 @@ void TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 /*
  Simple bisect algorithm to calculate optimal layer truncation points
  */
-void TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
+bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 {
 	uint32_t passno;
 	const double K = 1;
@@ -1277,14 +1277,13 @@ void TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 	{
 		// simulation will generate correct PLT lengths
 		// and correct tile length
-		t2.compressPacketsSimulate(m_tileIndex,
+		return t2.compressPacketsSimulate(m_tileIndex,
 									0 + 1U,
 									allPacketBytes,
 									UINT_MAX,
 									newTilePartProgressionPosition,
 									packetLengthCache.getMarkers());
 
-		return;
 	}
 	double cumulativeDistortion[maxCompressLayersGRK];
 	double upperBound = max_slope;
@@ -1363,7 +1362,7 @@ void TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 	// final simulation will generate correct PLT lengths
 	// and correct tile length
 	//GRK_INFO("Rate control final simulation");
-	t2.compressPacketsSimulate(m_tileIndex,
+	return t2.compressPacketsSimulate(m_tileIndex,
 								m_tcp->numlayers,
 								allPacketBytes,
 								maxLayerLength,

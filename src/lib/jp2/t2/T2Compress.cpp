@@ -354,6 +354,8 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 	auto tile = tileProcessor->tile;
 	auto tilec = tile->comps + compno;
 	auto res = tilec->tileCompResolution + resno;
+	uint64_t byteCount = 0;
+	*packet_bytes_written = 0;
 
 	if(compno >= tile->numcomps)
 	{
@@ -362,7 +364,6 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 				  compno, tile->numcomps);
 		return false;
 	}
-	*packet_bytes_written = 0;
 	if(tileProcessor->getPacketTracker()->is_packet_encoded(compno, resno, precinctIndex, layno))
 		return true;
 	tileProcessor->getPacketTracker()->packet_encoded(compno, resno, precinctIndex, layno);
@@ -374,13 +375,13 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 	{
 		if (max_bytes_available != UINT_MAX)
 			max_bytes_available -= 6;
-		*packet_bytes_written += 6;
+		byteCount += 6;
 	}
 	std::unique_ptr<BitIO> bio(new BitIO(nullptr, max_bytes_available, true));
 	if (!compressHeader(bio.get(), res, layno, precinctIndex))
 		return false;
 
-	*packet_bytes_written += (uint32_t)bio->numBytes();
+	byteCount += (uint32_t)bio->numBytes();
 	//if (max_bytes_available == UINT_MAX)
 	//	GRK_INFO("Simulated packet header bytes %d for layer %d", *packet_bytes_written,layno);
 	if (max_bytes_available != UINT_MAX)
@@ -389,7 +390,7 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 	{
 		if (max_bytes_available != UINT_MAX)
 			max_bytes_available -= 2;
-		*packet_bytes_written += 2;
+		byteCount += 2;
 	}
 	/* Writing the packet body */
 	for(uint32_t bandIndex = 0; bandIndex < res->numTileBandWindows; bandIndex++)
@@ -408,11 +409,17 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 			if(layer->len > max_bytes_available)
 				return false;
 			cblk->numPassesInPacket += layer->numpasses;
-			*packet_bytes_written += layer->len;
+			byteCount += layer->len;
 			if (max_bytes_available != UINT_MAX)
 				max_bytes_available -= layer->len;
 		}
 	}
+	if (byteCount > UINT_MAX){
+		GRK_ERROR("Tile part size exceeds standard maximum value of %d."
+				"Please enable tile part generation to keep tile part size below max", UINT_MAX);
+		return false;
+	}
+	*packet_bytes_written = (uint32_t)byteCount;
 	if(markers)
 		markers->pushNextPacketLength(*packet_bytes_written);
 
