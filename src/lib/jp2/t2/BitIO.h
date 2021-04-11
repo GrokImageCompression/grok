@@ -79,8 +79,6 @@ class BitIO : public IBitIO
 	/* coder : number of bits free to write. decoder : number of bits read */
 	uint8_t ct;
 
-	bool sim_out;
-
 	IBufferedStream* stream;
 
 	bool read0xFF;

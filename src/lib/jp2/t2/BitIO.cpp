@@ -23,14 +23,14 @@
 namespace grk
 {
 BitIO::BitIO(uint8_t* bp, uint64_t len, bool isCompressor)
-	: start(bp), offset(0), buf_len(len), buf(0), ct(isCompressor ? 8 : 0), sim_out(isCompressor && !bp),
+	: start(bp), offset(0), buf_len(len), buf(0), ct(isCompressor ? 8 : 0),
 	  stream(nullptr), read0xFF(false)
 {
 	assert(isCompressor || bp);
 }
 
 BitIO::BitIO(IBufferedStream* strm, bool isCompressor)
-	: start(nullptr), offset(0), buf_len(0), buf(0), ct(isCompressor ? 8 : 0), sim_out(isCompressor && !strm),
+	: start(nullptr), offset(0), buf_len(0), buf(0), ct(isCompressor ? 8 : 0),
 	  stream(strm), read0xFF(false)
 {}
 
@@ -44,10 +44,7 @@ bool BitIO::writeByte()
 			start[offset] = buf;
 		offset++;
 		if (offset == buf_len)
-		{
-			assert(sim_out);
 			return false;
-		}
 	}
 	ct = buf == 0xff ? 7 : 8;
 	buf = 0;
