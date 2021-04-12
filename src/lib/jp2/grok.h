@@ -73,6 +73,7 @@ typedef enum GRK_SUPPORTED_FILE_FMT
 } GRK_SUPPORTED_FILE_FMT;
 
 #define GRK_PATH_LEN 4096 /**< Maximum allowed size for filenames */
+#define GRK_MAX_LAYERS 100
 
 /*
  * note: range for number of decomposition levels is 0-32
@@ -474,11 +475,17 @@ typedef struct _grk_cparameters
 	uint32_t t_width;
 	/** YTsiz */
 	uint32_t t_height;
-	/** allocation by rate/distortion */
+	/** number of layers */
+	uint16_t numlayers;
+	/** rate control allocation by rate/distortion curve */
 	bool allocationByRateDistoration;
-	/** allocation by fixed_quality */
+	/** layers rates expressed as compression ratios.
+	 *  They might be subsequently limited by the max_cs_size field */
+	double layer_rate[GRK_MAX_LAYERS];
+	/** rate control allocation by fixed_PSNR quality */
 	bool allocationByQuality;
-	/** comment for coding */
+	/** layer PSNR values */
+	double layer_distortion[GRK_MAX_LAYERS];
 	char* comment[GRK_NUM_COMMENTS_SUPPORTED];
 	uint16_t comment_len[GRK_NUM_COMMENTS_SUPPORTED];
 	bool is_binary_comment[GRK_NUM_COMMENTS_SUPPORTED];
@@ -493,13 +500,6 @@ typedef struct _grk_cparameters
 	grk_progression progression[GRK_J2K_MAXRLVLS];
 	/** number of progression order changes (POCs), default to 0 */
 	uint32_t numpocs;
-	/** number of layers */
-	uint16_t numlayers;
-	/** rates of layers, expressed as compression ratios.
-	 *  They might be subsequently limited by the max_cs_size field */
-	double layer_rate[100];
-	/** different psnr for successive layers */
-	double layer_distortion[100];
 	/** number of resolutions */
 	uint8_t numresolution;
 	/** initial code block width  (default to 64) */
