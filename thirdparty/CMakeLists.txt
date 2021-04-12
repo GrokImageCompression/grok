@@ -7,7 +7,7 @@ if(BUILD_THIRDPARTY)
   message(STATUS "zlib will be built.")
   set(ZLIB_COMPAT ON)
   set(BUILD_SHARED_LIBS OFF)
-  add_subdirectory(libz)
+  add_subdirectory(libz EXCLUDE_FROM_ALL)
   set(Z_LIBNAME zlibstatic PARENT_SCOPE)
   set(ZLIB_FOUND 1)
 else(BUILD_THIRDPARTY)
@@ -51,7 +51,7 @@ endif(BUILD_THIRDPARTY)
 if(BUILD_THIRDPARTY)
   # Try to build it
   message(STATUS "libtiff will be built to support TIFF files.")
-  add_subdirectory(libtiff)
+  add_subdirectory(libtiff EXCLUDE_FROM_ALL)
   set(TIFF_LIBNAME tiff PARENT_SCOPE)
   set(TIFF_INCLUDE_DIRNAME
     ${GROK_SOURCE_DIR}/thirdparty/libtiff
