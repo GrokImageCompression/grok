@@ -34,7 +34,10 @@
 //------------------------------------------------------------------------------
 // Detect compiler using predefined macros
 
-#ifdef _MSC_VER
+// clang-cl defines _MSC_VER but doesn't behave like MSVC in other aspects like
+// used in HWY_DIAGNOSTICS(). We include a check that we are not clang for that
+// purpose.
+#if defined(_MSC_VER) && !defined(__clang__)
 #define HWY_COMPILER_MSVC _MSC_VER
 #else
 #define HWY_COMPILER_MSVC 0
@@ -212,14 +215,29 @@
 #define HWY_ARCH_PPC 0
 #endif
 
-#if defined(__arm__) || defined(_M_ARM) || defined(__aarch64__)
+#if defined(__ARM_ARCH_ISA_A64) || defined(__aarch64__) || defined(_M_ARM64)
+#define HWY_ARCH_ARM_A64 1
+#else
+#define HWY_ARCH_ARM_A64 0
+#endif
+
+#if defined(__arm__) || defined(_M_ARM)
+#define HWY_ARCH_ARM_V7 1
+#else
+#define HWY_ARCH_ARM_V7 0
+#endif
+
+#if HWY_ARCH_ARM_A64 && HWY_ARCH_ARM_V7
+#error "Cannot have both A64 and V7"
+#endif
+
+#if HWY_ARCH_ARM_A64 || HWY_ARCH_ARM_V7
 #define HWY_ARCH_ARM 1
 #else
 #define HWY_ARCH_ARM 0
 #endif
 
-// There isn't yet a standard __wasm or __wasm__.
-#ifdef __EMSCRIPTEN__
+#if defined(__EMSCRIPTEN__) || defined(__wasm__) || defined(__WASM__)
 #define HWY_ARCH_WASM 1
 #else
 #define HWY_ARCH_WASM 0
@@ -308,18 +326,20 @@ static constexpr HWY_MAYBE_UNUSED size_t kMaxVectorSize = 16;
 // Match [u]int##_t naming scheme so rvv-inl.h macros can obtain the type name
 // by concatenating base type and bits.
 
-// RVV already has a builtin type.
-#if HWY_ARCH_RVV
+// RVV already has a builtin type and the GCC intrinsics require it.
+#if HWY_ARCH_RVV && HWY_COMPILER_GCC
 using float16_t = __fp16;
+// Clang does not allow __fp16 arguments, but scalar.h requires LaneType
+// arguments, so use a wrapper.
+// TODO(janwas): replace with _Float16 when that is supported?
 #else
 #pragma pack(push, 1)
 struct float16_t {
-  // __fp16 cannot be used as a function parameter in clang, so use a wrapper.
-  // It is also deprecated, and wide _Float16 support is far off.
   uint16_t bits;
 };
 #pragma pack(pop)
 #endif
+
 using float32_t = float;
 using float64_t = double;
 
@@ -563,13 +583,13 @@ constexpr inline size_t RoundUpTo(size_t what, size_t align) {
 
 // Undefined results for x == 0.
 HWY_API size_t Num0BitsBelowLS1Bit_Nonzero32(const uint32_t x) {
-#ifdef _MSC_VER
+#if HWY_COMPILER_MSVC
   unsigned long index;  // NOLINT
   _BitScanForward(&index, x);
   return index;
-#else
+#else  // HWY_COMPILER_MSVC
   return static_cast<size_t>(__builtin_ctz(x));
-#endif
+#endif  // HWY_COMPILER_MSVC
 }
 
 HWY_API size_t PopCount(uint64_t x) {

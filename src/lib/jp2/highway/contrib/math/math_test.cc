@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <cfloat>  // FLT_MAX
-#include <cmath>
 #include <iostream>
 #include <type_traits>
 
@@ -52,7 +51,12 @@ void TestMath(const std::string name, T (*fx1)(T), Vec<D> (*fxN)(D, Vec<D>),
   }
 
   uint64_t max_ulp = 0;
+#if HWY_ARCH_ARM
+  // Emulation is slower, so cannot afford as many.
+  constexpr UintT kSamplesPerRange = 25000;
+#else
   constexpr UintT kSamplesPerRange = 100000;
+#endif
   for (int range_index = 0; range_index < range_count; ++range_index) {
     const UintT start = ranges[range_index][0];
     const UintT stop = ranges[range_index][1];
@@ -63,7 +67,7 @@ void TestMath(const std::string name, T (*fx1)(T), Vec<D> (*fxN)(D, Vec<D>),
       const T expected = fx1(value);
 
       // Skip small inputs and outputs on armv7, it flushes subnormals to zero.
-#if (HWY_TARGET == HWY_NEON) && !defined(__aarch64__)
+#if HWY_TARGET == HWY_NEON && HWY_ARCH_ARM_V7
       if ((std::abs(value) < 1e-37f) || (std::abs(expected) < 1e-37f)) {
         continue;
       }
@@ -162,6 +166,7 @@ DEFINE_MATH_TEST(Tanh,
 HWY_AFTER_NAMESPACE();
 
 #if HWY_ONCE
+namespace hwy {
 HWY_BEFORE_TEST(HwyMathTest);
 HWY_EXPORT_AND_TEST_P(HwyMathTest, TestAllAcos);
 HWY_EXPORT_AND_TEST_P(HwyMathTest, TestAllAcosh);
@@ -179,5 +184,5 @@ HWY_EXPORT_AND_TEST_P(HwyMathTest, TestAllLog2);
 HWY_EXPORT_AND_TEST_P(HwyMathTest, TestAllSin);
 HWY_EXPORT_AND_TEST_P(HwyMathTest, TestAllSinh);
 HWY_EXPORT_AND_TEST_P(HwyMathTest, TestAllTanh);
-HWY_AFTER_TEST();
+}  // namespace hwy
 #endif

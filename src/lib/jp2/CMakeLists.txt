@@ -26,9 +26,6 @@ IF(BUILD_SHARED_LIBS AND NOT BUILD_STATIC_LIBS)
          string(APPEND CMAKE_CXX_FLAGS " -fvisibility=hidden")
     ENDIF()
 ENDIF()
-IF(AVX2_FOUND)
-	string(APPEND CMAKE_CXX_FLAGS " -mavx2 -mbmi2")
-ENDIF()
 ENDIF(UNIX)
 
 install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/grk_config.h
@@ -55,7 +52,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/t2
   ${CMAKE_CURRENT_SOURCE_DIR}/tile
   ${CMAKE_CURRENT_SOURCE_DIR}/filters
-  ${CMAKE_CURRENT_SOURCE_DIR}/../highway
+  ${CMAKE_CURRENT_SOURCE_DIR}/highway
   ${CMAKE_CURRENT_SOURCE_DIR}/cache
 )
 

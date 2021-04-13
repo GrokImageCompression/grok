@@ -825,6 +825,33 @@ HWY_API void Stream(const V v, D d, T* HWY_RESTRICT aligned) {
   Store(v, d, aligned);
 }
 
+// ------------------------------ ScatterOffset
+
+#define HWY_RVV_SCATTER(BASE, CHAR, SEW, LMUL, MLEN, NAME, OP) \
+  HWY_API void NAME(HWY_RVV_V(BASE, SEW, LMUL) v,              \
+                    HWY_RVV_D(CHAR, SEW, LMUL) /* d */,        \
+                    HWY_RVV_T(BASE, SEW) * HWY_RESTRICT base,  \
+                    HWY_RVV_V(int, SEW, LMUL) offset) {        \
+    return v##OP##ei##SEW##_v_##CHAR##SEW##m##LMUL(            \
+        base, detail::BitCastToUnsigned(offset), v);           \
+  }
+HWY_RVV_FOREACH(HWY_RVV_SCATTER, ScatterOffset, sx)
+#undef HWY_RVV_SCATTER
+
+// ------------------------------ ScatterIndex
+
+template <class D, HWY_IF_LANE_SIZE_D(D, 4)>
+HWY_API void ScatterIndex(VFromD<D> v, D d, TFromD<D>* HWY_RESTRICT base,
+                          const VFromD<RebindToSigned<D>> index) {
+  return ScatterOffset(v, d, base, ShiftLeft<2>(index));
+}
+
+template <class D, HWY_IF_LANE_SIZE_D(D, 8)>
+HWY_API void ScatterIndex(VFromD<D> v, D d, TFromD<D>* HWY_RESTRICT base,
+                          const VFromD<RebindToSigned<D>> index) {
+  return ScatterOffset(v, d, base, ShiftLeft<3>(index));
+}
+
 // ------------------------------ GatherOffset
 
 #define HWY_RVV_GATHER(BASE, CHAR, SEW, LMUL, MLEN, NAME, OP) \
@@ -851,6 +878,41 @@ HWY_API VFromD<D> GatherIndex(D d, const TFromD<D>* HWY_RESTRICT base,
                               const VFromD<RebindToSigned<D>> index) {
   return GatherOffset(d, base, ShiftLeft<3>(index));
 }
+
+// ------------------------------ StoreInterleaved3
+
+#define HWY_RVV_STORE3(BASE, CHAR, SEW, LMUL, MLEN, NAME, OP)           \
+  HWY_API void NAME(                                                    \
+      HWY_RVV_V(BASE, SEW, LMUL) a, HWY_RVV_V(BASE, SEW, LMUL) b,       \
+      HWY_RVV_V(BASE, SEW, LMUL) c, HWY_RVV_D(CHAR, SEW, LMUL) /* d */, \
+      HWY_RVV_T(BASE, SEW) * HWY_RESTRICT unaligned) {                  \
+    const v##BASE##SEW##m##LMUL##x3_t triple =                          \
+        vcreate_##CHAR##SEW##m##LMUL##x3(a, b, c);                      \
+    return v##OP##e8_v_##CHAR##SEW##m##LMUL##x3(unaligned, triple);     \
+  }
+// Segments are limited to 8 registers, so we can only go up to LMUL=2.
+HWY_RVV_STORE3(uint, u, 8, 1, 8, StoreInterleaved3, sseg3)
+HWY_RVV_STORE3(uint, u, 8, 2, 4, StoreInterleaved3, sseg3)
+
+#undef HWY_RVV_STORE3
+
+// ------------------------------ StoreInterleaved4
+
+#define HWY_RVV_STORE4(BASE, CHAR, SEW, LMUL, MLEN, NAME, OP)       \
+  HWY_API void NAME(                                                \
+      HWY_RVV_V(BASE, SEW, LMUL) v0, HWY_RVV_V(BASE, SEW, LMUL) v1, \
+      HWY_RVV_V(BASE, SEW, LMUL) v2, HWY_RVV_V(BASE, SEW, LMUL) v3, \
+      HWY_RVV_D(CHAR, SEW, LMUL) /* d */,                           \
+      HWY_RVV_T(BASE, SEW) * HWY_RESTRICT aligned) {                \
+    const v##BASE##SEW##m##LMUL##x4_t quad =                        \
+        vcreate_##CHAR##SEW##m##LMUL##x4(v0, v1, v2, v3);           \
+    return v##OP##e8_v_##CHAR##SEW##m##LMUL##x4(aligned, quad);     \
+  }
+// Segments are limited to 8 registers, so we can only go up to LMUL=2.
+HWY_RVV_STORE4(uint, u, 8, 1, 8, StoreInterleaved4, sseg4)
+HWY_RVV_STORE4(uint, u, 8, 2, 4, StoreInterleaved4, sseg4)
+
+#undef HWY_RVV_STORE4
 
 // ================================================== CONVERT
 

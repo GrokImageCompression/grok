@@ -19,8 +19,6 @@
 #include <stdint.h>
 #include <wasm_simd128.h>
 
-#include <cmath>
-
 #include "hwy/base.h"
 #include "hwy/ops/shared-inl.h"
 
@@ -396,9 +394,38 @@ HWY_API Vec128<int32_t, N> ShiftRight(const Vec128<int32_t, N> v) {
   return Vec128<int32_t, N>{wasm_i32x4_shr(v.raw, kBits)};
 }
 
+// 8-bit
+template <int kBits, typename T, size_t N, HWY_IF_LANE_SIZE(T, 1)>
+HWY_API Vec128<T, N> ShiftLeft(const Vec128<T, N> v) {
+  const Simd<T, N> d8;
+  // Use raw instead of BitCast to support N=1.
+  const Vec128<T, N> shifted{ShiftLeft<kBits>(Vec128<MakeWide<T>>{v.raw}).raw};
+  return kBits == 1
+             ? (v + v)
+             : (shifted & Set(d8, static_cast<T>((0xFF << kBits) & 0xFF)));
+}
+
+template <int kBits, size_t N>
+HWY_API Vec128<uint8_t, N> ShiftRight(const Vec128<uint8_t, N> v) {
+  const Simd<uint8_t, N> d8;
+  // Use raw instead of BitCast to support N=1.
+  const Vec128<uint8_t, N> shifted{
+      ShiftRight<kBits>(Vec128<uint16_t>{v.raw}).raw};
+  return shifted & Set(d8, 0xFF >> kBits);
+}
+
+template <int kBits, size_t N>
+HWY_API Vec128<int8_t, N> ShiftRight(const Vec128<int8_t, N> v) {
+  const Simd<int8_t, N> di;
+  const Simd<uint8_t, N> du;
+  const auto shifted = BitCast(di, ShiftRight<kBits>(BitCast(du, v)));
+  const auto shifted_sign = BitCast(di, Set(du, 0x80 >> kBits));
+  return (shifted ^ shifted_sign) - shifted_sign;
+}
+
 // ------------------------------ Shift lanes by same variable #bits
 
-// Unsigned (no u8)
+// Unsigned
 template <size_t N>
 HWY_API Vec128<uint16_t, N> ShiftLeftSame(const Vec128<uint16_t, N> v,
                                           const int bits) {
@@ -420,7 +447,7 @@ HWY_API Vec128<uint32_t, N> ShiftRightSame(const Vec128<uint32_t, N> v,
   return Vec128<uint32_t, N>{wasm_u32x4_shr(v.raw, bits)};
 }
 
-// Signed (no i8)
+// Signed
 template <size_t N>
 HWY_API Vec128<int16_t, N> ShiftLeftSame(const Vec128<int16_t, N> v,
                                          const int bits) {
@@ -440,6 +467,35 @@ template <size_t N>
 HWY_API Vec128<int32_t, N> ShiftRightSame(const Vec128<int32_t, N> v,
                                           const int bits) {
   return Vec128<int32_t, N>{wasm_i32x4_shr(v.raw, bits)};
+}
+
+// 8-bit
+template <typename T, size_t N, HWY_IF_LANE_SIZE(T, 1)>
+HWY_API Vec128<T, N> ShiftLeftSame(const Vec128<T, N> v, const int bits) {
+  const Simd<T, N> d8;
+  // Use raw instead of BitCast to support N=1.
+  const Vec128<T, N> shifted{
+      ShiftLeftSame(Vec128<MakeWide<T>>{v.raw}, bits).raw};
+  return shifted & Set(d8, (0xFF << bits) & 0xFF);
+}
+
+template <size_t N>
+HWY_API Vec128<uint8_t, N> ShiftRightSame(Vec128<uint8_t, N> v,
+                                          const int bits) {
+  const Simd<uint8_t, N> d8;
+  // Use raw instead of BitCast to support N=1.
+  const Vec128<uint8_t, N> shifted{
+      ShiftRightSame(Vec128<uint16_t>{v.raw}, bits).raw};
+  return shifted & Set(d8, 0xFF >> bits);
+}
+
+template <size_t N>
+HWY_API Vec128<int8_t, N> ShiftRightSame(Vec128<int8_t, N> v, const int bits) {
+  const Simd<int8_t, N> di;
+  const Simd<uint8_t, N> du;
+  const auto shifted = BitCast(di, ShiftRightSame(BitCast(du, v), bits));
+  const auto shifted_sign = BitCast(di, Set(du, 0x80 >> bits));
+  return (shifted ^ shifted_sign) - shifted_sign;
 }
 
 // ------------------------------ Minimum
@@ -765,53 +821,76 @@ HWY_API Vec128<float, N> ApproximateReciprocalSqrt(const Vec128<float, N> v) {
 // Toward nearest integer, ties to even
 template <size_t N>
 HWY_API Vec128<float, N> Round(const Vec128<float, N> v) {
-  // TODO(eustas): is it f32x4.nearest? (not implemented yet)
-  alignas(16) float input[4];
-  alignas(16) float output[4];
-  wasm_v128_store(input, v.raw);
-  for (size_t i = 0; i < 4; ++i) {
-    output[i] = std::nearbyint(input[i]);
-  }
-  return Vec128<float, N>{wasm_v128_load(output)};
+  // IEEE-754 roundToIntegralTiesToEven returns floating-point, but we do not
+  // yet have an instruction for that (f32x4.nearest is not implemented). We
+  // rely on rounding after addition with a large value such that no mantissa
+  // bits remain (assuming the current mode is nearest-even). We may need a
+  // compiler flag for precise floating-point to prevent "optimizing" this out.
+  const Simd<float, N> df;
+  const auto max = Set(df, MantissaEnd<float>());
+  const auto large = CopySignToAbs(max, v);
+  const auto added = large + v;
+  const auto rounded = added - large;
+
+  // Keep original if NaN or the magnitude is large (already an int).
+  return IfThenElse(Abs(v) < max, rounded, v);
 }
+
+namespace detail {
+
+// Truncating to integer and converting back to float is correct except when the
+// input magnitude is large, in which case the input was already an integer
+// (because mantissa >> exponent is zero).
+template <size_t N>
+HWY_API Mask128<float, N> UseInt(const Vec128<float, N> v) {
+  return Abs(v) < Set(Simd<float, N>(), MantissaEnd<float>());
+}
+
+}  // namespace detail
 
 // Toward zero, aka truncate
 template <size_t N>
 HWY_API Vec128<float, N> Trunc(const Vec128<float, N> v) {
   // TODO(eustas): is it f32x4.trunc? (not implemented yet)
-  alignas(16) float input[4];
-  alignas(16) float output[4];
-  wasm_v128_store(input, v.raw);
-  for (size_t i = 0; i < 4; ++i) {
-    output[i] = std::trunc(input[i]);
-  }
-  return Vec128<float, N>{wasm_v128_load(output)};
+  const Simd<float, N> df;
+  const RebindToSigned<decltype(df)> di;
+
+  const auto integer = ConvertTo(di, v);  // round toward 0
+  const auto int_f = ConvertTo(df, integer);
+
+  return IfThenElse(detail::UseInt(v), CopySign(int_f, v), v);
 }
 
 // Toward +infinity, aka ceiling
 template <size_t N>
-HWY_API Vec128<float, N> Ceil(const Vec128<float, N> v) {
+HWY_INLINE Vec128<float, N> Ceil(const Vec128<float, N> v) {
   // TODO(eustas): is it f32x4.ceil? (not implemented yet)
-  alignas(16) float input[4];
-  alignas(16) float output[4];
-  wasm_v128_store(input, v.raw);
-  for (size_t i = 0; i < 4; ++i) {
-    output[i] = std::ceil(input[i]);
-  }
-  return Vec128<float, N>{wasm_v128_load(output)};
+  const Simd<float, N> df;
+  const RebindToSigned<decltype(df)> di;
+
+  const auto integer = ConvertTo(di, v);  // round toward 0
+  const auto int_f = ConvertTo(df, integer);
+
+  // Truncating a positive non-integer ends up smaller; if so, add 1.
+  const auto neg1 = ConvertTo(df, VecFromMask(di, RebindMask(di, int_f < v)));
+
+  return IfThenElse(detail::UseInt(v), int_f - neg1, v);
 }
 
 // Toward -infinity, aka floor
 template <size_t N>
-HWY_API Vec128<float, N> Floor(const Vec128<float, N> v) {
+HWY_INLINE Vec128<float, N> Floor(const Vec128<float, N> v) {
   // TODO(eustas): is it f32x4.floor? (not implemented yet)
-  alignas(16) float input[4];
-  alignas(16) float output[4];
-  wasm_v128_store(input, v.raw);
-  for (size_t i = 0; i < 4; ++i) {
-    output[i] = std::floor(input[i]);
-  }
-  return Vec128<float, N>{wasm_v128_load(output)};
+  const Simd<float, N> df;
+  const RebindToSigned<decltype(df)> di;
+
+  const auto integer = ConvertTo(di, v);  // round toward 0
+  const auto int_f = ConvertTo(df, integer);
+
+  // Truncating a negative non-integer ends up larger; if so, subtract 1.
+  const auto neg1 = ConvertTo(df, VecFromMask(di, RebindMask(di, int_f > v)));
+
+  return IfThenElse(detail::UseInt(v), int_f + neg1, v);
 }
 
 // ================================================== COMPARE
@@ -1015,7 +1094,7 @@ HWY_API Vec128<T, N> BroadcastSignBit(const Vec128<T, N> v) {
 }
 template <size_t N>
 HWY_API Vec128<int8_t, N> BroadcastSignBit(const Vec128<int8_t, N> v) {
-  return VecFromMask(v < Zero(Simd<int8_t, N>()));
+  return VecFromMask(Simd<int8_t, N>(), v < Zero(Simd<int8_t, N>()));
 }
 
 // ------------------------------ Mask
@@ -1278,26 +1357,73 @@ HWY_API void Stream(Vec128<T, N> v, Simd<T, N> /* tag */,
   wasm_v128_store(aligned, v.raw);
 }
 
-// ------------------------------ Gather
+// ------------------------------ Scatter (Store)
+
+template <typename T, size_t N, typename Offset, HWY_IF_LE128(T, N)>
+HWY_API void ScatterOffset(Vec128<T, N> v, Simd<T, N> d, T* HWY_RESTRICT base,
+                           const Vec128<Offset, N> offset) {
+  static_assert(sizeof(T) == sizeof(Offset), "Must match for portability");
+
+  alignas(16) T lanes[N];
+  Store(v, d, lanes);
+
+  alignas(16) Offset offset_lanes[N];
+  Store(offset, Simd<Offset, N>(), offset_lanes);
+
+  uint8_t* base_bytes = reinterpret_cast<uint8_t*>(base);
+  for (size_t i = 0; i < N; ++i) {
+    CopyBytes<sizeof(T)>(&lanes[i], base_bytes + offset_lanes[i]);
+  }
+}
+
+template <typename T, size_t N, typename Index, HWY_IF_LE128(T, N)>
+HWY_API void ScatterIndex(Vec128<T, N> v, Simd<T, N> d, T* HWY_RESTRICT base,
+                          const Vec128<Index, N> index) {
+  static_assert(sizeof(T) == sizeof(Index), "Must match for portability");
+
+  alignas(16) T lanes[N];
+  Store(v, d, lanes);
+
+  alignas(16) Index index_lanes[N];
+  Store(index, Simd<Index, N>(), index_lanes);
+
+  for (size_t i = 0; i < N; ++i) {
+    base[index_lanes[i]] = lanes[i];
+  }
+}
+
+// ------------------------------ Gather (Load/Store)
 
 template <typename T, size_t N, typename Offset>
 HWY_API Vec128<T, N> GatherOffset(const Simd<T, N> d,
                                   const T* HWY_RESTRICT base,
                                   const Vec128<Offset, N> offset) {
-  static_assert(N == 1, "Wasm does not support full gather");
-  static_assert(sizeof(T) == sizeof(Offset), "T must match Offset");
-  const uintptr_t address = reinterpret_cast<uintptr_t>(base) + GetLane(offset);
-  T val;
-  CopyBytes<sizeof(T)>(reinterpret_cast<const T*>(address), &val);
-  return Set(d, val);
+  static_assert(sizeof(T) == sizeof(Offset), "Must match for portability");
+
+  alignas(16) Offset offset_lanes[N];
+  Store(offset, Simd<Offset, N>(), offset_lanes);
+
+  alignas(16) T lanes[N];
+  const uint8_t* base_bytes = reinterpret_cast<const uint8_t*>(base);
+  for (size_t i = 0; i < N; ++i) {
+    CopyBytes<sizeof(T)>(base_bytes + offset_lanes[i], &lanes[i]);
+  }
+  return Load(d, lanes);
 }
 
 template <typename T, size_t N, typename Index>
 HWY_API Vec128<T, N> GatherIndex(const Simd<T, N> d, const T* HWY_RESTRICT base,
                                  const Vec128<Index, N> index) {
-  static_assert(N == 1, "Wasm does not support full gather");
-  static_assert(sizeof(T) == sizeof(Index), "T must match Index");
-  return Set(d, base[GetLane(index)]);
+  static_assert(sizeof(T) == sizeof(Index), "Must match for portability");
+
+  alignas(16) Index index_lanes[N];
+  Store(index, Simd<Index, N>(), index_lanes);
+
+  alignas(16) T lanes[N];
+  for (size_t i = 0; i < N; ++i) {
+    lanes[i] = base[index_lanes[i]];
+  }
+  return Load(d, lanes);
 }
 
 // ================================================== SWIZZLE
@@ -1652,16 +1778,23 @@ HWY_API Vec128<float, N> Broadcast(const Vec128<float, N> v) {
 template <typename T, size_t N>
 HWY_API Vec128<T, N> TableLookupBytes(const Vec128<T, N> bytes,
                                       const Vec128<T, N> from) {
-  // TODO(eustas): use swizzle? (shuffle does not work for variable indices)
+// Not yet available in all engines, see
+// https://github.com/WebAssembly/simd/blob/bdcc304b2d379f4601c2c44ea9b44ed9484fde7e/proposals/simd/ImplementationStatus.md
+// V8 implementation of this had a bug, fixed on 2021-04-03:
+// https://chromium-review.googlesource.com/c/v8/v8/+/2822951
+#if 0
+  return Vec128<T, N>{wasm_v8x16_swizzle(bytes.raw, from.raw)};
+#else
   alignas(16) uint8_t control[16];
   alignas(16) uint8_t input[16];
   alignas(16) uint8_t output[16];
   wasm_v128_store(control, from.raw);
   wasm_v128_store(input, bytes.raw);
   for (size_t i = 0; i < 16; ++i) {
-    output[i] = input[control[i]];
+    output[i] = control[i] < 16 ? input[control[i]] : 0;
   }
   return Vec128<T, N>{wasm_v128_load(output)};
+#endif
 }
 
 // ------------------------------ Hard-coded shuffles
@@ -2122,7 +2255,7 @@ HWY_API Vec128<uint8_t, N> U8FromU32(const Vec128<uint32_t, N> v) {
       wasm_u8x16_narrow_i16x8(intermediate, intermediate)};
 }
 
-// ------------------------------ Convert i32 <=> f32
+// ------------------------------ Convert i32 <=> f32 (Round)
 
 template <size_t N>
 HWY_API Vec128<float, N> ConvertTo(Simd<float, N> /* tag */,
@@ -2138,14 +2271,7 @@ HWY_API Vec128<int32_t, N> ConvertTo(Simd<int32_t, N> /* tag */,
 
 template <size_t N>
 HWY_API Vec128<int32_t, N> NearestInt(const Vec128<float, N> v) {
-  const __f32x4 c00 = wasm_f32x4_splat(0.0f);
-  const __f32x4 corr = wasm_f32x4_convert_i32x4(wasm_f32x4_le(v.raw, c00));
-  const __f32x4 c05 = wasm_f32x4_splat(0.5f);
-  // +0.5 for non-negative lane, -0.5 for other.
-  const __f32x4 delta = wasm_f32x4_add(c05, corr);
-  // Shift input by 0.5 away from 0.
-  const __f32x4 fixed = wasm_f32x4_add(v.raw, delta);
-  return Vec128<int32_t, N>{wasm_i32x4_trunc_saturate_f32x4(fixed)};
+  return ConvertTo(Simd<int32_t, N>(), Round(v));
 }
 
 // ================================================== MISC
@@ -2167,20 +2293,13 @@ namespace detail {
 template <typename T, size_t N>
 HWY_API uint64_t BitsFromMask(hwy::SizeTag<1> /*tag*/,
                               const Mask128<T, N> mask) {
-  const __i8x16 slice =
-      wasm_i8x16_make(1, 2, 4, 8, 1, 2, 4, 8, 1, 2, 4, 8, 1, 2, 4, 8);
-  // Each u32 lane has byte[i] = (1 << i) or 0.
-  const __i8x16 v8_4_2_1 = wasm_v128_and(mask.raw, slice);
-  // OR together 4 bytes of each u32 to get the 4 bits.
-  const __i16x8 v2_1_z_z = wasm_i32x4_shl(v8_4_2_1, 16);
-  const __i16x8 v82_41_2_1 = wasm_v128_or(v8_4_2_1, v2_1_z_z);
-  const __i16x8 v41_2_1_0 = wasm_i32x4_shl(v82_41_2_1, 8);
-  const __i16x8 v8421_421_21_10 = wasm_v128_or(v82_41_2_1, v41_2_1_0);
-  const __i16x8 nibble_per_u32 = wasm_i32x4_shr(v8421_421_21_10, 24);
-  // Assemble four nibbles into 16 bits.
-  alignas(16) uint32_t lanes[4];
-  wasm_v128_store(lanes, nibble_per_u32);
-  return lanes[0] | (lanes[1] << 4) | (lanes[2] << 8) | (lanes[3] << 12);
+  alignas(16) uint64_t lanes[2];
+  wasm_v128_store(lanes, mask.raw);
+
+  constexpr uint64_t kMagic = 0x103070F1F3F80ULL;
+  const uint64_t lo = ((lanes[0] * kMagic) >> 56);
+  const uint64_t hi = ((lanes[1] * kMagic) >> 48) & 0xFF00;
+  return (hi + lo);
 }
 
 template <typename T, size_t N>
@@ -2289,7 +2408,15 @@ HWY_API size_t CountTrue(const Mask128<T, N> m) {
 // Full vector, type-independent
 template <typename T>
 HWY_API bool AllFalse(const Mask128<T> m) {
-  return !wasm_i8x16_any_true(m.raw);
+#if 0
+  // Casting followed by wasm_i8x16_any_true results in wasm error:
+  // i32.eqz[0] expected type i32, found i8x16.popcnt of type s128
+  const auto v8 = BitCast(Full128<int8_t>(), VecFromMask(Full128<T>(), m));
+  return !wasm_i8x16_any_true(v8.raw);
+#else
+  return (wasm_i64x2_extract_lane(m.raw, 0) |
+          wasm_i64x2_extract_lane(m.raw, 1)) == 0;
+#endif
 }
 
 // Full vector, type-dependent
@@ -2566,6 +2693,195 @@ HWY_API size_t CompressStore(Vec128<T, N> v, const Mask128<T, N> mask,
   const uint64_t mask_bits = detail::BitsFromMask(mask);
   Store(detail::Compress(hwy::SizeTag<sizeof(T)>(), v, mask_bits), d, aligned);
   return PopCount(mask_bits);
+}
+
+// ------------------------------ StoreInterleaved3 (CombineShiftRightBytes,
+// TableLookupBytes)
+
+// 128 bits
+HWY_API void StoreInterleaved3(const Vec128<uint8_t> a, const Vec128<uint8_t> b,
+                               const Vec128<uint8_t> c, Full128<uint8_t> d,
+                               uint8_t* HWY_RESTRICT unaligned) {
+  const auto k5 = Set(d, 5);
+  const auto k6 = Set(d, 6);
+
+  // Shuffle (a,b,c) vector bytes to (MSB on left): r5, bgr[4:0].
+  // 0x80 so lanes to be filled from other vectors are 0 for blending.
+  alignas(16) static constexpr uint8_t tbl_r0[16] = {
+      0, 0x80, 0x80, 1, 0x80, 0x80, 2, 0x80, 0x80,  //
+      3, 0x80, 0x80, 4, 0x80, 0x80, 5};
+  alignas(16) static constexpr uint8_t tbl_g0[16] = {
+      0x80, 0, 0x80, 0x80, 1, 0x80,  //
+      0x80, 2, 0x80, 0x80, 3, 0x80, 0x80, 4, 0x80, 0x80};
+  const auto shuf_r0 = Load(d, tbl_r0);
+  const auto shuf_g0 = Load(d, tbl_g0);  // cannot reuse r0 due to 5 in MSB
+  const auto shuf_b0 = CombineShiftRightBytes<15>(shuf_g0, shuf_g0);
+  const auto r0 = TableLookupBytes(a, shuf_r0);  // 5..4..3..2..1..0
+  const auto g0 = TableLookupBytes(b, shuf_g0);  // ..4..3..2..1..0.
+  const auto b0 = TableLookupBytes(c, shuf_b0);  // .4..3..2..1..0..
+  const auto int0 = r0 | g0 | b0;
+  StoreU(int0, d, unaligned + 0 * 16);
+
+  // Second vector: g10,r10, bgr[9:6], b5,g5
+  const auto shuf_r1 = shuf_b0 + k6;  // .A..9..8..7..6..
+  const auto shuf_g1 = shuf_r0 + k5;  // A..9..8..7..6..5
+  const auto shuf_b1 = shuf_g0 + k5;  // ..9..8..7..6..5.
+  const auto r1 = TableLookupBytes(a, shuf_r1);
+  const auto g1 = TableLookupBytes(b, shuf_g1);
+  const auto b1 = TableLookupBytes(c, shuf_b1);
+  const auto int1 = r1 | g1 | b1;
+  StoreU(int1, d, unaligned + 1 * 16);
+
+  // Third vector: bgr[15:11], b10
+  const auto shuf_r2 = shuf_b1 + k6;  // ..F..E..D..C..B.
+  const auto shuf_g2 = shuf_r1 + k5;  // .F..E..D..C..B..
+  const auto shuf_b2 = shuf_g1 + k5;  // F..E..D..C..B..A
+  const auto r2 = TableLookupBytes(a, shuf_r2);
+  const auto g2 = TableLookupBytes(b, shuf_g2);
+  const auto b2 = TableLookupBytes(c, shuf_b2);
+  const auto int2 = r2 | g2 | b2;
+  StoreU(int2, d, unaligned + 2 * 16);
+}
+
+// 64 bits
+HWY_API void StoreInterleaved3(const Vec128<uint8_t, 8> a,
+                               const Vec128<uint8_t, 8> b,
+                               const Vec128<uint8_t, 8> c, Simd<uint8_t, 8> d,
+                               uint8_t* HWY_RESTRICT unaligned) {
+  // Use full vectors for the shuffles and first result.
+  const Full128<uint8_t> d_full;
+  const auto k5 = Set(d_full, 5);
+  const auto k6 = Set(d_full, 6);
+
+  const Vec128<uint8_t> full_a{a.raw};
+  const Vec128<uint8_t> full_b{b.raw};
+  const Vec128<uint8_t> full_c{c.raw};
+
+  // Shuffle (a,b,c) vector bytes to (MSB on left): r5, bgr[4:0].
+  // 0x80 so lanes to be filled from other vectors are 0 for blending.
+  alignas(16) static constexpr uint8_t tbl_r0[16] = {
+      0, 0x80, 0x80, 1, 0x80, 0x80, 2, 0x80, 0x80,  //
+      3, 0x80, 0x80, 4, 0x80, 0x80, 5};
+  alignas(16) static constexpr uint8_t tbl_g0[16] = {
+      0x80, 0, 0x80, 0x80, 1, 0x80,  //
+      0x80, 2, 0x80, 0x80, 3, 0x80, 0x80, 4, 0x80, 0x80};
+  const auto shuf_r0 = Load(d_full, tbl_r0);
+  const auto shuf_g0 = Load(d_full, tbl_g0);  // cannot reuse r0 due to 5 in MSB
+  const auto shuf_b0 = CombineShiftRightBytes<15>(shuf_g0, shuf_g0);
+  const auto r0 = TableLookupBytes(full_a, shuf_r0);  // 5..4..3..2..1..0
+  const auto g0 = TableLookupBytes(full_b, shuf_g0);  // ..4..3..2..1..0.
+  const auto b0 = TableLookupBytes(full_c, shuf_b0);  // .4..3..2..1..0..
+  const auto int0 = r0 | g0 | b0;
+  StoreU(int0, d_full, unaligned + 0 * 16);
+
+  // Second (HALF) vector: bgr[7:6], b5,g5
+  const auto shuf_r1 = shuf_b0 + k6;  // ..7..6..
+  const auto shuf_g1 = shuf_r0 + k5;  // .7..6..5
+  const auto shuf_b1 = shuf_g0 + k5;  // 7..6..5.
+  const auto r1 = TableLookupBytes(full_a, shuf_r1);
+  const auto g1 = TableLookupBytes(full_b, shuf_g1);
+  const auto b1 = TableLookupBytes(full_c, shuf_b1);
+  const decltype(Zero(d)) int1{(r1 | g1 | b1).raw};
+  StoreU(int1, d, unaligned + 1 * 16);
+}
+
+// <= 32 bits
+template <size_t N, HWY_IF_LE32(uint8_t, N)>
+HWY_API void StoreInterleaved3(const Vec128<uint8_t, N> a,
+                               const Vec128<uint8_t, N> b,
+                               const Vec128<uint8_t, N> c,
+                               Simd<uint8_t, N> /*tag*/,
+                               uint8_t* HWY_RESTRICT unaligned) {
+  // Use full vectors for the shuffles and result.
+  const Full128<uint8_t> d_full;
+
+  const Vec128<uint8_t> full_a{a.raw};
+  const Vec128<uint8_t> full_b{b.raw};
+  const Vec128<uint8_t> full_c{c.raw};
+
+  // Shuffle (a,b,c) vector bytes to bgr[3:0].
+  // 0x80 so lanes to be filled from other vectors are 0 for blending.
+  alignas(16) static constexpr uint8_t tbl_r0[16] = {
+      0,    0x80, 0x80, 1,   0x80, 0x80, 2, 0x80, 0x80, 3, 0x80, 0x80,  //
+      0x80, 0x80, 0x80, 0x80};
+  const auto shuf_r0 = Load(d_full, tbl_r0);
+  const auto shuf_g0 = CombineShiftRightBytes<15>(shuf_r0, shuf_r0);
+  const auto shuf_b0 = CombineShiftRightBytes<14>(shuf_r0, shuf_r0);
+  const auto r0 = TableLookupBytes(full_a, shuf_r0);  // ......3..2..1..0
+  const auto g0 = TableLookupBytes(full_b, shuf_g0);  // .....3..2..1..0.
+  const auto b0 = TableLookupBytes(full_c, shuf_b0);  // ....3..2..1..0..
+  const auto int0 = r0 | g0 | b0;
+  alignas(16) uint8_t buf[16];
+  StoreU(int0, d_full, buf);
+  CopyBytes<N * 3>(buf, unaligned);
+}
+
+// ------------------------------ StoreInterleaved4
+
+// 128 bits
+HWY_API void StoreInterleaved4(const Vec128<uint8_t> v0,
+                               const Vec128<uint8_t> v1,
+                               const Vec128<uint8_t> v2,
+                               const Vec128<uint8_t> v3, Full128<uint8_t> d,
+                               uint8_t* HWY_RESTRICT unaligned) {
+  // let a,b,c,d denote v0..3.
+  const auto ba0 = ZipLower(v0, v1);  // b7 a7 .. b0 a0
+  const auto dc0 = ZipLower(v2, v3);  // d7 c7 .. d0 c0
+  const auto ba8 = ZipUpper(v0, v1);
+  const auto dc8 = ZipUpper(v2, v3);
+  const auto dcba_0 = ZipLower(ba0, dc0);  // d..a3 d..a0
+  const auto dcba_4 = ZipUpper(ba0, dc0);  // d..a7 d..a4
+  const auto dcba_8 = ZipLower(ba8, dc8);  // d..aB d..a8
+  const auto dcba_C = ZipUpper(ba8, dc8);  // d..aF d..aC
+  StoreU(BitCast(d, dcba_0), d, unaligned + 0 * 16);
+  StoreU(BitCast(d, dcba_4), d, unaligned + 1 * 16);
+  StoreU(BitCast(d, dcba_8), d, unaligned + 2 * 16);
+  StoreU(BitCast(d, dcba_C), d, unaligned + 3 * 16);
+}
+
+// 64 bits
+HWY_API void StoreInterleaved4(const Vec128<uint8_t, 8> in0,
+                               const Vec128<uint8_t, 8> in1,
+                               const Vec128<uint8_t, 8> in2,
+                               const Vec128<uint8_t, 8> in3,
+                               Simd<uint8_t, 8> /*tag*/,
+                               uint8_t* HWY_RESTRICT unaligned) {
+  // Use full vectors to reduce the number of stores.
+  const Vec128<uint8_t> v0{in0.raw};
+  const Vec128<uint8_t> v1{in1.raw};
+  const Vec128<uint8_t> v2{in2.raw};
+  const Vec128<uint8_t> v3{in3.raw};
+  // let a,b,c,d denote v0..3.
+  const auto ba0 = ZipLower(v0, v1);       // b7 a7 .. b0 a0
+  const auto dc0 = ZipLower(v2, v3);       // d7 c7 .. d0 c0
+  const auto dcba_0 = ZipLower(ba0, dc0);  // d..a3 d..a0
+  const auto dcba_4 = ZipUpper(ba0, dc0);  // d..a7 d..a4
+  const Full128<uint8_t> d_full;
+  StoreU(BitCast(d_full, dcba_0), d_full, unaligned + 0 * 16);
+  StoreU(BitCast(d_full, dcba_4), d_full, unaligned + 1 * 16);
+}
+
+// <= 32 bits
+template <size_t N, HWY_IF_LE32(uint8_t, N)>
+HWY_API void StoreInterleaved4(const Vec128<uint8_t, N> in0,
+                               const Vec128<uint8_t, N> in1,
+                               const Vec128<uint8_t, N> in2,
+                               const Vec128<uint8_t, N> in3,
+                               Simd<uint8_t, N> /*tag*/,
+                               uint8_t* HWY_RESTRICT unaligned) {
+  // Use full vectors to reduce the number of stores.
+  const Vec128<uint8_t> v0{in0.raw};
+  const Vec128<uint8_t> v1{in1.raw};
+  const Vec128<uint8_t> v2{in2.raw};
+  const Vec128<uint8_t> v3{in3.raw};
+  // let a,b,c,d denote v0..3.
+  const auto ba0 = ZipLower(v0, v1);       // b3 a3 .. b0 a0
+  const auto dc0 = ZipLower(v2, v3);       // d3 c3 .. d0 c0
+  const auto dcba_0 = ZipLower(ba0, dc0);  // d..a3 d..a0
+  alignas(16) uint8_t buf[16];
+  const Full128<uint8_t> d_full;
+  StoreU(BitCast(d_full, dcba_0), d_full, buf);
+  CopyBytes<4 * N>(buf, unaligned);
 }
 
 // ------------------------------ Reductions

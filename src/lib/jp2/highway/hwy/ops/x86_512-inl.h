@@ -19,6 +19,23 @@
 // particular, "Broadcast", pack and zip behavior may be surprising.
 
 #include <immintrin.h>  // AVX2+
+#if defined(_MSC_VER) && defined(__clang__)
+// Including <immintrin.h> should be enough, but Clang's headers helpfully skip
+// including these headers when _MSC_VER is defined, like when using clang-cl.
+// Include these directly here.
+#include <smmintrin.h>
+#include <avxintrin.h>
+#include <avx2intrin.h>
+#include <f16cintrin.h>
+#include <fmaintrin.h>
+#include <avx512fintrin.h>
+#include <avx512vlintrin.h>
+#include <avx512bwintrin.h>
+#include <avx512dqintrin.h>
+#include <avx512vlbwintrin.h>
+#include <avx512vldqintrin.h>
+#endif
+
 #include <stddef.h>
 #include <stdint.h>
 
@@ -675,6 +692,16 @@ HWY_API Vec512<int64_t> ShiftLeft(const Vec512<int64_t> v) {
   return Vec512<int64_t>{_mm512_slli_epi64(v.raw, kBits)};
 }
 
+template <int kBits, typename T, HWY_IF_LANE_SIZE(T, 1)>
+HWY_API Vec512<T> ShiftLeft(const Vec512<T> v) {
+  const Full512<T> d8;
+  const RepartitionToWide<decltype(d8)> d16;
+  const auto shifted = BitCast(d8, ShiftLeft<kBits>(BitCast(d16, v)));
+  return kBits == 1
+             ? (v + v)
+             : (shifted & Set(d8, static_cast<T>((0xFF << kBits) & 0xFF)));
+}
+
 // ------------------------------ ShiftRight
 
 template <int kBits>
@@ -693,6 +720,14 @@ HWY_API Vec512<uint64_t> ShiftRight(const Vec512<uint64_t> v) {
 }
 
 template <int kBits>
+HWY_API Vec512<uint8_t> ShiftRight(const Vec512<uint8_t> v) {
+  const Full512<uint8_t> d8;
+  // Use raw instead of BitCast to support N=1.
+  const Vec512<uint8_t> shifted{ShiftRight<kBits>(Vec512<uint16_t>{v.raw}).raw};
+  return shifted & Set(d8, 0xFF >> kBits);
+}
+
+template <int kBits>
 HWY_API Vec512<int16_t> ShiftRight(const Vec512<int16_t> v) {
   return Vec512<int16_t>{_mm512_srai_epi16(v.raw, kBits)};
 }
@@ -705,6 +740,15 @@ HWY_API Vec512<int32_t> ShiftRight(const Vec512<int32_t> v) {
 template <int kBits>
 HWY_API Vec512<int64_t> ShiftRight(const Vec512<int64_t> v) {
   return Vec512<int64_t>{_mm512_srai_epi64(v.raw, kBits)};
+}
+
+template <int kBits>
+HWY_API Vec512<int8_t> ShiftRight(const Vec512<int8_t> v) {
+  const Full512<int8_t> di;
+  const Full512<uint8_t> du;
+  const auto shifted = BitCast(di, ShiftRight<kBits>(BitCast(du, v)));
+  const auto shifted_sign = BitCast(di, Set(du, 0x80 >> kBits));
+  return (shifted ^ shifted_sign) - shifted_sign;
 }
 
 // ------------------------------ ShiftLeftSame
@@ -734,6 +778,14 @@ HWY_API Vec512<int64_t> ShiftLeftSame(const Vec512<int64_t> v, const int bits) {
   return Vec512<int64_t>{_mm512_sll_epi64(v.raw, _mm_cvtsi32_si128(bits))};
 }
 
+template <typename T, HWY_IF_LANE_SIZE(T, 1)>
+HWY_API Vec512<T> ShiftLeftSame(const Vec512<T> v, const int bits) {
+  const Full512<T> d8;
+  const RepartitionToWide<decltype(d8)> d16;
+  const auto shifted = BitCast(d8, ShiftLeftSame(BitCast(d16, v), bits));
+  return shifted & Set(d8, (0xFF << bits) & 0xFF);
+}
+
 // ------------------------------ ShiftRightSame
 
 HWY_API Vec512<uint16_t> ShiftRightSame(const Vec512<uint16_t> v,
@@ -749,6 +801,13 @@ HWY_API Vec512<uint64_t> ShiftRightSame(const Vec512<uint64_t> v,
   return Vec512<uint64_t>{_mm512_srl_epi64(v.raw, _mm_cvtsi32_si128(bits))};
 }
 
+HWY_API Vec512<uint8_t> ShiftRightSame(Vec512<uint8_t> v, const int bits) {
+  const Full512<uint8_t> d8;
+  const RepartitionToWide<decltype(d8)> d16;
+  const auto shifted = BitCast(d8, ShiftRightSame(BitCast(d16, v), bits));
+  return shifted & Set(d8, 0xFF >> bits);
+}
+
 HWY_API Vec512<int16_t> ShiftRightSame(const Vec512<int16_t> v,
                                        const int bits) {
   return Vec512<int16_t>{_mm512_sra_epi16(v.raw, _mm_cvtsi32_si128(bits))};
@@ -761,6 +820,14 @@ HWY_API Vec512<int32_t> ShiftRightSame(const Vec512<int32_t> v,
 HWY_API Vec512<int64_t> ShiftRightSame(const Vec512<int64_t> v,
                                        const int bits) {
   return Vec512<int64_t>{_mm512_sra_epi64(v.raw, _mm_cvtsi32_si128(bits))};
+}
+
+HWY_API Vec512<int8_t> ShiftRightSame(Vec512<int8_t> v, const int bits) {
+  const Full512<int8_t> di;
+  const Full512<uint8_t> du;
+  const auto shifted = BitCast(di, ShiftRightSame(BitCast(du, v), bits));
+  const auto shifted_sign = BitCast(di, Set(du, 0x80 >> bits));
+  return (shifted ^ shifted_sign) - shifted_sign;
 }
 
 // ------------------------------ Shl
@@ -1678,6 +1745,79 @@ HWY_API void Stream(const Vec512<double> v, Full512<double>,
   _mm512_stream_pd(aligned, v.raw);
 }
 
+// ------------------------------ Scatter
+
+namespace detail {
+
+template <typename T>
+HWY_API void ScatterOffset(hwy::SizeTag<4> /* tag */, Vec512<T> v,
+                           Full512<T> /* tag */, T* HWY_RESTRICT base,
+                           const Vec512<int32_t> offset) {
+  _mm512_i32scatter_epi32(base, offset.raw, v.raw, 1);
+}
+template <typename T>
+HWY_API void ScatterIndex(hwy::SizeTag<4> /* tag */, Vec512<T> v,
+                          Full512<T> /* tag */, T* HWY_RESTRICT base,
+                          const Vec512<int32_t> index) {
+  _mm512_i32scatter_epi32(base, index.raw, v.raw, 4);
+}
+
+template <typename T>
+HWY_API void ScatterOffset(hwy::SizeTag<8> /* tag */, Vec512<T> v,
+                           Full512<T> /* tag */, T* HWY_RESTRICT base,
+                           const Vec512<int64_t> offset) {
+  _mm512_i64scatter_epi64(base, offset.raw, v.raw, 1);
+}
+template <typename T>
+HWY_API void ScatterIndex(hwy::SizeTag<8> /* tag */, Vec512<T> v,
+                          Full512<T> /* tag */, T* HWY_RESTRICT base,
+                          const Vec512<int64_t> index) {
+  _mm512_i64scatter_epi64(base, index.raw, v.raw, 8);
+}
+
+}  // namespace detail
+
+template <typename T, typename Offset>
+HWY_API void ScatterOffset(Vec512<T> v, Full512<T> d, T* HWY_RESTRICT base,
+                           const Vec512<Offset> offset) {
+  static_assert(sizeof(T) == sizeof(Offset), "Must match for portability");
+  return detail::ScatterOffset(hwy::SizeTag<sizeof(T)>(), v, d, base, offset);
+}
+template <typename T, typename Index>
+HWY_API void ScatterIndex(Vec512<T> v, Full512<T> d, T* HWY_RESTRICT base,
+                          const Vec512<Index> index) {
+  static_assert(sizeof(T) == sizeof(Index), "Must match for portability");
+  return detail::ScatterIndex(hwy::SizeTag<sizeof(T)>(), v, d, base, index);
+}
+
+template <>
+HWY_INLINE void ScatterOffset<float>(Vec512<float> v, Full512<float> /* tag */,
+                                     float* HWY_RESTRICT base,
+                                     const Vec512<int32_t> offset) {
+  _mm512_i32scatter_ps(base, offset.raw, v.raw, 1);
+}
+template <>
+HWY_INLINE void ScatterIndex<float>(Vec512<float> v, Full512<float> /* tag */,
+                                    float* HWY_RESTRICT base,
+                                    const Vec512<int32_t> index) {
+  _mm512_i32scatter_ps(base, index.raw, v.raw, 4);
+}
+
+template <>
+HWY_INLINE void ScatterOffset<double>(Vec512<double> v,
+                                      Full512<double> /* tag */,
+                                      double* HWY_RESTRICT base,
+                                      const Vec512<int64_t> offset) {
+  _mm512_i64scatter_pd(base, offset.raw, v.raw, 1);
+}
+template <>
+HWY_INLINE void ScatterIndex<double>(Vec512<double> v,
+                                     Full512<double> /* tag */,
+                                     double* HWY_RESTRICT base,
+                                     const Vec512<int64_t> index) {
+  _mm512_i64scatter_pd(base, index.raw, v.raw, 8);
+}
+
 // ------------------------------ Gather
 
 namespace detail {
@@ -1713,13 +1853,13 @@ HWY_API Vec512<T> GatherIndex(hwy::SizeTag<8> /* tag */, Full512<T> /* tag */,
 template <typename T, typename Offset>
 HWY_API Vec512<T> GatherOffset(Full512<T> d, const T* HWY_RESTRICT base,
                                const Vec512<Offset> offset) {
-  static_assert(sizeof(T) == sizeof(Offset), "SVE requires same size base/ofs");
+static_assert(sizeof(T) == sizeof(Offset), "Must match for portability");
   return detail::GatherOffset(hwy::SizeTag<sizeof(T)>(), d, base, offset);
 }
 template <typename T, typename Index>
 HWY_API Vec512<T> GatherIndex(Full512<T> d, const T* HWY_RESTRICT base,
                               const Vec512<Index> index) {
-  static_assert(sizeof(T) == sizeof(Index), "SVE requires same size base/idx");
+  static_assert(sizeof(T) == sizeof(Index), "Must match for portability");
   return detail::GatherIndex(hwy::SizeTag<sizeof(T)>(), d, base, index);
 }
 
@@ -2666,8 +2806,8 @@ HWY_API Vec512<T> Compress(Vec512<T> v, const Mask512<T> mask) {
   const auto promoted0 = PromoteTo(dw, LowerHalf(vu16));
   const auto promoted1 = PromoteTo(dw, UpperHalf(vu16));
 
-  const Mask512<int32_t> mask0{mask.raw & 0xFFFF};
-  const Mask512<int32_t> mask1{mask.raw >> 16};
+  const Mask512<int32_t> mask0{static_cast<__mmask16>(mask.raw & 0xFFFF)};
+  const Mask512<int32_t> mask1{static_cast<__mmask16>(mask.raw >> 16)};
   const auto compressed0 = Compress(promoted0, mask0);
   const auto compressed1 = Compress(promoted1, mask1);
 
@@ -2746,6 +2886,98 @@ HWY_API size_t CompressStore(Vec512<double> v, const Mask512<double> mask,
                              double* HWY_RESTRICT aligned) {
   _mm512_mask_compressstoreu_pd(aligned, mask.raw, v.raw);
   return CountTrue(mask);
+}
+
+// ------------------------------ StoreInterleaved3 (CombineShiftRightBytes,
+// TableLookupBytes)
+
+HWY_API void StoreInterleaved3(const Vec512<uint8_t> a, const Vec512<uint8_t> b,
+                               const Vec512<uint8_t> c, Full512<uint8_t> d,
+                               uint8_t* HWY_RESTRICT unaligned) {
+  const auto k5 = Set(d, 5);
+  const auto k6 = Set(d, 6);
+
+  // Shuffle (a,b,c) vector bytes to (MSB on left): r5, bgr[4:0].
+  // 0x80 so lanes to be filled from other vectors are 0 for blending.
+  alignas(16) static constexpr uint8_t tbl_r0[16] = {
+      0, 0x80, 0x80, 1, 0x80, 0x80, 2, 0x80, 0x80,  //
+      3, 0x80, 0x80, 4, 0x80, 0x80, 5};
+  alignas(16) static constexpr uint8_t tbl_g0[16] = {
+      0x80, 0, 0x80, 0x80, 1, 0x80,  //
+      0x80, 2, 0x80, 0x80, 3, 0x80, 0x80, 4, 0x80, 0x80};
+  const auto shuf_r0 = LoadDup128(d, tbl_r0);
+  const auto shuf_g0 = LoadDup128(d, tbl_g0);  // cannot reuse r0 due to 5
+  const auto shuf_b0 = CombineShiftRightBytes<15>(shuf_g0, shuf_g0);
+  const auto r0 = TableLookupBytes(a, shuf_r0);  // 5..4..3..2..1..0
+  const auto g0 = TableLookupBytes(b, shuf_g0);  // ..4..3..2..1..0.
+  const auto b0 = TableLookupBytes(c, shuf_b0);  // .4..3..2..1..0..
+  const auto i = (r0 | g0 | b0).raw;  // low byte in each 128bit: 30 20 10 00
+
+  // Second vector: g10,r10, bgr[9:6], b5,g5
+  const auto shuf_r1 = shuf_b0 + k6;  // .A..9..8..7..6..
+  const auto shuf_g1 = shuf_r0 + k5;  // A..9..8..7..6..5
+  const auto shuf_b1 = shuf_g0 + k5;  // ..9..8..7..6..5.
+  const auto r1 = TableLookupBytes(a, shuf_r1);
+  const auto g1 = TableLookupBytes(b, shuf_g1);
+  const auto b1 = TableLookupBytes(c, shuf_b1);
+  const auto j = (r1 | g1 | b1).raw;  // low byte in each 128bit: 35 25 15 05
+
+  // Third vector: bgr[15:11], b10
+  const auto shuf_r2 = shuf_b1 + k6;  // ..F..E..D..C..B.
+  const auto shuf_g2 = shuf_r1 + k5;  // .F..E..D..C..B..
+  const auto shuf_b2 = shuf_g1 + k5;  // F..E..D..C..B..A
+  const auto r2 = TableLookupBytes(a, shuf_r2);
+  const auto g2 = TableLookupBytes(b, shuf_g2);
+  const auto b2 = TableLookupBytes(c, shuf_b2);
+  const auto k = (r2 | g2 | b2).raw;  // low byte in each 128bit: 3A 2A 1A 0A
+
+  // To obtain 10 0A 05 00 in one vector, transpose "rows" into "columns".
+  const auto k3_k0_i3_i0 = _mm512_shuffle_i64x2(i, k, _MM_SHUFFLE(3, 0, 3, 0));
+  const auto i1_i2_j0_j1 = _mm512_shuffle_i64x2(j, i, _MM_SHUFFLE(1, 2, 0, 1));
+  const auto j2_j3_k1_k2 = _mm512_shuffle_i64x2(k, j, _MM_SHUFFLE(2, 3, 1, 2));
+
+  // Alternating order, most-significant 128 bits from the second arg.
+  const __mmask8 m = 0xCC;
+  const auto i1_k0_j0_i0 = _mm512_mask_blend_epi64(m, k3_k0_i3_i0, i1_i2_j0_j1);
+  const auto j2_i2_k1_j1 = _mm512_mask_blend_epi64(m, i1_i2_j0_j1, j2_j3_k1_k2);
+  const auto k3_j3_i3_k2 = _mm512_mask_blend_epi64(m, j2_j3_k1_k2, k3_k0_i3_i0);
+
+  StoreU(Vec512<uint8_t>{i1_k0_j0_i0}, d, unaligned + 0 * 64);  //  10 0A 05 00
+  StoreU(Vec512<uint8_t>{j2_i2_k1_j1}, d, unaligned + 1 * 64);  //  25 20 1A 15
+  StoreU(Vec512<uint8_t>{k3_j3_i3_k2}, d, unaligned + 2 * 64);  //  3A 35 30 2A
+}
+
+// ------------------------------ StoreInterleaved4
+
+HWY_API void StoreInterleaved4(const Vec512<uint8_t> v0,
+                               const Vec512<uint8_t> v1,
+                               const Vec512<uint8_t> v2,
+                               const Vec512<uint8_t> v3, Full512<uint8_t> d,
+                               uint8_t* HWY_RESTRICT unaligned) {
+  // let a,b,c,d denote v0..3.
+  const auto ba0 = ZipLower(v0, v1);  // b7 a7 .. b0 a0
+  const auto dc0 = ZipLower(v2, v3);  // d7 c7 .. d0 c0
+  const auto ba8 = ZipUpper(v0, v1);
+  const auto dc8 = ZipUpper(v2, v3);
+  const auto i = ZipLower(ba0, dc0).raw;  // 4x128bit: d..a3 d..a0
+  const auto j = ZipUpper(ba0, dc0).raw;  // 4x128bit: d..a7 d..a4
+  const auto k = ZipLower(ba8, dc8).raw;  // 4x128bit: d..aB d..a8
+  const auto l = ZipUpper(ba8, dc8).raw;  // 4x128bit: d..aF d..aC
+  // 128-bit blocks were independent until now; transpose 4x4.
+  const auto j1_j0_i1_i0 = _mm512_shuffle_i64x2(i, j, _MM_SHUFFLE(1, 0, 1, 0));
+  const auto l1_l0_k1_k0 = _mm512_shuffle_i64x2(k, l, _MM_SHUFFLE(1, 0, 1, 0));
+  const auto j3_j2_i3_i2 = _mm512_shuffle_i64x2(i, j, _MM_SHUFFLE(3, 2, 3, 2));
+  const auto l3_l2_k3_k2 = _mm512_shuffle_i64x2(k, l, _MM_SHUFFLE(3, 2, 3, 2));
+  constexpr int k20 = _MM_SHUFFLE(2, 0, 2, 0);
+  constexpr int k31 = _MM_SHUFFLE(3, 1, 3, 1);
+  const auto l0_k0_j0_i0 = _mm512_shuffle_i64x2(j1_j0_i1_i0, l1_l0_k1_k0, k20);
+  const auto l1_k1_j1_i1 = _mm512_shuffle_i64x2(j1_j0_i1_i0, l1_l0_k1_k0, k31);
+  const auto l2_k2_j2_i2 = _mm512_shuffle_i64x2(j3_j2_i3_i2, l3_l2_k3_k2, k20);
+  const auto l3_k3_j3_i3 = _mm512_shuffle_i64x2(j3_j2_i3_i2, l3_l2_k3_k2, k31);
+  StoreU(Vec512<uint8_t>{l0_k0_j0_i0}, d, unaligned + 0 * 64);
+  StoreU(Vec512<uint8_t>{l1_k1_j1_i1}, d, unaligned + 1 * 64);
+  StoreU(Vec512<uint8_t>{l2_k2_j2_i2}, d, unaligned + 2 * 64);
+  StoreU(Vec512<uint8_t>{l3_k3_j3_i3}, d, unaligned + 3 * 64);
 }
 
 // ------------------------------ Reductions

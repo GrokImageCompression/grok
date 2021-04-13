@@ -171,7 +171,7 @@ bool Profile::is_imf_compliant(grk_cparameters* parameters, GrkImage* image)
 	/* Validate mainlevel */
 	if(mainlevel > GRK_LEVEL_MAX)
 	{
-		GRK_WARN("IMF profile require mainlevel <= 11.\n"
+		GRK_WARN("IMF profile requires mainlevel <= 11.\n"
 				 "-> %u is thus not compliant\n"
 				 "-> Non-IMF code stream will be generated",
 				 mainlevel);
@@ -183,7 +183,7 @@ bool Profile::is_imf_compliant(grk_cparameters* parameters, GrkImage* image)
 		   (GRK_LEVEL_MAX + 1) * sizeof(tabMaxSubLevelFromMainLevel[0]));
 	if(sublevel > tabMaxSubLevelFromMainLevel[mainlevel])
 	{
-		GRK_WARN("IMF profile require sublevel <= %u for mainlevel = %u.\n"
+		GRK_WARN("IMF profile requires sublevel <= %u for mainlevel = %u.\n"
 				 "-> %u is thus not compliant\n"
 				 "-> Non-IMF code stream will be generated",
 				 tabMaxSubLevelFromMainLevel[mainlevel], mainlevel, sublevel);
@@ -379,8 +379,8 @@ bool Profile::is_imf_compliant(grk_cparameters* parameters, GrkImage* image)
 
 	if(parameters->cblockw_init != 32 || parameters->cblockh_init != 32)
 	{
-		GRK_WARN("IMF profile require code block size to be 32x32.\n"
-				 "-> Compression parameters set it to %dx%u.\n"
+		GRK_WARN("IMF profile requires code block size to be 32x32.\n"
+				 "-> Compression parameter set to %dx%u.\n"
 				 "-> Non-IMF code stream will be generated",
 				 parameters->cblockw_init, parameters->cblockh_init);
 		ret = false;
@@ -388,8 +388,8 @@ bool Profile::is_imf_compliant(grk_cparameters* parameters, GrkImage* image)
 
 	if(parameters->prog_order != GRK_CPRL)
 	{
-		GRK_WARN("IMF profile require progression order to be CPRL.\n"
-				 "-> Compression parameters set it to %u.\n"
+		GRK_WARN("IMF profile requires progression order to be CPRL.\n"
+				 "-> Compression parameter set to %u.\n"
 				 "-> Non-IMF code stream will be generated",
 				 parameters->prog_order);
 		ret = false;
@@ -421,7 +421,7 @@ bool Profile::is_imf_compliant(grk_cparameters* parameters, GrkImage* image)
 		if(!parameters->irreversible)
 		{
 			GRK_WARN("IMF 2K/4K/8K profiles require 9-7 Irreversible Transform.\n"
-					 "-> Compression parameters set it to reversible.\n"
+					 "-> Compression parameter set to reversible.\n"
 					 "-> Non-IMF code stream will be generated");
 			ret = false;
 		}
@@ -432,7 +432,7 @@ bool Profile::is_imf_compliant(grk_cparameters* parameters, GrkImage* image)
 		if(parameters->irreversible)
 		{
 			GRK_WARN("IMF 2K/4K/8K profiles require 5-3 reversible Transform.\n"
-					 "-> Compression parameters set it to irreversible.\n"
+					 "-> Compression parameter set to irreversible.\n"
 					 "-> Non-IMF code stream will be generated");
 			ret = false;
 		}
@@ -886,7 +886,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters* parameters, GrkImage* imag
 	if(parameters->prog_order != GRK_CPRL)
 	{
 		GRK_WARN("Broadcast profile require progression order to be CPRL.\n"
-				 "-> Compression parameters set it to %u.\n"
+				 "-> Compression parameter set to %u.\n"
 				 "-> Non-broadcast code stream will be generated",
 				 parameters->prog_order);
 		ret = false;
@@ -917,7 +917,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters* parameters, GrkImage* imag
 		if(!parameters->irreversible)
 		{
 			GRK_WARN("Broadcast single and multi profiles require 9-7 Irreversible Transform.\n"
-					 "-> Compression parameters set it to reversible.\n"
+					 "-> Compression parameter set to reversible.\n"
 					 "-> Non-broadcast code stream will be generated");
 			ret = false;
 		}
@@ -928,7 +928,7 @@ bool Profile::is_broadcast_compliant(grk_cparameters* parameters, GrkImage* imag
 		if(parameters->irreversible)
 		{
 			GRK_WARN("Broadcast multi_r profile require 5-3 reversible Transform.\n"
-					 "-> Compression parameters set it to irreversible.\n"
+					 "-> Compression parameter set to irreversible.\n"
 					 "-> Non-broadcast code stream will be generated");
 			ret = false;
 		}

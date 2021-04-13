@@ -25,6 +25,20 @@
 #include <limits>
 #include <sstream>
 
+#undef HWY_TARGET_INCLUDE
+#define HWY_TARGET_INCLUDE "transform/WaveletReverse.cpp"
+#include <hwy/foreach_target.h>
+#include <hwy/highway.h>
+HWY_BEFORE_NAMESPACE();
+namespace grk {
+namespace HWY_NAMESPACE {
+using namespace hwy::HWY_NAMESPACE;
+
+} // namespace HWY_NAMESPACE
+} // namespace grk
+HWY_AFTER_NAMESPACE();
+
+#if HWY_ONCE
 namespace grk
 {
 /* <summary>                             */
@@ -2262,3 +2276,4 @@ bool WaveletReverse::decompress(TileProcessor* p_tcd, TileComponent* tilec, uint
 }
 
 } // namespace grk
+#endif

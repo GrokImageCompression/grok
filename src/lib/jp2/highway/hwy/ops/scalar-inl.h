@@ -19,7 +19,6 @@
 #include <stdint.h>
 
 #include <algorithm>  // std::min
-#include <cmath>
 
 #include "hwy/base.h"
 #include "hwy/ops/shared-inl.h"
@@ -357,9 +356,9 @@ HWY_INLINE Vec1<T> operator>>(const Vec1<T> v, const Vec1<T> bits) {
 
 template <typename T>
 HWY_INLINE Vec1<T> operator+(Vec1<T> a, Vec1<T> b) {
-  const uint64_t a64 = static_cast<int64_t>(a.raw);
-  const uint64_t b64 = static_cast<int64_t>(b.raw);
-  return Vec1<T>((a64 + b64) & ~T(0));
+  const uint64_t a64 = static_cast<uint64_t>(a.raw);
+  const uint64_t b64 = static_cast<uint64_t>(b.raw);
+  return Vec1<T>(static_cast<T>((a64 + b64) & static_cast<uint64_t>(~T(0))));
 }
 HWY_INLINE Vec1<float> operator+(const Vec1<float> a, const Vec1<float> b) {
   return Vec1<float>(a.raw + b.raw);
@@ -370,9 +369,9 @@ HWY_INLINE Vec1<double> operator+(const Vec1<double> a, const Vec1<double> b) {
 
 template <typename T>
 HWY_INLINE Vec1<T> operator-(Vec1<T> a, Vec1<T> b) {
-  const uint64_t a64 = static_cast<int64_t>(a.raw);
-  const uint64_t b64 = static_cast<int64_t>(b.raw);
-  return Vec1<T>((a64 - b64) & ~T(0));
+  const uint64_t a64 = static_cast<uint64_t>(a.raw);
+  const uint64_t b64 = static_cast<uint64_t>(b.raw);
+  return Vec1<T>(static_cast<T>((a64 - b64) & static_cast<uint64_t>(~T(0))));
 }
 HWY_INLINE Vec1<float> operator-(const Vec1<float> a, const Vec1<float> b) {
   return Vec1<float>(a.raw - b.raw);
@@ -388,21 +387,25 @@ HWY_INLINE Vec1<double> operator-(const Vec1<double> a, const Vec1<double> b) {
 // Unsigned
 HWY_INLINE Vec1<uint8_t> SaturatedAdd(const Vec1<uint8_t> a,
                                       const Vec1<uint8_t> b) {
-  return Vec1<uint8_t>(HWY_MIN(HWY_MAX(0, a.raw + b.raw), 255));
+  return Vec1<uint8_t>(
+      static_cast<uint8_t>(HWY_MIN(HWY_MAX(0, a.raw + b.raw), 255)));
 }
 HWY_INLINE Vec1<uint16_t> SaturatedAdd(const Vec1<uint16_t> a,
                                        const Vec1<uint16_t> b) {
-  return Vec1<uint16_t>(HWY_MIN(HWY_MAX(0, a.raw + b.raw), 65535));
+  return Vec1<uint16_t>(
+      static_cast<uint16_t>(HWY_MIN(HWY_MAX(0, a.raw + b.raw), 65535)));
 }
 
 // Signed
 HWY_INLINE Vec1<int8_t> SaturatedAdd(const Vec1<int8_t> a,
                                      const Vec1<int8_t> b) {
-  return Vec1<int8_t>(HWY_MIN(HWY_MAX(-128, a.raw + b.raw), 127));
+  return Vec1<int8_t>(
+      static_cast<int8_t>(HWY_MIN(HWY_MAX(-128, a.raw + b.raw), 127)));
 }
 HWY_INLINE Vec1<int16_t> SaturatedAdd(const Vec1<int16_t> a,
                                       const Vec1<int16_t> b) {
-  return Vec1<int16_t>(HWY_MIN(HWY_MAX(-32768, a.raw + b.raw), 32767));
+  return Vec1<int16_t>(
+      static_cast<int16_t>(HWY_MIN(HWY_MAX(-32768, a.raw + b.raw), 32767)));
 }
 
 // ------------------------------ Saturating subtraction
@@ -412,21 +415,25 @@ HWY_INLINE Vec1<int16_t> SaturatedAdd(const Vec1<int16_t> a,
 // Unsigned
 HWY_INLINE Vec1<uint8_t> SaturatedSub(const Vec1<uint8_t> a,
                                       const Vec1<uint8_t> b) {
-  return Vec1<uint8_t>(HWY_MIN(HWY_MAX(0, a.raw - b.raw), 255));
+  return Vec1<uint8_t>(
+      static_cast<uint8_t>(HWY_MIN(HWY_MAX(0, a.raw - b.raw), 255)));
 }
 HWY_INLINE Vec1<uint16_t> SaturatedSub(const Vec1<uint16_t> a,
                                        const Vec1<uint16_t> b) {
-  return Vec1<uint16_t>(HWY_MIN(HWY_MAX(0, a.raw - b.raw), 65535));
+  return Vec1<uint16_t>(
+      static_cast<uint16_t>(HWY_MIN(HWY_MAX(0, a.raw - b.raw), 65535)));
 }
 
 // Signed
 HWY_INLINE Vec1<int8_t> SaturatedSub(const Vec1<int8_t> a,
                                      const Vec1<int8_t> b) {
-  return Vec1<int8_t>(HWY_MIN(HWY_MAX(-128, a.raw - b.raw), 127));
+  return Vec1<int8_t>(
+      static_cast<int8_t>(HWY_MIN(HWY_MAX(-128, a.raw - b.raw), 127)));
 }
 HWY_INLINE Vec1<int16_t> SaturatedSub(const Vec1<int16_t> a,
                                       const Vec1<int16_t> b) {
-  return Vec1<int16_t>(HWY_MIN(HWY_MAX(-32768, a.raw - b.raw), 32767));
+  return Vec1<int16_t>(
+      static_cast<int16_t>(HWY_MIN(HWY_MAX(-32768, a.raw - b.raw), 32767)));
 }
 
 // ------------------------------ Average
@@ -435,11 +442,11 @@ HWY_INLINE Vec1<int16_t> SaturatedSub(const Vec1<int16_t> a,
 
 HWY_INLINE Vec1<uint8_t> AverageRound(const Vec1<uint8_t> a,
                                       const Vec1<uint8_t> b) {
-  return Vec1<uint8_t>((a.raw + b.raw + 1) / 2);
+  return Vec1<uint8_t>(static_cast<uint8_t>((a.raw + b.raw + 1) / 2));
 }
 HWY_INLINE Vec1<uint16_t> AverageRound(const Vec1<uint16_t> a,
                                        const Vec1<uint16_t> b) {
-  return Vec1<uint16_t>((a.raw + b.raw + 1) / 2);
+  return Vec1<uint16_t>(static_cast<uint16_t>((a.raw + b.raw + 1) / 2));
 }
 
 // ------------------------------ Absolute value
@@ -514,15 +521,15 @@ HWY_INLINE Vec1<T> operator/(const Vec1<T> a, const Vec1<T> b) {
 
 // Returns the upper 16 bits of a * b in each lane.
 HWY_INLINE Vec1<int16_t> MulHigh(const Vec1<int16_t> a, const Vec1<int16_t> b) {
-  return Vec1<int16_t>((a.raw * b.raw) >> 16);
+  return Vec1<int16_t>(static_cast<int16_t>((a.raw * b.raw) >> 16));
 }
 HWY_INLINE Vec1<uint16_t> MulHigh(const Vec1<uint16_t> a,
                                   const Vec1<uint16_t> b) {
   // Cast to uint32_t first to prevent overflow. Otherwise the result of
   // uint16_t * uint16_t is in "int" which may overflow. In practice the result
   // is the same but this way it is also defined.
-  return Vec1<uint16_t>(
-      (static_cast<uint32_t>(a.raw) * static_cast<uint32_t>(b.raw)) >> 16);
+  return Vec1<uint16_t>(static_cast<uint16_t>(
+      (static_cast<uint32_t>(a.raw) * static_cast<uint32_t>(b.raw)) >> 16));
 }
 
 // Multiplies even lanes (0, 2 ..) and returns the double-wide result.
@@ -617,6 +624,31 @@ HWY_INLINE Vec1<T> Round(const Vec1<T> v) {
   return Vec1<T>(static_cast<T>(rounded));
 }
 
+// Round-to-nearest even.
+HWY_INLINE Vec1<int32_t> NearestInt(const Vec1<float> v) {
+  using T = float;
+  using TI = int32_t;
+
+  const T abs = Abs(v).raw;
+  const bool signbit = std::signbit(v.raw);
+
+  if (!(abs < MantissaEnd<T>())) {  // Huge or NaN
+    // Check if too large to cast or NaN
+    if (!(abs <= static_cast<T>(LimitsMax<TI>()))) {
+      return Vec1<TI>(signbit ? LimitsMin<TI>() : LimitsMax<TI>());
+    }
+    return Vec1<int32_t>(static_cast<TI>(v.raw));
+  }
+  const T bias = v.raw < T(0.0) ? T(-0.5) : T(0.5);
+  const TI rounded = static_cast<TI>(v.raw + bias);
+  if (rounded == 0) return Vec1<int32_t>(0);
+  // Round to even
+  if ((rounded & 1) && std::abs(rounded - v.raw) == T(0.5)) {
+    return Vec1<TI>(rounded - (signbit ? -1 : 1));
+  }
+  return Vec1<TI>(rounded);
+}
+
 template <typename T>
 HWY_INLINE Vec1<T> Trunc(const Vec1<T> v) {
   using TI = MakeSigned<T>;
@@ -641,7 +673,8 @@ V Ceiling(const V v) {
   Bits bits;
   CopyBytes<sizeof(Bits)>(&v, &bits);
 
-  const int exponent = ((bits >> kMantissaBits) & kExponentMask) - kBias;
+  const int exponent =
+      static_cast<int>(((bits >> kMantissaBits) & kExponentMask) - kBias);
   // Already an integer.
   if (exponent >= kMantissaBits) return v;
   // |v| <= 1 => 0 or 1.
@@ -672,7 +705,8 @@ V Floor(const V v) {
   Bits bits;
   CopyBytes<sizeof(Bits)>(&v, &bits);
 
-  const int exponent = ((bits >> kMantissaBits) & kExponentMask) - kBias;
+  const int exponent =
+      static_cast<int>(((bits >> kMantissaBits) & kExponentMask) - kBias);
   // Already an integer.
   if (exponent >= kMantissaBits) return v;
   // |v| <= 1 => -1 or 0.
@@ -772,6 +806,26 @@ HWY_INLINE void StoreU(const Vec1<T> v, Sisd<T> d, T* HWY_RESTRICT p) {
   return Store(v, d, p);
 }
 
+// ------------------------------ StoreInterleaved3
+
+HWY_API void StoreInterleaved3(const Vec1<uint8_t> v0, const Vec1<uint8_t> v1,
+                               const Vec1<uint8_t> v2, Sisd<uint8_t> d,
+                               uint8_t* HWY_RESTRICT unaligned) {
+  StoreU(v0, d, unaligned + 0);
+  StoreU(v1, d, unaligned + 1);
+  StoreU(v2, d, unaligned + 2);
+}
+
+HWY_API void StoreInterleaved4(const Vec1<uint8_t> v0, const Vec1<uint8_t> v1,
+                               const Vec1<uint8_t> v2, const Vec1<uint8_t> v3,
+                               Sisd<uint8_t> d,
+                               uint8_t* HWY_RESTRICT unaligned) {
+  StoreU(v0, d, unaligned + 0);
+  StoreU(v1, d, unaligned + 1);
+  StoreU(v2, d, unaligned + 2);
+  StoreU(v3, d, unaligned + 3);
+}
+
 // ------------------------------ Stream
 
 template <typename T>
@@ -779,12 +833,29 @@ HWY_INLINE void Stream(const Vec1<T> v, Sisd<T> d, T* HWY_RESTRICT aligned) {
   return Store(v, d, aligned);
 }
 
+// ------------------------------ Scatter
+
+template <typename T, typename Offset>
+HWY_INLINE void ScatterOffset(Vec1<T> v, Sisd<T> d, T* base,
+                              const Vec1<Offset> offset) {
+  static_assert(sizeof(T) == sizeof(Offset), "Must match for portability");
+  uint8_t* const base8 = reinterpret_cast<uint8_t*>(base) + offset.raw;
+  return Store(v, d, reinterpret_cast<T*>(base8));
+}
+
+template <typename T, typename Index>
+HWY_INLINE void ScatterIndex(Vec1<T> v, Sisd<T> d, T* HWY_RESTRICT base,
+                             const Vec1<Index> index) {
+  static_assert(sizeof(T) == sizeof(Index), "Must match for portability");
+  return Store(v, d, base + index.raw);
+}
+
 // ------------------------------ Gather
 
 template <typename T, typename Offset>
 HWY_INLINE Vec1<T> GatherOffset(Sisd<T> d, const T* base,
                                 const Vec1<Offset> offset) {
-  static_assert(sizeof(T) == sizeof(Offset), "SVE requires same size base/ofs");
+  static_assert(sizeof(T) == sizeof(Offset), "Must match for portability");
   const uintptr_t addr = reinterpret_cast<uintptr_t>(base) + offset.raw;
   return Load(d, reinterpret_cast<const T*>(addr));
 }
@@ -792,7 +863,7 @@ HWY_INLINE Vec1<T> GatherOffset(Sisd<T> d, const T* base,
 template <typename T, typename Index>
 HWY_INLINE Vec1<T> GatherIndex(Sisd<T> d, const T* HWY_RESTRICT base,
                                const Vec1<Index> index) {
-  static_assert(sizeof(T) == sizeof(Index), "SVE requires same size base/idx");
+  static_assert(sizeof(T) == sizeof(Index), "Must match for portability");
   return Load(d, base + index.raw);
 }
 
@@ -841,7 +912,8 @@ static HWY_INLINE Vec1<float> PromoteTo(Sisd<float> /* tag */,
 
   // Subnormal or zero
   if (biased_exp == 0) {
-    const float subnormal = (1.0f / 16384) * (mantissa * (1.0f / 1024));
+    const float subnormal =
+        (1.0f / 16384) * (static_cast<float>(mantissa) * (1.0f / 1024));
     return Vec1<float>(sign ? -subnormal : subnormal);
   }
 
@@ -917,18 +989,6 @@ HWY_INLINE Vec1<ToT> ConvertTo(Sisd<ToT> /* tag */, Vec1<FromT> from) {
 
 HWY_INLINE Vec1<uint8_t> U8FromU32(const Vec1<uint32_t> v) {
   return DemoteTo(Sisd<uint8_t>(), v);
-}
-
-// Approximation of round-to-nearest for numbers representable as int32_t.
-HWY_INLINE Vec1<int32_t> NearestInt(const Vec1<float> v) {
-  const float f = v.raw;
-  if (std::isinf(f) ||
-      std::fabs(f) > static_cast<float>(LimitsMax<int32_t>())) {
-    return Vec1<int32_t>(std::signbit(f) ? LimitsMin<int32_t>()
-                                         : LimitsMax<int32_t>());
-  }
-  const float bias = f < 0.0f ? -0.5f : 0.5f;
-  return Vec1<int32_t>(static_cast<int>(f + bias));
 }
 
 // ================================================== SWIZZLE

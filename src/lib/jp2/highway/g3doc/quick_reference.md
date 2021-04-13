@@ -33,6 +33,12 @@ The public headers are:
 *   hwy/cache_control.h: defines stand-alone functions to control caching (e.g.
     prefetching) and memory barriers, independent of actual SIMD.
 
+*   hwy/nanobenchmark.h: library for precisely measuring elapsed time (under
+    varying inputs) for benchmarking small/medium regions of code.
+
+*   hwy/tests/test_util-inl.h: defines macros for invoking tests on all
+    available targets, plus per-target functions useful in tests (e.g. Print).
+
 SIMD implementations must be preceded and followed by the following:
 
 ```
@@ -252,23 +258,24 @@ Left-shifting signed `T` and right-shifting positive signed `T` is the same as
 shifting `MakeUnsigned<T>` and casting to `T`. Right-shifting negative signed
 `T` is the same as an unsigned shift, except that 1-bits are shifted in.
 
-Compile-time constant shifts, generally the most efficient variant:
+Compile-time constant shifts, generally the most efficient variant (though 8-bit
+shifts are potentially slower than other lane sizes):
 
-*   `V`: `{u,i}{16,32,64}` \
+*   `V`: `{u,i}` \
     <code>V **ShiftLeft**&lt;int&gt;(V a)</code> returns `a[i] << int`.
 
-*   `V`: `{u,i}{16,32,64}` \
+*   `V`: `{u,i}` \
     <code>V **ShiftRight**&lt;int&gt;(V a)</code> returns `a[i] >> int`.
 
 Shift all lanes by the same (not necessarily compile-time constant) amount:
 
-*   `V`: `{u,i}{16,32,64}` \
+*   `V`: `{u,i}` \
     <code>V **ShiftLeftSame**(V a, int bits)</code> returns `a[i] << bits`.
 
-*   `V`: `{u,i}{16,32,64}` \
+*   `V`: `{u,i}` \
     <code>V **ShiftRightSame**(V a, int bits)</code> returns `a[i] >> bits`.
 
-Per-lane variable shifts (slow if SSE4, or Shr i64 on AVX2):
+Per-lane variable shifts (slow if SSE4, or 16-bit, or Shr i64 on AVX2):
 
 *   `V`: `{u,i}{16,32,64}` \
     <code>V **operator<<**(V a, V b)</code> returns `a[i] << b[i]`.
@@ -441,19 +448,31 @@ either naturally-aligned (`aligned`) or possibly unaligned (`p`).
     be faster than broadcasting single values, and is more convenient than
     preparing constants for the actual vector length.
 
-#### Gather
+#### Scatter/Gather
 
-**Note**: Vectors must be `HWY_CAPPED(T, HWY_GATHER_LANES(T))`:
+**Note**: Offsets/indices are of type `VI = Vec<RebindToSigned<D>>` and need not
+be unique. The results are implementation-defined if any are negative.
 
-*   `V`,`VI`: (`{u,i,f}{32},i32`), (`{u,i,f}{64},i64`) \
-    <code>Vec&lt;D&gt; **GatherOffset**(D, const T* base, VI offsets)</code>.
-    Returns elements of base selected by possibly repeated *byte* `offsets[i]`.
-    Results are implementation-defined if `offsets[i]` is negative.
+**Note**: Where possible, applications should `Load/Store/TableLookup*` entire
+vectors, which is much faster than `Scatter/Gather`. Otherwise, code of the form
+`dst[tbl[i]] = F(src[i])` should when possible be transformed to `dst[i] =
+F(src[tbl[i]])` because `Scatter` is more expensive than `Gather`.
 
-*   `V`,`VI`: (`{u,i,f}{32},i32`), (`{u,i,f}{64},i64`) \
-    <code>Vec&lt;D&gt; **GatherIndex**(D, const T* base, VI indices)</code>.
-    Returns vector of `base[indices[i]]`. Indices need not be unique, but
-    results are implementation-defined if they are negative.
+*   `D`: `{u,i,f}{32,64}` \
+    <code>void **ScatterOffset**(Vec&lt;D&gt; v, D, const T* base, VI
+    offsets)</code>: stores `v[i]` to the base address plus *byte* `offsets[i]`.
+
+*   `D`: `{u,i,f}{32,64}` \
+    <code>void **ScatterIndex**(Vec&lt;D&gt; v, D, const T* base, VI
+    indices)</code>: stores `v[i]` to `base[indices[i]]`.
+
+*   `D`: `{u,i,f}{32,64}` \
+    <code>Vec&lt;D&gt; **GatherOffset**(D, const T* base, VI offsets)</code>:
+    returns elements of base selected by *byte* `offsets[i]`.
+
+*   `D`: `{u,i,f}{32,64}` \
+    <code>Vec&lt;D&gt; **GatherIndex**(D, const T* base, VI indices)</code>:
+    returns vector of `base[indices[i]]`.
 
 #### Store
 
@@ -462,6 +481,17 @@ either naturally-aligned (`aligned`) or possibly unaligned (`p`).
     sizeof(T) bytes.
 *   <code>void **StoreU**(Vec&lt;D&gt; a, D, T* p)</code>: as Store, but without
     the alignment requirement.
+
+*   `D`: `u8` \
+    <code>void **StoreInterleaved3**(Vec&lt;D&gt; v0, Vec&lt;D&gt; v1,
+    Vec&lt;D&gt; v2, D, T* p)</code>: equivalent to shuffling `v0, v1, v2`
+    followed by three `StoreU()`, such that `p[0] == v0[0], p[1] == v1[0],
+    p[2] == v1[0]`. Useful for RGB samples.
+
+*   `D`: `u8` \
+    <code>void **StoreInterleaved4**(Vec&lt;D&gt; v0, Vec&lt;D&gt; v1,
+    Vec&lt;D&gt; v2, Vec&lt;D&gt; v3, D, T* p)</code>: as above, but for four
+    vectors (e.g. RGBA samples).
 
 ### Cache control
 
@@ -526,7 +556,8 @@ if the input exceeds the destination range.
     zero and converts the value to same-sized integer.
 
 *   `V`: `f32`; `Ret`: `i32` \
-    <code>Ret **NearestInt**(V a)</code>: returns the integer nearest to `a[i]`.
+    <code>Ret **NearestInt**(V a)</code>: returns the integer nearest to `a[i]`;
+    results are undefined for NaN.
 
 ### Swizzle
 
@@ -711,22 +742,10 @@ The following signal capabilities and expand to 1 or 0.
 *   `HWY_CAP_GE256`: the current target supports vectors of >= 256 bits.
 *   `HWY_CAP_GE512`: the current target supports vectors of >= 512 bits.
 
-The following indicate the maximum number of lanes for certain operations. For
-targets that support the feature/operation, the macro evaluates to
-`HWY_LANES(T)`, otherwise 1. Using `HWY_CAPPED(T, HWY_GATHER_LANES(T))`
-generates the best possible code (or scalar fallback) from the same source code.
+The following were used to signal the maximum number of lanes for certain
+operations, but this is no longer necessary, so they are DEPRECATED:
 
-*   `HWY_GATHER_LANES(T)`: supports GatherIndex/Offset.
-*   `HWY_VARIABLE_SHIFT_LANES(T)`: supports per-lane shift amounts (v1 << v2).
-    DEPRECATED, this always matches HWY_LANES(T) and will be removed.
-
-As above, but the feature implies the type so there is no T parameter, thus
-these can be used in `#if` expressions.
-
-*   `HWY_COMPARE64_LANES`: 64-bit signed integer comparisons. DEPRECATED, this
-    always matches HWY_LANES(int64_t) and will be removed.
-*   `HWY_MINMAX64_LANES`: 64-bit signed/unsigned integer min/max. DEPRECATED,
-    this always matches HWY_LANES(int64_t) and will be removed.
+*   `HWY_GATHER_LANES(T)`.
 
 ## Detecting supported targets
 
