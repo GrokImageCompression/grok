@@ -114,14 +114,14 @@ int convert(std::string s)
 	return -1;
 }
 
-bool header_rewind(char* s, char* line, size_t lineLen, FILE* reader)
+bool header_rewind(char* s, char* line,FILE* reader)
 {
 	// if s points to ' ', then rewind file
 	// to two past current position of s
 	if(*s == ' ')
 	{
 		auto len = (int64_t)s - (int64_t)line;
-		if(GRK_FSEEK(reader, (int64_t)(-lineLen) + len + 2, SEEK_CUR))
+		if(GRK_FSEEK(reader, (int64_t)(-strlen(line)) + len + 2, SEEK_CUR))
 			return false;
 	}
 	return true;
@@ -323,7 +323,7 @@ static bool read_pnm_header(FILE* reader, struct pnm_header* ph)
 				}
 				if(format == 1 || format == 4)
 				{
-					if(!header_rewind(s, line, lineSearch, reader))
+					if(!header_rewind(s, line, reader))
 						return false;
 					break;
 				}
@@ -336,7 +336,7 @@ static bool read_pnm_header(FILE* reader, struct pnm_header* ph)
 			if(!s || (*s == 0))
 				return false;
 
-			if(!header_rewind(s, line, lineSearch, reader))
+			if(!header_rewind(s, line, reader))
 				return false;
 
 			break;
