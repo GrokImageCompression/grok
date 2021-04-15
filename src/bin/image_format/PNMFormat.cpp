@@ -358,6 +358,20 @@ static bool read_pnm_header(FILE* reader, struct pnm_header* ph)
 		// bitmap (ascii or binary)
 		if(format == 1 || format == 4)
 			ph->maxval = 1;
+
+		//sanity check
+		uint64_t area = (uint64_t)ph->width * ph->height;
+		uint64_t minBytes = (ph->maxval != 1) ? area  : area/8;
+		if (minBytes) {
+			int64_t currentPos = GRK_FTELL(reader);
+			GRK_FSEEK(reader, 0L, SEEK_END);
+			uint64_t length = (uint64_t)GRK_FTELL(reader);
+			if (length < minBytes){
+				spdlog::error("File is truncated");
+				return false;
+			}
+			GRK_FSEEK(reader, currentPos, SEEK_SET);
+		}
 	}
 	return true;
 }
