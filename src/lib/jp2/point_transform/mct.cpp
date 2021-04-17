@@ -215,13 +215,11 @@ void trans(std::vector<int32_t*> channels,
 	}
 }
 private:
-
 	const float a_r = 0.299f;
 	const float a_g = 0.587f;
 	const float a_b = 0.114f;
 	const float cb = 0.5f / (1.0f - a_b);
 	const float cr = 0.5f / (1.0f - a_r);
-
 };
 
 class DecompressRev{
@@ -343,11 +341,9 @@ void trans(std::vector<int32_t*> channels,
 	    std::vector<ShiftInfo> shiftInfo,
 			size_t i,
 			size_t n){
-
 	float* GRK_RESTRICT chan0 = (float*)channels[0];
 	float* GRK_RESTRICT chan1 = (float*)channels[1];
 	float* GRK_RESTRICT chan2 = (float*)channels[2];
-
 
 	int32_t* GRK_RESTRICT c0 = channels[0];
 	int32_t* GRK_RESTRICT c1 = channels[1];
@@ -373,7 +369,7 @@ void trans(std::vector<int32_t*> channels,
 }
 };
 
-template<class T> size_t transform(std::vector<int32_t*> channels,
+template<class T> size_t vscheduler(std::vector<int32_t*> channels,
 	    						std::vector<ShiftInfo> shiftInfo,
 								size_t n)
 {
@@ -414,41 +410,41 @@ template<class T> size_t transform(std::vector<int32_t*> channels,
 size_t hwy_compress_rev(std::vector<int32_t*> channels,
 					size_t n)
 {
-	return transform<CompressRev>(channels,{{0,0,0}},n);
+	return vscheduler<CompressRev>(channels,{{0,0,0}},n);
 }
 
 size_t hwy_compress_irrev(std::vector<int32_t*> channels,
 					size_t n)
 {
-	return transform<CompressIrrev>(channels,{{0,0,0}},n);
+	return vscheduler<CompressIrrev>(channels,{{0,0,0}},n);
 }
 
 size_t hwy_decompress_rev(std::vector<int32_t*> channels,
 						std::vector<ShiftInfo> shiftInfo,
 					size_t n)
 {
-	return transform<DecompressRev>(channels,shiftInfo,n);
+	return vscheduler<DecompressRev>(channels,shiftInfo,n);
 }
 
 size_t hwy_decompress_irrev(std::vector<int32_t*> channels,
 						std::vector<ShiftInfo> shiftInfo,
 					size_t n)
 {
-	return transform<DecompressIrrev>(channels,shiftInfo,n);
+	return vscheduler<DecompressIrrev>(channels,shiftInfo,n);
 }
 
 size_t hwy_decompress_dc_shift_irrev(std::vector<int32_t*> channels,
 									std::vector<ShiftInfo> shiftInfo,
 									size_t n)
 {
-	return transform<DecompressDcShiftIrrev>(channels,shiftInfo,n);
+	return vscheduler<DecompressDcShiftIrrev>(channels,shiftInfo,n);
 }
 
 size_t hwy_decompress_dc_shift_rev(std::vector<int32_t*> channels,
 									std::vector<ShiftInfo> shiftInfo,
 									size_t n)
 {
-	return transform<DecompressDcShiftRev>(channels,shiftInfo,n);
+	return vscheduler<DecompressDcShiftRev>(channels,shiftInfo,n);
 }
 } // namespace HWY_NAMESPACE
 } // namespace grk
@@ -466,6 +462,41 @@ HWY_EXPORT(hwy_decompress_rev);
 HWY_EXPORT(hwy_decompress_irrev);
 HWY_EXPORT(hwy_decompress_dc_shift_irrev);
 HWY_EXPORT(hwy_decompress_dc_shift_rev);
+
+template<class T> size_t mct_scheduler(std::vector<int32_t*> channels,
+	    						std::vector<ShiftInfo> shiftInfo,
+								size_t n)
+{
+	size_t i = 0;
+	size_t num_threads = ThreadPool::get()->num_threads();
+	size_t chunkSize = n / num_threads;
+	if(chunkSize > num_threads)
+	{
+		std::vector<std::future<int>> results;
+		for(size_t tr = 0; tr < num_threads; ++tr)
+		{
+			size_t index = tr;
+			auto compressor = [index, chunkSize, channels,shiftInfo]() {
+				T transform;
+				transform.trans(channels,shiftInfo,index*chunkSize,(index+1)*chunkSize);
+				return 0;
+			};
+			if(num_threads > 1)
+				results.emplace_back(ThreadPool::get()->enqueue(compressor));
+			else
+				compressor();
+		}
+		for(auto& result : results)
+		{
+			result.get();
+		}
+		i = chunkSize * num_threads;
+	}
+	T transform;
+	transform.trans(channels,shiftInfo,i,n);
+
+	return i;
+}
 
 void mct::decompress_dc_shift_irrev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps,
 									uint32_t compno)
@@ -499,7 +530,6 @@ void mct::decompress_dc_shift_irrev(Tile* tile, GrkImage* image, TileComponentCo
 /* </summary> */
 void mct::decompress_irrev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps)
 {
-	uint64_t i = 0;
 	uint64_t n = tile->comps->getBuffer()->stridedArea();
 
 	int32_t *c0_i =
@@ -529,17 +559,19 @@ void mct::decompress_irrev(Tile* tile, GrkImage* image, TileComponentCodingParam
 		shift[compno] = tccp->m_dc_level_shift;
 	}
 
-	HWY_NAMESPACE::DecompressIrrev D;
-	D.trans({c0_i,c1_i,c2_i},
-		 {ShiftInfo(_min[0],_max[0],shift[0]),
-		 ShiftInfo(_min[1],_max[1],shift[1]),
-		 ShiftInfo(_min[2],_max[2],shift[2])},i,n);
-		 /*
+	mct_scheduler<HWY_NAMESPACE::DecompressIrrev>(
+							 {c0_i,c1_i,c2_i},
+							 {ShiftInfo(_min[0],_max[0],shift[0]),
+							 ShiftInfo(_min[1],_max[1],shift[1]),
+							 ShiftInfo(_min[2],_max[2],shift[2])},
+							 n);
+
+/*
 	HWY_DYNAMIC_DISPATCH(hwy_decompress_irrev)({c0_i,c1_i,c2_i},
 						{ShiftInfo(_min[0],_max[0],shift[0]),
 						 ShiftInfo(_min[1],_max[1],shift[1]),
 						 ShiftInfo(_min[2],_max[2],shift[2])},n);
-						 */
+*/
 }
 
 void mct::decompress_dc_shift_rev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps,
@@ -620,8 +652,11 @@ void mct::compress_rev(int32_t* GRK_RESTRICT chan0, int32_t* GRK_RESTRICT chan1,
 void mct::compress_irrev(int32_t* GRK_RESTRICT chan0, int32_t* GRK_RESTRICT chan1,
 						 int32_t* GRK_RESTRICT chan2, uint64_t n)
 {
-	HWY_NAMESPACE::CompressIrrev C;
-	C.trans({chan0,chan1,chan2}, {{0,0,0}}, 0,n);
+
+	mct_scheduler<HWY_NAMESPACE::CompressIrrev>({chan0,chan1,chan2},
+											{{0,0,0}},
+											n);
+
 	//HWY_DYNAMIC_DISPATCH(hwy_compress_irrev)({chan0,chan1,chan2},n);
 }
 

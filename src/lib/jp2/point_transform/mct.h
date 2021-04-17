@@ -125,6 +125,7 @@ class mct
 	 */
 	static void decompress_dc_shift_irrev(Tile* tile, GrkImage* image,
 										  TileComponentCodingParams* tccps, uint32_t compno);
+
 };
 
 /* ----------------------------------------------------------------------- */
