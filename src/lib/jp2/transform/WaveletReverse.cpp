@@ -872,7 +872,7 @@ static bool decompress_tile_53(TileComponent* tilec, uint32_t numres)
 static void decompress_step1_sse_97(Params97 d, const __m128 c)
 {
 	// process 4 floats at a time
-	__m128* GRK_RESTRICT mmData = (__m128*)d.data;
+	auto mmData = (__m128*)d.data;
 	uint32_t i;
 	for(i = 0; i + 3 < d.len; i += 4, mmData += 8)
 	{
@@ -913,19 +913,18 @@ static void decompress_step2_sse_97(const Params97& d, __m128 c)
 
 	// initial tmp1 value is only necessary when
 	// absolute start of line is at 0
-	__m128 tmp1 = ((__m128*)d.dataPrev)[0];
+	auto tmp1 = ((__m128*)d.dataPrev)[0];
 	uint32_t i = 0;
 	for(; i + 3 < imax; i += 4)
 	{
-		__m128 tmp4, tmp5, tmp6, tmp7, tmp8, tmp9;
-		__m128 tmp2 = vec_data[-1];
-		__m128 tmp3 = vec_data[0];
-		tmp4 = vec_data[1];
-		tmp5 = vec_data[2];
-		tmp6 = vec_data[3];
-		tmp7 = vec_data[4];
-		tmp8 = vec_data[5];
-		tmp9 = vec_data[6];
+		auto tmp2 = vec_data[-1];
+		auto tmp3 = vec_data[0];
+		auto tmp4 = vec_data[1];
+		auto tmp5 = vec_data[2];
+		auto tmp6 = vec_data[3];
+		auto tmp7 = vec_data[4];
+		auto tmp8 = vec_data[5];
+		auto tmp9 = vec_data[6];
 		vec_data[-1] = _mm_add_ps(tmp2, _mm_mul_ps(_mm_add_ps(tmp1, tmp3), c));
 		vec_data[1] = _mm_add_ps(tmp4, _mm_mul_ps(_mm_add_ps(tmp3, tmp5), c));
 		vec_data[3] = _mm_add_ps(tmp6, _mm_mul_ps(_mm_add_ps(tmp5, tmp7), c));
@@ -936,8 +935,8 @@ static void decompress_step2_sse_97(const Params97& d, __m128 c)
 
 	for(; i < imax; ++i)
 	{
-		__m128 tmp2 = vec_data[-1];
-		__m128 tmp3 = vec_data[0];
+		auto tmp2 = vec_data[-1];
+		auto tmp3 = vec_data[0];
 		vec_data[-1] = _mm_add_ps(tmp2, _mm_mul_ps(_mm_add_ps(tmp1, tmp3), c));
 		tmp1 = tmp3;
 		vec_data += 2;
