@@ -463,41 +463,6 @@ HWY_EXPORT(hwy_decompress_irrev);
 HWY_EXPORT(hwy_decompress_dc_shift_irrev);
 HWY_EXPORT(hwy_decompress_dc_shift_rev);
 
-template<class T> size_t mct_scheduler(std::vector<int32_t*> channels,
-	    						std::vector<ShiftInfo> shiftInfo,
-								size_t n)
-{
-	size_t i = 0;
-	size_t num_threads = ThreadPool::get()->num_threads();
-	size_t chunkSize = n / num_threads;
-	if(chunkSize > num_threads)
-	{
-		std::vector<std::future<int>> results;
-		for(size_t tr = 0; tr < num_threads; ++tr)
-		{
-			size_t index = tr;
-			auto compressor = [index, chunkSize, channels,shiftInfo]() {
-				T transform;
-				transform.trans(channels,shiftInfo,index*chunkSize,(index+1)*chunkSize);
-				return 0;
-			};
-			if(num_threads > 1)
-				results.emplace_back(ThreadPool::get()->enqueue(compressor));
-			else
-				compressor();
-		}
-		for(auto& result : results)
-		{
-			result.get();
-		}
-		i = chunkSize * num_threads;
-	}
-	T transform;
-	transform.trans(channels,shiftInfo,i,n);
-
-	return i;
-}
-
 void mct::decompress_dc_shift_irrev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps,
 									uint32_t compno)
 {
@@ -558,20 +523,12 @@ void mct::decompress_irrev(Tile* tile, GrkImage* image, TileComponentCodingParam
 		auto tccp = tccps + compno;
 		shift[compno] = tccp->m_dc_level_shift;
 	}
-
-	mct_scheduler<HWY_NAMESPACE::DecompressIrrev>(
-							 {c0_i,c1_i,c2_i},
-							 {ShiftInfo(_min[0],_max[0],shift[0]),
-							 ShiftInfo(_min[1],_max[1],shift[1]),
-							 ShiftInfo(_min[2],_max[2],shift[2])},
-							 n);
-
-/*
+    hwy::DisableTargets(uint32_t(~HWY_SCALAR));
 	HWY_DYNAMIC_DISPATCH(hwy_decompress_irrev)({c0_i,c1_i,c2_i},
 						{ShiftInfo(_min[0],_max[0],shift[0]),
 						 ShiftInfo(_min[1],_max[1],shift[1]),
 						 ShiftInfo(_min[2],_max[2],shift[2])},n);
-*/
+
 }
 
 void mct::decompress_dc_shift_rev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps,
@@ -652,12 +609,8 @@ void mct::compress_rev(int32_t* GRK_RESTRICT chan0, int32_t* GRK_RESTRICT chan1,
 void mct::compress_irrev(int32_t* GRK_RESTRICT chan0, int32_t* GRK_RESTRICT chan1,
 						 int32_t* GRK_RESTRICT chan2, uint64_t n)
 {
-
-	mct_scheduler<HWY_NAMESPACE::CompressIrrev>({chan0,chan1,chan2},
-											{{0,0,0}},
-											n);
-
-	//HWY_DYNAMIC_DISPATCH(hwy_compress_irrev)({chan0,chan1,chan2},n);
+    hwy::DisableTargets(uint32_t(~HWY_SCALAR));
+	HWY_DYNAMIC_DISPATCH(hwy_compress_irrev)({chan0,chan1,chan2},n);
 }
 
 void mct::calculate_norms(double* pNorms, uint32_t pNbComps, float* pMatrix)
