@@ -33,7 +33,7 @@ namespace grk {
 namespace HWY_NAMESPACE {
 using namespace hwy::HWY_NAMESPACE;
 
-static const size_t hwy_num_lanes(void){
+static size_t hwy_num_lanes(void){
 	const HWY_FULL(int32_t) di;
 	return Lanes(di);
 }
@@ -274,7 +274,8 @@ struct decompress_job
 };
 
 /** Number of columns that we can process in parallel in the vertical pass */
-#define PLL_COLS_53 (2 * (HWY_DYNAMIC_DISPATCH(hwy_num_lanes)()))
+#undef PLL_COLS_53
+#define PLL_COLS_53 (2 * uint32_t(HWY_DYNAMIC_DISPATCH(hwy_num_lanes)()))
 template<typename T>
 struct dwt_data
 {
