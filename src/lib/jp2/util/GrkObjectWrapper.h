@@ -1,3 +1,4 @@
+#include <atomic>
 #pragma once
 
 namespace grk
