@@ -147,6 +147,7 @@ target_sources(tiff PRIVATE
         tif_jbig.c
         tif_jpeg.c
         tif_jpeg_12.c
+        tif_lerc.c
         tif_luv.c
         tif_lzma.c
         tif_lzw.c
@@ -203,6 +204,9 @@ endif()
 if(JBIG_SUPPORT)
   target_link_libraries(tiff PRIVATE JBIG::JBIG)
 endif()
+if(LERC_SUPPORT)
+    target_link_libraries(tiff PRIVATE LERC::LERC)
+endif()
 if(LZMA_SUPPORT)
     target_link_libraries(tiff PRIVATE LibLZMA::LibLZMA)
 endif()
@@ -220,7 +224,7 @@ if(NOT CYGWIN)
     # encoded into their final filename.  We disable this on Cygwin because
     # it causes cygz-${TIFF_FULL_VERSION}.dll to be created when cygz.dll
     # seems to be the default.
-	set_target_properties(tiff PROPERTIES SOVERSION ${SO_COMPATVERSION})
+    set_target_properties(tiff PROPERTIES VERSION ${SO_VERSION})
 endif()
 if(HAVE_LD_VERSION_SCRIPT)
   set_target_properties(tiff PROPERTIES LINK_FLAGS

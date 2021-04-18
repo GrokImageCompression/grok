@@ -26,7 +26,7 @@
 
 # libzstd
 set(ZSTD_SUPPORT FALSE)
-set(ZSTD_USABLE_FALSE)
+set(ZSTD_USABLE FALSE)
 
 find_package(ZSTD)
 

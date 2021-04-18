@@ -41,6 +41,10 @@ find_path(Deflate_INCLUDE_DIR
           NAMES libdeflate.h
           PATH_SUFFIXES include)
 
+set(Deflate_OLD_FIND_LIBRARY_PREFIXES "${CMAKE_FIND_LIBRARY_PREFIXES}")
+# Library has a "lib" prefix even on Windows.
+set(CMAKE_FIND_LIBRARY_PREFIXES "lib" "")
+
 # Allow Deflate_LIBRARY to be set manually, as the location of the deflate library
 if(NOT Deflate_LIBRARY)
   find_library(Deflate_LIBRARY_RELEASE
@@ -54,8 +58,11 @@ if(NOT Deflate_LIBRARY)
   select_library_configurations(Deflate)
 endif()
 
+set(CMAKE_FIND_LIBRARY_PREFIXES "${Deflate_OLD_FIND_LIBRARY_PREFIXES}")
+
 unset(Deflate_NAMES)
 unset(Deflate_NAMES_DEBUG)
+unset(Deflate_OLD_FIND_LIBRARY_PREFIXES)
 
 mark_as_advanced(Deflate_INCLUDE_DIR)
 

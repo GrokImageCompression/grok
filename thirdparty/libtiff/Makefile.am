@@ -74,6 +74,7 @@ libtiff_la_SOURCES = \
 	tif_jbig.c \
 	tif_jpeg.c \
 	tif_jpeg_12.c \
+	tif_lerc.c \
 	tif_luv.c \
 	tif_lzma.c \
 	tif_lzw.c \

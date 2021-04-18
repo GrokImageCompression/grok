@@ -25,7 +25,7 @@ dnl OF THIS SOFTWARE.
 dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.64)
-AC_INIT([LibTIFF Software],[4.2.0],[tiff@lists.maptools.org],[tiff])
+AC_INIT([LibTIFF Software],[4.3.0],[tiff@lists.maptools.org],[tiff])
 AC_CONFIG_AUX_DIR(config)
 AC_CONFIG_MACRO_DIR(m4)
 AC_LANG(C)
@@ -33,14 +33,14 @@ AC_LANG(C)
 dnl Compute the canonical host (run-time) system type variable
 AC_CANONICAL_HOST
 
-AM_INIT_AUTOMAKE(tar-ustar)
+AM_INIT_AUTOMAKE([dist-xz tar-ustar])
 dnl Do not rebuild generated files every time
 AM_MAINTAINER_MODE
 
 dnl Versioning.
 dnl Don't fill the ALPHA_VERSION field, if not applicable.
 LIBTIFF_MAJOR_VERSION=4
-LIBTIFF_MINOR_VERSION=2
+LIBTIFF_MINOR_VERSION=3
 LIBTIFF_MICRO_VERSION=0
 LIBTIFF_ALPHA_VERSION=
 LIBTIFF_VERSION=$LIBTIFF_MAJOR_VERSION.$LIBTIFF_MINOR_VERSION.$LIBTIFF_MICRO_VERSION$LIBTIFF_ALPHA_VERSION
@@ -76,9 +76,9 @@ dnl  5. If any interfaces have been added since the last public release, then
 dnl     increment age.
 dnl  6. If any interfaces have been removed since the last public release,
 dnl     then set age to 0.                                
-LIBTIFF_CURRENT=11
+LIBTIFF_CURRENT=12
 LIBTIFF_REVISION=0
-LIBTIFF_AGE=6
+LIBTIFF_AGE=7
 LIBTIFF_VERSION_INFO=$LIBTIFF_CURRENT:$LIBTIFF_REVISION:$LIBTIFF_AGE
 
 # This is a special hack for OpenBSD and MirOS systems. The dynamic linker
@@ -642,6 +642,65 @@ fi
 AM_CONDITIONAL(HAVE_JBIG, test "$HAVE_JBIG" = 'yes')
 
 dnl ---------------------------------------------------------------------------
+dnl Check for liblerc.
+dnl ---------------------------------------------------------------------------
+
+HAVE_LERC=no
+
+AC_ARG_ENABLE(lerc,
+      AS_HELP_STRING([--disable-lerc],
+         [disable liblerc usage (required for lerc compression, enabled by default)]),,)
+AC_ARG_WITH(lerc-include-dir,
+      AS_HELP_STRING([--with-lerc-include-dir=DIR],
+         [location of liblerc headers]),,)
+AC_ARG_WITH(lerc-lib-dir,
+	    AS_HELP_STRING([--with-lerc-lib-dir=DIR],
+			   [location of liblerc library binary]),,)
+
+if test "x$enable_lerc" != "xno" ; then
+
+  if test "x$with_lerc_lib_dir" != "x" ; then
+    LDFLAGS="-L$with_lerc_lib_dir $LDFLAGS"
+  fi
+
+  lerc_lib_name="LercLib"
+  AC_CHECK_LIB("$lerc_lib_name", lerc_decode, [lerc_lib=yes], [lerc_lib=no],)
+  if test "$lerc_lib" = "no" ; then
+    lerc_lib_name="Lerc"
+    AC_CHECK_LIB("$lerc_lib_name", lerc_decode, [lerc_lib=yes], [lerc_lib=no],)
+  fi
+  if test "$lerc_lib" = "no" -a "x$with_lerc_lib_dir" != "x"; then
+    AC_MSG_ERROR([lerc library not found at $with_lerc_lib_dir])
+  fi
+
+  if test "x$with_lerc_include_dir" != "x" ; then
+    CPPFLAGS="-I$with_lerc_include_dir $CPPFLAGS"
+  fi
+  AC_CHECK_HEADER(Lerc_c_api.h, [lerc_c_api_h=yes], [lerc_c_api_h=no])
+  if test "$lerc_c_api_h" = "no" -a "x$with_lerc_include_dir" != "x" ; then
+    AC_MSG_ERROR([Liblerc headers not found at $with_lerc_include_dir])
+  fi
+
+  if test "$lerc_lib" = "yes" -a "$lerc_c_api_h" = "yes" ; then
+    HAVE_LERC=yes
+  fi
+
+fi
+
+if test "$HAVE_LERC" = "yes" ; then
+  AC_DEFINE(LERC_SUPPORT,1,[Support lerc compression])
+  LIBS="-l${lerc_lib_name} $LIBS"
+  tiff_libs_private="-l${lerc_lib_name} ${tiff_libs_private}"
+
+  if test "$HAVE_RPATH" = "yes" -a "x$with_lerc_lib_dir" != "x" ; then
+    LIBDIR="-R $with_lerc_lib_dir $LIBDIR"
+  fi
+
+fi
+
+AM_CONDITIONAL(HAVE_LERC, test "$HAVE_LERC" = 'yes')
+
+dnl ---------------------------------------------------------------------------
 dnl Check for liblzma2.
 dnl ---------------------------------------------------------------------------
 
@@ -1079,6 +1138,7 @@ LOC_MSG([  JPEG support:                       ${HAVE_JPEG}])
 LOC_MSG([  Old JPEG support:                   ${HAVE_OJPEG}])
 LOC_MSG([  JPEG 8/12 bit dual mode:            ${HAVE_JPEG12}])
 LOC_MSG([  ISO JBIG support:                   ${HAVE_JBIG}])
+LOC_MSG([  LERC support:                       ${HAVE_LERC}])
 LOC_MSG([  LZMA2 support:                      ${HAVE_LZMA}])
 LOC_MSG([  ZSTD support:                       ${HAVE_ZSTD}])
 LOC_MSG([  WEBP support:                       ${HAVE_WEBP}])

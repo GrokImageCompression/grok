@@ -20,7 +20,7 @@ This module defines the following variables:
 
 ::
 
-  CMath_INCLUDE_DIRS   - where to find CMath.h, etc.
+  CMath_INCLUDE_DIRS   - Where to find math.h
   CMath_LIBRARIES      - List of libraries when using CMath.
   CMath_FOUND          - True if CMath found.
 
@@ -34,12 +34,9 @@ check_symbol_exists(pow "math.h" CMath_HAVE_LIBC_POW)
 if(NOT CMath_HAVE_LIBC_POW)
     find_library(CMath_LIBRARY NAMES m)
 
-    set(CMAKE_REQUIRED_INCLUDES_SAVE ${CMAKE_REQUIRED_INCLUDES})
-    set(CMAKE_REQUIRED_INCLUDES ${CMAKE_REQUIRED_INCLUDES} ${ZSTD_INCLUDE_DIRS})
     set(CMAKE_REQUIRED_LIBRARIES_SAVE ${CMAKE_REQUIRED_LIBRARIES})
     set(CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES} ${CMath_LIBRARY})
     check_symbol_exists(pow "math.h" CMath_HAVE_LIBM_POW)
-    set(CMAKE_REQUIRED_INCLUDES ${CMAKE_REQUIRED_INCLUDES_SAVE})
     set(CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES_SAVE})
 endif()
 
@@ -54,6 +51,9 @@ include(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(CMath REQUIRED_VARS CMath_pow)
 
 if(CMath_FOUND)
+    if(NOT CMath_INCLUDE_DIRS)
+        set(CMath_INCLUDE_DIRS)
+    endif()
     if(NOT CMath_LIBRARIES)
         if (CMath_LIBRARY)
             set(CMath_LIBRARIES ${CMath_LIBRARY})

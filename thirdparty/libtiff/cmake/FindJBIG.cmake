@@ -41,6 +41,10 @@ find_path(JBIG_INCLUDE_DIR
           NAMES jbig.h
           PATH_SUFFIXES include)
 
+set(JBIG_OLD_FIND_LIBRARY_PREFIXES "${CMAKE_FIND_LIBRARY_PREFIXES}")
+# Library has a "lib" prefix even on Windows.
+set(CMAKE_FIND_LIBRARY_PREFIXES "lib" "")
+
 # Allow JBIG_LIBRARY to be set manually, as the location of the jbig library
 if(NOT JBIG_LIBRARY)
   find_library(JBIG_LIBRARY_RELEASE
@@ -54,8 +58,11 @@ if(NOT JBIG_LIBRARY)
   select_library_configurations(JBIG)
 endif()
 
+set(CMAKE_FIND_LIBRARY_PREFIXES "${JBIG_OLD_FIND_LIBRARY_PREFIXES}")
+
 unset(JBIG_NAMES)
 unset(JBIG_NAMES_DEBUG)
+unset(JBIG_OLD_FIND_LIBRARY_PREFIXES)
 
 mark_as_advanced(JBIG_INCLUDE_DIR)
 

@@ -62,6 +62,9 @@
 /* Support JBIG compression (requires JBIG-KIT library) */
 #undef JBIG_SUPPORT
 
+/* Support LERC compression */
+#undef LERC_SUPPORT
+
 /* Support LogLuv high dynamic range encoding */
 #undef LOGLUV_SUPPORT
 

@@ -62,6 +62,9 @@
 /* Support JBIG compression (requires JBIG-KIT library) */
 #cmakedefine JBIG_SUPPORT
 
+/* Support LERC compression */
+#cmakedefine LERC_SUPPORT 1
+
 /* Support LogLuv high dynamic range encoding */
 #cmakedefine LOGLUV_SUPPORT 1
 

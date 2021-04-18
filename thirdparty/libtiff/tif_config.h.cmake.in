@@ -76,8 +76,11 @@
 /* 8/12 bit libjpeg dual mode enabled */
 #cmakedefine JPEG_DUAL_MODE_8_12 1 1
 
+/* Support LERC compression */
+#cmakedefine LERC_SUPPORT 1
+
 /* 12bit libjpeg primary include file with path */
-#define LIBJPEG_12_PATH @LIBJPEG_12_PATH@
+#define LIBJPEG_12_PATH "@LIBJPEG_12_PATH@"
 
 /* Support LZMA2 compression */
 #cmakedefine LZMA_SUPPORT 1
