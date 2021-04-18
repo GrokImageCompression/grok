@@ -190,9 +190,8 @@ bool DecompressorState::findNextTile(CodeStreamDecompress* codeStream)
 
 	// if there is no EOC marker and there is also no data left, then simply return true
 	if(stream->numBytesLeft() == 0 && getState() == J2K_DEC_STATE_NO_EOC)
-	{
 		return true;
-	}
+
 	// if EOC marker has not been read yet, then try to read the next marker
 	// (should be EOC or SOT)
 	if(getState() != J2K_DEC_STATE_EOC)

@@ -450,8 +450,6 @@ size_t hwy_decompress_dc_shift_rev(std::vector<int32_t*> channels,
 } // namespace grk
 HWY_AFTER_NAMESPACE();
 
-#include "CPUArch.h"
-
 #if HWY_ONCE
 namespace grk
 {

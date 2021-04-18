@@ -27,9 +27,6 @@
 #include <functional>
 #include <stdexcept>
 #include <map>
-#ifdef __linux__
-#include "pthread.h"
-#endif
 #include <type_traits>
 
 /*

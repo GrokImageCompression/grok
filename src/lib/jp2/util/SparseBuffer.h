@@ -21,9 +21,8 @@ namespace grk
 {
 /*  SparseBuffer
 
- Store a list of buffers, or chunks, which can be treated as one single
+ Manage a list of buffers, which can be treated as one single
  contiguous buffer.
-
  */
 struct SparseBuffer
 {
@@ -32,30 +31,19 @@ struct SparseBuffer
 	grkBufferU8* pushBack(uint8_t* buf, size_t len, bool ownsData);
 	void incrementCurrentChunkOffset(size_t offset);
 	size_t getCurrentChunkLength(void);
-	/*
-	 Treat segmented buffer as single contiguous buffer, and get current pointer
-	 */
+	// Treat segmented buffer as single contiguous buffer, and get current pointer
 	uint8_t* getCurrentChunkPtr(void);
-	/*
-	 Reset all offsets to zero, and set current chunk to beginning of list
-	 */
+	// Reset all offsets to zero, and set current chunk to beginning of list
 	void rewind(void);
 	size_t skip(size_t numBytes);
 	void increment(void);
 	size_t read(void* buffer, size_t numBytes);
-
   private:
-	/*
-	 Treat segmented buffer as single contiguous buffer, and get current offset
-	 */
+	// Treat segmented buffer as single contiguous buffer, and get current offset
 	size_t getGlobalOffset(void);
-	/*
-	 Copy all chunks, in sequence, into contiguous array
-	 */
+	// Copy all chunks, in sequence, into contiguous array
 	bool copyToContiguousBuffer(uint8_t* buffer);
-	/*
-	 Clean up internal resources
-	 */
+	// Clean up internal resources
 	void cleanup(void);
 	/*
 	 Return current pointer, stored in ptr variable, and advance chunk buffer

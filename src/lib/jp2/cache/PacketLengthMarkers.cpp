@@ -274,9 +274,7 @@ void PacketLengthMarkers::rewind(void)
 	{
 		auto pair = m_markers->find(0);
 		if(pair != m_markers->end())
-		{
 			m_curr_vec = pair->second.packetLength;
-		}
 	}
 }
 // note: packet length must be at least 1, so 0 indicates

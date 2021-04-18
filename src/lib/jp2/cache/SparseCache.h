@@ -47,13 +47,9 @@ class SparseCache
 			m_currChunkIndex = chunkIndex;
 			auto iter = chunks.find(chunkIndex);
 			if(iter != chunks.end())
-			{
 				m_currChunk = iter->second;
-			}
 			else
-			{
 				return nullptr;
-			}
 		}
 		return m_currChunk[itemIndex];
 	}

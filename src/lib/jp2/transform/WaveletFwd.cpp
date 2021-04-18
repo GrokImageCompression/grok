@@ -19,13 +19,9 @@
  */
 
 #include "grk_includes.h"
-#include "CPUArch.h"
 #include <algorithm>
 #include <limits>
 #include <sstream>
-
-//#undef __SSE__
-
 namespace grk
 {
 template<typename T>

@@ -16,11 +16,12 @@
  */
 #include "grk_includes.h"
 
-namespace grk
-{
 /* #define DEBUG_CHUNK_BUF */
 
-SparseBuffer::SparseBuffer() : dataLength(0), currentChunkId(0) {}
+namespace grk
+{
+SparseBuffer::SparseBuffer() : dataLength(0), currentChunkId(0)
+{}
 SparseBuffer::~SparseBuffer()
 {
 	cleanup();
@@ -82,7 +83,7 @@ size_t SparseBuffer::skip(size_t numBytes)
 	bytes_remaining = numBytes;
 	while(currentChunkId < chunks.size() && bytes_remaining > 0)
 	{
-		grkBufferU8* currentChunk = chunks[currentChunkId];
+		auto currentChunk = chunks[currentChunkId];
 		size_t bytesInCurrentChunk = (size_t)(currentChunk->len - currentChunk->offset);
 		/* hoover up all the bytes in this chunk, and move to the next one */
 		if(bytesInCurrentChunk > bytes_remaining)
@@ -123,7 +124,7 @@ void SparseBuffer::rewind(void)
 {
 	for(size_t i = 0; i < chunks.size(); ++i)
 	{
-		grkBufferU8* chunk = chunks[i];
+		auto chunk = chunks[i];
 		if(chunk)
 			chunk->offset = 0;
 	}
@@ -186,7 +187,7 @@ size_t SparseBuffer::getGlobalOffset(void)
 	size_t offset = 0;
 	for(size_t i = 0; i < currentChunkId; ++i)
 	{
-		grkBufferU8* chunk = chunks[i];
+		auto chunk = chunks[i];
 		offset += chunk->len;
 	}
 	return offset + getCurrentChunkOffset();

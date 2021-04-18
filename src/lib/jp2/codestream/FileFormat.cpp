@@ -61,10 +61,7 @@ bool FileFormat::exec(std::vector<PROCEDURE_FUNC>* procs)
 	assert(procs);
 
 	for(auto it = procs->begin(); it != procs->end(); ++it)
-	{
-		auto p = *it;
-		result = result && (p)();
-	}
+		result = result && (*it)();
 	procs->clear();
 
 	return result;

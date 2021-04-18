@@ -94,16 +94,12 @@ void Profile::set_imf_parameters(grk_cparameters* parameters, GrkImage* image)
 	parameters->enableTilePartGeneration = 1;
 
 	if(parameters->prog_order == GRK_COMP_PARAM_DEFAULT_PROG_ORDER)
-	{
 		parameters->prog_order = GRK_CPRL;
-	}
 
 	if(profile == GRK_PROFILE_IMF_2K || profile == GRK_PROFILE_IMF_4K ||
 	   profile == GRK_PROFILE_IMF_8K)
-	{
 		/* 9-7 transform */
 		parameters->irreversible = true;
-	}
 
 	/* Adjust the number of resolutions if set to its defaults */
 	if(parameters->numresolution == GRK_COMP_PARAM_DEFAULT_NUMRESOLUTION && image->x0 == 0 &&

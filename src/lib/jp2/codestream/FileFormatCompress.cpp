@@ -229,23 +229,16 @@ bool FileFormatCompress::write_jp2h(void)
 		for(i = 0; i < nb_writers; ++i)
 		{
 			auto current_writer = writers + i;
-			if(current_writer->m_data != nullptr)
-			{
-				grkFree(current_writer->m_data);
-			}
+			grkFree(current_writer->m_data);
 		}
 		return false;
 	}
 
 	/* write super box size */
 	if(!stream->writeInt(jp2h_size))
-	{
 		result = false;
-	}
 	if(!stream->writeInt(JP2_JP2H))
-	{
 		result = false;
-	}
 
 	if(result)
 	{
@@ -300,9 +293,7 @@ uint8_t* FileFormatCompress::write_palette_clr(uint32_t* p_nb_bytes_written)
 	grk_write<uint8_t>(palette_ptr++, palette->num_channels);
 
 	for(uint8_t i = 0; i < palette->num_channels; ++i)
-	{
 		grk_write<uint8_t>(palette_ptr++, (uint8_t)(palette->channel_prec[i] - 1U)); // Bi
-	}
 
 	// LUT values for all components
 	auto lut_ptr = palette->lut;
@@ -494,9 +485,7 @@ uint8_t* FileFormatCompress::write_res(uint32_t* p_nb_bytes_written)
 
 	uint32_t size = (4 + 4) + GRK_RESOLUTION_BOX_SIZE;
 	if(storeCapture && storeDisplay)
-	{
 		size += GRK_RESOLUTION_BOX_SIZE;
-	}
 
 	res_data = (uint8_t*)grkCalloc(1, size);
 	if(!res_data)
@@ -513,15 +502,11 @@ uint8_t* FileFormatCompress::write_res(uint32_t* p_nb_bytes_written)
 	current_res_ptr += 4;
 
 	if(storeCapture)
-	{
 		write_res_box(capture_resolution[0], capture_resolution[1], JP2_CAPTURE_RES,
 					  &current_res_ptr);
-	}
 	if(storeDisplay)
-	{
 		write_res_box(display_resolution[0], display_resolution[1], JP2_DISPLAY_RES,
 					  &current_res_ptr);
-	}
 	*p_nb_bytes_written = size;
 
 	return res_data;
@@ -892,16 +877,12 @@ bool FileFormatCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 	if(parameters->write_capture_resolution)
 	{
 		for(i = 0; i < 2; ++i)
-		{
 			capture_resolution[i] = parameters->capture_resolution[i];
-		}
 	}
 	else if(parameters->write_capture_resolution_from_file)
 	{
 		for(i = 0; i < 2; ++i)
-		{
 			capture_resolution[i] = parameters->capture_resolution_from_file[i];
-		}
 	}
 	if(parameters->write_display_resolution)
 	{
@@ -993,9 +974,8 @@ bool FileFormatCompress::default_validation(void)
 	/* number of components */
 	/* precision */
 	for(i = 0; i < numcomps; ++i)
-	{
 		is_valid &= ((comps[i].bpc & 0x7FU) < 38U); /* 0 is valid, ignore sign for check */
-	}
+
 	/* METH */
 	is_valid &= ((meth > 0) && (meth < 3));
 

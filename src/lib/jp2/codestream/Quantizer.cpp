@@ -101,9 +101,8 @@ bool Quantizer::write_SQcd_SQcc(CodeStream* codeStream, uint32_t comp_no, IBuffe
 
 	/* Sqcx */
 	if(!stream->writeByte((uint8_t)(tccp->qntsty + (tccp->numgbits << 5))))
-	{
 		return false;
-	}
+
 	/* SPqcx_i */
 	for(uint32_t band_no = 0; band_no < num_bands; ++band_no)
 	{
@@ -112,16 +111,12 @@ bool Quantizer::write_SQcd_SQcc(CodeStream* codeStream, uint32_t comp_no, IBuffe
 		if(tccp->qntsty == J2K_CCP_QNTSTY_NOQNT)
 		{
 			if(!stream->writeByte((uint8_t)(expn << 3)))
-			{
 				return false;
-			}
 		}
 		else
 		{
 			if(!stream->writeShort((uint16_t)((expn << 11) + mant)))
-			{
 				return false;
-			}
 		}
 	}
 	return true;
@@ -141,13 +136,9 @@ uint32_t Quantizer::get_SQcd_SQcc_size(CodeStream* codeStream, uint32_t comp_no)
 		(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ? 1 : (tccp->numresolutions * 3U - 2);
 
 	if(tccp->qntsty == J2K_CCP_QNTSTY_NOQNT)
-	{
 		return 1 + num_bands;
-	}
 	else
-	{
 		return 1 + 2 * num_bands;
-	}
 }
 
 bool Quantizer::compare_SQcd_SQcc(CodeStream* codeStream, uint32_t first_comp_no,
@@ -161,13 +152,9 @@ bool Quantizer::compare_SQcd_SQcc(CodeStream* codeStream, uint32_t first_comp_no
 	auto tccp1 = &tcp->tccps[second_comp_no];
 
 	if(tccp0->qntsty != tccp1->qntsty)
-	{
 		return false;
-	}
 	if(tccp0->numgbits != tccp1->numgbits)
-	{
 		return false;
-	}
 	uint32_t band_no, num_bands;
 	if(tccp0->qntsty == J2K_CCP_QNTSTY_SIQNT)
 	{
@@ -177,25 +164,19 @@ bool Quantizer::compare_SQcd_SQcc(CodeStream* codeStream, uint32_t first_comp_no
 	{
 		num_bands = tccp0->numresolutions * 3U - 2U;
 		if(num_bands != (tccp1->numresolutions * 3U - 2U))
-		{
 			return false;
-		}
 	}
 	for(band_no = 0; band_no < num_bands; ++band_no)
 	{
 		if(tccp0->stepsizes[band_no].expn != tccp1->stepsizes[band_no].expn)
-		{
 			return false;
-		}
 	}
 	if(tccp0->qntsty != J2K_CCP_QNTSTY_NOQNT)
 	{
 		for(band_no = 0; band_no < num_bands; ++band_no)
 		{
 			if(tccp0->stepsizes[band_no].mant != tccp1->stepsizes[band_no].mant)
-			{
 				return false;
-			}
 		}
 	}
 	return true;

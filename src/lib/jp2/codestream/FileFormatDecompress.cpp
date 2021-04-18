@@ -901,13 +901,9 @@ void FileFormatDecompress::apply_channel_definition(GrkImage* image, grk_color* 
 			for(j = (uint16_t)(i + 1U); j < n; ++j)
 			{
 				if(info[j].cn == cn)
-				{
 					info[j].cn = asoc_index;
-				}
 				else if(info[j].cn == asoc_index)
-				{
 					info[j].cn = cn;
-				}
 				/* asoc is related to color index. Do not update. */
 			}
 		}
@@ -1358,9 +1354,7 @@ bool FileFormatDecompress::apply_palette_clr(GrkImage* image, grk_color* color)
 			auto dst = new_comps[i].data;
 			assert(dst);
 			for(size_t j = 0; j < num_pixels; ++j)
-			{
 				dst[j] = src[j];
-			}
 		}
 		else
 		{
@@ -1633,9 +1627,7 @@ bool FileFormatDecompress::read_jp2h(uint8_t* headerData, uint32_t header_size)
 		uint32_t box_size = 0;
 		FileFormatBox box;
 		if(!read_box(&box, headerData, &box_size, (uint64_t)header_size))
-		{
 			return false;
-		}
 		uint32_t box_data_length = (uint32_t)(box.length - box_size);
 		headerData += box_size;
 
@@ -1643,9 +1635,7 @@ bool FileFormatDecompress::read_jp2h(uint8_t* headerData, uint32_t header_size)
 		if(current_handler != nullptr)
 		{
 			if(!current_handler(headerData, box_data_length))
-			{
 				return false;
-			}
 		}
 		if(box.type == JP2_IHDR)
 			has_ihdr = true;

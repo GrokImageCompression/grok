@@ -168,9 +168,7 @@ void TileInfo::dump(FILE* outputFileStream, uint16_t tileNum)
 	if(markerInfo)
 	{
 		for(uint32_t markerNum = 0; markerNum < numMarkers; markerNum++)
-		{
 			markerInfo[markerNum].dump(outputFileStream);
-		}
 	}
 }
 CodeStreamInfo::CodeStreamInfo(IBufferedStream* str)
@@ -291,9 +289,7 @@ TileLengthMarkers::~TileLengthMarkers()
 	if(m_markers)
 	{
 		for(auto it = m_markers->begin(); it != m_markers->end(); it++)
-		{
 			delete it->second;
-		}
 		delete m_markers;
 	}
 }
