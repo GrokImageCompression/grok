@@ -1634,6 +1634,7 @@ int GrkDecompress::main(int argc, char** argv)
 	}
 	catch(std::bad_alloc& ba)
 	{
+		(void)ba;
 		spdlog::error("Out of memory. Exiting.");
 		rc = 1;
 		goto cleanup;

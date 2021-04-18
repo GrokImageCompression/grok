@@ -121,7 +121,7 @@ bool header_rewind(char* s, char* line,FILE* reader)
 	if(*s == ' ')
 	{
 		auto len = (int64_t)s - (int64_t)line;
-		if(GRK_FSEEK(reader, (int64_t)(-strlen(line)) + len + 2, SEEK_CUR))
+		if(GRK_FSEEK(reader, -int64_t(strlen(line)) + len + 2, SEEK_CUR))
 			return false;
 	}
 	return true;

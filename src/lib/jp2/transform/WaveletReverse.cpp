@@ -38,7 +38,7 @@ static size_t hwy_num_lanes(void){
 	return Lanes(di);
 }
 
-#define PLL_COLS_53 (2 * Lanes(di))
+#define HWY_PLL_COLS_53 (2 * Lanes(di))
 
 static void hwy_decompress_v_final_memcpy_53(const int32_t* buf, const uint32_t height, int32_t* dest,
 										 const size_t strideDest)
@@ -46,8 +46,8 @@ static void hwy_decompress_v_final_memcpy_53(const int32_t* buf, const uint32_t 
 	const HWY_FULL(int32_t) di;
 	for(uint32_t i = 0; i < height; ++i)
 	{
-		StoreU(Load(di,buf + PLL_COLS_53 * i + 0),di,&dest[(size_t)i * strideDest + 0]);
-		StoreU(Load(di,buf + PLL_COLS_53 * i + Lanes(di)),di,dest+(size_t)i * strideDest + Lanes(di));
+		StoreU(Load(di,buf + HWY_PLL_COLS_53 * i + 0),di,&dest[(size_t)i * strideDest + 0]);
+		StoreU(Load(di,buf + HWY_PLL_COLS_53 * i + Lanes(di)),di,dest+(size_t)i * strideDest + Lanes(di));
 	}
 }
 /** Vertical inverse 5x3 wavelet transform for 8 columns in SSE2, or
@@ -99,38 +99,38 @@ static void hwy_decompress_v_cas0_mcols_53(int32_t* buf, int32_t* bandL, /* even
 			s0n_0 = s1n_0 - ShiftRight<2>(d1c_0 + d1n_0 + two);
 			s0n_1 = s1n_1 - ShiftRight<2>(d1c_1 + d1n_1 + two);
 
-			Store(s0c_0,di,buf + PLL_COLS_53 * (i + 0));
-			Store(s0c_1,di,buf + PLL_COLS_53 * (i + 0) + Lanes(di));
+			Store(s0c_0,di,buf + HWY_PLL_COLS_53 * (i + 0));
+			Store(s0c_1,di,buf + HWY_PLL_COLS_53 * (i + 0) + Lanes(di));
 
 			/* d1c + ((s0c + s0n) >> 1) */
-			Store(d1c_0 + ShiftRight<1>(s0c_0 + s0n_0),di,buf + PLL_COLS_53 * (i + 1) + 0);
-			Store(d1c_1 + ShiftRight<1>(s0c_1 + s0n_1),di,buf + PLL_COLS_53 * (i + 1) + Lanes(di) );
+			Store(d1c_0 + ShiftRight<1>(s0c_0 + s0n_0),di,buf + HWY_PLL_COLS_53 * (i + 1) + 0);
+			Store(d1c_1 + ShiftRight<1>(s0c_1 + s0n_1),di,buf + HWY_PLL_COLS_53 * (i + 1) + Lanes(di) );
 		}
 	}
 
-	Store(s0n_0,di,buf + PLL_COLS_53 * (i + 0) + 0);
-	Store(s0n_1,di,buf + PLL_COLS_53 * (i + 0) + Lanes(di));
+	Store(s0n_0,di,buf + HWY_PLL_COLS_53 * (i + 0) + 0);
+	Store(s0n_1,di,buf + HWY_PLL_COLS_53 * (i + 0) + Lanes(di));
 
 	if(total_height & 1)
 	{
 		s1n_0 = LoadU(di,bandL + (size_t)((total_height - 1) / 2) * strideL);
 		/* tmp_len_minus_1 = s1n - ((d1n + 1) >> 1); */
 		auto tmp_len_minus_1 = s1n_0 - ShiftRight<2>(d1n_0 + d1n_0 + two);
-		Store(tmp_len_minus_1,di,buf + PLL_COLS_53 * (total_height - 1));
+		Store(tmp_len_minus_1,di,buf + HWY_PLL_COLS_53 * (total_height - 1));
 		/* d1n + ((s0n + tmp_len_minus_1) >> 1) */
-		Store(d1n_0 + ShiftRight<1>(s0n_0 + tmp_len_minus_1),di,buf + PLL_COLS_53 * (total_height - 2));
+		Store(d1n_0 + ShiftRight<1>(s0n_0 + tmp_len_minus_1),di,buf + HWY_PLL_COLS_53 * (total_height - 2));
 
 		s1n_1 = LoadU(di,bandL + (size_t)((total_height - 1) / 2) * strideL + Lanes(di));
 		/* tmp_len_minus_1 = s1n - ((d1n + 1) >> 1); */
 		tmp_len_minus_1 = s1n_1 - ShiftRight<2>(d1n_1 + d1n_1 + two);
-		Store(tmp_len_minus_1,di,buf + PLL_COLS_53 * (total_height - 1) + Lanes(di));
+		Store(tmp_len_minus_1,di,buf + HWY_PLL_COLS_53 * (total_height - 1) + Lanes(di));
 		/* d1n + ((s0n + tmp_len_minus_1) >> 1) */
-		Store(d1n_1 + ShiftRight<1>(s0n_1 + tmp_len_minus_1),di,buf + PLL_COLS_53 * (total_height - 2) + Lanes(di));
+		Store(d1n_1 + ShiftRight<1>(s0n_1 + tmp_len_minus_1),di,buf + HWY_PLL_COLS_53 * (total_height - 2) + Lanes(di));
 	}
 	else
 	{
-		Store(d1n_0 + s0n_0,di,buf + PLL_COLS_53 * (total_height - 1) + 0);
-		Store(d1n_1 + s0n_1,di,buf + PLL_COLS_53 * (total_height - 1) + Lanes(di));
+		Store(d1n_0 + s0n_0,di,buf + HWY_PLL_COLS_53 * (total_height - 1) + 0);
+		Store(d1n_1 + s0n_1,di,buf + HWY_PLL_COLS_53 * (total_height - 1) + Lanes(di));
 	}
 	hwy_decompress_v_final_memcpy_53(buf, total_height, dest, strideDest);
 }
@@ -157,12 +157,12 @@ static void hwy_decompress_v_cas1_mcols_53(int32_t* buf, int32_t* bandL, const u
 	auto s1_0 = LoadU(di,in_even + strideH);
 	/* in_odd[0] - ((in_even[0] + s1 + 2) >> 2); */
 	auto dc_0 = LoadU(di,in_odd + 0) - ShiftRight<2>(LoadU(di,in_even + 0) + s1_0 + two);
-	Store(LoadU(di,in_even + 0)+ dc_0,di,buf + PLL_COLS_53 * 0);
+	Store(LoadU(di,in_even + 0)+ dc_0,di,buf + HWY_PLL_COLS_53 * 0);
 
 	auto s1_1 = LoadU(di,in_even + strideH + Lanes(di));
 	/* in_odd[0] - ((in_even[0] + s1 + 2) >> 2); */
 	auto dc_1 = LoadU(di,in_odd + Lanes(di)) - ShiftRight<2>(LoadU(di,in_even + Lanes(di))+ s1_1 + two);
-	Store(LoadU(di,in_even + Lanes(di)) + dc_1,di,buf + PLL_COLS_53 * 0 + Lanes(di));
+	Store(LoadU(di,in_even + Lanes(di)) + dc_1,di,buf + HWY_PLL_COLS_53 * 0 + Lanes(di));
 
 	uint32_t i;
 	size_t j;
@@ -176,20 +176,20 @@ static void hwy_decompress_v_cas1_mcols_53(int32_t* buf, int32_t* bandL, const u
 		auto dn_1 =
 			LoadU(di,in_odd + j * strideL + Lanes(di))- ShiftRight<2>(s1_1 + s2_1 + two);
 
-		Store(dc_0, di, buf + PLL_COLS_53 * i);
-		Store(dc_1, di, buf + PLL_COLS_53 * i + Lanes(di));
+		Store(dc_0, di, buf + HWY_PLL_COLS_53 * i);
+		Store(dc_1, di, buf + HWY_PLL_COLS_53 * i + Lanes(di));
 
 		/* buf[i + 1] = s1 + ((dn + dc) >> 1); */
-		Store(s1_0 + ShiftRight<1>(dn_0+dc_0),di,buf + PLL_COLS_53 * (i + 1) + 0);
-		Store(s1_1+ ShiftRight<1>(dn_1+dc_1),di,buf + PLL_COLS_53 * (i + 1) + Lanes(di));
+		Store(s1_0 + ShiftRight<1>(dn_0+dc_0),di,buf + HWY_PLL_COLS_53 * (i + 1) + 0);
+		Store(s1_1+ ShiftRight<1>(dn_1+dc_1),di,buf + HWY_PLL_COLS_53 * (i + 1) + Lanes(di));
 
 		dc_0 = dn_0;
 		s1_0 = s2_0;
 		dc_1 = dn_1;
 		s1_1 = s2_1;
 	}
-	Store(dc_0,di,buf + PLL_COLS_53 * i);
-	Store(dc_1,di,buf + PLL_COLS_53 * i + Lanes(di));
+	Store(dc_0,di,buf + HWY_PLL_COLS_53 * i);
+	Store(dc_1,di,buf + HWY_PLL_COLS_53 * i + Lanes(di));
 
 	if(!(total_height & 1))
 	{
@@ -200,16 +200,16 @@ static void hwy_decompress_v_cas1_mcols_53(int32_t* buf, int32_t* bandL, const u
 						ShiftRight<2>(s1_1+s1_1+two);
 
 		/* buf[len - 2] = s1 + ((dn + dc) >> 1); */
-		Store(s1_0 + ShiftRight<1>(dn_0+dc_0),di,buf + PLL_COLS_53 * (total_height - 2) + 0);
-		Store(s1_1 + ShiftRight<1>(dn_1+dc_1),di,buf + PLL_COLS_53 * (total_height - 2) + Lanes(di));
+		Store(s1_0 + ShiftRight<1>(dn_0+dc_0),di,buf + HWY_PLL_COLS_53 * (total_height - 2) + 0);
+		Store(s1_1 + ShiftRight<1>(dn_1+dc_1),di,buf + HWY_PLL_COLS_53 * (total_height - 2) + Lanes(di));
 
-		Store(dn_0,di,buf + PLL_COLS_53 * (total_height - 1) + 0);
-		Store(dn_1,di,buf + PLL_COLS_53 * (total_height - 1) + Lanes(di));
+		Store(dn_0,di,buf + HWY_PLL_COLS_53 * (total_height - 1) + 0);
+		Store(dn_1,di,buf + HWY_PLL_COLS_53 * (total_height - 1) + Lanes(di));
 	}
 	else
 	{
-		Store(s1_0+dc_0,di,buf + PLL_COLS_53 * (total_height - 1) + 0);
-		Store(s1_1+dc_1,di,buf + PLL_COLS_53 * (total_height - 1) + Lanes(di));
+		Store(s1_0+dc_0,di,buf + HWY_PLL_COLS_53 * (total_height - 1) + 0);
+		Store(s1_1+dc_1,di,buf + HWY_PLL_COLS_53 * (total_height - 1) + Lanes(di));
 	}
 	hwy_decompress_v_final_memcpy_53(buf, total_height, dest, strideDest);
 }
