@@ -36,12 +36,6 @@ message(STATUS "ZLIBNG_HEADER_VERSION: ${ZLIBNG_HEADER_VERSION}")
 
 project(zlib VERSION ${ZLIB_HEADER_VERSION} LANGUAGES C)
 
-set(BIN_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/bin" CACHE PATH "Installation directory for executables")
-set(LIB_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib" CACHE PATH "Installation directory for libraries")
-set(INC_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/include" CACHE PATH "Installation directory for headers")
-set(MAN_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/share/man" CACHE PATH "Installation directory for manual pages")
-set(PKGCONFIG_INSTALL_DIR "${LIB_INSTALL_DIR}/pkgconfig" CACHE PATH "Installation directory for pkgconfig (.pc) files")
-
 include(CheckTypeSize)
 include(CheckSymbolExists)
 include(CheckFunctionExists)
@@ -53,6 +47,7 @@ include(CMakeDependentOption)
 include(FeatureSummary)
 
 include(cmake/detect-arch.cmake)
+include(cmake/detect-install-dirs.cmake)
 include(cmake/detect-coverage.cmake)
 include(cmake/detect-sanitizer.cmake)
 
@@ -165,6 +160,11 @@ if("${CMAKE_C_COMPILER}" MATCHES "icc" OR "${CMAKE_C_COMPILER}" MATCHES "icpc" O
         message(STATUS "Ignoring WITH_NATIVE_INSTRUCTIONS; not supported on this configuration")
     endif()
 elseif(MSVC)
+    # Minimum supported MSVC version is 1800 = Visual Studio 12.0/2013
+    # See also https://cmake.org/cmake/help/latest/variable/MSVC_VERSION.html
+    if(MSVC_VERSION VERSION_LESS 1800)
+        message(SEND_ERROR "Unsupported Visual Studio compiler version (requires 2013 or later).")
+    endif()
     # TODO. ICC can be used through MSVC. I'm not sure if we'd ever see that combination
     # (who'd use cmake from an IDE...) but checking for ICC before checking for MSVC should
     # avoid mistakes.
@@ -210,17 +210,23 @@ else()
     if(NOT NATIVEFLAG)
         if(__GNUC__)
             if(BASEARCH_ARM_FOUND)
-                if(NOT CMAKE_C_FLAGS MATCHES "-mfloat-abi")
-                    # Check support for ARM floating point
-                    execute_process(COMMAND ${CMAKE_C_COMPILER} "-dumpmachine"
-                                    OUTPUT_VARIABLE GCC_MACHINE)
-                    if("${GCC_MACHINE}" MATCHES "gnueabihf")
-                        set(FLOATABI "-mfloat-abi=hard")
-                    elseif("${GCC_MACHINE}" MATCHES ".*gnueabi")
+                if("${ARCH}" MATCHES "arm" AND NOT CMAKE_C_FLAGS MATCHES "-mfloat-abi")
+                    # Auto-detect support for ARM floating point ABI
+                    check_c_compiler_flag(-mfloat-abi=softfp HAVE_FLOATABI_SOFTFP)
+                    if(HAVE_FLOATABI_SOFTFP)
                         set(FLOATABI "-mfloat-abi=softfp")
+                    else()
+                        check_c_compiler_flag(-mfloat-abi=hard HAVE_FLOATABI_HARD)
+                        if(HAVE_FLOATABI_HARD)
+                            set(FLOATABI "-mfloat-abi=hard")
+                        endif()
                     endif()
-                    message(STATUS "ARM floating point arch: ${FLOATABI}")
-                    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FLOATABI}")
+                    if(FLOATABI)
+                        message(STATUS "ARM floating point arch: ${FLOATABI}")
+                        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FLOATABI}")
+                    else()
+                        message(STATUS "ARM floating point arch not auto-detected")
+                    endif()
                 endif()
                 # NEON
                 if("${ARCH}" MATCHES "aarch64")
@@ -316,10 +322,7 @@ endif()
 #
 # Check for standard/system includes
 #
-check_include_file(sys/types.h HAVE_SYS_TYPES_H)
 check_include_file(stdarg.h    HAVE_STDARG_H)
-check_include_file(stdint.h    HAVE_STDINT_H)
-check_include_file(stddef.h    HAVE_STDDEF_H)
 check_include_file(sys/sdt.h   HAVE_SYS_SDT_H)
 if(HAVE_SYS_SDT_H)
     add_definitions(-DHAVE_SYS_SDT_H)
@@ -796,12 +799,12 @@ endif()
 if(INC_INSTALL_DIR STREQUAL "${CMAKE_INSTALL_PREFIX}/include")
   set(PC_INC_INSTALL_DIR "\${prefix}/include")
 else()
-  set(PC_INC_INSTALL_DIR "${INSTALL_INC_DIR}")
+  set(PC_INC_INSTALL_DIR "${INC_INSTALL_DIR}")
 endif()
 if(LIB_INSTALL_DIR STREQUAL "${CMAKE_INSTALL_PREFIX}/lib")
   set(PC_LIB_INSTALL_DIR "\${exec_prefix}/lib")
 else()
-  set(PC_LIB_INSTALL_DIR "${INSTALL_LIB_DIR}")
+  set(PC_LIB_INSTALL_DIR "${LIB_INSTALL_DIR}")
 endif()
 
 #============================================================================
@@ -984,6 +987,7 @@ else()
     SET(ZCONF_PTRDIFF_LINE "#ifdef NEED_PTRDIFF_T    /* may be set to #if 1 by configure/cmake/etc */")
 endif()
 
+set(ZLIB_PC ${CMAKE_CURRENT_BINARY_DIR}/zlib${SUFFIX}.pc)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/zlib.pc.cmakein
     ${ZLIB_PC} @ONLY)
 configure_file(${CMAKE_CURRENT_BINARY_DIR}/zconf${SUFFIX}.h.cmakein

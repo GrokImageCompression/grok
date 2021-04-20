@@ -30,19 +30,27 @@
   (zlib format), rfc1951 (deflate format) and rfc1952 (gzip format).
 */
 
+#ifdef ZNGLIB_H_
+#  error Include zlib-ng.h for zlib-ng API or zlib.h for zlib-compat API but not both
+#endif
+
 #include <stdint.h>
 #include <stdarg.h>
 #include "zconf.h"
+
+#ifndef ZCONF_H
+#  error Missing zconf.h add binary output directory to include directories
+#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define ZLIBNG_VERSION "2.0.1"
-#define ZLIBNG_VERNUM 0x2010
+#define ZLIBNG_VERSION "2.0.2"
+#define ZLIBNG_VERNUM 0x2020
 #define ZLIBNG_VER_MAJOR 2
 #define ZLIBNG_VER_MINOR 0
-#define ZLIBNG_VER_REVISION 1
+#define ZLIBNG_VER_REVISION 2
 #define ZLIBNG_VER_SUBREVISION 0
 
 #define ZLIB_VERSION "1.2.11.zlib-ng"
@@ -1786,7 +1794,7 @@ Z_EXTERN int Z_EXPORT gzgetc_(gzFile file);  /* backward compatibility */
    Z_EXTERN void Z_EXPORT crc32_combine_gen64(uint32_t *op, z_off64_t);
 #endif
 
-#if !defined(ZLIB_INTERNAL) && defined(Z_WANT64)
+#if !defined(Z_INTERNAL) && defined(Z_WANT64)
 #    define gzopen gzopen64
 #    define gzseek gzseek64
 #    define gztell gztell64
