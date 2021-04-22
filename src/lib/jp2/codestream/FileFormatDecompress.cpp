@@ -1285,89 +1285,99 @@ bool FileFormatDecompress::apply_palette_clr(GrkImage* image, grk_color* color)
 	auto component_mapping = color->palette->component_mapping;
 	uint16_t num_channels = color->palette->num_channels;
 
-	for(uint16_t i = 0; i < num_channels; ++i)
+	// sanity check on component mapping
+	for(uint16_t channel = 0; channel < num_channels; ++channel)
 	{
-		/* Palette mapping: */
-		uint16_t component_index = component_mapping[i].component_index;
-		if(image->comps[component_index].data == nullptr)
+		auto mapping = component_mapping + channel;
+		uint16_t compno = mapping->component_index;
+		uint16_t paletteColumn = mapping->palette_column;
+		if (compno >= image->numcomps){
+			GRK_ERROR("apply_palette_clr: component mapping component number %d for channel %d "
+					"must be less than number of image components %d",compno, channel,image->numcomps);
+			return false;
+		}
+		if(image->comps[compno].data == nullptr)
 		{
 			GRK_ERROR("image->comps[%u].data == nullptr"
 					  " in apply_palette_clr().",
-					  i);
+					  channel);
 			return false;
 		}
+		switch(mapping->mapping_type){
+		case 0:
+			if(paletteColumn != 0){
+				GRK_ERROR("apply_palette_clr: palette with direct component mapping: non-zero palette column %d not allowed",paletteColumn);
+				return false;
+			}
+			break;
+		case 1:
+			if (channel != paletteColumn){
+				GRK_ERROR("apply_palette_clr: component mapping channel %d does not match palette column %d.",channel, paletteColumn);
+				return false;
+			}
+			break;
+		}
 	}
-	auto old_comps = image->comps;
-	auto new_comps = new grk_image_comp[num_channels];
-	if(!new_comps)
+	auto oldComps = image->comps;
+	auto newComps = new grk_image_comp[num_channels];
+	for(uint16_t channel = 0; channel < num_channels; ++channel)
 	{
-		GRK_ERROR("Memory allocation failure in apply_palette_clr().");
-		return false;
-	}
-	for(uint16_t i = 0; i < num_channels; ++i)
-	{
-		uint16_t palette_column = component_mapping[i].palette_column;
-		uint16_t component_index = component_mapping[i].component_index;
+		auto mapping = component_mapping + channel;
+		uint16_t palette_column = mapping->palette_column;
+		uint16_t compno = mapping->component_index;
 
-		/* Direct use */
-		if(component_mapping[i].mapping_type == 0)
+		/* Direct mapping */
+		if(mapping->mapping_type == 0)
 		{
-			assert(palette_column == 0);
-			new_comps[i] = old_comps[component_index];
-			new_comps[i].data = nullptr;
+			newComps[channel] = oldComps[compno];
+			newComps[channel].data = nullptr;
 		}
 		else
 		{
-			assert(i == palette_column);
-			new_comps[palette_column] = old_comps[component_index];
-			new_comps[palette_column].data = nullptr;
+			newComps[palette_column] = oldComps[compno];
+			newComps[palette_column].data = nullptr;
 		}
-		/* Palette mapping: */
-		if(!GrkImage::allocData(new_comps + i))
+		if(!GrkImage::allocData(newComps + channel))
 		{
-			while(i > 0)
+			while(channel > 0)
 			{
-				--i;
-				grkAlignedFree(new_comps[i].data);
+				--channel;
+				grkAlignedFree(newComps[channel].data);
 			}
-			delete[] new_comps;
+			delete[] newComps;
 			GRK_ERROR("Memory allocation failure in apply_palette_clr().");
 			return false;
 		}
-		new_comps[i].prec = channel_prec[i];
-		new_comps[i].sgnd = channel_sign[i];
+		newComps[channel].prec = channel_prec[channel];
+		newComps[channel].sgnd = channel_sign[channel];
 	}
 	int32_t top_k = color->palette->num_entries - 1;
-	for(uint16_t i = 0; i < num_channels; ++i)
+	for(uint16_t channel = 0; channel < num_channels; ++channel)
 	{
 		/* Palette mapping: */
-		uint16_t component_index = component_mapping[i].component_index;
-		uint16_t palette_column = component_mapping[i].palette_column;
-		auto src = old_comps[component_index].data;
-		assert(src);
-		size_t num_pixels = (size_t)new_comps[palette_column].stride * new_comps[palette_column].h;
-
-		/* Direct use: */
-		if(component_mapping[i].mapping_type == 0)
-		{
-			assert(component_index == 0);
-			auto dst = new_comps[i].data;
-			assert(dst);
-			for(size_t j = 0; j < num_pixels; ++j)
-				dst[j] = src[j];
-		}
-		else
-		{
-			assert(i == palette_column);
-			auto dst = new_comps[palette_column].data;
-			assert(dst);
+		auto mapping = component_mapping + channel;
+		uint16_t compno = mapping->component_index;
+		uint16_t palette_column = mapping->palette_column;
+		auto src = oldComps[compno].data;
+		switch(mapping->mapping_type){
+		case 0:
+			{
+			auto src = oldComps[compno].data;
+			size_t num_pixels = (size_t)newComps[channel].stride * newComps[channel].h;
+			memcpy(newComps[channel].data,src,num_pixels * sizeof(int32_t));
+			}
+			break;
+		case 1:
+			{
+			auto dst = newComps[palette_column].data;
 			uint32_t diff =
-				(uint32_t)(new_comps[palette_column].stride - new_comps[palette_column].w);
+				(uint32_t)(newComps[palette_column].stride - newComps[palette_column].w);
 			size_t ind = 0;
-			for(uint32_t n = 0; n < new_comps[palette_column].h; ++n)
+			// note: 1 <= n <= 255
+			for(uint32_t n = 0; n < newComps[palette_column].h; ++n)
 			{
 				int32_t k = 0;
-				for(uint32_t m = 0; m < new_comps[palette_column].w; ++m)
+				for(uint32_t m = 0; m < newComps[palette_column].w; ++m)
 				{
 					if((k = src[ind]) < 0)
 						k = 0;
@@ -1377,12 +1387,14 @@ bool FileFormatDecompress::apply_palette_clr(GrkImage* image, grk_color* color)
 				}
 				ind += diff;
 			}
+			}
+			break;
 		}
 	}
 	for(uint16_t i = 0; i < image->numcomps; ++i)
-		grk_image_single_component_data_free(old_comps + i);
-	delete[] old_comps;
-	image->comps = new_comps;
+		grk_image_single_component_data_free(oldComps + i);
+	delete[] oldComps;
+	image->comps = newComps;
 	image->numcomps = num_channels;
 
 	return true;
@@ -1390,7 +1402,7 @@ bool FileFormatDecompress::apply_palette_clr(GrkImage* image, grk_color* color)
 bool FileFormatDecompress::read_component_mapping(uint8_t* component_mapping_header_data,
 												  uint32_t component_mapping_header_size)
 {
-	uint8_t i, num_channels;
+	uint8_t channel, num_channels;
 	assert(component_mapping_header_data != nullptr);
 
 	/* Need num_channels: */
@@ -1414,15 +1426,21 @@ bool FileFormatDecompress::read_component_mapping(uint8_t* component_mapping_hea
 		return false;
 	}
 	auto component_mapping = new grk_component_mapping_comp[num_channels];
-	for(i = 0; i < num_channels; ++i)
+	for(channel = 0; channel < num_channels; ++channel)
 	{
+		auto mapping = component_mapping + channel;
 		grk_read<uint16_t>(component_mapping_header_data,
-						   &component_mapping[i].component_index); /* CMP^i */
+						   &mapping->component_index); /* CMP^i */
 		component_mapping_header_data += 2;
 		grk_read<uint8_t>(component_mapping_header_data++,
-						  &component_mapping[i].mapping_type); /* MTYP^i */
+						  &mapping->mapping_type); /* MTYP^i */
+		if (mapping->mapping_type > 1){
+			GRK_ERROR("Component mapping type %d for channel %d is greater than 1.",mapping->mapping_type,channel );
+			delete[] component_mapping;
+			return false;
+		}
 		grk_read<uint8_t>(component_mapping_header_data++,
-						  &component_mapping[i].palette_column); /* PCOL^i */
+						  &mapping->palette_column); /* PCOL^i */
 	}
 	color.palette->component_mapping = component_mapping;
 
@@ -1441,7 +1459,7 @@ bool FileFormatDecompress::read_palette_clr(uint8_t* p_pclr_header_data, uint32_
 	p_pclr_header_data += 2;
 	if((num_entries == 0U) || (num_entries > 1024U))
 	{
-		GRK_ERROR("Invalid PCLR box. Reports %u lut", (int)num_entries);
+		GRK_ERROR("Invalid PCLR box. Reports %u palette entries", (int)num_entries);
 		return false;
 	}
 	uint8_t num_channels;
@@ -1449,7 +1467,7 @@ bool FileFormatDecompress::read_palette_clr(uint8_t* p_pclr_header_data, uint32_
 	++p_pclr_header_data;
 	if(num_channels == 0U)
 	{
-		GRK_ERROR("Invalid PCLR box. Reports 0 palette columns");
+		GRK_ERROR("Invalid PCLR box : 0 palette columns");
 		return false;
 	}
 	if(pclr_header_size < 3 + (uint32_t)num_channels)
@@ -1461,11 +1479,11 @@ bool FileFormatDecompress::read_palette_clr(uint8_t* p_pclr_header_data, uint32_
 		uint8_t val;
 		grk_read<uint8_t>(p_pclr_header_data++, &val); /* Bi */
 		jp2_pclr->channel_prec[i] = (uint8_t)((val & 0x7f) + 1);
-		if(jp2_pclr->channel_prec[i] > 32)
+		if(jp2_pclr->channel_prec[i] > maxSupportedPrecisionGRK)
 		{
 			GRK_ERROR("Palette : channel precision %d is greater than supported palette channel "
-					  "precision (32) ",
-					  jp2_pclr->channel_prec[i]);
+					  "precision %d",
+					  jp2_pclr->channel_prec[i],maxSupportedPrecisionGRK);
 			return false;
 		}
 		jp2_pclr->channel_sign[i] = (val & 0x80) ? true : false;
