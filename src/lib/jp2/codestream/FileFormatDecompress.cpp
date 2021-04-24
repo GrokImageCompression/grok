@@ -1279,11 +1279,12 @@ bool FileFormatDecompress::check_color(GrkImage* image, grk_color* color)
 }
 bool FileFormatDecompress::apply_palette_clr(GrkImage* image, grk_color* color)
 {
-	auto channel_prec = color->palette->channel_prec;
-	auto channel_sign = color->palette->channel_sign;
-	auto lut = color->palette->lut;
-	auto component_mapping = color->palette->component_mapping;
-	uint16_t num_channels = color->palette->num_channels;
+	auto pal = color->palette;
+	auto channel_prec = pal->channel_prec;
+	auto channel_sign = pal->channel_sign;
+	auto lut = pal->lut;
+	auto component_mapping = pal->component_mapping;
+	uint16_t num_channels = pal->num_channels;
 
 	// sanity check on component mapping
 	for(uint16_t channel = 0; channel < num_channels; ++channel)
@@ -1300,22 +1301,19 @@ bool FileFormatDecompress::apply_palette_clr(GrkImage* image, grk_color* color)
 		{
 			GRK_ERROR("image->comps[%u].data == nullptr"
 					  " in apply_palette_clr().",
-					  channel);
+					  compno);
 			return false;
 		}
-		switch(mapping->mapping_type){
-		case 0:
-			if(paletteColumn != 0){
-				GRK_ERROR("apply_palette_clr: palette with direct component mapping: non-zero palette column %d not allowed",paletteColumn);
-				return false;
-			}
-			break;
-		case 1:
-			if (channel != paletteColumn){
-				GRK_ERROR("apply_palette_clr: component mapping channel %d does not match palette column %d.",channel, paletteColumn);
-				return false;
-			}
-			break;
+		if (image->comps[compno].prec > pal->num_entries){
+			GRK_ERROR("Precision %d of component %d is greater than "
+					"number of palette entries %d",
+					compno,image->comps[compno].prec,pal->num_entries);
+			return false;
+		}
+		if (mapping->mapping_type == 0 && paletteColumn != 0){
+			GRK_ERROR("apply_palette_clr: channel %d with direct component mapping: "
+					"non-zero palette column %d not allowed",channel,paletteColumn);
+			return false;
 		}
 	}
 	auto oldComps = image->comps;
@@ -1351,7 +1349,7 @@ bool FileFormatDecompress::apply_palette_clr(GrkImage* image, grk_color* color)
 		newComps[channel].prec = channel_prec[channel];
 		newComps[channel].sgnd = channel_sign[channel];
 	}
-	int32_t top_k = color->palette->num_entries - 1;
+	int32_t top_k = pal->num_entries - 1;
 	for(uint16_t channel = 0; channel < num_channels; ++channel)
 	{
 		/* Palette mapping: */
