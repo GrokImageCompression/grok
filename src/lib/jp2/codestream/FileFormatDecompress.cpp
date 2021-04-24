@@ -1292,28 +1292,40 @@ bool FileFormatDecompress::apply_palette_clr(GrkImage* image, grk_color* color)
 		auto mapping = component_mapping + channel;
 		uint16_t compno = mapping->component_index;
 		uint16_t paletteColumn = mapping->palette_column;
+		auto comp = image->comps + compno;
 		if (compno >= image->numcomps){
 			GRK_ERROR("apply_palette_clr: component mapping component number %d for channel %d "
 					"must be less than number of image components %d",compno, channel,image->numcomps);
 			return false;
 		}
-		if(image->comps[compno].data == nullptr)
+		if(comp->data == nullptr)
 		{
 			GRK_ERROR("image->comps[%u].data == nullptr"
 					  " in apply_palette_clr().",
 					  compno);
 			return false;
 		}
-		if (image->comps[compno].prec > pal->num_entries){
+		if (comp->prec > pal->num_entries){
 			GRK_ERROR("Precision %d of component %d is greater than "
 					"number of palette entries %d",
 					compno,image->comps[compno].prec,pal->num_entries);
 			return false;
 		}
-		if (mapping->mapping_type == 0 && paletteColumn != 0){
-			GRK_ERROR("apply_palette_clr: channel %d with direct component mapping: "
-					"non-zero palette column %d not allowed",channel,paletteColumn);
-			return false;
+		switch (mapping->mapping_type){
+			case 0:
+				if (paletteColumn != 0){
+					GRK_ERROR("apply_palette_clr: channel %d with direct component mapping: "
+							"non-zero palette column %d not allowed",channel,paletteColumn);
+					return false;
+				}
+				break;
+			case 1:
+				if (comp->sgnd){
+					GRK_ERROR("apply_palette_clr: channel %d with non-direct component mapping: "
+							"cannot be signed");
+					return false;
+				}
+				break;
 		}
 	}
 	auto oldComps = image->comps;
