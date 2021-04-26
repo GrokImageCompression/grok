@@ -250,6 +250,73 @@ struct BufferResWindow
 
 		return true;
 	}
+
+	/**
+	 * Get band window in tile component coordinates for specified number
+	 * of decompositions
+	 *
+	 * Note: if num_res is zero, then the band window (and there is only one)
+	 * is equal to the unreduced tile component window
+	 *
+	 * Compute number of decomposition for this band. See table F-1
+	 * uint32_t numDecomps = (resno == 0) ?
+	 *		(uint32_t)(numresolutions - 1U) : (uint32_t)(numresolutions - resno);
+	 *
+	 */
+	static grkRectU32 getTileCompBandWindow(uint32_t numDecomps, uint8_t orientation,
+									 grkRectU32 unreducedTileCompWindow)
+	{
+		assert(orientation < BAND_NUM_ORIENTATIONS);
+		if(numDecomps == 0)
+			return unreducedTileCompWindow;
+
+		uint32_t tcx0 = unreducedTileCompWindow.x0;
+		uint32_t tcy0 = unreducedTileCompWindow.y0;
+		uint32_t tcx1 = unreducedTileCompWindow.x1;
+		uint32_t tcy1 = unreducedTileCompWindow.y1;
+
+		/* Map above tile-based coordinates to
+		 * sub-band-based coordinates, i.e. origin is at tile origin  */
+		/* See equation B-15 of the standard. */
+		uint32_t bx0 = orientation & 1;
+		uint32_t by0 = (uint32_t)(orientation >> 1U);
+
+		uint32_t bx0Shift = (1U << (numDecomps - 1)) * bx0;
+		uint32_t by0Shift = (1U << (numDecomps - 1)) * by0;
+
+		return grkRectU32((tcx0 <= bx0Shift) ? 0 : ceildivpow2<uint32_t>(tcx0 - bx0Shift, numDecomps),
+						  (tcy0 <= by0Shift) ? 0 : ceildivpow2<uint32_t>(tcy0 - by0Shift, numDecomps),
+						  (tcx1 <= bx0Shift) ? 0 : ceildivpow2<uint32_t>(tcx1 - bx0Shift, numDecomps),
+						  (tcy1 <= by0Shift) ? 0 : ceildivpow2<uint32_t>(tcy1 - by0Shift, numDecomps));
+	}
+	/**
+	 * Get band window in tile component coordinates for specified number
+	 * of decompositions (with padding)
+	 *
+	 * Note: if num_res is zero, then the band window (and there is only one)
+	 * is equal to the unreduced tile component window (with padding)
+	 */
+	static grkRectU32 getTileCompBandWindow(uint32_t numDecomps, uint8_t orientation,
+									 grkRectU32 unreducedTileCompWindow, grkRectU32 unreducedTileComp,
+									 uint32_t padding)
+	{
+		assert(orientation < BAND_NUM_ORIENTATIONS);
+		if(numDecomps == 0)
+		{
+			assert(orientation == 0);
+			return unreducedTileCompWindow.grow(padding).intersection(&unreducedTileComp);
+		}
+		auto oneLessDecompWindow = unreducedTileCompWindow;
+		auto oneLessDecompTile = unreducedTileComp;
+		if(numDecomps > 1)
+		{
+			oneLessDecompWindow = getTileCompBandWindow(numDecomps - 1, 0, unreducedTileCompWindow);
+			oneLessDecompTile = getTileCompBandWindow(numDecomps - 1, 0, unreducedTileComp);
+		}
+
+		return getTileCompBandWindow(
+			1, orientation, oneLessDecompWindow.grow(2 * padding).intersection(&oneLessDecompTile));
+	}
 	bool m_allocated;
 	Resolution* m_tileCompRes; // when non-null, it triggers creation of band window buffers
 	Resolution* m_tileCompResLower; // null for lowest resolution
@@ -306,7 +373,7 @@ struct TileComponentWindowBuffer
 		{
 			// resolution window ==  next resolution band window at orientation 0
 			auto resDims =
-				getTileCompBandWindow((uint32_t)(numresolutions - 1 - resno), 0, m_unreducedBounds);
+					BufferResWindow<T>::getTileCompBandWindow((uint32_t)(numresolutions - 1 - resno), 0, m_unreducedBounds);
 			m_bufferResWindowREL.push_back(new BufferResWindow<T>(
 				numresolutions, resno,
 				useBandWindows() ? nullptr : topLevel->m_bufferResWindowBufferREL,

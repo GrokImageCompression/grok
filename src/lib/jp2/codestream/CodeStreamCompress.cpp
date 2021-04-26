@@ -649,20 +649,8 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 						if(!tileProcessor->doCompress())
 							success = false;
 					}
-					if (success) {
+					if (success)
 					    heap.push(tileProcessor);
-					    /*
-						auto completeTileProcessor = heap.pop();
-						while (completeTileProcessor){
-							bool write_success = writeTileParts(completeTileProcessor);
-							delete completeTileProcessor;
-							if (!write_success){
-								success = false;
-							}
-							completeTileProcessor = heap.pop();
-						}
-						*/
-					}
 				}
 				return 0;
 			}));

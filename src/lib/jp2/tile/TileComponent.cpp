@@ -86,7 +86,7 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreduce
 	{
 		auto res = tileCompResolution + resno;
 
-		res->set(getTileCompBandWindow((uint32_t)(numresolutions - (resno + 1)), BAND_ORIENT_LL,
+		res->set(BufferResWindow<int32_t>::getTileCompBandWindow((uint32_t)(numresolutions - (resno + 1)), BAND_ORIENT_LL,
 									   unreducedTileComp));
 
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
@@ -138,7 +138,7 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreduce
 			band->orientation = orientation;
 			uint32_t numDecomps =
 				(resno == 0) ? (uint32_t)(numresolutions - 1U) : (uint32_t)(numresolutions - resno);
-			band->set(getTileCompBandWindow(numDecomps, band->orientation, unreducedTileComp));
+			band->set(BufferResWindow<int32_t>::getTileCompBandWindow(numDecomps, band->orientation, unreducedTileComp));
 		}
 	}
 	// set band step size

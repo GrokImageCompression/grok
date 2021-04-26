@@ -292,8 +292,8 @@ bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBuffered
 			return false;
 		if(!stream->writeByte(4))
 			return false;
-		/* numProcessedPackets is uint32_t modulo 65536, in big endian format */
-		uint16_t numProcessedPackets = (uint16_t)(tile->numProcessedPackets % 0x10000);
+		/* numProcessedPackets is uint64_t modulo 65536, in big endian format */
+		uint16_t numProcessedPackets = (uint16_t)(tile->numProcessedPackets & 0xFFFF);
 		if(!stream->writeByte((uint8_t)(numProcessedPackets >> 8)))
 			return false;
 		if(!stream->writeByte((uint8_t)(numProcessedPackets & 0xff)))

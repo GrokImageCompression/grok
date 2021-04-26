@@ -54,7 +54,6 @@ using grkLineU32 = grkLine<uint32_t>;
 template<typename T>
 struct grkRect;
 using grkRectU32 = grkRect<uint32_t>;
-using grkRectS64 = grkRect<int64_t>;
 
 template<typename T>
 T clip(int64_t val)
@@ -263,14 +262,14 @@ struct grkRect
 
 		return *this;
 	}
+	T parityX(void){
+		return T(x0 & 1);
+	}
+	T parityY(void){
+		return T(y0 & 1);
+	}
 };
 
-using grkRectS64 = grkRect<int64_t>;
 using grkRectU32 = grkRect<uint32_t>;
 
-grkRectU32 getTileCompBandWindow(uint32_t numDecomps, uint8_t orientation,
-								 grkRectU32 unreducedTileCompWindow);
-grkRectU32 getTileCompBandWindow(uint32_t numDecomps, uint8_t orientation,
-								 grkRectU32 unreducedTileCompWindow, grkRectU32 unreducedTileComp,
-								 uint32_t padding);
 } // namespace grk
