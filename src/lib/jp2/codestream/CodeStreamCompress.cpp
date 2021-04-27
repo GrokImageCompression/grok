@@ -825,7 +825,7 @@ bool CodeStreamCompress::get_end_header(void)
 bool CodeStreamCompress::init_header_writing(void)
 {
 	m_procedure_list.push_back([this] {
-		return calculateTileParts(&m_cp, &m_compressorState.m_total_tile_parts, getHeaderImage());
+		return getNumTileParts(&m_compressorState.m_total_tile_parts, getHeaderImage());
 	});
 
 	m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_soc, this));
@@ -911,10 +911,9 @@ bool CodeStreamCompress::writeTileParts(TileProcessor* tileProcessor)
 		return false;
 	// 2. write the other tile parts
 	uint32_t pino;
-	auto cp = &(m_cp);
-	auto tcp = cp->tcps + tileProcessor->m_tileIndex;
+	auto tcp = m_cp.tcps + tileProcessor->m_tileIndex;
 	// write tile parts for first progression order
-	uint64_t numTileParts = getNumTileParts(cp, 0, tileProcessor->m_tileIndex);
+	uint64_t numTileParts = getNumTilePartsForProgression(0, tileProcessor->m_tileIndex);
 	if(numTileParts > maxTilePartsPerTileJ2K)
 	{
 		GRK_ERROR("Number of tile parts %d for first POC exceeds maximum number of tile parts %d",
@@ -931,7 +930,7 @@ bool CodeStreamCompress::writeTileParts(TileProcessor* tileProcessor)
 	for(pino = 1; pino <= tcp->numpocs; ++pino)
 	{
 		tileProcessor->pino = pino;
-		numTileParts = getNumTileParts(cp, pino, tileProcessor->m_tileIndex);
+		numTileParts = getNumTilePartsForProgression(pino, tileProcessor->m_tileIndex);
 		if(numTileParts > maxTilePartsPerTileJ2K)
 		{
 			GRK_ERROR("Number of tile parts %d exceeds maximum number of "
@@ -1065,9 +1064,8 @@ bool CodeStreamCompress::write_siz()
 }
 bool CodeStreamCompress::write_cap()
 {
-	auto cp = &(m_cp);
-	auto tcp = &cp->tcps[0];
-	auto tccp0 = &tcp->tccps[0];
+	auto tcp = m_cp.tcps;
+	auto tccp = tcp->tccps;
 
 	// marker size excluding header
 	uint16_t Lcap = 8;
@@ -1076,7 +1074,7 @@ bool CodeStreamCompress::write_cap()
 	uint16_t Ccap[32]; // a maximum of 32
 	memset(Ccap, 0, sizeof(Ccap));
 
-	bool reversible = tccp0->qmfbid == 1;
+	bool reversible = tccp->qmfbid == 1;
 	if(reversible)
 		Ccap[0] &= 0xFFDF;
 	else
@@ -1150,8 +1148,7 @@ bool CodeStreamCompress::write_com()
 bool CodeStreamCompress::write_cod()
 {
 	uint32_t code_size;
-	auto cp = &(m_cp);
-	auto tcp = &cp->tcps[0];
+	auto tcp = m_cp.tcps;
 	code_size = 9 + get_SPCod_SPCoc_size(0);
 
 	/* COD */
@@ -1184,8 +1181,7 @@ bool CodeStreamCompress::write_coc(uint32_t comp_no)
 {
 	uint32_t coc_size;
 	uint32_t comp_room;
-	auto cp = &(m_cp);
-	auto tcp = &cp->tcps[0];
+	auto tcp = m_cp.tcps;
 	auto image = getHeaderImage();
 	comp_room = (image->numcomps <= 256) ? 1 : 2;
 	coc_size = cod_coc_len + comp_room + get_SPCod_SPCoc_size(comp_no);
@@ -1216,8 +1212,7 @@ bool CodeStreamCompress::write_coc(uint32_t comp_no)
 }
 bool CodeStreamCompress::compare_coc(uint32_t first_comp_no, uint32_t second_comp_no)
 {
-	auto cp = &(m_cp);
-	auto tcp = &cp->tcps[0];
+	auto tcp = m_cp.tcps;
 
 	if(tcp->tccps[first_comp_no].csty != tcp->tccps[second_comp_no].csty)
 		return false;
@@ -1283,8 +1278,8 @@ bool CodeStreamCompress::compare_qcc(uint32_t first_comp_no, uint32_t second_com
 }
 bool CodeStreamCompress::writePoc()
 {
-	auto tcp = &m_cp.tcps[0];
-	auto tccp = &tcp->tccps[0];
+	auto tcp = m_cp.tcps;
+	auto tccp = tcp->tccps;
 	auto image = getHeaderImage();
 	uint16_t numComps = image->numcomps;
 	uint32_t numPocs = tcp->numpocs + 1;
@@ -1350,14 +1345,13 @@ bool CodeStreamCompress::writePoc()
 
 bool CodeStreamCompress::write_mct_data_group()
 {
-	uint32_t i;
 	if(!write_cbd())
 		return false;
 
-	auto tcp = &(m_cp.tcps[0]);
+	auto tcp = m_cp.tcps;
 	auto mct_record = tcp->m_mct_records;
 
-	for(i = 0; i < tcp->m_nb_mct_records; ++i)
+	for(uint32_t i = 0; i < tcp->m_nb_mct_records; ++i)
 	{
 		if(!write_mct_record(mct_record, m_stream))
 			return false;
@@ -1365,7 +1359,7 @@ bool CodeStreamCompress::write_mct_data_group()
 	}
 
 	auto mcc_record = tcp->m_mcc_records;
-	for(i = 0; i < tcp->m_nb_mcc_records; ++i)
+	for(uint32_t i = 0; i < tcp->m_nb_mcc_records; ++i)
 	{
 		if(!write_mcc_record(mcc_record, m_stream))
 			return false;
@@ -1585,9 +1579,8 @@ bool CodeStreamCompress::write_tlm_end()
 }
 uint32_t CodeStreamCompress::get_SPCod_SPCoc_size(uint32_t comp_no)
 {
-	auto cp = &(m_cp);
-	auto tcp = &cp->tcps[0];
-	auto tccp = &tcp->tccps[comp_no];
+	auto tcp = m_cp.tcps;
+	auto tccp = tcp->tccps + comp_no;
 	assert(comp_no < getHeaderImage()->numcomps);
 
 	uint32_t rc = SPCod_SPCoc_len;
@@ -1598,10 +1591,9 @@ uint32_t CodeStreamCompress::get_SPCod_SPCoc_size(uint32_t comp_no)
 }
 bool CodeStreamCompress::compare_SPCod_SPCoc(uint32_t first_comp_no, uint32_t second_comp_no)
 {
-	auto cp = &(m_cp);
-	auto tcp = &cp->tcps[0];
-	auto tccp0 = &tcp->tccps[first_comp_no];
-	auto tccp1 = &tcp->tccps[second_comp_no];
+	auto tcp = m_cp.tcps;
+	auto tccp0 = tcp->tccps + first_comp_no;
+	auto tccp1 = tcp->tccps + second_comp_no;
 
 	if(tccp0->numresolutions != tccp1->numresolutions)
 		return false;
@@ -1628,9 +1620,8 @@ bool CodeStreamCompress::compare_SPCod_SPCoc(uint32_t first_comp_no, uint32_t se
 
 bool CodeStreamCompress::write_SPCod_SPCoc(uint32_t comp_no)
 {
-	auto cp = &(m_cp);
-	auto tcp = &cp->tcps[0];
-	auto tccp = &tcp->tccps[comp_no];
+	auto tcp = m_cp.tcps;
+	auto tccp = tcp->tccps + comp_no;
 
 	assert(comp_no < (getHeaderImage()->numcomps));
 
@@ -1667,25 +1658,22 @@ bool CodeStreamCompress::write_SPCod_SPCoc(uint32_t comp_no)
 }
 uint32_t CodeStreamCompress::get_SQcd_SQcc_size(uint32_t comp_no)
 {
-	auto cp = &(m_cp);
-	auto tcp = &cp->tcps[0];
-	auto tccp = &tcp->tccps[comp_no];
+	auto tcp = m_cp.tcps;
+	auto tccp = tcp->tccps + comp_no;
 
 	return tccp->quant.get_SQcd_SQcc_size(this, comp_no);
 }
 bool CodeStreamCompress::compare_SQcd_SQcc(uint32_t first_comp_no, uint32_t second_comp_no)
 {
-	auto cp = &(m_cp);
-	auto tcp = &cp->tcps[0];
-	auto tccp0 = &tcp->tccps[first_comp_no];
+	auto tcp = m_cp.tcps;
+	auto tccp0 = tcp->tccps + first_comp_no;
 
 	return tccp0->quant.compare_SQcd_SQcc(this, first_comp_no, second_comp_no);
 }
 bool CodeStreamCompress::write_SQcd_SQcc(uint32_t comp_no)
 {
-	auto cp = &(m_cp);
-	auto tcp = &cp->tcps[0];
-	auto tccp = &tcp->tccps[comp_no];
+	auto tcp = m_cp.tcps;
+	auto tccp = tcp->tccps + comp_no;
 
 	return tccp->quant.write_SQcd_SQcc(this, comp_no, m_stream);
 }
@@ -1907,9 +1895,10 @@ bool CodeStreamCompress::init_mct_encoding(TileCodingParams* p_tcp, GrkImage* p_
 
 	return true;
 }
-uint8_t CodeStreamCompress::getNumTileParts(CodingParams* cp, uint32_t pino, uint16_t tileno)
+uint64_t CodeStreamCompress::getNumTilePartsForProgression(uint32_t pino, uint16_t tileno)
 {
 	uint64_t numTileParts = 1;
+	auto cp = &m_cp;
 
 	/*  preconditions */
 	assert(tileno < (cp->t_grid_width * cp->t_grid_height));
@@ -1962,43 +1951,45 @@ uint8_t CodeStreamCompress::getNumTileParts(CodingParams* cp, uint32_t pino, uin
 	{
 		numTileParts = 1;
 	}
-	assert(numTileParts < 256);
+	assert(numTileParts < maxTilePartsPerTileJ2K);
 
-	return (uint8_t)numTileParts;
+	return numTileParts;
 }
-bool CodeStreamCompress::calculateTileParts(CodingParams* cp, uint16_t* numTilePartsForImage, GrkImage* image)
+bool CodeStreamCompress::getNumTileParts(uint16_t* numTilePartsForAllTiles, GrkImage* image)
 {
-	assert(numTilePartsForImage != nullptr);
-	assert(cp != nullptr);
+	assert(numTilePartsForAllTiles != nullptr);
 	assert(image != nullptr);
 
-	uint32_t numTiles = (uint16_t)(cp->t_grid_width * cp->t_grid_height);
-	*numTilePartsForImage = 0;
-	auto tcp = cp->tcps;
+	uint32_t numTiles = (uint16_t)(m_cp.t_grid_width * m_cp.t_grid_height);
+	*numTilePartsForAllTiles = 0;
+	auto tcp = m_cp.tcps;
 	for(uint16_t tileno = 0; tileno < numTiles; ++tileno)
 	{
 		uint8_t totalTilePartsForTile = 0;
-		PacketManager::updateCompressParams(image, cp, tileno);
+		PacketManager::updateCompressParams(image, &m_cp, tileno);
 		for(uint32_t pino = 0; pino <= tcp->numpocs; ++pino)
 		{
-			uint8_t numTileParts = getNumTileParts(cp, pino, tileno);
-			if(numTileParts > maxTilePartsPerTileJ2K)
+			uint64_t numTilePartsForProgression = getNumTilePartsForProgression(pino, tileno);
+			uint16_t newTotalTilePartsForTile = uint16_t(numTilePartsForProgression + totalTilePartsForTile);
+			if(newTotalTilePartsForTile > maxTilePartsPerTileJ2K)
 			{
 				GRK_ERROR("Number of tile parts %d exceeds maximum number of "
 						  "tile parts %d",
-						  numTileParts, maxTilePartsPerTileJ2K);
+						  (uint16_t)newTotalTilePartsForTile, maxTilePartsPerTileJ2K);
 				return false;
 			}
-			uint32_t newTotalForImage = (uint32_t)(*numTilePartsForImage) + numTileParts;
-			if(newTotalForImage > maxTotalTilePartsJ2K)
+			totalTilePartsForTile = (uint8_t)newTotalTilePartsForTile;
+
+			uint32_t newTotalTilePartsForAllTiles =
+					(uint32_t)(*numTilePartsForAllTiles + numTilePartsForProgression);
+			if(newTotalTilePartsForAllTiles > maxTotalTilePartsJ2K)
 			{
 				GRK_ERROR("Total number of tile parts %d for image exceeds JPEG 2000 maximum total number of "
 						  "tile parts %d",
-						  newTotalForImage, maxTotalTilePartsJ2K);
+						  newTotalTilePartsForAllTiles, maxTotalTilePartsJ2K);
 				return false;
 			}
-			*numTilePartsForImage = (uint16_t)newTotalForImage;
-			totalTilePartsForTile += numTileParts;
+			*numTilePartsForAllTiles = (uint16_t)newTotalTilePartsForAllTiles;
 		}
 		tcp->numTileParts = totalTilePartsForTile;
 		++tcp;

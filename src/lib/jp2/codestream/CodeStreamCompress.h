@@ -303,27 +303,25 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	   * Calculates the total number of tile parts needed by the compressor to
 	   * compress such an image. If not enough memory is available, then the function return false.
 	   *
-	   * @param       cp              coding parameters for the image.
 	   * @param       p_nb_tile_parts total number of tile parts in whole image.
 	   * @param       image           image to compress.
 
 	   *
 	   * @return true if the function was successful, false else.
 	   */
-	bool calculateTileParts(CodingParams* cp, uint16_t* p_nb_tile_parts, GrkImage* image);
+	bool getNumTileParts(uint16_t* p_nb_tile_parts, GrkImage* image);
 
 	/**
 	 * Gets the number of tile parts used for the given change of progression (if any) and the given
 	 * tile.
 	 *
-	 * @param               cp                      the coding parameters.
 	 * @param               pino            the offset of the given poc (i.e. its position in the
 	 * coding parameter).
 	 * @param               tileno          the given tile.
 	 *
 	 * @return              the number of tile parts.
 	 */
-	uint8_t getNumTileParts(CodingParams* cp, uint32_t pino, uint16_t tileno);
+	uint64_t getNumTilePartsForProgression(uint32_t pino, uint16_t tileno);
 
 	/**
 	 * Checks the progression order changes values. Tells of the poc given as input are valid.
