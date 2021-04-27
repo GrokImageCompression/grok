@@ -289,19 +289,27 @@ bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 			auto uuid = uuids + i;
 			if(memcmp(uuid->uuid, IPTC_UUID, 16) == 0)
 			{
+				// make sure image meta exists
 				image->createMeta();
-				image->meta->iptc_buf = uuid->buf;
-				image->meta->iptc_len = uuid->len;
-				uuid->buf = nullptr;
-				uuid->len = 0;
+				if (image->meta->iptc_buf){
+					GRK_WARN("Attempt to set a second IPTC buffer. Ignoring");
+				} else 	if (uuid->len) {
+					image->meta->iptc_len = uuid->len;
+					image->meta->iptc_buf = new uint8_t[uuid->len];
+					memcpy(image->meta->iptc_buf, uuid->buf,uuid->len );
+				}
 			}
 			else if(memcmp(uuid->uuid, XMP_UUID, 16) == 0)
 			{
+				// make sure image meta exists
 				image->createMeta();
-				image->meta->xmp_buf = uuid->buf;
-				image->meta->xmp_len = uuid->len;
-				uuid->buf = nullptr;
-				uuid->len = 0;
+				if (image->meta->xmp_buf){
+					GRK_WARN("Attempt to set a second XMP buffer. Ignoring");
+				} else if (uuid->len) {
+					image->meta->xmp_len = uuid->len;
+					image->meta->xmp_buf = new uint8_t[uuid->len];
+					memcpy(image->meta->xmp_buf, uuid->buf,uuid->len );
+				}
 			}
 		}
 	}
@@ -746,6 +754,10 @@ bool FileFormatDecompress::read_uuid(uint8_t* headerData, uint32_t header_size)
 {
 	if(!headerData || header_size < 16)
 		return false;
+	if (header_size == 16){
+		GRK_WARN("Read UUID box with no data - ignoring");
+		return false;
+	}
 	if(numUuids == JP2_MAX_NUM_UUIDS)
 	{
 		GRK_WARN("Reached maximum (%u) number of UUID boxes read - ignoring UUID box",
