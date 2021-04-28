@@ -129,7 +129,8 @@ struct grkRect
 	}
 	grkRect<T>& operator=(const grkRect<T>* rhs)
 	{
-		if(this != rhs)
+		assert(rhs);
+		if(rhs && (this != rhs))
 		{ // self-assignment check expected
 			x0 = rhs->x0;
 			y0 = rhs->y0;
