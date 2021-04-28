@@ -644,13 +644,22 @@ HWY_API Vec512<uint16_t> AverageRound(const Vec512<uint16_t> a,
 
 // Returns absolute value, except that LimitsMin() maps to LimitsMax() + 1.
 HWY_API Vec512<int8_t> Abs(const Vec512<int8_t> v) {
+#if HWY_COMPILER_MSVC
+  // Workaround for incorrect codegen? (untested due to internal compiler error)
+  const auto zero = Zero(Full512<int8_t>());
+  return Vec512<int8_t>{_mm512_max_epi8(v.raw, (zero - v).raw)};
+#else
   return Vec512<int8_t>{_mm512_abs_epi8(v.raw)};
+#endif
 }
 HWY_API Vec512<int16_t> Abs(const Vec512<int16_t> v) {
   return Vec512<int16_t>{_mm512_abs_epi16(v.raw)};
 }
 HWY_API Vec512<int32_t> Abs(const Vec512<int32_t> v) {
   return Vec512<int32_t>{_mm512_abs_epi32(v.raw)};
+}
+HWY_API Vec512<int64_t> Abs(const Vec512<int64_t> v) {
+  return Vec512<int64_t>{_mm512_abs_epi64(v.raw)};
 }
 
 // These aren't native instructions, they also involve AND with constant.

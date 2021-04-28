@@ -121,10 +121,13 @@
 #pragma message("x86 Clang <= 6: define HWY_COMPILE_ONLY_SCALAR or upgrade.")
 #endif
 
-// MSVC, or 32-bit may fail to compile AVX2/3.
-#elif HWY_COMPILER_MSVC != 0 || HWY_ARCH_X86_32
+// 32-bit may fail to compile AVX2/3.
+#elif HWY_ARCH_X86_32
 #define HWY_BROKEN_TARGETS (HWY_AVX2 | HWY_AVX3)
-#pragma message("Disabling AVX2/3 due to known issues with MSVC/32-bit builds")
+
+// MSVC AVX3 support is buggy: https://github.com/Mysticial/Flops/issues/16
+#elif HWY_COMPILER_MSVC != 0
+#define HWY_BROKEN_TARGETS (HWY_AVX3)
 
 #else
 #define HWY_BROKEN_TARGETS 0
@@ -164,7 +167,10 @@
 #define HWY_BASELINE_NEON 0
 #endif
 
-#ifdef __SSE4_1__
+// MSVC does not set SSE4_1, but it does set AVX; checking for the latter means
+// we at least get SSE4 on machines supporting AVX but not AVX2.
+// https://stackoverflow.com/questions/18563978/
+#if defined(__SSE4_1__) || (HWY_COMPILER_MSVC != 0 && defined(__AVX__))
 #define HWY_BASELINE_SSE4 HWY_SSE4
 #else
 #define HWY_BASELINE_SSE4 0

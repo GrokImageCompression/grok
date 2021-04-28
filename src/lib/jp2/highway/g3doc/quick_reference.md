@@ -168,7 +168,7 @@ bits are allowed. Abbreviations of the form `u32 = {u}{32}` may also be used.
 *   `V`: `{i,f}` \
     <code>V **Neg**(V a)</code>: returns `-a[i]`.
 
-*   `V`: `{i}{8,16,32}, {f}` \
+*   `V`: `{i,f}` \
     <code>V **Abs**(V a)</code> returns the absolute value of `a[i]`; for
     integers, `LimitsMin()` maps to `LimitsMax() + 1`.
 
@@ -339,7 +339,7 @@ Special functions for signed types:
     slightly more efficient; requires the first argument to be non-negative.
 
 *   `V`: `i32/64` \
-    <code>V **BroadcastSignBit(V a)</code> returns `a[i] < 0 ? -1 : 0`.
+    <code>V **BroadcastSignBit**(V a)</code> returns `a[i] < 0 ? -1 : 0`.
 
 ### Masks
 
@@ -437,10 +437,16 @@ Memory operands are little-endian, otherwise their order would depend on the
 lane configuration. Pointers are the addresses of `N` consecutive `T` values,
 either naturally-aligned (`aligned`) or possibly unaligned (`p`).
 
+**Note**: computations with low arithmetic intensity (FLOP/s per memory traffic
+bytes), e.g. dot product, can be *1.5 times as fast* when the memory operands
+are naturally aligned. An unaligned access may require two load ports.
+
 #### Load
 
 *   <code>Vec&lt;D&gt; **Load**(D, const T* aligned)</code>: returns
-    `aligned[i]`.
+    `aligned[i]`. May fault if the pointer is not aligned to the vector size.
+    Using this whenever possible improves codegen on SSE4: unlike `LoadU`,
+    `Load` can be fused into a memory operand, which reduces register pressure.
 *   <code>Vec&lt;D&gt; **LoadU**(D, const T* p)</code>: returns `p[i]`.
 
 *   <code>Vec&lt;D&gt; **LoadDup128**(D, const T* p)</code>: returns one 128-bit

@@ -802,6 +802,7 @@ HWY_INLINE Vec128<int16_t> Abs(const Vec128<int16_t> v) {
 HWY_INLINE Vec128<int32_t> Abs(const Vec128<int32_t> v) {
   return Vec128<int32_t>(vabsq_s32(v.raw));
 }
+// i64 is implemented after BroadcastSignBit.
 HWY_INLINE Vec128<float> Abs(const Vec128<float> v) {
   return Vec128<float>(vabsq_f32(v.raw));
 }
@@ -1184,21 +1185,34 @@ HWY_INLINE Vec128<float, N> ApproximateReciprocal(const Vec128<float, N> v) {
 #if HWY_ARCH_ARM_A64
 HWY_NEON_DEF_FUNCTION_ALL_FLOATS(operator/, vdiv, _, 2)
 #else
-// Emulated with approx reciprocal + Newton-Raphson + mul
+// Not defined on armv7: approximate
+namespace detail {
+
+HWY_INLINE Vec128<float> ReciprocalNewtonRaphsonStep(
+    const Vec128<float> recip, const Vec128<float> divisor) {
+  return Vec128<float>(vrecpsq_f32(recip.raw, divisor.raw));
+}
+template <size_t N>
+HWY_INLINE Vec128<float, N> ReciprocalNewtonRaphsonStep(
+    const Vec128<float, N> recip, Vec128<float, N> divisor) {
+  return Vec128<float, N>(vrecps_f32(recip.raw, divisor.raw));
+}
+
+}  // namespace detail
+
 template <size_t N>
 HWY_INLINE Vec128<float, N> operator/(const Vec128<float, N> a,
                                       const Vec128<float, N> b) {
   auto x = ApproximateReciprocal(b);
-  // Newton-Raphson on 1/x - b
-  const auto two = Set(Simd<float, N>(), 2);
-  x = x * (two - b * x);
-  x = x * (two - b * x);
-  x = x * (two - b * x);
+  x *= detail::ReciprocalNewtonRaphsonStep(x, b);
+  x *= detail::ReciprocalNewtonRaphsonStep(x, b);
+  x *= detail::ReciprocalNewtonRaphsonStep(x, b);
   return a * x;
 }
 #endif
 
-// Absolute value of difference.
+// ------------------------------ Absolute value of difference.
+
 HWY_INLINE Vec128<float> AbsDiff(const Vec128<float> a, const Vec128<float> b) {
   return Vec128<float>(vabdq_f32(a.raw, b.raw));
 }
@@ -1312,7 +1326,7 @@ HWY_INLINE Vec128<double, N> NegMulSub(const Vec128<double, N> mul,
 }
 #endif
 
-// ------------------------------ Floating-point square root
+// ------------------------------ Floating-point square root (IfThenZeroElse)
 
 // Approximate reciprocal square root
 HWY_INLINE Vec128<float> ApproximateReciprocalSqrt(const Vec128<float> v) {
@@ -1328,20 +1342,31 @@ HWY_INLINE Vec128<float, N> ApproximateReciprocalSqrt(
 #if HWY_ARCH_ARM_A64
 HWY_NEON_DEF_FUNCTION_ALL_FLOATS(Sqrt, vsqrt, _, 1)
 #else
-// Not defined on armv7: emulate with approx reciprocal sqrt + Goldschmidt.
+namespace detail {
+
+HWY_INLINE Vec128<float> ReciprocalSqrtStep(const Vec128<float> root,
+                                            const Vec128<float> recip) {
+  return Vec128<float>(vrsqrtsq_f32(root.raw, recip.raw));
+}
+template <size_t N>
+HWY_INLINE Vec128<float, N> ReciprocalSqrtStep(const Vec128<float, N> root,
+                                               Vec128<float, N> recip) {
+  return Vec128<float, N>(vrsqrts_f32(root.raw, recip.raw));
+}
+
+}  // namespace detail
+
+// Not defined on armv7: approximate
 template <size_t N>
 HWY_INLINE Vec128<float, N> Sqrt(const Vec128<float, N> v) {
-  auto b = v;
-  auto Y = ApproximateReciprocalSqrt(v);
-  auto x = v * Y;
-  const auto half = Set(Simd<float, N>(), 0.5);
-  const auto oneandhalf = Set(Simd<float, N>(), 1.5);
-  for (size_t i = 0; i < 3; i++) {
-    b = b * Y * Y;
-    Y = oneandhalf - half * b;
-    x = x * Y;
-  }
-  return IfThenZeroElse(v == Zero(Simd<float, N>()), x);
+  auto recip = ApproximateReciprocalSqrt(v);
+
+  recip *= detail::ReciprocalSqrtStep(v * recip, recip);
+  recip *= detail::ReciprocalSqrtStep(v * recip, recip);
+  recip *= detail::ReciprocalSqrtStep(v * recip, recip);
+
+  const auto root = v * recip;
+  return IfThenZeroElse(v == Zero(Simd<float, N>()), root);
 }
 #endif
 
@@ -1515,11 +1540,35 @@ HWY_API Vec128<T, N> BroadcastSignBit(const Vec128<T, N> v) {
 
 // ------------------------------ Make mask
 
-template <typename T, size_t N>
-HWY_INLINE Mask128<T, N> TestBit(Vec128<T, N> v, Vec128<T, N> bit) {
-  static_assert(!hwy::IsFloat<T>(), "Only integer vectors supported");
+#define HWY_NEON_BUILD_TPL_HWY_TESTBIT
+#define HWY_NEON_BUILD_RET_HWY_TESTBIT(type, size) Mask128<type, size>
+#define HWY_NEON_BUILD_PARAM_HWY_TESTBIT(type, size) \
+  Vec128<type, size> v, Vec128<type, size> bit
+#define HWY_NEON_BUILD_ARG_HWY_TESTBIT v.raw, bit.raw
+
+#if HWY_ARCH_ARM_A64
+HWY_NEON_DEF_FUNCTION_INTS_UINTS(TestBit, vtst, _, HWY_TESTBIT)
+#else
+// No 64-bit versions on armv7
+HWY_NEON_DEF_FUNCTION_UINT_8_16_32(TestBit, vtst, _, HWY_TESTBIT)
+HWY_NEON_DEF_FUNCTION_INT_8_16_32(TestBit, vtst, _, HWY_TESTBIT)
+
+template <size_t N>
+HWY_INLINE Mask128<uint64_t, N> TestBit(Vec128<uint64_t, N> v,
+                                        Vec128<uint64_t, N> bit) {
   return (v & bit) == bit;
 }
+template <size_t N>
+HWY_INLINE Mask128<int64_t, N> TestBit(Vec128<int64_t, N> v,
+                                       Vec128<int64_t, N> bit) {
+  return (v & bit) == bit;
+}
+
+#endif
+#undef HWY_NEON_BUILD_TPL_HWY_TESTBIT
+#undef HWY_NEON_BUILD_RET_HWY_TESTBIT
+#undef HWY_NEON_BUILD_PARAM_HWY_TESTBIT
+#define HWY_NEON_BUILD_ARG_HWY_TESTBIT
 
 // Mask and Vec are the same (true = FF..FF).
 template <typename T, size_t N>
@@ -1574,6 +1623,22 @@ HWY_INLINE Vec128<T, N> ZeroIfNegative(Vec128<T, N> v) {
   return Max(zero, v);
 }
 
+HWY_INLINE Vec128<int64_t> Abs(const Vec128<int64_t> v) {
+#if HWY_ARCH_ARM_A64
+  return Vec128<int64_t>(vabsq_s64(v.raw));
+#else
+  const auto zero = Zero(Full128<int64_t>());
+  return IfThenElse(MaskFromVec(BroadcastSignBit(v)), zero - v, v);
+#endif
+}
+HWY_INLINE Vec128<int64_t, 1> Abs(const Vec128<int64_t, 1> v) {
+#if HWY_ARCH_ARM_A64
+  return Vec128<int64_t, 1>(vabs_s64(v.raw));
+#else
+  const auto zero = Zero(Simd<int64_t, 1>());
+  return IfThenElse(MaskFromVec(BroadcastSignBit(v)), zero - v, v);
+#endif
+}
 
 // ------------------------------ Mask logical
 

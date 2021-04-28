@@ -844,7 +844,13 @@ HWY_API Vec256<uint16_t> AverageRound(const Vec256<uint16_t> a,
 
 // Returns absolute value, except that LimitsMin() maps to LimitsMax() + 1.
 HWY_API Vec256<int8_t> Abs(const Vec256<int8_t> v) {
+#if HWY_COMPILER_MSVC
+  // Workaround for incorrect codegen? (wrong result)
+  const auto zero = Zero(Full256<int8_t>());
+  return Vec256<int8_t>{_mm256_max_epi8(v.raw, (zero - v).raw)};
+#else
   return Vec256<int8_t>{_mm256_abs_epi8(v.raw)};
+#endif
 }
 HWY_API Vec256<int16_t> Abs(const Vec256<int16_t> v) {
   return Vec256<int16_t>{_mm256_abs_epi16(v.raw)};
@@ -852,6 +858,7 @@ HWY_API Vec256<int16_t> Abs(const Vec256<int16_t> v) {
 HWY_API Vec256<int32_t> Abs(const Vec256<int32_t> v) {
   return Vec256<int32_t>{_mm256_abs_epi32(v.raw)};
 }
+// i64 is implemented after BroadcastSignBit.
 
 HWY_API Vec256<float> Abs(const Vec256<float> v) {
   const Vec256<int32_t> mask{_mm256_set1_epi32(0x7FFFFFFF)};
@@ -1025,6 +1032,15 @@ HWY_API Vec256<int64_t> ShiftRight(const Vec256<int64_t> v) {
   const auto right = BitCast(di, ShiftRight<kBits>(BitCast(du, v)));
   const auto sign = ShiftLeft<64 - kBits>(BroadcastSignBit(v));
   return right | sign;
+#endif
+}
+
+HWY_API Vec256<int64_t> Abs(const Vec256<int64_t> v) {
+#if HWY_TARGET == HWY_AVX3
+  return Vec256<int64_t>{_mm256_abs_epi64(v.raw)};
+#else
+  const auto zero = Zero(Full256<int64_t>());
+  return IfThenElse(MaskFromVec(BroadcastSignBit(v)), zero - v, v);
 #endif
 }
 
@@ -2382,6 +2398,11 @@ HWY_API Vec128<int8_t> DemoteTo(Full128<int8_t> /* tag */,
 
 HWY_API Vec128<float16_t> DemoteTo(Full128<float16_t> /* tag */,
                                    const Vec256<float> v) {
+#if HWY_COMPILER_MSVC
+  // Avoid "value of intrinsic immediate argument '8' is out of range '0 - 7'".
+  // 8 is the correct value of _MM_FROUND_NO_EXC, which is allowed here.
+#pragma warning(suppress : 4556)
+#endif
   return Vec128<float16_t>{_mm256_cvtps_ph(v.raw, _MM_FROUND_NO_EXC)};
 }
 
@@ -2410,7 +2431,7 @@ HWY_API Vec128<uint8_t, 8> U8FromU32(const Vec256<uint32_t> v) {
   return BitCast(Simd<uint8_t, 8>(), pair);
 }
 
-// ------------------------------ Convert integer <=> floating point
+// ------------------------------ Integer <=> fp (ShiftRight, OddEven)
 
 HWY_API Vec256<float> ConvertTo(Full256<float> /* tag */,
                                 const Vec256<int32_t> v) {
@@ -2422,13 +2443,20 @@ HWY_API Vec256<double> ConvertTo(Full256<double> dd, const Vec256<int64_t> v) {
   (void)dd;
   return Vec256<double>{_mm256_cvtepi64_pd(v.raw)};
 #else
-  alignas(32) int64_t lanes_i[4];
-  Store(v, Full256<int64_t>(), lanes_i);
-  alignas(32) double lanes_d[4];
-  for (size_t i = 0; i < 4; ++i) {
-    lanes_d[i] = static_cast<double>(lanes_i[i]);
-  }
-  return Load(dd, lanes_d);
+  // Based on wim's approach (https://stackoverflow.com/questions/41144668/)
+  const Repartition<uint32_t, decltype(dd)> d32;
+  const Repartition<uint64_t, decltype(dd)> d64;
+
+  // Toggle MSB of lower 32-bits and insert exponent for 2^84 + 2^63
+  const auto k84_63 = Set(d64, 0x4530000080000000ULL);
+  const auto v_upper = BitCast(dd, ShiftRight<32>(BitCast(d64, v)) ^ k84_63);
+
+  // Exponent is 2^52, lower 32 bits from v (=> 32-bit OddEven)
+  const auto k52 = Set(d32, 0x43300000);
+  const auto v_lower = BitCast(dd, OddEven(k52, BitCast(d32, v)));
+
+  const auto k84_63_52 = BitCast(dd, Set(d64, 0x4530000080100000ULL));
+  return (v_upper - k84_63_52) + v_lower;  // order matters!
 #endif
 }
 
