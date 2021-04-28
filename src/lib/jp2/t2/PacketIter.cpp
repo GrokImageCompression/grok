@@ -26,9 +26,9 @@ namespace grk
 /*@{*/
 
 PacketIter::PacketIter()
-	: enableTilePartGeneration(false), step_l(0), step_r(0), step_c(0), step_p(0), compno(0), resno(0),
-	  precinctIndex(0), layno(0), numcomps(0), comps(nullptr), tx0(0), ty0(0), tx1(0), ty1(0), x(0),
-	  y(0), dx(0), dy(0), handledFirstInner(false), packetManager(nullptr),
+	: enableTilePartGeneration(false), step_l(0), step_r(0), step_c(0), step_p(0), compno(0),
+	  resno(0), precinctIndex(0), layno(0), numcomps(0), comps(nullptr), tx0(0), ty0(0), tx1(0),
+	  ty1(0), x(0), y(0), dx(0), dy(0), handledFirstInner(false), packetManager(nullptr),
 	  maxNumDecompositionResolutions(0)
 {
 	memset(&prog, 0, sizeof(prog));

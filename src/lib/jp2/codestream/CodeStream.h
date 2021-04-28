@@ -28,7 +28,6 @@
 
 namespace grk
 {
-
 const uint32_t default_numbers_segments = 10;
 const uint32_t default_header_size = 4096;
 const uint32_t default_number_mcc_records = 10;

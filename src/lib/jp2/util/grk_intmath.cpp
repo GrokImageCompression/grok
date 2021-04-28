@@ -19,7 +19,6 @@
 
 namespace grk
 {
-
 uint8_t floorlog2(uint32_t a)
 {
 	uint8_t l;
@@ -30,6 +29,4 @@ uint8_t floorlog2(uint32_t a)
 	return l;
 }
 
-
-
-}
+} // namespace grk

@@ -44,8 +44,8 @@ bool Quantizer::setBandStepSizeAndBps(TileCodingParams* tcp, Subband* band, uint
 	// %f\n",resno,band->orientation,step_size->mant,step_size->expn,numbps, band->stepsize);
 
 	// see Taubman + Marcellin - Equation 10.22
-	band->numbps =
-		tccp->roishift + (uint8_t)std::max<int8_t>(0, int8_t(step_size->expn + tccp->numgbits - 1U));
+	band->numbps = tccp->roishift +
+				   (uint8_t)std::max<int8_t>(0, int8_t(step_size->expn + tccp->numgbits - 1U));
 	// assert(band->numbps <= maxBitPlanesGRK);
 
 	if(tcp->getIsHT())

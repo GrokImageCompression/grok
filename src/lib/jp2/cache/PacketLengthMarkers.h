@@ -22,11 +22,11 @@ namespace grk
 {
 typedef std::vector<uint32_t> PL_INFO_VEC;
 
-struct PacketLengthMarkerInfo{
-	PacketLengthMarkerInfo() : PacketLengthMarkerInfo(nullptr){
-	}
-	PacketLengthMarkerInfo(PL_INFO_VEC* packetLengthVec) : markerLength(0),
-														   packetLength(packetLengthVec)
+struct PacketLengthMarkerInfo
+{
+	PacketLengthMarkerInfo() : PacketLengthMarkerInfo(nullptr) {}
+	PacketLengthMarkerInfo(PL_INFO_VEC* packetLengthVec)
+		: markerLength(0), packetLength(packetLengthVec)
 	{}
 	uint64_t markerLength;
 	PL_INFO_VEC* packetLength;
@@ -55,8 +55,8 @@ struct PacketLengthMarkers
   private:
 	void readInit(uint8_t index);
 	void readNext(uint8_t Iplm);
-	void tryWriteMarkerHeader(PacketLengthMarkerInfo *markerInfo, bool simulate);
-	void writeMarkerLength(PacketLengthMarkerInfo *markerInfo);
+	void tryWriteMarkerHeader(PacketLengthMarkerInfo* markerInfo, bool simulate);
+	void writeMarkerLength(PacketLengthMarkerInfo* markerInfo);
 	void writeIncrement(uint32_t bytes);
 
 	PL_MAP* m_markers;

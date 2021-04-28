@@ -851,7 +851,7 @@ void GRK_CALLCONV grk_stream_set_write_function(grk_stream* stream, grk_stream_w
 	if((!streamImpl) || (!(streamImpl->getStatus() & GROK_STREAM_STATUS_OUTPUT)))
 		return;
 
-	streamImpl->setWriteFunction( p_function);
+	streamImpl->setWriteFunction(p_function);
 }
 
 void GRK_CALLCONV grk_stream_set_user_data(grk_stream* stream, void* p_data,

@@ -114,7 +114,7 @@ int convert(std::string s)
 	return -1;
 }
 
-bool header_rewind(char* s, char* line,FILE* reader)
+bool header_rewind(char* s, char* line, FILE* reader)
 {
 	// if s points to ' ', then rewind file
 	// to two past current position of s
@@ -359,14 +359,16 @@ static bool read_pnm_header(FILE* reader, struct pnm_header* ph)
 		if(format == 1 || format == 4)
 			ph->maxval = 1;
 
-		//sanity check
+		// sanity check
 		uint64_t area = (uint64_t)ph->width * ph->height;
-		uint64_t minBytes = (ph->maxval != 1) ? area  : area/8;
-		if (minBytes) {
+		uint64_t minBytes = (ph->maxval != 1) ? area : area / 8;
+		if(minBytes)
+		{
 			int64_t currentPos = GRK_FTELL(reader);
 			GRK_FSEEK(reader, 0L, SEEK_END);
 			uint64_t length = (uint64_t)GRK_FTELL(reader);
-			if (length < minBytes){
+			if(length < minBytes)
+			{
 				spdlog::error("File is truncated");
 				return false;
 			}

@@ -26,7 +26,8 @@ namespace grk
 SOTMarker::SOTMarker(void) : m_psot_location(0) {}
 bool SOTMarker::write_psot(IBufferedStream* stream, uint32_t tileLength)
 {
-	if (m_psot_location) {
+	if(m_psot_location)
+	{
 		auto currentLocation = stream->tell();
 		stream->seek(m_psot_location);
 		if(!stream->writeInt(tileLength))
@@ -37,7 +38,7 @@ bool SOTMarker::write_psot(IBufferedStream* stream, uint32_t tileLength)
 	return true;
 }
 
-bool SOTMarker::write(TileProcessor *proc, uint32_t tileLength)
+bool SOTMarker::write(TileProcessor* proc, uint32_t tileLength)
 {
 	auto stream = proc->getStream();
 	/* SOT */
@@ -52,10 +53,13 @@ bool SOTMarker::write(TileProcessor *proc, uint32_t tileLength)
 		return false;
 
 	/* Psot  */
-	if (tileLength){
+	if(tileLength)
+	{
 		if(!stream->writeInt(tileLength))
 			return false;
-	} else {
+	}
+	else
+	{
 		m_psot_location = stream->tell();
 		if(!stream->skip(4))
 			return false;

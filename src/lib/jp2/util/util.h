@@ -262,10 +262,12 @@ struct grkRect
 
 		return *this;
 	}
-	T parityX(void){
+	T parityX(void)
+	{
 		return T(x0 & 1);
 	}
-	T parityY(void){
+	T parityY(void)
+	{
 		return T(y0 & 1);
 	}
 };

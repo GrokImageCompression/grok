@@ -264,7 +264,7 @@ struct BufferResWindow
 	 *
 	 */
 	static grkRectU32 getTileCompBandWindow(uint32_t numDecomps, uint8_t orientation,
-									 grkRectU32 unreducedTileCompWindow)
+											grkRectU32 unreducedTileCompWindow)
 	{
 		assert(orientation < BAND_NUM_ORIENTATIONS);
 		if(numDecomps == 0)
@@ -284,10 +284,11 @@ struct BufferResWindow
 		uint32_t bx0Shift = (1U << (numDecomps - 1)) * bx0;
 		uint32_t by0Shift = (1U << (numDecomps - 1)) * by0;
 
-		return grkRectU32((tcx0 <= bx0Shift) ? 0 : ceildivpow2<uint32_t>(tcx0 - bx0Shift, numDecomps),
-						  (tcy0 <= by0Shift) ? 0 : ceildivpow2<uint32_t>(tcy0 - by0Shift, numDecomps),
-						  (tcx1 <= bx0Shift) ? 0 : ceildivpow2<uint32_t>(tcx1 - bx0Shift, numDecomps),
-						  (tcy1 <= by0Shift) ? 0 : ceildivpow2<uint32_t>(tcy1 - by0Shift, numDecomps));
+		return grkRectU32(
+			(tcx0 <= bx0Shift) ? 0 : ceildivpow2<uint32_t>(tcx0 - bx0Shift, numDecomps),
+			(tcy0 <= by0Shift) ? 0 : ceildivpow2<uint32_t>(tcy0 - by0Shift, numDecomps),
+			(tcx1 <= bx0Shift) ? 0 : ceildivpow2<uint32_t>(tcx1 - bx0Shift, numDecomps),
+			(tcy1 <= by0Shift) ? 0 : ceildivpow2<uint32_t>(tcy1 - by0Shift, numDecomps));
 	}
 	/**
 	 * Get band window in tile component coordinates for specified number
@@ -297,8 +298,8 @@ struct BufferResWindow
 	 * is equal to the unreduced tile component window (with padding)
 	 */
 	static grkRectU32 getTileCompBandWindow(uint32_t numDecomps, uint8_t orientation,
-									 grkRectU32 unreducedTileCompWindow, grkRectU32 unreducedTileComp,
-									 uint32_t padding)
+											grkRectU32 unreducedTileCompWindow,
+											grkRectU32 unreducedTileComp, uint32_t padding)
 	{
 		assert(orientation < BAND_NUM_ORIENTATIONS);
 		if(numDecomps == 0)
@@ -372,8 +373,8 @@ struct TileComponentWindowBuffer
 		for(uint8_t resno = 0; resno < reducedNumResolutions - 1; ++resno)
 		{
 			// resolution window ==  next resolution band window at orientation 0
-			auto resDims =
-					BufferResWindow<T>::getTileCompBandWindow((uint32_t)(numresolutions - 1 - resno), 0, m_unreducedBounds);
+			auto resDims = BufferResWindow<T>::getTileCompBandWindow(
+				(uint32_t)(numresolutions - 1 - resno), 0, m_unreducedBounds);
 			m_bufferResWindowREL.push_back(new BufferResWindow<T>(
 				numresolutions, resno,
 				useBandWindows() ? nullptr : topLevel->m_bufferResWindowBufferREL,

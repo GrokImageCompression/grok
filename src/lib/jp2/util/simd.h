@@ -29,7 +29,6 @@
 #endif
 #endif
 
-
 #if defined(_MSC_VER)
 static inline long grk_lrintf(float f)
 {
@@ -56,4 +55,3 @@ static inline long grk_lrintf(float f)
 #if defined(_MSC_VER) && (_MSC_VER >= 1400) && !defined(__INTEL_COMPILER) && defined(_M_IX86)
 #pragma intrinsic(__emul)
 #endif
-

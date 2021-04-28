@@ -163,13 +163,13 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 		return false;
 	}
 
-	if(GRK_IS_IMF(parameters->rsiz) && parameters->max_cs_size > 0 &&
-	   parameters->numlayers == 1 && parameters->layer_rate[0] == 0)
+	if(GRK_IS_IMF(parameters->rsiz) && parameters->max_cs_size > 0 && parameters->numlayers == 1 &&
+	   parameters->layer_rate[0] == 0)
 	{
-		parameters->layer_rate[0] = (float)(image->numcomps * image->comps[0].w * image->comps[0].h *
-										   image->comps[0].prec) /
-								   (float)(((uint32_t)parameters->max_cs_size) * 8 *
-										   image->comps[0].dx * image->comps[0].dy);
+		parameters->layer_rate[0] = (float)(image->numcomps * image->comps[0].w *
+											image->comps[0].h * image->comps[0].prec) /
+									(float)(((uint32_t)parameters->max_cs_size) * 8 *
+											image->comps[0].dx * image->comps[0].dy);
 	}
 
 	/* if no rate entered, lossless by default */
@@ -186,8 +186,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 		(8 * image->comps[0].dx * image->comps[0].dy);
 	if(parameters->max_cs_size == 0)
 	{
-		if(parameters->numlayers > 0 &&
-		   parameters->layer_rate[parameters->numlayers - 1] > 0)
+		if(parameters->numlayers > 0 && parameters->layer_rate[parameters->numlayers - 1] > 0)
 		{
 			parameters->max_cs_size =
 				(uint64_t)floor(image_bytes / parameters->layer_rate[parameters->numlayers - 1]);
@@ -287,7 +286,8 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 
 	cp->m_coding_params.m_enc.m_max_comp_size = parameters->max_comp_size;
 	cp->rsiz = parameters->rsiz;
-	cp->m_coding_params.m_enc.m_allocationByRateDistortion = parameters->allocationByRateDistoration;
+	cp->m_coding_params.m_enc.m_allocationByRateDistortion =
+		parameters->allocationByRateDistoration;
 	cp->m_coding_params.m_enc.m_allocationByFixedQuality = parameters->allocationByQuality;
 	cp->m_coding_params.m_enc.writePLT = parameters->writePLT;
 	cp->m_coding_params.m_enc.writeTLM = parameters->writeTLM;
@@ -365,11 +365,13 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 	}
 	if(parameters->enableTilePartGeneration)
 	{
-		cp->m_coding_params.m_enc.m_newTilePartProgressionDivider = parameters->newTilePartProgressionDivider;
+		cp->m_coding_params.m_enc.m_newTilePartProgressionDivider =
+			parameters->newTilePartProgressionDivider;
 		cp->m_coding_params.m_enc.m_enableTilePartGeneration = true;
 	}
 	uint8_t numgbits = parameters->numgbits;
-	if (parameters->numgbits > 7){
+	if(parameters->numgbits > 7)
+	{
 		GRK_ERROR("Number of guard bits %d is greater than 7", numgbits);
 		return false;
 	}
@@ -557,8 +559,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 						}
 						else
 						{
-							tccp->precinctWidthExp[it_res] =
-								floorlog2(parameters->prcw_init[p]);
+							tccp->precinctWidthExp[it_res] = floorlog2(parameters->prcw_init[p]);
 						}
 						if(parameters->prch_init[p] < 1)
 						{
@@ -566,8 +567,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 						}
 						else
 						{
-							tccp->precinctHeightExp[it_res] =
-								floorlog2(parameters->prch_init[p]);
+							tccp->precinctHeightExp[it_res] = floorlog2(parameters->prch_init[p]);
 						}
 					}
 					else
@@ -636,7 +636,7 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 		for(uint16_t i = 0; i < numTiles; ++i)
 		{
 			uint16_t tileIndex = i;
-			results.emplace_back(pool.enqueue([this, tile, tileIndex, &heap,&success] {
+			results.emplace_back(pool.enqueue([this, tile, tileIndex, &heap, &success] {
 				if(success)
 				{
 					auto tileProcessor = new TileProcessor(this, m_stream, true, false);
@@ -649,8 +649,8 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 						if(!tileProcessor->doCompress())
 							success = false;
 					}
-					if (success)
-					    heap.push(tileProcessor);
+					if(success)
+						heap.push(tileProcessor);
 				}
 				return 0;
 			}));
@@ -691,10 +691,12 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 	rc = true;
 cleanup:
 	auto completeTileProcessor = heap.pop();
-	while (completeTileProcessor){
-		if (success) {
+	while(completeTileProcessor)
+	{
+		if(success)
+		{
 			bool write_success = writeTileParts(completeTileProcessor);
-			if (!write_success)
+			if(!write_success)
 				success = false;
 		}
 		delete completeTileProcessor;
@@ -861,7 +863,7 @@ bool CodeStreamCompress::init_header_writing(void)
 bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 {
 	uint64_t currentPos;
-	if (tileProcessor->canPreCalculateTileLen())
+	if(tileProcessor->canPreCalculateTileLen())
 		currentPos = m_stream->tell();
 	uint16_t currentTileIndex = tileProcessor->m_tileIndex;
 	auto calculatedBytesWritten = tileProcessor->getPreCalculatedTileLen();
@@ -889,7 +891,8 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 	if(!sot.write_psot(m_stream, tilePartBytesWritten))
 		return false;
 	// 5. update TLM
-	if (tileProcessor->canPreCalculateTileLen()) {
+	if(tileProcessor->canPreCalculateTileLen())
+	{
 		assert(m_stream->tell() - currentPos == calculatedBytesWritten);
 		(void)currentPos;
 		tilePartBytesWritten = calculatedBytesWritten;
@@ -1970,7 +1973,8 @@ bool CodeStreamCompress::getNumTileParts(uint16_t* numTilePartsForAllTiles, GrkI
 		for(uint32_t pino = 0; pino <= tcp->numpocs; ++pino)
 		{
 			uint64_t numTilePartsForProgression = getNumTilePartsForProgression(pino, tileno);
-			uint16_t newTotalTilePartsForTile = uint16_t(numTilePartsForProgression + totalTilePartsForTile);
+			uint16_t newTotalTilePartsForTile =
+				uint16_t(numTilePartsForProgression + totalTilePartsForTile);
 			if(newTotalTilePartsForTile > maxTilePartsPerTileJ2K)
 			{
 				GRK_ERROR("Number of tile parts %d exceeds maximum number of "
@@ -1981,10 +1985,11 @@ bool CodeStreamCompress::getNumTileParts(uint16_t* numTilePartsForAllTiles, GrkI
 			totalTilePartsForTile = (uint8_t)newTotalTilePartsForTile;
 
 			uint32_t newTotalTilePartsForAllTiles =
-					(uint32_t)(*numTilePartsForAllTiles + numTilePartsForProgression);
+				(uint32_t)(*numTilePartsForAllTiles + numTilePartsForProgression);
 			if(newTotalTilePartsForAllTiles > maxTotalTilePartsJ2K)
 			{
-				GRK_ERROR("Total number of tile parts %d for image exceeds JPEG 2000 maximum total number of "
+				GRK_ERROR("Total number of tile parts %d for image exceeds JPEG 2000 maximum total "
+						  "number of "
 						  "tile parts %d",
 						  newTotalTilePartsForAllTiles, maxTotalTilePartsJ2K);
 				return false;

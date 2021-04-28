@@ -13,6 +13,7 @@ class GrkObjectWrapper
 	int32_t ref(void);
 	int32_t unref(void);
 	virtual void release(void) = 0;
+
   private:
 	std::atomic<int32_t> ref_count;
 };
@@ -34,6 +35,7 @@ class GrkObjectWrapperImpl : public GrkObjectWrapper
 		assert(wrappee);
 		return wrappee;
 	}
+
   private:
 	T* wrappee;
 };

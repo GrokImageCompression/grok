@@ -44,29 +44,37 @@ BufferedStream::~BufferedStream()
 		m_free_user_data_fn(m_user_data);
 	delete m_buf;
 }
-void  BufferedStream::setUserData(void* data, grk_stream_free_user_data_fn freeUserDataFun){
+void BufferedStream::setUserData(void* data, grk_stream_free_user_data_fn freeUserDataFun)
+{
 	m_user_data = data;
 	m_free_user_data_fn = freeUserDataFun;
 }
-void*  BufferedStream::getUserData(void){
+void* BufferedStream::getUserData(void)
+{
 	return m_user_data;
 }
-void  BufferedStream::setUserDataLength(uint64_t len){
+void BufferedStream::setUserDataLength(uint64_t len)
+{
 	m_user_data_length = len;
 }
-uint32_t  BufferedStream::getStatus(void){
+uint32_t BufferedStream::getStatus(void)
+{
 	return m_status;
 }
-void  BufferedStream::setReadFunction(grk_stream_read_fn fn){
+void BufferedStream::setReadFunction(grk_stream_read_fn fn)
+{
 	m_read_fn = fn;
 }
-void  BufferedStream::setZeroCopyReadFunction(grk_stream_zero_copy_read_fn fn){
+void BufferedStream::setZeroCopyReadFunction(grk_stream_zero_copy_read_fn fn)
+{
 	m_zero_copy_read_fn = fn;
 }
-void  BufferedStream::setWriteFunction(grk_stream_write_fn fn){
+void BufferedStream::setWriteFunction(grk_stream_write_fn fn)
+{
 	m_write_fn = fn;
 }
-void  BufferedStream::setSeekFunction(grk_stream_seek_fn fn){
+void BufferedStream::setSeekFunction(grk_stream_seek_fn fn)
+{
 	m_seek_fn = fn;
 }
 // note: passing in nullptr for buffer will execute a zero-copy read

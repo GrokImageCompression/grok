@@ -110,7 +110,7 @@ static void grk_stream_set_zero_copy_read_function(grk_stream* stream,
 	auto streamImpl = BufferedStream::getImpl(stream);
 	if((!streamImpl) || (!(streamImpl->getStatus() & GROK_STREAM_STATUS_INPUT)))
 		return;
-	streamImpl->setZeroCopyReadFunction( p_function);
+	streamImpl->setZeroCopyReadFunction(p_function);
 }
 
 void set_up_mem_stream(grk_stream* stream, size_t len, bool is_read_stream)

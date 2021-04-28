@@ -57,7 +57,7 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* currPi, Spar
 	auto tilec = tileProcessor->tile->comps + currPi->compno;
 	auto tilecBuffer = tilec->getBuffer();
 	auto packetInfo = tileProcessor->packetLengthCache.next();
-	if (!packetInfo)
+	if(!packetInfo)
 		return false;
 	auto res = tilec->tileCompResolution + currPi->resno;
 	auto skipPacket = currPi->layno >= tcp->numLayersToDecompress ||
@@ -298,7 +298,8 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 					{
 						uint16_t value;
 						prc->getInclTree()->decodeValue(bio.get(), cblkno, p_pi->layno + 1, &value);
-						if(value != prc->getInclTree()->getUninitializedValue() && value != p_pi->layno)
+						if(value != prc->getInclTree()->getUninitializedValue() &&
+						   value != p_pi->layno)
 						{
 							GRK_WARN("Tile number: %u", tileProcessor->m_tileIndex + 1);
 							std::string msg =
@@ -326,13 +327,13 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 					}
 					if(!included)
 					{
-						if (cblk)
+						if(cblk)
 							cblk->numPassesInPacket = 0;
 						// GRK_INFO("included=%u ", included);
 						continue;
 					}
 					/* if cblk not yet included --> zero-bitplane tagtree */
-					if (!cblk)
+					if(!cblk)
 						cblk = prc->getDecompressedBlockPtr(cblkno);
 					if(!cblk->numlenbits)
 					{
@@ -345,10 +346,11 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 						while(value >= K_msbs)
 						{
 							++K_msbs;
-							if (K_msbs > maxBitPlanesGRK){
+							if(K_msbs > maxBitPlanesGRK)
+							{
 								GRK_WARN("More missing code block bit planes (%u)"
-										" than supported number of bit planes (%u) in library.",
-										K_msbs, maxBitPlanesGRK);
+										 " than supported number of bit planes (%u) in library.",
+										 K_msbs, maxBitPlanesGRK);
 								break;
 							}
 							prc->getImsbTree()->decodeValue(bio.get(), cblkno, K_msbs, &value);
@@ -371,7 +373,8 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 						}
 						if(cblk->numbps > maxBitPlanesGRK)
 						{
-							GRK_WARN("Number of bit planes %u is larger than maximum %u", cblk->numbps,maxBitPlanesGRK);
+							GRK_WARN("Number of bit planes %u is larger than maximum %u",
+									 cblk->numbps, maxBitPlanesGRK);
 							cblk->numbps = maxBitPlanesGRK;
 						}
 						cblk->numlenbits = 3;
@@ -433,9 +436,9 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 						if(packetDataBytes)
 							*packetDataBytes += seg->numBytesInPacket;
 #ifdef DEBUG_LOSSLESS_T2
-						cblk->packet_length_info.push_back(PacketLengthInfo(
-							seg->numBytesInPacket,
-							cblk->numlenbits + floorlog2(seg->numPassesInPacket)));
+						cblk->packet_length_info.push_back(
+							PacketLengthInfo(seg->numBytesInPacket,
+											 cblk->numlenbits + floorlog2(seg->numPassesInPacket)));
 #endif
 						/*
 						 GRK_INFO(

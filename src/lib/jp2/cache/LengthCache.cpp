@@ -412,7 +412,8 @@ TilePartLengthInfo TileLengthMarkers::getNext(void)
 	}
 	return 0;
 }
-bool TileLengthMarkers::skipTo(uint16_t skipTileIndex, IBufferedStream* stream, uint64_t firstSotPos)
+bool TileLengthMarkers::skipTo(uint16_t skipTileIndex, IBufferedStream* stream,
+							   uint64_t firstSotPos)
 {
 	assert(stream);
 	rewind();

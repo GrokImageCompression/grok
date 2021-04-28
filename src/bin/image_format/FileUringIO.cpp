@@ -44,9 +44,7 @@ struct io_uring ring;
 
 struct io_data
 {
-	io_data() : offset(0),
-				iov{0, 0}
-	{}
+	io_data() : offset(0), iov{0, 0} {}
 	int64_t offset;
 	iovec iov;
 };
@@ -102,9 +100,7 @@ static int _getMode(const char* mode)
 	return (m);
 }
 
-FileUringIO::FileUringIO() : m_fd(0),
-							m_off(0),
-							m_writeCount(0)
+FileUringIO::FileUringIO() : m_fd(0), m_off(0), m_writeCount(0)
 {
 	memset(&ring, 0, sizeof(ring));
 }
@@ -166,7 +162,7 @@ int process_completion(struct io_uring* ring)
 	io_data* data = (io_data*)io_uring_cqe_get_data(cqe);
 
 	/* process this request here */
-	delete[] (uint8_t*) data->iov.iov_base;
+	delete[](uint8_t*) data->iov.iov_base;
 	delete data;
 
 	/* Mark this completion as seen */

@@ -54,7 +54,6 @@ class SparseCache
 		return m_currChunk[itemIndex];
 	}
 
-
 	T* get(uint64_t index)
 	{
 		uint64_t chunkIndex = index / m_chunkSize;

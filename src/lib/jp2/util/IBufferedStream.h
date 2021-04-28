@@ -38,7 +38,7 @@ struct IBufferedStream
 	virtual bool writeShort(uint16_t value) = 0;
 	virtual bool write24(uint32_t value) = 0;
 	virtual bool writeInt(uint32_t value) = 0;
-	virtual bool write64(uint64_t value)=0;
+	virtual bool write64(uint64_t value) = 0;
 
 	virtual bool writeByte(uint8_t value) = 0;
 	/**

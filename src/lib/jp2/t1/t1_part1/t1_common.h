@@ -47,7 +47,6 @@ const uint8_t grk_cblk_enc_compressed_data_pad_left = 2;
 
 namespace grk
 {
-
 #define T1_NUMCTXS_ZC 9
 #define T1_NUMCTXS_SC 5
 #define T1_NUMCTXS_MAG 3
@@ -60,7 +59,6 @@ namespace grk
 #define T1_CTXNO_AGG (T1_CTXNO_MAG + T1_NUMCTXS_MAG)
 #define T1_CTXNO_UNI (T1_CTXNO_AGG + T1_NUMCTXS_AGG)
 #define T1_NUMCTXS (T1_CTXNO_UNI + T1_NUMCTXS_UNI)
-
 
 struct pass_enc
 {

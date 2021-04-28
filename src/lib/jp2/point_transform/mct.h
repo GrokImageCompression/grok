@@ -22,12 +22,10 @@
 #pragma once
 namespace grk
 {
-
-struct ShiftInfo{
-	ShiftInfo(int32_t mn,int32_t mx, int32_t shift) : _min(mn),_max(mx), _shift(shift)
-	{}
-	ShiftInfo() : ShiftInfo(0,0,0)
-	{}
+struct ShiftInfo
+{
+	ShiftInfo(int32_t mn, int32_t mx, int32_t shift) : _min(mn), _max(mx), _shift(shift) {}
+	ShiftInfo() : ShiftInfo(0, 0, 0) {}
 	int32_t _min;
 	int32_t _max;
 	int32_t _shift;
@@ -125,7 +123,6 @@ class mct
 	 */
 	static void decompress_dc_shift_irrev(Tile* tile, GrkImage* image,
 										  TileComponentCodingParams* tccps, uint32_t compno);
-
 };
 
 /* ----------------------------------------------------------------------- */

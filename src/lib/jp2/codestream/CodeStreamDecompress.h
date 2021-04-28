@@ -282,8 +282,7 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	 *              it is changed by the function.
 	 *
 	 */
-	bool read_SQcd_SQcc(bool fromQCC, uint32_t compno, uint8_t* headerData,
-						uint16_t* header_size);
+	bool read_SQcd_SQcc(bool fromQCC, uint32_t compno, uint8_t* headerData, uint16_t* header_size);
 	/**
 	 * Merges all PPM markers read (Packed headers, main header)
 	 *

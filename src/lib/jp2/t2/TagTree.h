@@ -25,11 +25,11 @@
 
 namespace grk
 {
-
 /**
  Tag node
  */
-template<typename T> struct TagTreeNode
+template<typename T>
+struct TagTreeNode
 {
 	TagTreeNode() : parent(nullptr), value(0), low(0), known(false) {}
 
@@ -42,7 +42,8 @@ template<typename T> struct TagTreeNode
 /**
  Tag tree
  */
-template<typename T> class TagTree
+template<typename T>
+class TagTree
 {
   public:
 	/**
@@ -116,7 +117,8 @@ template<typename T> class TagTree
 		delete[] nodes;
 	}
 
-	constexpr T getUninitializedValue(void){
+	constexpr T getUninitializedValue(void)
+	{
 		return (std::numeric_limits<T>::max)();
 	}
 	/**
@@ -216,7 +218,7 @@ template<typename T> class TagTree
 		T low = 0;
 		while(true)
 		{
-			if(node->low <  low)
+			if(node->low < low)
 				node->low = low;
 			else
 				low = node->low;
@@ -224,11 +226,13 @@ template<typename T> class TagTree
 			{
 				uint32_t temp = 0;
 				bio->read(&temp, 1);
-				if(temp) {
+				if(temp)
+				{
 					node->value = T(low);
 					break;
 				}
-				else {
+				else
+				{
 					++low;
 				}
 			}
@@ -239,6 +243,7 @@ template<typename T> class TagTree
 		}
 		*value = node->value;
 	}
+
   private:
 	uint32_t numleafsh;
 	uint32_t numleafsv;
@@ -248,6 +253,5 @@ template<typename T> class TagTree
 
 typedef TagTree<uint8_t> TagTreeU8;
 typedef TagTree<uint16_t> TagTreeU16;
-
 
 } // namespace grk

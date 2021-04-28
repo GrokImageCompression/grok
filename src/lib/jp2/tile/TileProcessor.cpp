@@ -28,8 +28,8 @@ TileProcessor::TileProcessor(CodeStream* codeStream, IBufferedStream* stream, bo
 	  current_plugin_tile(codeStream->getCurrentPluginTile()),
 	  wholeTileDecompress(isWholeTileDecompress), m_cp(codeStream->getCodingParams()),
 	  packetLengthCache(PacketLengthCache(m_cp)), m_stream(stream), m_corrupt_packet(false),
-	  newTilePartProgressionPosition(0), m_tcp(nullptr), truncated(false), m_image(nullptr), m_isCompressor(isCompressor),
-	  preCalculatedTileLen(0)
+	  newTilePartProgressionPosition(0), m_tcp(nullptr), truncated(false), m_image(nullptr),
+	  m_isCompressor(isCompressor), preCalculatedTileLen(0)
 {
 	tile = new Tile();
 	tile->comps = new TileComponent[headerImage->numcomps];
@@ -43,13 +43,16 @@ TileProcessor::~TileProcessor()
 	if(m_image)
 		grk_object_unref(&m_image->obj);
 }
-IBufferedStream* TileProcessor::getStream(void){
+IBufferedStream* TileProcessor::getStream(void)
+{
 	return m_stream;
 }
-uint32_t TileProcessor::getPreCalculatedTileLen(void){
+uint32_t TileProcessor::getPreCalculatedTileLen(void)
+{
 	return preCalculatedTileLen;
 }
-bool TileProcessor::canPreCalculateTileLen(void){
+bool TileProcessor::canPreCalculateTileLen(void)
+{
 	return !m_cp->m_coding_params.m_enc.m_enableTilePartGeneration;
 }
 void TileProcessor::generateImage(GrkImage* src_image, Tile* src_tile)
@@ -233,18 +236,20 @@ bool TileProcessor::doCompress(void)
 		packetLengthCache.createMarkers(m_stream);
 	// 2. rate control
 	uint32_t allPacketBytes = 0;
-	if (!rateAllocate(&allPacketBytes))
+	if(!rateAllocate(&allPacketBytes))
 		return false;
 	m_packetTracker.clear();
 
-	if (canPreCalculateTileLen()) {
+	if(canPreCalculateTileLen())
+	{
 		// SOT marker
 		preCalculatedTileLen = sot_marker_segment_len;
 		// POC marker
-		if (canWritePocMarker())
-			preCalculatedTileLen += CodeStreamCompress::getPocSize(tile->numcomps, 1 + m_tcp->numpocs);
+		if(canWritePocMarker())
+			preCalculatedTileLen +=
+				CodeStreamCompress::getPocSize(tile->numcomps, 1 + m_tcp->numpocs);
 		// calculate PLT marker length
-		if (packetLengthCache.getMarkers())
+		if(packetLengthCache.getMarkers())
 			preCalculatedTileLen += packetLengthCache.getMarkers()->write(true);
 		// calculate SOD marker length
 		preCalculatedTileLen += 2;
@@ -253,7 +258,8 @@ bool TileProcessor::doCompress(void)
 	}
 	return true;
 }
-bool TileProcessor::canWritePocMarker(void){
+bool TileProcessor::canWritePocMarker(void)
+{
 	bool firstTilePart = (m_tileIndex == 0);
 
 	// note: DCP standard does not allow POC marker
@@ -674,13 +680,8 @@ bool TileProcessor::encodeT2(uint32_t* tileBytesWritten)
 		}
 	}
 #endif
-	if(!l_t2->compressPackets(m_tileIndex,
-								m_tcp->numlayers,
-								m_stream,
-								tileBytesWritten,
-								m_first_poc_tile_part,
-								newTilePartProgressionPosition,
-								pino))
+	if(!l_t2->compressPackets(m_tileIndex, m_tcp->numlayers, m_stream, tileBytesWritten,
+							  m_first_poc_tile_part, newTilePartProgressionPosition, pino))
 	{
 		delete l_t2;
 		return false;
@@ -908,7 +909,8 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 		{
 			buff = m_stream->getZeroCopyPtr();
 		}
-		else {
+		else
+		{
 			try
 			{
 				buff = new uint8_t[len];
@@ -931,7 +933,7 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 	return true;
 }
 // RATE CONTROL ////////////////////////////////////////////
-bool TileProcessor::rateAllocate(uint32_t *allPacketBytes)
+bool TileProcessor::rateAllocate(uint32_t* allPacketBytes)
 {
 	// rate control by rate/distortion or fixed quality
 	switch(m_cp->m_coding_params.m_enc.rateControlAlgorithm)
@@ -1110,12 +1112,9 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 	{
 		// simulation will generate correct PLT lengths
 		// and correct tile length
-		return t2.compressPacketsSimulate(m_tileIndex,
-									0 + 1U,
-									allPacketBytes,
-									UINT_MAX,
-									newTilePartProgressionPosition,
-									packetLengthCache.getMarkers());
+		return t2.compressPacketsSimulate(m_tileIndex, 0 + 1U, allPacketBytes, UINT_MAX,
+										  newTilePartProgressionPosition,
+										  packetLengthCache.getMarkers());
 	}
 
 	uint32_t min_slope = rateInfo.getMinimumThresh();
@@ -1145,9 +1144,9 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 				prevthresh = thresh;
 				if(m_cp->m_coding_params.m_enc.m_allocationByFixedQuality)
 				{
-					double distoachieved =
-						layno == 0 ? tile->layerDistoration[0]
-								   : cumulativeDistortion[layno - 1] + tile->layerDistoration[layno];
+					double distoachieved = layno == 0 ? tile->layerDistoration[0]
+													  : cumulativeDistortion[layno - 1] +
+															tile->layerDistoration[layno];
 
 					if(distoachieved < distortionTarget)
 					{
@@ -1159,10 +1158,8 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 				else
 				{
 					if(!t2.compressPacketsSimulate(m_tileIndex, (uint16_t)(layno + 1U),
-													allPacketBytes,
-													maxLayerLength,
-													newTilePartProgressionPosition,
-													nullptr))
+												   allPacketBytes, maxLayerLength,
+												   newTilePartProgressionPosition, nullptr))
 					{
 						lowerBound = thresh;
 						continue;
@@ -1175,8 +1172,9 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 			// start by including everything in this layer
 			uint32_t goodthresh = upperBound;
 			makeLayerFeasible(layno, (uint16_t)goodthresh, true);
-			cumulativeDistortion[layno] = (layno == 0) ? tile->layerDistoration[0]
-										   : (cumulativeDistortion[layno - 1] + tile->layerDistoration[layno]);
+			cumulativeDistortion[layno] =
+				(layno == 0) ? tile->layerDistoration[0]
+							 : (cumulativeDistortion[layno - 1] + tile->layerDistoration[layno]);
 			// upper bound for next layer is initialized to lowerBound for current layer, minus one
 			upperBound = lowerBound - 1;
 		}
@@ -1188,12 +1186,9 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 
 	// final simulation will generate correct PLT lengths
 	// and correct tile length
-	return t2.compressPacketsSimulate(m_tileIndex,
-								tcp->numlayers,
-								allPacketBytes,
-								maxLayerLength,
-								newTilePartProgressionPosition,
-								packetLengthCache.getMarkers());
+	return t2.compressPacketsSimulate(m_tileIndex, tcp->numlayers, allPacketBytes, maxLayerLength,
+									  newTilePartProgressionPosition,
+									  packetLengthCache.getMarkers());
 }
 /*
  Simple bisect algorithm to calculate optimal layer truncation points
@@ -1277,13 +1272,9 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 	{
 		// simulation will generate correct PLT lengths
 		// and correct tile length
-		return t2.compressPacketsSimulate(m_tileIndex,
-									0 + 1U,
-									allPacketBytes,
-									UINT_MAX,
-									newTilePartProgressionPosition,
-									packetLengthCache.getMarkers());
-
+		return t2.compressPacketsSimulate(m_tileIndex, 0 + 1U, allPacketBytes, UINT_MAX,
+										  newTilePartProgressionPosition,
+										  packetLengthCache.getMarkers());
 	}
 	double cumulativeDistortion[maxCompressLayersGRK];
 	double upperBound = max_slope;
@@ -1292,8 +1283,8 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 	uint32_t maxLayerLength = UINT_MAX;
 	for(uint16_t layno = 0; layno < m_tcp->numlayers; layno++)
 	{
-		maxLayerLength = (m_tcp->rates[layno] > 0.0f) ?
-				(uint32_t)ceil(m_tcp->rates[layno]) : UINT_MAX;
+		maxLayerLength =
+			(m_tcp->rates[layno] > 0.0f) ? (uint32_t)ceil(m_tcp->rates[layno]) : UINT_MAX;
 		if(layerNeedsRateControl(layno))
 		{
 			double lowerBound = min_slope;
@@ -1319,9 +1310,9 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 				prevthresh = thresh;
 				if(m_cp->m_coding_params.m_enc.m_allocationByFixedQuality)
 				{
-					double distoachieved =
-						layno == 0 ? tile->layerDistoration[0]
-								   : cumulativeDistortion[layno - 1] + tile->layerDistoration[layno];
+					double distoachieved = layno == 0 ? tile->layerDistoration[0]
+													  : cumulativeDistortion[layno - 1] +
+															tile->layerDistoration[layno];
 					if(distoachieved < distortionTarget)
 					{
 						upperBound = thresh;
@@ -1331,12 +1322,9 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 				}
 				else
 				{
-					if(!t2.compressPacketsSimulate(m_tileIndex,
-													layno + 1U,
-													allPacketBytes,
-													maxLayerLength,
-													newTilePartProgressionPosition,
-													nullptr))
+					if(!t2.compressPacketsSimulate(m_tileIndex, layno + 1U, allPacketBytes,
+												   maxLayerLength, newTilePartProgressionPosition,
+												   nullptr))
 					{
 						lowerBound = thresh;
 						continue;
@@ -1347,8 +1335,9 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 			// choose conservative value for goodthresh
 			goodthresh = (upperBound == -1) ? thresh : upperBound;
 			makeLayerSimple(layno, goodthresh, true);
-			cumulativeDistortion[layno] = (layno == 0) ? tile->layerDistoration[0]
-										   : (cumulativeDistortion[layno - 1] + tile->layerDistoration[layno]);
+			cumulativeDistortion[layno] =
+				(layno == 0) ? tile->layerDistoration[0]
+							 : (cumulativeDistortion[layno - 1] + tile->layerDistoration[layno]);
 
 			// upper bound for next layer will equal lowerBound for previous layer, minus one
 			upperBound = lowerBound - 1;
@@ -1361,13 +1350,10 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 	}
 	// final simulation will generate correct PLT lengths
 	// and correct tile length
-	//GRK_INFO("Rate control final simulation");
-	return t2.compressPacketsSimulate(m_tileIndex,
-								m_tcp->numlayers,
-								allPacketBytes,
-								maxLayerLength,
-								newTilePartProgressionPosition,
-								packetLengthCache.getMarkers());
+	// GRK_INFO("Rate control final simulation");
+	return t2.compressPacketsSimulate(m_tileIndex, m_tcp->numlayers, allPacketBytes, maxLayerLength,
+									  newTilePartProgressionPosition,
+									  packetLengthCache.getMarkers());
 }
 static void prepareBlockForFirstLayer(CompressCodeblock* cblk)
 {

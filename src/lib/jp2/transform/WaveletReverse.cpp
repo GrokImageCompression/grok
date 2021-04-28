@@ -29,190 +29,202 @@
 #include <hwy/foreach_target.h>
 #include <hwy/highway.h>
 HWY_BEFORE_NAMESPACE();
-namespace grk {
-namespace HWY_NAMESPACE {
-using namespace hwy::HWY_NAMESPACE;
+namespace grk
+{
+namespace HWY_NAMESPACE
+{
+	using namespace hwy::HWY_NAMESPACE;
 
-static size_t hwy_num_lanes(void){
-	const HWY_FULL(int32_t) di;
-	return Lanes(di);
-}
+	static size_t hwy_num_lanes(void)
+	{
+		const HWY_FULL(int32_t) di;
+		return Lanes(di);
+	}
 
 #define HWY_PLL_COLS_53 (2 * Lanes(di))
 
-static void hwy_decompress_v_final_memcpy_53(const int32_t* buf, const uint32_t height, int32_t* dest,
-										 const size_t strideDest)
-{
-	const HWY_FULL(int32_t) di;
-	for(uint32_t i = 0; i < height; ++i)
+	static void hwy_decompress_v_final_memcpy_53(const int32_t* buf, const uint32_t height,
+												 int32_t* dest, const size_t strideDest)
 	{
-		StoreU(Load(di,buf + HWY_PLL_COLS_53 * i + 0),di,&dest[(size_t)i * strideDest + 0]);
-		StoreU(Load(di,buf + HWY_PLL_COLS_53 * i + Lanes(di)),di,dest+(size_t)i * strideDest + Lanes(di));
-	}
-}
-/** Vertical inverse 5x3 wavelet transform for 8 columns in SSE2, or
- * 16 in AVX2, when top-most pixel is on even coordinate */
-static void hwy_decompress_v_cas0_mcols_53(int32_t* buf, int32_t* bandL, /* even */
-													const uint32_t hL, const size_t strideL,
-													int32_t* bandH, /* odd */
-													const uint32_t hH, const size_t strideH,
-													int32_t* dest, const uint32_t strideDest)
-{
-	const HWY_FULL(int32_t) di;
-	auto two = Set(di,2);
-
-	const uint32_t total_height = hL + hH;
-	assert(total_height > 1);
-
-	/* Note: loads of input even/odd values must be done in a unaligned */
-	/* fashion. But stores in tmp can be done with aligned store, since */
-	/* the temporary buffer is properly aligned */
-	assert((size_t)buf % (sizeof(int32_t) * Lanes(di)) == 0);
-
-	auto s1n_0 = LoadU(di,bandL + 0);
-	auto s1n_1 = LoadU(di,bandL + Lanes(di));
-	auto d1n_0 = LoadU(di,bandH);
-	auto d1n_1 = LoadU(di,bandH + Lanes(di));
-
-	/* s0n = s1n - ((d1n + 1) >> 1); <==> */
-	/* s0n = s1n - ((d1n + d1n + 2) >> 2); */
-	auto s0n_0 = s1n_0 - ShiftRight<2>(d1n_0 + d1n_0 + two);
-	auto s0n_1 = s1n_1 - ShiftRight<2>(d1n_1 + d1n_1 + two);
-
-	uint32_t i = 0;
-	if(total_height > 3)
-	{
-		uint32_t j;
-		for(i = 0, j = 1; i < (total_height - 3); i += 2, j++)
+		const HWY_FULL(int32_t) di;
+		for(uint32_t i = 0; i < height; ++i)
 		{
-			auto d1c_0 = d1n_0;
-			auto s0c_0 = s0n_0;
-			auto d1c_1 = d1n_1;
-			auto s0c_1 = s0n_1;
-
-			s1n_0 = LoadU(di,bandL + j * strideL);
-			s1n_1 = LoadU(di,bandL + j * strideL + Lanes(di));
-			d1n_0 = LoadU(di,bandH + j * strideH);
-			d1n_1 = LoadU(di,bandH + j * strideH + Lanes(di));
-
-			/*s0n = s1n - ((d1c + d1n + 2) >> 2);*/
-			s0n_0 = s1n_0 - ShiftRight<2>(d1c_0 + d1n_0 + two);
-			s0n_1 = s1n_1 - ShiftRight<2>(d1c_1 + d1n_1 + two);
-
-			Store(s0c_0,di,buf + HWY_PLL_COLS_53 * (i + 0));
-			Store(s0c_1,di,buf + HWY_PLL_COLS_53 * (i + 0) + Lanes(di));
-
-			/* d1c + ((s0c + s0n) >> 1) */
-			Store(d1c_0 + ShiftRight<1>(s0c_0 + s0n_0),di,buf + HWY_PLL_COLS_53 * (i + 1) + 0);
-			Store(d1c_1 + ShiftRight<1>(s0c_1 + s0n_1),di,buf + HWY_PLL_COLS_53 * (i + 1) + Lanes(di) );
+			StoreU(Load(di, buf + HWY_PLL_COLS_53 * i + 0), di, &dest[(size_t)i * strideDest + 0]);
+			StoreU(Load(di, buf + HWY_PLL_COLS_53 * i + Lanes(di)), di,
+				   dest + (size_t)i * strideDest + Lanes(di));
 		}
 	}
-
-	Store(s0n_0,di,buf + HWY_PLL_COLS_53 * (i + 0) + 0);
-	Store(s0n_1,di,buf + HWY_PLL_COLS_53 * (i + 0) + Lanes(di));
-
-	if(total_height & 1)
+	/** Vertical inverse 5x3 wavelet transform for 8 columns in SSE2, or
+	 * 16 in AVX2, when top-most pixel is on even coordinate */
+	static void hwy_decompress_v_cas0_mcols_53(int32_t* buf, int32_t* bandL, /* even */
+											   const uint32_t hL, const size_t strideL,
+											   int32_t* bandH, /* odd */
+											   const uint32_t hH, const size_t strideH,
+											   int32_t* dest, const uint32_t strideDest)
 	{
-		s1n_0 = LoadU(di,bandL + (size_t)((total_height - 1) / 2) * strideL);
-		/* tmp_len_minus_1 = s1n - ((d1n + 1) >> 1); */
-		auto tmp_len_minus_1 = s1n_0 - ShiftRight<2>(d1n_0 + d1n_0 + two);
-		Store(tmp_len_minus_1,di,buf + HWY_PLL_COLS_53 * (total_height - 1));
-		/* d1n + ((s0n + tmp_len_minus_1) >> 1) */
-		Store(d1n_0 + ShiftRight<1>(s0n_0 + tmp_len_minus_1),di,buf + HWY_PLL_COLS_53 * (total_height - 2));
+		const HWY_FULL(int32_t) di;
+		auto two = Set(di, 2);
 
-		s1n_1 = LoadU(di,bandL + (size_t)((total_height - 1) / 2) * strideL + Lanes(di));
-		/* tmp_len_minus_1 = s1n - ((d1n + 1) >> 1); */
-		tmp_len_minus_1 = s1n_1 - ShiftRight<2>(d1n_1 + d1n_1 + two);
-		Store(tmp_len_minus_1,di,buf + HWY_PLL_COLS_53 * (total_height - 1) + Lanes(di));
-		/* d1n + ((s0n + tmp_len_minus_1) >> 1) */
-		Store(d1n_1 + ShiftRight<1>(s0n_1 + tmp_len_minus_1),di,buf + HWY_PLL_COLS_53 * (total_height - 2) + Lanes(di));
+		const uint32_t total_height = hL + hH;
+		assert(total_height > 1);
+
+		/* Note: loads of input even/odd values must be done in a unaligned */
+		/* fashion. But stores in tmp can be done with aligned store, since */
+		/* the temporary buffer is properly aligned */
+		assert((size_t)buf % (sizeof(int32_t) * Lanes(di)) == 0);
+
+		auto s1n_0 = LoadU(di, bandL + 0);
+		auto s1n_1 = LoadU(di, bandL + Lanes(di));
+		auto d1n_0 = LoadU(di, bandH);
+		auto d1n_1 = LoadU(di, bandH + Lanes(di));
+
+		/* s0n = s1n - ((d1n + 1) >> 1); <==> */
+		/* s0n = s1n - ((d1n + d1n + 2) >> 2); */
+		auto s0n_0 = s1n_0 - ShiftRight<2>(d1n_0 + d1n_0 + two);
+		auto s0n_1 = s1n_1 - ShiftRight<2>(d1n_1 + d1n_1 + two);
+
+		uint32_t i = 0;
+		if(total_height > 3)
+		{
+			uint32_t j;
+			for(i = 0, j = 1; i < (total_height - 3); i += 2, j++)
+			{
+				auto d1c_0 = d1n_0;
+				auto s0c_0 = s0n_0;
+				auto d1c_1 = d1n_1;
+				auto s0c_1 = s0n_1;
+
+				s1n_0 = LoadU(di, bandL + j * strideL);
+				s1n_1 = LoadU(di, bandL + j * strideL + Lanes(di));
+				d1n_0 = LoadU(di, bandH + j * strideH);
+				d1n_1 = LoadU(di, bandH + j * strideH + Lanes(di));
+
+				/*s0n = s1n - ((d1c + d1n + 2) >> 2);*/
+				s0n_0 = s1n_0 - ShiftRight<2>(d1c_0 + d1n_0 + two);
+				s0n_1 = s1n_1 - ShiftRight<2>(d1c_1 + d1n_1 + two);
+
+				Store(s0c_0, di, buf + HWY_PLL_COLS_53 * (i + 0));
+				Store(s0c_1, di, buf + HWY_PLL_COLS_53 * (i + 0) + Lanes(di));
+
+				/* d1c + ((s0c + s0n) >> 1) */
+				Store(d1c_0 + ShiftRight<1>(s0c_0 + s0n_0), di,
+					  buf + HWY_PLL_COLS_53 * (i + 1) + 0);
+				Store(d1c_1 + ShiftRight<1>(s0c_1 + s0n_1), di,
+					  buf + HWY_PLL_COLS_53 * (i + 1) + Lanes(di));
+			}
+		}
+
+		Store(s0n_0, di, buf + HWY_PLL_COLS_53 * (i + 0) + 0);
+		Store(s0n_1, di, buf + HWY_PLL_COLS_53 * (i + 0) + Lanes(di));
+
+		if(total_height & 1)
+		{
+			s1n_0 = LoadU(di, bandL + (size_t)((total_height - 1) / 2) * strideL);
+			/* tmp_len_minus_1 = s1n - ((d1n + 1) >> 1); */
+			auto tmp_len_minus_1 = s1n_0 - ShiftRight<2>(d1n_0 + d1n_0 + two);
+			Store(tmp_len_minus_1, di, buf + HWY_PLL_COLS_53 * (total_height - 1));
+			/* d1n + ((s0n + tmp_len_minus_1) >> 1) */
+			Store(d1n_0 + ShiftRight<1>(s0n_0 + tmp_len_minus_1), di,
+				  buf + HWY_PLL_COLS_53 * (total_height - 2));
+
+			s1n_1 = LoadU(di, bandL + (size_t)((total_height - 1) / 2) * strideL + Lanes(di));
+			/* tmp_len_minus_1 = s1n - ((d1n + 1) >> 1); */
+			tmp_len_minus_1 = s1n_1 - ShiftRight<2>(d1n_1 + d1n_1 + two);
+			Store(tmp_len_minus_1, di, buf + HWY_PLL_COLS_53 * (total_height - 1) + Lanes(di));
+			/* d1n + ((s0n + tmp_len_minus_1) >> 1) */
+			Store(d1n_1 + ShiftRight<1>(s0n_1 + tmp_len_minus_1), di,
+				  buf + HWY_PLL_COLS_53 * (total_height - 2) + Lanes(di));
+		}
+		else
+		{
+			Store(d1n_0 + s0n_0, di, buf + HWY_PLL_COLS_53 * (total_height - 1) + 0);
+			Store(d1n_1 + s0n_1, di, buf + HWY_PLL_COLS_53 * (total_height - 1) + Lanes(di));
+		}
+		hwy_decompress_v_final_memcpy_53(buf, total_height, dest, strideDest);
 	}
-	else
+
+	/** Vertical inverse 5x3 wavelet transform for 8 columns in SSE2, or
+	 * 16 in AVX2, when top-most pixel is on odd coordinate */
+	static void hwy_decompress_v_cas1_mcols_53(int32_t* buf, int32_t* bandL, const uint32_t hL,
+											   const uint32_t strideL, int32_t* bandH,
+											   const uint32_t hH, const uint32_t strideH,
+											   int32_t* dest, const uint32_t strideDest)
 	{
-		Store(d1n_0 + s0n_0,di,buf + HWY_PLL_COLS_53 * (total_height - 1) + 0);
-		Store(d1n_1 + s0n_1,di,buf + HWY_PLL_COLS_53 * (total_height - 1) + Lanes(di));
-	}
-	hwy_decompress_v_final_memcpy_53(buf, total_height, dest, strideDest);
-}
+		const HWY_FULL(int32_t) di;
+		auto two = Set(di, 2);
 
-/** Vertical inverse 5x3 wavelet transform for 8 columns in SSE2, or
- * 16 in AVX2, when top-most pixel is on odd coordinate */
-static void hwy_decompress_v_cas1_mcols_53(int32_t* buf, int32_t* bandL, const uint32_t hL,
-													const uint32_t strideL, int32_t* bandH,
-													const uint32_t hH, const uint32_t strideH,
-													int32_t* dest, const uint32_t strideDest)
-{
-	const HWY_FULL(int32_t) di;
-	auto two = Set(di,2);
+		const uint32_t total_height = hL + hH;
+		assert(total_height > 2);
+		/* Note: loads of input even/odd values must be done in a unaligned */
+		/* fashion. But stores in buf can be done with aligned store, since */
+		/* the temporary buffer is properly aligned */
+		assert((size_t)buf % (sizeof(int32_t) * Lanes(di)) == 0);
 
-	const uint32_t total_height = hL + hH;
-	assert(total_height > 2);
-	/* Note: loads of input even/odd values must be done in a unaligned */
-	/* fashion. But stores in buf can be done with aligned store, since */
-	/* the temporary buffer is properly aligned */
-	assert((size_t)buf % (sizeof(int32_t) * Lanes(di)) == 0);
+		const int32_t* in_even = bandH;
+		const int32_t* in_odd = bandL;
+		auto s1_0 = LoadU(di, in_even + strideH);
+		/* in_odd[0] - ((in_even[0] + s1 + 2) >> 2); */
+		auto dc_0 = LoadU(di, in_odd + 0) - ShiftRight<2>(LoadU(di, in_even + 0) + s1_0 + two);
+		Store(LoadU(di, in_even + 0) + dc_0, di, buf + HWY_PLL_COLS_53 * 0);
 
-	const int32_t* in_even = bandH;
-	const int32_t* in_odd = bandL;
-	auto s1_0 = LoadU(di,in_even + strideH);
-	/* in_odd[0] - ((in_even[0] + s1 + 2) >> 2); */
-	auto dc_0 = LoadU(di,in_odd + 0) - ShiftRight<2>(LoadU(di,in_even + 0) + s1_0 + two);
-	Store(LoadU(di,in_even + 0)+ dc_0,di,buf + HWY_PLL_COLS_53 * 0);
+		auto s1_1 = LoadU(di, in_even + strideH + Lanes(di));
+		/* in_odd[0] - ((in_even[0] + s1 + 2) >> 2); */
+		auto dc_1 = LoadU(di, in_odd + Lanes(di)) -
+					ShiftRight<2>(LoadU(di, in_even + Lanes(di)) + s1_1 + two);
+		Store(LoadU(di, in_even + Lanes(di)) + dc_1, di, buf + HWY_PLL_COLS_53 * 0 + Lanes(di));
 
-	auto s1_1 = LoadU(di,in_even + strideH + Lanes(di));
-	/* in_odd[0] - ((in_even[0] + s1 + 2) >> 2); */
-	auto dc_1 = LoadU(di,in_odd + Lanes(di)) - ShiftRight<2>(LoadU(di,in_even + Lanes(di))+ s1_1 + two);
-	Store(LoadU(di,in_even + Lanes(di)) + dc_1,di,buf + HWY_PLL_COLS_53 * 0 + Lanes(di));
+		uint32_t i;
+		size_t j;
+		for(i = 1, j = 1; i < (total_height - 2 - !(total_height & 1)); i += 2, j++)
+		{
+			auto s2_0 = LoadU(di, in_even + (j + 1) * strideH);
+			auto s2_1 = LoadU(di, in_even + (j + 1) * strideH + Lanes(di));
 
-	uint32_t i;
-	size_t j;
-	for(i = 1, j = 1; i < (total_height - 2 - !(total_height & 1)); i += 2, j++)
-	{
-		auto s2_0 = LoadU(di,in_even + (j + 1) * strideH);
-		auto s2_1 = LoadU(di,in_even + (j + 1) * strideH + Lanes(di));
+			/* dn = in_odd[j * stride] - ((s1 + s2 + 2) >> 2); */
+			auto dn_0 = LoadU(di, in_odd + j * strideL) - ShiftRight<2>(s1_0 + s2_0 + two);
+			auto dn_1 =
+				LoadU(di, in_odd + j * strideL + Lanes(di)) - ShiftRight<2>(s1_1 + s2_1 + two);
 
-		/* dn = in_odd[j * stride] - ((s1 + s2 + 2) >> 2); */
-		auto dn_0 = LoadU(di,in_odd + j * strideL) - ShiftRight<2>(s1_0+ s2_0+two);
-		auto dn_1 =
-			LoadU(di,in_odd + j * strideL + Lanes(di))- ShiftRight<2>(s1_1 + s2_1 + two);
+			Store(dc_0, di, buf + HWY_PLL_COLS_53 * i);
+			Store(dc_1, di, buf + HWY_PLL_COLS_53 * i + Lanes(di));
 
+			/* buf[i + 1] = s1 + ((dn + dc) >> 1); */
+			Store(s1_0 + ShiftRight<1>(dn_0 + dc_0), di, buf + HWY_PLL_COLS_53 * (i + 1) + 0);
+			Store(s1_1 + ShiftRight<1>(dn_1 + dc_1), di,
+				  buf + HWY_PLL_COLS_53 * (i + 1) + Lanes(di));
+
+			dc_0 = dn_0;
+			s1_0 = s2_0;
+			dc_1 = dn_1;
+			s1_1 = s2_1;
+		}
 		Store(dc_0, di, buf + HWY_PLL_COLS_53 * i);
 		Store(dc_1, di, buf + HWY_PLL_COLS_53 * i + Lanes(di));
 
-		/* buf[i + 1] = s1 + ((dn + dc) >> 1); */
-		Store(s1_0 + ShiftRight<1>(dn_0+dc_0),di,buf + HWY_PLL_COLS_53 * (i + 1) + 0);
-		Store(s1_1+ ShiftRight<1>(dn_1+dc_1),di,buf + HWY_PLL_COLS_53 * (i + 1) + Lanes(di));
+		if(!(total_height & 1))
+		{
+			/*dn = in_odd[(len / 2 - 1) * stride] - ((s1 + 1) >> 1); */
+			auto dn_0 = LoadU(di, in_odd + (size_t)(total_height / 2 - 1) * strideL) -
+						ShiftRight<2>(s1_0 + s1_0 + two);
+			auto dn_1 = LoadU(di, in_odd + (size_t)(total_height / 2 - 1) * strideL + Lanes(di)) -
+						ShiftRight<2>(s1_1 + s1_1 + two);
 
-		dc_0 = dn_0;
-		s1_0 = s2_0;
-		dc_1 = dn_1;
-		s1_1 = s2_1;
+			/* buf[len - 2] = s1 + ((dn + dc) >> 1); */
+			Store(s1_0 + ShiftRight<1>(dn_0 + dc_0), di,
+				  buf + HWY_PLL_COLS_53 * (total_height - 2) + 0);
+			Store(s1_1 + ShiftRight<1>(dn_1 + dc_1), di,
+				  buf + HWY_PLL_COLS_53 * (total_height - 2) + Lanes(di));
+
+			Store(dn_0, di, buf + HWY_PLL_COLS_53 * (total_height - 1) + 0);
+			Store(dn_1, di, buf + HWY_PLL_COLS_53 * (total_height - 1) + Lanes(di));
+		}
+		else
+		{
+			Store(s1_0 + dc_0, di, buf + HWY_PLL_COLS_53 * (total_height - 1) + 0);
+			Store(s1_1 + dc_1, di, buf + HWY_PLL_COLS_53 * (total_height - 1) + Lanes(di));
+		}
+		hwy_decompress_v_final_memcpy_53(buf, total_height, dest, strideDest);
 	}
-	Store(dc_0,di,buf + HWY_PLL_COLS_53 * i);
-	Store(dc_1,di,buf + HWY_PLL_COLS_53 * i + Lanes(di));
-
-	if(!(total_height & 1))
-	{
-		/*dn = in_odd[(len / 2 - 1) * stride] - ((s1 + 1) >> 1); */
-		auto dn_0 = LoadU(di,in_odd + (size_t)(total_height / 2 - 1) * strideL) -
-						ShiftRight<2>(s1_0+s1_0+two);
-		auto dn_1 = LoadU(di,in_odd + (size_t)(total_height / 2 - 1) * strideL + Lanes(di))-
-						ShiftRight<2>(s1_1+s1_1+two);
-
-		/* buf[len - 2] = s1 + ((dn + dc) >> 1); */
-		Store(s1_0 + ShiftRight<1>(dn_0+dc_0),di,buf + HWY_PLL_COLS_53 * (total_height - 2) + 0);
-		Store(s1_1 + ShiftRight<1>(dn_1+dc_1),di,buf + HWY_PLL_COLS_53 * (total_height - 2) + Lanes(di));
-
-		Store(dn_0,di,buf + HWY_PLL_COLS_53 * (total_height - 1) + 0);
-		Store(dn_1,di,buf + HWY_PLL_COLS_53 * (total_height - 1) + Lanes(di));
-	}
-	else
-	{
-		Store(s1_0+dc_0,di,buf + HWY_PLL_COLS_53 * (total_height - 1) + 0);
-		Store(s1_1+dc_1,di,buf + HWY_PLL_COLS_53 * (total_height - 1) + Lanes(di));
-	}
-	hwy_decompress_v_final_memcpy_53(buf, total_height, dest, strideDest);
-}
 
 } // namespace HWY_NAMESPACE
 } // namespace grk
@@ -604,12 +616,9 @@ static void decompress_v_53(const dwt_data<int32_t>* dwt, int32_t* bandL, const 
 		{
 			/* Same as below general case, except that thanks to SSE2/AVX2 */
 			/* we can efficiently process 8/16 columns in parallel */
-			HWY_DYNAMIC_DISPATCH(hwy_decompress_v_cas0_mcols_53)(dwt->mem, bandL,
-													dwt->sn_full,
-													strideL,
-													bandH,
-													dwt->dn_full, strideH, dest,
-													strideDest);
+			HWY_DYNAMIC_DISPATCH(hwy_decompress_v_cas0_mcols_53)
+			(dwt->mem, bandL, dwt->sn_full, strideL, bandH, dwt->dn_full, strideH, dest,
+			 strideDest);
 			return;
 		}
 		if(total_height > 1)
@@ -642,9 +651,9 @@ static void decompress_v_53(const dwt_data<int32_t>* dwt, int32_t* bandL, const 
 		{
 			/* Same as below general case, except that thanks to SSE2/AVX2 */
 			/* we can efficiently process 8/16 columns in parallel */
-			HWY_DYNAMIC_DISPATCH(hwy_decompress_v_cas1_mcols_53)(dwt->mem, bandL, dwt->sn_full, strideL,
-													bandH, dwt->dn_full, strideH, dest,
-													strideDest);
+			HWY_DYNAMIC_DISPATCH(hwy_decompress_v_cas1_mcols_53)
+			(dwt->mem, bandL, dwt->sn_full, strideL, bandH, dwt->dn_full, strideH, dest,
+			 strideDest);
 			return;
 		}
 		for(uint32_t c = 0; c < nb_cols; c++, bandL++, bandH++, dest++)

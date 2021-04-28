@@ -434,9 +434,11 @@ static bool validateCinema(TCLAP::ValueArg<uint32_t>* arg, uint16_t profile,
 	if(arg->isSet())
 	{
 		uint16_t fps = (uint16_t)arg->getValue();
-		if (fps != 24 && fps != 48){
+		if(fps != 24 && fps != 48)
+		{
 			spdlog::warn("Incorrect digital cinema frame rate {} : "
-						 "		must be either 24 or 48. Ignoring", fps);
+						 "		must be either 24 or 48. Ignoring",
+						 fps);
 			return false;
 		}
 		parameters->rsiz = profile;
@@ -451,9 +453,12 @@ static bool validateCinema(TCLAP::ValueArg<uint32_t>* arg, uint16_t profile,
 			parameters->max_comp_size = GRK_CINEMA_48_COMP;
 			parameters->max_cs_size = GRK_CINEMA_48_CS;
 		}
-		if (profile == GRK_PROFILE_CINEMA_2K){
+		if(profile == GRK_PROFILE_CINEMA_2K)
+		{
 			parameters->numgbits = 1;
-		} else {
+		}
+		else
+		{
 			parameters->numgbits = 2;
 		}
 	}
@@ -579,8 +584,8 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 													false, "", "string", cmd);
 
 		TCLAP::ValueArg<uint32_t> cblkSty("M", "Mode", "Mode", false, 0, "unsigned integer", cmd);
-		TCLAP::ValueArg<uint32_t> guardBits("N", "GuardBits",
-				"Number of guard bits", false, 2, "unsigned integer", cmd);
+		TCLAP::ValueArg<uint32_t> guardBits("N", "GuardBits", "Number of guard bits", false, 2,
+											"unsigned integer", cmd);
 		TCLAP::ValueArg<std::string> commentArg("C", "Comment", "Add a comment", false, "",
 												"string", cmd);
 
@@ -1124,8 +1129,10 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 			}
 		}
 
-		if (guardBits.isSet()){
-			if (guardBits.getValue() > 7){
+		if(guardBits.isSet())
+		{
+			if(guardBits.getValue() > 7)
+			{
 				spdlog::error("Number of guard bits {} is greater than 7", guardBits.getValue());
 				return 1;
 			}

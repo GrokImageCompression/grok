@@ -114,7 +114,8 @@ struct BufferedStream : public IBufferedStream
 	bool hasSeek();
 	bool supportsZeroCopy();
 	uint8_t* getZeroCopyPtr();
-private:
+
+  private:
 	~BufferedStream();
 	/**
 	 * Skip bytes in write stream.

@@ -42,9 +42,8 @@ class BlockCache : public SparseCache<T>
 struct PrecinctImpl
 {
 	PrecinctImpl(bool isCompressor, grkRectU32* bounds, grkPointU32 cblk_expn)
-		: enc(nullptr), dec(nullptr), m_bounds(*bounds),
-		  m_cblk_expn(cblk_expn), m_isCompressor(isCompressor),
-		  incltree(nullptr), imsbtree(nullptr)
+		: enc(nullptr), dec(nullptr), m_bounds(*bounds), m_cblk_expn(cblk_expn),
+		  m_isCompressor(isCompressor), incltree(nullptr), imsbtree(nullptr)
 	{
 		m_cblk_grid =
 			grkRectU32(floordivpow2(bounds->x0, cblk_expn.x), floordivpow2(bounds->y0, cblk_expn.y),
@@ -101,7 +100,8 @@ struct PrecinctImpl
 		delete imsbtree;
 		imsbtree = nullptr;
 	}
-	TagTreeU16* getIncludeTagTree(void){
+	TagTreeU16* getIncludeTagTree(void)
+	{
 		// if cw == 0 or ch == 0,
 		// then the precinct has no code blocks, therefore
 		// no need for inclusion and msb tag trees
@@ -125,7 +125,8 @@ struct PrecinctImpl
 		}
 		return nullptr;
 	}
-	TagTreeU8* getIMsbTagTree(void){
+	TagTreeU8* getIMsbTagTree(void)
+	{
 		// if cw == 0 or ch == 0,
 		// then the precinct has no code blocks, therefore
 		// no need for inclusion and msb tag trees
@@ -155,7 +156,8 @@ struct PrecinctImpl
 	grkRectU32 m_bounds;
 	grkPointU32 m_cblk_expn;
 	bool m_isCompressor;
-private:
+
+  private:
 	TagTreeU16* incltree; /* inclusion tree */
 	TagTreeU8* imsbtree; /* IMSB tree */
 };

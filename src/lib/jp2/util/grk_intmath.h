@@ -57,7 +57,6 @@ static inline uint32_t floordivpow2(uint32_t a, uint32_t b)
 
 uint8_t floorlog2(uint32_t a);
 
-
 /**
  Multiply two fixed-point numbers.
  @param  a N-bit precision fixed point number

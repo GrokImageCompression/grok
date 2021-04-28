@@ -494,8 +494,7 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 bool CodeStreamDecompress::endOfCodeStream(void)
 {
 	return m_decompressorState.getState() == J2K_DEC_STATE_EOC ||
-		   m_decompressorState.getState() == J2K_DEC_STATE_NO_EOC ||
-		   m_stream->numBytesLeft() == 0;
+		   m_decompressorState.getState() == J2K_DEC_STATE_NO_EOC || m_stream->numBytesLeft() == 0;
 }
 bool CodeStreamDecompress::decompressTiles(void)
 {
@@ -2379,8 +2378,7 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 				return false;
 		}
 		// no bytes left and no EOC marker : we're done!
-		if(!m_stream->numBytesLeft() &&
-		   m_decompressorState.getState() == J2K_DEC_STATE_NO_EOC)
+		if(!m_stream->numBytesLeft() && m_decompressorState.getState() == J2K_DEC_STATE_NO_EOC)
 			break;
 		/* If we didn't skip data before, we need to read the SOD marker*/
 		if(!m_decompressorState.skipTileData)

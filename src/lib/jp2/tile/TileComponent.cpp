@@ -86,8 +86,8 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreduce
 	{
 		auto res = tileCompResolution + resno;
 
-		res->set(BufferResWindow<int32_t>::getTileCompBandWindow((uint32_t)(numresolutions - (resno + 1)), BAND_ORIENT_LL,
-									   unreducedTileComp));
+		res->set(BufferResWindow<int32_t>::getTileCompBandWindow(
+			(uint32_t)(numresolutions - (resno + 1)), BAND_ORIENT_LL, unreducedTileComp));
 
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
 		uint32_t precinctWidthExp = m_tccp->precinctWidthExp[resno];
@@ -138,7 +138,8 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreduce
 			band->orientation = orientation;
 			uint32_t numDecomps =
 				(resno == 0) ? (uint32_t)(numresolutions - 1U) : (uint32_t)(numresolutions - resno);
-			band->set(BufferResWindow<int32_t>::getTileCompBandWindow(numDecomps, band->orientation, unreducedTileComp));
+			band->set(BufferResWindow<int32_t>::getTileCompBandWindow(numDecomps, band->orientation,
+																	  unreducedTileComp));
 		}
 	}
 	// set band step size
@@ -335,22 +336,26 @@ bool TileComponent::postProcess(int32_t* srcData, DecompressBlockExec* block)
 	{
 		if(block->qmfbid == 1)
 		{
-			return postDecompressImpl<RoiShiftFilter<int32_t>>(srcData, block, (uint16_t)block->cblk->width());
+			return postDecompressImpl<RoiShiftFilter<int32_t>>(srcData, block,
+															   (uint16_t)block->cblk->width());
 		}
 		else
 		{
-			return postDecompressImpl<RoiScaleFilter<int32_t>>(srcData, block, (uint16_t)block->cblk->width());
+			return postDecompressImpl<RoiScaleFilter<int32_t>>(srcData, block,
+															   (uint16_t)block->cblk->width());
 		}
 	}
 	else
 	{
 		if(block->qmfbid == 1)
 		{
-			return postDecompressImpl<ShiftFilter<int32_t>>(srcData, block, (uint16_t)block->cblk->width());
+			return postDecompressImpl<ShiftFilter<int32_t>>(srcData, block,
+															(uint16_t)block->cblk->width());
 		}
 		else
 		{
-			return postDecompressImpl<ScaleFilter<int32_t>>(srcData, block, (uint16_t)block->cblk->width());
+			return postDecompressImpl<ScaleFilter<int32_t>>(srcData, block,
+															(uint16_t)block->cblk->width());
 		}
 	}
 }
@@ -360,27 +365,28 @@ bool TileComponent::postProcessHT(int32_t* srcData, DecompressBlockExec* block, 
 	{
 		if(block->qmfbid == 1)
 		{
-			return postDecompressImpl<RoiShiftHTFilter<int32_t>>(srcData, block,stride);
+			return postDecompressImpl<RoiShiftHTFilter<int32_t>>(srcData, block, stride);
 		}
 		else
 		{
-			return postDecompressImpl<RoiScaleHTFilter<int32_t>>(srcData, block,stride);
+			return postDecompressImpl<RoiScaleHTFilter<int32_t>>(srcData, block, stride);
 		}
 	}
 	else
 	{
 		if(block->qmfbid == 1)
 		{
-			return postDecompressImpl<ShiftHTFilter<int32_t>>(srcData, block,stride);
+			return postDecompressImpl<ShiftHTFilter<int32_t>>(srcData, block, stride);
 		}
 		else
 		{
-			return postDecompressImpl<ScaleHTFilter<int32_t>>(srcData, block,stride);
+			return postDecompressImpl<ScaleHTFilter<int32_t>>(srcData, block, stride);
 		}
 	}
 }
 template<typename F>
-bool TileComponent::postDecompressImpl(int32_t* srcData, DecompressBlockExec* block, uint16_t stride)
+bool TileComponent::postDecompressImpl(int32_t* srcData, DecompressBlockExec* block,
+									   uint16_t stride)
 {
 	auto cblk = block->cblk;
 

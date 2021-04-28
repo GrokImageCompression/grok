@@ -20,8 +20,7 @@
 
 namespace grk
 {
-SparseBuffer::SparseBuffer() : dataLength(0), currentChunkId(0)
-{}
+SparseBuffer::SparseBuffer() : dataLength(0), currentChunkId(0) {}
 SparseBuffer::~SparseBuffer()
 {
 	cleanup();
