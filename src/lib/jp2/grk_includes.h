@@ -84,10 +84,14 @@
 #define GRK_UNUSED(x) (void)x
 
 #include "simd.h"
+#ifndef _MSC_VER
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
 #include <taskflow/taskflow.hpp>
+#ifndef _MSC_VER
 #pragma GCC diagnostic pop
+#endif
 #include "SequentialCache.h"
 #include "SparseCache.h"
 #include "CodeStreamLimits.h"
