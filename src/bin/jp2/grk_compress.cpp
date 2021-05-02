@@ -1020,61 +1020,61 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 		}
 		if(pocArg.isSet())
 		{
-			uint32_t numpocs = 0; /* number of progression order change (POC) default 0 */
+			uint32_t numProgressions = 0;
 			char* s = (char*)pocArg.getValue().c_str();
 			auto progression = parameters->progression;
 			uint32_t resS, compS, layE, resE, compE;
 
-			while(sscanf(s, "T%u=%u,%u,%u,%u,%u,%4s", &progression[numpocs].tileno, &resS, &compS,
-						 &layE, &resE, &compE, progression[numpocs].progressionString) == 7)
+			while(sscanf(s, "T%u=%u,%u,%u,%u,%u,%4s", &progression[numProgressions].tileno, &resS, &compS,
+						 &layE, &resE, &compE, progression[numProgressions].progressionString) == 7)
 			{
-				progression[numpocs].resS = (uint8_t)resS;
-				progression[numpocs].compS = (uint16_t)compS;
-				progression[numpocs].layE = (uint16_t)layE;
-				progression[numpocs].resE = (uint8_t)resE;
-				progression[numpocs].compE = (uint16_t)compE;
-				progression[numpocs].specifiedCompressionPocProg =
-					getProgression(progression[numpocs].progressionString);
+				progression[numProgressions].resS = (uint8_t)resS;
+				progression[numProgressions].compS = (uint16_t)compS;
+				progression[numProgressions].layE = (uint16_t)layE;
+				progression[numProgressions].resE = (uint8_t)resE;
+				progression[numProgressions].compE = (uint16_t)compE;
+				progression[numProgressions].specifiedCompressionPocProg =
+					getProgression(progression[numProgressions].progressionString);
 				// sanity check on layer
-				if(progression[numpocs].layE > parameters->numlayers)
+				if(progression[numProgressions].layE > parameters->numlayers)
 				{
 					spdlog::warn("End layer {} in POC {} is greater than"
 								 " total number of layers {}. Truncating.",
-								 progression[numpocs].layE, numpocs, parameters->numlayers);
-					progression[numpocs].layE = parameters->numlayers;
+								 progression[numProgressions].layE, numProgressions, parameters->numlayers);
+					progression[numProgressions].layE = parameters->numlayers;
 				}
-				if(progression[numpocs].resE > parameters->numresolution)
+				if(progression[numProgressions].resE > parameters->numresolution)
 				{
 					spdlog::warn("POC end resolution {} cannot be greater than"
 								 "the number of resolutions {}",
-								 progression[numpocs].resE, parameters->numresolution);
-					progression[numpocs].resE = (uint8_t)(parameters->numresolution - 1U);
+								 progression[numProgressions].resE, parameters->numresolution);
+					progression[numProgressions].resE = (uint8_t)(parameters->numresolution - 1U);
 				}
-				if(progression[numpocs].resS >= progression[numpocs].resE)
+				if(progression[numProgressions].resS >= progression[numProgressions].resE)
 				{
 					spdlog::error(
 						"POC beginning resolution must be strictly less than end resolution");
 					return 1;
 				}
-				if(progression[numpocs].compS >= progression[numpocs].compE)
+				if(progression[numProgressions].compS >= progression[numProgressions].compE)
 				{
 					spdlog::error(
 						"POC beginning component must be strictly less than end component");
 					return 1;
 				}
-				numpocs++;
+				numProgressions++;
 				while(*s && *s != '/')
 					s++;
 				if(!*s)
 					break;
 				s++;
 			}
-			if(numpocs == 0)
+			if(numProgressions <= 1)
 			{
-				spdlog::error("POC argument must have at least one progression order change");
+				spdlog::error("POC argument must have at least two progressions");
 				return 1;
 			}
-			parameters->numpocs = numpocs;
+			parameters->numpocs = numProgressions-1;
 		}
 
 		if(sopArg.isSet())
