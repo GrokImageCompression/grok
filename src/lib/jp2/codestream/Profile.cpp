@@ -1100,7 +1100,7 @@ void Profile::set_cinema_parameters(grk_cparameters* parameters, GrkImage* image
 	if(parameters->rsiz == GRK_PROFILE_CINEMA_4K)
 	{
 		Profile::initialise_4K_poc(parameters->progression, parameters->numresolution);
-		parameters->numpocs = 2;
+		parameters->numpocs = 1;
 		parameters->numgbits = 2;
 	}
 	else

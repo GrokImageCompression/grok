@@ -324,17 +324,17 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	uint64_t getNumTilePartsForProgression(uint32_t pino, uint16_t tileno);
 
 	/**
-	 * Checks the progression order changes values. Tells of the poc given as input are valid.
+	 * Validate progression orders
 	 *
-	 * @param       p_pocs                the progression order changes.
-	 * @param       nb_pocs               the number of progression order changes.
-	 * @param       nb_resolutions        the number of resolutions.
-	 * @param       numcomps              the number of components
-	 * @param       numlayers             the number of layers.
+	 * @param       progressions          progression orders.
+	 * @param       numProgressions       number of progression orders.
+	 * @param       numResolutions        number of resolutions.
+	 * @param       numcomps              number of components
+	 * @param       numlayers             number of layers.
 	 *
 	 * @return      true if the pocs are valid.
 	 */
-	bool check_poc_val(const grk_progression* p_pocs, uint32_t nb_pocs, uint8_t nb_resolutions,
+	bool validateProgressionOrders(const grk_progression* progressions, uint32_t numProgressions, uint8_t numResolutions,
 					   uint16_t numcomps, uint16_t numlayers);
 
 	bool init_mct_encoding(TileCodingParams* p_tcp, GrkImage* p_image);

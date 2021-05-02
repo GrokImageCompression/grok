@@ -269,8 +269,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 
 	if(parameters->numpocs)
 	{
-		/* initialisation of POC */
-		if(!check_poc_val(parameters->progression, parameters->numpocs, parameters->numresolution,
+		if(!validateProgressionOrders(parameters->progression, parameters->numpocs+1, parameters->numresolution,
 						  image->numcomps, parameters->numlayers))
 		{
 			GRK_ERROR("Failed to initialize POC");
@@ -400,30 +399,30 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 		{
 			/* initialisation of POC */
 			tcp->POC = true;
-			uint32_t numpocs_tile = 0;
-			for(uint32_t i = 0; i < parameters->numpocs; i++)
+			uint32_t numTileProgressions = 0;
+			for(uint32_t i = 0; i < parameters->numpocs+1; i++)
 			{
 				if(tileno == parameters->progression[i].tileno)
 				{
-					auto tcp_poc = &tcp->progressionOrderChange[numpocs_tile];
+					auto tcp_poc = &tcp->progressionOrderChange[numTileProgressions];
 
-					tcp_poc->resS = parameters->progression[numpocs_tile].resS;
-					tcp_poc->compS = parameters->progression[numpocs_tile].compS;
-					tcp_poc->layE = parameters->progression[numpocs_tile].layE;
-					tcp_poc->resE = parameters->progression[numpocs_tile].resE;
-					tcp_poc->compE = parameters->progression[numpocs_tile].compE;
+					tcp_poc->resS = parameters->progression[numTileProgressions].resS;
+					tcp_poc->compS = parameters->progression[numTileProgressions].compS;
+					tcp_poc->layE = parameters->progression[numTileProgressions].layE;
+					tcp_poc->resE = parameters->progression[numTileProgressions].resE;
+					tcp_poc->compE = parameters->progression[numTileProgressions].compE;
 					tcp_poc->specifiedCompressionPocProg =
-						parameters->progression[numpocs_tile].specifiedCompressionPocProg;
-					tcp_poc->tileno = parameters->progression[numpocs_tile].tileno;
-					numpocs_tile++;
+						parameters->progression[numTileProgressions].specifiedCompressionPocProg;
+					tcp_poc->tileno = parameters->progression[numTileProgressions].tileno;
+					numTileProgressions++;
 				}
 			}
-			if(numpocs_tile == 0)
+			if(numTileProgressions == 0)
 			{
 				GRK_ERROR("Problem with specified progression order changes");
 				return false;
 			}
-			tcp->numpocs = numpocs_tile - 1;
+			tcp->numpocs = numTileProgressions-1;
 		}
 		else
 		{
@@ -1687,7 +1686,7 @@ uint16_t CodeStreamCompress::getPocSize(uint32_t numComps, uint32_t numPocs)
 
 	return (uint16_t)(4 + (5 + 2 * pocRoom) * numPocs);
 }
-bool CodeStreamCompress::check_poc_val(const grk_progression* progressions, uint32_t numPocs,
+bool CodeStreamCompress::validateProgressionOrders(const grk_progression* progressions, uint32_t numProgressions,
 									   uint8_t numResolutions, uint16_t numComps,
 									   uint16_t numLayers)
 {
@@ -1696,14 +1695,12 @@ bool CodeStreamCompress::check_poc_val(const grk_progression* progressions, uint
 	uint32_t step_c = 1;
 	uint32_t step_r = numComps * step_c;
 	uint32_t step_l = numResolutions * step_r;
-	if(numPocs == 0)
-		return true;
 
 	auto packet_array = new uint8_t[(size_t)step_l * numLayers];
 	memset(packet_array, 0, (size_t)step_l * numLayers * sizeof(uint8_t));
 
 	/* iterate through all the pocs */
-	for(i = 0; i < numPocs; ++i)
+	for(i = 0; i < numProgressions; ++i)
 	{
 		auto currentPoc = progressions + i;
 		size_t index = step_r * currentPoc->resS;
