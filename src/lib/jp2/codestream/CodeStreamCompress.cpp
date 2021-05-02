@@ -394,11 +394,8 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 		tcp->csty = parameters->csty;
 		tcp->prg = parameters->prog_order;
 		tcp->mct = parameters->mct;
-		tcp->POC = false;
 		if(parameters->numpocs)
 		{
-			/* initialisation of POC */
-			tcp->POC = true;
 			uint32_t numTileProgressions = 0;
 			for(uint32_t i = 0; i < parameters->numpocs+1; i++)
 			{
@@ -488,7 +485,6 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 
 			if(init_mct_encoding(tcp, image) == false)
 			{
-				/* free will be handled by j2k_destroy */
 				GRK_ERROR("Failed to set up j2k mct compressing");
 				return false;
 			}
@@ -840,7 +836,7 @@ bool CodeStreamCompress::init_header_writing(void)
 
 	if(m_cp.m_coding_params.m_enc.writeTLM)
 		m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_tlm_begin, this));
-	if(m_cp.tcps->numpocs > 0)
+	if(m_cp.tcps->hasPoc())
 		m_procedure_list.push_back(std::bind(&CodeStreamCompress::writePoc, this));
 
 	m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_regions, this));

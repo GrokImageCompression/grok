@@ -76,7 +76,7 @@ TileCodingParams::TileCodingParams()
 	  m_tilePartIndex(-1), numTileParts(0), m_compressedTileData(nullptr), mct_norms(nullptr),
 	  m_mct_decoding_matrix(nullptr), m_mct_coding_matrix(nullptr), m_mct_records(nullptr),
 	  m_nb_mct_records(0), m_nb_max_mct_records(0), m_mcc_records(nullptr), m_nb_mcc_records(0),
-	  m_nb_max_mcc_records(0), cod(false), ppt(false), POC(false), isHT(false)
+	  m_nb_max_mcc_records(0), cod(false), ppt(false), isHT(false)
 {
 	for(auto i = 0; i < maxCompressLayersGRK; ++i)
 		rates[i] = 0.0;
@@ -103,6 +103,9 @@ bool TileCodingParams::getIsHT(void)
 }
 uint32_t TileCodingParams::getNumProgressions(){
 	return numpocs+1;
+}
+bool TileCodingParams::hasPoc(void){
+	return numpocs > 0;
 }
 void TileCodingParams::destroy()
 {

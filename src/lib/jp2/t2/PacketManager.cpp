@@ -72,7 +72,7 @@ PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cpar
 
 	/* set values for first packet iterator*/
 	m_pi->enableTilePartGeneration = cp->m_coding_params.m_enc.m_enableTilePartGeneration;
-	for(uint32_t pino = 0; pino <= tcp->numpocs; ++pino)
+	for(uint32_t pino = 0; pino < tcp->getNumProgressions(); ++pino)
 	{
 		auto cur_pi = m_pi + pino;
 
@@ -120,7 +120,7 @@ PacketManager::PacketManager(bool compression, GrkImage* img, CodingParams* cpar
 	delete[] precinctByComponent;
 	if(compression)
 	{
-		bool poc = tcp->POC && (GRK_IS_CINEMA(cp->rsiz) || t2_mode == FINAL_PASS);
+		bool poc = tcp->hasPoc() && (GRK_IS_CINEMA(cp->rsiz) || t2_mode == FINAL_PASS);
 		updateCompressTcpProgressions(cp, image->numcomps, tileno, tileBounds, max_precincts,
 									  max_res, dx_min, dy_min, poc);
 	}
@@ -149,8 +149,8 @@ TileProcessor* PacketManager::getTileProcessor(void)
 
 void PacketManager::init(TileCodingParams* tcp, uint8_t max_res, uint64_t max_precincts)
 {
-	bool poc = tcp->POC;
-	for(uint32_t pino = 0; pino <= tcp->numpocs; ++pino)
+	bool poc = tcp->hasPoc();
+	for(uint32_t pino = 0; pino < tcp->getNumProgressions(); ++pino)
 	{
 		auto cur_pi = m_pi + pino;
 		auto current_poc = tcp->progressionOrderChange + pino;
@@ -570,7 +570,7 @@ void PacketManager::updateCompressTcpProgressions(CodingParams* p_cp, uint16_t n
 	assert(p_cp != nullptr);
 	assert(tileno < p_cp->t_grid_width * p_cp->t_grid_height);
 	auto tcp = &p_cp->tcps[tileno];
-	for(uint32_t pino = 0; pino <= tcp->numpocs; ++pino)
+	for(uint32_t pino = 0; pino < tcp->getNumProgressions(); ++pino)
 	{
 		auto cur_prog = tcp->progressionOrderChange + pino;
 		cur_prog->progression = poc ? cur_prog->specifiedCompressionPocProg : tcp->prg;
@@ -603,7 +603,7 @@ void PacketManager::updateCompressParams(const GrkImage* image, CodingParams* p_
 	getParams(image, p_cp, tileno, &tileBounds, &dx_min, &dy_min, nullptr, &max_precincts, &max_res,
 			  nullptr);
 	updateCompressTcpProgressions(p_cp, image->numcomps, tileno, tileBounds, max_precincts, max_res,
-								  dx_min, dy_min, tcp->POC);
+								  dx_min, dy_min, tcp->hasPoc());
 }
 /**
  * Check if there is a remaining valid progression order

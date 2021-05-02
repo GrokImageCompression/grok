@@ -123,7 +123,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* srcBuf, boo
 	PacketManager packetManager(false, tileProcessor->headerImage, cp, tile_no, FINAL_PASS,
 								tileProcessor);
 	tileProcessor->packetLengthCache.rewind();
-	for(uint32_t pino = 0; pino <= tcp->numpocs; ++pino)
+	for(uint32_t pino = 0; pino < tcp->getNumProgressions(); ++pino)
 	{
 		auto currPi = packetManager.getPacketIter(pino);
 		if(currPi->prog.progression == GRK_PROG_UNKNOWN)

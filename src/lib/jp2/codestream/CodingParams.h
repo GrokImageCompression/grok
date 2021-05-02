@@ -130,7 +130,8 @@ struct TileCodingParams
 
 	void setIsHT(bool ht);
 	bool getIsHT(void);
-	uint32_t getNumProgressions();
+	uint32_t getNumProgressions(void);
+	bool hasPoc(void);
 
 	/** coding style */
 	uint8_t csty;
@@ -200,8 +201,6 @@ struct TileCodingParams
 	bool cod;
 	/** If ppt == true --> there was a PPT marker for the present tile */
 	bool ppt;
-	/** indicates if a POC marker has been used*/
-	bool POC;
 	param_qcd qcd;
 
   private:

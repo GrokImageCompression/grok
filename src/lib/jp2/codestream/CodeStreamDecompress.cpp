@@ -1178,7 +1178,6 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
 		return false;
 	}
 
-	tcp->POC = true;
 	for(uint32_t i = oldNumProgressions; i < currentNumProgressions; ++i)
 	{
 		auto current_prog = tcp->progressionOrderChange + i;
