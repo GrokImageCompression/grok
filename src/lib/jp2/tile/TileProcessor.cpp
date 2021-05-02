@@ -260,7 +260,7 @@ bool TileProcessor::doCompress(void)
 }
 bool TileProcessor::canWritePocMarker(void)
 {
-	bool firstTilePart = (m_tileIndex == 0);
+	bool firstTilePart = (m_tilePartIndex == 0);
 
 	// note: DCP standard does not allow POC marker
 	return m_cp->tcps[m_tileIndex].numpocs && firstTilePart && !GRK_IS_CINEMA(m_cp->rsiz);
