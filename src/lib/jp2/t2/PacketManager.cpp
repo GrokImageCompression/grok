@@ -136,9 +136,7 @@ PacketManager::~PacketManager()
 }
 uint32_t PacketManager::getNumProgressions(void)
 {
-	auto tcp = cp->tcps + tileno;
-
-	return tcp->numpocs + 1;
+	return (cp->tcps + tileno)->getNumProgressions();
 }
 PacketIter* PacketManager::getPacketIter(uint32_t poc) const
 {

@@ -130,6 +130,7 @@ struct TileCodingParams
 
 	void setIsHT(bool ht);
 	bool getIsHT(void);
+	uint32_t getNumProgressions();
 
 	/** coding style */
 	uint8_t csty;

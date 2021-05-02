@@ -1021,11 +1021,8 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 		if(pocArg.isSet())
 		{
 			uint32_t numpocs = 0; /* number of progression order change (POC) default 0 */
-			grk_progression* progression =
-				nullptr; /* POC : used in case of Progression order change */
-
 			char* s = (char*)pocArg.getValue().c_str();
-			progression = parameters->progression;
+			auto progression = parameters->progression;
 			uint32_t resS, compS, layE, resE, compE;
 
 			while(sscanf(s, "T%u=%u,%u,%u,%u,%u,%4s", &progression[numpocs].tileno, &resS, &compS,
@@ -1065,16 +1062,11 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 						"POC beginning component must be strictly less than end component");
 					return 1;
 				}
-
 				numpocs++;
 				while(*s && *s != '/')
-				{
 					s++;
-				}
 				if(!*s)
-				{
 					break;
-				}
 				s++;
 			}
 			if(numpocs == 0)

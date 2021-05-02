@@ -494,7 +494,7 @@ typedef struct _grk_cparameters
 	uint8_t csty;
 	/* number of guard bits */
 	uint8_t numgbits;
-	/** progression order (default GRK_LRCP) */
+	/** progression order (default is LRCP) */
 	GRK_PROG_ORDER prog_order;
 	/** progressions */
 	grk_progression progression[GRK_J2K_MAXRLVLS];

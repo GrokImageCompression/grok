@@ -101,7 +101,9 @@ bool TileCodingParams::getIsHT(void)
 {
 	return isHT;
 }
-
+uint32_t TileCodingParams::getNumProgressions(){
+	return numpocs+1;
+}
 void TileCodingParams::destroy()
 {
 	if(ppt_markers != nullptr)

@@ -1148,8 +1148,6 @@ bool CodeStreamDecompress::readMarker()
  */
 bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
 {
-	uint32_t old_poc_nb, current_poc_nb, current_poc_remaining;
-	uint32_t chunk_size, comp_room;
 	assert(headerData != nullptr);
 	auto image = getHeaderImage();
 	uint16_t maxNumResLevels = 0;
@@ -1161,29 +1159,27 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
 	}
 
 	uint16_t numComps = image->numcomps;
-	comp_room = (numComps <= 256) ? 1 : 2;
-	chunk_size = 5 + 2 * comp_room;
-	current_poc_nb = header_size / chunk_size;
-	current_poc_remaining = header_size % chunk_size;
+	uint32_t componentRoom = (numComps <= 256) ? 1 : 2;
+	uint32_t chunkSize = 5 + 2 * componentRoom;
+	uint32_t currentNumProgressions = header_size / chunkSize;
+	uint32_t currentRemainingProgressions = header_size % chunkSize;
 
-	if((current_poc_nb == 0) || (current_poc_remaining != 0))
+	if((currentNumProgressions == 0) || (currentRemainingProgressions != 0))
 	{
 		GRK_ERROR("Error reading POC marker");
 		return false;
 	}
-	old_poc_nb = tcp->POC ? tcp->numpocs + 1 : 0;
-	current_poc_nb += old_poc_nb;
-	if(current_poc_nb >= GRK_J2K_MAXRLVLS)
+	uint32_t oldNumProgressions = tcp->getNumProgressions();
+	currentNumProgressions += oldNumProgressions;
+	if(currentNumProgressions > GRK_J2K_MAXRLVLS)
 	{
-		GRK_ERROR("read_poc: number of POCs %u exceeds Grok max %d", current_poc_nb,
+		GRK_ERROR("read_poc: number of progressions %u exceeds Grok maximum number %d", currentNumProgressions,
 				  GRK_J2K_MAXRLVLS);
 		return false;
 	}
 
-	/* now poc is in use.*/
 	tcp->POC = true;
-
-	for(uint32_t i = old_poc_nb; i < current_poc_nb; ++i)
+	for(uint32_t i = oldNumProgressions; i < currentNumProgressions; ++i)
 	{
 		auto current_prog = tcp->progressionOrderChange + i;
 		/* RSpoc_i */
@@ -1195,8 +1191,8 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
 			return false;
 		}
 		/* CSpoc_i */
-		grk_read<uint16_t>(headerData, &(current_prog->compS), comp_room);
-		headerData += comp_room;
+		grk_read<uint16_t>(headerData, &(current_prog->compS), componentRoom);
+		headerData += componentRoom;
 		if(current_prog->compS > image->numcomps)
 		{
 			GRK_ERROR("read_poc: invalid POC start component %d", current_prog->compS);
@@ -1216,8 +1212,8 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
 			return false;
 		}
 		/* CEpoc_i */
-		grk_read<uint16_t>(headerData, &(current_prog->compE), comp_room);
-		headerData += comp_room;
+		grk_read<uint16_t>(headerData, &(current_prog->compE), componentRoom);
+		headerData += componentRoom;
 		current_prog->compE = std::min<uint16_t>(current_prog->compE, numComps);
 		if(current_prog->compE <= current_prog->compS)
 		{
@@ -1234,7 +1230,7 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
 		}
 		current_prog->progression = (GRK_PROG_ORDER)tmp;
 	}
-	tcp->numpocs = current_poc_nb - 1;
+	tcp->numpocs = currentNumProgressions - 1;
 	return true;
 }
 /**

@@ -878,7 +878,7 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 		if(!writePoc())
 			return false;
 		auto tcp = m_cp.tcps + currentTileIndex;
-		tilePartBytesWritten += getPocSize(m_headerImage->numcomps, 1 + tcp->numpocs);
+		tilePartBytesWritten += getPocSize(m_headerImage->numcomps, tcp->getNumProgressions());
 	}
 	// 3. compress tile part and write to stream
 	if(!tileProcessor->writeTilePartT2(&tilePartBytesWritten))
@@ -931,7 +931,7 @@ bool CodeStreamCompress::writeTileParts(TileProcessor* tileProcessor)
 			return false;
 	}
 	// write tile parts for remaining progression orders
-	for(pino = 1; pino <= tcp->numpocs; ++pino)
+	for(pino = 1; pino < tcp->getNumProgressions(); ++pino)
 	{
 		tileProcessor->pino = pino;
 		numTileParts = getNumTilePartsForProgression(pino, tileProcessor->m_tileIndex);
@@ -1286,10 +1286,10 @@ bool CodeStreamCompress::writePoc()
 	auto tccp = tcp->tccps;
 	auto image = getHeaderImage();
 	uint16_t numComps = image->numcomps;
-	uint32_t numPocs = tcp->numpocs + 1;
+	uint32_t numPocs = tcp->getNumProgressions();
 	uint32_t pocRoom = (numComps <= 256) ? 1 : 2;
 
-	auto poc_size = getPocSize(numComps, 1 + tcp->numpocs);
+	auto poc_size = getPocSize(numComps, numPocs);
 
 	/* POC  */
 	if(!m_stream->writeShort(J2K_MS_POC))
@@ -1687,39 +1687,39 @@ uint16_t CodeStreamCompress::getPocSize(uint32_t numComps, uint32_t numPocs)
 
 	return (uint16_t)(4 + (5 + 2 * pocRoom) * numPocs);
 }
-bool CodeStreamCompress::check_poc_val(const grk_progression* p_pocs, uint32_t nb_pocs,
-									   uint32_t nb_resolutions, uint32_t num_comps,
-									   uint16_t num_layers)
+bool CodeStreamCompress::check_poc_val(const grk_progression* progressions, uint32_t numPocs,
+									   uint8_t numResolutions, uint16_t numComps,
+									   uint16_t numLayers)
 {
 	uint32_t resno, compno, layno;
 	uint32_t i;
 	uint32_t step_c = 1;
-	uint32_t step_r = num_comps * step_c;
-	uint32_t step_l = nb_resolutions * step_r;
-	if(nb_pocs == 0)
+	uint32_t step_r = numComps * step_c;
+	uint32_t step_l = numResolutions * step_r;
+	if(numPocs == 0)
 		return true;
 
-	auto packet_array = new uint8_t[(size_t)step_l * num_layers];
-	memset(packet_array, 0, (size_t)step_l * num_layers * sizeof(uint8_t));
+	auto packet_array = new uint8_t[(size_t)step_l * numLayers];
+	memset(packet_array, 0, (size_t)step_l * numLayers * sizeof(uint8_t));
 
 	/* iterate through all the pocs */
-	for(i = 0; i < nb_pocs; ++i)
+	for(i = 0; i < numPocs; ++i)
 	{
-		auto currentPoc = p_pocs + i;
+		auto currentPoc = progressions + i;
 		size_t index = step_r * currentPoc->resS;
 		/* take each resolution for each poc */
-		for(resno = currentPoc->resS; resno < std::min<uint32_t>(currentPoc->resE, nb_resolutions); ++resno)
+		for(resno = currentPoc->resS; resno < std::min<uint32_t>(currentPoc->resE, numResolutions); ++resno)
 		{
 			size_t res_index = index + currentPoc->compS * step_c;
 
 			/* take each comp of each resolution for each poc */
-			for(compno = currentPoc->compS; compno < std::min<uint32_t>(currentPoc->compE, num_comps);
+			for(compno = currentPoc->compS; compno < std::min<uint32_t>(currentPoc->compE, numComps);
 				++compno)
 			{
 				size_t comp_index = res_index + 0 * step_l;
 
 				/* and finally take each layer of each res of ... */
-				for(layno = 0; layno < std::min<uint32_t>(currentPoc->layE, num_layers); ++layno)
+				for(layno = 0; layno < std::min<uint32_t>(currentPoc->layE, numLayers); ++layno)
 				{
 					/*index = step_r * resno + step_c * compno + step_l * layno;*/
 					packet_array[comp_index] = 1;
@@ -1733,11 +1733,11 @@ bool CodeStreamCompress::check_poc_val(const grk_progression* p_pocs, uint32_t n
 	}
 	bool loss = false;
 	size_t index = 0;
-	for(layno = 0; layno < num_layers; ++layno)
+	for(layno = 0; layno < numLayers; ++layno)
 	{
-		for(resno = 0; resno < nb_resolutions; ++resno)
+		for(resno = 0; resno < numResolutions; ++resno)
 		{
-			for(compno = 0; compno < num_comps; ++compno)
+			for(compno = 0; compno < numComps; ++compno)
 			{
 				if (!packet_array[index]){
 					loss = true;
@@ -1910,7 +1910,7 @@ uint64_t CodeStreamCompress::getNumTilePartsForProgression(uint32_t pino, uint16
 
 	/*  preconditions */
 	assert(tileno < (cp->t_grid_width * cp->t_grid_height));
-	assert(pino < (cp->tcps[tileno].numpocs + 1));
+	assert(pino < (cp->tcps[tileno].getNumProgressions()));
 
 	/* get the given tile coding parameter */
 	auto tcp = cp->tcps+tileno;
@@ -1976,7 +1976,7 @@ bool CodeStreamCompress::getNumTileParts(uint16_t* numTilePartsForAllTiles, GrkI
 	{
 		uint8_t totalTilePartsForTile = 0;
 		PacketManager::updateCompressParams(image, &m_cp, tileno);
-		for(uint32_t pino = 0; pino <= tcp->numpocs; ++pino)
+		for(uint32_t pino = 0; pino < tcp->getNumProgressions(); ++pino)
 		{
 			uint64_t numTilePartsForProgression = getNumTilePartsForProgression(pino, tileno);
 			uint16_t newTotalTilePartsForTile =

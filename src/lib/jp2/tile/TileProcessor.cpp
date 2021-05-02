@@ -53,7 +53,7 @@ uint32_t TileProcessor::getPreCalculatedTileLen(void)
 }
 bool TileProcessor::canPreCalculateTileLen(void)
 {
-	return !m_cp->m_coding_params.m_enc.m_enableTilePartGeneration && (m_cp->tcps + m_tileIndex)->numpocs == 0;
+	return !m_cp->m_coding_params.m_enc.m_enableTilePartGeneration && (m_cp->tcps + m_tileIndex)->getNumProgressions() == 1;
 }
 void TileProcessor::generateImage(GrkImage* src_image, Tile* src_tile)
 {
@@ -247,7 +247,7 @@ bool TileProcessor::doCompress(void)
 		// POC marker
 		if(canWritePocMarker())
 			preCalculatedTileLen +=
-				CodeStreamCompress::getPocSize(tile->numcomps, 1 + m_tcp->numpocs);
+				CodeStreamCompress::getPocSize(tile->numcomps, m_tcp->getNumProgressions());
 		// calculate PLT marker length
 		if(packetLengthCache.getMarkers())
 			preCalculatedTileLen += packetLengthCache.getMarkers()->write(true);
@@ -263,7 +263,7 @@ bool TileProcessor::canWritePocMarker(void)
 	bool firstTilePart = (m_tilePartIndex == 0);
 
 	// note: DCP standard does not allow POC marker
-	return m_cp->tcps[m_tileIndex].numpocs && firstTilePart && !GRK_IS_CINEMA(m_cp->rsiz);
+	return (m_cp->tcps[m_tileIndex].numpocs > 0) && firstTilePart && !GRK_IS_CINEMA(m_cp->rsiz);
 }
 bool TileProcessor::writeTilePartT2(uint32_t* tileBytesWritten)
 {
