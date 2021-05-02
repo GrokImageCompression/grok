@@ -53,7 +53,7 @@ uint32_t TileProcessor::getPreCalculatedTileLen(void)
 }
 bool TileProcessor::canPreCalculateTileLen(void)
 {
-	return !m_cp->m_coding_params.m_enc.m_enableTilePartGeneration;
+	return !m_cp->m_coding_params.m_enc.m_enableTilePartGeneration && (m_cp->tcps + m_tileIndex)->numpocs == 0;
 }
 void TileProcessor::generateImage(GrkImage* src_image, Tile* src_tile)
 {

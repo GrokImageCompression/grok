@@ -418,7 +418,7 @@ void GRK_CALLCONV grk_compress_set_default_params(grk_cparameters* parameters)
 		parameters->roi_compno = -1; /* no ROI */
 		parameters->subsampling_dx = 1;
 		parameters->subsampling_dy = 1;
-		parameters->enableTilePartGeneration = 0;
+		parameters->enableTilePartGeneration = false;
 		parameters->decod_format = GRK_UNK_FMT;
 		parameters->cod_format = GRK_UNK_FMT;
 		parameters->layer_rate[0] = 0;

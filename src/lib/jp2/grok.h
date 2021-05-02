@@ -547,8 +547,8 @@ typedef struct _grk_cparameters
 	 * */
 	uint32_t max_comp_size;
 	/** Tile part generation*/
-	uint8_t enableTilePartGeneration;
-	/** Flag for tile part generation*/
+	bool enableTilePartGeneration;
+	/** new tile part progression divider */
 	uint8_t newTilePartProgressionDivider;
 	/** MCT (multiple component transform) */
 	uint8_t mct;

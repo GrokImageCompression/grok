@@ -740,7 +740,10 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 				return 1;
 			}
 		}
-
+		if (compressionRatiosArg.isSet() && qualityArg.isSet()){
+			spdlog::error("Compression by both rate distortion and quality is not allowed");
+			return 1;
+		}
 		if(compressionRatiosArg.isSet())
 		{
 			char* s = (char*)compressionRatiosArg.getValue().c_str();
@@ -782,8 +785,7 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 					parameters->layer_rate[i] = 0;
 			}
 		}
-
-		if(qualityArg.isSet())
+		else if(qualityArg.isSet())
 		{
 			char* s = (char*)qualityArg.getValue().c_str();
 			;
@@ -818,6 +820,11 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 				}
 				lastDistortion = distortion;
 			}
+		} else {
+			/* if no rate was entered, then lossless by default */
+			parameters->layer_rate[0] = 0;
+			parameters->numlayers = 1;
+			parameters->allocationByRateDistoration = true;
 		}
 		if(rawFormatArg.isSet())
 		{
@@ -1612,7 +1619,7 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 		if(tpArg.isSet())
 		{
 			parameters->newTilePartProgressionDivider = tpArg.getValue();
-			parameters->enableTilePartGeneration = 1;
+			parameters->enableTilePartGeneration = true;
 		}
 	}
 	catch(TCLAP::ArgException& e) // catch any exceptions
@@ -1671,20 +1678,6 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 		spdlog::error("-F rawWidth,rawHeight,rawComp,rawBitDepth,s/u (Signed/Unsigned)");
 		spdlog::error("Example: -i lena.raw -o lena.j2k -F 512,512,3,8,u");
 		return 1;
-	}
-
-	if((parameters->allocationByRateDistoration || parameters->allocationByQuality) &&
-	   (!(parameters->allocationByRateDistoration != parameters->allocationByQuality)))
-	{
-		spdlog::error("options -r and -q cannot be used together");
-		return 1;
-	}
-	/* if no rate was entered, then lossless by default */
-	if(parameters->numlayers == 0)
-	{
-		parameters->layer_rate[0] = 0;
-		parameters->numlayers = 1;
-		parameters->allocationByRateDistoration = true;
 	}
 	if((parameters->tx0 > 0 && parameters->tx0 > parameters->image_offset_x0) ||
 	   (parameters->ty0 > 0 && parameters->ty0 > parameters->image_offset_y0))

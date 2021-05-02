@@ -403,7 +403,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 			uint32_t numpocs_tile = 0;
 			for(uint32_t i = 0; i < parameters->numpocs; i++)
 			{
-				if(tileno + 1 == parameters->progression[i].tileno)
+				if(tileno == parameters->progression[i].tileno)
 				{
 					auto tcp_poc = &tcp->progressionOrderChange[numpocs_tile];
 
@@ -841,7 +841,7 @@ bool CodeStreamCompress::init_header_writing(void)
 
 	if(m_cp.m_coding_params.m_enc.writeTLM)
 		m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_tlm_begin, this));
-	if(m_cp.rsiz == GRK_PROFILE_CINEMA_4K)
+	if(m_cp.tcps->numpocs > 0)
 		m_procedure_list.push_back(std::bind(&CodeStreamCompress::writePoc, this));
 
 	m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_regions, this));
@@ -893,8 +893,9 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 	// 5. update TLM
 	if(tileProcessor->canPreCalculateTileLen())
 	{
-		assert(m_stream->tell() - currentPos == calculatedBytesWritten);
-		(void)currentPos;
+		auto actualBytes = m_stream->tell() - currentPos;
+		assert(actualBytes == calculatedBytesWritten);
+		(void)actualBytes;
 		tilePartBytesWritten = calculatedBytesWritten;
 	}
 	if(m_cp.tlm_markers)
@@ -1698,36 +1699,37 @@ bool CodeStreamCompress::check_poc_val(const grk_progression* p_pocs, uint32_t n
 	if(nb_pocs == 0)
 		return true;
 
-	auto packet_array = new uint32_t[(size_t)step_l * num_layers];
-	memset(packet_array, 0, (size_t)step_l * num_layers * sizeof(uint32_t));
+	auto packet_array = new uint8_t[(size_t)step_l * num_layers];
+	memset(packet_array, 0, (size_t)step_l * num_layers * sizeof(uint8_t));
 
 	/* iterate through all the pocs */
 	for(i = 0; i < nb_pocs; ++i)
 	{
-		size_t index = step_r * p_pocs->resS;
+		auto currentPoc = p_pocs + i;
+		size_t index = step_r * currentPoc->resS;
 		/* take each resolution for each poc */
-		for(resno = p_pocs->resS; resno < std::min<uint32_t>(p_pocs->resE, nb_resolutions); ++resno)
+		for(resno = currentPoc->resS; resno < std::min<uint32_t>(currentPoc->resE, nb_resolutions); ++resno)
 		{
-			size_t res_index = index + p_pocs->compS * step_c;
+			size_t res_index = index + currentPoc->compS * step_c;
 
 			/* take each comp of each resolution for each poc */
-			for(compno = p_pocs->compS; compno < std::min<uint32_t>(p_pocs->compE, num_comps);
+			for(compno = currentPoc->compS; compno < std::min<uint32_t>(currentPoc->compE, num_comps);
 				++compno)
 			{
 				size_t comp_index = res_index + 0 * step_l;
 
 				/* and finally take each layer of each res of ... */
-				for(layno = 0; layno < std::min<uint32_t>(p_pocs->layE, num_layers); ++layno)
+				for(layno = 0; layno < std::min<uint32_t>(currentPoc->layE, num_layers); ++layno)
 				{
 					/*index = step_r * resno + step_c * compno + step_l * layno;*/
 					packet_array[comp_index] = 1;
+					//printf("%d %d\n",i,comp_index);
 					comp_index += step_l;
 				}
 				res_index += step_c;
 			}
 			index += step_r;
 		}
-		++p_pocs;
 	}
 	bool loss = false;
 	size_t index = 0;
@@ -1737,13 +1739,16 @@ bool CodeStreamCompress::check_poc_val(const grk_progression* p_pocs, uint32_t n
 		{
 			for(compno = 0; compno < num_comps; ++compno)
 			{
-				loss |= (packet_array[index] != 1);
+				if (!packet_array[index]){
+					loss = true;
+					break;
+				}
 				index += step_c;
 			}
 		}
 	}
 	if(loss)
-		GRK_ERROR("Missing packets possible loss of data");
+		GRK_ERROR("POC: missing packets");
 	delete[] packet_array;
 
 	return !loss;
@@ -1908,7 +1913,7 @@ uint64_t CodeStreamCompress::getNumTilePartsForProgression(uint32_t pino, uint16
 	assert(pino < (cp->tcps[tileno].numpocs + 1));
 
 	/* get the given tile coding parameter */
-	auto tcp = &cp->tcps[tileno];
+	auto tcp = cp->tcps+tileno;
 	assert(tcp != nullptr);
 
 	auto current_poc = &(tcp->progressionOrderChange[pino]);
@@ -1942,9 +1947,10 @@ uint64_t CodeStreamCompress::getNumTilePartsForProgression(uint32_t pino, uint16
 					break;
 			}
 			// we start a new tile part when progression matches specified tile part
-			// generation division progression
+			// divider
 			if(cp->m_coding_params.m_enc.m_newTilePartProgressionDivider == prog[i])
 			{
+				assert(prog[i] != 'P');
 				cp->m_coding_params.m_enc.newTilePartProgressionPosition = i;
 				break;
 			}
