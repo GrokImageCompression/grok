@@ -73,21 +73,21 @@ if [ "${GROK_CI_SKIP_TESTS:-}" != "1" ]; then
 	if [ "${GROK_NONCOMMERCIAL:-}" == "1" ]; then
 		if [ "${TRAVIS_OS_NAME:-}" == "linux" ] || uname -s | grep -i Linux &> /dev/null; then
 			echo "Retrieving Kakadu"
-			wget -q https://kakadusoftware.com/wp-content/uploads/2014/06/KDU802_Demo_Apps_for_Linux-x86-64_200113.zip
-			cmake -E tar -xzf KDU802_Demo_Apps_for_Linux-x86-64_200113.zip
-			mv KDU802_Demo_Apps_for_Linux-x86-64_200113 kdu
+			wget -q http://kakadusoftware.com/wp-content/uploads/KDU805_Demo_Apps_for_Linux-x86-64_200602.zip
+			cmake -E tar -xzf KDU805_Demo_Apps_for_Linux-x86-64_200602.zip
+			mv KDU805_Demo_Apps_for_Linux-x86-64_200602 kdu
 		elif [ "${TRAVIS_OS_NAME:-}" == "osx" ] || uname -s | grep -i Darwin &> /dev/null; then
 			echo "Retrieving Kakadu"
-			wget -q https://kakadusoftware.com/wp-content/uploads/2014/06/KDU802_Demo_Apps_for_MacOS_200113.dmg_.zip
-                        7z x KDU802_Demo_Apps_for_MacOS_200113.dmg_.zip
-                        7z x KDU802_Demo_Apps_for_MacOS_200113.dmg
-                        7z x KDU802_Demo_Apps_for_MacOS_200113/KDU802_Demo_Apps_for_MacOS_200113.pkg
+			wget -q http://kakadusoftware.com/wp-content/uploads/KDU805_Demo_Apps_for_MacOS_200602.dmg_.zip
+                        7z x KDU805_Demo_Apps_for_MacOS_200602.dmg_.zip
+                        7z x KDU805_Demo_Apps_for_MacOS_200602.dmg
+                        7z x KDU805_Demo_Apps_for_MacOS_200602/KDU805_Demo_Apps_for_MacOS_200602.pkg
                         7z x Payload~
                         mv Library kdu
 			cd kdu
-                        cp Kakadu/8.0.2/bin/kdu_expand .
-                        cp Kakadu/8.0.2/bin/kdu_compress .
-                        cp Kakadu/8.0.2/lib/libkdu_v80R.dylib .
+                        cp Kakadu/8.0.5/bin/kdu_expand .
+                        cp Kakadu/8.0.5/bin/kdu_compress .
+                        cp Kakadu/8.0.5/lib/libkdu_v80R.dylib .
                         chmod +x kdu_expand
                         chmod +x kdu_compress
                         install_name_tool -id ${PWD}/libkdu_v80R.dylib libkdu_v80R.dylib 
@@ -95,9 +95,9 @@ if [ "${GROK_CI_SKIP_TESTS:-}" != "1" ]; then
 			install_name_tool -change /usr/local/lib/libkdu_v80R.dylib ${PWD}/libkdu_v80R.dylib kdu_expand
 		elif [ "${APPVEYOR:-}" == "True" ]; then
 			echo "Retrieving Kakadu"
-			wget -q https://kakadusoftware.com/wp-content/uploads/2014/06/KDU802_Demo_Apps_for_Win64_200113.msi_.zip
-			cmake -E tar -xzf KDU802_Demo_Apps_for_Win64_200113.msi_.zip
-			msiexec /i KDU802_Demo_Apps_for_Win64_200113.msi /quiet /qn /norestart
+			wget -q http://kakadusoftware.com/wp-content/uploads/KDU805_Demo_Apps_for_Win64_200602.msi_.zip
+			cmake -E tar -xzf KDU805_Demo_Apps_for_Win64_200602.msi_.zip
+			msiexec /i KDU805_Demo_Apps_for_Win64_200602.msi /quiet /qn /norestart
 			if [ -d "C:/Program Files/Kakadu" ]; then
 				cp -r "C:/Program Files/Kakadu/Kakadu Demo-Apps" ./kdu
 			else
