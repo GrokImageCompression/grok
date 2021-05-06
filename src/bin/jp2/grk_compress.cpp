@@ -989,26 +989,6 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 			parameters->cblockh_init = (uint32_t)cblockh_init;
 		}
 
-		if(progressionOrderArg.isSet())
-		{
-			bool recognized = false;
-			if(progressionOrderArg.getValue().length() == 4)
-			{
-				char progression[5];
-				progression[4] = 0;
-				strncpy(progression, progressionOrderArg.getValue().c_str(), 4);
-				parameters->prog_order = getProgression(progression);
-				recognized = parameters->prog_order != -1;
-			}
-			if(!recognized)
-			{
-				spdlog::error("Unrecognized progression order {} is not one of "
-							  "[LRCP, RLCP, RPCL, PCRL, CPRL]",
-							  progressionOrderArg.getValue());
-				return 1;
-			}
-		}
-
 		if(subsamplingFactorArg.isSet())
 		{
 			if(sscanf(subsamplingFactorArg.getValue().c_str(), "%d,%d", &parameters->subsampling_dx,
@@ -1075,6 +1055,24 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 				return 1;
 			}
 			parameters->numpocs = numProgressions-1;
+		} else 	if(progressionOrderArg.isSet())
+		{
+			bool recognized = false;
+			if(progressionOrderArg.getValue().length() == 4)
+			{
+				char progression[5];
+				progression[4] = 0;
+				strncpy(progression, progressionOrderArg.getValue().c_str(), 4);
+				parameters->prog_order = getProgression(progression);
+				recognized = parameters->prog_order != -1;
+			}
+			if(!recognized)
+			{
+				spdlog::error("Unrecognized progression order {} is not one of "
+							  "[LRCP, RLCP, RPCL, PCRL, CPRL]",
+							  progressionOrderArg.getValue());
+				return 1;
+			}
 		}
 
 		if(sopArg.isSet())
