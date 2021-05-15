@@ -130,23 +130,20 @@ struct IncludeTracker
 		uint64_t index = compno * numprecs + precno;
 		uint64_t include_index = (index >> 3);
 		uint32_t shift = (index & 7);
-		bool rc = false;
 		uint8_t val = include[include_index];
 		if(((val >> shift) & 1) == 0)
 		{
 			include[include_index] = (uint8_t)(val | (1 << shift));
-			rc = true;
+			return true;
 		}
 
-		return rc;
+		return false;
 	}
 
 	void clear()
 	{
 		for(auto it = include->begin(); it != include->end(); ++it)
-		{
 			delete it->second;
-		}
 		include->clear();
 	}
 
