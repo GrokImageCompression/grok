@@ -115,11 +115,11 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* currPi, Spar
 
 	return true;
 }
-bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* srcBuf, bool* truncated)
+bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* srcBuf, bool* stopProcessionPackets)
 {
 	auto cp = tileProcessor->m_cp;
 	auto tcp = cp->tcps + tile_no;
-	*truncated = false;
+	*stopProcessionPackets = false;
 	PacketManager packetManager(false, tileProcessor->headerImage, cp, tile_no, FINAL_PASS,
 								tileProcessor);
 	tileProcessor->packetLengthCache.rewind();
@@ -136,7 +136,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* srcBuf, boo
 			if(srcBuf->getCurrentChunkLength() == 0)
 			{
 				GRK_WARN("Tile %d is truncated.", tile_no);
-				*truncated = true;
+				*stopProcessionPackets = true;
 				break;
 			}
 			try
@@ -151,6 +151,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* srcBuf, boo
 						 "layer=%02d",
 						 tile_no, currPi->compno, currPi->resno, currPi->precinctIndex,
 						 currPi->layno);
+				*stopProcessionPackets = true;
 				break;
 			}
 			catch(CorruptPacketHeaderException& cex)
@@ -160,25 +161,16 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* srcBuf, boo
 						 "layer=%02d",
 						 tile_no, currPi->compno, currPi->resno, currPi->precinctIndex,
 						 currPi->layno);
+				//ToDo: skip corrupt packet if PLT marker is present
+				*stopProcessionPackets = true;
 				break;
 			}
-#ifdef DEBUG_DECOMPRESS_PACKETS
-			GRK_INFO("packet cmptno=%02d rlvlno=%02d prcno=%03d layrno=%02d -> %s", currPi->compno,
-					 currPi->resno, currPi->precinctIndex, currPi->layno,
-					 skip ? "skipped" : "decompressed");
-			GRK_INFO("T2Decompress Packet length: %u", bytesRead);
-			if(pltMarkerLen)
-			{
-				if(bytesRead != pltMarkerLen)
-					GRK_WARN("T2Decompress: bytes read %d != PLT Packet length: %u", pltMarkerLen);
-			}
-#endif
 		}
-		if(*truncated)
+		if(*stopProcessionPackets)
 			break;
 	}
 	if(tileProcessor->tile->numDecompressedPackets == 0)
-		GRK_WARN("T2Decompress: no packets for tile %d were successfully read", tile_no + 1);
+		GRK_WARN("T2Decompress: no packets for tile %d were successfully read", tile_no);
 
 	return tileProcessor->tile->numDecompressedPackets > 0;
 }
