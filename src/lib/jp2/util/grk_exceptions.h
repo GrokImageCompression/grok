@@ -33,6 +33,9 @@ class CorruptJP2BoxException : public std::exception
 class TruncatedPacketHeaderException : public std::exception
 {
 };
+class CorruptPacketHeaderException : public std::exception
+{
+};
 class InvalidMarkerException : public std::exception
 {
   public:

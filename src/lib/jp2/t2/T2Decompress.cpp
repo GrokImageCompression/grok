@@ -153,6 +153,15 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* srcBuf, boo
 						 currPi->layno);
 				break;
 			}
+			catch(CorruptPacketHeaderException& cex)
+			{
+				GRK_UNUSED(cex);
+				GRK_WARN("Corrupt packet: tile=%d component=%02d resolution=%02d precinct=%03d "
+						 "layer=%02d",
+						 tile_no, currPi->compno, currPi->resno, currPi->precinctIndex,
+						 currPi->layno);
+				break;
+			}
 #ifdef DEBUG_DECOMPRESS_PACKETS
 			GRK_INFO("packet cmptno=%02d rlvlno=%02d prcno=%03d layrno=%02d -> %s", currPi->compno,
 					 currPi->resno, currPi->precinctIndex, currPi->layno,
@@ -231,6 +240,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 		if(marker != J2K_MS_SOP)
 		{
 			GRK_WARN("Expected SOP marker, but found 0x%x", marker);
+			throw CorruptPacketHeaderException();
 		}
 		else
 		{
@@ -240,7 +250,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 			{
 				GRK_ERROR("SOP marker packet counter %u does not match expected counter %u",
 						  numIteratedPackets, tilePtr->numProcessedPackets);
-				return false;
+				throw CorruptPacketHeaderException();
 			}
 			active_src += 6;
 			available_bytes -= 6;
@@ -475,7 +485,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 		if(marker != J2K_MS_EPH)
 		{
 			GRK_ERROR("Expected EPH marker, but found 0x%x", marker);
-			return false;
+			throw CorruptPacketHeaderException();
 		}
 		else
 		{
