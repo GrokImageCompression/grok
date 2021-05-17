@@ -25,11 +25,13 @@
 // Including <immintrin.h> should be enough, but Clang's headers helpfully skip
 // including these headers when _MSC_VER is defined, like when using clang-cl.
 // Include these directly here.
-#include <smmintrin.h>
 #include <avxintrin.h>
+// avxintrin defines __m256i and must come before avx2intrin.
 #include <avx2intrin.h>
+#include <bmi2intrin.h>  // _pext_u64
 #include <f16cintrin.h>
 #include <fmaintrin.h>
+#include <smmintrin.h>
 #endif
 
 #include <stddef.h>
@@ -2413,12 +2415,16 @@ HWY_API Vec128<int8_t> DemoteTo(Full128<int8_t> /* tag */,
       _mm256_castsi256_si128(_mm256_permute4x64_epi64(i8, 0x88))};
 }
 
+  // Avoid "value of intrinsic immediate argument '8' is out of range '0 - 7'".
+  // 8 is the correct value of _MM_FROUND_NO_EXC, which is allowed here.
 HWY_DIAGNOSTICS(push)
 HWY_DIAGNOSTICS_OFF(disable : 4556, ignored "-Wsign-conversion")
+
 HWY_API Vec128<float16_t> DemoteTo(Full128<float16_t> /* tag */,
                                    const Vec256<float> v) {
   return Vec128<float16_t>{_mm256_cvtps_ph(v.raw, _MM_FROUND_NO_EXC)};
 }
+
 HWY_DIAGNOSTICS(pop)
 
 HWY_API Vec128<float> DemoteTo(Full128<float> /* tag */,
@@ -2546,8 +2552,7 @@ HWY_API uint64_t BitsFromMask(hwy::SizeTag<2> /*tag*/, const Mask256<T> mask) {
   const auto compressed =
       _mm256_permute4x64_epi64(sign_bits, _MM_SHUFFLE(3, 1, 2, 0));
   return static_cast<unsigned>(_mm256_movemask_epi8(compressed));
-
-#endif
+#endif  // HWY_ARCH_X86_64
 }
 
 template <typename T>
