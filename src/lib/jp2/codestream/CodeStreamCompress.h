@@ -52,42 +52,36 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	/**
 	 * Writes the SOC marker (Start Of Codestream)
 	 *
-	 * @param       codeStream          JPEG 2000 code stream
 	 */
 	bool write_soc();
 
 	/**
 	 * Writes the SIZ marker (image and tile size)
 	 *
-	 * @param       codeStream          JPEG 2000 code stream
 	 */
 	bool write_siz();
 
 	/**
 	 * Writes the CAP marker
 	 *
-	 * @param       codeStream          JPEG 2000 code stream
 	 */
 	bool write_cap();
 
 	/**
 	 * Writes the COM marker (comment)
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
 	 */
 	bool write_com();
 
 	/**
 	 * Writes the COD marker (Coding style default)
 	 *
-	 * @param       codeStream          JPEG 2000 code stream
 	 */
 	bool write_cod();
 
 	/**
 	 * Compares 2 COC markers (Coding style component)
 	 *
-	 * @param       codeStream            JPEG 2000 code stream
 	 * @param       first_comp_no  the index of the first component to compare.
 	 * @param       second_comp_no the index of the second component to compare.
 	 *
@@ -98,7 +92,6 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	/**
 	 * Writes the COC marker (Coding style component)
 	 *
-	 * @param       codeStream  JPEG 2000 code stream
 	 * @param       comp_no   the index of the component to output.
 	 * @param       stream    buffered stream.
 
@@ -110,14 +103,12 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	/**
 	 * Writes the QCD marker (quantization default)
 	 *
-	 * @param       codeStream          JPEG 2000 code stream
 	 */
 	bool write_qcd();
 
 	/**
 	 * Compare QCC markers (quantization component)
 	 *
-	 * @param       codeStream                 JPEG 2000 code stream
 	 * @param       first_comp_no       the index of the first component to compare.
 	 * @param       second_comp_no      the index of the second component to compare.
 	 *
@@ -128,7 +119,6 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	/**
 	 * Writes the QCC marker (quantization component)
 	 *
-	 * @param       codeStream  JPEG 2000 code stream
 	 * @param 		tileIndex 	current tile index
 	 * @param       comp_no     the index of the component to output.
 	 * @param       stream      buffered stream.
@@ -141,28 +131,24 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	/**
 	 * Writes the POC marker (Progression Order Change)
 	 *
-	 * @param       codeStream          JPEG 2000 code stream
 	 */
 	bool writePoc();
 
 	/**
 	 * End writing the updated tlm.
 	 *
-	 * @param       codeStream          JPEG 2000 code stream
 	 */
 	bool write_tlm_end();
 
 	/**
 	 * Begin writing the TLM marker (Tile Length Marker)
 	 *
-	 * @param       codeStream          JPEG 2000 code stream
 	 */
 	bool write_tlm_begin();
 
 	/**
 	 * Compare 2 a SPCod/ SPCoc elements, i.e. the coding style of a given component of a tile.
 	 *
-	 * @param       codeStream            JPEG 2000 code stream
 	 * @param       first_comp_no  The 1st component number to compare.
 	 * @param       second_comp_no The 1st component number to compare.
 	 *
@@ -173,7 +159,6 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	/**
 	 * Writes a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
 	 *
-	 * @param       codeStream           JPEG 2000 code stream
 	 * @param       comp_no       the component number to output.
 	 *
 	 * @return true if successful
@@ -183,7 +168,6 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	/**
 	 * Gets the size taken by writing a SPCod or SPCoc for the given tile and component.
 	 *
-	 * @param       codeStream                   the JPEG 2000 code stream
 	 * @param       comp_no               the component being outputted.
 	 *
 	 * @return      the number of bytes taken by the SPCod element.
@@ -194,7 +178,6 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	 * Gets the size taken by writing SQcd or SQcc element, i.e. the quantization values of a band
 	 * in the QCD or QCC.
 	 *
-	 * @param       codeStream                   the JPEG 2000 code stream
 	 * @param       comp_no               the component being output.
 	 *
 	 * @return      the number of bytes taken by the SPCod element.
@@ -204,7 +187,6 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	/**
 	 * Compares 2 SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
 	 *
-	 * @param       codeStream                   JPEG 2000 code stream
 	 * @param       first_comp_no         the first component number to compare.
 	 * @param       second_comp_no        the second component number to compare.
 	 *
@@ -215,7 +197,6 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	/**
 	 * Writes a SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
 	 *
-	 * @param       codeStream                   JPEG 2000 code stream
 	 * @param       comp_no               the component number to output.
 	 *
 	 */
@@ -242,35 +223,30 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	/**
 	 * Writes the MCO marker (Multiple component transformation ordering)
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
 	 */
 	bool write_mco();
 
 	/**
 	 * Writes the CBD marker (Component bit depth definition)
 	 *
-	 * @param       codeStream                           JPEG 2000 code stream
 	 */
 	bool write_cbd();
 
 	/**
 	 * Writes COC marker for each component.
 	 *
-	 * @param       codeStream          JPEG 2000 code stream
 	 */
 	bool write_all_coc();
 
 	/**
 	 * Writes QCC marker for each component.
 	 *
-	 * @param       codeStream          JPEG 2000 code stream
 	 */
 	bool write_all_qcc();
 
 	/**
 	 * Writes regions of interests.
 	 *
-	 * @param       codeStream          JPEG 2000 code stream
 	 */
 	bool write_regions();
 
@@ -280,22 +256,19 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	 * @param       tile_no               the tile to output
 	 * @param       comp_no               the component to output
 	 * @param       nb_comps                the number of components
-	 * @param       codeStream                   JPEG 2000 code stream
-
+	 *
 	 */
 	bool write_rgn(uint16_t tile_no, uint32_t comp_no, uint32_t nb_comps);
 
 	/**
 	 * Writes the EOC marker (End of Codestream)
 	 *
-	 * @param       codeStream          JPEG 2000 code stream
 	 */
 	bool write_eoc();
 
 	/**
 	 * Writes the CBD-MCT-MCC-MCO markers (Multi components transform)
 	 *
-	 * @param       codeStream          JPEG 2000 code stream
 	 */
 	bool write_mct_data_group();
 

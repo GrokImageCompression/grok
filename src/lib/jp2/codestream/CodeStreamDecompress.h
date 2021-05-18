@@ -108,7 +108,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	/**
 	 * Reads a MCT marker (Multiple Component Transform)
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
 	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 *
@@ -117,7 +116,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	/**
 	 * Reads a MCC marker (Multiple Component Collection)
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
 	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 *
@@ -126,7 +124,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	/**
 	 * Reads a MCO marker (Multiple Component Transform Ordering)
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
 	 * @param       headerData   header data.
 	 * @param       header_size     size of header data
 	 *
@@ -136,7 +133,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	/**
 	 * Reads a CBD marker (Component bit depth definition)
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
 	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 *
@@ -145,7 +141,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	/**
 	 * Reads a RGN marker (Region Of Interest)
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
 	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 */
@@ -154,13 +149,11 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	bool readHeaderProcedure(void);
 	/**
 	 * Reads a SOC marker (Start of Codestream)
-	 * @param       codeStream           JPEG 2000 code stream.
 	 */
 	bool read_soc();
 	/**
 	 * Reads a SIZ marker (image and tile size)
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
 	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 */
@@ -168,7 +161,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	/**
 	 * Reads a CAP marker
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
 	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 */
@@ -176,7 +168,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	/**
 	 * Reads a COM marker (comments)
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
 	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 *
@@ -185,7 +176,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	/**
 	 * Reads a COD marker (Coding Style defaults)
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
 	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 *
@@ -194,7 +184,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	/**
 	 * Reads a POC marker (Progression Order Change)
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
 	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 */
@@ -202,7 +191,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	/**
 	 * Reads a CRG marker (Component registration)
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
 	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 *
@@ -211,7 +199,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	/**
 	 * Reads a TLM marker (Tile Length Marker)
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
 	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 */
@@ -219,7 +206,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	/**
 	 * Reads a PLM marker (Packet length, main header marker)
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
 	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 *
@@ -228,7 +214,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	/**
 	 * Reads a PLT marker (Packet length, tile-part header)
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
 	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 *
@@ -237,7 +222,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	/**
 	 * Reads a PPM marker (Packed headers, main header)
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
 	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 *
@@ -246,7 +230,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	/**
 	 * Reads a PPT marker (Packed packet headers, tile-part header)
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
 	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 *
@@ -255,7 +238,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	/**
 	 * Read SOT (Start of tile part) marker
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
 	 * @param       headerData   header data.
 	 * @param       header_size     size of header data
 	 *
@@ -263,7 +245,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	bool read_sot(uint8_t* headerData, uint16_t header_size);
 	/**
 	 * Reads a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
-	 * @param       codeStream           JPEG 2000 code stream
 	 * @param       compno          component number
 	 * @param       headerData   the data contained in the COM box.
 	 * @param       header_size   the size of the data contained in the COM marker.
@@ -274,7 +255,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	 * Reads a SQcd or SQcc element, i.e. the quantization values of a band
 	 * in the QCD or QCC.
 	 *
-	 * @param       codeStream           JPEG 2000 code stream
 	 * @param		fromQCC			true if reading QCC, otherwise false (reading QCD)
 	 * @param       compno          the component number to output.
 	 * @param       headerData   the data buffer.
@@ -300,7 +280,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	/**
 	 * Reads a COC marker (Coding Style Component)
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
 	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 *
@@ -309,7 +288,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	/**
 	 * Reads a QCD marker (Quantization defaults)
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
 	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 	 */
@@ -317,7 +295,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	/**
 	 * Reads a QCC marker (Quantization component)
 	 *
-	 * @param       codeStream      JPEG 2000 code stream
 	 * @param       headerData   header data
 	 * @param       header_size     size of header data
 
