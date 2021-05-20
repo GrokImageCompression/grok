@@ -510,16 +510,16 @@ extern uint64_t TIFFGetStrileByteCountWithErr(TIFF *tif, uint32_t strile, int *p
 #define UVSCALE		410.
 extern double LogL16toY(int);
 extern double LogL10toY(int);
-extern void XYZtoRGB24(float*, uint8_t*);
+extern void XYZtoRGB24(float[3], uint8_t[3]);
 extern int uv_decode(double*, double*, int);
-extern void LogLuv24toXYZ(uint32_t, float*);
-extern void LogLuv32toXYZ(uint32_t, float*);
+extern void LogLuv24toXYZ(uint32_t, float[3]);
+extern void LogLuv32toXYZ(uint32_t, float[3]);
 #if defined(c_plusplus) || defined(__cplusplus)
 extern int LogL16fromY(double, int = SGILOGENCODE_NODITHER);
 extern int LogL10fromY(double, int = SGILOGENCODE_NODITHER);
 extern int uv_encode(double, double, int = SGILOGENCODE_NODITHER);
-extern uint32_t LogLuv24fromXYZ(float*, int = SGILOGENCODE_NODITHER);
-extern uint32_t LogLuv32fromXYZ(float*, int = SGILOGENCODE_NODITHER);
+extern uint32_t LogLuv24fromXYZ(float[3], int = SGILOGENCODE_NODITHER);
+extern uint32_t LogLuv32fromXYZ(float[3], int = SGILOGENCODE_NODITHER);
 #else
 extern int LogL16fromY(double, int);
 extern int LogL10fromY(double, int);
