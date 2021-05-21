@@ -112,97 +112,99 @@ static void sycc_to_rgb(int32_t offset, int32_t upb, int32_t y, int32_t cb, int3
 	*out_b = b;
 }
 
-static bool sycc444_to_rgb(grk_image* src_img)
+static bool sycc444_to_rgb(grk_image* src)
 {
 	int32_t *d0, *d1, *d2, *r, *g, *b;
-	auto dest_img = create_rgb_no_subsample_image(3, src_img->comps[0].w, src_img->comps[0].h,
-												  src_img->comps[0].prec);
-	if(!dest_img)
+	auto dst = create_rgb_no_subsample_image(3, src->comps[0].w, src->comps[0].h,
+			src->comps[0].prec);
+	if(!dst)
 		return false;
 
-	int32_t upb = (int32_t)src_img->comps[0].prec;
+	int32_t upb = (int32_t)src->comps[0].prec;
 	int32_t offset = 1 << (upb - 1);
 	upb = (1 << upb) - 1;
 
-	uint32_t w = src_img->comps[0].w;
-	uint32_t stride_diff = src_img->comps[0].stride - w;
-	uint32_t h = src_img->comps[0].h;
+	uint32_t w = src->comps[0].w;
+	uint32_t src_stride_diff = src->comps[0].stride - w;
+	uint32_t dst_stride_diff = dst->comps[0].stride - dst->comps[0].w;
+	uint32_t h = src->comps[0].h;
 
-	auto y = src_img->comps[0].data;
-	auto cb = src_img->comps[1].data;
-	auto cr = src_img->comps[2].data;
+	auto y = src->comps[0].data;
+	auto cb = src->comps[1].data;
+	auto cr = src->comps[2].data;
 
-	d0 = r = dest_img->comps[0].data;
-	d1 = g = dest_img->comps[1].data;
-	d2 = b = dest_img->comps[2].data;
+	d0 = r = dst->comps[0].data;
+	d1 = g = dst->comps[1].data;
+	d2 = b = dst->comps[2].data;
 
-	dest_img->comps[0].data = nullptr;
-	dest_img->comps[1].data = nullptr;
-	dest_img->comps[2].data = nullptr;
+	dst->comps[0].data = nullptr;
+	dst->comps[1].data = nullptr;
+	dst->comps[2].data = nullptr;
 
 	for(uint32_t j = 0; j < h; ++j)
 	{
 		for(uint32_t i = 0; i < w; ++i)
 			sycc_to_rgb(offset, upb, *y++, *cb++, *cr++, r++, g++, b++);
-		y += stride_diff;
-		cb += stride_diff;
-		cr += stride_diff;
-		r += stride_diff;
-		g += stride_diff;
-		b += stride_diff;
+		y += src_stride_diff;
+		cb += src_stride_diff;
+		cr += src_stride_diff;
+		r += dst_stride_diff;
+		g += dst_stride_diff;
+		b += dst_stride_diff;
 	}
 
-	grk_image_all_components_data_free(src_img);
-	src_img->comps[0].data = d0;
-	src_img->comps[1].data = d1;
-	src_img->comps[2].data = d2;
-	src_img->color_space = GRK_CLRSPC_SRGB;
+	grk_image_all_components_data_free(src);
+	src->comps[0].data = d0;
+	src->comps[1].data = d1;
+	src->comps[2].data = d2;
+	src->color_space = GRK_CLRSPC_SRGB;
 
-	for(uint32_t i = 0; i < src_img->numcomps; ++i)
-		src_img->comps[i].stride = dest_img->comps[i].stride;
-	grk_object_unref(&dest_img->obj);
-	dest_img = nullptr;
+	for(uint32_t i = 0; i < src->numcomps; ++i)
+		src->comps[i].stride = dst->comps[i].stride;
+	grk_object_unref(&dst->obj);
+	dst = nullptr;
 
 	return true;
 } /* sycc444_to_rgb() */
 
-static bool sycc422_to_rgb(grk_image* src_img, bool oddFirstX)
+static bool sycc422_to_rgb(grk_image* src, bool oddFirstX)
 {
-	auto dest_img = create_rgb_no_subsample_image(3, src_img->comps[0].w, src_img->comps[0].h,
-												  src_img->comps[0].prec);
-	if(!dest_img)
+	auto dst = create_rgb_no_subsample_image(3, src->comps[0].w, src->comps[0].h,
+												  src->comps[0].prec);
+	if(!dst)
 		return false;
 
-	int32_t upb = src_img->comps[0].prec;
+	int32_t upb = src->comps[0].prec;
 	int32_t offset = 1 << (upb - 1);
 	upb = (1 << upb) - 1;
 
-	uint32_t w = src_img->comps[0].w;
-	uint32_t stride_diff = src_img->comps[0].stride - w;
-	uint32_t stride_diff_chroma = src_img->comps[1].stride - src_img->comps[1].w;
-	uint32_t h = src_img->comps[0].h;
+	uint32_t w = src->comps[0].w;
+	uint32_t dst_stride_diff = dst->comps[0].stride - dst->comps[0].w;
+	uint32_t src_stride_diff = src->comps[0].stride - w;
+	uint32_t src_stride_diff_chroma = src->comps[1].stride - src->comps[1].w;
+	uint32_t h = src->comps[0].h;
 
 	int32_t *d0, *d1, *d2, *r, *g, *b;
 
-	auto y = src_img->comps[0].data;
+	auto y = src->comps[0].data;
 	if (!y){
 		spdlog::warn("sycc422_to_rgb: null luma channel");
 		return false;
 	}
-	auto cb = src_img->comps[1].data;
-	auto cr = src_img->comps[2].data;
+	auto cb = src->comps[1].data;
+	auto cr = src->comps[2].data;
 	if (!cb || !cr){
 		spdlog::warn("sycc422_to_rgb: null chroma channel");
 		return false;
 	}
 
-	d0 = r = dest_img->comps[0].data;
-	d1 = g = dest_img->comps[1].data;
-	d2 = b = dest_img->comps[2].data;
+	d0 = r = dst->comps[0].data;
+	d1 = g = dst->comps[1].data;
+	d2 = b = dst->comps[2].data;
 
-	dest_img->comps[0].data = nullptr;
-	dest_img->comps[1].data = nullptr;
-	dest_img->comps[2].data = nullptr;
+	dst->comps[0].data = nullptr;
+	dst->comps[1].data = nullptr;
+	dst->comps[2].data = nullptr;
 
 	/* if img->x0 is odd, then first column shall use Cb/Cr = 0 */
 	uint32_t loopmaxw = w;
@@ -223,29 +225,29 @@ static bool sycc422_to_rgb(grk_image* src_img, bool oddFirstX)
 		if(j < loopmaxw)
 			sycc_to_rgb(offset, upb, *y++, *cb++, *cr++, r++, g++, b++);
 
-		y += stride_diff;
-		cb += stride_diff_chroma;
-		cr += stride_diff_chroma;
-		r += stride_diff;
-		g += stride_diff;
-		b += stride_diff;
+		y += src_stride_diff;
+		cb += src_stride_diff_chroma;
+		cr += src_stride_diff_chroma;
+		r += dst_stride_diff;
+		g += dst_stride_diff;
+		b += dst_stride_diff;
 	}
-	grk_image_all_components_data_free(src_img);
+	grk_image_all_components_data_free(src);
 
-	src_img->comps[0].data = d0;
-	src_img->comps[1].data = d1;
-	src_img->comps[2].data = d2;
+	src->comps[0].data = d0;
+	src->comps[1].data = d1;
+	src->comps[2].data = d2;
 
-	src_img->comps[1].w = src_img->comps[2].w = src_img->comps[0].w;
-	src_img->comps[1].h = src_img->comps[2].h = src_img->comps[0].h;
-	src_img->comps[1].dx = src_img->comps[2].dx = src_img->comps[0].dx;
-	src_img->comps[1].dy = src_img->comps[2].dy = src_img->comps[0].dy;
-	src_img->color_space = GRK_CLRSPC_SRGB;
+	src->comps[1].w = src->comps[2].w = src->comps[0].w;
+	src->comps[1].h = src->comps[2].h = src->comps[0].h;
+	src->comps[1].dx = src->comps[2].dx = src->comps[0].dx;
+	src->comps[1].dy = src->comps[2].dy = src->comps[0].dy;
+	src->color_space = GRK_CLRSPC_SRGB;
 
-	for(uint32_t i = 0; i < src_img->numcomps; ++i)
-		src_img->comps[i].stride = dest_img->comps[i].stride;
-	grk_object_unref(&dest_img->obj);
-	dest_img = nullptr;
+	for(uint32_t i = 0; i < src->numcomps; ++i)
+		src->comps[i].stride = dst->comps[i].stride;
+	grk_object_unref(&dst->obj);
+	dst = nullptr;
 
 	return true;
 
@@ -253,9 +255,9 @@ static bool sycc422_to_rgb(grk_image* src_img, bool oddFirstX)
 
 static bool sycc420_to_rgb(grk_image* src_img, bool oddFirstX, bool oddFirstY)
 {
-	auto dest_img = create_rgb_no_subsample_image(3, src_img->comps[0].w, src_img->comps[0].h,
+	auto dst = create_rgb_no_subsample_image(3, src_img->comps[0].w, src_img->comps[0].h,
 												  src_img->comps[0].prec);
-	if(!dest_img)
+	if(!dst)
 		return false;
 
 	int32_t upb = src_img->comps[0].prec;
@@ -271,8 +273,8 @@ static bool sycc420_to_rgb(grk_image* src_img, bool oddFirstX, bool oddFirstY)
 	uint32_t stride_src[3];
 	uint32_t stride_src_diff[3];
 
-	uint32_t stride_dest = dest_img->comps[0].stride;
-	uint32_t stride_dest_diff = dest_img->comps[0].stride - dest_img->comps[0].w;
+	uint32_t stride_dest = dst->comps[0].stride;
+	uint32_t stride_dest_diff = dst->comps[0].stride - dst->comps[0].w;
 
 	for(uint32_t i = 0; i < 3; ++i)
 	{
@@ -281,8 +283,8 @@ static bool sycc420_to_rgb(grk_image* src_img, bool oddFirstX, bool oddFirstY)
 		stride_src[i] = src_comp->stride;
 		stride_src_diff[i] = src_comp->stride - src_comp->w;
 
-		dest[i] = dest_ptr[i] = dest_img->comps[i].data;
-		dest_img->comps[i].data = nullptr;
+		dest[i] = dest_ptr[i] = dst->comps[i].data;
+		dst->comps[i].data = nullptr;
 	}
 
 	uint32_t loopmaxw = w;
@@ -358,7 +360,7 @@ static bool sycc420_to_rgb(grk_image* src_img, bool oddFirstX, bool oddFirstY)
 	for(uint32_t k = 0; k < 3; ++k)
 	{
 		src_img->comps[k].data = dest[k];
-		src_img->comps[k].stride = dest_img->comps[k].stride;
+		src_img->comps[k].stride = dst->comps[k].stride;
 	}
 
 	src_img->comps[1].w = src_img->comps[2].w = src_img->comps[0].w;
@@ -367,8 +369,8 @@ static bool sycc420_to_rgb(grk_image* src_img, bool oddFirstX, bool oddFirstY)
 	src_img->comps[1].dy = src_img->comps[2].dy = src_img->comps[0].dy;
 	src_img->color_space = GRK_CLRSPC_SRGB;
 
-	grk_object_unref(&dest_img->obj);
-	dest_img = nullptr;
+	grk_object_unref(&dst->obj);
+	dst = nullptr;
 
 	return true;
 
