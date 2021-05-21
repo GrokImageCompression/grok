@@ -901,6 +901,11 @@ bool color_cielab_to_rgb(grk_image* src_img)
 	a = src[1] = src_img->comps[1].data;
 	b = src[2] = src_img->comps[2].data;
 
+	if (!L || !a || !b){
+		spdlog::warn("color_cielab_to_rgb: null L*a*b component");
+		return false;
+	}
+
 	red = dst[0] = dest_img->comps[0].data;
 	green = dst[1] = dest_img->comps[1].data;
 	blue = dst[2] = dest_img->comps[2].data;
