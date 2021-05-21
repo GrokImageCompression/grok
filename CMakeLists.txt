@@ -1,6 +1,6 @@
 # option to set custom Grok name space
 #set(GROK_NAMESPACE "FOO")
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.17)
 
 if(NOT GROK_NAMESPACE)
   set(GROK_NAMESPACE "GROK")
