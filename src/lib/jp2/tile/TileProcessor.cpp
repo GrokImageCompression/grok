@@ -388,7 +388,7 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 		return false;
 	if(!decompressT2(tcp->m_compressedTileData) || m_corrupt_packet)
 	{
-		GRK_WARN("Tile %d was not decompressed", m_tileIndex + 1);
+		GRK_WARN("Tile %d was not decompressed", m_tileIndex);
 		return true;
 	}
 	if(!decompressT1())

@@ -22,53 +22,49 @@ GrkImage* GrkImage::create(uint16_t numcmpts, grk_image_cmptparm* cmptparms, GRK
 						   bool doAllocation)
 {
 	auto image = new GrkImage();
+	image->color_space = clrspc;
+	image->numcomps = numcmpts;
+	/* allocate memory for the per-component information */
+	image->comps = new grk_image_comp[image->numcomps];
+	memset(image->comps, 0, image->numcomps * sizeof(grk_image_comp));
 
-	if(image)
+	/* create the individual image components */
+	for(uint32_t compno = 0; compno < numcmpts; compno++)
 	{
-		image->color_space = clrspc;
-		image->numcomps = numcmpts;
-		/* allocate memory for the per-component information */
-		image->comps = new grk_image_comp[image->numcomps];
-		memset(image->comps, 0, image->numcomps * sizeof(grk_image_comp));
+		auto comp = &image->comps[compno];
 
-		/* create the individual image components */
-		for(uint32_t compno = 0; compno < numcmpts; compno++)
+		assert(cmptparms[compno].dx);
+		assert(cmptparms[compno].dy);
+		comp->dx = cmptparms[compno].dx;
+		comp->dy = cmptparms[compno].dy;
+		comp->w = cmptparms[compno].w;
+		comp->h = cmptparms[compno].h;
+		comp->x0 = cmptparms[compno].x0;
+		comp->y0 = cmptparms[compno].y0;
+		comp->prec = cmptparms[compno].prec;
+		comp->sgnd = cmptparms[compno].sgnd;
+		if(doAllocation && !allocData(comp))
 		{
-			auto comp = &image->comps[compno];
-
-			assert(cmptparms[compno].dx);
-			assert(cmptparms[compno].dy);
-			comp->dx = cmptparms[compno].dx;
-			comp->dy = cmptparms[compno].dy;
-			comp->w = cmptparms[compno].w;
-			comp->h = cmptparms[compno].h;
-			comp->x0 = cmptparms[compno].x0;
-			comp->y0 = cmptparms[compno].y0;
-			comp->prec = cmptparms[compno].prec;
-			comp->sgnd = cmptparms[compno].sgnd;
-			if(doAllocation && !allocData(comp))
-			{
-				grk::GRK_ERROR("Unable to allocate memory for image.");
-				delete image;
-				return nullptr;
-			}
-			comp->type = GRK_COMPONENT_TYPE_COLOUR;
-			switch(compno)
-			{
-				case 0:
-					comp->association = GRK_COMPONENT_ASSOC_COLOUR_1;
-					break;
-				case 1:
-					comp->association = GRK_COMPONENT_ASSOC_COLOUR_2;
-					break;
-				case 2:
-					comp->association = GRK_COMPONENT_ASSOC_COLOUR_3;
-					break;
-				default:
-					comp->association = GRK_COMPONENT_ASSOC_UNASSOCIATED;
-					comp->type = GRK_COMPONENT_TYPE_UNSPECIFIED;
-					break;
-			}
+			grk::GRK_ERROR("Unable to allocate memory for image.");
+			delete image;
+			return nullptr;
+		}
+		comp->type = GRK_COMPONENT_TYPE_COLOUR;
+		switch(compno)
+		{
+			case 0:
+				comp->association = GRK_COMPONENT_ASSOC_COLOUR_1;
+				break;
+			case 1:
+				comp->association = GRK_COMPONENT_ASSOC_COLOUR_2;
+				break;
+			case 2:
+				comp->association = GRK_COMPONENT_ASSOC_COLOUR_3;
+				break;
+			default:
+				comp->association = GRK_COMPONENT_ASSOC_UNASSOCIATED;
+				comp->type = GRK_COMPONENT_TYPE_UNSPECIFIED;
+				break;
 		}
 	}
 

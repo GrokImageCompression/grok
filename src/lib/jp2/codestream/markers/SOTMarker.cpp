@@ -83,7 +83,7 @@ bool SOTMarker::get_sot_values(CodeStreamDecompress* codeStream, uint8_t* header
 	assert(headerData != nullptr);
 	if(header_size != sot_marker_segment_len - grk_marker_length)
 	{
-		GRK_ERROR("Error reading SOT marker");
+		GRK_ERROR("Error reading next SOT marker");
 		return false;
 	}
 	uint32_t len;
@@ -98,7 +98,7 @@ bool SOTMarker::get_sot_values(CodeStreamDecompress* codeStream, uint8_t* header
 
 	if(num_tile_parts && (tile_part_index == num_tile_parts))
 	{
-		GRK_ERROR("Tile part index (%d) is not less than number of tile parts (%d)",
+		GRK_ERROR("Tile part index (%d) must be less than number of tile parts (%d)",
 				  tile_part_index, num_tile_parts);
 		return false;
 	}

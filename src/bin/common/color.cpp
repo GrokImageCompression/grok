@@ -40,12 +40,16 @@ namespace grk
 static grk_image* create_rgb_no_subsample_image(uint16_t numcmpts, uint32_t w, uint32_t h,
 												uint8_t prec)
 {
-	if(!numcmpts)
+	if(!numcmpts){
+		spdlog::warn("create_rgb_no_subsample_image: number of components cannot be zero.");
 		return nullptr;
+	}
 
 	auto cmptparms = (grk_image_cmptparm*)calloc(numcmpts, sizeof(grk_image_cmptparm));
-	if(!cmptparms)
+	if(!cmptparms){
+		spdlog::warn("create_rgb_no_subsample_image: out of memory.");
 		return nullptr;
+	}
 	uint32_t compno = 0U;
 	for(compno = 0U; compno < numcmpts; ++compno)
 	{
@@ -61,6 +65,7 @@ static grk_image* create_rgb_no_subsample_image(uint16_t numcmpts, uint32_t w, u
 	}
 	auto img = grk_image_new(numcmpts, (grk_image_cmptparm*)cmptparms, GRK_CLRSPC_SRGB, true);
 	free(cmptparms);
+
 	return img;
 }
 
@@ -180,8 +185,16 @@ static bool sycc422_to_rgb(grk_image* src_img, bool oddFirstX)
 	int32_t *d0, *d1, *d2, *r, *g, *b;
 
 	auto y = src_img->comps[0].data;
+	if (!y){
+		spdlog::warn("sycc422_to_rgb: null luma channel");
+		return false;
+	}
 	auto cb = src_img->comps[1].data;
 	auto cr = src_img->comps[2].data;
+	if (!cb || !cr){
+		spdlog::warn("sycc422_to_rgb: null chroma channel");
+		return false;
+	}
 
 	d0 = r = dest_img->comps[0].data;
 	d1 = g = dest_img->comps[1].data;
