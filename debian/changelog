@@ -1,3 +1,10 @@
+libgrokj2k (9.2.0-1) unstable; urgency=high
+
+    * Majour release
+    * Fixes CVE-2021-36089 (Closes: #990525)
+
+ -- Aaron Boxer <boxerab@gmail.com>  Sat, 22 May 2021 11:10:00 +0200
+
 libgrokj2k (7.6.6-2) unstable; urgency=high
 
     * Add -latomic to fix FTBFS on armel/mipsel (Closes: #983773)

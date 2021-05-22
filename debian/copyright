@@ -16,7 +16,11 @@ Copyright: 2001-2003, David Janssens
   2011-2012, Centre National d'Etudes Spatiales (CNES), France
   2012, CS Systemes d'Information, France
   2016-2020, Grok Image Compression Inc.
-License: AGPL-3 and BSD-2-clause
+License: AGPL-3 and BSD-2-clause and Apache-2
+
+Files: src/lib/jp2/highway/*
+Copyright: 2020, Google LLC
+License: Apache-2
 
 Files: src/lib/jp2/codestream/HTParams.*
  src/lib/jp2/t1/t1_ht/coding/*
@@ -27,9 +31,7 @@ Copyright: 2019, Aous Naman
   2019, The University of New South Wales, Australia
 License: BSD-2-clause
 
-Files: src/lib/jp2/tile/SparseBuffer.h
- src/lib/jp2/util/bench_dwt.cpp
- src/lib/jp2/util/TestSparseBuffer.cpp
+Files: src/lib/jp2/tile/SparseCanvas.h
 Copyright: 2016-2020, Grok Image Compression Inc.
   2017, IntoPix SA <contact@intopix.com>
 License: AGPL-3 and BSD-2-clause
@@ -962,3 +964,5 @@ License: AGPL-3
  and how to apply and follow the GNU AGPL,
  see <https://www.gnu.org/licenses/>.
 
+License: Apache-2
+ `/usr/share/common-licenses/Apache-2.0`
