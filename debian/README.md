@@ -4,12 +4,12 @@ Useful Commands
 
 Move master tag:
 
-`$ git push origin :refs/tags/v8.0.0 && git tag -fa v8.0.0 && git push origin master --tags`
+`$ git push origin :refs/tags/v9.2.0 && git tag -fa v9.2.0 && git push origin master --tags`
 
 
 Move debian/master tag:
 
-`$ git push origin :refs/tags/v8.0.0.debian && git tag -fa v8.0.0.debian && git push origin master --tags`
+`$ git push origin :refs/tags/v9.2.0.debian && git tag -fa v9.2.0.debian && git push origin master --tags`
 
 ------------------
 Building a Package
@@ -23,7 +23,7 @@ Guide to [setting up schroot](https://wiki.debian.org/Packaging/Pre-Requisites)
 
 1. `sudo schroot -c debian-sid`
 
-2. `$ git archive --format=tar v8.0.0 | gzip > libgrokj2k_8.0.0.orig.tar.gz && mv libgrokj2k_8.0.0.orig.tar.gz ..`
+2. `$ git archive --format=tar v9.2.0 | gzip > libgrokj2k_9.2.0.orig.tar.gz && mv libgrokj2k_9.2.0.orig.tar.gz ..`
 
 3. `$ dpkg-buildpackage -us -uc`
 
