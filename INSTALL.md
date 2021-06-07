@@ -97,35 +97,6 @@ If the `-DGRK_DATA_ROOT:PATH` option is omitted, test files will be automaticall
  `${CMAKE_SOURCE_DIR}/../grok-test-data`
 
 
-#### SIMD
-
-On Intel and AMD processors, Grok implements optimizations using the `SSE4.1`
-instruction set (example: 9x7 inverse MCT transform) and the `AVX2`
-instruction set (example: 5x3 inverse discrete wavelet transform).
-Currently, those optimizations are only available if Grok is built to
-use those instruction sets. If Grok is able to run on machines both with and without
-these instructions.
-
-With `gcc`/`clang`, it is possible to enable those instruction sets
-with the following commands:
-
-```
-cmake -DCMAKE_CXX_FLAGS="-O3 -msse4.1 -DNDEBUG" ..
-```
-
-```
-cmake -DCMAKE_CXX_FLAGS="-O3 -mavx2 -DNDEBUG" ..
-```
-
-(`AVX2` implies `SSE4.1`)
-
-Or if the binary will run on the machine where it has
-been compiled :
-
-```
-cmake -DCMAKE_CXX_FLAGS="-O3 -march=native -DNDEBUG" ..
-```
-
 ## OSX
 
 OSX builds are configured similar to Unix builds.
