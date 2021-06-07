@@ -10,6 +10,12 @@ set(GROK_PLUGIN_NAME grokj2k_plugin)
 
 project(${GROK_NAMESPACE} )
 
+
+if ( (CMAKE_CXX_COMPILER_ID MATCHES "GNU") AND (CMAKE_CXX_COMPILER_VERSION LESS 10.0) )
+   message(FATAL_ERROR "GNU compiler version must be at least 10.0")
+endif()
+
+
 # Do full dependency headers.
 include_regular_expression("^.*$")
 
