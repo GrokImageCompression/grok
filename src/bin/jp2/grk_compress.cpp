@@ -1028,7 +1028,7 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 					spdlog::warn("POC end resolution {} cannot be greater than"
 								 "the number of resolutions {}",
 								 progression[numProgressions].resE, parameters->numresolution);
-					progression[numProgressions].resE = (uint8_t)(parameters->numresolution - 1U);
+					progression[numProgressions].resE = parameters->numresolution;
 				}
 				if(progression[numProgressions].resS >= progression[numProgressions].resE)
 				{

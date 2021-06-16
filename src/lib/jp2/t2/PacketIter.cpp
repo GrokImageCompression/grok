@@ -67,7 +67,7 @@ bool PacketIter::next_cprl(void)
 		{
 			for(; x < prog.tx1; x += dx - (x % dx))
 			{
-				for(; resno < std::min<uint32_t>(prog.resE, comp->numresolutions); resno++)
+				for(; resno < prog.resE; resno++)
 				{
 					if(!generatePrecinctIndex())
 						continue;
@@ -116,8 +116,7 @@ bool PacketIter::next_pcrl(void)
 			}
 			for(; compno < prog.compE; compno++)
 			{
-				auto comp = comps + compno;
-				for(; resno < std::min<uint32_t>(prog.resE, comp->numresolutions); resno++)
+				for(; resno < prog.resE; resno++)
 				{
 					if(!generatePrecinctIndex())
 						continue;
@@ -236,6 +235,23 @@ bool PacketIter::next_rpcl(void)
 			if(resno >= maxNumDecompositionResolutions)
 				return false;
 		}
+
+		// if all remaining components have degenerate precinct grid, then
+		// skip this resolution
+		bool sane = false;
+		for(uint16_t compnoTmp = compno; compnoTmp < prog.compE; compnoTmp++) {
+			auto comp = comps + compnoTmp;
+			if(resno >= comp->numresolutions)
+				continue;
+			auto res = comp->resolutions + resno;
+			if(res->precinctGridWidth > 0 && res->precinctGridHeight > 0){
+				sane = true;
+				break;
+			}
+		}
+		if (!sane)
+			continue;
+
 		for(; y < prog.ty1; y += dy - (y % dy))
 		{
 			for(; x < prog.tx1; x += dx - (x % dx))
@@ -286,20 +302,13 @@ bool PacketIter::next(void)
 }
 bool PacketIter::generatePrecinctIndex(void)
 {
-	if(compno >= numcomps)
-	{
-		GRK_ERROR("Packet iterator component %d must be strictly less than "
-				  "total number of components %d",
-				  compno, numcomps);
-		return false;
-	}
 	auto comp = comps + compno;
 	if(resno >= comp->numresolutions)
 		return false;
-
 	auto res = comp->resolutions + resno;
-	uint32_t levelno = comp->numresolutions - 1 - resno;
-	assert(levelno < GRK_J2K_MAXRLVLS);
+	if(res->precinctGridWidth == 0 || res->precinctGridHeight == 0)
+		return false;
+	uint8_t levelno = (uint8_t)(comp->numresolutions - 1U - resno);
 	if(levelno >= GRK_J2K_MAXRLVLS)
 		return false;
 	grkRectU32 resBounds(ceildiv<uint64_t>((uint64_t)tx0, ((uint64_t)comp->dx << levelno)),
@@ -310,15 +319,9 @@ bool PacketIter::generatePrecinctIndex(void)
 	uint32_t rpy = res->precinctHeightExp + levelno;
 	if(!(((uint64_t)x % ((uint64_t)comp->dx << rpx) == 0) ||
 		 ((x == tx0) && (((uint64_t)resBounds.x0 << levelno) % ((uint64_t)1 << rpx)))))
-	{
 		return false;
-	}
 	if(!(((uint64_t)y % ((uint64_t)comp->dy << rpy) == 0) ||
 		 ((y == ty0) && (((uint64_t)resBounds.y0 << levelno) % ((uint64_t)1 << rpy)))))
-	{
-		return false;
-	}
-	if((res->precinctGridWidth == 0) || (res->precinctGridHeight == 0))
 		return false;
 	if(resBounds.area() == 0)
 		return false;
@@ -340,8 +343,7 @@ grkRectU32 PacketIter::generatePrecinct(uint64_t precinctIndex)
 	if(resno >= comp->numresolutions)
 		return grkRectU32(0, 0, 0, 0);
 	auto res = comp->resolutions + resno;
-	uint32_t levelno = comp->numresolutions - 1 - resno;
-	assert(levelno < GRK_J2K_MAXRLVLS);
+	uint8_t levelno = (uint8_t)(comp->numresolutions - 1U - resno);
 	if(levelno >= GRK_J2K_MAXRLVLS)
 		return grkRectU32(0, 0, 0, 0);
 	grkRectU32 resBounds(ceildiv<uint64_t>((uint64_t)tx0, ((uint64_t)comp->dx << levelno)),

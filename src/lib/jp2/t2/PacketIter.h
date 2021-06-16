@@ -58,7 +58,7 @@ struct PiComp
 	// component sub-sampling factors
 	uint32_t dx;
 	uint32_t dy;
-	uint32_t numresolutions;
+	uint8_t numresolutions;
 	PiResolution* resolutions;
 };
 
@@ -171,46 +171,12 @@ struct PacketIter
 	void destroy_include(void);
 
 	/**
-	 Get next packet in component-precinct-resolution-layer order.
-	 @return returns false if pi pointed to the last packet or else returns true
-	 */
-	bool next_cprl(void);
-
-	bool generatePrecinctIndex(void);
-
-	grkRectU32 generatePrecinct(uint64_t precinctIndex);
-
-	/**
-	 Get next packet in precinct-component-resolution-layer order.
-	 @return returns false if pi pointed to the last packet or else returns true
-	 */
-	bool next_pcrl(void);
-
-	/**
-	 Get next packet in layer-resolution-component-precinct order.
-	 @return returns false if pi pointed to the last packet or else returns true
-	 */
-	bool next_lrcp(void);
-	/**
-	 Get next packet in resolution-layer-component-precinct order.
-	 @return returns false if pi pointed to the last packet or else returns true
-	 */
-	bool next_rlcp(void);
-	/**
-	 Get next packet in resolution-precinct-component-layer order.
-	 @return returns false if pi pointed to the last packet or else returns true
-	 */
-	bool next_rpcl(void);
-
-	/**
 	 Modify the packet iterator to point to the next packet
 	 @return false if pi pointed to the last packet or else returns true
 	 */
-
 	bool next(void);
 
 	void update_dxy(void);
-	void update_dxy_for_comp(PiComp* comp);
 
 	/** Enabling Tile part generation*/
 	bool enableTilePartGeneration;
@@ -243,12 +209,42 @@ struct PacketIter
 	uint32_t x, y;
 	/** component sub-sampling */
 	uint32_t dx, dy;
-	bool handledFirstInner;
-
   private:
-	bool isSingleProgression(void);
+	bool handledFirstInner;
 	PacketManager* packetManager;
 	uint8_t maxNumDecompositionResolutions;
+	bool isSingleProgression(void);
+	bool generatePrecinctIndex(void);
+	grkRectU32 generatePrecinct(uint64_t precinctIndex);
+	void update_dxy_for_comp(PiComp* comp);
+
+	/**
+	 Get next packet in component-precinct-resolution-layer order.
+	 @return returns false if pi pointed to the last packet or else returns true
+	 */
+	bool next_cprl(void);
+
+	/**
+	 Get next packet in precinct-component-resolution-layer order.
+	 @return returns false if pi pointed to the last packet or else returns true
+	 */
+	bool next_pcrl(void);
+
+	/**
+	 Get next packet in layer-resolution-component-precinct order.
+	 @return returns false if pi pointed to the last packet or else returns true
+	 */
+	bool next_lrcp(void);
+	/**
+	 Get next packet in resolution-layer-component-precinct order.
+	 @return returns false if pi pointed to the last packet or else returns true
+	 */
+	bool next_rlcp(void);
+	/**
+	 Get next packet in resolution-precinct-component-layer order.
+	 @return returns false if pi pointed to the last packet or else returns true
+	 */
+	bool next_rpcl(void);
 };
 
 /* ----------------------------------------------------------------------- */
