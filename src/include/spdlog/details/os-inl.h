@@ -199,6 +199,12 @@ SPDLOG_INLINE bool path_exists(const filename_t &filename) SPDLOG_NOEXCEPT
 #endif
 }
 
+#ifdef _MSC_VER
+    // avoid warning about unreachable statement at the end of filesize()
+    #pragma warning(push)
+    #pragma warning(disable: 4702)
+#endif
+
 // Return file size according to open FILE* object
 SPDLOG_INLINE size_t filesize(FILE *f)
 {
@@ -208,7 +214,7 @@ SPDLOG_INLINE size_t filesize(FILE *f)
     }
 #if defined(_WIN32) && !defined(__CYGWIN__)
     int fd = ::_fileno(f);
-#if _WIN64 // 64 bits
+#if defined(_WIN64) // 64 bits
     __int64 ret = ::_filelengthi64(fd);
     if (ret >= 0)
     {
@@ -248,6 +254,10 @@ SPDLOG_INLINE size_t filesize(FILE *f)
     throw_spdlog_ex("Failed getting file size from fd", errno);
     return 0; // will not be reached.
 }
+
+#ifdef _MSC_VER
+    #pragma warning(pop)
+#endif
 
 // Return utc offset in minutes or throw spdlog_ex on failure
 SPDLOG_INLINE int utc_minutes_offset(const std::tm &tm)
@@ -356,7 +366,7 @@ SPDLOG_INLINE size_t thread_id() SPDLOG_NOEXCEPT
 
 // This is avoid msvc issue in sleep_for that happens if the clock changes.
 // See https://github.com/gabime/spdlog/issues/609
-SPDLOG_INLINE void sleep_for_millis(int milliseconds) SPDLOG_NOEXCEPT
+SPDLOG_INLINE void sleep_for_millis(unsigned int milliseconds) SPDLOG_NOEXCEPT
 {
 #if defined(_WIN32)
     ::Sleep(milliseconds);
