@@ -14,6 +14,13 @@ Grok releases can be found [here](https://github.com/GrokImageCompression/grok/r
 
 Grok uses [cmake](www.cmake.org) to configure builds across multiple platforms.
 
+Supported compilers:
+
+1. gcc 10 and higher
+1. clang 12 and higher
+1. MSVC 2019 and higher (mingw compiler not supported)
+
+
 To configure a build using the defaults:
 
 ```
