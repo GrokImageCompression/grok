@@ -276,56 +276,53 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 			return false;
 		}
 	}
-	/* keep a link to cp so that we can destroy it later in j2k_destroy_compress */
-	auto cp = &(m_cp);
+	/* set default values for m_cp */
+	m_cp.t_grid_width = 1;
+	m_cp.t_grid_height = 1;
 
-	/* set default values for cp */
-	cp->t_grid_width = 1;
-	cp->t_grid_height = 1;
-
-	cp->m_coding_params.m_enc.m_max_comp_size = parameters->max_comp_size;
-	cp->rsiz = parameters->rsiz;
-	cp->m_coding_params.m_enc.m_allocationByRateDistortion =
+	m_cp.m_coding_params.m_enc.m_max_comp_size = parameters->max_comp_size;
+	m_cp.rsiz = parameters->rsiz;
+	m_cp.m_coding_params.m_enc.m_allocationByRateDistortion =
 		parameters->allocationByRateDistoration;
-	cp->m_coding_params.m_enc.m_allocationByFixedQuality = parameters->allocationByQuality;
-	cp->m_coding_params.m_enc.writePLT = parameters->writePLT;
-	cp->m_coding_params.m_enc.writeTLM = parameters->writeTLM;
-	cp->m_coding_params.m_enc.rateControlAlgorithm = parameters->rateControlAlgorithm;
+	m_cp.m_coding_params.m_enc.m_allocationByFixedQuality = parameters->allocationByQuality;
+	m_cp.m_coding_params.m_enc.writePLT = parameters->writePLT;
+	m_cp.m_coding_params.m_enc.writeTLM = parameters->writeTLM;
+	m_cp.m_coding_params.m_enc.rateControlAlgorithm = parameters->rateControlAlgorithm;
 
 	/* tiles */
-	cp->t_width = parameters->t_width;
-	cp->t_height = parameters->t_height;
+	m_cp.t_width = parameters->t_width;
+	m_cp.t_height = parameters->t_height;
 
 	/* tile offset */
-	cp->tx0 = parameters->tx0;
-	cp->ty0 = parameters->ty0;
+	m_cp.tx0 = parameters->tx0;
+	m_cp.ty0 = parameters->ty0;
 
 	/* comment string */
 	if(parameters->num_comments)
 	{
 		for(size_t i = 0; i < parameters->num_comments; ++i)
 		{
-			cp->comment_len[i] = parameters->comment_len[i];
-			if(!cp->comment_len[i])
+			m_cp.comment_len[i] = parameters->comment_len[i];
+			if(!m_cp.comment_len[i])
 			{
 				GRK_WARN("Empty comment. Ignoring");
 				continue;
 			}
-			if(cp->comment_len[i] > GRK_MAX_COMMENT_LENGTH)
+			if(m_cp.comment_len[i] > GRK_MAX_COMMENT_LENGTH)
 			{
 				GRK_WARN("Comment length %s is greater than maximum comment length %u. Ignoring",
-						 cp->comment_len[i], GRK_MAX_COMMENT_LENGTH);
+						 m_cp.comment_len[i], GRK_MAX_COMMENT_LENGTH);
 				continue;
 			}
-			cp->comment[i] = (char*)new uint8_t[cp->comment_len[i]];
-			if(!cp->comment[i])
+			m_cp.comment[i] = (char*)new uint8_t[m_cp.comment_len[i]];
+			if(!m_cp.comment[i])
 			{
 				GRK_ERROR("Not enough memory to allocate copy of comment string");
 				return false;
 			}
-			memcpy(cp->comment[i], parameters->comment[i], cp->comment_len[i]);
-			cp->isBinaryComment[i] = parameters->is_binary_comment[i];
-			cp->num_comments++;
+			memcpy(m_cp.comment[i], parameters->comment[i], m_cp.comment_len[i]);
+			m_cp.isBinaryComment[i] = parameters->is_binary_comment[i];
+			m_cp.num_comments++;
 		}
 	}
 	else
@@ -335,38 +332,38 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 		const size_t clen = strlen(comment);
 		const char* version = grk_version();
 
-		cp->comment[0] = (char*)new uint8_t[clen + strlen(version) + 1];
-		if(!cp->comment[0])
+		m_cp.comment[0] = (char*)new uint8_t[clen + strlen(version) + 1];
+		if(!m_cp.comment[0])
 		{
 			GRK_ERROR("Not enough memory to allocate comment string");
 			return false;
 		}
-		sprintf(cp->comment[0], "%s%s", comment, version);
-		cp->comment_len[0] = (uint16_t)strlen(cp->comment[0]);
-		cp->num_comments = 1;
-		cp->isBinaryComment[0] = false;
+		sprintf(m_cp.comment[0], "%s%s", comment, version);
+		m_cp.comment_len[0] = (uint16_t)strlen(m_cp.comment[0]);
+		m_cp.num_comments = 1;
+		m_cp.isBinaryComment[0] = false;
 	}
 	if(parameters->tile_size_on)
 	{
 		// avoid divide by zero
-		if(cp->t_width == 0 || cp->t_height == 0)
+		if(m_cp.t_width == 0 || m_cp.t_height == 0)
 		{
-			GRK_ERROR("Invalid tile dimensions (%u,%u)", cp->t_width, cp->t_height);
+			GRK_ERROR("Invalid tile dimensions (%u,%u)", m_cp.t_width, m_cp.t_height);
 			return false;
 		}
-		cp->t_grid_width = ceildiv<uint32_t>((image->x1 - cp->tx0), cp->t_width);
-		cp->t_grid_height = ceildiv<uint32_t>((image->y1 - cp->ty0), cp->t_height);
+		m_cp.t_grid_width = ceildiv<uint32_t>((image->x1 - m_cp.tx0), m_cp.t_width);
+		m_cp.t_grid_height = ceildiv<uint32_t>((image->y1 - m_cp.ty0), m_cp.t_height);
 	}
 	else
 	{
-		cp->t_width = image->x1 - cp->tx0;
-		cp->t_height = image->y1 - cp->ty0;
+		m_cp.t_width = image->x1 - m_cp.tx0;
+		m_cp.t_height = image->y1 - m_cp.ty0;
 	}
 	if(parameters->enableTilePartGeneration)
 	{
-		cp->m_coding_params.m_enc.m_newTilePartProgressionDivider =
+		m_cp.m_coding_params.m_enc.m_newTilePartProgressionDivider =
 			parameters->newTilePartProgressionDivider;
-		cp->m_coding_params.m_enc.m_enableTilePartGeneration = true;
+		m_cp.m_coding_params.m_enc.m_enableTilePartGeneration = true;
 	}
 	uint8_t numgbits = parameters->numgbits;
 	if(parameters->numgbits > 7)
@@ -374,10 +371,10 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 		GRK_ERROR("Number of guard bits %d is greater than 7", numgbits);
 		return false;
 	}
-	cp->tcps = new TileCodingParams[cp->t_grid_width * cp->t_grid_height];
-	for(uint32_t tileno = 0; tileno < cp->t_grid_width * cp->t_grid_height; tileno++)
+	m_cp.tcps = new TileCodingParams[m_cp.t_grid_width * m_cp.t_grid_height];
+	for(uint32_t tileno = 0; tileno < m_cp.t_grid_width * m_cp.t_grid_height; tileno++)
 	{
-		TileCodingParams* tcp = cp->tcps + tileno;
+		TileCodingParams* tcp = m_cp.tcps + tileno;
 		tcp->setIsHT(parameters->isHT);
 		tcp->qcd.generate(numgbits, (uint32_t)(parameters->numresolution - 1),
 						  !parameters->irreversible, image->comps[0].prec, tcp->mct > 0,
@@ -386,7 +383,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 
 		for(uint16_t j = 0; j < tcp->numlayers; j++)
 		{
-			if(cp->m_coding_params.m_enc.m_allocationByFixedQuality)
+			if(m_cp.m_coding_params.m_enc.m_allocationByFixedQuality)
 				tcp->distortion[j] = parameters->layer_distortion[j];
 			else
 				tcp->rates[j] = parameters->layer_rate[j];
@@ -1659,22 +1656,79 @@ uint32_t CodeStreamCompress::get_SQcd_SQcc_size(uint32_t comp_no)
 {
 	auto tcp = m_cp.tcps;
 	auto tccp = tcp->tccps + comp_no;
+	assert(comp_no < getHeaderImage()->numcomps);
 
-	return tccp->quant.get_SQcd_SQcc_size(this, comp_no);
+	uint32_t num_bands =
+		(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ? 1 : (tccp->numresolutions * 3U - 2);
+
+	return (tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) ? 1 + num_bands : 1 + 2 * num_bands;
 }
 bool CodeStreamCompress::compare_SQcd_SQcc(uint32_t first_comp_no, uint32_t second_comp_no)
 {
 	auto tcp = m_cp.tcps;
 	auto tccp0 = tcp->tccps + first_comp_no;
+	auto tccp1 = tcp->tccps + second_comp_no;
 
-	return tccp0->quant.compare_SQcd_SQcc(this, first_comp_no, second_comp_no);
+	if(tccp0->qntsty != tccp1->qntsty)
+		return false;
+	if(tccp0->numgbits != tccp1->numgbits)
+		return false;
+	uint32_t band_no, num_bands;
+	if(tccp0->qntsty == J2K_CCP_QNTSTY_SIQNT)
+	{
+		num_bands = 1U;
+	}
+	else
+	{
+		num_bands = tccp0->numresolutions * 3U - 2U;
+		if(num_bands != (tccp1->numresolutions * 3U - 2U))
+			return false;
+	}
+	for(band_no = 0; band_no < num_bands; ++band_no)
+	{
+		if(tccp0->stepsizes[band_no].expn != tccp1->stepsizes[band_no].expn)
+			return false;
+	}
+	if(tccp0->qntsty != J2K_CCP_QNTSTY_NOQNT)
+	{
+		for(band_no = 0; band_no < num_bands; ++band_no)
+		{
+			if(tccp0->stepsizes[band_no].mant != tccp1->stepsizes[band_no].mant)
+				return false;
+		}
+	}
+
+	return true;
 }
 bool CodeStreamCompress::write_SQcd_SQcc(uint32_t comp_no)
 {
+	assert(comp_no < getHeaderImage()->numcomps);
 	auto tcp = m_cp.tcps;
 	auto tccp = tcp->tccps + comp_no;
+	uint32_t num_bands =
+		(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ? 1 : (tccp->numresolutions * 3U - 2);
 
-	return tccp->quant.write_SQcd_SQcc(this, comp_no, m_stream);
+	/* Sqcx */
+	if(!m_stream->writeByte((uint8_t)(tccp->qntsty + (tccp->numgbits << 5))))
+		return false;
+
+	/* SPqcx_i */
+	for(uint32_t band_no = 0; band_no < num_bands; ++band_no)
+	{
+		uint32_t expn = tccp->stepsizes[band_no].expn;
+		uint32_t mant = tccp->stepsizes[band_no].mant;
+		if(tccp->qntsty == J2K_CCP_QNTSTY_NOQNT)
+		{
+			if(!m_stream->writeByte((uint8_t)(expn << 3)))
+				return false;
+		}
+		else
+		{
+			if(!m_stream->writeShort((uint16_t)((expn << 11) + mant)))
+				return false;
+		}
+	}
+	return true;
 }
 uint16_t CodeStreamCompress::getPocSize(uint32_t numComps, uint32_t numPocs)
 {

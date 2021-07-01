@@ -101,7 +101,7 @@ bool FileFormatDecompress::read_asoc(uint8_t* header_data, uint32_t header_data_
 {
 	assert(header_data);
 
-	// 12 == sizoef(asoc tag) + sizeof(child size) + sizeof(child tag)
+	// 12 == sizeof(asoc tag) + sizeof(child size) + sizeof(child tag)
 	if(header_data_size <= 12)
 	{
 		GRK_ERROR("ASOC super box can't be empty");
@@ -194,7 +194,6 @@ bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 		m_headerError = true;
 		return false;
 	}
-
 	if(needsHeaderRead)
 	{
 		auto image = (GrkImage*)codeStream->getCompositeImage();
@@ -391,12 +390,11 @@ bool FileFormatDecompress::applyColour(GrkImage* img)
 				return false;
 		}
 	}
-
 	/* Apply channel definitions if needed */
 	if(color.channel_definition)
 		apply_channel_definition(img, &color);
-
 	img->color_applied = true;
+
 	return true;
 }
 uint32_t FileFormatDecompress::read_asoc(AsocBox* parent, uint8_t** header_data,
@@ -618,6 +616,7 @@ bool FileFormatDecompress::readHeaderProcedureImpl(void)
 	}
 cleanup:
 	grkFree(current_data);
+
 	return rc;
 }
 /***
@@ -668,6 +667,7 @@ bool FileFormatDecompress::read_box_hdr(FileFormatBox* box, uint32_t* p_number_b
 		GRK_ERROR("invalid box size %" PRIu64 " (%x)", box->length, box->type);
 		throw CorruptJP2BoxException();
 	}
+
 	return true;
 }
 bool FileFormatDecompress::read_ihdr(uint8_t* p_image_header_data, uint32_t image_header_size)
@@ -754,6 +754,7 @@ bool FileFormatDecompress::read_xml(uint8_t* p_xml_data, uint32_t xml_size)
 		return false;
 	}
 	memcpy(xml.buf, p_xml_data, xml_size);
+
 	return true;
 }
 bool FileFormatDecompress::read_uuid(uint8_t* headerData, uint32_t header_size)
@@ -784,6 +785,7 @@ double FileFormatDecompress::calc_res(uint16_t num, uint16_t den, uint8_t expone
 {
 	if(den == 0)
 		return 0;
+
 	return ((double)num / den) * pow(10, exponent);
 }
 bool FileFormatDecompress::read_res_box(uint32_t* id, uint32_t* num, uint32_t* den,
@@ -846,6 +848,7 @@ bool FileFormatDecompress::read_res(uint8_t* p_resolution_data, uint32_t resolut
 			res[i] = calc_res((uint16_t)num[i], (uint16_t)den[i], (uint8_t)exponent[i]);
 		resolution_size -= GRK_RESOLUTION_BOX_SIZE;
 	}
+
 	return true;
 }
 bool FileFormatDecompress::read_bpc(uint8_t* p_bpc_header_data, uint32_t bpc_header_size)
@@ -1145,6 +1148,7 @@ bool FileFormatDecompress::read_colr(uint8_t* p_colr_header_data, uint32_t colr_
 				 "so we will ignore the entire Colour Specification box. ",
 				 meth);
 	}
+
 	return true;
 }
 bool FileFormatDecompress::check_color(GrkImage* image, grk_color* color)

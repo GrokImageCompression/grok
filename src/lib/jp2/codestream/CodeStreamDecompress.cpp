@@ -1704,7 +1704,147 @@ bool CodeStreamDecompress::read_SQcd_SQcc(bool fromQCC, uint32_t comp_no, uint8_
 	auto tcp = get_current_decode_tcp();
 	auto tccp = tcp->tccps + comp_no;
 
-	return tccp->quant.read_SQcd_SQcc(this, fromQCC, comp_no, headerData, header_size);
+	if(*header_size < 1)
+	{
+		GRK_ERROR("Error reading SQcd or SQcc element");
+		return false;
+	}
+	/* Sqcx */
+	uint32_t tmp = 0;
+	auto current_ptr = headerData;
+	grk_read<uint32_t>(current_ptr++, &tmp, 1);
+	uint8_t qntsty = tmp & 0x1f;
+	*header_size = (uint16_t)(*header_size - 1);
+	if(qntsty > J2K_CCP_QNTSTY_SEQNT)
+	{
+		GRK_ERROR("Undefined quantization style %d", qntsty);
+		return false;
+	}
+
+	// scoping rules
+	bool ignore = false;
+	bool fromTileHeader = isDecodingTilePartHeader();
+	bool mainQCD = !fromQCC && !fromTileHeader;
+
+	if(tccp->quantizationMarkerSet)
+	{
+		bool tileHeaderQCC = fromQCC && fromTileHeader;
+		bool setMainQCD = !tccp->fromQCC && !tccp->fromTileHeader;
+		bool setMainQCC = tccp->fromQCC && !tccp->fromTileHeader;
+		bool setTileHeaderQCD = !tccp->fromQCC && tccp->fromTileHeader;
+		bool setTileHeaderQCC = tccp->fromQCC && tccp->fromTileHeader;
+
+		if(!fromTileHeader)
+		{
+			if(setMainQCC || (mainQCD && setMainQCD))
+				ignore = true;
+		}
+		else
+		{
+			if(setTileHeaderQCC)
+				ignore = true;
+			else if(setTileHeaderQCD && !tileHeaderQCC)
+				ignore = true;
+		}
+	}
+
+	if(!ignore)
+	{
+		tccp->quantizationMarkerSet = true;
+		tccp->fromQCC = fromQCC;
+		tccp->fromTileHeader = fromTileHeader;
+		tccp->qntsty = qntsty;
+		if(mainQCD)
+			tcp->main_qcd_qntsty = tccp->qntsty;
+		tccp->numgbits = (uint8_t)(tmp >> 5);
+		if(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT)
+		{
+			tccp->numStepSizes = 1;
+		}
+		else
+		{
+			tccp->numStepSizes = (tccp->qntsty == J2K_CCP_QNTSTY_NOQNT)
+									 ? (uint8_t)(*header_size)
+									 : (uint8_t)((*header_size) / 2);
+			if(tccp->numStepSizes > GRK_J2K_MAXBANDS)
+			{
+				GRK_WARN("While reading QCD or QCC marker segment, "
+						 "number of step sizes (%u) is greater"
+						 " than GRK_J2K_MAXBANDS (%u).\n"
+						 "So, number of elements stored is limited to "
+						 "GRK_J2K_MAXBANDS (%u) and the rest are skipped.",
+						 tccp->numStepSizes, GRK_J2K_MAXBANDS, GRK_J2K_MAXBANDS);
+			}
+		}
+		if(mainQCD)
+			tcp->main_qcd_numStepSizes = tccp->numStepSizes;
+	}
+	if(qntsty == J2K_CCP_QNTSTY_NOQNT)
+	{
+		if(*header_size < tccp->numStepSizes)
+		{
+			GRK_ERROR("Error reading SQcd_SQcc marker");
+			return false;
+		}
+		for(uint32_t band_no = 0; band_no < tccp->numStepSizes; band_no++)
+		{
+			/* SPqcx_i */
+			grk_read<uint32_t>(current_ptr++, &tmp, 1);
+			if(!ignore)
+			{
+				if(band_no < GRK_J2K_MAXBANDS)
+				{
+					// top 5 bits for exponent
+					tccp->stepsizes[band_no].expn = (uint8_t)(tmp >> 3);
+					// mantissa = 0
+					tccp->stepsizes[band_no].mant = 0;
+				}
+			}
+		}
+		*header_size = (uint16_t)(*header_size - tccp->numStepSizes);
+	}
+	else
+	{
+		if(*header_size < 2 * tccp->numStepSizes)
+		{
+			GRK_ERROR("Error reading SQcd_SQcc marker");
+			return false;
+		}
+		for(uint32_t band_no = 0; band_no < tccp->numStepSizes; band_no++)
+		{
+			/* SPqcx_i */
+			grk_read<uint32_t>(current_ptr, &tmp, 2);
+			current_ptr += 2;
+			if(!ignore)
+			{
+				if(band_no < GRK_J2K_MAXBANDS)
+				{
+					// top 5 bits for exponent
+					tccp->stepsizes[band_no].expn = (uint8_t)(tmp >> 11);
+					// bottom 11 bits for mantissa
+					tccp->stepsizes[band_no].mant = (uint16_t)(tmp & 0x7ff);
+				}
+			}
+		}
+		*header_size = (uint16_t)(*header_size - 2 * tccp->numStepSizes);
+	}
+	if(!ignore)
+	{
+		/* if scalar derived, then compute other stepsizes */
+		if(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT)
+		{
+			for(uint32_t band_no = 1; band_no < GRK_J2K_MAXBANDS; band_no++)
+			{
+				uint8_t bandDividedBy3 = (uint8_t)((band_no - 1) / 3);
+				tccp->stepsizes[band_no].expn = 0;
+				if(tccp->stepsizes[0].expn > bandDividedBy3)
+					tccp->stepsizes[band_no].expn =
+						(uint8_t)(tccp->stepsizes[0].expn - bandDividedBy3);
+				tccp->stepsizes[band_no].mant = tccp->stepsizes[0].mant;
+			}
+		}
+	}
+	return true;
 }
 bool CodeStreamDecompress::read_SPCod_SPCoc(uint32_t compno, uint8_t* headerData,
 											uint16_t* header_size)
@@ -2678,9 +2818,7 @@ bool CodeStreamDecompress::read_qcd(uint8_t* headerData, uint16_t header_size)
 {
 	assert(headerData != nullptr);
 	if(!read_SQcd_SQcc(false, 0, headerData, &header_size))
-	{
 		return false;
-	}
 	if(header_size != 0)
 	{
 		GRK_ERROR("Error reading QCD marker");
@@ -2690,11 +2828,25 @@ bool CodeStreamDecompress::read_qcd(uint8_t* headerData, uint16_t header_size)
 	// Apply the quantization parameters to the other components
 	// of the current tile or m_default_tcp
 	auto tcp = get_current_decode_tcp();
-	auto ref_tccp = tcp->tccps;
+	auto src = tcp->tccps;
+	assert(src);
 	for(uint32_t i = 1; i < getHeaderImage()->numcomps; ++i)
 	{
-		auto target_tccp = ref_tccp + i;
-		target_tccp->quant.apply_quant(ref_tccp, target_tccp);
+		auto dest = src + i;
+		// respect the QCD/QCC scoping rules
+		bool ignore = false;
+		if(dest->fromQCC)
+		{
+			if(!src->fromTileHeader || dest->fromTileHeader)
+				ignore = true;
+		}
+		if(!ignore)
+		{
+			dest->qntsty = src->qntsty;
+			dest->numgbits = src->numgbits;
+			auto size = GRK_J2K_MAXBANDS * sizeof(grk_stepsize);
+			memcpy(dest->stepsizes, src->stepsizes, size);
+		}
 	}
 	return true;
 }

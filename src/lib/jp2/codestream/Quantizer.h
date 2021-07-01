@@ -37,13 +37,9 @@ struct grk_stepsize
 	uint16_t mant;
 };
 
-class CodeStream;
-class CodeStreamDecompress;
 struct TileComponentCodingParams;
-struct BufferedStream;
 struct Subband;
 struct TileCodingParams;
-struct TileProcessor;
 
 class Quantizer
 {
@@ -51,13 +47,6 @@ class Quantizer
 	bool setBandStepSizeAndBps(TileCodingParams* tcp, Subband* band, uint32_t resno,
 							   uint8_t bandIndex, TileComponentCodingParams* tccp,
 							   uint8_t image_precision, bool compress);
-
-	uint32_t get_SQcd_SQcc_size(CodeStream* codeStream, uint32_t comp_no);
-	bool compare_SQcd_SQcc(CodeStream* codeStream, uint32_t first_comp_no, uint32_t second_comp_no);
-	bool read_SQcd_SQcc(CodeStreamDecompress* codeStream, bool fromQCC, uint32_t comp_no,
-						uint8_t* headerData, uint16_t* header_size);
-	bool write_SQcd_SQcc(CodeStream* codeStream, uint32_t comp_no, IBufferedStream* stream);
-	void apply_quant(TileComponentCodingParams* src, TileComponentCodingParams* dest);
 };
 
 } // namespace grk
