@@ -22,13 +22,15 @@ namespace grk
 struct BlockExec
 {
 	BlockExec()
-		: tilec(nullptr), bandIndex(0), bandOrientation(BAND_ORIENT_LL), stepsize(0), cblk_sty(0),
+		: tilec(nullptr), bandIndex(0), bandNumbps(0),
+		  bandOrientation(BAND_ORIENT_LL), stepsize(0), cblk_sty(0),
 		  qmfbid(0), x(0), y(0), k_msbs(0)
 	{}
 	virtual bool open(T1Interface* t1) = 0;
 	virtual ~BlockExec() = default;
 	TileComponent* tilec;
 	uint8_t bandIndex;
+	uint8_t bandNumbps;
 	eBandOrientation bandOrientation;
 	float stepsize;
 	uint8_t cblk_sty;

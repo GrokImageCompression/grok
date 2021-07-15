@@ -124,7 +124,7 @@ bool TileProcessor::init(void)
 			ceildiv<uint32_t>(tile->x0, imageComp->dx), ceildiv<uint32_t>(tile->y0, imageComp->dy),
 			ceildiv<uint32_t>(tile->x1, imageComp->dx), ceildiv<uint32_t>(tile->y1, imageComp->dy));
 		if(!tilec->init(m_isCompressor, wholeTileDecompress, unreducedTileComp, imageComp->prec,
-						m_cp, tcp, tcp->tccps + compno, current_plugin_tile))
+						m_cp, tcp->tccps + compno, current_plugin_tile))
 		{
 			return false;
 		}

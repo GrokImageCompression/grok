@@ -23,7 +23,7 @@
 
 namespace grk
 {
-bool Quantizer::setBandStepSizeAndBps(TileCodingParams* tcp, Subband* band, uint32_t resno,
+bool Quantizer::setBandStepSizeAndBps(Subband* band, uint32_t resno,
 									  uint8_t bandIndex, TileComponentCodingParams* tccp,
 									  uint8_t image_precision, bool compress)
 {
@@ -47,20 +47,6 @@ bool Quantizer::setBandStepSizeAndBps(TileCodingParams* tcp, Subband* band, uint
 	band->numbps = tccp->roishift +
 				   (uint8_t)std::max<int8_t>(0, int8_t(step_size->expn + tccp->numgbits - 1U));
 	// assert(band->numbps <= maxBitPlanesGRK);
-
-	if(tcp->getIsHT())
-	{
-		// lossy decompress
-		if(!compress && tccp->qmfbid == 0)
-		{
-			if(band->numbps > 31)
-			{
-				GRK_ERROR("Unsupported number of band bps %u", band->numbps);
-				return false;
-			}
-			band->stepsize /= (float)(1u << (31 - band->numbps));
-		}
-	}
 
 	return true;
 }

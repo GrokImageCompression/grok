@@ -67,7 +67,7 @@ void TileComponent::deallocBuffers(void)
  *
  */
 bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreducedTileComp,
-						 uint8_t prec, CodingParams* cp, TileCodingParams* tcp,
+						 uint8_t prec, CodingParams* cp,
 						 TileComponentCodingParams* tccp, grk_plugin_tile* current_plugin_tile)
 {
 	m_is_encoder = isCompressor;
@@ -149,7 +149,7 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreduce
 		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 		{
 			auto band = res->tileBand + bandIndex;
-			if(!m_tccp->quant.setBandStepSizeAndBps(tcp, band, resno, bandIndex, m_tccp, prec,
+			if(!m_tccp->quant.setBandStepSizeAndBps(band, resno, bandIndex, m_tccp, prec,
 													m_is_encoder))
 				return false;
 		}
@@ -335,28 +335,20 @@ bool TileComponent::postProcess(int32_t* srcData, DecompressBlockExec* block)
 	if(block->roishift)
 	{
 		if(block->qmfbid == 1)
-		{
 			return postDecompressImpl<RoiShiftFilter<int32_t>>(srcData, block,
 															   (uint16_t)block->cblk->width());
-		}
 		else
-		{
 			return postDecompressImpl<RoiScaleFilter<int32_t>>(srcData, block,
 															   (uint16_t)block->cblk->width());
-		}
 	}
 	else
 	{
 		if(block->qmfbid == 1)
-		{
 			return postDecompressImpl<ShiftFilter<int32_t>>(srcData, block,
 															(uint16_t)block->cblk->width());
-		}
 		else
-		{
 			return postDecompressImpl<ScaleFilter<int32_t>>(srcData, block,
 															(uint16_t)block->cblk->width());
-		}
 	}
 }
 bool TileComponent::postProcessHT(int32_t* srcData, DecompressBlockExec* block, uint16_t stride)
@@ -364,24 +356,16 @@ bool TileComponent::postProcessHT(int32_t* srcData, DecompressBlockExec* block, 
 	if(block->roishift)
 	{
 		if(block->qmfbid == 1)
-		{
 			return postDecompressImpl<RoiShiftHTFilter<int32_t>>(srcData, block, stride);
-		}
 		else
-		{
 			return postDecompressImpl<RoiScaleHTFilter<int32_t>>(srcData, block, stride);
-		}
 	}
 	else
 	{
 		if(block->qmfbid == 1)
-		{
 			return postDecompressImpl<ShiftHTFilter<int32_t>>(srcData, block, stride);
-		}
 		else
-		{
 			return postDecompressImpl<ScaleHTFilter<int32_t>>(srcData, block, stride);
-		}
 	}
 }
 template<typename F>

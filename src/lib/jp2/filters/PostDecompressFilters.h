@@ -79,9 +79,7 @@ class ScaleFilter
 	inline void copy(T* dest, T* src, uint32_t len)
 	{
 		for(uint32_t i = 0; i < len; ++i)
-		{
 			((float*)dest)[i] = (float)src[i] * scale;
-		}
 	}
 
   private:
@@ -136,8 +134,11 @@ template<typename T>
 class RoiScaleHTFilter
 {
   public:
-	RoiScaleHTFilter(DecompressBlockExec* block) : roiShift(block->roishift), scale(block->stepsize)
-	{}
+	RoiScaleHTFilter(DecompressBlockExec* block) : roiShift(block->roishift),
+													scale(block->stepsize / (float)(1u << (31 - block->bandNumbps)))
+	{
+		assert(block->bandNumbps <= 31);
+	}
 	inline void copy(T* dest, T* src, uint32_t len)
 	{
 		T thresh = 1 << roiShift;
@@ -161,7 +162,9 @@ template<typename T>
 class ScaleHTFilter
 {
   public:
-	ScaleHTFilter(DecompressBlockExec* block) : scale(block->stepsize) {}
+	ScaleHTFilter(DecompressBlockExec* block) : scale(block->stepsize / (float)(1u << (31 - block->bandNumbps))) {
+		assert(block->bandNumbps <= 31);
+	}
 	inline void copy(T* dest, T* src, uint32_t len)
 	{
 		for(uint32_t i = 0; i < len; ++i)

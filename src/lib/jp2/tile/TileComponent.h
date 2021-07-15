@@ -32,7 +32,7 @@ struct TileComponent : public grkRectU32
 	bool allocWindowBuffer(grkRectU32 unreducedTileCompOrImageCompWindow);
 	void deallocBuffers(void);
 	bool init(bool isCompressor, bool whole_tile, grkRectU32 unreducedTileComp, uint8_t prec,
-			  CodingParams* cp, TileCodingParams* tcp, TileComponentCodingParams* tccp,
+			  CodingParams* cp, TileComponentCodingParams* tccp,
 			  grk_plugin_tile* current_plugin_tile);
 	bool subbandIntersectsAOI(uint8_t resno, eBandOrientation orient, const grkRectU32* aoi) const;
 

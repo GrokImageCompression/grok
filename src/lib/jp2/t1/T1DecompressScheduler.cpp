@@ -57,6 +57,7 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 						block->y = cblk->y0;
 						block->tilec = tilec;
 						block->bandIndex = bandIndex;
+						block->bandNumbps = band->numbps;
 						block->bandOrientation = band->orientation;
 						block->cblk = cblk;
 						block->cblk_sty = tccp->cblk_sty;

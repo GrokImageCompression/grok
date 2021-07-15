@@ -116,8 +116,6 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodingParams.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Quantizer.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Quantizer.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/HTParams.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/HTParams.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/SIZMarker.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/SIZMarker.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/PPMMarker.h
@@ -184,6 +182,8 @@ set(GROK_LIBRARY_SRCS
 
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/T1HT.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/T1HT.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/HTParams.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/HTParams.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/coding/ojph_block_decoder.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/coding/ojph_block_decoder.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/coding/ojph_block_encoder.cpp
