@@ -19,8 +19,9 @@
  *
  */
 
+#include "PostT1DecompressFilters.h"
+#include "PostT1DecompressFiltersHT.h"
 #include "grk_includes.h"
-#include "PostDecompressFilters.h"
 
 const bool DEBUG_TILE_COMPONENT = false;
 
@@ -149,9 +150,27 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreduce
 		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 		{
 			auto band = res->tileBand + bandIndex;
-			if(!m_tccp->quant.setBandStepSizeAndBps(band, resno, bandIndex, m_tccp, prec,
-													m_is_encoder))
-				return false;
+
+			/* Table E-1 - Sub-band gains */
+			/* BUG_WEIRD_TWO_INVK (look for this identifier in dwt.c): */
+			/* the test (!isEncoder && l_tccp->qmfbid == 0) is strongly */
+			/* linked to the use of two_invK instead of invK */
+			const uint32_t log2_gain = (!m_is_encoder && tccp->qmfbid == 0) ? 0
+									   : (band->orientation == 0)		? 0
+									   : (band->orientation == 3)		? 2
+																		: 1;
+			uint32_t numbps = prec + log2_gain;
+			auto offset = (resno == 0) ? 0 : 3 * resno - 2;
+			auto step_size = tccp->stepsizes + offset + bandIndex;
+			band->stepsize =
+				(float)(((1.0 + step_size->mant / 2048.0) * pow(2.0, (int32_t)(numbps - step_size->expn))));
+			// printf("res=%d, band=%d, mant=%d,expn=%d, numbps=%d, step size=
+			// %f\n",resno,band->orientation,step_size->mant,step_size->expn,numbps, band->stepsize);
+
+			// see Taubman + Marcellin - Equation 10.22
+			band->numbps = tccp->roishift +
+						   (uint8_t)std::max<int8_t>(0, int8_t(step_size->expn + tccp->numgbits - 1U));
+			// assert(band->numbps <= maxBitPlanesGRK);
 		}
 	}
 

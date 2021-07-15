@@ -21,10 +21,7 @@
 
 #pragma once
 
-#include <vector>
-#include <map>
 #include "CodingParams.h"
-#include <map>
 
 namespace grk
 {

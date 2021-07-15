@@ -112,7 +112,6 @@
 #include "SparseBuffer.h"
 #include "BitIO.h"
 #include "BufferedStream.h"
-#include "Quantizer.h"
 #include "Profile.h"
 #include "LengthCache.h"
 #include "PacketLengthMarkers.h"

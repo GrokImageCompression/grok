@@ -23,6 +23,24 @@
 
 namespace grk
 {
+
+CodingParams::CodingParams() : rsiz(0), pcap(0), tx0(0), ty0(0), t_width(0), t_height(0),
+								num_comments(0), t_grid_width(0), t_grid_height(0),
+								ppm_marker(nullptr), tcps(nullptr), tlm_markers(nullptr),
+								plm_markers(nullptr)
+{
+	memset(&m_coding_params, 0, sizeof(m_coding_params));
+}
+CodingParams::~CodingParams(){
+	delete[] tcps;
+	for(uint32_t i = 0; i < num_comments; ++i)
+		delete[]((uint8_t*)comment[i]);
+	num_comments = 0;
+	delete plm_markers;
+	delete tlm_markers;
+	delete ppm_marker;
+}
+
 // (canvas coordinates)
 grkRectU32 CodingParams::getTileBounds(const GrkImage* p_image, uint32_t tile_x,
 									   uint32_t tile_y) const
@@ -44,31 +62,6 @@ grkRectU32 CodingParams::getTileBounds(const GrkImage* p_image, uint32_t tile_x,
 	return rc;
 }
 
-void CodingParams::destroy()
-{
-	if(tcps != nullptr)
-	{
-		uint32_t numTiles = t_grid_height * t_grid_width;
-
-		for(uint32_t i = 0U; i < numTiles; ++i)
-		{
-			auto current_tile = tcps + i;
-			current_tile->destroy();
-		}
-		delete[] tcps;
-		tcps = nullptr;
-	}
-	for(uint32_t i = 0; i < num_comments; ++i)
-	{
-		delete[]((uint8_t*)comment[i]);
-		comment[i] = nullptr;
-	}
-	num_comments = 0;
-	delete plm_markers;
-	delete tlm_markers;
-	delete ppm_marker;
-}
-
 TileCodingParams::TileCodingParams()
 	: csty(0), prg(GRK_PROG_UNKNOWN), numlayers(0), numLayersToDecompress(0), mct(0), numpocs(0),
 	  ppt_markers_count(0), ppt_markers(nullptr), ppt_data(nullptr), ppt_buffer(nullptr),
@@ -88,7 +81,31 @@ TileCodingParams::TileCodingParams()
 
 TileCodingParams::~TileCodingParams()
 {
-	destroy();
+	if(ppt_markers != nullptr)
+	{
+		for(uint32_t i = 0U; i < ppt_markers_count; ++i)
+			grkFree(ppt_markers[i].m_data);
+		grkFree(ppt_markers);
+	}
+
+	delete[] ppt_buffer;
+	delete[] tccps;
+	grkFree(m_mct_coding_matrix);
+	grkFree(m_mct_decoding_matrix);
+	if(m_mcc_records)
+		grkFree(m_mcc_records);
+	if(m_mct_records)
+	{
+		auto mct_data = m_mct_records;
+		for(uint32_t i = 0; i < m_nb_mct_records; ++i)
+		{
+			grkFree(mct_data->m_data);
+			++mct_data;
+		}
+		grkFree(m_mct_records);
+	}
+	grkFree(mct_norms);
+	delete m_compressedTileData;
 }
 
 void TileCodingParams::setIsHT(bool ht)
@@ -107,51 +124,6 @@ uint32_t TileCodingParams::getNumProgressions(){
 bool TileCodingParams::hasPoc(void){
 	return numpocs > 0;
 }
-void TileCodingParams::destroy()
-{
-	if(ppt_markers != nullptr)
-	{
-		for(uint32_t i = 0U; i < ppt_markers_count; ++i)
-			grkFree(ppt_markers[i].m_data);
-		ppt_markers_count = 0U;
-		grkFree(ppt_markers);
-		ppt_markers = nullptr;
-	}
-
-	delete[] ppt_buffer;
-	ppt_buffer = nullptr;
-	delete[] tccps;
-	tccps = nullptr;
-	grkFree(m_mct_coding_matrix);
-	m_mct_coding_matrix = nullptr;
-	grkFree(m_mct_decoding_matrix);
-	m_mct_decoding_matrix = nullptr;
-
-	if(m_mcc_records)
-	{
-		grkFree(m_mcc_records);
-		m_mcc_records = nullptr;
-		m_nb_max_mcc_records = 0;
-		m_nb_mcc_records = 0;
-	}
-
-	if(m_mct_records)
-	{
-		auto mct_data = m_mct_records;
-		for(uint32_t i = 0; i < m_nb_mct_records; ++i)
-		{
-			grkFree(mct_data->m_data);
-			++mct_data;
-		}
-		grkFree(m_mct_records);
-		m_mct_records = nullptr;
-	}
-	grkFree(mct_norms);
-	mct_norms = nullptr;
-	delete m_compressedTileData;
-	m_compressedTileData = nullptr;
-}
-
 TileComponentCodingParams::TileComponentCodingParams()
 	: csty(0), numresolutions(0), cblkw(0), cblkh(0), cblk_sty(0), qmfbid(0),
 	  quantizationMarkerSet(false), fromQCC(false), fromTileHeader(false), qntsty(0),

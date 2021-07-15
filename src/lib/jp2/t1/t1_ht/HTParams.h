@@ -61,6 +61,9 @@ using namespace std;
 
 namespace grk
 {
+
+struct grk_stepsize;
+
 class sqrt_energy_gains
 {
   public:
@@ -74,14 +77,35 @@ class sqrt_energy_gains
 	static const float gain_5x3_h[34];
 };
 
-struct param_qcd
+
+
+struct qcd
 {
   public:
-	param_qcd() : Sqcd(0), num_decomps(0), base_delta(-1.0f), isHT(false)
+	qcd() : Sqcd(0), num_decomps(0)
 	{
 		memset(u8_SPqcd, 0, GRK_J2K_MAXBANDS);
 		memset(u16_SPqcd, 0, GRK_J2K_MAXBANDS * sizeof(short));
 	}
+	void pull(grk_stepsize* stepptr, bool reversible);
+	void push(grk_stepsize* stepptr, bool reversible);
+  protected:
+	uint8_t Sqcd;
+	union
+	{
+		uint8_t u8_SPqcd[97];
+		uint16_t u16_SPqcd[97];
+	};
+	uint32_t num_decomps;
+};
+
+
+
+struct qcdHT : public qcd
+{
+  public:
+	qcdHT() : base_delta(-1.0f), isHT(false)
+	{}
 
 	void setIsHT(bool ht)
 	{
@@ -93,24 +117,13 @@ struct param_qcd
 	}
 	void set_rev_quant(uint32_t bit_depth, bool is_employing_color_transform);
 	void set_irrev_quant();
-
 	void generate(uint8_t guard_bits, uint32_t decomps, bool is_reversible, uint32_t max_bit_depth,
 				  bool color_transform, bool is_signed);
 
 	uint32_t get_num_guard_bits() const;
 	uint32_t get_MAGBp() const;
 
-	void pull(grk_stepsize* stepptr, bool reversible);
-	void push(grk_stepsize* stepptr, bool reversible);
-
   private:
-	uint8_t Sqcd;
-	union
-	{
-		uint8_t u8_SPqcd[97];
-		uint16_t u16_SPqcd[97];
-	};
-	uint32_t num_decomps;
 	float base_delta;
 	bool isHT;
 };

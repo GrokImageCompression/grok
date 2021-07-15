@@ -45,6 +45,17 @@ enum J2K_MCT_ARRAY_TYPE
 	MCT_TYPE_DECORRELATION = 1,
 	MCT_TYPE_OFFSET = 2
 };
+/**
+ * Quantization stepsize
+ */
+struct grk_stepsize
+{
+	grk_stepsize() : expn(0), mant(0) {}
+	/** exponent - 5 bits */
+	uint8_t expn;
+	/** mantissa  -11 bits */
+	uint16_t mant;
+};
 
 /**
  Tile-component coding parameters
@@ -60,9 +71,6 @@ struct TileComponentCodingParams
 	uint8_t cblkw;
 	/** log2(code-blocks height) */
 	uint8_t cblkh;
-
-	Quantizer quant;
-
 	/** code-block mode */
 	uint8_t cblk_sty;
 	/** discrete wavelet transform identifier */
@@ -125,8 +133,6 @@ struct TileCodingParams
 {
 	TileCodingParams();
 	~TileCodingParams();
-
-	void destroy();
 
 	void setIsHT(bool ht);
 	bool getIsHT(void);
@@ -201,7 +207,7 @@ struct TileCodingParams
 	bool cod;
 	/** If ppt == true --> there was a PPT marker for the present tile */
 	bool ppt;
-	param_qcd qcd;
+	qcdHT qcd;
 
   private:
 	bool isHT;
@@ -245,6 +251,8 @@ struct DecodingParams
  */
 struct CodingParams
 {
+	CodingParams();
+	~CodingParams();
 	grkRectU32 getTileBounds(const GrkImage* p_image, uint32_t tile_x, uint32_t tile_y) const;
 
 	/** Rsiz*/
@@ -286,8 +294,6 @@ struct CodingParams
 
 	TileLengthMarkers* tlm_markers;
 	PacketLengthMarkers* plm_markers;
-
-	void destroy();
 };
 
 /**

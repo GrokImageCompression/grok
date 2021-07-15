@@ -1058,7 +1058,6 @@ bool CodeStreamDecompress::findNextTile(TileProcessor* tileProcessor)
 	if(!tcp->m_compressedTileData)
 	{
 		GRK_ERROR("Missing SOD marker");
-		tcp->destroy();
 		return false;
 	}
 	// find next tile

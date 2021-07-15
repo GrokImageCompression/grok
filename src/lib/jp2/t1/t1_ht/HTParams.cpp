@@ -156,7 +156,7 @@ const float bibo_gains::gain_5x3_h[34] = {
  *
  *
  */
-void param_qcd::pull(grk_stepsize* stepptr, bool reversible)
+void qcd::pull(grk_stepsize* stepptr, bool reversible)
 {
 	uint32_t numbands = 3 * (num_decomps + 1) - 2;
 	for(uint32_t bn = 0; bn < numbands; bn++)
@@ -174,32 +174,27 @@ void param_qcd::pull(grk_stepsize* stepptr, bool reversible)
 		}
 	}
 }
-void param_qcd::push(grk_stepsize* stepptr, bool reversible)
+void qcd::push(grk_stepsize* stepptr, bool reversible)
 {
 	uint32_t numbands = 3 * (num_decomps + 1) - 2;
 	for(uint32_t bn = 0; bn < numbands; bn++)
 	{
 		auto step = stepptr + bn;
 		if(reversible)
-		{
 			u8_SPqcd[bn] = (uint8_t)(step->expn << 3);
-		}
 		else
-		{
 			u16_SPqcd[bn] = (uint16_t)((step->expn << 11) + step->mant);
-		}
 	}
 }
 
-void param_qcd::generate(uint8_t guard_bits, uint32_t decomps, bool is_reversible,
+void qcdHT::generate(uint8_t guard_bits, uint32_t decomps, bool is_reversible,
 						 uint32_t max_bit_depth, bool color_transform, bool is_signed)
 {
 	num_decomps = decomps;
 	Sqcd = (uint8_t)(guard_bits << 5);
 	if(!is_reversible)
-	{
 		Sqcd |= 0x2;
-	}
+
 	if(isHT)
 	{
 		if(is_reversible)
@@ -226,16 +221,9 @@ void param_qcd::generate(uint8_t guard_bits, uint32_t decomps, bool is_reversibl
 								? 0
 								: ((orient == 0) ? 0 : (((orient == 1) || (orient == 2)) ? 1 : 2));
 
-			double stepsize;
-			if(is_reversible)
-			{
-				stepsize = 1.0;
-			}
-			else
-			{
-				double norm = T1::getnorm(level, orient, false);
-				stepsize = (1 << (gain)) / norm;
-			}
+			double stepsize = 1.0;
+			if(!is_reversible)
+				stepsize = (1 << (gain)) / T1::getnorm(level, orient, false);
 			uint32_t step = (uint32_t)floor(stepsize * 8192.0);
 			int32_t p, n;
 			p = floorlog2(step) - 13;
@@ -250,7 +238,7 @@ void param_qcd::generate(uint8_t guard_bits, uint32_t decomps, bool is_reversibl
 		}
 	}
 }
-void param_qcd::set_rev_quant(uint32_t bit_depth, bool is_employing_color_transform)
+void qcdHT::set_rev_quant(uint32_t bit_depth, bool is_employing_color_transform)
 {
 	int B = (int)bit_depth;
 	B += is_employing_color_transform ? 1 : 0; // 1 bit for RCT
@@ -270,7 +258,7 @@ void param_qcd::set_rev_quant(uint32_t bit_depth, bool is_employing_color_transf
 		u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
 	}
 }
-void param_qcd::set_irrev_quant()
+void qcdHT::set_irrev_quant()
 {
 	uint32_t s = 0;
 	float gain_l = sqrt_energy_gains::get_gain_l(num_decomps, false);
@@ -315,7 +303,7 @@ void param_qcd::set_irrev_quant()
 		u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
 	}
 }
-uint32_t param_qcd::get_MAGBp() const
+uint32_t qcdHT::get_MAGBp() const
 {
 	uint32_t B = 0;
 	uint32_t irrev = Sqcd & 0x1F;
@@ -333,7 +321,7 @@ uint32_t param_qcd::get_MAGBp() const
 
 	return B;
 }
-uint32_t param_qcd::get_num_guard_bits() const
+uint32_t qcdHT::get_num_guard_bits() const
 {
 	return uint32_t(Sqcd >> 5U);
 }

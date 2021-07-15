@@ -398,7 +398,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 			{
 				if(tileno == parameters->progression[i].tileno)
 				{
-					auto tcp_poc = &tcp->progressionOrderChange[numTileProgressions];
+					auto tcp_poc = tcp->progressionOrderChange + numTileProgressions;
 
 					tcp_poc->resS = parameters->progression[numTileProgressions].resS;
 					tcp_poc->compS = parameters->progression[numTileProgressions].compS;
@@ -513,9 +513,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 				auto tccp = tcp->tccps + i;
 				auto comp = image->comps + i;
 				if(!comp->sgnd)
-				{
 					tccp->m_dc_level_shift = 1 << (comp->prec - 1);
-				}
 			}
 		}
 
@@ -546,21 +544,13 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 					if(p < parameters->res_spec)
 					{
 						if(parameters->prcw_init[p] < 1)
-						{
 							tccp->precinctWidthExp[it_res] = 1;
-						}
 						else
-						{
 							tccp->precinctWidthExp[it_res] = floorlog2(parameters->prcw_init[p]);
-						}
 						if(parameters->prch_init[p] < 1)
-						{
 							tccp->precinctHeightExp[it_res] = 1;
-						}
 						else
-						{
 							tccp->precinctHeightExp[it_res] = floorlog2(parameters->prch_init[p]);
-						}
 					}
 					else
 					{
@@ -570,21 +560,13 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 						size_prcw = parameters->prcw_init[res_spec - 1] >> (p - (res_spec - 1));
 						size_prch = parameters->prch_init[res_spec - 1] >> (p - (res_spec - 1));
 						if(size_prcw < 1)
-						{
 							tccp->precinctWidthExp[it_res] = 1;
-						}
 						else
-						{
 							tccp->precinctWidthExp[it_res] = floorlog2(size_prcw);
-						}
 						if(size_prch < 1)
-						{
 							tccp->precinctHeightExp[it_res] = 1;
-						}
 						else
-						{
 							tccp->precinctHeightExp[it_res] = floorlog2(size_prch);
-						}
 					}
 					p++;
 					/*printf("\nsize precinct for level %u : %u,%u\n",
@@ -687,8 +669,7 @@ cleanup:
 	{
 		if(success)
 		{
-			bool write_success = writeTileParts(completeTileProcessor);
-			if(!write_success)
+			if(!writeTileParts(completeTileProcessor))
 				success = false;
 		}
 		delete completeTileProcessor;
@@ -841,9 +822,7 @@ bool CodeStreamCompress::init_header_writing(void)
 	// begin custom procedures
 	if((m_cp.rsiz & (GRK_PROFILE_PART2 | GRK_EXTENSION_MCT)) ==
 	   (GRK_PROFILE_PART2 | GRK_EXTENSION_MCT))
-	{
-		m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_mct_data_group, this));
-	}
+			m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_mct_data_group, this));
 	// end custom procedures
 
 	if(codeStreamInfo)

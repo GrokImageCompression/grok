@@ -27,13 +27,11 @@ CodeStream::CodeStream(IBufferedStream* stream)
 	: codeStreamInfo(nullptr), m_headerImage(nullptr), m_currentTileProcessor(nullptr),
 	  m_stream(stream), m_multiTile(false), current_plugin_tile(nullptr)
 {
-	memset(&m_cp, 0, sizeof(CodingParams));
 }
 CodeStream::~CodeStream()
 {
 	if(m_headerImage)
 		grk_object_unref(&m_headerImage->obj);
-	m_cp.destroy();
 	delete codeStreamInfo;
 }
 CodingParams* CodeStream::getCodingParams(void)
