@@ -26,16 +26,22 @@ using namespace ojph::local;
 #include "grk_includes.h"
 #include "T1Part1.h"
 #include "T1HT.h"
+#include "Qcd.h"
+#include "HTParams.h"
 
 namespace grk
 {
-T1Interface* T1Factory::get_t1(bool isCompressor, TileCodingParams* tcp, uint32_t maxCblkW,
+T1Interface* T1Factory::makeT1(bool isCompressor, TileCodingParams* tcp, uint32_t maxCblkW,
 							   uint32_t maxCblkH)
 {
 	if(tcp->isHT())
 		return new t1_ht::T1HT(isCompressor, tcp, maxCblkW, maxCblkH);
 	else
 		return new t1_part1::T1Part1(isCompressor, maxCblkW, maxCblkH);
+}
+
+qcd* T1Factory::makeQcd(bool ht, bool reversible, uint8_t guardBits){
+	return ht ? new qcdHT(reversible, guardBits) : new qcd(reversible,guardBits);
 }
 
 } // namespace grk

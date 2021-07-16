@@ -83,7 +83,7 @@ bool T1DecompressScheduler::scheduleDecompress(TileCodingParams* tcp, uint16_t b
 	uint16_t codeblock_height = (uint16_t)(blockh ? (uint32_t)1 << blockh : 0);
 	for(auto i = 0U; i < ThreadPool::get()->num_threads(); ++i)
 		t1Implementations.push_back(
-			T1Factory::get_t1(false, tcp, codeblock_width, codeblock_height));
+			T1Factory::makeT1(false, tcp, codeblock_width, codeblock_height));
 
 	return decompress(blocks);
 }

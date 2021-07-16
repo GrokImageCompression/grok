@@ -203,7 +203,7 @@ void TileCodingParams::setIsHT(bool ht, bool reversible, uint8_t guardBits)
 {
 	m_ht = ht;
 	if (!m_qcd)
-		m_qcd = ht ? new qcdHT(reversible, guardBits) : new qcd(reversible,guardBits);
+		m_qcd = T1Factory::makeQcd(ht, reversible, guardBits);
 }
 
 bool TileCodingParams::isHT(void)

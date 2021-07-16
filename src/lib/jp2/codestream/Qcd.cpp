@@ -111,6 +111,8 @@ void qcd::generate(uint32_t decomps,
 
 // no-op
 bool qcd::write(IBufferedStream *stream){
+	GRK_UNUSED(stream);
+
 	return true;
 }
 

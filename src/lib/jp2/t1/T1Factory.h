@@ -24,8 +24,9 @@ namespace grk
 class T1Factory
 {
   public:
-	static T1Interface* get_t1(bool isCompressor, TileCodingParams* tcp, uint32_t maxCblkW,
+	static T1Interface* makeT1(bool isCompressor, TileCodingParams* tcp, uint32_t maxCblkW,
 							   uint32_t maxCblkH);
+	static qcd* makeQcd(bool ht, bool reversible, uint8_t guardBits);
 };
 
 } // namespace grk

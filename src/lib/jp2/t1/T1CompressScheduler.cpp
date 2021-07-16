@@ -89,7 +89,7 @@ void T1CompressScheduler::scheduleCompress(TileCodingParams* tcp, const double* 
 		}
 	}
 	for(auto i = 0U; i < ThreadPool::get()->num_threads(); ++i)
-		t1Implementations.push_back(T1Factory::get_t1(true, tcp, maxCblkW, maxCblkH));
+		t1Implementations.push_back(T1Factory::makeT1(true, tcp, maxCblkW, maxCblkH));
 	compress(&blocks);
 }
 
