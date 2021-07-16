@@ -20,22 +20,21 @@
 #include "ojph_block_decoder.h"
 #include "ojph_block_encoder.h"
 #include "ojph_mem.h"
-using namespace ojph;
 using namespace ojph::local;
-using namespace ojph::local2;
 
 #include "grk_includes.h"
 #include "T1HT.h"
 #include <algorithm>
 using namespace std;
+using namespace grk;
 
 const uint8_t grk_cblk_dec_compressed_data_pad_ht = 8;
 
-namespace grk
+namespace ojph
 {
 namespace t1_ht
 {
-	T1HT::T1HT(bool isCompressor, TileCodingParams* tcp, uint32_t maxCblkW, uint32_t maxCblkH)
+	T1HT::T1HT(bool isCompressor, grk::TileCodingParams* tcp, uint32_t maxCblkW, uint32_t maxCblkH)
 		: coded_data_size(isCompressor ? 0 : (uint32_t)(maxCblkW * maxCblkH * sizeof(int32_t))),
 		  coded_data(isCompressor ? nullptr : new uint8_t[coded_data_size]),
 		  unencoded_data_size(maxCblkW * maxCblkH),

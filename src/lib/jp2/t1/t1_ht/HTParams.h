@@ -61,7 +61,7 @@ using namespace std;
 
 #include "Qcd.h"
 
-namespace grk
+namespace ojph
 {
 
 struct grk_stepsize;
@@ -79,14 +79,14 @@ class sqrt_energy_gains
 	static const float gain_5x3_h[34];
 };
 
-struct qcdHT : public qcd
+struct qcdHT : public grk::qcd
 {
   public:
 	qcdHT(bool reversible,uint8_t guard_bits);
 	void generate(uint32_t decomps,
 					uint32_t max_bit_depth,
 					bool color_transform, bool is_signed) override;
-	bool write(IBufferedStream *stream) override;
+	bool write(grk::IBufferedStream *stream) override;
   private:
 	uint32_t get_MAGBp() const;
 	uint32_t get_num_guard_bits() const;

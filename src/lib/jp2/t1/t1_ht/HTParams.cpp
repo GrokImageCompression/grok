@@ -59,8 +59,9 @@
 #include <cassert>
 #include <algorithm>
 using namespace std;
+using namespace grk;
 
-namespace grk
+namespace ojph
 {
 float sqrt_energy_gains::get_gain_l(uint32_t num_decomp, bool reversible)
 {

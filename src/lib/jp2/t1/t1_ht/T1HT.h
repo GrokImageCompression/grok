@@ -21,24 +21,24 @@
 #include "TileProcessor.h"
 #include "T1Interface.h"
 
-namespace grk
+namespace ojph
 {
 struct TileCodingParams;
 
 namespace t1_ht
 {
-	class T1HT : public T1Interface
+	class T1HT : public grk::T1Interface
 	{
 	  public:
-		T1HT(bool isCompressor, TileCodingParams* tcp, uint32_t maxCblkW, uint32_t maxCblkH);
+		T1HT(bool isCompressor, grk::TileCodingParams* tcp, uint32_t maxCblkW, uint32_t maxCblkH);
 		virtual ~T1HT();
 
-		bool compress(CompressBlockExec* block);
-		bool decompress(DecompressBlockExec* block);
+		bool compress(grk::CompressBlockExec* block);
+		bool decompress(grk::DecompressBlockExec* block);
 
 	  private:
-		void preCompress(CompressBlockExec* block, Tile* tile);
-		bool postProcess(DecompressBlockExec* block);
+		void preCompress(grk::CompressBlockExec* block, grk::Tile* tile);
+		bool postProcess(grk::DecompressBlockExec* block);
 
 		uint32_t coded_data_size;
 		uint8_t* coded_data;
@@ -49,4 +49,4 @@ namespace t1_ht
 		mem_elastic_allocator* elastic_alloc;
 	};
 } // namespace t1_ht
-} // namespace grk
+}

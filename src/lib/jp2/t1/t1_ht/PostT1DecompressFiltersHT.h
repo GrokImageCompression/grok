@@ -2,13 +2,13 @@
 
 #include "grk_includes.h"
 
-namespace grk
+namespace ojph
 {
 template<typename T>
 class RoiShiftHTFilter
 {
   public:
-	RoiShiftHTFilter(DecompressBlockExec* block)
+	RoiShiftHTFilter(grk::DecompressBlockExec* block)
 		: roiShift(block->roishift), shift(31U - (block->k_msbs + 1U))
 	{}
 	inline void copy(T* dest, T* src, uint32_t len)
@@ -33,7 +33,7 @@ template<typename T>
 class ShiftHTFilter
 {
   public:
-	ShiftHTFilter(DecompressBlockExec* block) : shift(31U - (block->k_msbs + 1U)) {}
+	ShiftHTFilter(grk::DecompressBlockExec* block) : shift(31U - (block->k_msbs + 1U)) {}
 	inline void copy(T* dest, T* src, uint32_t len)
 	{
 		for(uint32_t i = 0; i < len; ++i)
@@ -52,7 +52,7 @@ template<typename T>
 class RoiScaleHTFilter
 {
   public:
-	RoiScaleHTFilter(DecompressBlockExec* block) : roiShift(block->roishift),
+	RoiScaleHTFilter(grk::DecompressBlockExec* block) : roiShift(block->roishift),
 													scale(block->stepsize / (float)(1u << (31 - block->bandNumbps)))
 	{
 		assert(block->bandNumbps <= 31);
@@ -80,7 +80,7 @@ template<typename T>
 class ScaleHTFilter
 {
   public:
-	ScaleHTFilter(DecompressBlockExec* block) : scale(block->stepsize / (float)(1u << (31 - block->bandNumbps))) {
+	ScaleHTFilter(grk::DecompressBlockExec* block) : scale(block->stepsize / (float)(1u << (31 - block->bandNumbps))) {
 		assert(block->bandNumbps <= 31);
 	}
 	inline void copy(T* dest, T* src, uint32_t len)
