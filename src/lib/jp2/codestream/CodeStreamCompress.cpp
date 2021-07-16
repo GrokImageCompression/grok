@@ -374,13 +374,17 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 	m_cp.tcps = new TileCodingParams[m_cp.t_grid_width * m_cp.t_grid_height];
 	for(uint32_t tileno = 0; tileno < m_cp.t_grid_width * m_cp.t_grid_height; tileno++)
 	{
-		TileCodingParams* tcp = m_cp.tcps + tileno;
-		tcp->setIsHT(parameters->isHT);
-		tcp->qcd.generate(numgbits, (uint32_t)(parameters->numresolution - 1),
-						  !parameters->irreversible, image->comps[0].prec, tcp->mct > 0,
-						  image->comps[0].sgnd);
-		tcp->numlayers = parameters->numlayers;
+		auto tcp = m_cp.tcps + tileno;
+		tcp->tccps = new TileComponentCodingParams[image->numcomps];
 
+		tcp->setIsHT(parameters->isHT, !parameters->irreversible, numgbits);
+		tcp->m_qcd->generate((uint32_t)(parameters->numresolution - 1),
+						  image->comps[0].prec, parameters->mct > 0,
+						  image->comps[0].sgnd);
+		for(uint32_t i = 0; i < image->numcomps; i++)
+			tcp->m_qcd->pull((tcp->tccps+i)->stepsizes);
+
+		tcp->numlayers = parameters->numlayers;
 		for(uint16_t j = 0; j < tcp->numlayers; j++)
 		{
 			if(m_cp.m_coding_params.m_enc.m_allocationByFixedQuality)
@@ -422,7 +426,6 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 		{
 			tcp->numpocs = 0;
 		}
-		tcp->tccps = new TileComponentCodingParams[image->numcomps];
 		if(parameters->mct_data)
 		{
 			uint32_t lMctSize =
@@ -581,7 +584,6 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 					tccp->precinctHeightExp[j] = 15;
 				}
 			}
-			tcp->qcd.pull(tccp->stepsizes, !parameters->irreversible);
 		}
 	}
 	grkFree(parameters->mct_data);
@@ -805,7 +807,7 @@ bool CodeStreamCompress::init_header_writing(void)
 
 	m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_soc, this));
 	m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_siz, this));
-	if(m_cp.tcps[0].getIsHT())
+	if(m_cp.tcps[0].isHT())
 		m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_cap, this));
 	m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_cod, this));
 	m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_qcd, this));
@@ -1039,52 +1041,7 @@ bool CodeStreamCompress::write_siz()
 }
 bool CodeStreamCompress::write_cap()
 {
-	auto tcp = m_cp.tcps;
-	auto tccp = tcp->tccps;
-
-	// marker size excluding header
-	uint16_t Lcap = 8;
-
-	uint32_t Pcap = 0x00020000; // for jph, Pcap^15 must be set, the 15th MSB
-	uint16_t Ccap[32]; // a maximum of 32
-	memset(Ccap, 0, sizeof(Ccap));
-
-	bool reversible = tccp->qmfbid == 1;
-	if(reversible)
-		Ccap[0] &= 0xFFDF;
-	else
-		Ccap[0] |= 0x0020;
-	Ccap[0] &= 0xFFE0;
-
-	uint32_t Bp = 0;
-	uint32_t B = tcp->qcd.get_MAGBp();
-	if(B <= 8)
-		Bp = 0;
-	else if(B < 28)
-		Bp = B - 8;
-	else if(B < 48)
-		Bp = 13 + (B >> 2);
-	else
-		Bp = 31;
-	Ccap[0] = (uint16_t)(Ccap[0] | Bp);
-
-	/* CAP */
-	if(!m_stream->writeShort(J2K_MS_CAP))
-	{
-		return false;
-	}
-
-	/* L_CAP */
-	if(!m_stream->writeShort(Lcap))
-		return false;
-	/* PCAP */
-	if(!m_stream->writeInt(Pcap))
-		return false;
-	/* CCAP */
-	if(!m_stream->writeShort(Ccap[0]))
-		return false;
-
-	return true;
+	return m_cp.tcps->m_qcd->write(m_stream);
 }
 
 bool CodeStreamCompress::write_com()

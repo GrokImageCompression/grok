@@ -45,17 +45,6 @@ enum J2K_MCT_ARRAY_TYPE
 	MCT_TYPE_DECORRELATION = 1,
 	MCT_TYPE_OFFSET = 2
 };
-/**
- * Quantization stepsize
- */
-struct grk_stepsize
-{
-	grk_stepsize() : expn(0), mant(0) {}
-	/** exponent - 5 bits */
-	uint8_t expn;
-	/** mantissa  -11 bits */
-	uint16_t mant;
-};
 
 /**
  Tile-component coding parameters
@@ -135,8 +124,8 @@ struct TileCodingParams
 	~TileCodingParams();
 
 	bool copy(const TileCodingParams* rhs, const GrkImage *image);
-	void setIsHT(bool ht);
-	bool getIsHT(void);
+	void setIsHT(bool ht, bool reversible, uint8_t guardBits);
+	bool isHT(void);
 	uint32_t getNumProgressions(void);
 	bool hasPoc(void);
 
@@ -208,10 +197,10 @@ struct TileCodingParams
 	bool cod;
 	/** If ppt == true --> there was a PPT marker for the present tile */
 	bool ppt;
-	qcdHT qcd;
+	qcd *m_qcd;
 
   private:
-	bool isHT;
+	bool m_ht;
 };
 
 struct EncodingParams

@@ -59,6 +59,8 @@
 #include <cstring>
 using namespace std;
 
+#include "Qcd.h"
+
 namespace grk
 {
 
@@ -77,55 +79,20 @@ class sqrt_energy_gains
 	static const float gain_5x3_h[34];
 };
 
-
-
-struct qcd
-{
-  public:
-	qcd() : Sqcd(0), num_decomps(0)
-	{
-		memset(u8_SPqcd, 0, GRK_J2K_MAXBANDS);
-		memset(u16_SPqcd, 0, GRK_J2K_MAXBANDS * sizeof(short));
-	}
-	void pull(grk_stepsize* stepptr, bool reversible);
-	void push(grk_stepsize* stepptr, bool reversible);
-  protected:
-	uint8_t Sqcd;
-	union
-	{
-		uint8_t u8_SPqcd[97];
-		uint16_t u16_SPqcd[97];
-	};
-	uint32_t num_decomps;
-};
-
-
-
 struct qcdHT : public qcd
 {
   public:
-	qcdHT() : base_delta(-1.0f), isHT(false)
-	{}
-
-	void setIsHT(bool ht)
-	{
-		isHT = ht;
-	}
-	void set_delta(float delta)
-	{
-		base_delta = delta;
-	}
+	qcdHT(bool reversible,uint8_t guard_bits);
+	void generate(uint32_t decomps,
+					uint32_t max_bit_depth,
+					bool color_transform, bool is_signed) override;
+	bool write(IBufferedStream *stream) override;
+  private:
+	uint32_t get_MAGBp() const;
+	uint32_t get_num_guard_bits() const;
 	void set_rev_quant(uint32_t bit_depth, bool is_employing_color_transform);
 	void set_irrev_quant();
-	void generate(uint8_t guard_bits, uint32_t decomps, bool is_reversible, uint32_t max_bit_depth,
-				  bool color_transform, bool is_signed);
-
-	uint32_t get_num_guard_bits() const;
-	uint32_t get_MAGBp() const;
-
-  private:
 	float base_delta;
-	bool isHT;
 };
 
 } // namespace grk

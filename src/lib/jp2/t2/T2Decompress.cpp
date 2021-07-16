@@ -528,7 +528,7 @@ bool T2Decompress::readPacketData(Resolution* res, const PacketIter* p_pi, Spars
 				{
 					// HT doesn't tolerate truncated code blocks since decoding runs both forward
 					// and reverse. So, in this case, we ignore the entire code block
-					if(tileProcessor->m_cp->tcps[0].getIsHT())
+					if(tileProcessor->m_cp->tcps[0].isHT())
 						cblk->cleanUpSegBuffers();
 					seg->numBytesInPacket = 0;
 					seg->numpasses = 0;

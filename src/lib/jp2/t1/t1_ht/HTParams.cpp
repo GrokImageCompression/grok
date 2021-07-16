@@ -144,99 +144,23 @@ const float bibo_gains::gain_5x3_h[34] = {
 	2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f,
 	2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f};
 
-/**
- * Note:
- *
- * Lossless
- * u8_SPqcd[] stores expn in upper 5 bits (mantissa is zero)
- *
- * Lossy
- * u16_SPqcd[bn] stores expn in upper 5 bits and mantissa
- * in lower 11 bits
- *
- *
- */
-void qcd::pull(grk_stepsize* stepptr, bool reversible)
-{
-	uint32_t numbands = 3 * (num_decomps + 1) - 2;
-	for(uint32_t bn = 0; bn < numbands; bn++)
-	{
-		auto step = stepptr + bn;
-		if(reversible)
-		{
-			step->expn = (uint8_t)(u8_SPqcd[bn] >> 3);
-			step->mant = 0;
-		}
-		else
-		{
-			step->expn = (uint8_t)(u16_SPqcd[bn] >> 11);
-			step->mant = (uint16_t)(u16_SPqcd[bn] & 0x7FF);
-		}
-	}
-}
-void qcd::push(grk_stepsize* stepptr, bool reversible)
-{
-	uint32_t numbands = 3 * (num_decomps + 1) - 2;
-	for(uint32_t bn = 0; bn < numbands; bn++)
-	{
-		auto step = stepptr + bn;
-		if(reversible)
-			u8_SPqcd[bn] = (uint8_t)(step->expn << 3);
-		else
-			u16_SPqcd[bn] = (uint16_t)((step->expn << 11) + step->mant);
-	}
-}
-
-void qcdHT::generate(uint8_t guard_bits, uint32_t decomps, bool is_reversible,
+qcdHT::qcdHT(bool reversible,uint8_t guard_bits) : qcd(reversible, guard_bits), base_delta(-1.0f)
+{}
+void qcdHT::generate(uint32_t decomps,
 						 uint32_t max_bit_depth, bool color_transform, bool is_signed)
 {
 	num_decomps = decomps;
-	Sqcd = (uint8_t)(guard_bits << 5);
-	if(!is_reversible)
-		Sqcd |= 0x2;
-
-	if(isHT)
+	if(isReversible)
 	{
-		if(is_reversible)
-		{
-			set_rev_quant(max_bit_depth, color_transform);
-		}
-		else
-		{
-			if(base_delta == -1.0f)
-				base_delta = 1.0f / (float)(1 << (max_bit_depth + is_signed));
-			set_irrev_quant();
-		}
+		set_rev_quant(max_bit_depth, color_transform);
 	}
 	else
 	{
-		uint32_t numresolutions = decomps + 1;
-		uint32_t numbands = 3 * numresolutions - 2;
-		for(uint32_t bandno = 0; bandno < numbands; bandno++)
-		{
-			uint32_t resno = (bandno == 0) ? 0 : ((bandno - 1) / 3 + 1);
-			uint8_t orient = (uint8_t)((bandno == 0) ? 0 : ((bandno - 1) % 3 + 1));
-			uint32_t level = numresolutions - 1 - resno;
-			uint32_t gain = (!is_reversible)
-								? 0
-								: ((orient == 0) ? 0 : (((orient == 1) || (orient == 2)) ? 1 : 2));
-
-			double stepsize = 1.0;
-			if(!is_reversible)
-				stepsize = (1 << (gain)) / T1::getnorm(level, orient, false);
-			uint32_t step = (uint32_t)floor(stepsize * 8192.0);
-			int32_t p, n;
-			p = floorlog2(step) - 13;
-			n = 11 - floorlog2(step);
-			uint32_t mant = (n < 0 ? step >> -n : step << n) & 0x7ff;
-			int32_t expn = (int32_t)(max_bit_depth + gain) - p;
-			assert(expn >= 0);
-			if(is_reversible)
-				u8_SPqcd[bandno] = (uint8_t)(expn << 3);
-			else
-				u16_SPqcd[bandno] = (uint16_t)((uint32_t)(expn << 11) + mant);
-		}
+		if(base_delta == -1.0f)
+			base_delta = 1.0f / (float)(1 << (max_bit_depth + is_signed));
+		set_irrev_quant();
 	}
+
 }
 void qcdHT::set_rev_quant(uint32_t bit_depth, bool is_employing_color_transform)
 {
@@ -324,6 +248,49 @@ uint32_t qcdHT::get_MAGBp() const
 uint32_t qcdHT::get_num_guard_bits() const
 {
 	return uint32_t(Sqcd >> 5U);
+}
+bool qcdHT::write(IBufferedStream *stream) {
+	// marker size excluding header
+	uint16_t Lcap = 8;
+	uint32_t Pcap = 0x00020000; // for jph, Pcap^15 must be set, the 15th MSB
+	uint16_t Ccap[32]; // a maximum of 32
+	memset(Ccap, 0, sizeof(Ccap));
+
+	if(isReversible)
+		Ccap[0] &= 0xFFDF;
+	else
+		Ccap[0] |= 0x0020;
+	Ccap[0] &= 0xFFE0;
+
+	uint32_t Bp = 0;
+	uint32_t B = get_MAGBp();
+	if(B <= 8)
+		Bp = 0;
+	else if(B < 28)
+		Bp = B - 8;
+	else if(B < 48)
+		Bp = 13 + (B >> 2);
+	else
+		Bp = 31;
+	Ccap[0] = (uint16_t)(Ccap[0] | Bp);
+
+	/* CAP */
+	if(!stream->writeShort(J2K_MS_CAP))
+	{
+		return false;
+	}
+
+	/* L_CAP */
+	if(!stream->writeShort(Lcap))
+		return false;
+	/* PCAP */
+	if(!stream->writeInt(Pcap))
+		return false;
+	/* CCAP */
+	if(!stream->writeShort(Ccap[0]))
+		return false;
+
+	return true;
 }
 
 } // namespace grk

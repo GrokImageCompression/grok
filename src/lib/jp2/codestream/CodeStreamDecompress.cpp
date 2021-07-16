@@ -1772,7 +1772,7 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint32_t compno, uint8_t* headerData
 
 	auto cp = &(m_cp);
 	auto tcp = get_current_decode_tcp();
-	auto tccp = &tcp->tccps[compno];
+	auto tccp = tcp->tccps + compno;
 	auto current_ptr = headerData;
 
 	/* make sure room is sufficient */
@@ -1792,13 +1792,13 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint32_t compno, uint8_t* headerData
 		return false;
 	}
 	++tccp->numresolutions;
-	if(m_cp.pcap && !tcp->getIsHT())
+	if(m_cp.pcap && !tcp->isHT())
 	{
-		tcp->setIsHT(true);
-		tcp->qcd.generate(tccp->numgbits, tccp->numresolutions - 1U, tccp->qmfbid == 1,
+		tcp->setIsHT(true, tccp->qmfbid == 1, tccp->numgbits);
+		tcp->m_qcd->generate(tccp->numresolutions - 1U,
 						  getHeaderImage()->comps[compno].prec, tcp->mct > 0,
 						  getHeaderImage()->comps[compno].sgnd);
-		tcp->qcd.push(tccp->stepsizes, tccp->qmfbid == 1);
+		tcp->m_qcd->push(tccp->stepsizes);
 	}
 
 	/* If user wants to remove more resolutions than the code stream contains, return error */

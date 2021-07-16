@@ -20,6 +20,7 @@
  */
 
 #include "grk_includes.h"
+#include "HTParams.h"
 
 namespace grk
 {
@@ -62,6 +63,7 @@ grkRectU32 CodingParams::getTileBounds(const GrkImage* p_image, uint32_t tile_x,
 	return rc;
 }
 
+
 TileCodingParams::TileCodingParams()
 	: csty(0), prg(GRK_PROG_UNKNOWN), numlayers(0), numLayersToDecompress(0), mct(0), numpocs(0),
 	  ppt_markers_count(0), ppt_markers(nullptr), ppt_data(nullptr), ppt_buffer(nullptr),
@@ -69,7 +71,7 @@ TileCodingParams::TileCodingParams()
 	  m_tilePartIndex(-1), numTileParts(0), m_compressedTileData(nullptr), mct_norms(nullptr),
 	  m_mct_decoding_matrix(nullptr), m_mct_coding_matrix(nullptr), m_mct_records(nullptr),
 	  m_nb_mct_records(0), m_nb_max_mct_records(0), m_mcc_records(nullptr), m_nb_mcc_records(0),
-	  m_nb_max_mcc_records(0), cod(false), ppt(false), isHT(false)
+	  m_nb_max_mcc_records(0), cod(false), ppt(false), m_qcd(nullptr), m_ht(false)
 {
 	for(auto i = 0; i < maxCompressLayersGRK; ++i)
 		rates[i] = 0.0;
@@ -78,13 +80,44 @@ TileCodingParams::TileCodingParams()
 	for(auto i = 0; i < 32; ++i)
 		memset(progressionOrderChange + i, 0, sizeof(grk_progression));
 }
+TileCodingParams::~TileCodingParams()
+{
+	if(ppt_markers != nullptr)
+	{
+		for(uint32_t i = 0U; i < ppt_markers_count; ++i)
+			grkFree(ppt_markers[i].m_data);
+		grkFree(ppt_markers);
+	}
+
+	delete[] ppt_buffer;
+	delete[] tccps;
+	grkFree(m_mct_coding_matrix);
+	grkFree(m_mct_decoding_matrix);
+	if(m_mcc_records)
+		grkFree(m_mcc_records);
+	if(m_mct_records)
+	{
+		auto mct_data = m_mct_records;
+		for(uint32_t i = 0; i < m_nb_mct_records; ++i)
+		{
+			grkFree(mct_data->m_data);
+			++mct_data;
+		}
+		grkFree(m_mct_records);
+	}
+	grkFree(mct_norms);
+	delete m_compressedTileData;
+	delete m_qcd;
+}
+
 bool TileCodingParams::copy(const TileCodingParams *rhs, const GrkImage *image)
 {
 	uint32_t tccp_size = image->numcomps * (uint32_t)sizeof(TileComponentCodingParams);
 	uint32_t mct_size = (uint32_t)image->numcomps * image->numcomps * (uint32_t)sizeof(float);
 
 	//cache tccps
-	auto current_tccp = tccps;
+	auto cachedTccps = tccps;
+	auto cachedQcd = m_qcd;
 	*this = *rhs;
 	/* Initialize some values of the current tile coding parameters*/
 	cod = false;
@@ -97,7 +130,8 @@ bool TileCodingParams::copy(const TileCodingParams *rhs, const GrkImage *image)
 	m_nb_max_mcc_records = 0;
 	m_mcc_records = nullptr;
 	// restore tccps
-	tccps = current_tccp;
+	tccps = cachedTccps;
+	m_qcd = cachedQcd;
 
 	/* Get the mct_decoding_matrix of the dflt_tile_cp and copy them into the current tile cp*/
 	if(rhs->m_mct_decoding_matrix)
@@ -165,44 +199,16 @@ bool TileCodingParams::copy(const TileCodingParams *rhs, const GrkImage *image)
 	return true;
 }
 
-TileCodingParams::~TileCodingParams()
+void TileCodingParams::setIsHT(bool ht, bool reversible, uint8_t guardBits)
 {
-	if(ppt_markers != nullptr)
-	{
-		for(uint32_t i = 0U; i < ppt_markers_count; ++i)
-			grkFree(ppt_markers[i].m_data);
-		grkFree(ppt_markers);
-	}
-
-	delete[] ppt_buffer;
-	delete[] tccps;
-	grkFree(m_mct_coding_matrix);
-	grkFree(m_mct_decoding_matrix);
-	if(m_mcc_records)
-		grkFree(m_mcc_records);
-	if(m_mct_records)
-	{
-		auto mct_data = m_mct_records;
-		for(uint32_t i = 0; i < m_nb_mct_records; ++i)
-		{
-			grkFree(mct_data->m_data);
-			++mct_data;
-		}
-		grkFree(m_mct_records);
-	}
-	grkFree(mct_norms);
-	delete m_compressedTileData;
+	m_ht = ht;
+	if (!m_qcd)
+		m_qcd = ht ? new qcdHT(reversible, guardBits) : new qcd(reversible,guardBits);
 }
 
-void TileCodingParams::setIsHT(bool ht)
+bool TileCodingParams::isHT(void)
 {
-	isHT = ht;
-	qcd.setIsHT(ht);
-}
-
-bool TileCodingParams::getIsHT(void)
-{
-	return isHT;
+	return m_ht;
 }
 uint32_t TileCodingParams::getNumProgressions(){
 	return numpocs+1;
