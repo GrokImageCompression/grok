@@ -134,6 +134,7 @@ struct TileCodingParams
 	TileCodingParams();
 	~TileCodingParams();
 
+	bool copy(const TileCodingParams* rhs, const GrkImage *image);
 	void setIsHT(bool ht);
 	bool getIsHT(void);
 	uint32_t getNumProgressions(void);

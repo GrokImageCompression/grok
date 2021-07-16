@@ -254,7 +254,7 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 
 		cp = &(m_cp);
 		tcp = m_decompressorState.m_default_tcp;
-		tccp = &tcp->tccps[0];
+		tccp = tcp->tccps;
 
 		header_info->cblockw_init = 1U << tccp->cblkw;
 		header_info->cblockh_init = 1U << tccp->cblkh;
@@ -690,97 +690,12 @@ bool CodeStreamDecompress::copy_default_tcp(void)
 {
 	auto image = m_headerImage;
 	uint32_t numTiles = m_cp.t_grid_height * m_cp.t_grid_width;
-	uint32_t tccp_size = image->numcomps * (uint32_t)sizeof(TileComponentCodingParams);
-	auto default_tcp = m_decompressorState.m_default_tcp;
-	uint32_t mct_size = (uint32_t)image->numcomps * image->numcomps * (uint32_t)sizeof(float);
 
-	/* For each tile */
 	for(uint32_t i = 0; i < numTiles; ++i)
 	{
 		auto tcp = m_cp.tcps + i;
-		/* keep the tile-compo coding parameters pointer of the current tile coding parameters*/
-		auto current_tccp = tcp->tccps;
-		/*Copy default coding parameters into the current tile coding parameters*/
-		*tcp = *default_tcp;
-		/* Initialize some values of the current tile coding parameters*/
-		tcp->cod = false;
-		tcp->ppt = false;
-		tcp->ppt_data = nullptr;
-		/* Remove memory not owned by this tile in case of early error return. */
-		tcp->m_mct_decoding_matrix = nullptr;
-		tcp->m_nb_max_mct_records = 0;
-		tcp->m_mct_records = nullptr;
-		tcp->m_nb_max_mcc_records = 0;
-		tcp->m_mcc_records = nullptr;
-		/* Reconnect the tile-compo coding parameters pointer to the current tile coding
-		 * parameters*/
-		tcp->tccps = current_tccp;
-
-		/* Get the mct_decoding_matrix of the dflt_tile_cp and copy them into the current tile cp*/
-		if(default_tcp->m_mct_decoding_matrix)
-		{
-			tcp->m_mct_decoding_matrix = (float*)grkMalloc(mct_size);
-			if(!tcp->m_mct_decoding_matrix)
-				return false;
-			memcpy(tcp->m_mct_decoding_matrix, default_tcp->m_mct_decoding_matrix, mct_size);
-		}
-
-		/* Get the mct_record of the dflt_tile_cp and copy them into the current tile cp*/
-		uint32_t mct_records_size =
-			default_tcp->m_nb_max_mct_records * (uint32_t)sizeof(grk_mct_data);
-		tcp->m_mct_records = (grk_mct_data*)grkMalloc(mct_records_size);
-		if(!tcp->m_mct_records)
+		if (!tcp->copy(m_decompressorState.m_default_tcp, image))
 			return false;
-		memcpy(tcp->m_mct_records, default_tcp->m_mct_records, mct_records_size);
-
-		/* Copy the mct record data from dflt_tile_cp to the current tile*/
-		auto src_mct_rec = default_tcp->m_mct_records;
-		auto dest_mct_rec = tcp->m_mct_records;
-
-		for(uint32_t j = 0; j < default_tcp->m_nb_mct_records; ++j)
-		{
-			if(src_mct_rec->m_data)
-			{
-				dest_mct_rec->m_data = (uint8_t*)grkMalloc(src_mct_rec->m_data_size);
-				if(!dest_mct_rec->m_data)
-					return false;
-				memcpy(dest_mct_rec->m_data, src_mct_rec->m_data, src_mct_rec->m_data_size);
-			}
-			++src_mct_rec;
-			++dest_mct_rec;
-			/* Update with each pass to free exactly what has been allocated on early return. */
-			tcp->m_nb_max_mct_records += 1;
-		}
-
-		/* Get the mcc_record of the dflt_tile_cp and copy them into the current tile cp*/
-		uint32_t mcc_records_size =
-			default_tcp->m_nb_max_mcc_records * (uint32_t)sizeof(grk_simple_mcc_decorrelation_data);
-		tcp->m_mcc_records = (grk_simple_mcc_decorrelation_data*)grkMalloc(mcc_records_size);
-		if(!tcp->m_mcc_records)
-			return false;
-		memcpy(tcp->m_mcc_records, default_tcp->m_mcc_records, mcc_records_size);
-		tcp->m_nb_max_mcc_records = default_tcp->m_nb_max_mcc_records;
-
-		/* Copy the mcc record data from dflt_tile_cp to the current tile*/
-		for(uint32_t j = 0; j < default_tcp->m_nb_max_mcc_records; ++j)
-		{
-			auto src_mcc_rec = default_tcp->m_mcc_records + j;
-			auto dest_mcc_rec = tcp->m_mcc_records + j;
-			if(src_mcc_rec->m_decorrelation_array)
-			{
-				uint32_t offset =
-					(uint32_t)(src_mcc_rec->m_decorrelation_array - default_tcp->m_mct_records);
-				dest_mcc_rec->m_decorrelation_array = tcp->m_mct_records + offset;
-			}
-			if(src_mcc_rec->m_offset_array)
-			{
-				uint32_t offset =
-					(uint32_t)(src_mcc_rec->m_offset_array - default_tcp->m_mct_records);
-				dest_mcc_rec->m_offset_array = tcp->m_mct_records + offset;
-			}
-		}
-		/* Copy all the dflt_tile_compo_cp to the current tile cp */
-		memcpy(current_tccp, default_tcp->tccps, tccp_size);
 	}
 
 	return true;
