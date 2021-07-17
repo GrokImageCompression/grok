@@ -197,7 +197,7 @@ struct TileCodingParams
 	bool cod;
 	/** If ppt == true --> there was a PPT marker for the present tile */
 	bool ppt;
-	qcd *m_qcd;
+	Quantizer *m_qcd;
 
   private:
 	bool m_ht;

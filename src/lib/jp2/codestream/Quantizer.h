@@ -38,11 +38,11 @@ struct grk_stepsize
 };
 
 
-struct qcd
+struct Quantizer
 {
   public:
-	qcd(bool reversible, uint8_t guard_bits);
-	virtual ~qcd() = default;
+	Quantizer(bool reversible, uint8_t guard_bits);
+	virtual ~Quantizer() = default;
 	// for compress
 	void pull(grk_stepsize* stepptr);
 	// for decompress

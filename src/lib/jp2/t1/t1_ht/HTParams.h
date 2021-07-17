@@ -59,7 +59,7 @@
 #include <cstring>
 using namespace std;
 
-#include "Qcd.h"
+#include <Quantizer.h>
 
 namespace ojph
 {
@@ -79,10 +79,10 @@ class sqrt_energy_gains
 	static const float gain_5x3_h[34];
 };
 
-struct qcdHT : public grk::qcd
+struct QuantizerHT : public grk::Quantizer
 {
   public:
-	qcdHT(bool reversible,uint8_t guard_bits);
+	QuantizerHT(bool reversible,uint8_t guard_bits);
 	void generate(uint32_t decomps,
 					uint32_t max_bit_depth,
 					bool color_transform, bool is_signed) override;

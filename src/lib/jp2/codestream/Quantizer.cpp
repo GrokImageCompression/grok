@@ -25,7 +25,7 @@
 namespace grk
 {
 
-qcd::qcd(bool reversible,uint8_t guard_bits) : Sqcd((uint8_t)(guard_bits << 5)),
+Quantizer::Quantizer(bool reversible,uint8_t guard_bits) : Sqcd((uint8_t)(guard_bits << 5)),
 												num_decomps(0), isReversible(reversible)
 {
 	memset(u8_SPqcd, 0, GRK_J2K_MAXBANDS);
@@ -44,7 +44,7 @@ qcd::qcd(bool reversible,uint8_t guard_bits) : Sqcd((uint8_t)(guard_bits << 5)),
  *
  *
  */
-void qcd::pull(grk_stepsize* stepptr)
+void Quantizer::pull(grk_stepsize* stepptr)
 {
 	uint32_t numbands = 3 * (num_decomps + 1) - 2;
 	for(uint32_t bn = 0; bn < numbands; bn++)
@@ -62,7 +62,7 @@ void qcd::pull(grk_stepsize* stepptr)
 		}
 	}
 }
-void qcd::push(grk_stepsize* stepptr)
+void Quantizer::push(grk_stepsize* stepptr)
 {
 	uint32_t numbands = 3 * (num_decomps + 1) - 2;
 	for(uint32_t bn = 0; bn < numbands; bn++)
@@ -74,7 +74,7 @@ void qcd::push(grk_stepsize* stepptr)
 			u16_SPqcd[bn] = (uint16_t)((step->expn << 11) + step->mant);
 	}
 }
-void qcd::generate(uint32_t decomps,
+void Quantizer::generate(uint32_t decomps,
 						 uint32_t max_bit_depth, bool color_transform, bool is_signed)
 {
 	GRK_UNUSED(color_transform);
@@ -110,7 +110,7 @@ void qcd::generate(uint32_t decomps,
 }
 
 // no-op
-bool qcd::write(IBufferedStream *stream){
+bool Quantizer::write(IBufferedStream *stream){
 	GRK_UNUSED(stream);
 
 	return true;

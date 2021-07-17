@@ -114,8 +114,8 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/FileFormatDecompress.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodingParams.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodingParams.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Qcd.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Qcd.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Quantizer.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Quantizer.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/SIZMarker.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/SIZMarker.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/PPMMarker.h

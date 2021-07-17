@@ -121,13 +121,9 @@ void dwt97::encode_step1_combined(float* fw, uint32_t iters_c1, uint32_t iters_c
 		fw += 2;
 	}
 	if(i < iters_c1)
-	{
 		fw[0] *= c1;
-	}
 	else if(i < iters_c2)
-	{
 		fw[1] *= c2;
-	}
 }
 
 #endif
@@ -187,13 +183,9 @@ void dwt97::encode_1_real(float* w, int32_t dn, int32_t sn, int32_t parity)
                          grk_invK);
 #else
 	if(a == 0)
-	{
 		encode_step1_combined(w, (uint32_t)sn, (uint32_t)dn, grk_invK, grk_K);
-	}
 	else
-	{
 		encode_step1_combined(w, (uint32_t)dn, (uint32_t)sn, grk_K, grk_invK);
-	}
 #endif
 }
 template<typename T, typename DWT>
@@ -239,16 +231,11 @@ void encode_v_func(encode_v_job<T, DWT>* job)
 {
 	uint32_t j;
 	for(j = job->min_j; j + NB_ELTS_V8 - 1 < job->max_j; j += NB_ELTS_V8)
-	{
 		job->dwt.encode_and_deinterleave_v((T*)job->tiledp + j, (T*)job->v.mem, job->rh,
 										   job->v.parity == 0, job->w, NB_ELTS_V8);
-	}
 	if(j < job->max_j)
-	{
 		job->dwt.encode_and_deinterleave_v((T*)job->tiledp + j, (T*)job->v.mem, job->rh,
 										   job->v.parity == 0, job->w, job->max_j - j);
-	}
-
 	grkAlignedFree(job->v.mem);
 	delete job;
 }
@@ -263,9 +250,7 @@ void fetch_cols_vertical_pass(const T* array, T* tmp, uint32_t height, uint32_t 
 	{
 		uint32_t k;
 		for(k = 0; k < height; ++k)
-		{
 			memcpy(tmp + NB_ELTS_V8 * k, array + k * stride_width, NB_ELTS_V8 * sizeof(T));
-		}
 	}
 	else
 	{
@@ -274,13 +259,9 @@ void fetch_cols_vertical_pass(const T* array, T* tmp, uint32_t height, uint32_t 
 		{
 			uint32_t c;
 			for(c = 0; c < cols; c++)
-			{
 				tmp[NB_ELTS_V8 * k + c] = array[c + k * stride_width];
-			}
 			for(; c < NB_ELTS_V8; c++)
-			{
 				tmp[NB_ELTS_V8 * k + c] = 0;
-			}
 		}
 	}
 }
@@ -360,9 +341,7 @@ void dwt97::grk_v8dwt_encode_step1(float* fw, uint32_t end, const float cst)
 	for(i = 0; i < end; ++i)
 	{
 		for(c = 0; c < NB_ELTS_V8; c++)
-		{
 			fw[i * 2 * NB_ELTS_V8 + c] *= cst;
-		}
 	}
 #endif
 }
@@ -402,17 +381,13 @@ void dwt97::grk_v8dwt_encode_step2(float* fl, float* fw, uint32_t end, uint32_t 
 	if(imax > 0)
 	{
 		for(c = 0; c < NB_ELTS; c++)
-		{
 			fw[-1 * NB_ELTS + c] += (fl[0 * NB_ELTS + c] + fw[0 * NB_ELTS + c]) * cst;
-		}
 		fw += 2 * NB_ELTS;
 		i = 1;
 		for(; i < imax; ++i)
 		{
 			for(c = 0; c < NB_ELTS; c++)
-			{
 				fw[-1 * NB_ELTS + c] += (fw[-2 * NB_ELTS + c] + fw[0 * NB_ELTS + c]) * cst;
-			}
 			fw += 2 * NB_ELTS;
 		}
 	}
@@ -420,9 +395,7 @@ void dwt97::grk_v8dwt_encode_step2(float* fl, float* fw, uint32_t end, uint32_t 
 	{
 		assert(m + 1 == end);
 		for(c = 0; c < NB_ELTS; c++)
-		{
 			fw[-1 * NB_ELTS + c] += (2 * fw[-2 * NB_ELTS + c]) * cst;
-		}
 	}
 #endif
 }
@@ -436,36 +409,30 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 		return true;
 
 	int32_t i;
-	T* bj = nullptr;
 	int32_t maxNumResolutions;
-
 	size_t dataSize;
 
-	Resolution* currentRes = nullptr;
-	Resolution* lastRes = nullptr;
 	// const int num_threads = grk_thread_pool_get_thread_count(tp);
 	uint32_t stride = tilec->getBuffer()->getHighestBufferResWindowREL()->stride;
 	T* GRK_RESTRICT tiledp = (T*)tilec->getBuffer()->getHighestBufferResWindowREL()->getBuffer();
 
 	maxNumResolutions = (int32_t)tilec->numresolutions - 1;
-	currentRes = tilec->tileCompResolution + maxNumResolutions;
-	lastRes = currentRes - 1;
+	auto currentRes = tilec->tileCompResolution + maxNumResolutions;
+	auto lastRes = currentRes - 1;
 
 	dataSize = max_resolution(tilec->tileCompResolution, tilec->numresolutions);
 	/* overflow check */
 	if(dataSize > (SIZE_MAX / (NB_ELTS_V8 * sizeof(int32_t))))
 	{
-		/* FIXME event manager error callback */
+		GRK_ERROR("Forward wavelet overflow");
 		return false;
 	}
 	dataSize *= NB_ELTS_V8 * sizeof(int32_t);
-	bj = (T*)grkAlignedMalloc(dataSize);
+	auto bj = (T*)grkAlignedMalloc(dataSize);
 	/* dataSize is equal to 0 when numresolutions == 1 but bj is not used */
 	/* in that case, so do not error out */
 	if(dataSize != 0 && !bj)
-	{
 		return false;
-	}
 	i = maxNumResolutions;
 	uint32_t num_threads = ThreadPool::get()->num_threads() > 1 ? 2 : 1;
 
@@ -498,15 +465,11 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 		{
 			uint32_t j;
 			for(j = 0; j + NB_ELTS_V8 - 1 < rw; j += NB_ELTS_V8)
-			{
 				dwt.encode_and_deinterleave_v((T*)tiledp + j, bj, rh, parity_col == 0, stride,
 											  NB_ELTS_V8);
-			}
 			if(j < rw)
-			{
 				dwt.encode_and_deinterleave_v((T*)tiledp + j, bj, rh, parity_col == 0, stride,
 											  rw - j);
-			}
 		}
 		else
 		{
@@ -514,9 +477,7 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 			uint32_t step_j;
 
 			if(rw < num_jobs)
-			{
 				num_jobs = rw;
-			}
 			step_j = ((rw / num_jobs) / NB_ELTS_V8) * NB_ELTS_V8;
 			std::vector<std::future<int>> results;
 			for(uint32_t j = 0; j < num_jobs; j++)
@@ -569,9 +530,7 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 			uint32_t step_j;
 
 			if(rh < num_jobs)
-			{
 				num_jobs = rh;
-			}
 			step_j = (rh / num_jobs);
 			std::vector<std::future<int>> results;
 			for(uint32_t j = 0; j < num_jobs; j++)
@@ -618,13 +577,10 @@ bool WaveletFwdImpl::encode_procedure(TileComponent* tilec)
 bool WaveletFwdImpl::compress(TileComponent* tile_comp, uint8_t qmfbid)
 {
 	if(qmfbid == 1)
-	{
 		return encode_procedure<int32_t, dwt53>(tile_comp);
-	}
 	else if(qmfbid == 0)
-	{
 		return encode_procedure<float, dwt97>(tile_comp);
-	}
+
 	return false;
 }
 
@@ -652,9 +608,7 @@ void dwt53::encode_and_deinterleave_v(int32_t* arrayIn, int32_t* tmpIn, uint32_t
 		{
 			uint32_t c;
 			for(c = 0; c < NB_ELTS_V8; c++)
-			{
 				tmp[c] *= 2;
-			}
 		}
 	}
 	else if(even)
@@ -685,14 +639,10 @@ void dwt53::encode_and_deinterleave_v(int32_t* arrayIn, int32_t* tmpIn, uint32_t
 		if(((height) % 2) == 0)
 		{
 			for(c = 0; c < NB_ELTS_V8; c++)
-			{
 				GRK_Dc(i) -= GRK_Sc(i);
-			}
 		}
 		for(c = 0; c < NB_ELTS_V8; c++)
-		{
 			GRK_Sc(0) += (GRK_Dc(0) + GRK_Dc(0) + 2) >> 2;
-		}
 		i = 1;
 		if(i < dn)
 		{
@@ -720,9 +670,7 @@ void dwt53::encode_and_deinterleave_v(int32_t* arrayIn, int32_t* tmpIn, uint32_t
 		if(((height) % 2) == 1)
 		{
 			for(c = 0; c < NB_ELTS_V8; c++)
-			{
 				GRK_Sc(i) += (GRK_Dc(i - 1) + GRK_Dc(i - 1) + 2) >> 2;
-			}
 		}
 	}
 	else
@@ -757,9 +705,7 @@ void dwt53::encode_and_deinterleave_v(int32_t* arrayIn, int32_t* tmpIn, uint32_t
 		if(((height) % 2) == 1)
 		{
 			for(c = 0; c < NB_ELTS_V8; c++)
-			{
 				GRK_Sc(i) -= GRK_Dc(i - 1);
-			}
 		}
 		i = 0;
 		if(i + 1 < dn)
@@ -788,9 +734,7 @@ void dwt53::encode_and_deinterleave_v(int32_t* arrayIn, int32_t* tmpIn, uint32_t
 		if(((height) % 2) == 0)
 		{
 			for(c = 0; c < NB_ELTS_V8; c++)
-			{
 				GRK_Dc(i) += (GRK_Sc(i) + GRK_Sc(i) + 2) >> 2;
-			}
 		}
 	}
 #else
@@ -803,34 +747,24 @@ void dwt53::encode_and_deinterleave_v(int32_t* arrayIn, int32_t* tmpIn, uint32_t
 			for(i = 0; i + 1 < sn; i++)
 			{
 				for(c = 0; c < NB_ELTS_V8; c++)
-				{
 					GRK_Dc(i) -= (GRK_Sc(i) + GRK_Sc(i + 1)) >> 1;
-				}
 			}
 			if(((height) % 2) == 0)
 			{
 				for(c = 0; c < NB_ELTS_V8; c++)
-				{
 					GRK_Dc(i) -= GRK_Sc(i);
-				}
 			}
 			for(c = 0; c < NB_ELTS_V8; c++)
-			{
 				GRK_Sc(0) += (GRK_Dc(0) + GRK_Dc(0) + 2) >> 2;
-			}
 			for(i = 1; i < dn; i++)
 			{
 				for(c = 0; c < NB_ELTS_V8; c++)
-				{
 					GRK_Sc(i) += (GRK_Dc(i - 1) + GRK_Dc(i) + 2) >> 2;
-				}
 			}
 			if(((height) % 2) == 1)
 			{
 				for(c = 0; c < NB_ELTS_V8; c++)
-				{
 					GRK_Sc(i) += (GRK_Dc(i - 1) + GRK_Dc(i - 1) + 2) >> 2;
-				}
 			}
 		}
 	}
@@ -840,57 +774,41 @@ void dwt53::encode_and_deinterleave_v(int32_t* arrayIn, int32_t* tmpIn, uint32_t
 		if(height == 1)
 		{
 			for(c = 0; c < NB_ELTS_V8; c++)
-			{
 				GRK_Sc(0) *= 2;
-			}
 		}
 		else
 		{
 			uint32_t i;
 			for(c = 0; c < NB_ELTS_V8; c++)
-			{
 				GRK_Sc(0) -= GRK_Dc(0);
-			}
 			for(i = 1; i < sn; i++)
 			{
 				for(c = 0; c < NB_ELTS_V8; c++)
-				{
 					GRK_Sc(i) -= (GRK_Dc(i) + GRK_Dc(i - 1)) >> 1;
-				}
 			}
 			if(((height) % 2) == 1)
 			{
 				for(c = 0; c < NB_ELTS_V8; c++)
-				{
 					GRK_Sc(i) -= GRK_Dc(i - 1);
-				}
 			}
 			for(i = 0; i + 1 < dn; i++)
 			{
 				for(c = 0; c < NB_ELTS_V8; c++)
-				{
 					GRK_Dc(i) += (GRK_Sc(i) + GRK_Sc(i + 1) + 2) >> 2;
-				}
 			}
 			if(((height) % 2) == 0)
 			{
 				for(c = 0; c < NB_ELTS_V8; c++)
-				{
 					GRK_Dc(i) += (GRK_Sc(i) + GRK_Sc(i) + 2) >> 2;
-				}
 			}
 		}
 	}
 #endif
 
 	if(cols == NB_ELTS_V8)
-	{
 		deinterleave_v_cols(tmp, array, dn, sn, stride_width, even ? 0 : 1, NB_ELTS_V8);
-	}
 	else
-	{
 		deinterleave_v_cols(tmp, array, dn, sn, stride_width, even ? 0 : 1, cols);
-	}
 }
 
 /** Process one line for the horizontal pass of the 5x3 forward transform */
@@ -908,22 +826,14 @@ void dwt53::encode_and_deinterleave_h_one_row(int32_t* rowIn, int32_t* tmpIn, ui
 		{
 			int32_t i;
 			for(i = 0; i < sn - 1; i++)
-			{
 				tmp[sn + i] = row[2 * i + 1] - ((row[(i)*2] + row[(i + 1) * 2]) >> 1);
-			}
 			if((width % 2) == 0)
-			{
 				tmp[sn + i] = row[2 * i + 1] - row[(i)*2];
-			}
 			row[0] += (tmp[sn] + tmp[sn] + 2) >> 2;
 			for(i = 1; i < dn; i++)
-			{
 				row[i] = row[2 * i] + ((tmp[sn + (i - 1)] + tmp[sn + i] + 2) >> 2);
-			}
 			if((width % 2) == 1)
-			{
 				row[i] = row[2 * i] + ((tmp[sn + (i - 1)] + tmp[sn + (i - 1)] + 2) >> 2);
-			}
 			memcpy(row + sn, tmp + sn, (size_t)dn * sizeof(int32_t));
 		}
 	}
@@ -938,22 +848,13 @@ void dwt53::encode_and_deinterleave_h_one_row(int32_t* rowIn, int32_t* tmpIn, ui
 			int32_t i;
 			tmp[sn + 0] = row[0] - row[1];
 			for(i = 1; i < sn; i++)
-			{
 				tmp[sn + i] = row[2 * i] - ((row[2 * i + 1] + row[2 * (i - 1) + 1]) >> 1);
-			}
 			if((width % 2) == 1)
-			{
 				tmp[sn + i] = row[2 * i] - row[2 * (i - 1) + 1];
-			}
-
 			for(i = 0; i < dn - 1; i++)
-			{
 				row[i] = row[2 * i + 1] + ((tmp[sn + i] + tmp[sn + i + 1] + 2) >> 2);
-			}
 			if((width % 2) == 0)
-			{
 				row[i] = row[2 * i + 1] + ((tmp[sn + i] + tmp[sn + i] + 2) >> 2);
-			}
 			memcpy(row + sn, tmp + sn, (size_t)dn * sizeof(int32_t));
 		}
 	}
@@ -971,9 +872,7 @@ void dwt97::encode_and_deinterleave_v(float* arrayIn, float* tmpIn, uint32_t hei
 	uint32_t a, b;
 
 	if(height == 1)
-	{
 		return;
-	}
 
 	fetch_cols_vertical_pass(arrayIn, tmpIn, height, stride_width, cols);
 
@@ -999,13 +898,9 @@ void dwt97::encode_and_deinterleave_v(float* arrayIn, float* tmpIn, uint32_t hei
 	grk_v8dwt_encode_step1(tmp + a * NB_ELTS_V8, (uint32_t)sn, grk_invK);
 
 	if(cols == NB_ELTS_V8)
-	{
 		deinterleave_v_cols(tmp, array, dn, sn, stride_width, even ? 0 : 1, NB_ELTS_V8);
-	}
 	else
-	{
 		deinterleave_v_cols(tmp, array, dn, sn, stride_width, even ? 0 : 1, cols);
-	}
 }
 
 /** Process one line for the horizontal pass of the 9x7 forward transform */
@@ -1016,9 +911,7 @@ void dwt97::encode_and_deinterleave_h_one_row(float* rowIn, float* tmpIn, uint32
 	const int32_t sn = (int32_t)((width + (even ? 1 : 0)) >> 1);
 	const int32_t dn = (int32_t)(width - (uint32_t)sn);
 	if(width == 1)
-	{
 		return;
-	}
 	memcpy(tmp, row, width * sizeof(float));
 	encode_1_real(tmp, dn, sn, even ? 0 : 1);
 	deinterleave_h(tmp, row, dn, sn, even ? 0 : 1);

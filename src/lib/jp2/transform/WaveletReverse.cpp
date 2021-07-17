@@ -560,13 +560,14 @@ static void decompress_h_53(const dwt_data<int32_t>* dwt, int32_t* bandL, int32_
 							int32_t* dest)
 {
 	const uint32_t total_width = dwt->sn_full + dwt->dn_full;
+	assert(total_width != 0);
 	if(dwt->parity == 0)
 	{ /* Left-most sample is on even coordinate */
 		if(total_width > 1)
 		{
 			decompress_h_cas0_53(dwt->mem, bandL, dwt->sn_full, bandH, dwt->dn_full, dest);
 		}
-		else if(total_width == 1)
+		else
 		{
 			assert(dwt->sn_full == 1);
 			// only L op: only one sample in L band and H band is empty
@@ -575,7 +576,6 @@ static void decompress_h_53(const dwt_data<int32_t>* dwt, int32_t* bandL, int32_
 	}
 	else
 	{ /* Left-most sample is on odd coordinate */
-		assert(total_width != 0);
 		if(total_width == 1)
 		{
 			assert(dwt->dn_full == 1);
@@ -588,7 +588,7 @@ static void decompress_h_53(const dwt_data<int32_t>* dwt, int32_t* bandL, int32_
 			dest[0] = bandH[0] + dwt->mem[1];
 			dest[1] = dwt->mem[1];
 		}
-		else if(total_width > 2)
+		else
 		{
 			decompress_h_cas1_53(dwt->mem, bandL, dwt->sn_full, bandH, dwt->dn_full, dest);
 		}
@@ -604,28 +604,28 @@ static void decompress_v_53(const dwt_data<int32_t>* dwt, int32_t* bandL, const 
 							const uint32_t strideDest, uint32_t nb_cols)
 {
 	const uint32_t total_height = dwt->sn_full + dwt->dn_full;
+	assert(total_height != 0);
 	if(dwt->parity == 0)
 	{
 		if(total_height == 1)
 		{
 			for(uint32_t c = 0; c < nb_cols; c++, bandL++, dest++)
 				dest[0] = bandL[0];
-			return;
-		}
-		if(total_height > 1 && nb_cols == PLL_COLS_53)
-		{
-			/* Same as below general case, except that thanks to SSE2/AVX2 */
-			/* we can efficiently process 8/16 columns in parallel */
-			HWY_DYNAMIC_DISPATCH(hwy_decompress_v_cas0_mcols_53)
-			(dwt->mem, bandL, dwt->sn_full, strideL, bandH, dwt->dn_full, strideH, dest,
-			 strideDest);
-			return;
-		}
-		if(total_height > 1)
-		{
-			for(uint32_t c = 0; c < nb_cols; c++, bandL++, bandH++, dest++)
-				decompress_v_cas0_53(dwt->mem, bandL, dwt->sn_full, strideL, bandH, dwt->dn_full,
-									 strideH, dest, strideDest);
+		} else {
+			if(nb_cols == PLL_COLS_53)
+			{
+				/* Same as below general case, except that thanks to SSE2/AVX2 */
+				/* we can efficiently process 8/16 columns in parallel */
+				HWY_DYNAMIC_DISPATCH(hwy_decompress_v_cas0_mcols_53)
+				(dwt->mem, bandL, dwt->sn_full, strideL, bandH, dwt->dn_full, strideH, dest,
+				 strideDest);
+			}
+			else
+			{
+				for(uint32_t c = 0; c < nb_cols; c++, bandL++, bandH++, dest++)
+					decompress_v_cas0_53(dwt->mem, bandL, dwt->sn_full, strideL, bandH, dwt->dn_full,
+										 strideH, dest, strideDest);
+			}
 		}
 	}
 	else
@@ -634,7 +634,6 @@ static void decompress_v_53(const dwt_data<int32_t>* dwt, int32_t* bandL, const 
 		{
 			for(uint32_t c = 0; c < nb_cols; c++, bandL++, dest++)
 				dest[0] = bandL[0] >> 1;
-			return;
 		}
 		else if(total_height == 2)
 		{
@@ -645,20 +644,20 @@ static void decompress_v_53(const dwt_data<int32_t>* dwt, int32_t* bandL, const 
 				dest[0] = bandH[0] + out[1];
 				dest[1] = out[1];
 			}
-			return;
+		} else {
+			if(nb_cols == PLL_COLS_53)
+			{
+				/* Same as below general case, except that thanks to SSE2/AVX2 */
+				/* we can efficiently process 8/16 columns in parallel */
+				HWY_DYNAMIC_DISPATCH(hwy_decompress_v_cas1_mcols_53)
+				(dwt->mem, bandL, dwt->sn_full, strideL, bandH, dwt->dn_full, strideH, dest,
+				 strideDest);
+			} else {
+				for(uint32_t c = 0; c < nb_cols; c++, bandL++, bandH++, dest++)
+					decompress_v_cas1_53(dwt->mem, bandL, dwt->sn_full, strideL, bandH, dwt->dn_full,
+										 strideH, dest, strideDest);
+			}
 		}
-		if(nb_cols == PLL_COLS_53)
-		{
-			/* Same as below general case, except that thanks to SSE2/AVX2 */
-			/* we can efficiently process 8/16 columns in parallel */
-			HWY_DYNAMIC_DISPATCH(hwy_decompress_v_cas1_mcols_53)
-			(dwt->mem, bandL, dwt->sn_full, strideL, bandH, dwt->dn_full, strideH, dest,
-			 strideDest);
-			return;
-		}
-		for(uint32_t c = 0; c < nb_cols; c++, bandL++, bandH++, dest++)
-			decompress_v_cas1_53(dwt->mem, bandL, dwt->sn_full, strideL, bandH, dwt->dn_full,
-								 strideH, dest, strideDest);
 	}
 }
 
@@ -1517,15 +1516,11 @@ class Partial53 : public PartialInterleaver<T, FILTER_WIDTH, VERT_PASS_WIDTH>
 					if(i_max > dn)
 						i_max = dn;
 					for(; i < i_max; i++)
-					{
 						/* No bound checking */
 						S(buf, i) -= (get_D(buf, i - 1) + get_D(buf, i) + 2) >> 2;
-					}
 					for(; i < win_l_x1 - win_l_x0; i++)
-					{
 						/* Right-most case */
 						S(buf, i) -= (D_(buf, i - 1) + D_(buf, i) + 2) >> 2;
-					}
 				}
 				i = 0;
 				i_max = win_h_x1 - win_h_x0;
@@ -1534,15 +1529,11 @@ class Partial53 : public PartialInterleaver<T, FILTER_WIDTH, VERT_PASS_WIDTH>
 					if(i_max >= sn)
 						i_max = sn - 1;
 					for(; i < i_max; i++)
-					{
 						/* No bound checking */
 						D(buf, i) += (S(buf, i) + S(buf, i + 1)) >> 1;
-					}
 					for(; i < win_h_x1 - win_h_x0; i++)
-					{
 						/* Right-most case */
 						D(buf, i) += (S_(buf, i) + S_(buf, i + 1)) >> 1;
-					}
 				}
 			}
 		}

@@ -26,7 +26,7 @@ using namespace ojph::local;
 #include "grk_includes.h"
 #include "T1Part1.h"
 #include "T1HT.h"
-#include "Qcd.h"
+#include <Quantizer.h>
 #include "HTParams.h"
 
 namespace grk
@@ -40,8 +40,8 @@ T1Interface* T1Factory::makeT1(bool isCompressor, TileCodingParams* tcp, uint32_
 		return new t1_part1::T1Part1(isCompressor, maxCblkW, maxCblkH);
 }
 
-qcd* T1Factory::makeQcd(bool ht, bool reversible, uint8_t guardBits){
-	return ht ? new qcdHT(reversible, guardBits) : new qcd(reversible,guardBits);
+Quantizer* T1Factory::makeQuantizer(bool ht, bool reversible, uint8_t guardBits){
+	return ht ? new QuantizerHT(reversible, guardBits) : new Quantizer(reversible,guardBits);
 }
 
 } // namespace grk
