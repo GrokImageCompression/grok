@@ -55,3 +55,13 @@ static inline long grk_lrintf(float f)
 #if defined(_MSC_VER) && (_MSC_VER >= 1400) && !defined(__INTEL_COMPILER) && defined(_M_IX86)
 #pragma intrinsic(__emul)
 #endif
+
+static inline uint32_t grk_population_count(uint32_t val)
+{
+#ifdef _MSC_VER
+  return (uint32_t)__popcnt(val);
+#else
+  return (uint32_t)__builtin_popcount(val);
+#endif
+}
+

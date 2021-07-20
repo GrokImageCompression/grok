@@ -20,7 +20,6 @@
  */
 
 #include "grk_includes.h"
-#include "ojph_arch.h"
 
 namespace grk
 {
@@ -2872,7 +2871,7 @@ bool CodeStreamDecompress::read_cap(uint8_t* headerData, uint16_t header_size)
 	}
 	headerData += sizeof(uint32_t);
 	cp->pcap = tmp;
-	uint32_t count = ojph::population_count(cp->pcap);
+	uint32_t count = grk_population_count(cp->pcap);
 	uint32_t expected_size = (uint32_t)sizeof(cp->pcap) + 2U * count;
 	if(header_size != expected_size)
 	{

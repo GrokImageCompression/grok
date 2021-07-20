@@ -15,19 +15,14 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#ifdef _MSC_VER
-#include <intrin.h>
-#endif
-#include "ojph_block_decoder.h"
-#include "ojph_mem.h"
+#include "../OJPH/coding/ojph_block_decoder.h"
+#include "../OJPH/common/ojph_mem.h"
 using namespace ojph;
 using namespace ojph::local;
+#include "OJPH/T1HT.h"
 
 #include "grk_includes.h"
 #include "T1Part1.h"
-#include "T1HT.h"
-#include <Quantizer.h>
-#include "HTParams.h"
 
 namespace grk
 {

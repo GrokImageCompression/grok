@@ -20,7 +20,7 @@
  */
 
 #include "grk_includes.h"
-#include "HTParams.h"
+#include "OJPH/HTParams.h"
 
 namespace grk
 {

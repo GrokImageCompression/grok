@@ -40,11 +40,10 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin
   ${CMAKE_CURRENT_SOURCE_DIR}/transform
   ${CMAKE_CURRENT_SOURCE_DIR}/t1
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/coding
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/others
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1
+  
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/common
+  
   ${CMAKE_CURRENT_SOURCE_DIR}/util
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers
@@ -59,7 +58,7 @@ include_directories(
 # Defines the source code for executables
 set(GROK_EXECUTABLES_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/bench_dwt.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_generate_luts.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/t1_generate_luts.cpp
 )
 
 # Defines the source code for the library
@@ -86,7 +85,7 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkObjectWrapper.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkMatrix.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkMatrix.h
-
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/simd.h
   
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin/minpf_dynamic_library.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin/minpf_dynamic_library.h
@@ -180,32 +179,32 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Factory.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Interface.h
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/T1HT.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/T1HT.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/HTParams.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/HTParams.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/coding/ojph_block_decoder.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/coding/ojph_block_decoder.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/coding/ojph_block_encoder.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/coding/ojph_block_encoder.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/coding/table0.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/coding/table1.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common/ojph_arch.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common/ojph_arg.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common/ojph_base.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common/ojph_defs.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common/ojph_mem.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common/ojph_message.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/others/ojph_arch.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/others/ojph_mem.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/others/ojph_message.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/T1HT.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/T1HT.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/HTParams.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/HTParams.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/coding/ojph_block_decoder.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/coding/ojph_block_decoder.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/coding/ojph_block_encoder.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/coding/ojph_block_encoder.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/coding/table0.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/coding/table1.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/common/ojph_arch.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/common/ojph_arg.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/common/ojph_base.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/common/ojph_defs.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/common/ojph_mem.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/common/ojph_message.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/others/ojph_arch.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/others/ojph_mem.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/others/ojph_message.cpp
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/T1.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/T1.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/mqc_enc.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/mqc_dec.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/T1Part1.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/T1Part1.h    
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/T1.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/T1.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/mqc_enc.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/mqc_dec.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/T1Part1.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/T1Part1.h    
 )
 
 add_definitions(-DSPDLOG_COMPILED_LIB)

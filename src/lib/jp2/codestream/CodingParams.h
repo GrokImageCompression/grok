@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include "HTParams.h"
+#include "OJPH/HTParams.h"
 
 namespace grk
 {

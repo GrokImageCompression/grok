@@ -19,7 +19,6 @@
  *
  */
 #include "grk_includes.h"
-#include "ojph_arch.h"
 
 namespace grk
 {

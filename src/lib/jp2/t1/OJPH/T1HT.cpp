@@ -17,8 +17,8 @@
 #ifdef _MSC_VER
 #include <intrin.h>
 #endif
-#include "ojph_block_decoder.h"
-#include "ojph_block_encoder.h"
+#include "coding/ojph_block_decoder.h"
+#include "coding/ojph_block_encoder.h"
 #include "ojph_mem.h"
 using namespace ojph::local;
 

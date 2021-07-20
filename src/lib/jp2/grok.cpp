@@ -30,8 +30,6 @@
 #include <sys/mman.h>
 #endif
 #include <fcntl.h>
-#include "ojph_block_encoder.h"
-#include "ojph_block_decoder.h"
 #include "grk_includes.h"
 using namespace grk;
 
