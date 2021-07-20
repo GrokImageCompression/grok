@@ -20,7 +20,7 @@
  */
 
 #include "PostT1DecompressFilters.h"
-#include "OJPH/PostT1DecompressFiltersHT.h"
+#include "OJPH/PostT1DecompressFiltersOJPH.h"
 #include "grk_includes.h"
 
 const bool DEBUG_TILE_COMPONENT = false;

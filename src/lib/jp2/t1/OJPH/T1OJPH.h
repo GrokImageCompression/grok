@@ -16,22 +16,20 @@
  */
 
 #pragma once
+#include "../OJPH/common/ojph_mem.h"
 #include "T1Interface.h"
 #include "stdint.h"
 #include "TileProcessor.h"
-#include "T1Interface.h"
 
 namespace ojph
 {
 struct TileCodingParams;
 
-namespace t1_ht
-{
-	class T1HT : public grk::T1Interface
+	class T1OJPH : public grk::T1Interface
 	{
 	  public:
-		T1HT(bool isCompressor, grk::TileCodingParams* tcp, uint32_t maxCblkW, uint32_t maxCblkH);
-		virtual ~T1HT();
+		T1OJPH(bool isCompressor, grk::TileCodingParams* tcp, uint32_t maxCblkW, uint32_t maxCblkH);
+		virtual ~T1OJPH();
 
 		bool compress(grk::CompressBlockExec* block);
 		bool decompress(grk::DecompressBlockExec* block);
@@ -48,5 +46,4 @@ namespace t1_ht
 		mem_fixed_allocator* allocator;
 		mem_elastic_allocator* elastic_alloc;
 	};
-} // namespace t1_ht
-}
+} // namespace ojph

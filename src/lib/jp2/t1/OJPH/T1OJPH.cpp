@@ -14,27 +14,21 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#ifdef _MSC_VER
-#include <intrin.h>
-#endif
+#include "simd.h"
 #include "coding/ojph_block_decoder.h"
 #include "coding/ojph_block_encoder.h"
 #include "ojph_mem.h"
-using namespace ojph::local;
 
 #include "grk_includes.h"
-#include "T1HT.h"
+#include "T1OJPH.h"
 #include <algorithm>
 using namespace std;
-using namespace grk;
 
 const uint8_t grk_cblk_dec_compressed_data_pad_ht = 8;
 
 namespace ojph
 {
-namespace t1_ht
-{
-	T1HT::T1HT(bool isCompressor, grk::TileCodingParams* tcp, uint32_t maxCblkW, uint32_t maxCblkH)
+	T1OJPH::T1OJPH(bool isCompressor, grk::TileCodingParams* tcp, uint32_t maxCblkW, uint32_t maxCblkH)
 		: coded_data_size(isCompressor ? 0 : (uint32_t)(maxCblkW * maxCblkH * sizeof(int32_t))),
 		  coded_data(isCompressor ? nullptr : new uint8_t[coded_data_size]),
 		  unencoded_data_size(maxCblkW * maxCblkH),
@@ -45,14 +39,14 @@ namespace t1_ht
 		if(!isCompressor)
 			memset(coded_data, 0, grk_cblk_dec_compressed_data_pad_ht);
 	}
-	T1HT::~T1HT()
+	T1OJPH::~T1OJPH()
 	{
 		delete[] coded_data;
 		delete[] unencoded_data;
 		delete allocator;
 		delete elastic_alloc;
 	}
-	void T1HT::preCompress(CompressBlockExec* block, Tile* tile)
+	void T1OJPH::preCompress(grk::CompressBlockExec* block, grk::Tile* tile)
 	{
 		(void)block;
 		(void)tile;
@@ -105,7 +99,7 @@ namespace t1_ht
 			}
 		}
 	}
-	bool T1HT::compress(CompressBlockExec* block)
+	bool T1OJPH::compress(grk::CompressBlockExec* block)
 	{
 		preCompress(block, block->tile);
 
@@ -118,7 +112,7 @@ namespace t1_ht
 		uint16_t h = (uint16_t)cblk->height();
 
 		uint32_t pass_length[2] = {0, 0};
-		ojph_encode_codeblock((uint32_t*)unencoded_data, block->k_msbs, 1, w, h, w, pass_length,
+		ojph::local::ojph_encode_codeblock((uint32_t*)unencoded_data, block->k_msbs, 1, w, h, w, pass_length,
 							  elastic_alloc, next_coded);
 
 		cblk->numPassesTotal = 1;
@@ -130,7 +124,7 @@ namespace t1_ht
 
 		return true;
 	}
-	bool T1HT::decompress(DecompressBlockExec* block)
+	bool T1OJPH::decompress(grk::DecompressBlockExec* block)
 	{
 		auto cblk = block->cblk;
 		if(!cblk->area())
@@ -167,7 +161,7 @@ namespace t1_ht
 			bool rc = false;
 			if(num_passes && offset)
 			{
-				rc = ojph_decode_codeblock(actual_coded_data, (uint32_t*)unencoded_data,
+				rc = ojph::local::ojph_decode_codeblock(actual_coded_data, (uint32_t*)unencoded_data,
 										   block->k_msbs, (uint32_t)num_passes, (uint32_t)offset, 0,
 										   cblk->width(), cblk->height(), stride);
 			}
@@ -177,13 +171,11 @@ namespace t1_ht
 			}
 			if(!rc)
 			{
-				GRK_ERROR("Error in HT block coder");
+				grk::GRK_ERROR("Error in HT block coder");
 				return false;
 			}
 		}
 
 		return block->tilec->postProcessHT(unencoded_data, block, stride);
 	}
-
-} // namespace t1_ht
-} // namespace grk
+} // namespace ojph

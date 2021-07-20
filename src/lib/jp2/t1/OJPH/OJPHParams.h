@@ -79,10 +79,10 @@ class sqrt_energy_gains
 	static const float gain_5x3_h[34];
 };
 
-struct QuantizerHT : public grk::Quantizer
+struct QuantizerOJPH : public grk::Quantizer
 {
   public:
-	QuantizerHT(bool reversible,uint8_t guard_bits);
+	QuantizerOJPH(bool reversible,uint8_t guard_bits);
 	void generate(uint32_t decomps,
 					uint32_t max_bit_depth,
 					bool color_transform, bool is_signed) override;

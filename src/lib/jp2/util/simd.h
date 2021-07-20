@@ -17,7 +17,15 @@
  */
 #pragma once
 
-#ifdef _WIN32
+#include <cmath>
+#include <cstdint>
+
+#if defined(__arm64__) || defined(__arm__)
+  #include <arm_acle.h>
+  #if defined(__ARM_NEON__)
+    #include <arm_neon.h>
+  #endif
+#elif defined (_WIN32)
 #include <intrin.h>
 #elif defined(__x86_64__) || defined(__i386__)
 #include <x86intrin.h>
@@ -64,4 +72,3 @@ static inline uint32_t grk_population_count(uint32_t val)
   return (uint32_t)__builtin_popcount(val);
 #endif
 }
-

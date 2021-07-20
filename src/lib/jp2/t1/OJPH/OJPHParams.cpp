@@ -55,11 +55,10 @@
 
 #define _USE_MATH_DEFINES
 #include "grk_includes.h"
-#include "HTParams.h"
+#include "OJPHParams.h"
 #include <cassert>
 #include <algorithm>
 using namespace std;
-using namespace grk;
 
 namespace ojph
 {
@@ -145,9 +144,9 @@ const float bibo_gains::gain_5x3_h[34] = {
 	2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f,
 	2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f};
 
-QuantizerHT::QuantizerHT(bool reversible,uint8_t guard_bits) : Quantizer(reversible, guard_bits), base_delta(-1.0f)
+QuantizerOJPH::QuantizerOJPH(bool reversible,uint8_t guard_bits) : Quantizer(reversible, guard_bits), base_delta(-1.0f)
 {}
-void QuantizerHT::generate(uint32_t decomps,
+void QuantizerOJPH::generate(uint32_t decomps,
 						 uint32_t max_bit_depth, bool color_transform, bool is_signed)
 {
 	num_decomps = decomps;
@@ -163,7 +162,7 @@ void QuantizerHT::generate(uint32_t decomps,
 	}
 
 }
-void QuantizerHT::set_rev_quant(uint32_t bit_depth, bool is_employing_color_transform)
+void QuantizerOJPH::set_rev_quant(uint32_t bit_depth, bool is_employing_color_transform)
 {
 	int B = (int)bit_depth;
 	B += is_employing_color_transform ? 1 : 0; // 1 bit for RCT
@@ -183,7 +182,7 @@ void QuantizerHT::set_rev_quant(uint32_t bit_depth, bool is_employing_color_tran
 		u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
 	}
 }
-void QuantizerHT::set_irrev_quant()
+void QuantizerOJPH::set_irrev_quant()
 {
 	uint32_t s = 0;
 	float gain_l = sqrt_energy_gains::get_gain_l(num_decomps, false);
@@ -228,7 +227,7 @@ void QuantizerHT::set_irrev_quant()
 		u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
 	}
 }
-uint32_t QuantizerHT::get_MAGBp() const
+uint32_t QuantizerOJPH::get_MAGBp() const
 {
 	uint32_t B = 0;
 	uint32_t irrev = Sqcd & 0x1F;
@@ -246,11 +245,11 @@ uint32_t QuantizerHT::get_MAGBp() const
 
 	return B;
 }
-uint32_t QuantizerHT::get_num_guard_bits() const
+uint32_t QuantizerOJPH::get_num_guard_bits() const
 {
 	return uint32_t(Sqcd >> 5U);
 }
-bool QuantizerHT::write(IBufferedStream *stream) {
+bool QuantizerOJPH::write(grk::IBufferedStream *stream) {
 	// marker size excluding header
 	uint16_t Lcap = 8;
 	uint32_t Pcap = 0x00020000; // for jph, Pcap^15 must be set, the 15th MSB
