@@ -303,7 +303,7 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 							   truncatedTile))
 						{
 							delete sa;
-							throw runtime_error("unable to allocate sparse array");
+							throw std::runtime_error("unable to allocate sparse array");
 						}
 						cblkno++;
 					}

@@ -97,4 +97,4 @@ class ScaleHTFilter
 	float scale;
 };
 
-} // namespace grk
+} // namespace ojph

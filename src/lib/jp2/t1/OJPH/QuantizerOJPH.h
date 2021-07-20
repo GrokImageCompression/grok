@@ -53,31 +53,10 @@
 //***************************************************************************/
 
 #pragma once
-
-#include <algorithm>
-#include <cstdint>
-#include <cstring>
-using namespace std;
-
 #include <Quantizer.h>
 
 namespace ojph
 {
-
-struct grk_stepsize;
-
-class sqrt_energy_gains
-{
-  public:
-	static float get_gain_l(uint32_t num_decomp, bool reversible);
-	static float get_gain_h(uint32_t num_decomp, bool reversible);
-
-  private:
-	static const float gain_9x7_l[34];
-	static const float gain_9x7_h[34];
-	static const float gain_5x3_l[34];
-	static const float gain_5x3_h[34];
-};
 
 struct QuantizerOJPH : public grk::Quantizer
 {
@@ -95,4 +74,4 @@ struct QuantizerOJPH : public grk::Quantizer
 	float base_delta;
 };
 
-} // namespace grk
+} // namespace ojph

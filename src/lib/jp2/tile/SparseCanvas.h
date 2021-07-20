@@ -50,6 +50,7 @@
 #pragma once
 
 #include <cstdint>
+#include <algorithm>
 
 // SparseCanvas stores blocks in the canvas coordinate system. It covers the active sub-bands for
 // all (reduced) resolutions
@@ -203,13 +204,13 @@ class SparseCanvas : public ISparseCanvas
 		for(uint32_t y = win.y0; y < win.y1; block_y++, y += y_incr)
 		{
 			y_incr = (y == win.y0) ? block_height - (win.y0 & (block_height - 1)) : block_height;
-			y_incr = min<uint32_t>(y_incr, win.y1 - y);
+			y_incr = (std::min<uint32_t>)(y_incr, win.y1 - y);
 			uint32_t block_x = win.x0 >> LBW;
 			uint32_t x_incr = 0;
 			for(uint32_t x = win.x0; x < win.x1; block_x++, x += x_incr)
 			{
 				x_incr = (x == win.x0) ? block_width - (win.x0 & (block_width - 1)) : block_width;
-				x_incr = min<uint32_t>(x_incr, win.x1 - x);
+				x_incr = (std::min<uint32_t>)(x_incr, win.x1 - x);
 				if(!grid_bounds.contains(grkPointU32(block_x, block_y)))
 				{
 					GRK_ERROR("sparse buffer : attempt to allocate a block (%d,%d) outside block "
@@ -286,14 +287,14 @@ class SparseCanvas : public ISparseCanvas
 		{
 			y_incr = (y == win.y0) ? block_height - (win.y0 & (block_height - 1)) : block_height;
 			uint32_t block_y_offset = block_height - y_incr;
-			y_incr = min<uint32_t>(y_incr, win.y1 - y);
+			y_incr = (std::min<uint32_t>)(y_incr, win.y1 - y);
 			uint32_t block_x = win.x0 >> LBW;
 			uint32_t x_incr = 0;
 			for(uint32_t x = win.x0; x < win.x1; block_x++, x += x_incr)
 			{
 				x_incr = (x == win.x0) ? block_width - (win.x0 & (block_width - 1)) : block_width;
 				uint32_t block_x_offset = block_width - x_incr;
-				x_incr = min<uint32_t>(x_incr, win.x1 - x);
+				x_incr = (std::min<uint32_t>)(x_incr, win.x1 - x);
 				if(!grid_bounds.contains(grkPointU32(block_x, block_y)))
 				{
 					GRK_ERROR("sparse buffer @ resno %d, Attempt to access a block (%d,%d) outside "

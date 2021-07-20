@@ -18,7 +18,6 @@
 #pragma once
 #include "../OJPH/common/ojph_mem.h"
 #include "T1Interface.h"
-#include "stdint.h"
 #include "TileProcessor.h"
 
 namespace ojph

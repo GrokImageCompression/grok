@@ -918,7 +918,7 @@ static void decompress_step2_sse_97(const Params97& d, __m128 c)
 {
 	__m128* GRK_RESTRICT vec_data = (__m128*)d.data;
 
-	uint32_t imax = min<uint32_t>(d.len, d.lenMax);
+	uint32_t imax = (std::min<uint32_t>)(d.len, d.lenMax);
 
 	// initial tmp1 value is only necessary when
 	// absolute start of line is at 0
@@ -1819,8 +1819,8 @@ static Params97 makeParams97(dwt_data<vec4f>* dwt, bool isBandL, bool step1)
 	int64_t band_1 = isBandL ? dwt->win_l.x1 : dwt->win_h.x1;
 	auto memPartial = isBandL ? dwt->memL : dwt->memH;
 	int64_t parityOffset = isBandL ? dwt->parity : !dwt->parity;
-	int64_t lenMax = isBandL ? min<int64_t>(dwt->sn_full, (int64_t)dwt->dn_full - parityOffset)
-							 : min<int64_t>(dwt->dn_full, (int64_t)dwt->sn_full - parityOffset);
+	int64_t lenMax = isBandL ? (std::min<int64_t>)(dwt->sn_full, (int64_t)dwt->dn_full - parityOffset)
+							 : (std::min<int64_t>)(dwt->dn_full, (int64_t)dwt->sn_full - parityOffset);
 	if(lenMax < 0)
 		lenMax = 0;
 	assert(lenMax >= band_0);

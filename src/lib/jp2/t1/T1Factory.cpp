@@ -18,6 +18,7 @@
 #include "OJPH/T1OJPH.h"
 #include "grk_includes.h"
 #include "T1Part1.h"
+#include "OJPH/QuantizerOJPH.h"
 
 namespace grk
 {

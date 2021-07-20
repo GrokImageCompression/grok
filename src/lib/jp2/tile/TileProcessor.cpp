@@ -150,7 +150,7 @@ bool TileProcessor::init(void)
 			for(uint32_t resno = 0; resno < tilec->numresolutions; ++resno)
 			{
 				auto res = tilec->tileCompResolution + resno;
-				max_precincts = max<uint64_t>(max_precincts, (uint64_t)res->precinctGridWidth *
+				max_precincts = (std::max<uint64_t>)(max_precincts, (uint64_t)res->precinctGridWidth *
 																 res->precinctGridHeight);
 			}
 		}
@@ -349,7 +349,7 @@ bool TileProcessor::decompressT1(void)
 				{
 					tilec->allocSparseCanvas(tilec->resolutions_decompressed + 1U, truncated);
 				}
-				catch(runtime_error& ex)
+				catch(std::runtime_error& ex)
 				{
 					GRK_UNUSED(ex);
 					continue;

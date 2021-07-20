@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include "OJPH/OJPHParams.h"
+#include "Quantizer.h"
 
 namespace grk
 {

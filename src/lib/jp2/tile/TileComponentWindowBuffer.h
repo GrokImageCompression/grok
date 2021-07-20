@@ -100,12 +100,12 @@ struct BufferResWindow
 				}
 				auto winLow = m_paddedBandWindowBufferREL[BAND_ORIENT_LL];
 				auto winHigh = m_paddedBandWindowBufferREL[BAND_ORIENT_HL];
-				m_bufferResWindowBufferREL->x0 = min<uint32_t>(2 * winLow->x0, 2 * winHigh->x0 + 1);
-				m_bufferResWindowBufferREL->x1 = max<uint32_t>(2 * winLow->x1, 2 * winHigh->x1 + 1);
+				m_bufferResWindowBufferREL->x0 = (std::min<uint32_t>)(2 * winLow->x0, 2 * winHigh->x0 + 1);
+				m_bufferResWindowBufferREL->x1 = (std::max<uint32_t>)(2 * winLow->x1, 2 * winHigh->x1 + 1);
 				winLow = m_paddedBandWindowBufferREL[BAND_ORIENT_LL];
 				winHigh = m_paddedBandWindowBufferREL[BAND_ORIENT_LH];
-				m_bufferResWindowBufferREL->y0 = min<uint32_t>(2 * winLow->y0, 2 * winHigh->y0 + 1);
-				m_bufferResWindowBufferREL->y1 = max<uint32_t>(2 * winLow->y1, 2 * winHigh->y1 + 1);
+				m_bufferResWindowBufferREL->y0 = (std::min<uint32_t>)(2 * winLow->y0, 2 * winHigh->y0 + 1);
+				m_bufferResWindowBufferREL->y1 = (std::max<uint32_t>)(2 * winLow->y1, 2 * winHigh->y1 + 1);
 
 				// todo: shouldn't need to clip
 				auto resBounds = grkRectU32(0, 0, m_tileCompRes->width(), m_tileCompRes->height());

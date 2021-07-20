@@ -20,7 +20,6 @@
  */
 
 #include "grk_includes.h"
-#include "OJPH/OJPHParams.h"
 
 namespace grk
 {

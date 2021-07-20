@@ -55,13 +55,24 @@
 
 #define _USE_MATH_DEFINES
 #include "grk_includes.h"
-#include "OJPHParams.h"
-#include <cassert>
-#include <algorithm>
-using namespace std;
+#include "QuantizerOJPH.h"
 
 namespace ojph
 {
+
+class sqrt_energy_gains
+{
+  public:
+	static float get_gain_l(uint32_t num_decomp, bool reversible);
+	static float get_gain_h(uint32_t num_decomp, bool reversible);
+
+  private:
+	static const float gain_9x7_l[34];
+	static const float gain_9x7_h[34];
+	static const float gain_5x3_l[34];
+	static const float gain_5x3_h[34];
+};
+
 float sqrt_energy_gains::get_gain_l(uint32_t num_decomp, bool reversible)
 {
 	return reversible ? gain_5x3_l[num_decomp] : gain_9x7_l[num_decomp];
@@ -233,12 +244,12 @@ uint32_t QuantizerOJPH::get_MAGBp() const
 	uint32_t irrev = Sqcd & 0x1F;
 	if(irrev == 0) // reversible
 		for(uint32_t i = 0; i < 3 * num_decomps + 1; ++i)
-			B = max(B, uint32_t(u8_SPqcd[i] >> 3U) + get_num_guard_bits() - 1U);
+			B = (std::max)(B, uint32_t(u8_SPqcd[i] >> 3U) + get_num_guard_bits() - 1U);
 	else if(irrev == 2) // scalar expounded
 		for(uint32_t i = 0; i < 3 * num_decomps + 1; ++i)
 		{
 			uint32_t nb = num_decomps - (i ? (i - 1) / 3 : 0); // decomposition level
-			B = max(B, uint32_t(u16_SPqcd[i] >> 11U) + get_num_guard_bits() - nb);
+			B = (std::max)(B, uint32_t(u16_SPqcd[i] >> 11U) + get_num_guard_bits() - nb);
 		}
 	else
 		assert(0);
