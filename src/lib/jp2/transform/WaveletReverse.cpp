@@ -969,7 +969,7 @@ static void decompress_step2_97(const Params97& d, float c)
 	float* dataPrev = (float*)d.dataPrev;
 	float* data = (float*)d.data;
 
-	uint32_t imax = min<uint32_t>(d.len, d.lenMax);
+	uint32_t imax = (std::min<uint32_t>)(d.len, d.lenMax);
 	for(uint32_t i = 0; i < imax; ++i)
 	{
 		float tmp1_1 = dataPrev[0];

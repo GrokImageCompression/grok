@@ -118,8 +118,6 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/FileFormatDecompress.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodingParams.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodingParams.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Quantizer.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Quantizer.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/SIZMarker.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/SIZMarker.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/markers/PPMMarker.h
@@ -198,17 +196,19 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ht_block_decoding.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ht_block_encoding.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/mq_decoder.hpp
-                            
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/codestream/codestream.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/codestream/codestream_source.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/codestream/j2kmarkers.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/codestream/j2kmarkers.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/codestream/marker_def.hpp
-
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/transform/color.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/transform/color.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/transform/fdwt.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/transform/idwt.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/T1Part15.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/T1Part15.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/QuantizerPart15.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/QuantizerPart15.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/T1OJPH.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/T1OJPH.cpp
@@ -235,7 +235,9 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/mqc_enc.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/mqc_dec.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/T1Part1.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/T1Part1.h    
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/T1Part1.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1//Quantizer.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1//Quantizer.h
 )
 
 add_definitions(-DSPDLOG_COMPILED_LIB)

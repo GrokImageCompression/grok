@@ -1,4 +1,3 @@
-
 /*
  *    Copyright (C) 2016-2021 Grok Image Compression Inc.
  *
@@ -15,23 +14,31 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#include "simd.h"
-#include "OJPH/T1OJPH.h"
-#include "grk_includes.h"
-#include "T1Part1.h"
-#include "OJPH/QuantizerOJPH.h"
 
-namespace grk
+#pragma once
+#include "T1Interface.h"
+#include "TileProcessor.h"
+
+namespace t1_part15
 {
-T1Interface* T1Factory::makeT1(bool isCompressor, TileCodingParams* tcp, uint32_t maxCblkW,
-							   uint32_t maxCblkH)
-{
-	return tcp->isHT() ? (T1Interface*)(new ojph::T1OJPH(isCompressor, tcp, maxCblkW, maxCblkH)) :
-						 (T1Interface*)(new t1_part1::T1Part1(isCompressor, maxCblkW, maxCblkH));
-}
+struct TileCodingParams;
 
-Quantizer* T1Factory::makeQuantizer(bool ht, bool reversible, uint8_t guardBits){
-	return ht ? new ojph::QuantizerOJPH(reversible, guardBits) : new Quantizer(reversible,guardBits);
-}
+	class T1Part15 : public grk::T1Interface
+	{
+	  public:
+		T1Part15(bool isCompressor, grk::TileCodingParams* tcp, uint32_t maxCblkW, uint32_t maxCblkH);
+		virtual ~T1Part15();
 
-} // namespace grk
+		bool compress(grk::CompressBlockExec* block);
+		bool decompress(grk::DecompressBlockExec* block);
+
+	  private:
+		void preCompress(grk::CompressBlockExec* block, grk::Tile* tile);
+		bool postProcess(grk::DecompressBlockExec* block);
+
+		uint32_t coded_data_size;
+		uint8_t* coded_data;
+		uint32_t unencoded_data_size;
+		int32_t* unencoded_data;
+	};
+} // namespace t1_part15
