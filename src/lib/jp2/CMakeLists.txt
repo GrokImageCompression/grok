@@ -41,6 +41,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/transform
   ${CMAKE_CURRENT_SOURCE_DIR}/t1
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/impl
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/codestream
@@ -230,10 +231,10 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/others/ojph_mem.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/others/ojph_message.cpp
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/T1.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/T1.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/mqc_enc.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/mqc_dec.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/impl/T1.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/impl/T1.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/impl/mqc_enc.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/impl/mqc_dec.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/T1Part1.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/T1Part1.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1//Quantizer.cpp
