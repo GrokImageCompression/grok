@@ -16,22 +16,29 @@
  *
  */
 #include "simd.h"
-#include "OJPH/T1OJPH.h"
 #include "grk_includes.h"
 #include "T1Part1.h"
-#include "OJPH/QuantizerOJPH.h"
+#include "htconfig.h"
 
 namespace grk
 {
 T1Interface* T1Factory::makeT1(bool isCompressor, TileCodingParams* tcp, uint32_t maxCblkW,
 							   uint32_t maxCblkH)
 {
-	return tcp->isHT() ? (T1Interface*)(new ojph::T1OJPH(isCompressor, tcp, maxCblkW, maxCblkH)) :
-						 (T1Interface*)(new t1_part1::T1Part1(isCompressor, maxCblkW, maxCblkH));
+	if (tcp->isHT()){
+		return use_ojph ? (T1Interface*)(new ojph::T1OJPH(isCompressor, tcp, maxCblkW, maxCblkH)) :
+				(T1Interface*)(new ojph::T1OJPH(isCompressor, tcp, maxCblkW, maxCblkH));
+
+	}
+	return (T1Interface*)(new t1_part1::T1Part1(isCompressor, maxCblkW, maxCblkH));
 }
 
 Quantizer* T1Factory::makeQuantizer(bool ht, bool reversible, uint8_t guardBits){
-	return ht ? new ojph::QuantizerOJPH(reversible, guardBits) : new Quantizer(reversible,guardBits);
+	if (ht){
+		return use_ojph ? (Quantizer*)(new ojph::QuantizerOJPH(reversible, guardBits)) :
+				 (Quantizer*)(new t1_part15::QuantizerPart15(reversible, guardBits));
+	}
+	return new Quantizer(reversible,guardBits);
 }
 
 } // namespace grk

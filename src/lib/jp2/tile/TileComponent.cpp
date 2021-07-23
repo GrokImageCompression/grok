@@ -20,8 +20,8 @@
  */
 
 #include "PostT1DecompressFilters.h"
-#include "OJPH/PostT1DecompressFiltersOJPH.h"
 #include "grk_includes.h"
+#include "htconfig.h"
 
 const bool DEBUG_TILE_COMPONENT = false;
 
@@ -372,19 +372,37 @@ bool TileComponent::postProcess(int32_t* srcData, DecompressBlockExec* block)
 }
 bool TileComponent::postProcessHT(int32_t* srcData, DecompressBlockExec* block, uint16_t stride)
 {
-	if(block->roishift)
-	{
-		if(block->qmfbid == 1)
-			return postDecompressImpl<ojph::RoiShiftHTFilter<int32_t>>(srcData, block, stride);
+	if (use_ojph){
+		if(block->roishift)
+		{
+			if(block->qmfbid == 1)
+				return postDecompressImpl<ojph::RoiShiftOJPHFilter<int32_t>>(srcData, block, stride);
+			else
+				return postDecompressImpl<ojph::RoiScaleOJPHFilter<int32_t>>(srcData, block, stride);
+		}
 		else
-			return postDecompressImpl<ojph::RoiScaleHTFilter<int32_t>>(srcData, block, stride);
-	}
-	else
-	{
-		if(block->qmfbid == 1)
-			return postDecompressImpl<ojph::ShiftHTFilter<int32_t>>(srcData, block, stride);
+		{
+			if(block->qmfbid == 1)
+				return postDecompressImpl<ojph::ShiftOJPHFilter<int32_t>>(srcData, block, stride);
+			else
+				return postDecompressImpl<ojph::ScaleOJPHFilter<int32_t>>(srcData, block, stride);
+		}
+	} else {
+		if(block->roishift)
+		{
+			if(block->qmfbid == 1)
+				return postDecompressImpl<t1_part15::RoiShiftHTFilter<int32_t>>(srcData, block, stride);
+			else
+				return postDecompressImpl<t1_part15::RoiScaleHTFilter<int32_t>>(srcData, block, stride);
+		}
 		else
-			return postDecompressImpl<ojph::ScaleHTFilter<int32_t>>(srcData, block, stride);
+		{
+			if(block->qmfbid == 1)
+				return postDecompressImpl<t1_part15::ShiftHTFilter<int32_t>>(srcData, block, stride);
+			else
+				return postDecompressImpl<t1_part15::ScaleHTFilter<int32_t>>(srcData, block, stride);
+		}
+
 	}
 }
 template<typename F>

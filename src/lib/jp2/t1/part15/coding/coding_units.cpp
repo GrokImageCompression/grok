@@ -25,7 +25,7 @@
 //    CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#include "simd.h"
+
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
@@ -34,6 +34,15 @@
 #include "block_decoding.hpp"
 #include "dwt.hpp"
 #include "color.hpp"
+#ifdef _OPENMP
+  #include <omp.h>
+#endif
+
+#if defined(_MSC_VER) || defined(__MINGW64__)
+  #include <intrin.h>
+#elif defined(__x86_64__)
+  #include <x86intrin.h>
+#endif
 
 float bibo_step_gains[32][5] = {{1.00000000, 4.17226868, 1.44209458, 2.10966980, 1.69807026},
                                 {1.38034954, 4.58473765, 1.83866981, 2.13405021, 1.63956779},

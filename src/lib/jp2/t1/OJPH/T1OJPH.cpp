@@ -15,6 +15,7 @@
  *
  */
 #include "simd.h"
+#include "../OJPH/common/ojph_mem.h"
 #include "coding/ojph_block_decoder.h"
 #include "coding/ojph_block_encoder.h"
 #include "ojph_mem.h"

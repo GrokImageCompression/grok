@@ -501,18 +501,19 @@ QCD_marker::QCD_marker(j2c_src_memory &in) : j2k_marker_io_base(_QCD), Sqcd(0) {
 
 QCD_marker::QCD_marker(uint8_t number_of_guardbits, uint8_t dwt_levels, uint8_t transformation,
                        bool is_derived, uint8_t RI, uint8_t use_ycc, double basestep)
-    : j2k_marker_io_base(_QCD), Sqcd(0) {
+    : j2k_marker_io_base(_QCD), Sqcd(0), is_reversible(transformation == 1) {
   unsigned long n;
-  if (transformation == 1) {
+  if (is_reversible) {
     Lmar = 4 + 3 * dwt_levels;
     n    = 3 * dwt_levels + 1;
   } else if (is_derived) {
     Lmar = 5;
     n    = 1;
+    Sqcd = 0b01;
   } else {
     Lmar = 5 + 6 * dwt_levels;
     n    = 3 * dwt_levels + 1;
-    Sqcd += 2;
+    Sqcd = 0b10;
   }
 
   assert(number_of_guardbits < 8 && number_of_guardbits >= 0);
@@ -535,8 +536,8 @@ QCD_marker::QCD_marker(uint8_t number_of_guardbits, uint8_t dwt_levels, uint8_t 
   double gain_low = 0.0, gain_high = 0.0;
 
   std::vector<double> L, H;
-  L = (transformation) ? CDF53L : D97SL;
-  H = (transformation) ? CDF53H : D97SH;
+  L = (is_reversible) ? CDF53L : D97SL;
+  H = (is_reversible) ? CDF53H : D97SH;
   std::vector<double> outL(L);
   std::vector<double> outH(H);
 
@@ -549,10 +550,10 @@ QCD_marker::QCD_marker(uint8_t number_of_guardbits, uint8_t dwt_levels, uint8_t 
       gain_low  = 0.0;
       gain_high = 0.0;
       for (const auto &e : outL) {
-        gain_low += (transformation) ? fabs(e) : e * e;
+        gain_low += (is_reversible) ? fabs(e) : e * e;
       }
       for (const auto &e : outH) {
-        gain_high += (transformation) ? fabs(e) : e * e;
+        gain_high += (is_reversible) ? fabs(e) : e * e;
       }
 
       wmse_or_BIBO.push_back(gain_high * gain_high);  // HH
@@ -590,7 +591,7 @@ QCD_marker::QCD_marker(uint8_t number_of_guardbits, uint8_t dwt_levels, uint8_t 
   // construct epsilon and mu
   std::vector<uint8_t> epsilon(3 * dwt_levels + 1, 0);
   std::vector<uint16_t> mu(3 * dwt_levels + 1, 0);
-  if (transformation) {
+  if (is_reversible) {
     // lossless
     for (int i = 0; i < epsilon.size(); ++i) {
       epsilon[epsilon.size() - i - 1] = RI - number_of_guardbits + use_ycc;
@@ -627,10 +628,16 @@ QCD_marker::QCD_marker(uint8_t number_of_guardbits, uint8_t dwt_levels, uint8_t 
 
   // set SPqcd from epsilon and mu
   for (unsigned long i = 0; i < n; i++) {
-    if (transformation == 1) {
+    if (is_reversible) {
       SPqcd.push_back(epsilon[i] << 3);
     } else {
-      SPqcd.push_back((static_cast<uint16_t>(epsilon[i]) << 11) + mu[i]);
+      if (!is_derived) {
+        // Quantization style -> Scalar expounded (values signalled for each sub-band)
+        SPqcd.push_back((static_cast<uint16_t>(epsilon[i]) << 11) + mu[i]);
+      } else {
+        // Quantization style -> Scalar derived (values signalled for LL subband only)
+        SPqcd.push_back((static_cast<uint16_t>(epsilon[0]) << 11) + mu[0]);
+      }
     }
   }
 
@@ -643,13 +650,11 @@ int QCD_marker::write(j2c_destination_base &dst) {
   dst.put_word(Lmar);
   dst.put_byte(Sqcd);
 
-  if ((Lmar - 4) % 3 == 0) {
-    // reversible
+  if (is_reversible) {
     for (unsigned short &i : SPqcd) {
       dst.put_byte(static_cast<uint8_t>(i));
     }
   } else {
-    // irreversible
     for (unsigned short &i : SPqcd) {
       dst.put_word(i);
     }
@@ -704,17 +709,207 @@ uint8_t QCD_marker::get_MAGB() {
 /********************************************************************************
  * QCC_marker
  *******************************************************************************/
-QCC_marker::QCC_marker() : j2k_marker_io_base(_QCC) {
-  Cqcc = 0;
-  Sqcc = 0;
+QCC_marker::QCC_marker(uint16_t Csiz, uint16_t c, uint8_t number_of_guardbits, uint8_t dwt_levels,
+                       uint8_t transformation, bool is_derived, uint8_t RI, uint8_t use_ycc,
+                       uint8_t qfactor)
+    : j2k_marker_io_base(_QCC), max_components(Csiz), Cqcc(c), Sqcc(0), is_reversible(transformation == 1) {
+  unsigned long n;
+  if (is_derived && qfactor != 0xFF) {
+    is_derived = false;
+    // TODO: show warning??
+  }
+  if (is_reversible) {
+    Lmar = 5 + 3 * dwt_levels + ((max_components < 257) ? 0 : 1);
+    n    = 3 * dwt_levels + 1;
+  } else if (is_derived) {
+    Lmar = 6 + ((max_components < 257) ? 0 : 1);
+    n    = 1;
+    Sqcc = 0b01;
+  } else {
+    Lmar = 6 + 6 * dwt_levels + ((max_components < 257) ? 0 : 1);
+    n    = 3 * dwt_levels + 1;
+    Sqcc = 0b10;
+  }
+
+  assert(number_of_guardbits < 8 && number_of_guardbits >= 0);
+  Sqcc += number_of_guardbits << 5;
+
+  std::vector<double> wmse_or_BIBO;
+  wmse_or_BIBO.reserve(3 * dwt_levels + 1);
+
+  const std::vector<double> CDF53L = {-0.125, 0.25, 0.75, 0.25, -0.125};
+  const std::vector<double> CDF53H = {-0.5, 1, -0.5};  // gain is doubled(x2)
+  const std::vector<double> D97SL  = {-0.091271763114250, -0.057543526228500, 0.591271763114250,
+                                     1.115087052457000,  0.5912717631142500, -0.05754352622850,
+                                     -0.091271763114250};
+  const std::vector<double> D97SH  = {0.053497514821622,  0.033728236885750,
+                                     -0.156446533057980, -0.533728236885750,
+                                     1.205898036472720,  -0.533728236885750,
+                                     -0.156446533057980, 0.033728236885750,
+                                     0.053497514821622};  // gain is doubled(x2)
+
+  // Square roots of the visual weighting factors for 4:4:4 YCbCr content
+  const double W_b_sqrt[3][15] = {{0.0901, 0.2758, 0.2758, 0.7018, 0.8378, 0.8378, 1.0000, 1.0000, 1.0000,
+                                   1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000},
+                                  {0.0263, 0.0863, 0.0863, 0.1362, 0.2564, 0.2564, 0.3346, 0.4691, 0.4691,
+                                   0.5444, 0.6523, 0.6523, 0.7078, 0.7797, 0.7797},
+                                  {0.0773, 0.1835, 0.1835, 0.2598, 0.4130, 0.4130, 0.5040, 0.6464, 0.6464,
+                                   0.7220, 0.8254, 0.8254, 0.8769, 0.9424, 0.9424}};
+
+  // The squared Euclidean norm of the multi-component synthesis operator that represents the contribution
+  // of component 𝑐 (e.g., Y, Cb or Cr) to reconstructed image samples (usually R, G and B)
+  const double G_c_sqrt[3] = {1.7321, 1.8051, 1.5734};
+
+  double gain_low = 0.0, gain_high = 0.0;
+
+  std::vector<double> L, H;
+  L = (is_reversible) ? CDF53L : D97SL;
+  H = (is_reversible) ? CDF53H : D97SH;
+  std::vector<double> outL(L);
+  std::vector<double> outH(H);
+
+  // derive BIBO gain for lossless, or
+  // derive weighted mse for lossy
+  if (dwt_levels == 0) {
+    wmse_or_BIBO.push_back(1.0);
+  } else {
+    for (uint8_t level = 0; level < dwt_levels; ++level) {
+      gain_low  = 0.0;
+      gain_high = 0.0;
+      for (const auto &e : outL) {
+        gain_low += (is_reversible) ? fabs(e) : e * e;
+      }
+      for (const auto &e : outH) {
+        gain_high += (is_reversible) ? fabs(e) : e * e;
+      }
+
+      wmse_or_BIBO.push_back(gain_high * gain_high);  // HH
+      wmse_or_BIBO.push_back(gain_low * gain_high);   // LH
+      wmse_or_BIBO.push_back(gain_high * gain_low);   // HL
+
+      std::vector<double> L2, H2;
+      // upsampling
+      for (auto &i : outL) {
+        L2.push_back(i);
+        L2.push_back(0.0);
+      }
+      for (auto &i : outH) {
+        H2.push_back(i);
+        H2.push_back(0.0);
+      }
+      std::vector<double> tmpL(L.size() + L2.size() - 1, 0.0);
+      for (int i = 0; i < L.size(); ++i) {
+        for (int j = 0; j < L2.size(); ++j) {
+          tmpL[i + j] += L[i] * L2[j];
+        }
+      }
+      std::vector<double> tmpH(L.size() + H2.size() - 1, 0.0);
+      for (int i = 0; i < L.size(); ++i) {
+        for (int j = 0; j < H2.size(); ++j) {
+          tmpH[i + j] += L[i] * H2[j];
+        }
+      }
+      outL = tmpL;
+      outH = tmpH;
+    }
+    wmse_or_BIBO.push_back(gain_low * gain_low);
+  }
+
+  // construct epsilon and mu
+  std::vector<uint8_t> epsilon(3 * dwt_levels + 1, 0);
+  std::vector<uint16_t> mu(3 * dwt_levels + 1, 0);
+  if (is_reversible) {
+    // lossless
+    for (int i = 0; i < epsilon.size(); ++i) {
+      epsilon[epsilon.size() - i - 1] = RI - number_of_guardbits + use_ycc;
+      while (wmse_or_BIBO[i] > 0.9) {
+        epsilon[epsilon.size() - i - 1]++;
+        wmse_or_BIBO[i] *= 0.5;
+      }
+    }
+  } else {
+    // lossy with qfactor: The detail of Qfactor feature is described in HTJ2K white paper at
+    // https://htj2k.com/wp-content/uploads/white-paper.pdf
+    double M_Q;
+    uint8_t t0 = 65, t1 = 97;
+    const double alpha_T0 = 0.04;
+    const double alpha_T1 = 0.10;
+    const double M_T0     = 2.0 * (1.0 - t0 / 100.0);
+    const double M_T1     = 2.0 * (1.0 - t1 / 100.0);
+    double alpha_Q        = alpha_T0;
+    double qfactor_power  = 1.0;
+
+    if (qfactor < 50) {
+      M_Q = 50.0 / qfactor;
+    } else {
+      M_Q = 2.0 * (1.0 - qfactor / 100.0);
+    }
+    // adjust the scaling
+    if (qfactor >= t1) {
+      qfactor_power = 0.0;
+      alpha_Q       = alpha_T1;
+    } else if (qfactor > t0) {
+      qfactor_power = (log(M_T1) - log(M_Q)) / (log(M_T1) - log(M_T0));
+      alpha_Q       = alpha_T1 * pow(alpha_T0 / alpha_T1, qfactor_power);
+    }
+
+    const double eps0 = sqrt(0.5) / static_cast<double>(1 << RI);
+    double delta_Q    = alpha_Q * M_Q + eps0;
+    double delta_ref  = delta_Q * G_c_sqrt[0];
+    double G_c        = G_c_sqrt[Cqcc];  // gain of color transform
+
+    for (int i = 0; i < epsilon.size(); ++i) {
+      int32_t exponent, mantissa;
+      double w_b;
+      // w_b for LL band shall be 1.0
+      w_b = (i == epsilon.size() - 1) ? 1.0 : pow(W_b_sqrt[Cqcc][i], qfactor_power);
+
+      double fval = delta_ref / (sqrt(wmse_or_BIBO[i]) * w_b * G_c);
+      for (exponent = 0; fval < 1.0; exponent++) {
+        fval *= 2.0;
+      }
+      mantissa = static_cast<int32_t>(floor((fval - 1.0) * static_cast<double>(1 << 11) + 0.5));
+      if (mantissa >= (1 << 11)) {
+        mantissa = 0;
+        exponent--;
+      }
+      if (exponent > 31) {
+        exponent = 31;
+        mantissa = 0;
+      }
+      if (exponent < 0) {
+        exponent = 0;
+        mantissa = (1 << 11) - 1;
+      }
+      epsilon[epsilon.size() - i - 1] = exponent;
+      mu[epsilon.size() - i - 1]      = mantissa;
+    }
+  }
+
+  // set SPqcd from epsilon and mu
+  for (unsigned long i = 0; i < n; i++) {
+    if (is_reversible) {
+      SPqcc.push_back(epsilon[i] << 3);
+    } else {
+      if (!is_derived) {
+        // Quantization style -> Scalar expounded (values signalled for each sub-band)
+        SPqcc.push_back((static_cast<uint16_t>(epsilon[i]) << 11) + mu[i]);
+      } else {
+        // Quantization style -> Scalar derived (values signalled for LL subband only)
+        SPqcc.push_back((static_cast<uint16_t>(epsilon[0]) << 11) + mu[0]);
+      }
+    }
+  }
+
+  is_set = true;
 }
 
-QCC_marker::QCC_marker(j2c_src_memory &in, uint16_t Csiz) : j2k_marker_io_base(_QCC) {
+QCC_marker::QCC_marker(j2c_src_memory &in, uint16_t Csiz) : j2k_marker_io_base(_QCC), max_components(Csiz) {
   Lmar = in.get_word();
   this->set_buf(in.get_buf_pos());
   in.get_N_byte(this->get_buf(), Lmar - 2);
   uint16_t len = 2;  // tmp length including Lqcc
-  if (Csiz < 257) {
+  if (max_components < 257) {
     Cqcc = get_byte();
     len += 1;
   } else {
@@ -746,6 +941,28 @@ QCC_marker::QCC_marker(j2c_src_memory &in, uint16_t Csiz) : j2k_marker_io_base(_
   is_set = true;
 }
 
+int QCC_marker::write(j2c_destination_base &dst) {
+  assert(is_set == true);
+  dst.put_word(code);
+  dst.put_word(Lmar);
+  if (max_components < 257) {
+    dst.put_byte(static_cast<uint8_t>(Cqcc));
+  } else {
+    dst.put_word(Cqcc);
+  }
+  dst.put_byte(Sqcc);
+
+  if (is_reversible) {
+    for (unsigned short &i : SPqcc) {
+      dst.put_byte(static_cast<uint8_t>(i));
+    }
+  } else {
+    for (unsigned short &i : SPqcc) {
+      dst.put_word(i);
+    }
+  }
+  return EXIT_SUCCESS;
+}
 uint16_t QCC_marker::get_component_index() const { return Cqcc; }
 
 uint8_t QCC_marker::get_quantization_style() const { return (Sqcc & 0x1F); }
@@ -1161,10 +1378,23 @@ j2k_main_header::j2k_main_header() {
 }
 
 j2k_main_header::j2k_main_header(SIZ_marker *siz, COD_marker *cod, QCD_marker *qcd, CAP_marker *cap,
-                                 CPF_marker *cpf, POC_marker *poc, CRG_marker *crg) {
+                                 uint8_t qfactor, CPF_marker *cpf, POC_marker *poc, CRG_marker *crg) {
   SIZ = std::make_unique<SIZ_marker>(*siz);
   COD = std::make_unique<COD_marker>(*cod);
   QCD = std::make_unique<QCD_marker>(*qcd);
+  // Qfactor, if any
+  if (qfactor != 0xFF) {
+    if (siz->get_num_components() != 3 && siz->get_num_components() != 1) {
+      printf("feature Qfactor is only available for gray-scale or color images.\n");
+      exit(EXIT_FAILURE);
+    }
+    for (uint16_t c = 0; c < siz->get_num_components(); ++c) {
+      QCC.push_back(std::make_unique<QCC_marker>(
+          siz->get_num_components(), c, qcd->get_number_of_guardbits(), cod->get_dwt_levels(),
+          cod->get_transformation(), false, siz->get_bitdepth(c), cod->use_color_trafo(), qfactor));
+    }
+  }
+
   if (cap != nullptr) {
     CAP = std::make_unique<CAP_marker>(*cap);
   }
@@ -1197,7 +1427,7 @@ void j2k_main_header::flush(j2c_dst_memory &buf) {
   QCD->write(buf);
   if (!QCC.empty()) {
     for (int i = 0; i < QCC.size(); ++i) {
-      // QCC[i]->write(buf);
+      QCC[i]->write(buf);
     }
   }
   if (!RGN.empty()) {

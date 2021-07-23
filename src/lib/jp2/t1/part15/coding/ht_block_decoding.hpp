@@ -31,6 +31,12 @@
 #include <cstdint>
 #include <algorithm>  // for max{a,b,c,d}
 
+#if defined(_MSC_VER) || defined(__MINGW64__)
+  #include <intrin.h>
+#elif defined(__x86_64__)
+  #include <x86intrin.h>
+#endif
+
 const int32_t bitmask32[32] = {
     0x00000000, 0x00000001, 0x00000003, 0x00000007, 0x0000000F, 0x0000001F, 0x0000003F, 0x0000007F,
     0x000000FF, 0x000001FF, 0x000003FF, 0x000007FF, 0x00000FFF, 0x00001FFF, 0x00003FFF, 0x00007FFF,

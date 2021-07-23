@@ -5,10 +5,10 @@
 namespace ojph
 {
 template<typename T>
-class RoiShiftHTFilter
+class RoiShiftOJPHFilter
 {
   public:
-	RoiShiftHTFilter(grk::DecompressBlockExec* block)
+	RoiShiftOJPHFilter(grk::DecompressBlockExec* block)
 		: roiShift(block->roishift), shift(31U - (block->k_msbs + 1U))
 	{}
 	inline void copy(T* dest, T* src, uint32_t len)
@@ -30,10 +30,10 @@ class RoiShiftHTFilter
 	uint32_t shift;
 };
 template<typename T>
-class ShiftHTFilter
+class ShiftOJPHFilter
 {
   public:
-	ShiftHTFilter(grk::DecompressBlockExec* block) : shift(31U - (block->k_msbs + 1U)) {}
+	ShiftOJPHFilter(grk::DecompressBlockExec* block) : shift(31U - (block->k_msbs + 1U)) {}
 	inline void copy(T* dest, T* src, uint32_t len)
 	{
 		for(uint32_t i = 0; i < len; ++i)
@@ -49,10 +49,10 @@ class ShiftHTFilter
 };
 
 template<typename T>
-class RoiScaleHTFilter
+class RoiScaleOJPHFilter
 {
   public:
-	RoiScaleHTFilter(grk::DecompressBlockExec* block) : roiShift(block->roishift),
+	RoiScaleOJPHFilter(grk::DecompressBlockExec* block) : roiShift(block->roishift),
 													scale(block->stepsize / (float)(1u << (31 - block->bandNumbps)))
 	{
 		assert(block->bandNumbps <= 31);
@@ -77,10 +77,10 @@ class RoiScaleHTFilter
 };
 
 template<typename T>
-class ScaleHTFilter
+class ScaleOJPHFilter
 {
   public:
-	ScaleHTFilter(grk::DecompressBlockExec* block) : scale(block->stepsize / (float)(1u << (31 - block->bandNumbps))) {
+	ScaleOJPHFilter(grk::DecompressBlockExec* block) : scale(block->stepsize / (float)(1u << (31 - block->bandNumbps))) {
 		assert(block->bandNumbps <= 31);
 	}
 	inline void copy(T* dest, T* src, uint32_t len)

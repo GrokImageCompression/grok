@@ -200,10 +200,11 @@ class QCD_marker : public j2k_marker_io_base {
  private:
   uint8_t Sqcd;
   std::vector<uint16_t> SPqcd;
+  bool is_reversible;
 
  public:
   explicit QCD_marker(j2c_src_memory &in);
-  QCD_marker(uint8_t number_of_guardbits, uint8_t dwt_levels, uint8_t reversible_flag, bool is_derived,
+  QCD_marker(uint8_t number_of_guardbits, uint8_t dwt_levels, uint8_t transformation, bool is_derived,
              uint8_t RI, uint8_t use_ycc, double basestep = 1.0 / 256.0);
   int write(j2c_destination_base &dst);
   uint8_t get_quantization_style() const;
@@ -219,13 +220,17 @@ class QCD_marker : public j2k_marker_io_base {
  *******************************************************************************/
 class QCC_marker : public j2k_marker_io_base {
  private:
+  uint16_t max_components;
   uint16_t Cqcc;
   uint8_t Sqcc;
   std::vector<uint16_t> SPqcc;
+  bool is_reversible;
 
  public:
-  QCC_marker();
+  QCC_marker(uint16_t Csiz, uint16_t c, uint8_t number_of_guardbits, uint8_t dwt_levels,
+             uint8_t transformation, bool is_derived, uint8_t RI, uint8_t use_ycc, uint8_t qfactor);
   QCC_marker(j2c_src_memory &in, uint16_t Csiz);
+  int write(j2c_destination_base &dst);
   uint16_t get_component_index() const;
   uint8_t get_quantization_style() const;
   uint8_t get_exponents(uint8_t nb);
@@ -398,7 +403,8 @@ class j2k_main_header {
  public:
   j2k_main_header();
   j2k_main_header(SIZ_marker *siz, COD_marker *cod, QCD_marker *qcd, CAP_marker *cap = nullptr,
-                  CPF_marker *cpf = nullptr, POC_marker *poc = nullptr, CRG_marker *crg = nullptr);
+                  uint8_t qfactor = 0xFF, CPF_marker *cpf = nullptr, POC_marker *poc = nullptr,
+                  CRG_marker *crg = nullptr);
   void add_COM_marker(const COM_marker &com);
   void flush(j2c_dst_memory &buf);
   int read(j2c_src_memory &);

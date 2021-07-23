@@ -27,7 +27,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
-#include "simd.h"
 
 #include <cstdint>
 #include <cstdlib>
@@ -35,6 +34,17 @@
 #define round_up(x, n) (((x) + (n)-1) & (-n))
 #define round_down(x, n) ((x) & (-n))
 #define ceil_int(a, b) ((a) + ((b)-1)) / (b)
+
+#if defined(__arm64__) || defined(__arm__)
+  #include <arm_acle.h>
+  #if defined(__ARM_NEON__)
+    #include <arm_neon.h>
+  #endif
+#elif defined(_MSC_VER) || defined(__MINGW64__)
+  #include <intrin.h>
+#else
+  #include <x86intrin.h>
+#endif
 
 static inline size_t popcount32(uintmax_t num) {
   size_t precision = 0;
@@ -55,33 +65,30 @@ static inline size_t popcount32(uintmax_t num) {
 
 static inline uint32_t int_log2(const uint32_t x) {
   uint32_t y;
-#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
-  #if defined(_MSC_VER)
+#if defined(_MSC_VER)
   unsigned long tmp;
   _BitScanReverse(&tmp, x);
   y = tmp;
-  #else
-  asm("bsr %1, %0" : "=r"(y) : "r"(x));
-  #endif
-#elif (defined(__arm64__) || defined(__arm__)) && defined(__ARM_FEATURE_CLZ)
-  y = 31 - __clz(x);
+#else
+  y         = 31 - __builtin_clz(x);
 #endif
-  return y;
+  return (x == 0) ? 0 : y;
 }
 
 static inline uint32_t count_leading_zeros(const uint32_t x) {
+  uint32_t y;
 #if defined(_MSC_VER)
-  return __lzcnt(x);
+  y = __lzcnt(x);
 #elif defined(__AVX2__)
-  return _lzcnt_u32(x);
+  y         = _lzcnt_u32(x);
 #elif defined(__MINGW32__) || defined(__MINGW64__)
-  // avoid undefined behaviour
-  return (x == 0) ? 32 : __builtin_clz(x);
+  y      = __builtin_clz(x);
 #elif defined(__ARM_FEATURE_CLZ)
-  return __clz(x);
+  y = __builtin_clz(x);
 #else
-  return 31 - int_log2(x);
+  y = 31 - int_log2(x);
 #endif
+  return (x == 0) ? 31 : y;
 }
 
 static inline void* aligned_mem_alloc(size_t size, size_t align) {

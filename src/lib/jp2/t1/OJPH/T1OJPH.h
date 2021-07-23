@@ -16,12 +16,15 @@
  */
 
 #pragma once
-#include "../OJPH/common/ojph_mem.h"
 #include "T1Interface.h"
 #include "TileProcessor.h"
 
 namespace ojph
 {
+
+class mem_fixed_allocator;
+class mem_elastic_allocator;
+
 struct TileCodingParams;
 
 	class T1OJPH : public grk::T1Interface

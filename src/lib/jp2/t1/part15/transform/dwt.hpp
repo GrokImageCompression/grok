@@ -27,8 +27,18 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
-#include "simd.h"
+
 #include <cstdint>
+
+#ifdef _OPENMP
+  #include <omp.h>
+#endif
+
+#if defined(_MSC_VER) || defined(__MINGW64__)
+  #include <intrin.h>
+#elif defined(__x86_64__)
+  #include <x86intrin.h>
+#endif
 
 #define SIMD_LEN_I16 16
 

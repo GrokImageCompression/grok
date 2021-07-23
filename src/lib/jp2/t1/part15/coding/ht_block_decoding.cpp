@@ -32,6 +32,10 @@
 #include "coding_local.hpp"
 #include "utils.hpp"
 
+#ifdef _OPENMP
+  #include <omp.h>
+#endif
+
 #define FIRST_QUAD 0
 #define SECOND_QUAD 1
 

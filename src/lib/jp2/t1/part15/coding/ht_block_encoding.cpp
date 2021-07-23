@@ -33,6 +33,10 @@
 #include "enc_CxtVLC_tables.hpp"
 #include "utils.hpp"
 
+#ifdef _OPENMP
+  #include <omp.h>
+#endif
+
 #define Q0 0
 #define Q1 1
 
