@@ -707,7 +707,7 @@ int main(int argc, char **argv) {
 	uint16_t compno;
 	int failed = 1;
 	uint16_t nbFilenamePGXbase = 0, nbFilenamePGXtest = 0;
-	char *filenamePNGtest = nullptr, *filenamePNGbase = nullptr,
+	char *testFileName = nullptr, *baseFileName = nullptr,
 			*filenamePNGdiff = nullptr;
 	size_t memsizebasefilename, memsizetestfilename;
 	size_t memsizedifffilename;
@@ -761,15 +761,7 @@ int main(int argc, char **argv) {
 	memsizebasefilename = strlen(inParam.test_filename) + 1 + 5 + 2 + 4;
 	memsizetestfilename = strlen(inParam.test_filename) + 1 + 5 + 2 + 4;
 
-	decod_format = get_decod_format(&inParam);
-	if (decod_format == -1) {
-		spdlog::error("Unhandled file format");
-		goto cleanup;
-	}
-	assert(
-			decod_format == GRK_PGX_FMT || decod_format == GRK_TIF_FMT
-					|| decod_format == GRK_PXM_FMT
-					|| decod_format == GRK_PNG_FMT);
+	decod_format = grk::get_file_format(inParam.base_filename);
 
 	if (decod_format == GRK_PGX_FMT) {
 		imageBase = readImageFromFilePGX(inParam.base_filename,
@@ -783,17 +775,22 @@ int main(int argc, char **argv) {
 	} else if (decod_format == GRK_PNG_FMT) {
 		imageBase = readImageFromFilePNG(inParam.base_filename,
 				nbFilenamePGXbase, inParam.separator_base);
+	} else {
+		spdlog::error("compare_images does not support this base file format");
+		goto cleanup;
 	}
 
 	if (!imageBase)
 		goto cleanup;
 
-	filenamePNGbase = (char*) malloc(memsizebasefilename);
-	strcpy(filenamePNGbase, inParam.test_filename);
-	strcat(filenamePNGbase, ".base");
-	/*spdlog::info("filenamePNGbase = %s [%u / %u octets]",filenamePNGbase, strlen(filenamePNGbase),memsizebasefilename );*/
+
+	baseFileName = (char*) malloc(memsizebasefilename);
+	strcpy(baseFileName, inParam.test_filename);
+	strcat(baseFileName, ".base");
 
 	/*----------TEST IMAGE--------*/
+
+	decod_format = grk::get_file_format(inParam.test_filename);
 
 	if (decod_format == GRK_PGX_FMT) {
 		imageTest = readImageFromFilePGX(inParam.test_filename,
@@ -807,15 +804,17 @@ int main(int argc, char **argv) {
 	} else if (decod_format == GRK_PNG_FMT) {
 		imageTest = readImageFromFilePNG(inParam.test_filename,
 				nbFilenamePGXtest, inParam.separator_test);
+	} else {
+		spdlog::error("compare_images does not support this test file format");
+		goto cleanup;
 	}
 
 	if (!imageTest)
 		goto cleanup;
 
-	filenamePNGtest = (char*) malloc(memsizetestfilename);
-	strcpy(filenamePNGtest, inParam.test_filename);
-	strcat(filenamePNGtest, ".test");
-	/*spdlog::info("filenamePNGtest = %s [%u / %u octets]",filenamePNGtest, strlen(filenamePNGtest),memsizetestfilename );*/
+	testFileName = (char*) malloc(memsizetestfilename);
+	strcpy(testFileName, inParam.test_filename);
+	strcat(testFileName, ".test");
 
 	/*----------DIFF IMAGE--------*/
 
@@ -985,7 +984,7 @@ int main(int argc, char **argv) {
 					if (!filenamePNGbase_it_comp) {
 						goto cleanup;
 					}
-					strcpy(filenamePNGbase_it_comp, filenamePNGbase);
+					strcpy(filenamePNGbase_it_comp, baseFileName);
 
 					filenamePNGtest_it_comp = (char*) malloc(
 							memsizetestfilename);
@@ -993,7 +992,7 @@ int main(int argc, char **argv) {
 						free(filenamePNGbase_it_comp);
 						goto cleanup;
 					}
-					strcpy(filenamePNGtest_it_comp, filenamePNGtest);
+					strcpy(filenamePNGtest_it_comp, testFileName);
 
 					filenamePNGdiff_it_comp = (char*) malloc(
 							memsizedifffilename);
@@ -1052,8 +1051,8 @@ int main(int argc, char **argv) {
 	grk_object_unref(&imageTest->obj);
 	grk_object_unref(&imageDiff->obj);
 
-	free(filenamePNGbase);
-	free(filenamePNGtest);
+	free(baseFileName);
+	free(testFileName);
 	free(filenamePNGdiff);
 	free(inParam.tabMSEvalues);
 	free(inParam.tabPEAKvalues);
