@@ -247,9 +247,6 @@ static grk_image* readImageFromFilePNG(const char *filename, uint16_t nbFilename
 	(void) nbFilenamePGX;
 	(void) separator;
 
-	if (strlen(separator) != 0)
-		return nullptr;
-
 	/* set encoding parameters to default values */
 	grk_compress_set_default_params(&parameters);
 	parameters.decod_format = GRK_TIF_FMT;
