@@ -140,8 +140,8 @@ bool T2Compress::compressHeader(BitIO* bio, Resolution* res, uint16_t layno, uin
 				auto cblk = prc->getCompressedBlockPtr(cblkno);
 				cblk->numPassesInPacket = 0;
 				assert(band->numbps >= cblk->numbps);
-				if(band->numbps < cblk->numbps)
-					GRK_WARN("Code block %u bps greater than band bps. Skipping.", cblkno);
+				if(cblk->numbps > band->numbps)
+					GRK_WARN("Code block %u bps %d greater than band bps %d. Skipping.", cblkno, cblk->numbps, band->numbps);
 				else
 					prc->getImsbTree()->setvalue(cblkno, band->numbps - cblk->numbps);
 			}

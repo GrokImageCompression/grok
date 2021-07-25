@@ -35,9 +35,9 @@
 #include <cstring>
 #include <cassert>
 
-static uint8_t readuchar(FILE* f)
+template<typename T> T readchar(FILE* f)
 {
-	uint8_t c1;
+	T c1;
 	if(!fread(&c1, 1, 1, f))
 	{
 		spdlog::error(" fread return a number of element different from the expected.");
@@ -46,7 +46,7 @@ static uint8_t readuchar(FILE* f)
 	return c1;
 }
 
-static unsigned short readushort(FILE* f, bool bigendian)
+template<typename T> T readshort(FILE* f, bool bigendian)
 {
 	uint8_t c1, c2;
 	if(!fread(&c1, 1, 1, f))
@@ -60,47 +60,41 @@ static unsigned short readushort(FILE* f, bool bigendian)
 		return 0;
 	}
 	if(bigendian)
-		return (unsigned short)((c1 << 8) + c2);
+		return (T)((c1 << 8) + c2);
 	else
-		return (unsigned short)((c2 << 8) + c1);
+		return (T)((c2 << 8) + c1);
 }
 
 static grk_image* pgxtoimage(const char* filename, grk_cparameters* parameters)
 {
-	FILE* f = nullptr;
 	uint32_t w, stride_diff, h;
 	uint16_t numcomps;
 	uint32_t prec;
 	int32_t max;
 	uint64_t i, index;
 	GRK_COLOR_SPACE color_space;
-	grk_image_cmptparm cmptparm; /* maximum of 1 component  */
 	grk_image* image = nullptr;
-	uint32_t adjustS, ushift, dshift;
 	bool force8 = false;
-	;
 	int c;
-	char endian1, endian2, sign;
+	char endian1, endian2;
 	char signtmp[32];
-
-	char temp[32];
+	bool sign;
+    char temp[32];
 	bool bigendian;
 	grk_image_comp* comp = nullptr;
 
 	numcomps = 1;
 	color_space = GRK_CLRSPC_GRAY;
 
+	grk_image_cmptparm cmptparm; /* maximum of 1 component  */
 	memset(&cmptparm, 0, sizeof(grk_image_cmptparm));
 	max = 0;
-	f = fopen(filename, "rb");
+	auto f = fopen(filename, "rb");
 	if(!f)
 	{
 		spdlog::error("Failed to open {} for reading.", filename);
 		return nullptr;
 	}
-
-	if(GRK_FSEEK(f, 0, SEEK_SET))
-		goto cleanup;
 	if(fscanf(f, "PG%31[ \t]%c%c%31[ \t+-]%u%31[ \t]%u%31[ \t]%u", temp, &endian1, &endian2,
 			  signtmp, &prec, temp, &w, temp, &h) != 9)
 	{
@@ -115,11 +109,13 @@ static grk_image* pgxtoimage(const char* filename, grk_cparameters* parameters)
 	}
 
 	i = 0;
-	sign = '+';
+	sign = false;
 	while(signtmp[i] != '\0')
 	{
-		if(signtmp[i] == '-')
-			sign = '-';
+		if(signtmp[i] == '-'){
+			sign = true;
+			break;
+		}
 		i++;
 	}
 
@@ -149,24 +145,14 @@ static grk_image* pgxtoimage(const char* filename, grk_cparameters* parameters)
 	cmptparm.h = !cmptparm.y0 ? ((h - 1) * parameters->subsampling_dy + 1)
 							  : cmptparm.y0 + (uint32_t)(h - 1) * parameters->subsampling_dy + 1;
 
-	cmptparm.sgnd = sign == '-';
+	cmptparm.sgnd = sign;
 	if(prec < 8)
 	{
 		force8 = true;
-		ushift = (uint32_t)(8U - prec);
-		dshift = (uint32_t)(prec - ushift);
-		if(cmptparm.sgnd)
-			adjustS = (1U << (prec - 1));
-		else
-			adjustS = 0;
 		cmptparm.sgnd = false;
 		prec = 8;
 	}
 	else
-	{
-		ushift = dshift = adjustS = 0;
-		force8 = false;
-	}
 
 	cmptparm.prec = (uint8_t)prec;
 	cmptparm.dx = parameters->subsampling_dx;
@@ -195,32 +181,23 @@ static grk_image* pgxtoimage(const char* filename, grk_cparameters* parameters)
 			int32_t v = 0;
 			if(force8)
 			{
-				v = (int32_t)(readuchar(f) + adjustS);
-				v = (v << ushift) + (v >> dshift);
+				v = (int32_t)readchar<int8_t>(f);
 			}
 			else
 			{
 				if(comp->prec == 8)
 				{
 					if(!comp->sgnd)
-					{
-						v = (int32_t)readuchar(f);
-					}
+						v = (int32_t)readchar<uint8_t>(f);
 					else
-					{
-						v = (int32_t)readuchar(f);
-					}
+						v = (int32_t)readchar<int8_t>(f);
 				}
 				else
 				{
 					if(!comp->sgnd)
-					{
-						v = (int32_t)readushort(f, bigendian);
-					}
+						v = (int32_t)readshort<uint16_t>(f, bigendian);
 					else
-					{
-						v = (int32_t)readushort(f, bigendian);
-					}
+						v = (int32_t)readshort<int16_t>(f, bigendian);
 				}
 			}
 			if(v > max)
