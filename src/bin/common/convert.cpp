@@ -498,6 +498,35 @@ static void convert_4u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length,
 		pDst[i + 0] = INV((int32_t)(val >> 4), 15, invert);
 	}
 }
+
+
+static inline int32_t sign_extend(int32_t val, uint8_t shift){
+	val <<= shift;
+	val >>= shift;
+
+	return val;
+}
+
+/**
+ * 4 bit signed to 32 bit
+ */
+static void convert_4s32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
+{
+	size_t i;
+	for(i = 0; i < (length & ~(size_t)1U); i += 2U)
+	{
+		uint8_t val = *pSrc++;
+		pDst[i + 0] = INV(sign_extend(val>>4, 28), 0xF, invert);
+		pDst[i + 1] = INV(sign_extend(val & 0xF, 28), 0xF, invert);
+	}
+	if(length & 1U)
+	{
+		uint8_t val = *pSrc++;
+		pDst[i + 0] = INV(sign_extend(val >> 4, 28), 15, invert);
+	}
+}
+
+
 /**
  * 6 bit unsigned to 32 bit
  */
@@ -556,6 +585,10 @@ void convert_16u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length, bool 
 }
 const cvtTo32 cvtTo32_LUT[9] = {nullptr,		   convert_1u32s_C1R, convert_2u32s_C1R,
 								nullptr,		   convert_4u32s_C1R, nullptr,
+								convert_6u32s_C1R, nullptr,			  convert_8u32s_C1R};
+
+const cvtTo32 cvtsTo32_LUT[9] = {nullptr,		   convert_1u32s_C1R, convert_2u32s_C1R,
+								nullptr,		   convert_4s32s_C1R, nullptr,
 								convert_6u32s_C1R, nullptr,			  convert_8u32s_C1R};
 
 /**
@@ -664,8 +697,11 @@ static void convert_32s4u_C1R(const int32_t* pSrc, uint8_t* pDst, size_t length)
 	{
 		uint32_t src0 = (uint32_t)pSrc[i + 0];
 		uint32_t src1 = (uint32_t)pSrc[i + 1];
-
-		*pDst++ = (uint8_t)((src0 << 4) | src1);
+		// IMPORTANT NOTE: we need to mask src1 to 4 bits,
+		// to prevent sign extension bits of negative src1,
+		// extending beyond 4 bits,
+		// from contributing to destination value
+		*pDst++ = (uint8_t)((src0 << 4) | (src1 & 0xF));
 	}
 
 	if(length & 1U)

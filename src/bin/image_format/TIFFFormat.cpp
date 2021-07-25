@@ -221,7 +221,7 @@ static bool readTiffPixelsUnsigned(TIFF* tif, grk_image_comp* comps, uint32_t nu
 		case 4:
 		case 6:
 		case 8:
-			cvtTifTo32s = cvtTo32_LUT[comps[0].prec];
+			cvtTifTo32s = comps[0].sgnd ? cvtsTo32_LUT[comps[0].prec] : cvtTo32_LUT[comps[0].prec];
 			break;
 			/* others are specific to TIFF */
 		case 3:

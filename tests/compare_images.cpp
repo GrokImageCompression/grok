@@ -830,7 +830,7 @@ int main(int argc, char **argv) {
 		imageTest = readImageFromFilePNG(inParam.test_filename,
 				nbFilenamePGXtest, inParam.separator_test);
 	} else if (decod_format == GRK_BMP_FMT) {
-		imageTest = readImageFromFileBMP(inParam.base_filename,
+		imageTest = readImageFromFileBMP(inParam.test_filename,
 				nbFilenamePGXbase, inParam.separator_base);
 	}
 	else {

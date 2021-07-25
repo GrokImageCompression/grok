@@ -469,7 +469,7 @@ bool PNGFormat::encodeHeader(grk_image* img, const std::string& filename, uint32
 	if(i != nr_comp)
 	{
 		spdlog::error("imagetopng: All components shall have the same sub-sampling,"
-					  " same bit depth and same sign.");
+					  " bit depth and sign.");
 		return false;
 	}
 	if(prec > 8 && prec < 16)
@@ -506,6 +506,8 @@ bool PNGFormat::encodeHeader(grk_image* img, const std::string& filename, uint32
 	 * in case we are using dynamically linked libraries.  REQUIRED.
 	 */
 	png = png_create_write_struct(PNG_LIBPNG_VER_STRING, this, user_error_fn, user_warning_fn);
+	if(png == nullptr)
+		goto beach;
 
 	// allow Microsoft/HP 3144-byte sRGB profile, normally skipped by library
 	// because it deems it broken. (a controversial decision)
@@ -513,9 +515,6 @@ bool PNGFormat::encodeHeader(grk_image* img, const std::string& filename, uint32
 
 	// treat some errors as warnings
 	png_set_benign_errors(png, 1);
-
-	if(png == nullptr)
-		goto beach;
 
 	/* Allocate/initialize the image information data.  REQUIRED
 	 */

@@ -41,6 +41,7 @@ extern const cvtPlanarToInterleaved cvtPlanarToInterleaved_LUT[10];
 /* bit depth conversions */
 typedef void (*cvtTo32)(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert);
 extern const cvtTo32 cvtTo32_LUT[9]; /* up to 8bpp */
+extern const cvtTo32 cvtsTo32_LUT[9]; /* up to 8bpp */
 typedef void (*cvtFrom32)(const int32_t* pSrc, uint8_t* pDst, size_t length);
 extern const cvtFrom32 cvtFrom32_LUT[9]; /* up to 8bpp */
 
