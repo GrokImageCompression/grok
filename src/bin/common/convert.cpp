@@ -499,8 +499,7 @@ static void convert_4u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length,
 	}
 }
 
-
-static inline int32_t sign_extend(int32_t val, uint8_t shift){
+int32_t sign_extend(int32_t val, uint8_t shift){
 	val <<= shift;
 	val >>= shift;
 

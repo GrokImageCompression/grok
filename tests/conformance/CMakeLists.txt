@@ -56,7 +56,7 @@ foreach(numFileC0P0 RANGE 1 2)
         ${EXECUTABLE_OUTPUT_PATH}/grk_decompress
         -i ${INPUT_CONF}/${filenameInput}
         -o ${TEMP}/c0${filenameInput}-r0.pgx
-        -r 0
+        -t 0
         )
 
     add_test(ETS-C0P0-${filenameInput}-r0-compare2ref

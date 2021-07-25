@@ -68,27 +68,20 @@ template<typename T> T readshort(FILE* f, bool bigendian)
 static grk_image* pgxtoimage(const char* filename, grk_cparameters* parameters)
 {
 	uint32_t w, stride_diff, h;
-	uint16_t numcomps;
+	uint16_t numcomps = 1;
 	uint32_t prec;
-	int32_t max;
-	uint64_t i, index;
-	GRK_COLOR_SPACE color_space;
+	uint64_t i = 0, index = 0;
+	GRK_COLOR_SPACE color_space = GRK_CLRSPC_GRAY;
 	grk_image* image = nullptr;
-	bool force8 = false;
 	int c;
 	char endian1, endian2;
 	char signtmp[32];
-	bool sign;
+	bool sign = false;
     char temp[32];
 	bool bigendian;
-	grk_image_comp* comp = nullptr;
-
-	numcomps = 1;
-	color_space = GRK_CLRSPC_GRAY;
-
 	grk_image_cmptparm cmptparm; /* maximum of 1 component  */
+
 	memset(&cmptparm, 0, sizeof(grk_image_cmptparm));
-	max = 0;
 	auto f = fopen(filename, "rb");
 	if(!f)
 	{
@@ -107,9 +100,6 @@ static grk_image* pgxtoimage(const char* filename, grk_cparameters* parameters)
 		spdlog::error("Precision must be >= 4");
 		goto cleanup;
 	}
-
-	i = 0;
-	sign = false;
 	while(signtmp[i] != '\0')
 	{
 		if(signtmp[i] == '-'){
@@ -135,25 +125,13 @@ static grk_image* pgxtoimage(const char* filename, grk_cparameters* parameters)
 		spdlog::error("Bad pgx header, please check input file");
 		goto cleanup;
 	}
-
-	/* initialize image component */
-
 	cmptparm.x0 = parameters->image_offset_x0;
 	cmptparm.y0 = parameters->image_offset_y0;
 	cmptparm.w = !cmptparm.x0 ? ((w - 1) * parameters->subsampling_dx + 1)
 							  : cmptparm.x0 + (uint32_t)(w - 1) * parameters->subsampling_dx + 1;
 	cmptparm.h = !cmptparm.y0 ? ((h - 1) * parameters->subsampling_dy + 1)
 							  : cmptparm.y0 + (uint32_t)(h - 1) * parameters->subsampling_dy + 1;
-
 	cmptparm.sgnd = sign;
-	if(prec < 8)
-	{
-		force8 = true;
-		cmptparm.sgnd = false;
-		prec = 8;
-	}
-	else
-
 	cmptparm.prec = (uint8_t)prec;
 	cmptparm.dx = parameters->subsampling_dx;
 	cmptparm.dy = parameters->subsampling_dy;
@@ -161,9 +139,8 @@ static grk_image* pgxtoimage(const char* filename, grk_cparameters* parameters)
 	/* create the image */
 	image = grk_image_new(numcomps, &cmptparm, color_space, true);
 	if(!image)
-	{
 		goto cleanup;
-	}
+
 	/* set image offset and reference grid */
 	image->x0 = cmptparm.x0;
 	image->y0 = cmptparm.x0;
@@ -171,38 +148,35 @@ static grk_image* pgxtoimage(const char* filename, grk_cparameters* parameters)
 	image->y1 = cmptparm.h;
 
 	/* set image data */
-	comp = &image->comps[0];
-	index = 0;
-	stride_diff = comp->stride - w;
+	stride_diff = image->comps->stride - w;
 	for(uint32_t j = 0; j < h; ++j)
 	{
 		for(uint32_t k = 0; k < w; ++k)
 		{
 			int32_t v = 0;
-			if(force8)
+			if(prec < 8)
 			{
-				v = (int32_t)readchar<int8_t>(f);
+				v = sign ? sign_extend(readchar<int8_t>(f), 0) :
+						   readchar<int8_t>(f);
 			}
 			else
 			{
-				if(comp->prec == 8)
+				if(image->comps->prec == 8)
 				{
-					if(!comp->sgnd)
+					if(!image->comps->sgnd)
 						v = (int32_t)readchar<uint8_t>(f);
 					else
 						v = (int32_t)readchar<int8_t>(f);
 				}
 				else
 				{
-					if(!comp->sgnd)
+					if(!image->comps->sgnd)
 						v = (int32_t)readshort<uint16_t>(f, bigendian);
 					else
 						v = (int32_t)readshort<int16_t>(f, bigendian);
 				}
 			}
-			if(v > max)
-				max = v;
-			comp->data[index++] = v;
+			image->comps->data[index++] = v;
 		}
 		index += stride_diff;
 	}
@@ -212,6 +186,7 @@ cleanup:
 		grk_object_unref(&image->obj);
 		image = nullptr;
 	}
+
 	return image;
 }
 
