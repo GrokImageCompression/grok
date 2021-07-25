@@ -1134,15 +1134,13 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 		if(tiPhoto == PHOTOMETRIC_MINISWHITE)
 		{
 			spdlog::error("tiftoimage: signed image with "
-						  "MINISWHITE format is not supported");
-			goto cleanup;
+						  "MINISWHITE format is not fully supported");
 		}
 		if(tiBps != 8 && tiBps != 16)
 		{
 			spdlog::error("tiftoimage: signed image with bit"
-						  " depth {} is not supported",
+						  " depth {} is not fully supported",
 						  tiBps);
-			goto cleanup;
 		}
 	}
 	if(numcomps > maxNumComponents)
@@ -1326,7 +1324,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 		memcpy(image->meta->xmp_buf, xmp_buf, xmp_len);
 	}
 	// 9. read pixel data
-	if(isSigned)
+	if(isSigned && tiBps >= 8)
 	{
 		if(tiBps == 8)
 			success = readTiffPixelsSigned<int8_t>(tif, image->comps, numcomps, tiSpp, tiPC);
