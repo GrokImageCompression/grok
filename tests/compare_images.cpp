@@ -29,6 +29,7 @@
 #include "grok.h"
 #include "PNMFormat.h"
 #include "PGXFormat.h"
+#include "BMPFormat.h"
 #include "convert.h"
 #include "common.h"
 #include "spdlog/spdlog.h"
@@ -240,6 +241,29 @@ static grk_image* readImageFromFilePPM(const char *filename, uint16_t nbFilename
 	return dest;
 }
 
+static grk_image* readImageFromFileBMP(const char *filename, uint16_t nbFilenamePGX,
+		const char *separator) {
+	grk_image *image_read = nullptr;
+	grk_cparameters parameters;
+	(void) nbFilenamePGX;
+	(void) separator;
+
+	/* set encoding parameters to default values */
+	grk_compress_set_default_params(&parameters);
+	parameters.decod_format = GRK_BMP_FMT;
+	strcpy(parameters.infile, filename);
+
+	BMPFormat bmp;
+	image_read = bmp.decode(filename, &parameters);
+
+	if (!image_read) {
+		spdlog::error("Unable to load BMP file");
+		return nullptr;
+	}
+
+	return image_read;
+}
+
 static grk_image* readImageFromFilePNG(const char *filename, uint16_t nbFilenamePGX,
 		const char *separator) {
 	grk_image *image_read = nullptr;
@@ -249,7 +273,7 @@ static grk_image* readImageFromFilePNG(const char *filename, uint16_t nbFilename
 
 	/* set encoding parameters to default values */
 	grk_compress_set_default_params(&parameters);
-	parameters.decod_format = GRK_TIF_FMT;
+	parameters.decod_format = GRK_PNG_FMT;
 	strcpy(parameters.infile, filename);
 
 #ifdef GROK_HAVE_LIBPNG
@@ -772,7 +796,11 @@ int main(int argc, char **argv) {
 	} else if (decod_format == GRK_PNG_FMT) {
 		imageBase = readImageFromFilePNG(inParam.base_filename,
 				nbFilenamePGXbase, inParam.separator_base);
-	} else {
+	} else if (decod_format == GRK_BMP_FMT) {
+	imageBase = readImageFromFileBMP(inParam.base_filename,
+			nbFilenamePGXbase, inParam.separator_base);
+	}
+	else {
 		spdlog::error("compare_images does not support this base file format");
 		goto cleanup;
 	}
@@ -801,7 +829,11 @@ int main(int argc, char **argv) {
 	} else if (decod_format == GRK_PNG_FMT) {
 		imageTest = readImageFromFilePNG(inParam.test_filename,
 				nbFilenamePGXtest, inParam.separator_test);
-	} else {
+	} else if (decod_format == GRK_BMP_FMT) {
+		imageTest = readImageFromFileBMP(inParam.base_filename,
+				nbFilenamePGXbase, inParam.separator_base);
+	}
+	else {
 		spdlog::error("compare_images does not support this test file format");
 		goto cleanup;
 	}
