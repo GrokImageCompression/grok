@@ -790,9 +790,6 @@ bool TIFFFormat::encodeStrip(uint32_t rows)
 	tsize_t stride, rowsPerStrip;
 	uint32_t strip = 0;
 	int32_t* buffer32s = nullptr;
-	int32_t adjust = (m_image->comps[0].sgnd && m_image->comps[0].prec < 8)
-						 ? 1 << (m_image->comps[0].prec - 1)
-						 : 0;
 
 	// calculate rows per strip, base on target 8K strip size
 	if(subsampled)
@@ -883,7 +880,7 @@ bool TIFFFormat::encodeStrip(uint32_t rows)
 			tmsize_t bytesToWrite = 0;
 			for(h = h_start; h < h_start + rowsPerStrip && (h < height); h++)
 			{
-				cvtPxToCx(planes, buffer32s, (size_t)width, adjust);
+				cvtPxToCx(planes, buffer32s, (size_t)width, 0);
 				cvt32sToTif(buffer32s, (uint8_t*)buf + bytesToWrite, (size_t)width * numcomps);
 				for(uint32_t k = 0; k < numcomps; ++k)
 					planes[k] += m_image->comps[k].stride;
