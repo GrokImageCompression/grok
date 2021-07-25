@@ -579,7 +579,7 @@ bool BMPFormat::encodeStrip(uint32_t rows)
 	{
 		if(m_image->comps[0].prec != 8)
 		{
-			scale[compno] = 255.0f / (float)(1U << m_image->comps[compno].prec);
+			scale[compno] = 255.0f / (float)((1U << m_image->comps[compno].prec) - 1);
 			spdlog::warn("BMP conversion: scaling component {} from {} bits to 8 bits", compno,
 						 m_image->comps[compno].prec);
 		}
