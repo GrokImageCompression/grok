@@ -128,6 +128,7 @@ foreach(numFileC0P0 RANGE 1 2)
         -i ${INPUT_CONF}/${filenameInput}
         -o ${TEMP}/c0${filenameInput}.pgx
         -r ${ResFactor}
+        -t 0
         )
 
     add_test(ETS-C0P0-${filenameInput}-compare2ref
