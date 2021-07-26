@@ -80,6 +80,7 @@ static grk_image* pgxtoimage(const char* filename, grk_cparameters* parameters)
     char temp[32];
 	bool bigendian;
 	grk_image_cmptparm cmptparm; /* maximum of 1 component  */
+	uint8_t shift = 0;
 
 	memset(&cmptparm, 0, sizeof(grk_image_cmptparm));
 	auto f = fopen(filename, "rb");
@@ -149,6 +150,7 @@ static grk_image* pgxtoimage(const char* filename, grk_cparameters* parameters)
 
 	/* set image data */
 	stride_diff = image->comps->stride - w;
+	shift = (uint8_t)(32 - prec);
 	for(uint32_t j = 0; j < h; ++j)
 	{
 		for(uint32_t k = 0; k < w; ++k)
@@ -156,7 +158,7 @@ static grk_image* pgxtoimage(const char* filename, grk_cparameters* parameters)
 			int32_t v = 0;
 			if(prec < 8)
 			{
-				v = sign ? sign_extend(readchar<int8_t>(f), 0) :
+				v = sign ? sign_extend((int32_t)readchar<int8_t>(f), shift) :
 						   readchar<int8_t>(f);
 			}
 			else
