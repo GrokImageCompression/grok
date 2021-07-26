@@ -1067,7 +1067,6 @@ int main(int argc, char **argv) {
 					free(filenamePNGdiff_it_comp);
 				}
 #endif
-				goto cleanup;
 			}
 		}
 	} /* it_comp loop */
