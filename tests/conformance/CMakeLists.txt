@@ -198,14 +198,15 @@ foreach(numFileC0P1 RANGE 1 1)
     add_test(ETS-C0P1-${filenameInput}-r0-decode
         ${EXECUTABLE_OUTPUT_PATH}/grk_decompress
         -i ${INPUT_CONF}/${filenameInput}
-        -o ${TEMP}/c0${filenameInput}-r0.pgx
-        -r 0
+        -o ${TEMP}/c0${filenameInput}r0.pgx
+        -t 0
+        -p 8S
         )
 
     add_test(ETS-C0P1-${filenameInput}-r0-compare2ref
         ${EXECUTABLE_OUTPUT_PATH}/compare_images
         -b ${BASELINE_CONF}/${filenameRefSub}r0.pgx
-        -t ${TEMP}/c0${filenameInput}-r0.pgx
+        -t ${TEMP}/c0${filenameInput}r0.pgx
         -n ${nbComponents}
         -p ${PEAK_limit}
         -m ${MSE_limit}
@@ -218,8 +219,8 @@ foreach(numFileC0P1 RANGE 1 1)
 
     add_test(NR-C0P1-${filenameInput}-r0-compare2base
         ${EXECUTABLE_OUTPUT_PATH}/compare_images
-        -b ${BASELINE_NR}/${filenameRefSub}-r0.pgx
-        -t ${TEMP}/c0${filenameInput}-r0.pgx
+        -b ${BASELINE_NR}/${filenameRefSub}r0.pgx
+        -t ${TEMP}/c0${filenameInput}r0.pgx
         -n ${nbComponents}
         -d
         -s b_t_
@@ -233,14 +234,16 @@ foreach(numFileC0P1 RANGE 1 1)
     add_test(ETS-C0P1-${filenameInput}-r3-decode
         ${EXECUTABLE_OUTPUT_PATH}/grk_decompress
         -i ${INPUT_CONF}/${filenameInput}
-        -o ${TEMP}/c0${filenameInput}-r3.pgx
+        -o ${TEMP}/c0${filenameInput}r3.pgx
         -r 3
+        -t 0
+        -p 8S
         )
 
     add_test(ETS-C0P1-${filenameInput}-r3-compare2ref
         ${EXECUTABLE_OUTPUT_PATH}/compare_images
         -b ${BASELINE_CONF}/${filenameRefSub}r3.pgx
-        -t ${TEMP}/c0${filenameInput}-r3.pgx
+        -t ${TEMP}/c0${filenameInput}r3.pgx
         -n ${nbComponents}
         -p ${PEAK_limit}
         -m ${MSE_limit}
@@ -253,8 +256,8 @@ foreach(numFileC0P1 RANGE 1 1)
 
     add_test(NR-C0P1-${filenameInput}-r3-compare2base
         ${EXECUTABLE_OUTPUT_PATH}/compare_images
-        -b ${BASELINE_NR}/${filenameRefSub}-r3.pgx
-        -t ${TEMP}/c0${filenameInput}-r3.pgx
+        -b ${BASELINE_NR}/${filenameRefSub}r3.pgx
+        -t ${TEMP}/c0${filenameInput}r3.pgx
         -n ${nbComponents}
         -d
         -s b_t_
@@ -271,6 +274,8 @@ foreach(numFileC0P1 RANGE 1 1)
         -i ${INPUT_CONF}/${filenameInput}
         -o ${TEMP}/c0${filenameInput}.pgx
         -r ${ResFactor}
+        -t 0
+        -p 8S
         )
 
     add_test(ETS-C0P1-${filenameInput}-compare2ref
