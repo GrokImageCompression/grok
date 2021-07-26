@@ -1136,11 +1136,12 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 			spdlog::error("tiftoimage: signed image with "
 						  "MINISWHITE format is not fully supported");
 		}
-		if(tiBps != 8 && tiBps != 16)
+		if(tiBps != 4 && tiBps != 8 && tiBps != 16)
 		{
 			spdlog::error("tiftoimage: signed image with bit"
-						  " depth {} is not fully supported",
+						  " depth {} is not supported",
 						  tiBps);
+			goto cleanup;
 		}
 	}
 	if(numcomps > maxNumComponents)
