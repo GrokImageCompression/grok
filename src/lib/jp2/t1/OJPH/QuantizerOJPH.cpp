@@ -195,48 +195,41 @@ void QuantizerOJPH::set_rev_quant(uint32_t bit_depth, bool is_employing_color_tr
 }
 void QuantizerOJPH::set_irrev_quant()
 {
-	uint32_t s = 0;
-	float gain_l = sqrt_energy_gains::get_gain_l(num_decomps, false);
-	float delta_b = base_delta / (gain_l * gain_l);
-	uint32_t exp = 0, mantissa;
-	while(delta_b < 1.0f)
-	{
-		exp++;
-		delta_b *= 2.0f;
-	}
-	// with rounding, there is a risk of becoming equal to 1<<12
-	// but that should not happen in reality
-	mantissa = (uint32_t)round(delta_b * (float)(1 << 11)) - (1 << 11);
-	mantissa = mantissa < (1 << 11) ? mantissa : 0x7FF;
-	u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
-	for(int d = (int32_t)num_decomps - 1; d >= 0; --d)
-	{
-		gain_l = sqrt_energy_gains::get_gain_l((uint32_t)(d + 1), false);
-		float gain_h = sqrt_energy_gains::get_gain_h((uint32_t)d, false);
-		delta_b = base_delta / (gain_l * gain_h);
-		exp = 0;
-		while(delta_b < 1.0f)
-		{
-			exp++;
-			delta_b *= 2.0f;
-		}
-		mantissa = (uint32_t)round(delta_b * (float)(1 << 11)) - (1 << 11);
-		mantissa = mantissa < (1 << 11) ? mantissa : 0x7FF;
-		u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
-		u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
+    int s = 0;
+    float gain_l = sqrt_energy_gains::get_gain_l(num_decomps, false);
+    float delta_b = base_delta / (gain_l * gain_l);
+    int exp = 0, mantissa;
+    while (delta_b < 1.0f)
+    { exp++; delta_b *= 2.0f; }
+    //with rounding, there is a risk of becoming equal to 1<<12
+    // but that should not happen in reality
+    mantissa = (int)round(delta_b * (float)(1<<11)) - (1<<11);
+    mantissa = mantissa < (1<<11) ? mantissa : 0x7FF;
+    u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
+    for (uint32_t d = num_decomps; d > 0; --d)
+    {
+      float gain_l = sqrt_energy_gains::get_gain_l(d, false);
+      float gain_h = sqrt_energy_gains::get_gain_h(d - 1, false);
 
-		delta_b = base_delta / (gain_h * gain_h);
+      delta_b = base_delta / (gain_l * gain_h);
 
-		exp = 0;
-		while(delta_b < 1)
-		{
-			exp++;
-			delta_b *= 2.0f;
-		}
-		mantissa = (uint32_t)round(delta_b * (float)(1 << 11)) - (1 << 11);
-		mantissa = mantissa < (1 << 11) ? mantissa : 0x7FF;
-		u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
-	}
+      int exp = 0, mantissa;
+      while (delta_b < 1.0f)
+      { exp++; delta_b *= 2.0f; }
+      mantissa = (int)round(delta_b * (float)(1<<11)) - (1<<11);
+      mantissa = mantissa < (1<<11) ? mantissa : 0x7FF;
+      u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
+      u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
+
+      delta_b = base_delta / (gain_h * gain_h);
+
+      exp = 0;
+      while (delta_b < 1)
+      { exp++; delta_b *= 2.0f; }
+      mantissa = (int)round(delta_b * (float)(1<<11)) - (1<<11);
+      mantissa = mantissa < (1<<11) ? mantissa : 0x7FF;
+      u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
+    }
 }
 uint32_t QuantizerOJPH::get_MAGBp() const
 {
