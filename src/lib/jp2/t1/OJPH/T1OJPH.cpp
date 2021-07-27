@@ -80,7 +80,7 @@ namespace ojph
 		}
 		else
 		{
-			int32_t shift = 31 - (block->k_msbs + 1) - 11;
+			int32_t shift = 31 - (block->k_msbs + 1);
 			for(auto j = 0U; j < h; ++j)
 			{
 				for(auto i = 0U; i < w; ++i)
