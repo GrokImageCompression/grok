@@ -36,7 +36,7 @@ T1Interface* T1Factory::makeT1(bool isCompressor, TileCodingParams* tcp, uint32_
 Quantizer* T1Factory::makeQuantizer(bool ht, bool reversible, uint8_t guardBits){
 	if (ht){
 		return use_ojph ? (Quantizer*)(new ojph::QuantizerOJPH(reversible, guardBits)) :
-				 (Quantizer*)(new ojph::QuantizerOJPH(reversible, guardBits));
+				 (Quantizer*)(new t1_part15::QuantizerPart15(reversible, guardBits));
 	}
 	return new Quantizer(reversible,guardBits);
 }

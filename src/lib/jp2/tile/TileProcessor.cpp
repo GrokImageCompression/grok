@@ -515,7 +515,7 @@ bool TileProcessor::dcLevelShiftCompress()
 		{
 			for(uint64_t i = 0; i < samples; ++i)
 			{
-				*current_ptr = (*current_ptr - tccp->m_dc_level_shift) * 2048;
+				*current_ptr = (*current_ptr - tccp->m_dc_level_shift) * (1 << 11);
 				++current_ptr;
 			}
 		}

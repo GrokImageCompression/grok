@@ -80,9 +80,9 @@ namespace ojph
 		}
 		else
 		{
+			int32_t shift = 31 - (block->k_msbs + 1) - 11;
 			for(auto j = 0U; j < h; ++j)
 			{
-				int32_t shift = 31 - (block->k_msbs + 1) - 11;
 				for(auto i = 0U; i < w; ++i)
 				{
 					int32_t temp = block->tiledp[tileIndex];

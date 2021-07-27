@@ -10,7 +10,7 @@
 
 namespace grk {
 
-const bool use_ojph = false;
+const bool use_ojph = true;
 
 
 }

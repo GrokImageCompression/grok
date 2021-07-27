@@ -46,7 +46,7 @@ Quantizer::Quantizer(bool reversible,uint8_t guard_bits) : Sqcd((uint8_t)(guard_
  */
 void Quantizer::pull(grk_stepsize* stepptr)
 {
-	uint32_t numbands = 3 * (num_decomps + 1) - 2;
+	uint32_t numbands = 3 * num_decomps + 1;
 	for(uint32_t bn = 0; bn < numbands; bn++)
 	{
 		auto step = stepptr + bn;
@@ -64,7 +64,7 @@ void Quantizer::pull(grk_stepsize* stepptr)
 }
 void Quantizer::push(grk_stepsize* stepptr)
 {
-	uint32_t numbands = 3 * (num_decomps + 1) - 2;
+	uint32_t numbands = 3 * num_decomps + 1;
 	for(uint32_t bn = 0; bn < numbands; bn++)
 	{
 		auto step = stepptr + bn;
