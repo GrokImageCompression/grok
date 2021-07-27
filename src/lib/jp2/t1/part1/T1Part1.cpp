@@ -34,8 +34,9 @@ namespace t1_part1
 	{
 		delete t1;
 	}
-	void T1Part1::preCompress(CompressBlockExec* block, Tile* tile, uint32_t& maximum)
+	void T1Part1::preCompress(CompressBlockExec* block, uint32_t& maximum)
 	{
+		auto tile = block->tile;
 		auto cblk = block->cblk;
 		auto w = cblk->width();
 		auto h = cblk->height();
@@ -89,7 +90,7 @@ namespace t1_part1
 	bool T1Part1::compress(CompressBlockExec* block)
 	{
 		uint32_t max = 0;
-		preCompress(block, block->tile, max);
+		preCompress(block, max);
 
 		auto cblk = block->cblk;
 		cblk_enc cblkexp;
