@@ -509,9 +509,12 @@ bool TileProcessor::dcLevelShiftCompress()
 		auto tccp = m_tcp->tccps + compno;
 		auto current_ptr = tile_comp->getBuffer()->getHighestBufferResWindowREL()->getBuffer();
 		uint64_t samples = tile_comp->getBuffer()->stridedArea();
-		if(tccp->m_dc_level_shift == 0 || needsMctDecompress(compno))
+		if(needsMctDecompress(compno))
 			continue;
+
 		if (tccp->qmfbid == 1){
+			if (tccp->m_dc_level_shift == 0)
+				continue;
 			for(uint64_t i = 0; i < samples; ++i)
 			{
 				*current_ptr -= tccp->m_dc_level_shift;
@@ -519,6 +522,10 @@ bool TileProcessor::dcLevelShiftCompress()
 			}
 		} else {
 			// output float
+
+			// Note: we need to convert to FP even if level shift is zero
+			// todo: skip this inefficiency for zero level shift
+
 			float* floatPtr = (float*)current_ptr;
 			for(uint64_t i = 0; i < samples; ++i)
 				*floatPtr++ = (float)(*current_ptr++ - tccp->m_dc_level_shift);
