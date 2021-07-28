@@ -81,20 +81,19 @@ namespace ojph
 		else
 		{
 			int32_t shift = 31 - (block->k_msbs + 1);
+			auto tiledp = (float*)block->tiledp;
 			for(auto j = 0U; j < h; ++j)
 			{
 				for(auto i = 0U; i < w; ++i)
 				{
-					int32_t temp = block->tiledp[tileIndex];
-					int32_t t = (int32_t)((float)temp * block->inv_step_ht * (float)(1 << shift));
+					int32_t t = (int32_t)((float)*tiledp++ * block->inv_step_ht * (float)(1 << shift));
 					int32_t val = t >= 0 ? t : -t;
 					int32_t sign = t >= 0 ? 0 : (int32_t)0x80000000;
 					int32_t res = sign | val;
 					unencoded_data[cblk_index] = res;
-					tileIndex++;
 					cblk_index++;
 				}
-				tileIndex += tileLineAdvance;
+				tiledp += tileLineAdvance;
 			}
 		}
 	}

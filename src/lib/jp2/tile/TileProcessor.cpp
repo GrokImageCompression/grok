@@ -511,19 +511,14 @@ bool TileProcessor::dcLevelShiftCompress()
 		uint64_t samples = tile_comp->getBuffer()->stridedArea();
 		if(tccp->m_dc_level_shift == 0 || needsMctDecompress(compno))
 			continue;
-		bool integerTrans = tccp->qmfbid == 1;
-		if (m_tcp->isHT()){
-			integerTrans = true;
-		} else {
-			integerTrans = integerTrans || (tccp->numresolutions > 1);
-		}
-		if (integerTrans){
+		if (tccp->qmfbid == 1){
 			for(uint64_t i = 0; i < samples; ++i)
 			{
 				*current_ptr -= tccp->m_dc_level_shift;
 				++current_ptr;
 			}
 		} else {
+			// output float
 			float* floatPtr = (float*)current_ptr;
 			for(uint64_t i = 0; i < samples; ++i)
 				*floatPtr++ = (float)(*current_ptr++ - tccp->m_dc_level_shift);
