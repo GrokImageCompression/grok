@@ -509,13 +509,13 @@ bool TileProcessor::dcLevelShiftCompress()
 		auto tccp = m_tcp->tccps + compno;
 		auto current_ptr = tile_comp->getBuffer()->getHighestBufferResWindowREL()->getBuffer();
 		uint64_t samples = tile_comp->getBuffer()->stridedArea();
-		if(tccp->m_dc_level_shift == 0)
+		if(tccp->m_dc_level_shift == 0 || needsMctDecompress(compno))
 			continue;
 		bool integerTrans = tccp->qmfbid == 1;
 		if (m_tcp->isHT()){
 			integerTrans = true;
 		} else {
-			integerTrans = integerTrans || (m_tcp->mct || tccp->numresolutions > 1);
+			integerTrans = integerTrans || (tccp->numresolutions > 1);
 		}
 		if (integerTrans){
 			for(uint64_t i = 0; i < samples; ++i)

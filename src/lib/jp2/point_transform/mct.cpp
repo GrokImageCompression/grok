@@ -48,15 +48,15 @@ namespace HWY_NAMESPACE
 		{
 			float* GRK_RESTRICT chan0 = (float*)channels[0];
 			size_t begin = (size_t)index * chunkSize;
-			const HWY_FULL(int32_t) d;
+			const HWY_FULL(int32_t) di;
 			const HWY_FULL(float) df;
-			auto vshift = Set(d, shiftInfo[0]._shift);
-			auto vmin = Set(d, shiftInfo[0]._min);
-			auto vmax = Set(d, shiftInfo[0]._max);
-			for(auto j = begin; j < begin + chunkSize; j += Lanes(d))
+			auto vshift = Set(di, shiftInfo[0]._shift);
+			auto vmin = Set(di, shiftInfo[0]._min);
+			auto vmax = Set(di, shiftInfo[0]._max);
+			for(auto j = begin; j < begin + chunkSize; j += Lanes(di))
 			{
 				auto ni = Clamp(NearestInt(Load(df, chan0 + j)) + vshift, vmin, vmax);
-				Store(ni, d, (int32_t*)(chan0 + j));
+				Store(ni, di, (int32_t*)(chan0 + j));
 			}
 			return 0;
 		}
@@ -92,14 +92,14 @@ namespace HWY_NAMESPACE
 		{
 			int32_t* GRK_RESTRICT chan0 = channels[0];
 			size_t begin = (size_t)index * chunkSize;
-			const HWY_FULL(int32_t) d;
-			auto vshift = Set(d, shiftInfo[0]._shift);
-			auto vmin = Set(d, shiftInfo[0]._min);
-			auto vmax = Set(d, shiftInfo[0]._max);
-			for(auto j = begin; j < begin + chunkSize; j += Lanes(d))
+			const HWY_FULL(int32_t) di;
+			auto vshift = Set(di, shiftInfo[0]._shift);
+			auto vmin = Set(di, shiftInfo[0]._min);
+			auto vmax = Set(di, shiftInfo[0]._max);
+			for(auto j = begin; j < begin + chunkSize; j += Lanes(di))
 			{
-				auto ni = Clamp(Load(d, chan0 + j) + vshift, vmin, vmax);
-				Store(ni, d, chan0 + j);
+				auto ni = Clamp(Load(di, chan0 + j) + vshift, vmin, vmax);
+				Store(ni, di, chan0 + j);
 			}
 			return 0;
 		}
@@ -134,29 +134,29 @@ namespace HWY_NAMESPACE
 			int32_t _min[3] = {shiftInfo[0]._min, shiftInfo[1]._min, shiftInfo[2]._min};
 			int32_t _max[3] = {shiftInfo[0]._max, shiftInfo[1]._max, shiftInfo[2]._max};
 
-			const HWY_FULL(int32_t) d;
-			auto vdcr = Set(d, shift[0]);
-			auto vdcg = Set(d, shift[1]);
-			auto vdcb = Set(d, shift[2]);
-			auto minr = Set(d, _min[0]);
-			auto ming = Set(d, _min[1]);
-			auto minb = Set(d, _min[2]);
-			auto maxr = Set(d, _max[0]);
-			auto maxg = Set(d, _max[1]);
-			auto maxb = Set(d, _max[2]);
+			const HWY_FULL(int32_t) di;
+			auto vdcr = Set(di, shift[0]);
+			auto vdcg = Set(di, shift[1]);
+			auto vdcb = Set(di, shift[2]);
+			auto minr = Set(di, _min[0]);
+			auto ming = Set(di, _min[1]);
+			auto minb = Set(di, _min[2]);
+			auto maxr = Set(di, _max[0]);
+			auto maxg = Set(di, _max[1]);
+			auto maxb = Set(di, _max[2]);
 
 			size_t begin = (size_t)index * chunkSize;
-			for(auto j = begin; j < begin + chunkSize; j += Lanes(d))
+			for(auto j = begin; j < begin + chunkSize; j += Lanes(di))
 			{
-				auto y = Load(d, chan0 + j);
-				auto u = Load(d, chan1 + j);
-				auto v = Load(d, chan2 + j);
+				auto y = Load(di, chan0 + j);
+				auto u = Load(di, chan1 + j);
+				auto v = Load(di, chan2 + j);
 				auto g = y - ShiftRight<2>(u + v);
 				auto r = v + g;
 				auto b = u + g;
-				Store(Clamp(r + vdcr, minr, maxr), d, chan0 + j);
-				Store(Clamp(g + vdcg, ming, maxg), d, chan1 + j);
-				Store(Clamp(b + vdcb, minb, maxb), d, chan2 + j);
+				Store(Clamp(r + vdcr, minr, maxr), di, chan0 + j);
+				Store(Clamp(g + vdcg, ming, maxg), di, chan1 + j);
+				Store(Clamp(b + vdcb, minb, maxb), di, chan2 + j);
 			}
 			return 0;
 		}
@@ -286,21 +286,25 @@ namespace HWY_NAMESPACE
 			int32_t* GRK_RESTRICT chan1 = channels[1];
 			int32_t* GRK_RESTRICT chan2 = channels[2];
 
+			const HWY_FULL(int32_t) di;
 			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
 
+			auto vdcr = Set(di, shift[0]);
+			auto vdcg = Set(di, shift[1]);
+			auto vdcb = Set(di, shift[2]);
+
 			size_t begin = (size_t)index * chunkSize;
-			const HWY_FULL(int32_t) d;
-			for(auto j = begin; j < begin + chunkSize; j += Lanes(d))
+			for(auto j = begin; j < begin + chunkSize; j += Lanes(di))
 			{
-				auto r = Load(d, chan0 + j);
-				auto g = Load(d, chan1 + j);
-				auto b = Load(d, chan2 + j);
+				auto r = Load(di, chan0 + j) + vdcr;
+				auto g = Load(di, chan1 + j) + vdcg;
+				auto b = Load(di, chan2 + j) + vdcb;
 				auto y = ShiftRight<2>((g + g) + b + r);
 				auto u = b - g;
 				auto v = r - g;
-				Store(y, d, chan0 + j);
-				Store(u, d, chan1 + j);
-				Store(v, d, chan2 + j);
+				Store(y, di, chan0 + j);
+				Store(u, di, chan1 + j);
+				Store(v, di, chan2 + j);
 			}
 			return 0;
 		}
@@ -310,11 +314,13 @@ namespace HWY_NAMESPACE
 			int32_t* GRK_RESTRICT chan0 = channels[0];
 			int32_t* GRK_RESTRICT chan1 = channels[1];
 			int32_t* GRK_RESTRICT chan2 = channels[2];
+			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
+
 			for(; index < numSamples; ++index)
 			{
-				int32_t r = chan0[index];
-				int32_t g = chan1[index];
-				int32_t b = chan2[index];
+				int32_t r = chan0[index] + shift[0];
+				int32_t g = chan1[index] + shift[1];
+				int32_t b = chan2[index] + shift[2];
 				int32_t y = (r + (g * 2) + b) >> 2;
 				int32_t u = b - g;
 				int32_t v = r - g;
@@ -349,12 +355,16 @@ namespace HWY_NAMESPACE
 			auto vcb = Set(df, cb);
 			auto vcr = Set(df, cr);
 
+			auto vdcr = Set(di, shift[0]);
+			auto vdcg = Set(di, shift[1]);
+			auto vdcb = Set(di, shift[2]);
+
 			size_t begin = (size_t)index * chunkSize;
 			for(auto j = begin; j < begin + chunkSize; j += Lanes(di))
 			{
-				auto r = ConvertTo(df, Load(di, chan0 + j));
-				auto g = ConvertTo(df, Load(di, chan1 + j));
-				auto b = ConvertTo(df, Load(di, chan2 + j));
+				auto r = ConvertTo(df, Load(di, chan0 + j) + vdcr);
+				auto g = ConvertTo(df, Load(di, chan1 + j) + vdcg);
+				auto b = ConvertTo(df, Load(di, chan2 + j) + vdcb);
 
 				auto y = va_r * r + va_g * g + va_b * b;
 				auto u = vcb * (b - y);
@@ -382,9 +392,9 @@ namespace HWY_NAMESPACE
 
 			for(; index < numSamples; ++index)
 			{
-				float r = (float)chan0[index];
-				float g = (float)chan1[index];
-				float b = (float)chan2[index];
+				float r = (float)(chan0[index] + shift[0]);
+				float g = (float)(chan1[index] + shift[1]);
+				float b = (float)(chan2[index] + shift[2]);
 
 				float y = a_r * r + a_g * g + a_b * b;
 				float u = cb * (b - y);
@@ -410,8 +420,8 @@ namespace HWY_NAMESPACE
 		size_t i = 0;
 		size_t num_threads = ThreadPool::get()->num_threads();
 		size_t chunkSize = numSamples / num_threads;
-		const HWY_FULL(int32_t) d;
-		auto numLanes = Lanes(d);
+		const HWY_FULL(int32_t) di;
+		auto numLanes = Lanes(di);
 		chunkSize = (chunkSize / numLanes) * numLanes;
 		if(chunkSize > numLanes)
 		{
