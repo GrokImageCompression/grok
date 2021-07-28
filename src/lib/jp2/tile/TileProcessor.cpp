@@ -555,17 +555,11 @@ bool TileProcessor::mct_encode()
 	}
 	else if(m_tcp->tccps->qmfbid == 0)
 	{
-		mct::compress_irrev(tile->comps[0].getBuffer()->getHighestBufferResWindowREL()->getBuffer(),
-							tile->comps[1].getBuffer()->getHighestBufferResWindowREL()->getBuffer(),
-							tile->comps[2].getBuffer()->getHighestBufferResWindowREL()->getBuffer(),
-							samples);
+		mct::compress_irrev(tile, headerImage, m_tcp->tccps);
 	}
 	else
 	{
-		mct::compress_rev(tile->comps[0].getBuffer()->getHighestBufferResWindowREL()->getBuffer(),
-						  tile->comps[1].getBuffer()->getHighestBufferResWindowREL()->getBuffer(),
-						  tile->comps[2].getBuffer()->getHighestBufferResWindowREL()->getBuffer(),
-						  samples);
+		mct::compress_rev(tile, headerImage, m_tcp->tccps);
 	}
 
 	return true;

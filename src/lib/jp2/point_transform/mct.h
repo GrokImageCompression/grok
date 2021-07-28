@@ -20,6 +20,8 @@
  */
 
 #pragma once
+#include <vector>
+
 namespace grk
 {
 struct ShiftInfo
@@ -36,12 +38,11 @@ class mct
   public:
 	/**
 	 Apply a reversible multi-component transform to an image
-	 @param c0 Samples for red component
-	 @param c1 Samples for green component
-	 @param c2 Samples blue component
-	 @param n Number of samples for each component
+	 @param tile tile
+	 @param image image
+	 @param tccps tile component coding parameters
 	 */
-	static void compress_rev(int32_t* c0, int32_t* c1, int32_t* c2, uint64_t n);
+	static void compress_rev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps);
 	/**
 	 Apply a reversible multi-component inverse transform to an image
 	 @param tile tile
@@ -57,12 +58,11 @@ class mct
 
 	/**
 	 Apply an irreversible multi-component transform to an image
-	 @param c0 Samples for red component
-	 @param c1 Samples for green component
-	 @param c2 Samples blue component
-	 @param n Number of samples for each component
+	 @param tile tile
+	 @param image image
+	 @param tccps tile component coding parameters
 	 */
-	static void compress_irrev(int32_t* c0, int32_t* c1, int32_t* c2, uint64_t n);
+	static void compress_irrev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps);
 	/**
 	 Apply an irreversible multi-component inverse transform to an image
 	 @param tile tile
@@ -123,6 +123,16 @@ class mct
 	 */
 	static void decompress_dc_shift_irrev(Tile* tile, GrkImage* image,
 										  TileComponentCodingParams* tccps, uint32_t compno);
+private:
+	static void genShift(uint16_t compno,
+						GrkImage* image,
+						TileComponentCodingParams* tccps,
+						int32_t sign,
+						std::vector<ShiftInfo> &shiftInfo);
+	static void genShift(GrkImage* image,
+						TileComponentCodingParams* tccps,
+						int32_t sign,
+						std::vector<ShiftInfo> &shiftInfo);
 };
 
 /* ----------------------------------------------------------------------- */
