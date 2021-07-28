@@ -32,7 +32,11 @@ namespace HWY_NAMESPACE
 {
 	using namespace hwy::HWY_NAMESPACE;
 
-	class DecompressDcShiftIrrev
+	/**
+	 * Apply dc shift for irreversible image.
+	 * (assumes that mct was not performed)
+	 */
+	class DcShiftIrrev
 	{
 	  public:
 		int32_t vtrans(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo,
@@ -65,7 +69,11 @@ namespace HWY_NAMESPACE
 		}
 	};
 
-	class DecompressDcShiftRev
+	/**
+	 * Apply dc shift for reversible image
+	 * (assumes that mct was not performed)
+	 */
+	class DcShiftRev
 	{
 	  public:
 		int32_t vtrans(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo,
@@ -301,11 +309,6 @@ namespace HWY_NAMESPACE
 			int32_t shift[3] = {shiftInfo[0]._shift, shiftInfo[1]._shift, shiftInfo[2]._shift};
 			int32_t _min[3] = {shiftInfo[0]._min, shiftInfo[1]._min, shiftInfo[2]._min};
 			int32_t _max[3] = {shiftInfo[0]._max, shiftInfo[1]._max, shiftInfo[2]._max};
-
-			auto vrv = Set(df, 1.402f);
-			auto vgu = Set(df, 0.34413f);
-			auto vgv = Set(df, 0.71414f);
-			auto vbu = Set(df, 1.772f);
 			auto vdcr = Set(di, shift[0]);
 			auto vdcg = Set(di, shift[1]);
 			auto vdcb = Set(di, shift[2]);
@@ -315,6 +318,11 @@ namespace HWY_NAMESPACE
 			auto maxr = Set(di, _max[0]);
 			auto maxg = Set(di, _max[1]);
 			auto maxb = Set(di, _max[2]);
+
+			auto vrv = Set(df, 1.402f);
+			auto vgu = Set(df, 0.34413f);
+			auto vgv = Set(df, 0.71414f);
+			auto vbu = Set(df, 1.772f);
 
 			size_t begin = (size_t)index * chunkSize;
 			for(auto j = begin; j < begin + chunkSize; j += Lanes(di))
@@ -425,13 +433,13 @@ namespace HWY_NAMESPACE
 	size_t hwy_decompress_dc_shift_irrev(std::vector<int32_t*> channels,
 										 std::vector<ShiftInfo> shiftInfo, size_t n)
 	{
-		return vscheduler<DecompressDcShiftIrrev>(channels, shiftInfo, n);
+		return vscheduler<DcShiftIrrev>(channels, shiftInfo, n);
 	}
 
 	size_t hwy_decompress_dc_shift_rev(std::vector<int32_t*> channels,
 									   std::vector<ShiftInfo> shiftInfo, size_t n)
 	{
-		return vscheduler<DecompressDcShiftRev>(channels, shiftInfo, n);
+		return vscheduler<DcShiftRev>(channels, shiftInfo, n);
 	}
 } // namespace HWY_NAMESPACE
 } // namespace grk

@@ -8,6 +8,8 @@ set(INPUT_NR ${GRK_DATA_ROOT}/input/nonregression)
 set(INPUT_NR_PATH ${INPUT_NR})
 set(TEMP_PATH ${TEMP})
 set(INPUT_CONF_PATH ${GRK_DATA_ROOT}/input/conformance)
+set(BASELINE_CONF_PATH ${GRK_DATA_ROOT}/baseline/conformance)
+
 # need kdu_expand if available
 find_package(KAKADU)
 # need jpylyzer if available

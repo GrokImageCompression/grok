@@ -458,6 +458,7 @@ bool TileProcessor::mctDecompress()
 {
 	if(!needsMctDecompress(0))
 		return true;
+	// custom MCT
 	if(m_tcp->mct == 2)
 	{
 		auto data = new uint8_t*[tile->numcomps];
@@ -475,13 +476,9 @@ bool TileProcessor::mctDecompress()
 	else
 	{
 		if(m_tcp->tccps->qmfbid == 1)
-		{
 			mct::decompress_rev(tile, headerImage, m_tcp->tccps);
-		}
 		else
-		{
 			mct::decompress_irrev(tile, headerImage, m_tcp->tccps);
-		}
 	}
 
 	return true;
@@ -491,6 +488,7 @@ bool TileProcessor::dcLevelShiftDecompress()
 {
 	for(uint16_t compno = 0; compno < tile->numcomps; compno++)
 	{
+		// use with either custom MCT, or no MCT
 		if(!needsMctDecompress(compno) || m_tcp->mct == 2)
 		{
 			auto tccp = m_tcp->tccps + compno;
