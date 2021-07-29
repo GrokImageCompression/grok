@@ -62,9 +62,9 @@ class BitIO : public IBitIO
 	 */
 	void inalign();
 
-	void putcommacode(uint8_t n);
+	bool putcommacode(uint8_t n);
 	void getcommacode(uint8_t* n);
-	void putnumpasses(uint32_t n);
+	bool putnumpasses(uint32_t n);
 	void getnumpasses(uint32_t* numpasses);
 
   private:

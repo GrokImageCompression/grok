@@ -43,11 +43,11 @@ bool BitIO::writeByte()
 	}
 	else
 	{
-		if(start)
-			start[offset] = buf;
-		offset++;
+		// avoid buffer over-run
 		if(offset == buf_len)
 			return false;
+
+		offset++;
 	}
 	ct = buf == 0xff ? 7 : 8;
 	buf = 0;
@@ -141,12 +141,14 @@ void BitIO::inalign()
 	ct = 0;
 }
 
-void BitIO::putcommacode(uint8_t n)
+bool BitIO::putcommacode(uint8_t n)
 {
 	int16_t nn = n;
-	while(--nn >= 0)
-		write(1, 1);
-	write(0, 1);
+	while(--nn >= 0){
+		if (!write(1, 1))
+			return false;
+	}
+	return write(0, 1);
 }
 
 void BitIO::getcommacode(uint8_t* n)
@@ -161,18 +163,30 @@ void BitIO::getcommacode(uint8_t* n)
 	}
 }
 
-void BitIO::putnumpasses(uint32_t n)
+bool BitIO::putnumpasses(uint32_t n)
 {
-	if(n == 1)
-		write(0, 1);
-	else if(n == 2)
-		write(2, 2);
-	else if(n <= 5)
-		write(0xc | (n - 3), 4);
-	else if(n <= 36)
-		write(0x1e0 | (n - 6), 9);
-	else if(n <= 164)
-		write(0xff80 | (n - 37), 16);
+	if(n == 1){
+		if (!write(0, 1))
+			return false;
+	}
+	else if(n == 2){
+		if (!write(2, 2))
+			return false;
+	}
+	else if(n <= 5) {
+		if (!write(0xc | (n - 3), 4))
+			return false;
+	}
+	else if(n <= 36) {
+		if (!write(0x1e0 | (n - 6), 9))
+			return false;
+	}
+	else if(n <= 164) {
+		if (!write(0xff80 | (n - 37), 16))
+			return false;
+	}
+
+	return true;
 }
 
 void BitIO::getnumpasses(uint32_t* numpasses)

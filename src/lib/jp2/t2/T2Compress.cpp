@@ -118,7 +118,10 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 	return true;
 }
 
-bool T2Compress::compressHeader(BitIO* bio, Resolution* res, uint16_t layno, uint64_t precinctIndex)
+bool T2Compress::compressHeader(BitIO* bio,
+								Resolution* res,
+								uint16_t layno,
+								uint64_t precinctIndex)
 {
 	if(layno == 0)
 	{
@@ -187,8 +190,7 @@ bool T2Compress::compressHeader(BitIO* bio, Resolution* res, uint16_t layno, uin
 			/* cblk inclusion bits */
 			if(!cblk->numPassesInPacket)
 			{
-				bool rc = prc->getInclTree()->compress(bio, cblkno, layno + 1);
-				if(!rc)
+				if (!prc->getInclTree()->compress(bio, cblkno, layno + 1))
 					return false;
 			}
 			else
@@ -206,13 +208,13 @@ bool T2Compress::compressHeader(BitIO* bio, Resolution* res, uint16_t layno, uin
 			if(!cblk->numPassesInPacket)
 			{
 				cblk->numlenbits = 3;
-				bool rc = prc->getImsbTree()->compress(bio, cblkno,
-													   prc->getImsbTree()->getUninitializedValue());
-				if(!rc)
+				if (!prc->getImsbTree()->compress(bio, cblkno,
+													   prc->getImsbTree()->getUninitializedValue()))
 					return false;
 			}
 			/* number of coding passes included */
-			bio->putnumpasses(layer->numpasses);
+			if (!bio->putnumpasses(layer->numpasses))
+				return false;
 			uint32_t nb_passes = cblk->numPassesInPacket + layer->numpasses;
 			auto pass = cblk->passes + cblk->numPassesInPacket;
 
@@ -232,7 +234,8 @@ bool T2Compress::compressHeader(BitIO* bio, Resolution* res, uint16_t layno, uin
 				}
 				++pass;
 			}
-			bio->putcommacode(increment);
+			if (!bio->putcommacode(increment))
+				return false;
 			/* computation of the new Length indicator */
 			cblk->numlenbits += increment;
 
