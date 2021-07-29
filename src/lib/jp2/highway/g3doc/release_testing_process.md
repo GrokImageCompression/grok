@@ -46,20 +46,18 @@ make -j8 && ctest && cd ..
 
 ```
 for VER in 7 8 9 10 11; do
-  rm -rf build_debug$VER && CC=clang-$VER CXX=clang++-$VER BUILD_DIR=build_debug$VER ./ci.sh debug && rm -rf build_debug$VER
+  rm -rf build_debug$VER && CC=clang-$VER CXX=clang++-$VER BUILD_DIR=build_debug$VER SKIP_TEST=1 ./ci.sh debug && ./ci.sh test -R PassesTest && rm -rf build_debug$VER
   rm -rf build_asan$VER  && CC=clang-$VER CXX=clang++-$VER BUILD_DIR=build_asan$VER  ./ci.sh asan  && rm -rf build_asan$VER
   rm -rf build_msan$VER  && CC=clang-$VER CXX=clang++-$VER BUILD_DIR=build_msan$VER  ./ci.sh msan  && rm -rf build_msan$VER
 done
 ```
 
-#### JPEG XL Webassembly
+#### JPEG XL tests
 
 ```
-sudo docker run -it --rm -v $HOME/jpeg-xlm:/jpeg-xlm -w /jpeg-xlm gcr.io/jpegxl/jpegxl-builder
-mkdir -p /jpeg-xlm/em_cache
-export EM_CACHE=/jpeg-xlm/em_cache
-export V8=/opt/.jsvu/v8
-source /opt/emsdk/emsdk_env.sh
-BUILD_TARGET=wasm32 ENABLE_WASM_SIMD=1 SKIP_TEST=1 PACK_TEST=1 emconfigure ./ci.sh release
-BUILD_TARGET=wasm32 emconfigure ./ci.sh test
+git -C third_party/highway pull -r origin master
+git diff
+vi deps.sh
+git commit -a -m"Highway test"
+git push git@gitlab.com:$USER/jpeg-xl.git HEAD:main --force
 ```

@@ -31,7 +31,7 @@ The public headers are:
     alignment suitable for `Load`/`Store`.
 
 *   hwy/cache_control.h: defines stand-alone functions to control caching (e.g.
-    prefetching) and memory barriers, independent of actual SIMD.
+    prefetching), independent of actual SIMD.
 
 *   hwy/nanobenchmark.h: library for precisely measuring elapsed time (under
     varying inputs) for benchmarking small/medium regions of code.
@@ -67,76 +67,103 @@ HWY_AFTER_NAMESPACE();
 
 ## Vector and descriptor types
 
-Highway vectors consist of one or more 'lanes' of the same built-in type `T =
-uint##_t, int##_t` for `## = 8, 16, 32, 64`, plus `T = float##_t` for `## = 16,
-32, 64`. `float16_t` is an IEEE binary16 half-float and only supports load,
-store, and conversion to/from `float32_t`; infinity or NaN have
-implementation-defined results.
+Highway vectors consist of one or more 'lanes' of the same built-in type
+`uint##_t, int##_t` for `## = 8, 16, 32, 64`, plus `float##_t` for `## = 16, 32,
+64`.
 
-Each vector has `N` lanes (a power of two, possibly unknown at compile time).
+In Highway, `float16_t` (an IEEE binary16 half-float) only supports load, store,
+and conversion to/from `float32_t`; the behavior of `float16_t` infinity and NaN
+are implementation-defined due to ARMv7.
 
-Platforms such as x86 support multiple vector types, and other platforms require
-that vectors are built-in types. On RVV, vectors are sizeless and thus cannot be
-wrapped inside a class. The Highway API satisfies these constraints because it
-is designed around overloaded functions selected via a zero-sized tag parameter
-`d` of type `D = Simd<T, N>`. These are typically constructed using aliases:
+On RVV, vectors are sizeless and cannot be wrapped inside a class. The Highway
+API allows using built-in types as vectors because operations are expressed as
+overloaded functions. Instead of constructors, overloaded initialization
+functions such as `Set` take a zero-sized tag argument called `d` of type `D =
+Simd<T, N>` and return an actual vector of unspecified type.
 
-*   `const HWY_FULL(T[, LMUL=1]) d;` chooses an `N` that results in a native
-    vector for the current target. For targets (e.g. RVV) that support register
-    groups, the optional `LMUL` (1, 2, 4, 8) specifies the number of registers
-    in the group. This effectively multiplies the lane count in each operation
-    by `LMUL`. For mixed-precision code, `LMUL` must be at least the ratio of
-    the sizes of the largest and smallest type. `LMUL > 1` is more efficient on
-    single-issue machines, but larger values reduce the effective number of
-    registers, which may cause the compiler to spill them to memory.
+`T` is one of the lane types above, and may be retrieved via `TFromD<D>`.
 
-*   `const HWY_CAPPED(T, N) d;` for up to `N` lanes.
+`N` is target-dependent and not directly user-specified. The actual lane count
+may not be known at compile time, but can be obtained via `Lanes(d)`. Use this
+value, which is potentially different from `N`, to increment loop counters etc.
+It is typically a power of two, but that is not guaranteed e.g. on SVE.
 
-For mixed-precision code (e.g. `uint8_t` lanes promoted to `float`), descriptors
-for the smaller types must be obtained from those of the larger type (e.g. via
+`d` lvalues (a tag, NOT actual vector) are typically obtained using two aliases:
+
+*   Most common: pass `HWY_FULL(T[, LMUL=1]) d;` as an argument to return a
+    native vector. This is preferred because it fully utilizes vector lanes.
+
+    Only for targets (e.g. RVV) that support register groups, the second
+    argument (1, 2, 4, 8) specifies `LMUL`, the number of registers in the
+    group. This effectively multiplies the lane count in each operation by
+    `LMUL`. This argument will eventually be an optional hint that may improve
+    performance on 1-2 wide machines (at the cost of reducing the effective
+    number of registers), but the experimental GCC support for RVV does not
+    support fractional `LMUL`. Thus, mixed-precision code (e.g. demoting float
+    to uint8_t) currently requires `LMUL` to be at least the ratio of the sizes
+    of the largest and smallest type, and smaller `d` to be obtained via
+    `Half<DLarger>`.
+
+*   Less common: pass `HWY_CAPPED(T, N) d;` as an argument to return a vector or
+    mask where only the first `N` lanes have observable effects such as
+    loading/storing to memory, or being counted by `CountTrue`.
+
+    These may be implemented using full vectors plus additional runtime cost for
+    masking in `Load` etc. For `HWY_SCALAR`, vectors always have a single lane.
+    All other targets allow any `N <= 16/sizeof(T)`. This is useful for
+    algorithms tailored to 128-bit vectors.
+
+*   The result of `UpperHalf`/`LowerHalf` has half the lanes. To obtain a
+    corresponding `d`, use `Half<decltype(d)>`; the opposite is `Twice<>`.
+
+User-specified lane counts or tuples of vectors could cause spills on targets
+with fewer or smaller vectors. By contrast, Highway encourages vector-length
+agnostic code, which is more performance-portable.
+
+Given that lane counts are potentially compile-time-unknown, storage for vectors
+should be dynamically allocated, e.g. via `AllocateAligned(Lanes(d))`. For
+applications that require a compile-time estimate, `MaxLanes(d)` returns the `N`
+from `Simd<T, N>`, which is NOT necessarily the actual lane count. This is
+DISCOURAGED because it is not guaranteed to be an upper bound (RVV vectors may
+be very large) and some compilers are not able to interpret it as constexpr.
+
+For mixed-precision code (e.g. `uint8_t` lanes promoted to `float`), tags for
+the smaller types must be obtained from those of the larger type (e.g. via
 `Rebind<uint8_t, HWY_FULL(float)>`).
 
-The type `T` may be accessed as `TFromD<D>`. There are three possibilities for
-the template parameter `N`:
+## Using unspecified vector types
 
-1.  Equal to the hardware vector width, e.g. when using `HWY_FULL(T)` on a
-    target with compile-time constant vectors.
+Because vector types are unspecified, local vector variables `v` are typically
+defined using `auto` for type deduction. The vector type `V` can be obtained via
+`decltype(v)`, `Vec<D>`, or if an lvalue `d` is available, `decltype(Zero(d))`.
 
-1.  Less than the hardware vector width. This is the result of a compile-time
-    decision by the user, i.e. using `HWY_CAPPED(T, N)` to limit the number of
-    lanes, even when the hardware vector width could be greater.
+Using a type alias of `V` instead of auto may improve readability of code using
+several types of vectors.
 
-1.  Unrelated to the hardware vector width, e.g. when the hardware vector width
-    is not known at compile-time and may be very large.
+Vectors are sizeless types on RVV/SVE. Therefore, vectors must not be used in
+arrays/STL containers (use the lane type `T` instead), class members,
+static/thread_local variables, new-expressions (use `AllocateAligned` instead),
+and sizeof/pointer arithmetic (increment `T*` by `Lanes()` instead).
 
-In all cases, `Lanes(d)` returns the actual number of lanes, i.e. the amount by
-which to advance loop counters. `MaxLanes(d)` returns the `N` from `Simd<T, N>`,
-which is NOT necessarily the actual vector size (see above) and some compilers
-are not able to interpret it as constexpr. Instead of `MaxLanes`, prefer to use
-alternatives, e.g. `Rebind` or `aligned_allocator.h` for dynamic allocation of
-`Lanes(d)` elements.
+Initializing constants requires an lvalue `d` or type `D`, which can be passed
+as a template argument or obtained via `DFromV<V>`.
 
-Highway is designed to map a vector variable to a (possibly partial) hardware
-register or register group. By discouraging user-specified `N` and tuples of
-vector variables, we improve performance portability (e.g. by reducing spills to
-memory for platforms that have smaller vectors than the developer expected).
+**Note**: For builtin `V` (currently necessary on RVV/SVE), `DV = DFromV<V>`
+might not be the same as the `D` used to create `V`. In particular, `DV` must
+not be passed to `Load/Store` functions because it may lack the limit on `N`
+established by the original `D`. However, `Vec<DV>` is the same as `V`.
 
-To construct vectors, call factory functions (see "Initialization" below) with
-a tag parameter `d`.
+Thus a template argument `V` suffices for generic functions that do not load
+from/store to memory: `template<class V> V Mul4(V v) { return v *
+Set(DFromV<V>(), 4); }`.
 
-Local variables typically use auto for type deduction. For some generic
-functions, a template argument `V` is sufficient: `template<class V> V Squared(V
-v) { return v * v; }`. In general, functions have a `D` template argument and
-can return vectors of type `Vec<D>`.
+Example of mixing partial vectors with generic functions:
 
-Note that Highway functions reside in `hwy::HWY_NAMESPACE`, whereas user-defined
-functions reside in `project::[nested]::HWY_NAMESPACE`. Because all Highway
-functions generally take either a `Simd` or vector argument, which are also
-defined in namespace `hwy`, they will typically be found via Argument-Dependent
-Lookup and namespace qualifiers are not necessary. As an exception, Highway
-functions that are templates (e.g. because they require a compile-time argument
-such as a lane index or shift count) require a using-declaration such as
-`using hwy::HWY_NAMESPACE::ShiftLeft`.
+```
+HWY_CAPPED(int16_t, 2) d2;
+auto v = Mul4(Set(d2, 2));
+Store(v, d2, ptr);  // Use d2, NOT DFromV<decltype(v)>()
+```
 
 ## Operations
 
@@ -146,6 +173,18 @@ constraint of the form `V`: `{prefixes}[{bits}]`. The prefixes `u,i,f` denote
 unsigned, signed, and floating-point types, and bits indicates the number of
 bits per lane: 8, 16, 32, or 64. Any combination of the specified prefixes and
 bits are allowed. Abbreviations of the form `u32 = {u}{32}` may also be used.
+
+Note that Highway functions reside in `hwy::HWY_NAMESPACE`, whereas user-defined
+functions reside in `project::[nested]::HWY_NAMESPACE`. Highway functions
+generally take either a `Simd` or vector/mask argument. For targets where
+vectors and masks are defined in namespace `hwy`, the functions will be found
+via Argument-Dependent Lookup. However, this does not work for function
+templates, and RVV and SVE both use builtin vectors. Thus we recommend a `using
+hwy::HWY_NAMESPACE;` directive inside `project::[nested]::HWY_NAMESPACE`.
+
+Note that overloaded operators are not yet supported on RVV and SVE; code that
+wishes to run on all targets until that is resolved can use functions such as
+`Eq`, `Lt`, `Add`, `Div` etc.
 
 ### Initialization
 
@@ -228,9 +267,16 @@ is qNaN, and NaN if both are.
     <code>V **MulHigh**(V a, V b)</code>: returns the upper half of `a[i] *
     b[i]` in each lane.
 
-*   `V`: `{u,i}{32}` \
-    <code>V **MulEven**(V a, V b)</code>: returns double-wide result of `a[i] *
-    b[i]` for every even `i`, in lanes `i` (lower) and `i + 1` (upper).
+*   `V`: `{u,i}{32},u64` \
+    <code>V2 **MulEven**(V a, V b)</code>: returns double-wide result of `a[i] *
+    b[i]` for every even `i`, in lanes `i` (lower) and `i + 1` (upper). `V2` is
+    a vector with double-width lanes, or the same as `V` for 64-bit inputs
+    (which are only supported if `HWY_TARGET != HWY_SCALAR`).
+
+*   `V`: `u64` \
+    <code>V **MulOdd**(V a, V b)</code>: returns double-wide result of `a[i] *
+    b[i]` for every odd `i`, in lanes `i - 1` (lower) and `i` (upper). Only
+    supported if `HWY_TARGET != HWY_SCALAR`.
 
 #### Fused multiply-add
 
@@ -275,7 +321,7 @@ Shift all lanes by the same (not necessarily compile-time constant) amount:
 *   `V`: `{u,i}` \
     <code>V **ShiftRightSame**(V a, int bits)</code> returns `a[i] >> bits`.
 
-Per-lane variable shifts (slow if SSE4, or 16-bit, or Shr i64 on AVX2):
+Per-lane variable shifts (slow if SSSE3/SSE4, or 16-bit, or Shr i64 on AVX2):
 
 *   `V`: `{u,i}{16,32,64}` \
     <code>V **operator<<**(V a, V b)</code> returns `a[i] << b[i]`.
@@ -303,7 +349,11 @@ Per-lane variable shifts (slow if SSE4, or 16-bit, or Shr i64 on AVX2):
 
 ### Logical
 
-These operate on individual bits within each lane.
+*   `V`: `{u,i}` \
+    <code>V **PopulationCount**(V a)</code>: returns the number of 1-bits in
+    each lane, i.e. `PopCount(a[i])`.
+
+The following operate on individual bits within each lane:
 
 *   `V`: `{u,i}` \
     <code>V **operator&**(V a, V b)</code>: returns `a[i] & b[i]`.
@@ -375,9 +425,6 @@ Let `M` denote a mask capable of storing true/false for each lane.
 *   <code>V **VecFromMask**(D, M m)</code>: returns 0 in lane `i` if `m[i] ==
     false`, otherwise all bits set.
 
-*   <code>V **VecFromMask**(M m)</code>: returns 0 in lane `i` if `m[i] ==
-    false`, otherwise all bits set. DEPRECATED and will be removed before 1.0.
-
 *   <code>V **IfThenElse**(M mask, V yes, V no)</code>: returns `mask[i] ?
     yes[i] : no[i]`.
 
@@ -389,17 +436,21 @@ Let `M` denote a mask capable of storing true/false for each lane.
 
 *   <code>V **ZeroIfNegative**(V v)</code>: returns `v[i] < 0 ? 0 : v[i]`.
 
-*   <code>bool **AllTrue**(M m)</code>: returns whether all `m[i]` are true.
+*   <code>bool **AllTrue**(D, M m)</code>: returns whether all `m[i]` are true.
 
-*   <code>bool **AllFalse**(M m)</code>: returns whether all `m[i]` are false.
+*   <code>bool **AllFalse**(D, M m)</code>: returns whether all `m[i]` are
+    false.
 
-*   <code>size_t **StoreMaskBits**(M m, uint8_t* p)</code>: stores a bit array
-    indicating whether `m[i]` is true, in ascending order of `i`, filling the
-    bits of each byte from least to most significant, then proceeding to the
+*   <code>size_t **StoreMaskBits**(D, M m, uint8_t* p)</code>: stores a bit
+    array indicating whether `m[i]` is true, in ascending order of `i`, filling
+    the bits of each byte from least to most significant, then proceeding to the
     next byte. Returns the number of (partial) bytes written.
 
-*   <code>size_t **CountTrue**(M m)</code>: returns how many of `m[i]` are true
-    [0, N]. This is typically more expensive than AllTrue/False.
+*   <code>size_t **CountTrue**(D, M m)</code>: returns how many of `m[i]` are
+    true [0, N]. This is typically more expensive than AllTrue/False.
+
+*   <code>intptr_t **FindFirstTrue**(D, M m)</code>: returns the index of the
+    first (i.e. lowest index) `m[i]` that is true, or -1 if none are.
 
 *   `V`: `{u,i,f}{16,32,64}` \
     <code>V **Compress**(V v, M m)</code>: returns `r` such that `r[n]` is
@@ -408,17 +459,18 @@ Let `M` denote a mask capable of storing true/false for each lane.
     implementation-defined. Slow with 16-bit lanes.
 
 *   `V`: `{u,i,f}{16,32,64}` \
-    <code>size_t **CompressStore**(V v, M m, D, T* aligned)</code>: writes lanes
-    whose mask is set into `aligned`, starting from lane 0. Returns
-    `CountTrue(m)`, the number of valid lanes. All subsequent lanes may be
-    overwritten! Alignment ensures inactive lanes will not cause faults. Slow
-    with 16-bit lanes.
+    <code>size_t **CompressStore**(V v, M m, D d, T* aligned)</code>: writes
+    lanes whose mask `m` is set into `aligned`, starting from lane 0. Returns
+    `CountTrue(d, m)`, the number of valid lanes. All subsequent lanes may be
+    overwritten! Alignment ensures inactive lanes will not cause faults. Slower
+    for 16-bit lanes.
 
 ### Comparisons
 
 These return a mask (see above) indicating whether the condition is true.
 
 *   <code>M **operator==**(V a, V b)</code>: returns `a[i] == b[i]`.
+*   <code>M **operator!=**(V a, V b)</code>: returns `a[i] != b[i]`.
 
 *   `V`: `{i,f}` \
     <code>M **operator&lt;**(V a, V b)</code>: returns `a[i] < b[i]`.
@@ -450,7 +502,7 @@ are naturally aligned. An unaligned access may require two load ports.
 
 *   <code>Vec&lt;D&gt; **Load**(D, const T* aligned)</code>: returns
     `aligned[i]`. May fault if the pointer is not aligned to the vector size.
-    Using this whenever possible improves codegen on SSE4: unlike `LoadU`,
+    Using this whenever possible improves codegen on SSSE3/SSE4: unlike `LoadU`,
     `Load` can be fused into a memory operand, which reduces register pressure.
 *   <code>Vec&lt;D&gt; **LoadU**(D, const T* p)</code>: returns `p[i]`.
 
@@ -506,24 +558,29 @@ F(src[tbl[i]])` because `Scatter` is more expensive than `Gather`.
 
 ### Cache control
 
-All functions except Stream are defined in cache_control.h.
+All functions except `Stream` are defined in cache_control.h.
 
-*   <code>void **Stream**(Vec&lt;D&gt; a, D, const T* aligned)</code>: copies
-    `a[i]` into `aligned[i]` with non-temporal hint on x86 (for good
-    performance, call for all consecutive vectors within the same cache line).
-    (Over)writes a multiple of HWY_STREAM_MULTIPLE bytes.
+*   <code>void **Stream**(Vec&lt;D&gt; a, D d, const T* aligned)</code>: copies
+    `a[i]` into `aligned[i]` with non-temporal hint if available (useful for
+    write-only data; avoids cache pollution). May be implemented using a
+    CPU-internal buffer. To avoid partial flushes and unpredictable interactions
+    with atomics (for example, see Intel SDM Vol 4, Sec. 8.1.2.2), call this
+    consecutively for an entire naturally aligned cache line (typically 64
+    bytes). Each call may write a multiple of `HWY_STREAM_MULTIPLE` bytes, which
+    can exceed `Lanes(d) * sizeof(T)`. The new contents of `aligned` may not be
+    visible until `FlushStream` is called.
 
-*   <code>void **LoadFence**()</code>: delays subsequent loads until prior loads
-    are visible. Also a full fence on Intel CPUs. No effect on non-x86.
-
-*   <code>void **StoreFence**()</code>: ensures previous non-temporal stores are
-    visible. No effect on non-x86.
+*   <code>void **FlushStream**()</code>: ensures values written by previous
+    `Stream` calls are visible on the current core. This is NOT sufficient for
+    synchronizing across cores; when `Stream` outputs are to be consumed by
+    other core(s), the producer must publish availability (e.g. via mutex or
+    atomic_flag) after `FlushStream`.
 
 *   <code>void **FlushCacheline**(const void* p)</code>: invalidates and flushes
-    the cache line containing "p". No effect on non-x86.
+    the cache line containing "p", if possible.
 
-*   <code>void **Prefetch**(const T* p)</code>: begins loading the cache line
-    containing "p".
+*   <code>void **Prefetch**(const T* p)</code>: optionally begins loading the
+    cache line containing "p" to reduce latency of subsequent actual loads.
 
 *   <code>void **Pause**()</code>: when called inside a spin-loop, may reduce
     power consumption.
@@ -533,8 +590,9 @@ All functions except Stream are defined in cache_control.h.
 *   <code>Vec&lt;D&gt; **BitCast**(D, V)</code>: returns the bits of `V`
     reinterpreted as type `Vec<D>`.
 
-*   `V`,`D`: (`u8,i16`), (`u8,i32`), (`u16,i32`), (`i8,i16`), (`i8,i32`),
-    (`i16,i32`), (`f16,f32`), (`f32,f64`) \
+*   `V`,`D`: (`u8,u16`), (`u16,u32`), (`u8,u32`), (`u32,u64`), (`u8,i16`), \
+    (`u8,i32`), (`u16,i32`), (`i8,i16`), (`i8,i32`), (`i16,i32`), (`i32,i64`), \
+    (`f16,f32`), (`f32,f64`) \
     <code>Vec&lt;D&gt; **PromoteTo**(D, V part)</code>: returns `part[i]` zero-
     or sign-extended to `MakeWide<T>`.
 
@@ -573,24 +631,43 @@ if the input exceeds the destination range.
     <code>Ret **NearestInt**(V a)</code>: returns the integer nearest to `a[i]`;
     results are undefined for NaN.
 
-### Swizzle
+### Combine
 
-*   <code>T **GetLane**(V)</code>: returns lane 0 within `V`. This is useful for
-    extracting `SumOfLanes` results.
+*   <code>V2 **LowerHalf**([D, ] V)</code>: returns the lower half of the vector
+    `V`. The optional `D` (provided for consistency with `UpperHalf`) is
+    `Half<DFromV<V>>`.
 
-*   <code>V2 **Upper/LowerHalf**(V)</code>: returns upper or lower half of the
-    vector `V`.
+*   <code>V2 **UpperHalf**(D, V)</code>: returns upper half of the vector `V`,
+    where `D` is `Half<DFromV<V>>`.
 
-*   <code>V **ZeroExtendVector**(V2)</code>: returns vector whose `UpperHalf` is
-    zero and whose `LowerHalf` is the argument.
+*   <code>V **ZeroExtendVector**(D, V2)</code>: returns vector whose `UpperHalf`
+    is zero and whose `LowerHalf` is the argument; `D` is `Twice<DFromV<V2>>`.
 
-*   <code>V **Combine**(V2, V2)</code>: returns vector whose `UpperHalf` is the
-    first argument and whose `LowerHalf` is the second argument. This is
-    currently only implemented for RVV, AVX2, AVX3. If you need to assemble
-    <128 bit parts, please raise an issue to discuss.
+*   <code>V **Combine**(D, V2, V2)</code>: returns vector whose `UpperHalf` is
+    the first argument and whose `LowerHalf` is the second argument. This is
+    currently only implemented for RVV, AVX2, AVX3*. `D` is `Twice<DFromV<V2>>`.
 
-*   <code>V **OddEven**(V a, V b)</code>: returns a vector whose odd lanes are
-    taken from `a` and the even lanes from `b`.
+**Note**: the following operations cross block boundaries, which is typically
+more expensive on AVX2/AVX-512 than per-block operations.
+
+*   <code>V **ConcatLowerLower**(D, V hi, V lo)</code>: returns the
+    concatenation of the lower halves of `hi` and `lo` without splitting into
+    blocks. `D` is `DFromV<V>`.
+
+*   <code>V **ConcatUpperUpper**(D, V hi, V lo)</code>: returns the
+    concatenation of the upper halves of `hi` and `lo` without splitting into
+    blocks. `D` is `DFromV<V>`.
+
+*   <code>V **ConcatLowerUpper**(D, V hi, V lo)</code>: returns the inner half
+    of the concatenation of `hi` and `lo` without splitting into blocks. Useful
+    for swapping the two blocks in 256-bit vectors. `D` is `DFromV<V>`.
+
+*   <code>V **ConcatUpperLower**(D, V hi, V lo)</code>: returns the outer
+    quarters of the concatenation of `hi` and `lo` without splitting into
+    blocks. Unlike the other variants, this does not incur a block-crossing
+    penalty on AVX2. `D` is `DFromV<V>`.
+
+### Blockwise
 
 **Note**: if vectors are larger than 128 bits, the following operations split
 their operands into independently processed 128-bit *blocks*.
@@ -599,46 +676,70 @@ their operands into independently processed 128-bit *blocks*.
     <code>V **Broadcast**&lt;int i&gt;(V)</code>: returns individual *blocks*,
     each with lanes set to `input_block[i]`, `i = [0, 16/sizeof(T))`.
 
-*   `Ret`: `MakeWide<T>`; `V`: `{u,i}{8,16,32}` \
-    <code>Ret **ZipLower**(V a, V b)</code>: returns the same bits as
-    `InterleaveLower`, but repartitioned into double-width lanes (required in
-    order to use this operation with scalars).
+*   `V`: `{u,i}` \
+    <code>VI **TableLookupBytes**(V bytes, VI from)</code>: returns
+    `bytes[from[i]]`. Uses byte lanes regardless of the actual vector types.
+    Results are implementation-defined if `from[i] >= HWY_MIN(lanes in V, 16)`.
+    The number of lanes in `V` and `VI` may differ, e.g. a full-length table
+    vector loaded via `LoadDup128`, plus partial vector `VI` of 4-bit indices.
 
 *   `V`: `{u,i}` \
-    <code>V **TableLookupBytes**(V bytes, V from)</code>: returns
-    `bytes[from[i]]`. Uses byte lanes regardless of the actual vector types.
-    Results are implementation-defined if `from[i] >= HWY_MIN(vector size, 16)`.
+    <code>VI **TableLookupBytesOr0**(V bytes, VI from)</code>: returns
+    `bytes[from[i]]`, or 0 if `from[i] & 0x80`. Uses byte lanes regardless of
+    the actual vector types. Results are implementation-defined for `from[i]` in
+    `[HWY_MIN(vector size, 16), 0x80)`. The zeroing behavior has zero cost on
+    x86 and ARM. For vectors of >= 256 bytes (can happen on SVE and RVV), this
+    will set all lanes after the first 128 to 0. The number of lanes in `V` and
+    `VI` may differ.
 
-**Note**: the following are only available for full vectors (`N` > 1), and split
-their operands into independently processed 128-bit *blocks*:
+*   <code>V **InterleaveLower**([D, ] V a, V b)</code>: returns *blocks* with
+    alternating lanes from the lower halves of `a` and `b` (`a[0]` in the
+    least-significant lane). The optional `D` (provided for consistency with
+    `InterleaveUpper`) is `DFromV<V>`.
+
+*   <code>V **InterleaveUpper**(D, V a, V b)</code>: returns *blocks* with
+    alternating lanes from the upper halves of `a` and `b` (`a[N/2]` in the
+    least-significant lane). `D` is `DFromV<V>`.
+
+*   `Ret`: `MakeWide<T>`; `V`: `{u,i}{8,16,32}` \
+    <code>Ret **ZipLower**([D, ] V a, V b)</code>: returns the same bits as
+    `InterleaveLower`, but repartitioned into double-width lanes (required in
+    order to use this operation with scalars). The optional `D` (provided for
+    consistency with `ZipUpper`) is `RepartitionToWide<DFromV<V>>`.
 
 *   `Ret`: `MakeWide<T>`; `V`: `{u,i}{8,16,32}` \
     <code>Ret **ZipUpper**(V a, V b)</code>: returns the same bits as
     `InterleaveUpper`, but repartitioned into double-width lanes (required in
-    order to use this operation with scalars)
+    order to use this operation with scalars). `D` is
+    `RepartitionToWide<DFromV<V>>`.
 
 *   `V`: `{u,i}` \
-    <code>V **ShiftLeftBytes**&lt;int&gt;(V)</code>: returns the result of
-    shifting independent *blocks* left by `int` bytes \[1, 15\].
+    <code>V **ShiftLeftBytes**&lt;int&gt;([D, ] V)</code>: returns the result of
+    shifting independent *blocks* left by `int` bytes \[1, 15\]. The optional
+    `D` (provided for consistency with `ShiftRightBytes`) is `DFromV<V>`.
 
-*   <code>V **ShiftLeftLanes**&lt;int&gt;(V)</code>: returns the result of
-    shifting independent *blocks* left by `int` lanes.
-
-*   `V`: `{u,i}` \
-    <code>V **ShiftRightBytes**&lt;int&gt;(V)</code>: returns the result of
-    shifting independent *blocks* right by `int` bytes \[1, 15\].
-
-*   <code>V **ShiftRightLanes**&lt;int&gt;(V)</code>: returns the result of
-    shifting independent *blocks* right by `int` lanes.
+*   <code>V **ShiftLeftLanes**&lt;int&gt;([D, ] V)</code>: returns the result of
+    shifting independent *blocks* left by `int` lanes. The optional `D`
+    (provided for consistency with `ShiftRightLanes`) is `DFromV<V>`.
 
 *   `V`: `{u,i}` \
-    <code>V **CombineShiftRightBytes**&lt;int&gt;(V hi, V lo)</code>: returns a
-    vector of *blocks* each the result of shifting two concatenated *blocks*
-    `hi[i] || lo[i]` right by `int` bytes \[1, 16).
+    <code>V **ShiftRightBytes**&lt;int&gt;(D, V)</code>: returns the result of
+    shifting independent *blocks* right by `int` bytes \[1, 15\], shifting in
+    zeros even for partial vectors. `D` is `DFromV<V>`.
 
-*   <code>V **CombineShiftRightLanes**&lt;int&gt;(V hi, V lo)</code>: returns a
-    vector of *blocks* each the result of shifting two concatenated *blocks*
-    `hi[i] || lo[i]` right by `int` lanes \[1, 16/sizeof(T)).
+*   <code>V **ShiftRightLanes**&lt;int&gt;(D, V)</code>: returns the result of
+    shifting independent *blocks* right by `int` lanes, shifting in zeros even
+    for partial vectors. `D` is `DFromV<V>`.
+
+*   `V`: `{u,i}` \
+    <code>V **CombineShiftRightBytes**&lt;int&gt;(D, V hi, V lo)</code>: returns
+    a vector of *blocks* each the result of shifting two concatenated *blocks*
+    `hi[i] || lo[i]` right by `int` bytes \[1, 16). `D` is `DFromV<V>`.
+
+*   <code>V **CombineShiftRightLanes**&lt;int&gt;(D, V hi, V lo)</code>: returns
+    a vector of *blocks* each the result of shifting two concatenated *blocks*
+    `hi[i] || lo[i]` right by `int` lanes \[1, 16/sizeof(T)). `D` is
+    `DFromV<V>`.
 
 *   `V`: `{u,i,f}{32}` \
     <code>V **Shuffle2301**(V)</code>: returns *blocks* with 32-bit halves
@@ -664,65 +765,169 @@ their operands into independently processed 128-bit *blocks*:
     <code>V **Shuffle0123**(V)</code>: returns *blocks* with lanes in reverse
     order.
 
-*   <code>V **InterleaveLower**(V a, V b)</code>: returns *blocks* with
-    alternating lanes from the lower halves of `a` and `b` (`a[0]` in the
-    least-significant lane).
+### Swizzle
 
-*   <code>V **InterleaveUpper**(V a, V b)</code>: returns *blocks* with
-    alternating lanes from the upper halves of `a` and `b` (`a[N/2]` in the
-    least-significant lane).
+*   <code>T **GetLane**(V)</code>: returns lane 0 within `V`. This is useful for
+    extracting `SumOfLanes` results.
 
-**Note**: the following operations cross block boundaries, which is typically
-more expensive on AVX2/AVX-512 than within-block operations.
-
-*   <code>V **ConcatLowerLower**(V hi, V lo)</code>: returns the concatenation
-    of the lower halves of `hi` and `lo` without splitting into blocks.
-
-*   <code>V **ConcatUpperUpper**(V hi, V lo)</code>: returns the concatenation
-    of the upper halves of `hi` and `lo` without splitting into blocks.
-
-*   <code>V **ConcatLowerUpper**(V hi, V lo)</code>: returns the inner half of
-    the concatenation of `hi` and `lo` without splitting into blocks. Useful for
-    swapping the two blocks in 256-bit vectors.
-
-*   <code>V **ConcatUpperLower**(V hi, V lo)</code>: returns the outer quarters
-    of the concatenation of `hi` and `lo` without splitting into blocks. Unlike
-    the other variants, this does not incur a block-crossing penalty on AVX2.
+*   <code>V **OddEven**(V a, V b)</code>: returns a vector whose odd lanes are
+    taken from `a` and the even lanes from `b`.
 
 *   `V`: `{u,i,f}{32}` \
     <code>V **TableLookupLanes**(V a, VI)</code> returns a vector of
-    `a[indices[i]]`, where `VI` is from `SetTableIndices(D, &indices[0])`.
+    `a[indices[i]]`, where `VI` is from `SetTableIndices(D, &indices[0])`. The
+    indices are not limited to blocks, hence this is slower than
+    `TableLookupBytes*` on AVX2/AVX-512. Results are implementation-defined if
+    `indices[i] >= Lanes(D())`.
 
-*   <code>VI **SetTableIndices**(D, int* idx)</code> prepares for
+*   `VI`: `i32` \
+    <code>VI **SetTableIndices**(D, int32_t* idx)</code> prepares for
     `TableLookupLanes` with lane indices `idx = [0, N)` (need not be unique).
 
 ### Reductions
 
 **Note**: these 'reduce' all lanes to a single result (e.g. sum), which is
-broadcasted to all lanes at no extra cost. To obtain a scalar, you can call
-`GetLane`.
+broadcasted to all lanes. To obtain a scalar, you can call `GetLane`.
 
 Being a horizontal operation (across lanes of the same vector), these are slower
 than normal SIMD operations and are typically used outside critical loops.
 
 *   `V`: `{u,i,f}{32,64}` \
-    <code>V **SumOfLanes**(V v)</code>: returns the sum of all lanes in each
+    <code>V **SumOfLanes**(D, V v)</code>: returns the sum of all lanes in each
     lane.
+
+*   `V`: `{u,i,f}{32,64}` \
+    <code>V **MinOfLanes**(D, V v)</code>: returns the minimum-valued lane in
+    each lane.
+
+*   `V`: `{u,i,f}{32,64}` \
+    <code>V **MaxOfLanes**(D, V v)</code>: returns the maximum-valued lane in
+    each lane.
+
+### Crypto
+
+*   `V`: `u8` \
+    <code>V **AESRound**(V state, V round_key)</code>: one round of AES
+    encrytion: `MixColumns(SubBytes(ShiftRows(state))) ^ round_key`. This
+    matches x86 AES-NI. The latency is independent of the input values. Only
+    available if `HWY_TARGET != HWY_SCALAR`.
+
+*   `V`: `u64` \
+    <code>V **CLMulLower**(V a, V b)</code>: carryless multiplication of the
+    lower 64 bits of each 128-bit block into a 128-bit product. The latency is
+    independent of the input values (assuming that is true of normal integer
+    multiplication) so this can safely be used in cryto. Applications that wish
+    to multiply upper with lower halves can `Shuffle01` one of the operands; on
+    x86 that is expected to be latency-neutral.
+
+*   `V`: `u64` \
+    <code>V **CLMulUpper**(V a, V b)</code>: as CLMulLower, but multiplies the
+    upper 64 bits of each 128-bit block.
+
+### Deprecated
+
+*   <code>bool **AllTrue**(M m)</code>: returns whether all `m[i]` are true.
+    DEPRECATED, SVE needs an extra D argument.
+
+*   <code>bool **AllFalse**(M m)</code>: returns whether all `m[i]` are false.
+    DEPRECATED, SVE needs an extra D argument.
+
+*   <code>size_t **StoreMaskBits**(M m, uint8_t* p)</code>: stores a bit array
+    indicating whether `m[i]` is true, in ascending order of `i`, filling the
+    bits of each byte from least to most significant, then proceeding to the
+    next byte. Returns the number of (partial) bytes written. DEPRECATED, SVE
+    needs an extra D argument.
+
+*   <code>size_t **CountTrue**(M m)</code>: returns how many of `m[i]` are true
+    [0, N]. This is typically more expensive than AllTrue/False. DEPRECATED, SVE
+    needs an extra D argument.
+
+*   <code>void **StoreFence**()</code>: DEPRECATED, calls `FlushStream`.
+
+*   <code>void **LoadFence**()</code>: delays subsequent loads until prior loads
+    are visible. Also a full fence on Intel CPUs. No effect on non-x86.
+    DEPRECATED due to differing behavior across architectures AND vendors.
+
+*   <code>V2 **UpperHalf**(V)</code>: returns upper half of the vector `V`.
+    DEPRECATED, supporting partial vectors requires a D argument.
+
+*   `V`: `{u,i}` \
+    <code>V **ShiftRightBytes**&lt;int&gt;(V)</code>: returns the result of
+    shifting independent *blocks* right by `int` bytes \[1, 15\]. DEPRECATED,
+    supporting partial vectors requires a D argument.
+
+*   <code>V **ShiftRightLanes**&lt;int&gt;(V)</code>: returns the result of
+    shifting independent *blocks* right by `int` lanes. DEPRECATED, supporting
+    partial vectors requires a D argument.
+
+*   <code>V **ZeroExtendVector**(V2)</code>: returns vector whose `UpperHalf` is
+    zero and whose `LowerHalf` is the argument. DEPRECATED, supporting partial
+    vectors requires a D argument.
+
+*   <code>V **Combine**(V2, V2)</code>: returns vector whose `UpperHalf` is the
+    first argument and whose `LowerHalf` is the second argument. This is
+    currently only implemented for RVV, AVX2, AVX3*. DEPRECATED, supporting
+    partial vectors requires a D argument.
+
+*   <code>V **ConcatLowerLower**(V hi, V lo)</code>: returns the concatenation
+    of the lower halves of `hi` and `lo` without splitting into blocks.
+    DEPRECATED, supporting partial vectors requires a D argument.
+
+*   <code>V **ConcatUpperUpper**(V hi, V lo)</code>: returns the concatenation
+    of the upper halves of `hi` and `lo` without splitting into blocks.
+    DEPRECATED, supporting partial vectors requires a D argument.
+
+*   <code>V **ConcatLowerUpper**(V hi, V lo)</code>: returns the inner half of
+    the concatenation of `hi` and `lo` without splitting into blocks. Useful for
+    swapping the two blocks in 256-bit vectors. DEPRECATED, supporting partial
+    vectors requires a D argument.
+
+*   <code>V **ConcatUpperLower**(V hi, V lo)</code>: returns the outer quarters
+    of the concatenation of `hi` and `lo` without splitting into blocks. Unlike
+    the other variants, this does not incur a block-crossing penalty on AVX2.
+    DEPRECATED, supporting partial vectors requires a D argument.
+
+*   <code>V **InterleaveUpper**(V a, V b)</code>: returns *blocks* with
+    alternating lanes from the upper halves of `a` and `b` (`a[N/2]` in the
+    least-significant lane). DEPRECATED, supporting partial vectors requires a D
+    argument.
+
+*   `Ret`: `MakeWide<T>`; `V`: `{u,i}{8,16,32}` \
+    <code>Ret **ZipUpper**(V a, V b)</code>: returns the same bits as
+    `InterleaveUpper`, but repartitioned into double-width lanes (required in
+    order to use this operation with scalars). DEPRECATED, supporting partial
+    vectors requires a D argument.
+
+*   `V`: `{u,i}` \
+    <code>V **CombineShiftRightBytes**&lt;int&gt;(V hi, V lo)</code>: returns a
+    vector of *blocks* each the result of shifting two concatenated *blocks*
+    `hi[i] || lo[i]` right by `int` bytes \[1, 16). DEPRECATED, supporting
+    partial vectors requires a D argument.
+
+*   <code>V **CombineShiftRightLanes**&lt;int&gt;(V hi, V lo)</code>: returns a
+    vector of *blocks* each the result of shifting two concatenated *blocks*
+    `hi[i] || lo[i]` right by `int` lanes \[1, 16/sizeof(T)). DEPRECATED,
+    supporting partial vectors requires a D argument.
+
+*   `V`: `{u,i,f}{32,64}` \
+    <code>V **SumOfLanes**(V v)</code>: returns the sum of all lanes in each
+    lane. DEPRECATED, SVE/RVV require a D argument to support partial vectors.
 
 *   `V`: `{u,i,f}{32,64}` \
     <code>V **MinOfLanes**(V v)</code>: returns the minimum-valued lane in each
-    lane.
+    lane. DEPRECATED, SVE/RVV require a D argument to support partial vectors.
 
 *   `V`: `{u,i,f}{32,64}` \
     <code>V **MaxOfLanes**(V v)</code>: returns the maximum-valued lane in each
-    lane.
+    lane. DEPRECATED, SVE/RVV require a D argument to support partial vectors.
 
 ## Advanced macros
 
 Let `Target` denote an instruction set:
-`SCALAR/SSE4/AVX2/AVX3/PPC8/NEON/WASM/RVV`. Targets are only used if enabled
-(i.e. not broken nor disabled). Baseline means the compiler is allowed to
-generate such instructions (implying the target CPU would have to support them).
+`SCALAR/SSSE3/SSE4/AVX2/AVX3/AVX3_DL/PPC8/NEON/WASM/RVV`. Targets are only used
+if enabled (i.e. not broken nor disabled). Baseline means the compiler is
+allowed to generate such instructions (implying the target CPU would have to
+support them).
 
 *   `HWY_Target=##` are powers of two uniquely identifying `Target`.
 
@@ -743,12 +948,17 @@ generate such instructions (implying the target CPU would have to support them).
     finally reverts to `HWY_STATIC_TARGET`. Can be used in `#if` expressions to
     provide an alternative to functions which are not supported by HWY_SCALAR.
 
+*   `HWY_WANT_AVX3_DL`: additional opt-in for HWY_AVX3, which is disabled unless
+    this is defined by the app before including highway.h, OR all AVX3_DL
+    compiler flags are specified.
+
 *   `HWY_IDE` is 0 except when parsed by IDEs; adding it to conditions such as
     `#if HWY_TARGET != HWY_SCALAR || HWY_IDE` avoids code appearing greyed out.
 
 The following signal capabilities and expand to 1 or 0.
 
 *   `HWY_CAP_INTEGER64`: support for 64-bit signed/unsigned integer lanes.
+*   `HWY_CAP_FLOAT16`: support for IEEE half-precision floating-point lanes.
 *   `HWY_CAP_FLOAT64`: support for double-precision floating-point lanes.
 
 The following were used to signal the maximum number of lanes for certain
@@ -810,8 +1020,10 @@ policy for selecting `HWY_TARGETS`:
     and permitted by the compiler, independently of autovectorization), which
     maximizes coverage in tests.
 
-If none are defined, the default is to select all attainable targets except any
-non-best baseline (typically `HWY_SCALAR`), which reduces code size.
+If none are defined, but `HWY_IS_TEST` is defined, the default is
+`HWY_COMPILE_ALL_ATTAINABLE`. Otherwise, the default is to select all attainable
+targets except any non-best baseline (typically `HWY_SCALAR`), which reduces
+code size.
 
 ## Compiler support
 
@@ -819,7 +1031,8 @@ Clang and GCC require e.g. -mavx2 flags in order to use SIMD intrinsics.
 However, this enables AVX2 instructions in the entire translation unit, which
 may violate the one-definition rule and cause crashes. Instead, we use
 target-specific attributes introduced via #pragma. Function using SIMD must
-reside between `HWY_BEFORE_NAMESPACE` and `HWY_AFTER_NAMESPACE`.
+reside between `HWY_BEFORE_NAMESPACE` and `HWY_AFTER_NAMESPACE`. Alternatively,
+individual functions or lambdas may be prefixed with `HWY_ATTR`.
 
 Immediates (compile-time constants) are specified as template arguments to avoid
 constant-propagation issues with Clang on ARM.
