@@ -651,11 +651,11 @@ int QCD_marker::write(j2c_destination_base &dst) {
   dst.put_byte(Sqcd);
 
   if (is_reversible) {
-    for (unsigned short &i : SPqcd) {
+    for (uint16_t &i : SPqcd) {
       dst.put_byte(static_cast<uint8_t>(i));
     }
   } else {
-    for (unsigned short &i : SPqcd) {
+    for (uint16_t &i : SPqcd) {
       dst.put_word(i);
     }
   }
@@ -696,7 +696,7 @@ uint8_t QCD_marker::get_number_of_guardbits() const { return Sqcd >> 5; }
 uint8_t QCD_marker::get_MAGB() {
   uint8_t qstyle = get_quantization_style();
   uint8_t tmp    = (qstyle > 0) ? 0xFF : 0;
-  for (unsigned short &val : SPqcd) {
+  for (uint16_t &val : SPqcd) {
     if (qstyle == 0) {
       tmp = (tmp < (val >> 3)) ? val >> 3 : tmp;
     } else {
@@ -953,11 +953,11 @@ int QCC_marker::write(j2c_destination_base &dst) {
   dst.put_byte(Sqcc);
 
   if (is_reversible) {
-    for (unsigned short &i : SPqcc) {
+    for (uint16_t &i : SPqcc) {
       dst.put_byte(static_cast<uint8_t>(i));
     }
   } else {
-    for (unsigned short &i : SPqcc) {
+    for (uint16_t &i : SPqcc) {
       dst.put_word(i);
     }
   }

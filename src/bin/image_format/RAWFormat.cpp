@@ -221,11 +221,11 @@ grk_image* RAWFormat::rawtoimage(const char* filename, grk_cparameters* paramete
 
 	uint32_t i, compno, w, h;
 	uint16_t numcomps;
-	GRK_COLOR_SPACE color_space;
+	GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
 	grk_image_cmptparm* cmptparm;
 	grk_image* image = nullptr;
-	unsigned short ch;
-	bool success = true;
+	uint16_t ch;
+	bool success = false;
 
 	if(!(raw_cp->width && raw_cp->height && raw_cp->numcomps && raw_cp->prec))
 	{
@@ -250,34 +250,23 @@ grk_image* RAWFormat::rawtoimage(const char* filename, grk_cparameters* paramete
 		if(!m_fileStream)
 		{
 			spdlog::error("Failed to open {} for reading", filename);
-			success = false;
 			goto cleanup;
 		}
 	}
 	numcomps = raw_cp->numcomps;
 	if(numcomps == 1)
-	{
 		color_space = GRK_CLRSPC_GRAY;
-	}
 	else if((numcomps >= 3) && (parameters->mct == 0))
-	{
 		color_space = GRK_CLRSPC_SYCC;
-	}
 	else if((numcomps >= 3) && (parameters->mct != 2))
-	{
 		color_space = GRK_CLRSPC_SRGB;
-	}
-	else
-	{
-		color_space = GRK_CLRSPC_UNKNOWN;
-	}
+
 	w = raw_cp->width;
 	h = raw_cp->height;
 	cmptparm = (grk_image_cmptparm*)calloc(numcomps, sizeof(grk_image_cmptparm));
 	if(!cmptparm)
 	{
 		spdlog::error("Failed to allocate image components parameters");
-		success = false;
 		goto cleanup;
 	}
 	/* initialize image components */
@@ -293,7 +282,6 @@ grk_image* RAWFormat::rawtoimage(const char* filename, grk_cparameters* paramete
 		if(raw_cp->comps[i].dx * raw_cp->comps[i].dy != 1)
 		{
 			spdlog::error("Subsampled raw images are not currently supported");
-			success = false;
 			goto cleanup;
 		}
 	}
@@ -301,10 +289,8 @@ grk_image* RAWFormat::rawtoimage(const char* filename, grk_cparameters* paramete
 	image = grk_image_new(numcomps, &cmptparm[0], color_space, true);
 	free(cmptparm);
 	if(!image)
-	{
-		success = false;
 		goto cleanup;
-	}
+
 	/* set image offset and reference grid */
 	image->x0 = parameters->image_offset_x0;
 	image->y0 = parameters->image_offset_y0;
@@ -326,7 +312,6 @@ grk_image* RAWFormat::rawtoimage(const char* filename, grk_cparameters* paramete
 				if(!rc)
 				{
 					spdlog::error("Error reading raw file. End of file probably reached.");
-					success = false;
 					goto cleanup;
 				}
 				ptr += image->comps[compno].stride;
@@ -348,7 +333,6 @@ grk_image* RAWFormat::rawtoimage(const char* filename, grk_cparameters* paramete
 				if(!rc)
 				{
 					spdlog::error("Error reading raw file. End of file probably reached.");
-					success = false;
 					goto cleanup;
 				}
 				ptr += image->comps[compno].stride;
@@ -358,14 +342,12 @@ grk_image* RAWFormat::rawtoimage(const char* filename, grk_cparameters* paramete
 	else
 	{
 		spdlog::error("Grok cannot encode raw components with bit depth higher than 16 bits.");
-		success = false;
 		goto cleanup;
 	}
 
 	if(fread(&ch, 1, 1, m_fileStream))
-	{
 		spdlog::warn("End of raw file not reached... processing anyway");
-	}
+	success = true;
 cleanup:
 	if(m_fileStream && !m_useStdIO)
 	{
