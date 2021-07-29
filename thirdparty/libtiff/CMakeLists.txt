@@ -188,14 +188,20 @@ target_include_directories(tiff
         ${TIFF_INCLUDES}
 )
 
+set(tiff_libs_private_list "") # cmake list
+set(tiff_requires_private "") # cmake string
+
 if(ZIP_SUPPORT)
   target_link_libraries(tiff PRIVATE ZLIB::ZLIB)
+  string(APPEND tiff_requires_private " zlib")
 endif()
 if(ZIP_SUPPORT AND LIBDEFLATE_SUPPORT)
   target_link_libraries(tiff PRIVATE Deflate::Deflate)
+  list(APPEND tiff_libs_private_list "${Deflate_LIBRARY}")
 endif()
 if(JPEG_SUPPORT)
   target_link_libraries(tiff PRIVATE JPEG::JPEG)
+  string(APPEND tiff_requires_private " libjpeg")
   if(JPEG_DUAL_MODE_8_12)
     target_include_directories(tiff PRIVATE ${JPEG12_INCLUDE_DIR})
     target_link_libraries(tiff PRIVATE ${JPEG12_LIBRARIES})
@@ -203,20 +209,31 @@ if(JPEG_SUPPORT)
 endif()
 if(JBIG_SUPPORT)
   target_link_libraries(tiff PRIVATE JBIG::JBIG)
+  list(APPEND tiff_libs_private_list "${JBIG_LIBRARY}")
 endif()
 if(LERC_SUPPORT)
-    target_link_libraries(tiff PRIVATE LERC::LERC)
+  target_link_libraries(tiff PRIVATE LERC::LERC)
+  list(APPEND tiff_libs_private_list "${LERC_LIBRARY}")
 endif()
 if(LZMA_SUPPORT)
-    target_link_libraries(tiff PRIVATE LibLZMA::LibLZMA)
+  target_link_libraries(tiff PRIVATE LibLZMA::LibLZMA)
+  string(APPEND tiff_requires_private " liblzma")
 endif()
 if(ZSTD_SUPPORT)
   target_link_libraries(tiff PRIVATE ZSTD::ZSTD)
+  string(APPEND tiff_requires_private " libzstd")
 endif()
 if(WEBP_SUPPORT)
   target_link_libraries(tiff PRIVATE WebP::WebP)
+  string(APPEND tiff_requires_private " libwebp")
 endif()
 target_link_libraries(tiff PRIVATE CMath::CMath)
+if(CMath_LIBRARY)
+  list(APPEND tiff_libs_private_list "${CMath_LIBRARY}")
+endif()
+
+set(tiff_libs_private_list "${tiff_libs_private_list}" PARENT_SCOPE)
+set(tiff_requires_private "${tiff_requires_private}" PARENT_SCOPE)
 
 set_target_properties(tiff PROPERTIES SOVERSION ${SO_COMPATVERSION})
 if(NOT CYGWIN)
@@ -231,13 +248,21 @@ if(HAVE_LD_VERSION_SCRIPT)
                         "-Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/libtiff.map")
 endif()
 
-install(TARGETS tiff
+export(TARGETS tiff NAMESPACE TIFF:: FILE "${CMAKE_CURRENT_BINARY_DIR}/libtiffTargets.cmake")
+install(TARGETS tiff EXPORT TiffTargets
         RUNTIME DESTINATION ${CMAKE_INSTALL_FULL_BINDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_FULL_LIBDIR})
 
 install(FILES ${tiff_public_HEADERS}
         DESTINATION "${CMAKE_INSTALL_FULL_INCLUDEDIR}")
+
+set(TIFF_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/tiff)
+install(EXPORT TiffTargets
+        FILE TiffTargets.cmake
+        NAMESPACE TIFF::
+        DESTINATION ${TIFF_CONFIGDIR}
+)
 
 if(CXX_SUPPORT)
   set(tiffxx_HEADERS

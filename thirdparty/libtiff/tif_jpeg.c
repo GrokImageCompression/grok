@@ -179,6 +179,7 @@ typedef struct {
 
         int             ycbcrsampling_fetched;
         int             max_allowed_scan_number;
+        int             has_warned_about_progressive_mode;
 } JPEGState;
 
 #define	JState(tif)	((JPEGState*)(tif)->tif_data)
@@ -1202,6 +1203,16 @@ JPEGPreDecode(TIFF* tif, uint16_t s)
 	}
 #endif
 
+    if( sp->cinfo.d.progressive_mode && !sp->has_warned_about_progressive_mode )
+    {
+        TIFFWarningExt(tif->tif_clientdata, module,
+                       "The JPEG strip/tile is encoded with progressive mode, "
+                       "which is normally not legal for JPEG-in-TIFF.\n"
+                       "libtiff should be able to decode it, but it might "
+                       "cause compatibility issues with other readers");
+        sp->has_warned_about_progressive_mode = TRUE;
+    }
+
         /* In some cases, libjpeg needs to allocate a lot of memory */
         /* http://www.libjpeg-turbo.org/pmwiki/uploads/About/TwoIssueswiththeJPEGStandard.pdf */
         if( TIFFjpeg_has_multiple_scans(sp) )
@@ -1722,6 +1733,34 @@ prepare_JPEGTables(TIFF* tif)
 	return (1);
 }
 
+#if defined(JPEG_LIB_VERSION_MAJOR) && (JPEG_LIB_VERSION_MAJOR > 9 || \
+    (JPEG_LIB_VERSION_MAJOR == 9 && JPEG_LIB_VERSION_MINOR >= 4))
+/* This is a modified version of std_huff_tables() from jcparam.c
+ * in libjpeg-9d because it no longer initializes default Huffman
+ * tables in jpeg_set_defaults(). */
+static void
+TIFF_std_huff_tables (j_compress_ptr cinfo)
+{
+
+  if( cinfo->dc_huff_tbl_ptrs[0] == NULL )
+  {
+      (void) jpeg_std_huff_table((j_common_ptr) cinfo, TRUE, 0);
+  }
+  if( cinfo->ac_huff_tbl_ptrs[0] == NULL )
+  {
+      (void) jpeg_std_huff_table((j_common_ptr) cinfo, FALSE, 0);
+  }
+  if( cinfo->dc_huff_tbl_ptrs[1] == NULL )
+  {
+      (void) jpeg_std_huff_table((j_common_ptr) cinfo, TRUE, 1);
+  }
+  if( cinfo->ac_huff_tbl_ptrs[1] == NULL )
+  {
+      (void) jpeg_std_huff_table((j_common_ptr) cinfo, FALSE, 1);
+  }
+}
+#endif
+
 static int
 JPEGSetupEncode(TIFF* tif)
 {
@@ -1770,6 +1809,23 @@ JPEGSetupEncode(TIFF* tif)
 	}
 	if (!TIFFjpeg_set_defaults(sp))
 		return (0);
+
+    /* mozjpeg by default enables progressive JPEG, which is illegal in JPEG-in-TIFF */
+    /* So explicitly disable it. */
+    if( sp->cinfo.c.num_scans != 0 &&
+        (sp->jpegtablesmode & JPEGTABLESMODE_HUFF) != 0 )
+    {
+        /* it has been found that mozjpeg could create corrupt strips/tiles */
+        /* in non optimize_coding mode. */
+        TIFFWarningExt(tif->tif_clientdata, module,
+                       "mozjpeg library likely detected. Disable emission of "
+                       "Huffman tables in JpegTables tag, and use optimize_coding "
+                       "to avoid potential issues");
+        sp->jpegtablesmode &= ~JPEGTABLESMODE_HUFF;
+    }
+    sp->cinfo.c.num_scans = 0;
+    sp->cinfo.c.scan_info = NULL;
+
 	/* Set per-file parameters */
 	switch (sp->photometric) {
 	case PHOTOMETRIC_YCBCR:
@@ -1869,18 +1925,33 @@ JPEGSetupEncode(TIFF* tif)
 		}
 	}
 
+
 	/* Create a JPEGTables field if appropriate */
 	if (sp->jpegtablesmode & (JPEGTABLESMODE_QUANT|JPEGTABLESMODE_HUFF)) {
-                if( sp->jpegtables == NULL
-                    || memcmp(sp->jpegtables,"\0\0\0\0\0\0\0\0\0",8) == 0 )
-                {
-                        if (!prepare_JPEGTables(tif))
-                                return (0);
-                        /* Mark the field present */
-                        /* Can't use TIFFSetField since BEENWRITING is already set! */
-                        tif->tif_flags |= TIFF_DIRTYDIRECT;
-                        TIFFSetFieldBit(tif, FIELD_JPEGTABLES);
-                }
+        if( sp->jpegtables == NULL
+            || memcmp(sp->jpegtables,"\0\0\0\0\0\0\0\0\0",8) == 0 )
+        {
+#if defined(JPEG_LIB_VERSION_MAJOR) && (JPEG_LIB_VERSION_MAJOR > 9 || \
+    (JPEG_LIB_VERSION_MAJOR == 9 && JPEG_LIB_VERSION_MINOR >= 4))
+            if( (sp->jpegtablesmode & JPEGTABLESMODE_HUFF) != 0 &&
+                (sp->cinfo.c.dc_huff_tbl_ptrs[0] == NULL ||
+                 sp->cinfo.c.dc_huff_tbl_ptrs[1] == NULL ||
+                 sp->cinfo.c.ac_huff_tbl_ptrs[0] == NULL ||
+                 sp->cinfo.c.ac_huff_tbl_ptrs[1] == NULL) )
+            {
+                /* libjpeg-9d no longer initializes default Huffman tables in */
+                /* jpeg_set_defaults() */
+                TIFF_std_huff_tables(&sp->cinfo.c);
+            }
+#endif
+
+            if (!prepare_JPEGTables(tif))
+                    return (0);
+            /* Mark the field present */
+            /* Can't use TIFFSetField since BEENWRITING is already set! */
+            tif->tif_flags |= TIFF_DIRTYDIRECT;
+            TIFFSetFieldBit(tif, FIELD_JPEGTABLES);
+        }
 	} else {
 		/* We do not support application-supplied JPEGTables, */
 		/* so mark the field not present */
