@@ -597,7 +597,7 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 	uint32_t numTiles = (uint32_t)m_cp.t_grid_height * m_cp.t_grid_width;
 	if(numTiles > maxNumTilesJ2K)
 	{
-		GRK_ERROR("Number of tiles %u is greater than %u max tiles "
+		GRK_ERROR("Number of tiles %u is greater than max tiles %u"
 				  "allowed by the standard.",
 				  numTiles, maxNumTilesJ2K);
 		return false;
@@ -606,7 +606,6 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 	ThreadPool pool(pool_size);
 	std::vector<std::future<int>> results;
 	std::atomic<bool> success(true);
-	bool rc = false;
 	if(pool_size > 1)
 	{
 		for(uint16_t i = 0; i < numTiles; ++i)
@@ -618,15 +617,9 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 					auto tileProcessor = new TileProcessor(this, m_stream, true, false);
 					tileProcessor->m_tileIndex = tileIndex;
 					tileProcessor->current_plugin_tile = tile;
-					if(!tileProcessor->preCompressTile())
+					if(!tileProcessor->preCompressTile() || !tileProcessor->doCompress())
 						success = false;
-					else
-					{
-						if(!tileProcessor->doCompress())
-							success = false;
-					}
-					if(success)
-						heap.push(tileProcessor);
+					heap.push(tileProcessor);
 				}
 				return 0;
 			}));
@@ -639,20 +632,18 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 			auto tileProcessor = new TileProcessor(this, m_stream, true, false);
 			tileProcessor->m_tileIndex = i;
 			tileProcessor->current_plugin_tile = tile;
-			if(!tileProcessor->preCompressTile())
+			if(!tileProcessor->preCompressTile() || !tileProcessor->doCompress())
 			{
 				delete tileProcessor;
-				goto cleanup;
-			}
-			if(!tileProcessor->doCompress())
-			{
-				delete tileProcessor;
+				success = false;
 				goto cleanup;
 			}
 			bool write_success = writeTileParts(tileProcessor);
 			delete tileProcessor;
-			if(!write_success)
+			if(!write_success){
+				success = false;
 				goto cleanup;
+			}
 		}
 	}
 	if(pool_size > 1)
@@ -661,10 +652,7 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 		{
 			result.get();
 		}
-		if(!success)
-			goto cleanup;
 	}
-	rc = true;
 cleanup:
 	auto completeTileProcessor = heap.pop();
 	while(completeTileProcessor)
@@ -677,7 +665,8 @@ cleanup:
 		delete completeTileProcessor;
 		completeTileProcessor = heap.pop();
 	}
-	return rc;
+
+	return success;
 }
 bool CodeStreamCompress::compressTile(uint16_t tileIndex, uint8_t* p_data,
 									  uint64_t uncompressed_data_size)
