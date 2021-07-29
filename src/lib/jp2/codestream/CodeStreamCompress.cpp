@@ -856,8 +856,13 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 	if(tileProcessor->canPreCalculateTileLen())
 	{
 		auto actualBytes = m_stream->tell() - currentPos;
-		assert(actualBytes == calculatedBytesWritten);
-		(void)actualBytes;
+		//GRK_INFO("Tile %d: precalculated / actual : %d / %d",
+		//		tileProcessor->m_tileIndex, calculatedBytesWritten, actualBytes);
+		if (actualBytes != calculatedBytesWritten){
+			GRK_ERROR("Error in tile length calculation. Please share uncompressed image\n"
+					"and compression parameters on Github issue tracker");
+			return false;
+		}
 		tilePartBytesWritten = calculatedBytesWritten;
 	}
 	if(m_cp.tlm_markers)
