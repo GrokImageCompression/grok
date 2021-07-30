@@ -400,6 +400,8 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 #endif
 	if(tcp->csty & J2K_CP_CSTY_SOP)
 	{
+		if (max_bytes_available < 6)
+			return false;
 		if(max_bytes_available != UINT_MAX)
 			max_bytes_available -= 6;
 		byteCount += 6;
@@ -415,6 +417,8 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 		max_bytes_available -= (uint32_t)bio->numBytes();
 	if(tcp->csty & J2K_CP_CSTY_EPH)
 	{
+		if (max_bytes_available < 2)
+			return false;
 		if(max_bytes_available != UINT_MAX)
 			max_bytes_available -= 2;
 		byteCount += 2;
