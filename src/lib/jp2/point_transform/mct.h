@@ -86,7 +86,7 @@ class mct
 	 @return false if function encounter a problem, true otherwise
 	 */
 	static bool compress_custom(uint8_t* p_coding_data, uint64_t n, uint8_t** p_data,
-								uint32_t numComps, uint32_t is_signed);
+			uint16_t numComps, uint32_t is_signed);
 	/**
 	 Custom MCT decode
 	 @param pDecodingData    MCT data
@@ -97,14 +97,14 @@ class mct
 	 @return false if function encounter a problem, true otherwise
 	 */
 	static bool decompress_custom(uint8_t* pDecodingData, uint64_t n, uint8_t** pData,
-								  uint32_t pNbComp, uint32_t isSigned);
+			uint16_t pNbComp, uint32_t isSigned);
 	/**
 	 Calculate norm of MCT transform
 	 @param pNorms         MCT data
 	 @param nb_comps       number of components
 	 @param pMatrix        components
 	 */
-	static void calculate_norms(double* pNorms, uint32_t nb_comps, float* pMatrix);
+	static void calculate_norms(double* pNorms, uint16_t nb_comps, float* pMatrix);
 
 	/**
 	 Apply a reversible inverse dc shift to an image
@@ -113,7 +113,7 @@ class mct
 	 @param tccps tile component coding parameters
 	 */
 	static void decompress_dc_shift_rev(Tile* tile, GrkImage* image,
-										TileComponentCodingParams* tccps, uint32_t compno);
+										TileComponentCodingParams* tccps, uint16_t compno);
 
 	/**
 	 Apply an irreversible inverse dc shift to an image
@@ -122,7 +122,7 @@ class mct
 	 @param tccps tile component coding parameters
 	 */
 	static void decompress_dc_shift_irrev(Tile* tile, GrkImage* image,
-										  TileComponentCodingParams* tccps, uint32_t compno);
+										  TileComponentCodingParams* tccps, uint16_t compno);
 private:
 	static void genShift(uint16_t compno,
 						GrkImage* image,

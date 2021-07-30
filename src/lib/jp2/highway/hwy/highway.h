@@ -27,16 +27,11 @@ namespace hwy {
 
 // API version (https://semver.org/); keep in sync with CMakeLists.txt.
 #define HWY_MAJOR 0
-#define HWY_MINOR 12
-#define HWY_PATCH 2
+#define HWY_MINOR 14
+#define HWY_PATCH 0
 
 //------------------------------------------------------------------------------
 // Shorthand for descriptors (defined in shared-inl.h) used to select overloads.
-
-// Because Highway functions take descriptor and/or vector arguments, ADL finds
-// these functions without requiring users in project::HWY_NAMESPACE to
-// qualify Highway functions with hwy::HWY_NAMESPACE. However, ADL rules for
-// templates require `using hwy::HWY_NAMESPACE::ShiftLeft;` etc. declarations.
 
 // HWY_FULL(T[,LMUL=1]) is a native vector/group. LMUL is the number of
 // registers in the group, and is ignored on targets that do not support groups.

@@ -502,7 +502,7 @@ HWY_EXPORT(hwy_decompress_dc_shift_rev);
 
 void mct::decompress_dc_shift_irrev(Tile* tile, GrkImage* image,
 									TileComponentCodingParams* tccps,
-									uint32_t compno)
+									uint16_t compno)
 {
 	int32_t* GRK_RESTRICT c0 =
 		  tile->comps[compno].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
@@ -535,7 +535,7 @@ void mct::decompress_irrev(Tile* tile, GrkImage* image, TileComponentCodingParam
 }
 
 void mct::decompress_dc_shift_rev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps,
-								  uint32_t compno)
+		uint16_t compno)
 {
 	int32_t* GRK_RESTRICT c0 =
 		tile->comps[compno].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
@@ -642,7 +642,7 @@ void mct::genShift(GrkImage* image,
 
 
 
-void mct::calculate_norms(double* pNorms, uint32_t pNbComps, float* pMatrix)
+void mct::calculate_norms(double* pNorms, uint16_t pNbComps, float* pMatrix)
 {
 	float CurrentValue;
 	double* Norms = (double*)pNorms;
@@ -664,7 +664,7 @@ void mct::calculate_norms(double* pNorms, uint32_t pNbComps, float* pMatrix)
 	}
 }
 
-bool mct::compress_custom(uint8_t* mct_matrix, uint64_t n, uint8_t** pData, uint32_t pNbComp,
+bool mct::compress_custom(uint8_t* mct_matrix, uint64_t n, uint8_t** pData, uint16_t pNbComp,
 						  uint32_t isSigned)
 {
 	auto Mct = (float*)mct_matrix;
@@ -703,7 +703,7 @@ bool mct::compress_custom(uint8_t* mct_matrix, uint64_t n, uint8_t** pData, uint
 	return true;
 }
 
-bool mct::decompress_custom(uint8_t* mct_matrix, uint64_t n, uint8_t** pData, uint32_t num_comps,
+bool mct::decompress_custom(uint8_t* mct_matrix, uint64_t n, uint8_t** pData, uint16_t num_comps,
 							uint32_t is_signed)
 {
 	auto data = (float**)pData;
