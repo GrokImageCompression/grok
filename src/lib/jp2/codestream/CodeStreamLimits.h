@@ -32,7 +32,6 @@ const uint32_t maxTilePartSizeJ2K = UINT_MAX;
 const uint32_t maxNumLayersJ2K = 65535;
 
 // Limits in Grok library
-const uint32_t maxSupportedPrecisionGRK = 16; // maximum supported precision for Grok library
 // We can have a maximum 31 bits in each 32 bit wavelet coefficient
 // as the most significant bit is reserved for the sign.
 // Since we need T1_NMSEDEC_FRACBITS fixed point fractional bits,

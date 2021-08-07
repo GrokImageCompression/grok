@@ -640,6 +640,16 @@ bool PNMFormat::encodeHeader(grk_image* image, const std::string& filename,
 	m_image = image;
 	m_fileName = filename;
 
+	if(!grk::allComponentsSanityCheck(m_image, true)){
+		spdlog::error("PNMFormat::encodeHeader: image sanity check failed.");
+		return false;
+	}
+
+	if (m_image->numcomps > 4){
+		spdlog::error("PNMFormat::encodeHeader: %d number of components not supported.", m_image->numcomps);
+		return false;
+	}
+
 	(void)compressionParam;
 
 	return true;
@@ -653,30 +663,18 @@ bool PNMFormat::encodeStrip(uint32_t rows)
 	int* blue = nullptr;
 	int* alpha = nullptr;
 	uint32_t width, height, stride_diff, max;
-	uint32_t compno, ncomp, prec;
+	uint32_t compno, ncomp, prec = m_image->comps[0].prec;
 	int adjustR, adjustG, adjustB, adjustA;
 	int two, want_gray, has_alpha, triple;
 	int v;
 	const char* tmp = m_fileName.c_str();
 	char* destname = nullptr;
 	bool success = false;
+
 	m_useStdIO = grk::useStdio(m_fileName.c_str());
-
 	alpha = nullptr;
-
-	if((prec = m_image->comps[0].prec) > 16)
-	{
-		spdlog::error("{}:{}:imagetopnm\n\tprecision {} is larger than 16", __FILE__, __LINE__,
-					  prec);
-		goto cleanup;
-	}
 	two = has_alpha = 0;
 	ncomp = m_image->numcomps;
-
-	if(!grk::all_components_sanity_check(m_image, true))
-	{
-		goto cleanup;
-	}
 
 	while(*tmp)
 		++tmp;

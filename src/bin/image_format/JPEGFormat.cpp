@@ -403,15 +403,13 @@ bool JPEGFormat::encodeHeader(grk_image* image, const std::string& filename,
 			color_space = JCS_CMYK;
 			break;
 		default:
-			if(numcomps == 3)
+			if(numcomps == 3 && !grk::isSubsampled(m_image))
 				color_space = JCS_RGB;
 			else if(numcomps == 1)
 				color_space = JCS_GRAYSCALE;
 			else
 			{
-				spdlog::error("imagetojpeg: colour space must be "
-							  "either RGB or Grayscale");
-				return false;
+				spdlog::error("imagetojpeg: unrecognized colour space");
 			}
 			break;
 	}
@@ -423,42 +421,13 @@ bool JPEGFormat::encodeHeader(grk_image* image, const std::string& filename,
 					  m_image->numcomps);
 		return false;
 	}
+	if (!grk::allComponentsSanityCheck(m_image,true))
+		return false;
 
 	planes[0] = m_image->comps[0].data;
-	if(prec == 0)
-	{
-		spdlog::error("imagetojpeg: m_image precision is zero.");
-		return false;
-	}
-
-	// check for null m_image components
-	for(uint32_t i = 0; i < numcomps; ++i)
-	{
-		auto comp = m_image->comps[i];
-		if(!comp.data)
-		{
-			spdlog::error("imagetojpeg: component {} is null.", i);
-			return false;
-		}
-	}
 	for(i = 1U; i < numcomps; ++i)
-	{
-		if(m_image->comps[0].dx != m_image->comps[i].dx)
-			break;
-		if(m_image->comps[0].dy != m_image->comps[i].dy)
-			break;
-		if(m_image->comps[0].prec != m_image->comps[i].prec)
-			break;
-		if(m_image->comps[0].sgnd != m_image->comps[i].sgnd)
-			break;
 		planes[i] = m_image->comps[i].data;
-	}
-	if(i != numcomps)
-	{
-		spdlog::error(
-			"imagetojpeg: All components shall have the same subsampling, same bit depth.");
-		return false;
-	}
+
 
 	if(prec < 8 && numcomps > 1)
 	{ /* GRAY_ALPHA, RGB, RGB_ALPHA */

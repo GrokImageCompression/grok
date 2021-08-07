@@ -433,7 +433,7 @@ void color_apply_icc_profile(grk_image* image, bool forceRGB)
 	uint32_t prec, w, stride_diff, h;
 	GRK_COLOR_SPACE oldspace;
 	grk_image* new_image = nullptr;
-	if(image->numcomps == 0 || !grk::all_components_sanity_check(image, true))
+	if(image->numcomps == 0 || !grk::allComponentsSanityCheck(image, true))
 		return;
 	if(!image->meta)
 		return;
@@ -779,7 +779,7 @@ cleanup:
 bool color_cielab_to_rgb(grk_image* src_img)
 {
 	// sanity checks
-	if(src_img->numcomps == 0 || !grk::all_components_sanity_check(src_img, true))
+	if(src_img->numcomps == 0 || !grk::allComponentsSanityCheck(src_img, true))
 		return false;
 	if(!src_img->meta)
 		return false;
@@ -972,7 +972,7 @@ bool color_cmyk_to_rgb(grk_image* image)
 	uint32_t w = image->comps[0].w;
 	uint32_t h = image->comps[0].h;
 
-	if((image->numcomps < 4) || !grk::all_components_sanity_check(image, true))
+	if((image->numcomps < 4) || !grk::allComponentsSanityCheck(image, true))
 		return false;
 
 	float sC = 1.0F / (float)((1 << image->comps[0].prec) - 1);
@@ -1029,7 +1029,7 @@ bool color_esycc_to_rgb(grk_image* image)
 	int32_t flip_value = (1 << (image->comps[0].prec - 1));
 	int32_t max_value = (1 << image->comps[0].prec) - 1;
 
-	if((image->numcomps < 3) || !grk::all_components_sanity_check(image, true))
+	if((image->numcomps < 3) || !grk::allComponentsSanityCheck(image, true))
 		return false;
 
 	uint32_t w = image->comps[0].w;

@@ -477,6 +477,13 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 
 	assert(m_image);
 	assert(m_fileName.c_str());
+
+	if(!grk::allComponentsSanityCheck(m_image, true))
+	{
+		spdlog::error("TIFFFormat::encodeHeader: Image sanity check failed.");
+		goto cleanup;
+	}
+
 	if(m_image->color_space == GRK_CLRSPC_CMYK)
 	{
 		if(numcomps < 4U)
@@ -550,12 +557,6 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 			spdlog::error("TIFFFormat::encodeHeader: only chroma channels can be subsampled");
 			goto cleanup;
 		}
-	}
-
-	if(!grk::all_components_sanity_check(m_image, true))
-	{
-		spdlog::error("TIFFFormat::encodeHeader: Image sanity check failed.");
-		goto cleanup;
 	}
 
 	cvtPxToCx = cvtPlanarToInterleaved_LUT[numcomps];

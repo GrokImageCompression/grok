@@ -74,6 +74,7 @@ typedef enum GRK_SUPPORTED_FILE_FMT
 
 #define GRK_PATH_LEN 4096 /**< Maximum allowed size for filenames */
 #define GRK_MAX_LAYERS 100
+#define GRK_MAX_SUPPORTED_IMAGE_PRECISION 16 // maximum supported precision for Grok library
 
 /*
  * note: range for number of decomposition levels is 0-32

@@ -240,7 +240,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 				(uint16_t)(((uint16_t)active_src[4] << 8) | active_src[5]);
 			if(numIteratedPackets != (tilePtr->numProcessedPackets % 0x10000))
 			{
-				GRK_ERROR("SOP marker packet counter %u does not match expected counter %u",
+				GRK_WARN("SOP marker packet counter %u does not match expected counter %u",
 						  numIteratedPackets, tilePtr->numProcessedPackets);
 				throw CorruptPacketHeaderException();
 			}

@@ -711,7 +711,7 @@ bool FileFormatDecompress::read_ihdr(uint8_t* p_image_header_data, uint32_t imag
 	// Otherwise, low 7 bits of bpc determine bits per component,
 	// and high bit set indicates signed data,
 	// unset indicates unsigned data
-	if(((bpc != 0xFF) && ((bpc & 0x7F) > (maxSupportedPrecisionGRK - 1))))
+	if(((bpc != 0xFF) && ((bpc & 0x7F) > (GRK_MAX_SUPPORTED_IMAGE_PRECISION - 1))))
 	{
 		GRK_ERROR("JP2 IHDR box: bpc=%u not supported.", bpc);
 		return false;
@@ -1517,11 +1517,11 @@ bool FileFormatDecompress::read_palette_clr(uint8_t* p_pclr_header_data, uint32_
 		uint8_t val;
 		grk_read<uint8_t>(p_pclr_header_data++, &val); /* Bi */
 		jp2_pclr->channel_prec[i] = (uint8_t)((val & 0x7f) + 1);
-		if(jp2_pclr->channel_prec[i] > maxSupportedPrecisionGRK)
+		if(jp2_pclr->channel_prec[i] > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
 		{
 			GRK_ERROR("Palette : channel precision %d is greater than supported palette channel "
 					  "precision %d",
-					  jp2_pclr->channel_prec[i], maxSupportedPrecisionGRK);
+					  jp2_pclr->channel_prec[i], GRK_MAX_SUPPORTED_IMAGE_PRECISION);
 			return false;
 		}
 		jp2_pclr->channel_sign[i] = (val & 0x80) ? true : false;

@@ -330,7 +330,16 @@ uint32_t uint_adds(uint32_t a, uint32_t b)
 	return (uint32_t)(-(int32_t)(sum >> 32)) | (uint32_t)sum;
 }
 
-bool all_components_sanity_check(grk_image* image, bool equal_precision)
+/**
+ * return false if :
+ * 1. any component's data buffer is NULL
+ * 2. any component's precision is either 0 or greater than GRK_MAX_SUPPORTED_IMAGE_PRECISION
+ * 3. any component's signedness does not match another component's signedness
+ * 4. any component's precision does not match another component's precision
+ *    (if equalPrecision is true)
+ *
+ */
+bool allComponentsSanityCheck(grk_image* image, bool equalPrecision)
 {
 	if(!image || image->numcomps == 0)
 		return false;
@@ -341,7 +350,7 @@ bool all_components_sanity_check(grk_image* image, bool equal_precision)
 		spdlog::error("component 0 : data is null.");
 		return false;
 	}
-	if(comp0->prec == 0 || comp0->prec > 16)
+	if(comp0->prec == 0 || comp0->prec > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
 	{
 		spdlog::warn("component 0 precision {} is not supported.", 0, comp0->prec);
 		return false;
@@ -356,7 +365,7 @@ bool all_components_sanity_check(grk_image* image, bool equal_precision)
 			spdlog::error("component {} : data is null.", i);
 			return false;
 		}
-		if(equal_precision && comp0->prec != compi->prec)
+		if(equalPrecision && comp0->prec != compi->prec)
 		{
 			spdlog::warn("precision {} of component {}"
 						 " differs from precision {} of component 0.",
@@ -374,6 +383,19 @@ bool all_components_sanity_check(grk_image* image, bool equal_precision)
 	return true;
 }
 
+bool areAllComponentsSameSubsampling(grk_image* image){
+	if (!image || image->numcomps == 1)
+		return true;
+	auto comp0 = image->comps;
+	for(uint32_t i = 0; i < image->numcomps; ++i)
+	{
+		auto comp = image->comps + i;
+		if(comp->dx != comp0->dx || comp->dy != comp0->dy)
+			return true;
+	}
+	return true;
+}
+
 bool isSubsampled(grk_image* image)
 {
 	if(!image)
@@ -381,9 +403,7 @@ bool isSubsampled(grk_image* image)
 	for(uint32_t i = 0; i < image->numcomps; ++i)
 	{
 		if(image->comps[i].dx != 1 || image->comps[i].dy != 1)
-		{
 			return true;
-		}
 	}
 	return false;
 }

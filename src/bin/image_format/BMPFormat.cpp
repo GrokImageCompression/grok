@@ -466,26 +466,19 @@ bool BMPFormat::encodeHeader(grk_image* image, const std::string& filename,
 	if(m_rowsPerStrip > h)
 		m_rowsPerStrip = h;
 
-	if(!grk::all_components_sanity_check(m_image, false))
+	if(!grk::allComponentsSanityCheck(m_image, false))
 		goto cleanup;
-	if(m_image->numcomps != 1 && (m_image->numcomps != 3 && m_image->numcomps != 4))
-	{
-		spdlog::error("Unsupported number of components: {}", m_image->numcomps);
-		goto cleanup;
-	}
 	if(grk::isSubsampled(m_image))
 	{
 		spdlog::error("Sub-sampled images not supported");
 		goto cleanup;
 	}
-	for(uint32_t i = 0; i < m_image->numcomps; ++i)
+	if(m_image->numcomps != 1 && (m_image->numcomps != 3 && m_image->numcomps != 4))
 	{
-		if(m_image->comps[i].prec == 0)
-		{
-			spdlog::error("Unsupported precision: 0 for component {}", i);
-			goto cleanup;
-		}
+		spdlog::error("Unsupported number of components: {}", m_image->numcomps);
+		goto cleanup;
 	}
+
 	colours_used = (m_image->numcomps == 3) ? 0 : 256;
 	lut_size = colours_used * (uint32_t)sizeof(uint32_t);
 	full_header_size = fileHeaderSize + BITMAPINFOHEADER_LENGTH;

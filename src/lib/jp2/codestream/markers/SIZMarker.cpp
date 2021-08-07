@@ -216,11 +216,11 @@ bool SIZMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 			return false;
 		}
 
-		if(img_comp->prec == 0 || img_comp->prec > maxSupportedPrecisionGRK)
+		if(img_comp->prec == 0 || img_comp->prec > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
 		{
 			GRK_ERROR("Unsupported precision for comp = %u : prec=%u (this library only supports "
 					  "precisions between 1 and %u)",
-					  i, img_comp->prec, maxSupportedPrecisionGRK);
+					  i, img_comp->prec, GRK_MAX_SUPPORTED_IMAGE_PRECISION);
 			return false;
 		}
 		++img_comp;
