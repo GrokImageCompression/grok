@@ -385,6 +385,12 @@ bool JPEGFormat::encodeHeader(grk_image* image, const std::string& filename,
 	JDIMENSION image_width = m_image->x1 - m_image->x0; /* input m_image width */
 	JDIMENSION image_height = m_image->y1 - m_image->y0; /* input m_image height */
 
+	//sub-sampling not supported at the moment
+	if (grk::isSubsampled(m_image)){
+		spdlog::error("JPEGFormat::encodeHeader: subsampling not currently supported.");
+		return false;
+	}
+
 	switch(m_image->color_space)
 	{
 		case GRK_CLRSPC_SRGB: /**< sRGB */
@@ -403,20 +409,20 @@ bool JPEGFormat::encodeHeader(grk_image* image, const std::string& filename,
 			color_space = JCS_CMYK;
 			break;
 		default:
-			if(numcomps == 3 && !grk::isSubsampled(m_image))
+			if(numcomps == 3)
 				color_space = JCS_RGB;
 			else if(numcomps == 1)
 				color_space = JCS_GRAYSCALE;
 			else
 			{
-				spdlog::error("imagetojpeg: unrecognized colour space");
+				spdlog::error("JPEGFormat::encodeHeader: unrecognized colour space");
 			}
 			break;
 	}
 
 	if(m_image->numcomps > 4)
 	{
-		spdlog::error("imagetojpeg: number of components {} "
+		spdlog::error("JPEGFormat::encodeHeader: number of components {} "
 					  "is greater than 4.",
 					  m_image->numcomps);
 		return false;
@@ -447,7 +453,7 @@ bool JPEGFormat::encodeHeader(grk_image* image, const std::string& filename,
 
 	if(prec != 1 && prec != 2 && prec != 4 && prec != 8)
 	{
-		spdlog::error("imagetojpeg: can not create {}\n\twrong bit_depth {}", filename, prec);
+		spdlog::error("JPEGFormat::encodeHeader: can not create {}\n\twrong bit_depth {}", filename, prec);
 		return false;
 	}
 
@@ -467,7 +473,7 @@ bool JPEGFormat::encodeHeader(grk_image* image, const std::string& filename,
 	// We assume that alpha channels occur as last channels in m_image.
 	if(numAlphaChannels && ((uint32_t)firstAlpha + numAlphaChannels >= numcomps))
 	{
-		spdlog::warn("PNG requires that alpha channels occur"
+		spdlog::warn("JPEGFormat::encodeHeader: PNG requires that alpha channels occur"
 					 " as last channels in m_image.");
 		numAlphaChannels = 0;
 	}
