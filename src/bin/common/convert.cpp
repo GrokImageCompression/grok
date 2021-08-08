@@ -36,31 +36,6 @@
 #include <intrin.h>
 #endif
 
-#if defined(_MSC_VER)
-long grk_lrintf(float f)
-{
-#ifdef _M_X64
-	return _mm_cvt_ss2si(_mm_load_ss(&f));
-#elif defined(_M_IX86)
-	int i;
-	_asm {
-        fld f
-        fistp i
-	}
-	;
-	return i;
-#else
-	return (long)((f > 0.0f) ? (f + 0.5f) : (f - 0.5f));
-#endif
-}
-#else
-long grk_lrintf(float f)
-{
-	return lrintf(f);
-}
-#endif
-
-
 
 /* Component clipping */
 template<typename T>
@@ -92,57 +67,41 @@ void clip_component(grk_image_comp* component, uint8_t precision)
 		clip<uint32_t>(component, precision);
 }
 
-/* Component precision scaling */
-template<typename T>
-void scale_component_up(grk_image_comp* component, uint8_t precision)
-{
-	uint32_t stride_diff = component->stride - component->w;
-	T newMax = std::is_signed<T>::value ? ((T)1U << (precision - 1)) : (((T)1U << precision) - 1U);
-	T oldMax = std::is_signed<T>::value ? ((T)1U << (component->prec - 1))
-										: (((T)1U << component->prec) - 1U);
-	auto data = component->data;
-	size_t index = 0;
-	float scale = (float)newMax/(float)oldMax;
-	for(uint32_t j = 0; j < component->h; ++j)
-	{
-		for(uint32_t i = 0; i < component->w; ++i)
-		{
-			data[index] = (int32_t)grk_lrintf((float)data[index] * scale);
-			index++;
-		}
-		index += stride_diff;
-	}
-	component->prec = precision;
-}
 void scale_component(grk_image_comp* component, uint8_t precision)
 {
 	if(component->prec == precision)
 		return;
+	uint32_t stride_diff = component->stride - component->w;
+	auto data = component->data;
 	if(component->prec < precision)
 	{
-		if(component->sgnd)
-			scale_component_up<int64_t>(component, precision);
-		else
-			scale_component_up<uint64_t>(component, precision);
-	}
-	else
-	{
-		uint32_t stride_diff = component->stride - component->w;
-		uint32_t scale = 1U << (uint32_t)(component->prec - precision);
-		auto data = component->data;
+		int32_t scale = 1U << (uint32_t)(precision - component->prec);
 		size_t index = 0;
 		for(uint32_t j = 0; j < component->h; ++j)
 		{
 			for(uint32_t i = 0; i < component->w; ++i)
 			{
-				// we use truncation for down-scaling
-				data[index] = (int32_t)(data[index] / (int32_t)scale);
+				data[index] = data[index] * scale;
 				index++;
 			}
 			index += stride_diff;
 		}
-		component->prec = precision;
 	}
+	else
+	{
+		int32_t scale = 1U << (uint32_t)(component->prec - precision);
+		size_t index = 0;
+		for(uint32_t j = 0; j < component->h; ++j)
+		{
+			for(uint32_t i = 0; i < component->w; ++i)
+			{
+				data[index] = data[index] / scale;
+				index++;
+			}
+			index += stride_diff;
+		}
+	}
+	component->prec = precision;
 }
 
 grk_image* convert_gray_to_rgb(grk_image* original)
