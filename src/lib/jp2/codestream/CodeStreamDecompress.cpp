@@ -953,7 +953,6 @@ bool CodeStreamDecompress::decompressT2T1(TileProcessor* tileProcessor)
 		!current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
 	if(!tileProcessor->decompressT2T1(tcp, m_output_image, m_multiTile, doPost))
 	{
-		m_decompressorState.orState(J2K_DEC_STATE_ERR);
 		return false;
 	}
 
@@ -965,7 +964,7 @@ bool CodeStreamDecompress::findNextTile(TileProcessor* tileProcessor)
 
 	if(!(decompressor->getState() & J2K_DEC_STATE_DATA))
 	{
-		GRK_ERROR("j2k_decompress_tile: no data.");
+		GRK_ERROR("no tile data.");
 		return false;
 	}
 	auto tcp = m_cp.tcps + tileProcessor->m_tileIndex;
@@ -1808,7 +1807,6 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint32_t compno, uint8_t* headerData
 				  "of resolutions (%d) of this component.\n"
 				  "Please decrease the cp_reduce parameter.",
 				  compno, cp->m_coding_params.m_dec.m_reduce, tccp->numresolutions);
-		m_decompressorState.orState(J2K_DEC_STATE_ERR);
 		return false;
 	}
 	/* SPcoc (E) */
