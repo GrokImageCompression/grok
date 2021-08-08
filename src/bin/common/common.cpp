@@ -390,8 +390,10 @@ bool areAllComponentsSameSubsampling(grk_image* image){
 	for(uint32_t i = 0; i < image->numcomps; ++i)
 	{
 		auto comp = image->comps + i;
-		if(comp->dx != comp0->dx || comp->dy != comp0->dy)
-			return true;
+		if(comp->dx != comp0->dx || comp->dy != comp0->dy){
+			spdlog::error("Not all components have same sub-sampling");
+			return false;
+		}
 	}
 	return true;
 }

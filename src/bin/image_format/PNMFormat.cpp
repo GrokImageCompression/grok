@@ -645,6 +645,9 @@ bool PNMFormat::encodeHeader(grk_image* image, const std::string& filename,
 		return false;
 	}
 
+	if (!grk::areAllComponentsSameSubsampling(m_image))
+		return false;
+
 	if (m_image->numcomps > 4){
 		spdlog::error("PNMFormat::encodeHeader: %d number of components not supported.", m_image->numcomps);
 		return false;
@@ -665,7 +668,7 @@ bool PNMFormat::encodeStrip(uint32_t rows)
 	uint32_t width, height, stride_diff, max;
 	uint32_t compno, ncomp, prec = m_image->comps[0].prec;
 	int adjustR, adjustG, adjustB, adjustA;
-	int two, want_gray, has_alpha, triple;
+	bool two, grayscale, hasAlpha, triple;
 	int v;
 	const char* tmp = m_fileName.c_str();
 	char* destname = nullptr;
@@ -673,15 +676,15 @@ bool PNMFormat::encodeStrip(uint32_t rows)
 
 	m_useStdIO = grk::useStdio(m_fileName.c_str());
 	alpha = nullptr;
-	two = has_alpha = 0;
+	two = hasAlpha = 0;
 	ncomp = m_image->numcomps;
 
 	while(*tmp)
 		++tmp;
 	tmp -= 2;
-	want_gray = (*tmp == 'g' || *tmp == 'G');
+	grayscale = (*tmp == 'g' || *tmp == 'G');
 
-	if(want_gray)
+	if(grayscale)
 		ncomp = 1;
 
 	if(m_useStdIO)
@@ -693,12 +696,8 @@ bool PNMFormat::encodeStrip(uint32_t rows)
 		}
 	}
 
-	if((!forceSplit) && (ncomp == 2 /* GRAYA */
-						 || (ncomp > 2 /* RGB, RGBA */
-							 && m_image->comps[0].dx == m_image->comps[1].dx &&
-							 m_image->comps[1].dx == m_image->comps[2].dx &&
-							 m_image->comps[0].dy == m_image->comps[1].dy &&
-							 m_image->comps[1].dy == m_image->comps[2].dy)))
+	if(!forceSplit && (ncomp == 2 /* GRAYA */
+						 || ncomp > 2 )/* RGB, RGBA */)
 	{
 		if(!grk::grk_open_for_output(&m_fileStream, m_fileName.c_str(), m_useStdIO))
 			goto cleanup;
@@ -708,9 +707,8 @@ bool PNMFormat::encodeStrip(uint32_t rows)
 		width = m_image->comps[0].w;
 		stride_diff = m_image->comps[0].stride - width;
 		height = m_image->comps[0].h;
-		max = (uint32_t)((1 << prec) - 1);
-		has_alpha = (ncomp == 4 || ncomp == 2);
-
+		max = (uint32_t)((1U << prec) - 1);
+		hasAlpha = (ncomp == 4 || ncomp == 2);
 		red = m_image->comps[0].data;
 
 		if(triple)
@@ -721,14 +719,13 @@ bool PNMFormat::encodeStrip(uint32_t rows)
 		else
 			green = blue = nullptr;
 
-		if(has_alpha)
+		if(hasAlpha)
 		{
-			const char* tt = (triple ? "RGB_ALPHA" : "GRAYSCALE_ALPHA");
-
 			fprintf(m_fileStream,
 					"P7\n# Grok-%s\nWIDTH %u\nHEIGHT %u\nDEPTH %u\n"
 					"MAXVAL %u\nTUPLTYPE %s\nENDHDR\n",
-					grk_version(), width, height, ncomp, max, tt);
+					grk_version(), width, height, ncomp, max,
+					(triple ? "RGB_ALPHA" : "GRAYSCALE_ALPHA"));
 			alpha = m_image->comps[ncomp - 1].data;
 			adjustA =
 				(m_image->comps[ncomp - 1].sgnd ? 1 << (m_image->comps[ncomp - 1].prec - 1) : 0);
@@ -762,33 +759,25 @@ bool PNMFormat::encodeStrip(uint32_t rows)
 					v = *red++ + adjustR;
 					if(!grk::writeBytes<uint16_t>((uint16_t)v, buf, &outPtr, &outCount, bufSize,
 												  true, m_fileStream))
-					{
 						goto cleanup;
-					}
 					if(triple)
 					{
 						v = *green++ + adjustG;
 						if(!grk::writeBytes<uint16_t>((uint16_t)v, buf, &outPtr, &outCount, bufSize,
 													  true, m_fileStream))
-						{
 							goto cleanup;
-						}
 						v = *blue++ + adjustB;
 						if(!grk::writeBytes<uint16_t>((uint16_t)v, buf, &outPtr, &outCount, bufSize,
 													  true, m_fileStream))
-						{
 							goto cleanup;
-						}
 					} /* if(triple) */
 
-					if(has_alpha)
+					if(hasAlpha)
 					{
 						v = *alpha++ + adjustA;
 						if(!grk::writeBytes<uint16_t>((uint16_t)v, buf, &outPtr, &outCount, bufSize,
 													  true, m_fileStream))
-						{
 							goto cleanup;
-						}
 					}
 				}
 				red += stride_diff;
@@ -797,16 +786,14 @@ bool PNMFormat::encodeStrip(uint32_t rows)
 					green += stride_diff;
 					blue += stride_diff;
 				}
-				if(has_alpha)
+				if(hasAlpha)
 					alpha += stride_diff;
 			}
 			if(outCount)
 			{
 				size_t res = fwrite(buf, sizeof(uint16_t), outCount, m_fileStream);
 				if(res != outCount)
-				{
 					goto cleanup;
-				}
 			}
 		}
 		else
@@ -822,32 +809,24 @@ bool PNMFormat::encodeStrip(uint32_t rows)
 					v = *red++;
 					if(!grk::writeBytes<uint8_t>((uint8_t)v, buf, &outPtr, &outCount, bufSize, true,
 												 m_fileStream))
-					{
 						goto cleanup;
-					}
 					if(triple)
 					{
 						v = *green++;
 						if(!grk::writeBytes<uint8_t>((uint8_t)v, buf, &outPtr, &outCount, bufSize,
 													 true, m_fileStream))
-						{
 							goto cleanup;
-						}
 						v = *blue++;
 						if(!grk::writeBytes<uint8_t>((uint8_t)v, buf, &outPtr, &outCount, bufSize,
 													 true, m_fileStream))
-						{
 							goto cleanup;
-						}
 					}
-					if(has_alpha)
+					if(hasAlpha)
 					{
 						v = *alpha++;
 						if(!grk::writeBytes<uint8_t>((uint8_t)v, buf, &outPtr, &outCount, bufSize,
 													 true, m_fileStream))
-						{
 							goto cleanup;
-						}
 					}
 				}
 				red += stride_diff;
@@ -856,16 +835,14 @@ bool PNMFormat::encodeStrip(uint32_t rows)
 					green += stride_diff;
 					blue += stride_diff;
 				}
-				if(has_alpha)
+				if(hasAlpha)
 					alpha += stride_diff;
 			}
 			if(outCount)
 			{
 				size_t res = fwrite(buf, sizeof(uint8_t), outCount, m_fileStream);
 				if(res != outCount)
-				{
 					goto cleanup;
-				}
 			}
 		}
 		// we only write the first PNM file to stdout
@@ -888,10 +865,8 @@ bool PNMFormat::encodeStrip(uint32_t rows)
 
 	/* YUV or MONO: */
 	if(m_image->numcomps > ncomp)
-	{
 		spdlog::warn("[PGM file] Only the first component"
 					 " is written out");
-	}
 	destname = (char*)malloc(strlen(m_fileName.c_str()) + 8);
 	if(!destname)
 	{
@@ -917,11 +892,8 @@ bool PNMFormat::encodeStrip(uint32_t rows)
 		else
 			sprintf(destname, "%s", m_fileName.c_str());
 
-		if(!m_fileStream)
-		{
-			if(!grk::grk_open_for_output(&m_fileStream, destname, m_useStdIO))
-				goto cleanup;
-		}
+		if(!m_fileStream && !grk::grk_open_for_output(&m_fileStream, destname, m_useStdIO))
+			goto cleanup;
 
 		width = m_image->comps[compno].w;
 		stride_diff = m_image->comps[compno].stride - width;
@@ -933,9 +905,7 @@ bool PNMFormat::encodeStrip(uint32_t rows)
 
 		red = m_image->comps[compno].data;
 		if(!red)
-		{
 			goto cleanup;
-		}
 		adjustR = (m_image->comps[compno].sgnd ? 1 << (m_image->comps[compno].prec - 1) : 0);
 
 		if(prec > 8)
@@ -952,21 +922,17 @@ bool PNMFormat::encodeStrip(uint32_t rows)
 					v = *red++ + adjustR;
 					if(!grk::writeBytes<uint16_t>((uint16_t)v, buf, &outPtr, &outCount, bufSize,
 												  true, m_fileStream))
-					{
 						goto cleanup;
-					}
-					if(has_alpha)
+					if(hasAlpha)
 					{
 						v = *alpha++;
 						if(!grk::writeBytes<uint16_t>((uint16_t)v, buf, &outPtr, &outCount, bufSize,
 													  true, m_fileStream))
-						{
 							goto cleanup;
-						}
 					}
 				}
 				red += stride_diff;
-				if(has_alpha)
+				if(hasAlpha)
 					alpha += stride_diff;
 			}
 			// flush
@@ -974,9 +940,7 @@ bool PNMFormat::encodeStrip(uint32_t rows)
 			{
 				size_t res = fwrite(buf, sizeof(uint16_t), outCount, m_fileStream);
 				if(res != outCount)
-				{
 					goto cleanup;
-				}
 			}
 		}
 		else
@@ -992,29 +956,23 @@ bool PNMFormat::encodeStrip(uint32_t rows)
 					v = *red++ + adjustR;
 					if(!grk::writeBytes<uint8_t>((uint8_t)v, buf, &outPtr, &outCount, bufSize, true,
 												 m_fileStream))
-					{
 						goto cleanup;
-					}
 				}
 				red += stride_diff;
-				if(has_alpha)
+				if(hasAlpha)
 					alpha += stride_diff;
 			}
 			if(outCount)
 			{
 				size_t res = fwrite(buf, sizeof(uint8_t), outCount, m_fileStream);
 				if(res != outCount)
-				{
 					goto cleanup;
-				}
 			}
 		}
 		if(!m_useStdIO && m_fileStream)
 		{
 			if(!grk::safe_fclose(m_fileStream))
-			{
 				goto cleanup;
-			}
 		}
 		m_fileStream = nullptr;
 	} /* for (compno */
