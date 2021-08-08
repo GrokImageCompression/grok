@@ -474,13 +474,13 @@ static void convert_4s32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length,
 	for(i = 0; i < (length & ~(size_t)1U); i += 2U)
 	{
 		uint8_t val = *pSrc++;
-		pDst[i + 0] = INV(sign_extend(val>>4, 28), 0xF, invert);
-		pDst[i + 1] = INV(sign_extend(val & 0xF, 28), 0xF, invert);
+		pDst[i + 0] = INV(sign_extend(val>>4, 32 - 4), 0xF, invert);
+		pDst[i + 1] = INV(sign_extend(val & 0xF, 32 - 4), 0xF, invert);
 	}
 	if(length & 1U)
 	{
 		uint8_t val = *pSrc++;
-		pDst[i + 0] = INV(sign_extend(val >> 4, 28), 15, invert);
+		pDst[i + 0] = INV(sign_extend(val >> 4, 32 - 4), 15, invert);
 	}
 }
 

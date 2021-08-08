@@ -42,8 +42,10 @@ static void convert_tif_3uto32s(const uint8_t* pSrc, int32_t* pDst, size_t lengt
 static void convert_tif_5uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert);
 static void convert_tif_7uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert);
 static void convert_tif_9uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert);
+static void convert_tif_10sto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert);
 static void convert_tif_10uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert);
 static void convert_tif_11uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert);
+static void convert_tif_12sto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert);
 static void convert_tif_12uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert);
 static void convert_tif_13uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert);
 static void convert_tif_14uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert);
@@ -90,7 +92,7 @@ void tiffSetErrorAndWarningHandlers(bool verbose)
 	TIFFSetWarningHandler(MyTiffWarningHandler);
 }
 
-static bool readTiffPixelsUnsigned(TIFF* tif, grk_image_comp* comps, uint32_t numcomps,
+static bool readTiffPixels(TIFF* tif, grk_image_comp* comps, uint32_t numcomps,
 								   uint16_t tiSpp, uint16_t tiPC, uint16_t tiPhoto,
 								   uint32_t chroma_subsample_x, uint32_t chroma_subsample_y);
 
@@ -192,7 +194,7 @@ static void set_resolution(double* res, float resx, float resy, short resUnit)
 	}
 }
 
-static bool readTiffPixelsUnsigned(TIFF* tif, grk_image_comp* comps, uint32_t numcomps,
+static bool readTiffPixels(TIFF* tif, grk_image_comp* comps, uint32_t numcomps,
 								   uint16_t tiSpp, uint16_t tiPC, uint16_t tiPhoto,
 								   uint32_t chroma_subsample_x, uint32_t chroma_subsample_y)
 {
@@ -237,13 +239,13 @@ static bool readTiffPixelsUnsigned(TIFF* tif, grk_image_comp* comps, uint32_t nu
 			cvtTifTo32s = convert_tif_9uto32s;
 			break;
 		case 10:
-			cvtTifTo32s = convert_tif_10uto32s;
+			cvtTifTo32s = comps[0].sgnd ? convert_tif_10sto32s : convert_tif_10uto32s;
 			break;
 		case 11:
 			cvtTifTo32s = convert_tif_11uto32s;
 			break;
 		case 12:
-			cvtTifTo32s = convert_tif_12uto32s;
+			cvtTifTo32s = comps[0].sgnd ? convert_tif_12sto32s : convert_tif_12uto32s;
 			break;
 		case 13:
 			cvtTifTo32s = convert_tif_13uto32s;
@@ -1135,7 +1137,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 			spdlog::error("TIFFFormat::decode: signed image with "
 						  "MINISWHITE format is not fully supported");
 		}
-		if(tiBps != 4 && tiBps != 8 && tiBps != 16)
+		if(tiBps != 4 && tiBps != 8 && tiBps != 10 && tiBps != 12 && tiBps != 16)
 		{
 			spdlog::error("TIFFFormat::decode: signed image with bit"
 						  " depth {} is not supported",
@@ -1320,7 +1322,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 		memcpy(image->meta->xmp_buf, xmp_buf, xmp_len);
 	}
 	// 9. read pixel data
-	if(isSigned && tiBps >= 8)
+	if(isSigned && (tiBps == 8 || tiBps == 16) )
 	{
 		if(tiBps == 8)
 			success = readTiffPixelsSigned<int8_t>(tif, image->comps, numcomps, tiSpp, tiPC);
@@ -1329,7 +1331,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	}
 	else
 	{
-		success = readTiffPixelsUnsigned(tif, image->comps, numcomps, tiSpp, tiPC, tiPhoto,
+		success = readTiffPixels(tif, image->comps, numcomps, tiSpp, tiPC, tiPhoto,
 										 chroma_subsample_x, chroma_subsample_y);
 	}
 cleanup:
@@ -1512,6 +1514,43 @@ static void convert_tif_9uto32s(const uint8_t* pSrc, int32_t* pDst, size_t lengt
 	}
 }
 
+static void convert_tif_10sto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
+{
+	size_t i;
+	for(i = 0; i < (length & ~(size_t)3U); i += 4U)
+	{
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		uint32_t val2 = *pSrc++;
+		uint32_t val3 = *pSrc++;
+		uint32_t val4 = *pSrc++;
+
+		pDst[i + 0] = sign_extend(INV((int32_t)((val0 << 2) | (val1 >> 6)), INV_MASK_10, invert),32-10);
+		pDst[i + 1] = sign_extend(INV((int32_t)(((val1 & 0x3FU) << 4) | (val2 >> 4)), INV_MASK_10, invert),32-10);
+		pDst[i + 2] = sign_extend(INV((int32_t)(((val2 & 0xFU) << 6) | (val3 >> 2)), INV_MASK_10, invert),32-10);
+		pDst[i + 3] = sign_extend(INV((int32_t)(((val3 & 0x3U) << 8) | val4), INV_MASK_10, invert),32-10);
+	}
+	if(length & 3U)
+	{
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		length = length & 3U;
+		pDst[i + 0] = sign_extend(INV((int32_t)((val0 << 2) | (val1 >> 6)), INV_MASK_10, invert),32-10);
+
+		if(length > 1U)
+		{
+			uint32_t val2 = *pSrc++;
+			pDst[i + 1] = sign_extend(INV((int32_t)(((val1 & 0x3FU) << 4) | (val2 >> 4)), INV_MASK_10, invert),32-10);
+			if(length > 2U)
+			{
+				uint32_t val3 = *pSrc++;
+				pDst[i + 2] =
+						sign_extend(INV((int32_t)(((val2 & 0xFU) << 6) | (val3 >> 2)), INV_MASK_10, invert),32-10);
+			}
+		}
+	}
+}
+
 static void convert_tif_10uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
 {
 	size_t i;
@@ -1584,6 +1623,25 @@ static void convert_tif_11uto32s(const uint8_t* pSrc, int32_t* pDst, size_t leng
 		int available = 0;
 		for(size_t j = 0; j < length; ++j)
 			GETBITS(pDst[i + j], 11, INV_MASK_11, invert)
+	}
+}
+static void convert_tif_12sto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
+{
+	size_t i;
+	for(i = 0; i < (length & ~(size_t)1U); i += 2U)
+	{
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		uint32_t val2 = *pSrc++;
+
+		pDst[i + 0] = sign_extend(INV((int32_t)((val0 << 4) | (val1 >> 4)), INV_MASK_12, invert), 32 - 12);
+		pDst[i + 1] = sign_extend(INV((int32_t)(((val1 & 0xFU) << 8) | val2), INV_MASK_12, invert), 32 - 12);
+	}
+	if(length & 1U)
+	{
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		pDst[i + 0] = sign_extend(INV((int32_t)((val0 << 4) | (val1 >> 4)), INV_MASK_12, invert), 32 - 12);
 	}
 }
 static void convert_tif_12uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
