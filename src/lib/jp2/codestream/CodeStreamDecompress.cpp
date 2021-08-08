@@ -66,7 +66,7 @@ static const j2k_mct_function j2k_mct_read_functions_to_int32[] = {
 CodeStreamDecompress::CodeStreamDecompress(IBufferedStream* stream)
 	: CodeStream(stream), wholeTileDecompress(true), m_curr_marker(0), m_headerError(false),
 	  m_tile_ind_to_dec(-1), m_marker_scratch(nullptr), m_marker_scratch_size(0),
-	  m_output_image(nullptr), m_tileCache(new TileCache())
+	  m_outputImage(nullptr), m_tileCache(new TileCache())
 {
 	m_decompressorState.m_default_tcp = new TileCodingParams();
 	m_decompressorState.lastSotReadPosition = 0;
@@ -80,64 +80,64 @@ CodeStreamDecompress::CodeStreamDecompress(IBufferedStream* stream)
 	}
 	marker_map = {
 		{J2K_MS_SOT,
-		 new marker_handler(J2K_MS_SOT, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH_SOT,
+		 new marker_handler(J2K_MS_SOT, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH_SOT,
 							[this](uint8_t* data, uint16_t len) { return read_sot(data, len); })},
 		{J2K_MS_COD,
-		 new marker_handler(J2K_MS_COD, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH,
+		 new marker_handler(J2K_MS_COD, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
 							[this](uint8_t* data, uint16_t len) { return read_cod(data, len); })},
 		{J2K_MS_COC,
-		 new marker_handler(J2K_MS_COC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH,
+		 new marker_handler(J2K_MS_COC, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
 							[this](uint8_t* data, uint16_t len) { return read_coc(data, len); })},
 		{J2K_MS_RGN,
-		 new marker_handler(J2K_MS_RGN, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH,
+		 new marker_handler(J2K_MS_RGN, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
 							[this](uint8_t* data, uint16_t len) { return read_rgn(data, len); })},
 		{J2K_MS_QCD,
-		 new marker_handler(J2K_MS_QCD, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH,
+		 new marker_handler(J2K_MS_QCD, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
 							[this](uint8_t* data, uint16_t len) { return read_qcd(data, len); })},
 		{J2K_MS_QCC,
-		 new marker_handler(J2K_MS_QCC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH,
+		 new marker_handler(J2K_MS_QCC, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
 							[this](uint8_t* data, uint16_t len) { return read_qcc(data, len); })},
 		{J2K_MS_POC,
-		 new marker_handler(J2K_MS_POC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH,
+		 new marker_handler(J2K_MS_POC, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
 							[this](uint8_t* data, uint16_t len) { return read_poc(data, len); })},
 		{J2K_MS_SIZ,
-		 new marker_handler(J2K_MS_SIZ, J2K_DEC_STATE_MH_SIZ,
+		 new marker_handler(J2K_MS_SIZ, DECOMPRESS_STATE_MH_SIZ,
 							[this](uint8_t* data, uint16_t len) { return read_siz(data, len); })},
 		{J2K_MS_CAP,
-		 new marker_handler(J2K_MS_CAP, J2K_DEC_STATE_MH,
+		 new marker_handler(J2K_MS_CAP, DECOMPRESS_STATE_MH,
 							[this](uint8_t* data, uint16_t len) { return read_cap(data, len); })},
 		{J2K_MS_TLM,
-		 new marker_handler(J2K_MS_TLM, J2K_DEC_STATE_MH,
+		 new marker_handler(J2K_MS_TLM, DECOMPRESS_STATE_MH,
 							[this](uint8_t* data, uint16_t len) { return read_tlm(data, len); })},
 		{J2K_MS_PLM,
-		 new marker_handler(J2K_MS_PLM, J2K_DEC_STATE_MH,
+		 new marker_handler(J2K_MS_PLM, DECOMPRESS_STATE_MH,
 							[this](uint8_t* data, uint16_t len) { return read_plm(data, len); })},
 		{J2K_MS_PLT,
-		 new marker_handler(J2K_MS_PLT, J2K_DEC_STATE_TPH,
+		 new marker_handler(J2K_MS_PLT, DECOMPRESS_STATE_TPH,
 							[this](uint8_t* data, uint16_t len) { return read_plt(data, len); })},
 		{J2K_MS_PPM,
-		 new marker_handler(J2K_MS_PPM, J2K_DEC_STATE_MH,
+		 new marker_handler(J2K_MS_PPM, DECOMPRESS_STATE_MH,
 							[this](uint8_t* data, uint16_t len) { return read_ppm(data, len); })},
 		{J2K_MS_PPT,
-		 new marker_handler(J2K_MS_PPT, J2K_DEC_STATE_TPH,
+		 new marker_handler(J2K_MS_PPT, DECOMPRESS_STATE_TPH,
 							[this](uint8_t* data, uint16_t len) { return read_ppt(data, len); })},
 		{J2K_MS_CRG,
-		 new marker_handler(J2K_MS_CRG, J2K_DEC_STATE_MH,
+		 new marker_handler(J2K_MS_CRG, DECOMPRESS_STATE_MH,
 							[this](uint8_t* data, uint16_t len) { return read_crg(data, len); })},
 		{J2K_MS_COM,
-		 new marker_handler(J2K_MS_COM, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH,
+		 new marker_handler(J2K_MS_COM, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
 							[this](uint8_t* data, uint16_t len) { return read_com(data, len); })},
 		{J2K_MS_MCT,
-		 new marker_handler(J2K_MS_MCT, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH,
+		 new marker_handler(J2K_MS_MCT, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
 							[this](uint8_t* data, uint16_t len) { return read_mct(data, len); })},
 		{J2K_MS_CBD,
-		 new marker_handler(J2K_MS_CBD, J2K_DEC_STATE_MH,
+		 new marker_handler(J2K_MS_CBD, DECOMPRESS_STATE_MH,
 							[this](uint8_t* data, uint16_t len) { return read_cbd(data, len); })},
 		{J2K_MS_MCC,
-		 new marker_handler(J2K_MS_MCC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH,
+		 new marker_handler(J2K_MS_MCC, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
 							[this](uint8_t* data, uint16_t len) { return read_mcc(data, len); })},
 		{J2K_MS_MCO,
-		 new marker_handler(J2K_MS_MCO, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH,
+		 new marker_handler(J2K_MS_MCO, DECOMPRESS_STATE_MH | DECOMPRESS_STATE_TPH,
 							[this](uint8_t* data, uint16_t len) { return read_mco(data, len); })}};
 }
 CodeStreamDecompress::~CodeStreamDecompress()
@@ -146,8 +146,8 @@ CodeStreamDecompress::~CodeStreamDecompress()
 		delete val.second;
 	delete m_decompressorState.m_default_tcp;
 	delete[] m_marker_scratch;
-	if(m_output_image)
-		grk_object_unref(&m_output_image->obj);
+	if(m_outputImage)
+		grk_object_unref(&m_outputImage->obj);
 	delete m_tileCache;
 }
 GrkImage* CodeStreamDecompress::getCompositeImage()
@@ -167,14 +167,14 @@ TileProcessor* CodeStreamDecompress::allocateProcessor(uint16_t tileIndex)
 	m_currentTileProcessor = tileProcessor;
 	if(!m_multiTile)
 	{
-		if(m_output_image)
-			grk_object_unref(&m_output_image->obj);
-		m_output_image = nullptr;
+		if(m_outputImage)
+			grk_object_unref(&m_outputImage->obj);
+		m_outputImage = nullptr;
 	}
-	if(!m_output_image)
+	if(!m_outputImage)
 	{
-		m_output_image = new GrkImage();
-		getCompositeImage()->copyHeader(m_output_image);
+		m_outputImage = new GrkImage();
+		getCompositeImage()->copyHeader(m_outputImage);
 	}
 
 	return m_currentTileProcessor;
@@ -192,7 +192,7 @@ CodeStreamInfo* CodeStreamDecompress::getCodeStreamInfo(void)
 }
 bool CodeStreamDecompress::isDecodingTilePartHeader()
 {
-	return (m_decompressorState.getState() & J2K_DEC_STATE_TPH);
+	return (m_decompressorState.getState() & DECOMPRESS_STATE_TPH);
 }
 DecompressorState* CodeStreamDecompress::getDecompressorState(void)
 {
@@ -299,7 +299,7 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 	auto decompressor = &m_decompressorState;
 
 	/* Check if we have read the main header */
-	if(decompressor->getState() != J2K_DEC_STATE_TPH_SOT)
+	if(decompressor->getState() != DECOMPRESS_STATE_TPH_SOT)
 	{
 		GRK_ERROR("Need to read the main header before setting decompress window");
 		return false;
@@ -419,7 +419,7 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 		return true;
 
 	// another tile has already been decoded
-	if(m_output_image)
+	if(m_outputImage)
 	{
 		/* Copy code stream image information to composite image */
 		m_headerImage->copyHeader(getCompositeImage());
@@ -483,7 +483,7 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 	// reset tile part numbers, in case we are re-using the same codec object
 	// from previous decompress
 	for(uint32_t i = 0; i < numTilesToDecompress; ++i)
-		m_cp.tcps[i].m_tilePartIndex = -1;
+		m_cp.tcps[i].m_tilePartIndexCounter = -1;
 
 	/* customization of the decoding */
 	m_procedure_list.push_back([this] { return decompressTile(); });
@@ -492,8 +492,8 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 }
 bool CodeStreamDecompress::endOfCodeStream(void)
 {
-	return m_decompressorState.getState() == J2K_DEC_STATE_EOC ||
-		   m_decompressorState.getState() == J2K_DEC_STATE_NO_EOC || m_stream->numBytesLeft() == 0;
+	return m_decompressorState.getState() == DECOMPRESS_STATE_EOC ||
+		   m_decompressorState.getState() == DECOMPRESS_STATE_NO_EOC || m_stream->numBytesLeft() == 0;
 }
 bool CodeStreamDecompress::decompressTiles(void)
 {
@@ -741,7 +741,7 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 	bool has_qcd = false;
 
 	/*  We enter in the main header */
-	m_decompressorState.setState(J2K_DEC_STATE_MH_SOC);
+	m_decompressorState.setState(DECOMPRESS_STATE_MH_SOC);
 
 	/* Try to read the SOC marker, the code stream must begin with SOC marker */
 	if(!read_soc())
@@ -848,7 +848,7 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 		codeStreamInfo->setMainHeaderEnd((uint32_t)m_stream->tell() - 2U);
 
 	/* Next step: read a tile-part header */
-	m_decompressorState.setState(J2K_DEC_STATE_TPH_SOT);
+	m_decompressorState.setState(DECOMPRESS_STATE_TPH_SOT);
 
 	return true;
 }
@@ -856,18 +856,22 @@ bool CodeStreamDecompress::decompressExec(void)
 {
 	if(!exec(m_procedure_list))
 		return false;
+
+	// composite all tiles (if multiple tiles are to be decompressed)
 	if(m_multiTile)
 	{
-		if(!m_output_image->allocData())
+		if(!m_outputImage->allocData())
 			return false;
 		auto images = m_tileCache->getTileImages();
 		for(auto& img : images)
 		{
-			if(!m_output_image->compositeFrom(img))
+			if(!m_outputImage->compositeFrom(img))
 				return false;
 		}
 	}
-	m_output_image->transferDataTo(getCompositeImage());
+
+	// transfer output image to composite image
+	m_outputImage->transferDataTo(getCompositeImage());
 
 	return true;
 }
@@ -907,8 +911,8 @@ bool CodeStreamDecompress::decompressTile()
 		}
 		/* Special case if we have previously read the EOC marker
 		 * (if the previous tile decompressed is the last ) */
-		if(m_decompressorState.getState() == J2K_DEC_STATE_EOC)
-			m_decompressorState.setState(J2K_DEC_STATE_TPH_SOT);
+		if(m_decompressorState.getState() == DECOMPRESS_STATE_EOC)
+			m_decompressorState.setState(DECOMPRESS_STATE_TPH_SOT);
 		bool canDecompress = true;
 		try
 		{
@@ -951,7 +955,7 @@ bool CodeStreamDecompress::decompressT2T1(TileProcessor* tileProcessor)
 	}
 	bool doPost =
 		!current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
-	if(!tileProcessor->decompressT2T1(tcp, m_output_image, m_multiTile, doPost))
+	if(!tileProcessor->decompressT2T1(tcp, m_outputImage, m_multiTile, doPost))
 	{
 		return false;
 	}
@@ -962,7 +966,7 @@ bool CodeStreamDecompress::findNextTile(TileProcessor* tileProcessor)
 {
 	auto decompressor = &m_decompressorState;
 
-	if(!(decompressor->getState() & J2K_DEC_STATE_DATA))
+	if(!(decompressor->getState() & DECOMPRESS_STATE_DATA))
 	{
 		GRK_ERROR("no tile data.");
 		return false;
@@ -986,7 +990,7 @@ bool CodeStreamDecompress::findNextTile(TileProcessor* tileProcessor)
 bool CodeStreamDecompress::decompressValidation(void)
 {
 	bool is_valid = true;
-	is_valid &= (m_decompressorState.getState() == J2K_DEC_STATE_NONE);
+	is_valid &= (m_decompressorState.getState() == DECOMPRESS_STATE_NONE);
 
 	return is_valid;
 }
@@ -2323,13 +2327,13 @@ bool CodeStreamDecompress::endDecompress(void)
 }
 bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 {
-	if(m_decompressorState.getState() == J2K_DEC_STATE_EOC)
+	if(m_decompressorState.getState() == DECOMPRESS_STATE_EOC)
 	{
 		m_curr_marker = J2K_MS_EOC;
 		return true;
 	}
 	/* We need to encounter a SOT marker (a new tile-part header) */
-	if(m_decompressorState.getState() != J2K_DEC_STATE_TPH_SOT)
+	if(m_decompressorState.getState() != DECOMPRESS_STATE_TPH_SOT)
 	{
 		GRK_ERROR("parse_markers: no SOT marker found");
 		return false;
@@ -2344,7 +2348,7 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 			// end of stream with no EOC
 			if(m_stream->numBytesLeft() == 0)
 			{
-				m_decompressorState.setState(J2K_DEC_STATE_NO_EOC);
+				m_decompressorState.setState(DECOMPRESS_STATE_NO_EOC);
 				break;
 			}
 			uint16_t marker_size;
@@ -2362,7 +2366,7 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 				return false;
 			}
 			// subtract tile part header and header marker size
-			if(m_decompressorState.getState() & J2K_DEC_STATE_TPH)
+			if(m_decompressorState.getState() & DECOMPRESS_STATE_TPH)
 				m_currentTileProcessor->tilePartDataLength -= (uint32_t)(marker_size + 2);
 
 			marker_size =
@@ -2411,7 +2415,7 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 				return false;
 		}
 		// no bytes left and no EOC marker : we're done!
-		if(!m_stream->numBytesLeft() && m_decompressorState.getState() == J2K_DEC_STATE_NO_EOC)
+		if(!m_stream->numBytesLeft() && m_decompressorState.getState() == DECOMPRESS_STATE_NO_EOC)
 			break;
 		/* If we didn't skip data before, we need to read the SOD marker*/
 		if(!m_decompressorState.skipTileData)
@@ -2422,7 +2426,7 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 			{
 				if(!readMarker())
 				{
-					m_decompressorState.setState(J2K_DEC_STATE_NO_EOC);
+					m_decompressorState.setState(DECOMPRESS_STATE_NO_EOC);
 					break;
 				}
 			}
@@ -2431,13 +2435,13 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 		{
 			if(!readMarker())
 			{
-				m_decompressorState.setState(J2K_DEC_STATE_NO_EOC);
+				m_decompressorState.setState(DECOMPRESS_STATE_NO_EOC);
 				break;
 			}
 			/* Indicate we will try to read a new tile-part header*/
 			m_decompressorState.skipTileData = false;
 			m_decompressorState.lastTilePartWasRead = false;
-			m_decompressorState.setState(J2K_DEC_STATE_TPH_SOT);
+			m_decompressorState.setState(DECOMPRESS_STATE_TPH_SOT);
 		}
 	}
 	if(!m_currentTileProcessor)
@@ -2534,8 +2538,8 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 		}
 	}
 	/* Current marker is the EOC marker ?*/
-	if(m_curr_marker == J2K_MS_EOC && m_decompressorState.getState() != J2K_DEC_STATE_EOC)
-		m_decompressorState.setState(J2K_DEC_STATE_EOC);
+	if(m_curr_marker == J2K_MS_EOC && m_decompressorState.getState() != DECOMPRESS_STATE_EOC)
+		m_decompressorState.setState(DECOMPRESS_STATE_EOC);
 	// if we are not ready to decompress tile part data,
 	// then skip tiles with no tile data i.e. no SOD marker
 	if(!m_decompressorState.lastTilePartWasRead)
@@ -2558,7 +2562,7 @@ bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 		return false;
 	}
 	*canDecompress = true;
-	m_decompressorState.orState(J2K_DEC_STATE_DATA);
+	m_decompressorState.orState(DECOMPRESS_STATE_DATA);
 
 	return true;
 }
@@ -2584,7 +2588,7 @@ bool CodeStreamDecompress::read_cod(uint8_t* headerData, uint16_t header_size)
 	{
 		GRK_WARN("Multiple COD markers detected for tile part %u."
 				 " The JPEG 2000 standard does not allow more than one COD marker per tile.",
-				 tcp->m_tilePartIndex);
+				 tcp->m_tilePartIndexCounter);
 	}
 	tcp->cod = true;
 
@@ -2830,7 +2834,7 @@ bool CodeStreamDecompress::read_soc()
 		return false;
 
 	/* Next marker should be a SIZ marker in the main header */
-	m_decompressorState.setState(J2K_DEC_STATE_MH_SIZ);
+	m_decompressorState.setState(DECOMPRESS_STATE_MH_SIZ);
 
 	if(codeStreamInfo)
 	{

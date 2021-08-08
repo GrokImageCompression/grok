@@ -321,7 +321,7 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	int32_t m_tile_ind_to_dec;
 	uint8_t* m_marker_scratch;
 	uint16_t m_marker_scratch_size;
-	GrkImage* m_output_image;
+	GrkImage* m_outputImage;
 	TileCache* m_tileCache;
 };
 

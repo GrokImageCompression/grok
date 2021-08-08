@@ -23,7 +23,7 @@ namespace grk
 {
 TileProcessor::TileProcessor(CodeStream* codeStream, IBufferedStream* stream, bool isCompressor,
 							 bool isWholeTileDecompress)
-	: m_tileIndex(0), m_first_poc_tile_part(true), m_tilePartIndex(0), tilePartDataLength(0),
+	: m_tileIndex(0), m_first_poc_tile_part(true), m_tilePartIndexCounter(0), tilePartDataLength(0),
 	  numTilePartsTotal(0), pino(0), tile(nullptr), headerImage(codeStream->getHeaderImage()),
 	  current_plugin_tile(codeStream->getCurrentPluginTile()),
 	  wholeTileDecompress(isWholeTileDecompress), m_cp(codeStream->getCodingParams()),
@@ -281,7 +281,7 @@ bool TileProcessor::doCompress(void)
 }
 bool TileProcessor::canWritePocMarker(void)
 {
-	bool firstTilePart = (m_tilePartIndex == 0);
+	bool firstTilePart = (m_tilePartIndexCounter == 0);
 
 	// note: DCP standard does not allow POC marker
 	return m_cp->tcps[m_tileIndex].hasPoc() && firstTilePart && !GRK_IS_CINEMA(m_cp->rsiz);
@@ -289,7 +289,7 @@ bool TileProcessor::canWritePocMarker(void)
 bool TileProcessor::writeTilePartT2(uint32_t* tileBytesWritten)
 {
 	// write entire PLT marker in first tile part header
-	if(m_tilePartIndex == 0 && packetLengthCache.getMarkers())
+	if(m_tilePartIndexCounter == 0 && packetLengthCache.getMarkers())
 		*tileBytesWritten += packetLengthCache.getMarkers()->write(false);
 
 	// write SOD
@@ -413,9 +413,7 @@ bool TileProcessor::decompressT2T1(TileCodingParams* tcp, GrkImage* outputImage,
 		return multiTile;
 	}
 	if(!decompressT1())
-	{
 		return false;
-	}
 	if(doPost)
 	{
 		if(multiTile)
@@ -736,8 +734,8 @@ bool TileProcessor::encodeT2(uint32_t* tileBytesWritten)
 }
 bool TileProcessor::preCompressTile()
 {
-	m_tilePartIndex = 0;
-	numTilePartsTotal = m_cp->tcps[m_tileIndex].numTileParts;
+	m_tilePartIndexCounter = 0;
+	numTilePartsTotal = m_cp->tcps[m_tileIndex].m_numTileParts;
 	m_first_poc_tile_part = true;
 
 	/* initialization before tile compressing  */
@@ -871,7 +869,7 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 		{
 			GRK_ERROR("Tile %d, tile part %d: stream has been truncated and "
 					  "there is no tile data available",
-					  m_tileIndex, tcp->m_tilePartIndex);
+					  m_tileIndex, tcp->m_tilePartIndexCounter);
 			return false;
 		}
 		// check that there are enough bytes in stream to fill tile data
@@ -881,7 +879,7 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 					 "stream length %lld\n"
 					 "(tile: %u, tile part: %d). Tile has been truncated.",
 					 tilePartDataLength, m_stream->numBytesLeft(), m_tileIndex,
-					 tcp->m_tilePartIndex);
+					 tcp->m_tilePartIndexCounter);
 
 			// sanitize tilePartDataLength
 			tilePartDataLength = (uint32_t)bytesLeftInStream;
@@ -942,9 +940,9 @@ bool TileProcessor::prepareSodDecompress(CodeStreamDecompress* codeStream)
 		tcp->m_compressedTileData->pushBack(buff, len, !zeroCopy);
 	}
 	if(current_read_size != tilePartDataLength)
-		codeStream->getDecompressorState()->setState(J2K_DEC_STATE_NO_EOC);
+		codeStream->getDecompressorState()->setState(DECOMPRESS_STATE_NO_EOC);
 	else
-		codeStream->getDecompressorState()->setState(J2K_DEC_STATE_TPH_SOT);
+		codeStream->getDecompressorState()->setState(DECOMPRESS_STATE_TPH_SOT);
 
 	return true;
 }

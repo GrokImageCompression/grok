@@ -47,6 +47,9 @@ class SOTMarker
 
 	 */
 	bool read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint16_t header_size);
+  private:
+	uint64_t m_psot_location;
+
 
 	/**
 	 * Reads values from a SOT marker (Start of tile-part)
@@ -56,18 +59,16 @@ class SOTMarker
 	 *
 	 * @param       headerData   the data contained in the SOT marker.
 	 * @param       header_size   the size of the data contained in the SOT marker.
-	 * @param       tile_no       Isot.
 	 * @param       p_tot_len       Psot.
 	 * @param       p_current_part  TPsot.
 	 * @param       p_num_parts     TNsot.
 
 	 */
-	bool get_sot_values(CodeStreamDecompress* codeStream, uint8_t* headerData, uint32_t header_size,
-						uint16_t* tile_no, uint32_t* p_tot_len, uint8_t* p_current_part,
+	bool read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint32_t header_size,
+						uint32_t* p_tot_len, uint8_t* p_current_part,
 						uint8_t* p_num_parts);
 
-  private:
-	uint64_t m_psot_location;
+
 };
 
 } /* namespace grk */

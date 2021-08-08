@@ -67,7 +67,7 @@ TileCodingParams::TileCodingParams()
 	: csty(0), prg(GRK_PROG_UNKNOWN), numlayers(0), numLayersToDecompress(0), mct(0), numpocs(0),
 	  ppt_markers_count(0), ppt_markers(nullptr), ppt_data(nullptr), ppt_buffer(nullptr),
 	  ppt_data_size(0), ppt_len(0), main_qcd_qntsty(0), main_qcd_numStepSizes(0), tccps(nullptr),
-	  m_tilePartIndex(-1), numTileParts(0), m_compressedTileData(nullptr), mct_norms(nullptr),
+	  m_tilePartIndexCounter(-1), m_numTileParts(0), m_compressedTileData(nullptr), mct_norms(nullptr),
 	  m_mct_decoding_matrix(nullptr), m_mct_coding_matrix(nullptr), m_mct_records(nullptr),
 	  m_nb_mct_records(0), m_nb_max_mct_records(0), m_mcc_records(nullptr), m_nb_mcc_records(0),
 	  m_nb_max_mcc_records(0), cod(false), ppt(false), m_qcd(nullptr), m_ht(false)
@@ -231,7 +231,7 @@ DecompressorState::DecompressorState()
 	: m_default_tcp(nullptr), m_start_tile_x_index(0), m_start_tile_y_index(0),
 	  m_end_tile_x_index(0), m_end_tile_y_index(0), lastSotReadPosition(0),
 	  lastTilePartInCodeStream(false), lastTilePartWasRead(false), skipTileData(false),
-	  m_state(J2K_DEC_STATE_NONE)
+	  m_state(DECOMPRESS_STATE_NONE)
 {}
 
 uint16_t DecompressorState::getState(void)
@@ -254,15 +254,15 @@ bool DecompressorState::findNextTile(CodeStreamDecompress* codeStream)
 {
 	auto stream = codeStream->getStream();
 	lastTilePartWasRead = false;
-	andState((uint16_t)(~J2K_DEC_STATE_DATA));
+	andState((uint16_t)(~DECOMPRESS_STATE_DATA));
 
 	// if there is no EOC marker and there is also no data left, then simply return true
-	if(stream->numBytesLeft() == 0 && getState() == J2K_DEC_STATE_NO_EOC)
+	if(stream->numBytesLeft() == 0 && getState() == DECOMPRESS_STATE_NO_EOC)
 		return true;
 
 	// if EOC marker has not been read yet, then try to read the next marker
 	// (should be EOC or SOT)
-	if(getState() != J2K_DEC_STATE_EOC)
+	if(getState() != DECOMPRESS_STATE_EOC)
 	{
 		try
 		{
@@ -276,7 +276,7 @@ bool DecompressorState::findNextTile(CodeStreamDecompress* codeStream)
 		catch(InvalidMarkerException& ume)
 		{
 			GRK_UNUSED(ume);
-			setState(J2K_DEC_STATE_NO_EOC);
+			setState(DECOMPRESS_STATE_NO_EOC);
 			GRK_WARN("findNextTile: expected EOC or SOT "
 					 "but found invalid marker 0x%x.",
 					 codeStream->getCurrentMarker());
@@ -288,7 +288,7 @@ bool DecompressorState::findNextTile(CodeStreamDecompress* codeStream)
 			// we found the EOC marker - set state accordingly and return true;
 			// we can ignore all data after EOC
 			case J2K_MS_EOC:
-				setState(J2K_DEC_STATE_EOC);
+				setState(DECOMPRESS_STATE_EOC);
 				return true;
 				break;
 			// start of another tile
@@ -297,7 +297,7 @@ bool DecompressorState::findNextTile(CodeStreamDecompress* codeStream)
 				break;
 			default: {
 				auto bytesLeft = stream->numBytesLeft();
-				setState(J2K_DEC_STATE_NO_EOC);
+				setState(DECOMPRESS_STATE_NO_EOC);
 				GRK_WARN("findNextTile: expected EOC or SOT "
 						 "but found marker 0x%x.\nIgnoring %d bytes "
 						 "remaining in the stream.",

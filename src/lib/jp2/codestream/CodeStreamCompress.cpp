@@ -867,14 +867,14 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 	}
 	if(m_cp.tlm_markers)
 		m_cp.tlm_markers->push(currentTileIndex, tilePartBytesWritten);
-	++tileProcessor->m_tilePartIndex;
+	++tileProcessor->m_tilePartIndexCounter;
 
 	return true;
 }
 bool CodeStreamCompress::writeTileParts(TileProcessor* tileProcessor)
 {
 	m_currentTileProcessor = tileProcessor;
-	assert(tileProcessor->m_tilePartIndex == 0);
+	assert(tileProcessor->m_tilePartIndexCounter == 0);
 	// 1. write first tile part
 	tileProcessor->pino = 0;
 	tileProcessor->m_first_poc_tile_part = true;
@@ -940,7 +940,7 @@ bool CodeStreamCompress::updateRates(void)
 		{
 			double stride = 0;
 			if(cp->m_coding_params.m_enc.m_enableTilePartGeneration)
-				stride = (tcp->numTileParts - 1) * 14;
+				stride = (tcp->m_numTileParts - 1) * 14;
 			double offset = stride / tcp->numlayers;
 			auto tileBounds = cp->getTileBounds(image, tile_x, tile_y);
 			uint64_t numTilePixels = tileBounds.area();
@@ -1979,7 +1979,7 @@ bool CodeStreamCompress::getNumTileParts(uint16_t* numTilePartsForAllTiles, GrkI
 			}
 			*numTilePartsForAllTiles = (uint16_t)newTotalTilePartsForAllTiles;
 		}
-		tcp->numTileParts = totalTilePartsForTile;
+		tcp->m_numTileParts = totalTilePartsForTile;
 		++tcp;
 	}
 
