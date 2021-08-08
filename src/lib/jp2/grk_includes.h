@@ -19,6 +19,9 @@
  *
  */
 #pragma once
+
+//#define GRK_FORCE_SIGNED_COMPRESS
+
 /*
  * This must be included before any system headers,
  * since they are affected by macros defined therein

@@ -291,9 +291,7 @@ static bool readTiffPixelsUnsigned(TIFF* tif, grk_image_comp* comps, uint32_t nu
 		// each coded row will be padded to fill unit
 		size_t padding = (units * chroma_subsample_x - comp->w);
 		if(subsampled)
-		{
 			rowStride = (tsize_t)(units * unitSize);
-		}
 		size_t xpos = 0;
 		for(; (height < comp->h) && (strip < TIFFNumberOfStrips(tif)); strip++)
 		{
@@ -942,7 +940,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	tif = TIFFOpen(filename.c_str(), "r");
 	if(!tif)
 	{
-		spdlog::error("tiftoimage:Failed to open {} for reading", filename);
+		spdlog::error("TIFFFormat::decode: Failed to open {} for reading", filename);
 		return 0;
 	}
 
@@ -979,7 +977,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	   tiPhoto != PHOTOMETRIC_CIELAB && tiPhoto != PHOTOMETRIC_YCBCR &&
 	   tiPhoto != PHOTOMETRIC_SEPARATED && tiPhoto != PHOTOMETRIC_PALETTE)
 	{
-		spdlog::error("tiftoimage: Unsupported color format {}.\n"
+		spdlog::error("TIFFFormat::decode: Unsupported color format {}.\n"
 					  "Only RGB(A), GRAY(A), CIELAB, YCC, CMYK and PALETTE have been implemented.",
 					  getColourFormatString(tiPhoto));
 		goto cleanup;
@@ -993,7 +991,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 			if((uint32_t)(luma[i] * 1000.0f + 0.5f) != rec_601_luma[i])
 			{
 				spdlog::error(
-					"tiftoimage: YCbCr image with unsupported non Rec. 601 colour space;");
+					"TIFFFormat::decode: YCbCr image with unsupported non Rec. 601 colour space;");
 				spdlog::error("YCbCrCoefficients: {},{},{}", luma[0], luma[1], luma[2]);
 				spdlog::error("Please convert to sRGB before compressing.");
 				goto cleanup;
@@ -1003,22 +1001,22 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	// check sample format
 	if(hasTiSf && tiSf != SAMPLEFORMAT_UINT && tiSf != SAMPLEFORMAT_INT)
 	{
-		spdlog::error("tiftoimage: Unsupported sample format: {}.", getSampleFormatString(tiSf));
+		spdlog::error("TIFFFormat::decode: Unsupported sample format: {}.", getSampleFormatString(tiSf));
 		goto cleanup;
 	}
 	if(tiSpp == 0)
 	{
-		spdlog::error("tiftoimage: Samples per pixel must be non-zero");
+		spdlog::error("TIFFFormat::decode: Samples per pixel must be non-zero");
 		goto cleanup;
 	}
 	if(tiBps > 16U || tiBps == 0)
 	{
-		spdlog::error("tiftoimage: Unsupported precision {}. Maximum 16 Bits supported.", tiBps);
+		spdlog::error("TIFFFormat::decode: Unsupported precision {}. Maximum 16 Bits supported.", tiBps);
 		goto cleanup;
 	}
 	if(tiWidth == 0 || tiHeight == 0)
 	{
-		spdlog::error("tiftoimage: Width({}) and height({}) must both "
+		spdlog::error("TIFFFormat::decode: Width({}) and height({}) must both "
 					  "be non-zero",
 					  tiWidth, tiHeight);
 		goto cleanup;
@@ -1029,7 +1027,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	memset(&cmptparm[0], 0, maxNumComponents * sizeof(grk_image_cmptparm));
 	if((tiPhoto == PHOTOMETRIC_RGB) && (is_cinema) && (tiBps != 12U))
 	{
-		spdlog::warn("tiftoimage: Input image bitdepth is {} bits\n"
+		spdlog::warn("TIFFFormat::decode: Input image bitdepth is {} bits\n"
 					 "TIF conversion has automatically rescaled to 12-bits\n"
 					 "to comply with cinema profiles.",
 					 tiBps);
@@ -1044,7 +1042,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 		case PHOTOMETRIC_PALETTE:
 			if(isSigned)
 			{
-				spdlog::error("tiftoimage: Signed palette image not supported");
+				spdlog::error("TIFFFormat::decode: Signed palette image not supported");
 				goto cleanup;
 			}
 			color_space = GRK_CLRSPC_SRGB;
@@ -1069,13 +1067,13 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 			// jpeg library is needed to convert from YCbCr to RGB
 			if(compress == COMPRESSION_OJPEG || compress == COMPRESSION_JPEG)
 			{
-				spdlog::error("tiftoimage: YCbCr image with JPEG compression"
+				spdlog::error("TIFFFormat::decode: YCbCr image with JPEG compression"
 							  " is not supported");
 				goto cleanup;
 			}
 			else if(compress == COMPRESSION_PACKBITS)
 			{
-				spdlog::error("tiftoimage: YCbCr image with PACKBITS compression"
+				spdlog::error("TIFFFormat::decode: YCbCr image with PACKBITS compression"
 							  " is not supported");
 				goto cleanup;
 			}
@@ -1088,14 +1086,14 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 				if(isSigned)
 				{
 					spdlog::error(
-						"tiftoimage: chroma subsampling {},{} with signed data is not supported",
+						"TIFFFormat::decode: chroma subsampling {},{} with signed data is not supported",
 						chroma_subsample_x, chroma_subsample_y);
 					goto cleanup;
 				}
 				if(numcomps != 3)
 				{
 					spdlog::error(
-						"tiftoimage: chroma subsampling {},{} with alpha channel(s) not supported",
+						"TIFFFormat::decode: chroma subsampling {},{} with alpha channel(s) not supported",
 						chroma_subsample_x, chroma_subsample_y);
 					goto cleanup;
 				}
@@ -1107,7 +1105,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 			numcomps = (uint16_t)(numcomps + 4);
 			break;
 		default:
-			spdlog::error("tiftoimage: Unsupported colour space {}.", tiPhoto);
+			spdlog::error("TIFFFormat::decode: Unsupported colour space {}.", tiPhoto);
 			goto cleanup;
 			break;
 	}
@@ -1115,7 +1113,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	{
 		if(hasTiSf && (tiSf != SAMPLEFORMAT_INT))
 		{
-			spdlog::warn("tiftoimage: Input image is in CIE colour space"
+			spdlog::warn("TIFFFormat::decode: Input image is in CIE colour space"
 						 " but sample format is unsigned int. Forcing to signed int");
 		}
 		isSigned = true;
@@ -1124,7 +1122,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	{
 		if(hasTiSf && (tiSf != SAMPLEFORMAT_UINT))
 		{
-			spdlog::warn("tiftoimage: Input image is in ICC CIE colour"
+			spdlog::warn("TIFFFormat::decode: Input image is in ICC CIE colour"
 						 " space but sample format is signed int. Forcing to unsigned int");
 		}
 		isSigned = false;
@@ -1134,12 +1132,12 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	{
 		if(tiPhoto == PHOTOMETRIC_MINISWHITE)
 		{
-			spdlog::error("tiftoimage: signed image with "
+			spdlog::error("TIFFFormat::decode: signed image with "
 						  "MINISWHITE format is not fully supported");
 		}
 		if(tiBps != 4 && tiBps != 8 && tiBps != 16)
 		{
-			spdlog::error("tiftoimage: signed image with bit"
+			spdlog::error("TIFFFormat::decode: signed image with bit"
 						  " depth {} is not supported",
 						  tiBps);
 			goto cleanup;
@@ -1147,7 +1145,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	}
 	if(numcomps > maxNumComponents)
 	{
-		spdlog::error("tiftoimage: number of components "
+		spdlog::error("TIFFFormat::decode: number of components "
 					  "{} must be <= %u",
 					  numcomps, maxNumComponents);
 		goto cleanup;
@@ -1173,7 +1171,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	image->x1 = image->x0 + (w - 1) * 1 + 1;
 	if(image->x1 <= image->x0)
 	{
-		spdlog::error("tiftoimage: Bad value for image->x1({}) vs. "
+		spdlog::error("TIFFFormat::decode: Bad value for image->x1({}) vs. "
 					  "image->x0({}).",
 					  image->x1, image->x0);
 		goto cleanup;
@@ -1182,7 +1180,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	image->y1 = image->y0 + (h - 1) * 1 + 1;
 	if(image->y1 <= image->y0)
 	{
-		spdlog::error("tiftoimage: Bad value for image->y1({}) vs. "
+		spdlog::error("TIFFFormat::decode: Bad value for image->y1({}) vs. "
 					  "image->y0({}).",
 					  image->y1, image->y0);
 		goto cleanup;
@@ -1192,7 +1190,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	{
 		if(!TIFFGetField(tif, TIFFTAG_COLORMAP, &red_orig, &green_orig, &blue_orig))
 		{
-			spdlog::error("Missing required \"Colormap\" tag");
+			spdlog::error("TIFFFormat::decode: Missing required \"Colormap\" tag");
 			goto cleanup;
 		}
 		uint16_t palette_num_entries = (uint16_t)(1U << tiBps);
@@ -1233,7 +1231,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 			{
 				if(found_assocalpha)
 				{
-					spdlog::warn("tiftoimage: Found more than one associated alpha channel");
+					spdlog::warn("TIFFFormat::decode: Found more than one associated alpha channel");
 				}
 				alpha_count++;
 				comp->type = GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
@@ -1296,13 +1294,9 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 		   icclen < grk::maxICCProfileBufferLen)
 		{
 			if(grk::validate_icc(color_space, iccbuf, icclen))
-			{
 				grk::copy_icc(image, iccbuf, icclen);
-			}
 			else
-			{
-				spdlog::warn("ICC profile does not match underlying colour space. Ignoring");
-			}
+				spdlog::warn("TIFFFormat::decode: ICC profile does not match underlying colour space. Ignoring");
 		}
 	}
 	// 7. extract IPTC meta-data

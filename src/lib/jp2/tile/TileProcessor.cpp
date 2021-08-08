@@ -528,8 +528,12 @@ bool TileProcessor::dcLevelShiftCompress()
 		auto tccp = m_tcp->tccps + compno;
 		auto current_ptr = tile_comp->getBuffer()->getHighestBufferResWindowREL()->getBuffer();
 		uint64_t samples = tile_comp->getBuffer()->stridedArea();
+#ifndef GRK_FORCE_SIGNED_COMPRESS
 		if(needsMctDecompress(compno))
 			continue;
+#else
+		tccp->m_dc_level_shift = 1 << ((this->headerImage->comps + compno)->prec-1);
+#endif
 
 		if (tccp->qmfbid == 1){
 			if (tccp->m_dc_level_shift == 0)
@@ -549,6 +553,9 @@ bool TileProcessor::dcLevelShiftCompress()
 			for(uint64_t i = 0; i < samples; ++i)
 				*floatPtr++ = (float)(*current_ptr++ - tccp->m_dc_level_shift);
 		}
+#ifdef GRK_FORCE_SIGNED_COMPRESS
+		tccp->m_dc_level_shift = 0;
+#endif
 	}
 
 	return true;

@@ -128,6 +128,9 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 	for(uint32_t i = 0; i < image->numcomps; ++i)
 	{
 		auto comp = image->comps + i;
+#ifdef GRK_FORCE_SIGNED_COMPRESS
+		comp->sgnd = true;
+#endif
 		if(comp->w == 0 || comp->h == 0)
 		{
 			GRK_ERROR(
