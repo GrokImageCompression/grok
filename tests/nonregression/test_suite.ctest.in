@@ -708,3 +708,6 @@ grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/ht_rgb_lossy_no_mct_
 grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/ht_rgb_lossy_no_mct.j2k -M 64 -I -mct 0
 grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/ht_rgb_lossy_no_transform.j2k -M 64 -I -n 1
 grk_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/ht_rgb_lossy.j2k -M 64 -I
+
+# signed 4 bpp
+grk_compress -i @INPUT_NR_PATH@/signed-4bpp.tif -o @TEMP_PATH@/signed-4bpp.j2k
