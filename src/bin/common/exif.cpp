@@ -18,7 +18,11 @@
 #ifdef GROK_HAVE_EXIFTOOL
 #ifndef _MSC_VER
 #pragma GCC diagnostic push
+#ifdef __clang__
+#pragma GCC diagnostic ignored "-Wdeprecated-volatile"
+#else
 #pragma GCC diagnostic ignored "-Wvolatile"
+#endif
 #pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #endif

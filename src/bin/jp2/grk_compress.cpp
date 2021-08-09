@@ -958,7 +958,7 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 								 &parameters->prch_init[res_spec], &sep);
 				if(!(ret == 2 && sep == 0) && !(ret == 3 && sep == ','))
 				{
-					spdlog::error("Could not parse precinct dimension: '{}' {0:x}", s, sep);
+					spdlog::error("Could not parse precinct dimension: {} {}", s, sep);
 					spdlog::error("Example: -i lena.raw -o lena.j2k -c [128,128],[128,128]");
 					return 1;
 				}

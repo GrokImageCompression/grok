@@ -35,8 +35,14 @@
 
 #include <spdlog/fmt/fmt.h>
 
-#if defined(SPDLOG_WCHAR_FILENAMES) || defined(SPDLOG_WCHAR_TO_UTF8_SUPPORT)
-#    include <spdlog/fmt/xchar.h>
+// backward compatibility with fmt versions older than 8
+#if FMT_VERSION >= 80000
+#    define SPDLOG_FMT_RUNTIME(format_string) fmt::runtime(format_string)
+#    if defined(SPDLOG_WCHAR_FILENAMES) || defined(SPDLOG_WCHAR_TO_UTF8_SUPPORT)
+#        include <spdlog/fmt/xchar.h>
+#    endif
+#else
+#    define SPDLOG_FMT_RUNTIME(format_string) format_string
 #endif
 
 // visual studio upto 2013 does not support noexcept nor constexpr
@@ -110,6 +116,17 @@ using wstring_view_t = fmt::basic_string_view<wchar_t>;
 using memory_buf_t = fmt::basic_memory_buffer<char, 250>;
 using wmemory_buf_t = fmt::basic_memory_buffer<wchar_t, 250>;
 
+template<class T>
+using remove_cvref_t = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
+
+// clang doesn't like SFINAE disabled constructor in std::is_convertible<> so have to repeat the condition from basic_format_string here,
+// in addition, fmt::basic_runtime<Char> is only convertible to basic_format_string<Char> but not basic_string_view<Char>
+template<class T, class Char = char>
+struct is_convertible_to_basic_format_string
+    : std::integral_constant<bool,
+          std::is_convertible<T, fmt::basic_string_view<Char>>::value || std::is_same<remove_cvref_t<T>, fmt::basic_runtime<Char>>::value>
+{};
+
 #ifdef SPDLOG_WCHAR_TO_UTF8_SUPPORT
 #    ifndef _WIN32
 #        error SPDLOG_WCHAR_TO_UTF8_SUPPORT only supported on windows
@@ -117,12 +134,27 @@ using wmemory_buf_t = fmt::basic_memory_buffer<wchar_t, 250>;
 template<typename T>
 struct is_convertible_to_wstring_view : std::is_convertible<T, wstring_view_t>
 {};
+
+template<class T>
+using is_convertible_to_wformat_string = is_convertible_to_basic_format_string<T, wchar_t>;
 #    endif // _WIN32
 #else
 template<typename>
 struct is_convertible_to_wstring_view : std::false_type
 {};
+template<class>
+struct is_convertible_to_wformat_string : std::false_type
+{};
 #endif // SPDLOG_WCHAR_TO_UTF8_SUPPORT
+
+template<class T>
+struct is_convertible_to_any_string_view
+    : std::integral_constant<bool, std::is_convertible<T, string_view_t>::value || is_convertible_to_wstring_view<T>::value>
+{};
+template<class T>
+struct is_convertible_to_any_format_string
+    : std::integral_constant<bool, is_convertible_to_basic_format_string<T, char>::value || is_convertible_to_wformat_string<T>::value>
+{};
 
 #if defined(SPDLOG_NO_ATOMIC_LEVELS)
 using level_t = details::null_atomic_int;
@@ -156,13 +188,13 @@ enum level_enum
     n_levels
 };
 
-#define SPDLOG_LEVEL_NAME_TRACE string_view_t("trace", 5)
-#define SPDLOG_LEVEL_NAME_DEBUG string_view_t("debug", 5)
-#define SPDLOG_LEVEL_NAME_INFO string_view_t("info", 4)
-#define SPDLOG_LEVEL_NAME_WARNING string_view_t("warning", 7)
-#define SPDLOG_LEVEL_NAME_ERROR string_view_t("error", 5)
-#define SPDLOG_LEVEL_NAME_CRITICAL string_view_t("critical", 8)
-#define SPDLOG_LEVEL_NAME_OFF string_view_t("off", 3)
+#define SPDLOG_LEVEL_NAME_TRACE spdlog::string_view_t("trace", 5)
+#define SPDLOG_LEVEL_NAME_DEBUG spdlog::string_view_t("debug", 5)
+#define SPDLOG_LEVEL_NAME_INFO spdlog::string_view_t("info", 4)
+#define SPDLOG_LEVEL_NAME_WARNING spdlog::string_view_t("warning", 7)
+#define SPDLOG_LEVEL_NAME_ERROR spdlog::string_view_t("error", 5)
+#define SPDLOG_LEVEL_NAME_CRITICAL spdlog::string_view_t("critical", 8)
+#define SPDLOG_LEVEL_NAME_OFF spdlog::string_view_t("off", 3)
 
 #if !defined(SPDLOG_LEVEL_NAMES)
 #    define SPDLOG_LEVEL_NAMES                                                                                                             \

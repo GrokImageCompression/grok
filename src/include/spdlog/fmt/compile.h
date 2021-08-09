@@ -14,7 +14,7 @@
 #            define FMT_HEADER_ONLY
 #        endif
 #    endif
-#    include <spdlog/fmt/bundled/xchar.h>
+#    include <spdlog/fmt/bundled/compile.h>
 #else
-#    include <fmt/xchar.h>
+#    include <fmt/compile.h>
 #endif

@@ -27,7 +27,6 @@ enum class async_msg_type
     terminate
 };
 
-#include <spdlog/details/log_msg_buffer.h>
 // Async msg to move to/from the queue
 // Movable only. should never be copied
 struct async_msg : log_msg_buffer
@@ -117,5 +116,5 @@ private:
 } // namespace spdlog
 
 #ifdef SPDLOG_HEADER_ONLY
-#include "thread_pool-inl.h"
+#    include "thread_pool-inl.h"
 #endif
