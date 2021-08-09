@@ -970,6 +970,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	uint16_t extrasamples = 0;
 	bool hasXRes = false, hasYRes = false, hasResUnit = false;
 	bool isSigned = (tiSf == SAMPLEFORMAT_INT);
+	bool needSignedPixelReader = isSigned && (tiBps == 8 || tiBps == 16);
 
 	// 1. sanity checks
 
@@ -1276,6 +1277,11 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 		comp->sgnd = isSigned;
 	}
 
+	if (needSignedPixelReader && grk::isSubsampled(image)){
+		spdlog::error("TIFF: subsampling not supported for signed 8 and 16 bit images");
+		goto cleanup;
+	}
+
 	// 5. extract capture resolution
 	hasXRes = TIFFGetFieldDefaulted(tif, TIFFTAG_XRESOLUTION, &tiXRes) == 1;
 	hasYRes = TIFFGetFieldDefaulted(tif, TIFFTAG_YRESOLUTION, &tiYRes) == 1;
@@ -1322,7 +1328,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 		memcpy(image->meta->xmp_buf, xmp_buf, xmp_len);
 	}
 	// 9. read pixel data
-	if(isSigned && (tiBps == 8 || tiBps == 16) )
+	if(needSignedPixelReader)
 	{
 		if(tiBps == 8)
 			success = readTiffPixelsSigned<int8_t>(tif, image->comps, numcomps, tiSpp, tiPC);

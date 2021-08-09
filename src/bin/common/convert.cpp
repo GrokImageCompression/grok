@@ -75,7 +75,7 @@ void scale_component(grk_image_comp* component, uint8_t precision)
 	auto data = component->data;
 	if(component->prec < precision)
 	{
-		int32_t scale = 1U << (uint32_t)(precision - component->prec);
+		int32_t scale = 1 << (uint32_t)(precision - component->prec);
 		size_t index = 0;
 		for(uint32_t j = 0; j < component->h; ++j)
 		{
@@ -89,7 +89,7 @@ void scale_component(grk_image_comp* component, uint8_t precision)
 	}
 	else
 	{
-		int32_t scale = 1U << (uint32_t)(component->prec - precision);
+		int32_t scale = 1 << (uint32_t)(component->prec - precision);
 		size_t index = 0;
 		for(uint32_t j = 0; j < component->h; ++j)
 		{
