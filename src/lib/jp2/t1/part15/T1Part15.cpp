@@ -147,11 +147,15 @@ namespace t1_part15
 				const element_siz p0;
 				const element_siz p1;
 				const element_siz s(cblk->width(), cblk->height());
-				auto j2k_block = new j2k_codeblock(idx,block->bandOrientation, 0,0,0,0,cblk->width(),unencoded_data,(float*)unencoded_data,offset,
-												numlayers,codelbock_style,p0,p1,s);
+				auto j2k_block = new j2k_codeblock(idx,block->bandOrientation, block->bandNumbps,
+													0,0,0,
+													cblk->width(),unencoded_data,(float*)unencoded_data,
+													offset, numlayers,codelbock_style,p0,p1,s);
 				j2k_block->num_passes = num_passes;
-				j2k_block->num_ZBP = block->k_msbs - 1;
+				j2k_block->num_ZBP = block->k_msbs;
 				j2k_block->length = offset;
+				j2k_block->pass_length[0] = offset;
+				j2k_block->set_compressed_data(actual_coded_data, offset);
 				htj2k_decode(j2k_block, 0);
 				delete j2k_block;
 			}

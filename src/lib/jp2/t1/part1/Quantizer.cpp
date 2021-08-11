@@ -32,6 +32,11 @@ Quantizer::Quantizer(bool reversible,uint8_t guard_bits) : Sqcd((uint8_t)(guard_
 	memset(u16_SPqcd, 0, GRK_J2K_MAXBANDS * sizeof(short));
 }
 
+uint32_t Quantizer::get_num_guard_bits() const
+{
+	return uint32_t(Sqcd >> 5U);
+}
+
 /**
  * Note:
  *

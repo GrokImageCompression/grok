@@ -68,7 +68,6 @@ struct QuantizerPart15 : public grk::Quantizer
 	bool write(grk::IBufferedStream *stream) override;
   private:
 	uint32_t get_MAGBp() const;
-	uint32_t get_num_guard_bits() const;
 	void set_rev_quant(uint32_t bit_depth, bool is_employing_color_transform);
 	void set_irrev_quant();
 	float base_delta;

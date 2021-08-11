@@ -256,10 +256,7 @@ uint32_t QuantizerPart15::get_MAGBp() const
 
 	return B;
 }
-uint32_t QuantizerPart15::get_num_guard_bits() const
-{
-	return uint32_t(Sqcd >> 5U);
-}
+
 bool QuantizerPart15::write(grk::IBufferedStream *stream) {
 	// marker size excluding header
 	uint16_t Lcap = 8;

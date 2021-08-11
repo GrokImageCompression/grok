@@ -52,6 +52,7 @@ struct Quantizer
 						bool color_transform, bool is_signed);
 	virtual bool write(IBufferedStream *stream);
   protected:
+	uint32_t get_num_guard_bits() const;
 	uint8_t Sqcd;
 	union
 	{
