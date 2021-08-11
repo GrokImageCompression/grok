@@ -90,31 +90,3 @@ static inline uint32_t count_leading_zeros(const uint32_t x) {
 #endif
   return (x == 0) ? 31 : y;
 }
-
-static inline void* aligned_mem_alloc(size_t size, size_t align) {
-  void* result;
-#if defined(__INTEL_COMPILER)
-  result = _mm_malloc(size, align);
-#elif defined(_MSC_VER)
-  result = _aligned_malloc(size, align);
-#elif defined(__MINGW32__) || defined(__MINGW64__)
-  result = __mingw_aligned_malloc(size, align);
-#else
-  if (posix_memalign(&result, align, size)) {
-    result = nullptr;
-  }
-#endif
-  return result;
-}
-
-static inline void aligned_mem_free(void* ptr) {
-#if defined(__INTEL_COMPILER)
-  _mm_free(ptr);
-#elif defined(_MSC_VER)
-  _aligned_free(ptr);
-#elif defined(__MINGW32__) || defined(__MINGW64__)
-  __mingw_aligned_free(ptr);
-#else
-  free(ptr);
-#endif
-}

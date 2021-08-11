@@ -20,23 +20,34 @@
 #include "T1Part1.h"
 #include "htconfig.h"
 
+//#define PART15
+
 namespace grk
 {
 T1Interface* T1Factory::makeT1(bool isCompressor, TileCodingParams* tcp, uint32_t maxCblkW,
 							   uint32_t maxCblkH)
 {
 	if (tcp->isHT()){
+#ifdef PART15
+		return use_ojph ? (T1Interface*)(new t1_part15::T1Part15(isCompressor, tcp, maxCblkW, maxCblkH)) :
+				(T1Interface*)(new t1_part15::T1Part15(isCompressor, tcp, maxCblkW, maxCblkH));
+#else
 		return use_ojph ? (T1Interface*)(new ojph::T1OJPH(isCompressor, tcp, maxCblkW, maxCblkH)) :
 				(T1Interface*)(new ojph::T1OJPH(isCompressor, tcp, maxCblkW, maxCblkH));
-
+#endif
 	}
 	return (T1Interface*)(new t1_part1::T1Part1(isCompressor, maxCblkW, maxCblkH));
 }
 
 Quantizer* T1Factory::makeQuantizer(bool ht, bool reversible, uint8_t guardBits){
 	if (ht){
-		return use_ojph ? (Quantizer*)(new ojph::QuantizerOJPH(reversible, guardBits)) :
+#ifdef PART15
+		return use_ojph ? (Quantizer*)(new t1_part15::QuantizerPart15(reversible, guardBits)) :
 				 (Quantizer*)(new t1_part15::QuantizerPart15(reversible, guardBits));
+#else
+		return use_ojph ? (Quantizer*)(new ojph::QuantizerOJPH(reversible, guardBits)) :
+				 (Quantizer*)(new ojph::QuantizerOJPH(reversible, guardBits));
+#endif
 	}
 	return new Quantizer(reversible,guardBits);
 }

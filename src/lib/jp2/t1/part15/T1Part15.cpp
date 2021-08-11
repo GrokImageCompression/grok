@@ -15,8 +15,9 @@
  *
  */
 #include "simd.h"
+#include "coding_units.hpp"
+#include "ht_block_encoding.hpp"
 #include "T1Part15.h"
-
 #include "grk_includes.h"
 
 const uint8_t grk_cblk_dec_compressed_data_pad_ht = 8;
@@ -73,27 +74,42 @@ namespace t1_part15
 		}
 		else
 		{
+			int32_t shift = 31 - (block->k_msbs + 1);
+			auto tiledp = (float*)block->tiledp;
 			for(auto j = 0U; j < h; ++j)
 			{
-				int32_t shift = 31 - (block->k_msbs + 1) - 11;
 				for(auto i = 0U; i < w; ++i)
 				{
-					int32_t temp = block->tiledp[tileIndex];
-					int32_t t = (int32_t)((float)temp * block->inv_step_ht * (float)(1 << shift));
+					int32_t t = (int32_t)((float)*tiledp++ * block->inv_step_ht * (float)(1 << shift));
 					int32_t val = t >= 0 ? t : -t;
 					int32_t sign = t >= 0 ? 0 : (int32_t)0x80000000;
 					int32_t res = sign | val;
 					unencoded_data[cblk_index] = res;
-					tileIndex++;
 					cblk_index++;
 				}
-				tileIndex += tileLineAdvance;
+				tiledp += tileLineAdvance;
 			}
 		}
 	}
 	bool T1Part15::compress(grk::CompressBlockExec* block)
 	{
 		preCompress(block, block->tile);
+
+/*
+ *   j2k_codeblock(const uint32_t &idx, uint8_t orientation, uint8_t M_b, uint8_t R_b, uint8_t transformation,
+                float stepsize, uint32_t band_stride, int16_t *ibuf, float *fbuf, uint32_t offset,
+                const uint16_t &numlayers, const uint8_t &codeblock_style, const element_siz &p0,
+                const element_siz &p1, const element_siz &s);
+ */
+		uint32_t idx;
+		uint16_t numlayers = 1;
+		uint16_t codelbock_style = block->cblk_sty;
+		const element_siz p0;
+		const element_siz p1;
+		const element_siz s(block->cblk->width(), block->cblk->height());
+        auto j2k_block = new j2k_codeblock(idx,block->bandOrientation, 0,0,0,0,0,nullptr,nullptr,0,
+        								numlayers,codelbock_style,p0,p1,s);
+        htj2k_encode(j2k_block, 0);
 /*
 		coded_lists* next_coded = nullptr;
 		auto cblk = block->cblk;
