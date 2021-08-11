@@ -16,6 +16,7 @@
  */
 #include "simd.h"
 #include "coding_units.hpp"
+#include "ht_block_decoding.hpp"
 #include "ht_block_encoding.hpp"
 #include "T1Part15.h"
 #include "grk_includes.h"
@@ -50,55 +51,30 @@ namespace t1_part15
 		uint32_t tile_width =
 			(tile->comps + block->compno)->getBuffer()->getHighestBufferResWindowREL()->stride;
 		auto tileLineAdvance = tile_width - w;
-		uint32_t tileIndex = 0;
 		uint32_t cblk_index = 0;
-
-
-		for(auto j = 0U; j < h; ++j)
-		{
-			for(auto i = 0U; i < w; ++i)
-			{
-				unencoded_data[cblk_index] = block->tiledp[tileIndex];
-				tileIndex++;
-				cblk_index++;
-			}
-			tileIndex += tileLineAdvance;
-		}
-
-		return;
 
 		// convert to sign-magnitude
 		if(block->qmfbid == 1)
 		{
-			int32_t shift = 31 - (block->k_msbs + 1);
+			auto tiledp = block->tiledp;
 			for(auto j = 0U; j < h; ++j)
 			{
 				for(auto i = 0U; i < w; ++i)
 				{
-					int32_t temp = block->tiledp[tileIndex];
-					int32_t val = temp >= 0 ? temp : -temp;
-					int32_t sign = (int32_t)((temp >= 0) ? 0U : 0x80000000);
-					int32_t res = sign | (val << shift);
-					unencoded_data[cblk_index] = res;
-					tileIndex++;
+					unencoded_data[cblk_index] = *tiledp++;
 					cblk_index++;
 				}
-				tileIndex += tileLineAdvance;
+				tiledp += tileLineAdvance;
 			}
 		}
 		else
 		{
-			int32_t shift = 31 - (block->k_msbs + 1);
 			auto tiledp = (float*)block->tiledp;
 			for(auto j = 0U; j < h; ++j)
 			{
 				for(auto i = 0U; i < w; ++i)
 				{
-					int32_t t = (int32_t)((float)*tiledp++ * block->inv_step_ht * (float)(1 << shift));
-					int32_t val = t >= 0 ? t : -t;
-					int32_t sign = t >= 0 ? 0 : (int32_t)0x80000000;
-					int32_t res = sign | val;
-					unencoded_data[cblk_index] = res;
+					unencoded_data[cblk_index] = (int32_t)((float)*tiledp++ * block->inv_step_ht);
 					cblk_index++;
 				}
 				tiledp += tileLineAdvance;
@@ -162,23 +138,26 @@ namespace t1_part15
 				num_passes += sgrk->numpasses;
 			}
 
-			bool rc = false;
-			/*
 			if(num_passes && offset)
 			{
-				rc = ojph::local::ojph_decode_codeblock(actual_coded_data, (uint32_t*)unencoded_data,
-										   block->k_msbs, (uint32_t)num_passes, (uint32_t)offset, 0,
-										   cblk->width(), cblk->height(), stride);
+				auto cblk = block->cblk;
+				uint32_t idx;
+				uint16_t numlayers = 1;
+				uint16_t codelbock_style = block->cblk_sty;
+				const element_siz p0;
+				const element_siz p1;
+				const element_siz s(cblk->width(), cblk->height());
+				auto j2k_block = new j2k_codeblock(idx,block->bandOrientation, 0,0,0,0,cblk->width(),unencoded_data,(float*)unencoded_data,offset,
+												numlayers,codelbock_style,p0,p1,s);
+				j2k_block->num_passes = num_passes;
+				j2k_block->num_ZBP = block->k_msbs - 1;
+				j2k_block->length = offset;
+				htj2k_decode(j2k_block, 0);
+				delete j2k_block;
 			}
 			else
 			{
 				memset(unencoded_data, 0, stride * cblk->height() * sizeof(int32_t));
-			}
-			*/
-			if(!rc)
-			{
-				grk::GRK_ERROR("Error in HT block coder");
-				return false;
 			}
 		}
 

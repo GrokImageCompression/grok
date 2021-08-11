@@ -206,7 +206,7 @@ uint8_t state_VLC::importVLCBit() {
   return val;
 }
 #else
-void state_VLC_enc::load_bytes() {
+void state_VLC_dec::load_bytes() {
   uint64_t load_val = 0;
   int32_t new_bits  = 32;
   last              = buf[pos + 1];
@@ -252,14 +252,14 @@ void state_VLC_enc::load_bytes() {
   ctreg += new_bits;
 }
 
-uint8_t state_VLC_enc::getVLCbit() {
+uint8_t state_VLC_dec::getVLCbit() {
   // "bits" is not actually bits, but a bit
   bits = (uint8_t)(Creg & 0x01);
   close32(1);
   return bits;
 }
 
-void state_VLC_enc::close32(int32_t num_bits) {
+void state_VLC_dec::close32(int32_t num_bits) {
   Creg >>= num_bits;
   ctreg -= num_bits;
   while (ctreg < 32) {
@@ -268,7 +268,7 @@ void state_VLC_enc::close32(int32_t num_bits) {
 }
 #endif
 
-void state_VLC_enc::decodeCxtVLC(const uint16_t &context, uint8_t (&u_off)[2], uint8_t (&rho)[2],
+void state_VLC_dec::decodeCxtVLC(const uint16_t &context, uint8_t (&u_off)[2], uint8_t (&rho)[2],
                                  uint8_t (&emb_k)[2], uint8_t (&emb_1)[2], const uint8_t &first_or_second,
                                  const uint16_t *dec_CxtVLC_table) {
 #ifndef ADVANCED
@@ -304,7 +304,7 @@ void state_VLC_enc::decodeCxtVLC(const uint16_t &context, uint8_t (&u_off)[2], u
 #endif
 }
 
-uint8_t state_VLC_enc::decodeUPrefix() {
+uint8_t state_VLC_dec::decodeUPrefix() {
   if (getbitfunc == 1) {
     return 1;
   }
@@ -318,7 +318,7 @@ uint8_t state_VLC_enc::decodeUPrefix() {
   }
 }
 
-uint8_t state_VLC_enc::decodeUSuffix(const uint8_t &u_pfx) {
+uint8_t state_VLC_dec::decodeUSuffix(const uint8_t &u_pfx) {
   uint8_t bit, val;
   if (u_pfx < 3) {
     return 0;
@@ -333,7 +333,7 @@ uint8_t state_VLC_enc::decodeUSuffix(const uint8_t &u_pfx) {
   }
   return val;
 }
-uint8_t state_VLC_enc::decodeUExtension(const uint8_t &u_sfx) {
+uint8_t state_VLC_dec::decodeUExtension(const uint8_t &u_sfx) {
   uint8_t bit, val;
   if (u_sfx < 28) {
     return 0;
@@ -394,7 +394,7 @@ uint8_t MR_dec::importMagRefBit() {
   return val;
 }
 
-auto decodeSigEMB = [](state_MEL_decoder &MEL_decoder, state_VLC_enc &VLC, const uint16_t &context,
+auto decodeSigEMB = [](state_MEL_decoder &MEL_decoder, state_VLC_dec &VLC, const uint16_t &context,
                        uint8_t (&u_off)[2], uint8_t (&rho)[2], uint8_t (&emb_k)[2], uint8_t (&emb_1)[2],
                        const uint8_t &first_or_second, const uint16_t *dec_CxtVLC_table) {
   uint8_t sym;
@@ -434,7 +434,7 @@ inline void get_sample_position_from_quad(uint16_t q, uint16_t QW, uint16_t Wblk
 void ht_cleanup_decode(j2k_codeblock *block, uint8_t *const Dcup, const uint32_t &Lcup,
                        const uint8_t &ROIshift, const uint8_t &pLSB, state_MS_dec &MS,
                        state_MEL_unPacker &MEL_unpacker, state_MEL_decoder &MEL_decoder,
-                       state_VLC_enc &VLC) {
+                       state_VLC_dec &VLC) {
   const uint16_t QW = ceil_int(block->size.x, 2);
   const uint16_t QH = ceil_int(block->size.y, 2);
 
@@ -1141,7 +1141,7 @@ void htj2k_decode(j2k_codeblock *block, const uint8_t ROIshift) {
     state_MS_dec MS                 = state_MS_dec(Dcup, Pcup);
     state_MEL_unPacker MEL_unPacker = state_MEL_unPacker(Dcup, Lcup, Pcup);
     state_MEL_decoder MEL_decoder   = state_MEL_decoder(MEL_unPacker);
-    state_VLC_enc VLC               = state_VLC_enc(Dcup, Lcup, Pcup);
+    state_VLC_dec VLC               = state_VLC_dec(Dcup, Lcup, Pcup);
 
     ht_cleanup_decode(block, Dcup, Lcup, ROIshift, 30 - S_blk, MS, MEL_unPacker, MEL_decoder, VLC);
     if (num_ht_passes > 1) {

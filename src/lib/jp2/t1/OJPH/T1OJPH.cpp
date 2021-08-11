@@ -56,31 +56,29 @@ namespace ojph
 		uint32_t tile_width =
 			(tile->comps + block->compno)->getBuffer()->getHighestBufferResWindowREL()->stride;
 		auto tileLineAdvance = tile_width - w;
-		uint32_t tileIndex = 0;
 		uint32_t cblk_index = 0;
+		int32_t shift = 31 - (block->k_msbs + 1);
 
 		// convert to sign-magnitude
 		if(block->qmfbid == 1)
 		{
-			int32_t shift = 31 - (block->k_msbs + 1);
+			auto tiledp = block->tiledp;
 			for(auto j = 0U; j < h; ++j)
 			{
 				for(auto i = 0U; i < w; ++i)
 				{
-					int32_t temp = block->tiledp[tileIndex];
+					int32_t temp = *tiledp++;
 					int32_t val = temp >= 0 ? temp : -temp;
 					int32_t sign = (int32_t)((temp >= 0) ? 0U : 0x80000000);
 					int32_t res = sign | (val << shift);
 					unencoded_data[cblk_index] = res;
-					tileIndex++;
 					cblk_index++;
 				}
-				tileIndex += tileLineAdvance;
+				tiledp += tileLineAdvance;
 			}
 		}
 		else
 		{
-			int32_t shift = 31 - (block->k_msbs + 1);
 			auto tiledp = (float*)block->tiledp;
 			for(auto j = 0U; j < h; ++j)
 			{

@@ -114,7 +114,7 @@ class state_MEL_decoder {
 /********************************************************************************
  * state_VLC: state classe for VLC decoding
  *******************************************************************************/
-class state_VLC_enc {
+class state_VLC_dec {
  private:
   int32_t pos;
   uint8_t last;
@@ -129,7 +129,7 @@ class state_VLC_enc {
   uint8_t *buf;
 
  public:
-  state_VLC_enc(uint8_t *Dcup, uint32_t Lcup, uint32_t Pcup)
+  state_VLC_dec(uint8_t *Dcup, uint32_t Lcup, uint32_t Pcup)
 #ifndef ADVANCED
       : pos((Lcup > 2) ? Lcup - 3 : 0),
         last(*(Dcup + Lcup - 2)),
@@ -203,3 +203,5 @@ class MR_dec {
         Dref((Lref == 0) ? nullptr : HT_magref_segment) {}
   uint8_t importMagRefBit();
 };
+
+void htj2k_decode(j2k_codeblock *block, const uint8_t ROIshift);
