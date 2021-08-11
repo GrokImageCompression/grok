@@ -32,6 +32,7 @@ class cudaFlow;
 class cudaFlowCapturer;
 class cudaFlowCapturerBase;
 class cudaCapturingBase;
+class cudaLinearCapturing;
 class cudaSequentialCapturing;
 class cudaRoundRobinCapturing;
 class cublasFlowCapturer;
@@ -41,6 +42,9 @@ class syclNode;
 class syclGraph;
 class syclTask;
 class syclFlow;
+
+// clas
+class Sanitizer;
 
 
 }  // end of namespace tf -----------------------------------------------------

@@ -2,43 +2,164 @@
 
 #include "../cuda_flow.hpp"
 #include "../cuda_capturer.hpp"
+#include "../cuda_meta.hpp"
+
+/** 
+@file cuda_for_each.hpp
+@brief cuda parallel-iteration algorithms include file
+*/
 
 namespace tf {
+
+namespace detail {
+
+/** @private */
+template <typename P, typename I, typename C>
+void cuda_for_each_loop(P&& p, I first, unsigned count, C c) {
+
+  using E = std::decay_t<P>;
+
+  unsigned B = (count + E::nv - 1) / E::nv;
+
+  cuda_kernel<<<B, E::nt, 0, p.stream()>>>(
+  [=] __device__ (auto tid, auto bid) {
+    auto tile = cuda_get_tile(bid, E::nv, count);
+    cuda_strided_iterate<E::nt, E::vt>([=](auto, auto j) {
+      c(*(first + tile.begin + j));
+    }, tid, tile.count());
+  });
+}
+
+/** @private */
+template <typename P, typename I, typename C>
+void cuda_for_each_index_loop(
+  P&& p, I first, I inc, unsigned count, C c
+) {
+
+  using E = std::decay_t<P>;
+
+  unsigned B = (count + E::nv - 1) / E::nv;
+
+  cuda_kernel<<<B, E::nt, 0, p.stream()>>>(
+  [=]__device__(auto tid, auto bid) {
+    auto tile = cuda_get_tile(bid, E::nv, count);
+    cuda_strided_iterate<E::nt, E::vt>([=]__device__(auto, auto j) {
+      c(first + inc*(tile.begin+j));
+    }, tid, tile.count());
+  });
+}
+
+}  // end of namespace detail -------------------------------------------------
+
+// ----------------------------------------------------------------------------
+// cuda standard algorithms: single_task/for_each/for_each_index
+// ----------------------------------------------------------------------------
+
+/**
+@brief runs a callable asynchronously using one kernel thread
+
+@tparam P execution policy type
+@tparam C closure type
+
+@param p execution policy
+@param c closure to run by one kernel thread
+
+The function launches a single kernel thread to run the given callable
+through the stream in the execution policy object.
+*/
+template <typename P, typename C>
+void cuda_single_task(P&& p, C c) {
+  cuda_kernel<<<1, 1, 0, p.stream()>>>(
+    [=]__device__(auto, auto) mutable { c(); }
+  );
+}
+
+/**
+@brief performs asynchronous parallel iterations over a range of items
+
+@tparam P execution policy type
+@tparam I input iterator type
+@tparam C unary operator type
+
+@param p execution policy object
+@param first iterator to the beginning of the range
+@param last iterator to the end of the range
+@param c unary operator to apply to each dereferenced iterator
+
+This function is equivalent to a parallel execution of the following loop 
+on a GPU:
+
+@code{.cpp}
+for(auto itr = first; itr != last; itr++) {
+  c(*itr);
+}
+@endcode
+*/
+template <typename P, typename I, typename C>
+void cuda_for_each(P&& p, I first, I last, C c) {
+  
+  unsigned count = std::distance(first, last);
+  
+  if(count == 0) {
+    return;
+  }
+
+  detail::cuda_for_each_loop(p, first, count, c);
+}
+
+/**
+@brief performs asynchronous parallel iterations over 
+       an index-based range of items
+
+@tparam P execution policy type
+@tparam I input index type
+@tparam C unary operator type
+
+@param p execution policy object
+@param first index to the beginning of the range
+@param last  index to the end of the range
+@param inc step size between successive iterations
+@param c unary operator to apply to each index
+
+This function is equivalent to a parallel execution of 
+the following loop on a GPU:
+
+@code{.cpp}
+// step is positive [first, last)
+for(auto i=first; i<last; i+=step) {
+  c(i);
+}
+
+// step is negative [first, last)
+for(auto i=first; i>last; i+=step) {
+  c(i);
+}
+@endcode
+*/
+template <typename P, typename I, typename C>
+void cuda_for_each_index(P&& p, I first, I last, I inc, C c) {
+  
+  if(is_range_invalid(first, last, inc)) {
+    TF_THROW("invalid range [", first, ", ", last, ") with inc size ", inc);
+  }
+  
+  unsigned count = distance(first, last, inc);
+  
+  if(count == 0) {
+    return;
+  }
+
+  detail::cuda_for_each_index_loop(p, first, inc, count, c);
+}
 
 // ----------------------------------------------------------------------------
 // single_task
 // ----------------------------------------------------------------------------
 
-// Kernel: single_task
+/** @private */
 template <typename C>
 __global__ void cuda_single_task(C callable) {
   callable();
-}
-
-// ----------------------------------------------------------------------------
-// for_each
-// ----------------------------------------------------------------------------
-
-// Kernel: for_each
-template <typename I, typename F>
-__global__ void cuda_for_each(I first, size_t N, F op) {
-  size_t i = blockIdx.x*blockDim.x + threadIdx.x;
-  if (i < N) {
-    op(*(first+i));
-  }
-}
-
-// ----------------------------------------------------------------------------
-// for_each_index
-// ----------------------------------------------------------------------------
-
-// Kernel: for_each_index
-template <typename I, typename F>
-__global__ void cuda_for_each_index(I beg, I inc, size_t N, F op) {
-  size_t i = blockIdx.x*blockDim.x + threadIdx.x;
-  if (i < N) {
-    op(static_cast<I>(i)*inc + beg);
-  }
 }
 
 // ----------------------------------------------------------------------------
@@ -47,75 +168,50 @@ __global__ void cuda_for_each_index(I beg, I inc, size_t N, F op) {
 
 // Function: single_task
 template <typename C>
-cudaTask cudaFlow::single_task(C&& c) {
-  return kernel(
-    1, 1, 0, cuda_single_task<C>, std::forward<C>(c)
-  );
+cudaTask cudaFlow::single_task(C c) {
+  return kernel(1, 1, 0, cuda_single_task<C>, c);
 }
 
-// Procedure: update_for_each
-template <typename I, typename C>
-void cudaFlow::update_for_each(
-  cudaTask task, I first, I last, C&& callable
-) {
-  // TODO: special case when N is 0?
-  size_t N = std::distance(first, last);
-  size_t B = _default_block_size(N);
-
-  update_kernel(
-    task, (N+B-1) / B, B, 0, first, N, std::forward<C>(callable)
-  );
-}
-
-// Procedure: update_for_each_index
-template <typename I, typename C>
-void cudaFlow::update_for_each_index(
-  cudaTask task, I beg, I end, I inc, C&& c
-) {
-
-  if(is_range_invalid(beg, end, inc)) {
-    TF_THROW("invalid range [", beg, ", ", end, ") with inc size ", inc);
-  }
-  
-  // TODO: special case when N is 0?
-  size_t N = distance(beg, end, inc);
-  size_t B = _default_block_size(N);
-
-  update_kernel(
-    task, (N+B-1) / B, B, 0, beg, inc, N, std::forward<C>(c)
-  );
+// Function: single_task
+template <typename C>
+void cudaFlow::single_task(cudaTask task, C c) {
+  return kernel(task, 1, 1, 0, cuda_single_task<C>, c);
 }
 
 // Function: for_each
 template <typename I, typename C>
-cudaTask cudaFlow::for_each(I first, I last, C&& c) {
-  
-  size_t N = std::distance(first, last);
-  size_t B = _default_block_size(N);
-  
-  // TODO: special case when N is 0?
-
-  return kernel(
-    (N+B-1) / B, B, 0, cuda_for_each<I, C>, first, N, std::forward<C>(c)
-  );
+cudaTask cudaFlow::for_each(I first, I last, C c) {
+  return capture([=](cudaFlowCapturer& cap) mutable {
+    cap.make_optimizer<cudaLinearCapturing>();
+    cap.for_each(first, last, c);
+  });
 }
 
 // Function: for_each_index
 template <typename I, typename C>
-cudaTask cudaFlow::for_each_index(I beg, I end, I inc, C&& c) {
-      
-  if(is_range_invalid(beg, end, inc)) {
-    TF_THROW("invalid range [", beg, ", ", end, ") with inc size ", inc);
-  }
-  
-  // TODO: special case when N is 0?
+cudaTask cudaFlow::for_each_index(I first, I last, I inc, C c) {
+  return capture([=](cudaFlowCapturer& cap) mutable {
+    cap.make_optimizer<cudaLinearCapturing>();
+    cap.for_each_index(first, last, inc, c);
+  });
+}
 
-  size_t N = distance(beg, end, inc);
-  size_t B = _default_block_size(N);
+// Function: for_each
+template <typename I, typename C>
+void cudaFlow::for_each(cudaTask task, I first, I last, C c) {
+  capture(task, [=](cudaFlowCapturer& cap) mutable {
+    cap.make_optimizer<cudaLinearCapturing>();
+    cap.for_each(first, last, c);
+  });
+}
 
-  return kernel(
-    (N+B-1) / B, B, 0, cuda_for_each_index<I, C>, beg, inc, N, std::forward<C>(c)
-  );
+// Function: for_each_index
+template <typename I, typename C>
+void cudaFlow::for_each_index(cudaTask task, I first, I last, I inc, C c) {
+  capture(task, [=](cudaFlowCapturer& cap) mutable {
+    cap.make_optimizer<cudaLinearCapturing>();
+    cap.for_each_index(first, last, inc, c);
+  });
 }
 
 // ----------------------------------------------------------------------------
@@ -124,79 +220,57 @@ cudaTask cudaFlow::for_each_index(I beg, I end, I inc, C&& c) {
 
 // Function: for_each
 template <typename I, typename C>
-cudaTask cudaFlowCapturer::for_each(I first, I last, C&& c) {
-  
-  // TODO: special case for N == 0?
-  size_t N = std::distance(first, last);
-  size_t B = _default_block_size(N);
-
-  return on([=, c=std::forward<C>(c)](cudaStream_t stream) mutable {
-    cuda_for_each<I, C><<<(N+B-1)/B, B, 0, stream>>>(first, N, c);
+cudaTask cudaFlowCapturer::for_each(I first, I last, C c) {
+  return on([=](cudaStream_t stream) mutable {
+    cudaDefaultExecutionPolicy p(stream);
+    cuda_for_each(p, first, last, c);
   });
 }
 
 // Function: for_each_index
 template <typename I, typename C>
-cudaTask cudaFlowCapturer::for_each_index(I beg, I end, I inc, C&& c) {
-      
-  if(is_range_invalid(beg, end, inc)) {
-    TF_THROW("invalid range [", beg, ", ", end, ") with inc size ", inc);
-  }
-    
-  // TODO: special case when N is 0?
-  size_t N = distance(beg, end, inc);
-  size_t B = _default_block_size(N);
-  
-  return on([=, c=std::forward<C>(c)] (cudaStream_t stream) mutable {
-    cuda_for_each_index<I, C><<<(N+B-1)/B, B, 0, stream>>>(beg, inc, N, c);
+cudaTask cudaFlowCapturer::for_each_index(I beg, I end, I inc, C c) {
+  return on([=] (cudaStream_t stream) mutable {
+    cudaDefaultExecutionPolicy p(stream);
+    cuda_for_each_index(p, beg, end, inc, c);
   });
 }
 
-// Function: rebind_for_each
+// Function: for_each
 template <typename I, typename C>
-void cudaFlowCapturer::rebind_for_each(cudaTask task, I first, I last, C&& c) {
-  
-  // TODO: special case for N == 0?
-  size_t N = std::distance(first, last);
-  size_t B = _default_block_size(N);
-
-  rebind_on(task, [=, c=std::forward<C>(c)](cudaStream_t stream) mutable {
-    cuda_for_each<I, C><<<(N+B-1)/B, B, 0, stream>>>(first, N, c);
+void cudaFlowCapturer::for_each(cudaTask task, I first, I last, C c) {
+  on(task, [=](cudaStream_t stream) mutable {
+    cudaDefaultExecutionPolicy p(stream);
+    cuda_for_each(p, first, last, c);
   });
 }
 
-// Function: rebind_for_each_index
+// Function: for_each_index
 template <typename I, typename C>
-void cudaFlowCapturer::rebind_for_each_index(
-  cudaTask task, I beg, I end, I inc, C&& c
+void cudaFlowCapturer::for_each_index(
+  cudaTask task, I beg, I end, I inc, C c
 ) {
-      
-  if(is_range_invalid(beg, end, inc)) {
-    TF_THROW("invalid range [", beg, ", ", end, ") with inc size ", inc);
-  }
-    
-  // TODO: special case when N is 0?
-  size_t N = distance(beg, end, inc);
-  size_t B = _default_block_size(N);
-  
-  rebind_on(task, [=, c=std::forward<C>(c)] (cudaStream_t stream) mutable {
-    cuda_for_each_index<I, C><<<(N+B-1)/B, B, 0, stream>>>(beg, inc, N, c);
+  on(task, [=] (cudaStream_t stream) mutable {
+    cudaDefaultExecutionPolicy p(stream);
+    cuda_for_each_index(p, beg, end, inc, c);
   });
 }
 
 // Function: single_task
 template <typename C>
-cudaTask cudaFlowCapturer::single_task(C&& callable) {
-  return on([c=std::forward<C>(callable)] (cudaStream_t stream) mutable {
-    cuda_single_task<C><<<1, 1, 0, stream>>>(c);
+cudaTask cudaFlowCapturer::single_task(C callable) {
+  return on([=] (cudaStream_t stream) mutable {
+    cudaDefaultExecutionPolicy p(stream);
+    cuda_single_task(p, callable);
   });
 }
 
-// Function: rebind_single_task
+// Function: single_task
 template <typename C>
-void cudaFlowCapturer::rebind_single_task(cudaTask task, C&& callable) {
-  rebind_on(task, [c=std::forward<C>(callable)] (cudaStream_t stream) mutable {
-    cuda_single_task<C><<<1, 1, 0, stream>>>(c);
+void cudaFlowCapturer::single_task(cudaTask task, C callable) {
+  on(task, [=] (cudaStream_t stream) mutable {
+    cudaDefaultExecutionPolicy p(stream);
+    cuda_single_task(p, callable);
   });
 }
 

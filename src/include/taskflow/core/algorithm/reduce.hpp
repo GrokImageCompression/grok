@@ -105,7 +105,7 @@ Task FlowBuilder::reduce(
           }
           // coarse-grained
           else {
-            size_t q = static_cast<size_t>(p2 * r);
+            size_t q = static_cast<size_t>(p2 * (double)r);
             if(q < C) {
               q = C;
             }
@@ -236,7 +236,7 @@ Task FlowBuilder::transform_reduce(
           }
           // coarse-grained
           else {
-            size_t q = static_cast<size_t>(p2 * r);
+            size_t q = static_cast<size_t>(p2 * (double)r);
             if(q < C) {
               q = C;
             }

@@ -127,8 +127,7 @@ cudaCapturingBase::_levelize(cudaGraph& graph) {
 /**
 @class cudaSequentialCapturing
 
-@brief class to capture the described graph into a native cudaGraph
-       using a single stream
+@brief class to capture a CUDA graph using a sequential stream
 
 A sequential capturing algorithm finds a topological order of 
 the described graph and captures dependent GPU tasks using a single stream.
@@ -175,17 +174,89 @@ inline cudaGraph_t cudaSequentialCapturing::_optimize(cudaGraph& graph) {
 }
 
 // ----------------------------------------------------------------------------
+// class definition: cudaLinearCapturing
+// ----------------------------------------------------------------------------
+
+/**
+@class cudaLinearCapturing
+
+@brief class to capture a linear CUDA graph using a sequential stream
+
+A linear capturing algorithm is a special case of tf::cudaSequentialCapturing
+and assumes the input task graph to be a single linear chain of tasks
+(i.e., a straight line).
+This assumption allows faster optimization during the capturing process.
+If the input task graph is not a linear chain, the behavior is undefined.
+*/
+class cudaLinearCapturing : public cudaCapturingBase {
+
+  friend class cudaFlowCapturer;
+
+  public:
+    
+    /**
+    @brief constructs a linear optimizer
+    */
+    cudaLinearCapturing() = default;
+  
+  private:
+
+    cudaGraph_t _optimize(cudaGraph& graph);
+};
+
+inline cudaGraph_t cudaLinearCapturing::_optimize(cudaGraph& graph) {
+
+  // acquire per-thread stream and turn it into capture mode
+  // we must use ThreadLocal mode to avoid clashing with CUDA global states
+  cudaScopedPerThreadStream stream;
+
+  cudaGraph_t native_g;
+
+  TF_CHECK_CUDA(
+    cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal), 
+    "failed to turn stream into per-thread capture mode"
+  );
+
+  // find the source node
+  cudaNode* src {nullptr};
+  for(auto& u : graph._nodes) {
+    if(u->_dependents.size() == 0) {
+      src = u.get();
+      while(src) {
+        std::get<cudaNode::Capture>(src->_handle).work(stream);  
+        src = src->_successors.empty() ? nullptr : src->_successors[0]; 
+      }
+      break;
+    }
+    // ideally, there should be only one source
+  }
+
+  TF_CHECK_CUDA(
+    cudaStreamEndCapture(stream, &native_g), "failed to end capture"
+  );
+
+  return native_g;
+}
+
+// ----------------------------------------------------------------------------
 // class definition: cudaRoundRobinCapturing
 // ----------------------------------------------------------------------------
 
 /**
 @class cudaRoundRobinCapturing
 
-@brief class to capture the described graph into a native cudaGraph
-       using a greedy round-robin algorithm on a fixed number of streams
+@brief class to capture a CUDA graph using a round-robin algorithm
 
 A round-robin capturing algorithm levelizes the user-described graph
 and assign streams to nodes in a round-robin order level by level.
+The algorithm is based on the following paper published in Euro-Par 2021:
+  + Dian-Lun Lin and Tsung-Wei Huang, &quot;Efficient GPU Computation using %Task Graph Parallelism,&quot; <i>European Conference on Parallel and Distributed Computing (Euro-Par)</i>, 2021
+
+The round-robin optimization algorithm is best suited for large %cudaFlow graphs
+that compose hundreds of or thousands of GPU operations 
+(e.g., kernels and memory copies) with many of them being able to run in parallel.
+You can configure the number of streams to the optimizer to adjust the 
+maximum kernel currency in the captured CUDA graph.
 */
 class cudaRoundRobinCapturing : public cudaCapturingBase {
 
@@ -196,7 +267,7 @@ class cudaRoundRobinCapturing : public cudaCapturingBase {
     /**
     @brief constructs a round-robin optimizer with 4 streams by default
      */
-    cudaRoundRobinCapturing();
+    cudaRoundRobinCapturing() = default;
     
     /**
     @brief constructs a round-robin optimizer with the given number of streams
@@ -245,7 +316,9 @@ inline void cudaRoundRobinCapturing::num_streams(size_t n) {
   _num_streams = n;
 }
 
-inline void cudaRoundRobinCapturing::_reset(std::vector<std::vector<cudaNode*>>& graph) {
+inline void cudaRoundRobinCapturing::_reset(
+  std::vector<std::vector<cudaNode*>>& graph
+) {
   //level == global id 
   //idx == stream id we want to skip
   size_t id{0};
@@ -374,265 +447,6 @@ inline cudaGraph_t cudaRoundRobinCapturing::_optimize(cudaGraph& graph) {
   return native_g;
 }
 
-
-/*class cudaGreedyCapturing: public cudaCapturingBase {
-  
-  friend class cudaFlowCapturer;
-
-  public:
-
-    cudaGreedyCapturing();
-
-    cudaGreedyCapturing(size_t num_stream);
-
-  private:
-
-    size_t _num_streams{4};
-  
-    cudaGraph_t _optimize(cudaGraph& graph);
-};
-
-inline cudaGreedyCapturing::cudaGreedyCapturing(size_t num_streams): 
-  _num_streams {num_streams} {
-
-  if(num_streams == 0) {
-    TF_THROW("number of streams must be at least one");
-  }
-}
-
-inline cudaGraph_t cudaGreedyCapturing::_optimize(cudaGraph& graph) {
-  // levelize the graph
-  auto level_graph = _levelize(graph);
-  
-  // begin to capture
-  std::vector<cudaScopedPerThreadStream> streams(_num_streams);
-
-  TF_CHECK_CUDA(
-    cudaStreamBeginCapture(streams[0], cudaStreamCaptureModeThreadLocal), 
-    "failed to turn stream into per-thread capture mode"
-  );
-  
-  // reserve space for scoped events
-  std::vector<cudaScopedPerThreadEvent> events;
-  events.reserve((_num_streams >> 1) + level_graph.size());
-  
-  // fork
-  cudaEvent_t fork_event = events.emplace_back();
-  TF_CHECK_CUDA(
-    cudaEventRecord(fork_event, streams[0]), "faid to record fork"
-  );
-
-  for(size_t i = 1; i < streams.size(); ++i) {
-    TF_CHECK_CUDA(
-      cudaStreamWaitEvent(streams[i], fork_event, 0), "failed to wait on fork"
-    );
-  }
-
-  //assign sid to each node
-  std::vector<cudaNode*> assign(streams.size());
-  std::vector<cudaNode*> prev_assign(streams.size());
-  std::queue<cudaNode*> remains;;
-  size_t counter{0};
-
-  //first level (we don't have any predecessors in the firset level)
-  for(auto& node : level_graph[0]) {
-    auto& hn = std::get<cudaNode::Capture>(node->_handle);
-
-    hn.work(streams[counter]);
-    hn.sid = counter;
-    prev_assign[hn.sid] = node;
-    if(++counter == streams.size()) {
-      counter = 0;
-    }
-  }
-
-  //other levels
-  for(size_t l = 1; l < level_graph.size(); ++l) {
-    for(size_t n = 0; n < level_graph[l].size(); ++n) {
-
-      auto& node = level_graph[l][n];
-      auto& hn = std::get<cudaNode::Capture>(node->_handle);
-      auto& preds = node->_dependents;
-
-      //1. try to assign the same stream as one of parent nodes'
-      //maybe assigned by 2 in advance
-      if(hn.sid == -1) {
-        for(auto& pn: preds) {
-          auto& phn = std::get<cudaNode::Capture>(pn->_handle);
-          //TODO:ignore cross-level? (currently no, since we still need to create events for cross-level dependencies)
-          //TODO::we may not choose the most suitable stream if the node has multiple parents
-          if(assign[phn.sid] == nullptr) {
-            hn.sid = phn.sid;
-            assign[hn.sid] = node;
-            //sgraph[hn.sid].emplace_back(node);
-
-            ++counter;
-            break;
-          }
-        }
-      }
-
-      if(hn.sid == -1) {
-        //2. if 1. failed
-        //try to find idle stream
-        //however, the idle stream may be 'booked' by incoming nodes
-        //we then skip such case to avoid the cost of creating event
-        //in other words, we let future nodes use 1. as much as possible
-        for(size_t s = 0; s < streams.size(); ++s) {
-          if(assign[s] == nullptr) {
-            bool is_assigned{false};
-
-            if(prev_assign[s] != nullptr) {
-              auto& pan = prev_assign[s];
-              auto& pahn = std::get<cudaNode::Capture>(pan->_handle);
-
-              for(auto& sn: pan->_successors) {
-                auto& shn = std::get<cudaNode::Capture>(sn->_handle);
-                if(shn.level - pahn.level == 1 && shn.sid == -1) {
-                  shn.sid = s;
-                  assign[s] = sn;
-                  ++counter;
-                  is_assigned = true;
-                  break;
-                }
-              }
-            }
-
-            if(!is_assigned) {
-              hn.sid = s;
-              assign[s] = node;
-              ++counter;
-            }
-
-            break;
-          }
-        }
-      }
-
-      //3. if 1. and 2. failed
-      //emplace_back to remains
-      if(hn.sid == -1) {
-        remains.push(node);
-      }
-
-      if(counter == streams.size()) {
-        //insert remaining nodes into remains
-        for(size_t i = n + 1; i < level_graph[l].size(); ++i) {
-          auto& ln = level_graph[l][i];
-          auto& lhn = std::get<cudaNode::Capture>(ln->_handle);
-          if(lhn.sid == -1) {
-            remains.push(ln);
-          }
-        } 
-
-        prev_assign = std::move(assign);
-        assign.resize(streams.size());
-        counter = 0;
-
-        break;
-      }
-    }
-
-
-    while(!remains.empty()) {
-      //r1. same as 1
-      auto& node = remains.front();
-      auto& hn = std::get<cudaNode::Capture>(node->_handle);
-      auto& preds = node->_dependents;
-      remains.pop();
-
-      for(auto& pn: preds) {
-        auto& phn = std::get<cudaNode::Capture>(pn->_handle);
-        //TODO: ignore cross-level?
-        if(assign[phn.sid] == nullptr) {
-          hn.sid = phn.sid;
-          assign[hn.sid] = node;
-          prev_assign[hn.sid] = node;
-          //sgraph[hn.sid].emplace_back(node);
-          ++counter;
-        }
-      }
-
-      //if r1 failed
-      //r2.
-      if(hn.sid == -1) {
-        for(size_t s = 0; s < streams.size(); ++s) {
-          if(assign[s] == nullptr) {
-            hn.sid = s;
-            assign[hn.sid] = node;
-            prev_assign[hn.sid] = node;
-            //sgraph[hn.sid].emplace_back(node);
-            ++counter;
-          }
-        }
-      }
-
-      if(counter == streams.size()) {
-        assign.clear();
-        assign.resize(streams.size());
-        counter = 0;
-      }
-    }
-
-    //reset
-    counter = 0;
-    assign.clear();
-    assign.resize(streams.size());
-  }
-
-  //add events and work
-  for(auto& level_nodes: level_graph) {
-    for(auto& node: level_nodes) {
-      auto& hn = std::get<cudaNode::Capture>(node->_handle);
-
-      //wait
-      for(auto& pn: node->_dependents) {
-        auto& phn = std::get<cudaNode::Capture>(pn->_handle);
-        if(phn.sid != hn.sid) {
-          TF_CHECK_CUDA(
-            cudaStreamWaitEvent(streams[hn.sid], phn.event), "failed to wait on the node"
-          );
-        }
-      }
-
-      //capture
-      hn.work(streams[hn.sid]);
-
-      //create event
-      for(auto& sn : node->_successors) {
-        auto& shn = std::get<cudaNode::Capture>(sn->_handle);
-        if(hn.sid != shn.sid && hn.event == nullptr) {
-          hn.event = events.emplace_back();
-          TF_CHECK_CUDA(
-            cudaEventRecord(hn.event, streams[hn.sid]), "failed to record"
-          );
-        }
-      }
-    }
-  }
-
-
-  // join
-  for(size_t i=1; i<_num_streams; ++i) {
-    cudaEvent_t join_event = events.emplace_back();
-    TF_CHECK_CUDA(
-      cudaEventRecord(join_event, streams[i]), "failed to record join"
-    );
-    TF_CHECK_CUDA(
-      cudaStreamWaitEvent(streams[0], join_event), "failed to wait on join"
-    );
-  }
-
-  cudaGraph_t native_g;
-
-  TF_CHECK_CUDA(
-    cudaStreamEndCapture(streams[0], &native_g), "failed to end capture"
-  );
-
-  //tf::cuda_dump_graph(std::cout, native_g);
-
-  return native_g;
-} */
 
 }  // end of namespace tf -----------------------------------------------------
 

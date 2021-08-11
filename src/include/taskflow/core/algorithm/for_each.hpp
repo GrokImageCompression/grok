@@ -81,7 +81,7 @@ Task FlowBuilder::for_each(B&& beg, E&& end, C&& c) {
           }
           // coarse-grained
           else {
-            size_t q = static_cast<size_t>(p2 * r);
+            size_t q = static_cast<size_t>(p2 * (double)r);
             if(q < chunk_size) {
               q = chunk_size;
             }
@@ -177,7 +177,7 @@ Task FlowBuilder::for_each_index(B&& beg, E&& end, S&& inc, C&& c){
           }
           // coarse-grained
           else {
-            size_t q = static_cast<size_t>(p2 * r);
+            size_t q = static_cast<size_t>(p2 * (double)r);
             if(q < chunk_size) {
               q = chunk_size;
             }

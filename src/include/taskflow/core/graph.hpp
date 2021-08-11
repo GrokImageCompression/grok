@@ -6,8 +6,8 @@
 #include "../utility/singleton.hpp"
 #include "../utility/os.hpp"
 #include "../utility/math.hpp"
-#include "../utility/serializer.hpp"
 #include "../utility/small_vector.hpp"
+#include "../utility/serializer.hpp"
 #include "error.hpp"
 #include "declarations.hpp"
 #include "semaphore.hpp"
@@ -35,6 +35,7 @@ class Graph {
   friend class Node;
   friend class Taskflow;
   friend class Executor;
+  friend class Sanitizer;
 
   public:
 
@@ -77,6 +78,7 @@ class Node {
   friend class Executor;
   friend class FlowBuilder;
   friend class Subflow;
+  friend class Sanitizer;
 
   TF_ENABLE_POOLABLE_ON_THIS;
 
@@ -503,11 +505,7 @@ inline std::vector<Node*> Node::_release_all() {
 
 // Destructor
 inline Graph::~Graph() {
-  //auto& np = _node_pool();
-  for(auto node : _nodes) {
-    //np.recycle(node);
-    node_pool.recycle(node);
-  }
+  clear();
 }
 
 // Move constructor
@@ -517,6 +515,7 @@ inline Graph::Graph(Graph&& other) :
 
 // Move assignment
 inline Graph& Graph::operator = (Graph&& other) {
+  clear();
   _nodes = std::move(other._nodes);
   return *this;
 }
@@ -543,7 +542,7 @@ inline void Graph::clear_detached() {
   for(auto itr = mid; itr != _nodes.end(); ++itr) {
     node_pool.recycle(*itr);
   }
-  _nodes.resize(static_cast<size_t>(std::distance(_nodes.begin(), mid)));
+  _nodes.resize(std::distance(_nodes.begin(), mid));
 }
 
 // Procedure: merge
@@ -555,13 +554,11 @@ inline void Graph::merge(Graph&& g) {
 }
 
 // Function: size
-// query the size
 inline size_t Graph::size() const {
   return _nodes.size();
 }
 
 // Function: empty
-// query the emptiness
 inline bool Graph::empty() const {
   return _nodes.empty();
 }

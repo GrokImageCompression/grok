@@ -20,16 +20,18 @@ A %taskflow manages a task dependency graph where each task represents a
 callable object (e.g., @std_lambda, @std_function) and an edge represents a 
 dependency between two tasks. A task is one of the following types:
   
-  1. static task: the callable constructible from 
-                  @c std::function<void()>
-  2. dynamic task: the callable constructible from 
-                   @c std::function<void(tf::Subflow&)>
+  1. static task   : the callable constructible from 
+                     @c std::function<void()>
+  2. dynamic task  : the callable constructible from 
+                     @c std::function<void(tf::Subflow&)>
   3. condition task: the callable constructible from 
                      @c std::function<int()>
-  4. module task: the task constructed from tf::Taskflow::composed_of
+  4. module task   : the task constructed from tf::Taskflow::composed_of
   5. %cudaFlow task: the callable constructible from 
                      @c std::function<void(tf::cudaFlow&)> or
                      @c std::function<void(tf::cudaFlowCapturer&)>
+  6. %syclFlow task: the callable constructible from
+                     @c std::function<void(tf::syclFlow&)>
 
 Each task is a basic computation unit and is run by one worker thread
 from an executor.
@@ -78,6 +80,24 @@ class Taskflow : public FlowBuilder {
     @brief constructs a taskflow
     */
     Taskflow();
+
+    /**
+    @brief constructs a taskflow from a moved taskflow
+
+    Move a running taskflow can result in undefined behavior.
+    You should only move a taskflow to another if it is not being run by
+    an executor.
+    */
+    Taskflow(Taskflow&& rhs);
+
+    /**
+    @brief move assignment operator
+
+    Move a running taskflow can result in undefined behavior.
+    You should only move a taskflow to another if it is not being run by
+    an executor.
+    */
+    Taskflow& operator = (Taskflow&& rhs);
 
     /**
     @brief default destructor
@@ -145,14 +165,16 @@ class Taskflow : public FlowBuilder {
     void for_each_task(V&& visitor) const;
 
   private:
+    
+    mutable std::mutex _mutex;
  
     std::string _name;
    
     Graph _graph;
 
-    std::mutex _mtx;
-
     std::queue<std::shared_ptr<Topology>> _topologies;
+
+    std::optional<std::list<Taskflow>::iterator> _satellite;
     
     void _dump(std::ostream&, const Taskflow*) const;
     void _dump(std::ostream&, const Node*, Dumper&) const;
@@ -167,6 +189,32 @@ inline Taskflow::Taskflow(const std::string& name) :
 
 // Constructor
 inline Taskflow::Taskflow() : FlowBuilder{_graph} {
+}
+
+// Move constructor
+inline Taskflow::Taskflow(Taskflow&& rhs) : FlowBuilder{_graph} {
+
+  std::scoped_lock<std::mutex> lock(rhs._mutex);
+  
+  _name = std::move(rhs._name);
+  _graph = std::move(rhs._graph); 
+  _topologies = std::move(rhs._topologies);
+  _satellite = rhs._satellite;
+
+  rhs._satellite.reset();
+}
+
+// Move assignment
+inline Taskflow& Taskflow::operator = (Taskflow&& rhs) {
+  if(this != &rhs) {
+    std::scoped_lock<std::mutex, std::mutex> lock(_mutex, rhs._mutex);
+    _name = std::move(rhs._name);
+    _graph = std::move(rhs._graph); 
+    _topologies = std::move(rhs._topologies);
+    _satellite = rhs._satellite;
+    rhs._satellite.reset();
+  }
+  return *this;
 }
 
 // Procedure:
