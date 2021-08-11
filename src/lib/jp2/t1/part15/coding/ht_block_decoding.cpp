@@ -1167,7 +1167,7 @@ void htj2k_decode(j2k_codeblock *block, const uint8_t ROIshift) {
     int32_t offset = 0;
 
     int32_t *val = nullptr;
-    int16_t *dst = nullptr;
+    int32_t *dst = nullptr;
     float *fval  = nullptr;
     int32_t sign;
     int16_t QF15;

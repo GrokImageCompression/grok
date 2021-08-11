@@ -53,6 +53,20 @@ namespace t1_part15
 		uint32_t tileIndex = 0;
 		uint32_t cblk_index = 0;
 
+
+		for(auto j = 0U; j < h; ++j)
+		{
+			for(auto i = 0U; i < w; ++i)
+			{
+				unencoded_data[cblk_index] = block->tiledp[tileIndex];
+				tileIndex++;
+				cblk_index++;
+			}
+			tileIndex += tileLineAdvance;
+		}
+
+		return;
+
 		// convert to sign-magnitude
 		if(block->qmfbid == 1)
 		{
@@ -94,42 +108,24 @@ namespace t1_part15
 	bool T1Part15::compress(grk::CompressBlockExec* block)
 	{
 		preCompress(block, block->tile);
-
-/*
- *   j2k_codeblock(const uint32_t &idx, uint8_t orientation, uint8_t M_b, uint8_t R_b, uint8_t transformation,
-                float stepsize, uint32_t band_stride, int16_t *ibuf, float *fbuf, uint32_t offset,
-                const uint16_t &numlayers, const uint8_t &codeblock_style, const element_siz &p0,
-                const element_siz &p1, const element_siz &s);
- */
+		auto cblk = block->cblk;
 		uint32_t idx;
 		uint16_t numlayers = 1;
 		uint16_t codelbock_style = block->cblk_sty;
 		const element_siz p0;
 		const element_siz p1;
-		const element_siz s(block->cblk->width(), block->cblk->height());
-        auto j2k_block = new j2k_codeblock(idx,block->bandOrientation, 0,0,0,0,0,nullptr,nullptr,0,
+		const element_siz s(cblk->width(), cblk->height());
+        auto j2k_block = new j2k_codeblock(idx,block->bandOrientation, 0,0,0,0,cblk->width(),unencoded_data,(float*)unencoded_data,0,
         								numlayers,codelbock_style,p0,p1,s);
-        htj2k_encode(j2k_block, 0);
-/*
-		coded_lists* next_coded = nullptr;
-		auto cblk = block->cblk;
-		cblk->numbps = 0;
-		// optimization below was causing errors in compressing
-		// if (maximum >= (uint32_t)1<<(31 - (block->k_msbs+1)))
-		uint16_t w = (uint16_t)cblk->width();
-		uint16_t h = (uint16_t)cblk->height();
-
-		uint32_t pass_length[2] = {0, 0};
-		ojph::local::ojph_encode_codeblock((uint32_t*)unencoded_data, block->k_msbs, 1, w, h, w, pass_length,
-							  elastic_alloc, next_coded);
-
+        auto len = htj2k_encode(j2k_block, 0);
 		cblk->numPassesTotal = 1;
-		cblk->passes[0].len = (uint16_t)pass_length[0];
-		cblk->passes[0].rate = (uint16_t)pass_length[0];
+		cblk->passes[0].len = (uint16_t)len;
+		cblk->passes[0].rate = (uint16_t)len;
 		cblk->numbps = 1;
 		assert(cblk->paddedCompressedStream);
-		memcpy(cblk->paddedCompressedStream, next_coded->buf, (size_t)pass_length[0]);
-*/
+		memcpy(cblk->paddedCompressedStream, j2k_block->get_compressed_data(), (size_t)len);
+		delete j2k_block;
+
 		return true;
 	}
 	bool T1Part15::decompress(grk::DecompressBlockExec* block)

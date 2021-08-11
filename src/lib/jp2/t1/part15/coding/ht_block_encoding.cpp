@@ -48,7 +48,7 @@ void j2k_codeblock::set_MagSgn_and_sigma(uint32_t &or_val) {
   const uint32_t stride = this->band_stride;
 
   for (uint16_t i = 0; i < height; ++i) {
-    int16_t *const sp = this->i_samples + i * stride;
+    int32_t *const sp = this->i_samples + i * stride;
     int32_t *const dp = this->sample_buf.get() + i * width;
     for (uint16_t j = 0; j < width; ++j) {
       int32_t tmp   = sp[j];
