@@ -56,6 +56,11 @@ extern "C" {
 #endif
 #endif
 
+typedef enum GRK_RATE_CONTROL_ALGORITHM{
+  GRK_RATE_CONTROL_BISECT,
+  GRK_RATE_CONTROL_PCRD_OPT
+} GRK_RATE_CONTROL_ALGORITHM;
+
 typedef enum GRK_SUPPORTED_FILE_FMT
 {
 	GRK_UNK_FMT,
@@ -578,8 +583,9 @@ typedef struct _grk_cparameters
 	bool write_display_resolution;
 	double display_resolution[2];
 
-	// 0: bisect with all truncation points,  1: bisect with only feasible truncation points
-	uint32_t rateControlAlgorithm;
+	// 0: bisect with all truncation points
+	// 1: bisect with only feasible truncation points
+	GRK_RATE_CONTROL_ALGORITHM rateControlAlgorithm;
 	uint32_t numThreads;
 	int32_t deviceId;
 	uint32_t duration; // seconds

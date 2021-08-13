@@ -637,8 +637,13 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 		if(kernelBuildOptionsArg.isSet())
 			parameters->kernelBuildOptions = kernelBuildOptionsArg.getValue();
 
-		if(rateControlAlgoArg.isSet())
-			parameters->rateControlAlgorithm = rateControlAlgoArg.getValue();
+		if(rateControlAlgoArg.isSet()) {
+			uint32_t algo = rateControlAlgoArg.getValue();
+			if (algo > GRK_RATE_CONTROL_PCRD_OPT)
+				spdlog::warn("Rate control algorithm %d is not valid. Using default");
+			else
+				parameters->rateControlAlgorithm = (GRK_RATE_CONTROL_ALGORITHM)rateControlAlgoArg.getValue();
+		}
 
 		if(numThreadsArg.isSet())
 			parameters->numThreads = numThreadsArg.getValue();
@@ -1997,12 +2002,6 @@ static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info)
 		}
 	}
 
-	// set default algorithm
-	if(parameters->rateControlAlgorithm == 255)
-	{
-		parameters->rateControlAlgorithm = 0;
-	}
-
 	if((GRK_IS_BROADCAST(parameters->rsiz) || GRK_IS_IMF(parameters->rsiz)) &&
 	   parameters->framerate != 0)
 	{
@@ -2181,7 +2180,7 @@ static int pluginMain(int argc, char** argv, CompressInitParams* initParams)
 	/* parse input and get user compressing parameters */
 	initParams->parameters.mct =
 		255; /* This will be set later according to the input image or the provided option */
-	initParams->parameters.rateControlAlgorithm = 255;
+	initParams->parameters.rateControlAlgorithm = GRK_RATE_CONTROL_PCRD_OPT;
 	if(parseCommandLine(argc, argv, initParams) == 1)
 	{
 		success = 1;
