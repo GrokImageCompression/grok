@@ -391,16 +391,16 @@ bool TileComponent::postProcessHT(int32_t* srcData, DecompressBlockExec* block, 
 		if(block->roishift)
 		{
 			if(block->qmfbid == 1)
-				return postDecompressImpl<t1_part15::RoiShiftHTFilter<int32_t>>(srcData, block, stride);
+				return postDecompressImpl<openhtj2k::RoiShiftHTFilter<int32_t>>(srcData, block, stride);
 			else
-				return postDecompressImpl<t1_part15::RoiScaleHTFilter<int32_t>>(srcData, block, stride);
+				return postDecompressImpl<openhtj2k::RoiScaleHTFilter<int32_t>>(srcData, block, stride);
 		}
 		else
 		{
 			if(block->qmfbid == 1)
-				return postDecompressImpl<t1_part15::ShiftHTFilter<int32_t>>(srcData, block, stride);
+				return postDecompressImpl<openhtj2k::ShiftHTFilter<int32_t>>(srcData, block, stride);
 			else
-				return postDecompressImpl<t1_part15::ScaleHTFilter<int32_t>>(srcData, block, stride);
+				return postDecompressImpl<openhtj2k::ScaleHTFilter<int32_t>>(srcData, block, stride);
 		}
 
 	}

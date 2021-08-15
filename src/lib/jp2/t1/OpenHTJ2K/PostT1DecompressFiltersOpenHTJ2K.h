@@ -2,7 +2,7 @@
 
 #include "grk_includes.h"
 
-namespace t1_part15
+namespace openhtj2k
 {
 template<typename T>
 class RoiShiftHTFilter

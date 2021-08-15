@@ -55,9 +55,9 @@
 
 #define _USE_MATH_DEFINES
 #include "grk_includes.h"
-#include "QuantizerPart15.h"
+#include "QuantizerOpenHTJ2K.h"
 
-namespace t1_part15
+namespace openhtj2k
 {
 
 class sqrt_energy_gains
@@ -155,9 +155,9 @@ const float bibo_gains::gain_5x3_h[34] = {
 	2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f,
 	2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f, 2.8671e+00f};
 
-QuantizerPart15::QuantizerPart15(bool reversible,uint8_t guard_bits) : Quantizer(reversible, guard_bits), base_delta(-1.0f)
+QuantizerOpenHTJ2K::QuantizerOpenHTJ2K(bool reversible,uint8_t guard_bits) : Quantizer(reversible, guard_bits), base_delta(-1.0f)
 {}
-void QuantizerPart15::generate(uint32_t decomps,
+void QuantizerOpenHTJ2K::generate(uint32_t decomps,
 						 uint32_t max_bit_depth, bool color_transform, bool is_signed)
 {
 	num_decomps = decomps;
@@ -173,7 +173,7 @@ void QuantizerPart15::generate(uint32_t decomps,
 	}
 
 }
-void QuantizerPart15::set_rev_quant(uint32_t bit_depth, bool is_employing_color_transform)
+void QuantizerOpenHTJ2K::set_rev_quant(uint32_t bit_depth, bool is_employing_color_transform)
 {
 	int B = (int)bit_depth;
 	B += is_employing_color_transform ? 1 : 0; // 1 bit for RCT
@@ -193,7 +193,7 @@ void QuantizerPart15::set_rev_quant(uint32_t bit_depth, bool is_employing_color_
 		u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
 	}
 }
-void QuantizerPart15::set_irrev_quant()
+void QuantizerOpenHTJ2K::set_irrev_quant()
 {
 	uint32_t s = 0;
 	float gain_l = sqrt_energy_gains::get_gain_l(num_decomps, false);
@@ -238,7 +238,7 @@ void QuantizerPart15::set_irrev_quant()
 		u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
 	}
 }
-uint32_t QuantizerPart15::get_MAGBp() const
+uint32_t QuantizerOpenHTJ2K::get_MAGBp() const
 {
 	uint32_t B = 0;
 	uint32_t irrev = Sqcd & 0x1F;
@@ -257,7 +257,7 @@ uint32_t QuantizerPart15::get_MAGBp() const
 	return B;
 }
 
-bool QuantizerPart15::write(grk::IBufferedStream *stream) {
+bool QuantizerOpenHTJ2K::write(grk::IBufferedStream *stream) {
 	// marker size excluding header
 	uint16_t Lcap = 8;
 	uint32_t Pcap = 0x00020000; // for jph, Pcap^15 must be set, the 15th MSB
@@ -301,4 +301,4 @@ bool QuantizerPart15::write(grk::IBufferedStream *stream) {
 	return true;
 }
 
-} // namespace t1_part15
+} // namespace openhtj2k

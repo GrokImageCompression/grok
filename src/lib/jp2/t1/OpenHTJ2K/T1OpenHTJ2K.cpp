@@ -18,14 +18,14 @@
 #include "coding_units.hpp"
 #include "ht_block_decoding.hpp"
 #include "ht_block_encoding.hpp"
-#include "T1Part15.h"
+#include "T1OpenHTJ2K.h"
 #include "grk_includes.h"
 
 const uint8_t grk_cblk_dec_compressed_data_pad_ht = 8;
 
-namespace t1_part15
+namespace openhtj2k
 {
-	T1Part15::T1Part15(bool isCompressor, grk::TileCodingParams* tcp, uint32_t maxCblkW, uint32_t maxCblkH)
+	T1OpenHTJ2K::T1OpenHTJ2K(bool isCompressor, grk::TileCodingParams* tcp, uint32_t maxCblkW, uint32_t maxCblkH)
 		: coded_data_size(isCompressor ? 0 : (uint32_t)(maxCblkW * maxCblkH * sizeof(int32_t))),
 		  coded_data(isCompressor ? nullptr : new uint8_t[coded_data_size]),
 		  unencoded_data_size(maxCblkW * maxCblkH),
@@ -35,12 +35,12 @@ namespace t1_part15
 		if(!isCompressor)
 			memset(coded_data, 0, grk_cblk_dec_compressed_data_pad_ht);
 	}
-	T1Part15::~T1Part15()
+	T1OpenHTJ2K::~T1OpenHTJ2K()
 	{
 		delete[] coded_data;
 		delete[] unencoded_data;
 	}
-	void T1Part15::preCompress(grk::CompressBlockExec* block, grk::Tile* tile)
+	void T1OpenHTJ2K::preCompress(grk::CompressBlockExec* block, grk::Tile* tile)
 	{
 		(void)block;
 		(void)tile;
@@ -81,7 +81,7 @@ namespace t1_part15
 			}
 		}
 	}
-	bool T1Part15::compress(grk::CompressBlockExec* block)
+	bool T1OpenHTJ2K::compress(grk::CompressBlockExec* block)
 	{
 		preCompress(block, block->tile);
 		auto cblk = block->cblk;
@@ -104,7 +104,7 @@ namespace t1_part15
 
 		return true;
 	}
-	bool T1Part15::decompress(grk::DecompressBlockExec* block)
+	bool T1OpenHTJ2K::decompress(grk::DecompressBlockExec* block)
 	{
 		auto cblk = block->cblk;
 		if(!cblk->area())
@@ -167,4 +167,4 @@ namespace t1_part15
 
 		return block->tilec->postProcessHT(unencoded_data, block, stride);
 	}
-} // namespace t1_part15
+} // namespace openhtj2k

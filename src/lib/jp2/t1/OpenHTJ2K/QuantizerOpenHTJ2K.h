@@ -55,13 +55,13 @@
 #pragma once
 #include <Quantizer.h>
 
-namespace t1_part15
+namespace openhtj2k
 {
 
-struct QuantizerPart15 : public grk::Quantizer
+struct QuantizerOpenHTJ2K : public grk::Quantizer
 {
   public:
-	QuantizerPart15(bool reversible,uint8_t guard_bits);
+	QuantizerOpenHTJ2K(bool reversible,uint8_t guard_bits);
 	void generate(uint32_t decomps,
 					uint32_t max_bit_depth,
 					bool color_transform, bool is_signed) override;
@@ -73,4 +73,4 @@ struct QuantizerPart15 : public grk::Quantizer
 	float base_delta;
 };
 
-} // namespace t1_part15
+} // namespace openhtj2k

@@ -19,15 +19,15 @@
 #include "T1Interface.h"
 #include "TileProcessor.h"
 
-namespace t1_part15
+namespace openhtj2k
 {
 struct TileCodingParams;
 
-	class T1Part15 : public grk::T1Interface
+	class T1OpenHTJ2K : public grk::T1Interface
 	{
 	  public:
-		T1Part15(bool isCompressor, grk::TileCodingParams* tcp, uint32_t maxCblkW, uint32_t maxCblkH);
-		virtual ~T1Part15();
+		T1OpenHTJ2K(bool isCompressor, grk::TileCodingParams* tcp, uint32_t maxCblkW, uint32_t maxCblkH);
+		virtual ~T1OpenHTJ2K();
 
 		bool compress(grk::CompressBlockExec* block);
 		bool decompress(grk::DecompressBlockExec* block);
@@ -41,4 +41,4 @@ struct TileCodingParams;
 		uint32_t unencoded_data_size;
 		int32_t* unencoded_data;
 	};
-} // namespace t1_part15
+} // namespace openhtj2k

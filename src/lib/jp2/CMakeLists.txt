@@ -42,10 +42,10 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/t1
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/impl
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/codestream
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/common
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/codestream
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/common
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/common
   ${CMAKE_CURRENT_SOURCE_DIR}/util
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream
@@ -180,26 +180,26 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Factory.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Interface.h
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/coding_local.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/coding_units.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ht_block_decoding.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ht_block_encoding.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/coding_units.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/dec_CxtVLC_tables.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/enc_CxtVLC_tables.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ht_block_decoding.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/coding/ht_block_encoding.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/codestream/codestream.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/codestream/codestream_source.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/codestream/j2kmarkers.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/codestream/j2kmarkers.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/codestream/marker_def.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/coding_local.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/coding_units.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/ht_block_decoding.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/ht_block_encoding.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/coding_units.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/dec_CxtVLC_tables.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/enc_CxtVLC_tables.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/ht_block_decoding.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/ht_block_encoding.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/codestream/codestream.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/codestream/codestream_source.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/codestream/j2kmarkers.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/codestream/j2kmarkers.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/codestream/marker_def.hpp
   
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/T1Part15.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/T1Part15.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/QuantizerPart15.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/QuantizerPart15.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/part15/PostT1DecompressFiltersPart15.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/T1OpenHTJ2K.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/T1OpenHTJ2K.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/QuantizerOpenHTJ2K.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/QuantizerOpenHTJ2K.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/PostT1DecompressFiltersOpenHTJ2K.h
 
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/T1OJPH.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/T1OJPH.cpp

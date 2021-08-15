@@ -4,9 +4,9 @@
 #include "OJPH/PostT1DecompressFiltersOJPH.h"
 #include "OJPH/QuantizerOJPH.h"
 
-#include "part15/T1Part15.h"
-#include "part15/PostT1DecompressFiltersPart15.h"
-#include "part15/QuantizerPart15.h"
+#include "OpenHTJ2K/T1OpenHTJ2K.h"
+#include "OpenHTJ2K/PostT1DecompressFiltersOpenHTJ2K.h"
+#include "OpenHTJ2K/QuantizerOpenHTJ2K.h"
 
 namespace grk {
 
