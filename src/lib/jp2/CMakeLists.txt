@@ -246,7 +246,7 @@ if(WIN32)
   add_library(${GROK_LIBRARY_NAME} ${GROK_LIBRARY_SRCS})
   set(INSTALL_LIBS ${GROK_LIBRARY_NAME})
 else()
-  if(BUILD_SHARED_LIBS AND BUILD_STATIC_LIBS)
+  if(BUILD_STATIC_LIBS)
       # Builds and installs both static and dynamic libraries
 	  add_library(${GROK_LIBRARY_NAME} SHARED ${GROK_LIBRARY_SRCS})
 	  add_library(${GROK_LIBRARY_NAME}_static STATIC ${GROK_LIBRARY_SRCS})
