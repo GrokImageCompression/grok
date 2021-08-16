@@ -19,7 +19,7 @@ if(NOT COMMAND cotire)
     include(${CMAKE_CURRENT_LIST_DIR}/../cotire/CMake/cotire.cmake OPTIONAL)
 endif()
 
-if(COMMAND cotire AND "1.7.7" VERSION_LESS "${COTIRE_CMAKE_MODULE_VERSION}")
+if(COMMAND cotire AND "1.7.9" VERSION_LESS "${COTIRE_CMAKE_MODULE_VERSION}")
     set(ucm_with_cotire 1)
 else()
     set(ucm_with_cotire 0)
@@ -87,7 +87,7 @@ macro(ucm_add_linker_flags)
     endif()
 
     foreach(CONFIG ${ARG_CONFIG})
-        string(TOUPPER "${ARG_CONFIG}" ARG_CONFIG)
+        string(TOUPPER "${CONFIG}" CONFIG)
     
         if(NOT ${ARG_EXE} AND NOT ${ARG_MODULE} AND NOT ${ARG_SHARED} AND NOT ${ARG_STATIC})
             set(ARG_EXE 1)
@@ -244,11 +244,40 @@ endmacro()
 # Prints all compiler flags for all configurations
 macro(ucm_print_flags)
     ucm_gather_flags(1 flags_configs)
-    message("")
+    message(STATUS "")
     foreach(flags ${flags_configs})
-        message("${flags}: ${${flags}}")
+        message(STATUS "${flags}: ${${flags}}")
     endforeach()
-    message("")
+    message(STATUS "")
+endmacro()
+
+# ucm_set_xcode_attrib
+# Set xcode attributes - name value CONFIG config1 conifg2..
+macro(ucm_set_xcode_attrib)
+    cmake_parse_arguments(ARG "" "CLEAR" "CONFIG" ${ARGN})
+
+    if(NOT ARG_CONFIG)
+        set(ARG_CONFIG " ")
+    endif()
+
+    foreach(CONFIG ${ARG_CONFIG})
+        # determine to which attributes to add
+        if(${CONFIG} STREQUAL " ")
+            if(${ARG_CLEAR})
+                # clear the old flags
+                unset(CMAKE_XCODE_ATTRIBUTE_${ARGV0})
+            else()
+                set(CMAKE_XCODE_ATTRIBUTE_${ARGV0} ${ARGV1})
+            endif()
+        else()
+            if(${ARG_CLEAR})
+                # clear the old flags
+                unset(CMAKE_XCODE_ATTRIBUTE_${ARGV0}[variant=${CONFIG}])
+            else()
+                set(CMAKE_XCODE_ATTRIBUTE_${ARGV0}[variant=${CONFIG}] ${ARGV1})
+            endif()
+        endif()
+    endforeach()
 endmacro()
 
 # ucm_count_sources
@@ -609,7 +638,7 @@ macro(ucm_add_target)
         # also set the name of the target output as the original one
         set_target_properties(${unity_target_name} PROPERTIES OUTPUT_NAME ${ARG_NAME})
         if(UCM_NO_COTIRE_FOLDER)
-            # reset the folder property so all unity targets don't end up in a single folder in the solution explorer of VS
+            # reset the folder property so all unity targets dont end up in a single folder in the solution explorer of VS
             set_target_properties(${unity_target_name} PROPERTIES FOLDER "")
         endif()
         set_target_properties(all_unity PROPERTIES FOLDER "CMakePredefinedTargets")
