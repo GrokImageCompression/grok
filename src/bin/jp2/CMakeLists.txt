@@ -90,15 +90,15 @@ foreach(exe grk_decompress grk_compress grk_dump)
   if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
 	target_link_options(${exe}  PUBLIC "LINKER:-z,now")
   endif()
+
+  target_link_libraries(${exe} 
+    ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME}
+    ${JPEG_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
   # perform static link if only BUILD_STATIC_LIBS is turned on
   if (BUILD_STATIC_LIBS AND NOT BUILD_SHARED_LIBS)
-	  target_link_libraries(${exe} ${GROK_LIBRARY_NAME}_static hwy
-	    ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME}
-	    ${JPEG_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
+	  target_link_libraries(${exe} ${GROK_LIBRARY_NAME}_static hwy)
   else()
-	  target_link_libraries(${exe} ${GROK_LIBRARY_NAME}
-	    ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME}
-	    ${JPEG_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
+	  target_link_libraries(${exe} ${GROK_LIBRARY_NAME} )
   endif()
 
   # To support universal exe:
