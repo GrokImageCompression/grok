@@ -10,7 +10,6 @@ set(GROK_PLUGIN_NAME grokj2k_plugin)
 
 project(${GROK_NAMESPACE} )
 
-
 if ( (CMAKE_CXX_COMPILER_ID MATCHES "GNU") AND (CMAKE_CXX_COMPILER_VERSION LESS 10.0) )
    message(FATAL_ERROR "GNU compiler version must be at least 10.0")
 endif()
@@ -22,7 +21,7 @@ include_regular_expression("^.*$")
 #-----------------------------------------------------------------------------
 # GROK version number, useful for packaging and doxygen doc:
 set(GROK_VERSION_MAJOR 9)
-set(GROK_VERSION_MINOR 3)
+set(GROK_VERSION_MINOR 4)
 set(GROK_VERSION_BUILD 0)
 set(GROK_VERSION
   "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_BUILD}")
@@ -53,6 +52,7 @@ set(PACKAGE_VERSION
 #   9.1.0 |  1
 #   9.2.0 |  1
 #   9.3.0 |  1
+#   9.4.0 |  1
 if(NOT GROK_SOVERSION)
   set(GROK_SOVERSION 1)
 endif(NOT GROK_SOVERSION)
