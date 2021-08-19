@@ -14,12 +14,29 @@ Grok releases can be found [here](https://github.com/GrokImageCompression/grok/r
 
 Grok uses [cmake](www.cmake.org) to configure builds across multiple platforms.
 
+### compilers
+
 Supported compilers:
 
-1. gcc 10 and higher
+1. g++ 10 and higher
 1. clang 12 and higher
 1. MSVC 2019 and higher (mingw compiler not supported)
 
+To ensure that g++ 10 is the default compiler after installation, execute
+
+$ sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 --slave /usr/bin/g++ g++ /usr/bin/g++-10
+
+For clang-12, execute:
+
+```
+$ sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-12 60
+$ sudo update-alternatives --config c++
+```
+
+The second line brings up a menu allowing a user to configure the default `c++` compiler, which is
+what is used by `cmake` to configure the project compiler.
+
+### configuration
 
 To configure a build using the defaults:
 
@@ -36,7 +53,11 @@ The `cmake` GUI is recommended, in order to easily view all `cmake` options. On 
 
 #### SHARED/STATIC
 
-The `BUILD_SHARED_LIBS` `cmake` flag determines if the `grk_compress` and `grk_decompress` binaries are linked to dynamic or static builds of the codec library `libgrokj2k`. If both `BUILD_SHARED_LIBS` and `BUILD_STATIC_LIBS` `cmake` flags are set for a non-windows build, then both dynamic and static builds are generated, and the static version is installed.
+The `BUILD_SHARED_LIBS` `cmake` flag determines if the `grk_compress` and `grk_decompress` binaries
+are linked to dynamic or static builds of the codec library `libgrokj2k`.
+
+If both `BUILD_SHARED_LIBS` and `BUILD_STATIC_LIBS` `cmake` flags are set,
+then both dynamic and static builds are generated and installed.
 
 
 #### DEBUG/RELEASE
