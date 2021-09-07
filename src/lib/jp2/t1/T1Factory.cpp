@@ -20,7 +20,7 @@
 #include "T1Part1.h"
 #include "htconfig.h"
 
-//#define PART15
+//#define OPENHTJ2K
 
 namespace grk
 {
@@ -28,7 +28,7 @@ T1Interface* T1Factory::makeT1(bool isCompressor, TileCodingParams* tcp, uint32_
 							   uint32_t maxCblkH)
 {
 	if (tcp->isHT()){
-#ifdef PART15
+#ifdef OPENHTJ2K
 		return use_ojph ? (T1Interface*)(new openhtj2k::T1OpenHTJ2K(isCompressor, tcp, maxCblkW, maxCblkH)) :
 				(T1Interface*)(new openhtj2k::T1OpenHTJ2K(isCompressor, tcp, maxCblkW, maxCblkH));
 #else
@@ -41,7 +41,7 @@ T1Interface* T1Factory::makeT1(bool isCompressor, TileCodingParams* tcp, uint32_
 
 Quantizer* T1Factory::makeQuantizer(bool ht, bool reversible, uint8_t guardBits){
 	if (ht){
-#ifdef PART15
+#ifdef OPENHTJ2K
 		return use_ojph ? (Quantizer*)(new openhtj2k::QuantizerOpenHTJ2K(reversible, guardBits)) :
 				 (Quantizer*)(new openhtj2k::QuantizerOpenHTJ2K(reversible, guardBits));
 #else

@@ -73,21 +73,8 @@ class j2c_destination_base {
   virtual int32_t put_word(uint16_t word)                    = 0;
   virtual int32_t put_dword(uint32_t put_dword)              = 0;
   virtual int32_t put_N_bytes(uint8_t *src, uint32_t length) = 0;
-  virtual uint32_t flush(std::string file)                   = 0;
-  // virtual void print_bytes(uint32_t start, uint32_t stop) = 0;
+  virtual int32_t flush(std::ofstream &dst)                  = 0;
 };
-/*
-class j2c_dst_file : public codestream_destination_base {
-    public:
-        ofstream dst;
-        uint32_t pos;
-    public:
-        j2c_dst_file(string file_name){
-            dst.open(file_name, ios::out|ios::binary|ios::trunc);
-            pos = 0;
-        }
-};
-*/
 
 class j2c_dst_memory : public j2c_destination_base {
  private:
@@ -101,7 +88,8 @@ class j2c_dst_memory : public j2c_destination_base {
   int32_t put_word(uint16_t word) override;
   int32_t put_dword(uint32_t dword) override;
   int32_t put_N_bytes(uint8_t *src, uint32_t length) override;
-  uint32_t flush(std::string file) override;
+  int32_t flush(std::ofstream &dst) override;
+  size_t get_length() const;
   void print_bytes();
 };
 

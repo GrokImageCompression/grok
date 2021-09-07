@@ -31,19 +31,14 @@
 #include <cstring>
 #include <cassert>
 #include "coding_units.hpp"
-
-#if defined(_MSC_VER) || defined(__MINGW64__)
-  #include <intrin.h>
-#elif defined(__x86_64__)
-  #include <x86intrin.h>
-#endif
+#include "ThreadPool.hpp"
 
 /********************************************************************************
  * j2k_codeblock
  *******************************************************************************/
 
 j2k_codeblock::j2k_codeblock(const uint32_t &idx, uint8_t orientation, uint8_t M_b, uint8_t R_b,
-                             uint8_t transformation, float stepsize, uint32_t band_stride, int32_t *ibuf,
+                             uint8_t transformation, float stepsize, uint32_t band_stride, sprec_t *ibuf,
                              float *fbuf, uint32_t offset, const uint16_t &numlayers,
                              const uint8_t &codeblock_style, const element_siz &p0, const element_siz &p1,
                              const element_siz &s)

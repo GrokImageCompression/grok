@@ -28,21 +28,7 @@
 #include <stdexcept>
 #include <map>
 #include <type_traits>
-
-/*
-	tf::Executor executor;
-	tf::Taskflow taskflow("simple");
-
-	tf::Task A = taskflow.emplace([](){ std::cout << "TaskA\n"; });
-	tf::Task B = taskflow.emplace([](){ std::cout << "TaskB\n"; });
-	tf::Task C = taskflow.emplace([](){ std::cout << "TaskC\n"; });
-	tf::Task D = taskflow.emplace([](){ std::cout << "TaskD\n"; });
-
-	A.precede(B, C);  // A runs before B and C
-	D.succeed(B, C);  // D runs after  B and C
-
-	executor.run(taskflow).wait();
-*/
+#include <iostream>
 
 class ThreadPool
 {
@@ -82,17 +68,7 @@ class ThreadPool
 	}
 	static uint32_t hardware_concurrency()
 	{
-		uint32_t ret = 0;
-
-#if _MSC_VER >= 1200 && MSC_VER <= 1910
-		SYSTEM_INFO sysinfo;
-		GetSystemInfo(&sysinfo);
-		ret = sysinfo.dwNumberOfProcessors;
-
-#else
-		ret = std::thread::hardware_concurrency();
-#endif
-		return ret;
+		return std::thread::hardware_concurrency();
 	}
 
   private:

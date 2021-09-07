@@ -1167,8 +1167,7 @@ void htj2k_decode(j2k_codeblock *block, const uint8_t ROIshift) {
     int32_t offset = 0;
 
     int32_t *val = nullptr;
-    int32_t *dst = nullptr;
-    float *fval  = nullptr;
+    sprec_t *dst = nullptr;
     int32_t sign;
     int16_t QF15;
     float fscale = block->stepsize / (1 << block->R_b);
@@ -1192,7 +1191,6 @@ void htj2k_decode(j2k_codeblock *block, const uint8_t ROIshift) {
           const uint32_t n = x + y * block->band_stride;
           val              = &block->sample_buf[x + y * block->size.x];
           dst              = block->i_samples + n;
-          fval             = block->f_samples + n;
           sign             = *val & INT32_MIN;
           *val &= INT32_MAX;
           // detect background region and upshift it
@@ -1224,13 +1222,7 @@ void htj2k_decode(j2k_codeblock *block, const uint8_t ROIshift) {
 
           assert(pLSB >= 0);  // assure downshift is not negative
           QF15 = *val >> pLSB;
-          // deprecated lines 3
-          // if (sign) {
-          //   QF15 = -QF15;
-          // }
-          *dst  = QF15;
-          *fval = static_cast<float>(QF15);
-          // block->dequantize(y, x, N_b, pLSB, ROIshift);
+          *dst = QF15;
         }
       }
     } else {
@@ -1243,7 +1235,6 @@ void htj2k_decode(j2k_codeblock *block, const uint8_t ROIshift) {
           const uint32_t n = x + y * block->band_stride;
           val              = &block->sample_buf[x + y * block->size.x];
           dst              = block->i_samples + n;
-          fval             = block->f_samples + n;
           sign             = *val & INT32_MIN;
           *val &= INT32_MAX;
           // detect background region and upshift it
@@ -1279,15 +1270,7 @@ void htj2k_decode(j2k_codeblock *block, const uint8_t ROIshift) {
           *val *= scale;
           // truncate to int16_t
           QF15 = (int16_t)((*val + (1 << 15)) >> 16);
-          // deprecated lines 3
-          // if (sign) {
-          //   QF15 = -QF15;
-          // }
-          *dst  = QF15;
-          *fval = static_cast<float>(QF15);
-          // just for float implementation (soon be deprecated)
-          *fval *= 1 << block->R_b;
-          *fval /= 1 << FRACBITS;
+          *dst = QF15;
         }
       }
     }

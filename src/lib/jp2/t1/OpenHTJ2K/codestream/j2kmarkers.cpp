@@ -32,6 +32,10 @@
 #include <cmath>
 #include <string>
 
+constexpr uint8_t YCC444 = 0;
+constexpr uint8_t YCC420 = 1;
+constexpr uint8_t YCC422 = 2;
+
 /********************************************************************************
  * j2k_marker_io_base
  *******************************************************************************/
@@ -90,7 +94,7 @@ SIZ_marker::SIZ_marker(j2c_src_memory &in) : j2k_marker_io_base(_SIZ) {
 
 SIZ_marker::SIZ_marker(uint16_t R, uint32_t X, uint32_t Y, uint32_t XO, uint32_t YO, uint32_t XT,
                        uint32_t YT, uint32_t XTO, uint32_t YTO, uint16_t C, std::vector<uint8_t> &S,
-                       std::vector<uint8_t> &XR, std::vector<uint8_t> &YR, bool is_signed, bool needCAP)
+                       std::vector<uint8_t> &XR, std::vector<uint8_t> &YR, bool needCAP)
     : j2k_marker_io_base(_SIZ),
       Rsiz(R | (needCAP ? 1 << 14 : 0)),
       Xsiz(X),
@@ -104,11 +108,8 @@ SIZ_marker::SIZ_marker(uint16_t R, uint32_t X, uint32_t Y, uint32_t XO, uint32_t
       Csiz(C) {
   Lmar      = 38 + 3 * C;
   uint8_t s = 0;
-  if (is_signed) {
-    s = 0x80;
-  }
   for (unsigned long i = 0; i < Csiz; i++) {
-    Ssiz.push_back(s | S[i] - 1);
+    Ssiz.push_back(S[i]);
     XRsiz.push_back(XR[i]);
     YRsiz.push_back(YR[i]);
   }
@@ -159,6 +160,14 @@ void SIZ_marker::get_image_size(element_siz &siz) const {
   siz.y = Ysiz;
 }
 
+uint32_t SIZ_marker::get_component_stride(uint16_t c) const {
+  if (c >= Csiz) {
+    printf("ERROR: invalid component index\n");
+    exit(EXIT_FAILURE);
+  }
+  return Xsiz / XRsiz[c];
+}
+
 void SIZ_marker::get_image_origin(element_siz &siz) const {
   siz.x = XOsiz;
   siz.y = YOsiz;
@@ -180,6 +189,24 @@ void SIZ_marker::get_subsampling_factor(element_siz &siz, uint16_t c) {
 }
 
 uint16_t SIZ_marker::get_num_components() const { return Csiz; }
+
+uint8_t SIZ_marker::get_chroma_format() const {
+  uint8_t chroma_format = YCC444;
+  // determine type of chroma subsampling
+  if (Csiz != 3) {
+    return chroma_format;
+  } else {
+    if (XRsiz[1] == 2 && XRsiz[2] == 2) {
+      if (YRsiz[1] == 2 && YRsiz[2] == 2) {
+        chroma_format = YCC420;
+      }
+      if (YRsiz[1] == 1 && YRsiz[2] == 1) {
+        chroma_format = YCC422;
+      }
+    }
+  }
+  return chroma_format;
+}
 
 /********************************************************************************
  * CAP_marker
@@ -500,9 +527,13 @@ QCD_marker::QCD_marker(j2c_src_memory &in) : j2k_marker_io_base(_QCD), Sqcd(0) {
 }
 
 QCD_marker::QCD_marker(uint8_t number_of_guardbits, uint8_t dwt_levels, uint8_t transformation,
-                       bool is_derived, uint8_t RI, uint8_t use_ycc, double basestep)
+                       bool is_derived, uint8_t RI, uint8_t use_ycc, double basestep, uint8_t qfactor)
     : j2k_marker_io_base(_QCD), Sqcd(0), is_reversible(transformation == 1) {
   unsigned long n;
+  if (is_derived && qfactor != 0xFF) {
+    is_derived = false;
+    // TODO: show warning??
+  }
   if (is_reversible) {
     Lmar = 4 + 3 * dwt_levels;
     n    = 3 * dwt_levels + 1;
@@ -532,6 +563,14 @@ QCD_marker::QCD_marker(uint8_t number_of_guardbits, uint8_t dwt_levels, uint8_t 
                                      1.205898036472720,  -0.533728236885750,
                                      -0.156446533057980, 0.033728236885750,
                                      0.053497514821622};  // gain is doubled(x2)
+
+  // Square roots of the visual weighting factors for Y content
+  const double W_b_Y[15] = {0.0901, 0.2758, 0.2758, 0.7018, 0.8378, 0.8378, 1.0000, 1.0000,
+                            1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000};
+
+  // The squared Euclidean norm of the multi-component synthesis operator that represents the contribution
+  // of component 𝑐 (e.g., Y, Cb or Cr) to reconstructed image samples (usually R, G and B)
+  const double G_c_sqrt[3] = {1.7321, 1.8051, 1.5734};
 
   double gain_low = 0.0, gain_high = 0.0;
 
@@ -602,27 +641,86 @@ QCD_marker::QCD_marker(uint8_t number_of_guardbits, uint8_t dwt_levels, uint8_t 
     }
   } else {
     // lossy
-    for (int i = 0; i < epsilon.size(); ++i) {
-      int32_t eps, m;
-      double fval = basestep / sqrt(wmse_or_BIBO[i]);
-      for (eps = 0; fval < 1.0; eps++) {
-        fval *= 2.0;
+    if (qfactor == 0xFF) {
+      for (int i = 0; i < epsilon.size(); ++i) {
+        int32_t exponent, mantissa;
+        double fval = basestep / sqrt(wmse_or_BIBO[i]);
+        for (exponent = 0; fval < 1.0; exponent++) {
+          fval *= 2.0;
+        }
+        mantissa = static_cast<int32_t>(floor((fval - 1.0) * static_cast<double>(1 << 11) + 0.5));
+        if (mantissa >= (1 << 11)) {
+          mantissa = 0;
+          exponent--;
+        }
+        if (exponent > 31) {
+          exponent = 31;
+          mantissa = 0;
+        }
+        if (exponent < 0) {
+          exponent = 0;
+          mantissa = (1 << 11) - 1;
+        }
+        epsilon[epsilon.size() - i - 1] = exponent;
+        mu[epsilon.size() - i - 1]      = mantissa;
       }
-      m = static_cast<int32_t>(floor((fval - 1.0) * static_cast<double>(1 << 11) + 0.5));
-      if (m >= (1 << 11)) {
-        m = 0;
-        eps--;
+    } else {
+      // lossy with qfactor: The detail of Qfactor feature is described in HTJ2K white paper at
+      // https://htj2k.com/wp-content/uploads/white-paper.pdf
+      double M_Q;
+      uint8_t t0 = 65, t1 = 97;
+      const double alpha_T0 = 0.04;
+      const double alpha_T1 = 0.10;
+      const double M_T0     = 2.0 * (1.0 - t0 / 100.0);
+      const double M_T1     = 2.0 * (1.0 - t1 / 100.0);
+      double alpha_Q        = alpha_T0;
+      double qfactor_power  = 1.0;
+
+      if (qfactor < 50) {
+        M_Q = 50.0 / qfactor;
+      } else {
+        M_Q = 2.0 * (1.0 - qfactor / 100.0);
       }
-      if (eps > 31) {
-        eps = 31;
-        m   = 0;
+      // adjust the scaling
+      if (qfactor >= t1) {
+        qfactor_power = 0.0;
+        alpha_Q       = alpha_T1;
+      } else if (qfactor > t0) {
+        qfactor_power = (log(M_T1) - log(M_Q)) / (log(M_T1) - log(M_T0));
+        alpha_Q       = alpha_T1 * pow(alpha_T0 / alpha_T1, qfactor_power);
       }
-      if (eps < 0) {
-        eps = 0;
-        m   = (1 << 11) - 1;
+
+      const double eps0 = sqrt(0.5) / static_cast<double>(1 << RI);
+      double delta_Q    = alpha_Q * M_Q + eps0;
+      double delta_ref  = delta_Q * G_c_sqrt[0];
+      double G_c        = G_c_sqrt[0];  // gain of color transform
+      for (int i = 0; i < epsilon.size(); ++i) {
+        int32_t exponent, mantissa;
+        double w_b;
+        // w_b for LL band shall be 1.0
+        w_b = (i == epsilon.size() - 1) ? 1.0 : pow(W_b_Y[i], qfactor_power);
+
+        double fval = (qfactor != 0xFF) ? delta_ref / (sqrt(wmse_or_BIBO[i]) * w_b * G_c)
+                                        : basestep / sqrt(wmse_or_BIBO[i]);
+        for (exponent = 0; fval < 1.0; exponent++) {
+          fval *= 2.0;
+        }
+        mantissa = static_cast<int32_t>(floor((fval - 1.0) * static_cast<double>(1 << 11) + 0.5));
+        if (mantissa >= (1 << 11)) {
+          mantissa = 0;
+          exponent--;
+        }
+        if (exponent > 31) {
+          exponent = 31;
+          mantissa = 0;
+        }
+        if (exponent < 0) {
+          exponent = 0;
+          mantissa = (1 << 11) - 1;
+        }
+        epsilon[epsilon.size() - i - 1] = exponent;
+        mu[epsilon.size() - i - 1]      = mantissa;
       }
-      epsilon[epsilon.size() - i - 1] = eps;
-      mu[epsilon.size() - i - 1]      = m;
     }
   }
 
@@ -651,11 +749,11 @@ int QCD_marker::write(j2c_destination_base &dst) {
   dst.put_byte(Sqcd);
 
   if (is_reversible) {
-    for (uint16_t &i : SPqcd) {
+    for (unsigned short &i : SPqcd) {
       dst.put_byte(static_cast<uint8_t>(i));
     }
   } else {
-    for (uint16_t &i : SPqcd) {
+    for (unsigned short &i : SPqcd) {
       dst.put_word(i);
     }
   }
@@ -696,7 +794,7 @@ uint8_t QCD_marker::get_number_of_guardbits() const { return Sqcd >> 5; }
 uint8_t QCD_marker::get_MAGB() {
   uint8_t qstyle = get_quantization_style();
   uint8_t tmp    = (qstyle > 0) ? 0xFF : 0;
-  for (uint16_t &val : SPqcd) {
+  for (unsigned short &val : SPqcd) {
     if (qstyle == 0) {
       tmp = (tmp < (val >> 3)) ? val >> 3 : tmp;
     } else {
@@ -711,7 +809,7 @@ uint8_t QCD_marker::get_MAGB() {
  *******************************************************************************/
 QCC_marker::QCC_marker(uint16_t Csiz, uint16_t c, uint8_t number_of_guardbits, uint8_t dwt_levels,
                        uint8_t transformation, bool is_derived, uint8_t RI, uint8_t use_ycc,
-                       uint8_t qfactor)
+                       uint8_t qfactor, uint8_t chroma_format)
     : j2k_marker_io_base(_QCC), max_components(Csiz), Cqcc(c), Sqcc(0), is_reversible(transformation == 1) {
   unsigned long n;
   if (is_derived && qfactor != 0xFF) {
@@ -749,15 +847,46 @@ QCC_marker::QCC_marker(uint16_t Csiz, uint16_t c, uint8_t number_of_guardbits, u
                                      0.053497514821622};  // gain is doubled(x2)
 
   // Square roots of the visual weighting factors for 4:4:4 YCbCr content
-  const double W_b_sqrt[3][15] = {{0.0901, 0.2758, 0.2758, 0.7018, 0.8378, 0.8378, 1.0000, 1.0000, 1.0000,
-                                   1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000},
-                                  {0.0263, 0.0863, 0.0863, 0.1362, 0.2564, 0.2564, 0.3346, 0.4691, 0.4691,
-                                   0.5444, 0.6523, 0.6523, 0.7078, 0.7797, 0.7797},
-                                  {0.0773, 0.1835, 0.1835, 0.2598, 0.4130, 0.4130, 0.5040, 0.6464, 0.6464,
-                                   0.7220, 0.8254, 0.8254, 0.8769, 0.9424, 0.9424}};
+  const double W_b_444[3][15] = {{0.0901, 0.2758, 0.2758, 0.7018, 0.8378, 0.8378, 1.0000, 1.0000, 1.0000,
+                                  1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000},
+                                 {0.0263, 0.0863, 0.0863, 0.1362, 0.2564, 0.2564, 0.3346, 0.4691, 0.4691,
+                                  0.5444, 0.6523, 0.6523, 0.7078, 0.7797, 0.7797},
+                                 {0.0773, 0.1835, 0.1835, 0.2598, 0.4130, 0.4130, 0.5040, 0.6464, 0.6464,
+                                  0.7220, 0.8254, 0.8254, 0.8769, 0.9424, 0.9424}};
+  // Square roots of the visual weighting factors for 4:2:0 YCbCr content
+  const double W_b_420[3][15] = {{0.0901, 0.2758, 0.2758, 0.7018, 0.8378, 0.8378, 1.0000, 1.0000, 1.0000,
+                                  1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000},
+                                 {0.1362, 0.2564, 0.2564, 0.3346, 0.4691, 0.4691, 0.5444, 0.6523, 0.6523,
+                                  0.7078, 0.7797, 0.7797, 1.0000, 1.0000, 1.0000},
+                                 {0.2598, 0.4130, 0.4130, 0.5040, 0.6464, 0.6464, 0.7220, 0.8254, 0.8254,
+                                  0.8769, 0.9424, 0.9424, 1.0000, 1.0000, 1.0000}};
+  // Square roots of the visual weighting factors for 4:2:2 YCbCr content
+  const double W_b_422[3][15] = {{0.0901, 0.2758, 0.2758, 0.7018, 0.8378, 0.8378, 1.0000, 1.0000, 1.0000,
+                                  1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000},
+                                 {0.0863, 0.0863, 0.2564, 0.2564, 0.2564, 0.4691, 0.4691, 0.4691, 0.6523,
+                                  0.6523, 0.6523, 0.7797, 0.7797, 0.7797, 1.0000},
+                                 {0.1835, 0.1835, 0.4130, 0.4130, 0.4130, 0.6464, 0.6464, 0.6464, 0.8254,
+                                  0.8254, 0.8254, 0.9424, 0.9424, 0.9424, 1.0000}};
+  double *W_b_sqrt[3];
+  for (size_t i = 0; i < 3; ++i) {
+    switch (chroma_format) {
+      case YCC444:
+        W_b_sqrt[i] = const_cast<double *>(W_b_444[i]);
+        break;
+      case YCC420:
+        W_b_sqrt[i] = const_cast<double *>(W_b_420[i]);
+        break;
+      case YCC422:
+        W_b_sqrt[i] = const_cast<double *>(W_b_422[i]);
+        break;
+      default:
+        printf("ERROR: chroma format for QCC_marker is invalid.\n");
+        exit(EXIT_FAILURE);
+    }
+  }
 
-  // The squared Euclidean norm of the multi-component synthesis operator that represents the contribution
-  // of component 𝑐 (e.g., Y, Cb or Cr) to reconstructed image samples (usually R, G and B)
+  // The squared Euclidean norm of the multi-component synthesis operator that represents the
+  // contribution of component 𝑐 (e.g., Y, Cb or Cr) to reconstructed image samples (usually R, G and B)
   const double G_c_sqrt[3] = {1.7321, 1.8051, 1.5734};
 
   double gain_low = 0.0, gain_high = 0.0;
@@ -953,11 +1082,11 @@ int QCC_marker::write(j2c_destination_base &dst) {
   dst.put_byte(Sqcc);
 
   if (is_reversible) {
-    for (uint16_t &i : SPqcc) {
+    for (unsigned short &i : SPqcc) {
       dst.put_byte(static_cast<uint8_t>(i));
     }
   } else {
-    for (uint16_t &i : SPqcc) {
+    for (unsigned short &i : SPqcc) {
       dst.put_word(i);
     }
   }
@@ -1388,10 +1517,11 @@ j2k_main_header::j2k_main_header(SIZ_marker *siz, COD_marker *cod, QCD_marker *q
       printf("feature Qfactor is only available for gray-scale or color images.\n");
       exit(EXIT_FAILURE);
     }
-    for (uint16_t c = 0; c < siz->get_num_components(); ++c) {
+    for (uint16_t c = 1; c < siz->get_num_components(); ++c) {
       QCC.push_back(std::make_unique<QCC_marker>(
           siz->get_num_components(), c, qcd->get_number_of_guardbits(), cod->get_dwt_levels(),
-          cod->get_transformation(), false, siz->get_bitdepth(c), cod->use_color_trafo(), qfactor));
+          cod->get_transformation(), false, siz->get_bitdepth(c), cod->use_color_trafo(), qfactor,
+          SIZ->get_chroma_format()));
     }
   }
 

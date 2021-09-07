@@ -29,12 +29,6 @@
 #pragma once
 #include <cstdint>
 
-#if defined(_MSC_VER) || defined(__MINGW64__)
-  #include <intrin.h>
-#elif defined(__x86_64__)
-  #include <x86intrin.h>
-#endif
-
 #define MAX_Lcup 16834
 #define MAX_Scup 4079
 

@@ -71,16 +71,16 @@ class j2k_codeblock : public j2k_region {
   const uint8_t M_b;
   std::unique_ptr<uint8_t[]> compressed_data;
   uint8_t *current_address;
-  std::unique_ptr<uint8_t[]> block_states;
 
  public:
+  std::unique_ptr<uint8_t[]> block_states;
   const uint8_t R_b;
   const uint8_t transformation;
   const float stepsize;
   const uint32_t band_stride;
   const uint16_t num_layers;
   std::unique_ptr<int32_t[]> sample_buf;
-  int32_t *const i_samples;
+  sprec_t *const i_samples;
   float *const f_samples;
   uint32_t length;
   uint16_t Cmodes;
@@ -97,7 +97,7 @@ class j2k_codeblock : public j2k_region {
   bool already_included;
 
   j2k_codeblock(const uint32_t &idx, uint8_t orientation, uint8_t M_b, uint8_t R_b, uint8_t transformation,
-                float stepsize, uint32_t band_stride, int32_t *ibuf, float *fbuf, uint32_t offset,
+                float stepsize, uint32_t band_stride, sprec_t *ibuf, float *fbuf, uint32_t offset,
                 const uint16_t &numlayers, const uint8_t &codeblock_style, const element_siz &p0,
                 const element_siz &p1, const element_siz &s);
   void modify_state(const std::function<void(uint8_t &, uint8_t)> &callback, uint8_t val, int16_t j1,

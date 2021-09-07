@@ -35,7 +35,7 @@
 #define round_down(x, n) ((x) & (-n))
 #define ceil_int(a, b) ((a) + ((b)-1)) / (b)
 
-#if defined(__arm64__) || defined(__arm__)
+#if defined(__arm64__) || defined(__arm__) || defined(__aarch64__)
   #include <arm_acle.h>
   #if defined(__ARM_NEON__)
     #include <arm_neon.h>
