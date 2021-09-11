@@ -388,6 +388,57 @@ static inline uint32_t uint_floorlog2(uint32_t a)
 	return l;
 }
 
+template<typename T>
+inline bool readBytes(FILE* fp, grk_image* image, size_t area)
+{
+	if(!fp || !image)
+		return false;
+
+	assert(image->numcomps <= 4);
+
+	uint64_t i = 0;
+	uint64_t index = 0;
+	uint32_t compno = 0;
+	uint64_t totalSize = area * image->numcomps;
+	const uint64_t chunkSize = 4096 * 4;
+	T chunk[chunkSize];
+	uint32_t width = image->comps[0].w;
+	uint32_t stride_diff = image->comps[0].stride - width;
+	uint32_t counter = 0;
+	while(i < totalSize)
+	{
+		uint64_t toRead = std::min(chunkSize, (uint64_t)(totalSize - i));
+		size_t bytesRead = fread(chunk, sizeof(T), toRead, fp);
+		if(bytesRead == 0)
+			break;
+		T* chunkPtr = chunk;
+		for(size_t ct = 0; ct < bytesRead; ++ct)
+		{
+			image->comps[compno++].data[index] =
+					sizeof(T) > 1 ? grk::endian<T>(*chunkPtr++, true) : *chunkPtr++;
+			if(compno == image->numcomps)
+			{
+				compno = 0;
+				index++;
+				counter++;
+				if(counter == width)
+				{
+					index += stride_diff;
+					counter = 0;
+				}
+			}
+		}
+		i += bytesRead;
+	}
+	if(i != totalSize)
+	{
+		spdlog::error("bytes read ({}) are less than expected number of bytes ({})", i, totalSize);
+		return false;
+	}
+
+	return true;
+}
+
 static grk_image* pnmtoimage(const char* filename, grk_cparameters* parameters)
 {
 	uint32_t subsampling_dx = parameters->subsampling_dx;
@@ -543,9 +594,9 @@ static grk_image* pnmtoimage(const char* filename, grk_cparameters* parameters)
 	{
 		bool rc = false;
 		if(prec <= 8)
-			rc = grk::readBytes<uint8_t>(fp, image, area);
+			rc = readBytes<uint8_t>(fp, image, area);
 		else
-			rc = grk::readBytes<uint16_t>(fp, image, area);
+			rc = readBytes<uint16_t>(fp, image, area);
 		if(!rc)
 			goto cleanup;
 	}

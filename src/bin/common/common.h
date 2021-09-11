@@ -189,55 +189,6 @@ inline bool writeBytes(T val, T* buf, T** outPtr, size_t* outCount, size_t len, 
 	return true;
 }
 
-template<typename T>
-inline bool readBytes(FILE* fp, grk_image* image, size_t area)
-{
-	if(!fp || !image)
-		return false;
-
-	assert(image->numcomps <= 4);
-
-	uint64_t i = 0;
-	uint64_t index = 0;
-	uint32_t compno = 0;
-	uint64_t totalSize = area * image->numcomps;
-	const uint64_t chunkSize = 4096 * 4;
-	T chunk[chunkSize];
-	uint32_t width = image->comps[0].w;
-	uint32_t stride_diff = image->comps[0].stride - width;
-	uint32_t counter = 0;
-	while(i < totalSize)
-	{
-		uint64_t toRead = std::min(chunkSize, (uint64_t)(totalSize - i));
-		size_t bytesRead = fread(chunk, sizeof(T), toRead, fp);
-		if(bytesRead == 0)
-			break;
-		T* chunkPtr = chunk;
-		for(size_t ct = 0; ct < bytesRead; ++ct)
-		{
-			image->comps[compno++].data[index] = grk::endian<T>(*chunkPtr++, true);
-			if(compno == image->numcomps)
-			{
-				compno = 0;
-				index++;
-				counter++;
-				if(counter == width)
-				{
-					index += stride_diff;
-					counter = 0;
-				}
-			}
-		}
-		i += bytesRead;
-	}
-	if(i != totalSize)
-	{
-		spdlog::error("bytes read ({}) are less than expected number of bytes ({})", i, totalSize);
-		return false;
-	}
-
-	return true;
-}
 
 uint32_t uint_adds(uint32_t a, uint32_t b);
 bool allComponentsSanityCheck(grk_image* image, bool equalPrecision);
