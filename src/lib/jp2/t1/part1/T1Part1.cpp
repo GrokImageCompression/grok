@@ -54,14 +54,13 @@ namespace t1_part1
 			{
 				for(auto i = 0U; i < w; ++i)
 				{
-					int32_t temp = (block->tiledp[tileIndex] *= (1 << T1_NMSEDEC_FRACBITS));
+					int32_t temp = (block->tiledp[tileIndex++] *= (1 << T1_NMSEDEC_FRACBITS));
+					int32_t mag = temp * ((temp>0) - (temp<0)  );
+					if((uint32_t)mag > maximum)
+						maximum = (uint32_t)mag;
+					int32_t sgn = int32_t((uint32_t)(mag != temp) * 0x80000000);
 					temp = (int32_t)to_smr(temp);
-					uint32_t mag = smr_abs(temp);
-					if(mag > maximum)
-						maximum = mag;
-					uncompressedData[cblk_index] = temp;
-					tileIndex++;
-					cblk_index++;
+					uncompressedData[cblk_index++] = sgn | mag;
 				}
 				tileIndex += tileLineAdvance;
 			}
@@ -69,19 +68,19 @@ namespace t1_part1
 		else
 		{
 			auto tiledp = (float*)block->tiledp;
+			double quant = 1.0/block->stepsize;
 			for(auto j = 0U; j < h; ++j)
 			{
 				for(auto i = 0U; i < w; ++i)
 				{
-					int32_t temp = (int32_t)grk_lrintf((tiledp[tileIndex] / block->stepsize) *
+					int32_t temp = (int32_t)grk_lrintf((float)(((double)tiledp[tileIndex++] * quant)) *
 													   (1 << T1_NMSEDEC_FRACBITS));
+					int32_t mag = temp * ((temp>0) - (temp<0)  );
+					if((uint32_t)mag > maximum)
+						maximum = (uint32_t)mag;
+					int32_t sgn = int32_t((uint32_t)(mag != temp) * 0x80000000);
 					temp = (int32_t)to_smr(temp);
-					uint32_t mag = smr_abs(temp);
-					if(mag > maximum)
-						maximum = mag;
-					uncompressedData[cblk_index] = temp;
-					tileIndex++;
-					cblk_index++;
+					uncompressedData[cblk_index++] = sgn | mag;
 				}
 				tileIndex += tileLineAdvance;
 			}
