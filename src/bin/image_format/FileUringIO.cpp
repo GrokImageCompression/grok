@@ -44,39 +44,71 @@ struct io_uring ring;
 
 struct io_data
 {
-	io_data() : offset(0), iov{0, 0} {}
+	io_data() : readop(false), offset(0), iov{0, 0}
+	{}
+	bool readop;
 	uint64_t offset;
 	iovec iov;
 };
 
-static int setup_context(unsigned entries, io_uring* ring)
-{
-	int ret = io_uring_queue_init(entries, ring, 0);
-	if(ret < 0)
-	{
-		spdlog::error("queue_init: %s\n", strerror(-ret));
-		return -1;
-	}
-
-	return 0;
-}
-
-static void queue_prepped(io_uring* ring, io_data* data, int outfd)
+static void enqueue(io_uring* ring, io_data* data, int fd)
 {
 	auto sqe = io_uring_get_sqe(ring);
 	assert(sqe);
 
-	io_uring_prep_writev(sqe, outfd, &data->iov, 1, data->offset);
+	if (data->readop)
+		io_uring_prep_readv(sqe, fd, &data->iov, 1, data->offset);
+	else
+		io_uring_prep_writev(sqe, fd, &data->iov, 1, data->offset);
 	io_uring_sqe_set_data(sqe, data);
-}
-
-static void queue_write(io_uring* ring, io_data* data, int outfd)
-{
-	queue_prepped(ring, data, outfd);
 	io_uring_submit(ring);
 }
 
-static int _getMode(const char* mode)
+
+FileUringIO::FileUringIO() : m_fd(0), m_off(0), m_queueCount(0)
+{
+	memset(&ring, 0, sizeof(ring));
+}
+
+FileUringIO::~FileUringIO()
+{
+	close();
+}
+
+bool FileUringIO::open(std::string fileName, std::string mode)
+{
+	bool useStdio = grk::useStdio(fileName.c_str());
+	bool doRead = mode[0] == -'r';
+	if(useStdio)
+	{
+		m_fd = doRead ? STDIN_FILENO : STDOUT_FILENO;
+		return true;
+	}
+	auto name = fileName.c_str();
+	m_fd = ::open(name, getMode(mode.c_str()), 0666);
+	if(m_fd < 0)
+	{
+		if(errno > 0 && strerror(errno) != nullptr)
+			spdlog::error("{}: {}", name, strerror(errno));
+		else
+			spdlog::error("{}: Cannot open", name);
+		return false;
+	}
+	m_fileName = fileName;
+	// initialize ring
+	if (!doRead){
+		int ret = io_uring_queue_init(QD, &ring, 0);
+		if(ret < 0)
+		{
+			spdlog::error("queue_init: %s\n", strerror(-ret));
+			return false;
+		}
+	}
+
+	return true;
+}
+
+int FileUringIO::getMode(const char* mode)
 {
 	int m = -1;
 
@@ -97,78 +129,7 @@ static int _getMode(const char* mode)
 			spdlog::error("Bad mode {}", mode);
 			break;
 	}
-	return (m);
-}
-
-FileUringIO::FileUringIO() : m_fd(0), m_off(0), m_writeCount(0)
-{
-	memset(&ring, 0, sizeof(ring));
-}
-
-FileUringIO::~FileUringIO()
-{
-	close();
-}
-
-bool FileUringIO::open(std::string fileName, std::string mode)
-{
-	bool useStdio = grk::useStdio(fileName.c_str());
-	bool doRead = mode[0] == -'r';
-	if(useStdio)
-	{
-		m_fd = doRead ? STDIN_FILENO : STDOUT_FILENO;
-		return true;
-	}
-	auto name = fileName.c_str();
-	m_fd = ::open(name, _getMode(mode.c_str()), 0666);
-	if(m_fd < 0)
-	{
-		if(errno > 0 && strerror(errno) != nullptr)
-		{
-			spdlog::error("{}: {}", name, strerror(errno));
-		}
-		else
-		{
-			spdlog::error("{}: Cannot open", name);
-		}
-		return false;
-	}
-	m_fileName = fileName;
-	if(!doRead)
-	{
-		if(setup_context(QD, &ring))
-			return false;
-	}
-	return true;
-}
-
-int process_completion(struct io_uring* ring)
-{
-	io_uring_cqe* cqe;
-	int ret = io_uring_wait_cqe(ring, &cqe);
-
-	if(ret < 0)
-	{
-		spdlog::error("io_uring_wait_cqe");
-		return 1;
-	}
-	if(cqe->res < 0)
-	{
-		spdlog::error("The system call invoked asynchonously failed");
-		return 1;
-	}
-
-	/* Retrieve user data from CQE */
-	io_data* data = (io_data*)io_uring_cqe_get_data(cqe);
-
-	/* process this request here */
-	delete[](uint8_t*) data->iov.iov_base;
-	delete data;
-
-	/* Mark this completion as seen */
-	io_uring_cqe_seen(ring, cqe);
-
-	return 0;
+	return m;
 }
 
 bool FileUringIO::close(void)
@@ -181,8 +142,33 @@ bool FileUringIO::close(void)
 	}
 	if(ring.ring_fd)
 	{
-		for(uint32_t i = 0; i < m_writeCount; ++i)
-			process_completion(&ring);
+		// process completions
+		for(uint32_t i = 0; i < m_queueCount; ++i){
+			io_uring_cqe* cqe;
+			int ret = io_uring_wait_cqe(&ring, &cqe);
+
+			if(ret < 0)
+			{
+				spdlog::error("io_uring_wait_cqe");
+				rc = false;
+			}
+			if(cqe->res < 0)
+			{
+				spdlog::error("The system call invoked asynchronously failed");
+				rc = false;
+			}
+
+			/* Retrieve user data from CQE */
+			auto data = (io_data*)io_uring_cqe_get_data(cqe);
+
+			/* process this request here */
+			if (!data->readop)
+				delete[](uint8_t*) data->iov.iov_base;
+			delete data;
+
+			/* Mark this completion as seen */
+			io_uring_cqe_seen(&ring, cqe);
+		}
 		io_uring_queue_exit(&ring);
 		memset(&ring, 0, sizeof(ring));
 	}
@@ -191,6 +177,7 @@ bool FileUringIO::close(void)
 	else if(::close(m_fd) == 0)
 		rc = true;
 	m_fd = 0;
+
 	return rc;
 }
 
@@ -205,17 +192,36 @@ bool FileUringIO::write(uint8_t* buf, size_t len)
 	m_off += (uint64_t)len;
 	data->iov.iov_base = b;
 	data->iov.iov_len = len;
-	queue_write(&ring, data, m_fd);
+	enqueue(&ring, data, m_fd);
 
 	// auto finish = std::chrono::high_resolution_clock::now();
 	// std::chrono::duration<double> elapsed = finish - start;
 	// spdlog::info("write time: {} ms",	elapsed.count() * 1000);
-	m_writeCount++;
+	m_queueCount++;
 
 	return rc;
 }
 bool FileUringIO::read(uint8_t* buf, size_t len)
 {
+/*
+	bool rc = true;
+	// auto start = std::chrono::high_resolution_clock::now();
+	io_data* data = new io_data();
+	data->readop = false;
+	data->offset = m_off;
+	m_off += (uint64_t)len;
+	data->iov.iov_base = buf;
+	data->iov.iov_len = len;
+	queue_write(&ring, data, m_fd);
+
+	// auto finish = std::chrono::high_resolution_clock::now();
+	// std::chrono::duration<double> elapsed = finish - start;
+	// spdlog::info("write time: {} ms",	elapsed.count() * 1000);
+	m_queueCount++;
+
+	return rc;
+*/
+
 	auto actual = (size_t)::read(m_fd, buf, len);
 	if(actual < len)
 		spdlog::error("read fewer bytes {} than expected number of bytes {}.", actual, len);

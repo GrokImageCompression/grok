@@ -35,5 +35,6 @@ class FileUringIO : public IFileIO
 	int m_fd;
 	std::string m_fileName;
 	uint64_t m_off;
-	size_t m_writeCount;
+	size_t m_queueCount;
+	int getMode(const char* mode);
 };
