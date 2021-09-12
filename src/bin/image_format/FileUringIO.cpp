@@ -45,7 +45,7 @@ struct io_uring ring;
 struct io_data
 {
 	io_data() : offset(0), iov{0, 0} {}
-	int64_t offset;
+	uint64_t offset;
 	iovec iov;
 };
 
@@ -202,7 +202,7 @@ bool FileUringIO::write(uint8_t* buf, size_t len)
 	auto b = new uint8_t[len];
 	memcpy(b, buf, len);
 	data->offset = m_off;
-	m_off += (int64_t)len;
+	m_off += (uint64_t)len;
 	data->iov.iov_base = b;
 	data->iov.iov_len = len;
 	queue_write(&ring, data, m_fd);

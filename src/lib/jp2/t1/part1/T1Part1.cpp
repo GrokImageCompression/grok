@@ -59,7 +59,6 @@ namespace t1_part1
 					if((uint32_t)mag > maximum)
 						maximum = (uint32_t)mag;
 					int32_t sgn = int32_t((uint32_t)(mag != temp) * 0x80000000);
-					temp = (int32_t)to_smr(temp);
 					uncompressedData[cblk_index++] = sgn | mag;
 				}
 				tileIndex += tileLineAdvance;
@@ -79,7 +78,6 @@ namespace t1_part1
 					if((uint32_t)mag > maximum)
 						maximum = (uint32_t)mag;
 					int32_t sgn = int32_t((uint32_t)(mag != temp) * 0x80000000);
-					temp = (int32_t)to_smr(temp);
 					uncompressedData[cblk_index++] = sgn | mag;
 				}
 				tileIndex += tileLineAdvance;

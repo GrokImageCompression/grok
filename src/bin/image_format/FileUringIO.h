@@ -34,6 +34,6 @@ class FileUringIO : public IFileIO
   private:
 	int m_fd;
 	std::string m_fileName;
-	int64_t m_off;
+	uint64_t m_off;
 	size_t m_writeCount;
 };
