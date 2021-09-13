@@ -28,7 +28,7 @@
 #include "common.h"
 
 template<typename T>
-static bool write(FILE* m_fileStream, bool bigEndian, int32_t* ptr, uint32_t w, uint32_t stride,
+static bool writeToFile(FILE* m_fileStream, bool bigEndian, int32_t* ptr, uint32_t w, uint32_t stride,
 				  uint32_t h, int32_t lower, int32_t upper)
 {
 	const size_t bufSize = 4096;
@@ -144,18 +144,18 @@ bool RAWFormat::encodeStrip(uint32_t rows)
 		if(prec <= 8)
 		{
 			if(sgnd)
-				rc = write<int8_t>(m_fileStream, bigEndian, ptr, w, stride, h, lower, upper);
+				rc = writeToFile<int8_t>(m_fileStream, bigEndian, ptr, w, stride, h, lower, upper);
 			else
-				rc = write<uint8_t>(m_fileStream, bigEndian, ptr, w, stride, h, lower, upper);
+				rc = writeToFile<uint8_t>(m_fileStream, bigEndian, ptr, w, stride, h, lower, upper);
 			if(!rc)
 				spdlog::error("imagetoraw: failed to write bytes for {}", outfile);
 		}
 		else if(prec <= 16)
 		{
 			if(sgnd)
-				rc = write<int16_t>(m_fileStream, bigEndian, ptr, w, stride, h, lower, upper);
+				rc = writeToFile<int16_t>(m_fileStream, bigEndian, ptr, w, stride, h, lower, upper);
 			else
-				rc = write<uint16_t>(m_fileStream, bigEndian, ptr, w, stride, h, lower, upper);
+				rc = writeToFile<uint16_t>(m_fileStream, bigEndian, ptr, w, stride, h, lower, upper);
 			if(!rc)
 				spdlog::error("fimagetoraw: ailed to write bytes for {}", outfile);
 		}
@@ -193,7 +193,7 @@ grk_image* RAWFormat::decode(const std::string& filename, grk_cparameters* param
 }
 
 template<typename T>
-static bool read(FILE* m_fileStream, bool bigEndian, int32_t* ptr, uint64_t nloop)
+static bool readFile(FILE* m_fileStream, bool bigEndian, int32_t* ptr, uint64_t nloop)
 {
 	const size_t bufSize = 4096;
 	T buf[bufSize];
@@ -306,9 +306,9 @@ grk_image* RAWFormat::rawtoimage(const char* filename, grk_cparameters* paramete
 			{
 				bool rc;
 				if(raw_cp->sgnd)
-					rc = read<int8_t>(m_fileStream, bigEndian, ptr, w);
+					rc = readFile<int8_t>(m_fileStream, bigEndian, ptr, w);
 				else
-					rc = read<uint8_t>(m_fileStream, bigEndian, ptr, w);
+					rc = readFile<uint8_t>(m_fileStream, bigEndian, ptr, w);
 				if(!rc)
 				{
 					spdlog::error("Error reading raw file. End of file probably reached.");
@@ -327,9 +327,9 @@ grk_image* RAWFormat::rawtoimage(const char* filename, grk_cparameters* paramete
 			{
 				bool rc;
 				if(raw_cp->sgnd)
-					rc = read<int16_t>(m_fileStream, bigEndian, ptr, w);
+					rc = readFile<int16_t>(m_fileStream, bigEndian, ptr, w);
 				else
-					rc = read<uint16_t>(m_fileStream, bigEndian, ptr, w);
+					rc = readFile<uint16_t>(m_fileStream, bigEndian, ptr, w);
 				if(!rc)
 				{
 					spdlog::error("Error reading raw file. End of file probably reached.");

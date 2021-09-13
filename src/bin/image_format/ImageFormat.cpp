@@ -67,21 +67,21 @@ bool ImageFormat::encodeFinish(void)
 
 	return rc;
 }
-bool ImageFormat::openFile(std::string fileName, std::string mode)
+bool ImageFormat::open(std::string fileName, std::string mode)
 {
 	return m_fileIO->open(fileName, mode);
 }
 
-bool ImageFormat::writeToFile(uint8_t* buf, size_t len)
+bool ImageFormat::write(uint8_t* buf, size_t len)
 {
 	return m_fileIO->write(buf, len);
 }
-bool ImageFormat::readFromFile(uint8_t* buf, size_t len)
+bool ImageFormat::read(uint8_t* buf, size_t len)
 {
 	return m_fileIO->read(buf, len);
 }
 
-bool ImageFormat::seekInFile(int64_t pos)
+bool ImageFormat::seek(int64_t pos)
 {
 	return m_fileIO->seek(pos);
 }

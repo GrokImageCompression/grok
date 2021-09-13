@@ -32,10 +32,10 @@ class ImageFormat : public IImageFormat
 	virtual bool encodeFinish(void) override;
 
   protected:
-	bool openFile(std::string fname, std::string mode);
-	bool writeToFile(uint8_t* buf, size_t len);
-	bool readFromFile(uint8_t* buf, size_t len);
-	bool seekInFile(int64_t pos);
+	bool open(std::string fname, std::string mode);
+	bool write(uint8_t* buf, size_t len);
+	bool read(uint8_t* buf, size_t len);
+	bool seek(int64_t pos);
 	uint32_t maxY(uint32_t rows);
 	int getMode(const char* mode);
 
@@ -43,9 +43,10 @@ class ImageFormat : public IImageFormat
 	uint32_t m_rowCount;
 	uint32_t m_rowsPerStrip;
 	uint32_t m_numStrips;
-	IFileIO* m_fileIO;
 
+	IFileIO* m_fileIO;
 	FILE* m_fileStream;
 	std::string m_fileName;
+
 	bool m_useStdIO;
 };

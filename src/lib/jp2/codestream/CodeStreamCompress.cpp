@@ -827,7 +827,7 @@ bool CodeStreamCompress::init_header_writing(void)
 }
 bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 {
-	uint64_t currentPos;
+	uint64_t currentPos = 0;
 	if(tileProcessor->canPreCalculateTileLen())
 		currentPos = m_stream->tell();
 	uint16_t currentTileIndex = tileProcessor->m_tileIndex;

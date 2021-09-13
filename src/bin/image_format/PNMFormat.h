@@ -21,7 +21,7 @@
 class PNMFormat : public ImageFormat
 {
   public:
-	explicit PNMFormat(bool split) : forceSplit(split) {}
+	explicit PNMFormat(bool split);
 	bool encodeHeader(grk_image* image, const std::string& filename,
 					  uint32_t compressionParam) override;
 	bool encodeStrip(uint32_t rows) override;
@@ -30,4 +30,6 @@ class PNMFormat : public ImageFormat
 
   private:
 	bool forceSplit;
+	grk_image* decode(grk_cparameters* parameters);
+	bool decodeHeader(struct pnm_header* ph);
 };

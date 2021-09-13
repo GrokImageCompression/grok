@@ -85,3 +85,15 @@ bool FileStreamIO::seek(int64_t pos)
 {
 	return GRK_FSEEK(m_fileHandle, pos, SEEK_SET) == 0;
 }
+
+FILE* FileStreamIO::getFileStream()
+{
+	return m_fileHandle;
+}
+int FileStreamIO::getFileDescriptor(void){
+#ifndef __WIN32__
+	if (m_fileHandle)
+		return fileno(m_fileHandle);
+#endif
+	return 0;
+}

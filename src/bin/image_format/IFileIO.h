@@ -20,6 +20,8 @@
 
 #include <string>
 
+typedef bool (*process_read_func)(void);
+
 class IFileIO
 {
   public:

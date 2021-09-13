@@ -34,6 +34,10 @@
 #include <iterator>
 #include <vector>
 #include <climits>
+#ifdef GROK_HAVE_URING
+#include "FileUringIO.h"
+#endif
+
 using namespace std;
 
 enum PNM_COLOUR_SPACE
@@ -127,7 +131,7 @@ bool header_rewind(char* s, char* line, FILE* reader)
 	return true;
 }
 
-static bool read_pnm_header(FILE* reader, struct pnm_header* ph)
+bool PNMFormat::decodeHeader(struct pnm_header* ph)
 {
 	uint32_t format;
 	const size_t lineSize = 256;
@@ -135,7 +139,7 @@ static bool read_pnm_header(FILE* reader, struct pnm_header* ph)
 	char line[lineSize];
 	char c;
 
-	if(fread(&c, 1, 1, reader) != 1)
+	if(fread(&c, 1, 1, m_fileStream) != 1)
 	{
 		spdlog::error(" fread error");
 		return false;
@@ -145,7 +149,7 @@ static bool read_pnm_header(FILE* reader, struct pnm_header* ph)
 		spdlog::error("read_pnm_header:PNM:magic P missing");
 		return false;
 	}
-	if(fread(&c, 1, 1, reader) != 1)
+	if(fread(&c, 1, 1, m_fileStream) != 1)
 	{
 		spdlog::error(" fread error");
 		return false;
@@ -160,7 +164,7 @@ static bool read_pnm_header(FILE* reader, struct pnm_header* ph)
 	if(format == 7)
 	{
 		uint32_t end = 0;
-		while(fgets(line, lineSearch, reader))
+		while(fgets(line, lineSearch, m_fileStream))
 		{
 			if(*line == '#' || *line == '\n')
 				continue;
@@ -293,7 +297,7 @@ static bool read_pnm_header(FILE* reader, struct pnm_header* ph)
 	}
 	else
 	{
-		while(fgets(line, lineSearch, reader))
+		while(fgets(line, lineSearch, m_fileStream))
 		{
 			int allow_null = 0;
 			if(*line == '#' || *line == '\n' || *line == '\r')
@@ -323,7 +327,7 @@ static bool read_pnm_header(FILE* reader, struct pnm_header* ph)
 				}
 				if(format == 1 || format == 4)
 				{
-					if(!header_rewind(s, line, reader))
+					if(!header_rewind(s, line, m_fileStream))
 						return false;
 					break;
 				}
@@ -336,7 +340,7 @@ static bool read_pnm_header(FILE* reader, struct pnm_header* ph)
 			if(!s || (*s == 0))
 				return false;
 
-			if(!header_rewind(s, line, reader))
+			if(!header_rewind(s, line, m_fileStream))
 				return false;
 
 			break;
@@ -364,15 +368,15 @@ static bool read_pnm_header(FILE* reader, struct pnm_header* ph)
 		uint64_t minBytes = (ph->maxval != 1) ? area : area / 8;
 		if(minBytes)
 		{
-			int64_t currentPos = GRK_FTELL(reader);
-			GRK_FSEEK(reader, 0L, SEEK_END);
-			uint64_t length = (uint64_t)GRK_FTELL(reader);
+			int64_t currentPos = GRK_FTELL(m_fileStream);
+			GRK_FSEEK(m_fileStream, 0L, SEEK_END);
+			uint64_t length = (uint64_t)GRK_FTELL(m_fileStream);
 			if(length < minBytes)
 			{
 				spdlog::error("File is truncated");
 				return false;
 			}
-			GRK_FSEEK(reader, currentPos, SEEK_SET);
+			GRK_FSEEK(m_fileStream, currentPos, SEEK_SET);
 		}
 	}
 	return true;
@@ -439,11 +443,10 @@ inline bool readBytes(FILE* fp, grk_image* image, size_t area)
 	return true;
 }
 
-static grk_image* pnmtoimage(const char* filename, grk_cparameters* parameters)
+grk_image* PNMFormat::decode(grk_cparameters* parameters)
 {
 	uint32_t subsampling_dx = parameters->subsampling_dx;
 	uint32_t subsampling_dy = parameters->subsampling_dy;
-	FILE* fp = nullptr;
 	uint16_t numcomps;
 	uint32_t compno, w, stride_diff, width, counter, h, format;
 	uint8_t prec;
@@ -454,13 +457,13 @@ static grk_image* pnmtoimage(const char* filename, grk_cparameters* parameters)
 	uint64_t area = 0;
 	bool success = false;
 
-	if((fp = fopen(filename, "rb")) == nullptr)
+	if((m_fileStream = fopen(m_fileName.c_str(), "rb")) == nullptr)
 	{
-		spdlog::error("pnmtoimage:Failed to open {} for reading.", filename);
+		spdlog::error("pnmtoimage:Failed to open {} for reading.", m_fileName.c_str());
 		goto cleanup;
 	}
 	memset(&header_info, 0, sizeof(struct pnm_header));
-	if(!read_pnm_header(fp, &header_info))
+	if(!decodeHeader(&header_info))
 	{
 		spdlog::error("Invalid PNM header");
 		goto cleanup;
@@ -539,7 +542,7 @@ static grk_image* pnmtoimage(const char* filename, grk_cparameters* parameters)
 		area = (uint64_t)image->comps[0].stride * h;
 		while(i < area)
 		{
-			size_t bytesRead = fread(chunk, 1, chunkSize, fp);
+			size_t bytesRead = fread(chunk, 1, chunkSize, m_fileStream);
 			if(bytesRead == 0)
 				break;
 			uint8_t* chunkPtr = (uint8_t*)chunk;
@@ -572,7 +575,7 @@ static grk_image* pnmtoimage(const char* filename, grk_cparameters* parameters)
 			for(compno = 0; compno < numcomps; compno++)
 			{
 				uint32_t val = 0;
-				if(fscanf(fp, "%u", &val) != 1)
+				if(fscanf(m_fileStream, "%u", &val) != 1)
 				{
 					spdlog::error("error reading ASCII PPM pixel data");
 					goto cleanup;
@@ -594,9 +597,9 @@ static grk_image* pnmtoimage(const char* filename, grk_cparameters* parameters)
 	{
 		bool rc = false;
 		if(prec <= 8)
-			rc = readBytes<uint8_t>(fp, image, area);
+			rc = readBytes<uint8_t>(m_fileStream, image, area);
 		else
-			rc = readBytes<uint16_t>(fp, image, area);
+			rc = readBytes<uint16_t>(m_fileStream, image, area);
 		if(!rc)
 			goto cleanup;
 	}
@@ -611,15 +614,15 @@ static grk_image* pnmtoimage(const char* filename, grk_cparameters* parameters)
 		else
 		{
 			/* let's see if bits are packed into bytes or not */
-			int64_t currentPos = GRK_FTELL(fp);
+			int64_t currentPos = GRK_FTELL(m_fileStream);
 			if(currentPos == -1)
 				goto cleanup;
-			if(GRK_FSEEK(fp, 0L, SEEK_END))
+			if(GRK_FSEEK(m_fileStream, 0L, SEEK_END))
 				goto cleanup;
-			int64_t endPos = GRK_FTELL(fp);
+			int64_t endPos = GRK_FTELL(m_fileStream);
 			if(endPos == -1)
 				goto cleanup;
-			if(GRK_FSEEK(fp, currentPos, SEEK_SET))
+			if(GRK_FSEEK(m_fileStream, currentPos, SEEK_SET))
 				goto cleanup;
 			uint64_t pixels = (uint64_t)(endPos - currentPos);
 			if(pixels == packed_area)
@@ -635,7 +638,7 @@ static grk_image* pnmtoimage(const char* filename, grk_cparameters* parameters)
 		while(i < area)
 		{
 			auto toRead = min((uint64_t)chunkSize, (uint64_t)(area - i));
-			size_t bytesRead = fread(chunk, 1, toRead, fp);
+			size_t bytesRead = fread(chunk, 1, toRead, m_fileStream);
 			if(bytesRead == 0)
 				break;
 			auto chunkPtr = (uint8_t*)chunk;
@@ -677,13 +680,21 @@ static grk_image* pnmtoimage(const char* filename, grk_cparameters* parameters)
 	}
 	success = true;
 cleanup:
-	if(!grk::safe_fclose(fp) || !success)
+	if(!grk::safe_fclose(m_fileStream) || !success)
 	{
 		grk_object_unref(&image->obj);
 		image = nullptr;
 	}
 	return image;
 } /* pnmtoimage() */
+
+
+PNMFormat::PNMFormat(bool split) : forceSplit(split) {
+#ifdef GROK_HAVE_URING
+	delete m_fileIO;
+	m_fileIO = new FileUringIO();
+#endif
+}
 
 bool PNMFormat::encodeHeader(grk_image* image, const std::string& filename,
 							 uint32_t compressionParam)
@@ -1048,5 +1059,6 @@ bool PNMFormat::encodeFinish(void)
 }
 grk_image* PNMFormat::decode(const std::string& filename, grk_cparameters* parameters)
 {
-	return pnmtoimage(filename.c_str(), parameters);
+	m_fileName = filename;
+	return decode(parameters);
 }
