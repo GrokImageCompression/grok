@@ -699,10 +699,10 @@ bool CodeStreamDecompress::copy_default_tcp(void)
 
 	return true;
 }
-void CodeStreamDecompress::addMainHeaderMarker(uint16_t id, uint64_t pos, uint32_t len)
+void CodeStreamDecompress::addMarker(uint16_t id, uint64_t pos, uint32_t len)
 {
-	assert(codeStreamInfo != nullptr);
-	codeStreamInfo->pushMarker(id, pos, len);
+	if (codeStreamInfo)
+		codeStreamInfo->pushMarker(id, pos, len);
 }
 uint16_t CodeStreamDecompress::getCurrentMarker()
 {
@@ -740,7 +740,6 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 	bool has_cod = false;
 	bool has_qcd = false;
 
-	/*  We enter in the main header */
 	m_decompressorState.setState(DECOMPRESS_STATE_MH_SOC);
 
 	/* Try to read the SOC marker, the code stream must begin with SOC marker */
@@ -749,7 +748,6 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 		GRK_ERROR("Code stream must begin with SOC marker ");
 		return false;
 	}
-	// read next marker
 	if(!readMarker())
 		return false;
 
@@ -763,20 +761,15 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 	/* Try to read until the SOT is detected */
 	while(m_curr_marker != J2K_MS_SOT)
 	{
-		/* Get the marker handler from the marker ID */
 		auto marker_handler = get_marker_handler(m_curr_marker);
-
-		/* Manage case where marker is unknown */
 		if(!marker_handler)
 		{
-			if(!read_unk(&m_curr_marker))
-			{
-				GRK_ERROR("Unable to read unknown marker 0x%02x.", m_curr_marker);
+			if(!read_unk())
 				return false;
-			}
-			continue;
+		    if (m_curr_marker == J2K_MS_SOT)
+				 break;
+			 marker_handler = get_marker_handler(m_curr_marker);
 		}
-
 		if(marker_handler->id == J2K_MS_SIZ)
 			has_siz = true;
 		else if(marker_handler->id == J2K_MS_COD)
@@ -784,8 +777,8 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 		else if(marker_handler->id == J2K_MS_QCD)
 			has_qcd = true;
 
-		/* Check if the marker is known and if it is in the correct location (main, tile, end of
-		 * code stream)*/
+		/* Check if the marker is known and if it is in the correct location
+		 * (main, tile, end of code stream)*/
 		if(!(m_decompressorState.getState() & marker_handler->states))
 		{
 			GRK_ERROR("Marker %d is not compliant with its position", m_curr_marker);
@@ -795,13 +788,6 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 		uint16_t marker_size;
 		if(!read_short(&marker_size))
 			return false;
-		/* Check marker size (does not include marker ID but includes marker size) */
-		else if(marker_size < 2)
-		{
-			GRK_ERROR("Marker size %d for marker 0x%x is less than 2", marker_size,
-					  marker_handler->id);
-			return false;
-		}
 		else if(marker_size == 2)
 		{
 			GRK_ERROR("Zero-size marker in header.");
@@ -813,12 +799,9 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 		if(!process_marker(marker_handler, marker_size))
 			return false;
 
-		if(codeStreamInfo)
-		{
-			/* Add the marker to the code stream index*/
-			addMainHeaderMarker(marker_handler->id, m_stream->tell() - marker_size - 4U,
-								marker_size + 4U);
-		}
+		/* Add the marker to the code stream index*/
+		addMarker(marker_handler->id, m_stream->tell() - marker_size - 4U,
+							marker_size + 4U);
 		// read next marker
 		if(!readMarker())
 			return false;
@@ -1041,7 +1024,10 @@ const marker_handler* CodeStreamDecompress::get_marker_handler(uint16_t id)
 		return nullptr;
 	}
 }
-bool CodeStreamDecompress::readMarker()
+bool CodeStreamDecompress::readMarker(void){
+	return readMarker(false);
+}
+bool CodeStreamDecompress::readMarker(bool suppressWarning)
 {
 	if(!read_short(&m_curr_marker))
 		return false;
@@ -1049,7 +1035,8 @@ bool CodeStreamDecompress::readMarker()
 	/* Check if the current marker ID is valid */
 	if(m_curr_marker < 0xff00)
 	{
-		GRK_WARN("marker ID 0x%.4x does not match JPEG 2000 marker format 0xffxx", m_curr_marker);
+		if (!suppressWarning)
+			GRK_WARN("marker ID 0x%.4x does not match JPEG 2000 marker format 0xffxx", m_curr_marker);
 		throw InvalidMarkerException(m_curr_marker);
 	}
 
@@ -2281,42 +2268,34 @@ bool CodeStreamDecompress::read_mct(uint8_t* headerData, uint16_t header_size)
 
 	return true;
 }
-bool CodeStreamDecompress::read_unk(uint16_t* output_marker)
+bool CodeStreamDecompress::read_unk(void)
 {
-	const marker_handler* marker_handler = nullptr;
 	uint32_t size_unk = 2;
+	uint16_t unknownMarker = m_curr_marker;
 	while(true)
 	{
-		if(!readMarker())
-			return false;
-		/* Get the marker handler from the marker ID*/
-		marker_handler = get_marker_handler(m_curr_marker);
-		if(marker_handler == nullptr)
-		{
-			size_unk += 2;
-		}
-		else
-		{
-			if(!(m_decompressorState.getState() & marker_handler->states))
-			{
-				GRK_ERROR("Marker %d is not compliant with its position", m_curr_marker);
+		// keep reading potential markers until we either find the next one, or
+		// we reach the end of the stream
+		try {
+			if(!readMarker(true)){
+				GRK_ERROR("Unable to read unknown marker 0x%02x.", unknownMarker);
 				return false;
 			}
-			else
-			{
-				/* Add the marker to the code stream index*/
-				if(codeStreamInfo && marker_handler->id != J2K_MS_SOT)
-					addMainHeaderMarker(J2K_MS_UNK, m_stream->tell() - size_unk, size_unk);
-				break; /* next marker is known and located correctly  */
-			}
+		} catch (InvalidMarkerException& ){
+			size_unk += 2;
+			continue;
 		}
+		addMarker(unknownMarker, m_stream->tell() - 2 - size_unk, size_unk);
+		auto marker_handler = get_marker_handler(m_curr_marker);
+		// check if we need to process another unknown marker
+		if (!marker_handler){
+			size_unk = 2;
+			unknownMarker = m_curr_marker;
+			continue;
+		}
+		 // the next marker is known and located correctly
+		break;
 	}
-	if(!marker_handler)
-	{
-		GRK_ERROR("Unable to read unknown marker");
-		return false;
-	}
-	*output_marker = marker_handler->id;
 
 	return true;
 }
@@ -2839,7 +2818,7 @@ bool CodeStreamDecompress::read_soc()
 	if(codeStreamInfo)
 	{
 		codeStreamInfo->setMainHeaderStart(m_stream->tell() - 2);
-		addMainHeaderMarker(J2K_MS_SOC, codeStreamInfo->getMainHeaderStart(), 2);
+		addMarker(J2K_MS_SOC, codeStreamInfo->getMainHeaderStart(), 2);
 	}
 	return true;
 }

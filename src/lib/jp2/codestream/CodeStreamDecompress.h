@@ -55,6 +55,7 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	CodeStreamInfo* getCodeStreamInfo(void);
 	GrkImage* getCompositeImage();
 	bool readMarker(void);
+	bool readMarker(bool suppressWarning);
 	GrkImage* getHeaderImage(void);
 	uint16_t getCurrentMarker();
 	int32_t tileIndexToDecode();
@@ -96,7 +97,7 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	bool decompressTiles(void);
 	bool decompressValidation(void);
 	bool copy_default_tcp(void);
-	bool read_unk(uint16_t* output_marker);
+	bool read_unk(void);
 
 	/**
 	 Add main header marker information
@@ -104,7 +105,7 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	 @param pos          byte offset of marker segment
 	 @param len          length of marker segment
 	 */
-	void addMainHeaderMarker(uint16_t id, uint64_t pos, uint32_t len);
+	void addMarker(uint16_t id, uint64_t pos, uint32_t len);
 	/**
 	 * Reads a MCT marker (Multiple Component Transform)
 	 *
