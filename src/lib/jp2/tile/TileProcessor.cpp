@@ -378,7 +378,7 @@ bool TileProcessor::decompressT1(void)
 			}
 			std::vector<DecompressBlockExec*> blocks;
 			auto scheduler = std::unique_ptr<T1DecompressScheduler>(new T1DecompressScheduler());
-			if(!scheduler->prepareScheduleDecompress(tilec, tccp, &blocks))
+			if(!scheduler->prepareScheduleDecompress(tilec, tccp, &blocks, headerImage->comps->prec))
 				return false;
 			if(!scheduler->scheduleDecompress(m_tcp, (uint16_t)tccp->cblkw, (uint16_t)tccp->cblkh,
 											  &blocks))

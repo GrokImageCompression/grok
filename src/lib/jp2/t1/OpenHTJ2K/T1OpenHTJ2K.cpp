@@ -32,8 +32,6 @@ namespace openhtj2k
 		  unencoded_data(new int32_t[unencoded_data_size])
 	{
 		(void)tcp;
-		if(!isCompressor)
-			memset(coded_data, 0, grk_cblk_dec_compressed_data_pad_ht);
 	}
 	T1OpenHTJ2K::~T1OpenHTJ2K()
 	{
@@ -112,22 +110,17 @@ namespace openhtj2k
 		uint16_t stride = (uint16_t)cblk->width();
 		if(!cblk->seg_buffers.empty())
 		{
-			size_t total_seg_len =
-				2 * grk_cblk_dec_compressed_data_pad_ht + cblk->getSegBuffersLen();
+			size_t total_seg_len = cblk->getSegBuffersLen();
 			if(coded_data_size < total_seg_len)
 			{
 				delete[] coded_data;
 				coded_data = new uint8_t[total_seg_len];
 				coded_data_size = (uint32_t)total_seg_len;
-				memset(coded_data, 0, grk_cblk_dec_compressed_data_pad_ht);
 			}
-			memset(coded_data + grk_cblk_dec_compressed_data_pad_ht + cblk->getSegBuffersLen(), 0,
-				   grk_cblk_dec_compressed_data_pad_ht);
-			uint8_t* actual_coded_data = coded_data + grk_cblk_dec_compressed_data_pad_ht;
 			size_t offset = 0;
 			for(auto& b : cblk->seg_buffers)
 			{
-				memcpy(actual_coded_data + offset, b->buf, b->len);
+				memcpy(coded_data + offset, b->buf, b->len);
 				offset += b->len;
 			}
 
@@ -147,15 +140,18 @@ namespace openhtj2k
 				const element_siz p0;
 				const element_siz p1;
 				const element_siz s(cblk->width(), cblk->height());
-				auto j2k_block = new j2k_codeblock(idx,block->bandOrientation, block->bandNumbps,
-													0,0,0,
+				auto j2k_block = new j2k_codeblock(idx,block->bandOrientation,
+													block->M_b, block->R_b,block->qmfbid,
+													block->stepsize,
 													cblk->width(),unencoded_data,(float*)unencoded_data,
-													offset, numlayers,codelbock_style,p0,p1,s);
+													0, numlayers,codelbock_style,p0,p1,s);
 				j2k_block->num_passes = num_passes;
 				j2k_block->num_ZBP = block->k_msbs;
 				j2k_block->length = offset;
 				j2k_block->pass_length[0] = offset;
-				j2k_block->set_compressed_data(actual_coded_data, offset);
+				j2k_block->pass_length[1] = 0;
+				j2k_block->pass_length[2] = 0;
+				j2k_block->set_compressed_data(coded_data, offset);
 				htj2k_decode(j2k_block, 0);
 				delete j2k_block;
 			}

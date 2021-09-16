@@ -26,7 +26,8 @@ T1DecompressScheduler::~T1DecompressScheduler()
 }
 bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 													  TileComponentCodingParams* tccp,
-													  std::vector<DecompressBlockExec*>* blocks)
+													  std::vector<DecompressBlockExec*>* blocks,
+													  uint8_t prec)
 {
 	if(!tilec->getBuffer()->alloc())
 	{
@@ -34,6 +35,7 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 		return false;
 	}
 	bool wholeTileDecoding = tilec->isWholeTileDecoding();
+	uint8_t gain_b[4] = {0, 1, 1, 2};
 	for(uint8_t resno = 0; resno < tilec->resolutions_to_decompress; ++resno)
 	{
 		auto res = &tilec->tileCompResolution[resno];
@@ -66,6 +68,8 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 						block->roishift = tccp->roishift;
 						block->stepsize = band->stepsize;
 						block->k_msbs = (uint8_t)(band->numbps - cblk->numbps);
+						block->R_b = prec + gain_b[band->orientation];
+						block->M_b = 0;
 						blocks->push_back(block);
 					}
 				}
@@ -76,7 +80,7 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 }
 bool T1DecompressScheduler::scheduleDecompress(TileCodingParams* tcp, uint16_t blockw,
 											   uint16_t blockh,
-											   std::vector<DecompressBlockExec*>* blocks)
+											   std::vector<DecompressBlockExec*>* blocks        )
 {
 	// nominal code block dimensions
 	uint16_t codeblock_width = (uint16_t)(blockw ? (uint32_t)1 << blockw : 0);
