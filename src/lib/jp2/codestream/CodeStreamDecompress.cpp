@@ -1782,13 +1782,7 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint32_t compno, uint8_t* headerData
 	}
 	++tccp->numresolutions;
 	if(m_cp.pcap && !tcp->isHT())
-	{
 		tcp->setIsHT(true, tccp->qmfbid == 1, tccp->numgbits);
-		tcp->m_qcd->generate(tccp->numresolutions - 1U,
-						  getHeaderImage()->comps[compno].prec, tcp->mct > 0,
-						  getHeaderImage()->comps[compno].sgnd);
-		tcp->m_qcd->push(tccp->stepsizes);
-	}
 
 	/* If user wants to remove more resolutions than the code stream contains, return error */
 	if(cp->m_coding_params.m_dec.m_reduce >= tccp->numresolutions)

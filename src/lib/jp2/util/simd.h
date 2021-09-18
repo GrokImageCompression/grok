@@ -37,9 +37,9 @@
 #endif
 #endif
 
-#if defined(_MSC_VER)
 static inline long grk_lrintf(float f)
 {
+#if defined(_MSC_VER)
 #ifdef _M_X64
 	return _mm_cvt_ss2si(_mm_load_ss(&f));
 #elif defined(_M_IX86)
@@ -53,13 +53,11 @@ static inline long grk_lrintf(float f)
 #else
 	return (long)((f > 0.0f) ? (f + 0.5f) : (f - 0.5f));
 #endif
-}
 #else
-static inline long grk_lrintf(float f)
-{
 	return lrintf(f);
-}
 #endif
+}
+
 #if defined(_MSC_VER) && (_MSC_VER >= 1400) && !defined(__INTEL_COMPILER) && defined(_M_IX86)
 #pragma intrinsic(__emul)
 #endif

@@ -101,14 +101,16 @@ typedef enum GRK_SUPPORTED_FILE_FMT
 #define GRK_JP2_INFO 128 /**< JP2 file information */
 #define GRK_JP2_IND 256 /**< JP2 file index */
 
-#define GRK_CBLKSTY_LAZY 0x01 /**< Selective arithmetic coding bypass */
-#define GRK_CBLKSTY_RESET 0x02 /**< Reset context probabilities on coding pass boundaries */
-#define GRK_CBLKSTY_TERMALL 0x04 /**< Termination on each coding pass */
-#define GRK_CBLKSTY_VSC 0x08 /**< Vertically stripe causal context */
-#define GRK_CBLKSTY_PTERM 0x10 /**< Predictable termination */
-#define GRK_CBLKSTY_SEGSYM 0x20 /**< Segmentation symbols are used */
-#define GRK_CBLKSTY_HT 0x40 /**< high throughput block coding */
-#define GRK_JPH_RSIZ_FLAG 0x4000 /**<for JPH, bit 14 of RSIZ must be set to 1 */
+#define GRK_CBLKSTY_LAZY 		0x001 /**< Selective arithmetic coding bypass */
+#define GRK_CBLKSTY_RESET		0x002 /**< Reset context probabilities on coding pass boundaries */
+#define GRK_CBLKSTY_TERMALL 	0x004 /**< Termination on each coding pass */
+#define GRK_CBLKSTY_VSC 		0x008 /**< Vertical stripe causal context */
+#define GRK_CBLKSTY_PTERM 		0x010 /**< Predictable termination */
+#define GRK_CBLKSTY_SEGSYM 		0x020 /**< Segmentation symbols are used */
+#define GRK_CBLKSTY_HT 			0x040 /**< high throughput block coding */
+#define GRK_CBLKSTY_HT_MIXED 	0x080 /**< high throughput block coding - mixed*/
+#define GRK_CBLKSTY_HT_PHLD		0x100 /**< high throughput block coding - placeholder */
+#define GRK_JPH_RSIZ_FLAG 		0x4000 /**<for JPH, bit 14 of RSIZ must be set to 1 */
 
 /**
  * JPEG 2000 Profiles, see Table A.10 from 15444-1 (updated in various AMDs)

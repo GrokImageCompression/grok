@@ -141,7 +141,7 @@ namespace openhtj2k
 				const element_siz p1;
 				const element_siz s(cblk->width(), cblk->height());
 				auto j2k_block = new j2k_codeblock(idx,block->bandOrientation,
-													block->M_b, block->R_b,block->qmfbid,
+													block->k_msbs + 1U, block->R_b,block->qmfbid,
 													block->stepsize,
 													cblk->width(),unencoded_data,(float*)unencoded_data,
 													0, numlayers,codelbock_style,p0,p1,s);

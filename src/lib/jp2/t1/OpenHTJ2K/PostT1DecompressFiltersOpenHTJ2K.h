@@ -5,50 +5,11 @@
 namespace openhtj2k
 {
 template<typename T>
-class RoiShiftHTFilter
+class RoiShiftOpenHTJ2KFilter
 {
   public:
-	RoiShiftHTFilter(grk::DecompressBlockExec* block) : roiShift(block->roishift) {}
-	inline void copy(T* dest, T* src, uint32_t len)
-	{
-		T thresh = 1 << roiShift;
-		for(uint32_t i = 0; i < len; ++i)
-		{
-			T val = src[i];
-			T mag = abs(val);
-			if(mag >= thresh)
-			{
-				mag >>= roiShift;
-				val = val < 0 ? -mag : mag;
-			}
-			dest[i] = val / 2;
-		}
-	}
-
-  private:
-	uint32_t roiShift;
-};
-template<typename T>
-class ShiftHTFilter
-{
-  public:
-	ShiftHTFilter(grk::DecompressBlockExec* block)
-	{
-		(void)block;
-	}
-	inline void copy(T* dest, T* src, uint32_t len)
-	{
-		for(uint32_t i = 0; i < len; ++i)
-			dest[i] = src[i] / 2;
-	}
-};
-
-template<typename T>
-class RoiScaleHTFilter
-{
-  public:
-	RoiScaleHTFilter(grk::DecompressBlockExec* block)
-		: roiShift(block->roishift), scale(block->stepsize / 2)
+	RoiShiftOpenHTJ2KFilter(grk::DecompressBlockExec* block)
+		: roiShift(block->roishift), shift(31U - (block->k_msbs + 1U))
 	{}
 	inline void copy(T* dest, T* src, uint32_t len)
 	{
@@ -56,34 +17,68 @@ class RoiScaleHTFilter
 		for(uint32_t i = 0; i < len; ++i)
 		{
 			T val = src[i];
-			T mag = abs(val);
+			T mag = (val & 0x7FFFFFFF);
 			if(mag >= thresh)
-			{
-				mag >>= roiShift;
-				val = val < 0 ? -mag : mag;
-			}
-			((float*)dest)[i] = (float)val * scale;
+				val = (T)(((uint32_t)mag >> roiShift) & ((uint32_t)val & 0x80000000));
+			int32_t val_shifted = (val & 0x7FFFFFFF) >> shift;
+			dest[i] = (int32_t)(((uint32_t)val & 0x80000000) ? -val_shifted : val_shifted);
 		}
 	}
 
   private:
 	uint32_t roiShift;
-	float scale;
+	uint32_t shift;
 };
-
 template<typename T>
-class ScaleHTFilter
+class ShiftOpenHTJ2KFilter
 {
   public:
-	ScaleHTFilter(grk::DecompressBlockExec* block) : scale(block->stepsize / 2) {}
+	ShiftOpenHTJ2KFilter(grk::DecompressBlockExec* block)
+	{
+		GRK_UNUSED(block);
+	}
 	inline void copy(T* dest, T* src, uint32_t len)
 	{
 		for(uint32_t i = 0; i < len; ++i)
-			((float*)dest)[i] = (float)src[i] * scale;
+		{
+			dest[i] = src[i];
+		}
 	}
-
-  private:
-	float scale;
 };
 
-} // namespace grk
+template<typename T>
+class RoiScaleOpenHTJ2KFilter
+{
+  public:
+	RoiScaleOpenHTJ2KFilter(grk::DecompressBlockExec* block)
+	{
+		GRK_UNUSED(block);
+	}
+	inline void copy(T* dest, T* src, uint32_t len)
+	{
+		for(uint32_t i = 0; i < len; ++i)
+		{
+			((float*)dest)[i] = src[i];
+		}
+	}
+};
+
+
+template<typename T>
+class ScaleOpenHTJ2KFilter
+{
+public:
+	ScaleOpenHTJ2KFilter(grk::DecompressBlockExec* block)
+	{
+		GRK_UNUSED(block);
+	}
+	inline void copy(T* dest, T* src, uint32_t len)
+	{
+		for(uint32_t i = 0; i < len; ++i)
+		{
+			((float*)dest)[i] = src[i];
+		}
+	}
+};
+
+} // namespace OpenHTJ2K

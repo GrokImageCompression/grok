@@ -69,7 +69,6 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 						block->stepsize = band->stepsize;
 						block->k_msbs = (uint8_t)(band->numbps - cblk->numbps);
 						block->R_b = prec + gain_b[band->orientation];
-						block->M_b = 0;
 						blocks->push_back(block);
 					}
 				}

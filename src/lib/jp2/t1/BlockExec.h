@@ -24,7 +24,7 @@ struct BlockExec
 	BlockExec()
 		: tilec(nullptr), bandIndex(0), bandNumbps(0),
 		  bandOrientation(BAND_ORIENT_LL), stepsize(0), cblk_sty(0),
-		  qmfbid(0), x(0), y(0), k_msbs(0),R_b(0), M_b(0)
+		  qmfbid(0), x(0), y(0), k_msbs(0),R_b(0)
 	{}
 	virtual bool open(T1Interface* t1) = 0;
 	virtual ~BlockExec() = default;
@@ -41,7 +41,6 @@ struct BlockExec
 	// missing bit planes for all blocks in band
 	uint8_t k_msbs;
     uint8_t R_b;
-    uint8_t M_b;
 };
 struct DecompressBlockExec : public BlockExec
 {

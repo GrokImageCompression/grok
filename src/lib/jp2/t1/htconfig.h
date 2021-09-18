@@ -8,9 +8,4 @@
 #include "OpenHTJ2K/PostT1DecompressFiltersOpenHTJ2K.h"
 #include "OpenHTJ2K/QuantizerOpenHTJ2K.h"
 
-namespace grk {
-
-const bool use_ojph = true;
-
-
-}
+//#define OPENHTJ2K
