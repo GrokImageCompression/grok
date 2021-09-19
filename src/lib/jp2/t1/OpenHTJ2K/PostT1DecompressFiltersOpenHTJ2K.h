@@ -81,4 +81,4 @@ public:
 	}
 };
 
-} // namespace OpenHTJ2K
+} // namespace openhtj2k

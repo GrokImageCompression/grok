@@ -230,7 +230,7 @@ bool FileFormatDecompress::readHeader(grk_header_info* header_info)
 				}
 				else
 				{
-					GRK_ERROR("CIE Lab image requires ICC profile buffer set");
+					GRK_ERROR("CIE Lab image: ICC profile buffer not present");
 					m_headerError = true;
 					return false;
 				}
