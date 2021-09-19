@@ -1165,20 +1165,7 @@ void htj2k_decode(j2k_codeblock *block, const uint8_t ROIshift) {
     // reconstruction parameter defined in E.1.1.2 of the spec
     int32_t r_val;
     int32_t offset = 0;
-
-    int32_t *val = nullptr;
-    sprec_t *dst = nullptr;
     int32_t sign;
-    int16_t QF15;
-    float fscale = block->stepsize / (1 << block->R_b);
-    fscale *= (1 << FRACBITS);
-    if (M_b <= 31) {
-      fscale /= (1 << (31 - M_b));
-    } else {
-      fscale *= (1 << (M_b - 31));
-    }
-    fscale *= (float)(1 << 16) * (float)(1 << 16);
-    const auto scale   = (const int32_t)(fscale + 0.5);
     const uint16_t yyy = block->size.y;
     const uint16_t xxx = block->size.x;
     if (block->transformation) {
@@ -1189,8 +1176,8 @@ void htj2k_decode(j2k_codeblock *block, const uint8_t ROIshift) {
       for (uint16_t y = 0; y < yyy; y++) {
         for (uint16_t x = 0; x < xxx; x++) {
           const uint32_t n = x + y * block->band_stride;
-          val              = &block->sample_buf[x + y * block->size.x];
-          dst              = block->i_samples + n;
+          auto val              = &block->sample_buf[x + y * block->size.x];
+          auto dst              = block->i_samples + n;
           sign             = *val & INT32_MIN;
           *val &= INT32_MAX;
           // detect background region and upshift it
@@ -1220,9 +1207,9 @@ void htj2k_decode(j2k_codeblock *block, const uint8_t ROIshift) {
             *val = -(*val & INT32_MAX);
           }
 
+          //////////////////////////////////////////////////////
           assert(pLSB >= 0);  // assure downshift is not negative
-          QF15 = *val >> pLSB;
-          *dst = QF15;
+          *dst = *val >> pLSB;
         }
       }
     } else {
@@ -1233,8 +1220,8 @@ void htj2k_decode(j2k_codeblock *block, const uint8_t ROIshift) {
       for (uint16_t y = 0; y < yyy; y++) {
         for (uint16_t x = 0; x < xxx; x++) {
           const uint32_t n = x + y * block->band_stride;
-          val              = &block->sample_buf[x + y * block->size.x];
-          dst              = block->i_samples + n;
+          auto val         = &block->sample_buf[x + y * block->size.x];
+          auto dst         = block->i_samples + n;
           sign             = *val & INT32_MIN;
           *val &= INT32_MAX;
           // detect background region and upshift it
@@ -1258,19 +1245,14 @@ void htj2k_decode(j2k_codeblock *block, const uint8_t ROIshift) {
           if (*val != 0) {
             *val |= r_val;
           }
-          // to prevent overflow, truncate to int16_t
-          *val = (*val + (1 << 15)) >> 16;
-          // bring sign back
+            // bring sign back
           *val |= sign;
           // convert sign-magnitude to two's complement form
           if (*val < 0) {
             *val = -(*val & INT32_MAX);
           }
-          // dequantization and lifting scaling (defined as step 1 and 2 in the spec)
-          *val *= scale;
-          // truncate to int16_t
-          QF15 = (int16_t)((*val + (1 << 15)) >> 16);
-          *dst = QF15;
+
+          *dst = *val;
         }
       }
     }

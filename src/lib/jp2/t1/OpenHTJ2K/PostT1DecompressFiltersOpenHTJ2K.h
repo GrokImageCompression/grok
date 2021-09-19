@@ -67,18 +67,21 @@ class RoiScaleOpenHTJ2KFilter
 template<typename T>
 class ScaleOpenHTJ2KFilter
 {
-public:
-	ScaleOpenHTJ2KFilter(grk::DecompressBlockExec* block)
-	{
-		GRK_UNUSED(block);
+  public:
+	ScaleOpenHTJ2KFilter(grk::DecompressBlockExec* block) : scale(block->stepsize / (float)(1u << (31 - (block->k_msbs+1)))) {
+		assert(block->bandNumbps <= 31);
 	}
 	inline void copy(T* dest, T* src, uint32_t len)
 	{
 		for(uint32_t i = 0; i < len; ++i)
 		{
-			((float*)dest)[i] = src[i];
+			((float*)dest)[i] = src[i] * scale;
 		}
 	}
+
+  private:
+	float scale;
 };
+
 
 } // namespace openhtj2k
