@@ -206,7 +206,6 @@ struct DecompressCodeblock : public Codeblock
 			for(uint32_t i = 0; i < numSegmentsAllocated; ++i)
 				new_segs[i] = segs[i];
 			numSegmentsAllocated *= 2;
-			;
 			delete[] segs;
 			segs = new_segs;
 		}
@@ -261,8 +260,8 @@ struct DecompressCodeblock : public Codeblock
 
   private:
 	Segment* segs; /* information on segments */
-	uint16_t numSegments; /* number of segment in block*/
-	uint16_t numSegmentsAllocated; // number of segments allocated for segs array
+	uint32_t numSegments; /* number of segment in block*/
+	uint32_t numSegmentsAllocated; // number of segments allocated for segs array
 };
 
 } // namespace grk
