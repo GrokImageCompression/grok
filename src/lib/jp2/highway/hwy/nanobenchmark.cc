@@ -46,7 +46,7 @@
 #endif
 
 #include "hwy/base.h"
-#if HWY_ARCH_PPC
+#if HWY_ARCH_PPC && defined(__GLIBC__)
 #include <sys/platform/ppc.h>  // NOLINT __ppc_get_timebase_freq
 #elif HWY_ARCH_X86
 
@@ -119,7 +119,7 @@ using Ticks = uint64_t;
 // divide by InvariantTicksPerSecond.
 inline Ticks Start() {
   Ticks t;
-#if HWY_ARCH_PPC
+#if HWY_ARCH_PPC && defined(__GLIBC__)
   asm volatile("mfspr %0, %1" : "=r"(t) : "i"(268));
 #elif HWY_ARCH_X86 && HWY_COMPILER_MSVC
   _ReadWriteBarrier();
@@ -154,14 +154,14 @@ inline Ticks Start() {
 #else  // POSIX
   timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
-  t = ts.tv_sec * 1000000000LL + ts.tv_nsec;
+  t = static_cast<Ticks>(ts.tv_sec * 1000000000LL + ts.tv_nsec);
 #endif
   return t;
 }
 
 inline Ticks Stop() {
   uint64_t t;
-#if HWY_ARCH_PPC
+#if HWY_ARCH_PPC && defined(__GLIBC__)
   asm volatile("mfspr %0, %1" : "=r"(t) : "i"(268));
 #elif HWY_ARCH_X86 && HWY_COMPILER_MSVC
   _ReadWriteBarrier();
@@ -353,6 +353,12 @@ void Cpuid(const uint32_t level, const uint32_t count,
 #endif
 }
 
+bool HasRDTSCP() {
+  uint32_t abcd[4];
+  Cpuid(0x80000001U, 0, abcd);         // Extended feature flags
+  return (abcd[3] & (1u << 27)) != 0;  // RDTSCP
+}
+
 std::string BrandString() {
   char brand_string[49];
   std::array<uint32_t, 4> abcd;
@@ -399,8 +405,8 @@ double NominalClockRate() {
 }  // namespace
 
 double InvariantTicksPerSecond() {
-#if HWY_ARCH_PPC
-  return __ppc_get_timebase_freq();
+#if HWY_ARCH_PPC && defined(__GLIBC__)
+  return double(__ppc_get_timebase_freq());
 #elif HWY_ARCH_X86
   // We assume the TSC is invariant; it is on all recent Intel/AMD CPUs.
   return NominalClockRate();
@@ -457,8 +463,9 @@ timer::Ticks SampleUntilStable(const double max_rel_mad, double* rel_mad,
   static const double ticks_per_second = platform::InvariantTicksPerSecond();
   const size_t ticks_per_eval =
       static_cast<size_t>(ticks_per_second * p.seconds_per_eval);
-  size_t samples_per_eval =
-      est == 0 ? p.min_samples_per_eval : ticks_per_eval / est;
+  size_t samples_per_eval = est == 0
+                                ? p.min_samples_per_eval
+                                : static_cast<size_t>(ticks_per_eval / est);
   samples_per_eval = HWY_MAX(samples_per_eval, p.min_samples_per_eval);
 
   std::vector<timer::Ticks> samples;
@@ -537,7 +544,9 @@ size_t NumSkip(const Func func, const uint8_t* arg, const InputVec& unique,
   const size_t max_skip = p.precision_divisor;
   // Number of repetitions given the estimated duration.
   const size_t num_skip =
-      min_duration == 0 ? 0 : (max_skip + min_duration - 1) / min_duration;
+      min_duration == 0
+          ? 0
+          : static_cast<size_t>((max_skip + min_duration - 1) / min_duration);
   if (p.verbose) {
     printf("res=%zu max_skip=%zu min_dur=%zu num_skip=%zu\n",
            size_t(timer_resolution), max_skip, size_t(min_duration), num_skip);
@@ -644,6 +653,15 @@ int Unpredictable1() { return timer::Start() != ~0ULL; }
 size_t Measure(const Func func, const uint8_t* arg, const FuncInput* inputs,
                const size_t num_inputs, Result* results, const Params& p) {
   NANOBENCHMARK_CHECK(num_inputs != 0);
+
+#if HWY_ARCH_X86
+  if (!platform::HasRDTSCP()) {
+    fprintf(stderr, "CPU '%s' does not support RDTSCP, skipping benchmark.\n",
+            platform::BrandString().c_str());
+    return 0;
+  }
+#endif
+
   const InputVec& unique = UniqueInputs(inputs, num_inputs);
 
   const size_t num_skip = NumSkip(func, arg, unique, p);  // never 0

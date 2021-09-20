@@ -162,21 +162,10 @@ struct TestBroadcast {
 
 HWY_NOINLINE void TestAllBroadcast() {
   const ForPartialVectors<TestBroadcast> test;
-  // No u8.
+  // No u/i8.
   test(uint16_t());
-  test(uint32_t());
-#if HWY_CAP_INTEGER64
-  test(uint64_t());
-#endif
-
-  // No i8.
   test(int16_t());
-  test(int32_t());
-#if HWY_CAP_INTEGER64
-  test(int64_t());
-#endif
-
-  ForFloatTypes(test);
+  ForUIF3264(test);
 }
 
 template <bool kFull>
@@ -187,7 +176,7 @@ struct ChooseTableSize {
 template <>
 struct ChooseTableSize<true> {
   template <typename T, typename DIdx>
-  using type = HWY_FULL(T);
+  using type = ScalableTag<T>;
 };
 
 template <bool kFull>
@@ -246,7 +235,7 @@ struct TestTableLookupBytes {
       const uint8_t prev_index = index_bytes[i];
       expected_bytes[i] = 0;
 
-      const int idx = 0x80 + ((Random32(&rng) & 7) << 4);
+      const int idx = 0x80 + (int(Random32(&rng) & 7) << 4);
       HWY_ASSERT(0x80 <= idx && idx < 256);
       index_bytes[i] = static_cast<uint8_t>(idx);
 
@@ -348,16 +337,15 @@ struct TestZipLower {
     const Repartition<WideT, D> dw;
     const size_t NW = Lanes(dw);
     auto expected = AllocateAligned<WideT>(NW);
-    const WideT blockN = static_cast<WideT>(HWY_MIN(16 / sizeof(WideT), NW));
+    const size_t blockN = HWY_MIN(size_t(16) / sizeof(WideT), NW);
 
     for (size_t i = 0; i < NW; ++i) {
       const size_t block = i / blockN;
       // Value of least-significant lane in lo-vector.
-      const WideT lo =
-          static_cast<WideT>(2 * (i % blockN) + 4 * block * blockN);
-      const WideT kBits = static_cast<WideT>(sizeof(T) * 8);
-      expected[i] =
-          static_cast<WideT>((static_cast<WideT>(lo + 1) << kBits) + lo);
+      const size_t lo = 2u * (i % blockN) + 4u * block * blockN;
+      const size_t kBits = sizeof(T) * 8;
+      expected[i] = static_cast<WideT>((static_cast<WideT>(lo + 1) << kBits) +
+                                       static_cast<WideT>(lo));
     }
     HWY_ASSERT_VEC_EQ(dw, expected.get(), ZipLower(even, odd));
     HWY_ASSERT_VEC_EQ(dw, expected.get(), ZipLower(dw, even, odd));
@@ -384,15 +372,15 @@ struct TestZipUpper {
         const Repartition<WideT, D> dw;
     const size_t NW = Lanes(dw);
     auto expected = AllocateAligned<WideT>(NW);
-    const WideT blockN = static_cast<WideT>(HWY_MIN(16 / sizeof(WideT), NW));
+    const size_t blockN = HWY_MIN(size_t(16) / sizeof(WideT), NW);
 
     for (size_t i = 0; i < NW; ++i) {
       const size_t block = i / blockN;
-      const WideT lo =
-          static_cast<WideT>(2 * (i % blockN) + 4 * block * blockN);
-      const WideT kBits = static_cast<WideT>(sizeof(T) * 8);
+      const size_t lo = 2u * (i % blockN) + 4u * block * blockN;
+      const size_t kBits = sizeof(T) * 8;
       expected[i] = static_cast<WideT>(
-          (static_cast<WideT>(lo + 2 * blockN + 1) << kBits) + lo + 2 * blockN);
+          (static_cast<WideT>(lo + 2 * blockN + 1) << kBits) +
+          static_cast<WideT>(lo + 2 * blockN));
     }
     HWY_ASSERT_VEC_EQ(dw, expected.get(), ZipUpper(dw, even, odd));
   }
@@ -457,7 +445,7 @@ struct TestCombineShiftRightBytesR {
 
     // Random inputs in each lane
     RandomState rng;
-    for (size_t rep = 0; rep < 100; ++rep) {
+    for (size_t rep = 0; rep < AdjustedReps(100); ++rep) {
       for (size_t i = 0; i < N8; ++i) {
         hi_bytes[i] = static_cast<uint8_t>(Random64(&rng) & 0xFF);
         lo_bytes[i] = static_cast<uint8_t>(Random64(&rng) & 0xFF);
@@ -500,7 +488,7 @@ struct TestCombineShiftRightLanesR {
 
     // Random inputs in each lane
     RandomState rng;
-    for (size_t rep = 0; rep < 100; ++rep) {
+    for (size_t rep = 0; rep < AdjustedReps(100); ++rep) {
       for (size_t i = 0; i < N8; ++i) {
         hi_bytes[i] = static_cast<uint8_t>(Random64(&rng) & 0xFF);
         lo_bytes[i] = static_cast<uint8_t>(Random64(&rng) & 0xFF);
@@ -541,9 +529,9 @@ struct TestCombineShiftRightLanesR<0> {
 struct TestCombineShiftRight {
   template <class T, class D>
   HWY_NOINLINE void operator()(T t, D d) {
-    constexpr size_t kMaxBytes = HWY_MIN(16, MaxLanes(d) * sizeof(T));
+    constexpr int kMaxBytes = HWY_MIN(16, int(MaxLanes(d) * sizeof(T)));
     TestCombineShiftRightBytesR<kMaxBytes - 1>()(t, d);
-    TestCombineShiftRightLanesR<kMaxBytes / sizeof(T) - 1>()(t, d);
+    TestCombineShiftRightLanesR<kMaxBytes / int(sizeof(T)) - 1>()(t, d);
   }
 };
 
@@ -566,9 +554,10 @@ class TestSpecialShuffle32 {
 
  private:
   template <class D, class V>
-  HWY_NOINLINE void VerifyLanes32(D d, V actual, const int i3, const int i2,
-                                  const int i1, const int i0,
-                                  const char* filename, const int line) {
+  HWY_NOINLINE void VerifyLanes32(D d, VecArg<V> actual, const size_t i3,
+                                  const size_t i2, const size_t i1,
+                                  const size_t i0, const char* filename,
+                                  const int line) {
     using T = TFromD<D>;
     constexpr size_t kBlockN = 16 / sizeof(T);
     const size_t N = Lanes(d);
@@ -594,8 +583,9 @@ class TestSpecialShuffle64 {
 
  private:
   template <class D, class V>
-  HWY_NOINLINE void VerifyLanes64(D d, V actual, const int i1, const int i0,
-                                  const char* filename, const int line) {
+  HWY_NOINLINE void VerifyLanes64(D d, VecArg<V> actual, const size_t i1,
+                                  const size_t i0, const char* filename,
+                                  const int line) {
     using T = TFromD<D>;
     constexpr size_t kBlockN = 16 / sizeof(T);
     const size_t N = Lanes(d);

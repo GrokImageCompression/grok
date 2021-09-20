@@ -146,9 +146,20 @@
     }                                     \
   } while (0)
 
-// Only for "debug" builds
-#if !defined(NDEBUG) || defined(ADDRESS_SANITIZER) || \
-    defined(MEMORY_SANITIZER) || defined(THREAD_SANITIZER)
+// For enabling HWY_DASSERT and shortening tests in slower debug builds
+#if !defined(HWY_IS_DEBUG_BUILD)
+// Clang does not define NDEBUG, but it and GCC define __OPTIMIZE__, and recent
+// MSVC defines NDEBUG (if not, could instead check _DEBUG).
+#if (!defined(__OPTIMIZE__) && !defined(NDEBUG)) ||            \
+    defined(ADDRESS_SANITIZER) || defined(MEMORY_SANITIZER) || \
+    defined(THREAD_SANITIZER) || defined(__clang_analyzer__)
+#define HWY_IS_DEBUG_BUILD 1
+#else
+#define HWY_IS_DEBUG_BUILD 0
+#endif
+#endif  // HWY_IS_DEBUG_BUILD
+
+#if HWY_IS_DEBUG_BUILD
 #define HWY_DASSERT(condition) HWY_ASSERT(condition)
 #else
 #define HWY_DASSERT(condition) \
@@ -192,13 +203,13 @@ static constexpr HWY_MAYBE_UNUSED size_t kMaxVectorSize = 16;
 // Match [u]int##_t naming scheme so rvv-inl.h macros can obtain the type name
 // by concatenating base type and bits.
 
-// RVV already has a builtin type and the GCC intrinsics require it.
-#if (HWY_ARCH_RVV && HWY_COMPILER_GCC && defined(__riscv_vector)) || \
-    (HWY_ARCH_ARM && (__ARM_FP & 2))
+#if HWY_ARCH_ARM && (__ARM_FP & 2)
 #define HWY_NATIVE_FLOAT16 1
 #else
 #define HWY_NATIVE_FLOAT16 0
 #endif
+
+#pragma pack(push, 1)
 
 #if defined(HWY_EMULATE_SVE)
 using float16_t = FarmFloat16;
@@ -208,12 +219,16 @@ using float16_t = __fp16;
 // arguments, so use a wrapper.
 // TODO(janwas): replace with _Float16 when that is supported?
 #else
-#pragma pack(push, 1)
 struct float16_t {
   uint16_t bits;
 };
-#pragma pack(pop)
 #endif
+
+struct bfloat16_t {
+  uint16_t bits;
+};
+
+#pragma pack(pop)
 
 using float32_t = float;
 using float64_t = double;
@@ -302,6 +317,10 @@ constexpr bool IsSigned() {
 }
 template <>
 constexpr bool IsSigned<float16_t>() {
+  return true;
+}
+template <>
+constexpr bool IsSigned<bfloat16_t>() {
   return true;
 }
 
@@ -449,6 +468,12 @@ struct Relations<float16_t> {
   using Wide = float;
 };
 template <>
+struct Relations<bfloat16_t> {
+  using Unsigned = uint16_t;
+  using Signed = int16_t;
+  using Wide = float;
+};
+template <>
 struct Relations<float> {
   using Unsigned = uint32_t;
   using Signed = int32_t;
@@ -539,9 +564,23 @@ HWY_API size_t Num0BitsBelowLS1Bit_Nonzero32(const uint32_t x) {
 
 HWY_API size_t Num0BitsBelowLS1Bit_Nonzero64(const uint64_t x) {
 #if HWY_COMPILER_MSVC
+#if HWY_ARCH_X86_64
   unsigned long index;  // NOLINT
   _BitScanForward64(&index, x);
   return index;
+#else   // HWY_ARCH_X86_64
+  // _BitScanForward64 not available
+  uint32_t lsb = static_cast<uint32_t>(x & 0xFFFFFFFF);
+  unsigned long index;
+  if (lsb == 0) {
+    uint32_t msb = static_cast<uint32_t>(x >> 32u);
+    _BitScanForward(&index, msb);
+    return 32 + index;
+  } else {
+    _BitScanForward(&index, lsb);
+    return index;
+  }
+#endif  // HWY_ARCH_X86_64
 #else   // HWY_COMPILER_MSVC
   return static_cast<size_t>(__builtin_ctzll(x));
 #endif  // HWY_COMPILER_MSVC
@@ -604,6 +643,22 @@ HWY_API void CopyBytes(const From* from, To* to) {
   // Avoids horrible codegen on Clang (series of PINSRB)
   __builtin_memcpy(to, from, kBytes);
 #endif
+}
+
+HWY_API float F32FromBF16(bfloat16_t bf) {
+  uint32_t bits = bf.bits;
+  bits <<= 16;
+  float f;
+  CopyBytes<4>(&bits, &f);
+  return f;
+}
+
+HWY_API bfloat16_t BF16FromF32(float f) {
+  uint32_t bits;
+  CopyBytes<4>(&f, &bits);
+  bfloat16_t bf;
+  bf.bits = static_cast<uint16_t>(bits >> 16);
+  return bf;
 }
 
 HWY_NORETURN void HWY_FORMAT(3, 4)
