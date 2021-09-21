@@ -1119,6 +1119,8 @@ void htj2k_decode(j2k_codeblock *block, const uint8_t ROIshift) {
       }
     }
     Lcup += block->pass_length[all_segments[0]];
+    if (Lcup < 2)
+    	return;
     for (int i = 1; i < all_segments.size(); i++) {
       Lref += block->pass_length[all_segments[i]];
     }
@@ -1131,9 +1133,13 @@ void htj2k_decode(j2k_codeblock *block, const uint8_t ROIshift) {
     }
     // number of (skipped) magnitude bitplanes
     const uint8_t S_blk = P0 + block->num_ZBP + S_skip;
-    assert(S_blk < 30);
+    if (S_blk >= 30)
+    	return;
     // Suffix length (=MEL + VLC) of HT Cleanup pass
     const uint32_t Scup = (Dcup[Lcup - 1] << 4) + (Dcup[Lcup - 2] & 0x0F);
+    if (Scup < 2 || Scup > Lcup || Scup > 4079)
+      return;
+
     // modDcup (shall be done before the creation of state_VLC instance)
     Dcup[Lcup - 1] = 0xFF;
     Dcup[Lcup - 2] |= 0x0F;
