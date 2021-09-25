@@ -194,6 +194,7 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 	grkRectU32 temp(0, 0, 0, 0);
 	bool first = true;
 
+	//1. find outside bounds of all relevant code blocks, in relative coordinates
 	for(uint8_t resno = 0; resno < numres; ++resno)
 	{
 		auto res = &tileCompResolution[resno];
@@ -253,10 +254,11 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 		}
 	}
 
-	auto tr_max = tileCompResolution + numres - 1;
-	temp.grow(5, tr_max->width(), tr_max->height());
+	//2. create (padded) sparse canvas, in buffer space,
+	temp.grow(5);
 	auto sa = new SparseCanvas<6, 6>(temp);
 
+	//3. allocate sparse blocks
 	for(uint8_t resno = 0; resno < numres; ++resno)
 	{
 		auto res = &tileCompResolution[resno];
@@ -311,6 +313,8 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 			}
 		}
 	}
+
+
 	if(m_sa)
 		delete m_sa;
 	m_sa = sa;

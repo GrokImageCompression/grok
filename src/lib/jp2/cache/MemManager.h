@@ -290,6 +290,60 @@ struct grkBuffer2d : private grkBuffer<T, A>, public grkRectU32
 			*strd = stride;
 		}
 	}
+
+	/** Returns whether window bounds are valid (non empty and within buffer bounds)
+	 *
+	 * @param win window.
+	 * @return true or false.
+	 */
+	bool isWindowValid(grkRectU32 win)
+	{
+		return !(win.x0 >= x1 || win.x1 <= x0 || win.x1 > x1 ||
+				 win.y0 >= y1 || win.y1 <= win.y0 || win.y1 > y1);
+	}
+
+	/** Read the contents of a rectangular window into a
+	 * user buffer.
+	 *
+	 * @param window window to read from.
+	 * @param dest user buffer to fill
+	 * @param dest_col_stride spacing (in elements, not in bytes) in x dimension between consecutive
+	 * elements of the user buffer.
+	 * @param dest_line_stride spacing (in elements, not in bytes) in y dimension between
+	 * consecutive elements of the user buffer.
+	 */
+	bool read(grkRectU32 window,
+				int32_t* dest,
+				 const uint32_t destColStride,
+				 const uint32_t destStride){
+		if (!isWindowValid(window))
+			return false;
+
+		//1. calculate overlap
+
+		return true;
+	}
+
+	/** Write the contents of a rectangular window from a user buffer.
+	 *
+	 * @param window : window to write to buffer
+	 * @param src user buffer to fill.
+	 * @param src_col_stride spacing (in elements, not in bytes) in x dimension between consecutive
+	 * elements of the user buffer.
+	 * @param src_line_stride spacing (in elements, not in bytes) in y dimension between consecutive
+	 * elements of the user buffer.
+	 */
+	bool write(grkRectU32 window,
+				const int32_t* src,
+			   const uint32_t srcColStride,
+			   const uint32_t srcStride){
+
+		if (!isWindowValid(window))
+			return false;
+
+		return true;
+	}
+
 	bool copy_data(T* dest, uint32_t dest_w, uint32_t dest_h, uint32_t dest_stride) const
 	{
 		assert(dest_w <= width());

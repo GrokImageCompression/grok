@@ -144,22 +144,21 @@ class SparseCanvas : public ISparseCanvas
 		: block_width(1 << LBW), block_height(1 << LBH), data_blocks(nullptr), bounds(bds)
 	{
 		if(!bounds.width() || !bounds.height() || !LBW || !LBH)
-		{
 			throw std::runtime_error("invalid window for sparse buffer");
-		}
+
 		uint32_t grid_off_x = floordivpow2(bounds.x0, LBW);
 		uint32_t grid_off_y = floordivpow2(bounds.y0, LBH);
-		assert(grid_off_x == 0);
-		assert(grid_off_y == 0);
-		uint32_t grid_width = ceildivpow2<uint32_t>(bounds.width(), LBW);
-		uint32_t grid_height = ceildivpow2<uint32_t>(bounds.height(), LBH);
+		uint32_t grid_x = ceildivpow2<uint32_t>(bounds.x1, LBW);
+		uint32_t grid_y = ceildivpow2<uint32_t>(bounds.y1, LBH);
 		grid_bounds =
-			grkRectU32(grid_off_x, grid_off_y, grid_off_x + grid_width, grid_off_y + grid_height);
+			grkRectU32(grid_off_x, grid_off_y, grid_x, grid_y);
 		auto block_count = grid_bounds.area();
 		data_blocks = new SparseBlock*[block_count];
 		for(uint64_t i = 0; i < block_count; ++i)
 			data_blocks[i] = nullptr;
 	}
+
+
 	/**
 	 *
 	 * SparseCanvas constructor
@@ -235,6 +234,8 @@ class SparseCanvas : public ISparseCanvas
 		return true;
 	}
 
+
+
   private:
 	inline SparseBlock* getBlock(uint32_t block_x, uint32_t block_y)
 	{
@@ -242,17 +243,14 @@ class SparseCanvas : public ISparseCanvas
 			(uint64_t)(block_y - grid_bounds.y0) * grid_bounds.width() + (block_x - grid_bounds.x0);
 		return data_blocks[index];
 	}
-	/** Returns whether window bounds are valid (non empty and within array bounds)
-	 * @param x0 left x coordinate of the window.
-	 * @param y0 top x coordinate of the window.
-	 * @param x1 right x coordinate (not included) of the window. Must be greater than x0.
-	 * @param y1 bottom y coordinate (not included) of the window. Must be greater than y0.
+	/** Returns whether window bounds are valid (non empty and within bounds)
+	 * @param win window bounds
 	 * @return true or false.
 	 */
 	bool is_window_valid(grkRectU32 win)
 	{
-		return !(win.x0 >= bounds.width() || win.x1 <= win.x0 || win.x1 > bounds.width() ||
-				 win.y0 >= bounds.height() || win.y1 <= win.y0 || win.y1 > bounds.height());
+		return !(win.x0 >= bounds.x1 || win.x1 <= win.x0 || win.x1 > bounds.x1 ||
+				 win.y0 >= bounds.y1 || win.y1 <= win.y0 || win.y1 > bounds.y1);
 	}
 	bool read_or_write(uint8_t resno, grkRectU32 win, int32_t* buf, const uint32_t buf_col_stride,
 					   const uint32_t buf_line_stride, bool forgiving, bool is_read_op)

@@ -60,7 +60,8 @@ enum eSplitOrientation
 template<typename T>
 struct ResWindowBuffer
 {
-	ResWindowBuffer(uint8_t numresolutions, uint8_t resno,
+	ResWindowBuffer(uint8_t numresolutions,
+					uint8_t resno,
 					grkBuffer2d<T, AllocatorAligned>* resWindowTopLevelREL,
 					Resolution* tileCompAtRes,
 					Resolution* tileCompAtLowerRes,
@@ -360,8 +361,10 @@ struct TileComponentWindowBuffer
 								Resolution* tileCompResolution,
 								uint8_t numresolutions,
 								uint8_t reducedNumResolutions)
-		: m_unreducedBounds(tileCompUnreduced), m_bounds(tileCompReduced),
-		  m_numResolutions(numresolutions), m_compress(isCompressor),
+		: m_unreducedBounds(tileCompUnreduced),
+		  m_bounds(tileCompReduced),
+		  m_numResolutions(numresolutions),
+		  m_compress(isCompressor),
 		  m_wholeTileDecompress(wholeTileDecompress)
 	{
 		if(!m_compress)
@@ -398,10 +401,14 @@ struct TileComponentWindowBuffer
 			auto resDims = ResWindowBuffer<T>::getBandWindow(
 				(uint32_t)(numresolutions - 1 - resno), 0, m_unreducedBounds);
 			m_resWindowBufferREL.push_back(new ResWindowBuffer<T>(
-				numresolutions, resno,
+				numresolutions,
+				resno,
 				useBandWindows() ? nullptr : topLevel->m_resWindowBufferREL,
-				tileCompResolution + resno, resno > 0 ? tileCompResolution + resno - 1 : nullptr,
-				resDims, m_unreducedBounds, tileCompUnreduced,
+				tileCompResolution + resno,
+				resno > 0 ? tileCompResolution + resno - 1 : nullptr,
+				resDims,
+				m_unreducedBounds,
+				tileCompUnreduced,
 				wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless)));
 		}
 		m_resWindowBufferREL.push_back(topLevel);

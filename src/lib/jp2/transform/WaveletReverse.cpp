@@ -1908,8 +1908,10 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 	{
 		// simply copy into tile component buffer
 		bool ret = sa->read(0, BAND_ORIENT_LL, synthesisWindow,
-							tilec->getBuffer()->getResWindowBufferHighestREL()->getBuffer(), 1,
-							tilec->getBuffer()->getResWindowBufferHighestREL()->stride, true);
+							tilec->getBuffer()->getResWindowBufferHighestREL()->getBuffer(),
+							1,
+							tilec->getBuffer()->getResWindowBufferHighestREL()->stride,
+							true);
 		assert(ret);
 		GRK_UNUSED(ret);
 		return true;
@@ -2184,9 +2186,13 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 			goto cleanup;
 	}
 	// final read into tile buffer
-	ret = sa->read(numres - 1, BAND_ORIENT_LL, synthesisWindow,
-				   tilec->getBuffer()->getResWindowBufferHighestREL()->getBuffer(), 1,
-				   tilec->getBuffer()->getResWindowBufferHighestREL()->stride, true);
+	ret = sa->read(numres - 1,
+					BAND_ORIENT_LL,
+					synthesisWindow,
+				   tilec->getBuffer()->getResWindowBufferHighestREL()->getBuffer(),
+				   1,
+				   tilec->getBuffer()->getResWindowBufferHighestREL()->stride,
+				   true);
 	assert(ret);
 	GRK_UNUSED(ret);
 
