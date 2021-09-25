@@ -43,7 +43,7 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 		{
 			auto band = res->tileBand + bandIndex;
 			auto paddedBandWindow =
-				tilec->getBuffer()->getPaddedBandWindow(resno, band->orientation);
+				tilec->getBuffer()->getBandWindowPadded(resno, band->orientation);
 			for(auto precinct : band->precincts)
 			{
 				if(!wholeTileDecoding && !paddedBandWindow->non_empty_intersection(precinct))

@@ -505,7 +505,7 @@ void mct::decompress_dc_shift_irrev(Tile* tile, GrkImage* image,
 									uint16_t compno)
 {
 	int32_t* GRK_RESTRICT c0 =
-		  tile->comps[compno].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
+		  tile->comps[compno].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 	size_t n = (tile->comps + compno)->getBuffer()->stridedArea();
 	std::vector<ShiftInfo> shiftInfo;
 
@@ -520,9 +520,9 @@ void mct::decompress_dc_shift_irrev(Tile* tile, GrkImage* image,
 void mct::decompress_irrev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps)
 {
 	uint64_t n = tile->comps->getBuffer()->stridedArea();
-	int32_t* c0_i = tile->comps[0].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
-	int32_t* c1_i = tile->comps[1].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
-	int32_t* c2_i = tile->comps[2].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
+	int32_t* c0_i = tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+	int32_t* c1_i = tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+	int32_t* c2_i = tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 	std::vector<ShiftInfo> shiftInfo;
 
 	hwy::DisableTargets(uint32_t(~HWY_SCALAR));
@@ -538,7 +538,7 @@ void mct::decompress_dc_shift_rev(Tile* tile, GrkImage* image, TileComponentCodi
 		uint16_t compno)
 {
 	int32_t* GRK_RESTRICT c0 =
-		tile->comps[compno].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
+		tile->comps[compno].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 	std::vector<ShiftInfo> shiftInfo;
 
 	size_t n = (tile->comps + compno)->getBuffer()->stridedArea();
@@ -552,11 +552,11 @@ void mct::decompress_dc_shift_rev(Tile* tile, GrkImage* image, TileComponentCodi
 void mct::decompress_rev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps)
 {
 	int32_t* GRK_RESTRICT c0 =
-		tile->comps[0].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
+		tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 	int32_t* GRK_RESTRICT c1 =
-		tile->comps[1].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
+		tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 	int32_t* GRK_RESTRICT c2 =
-		tile->comps[2].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
+		tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 	uint64_t n = tile->comps->getBuffer()->stridedArea();
 	std::vector<ShiftInfo> shiftInfo;
 
@@ -572,11 +572,11 @@ void mct::decompress_rev(Tile* tile, GrkImage* image, TileComponentCodingParams*
 void mct::compress_rev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps)
 {
 	int32_t* GRK_RESTRICT c0 =
-		tile->comps[0].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
+		tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 	int32_t* GRK_RESTRICT c1 =
-		tile->comps[1].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
+		tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 	int32_t* GRK_RESTRICT c2 =
-		tile->comps[2].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
+		tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 
 	uint64_t n = tile->comps->getBuffer()->stridedArea();
 	std::vector<ShiftInfo> shiftInfo;
@@ -593,11 +593,11 @@ void mct::compress_rev(Tile* tile, GrkImage* image, TileComponentCodingParams* t
 void mct::compress_irrev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps)
 {
 	int32_t* GRK_RESTRICT c0 =
-		tile->comps[0].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
+		tile->comps[0].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 	int32_t* GRK_RESTRICT c1 =
-		tile->comps[1].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
+		tile->comps[1].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 	int32_t* GRK_RESTRICT c2 =
-		tile->comps[2].getBuffer()->getHighestBufferResWindowREL()->getBuffer();
+		tile->comps[2].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 
 	uint64_t n = tile->comps->getBuffer()->stridedArea();
 	std::vector<ShiftInfo> shiftInfo;

@@ -87,7 +87,7 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreduce
 	{
 		auto res = tileCompResolution + resno;
 
-		res->set(BufferResWindow<int32_t>::getTileCompBandWindow(
+		res->set(ResWindowBuffer<int32_t>::getBandWindow(
 			(uint32_t)(numresolutions - (resno + 1)), BAND_ORIENT_LL, unreducedTileComp));
 
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
@@ -139,7 +139,7 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreduce
 			band->orientation = orientation;
 			uint32_t numDecomps =
 				(resno == 0) ? (uint32_t)(numresolutions - 1U) : (uint32_t)(numresolutions - resno);
-			band->set(BufferResWindow<int32_t>::getTileCompBandWindow(numDecomps, band->orientation,
+			band->set(ResWindowBuffer<int32_t>::getBandWindow(numDecomps, band->orientation,
 																	  unreducedTileComp));
 		}
 	}
@@ -187,7 +187,7 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreduce
 bool TileComponent::subbandIntersectsAOI(uint8_t resno, eBandOrientation orient,
 										 const grkRectU32* aoi) const
 {
-	return buf->getPaddedBandWindow(resno, orient)->non_empty_intersection(aoi);
+	return buf->getBandWindowPadded(resno, orient)->non_empty_intersection(aoi);
 }
 bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 {
@@ -200,7 +200,7 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 		{
 			auto band = res->tileBand + bandIndex;
-			auto roi = buf->getPaddedBandWindow(resno, band->orientation);
+			auto roi = buf->getBandWindowPadded(resno, band->orientation);
 			for(auto precinct : band->precincts)
 			{
 				if(!precinct->non_empty())
@@ -263,7 +263,7 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 		{
 			auto band = res->tileBand + bandIndex;
-			auto roi = buf->getPaddedBandWindow(resno, band->orientation);
+			auto roi = buf->getBandWindowPadded(resno, band->orientation);
 			for(auto precinct : band->precincts)
 			{
 				if(!precinct->non_empty())
@@ -438,7 +438,7 @@ bool TileComponent::postDecompressImpl(int32_t* srcData, DecompressBlockExec* bl
 	if(m_sa)
 	{
 		if(!m_sa->write(
-			   block->resno,
+			   block->resno, BAND_ORIENT_LL,
 			   grkRectU32(block->x, block->y, block->x + cblk->width(), block->y + cblk->height()),
 			   srcData, 1, cblk->width(), true))
 		{

@@ -73,7 +73,7 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* currPi, Spar
 				if(band->isEmpty())
 					continue;
 				auto paddedBandWindow =
-					tilecBuffer->getPaddedBandWindow(currPi->resno, band->orientation);
+					tilecBuffer->getBandWindowPadded(currPi->resno, band->orientation);
 				auto prec = band->generatePrecinctBounds(currPi->precinctIndex, res->precinctStart,
 														 res->precinctExpn, res->precinctGridWidth);
 				if(paddedBandWindow->non_empty_intersection(&prec))

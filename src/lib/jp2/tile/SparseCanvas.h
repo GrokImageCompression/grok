@@ -77,7 +77,7 @@ class ISparseCanvas
 	 * @param forgiving if set to TRUE and the window is invalid, true will still be returned.
 	 * @return true in case of success.
 	 */
-	virtual bool read(uint8_t resno, grkRectU32 window, int32_t* dest,
+	virtual bool read(uint8_t resno, eBandOrientation bandOrientation, grkRectU32 window, int32_t* dest,
 					  const uint32_t dest_col_stride, const uint32_t dest_line_stride,
 					  bool forgiving) = 0;
 	/** Write the content of a rectangular window into the sparse buffer from a
@@ -96,7 +96,7 @@ class ISparseCanvas
 	 * @param forgiving if set to TRUE and the window is invalid, true will still be returned.
 	 * @return true in case of success.
 	 */
-	virtual bool write(uint8_t resno, grkRectU32 window, const int32_t* src,
+	virtual bool write(uint8_t resno, eBandOrientation bandOrientation, grkRectU32 window, const int32_t* src,
 					   const uint32_t src_col_stride, const uint32_t src_line_stride,
 					   bool forgiving) = 0;
 	/** Allocate all blocks for a rectangular window into the sparse buffer from a
@@ -182,13 +182,13 @@ class SparseCanvas : public ISparseCanvas
 			delete[] data_blocks;
 		}
 	}
-	bool read(uint8_t resno, grkRectU32 window, int32_t* dest, const uint32_t dest_col_stride,
+	bool read(uint8_t resno, eBandOrientation bandOrientation, grkRectU32 window, int32_t* dest, const uint32_t dest_col_stride,
 			  const uint32_t dest_line_stride, bool forgiving)
 	{
 		return read_or_write(resno, window, dest, dest_col_stride, dest_line_stride, forgiving,
 							 true);
 	}
-	bool write(uint8_t resno, grkRectU32 window, const int32_t* src, const uint32_t src_col_stride,
+	bool write(uint8_t resno, eBandOrientation bandOrientation, grkRectU32 window, const int32_t* src, const uint32_t src_col_stride,
 			   const uint32_t src_line_stride, bool forgiving)
 	{
 		return read_or_write(resno, window, (int32_t*)src, src_col_stride, src_line_stride,

@@ -43,7 +43,7 @@ namespace t1_part1
 		if(!t1->alloc(w, h))
 			return;
 		auto tileLineAdvance =
-			(tile->comps + block->compno)->getBuffer()->getHighestBufferResWindowREL()->stride - w;
+			(tile->comps + block->compno)->getBuffer()->getResWindowBufferHighestREL()->stride - w;
 		uint32_t tileIndex = 0;
 		uint32_t cblk_index = 0;
 		maximum = 0;
