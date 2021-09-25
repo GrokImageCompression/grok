@@ -184,7 +184,7 @@ struct ResWindowBuffer
 			if(!m_resWindowBufferTopLevelREL->alloc2d(clear))
 				return false;
 
-			// for now, we don't allocate bandWindows for windowed decompression
+			// don't allocate bandWindows for windowed decompression
 			if(m_filterWidth)
 				return true;
 
@@ -240,9 +240,6 @@ struct ResWindowBuffer
 			// resolution window is always allocated
 			if(!m_resWindowBufferREL->alloc2d(clear))
 				return false;
-			// for now, we don't allocate bandWindows for windowed decode
-			if(m_filterWidth)
-				return true;
 
 			// band windows are allocated if present
 			for(auto& b : m_bandWindowBufferPaddedREL)
@@ -576,8 +573,7 @@ struct TileComponentWindowBuffer
   private:
 	bool useBandWindows() const
 	{
-		// return !m_compress && m_wholeTileDecompress;
-		return false;
+		return !m_wholeTileDecompress;
 	}
 	bool useBufferCoordinatesForCodeblock() const
 	{
