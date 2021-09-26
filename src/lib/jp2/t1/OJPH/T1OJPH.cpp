@@ -126,6 +126,7 @@ namespace ojph
 		if(!cblk->area())
 			return true;
 		uint16_t stride = (uint16_t)cblk->width();
+		bool stripe_causal = true;
 		if(!cblk->seg_buffers.empty())
 		{
 			size_t total_seg_len =
@@ -159,7 +160,7 @@ namespace ojph
 			{
 				rc = ojph::local::ojph_decode_codeblock(actual_coded_data, (uint32_t*)unencoded_data,
 										   block->k_msbs, (uint32_t)num_passes, (uint32_t)offset, 0,
-										   cblk->width(), cblk->height(), stride);
+										   cblk->width(), cblk->height(), stride, stripe_causal);
 			}
 			else
 			{
