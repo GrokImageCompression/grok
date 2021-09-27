@@ -93,12 +93,12 @@ foreach(exe grk_decompress grk_compress grk_dump)
 
   target_link_libraries(${exe} 
     ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME}
-    ${JPEG_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
+    ${JPEG_LIBNAME} ${CMAKE_THREAD_LIBS_INIT} )
   # perform static link if only BUILD_STATIC_LIBS is turned on
   if (BUILD_STATIC_LIBS AND NOT BUILD_SHARED_LIBS)
-	  target_link_libraries(${exe} ${GROK_LIBRARY_NAME}_static hwy)
+	  target_link_libraries(${exe} ${GROK_LIBRARY_NAME}_static hwy ${CMAKE_DL_LIBS})
   else()
-	  target_link_libraries(${exe} ${GROK_LIBRARY_NAME} )
+	  target_link_libraries(${exe} ${GROK_LIBRARY_NAME} ${CMAKE_DL_LIBS} )
   endif()
 
   # To support universal exe:
