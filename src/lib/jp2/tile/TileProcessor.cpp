@@ -1080,7 +1080,7 @@ void TileProcessor::makeLayerFeasible(uint32_t layno, uint16_t thresh, bool fina
  */
 bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 {
-	bool single_lossless = makeSingleLosslessLayer();
+	bool single_lossless = m_tcp->numlayers == 1 && !layerNeedsRateControl(0);
 	const double K = 1;
 	double maxSE = 0;
 	auto tcp = m_tcp;
@@ -1131,6 +1131,8 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 	auto t2 = T2Compress(this);
 	if(single_lossless)
 	{
+		makeSingleLosslessLayer();
+
 		// simulation will generate correct PLT lengths
 		// and correct tile length
 		return t2.compressPacketsSimulate(m_tileIndex, 0 + 1U, allPacketBytes, UINT_MAX,
