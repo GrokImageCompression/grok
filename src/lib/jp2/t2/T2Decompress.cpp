@@ -115,7 +115,8 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* currPi, Spar
 
 	return true;
 }
-bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* srcBuf, bool* stopProcessionPackets)
+bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* srcBuf,
+									 bool* stopProcessionPackets)
 {
 	auto cp = tileProcessor->m_cp;
 	auto tcp = cp->tcps + tile_no;
@@ -161,7 +162,7 @@ bool T2Decompress::decompressPackets(uint16_t tile_no, SparseBuffer* srcBuf, boo
 						 "layer=%02d",
 						 tile_no, currPi->compno, currPi->resno, currPi->precinctIndex,
 						 currPi->layno);
-				//ToDo: skip corrupt packet if PLT marker is present
+				// ToDo: skip corrupt packet if PLT marker is present
 				*stopProcessionPackets = true;
 				break;
 			}
@@ -241,7 +242,7 @@ bool T2Decompress::readPacketHeader(TileCodingParams* p_tcp, const PacketIter* p
 			if(numIteratedPackets != (tilePtr->numProcessedPackets % 0x10000))
 			{
 				GRK_WARN("SOP marker packet counter %u does not match expected counter %u",
-						  numIteratedPackets, tilePtr->numProcessedPackets);
+						 numIteratedPackets, tilePtr->numProcessedPackets);
 				throw CorruptPacketHeaderException();
 			}
 			active_src += 6;

@@ -25,8 +25,7 @@ namespace grk
 CodeStream::CodeStream(IBufferedStream* stream)
 	: codeStreamInfo(nullptr), m_headerImage(nullptr), m_currentTileProcessor(nullptr),
 	  m_stream(stream), m_multiTile(false), current_plugin_tile(nullptr)
-{
-}
+{}
 CodeStream::~CodeStream()
 {
 	if(m_headerImage)

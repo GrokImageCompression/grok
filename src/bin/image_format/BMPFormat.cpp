@@ -566,17 +566,20 @@ bool BMPFormat::encodeStrip(uint32_t rows)
 	uint32_t pad_dest = (4 - (((uint64_t)numcomps * w) & 3)) & 3;
 
 	int32_t scale[4] = {1, 1, 1, 1};
-	uint8_t scaleType[4] = {0,0,0,0};
+	uint8_t scaleType[4] = {0, 0, 0, 0};
 	int32_t shift[4] = {0, 0, 0, 0};
 
 	for(uint32_t compno = 0; compno < numcomps; ++compno)
 	{
 		if(m_image->comps[0].prec != 8)
 		{
-			if (m_image->comps[0].prec < 8) {
+			if(m_image->comps[0].prec < 8)
+			{
 				scale[compno] = 1 << (8 - m_image->comps[compno].prec);
 				scaleType[compno] = 1;
-			} else {
+			}
+			else
+			{
 				scale[compno] = 1 << (m_image->comps[compno].prec - 8);
 				scaleType[compno] = 2;
 			}
@@ -610,9 +613,9 @@ bool BMPFormat::encodeStrip(uint32_t rows)
 				{
 					int32_t r = m_image->comps[compno].data[m_srcIndex + i];
 					r += shift[compno];
-					if (scaleType[compno] == 1)
+					if(scaleType[compno] == 1)
 						r *= scale[compno];
-					else if (scaleType[compno] == 2)
+					else if(scaleType[compno] == 2)
 						r /= scale[compno];
 					rc[compno] = (uint8_t)r;
 				}

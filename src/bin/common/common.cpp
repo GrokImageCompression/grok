@@ -383,14 +383,16 @@ bool allComponentsSanityCheck(grk_image* image, bool equalPrecision)
 	return true;
 }
 
-bool areAllComponentsSameSubsampling(grk_image* image){
-	if (!image || image->numcomps == 1)
+bool areAllComponentsSameSubsampling(grk_image* image)
+{
+	if(!image || image->numcomps == 1)
 		return true;
 	auto comp0 = image->comps;
 	for(uint32_t i = 0; i < image->numcomps; ++i)
 	{
 		auto comp = image->comps + i;
-		if(comp->dx != comp0->dx || comp->dy != comp0->dy){
+		if(comp->dx != comp0->dx || comp->dy != comp0->dy)
+		{
 			spdlog::error("Not all components have same sub-sampling");
 			return false;
 		}

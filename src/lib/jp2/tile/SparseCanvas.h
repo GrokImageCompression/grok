@@ -77,9 +77,9 @@ class ISparseCanvas
 	 * @param forgiving if set to TRUE and the window is invalid, true will still be returned.
 	 * @return true in case of success.
 	 */
-	virtual bool read(uint8_t resno, eBandOrientation bandOrientation, grkRectU32 window, int32_t* dest,
-					  const uint32_t dest_col_stride, const uint32_t dest_line_stride,
-					  bool forgiving) = 0;
+	virtual bool read(uint8_t resno, eBandOrientation bandOrientation, grkRectU32 window,
+					  int32_t* dest, const uint32_t dest_col_stride,
+					  const uint32_t dest_line_stride, bool forgiving) = 0;
 	/** Write the content of a rectangular window into the sparse buffer from a
 	 * user buffer.
 	 *
@@ -96,9 +96,9 @@ class ISparseCanvas
 	 * @param forgiving if set to TRUE and the window is invalid, true will still be returned.
 	 * @return true in case of success.
 	 */
-	virtual bool write(uint8_t resno, eBandOrientation bandOrientation, grkRectU32 window, const int32_t* src,
-					   const uint32_t src_col_stride, const uint32_t src_line_stride,
-					   bool forgiving) = 0;
+	virtual bool write(uint8_t resno, eBandOrientation bandOrientation, grkRectU32 window,
+					   const int32_t* src, const uint32_t src_col_stride,
+					   const uint32_t src_line_stride, bool forgiving) = 0;
 	/** Allocate all blocks for a rectangular window into the sparse buffer from a
 	 * user buffer.
 	 *
@@ -150,14 +150,12 @@ class SparseCanvas : public ISparseCanvas
 		uint32_t grid_off_y = floordivpow2(bounds.y0, LBH);
 		uint32_t grid_x = ceildivpow2<uint32_t>(bounds.x1, LBW);
 		uint32_t grid_y = ceildivpow2<uint32_t>(bounds.y1, LBH);
-		grid_bounds =
-			grkRectU32(grid_off_x, grid_off_y, grid_x, grid_y);
+		grid_bounds = grkRectU32(grid_off_x, grid_off_y, grid_x, grid_y);
 		auto block_count = grid_bounds.area();
 		data_blocks = new SparseBlock*[block_count];
 		for(uint64_t i = 0; i < block_count; ++i)
 			data_blocks[i] = nullptr;
 	}
-
 
 	/**
 	 *
@@ -181,14 +179,15 @@ class SparseCanvas : public ISparseCanvas
 			delete[] data_blocks;
 		}
 	}
-	bool read(uint8_t resno, eBandOrientation bandOrientation, grkRectU32 window, int32_t* dest, const uint32_t dest_col_stride,
-			  const uint32_t dest_line_stride, bool forgiving)
+	bool read(uint8_t resno, eBandOrientation bandOrientation, grkRectU32 window, int32_t* dest,
+			  const uint32_t dest_col_stride, const uint32_t dest_line_stride, bool forgiving)
 	{
 		return read_or_write(resno, window, dest, dest_col_stride, dest_line_stride, forgiving,
 							 true);
 	}
-	bool write(uint8_t resno, eBandOrientation bandOrientation, grkRectU32 window, const int32_t* src, const uint32_t src_col_stride,
-			   const uint32_t src_line_stride, bool forgiving)
+	bool write(uint8_t resno, eBandOrientation bandOrientation, grkRectU32 window,
+			   const int32_t* src, const uint32_t src_col_stride, const uint32_t src_line_stride,
+			   bool forgiving)
 	{
 		return read_or_write(resno, window, (int32_t*)src, src_col_stride, src_line_stride,
 							 forgiving, false);
@@ -233,8 +232,6 @@ class SparseCanvas : public ISparseCanvas
 
 		return true;
 	}
-
-
 
   private:
 	inline SparseBlock* getBlock(uint32_t block_x, uint32_t block_y)

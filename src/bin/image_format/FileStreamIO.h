@@ -32,6 +32,7 @@ class FileStreamIO : public IFileIO
 	bool seek(int64_t pos) override;
 	FILE* getFileStream(void);
 	int getFileDescriptor(void);
+
   private:
 	FILE* m_fileHandle;
 	std::string m_fileName;

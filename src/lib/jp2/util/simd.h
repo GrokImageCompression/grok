@@ -21,11 +21,11 @@
 #include <cstdint>
 
 #if defined(__arm64__) || defined(__arm__)
-  #include <arm_acle.h>
-  #if defined(__ARM_NEON__)
-    #include <arm_neon.h>
-  #endif
-#elif defined (_WIN32)
+#include <arm_acle.h>
+#if defined(__ARM_NEON__)
+#include <arm_neon.h>
+#endif
+#elif defined(_WIN32)
 #include <intrin.h>
 #elif defined(__x86_64__) || defined(__i386__)
 #include <x86intrin.h>
@@ -65,8 +65,8 @@ static inline long grk_lrintf(float f)
 static inline uint32_t grk_population_count(uint32_t val)
 {
 #ifdef _MSC_VER
-  return (uint32_t)__popcnt(val);
+	return (uint32_t)__popcnt(val);
 #else
-  return (uint32_t)__builtin_popcount(val);
+	return (uint32_t)__builtin_popcount(val);
 #endif
 }

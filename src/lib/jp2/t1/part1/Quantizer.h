@@ -21,10 +21,8 @@
 
 #pragma once
 
-
 namespace grk
 {
-
 /**
  * Quantization stepsize
  */
@@ -37,7 +35,6 @@ struct grk_stepsize
 	uint16_t mant;
 };
 
-
 struct Quantizer
 {
   public:
@@ -47,10 +44,10 @@ struct Quantizer
 	void pull(grk_stepsize* stepptr);
 	// for decompress
 	void push(grk_stepsize* stepptr);
-	virtual void generate(uint32_t decomps,
-						uint32_t max_bit_depth,
-						bool color_transform, bool is_signed);
-	virtual bool write(IBufferedStream *stream);
+	virtual void generate(uint32_t decomps, uint32_t max_bit_depth, bool color_transform,
+						  bool is_signed);
+	virtual bool write(IBufferedStream* stream);
+
   protected:
 	uint32_t get_num_guard_bits() const;
 	uint8_t Sqcd;

@@ -40,13 +40,15 @@ namespace grk
 static grk_image* create_rgb_no_subsample_image(uint16_t numcmpts, uint32_t w, uint32_t h,
 												uint8_t prec)
 {
-	if(!numcmpts){
+	if(!numcmpts)
+	{
 		spdlog::warn("create_rgb_no_subsample_image: number of components cannot be zero.");
 		return nullptr;
 	}
 
 	auto cmptparms = (grk_image_cmptparm*)calloc(numcmpts, sizeof(grk_image_cmptparm));
-	if(!cmptparms){
+	if(!cmptparms)
+	{
 		spdlog::warn("create_rgb_no_subsample_image: out of memory.");
 		return nullptr;
 	}
@@ -115,8 +117,8 @@ static void sycc_to_rgb(int32_t offset, int32_t upb, int32_t y, int32_t cb, int3
 static bool sycc444_to_rgb(grk_image* src)
 {
 	int32_t *d0, *d1, *d2, *r, *g, *b;
-	auto dst = create_rgb_no_subsample_image(3, src->comps[0].w, src->comps[0].h,
-			src->comps[0].prec);
+	auto dst =
+		create_rgb_no_subsample_image(3, src->comps[0].w, src->comps[0].h, src->comps[0].prec);
 	if(!dst)
 		return false;
 
@@ -169,8 +171,8 @@ static bool sycc444_to_rgb(grk_image* src)
 
 static bool sycc422_to_rgb(grk_image* src, bool oddFirstX)
 {
-	auto dst = create_rgb_no_subsample_image(3, src->comps[0].w, src->comps[0].h,
-												  src->comps[0].prec);
+	auto dst =
+		create_rgb_no_subsample_image(3, src->comps[0].w, src->comps[0].h, src->comps[0].prec);
 	if(!dst)
 		return false;
 
@@ -187,13 +189,15 @@ static bool sycc422_to_rgb(grk_image* src, bool oddFirstX)
 	int32_t *d0, *d1, *d2, *r, *g, *b;
 
 	auto y = src->comps[0].data;
-	if (!y){
+	if(!y)
+	{
 		spdlog::warn("sycc422_to_rgb: null luma channel");
 		return false;
 	}
 	auto cb = src->comps[1].data;
 	auto cr = src->comps[2].data;
-	if (!cb || !cr){
+	if(!cb || !cr)
+	{
 		spdlog::warn("sycc422_to_rgb: null chroma channel");
 		return false;
 	}
@@ -256,7 +260,7 @@ static bool sycc422_to_rgb(grk_image* src, bool oddFirstX)
 static bool sycc420_to_rgb(grk_image* src_img, bool oddFirstX, bool oddFirstY)
 {
 	auto dst = create_rgb_no_subsample_image(3, src_img->comps[0].w, src_img->comps[0].h,
-												  src_img->comps[0].prec);
+											 src_img->comps[0].prec);
 	if(!dst)
 		return false;
 
@@ -901,7 +905,8 @@ bool color_cielab_to_rgb(grk_image* src_img)
 	a = src[1] = src_img->comps[1].data;
 	b = src[2] = src_img->comps[2].data;
 
-	if (!L || !a || !b){
+	if(!L || !a || !b)
+	{
 		spdlog::warn("color_cielab_to_rgb: null L*a*b component");
 		return false;
 	}

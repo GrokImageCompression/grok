@@ -35,7 +35,8 @@
 #include <cstring>
 #include <cassert>
 
-template<typename T> T readchar(FILE* f)
+template<typename T>
+T readchar(FILE* f)
 {
 	T c1;
 	if(!fread(&c1, 1, 1, f))
@@ -46,7 +47,8 @@ template<typename T> T readchar(FILE* f)
 	return c1;
 }
 
-template<typename T> T readshort(FILE* f, bool bigendian)
+template<typename T>
+T readshort(FILE* f, bool bigendian)
 {
 	uint8_t c1, c2;
 	if(!fread(&c1, 1, 1, f))
@@ -77,7 +79,7 @@ static grk_image* pgxtoimage(const char* filename, grk_cparameters* parameters)
 	char endian1, endian2;
 	char signtmp[32];
 	bool sign = false;
-    char temp[32];
+	char temp[32];
 	bool bigendian;
 	grk_image_cmptparm cmptparm; /* maximum of 1 component  */
 	uint8_t shift = 0;
@@ -103,7 +105,8 @@ static grk_image* pgxtoimage(const char* filename, grk_cparameters* parameters)
 	}
 	while(signtmp[i] != '\0')
 	{
-		if(signtmp[i] == '-'){
+		if(signtmp[i] == '-')
+		{
 			sign = true;
 			break;
 		}
@@ -158,8 +161,7 @@ static grk_image* pgxtoimage(const char* filename, grk_cparameters* parameters)
 			int32_t v = 0;
 			if(prec < 8)
 			{
-				v = sign ? sign_extend((int32_t)readchar<int8_t>(f), shift) :
-						   readchar<int8_t>(f);
+				v = sign ? sign_extend((int32_t)readchar<int8_t>(f), shift) : readchar<int8_t>(f);
 			}
 			else
 			{
@@ -198,7 +200,8 @@ bool PGXFormat::encodeHeader(grk_image* image, const std::string& filename,
 	(void)compressionParam;
 	m_image = image;
 	m_fileName = filename;
-	if(!grk::allComponentsSanityCheck(m_image, false)){
+	if(!grk::allComponentsSanityCheck(m_image, false))
+	{
 		spdlog::error("PGXFormat::encodeHeader: image sanity check failed.");
 		return false;
 	}

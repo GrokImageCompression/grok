@@ -209,6 +209,7 @@ struct PacketIter
 	uint32_t x, y;
 	/** component sub-sampling */
 	uint32_t dx, dy;
+
   private:
 	bool handledFirstInner;
 	PacketManager* packetManager;

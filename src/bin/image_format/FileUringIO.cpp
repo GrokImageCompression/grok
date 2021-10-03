@@ -44,8 +44,7 @@ struct io_uring ring;
 
 struct io_data
 {
-	io_data() : readop(false), offset(0), iov{0, 0}
-	{}
+	io_data() : readop(false), offset(0), iov{0, 0} {}
 	bool readop;
 	uint64_t offset;
 	iovec iov;
@@ -56,14 +55,13 @@ static void enqueue(io_uring* ring, io_data* data, int fd)
 	auto sqe = io_uring_get_sqe(ring);
 	assert(sqe);
 
-	if (data->readop)
+	if(data->readop)
 		io_uring_prep_readv(sqe, fd, &data->iov, 1, data->offset);
 	else
 		io_uring_prep_writev(sqe, fd, &data->iov, 1, data->offset);
 	io_uring_sqe_set_data(sqe, data);
 	io_uring_submit(ring);
 }
-
 
 FileUringIO::FileUringIO() : m_fd(0), m_off(0), m_queueCount(0)
 {
@@ -96,7 +94,8 @@ bool FileUringIO::open(std::string fileName, std::string mode)
 	}
 	m_fileName = fileName;
 	// initialize ring
-	if (!doRead){
+	if(!doRead)
+	{
 		int ret = io_uring_queue_init(QD, &ring, 0);
 		if(ret < 0)
 		{
@@ -143,7 +142,8 @@ bool FileUringIO::close(void)
 	if(ring.ring_fd)
 	{
 		// process completions
-		for(uint32_t i = 0; i < m_queueCount; ++i){
+		for(uint32_t i = 0; i < m_queueCount; ++i)
+		{
 			io_uring_cqe* cqe;
 			int ret = io_uring_wait_cqe(&ring, &cqe);
 
@@ -162,7 +162,7 @@ bool FileUringIO::close(void)
 			auto data = (io_data*)io_uring_cqe_get_data(cqe);
 
 			/* process this request here */
-			if (!data->readop)
+			if(!data->readop)
 				delete[](uint8_t*) data->iov.iov_base;
 			delete data;
 
@@ -203,24 +203,24 @@ bool FileUringIO::write(uint8_t* buf, size_t len)
 }
 bool FileUringIO::read(uint8_t* buf, size_t len)
 {
-/*
-	bool rc = true;
-	// auto start = std::chrono::high_resolution_clock::now();
-	io_data* data = new io_data();
-	data->readop = false;
-	data->offset = m_off;
-	m_off += (uint64_t)len;
-	data->iov.iov_base = buf;
-	data->iov.iov_len = len;
-	queue_write(&ring, data, m_fd);
+	/*
+		bool rc = true;
+		// auto start = std::chrono::high_resolution_clock::now();
+		io_data* data = new io_data();
+		data->readop = false;
+		data->offset = m_off;
+		m_off += (uint64_t)len;
+		data->iov.iov_base = buf;
+		data->iov.iov_len = len;
+		queue_write(&ring, data, m_fd);
 
-	// auto finish = std::chrono::high_resolution_clock::now();
-	// std::chrono::duration<double> elapsed = finish - start;
-	// spdlog::info("write time: {} ms",	elapsed.count() * 1000);
-	m_queueCount++;
+		// auto finish = std::chrono::high_resolution_clock::now();
+		// std::chrono::duration<double> elapsed = finish - start;
+		// spdlog::info("write time: {} ms",	elapsed.count() * 1000);
+		m_queueCount++;
 
-	return rc;
-*/
+		return rc;
+	*/
 
 	auto actual = (size_t)::read(m_fd, buf, len);
 	if(actual < len)

@@ -31,11 +31,9 @@
 #include <algorithm>
 #include <limits>
 
-
 #ifdef _WIN32
 #include <intrin.h>
 #endif
-
 
 /* Component clipping */
 template<typename T>
@@ -458,7 +456,8 @@ static void convert_4u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length,
 	}
 }
 
-int32_t sign_extend(int32_t val, uint8_t shift){
+int32_t sign_extend(int32_t val, uint8_t shift)
+{
 	val <<= shift;
 	val >>= shift;
 
@@ -474,7 +473,7 @@ static void convert_4s32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length,
 	for(i = 0; i < (length & ~(size_t)1U); i += 2U)
 	{
 		uint8_t val = *pSrc++;
-		pDst[i + 0] = INV(sign_extend(val>>4, 32 - 4), 0xF, invert);
+		pDst[i + 0] = INV(sign_extend(val >> 4, 32 - 4), 0xF, invert);
 		pDst[i + 1] = INV(sign_extend(val & 0xF, 32 - 4), 0xF, invert);
 	}
 	if(length & 1U)
@@ -483,7 +482,6 @@ static void convert_4s32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length,
 		pDst[i + 0] = INV(sign_extend(val >> 4, 32 - 4), 15, invert);
 	}
 }
-
 
 /**
  * 6 bit unsigned to 32 bit
@@ -545,9 +543,9 @@ const cvtTo32 cvtTo32_LUT[9] = {nullptr,		   convert_1u32s_C1R, convert_2u32s_C1
 								nullptr,		   convert_4u32s_C1R, nullptr,
 								convert_6u32s_C1R, nullptr,			  convert_8u32s_C1R};
 
-const cvtTo32 cvtsTo32_LUT[9] = {nullptr,		   convert_1u32s_C1R, convert_2u32s_C1R,
-								nullptr,		   convert_4s32s_C1R, nullptr,
-								convert_6u32s_C1R, nullptr,			  convert_8u32s_C1R};
+const cvtTo32 cvtsTo32_LUT[9] = {nullptr,			convert_1u32s_C1R, convert_2u32s_C1R,
+								 nullptr,			convert_4s32s_C1R, nullptr,
+								 convert_6u32s_C1R, nullptr,		   convert_8u32s_C1R};
 
 /**
  * convert 1 bpp to 8 bit

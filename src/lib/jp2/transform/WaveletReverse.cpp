@@ -611,7 +611,9 @@ static void decompress_v_53(const dwt_data<int32_t>* dwt, int32_t* bandL, const 
 		{
 			for(uint32_t c = 0; c < nb_cols; c++, bandL++, dest++)
 				dest[0] = bandL[0];
-		} else {
+		}
+		else
+		{
 			if(nb_cols == PLL_COLS_53)
 			{
 				/* Same as below general case, except that thanks to SSE2/AVX2 */
@@ -623,8 +625,8 @@ static void decompress_v_53(const dwt_data<int32_t>* dwt, int32_t* bandL, const 
 			else
 			{
 				for(uint32_t c = 0; c < nb_cols; c++, bandL++, bandH++, dest++)
-					decompress_v_cas0_53(dwt->mem, bandL, dwt->sn_full, strideL, bandH, dwt->dn_full,
-										 strideH, dest, strideDest);
+					decompress_v_cas0_53(dwt->mem, bandL, dwt->sn_full, strideL, bandH,
+										 dwt->dn_full, strideH, dest, strideDest);
 			}
 		}
 	}
@@ -644,7 +646,9 @@ static void decompress_v_53(const dwt_data<int32_t>* dwt, int32_t* bandL, const 
 				dest[0] = bandH[0] + out[1];
 				dest[1] = out[1];
 			}
-		} else {
+		}
+		else
+		{
 			if(nb_cols == PLL_COLS_53)
 			{
 				/* Same as below general case, except that thanks to SSE2/AVX2 */
@@ -652,10 +656,12 @@ static void decompress_v_53(const dwt_data<int32_t>* dwt, int32_t* bandL, const 
 				HWY_DYNAMIC_DISPATCH(hwy_decompress_v_cas1_mcols_53)
 				(dwt->mem, bandL, dwt->sn_full, strideL, bandH, dwt->dn_full, strideH, dest,
 				 strideDest);
-			} else {
+			}
+			else
+			{
 				for(uint32_t c = 0; c < nb_cols; c++, bandL++, bandH++, dest++)
-					decompress_v_cas1_53(dwt->mem, bandL, dwt->sn_full, strideL, bandH, dwt->dn_full,
-										 strideH, dest, strideDest);
+					decompress_v_cas1_53(dwt->mem, bandL, dwt->sn_full, strideL, bandH,
+										 dwt->dn_full, strideH, dest, strideDest);
 			}
 		}
 	}
@@ -859,16 +865,17 @@ static bool decompress_tile_53(TileComponent* tilec, uint32_t numres)
 			return false;
 		vert.dn_full = rh - vert.sn_full;
 		vert.parity = tr->y0 & 1;
-		if(!decompress_v_mt_53(num_threads, data_size, horiz, vert, rw,
-							   // lower split window
-							   tilec->getBuffer()->getResWindowBufferSplitREL(res, SPLIT_L)->getBuffer(),
-							   tilec->getBuffer()->getResWindowBufferSplitREL(res, SPLIT_L)->stride,
-							   // higher split window
-							   tilec->getBuffer()->getResWindowBufferSplitREL(res, SPLIT_H)->getBuffer(),
-							   tilec->getBuffer()->getResWindowBufferSplitREL(res, SPLIT_H)->stride,
-							   // resolution buffer
-							   tilec->getBuffer()->getResWindowBufferREL(res)->getBuffer(),
-							   tilec->getBuffer()->getResWindowBufferREL(res)->stride))
+		if(!decompress_v_mt_53(
+			   num_threads, data_size, horiz, vert, rw,
+			   // lower split window
+			   tilec->getBuffer()->getResWindowBufferSplitREL(res, SPLIT_L)->getBuffer(),
+			   tilec->getBuffer()->getResWindowBufferSplitREL(res, SPLIT_L)->stride,
+			   // higher split window
+			   tilec->getBuffer()->getResWindowBufferSplitREL(res, SPLIT_H)->getBuffer(),
+			   tilec->getBuffer()->getResWindowBufferSplitREL(res, SPLIT_H)->stride,
+			   // resolution buffer
+			   tilec->getBuffer()->getResWindowBufferREL(res)->getBuffer(),
+			   tilec->getBuffer()->getResWindowBufferREL(res)->stride))
 			return false;
 	}
 	horiz.release();
@@ -1306,7 +1313,9 @@ static bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec, uint32_t numre
 			   (float*)tilec->getBuffer()->getResWindowBufferREL(res - 1U)->getBuffer(),
 			   tilec->getBuffer()->getResWindowBufferREL(res - 1U)->stride,
 			   // HL
-			   (float*)tilec->getBuffer()->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HL)->getBuffer(),
+			   (float*)tilec->getBuffer()
+				   ->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HL)
+				   ->getBuffer(),
 			   tilec->getBuffer()->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HL)->stride,
 			   // lower split window
 			   (float*)tilec->getBuffer()->getResWindowBufferSplitREL(res, SPLIT_L)->getBuffer(),
@@ -1315,10 +1324,14 @@ static bool decompress_tile_97(TileComponent* GRK_RESTRICT tilec, uint32_t numre
 		if(!decompress_h_mt_97(
 			   num_threads, data_size, horiz, rh - vert.sn_full,
 			   // LH
-			   (float*)tilec->getBuffer()->getBandWindowBufferPaddedREL(res, BAND_ORIENT_LH)->getBuffer(),
+			   (float*)tilec->getBuffer()
+				   ->getBandWindowBufferPaddedREL(res, BAND_ORIENT_LH)
+				   ->getBuffer(),
 			   tilec->getBuffer()->getBandWindowBufferPaddedREL(res, BAND_ORIENT_LH)->stride,
 			   // HH
-			   (float*)tilec->getBuffer()->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HH)->getBuffer(),
+			   (float*)tilec->getBuffer()
+				   ->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HH)
+				   ->getBuffer(),
 			   tilec->getBuffer()->getBandWindowBufferPaddedREL(res, BAND_ORIENT_HH)->stride,
 			   // higher split window
 			   (float*)tilec->getBuffer()->getResWindowBufferSplitREL(res, SPLIT_H)->getBuffer(),
@@ -1388,7 +1401,7 @@ class PartialInterleaver
 			if(dwt->sn_full)
 			{
 				ret = sa->read(
-					dwt->resno,BAND_ORIENT_LL,
+					dwt->resno, BAND_ORIENT_LL,
 					grkRectU32(dwt->win_l.x0, y_offset + i,
 							   std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn_full),
 							   y_offset + i + 1),
@@ -1399,7 +1412,7 @@ class PartialInterleaver
 			if(dwt->dn_full)
 			{
 				ret = sa->read(
-					dwt->resno,BAND_ORIENT_LL,
+					dwt->resno, BAND_ORIENT_LL,
 					grkRectU32(dwt->sn_full + dwt->win_h.x0, y_offset + i,
 							   dwt->sn_full +
 								   std::min<uint32_t>(dwt->win_h.x1 + FILTER_WIDTH, dwt->dn_full),
@@ -1425,7 +1438,7 @@ class PartialInterleaver
 		if(dwt->sn_full)
 		{
 			ret =
-				sa->read(dwt->resno,BAND_ORIENT_LL,
+				sa->read(dwt->resno, BAND_ORIENT_LL,
 						 grkRectU32(x_offset, dwt->win_l.x0, x_offset + x_num_elements,
 									std::min<uint32_t>(dwt->win_l.x1 + FILTER_WIDTH, dwt->sn_full)),
 						 (int32_t*)dwt->memL, 1, 2 * v_chunk, true);
@@ -1819,8 +1832,9 @@ static Params97 makeParams97(dwt_data<vec4f>* dwt, bool isBandL, bool step1)
 	int64_t band_1 = isBandL ? dwt->win_l.x1 : dwt->win_h.x1;
 	auto memPartial = isBandL ? dwt->memL : dwt->memH;
 	int64_t parityOffset = isBandL ? dwt->parity : !dwt->parity;
-	int64_t lenMax = isBandL ? (std::min<int64_t>)(dwt->sn_full, (int64_t)dwt->dn_full - parityOffset)
-							 : (std::min<int64_t>)(dwt->dn_full, (int64_t)dwt->sn_full - parityOffset);
+	int64_t lenMax = isBandL
+						 ? (std::min<int64_t>)(dwt->sn_full, (int64_t)dwt->dn_full - parityOffset)
+						 : (std::min<int64_t>)(dwt->dn_full, (int64_t)dwt->sn_full - parityOffset);
 	if(lenMax < 0)
 		lenMax = 0;
 	assert(lenMax >= band_0);
@@ -1908,10 +1922,8 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 	{
 		// simply copy into tile component buffer
 		bool ret = sa->read(0, BAND_ORIENT_LL, synthesisWindow,
-							tilec->getBuffer()->getResWindowBufferHighestREL()->getBuffer(),
-							1,
-							tilec->getBuffer()->getResWindowBufferHighestREL()->stride,
-							true);
+							tilec->getBuffer()->getResWindowBufferHighestREL()->getBuffer(), 1,
+							tilec->getBuffer()->getResWindowBufferHighestREL()->stride, true);
 		assert(ret);
 		GRK_UNUSED(ret);
 		return true;
@@ -2016,7 +2028,7 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 				grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 #endif
 				if(!sa->write(resno, BAND_ORIENT_LL,
-						grkRectU32(resWindowRect.x0, j, resWindowRect.x1, j + height),
+							  grkRectU32(resWindowRect.x0, j, resWindowRect.x1, j + height),
 							  (int32_t*)(job->data.mem + (int64_t)resWindowRect.x0 -
 										 2 * (int64_t)job->data.win_l.x0),
 							  HORIZ_PASS_HEIGHT, 1, true))
@@ -2073,7 +2085,7 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 				   << ", total samples = " << len;
 				grk_memcheck_all<int32_t>((int32_t*)job->data.mem, len, ss.str());
 #endif
-				if(!sa->write(resno,BAND_ORIENT_LL,
+				if(!sa->write(resno, BAND_ORIENT_LL,
 							  grkRectU32(j, resWindowRect.y0, j + width,
 										 resWindowRect.y0 + job->data.win_l.length() +
 											 job->data.win_h.length()),
@@ -2186,13 +2198,9 @@ bool decompress_partial_tile(TileComponent* GRK_RESTRICT tilec, uint16_t compno,
 			goto cleanup;
 	}
 	// final read into tile buffer
-	ret = sa->read(numres - 1,
-					BAND_ORIENT_LL,
-					synthesisWindow,
-				   tilec->getBuffer()->getResWindowBufferHighestREL()->getBuffer(),
-				   1,
-				   tilec->getBuffer()->getResWindowBufferHighestREL()->stride,
-				   true);
+	ret = sa->read(numres - 1, BAND_ORIENT_LL, synthesisWindow,
+				   tilec->getBuffer()->getResWindowBufferHighestREL()->getBuffer(), 1,
+				   tilec->getBuffer()->getResWindowBufferHighestREL()->stride, true);
 	assert(ret);
 	GRK_UNUSED(ret);
 

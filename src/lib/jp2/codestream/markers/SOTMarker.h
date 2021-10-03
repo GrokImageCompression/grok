@@ -47,9 +47,9 @@ class SOTMarker
 
 	 */
 	bool read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint16_t header_size);
+
   private:
 	uint64_t m_psot_location;
-
 
 	/**
 	 * Reads values from a SOT marker (Start of tile-part)
@@ -65,10 +65,7 @@ class SOTMarker
 
 	 */
 	bool read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint32_t header_size,
-						uint32_t* p_tot_len, uint8_t* p_current_part,
-						uint8_t* p_num_parts);
-
-
+			  uint32_t* p_tot_len, uint8_t* p_current_part, uint8_t* p_num_parts);
 };
 
 } /* namespace grk */

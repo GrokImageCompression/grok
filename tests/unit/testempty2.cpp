@@ -19,9 +19,9 @@
  */
 
 #include <assert.h>
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "grk_config.h"
 #include "grok.h"
@@ -30,138 +30,133 @@ void error_callback(const char *msg, void *v);
 void warning_callback(const char *msg, void *v);
 void info_callback(const char *msg, void *v);
 
-void error_callback(const char *msg, void *v)
-{
-    (void)msg;
-    (void)v;
-    puts(msg);
+void error_callback(const char *msg, void *v) {
+  (void)msg;
+  (void)v;
+  puts(msg);
 }
-void warning_callback(const char *msg, void *v)
-{
-    (void)msg;
-    (void)v;
-    puts(msg);
+void warning_callback(const char *msg, void *v) {
+  (void)msg;
+  (void)v;
+  puts(msg);
 }
-void info_callback(const char *msg, void *v)
-{
-    (void)msg;
-    (void)v;
-    puts(msg);
+void info_callback(const char *msg, void *v) {
+  (void)msg;
+  (void)v;
+  puts(msg);
 }
 
-int main(int argc, char *argv[])
-{
-    const char * v = grk_version();
+int main(int argc, char *argv[]) {
+  const char *v = grk_version();
 
-    const GRK_COLOR_SPACE color_space = GRK_CLRSPC_GRAY;
-    uint16_t numcomps = 1;
-    unsigned int i;
-    unsigned int image_width = 256;
-    unsigned int image_height = 256;
+  const GRK_COLOR_SPACE color_space = GRK_CLRSPC_GRAY;
+  uint16_t numcomps = 1;
+  unsigned int i;
+  unsigned int image_width = 256;
+  unsigned int image_height = 256;
 
-     grk_cparameters  parameters;
+  grk_cparameters parameters;
 
-    unsigned int subsampling_dx;
-    unsigned int subsampling_dy;
-    const char outputfile[] = "testempty2.j2k";
+  unsigned int subsampling_dx;
+  unsigned int subsampling_dy;
+  const char outputfile[] = "testempty2.j2k";
 
-     grk_image_cmptparm  cmptparm;
-    grk_image *image;
-     grk_codec   *codec = nullptr;
-    bool bSuccess;
-     grk_stream  *l_stream = nullptr;
-    (void)argc;
-    (void)argv;
+  grk_image_cmptparm cmptparm;
+  grk_image *image;
+  grk_codec *codec = nullptr;
+  bool bSuccess;
+  grk_stream *l_stream = nullptr;
+  (void)argc;
+  (void)argv;
 
-    grk_compress_set_default_params(&parameters);
-    parameters.cod_format = GRK_J2K_FMT;
-    puts(v);
-    subsampling_dx = (unsigned int)parameters.subsampling_dx;
-    subsampling_dy = (unsigned int)parameters.subsampling_dy;
-    cmptparm.prec = 8;
-    cmptparm.sgnd = 0;
-    cmptparm.dx = subsampling_dx;
-    cmptparm.dy = subsampling_dy;
-    cmptparm.w = image_width;
-    cmptparm.h = image_height;
-    strncpy(parameters.outfile, outputfile, sizeof(parameters.outfile)-1);
+  grk_compress_set_default_params(&parameters);
+  parameters.cod_format = GRK_J2K_FMT;
+  puts(v);
+  subsampling_dx = (unsigned int)parameters.subsampling_dx;
+  subsampling_dy = (unsigned int)parameters.subsampling_dy;
+  cmptparm.prec = 8;
+  cmptparm.sgnd = 0;
+  cmptparm.dx = subsampling_dx;
+  cmptparm.dy = subsampling_dy;
+  cmptparm.w = image_width;
+  cmptparm.h = image_height;
+  strncpy(parameters.outfile, outputfile, sizeof(parameters.outfile) - 1);
 
-    image = grk_image_new(numcomps, &cmptparm, color_space,true);
-    assert( image );
+  image = grk_image_new(numcomps, &cmptparm, color_space, true);
+  assert(image);
 
-    for (i = 0; i < image_width * image_height; i++) {
-        unsigned int compno;
-        for(compno = 0; compno < numcomps; compno++) {
-            image->comps[compno].data[i] = 0;
-        }
+  for (i = 0; i < image_width * image_height; i++) {
+    unsigned int compno;
+    for (compno = 0; compno < numcomps; compno++) {
+      image->comps[compno].data[i] = 0;
     }
+  }
 
-    /* catch events using our callbacks and give a local context */
-    grk_set_info_handler(info_callback,nullptr);
-    grk_set_warning_handler(warning_callback,nullptr);
-    grk_set_error_handler(error_callback,nullptr);
+  /* catch events using our callbacks and give a local context */
+  grk_set_info_handler(info_callback, nullptr);
+  grk_set_warning_handler(warning_callback, nullptr);
+  grk_set_error_handler(error_callback, nullptr);
 
-    l_stream = grk_stream_create_file_stream(parameters.outfile, 1024*1024, false);
-    if( !l_stream ) {
-        fprintf( stderr, "Something went wrong during creation of stream\n" );
-        grk_object_unref(codec);
-        grk_object_unref(&image->obj);
-        grk_object_unref(l_stream);
-        return 1;
-    }
+  l_stream =
+      grk_stream_create_file_stream(parameters.outfile, 1024 * 1024, false);
+  if (!l_stream) {
+    fprintf(stderr, "Something went wrong during creation of stream\n");
+    grk_object_unref(codec);
+    grk_object_unref(&image->obj);
+    grk_object_unref(l_stream);
+    return 1;
+  }
 
-    codec = grk_compress_create(GRK_CODEC_J2K, l_stream);
-    grk_compress_init(codec, &parameters, image);
+  codec = grk_compress_create(GRK_CODEC_J2K, l_stream);
+  grk_compress_init(codec, &parameters, image);
 
+  assert(l_stream);
+  bSuccess = grk_compress_start(codec);
+  if (!bSuccess) {
+    grk_object_unref(l_stream);
+    grk_object_unref(codec);
+    grk_object_unref(&image->obj);
+    return 0;
+  }
 
+  assert(bSuccess);
+  bSuccess = grk_compress(codec);
+  assert(bSuccess);
+  bSuccess = grk_compress_end(codec);
+  assert(bSuccess);
+
+  grk_object_unref(l_stream);
+
+  grk_object_unref(codec);
+  grk_object_unref(&image->obj);
+
+  /* read back the generated file */
+  {
+    grk_codec *d_codec = nullptr;
+    grk_dparameters dparameters;
+
+    bSuccess = grk_decompress_init(d_codec, &dparameters);
+    assert(bSuccess);
+
+    l_stream = grk_stream_create_file_stream(outputfile, 1024 * 1024, 1);
     assert(l_stream);
-    bSuccess = grk_compress_start(codec);
-    if( !bSuccess ) {
-        grk_object_unref(l_stream);
-        grk_object_unref(codec);
-        grk_object_unref(&image->obj);
-        return 0;
-    }
 
-    assert( bSuccess );
-    bSuccess = grk_compress(codec);
-    assert( bSuccess );
-    bSuccess = grk_compress_end(codec);
-    assert( bSuccess );
+    bSuccess = grk_decompress_read_header(d_codec, nullptr);
+    assert(bSuccess);
+
+    bSuccess = grk_decompress(codec, nullptr);
+    assert(bSuccess);
+
+    bSuccess = grk_decompress_end(codec);
+    assert(bSuccess);
 
     grk_object_unref(l_stream);
 
-    grk_object_unref(codec);
+    grk_object_unref(d_codec);
+
     grk_object_unref(&image->obj);
+  }
 
-
-    /* read back the generated file */
-    {
-         grk_codec   *d_codec = nullptr;
-         grk_dparameters  dparameters;
-
-         bSuccess = grk_decompress_init(d_codec, &dparameters);
-        assert( bSuccess );
-
-        l_stream = grk_stream_create_file_stream(outputfile,1024*1024, 1);
-        assert( l_stream );
-
-        bSuccess = grk_decompress_read_header(d_codec,nullptr);
-        assert( bSuccess );
-
-        bSuccess = grk_decompress(codec, nullptr);
-        assert( bSuccess );
-
-        bSuccess = grk_decompress_end(codec);
-        assert( bSuccess );
-
-        grk_object_unref(l_stream);
-
-        grk_object_unref(d_codec);
-
-        grk_object_unref(&image->obj);
-    }
-
-    puts( "end" );
-    return 0;
+  puts("end");
+  return 0;
 }

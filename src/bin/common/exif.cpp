@@ -62,21 +62,29 @@ class PerlInterp
 		const char* embedding[NUM_ARGS] = {"", "-e", "0"};
 		PERL_SYS_INIT3(nullptr, nullptr, nullptr);
 		my_perl = perl_alloc();
-		if (my_perl) {
+		if(my_perl)
+		{
 			perl_construct(my_perl);
-			if (perl_parse(my_perl, nullptr, NUM_ARGS, (char**)embedding, nullptr)){
+			if(perl_parse(my_perl, nullptr, NUM_ARGS, (char**)embedding, nullptr))
+			{
 				dealloc();
 				throw std::runtime_error("Unable to parse Perl script used to extract exif tags");
 			}
-			if (perl_run(my_perl)) {
+			if(perl_run(my_perl))
+			{
 				dealloc();
-				throw std::runtime_error("Unable to run Perl interpreter used to extract exif tags");
+				throw std::runtime_error(
+					"Unable to run Perl interpreter used to extract exif tags");
 			}
-			if (!eval_pv(script.c_str(), TRUE)) {
+			if(!eval_pv(script.c_str(), TRUE))
+			{
 				dealloc();
-				throw std::runtime_error("Unable to evaluate Perl script used to extract exif tags");
+				throw std::runtime_error(
+					"Unable to evaluate Perl script used to extract exif tags");
 			}
-		} else {
+		}
+		else
+		{
 			PERL_SYS_TERM();
 		}
 	}
@@ -85,8 +93,10 @@ class PerlInterp
 	{
 		dealloc();
 	}
-private:
-	void dealloc(void){
+
+  private:
+	void dealloc(void)
+	{
 		if(my_perl)
 		{
 			perl_destruct(my_perl);
@@ -112,15 +122,18 @@ class PerlScriptRunner
 void transferExifTags(std::string src, std::string dest)
 {
 #ifdef GROK_HAVE_EXIFTOOL
-	try {
+	try
+	{
 		PerlScriptRunner::instance();
-	} catch (std::runtime_error &re){
+	}
+	catch(std::runtime_error& re)
+	{
 		spdlog::warn(re.what());
 		return;
 	}
 	dTHX;
 	char* args[] = {(char*)src.c_str(), (char*)dest.c_str(), nullptr};
-	if (call_argv("transfer", G_DISCARD, args))
+	if(call_argv("transfer", G_DISCARD, args))
 		spdlog::warn("Unable to run Perl script used to extract exif tags");
 #else
 	(void)src;

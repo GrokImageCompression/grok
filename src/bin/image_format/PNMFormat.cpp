@@ -419,7 +419,7 @@ inline bool readBytes(FILE* fp, grk_image* image, size_t area)
 		for(size_t ct = 0; ct < bytesRead; ++ct)
 		{
 			image->comps[compno++].data[index] =
-					sizeof(T) > 1 ? grk::endian<T>(*chunkPtr++, true) : *chunkPtr++;
+				sizeof(T) > 1 ? grk::endian<T>(*chunkPtr++, true) : *chunkPtr++;
 			if(compno == image->numcomps)
 			{
 				compno = 0;
@@ -688,8 +688,8 @@ cleanup:
 	return image;
 } /* pnmtoimage() */
 
-
-PNMFormat::PNMFormat(bool split) : forceSplit(split) {
+PNMFormat::PNMFormat(bool split) : forceSplit(split)
+{
 #ifdef GROK_HAVE_URING
 	delete m_fileIO;
 	m_fileIO = new FileUringIO();
@@ -702,16 +702,19 @@ bool PNMFormat::encodeHeader(grk_image* image, const std::string& filename,
 	m_image = image;
 	m_fileName = filename;
 
-	if(!grk::allComponentsSanityCheck(m_image, true)){
+	if(!grk::allComponentsSanityCheck(m_image, true))
+	{
 		spdlog::error("PNMFormat::encodeHeader: image sanity check failed.");
 		return false;
 	}
 
-	if (!grk::areAllComponentsSameSubsampling(m_image))
+	if(!grk::areAllComponentsSameSubsampling(m_image))
 		return false;
 
-	if (m_image->numcomps > 4){
-		spdlog::error("PNMFormat::encodeHeader: %d number of components not supported.", m_image->numcomps);
+	if(m_image->numcomps > 4)
+	{
+		spdlog::error("PNMFormat::encodeHeader: %d number of components not supported.",
+					  m_image->numcomps);
 		return false;
 	}
 
@@ -759,7 +762,7 @@ bool PNMFormat::encodeStrip(uint32_t rows)
 	}
 
 	if(!forceSplit && (ncomp == 2 /* GRAYA */
-						 || ncomp > 2 )/* RGB, RGBA */)
+					   || ncomp > 2) /* RGB, RGBA */)
 	{
 		if(!grk::grk_open_for_output(&m_fileStream, m_fileName.c_str(), m_useStdIO))
 			goto cleanup;

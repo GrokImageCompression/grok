@@ -53,7 +53,8 @@ uint32_t TileProcessor::getPreCalculatedTileLen(void)
 }
 bool TileProcessor::canPreCalculateTileLen(void)
 {
-	return !m_cp->m_coding_params.m_enc.m_enableTilePartGeneration && (m_cp->tcps + m_tileIndex)->getNumProgressions() == 1;
+	return !m_cp->m_coding_params.m_enc.m_enableTilePartGeneration &&
+		   (m_cp->tcps + m_tileIndex)->getNumProgressions() == 1;
 }
 void TileProcessor::generateImage(GrkImage* src_image, Tile* src_tile)
 {
@@ -150,8 +151,9 @@ bool TileProcessor::init(void)
 			for(uint32_t resno = 0; resno < tilec->numresolutions; ++resno)
 			{
 				auto res = tilec->tileCompResolution + resno;
-				max_precincts = (std::max<uint64_t>)(max_precincts, (uint64_t)res->precinctGridWidth *
-																 res->precinctGridHeight);
+				max_precincts =
+					(std::max<uint64_t>)(max_precincts, (uint64_t)res->precinctGridWidth *
+															res->precinctGridHeight);
 			}
 		}
 		m_packetTracker.init(tile->numcomps, tile->comps->numresolutions, max_precincts,
@@ -244,37 +246,38 @@ bool TileProcessor::doCompress(void)
 	{
 		// SOT marker
 		preCalculatedTileLen = sot_marker_segment_len;
-		//if (m_tileIndex == 3)
-		//	GRK_INFO("Precalc: Tile %d, SOT marker seg len : %d", m_tileIndex, sot_marker_segment_len);
+		// if (m_tileIndex == 3)
+		//	GRK_INFO("Precalc: Tile %d, SOT marker seg len : %d", m_tileIndex,
+		//sot_marker_segment_len);
 		// POC marker
-		if(canWritePocMarker()) {
+		if(canWritePocMarker())
+		{
 			uint32_t pocSize =
-					CodeStreamCompress::getPocSize(tile->numcomps, m_tcp->getNumProgressions());
-			//if (m_tileIndex == 3)
+				CodeStreamCompress::getPocSize(tile->numcomps, m_tcp->getNumProgressions());
+			// if (m_tileIndex == 3)
 			//	GRK_INFO("Precalc: Tile %d, POC size len : %d", m_tileIndex, pocSize);
 			preCalculatedTileLen += pocSize;
-
 		}
 		// calculate PLT marker length
-		if(packetLengthCache.getMarkers()) { {
-			uint32_t pltMarkerLength =
-					packetLengthCache.getMarkers()->write(true);
-			//if (m_tileIndex == 3)
-			//	GRK_INFO("Precalc: Tile %d, PLT marker len : %d", m_tileIndex, pltMarkerLength);
-			preCalculatedTileLen += pltMarkerLength;
-
-		}
+		if(packetLengthCache.getMarkers())
+		{
+			{
+				uint32_t pltMarkerLength = packetLengthCache.getMarkers()->write(true);
+				// if (m_tileIndex == 3)
+				//	GRK_INFO("Precalc: Tile %d, PLT marker len : %d", m_tileIndex, pltMarkerLength);
+				preCalculatedTileLen += pltMarkerLength;
+			}
 		}
 		// calculate SOD marker length
 		preCalculatedTileLen += 2;
-		//if (m_tileIndex == 3)
+		// if (m_tileIndex == 3)
 		//	GRK_INFO("Precalc: Tile %d, SOD marker len : %d", m_tileIndex, 2);
 		// calculate packets length
 		preCalculatedTileLen += allPacketBytes;
-		//if (m_tileIndex == 3)
+		// if (m_tileIndex == 3)
 		//	GRK_INFO("Precalc: Tile %d, all packet bytes : %d", m_tileIndex, allPacketBytes);
 
-		//if (m_tileIndex == 3)
+		// if (m_tileIndex == 3)
 		//	GRK_INFO("Precalc: Tile %d, Total len : %d\n", m_tileIndex, preCalculatedTileLen);
 	}
 	return true;
@@ -378,7 +381,8 @@ bool TileProcessor::decompressT1(void)
 			}
 			std::vector<DecompressBlockExec*> blocks;
 			auto scheduler = std::unique_ptr<T1DecompressScheduler>(new T1DecompressScheduler());
-			if(!scheduler->prepareScheduleDecompress(tilec, tccp, &blocks, headerImage->comps->prec))
+			if(!scheduler->prepareScheduleDecompress(tilec, tccp, &blocks,
+													 headerImage->comps->prec))
 				return false;
 			if(!scheduler->scheduleDecompress(m_tcp, (uint16_t)tccp->cblkw, (uint16_t)tccp->cblkh,
 											  &blocks))
@@ -532,18 +536,21 @@ bool TileProcessor::dcLevelShiftCompress()
 		if(needsMctDecompress(compno))
 			continue;
 #else
-		tccp->m_dc_level_shift = 1 << ((this->headerImage->comps + compno)->prec-1);
+		tccp->m_dc_level_shift = 1 << ((this->headerImage->comps + compno)->prec - 1);
 #endif
 
-		if (tccp->qmfbid == 1){
-			if (tccp->m_dc_level_shift == 0)
+		if(tccp->qmfbid == 1)
+		{
+			if(tccp->m_dc_level_shift == 0)
 				continue;
 			for(uint64_t i = 0; i < samples; ++i)
 			{
 				*current_ptr -= tccp->m_dc_level_shift;
 				++current_ptr;
 			}
-		} else {
+		}
+		else
+		{
 			// output float
 
 			// Note: we need to convert to FP even if level shift is zero
@@ -1182,8 +1189,7 @@ bool TileProcessor::pcrdBisectFeasible(uint32_t* allPacketBytes)
 				{
 					if(!t2.compressPacketsSimulate(m_tileIndex, (uint16_t)(layno + 1U),
 												   allPacketBytes, maxLayerLength,
-												   newTilePartProgressionPosition, nullptr,
-												   false))
+												   newTilePartProgressionPosition, nullptr, false))
 					{
 						lowerBound = thresh;
 						continue;
@@ -1377,7 +1383,7 @@ bool TileProcessor::pcrdBisectSimple(uint32_t* allPacketBytes)
 	// GRK_INFO("Rate control final simulation");
 	return t2.compressPacketsSimulate(m_tileIndex, m_tcp->numlayers, allPacketBytes, maxLayerLength,
 									  newTilePartProgressionPosition,
-									  packetLengthCache.getMarkers(),true);
+									  packetLengthCache.getMarkers(), true);
 }
 static void prepareBlockForFirstLayer(CompressCodeblock* cblk)
 {

@@ -637,12 +637,14 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 		if(kernelBuildOptionsArg.isSet())
 			parameters->kernelBuildOptions = kernelBuildOptionsArg.getValue();
 
-		if(rateControlAlgoArg.isSet()) {
+		if(rateControlAlgoArg.isSet())
+		{
 			uint32_t algo = rateControlAlgoArg.getValue();
-			if (algo > GRK_RATE_CONTROL_PCRD_OPT)
+			if(algo > GRK_RATE_CONTROL_PCRD_OPT)
 				spdlog::warn("Rate control algorithm %d is not valid. Using default");
 			else
-				parameters->rateControlAlgorithm = (GRK_RATE_CONTROL_ALGORITHM)rateControlAlgoArg.getValue();
+				parameters->rateControlAlgorithm =
+					(GRK_RATE_CONTROL_ALGORITHM)rateControlAlgoArg.getValue();
 		}
 
 		if(numThreadsArg.isSet())
@@ -745,7 +747,8 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 				return 1;
 			}
 		}
-		if (compressionRatiosArg.isSet() && qualityArg.isSet()){
+		if(compressionRatiosArg.isSet() && qualityArg.isSet())
+		{
 			spdlog::error("Compression by both rate distortion and quality is not allowed");
 			return 1;
 		}
@@ -825,7 +828,9 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 				}
 				lastDistortion = distortion;
 			}
-		} else {
+		}
+		else
+		{
 			/* if no rate was entered, then lossless by default */
 			parameters->layer_rate[0] = 0;
 			parameters->numlayers = 1;
@@ -1010,8 +1015,9 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 			auto progression = parameters->progression;
 			uint32_t resS, compS, layE, resE, compE;
 
-			while(sscanf(s, "T%u=%u,%u,%u,%u,%u,%4s", &progression[numProgressions].tileno, &resS, &compS,
-						 &layE, &resE, &compE, progression[numProgressions].progressionString) == 7)
+			while(sscanf(s, "T%u=%u,%u,%u,%u,%u,%4s", &progression[numProgressions].tileno, &resS,
+						 &compS, &layE, &resE, &compE,
+						 progression[numProgressions].progressionString) == 7)
 			{
 				progression[numProgressions].resS = (uint8_t)resS;
 				progression[numProgressions].compS = (uint16_t)compS;
@@ -1025,7 +1031,8 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 				{
 					spdlog::warn("End layer {} in POC {} is greater than"
 								 " total number of layers {}. Truncating.",
-								 progression[numProgressions].layE, numProgressions, parameters->numlayers);
+								 progression[numProgressions].layE, numProgressions,
+								 parameters->numlayers);
 					progression[numProgressions].layE = parameters->numlayers;
 				}
 				if(progression[numProgressions].resE > parameters->numresolution)
@@ -1059,8 +1066,9 @@ static int parseCommandLine(int argc, char** argv, CompressInitParams* initParam
 				spdlog::error("POC argument must have at least two progressions");
 				return 1;
 			}
-			parameters->numpocs = numProgressions-1;
-		} else 	if(progressionOrderArg.isSet())
+			parameters->numpocs = numProgressions - 1;
+		}
+		else if(progressionOrderArg.isSet())
 		{
 			bool recognized = false;
 			if(progressionOrderArg.getValue().length() == 4)

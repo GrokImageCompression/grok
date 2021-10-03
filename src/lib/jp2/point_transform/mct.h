@@ -86,7 +86,7 @@ class mct
 	 @return false if function encounter a problem, true otherwise
 	 */
 	static bool compress_custom(uint8_t* p_coding_data, uint64_t n, uint8_t** p_data,
-			uint16_t numComps, uint32_t is_signed);
+								uint16_t numComps, uint32_t is_signed);
 	/**
 	 Custom MCT decode
 	 @param pDecodingData    MCT data
@@ -97,7 +97,7 @@ class mct
 	 @return false if function encounter a problem, true otherwise
 	 */
 	static bool decompress_custom(uint8_t* pDecodingData, uint64_t n, uint8_t** pData,
-			uint16_t pNbComp, uint32_t isSigned);
+								  uint16_t pNbComp, uint32_t isSigned);
 	/**
 	 Calculate norm of MCT transform
 	 @param pNorms         MCT data
@@ -123,16 +123,12 @@ class mct
 	 */
 	static void decompress_dc_shift_irrev(Tile* tile, GrkImage* image,
 										  TileComponentCodingParams* tccps, uint16_t compno);
-private:
-	static void genShift(uint16_t compno,
-						GrkImage* image,
-						TileComponentCodingParams* tccps,
-						int32_t sign,
-						std::vector<ShiftInfo> &shiftInfo);
-	static void genShift(GrkImage* image,
-						TileComponentCodingParams* tccps,
-						int32_t sign,
-						std::vector<ShiftInfo> &shiftInfo);
+
+  private:
+	static void genShift(uint16_t compno, GrkImage* image, TileComponentCodingParams* tccps,
+						 int32_t sign, std::vector<ShiftInfo>& shiftInfo);
+	static void genShift(GrkImage* image, TileComponentCodingParams* tccps, int32_t sign,
+						 std::vector<ShiftInfo>& shiftInfo);
 };
 
 /* ----------------------------------------------------------------------- */

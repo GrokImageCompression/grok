@@ -144,8 +144,9 @@ void BitIO::inalign()
 bool BitIO::putcommacode(uint8_t n)
 {
 	int16_t nn = n;
-	while(--nn >= 0){
-		if (!write(1, 1))
+	while(--nn >= 0)
+	{
+		if(!write(1, 1))
 			return false;
 	}
 	return write(0, 1);
@@ -165,24 +166,29 @@ void BitIO::getcommacode(uint8_t* n)
 
 bool BitIO::putnumpasses(uint32_t n)
 {
-	if(n == 1){
-		if (!write(0, 1))
+	if(n == 1)
+	{
+		if(!write(0, 1))
 			return false;
 	}
-	else if(n == 2){
-		if (!write(2, 2))
+	else if(n == 2)
+	{
+		if(!write(2, 2))
 			return false;
 	}
-	else if(n <= 5) {
-		if (!write(0xc | (n - 3), 4))
+	else if(n <= 5)
+	{
+		if(!write(0xc | (n - 3), 4))
 			return false;
 	}
-	else if(n <= 36) {
-		if (!write(0x1e0 | (n - 6), 9))
+	else if(n <= 36)
+	{
+		if(!write(0x1e0 | (n - 6), 9))
 			return false;
 	}
-	else if(n <= 164) {
-		if (!write(0xff80 | (n - 37), 16))
+	else if(n <= 164)
+	{
+		if(!write(0xff80 | (n - 37), 16))
 			return false;
 	}
 

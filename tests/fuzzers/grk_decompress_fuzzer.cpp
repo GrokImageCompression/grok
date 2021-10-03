@@ -46,142 +46,128 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
-#include <limits.h>
 
 #include "grok.h"
 
-extern "C" int LLVMFuzzerInitialize(int* argc, char*** argv);
+extern "C" int LLVMFuzzerInitialize(int *argc, char ***argv);
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len);
 
 typedef struct {
-    const uint8_t* pabyData;
-    size_t         nCurPos;
-    size_t         nLength;
+  const uint8_t *pabyData;
+  size_t nCurPos;
+  size_t nLength;
 } MemFile;
 
-
-static void ErrorCallback(const char * msg, void *user_data)
-{
-    fprintf(stderr, "error: %s\n", msg);
+static void ErrorCallback(const char *msg, void *user_data) {
+  fprintf(stderr, "error: %s\n", msg);
 }
 
-
-static void WarningCallback(const char *msg, void *user_data)
-{
-    fprintf(stderr, "warning: %s\n", msg);
+static void WarningCallback(const char *msg, void *user_data) {
+  fprintf(stderr, "warning: %s\n", msg);
 }
 
-static void InfoCallback(const char *msg, void *user_data)
-{
-    fprintf(stderr, "info: %s\n", msg);
+static void InfoCallback(const char *msg, void *user_data) {
+  fprintf(stderr, "info: %s\n", msg);
 }
 
-static size_t ReadCallback(void* pBuffer, size_t nBytes,
-                               void *pUserData)
-{
-    MemFile* memFile = (MemFile*)pUserData;
-    //printf("want to read %u bytes at %u\n", (int)memFile->nCurPos, (int)nBytes);
-    if (memFile->nCurPos >= memFile->nLength) {
-        return 0;
-    }
-    if (memFile->nCurPos + nBytes >= memFile->nLength) {
-        size_t nToRead = memFile->nLength - memFile->nCurPos;
-        memcpy(pBuffer, memFile->pabyData + memFile->nCurPos, nToRead);
-        memFile->nCurPos = memFile->nLength;
-        return nToRead;
-    }
-    if (nBytes == 0) {
-        return 0;
-    }
-    memcpy(pBuffer, memFile->pabyData + memFile->nCurPos, nBytes);
-    memFile->nCurPos += nBytes;
-    return nBytes;
+static size_t ReadCallback(void *pBuffer, size_t nBytes, void *pUserData) {
+  MemFile *memFile = (MemFile *)pUserData;
+  // printf("want to read %u bytes at %u\n", (int)memFile->nCurPos,
+  // (int)nBytes);
+  if (memFile->nCurPos >= memFile->nLength) {
+    return 0;
+  }
+  if (memFile->nCurPos + nBytes >= memFile->nLength) {
+    size_t nToRead = memFile->nLength - memFile->nCurPos;
+    memcpy(pBuffer, memFile->pabyData + memFile->nCurPos, nToRead);
+    memFile->nCurPos = memFile->nLength;
+    return nToRead;
+  }
+  if (nBytes == 0) {
+    return 0;
+  }
+  memcpy(pBuffer, memFile->pabyData + memFile->nCurPos, nBytes);
+  memFile->nCurPos += nBytes;
+  return nBytes;
 }
 
-static bool SeekCallback(size_t nBytes, void * pUserData)
-{
-    MemFile* memFile = (MemFile*)pUserData;
-    //printf("seek to %u\n", (int)nBytes);
-    memFile->nCurPos = nBytes;
-    return true;
+static bool SeekCallback(size_t nBytes, void *pUserData) {
+  MemFile *memFile = (MemFile *)pUserData;
+  // printf("seek to %u\n", (int)nBytes);
+  memFile->nCurPos = nBytes;
+  return true;
 }
 
-struct Initializer{
-	Initializer(){
-		grk_initialize(nullptr,0);
-	}
+struct Initializer {
+  Initializer() { grk_initialize(nullptr, 0); }
 };
 
-int LLVMFuzzerInitialize(int* argc, char*** argv)
-{
-	static Initializer init;
-    return 0;
+int LLVMFuzzerInitialize(int *argc, char ***argv) {
+  static Initializer init;
+  return 0;
 }
 
 static const unsigned char jpc_header[] = {0xff, 0x4f};
 static const unsigned char jp2_box_jp[] = {0x6a, 0x50, 0x20, 0x20}; /* 'jP  ' */
 
-int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len){
-	GRK_CODEC_FORMAT eCodecFormat;
-    if (len >= sizeof(jpc_header) &&
-            memcmp(buf, jpc_header, sizeof(jpc_header)) == 0) {
-        eCodecFormat = GRK_CODEC_J2K;
-    } else if (len >= 4 + sizeof(jp2_box_jp) &&
-               memcmp(buf + 4, jp2_box_jp, sizeof(jp2_box_jp)) == 0) {
-        eCodecFormat = GRK_CODEC_JP2;
-    } else {
-        return 0;
-    }
-    auto pStream = grk_stream_new(1024, true);
-    MemFile memFile;
-    memFile.pabyData = buf;
-    memFile.nLength = len;
-    memFile.nCurPos = 0;
-    grk_stream_set_user_data_length(pStream, len);
-    grk_stream_set_read_function(pStream, ReadCallback);
-    grk_stream_set_seek_function(pStream, SeekCallback);
-    grk_stream_set_user_data(pStream, &memFile, nullptr);
-    auto codec = grk_decompress_create(eCodecFormat, pStream);
-    grk_set_info_handler(InfoCallback, nullptr);
-    grk_set_warning_handler(WarningCallback, nullptr);
-    grk_set_error_handler(ErrorCallback, nullptr);
-    grk_dparameters parameters;
-    grk_decompress_set_default_params(&parameters);
-    grk_decompress_init(codec, &parameters);
-    grk_image * psImage = nullptr;
-    grk_header_info  header_info;
-    uint32_t x0,y0,width,height;
-    if (!grk_decompress_read_header(codec, &header_info))
-        goto cleanup;
-    psImage = grk_decompress_get_composited_image(codec);
-    width = psImage->x1 - psImage->x0;
-    if (width > 1024)
-        width = 1024;
-    height = psImage->y1 - psImage->y0;
-    if (height > 1024)
-        height = 1024;
-    x0=10;
-    if (x0 >= width)
-    	x0 = 0;
-    y0=10;
-    if (y0 >= height)
-    	y0 = 0;
-    if (grk_decompress_set_window(codec,
-                            x0,
-							y0,
-                            width,
-                            height)) {
-        if (!grk_decompress(codec, nullptr))
-        	goto cleanup;
-    }
-
-    grk_decompress_end(codec);
-cleanup:
-    grk_object_unref(pStream);
-    grk_object_unref(codec);
-
+int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
+  GRK_CODEC_FORMAT eCodecFormat;
+  if (len >= sizeof(jpc_header) &&
+      memcmp(buf, jpc_header, sizeof(jpc_header)) == 0) {
+    eCodecFormat = GRK_CODEC_J2K;
+  } else if (len >= 4 + sizeof(jp2_box_jp) &&
+             memcmp(buf + 4, jp2_box_jp, sizeof(jp2_box_jp)) == 0) {
+    eCodecFormat = GRK_CODEC_JP2;
+  } else {
     return 0;
+  }
+  auto pStream = grk_stream_new(1024, true);
+  MemFile memFile;
+  memFile.pabyData = buf;
+  memFile.nLength = len;
+  memFile.nCurPos = 0;
+  grk_stream_set_user_data_length(pStream, len);
+  grk_stream_set_read_function(pStream, ReadCallback);
+  grk_stream_set_seek_function(pStream, SeekCallback);
+  grk_stream_set_user_data(pStream, &memFile, nullptr);
+  auto codec = grk_decompress_create(eCodecFormat, pStream);
+  grk_set_info_handler(InfoCallback, nullptr);
+  grk_set_warning_handler(WarningCallback, nullptr);
+  grk_set_error_handler(ErrorCallback, nullptr);
+  grk_dparameters parameters;
+  grk_decompress_set_default_params(&parameters);
+  grk_decompress_init(codec, &parameters);
+  grk_image *psImage = nullptr;
+  grk_header_info header_info;
+  uint32_t x0, y0, width, height;
+  if (!grk_decompress_read_header(codec, &header_info))
+    goto cleanup;
+  psImage = grk_decompress_get_composited_image(codec);
+  width = psImage->x1 - psImage->x0;
+  if (width > 1024)
+    width = 1024;
+  height = psImage->y1 - psImage->y0;
+  if (height > 1024)
+    height = 1024;
+  x0 = 10;
+  if (x0 >= width)
+    x0 = 0;
+  y0 = 10;
+  if (y0 >= height)
+    y0 = 0;
+  if (grk_decompress_set_window(codec, x0, y0, width, height)) {
+    if (!grk_decompress(codec, nullptr))
+      goto cleanup;
+  }
+
+  grk_decompress_end(codec);
+cleanup:
+  grk_object_unref(pStream);
+  grk_object_unref(codec);
+
+  return 0;
 }

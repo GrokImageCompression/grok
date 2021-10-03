@@ -38,10 +38,8 @@
 
  */
 
-
 namespace grk
 {
-
 enum eSplitOrientation
 {
 	SPLIT_L,
@@ -60,18 +58,14 @@ enum eSplitOrientation
 template<typename T>
 struct ResWindowBuffer
 {
-	ResWindowBuffer(uint8_t numresolutions,
-					uint8_t resno,
+	ResWindowBuffer(uint8_t numresolutions, uint8_t resno,
 					grkBuffer2d<T, AllocatorAligned>* resWindowTopLevelREL,
-					Resolution* tileCompAtRes,
-					Resolution* tileCompAtLowerRes,
-					grkRectU32 tileCompWindow,
-					grkRectU32 tileCompWindowUnreduced,
-					grkRectU32 tileCompUnreduced,
-					uint32_t FILTER_WIDTH)
+					Resolution* tileCompAtRes, Resolution* tileCompAtLowerRes,
+					grkRectU32 tileCompWindow, grkRectU32 tileCompWindowUnreduced,
+					grkRectU32 tileCompUnreduced, uint32_t FILTER_WIDTH)
 		: m_allocated(false), m_tileCompRes(tileCompAtRes), m_tileCompResLower(tileCompAtLowerRes),
 		  m_resWindowBufferREL(new grkBuffer2d<T, AllocatorAligned>(tileCompWindow.width(),
-																		  tileCompWindow.height())),
+																	tileCompWindow.height())),
 		  m_resWindowBufferTopLevelREL(resWindowTopLevelREL), m_filterWidth(FILTER_WIDTH)
 	{
 		for(uint32_t i = 0; i < SPLIT_NUM_ORIENTATIONS; ++i)
@@ -88,9 +82,9 @@ struct ResWindowBuffer
 			*/
 			for(uint8_t orient = 0; orient < ((resno) > 0 ? BAND_NUM_ORIENTATIONS : 1); orient++)
 			{
-				m_bandWindowPadded.push_back(
-					getBandWindow(numDecomps, orient, tileCompWindowUnreduced,
-										  tileCompUnreduced, 2 * FILTER_WIDTH));
+				m_bandWindowPadded.push_back(getBandWindow(numDecomps, orient,
+														   tileCompWindowUnreduced,
+														   tileCompUnreduced, 2 * FILTER_WIDTH));
 			}
 
 			if(m_tileCompResLower)
@@ -99,9 +93,8 @@ struct ResWindowBuffer
 				for(uint8_t orient = 0; orient < BAND_NUM_ORIENTATIONS; orient++)
 				{
 					// todo: should only need padding equal to FILTER_WIDTH, not 2*FILTER_WIDTH
-					auto bandWindow =
-						getBandWindow(numDecomps, orient, tileCompWindowUnreduced,
-											  tileCompUnreduced, 2 * FILTER_WIDTH);
+					auto bandWindow = getBandWindow(numDecomps, orient, tileCompWindowUnreduced,
+													tileCompUnreduced, 2 * FILTER_WIDTH);
 					auto bandFull = orient == BAND_ORIENT_LL ? *((grkRectU32*)m_tileCompResLower)
 															 : m_tileCompRes->tileBand[orient - 1];
 					auto bandWindowREL =
@@ -111,12 +104,16 @@ struct ResWindowBuffer
 				}
 				auto winLow = m_bandWindowBufferPaddedREL[BAND_ORIENT_LL];
 				auto winHigh = m_bandWindowBufferPaddedREL[BAND_ORIENT_HL];
-				m_resWindowBufferREL->x0 = (std::min<uint32_t>)(2 * winLow->x0, 2 * winHigh->x0 + 1);
-				m_resWindowBufferREL->x1 = (std::max<uint32_t>)(2 * winLow->x1, 2 * winHigh->x1 + 1);
+				m_resWindowBufferREL->x0 =
+					(std::min<uint32_t>)(2 * winLow->x0, 2 * winHigh->x0 + 1);
+				m_resWindowBufferREL->x1 =
+					(std::max<uint32_t>)(2 * winLow->x1, 2 * winHigh->x1 + 1);
 				winLow = m_bandWindowBufferPaddedREL[BAND_ORIENT_LL];
 				winHigh = m_bandWindowBufferPaddedREL[BAND_ORIENT_LH];
-				m_resWindowBufferREL->y0 = (std::min<uint32_t>)(2 * winLow->y0, 2 * winHigh->y0 + 1);
-				m_resWindowBufferREL->y1 = (std::max<uint32_t>)(2 * winLow->y1, 2 * winHigh->y1 + 1);
+				m_resWindowBufferREL->y0 =
+					(std::min<uint32_t>)(2 * winLow->y0, 2 * winHigh->y0 + 1);
+				m_resWindowBufferREL->y1 =
+					(std::max<uint32_t>)(2 * winLow->y1, 2 * winHigh->y1 + 1);
 
 				// todo: shouldn't need to clip
 				auto resBounds = grkRectU32(0, 0, m_tileCompRes->width(), m_tileCompRes->height());
@@ -127,8 +124,7 @@ struct ResWindowBuffer
 
 				splitResWindowREL[SPLIT_L] = grkRectU32(
 					m_resWindowBufferREL->x0, m_bandWindowBufferPaddedREL[BAND_ORIENT_LL]->y0,
-					m_resWindowBufferREL->x1,
-					m_bandWindowBufferPaddedREL[BAND_ORIENT_LL]->y1);
+					m_resWindowBufferREL->x1, m_bandWindowBufferPaddedREL[BAND_ORIENT_LL]->y1);
 
 				m_resWindowBufferSplitREL[SPLIT_L] =
 					new grkBuffer2d<T, AllocatorAligned>(&splitResWindowREL[SPLIT_L]);
@@ -192,7 +188,7 @@ struct ResWindowBuffer
 			// attach to top level window
 			if(m_resWindowBufferREL != m_resWindowBufferTopLevelREL)
 				m_resWindowBufferREL->attach(m_resWindowBufferTopLevelREL->getBuffer(),
-												   m_resWindowBufferTopLevelREL->stride);
+											 m_resWindowBufferTopLevelREL->stride);
 
 			// m_tileCompResLower is null for lowest resolution
 			if(m_tileCompResLower)
@@ -252,10 +248,10 @@ struct ResWindowBuffer
 			{
 				m_resWindowBufferSplitREL[SPLIT_L]->attach(m_resWindowBufferREL->getBuffer(),
 														   m_resWindowBufferREL->stride);
-				m_resWindowBufferSplitREL[SPLIT_H]->attach(
-					m_resWindowBufferREL->getBuffer() +
-						m_tileCompResLower->height() * m_resWindowBufferREL->stride,
-					m_resWindowBufferREL->stride);
+				m_resWindowBufferSplitREL[SPLIT_H]->attach(m_resWindowBufferREL->getBuffer() +
+															   m_tileCompResLower->height() *
+																   m_resWindowBufferREL->stride,
+														   m_resWindowBufferREL->stride);
 			}
 		}
 		m_allocated = true;
@@ -273,8 +269,7 @@ struct ResWindowBuffer
 	 * See table F-1 in JPEG 2000 standard
 	 *
 	 */
-	static grkRectU32 getBandWindow(uint32_t numDecomps,
-									uint8_t orientation,
+	static grkRectU32 getBandWindow(uint32_t numDecomps, uint8_t orientation,
 									grkRectU32 tileCompWindowUnreduced)
 	{
 		assert(orientation < BAND_NUM_ORIENTATIONS);
@@ -308,11 +303,9 @@ struct ResWindowBuffer
 	 * Note: if numDecomps is zero, then the band window (and there is only one)
 	 * is equal to the unreduced tile component window (with padding)
 	 */
-	static grkRectU32 getBandWindow(uint32_t numDecomps,
-									uint8_t orientation,
+	static grkRectU32 getBandWindow(uint32_t numDecomps, uint8_t orientation,
 									grkRectU32 unreducedTileCompWindow,
-									grkRectU32 unreducedTileComp,
-									uint32_t padding)
+									grkRectU32 unreducedTileComp, uint32_t padding)
 	{
 		assert(orientation < BAND_NUM_ORIENTATIONS);
 		if(numDecomps == 0)
@@ -347,24 +340,16 @@ struct ResWindowBuffer
 	uint32_t m_filterWidth;
 };
 
-
-
 template<typename T>
 struct TileComponentWindowBuffer
 {
-	TileComponentWindowBuffer(bool isCompressor,
-								bool lossless,
-								bool wholeTileDecompress,
-								grkRectU32 tileCompUnreduced,
-								grkRectU32 tileCompReduced,
-								grkRectU32 unreducedTileCompOrImageCompWindow,
-								Resolution* tileCompResolution,
-								uint8_t numresolutions,
-								uint8_t reducedNumResolutions)
-		: m_unreducedBounds(tileCompUnreduced),
-		  m_bounds(tileCompReduced),
-		  m_numResolutions(numresolutions),
-		  m_compress(isCompressor),
+	TileComponentWindowBuffer(bool isCompressor, bool lossless, bool wholeTileDecompress,
+							  grkRectU32 tileCompUnreduced, grkRectU32 tileCompReduced,
+							  grkRectU32 unreducedTileCompOrImageCompWindow,
+							  Resolution* tileCompResolution, uint8_t numresolutions,
+							  uint8_t reducedNumResolutions)
+		: m_unreducedBounds(tileCompUnreduced), m_bounds(tileCompReduced),
+		  m_numResolutions(numresolutions), m_compress(isCompressor),
 		  m_wholeTileDecompress(wholeTileDecompress)
 	{
 		if(!m_compress)
@@ -398,17 +383,12 @@ struct TileComponentWindowBuffer
 		for(uint8_t resno = 0; resno < reducedNumResolutions - 1; ++resno)
 		{
 			// resolution window ==  next resolution band window at orientation 0
-			auto resDims = ResWindowBuffer<T>::getBandWindow(
-				(uint32_t)(numresolutions - 1 - resno), 0, m_unreducedBounds);
+			auto resDims = ResWindowBuffer<T>::getBandWindow((uint32_t)(numresolutions - 1 - resno),
+															 0, m_unreducedBounds);
 			m_resWindowBufferREL.push_back(new ResWindowBuffer<T>(
-				numresolutions,
-				resno,
-				useBandWindows() ? nullptr : topLevel->m_resWindowBufferREL,
-				tileCompResolution + resno,
-				resno > 0 ? tileCompResolution + resno - 1 : nullptr,
-				resDims,
-				m_unreducedBounds,
-				tileCompUnreduced,
+				numresolutions, resno, useBandWindows() ? nullptr : topLevel->m_resWindowBufferREL,
+				tileCompResolution + resno, resno > 0 ? tileCompResolution + resno - 1 : nullptr,
+				resDims, m_unreducedBounds, tileCompUnreduced,
 				wholeTileDecompress ? 0 : getFilterPad<uint32_t>(lossless)));
 		}
 		m_resWindowBufferREL.push_back(topLevel);
@@ -430,10 +410,8 @@ struct TileComponentWindowBuffer
 	 * @param offsety y offset of code block in canvas coordinates
 	 *
 	 */
-	void toRelativeCoordinates(uint8_t resno,
-								eBandOrientation orientation,
-								uint32_t& offsetx,
-								uint32_t& offsety) const
+	void toRelativeCoordinates(uint8_t resno, eBandOrientation orientation, uint32_t& offsetx,
+							   uint32_t& offsety) const
 	{
 		assert(resno < m_resolution.size());
 
@@ -467,11 +445,11 @@ struct TileComponentWindowBuffer
 	 *
 	 */
 	const grkBuffer2d<T, AllocatorAligned>*
-		getCodeBlockDestWindowREL(uint8_t resno,
-									eBandOrientation orientation) const
+		getCodeBlockDestWindowREL(uint8_t resno, eBandOrientation orientation) const
 	{
-		return (useBufferCoordinatesForCodeblock()) ? getResWindowBufferHighestREL()
-													: getBandWindowBufferPaddedREL(resno, orientation);
+		return (useBufferCoordinatesForCodeblock())
+				   ? getResWindowBufferHighestREL()
+				   : getBandWindowBufferPaddedREL(resno, orientation);
 	}
 	/**
 	 * Get padded band window buffer
@@ -482,8 +460,8 @@ struct TileComponentWindowBuffer
 	 * If resno is > 0, return LL,HL,LH or HH band window, otherwise return LL resolution window
 	 *
 	 */
-	const grkBuffer2d<T, AllocatorAligned>* getBandWindowBufferPaddedREL(uint8_t resno,
-															 eBandOrientation orientation) const
+	const grkBuffer2d<T, AllocatorAligned>*
+		getBandWindowBufferPaddedREL(uint8_t resno, eBandOrientation orientation) const
 	{
 		assert(resno < m_resolution.size());
 		assert(resno > 0 || orientation == BAND_ORIENT_LL);
@@ -512,8 +490,8 @@ struct TileComponentWindowBuffer
 	 *
 	 * @param orientation 0 for upper split window, and 1 for lower split window
 	 */
-	const grkBuffer2d<T, AllocatorAligned>* getResWindowBufferSplitREL(uint8_t resno,
-															  eSplitOrientation orientation) const
+	const grkBuffer2d<T, AllocatorAligned>*
+		getResWindowBufferSplitREL(uint8_t resno, eSplitOrientation orientation) const
 	{
 		assert(resno > 0 && resno < m_resolution.size());
 

@@ -79,7 +79,7 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 }
 bool T1DecompressScheduler::scheduleDecompress(TileCodingParams* tcp, uint16_t blockw,
 											   uint16_t blockh,
-											   std::vector<DecompressBlockExec*>* blocks        )
+											   std::vector<DecompressBlockExec*>* blocks)
 {
 	// nominal code block dimensions
 	uint16_t codeblock_width = (uint16_t)(blockw ? (uint32_t)1 << blockw : 0);

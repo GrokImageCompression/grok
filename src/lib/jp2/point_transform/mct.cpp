@@ -263,15 +263,15 @@ namespace HWY_NAMESPACE
 				float g = y - (u * 0.34413f) - (v * (0.71414f));
 				float b = y + (u * 1.772f);
 
-				c0[index] = std::clamp<int32_t>((int32_t)grk_lrintf(r) + shift[0], _min[0], _max[0]);
-				c1[index] = std::clamp<int32_t>((int32_t)grk_lrintf(g) + shift[1], _min[1], _max[1]);
-				c2[index] = std::clamp<int32_t>((int32_t)grk_lrintf(b) + shift[2], _min[2], _max[2]);
+				c0[index] =
+					std::clamp<int32_t>((int32_t)grk_lrintf(r) + shift[0], _min[0], _max[0]);
+				c1[index] =
+					std::clamp<int32_t>((int32_t)grk_lrintf(g) + shift[1], _min[1], _max[1]);
+				c2[index] =
+					std::clamp<int32_t>((int32_t)grk_lrintf(b) + shift[2], _min[2], _max[2]);
 			}
 		}
 	};
-
-
-
 
 	/**
 	 * Apply MCT with optional DC shift to reversible compressed image
@@ -415,7 +415,8 @@ namespace HWY_NAMESPACE
 	};
 
 	template<class T>
-	size_t vscheduler(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo, size_t numSamples)
+	size_t vscheduler(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo,
+					  size_t numSamples)
 	{
 		size_t i = 0;
 		size_t num_threads = ThreadPool::get()->num_threads();
@@ -452,13 +453,13 @@ namespace HWY_NAMESPACE
 	}
 
 	size_t hwy_compress_rev(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo,
-			  size_t n)
+							size_t n)
 	{
 		return vscheduler<CompressRev>(channels, shiftInfo, n);
 	}
 
 	size_t hwy_compress_irrev(std::vector<int32_t*> channels, std::vector<ShiftInfo> shiftInfo,
-			  size_t n)
+							  size_t n)
 	{
 		return vscheduler<CompressIrrev>(channels, shiftInfo, n);
 	}
@@ -500,16 +501,15 @@ HWY_EXPORT(hwy_decompress_irrev);
 HWY_EXPORT(hwy_decompress_dc_shift_irrev);
 HWY_EXPORT(hwy_decompress_dc_shift_rev);
 
-void mct::decompress_dc_shift_irrev(Tile* tile, GrkImage* image,
-									TileComponentCodingParams* tccps,
+void mct::decompress_dc_shift_irrev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps,
 									uint16_t compno)
 {
 	int32_t* GRK_RESTRICT c0 =
-		  tile->comps[compno].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
+		tile->comps[compno].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 	size_t n = (tile->comps + compno)->getBuffer()->stridedArea();
 	std::vector<ShiftInfo> shiftInfo;
 
-	genShift(compno, image,tccps,1,shiftInfo);
+	genShift(compno, image, tccps, 1, shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_decompress_dc_shift_irrev)({c0}, shiftInfo, n);
 }
 
@@ -527,22 +527,20 @@ void mct::decompress_irrev(Tile* tile, GrkImage* image, TileComponentCodingParam
 
 	hwy::DisableTargets(uint32_t(~HWY_SCALAR));
 
-	genShift(image,tccps,1,shiftInfo);
+	genShift(image, tccps, 1, shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_decompress_irrev)
-	({c0_i, c1_i, c2_i},
-	 shiftInfo,
-	 n);
+	({c0_i, c1_i, c2_i}, shiftInfo, n);
 }
 
 void mct::decompress_dc_shift_rev(Tile* tile, GrkImage* image, TileComponentCodingParams* tccps,
-		uint16_t compno)
+								  uint16_t compno)
 {
 	int32_t* GRK_RESTRICT c0 =
 		tile->comps[compno].getBuffer()->getResWindowBufferHighestREL()->getBuffer();
 	std::vector<ShiftInfo> shiftInfo;
 
 	size_t n = (tile->comps + compno)->getBuffer()->stridedArea();
-	genShift(compno, image,tccps,1,shiftInfo);
+	genShift(compno, image, tccps, 1, shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_decompress_dc_shift_rev)({c0}, shiftInfo, n);
 }
 
@@ -560,11 +558,9 @@ void mct::decompress_rev(Tile* tile, GrkImage* image, TileComponentCodingParams*
 	uint64_t n = tile->comps->getBuffer()->stridedArea();
 	std::vector<ShiftInfo> shiftInfo;
 
-	genShift(image,tccps,1,shiftInfo);
+	genShift(image, tccps, 1, shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_decompress_rev)
-	({c0, c1, c2},
-	 shiftInfo,
-	 n);
+	({c0, c1, c2}, shiftInfo, n);
 }
 /* <summary> */
 /* Forward reversible MCT. */
@@ -581,11 +577,9 @@ void mct::compress_rev(Tile* tile, GrkImage* image, TileComponentCodingParams* t
 	uint64_t n = tile->comps->getBuffer()->stridedArea();
 	std::vector<ShiftInfo> shiftInfo;
 
-	genShift(image,tccps,-1,shiftInfo);
+	genShift(image, tccps, -1, shiftInfo);
 	HWY_DYNAMIC_DISPATCH(hwy_compress_rev)
-	({c0, c1, c2},
-	 shiftInfo,
-	 n);
+	({c0, c1, c2}, shiftInfo, n);
 }
 /* <summary> */
 /* Forward irreversible MCT. */
@@ -602,21 +596,16 @@ void mct::compress_irrev(Tile* tile, GrkImage* image, TileComponentCodingParams*
 	uint64_t n = tile->comps->getBuffer()->stridedArea();
 	std::vector<ShiftInfo> shiftInfo;
 
-	genShift(image,tccps,-1,shiftInfo);
+	genShift(image, tccps, -1, shiftInfo);
 
 	HWY_DYNAMIC_DISPATCH(hwy_compress_irrev)
-	({c0, c1, c2},
-	 shiftInfo,
-	 n);
+	({c0, c1, c2}, shiftInfo, n);
 }
 
-void mct::genShift(uint16_t compno,
-					GrkImage* image,
-					TileComponentCodingParams* tccps,
-					int32_t sign,
-					std::vector<ShiftInfo> &shiftInfo){
-
-	int32_t _min,_max,shift;
+void mct::genShift(uint16_t compno, GrkImage* image, TileComponentCodingParams* tccps, int32_t sign,
+				   std::vector<ShiftInfo>& shiftInfo)
+{
+	int32_t _min, _max, shift;
 	auto img_comp = image->comps + compno;
 	if(img_comp->sgnd)
 	{
@@ -630,17 +619,14 @@ void mct::genShift(uint16_t compno,
 	}
 	auto tccp = tccps + compno;
 	shift = sign * tccp->m_dc_level_shift;
-	shiftInfo.push_back({_min,_max,shift});
+	shiftInfo.push_back({_min, _max, shift});
 }
-void mct::genShift(GrkImage* image,
-					TileComponentCodingParams* tccps,
-					int32_t sign,
-					std::vector<ShiftInfo> &shiftInfo){
-	for (uint16_t i = 0; i < 3; ++i)
-		genShift(i,image,tccps,sign,shiftInfo);
+void mct::genShift(GrkImage* image, TileComponentCodingParams* tccps, int32_t sign,
+				   std::vector<ShiftInfo>& shiftInfo)
+{
+	for(uint16_t i = 0; i < 3; ++i)
+		genShift(i, image, tccps, sign, shiftInfo);
 }
-
-
 
 void mct::calculate_norms(double* pNorms, uint16_t pNbComps, float* pMatrix)
 {

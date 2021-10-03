@@ -76,9 +76,8 @@ bool SOTMarker::write(TileProcessor* proc, uint32_t tileLength)
 	return true;
 }
 
-bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData,
-							   uint32_t headerSize, uint32_t* tilePartLength,
-							   uint8_t* tilePartIndex, uint8_t* numTileParts)
+bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint32_t headerSize,
+					 uint32_t* tilePartLength, uint8_t* tilePartIndex, uint8_t* numTileParts)
 {
 	assert(headerData != nullptr);
 	if(headerSize != sot_marker_segment_len - grk_marker_length)
@@ -119,8 +118,7 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	uint8_t currentTilePart;
 	uint32_t tile_x, tile_y;
 
-	if(!read(codeStream, headerData, header_size, &tilePartLength, &currentTilePart,
-					   &numTileParts))
+	if(!read(codeStream, headerData, header_size, &tilePartLength, &currentTilePart, &numTileParts))
 	{
 		GRK_ERROR("Error reading SOT marker");
 		return false;
@@ -145,7 +143,7 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	/* to avoid various issues, like grk_j2k_merge_ppt being called several times. */
 	/* ISO 15444-1 A.4.2 Start of tile-part (SOT) mandates that tile parts */
 	/* should appear in increasing order. */
-	if( uint8_t(tcp->m_tilePartIndexCounter + 1) != currentTilePart)
+	if(uint8_t(tcp->m_tilePartIndexCounter + 1) != currentTilePart)
 	{
 		GRK_ERROR("Invalid tile part index for tile number %u. "
 				  "Got %u, expected %u",
@@ -162,7 +160,8 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 		}
 		else
 		{
-			GRK_ERROR("Psot value is not correct regards to the JPEG2000 norm: %u.", tilePartLength);
+			GRK_ERROR("Psot value is not correct regards to the JPEG2000 norm: %u.",
+					  tilePartLength);
 			return false;
 		}
 	}
@@ -184,7 +183,7 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 	}
 
 	if(numTileParts != 0)
-	{   /* Number of tile-part header is provided by this tile-part header */
+	{ /* Number of tile-part header is provided by this tile-part header */
 		/* Useful to manage the case of textGBR.jp2 file because two values
 		 * of TNSot are allowed: the correct numbers of
 		 * tile-parts for that tile and zero (A.4.2 of 15444-1 : 2002). */
@@ -218,7 +217,8 @@ bool SOTMarker::read(CodeStreamDecompress* codeStream, uint8_t* headerData, uint
 
 	if(!codeStream->getDecompressorState()->lastTilePartInCodeStream)
 		/* Keep the size of data to skip after this marker */
-		codeStream->currentProcessor()->tilePartDataLength = tilePartLength - sot_marker_segment_len;
+		codeStream->currentProcessor()->tilePartDataLength =
+			tilePartLength - sot_marker_segment_len;
 	else
 		codeStream->currentProcessor()->tilePartDataLength = 0;
 	codeStream->getDecompressorState()->setState(DECOMPRESS_STATE_TPH);

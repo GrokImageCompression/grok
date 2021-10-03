@@ -32,8 +32,7 @@ class T1DecompressScheduler
 	bool decompress(std::vector<DecompressBlockExec*>* blocks);
 
 	bool prepareScheduleDecompress(TileComponent* tilec, TileComponentCodingParams* tccp,
-								   std::vector<DecompressBlockExec*>* blocks,
-								   uint8_t prec);
+								   std::vector<DecompressBlockExec*>* blocks, uint8_t prec);
 
 	bool scheduleDecompress(TileCodingParams* tcp, uint16_t blockw, uint16_t blockh,
 							std::vector<DecompressBlockExec*>* blocks);

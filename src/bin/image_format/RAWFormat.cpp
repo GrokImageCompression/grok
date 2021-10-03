@@ -28,8 +28,8 @@
 #include "common.h"
 
 template<typename T>
-static bool writeToFile(FILE* m_fileStream, bool bigEndian, int32_t* ptr, uint32_t w, uint32_t stride,
-				  uint32_t h, int32_t lower, int32_t upper)
+static bool writeToFile(FILE* m_fileStream, bool bigEndian, int32_t* ptr, uint32_t w,
+						uint32_t stride, uint32_t h, int32_t lower, int32_t upper)
 {
 	const size_t bufSize = 4096;
 	T buf[bufSize];
@@ -155,7 +155,8 @@ bool RAWFormat::encodeStrip(uint32_t rows)
 			if(sgnd)
 				rc = writeToFile<int16_t>(m_fileStream, bigEndian, ptr, w, stride, h, lower, upper);
 			else
-				rc = writeToFile<uint16_t>(m_fileStream, bigEndian, ptr, w, stride, h, lower, upper);
+				rc =
+					writeToFile<uint16_t>(m_fileStream, bigEndian, ptr, w, stride, h, lower, upper);
 			if(!rc)
 				spdlog::error("fimagetoraw: ailed to write bytes for {}", outfile);
 		}

@@ -493,7 +493,8 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 bool CodeStreamDecompress::endOfCodeStream(void)
 {
 	return m_decompressorState.getState() == DECOMPRESS_STATE_EOC ||
-		   m_decompressorState.getState() == DECOMPRESS_STATE_NO_EOC || m_stream->numBytesLeft() == 0;
+		   m_decompressorState.getState() == DECOMPRESS_STATE_NO_EOC ||
+		   m_stream->numBytesLeft() == 0;
 }
 bool CodeStreamDecompress::decompressTiles(void)
 {
@@ -693,7 +694,7 @@ bool CodeStreamDecompress::copy_default_tcp(void)
 	for(uint32_t i = 0; i < numTiles; ++i)
 	{
 		auto tcp = m_cp.tcps + i;
-		if (!tcp->copy(m_decompressorState.m_default_tcp, image))
+		if(!tcp->copy(m_decompressorState.m_default_tcp, image))
 			return false;
 	}
 
@@ -701,7 +702,7 @@ bool CodeStreamDecompress::copy_default_tcp(void)
 }
 void CodeStreamDecompress::addMarker(uint16_t id, uint64_t pos, uint32_t len)
 {
-	if (codeStreamInfo)
+	if(codeStreamInfo)
 		codeStreamInfo->pushMarker(id, pos, len);
 }
 uint16_t CodeStreamDecompress::getCurrentMarker()
@@ -766,9 +767,9 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 		{
 			if(!read_unk())
 				return false;
-		    if (m_curr_marker == J2K_MS_SOT)
-				 break;
-			 marker_handler = get_marker_handler(m_curr_marker);
+			if(m_curr_marker == J2K_MS_SOT)
+				break;
+			marker_handler = get_marker_handler(m_curr_marker);
 		}
 		if(marker_handler->id == J2K_MS_SIZ)
 			has_siz = true;
@@ -800,8 +801,7 @@ bool CodeStreamDecompress::readHeaderProcedureImpl(void)
 			return false;
 
 		/* Add the marker to the code stream index*/
-		addMarker(marker_handler->id, m_stream->tell() - marker_size - 4U,
-							marker_size + 4U);
+		addMarker(marker_handler->id, m_stream->tell() - marker_size - 4U, marker_size + 4U);
 		// read next marker
 		if(!readMarker())
 			return false;
@@ -1024,7 +1024,8 @@ const marker_handler* CodeStreamDecompress::get_marker_handler(uint16_t id)
 		return nullptr;
 	}
 }
-bool CodeStreamDecompress::readMarker(void){
+bool CodeStreamDecompress::readMarker(void)
+{
 	return readMarker(false);
 }
 bool CodeStreamDecompress::readMarker(bool suppressWarning)
@@ -1035,8 +1036,9 @@ bool CodeStreamDecompress::readMarker(bool suppressWarning)
 	/* Check if the current marker ID is valid */
 	if(m_curr_marker < 0xff00)
 	{
-		if (!suppressWarning)
-			GRK_WARN("marker ID 0x%.4x does not match JPEG 2000 marker format 0xffxx", m_curr_marker);
+		if(!suppressWarning)
+			GRK_WARN("marker ID 0x%.4x does not match JPEG 2000 marker format 0xffxx",
+					 m_curr_marker);
 		throw InvalidMarkerException(m_curr_marker);
 	}
 
@@ -1075,8 +1077,8 @@ bool CodeStreamDecompress::read_poc(uint8_t* headerData, uint16_t header_size)
 	currentNumProgressions += oldNumProgressions;
 	if(currentNumProgressions > GRK_J2K_MAXRLVLS)
 	{
-		GRK_ERROR("read_poc: number of progressions %u exceeds Grok maximum number %d", currentNumProgressions,
-				  GRK_J2K_MAXRLVLS);
+		GRK_ERROR("read_poc: number of progressions %u exceeds Grok maximum number %d",
+				  currentNumProgressions, GRK_J2K_MAXRLVLS);
 		return false;
 	}
 
@@ -2270,24 +2272,29 @@ bool CodeStreamDecompress::read_unk(void)
 	{
 		// keep reading potential markers until we either find the next one, or
 		// we reach the end of the stream
-		try {
-			if(!readMarker(true)){
+		try
+		{
+			if(!readMarker(true))
+			{
 				GRK_ERROR("Unable to read unknown marker 0x%02x.", unknownMarker);
 				return false;
 			}
-		} catch (InvalidMarkerException& ){
+		}
+		catch(InvalidMarkerException&)
+		{
 			size_unk += 2;
 			continue;
 		}
 		addMarker(unknownMarker, m_stream->tell() - 2 - size_unk, size_unk);
 		auto marker_handler = get_marker_handler(m_curr_marker);
 		// check if we need to process another unknown marker
-		if (!marker_handler){
+		if(!marker_handler)
+		{
 			size_unk = 2;
 			unknownMarker = m_curr_marker;
 			continue;
 		}
-		 // the next marker is known and located correctly
+		// the next marker is known and located correctly
 		break;
 	}
 

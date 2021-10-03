@@ -298,8 +298,8 @@ struct grkBuffer2d : private grkBuffer<T, A>, public grkRectU32
 	 */
 	bool isWindowValid(grkRectU32 win)
 	{
-		return !(win.x0 >= x1 || win.x1 <= x0 || win.x1 > x1 ||
-				 win.y0 >= y1 || win.y1 <= win.y0 || win.y1 > y1);
+		return !(win.x0 >= x1 || win.x1 <= x0 || win.x1 > x1 || win.y0 >= y1 || win.y1 <= win.y0 ||
+				 win.y1 > y1);
 	}
 
 	/** Read the contents of a rectangular window into a
@@ -312,14 +312,13 @@ struct grkBuffer2d : private grkBuffer<T, A>, public grkRectU32
 	 * @param dest_line_stride spacing (in elements, not in bytes) in y dimension between
 	 * consecutive elements of the user buffer.
 	 */
-	bool read(grkRectU32 window,
-				int32_t* dest,
-				 const uint32_t destColStride,
-				 const uint32_t destStride){
-		if (!isWindowValid(window))
+	bool read(grkRectU32 window, int32_t* dest, const uint32_t destColStride,
+			  const uint32_t destStride)
+	{
+		if(!isWindowValid(window))
 			return false;
 
-		//1. calculate overlap
+		// 1. calculate overlap
 
 		return true;
 	}
@@ -333,12 +332,10 @@ struct grkBuffer2d : private grkBuffer<T, A>, public grkRectU32
 	 * @param src_line_stride spacing (in elements, not in bytes) in y dimension between consecutive
 	 * elements of the user buffer.
 	 */
-	bool write(grkRectU32 window,
-				const int32_t* src,
-			   const uint32_t srcColStride,
-			   const uint32_t srcStride){
-
-		if (!isWindowValid(window))
+	bool write(grkRectU32 window, const int32_t* src, const uint32_t srcColStride,
+			   const uint32_t srcStride)
+	{
+		if(!isWindowValid(window))
 			return false;
 
 		return true;

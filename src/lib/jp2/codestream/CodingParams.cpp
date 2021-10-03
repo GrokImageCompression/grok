@@ -23,15 +23,15 @@
 
 namespace grk
 {
-
-CodingParams::CodingParams() : rsiz(0), pcap(0), tx0(0), ty0(0), t_width(0), t_height(0),
-								num_comments(0), t_grid_width(0), t_grid_height(0),
-								ppm_marker(nullptr), tcps(nullptr), tlm_markers(nullptr),
-								plm_markers(nullptr)
+CodingParams::CodingParams()
+	: rsiz(0), pcap(0), tx0(0), ty0(0), t_width(0), t_height(0), num_comments(0), t_grid_width(0),
+	  t_grid_height(0), ppm_marker(nullptr), tcps(nullptr), tlm_markers(nullptr),
+	  plm_markers(nullptr)
 {
 	memset(&m_coding_params, 0, sizeof(m_coding_params));
 }
-CodingParams::~CodingParams(){
+CodingParams::~CodingParams()
+{
 	delete[] tcps;
 	for(uint32_t i = 0; i < num_comments; ++i)
 		delete[]((uint8_t*)comment[i]);
@@ -62,15 +62,15 @@ grkRectU32 CodingParams::getTileBounds(const GrkImage* p_image, uint32_t tile_x,
 	return rc;
 }
 
-
 TileCodingParams::TileCodingParams()
 	: csty(0), prg(GRK_PROG_UNKNOWN), numlayers(0), numLayersToDecompress(0), mct(0), numpocs(0),
 	  ppt_markers_count(0), ppt_markers(nullptr), ppt_data(nullptr), ppt_buffer(nullptr),
 	  ppt_data_size(0), ppt_len(0), main_qcd_qntsty(0), main_qcd_numStepSizes(0), tccps(nullptr),
-	  m_tilePartIndexCounter(-1), m_numTileParts(0), m_compressedTileData(nullptr), mct_norms(nullptr),
-	  m_mct_decoding_matrix(nullptr), m_mct_coding_matrix(nullptr), m_mct_records(nullptr),
-	  m_nb_mct_records(0), m_nb_max_mct_records(0), m_mcc_records(nullptr), m_nb_mcc_records(0),
-	  m_nb_max_mcc_records(0), cod(false), ppt(false), m_qcd(nullptr), m_ht(false)
+	  m_tilePartIndexCounter(-1), m_numTileParts(0), m_compressedTileData(nullptr),
+	  mct_norms(nullptr), m_mct_decoding_matrix(nullptr), m_mct_coding_matrix(nullptr),
+	  m_mct_records(nullptr), m_nb_mct_records(0), m_nb_max_mct_records(0), m_mcc_records(nullptr),
+	  m_nb_mcc_records(0), m_nb_max_mcc_records(0), cod(false), ppt(false), m_qcd(nullptr),
+	  m_ht(false)
 {
 	for(auto i = 0; i < maxCompressLayersGRK; ++i)
 		rates[i] = 0.0;
@@ -109,12 +109,12 @@ TileCodingParams::~TileCodingParams()
 	delete m_qcd;
 }
 
-bool TileCodingParams::copy(const TileCodingParams *rhs, const GrkImage *image)
+bool TileCodingParams::copy(const TileCodingParams* rhs, const GrkImage* image)
 {
 	uint32_t tccp_size = image->numcomps * (uint32_t)sizeof(TileComponentCodingParams);
 	uint32_t mct_size = (uint32_t)image->numcomps * image->numcomps * (uint32_t)sizeof(float);
 
-	//cache tccps
+	// cache tccps
 	auto cachedTccps = tccps;
 	auto cachedQcd = m_qcd;
 	*this = *rhs;
@@ -142,8 +142,7 @@ bool TileCodingParams::copy(const TileCodingParams *rhs, const GrkImage *image)
 	}
 
 	/* Get the mct_record of the dflt_tile_cp and copy them into the current tile cp*/
-	uint32_t mct_records_size =
-		rhs->m_nb_max_mct_records * (uint32_t)sizeof(grk_mct_data);
+	uint32_t mct_records_size = rhs->m_nb_max_mct_records * (uint32_t)sizeof(grk_mct_data);
 	m_mct_records = (grk_mct_data*)grkMalloc(mct_records_size);
 	if(!m_mct_records)
 		return false;
@@ -182,14 +181,12 @@ bool TileCodingParams::copy(const TileCodingParams *rhs, const GrkImage *image)
 		auto dest_mcc_rec = m_mcc_records + j;
 		if(src_mcc_rec->m_decorrelation_array)
 		{
-			uint32_t offset =
-				(uint32_t)(src_mcc_rec->m_decorrelation_array - rhs->m_mct_records);
+			uint32_t offset = (uint32_t)(src_mcc_rec->m_decorrelation_array - rhs->m_mct_records);
 			dest_mcc_rec->m_decorrelation_array = m_mct_records + offset;
 		}
 		if(src_mcc_rec->m_offset_array)
 		{
-			uint32_t offset =
-				(uint32_t)(src_mcc_rec->m_offset_array - rhs->m_mct_records);
+			uint32_t offset = (uint32_t)(src_mcc_rec->m_offset_array - rhs->m_mct_records);
 			dest_mcc_rec->m_offset_array = m_mct_records + offset;
 		}
 	}
@@ -201,7 +198,7 @@ bool TileCodingParams::copy(const TileCodingParams *rhs, const GrkImage *image)
 void TileCodingParams::setIsHT(bool ht, bool reversible, uint8_t guardBits)
 {
 	m_ht = ht;
-	if (!m_qcd)
+	if(!m_qcd)
 		m_qcd = T1Factory::makeQuantizer(ht, reversible, guardBits);
 }
 
@@ -209,10 +206,12 @@ bool TileCodingParams::isHT(void)
 {
 	return m_ht;
 }
-uint32_t TileCodingParams::getNumProgressions(){
-	return numpocs+1;
+uint32_t TileCodingParams::getNumProgressions()
+{
+	return numpocs + 1;
 }
-bool TileCodingParams::hasPoc(void){
+bool TileCodingParams::hasPoc(void)
+{
 	return numpocs > 0;
 }
 TileComponentCodingParams::TileComponentCodingParams()

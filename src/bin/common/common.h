@@ -189,7 +189,6 @@ inline bool writeBytes(T val, T* buf, T** outPtr, size_t* outCount, size_t len, 
 	return true;
 }
 
-
 uint32_t uint_adds(uint32_t a, uint32_t b);
 bool allComponentsSanityCheck(grk_image* image, bool equalPrecision);
 bool isSubsampled(grk_image* image);

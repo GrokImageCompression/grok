@@ -92,9 +92,9 @@ void tiffSetErrorAndWarningHandlers(bool verbose)
 	TIFFSetWarningHandler(MyTiffWarningHandler);
 }
 
-static bool readTiffPixels(TIFF* tif, grk_image_comp* comps, uint32_t numcomps,
-								   uint16_t tiSpp, uint16_t tiPC, uint16_t tiPhoto,
-								   uint32_t chroma_subsample_x, uint32_t chroma_subsample_y);
+static bool readTiffPixels(TIFF* tif, grk_image_comp* comps, uint32_t numcomps, uint16_t tiSpp,
+						   uint16_t tiPC, uint16_t tiPhoto, uint32_t chroma_subsample_x,
+						   uint32_t chroma_subsample_y);
 
 static std::string getSampleFormatString(uint16_t tiSampleFormat)
 {
@@ -194,9 +194,9 @@ static void set_resolution(double* res, float resx, float resy, short resUnit)
 	}
 }
 
-static bool readTiffPixels(TIFF* tif, grk_image_comp* comps, uint32_t numcomps,
-								   uint16_t tiSpp, uint16_t tiPC, uint16_t tiPhoto,
-								   uint32_t chroma_subsample_x, uint32_t chroma_subsample_y)
+static bool readTiffPixels(TIFF* tif, grk_image_comp* comps, uint32_t numcomps, uint16_t tiSpp,
+						   uint16_t tiPC, uint16_t tiPhoto, uint32_t chroma_subsample_x,
+						   uint32_t chroma_subsample_y)
 {
 	if(!tif)
 		return false;
@@ -1004,7 +1004,8 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	// check sample format
 	if(hasTiSf && tiSf != SAMPLEFORMAT_UINT && tiSf != SAMPLEFORMAT_INT)
 	{
-		spdlog::error("TIFFFormat::decode: Unsupported sample format: {}.", getSampleFormatString(tiSf));
+		spdlog::error("TIFFFormat::decode: Unsupported sample format: {}.",
+					  getSampleFormatString(tiSf));
 		goto cleanup;
 	}
 	if(tiSpp == 0)
@@ -1014,7 +1015,8 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	}
 	if(tiBps > 16U || tiBps == 0)
 	{
-		spdlog::error("TIFFFormat::decode: Unsupported precision {}. Maximum 16 Bits supported.", tiBps);
+		spdlog::error("TIFFFormat::decode: Unsupported precision {}. Maximum 16 Bits supported.",
+					  tiBps);
 		goto cleanup;
 	}
 	if(tiWidth == 0 || tiHeight == 0)
@@ -1088,16 +1090,16 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 			{
 				if(isSigned)
 				{
-					spdlog::error(
-						"TIFFFormat::decode: chroma subsampling {},{} with signed data is not supported",
-						chroma_subsample_x, chroma_subsample_y);
+					spdlog::error("TIFFFormat::decode: chroma subsampling {},{} with signed data "
+								  "is not supported",
+								  chroma_subsample_x, chroma_subsample_y);
 					goto cleanup;
 				}
 				if(numcomps != 3)
 				{
-					spdlog::error(
-						"TIFFFormat::decode: chroma subsampling {},{} with alpha channel(s) not supported",
-						chroma_subsample_x, chroma_subsample_y);
+					spdlog::error("TIFFFormat::decode: chroma subsampling {},{} with alpha "
+								  "channel(s) not supported",
+								  chroma_subsample_x, chroma_subsample_y);
 					goto cleanup;
 				}
 			}
@@ -1234,7 +1236,8 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 			{
 				if(found_assocalpha)
 				{
-					spdlog::warn("TIFFFormat::decode: Found more than one associated alpha channel");
+					spdlog::warn(
+						"TIFFFormat::decode: Found more than one associated alpha channel");
 				}
 				alpha_count++;
 				comp->type = GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
@@ -1277,7 +1280,8 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 		comp->sgnd = isSigned;
 	}
 
-	if (needSignedPixelReader && grk::isSubsampled(image)){
+	if(needSignedPixelReader && grk::isSubsampled(image))
+	{
 		spdlog::error("TIFF: subsampling not supported for signed 8 and 16 bit images");
 		goto cleanup;
 	}
@@ -1304,7 +1308,8 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 			if(grk::validate_icc(color_space, iccbuf, icclen))
 				grk::copy_icc(image, iccbuf, icclen);
 			else
-				spdlog::warn("TIFFFormat::decode: ICC profile does not match underlying colour space. Ignoring");
+				spdlog::warn("TIFFFormat::decode: ICC profile does not match underlying colour "
+							 "space. Ignoring");
 		}
 	}
 	// 7. extract IPTC meta-data
@@ -1338,7 +1343,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	else
 	{
 		success = readTiffPixels(tif, image->comps, numcomps, tiSpp, tiPC, tiPhoto,
-										 chroma_subsample_x, chroma_subsample_y);
+								 chroma_subsample_x, chroma_subsample_y);
 	}
 cleanup:
 	if(tif)
@@ -1531,27 +1536,34 @@ static void convert_tif_10sto32s(const uint8_t* pSrc, int32_t* pDst, size_t leng
 		uint32_t val3 = *pSrc++;
 		uint32_t val4 = *pSrc++;
 
-		pDst[i + 0] = sign_extend(INV((int32_t)((val0 << 2) | (val1 >> 6)), INV_MASK_10, invert),32-10);
-		pDst[i + 1] = sign_extend(INV((int32_t)(((val1 & 0x3FU) << 4) | (val2 >> 4)), INV_MASK_10, invert),32-10);
-		pDst[i + 2] = sign_extend(INV((int32_t)(((val2 & 0xFU) << 6) | (val3 >> 2)), INV_MASK_10, invert),32-10);
-		pDst[i + 3] = sign_extend(INV((int32_t)(((val3 & 0x3U) << 8) | val4), INV_MASK_10, invert),32-10);
+		pDst[i + 0] =
+			sign_extend(INV((int32_t)((val0 << 2) | (val1 >> 6)), INV_MASK_10, invert), 32 - 10);
+		pDst[i + 1] = sign_extend(
+			INV((int32_t)(((val1 & 0x3FU) << 4) | (val2 >> 4)), INV_MASK_10, invert), 32 - 10);
+		pDst[i + 2] = sign_extend(
+			INV((int32_t)(((val2 & 0xFU) << 6) | (val3 >> 2)), INV_MASK_10, invert), 32 - 10);
+		pDst[i + 3] =
+			sign_extend(INV((int32_t)(((val3 & 0x3U) << 8) | val4), INV_MASK_10, invert), 32 - 10);
 	}
 	if(length & 3U)
 	{
 		uint32_t val0 = *pSrc++;
 		uint32_t val1 = *pSrc++;
 		length = length & 3U;
-		pDst[i + 0] = sign_extend(INV((int32_t)((val0 << 2) | (val1 >> 6)), INV_MASK_10, invert),32-10);
+		pDst[i + 0] =
+			sign_extend(INV((int32_t)((val0 << 2) | (val1 >> 6)), INV_MASK_10, invert), 32 - 10);
 
 		if(length > 1U)
 		{
 			uint32_t val2 = *pSrc++;
-			pDst[i + 1] = sign_extend(INV((int32_t)(((val1 & 0x3FU) << 4) | (val2 >> 4)), INV_MASK_10, invert),32-10);
+			pDst[i + 1] = sign_extend(
+				INV((int32_t)(((val1 & 0x3FU) << 4) | (val2 >> 4)), INV_MASK_10, invert), 32 - 10);
 			if(length > 2U)
 			{
 				uint32_t val3 = *pSrc++;
-				pDst[i + 2] =
-						sign_extend(INV((int32_t)(((val2 & 0xFU) << 6) | (val3 >> 2)), INV_MASK_10, invert),32-10);
+				pDst[i + 2] = sign_extend(
+					INV((int32_t)(((val2 & 0xFU) << 6) | (val3 >> 2)), INV_MASK_10, invert),
+					32 - 10);
 			}
 		}
 	}
@@ -1640,14 +1652,17 @@ static void convert_tif_12sto32s(const uint8_t* pSrc, int32_t* pDst, size_t leng
 		uint32_t val1 = *pSrc++;
 		uint32_t val2 = *pSrc++;
 
-		pDst[i + 0] = sign_extend(INV((int32_t)((val0 << 4) | (val1 >> 4)), INV_MASK_12, invert), 32 - 12);
-		pDst[i + 1] = sign_extend(INV((int32_t)(((val1 & 0xFU) << 8) | val2), INV_MASK_12, invert), 32 - 12);
+		pDst[i + 0] =
+			sign_extend(INV((int32_t)((val0 << 4) | (val1 >> 4)), INV_MASK_12, invert), 32 - 12);
+		pDst[i + 1] =
+			sign_extend(INV((int32_t)(((val1 & 0xFU) << 8) | val2), INV_MASK_12, invert), 32 - 12);
 	}
 	if(length & 1U)
 	{
 		uint32_t val0 = *pSrc++;
 		uint32_t val1 = *pSrc++;
-		pDst[i + 0] = sign_extend(INV((int32_t)((val0 << 4) | (val1 >> 4)), INV_MASK_12, invert), 32 - 12);
+		pDst[i + 0] =
+			sign_extend(INV((int32_t)((val0 << 4) | (val1 >> 4)), INV_MASK_12, invert), 32 - 12);
 	}
 }
 static void convert_tif_12uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)

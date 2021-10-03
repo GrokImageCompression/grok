@@ -307,8 +307,8 @@ class CodeStreamCompress : public CodeStream, public ICodeStreamCompress
 	 *
 	 * @return      true if the pocs are valid.
 	 */
-	bool validateProgressionOrders(const grk_progression* progressions, uint32_t numProgressions, uint8_t numResolutions,
-					   uint16_t numcomps, uint16_t numlayers);
+	bool validateProgressionOrders(const grk_progression* progressions, uint32_t numProgressions,
+								   uint8_t numResolutions, uint16_t numcomps, uint16_t numlayers);
 
 	bool init_mct_encoding(TileCodingParams* p_tcp, GrkImage* p_image);
 

@@ -68,8 +68,8 @@ void TileComponent::deallocBuffers(void)
  *
  */
 bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreducedTileComp,
-						 uint8_t prec, CodingParams* cp,
-						 TileComponentCodingParams* tccp, grk_plugin_tile* current_plugin_tile)
+						 uint8_t prec, CodingParams* cp, TileComponentCodingParams* tccp,
+						 grk_plugin_tile* current_plugin_tile)
 {
 	m_is_encoder = isCompressor;
 	wholeTileDecompress = whole_tile;
@@ -87,8 +87,8 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreduce
 	{
 		auto res = tileCompResolution + resno;
 
-		res->set(ResWindowBuffer<int32_t>::getBandWindow(
-			(uint32_t)(numresolutions - (resno + 1)), BAND_ORIENT_LL, unreducedTileComp));
+		res->set(ResWindowBuffer<int32_t>::getBandWindow((uint32_t)(numresolutions - (resno + 1)),
+														 BAND_ORIENT_LL, unreducedTileComp));
 
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
 		uint32_t precinctWidthExp = m_tccp->precinctWidthExp[resno];
@@ -140,7 +140,7 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreduce
 			uint32_t numDecomps =
 				(resno == 0) ? (uint32_t)(numresolutions - 1U) : (uint32_t)(numresolutions - resno);
 			band->set(ResWindowBuffer<int32_t>::getBandWindow(numDecomps, band->orientation,
-																	  unreducedTileComp));
+															  unreducedTileComp));
 		}
 	}
 	// set band step size
@@ -156,20 +156,21 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreduce
 			/* the test (!isEncoder && l_tccp->qmfbid == 0) is strongly */
 			/* linked to the use of two_invK instead of invK */
 			const uint32_t log2_gain = (!m_is_encoder && tccp->qmfbid == 0) ? 0
-									   : (band->orientation == 0)		? 0
-									   : (band->orientation == 3)		? 2
-																		: 1;
+									   : (band->orientation == 0)			? 0
+									   : (band->orientation == 3)			? 2
+																			: 1;
 			uint32_t numbps = prec + log2_gain;
 			auto offset = (resno == 0) ? 0 : 3 * resno - 2;
 			auto step_size = tccp->stepsizes + offset + bandIndex;
-			band->stepsize =
-				(float)(((1.0 + step_size->mant / 2048.0) * pow(2.0, (int32_t)(numbps - step_size->expn))));
+			band->stepsize = (float)(((1.0 + step_size->mant / 2048.0) *
+									  pow(2.0, (int32_t)(numbps - step_size->expn))));
 			// printf("res=%d, band=%d, mant=%d,expn=%d, numbps=%d, step size=
-			// %f\n",resno,band->orientation,step_size->mant,step_size->expn,numbps, band->stepsize);
+			// %f\n",resno,band->orientation,step_size->mant,step_size->expn,numbps,
+			// band->stepsize);
 
 			// see Taubman + Marcellin - Equation 10.22
-			band->numbps = tccp->roishift +
-						   (uint8_t)std::max<int8_t>(0, int8_t(step_size->expn + tccp->numgbits - 1U));
+			band->numbps = tccp->roishift + (uint8_t)std::max<int8_t>(
+												0, int8_t(step_size->expn + tccp->numgbits - 1U));
 			// assert(band->numbps <= maxBitPlanesGRK);
 		}
 	}
@@ -194,7 +195,7 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 	grkRectU32 temp(0, 0, 0, 0);
 	bool first = true;
 
-	//1. find outside bounds of all relevant code blocks, in relative coordinates
+	// 1. find outside bounds of all relevant code blocks, in relative coordinates
 	for(uint8_t resno = 0; resno < numres; ++resno)
 	{
 		auto res = &tileCompResolution[resno];
@@ -254,11 +255,11 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 		}
 	}
 
-	//2. create (padded) sparse canvas, in buffer space,
+	// 2. create (padded) sparse canvas, in buffer space,
 	temp.grow(5);
 	auto sa = new SparseCanvas<6, 6>(temp);
 
-	//3. allocate sparse blocks
+	// 3. allocate sparse blocks
 	for(uint8_t resno = 0; resno < numres; ++resno)
 	{
 		auto res = &tileCompResolution[resno];
@@ -313,7 +314,6 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 			}
 		}
 	}
-
 
 	if(m_sa)
 		delete m_sa;
@@ -380,16 +380,20 @@ bool TileComponent::postProcessHT(int32_t* srcData, DecompressBlockExec* block, 
 	if(block->roishift)
 	{
 		if(block->qmfbid == 1)
-			return postDecompressImpl<openhtj2k::RoiShiftOpenHTJ2KFilter<int32_t>>(srcData, block, stride);
+			return postDecompressImpl<openhtj2k::RoiShiftOpenHTJ2KFilter<int32_t>>(srcData, block,
+																				   stride);
 		else
-			return postDecompressImpl<openhtj2k::RoiScaleOpenHTJ2KFilter<int32_t>>(srcData, block, stride);
+			return postDecompressImpl<openhtj2k::RoiScaleOpenHTJ2KFilter<int32_t>>(srcData, block,
+																				   stride);
 	}
 	else
 	{
 		if(block->qmfbid == 1)
-			return postDecompressImpl<openhtj2k::ShiftOpenHTJ2KFilter<int32_t>>(srcData, block, stride);
+			return postDecompressImpl<openhtj2k::ShiftOpenHTJ2KFilter<int32_t>>(srcData, block,
+																				stride);
 		else
-			return postDecompressImpl<openhtj2k::ScaleOpenHTJ2KFilter<int32_t>>(srcData, block, stride);
+			return postDecompressImpl<openhtj2k::ScaleOpenHTJ2KFilter<int32_t>>(srcData, block,
+																				stride);
 	}
 #else
 	if(block->roishift)

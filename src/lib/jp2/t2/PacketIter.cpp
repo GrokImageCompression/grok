@@ -239,17 +239,19 @@ bool PacketIter::next_rpcl(void)
 		// if all remaining components have degenerate precinct grid, then
 		// skip this resolution
 		bool sane = false;
-		for(uint16_t compnoTmp = compno; compnoTmp < prog.compE; compnoTmp++) {
+		for(uint16_t compnoTmp = compno; compnoTmp < prog.compE; compnoTmp++)
+		{
 			auto comp = comps + compnoTmp;
 			if(resno >= comp->numresolutions)
 				continue;
 			auto res = comp->resolutions + resno;
-			if(res->precinctGridWidth > 0 && res->precinctGridHeight > 0){
+			if(res->precinctGridWidth > 0 && res->precinctGridHeight > 0)
+			{
 				sane = true;
 				break;
 			}
 		}
-		if (!sane)
+		if(!sane)
 			continue;
 
 		for(; y < prog.ty1; y += dy - (y % dy))

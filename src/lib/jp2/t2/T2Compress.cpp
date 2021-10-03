@@ -24,8 +24,7 @@
 
 namespace grk
 {
-T2Compress::T2Compress(TileProcessor* tileProc) : tileProcessor(tileProc) {
-}
+T2Compress::T2Compress(TileProcessor* tileProc) : tileProcessor(tileProc) {}
 bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers, IBufferedStream* stream,
 								 uint32_t* tileBytesWritten, bool first_poc_tile_part,
 								 uint32_t newTilePartProgressionPosition, uint32_t pino)
@@ -54,7 +53,7 @@ bool T2Compress::compressPackets(uint16_t tile_no, uint16_t max_layers, IBuffere
 			tilePtr->numProcessedPackets++;
 		}
 	}
-	//if (tile_no == 3)
+	// if (tile_no == 3)
 	//	GRK_INFO("Tile %d : compressed packet bytes %d", tile_no, *tileBytesWritten);
 
 	return true;
@@ -97,8 +96,8 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 				if(current_pi->layno < max_layers)
 				{
 					uint32_t bytesInPacket = 0;
-					if(!compressPacketSimulate(tcp, current_pi, &bytesInPacket,
-							maxBytes, markers, finalSimulation))
+					if(!compressPacketSimulate(tcp, current_pi, &bytesInPacket, maxBytes, markers,
+											   finalSimulation))
 						return false;
 
 					componentBytes += bytesInPacket;
@@ -112,16 +111,13 @@ bool T2Compress::compressPacketsSimulate(uint16_t tile_no, uint16_t max_layers,
 			}
 		}
 	}
-	//if (finalSimulation && tile_no == 3)
+	// if (finalSimulation && tile_no == 3)
 	//	GRK_INFO("Tile %d : simulated compressed packet bytes %d", tile_no, *allPacketBytes);
 
 	return true;
 }
 
-bool T2Compress::compressHeader(BitIO* bio,
-								Resolution* res,
-								uint16_t layno,
-								uint64_t precinctIndex)
+bool T2Compress::compressHeader(BitIO* bio, Resolution* res, uint16_t layno, uint64_t precinctIndex)
 {
 	if(layno == 0)
 	{
@@ -151,7 +147,8 @@ bool T2Compress::compressHeader(BitIO* bio,
 				cblk->numPassesInPacket = 0;
 				assert(band->numbps >= cblk->numbps);
 				if(cblk->numbps > band->numbps)
-					GRK_WARN("Code block %u bps %d greater than band bps %d. Skipping.", cblkno, cblk->numbps, band->numbps);
+					GRK_WARN("Code block %u bps %d greater than band bps %d. Skipping.", cblkno,
+							 cblk->numbps, band->numbps);
 				else
 					prc->getImsbTree()->setvalue(cblkno, band->numbps - cblk->numbps);
 			}
@@ -190,7 +187,7 @@ bool T2Compress::compressHeader(BitIO* bio,
 			/* cblk inclusion bits */
 			if(!cblk->numPassesInPacket)
 			{
-				if (!prc->getInclTree()->compress(bio, cblkno, layno + 1))
+				if(!prc->getInclTree()->compress(bio, cblkno, layno + 1))
 					return false;
 			}
 			else
@@ -208,12 +205,12 @@ bool T2Compress::compressHeader(BitIO* bio,
 			if(!cblk->numPassesInPacket)
 			{
 				cblk->numlenbits = 3;
-				if (!prc->getImsbTree()->compress(bio, cblkno,
-													   prc->getImsbTree()->getUninitializedValue()))
+				if(!prc->getImsbTree()->compress(bio, cblkno,
+												 prc->getImsbTree()->getUninitializedValue()))
 					return false;
 			}
 			/* number of coding passes included */
-			if (!bio->putnumpasses(layer->numpasses))
+			if(!bio->putnumpasses(layer->numpasses))
 				return false;
 			uint32_t nb_passes = cblk->numPassesInPacket + layer->numpasses;
 			auto pass = cblk->passes + cblk->numPassesInPacket;
@@ -234,7 +231,7 @@ bool T2Compress::compressHeader(BitIO* bio,
 				}
 				++pass;
 			}
-			if (!bio->putcommacode(increment))
+			if(!bio->putcommacode(increment))
 				return false;
 			/* computation of the new Length indicator */
 			cblk->numlenbits += increment;
@@ -265,9 +262,7 @@ bool T2Compress::compressHeader(BitIO* bio,
 
 	return true;
 }
-bool T2Compress::compressPacket(TileCodingParams* tcp,
-								PacketIter* pi,
-								IBufferedStream* stream,
+bool T2Compress::compressPacket(TileCodingParams* tcp, PacketIter* pi, IBufferedStream* stream,
 								uint32_t* packet_bytes_written)
 {
 	assert(stream);
@@ -332,7 +327,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp,
 			return false;
 	}
 
-	//if (tileProcessor->m_tileIndex == 3)
+	// if (tileProcessor->m_tileIndex == 3)
 	//	GRK_INFO("Tile %d:  packet header length: %d for layer %d",
 	//			tileProcessor->m_tileIndex, stream->tell() - stream_start,layno);
 
@@ -360,7 +355,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp,
 	}
 	*packet_bytes_written += (uint32_t)(stream->tell() - stream_start);
 
-	//if (tileProcessor->m_tileIndex == 3)
+	// if (tileProcessor->m_tileIndex == 3)
 	//	GRK_INFO("Tile %d : written packet length: %d for layer %d",
 	//			tileProcessor->m_tileIndex, *packet_bytes_written,layno);
 	return true;
@@ -368,8 +363,7 @@ bool T2Compress::compressPacket(TileCodingParams* tcp,
 
 bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 										uint32_t* packet_bytes_written,
-										uint32_t max_bytes_available,
-										PacketLengthMarkers* markers,
+										uint32_t max_bytes_available, PacketLengthMarkers* markers,
 										bool finalSimulation)
 {
 	GRK_UNUSED(finalSimulation);
@@ -400,7 +394,7 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 #endif
 	if(tcp->csty & J2K_CP_CSTY_SOP)
 	{
-		if (max_bytes_available < 6)
+		if(max_bytes_available < 6)
 			return false;
 		if(max_bytes_available != UINT_MAX)
 			max_bytes_available -= 6;
@@ -417,13 +411,13 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 		max_bytes_available -= (uint32_t)bio->numBytes();
 	if(tcp->csty & J2K_CP_CSTY_EPH)
 	{
-		if (max_bytes_available < 2)
+		if(max_bytes_available < 2)
 			return false;
 		if(max_bytes_available != UINT_MAX)
 			max_bytes_available -= 2;
 		byteCount += 2;
 	}
-	//if (finalSimulation && tileProcessor->m_tileIndex == 3 && byteCount == 553)
+	// if (finalSimulation && tileProcessor->m_tileIndex == 3 && byteCount == 553)
 	//	GRK_INFO("Tile %d, simulated packet header length: %d for layer %d",
 	//			tileProcessor->m_tileIndex, byteCount,layno);
 	/* Writing the packet body */
@@ -461,7 +455,7 @@ bool T2Compress::compressPacketSimulate(TileCodingParams* tcp, PacketIter* pi,
 
 	// if (max_bytes_available == UINT_MAX)
 	//	GRK_INFO("Simulated packet bytes %d for layer %d", *packet_bytes_written,layno);
-	//if (finalSimulation && tileProcessor->m_tileIndex == 3)
+	// if (finalSimulation && tileProcessor->m_tileIndex == 3)
 	//	GRK_INFO("Tile %d : simulated packet length: %d for layer %d",
 	//			tileProcessor->m_tileIndex, *packet_bytes_written,layno);
 

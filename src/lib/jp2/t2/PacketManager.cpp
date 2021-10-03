@@ -156,15 +156,15 @@ void PacketManager::init(TileCodingParams* tcp, uint8_t max_res, uint64_t max_pr
 		auto current_poc = tcp->progressionOrderChange + pino;
 		auto cur_pi_prog = &cur_pi->prog;
 
-		cur_pi_prog->progression =
-			poc ? current_poc->progression : tcp->prg;
+		cur_pi_prog->progression = poc ? current_poc->progression : tcp->prg;
 		cur_pi_prog->layS = 0;
-		cur_pi_prog->layE = poc ? std::min<uint16_t>(current_poc->layE, tcp->numlayers)
-								: tcp->numlayers;
+		cur_pi_prog->layE =
+			poc ? std::min<uint16_t>(current_poc->layE, tcp->numlayers) : tcp->numlayers;
 		cur_pi_prog->resS = poc ? current_poc->resS : 0;
 		cur_pi_prog->resE = poc ? current_poc->resE : max_res;
 		cur_pi_prog->compS = poc ? current_poc->compS : 0;
-		cur_pi_prog->compE = std::min<uint16_t>(poc ? current_poc->compE : cur_pi->numcomps, image->numcomps);
+		cur_pi_prog->compE =
+			std::min<uint16_t>(poc ? current_poc->compE : cur_pi->numcomps, image->numcomps);
 		cur_pi_prog->precS = 0;
 		cur_pi_prog->precE = max_precincts;
 	}

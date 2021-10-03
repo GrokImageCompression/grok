@@ -21,12 +21,10 @@
 
 #include "grk_includes.h"
 
-
 namespace grk
 {
-
-Quantizer::Quantizer(bool reversible,uint8_t guard_bits) : Sqcd((uint8_t)(guard_bits << 5)),
-												num_decomps(0), isReversible(reversible)
+Quantizer::Quantizer(bool reversible, uint8_t guard_bits)
+	: Sqcd((uint8_t)(guard_bits << 5)), num_decomps(0), isReversible(reversible)
 {
 	memset(u8_SPqcd, 0, GRK_J2K_MAXBANDS);
 	memset(u16_SPqcd, 0, GRK_J2K_MAXBANDS * sizeof(short));
@@ -79,8 +77,8 @@ void Quantizer::push(grk_stepsize* stepptr)
 			u16_SPqcd[bn] = (uint16_t)((step->expn << 11) + step->mant);
 	}
 }
-void Quantizer::generate(uint32_t decomps,
-						 uint32_t max_bit_depth, bool color_transform, bool is_signed)
+void Quantizer::generate(uint32_t decomps, uint32_t max_bit_depth, bool color_transform,
+						 bool is_signed)
 {
 	GRK_UNUSED(color_transform);
 	GRK_UNUSED(is_signed);
@@ -93,9 +91,8 @@ void Quantizer::generate(uint32_t decomps,
 		uint32_t resno = (bandno == 0) ? 0 : ((bandno - 1) / 3 + 1);
 		uint8_t orient = (uint8_t)((bandno == 0) ? 0 : ((bandno - 1) % 3 + 1));
 		uint32_t level = numresolutions - 1 - resno;
-		uint32_t gain = (!isReversible)
-							? 0
-							: ((orient == 0) ? 0 : (((orient == 1) || (orient == 2)) ? 1 : 2));
+		uint32_t gain =
+			(!isReversible) ? 0 : ((orient == 0) ? 0 : (((orient == 1) || (orient == 2)) ? 1 : 2));
 
 		double stepsize = 1.0;
 		if(!isReversible)
@@ -115,10 +112,11 @@ void Quantizer::generate(uint32_t decomps,
 }
 
 // no-op
-bool Quantizer::write(IBufferedStream *stream){
+bool Quantizer::write(IBufferedStream* stream)
+{
 	GRK_UNUSED(stream);
 
 	return true;
 }
 
-}
+} // namespace grk

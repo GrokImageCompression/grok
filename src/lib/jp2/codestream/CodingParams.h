@@ -123,7 +123,7 @@ struct TileCodingParams
 	TileCodingParams();
 	~TileCodingParams();
 
-	bool copy(const TileCodingParams* rhs, const GrkImage *image);
+	bool copy(const TileCodingParams* rhs, const GrkImage* image);
 	void setIsHT(bool ht, bool reversible, uint8_t guardBits);
 	bool isHT(void);
 	uint32_t getNumProgressions(void);
@@ -196,7 +196,8 @@ struct TileCodingParams
 	bool cod;
 	/** If ppt == true --> there was a PPT marker for the present tile */
 	bool ppt;
-	Quantizer *m_qcd;
+	Quantizer* m_qcd;
+
   private:
 	bool m_ht;
 };
@@ -285,18 +286,18 @@ struct CodingParams
  * */
 enum DECOMPRESS_STATE
 {
-	DECOMPRESS_STATE_NONE 		= 0x0000, /**< no decompress state */
-	DECOMPRESS_STATE_MH_SOC 	= 0x0001, /**< a SOC marker is expected */
-	DECOMPRESS_STATE_MH_SIZ 	= 0x0002, /**< a SIZ marker is expected */
-	DECOMPRESS_STATE_MH 		= 0x0004, /**< the decoding process is in the main header */
-	DECOMPRESS_STATE_TPH 		= 0x0008, /**< the decoding process is in a tile part header */
-	DECOMPRESS_STATE_TPH_SOT 	= 0x0010, /**< the decoding process is in a tile part header
-										 and expects a SOT marker */
-	DECOMPRESS_STATE_DATA 		= 0x0020, /**< the decoding process is expecting
-									  to read tile data from the code stream */
-	DECOMPRESS_STATE_EOC 		= 0x0040, /**< the decoding process has encountered the EOC marker */
-	DECOMPRESS_STATE_NO_EOC 	= 0x0080, /**< the decoding process must not expect a EOC marker
-										because the code stream is truncated */
+	DECOMPRESS_STATE_NONE = 0x0000, /**< no decompress state */
+	DECOMPRESS_STATE_MH_SOC = 0x0001, /**< a SOC marker is expected */
+	DECOMPRESS_STATE_MH_SIZ = 0x0002, /**< a SIZ marker is expected */
+	DECOMPRESS_STATE_MH = 0x0004, /**< the decoding process is in the main header */
+	DECOMPRESS_STATE_TPH = 0x0008, /**< the decoding process is in a tile part header */
+	DECOMPRESS_STATE_TPH_SOT = 0x0010, /**< the decoding process is in a tile part header
+									  and expects a SOT marker */
+	DECOMPRESS_STATE_DATA = 0x0020, /**< the decoding process is expecting
+								to read tile data from the code stream */
+	DECOMPRESS_STATE_EOC = 0x0040, /**< the decoding process has encountered the EOC marker */
+	DECOMPRESS_STATE_NO_EOC = 0x0080, /**< the decoding process must not expect a EOC marker
+									because the code stream is truncated */
 };
 
 class CodeStreamDecompress;
@@ -330,6 +331,7 @@ struct DecompressorState
 	// the tile's data can now be decompressed
 	bool lastTilePartWasRead;
 	bool skipTileData;
+
   private:
 	/** Decoder state: used to indicate in which part of the code stream
 	 *  the decompressor is (main header, tile header, end) */

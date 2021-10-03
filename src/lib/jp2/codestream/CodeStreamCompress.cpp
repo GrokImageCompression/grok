@@ -272,8 +272,9 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 
 	if(parameters->numpocs)
 	{
-		if(!validateProgressionOrders(parameters->progression, parameters->numpocs+1, parameters->numresolution,
-						  image->numcomps, parameters->numlayers))
+		if(!validateProgressionOrders(parameters->progression, parameters->numpocs + 1,
+									  parameters->numresolution, image->numcomps,
+									  parameters->numlayers))
 		{
 			GRK_ERROR("Failed to initialize POC");
 			return false;
@@ -381,11 +382,10 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 		tcp->tccps = new TileComponentCodingParams[image->numcomps];
 
 		tcp->setIsHT(parameters->isHT, !parameters->irreversible, numgbits);
-		tcp->m_qcd->generate((uint32_t)(parameters->numresolution - 1),
-						  image->comps[0].prec, parameters->mct > 0,
-						  image->comps[0].sgnd);
+		tcp->m_qcd->generate((uint32_t)(parameters->numresolution - 1), image->comps[0].prec,
+							 parameters->mct > 0, image->comps[0].sgnd);
 		for(uint32_t i = 0; i < image->numcomps; i++)
-			tcp->m_qcd->pull((tcp->tccps+i)->stepsizes);
+			tcp->m_qcd->pull((tcp->tccps + i)->stepsizes);
 
 		tcp->numlayers = parameters->numlayers;
 		for(uint16_t j = 0; j < tcp->numlayers; j++)
@@ -401,7 +401,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 		if(parameters->numpocs)
 		{
 			uint32_t numTileProgressions = 0;
-			for(uint32_t i = 0; i < parameters->numpocs+1; i++)
+			for(uint32_t i = 0; i < parameters->numpocs + 1; i++)
 			{
 				if(tileno == parameters->progression[i].tileno)
 				{
@@ -423,7 +423,7 @@ bool CodeStreamCompress::initCompress(grk_cparameters* parameters, GrkImage* ima
 				GRK_ERROR("Problem with specified progression order changes");
 				return false;
 			}
-			tcp->numpocs = numTileProgressions-1;
+			tcp->numpocs = numTileProgressions - 1;
 		}
 		else
 		{
@@ -643,7 +643,8 @@ bool CodeStreamCompress::compress(grk_plugin_tile* tile)
 			}
 			bool write_success = writeTileParts(tileProcessor);
 			delete tileProcessor;
-			if(!write_success){
+			if(!write_success)
+			{
 				success = false;
 				goto cleanup;
 			}
@@ -816,7 +817,7 @@ bool CodeStreamCompress::init_header_writing(void)
 	// begin custom procedures
 	if((m_cp.rsiz & (GRK_PROFILE_PART2 | GRK_EXTENSION_MCT)) ==
 	   (GRK_PROFILE_PART2 | GRK_EXTENSION_MCT))
-			m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_mct_data_group, this));
+		m_procedure_list.push_back(std::bind(&CodeStreamCompress::write_mct_data_group, this));
 	// end custom procedures
 
 	if(codeStreamInfo)
@@ -859,11 +860,12 @@ bool CodeStreamCompress::writeTilePart(TileProcessor* tileProcessor)
 	if(tileProcessor->canPreCalculateTileLen())
 	{
 		auto actualBytes = m_stream->tell() - currentPos;
-		//GRK_INFO("Tile %d: precalculated / actual : %d / %d",
+		// GRK_INFO("Tile %d: precalculated / actual : %d / %d",
 		//		tileProcessor->m_tileIndex, calculatedBytesWritten, actualBytes);
-		if (actualBytes != calculatedBytesWritten){
+		if(actualBytes != calculatedBytesWritten)
+		{
 			GRK_ERROR("Error in tile length calculation. Please share uncompressed image\n"
-					"and compression parameters on Github issue tracker");
+					  "and compression parameters on Github issue tracker");
 			return false;
 		}
 		tilePartBytesWritten = calculatedBytesWritten;
@@ -1669,9 +1671,9 @@ uint16_t CodeStreamCompress::getPocSize(uint32_t numComps, uint32_t numPocs)
 
 	return (uint16_t)(4 + (5 + 2 * pocRoom) * numPocs);
 }
-bool CodeStreamCompress::validateProgressionOrders(const grk_progression* progressions, uint32_t numProgressions,
-									   uint8_t numResolutions, uint16_t numComps,
-									   uint16_t numLayers)
+bool CodeStreamCompress::validateProgressionOrders(const grk_progression* progressions,
+												   uint32_t numProgressions, uint8_t numResolutions,
+												   uint16_t numComps, uint16_t numLayers)
 {
 	uint32_t resno, compno, layno;
 	uint32_t i;
@@ -1688,13 +1690,14 @@ bool CodeStreamCompress::validateProgressionOrders(const grk_progression* progre
 		auto currentPoc = progressions + i;
 		size_t index = step_r * currentPoc->resS;
 		/* take each resolution for each poc */
-		for(resno = currentPoc->resS; resno < std::min<uint32_t>(currentPoc->resE, numResolutions); ++resno)
+		for(resno = currentPoc->resS; resno < std::min<uint32_t>(currentPoc->resE, numResolutions);
+			++resno)
 		{
 			size_t res_index = index + currentPoc->compS * step_c;
 
 			/* take each comp of each resolution for each poc */
-			for(compno = currentPoc->compS; compno < std::min<uint32_t>(currentPoc->compE, numComps);
-				++compno)
+			for(compno = currentPoc->compS;
+				compno < std::min<uint32_t>(currentPoc->compE, numComps); ++compno)
 			{
 				size_t comp_index = res_index + 0 * step_l;
 
@@ -1703,7 +1706,7 @@ bool CodeStreamCompress::validateProgressionOrders(const grk_progression* progre
 				{
 					/*index = step_r * resno + step_c * compno + step_l * layno;*/
 					packet_array[comp_index] = 1;
-					//printf("%d %d\n",i,comp_index);
+					// printf("%d %d\n",i,comp_index);
 					comp_index += step_l;
 				}
 				res_index += step_c;
@@ -1719,7 +1722,8 @@ bool CodeStreamCompress::validateProgressionOrders(const grk_progression* progre
 		{
 			for(compno = 0; compno < numComps; ++compno)
 			{
-				if (!packet_array[index]){
+				if(!packet_array[index])
+				{
 					loss = true;
 					break;
 				}
@@ -1893,7 +1897,7 @@ uint64_t CodeStreamCompress::getNumTilePartsForProgression(uint32_t pino, uint16
 	assert(pino < (cp->tcps[tileno].getNumProgressions()));
 
 	/* get the given tile coding parameter */
-	auto tcp = cp->tcps+tileno;
+	auto tcp = cp->tcps + tileno;
 	assert(tcp != nullptr);
 
 	auto current_poc = &(tcp->progressionOrderChange[pino]);

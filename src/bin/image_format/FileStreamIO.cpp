@@ -90,9 +90,10 @@ FILE* FileStreamIO::getFileStream()
 {
 	return m_fileHandle;
 }
-int FileStreamIO::getFileDescriptor(void){
+int FileStreamIO::getFileDescriptor(void)
+{
 #ifndef __WIN32__
-	if (m_fileHandle)
+	if(m_fileHandle)
 		return fileno(m_fileHandle);
 #endif
 	return 0;
