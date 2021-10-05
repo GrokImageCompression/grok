@@ -8,4 +8,4 @@
 #include "OpenHTJ2K/PostT1DecompressFiltersOpenHTJ2K.h"
 #include "OpenHTJ2K/QuantizerOpenHTJ2K.h"
 
-#define OPENHTJ2K
+//#define OPENHTJ2K

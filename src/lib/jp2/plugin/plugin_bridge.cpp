@@ -159,13 +159,13 @@ void compress_synch_with_plugin(TileProcessor* tcd, uint32_t compno, uint32_t re
 		{
 			if(band->stepsize != plugin_band->stepsize)
 			{
-				GRK_WARN("ojp band step size {} differs from plugin step size {}", band->stepsize,
+				GRK_WARN("ojp band step size %d differs from plugin step size %d", band->stepsize,
 						 plugin_band->stepsize);
 			}
 			if(cblk->numPassesTotal != plugin_cblk->numPasses)
 				GRK_WARN(
-					"OPJ total number of passes ({}) differs from "
-					"plugin total number of passes ({}) : component={}, res={}, band={}, block={}",
+					"CPU total number of passes (%d) differs from "
+					"plugin total number of passes (%d) : component=%d, res=%d, band=%d, block=%d",
 					cblk->numPassesTotal, (uint32_t)plugin_cblk->numPasses, compno, resno,
 					bandIndex, cblkno);
 		}
@@ -177,8 +177,8 @@ void compress_synch_with_plugin(TileProcessor* tcd, uint32_t compno, uint32_t re
 		{
 			uint32_t grkNumPix = (uint32_t)cblk->area();
 			if(plugin_cblk->numPix != grkNumPix)
-				printf("[WARNING]  ojp numPix %u differs from plugin numPix %u\n", grkNumPix,
-					   plugin_cblk->numPix);
+				GRK_WARN("ojp numPix %u differs from plugin numPix %u", grkNumPix,
+						 plugin_cblk->numPix);
 		}
 
 		bool goodData = true;
@@ -193,7 +193,7 @@ void compress_synch_with_plugin(TileProcessor* tcd, uint32_t compno, uint32_t re
 				totalRate = (cblk->passes + cblk->numPassesTotal - 1)->rate;
 				if(totalRatePlugin != totalRate)
 				{
-					GRK_WARN("CPU rate {} differs from plugin rate {}", totalRate, totalRatePlugin);
+					GRK_WARN("CPU rate %d differs from plugin rate %d", totalRate, totalRatePlugin);
 				}
 			}
 
@@ -201,8 +201,8 @@ void compress_synch_with_plugin(TileProcessor* tcd, uint32_t compno, uint32_t re
 			{
 				if(cblk->paddedCompressedStream[p] != plugin_cblk->compressedData[p])
 				{
-					GRK_WARN("data differs at position={}, component={}, res={}, band={}, "
-							 "block={}, CPU rate ={}, plugin rate={}",
+					GRK_WARN("data differs at position=%d, component=%d, res=%d, band=%d, "
+							 "block=%d, CPU rate =%d, plugin rate=%d",
 							 p, compno, resno, bandIndex, cblkno, totalRate, totalRatePlugin);
 					goodData = false;
 					break;
@@ -220,7 +220,7 @@ void compress_synch_with_plugin(TileProcessor* tcd, uint32_t compno, uint32_t re
 			if(cblk->x0 != plugin_cblk->x0 || cblk->y0 != plugin_cblk->y0 ||
 			   cblk->x1 != plugin_cblk->x1 || cblk->y1 != plugin_cblk->y1)
 			{
-				GRK_ERROR("plugin code block bounding box differs from OPJ code block");
+				GRK_ERROR("CPU code block bounding box differs from plugin code block");
 			}
 		}
 
@@ -239,8 +239,8 @@ void compress_synch_with_plugin(TileProcessor* tcd, uint32_t compno, uint32_t re
 						   fabs(pass->distortiondec) >
 					   0.01)
 					{
-						GRK_WARN("distortion decrease for pass {} differs between plugin and OPJ:  "
-								 "plugin: {}, OPJ : {}",
+						GRK_WARN("distortion decrease for pass %d differs between plugin and OPJ:  "
+								 "plugin: %d, OPJ : %d",
 								 passno, pluginPass->distortionDecrease, pass->distortiondec);
 					}
 				}
@@ -260,7 +260,7 @@ void compress_synch_with_plugin(TileProcessor* tcd, uint32_t compno, uint32_t re
 			{
 				if(pluginRate != pass->rate)
 				{
-					GRK_WARN("plugin rate {} differs from OPJ rate {}\n", pluginRate, pass->rate);
+					GRK_WARN("CPU rate %d differs from plugin rate %d", pass->rate, pluginRate);
 				}
 			}
 
