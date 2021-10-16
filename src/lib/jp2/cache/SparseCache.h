@@ -44,7 +44,6 @@ class SparseCache
 		uint64_t itemIndex = index % m_chunkSize;
 		if(m_currChunk == nullptr || (chunkIndex != m_currChunkIndex))
 		{
-			m_currChunkIndex = chunkIndex;
 			auto iter = chunks.find(chunkIndex);
 			if(iter != chunks.end())
 				m_currChunk = iter->second;
