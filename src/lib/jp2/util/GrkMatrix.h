@@ -24,9 +24,6 @@ namespace grk
 class GrkMatrix
 {
   public:
-	GrkMatrix();
-	virtual ~GrkMatrix();
-
 	bool matrix_inversion_f(float* pSrcMatrix, float* pDestMatrix, uint32_t nb_compo);
 
   private:

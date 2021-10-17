@@ -23,15 +23,6 @@
 
 namespace grk
 {
-GrkMatrix::GrkMatrix()
-{
-	// TODO Auto-generated constructor stub
-}
-
-GrkMatrix::~GrkMatrix()
-{
-	// TODO Auto-generated destructor stub
-}
 
 /**
  * Matrix inversion.
@@ -47,9 +38,8 @@ bool GrkMatrix::matrix_inversion_f(float* pSrcMatrix, float* pDestMatrix, uint32
 
 	data = (uint8_t*)grkMalloc(total_size);
 	if(data == 0)
-	{
 		return false;
-	}
+
 	lPermutations = (uint32_t*)data;
 	double_data = (float*)(data + permutation_size);
 	memset(lPermutations, 0, permutation_size);
@@ -82,9 +72,8 @@ bool GrkMatrix::lupDecompose(float* matrix, uint32_t* permutations, float* p_swa
 
 	/*initialize permutations */
 	for(i = 0; i < nb_compo; ++i)
-	{
 		*tmpPermutations++ = i;
-	}
+
 	/* now make a pivot with column switch */
 	tmpPermutations = permutations;
 	for(k = 0; k < lLastColum; ++k)
@@ -109,9 +98,7 @@ bool GrkMatrix::lupDecompose(float* matrix, uint32_t* permutations, float* p_swa
 
 		/* a whole rest of 0 -> non singular */
 		if(p == 0.0)
-		{
 			return false;
-		}
 
 		/* should we permute ? */
 		if(k2 != k)
@@ -149,10 +136,9 @@ bool GrkMatrix::lupDecompose(float* matrix, uint32_t* permutations, float* p_swa
 			*(lColumnMatrix++) = p;
 
 			for(j = /* k + 1 */ offset; j < nb_compo; ++j)
-			{
 				/* matrix[i][j] -= matrix[i][k] * matrix[k][j]; */
 				*(lColumnMatrix++) -= p * (*(lDestMatrix++));
-			}
+
 			/* come back to the k+1th element */
 			lDestMatrix -= lStride;
 			/* go to kth element of the next line */
@@ -195,10 +181,9 @@ void GrkMatrix::lupSolve(float* pResult, float* pMatrix, float* pVector, uint32_
 		lCurrentPtr = p_intermediate_data;
 		lTmpMatrix = lLineMatrix;
 		for(j = 1; j <= i; ++j)
-		{
 			/* sum += matrix[i][j-1] * y[j-1]; */
 			sum += (*(lTmpMatrix++)) * (*(lCurrentPtr++));
-		}
+
 		/*y[i] = pVector[pPermutations[i]] - sum; */
 		*(lIntermediatePtr++) = pVector[*(lCurrentPermutationPtr++)] - sum;
 		lLineMatrix += nb_compo;
@@ -218,10 +203,9 @@ void GrkMatrix::lupSolve(float* pResult, float* pMatrix, float* pVector, uint32_
 		float u = *(lTmpMatrix++);
 		lCurrentPtr = lDestPtr--;
 		for(j = (uint32_t)(k + 1); j < nb_compo; ++j)
-		{
 			/* sum += matrix[k][j] * x[j] */
 			sum += (*(lTmpMatrix++)) * (*(lCurrentPtr++));
-		}
+
 		/*x[k] = (y[k] - sum) / u; */
 		*(lBeginPtr--) = (*(lGeneratedData--) - sum) / u;
 		lLineMatrix -= lStride;

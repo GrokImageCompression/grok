@@ -29,16 +29,10 @@ bool T1DecompressScheduler::prepareScheduleDecompress(TileComponent* tilec,
 													  std::vector<DecompressBlockExec*>* blocks,
 													  uint8_t prec)
 {
-	if(!tilec->getBuffer()->alloc())
-	{
-		GRK_ERROR("Not enough memory for tile data");
-		return false;
-	}
 	bool wholeTileDecoding = tilec->isWholeTileDecoding();
-	uint8_t gain_b[4] = {0, 1, 1, 2};
 	for(uint8_t resno = 0; resno < tilec->resolutions_to_decompress; ++resno)
 	{
-		auto res = &tilec->tileCompResolution[resno];
+		auto res = tilec->tileCompResolution + resno;
 		for(uint8_t bandIndex = 0; bandIndex < res->numTileBandWindows; ++bandIndex)
 		{
 			auto band = res->tileBand + bandIndex;

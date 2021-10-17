@@ -339,9 +339,7 @@ bool TileProcessor::decompressT2(SparseBuffer* srcBuf)
 			break;
 		}
 	}
-
 	bool doT2 = !current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_T2);
-
 	if(doT2)
 	{
 		auto t2 = new T2Decompress(this);
@@ -350,7 +348,8 @@ bool TileProcessor::decompressT2(SparseBuffer* srcBuf)
 		if(!rc)
 			return false;
 		// synch plugin with T2 data
-		decompress_synch_plugin_with_host(this);
+		//todo re-enable decompress synch
+		//decompress_synch_plugin_with_host(this);
 	}
 
 	return true;
@@ -384,6 +383,11 @@ bool TileProcessor::decompressT1(void)
 			if(!scheduler->prepareScheduleDecompress(tilec, tccp, &blocks,
 													 headerImage->comps->prec))
 				return false;
+			if(!tilec->getBuffer()->alloc())
+			{
+				GRK_ERROR("Not enough memory for tile data");
+				return false;
+			}
 			if(!scheduler->scheduleDecompress(m_tcp, (uint16_t)tccp->cblkw, (uint16_t)tccp->cblkh,
 											  &blocks))
 				return false;
