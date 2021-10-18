@@ -75,8 +75,6 @@ struct T1
 
 	template<uint32_t w, uint32_t h, bool vsc>
 	void dec_clnpass(int32_t bpno);
-	void dec_clnpass_step(grk_flag* flagsp, int32_t* datap, int32_t oneplushalf, uint32_t ciorig,
-						  uint32_t ci, uint32_t vsc);
 	void dec_clnpass(int32_t bpno, int32_t cblksty);
 	void dec_clnpass_check_segsym(int32_t cblksty);
 	void dec_sigpass_raw(int32_t bpno, int32_t cblksty);
@@ -85,12 +83,8 @@ struct T1
 	void dec_refpass_mqc(int32_t bpno);
 	inline void dec_refpass_step_raw(grk_flag* flagsp, int32_t* datap, int32_t poshalf,
 									 uint32_t ci);
-	inline void dec_refpass_step_mqc(mqcoder* mqc, grk_flag* flagsp, int32_t* datap,
-									 int32_t poshalf, uint32_t ci);
 	inline void dec_sigpass_step_raw(grk_flag* flagsp, int32_t* datap, int32_t oneplushalf,
 									 uint32_t vsc, uint32_t ci);
-	inline void dec_sigpass_step_mqc(grk_flag* flagsp, int32_t* datap, int32_t oneplushalf,
-									 uint32_t ci, uint32_t flags_stride, uint32_t vsc);
 	void enc_clnpass(int32_t bpno, int32_t* nmsedec, uint32_t cblksty);
 	void enc_sigpass(int32_t bpno, int32_t* nmsedec, uint8_t type, uint32_t cblksty);
 	void enc_refpass(int32_t bpno, int32_t* nmsedec, uint8_t type);

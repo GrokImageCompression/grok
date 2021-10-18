@@ -58,13 +58,9 @@ Renormalize mqc->a and mqc->c while compressing, so that mqc->a stays between 0x
 		if((a & 0x8000) == 0)                    \
 		{                                        \
 			if(a < (*curctx)->qeval)             \
-			{                                    \
 				a = (*curctx)->qeval;            \
-			}                                    \
 			else                                 \
-			{                                    \
 				c += (*curctx)->qeval;           \
-			}                                    \
 			*curctx = (*curctx)->nmps;           \
 			mqc_renorme_macro(mqc, a, c, ct);    \
 		}                                        \
@@ -78,13 +74,9 @@ Renormalize mqc->a and mqc->c while compressing, so that mqc->a stays between 0x
 	{                                            \
 		a -= (*curctx)->qeval;                   \
 		if(a < (*curctx)->qeval)                 \
-		{                                        \
 			c += (*curctx)->qeval;               \
-		}                                        \
 		else                                     \
-		{                                        \
 			a = (*curctx)->qeval;                \
-		}                                        \
 		*curctx = (*curctx)->nlps;               \
 		mqc_renorme_macro(mqc, a, c, ct);        \
 	}
@@ -92,21 +84,15 @@ Renormalize mqc->a and mqc->c while compressing, so that mqc->a stays between 0x
 #define mqc_encode_macro(mqc, curctx, a, c, ct, d)    \
 	{                                                 \
 		if((*curctx)->mps == (d))                     \
-		{                                             \
-			mqc_codemps_macro(mqc, curctx, a, c, ct); \
-		}                                             \
+			mqc_codemps_macro(mqc, curctx, a, c, ct)  \
 		else                                          \
-		{                                             \
-			mqc_codelps_macro(mqc, curctx, a, c, ct); \
-		}                                             \
+			mqc_codelps_macro(mqc, curctx, a, c, ct)  \
 	}
 
 #define mqc_bypass_enc_macro(mqc, c, ct, d)                                       \
 	{                                                                             \
 		if(ct == BYPASS_CT_INIT)                                                  \
-		{                                                                         \
 			ct = 8;                                                               \
-		}                                                                         \
 		ct--;                                                                     \
 		c = c + ((d) << ct);                                                      \
 		if(ct == 0)                                                               \
@@ -115,9 +101,7 @@ Renormalize mqc->a and mqc->c while compressing, so that mqc->a stays between 0x
 			ct = 8;                                                               \
 			/* If the previous byte was 0xff, make sure that the next msb is 0 */ \
 			if(*mqc->bp == 0xff)                                                  \
-			{                                                                     \
 				ct = 7;                                                           \
-			}                                                                     \
 			mqc->bp++;                                                            \
 			c = 0;                                                                \
 		}                                                                         \

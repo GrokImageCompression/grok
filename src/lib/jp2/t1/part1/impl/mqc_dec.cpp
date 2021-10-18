@@ -121,9 +121,7 @@ void mqc_finish_dec(mqcoder* mqc)
 void mqc_resetstates(mqcoder* mqc)
 {
 	for(uint32_t i = 0; i < MQC_NUMCTXS; i++)
-	{
 		mqc->ctxs[i] = mqc_states;
-	}
 	mqc->ctxs[T1_CTXNO_UNI] = mqc_states + (uint32_t)(46 << 1);
 	mqc->ctxs[T1_CTXNO_AGG] = mqc_states + (uint32_t)(3 << 1);
 	mqc->ctxs[T1_CTXNO_ZC] = mqc_states + (uint32_t)(4 << 1);
