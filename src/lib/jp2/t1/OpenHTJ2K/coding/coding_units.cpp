@@ -85,7 +85,7 @@ void j2k_codeblock::set_compressed_data(uint8_t *buf, uint16_t bufsize) {
     printf(
         "ERROR: illegal attempt to allocate codeblock's compressed data but the data is not "
         "null.\n");
-    exit(EXIT_FAILURE);
+    //exit(EXIT_FAILURE);
   }
   this->compressed_data = std::make_unique<uint8_t[]>(bufsize);
   memcpy(this->compressed_data.get(), buf, bufsize);

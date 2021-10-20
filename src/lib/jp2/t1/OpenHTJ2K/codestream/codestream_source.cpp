@@ -38,7 +38,7 @@ void j2c_src_memory::alloc_memory(uint32_t length) {
 uint8_t j2c_src_memory::get_byte() {
   if (pos > len - 1) {
     printf("Codestream is shorter than the expected length\n");
-    exit(EXIT_FAILURE);
+    //exit(EXIT_FAILURE);
   }
   uint8_t out = buf[pos];
   pos++;
@@ -55,7 +55,7 @@ int j2c_src_memory::get_N_byte(uint8_t *out, uint32_t length) {
 uint16_t j2c_src_memory::get_word() {
   if (pos > len - 2) {
     printf("Codestream is shorter than the expected length\n");
-    exit(EXIT_FAILURE);
+    //exit(EXIT_FAILURE);
   }
   uint16_t out = (static_cast<uint16_t>(get_byte()) << 8) + static_cast<uint16_t>(get_byte());
   return out;
@@ -64,7 +64,7 @@ uint16_t j2c_src_memory::get_word() {
 int j2c_src_memory::rewind_2bytes() {
   if (pos < 2) {
     printf("Cannot rewind 2 bytes because the current position is less than 2\n");
-    exit(EXIT_FAILURE);
+    //exit(EXIT_FAILURE);
   }
   pos -= 2;
   return EXIT_SUCCESS;

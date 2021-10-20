@@ -96,13 +96,13 @@ uint8_t state_MS_dec::importMagSgnBit() {
       tmp = *(buf + pos);  // modDcup(MS->pos, Lcup);
       if ((static_cast<uint16_t>(tmp) & static_cast<uint16_t>(1 << bits)) != 0) {
         printf("ERROR: importMagSgnBit error\n");
-        exit(EXIT_FAILURE);
+        //exit(EXIT_FAILURE);
       }
     } else if (pos == length) {
       tmp = 0xFF;
     } else {
       printf("ERROR: importMagSgnBit error\n");
-      exit(EXIT_FAILURE);
+      //exit(EXIT_FAILURE);
     }
     last = tmp;
     pos++;
@@ -188,7 +188,7 @@ uint8_t state_VLC::importVLCBit() {
       tmp = *(buf + pos);  // modDcup(VLC->pos, Lcup);
     } else {
       printf("ERROR: import VLCBits error\n");
-      exit(EXIT_FAILURE);
+      //exit(EXIT_FAILURE);
     }
     bits = 8;
     if (last > 0x8F && (tmp & 0x7F) == 0x7F) {
@@ -357,7 +357,7 @@ uint8_t SP_dec::importSigPropBit() {
       pos++;
       if ((tmp & (1 << bits)) != 0) {
         printf("ERROR: importSigPropBit error\n");
-        exit(EXIT_FAILURE);
+        //exit(EXIT_FAILURE);
       }
     } else {
       tmp = 0;
@@ -1101,7 +1101,7 @@ void htj2k_decode(j2k_codeblock *block, const uint8_t ROIshift) {
   const uint8_t empty_passes = P0 * 3;
   if (block->num_passes < empty_passes) {
     printf("ERROR: number of placeholde passes is too large.\n");
-    exit(EXIT_FAILURE);
+    //exit(EXIT_FAILURE);
   }
   // number of ht coding pass (Z_blk in the spec)
   const uint8_t num_ht_passes = block->num_passes - empty_passes;
