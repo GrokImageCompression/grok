@@ -1,9 +1,22 @@
+libgrokj2k (9.5.0-1) unstable; urgency=medium
+
+    * Maintenance bug fix release
+    * Fixes GCC 11 build failure (Closes: #984111)
+
+ -- Aaron Boxer <boxerab@protonmail.com>  Wed, 20 Oct 2021 11:10:00 +0200
+
 libgrokj2k (9.2.0-1) unstable; urgency=high
 
     * Majour release
     * Fixes CVE-2021-36089 (Closes: #990525)
 
  -- Aaron Boxer <boxerab@gmail.com>  Sat, 22 May 2021 11:10:00 +0200
+
+libgrokj2k (7.6.6-3) unstable; urgency=high
+
+    * Fix GCC poison error by removing one poison directive (Closes: #985116)
+
+ -- Aaron Boxer <boxerab@gmail.com>  Tue, 16 Mar 2021 11:10:00 +0200
 
 libgrokj2k (7.6.6-2) unstable; urgency=high
 

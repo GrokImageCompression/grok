@@ -1,6 +1,6 @@
 Source: libgrokj2k
 Priority: optional
-Maintainer: Aaron Boxer <boxerab@gmail.com>
+Maintainer: Aaron Boxer <boxerab@protonmail.com>
 Homepage: https://github.com/GrokImageCompression/grok
 Build-Depends: cmake (>= 3.16.0),
                debhelper-compat (= 13),

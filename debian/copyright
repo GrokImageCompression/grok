@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: libgrokj2k
-Upstream-Contact: boxerab@gmail.com
+Upstream-Contact: boxerab@protonmail.com
 Source: https://github.com/GrokImageCompression/grok
 
 Files: *
@@ -22,14 +22,20 @@ Files: src/lib/jp2/highway/*
 Copyright: 2020, Google LLC
 License: Apache-2
 
-Files: src/lib/jp2/codestream/HTParams.*
- src/lib/jp2/t1/t1_ht/coding/*
- src/lib/jp2/t1/t1_ht/common/*
- src/lib/jp2/t1/t1_ht/others/*
+Files: src/lib/jp2/t1/OJPH/coding/*
+ src/lib/jp2/t1/OJPH/common/*
+ src/lib/jp2/t1/OJPH/others/*
 Copyright: 2019, Aous Naman
   2019, Kakadu Software Pty Ltd, Australia
   2019, The University of New South Wales, Australia
 License: BSD-2-clause
+
+Files: src/lib/jp2/t1/OpenHTJ2K/codestream/*
+ src/lib/jp2/t1/OpenHTJ2K/coding/*
+ src/lib/jp2/t1/OpenHTJ2K/common/*
+Copyright: 2019 - 2021, Osamu Watanabe
+License: BSD-2-clause
+
 
 Files: src/lib/jp2/tile/SparseCanvas.h
 Copyright: 2016-2020, Grok Image Compression Inc.
