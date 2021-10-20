@@ -21,7 +21,7 @@ include_regular_expression("^.*$")
 #-----------------------------------------------------------------------------
 # GROK version number, useful for packaging and doxygen doc:
 set(GROK_VERSION_MAJOR 9)
-set(GROK_VERSION_MINOR 4)
+set(GROK_VERSION_MINOR 5)
 set(GROK_VERSION_BUILD 0)
 set(GROK_VERSION
   "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_BUILD}")
@@ -31,28 +31,12 @@ set(PACKAGE_VERSION
 # Because autotools does not support X.Y notation for SOVERSION, we have to use
 # two numbering, one for the Grok version and one for Grok soversion
 # version | soversion
-#   7.0.0 |  1
-#   7.1.0 |  1
-#   7.2.0 |  1
-#   7.3.0 |  1
-#   7.4.0 |  1
-#   7.5.0 |  1
-#   7.6.0 |  1
-#   7.6.1 |  1
-#   7.6.2 |  1
-#   7.6.3 |  1
-#   7.6.4 |  1
-#   7.6.5 |  1
-#   7.6.6 |  1
-#   8.0.0 |  1
-#   8.0.1 |  1
-#   8.0.2 |  1
-#   8.0.3 |  1
 #   9.0.0 |  1
 #   9.1.0 |  1
 #   9.2.0 |  1
 #   9.3.0 |  1
 #   9.4.0 |  1
+#   9.5.0 |  1
 if(NOT GROK_SOVERSION)
   set(GROK_SOVERSION 1)
 endif(NOT GROK_SOVERSION)
