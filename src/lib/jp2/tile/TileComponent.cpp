@@ -28,8 +28,8 @@ const bool DEBUG_TILE_COMPONENT = false;
 namespace grk
 {
 TileComponent::TileComponent()
-	: tileCompResolution(nullptr), numresolutions(0), resolutions_to_decompress(0),
-	  resolutions_decompressed(0),
+	: tileCompResolution(nullptr), numresolutions(0), numResolutionsToDecompress(0),
+	  highestResolutionDecompressed(0),
 #ifdef DEBUG_LOSSLESS_T2
 	  round_trip_resolutions(nullptr),
 #endif
@@ -79,9 +79,9 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreduce
 	// all in canvas coordinates (with subsampling)
 	numresolutions = m_tccp->numresolutions;
 	if(numresolutions < cp->m_coding_params.m_dec.m_reduce)
-		resolutions_to_decompress = 1;
+		numResolutionsToDecompress = 1;
 	else
-		resolutions_to_decompress = (uint8_t)(numresolutions - cp->m_coding_params.m_dec.m_reduce);
+		numResolutionsToDecompress = (uint8_t)(numresolutions - cp->m_coding_params.m_dec.m_reduce);
 	tileCompResolution = new Resolution[numresolutions];
 	for(uint8_t resno = 0; resno < numresolutions; ++resno)
 	{
@@ -125,7 +125,7 @@ bool TileComponent::init(bool isCompressor, bool whole_tile, grkRectU32 unreduce
 	}
 
 	// 2. set tile component and band bounds
-	auto highestNumberOfResolutions = (!m_is_encoder) ? resolutions_to_decompress : numresolutions;
+	auto highestNumberOfResolutions = (!m_is_encoder) ? numResolutionsToDecompress : numresolutions;
 	auto hightestResolution = tileCompResolution + highestNumberOfResolutions - 1;
 	set(hightestResolution);
 	for(uint8_t resno = 0; resno < numresolutions; ++resno)
@@ -324,7 +324,7 @@ bool TileComponent::allocSparseCanvas(uint32_t numres, bool truncatedTile)
 bool TileComponent::allocWindowBuffer(grkRectU32 unreducedTileCompOrImageCompWindow)
 {
 	deallocBuffers();
-	auto highestNumberOfResolutions = (!m_is_encoder) ? resolutions_to_decompress : numresolutions;
+	auto highestNumberOfResolutions = (!m_is_encoder) ? numResolutionsToDecompress : numresolutions;
 	auto maxResolution = tileCompResolution + numresolutions - 1;
 	if(!maxResolution->intersection(unreducedTileCompOrImageCompWindow).is_valid())
 	{

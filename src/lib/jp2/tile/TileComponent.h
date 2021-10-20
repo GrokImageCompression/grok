@@ -44,8 +44,8 @@ struct TileComponent : public grkRectU32
 
 	Resolution* tileCompResolution; // in canvas coordinates
 	uint8_t numresolutions;
-	uint8_t resolutions_to_decompress; // desired number of resolutions to decompress
-	uint8_t resolutions_decompressed; // actual number of resolutions decompressed
+	uint8_t numResolutionsToDecompress;     // desired number of resolutions to decompress
+	uint8_t highestResolutionDecompressed;  // highest resolution actually decompressed
 #ifdef DEBUG_LOSSLESS_T2
 	Resolution* round_trip_resolutions; /* round trip resolution information */
 #endif

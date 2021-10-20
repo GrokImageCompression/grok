@@ -61,7 +61,7 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* currPi, Spar
 		return false;
 	auto res = tilec->tileCompResolution + currPi->resno;
 	auto skipPacket = currPi->layno >= tcp->numLayersToDecompress ||
-					  currPi->resno >= tilec->resolutions_to_decompress;
+					  currPi->resno >= tilec->numResolutionsToDecompress;
 	if(!skipPacket)
 	{
 		if(!tilec->isWholeTileDecoding())
@@ -100,8 +100,8 @@ bool T2Decompress::processPacket(TileCodingParams* tcp, PacketIter* currPi, Spar
 	{
 		if(!decompressPacket(tcp, currPi, srcBuf, packetInfo, false))
 			return false;
-		tilec->resolutions_decompressed =
-			std::max<uint8_t>(currPi->resno, tilec->resolutions_decompressed);
+		tilec->highestResolutionDecompressed =
+			std::max<uint8_t>(currPi->resno, tilec->highestResolutionDecompressed);
 		tileProcessor->tile->numDecompressedPackets++;
 	}
 	else

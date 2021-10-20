@@ -316,7 +316,7 @@ bool TileProcessor::isWholeTileDecompress(uint32_t compno)
 	/* with the tile bounds */
 	auto dims = tilec->getBuffer()->bounds().intersection(tilec);
 
-	uint32_t shift = (uint32_t)(tilec->numresolutions - tilec->resolutions_to_decompress);
+	uint32_t shift = (uint32_t)(tilec->numresolutions - tilec->numResolutionsToDecompress);
 	/* Tolerate small margin within the reduced resolution factor to consider if */
 	/* the whole tile path must be taken */
 	return (dims.is_valid() &&
@@ -370,7 +370,7 @@ bool TileProcessor::decompressT1(void)
 			{
 				try
 				{
-					tilec->allocSparseCanvas(tilec->resolutions_decompressed + 1U, truncated);
+					tilec->allocSparseCanvas(tilec->highestResolutionDecompressed + 1U, truncated);
 				}
 				catch(std::runtime_error& ex)
 				{
@@ -385,6 +385,9 @@ bool TileProcessor::decompressT1(void)
 				return false;
 			if(!tilec->getBuffer()->alloc())
 			{
+				// clean up
+				for (auto& b : blocks)
+					delete b;
 				GRK_ERROR("Not enough memory for tile data");
 				return false;
 			}
@@ -396,7 +399,7 @@ bool TileProcessor::decompressT1(void)
 			{
 				WaveletReverse w;
 				if(!w.decompress(this, tilec, compno, tilec->getBuffer()->unreducedBounds(),
-								 tilec->resolutions_decompressed + 1U, tccp->qmfbid))
+								 tilec->highestResolutionDecompressed + 1U, tccp->qmfbid))
 					return false;
 			}
 		}
