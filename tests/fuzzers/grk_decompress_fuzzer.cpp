@@ -63,15 +63,15 @@ typedef struct {
 } MemFile;
 
 static void ErrorCallback(const char *msg, void *user_data) {
-  fprintf(stderr, "error: %s\n", msg);
+  //fprintf(stderr, "error: %s\n", msg);
 }
 
 static void WarningCallback(const char *msg, void *user_data) {
-  fprintf(stderr, "warning: %s\n", msg);
+  //fprintf(stderr, "warning: %s\n", msg);
 }
 
 static void InfoCallback(const char *msg, void *user_data) {
-  fprintf(stderr, "info: %s\n", msg);
+  //fprintf(stderr, "info: %s\n", msg);
 }
 
 static size_t ReadCallback(void *pBuffer, size_t nBytes, void *pUserData) {
