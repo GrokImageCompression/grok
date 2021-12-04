@@ -81,7 +81,7 @@ void BufferedStream::setSeekFunction(grk_stream_seek_fn fn)
 size_t BufferedStream::read(uint8_t* buffer, size_t p_size)
 {
 	if(!buffer && !supportsZeroCopy())
-		throw new std::exception();
+		throw std::exception();
 	assert(p_size);
 	if(!p_size)
 		return 0;
