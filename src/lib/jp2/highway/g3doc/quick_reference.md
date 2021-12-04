@@ -9,8 +9,8 @@ runtime (dynamic dispatch), or compile for a single CPU target without runtime
 overhead (static dispatch). Examples of both are provided in examples/.
 
 Dynamic dispatch uses the same source code as static, plus `#define
-HWY_TARGET_INCLUDE`, `#include "hwy/foreach_target.h"` and
-`HWY_DYNAMIC_DISPATCH`.
+HWY_TARGET_INCLUDE`, `#include "hwy/foreach_target.h"`
+(which must come before any inclusion of highway.h) and `HWY_DYNAMIC_DISPATCH`.
 
 ## Headers
 
@@ -64,7 +64,7 @@ HWY_AFTER_NAMESPACE();
 *   `d` is an lvalue of type `D`, passed as a function argument e.g. to Zero;
 *   `V` is the type of a vector.
 
-## Vector and descriptor types
+## Vector and tag types
 
 Highway vectors consist of one or more 'lanes' of the same built-in type
 `uint##_t, int##_t` for `## = 8, 16, 32, 64`, plus `float##_t` for `## = 16, 32,
@@ -263,6 +263,8 @@ wishes to run on all targets until that is resolved can use functions such as
     <code>V **ApproximateReciprocal**(V a)</code>: returns an approximation of
     `1.0 / a[i]`.
 
+#### Min/Max
+
 **Note**: Min/Max corner cases are target-specific and may change. If either
 argument is qNaN, x86 SIMD returns the second argument, ARMv7 Neon returns NaN,
 Wasm is supposed to return NaN but does not always, but other targets actually
@@ -272,6 +274,16 @@ is qNaN, and NaN if both are.
 *   <code>V **Min**(V a, V b)</code>: returns `min(a[i], b[i])`.
 
 *   <code>V **Max**(V a, V b)</code>: returns `max(a[i], b[i])`.
+
+*   `V`: `u64` \
+    <code>M **Min128**(D, V a, V b)</code>: returns the minimum of unsigned
+    128-bit values, each stored as an adjacent pair of 64-bit lanes (e.g.
+    indices 1 and 0, where 0 is the least-significant 64-bits).
+
+*   `V`: `u64` \
+    <code>M **Max128**(D, V a, V b)</code>: returns the maximum of unsigned
+    128-bit values, each stored as an adjacent pair of 64-bit lanes (e.g.
+    indices 1 and 0, where 0 is the least-significant 64-bits).
 
 #### Multiply
 
@@ -332,14 +344,19 @@ Left-shifting signed `T` and right-shifting positive signed `T` is the same as
 shifting `MakeUnsigned<T>` and casting to `T`. Right-shifting negative signed
 `T` is the same as an unsigned shift, except that 1-bits are shifted in.
 
-Compile-time constant shifts, generally the most efficient variant (though 8-bit
-shifts are potentially slower than other lane sizes):
+Compile-time constant shifts: the amount must be in [0, sizeof(T)*8). Generally
+the most efficient variant, but 8-bit shifts are potentially slower than other
+lane sizes, and `RotateRight` is often emulated with shifts:
 
 *   `V`: `{u,i}` \
     <code>V **ShiftLeft**&lt;int&gt;(V a)</code> returns `a[i] << int`.
 
 *   `V`: `{u,i}` \
     <code>V **ShiftRight**&lt;int&gt;(V a)</code> returns `a[i] >> int`.
+
+*   `V`: `{u}{32,64}` \
+    <code>V **RotateRight**&lt;int&gt;(V a)</code> returns `(a[i] >> int) |
+    (a[i] << (sizeof(T)*8 - int))`.
 
 Shift all lanes by the same (not necessarily compile-time constant) amount:
 
@@ -406,6 +423,11 @@ non-operator functions (also available for integers) must be used:
 
 *   <code>V **AndNot**(V a, V b)</code>: returns `~a[i] & b[i]`.
 
+The following three-argument functions may be more efficient than assembling
+them from 2-argument functions:
+
+*   <code>V **OrAnd**(V o, V a1, V a2)</code>: returns `o[i] | (a1[i] & a2[i])`.
+
 Special functions for signed types:
 
 *   `V`: `{f}` \
@@ -429,8 +451,10 @@ Let `M` denote a mask capable of storing true/false for each lane.
 
 *   <code>M **FirstN**(D, size_t N)</code>: returns mask with the first `N`
     lanes (those with index `< N`) true. `N >= Lanes(D())` results in an
-    all-true mask. Useful for implementing "masked" stores by loading `prev`
-    followed by `IfThenElse(FirstN(d, N), what_to_store, prev)`.
+    all-true mask. `N` must not exceed
+    `LimitsMax<SignedFromSize<HWY_MIN(sizeof(size_t), sizeof(TFromD<D>))>>()`.
+    Useful for implementing "masked" stores by loading `prev` followed by
+    `IfThenElse(FirstN(d, N), what_to_store, prev)`.
 
 *   <code>M **MaskFromVec**(V v)</code>: returns false in lane `i` if `v[i] ==
     0`, or true if `v[i]` has all bits set.
@@ -480,6 +504,9 @@ Let `M` denote a mask capable of storing true/false for each lane.
 *   <code>V **IfThenZeroElse**(M mask, V no)</code>: returns `mask[i] ? 0 :
     no[i]`.
 
+*   <code>V **IfVecThenElse**(V mask, V yes, V no)</code>: equivalent to and
+    possibly faster than `IfVecThenElse(MaskFromVec(mask), yes, no)`.
+
 #### Logical
 
 *   <code>M **Not**(M m)</code>: returns mask of elements indicating whether the
@@ -514,6 +541,13 @@ Let `M` denote a mask capable of storing true/false for each lane.
     16-bit lanes.
 
 *   `V`: `{u,i,f}{16,32,64}` \
+    <code>size_t **CompressBlendedStore**(V v, M m, D d, T* p)</code>: writes
+    only lanes whose mask `m` is set into `p`, starting from lane 0. Returns
+    `CountTrue(d, m)`, the number of lanes written. Does not modify subsequent
+    lanes, but there is no guarantee of atomicity because this may be
+    implemented as `Compress, LoadU, IfThenElse(FirstN), StoreU`.
+
+*   `V`: `{u,i,f}{16,32,64}` \
     <code>V **CompressBits**(V v, const uint8_t* HWY_RESTRICT bits)</code>:
     Equivalent to, but often faster than `Compress(v, LoadMaskBits(d, bits))`.
     `bits` is as specified for `LoadMaskBits`. If called multiple times, the
@@ -533,11 +567,9 @@ These return a mask (see above) indicating whether the condition is true.
 *   <code>M **operator==**(V a, V b)</code>: returns `a[i] == b[i]`.
 *   <code>M **operator!=**(V a, V b)</code>: returns `a[i] != b[i]`.
 
-*   `V`: `{i,f}` \
-    <code>M **operator&lt;**(V a, V b)</code>: returns `a[i] < b[i]`.
+*   <code>M **operator&lt;**(V a, V b)</code>: returns `a[i] < b[i]`.
 
-*   `V`: `{i,f}` \
-    <code>M **operator&gt;**(V a, V b)</code>: returns `a[i] > b[i]`.
+*   <code>M **operator&gt;**(V a, V b)</code>: returns `a[i] > b[i]`.
 
 *   `V`: `{f}` \
     <code>M **operator&lt;=**(V a, V b)</code>: returns `a[i] <= b[i]`.
@@ -548,6 +580,12 @@ These return a mask (see above) indicating whether the condition is true.
 *   `V`: `{u,i}` \
     <code>M **TestBit**(V v, V bit)</code>: returns `(v[i] & bit[i]) == bit[i]`.
     `bit[i]` must have exactly one bit set.
+
+*   `V`: `u64` \
+    <code>M **Lt128**(D, V a, V b)</code>: for each adjacent pair of 64-bit
+    lanes (e.g. indices 1,0), returns whether a[1]:a[0] concatenated to an
+    unsigned 128-bit integer (least significant bits in a[0]) is less than
+    b[1]:b[0]. For each pair, the mask lanes are either both true or both false.
 
 ### Memory
 
@@ -778,20 +816,23 @@ their operands into independently processed 128-bit *blocks*.
     each with lanes set to `input_block[i]`, `i = [0, 16/sizeof(T))`.
 
 *   `V`: `{u,i}` \
-    <code>VI **TableLookupBytes**(V bytes, VI from)</code>: returns
-    `bytes[from[i]]`. Uses byte lanes regardless of the actual vector types.
-    Results are implementation-defined if `from[i] >= HWY_MIN(lanes in V, 16)`.
-    The number of lanes in `V` and `VI` may differ, e.g. a full-length table
-    vector loaded via `LoadDup128`, plus partial vector `VI` of 4-bit indices.
+    <code>VI **TableLookupBytes**(V bytes, VI indices)</code>: returns
+    `bytes[indices[i]]`. Uses byte lanes regardless of the actual vector types.
+    Results are implementation-defined if `indices[i] < 0` or `indices[i] >=
+    HWY_MIN(Lanes(DFromV<V>()), 16)`. `VI` are integers with the same bit width
+    as a lane in `V`. The number of lanes in `V` and `VI` may differ, e.g. a
+    full-length table vector loaded via `LoadDup128`, plus partial vector `VI`
+    of 4-bit indices.
 
 *   `V`: `{u,i}` \
-    <code>VI **TableLookupBytesOr0**(V bytes, VI from)</code>: returns
-    `bytes[from[i]]`, or 0 if `from[i] & 0x80`. Uses byte lanes regardless of
-    the actual vector types. Results are implementation-defined for `from[i]` in
-    `[HWY_MIN(vector size, 16), 0x80)`. The zeroing behavior has zero cost on
-    x86 and ARM. For vectors of >= 256 bytes (can happen on SVE and RVV), this
-    will set all lanes after the first 128 to 0. The number of lanes in `V` and
-    `VI` may differ.
+    <code>VI **TableLookupBytesOr0**(V bytes, VI indices)</code>: returns
+    `bytes[indices[i]]`, or 0 if `indices[i] & 0x80`. Uses byte lanes regardless
+    of the actual vector types. Results are implementation-defined for
+    `indices[i] < 0` or in `[HWY_MIN(Lanes(DFromV<V>()), 16), 0x80)`. The
+    zeroing behavior has zero cost on x86 and ARM. For vectors of >= 256 bytes
+    (can happen on SVE and RVV), this will set all lanes after the first 128
+    to 0. `VI` are integers with the same bit width as a lane in `V`. The number
+    of lanes in `V` and `VI` may differ.
 
 #### Zip/Interleave
 
@@ -880,18 +921,39 @@ their operands into independently processed 128-bit *blocks*.
 *   <code>V **OddEven**(V a, V b)</code>: returns a vector whose odd lanes are
     taken from `a` and the even lanes from `b`.
 
-*   `V`: `{u,i,f}{32}` \
-    <code>V **TableLookupLanes**(V a, VI)</code> returns a vector of
-    `a[indices[i]]`, where `VI` is from `SetTableIndices(D, &indices[0])`. The
-    indices are not limited to blocks, hence this is slower than
-    `TableLookupBytes*` on AVX2/AVX-512. Results are implementation-defined if
-    `indices[i] >= Lanes(D())`.
+*   <code>V **OddEvenBlocks**(V a, V b)</code>: returns a vector whose odd
+    blocks are taken from `a` and the even blocks from `b`. Returns `b` if the
+    vector has no more than one block (i.e. is 128 bits or scalar).
 
-*   `VI`: `i32` \
-    <code>VI **SetTableIndices**(D, int32_t* idx)</code> prepares for
-    `TableLookupLanes` with lane indices `idx = [0, N)` (need not be unique).
+*   <code>V **SwapAdjacentBlocks**(V v)</code>: returns a vector where blocks of
+    index `2*i` and `2*i+1` are swapped. Results are undefined for vectors with
+    less than two blocks; callers must first check that via `Lanes`.
 
-*   `V`: `{u,i,f}{32}` \
+*   <code>V **ReverseBlocks**(V v)</code>: returns a vector with blocks in
+    reversed order.
+
+*   `V`: `{u,i,f}{32,64}` \
+    <code>V **TableLookupLanes**(V a, unspecified)</code> returns a vector of
+    `a[indices[i]]`, where `unspecified` is the return value of
+    `SetTableIndices(D, &indices[0])` or `IndicesFromVec`. The indices are not
+    limited to blocks, hence this is slower than `TableLookupBytes*` on
+    AVX2/AVX-512. Results are implementation-defined unless `0 <= indices[i] <
+    Lanes(D())`. `indices` are always integers, even if `V` is a floating-point
+    type.
+
+*   `D`: `{u,i}{32,64}` \
+    <code>unspecified **IndicesFromVec**(D d, V idx)</code> prepares for
+    `TableLookupLanes` with integer indices in `idx`, which must be the same bit
+    width as `TFromD<D>` and in the range `[0, Lanes(d))`, but need not be
+    unique.
+
+*   `D`: `{u,i}{32,64}` \
+    <code>unspecified **SetTableIndices**(D d, TI* idx)</code> prepares for
+    `TableLookupLanes` by loading `Lanes(d)` integer indices from `idx`, which
+    must be in the range `[0, Lanes(d))` but need not be unique. The index type
+    `TI` must be an integer of the same size as `TFromD<D>`.
+
+*   `V`: `{u,i,f}{16,32,64}` \
     <code>V **Reverse**(D, V a)</code> returns a vector with lanes in reversed
     order (`out[i] == a[Lanes(D()) - 1 - i]`).
 
@@ -907,11 +969,11 @@ than normal SIMD operations and are typically used outside critical loops.
     <code>V **SumOfLanes**(D, V v)</code>: returns the sum of all lanes in each
     lane.
 
-*   `V`: `{u,i,f}{32,64}` \
+*   `V`: `{u,i,f}{32,64},{u,i}{16}` \
     <code>V **MinOfLanes**(D, V v)</code>: returns the minimum-valued lane in
     each lane.
 
-*   `V`: `{u,i,f}{32,64}` \
+*   `V`: `{u,i,f}{32,64},{u,i}{16}` \
     <code>V **MaxOfLanes**(D, V v)</code>: returns the maximum-valued lane in
     each lane.
 

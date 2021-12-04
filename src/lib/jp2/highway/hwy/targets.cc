@@ -15,23 +15,28 @@
 #include "hwy/targets.h"
 
 #include <stdarg.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 
 #include <atomic>
-#include <cstddef>
-#include <limits>
+
+#include "hwy/base.h"
 
 #if defined(ADDRESS_SANITIZER) || defined(MEMORY_SANITIZER) || \
     defined(THREAD_SANITIZER)
 #include "sanitizer/common_interface_defs.h"  // __sanitizer_print_stack_trace
 #endif                                        // defined(*_SANITIZER)
 
+#if HWY_COMPILER_MSVC || HWY_ARCH_RVV
+#include <stdlib.h>  // abort / exit
+#endif
+
 #if HWY_ARCH_X86
 #include <xmmintrin.h>
 #if HWY_COMPILER_MSVC
 #include <intrin.h>
-#else  // HWY_COMPILER_MSVC
+#else  // !HWY_COMPILER_MSVC
 #include <cpuid.h>
 #endif  // HWY_COMPILER_MSVC
 #endif  // HWY_ARCH_X86
@@ -41,14 +46,14 @@ namespace {
 
 #if HWY_ARCH_X86
 
-bool IsBitSet(const uint32_t reg, const int index) {
+HWY_INLINE bool IsBitSet(const uint32_t reg, const int index) {
   return (reg & (1U << index)) != 0;
 }
 
 // Calls CPUID instruction with eax=level and ecx=count and returns the result
 // in abcd array where abcd = {eax, ebx, ecx, edx} (hence the name abcd).
-void Cpuid(const uint32_t level, const uint32_t count,
-           uint32_t* HWY_RESTRICT abcd) {
+HWY_INLINE void Cpuid(const uint32_t level, const uint32_t count,
+                      uint32_t* HWY_RESTRICT abcd) {
 #if HWY_COMPILER_MSVC
   int regs[4];
   __cpuidex(regs, level, count);
@@ -93,7 +98,7 @@ std::atomic<uint32_t> supported_{0};  // Not yet initialized
 uint32_t supported_targets_for_test_ = 0;
 
 // Mask of targets disabled at runtime with DisableTargets.
-uint32_t supported_mask_{std::numeric_limits<uint32_t>::max()};
+uint32_t supported_mask_{LimitsMax<uint32_t>()};
 
 #if HWY_ARCH_X86
 // Arbritrary bit indices indicating which instruction set extensions are
@@ -134,7 +139,7 @@ enum class FeatureIndex : uint32_t {
 static_assert(static_cast<size_t>(FeatureIndex::kSentinel) < 64,
               "Too many bits for u64");
 
-constexpr uint64_t Bit(FeatureIndex index) {
+HWY_INLINE constexpr uint64_t Bit(FeatureIndex index) {
   return 1ull << static_cast<size_t>(index);
 }
 

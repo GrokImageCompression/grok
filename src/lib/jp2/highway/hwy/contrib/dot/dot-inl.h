@@ -62,11 +62,13 @@ struct Dot {
     const size_t N = Lanes(d);
     size_t i = 0;
 
-    constexpr bool kIsAtLeastOneVector = kAssumptions & kAtLeastOneVector;
-    constexpr bool kIsMultipleOfVector = kAssumptions & kMultipleOfVector;
-    constexpr bool kIsPaddedToVector = kAssumptions & kPaddedToVector;
-    constexpr bool kIsAlignedA = kAssumptions & kVectorAlignedA;
-    constexpr bool kIsAlignedB = kAssumptions & kVectorAlignedB;
+    constexpr bool kIsAtLeastOneVector =
+        (kAssumptions & kAtLeastOneVector) != 0;
+    constexpr bool kIsMultipleOfVector =
+        (kAssumptions & kMultipleOfVector) != 0;
+    constexpr bool kIsPaddedToVector = (kAssumptions & kPaddedToVector) != 0;
+    constexpr bool kIsAlignedA = (kAssumptions & kVectorAlignedA) != 0;
+    constexpr bool kIsAlignedB = (kAssumptions & kVectorAlignedB) != 0;
 
     // Won't be able to do a full vector load without padding => scalar loop.
     if (!kIsAtLeastOneVector && !kIsMultipleOfVector && !kIsPaddedToVector &&
@@ -163,17 +165,19 @@ struct Dot {
     const size_t N = Lanes(d);
     size_t i = 0;
 
-    constexpr bool kIsAtLeastOneVector = kAssumptions & kAtLeastOneVector;
-    constexpr bool kIsMultipleOfVector = kAssumptions & kMultipleOfVector;
-    constexpr bool kIsPaddedToVector = kAssumptions & kPaddedToVector;
-    constexpr bool kIsAlignedA = kAssumptions & kVectorAlignedA;
-    constexpr bool kIsAlignedB = kAssumptions & kVectorAlignedB;
+    constexpr bool kIsAtLeastOneVector =
+        (kAssumptions & kAtLeastOneVector) != 0;
+    constexpr bool kIsMultipleOfVector =
+        (kAssumptions & kMultipleOfVector) != 0;
+    constexpr bool kIsPaddedToVector = (kAssumptions & kPaddedToVector) != 0;
+    constexpr bool kIsAlignedA = (kAssumptions & kVectorAlignedA) != 0;
+    constexpr bool kIsAlignedB = (kAssumptions & kVectorAlignedB) != 0;
 
     // Won't be able to do a full vector load without padding => scalar loop.
     if (!kIsAtLeastOneVector && !kIsMultipleOfVector && !kIsPaddedToVector &&
         HWY_UNLIKELY(num_elements < N)) {
-      float_t sum0 = 0.0f;  // Only 2x unroll to avoid excessive code size for..
-      float_t sum1 = 0.0f;  // this unlikely(?) case.
+      float sum0 = 0.0f;  // Only 2x unroll to avoid excessive code size for..
+      float sum1 = 0.0f;  // this unlikely(?) case.
       for (; i + 2 <= num_elements; i += 2) {
         sum0 += F32FromBF16(pa[i + 0]) * F32FromBF16(pb[i + 0]);
         sum1 += F32FromBF16(pa[i + 1]) * F32FromBF16(pb[i + 1]);

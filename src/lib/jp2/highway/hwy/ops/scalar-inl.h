@@ -187,6 +187,20 @@ HWY_API Vec1<T> operator^(const Vec1<T> a, const Vec1<T> b) {
   return Xor(a, b);
 }
 
+// ------------------------------ OrAnd
+
+template <typename T>
+HWY_API Vec1<T> OrAnd(const Vec1<T> o, const Vec1<T> a1, const Vec1<T> a2) {
+  return Or(o, And(a1, a2));
+}
+
+// ------------------------------ IfVecThenElse
+
+template <typename T>
+HWY_API Vec1<T> IfVecThenElse(Vec1<T> mask, Vec1<T> yes, Vec1<T> no) {
+  return IfThenElse(MaskFromVec(mask), yes, no);
+}
+
 // ------------------------------ CopySign
 
 template <typename T>
@@ -313,7 +327,7 @@ HWY_API Mask1<T> Xor(const Mask1<T> a, Mask1<T> b) {
 
 // ================================================== SHIFTS
 
-// ------------------------------ ShiftLeft (BroadcastSignBit)
+// ------------------------------ ShiftLeft/ShiftRight (BroadcastSignBit)
 
 template <int kBits, typename T>
 HWY_API Vec1<T> ShiftLeft(const Vec1<T> v) {
@@ -342,6 +356,15 @@ HWY_API Vec1<T> ShiftRight(const Vec1<T> v) {
     return Vec1<T>(v.raw >> kBits);  // unsigned, logical shift
   }
 #endif
+}
+
+// ------------------------------ RotateRight (ShiftRight)
+
+template <int kBits, typename T>
+HWY_API Vec1<T> RotateRight(const Vec1<T> v) {
+  static_assert(0 <= kBits && kBits < sizeof(T) * 8, "Invalid shift");
+  if (kBits == 0) return v;
+  return Or(ShiftRight<kBits>(v), ShiftLeft<sizeof(T) * 8 - kBits>(v));
 }
 
 // ------------------------------ ShiftLeftSame (BroadcastSignBit)
@@ -1068,11 +1091,27 @@ HWY_API Vec1<T> LowerHalf(Sisd<T> /* tag */, Vec1<T> v) {
 }
 
 // ================================================== SWIZZLE
-// OddEven is unsupported.
 
 template <typename T>
 HWY_API T GetLane(const Vec1<T> v) {
   return v.raw;
+}
+
+template <typename T>
+HWY_API Vec1<T> OddEven(Vec1<T> /* odd */, Vec1<T> even) {
+  return even;
+}
+
+template <typename T>
+HWY_API Vec1<T> OddEvenBlocks(Vec1<T> /* odd */, Vec1<T> even) {
+  return even;
+}
+
+// ------------------------------ SwapAdjacentBlocks
+
+template <typename T>
+HWY_API Vec1<T> SwapAdjacentBlocks(Vec1<T> v) {
+  return v;
 }
 
 // ------------------------------ TableLookupLanes
@@ -1080,17 +1119,31 @@ HWY_API T GetLane(const Vec1<T> v) {
 // Returned by SetTableIndices for use by TableLookupLanes.
 template <typename T>
 struct Indices1 {
-  int raw;
+  MakeSigned<T> raw;
 };
 
-template <typename T>
-HWY_API Indices1<T> SetTableIndices(Sisd<T>, const int32_t* idx) {
-  HWY_DASSERT(idx[0] == 0);
-  return Indices1<T>{idx[0]};
+template <typename T, typename TI>
+HWY_API Indices1<T> IndicesFromVec(Sisd<T>, Vec1<TI> vec) {
+  static_assert(sizeof(T) == sizeof(TI), "Index size must match lane size");
+  HWY_DASSERT(vec.raw == 0);
+  return Indices1<T>{vec.raw};
+}
+
+template <typename T, typename TI>
+HWY_API Indices1<T> SetTableIndices(Sisd<T> d, const TI* idx) {
+  return IndicesFromVec(d, LoadU(idx));
 }
 
 template <typename T>
 HWY_API Vec1<T> TableLookupLanes(const Vec1<T> v, const Indices1<T> /* idx */) {
+  return v;
+}
+
+// ------------------------------ ReverseBlocks
+
+// Single block: no change
+template <typename T>
+HWY_API Vec1<T> ReverseBlocks(Sisd<T> /* tag */, const Vec1<T> v) {
   return v;
 }
 
@@ -1112,38 +1165,36 @@ HWY_API Vec1<T> Broadcast(const Vec1<T> v) {
   return v;
 }
 
-// ------------------------------ Shuffle bytes with variable indices
+// ------------------------------ TableLookupBytes, TableLookupBytesOr0
 
-// Returns vector of bytes[from[i]]. "from" is also interpreted as bytes, i.e.
-// indices in [0, sizeof(T)).
-template <typename T>
-HWY_API Vec1<T> TableLookupBytes(const Vec1<T> in, const Vec1<T> from) {
+template <typename T, typename TI>
+HWY_API Vec1<TI> TableLookupBytes(const Vec1<T> in, const Vec1<TI> indices) {
   uint8_t in_bytes[sizeof(T)];
-  uint8_t from_bytes[sizeof(T)];
+  uint8_t idx_bytes[sizeof(T)];
   uint8_t out_bytes[sizeof(T)];
   CopyBytes<sizeof(T)>(&in, &in_bytes);
-  CopyBytes<sizeof(T)>(&from, &from_bytes);
+  CopyBytes<sizeof(T)>(&indices, &idx_bytes);
   for (size_t i = 0; i < sizeof(T); ++i) {
-    out_bytes[i] = in_bytes[from_bytes[i]];
+    out_bytes[i] = in_bytes[idx_bytes[i]];
   }
-  T out;
-  CopyBytes<sizeof(T)>(&out_bytes, &out);
-  return Vec1<T>{out};
+  TI out;
+  CopyBytes<sizeof(TI)>(&out_bytes, &out);
+  return Vec1<TI>{out};
 }
 
-template <typename T>
-HWY_API Vec1<T> TableLookupBytesOr0(const Vec1<T> in, const Vec1<T> from) {
+template <typename T, typename TI>
+HWY_API Vec1<TI> TableLookupBytesOr0(const Vec1<T> in, const Vec1<TI> indices) {
   uint8_t in_bytes[sizeof(T)];
-  uint8_t from_bytes[sizeof(T)];
+  uint8_t idx_bytes[sizeof(T)];
   uint8_t out_bytes[sizeof(T)];
   CopyBytes<sizeof(T)>(&in, &in_bytes);
-  CopyBytes<sizeof(T)>(&from, &from_bytes);
+  CopyBytes<sizeof(T)>(&indices, &idx_bytes);
   for (size_t i = 0; i < sizeof(T); ++i) {
-    out_bytes[i] = from_bytes[i] & 0x80 ? 0 : in_bytes[from_bytes[i]];
+    out_bytes[i] = idx_bytes[i] & 0x80 ? 0 : in_bytes[idx_bytes[i]];
   }
-  T out;
-  CopyBytes<sizeof(T)>(&out_bytes, &out);
-  return Vec1<T>{out};
+  TI out;
+  CopyBytes<sizeof(TI)>(&out_bytes, &out);
+  return Vec1<TI>{out};
 }
 
 // ------------------------------ ZipLower
@@ -1230,6 +1281,16 @@ HWY_API size_t CompressStore(Vec1<T> v, const Mask1<T> mask, Sisd<T> d,
                              T* HWY_RESTRICT unaligned) {
   StoreU(Compress(v, mask), d, unaligned);
   return CountTrue(d, mask);
+}
+
+// ------------------------------ CompressBlendedStore
+
+template <typename T>
+HWY_API size_t CompressBlendedStore(Vec1<T> v, const Mask1<T> mask, Sisd<T> d,
+                                    T* HWY_RESTRICT unaligned) {
+  if (!mask.bits) return 0;
+  StoreU(v, d, unaligned);
+  return 1;
 }
 
 // ------------------------------ CompressBitsStore

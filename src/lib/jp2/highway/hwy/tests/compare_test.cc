@@ -77,6 +77,37 @@ void EnsureGreater(D d, TFromD<D> a, TFromD<D> b, const char* file, int line) {
 
 #define HWY_ENSURE_GREATER(d, a, b) EnsureGreater(d, a, b, __FILE__, __LINE__)
 
+struct TestStrictUnsigned {
+  template <typename T, class D>
+  HWY_NOINLINE void operator()(T /*unused*/, D d) {
+    const T max = LimitsMax<T>();
+    const auto v0 = Zero(d);
+    const auto v2 = And(Iota(d, T(2)), Set(d, 255));  // 0..255
+
+    const auto mask_false = MaskFalse(d);
+
+    // Individual values of interest
+    HWY_ENSURE_GREATER(d, 2, 1);
+    HWY_ENSURE_GREATER(d, 1, 0);
+    HWY_ENSURE_GREATER(d, 128, 127);
+    HWY_ENSURE_GREATER(d, max, max / 2);
+    HWY_ENSURE_GREATER(d, max, 1);
+    HWY_ENSURE_GREATER(d, max, 0);
+
+    // Also use Iota to ensure lanes are independent
+    HWY_ASSERT_MASK_EQ(d, mask_false, Lt(v2, v0));
+    HWY_ASSERT_MASK_EQ(d, mask_false, Gt(v0, v2));
+    HWY_ASSERT_MASK_EQ(d, mask_false, Lt(v0, v0));
+    HWY_ASSERT_MASK_EQ(d, mask_false, Gt(v0, v0));
+    HWY_ASSERT_MASK_EQ(d, mask_false, Lt(v2, v2));
+    HWY_ASSERT_MASK_EQ(d, mask_false, Gt(v2, v2));
+  }
+};
+
+HWY_NOINLINE void TestAllStrictUnsigned() {
+  ForUnsignedTypes(ForPartialVectors<TestStrictUnsigned>());
+}
+
 struct TestStrictInt {
   template <typename T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
@@ -187,6 +218,51 @@ HWY_NOINLINE void TestAllWeakFloat() {
   ForFloatTypes(ForPartialVectors<TestWeakFloat>());
 }
 
+class TestLt128 {
+  template <class D>
+  static HWY_NOINLINE Vec<D> Make128(D d, uint64_t hi, uint64_t lo) {
+    alignas(16) uint64_t in[2];
+    in[0] = lo;
+    in[1] = hi;
+    return LoadDup128(d, in);
+  }
+
+ public:
+  template <typename T, class D>
+  HWY_NOINLINE void operator()(T /*unused*/, D d) {
+    using V = Vec<D>;
+    const V v00 = Zero(d);
+    const V v01 = Make128(d, 0, 1);
+    const V v10 = Make128(d, 1, 0);
+    const V v11 = Add(v01, v10);
+    const V iota = Iota(d, 1);
+
+    const auto mask_false = MaskFalse(d);
+    const auto mask_true = MaskTrue(d);
+
+    HWY_ASSERT_MASK_EQ(d, mask_false, Lt128(d, v00, v00));
+    HWY_ASSERT_MASK_EQ(d, mask_false, Lt128(d, v01, v01));
+    HWY_ASSERT_MASK_EQ(d, mask_false, Lt128(d, v10, v10));
+
+    HWY_ASSERT_MASK_EQ(d, mask_true, Lt128(d, v00, v01));
+    HWY_ASSERT_MASK_EQ(d, mask_true, Lt128(d, v01, v10));
+    HWY_ASSERT_MASK_EQ(d, mask_true, Lt128(d, v01, v11));
+
+    // Reversed order
+    HWY_ASSERT_MASK_EQ(d, mask_false, Lt128(d, v01, v00));
+    HWY_ASSERT_MASK_EQ(d, mask_false, Lt128(d, v10, v01));
+    HWY_ASSERT_MASK_EQ(d, mask_false, Lt128(d, v11, v01));
+
+    // Also check 128-bit blocks are independent
+    HWY_ASSERT_MASK_EQ(d, mask_true, Lt128(d, iota, Add(iota, v01)));
+    HWY_ASSERT_MASK_EQ(d, mask_true, Lt128(d, iota, Add(iota, v10)));
+    HWY_ASSERT_MASK_EQ(d, mask_false, Lt128(d, Add(iota, v01), iota));
+    HWY_ASSERT_MASK_EQ(d, mask_false, Lt128(d, Add(iota, v10), iota));
+  }
+};
+
+HWY_NOINLINE void TestAllLt128() { ForGE128Vectors<TestLt128>()(uint64_t()); }
+
 // NOLINTNEXTLINE(google-readability-namespace-comments)
 }  // namespace HWY_NAMESPACE
 }  // namespace hwy
@@ -197,9 +273,11 @@ HWY_AFTER_NAMESPACE();
 namespace hwy {
 HWY_BEFORE_TEST(HwyCompareTest);
 HWY_EXPORT_AND_TEST_P(HwyCompareTest, TestAllEquality);
+HWY_EXPORT_AND_TEST_P(HwyCompareTest, TestAllStrictUnsigned);
 HWY_EXPORT_AND_TEST_P(HwyCompareTest, TestAllStrictInt);
 HWY_EXPORT_AND_TEST_P(HwyCompareTest, TestAllStrictFloat);
 HWY_EXPORT_AND_TEST_P(HwyCompareTest, TestAllWeakFloat);
+HWY_EXPORT_AND_TEST_P(HwyCompareTest, TestAllLt128);
 }  // namespace hwy
 
 // Ought not to be necessary, but without this, no tests run on RVV.

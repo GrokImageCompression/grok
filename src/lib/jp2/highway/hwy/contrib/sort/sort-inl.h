@@ -22,6 +22,8 @@
 #define HIGHWAY_HWY_CONTRIB_SORT_SORT_INL_H_
 #endif
 
+#include <inttypes.h>
+
 #include "hwy/aligned_allocator.h"
 #include "hwy/highway.h"
 
@@ -29,11 +31,11 @@ HWY_BEFORE_NAMESPACE();
 namespace hwy {
 namespace HWY_NAMESPACE {
 
+enum class SortOrder { kAscending, kDescending };
+
 #if HWY_TARGET != HWY_SCALAR && HWY_ARCH_X86
 
 #define HWY_SORT_VERIFY 1
-
-enum class SortOrder { kAscending, kDescending };
 
 constexpr inline SortOrder Reverse(SortOrder order) {
   return (order == SortOrder::kAscending) ? SortOrder::kDescending
@@ -125,7 +127,8 @@ class Runs {
     if (IsBitonic()) return;
     for (size_t ir = 0; ir < num_runs_; ++ir) {
       const T* p = &consecutive_[ir * run_length_];
-      printf("run %zu (len %zu)\n", ir, run_length_);
+      printf("run %" PRIu64 " (len %" PRIu64 ")\n", static_cast<uint64_t>(ir),
+             static_cast<uint64_t>(run_length_));
       for (size_t i = 0; i < run_length_; ++i) {
         printf("%.0f\n", static_cast<float>(p[i]));
       }
@@ -142,10 +145,11 @@ class Runs {
 
       for (size_t i = 0; i < run_length_ - 1; ++i) {
         if (!Compare(p[i], p[i + 1], order)) {
-          printf(
-              "ir%zu run_length=%zu alt=%d original order=%d this order=%d\n",
-              ir, run_length_, alternating_, static_cast<int>(kOrder),
-              static_cast<int>(order));
+          printf("ir%" PRIu64 " run_length=%" PRIu64
+                 " alt=%d original order=%d this order=%d\n",
+                 static_cast<uint64_t>(ir), static_cast<uint64_t>(run_length_),
+                 alternating_, static_cast<int>(kOrder),
+                 static_cast<int>(order));
           for (size_t i = 0; i < run_length_; ++i) {
             printf(" %.0f\n", static_cast<float>(p[i]));
           }
@@ -168,14 +172,14 @@ class Runs {
 
 template <class D>
 Runs<D> StoreDeinterleavedQuartets(D d, Vec<D> v0) {
-  Runs runs(d, 1);
+  Runs<D> runs(d, 1);
   runs.ScatterQuartets(d, 0, v0);
   return runs;
 }
 
 template <class D>
 Runs<D> StoreDeinterleavedQuartets(D d, Vec<D> v0, Vec<D> v1) {
-  Runs runs(d, 2);
+  Runs<D> runs(d, 2);
   runs.ScatterQuartets(d, 0, v0);
   runs.ScatterQuartets(d, 1, v1);
   return runs;
@@ -184,7 +188,7 @@ Runs<D> StoreDeinterleavedQuartets(D d, Vec<D> v0, Vec<D> v1) {
 template <class D>
 Runs<D> StoreDeinterleavedQuartets(D d, Vec<D> v0, Vec<D> v1, Vec<D> v2,
                                    Vec<D> v3) {
-  Runs runs(d, 4);
+  Runs<D> runs(d, 4);
   runs.ScatterQuartets(d, 0, v0);
   runs.ScatterQuartets(d, 1, v1);
   runs.ScatterQuartets(d, 2, v2);
@@ -196,7 +200,7 @@ template <class D>
 Runs<D> StoreDeinterleavedQuartets(D d, Vec<D> v0, Vec<D> v1, Vec<D> v2,
                                    Vec<D> v3, Vec<D> v4, Vec<D> v5, Vec<D> v6,
                                    Vec<D> v7) {
-  Runs runs(d, 8);
+  Runs<D> runs(d, 8);
   runs.ScatterQuartets(d, 0, v0);
   runs.ScatterQuartets(d, 1, v1);
   runs.ScatterQuartets(d, 2, v2);
@@ -214,7 +218,7 @@ Runs<D> StoreDeinterleavedQuartets(D d, Vec<D> v0, Vec<D> v1, Vec<D> v2,
                                    Vec<D> v7, Vec<D> v8, Vec<D> v9, Vec<D> vA,
                                    Vec<D> vB, Vec<D> vC, Vec<D> vD, Vec<D> vE,
                                    Vec<D> vF) {
-  Runs runs(d, 16);
+  Runs<D> runs(d, 16);
   runs.ScatterQuartets(d, 0x0, v0);
   runs.ScatterQuartets(d, 0x1, v1);
   runs.ScatterQuartets(d, 0x2, v2);
@@ -245,7 +249,7 @@ Runs<D> StoreDeinterleavedQuartets(
     const Vec<D>& v17, const Vec<D>& v18, const Vec<D>& v19, const Vec<D>& v1A,
     const Vec<D>& v1B, const Vec<D>& v1C, const Vec<D>& v1D, const Vec<D>& v1E,
     const Vec<D>& v1F) {
-  Runs runs(d, 32);
+  Runs<D> runs(d, 32);
   runs.ScatterQuartets(d, 0x00, v00);
   runs.ScatterQuartets(d, 0x01, v01);
   runs.ScatterQuartets(d, 0x02, v02);
@@ -283,7 +287,7 @@ Runs<D> StoreDeinterleavedQuartets(
 
 template <class D>
 Runs<D> StoreVectors(D d, Vec<D> v0, size_t run_length, bool alternating) {
-  Runs runs(d, 1, run_length, alternating);
+  Runs<D> runs(d, 1, run_length, alternating);
   runs.StoreVector(d, 0, v0);
   return runs;
 }
@@ -291,7 +295,7 @@ Runs<D> StoreVectors(D d, Vec<D> v0, size_t run_length, bool alternating) {
 template <class D>
 Runs<D> StoreVectors(D d, Vec<D> v0, Vec<D> v1) {
   constexpr size_t kRegs = 2;
-  Runs runs(d, kRegs, /*run_length=*/kRegs * Lanes(d), /*alternating=*/false);
+  Runs<D> runs(d, kRegs, /*run_length=*/kRegs * Lanes(d), /*alternating=*/false);
   runs.StoreVector(d, 0, v0);
   runs.StoreVector(d, 1, v1);
   return runs;
@@ -300,7 +304,7 @@ Runs<D> StoreVectors(D d, Vec<D> v0, Vec<D> v1) {
 template <class D>
 Runs<D> StoreVectors(D d, Vec<D> v0, Vec<D> v1, Vec<D> v2, Vec<D> v3) {
   constexpr size_t kRegs = 4;
-  Runs runs(d, kRegs, /*run_length=*/kRegs * Lanes(d), /*alternating=*/false);
+  Runs<D> runs(d, kRegs, /*run_length=*/kRegs * Lanes(d), /*alternating=*/false);
   runs.StoreVector(d, 0, v0);
   runs.StoreVector(d, 1, v1);
   runs.StoreVector(d, 2, v2);
@@ -312,7 +316,7 @@ template <class D>
 Runs<D> StoreVectors(D d, Vec<D> v0, Vec<D> v1, Vec<D> v2, Vec<D> v3, Vec<D> v4,
                      Vec<D> v5, Vec<D> v6, Vec<D> v7) {
   constexpr size_t kRegs = 8;
-  Runs runs(d, kRegs, /*run_length=*/kRegs * Lanes(d), /*alternating=*/false);
+  Runs<D> runs(d, kRegs, /*run_length=*/kRegs * Lanes(d), /*alternating=*/false);
   runs.StoreVector(d, 0, v0);
   runs.StoreVector(d, 1, v1);
   runs.StoreVector(d, 2, v2);
@@ -431,6 +435,7 @@ HWY_INLINE void Merge2SortedQuartets(D d, V& v0, V& v1, int caller) {
 // with their odd-numbered neighbor. Works for both quartets and vectors.
 template <SortOrder kOrder, class D>
 HWY_INLINE void SortAdjacentLanesQV(D d, Vec<D>& q_or_v) {
+  (void)d;
   // Optimization for 32-bit integers: swap via Shuffle and 64-bit Min/Max.
   // (not worthwhile on SSE4/AVX2 because they lack 64-bit Min/Max)
 #if !HWY_ARCH_X86 || HWY_TARGET <= HWY_AVX3
@@ -584,7 +589,7 @@ template <SortOrder kOrder, typename T>
 HWY_INLINE void SortDistance4LanesV(Simd<T, 8> d, Vec<decltype(d)>& v) {
   Vec<decltype(d)> swapped = ConcatLowerUpper(d, v, v);
   SortLanesIn2Vectors<kOrder>(v, swapped);
-  v = ConcatUpperLower(swapped, v);
+  v = ConcatUpperLower(d, swapped, v);
 }
 
 template <SortOrder kOrder, typename T>
@@ -595,7 +600,7 @@ template <SortOrder kOrder, class D>
 HWY_INLINE void SortDistance8LanesV(D d, Vec<D>& v) {
   Vec<D> swapped = ConcatLowerUpper(d, v, v);
   SortLanesIn2Vectors<kOrder>(v, swapped);
-  v = ConcatUpperLower(swapped, v);
+  v = ConcatUpperLower(d, swapped, v);
 }
 
 // 120 ops. Only used if vectors are at least 8 lanes.
@@ -884,6 +889,14 @@ HWY_API size_t SortBatch(D d, TFromD<D>* inout) {
 
   return detail::FourQuartetsPerVector<kOrder>(d, q0, q1, q4, q5, q2, q3, q6,
                                                q7, inout);
+}
+
+#else
+
+// Avoids unused attribute warning
+template <SortOrder kOrder, class D>
+HWY_API size_t SortBatch(D /* tag */, TFromD<D>* /* inout */) {
+  return 0;
 }
 
 #endif  // HWY_TARGET != HWY_SCALAR && HWY_ARCH_X86

@@ -16,15 +16,19 @@
 #define HWY_TARGET_INCLUDE "hwy/examples/benchmark.cc"
 #include "hwy/foreach_target.h"
 
+#include <inttypes.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #include <memory>
 #include <numeric>  // iota
 
 #include "hwy/aligned_allocator.h"
+// Must come after foreach_target.h to avoid redefinition errors.
 #include "hwy/highway.h"
 #include "hwy/nanobenchmark.h"
+
 HWY_BEFORE_NAMESPACE();
 namespace hwy {
 namespace HWY_NAMESPACE {
@@ -79,7 +83,8 @@ void RunBenchmark(const char* caption) {
   for (size_t i = 0; i < num_results; ++i) {
     const double cycles_per_item = results[i].ticks / double(results[i].input);
     const double mad = results[i].variability * cycles_per_item;
-    printf("%6zu: %6.3f (+/- %5.3f)\n", results[i].input, cycles_per_item, mad);
+    printf("%6" PRIu64 ": %6.3f (+/- %5.3f)\n",
+           static_cast<uint64_t>(results[i].input), cycles_per_item, mad);
   }
 }
 
