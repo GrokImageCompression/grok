@@ -96,6 +96,10 @@ foreach(exe grk_decompress grk_compress grk_dump)
     ${JPEG_LIBNAME} ${CMAKE_THREAD_LIBS_INIT} )
   # perform static link if only BUILD_STATIC_LIBS is turned on
   if (BUILD_STATIC_LIBS AND NOT BUILD_SHARED_LIBS)
+      # for some reason, ${CMAKE_THREAD_LIBS_INIT}  doesn't work here
+      if(UNIX)
+  		target_link_options(${exe}  PUBLIC "-pthread")
+  	  endif()
 	  target_link_libraries(${exe} ${GROK_LIBRARY_NAME}_static hwy ${CMAKE_DL_LIBS})
   else()
 	  target_link_libraries(${exe} ${GROK_LIBRARY_NAME} ${CMAKE_DL_LIBS} )
