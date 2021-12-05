@@ -9,6 +9,7 @@ class Graph;
 class FlowBuilder;
 class Semaphore;
 class Subflow;
+class Runtime;
 class Task;
 class TaskView;
 class Taskflow;
@@ -20,6 +21,9 @@ class ObserverInterface;
 class ChromeTracingObserver;
 class TFProfObserver;
 class TFProfManager;
+
+template <typename...Fs>
+class Pipeline;
 
 template <typename T>
 class Future;
@@ -35,16 +39,12 @@ class cudaCapturingBase;
 class cudaLinearCapturing;
 class cudaSequentialCapturing;
 class cudaRoundRobinCapturing;
-class cublasFlowCapturer;
 
 // syclFlow
 class syclNode;
 class syclGraph;
 class syclTask;
 class syclFlow;
-
-// clas
-class Sanitizer;
 
 
 }  // end of namespace tf -----------------------------------------------------

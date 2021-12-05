@@ -15,7 +15,7 @@ class TopologyBase {
 
   protected:
 
-  bool _is_cancelled { false };
+  std::atomic<bool> _is_cancelled { false };
 };
 
 // ----------------------------------------------------------------------------
@@ -42,7 +42,7 @@ class Topology : public TopologyBase {
 
     std::promise<void> _promise;
 
-    std::vector<Node*> _sources;
+    SmallVector<Node*> _sources;
 
     std::function<bool()> _pred;
     std::function<void()> _call;
