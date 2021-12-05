@@ -91,35 +91,3 @@ void j2k_codeblock::set_compressed_data(uint8_t *buf, uint16_t bufsize) {
   memcpy(this->compressed_data.get(), buf, bufsize);
   this->current_address = this->compressed_data.get();
 }
-
-void j2k_codeblock::create_compressed_buffer(buf_chain *tile_buf, uint16_t buf_limit,
-                                             const uint16_t &layer) {
-  uint32_t layer_length = 0;
-  uint16_t l0, l1;
-  if (this->layer_passes[layer] > 0) {
-    l0 = this->layer_start[layer];
-    l1 = l0 + this->layer_passes[layer];
-    for (int i = l0; i < l1; i++) {
-      layer_length += this->pass_length[i];
-    }
-    // allocate buffer one once for the first contributing layer
-    if (this->compressed_data == nullptr) {
-      this->compressed_data = std::make_unique<uint8_t[]>(buf_limit);
-      this->current_address = this->compressed_data.get();
-    }
-    if (layer_length != 0) {
-      while (this->length + layer_length > buf_limit) {
-        // extend buffer size, if necessary
-        uint8_t *old_buf = this->compressed_data.release();
-        buf_limit += 8192;
-        this->compressed_data = std::make_unique<uint8_t[]>(buf_limit);
-        memcpy(this->compressed_data.get(), old_buf, sizeof(uint8_t) * (buf_limit));
-        this->current_address = this->compressed_data.get() + (this->length);
-        delete[] old_buf;
-      }
-      // we assume that the size of the compressed data is less than or equal to that of buf_chain node.
-      tile_buf->copy_N_bytes(this->current_address, layer_length);
-      this->length += layer_length;
-    }
-  }
-}

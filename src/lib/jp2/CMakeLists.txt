@@ -44,7 +44,6 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/impl
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/codestream
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/common
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/common
   ${CMAKE_CURRENT_SOURCE_DIR}/util
@@ -189,11 +188,6 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/enc_CxtVLC_tables.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/ht_block_decoding.hpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/coding/ht_block_encoding.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/codestream/codestream.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/codestream/codestream_source.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/codestream/j2kmarkers.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/codestream/j2kmarkers.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/codestream/marker_def.hpp
   
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/T1OpenHTJ2K.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OpenHTJ2K/T1OpenHTJ2K.cpp

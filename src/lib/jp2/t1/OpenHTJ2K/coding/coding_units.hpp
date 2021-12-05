@@ -28,7 +28,13 @@
 
 #pragma once
 
-#include "j2kmarkers.hpp"
+#include <cstdint>
+#include <vector>
+#include "open_htj2k_typedef.hpp"
+#include <cassert>
+#include <string>
+#include <memory>
+#include "utils.hpp"
 #include <cstring>
 #include <functional>
 
@@ -114,7 +120,6 @@ class j2k_codeblock : public j2k_region {
   uint8_t get_Mb() const;
   uint8_t *get_compressed_data();
   void set_compressed_data(uint8_t *buf, uint16_t size);
-  void create_compressed_buffer(buf_chain *tile_buf, uint16_t buf_limit, const uint16_t &layer);
   float *get_fsample_addr(const int16_t &j1, const int16_t &j2) const;
   void update_sample(const uint8_t &symbol, const uint8_t &p, const uint16_t &j1, const uint16_t &j2) const;
   void update_sign(const int8_t &val, const uint16_t &j1, const uint16_t &j2) const;

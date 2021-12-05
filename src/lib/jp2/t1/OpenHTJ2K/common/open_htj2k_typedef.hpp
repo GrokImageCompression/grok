@@ -30,34 +30,13 @@
 
 #include <cstdint>
 
-// calc BIBO gain? if not, LUT is used
-//#define BIBO
-
 // number of fractional bits for fixed-point representation
 constexpr int32_t FRACBITS = 13;
 
 // for 12 bit or higher sample precision, sprec_t == int16_t will lead overflow at quantization
 typedef int32_t sprec_t;
-typedef uint32_t usprec_t;
 
-#define SIMD_LEN_F32 8
-#define SIMD_LEN_I32 8
-
-#define BAND_LL 0
-#define BAND_HL 1
-#define BAND_LH 2
-#define BAND_HH 3
-
-#define BYPASS 0x001
-#define RESET 0x002
-#define RESTART 0x004
 #define CAUSAL 0x008
-// TODO: implementation of MQ decoding with ERTERM
-#define ERTERM 0x010
-#define SEGMARK 0x020
-#define HT 0x040
-#define HT_MIXED 0x080
-#define HT_PHLD 0x100
 
 class element_siz {
  public:
