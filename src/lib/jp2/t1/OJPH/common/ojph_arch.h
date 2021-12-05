@@ -49,27 +49,16 @@
 #include "ojph_defs.h"
 
 namespace ojph {
-
-  /////////////////////////////////////////////////////////////////////////////
-  // preprocessor directives for compiler
-  /////////////////////////////////////////////////////////////////////////////
   #ifdef _MSC_VER
     #define OJPH_COMPILER_MSVC
   #elif (defined __GNUC__)
     #define OJPH_COMPILER_GNUC
   #endif
 
-  /////////////////////////////////////////////////////////////////////////////
-  //                             cpu features
-  /////////////////////////////////////////////////////////////////////////////
-  int cpu_ext_level();
-
-  /////////////////////////////////////////////////////////////////////////////
   #ifdef OJPH_COMPILER_MSVC
   #include <intrin.h>
   #endif
 
-  /////////////////////////////////////////////////////////////////////////////
   static inline ui32 population_count(ui32 val)
   {
   #ifdef OJPH_COMPILER_MSVC
@@ -108,62 +97,12 @@ namespace ojph {
   #endif
   }
 
-  /////////////////////////////////////////////////////////////////////////////
-#ifdef OJPH_COMPILER_MSVC
-  #pragma intrinsic(_BitScanForward)
-#endif
-  static inline ui32 count_trailing_zeros(ui32 val)
-  {
-  #ifdef OJPH_COMPILER_MSVC
-    unsigned long result = 0;
-    _BitScanForward(&result, val);
-    return (ui32)result;
-  #elif (defined OJPH_COMPILER_GNUC)
-    return (ui32)__builtin_ctz(val);
-  #else
-    val |= (val << 1);
-    val |= (val << 2);
-    val |= (val << 4);
-    val |= (val << 8);
-    val |= (val << 16);
-    return 32 - population_count(val);
-  #endif
-  }
-
-  ////////////////////////////////////////////////////////////////////////////
-  static inline si32 ojph_round(float val)
-  {
-  #ifdef OJPH_COMPILER_MSVC
-    return (si32)(val + (val >= 0.0f ? 0.5f : -0.5f));
-  #elif (defined OJPH_COMPILER_GNUC)
-    return (si32)(val + (val >= 0.0f ? 0.5f : -0.5f));
-  #else
-    return (si32)round(val);
-  #endif
-  }
-
-  ////////////////////////////////////////////////////////////////////////////
-  static inline si32 ojph_trunc(float val)
-  {
-  #ifdef OJPH_COMPILER_MSVC
-    return (si32)(val);
-  #elif (defined OJPH_COMPILER_GNUC)
-    return (si32)(val);
-  #else
-    return (si32)trunc(val);
-  #endif
-  }
-
   ////////////////////////////////////////////////////////////////////////////
   // constants
   ////////////////////////////////////////////////////////////////////////////
   const ui32 byte_alignment = 32; //32 bytes == 256 bits
   const ui32 log_byte_alignment = 31 - count_leading_zeros(byte_alignment);
   const ui32 object_alignment = 8;
-
-  ////////////////////////////////////////////////////////////////////////////
-  // templates for alignment
-  ////////////////////////////////////////////////////////////////////////////
 
   ////////////////////////////////////////////////////////////////////////////
   // finds the size such that it is a multiple of byte_alignment
@@ -184,26 +123,6 @@ namespace ojph {
     p &= ~((intptr_t)(1ULL << (31 - count_leading_zeros(N))) - 1);
     return reinterpret_cast<T *>(p);
   }
-
-  ////////////////////////////////////////////////////////////////////////////
-  //                         OS detection definitions
-  ////////////////////////////////////////////////////////////////////////////
-#if (defined WIN32) || (defined _WIN32) || (defined _WIN64)
-  #define OJPH_OS_WINDOWS
-#elif (defined __APPLE__)
-  #define OJPH_OS_APPLE
-#elif (defined __linux)
-  #define OJPH_OS_LINUX
-#endif
-
-  /////////////////////////////////////////////////////////////////////////////
-  // defines for dll
-  /////////////////////////////////////////////////////////////////////////////
-#ifdef OJPH_OS_WINDOWS
-  #define OJPH_EXPORT __declspec(dllexport)
-#else
-  #define OJPH_EXPORT
-#endif
 
 }
 

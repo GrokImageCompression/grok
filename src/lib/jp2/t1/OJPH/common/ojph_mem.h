@@ -132,32 +132,6 @@ namespace ojph {
   };
 
   /////////////////////////////////////////////////////////////////////////////
-  struct line_buf
-  {
-    template<typename T>
-    void pre_alloc(mem_fixed_allocator *p, size_t num_ele, ui32 pre_size)
-    {
-      memset(this, 0, sizeof(line_buf));
-      p->pre_alloc_data<T>(num_ele, pre_size);
-      size = num_ele;
-      this->pre_size = pre_size;
-    }
-    
-    template<typename T>
-    void finalize_alloc(mem_fixed_allocator *p);
-
-    template<typename T>
-    void wrap(T *buffer, size_t num_ele, ui32 pre_size);
-
-    size_t size;
-    ui32 pre_size;
-    union {
-      si32* i32;
-      float* f32;
-    };
-  };
-
-  /////////////////////////////////////////////////////////////////////////////
   struct coded_lists
   {
     coded_lists(ui32 size)

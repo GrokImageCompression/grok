@@ -42,9 +42,10 @@
 
 #include <cassert>
 #include <cstring>
+#include "grok.h"
+#include "logger.h"
 #include "ojph_block_decoder.h"
 #include "ojph_arch.h"
-#include "ojph_message.h"
 
 namespace ojph {
   namespace local {
@@ -343,7 +344,7 @@ namespace ojph {
         //// We pad the data by 8 bytes at the beginning of the code stream 
         //// buffer
         //if (vlcp->size < -4) 
-        //  OJPH_ERROR(0x00010001, "Error in reading VLC data: vlcp size %d "
+        //  grk::GRK_ERROR( "Error in reading VLC data: vlcp size %d "
         //             "less than -4 before rev_read", vlcp->size);
       }
 
@@ -1013,14 +1014,14 @@ namespace ojph {
 
       if (num_passes > 1 && lengths2 == 0)
       {
-    	OJPH_ERROR(0x00010001, "A malformed codeblock that has more than "
+    	grk::GRK_ERROR( "A malformed codeblock that has more than "
                               "one coding pass, but zero length for "
                               "2nd and potential 3rd pass.\n");
         return false;
       }
       if (num_passes > 3)
       {
-        OJPH_ERROR(0x00010002, "We do not support more than 3 coding passes; "
+        grk::GRK_ERROR( "We do not support more than 3 coding passes; "
                                "This codeblocks has %d passes.\n",
                                num_passes);
         return false;

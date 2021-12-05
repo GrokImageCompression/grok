@@ -206,14 +206,9 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/coding/table0.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/coding/table1.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/common/ojph_arch.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/common/ojph_arg.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/common/ojph_base.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/common/ojph_defs.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/common/ojph_mem.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/common/ojph_message.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/others/ojph_arch.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/others/ojph_mem.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/OJPH/others/ojph_message.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/impl/T1.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/part1/impl/T1.h

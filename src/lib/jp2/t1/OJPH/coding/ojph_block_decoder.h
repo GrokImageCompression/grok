@@ -52,16 +52,6 @@ namespace ojph {
         ui32 missing_msbs, ui32 num_passes, ui32 lengths1, ui32 lengths2,
         ui32 width, ui32 height, ui32 stride);
   }
-  namespace local2 {
-    //////////////////////////////////////////////////////////////////////////
-    //decodes the cleanup pass, significance propagation pass,
-    // and magnitude refinement pass
-    bool
-      ojph_decode_codeblock2(ui8* coded_data, ui32* decoded_data,
-        ui32 missing_msbs, ui32 num_passes, ui32 lengths1, ui32 lengths2,
-        ui32 width, ui32 height, ui32 stride);
-
-  }
 }
 
 #endif // !OJPH_BLOCK_DECODER_H
