@@ -20,11 +20,9 @@
  */
 
 #ifdef _WIN32
-#include "../common/windirent.h"
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
 #else
-#include <dirent.h>
 #include <strings.h>
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -35,7 +33,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #endif /* _WIN32 */
-
+#include <filesystem>
 #include "common.h"
 using namespace grk;
 
@@ -70,8 +68,6 @@ using namespace grk;
 #include <chrono>
 #include "spdlog/sinks/basic_file_sink.h"
 #include "exif.h"
-#include "FileProvider.h"
-
 #include "grk_compress.h"
 
 static bool pluginCompressCallback(grk_plugin_compress_user_callback_info* info);
@@ -2251,14 +2247,12 @@ static int pluginMain(int argc, char** argv, CompressInitParams* initParams)
 		}
 		else
 		{
-			std::string filename;
-			FileProvider provider(initParams->inputFolder.imgdirpath);
 			// cache certain settings
 			auto mct = initParams->parameters.mct;
 			auto rateControlAlgorithm = initParams->parameters.rateControlAlgorithm;
-			while(provider.next(filename))
+			for (const auto & entry : std::filesystem::directory_iterator(initParams->inputFolder.imgdirpath))
 			{
-				if(nextFile(filename, &initParams->inputFolder,
+				if(nextFile(entry.path().filename().string(), &initParams->inputFolder,
 							initParams->outFolder.imgdirpath ? &initParams->outFolder
 															 : &initParams->inputFolder,
 							&initParams->parameters))
@@ -2313,12 +2307,10 @@ int main(int argc, char** argv)
 			}
 			else
 			{
-				std::string filename;
-				FileProvider provider(initParams.inputFolder.imgdirpath);
-				while(provider.next(filename))
+				for (const auto & entry : std::filesystem::directory_iterator(initParams.inputFolder.imgdirpath))
 				{
 					initParams.parameters = parametersCache;
-					if(compress(filename, &initParams) == 1)
+					if(compress(entry.path().filename().string(), &initParams) == 1)
 						numCompressedFiles++;
 				}
 			}

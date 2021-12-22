@@ -16,14 +16,9 @@
  */
 #include <plugin/minpf_plugin.h>
 #include <plugin/minpf_plugin_manager.h>
+#include <filesystem>
 #include <stdio.h>
 #include <cstring>
-
-#ifdef _WIN32
-#include "windirent.h"
-#else
-#include <dirent.h>
-#endif /* _WIN32 */
 
 namespace grk
 {
@@ -188,8 +183,6 @@ int32_t minpf_load_from_path(const char* path, minpf_invoke_service_func func)
 
 int32_t minpf_load_from_dir(const char* directory_path, minpf_invoke_service_func func)
 {
-	DIR* dir;
-	struct dirent* content;
 	char libraryPath[MINPF_MAX_PATH_LEN];
 	minpf_plugin_manager* mgr = minpf_get_plugin_manager();
 
@@ -197,32 +190,22 @@ int32_t minpf_load_from_dir(const char* directory_path, minpf_invoke_service_fun
 		return -1;
 
 	mgr->platformServices.invokeService = func;
-
-	dir = opendir(directory_path);
-	if(!dir)
-	{
-		fprintf(stderr, "Unable to open folder %s\n", directory_path);
-		return -1;
-	}
-
 	int32_t rc = -1;
-	while((content = readdir(dir)) != nullptr)
+	for (const auto & entry : std::filesystem::directory_iterator(directory_path))
 	{
-		if(strcmp(".", content->d_name) == 0 || strcmp("..", content->d_name) == 0)
-			continue;
-
+		const char* f = entry.path().filename().string().c_str();
 		// ignore files with incorrect extensions
-		if(strcmp(get_filename_ext(content->d_name), minpf_get_dynamic_library_extension()) != 0)
+		if(strcmp(get_filename_ext(f), minpf_get_dynamic_library_extension()) != 0)
 			continue;
 		strcpy(libraryPath, directory_path);
 		strcat(libraryPath, MINPF_FILE_SEPARATOR);
-		strcat(libraryPath, content->d_name);
+		strcat(libraryPath, f);
 		if(minpf_load(libraryPath) != 0)
 			continue;
 		rc = 0;
 	}
-	auto dir_rc = closedir(dir);
-	return rc || dir_rc;
+
+	return rc;
 }
 
 static int32_t minpf_post_load_plugin(const char* pluginPath, minpf_post_load_func postLoadFunc)

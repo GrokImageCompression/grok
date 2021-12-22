@@ -18,7 +18,7 @@
  *    Please see the LICENSE file in the root directory for details.
  *
  */
-
+#include <filesystem>
 #include "common.h"
 #include <cstdio>
 #include <cstdlib>
@@ -284,24 +284,14 @@ char* get_file_name(char* name)
 
 uint32_t get_num_images(char* imgdirpath)
 {
-	/*Reading the input images from given input directory*/
-	auto dir = opendir(imgdirpath);
-	if(!dir)
+	uint32_t i = 0;
+    for (const auto & entry : std::filesystem::directory_iterator(imgdirpath))
 	{
-		spdlog::error("Could not open Folder {}", imgdirpath);
-		return 0;
+    	(void)entry;
+    	i++;
 	}
 
-	uint32_t num_images = 0;
-	struct dirent* content = nullptr;
-	while((content = readdir(dir)) != nullptr)
-	{
-		if(strcmp(".", content->d_name) == 0 || strcmp("..", content->d_name) == 0)
-			continue;
-		num_images++;
-	}
-	closedir(dir);
-	return num_images;
+    return i;
 }
 
 char* actual_path(const char* outfile, bool* mem_allocated)

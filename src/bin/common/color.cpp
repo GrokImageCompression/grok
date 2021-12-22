@@ -807,7 +807,7 @@ bool color_cielab_to_rgb(grk_image* src_img)
 	}
 
 	auto row = (uint32_t*)src_img->meta->color.icc_profile_buf;
-	GRK_ENUM_COLOUR_SPACE enumcs = (GRK_ENUM_COLOUR_SPACE)row[0];
+	auto enumcs = (GRK_ENUM_COLOUR_SPACE)row[0];
 	if(enumcs != GRK_ENUM_CLRSPC_CIE)
 	{ /* CIELab */
 		spdlog::warn("{}:{}:\n\tenumCS {} not handled. Ignoring.", __FILE__, __LINE__, enumcs);
@@ -887,10 +887,10 @@ bool color_cielab_to_rgb(grk_image* src_img)
 	}
 
 	// Lab input profile
-	cmsHPROFILE in = cmsCreateLab4Profile(illuminant == GRK_CIE_D50 ? nullptr : &WhitePoint);
+	auto in = cmsCreateLab4Profile(illuminant == GRK_CIE_D50 ? nullptr : &WhitePoint);
 	// sRGB output profile
-	cmsHPROFILE out = cmsCreate_sRGBProfile();
-	cmsHTRANSFORM transform =
+	auto out = cmsCreate_sRGBProfile();
+	auto transform =
 		cmsCreateTransform(in, TYPE_Lab_DBL, out, TYPE_RGB_16, INTENT_PERCEPTUAL, 0);
 
 	cmsCloseProfile(in);

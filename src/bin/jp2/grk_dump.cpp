@@ -19,18 +19,13 @@
  *
  */
 #include "grk_config.h"
+#include <filesystem>
 #include "common.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
-
-#ifdef _WIN32
-#include "../common/windirent.h"
-#else
-#include <dirent.h>
-#endif /* _WIN32 */
 
 #ifdef _WIN32
 #include <windows.h>
@@ -116,28 +111,14 @@ class GrokOutput : public TCLAP::StdOutput
 /* -------------------------------------------------------------------------- */
 static int loadImages(dircnt* dirptr, char* imgdirpath)
 {
-	DIR* dir;
-	struct dirent* content;
 	int i = 0;
 
-	/*Reading the input images from given input directory*/
-
-	dir = opendir(imgdirpath);
-	if(!dir)
+	for (const auto & entry : std::filesystem::directory_iterator(imgdirpath))
 	{
-		spdlog::error("Could not open Folder {}", imgdirpath);
-		return 1;
-	}
-
-	while((content = readdir(dir)) != nullptr)
-	{
-		if(strcmp(".", content->d_name) == 0 || strcmp("..", content->d_name) == 0)
-			continue;
-
-		strcpy(dirptr->filename[i], content->d_name);
+		strcpy(dirptr->filename[i], entry.path().filename().string().c_str());
 		i++;
 	}
-	closedir(dir);
+
 	return 0;
 }
 /* -------------------------------------------------------------------------- */

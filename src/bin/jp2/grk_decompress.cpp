@@ -20,13 +20,12 @@
  */
 
 #include "grk_apps_config.h"
+#include <filesystem>
 
 #ifdef _WIN32
-#include "../common/windirent.h"
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
 #else
-#include <dirent.h>
 #include <strings.h>
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -70,7 +69,6 @@
 #include <chrono>
 #include "spdlog/sinks/basic_file_sink.h"
 #include "exif.h"
-#include "FileProvider.h"
 
 namespace grk
 {
@@ -333,32 +331,18 @@ bool GrkDecompress::parsePrecision(const char* option, grk_decompress_parameters
 
 int GrkDecompress::loadImages(grk_dircnt* dirptr, char* imgdirpath)
 {
-	DIR* dir;
-	struct dirent* content;
 	int i = 0;
 
-	/*Reading the input images from given input directory*/
-
-	dir = opendir(imgdirpath);
-	if(!dir)
+	for (const auto & entry : std::filesystem::directory_iterator(imgdirpath))
 	{
-		spdlog::error("Could not open Folder {}", imgdirpath);
-		return 1;
-	}
-
-	while((content = readdir(dir)) != nullptr)
-	{
-		if(strcmp(".", content->d_name) == 0 || strcmp("..", content->d_name) == 0)
-			continue;
-
-		strcpy(dirptr->filename[i], content->d_name);
+		strcpy(dirptr->filename[i], entry.path().filename().string().c_str());
 		i++;
 	}
-	closedir(dir);
+
 	return 0;
 }
 
-char GrkDecompress::nextFile(std::string inputFile, grk_img_fol* inputFolder,
+char GrkDecompress::nextFile(const std::string inputFile, grk_img_fol* inputFolder,
 							 grk_img_fol* outFolder, grk_decompress_parameters* parameters)
 {
 	spdlog::info("File: \"{}\"", inputFile.c_str());
@@ -843,7 +827,7 @@ void MycmsLogErrorHandlerFunction(cmsContext ContextID, cmsUInt32Number ErrorCod
 static int decompress_callback(grk_plugin_decompress_callback_info* info);
 
 // returns 0 for failure, 1 for success, and 2 if file is not suitable for decoding
-int GrkDecompress::decompress(std::string& fileName, DecompressInitParams* initParams)
+int GrkDecompress::decompress(const std::string& fileName, DecompressInitParams* initParams)
 {
 	if(initParams->inputFolder.set_imgdir)
 	{
@@ -960,11 +944,9 @@ int GrkDecompress::pluginMain(int argc, char** argv, DecompressInitParams* initP
 		}
 		else
 		{
-			std::string filename;
-			FileProvider provider(initParams->inputFolder.imgdirpath);
-			while(provider.next(filename))
+		    for (const auto & entry : std::filesystem::directory_iterator(initParams->inputFolder.imgdirpath))
 			{
-				if(nextFile(filename, &initParams->inputFolder,
+				if(nextFile(entry.path().filename().string(), &initParams->inputFolder,
 							initParams->outFolder.imgdirpath ? &initParams->outFolder
 															 : &initParams->inputFolder,
 							&initParams->parameters))
@@ -1622,10 +1604,9 @@ int GrkDecompress::main(int argc, char** argv)
 			}
 			else
 			{
-				FileProvider provider(initParams.inputFolder.imgdirpath);
-				while(provider.next(filename))
+				for (const auto & entry : std::filesystem::directory_iterator(initParams.inputFolder.imgdirpath))
 				{
-					if(decompress(filename, &initParams) == 1)
+					if(decompress(entry.path().filename().string(), &initParams) == 1)
 						numDecompressed++;
 				}
 			}
