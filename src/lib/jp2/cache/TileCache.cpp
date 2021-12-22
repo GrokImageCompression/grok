@@ -68,6 +68,10 @@ void TileCache::setStrategy(GRK_TILE_CACHE_STRATEGY strategy)
 {
 	m_strategy = strategy;
 }
+GRK_TILE_CACHE_STRATEGY TileCache::getStrategy(void)
+{
+	return m_strategy;
+}
 GrkImage* TileCache::getComposite()
 {
 	return tileComposite;

@@ -66,6 +66,11 @@ GrkImage* TileProcessor::getImage(void)
 {
 	return m_image;
 }
+void TileProcessor::deleteImage(void){
+	if(m_image)
+		grk_object_unref(&m_image->obj);
+	m_image = nullptr;
+}
 void TileProcessor::setCorruptPacket(void)
 {
 	m_corrupt_packet = true;

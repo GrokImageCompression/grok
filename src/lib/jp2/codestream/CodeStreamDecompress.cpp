@@ -165,17 +165,6 @@ TileProcessor* CodeStreamDecompress::allocateProcessor(uint16_t tileIndex)
 		m_tileCache->put(tileIndex, tileProcessor);
 	}
 	m_currentTileProcessor = tileProcessor;
-	if(!m_multiTile)
-	{
-		if(m_outputImage)
-			grk_object_unref(&m_outputImage->obj);
-		m_outputImage = nullptr;
-	}
-	if(!m_outputImage)
-	{
-		m_outputImage = new GrkImage();
-		getCompositeImage()->copyHeader(m_outputImage);
-	}
 
 	return m_currentTileProcessor;
 }
@@ -508,6 +497,9 @@ bool CodeStreamDecompress::decompressTiles(void)
 			return false;
 		}
 	}
+	if (!createOutputImage())
+		return false;
+
 	std::vector<std::future<int>> results;
 	std::atomic<bool> success(true);
 	std::atomic<uint32_t> numTilesDecompressed(0);
@@ -621,7 +613,14 @@ bool CodeStreamDecompress::decompressTiles(void)
 				else
 				{
 					numTilesDecompressed++;
+					if(m_multiTile && processor->getImage() && !m_outputImage->compositeFrom(processor->getImage()))
+						success = false;
+					//if cache strategy set to none, then delete image
+					if (success && m_tileCache && m_tileCache->getStrategy() == GRK_TILE_CACHE_NONE){
+						processor->deleteImage();
+					}
 				}
+
 			}
 			return 0;
 		};
@@ -840,30 +839,41 @@ bool CodeStreamDecompress::decompressExec(void)
 	if(!exec(m_procedure_list))
 		return false;
 
-	// composite all tiles (if multiple tiles are to be decompressed)
-	if(m_multiTile)
-	{
-		if(!m_outputImage->allocData())
-			return false;
-		auto images = m_tileCache->getTileImages();
-		for(auto& img : images)
-		{
-			if(!m_outputImage->compositeFrom(img))
-				return false;
-		}
-	}
-
 	// transfer output image to composite image
 	m_outputImage->transferDataTo(getCompositeImage());
 
 	return true;
 }
+
+bool CodeStreamDecompress::createOutputImage(void){
+	if(!m_multiTile)
+	{
+		if(m_outputImage)
+			grk_object_unref(&m_outputImage->obj);
+		m_outputImage = nullptr;
+	}
+	if(!m_outputImage)
+	{
+		m_outputImage = new GrkImage();
+		getCompositeImage()->copyHeader(m_outputImage);
+	}
+	// only allocate data if there are multiple tiles. Otherwise, the single tile data
+	// will simply be transferred to the output image
+	if(m_multiTile && !m_outputImage->allocData())
+		return false;
+
+	return true;
+}
+
 /*
  * Read and decompress one tile.
  */
 bool CodeStreamDecompress::decompressTile()
 {
 	m_multiTile = false;
+	if (!createOutputImage())
+		return false;
+
 	if(tileIndexToDecode() == -1)
 	{
 		GRK_ERROR("j2k_decompress_tile: Unable to decompress tile "
@@ -939,9 +949,7 @@ bool CodeStreamDecompress::decompressT2T1(TileProcessor* tileProcessor)
 	bool doPost =
 		!current_plugin_tile || (current_plugin_tile->decompress_flags & GRK_DECODE_POST_T1);
 	if(!tileProcessor->decompressT2T1(tcp, m_outputImage, m_multiTile, doPost))
-	{
 		return false;
-	}
 
 	return true;
 }
