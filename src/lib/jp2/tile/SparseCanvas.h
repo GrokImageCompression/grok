@@ -182,6 +182,7 @@ class SparseCanvas : public ISparseCanvas
 	bool read(uint8_t resno, eBandOrientation bandOrientation, grkRectU32 window, int32_t* dest,
 			  const uint32_t dest_col_stride, const uint32_t dest_line_stride, bool forgiving)
 	{
+		GRK_UNUSED(bandOrientation);
 		return read_or_write(resno, window, dest, dest_col_stride, dest_line_stride, forgiving,
 							 true);
 	}
@@ -189,6 +190,7 @@ class SparseCanvas : public ISparseCanvas
 			   const int32_t* src, const uint32_t src_col_stride, const uint32_t src_line_stride,
 			   bool forgiving)
 	{
+		GRK_UNUSED(bandOrientation);
 		return read_or_write(resno, window, (int32_t*)src, src_col_stride, src_line_stride,
 							 forgiving, false);
 	}

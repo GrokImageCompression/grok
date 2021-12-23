@@ -466,6 +466,562 @@ bool GrkImage::compositeFrom(const GrkImage* src_image)
 	return true;
 }
 
+/**
+ * return false if :
+ * 1. any component's data buffer is NULL
+ * 2. any component's precision is either 0 or greater than GRK_MAX_SUPPORTED_IMAGE_PRECISION
+ * 3. any component's signedness does not match another component's signedness
+ * 4. any component's precision does not match another component's precision
+ *    (if equalPrecision is true)
+ *
+ */
+bool GrkImage::allComponentsSanityCheck(bool equalPrecision)
+{
+	if(numcomps == 0)
+		return false;
+	auto comp0 = comps;
+
+	if(!comp0->data)
+	{
+		GRK_ERROR("component 0 : data is null.");
+		return false;
+	}
+	if(comp0->prec == 0 || comp0->prec > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
+	{
+		GRK_WARN("component 0 precision {} is not supported.", 0, comp0->prec);
+		return false;
+	}
+
+	for(uint16_t i = 1U; i < numcomps; ++i)
+	{
+		auto compi = comps + i;
+
+		if(!comp0->data)
+		{
+			GRK_WARN("component {} : data is null.", i);
+			return false;
+		}
+		if(equalPrecision && comp0->prec != compi->prec)
+		{
+			GRK_WARN("precision {} of component {}"
+						 " differs from precision {} of component 0.",
+						 compi->prec, i, comp0->prec);
+			return false;
+		}
+		if(comp0->sgnd != compi->sgnd)
+		{
+			GRK_WARN("signedness {} of component {}"
+						 " differs from signedness {} of component 0.",
+						 compi->sgnd, i, comp0->sgnd);
+			return false;
+		}
+	}
+	return true;
+}
+
+grk_image* GrkImage::create_rgb_no_subsample_image(uint16_t numcmpts, uint32_t w, uint32_t h,
+												uint8_t prec)
+{
+	if(!numcmpts)
+	{
+		GRK_WARN("create_rgb_no_subsample_image: number of components cannot be zero.");
+		return nullptr;
+	}
+
+	auto cmptparms = new grk_image_cmptparm[numcmpts];
+	if(!cmptparms)
+	{
+		GRK_WARN("create_rgb_no_subsample_image: out of memory.");
+		return nullptr;
+	}
+	uint32_t compno = 0U;
+	for(compno = 0U; compno < numcmpts; ++compno)
+	{
+		memset(cmptparms + compno, 0, sizeof(grk_image_cmptparm));
+		cmptparms[compno].dx = 1;
+		cmptparms[compno].dy = 1;
+		cmptparms[compno].w = w;
+		cmptparms[compno].h = h;
+		cmptparms[compno].x0 = 0U;
+		cmptparms[compno].y0 = 0U;
+		cmptparms[compno].prec = prec;
+		cmptparms[compno].sgnd = 0U;
+	}
+	auto img = grk_image_new(numcmpts, (grk_image_cmptparm*)cmptparms, GRK_CLRSPC_SRGB, true);
+	delete[] cmptparms;
+
+	return img;
+}
+
+/*--------------------------------------------------------
+ Matrix for sYCC, Amendment 1 to IEC 61966-2-1
+
+ Y  |  0.299   0.587    0.114  |    R
+ Cb | -0.1687 -0.3312   0.5    | x  G
+ Cr |  0.5    -0.4187  -0.0812 |    B
+
+ Inverse:
+
+ R   |1        -3.68213e-05    1.40199     |    Y
+ G = |1.00003  -0.344125      -0.714128    | x  Cb - 2^(prec - 1)
+ B   |0.999823  1.77204       -8.04142e-06 |    Cr - 2^(prec - 1)
+
+ -----------------------------------------------------------*/
+void GrkImage::sycc_to_rgb(int32_t offset, int32_t upb, int32_t y, int32_t cb, int32_t cr,
+						int32_t* out_r, int32_t* out_g, int32_t* out_b)
+{
+	int32_t r, g, b;
+
+	cb -= offset;
+	cr -= offset;
+	r = y + (int32_t)(1.402 * cr);
+	if(r < 0)
+		r = 0;
+	else if(r > upb)
+		r = upb;
+	*out_r = r;
+
+	g = y - (int32_t)(0.344 * cb + 0.714 * cr);
+	if(g < 0)
+		g = 0;
+	else if(g > upb)
+		g = upb;
+	*out_g = g;
+
+	b = y + (int32_t)(1.772 * cb);
+	if(b < 0)
+		b = 0;
+	else if(b > upb)
+		b = upb;
+	*out_b = b;
+}
+
+bool GrkImage::sycc444_to_rgb(void)
+{
+	int32_t *d0, *d1, *d2, *r, *g, *b;
+	auto dst =
+		create_rgb_no_subsample_image(3, comps[0].w, comps[0].h, comps[0].prec);
+	if(!dst)
+		return false;
+
+	int32_t upb = (int32_t)comps[0].prec;
+	int32_t offset = 1 << (upb - 1);
+	upb = (1 << upb) - 1;
+
+	uint32_t w = comps[0].w;
+	uint32_t src_stride_diff = comps[0].stride - w;
+	uint32_t dst_stride_diff = dst->comps[0].stride - dst->comps[0].w;
+	uint32_t h = comps[0].h;
+
+	auto y = comps[0].data;
+	auto cb = comps[1].data;
+	auto cr = comps[2].data;
+
+	d0 = r = dst->comps[0].data;
+	d1 = g = dst->comps[1].data;
+	d2 = b = dst->comps[2].data;
+
+	dst->comps[0].data = nullptr;
+	dst->comps[1].data = nullptr;
+	dst->comps[2].data = nullptr;
+
+	for(uint32_t j = 0; j < h; ++j)
+	{
+		for(uint32_t i = 0; i < w; ++i)
+			sycc_to_rgb(offset, upb, *y++, *cb++, *cr++, r++, g++, b++);
+		y += src_stride_diff;
+		cb += src_stride_diff;
+		cr += src_stride_diff;
+		r += dst_stride_diff;
+		g += dst_stride_diff;
+		b += dst_stride_diff;
+	}
+
+	grk_image_all_components_data_free(this);
+	comps[0].data = d0;
+	comps[1].data = d1;
+	comps[2].data = d2;
+	color_space = GRK_CLRSPC_SRGB;
+
+	for(uint32_t i = 0; i < numcomps; ++i)
+		comps[i].stride = dst->comps[i].stride;
+	grk_object_unref(&dst->obj);
+	dst = nullptr;
+
+	return true;
+} /* sycc444_to_rgb() */
+
+bool GrkImage::sycc422_to_rgb(bool oddFirstX)
+{
+	auto dst =
+		create_rgb_no_subsample_image(3, comps[0].w, comps[0].h, comps[0].prec);
+	if(!dst)
+		return false;
+
+	int32_t upb = comps[0].prec;
+	int32_t offset = 1 << (upb - 1);
+	upb = (1 << upb) - 1;
+
+	uint32_t w = comps[0].w;
+	uint32_t dst_stride_diff = dst->comps[0].stride - dst->comps[0].w;
+	uint32_t src_stride_diff = comps[0].stride - w;
+	uint32_t src_stride_diff_chroma = comps[1].stride - comps[1].w;
+	uint32_t h = comps[0].h;
+
+	int32_t *d0, *d1, *d2, *r, *g, *b;
+
+	auto y = comps[0].data;
+	if(!y)
+	{
+		GRK_WARN("sycc422_to_rgb: null luma channel");
+		return false;
+	}
+	auto cb = comps[1].data;
+	auto cr = comps[2].data;
+	if(!cb || !cr)
+	{
+		GRK_WARN("sycc422_to_rgb: null chroma channel");
+		return false;
+	}
+
+	d0 = r = dst->comps[0].data;
+	d1 = g = dst->comps[1].data;
+	d2 = b = dst->comps[2].data;
+
+	dst->comps[0].data = nullptr;
+	dst->comps[1].data = nullptr;
+	dst->comps[2].data = nullptr;
+
+	/* if img->x0 is odd, then first column shall use Cb/Cr = 0 */
+	uint32_t loopmaxw = w;
+	if(oddFirstX)
+		loopmaxw--;
+
+	for(uint32_t i = 0U; i < h; ++i)
+	{
+		if(oddFirstX)
+			sycc_to_rgb(offset, upb, *y++, 0, 0, r++, g++, b++);
+
+		uint32_t j;
+		for(j = 0U; j < (loopmaxw & ~(size_t)1U); j += 2U)
+		{
+			sycc_to_rgb(offset, upb, *y++, *cb, *cr, r++, g++, b++);
+			sycc_to_rgb(offset, upb, *y++, *cb++, *cr++, r++, g++, b++);
+		}
+		if(j < loopmaxw)
+			sycc_to_rgb(offset, upb, *y++, *cb++, *cr++, r++, g++, b++);
+
+		y += src_stride_diff;
+		cb += src_stride_diff_chroma;
+		cr += src_stride_diff_chroma;
+		r += dst_stride_diff;
+		g += dst_stride_diff;
+		b += dst_stride_diff;
+	}
+	grk_image_all_components_data_free(this);
+
+	comps[0].data = d0;
+	comps[1].data = d1;
+	comps[2].data = d2;
+
+	comps[1].w = comps[2].w = comps[0].w;
+	comps[1].h = comps[2].h = comps[0].h;
+	comps[1].dx = comps[2].dx = comps[0].dx;
+	comps[1].dy = comps[2].dy = comps[0].dy;
+	color_space = GRK_CLRSPC_SRGB;
+
+	for(uint32_t i = 0; i < numcomps; ++i)
+		comps[i].stride = dst->comps[i].stride;
+	grk_object_unref(&dst->obj);
+	dst = nullptr;
+
+	return true;
+
+} /* sycc422_to_rgb() */
+
+bool GrkImage::sycc420_to_rgb(bool oddFirstX, bool oddFirstY)
+{
+	auto dst = create_rgb_no_subsample_image(3, comps[0].w, comps[0].h,
+											 comps[0].prec);
+	if(!dst)
+		return false;
+
+	int32_t upb = comps[0].prec;
+	int32_t offset = 1 << (upb - 1);
+	upb = (1 << upb) - 1;
+
+	uint32_t w = comps[0].w;
+	uint32_t h = comps[0].h;
+
+	int32_t* src[3];
+	int32_t* dest[3];
+	int32_t* dest_ptr[3];
+	uint32_t stride_src[3];
+	uint32_t stride_src_diff[3];
+
+	uint32_t stride_dest = dst->comps[0].stride;
+	uint32_t stride_dest_diff = dst->comps[0].stride - dst->comps[0].w;
+
+	for(uint32_t i = 0; i < 3; ++i)
+	{
+		auto src_comp = comps + i;
+		src[i] = src_comp->data;
+		stride_src[i] = src_comp->stride;
+		stride_src_diff[i] = src_comp->stride - src_comp->w;
+
+		dest[i] = dest_ptr[i] = dst->comps[i].data;
+		dst->comps[i].data = nullptr;
+	}
+
+	uint32_t loopmaxw = w;
+	uint32_t loopmaxh = h;
+
+	/* if img->x0 is odd, then first column shall use Cb/Cr = 0 */
+	if(oddFirstX)
+		loopmaxw--;
+	/* if img->y0 is odd, then first line shall use Cb/Cr = 0 */
+	if(oddFirstY)
+		loopmaxh--;
+
+	if(oddFirstX)
+	{
+		for(size_t j = 0U; j < w; ++j)
+			sycc_to_rgb(offset, upb, *src[0]++, 0, 0, dest_ptr[0]++, dest_ptr[1]++, dest_ptr[2]++);
+		src[0] += stride_src_diff[0];
+		for(uint32_t i = 0; i < 3; ++i)
+			dest_ptr[i] += stride_dest_diff;
+	}
+	size_t i;
+	for(i = 0U; i < (loopmaxh & ~(size_t)1U); i += 2U)
+	{
+		auto ny = src[0] + stride_src[0];
+		auto nr = dest_ptr[0] + stride_dest;
+		auto ng = dest_ptr[1] + stride_dest;
+		auto nb = dest_ptr[2] + stride_dest;
+
+		if(oddFirstY)
+		{
+			sycc_to_rgb(offset, upb, *src[0]++, 0, 0, dest_ptr[0]++, dest_ptr[1]++, dest_ptr[2]++);
+			sycc_to_rgb(offset, upb, *ny++, *src[1], *src[2], nr++, ng++, nb++);
+		}
+		uint32_t j;
+		for(j = 0U; j < (loopmaxw & ~(size_t)1U); j += 2U)
+		{
+			sycc_to_rgb(offset, upb, *src[0]++, *src[1], *src[2], dest_ptr[0]++, dest_ptr[1]++,
+						dest_ptr[2]++);
+			sycc_to_rgb(offset, upb, *src[0]++, *src[1], *src[2], dest_ptr[0]++, dest_ptr[1]++,
+						dest_ptr[2]++);
+			sycc_to_rgb(offset, upb, *ny++, *src[1], *src[2], nr++, ng++, nb++);
+			sycc_to_rgb(offset, upb, *ny++, *src[1]++, *src[2]++, nr++, ng++, nb++);
+		}
+		if(j < loopmaxw)
+		{
+			sycc_to_rgb(offset, upb, *src[0]++, *src[1], *src[2], dest_ptr[0]++, dest_ptr[1]++,
+						dest_ptr[2]++);
+			sycc_to_rgb(offset, upb, *ny++, *src[1]++, *src[2]++, nr++, ng++, nb++);
+		}
+		src[0] += stride_src_diff[0] + stride_src[0];
+		src[1] += stride_src_diff[1];
+		src[2] += stride_src_diff[2];
+		for(uint32_t k = 0; k < 3; ++k)
+			dest_ptr[k] += stride_dest_diff + stride_dest;
+	}
+	// last row has no sub-sampling
+	if(i < loopmaxh)
+	{
+		uint32_t j;
+		for(j = 0U; j < (w & ~(size_t)1U); j += 2U)
+		{
+			sycc_to_rgb(offset, upb, *src[0]++, *src[1], *src[2], dest_ptr[0]++, dest_ptr[1]++,
+						dest_ptr[2]++);
+			sycc_to_rgb(offset, upb, *src[0]++, *src[1]++, *src[2]++, dest_ptr[0]++, dest_ptr[1]++,
+						dest_ptr[2]++);
+		}
+		if(j < w)
+			sycc_to_rgb(offset, upb, *src[0], *src[1], *src[2], dest_ptr[0], dest_ptr[1],
+						dest_ptr[2]);
+	}
+
+	grk_image_all_components_data_free(this);
+	for(uint32_t k = 0; k < 3; ++k)
+	{
+		comps[k].data = dest[k];
+		comps[k].stride = dst->comps[k].stride;
+	}
+
+	comps[1].w = comps[2].w = comps[0].w;
+	comps[1].h = comps[2].h = comps[0].h;
+	comps[1].dx = comps[2].dx = comps[0].dx;
+	comps[1].dy = comps[2].dy = comps[0].dy;
+	color_space = GRK_CLRSPC_SRGB;
+
+	grk_object_unref(&dst->obj);
+	dst = nullptr;
+
+	return true;
+
+} /* sycc420_to_rgb() */
+
+bool GrkImage::color_sycc_to_rgb(bool oddFirstX, bool oddFirstY)
+{
+	if(numcomps < 3)
+	{
+		GRK_WARN("color_sycc_to_rgb: number of components {} is less than 3."
+					 " Unable to convert",
+					 numcomps);
+		return false;
+	}
+	bool rc;
+
+	if((comps[0].dx == 1) && (comps[1].dx == 2) && (comps[2].dx == 2) &&
+	   (comps[0].dy == 1) && (comps[1].dy == 2) && (comps[2].dy == 2))
+	{ /* horizontal and vertical sub-sample */
+		rc = sycc420_to_rgb(oddFirstX, oddFirstY);
+	}
+	else if((comps[0].dx == 1) && (comps[1].dx == 2) && (comps[2].dx == 2) &&
+			(comps[0].dy == 1) && (comps[1].dy == 1) && (comps[2].dy == 1))
+	{ /* horizontal sub-sample only */
+		rc = sycc422_to_rgb( oddFirstX);
+	}
+	else if((comps[0].dx == 1) && (comps[1].dx == 1) && (comps[2].dx == 1) &&
+			(comps[0].dy == 1) && (comps[1].dy == 1) && (comps[2].dy == 1))
+	{ /* no sub-sample */
+		rc = sycc444_to_rgb();
+	}
+	else
+	{
+		GRK_WARN("color_sycc_to_rgb:  Invalid sub-sampling: ({},{}), ({},{}), ({},{})."
+					 " Unable to convert.",
+					 comps[0].dx, comps[0].dy, comps[1].dx, comps[1].dy,
+					 comps[2].dx, comps[2].dy);
+		rc = false;
+	}
+	if(rc)
+		color_space = GRK_CLRSPC_SRGB;
+
+	return rc;
+
+} /* color_sycc_to_rgb() */
+
+bool GrkImage::color_cmyk_to_rgb(void)
+{
+	uint32_t w = comps[0].w;
+	uint32_t h = comps[0].h;
+
+	if((numcomps < 4) || !allComponentsSanityCheck(true))
+		return false;
+
+	float sC = 1.0F / (float)((1 << comps[0].prec) - 1);
+	float sM = 1.0F / (float)((1 << comps[1].prec) - 1);
+	float sY = 1.0F / (float)((1 << comps[2].prec) - 1);
+	float sK = 1.0F / (float)((1 << comps[3].prec) - 1);
+
+	uint32_t stride_diff = comps[0].stride - w;
+	size_t dest_index = 0;
+	for(uint32_t j = 0; j < h; ++j)
+	{
+		for(uint32_t i = 0; i < w; ++i)
+		{
+			/* CMYK values from 0 to 1 */
+			float C = (float)(comps[0].data[dest_index]) * sC;
+			float M = (float)(comps[1].data[dest_index]) * sM;
+			float Y = (float)(comps[2].data[dest_index]) * sY;
+			float K = (float)(comps[3].data[dest_index]) * sK;
+
+			/* Invert all CMYK values */
+			C = 1.0F - C;
+			M = 1.0F - M;
+			Y = 1.0F - Y;
+			K = 1.0F - K;
+
+			/* CMYK -> RGB : RGB results from 0 to 255 */
+			comps[0].data[dest_index] = (int32_t)(255.0F * C * K); /* R */
+			comps[1].data[dest_index] = (int32_t)(255.0F * M * K); /* G */
+			comps[2].data[dest_index] = (int32_t)(255.0F * Y * K); /* B */
+			dest_index++;
+		}
+		dest_index += stride_diff;
+	}
+
+	grk_image_single_component_data_free(comps + 3);
+	comps[0].prec = 8;
+	comps[1].prec = 8;
+	comps[2].prec = 8;
+	numcomps = (uint16_t)(numcomps - 1U);
+	color_space = GRK_CLRSPC_SRGB;
+
+	for(uint32_t i = 3; i < numcomps; ++i)
+		memcpy(&(comps[i]), &(comps[i + 1]), sizeof(comps[i]));
+
+	return true;
+
+} /* color_cmyk_to_rgb() */
+
+// assuming unsigned data !
+bool GrkImage::color_esycc_to_rgb(void)
+{
+	int32_t flip_value = (1 << (comps[0].prec - 1));
+	int32_t max_value = (1 << comps[0].prec) - 1;
+
+	if((numcomps < 3) || !allComponentsSanityCheck(true))
+		return false;
+
+	uint32_t w = comps[0].w;
+	uint32_t h = comps[0].h;
+
+	bool sign1 = comps[1].sgnd;
+	bool sign2 = comps[2].sgnd;
+
+	uint32_t stride_diff = comps[0].stride - w;
+	size_t dest_index = 0;
+	for(uint32_t j = 0; j < h; ++j)
+	{
+		for(uint32_t i = 0; i < w; ++i)
+		{
+			int32_t y = comps[0].data[dest_index];
+			int32_t cb = comps[1].data[dest_index];
+			int32_t cr = comps[2].data[dest_index];
+
+			if(!sign1)
+				cb -= flip_value;
+			if(!sign2)
+				cr -= flip_value;
+
+			int32_t val = (int32_t)(y - 0.0000368 * cb + 1.40199 * cr + 0.5);
+
+			if(val > max_value)
+				val = max_value;
+			else if(val < 0)
+				val = 0;
+			comps[0].data[dest_index] = val;
+
+			val = (int32_t)(1.0003 * y - 0.344125 * cb - 0.7141128 * cr + 0.5);
+
+			if(val > max_value)
+				val = max_value;
+			else if(val < 0)
+				val = 0;
+			comps[1].data[dest_index] = val;
+
+			val = (int32_t)(0.999823 * y + 1.77204 * cb - 0.000008 * cr + 0.5);
+
+			if(val > max_value)
+				val = max_value;
+			else if(val < 0)
+				val = 0;
+			comps[2].data[dest_index] = val;
+			dest_index++;
+		}
+		dest_index += stride_diff;
+	}
+	color_space = GRK_CLRSPC_SRGB;
+
+	return true;
+
+} /* color_esycc_to_rgb() */
+
+
+
 GrkImageMeta::GrkImageMeta()
 {
 	obj.wrapper = new GrkObjectWrapperImpl(this);

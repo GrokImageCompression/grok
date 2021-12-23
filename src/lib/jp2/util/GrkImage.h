@@ -86,6 +86,16 @@ class GrkImage : public grk_image
 								 grkRectU32* dest, grkRectU32* dest_win, uint32_t* src_line_off);
 	void createMeta();
 
+	bool allComponentsSanityCheck(bool equalPrecision);
+	grk_image* create_rgb_no_subsample_image(uint16_t numcmpts, uint32_t w, uint32_t h,	uint8_t prec);
+	void sycc_to_rgb(int32_t offset, int32_t upb, int32_t y, int32_t cb, int32_t cr,
+							int32_t* out_r, int32_t* out_g, int32_t* out_b);
+	bool sycc444_to_rgb(void);
+	bool sycc422_to_rgb(bool oddFirstX);
+	bool sycc420_to_rgb(bool oddFirstX, bool oddFirstY);
+	bool color_sycc_to_rgb(bool oddFirstX, bool oddFirstY);
+	bool color_cmyk_to_rgb(void);
+	bool color_esycc_to_rgb(void);
   private:
 	~GrkImage();
 	bool ownsData;

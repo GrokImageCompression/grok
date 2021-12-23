@@ -315,6 +315,10 @@ struct grkBuffer2d : private grkBuffer<T, A>, public grkRectU32
 	bool read(grkRectU32 window, int32_t* dest, const uint32_t destColStride,
 			  const uint32_t destStride)
 	{
+		GRK_UNUSED(dest);
+		GRK_UNUSED(destColStride);
+		GRK_UNUSED(destStride);
+
 		if(!isWindowValid(window))
 			return false;
 
@@ -335,6 +339,10 @@ struct grkBuffer2d : private grkBuffer<T, A>, public grkRectU32
 	bool write(grkRectU32 window, const int32_t* src, const uint32_t srcColStride,
 			   const uint32_t srcStride)
 	{
+		GRK_UNUSED(src);
+		GRK_UNUSED(srcColStride);
+		GRK_UNUSED(srcStride);
+
 		if(!isWindowValid(window))
 			return false;
 
