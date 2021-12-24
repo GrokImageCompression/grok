@@ -977,6 +977,8 @@ typedef struct _grk_image
 	double capture_resolution[2];
 	bool has_display_resolution;
 	double display_resolution[2];
+	GRK_SUPPORTED_FILE_FMT decodeFormat;
+	bool forceRGB;
 	grk_image_meta* meta;
 	grk_image_comp* comps;
 } grk_image;

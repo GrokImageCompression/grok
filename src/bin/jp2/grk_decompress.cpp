@@ -1228,6 +1228,8 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	// 3. decompress
 	if(info->tile)
 		info->tile->decompress_flags = info->decompress_flags;
+	info->image->decodeFormat = cod_format;
+	info->image->forceRGB = info->decompressor_parameters->force_rgb;
 	// limit to 16 bit precision
 	for(uint32_t i = 0; i < info->image->numcomps; ++i)
 	{
@@ -1276,65 +1278,6 @@ cleanup:
 	return failed ? 1 : 0;
 }
 
-bool GrkDecompress::colorConvert(grk_image *image, GRK_SUPPORTED_FILE_FMT fmt, bool force_rgb){
-	bool oddFirstX = image->x0 & 1;
-	bool oddFirstY = image->y0 & 1;
-	bool isTiff = fmt == GRK_TIF_FMT;
-	if(image->color_space == GRK_CLRSPC_UNKNOWN &&
-	   image->numcomps == 3 &&
-	   image->comps[0].dx == 1 && image->comps[0].dy == 1 &&
-	   image->comps[1].dx == image->comps[2].dx &&
-	   image->comps[1].dy == image->comps[2].dy &&
-	   (image->comps[1].dx ==2 || image->comps[1].dy ==2) &&
-	   (image->comps[2].dx ==2 || image->comps[2].dy ==2) )
-		image->color_space = GRK_CLRSPC_SYCC;
-
-	switch(image->color_space)
-	{
-		case GRK_CLRSPC_SYCC:
-			if(image->numcomps != 3)
-			{
-				spdlog::error("grk_decompress: YCC: number of components {} "
-							  "not equal to 3 ",
-							  image->numcomps);
-				return false;
-			}
-			if(!isTiff || force_rgb)
-			{
-				if(!grk::color_sycc_to_rgb(image, oddFirstX, oddFirstY))
-					spdlog::warn("grk_decompress: sYCC to RGB colour conversion failed");
-			}
-			break;
-		case GRK_CLRSPC_EYCC:
-			if(image->numcomps != 3)
-			{
-				spdlog::error("grk_decompress: YCC: number of components {} "
-							  "not equal to 3 ",
-							  image->numcomps);
-				return false;
-			}
-			if ((!isTiff || force_rgb) && !grk::color_esycc_to_rgb(image))
-					spdlog::warn("grk_decompress: eYCC to RGB colour conversion failed");
-			break;
-		case GRK_CLRSPC_CMYK:
-			if(image->numcomps != 4)
-			{
-				spdlog::error("grk_decompress: CMYK: number of components {} "
-							  "not equal to 4 ",
-							  image->numcomps);
-				return false;
-			}
-			if((!isTiff || force_rgb) && !grk::color_cmyk_to_rgb(image))
-				spdlog::warn("grk_decompress: CMYK to RGB colour conversion failed");
-			break;
-		default:
-			break;
-	}
-
-	return true;
-
-}
-
 /*
  Post-process decompressed image and store in selected image format
  */
@@ -1369,11 +1312,6 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
 	bool canStoreCIE = isTiff && image->color_space == GRK_CLRSPC_DEFAULT_CIE;
 	bool isCIE =
 		image->color_space == GRK_CLRSPC_DEFAULT_CIE || image->color_space == GRK_CLRSPC_CUSTOM_CIE;
-
-	if (!colorConvert(image,
-						info->decompressor_parameters->cod_format,
-						info->decompressor_parameters->force_rgb))
-			goto cleanup;
 
 	if(image->meta && image->meta->color.icc_profile_buf)
 	{

@@ -70,7 +70,6 @@ class GrkDecompress
 	void setDefaultParams(grk_decompress_parameters* parameters);
 	void destoryParams(grk_decompress_parameters* parameters);
 	void printTiming(uint32_t num_images, std::chrono::duration<double> elapsed);
-	bool colorConvert(grk_image *image, GRK_SUPPORTED_FILE_FMT fmt, bool force_rgb);
 
 	bool storeToDisk;
 	IImageFormat* imageFormat;

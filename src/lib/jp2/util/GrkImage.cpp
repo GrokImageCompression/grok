@@ -24,6 +24,8 @@ GrkImage* GrkImage::create(uint16_t numcmpts, grk_image_cmptparm* cmptparms, GRK
 	auto image = new GrkImage();
 	image->color_space = clrspc;
 	image->numcomps = numcmpts;
+	image->decodeFormat = GRK_UNK_FMT;
+	image->forceRGB = false;
 	/* allocate memory for the per-component information */
 	image->comps = new grk_image_comp[image->numcomps];
 	memset(image->comps, 0, image->numcomps * sizeof(grk_image_comp));
@@ -164,6 +166,8 @@ void GrkImage::copyHeader(GrkImage* dest)
 		grk_object_ref(&temp->obj);
 		dest->meta = meta;
 	}
+	dest->decodeFormat = decodeFormat;
+	dest->forceRGB = forceRGB;
 }
 
 void GrkImage::createMeta()
@@ -517,6 +521,65 @@ bool GrkImage::allComponentsSanityCheck(bool equalPrecision)
 		}
 	}
 	return true;
+}
+
+bool GrkImage::colorConvert(void){
+	bool oddFirstX = x0 & 1;
+	bool oddFirstY = y0 & 1;
+	bool isTiff = decodeFormat == GRK_TIF_FMT;
+	if(color_space == GRK_CLRSPC_UNKNOWN &&
+	   numcomps == 3 &&
+	   comps[0].dx == 1 && comps[0].dy == 1 &&
+	   comps[1].dx == comps[2].dx &&
+	   comps[1].dy == comps[2].dy &&
+	   (comps[1].dx ==2 || comps[1].dy ==2) &&
+	   (comps[2].dx ==2 || comps[2].dy ==2) )
+		color_space = GRK_CLRSPC_SYCC;
+
+	switch(color_space)
+	{
+		case GRK_CLRSPC_SYCC:
+			if(numcomps != 3)
+			{
+				GRK_ERROR("grk_decompress: YCC: number of components {} "
+							  "not equal to 3 ",
+							  numcomps);
+				return false;
+			}
+			if(!isTiff || forceRGB)
+			{
+				if(!color_sycc_to_rgb(oddFirstX, oddFirstY))
+					GRK_WARN("grk_decompress: sYCC to RGB colour conversion failed");
+			}
+			break;
+		case GRK_CLRSPC_EYCC:
+			if(numcomps != 3)
+			{
+				GRK_ERROR("grk_decompress: YCC: number of components {} "
+							  "not equal to 3 ",
+							  numcomps);
+				return false;
+			}
+			if ((!isTiff || forceRGB) && !color_esycc_to_rgb())
+				GRK_WARN("grk_decompress: eYCC to RGB colour conversion failed");
+			break;
+		case GRK_CLRSPC_CMYK:
+			if(numcomps != 4)
+			{
+				GRK_ERROR("grk_decompress: CMYK: number of components {} "
+							  "not equal to 4 ",
+							  numcomps);
+				return false;
+			}
+			if((!isTiff || forceRGB ) && !color_cmyk_to_rgb())
+				GRK_WARN("grk_decompress: CMYK to RGB colour conversion failed");
+			break;
+		default:
+			break;
+	}
+
+	return true;
+
 }
 
 grk_image* GrkImage::create_rgb_no_subsample_image(uint16_t numcmpts, uint32_t w, uint32_t h,

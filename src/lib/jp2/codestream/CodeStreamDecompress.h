@@ -47,11 +47,12 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	GrkImage* getImage(uint16_t tileIndex);
 	GrkImage* getImage(void);
 	std::vector<GrkImage*> getAllImages(void);
+	void initDecompress(grk_dparameters* p_param);
 	bool setDecompressWindow(grkRectU32 window);
 	bool decompress(grk_plugin_tile* tile);
 	bool decompressTile(uint16_t tileIndex);
 	bool endDecompress(void);
-	void initDecompress(grk_dparameters* p_param);
+	bool postProcess(void);
 	CodeStreamInfo* getCodeStreamInfo(void);
 	GrkImage* getCompositeImage();
 	bool readMarker(void);
@@ -61,7 +62,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	int32_t tileIndexToDecode();
 	bool isWholeTileDecompress();
 	void dump(uint32_t flag, FILE* outputFileStream);
-
   protected:
 	void dump_MH_info(FILE* outputFileStream);
 	/**
@@ -83,7 +83,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	 *@param outputFileStream			output stream where dump the elements.
 	 */
 	void dump_image_comp_header(grk_image_comp* comp, bool dev_dump_flag, FILE* outputFileStream);
-
   private:
 	bool endOfCodeStream(void);
 	bool read_short(uint16_t* val);
@@ -98,7 +97,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	bool decompressValidation(void);
 	bool copy_default_tcp(void);
 	bool read_unk(void);
-
 	/**
 	 Add main header marker information
 	 @param id           marker id
@@ -301,7 +299,6 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 
 	 */
 	bool read_qcc(uint8_t* headerData, uint16_t header_size);
-
   private:
 	/**
 	 * Reads the lookup table containing all the marker, status and action,

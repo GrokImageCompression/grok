@@ -616,7 +616,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 					if(m_multiTile && processor->getImage() && !m_outputImage->compositeFrom(processor->getImage()))
 						success = false;
 					//if cache strategy set to none, then delete image
-					if (success && m_tileCache && m_tileCache->getStrategy() == GRK_TILE_CACHE_NONE){
+					if (success && m_tileCache->getStrategy() == GRK_TILE_CACHE_NONE){
 						processor->deleteImage();
 					}
 				}
@@ -2312,6 +2312,9 @@ bool CodeStreamDecompress::read_unk(void)
 bool CodeStreamDecompress::endDecompress(void)
 {
 	return true;
+}
+bool CodeStreamDecompress::postProcess(void){
+	return getCompositeImage()->colorConvert();
 }
 bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 {

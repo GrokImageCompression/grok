@@ -344,6 +344,10 @@ bool FileFormatDecompress::decompress(grk_plugin_tile* tile)
 
 	return applyColour();
 }
+bool FileFormatDecompress::postProcess(void)
+{
+	return codeStream->postProcess();
+}
 bool FileFormatDecompress::decompressTile(uint16_t tileIndex)
 {
 	if(!codeStream->decompressTile(tileIndex))
