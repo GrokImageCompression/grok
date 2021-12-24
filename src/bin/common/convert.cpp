@@ -131,7 +131,7 @@ grk_image* convert_gray_to_rgb(grk_image* original)
 	}
 
 	auto new_image =
-		grk_image_new((uint16_t)(original->numcomps + 2U), new_components, GRK_CLRSPC_SRGB, true);
+		grk_image_new(nullptr,(uint16_t)(original->numcomps + 2U), new_components, GRK_CLRSPC_SRGB, true);
 	delete[] new_components;
 	if(new_image == nullptr)
 	{
@@ -184,9 +184,8 @@ grk_image* upsample_image_components(grk_image* original)
 		}
 	}
 	if(!upsample_need)
-	{
 		return original;
-	}
+
 	/* Upsample is needed */
 	new_components = new grk_image_cmptparm[original->numcomps];
 	for(compno = 0U; compno < original->numcomps; ++compno)
@@ -209,7 +208,7 @@ grk_image* upsample_image_components(grk_image* original)
 			new_cmp->h = original->y1 - original->y0;
 	}
 
-	new_image = grk_image_new(original->numcomps, new_components, original->color_space, true);
+	new_image = grk_image_new(nullptr,original->numcomps, new_components, original->color_space, true);
 	delete[] new_components;
 	if(new_image == nullptr)
 	{

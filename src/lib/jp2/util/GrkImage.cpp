@@ -2,14 +2,14 @@
 
 namespace grk
 {
-GrkImage::GrkImage() : ownsData(true)
+GrkImage::GrkImage()
 {
 	memset((grk_image*)(this), 0, sizeof(grk_image));
 	obj.wrapper = new GrkObjectWrapperImpl(this);
 }
 GrkImage::~GrkImage()
 {
-	if(ownsData && comps)
+	if(comps)
 	{
 		grk_image_all_components_data_free(this);
 		delete[] comps;
@@ -18,14 +18,24 @@ GrkImage::~GrkImage()
 		grk_object_unref(&meta->obj);
 }
 
-GrkImage* GrkImage::create(uint16_t numcmpts, grk_image_cmptparm* cmptparms, GRK_COLOR_SPACE clrspc,
-						   bool doAllocation)
+GrkImage* GrkImage::create(grk_image *src,
+							uint16_t numcmpts,
+							grk_image_cmptparm* cmptparms,
+							GRK_COLOR_SPACE clrspc,
+						    bool doAllocation)
 {
 	auto image = new GrkImage();
 	image->color_space = clrspc;
+	image->targetColourSpace = clrspc;
 	image->numcomps = numcmpts;
-	image->decodeFormat = GRK_UNK_FMT;
-	image->forceRGB = false;
+	if (src) {
+		image->decompressFormat = src->decompressFormat;
+		image->forceRGB = src->forceRGB;
+		image->targetColourSpace = src->targetColourSpace;
+		image->precision = src->precision;
+		image->numPrecision = src->numPrecision;
+	}
+
 	/* allocate memory for the per-component information */
 	image->comps = new grk_image_comp[image->numcomps];
 	memset(image->comps, 0, image->numcomps * sizeof(grk_image_comp));
@@ -150,6 +160,7 @@ void GrkImage::copyHeader(GrkImage* dest)
 	}
 
 	dest->color_space = color_space;
+	dest->targetColourSpace = targetColourSpace;
 	if(has_capture_resolution)
 	{
 		dest->capture_resolution[0] = capture_resolution[0];
@@ -166,8 +177,10 @@ void GrkImage::copyHeader(GrkImage* dest)
 		grk_object_ref(&temp->obj);
 		dest->meta = meta;
 	}
-	dest->decodeFormat = decodeFormat;
+	dest->decompressFormat = decompressFormat;
 	dest->forceRGB = forceRGB;
+	dest->precision = precision;
+	dest->numPrecision = numPrecision;
 }
 
 void GrkImage::createMeta()
@@ -523,10 +536,10 @@ bool GrkImage::allComponentsSanityCheck(bool equalPrecision)
 	return true;
 }
 
-bool GrkImage::colorConvert(void){
+bool GrkImage::convertToRGB(void){
 	bool oddFirstX = x0 & 1;
 	bool oddFirstY = y0 & 1;
-	bool isTiff = decodeFormat == GRK_TIF_FMT;
+	bool convert = (decompressFormat != GRK_UNK_FMT && decompressFormat != GRK_TIF_FMT) || forceRGB;
 	if(color_space == GRK_CLRSPC_UNKNOWN &&
 	   numcomps == 3 &&
 	   comps[0].dx == 1 && comps[0].dy == 1 &&
@@ -546,7 +559,7 @@ bool GrkImage::colorConvert(void){
 							  numcomps);
 				return false;
 			}
-			if(!isTiff || forceRGB)
+			if(convert)
 			{
 				if(!color_sycc_to_rgb(oddFirstX, oddFirstY))
 					GRK_WARN("grk_decompress: sYCC to RGB colour conversion failed");
@@ -560,7 +573,7 @@ bool GrkImage::colorConvert(void){
 							  numcomps);
 				return false;
 			}
-			if ((!isTiff || forceRGB) && !color_esycc_to_rgb())
+			if (convert && !color_esycc_to_rgb())
 				GRK_WARN("grk_decompress: eYCC to RGB colour conversion failed");
 			break;
 		case GRK_CLRSPC_CMYK:
@@ -571,7 +584,7 @@ bool GrkImage::colorConvert(void){
 							  numcomps);
 				return false;
 			}
-			if((!isTiff || forceRGB ) && !color_cmyk_to_rgb())
+			if(convert && !color_cmyk_to_rgb())
 				GRK_WARN("grk_decompress: CMYK to RGB colour conversion failed");
 			break;
 		default:
@@ -582,19 +595,19 @@ bool GrkImage::colorConvert(void){
 
 }
 
-grk_image* GrkImage::create_rgb_no_subsample_image(uint16_t numcmpts, uint32_t w, uint32_t h,
+grk_image* GrkImage::createRGB(uint16_t numcmpts, uint32_t w, uint32_t h,
 												uint8_t prec)
 {
 	if(!numcmpts)
 	{
-		GRK_WARN("create_rgb_no_subsample_image: number of components cannot be zero.");
+		GRK_WARN("createRGB: number of components cannot be zero.");
 		return nullptr;
 	}
 
 	auto cmptparms = new grk_image_cmptparm[numcmpts];
 	if(!cmptparms)
 	{
-		GRK_WARN("create_rgb_no_subsample_image: out of memory.");
+		GRK_WARN("createRGB: out of memory.");
 		return nullptr;
 	}
 	uint32_t compno = 0U;
@@ -610,7 +623,7 @@ grk_image* GrkImage::create_rgb_no_subsample_image(uint16_t numcmpts, uint32_t w
 		cmptparms[compno].prec = prec;
 		cmptparms[compno].sgnd = 0U;
 	}
-	auto img = grk_image_new(numcmpts, (grk_image_cmptparm*)cmptparms, GRK_CLRSPC_SRGB, true);
+	auto img = grk_image_new(this,numcmpts, (grk_image_cmptparm*)cmptparms, GRK_CLRSPC_SRGB, true);
 	delete[] cmptparms;
 
 	return img;
@@ -663,7 +676,7 @@ bool GrkImage::sycc444_to_rgb(void)
 {
 	int32_t *d0, *d1, *d2, *r, *g, *b;
 	auto dst =
-		create_rgb_no_subsample_image(3, comps[0].w, comps[0].h, comps[0].prec);
+		createRGB(3, comps[0].w, comps[0].h, comps[0].prec);
 	if(!dst)
 		return false;
 
@@ -717,7 +730,7 @@ bool GrkImage::sycc444_to_rgb(void)
 bool GrkImage::sycc422_to_rgb(bool oddFirstX)
 {
 	auto dst =
-		create_rgb_no_subsample_image(3, comps[0].w, comps[0].h, comps[0].prec);
+		createRGB(3, comps[0].w, comps[0].h, comps[0].prec);
 	if(!dst)
 		return false;
 
@@ -804,7 +817,7 @@ bool GrkImage::sycc422_to_rgb(bool oddFirstX)
 
 bool GrkImage::sycc420_to_rgb(bool oddFirstX, bool oddFirstY)
 {
-	auto dst = create_rgb_no_subsample_image(3, comps[0].w, comps[0].h,
+	auto dst = createRGB(3, comps[0].w, comps[0].h,
 											 comps[0].prec);
 	if(!dst)
 		return false;

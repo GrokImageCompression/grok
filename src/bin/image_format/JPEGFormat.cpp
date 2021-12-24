@@ -204,7 +204,7 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
 		cmptparm[j].h = h;
 	}
 
-	m_image = grk_image_new((uint16_t)numcomps, &cmptparm[0], color_space, true);
+	m_image = grk_image_new(nullptr,(uint16_t)numcomps, &cmptparm[0], color_space, true);
 	if(!m_image)
 	{
 		success = false;

@@ -32,7 +32,8 @@ class GrkImage : public grk_image
 	 *
 	 * @return 		     a new image if successful, otherwise nullptr
 	 * */
-	static GrkImage* create(uint16_t numcmpts, grk_image_cmptparm* cmptparms,
+	static GrkImage* create(grk_image *src,
+							uint16_t numcmpts, grk_image_cmptparm* cmptparms,
 							GRK_COLOR_SPACE clrspc, bool doAllocation);
 	/**
 	 * Allocate data for single image component
@@ -85,11 +86,11 @@ class GrkImage : public grk_image
 	bool generateCompositeBounds(uint16_t compno, grkRectU32* src, uint32_t src_stride,
 								 grkRectU32* dest, grkRectU32* dest_win, uint32_t* src_line_off);
 	void createMeta();
-	bool colorConvert(void);
+	bool convertToRGB(void);
   private:
 	~GrkImage();
 	bool allComponentsSanityCheck(bool equalPrecision);
-	grk_image* create_rgb_no_subsample_image(uint16_t numcmpts, uint32_t w, uint32_t h,	uint8_t prec);
+	grk_image* createRGB(uint16_t numcmpts, uint32_t w, uint32_t h,	uint8_t prec);
 	void sycc_to_rgb(int32_t offset, int32_t upb, int32_t y, int32_t cb, int32_t cr,
 							int32_t* out_r, int32_t* out_g, int32_t* out_b);
 	bool sycc444_to_rgb(void);
@@ -98,7 +99,6 @@ class GrkImage : public grk_image
 	bool color_sycc_to_rgb(bool oddFirstX, bool oddFirstY);
 	bool color_cmyk_to_rgb(void);
 	bool color_esycc_to_rgb(void);
-	bool ownsData;
 };
 
 } // namespace grk

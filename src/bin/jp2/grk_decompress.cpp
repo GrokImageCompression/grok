@@ -218,7 +218,7 @@ bool GrkDecompress::parsePrecision(const char* option, grk_decompress_parameters
 		free(parameters->precision);
 		parameters->precision = nullptr;
 	}
-	parameters->nb_precision = 0U;
+	parameters->numPrecision = 0U;
 
 	for(;;)
 	{
@@ -276,7 +276,7 @@ bool GrkDecompress::parsePrecision(const char* option, grk_decompress_parameters
 			}
 			else
 			{
-				uint32_t new_size = parameters->nb_precision + 1U;
+				uint32_t new_size = parameters->numPrecision + 1U;
 				grk_precision* new_prec;
 
 				if(new_size == 0U)
@@ -297,19 +297,19 @@ bool GrkDecompress::parsePrecision(const char* option, grk_decompress_parameters
 				parameters->precision = new_prec;
 			}
 
-			parameters->precision[parameters->nb_precision].prec = (uint8_t)prec;
+			parameters->precision[parameters->numPrecision].prec = (uint8_t)prec;
 			switch(mode)
 			{
 				case 'C':
-					parameters->precision[parameters->nb_precision].mode = GRK_PREC_MODE_CLIP;
+					parameters->precision[parameters->numPrecision].mode = GRK_PREC_MODE_CLIP;
 					break;
 				case 'S':
-					parameters->precision[parameters->nb_precision].mode = GRK_PREC_MODE_SCALE;
+					parameters->precision[parameters->numPrecision].mode = GRK_PREC_MODE_SCALE;
 					break;
 				default:
 					break;
 			}
-			parameters->nb_precision++;
+			parameters->numPrecision++;
 
 			remaining = strchr(remaining, ',');
 			if(remaining == nullptr)
@@ -1228,8 +1228,10 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	// 3. decompress
 	if(info->tile)
 		info->tile->decompress_flags = info->decompress_flags;
-	info->image->decodeFormat = cod_format;
+	info->image->decompressFormat = cod_format;
 	info->image->forceRGB = info->decompressor_parameters->force_rgb;
+	info->image->precision = info->decompressor_parameters->precision;
+	info->image->numPrecision = info->decompressor_parameters->numPrecision;
 	// limit to 16 bit precision
 	for(uint32_t i = 0; i < info->image->numcomps; ++i)
 	{
@@ -1398,8 +1400,8 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
 		for(compno = 0; compno < image->numcomps; ++compno)
 		{
 			uint32_t precisionno = compno;
-			if(precisionno >= parameters->nb_precision)
-				precisionno = parameters->nb_precision - 1U;
+			if(precisionno >= parameters->numPrecision)
+				precisionno = parameters->numPrecision - 1U;
 			uint8_t prec = parameters->precision[precisionno].prec;
 			auto comp = image->comps + compno;
 			if(prec == 0)

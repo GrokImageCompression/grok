@@ -517,7 +517,7 @@ grk_image* PNMFormat::decode(grk_cparameters* parameters)
 		cmptparm[i].w = w;
 		cmptparm[i].h = h;
 	}
-	image = grk_image_new(numcomps, &cmptparm[0], color_space, true);
+	image = grk_image_new(nullptr,numcomps, &cmptparm[0], color_space, true);
 	if(!image)
 	{
 		spdlog::error("pnmtoimage: Failed to create image");

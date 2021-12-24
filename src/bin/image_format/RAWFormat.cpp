@@ -287,7 +287,7 @@ grk_image* RAWFormat::rawtoimage(const char* filename, grk_cparameters* paramete
 		}
 	}
 	/* create the image */
-	image = grk_image_new(numcomps, &cmptparm[0], color_space, true);
+	image = grk_image_new(nullptr,numcomps, &cmptparm[0], color_space, true);
 	free(cmptparm);
 	if(!image)
 		goto cleanup;

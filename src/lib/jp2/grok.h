@@ -657,7 +657,7 @@ typedef struct _grk_palette_data
 /**
  ICC profile, palette, channel definition
  */
-typedef struct grk_color
+typedef struct _grk_color
 {
 	uint8_t* icc_profile_buf;
 	uint32_t icc_profile_len;
@@ -666,7 +666,7 @@ typedef struct grk_color
 	bool has_colour_specification_box;
 } grk_color;
 
-typedef struct grk_asoc
+typedef struct _grk_asoc
 {
 	uint32_t level; // 0 for root level
 	const char* label;
@@ -831,7 +831,7 @@ typedef struct _grk_decompress_params
 	/** Number of tiles to decompress */
 	uint32_t nb_tile_to_decompress;
 	grk_precision* precision;
-	uint32_t nb_precision;
+	uint32_t numPrecision;
 	/* force output colorspace to RGB */
 	bool force_rgb;
 	/* upsample components according to their dx/dy values */
@@ -972,13 +972,16 @@ typedef struct _grk_image
 	/** number of components in the image */
 	uint16_t numcomps;
 	GRK_COLOR_SPACE color_space;
+	GRK_COLOR_SPACE targetColourSpace;
 	bool color_applied;
 	bool has_capture_resolution;
 	double capture_resolution[2];
 	bool has_display_resolution;
 	double display_resolution[2];
-	GRK_SUPPORTED_FILE_FMT decodeFormat;
+	GRK_SUPPORTED_FILE_FMT decompressFormat;
 	bool forceRGB;
+	grk_precision* precision;
+	uint32_t numPrecision;
 	grk_image_meta* meta;
 	grk_image_comp* comps;
 } grk_image;
@@ -1155,6 +1158,7 @@ GRK_API bool GRK_CALLCONV grk_set_error_handler(grk_msg_callback p_callback, voi
 /**
  * Create image
  *
+ * @param src			source image
  * @param numcmpts      number of components
  * @param cmptparms     component parameters
  * @param clrspc        image color space
@@ -1162,7 +1166,8 @@ GRK_API bool GRK_CALLCONV grk_set_error_handler(grk_msg_callback p_callback, voi
  *
  * @return returns      a new image if successful, otherwise nullptr
  * */
-GRK_API grk_image* GRK_CALLCONV grk_image_new(uint16_t numcmpts, grk_image_cmptparm* cmptparms,
+GRK_API grk_image* GRK_CALLCONV grk_image_new(grk_image *src,
+												uint16_t numcmpts, grk_image_cmptparm* cmptparms,
 											  GRK_COLOR_SPACE clrspc, bool allocData);
 
 GRK_API grk_image_meta* GRK_CALLCONV grk_image_meta_new(void);

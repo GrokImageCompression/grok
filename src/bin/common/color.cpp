@@ -65,7 +65,7 @@ static grk_image* create_rgb_no_subsample_image(uint16_t numcmpts, uint32_t w, u
 		cmptparms[compno].prec = prec;
 		cmptparms[compno].sgnd = 0U;
 	}
-	auto img = grk_image_new(numcmpts, (grk_image_cmptparm*)cmptparms, GRK_CLRSPC_SRGB, true);
+	auto img = grk_image_new(nullptr,numcmpts, (grk_image_cmptparm*)cmptparms, GRK_CLRSPC_SRGB, true);
 	delete[] cmptparms;
 
 	return img;

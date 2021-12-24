@@ -342,11 +342,12 @@ bool FileFormatDecompress::decompress(grk_plugin_tile* tile)
 		return false;
 	}
 
-	return applyColour();
+	return true;
 }
 bool FileFormatDecompress::postProcess(void)
 {
-	return codeStream->postProcess();
+	bool rc =  applyColour();
+	return rc ? codeStream->postProcess() : false;;
 }
 bool FileFormatDecompress::decompressTile(uint16_t tileIndex)
 {
