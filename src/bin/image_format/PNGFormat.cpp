@@ -28,9 +28,7 @@
 #include "color.h"
 #include <cstring>
 
-#ifdef GROK_HAVE_LIBLCMS
 #include <lcms2.h>
-#endif
 #include <memory>
 #include <iostream>
 #include <string>
@@ -586,7 +584,6 @@ bool PNGFormat::encodeHeader(grk_image* img, const std::string& filename, uint32
 		std::string profileName = "Unknown";
 		// if lcms is present, try to extract the description tag from the ICC header,
 		// and use this tag as the profile name
-#if defined(GROK_HAVE_LIBLCMS)
 		auto in_prof = cmsOpenProfileFromMem(m_image->meta->color.icc_profile_buf,
 											 m_image->meta->color.icc_profile_len);
 		if(in_prof)
@@ -606,7 +603,6 @@ bool PNGFormat::encodeHeader(grk_image* img, const std::string& filename, uint32
 			}
 			cmsCloseProfile(in_prof);
 		}
-#endif
 		png_set_iCCP(png, m_info, profileName.c_str(), PNG_COMPRESSION_TYPE_BASE,
 					 m_image->meta->color.icc_profile_buf, m_image->meta->color.icc_profile_len);
 	}

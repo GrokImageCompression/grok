@@ -86,8 +86,6 @@ endif(BUILD_THIRDPARTY)
 add_subdirectory(liblcms2)
 set(LCMS_LIBNAME lcms2 PARENT_SCOPE)
 set(LCMS_INCLUDE_DIRNAME ${GROK_SOURCE_DIR}/thirdparty/liblcms2/include PARENT_SCOPE)
-set(GROK_HAVE_LIBLCMS 1 PARENT_SCOPE)
-
 
 # JPEG library
 find_package(JPEG)

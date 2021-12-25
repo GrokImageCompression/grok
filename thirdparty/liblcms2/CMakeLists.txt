@@ -10,8 +10,6 @@ if(MSVC)
 elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
   target_compile_options(${LIBTARGET} PRIVATE -Wstringop-truncation -Wno-stringop-truncation)
 endif()
-set_target_properties(${LIBTARGET}
-  PROPERTIES
-  OUTPUT_NAME "${LIBTARGET}")
- set_property(TARGET ${LIBTARGET} PROPERTY POSITION_INDEPENDENT_CODE ON)
+set_target_properties(${LIBTARGET}  PROPERTIES  OUTPUT_NAME "${LIBTARGET}")
+set_property(TARGET ${LIBTARGET} PROPERTY POSITION_INDEPENDENT_CODE ON)
 

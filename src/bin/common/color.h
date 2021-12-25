@@ -22,10 +22,8 @@
 
 namespace grk
 {
-#if defined(GROK_HAVE_LIBLCMS)
 bool color_cielab_to_rgb(grk_image* image);
-void color_apply_icc_profile(grk_image* image, bool forceRGB);
-#endif
+void applyICC(grk_image* image, bool forceRGB);
 void alloc_palette(grk_color* color, uint8_t num_channels, uint16_t num_entries);
 bool validate_icc(GRK_COLOR_SPACE color_space, uint8_t* iccbuf, uint32_t icclen);
 void copy_icc(grk_image* dest, uint8_t* iccbuf, uint32_t icclen);

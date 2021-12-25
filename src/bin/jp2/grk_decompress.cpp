@@ -57,9 +57,7 @@
 #endif
 #include "convert.h"
 
-#ifdef GROK_HAVE_LIBLCMS
 #include <lcms2.h>
-#endif
 #include "color.h"
 #include "grk_string.h"
 #include <climits>
@@ -815,14 +813,12 @@ void GrkDecompress::destoryParams(grk_decompress_parameters* parameters)
 	}
 }
 
-#ifdef GROK_HAVE_LIBLCMS
 void MycmsLogErrorHandlerFunction(cmsContext ContextID, cmsUInt32Number ErrorCode, const char* Text)
 {
 	(void)ContextID;
 	(void)ErrorCode;
 	spdlog::warn(" LCMS error: {}", Text);
 }
-#endif
 
 static int decompress_callback(grk_plugin_decompress_callback_info* info);
 
@@ -875,9 +871,7 @@ int GrkDecompress::pluginMain(int argc, char** argv, DecompressInitParams* initP
 	bool isBatch = false;
 	std::chrono::time_point<std::chrono::high_resolution_clock> start;
 
-#ifdef GROK_HAVE_LIBLCMS
 	cmsSetLogErrorHandler(MycmsLogErrorHandlerFunction);
-#endif
 	setDefaultParams(&initParams->parameters);
 	if(parseCommandLine(argc, argv, initParams) == 1)
 		return EXIT_FAILURE;
@@ -1321,7 +1315,6 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
 		{
 			if(!canStoreCIE || info->decompressor_parameters->force_rgb)
 			{
-#if defined(GROK_HAVE_LIBLCMS)
 				if(!info->decompressor_parameters->force_rgb)
 					spdlog::warn(
 						" Input file `{}` is in CIE colour space,\n"
@@ -1331,11 +1324,6 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
 						infile, outfile);
 				if(!color_cielab_to_rgb(image))
 					spdlog::warn("Unable to convert L*a*b image to sRGB");
-#else
-				spdlog::warn(" Input file is stored in CIELab colour space,"
-							 " but the lcms library is not linked, so the library is unable to "
-							 "convert L*a*b to sRGB");
-#endif
 			}
 		}
 		else
@@ -1350,7 +1338,6 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
 								info->decompressor_parameters->cod_format == GRK_BMP_FMT);
 			if(info->decompressor_parameters->force_rgb || !canStoreICC)
 			{
-#if defined(GROK_HAVE_LIBLCMS)
 				if(!info->decompressor_parameters->force_rgb)
 				{
 					spdlog::warn(" Input file `{}` contains a color profile,\n"
@@ -1360,12 +1347,7 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
 								 " image before saving.",
 								 infile, outfile);
 				}
-				color_apply_icc_profile(image, info->decompressor_parameters->force_rgb);
-#else
-				spdlog::warn(" Input file has an ICC profile,"
-							 " but the lcms2 library is not linked, so the library is unable to "
-							 "perform the conversion");
-#endif
+				applyICC(image, info->decompressor_parameters->force_rgb);
 			}
 		}
 	}
