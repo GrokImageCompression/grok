@@ -89,6 +89,7 @@ class GrkImage : public grk_image
 	bool greyToRGB(void);
 	bool convertToRGB(void);
 	void applyColourManagement(void);
+	void convertPrecision(void);
   private:
 	~GrkImage();
 	bool allComponentsSanityCheck(bool equalPrecision);
@@ -106,6 +107,7 @@ class GrkImage : public grk_image
 	bool cieLabToRGB(void);
 
 	static void copyComponent(grk_image_comp* src, grk_image_comp* dest);
+	void scaleComponent(grk_image_comp* component, uint8_t precision);
 };
 
 } // namespace grk

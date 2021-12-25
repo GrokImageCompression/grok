@@ -2314,10 +2314,12 @@ bool CodeStreamDecompress::endDecompress(void)
 	return true;
 }
 bool CodeStreamDecompress::postProcess(void){
-	bool rc =  getCompositeImage()->convertToRGB();
+	auto img = getCompositeImage();
+	bool rc =  img->convertToRGB();
 	if (rc){
-		getCompositeImage()->applyColourManagement();
-		getCompositeImage()->greyToRGB();
+		img->applyColourManagement();
+		img->greyToRGB();
+		img->convertPrecision();
 	}
 
 	return rc;

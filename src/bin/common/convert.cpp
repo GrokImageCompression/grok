@@ -35,36 +35,6 @@
 #include <intrin.h>
 #endif
 
-/* Component clipping */
-template<typename T>
-void clip(grk_image_comp* component, uint8_t precision)
-{
-	uint32_t stride_diff = component->stride - component->w;
-	assert(precision <= 16);
-	auto data = component->data;
-	T max = std::numeric_limits<T>::max();
-	T min = std::numeric_limits<T>::min();
-	size_t index = 0;
-	for(uint32_t j = 0; j < component->h; ++j)
-	{
-		for(uint32_t i = 0; i < component->w; ++i)
-		{
-			data[index] = (int32_t)std::clamp<T>((T)data[index], min, max);
-			index++;
-		}
-		index += stride_diff;
-	}
-	component->prec = precision;
-}
-
-void clip_component(grk_image_comp* component, uint8_t precision)
-{
-	if(component->sgnd)
-		clip<int32_t>(component, precision);
-	else
-		clip<uint32_t>(component, precision);
-}
-
 void scale_component(grk_image_comp* component, uint8_t precision)
 {
 	if(component->prec == precision)
@@ -102,32 +72,30 @@ void scale_component(grk_image_comp* component, uint8_t precision)
 	component->prec = precision;
 }
 
-grk_image* upsample_image_components(grk_image* original)
+grk_image* upsample(grk_image* original)
 {
 	grk_image* new_image = nullptr;
 	grk_image_cmptparm* new_components = nullptr;
-	bool upsample_need = false;
-	uint32_t compno;
+	bool upsampleNeeded = false;
 
 	if(!original || !original->comps)
 		return nullptr;
 
-	for(compno = 0U; compno < original->numcomps; ++compno)
+	for(uint32_t compno = 0U; compno < original->numcomps; ++compno)
 	{
 		if(!(original->comps + compno))
 			return nullptr;
 		if((original->comps[compno].dx > 1U) || (original->comps[compno].dy > 1U))
 		{
-			upsample_need = true;
+			upsampleNeeded = true;
 			break;
 		}
 	}
-	if(!upsample_need)
+	if(!upsampleNeeded)
 		return original;
 
-	/* Upsample is needed */
 	new_components = new grk_image_cmptparm[original->numcomps];
-	for(compno = 0U; compno < original->numcomps; ++compno)
+	for(uint32_t compno = 0U; compno < original->numcomps; ++compno)
 	{
 		auto new_cmp = &(new_components[compno]);
 		auto org_cmp = &(original->comps[compno]);
@@ -138,13 +106,8 @@ grk_image* upsample_image_components(grk_image* original)
 		new_cmp->y0 = original->y0;
 		new_cmp->dx = 1;
 		new_cmp->dy = 1;
-		new_cmp->w = org_cmp->w; /* should be original->x1 - original->x0 for dx==1 */
-		new_cmp->h = org_cmp->h; /* should be original->y1 - original->y0 for dy==0 */
-
-		if(org_cmp->dx > 1U)
-			new_cmp->w = original->x1 - original->x0;
-		if(org_cmp->dy > 1U)
-			new_cmp->h = original->y1 - original->y0;
+		new_cmp->w = original->x1 - original->x0;
+		new_cmp->h = original->y1 - original->y0;
 	}
 
 	new_image = grk_image_new(nullptr,original->numcomps, new_components, original->color_space, true);
@@ -160,10 +123,10 @@ grk_image* upsample_image_components(grk_image* original)
 	new_image->y0 = original->y0;
 	new_image->y1 = original->y1;
 
-	for(compno = 0U; compno < original->numcomps; ++compno)
+	for(uint32_t compno = 0U; compno < original->numcomps; ++compno)
 	{
-		grk_image_comp* new_cmp = &(new_image->comps[compno]);
-		grk_image_comp* org_cmp = &(original->comps[compno]);
+		auto new_cmp = new_image->comps + compno;
+		auto org_cmp = original->comps + compno;
 
 		new_cmp->type = org_cmp->type;
 

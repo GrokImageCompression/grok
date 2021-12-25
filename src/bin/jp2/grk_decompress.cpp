@@ -1304,35 +1304,9 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
 	const char* outfile = info->decompressor_parameters->outfile[0]
 							  ? info->decompressor_parameters->outfile
 							  : info->output_file_name;
-	if(parameters->precision != nullptr)
-	{
-		uint32_t compno;
-		for(compno = 0; compno < image->numcomps; ++compno)
-		{
-			uint32_t precisionno = compno;
-			if(precisionno >= parameters->numPrecision)
-				precisionno = parameters->numPrecision - 1U;
-			uint8_t prec = parameters->precision[precisionno].prec;
-			auto comp = image->comps + compno;
-			if(prec == 0)
-				prec = comp->prec;
-
-			switch(parameters->precision[precisionno].mode)
-			{
-				case GRK_PREC_MODE_CLIP:
-					clip_component(comp, prec);
-					break;
-				case GRK_PREC_MODE_SCALE:
-					scale_component(comp, prec);
-					break;
-				default:
-					break;
-			}
-		}
-	}
 	if(parameters->upsample)
 	{
-		auto tmp = upsample_image_components(image);
+		auto tmp = upsample(image);
 		if(tmp != image)
 			imageNeedsDestroy = true;
 		image = tmp;

@@ -551,6 +551,100 @@ bool GrkImage::allComponentsSanityCheck(bool equalPrecision)
 	return true;
 }
 
+
+template<typename T>
+void clip(grk_image_comp* component, uint8_t precision)
+{
+	uint32_t stride_diff = component->stride - component->w;
+	assert(precision <= 16);
+	auto data = component->data;
+	T max = std::numeric_limits<T>::max();
+	T min = std::numeric_limits<T>::min();
+	size_t index = 0;
+	for(uint32_t j = 0; j < component->h; ++j)
+	{
+		for(uint32_t i = 0; i < component->w; ++i)
+		{
+			data[index] = (int32_t)std::clamp<T>((T)data[index], min, max);
+			index++;
+		}
+		index += stride_diff;
+	}
+	component->prec = precision;
+}
+
+
+void GrkImage::scaleComponent(grk_image_comp* component, uint8_t precision)
+{
+	if(component->prec == precision)
+		return;
+	uint32_t stride_diff = component->stride - component->w;
+	auto data = component->data;
+	if(component->prec < precision)
+	{
+		int32_t scale = 1 << (uint32_t)(precision - component->prec);
+		size_t index = 0;
+		for(uint32_t j = 0; j < component->h; ++j)
+		{
+			for(uint32_t i = 0; i < component->w; ++i)
+			{
+				data[index] = data[index] * scale;
+				index++;
+			}
+			index += stride_diff;
+		}
+	}
+	else
+	{
+		int32_t scale = 1 << (uint32_t)(component->prec - precision);
+		size_t index = 0;
+		for(uint32_t j = 0; j < component->h; ++j)
+		{
+			for(uint32_t i = 0; i < component->w; ++i)
+			{
+				data[index] = data[index] / scale;
+				index++;
+			}
+			index += stride_diff;
+		}
+	}
+	component->prec = precision;
+}
+
+void GrkImage::convertPrecision(void){
+	if (!precision)
+		return;
+
+	for(uint32_t compno = 0; compno < numcomps; ++compno)
+	{
+		uint32_t precisionno = compno;
+		if(precisionno >= numPrecision)
+			precisionno = numPrecision - 1U;
+		uint8_t prec = precision[precisionno].prec;
+		auto comp = comps + compno;
+		if(prec == 0)
+			prec = comp->prec;
+
+		switch(precision[precisionno].mode)
+		{
+			case GRK_PREC_MODE_CLIP:
+				{
+					if(comp->sgnd)
+						clip<int32_t>(comp, prec);
+					else
+						clip<uint32_t>(comp, prec);
+				}
+				break;
+			case GRK_PREC_MODE_SCALE:
+				scaleComponent(comp,prec);
+				break;
+			default:
+				break;
+		}
+	}
+
+}
+
 bool GrkImage::greyToRGB(void){
 	if(numcomps != 1)
 		return false;
