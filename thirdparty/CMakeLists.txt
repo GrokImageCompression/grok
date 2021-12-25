@@ -83,32 +83,11 @@ else(BUILD_THIRDPARTY)
   endif(TIFF_FOUND)
 endif(BUILD_THIRDPARTY)
 
-# Try to find lib LCMS2
-if( BUILD_THIRDPARTY)
-  message(STATUS "We will build LCMS2 lib from thirdparty")
-  add_subdirectory(liblcms2)
-  set(LCMS_LIBNAME lcms2 PARENT_SCOPE)
-  set(LCMS_INCLUDE_DIRNAME ${GROK_SOURCE_DIR}/thirdparty/liblcms2/include PARENT_SCOPE) #
-  set(GROK_HAVE_LIBLCMS 1 PARENT_SCOPE)
-else(BUILD_THIRDPARTY)
-  find_package(LCMS2)
-    # Static only build:
-  #   it is necessary to invoke pkg_check_module on lcms2 since it may have
-  #   several other dependencies not declared by its cmake module, but which are
-  #   in its pkgconfig module.
-  if(PKG_CONFIG_FOUND)
-    pkg_check_modules(PC_LCMS2 QUIET lcms2)
-  endif(PKG_CONFIG_FOUND)
-  if(LCMS2_FOUND)
-    message(STATUS "The system seems to have a liblsmc2 available, it will be used to support ICC profiles.")
-    set(GROK_HAVE_LIBLCMS 1 PARENT_SCOPE)
-    set(LCMS_LIBNAME ${LCMS2_LIBRARIES} ${PC_LCMS2_STATIC_LIBRARIES} PARENT_SCOPE)
-    set(LCMS_INCLUDE_DIRNAME ${LCMS2_INCLUDE_DIRS} ${PC_LCMS2_STATIC_INCLUDE_DIRS} PARENT_SCOPE)
-  else(LCMS2_FOUND) 
-      set(GROK_HAVE_LIBLCMS 0 PARENT_SCOPE)
-      message(STATUS "liblcms2 not found, please activate BUILD_THIRDPARTY to support ICC profiles")
-  endif(LCMS2_FOUND)
-endif(BUILD_THIRDPARTY)
+add_subdirectory(liblcms2)
+set(LCMS_LIBNAME lcms2 PARENT_SCOPE)
+set(LCMS_INCLUDE_DIRNAME ${GROK_SOURCE_DIR}/thirdparty/liblcms2/include PARENT_SCOPE)
+set(GROK_HAVE_LIBLCMS 1 PARENT_SCOPE)
+
 
 # JPEG library
 find_package(JPEG)

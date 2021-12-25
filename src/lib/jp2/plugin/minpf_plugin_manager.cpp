@@ -193,7 +193,8 @@ int32_t minpf_load_from_dir(const char* directory_path, minpf_invoke_service_fun
 	int32_t rc = -1;
 	for (const auto & entry : std::filesystem::directory_iterator(directory_path))
 	{
-		const char* f = entry.path().filename().string().c_str();
+		auto str = entry.path().filename().string();
+		const char* f = str.c_str();
 		// ignore files with incorrect extensions
 		if(strcmp(get_filename_ext(f), minpf_get_dynamic_library_extension()) != 0)
 			continue;

@@ -1,4 +1,5 @@
 #include <grk_includes.h>
+#include <lcms2.h>
 
 namespace grk
 {
@@ -1095,8 +1096,6 @@ bool GrkImage::color_esycc_to_rgb(void)
 	return true;
 
 } /* color_esycc_to_rgb() */
-
-
 
 GrkImageMeta::GrkImageMeta()
 {

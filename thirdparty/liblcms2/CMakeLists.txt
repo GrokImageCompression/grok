@@ -1,7 +1,5 @@
-project(liblcms2 C)
-#
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/include")
-#
+
 file(GLOB SRCS src/*.c)
 file(GLOB HDRS include/*.h)
 
@@ -15,4 +13,5 @@ endif()
 set_target_properties(${LIBTARGET}
   PROPERTIES
   OUTPUT_NAME "${LIBTARGET}")
-#
+ set_property(TARGET ${LIBTARGET} PROPERTY POSITION_INDEPENDENT_CODE ON)
+
