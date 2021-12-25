@@ -1304,31 +1304,6 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
 	const char* outfile = info->decompressor_parameters->outfile[0]
 							  ? info->decompressor_parameters->outfile
 							  : info->output_file_name;
-	if(parameters->force_rgb)
-	{
-		switch(image->color_space)
-		{
-			case GRK_CLRSPC_SRGB:
-				break;
-			case GRK_CLRSPC_GRAY: {
-				auto tmp = convert_gray_to_rgb(image);
-				if(imageNeedsDestroy)
-					grk_object_unref(&image->obj);
-				imageNeedsDestroy = true;
-				image = tmp;
-			}
-			break;
-			default:
-				spdlog::error("grk_decompress: don't know how to convert image to RGB colorspace.");
-				image = nullptr;
-				goto cleanup;
-		}
-		if(image == nullptr)
-		{
-			spdlog::error("grk_decompress: failed to convert to RGB image.");
-			goto cleanup;
-		}
-	}
 	if(parameters->precision != nullptr)
 	{
 		uint32_t compno;

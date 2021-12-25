@@ -86,6 +86,7 @@ class GrkImage : public grk_image
 	bool generateCompositeBounds(uint16_t compno, grkRectU32* src, uint32_t src_stride,
 								 grkRectU32* dest, grkRectU32* dest_win, uint32_t* src_line_off);
 	void createMeta();
+	bool greyToRGB(void);
 	bool convertToRGB(void);
 	void applyColourManagement(void);
   private:
@@ -103,6 +104,8 @@ class GrkImage : public grk_image
 
 	void applyICC(void);
 	bool cieLabToRGB(void);
+
+	static void copyComponent(grk_image_comp* src, grk_image_comp* dest);
 };
 
 } // namespace grk

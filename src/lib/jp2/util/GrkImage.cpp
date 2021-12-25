@@ -19,6 +19,20 @@ GrkImage::~GrkImage()
 		grk_object_unref(&meta->obj);
 }
 
+void GrkImage::copyComponent(grk_image_comp* src, grk_image_comp* dest){
+	dest->dx = src->dx;
+	dest->dy = src->dy;
+	dest->w = src->w;
+	dest->h = src->h;
+	dest->x0 = src->x0;
+	dest->y0 = src->y0;
+	dest->Xcrg = src->Xcrg;
+	dest->Ycrg = src->Ycrg;
+	dest->prec = src->prec;
+	dest->sgnd = src->sgnd;
+	dest->type = src->type;
+}
+
 GrkImage* GrkImage::create(grk_image *src,
 							uint16_t numcmpts,
 							grk_image_cmptparm* cmptparms,
@@ -534,6 +548,35 @@ bool GrkImage::allComponentsSanityCheck(bool equalPrecision)
 			return false;
 		}
 	}
+	return true;
+}
+
+bool GrkImage::greyToRGB(void){
+	if(numcomps != 1)
+		return false;
+
+	if (!forceRGB || color_space != GRK_CLRSPC_GRAY)
+		return false;
+
+	auto new_components = new grk_image_comp[3];
+	memset(new_components, 0, 3 * sizeof(grk_image_comp));
+	for (uint16_t i = 0; i < 3; ++i){
+		auto src = comps;
+		auto dest = new_components + i;
+		copyComponent(src, dest);
+		if (!allocData(dest)){
+			delete [] new_components;
+			return false;
+		}
+		size_t dataSize = (uint64_t)src->stride * src->h * sizeof(uint32_t);
+		memcpy(dest->data, src->data, dataSize);
+	}
+
+	delete[] comps;
+	comps = new_components;
+	numcomps = 3;
+	color_space = GRK_CLRSPC_SRGB;
+
 	return true;
 }
 

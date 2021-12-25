@@ -1365,6 +1365,7 @@ bool FileFormatDecompress::apply_palette_clr(GrkImage* image, grk_color* color)
 	}
 	auto oldComps = image->comps;
 	auto newComps = new grk_image_comp[num_channels];
+	memset(newComps, 0, num_channels * sizeof(grk_image_comp));
 	for(uint16_t channel = 0; channel < num_channels; ++channel)
 	{
 		auto mapping = component_mapping + channel;

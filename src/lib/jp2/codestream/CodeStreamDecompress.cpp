@@ -2317,6 +2317,7 @@ bool CodeStreamDecompress::postProcess(void){
 	bool rc =  getCompositeImage()->convertToRGB();
 	if (rc){
 		getCompositeImage()->applyColourManagement();
+		getCompositeImage()->greyToRGB();
 	}
 
 	return rc;

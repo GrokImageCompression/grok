@@ -102,67 +102,6 @@ void scale_component(grk_image_comp* component, uint8_t precision)
 	component->prec = precision;
 }
 
-grk_image* convert_gray_to_rgb(grk_image* original)
-{
-	if(original->numcomps == 0)
-		return nullptr;
-	auto new_components = new grk_image_cmptparm[original->numcomps + 2U];
-	new_components[0].dx = new_components[1].dx = new_components[2].dx = original->comps[0].dx;
-	new_components[0].dy = new_components[1].dy = new_components[2].dy = original->comps[0].dy;
-	new_components[0].h = new_components[1].h = new_components[2].h = original->comps[0].h;
-	new_components[0].w = new_components[1].w = new_components[2].w = original->comps[0].w;
-	new_components[0].prec = new_components[1].prec = new_components[2].prec =
-		original->comps[0].prec;
-	new_components[0].sgnd = new_components[1].sgnd = new_components[2].sgnd =
-		original->comps[0].sgnd;
-	new_components[0].x0 = new_components[1].x0 = new_components[2].x0 = original->comps[0].x0;
-	new_components[0].y0 = new_components[1].y0 = new_components[2].y0 = original->comps[0].y0;
-
-	for(uint32_t compno = 1U; compno < original->numcomps; ++compno)
-	{
-		new_components[compno + 2U].dx = original->comps[compno].dx;
-		new_components[compno + 2U].dy = original->comps[compno].dy;
-		new_components[compno + 2U].h = original->comps[compno].h;
-		new_components[compno + 2U].w = original->comps[compno].w;
-		new_components[compno + 2U].prec = original->comps[compno].prec;
-		new_components[compno + 2U].sgnd = original->comps[compno].sgnd;
-		new_components[compno + 2U].x0 = original->comps[compno].x0;
-		new_components[compno + 2U].y0 = original->comps[compno].y0;
-	}
-
-	auto new_image =
-		grk_image_new(nullptr,(uint16_t)(original->numcomps + 2U), new_components, GRK_CLRSPC_SRGB, true);
-	delete[] new_components;
-	if(new_image == nullptr)
-	{
-		spdlog::error("grk_decompress: failed to allocate memory for RGB image.");
-		return nullptr;
-	}
-
-	new_image->x0 = original->x0;
-	new_image->x1 = original->x1;
-	new_image->y0 = original->y0;
-	new_image->y1 = original->y1;
-
-	new_image->comps[0].type = new_image->comps[1].type = new_image->comps[2].type =
-		original->comps[0].type;
-	memcpy(new_image->comps[0].data, original->comps[0].data,
-		   original->comps[0].stride * original->comps[0].h * sizeof(int32_t));
-	memcpy(new_image->comps[1].data, original->comps[0].data,
-		   original->comps[0].stride * original->comps[0].h * sizeof(int32_t));
-	memcpy(new_image->comps[2].data, original->comps[0].data,
-		   original->comps[0].stride * original->comps[0].h * sizeof(int32_t));
-
-	for(uint32_t compno = 1U; compno < original->numcomps; ++compno)
-	{
-		new_image->comps[compno + 2U].type = original->comps[compno].type;
-		memcpy(new_image->comps[compno + 2U].data, original->comps[compno].data,
-			   original->comps[compno].stride * original->comps[compno].h * sizeof(int32_t));
-	}
-
-	return new_image;
-}
-
 grk_image* upsample_image_components(grk_image* original)
 {
 	grk_image* new_image = nullptr;

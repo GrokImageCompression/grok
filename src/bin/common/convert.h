@@ -27,8 +27,6 @@
 void clip_component(grk_image_comp* component, uint8_t precision);
 /* Component precision scaling */
 void scale_component(grk_image_comp* component, uint8_t precision);
-
-grk_image* convert_gray_to_rgb(grk_image* original);
 grk_image* upsample_image_components(grk_image* original);
 
 /* planar / interleaved conversions */
