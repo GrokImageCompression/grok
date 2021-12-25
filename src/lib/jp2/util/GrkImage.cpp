@@ -1097,6 +1097,603 @@ bool GrkImage::color_esycc_to_rgb(void)
 
 } /* color_esycc_to_rgb() */
 
+void GrkImage::applyColourManagement(void){
+	if(meta && meta->color.icc_profile_buf)
+	{
+		bool isTiff = decompressFormat == GRK_TIF_FMT;
+		bool canStoreCIE = isTiff && color_space == GRK_CLRSPC_DEFAULT_CIE;
+		bool isCIE =
+			color_space == GRK_CLRSPC_DEFAULT_CIE || color_space == GRK_CLRSPC_CUSTOM_CIE;
+		if(isCIE)
+		{
+			if(!canStoreCIE || forceRGB)
+			{
+				if(!forceRGB)
+					GRK_WARN(
+						" Input file is in CIE colour space,\n"
+						"but the codec is unable to store this information in the "
+						"output file .\n"
+						"The output image will therefore be converted to sRGB before saving.");
+				if(!cieLabToRGB())
+					GRK_WARN("Unable to convert L*a*b image to sRGB");
+			}
+		}
+		else
+		{
+			// A TIFF,PNG, BMP or JPEG image can store the ICC profile,
+			// so no need to apply it in this case,
+			// (unless we are forcing to RGB).
+			// Otherwise, we apply the profile
+			bool canStoreICC = (decompressFormat == GRK_TIF_FMT ||
+									decompressFormat == GRK_PNG_FMT ||
+									decompressFormat == GRK_JPG_FMT ||
+									decompressFormat == GRK_BMP_FMT);
+			if(forceRGB || !canStoreICC)
+			{
+				if(!forceRGB)
+				{
+					GRK_WARN(" Input file contains a color profile,\n"
+								 "but the codec is unable to store this profile"
+								 " in the output file .\n"
+								 "The profile will therefore be applied to the output"
+								 " image before saving.");
+				}
+				applyICC();
+			}
+		}
+	}
+}
+
+
+/*#define DEBUG_PROFILE*/
+void GrkImage::applyICC(void)
+{
+	cmsColorSpaceSignature in_space;
+	cmsColorSpaceSignature out_space;
+	cmsUInt32Number intent = 0;
+	cmsHTRANSFORM transform = nullptr;
+	cmsHPROFILE in_prof = nullptr;
+	cmsHPROFILE out_prof = nullptr;
+	cmsUInt32Number in_type, out_type;
+	size_t nr_samples, max;
+	uint32_t prec, w, stride_diff, h;
+	GRK_COLOR_SPACE oldspace;
+	grk_image* new_image = nullptr;
+	if(numcomps == 0 || !allComponentsSanityCheck(true))
+		return;
+	if(!meta)
+		return;
+	in_prof = cmsOpenProfileFromMem(meta->color.icc_profile_buf,
+									meta->color.icc_profile_len);
+#ifdef DEBUG_PROFILE
+	FILE* icm = fopen("debug.icm", "wb");
+	fwrite(color.icc_profile_buf, 1, color.icc_profile_len, icm);
+	fclose(icm);
+#endif
+
+	if(in_prof == nullptr)
+		return;
+
+	in_space = cmsGetPCS(in_prof);
+	out_space = cmsGetColorSpace(in_prof);
+	intent = cmsGetHeaderRenderingIntent(in_prof);
+
+	w = comps[0].w;
+	stride_diff = comps[0].stride - w;
+	h = comps[0].h;
+
+	if(!w || !h)
+		goto cleanup;
+
+	prec = comps[0].prec;
+	oldspace = color_space;
+
+	if(out_space == cmsSigRgbData)
+	{ /* enumCS 16 */
+		uint32_t i, nr_comp = numcomps;
+
+		if(nr_comp > 4)
+		{
+			nr_comp = 4;
+		}
+		for(i = 1; i < nr_comp; ++i)
+		{
+			if(comps[0].dx != comps[i].dx)
+				break;
+			if(comps[0].dy != comps[i].dy)
+				break;
+			if(comps[0].prec != comps[i].prec)
+				break;
+			if(comps[0].sgnd != comps[i].sgnd)
+				break;
+		}
+		if(i != nr_comp)
+			goto cleanup;
+
+		if(prec <= 8)
+		{
+			in_type = TYPE_RGB_8;
+			out_type = TYPE_RGB_8;
+		}
+		else
+		{
+			in_type = TYPE_RGB_16;
+			out_type = TYPE_RGB_16;
+		}
+		out_prof = cmsCreate_sRGBProfile();
+		color_space = GRK_CLRSPC_SRGB;
+	}
+	else if(out_space == cmsSigGrayData)
+	{ /* enumCS 17 */
+		in_type = TYPE_GRAY_8;
+		out_type = TYPE_RGB_8;
+		out_prof = cmsCreate_sRGBProfile();
+		if(forceRGB)
+			color_space = GRK_CLRSPC_SRGB;
+		else
+			color_space = GRK_CLRSPC_GRAY;
+	}
+	else if(out_space == cmsSigYCbCrData)
+	{ /* enumCS 18 */
+		in_type = TYPE_YCbCr_16;
+		out_type = TYPE_RGB_16;
+		out_prof = cmsCreate_sRGBProfile();
+		color_space = GRK_CLRSPC_SRGB;
+	}
+	else
+	{
+#ifdef DEBUG_PROFILE
+		spdlog::error("{}:{}: color_apply_icc_profile\n\tICC Profile has unknown "
+					  "output colorspace(%#x)({}{}{}{})\n\tICC Profile ignored.",
+					  __FILE__, __LINE__, out_space, (out_space >> 24) & 0xff,
+					  (out_space >> 16) & 0xff, (out_space >> 8) & 0xff, out_space & 0xff);
+#endif
+		return;
+	}
+
+#ifdef DEBUG_PROFILE
+	spdlog::error("{}:{}:color_apply_icc_profile\n\tchannels({}) prec({}) w({}) h({})"
+				  "\n\tprofile: in({}) out({})",
+				  __FILE__, __LINE__, numcomps, prec, max_w, max_h, (void*)in_prof,
+				  (void*)out_prof);
+
+	spdlog::error("\trender_intent ({})\n\t"
+				  "color_space: in({})({}{}{}{})   out:({})({}{}{}{})\n\t"
+				  "       type: in({})              out:({})",
+				  intent, in_space, (in_space >> 24) & 0xff, (in_space >> 16) & 0xff,
+				  (in_space >> 8) & 0xff, in_space & 0xff,
+
+				  out_space, (out_space >> 24) & 0xff, (out_space >> 16) & 0xff,
+				  (out_space >> 8) & 0xff, out_space & 0xff,
+
+				  in_type, out_type);
+#else
+	(void)prec;
+	(void)in_space;
+#endif /* DEBUG_PROFILE */
+
+	transform = cmsCreateTransform(in_prof, in_type, out_prof, out_type, intent, 0);
+
+	cmsCloseProfile(in_prof);
+	in_prof = nullptr;
+	cmsCloseProfile(out_prof);
+	out_prof = nullptr;
+
+	if(transform == nullptr)
+	{
+#ifdef DEBUG_PROFILE
+		spdlog::error("{}:{}:color_apply_icc_profile\n\tcmsCreateTransform failed. "
+					  "ICC Profile ignored.",
+					  __FILE__, __LINE__);
+#endif
+		color_space = oldspace;
+		return;
+	}
+	if(numcomps > 2)
+	{ /* RGB, RGBA */
+		if(prec <= 8)
+		{
+			uint8_t *in = nullptr, *inbuf = nullptr, *out = nullptr, *outbuf = nullptr;
+			max = (size_t)w * h;
+			nr_samples = max * 3 * (cmsUInt32Number)sizeof(uint8_t);
+			in = inbuf = new uint8_t[nr_samples];
+			if(!in)
+			{
+				goto cleanup;
+			}
+			out = outbuf = new uint8_t[nr_samples];
+			if(!out)
+			{
+				delete[] inbuf;
+				goto cleanup;
+			}
+
+			auto r = comps[0].data;
+			auto g = comps[1].data;
+			auto b = comps[2].data;
+
+			size_t src_index = 0;
+			size_t dest_index = 0;
+			for(uint32_t j = 0; j < h; ++j)
+			{
+				for(uint32_t i = 0; i < w; ++i)
+				{
+					in[dest_index++] = (uint8_t)r[src_index];
+					in[dest_index++] = (uint8_t)g[src_index];
+					in[dest_index++] = (uint8_t)b[src_index];
+					src_index++;
+				}
+				src_index += stride_diff;
+			}
+
+			cmsDoTransform(transform, inbuf, outbuf, (cmsUInt32Number)max);
+
+			src_index = 0;
+			dest_index = 0;
+			for(uint32_t j = 0; j < h; ++j)
+			{
+				for(uint32_t i = 0; i < w; ++i)
+				{
+					r[dest_index] = (int32_t)out[src_index++];
+					g[dest_index] = (int32_t)out[src_index++];
+					b[dest_index] = (int32_t)out[src_index++];
+					dest_index++;
+				}
+				dest_index += stride_diff;
+			}
+			delete[] inbuf;
+			delete[] outbuf;
+		}
+		else
+		{
+			uint16_t *in = nullptr, *inbuf = nullptr, *out = nullptr, *outbuf = nullptr;
+			max = (size_t)w * h;
+			nr_samples = max * 3 * (cmsUInt32Number)sizeof(uint16_t);
+			in = inbuf = new uint16_t[nr_samples];
+			if(!in)
+				goto cleanup;
+			out = outbuf = new uint16_t[nr_samples];
+			if(!out)
+			{
+				delete[] inbuf;
+				goto cleanup;
+			}
+			auto r = comps[0].data;
+			auto g = comps[1].data;
+			auto b = comps[2].data;
+
+			size_t src_index = 0;
+			size_t dest_index = 0;
+			for(uint32_t j = 0; j < h; ++j)
+			{
+				for(uint32_t i = 0; i < w; ++i)
+				{
+					in[dest_index++] = (uint16_t)r[src_index];
+					in[dest_index++] = (uint16_t)g[src_index];
+					in[dest_index++] = (uint16_t)b[src_index];
+					src_index++;
+				}
+				src_index += stride_diff;
+			}
+
+			cmsDoTransform(transform, inbuf, outbuf, (cmsUInt32Number)max);
+
+			src_index = 0;
+			dest_index = 0;
+			for(uint32_t j = 0; j < h; ++j)
+			{
+				for(uint32_t i = 0; i < w; ++i)
+				{
+					r[dest_index] = (int32_t)out[src_index++];
+					g[dest_index] = (int32_t)out[src_index++];
+					b[dest_index] = (int32_t)out[src_index++];
+					dest_index++;
+				}
+				dest_index += stride_diff;
+			}
+			delete[] inbuf;
+			delete[] outbuf;
+		}
+	}
+	else
+	{ /* GRAY, GRAYA */
+		uint8_t *in = nullptr, *inbuf = nullptr, *out = nullptr, *outbuf = nullptr;
+
+		max = (size_t)w * h;
+		nr_samples = max * 3 * (cmsUInt32Number)sizeof(uint8_t);
+		auto newComps = new grk_image_comp[numcomps + 2U];
+		for(uint32_t i = 0; i < numcomps + 2U; ++i)
+		{
+			if(i < numcomps)
+				newComps[i] = comps[i];
+			else
+				memset(newComps + 1, 0, sizeof(grk_image_comp));
+		}
+		delete[] comps;
+		comps = newComps;
+
+		in = inbuf = new uint8_t[nr_samples];
+		if(!in)
+			goto cleanup;
+		out = outbuf = new uint8_t[nr_samples];
+		if(!out)
+		{
+			delete[] inbuf;
+			goto cleanup;
+		}
+
+		new_image = createRGB(2, comps[0].w, comps[0].h,
+												  comps[0].prec);
+		if(!new_image)
+		{
+			delete[] inbuf;
+			delete[] outbuf;
+			goto cleanup;
+		}
+
+		if(numcomps == 2)
+			comps[3] = comps[1];
+
+		comps[1] = comps[0];
+		comps[2] = comps[0];
+
+		comps[1].data = new_image->comps[0].data;
+		comps[2].data = new_image->comps[1].data;
+
+		new_image->comps[0].data = nullptr;
+		new_image->comps[1].data = nullptr;
+
+		grk_object_unref(&new_image->obj);
+		new_image = nullptr;
+
+		if(forceRGB)
+			numcomps = (uint16_t)(2 + numcomps);
+
+		auto r = comps[0].data;
+
+		size_t src_index = 0;
+		size_t dest_index = 0;
+		for(uint32_t j = 0; j < h; ++j)
+		{
+			for(uint32_t i = 0; i < w; ++i)
+			{
+				in[dest_index++] = (uint8_t)r[src_index];
+				src_index++;
+			}
+			src_index += stride_diff;
+		}
+
+		cmsDoTransform(transform, inbuf, outbuf, (cmsUInt32Number)max);
+
+		auto g = comps[1].data;
+		auto b = comps[2].data;
+
+		src_index = 0;
+		dest_index = 0;
+		for(uint32_t j = 0; j < h; ++j)
+		{
+			for(uint32_t i = 0; i < w; ++i)
+			{
+				r[dest_index] = (int32_t)out[src_index++];
+				if(forceRGB)
+				{
+					g[dest_index] = (int32_t)out[src_index++];
+					b[dest_index] = (int32_t)out[src_index++];
+				}
+				else
+				{
+					src_index += 2;
+				}
+				dest_index++;
+			}
+			dest_index += stride_diff;
+		}
+
+		delete[] inbuf;
+		delete[] outbuf;
+	} /* if(image->numcomps */
+cleanup:
+	if(in_prof)
+		cmsCloseProfile(in_prof);
+	if(out_prof)
+		cmsCloseProfile(out_prof);
+	if(transform)
+		cmsDeleteTransform(transform);
+} /* applyICC() */
+
+
+// transform LAB colour space to sRGB @ 16 bit precision
+bool GrkImage::cieLabToRGB(void)
+{
+	// sanity checks
+	if(numcomps == 0 || !allComponentsSanityCheck(true))
+		return false;
+	if(!meta)
+		return false;
+	size_t i;
+	for(i = 1U; i < numcomps; ++i)
+	{
+		auto comp0 = comps;
+		auto compi = comps + i;
+
+		if(comp0->prec != compi->prec)
+			break;
+		if(comp0->sgnd != compi->sgnd)
+			break;
+		if(comp0->stride != compi->stride)
+			break;
+	}
+	if(i != numcomps)
+	{
+		GRK_WARN("All components must have same precision, sign and stride");
+		return false;
+	}
+
+	auto row = (uint32_t*)meta->color.icc_profile_buf;
+	auto enumcs = (GRK_ENUM_COLOUR_SPACE)row[0];
+	if(enumcs != GRK_ENUM_CLRSPC_CIE)
+	{ /* CIELab */
+		GRK_WARN("{}:{}:\n\tenumCS {} not handled. Ignoring.", __FILE__, __LINE__, enumcs);
+		return false;
+	}
+
+	bool defaultType = true;
+	color_space = GRK_CLRSPC_SRGB;
+	uint32_t illuminant = GRK_CIE_D50;
+	cmsCIExyY WhitePoint;
+	defaultType = row[1] == GRK_DEFAULT_CIELAB_SPACE;
+	int32_t *L, *a, *b, *red, *green, *blue;
+	int32_t *src[3], *dst[3];
+	// range, offset and precision for L,a and b coordinates
+	double r_L, o_L, r_a, o_a, r_b, o_b, prec_L, prec_a, prec_b;
+	double minL, maxL, mina, maxa, minb, maxb;
+	cmsUInt16Number RGB[3];
+	auto dest_img = createRGB(3, comps[0].w, comps[0].h,
+												  comps[0].prec);
+	if(!dest_img)
+		return false;
+
+	prec_L = (double)comps[0].prec;
+	prec_a = (double)comps[1].prec;
+	prec_b = (double)comps[2].prec;
+
+	if(defaultType)
+	{ // default Lab space
+		r_L = 100;
+		r_a = 170;
+		r_b = 200;
+		o_L = 0;
+		o_a = pow(2, prec_a - 1); // 2 ^ (prec_b - 1)
+		o_b = 3 * pow(2, prec_b - 3); // 0.75 * 2 ^ (prec_b - 1)
+	}
+	else
+	{
+		r_L = row[2];
+		r_a = row[4];
+		r_b = row[6];
+		o_L = row[3];
+		o_a = row[5];
+		o_b = row[7];
+		illuminant = row[8];
+	}
+	switch(illuminant)
+	{
+		case GRK_CIE_D50:
+			break;
+		case GRK_CIE_D65:
+			cmsWhitePointFromTemp(&WhitePoint, 6504);
+			break;
+		case GRK_CIE_D75:
+			cmsWhitePointFromTemp(&WhitePoint, 7500);
+			break;
+		case GRK_CIE_SA:
+			cmsWhitePointFromTemp(&WhitePoint, 2856);
+			break;
+		case GRK_CIE_SC:
+			cmsWhitePointFromTemp(&WhitePoint, 6774);
+			break;
+		case GRK_CIE_F2:
+			cmsWhitePointFromTemp(&WhitePoint, 4100);
+			break;
+		case GRK_CIE_F7:
+			cmsWhitePointFromTemp(&WhitePoint, 6500);
+			break;
+		case GRK_CIE_F11:
+			cmsWhitePointFromTemp(&WhitePoint, 4000);
+			break;
+		default:
+			GRK_WARN("Unrecognized illuminant {} in CIELab colour space. "
+						 "Setting to default Daylight50",
+						 illuminant);
+			illuminant = GRK_CIE_D50;
+			break;
+	}
+
+	// Lab input profile
+	auto in = cmsCreateLab4Profile(illuminant == GRK_CIE_D50 ? nullptr : &WhitePoint);
+	// sRGB output profile
+	auto out = cmsCreate_sRGBProfile();
+	auto transform =
+		cmsCreateTransform(in, TYPE_Lab_DBL, out, TYPE_RGB_16, INTENT_PERCEPTUAL, 0);
+
+	cmsCloseProfile(in);
+	cmsCloseProfile(out);
+	if(transform == nullptr)
+	{
+		grk_object_unref(&dest_img->obj);
+		return false;
+	}
+
+	L = src[0] = comps[0].data;
+	a = src[1] = comps[1].data;
+	b = src[2] = comps[2].data;
+
+	if(!L || !a || !b)
+	{
+		GRK_WARN("color_cielab_to_rgb: null L*a*b component");
+		return false;
+	}
+
+	red = dst[0] = dest_img->comps[0].data;
+	green = dst[1] = dest_img->comps[1].data;
+	blue = dst[2] = dest_img->comps[2].data;
+
+	dest_img->comps[0].data = nullptr;
+	dest_img->comps[1].data = nullptr;
+	dest_img->comps[2].data = nullptr;
+
+	grk_object_unref(&dest_img->obj);
+	dest_img = nullptr;
+
+	minL = -(r_L * o_L) / (pow(2, prec_L) - 1);
+	maxL = minL + r_L;
+
+	mina = -(r_a * o_a) / (pow(2, prec_a) - 1);
+	maxa = mina + r_a;
+
+	minb = -(r_b * o_b) / (pow(2, prec_b) - 1);
+	maxb = minb + r_b;
+
+	uint32_t stride_diff = comps[0].stride - comps[0].w;
+	size_t dest_index = 0;
+	for(uint32_t j = 0; j < comps[0].h; ++j)
+	{
+		for(uint32_t k = 0; k < comps[0].w; ++k)
+		{
+			cmsCIELab Lab;
+			Lab.L = minL + (double)(*L) * (maxL - minL) / (pow(2, prec_L) - 1);
+			++L;
+			Lab.a = mina + (double)(*a) * (maxa - mina) / (pow(2, prec_a) - 1);
+			++a;
+			Lab.b = minb + (double)(*b) * (maxb - minb) / (pow(2, prec_b) - 1);
+			++b;
+
+			cmsDoTransform(transform, &Lab, RGB, 1);
+
+			red[dest_index] = RGB[0];
+			green[dest_index] = RGB[1];
+			blue[dest_index] = RGB[2];
+			dest_index++;
+		}
+		dest_index += stride_diff;
+		L += stride_diff;
+		a += stride_diff;
+		b += stride_diff;
+	}
+	cmsDeleteTransform(transform);
+	for(i = 0; i < 3; ++i)
+	{
+		auto comp = comps + i;
+		grk_image_single_component_data_free(comp);
+		comp->data = dst[i];
+		comp->prec = 16;
+	}
+	color_space = GRK_CLRSPC_SRGB;
+
+	return true;
+}
+
+
 GrkImageMeta::GrkImageMeta()
 {
 	obj.wrapper = new GrkObjectWrapperImpl(this);

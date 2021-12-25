@@ -87,6 +87,7 @@ class GrkImage : public grk_image
 								 grkRectU32* dest, grkRectU32* dest_win, uint32_t* src_line_off);
 	void createMeta();
 	bool convertToRGB(void);
+	void applyColourManagement(void);
   private:
 	~GrkImage();
 	bool allComponentsSanityCheck(bool equalPrecision);
@@ -99,6 +100,9 @@ class GrkImage : public grk_image
 	bool color_sycc_to_rgb(bool oddFirstX, bool oddFirstY);
 	bool color_cmyk_to_rgb(void);
 	bool color_esycc_to_rgb(void);
+
+	void applyICC(void);
+	bool cieLabToRGB(void);
 };
 
 } // namespace grk

@@ -2314,7 +2314,12 @@ bool CodeStreamDecompress::endDecompress(void)
 	return true;
 }
 bool CodeStreamDecompress::postProcess(void){
-	return getCompositeImage()->convertToRGB();
+	bool rc =  getCompositeImage()->convertToRGB();
+	if (rc){
+		getCompositeImage()->applyColourManagement();
+	}
+
+	return rc;
 }
 bool CodeStreamDecompress::parseTileHeaderMarkers(bool* canDecompress)
 {

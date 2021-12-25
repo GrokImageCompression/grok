@@ -1166,7 +1166,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 		uint16_t palette_num_entries = (uint16_t)(1U << tiBps);
 		uint8_t num_channels = 3U;
 		grk::create_meta(image);
-		grk::alloc_palette(&image->meta->color, num_channels, (uint16_t)palette_num_entries);
+		grk::allocPalette(&image->meta->color, num_channels, (uint16_t)palette_num_entries);
 		auto cmap = new _grk_component_mapping_comp[num_channels];
 		for(uint8_t i = 0; i < num_channels; ++i)
 		{

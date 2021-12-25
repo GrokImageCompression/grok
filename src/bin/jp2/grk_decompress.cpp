@@ -1304,53 +1304,6 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
 	const char* outfile = info->decompressor_parameters->outfile[0]
 							  ? info->decompressor_parameters->outfile
 							  : info->output_file_name;
-	bool isTiff = info->decompressor_parameters->cod_format == GRK_TIF_FMT;
-	bool canStoreCIE = isTiff && image->color_space == GRK_CLRSPC_DEFAULT_CIE;
-	bool isCIE =
-		image->color_space == GRK_CLRSPC_DEFAULT_CIE || image->color_space == GRK_CLRSPC_CUSTOM_CIE;
-
-	if(image->meta && image->meta->color.icc_profile_buf)
-	{
-		if(isCIE)
-		{
-			if(!canStoreCIE || info->decompressor_parameters->force_rgb)
-			{
-				if(!info->decompressor_parameters->force_rgb)
-					spdlog::warn(
-						" Input file `{}` is in CIE colour space,\n"
-						"but the codec is unable to store this information in the "
-						"output file `{}`.\n"
-						"The output image will therefore be converted to sRGB before saving.",
-						infile, outfile);
-				if(!color_cielab_to_rgb(image))
-					spdlog::warn("Unable to convert L*a*b image to sRGB");
-			}
-		}
-		else
-		{
-			// A TIFF,PNG, BMP or JPEG image can store the ICC profile,
-			// so no need to apply it in this case,
-			// (unless we are forcing to RGB).
-			// Otherwise, we apply the profile
-			bool canStoreICC = (info->decompressor_parameters->cod_format == GRK_TIF_FMT ||
-								info->decompressor_parameters->cod_format == GRK_PNG_FMT ||
-								info->decompressor_parameters->cod_format == GRK_JPG_FMT ||
-								info->decompressor_parameters->cod_format == GRK_BMP_FMT);
-			if(info->decompressor_parameters->force_rgb || !canStoreICC)
-			{
-				if(!info->decompressor_parameters->force_rgb)
-				{
-					spdlog::warn(" Input file `{}` contains a color profile,\n"
-								 "but the codec is unable to store this profile"
-								 " in the output file `{}`.\n"
-								 "The profile will therefore be applied to the output"
-								 " image before saving.",
-								 infile, outfile);
-				}
-				applyICC(image, info->decompressor_parameters->force_rgb);
-			}
-		}
-	}
 	if(parameters->force_rgb)
 	{
 		switch(image->color_space)
