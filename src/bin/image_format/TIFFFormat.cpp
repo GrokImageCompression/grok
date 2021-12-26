@@ -1316,7 +1316,7 @@ cleanup:
 		if(is_cinema)
 		{
 			for(uint32_t j = 0; j < numcomps; ++j)
-				scale_component(&(image->comps[j]), 12);
+				scaleComponent(image->comps+j, 12);
 		}
 		return image;
 	}

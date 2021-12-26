@@ -38,6 +38,7 @@ class ImageFormat : public IImageFormat
 	bool seek(int64_t pos);
 	uint32_t maxY(uint32_t rows);
 	int getMode(const char* mode);
+	void scaleComponent(grk_image_comp* component, uint8_t precision);
 
 	grk_image* m_image;
 	uint32_t m_rowCount;
