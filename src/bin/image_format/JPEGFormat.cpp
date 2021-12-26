@@ -435,22 +435,6 @@ bool JPEGFormat::encodeHeader(grk_image* image, const std::string& filename,
 	for(i = 1U; i < numcomps; ++i)
 		planes[i] = m_image->comps[i].data;
 
-	if(prec < 8 && numcomps > 1)
-	{ /* GRAY_ALPHA, RGB, RGB_ALPHA */
-		for(i = 0; i < numcomps; ++i)
-			scale_component(&(m_image->comps[i]), 8);
-		prec = 8;
-	}
-	else if((prec > 1) && (prec < 8) && ((prec == 6) || ((prec & 1) == 1)))
-	{ /* GRAY with non native precision */
-		if((prec == 5) || (prec == 6))
-			prec = 8;
-		else
-			prec++;
-		for(i = 0; i < numcomps; ++i)
-			scale_component(&(m_image->comps[i]), prec);
-	}
-
 	if(prec != 1 && prec != 2 && prec != 4 && prec != 8)
 	{
 		spdlog::error("JPEGFormat::encodeHeader: can not create {}\n\twrong bit_depth {}", filename,
