@@ -750,39 +750,38 @@ void GrkImage::scaleComponent(grk_image_comp* component, uint8_t precision)
 }
 
 void GrkImage::convertPrecision(void){
-	if (!precision)
-		return;
-
-	for(uint32_t compno = 0; compno < numcomps; ++compno)
-	{
-		uint32_t precisionno = compno;
-		if(precisionno >= numPrecision)
-			precisionno = numPrecision - 1U;
-		uint8_t prec = precision[precisionno].prec;
-		auto comp = comps + compno;
-		if(prec == 0)
-			prec = comp->prec;
-
-		switch(precision[precisionno].mode)
+	if (precision) {
+		for(uint32_t compno = 0; compno < numcomps; ++compno)
 		{
-			case GRK_PREC_MODE_CLIP:
-				{
-					if(comp->sgnd)
-						clip<int32_t>(comp, prec);
-					else
-						clip<uint32_t>(comp, prec);
-				}
-				break;
-			case GRK_PREC_MODE_SCALE:
-				scaleComponent(comp,prec);
-				break;
-			default:
-				break;
+			uint32_t precisionno = compno;
+			if(precisionno >= numPrecision)
+				precisionno = numPrecision - 1U;
+			uint8_t prec = precision[precisionno].prec;
+			auto comp = comps + compno;
+			if(prec == 0)
+				prec = comp->prec;
+
+			switch(precision[precisionno].mode)
+			{
+				case GRK_PREC_MODE_CLIP:
+					{
+						if(comp->sgnd)
+							clip<int32_t>(comp, prec);
+						else
+							clip<uint32_t>(comp, prec);
+					}
+					break;
+				case GRK_PREC_MODE_SCALE:
+					scaleComponent(comp,prec);
+					break;
+				default:
+					break;
+			}
 		}
 	}
 
-	if (this->decompressFormat == GRK_JPG_FMT) {
-		auto prec = comps[0].prec;
+	if (decompressFormat == GRK_JPG_FMT) {
+		uint8_t prec = comps[0].prec;
 		if(prec < 8 && numcomps > 1)
 		{ /* GRAY_ALPHA, RGB, RGB_ALPHA */
 			for(uint16_t i = 0; i < numcomps; ++i)
@@ -798,6 +797,33 @@ void GrkImage::convertPrecision(void){
 			for(uint16_t i = 0; i < numcomps; ++i)
 				scaleComponent(comps+i, prec);
 		}
+	} else if (decompressFormat == GRK_PNG_FMT){
+		uint16_t nr_comp = numcomps;
+		if(nr_comp > 4)
+		{
+			GRK_WARN("PNG: number of components {} is "
+						 "greater than 4. Truncating to 4",
+						 nr_comp);
+			nr_comp = 4;
+		}
+		uint8_t prec = comps[0].prec;
+		if(prec > 8 && prec < 16)
+		{
+			prec = 16;
+		}
+		else if(prec < 8 && nr_comp > 1)
+		{ /* GRAY_ALPHA, RGB, RGB_ALPHA */
+			prec = 8;
+		}
+		else if((prec > 1) && (prec < 8) && ((prec == 6) || ((prec & 1) == 1)))
+		{ /* GRAY with non native precision */
+			if((prec == 5) || (prec == 6))
+				prec = 8;
+			else
+				prec++;
+		}
+		for(uint16_t i = 0; i < nr_comp; ++i)
+			scaleComponent(comps+i, prec);
 	}
 
 }

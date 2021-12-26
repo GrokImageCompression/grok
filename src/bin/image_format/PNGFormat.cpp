@@ -631,9 +631,6 @@ bool PNGFormat::encodeHeader(grk_image* img, const std::string& filename, uint32
 		goto beach;
 	}
 
-	for(i = 0; i < nr_comp; ++i)
-		scale_component(&(m_image->comps[i]), prec);
-
 	png_write_info(png, m_info);
 
 	/* set up conversion */
