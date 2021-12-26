@@ -54,8 +54,6 @@ using namespace grk;
 #endif
 #include "convert.h"
 #include "grk_string.h"
-#include "color.h"
-
 #include <float.h>
 #include <math.h>
 #include <assert.h>

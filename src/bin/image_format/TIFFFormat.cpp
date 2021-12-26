@@ -33,7 +33,6 @@
 #endif /* GROK_HAVE_LIBTIFF */
 
 #include <tiffio.h>
-#include "color.h"
 #include <cassert>
 #include <memory>
 #include <string>
@@ -1165,8 +1164,8 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 		}
 		uint16_t palette_num_entries = (uint16_t)(1U << tiBps);
 		uint8_t num_channels = 3U;
-		grk::create_meta(image);
-		grk::allocPalette(&image->meta->color, num_channels, (uint16_t)palette_num_entries);
+		create_meta(image);
+		allocPalette(&image->meta->color, num_channels, (uint16_t)palette_num_entries);
 		auto cmap = new _grk_component_mapping_comp[num_channels];
 		for(uint8_t i = 0; i < num_channels; ++i)
 		{
@@ -1268,8 +1267,8 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 		if((TIFFGetFieldDefaulted(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1) && icclen > 0 &&
 		   icclen < grk::maxICCProfileBufferLen)
 		{
-			if(grk::validate_icc(color_space, iccbuf, icclen))
-				grk::copy_icc(image, iccbuf, icclen);
+			if(validate_icc(color_space, iccbuf, icclen))
+				copy_icc(image, iccbuf, icclen);
 			else
 				spdlog::warn("TIFFFormat::decode: ICC profile does not match underlying colour "
 							 "space. Ignoring");
@@ -1282,7 +1281,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 			TIFFSwabArrayOfLong((uint32_t*)iptc_buf, iptc_len);
 		// since TIFFTAG_RICHTIFFIPTC is of type TIFF_LONG, we must multiply
 		// by 4 to get the length in bytes
-		grk::create_meta(image);
+		create_meta(image);
 		image->meta->iptc_len = iptc_len * 4;
 		image->meta->iptc_buf = new uint8_t[iptc_len];
 		memcpy(image->meta->iptc_buf, iptc_buf, iptc_len);
@@ -1290,7 +1289,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	// 8. extract XML meta-data
 	if(TIFFGetFieldDefaulted(tif, TIFFTAG_XMLPACKET, &xmp_len, &xmp_buf) == 1)
 	{
-		grk::create_meta(image);
+		create_meta(image);
 		image->meta->xmp_len = xmp_len;
 		image->meta->xmp_buf = new uint8_t[xmp_len];
 		memcpy(image->meta->xmp_buf, xmp_buf, xmp_len);

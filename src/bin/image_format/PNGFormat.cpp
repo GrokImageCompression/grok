@@ -25,7 +25,6 @@
 #include "grok.h"
 #include "PNGFormat.h"
 #include "convert.h"
-#include "color.h"
 #include <cstring>
 
 #include <lcms2.h>
@@ -276,14 +275,10 @@ grk_image* PNGFormat::do_decode(const char* read_idf, grk_cparameters* params)
 		if(png_get_iCCP(png, m_info, &ProfileName, &Compression, &ProfileData, &ProfileLen) ==
 		   PNG_INFO_iCCP)
 		{
-			if(grk::validate_icc(m_colorSpace, ProfileData, ProfileLen))
-			{
-				grk::copy_icc(m_image, ProfileData, ProfileLen);
-			}
+			if(validate_icc(m_colorSpace, ProfileData, ProfileLen))
+				copy_icc(m_image, ProfileData, ProfileLen);
 			else
-			{
 				spdlog::warn("ICC profile does not match underlying colour space. Ignoring");
-			}
 		}
 	}
 
@@ -331,7 +326,7 @@ grk_image* PNGFormat::do_decode(const char* read_idf, grk_cparameters* params)
 			{
 				if(text_ptr[i].text_length)
 				{
-					grk::create_meta(m_image);
+					create_meta(m_image);
 					m_image->meta->xmp_len = text_ptr[i].text_length;
 					m_image->meta->xmp_buf = new uint8_t[m_image->meta->xmp_len];
 					memcpy(m_image->meta->xmp_buf, text_ptr[i].text, m_image->meta->xmp_len);

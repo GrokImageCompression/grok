@@ -19,6 +19,7 @@
 #include <algorithm>
 #include "common.h"
 #include "FileStreamIO.h"
+#include <lcms2.h>
 
 ImageFormat::ImageFormat()
 	: m_image(nullptr), m_rowCount(0), m_rowsPerStrip(0), m_numStrips(0),
@@ -126,4 +127,70 @@ void ImageFormat::scaleComponent(grk_image_comp* component, uint8_t precision)
 	}
 	component->prec = precision;
 }
+
+void ImageFormat::allocPalette(grk_color* color, uint8_t num_channels, uint16_t num_entries)
+{
+	assert(color);
+	assert(num_channels);
+	assert(num_entries);
+
+	auto jp2_pclr = new grk_palette_data();
+	jp2_pclr->channel_sign = new bool[num_channels];
+	jp2_pclr->channel_prec = new uint8_t[num_channels];
+	jp2_pclr->lut = new int32_t[num_channels * num_entries];
+	jp2_pclr->num_entries = num_entries;
+	jp2_pclr->num_channels = num_channels;
+	jp2_pclr->component_mapping = nullptr;
+	color->palette = jp2_pclr;
+}
+
+void ImageFormat::copy_icc(grk_image* dest, uint8_t* iccbuf, uint32_t icclen)
+{
+	create_meta(dest);
+	dest->meta->color.icc_profile_buf = new uint8_t[icclen];
+	memcpy(dest->meta->color.icc_profile_buf, iccbuf, icclen);
+	dest->meta->color.icc_profile_len = icclen;
+	dest->color_space = GRK_CLRSPC_ICC;
+}
+void ImageFormat::create_meta(grk_image* img)
+{
+	if(img && !img->meta)
+		img->meta = grk_image_meta_new();
+}
+
+bool ImageFormat::validate_icc(GRK_COLOR_SPACE colourSpace, uint8_t* iccbuf, uint32_t icclen)
+{
+	bool rc = true;
+	auto in_prof = cmsOpenProfileFromMem(iccbuf, icclen);
+	if(in_prof)
+	{
+		auto cmsColorSpaceSignature = cmsGetColorSpace(in_prof);
+		switch(cmsColorSpaceSignature)
+		{
+			case cmsSigLabData:
+				rc =
+					(colourSpace == GRK_CLRSPC_DEFAULT_CIE || colourSpace == GRK_CLRSPC_CUSTOM_CIE);
+				break;
+			case cmsSigYCbCrData:
+				rc = (colourSpace == GRK_CLRSPC_SYCC || colourSpace == GRK_CLRSPC_EYCC);
+				break;
+			case cmsSigRgbData:
+				rc = colourSpace == GRK_CLRSPC_SRGB;
+				break;
+			case cmsSigGrayData:
+				rc = colourSpace == GRK_CLRSPC_GRAY;
+				break;
+			case cmsSigCmykData:
+				rc = colourSpace == GRK_CLRSPC_CMYK;
+				break;
+			default:
+				rc = false;
+				break;
+		}
+		cmsCloseProfile(in_prof);
+	}
+
+	return rc;
+}
+
 

@@ -58,7 +58,6 @@
 #include "convert.h"
 
 #include <lcms2.h>
-#include "color.h"
 #include "grk_string.h"
 #include <climits>
 #include <string>

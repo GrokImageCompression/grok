@@ -25,8 +25,6 @@ set(common_SRCS
   ${GROK_SOURCE_DIR}/src/bin/image_format/TIFFFormat.h
   ${GROK_SOURCE_DIR}/src/bin/image_format/PNGFormat.h
   ${GROK_SOURCE_DIR}/src/bin/image_format/JPEGFormat.h
-  ${GROK_SOURCE_DIR}/src/bin/common/color.cpp
-  ${GROK_SOURCE_DIR}/src/bin/common/color.h
   ${GROK_SOURCE_DIR}/src/bin/common/common.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/common.h
   ${GROK_SOURCE_DIR}/src/bin/common/grk_string.h

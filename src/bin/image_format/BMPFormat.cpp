@@ -29,7 +29,6 @@
 #ifdef GROK_HAVE_URING
 #include "FileUringIO.h"
 #endif
-#include "color.h"
 
 // `MBED` in big endian format
 const uint32_t ICC_PROFILE_EMBEDDED = 0x4d424544;
@@ -827,9 +826,9 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 	if(palette)
 	{
 		uint8_t num_channels = palette_has_colour ? 3U : 1U;
-		grk::create_meta(image);
+		create_meta(image);
 		auto meta = image->meta;
-		grk::allocPalette(&meta->color, num_channels, (uint16_t)palette_num_entries);
+		allocPalette(&meta->color, num_channels, (uint16_t)palette_num_entries);
 		auto cmap = new _grk_component_mapping_comp[num_channels];
 		for(uint8_t i = 0; i < num_channels; ++i)
 		{
@@ -869,8 +868,8 @@ grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* paramete
 			delete[] iccbuf;
 			goto cleanup;
 		}
-		if(grk::validate_icc(colour_space, iccbuf, Info_h.biIccProfileSize))
-			grk::copy_icc(image, iccbuf, Info_h.biIccProfileSize);
+		if(validate_icc(colour_space, iccbuf, Info_h.biIccProfileSize))
+			copy_icc(image, iccbuf, Info_h.biIccProfileSize);
 		else
 			spdlog::warn("ICC profile does not match underlying colour space. Ignoring");
 		delete[] iccbuf;

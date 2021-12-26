@@ -20,7 +20,6 @@
 #include "grok.h"
 #include "JPEGFormat.h"
 #include "convert.h"
-#include "color.h"
 #include <cstring>
 
 #ifndef GROK_HAVE_LIBJPEG
@@ -212,9 +211,9 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
 	}
 	if(icc_data_ptr && icc_data_len)
 	{
-		if(grk::validate_icc(color_space, icc_data_ptr, icc_data_len))
+		if(validate_icc(color_space, icc_data_ptr, icc_data_len))
 		{
-			grk::copy_icc(m_image, icc_data_ptr, icc_data_len);
+			copy_icc(m_image, icc_data_ptr, icc_data_len);
 			icc_data_len = 0;
 		}
 		else

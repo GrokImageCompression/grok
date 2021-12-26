@@ -40,6 +40,11 @@ class ImageFormat : public IImageFormat
 	int getMode(const char* mode);
 	void scaleComponent(grk_image_comp* component, uint8_t precision);
 
+	void allocPalette(grk_color* color, uint8_t num_channels, uint16_t num_entries);
+	void copy_icc(grk_image* dest, uint8_t* iccbuf, uint32_t icclen);
+	void create_meta(grk_image* img);
+	bool validate_icc(GRK_COLOR_SPACE colourSpace, uint8_t* iccbuf, uint32_t icclen);
+
 	grk_image* m_image;
 	uint32_t m_rowCount;
 	uint32_t m_rowsPerStrip;
