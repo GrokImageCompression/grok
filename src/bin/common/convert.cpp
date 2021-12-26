@@ -20,26 +20,10 @@
  */
 
 #include "grk_apps_config.h"
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
-#include <limits.h>
 #include "grok.h"
 #include "convert.h"
-#include "common.h"
-#include <algorithm>
-#include <limits>
 
-#ifdef _WIN32
-#include <intrin.h>
-#endif
-
-/*
-planar <==> interleaved conversions
-used by PNG/TIFF/JPEG
-Source and destination are always signed, 32 bit
-*/
 
 ////////////////////////
 // interleaved ==> planar
@@ -69,36 +53,16 @@ const cvtInterleavedToPlanar cvtInterleavedToPlanar_LUT[10] = {nullptr,
 															   interleavedToPlanar<7>,
 															   interleavedToPlanar<8>,
 															   interleavedToPlanar<9>};
-////////////////////////
-// planar ==> interleaved
-template<size_t N>
-void planarToInterleaved(int32_t const* const* pSrc, int32_t* pDst, size_t length, int32_t adjust)
-{
-	for(size_t i = 0; i < length; i++)
-	{
-		for(size_t j = 0; j < N; ++j)
-			pDst[N * i + j] = pSrc[j][i] + adjust;
-	}
-}
-const cvtPlanarToInterleaved cvtPlanarToInterleaved_LUT[10] = {nullptr,
-															   planarToInterleaved<1>,
-															   planarToInterleaved<2>,
-															   planarToInterleaved<3>,
-															   planarToInterleaved<4>,
-															   planarToInterleaved<5>,
-															   planarToInterleaved<6>,
-															   planarToInterleaved<7>,
-															   planarToInterleaved<8>,
-															   planarToInterleaved<9>};
 
 /*
  * bit depth conversions for bit depth <= 8 and 16
  * used by PNG/TIFF
  *
- * Note: if source bit depth is < 8, then only unsigned is valid,
- * as we don't know how to manage the sign bit for signed data
  *
  */
+
+
+#define INV(val, mask, invert) ((invert) ? ((val) ^ (mask)) : (val))
 
 /**
  * 1 bit unsigned to 32 bit
@@ -151,9 +115,7 @@ static void convert_2u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length,
 		{
 			pDst[i + 1] = INV((int32_t)((val >> 4) & 0x3U), 3, invert);
 			if(length > 2U)
-			{
 				pDst[i + 2] = INV((int32_t)((val >> 2) & 0x3U), 3, invert);
-			}
 		}
 	}
 }
@@ -166,15 +128,14 @@ static void convert_4u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length,
 	for(i = 0; i < (length & ~(size_t)1U); i += 2U)
 	{
 		uint32_t val = *pSrc++;
-		pDst[i + 0] = INV((int32_t)(val >> 4), 15, invert);
-		pDst[i + 1] = INV((int32_t)(val & 0xFU), 15, invert);
+		pDst[i + 0] = INV((int32_t)(val >> 4), 0xF, invert);
+		pDst[i + 1] = INV((int32_t)(val & 0xFU), 0xF, invert);
 	}
 	if(length & 1U)
-	{
-		uint8_t val = *pSrc++;
-		pDst[i + 0] = INV((int32_t)(val >> 4), 15, invert);
-	}
+		pDst[i + 0] = INV((int32_t)((*pSrc++) >> 4), 0xF, invert);
 }
+
+
 
 int32_t sign_extend(int32_t val, uint8_t shift)
 {
@@ -183,6 +144,7 @@ int32_t sign_extend(int32_t val, uint8_t shift)
 
 	return val;
 }
+
 
 /**
  * 4 bit signed to 32 bit
@@ -197,10 +159,7 @@ static void convert_4s32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length,
 		pDst[i + 1] = INV(sign_extend(val & 0xF, 32 - 4), 0xF, invert);
 	}
 	if(length & 1U)
-	{
-		uint8_t val = *pSrc++;
-		pDst[i + 0] = INV(sign_extend(val >> 4, 32 - 4), 15, invert);
-	}
+		pDst[i + 0] = INV(sign_extend((*pSrc++) >> 4, 32 - 4), 0xF, invert);
 }
 
 /**
@@ -230,10 +189,7 @@ static void convert_6u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length,
 			uint32_t val1 = *pSrc++;
 			pDst[i + 1] = INV((int32_t)(((val0 & 0x3U) << 4) | (val1 >> 4)), 63, invert);
 			if(length > 2U)
-			{
-				uint32_t val2 = *pSrc++;
-				pDst[i + 2] = INV((int32_t)(((val1 & 0xFU) << 2) | (val2 >> 6)), 63, invert);
-			}
+				pDst[i + 2] = INV((int32_t)(((val1 & 0xFU) << 2) | ((*pSrc++) >> 6)), 63, invert);
 		}
 	}
 }
@@ -266,6 +222,12 @@ const cvtTo32 cvtTo32_LUT[9] = {nullptr,		   convert_1u32s_C1R, convert_2u32s_C1
 const cvtTo32 cvtsTo32_LUT[9] = {nullptr,			convert_1u32s_C1R, convert_2u32s_C1R,
 								 nullptr,			convert_4s32s_C1R, nullptr,
 								 convert_6u32s_C1R, nullptr,		   convert_8u32s_C1R};
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
 
 /**
  * convert 1 bpp to 8 bit
@@ -315,9 +277,7 @@ static void convert_32s1u_C1R(const int32_t* pSrc, uint8_t* pDst, size_t length)
 						{
 							src5 = (uint32_t)pSrc[i + 5];
 							if(length > 6U)
-							{
 								src6 = (uint32_t)pSrc[i + 6];
-							}
 						}
 					}
 				}
@@ -355,9 +315,7 @@ static void convert_32s2u_C1R(const int32_t* pSrc, uint8_t* pDst, size_t length)
 		{
 			src1 = (uint32_t)pSrc[i + 1];
 			if(length > 2U)
-			{
 				src2 = (uint32_t)pSrc[i + 2];
-			}
 		}
 		*pDst++ = (uint8_t)((src0 << 6) | (src1 << 4) | (src2 << 2));
 	}
@@ -381,10 +339,7 @@ static void convert_32s4u_C1R(const int32_t* pSrc, uint8_t* pDst, size_t length)
 	}
 
 	if(length & 1U)
-	{
-		uint32_t src0 = (uint32_t)pSrc[i + 0];
-		*pDst++ = (uint8_t)((src0 << 4));
-	}
+		*pDst++ = (uint8_t)(((uint32_t)pSrc[i + 0] << 4));
 }
 
 /**
@@ -416,18 +371,14 @@ static void convert_32s6u_C1R(const int32_t* pSrc, uint8_t* pDst, size_t length)
 		{
 			src1 = (uint32_t)pSrc[i + 1];
 			if(length > 2U)
-			{
 				src2 = (uint32_t)pSrc[i + 2];
-			}
 		}
 		*pDst++ = (uint8_t)((src0 << 2) | (src1 >> 4));
 		if(length > 1U)
 		{
 			*pDst++ = (uint8_t)(((src1 & 0xFU) << 4) | (src2 >> 2));
 			if(length > 2U)
-			{
 				*pDst++ = (uint8_t)(((src2 & 0x3U) << 6));
-			}
 		}
 	}
 }
@@ -443,8 +394,6 @@ const cvtFrom32 cvtFrom32_LUT[9] = {nullptr,		   convert_32s1u_C1R, convert_32s2
 									nullptr,		   convert_32s4u_C1R, nullptr,
 									convert_32s6u_C1R, nullptr,			  convert_32s8u_C1R};
 
-/////////////////////////////////////////////////////////////////////////
-// routines to convert image pixels => TIFF pixels for various precisions
 
 #define PUTBITS2(s, nb)                                              \
 	trailing <<= remaining;                                          \
@@ -506,9 +455,7 @@ void convert_tif_32sto3u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 		uint32_t trailing = 0U;
 		int remaining = 8U;
 		for(size_t j = 0; j < length; ++j)
-		{
 			PUTBITS((uint32_t)pSrc[i + j], 3);
-		}
 		FLUSHBITS()
 	}
 }
@@ -873,6 +820,10 @@ void convert_tif_32sto16u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 	for(size_t i = 0; i < length; ++i)
 		dest[i] = (uint16_t)pSrc[i];
 }
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Native precision to int32_t
 
 
 #define INV_MASK_16 0xFFFF
@@ -1335,3 +1286,28 @@ void convert_tif_16uto32s(const uint16_t* pSrc, int32_t* pDst, size_t length, bo
 	for(size_t i = 0; i < length; i++)
 		pDst[i] = INV(pSrc[i], 0xFFFF, invert);
 }
+
+
+
+////////////////////////////////////
+// planar ==> interleaved
+template<size_t N>
+void planarToInterleaved(int32_t const* const* pSrc, int32_t* pDst, size_t length, int32_t adjust)
+{
+	for(size_t i = 0; i < length; i++)
+	{
+		for(size_t j = 0; j < N; ++j)
+			pDst[N * i + j] = pSrc[j][i] + adjust;
+	}
+}
+const cvtPlanarToInterleaved cvtPlanarToInterleaved_LUT[10] = {nullptr,
+															   planarToInterleaved<1>,
+															   planarToInterleaved<2>,
+															   planarToInterleaved<3>,
+															   planarToInterleaved<4>,
+															   planarToInterleaved<5>,
+															   planarToInterleaved<6>,
+															   planarToInterleaved<7>,
+															   planarToInterleaved<8>,
+															   planarToInterleaved<9>};
+

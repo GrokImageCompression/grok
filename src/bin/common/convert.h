@@ -21,7 +21,6 @@
 
 #pragma once
 
-#define INV(val, mask, invert) ((invert) ? ((val) ^ (mask)) : (val))
 
 /* Component precision scaling */
 void scale_component(grk_image_comp* component, uint8_t precision);
