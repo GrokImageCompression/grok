@@ -457,13 +457,13 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 	uint32_t height = m_image->comps[0].h;
 	uint32_t bps = m_image->comps[0].prec;
 	size_t units = m_image->comps->w;
-	bool subsampled = grk::isSubsampled(m_image);
+	bool subsampled = isSubsampled(m_image);
 	tsize_t stride, rowsPerStrip;
 
 	assert(m_image);
 	assert(m_fileName.c_str());
 
-	if(!grk::allComponentsSanityCheck(m_image, true))
+	if(!allComponentsSanityCheck(m_image, true))
 	{
 		spdlog::error("TIFFFormat::encodeHeader: Image sanity check failed.");
 		goto cleanup;
@@ -530,14 +530,14 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 		goto cleanup;
 	}
 
-	if(grk::isSubsampled(m_image))
+	if(isSubsampled(m_image))
 	{
 		if(tiPhoto != PHOTOMETRIC_YCBCR)
 		{
 			spdlog::error("TIFFFormat : subsampling only supported for YCbCr images");
 			goto cleanup;
 		}
-		if(!grk::isChromaSubsampled(m_image))
+		if(!isChromaSubsampled(m_image))
 		{
 			spdlog::error("TIFFFormat::encodeHeader: only chroma channels can be subsampled");
 			goto cleanup;
@@ -765,7 +765,7 @@ bool TIFFFormat::encodeStrip(uint32_t rows)
 {
 	(void)rows;
 	bool success = false;
-	bool subsampled = grk::isSubsampled(m_image);
+	bool subsampled = isSubsampled(m_image);
 	uint32_t width = m_image->comps[0].w;
 	uint32_t height = m_image->comps[0].h;
 	size_t units = m_image->comps->w;
@@ -1242,7 +1242,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 		comp->sgnd = isSigned;
 	}
 
-	if(needSignedPixelReader && grk::isSubsampled(image))
+	if(needSignedPixelReader && isSubsampled(image))
 	{
 		spdlog::error("TIFF: subsampling not supported for signed 8 and 16 bit images");
 		goto cleanup;

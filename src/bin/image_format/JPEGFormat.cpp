@@ -385,7 +385,7 @@ bool JPEGFormat::encodeHeader(grk_image* image, const std::string& filename,
 	JDIMENSION image_height = m_image->y1 - m_image->y0; /* input m_image height */
 
 	// sub-sampling not supported at the moment
-	if(grk::isSubsampled(m_image))
+	if(isSubsampled(m_image))
 	{
 		spdlog::error("JPEGFormat::encodeHeader: subsampling not currently supported.");
 		return false;
@@ -427,7 +427,7 @@ bool JPEGFormat::encodeHeader(grk_image* image, const std::string& filename,
 					  m_image->numcomps);
 		return false;
 	}
-	if(!grk::allComponentsSanityCheck(m_image, true))
+	if(!allComponentsSanityCheck(m_image, true))
 		return false;
 
 	planes[0] = m_image->comps[0].data;

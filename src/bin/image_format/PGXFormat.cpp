@@ -200,7 +200,7 @@ bool PGXFormat::encodeHeader(grk_image* image, const std::string& filename,
 	(void)compressionParam;
 	m_image = image;
 	m_fileName = filename;
-	if(!grk::allComponentsSanityCheck(m_image, false))
+	if(!allComponentsSanityCheck(m_image, false))
 	{
 		spdlog::error("PGXFormat::encodeHeader: image sanity check failed.");
 		return false;

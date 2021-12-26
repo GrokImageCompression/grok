@@ -188,11 +188,6 @@ inline bool writeBytes(T val, T* buf, T** outPtr, size_t* outCount, size_t len, 
 }
 
 uint32_t uint_adds(uint32_t a, uint32_t b);
-bool allComponentsSanityCheck(grk_image* image, bool equalPrecision);
-bool isSubsampled(grk_image* image);
-bool isChromaSubsampled(grk_image* image);
-bool areAllComponentsSameSubsampling(grk_image* image);
-
 int population_count(uint32_t val);
 int count_leading_zeros(uint32_t val);
 int count_trailing_zeros(uint32_t val);

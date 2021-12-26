@@ -193,4 +193,114 @@ bool ImageFormat::validate_icc(GRK_COLOR_SPACE colourSpace, uint8_t* iccbuf, uin
 	return rc;
 }
 
+/**
+ * return false if :
+ * 1. any component's data buffer is NULL
+ * 2. any component's precision is either 0 or greater than GRK_MAX_SUPPORTED_IMAGE_PRECISION
+ * 3. any component's signedness does not match another component's signedness
+ * 4. any component's precision does not match another component's precision
+ *    (if equalPrecision is true)
+ *
+ */
+bool ImageFormat::allComponentsSanityCheck(grk_image* image, bool equalPrecision)
+{
+	if(!image || image->numcomps == 0)
+		return false;
+	auto comp0 = image->comps;
+
+	if(!comp0->data)
+	{
+		spdlog::error("component 0 : data is null.");
+		return false;
+	}
+	if(comp0->prec == 0 || comp0->prec > GRK_MAX_SUPPORTED_IMAGE_PRECISION)
+	{
+		spdlog::warn("component 0 precision {} is not supported.", 0, comp0->prec);
+		return false;
+	}
+
+	for(uint16_t i = 1U; i < image->numcomps; ++i)
+	{
+		auto compi = image->comps + i;
+
+		if(!compi->data)
+		{
+			spdlog::error("component {} : data is null.", i);
+			return false;
+		}
+		if(equalPrecision && comp0->prec != compi->prec)
+		{
+			spdlog::warn("precision {} of component {}"
+						 " differs from precision {} of component 0.",
+						 compi->prec, i, comp0->prec);
+			return false;
+		}
+		if(comp0->sgnd != compi->sgnd)
+		{
+			spdlog::warn("signedness {} of component {}"
+						 " differs from signedness {} of component 0.",
+						 compi->sgnd, i, comp0->sgnd);
+			return false;
+		}
+	}
+	return true;
+}
+
+bool ImageFormat::areAllComponentsSameSubsampling(grk_image* image)
+{
+	if(!image || image->numcomps == 1)
+		return true;
+	auto comp0 = image->comps;
+	for(uint32_t i = 0; i < image->numcomps; ++i)
+	{
+		auto comp = image->comps + i;
+		if(comp->dx != comp0->dx || comp->dy != comp0->dy)
+		{
+			spdlog::error("Not all components have same sub-sampling");
+			return false;
+		}
+	}
+	return true;
+}
+
+bool ImageFormat::isSubsampled(grk_image* image)
+{
+	if(!image)
+		return false;
+	for(uint32_t i = 0; i < image->numcomps; ++i)
+	{
+		if(image->comps[i].dx != 1 || image->comps[i].dy != 1)
+			return true;
+	}
+	return false;
+}
+
+bool ImageFormat::isChromaSubsampled(grk_image* image)
+{
+	if(!image || image->numcomps < 3)
+		return false;
+	for(uint32_t i = 0; i < image->numcomps; ++i)
+	{
+		auto comp = image->comps + i;
+		switch(i)
+		{
+			case 1:
+			case 2:
+				if(comp->type != GRK_COMPONENT_TYPE_COLOUR)
+					return false;
+				break;
+			default:
+				if(comp->dx != 1 || comp->dy != 1)
+				{
+					return false;
+				}
+				break;
+		}
+	}
+	auto compB = image->comps + 1;
+	auto compR = image->comps + 2;
+
+	return (compB->dx == compR->dx && compB->dy == compR->dy);
+}
+
 

@@ -702,13 +702,13 @@ bool PNMFormat::encodeHeader(grk_image* image, const std::string& filename,
 	m_image = image;
 	m_fileName = filename;
 
-	if(!grk::allComponentsSanityCheck(m_image, true))
+	if(!allComponentsSanityCheck(m_image, true))
 	{
 		spdlog::error("PNMFormat::encodeHeader: image sanity check failed.");
 		return false;
 	}
 
-	if(!grk::areAllComponentsSameSubsampling(m_image))
+	if(!areAllComponentsSameSubsampling(m_image))
 		return false;
 
 	if(m_image->numcomps > 4)

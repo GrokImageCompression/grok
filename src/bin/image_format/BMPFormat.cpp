@@ -465,9 +465,9 @@ bool BMPFormat::encodeHeader(grk_image* image, const std::string& filename,
 	if(m_rowsPerStrip > h)
 		m_rowsPerStrip = h;
 
-	if(!grk::allComponentsSanityCheck(m_image, false))
+	if(!allComponentsSanityCheck(m_image, false))
 		goto cleanup;
-	if(grk::isSubsampled(m_image))
+	if(isSubsampled(m_image))
 	{
 		spdlog::error("Sub-sampled images not supported");
 		goto cleanup;
