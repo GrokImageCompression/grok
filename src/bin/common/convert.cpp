@@ -31,10 +31,12 @@
 template<size_t N>
 void planarToInterleaved(int32_t const* const* pSrc, int32_t* pDst, size_t length, int32_t adjust)
 {
+	size_t off = 0;
 	for(size_t i = 0; i < length; i++)
 	{
 		for(size_t j = 0; j < N; ++j)
-			pDst[N * i + j] = pSrc[j][i] + adjust;
+			pDst[off + j] = pSrc[j][i] + adjust;
+		off += N;
 	}
 }
 const cvtPlanarToInterleaved cvtPlanarToInterleaved_LUT[10] = {nullptr,
@@ -47,6 +49,42 @@ const cvtPlanarToInterleaved cvtPlanarToInterleaved_LUT[10] = {nullptr,
 															   planarToInterleaved<7>,
 															   planarToInterleaved<8>,
 															   planarToInterleaved<9>};
+
+
+#define PUTBITS2(s, nb)                                              \
+	trailing <<= remaining;                                          \
+	trailing |= (uint32_t)((s) >> (nb - remaining));                 \
+	*pDst++ = (uint8_t)trailing;                                     \
+	trailing = (uint32_t)((s) & ((1U << (nb - remaining)) - 1U));    \
+	if(nb >= (remaining + 8))                                        \
+	{                                                                \
+		*pDst++ = (uint8_t)(trailing >> (nb - (remaining + 8)));     \
+		trailing &= (uint32_t)((1U << (nb - (remaining + 8))) - 1U); \
+		remaining += 16 - nb;                                        \
+	}                                                                \
+	else                                                             \
+	{                                                                \
+		remaining += 8 - nb;                                         \
+	}
+
+#define PUTBITS(s, nb)             \
+	if(nb >= remaining)            \
+	{                              \
+		PUTBITS2(s, nb)            \
+	}                              \
+	else                           \
+	{                              \
+		trailing <<= nb;           \
+		trailing |= (uint32_t)(s); \
+		remaining -= nb;           \
+	}
+#define FLUSHBITS()                  \
+	if(remaining != 8)               \
+	{                                \
+		trailing <<= remaining;      \
+		*pDst++ = (uint8_t)trailing; \
+	}
+
 
 /**
  * convert 1 bpp to 8 bit
@@ -142,42 +180,7 @@ void _32s2u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 	}
 }
 
-
-#define PUTBITS2(s, nb)                                              \
-	trailing <<= remaining;                                          \
-	trailing |= (uint32_t)((s) >> (nb - remaining));                 \
-	*pDst++ = (uint8_t)trailing;                                     \
-	trailing = (uint32_t)((s) & ((1U << (nb - remaining)) - 1U));    \
-	if(nb >= (remaining + 8))                                        \
-	{                                                                \
-		*pDst++ = (uint8_t)(trailing >> (nb - (remaining + 8)));     \
-		trailing &= (uint32_t)((1U << (nb - (remaining + 8))) - 1U); \
-		remaining += 16 - nb;                                        \
-	}                                                                \
-	else                                                             \
-	{                                                                \
-		remaining += 8 - nb;                                         \
-	}
-
-#define PUTBITS(s, nb)             \
-	if(nb >= remaining)            \
-	{                              \
-		PUTBITS2(s, nb)            \
-	}                              \
-	else                           \
-	{                              \
-		trailing <<= nb;           \
-		trailing |= (uint32_t)(s); \
-		remaining -= nb;           \
-	}
-#define FLUSHBITS()                  \
-	if(remaining != 8)               \
-	{                                \
-		trailing <<= remaining;      \
-		*pDst++ = (uint8_t)trailing; \
-	}
-
-void _32sto3u(const int32_t* pSrc, uint8_t* pDst, size_t length)
+void _32s3u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
 	size_t i;
 
@@ -230,7 +233,7 @@ void _32s4u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 }
 
 
-void _32sto5u(const int32_t* pSrc, uint8_t* pDst, size_t length)
+void _32s5u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
 	size_t i;
 
@@ -306,7 +309,7 @@ void _32s6u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 	}
 }
 
-void _32sto7u(const int32_t* pSrc, uint8_t* pDst, size_t length)
+void _32s7u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
 	size_t i;
 
@@ -353,7 +356,7 @@ void _32s8u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 		pDst[i] = (uint8_t)pSrc[i];
 }
 
-void _32sto9u(const int32_t* pSrc, uint8_t* pDst, size_t length)
+void _32s9u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
 	size_t i;
 
@@ -392,7 +395,7 @@ void _32sto9u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 	}
 }
 
-void _32sto10u(const int32_t* pSrc, uint8_t* pDst, size_t length)
+void _32s10u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
 	size_t i;
 	for(i = 0; i < (length & ~(size_t)3U); i += 4U)
@@ -437,7 +440,7 @@ void _32sto10u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 	}
 }
 
-void _32sto11u(const int32_t* pSrc, uint8_t* pDst, size_t length)
+void _32s11u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
 	size_t i;
 
@@ -477,7 +480,7 @@ void _32sto11u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 		FLUSHBITS()
 	}
 }
-void _32sto12u(const int32_t* pSrc, uint8_t* pDst, size_t length)
+void _32s12u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
 	size_t i;
 	for(i = 0; i < (length & ~(size_t)1U); i += 2U)
@@ -498,7 +501,7 @@ void _32sto12u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 	}
 }
 
-void _32sto13u(const int32_t* pSrc, uint8_t* pDst, size_t length)
+void _32s13u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
 	size_t i;
 
@@ -541,7 +544,7 @@ void _32sto13u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 	}
 }
 
-void _32sto14u(const int32_t* pSrc, uint8_t* pDst, size_t length)
+void _32s14u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
 	size_t i;
 	for(i = 0; i < (length & ~(size_t)3U); i += 4U)
@@ -590,7 +593,7 @@ void _32sto14u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 	}
 }
 
-void _32sto15u(const int32_t* pSrc, uint8_t* pDst, size_t length)
+void _32s15u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
 	size_t i;
 
@@ -635,14 +638,14 @@ void _32sto15u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 	}
 }
 
-void _32sto16u(const int32_t* pSrc, uint8_t* pDst, size_t length)
+void _32s16u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
 	auto dest = (uint16_t*)pDst;
 	for(size_t i = 0; i < length; ++i)
 		dest[i] = (uint16_t)pSrc[i];
 }
 
-void _32s16u(const int32_t* pSrc, uint8_t* pDst, size_t length)
+void _32s16uPNG(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
 	size_t i;
 	for(i = 0; i < length; i++)

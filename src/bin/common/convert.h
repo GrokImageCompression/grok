@@ -42,21 +42,21 @@ extern const cvtFrom32 cvtFrom32_LUT[9]; /* up to 8bpp */
 
 void _32s1u(const int32_t* pSrc, uint8_t* pDst, size_t length);
 void _32s2u(const int32_t* pSrc, uint8_t* pDst, size_t length);
-void _32sto3u(const int32_t* pSrc, uint8_t* pDst, size_t length);
+void _32s3u(const int32_t* pSrc, uint8_t* pDst, size_t length);
 void _32s4u(const int32_t* pSrc, uint8_t* pDst, size_t length);
-void _32sto5u(const int32_t* pSrc, uint8_t* pDst, size_t length);
+void _32s5u(const int32_t* pSrc, uint8_t* pDst, size_t length);
 void _32s6u(const int32_t* pSrc, uint8_t* pDst, size_t length);
-void _32sto7u(const int32_t* pSrc, uint8_t* pDst, size_t length);
+void _32s7u(const int32_t* pSrc, uint8_t* pDst, size_t length);
 void _32s8u(const int32_t* pSrc, uint8_t* pDst, size_t length);
-void _32sto9u(const int32_t* pSrc, uint8_t* pDst, size_t length);
-void _32sto10u(const int32_t* pSrc, uint8_t* pDst, size_t length);
-void _32sto11u(const int32_t* pSrc, uint8_t* pDst, size_t length);
-void _32sto12u(const int32_t* pSrc, uint8_t* pDst, size_t length);
-void _32sto13u(const int32_t* pSrc, uint8_t* pDst, size_t length);
-void _32sto14u(const int32_t* pSrc, uint8_t* pDst, size_t length);
-void _32sto15u(const int32_t* pSrc, uint8_t* pDst, size_t length);
-void _32sto16u(const int32_t* pSrc, uint8_t* pDst, size_t length);
+void _32s9u(const int32_t* pSrc, uint8_t* pDst, size_t length);
+void _32s10u(const int32_t* pSrc, uint8_t* pDst, size_t length);
+void _32s11u(const int32_t* pSrc, uint8_t* pDst, size_t length);
+void _32s12u(const int32_t* pSrc, uint8_t* pDst, size_t length);
+void _32s13u(const int32_t* pSrc, uint8_t* pDst, size_t length);
+void _32s14u(const int32_t* pSrc, uint8_t* pDst, size_t length);
+void _32s15u(const int32_t* pSrc, uint8_t* pDst, size_t length);
 void _32s16u(const int32_t* pSrc, uint8_t* pDst, size_t length);
+void _32s16uPNG(const int32_t* pSrc, uint8_t* pDst, size_t length);
 
 void _3uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert);
 void _5uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert);

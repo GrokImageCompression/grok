@@ -555,37 +555,37 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 			cvt32sToTif = cvtFrom32_LUT[bps];
 			break;
 		case 3:
-			cvt32sToTif = _32sto3u;
+			cvt32sToTif = _32s3u;
 			break;
 		case 5:
-			cvt32sToTif = _32sto5u;
+			cvt32sToTif = _32s5u;
 			break;
 		case 7:
-			cvt32sToTif = _32sto7u;
+			cvt32sToTif = _32s7u;
 			break;
 		case 9:
-			cvt32sToTif = _32sto9u;
+			cvt32sToTif = _32s9u;
 			break;
 		case 10:
-			cvt32sToTif = _32sto10u;
+			cvt32sToTif = _32s10u;
 			break;
 		case 11:
-			cvt32sToTif = _32sto11u;
+			cvt32sToTif = _32s11u;
 			break;
 		case 12:
-			cvt32sToTif = _32sto12u;
+			cvt32sToTif = _32s12u;
 			break;
 		case 13:
-			cvt32sToTif = _32sto13u;
+			cvt32sToTif = _32s13u;
 			break;
 		case 14:
-			cvt32sToTif = _32sto14u;
+			cvt32sToTif = _32s14u;
 			break;
 		case 15:
-			cvt32sToTif = _32sto15u;
+			cvt32sToTif = _32s15u;
 			break;
 		case 16:
-			cvt32sToTif = _32sto16u;
+			cvt32sToTif = _32s16u;
 			break;
 		default:
 			break;
@@ -874,10 +874,8 @@ bool TIFFFormat::encodeStrip(uint32_t rows)
 cleanup:
 	if(buffer32s)
 		free(buffer32s);
-	buffer32s = nullptr;
 	if(buf)
 		_TIFFfree((void*)buf);
-	buf = nullptr;
 
 	return success;
 }
@@ -1073,7 +1071,6 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 					goto cleanup;
 				}
 			}
-
 			break;
 		case PHOTOMETRIC_SEPARATED:
 			color_space = GRK_CLRSPC_CMYK;
