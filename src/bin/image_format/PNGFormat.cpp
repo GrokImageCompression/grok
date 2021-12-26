@@ -669,7 +669,7 @@ bool PNGFormat::encodeStrip(uint32_t rows)
 			cvt32sToPack = cvtFrom32_LUT[prec];
 			break;
 		case 16:
-			cvt32sToPack = _32s16uPNG;
+			cvt32sToPack = _32s16u_BE;
 			break;
 		default:
 			/* never here */
