@@ -210,7 +210,7 @@ grk_image* PNGFormat::do_decode(const char* read_idf, grk_cparameters* params)
 			cvtXXTo32s = cvtTo32_LUT[bit_depth];
 			break;
 		case 16: /* 16 bpp is specific to PNG */
-			cvtXXTo32s = convert_16u32s_C1R;
+			cvtXXTo32s = _16u32s;
 			break;
 		default:
 			spdlog::error("pngtoimage: bit depth {} is not supported", bit_depth);
@@ -400,16 +400,6 @@ static void user_error_fn(png_structp png_ptr, png_const_charp message)
 	spdlog::error("libpng error: {}", message);
 }
 
-static void convert_32s16u_C1R(const int32_t* pSrc, uint8_t* pDst, size_t length)
-{
-	size_t i;
-	for(i = 0; i < length; i++)
-	{
-		uint32_t val = (uint32_t)pSrc[i];
-		*pDst++ = (uint8_t)(val >> 8);
-		*pDst++ = (uint8_t)val;
-	}
-}
 
 PNGFormat::PNGFormat()
 	: m_info(nullptr), png(nullptr), row_buf(nullptr), row_buf_array(nullptr), row32s(nullptr),
@@ -680,7 +670,7 @@ bool PNGFormat::encodeStrip(uint32_t rows)
 			cvt32sToPack = cvtFrom32_LUT[prec];
 			break;
 		case 16:
-			cvt32sToPack = convert_32s16u_C1R;
+			cvt32sToPack = _32s16u;
 			break;
 		default:
 			/* never here */

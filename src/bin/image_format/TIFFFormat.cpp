@@ -212,37 +212,37 @@ static bool readTiffPixels(TIFF* tif, grk_image_comp* comps, uint32_t numcomps, 
 			break;
 			/* others are specific to TIFF */
 		case 3:
-			cvtTifTo32s = convert_tif_3uto32s;
+			cvtTifTo32s = _3uto32s;
 			break;
 		case 5:
-			cvtTifTo32s = convert_tif_5uto32s;
+			cvtTifTo32s = _5uto32s;
 			break;
 		case 7:
-			cvtTifTo32s = convert_tif_7uto32s;
+			cvtTifTo32s = _7uto32s;
 			break;
 		case 9:
-			cvtTifTo32s = convert_tif_9uto32s;
+			cvtTifTo32s = _9uto32s;
 			break;
 		case 10:
-			cvtTifTo32s = comps[0].sgnd ? convert_tif_10sto32s : convert_tif_10uto32s;
+			cvtTifTo32s = comps[0].sgnd ? _10sto32s : _10uto32s;
 			break;
 		case 11:
-			cvtTifTo32s = convert_tif_11uto32s;
+			cvtTifTo32s = _11uto32s;
 			break;
 		case 12:
-			cvtTifTo32s = comps[0].sgnd ? convert_tif_12sto32s : convert_tif_12uto32s;
+			cvtTifTo32s = comps[0].sgnd ? _12sto32s : _12uto32s;
 			break;
 		case 13:
-			cvtTifTo32s = convert_tif_13uto32s;
+			cvtTifTo32s = _13uto32s;
 			break;
 		case 14:
-			cvtTifTo32s = convert_tif_14uto32s;
+			cvtTifTo32s = _14uto32s;
 			break;
 		case 15:
-			cvtTifTo32s = convert_tif_15uto32s;
+			cvtTifTo32s = _15uto32s;
 			break;
 		case 16:
-			cvtTifTo32s = (cvtTo32)convert_tif_16uto32s;
+			cvtTifTo32s = (cvtTo32)_16uto32s;
 			break;
 		default:
 			/* never here */
@@ -555,37 +555,37 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 			cvt32sToTif = cvtFrom32_LUT[bps];
 			break;
 		case 3:
-			cvt32sToTif = convert_tif_32sto3u;
+			cvt32sToTif = _32sto3u;
 			break;
 		case 5:
-			cvt32sToTif = convert_tif_32sto5u;
+			cvt32sToTif = _32sto5u;
 			break;
 		case 7:
-			cvt32sToTif = convert_tif_32sto7u;
+			cvt32sToTif = _32sto7u;
 			break;
 		case 9:
-			cvt32sToTif = convert_tif_32sto9u;
+			cvt32sToTif = _32sto9u;
 			break;
 		case 10:
-			cvt32sToTif = convert_tif_32sto10u;
+			cvt32sToTif = _32sto10u;
 			break;
 		case 11:
-			cvt32sToTif = convert_tif_32sto11u;
+			cvt32sToTif = _32sto11u;
 			break;
 		case 12:
-			cvt32sToTif = convert_tif_32sto12u;
+			cvt32sToTif = _32sto12u;
 			break;
 		case 13:
-			cvt32sToTif = convert_tif_32sto13u;
+			cvt32sToTif = _32sto13u;
 			break;
 		case 14:
-			cvt32sToTif = convert_tif_32sto14u;
+			cvt32sToTif = _32sto14u;
 			break;
 		case 15:
-			cvt32sToTif = convert_tif_32sto15u;
+			cvt32sToTif = _32sto15u;
 			break;
 		case 16:
-			cvt32sToTif = convert_tif_32sto16u;
+			cvt32sToTif = _32sto16u;
 			break;
 		default:
 			break;

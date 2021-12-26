@@ -66,7 +66,7 @@ grk_image* BMPFormat::bmp1toimage(const uint8_t* pData, uint32_t srcStride, grk_
 	auto pSrc = pData + (height - 1U) * srcStride;
 	if(image->numcomps == 1U)
 	{
-		conv_1u32s_C1R(pSrc, -(int32_t)srcStride, image->comps[0].data,
+		conv_1u32s(pSrc, -(int32_t)srcStride, image->comps[0].data,
 					   (int32_t)image->comps[0].stride, width, height);
 	}
 	else
@@ -93,7 +93,7 @@ grk_image* BMPFormat::bmp4toimage(const uint8_t* pData, uint32_t srcStride, grk_
 	auto pSrc = pData + (height - 1U) * srcStride;
 	if(image->numcomps == 1U)
 	{
-		conv_4u32s_C1R(pSrc, -(int32_t)srcStride, image->comps[0].data,
+		conv_4u32s(pSrc, -(int32_t)srcStride, image->comps[0].data,
 					   (int32_t)image->comps[0].stride, width, height);
 	}
 	else
@@ -121,7 +121,7 @@ grk_image* BMPFormat::bmp8toimage(const uint8_t* pData, uint32_t srcStride, grk_
 	int32_t s_stride = topDown ? (int32_t)srcStride : (-(int32_t)srcStride);
 	if(image->numcomps == 1U)
 	{
-		conv_8u32s_C1R(pSrc, s_stride, image->comps[0].data, (int32_t)image->comps[0].stride, width,
+		conv_8u32s(pSrc, s_stride, image->comps[0].data, (int32_t)image->comps[0].stride, width,
 					   height);
 	}
 	else
@@ -1044,7 +1044,7 @@ cleanup:
 	return image;
 }
 
-void BMPFormat::conv_1u32s_C1R(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst,
+void BMPFormat::conv_1u32s(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst,
 							   int32_t dstStride, uint32_t destWidth, uint32_t destHeight)
 {
 	uint32_t absSrcStride = (uint32_t)std::abs(srcStride);
@@ -1066,7 +1066,7 @@ void BMPFormat::conv_1u32s_C1R(uint8_t const* pSrc, int32_t srcStride, int32_t* 
 	}
 }
 
-void BMPFormat::conv_4u32s_C1R(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst,
+void BMPFormat::conv_4u32s(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst,
 							   int32_t dstStride, uint32_t destWidth, uint32_t destHeight)
 {
 	uint32_t absSrcStride = (uint32_t)std::abs(srcStride);
@@ -1088,7 +1088,7 @@ void BMPFormat::conv_4u32s_C1R(uint8_t const* pSrc, int32_t srcStride, int32_t* 
 	}
 }
 
-void BMPFormat::conv_8u32s_C1R(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst,
+void BMPFormat::conv_8u32s(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst,
 							   int32_t dstStride, uint32_t width, uint32_t height)
 {
 	for(uint32_t y = height; y != 0U; --y)

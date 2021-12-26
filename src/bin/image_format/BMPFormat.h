@@ -88,11 +88,11 @@ class BMPFormat : public ImageFormat
 	GRK_BITMAPFILEHEADER File_h;
 	GRK_BITMAPINFOHEADER Info_h;
 
-	void conv_1u32s_C1R(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst, int32_t dstStride,
+	void conv_1u32s(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst, int32_t dstStride,
 						uint32_t destWidth, uint32_t destHeight);
-	void conv_4u32s_C1R(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst, int32_t dstStride,
+	void conv_4u32s(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst, int32_t dstStride,
 						uint32_t destWidth, uint32_t destHeight);
-	void conv_8u32s_C1R(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst, int32_t dstStride,
+	void conv_8u32s(uint8_t const* pSrc, int32_t srcStride, int32_t* pDst, int32_t dstStride,
 						uint32_t width, uint32_t height);
 
 	void applyLUT8u_1u32s_C1P3R(uint8_t const* pSrc, int32_t srcStride, int32_t* const* pDst,
