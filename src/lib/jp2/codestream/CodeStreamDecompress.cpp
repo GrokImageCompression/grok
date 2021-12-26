@@ -2320,6 +2320,8 @@ bool CodeStreamDecompress::postProcess(void){
 		img->applyColourManagement();
 		img->greyToRGB();
 		img->convertPrecision();
+		if (!img->execUpsample())
+			return false;
 	}
 
 	return rc;

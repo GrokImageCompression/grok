@@ -46,6 +46,7 @@ GrkImage* GrkImage::create(grk_image *src,
 	if (src) {
 		image->decompressFormat = src->decompressFormat;
 		image->forceRGB = src->forceRGB;
+		image->upsample = src->upsample;
 		image->targetColourSpace = src->targetColourSpace;
 		image->precision = src->precision;
 		image->numPrecision = src->numPrecision;
@@ -194,6 +195,7 @@ void GrkImage::copyHeader(GrkImage* dest)
 	}
 	dest->decompressFormat = decompressFormat;
 	dest->forceRGB = forceRGB;
+	dest->upsample = upsample;
 	dest->precision = precision;
 	dest->numPrecision = numPrecision;
 }
@@ -551,6 +553,142 @@ bool GrkImage::allComponentsSanityCheck(bool equalPrecision)
 	return true;
 }
 
+bool GrkImage::execUpsample(void)
+{
+	if (!upsample)
+		return true;
+
+	if(!comps)
+		return false;
+
+	grk_image_comp* new_components = nullptr;
+	bool upsampleNeeded = false;
+
+	for(uint32_t compno = 0U; compno < numcomps; ++compno)
+	{
+		if(!(comps + compno))
+			return false;
+		if((comps[compno].dx > 1U) || (comps[compno].dy > 1U))
+		{
+			upsampleNeeded = true;
+			break;
+		}
+	}
+	if(!upsampleNeeded)
+		return true;
+
+	new_components = new grk_image_comp[numcomps];
+	memset(new_components, 0, numcomps * sizeof(grk_image_comp));
+	for(uint32_t compno = 0U; compno < numcomps; ++compno)
+	{
+		auto new_cmp = new_components + compno;
+		copyComponent(comps + compno, new_cmp);
+		new_cmp->dx = 1;
+		new_cmp->dy = 1;
+		new_cmp->w = x1 - x0;
+		new_cmp->h = y1 - y0;
+		if (!allocData(new_cmp)){
+			delete[] new_components;
+			return false;
+		}
+	}
+
+	for(uint32_t compno = 0U; compno < numcomps; ++compno)
+	{
+		auto new_cmp = new_components + compno;
+		auto org_cmp = comps + compno;
+
+		new_cmp->type = org_cmp->type;
+
+		if((org_cmp->dx > 1U) || (org_cmp->dy > 1U))
+		{
+			auto src = org_cmp->data;
+			auto dst = new_cmp->data;
+
+			/* need to take into account dx & dy */
+			uint32_t xoff = org_cmp->dx * org_cmp->x0 - x0;
+			uint32_t yoff = org_cmp->dy * org_cmp->y0 - y0;
+			if((xoff >= org_cmp->dx) || (yoff >= org_cmp->dy))
+			{
+				GRK_ERROR("upsample: Invalid image/component parameters found when upsampling");
+				delete[] new_components;
+				return false;
+			}
+
+			uint32_t y;
+			for(y = 0U; y < yoff; ++y)
+			{
+				memset(dst, 0U, new_cmp->w * sizeof(int32_t));
+				dst += new_cmp->stride;
+			}
+
+			if(new_cmp->h > (org_cmp->dy - 1U))
+			{ /* check subtraction overflow for really small images */
+				for(; y < new_cmp->h - (org_cmp->dy - 1U); y += org_cmp->dy)
+				{
+					uint32_t x, dy;
+					uint32_t xorg = 0;
+					for(x = 0U; x < xoff; ++x)
+						dst[x] = 0;
+
+					if(new_cmp->w > (org_cmp->dx - 1U))
+					{ /* check subtraction overflow for really small images */
+						for(; x < new_cmp->w - (org_cmp->dx - 1U); x += org_cmp->dx, ++xorg)
+						{
+							for(uint32_t dx = 0U; dx < org_cmp->dx; ++dx)
+								dst[x + dx] = src[xorg];
+						}
+					}
+					for(; x < new_cmp->w; ++x)
+						dst[x] = src[xorg];
+					dst += new_cmp->stride;
+
+					for(dy = 1U; dy < org_cmp->dy; ++dy)
+					{
+						memcpy(dst, dst - new_cmp->stride, new_cmp->w * sizeof(int32_t));
+						dst += new_cmp->stride;
+					}
+					src += org_cmp->stride;
+				}
+			}
+			if(y < new_cmp->h)
+			{
+				uint32_t x;
+				uint32_t xorg = 0;
+				for(x = 0U; x < xoff; ++x)
+					dst[x] = 0;
+
+				if(new_cmp->w > (org_cmp->dx - 1U))
+				{ /* check subtraction overflow for really small images */
+					for(; x < new_cmp->w - (org_cmp->dx - 1U); x += org_cmp->dx, ++xorg)
+					{
+						for(uint32_t dx = 0U; dx < org_cmp->dx; ++dx)
+							dst[x + dx] = src[xorg];
+					}
+				}
+				for(; x < new_cmp->w; ++x)
+					dst[x] = src[xorg];
+				dst += new_cmp->stride;
+				++y;
+				for(; y < new_cmp->h; ++y)
+				{
+					memcpy(dst, dst - new_cmp->stride, new_cmp->w * sizeof(int32_t));
+					dst += new_cmp->stride;
+				}
+			}
+		}
+		else
+		{
+			memcpy(new_cmp->data, org_cmp->data, org_cmp->stride * org_cmp->h * sizeof(int32_t));
+		}
+	}
+
+	delete[] comps;
+	comps = new_components;
+
+	return true;
+}
+
 
 template<typename T>
 void clip(grk_image_comp* component, uint8_t precision)
@@ -558,14 +696,14 @@ void clip(grk_image_comp* component, uint8_t precision)
 	uint32_t stride_diff = component->stride - component->w;
 	assert(precision <= 16);
 	auto data = component->data;
-	T max = std::numeric_limits<T>::max();
-	T min = std::numeric_limits<T>::min();
+	T maximum = (std::numeric_limits<T>::max)();
+	T minimum = (std::numeric_limits<T>::min)();
 	size_t index = 0;
 	for(uint32_t j = 0; j < component->h; ++j)
 	{
 		for(uint32_t i = 0; i < component->w; ++i)
 		{
-			data[index] = (int32_t)std::clamp<T>((T)data[index], min, max);
+			data[index] = (int32_t)std::clamp<T>((T)data[index], minimum, maximum);
 			index++;
 		}
 		index += stride_diff;

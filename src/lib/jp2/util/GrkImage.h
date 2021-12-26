@@ -38,11 +38,11 @@ class GrkImage : public grk_image
 	/**
 	 * Allocate data for single image component
 	 *
-	 * @param image         image
+	 * @param imageComp         image component
 	 *
 	 * @return 		      true if successful
 	 */
-	static bool allocData(grk_image_comp* image);
+	static bool allocData(grk_image_comp* imageComp);
 	/**
 	 * Allocate data
 	 *
@@ -90,6 +90,7 @@ class GrkImage : public grk_image
 	bool convertToRGB(void);
 	void applyColourManagement(void);
 	void convertPrecision(void);
+	bool execUpsample(void);
   private:
 	~GrkImage();
 	bool allComponentsSanityCheck(bool equalPrecision);

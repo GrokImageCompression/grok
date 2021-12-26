@@ -980,6 +980,7 @@ typedef struct _grk_image
 	double display_resolution[2];
 	GRK_SUPPORTED_FILE_FMT decompressFormat;
 	bool forceRGB;
+	bool upsample;
 	grk_precision* precision;
 	uint32_t numPrecision;
 	grk_image_meta* meta;

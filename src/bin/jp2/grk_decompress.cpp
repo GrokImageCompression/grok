@@ -1224,6 +1224,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 		info->tile->decompress_flags = info->decompress_flags;
 	info->image->decompressFormat = cod_format;
 	info->image->forceRGB = info->decompressor_parameters->force_rgb;
+	info->image->upsample = info->decompressor_parameters->upsample;
 	info->image->precision = info->decompressor_parameters->precision;
 	info->image->numPrecision = info->decompressor_parameters->numPrecision;
 	// limit to 16 bit precision
@@ -1304,18 +1305,6 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
 	const char* outfile = info->decompressor_parameters->outfile[0]
 							  ? info->decompressor_parameters->outfile
 							  : info->output_file_name;
-	if(parameters->upsample)
-	{
-		auto tmp = upsample(image);
-		if(tmp != image)
-			imageNeedsDestroy = true;
-		image = tmp;
-		if(image == nullptr)
-		{
-			spdlog::error("grk_decompress: failed to upsample image components.");
-			goto cleanup;
-		}
-	}
 	if(image->meta)
 	{
 		if(image->meta->xmp_buf)
