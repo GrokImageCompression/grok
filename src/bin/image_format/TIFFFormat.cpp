@@ -431,7 +431,7 @@ local_cleanup:
 const uint32_t rec_601_luma[3]{299, 587, 114};
 
 TIFFFormat::TIFFFormat()
-	: tif(nullptr), chroma_subsample_x(1), chroma_subsample_y(1), cvtPxToCx(nullptr),
+	: tif(nullptr), chroma_subsample_x(1), chroma_subsample_y(1),
 	  cvt32sToTif(nullptr)
 {
 	for(uint32_t i = 0; i < maxNumComponents; ++i)
@@ -544,7 +544,6 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 		}
 	}
 
-	cvtPxToCx = cvtPlanarToInterleaved_LUT[numcomps];
 	switch(bps)
 	{
 		case 1:
@@ -858,7 +857,7 @@ bool TIFFFormat::encodeStrip(uint32_t rows)
 			tmsize_t bytesToWrite = 0;
 			for(h = h_start; h < h_start + rowsPerStrip && (h < height); h++)
 			{
-				cvtPxToCx(planes, buffer32s, (size_t)width, 0);
+				planarToInterleaved(numcomps,planes, buffer32s, (size_t)width, 0);
 				cvt32sToTif(buffer32s, (uint8_t*)buf + bytesToWrite, (size_t)width * numcomps);
 				for(uint32_t k = 0; k < numcomps; ++k)
 					planes[k] += m_image->comps[k].stride;

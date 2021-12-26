@@ -656,7 +656,6 @@ bool PNGFormat::encodeStrip(uint32_t rows)
 {
 	(void)rows;
 
-	cvtPlanarToInterleaved cvtPxToCx = cvtPlanarToInterleaved_LUT[nr_comp];
 	cvtFrom32 cvt32sToPack = nullptr;
 	png_bytep row_buf_cpy = row_buf;
 	int32_t* buffer32s_cpy = row32s;
@@ -684,7 +683,7 @@ bool PNGFormat::encodeStrip(uint32_t rows)
 	uint32_t max = maxY(rows);
 	for(uint32_t y = m_rowCount; y < max; ++y)
 	{
-		cvtPxToCx(m_planes, buffer32s_cpy, width, adjust);
+		planarToInterleaved(nr_comp,m_planes, buffer32s_cpy, width, adjust);
 		cvt32sToPack(buffer32s_cpy, row_buf_cpy, width * (size_t)nr_comp);
 		png_write_row(png, row_buf_cpy);
 		m_planes[0] += stride;

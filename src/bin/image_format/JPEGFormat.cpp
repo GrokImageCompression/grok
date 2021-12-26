@@ -343,7 +343,7 @@ cleanup:
 
 JPEGFormat::JPEGFormat(void)
 	: success(true), buffer(nullptr), buffer32s(nullptr), color_space(JCS_UNKNOWN), adjust(0),
-	  readFromStdin(false), planes{0, 0, 0}, cvtPxToCx(nullptr), cvtTo8bpp(nullptr)
+	  readFromStdin(false), planes{0, 0, 0},cvtTo8bpp(nullptr)
 {}
 
 bool JPEGFormat::encodeHeader(grk_image* image, const std::string& filename,
@@ -441,7 +441,6 @@ bool JPEGFormat::encodeHeader(grk_image* image, const std::string& filename,
 		return false;
 	}
 
-	cvtPxToCx = cvtPlanarToInterleaved_LUT[numcomps];
 	cvtTo8bpp = cvtFrom32_LUT[prec];
 
 	// Alpha channels
@@ -560,7 +559,7 @@ bool JPEGFormat::encodeStrip(uint32_t rows)
 		 * more than one scanline at a time if that's more convenient.
 		 */
 		uint32_t stride = m_image->comps[0].stride;
-		cvtPxToCx(planes, buffer32s, (size_t)m_image->comps[0].w, adjust);
+		planarToInterleaved(m_image->numcomps,planes, buffer32s, (size_t)m_image->comps[0].w, adjust);
 		cvtTo8bpp(buffer32s, (uint8_t*)buffer, (size_t)m_image->comps[0].w * m_image->numcomps);
 		JSAMPROW row_pointer[1]; /* pointer to JSAMPLE row[s] */
 		row_pointer[0] = buffer;

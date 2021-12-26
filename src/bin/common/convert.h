@@ -29,9 +29,8 @@ grk_image* upsample(grk_image* original);
 /* planar / interleaved conversions */
 typedef void (*cvtInterleavedToPlanar)(const int32_t* pSrc, int32_t* const* pDst, size_t length);
 extern const cvtInterleavedToPlanar cvtInterleavedToPlanar_LUT[10];
-typedef void (*cvtPlanarToInterleaved)(int32_t const* const* pSrc, int32_t* pDst, size_t length,
-									   int32_t adjust);
-extern const cvtPlanarToInterleaved cvtPlanarToInterleaved_LUT[10];
+
+void planarToInterleaved(size_t N, int32_t const* const* pSrc, int32_t* pDst, size_t length, int32_t adjust);
 
 /* bit depth conversions */
 typedef void (*cvtTo32)(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert);
