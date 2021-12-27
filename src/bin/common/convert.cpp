@@ -22,127 +22,6 @@
 #include <string.h>
 #include "grok.h"
 #include "convert.h"
-#include <type_traits>
-
-void planarToInterleaved(size_t N, int32_t const* const* src, int32_t* dest, size_t w, int32_t adjust)
-{
-	size_t off = 0;
-	for(size_t i = 0; i < w; i++)
-	{
-		for(size_t j = 0; j < N; ++j)
-			dest[off + j] = src[j][i] + adjust;
-		off += N;
-	}
-}
-
-template<typename T, typename P> void pack(const T* src, uint8_t* dest, size_t w)
-{
-	P packer;
-	size_t i;
-	for(i = 0; i < (w & ~(size_t)(packer.srcChk-1)); i += packer.srcChk)
-		packer.pack(src + i, &dest);
-	w &= (packer.srcChk-1);
-	if(w)
-		packer.packFinal(src + i, &dest,w);
-}
-
-void _32s1u(const int32_t* src, uint8_t* dest, size_t w)
-{
-	pack<int32_t, Pack1<int32_t>>(src,dest,w) ;
-}
-void _32s2u(const int32_t* src, uint8_t* dest, size_t w)
-{
-	pack<int32_t, Pack2<int32_t>>(src,dest,w) ;
-}
-void _32s3u(const int32_t* src, uint8_t* dest, size_t w)
-{
-	pack<int32_t, Pack3<int32_t>>(src,dest,w) ;
-}
-void _32s4u(const int32_t* src, uint8_t* dest, size_t w)
-{
-	pack<int32_t, Pack4<int32_t>>(src,dest,w) ;
-}
-void _32s5u(const int32_t* src, uint8_t* dest, size_t w)
-{
-	pack<int32_t, Pack5<int32_t>>(src,dest,w) ;
-}
-void _32s6u(const int32_t* src, uint8_t* dest, size_t w)
-{
-	pack<int32_t, Pack6<int32_t>>(src,dest,w) ;
-}
-void _32s7u(const int32_t* src, uint8_t* dest, size_t w)
-{
-	pack<int32_t, Pack7<int32_t>>(src,dest,w) ;
-}
-void _32s8u(const int32_t* src, uint8_t* dest, size_t w)
-{
-	pack<int32_t, Pack8<int32_t>>(src,dest,w) ;
-}
-void _32s9u(const int32_t* src, uint8_t* dest, size_t w)
-{
-	pack<int32_t, Pack9<int32_t>>(src,dest,w) ;
-}
-void _32s10u(const int32_t* src, uint8_t* dest, size_t w)
-{
-	pack<int32_t, Pack10<int32_t>>(src,dest,w) ;
-}
-void _32s11u(const int32_t* src, uint8_t* dest, size_t w)
-{
-	pack<int32_t, Pack11<int32_t>>(src,dest,w) ;
-}
-void _32s12u(const int32_t* src, uint8_t* dest, size_t w)
-{
-	pack<int32_t, Pack12<int32_t>>(src,dest,w) ;
-}
-void _32s13u(const int32_t* src, uint8_t* dest, size_t w)
-{
-	pack<int32_t, Pack13<int32_t>>(src,dest,w) ;
-}
-void _32s14u(const int32_t* src, uint8_t* dest, size_t w)
-{
-	pack<int32_t, Pack14<int32_t>>(src,dest,w) ;
-}
-void _32s15u(const int32_t* src, uint8_t* dest, size_t w)
-{
-	pack<int32_t, Pack15<int32_t>>(src,dest,w) ;
-}
-void _32s16u(const int32_t* src, uint8_t* dest, size_t w)
-{
-	pack<int32_t, Pack16<int32_t>>(src,dest,w) ;
-}
-
-template <typename T> class Pack16BE  {
-public:
-	const uint8_t srcChk = 1;
-	inline void pack(const T* src, uint8_t **dest){
-		uint32_t val = (uint32_t)*src;
-		*(*dest)++ = (uint8_t)(val >> 8);
-		*(*dest)++ = (uint8_t)val;
-	}
-	inline void packFinal(const T* src, uint8_t **dest, size_t w){
-		(void)src;
-		(void)dest;
-		(void)w;
-	}
-};
-void _32s16u_BE(const int32_t* src, uint8_t* dest, size_t w)
-{
-	pack<int32_t, Pack16BE<int32_t>>(src,dest,w) ;
-}
-
-const cvtFrom32 cvtFrom32_LUT[9] = {nullptr,		   _32s1u, _32s2u,
-									nullptr,		   _32s4u, nullptr,
-									_32s6u, nullptr,			  _32s8u};
-
-
-
-
-
-
-
-//////////////////////////////////////
-// Native precision to int32_t
-
 
 ////////////////////////
 // interleaved ==> planar
@@ -179,8 +58,6 @@ const cvtInterleavedToPlanar cvtInterleavedToPlanar_LUT[10] = {nullptr,
  *
  *
  */
-
-
 #define INV(val, mask, invert) ((invert) ? ((val) ^ (mask)) : (val))
 
 /**
@@ -253,9 +130,6 @@ static void _4u32s(const uint8_t* src, int32_t* dest, size_t w, bool invert)
 	if(w & 1U)
 		dest[i + 0] = INV((int32_t)((*src++) >> 4), 0xF, invert);
 }
-
-
-
 int32_t sign_extend(int32_t val, uint8_t shift)
 {
 	val <<= shift;
@@ -263,8 +137,6 @@ int32_t sign_extend(int32_t val, uint8_t shift)
 
 	return val;
 }
-
-
 /**
  * 4 bit signed to 32 bit
  */
@@ -280,7 +152,6 @@ static void _4s32s(const uint8_t* src, int32_t* dest, size_t w, bool invert)
 	if(w & 1U)
 		dest[i + 0] = INV(sign_extend((*src++) >> 4, 32 - 4), 0xF, invert);
 }
-
 /**
  * 6 bit unsigned to 32 bit
  */
@@ -341,14 +212,6 @@ const cvtTo32 cvtTo32_LUT[9] = {nullptr,		   _1u32s, _2u32s,
 const cvtTo32 cvtsTo32_LUT[9] = {nullptr,			_1u32s, _2u32s,
 								 nullptr,			_4s32s, nullptr,
 								 _6u32s, nullptr,		   _8u32s};
-
-//////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
-
 
 #define INV_MASK_16 0xFFFF
 #define INV_MASK_15 ((1 << 15) - 1)
@@ -555,7 +418,6 @@ void _10sto32s(const uint8_t* src, int32_t* dest, size_t w, bool invert)
 		}
 	}
 }
-
 void _10uto32s(const uint8_t* src, int32_t* dest, size_t w, bool invert)
 {
 	size_t i;
@@ -592,7 +454,6 @@ void _10uto32s(const uint8_t* src, int32_t* dest, size_t w, bool invert)
 		}
 	}
 }
-
 void _11uto32s(const uint8_t* src, int32_t* dest, size_t w, bool invert)
 {
 	size_t i;
@@ -713,7 +574,6 @@ void _13uto32s(const uint8_t* src, int32_t* dest, size_t w, bool invert)
 			GETBITS(dest[i + j], 13, INV_MASK_13, invert)
 	}
 }
-
 void _14uto32s(const uint8_t* src, int32_t* dest, size_t w, bool invert)
 {
 	size_t i;
@@ -757,7 +617,6 @@ void _14uto32s(const uint8_t* src, int32_t* dest, size_t w, bool invert)
 		}
 	}
 }
-
 void _15uto32s(const uint8_t* src, int32_t* dest, size_t w, bool invert)
 {
 	size_t i;
@@ -803,7 +662,6 @@ void _15uto32s(const uint8_t* src, int32_t* dest, size_t w, bool invert)
 			GETBITS(dest[i + j], 15, INV_MASK_15, invert)
 	}
 }
-
 /* seems that libtiff decodes this to machine endianness */
 void _16uto32s(const uint16_t* src, int32_t* dest, size_t w, bool invert)
 {

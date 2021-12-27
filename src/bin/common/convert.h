@@ -22,6 +22,8 @@
 #pragma once
 
 #include <cassert>
+#include <cstdint>
+#include <cstddef>
 
 #define PUTBITS2_(s, nb)   {                                         \
 	trailing <<= remaining;                                          \
@@ -521,6 +523,22 @@ public:
 		(void)w;
 	}
 };
+
+template <typename T> class Pack16BE  {
+public:
+	const uint8_t srcChk = 1;
+	inline void pack(const T* src, uint8_t **dest){
+		uint32_t val = (uint32_t)*src;
+		*(*dest)++ = (uint8_t)(val >> 8);
+		*(*dest)++ = (uint8_t)val;
+	}
+	inline void packFinal(const T* src, uint8_t **dest, size_t w){
+		(void)src;
+		(void)dest;
+		(void)w;
+	}
+};
+
 template <typename T> class PtoI {
 public:
 	virtual ~PtoI() = default;
@@ -626,6 +644,9 @@ public:
 			break;
 		case 16:
 			return new PlanarToInterleaved<T, Pack16<T>>();
+			break;
+		case 0xFF:
+			return new PlanarToInterleaved<T, Pack16BE<T>>();
 			break;
 		default:
 			return nullptr;

@@ -656,41 +656,24 @@ bool PNGFormat::encodeStrip(uint32_t rows)
 {
 	(void)rows;
 
-	cvtFrom32 cvt32sToPack = nullptr;
 	png_bytep row_buf_cpy = row_buf;
-	int32_t* buffer32s_cpy = row32s;
-
-	switch(prec)
-	{
-		case 1:
-		case 2:
-		case 4:
-		case 8:
-			cvt32sToPack = cvtFrom32_LUT[prec];
-			break;
-		case 16:
-			cvt32sToPack = _32s16u_BE;
-			break;
-		default:
-			/* never here */
-			return false;
-			break;
-	}
-
 	int32_t adjust = m_image->comps[0].sgnd ? 1 << (prec - 1) : 0;
-	size_t width = m_image->comps[0].w;
-	uint32_t stride = m_image->comps[0].stride;
 	uint32_t max = maxY(rows);
+	auto iter = InterleaverFactory<int32_t>::makeInterleaver(prec == 16 ? 0xFF : prec);
 	for(uint32_t y = m_rowCount; y < max; ++y)
 	{
-		planarToInterleaved(nr_comp,m_planes, buffer32s_cpy, width, adjust);
-		cvt32sToPack(buffer32s_cpy, row_buf_cpy, width * (size_t)nr_comp);
+		iter->interleave((int32_t**)m_planes,
+						nr_comp,
+						row_buf,
+						m_image->comps[0].w,
+						m_image->comps[0].stride,
+						m_image->comps[0].w,
+						1,
+						adjust);
+
 		png_write_row(png, row_buf_cpy);
-		m_planes[0] += stride;
-		m_planes[1] += stride;
-		m_planes[2] += stride;
-		m_planes[3] += stride;
 	}
+	delete iter;
 	m_rowCount += rows;
 
 	return true;

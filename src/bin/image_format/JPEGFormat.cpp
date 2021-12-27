@@ -343,7 +343,7 @@ cleanup:
 
 JPEGFormat::JPEGFormat(void)
 	: success(true), buffer(nullptr), buffer32s(nullptr), color_space(JCS_UNKNOWN), adjust(0),
-	  readFromStdin(false), planes{0, 0, 0},cvtTo8bpp(nullptr)
+	  readFromStdin(false), planes{0, 0, 0}
 {}
 
 bool JPEGFormat::encodeHeader(grk_image* image, const std::string& filename,
@@ -440,9 +440,6 @@ bool JPEGFormat::encodeHeader(grk_image* image, const std::string& filename,
 					  prec);
 		return false;
 	}
-
-	cvtTo8bpp = cvtFrom32_LUT[prec];
-
 	// Alpha channels
 	for(i = 0U; i < numcomps; ++i)
 	{
@@ -551,23 +548,26 @@ bool JPEGFormat::encodeStrip(uint32_t rows)
 	 * To keep things simple, we pass one scanline per call; you can pass
 	 * more if you wish, though.
 	 */
-
+	auto iter = InterleaverFactory<int32_t>::makeInterleaver(8);
 	while(cinfo.next_scanline < cinfo.image_height)
 	{
 		/* jpeg_write_scanlines expects an array of pointers to scanlines.
 		 * Here the array is only one element long, but you could pass
 		 * more than one scanline at a time if that's more convenient.
 		 */
-		uint32_t stride = m_image->comps[0].stride;
-		planarToInterleaved(m_image->numcomps,planes, buffer32s, (size_t)m_image->comps[0].w, adjust);
-		cvtTo8bpp(buffer32s, (uint8_t*)buffer, (size_t)m_image->comps[0].w * m_image->numcomps);
+		iter->interleave((int32_t**)planes,
+						m_image->numcomps,
+						(uint8_t*)buffer,
+						m_image->comps[0].w,
+						m_image->comps[0].stride,
+						m_image->comps[0].w,
+						1,
+						adjust);
 		JSAMPROW row_pointer[1]; /* pointer to JSAMPLE row[s] */
 		row_pointer[0] = buffer;
-		planes[0] += stride;
-		planes[1] += stride;
-		planes[2] += stride;
 		(void)jpeg_write_scanlines(&cinfo, row_pointer, 1);
 	}
+	delete iter;
 
 	return true;
 }

@@ -55,5 +55,4 @@ class JPEGFormat : public ImageFormat
 	 */
 	struct jpeg_compress_struct cinfo;
 	int32_t const* planes[3];
-	cvtFrom32 cvtTo8bpp;
 };

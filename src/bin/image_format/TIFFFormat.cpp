@@ -351,7 +351,6 @@ local_cleanup:
 		_TIFFfree(buf);
 	return success;
 }
-
 template<typename T>
 bool readTiffPixelsSigned(TIFF* tif, grk_image_comp* comps, uint32_t numcomps, uint16_t tiSpp,
 						  uint16_t tiPC)
@@ -430,14 +429,11 @@ local_cleanup:
 // rec 601 conversion factors, multiplied by 1000
 const uint32_t rec_601_luma[3]{299, 587, 114};
 
-TIFFFormat::TIFFFormat()
-	: tif(nullptr), chroma_subsample_x(1), chroma_subsample_y(1)
+TIFFFormat::TIFFFormat(): tif(nullptr), chroma_subsample_x(1), chroma_subsample_y(1)
 {
 	for(uint32_t i = 0; i < maxNumComponents; ++i)
 		planes[i] = nullptr;
 }
-TIFFFormat::~TIFFFormat() {}
-
 bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 							  uint32_t compressionParam)
 {
@@ -467,7 +463,6 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 		spdlog::error("TIFFFormat::encodeHeader: Image sanity check failed.");
 		goto cleanup;
 	}
-
 	if(m_image->color_space == GRK_CLRSPC_CMYK)
 	{
 		if(numcomps < 4U)
@@ -619,7 +614,6 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 			if(compressionParam != 0)
 				TIFFSetField(tif, TIFFTAG_COMPRESSION, compressionParam);
 	}
-
 	if(m_image->meta)
 	{
 		if(m_image->meta->color.icc_profile_buf)
@@ -628,10 +622,8 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 				TIFFSetField(tif, TIFFTAG_ICCPROFILE, m_image->meta->color.icc_profile_len,
 							 m_image->meta->color.icc_profile_buf);
 		}
-
 		if(m_image->meta->xmp_buf && m_image->meta->xmp_len)
 			TIFFSetField(tif, TIFFTAG_XMLPACKET, m_image->meta->xmp_len, m_image->meta->xmp_buf);
-
 		if(m_image->meta->iptc_buf && m_image->meta->iptc_len)
 		{
 			auto iptc_len = m_image->meta->iptc_len;
@@ -646,7 +638,6 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 				m_image->meta->iptc_buf = new_iptf_buf;
 				m_image->meta->iptc_len = iptc_len;
 			}
-
 			// Tag is of type TIFF_LONG, so byte length is divided by four
 			if(TIFFIsByteSwapped(tif))
 				TIFFSwabArrayOfLong((uint32_t*)m_image->meta->iptc_buf,
@@ -655,7 +646,6 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 						 (void*)m_image->meta->iptc_buf);
 		}
 	}
-
 	if(m_image->capture_resolution[0] > 0 && m_image->capture_resolution[1] > 0)
 	{
 		TIFFSetField(tif, TIFFTAG_RESOLUTIONUNIT, RESUNIT_CENTIMETER); // cm
@@ -665,7 +655,6 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 			TIFFSetField(tif, TIFFTAG_YRESOLUTION, m_image->capture_resolution[1] / 100);
 		}
 	}
-
 	if(numExtraChannels)
 	{
 		std::unique_ptr<uint16_t[]> out(new uint16_t[numExtraChannels]);
@@ -677,15 +666,11 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 			{
 				if(comp->type == GRK_COMPONENT_TYPE_OPACITY ||
 				   comp->type == GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY)
-				{
 					out[numExtraChannels++] = (m_image->comps[i].type == GRK_COMPONENT_TYPE_OPACITY)
 												  ? EXTRASAMPLE_UNASSALPHA
 												  : EXTRASAMPLE_ASSOCALPHA;
-				}
 				else
-				{
 					out[numExtraChannels++] = EXTRASAMPLE_UNSPECIFIED;
-				}
 			}
 		}
 		TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, numExtraChannels, out.get());
@@ -712,7 +697,6 @@ bool TIFFFormat::write(uint32_t* strip, void* buf, tmsize_t toWrite, tmsize_t* w
 
 	return true;
 }
-
 bool TIFFFormat::encodeStrip(uint32_t rows)
 {
 	(void)rows;
@@ -805,7 +789,7 @@ bool TIFFFormat::encodeStrip(uint32_t rows)
 	{
 		tmsize_t h = 0;
 		tmsize_t h_start = 0;
-		auto iter = InterleaverFactory<int32_t>::makeInterleaver((uint8_t)bps);
+		auto iter = InterleaverFactory<int32_t>::makeInterleaver(bps);
 		while(h < height)
 		{
 			size_t rowsToWrite = (std::min)(rowsPerStrip, height - h);
@@ -1099,7 +1083,6 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 					  image->y1, image->y0);
 		goto cleanup;
 	}
-
 	if(tiPhoto == PHOTOMETRIC_PALETTE)
 	{
 		if(!TIFFGetField(tif, TIFFTAG_COLORMAP, &red_orig, &green_orig, &blue_orig))
@@ -1129,7 +1112,6 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 			*lut_ptr++ = blue_orig[i];
 		}
 	}
-
 	for(uint32_t j = 0; j < numcomps; j++)
 	{
 		// handle non-colour channel

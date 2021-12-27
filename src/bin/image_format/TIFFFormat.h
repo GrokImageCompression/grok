@@ -33,7 +33,7 @@ class TIFFFormat : public ImageFormat
 {
   public:
 	TIFFFormat();
-	~TIFFFormat();
+	~TIFFFormat() = default;
 	bool encodeHeader(grk_image* image, const std::string& filename,
 					  uint32_t compressionParam) override;
 	bool encodeStrip(uint32_t rows) override;
