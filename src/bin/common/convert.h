@@ -60,7 +60,7 @@
 	}
 template <typename T> class Pack1  {
 public:
-	const uint8_t srcChk = 8;
+	static constexpr uint8_t srcChk = 8;
 	inline void pack(const T* src, uint8_t **dest){
 		uint32_t src0 = (uint32_t)src[0];
 		uint32_t src1 = (uint32_t)src[1];
@@ -111,7 +111,7 @@ public:
 };
 template <typename T> class Pack2  {
 public:
-	const uint8_t srcChk = 4;
+	static constexpr uint8_t srcChk = 4;
 	inline void pack(const T* src, uint8_t **dest){
 		uint32_t src0 = (uint32_t)src[0];
 		uint32_t src1 = (uint32_t)src[1];
@@ -136,7 +136,7 @@ public:
 };
 template <typename T> class Pack3  {
 public:
-	const uint8_t srcChk = 8;
+	static constexpr uint8_t srcChk = 8;
 	inline void pack(const T* src, uint8_t **dest){
 		uint32_t src0 = (uint32_t)src[0];
 		uint32_t src1 = (uint32_t)src[1];
@@ -162,7 +162,7 @@ public:
 
 template <typename T> class Pack4  {
 public:
-	const uint8_t srcChk = 2;
+	static constexpr uint8_t srcChk = 2;
 	inline void pack(const T* src, uint8_t **dest){
 		uint32_t src0 = (uint32_t)src[0];
 		uint32_t src1 = (uint32_t)src[1];
@@ -179,7 +179,7 @@ public:
 };
 template <typename T> class Pack5  {
 public:
-	const uint8_t srcChk = 8;
+	static constexpr uint8_t srcChk = 8;
 	inline void pack(const T* src, uint8_t **dest){
 		uint32_t src0 = (uint32_t)src[0];
 		uint32_t src1 = (uint32_t)src[1];
@@ -206,7 +206,7 @@ public:
 };
 template <typename T> class Pack6  {
 public:
-	const uint8_t srcChk = 4;
+	static constexpr uint8_t srcChk = 4;
 	inline void pack(const T* src, uint8_t **dest){
 		uint32_t src0 = (uint32_t)src[0];
 		uint32_t src1 = (uint32_t)src[1];
@@ -239,7 +239,7 @@ public:
 };
 template <typename T> class Pack7  {
 public:
-	const uint8_t srcChk = 8;
+	static constexpr uint8_t srcChk = 8;
 	inline void pack(const T* src, uint8_t **dest){
 		uint32_t src0 = (uint32_t)src[0];
 		uint32_t src1 = (uint32_t)src[1];
@@ -268,7 +268,7 @@ public:
 };
 template <typename T> class Pack8  {
 public:
-	const uint8_t srcChk = 1;
+	static constexpr uint8_t srcChk = 1;
 	inline void pack(const T* src, uint8_t **dest){
 		*(*dest)++ = (uint8_t)*src;
 	}
@@ -280,7 +280,7 @@ public:
 };
 template <typename T> class Pack9  {
 public:
-	const uint8_t srcChk = 8;
+	static constexpr uint8_t srcChk = 8;
 	inline void pack(const T* src, uint8_t **dest){
 		uint32_t src0 = (uint32_t)src[0];
 		uint32_t src1 = (uint32_t)src[1];
@@ -311,7 +311,7 @@ public:
 };
 template <typename T> class Pack10  {
 public:
-	const uint8_t srcChk = 4;
+	static constexpr uint8_t srcChk = 4;
 	inline void pack(const T* src, uint8_t **dest){
 		uint32_t src0 = (uint32_t)src[0];
 		uint32_t src1 = (uint32_t)src[1];
@@ -347,7 +347,7 @@ public:
 };
 template <typename T> class Pack11  {
 public:
-	const uint8_t srcChk = 8;
+	static constexpr uint8_t srcChk = 8;
 	inline void pack(const T* src, uint8_t **dest){
 		uint32_t src0 = (uint32_t)src[0];
 		uint32_t src1 = (uint32_t)src[1];
@@ -380,7 +380,7 @@ public:
 };
 template <typename T> class Pack12  {
 public:
-	const uint8_t srcChk = 2;
+	static constexpr uint8_t srcChk = 2;
 	inline void pack(const T* src, uint8_t **dest){
 		uint32_t src0 = (uint32_t)src[0];
 		uint32_t src1 = (uint32_t)src[1];
@@ -398,7 +398,7 @@ public:
 };
 template <typename T> class Pack13  {
 public:
-	const uint8_t srcChk = 8;
+	static constexpr uint8_t srcChk = 8;
 	inline void pack(const T* src, uint8_t **dest){
 		uint32_t src0 = (uint32_t)src[0];
 		uint32_t src1 = (uint32_t)src[1];
@@ -433,7 +433,7 @@ public:
 };
 template <typename T> class Pack14  {
 public:
-	const uint8_t srcChk = 4;
+	static constexpr uint8_t srcChk = 4;
 	inline void pack(const T* src, uint8_t **dest){
 		uint32_t src0 = (uint32_t)src[0];
 		uint32_t src1 = (uint32_t)src[1];
@@ -475,7 +475,7 @@ public:
 };
 template <typename T> class Pack15  {
 public:
-	const uint8_t srcChk = 8;
+	static constexpr uint8_t srcChk = 8;
 	inline void pack(const T* src, uint8_t **dest){
 		uint32_t src0 = (uint32_t)src[0];
 		uint32_t src1 = (uint32_t)src[1];
@@ -512,7 +512,7 @@ public:
 };
 template <typename T> class Pack16  {
 public:
-	const uint8_t srcChk = 1;
+	static constexpr uint8_t srcChk = 1;
 	inline void pack(const T* src, uint8_t **dest){
 		*(uint16_t*)(*dest) = (uint16_t)*src;
 		*dest+=2;
@@ -526,7 +526,7 @@ public:
 
 template <typename T> class Pack16BE  {
 public:
-	const uint8_t srcChk = 1;
+	static constexpr uint8_t srcChk = 1;
 	inline void pack(const T* src, uint8_t **dest){
 		uint32_t val = (uint32_t)*src;
 		*(*dest)++ = (uint8_t)(val >> 8);
