@@ -714,40 +714,14 @@ public:
 };
 
 
-/* Component precision scaling */
-void scale_component(grk_image_comp* component, uint8_t precision);
-grk_image* upsample(grk_image* original);
-
 /* planar / interleaved conversions */
 typedef void (*cvtInterleavedToPlanar)(const int32_t* src, int32_t* const* dest, size_t w);
 extern const cvtInterleavedToPlanar cvtInterleavedToPlanar_LUT[10];
-
-void planarToInterleaved(size_t N, int32_t const* const* src, int32_t* dest, size_t w, int32_t adjust);
 
 /* bit depth conversions */
 typedef void (*cvtTo32)(const uint8_t* src, int32_t* dest, size_t w, bool invert);
 extern const cvtTo32 cvtTo32_LUT[9]; /* up to 8bpp */
 extern const cvtTo32 cvtsTo32_LUT[9]; /* up to 8bpp */
-typedef void (*cvtFrom32)(const int32_t* src, uint8_t* dest, size_t w);
-extern const cvtFrom32 cvtFrom32_LUT[9]; /* up to 8bpp */
-
-void _32s1u(const int32_t* src, uint8_t* dest, size_t w);
-void _32s2u(const int32_t* src, uint8_t* dest, size_t w);
-void _32s3u(const int32_t* src, uint8_t* dest, size_t w);
-void _32s4u(const int32_t* src, uint8_t* dest, size_t w);
-void _32s5u(const int32_t* src, uint8_t* dest, size_t w);
-void _32s6u(const int32_t* src, uint8_t* dest, size_t w);
-void _32s7u(const int32_t* src, uint8_t* dest, size_t w);
-void _32s8u(const int32_t* src, uint8_t* dest, size_t w);
-void _32s9u(const int32_t* src, uint8_t* dest, size_t w);
-void _32s10u(const int32_t* src, uint8_t* dest, size_t w);
-void _32s11u(const int32_t* src, uint8_t* dest, size_t w);
-void _32s12u(const int32_t* src, uint8_t* dest, size_t w);
-void _32s13u(const int32_t* src, uint8_t* dest, size_t w);
-void _32s14u(const int32_t* src, uint8_t* dest, size_t w);
-void _32s15u(const int32_t* src, uint8_t* dest, size_t w);
-void _32s16u(const int32_t* src, uint8_t* dest, size_t w);
-void _32s16u_BE(const int32_t* src, uint8_t* dest, size_t w);
 
 void _3uto32s(const uint8_t* src, int32_t* dest, size_t w, bool invert);
 void _5uto32s(const uint8_t* src, int32_t* dest, size_t w, bool invert);
@@ -763,6 +737,5 @@ void _14uto32s(const uint8_t* src, int32_t* dest, size_t w, bool invert);
 void _15uto32s(const uint8_t* src, int32_t* dest, size_t w, bool invert);
 void _16uto32s(const uint16_t* src, int32_t* dest, size_t w, bool invert);
 void _16u32s(const uint8_t* src, int32_t* dest, size_t w, bool invert);
-
 
 int32_t sign_extend(int32_t val, uint8_t shift);
