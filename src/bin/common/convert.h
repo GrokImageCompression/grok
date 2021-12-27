@@ -25,6 +25,8 @@
 #include <cstdint>
 #include <cstddef>
 
+const uint32_t maxNumComponents = 10;
+
 #define PUTBITS2_(s, nb)   {                                         \
 	trailing <<= remaining;                                          \
 	trailing |= (uint32_t)((s) >> (nb - remaining));                 \
@@ -565,7 +567,7 @@ public:
 					const int32_t adjust) override
 	{
 		P packer;
-		T srcBuf[packer.srcChk * numPlanes];
+		T srcBuf[2 * maxNumComponents];
 		auto destPtr = dest;
 		for(size_t i = 0; i < h; i++) {
 			size_t srcOff = 0;
@@ -592,6 +594,61 @@ public:
 		}
 	}
 };
+
+template <typename T> class PlanarToInterleaved<T, Pack8<T> > : public PtoI<T>{
+public:
+	void interleave(T **src,
+					const size_t numPlanes,
+					uint8_t* dest,
+					const size_t w,
+					const size_t srcStride,
+					const size_t destStride,
+					const size_t h,
+					const int32_t adjust) override
+	{
+		auto destPtr = dest;
+		for(size_t i = 0; i < h; i++) {
+			for(size_t j = 0; j < w; j++)
+			{
+				for(size_t k = 0; k < numPlanes; ++k)
+					*destPtr++ = (uint8_t)(src[k][j] + adjust);
+			}
+			dest += destStride;
+			destPtr = dest;
+			for(size_t k = 0; k < numPlanes; ++k)
+				src[k] += srcStride;
+		}
+	}
+};
+
+template <typename T> class PlanarToInterleaved<T, Pack16<T> > : public PtoI<T>{
+public:
+	void interleave(T **src,
+					const size_t numPlanes,
+					uint8_t* dest,
+					const size_t w,
+					const size_t srcStride,
+					const size_t destStride,
+					const size_t h,
+					const int32_t adjust) override
+	{
+		auto destPtr = dest;
+		for(size_t i = 0; i < h; i++) {
+			for(size_t j = 0; j < w; j++)
+			{
+				for(size_t k = 0; k < numPlanes; ++k) {
+					*(uint16_t*)destPtr = (uint16_t)(src[k][j] + adjust);
+					destPtr+=2;
+				}
+			}
+			dest += destStride;
+			destPtr = dest;
+			for(size_t k = 0; k < numPlanes; ++k)
+				src[k] += srcStride;
+		}
+	}
+};
+
 
 template<typename T> class InterleaverFactory {
 public:

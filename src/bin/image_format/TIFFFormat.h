@@ -24,8 +24,6 @@
 #include <tiffio.h>
 #include "convert.h"
 
-const size_t maxNumComponents = 10;
-
 /* TIFF conversion*/
 void tiffSetErrorAndWarningHandlers(bool verbose);
 
