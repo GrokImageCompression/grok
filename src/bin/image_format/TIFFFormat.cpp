@@ -431,8 +431,7 @@ local_cleanup:
 const uint32_t rec_601_luma[3]{299, 587, 114};
 
 TIFFFormat::TIFFFormat()
-	: tif(nullptr), chroma_subsample_x(1), chroma_subsample_y(1),
-	  cvt32sToTif(nullptr)
+	: tif(nullptr), chroma_subsample_x(1), chroma_subsample_y(1)
 {
 	for(uint32_t i = 0; i < maxNumComponents; ++i)
 		planes[i] = nullptr;
@@ -542,52 +541,6 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 			spdlog::error("TIFFFormat::encodeHeader: only chroma channels can be subsampled");
 			goto cleanup;
 		}
-	}
-
-	switch(bps)
-	{
-		case 1:
-		case 2:
-		case 4:
-		case 6:
-		case 8:
-			cvt32sToTif = cvtFrom32_LUT[bps];
-			break;
-		case 3:
-			cvt32sToTif = _32s3u;
-			break;
-		case 5:
-			cvt32sToTif = _32s5u;
-			break;
-		case 7:
-			cvt32sToTif = _32s7u;
-			break;
-		case 9:
-			cvt32sToTif = _32s9u;
-			break;
-		case 10:
-			cvt32sToTif = _32s10u;
-			break;
-		case 11:
-			cvt32sToTif = _32s11u;
-			break;
-		case 12:
-			cvt32sToTif = _32s12u;
-			break;
-		case 13:
-			cvt32sToTif = _32s13u;
-			break;
-		case 14:
-			cvt32sToTif = _32s14u;
-			break;
-		case 15:
-			cvt32sToTif = _32s15u;
-			break;
-		case 16:
-			cvt32sToTif = _32s16u;
-			break;
-		default:
-			break;
 	}
 	// extra channels
 	for(uint32_t i = 0U; i < numcomps; ++i)
@@ -768,7 +721,7 @@ bool TIFFFormat::encodeStrip(uint32_t rows)
 	uint32_t width = m_image->comps[0].w;
 	uint32_t height = m_image->comps[0].h;
 	size_t units = m_image->comps->w;
-	uint32_t bps = m_image->comps[0].prec;
+	uint8_t bps = m_image->comps[0].prec;
 	uint32_t numcomps = m_image->numcomps;
 	tsize_t stride, rowsPerStrip;
 	uint32_t strip = 0;
@@ -852,22 +805,18 @@ bool TIFFFormat::encodeStrip(uint32_t rows)
 	{
 		tmsize_t h = 0;
 		tmsize_t h_start = 0;
+		auto iter = InterleaverFactory<int32_t>::makeInterleaver((uint8_t)bps);
 		while(h < height)
 		{
-			tmsize_t bytesToWrite = 0;
-			for(h = h_start; h < h_start + rowsPerStrip && (h < height); h++)
-			{
-				planarToInterleaved(numcomps,planes, buffer32s, (size_t)width, 0);
-				cvt32sToTif(buffer32s, (uint8_t*)buf + bytesToWrite, (size_t)width * numcomps);
-				for(uint32_t k = 0; k < numcomps; ++k)
-					planes[k] += m_image->comps[k].stride;
-				bytesToWrite += stride;
-			}
+			size_t rowsToWrite = (std::min)(rowsPerStrip, height - h);
+			iter->interleave((int32_t**)planes, numcomps, (uint8_t*)buf, width, m_image->comps[0].stride, stride, rowsToWrite, 0);
+			h += rowsToWrite;
 			tmsize_t written = 0;
-			if(!write(&strip, buf, bytesToWrite, &written))
+			if(!write(&strip, buf, stride * rowsToWrite, &written))
 				goto cleanup;
-			h_start += (h - h_start);
+			h_start += rowsToWrite;
 		}
+		delete iter;
 	}
 	success = true;
 cleanup:

@@ -46,5 +46,4 @@ class TIFFFormat : public ImageFormat
 	uint32_t chroma_subsample_x;
 	uint32_t chroma_subsample_y;
 	int32_t const* planes[maxNumComponents];
-	cvtFrom32 cvt32sToTif;
 };

@@ -21,6 +21,8 @@
 
 #pragma once
 
+#include <cassert>
+
 #define PUTBITS2_(s, nb)   {                                         \
 	trailing <<= remaining;                                          \
 	trailing |= (uint32_t)((s) >> (nb - remaining));                 \
@@ -532,6 +534,7 @@ public:
 							const int32_t adjust) = 0;
 };
 
+
 template <typename T, typename P> class PlanarToInterleaved : public PtoI<T>{
 public:
 	void interleave(T **src,
@@ -548,21 +551,24 @@ public:
 		auto destPtr = dest;
 		for(size_t i = 0; i < h; i++) {
 			size_t srcOff = 0;
-			size_t srcCount = 0;
 			for(size_t j = 0; j < w; j++)
 			{
 				for(size_t k = 0; k < numPlanes; ++k)
 					srcBuf[srcOff + k] = src[k][j] + adjust;
 				srcOff    += numPlanes;
-				srcCount  += numPlanes;
-				while (srcCount > packer.srcChk) {
-					packer.pack(srcBuf, &destPtr);
-					srcCount -= packer.srcChk;
+				size_t packOff = 0;
+				while (srcOff >= packer.srcChk) {
+					packer.pack(srcBuf + packOff, &destPtr);
+					srcOff -= packer.srcChk;
+					packOff += packer.srcChk;
 				}
+				for(size_t k = 0; k < srcOff; ++k)
+					srcBuf[k] = srcBuf[packOff+k];
 			}
-			if (srcCount)
-				packer.packFinal(srcBuf, &destPtr,srcCount);
-			destPtr += destStride;
+			if (srcOff)
+				packer.packFinal(srcBuf, &destPtr,srcOff);
+			dest += destStride;
+			destPtr = dest;
 			for(size_t k = 0; k < numPlanes; ++k)
 				src[k] += srcStride;
 		}
