@@ -269,16 +269,6 @@ public:
 	}
 };
 template <typename T> class Pack8  {
-public:
-	static constexpr uint8_t srcChk = 1;
-	inline void pack(const T* src, uint8_t **dest){
-		*(*dest)++ = (uint8_t)*src;
-	}
-	inline void packFinal(const T* src, uint8_t **dest, size_t w){
-		(void)src;
-		(void)dest;
-		(void)w;
-	}
 };
 template <typename T> class Pack9  {
 public:
@@ -513,32 +503,9 @@ public:
 	}
 };
 template <typename T> class Pack16  {
-public:
-	static constexpr uint8_t srcChk = 1;
-	inline void pack(const T* src, uint8_t **dest){
-		*(uint16_t*)(*dest) = (uint16_t)*src;
-		*dest+=2;
-	}
-	inline void packFinal(const T* src, uint8_t **dest, size_t w){
-		(void)src;
-		(void)dest;
-		(void)w;
-	}
 };
 
 template <typename T> class Pack16BE  {
-public:
-	static constexpr uint8_t srcChk = 1;
-	inline void pack(const T* src, uint8_t **dest){
-		uint32_t val = (uint32_t)*src;
-		*(*dest)++ = (uint8_t)(val >> 8);
-		*(*dest)++ = (uint8_t)val;
-	}
-	inline void packFinal(const T* src, uint8_t **dest, size_t w){
-		(void)src;
-		(void)dest;
-		(void)w;
-	}
 };
 
 template <typename T> class PtoI {
@@ -553,7 +520,6 @@ public:
 							const size_t h,
 							const int32_t adjust) = 0;
 };
-
 
 template <typename T, typename P> class PlanarToInterleaved : public PtoI<T>{
 public:
@@ -649,6 +615,34 @@ public:
 	}
 };
 
+template <typename T> class PlanarToInterleaved<T, Pack16BE<T> > : public PtoI<T>{
+public:
+	void interleave(T **src,
+					const size_t numPlanes,
+					uint8_t* dest,
+					const size_t w,
+					const size_t srcStride,
+					const size_t destStride,
+					const size_t h,
+					const int32_t adjust) override
+	{
+		auto destPtr = dest;
+		for(size_t i = 0; i < h; i++) {
+			for(size_t j = 0; j < w; j++)
+			{
+				for(size_t k = 0; k < numPlanes; ++k) {
+					uint32_t val = (uint32_t)(src[k][j] + adjust);
+					*(destPtr)++ = (uint8_t)(val >> 8);
+					*(destPtr)++ = (uint8_t)val;
+				}
+			}
+			dest += destStride;
+			destPtr = dest;
+			for(size_t k = 0; k < numPlanes; ++k)
+				src[k] += srcStride;
+		}
+	}
+};
 
 template<typename T> class InterleaverFactory {
 public:
@@ -656,60 +650,41 @@ public:
 		switch(prec){
 		case 1:
 			return new PlanarToInterleaved<T, Pack1<T>>();
-			break;
 		case 2:
 			return new PlanarToInterleaved<T, Pack2<T>>();
-			break;
 		case 3:
 			return new PlanarToInterleaved<T, Pack3<T>>();
-			break;
 		case 4:
 			return new PlanarToInterleaved<T, Pack4<T>>();
-			break;
 		case 5:
 			return new PlanarToInterleaved<T, Pack5<T>>();
-			break;
 		case 6:
 			return new PlanarToInterleaved<T, Pack6<T>>();
-			break;
 		case 7:
 			return new PlanarToInterleaved<T, Pack7<T>>();
-			break;
 		case 8:
 			return new PlanarToInterleaved<T, Pack8<T>>();
-			break;
 		case 9:
 			return new PlanarToInterleaved<T, Pack9<T>>();
-			break;
 		case 10:
 			return new PlanarToInterleaved<T, Pack10<T>>();
-			break;
 		case 11:
 			return new PlanarToInterleaved<T, Pack11<T>>();
-			break;
 		case 12:
 			return new PlanarToInterleaved<T, Pack12<T>>();
-			break;
 		case 13:
 			return new PlanarToInterleaved<T, Pack13<T>>();
-			break;
 		case 14:
 			return new PlanarToInterleaved<T, Pack14<T>>();
-			break;
 		case 15:
 			return new PlanarToInterleaved<T, Pack15<T>>();
-			break;
 		case 16:
 			return new PlanarToInterleaved<T, Pack16<T>>();
-			break;
 		case 0xFF:
 			return new PlanarToInterleaved<T, Pack16BE<T>>();
-			break;
 		default:
 			return nullptr;
-			break;
 		}
-		return nullptr;
 	}
 };
 

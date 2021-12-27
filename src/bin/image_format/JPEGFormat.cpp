@@ -549,6 +549,8 @@ bool JPEGFormat::encodeStrip(uint32_t rows)
 	 * more if you wish, though.
 	 */
 	auto iter = InterleaverFactory<int32_t>::makeInterleaver(8);
+	if (!iter)
+		return false;
 	while(cinfo.next_scanline < cinfo.image_height)
 	{
 		/* jpeg_write_scanlines expects an array of pointers to scanlines.

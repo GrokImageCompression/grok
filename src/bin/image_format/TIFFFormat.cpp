@@ -790,6 +790,8 @@ bool TIFFFormat::encodeStrip(uint32_t rows)
 		tmsize_t h = 0;
 		tmsize_t h_start = 0;
 		auto iter = InterleaverFactory<int32_t>::makeInterleaver(bps);
+		if (!iter)
+			goto cleanup;
 		while(h < height)
 		{
 			size_t rowsToWrite = (std::min)(rowsPerStrip, height - h);
