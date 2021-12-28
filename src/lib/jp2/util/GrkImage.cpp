@@ -336,78 +336,17 @@ void GrkImage::transferDataFrom(const Tile* tile_src_data)
 	}
 }
 
-bool GrkImage::generateCompositeBounds(uint16_t compno, grkRectU32* src, uint32_t src_stride,
-									   grkRectU32* dest, grkRectU32* destWin,
-									   uint32_t* srcLineOffset)
-{
-	auto destComp = comps + compno;
-	*dest = grkRectU32(destComp->x0, destComp->y0, destComp->x0 + destComp->w,
-					   destComp->y0 + destComp->h);
-	*srcLineOffset = src_stride - src->width();
-	if(dest->x0 < src->x0)
-	{
-		destWin->x0 = (uint32_t)(src->x0 - dest->x0);
-		if(dest->x1 >= src->x1)
-		{
-			destWin->x1 = destWin->x0 + src->width();
-		}
-		else
-		{
-			destWin->x1 = destWin->x0 + (uint32_t)(dest->x1 - src->x0);
-			*srcLineOffset = src_stride - destWin->width();
-		}
-	}
-	else
-	{
-		destWin->x0 = 0U;
-		if(dest->x1 >= src->x1)
-		{
-			destWin->x1 = destWin->x0 + src->width();
-		}
-		else
-		{
-			destWin->x1 = destWin->x0 + destComp->w;
-			*srcLineOffset = (uint32_t)(src->x1 - dest->x1);
-		}
-	}
-	if(dest->y0 < src->y0)
-	{
-		destWin->y0 = (uint32_t)(src->y0 - dest->y0);
-		destWin->y1 =
-			destWin->y0 + ((dest->y1 >= src->y1) ? src->height() : (uint32_t)(dest->y1 - src->y0));
-	}
-	else
-	{
-		destWin->y1 = destWin->y0 + src->height();
-	}
-	if(destWin->width() > destComp->w || destWin->height() > destComp->h)
-		return false;
-
-	return true;
-}
-
-bool GrkImage::generateCompositeBounds(const grk_image_comp* srcComp, uint16_t compno,
-									   grkRectU32* src, grkRectU32* dest, grkRectU32* destWin,
-									   uint32_t* srcLineOffset)
+bool GrkImage::generateCompositeBounds(const grk_image_comp* srcComp,
+										uint16_t compno,
+										grkRectU32* src,
+										grkRectU32* destWin,
+										uint32_t* srcLineOffset)
 {
 	*src = grkRectU32(srcComp->x0, srcComp->y0, srcComp->x0 + srcComp->w,
 					  srcComp->y0 + srcComp->h);
 
-	return generateCompositeBounds(compno, src, srcComp->stride, dest, destWin, srcLineOffset);
+	return generateCompositeBounds(compno, src, srcComp->stride,destWin, srcLineOffset);
 }
-
-bool GrkImage::generateCompositeBounds(const TileComponent* srcComp, uint16_t compno,
-									   grkRectU32* src, grkRectU32* dest, grkRectU32* destWin,
-									   uint32_t* srcLineOffset)
-{
-	*src = srcComp->getBuffer()->bounds();
-	assert(src->width() <= srcComp->width() && src->height() <= srcComp->height());
-
-	return generateCompositeBounds(compno, src,
-								   (srcComp->getBuffer()->getResWindowBufferHighestREL())->stride,
-								   dest, destWin, srcLineOffset);
-}
-
 
 /**
  * Copy image data to composite image
@@ -426,7 +365,7 @@ bool GrkImage::compositeFrom(const GrkImage* srcImg)
 		grkRectU32 src, dest, destWin;
 		uint32_t srcLineOffset;
 
-		if(!generateCompositeBounds(srcComp, compno, &src, &dest, &destWin, &srcLineOffset))
+		if(!generateCompositeBounds(srcComp, compno, &src, &destWin, &srcLineOffset))
 		{
 			GRK_WARN("GrkImage::compositeFrom: cannot generate composite bounds for component %d",
 					 compno);
@@ -450,12 +389,64 @@ bool GrkImage::compositeFrom(const GrkImage* srcImg)
 		auto src_ptr = srcComp->data;
 		for(uint32_t j = 0; j < destWin.height(); ++j)
 		{
-			memcpy(destComp->data + destIndex, src_ptr + srcIndex,
-				   destWin.width() * sizeof(int32_t));
+			memcpy(destComp->data + destIndex, src_ptr + srcIndex,destWin.width() * sizeof(int32_t));
 			destIndex += destLineOffset + destWin.width();
 			srcIndex  += srcLineOffset  + destWin.width();
 		}
 	}
+
+	return true;
+}
+bool GrkImage::generateCompositeBounds(uint16_t compno,
+										grkRectU32* src,
+										uint32_t src_stride,
+									    grkRectU32* destWin,
+									    uint32_t* srcLineOffset)
+{
+	auto destComp = comps + compno;
+	grkRectU32 destCompRect = grkRectU32(destComp->x0,
+										destComp->y0,
+										destComp->x0 + destComp->w,
+					   	   	   	   	   	destComp->y0 + destComp->h);
+	*srcLineOffset = src_stride - src->width();
+	if(destCompRect.x0 < src->x0)
+	{
+		destWin->x0 = (uint32_t)(src->x0 - destCompRect.x0);
+		if(destCompRect.x1 >= src->x1)
+		{
+			destWin->x1 = destWin->x0 + src->width();
+		}
+		else
+		{
+			destWin->x1 = destWin->x0 + (uint32_t)(destCompRect.x1 - src->x0);
+			*srcLineOffset = src_stride - destWin->width();
+		}
+	}
+	else
+	{
+		destWin->x0 = 0U;
+		if(destCompRect.x1 >= src->x1)
+		{
+			destWin->x1 = destWin->x0 + src->width();
+		}
+		else
+		{
+			destWin->x1 = destWin->x0 + destComp->w;
+			*srcLineOffset = (uint32_t)(src->x1 - destCompRect.x1);
+		}
+	}
+	if(destCompRect.y0 < src->y0)
+	{
+		destWin->y0 = (uint32_t)(src->y0 - destCompRect.y0);
+		destWin->y1 =
+			destWin->y0 + ((destCompRect.y1 >= src->y1) ? src->height() : (uint32_t)(destCompRect.y1 - src->y0));
+	}
+	else
+	{
+		destWin->y1 = destWin->y0 + src->height();
+	}
+	if(destWin->width() > destComp->w || destWin->height() > destComp->h)
+		return false;
 
 	return true;
 }

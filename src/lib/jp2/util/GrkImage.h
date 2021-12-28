@@ -77,13 +77,10 @@ class GrkImage : public grk_image
 	 * @return:			true if successful
 	 */
 	bool compositeFrom(const GrkImage* src_img);
-	bool generateCompositeBounds(const TileComponent* srcComp, uint16_t compno, grkRectU32* src,
-								 grkRectU32* dest, grkRectU32* destWin, uint32_t* srcLineOffset);
-
 	bool generateCompositeBounds(const grk_image_comp* srcComp, uint16_t compno, grkRectU32* src,
-								 grkRectU32* dest, grkRectU32* destWin, uint32_t* srcLineOffset);
+								 grkRectU32* destWin, uint32_t* srcLineOffset);
 	bool generateCompositeBounds(uint16_t compno, grkRectU32* src, uint32_t src_stride,
-								 grkRectU32* dest, grkRectU32* destWin, uint32_t* srcLineOffset);
+								 grkRectU32* destWin, uint32_t* srcLineOffset);
 	void createMeta();
 	bool greyToRGB(void);
 	bool convertToRGB(void);
