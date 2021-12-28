@@ -37,46 +37,6 @@
 #include <memory>
 #include <string>
 
-static void tiff_error(const char* msg, void* client_data)
-{
-	(void)client_data;
-	if(msg)
-	{
-		std::string out = std::string("libtiff: ") + msg;
-		spdlog::error(out);
-	}
-}
-static void tiff_warn(const char* msg, void* client_data)
-{
-	(void)client_data;
-	if(msg)
-	{
-		std::string out = std::string("libtiff: ") + msg;
-		spdlog::warn(out);
-	}
-}
-
-static bool tiffWarningHandlerVerbose = true;
-void MyTiffErrorHandler(const char* module, const char* fmt, va_list ap)
-{
-	(void)module;
-	grk::log(tiff_error, nullptr, fmt, ap);
-}
-
-void MyTiffWarningHandler(const char* module, const char* fmt, va_list ap)
-{
-	(void)module;
-	if(tiffWarningHandlerVerbose)
-		grk::log(tiff_warn, nullptr, fmt, ap);
-}
-
-void tiffSetErrorAndWarningHandlers(bool verbose)
-{
-	tiffWarningHandlerVerbose = verbose;
-	TIFFSetErrorHandler(MyTiffErrorHandler);
-	TIFFSetWarningHandler(MyTiffWarningHandler);
-}
-
 TIFFFormat::TIFFFormat(): tif(nullptr),
 							chroma_subsample_x(1),
 							chroma_subsample_y(1),
@@ -332,19 +292,19 @@ bool TIFFFormat::writeStrip(void* buf, tmsize_t toWrite)
 	tmsize_t written = TIFFWriteEncodedStrip(tif, strip++, buf, toWrite);
 	if(written == -1)
 	{
-		spdlog::error("TIFFFormat::encodeStrip: error in TIFFWriteEncodedStrip");
+		spdlog::error("TIFFFormat::encodeRows: error in TIFFWriteEncodedStrip");
 		return false;
 	}
 	if(written != toWrite)
 	{
-		spdlog::error("TIFFFormat::encodeStrip: Bytes written {} does not equal bytes to write {}",
+		spdlog::error("TIFFFormat::encodeRows: bytes written {} does not equal bytes to write {}",
 					  written, toWrite);
 		return false;
 	}
 
 	return true;
 }
-bool TIFFFormat::encodeStrip(uint32_t rowsToWrite)
+bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 {
 	bool success = false;
 	uint32_t width = m_image->comps[0].w;
@@ -374,11 +334,11 @@ bool TIFFFormat::encodeStrip(uint32_t rowsToWrite)
 				// 1. luma
 				for(size_t sub_h = 0; sub_h < chroma_subsample_y; ++sub_h)
 				{
-					for(size_t sub_x = 0; sub_x < chroma_subsample_x; ++sub_x)
+					for(size_t sub_x = xpos; sub_x < xpos + chroma_subsample_x; ++sub_x)
 					{
-						bool accept = (h + sub_h) < height && (xpos + sub_x) < width;
+						bool accept = (h + sub_h) < height && sub_x < width;
 						*bufptr++ =
-								accept ? (int8_t)planes[0][xpos + sub_x + sub_h * m_image->comps[0].stride] : 0;
+								accept ? (int8_t)planes[0][sub_x + sub_h * m_image->comps[0].stride] : 0;
 						bytesToWrite++;
 					}
 				}
@@ -395,7 +355,6 @@ bool TIFFFormat::encodeStrip(uint32_t rowsToWrite)
 		// cleanup
 		if(bytesToWrite && !writeStrip(buf, bytesToWrite))
 			goto cleanup;
-
 	}
 	else
 	{
@@ -1218,3 +1177,43 @@ cleanup:
 	return nullptr;
 }
 
+
+static void tiff_error(const char* msg, void* client_data)
+{
+	(void)client_data;
+	if(msg)
+	{
+		std::string out = std::string("libtiff: ") + msg;
+		spdlog::error(out);
+	}
+}
+static void tiff_warn(const char* msg, void* client_data)
+{
+	(void)client_data;
+	if(msg)
+	{
+		std::string out = std::string("libtiff: ") + msg;
+		spdlog::warn(out);
+	}
+}
+
+static bool tiffWarningHandlerVerbose = true;
+void MyTiffErrorHandler(const char* module, const char* fmt, va_list ap)
+{
+	(void)module;
+	grk::log(tiff_error, nullptr, fmt, ap);
+}
+
+void MyTiffWarningHandler(const char* module, const char* fmt, va_list ap)
+{
+	(void)module;
+	if(tiffWarningHandlerVerbose)
+		grk::log(tiff_warn, nullptr, fmt, ap);
+}
+
+void tiffSetErrorAndWarningHandlers(bool verbose)
+{
+	tiffWarningHandlerVerbose = verbose;
+	TIFFSetErrorHandler(MyTiffErrorHandler);
+	TIFFSetWarningHandler(MyTiffWarningHandler);
+}

@@ -1345,7 +1345,7 @@ int GrkDecompress::postProcess(grk_plugin_decompress_callback_info* info)
 			spdlog::error("Outfile {} not generated", outfileStr);
 			goto cleanup;
 		}
-		if(!fmt->encodeStrip(image->comps[0].h))
+		if(!fmt->encodeRows(image->comps[0].h))
 		{
 			spdlog::error("Outfile {} not generated", outfileStr);
 			goto cleanup;

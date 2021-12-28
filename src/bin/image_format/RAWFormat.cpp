@@ -71,7 +71,7 @@ bool RAWFormat::encodeHeader(grk_image* image, const std::string& filename,
 
 	return true;
 }
-bool RAWFormat::encodeStrip(uint32_t rows)
+bool RAWFormat::encodeRows(uint32_t rows)
 {
 	(void)rows;
 

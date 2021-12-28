@@ -552,7 +552,7 @@ cleanup:
 	return ret;
 }
 
-bool BMPFormat::encodeStrip(uint32_t rows)
+bool BMPFormat::encodeRows(uint32_t rows)
 {
 	(void)rows;
 	bool ret = false;

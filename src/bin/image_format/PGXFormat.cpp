@@ -208,7 +208,7 @@ bool PGXFormat::encodeHeader(grk_image* image, const std::string& filename,
 
 	return true;
 }
-bool PGXFormat::encodeStrip(uint32_t rows)
+bool PGXFormat::encodeRows(uint32_t rows)
 {
 	(void)rows;
 

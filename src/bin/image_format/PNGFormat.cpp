@@ -652,7 +652,7 @@ beach:
 	return !fails;
 }
 
-bool PNGFormat::encodeStrip(uint32_t rows)
+bool PNGFormat::encodeRows(uint32_t rows)
 {
 	(void)rows;
 

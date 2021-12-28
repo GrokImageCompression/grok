@@ -512,24 +512,24 @@ template <typename T> class PtoI {
 public:
 	virtual ~PtoI() = default;
 	virtual void interleave(T ** src,
-							const size_t numPlanes,
+							const uint32_t numPlanes,
 							uint8_t* dest,
-							const size_t w,
-							const size_t srcStride,
-							const size_t destStride,
-							const size_t h,
+							const uint32_t w,
+							const uint32_t srcStride,
+							const uint32_t destStride,
+							const uint32_t h,
 							const int32_t adjust) = 0;
 };
 
 template <typename T, typename P> class PlanarToInterleaved : public PtoI<T>{
 public:
 	void interleave(T **src,
-					const size_t numPlanes,
+					const uint32_t numPlanes,
 					uint8_t* dest,
-					const size_t w,
-					const size_t srcStride,
-					const size_t destStride,
-					const size_t h,
+					const uint32_t w,
+					const uint32_t srcStride,
+					const uint32_t destStride,
+					const uint32_t h,
 					const int32_t adjust) override
 	{
 		P packer;
@@ -564,12 +564,12 @@ public:
 template <typename T> class PlanarToInterleaved<T, Pack8<T> > : public PtoI<T>{
 public:
 	void interleave(T **src,
-					const size_t numPlanes,
+					const uint32_t numPlanes,
 					uint8_t* dest,
-					const size_t w,
-					const size_t srcStride,
-					const size_t destStride,
-					const size_t h,
+					const uint32_t w,
+					const uint32_t srcStride,
+					const uint32_t destStride,
+					const uint32_t h,
 					const int32_t adjust) override
 	{
 		auto destPtr = dest;
@@ -590,12 +590,12 @@ public:
 template <typename T> class PlanarToInterleaved<T, Pack16<T> > : public PtoI<T>{
 public:
 	void interleave(T **src,
-					const size_t numPlanes,
+					const uint32_t numPlanes,
 					uint8_t* dest,
-					const size_t w,
-					const size_t srcStride,
-					const size_t destStride,
-					const size_t h,
+					const uint32_t w,
+					const uint32_t srcStride,
+					const uint32_t destStride,
+					const uint32_t h,
 					const int32_t adjust) override
 	{
 		auto destPtr = dest;
@@ -618,12 +618,12 @@ public:
 template <typename T> class PlanarToInterleaved<T, Pack16BE<T> > : public PtoI<T>{
 public:
 	void interleave(T **src,
-					const size_t numPlanes,
+					const uint32_t numPlanes,
 					uint8_t* dest,
-					const size_t w,
-					const size_t srcStride,
-					const size_t destStride,
-					const size_t h,
+					const uint32_t w,
+					const uint32_t srcStride,
+					const uint32_t destStride,
+					const uint32_t h,
 					const int32_t adjust) override
 	{
 		auto destPtr = dest;
