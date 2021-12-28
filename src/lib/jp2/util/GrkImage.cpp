@@ -238,24 +238,24 @@ bool GrkImage::allocData(void)
 {
 	for(uint32_t i = 0; i < numcomps; i++)
 	{
-		auto dest_comp = comps + i;
+		auto destComp = comps + i;
 
-		if(dest_comp->w == 0 || dest_comp->h == 0)
+		if(destComp->w == 0 || destComp->h == 0)
 		{
-			GRK_ERROR("Output component %d has invalid dimensions %u x %u", i, dest_comp->w,
-					  dest_comp->h);
+			GRK_ERROR("Output component %d has invalid dimensions %u x %u", i, destComp->w,
+					  destComp->h);
 			return false;
 		}
-		if(!dest_comp->data)
+		if(!destComp->data)
 		{
-			if(!GrkImage::allocData(dest_comp))
+			if(!GrkImage::allocData(destComp))
 			{
 				GRK_ERROR("Failed to allocate pixel data for component %d, with dimensions %u x %u",
-						  i, dest_comp->w, dest_comp->h);
+						  i, destComp->w, destComp->h);
 				return false;
 			}
-			memset(dest_comp->data, 0,
-				   (uint64_t)dest_comp->stride * dest_comp->h * sizeof(int32_t));
+			memset(destComp->data, 0,
+				   (uint64_t)destComp->stride * destComp->h * sizeof(int32_t));
 		}
 	}
 
@@ -273,17 +273,17 @@ void GrkImage::transferDataTo(GrkImage* dest)
 
 	for(uint32_t compno = 0; compno < numcomps; compno++)
 	{
-		auto src_comp = comps + compno;
-		auto dest_comp = dest->comps + compno;
+		auto srcComp = comps + compno;
+		auto destComp = dest->comps + compno;
 
-		grk_image_single_component_data_free(dest_comp);
-		dest_comp->data = src_comp->data;
-		if(src_comp->stride)
+		grk_image_single_component_data_free(destComp);
+		destComp->data = srcComp->data;
+		if(srcComp->stride)
 		{
-			dest_comp->stride = src_comp->stride;
-			assert(dest_comp->stride >= dest_comp->w);
+			destComp->stride = srcComp->stride;
+			assert(destComp->stride >= destComp->w);
 		}
-		src_comp->data = nullptr;
+		srcComp->data = nullptr;
 	}
 }
 
@@ -306,15 +306,15 @@ GrkImage* GrkImage::duplicate(const Tile* src_tile)
 
 	for(uint16_t compno = 0; compno < src_tile->numcomps; ++compno)
 	{
-		auto src_comp = src_tile->comps + compno;
-		auto src_buffer = src_comp->getBuffer();
+		auto srcComp = src_tile->comps + compno;
+		auto src_buffer = srcComp->getBuffer();
 		auto src_bounds = src_buffer->bounds();
 
-		auto dest_comp = destImage->comps + compno;
-		dest_comp->x0 = src_bounds.x0;
-		dest_comp->y0 = src_bounds.y0;
-		dest_comp->w = src_bounds.width();
-		dest_comp->h = src_bounds.height();
+		auto destComp = destImage->comps + compno;
+		destComp->x0 = src_bounds.x0;
+		destComp->y0 = src_bounds.y0;
+		destComp->w = src_bounds.width();
+		destComp->h = src_bounds.height();
 	}
 
 	destImage->transferDataFrom(src_tile);
@@ -326,174 +326,134 @@ void GrkImage::transferDataFrom(const Tile* tile_src_data)
 {
 	for(uint16_t compno = 0; compno < numcomps; compno++)
 	{
-		auto src_comp = tile_src_data->comps + compno;
-		auto dest_comp = comps + compno;
+		auto srcComp = tile_src_data->comps + compno;
+		auto destComp = comps + compno;
 
 		// transfer memory from tile component to output image
-		src_comp->getBuffer()->transfer(&dest_comp->data, &dest_comp->stride);
-		if(dest_comp->data)
-			assert(dest_comp->stride >= dest_comp->w);
+		srcComp->getBuffer()->transfer(&destComp->data, &destComp->stride);
+		if(destComp->data)
+			assert(destComp->stride >= destComp->w);
 	}
 }
 
 bool GrkImage::generateCompositeBounds(uint16_t compno, grkRectU32* src, uint32_t src_stride,
-									   grkRectU32* dest, grkRectU32* dest_win,
-									   uint32_t* src_line_off)
+									   grkRectU32* dest, grkRectU32* destWin,
+									   uint32_t* srcLineOffset)
 {
-	auto dest_comp = comps + compno;
-	*dest = grkRectU32(dest_comp->x0, dest_comp->y0, dest_comp->x0 + dest_comp->w,
-					   dest_comp->y0 + dest_comp->h);
-	*src_line_off = src_stride - src->width();
+	auto destComp = comps + compno;
+	*dest = grkRectU32(destComp->x0, destComp->y0, destComp->x0 + destComp->w,
+					   destComp->y0 + destComp->h);
+	*srcLineOffset = src_stride - src->width();
 	if(dest->x0 < src->x0)
 	{
-		dest_win->x0 = (uint32_t)(src->x0 - dest->x0);
+		destWin->x0 = (uint32_t)(src->x0 - dest->x0);
 		if(dest->x1 >= src->x1)
 		{
-			dest_win->x1 = dest_win->x0 + src->width();
+			destWin->x1 = destWin->x0 + src->width();
 		}
 		else
 		{
-			dest_win->x1 = dest_win->x0 + (uint32_t)(dest->x1 - src->x0);
-			*src_line_off = src_stride - dest_win->width();
+			destWin->x1 = destWin->x0 + (uint32_t)(dest->x1 - src->x0);
+			*srcLineOffset = src_stride - destWin->width();
 		}
 	}
 	else
 	{
-		dest_win->x0 = 0U;
+		destWin->x0 = 0U;
 		if(dest->x1 >= src->x1)
 		{
-			dest_win->x1 = dest_win->x0 + src->width();
+			destWin->x1 = destWin->x0 + src->width();
 		}
 		else
 		{
-			dest_win->x1 = dest_win->x0 + dest_comp->w;
-			*src_line_off = (uint32_t)(src->x1 - dest->x1);
+			destWin->x1 = destWin->x0 + destComp->w;
+			*srcLineOffset = (uint32_t)(src->x1 - dest->x1);
 		}
 	}
 	if(dest->y0 < src->y0)
 	{
-		dest_win->y0 = (uint32_t)(src->y0 - dest->y0);
-		dest_win->y1 =
-			dest_win->y0 + ((dest->y1 >= src->y1) ? src->height() : (uint32_t)(dest->y1 - src->y0));
+		destWin->y0 = (uint32_t)(src->y0 - dest->y0);
+		destWin->y1 =
+			destWin->y0 + ((dest->y1 >= src->y1) ? src->height() : (uint32_t)(dest->y1 - src->y0));
 	}
 	else
 	{
-		dest_win->y1 = dest_win->y0 + src->height();
+		destWin->y1 = destWin->y0 + src->height();
 	}
-	if(dest_win->width() > dest_comp->w || dest_win->height() > dest_comp->h)
+	if(destWin->width() > destComp->w || destWin->height() > destComp->h)
 		return false;
 
 	return true;
 }
 
-bool GrkImage::generateCompositeBounds(const grk_image_comp* src_comp, uint16_t compno,
-									   grkRectU32* src, grkRectU32* dest, grkRectU32* dest_win,
-									   uint32_t* src_line_off)
+bool GrkImage::generateCompositeBounds(const grk_image_comp* srcComp, uint16_t compno,
+									   grkRectU32* src, grkRectU32* dest, grkRectU32* destWin,
+									   uint32_t* srcLineOffset)
 {
-	*src = grkRectU32(src_comp->x0, src_comp->y0, src_comp->x0 + src_comp->w,
-					  src_comp->y0 + src_comp->h);
+	*src = grkRectU32(srcComp->x0, srcComp->y0, srcComp->x0 + srcComp->w,
+					  srcComp->y0 + srcComp->h);
 
-	return generateCompositeBounds(compno, src, src_comp->stride, dest, dest_win, src_line_off);
+	return generateCompositeBounds(compno, src, srcComp->stride, dest, destWin, srcLineOffset);
 }
 
-bool GrkImage::generateCompositeBounds(const TileComponent* src_comp, uint16_t compno,
-									   grkRectU32* src, grkRectU32* dest, grkRectU32* dest_win,
-									   uint32_t* src_line_off)
+bool GrkImage::generateCompositeBounds(const TileComponent* srcComp, uint16_t compno,
+									   grkRectU32* src, grkRectU32* dest, grkRectU32* destWin,
+									   uint32_t* srcLineOffset)
 {
-	*src = src_comp->getBuffer()->bounds();
-	assert(src->width() <= src_comp->width() && src->height() <= src_comp->height());
+	*src = srcComp->getBuffer()->bounds();
+	assert(src->width() <= srcComp->width() && src->height() <= srcComp->height());
 
 	return generateCompositeBounds(compno, src,
-								   (src_comp->getBuffer()->getResWindowBufferHighestREL())->stride,
-								   dest, dest_win, src_line_off);
+								   (srcComp->getBuffer()->getResWindowBufferHighestREL())->stride,
+								   dest, destWin, srcLineOffset);
 }
 
-/**
- * Copy tile data to composite image
- *
- * tile stores only the decompressed resolutions, in the actual precision
- * of the decompressed image. This method copies tile buffer
- * into composite image.
- *
- *
- * @param src_tile 	source tile
- *
- * @return:			true if successful
- */
-bool GrkImage::compositeFrom(const Tile* src_tile)
-{
-	for(uint16_t compno = 0; compno < src_tile->numcomps; compno++)
-	{
-		auto src_comp = src_tile->comps + compno;
-		auto dest_comp = comps + compno;
-
-		grkRectU32 src, dest, dest_win;
-		uint32_t src_line_off;
-
-		if(!generateCompositeBounds(src_comp, compno, &src, &dest, &dest_win, &src_line_off))
-			return false;
-
-		size_t src_ind = 0;
-		auto dest_ind = (size_t)dest_win.x0 + (size_t)dest_win.y0 * dest_comp->stride;
-		size_t dest_line_off = (size_t)dest_comp->stride - (size_t)dest_win.width();
-		auto src_ptr = src_comp->getBuffer()->getResWindowBufferHighestREL()->getBuffer();
-		for(uint32_t j = 0; j < dest_win.height(); ++j)
-		{
-			memcpy(dest_comp->data + dest_ind, src_ptr + src_ind,
-				   dest_win.width() * sizeof(int32_t));
-			dest_ind += dest_win.width() + dest_line_off;
-			src_ind += dest_win.width() + src_line_off;
-		}
-	}
-
-	return true;
-}
 
 /**
  * Copy image data to composite image
  *
- * @param src_image 	source image
+ * @param src 	source image
  *
  * @return:			true if successful
  */
-bool GrkImage::compositeFrom(const GrkImage* src_image)
+bool GrkImage::compositeFrom(const GrkImage* srcImg)
 {
-	for(uint16_t compno = 0; compno < src_image->numcomps; compno++)
+	for(uint16_t compno = 0; compno < srcImg->numcomps; compno++)
 	{
-		auto src_comp = src_image->comps + compno;
-		auto dest_comp = comps + compno;
+		auto srcComp = srcImg->comps + compno;
+		auto destComp = comps + compno;
 
-		grkRectU32 src, dest, dest_win;
-		uint32_t src_line_off;
+		grkRectU32 src, dest, destWin;
+		uint32_t srcLineOffset;
 
-		if(!generateCompositeBounds(src_comp, compno, &src, &dest, &dest_win, &src_line_off))
+		if(!generateCompositeBounds(srcComp, compno, &src, &dest, &destWin, &srcLineOffset))
 		{
 			GRK_WARN("GrkImage::compositeFrom: cannot generate composite bounds for component %d",
 					 compno);
 			continue;
 		}
-		if(!dest_comp->data)
+		if(!destComp->data)
 		{
 			GRK_WARN("GrkImage::compositeFrom: null data for destination component %d", compno);
 			continue;
 		}
 
-		if(!src_comp->data)
+		if(!srcComp->data)
 		{
 			GRK_WARN("GrkImage::compositeFrom: null data for source component %d", compno);
 			continue;
 		}
 
-		size_t src_ind = 0;
-		auto dest_ind = (size_t)dest_win.x0 + (size_t)dest_win.y0 * dest_comp->stride;
-		size_t dest_line_off = (size_t)dest_comp->stride - (size_t)dest_win.width();
-		auto src_ptr = src_comp->data;
-		for(uint32_t j = 0; j < dest_win.height(); ++j)
+		size_t srcIndex = 0;
+		auto destIndex = (size_t)destWin.x0 + (size_t)destWin.y0 * destComp->stride;
+		size_t destLineOffset = (size_t)destComp->stride - (size_t)destWin.width();
+		auto src_ptr = srcComp->data;
+		for(uint32_t j = 0; j < destWin.height(); ++j)
 		{
-			memcpy(dest_comp->data + dest_ind, src_ptr + src_ind,
-				   dest_win.width() * sizeof(int32_t));
-			dest_ind += dest_win.width() + dest_line_off;
-			src_ind += dest_win.width() + src_line_off;
+			memcpy(destComp->data + destIndex, src_ptr + srcIndex,
+				   destWin.width() * sizeof(int32_t));
+			destIndex += destLineOffset + destWin.width();
+			srcIndex  += srcLineOffset  + destWin.width();
 		}
 	}
 
@@ -1161,10 +1121,10 @@ bool GrkImage::sycc420_to_rgb(bool oddFirstX, bool oddFirstY)
 
 	for(uint32_t i = 0; i < 3; ++i)
 	{
-		auto src_comp = comps + i;
-		src[i] = src_comp->data;
-		stride_src[i] = src_comp->stride;
-		stride_src_diff[i] = src_comp->stride - src_comp->w;
+		auto srcComp = comps + i;
+		src[i] = srcComp->data;
+		stride_src[i] = srcComp->stride;
+		stride_src_diff[i] = srcComp->stride - srcComp->w;
 
 		dest[i] = dest_ptr[i] = dst->comps[i].data;
 		dst->comps[i].data = nullptr;

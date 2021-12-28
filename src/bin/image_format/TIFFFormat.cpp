@@ -429,7 +429,10 @@ local_cleanup:
 // rec 601 conversion factors, multiplied by 1000
 const uint32_t rec_601_luma[3]{299, 587, 114};
 
-TIFFFormat::TIFFFormat(): tif(nullptr), chroma_subsample_x(1), chroma_subsample_y(1)
+TIFFFormat::TIFFFormat(): tif(nullptr),
+							chroma_subsample_x(1),
+							chroma_subsample_y(1),
+							rowsWritten(0)
 {
 	for(uint32_t i = 0; i < maxNumComponents; ++i)
 		planes[i] = nullptr;
@@ -697,9 +700,8 @@ bool TIFFFormat::write(uint32_t* strip, void* buf, tmsize_t toWrite, tmsize_t* w
 
 	return true;
 }
-bool TIFFFormat::encodeStrip(uint32_t rows)
+bool TIFFFormat::encodeStrip(uint32_t rowsToWrite)
 {
-	(void)rows;
 	bool success = false;
 	bool subsampled = isSubsampled(m_image);
 	uint32_t width = m_image->comps[0].w;
@@ -709,7 +711,9 @@ bool TIFFFormat::encodeStrip(uint32_t rows)
 	uint32_t numcomps = m_image->numcomps;
 	tsize_t stride, rowsPerStrip;
 	uint32_t strip = 0;
-	int32_t* buffer32s = nullptr;
+	rowsToWrite = (std::min)(rowsToWrite,height - rowsWritten);
+	if (rowsToWrite == 0)
+		return false;
 
 	// calculate rows per strip, base on target 8K strip size
 	if(subsampled)
@@ -733,15 +737,11 @@ bool TIFFFormat::encodeStrip(uint32_t rows)
 	if(buf == nullptr)
 		goto cleanup;
 
-	buffer32s = (int32_t*)malloc((size_t)width * numcomps * sizeof(int32_t));
-	if(buffer32s == nullptr)
-		goto cleanup;
-
 	if(subsampled)
 	{
 		tmsize_t bytesToWrite = 0;
 		auto bufptr = (int8_t*)buf;
-		for(uint32_t h = 0; h < height; h += chroma_subsample_y)
+		for(uint32_t h = rowsWritten; h < rowsWritten + rowsToWrite; h += chroma_subsample_y)
 		{
 			if(h > 0 && (h % rowsPerStrip == 0))
 			{
@@ -754,16 +754,14 @@ bool TIFFFormat::encodeStrip(uint32_t rows)
 			size_t xpos = 0;
 			for(uint32_t u = 0; u < units; ++u)
 			{
+				// 1. luma
 				for(size_t sub_h = 0; sub_h < chroma_subsample_y; ++sub_h)
 				{
-					size_t sub_x;
-					for(sub_x = 0; sub_x < chroma_subsample_x; ++sub_x)
+					for(size_t sub_x = 0; sub_x < chroma_subsample_x; ++sub_x)
 					{
-						bool accept = h + sub_h < height && xpos + sub_x < width;
+						bool accept = (h + sub_h) < height && (xpos + sub_x) < width;
 						*bufptr++ =
-							accept
-								? (int8_t)planes[0][xpos + sub_x + sub_h * m_image->comps[0].stride]
-								: 0;
+								accept ? (int8_t)planes[0][xpos + sub_x + sub_h * m_image->comps[0].stride] : 0;
 						bytesToWrite++;
 					}
 				}
@@ -777,7 +775,7 @@ bool TIFFFormat::encodeStrip(uint32_t rows)
 			planes[1] += m_image->comps[1].stride - m_image->comps[1].w;
 			planes[2] += m_image->comps[2].stride - m_image->comps[2].w;
 		}
-		// cleanup (
+		// cleanup
 		if(bytesToWrite)
 		{
 			tmsize_t written = 0;
@@ -787,27 +785,24 @@ bool TIFFFormat::encodeStrip(uint32_t rows)
 	}
 	else
 	{
-		tmsize_t h = 0;
-		tmsize_t h_start = 0;
+		tmsize_t h = rowsWritten;
 		auto iter = InterleaverFactory<int32_t>::makeInterleaver(bps);
 		if (!iter)
 			goto cleanup;
-		while(h < height)
+		while(h < rowsWritten + rowsToWrite)
 		{
-			size_t rowsToWrite = (std::min)(rowsPerStrip, height - h);
-			iter->interleave((int32_t**)planes, numcomps, (uint8_t*)buf, width, m_image->comps[0].stride, stride, rowsToWrite, 0);
-			h += rowsToWrite;
+			size_t stripRows = (std::min)(rowsPerStrip, height - h);
+			iter->interleave((int32_t**)planes, numcomps, (uint8_t*)buf, width, m_image->comps[0].stride, stride, stripRows, 0);
+			h += stripRows;
 			tmsize_t written = 0;
-			if(!write(&strip, buf, stride * rowsToWrite, &written))
+			if(!write(&strip, buf, stride * stripRows, &written))
 				goto cleanup;
-			h_start += rowsToWrite;
 		}
 		delete iter;
 	}
+	rowsWritten += rowsToWrite;
 	success = true;
 cleanup:
-	if(buffer32s)
-		free(buffer32s);
 	if(buf)
 		_TIFFfree((void*)buf);
 
