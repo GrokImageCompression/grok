@@ -77,9 +77,10 @@ class GrkImage : public grk_image
 	 * @return:			true if successful
 	 */
 	bool compositeFrom(const GrkImage* src_img);
-	bool generateCompositeBounds(const grk_image_comp* srcComp, uint16_t compno, grkRectU32* src,
+	bool compositeInterleavedFrom(const GrkImage* srcImg);
+	bool generateCompositeBounds(const grk_image_comp* srcComp, uint16_t compno,
 								 grkRectU32* destWin, uint32_t* srcLineOffset);
-	bool generateCompositeBounds(uint16_t compno, grkRectU32* src, uint32_t src_stride,
+	bool generateCompositeBounds(uint16_t compno, grkRectU32 src, uint32_t src_stride,
 								 grkRectU32* destWin, uint32_t* srcLineOffset);
 	void createMeta();
 	bool greyToRGB(void);
@@ -103,6 +104,7 @@ class GrkImage : public grk_image
 	void applyICC(void);
 	bool cieLabToRGB(void);
 
+	bool componentsEqual(grk_image_comp* src, grk_image_comp* dest);
 	static void copyComponent(grk_image_comp* src, grk_image_comp* dest);
 	void scaleComponent(grk_image_comp* component, uint8_t precision);
 };
