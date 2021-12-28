@@ -327,18 +327,18 @@ cleanup:
 	return success;
 }
 
-bool TIFFFormat::writeStrip(void* buf, tmsize_t toWrite, tmsize_t* written)
+bool TIFFFormat::writeStrip(void* buf, tmsize_t toWrite)
 {
-	*written = TIFFWriteEncodedStrip(tif, strip++, buf, toWrite);
-	if(*written == -1)
+	tmsize_t written = TIFFWriteEncodedStrip(tif, strip++, buf, toWrite);
+	if(written == -1)
 	{
 		spdlog::error("TIFFFormat::encodeStrip: error in TIFFWriteEncodedStrip");
 		return false;
 	}
-	if(*written != toWrite)
+	if(written != toWrite)
 	{
 		spdlog::error("TIFFFormat::encodeStrip: Bytes written {} does not equal bytes to write {}",
-					  *written, toWrite);
+					  written, toWrite);
 		return false;
 	}
 
@@ -347,21 +347,15 @@ bool TIFFFormat::writeStrip(void* buf, tmsize_t toWrite, tmsize_t* written)
 bool TIFFFormat::encodeStrip(uint32_t rowsToWrite)
 {
 	bool success = false;
-	bool subsampled = isSubsampled(m_image);
 	uint32_t width = m_image->comps[0].w;
 	uint32_t height = m_image->comps[0].h;
-	uint8_t bps = m_image->comps[0].prec;
-	uint32_t numcomps = m_image->numcomps;
 	rowsToWrite = (std::min)(rowsToWrite,height - rowsWritten);
 	if (rowsToWrite == 0)
 		return false;
 
 	auto strip_size = TIFFVStripSize(tif, (uint32_t)rowsPerStrip);
 	auto buf = new uint8_t[(size_t)strip_size];
-	if(buf == nullptr)
-		goto cleanup;
-
-	if(subsampled)
+	if(isSubsampled(m_image))
 	{
 		tmsize_t bytesToWrite = 0;
 		auto bufptr = (int8_t*)buf;
@@ -369,8 +363,7 @@ bool TIFFFormat::encodeStrip(uint32_t rowsToWrite)
 		{
 			if(h > 0 && (h % rowsPerStrip == 0))
 			{
-				tmsize_t written = 0;
-				if(!writeStrip(buf, bytesToWrite, &written))
+				if(!writeStrip(buf, bytesToWrite))
 					goto cleanup;
 				bufptr = (int8_t*)buf;
 				bytesToWrite = 0;
@@ -400,27 +393,25 @@ bool TIFFFormat::encodeStrip(uint32_t rowsToWrite)
 			planes[2] += m_image->comps[2].stride - m_image->comps[2].w;
 		}
 		// cleanup
-		if(bytesToWrite)
-		{
-			tmsize_t written = 0;
-			if(!writeStrip(buf, bytesToWrite, &written))
-				goto cleanup;
-		}
+		if(bytesToWrite && !writeStrip(buf, bytesToWrite))
+			goto cleanup;
+
 	}
 	else
 	{
 		tmsize_t h = rowsWritten;
-		auto iter = InterleaverFactory<int32_t>::makeInterleaver(bps);
+		auto iter = InterleaverFactory<int32_t>::makeInterleaver(m_image->comps[0].prec);
 		if (!iter)
 			goto cleanup;
 		while(h < rowsWritten + rowsToWrite)
 		{
 			uint32_t stripRows = (std::min)(rowsPerStrip, height - h);
-			iter->interleave((int32_t**)planes, numcomps, (uint8_t*)buf, width, m_image->comps[0].stride, stride, stripRows, 0);
+			iter->interleave((int32_t**)planes, m_image->numcomps, (uint8_t*)buf, width, m_image->comps[0].stride, stride, stripRows, 0);
 			h += stripRows;
-			tmsize_t written = 0;
-			if(!writeStrip(buf, stride * stripRows, &written))
+			if(!writeStrip(buf, stride * stripRows)) {
+				delete iter;
 				goto cleanup;
+			}
 		}
 		delete iter;
 	}
