@@ -31,7 +31,7 @@ class TIFFFormat : public ImageFormat
 {
   public:
 	TIFFFormat();
-	~TIFFFormat() = default;
+	~TIFFFormat();
 	bool encodeHeader(grk_image* image, const std::string& filename,
 					  uint32_t compressionParam) override;
 	bool encodeRows(uint32_t rows) override;
@@ -41,6 +41,7 @@ class TIFFFormat : public ImageFormat
   private:
 	bool writeStrip(void* buf, tmsize_t toWrite);
 	TIFF* tif;
+	uint8_t *buf;
 	uint32_t chroma_subsample_x;
 	uint32_t chroma_subsample_y;
 	int32_t const* planes[maxNumComponents];
@@ -49,4 +50,5 @@ class TIFFFormat : public ImageFormat
 	tsize_t rowsPerStrip;
 	tsize_t stride;
 	size_t units;
+	tmsize_t bytesToWrite;
 };
