@@ -95,6 +95,7 @@
 #ifndef _MSC_VER
 #pragma GCC diagnostic pop
 #endif
+#include "packer.h"
 #include "SequentialCache.h"
 #include "SparseCache.h"
 #include "CodeStreamLimits.h"

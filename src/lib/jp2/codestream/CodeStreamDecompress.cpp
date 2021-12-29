@@ -613,11 +613,11 @@ bool CodeStreamDecompress::decompressTiles(void)
 				else
 				{
 					numTilesDecompressed++;
-					if(m_multiTile && processor->getImage() && !m_outputImage->compositeFrom(processor->getImage()))
+					if(m_multiTile && processor->getImage() && !m_outputImage->composite(processor->getImage()))
 						success = false;
 					//if cache strategy set to none, then delete image
 					if (success && m_tileCache->getStrategy() == GRK_TILE_CACHE_NONE){
-						processor->deleteImage();
+						processor->release();
 					}
 				}
 
@@ -859,7 +859,7 @@ bool CodeStreamDecompress::createOutputImage(void){
 	}
 	// only allocate data if there are multiple tiles. Otherwise, the single tile data
 	// will simply be transferred to the output image
-	if(m_multiTile && !m_outputImage->allocData())
+	if(m_multiTile && !m_outputImage->allocCompositeData(m_cp.t_width))
 		return false;
 
 	return true;

@@ -19,7 +19,7 @@ class GrkImage : public grk_image
 {
 	friend GrkObjectWrapperImpl<GrkImage>;
 
-  public:
+public:
 	GrkImage();
 	bool subsampleAndReduce(uint32_t reduce);
 	/**
@@ -44,11 +44,14 @@ class GrkImage : public grk_image
 	 */
 	static bool allocData(grk_image_comp* imageComp);
 	/**
-	 * Allocate data
+	 * Allocate data for tile compositing
 	 *
 	 * @return true if successful
 	 */
-	bool allocData();
+	bool allocCompositeData(uint32_t tileWidth);
+
+	bool canAllocInterleaved(uint32_t tileWidth);
+
 	/**
 	 * Copy only header of image and its component header (no data are copied)
 	 * if dest image have data, they will be freed
@@ -65,23 +68,7 @@ class GrkImage : public grk_image
 	void transferDataTo(GrkImage* dest);
 	void transferDataFrom(const Tile* tile_src_data);
 	GrkImage* duplicate(const Tile* tile_src);
-	/**
-	 * Copy tile to composite image
-	 *
-	 * tile_data stores only the decompressed resolutions, in the actual precision
-	 * of the decompressed image. This method copies a sub-region of this region
-	 * into p_output_image (which stores data in 32 bit precision)
-	 *
-	 * @param src_tile 	source tile
-	 *
-	 * @return:			true if successful
-	 */
-	bool compositeFrom(const GrkImage* src_img);
-	bool compositeInterleavedFrom(const GrkImage* srcImg);
-	bool generateCompositeBounds(const grk_image_comp* srcComp, uint16_t compno,
-								 grkRectU32* destWin, uint32_t* srcLineOffset);
-	bool generateCompositeBounds(uint16_t compno, grkRectU32 src, uint32_t src_stride,
-								 grkRectU32* destWin, uint32_t* srcLineOffset);
+	bool composite(const GrkImage* srcImg);
 	void createMeta();
 	bool greyToRGB(void);
 	bool convertToRGB(void);
@@ -90,6 +77,12 @@ class GrkImage : public grk_image
 	bool execUpsample(void);
   private:
 	~GrkImage();
+	bool compositePlanar(const GrkImage* srcImg);
+	bool compositeInterleaved(const GrkImage* srcImg);
+	bool generateCompositeBounds(const grk_image_comp* srcComp, uint16_t compno,
+								 grkRectU32* destWin, uint32_t* srcLineOffset);
+	bool generateCompositeBounds(uint16_t compno, grkRectU32 src, uint32_t src_stride,
+								 grkRectU32* destWin, uint32_t* srcLineOffset);
 	bool allComponentsSanityCheck(bool equalPrecision);
 	grk_image* createRGB(uint16_t numcmpts, uint32_t w, uint32_t h,	uint8_t prec);
 	void sycc_to_rgb(int32_t offset, int32_t upb, int32_t y, int32_t cb, int32_t cr,
@@ -100,10 +93,8 @@ class GrkImage : public grk_image
 	bool color_sycc_to_rgb(bool oddFirstX, bool oddFirstY);
 	bool color_cmyk_to_rgb(void);
 	bool color_esycc_to_rgb(void);
-
 	void applyICC(void);
 	bool cieLabToRGB(void);
-
 	bool componentsEqual(grk_image_comp* src, grk_image_comp* dest);
 	static void copyComponent(grk_image_comp* src, grk_image_comp* dest);
 	void scaleComponent(grk_image_comp* component, uint8_t precision);

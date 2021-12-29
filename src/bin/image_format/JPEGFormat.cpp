@@ -548,7 +548,7 @@ bool JPEGFormat::encodeRows(uint32_t rows)
 	 * To keep things simple, we pass one scanline per call; you can pass
 	 * more if you wish, though.
 	 */
-	auto iter = InterleaverFactory<int32_t>::makeInterleaver(8);
+	auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(8);
 	if (!iter)
 		return false;
 	while(cinfo.next_scanline < cinfo.image_height)

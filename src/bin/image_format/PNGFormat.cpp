@@ -659,7 +659,7 @@ bool PNGFormat::encodeRows(uint32_t rows)
 	png_bytep row_buf_cpy = row_buf;
 	int32_t adjust = m_image->comps[0].sgnd ? 1 << (prec - 1) : 0;
 	uint32_t max = maxY(rows);
-	auto iter = InterleaverFactory<int32_t>::makeInterleaver(prec == 16 ? 0xFF : prec);
+	auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(prec == 16 ? 0xFF : prec);
 	if (!iter)
 		return false;
 	for(uint32_t y = m_rowCount; y < max; ++y)

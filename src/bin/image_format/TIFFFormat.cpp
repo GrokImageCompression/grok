@@ -44,11 +44,11 @@ TIFFFormat::TIFFFormat(): tif(nullptr),
 							rowsWritten(0),
 							strip(0),
 							rowsPerStrip(0),
-							stride(0),
+							srcBufStride(0),
 							units(0),
 							bytesToWrite(0)
 {
-	for(uint32_t i = 0; i < maxNumComponents; ++i)
+	for(uint32_t i = 0; i < grk::maxNumPackComponents; ++i)
 		planes[i] = nullptr;
 }
 TIFFFormat::~TIFFFormat(){
@@ -68,11 +68,11 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 	uint32_t num_colour_channels = 0;
 	size_t numExtraChannels = 0;
 	planes[0] = m_image->comps[0].data;
-	uint32_t numcomps = m_image->numcomps;
+	uint16_t numcomps = m_image->numcomps;
 	bool sgnd = m_image->comps[0].sgnd;
 	uint32_t width = m_image->comps[0].w;
 	uint32_t height = m_image->comps[0].h;
-	uint32_t bps = m_image->comps[0].prec;
+	uint8_t bps = m_image->comps[0].prec;
 	bool subsampled = isSubsampled(m_image);
 
 	assert(m_image);
@@ -131,10 +131,10 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 				break;
 		}
 	}
-	if(numcomps > maxNumComponents)
+	if(numcomps > grk::maxNumPackComponents)
 	{
 		spdlog::error("TIFFFormat::encodeHeader: number of components {} must be <= {}", numcomps,
-					  maxNumComponents);
+					  grk::maxNumPackComponents);
 		goto cleanup;
 	}
 	if(isSubsampled(m_image))
@@ -184,14 +184,14 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 	if(subsampled)
 	{
 		units = (width + chroma_subsample_x - 1) / chroma_subsample_x;
-		stride = (tmsize_t)(((width * chroma_subsample_y + units * 2U) * bps + 7U) / 8U);
-		rowsPerStrip = (chroma_subsample_y * 8 * 1024 * 1024) / stride;
+		srcBufStride = (tmsize_t)((((uint64_t)width * chroma_subsample_y + units * 2U) * bps + 7U) / 8U);
+		rowsPerStrip = (chroma_subsample_y * 8 * 1024 * 1024) / srcBufStride;
 	}
 	else
 	{
 		units = m_image->comps->w;
-		stride = (width * numcomps * bps + 7U) / 8U;
-		rowsPerStrip = (16 * 1024 * 1024) / stride;
+		srcBufStride =  grk::PtoI<int32_t>::getPackedBytes(numcomps, width, bps);
+		rowsPerStrip = (16 * 1024 * 1024) / srcBufStride;
 	}
 	if(rowsPerStrip & 1)
 		rowsPerStrip++;
@@ -289,7 +289,8 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 		}
 		TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, numExtraChannels, out.get());
 	}
-	buf = new uint8_t[(size_t)TIFFVStripSize(tif, (uint32_t)rowsPerStrip)];
+	if (!m_image->interleavedData)
+		buf = new uint8_t[(size_t)TIFFVStripSize(tif, (uint32_t)rowsPerStrip)];
 	success = true;
 cleanup:
 	return success;
@@ -367,19 +368,23 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 	else
 	{
 		tmsize_t hTarget = rowsWritten + rowsToWrite;
-		auto iter = InterleaverFactory<int32_t>::makeInterleaver(m_image->comps[0].prec);
+		auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(m_image->comps[0].prec);
 		if (!iter)
 			goto cleanup;
+		auto bufPtr = m_image->interleavedData ? m_image->interleavedData : buf;
 		while(h < hTarget)
 		{
 			uint32_t stripRows = (std::min)(rowsPerStrip, height - h);
-			iter->interleave((int32_t**)planes, m_image->numcomps, (uint8_t*)buf, width, m_image->comps[0].stride, stride, stripRows, 0);
-			if(!writeStrip(buf, stride * stripRows)) {
+			if (!m_image->interleavedData)
+				iter->interleave((int32_t**)planes, m_image->numcomps, (uint8_t*)buf, width, m_image->comps[0].stride, srcBufStride, stripRows, 0);
+			if(!writeStrip(bufPtr, srcBufStride * stripRows)) {
 				delete iter;
 				goto cleanup;
 			}
 			rowsWritten += stripRows;
 			h += stripRows;
+			if (m_image->interleavedData)
+				bufPtr += srcBufStride * stripRows;
 		}
 		delete iter;
 	}
@@ -512,7 +517,7 @@ static bool readTiffPixels(TIFF* tif, grk_image_comp* comps, uint32_t numcomps, 
 	bool success = true;
 	cvtTo32 cvtTifTo32s = nullptr;
 	cvtInterleavedToPlanar cvtToPlanar = nullptr;
-	int32_t* planes[maxNumComponents];
+	int32_t* planes[grk::maxNumPackComponents];
 	tsize_t rowStride;
 	bool invert;
 	tdata_t buf = nullptr;
@@ -683,7 +688,7 @@ bool readTiffPixelsSigned(TIFF* tif, grk_image_comp* comps, uint32_t numcomps, u
 
 	bool success = true;
 	cvtInterleavedToPlanar cvtToPlanar = nullptr;
-	int32_t* planes[maxNumComponents];
+	int32_t* planes[grk::maxNumPackComponents];
 	tsize_t rowStride;
 	tdata_t buf = nullptr;
 	tstrip_t strip;
@@ -759,7 +764,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	uint16_t chroma_subsample_x = 1;
 	uint16_t chroma_subsample_y = 1;
 	GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
-	grk_image_cmptparm cmptparm[maxNumComponents];
+	grk_image_cmptparm cmptparm[grk::maxNumPackComponents];
 	grk_image* image = nullptr;
 	uint16_t tiBps = 0, tiPhoto = 0, tiSf = SAMPLEFORMAT_UINT, tiSpp = 0, tiPC = 0;
 	bool hasTiSf = false;
@@ -863,7 +868,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	TIFFGetFieldDefaulted(tif, TIFFTAG_EXTRASAMPLES, &extrasamples, &sampleinfo);
 
 	// 2. initialize image components and signed/unsigned
-	memset(&cmptparm[0], 0, maxNumComponents * sizeof(grk_image_cmptparm));
+	memset(&cmptparm[0], 0, grk::maxNumPackComponents * sizeof(grk_image_cmptparm));
 	if((tiPhoto == PHOTOMETRIC_RGB) && (is_cinema) && (tiBps != 12U))
 	{
 		spdlog::warn("TIFFFormat::decode: Input image bitdepth is {} bits\n"
@@ -975,11 +980,11 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 			goto cleanup;
 		}
 	}
-	if(numcomps > maxNumComponents)
+	if(numcomps > grk::maxNumPackComponents)
 	{
 		spdlog::error("TIFFFormat::decode: number of components "
 					  "{} must be <= %u",
-					  numcomps, maxNumComponents);
+					  numcomps, grk::maxNumPackComponents);
 		goto cleanup;
 	}
 

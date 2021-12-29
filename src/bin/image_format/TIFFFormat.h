@@ -44,11 +44,11 @@ class TIFFFormat : public ImageFormat
 	uint8_t *buf;
 	uint32_t chroma_subsample_x;
 	uint32_t chroma_subsample_y;
-	int32_t const* planes[maxNumComponents];
+	int32_t const* planes[grk::maxNumPackComponents];
 	uint32_t rowsWritten;
 	uint32_t strip;
 	tsize_t rowsPerStrip;
-	tsize_t stride;
+	tsize_t srcBufStride;
 	size_t units;
 	tmsize_t bytesToWrite;
 };

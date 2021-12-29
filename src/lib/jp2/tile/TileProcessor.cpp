@@ -39,9 +39,7 @@ TileProcessor::TileProcessor(CodeStream* codeStream, IBufferedStream* stream, bo
 }
 TileProcessor::~TileProcessor()
 {
-	delete tile;
-	if(m_image)
-		grk_object_unref(&m_image->obj);
+	release();
 }
 IBufferedStream* TileProcessor::getStream(void)
 {
@@ -66,10 +64,12 @@ GrkImage* TileProcessor::getImage(void)
 {
 	return m_image;
 }
-void TileProcessor::deleteImage(void){
+void TileProcessor::release(void){
 	if(m_image)
 		grk_object_unref(&m_image->obj);
 	m_image = nullptr;
+	delete tile;
+	tile = nullptr;
 }
 void TileProcessor::setCorruptPacket(void)
 {

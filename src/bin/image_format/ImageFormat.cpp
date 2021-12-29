@@ -208,7 +208,7 @@ bool ImageFormat::allComponentsSanityCheck(grk_image* image, bool equalPrecision
 		return false;
 	auto comp0 = image->comps;
 
-	if(!comp0->data)
+	if(!image->interleavedData && !comp0->data)
 	{
 		spdlog::error("component 0 : data is null.");
 		return false;
@@ -223,7 +223,7 @@ bool ImageFormat::allComponentsSanityCheck(grk_image* image, bool equalPrecision
 	{
 		auto compi = image->comps + i;
 
-		if(!compi->data)
+		if(!image->interleavedData && !compi->data)
 		{
 			spdlog::error("component {} : data is null.", i);
 			return false;

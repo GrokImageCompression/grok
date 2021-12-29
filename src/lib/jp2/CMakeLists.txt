@@ -84,6 +84,7 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/grk_exceptions.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/testing.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkImage.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkImage_Conversion.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkImage.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkObjectWrapper.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/GrkObjectWrapper.h
