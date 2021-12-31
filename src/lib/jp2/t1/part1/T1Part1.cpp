@@ -156,7 +156,11 @@ namespace t1_part1
 			}
 		}
 
-		return block->tilec->postProcess(t1->getUncompressedData(), block);
+		bool rc =  block->tilec->postProcess(t1->getUncompressedData(), block);
+		cblk->release();
+
+		return rc;
+
 	}
 
 } // namespace t1_part1

@@ -189,8 +189,7 @@ struct DecompressCodeblock : public Codeblock
 	{}
 	virtual ~DecompressCodeblock()
 	{
-		cleanUpSegBuffers();
-		delete[] segs;
+		release();
 	}
 	Segment* getSegment(uint32_t segmentIndex)
 	{
@@ -255,6 +254,12 @@ struct DecompressCodeblock : public Codeblock
 			}
 		}
 		return true;
+	}
+	void release(void) {
+		cleanUpSegBuffers();
+		delete[] segs;
+		segs = nullptr;
+		grkBuffer2d::dealloc();
 	}
 	std::vector<grkBufferU8*> seg_buffers;
 

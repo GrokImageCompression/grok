@@ -38,13 +38,13 @@
 #include <string>
 
 TIFFFormat::TIFFFormat(): tif(nullptr),
-							buf(nullptr),
+							packedBuf(nullptr),
 							chroma_subsample_x(1),
 							chroma_subsample_y(1),
 							rowsWritten(0),
 							strip(0),
 							rowsPerStrip(0),
-							srcBufStride(0),
+							packedBufStride(0),
 							units(0),
 							bytesToWrite(0)
 {
@@ -54,7 +54,7 @@ TIFFFormat::TIFFFormat(): tif(nullptr),
 TIFFFormat::~TIFFFormat(){
 	if(tif)
 		TIFFClose(tif);
-	delete[] buf;
+	delete[] packedBuf;
 }
 bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 							  uint32_t compressionParam)
@@ -184,14 +184,14 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 	if(subsampled)
 	{
 		units = (width + chroma_subsample_x - 1) / chroma_subsample_x;
-		srcBufStride = (tmsize_t)((((uint64_t)width * chroma_subsample_y + units * 2U) * bps + 7U) / 8U);
-		rowsPerStrip = (chroma_subsample_y * 8 * 1024 * 1024) / srcBufStride;
+		packedBufStride = (tmsize_t)((((uint64_t)width * chroma_subsample_y + units * 2U) * bps + 7U) / 8U);
+		rowsPerStrip = (chroma_subsample_y * 8 * 1024 * 1024) / packedBufStride;
 	}
 	else
 	{
 		units = m_image->comps->w;
-		srcBufStride =  grk::PtoI<int32_t>::getPackedBytes(numcomps, width, bps);
-		rowsPerStrip = (16 * 1024 * 1024) / srcBufStride;
+		packedBufStride =  grk::PtoI<int32_t>::getPackedBytes(numcomps, width, bps);
+		rowsPerStrip = (16 * 1024 * 1024) / packedBufStride;
 	}
 	if(rowsPerStrip & 1)
 		rowsPerStrip++;
@@ -290,7 +290,7 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 		TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, numExtraChannels, out.get());
 	}
 	if (!m_image->interleavedData)
-		buf = new uint8_t[(size_t)TIFFVStripSize(tif, (uint32_t)rowsPerStrip)];
+		packedBuf = new uint8_t[(size_t)TIFFVStripSize(tif, (uint32_t)rowsPerStrip)];
 	success = true;
 cleanup:
 	return success;
@@ -316,7 +316,6 @@ bool TIFFFormat::writeStrip(void* buf, tmsize_t toWrite)
 bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 {
 	bool success = false;
-	uint32_t width = m_image->comps[0].w;
 	uint32_t height = m_image->comps[0].h;
 	rowsToWrite = (std::min)(rowsToWrite,height - rowsWritten);
 	if (rowsToWrite == 0)
@@ -324,15 +323,15 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 	tmsize_t h = rowsWritten;
 	if(isSubsampled(m_image))
 	{
-		auto bufptr = (int8_t*)buf;
+		auto bufptr = (int8_t*)packedBuf;
 		for(; h < rowsWritten + rowsToWrite; h += chroma_subsample_y)
 		{
 			uint32_t rowsSoFar = h - rowsWritten;
 			if(rowsSoFar > 0 && (rowsSoFar % rowsPerStrip == 0))
 			{
-				if(!writeStrip(buf, bytesToWrite))
+				if(!writeStrip(packedBuf, bytesToWrite))
 					goto cleanup;
-				bufptr = (int8_t*)buf;
+				bufptr = (int8_t*)packedBuf;
 				bytesToWrite = 0;
 			}
 			size_t xpos = 0;
@@ -343,7 +342,7 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 				{
 					for(size_t sub_x = xpos; sub_x < xpos + chroma_subsample_x; ++sub_x)
 					{
-						bool accept = (h + sub_h) < height && sub_x < width;
+						bool accept = (h + sub_h) < height && sub_x < m_image->comps[0].w;
 						*bufptr++ =
 								accept ? (int8_t)planes[0][sub_x + sub_h * m_image->comps[0].stride] : 0;
 						bytesToWrite++;
@@ -362,7 +361,7 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 		if (h != rowsWritten)
 			rowsWritten += h - chroma_subsample_y - rowsWritten;
 		// cleanup
-		if(bytesToWrite && !writeStrip(buf, bytesToWrite))
+		if(bytesToWrite && !writeStrip(packedBuf, bytesToWrite))
 			goto cleanup;
 	}
 	else
@@ -371,20 +370,20 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 		auto iter = grk::InterleaverFactory<int32_t>::makeInterleaver(m_image->comps[0].prec);
 		if (!iter)
 			goto cleanup;
-		auto bufPtr = m_image->interleavedData ? m_image->interleavedData : buf;
+		auto bufPtr = m_image->interleavedData ? m_image->interleavedData : packedBuf;
 		while(h < hTarget)
 		{
 			uint32_t stripRows = (std::min)(rowsPerStrip, height - h);
 			if (!m_image->interleavedData)
-				iter->interleave((int32_t**)planes, m_image->numcomps, (uint8_t*)buf, width, m_image->comps[0].stride, srcBufStride, stripRows, 0);
-			if(!writeStrip(bufPtr, srcBufStride * stripRows)) {
+				iter->interleave((int32_t**)planes, m_image->numcomps, (uint8_t*)packedBuf, m_image->comps[0].w, m_image->comps[0].stride, packedBufStride, stripRows, 0);
+			if(!writeStrip(bufPtr, packedBufStride * stripRows)) {
 				delete iter;
 				goto cleanup;
 			}
 			rowsWritten += stripRows;
 			h += stripRows;
 			if (m_image->interleavedData)
-				bufPtr += srcBufStride * stripRows;
+				bufPtr += packedBufStride * stripRows;
 		}
 		delete iter;
 	}
@@ -397,8 +396,8 @@ bool TIFFFormat::encodeFinish(void)
 	if(tif)
 		TIFFClose(tif);
 	tif = nullptr;
-	delete[] buf;
-	buf = nullptr;
+	delete[] packedBuf;
+	packedBuf = nullptr;
 
 	return true;
 }

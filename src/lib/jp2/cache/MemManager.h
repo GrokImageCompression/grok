@@ -219,7 +219,7 @@ using grkBufferU8 = grkBuffer<uint8_t, AllocatorVanilla>;
 using grkBufferU8Aligned = grkBuffer<uint8_t, AllocatorAligned>;
 
 template<typename T, template<typename TT> typename A>
-struct grkBuffer2d : private grkBuffer<T, A>, public grkRectU32
+struct grkBuffer2d : protected grkBuffer<T, A>, public grkRectU32
 {
 	grkBuffer2d(T* buffer, bool ownsData, uint32_t w, uint32_t strd, uint32_t h)
 		: grkBuffer<T, A>(buffer, ownsData), grkRectU32(0, 0, w, h), stride(strd)

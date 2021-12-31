@@ -41,14 +41,14 @@ class TIFFFormat : public ImageFormat
   private:
 	bool writeStrip(void* buf, tmsize_t toWrite);
 	TIFF* tif;
-	uint8_t *buf;
+	uint8_t *packedBuf;
 	uint32_t chroma_subsample_x;
 	uint32_t chroma_subsample_y;
 	int32_t const* planes[grk::maxNumPackComponents];
 	uint32_t rowsWritten;
 	uint32_t strip;
 	tsize_t rowsPerStrip;
-	tsize_t srcBufStride;
+	tsize_t packedBufStride;
 	size_t units;
 	tmsize_t bytesToWrite;
 };

@@ -507,54 +507,6 @@ bool CodeStreamDecompress::decompressTiles(void)
 		std::min<uint32_t>((uint32_t)ThreadPool::get()->num_threads(), numTilesToDecompress));
 	bool breakAfterT1 = false;
 	bool canDecompress = true;
-	if(endOfCodeStream())
-	{
-		if(m_tileCache->empty())
-		{
-			GRK_ERROR("No tiles were decompressed.");
-			return false;
-		}
-		for(uint16_t i = 0; i < numTilesToDecompress; ++i)
-		{
-			auto entry = m_tileCache->get(i);
-			if(!entry || !entry->processor)
-				continue;
-			auto processor = entry->processor;
-			auto exec = [this, processor, numTilesToDecompress, &numTilesDecompressed, &success] {
-				if(success)
-				{
-					if(!decompressT2T1(processor))
-					{
-						GRK_ERROR("Failed to decompress tile %u/%u", processor->m_tileIndex,
-								  numTilesToDecompress);
-						success = false;
-					}
-					else
-					{
-						numTilesDecompressed++;
-					}
-				}
-				return 0;
-			};
-			if(pool.num_threads() > 1)
-				results.emplace_back(pool.enqueue(exec));
-			else
-			{
-				exec();
-				if(!success)
-					goto cleanup;
-			}
-		}
-		for(auto& result : results)
-		{
-			result.get();
-		}
-		results.clear();
-		if(!success)
-			return false;
-
-		return true;
-	}
 	while(!endOfCodeStream() && !breakAfterT1)
 	{
 		// 1. read header
@@ -616,7 +568,7 @@ bool CodeStreamDecompress::decompressTiles(void)
 					if(m_multiTile && processor->getImage() && !m_outputImage->composite(processor->getImage()))
 						success = false;
 					//if cache strategy set to none, then delete image
-					if (success && m_tileCache->getStrategy() == GRK_TILE_CACHE_NONE){
+					if (!success || m_tileCache->getStrategy() == GRK_TILE_CACHE_NONE){
 						processor->release();
 					}
 				}

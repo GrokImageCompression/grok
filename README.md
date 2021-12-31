@@ -22,23 +22,27 @@
 
 ### Performance
 
-Below is a benchmark comparing **Kakadu 8.05**, **Grok 9.2** and **OpenJPEG 2.4**
-on the following workflows:
+Below is a benchmark comparing time and memory performance for **Kakadu 8.05**, **Grok 9.6** and **OpenJPEG 2.5** on the following workflows:
 
-1. compress [image](https://github.com/GrokImageCompression/grok-test-data/blob/master/input/nonregression/Bretagne2.ppm) using many small tiles
-1. decompress full [large single-tiled image of Mars](http://hirise-pds.lpl.arizona.edu/PDS/RDR/ESP/ORB_011200_011299/ESP_011277_1825/ESP_011277_1825_RED.JP2)
-1. decompress region {1000,1000,5000,5000} from [large single-tiled image of Mars](http://hirise-pds.lpl.arizona.edu/PDS/RDR/ESP/ORB_011200_011299/ESP_011277_1825/ESP_011277_1825_RED.JP2)
+1. decompress full [large single-tiled image of Mars](http://hirise-pds.lpl.arizona.edu/PDS/RDR/ESP/ORB_011200_011299/ESP_011277_1825/ESP_011277_1825_RED.JP2) to TIF output
+1. decompress region {1000,1000,5000,5000} from [large single-tiled image of Mars](http://hirise-pds.lpl.arizona.edu/PDS/RDR/ESP/ORB_011200_011299/ESP_011277_1825/ESP_011277_1825_RED.JP2) to TIF output
+1. decompress full [large multi-tiled Pleiades image](https://l3harrisgeospatial-webcontent.s3.amazonaws.com/MM_Samples/Pleiades_ORTHO_UTM_BUNDLE.zip) to TIF output.
 
-* test system : 24 core / 48 thread AMD Threadripper
-running Ubuntu 20.04 with 5.8 kernel
+#### Benchmark Details
+
+* test system : 24 core / 48 thread `AMD Threadripper`
+running `Ubuntu 21.04` with `5.11` Linux kernel
 * codecs were configured to use all 48 threads
-* timing measured in seconds
+* file cache was cleared between runs using `$ sudo sysctl vm.drop_caches=3`
+* open source codecs were built in release mode using `GCC 11`
 
-| Test | Kakadu | Grok     | OpenJPEG  |
-| :---- | :----- | :------: | --------: |
-| 1     | 0.17   | 0.34     | 1.64      |
-| 2     | 9.81   | 15.85    | 38.57     |
-| 3     | 0.12   | 0.17     | 0.88      |
+#### Results
+
+| Test  | Kakadu             | Grok                 | OpenJPEG           |
+| :---- | :-----             | :------:             | --------:          |
+| 1     | 9.81 s / 0.05 GB   | 17.03 s / 13.1 GB    | 17.84 s / 13.1 GB  |
+| 2     | 0.12 s             | 0.25 s / 0.4 GB      | 1.44 s / 2 GB      |
+| 3     | 4.99 s / 0.1 GB    | 4.71 s / 2.9 GB      | 10.8 s / 4.3 GB    |
 
 ### Library Details
 
