@@ -73,6 +73,34 @@ const uint32_t maxNumPackComponents = 10;
 	ct++; \
 }
 
+#define NEXT_8 \
+		NEXT_PACK() \
+		uint32_t src0 = next; \
+		NEXT_PACK() \
+		uint32_t src1 = next; \
+		NEXT_PACK() \
+		uint32_t src2 = next; \
+		NEXT_PACK() \
+		uint32_t src3 = next; \
+		NEXT_PACK() \
+		uint32_t src4 = next; \
+		NEXT_PACK() \
+		uint32_t src5 = next; \
+		NEXT_PACK() \
+		uint32_t src6 = next; \
+		NEXT_PACK() \
+		uint32_t src7 = next;
+
+#define NEXT_4 \
+		NEXT_PACK() \
+		uint32_t src0 = next; \
+		NEXT_PACK() \
+		uint32_t src1 = next; \
+		NEXT_PACK() \
+		uint32_t src2 = next; \
+		NEXT_PACK() \
+		uint32_t src3 = next;
+
 template <typename T> class PtoI {
 public:
 	virtual ~PtoI() = default;
@@ -110,23 +138,7 @@ public:
 			size_t k = 0;
 			size_t j = 0;
 			while(ct < lengthTrunc) {
-				NEXT_PACK()
-				uint32_t src0 = next;
-				NEXT_PACK()
-				uint32_t src1 = next;
-				NEXT_PACK()
-				uint32_t src2 = next;
-				NEXT_PACK()
-				uint32_t src3 = next;
-				NEXT_PACK()
-				uint32_t src4 = next;
-				NEXT_PACK()
-				uint32_t src5 = next;
-				NEXT_PACK()
-				uint32_t src6 = next;
-				NEXT_PACK()
-				uint32_t src7 = next;
-
+				NEXT_8
 				*destPtr++ = (uint8_t)((src0 << 7) | (src1 << 6) | (src2 << 5) | (src3 << 4) | (src4 << 3) |
 									(src5 << 2) | (src6 << 1) | src7);
 			}
@@ -201,14 +213,7 @@ public:
 			size_t k = 0;
 			size_t j = 0;
 			while(ct < lengthTrunc) {
-				NEXT_PACK()
-				uint32_t src0 = next;
-				NEXT_PACK()
-				uint32_t src1 = next;
-				NEXT_PACK()
-				uint32_t src2 = next;
-				NEXT_PACK()
-				uint32_t src3 = next;
+				NEXT_4
 
 				*destPtr++ = (uint8_t)((src0 << 6) | (src1 << 4) | (src2 << 2) | src3);
 			}
@@ -257,22 +262,7 @@ public:
 			size_t k = 0;
 			size_t j = 0;
 			while(ct < lengthTrunc) {
-				NEXT_PACK()
-				uint32_t src0 = next;
-				NEXT_PACK()
-				uint32_t src1 = next;
-				NEXT_PACK()
-				uint32_t src2 = next;
-				NEXT_PACK()
-				uint32_t src3 = next;
-				NEXT_PACK()
-				uint32_t src4 = next;
-				NEXT_PACK()
-				uint32_t src5 = next;
-				NEXT_PACK()
-				uint32_t src6 = next;
-				NEXT_PACK()
-				uint32_t src7 = next;
+				NEXT_8
 
 				*destPtr++ = (uint8_t)((src0 << 5) | (src1 << 2) | (src2 >> 1));
 				*destPtr++ = (uint8_t)((src2 << 7) | (src3 << 4) | (src4 << 1) | (src5 >> 2));
@@ -357,22 +347,7 @@ public:
 			size_t k = 0;
 			size_t j = 0;
 			while(ct < lengthTrunc) {
-				NEXT_PACK()
-				uint32_t src0 = next;
-				NEXT_PACK()
-				uint32_t src1 = next;
-				NEXT_PACK()
-				uint32_t src2 = next;
-				NEXT_PACK()
-				uint32_t src3 = next;
-				NEXT_PACK()
-				uint32_t src4 = next;
-				NEXT_PACK()
-				uint32_t src5 = next;
-				NEXT_PACK()
-				uint32_t src6 = next;
-				NEXT_PACK()
-				uint32_t src7 = next;
+				NEXT_8
 
 				*destPtr++ = (uint8_t)((src0 << 3) | (src1 >> 2));
 				*destPtr++ = (uint8_t)((src1 << 6) | (src2 << 1) | (src3 >> 4));
@@ -416,14 +391,7 @@ public:
 			size_t k = 0;
 			size_t j = 0;
 			while(ct < lengthTrunc) {
-				NEXT_PACK()
-				uint32_t src0 = next;
-				NEXT_PACK()
-				uint32_t src1 = next;
-				NEXT_PACK()
-				uint32_t src2 = next;
-				NEXT_PACK()
-				uint32_t src3 = next;
+				NEXT_4
 
 				*destPtr++ = (uint8_t)((src0 << 2) | (src1 >> 4));
 				*destPtr++ = (uint8_t)(((src1 & 0xFU) << 4) | (src2 >> 2));
@@ -481,22 +449,7 @@ public:
 			size_t k = 0;
 			size_t j = 0;
 			while(ct < lengthTrunc) {
-				NEXT_PACK()
-				uint32_t src0 = next;
-				NEXT_PACK()
-				uint32_t src1 = next;
-				NEXT_PACK()
-				uint32_t src2 = next;
-				NEXT_PACK()
-				uint32_t src3 = next;
-				NEXT_PACK()
-				uint32_t src4 = next;
-				NEXT_PACK()
-				uint32_t src5 = next;
-				NEXT_PACK()
-				uint32_t src6 = next;
-				NEXT_PACK()
-				uint32_t src7 = next;
+				NEXT_8
 
 				*destPtr++ = (uint8_t)((src0 << 1) | (src1 >> 6));
 				*destPtr++ = (uint8_t)((src1 << 2) | (src2 >> 5));
@@ -522,6 +475,31 @@ public:
 	}
 };
 
+
+template <typename T> class PlanarToInterleaved8: public PtoI<T>{
+public:
+	void interleave(T **src,
+					const uint32_t numPlanes,
+					uint8_t* dest,
+					const uint32_t srcWidth,
+					const uint32_t srcStride,
+					const uint64_t destStride,
+					const uint32_t h,
+					const int32_t adjust) override
+	{
+		for(size_t i = 0; i < h; i++) {
+			auto destPtr = dest;
+			for(size_t j = 0; j < srcWidth; j++)
+				for(size_t k = 0; k < numPlanes; ++k)
+					*destPtr++ = (uint8_t)(src[k][j] + adjust);
+			dest += destStride;
+			for(size_t k = 0; k < numPlanes; ++k)
+				src[k] += srcStride;
+		}
+	}
+};
+
+
 template <typename T> class PlanarToInterleaved9: public PtoI<T>{
 public:
 	void interleave(T **src,
@@ -542,22 +520,7 @@ public:
 			size_t k = 0;
 			size_t j = 0;
 			while(ct < lengthTrunc) {
-				NEXT_PACK()
-				uint32_t src0 = next;
-				NEXT_PACK()
-				uint32_t src1 = next;
-				NEXT_PACK()
-				uint32_t src2 = next;
-				NEXT_PACK()
-				uint32_t src3 = next;
-				NEXT_PACK()
-				uint32_t src4 = next;
-				NEXT_PACK()
-				uint32_t src5 = next;
-				NEXT_PACK()
-				uint32_t src6 = next;
-				NEXT_PACK()
-				uint32_t src7 = next;
+				NEXT_8
 
 				*destPtr++ = (uint8_t)((src0 >> 1));
 				*destPtr++ = (uint8_t)((src0 << 7) | (src1 >> 2));
@@ -574,7 +537,7 @@ public:
 				int remaining = 8U;
 				while (ct < length) {
 					NEXT_PACK()
-					PUTBITS(next, 9)
+					PUTBITS2(next, 9)
 				}
 				FLUSHBITS()
 			}
@@ -585,210 +548,6 @@ public:
 	}
 };
 
-template <typename T> class PlanarToInterleaved11: public PtoI<T>{
-public:
-	void interleave(T **src,
-					const uint32_t numPlanes,
-					uint8_t* dest,
-					const uint32_t srcWidth,
-					const uint32_t srcStride,
-					const uint64_t destStride,
-					const uint32_t h,
-					const int32_t adjust) override
-	{
-		uint64_t length = (uint64_t)srcWidth * numPlanes;
-		uint64_t lengthTrunc = (uint64_t)(length & (uint64_t)(~7));
-		for(size_t i = 0; i < h; i++) {
-			uint32_t next = 0;
-			auto destPtr = dest;
-			uint64_t ct = 0;
-			size_t k = 0;
-			size_t j = 0;
-			while(ct < lengthTrunc) {
-				NEXT_PACK()
-				uint32_t src0 = next;
-				NEXT_PACK()
-				uint32_t src1 = next;
-				NEXT_PACK()
-				uint32_t src2 = next;
-				NEXT_PACK()
-				uint32_t src3 = next;
-				NEXT_PACK()
-				uint32_t src4 = next;
-				NEXT_PACK()
-				uint32_t src5 = next;
-				NEXT_PACK()
-				uint32_t src6 = next;
-				NEXT_PACK()
-				uint32_t src7 = next;
-
-				*destPtr++ = (uint8_t)((src0 >> 3));
-				*destPtr++ = (uint8_t)((src0 << 5) | (src1 >> 6));
-				*destPtr++ = (uint8_t)((src1 << 2) | (src2 >> 9));
-				*destPtr++ = (uint8_t)((src2 >> 1));
-				*destPtr++ = (uint8_t)((src2 << 7) | (src3 >> 4));
-				*destPtr++ = (uint8_t)((src3 << 4) | (src4 >> 7));
-				*destPtr++ = (uint8_t)((src4 << 1) | (src5 >> 10));
-				*destPtr++ = (uint8_t)((src5 >> 2));
-				*destPtr++ = (uint8_t)((src5 << 6) | (src6 >> 5));
-				*destPtr++ = (uint8_t)((src6 << 3) | (src7 >> 8));
-				*destPtr++ = (uint8_t)(src7);
-			}
-			if (ct < length){
-				uint32_t trailing = 0U;
-				int remaining = 8U;
-				while (ct < length) {
-					NEXT_PACK()
-					PUTBITS(next, 11)
-				}
-				FLUSHBITS()
-			}
-			dest += destStride;
-			for(size_t k = 0; k < numPlanes; ++k)
-				src[k] += srcStride;
-		}
-	}
-};
-
-template <typename T> class PlanarToInterleaved13: public PtoI<T>{
-public:
-	void interleave(T **src,
-					const uint32_t numPlanes,
-					uint8_t* dest,
-					const uint32_t srcWidth,
-					const uint32_t srcStride,
-					const uint64_t destStride,
-					const uint32_t h,
-					const int32_t adjust) override
-	{
-		uint64_t length = (uint64_t)srcWidth * numPlanes;
-		uint64_t lengthTrunc = (uint64_t)(length & (uint64_t)(~7));
-		for(size_t i = 0; i < h; i++) {
-			uint32_t next = 0;
-			auto destPtr = dest;
-			uint64_t ct = 0;
-			size_t k = 0;
-			size_t j = 0;
-			while(ct < lengthTrunc) {
-				NEXT_PACK()
-				uint32_t src0 = next;
-				NEXT_PACK()
-				uint32_t src1 = next;
-				NEXT_PACK()
-				uint32_t src2 = next;
-				NEXT_PACK()
-				uint32_t src3 = next;
-				NEXT_PACK()
-				uint32_t src4 = next;
-				NEXT_PACK()
-				uint32_t src5 = next;
-				NEXT_PACK()
-				uint32_t src6 = next;
-				NEXT_PACK()
-				uint32_t src7 = next;
-
-				*destPtr++ = (uint8_t)((src0 >> 5));
-				*destPtr++ = (uint8_t)((src0 << 3) | (src1 >> 10));
-				*destPtr++ = (uint8_t)((src1 >> 2));
-				*destPtr++ = (uint8_t)((src1 << 6) | (src2 >> 7));
-				*destPtr++ = (uint8_t)((src2 << 1) | (src3 >> 12));
-				*destPtr++ = (uint8_t)((src3 >> 4));
-				*destPtr++ = (uint8_t)((src3 << 4) | (src4 >> 9));
-				*destPtr++ = (uint8_t)((src4 >> 1));
-				*destPtr++ = (uint8_t)((src4 << 7) | (src5 >> 6));
-				*destPtr++ = (uint8_t)((src5 << 2) | (src6 >> 11));
-				*destPtr++ = (uint8_t)((src6 >> 3));
-				*destPtr++ = (uint8_t)((src6 << 5) | (src7 >> 8));
-				*destPtr++ = (uint8_t)(src7);
-			}
-			if (ct < length){
-				uint32_t trailing = 0U;
-				int remaining = 8U;
-				while (ct < length) {
-					NEXT_PACK()
-					PUTBITS(next, 13)
-				}
-				FLUSHBITS()
-			}
-			dest += destStride;
-			for(size_t k = 0; k < numPlanes; ++k)
-				src[k] += srcStride;
-		}
-	}
-};
-
-template <typename T> class PlanarToInterleaved14: public PtoI<T>{
-public:
-	void interleave(T **src,
-					const uint32_t numPlanes,
-					uint8_t* dest,
-					const uint32_t srcWidth,
-					const uint32_t srcStride,
-					const uint64_t destStride,
-					const uint32_t h,
-					const int32_t adjust) override
-	{
-		uint64_t length = (uint64_t)srcWidth * numPlanes;
-		uint64_t lengthTrunc = (uint64_t)(length & (uint64_t)(~3));
-		for(size_t i = 0; i < h; i++) {
-			uint32_t next = 0;
-			auto destPtr = dest;
-			uint64_t ct = 0;
-			size_t k = 0;
-			size_t j = 0;
-			while(ct < lengthTrunc) {
-				NEXT_PACK()
-				uint32_t src0 = next;
-				NEXT_PACK()
-				uint32_t src1 = next;
-				NEXT_PACK()
-				uint32_t src2 = next;
-				NEXT_PACK()
-				uint32_t src3 = next;
-
-				*destPtr++ = (uint8_t)(src0 >> 6);
-				*destPtr++ = (uint8_t)(((src0 & 0x3FU) << 2) | (src1 >> 12));
-				*destPtr++ = (uint8_t)(src1 >> 4);
-				*destPtr++ = (uint8_t)(((src1 & 0xFU) << 4) | (src2 >> 10));
-				*destPtr++ = (uint8_t)(src2 >> 2);
-				*destPtr++ = (uint8_t)(((src2 & 0x3U) << 6) | (src3 >> 8));
-				*destPtr++ = (uint8_t)(src3);
-			}
-			if (ct < length){
-				NEXT_PACK()
-				uint32_t src0 = next;
-				uint32_t src1 = 0U;
-				uint32_t src2 = 0U;
-
-				ct = length & 3;
-				if(ct > 1U)
-				{
-					NEXT_PACK()
-					src1 = next;
-					if(ct > 2U) {
-						NEXT_PACK()
-						src2 = next;
-					}
-				}
-				*destPtr++ = (uint8_t)(src0 >> 6);
-				*destPtr++ = (uint8_t)(((src0 & 0x3FU) << 2) | (src1 >> 12));
-				if(ct > 1U)
-				{
-					*destPtr++ = (uint8_t)(src1 >> 4);
-					*destPtr++ = (uint8_t)(((src1 & 0xFU) << 4) | (src2 >> 10));
-					if(ct > 2U)
-					{
-						*destPtr++ = (uint8_t)(src2 >> 2);
-						*destPtr++ = (uint8_t)(((src2 & 0x3U) << 6));
-					}
-				}
-			}
-			dest += destStride;
-			for(size_t k = 0; k < numPlanes; ++k)
-				src[k] += srcStride;
-		}
-	}
-};
 
 template <typename T> class PlanarToInterleaved10: public PtoI<T>{
 public:
@@ -810,14 +569,7 @@ public:
 			size_t k = 0;
 			size_t j = 0;
 			while(ct < lengthTrunc) {
-				NEXT_PACK()
-				uint32_t src0 = next;
-				NEXT_PACK()
-				uint32_t src1 = next;
-				NEXT_PACK()
-				uint32_t src2 = next;
-				NEXT_PACK()
-				uint32_t src3 = next;
+				NEXT_4
 
 				*destPtr++ = (uint8_t)(src0 >> 2);
 				*destPtr++ = (uint8_t)(((src0 & 0x3U) << 6) | (src1 >> 4));
@@ -849,6 +601,57 @@ public:
 					if(ct > 2U)
 						*destPtr++ = (uint8_t)(((src2 & 0x3FU) << 2));
 				}
+			}
+			dest += destStride;
+			for(size_t k = 0; k < numPlanes; ++k)
+				src[k] += srcStride;
+		}
+	}
+};
+
+
+template <typename T> class PlanarToInterleaved11: public PtoI<T>{
+public:
+	void interleave(T **src,
+					const uint32_t numPlanes,
+					uint8_t* dest,
+					const uint32_t srcWidth,
+					const uint32_t srcStride,
+					const uint64_t destStride,
+					const uint32_t h,
+					const int32_t adjust) override
+	{
+		uint64_t length = (uint64_t)srcWidth * numPlanes;
+		uint64_t lengthTrunc = (uint64_t)(length & (uint64_t)(~7));
+		for(size_t i = 0; i < h; i++) {
+			uint32_t next = 0;
+			auto destPtr = dest;
+			uint64_t ct = 0;
+			size_t k = 0;
+			size_t j = 0;
+			while(ct < lengthTrunc) {
+				NEXT_8
+
+				*destPtr++ = (uint8_t)((src0 >> 3));
+				*destPtr++ = (uint8_t)((src0 << 5) | (src1 >> 6));
+				*destPtr++ = (uint8_t)((src1 << 2) | (src2 >> 9));
+				*destPtr++ = (uint8_t)((src2 >> 1));
+				*destPtr++ = (uint8_t)((src2 << 7) | (src3 >> 4));
+				*destPtr++ = (uint8_t)((src3 << 4) | (src4 >> 7));
+				*destPtr++ = (uint8_t)((src4 << 1) | (src5 >> 10));
+				*destPtr++ = (uint8_t)((src5 >> 2));
+				*destPtr++ = (uint8_t)((src5 << 6) | (src6 >> 5));
+				*destPtr++ = (uint8_t)((src6 << 3) | (src7 >> 8));
+				*destPtr++ = (uint8_t)(src7);
+			}
+			if (ct < length){
+				uint32_t trailing = 0U;
+				int remaining = 8U;
+				while (ct < length) {
+					NEXT_PACK()
+					PUTBITS2(next, 11)
+				}
+				FLUSHBITS()
 			}
 			dest += destStride;
 			for(size_t k = 0; k < numPlanes; ++k)
@@ -899,7 +702,7 @@ public:
 	}
 };
 
-template <typename T> class PlanarToInterleaved8: public PtoI<T>{
+template <typename T> class PlanarToInterleaved13: public PtoI<T>{
 public:
 	void interleave(T **src,
 					const uint32_t numPlanes,
@@ -910,11 +713,106 @@ public:
 					const uint32_t h,
 					const int32_t adjust) override
 	{
+		uint64_t length = (uint64_t)srcWidth * numPlanes;
+		uint64_t lengthTrunc = (uint64_t)(length & (uint64_t)(~7));
 		for(size_t i = 0; i < h; i++) {
+			uint32_t next = 0;
 			auto destPtr = dest;
-			for(size_t j = 0; j < srcWidth; j++)
-				for(size_t k = 0; k < numPlanes; ++k)
-					*destPtr++ = (uint8_t)(src[k][j] + adjust);
+			uint64_t ct = 0;
+			size_t k = 0;
+			size_t j = 0;
+			while(ct < lengthTrunc) {
+				NEXT_8
+
+				*destPtr++ = (uint8_t)((src0 >> 5));
+				*destPtr++ = (uint8_t)((src0 << 3) | (src1 >> 10));
+				*destPtr++ = (uint8_t)((src1 >> 2));
+				*destPtr++ = (uint8_t)((src1 << 6) | (src2 >> 7));
+				*destPtr++ = (uint8_t)((src2 << 1) | (src3 >> 12));
+				*destPtr++ = (uint8_t)((src3 >> 4));
+				*destPtr++ = (uint8_t)((src3 << 4) | (src4 >> 9));
+				*destPtr++ = (uint8_t)((src4 >> 1));
+				*destPtr++ = (uint8_t)((src4 << 7) | (src5 >> 6));
+				*destPtr++ = (uint8_t)((src5 << 2) | (src6 >> 11));
+				*destPtr++ = (uint8_t)((src6 >> 3));
+				*destPtr++ = (uint8_t)((src6 << 5) | (src7 >> 8));
+				*destPtr++ = (uint8_t)(src7);
+			}
+			if (ct < length){
+				uint32_t trailing = 0U;
+				int remaining = 8U;
+				while (ct < length) {
+					NEXT_PACK()
+					PUTBITS2(next, 13)
+				}
+				FLUSHBITS()
+			}
+			dest += destStride;
+			for(size_t k = 0; k < numPlanes; ++k)
+				src[k] += srcStride;
+		}
+	}
+};
+
+template <typename T> class PlanarToInterleaved14: public PtoI<T>{
+public:
+	void interleave(T **src,
+					const uint32_t numPlanes,
+					uint8_t* dest,
+					const uint32_t srcWidth,
+					const uint32_t srcStride,
+					const uint64_t destStride,
+					const uint32_t h,
+					const int32_t adjust) override
+	{
+		uint64_t length = (uint64_t)srcWidth * numPlanes;
+		uint64_t lengthTrunc = (uint64_t)(length & (uint64_t)(~3));
+		for(size_t i = 0; i < h; i++) {
+			uint32_t next = 0;
+			auto destPtr = dest;
+			uint64_t ct = 0;
+			size_t k = 0;
+			size_t j = 0;
+			while(ct < lengthTrunc) {
+				NEXT_4
+
+				*destPtr++ = (uint8_t)(src0 >> 6);
+				*destPtr++ = (uint8_t)(((src0 & 0x3FU) << 2) | (src1 >> 12));
+				*destPtr++ = (uint8_t)(src1 >> 4);
+				*destPtr++ = (uint8_t)(((src1 & 0xFU) << 4) | (src2 >> 10));
+				*destPtr++ = (uint8_t)(src2 >> 2);
+				*destPtr++ = (uint8_t)(((src2 & 0x3U) << 6) | (src3 >> 8));
+				*destPtr++ = (uint8_t)(src3);
+			}
+			if (ct < length){
+				NEXT_PACK()
+				uint32_t src0 = next;
+				uint32_t src1 = 0U;
+				uint32_t src2 = 0U;
+
+				ct = length & 3;
+				if(ct > 1U)
+				{
+					NEXT_PACK()
+					src1 = next;
+					if(ct > 2U) {
+						NEXT_PACK()
+						src2 = next;
+					}
+				}
+				*destPtr++ = (uint8_t)(src0 >> 6);
+				*destPtr++ = (uint8_t)(((src0 & 0x3FU) << 2) | (src1 >> 12));
+				if(ct > 1U)
+				{
+					*destPtr++ = (uint8_t)(src1 >> 4);
+					*destPtr++ = (uint8_t)(((src1 & 0xFU) << 4) | (src2 >> 10));
+					if(ct > 2U)
+					{
+						*destPtr++ = (uint8_t)(src2 >> 2);
+						*destPtr++ = (uint8_t)(((src2 & 0x3U) << 6));
+					}
+				}
+			}
 			dest += destStride;
 			for(size_t k = 0; k < numPlanes; ++k)
 				src[k] += srcStride;
@@ -942,22 +840,7 @@ public:
 			size_t k = 0;
 			size_t j = 0;
 			while(ct < lengthTrunc) {
-				NEXT_PACK()
-				uint32_t src0 = next;
-				NEXT_PACK()
-				uint32_t src1 = next;
-				NEXT_PACK()
-				uint32_t src2 = next;
-				NEXT_PACK()
-				uint32_t src3 = next;
-				NEXT_PACK()
-				uint32_t src4 = next;
-				NEXT_PACK()
-				uint32_t src5 = next;
-				NEXT_PACK()
-				uint32_t src6 = next;
-				NEXT_PACK()
-				uint32_t src7 = next;
+				NEXT_8
 
 				*destPtr++ = (uint8_t)((src0 >> 7));
 				*destPtr++ = (uint8_t)((src0 << 1) | (src1 >> 14));
@@ -980,7 +863,7 @@ public:
 				int remaining = 8U;
 				while (ct < length) {
 					NEXT_PACK()
-					PUTBITS(next, 15)
+					PUTBITS2(next, 15)
 				}
 				FLUSHBITS()
 			}
