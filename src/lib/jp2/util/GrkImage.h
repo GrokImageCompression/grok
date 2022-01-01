@@ -71,7 +71,7 @@ public:
 	bool composite(const GrkImage* srcImg);
 	void createMeta();
 	bool greyToRGB(void);
-	bool convertToRGB(void);
+	bool convertToRGB(bool wholeTileDecompress);
 	void applyColourManagement(void);
 	void convertPrecision(void);
 	bool execUpsample(void);

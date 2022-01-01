@@ -361,9 +361,13 @@ bool GrkImage::greyToRGB(void){
 	return true;
 }
 
-bool GrkImage::convertToRGB(void){
+bool GrkImage::convertToRGB(bool wholeTileDecompress){
 	bool oddFirstX = x0 & 1;
 	bool oddFirstY = y0 & 1;
+	if (!wholeTileDecompress){
+		oddFirstX = false;
+		oddFirstY = false;
+	}
 	bool convert = (decompressFormat != GRK_UNK_FMT && decompressFormat != GRK_TIF_FMT) || forceRGB;
 	if(color_space == GRK_CLRSPC_UNKNOWN &&
 	   numcomps == 3 &&
