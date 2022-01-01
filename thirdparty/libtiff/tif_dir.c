@@ -1041,11 +1041,15 @@ _TIFFVGetField(TIFF* tif, uint32_t tag, va_list ap)
 		case TIFFTAG_TILEOFFSETS:
 			_TIFFFillStriles( tif );
 			*va_arg(ap, const uint64_t**) = td->td_stripoffset_p;
+			if( td->td_stripoffset_p == NULL )
+				ret_val = 0;
 			break;
 		case TIFFTAG_STRIPBYTECOUNTS:
 		case TIFFTAG_TILEBYTECOUNTS:
 			_TIFFFillStriles( tif );
 			*va_arg(ap, const uint64_t**) = td->td_stripbytecount_p;
+			if( td->td_stripbytecount_p == NULL )
+				ret_val = 0;
 			break;
 		case TIFFTAG_MATTEING:
 			*va_arg(ap, uint16_t*) =
@@ -1819,6 +1823,7 @@ TIFFUnlinkDirectory(TIFF* tif, uint16_t dirn)
 	TIFFDefaultDirectory(tif);
 	tif->tif_diroff = 0;			/* force link on next write */
 	tif->tif_nextdiroff = 0;		/* next write must be at end */
+	tif->tif_lastdiroff = 0;		/* will be updated on next link */
 	tif->tif_curoff = 0;
 	tif->tif_row = (uint32_t) -1;
 	tif->tif_curstrip = (uint32_t) -1;

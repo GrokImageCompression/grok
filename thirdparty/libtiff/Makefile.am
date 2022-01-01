@@ -147,4 +147,10 @@ mkg3states_LDADD = $(LIBPORT)
 faxtable: mkg3states
 	(rm -f tif_fax3sm.c && ./mkg3states -b -c const tif_fax3sm.c)
 
-AM_CPPFLAGS = -I$(top_srcdir)/libtiff -I$(top_srcdir)/port
+if STATIC_LERC
+extra_CPPFLAGS = -DLERC_STATIC
+else
+extra_CPPFLAGS =
+endif
+
+AM_CPPFLAGS = -I$(top_srcdir)/libtiff -I$(top_srcdir)/port $(extra_CPPFLAGS)
