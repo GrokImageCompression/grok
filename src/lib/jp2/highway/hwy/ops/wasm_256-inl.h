@@ -247,7 +247,12 @@ HWY_API Vec128<float, N> operator-(const Vec128<float, N> a,
   return Vec128<float, N>{wasm_f32x4_sub(a.raw, b.raw)};
 }
 
-// ------------------------------ Saturating addition
+// ------------------------------ SumsOf8
+HWY_API Vec256<uint64_t> SumsOf8(const Vec256<uint8_t> v) {
+  HWY_ABORT("not implemented");
+}
+
+// ------------------------------ SaturatedAdd
 
 // Returns a + b clamped to the destination range.
 
@@ -275,7 +280,7 @@ HWY_API Vec128<int16_t, N> SaturatedAdd(const Vec128<int16_t, N> a,
   return Vec128<int16_t, N>{wasm_i16x8_add_sat(a.raw, b.raw)};
 }
 
-// ------------------------------ Saturating subtraction
+// ------------------------------ SaturatedSub
 
 // Returns a - b clamped to the destination range.
 
@@ -1140,6 +1145,12 @@ HWY_API Vec256<T> IfThenZeroElse(Mask256<T> mask, Vec256<T> no) {
   return AndNot(VecFromMask(Full256<T>(), mask), no);
 }
 
+template <typename T>
+    HWY_API Vec256 <
+    T IfNegativeThenElse(Vec256<T> v, Vec256<T> yes, Vec256<T> no) {
+  HWY_ASSERT(0);
+}
+
 template <typename T, HWY_IF_FLOAT(T)>
 HWY_API Vec256<T> ZeroIfNegative(Vec256<T> v) {
   const Full256<T> d;
@@ -1988,6 +1999,27 @@ HWY_API Vec256<T> Reverse(Full256<T> d, const Vec256<T> v) {
   return BitCast(d, RotateRight<16>(Reverse(du32, BitCast(du32, v))));
 }
 
+// ------------------------------ Reverse2
+
+template <typename T>
+HWY_API Vec256<T> Reverse2(Full256<T> d, const Vec256<T> v) {
+  HWY_ASSERT(0);
+}
+
+// ------------------------------ Reverse4
+
+template <typename T>
+HWY_API Vec256<T> Reverse4(Full256<T> d, const Vec256<T> v) {
+  HWY_ASSERT(0);
+}
+
+// ------------------------------ Reverse8
+
+template <typename T>
+HWY_API Vec256<T> Reverse8(Full256<T> d, const Vec256<T> v) {
+  HWY_ASSERT(0);
+}
+
 // ------------------------------ InterleaveLower
 
 template <size_t N>
@@ -2256,6 +2288,18 @@ HWY_API Vec128<T, 2> ConcatEven(Simd<T, 2> /* tag */, Vec128<T, 2> hi,
 template <typename T, HWY_IF_LANE_SIZE(T, 8)>
 HWY_API Vec128<T> ConcatEven(Full256<T> /* tag */, Vec128<T> hi, Vec128<T> lo) {
   return InterleaveLower(Full256<T>(), lo, hi);
+}
+
+// ------------------------------ DupEven
+template <typename T>
+HWY_API Vec256<T> DupEven(Vec256<T> v) {
+  HWY_ASSERT(0);
+}
+
+// ------------------------------ DupOdd
+template <typename T>
+HWY_API Vec256<T> DupOdd(Vec256<T> v) {
+  HWY_ASSERT(0);
 }
 
 // ------------------------------ OddEven

@@ -219,6 +219,13 @@ wishes to run on all targets until that is resolved can use functions such as
 *   <code>V **SignBit**(D, T)</code>: returns N-lane vector with all lanes set
     to a value whose representation has only the most-significant bit set.
 
+### Printing
+
+*   <code>V **Print**(D, const char* caption, V [, size_t lane][, size_t
+    max_lanes])</code>: prints `caption` followed by up to `max_lanes`
+    comma-separated lanes from the vector argument, starting at index `lane`.
+    Defined in test_util-inl.h.
+
 ### Arithmetic
 
 *   <code>V **operator+**(V a, V b)</code>: returns `a[i] + b[i]` (mod 2^bits).
@@ -233,6 +240,10 @@ wishes to run on all targets until that is resolved can use functions such as
 
 *   `V`: `f32` \
     <code>V **AbsDiff**(V a, V b)</code>: returns `|a[i] - b[i]|` in each lane.
+
+*   `V`: `u8` \
+    <code>VU64 **SumsOf8**(V v)</code> returns the sums of 8 consecutive u8
+    lanes, zero-extending each sum into a u64 lane. This is slower on RVV/WASM.
 
 *   `V`: `{u,i}{8,16}` \
     <code>V **SaturatedAdd**(V a, V b)</code> returns `a[i] + b[i]` saturated to
@@ -441,11 +452,17 @@ Special functions for signed types:
 *   `V`: `i32/64` \
     <code>V **BroadcastSignBit**(V a)</code> returns `a[i] < 0 ? -1 : 0`.
 
-*   <code>V **ZeroIfNegative**(V v)</code>: returns `v[i] < 0 ? 0 : v[i]`.
+*   `V`: `{f}` \
+    <code>V **ZeroIfNegative**(V v)</code>: returns `v[i] < 0 ? 0 : v[i]`.
+
+*   `V`: `{i,f}` \
+    <code>V **IfNegativeThenElse**(V v, V yes, V no)</code>: returns `v[i] < 0 ?
+    yes[i] : no[i]`. This may be more efficient than `IfThenElse(Lt..)`.
 
 ### Masks
 
-Let `M` denote a mask capable of storing true/false for each lane.
+Let `M` denote a mask capable of storing a logical true/false for each lane (the
+encoding depends on the platform).
 
 #### Creation
 
@@ -457,7 +474,8 @@ Let `M` denote a mask capable of storing true/false for each lane.
     `IfThenElse(FirstN(d, N), what_to_store, prev)`.
 
 *   <code>M **MaskFromVec**(V v)</code>: returns false in lane `i` if `v[i] ==
-    0`, or true if `v[i]` has all bits set.
+    0`, or true if `v[i]` has all bits set. The result is
+    *implementation-defined* if `v[i]` is neither zero nor all bits set.
 
 *   <code>M **LoadMaskBits**(D, const uint8_t* p)</code>: returns a mask
     indicating whether the i-th bit in the array is set. Loads bytes and bits in
@@ -495,6 +513,9 @@ Let `M` denote a mask capable of storing true/false for each lane.
 
 #### Ternary operator
 
+For `IfThen*`, masks must adhere to the invariant established by `MaskFromVec`:
+false is zero, true has all bits set:
+
 *   <code>V **IfThenElse**(M mask, V yes, V no)</code>: returns `mask[i] ?
     yes[i] : no[i]`.
 
@@ -505,44 +526,45 @@ Let `M` denote a mask capable of storing true/false for each lane.
     no[i]`.
 
 *   <code>V **IfVecThenElse**(V mask, V yes, V no)</code>: equivalent to and
-    possibly faster than `IfVecThenElse(MaskFromVec(mask), yes, no)`.
+    possibly faster than `IfVecThenElse(MaskFromVec(mask), yes, no)`. The result
+    is *implementation-defined* if `mask[i]` is neither zero nor all bits set.
 
 #### Logical
 
 *   <code>M **Not**(M m)</code>: returns mask of elements indicating whether the
-    input mask element was not set.
+    input mask element was false.
 
 *   <code>M **And**(M a, M b)</code>: returns mask of elements indicating
-    whether both input mask elements were set.
+    whether both input mask elements were true.
 
 *   <code>M **AndNot**(M not_a, M b)</code>: returns mask of elements indicating
-    whether not_a is not set and b is set.
+    whether not_a is false and b is true.
 
 *   <code>M **Or**(M a, M b)</code>: returns mask of elements indicating whether
-    either input mask element was set.
+    either input mask element was true.
 
 *   <code>M **Xor**(M a, M b)</code>: returns mask of elements indicating
-    whether exactly one input mask element was set.
+    whether exactly one input mask element was true.
 
 #### Compress
 
 *   `V`: `{u,i,f}{16,32,64}` \
     <code>V **Compress**(V v, M m)</code>: returns `r` such that `r[n]` is
     `v[i]`, with `i` the n-th lane index (starting from 0) where `m[i]` is true.
-    Compacts lanes whose mask is set into the lower lanes; upper lanes are
+    Compacts lanes whose mask is true into the lower lanes; upper lanes are
     implementation-defined. Slow with 16-bit lanes. Use this form when the input
     is already a mask, e.g. returned by a comparison.
 
 *   `V`: `{u,i,f}{16,32,64}` \
     <code>size_t **CompressStore**(V v, M m, D d, T* p)</code>: writes lanes
-    whose mask `m` is set into `p`, starting from lane 0. Returns `CountTrue(d,
+    whose mask `m` is true into `p`, starting from lane 0. Returns `CountTrue(d,
     m)`, the number of valid lanes. May be implemented as `Compress` followed by
     `StoreU`; lanes after the valid ones may still be overwritten! Slower for
     16-bit lanes.
 
 *   `V`: `{u,i,f}{16,32,64}` \
     <code>size_t **CompressBlendedStore**(V v, M m, D d, T* p)</code>: writes
-    only lanes whose mask `m` is set into `p`, starting from lane 0. Returns
+    only lanes whose mask `m` is true into `p`, starting from lane 0. Returns
     `CountTrue(d, m)`, the number of lanes written. Does not modify subsequent
     lanes, but there is no guarantee of atomicity because this may be
     implemented as `Compress, LoadU, IfThenElse(FirstN), StoreU`.
@@ -890,15 +912,7 @@ their operands into independently processed 128-bit *blocks*.
 #### Shuffle
 
 *   `V`: `{u,i,f}{32}` \
-    <code>V **Shuffle2301**(V)</code>: returns *blocks* with 32-bit halves
-    swapped inside 64-bit halves.
-
-*   `V`: `{u,i,f}{32}` \
     <code>V **Shuffle1032**(V)</code>: returns *blocks* with 64-bit halves
-    swapped.
-
-*   `V`: `{u,i,f}{64}` \
-    <code>V **Shuffle01**(V)</code>: returns *blocks* with 64-bit halves
     swapped.
 
 *   `V`: `{u,i,f}{32}` \
@@ -909,6 +923,17 @@ their operands into independently processed 128-bit *blocks*.
     <code>V **Shuffle2103**(V)</code>: returns *blocks* rotated left (toward the
     upper end) by 32 bits.
 
+The following are equivalent to `Reverse2` or `Reverse4`, which should be used
+instead because they are more general:
+
+*   `V`: `{u,i,f}{32}` \
+    <code>V **Shuffle2301**(V)</code>: returns *blocks* with 32-bit halves
+    swapped inside 64-bit halves.
+
+*   `V`: `{u,i,f}{64}` \
+    <code>V **Shuffle01**(V)</code>: returns *blocks* with 64-bit halves
+    swapped.
+
 *   `V`: `{u,i,f}{32}` \
     <code>V **Shuffle0123**(V)</code>: returns *blocks* with lanes in reverse
     order.
@@ -917,6 +942,16 @@ their operands into independently processed 128-bit *blocks*.
 
 *   <code>T **GetLane**(V)</code>: returns lane 0 within `V`. This is useful for
     extracting `SumOfLanes` results.
+
+*   `V`: `{u,i,f}{32,64}` \
+    <code>V **DupEven**(V v)</code>: returns `r`, the result of copying even
+    lanes to the next higher-indexed lane. For each even lane index `i`,
+    `r[i] == v[i]` and `r[i + 1] == v[i]`.
+
+*   `V`: `{u,i,f}{32,64}` \
+    <code>V **DupOdd**(V v)</code>: returns `r`, the result of copying odd lanes
+    to the previous lower-indexed lane. For each odd lane index `i`, `r[i] ==
+    v[i]` and `r[i - 1] == v[i]`.
 
 *   <code>V **OddEven**(V a, V b)</code>: returns a vector whose odd lanes are
     taken from `a` and the even lanes from `b`.
@@ -957,6 +992,20 @@ their operands into independently processed 128-bit *blocks*.
     <code>V **Reverse**(D, V a)</code> returns a vector with lanes in reversed
     order (`out[i] == a[Lanes(D()) - 1 - i]`).
 
+The following `ReverseN` must not be called if `Lanes(D()) > N`:
+
+*   `V`: `{u,i,f}{16,32,64}` \
+    <code>V **Reverse2**(D, V a)</code> returns a vector with each group of 2
+    contiguous lanes in reversed order (`out[i] == a[i ^ 1]`).
+
+*   `V`: `{u,i,f}{16,32,64}` \
+    <code>V **Reverse4**(D, V a)</code> returns a vector with each group of 4
+    contiguous lanes in reversed order (`out[i] == a[i ^ 3]`).
+
+*   `V`: `{u,i,f}{16,32,64}` \
+    <code>V **Reverse8**(D, V a)</code> returns a vector with each group of 8
+    contiguous lanes in reversed order (`out[i] == a[i ^ 7]`).
+
 ### Reductions
 
 **Note**: these 'reduce' all lanes to a single result (e.g. sum), which is
@@ -984,6 +1033,12 @@ than normal SIMD operations and are typically used outside critical loops.
     encrytion: `MixColumns(SubBytes(ShiftRows(state))) ^ round_key`. This
     matches x86 AES-NI. The latency is independent of the input values. Only
     available if `HWY_TARGET != HWY_SCALAR`.
+
+*   `V`: `u8` \
+    <code>V **AESLastRound**(V state, V round_key)</code>: the last round of AES
+    encrytion: `SubBytes(ShiftRows(state)) ^ round_key`. This matches x86
+    AES-NI. The latency is independent of the input values. Only available if
+    `HWY_TARGET != HWY_SCALAR`.
 
 *   `V`: `u64` \
     <code>V **CLMulLower**(V a, V b)</code>: carryless multiplication of the

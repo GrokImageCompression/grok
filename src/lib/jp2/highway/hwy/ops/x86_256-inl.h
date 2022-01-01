@@ -817,6 +817,7 @@ HWY_API Vec256<T> IfThenZeroElse(Mask256<T> mask, Vec256<T> no) {
 template <typename T, HWY_IF_FLOAT(T)>
 HWY_API Vec256<T> ZeroIfNegative(Vec256<T> v) {
   const auto zero = Zero(Full256<T>());
+  // AVX2 IfThenElse only looks at the MSB for 32/64-bit lanes
   return IfThenElse(MaskFromVec(v), zero, v);
 }
 
@@ -1427,7 +1428,12 @@ HWY_API Vec256<double> operator-(const Vec256<double> a,
   return Vec256<double>{_mm256_sub_pd(a.raw, b.raw)};
 }
 
-// ------------------------------ Saturating addition
+// ------------------------------ SumsOf8
+HWY_API Vec256<uint64_t> SumsOf8(const Vec256<uint8_t> v) {
+  return Vec256<uint64_t>{_mm256_sad_epu8(v.raw, _mm256_setzero_si256())};
+}
+
+// ------------------------------ SaturatedAdd
 
 // Returns a + b clamped to the destination range.
 
@@ -1451,7 +1457,7 @@ HWY_API Vec256<int16_t> SaturatedAdd(const Vec256<int16_t> a,
   return Vec256<int16_t>{_mm256_adds_epi16(a.raw, b.raw)};
 }
 
-// ------------------------------ Saturating subtraction
+// ------------------------------ SaturatedSub
 
 // Returns a - b clamped to the destination range.
 
@@ -1715,6 +1721,35 @@ HWY_API Vec256<int64_t> Abs(const Vec256<int64_t> v) {
   const auto zero = Zero(Full256<int64_t>());
   return IfThenElse(MaskFromVec(BroadcastSignBit(v)), zero - v, v);
 #endif
+}
+
+// ------------------------------ IfNegativeThenElse (BroadcastSignBit)
+HWY_API Vec256<int8_t> IfNegativeThenElse(Vec256<int8_t> v, Vec256<int8_t> yes,
+                                          Vec256<int8_t> no) {
+  // int8: AVX2 IfThenElse only looks at the MSB.
+  return IfThenElse(MaskFromVec(v), yes, no);
+}
+
+template <typename T, HWY_IF_LANE_SIZE(T, 2)>
+HWY_API Vec256<T> IfNegativeThenElse(Vec256<T> v, Vec256<T> yes, Vec256<T> no) {
+  static_assert(IsSigned<T>(), "Only works for signed/float");
+  const Full256<T> d;
+  const RebindToSigned<decltype(d)> di;
+
+  // 16-bit: no native blendv, so copy sign to lower byte's MSB.
+  v = BitCast(d, BroadcastSignBit(BitCast(di, v)));
+  return IfThenElse(MaskFromVec(v), yes, no);
+}
+
+template <typename T, HWY_IF_NOT_LANE_SIZE(T, 2)>
+HWY_API Vec256<T> IfNegativeThenElse(Vec256<T> v, Vec256<T> yes, Vec256<T> no) {
+  static_assert(IsSigned<T>(), "Only works for signed/float");
+  const Full256<T> d;
+  const RebindToFloat<decltype(d)> df;
+
+  // 32/64-bit: use float IfThenElse, which only looks at the MSB.
+  const MFromD<decltype(df)> msb = MaskFromVec(BitCast(df, v));
+  return BitCast(d, IfThenElse(msb, BitCast(df, yes), BitCast(df, no)));
 }
 
 // ------------------------------ ShiftLeftSame
@@ -2765,6 +2800,81 @@ HWY_API Vec256<T> Reverse(Full256<T> d, const Vec256<T> v) {
 #endif
 }
 
+// ------------------------------ Reverse2
+
+template <typename T, HWY_IF_LANE_SIZE(T, 2)>
+HWY_API Vec256<T> Reverse2(Full256<T> d, const Vec256<T> v) {
+  const Full256<uint32_t> du32;
+  return BitCast(d, RotateRight<16>(BitCast(du32, v)));
+}
+
+template <typename T, HWY_IF_LANE_SIZE(T, 4)>
+HWY_API Vec256<T> Reverse2(Full256<T> /* tag */, const Vec256<T> v) {
+  return Shuffle2301(v);
+}
+
+template <typename T, HWY_IF_LANE_SIZE(T, 8)>
+HWY_API Vec256<T> Reverse2(Full256<T> /* tag */, const Vec256<T> v) {
+  return Shuffle01(v);
+}
+
+// ------------------------------ Reverse4
+
+template <typename T, HWY_IF_LANE_SIZE(T, 2)>
+HWY_API Vec256<T> Reverse4(Full256<T> d, const Vec256<T> v) {
+#if HWY_TARGET <= HWY_AVX3
+  const RebindToSigned<decltype(d)> di;
+  alignas(32) constexpr int16_t kReverse4[16] = {3,  2,  1, 0, 7,  6,  5,  4,
+                                                 11, 10, 9, 8, 15, 14, 13, 12};
+  const Vec256<int16_t> idx = Load(di, kReverse4);
+  return BitCast(d, Vec256<int16_t>{
+                        _mm256_permutexvar_epi16(idx.raw, BitCast(di, v).raw)});
+#else
+  const RepartitionToWide<decltype(d)> dw;
+  return Reverse2(d, BitCast(d, Shuffle2301(BitCast(dw, v))));
+#endif
+}
+
+template <typename T, HWY_IF_LANE_SIZE(T, 4)>
+HWY_API Vec256<T> Reverse4(Full256<T> /* tag */, const Vec256<T> v) {
+  return Shuffle0123(v);
+}
+
+template <typename T, HWY_IF_LANE_SIZE(T, 8)>
+HWY_API Vec256<T> Reverse4(Full256<T> /* tag */, const Vec256<T> v) {
+  return Vec256<T>{_mm256_permute4x64_epi64(v.raw, _MM_SHUFFLE(0, 1, 2, 3))};
+}
+HWY_API Vec256<double> Reverse4(Full256<double> /* tag */, Vec256<double> v) {
+  return Vec256<double>{_mm256_permute4x64_pd(v.raw, _MM_SHUFFLE(0, 1, 2, 3))};
+}
+
+// ------------------------------ Reverse8
+
+template <typename T, HWY_IF_LANE_SIZE(T, 2)>
+HWY_API Vec256<T> Reverse8(Full256<T> d, const Vec256<T> v) {
+#if HWY_TARGET <= HWY_AVX3
+  const RebindToSigned<decltype(d)> di;
+  alignas(32) constexpr int16_t kReverse8[16] = {7,  6,  5,  4,  3,  2,  1, 0,
+                                                 15, 14, 13, 12, 11, 10, 9, 8};
+  const Vec256<int16_t> idx = Load(di, kReverse8);
+  return BitCast(d, Vec256<int16_t>{
+                        _mm256_permutexvar_epi16(idx.raw, BitCast(di, v).raw)});
+#else
+  const RepartitionToWide<decltype(d)> dw;
+  return Reverse2(d, BitCast(d, Shuffle0123(BitCast(dw, v))));
+#endif
+}
+
+template <typename T, HWY_IF_LANE_SIZE(T, 4)>
+HWY_API Vec256<T> Reverse8(Full256<T> d, const Vec256<T> v) {
+  return Reverse(d, v);
+}
+
+template <typename T, HWY_IF_LANE_SIZE(T, 8)>
+HWY_API Vec256<T> Reverse8(Full256<T> /* tag */, const Vec256<T> /* v */) {
+  HWY_ASSERT(0);  // AVX2 does not have 8 64-bit lanes
+}
+
 // ------------------------------ InterleaveLower
 
 // Interleaves lanes from halves of the 128-bit blocks of "a" (which provides
@@ -3093,6 +3203,38 @@ HWY_API Vec256<double> ConcatEven(Full256<double> d, Vec256<double> hi,
   return Vec256<double>{
       _mm256_permute4x64_pd(v20.raw, _MM_SHUFFLE(3, 1, 2, 0))};
 #endif
+}
+
+// ------------------------------ DupEven (InterleaveLower)
+
+template <typename T, HWY_IF_LANE_SIZE(T, 4)>
+HWY_API Vec256<T> DupEven(Vec256<T> v) {
+  return Vec256<T>{_mm256_shuffle_epi32(v.raw, _MM_SHUFFLE(2, 2, 0, 0))};
+}
+HWY_API Vec256<float> DupEven(Vec256<float> v) {
+  return Vec256<float>{
+      _mm256_shuffle_ps(v.raw, v.raw, _MM_SHUFFLE(2, 2, 0, 0))};
+}
+
+template <typename T, HWY_IF_LANE_SIZE(T, 8)>
+HWY_API Vec256<T> DupEven(const Vec256<T> v) {
+  return InterleaveLower(Full256<T>(), v, v);
+}
+
+// ------------------------------ DupOdd (InterleaveUpper)
+
+template <typename T, HWY_IF_LANE_SIZE(T, 4)>
+HWY_API Vec256<T> DupOdd(Vec256<T> v) {
+  return Vec256<T>{_mm256_shuffle_epi32(v.raw, _MM_SHUFFLE(3, 3, 1, 1))};
+}
+HWY_API Vec256<float> DupOdd(Vec256<float> v) {
+  return Vec256<float>{
+      _mm256_shuffle_ps(v.raw, v.raw, _MM_SHUFFLE(3, 3, 1, 1))};
+}
+
+template <typename T, HWY_IF_LANE_SIZE(T, 8)>
+HWY_API Vec256<T> DupOdd(const Vec256<T> v) {
+  return InterleaveUpper(Full256<T>(), v, v);
 }
 
 // ------------------------------ OddEven
@@ -3727,6 +3869,19 @@ HWY_API Vec256<uint8_t> AESRound(Vec256<uint8_t> state,
   const Half<decltype(d)> d2;
   return Combine(d, AESRound(UpperHalf(d2, state), UpperHalf(d2, round_key)),
                  AESRound(LowerHalf(state), LowerHalf(round_key)));
+#endif
+}
+
+HWY_API Vec256<uint8_t> AESLastRound(Vec256<uint8_t> state,
+                                     Vec256<uint8_t> round_key) {
+#if HWY_TARGET == HWY_AVX3_DL
+  return Vec256<uint8_t>{_mm256_aesenclast_epi128(state.raw, round_key.raw)};
+#else
+  const Full256<uint8_t> d;
+  const Half<decltype(d)> d2;
+  return Combine(d,
+                 AESLastRound(UpperHalf(d2, state), UpperHalf(d2, round_key)),
+                 AESLastRound(LowerHalf(state), LowerHalf(round_key)));
 #endif
 }
 

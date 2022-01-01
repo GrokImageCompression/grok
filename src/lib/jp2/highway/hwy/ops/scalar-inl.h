@@ -290,6 +290,11 @@ HWY_API Vec1<T> IfThenZeroElse(const Mask1<T> mask, const Vec1<T> no) {
 }
 
 template <typename T>
+HWY_API Vec1<T> IfNegativeThenElse(Vec1<T> v, Vec1<T> yes, Vec1<T> no) {
+  return v.raw < 0 ? yes : no;
+}
+
+template <typename T>
 HWY_API Vec1<T> ZeroIfNegative(const Vec1<T> v) {
   return v.raw < 0 ? Vec1<T>(0) : v;
 }
@@ -437,7 +442,13 @@ HWY_API Vec1<double> operator-(const Vec1<double> a, const Vec1<double> b) {
   return Vec1<double>(a.raw - b.raw);
 }
 
-// ------------------------------ Saturating addition
+// ------------------------------ SumsOf8
+
+HWY_API Vec1<uint64_t> SumsOf8(const Vec1<uint8_t> v) {
+  return Vec1<uint64_t>(v.raw);
+}
+
+// ------------------------------ SaturatedAdd
 
 // Returns a + b clamped to the destination range.
 
@@ -1098,6 +1109,12 @@ HWY_API T GetLane(const Vec1<T> v) {
 }
 
 template <typename T>
+HWY_API Vec1<T> DupEven(Vec1<T> v) {
+  return v;
+}
+// DupOdd is unsupported.
+
+template <typename T>
 HWY_API Vec1<T> OddEven(Vec1<T> /* odd */, Vec1<T> even) {
   return even;
 }
@@ -1151,6 +1168,21 @@ HWY_API Vec1<T> ReverseBlocks(Sisd<T> /* tag */, const Vec1<T> v) {
 
 template <typename T>
 HWY_API Vec1<T> Reverse(Sisd<T> /* tag */, const Vec1<T> v) {
+  return v;
+}
+
+template <typename T>
+HWY_API Vec1<T> Reverse2(Sisd<T> /* tag */, const Vec1<T> v) {
+  return v;
+}
+
+template <typename T>
+HWY_API Vec1<T> Reverse4(Sisd<T> /* tag */, const Vec1<T> v) {
+  return v;
+}
+
+template <typename T>
+HWY_API Vec1<T> Reverse8(Sisd<T> /* tag */, const Vec1<T> v) {
   return v;
 }
 

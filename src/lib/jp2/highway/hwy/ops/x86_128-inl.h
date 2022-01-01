@@ -2009,7 +2009,13 @@ HWY_API Vec128<double, N> operator-(const Vec128<double, N> a,
   return Vec128<double, N>{_mm_sub_pd(a.raw, b.raw)};
 }
 
-// ------------------------------ Saturating addition
+// ------------------------------ SumsOf8
+template <size_t N>
+HWY_API Vec128<uint64_t, N / 8> SumsOf8(const Vec128<uint8_t, N> v) {
+  return Vec128<uint64_t, N / 8>{_mm_sad_epu8(v.raw, _mm_setzero_si128())};
+}
+
+// ------------------------------ SaturatedAdd
 
 // Returns a + b clamped to the destination range.
 
@@ -2037,7 +2043,7 @@ HWY_API Vec128<int16_t, N> SaturatedAdd(const Vec128<int16_t, N> a,
   return Vec128<int16_t, N>{_mm_adds_epi16(a.raw, b.raw)};
 }
 
-// ------------------------------ Saturating subtraction
+// ------------------------------ SaturatedSub
 
 // Returns a - b clamped to the destination range.
 
@@ -2351,6 +2357,39 @@ HWY_API Vec128<T, N> ZeroIfNegative(Vec128<T, N> v) {
   const auto mask = MaskFromVec(v);  // MSB is sufficient for BLENDVPS
 #endif
   return IfThenElse(mask, Zero(d), v);
+}
+
+// ------------------------------ IfNegativeThenElse
+template <size_t N>
+HWY_API Vec128<int8_t, N> IfNegativeThenElse(const Vec128<int8_t, N> v,
+                                             const Vec128<int8_t, N> yes,
+                                             const Vec128<int8_t, N> no) {
+  // int8: IfThenElse only looks at the MSB.
+  return IfThenElse(MaskFromVec(v), yes, no);
+}
+
+template <typename T, size_t N, HWY_IF_LANE_SIZE(T, 2)>
+HWY_API Vec128<T, N> IfNegativeThenElse(Vec128<T, N> v, Vec128<T, N> yes,
+                                        Vec128<T, N> no) {
+  static_assert(IsSigned<T>(), "Only works for signed/float");
+  const Simd<T, N> d;
+  const RebindToSigned<decltype(d)> di;
+
+  // 16-bit: no native blendv, so copy sign to lower byte's MSB.
+  v = BitCast(d, BroadcastSignBit(BitCast(di, v)));
+  return IfThenElse(MaskFromVec(v), yes, no);
+}
+
+template <typename T, size_t N, HWY_IF_NOT_LANE_SIZE(T, 2)>
+HWY_API Vec128<T, N> IfNegativeThenElse(Vec128<T, N> v, Vec128<T, N> yes,
+                                        Vec128<T, N> no) {
+  static_assert(IsSigned<T>(), "Only works for signed/float");
+  const Simd<T, N> d;
+  const RebindToFloat<decltype(d)> df;
+
+  // 32/64-bit: use float IfThenElse, which only looks at the MSB.
+  return BitCast(d, IfThenElse(MaskFromVec(BitCast(df, v)), BitCast(df, yes),
+                               BitCast(df, no)));
 }
 
 // ------------------------------ ShiftLeftSame
@@ -3489,6 +3528,81 @@ HWY_API Vec128<T, N> Reverse(Simd<T, N> d, const Vec128<T, N> v) {
 #endif
 }
 
+// ------------------------------ Reverse2
+
+template <typename T, size_t N, HWY_IF_LANE_SIZE(T, 2)>
+HWY_API Vec128<T, N> Reverse2(Simd<T, N> d, const Vec128<T, N> v) {
+  const Repartition<uint32_t, decltype(d)> du32;
+  return BitCast(d, RotateRight<16>(BitCast(du32, v)));
+}
+
+template <typename T, size_t N, HWY_IF_LANE_SIZE(T, 4)>
+HWY_API Vec128<T, N> Reverse2(Simd<T, N> /* tag */, const Vec128<T, N> v) {
+  return Shuffle2301(v);
+}
+
+template <typename T, size_t N, HWY_IF_LANE_SIZE(T, 8)>
+HWY_API Vec128<T, N> Reverse2(Simd<T, N> /* tag */, const Vec128<T, N> v) {
+  return Shuffle01(v);
+}
+
+// ------------------------------ Reverse4
+
+template <typename T, size_t N, HWY_IF_LANE_SIZE(T, 2)>
+HWY_API Vec128<T, N> Reverse4(Simd<T, N> d, const Vec128<T, N> v) {
+#if HWY_TARGET <= HWY_AVX3
+  const RebindToSigned<decltype(d)> di;
+  alignas(16) constexpr int16_t kReverse4[8] = {3, 2, 1, 0, 7, 6, 5, 4};
+  const Vec128<int16_t, N> idx = Load(di, kReverse4);
+  return BitCast(d, Vec128<int16_t, N>{
+                        _mm_permutexvar_epi16(idx.raw, BitCast(di, v).raw)});
+#else
+  const RepartitionToWide<decltype(d)> dw;
+  return Reverse2(d, BitCast(d, Shuffle2301(BitCast(dw, v))));
+#endif
+}
+
+// For N=4, a single shufflelo suffices.
+template <typename T, HWY_IF_LANE_SIZE(T, 2)>
+HWY_API Vec128<T, 4> Reverse4(Simd<T, 4> d, const Vec128<T, 4> v) {
+  const RebindToSigned<decltype(d)> di;
+  return BitCast(d, Vec128<int16_t, 4>{_mm_shufflelo_epi16(
+                        BitCast(di, v).raw, _MM_SHUFFLE(0, 1, 2, 3))});
+}
+
+template <typename T, size_t N, HWY_IF_LANE_SIZE(T, 4)>
+HWY_API Vec128<T, N> Reverse4(Simd<T, N> /* tag */, const Vec128<T, N> v) {
+  return Shuffle0123(v);
+}
+
+template <typename T, size_t N, HWY_IF_LANE_SIZE(T, 8)>
+HWY_API Vec128<T, N> Reverse4(Simd<T, N> /* tag */,
+                              const Vec128<T, N> /* v */) {
+  HWY_ASSERT(0);  // don't have 4 u64 lanes
+}
+
+// ------------------------------ Reverse8
+
+template <typename T, size_t N, HWY_IF_LANE_SIZE(T, 2)>
+HWY_API Vec128<T, N> Reverse8(Simd<T, N> d, const Vec128<T, N> v) {
+#if HWY_TARGET <= HWY_AVX3
+  const RebindToSigned<decltype(d)> di;
+  alignas(32) constexpr int16_t kReverse8[16] = {7,  6,  5,  4,  3,  2,  1, 0,
+                                                 15, 14, 13, 12, 11, 10, 9, 8};
+  const Vec128<int16_t, N> idx = Load(di, kReverse8);
+  return BitCast(d, Vec128<int16_t, N>{
+                        _mm_permutexvar_epi16(idx.raw, BitCast(di, v).raw)});
+#else
+  const RepartitionToWide<decltype(d)> dw;
+  return Reverse2(d, BitCast(d, Shuffle0123(BitCast(dw, v))));
+#endif
+}
+
+template <typename T, size_t N, HWY_IF_NOT_LANE_SIZE(T, 2)>
+HWY_API Vec128<T, N> Reverse8(Simd<T, N> /* tag */, Vec128<T, N> /* v */) {
+  HWY_ASSERT(0);  // don't have 8 lanes unless 16-bit
+}
+
 // ------------------------------ InterleaveLower
 
 // Interleaves lanes from halves of the 128-bit blocks of "a" (which provides
@@ -3806,6 +3920,40 @@ HWY_API Vec128<T, 2> ConcatEven(Simd<T, 2> d, Vec128<T, 2> hi,
 template <typename T, HWY_IF_LANE_SIZE(T, 8)>
 HWY_API Vec128<T> ConcatEven(Full128<T> d, Vec128<T> hi, Vec128<T> lo) {
   return InterleaveLower(d, lo, hi);
+}
+
+// ------------------------------ DupEven (InterleaveLower)
+
+template <typename T, size_t N, HWY_IF_LANE_SIZE(T, 4)>
+HWY_API Vec128<T, N> DupEven(Vec128<T, N> v) {
+  return Vec128<T, N>{_mm_shuffle_epi32(v.raw, _MM_SHUFFLE(2, 2, 0, 0))};
+}
+template <size_t N>
+HWY_API Vec128<float, N> DupEven(Vec128<float, N> v) {
+  return Vec128<float, N>{
+      _mm_shuffle_ps(v.raw, v.raw, _MM_SHUFFLE(2, 2, 0, 0))};
+}
+
+template <typename T, size_t N, HWY_IF_LANE_SIZE(T, 8)>
+HWY_API Vec128<T, N> DupEven(const Vec128<T, N> v) {
+  return InterleaveLower(Simd<T, N>(), v, v);
+}
+
+// ------------------------------ DupOdd (InterleaveUpper)
+
+template <typename T, size_t N, HWY_IF_LANE_SIZE(T, 4)>
+HWY_API Vec128<T, N> DupOdd(Vec128<T, N> v) {
+  return Vec128<T, N>{_mm_shuffle_epi32(v.raw, _MM_SHUFFLE(3, 3, 1, 1))};
+}
+template <size_t N>
+HWY_API Vec128<float, N> DupOdd(Vec128<float, N> v) {
+  return Vec128<float, N>{
+      _mm_shuffle_ps(v.raw, v.raw, _MM_SHUFFLE(3, 3, 1, 1))};
+}
+
+template <typename T, size_t N, HWY_IF_LANE_SIZE(T, 8)>
+HWY_API Vec128<T, N> DupOdd(const Vec128<T, N> v) {
+  return InterleaveUpper(Simd<T, N>(), v, v);
 }
 
 // ------------------------------ OddEven (IfThenElse)
@@ -4721,6 +4869,11 @@ HWY_API Vec128<double, N> Floor(const Vec128<double, N> v) {
 HWY_API Vec128<uint8_t> AESRound(Vec128<uint8_t> state,
                                  Vec128<uint8_t> round_key) {
   return Vec128<uint8_t>{_mm_aesenc_si128(state.raw, round_key.raw)};
+}
+
+HWY_API Vec128<uint8_t> AESLastRound(Vec128<uint8_t> state,
+                                     Vec128<uint8_t> round_key) {
+  return Vec128<uint8_t>{_mm_aesenclast_si128(state.raw, round_key.raw)};
 }
 
 template <size_t N, HWY_IF_LE128(uint64_t, N)>
