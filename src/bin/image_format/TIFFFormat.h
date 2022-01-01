@@ -39,7 +39,7 @@ class TIFFFormat : public ImageFormat
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 
   private:
-	bool writeStrip(void* buf, tmsize_t toWrite);
+	bool writeStrip(void* buf, uint64_t toWrite);
 	TIFF* tif;
 	uint8_t *packedBuf;
 	uint32_t chroma_subsample_x;
@@ -47,8 +47,8 @@ class TIFFFormat : public ImageFormat
 	int32_t const* planes[grk::maxNumPackComponents];
 	uint32_t rowsWritten;
 	uint32_t strip;
-	tsize_t rowsPerStrip;
-	tsize_t packedBufStride;
+	uint32_t rowsPerStrip;
+	uint64_t packedBufStride;
 	size_t units;
-	tmsize_t bytesToWrite;
+	uint64_t bytesToWrite;
 };

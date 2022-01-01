@@ -184,14 +184,14 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 	if(subsampled)
 	{
 		units = (width + chroma_subsample_x - 1) / chroma_subsample_x;
-		packedBufStride = (tmsize_t)((((uint64_t)width * chroma_subsample_y + units * 2U) * bps + 7U) / 8U);
-		rowsPerStrip = (chroma_subsample_y * 8 * 1024 * 1024) / packedBufStride;
+		packedBufStride = (uint64_t)((((uint64_t)width * chroma_subsample_y + units * 2U) * bps + 7U) / 8U);
+		rowsPerStrip = (uint32_t)((chroma_subsample_y * 8 * 1024 * 1024) / packedBufStride);
 	}
 	else
 	{
 		units = m_image->comps->w;
 		packedBufStride =  grk::PtoI<int32_t>::getPackedBytes(numcomps, width, bps);
-		rowsPerStrip = (16 * 1024 * 1024) / packedBufStride;
+		rowsPerStrip = (uint32_t)((16 * 1024 * 1024) / packedBufStride);
 	}
 	if(rowsPerStrip & 1)
 		rowsPerStrip++;
@@ -296,15 +296,15 @@ cleanup:
 	return success;
 }
 
-bool TIFFFormat::writeStrip(void* buf, tmsize_t toWrite)
+bool TIFFFormat::writeStrip(void* buf, uint64_t toWrite)
 {
-	tmsize_t written = TIFFWriteEncodedStrip(tif, strip++, buf, toWrite);
+	tmsize_t written = TIFFWriteEncodedStrip(tif, (tmsize_t)strip++, buf, (tmsize_t)toWrite);
 	if(written == -1)
 	{
 		spdlog::error("TIFFFormat::encodeRows: error in TIFFWriteEncodedStrip");
 		return false;
 	}
-	if(written != toWrite)
+	if(written != (tmsize_t)toWrite)
 	{
 		spdlog::error("TIFFFormat::encodeRows: bytes written {} does not equal bytes to write {}",
 					  written, toWrite);
@@ -320,7 +320,7 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 	rowsToWrite = (std::min)(rowsToWrite,height - rowsWritten);
 	if (rowsToWrite == 0)
 		return true;
-	tmsize_t h = rowsWritten;
+	uint32_t h = rowsWritten;
 	if(isSubsampled(m_image))
 	{
 		auto bufptr = (int8_t*)packedBuf;
