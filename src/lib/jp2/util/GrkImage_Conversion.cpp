@@ -1058,13 +1058,10 @@ void GrkImage::applyICC(void)
 	}
 	else
 	{
-#ifdef DEBUG_PROFILE
-		GRK_ERROR("{}:{}: color_apply_icc_profile\n\tICC Profile has unknown "
-					  "output colorspace(%#x)({}{}{}{})\n\tICC Profile ignored.",
-					  __FILE__, __LINE__, out_space, (out_space >> 24) & 0xff,
-					  (out_space >> 16) & 0xff, (out_space >> 8) & 0xff, out_space & 0xff);
-#endif
-		return;
+		GRK_WARN("Apply ICC \nICC profile has unknown "
+					  "output color space (%#x)\nICC profile ignored.",
+					  out_space);
+		goto cleanup;
 	}
 
 #ifdef DEBUG_PROFILE
