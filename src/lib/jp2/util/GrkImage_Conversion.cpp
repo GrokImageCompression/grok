@@ -430,11 +430,6 @@ grk_image* GrkImage::createRGB(uint16_t numcmpts, uint32_t w, uint32_t h,
 	}
 
 	auto cmptparms = new grk_image_cmptparm[numcmpts];
-	if(!cmptparms)
-	{
-		GRK_WARN("createRGB: out of memory.");
-		return nullptr;
-	}
 	uint32_t compno = 0U;
 	for(compno = 0U; compno < numcmpts; ++compno)
 	{
@@ -982,7 +977,6 @@ void GrkImage::applyICC(void)
 	size_t nr_samples, max;
 	uint32_t prec, w, stride_diff, h;
 	GRK_COLOR_SPACE oldspace;
-	grk_image* new_image = nullptr;
 	if(numcomps == 0 || !allComponentsSanityCheck(true))
 		return;
 	if(!meta)
@@ -1015,11 +1009,9 @@ void GrkImage::applyICC(void)
 	if(out_space == cmsSigRgbData)
 	{ /* enumCS 16 */
 		uint32_t i, nr_comp = numcomps;
-
 		if(nr_comp > 4)
-		{
 			nr_comp = 4;
-		}
+
 		for(i = 1; i < nr_comp; ++i)
 		{
 			if(comps[0].dx != comps[i].dx)
@@ -1067,7 +1059,7 @@ void GrkImage::applyICC(void)
 	else
 	{
 #ifdef DEBUG_PROFILE
-		spdlog::error("{}:{}: color_apply_icc_profile\n\tICC Profile has unknown "
+		GRK_ERROR("{}:{}: color_apply_icc_profile\n\tICC Profile has unknown "
 					  "output colorspace(%#x)({}{}{}{})\n\tICC Profile ignored.",
 					  __FILE__, __LINE__, out_space, (out_space >> 24) & 0xff,
 					  (out_space >> 16) & 0xff, (out_space >> 8) & 0xff, out_space & 0xff);
@@ -1076,12 +1068,12 @@ void GrkImage::applyICC(void)
 	}
 
 #ifdef DEBUG_PROFILE
-	spdlog::error("{}:{}:color_apply_icc_profile\n\tchannels({}) prec({}) w({}) h({})"
+	GRK_ERROR("{}:{}:color_apply_icc_profile\n\tchannels({}) prec({}) w({}) h({})"
 				  "\n\tprofile: in({}) out({})",
 				  __FILE__, __LINE__, numcomps, prec, max_w, max_h, (void*)in_prof,
 				  (void*)out_prof);
 
-	spdlog::error("\trender_intent ({})\n\t"
+	GRK_ERROR("\trender_intent ({})\n\t"
 				  "color_space: in({})({}{}{}{})   out:({})({}{}{}{})\n\t"
 				  "       type: in({})              out:({})",
 				  intent, in_space, (in_space >> 24) & 0xff, (in_space >> 16) & 0xff,
@@ -1106,7 +1098,7 @@ void GrkImage::applyICC(void)
 	if(transform == nullptr)
 	{
 #ifdef DEBUG_PROFILE
-		spdlog::error("{}:{}:color_apply_icc_profile\n\tcmsCreateTransform failed. "
+		GRK_ERROR("{}:{}:color_apply_icc_profile\n\tcmsCreateTransform failed. "
 					  "ICC Profile ignored.",
 					  __FILE__, __LINE__);
 #endif
@@ -1121,16 +1113,7 @@ void GrkImage::applyICC(void)
 			max = (size_t)w * h;
 			nr_samples = max * 3 * (cmsUInt32Number)sizeof(uint8_t);
 			in = inbuf = new uint8_t[nr_samples];
-			if(!in)
-			{
-				goto cleanup;
-			}
 			out = outbuf = new uint8_t[nr_samples];
-			if(!out)
-			{
-				delete[] inbuf;
-				goto cleanup;
-			}
 
 			auto r = comps[0].data;
 			auto g = comps[1].data;
@@ -1174,14 +1157,8 @@ void GrkImage::applyICC(void)
 			max = (size_t)w * h;
 			nr_samples = max * 3 * (cmsUInt32Number)sizeof(uint16_t);
 			in = inbuf = new uint16_t[nr_samples];
-			if(!in)
-				goto cleanup;
 			out = outbuf = new uint16_t[nr_samples];
-			if(!out)
-			{
-				delete[] inbuf;
-				goto cleanup;
-			}
+
 			auto r = comps[0].data;
 			auto g = comps[1].data;
 			auto b = comps[2].data;
@@ -1221,8 +1198,10 @@ void GrkImage::applyICC(void)
 	}
 	else
 	{ /* GRAY, GRAYA */
-		uint8_t *in = nullptr, *inbuf = nullptr, *out = nullptr, *outbuf = nullptr;
+		uint8_t *inbuf = nullptr;
+		uint8_t *outbuf = nullptr;
 
+		int32_t *r = nullptr, *g = nullptr, *b = nullptr;
 		max = (size_t)w * h;
 		nr_samples = max * 3 * (cmsUInt32Number)sizeof(uint8_t);
 		auto newComps = new grk_image_comp[numcomps + 2U];
@@ -1231,50 +1210,28 @@ void GrkImage::applyICC(void)
 			if(i < numcomps)
 				newComps[i] = comps[i];
 			else
-				memset(newComps + 1, 0, sizeof(grk_image_comp));
+				memset(newComps + i, 0, sizeof(grk_image_comp));
 		}
 		delete[] comps;
 		comps = newComps;
 
-		in = inbuf = new uint8_t[nr_samples];
-		if(!in)
-			goto cleanup;
-		out = outbuf = new uint8_t[nr_samples];
-		if(!out)
-		{
-			delete[] inbuf;
-			goto cleanup;
-		}
+		auto in = inbuf = new uint8_t[nr_samples];
+		auto out = outbuf = new uint8_t[nr_samples];
 
-		new_image = createRGB(2, comps[0].w, comps[0].h,
-												  comps[0].prec);
-		if(!new_image)
-		{
-			delete[] inbuf;
-			delete[] outbuf;
-			goto cleanup;
-		}
+		if (forceRGB) {
+			if(numcomps == 2)
+				comps[3] = comps[1];
 
-		if(numcomps == 2)
-			comps[3] = comps[1];
-
-		comps[1] = comps[0];
-		comps[2] = comps[0];
-
-		comps[1].data = new_image->comps[0].data;
-		comps[2].data = new_image->comps[1].data;
-
-		new_image->comps[0].data = nullptr;
-		new_image->comps[1].data = nullptr;
-
-		grk_object_unref(&new_image->obj);
-		new_image = nullptr;
-
-		if(forceRGB)
+			comps[1] 		= comps[0];
+			comps[1].data   = nullptr;
+			allocData(comps+1);
+			comps[2] 		= comps[0];
+			comps[2].data   = nullptr;
+			allocData(comps+2);
 			numcomps = (uint16_t)(2 + numcomps);
+		}
 
-		auto r = comps[0].data;
-
+		r = comps[0].data;
 		size_t src_index = 0;
 		size_t dest_index = 0;
 		for(uint32_t j = 0; j < h; ++j)
@@ -1288,10 +1245,11 @@ void GrkImage::applyICC(void)
 		}
 
 		cmsDoTransform(transform, inbuf, outbuf, (cmsUInt32Number)max);
-
-		auto g = comps[1].data;
-		auto b = comps[2].data;
-
+		if(forceRGB)
+		{
+			g = comps[1].data;
+			b = comps[2].data;
+		}
 		src_index = 0;
 		dest_index = 0;
 		for(uint32_t j = 0; j < h; ++j)
