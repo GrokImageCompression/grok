@@ -109,6 +109,7 @@ set(GROK_LIBRARY_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodeStreamCompress.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodeStreamCompress.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodeStreamDecompress.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodeStreamDecompress_Markers.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/CodeStreamDecompress.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/FileFormat.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/FileFormat.h
