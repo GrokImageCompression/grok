@@ -348,3 +348,6 @@ ee517bb0a2c051f75127da89c6171628  clusterfuzz-testcase-minimized-grk_decompress_
 482f67d3f6d90002fd0e03ecc3c5fe9f  foo_irrev.j2k_1.pgx
 7e83021b54158734e86720002febda5c  foo_irrev.j2k_2.pgx
 d35710a9aa61cbefd464a68303ed211b  161388041dff7f85465687873c5a1d9680413331_0.pgx
+291acf81bd6ca9b690666ff5da3fe581  mono_icc.tif
+da9fdf369cee75617555cd36b2f8346b  mono_icc_0.pgx
+6fd6d70a1a23998e82848f03a99a50f5  mono_icc_force.tif
