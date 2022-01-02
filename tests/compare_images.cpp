@@ -149,7 +149,7 @@ static grk_image *readImageFromFilePPM(const char *filename,
   grk_image *src = nullptr;
   grk_image *dest = nullptr;
   grk_cparameters parameters;
-  grk_image_cmptparm *src_param = nullptr;
+  grk_image_comp *src_param = nullptr;
   int **dest_data = nullptr;
 
   /* If separator is empty => nb file to read is equal to one*/
@@ -165,8 +165,8 @@ static grk_image *readImageFromFilePPM(const char *filename,
   strcpy(parameters.infile, filename);
 
   /* Allocate memory*/
-  src_param = (grk_image_cmptparm *)malloc((size_t)nbFilenamePGX *
-                                           sizeof(grk_image_cmptparm));
+  src_param = (grk_image_comp *)malloc((size_t)nbFilenamePGX *
+                                           sizeof(grk_image_comp));
   if (!src_param)
     goto cleanup;
   dest_data = (int **)calloc((size_t)nbFilenamePGX, sizeof(*dest_data));
@@ -336,7 +336,7 @@ static grk_image *readImageFromFilePGX(const char *filename,
   grk_image *src = nullptr;
   grk_image *dest = nullptr;
   grk_cparameters parameters;
-  grk_image_cmptparm *dest_param = nullptr;
+  grk_image_comp *dest_param = nullptr;
   int **dest_data = nullptr;
 
   /* If separator is empty => nb file to read is equal to one*/
@@ -353,7 +353,7 @@ static grk_image *readImageFromFilePGX(const char *filename,
 
   /* Allocate memory*/
   dest_param =
-      (grk_image_cmptparm *)malloc(nbFilenamePGX * sizeof(grk_image_cmptparm));
+      (grk_image_comp *)malloc(nbFilenamePGX * sizeof(grk_image_comp));
   if (!dest_param)
     goto cleanup;
   dest_data = (int **)calloc(nbFilenamePGX, sizeof(*dest_data));
@@ -439,7 +439,7 @@ cleanup:
  *******************************************************************************/
 static int imageToPNG(const grk_image *src, const char *filename,
                       uint16_t compno) {
-  grk_image_cmptparm dest_param;
+  grk_image_comp dest_param;
   auto src_comp = src->comps + compno;
   dest_param.x0 = 0;
   dest_param.y0 = 0;
@@ -752,7 +752,7 @@ int main(int argc, char **argv) {
   double sumDiff = 0.0;
   /* Structures to store image parameters and data*/
   grk_image *imageBase = nullptr, *imageTest = nullptr, *imageDiff = nullptr;
-  grk_image_cmptparm *param_image_diff = nullptr;
+  grk_image_comp *param_image_diff = nullptr;
   int decod_format;
 
   /* Get parameters from command line*/
@@ -860,8 +860,8 @@ int main(int argc, char **argv) {
   /*----------DIFF IMAGE--------*/
 
   /* Allocate memory*/
-  param_image_diff = (grk_image_cmptparm *)malloc(imageBase->numcomps *
-                                                  sizeof(grk_image_cmptparm));
+  param_image_diff = (grk_image_comp *)malloc(imageBase->numcomps *
+                                                  sizeof(grk_image_comp));
 
   /* Comparison of header parameters*/
   spdlog::info("Step 1 -> Header comparison");

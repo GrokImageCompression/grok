@@ -987,33 +987,6 @@ typedef struct _grk_image
 	uint8_t* interleavedData;
 } grk_image;
 
-/**
- * Image component parameters
- * */
-typedef struct _grk_image_comptparm
-{
-	/** XRsiz: horizontal separation of a sample of component
-	 *  with respect to the reference grid */
-	uint32_t dx;
-	/** YRsiz: vertical separation of a sample of component
-	 *  with respect to the reference grid */
-	uint32_t dy;
-	/** data width */
-	uint32_t w;
-	/* data stride */
-	uint32_t stride;
-	/** data height */
-	uint32_t h;
-	/** x component offset compared to the whole image */
-	uint32_t x0;
-	/** y component offset compared to the whole image */
-	uint32_t y0;
-	/** precision */
-	uint8_t prec;
-	/** true if data is signed */
-	bool sgnd;
-} grk_image_cmptparm;
-
 ////////////////////////////////////////////////
 // Structs to pass data between grok and plugin
 /////////////////////////////////////////////////
@@ -1168,7 +1141,7 @@ GRK_API bool GRK_CALLCONV grk_set_error_handler(grk_msg_callback p_callback, voi
  * @return returns      a new image if successful, otherwise nullptr
  * */
 GRK_API grk_image* GRK_CALLCONV grk_image_new(grk_image *src,
-												uint16_t numcmpts, grk_image_cmptparm* cmptparms,
+												uint16_t numcmpts, grk_image_comp* cmptparms,
 											  GRK_COLOR_SPACE clrspc, bool allocData);
 
 GRK_API grk_image_meta* GRK_CALLCONV grk_image_meta_new(void);

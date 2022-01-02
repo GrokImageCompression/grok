@@ -50,7 +50,7 @@ bool GrkImage::componentsEqual(grk_image_comp* src, grk_image_comp* dest){
 
 GrkImage* GrkImage::create(grk_image *src,
 							uint16_t numcmpts,
-							grk_image_cmptparm* cmptparms,
+							grk_image_comp* cmptparms,
 							GRK_COLOR_SPACE clrspc,
 						    bool doAllocation)
 {

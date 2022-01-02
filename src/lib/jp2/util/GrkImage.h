@@ -33,7 +33,7 @@ public:
 	 * @return 		     a new image if successful, otherwise nullptr
 	 * */
 	static GrkImage* create(grk_image *src,
-							uint16_t numcmpts, grk_image_cmptparm* cmptparms,
+							uint16_t numcmpts, grk_image_comp* cmptparms,
 							GRK_COLOR_SPACE clrspc, bool doAllocation);
 	/**
 	 * Allocate data for single image component

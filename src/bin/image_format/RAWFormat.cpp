@@ -223,7 +223,7 @@ grk_image* RAWFormat::rawtoimage(const char* filename, grk_cparameters* paramete
 	uint32_t i, compno, w, h;
 	uint16_t numcomps;
 	GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
-	grk_image_cmptparm* cmptparm;
+	grk_image_comp* cmptparm;
 	grk_image* image = nullptr;
 	uint16_t ch;
 	bool success = false;
@@ -264,7 +264,7 @@ grk_image* RAWFormat::rawtoimage(const char* filename, grk_cparameters* paramete
 
 	w = raw_cp->width;
 	h = raw_cp->height;
-	cmptparm = (grk_image_cmptparm*)calloc(numcomps, sizeof(grk_image_cmptparm));
+	cmptparm = (grk_image_comp*)calloc(numcomps, sizeof(grk_image_comp));
 	if(!cmptparm)
 	{
 		spdlog::error("Failed to allocate image components parameters");

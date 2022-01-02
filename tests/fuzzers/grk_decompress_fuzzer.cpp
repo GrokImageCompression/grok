@@ -138,7 +138,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   grk_set_info_handler(InfoCallback, nullptr);
   grk_set_warning_handler(WarningCallback, nullptr);
   grk_set_error_handler(ErrorCallback, nullptr);
-  grk_dparameters parameters;
+  grk_decompress_core_params parameters;
   grk_decompress_set_default_params(&parameters);
   grk_decompress_init(codec, &parameters);
   grk_image *psImage = nullptr;

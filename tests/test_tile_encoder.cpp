@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
   grk_codec *codec = nullptr;
   grk_image *image = nullptr;
   grk_stream *stream = nullptr;
-  grk_image_cmptparm params[NUM_COMPS_MAX];
+  grk_image_comp params[NUM_COMPS_MAX];
   uint32_t nb_tiles = 0;
   uint64_t data_size = 0;
   size_t len = 0;
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
   const int32_t offsets[] = {128, 128, 128};
 #endif
 
-  grk_image_cmptparm *current_param_ptr = nullptr;
+  grk_image_comp *current_param_ptr = nullptr;
   uint32_t i;
   uint8_t *data = nullptr;
 

@@ -658,7 +658,7 @@ bool BMPFormat::encodeFinish(void)
 
 grk_image* BMPFormat::decode(const std::string& fname, grk_cparameters* parameters)
 {
-	grk_image_cmptparm cmptparm[4]; /* maximum of 4 components */
+	grk_image_comp cmptparm[4]; /* maximum of 4 components */
 	uint8_t lut_R[256], lut_G[256], lut_B[256];
 	uint8_t const* pLUT[3];
 	grk_image* image = nullptr;

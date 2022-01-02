@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
   unsigned int subsampling_dy;
   const char outputfile[] = "testempty2.j2k";
 
-  grk_image_cmptparm cmptparm;
+  grk_image_comp cmptparm;
   grk_image *image;
   grk_codec *codec = nullptr;
   bool bSuccess;

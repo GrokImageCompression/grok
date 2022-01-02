@@ -451,7 +451,7 @@ grk_image* PNMFormat::decode(grk_cparameters* parameters)
 	uint32_t compno, w, stride_diff, width, counter, h, format;
 	uint8_t prec;
 	GRK_COLOR_SPACE color_space;
-	grk_image_cmptparm cmptparm[4]; /* RGBA: max. 4 components */
+	grk_image_comp cmptparm[4]; /* RGBA: max. 4 components */
 	grk_image* image = nullptr;
 	struct pnm_header header_info;
 	uint64_t area = 0;
@@ -506,7 +506,7 @@ grk_image* PNMFormat::decode(grk_cparameters* parameters)
 	area = (uint64_t)w * h;
 	subsampling_dx = parameters->subsampling_dx;
 	subsampling_dy = parameters->subsampling_dy;
-	memset(&cmptparm[0], 0, (size_t)numcomps * sizeof(grk_image_cmptparm));
+	memset(&cmptparm[0], 0, (size_t)numcomps * sizeof(grk_image_comp));
 
 	for(uint32_t i = 0; i < numcomps; i++)
 	{

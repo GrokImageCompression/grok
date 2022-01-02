@@ -185,7 +185,7 @@ const char* GRK_CALLCONV grk_version(void)
 	return GRK_PACKAGE_VERSION;
 }
 
-grk_image* GRK_CALLCONV grk_image_new(grk_image *src, uint16_t numcmpts, grk_image_cmptparm* cmptparms,
+grk_image* GRK_CALLCONV grk_image_new(grk_image *src, uint16_t numcmpts, grk_image_comp* cmptparms,
 									  GRK_COLOR_SPACE clrspc, bool allocData)
 {
 	return GrkImage::create(src,numcmpts, cmptparms, clrspc, allocData);

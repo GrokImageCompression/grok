@@ -81,10 +81,10 @@ static grk_image* pgxtoimage(const char* filename, grk_cparameters* parameters)
 	bool sign = false;
 	char temp[32];
 	bool bigendian;
-	grk_image_cmptparm cmptparm; /* maximum of 1 component  */
+	grk_image_comp cmptparm; /* maximum of 1 component  */
 	uint8_t shift = 0;
 
-	memset(&cmptparm, 0, sizeof(grk_image_cmptparm));
+	memset(&cmptparm, 0, sizeof(grk_image_comp));
 	auto f = fopen(filename, "rb");
 	if(!f)
 	{

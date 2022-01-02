@@ -763,7 +763,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	uint16_t chroma_subsample_x = 1;
 	uint16_t chroma_subsample_y = 1;
 	GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
-	grk_image_cmptparm cmptparm[grk::maxNumPackComponents];
+	grk_image_comp cmptparm[grk::maxNumPackComponents];
 	grk_image* image = nullptr;
 	uint16_t tiBps = 0, tiPhoto = 0, tiSf = SAMPLEFORMAT_UINT, tiSpp = 0, tiPC = 0;
 	bool hasTiSf = false;
@@ -867,7 +867,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 	TIFFGetFieldDefaulted(tif, TIFFTAG_EXTRASAMPLES, &extrasamples, &sampleinfo);
 
 	// 2. initialize image components and signed/unsigned
-	memset(&cmptparm[0], 0, grk::maxNumPackComponents * sizeof(grk_image_cmptparm));
+	memset(&cmptparm[0], 0, grk::maxNumPackComponents * sizeof(grk_image_comp));
 	if((tiPhoto == PHOTOMETRIC_RGB) && (is_cinema) && (tiBps != 12U))
 	{
 		spdlog::warn("TIFFFormat::decode: Input image bitdepth is {} bits\n"

@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
 
   grk_cparameters parameters;
 
-  grk_image_cmptparm cmptparm;
+  grk_image_comp cmptparm;
   grk_image *image;
   grk_codec *codec = nullptr;
   bool bSuccess;

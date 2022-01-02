@@ -433,11 +433,11 @@ grk_image* GrkImage::createRGB(uint16_t numcmpts, uint32_t w, uint32_t h,
 		return nullptr;
 	}
 
-	auto cmptparms = new grk_image_cmptparm[numcmpts];
+	auto cmptparms = new grk_image_comp[numcmpts];
 	uint32_t compno = 0U;
 	for(compno = 0U; compno < numcmpts; ++compno)
 	{
-		memset(cmptparms + compno, 0, sizeof(grk_image_cmptparm));
+		memset(cmptparms + compno, 0, sizeof(grk_image_comp));
 		cmptparms[compno].dx = 1;
 		cmptparms[compno].dy = 1;
 		cmptparms[compno].w = w;
@@ -447,7 +447,7 @@ grk_image* GrkImage::createRGB(uint16_t numcmpts, uint32_t w, uint32_t h,
 		cmptparms[compno].prec = prec;
 		cmptparms[compno].sgnd = 0U;
 	}
-	auto img = grk_image_new(this,numcmpts, (grk_image_cmptparm*)cmptparms, GRK_CLRSPC_SRGB, true);
+	auto img = grk_image_new(this,numcmpts, (grk_image_comp*)cmptparms, GRK_CLRSPC_SRGB, true);
 	delete[] cmptparms;
 
 	return img;

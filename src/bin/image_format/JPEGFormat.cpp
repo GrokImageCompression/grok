@@ -89,7 +89,7 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
 	int bps = 0, numcomps = 0;
 	cvtTo32 cvtJpegTo32s;
 	GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
-	grk_image_cmptparm cmptparm[3]; /* mono or RGB */
+	grk_image_comp cmptparm[3]; /* mono or RGB */
 	cvtInterleavedToPlanar cvtToPlanar;
 	JOCTET* icc_data_ptr = nullptr;
 	unsigned int icc_data_len = 0;
@@ -186,7 +186,7 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
 	w = cinfo.image_width;
 	h = cinfo.image_height;
 	cvtJpegTo32s = cvtTo32_LUT[bps];
-	memset(&cmptparm[0], 0, 3 * sizeof(grk_image_cmptparm));
+	memset(&cmptparm[0], 0, 3 * sizeof(grk_image_comp));
 	cvtToPlanar = cvtInterleavedToPlanar_LUT[numcomps];
 
 	if(cinfo.output_components == 3)
