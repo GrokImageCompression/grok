@@ -480,8 +480,6 @@ bool PNGFormat::encodeHeader(grk_image* img, const std::string& filename, uint32
 	if(!ImageFormat::encodeHeader(m_image, m_fileName, compressionLevel))
 		return false;
 
-	m_fileStream = ((FileStreamIO*)m_fileIO)->getFileStream();
-
 	/* Create and initialize the png_struct with the desired error handler
 	 * functions.  If you want to use the default stderr and longjump method,
 	 * you can supply nullptr for the last three parameters.  We also check that
@@ -696,7 +694,7 @@ bool PNGFormat::encodeFinish(void)
 	free(row_buf);
 	free(row32s);
 	bool rc = ImageFormat::encodeFinish();
-	m_fileStream = nullptr;
+
 	return rc;
 }
 grk_image* PNGFormat::decode(const std::string& filename, grk_cparameters* parameters)

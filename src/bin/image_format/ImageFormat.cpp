@@ -57,7 +57,11 @@ bool ImageFormat::encodeHeader(grk_image* image, const std::string& filename,
 	(void)compressionParam;
 	m_image = image;
 
-	return m_fileIO->open(filename, "w");
+	bool rc = m_fileIO->open(filename, "w");
+	if (rc)
+		m_fileStream = ((FileStreamIO*)m_fileIO)->getFileStream();
+
+	return rc;
 }
 
 bool ImageFormat::encodeFinish(void)
@@ -65,6 +69,8 @@ bool ImageFormat::encodeFinish(void)
 	bool rc = m_fileIO->close();
 	delete m_fileIO;
 	m_fileIO = nullptr;
+	m_fileStream = nullptr;
+	m_fileName = "";
 
 	return rc;
 }

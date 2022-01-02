@@ -486,7 +486,6 @@ bool JPEGFormat::encodeHeader(grk_image* image, const std::string& filename,
 	if(!ImageFormat::encodeHeader(m_image, filename, compressionParam))
 		return false;
 
-	m_fileStream = ((FileStreamIO*)m_fileIO)->getFileStream();
 	jpeg_stdio_dest(&cinfo, m_fileStream);
 
 	/* Step 3: set parameters for compression */
