@@ -415,6 +415,19 @@ typedef struct _grk_object
  */
 typedef struct _grk_progression
 {
+	/** Tile number */
+	uint32_t tileno;
+
+	/** tile dimensions */
+	uint32_t tx0;
+	uint32_t ty0;
+	uint32_t tx1;
+	uint32_t ty1;
+
+	GRK_PROG_ORDER specifiedCompressionPocProg;
+	GRK_PROG_ORDER progression;
+	char progressionString[5];
+
 	/** progression order bounds specified by POC */
 	uint16_t layS;
 	uint16_t layE;
@@ -425,33 +438,20 @@ typedef struct _grk_progression
 	uint64_t precS;
 	uint64_t precE;
 
-	/** Progression order enum*/
-	GRK_PROG_ORDER specifiedCompressionPocProg;
-	GRK_PROG_ORDER progression;
-	/** Progression order string*/
-	char progressionString[5];
-	/** Tile number */
-	uint32_t tileno;
-	/** Start and end values for tile width and height*/
-	uint32_t tx0;
-	uint32_t tx1;
-	uint32_t ty0;
-	uint32_t ty1;
-	/** progression order bounds initialized in pi_create_compress*/
 	uint16_t tpLayE;
 	uint8_t tpResS;
 	uint8_t tpResE;
 	uint16_t tpCompS;
 	uint16_t tpCompE;
 	uint64_t tpPrecE;
-	/** tile bounds initialized by pi_create_compress*/
+
 	uint32_t tp_txS;
 	uint32_t tp_txE;
 	uint32_t tp_tyS;
 	uint32_t tp_tyE;
 	uint32_t dx;
 	uint32_t dy;
-	/** tile part temporary values initialized by pi_create_encode */
+
 	uint16_t lay_temp;
 	uint8_t res_temp;
 	uint16_t comp_temp;
@@ -761,6 +761,7 @@ typedef struct _grk_decompress_core_params
 	GRK_SUPPORTED_FILE_FMT decod_format;
 	/** output file format*/
 	GRK_SUPPORTED_FILE_FMT cod_format;
+
 	/** Decompress window left boundary */
 	uint32_t dw_x0;
 	/** Decompress window right boundary */
@@ -769,12 +770,11 @@ typedef struct _grk_decompress_core_params
 	uint32_t dw_y0;
 	/** Decompress window bottom boundary */
 	uint32_t dw_y1;
+
 	/** Verbose mode */
 	bool m_verbose;
 	/** tile number of the decompressed tile*/
 	uint16_t tileIndex;
-	/** Number of tiles to decompress */
-	uint32_t nb_tile_to_decompress;
 	uint32_t flags;
 	GRK_TILE_CACHE_STRATEGY tileCacheStrategy;
 } grk_decompress_core_params;
@@ -828,8 +828,7 @@ typedef struct _grk_decompress_params
 	bool m_verbose;
 	/** tile number of the decompressed tile*/
 	uint16_t tileIndex;
-	/** Number of tiles to decompress */
-	uint32_t nb_tile_to_decompress;
+	bool singleTileDecompress;
 	grk_precision* precision;
 	uint32_t numPrecision;
 	/* force output colorspace to RGB */

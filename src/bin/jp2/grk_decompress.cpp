@@ -655,11 +655,9 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 		}
 		if(layerArg.isSet())
 			parameters->core.cp_layer = layerArg.getValue();
+		parameters->singleTileDecompress = tileArg.isSet();
 		if(tileArg.isSet())
-		{
 			parameters->tileIndex = (uint16_t)tileArg.getValue();
-			parameters->nb_tile_to_decompress = 1;
-		}
 		if(precisionArg.isSet() && !parsePrecision(precisionArg.getValue().c_str(), parameters))
 			return 1;
 		if(numThreadsArg.isSet())
@@ -1203,7 +1201,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 		goto cleanup;
 	}
 	// decompress all tiles
-	if(!parameters->nb_tile_to_decompress)
+	if(!parameters->singleTileDecompress)
 	{
 		if(!(grk_decompress(info->codec, info->tile) && grk_decompress_end(info->codec)))
 			goto cleanup;
