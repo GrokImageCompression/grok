@@ -35,10 +35,8 @@ struct DecompressInitParams
 	}
 	~DecompressInitParams()
 	{
-		if(inputFolder.imgdirpath)
-			free(inputFolder.imgdirpath);
-		if(outFolder.imgdirpath)
-			free(outFolder.imgdirpath);
+		free(inputFolder.imgdirpath);
+		free(outFolder.imgdirpath);
 	}
 	bool initialized;
 	grk_decompress_parameters parameters;

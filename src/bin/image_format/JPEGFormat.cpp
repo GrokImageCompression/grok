@@ -221,8 +221,7 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
 			spdlog::warn("ICC profile does not match underlying colour space. Ignoring");
 		}
 	}
-	if(icc_data_ptr)
-		free(icc_data_ptr);
+	free(icc_data_ptr);
 	icc_data_ptr = nullptr;
 	/* set m_image offset and reference grid */
 	m_image->x0 = parameters->image_offset_x0;
@@ -305,8 +304,7 @@ grk_image* JPEGFormat::jpegtoimage(const char* filename, grk_cparameters* parame
  * with the stdio data source.
  */
 cleanup:
-	if(icc_data_ptr)
-		free(icc_data_ptr);
+	free(icc_data_ptr);
 	jpeg_destroy_decompress(&cinfo);
 
 	delete[] buffer32s;

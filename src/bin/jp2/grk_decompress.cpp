@@ -233,9 +233,7 @@ bool GrkDecompress::parsePrecision(const char* option, grk_decompress_parameters
 		if((count == 2) || (mode == ','))
 		{
 			if(mode == ',')
-			{
 				mode = 'C';
-			}
 			comma = ',';
 			count = 3;
 		}
@@ -338,7 +336,6 @@ int GrkDecompress::loadImages(grk_dircnt* dirptr, char* imgdirpath)
 
 	return 0;
 }
-
 char GrkDecompress::nextFile(const std::string inputFile, grk_img_fol* inputFolder,
 							 grk_img_fol* outFolder, grk_decompress_parameters* parameters)
 {
@@ -359,17 +356,12 @@ char GrkDecompress::nextFile(const std::string inputFile, grk_img_fol* inputFold
 	{
 		std::string outfilename = outFolder->imgdirpath + std::string(pathSeparator()) +
 								  temp_ofname + "." + inputFolder->out_format;
-		if(grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename.c_str()) !=
-		   0)
-		{
+		if(grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename.c_str()) != 0)
 			return 1;
-		}
 	}
 
 	return 0;
 }
-
-/* -------------------------------------------------------------------------- */
 
 class GrokOutput : public TCLAP::StdOutput
 {
@@ -406,11 +398,6 @@ uint32_t GrkDecompress::getCompressionCode(const std::string& compressionString)
 		return UINT_MAX;
 }
 
-/* -------------------------------------------------------------------------- */
-/**
- * Parse the command line
- */
-/* -------------------------------------------------------------------------- */
 int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams* initParams)
 {
 	grk_decompress_parameters* parameters = &initParams->parameters;
@@ -518,9 +505,7 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 				parameters->compression = comp;
 		}
 		if(compressionLevelArg.isSet())
-		{
 			parameters->compressionLevel = compressionLevelArg.getValue();
-		}
 		// process
 		if(inputFileArg.isSet())
 		{
@@ -599,7 +584,6 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 					return 1;
 			}
 		}
-
 		if(outputFileArg.isSet())
 		{
 			const char* outfile = outputFileArg.getValue().c_str();
@@ -670,24 +654,16 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 				parameters->core.cp_reduce = (uint8_t)reduceArg.getValue();
 		}
 		if(layerArg.isSet())
-		{
 			parameters->core.cp_layer = layerArg.getValue();
-		}
 		if(tileArg.isSet())
 		{
 			parameters->tileIndex = (uint16_t)tileArg.getValue();
 			parameters->nb_tile_to_decompress = 1;
 		}
-		if(precisionArg.isSet())
-		{
-			if(!parsePrecision(precisionArg.getValue().c_str(), parameters))
-				return 1;
-		}
+		if(precisionArg.isSet() && !parsePrecision(precisionArg.getValue().c_str(), parameters))
+			return 1;
 		if(numThreadsArg.isSet())
-		{
 			parameters->numThreads = numThreadsArg.getValue();
-		}
-
 		if(decodeRegionArg.isSet())
 		{
 			size_t size_optarg = (size_t)strlen(decodeRegionArg.getValue().c_str()) + 1U;
@@ -701,38 +677,23 @@ int GrkDecompress::parseCommandLine(int argc, char** argv, DecompressInitParams*
 			memcpy(ROI_values, decodeRegionArg.getValue().c_str(), size_optarg);
 			/*printf("ROI_values = %s [%d / %d]\n", ROI_values, strlen(ROI_values), size_optarg );
 			 */
-			int rc = parseWindowBounds(ROI_values, &parameters->DA_x0, &parameters->DA_y0,
-									   &parameters->DA_x1, &parameters->DA_y1);
+			int rc = parseWindowBounds(ROI_values, &parameters->dw_x0, &parameters->dw_y0,
+									   &parameters->dw_x1, &parameters->dw_y1);
 			free(ROI_values);
 			if(rc)
 				return 1;
 		}
 
-		if(pluginPathArg.isSet())
-		{
-			if(pluginPath)
-				strcpy(pluginPath, pluginPathArg.getValue().c_str());
-		}
-
+		if(pluginPathArg.isSet() && pluginPath)
+			strcpy(pluginPath, pluginPathArg.getValue().c_str());
 		if(repetitionsArg.isSet())
-		{
 			parameters->repeats = repetitionsArg.getValue();
-		}
-
 		if(kernelBuildOptionsArg.isSet())
-		{
 			parameters->kernelBuildOptions = kernelBuildOptionsArg.getValue();
-		}
-
 		if(deviceIdArg.isSet())
-		{
 			parameters->deviceId = deviceIdArg.getValue();
-		}
-
 		if(durationArg.isSet())
-		{
 			parameters->duration = durationArg.getValue();
-		}
 	}
 	catch(TCLAP::ArgException& e) // catch any exceptions
 	{
@@ -787,12 +748,6 @@ void GrkDecompress::setDefaultParams(grk_decompress_parameters* parameters)
 	if(parameters)
 	{
 		memset(parameters, 0, sizeof(grk_decompress_parameters));
-
-		/* default decoding parameters (command line specific) */
-		parameters->decod_format = GRK_UNK_FMT;
-		parameters->cod_format = GRK_UNK_FMT;
-
-		/* default decoding parameters (core) */
 		grk_decompress_set_default_params(&(parameters->core));
 		parameters->deviceId = 0;
 		parameters->repeats = 1;
@@ -802,13 +757,9 @@ void GrkDecompress::setDefaultParams(grk_decompress_parameters* parameters)
 
 void GrkDecompress::destoryParams(grk_decompress_parameters* parameters)
 {
-	if(parameters)
-	{
-		if(parameters->precision)
-		{
-			free(parameters->precision);
-			parameters->precision = nullptr;
-		}
+	if(parameters) {
+		free(parameters->precision);
+		parameters->precision = nullptr;
 	}
 }
 
@@ -959,10 +910,8 @@ int GrkDecompress::pluginMain(int argc, char** argv, DecompressInitParams* initP
 cleanup:
 	if(dirptr)
 	{
-		if(dirptr->filename_buf)
-			free(dirptr->filename_buf);
-		if(dirptr->filename)
-			free(dirptr->filename);
+		free(dirptr->filename_buf);
+		free(dirptr->filename);
 		free(dirptr);
 	}
 	return success;
@@ -985,9 +934,7 @@ int decompress_callback(grk_plugin_decompress_callback_info* info)
 		grk_object_unref(info->codec);
 		info->codec = nullptr;
 		if(info->image && !info->plugin_owns_image)
-		{
 			info->image = nullptr;
-		}
 		rc = 0;
 	}
 	auto decompressor = (GrkDecompress*)info->user_data;
@@ -998,9 +945,7 @@ int decompress_callback(grk_plugin_decompress_callback_info* info)
 			return rc;
 	}
 	if(info->decompress_flags & GRK_DECODE_POST_T1)
-	{
 		rc = decompressor->postProcess(info);
-	}
 	return rc;
 }
 
@@ -1183,10 +1128,10 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 		// do not allow odd top left window coordinates for SYCC
 		if(info->image->color_space == GRK_CLRSPC_SYCC)
 		{
-			bool adjustX = (info->decompressor_parameters->DA_x0 != info->full_image_x0) &&
-						   (info->decompressor_parameters->DA_x0 & 1);
-			bool adjustY = (info->decompressor_parameters->DA_y0 != info->full_image_y0) &&
-						   (info->decompressor_parameters->DA_y0 & 1);
+			bool adjustX = (info->decompressor_parameters->dw_x0 != info->full_image_x0) &&
+						   (info->decompressor_parameters->dw_x0 & 1);
+			bool adjustY = (info->decompressor_parameters->dw_y0 != info->full_image_y0) &&
+						   (info->decompressor_parameters->dw_y0 & 1);
 			if(adjustX || adjustY)
 			{
 				spdlog::error(
@@ -1251,8 +1196,8 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 			goto cleanup;
 		}
 	}
-	if(!grk_decompress_set_window(info->codec, parameters->DA_x0, parameters->DA_y0,
-								  parameters->DA_x1, parameters->DA_y1))
+	if(!grk_decompress_set_window(info->codec, parameters->dw_x0, parameters->dw_y0,
+								  parameters->dw_x1, parameters->dw_y1))
 	{
 		spdlog::error("grk_decompress: failed to set the decompressed area");
 		goto cleanup;
@@ -1261,9 +1206,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	if(!parameters->nb_tile_to_decompress)
 	{
 		if(!(grk_decompress(info->codec, info->tile) && grk_decompress_end(info->codec)))
-		{
 			goto cleanup;
-		}
 	}
 	// or, decompress one particular tile
 	else
@@ -1379,9 +1322,7 @@ cleanup:
 	delete imageFormat;
 	imageFormat = nullptr;
 	if(failed)
-	{
 		cleanUpFile(outfile);
-	}
 
 	return failed ? 1 : 0;
 }

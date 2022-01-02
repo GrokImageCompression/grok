@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
   /* read back the generated file */
   {
     grk_codec *d_codec = nullptr;
-    grk_dparameters dparameters;
+    grk_decompress_core_params dparameters;
 
     bSuccess = grk_decompress_init(d_codec, &dparameters);
     assert(bSuccess);

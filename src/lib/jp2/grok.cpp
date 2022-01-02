@@ -239,15 +239,15 @@ grk_codec* GRK_CALLCONV grk_decompress_create(GRK_CODEC_FORMAT p_format, grk_str
 	}
 	return &codec->obj;
 }
-void GRK_CALLCONV grk_decompress_set_default_params(grk_dparameters* parameters)
+void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_core_params* parameters)
 {
 	if(parameters)
 	{
-		memset(parameters, 0, sizeof(grk_dparameters));
+		memset(parameters, 0, sizeof(grk_decompress_core_params));
 		parameters->tileCacheStrategy = GRK_TILE_CACHE_NONE;
 	}
 }
-bool GRK_CALLCONV grk_decompress_init(grk_codec* codecWrapper, grk_dparameters* parameters)
+bool GRK_CALLCONV grk_decompress_init(grk_codec* codecWrapper, grk_decompress_core_params* parameters)
 {
 	if(codecWrapper && parameters)
 	{

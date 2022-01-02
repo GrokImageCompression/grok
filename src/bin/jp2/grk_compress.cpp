@@ -351,12 +351,9 @@ CompressInitParams::~CompressInitParams()
 		if(parameters.comment[i])
 			delete[]((uint8_t*)parameters.comment[i]);
 	}
-	if(parameters.raw_cp.comps)
-		free(parameters.raw_cp.comps);
-	if(inputFolder.imgdirpath)
-		free(inputFolder.imgdirpath);
-	if(outFolder.imgdirpath)
-		free(outFolder.imgdirpath);
+	free(parameters.raw_cp.comps);
+	free(inputFolder.imgdirpath);
+	free(outFolder.imgdirpath);
 }
 static char nextFile(std::string inputFile, grk_img_fol* inputFolder, grk_img_fol* outFolder,
 					 grk_cparameters* parameters)

@@ -326,7 +326,7 @@ bool FileFormatDecompress::setDecompressWindow(grkRectU32 window)
 	return codeStream->setDecompressWindow(window);
 }
 /** Set up decompressor function handler */
-void FileFormatDecompress::initDecompress(grk_dparameters* parameters)
+void FileFormatDecompress::initDecompress(grk_decompress_core_params* parameters)
 {
 	/* set up the J2K codec */
 	codeStream->initDecompress(parameters);

@@ -92,8 +92,8 @@ std::string convertFileFmtToString(GRK_SUPPORTED_FILE_FMT fmt)
  * separator = ","
  */
 /* -------------------------------------------------------------------------- */
-int parseWindowBounds(char* inArg, uint32_t* DA_x0, uint32_t* DA_y0, uint32_t* DA_x1,
-					  uint32_t* DA_y1)
+int parseWindowBounds(char* inArg, uint32_t* dw_x0, uint32_t* dw_y0, uint32_t* dw_x1,
+					  uint32_t* dw_y1)
 {
 	int it = 0;
 	int values[4];
@@ -132,10 +132,10 @@ int parseWindowBounds(char* inArg, uint32_t* DA_x0, uint32_t* DA_y0, uint32_t* D
 		return EXIT_FAILURE;
 	}
 
-	*DA_x0 = (uint32_t)values[0];
-	*DA_y0 = (uint32_t)values[1];
-	*DA_x1 = (uint32_t)values[2];
-	*DA_y1 = (uint32_t)values[3];
+	*dw_x0 = (uint32_t)values[0];
+	*dw_y0 = (uint32_t)values[1];
+	*dw_x1 = (uint32_t)values[2];
+	*dw_y1 = (uint32_t)values[3];
 	return EXIT_SUCCESS;
 }
 

@@ -736,7 +736,7 @@ typedef struct _grk_header_info
 /**
  * Core decompress parameters
  * */
-typedef struct _grk_dparameters
+typedef struct _grk_decompress_core_params
 {
 	/**
 	 Set the number of highest resolution levels to be discarded.
@@ -762,13 +762,13 @@ typedef struct _grk_dparameters
 	/** output file format*/
 	GRK_SUPPORTED_FILE_FMT cod_format;
 	/** Decompress window left boundary */
-	uint32_t DA_x0;
+	uint32_t dw_x0;
 	/** Decompress window right boundary */
-	uint32_t DA_x1;
+	uint32_t dw_x1;
 	/** Decompress window up boundary */
-	uint32_t DA_y0;
+	uint32_t dw_y0;
 	/** Decompress window bottom boundary */
-	uint32_t DA_y1;
+	uint32_t dw_y1;
 	/** Verbose mode */
 	bool m_verbose;
 	/** tile number of the decompressed tile*/
@@ -777,7 +777,7 @@ typedef struct _grk_dparameters
 	uint32_t nb_tile_to_decompress;
 	uint32_t flags;
 	GRK_TILE_CACHE_STRATEGY tileCacheStrategy;
-} grk_dparameters;
+} grk_decompress_core_params;
 
 /**
  * Precision mode
@@ -805,7 +805,7 @@ typedef struct _grk_prec
 typedef struct _grk_decompress_params
 {
 	/** core library parameters */
-	grk_dparameters core;
+	grk_decompress_core_params core;
 	/** input file name */
 	char infile[GRK_PATH_LEN];
 	/** output file name */
@@ -817,13 +817,13 @@ typedef struct _grk_decompress_params
 	/** index file name */
 	char indexfilename[GRK_PATH_LEN];
 	/** Decompress window left boundary */
-	uint32_t DA_x0;
+	uint32_t dw_x0;
 	/** Decompress window right boundary */
-	uint32_t DA_x1;
+	uint32_t dw_x1;
 	/** Decompress window up boundary */
-	uint32_t DA_y0;
+	uint32_t dw_y0;
 	/** Decompress window bottom boundary */
-	uint32_t DA_y1;
+	uint32_t dw_y1;
 	/** Verbose mode */
 	bool m_verbose;
 	/** tile number of the decompressed tile*/
@@ -1297,7 +1297,7 @@ GRK_API grk_codec* GRK_CALLCONV grk_decompress_create(GRK_CODEC_FORMAT format, g
  *
  * @param parameters decompression parameters
  */
-GRK_API void GRK_CALLCONV grk_decompress_set_default_params(grk_dparameters* parameters);
+GRK_API void GRK_CALLCONV grk_decompress_set_default_params(grk_decompress_core_params* parameters);
 
 /**
  * Set up the decompressor with decompress parameters
@@ -1307,7 +1307,7 @@ GRK_API void GRK_CALLCONV grk_decompress_set_default_params(grk_dparameters* par
  *
  * @return true			if the decompressor is correctly set
  */
-GRK_API bool GRK_CALLCONV grk_decompress_init(grk_codec* codec, grk_dparameters* parameters);
+GRK_API bool GRK_CALLCONV grk_decompress_init(grk_codec* codec, grk_decompress_core_params* parameters);
 
 /**
  * Decompress JPEG 2000 header

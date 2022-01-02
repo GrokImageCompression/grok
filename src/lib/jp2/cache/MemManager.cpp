@@ -144,7 +144,6 @@ void* grkRealloc(void* ptr, size_t new_size)
 }
 void grkFree(void* ptr)
 {
-	if(ptr)
-		free(ptr);
+	free(ptr);
 }
 } // namespace grk

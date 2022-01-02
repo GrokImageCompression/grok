@@ -53,7 +53,7 @@ static int32_t test_tile(uint16_t tile_index, grk_image *image,
 }
 
 int32_t main(int argc, char **argv) {
-  grk_dparameters parameters; /* decompression parameters */
+  grk_decompress_core_params parameters; /* decompression parameters */
   int32_t ret = EXIT_FAILURE, rc;
 
   if (argc != 2) {

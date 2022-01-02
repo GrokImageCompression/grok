@@ -1045,8 +1045,7 @@ bool PNMFormat::encodeRows(uint32_t rows)
 	success = true;
 
 cleanup:
-	if(destname)
-		free(destname);
+	free(destname);
 
 	return success;
 }

@@ -345,7 +345,7 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 
 	return true;
 }
-void CodeStreamDecompress::initDecompress(grk_dparameters* parameters)
+void CodeStreamDecompress::initDecompress(grk_decompress_core_params* parameters)
 {
 	if(parameters)
 	{

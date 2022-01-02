@@ -47,7 +47,7 @@ class CodeStreamDecompress : public CodeStream, public ICodeStreamDecompress
 	GrkImage* getImage(uint16_t tileIndex);
 	GrkImage* getImage(void);
 	std::vector<GrkImage*> getAllImages(void);
-	void initDecompress(grk_dparameters* p_param);
+	void initDecompress(grk_decompress_core_params* p_param);
 	bool setDecompressWindow(grkRectU32 window);
 	bool decompress(grk_plugin_tile* tile);
 	bool decompressTile(uint16_t tileIndex);
