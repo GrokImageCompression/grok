@@ -222,16 +222,8 @@ static int parseCommandLine(int argc, char** argv, grk_decompress_core_params* p
 			strcpy(inputFolder->imgdirpath, imgDirArg.getValue().c_str());
 			inputFolder->set_imgdir = true;
 		}
-
-		if(verboseArg.isSet())
-		{
-			parameters->m_verbose = 1;
-		}
-
 		if(flagArg.isSet())
-		{
 			inputFolder->flag = flagArg.getValue();
-		}
 	}
 	catch(TCLAP::ArgException& e) // catch any exceptions
 	{

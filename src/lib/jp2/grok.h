@@ -761,21 +761,6 @@ typedef struct _grk_decompress_core_params
 	GRK_SUPPORTED_FILE_FMT decod_format;
 	/** output file format*/
 	GRK_SUPPORTED_FILE_FMT cod_format;
-
-	/** Decompress window left boundary */
-	uint32_t dw_x0;
-	/** Decompress window right boundary */
-	uint32_t dw_x1;
-	/** Decompress window up boundary */
-	uint32_t dw_y0;
-	/** Decompress window bottom boundary */
-	uint32_t dw_y1;
-
-	/** Verbose mode */
-	bool m_verbose;
-	/** tile number of the decompressed tile*/
-	uint16_t tileIndex;
-	uint32_t flags;
 	GRK_TILE_CACHE_STRATEGY tileCacheStrategy;
 } grk_decompress_core_params;
 
@@ -806,14 +791,6 @@ typedef struct _grk_decompress_params
 {
 	/** core library parameters */
 	grk_decompress_core_params core;
-	/** input file name */
-	char infile[GRK_PATH_LEN];
-	/** output file name */
-	char outfile[GRK_PATH_LEN];
-	/** input file format 0: J2K, 1: JP2*/
-	GRK_SUPPORTED_FILE_FMT decod_format;
-	/** output file format 0: PGX, 1: PxM, 2: BMP */
-	GRK_SUPPORTED_FILE_FMT cod_format;
 	/** Decompress window left boundary */
 	uint32_t dw_x0;
 	/** Decompress window right boundary */
@@ -822,8 +799,6 @@ typedef struct _grk_decompress_params
 	uint32_t dw_y0;
 	/** Decompress window bottom boundary */
 	uint32_t dw_y1;
-	/** Verbose mode */
-	bool m_verbose;
 	/** tile number of the decompressed tile*/
 	uint16_t tileIndex;
 	bool singleTileDecompress;
@@ -841,11 +816,12 @@ typedef struct _grk_decompress_params
 	// compression "quality". Meaning of "quality" depends
 	// on file format we are writing to
 	uint32_t compressionLevel;
+	/** Verbose mode */
+	bool m_verbose;
 	int32_t deviceId;
 	uint32_t duration; // seconds
 	uint32_t kernelBuildOptions;
 	uint32_t repeats;
-	bool verbose;
 	uint32_t numThreads;
 } grk_decompress_parameters;
 
