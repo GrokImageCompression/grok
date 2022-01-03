@@ -208,7 +208,7 @@ bool PGXFormat::encodeHeader(grk_image* image, const std::string& filename,
 
 	return true;
 }
-bool PGXFormat::encodeBuffer(uint8_t *data, uint64_t dataLen, uint32_t strip) {
+bool PGXFormat::encodePixels(uint8_t *data, uint64_t dataLen, uint32_t strip) {
 	(void)data;
 	(void)dataLen;
 	(void)strip;

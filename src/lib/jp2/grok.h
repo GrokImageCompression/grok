@@ -675,6 +675,24 @@ typedef struct _grk_asoc
 } grk_asoc;
 
 /**
+ * Precision mode
+ */
+typedef enum grk_prec_mode
+{
+	GRK_PREC_MODE_CLIP,
+	GRK_PREC_MODE_SCALE
+} grk_precision_mode;
+
+/**
+ * Precision
+ */
+typedef struct _grk_prec
+{
+	uint8_t prec;
+	grk_precision_mode mode;
+} grk_precision;
+
+/**
  * Header info
  */
 typedef struct _grk_header_info
@@ -730,6 +748,11 @@ typedef struct _grk_header_info
 
 	grk_asoc asocs[GRK_NUM_ASOC_BOXES_SUPPORTED];
 	uint32_t num_asocs;
+	GRK_SUPPORTED_FILE_FMT decompressFormat;
+	bool forceRGB;
+	bool upsample;
+	grk_precision* precision;
+	uint32_t numPrecision;
 
 } grk_header_info;
 
@@ -771,23 +794,6 @@ typedef struct _grk_decompress_core_params
 
 } grk_decompress_core_params;
 
-/**
- * Precision mode
- */
-typedef enum grk_prec_mode
-{
-	GRK_PREC_MODE_CLIP,
-	GRK_PREC_MODE_SCALE
-} grk_precision_mode;
-
-/**
- * Precision
- */
-typedef struct _grk_prec
-{
-	uint8_t prec;
-	grk_precision_mode mode;
-} grk_precision;
 
 #define GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT (UINT_MAX)
 
@@ -975,6 +981,8 @@ typedef struct _grk_image
 	grk_image_meta* meta;
 	grk_image_comp* comps;
 	uint8_t* interleavedData;
+	uint32_t rowsPerStrip;
+	uint64_t packedWidthBytes;
 } grk_image;
 
 ////////////////////////////////////////////////

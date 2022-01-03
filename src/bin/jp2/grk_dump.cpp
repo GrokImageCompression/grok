@@ -303,6 +303,7 @@ int main(int argc, char* argv[])
 	FILE* fout = nullptr;
 
 	grk_decompress_parameters parameters; /* Decompression parameters */
+	memset(&parameters,0, sizeof(grk_decompress_parameters));
 	grk_image* image = nullptr; /* Image structure */
 	grk_codec* codec = nullptr; /* Handle to a decompressor */
 	grk_stream* stream = nullptr; /* Stream */

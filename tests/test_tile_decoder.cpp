@@ -47,7 +47,8 @@
 #endif /* _WIN32 */
 
 int main(int argc, char *argv[]) {
-	grk_decompress_parameters param;
+  grk_decompress_parameters param;
+  memset(&param,0, sizeof(grk_decompress_parameters));
   grk_codec *codec = nullptr;
   grk_stream *stream = nullptr;
   uint16_t tile_index = 0;

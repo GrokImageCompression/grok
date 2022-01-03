@@ -787,11 +787,16 @@ int GrkDecompress::decompress(const std::string& fileName, DecompressInitParams*
 	memset(&info, 0, sizeof(grk_plugin_decompress_callback_info));
 	memset(&info.header_info, 0, sizeof(grk_header_info));
 	info.decod_format = GRK_UNK_FMT;
-	info.cod_format = GRK_UNK_FMT;
 	info.decompress_flags = GRK_DECODE_ALL;
 	info.decompressor_parameters = &initParams->parameters;
 	info.user_data = this;
-
+	info.cod_format =
+			(GRK_SUPPORTED_FILE_FMT)(info.cod_format != GRK_UNK_FMT ? info.cod_format : info.decompressor_parameters->cod_format);
+	info.header_info.decompressFormat = info.cod_format;
+	info.header_info.forceRGB = info.decompressor_parameters->force_rgb;
+	info.header_info.upsample = info.decompressor_parameters->upsample;
+	info.header_info.precision = info.decompressor_parameters->precision;
+	info.header_info.numPrecision = info.decompressor_parameters->numPrecision;
 	if(preProcess(&info))
 	{
 		grk_object_unref(info.codec);
@@ -971,7 +976,7 @@ static bool grk_serialize_pixels(grk_simple_buf* buffer, uint32_t strip, void* u
 		return false;
 	IImageFormat *imageFormat = (IImageFormat*)user_data;
 
-	return imageFormat->encodeBuffer(buffer->data, buffer->dataLength, strip);
+	return imageFormat->encodePixels(buffer->data, buffer->dataLength, strip);
 }
 
 static void grk_reclaim_buffers(grk_simple_buf** reclaimed, uint32_t max_reclaimed, void* user_data){
@@ -997,12 +1002,10 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	auto infile = info->input_file_name ? info->input_file_name : parameters->infile;
 	int decod_format =
 		info->decod_format != GRK_UNK_FMT ? info->decod_format : parameters->decod_format;
-	GRK_SUPPORTED_FILE_FMT cod_format = (GRK_SUPPORTED_FILE_FMT)(
-		info->cod_format != GRK_UNK_FMT ? info->cod_format : parameters->cod_format);
 	const char* outfile = info->decompressor_parameters->outfile[0]
 							  ? info->decompressor_parameters->outfile
 							  : info->output_file_name;
-	switch(cod_format)
+	switch(info->cod_format)
 	{
 		case GRK_PXM_FMT:
 			imageFormat = new PNMFormat(parameters->split_pnm);
@@ -1035,12 +1038,10 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 			break;
 #endif
 		default:
-			spdlog::error("Unsupported output format {}", convertFileFmtToString(cod_format));
+			spdlog::error("Unsupported output format {}", convertFileFmtToString(info->cod_format));
 			goto cleanup;
 			break;
 	}
-
-
 	parameters->core.serialize_data = imageFormat;
 	parameters->core.serializeBufferCallback = grk_serialize_pixels;
 	parameters->core.reclaimCallback = grk_reclaim_buffers;
@@ -1201,11 +1202,6 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 	// 3. decompress
 	if(info->tile)
 		info->tile->decompress_flags = info->decompress_flags;
-	info->image->decompressFormat = cod_format;
-	info->image->forceRGB = info->decompressor_parameters->force_rgb;
-	info->image->upsample = info->decompressor_parameters->upsample;
-	info->image->precision = info->decompressor_parameters->precision;
-	info->image->numPrecision = info->decompressor_parameters->numPrecision;
 	// limit to 16 bit precision
 	for(uint32_t i = 0; i < info->image->numcomps; ++i)
 	{

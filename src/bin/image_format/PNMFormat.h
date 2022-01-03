@@ -25,7 +25,7 @@ class PNMFormat : public ImageFormat
 	bool encodeHeader(grk_image* image, const std::string& filename,
 					  uint32_t compressionParam) override;
 	bool encodeRows(uint32_t rows) override;
-	bool encodeBuffer(uint8_t *data, uint64_t dataLen, uint32_t strip) override;
+	bool encodePixels(uint8_t *data, uint64_t dataLen, uint32_t strip) override;
 	bool encodeFinish(void) override;
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 

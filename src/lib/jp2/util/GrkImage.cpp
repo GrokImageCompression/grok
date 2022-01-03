@@ -65,6 +65,8 @@ GrkImage* GrkImage::create(grk_image *src,
 		image->targetColourSpace = src->targetColourSpace;
 		image->precision = src->precision;
 		image->numPrecision = src->numPrecision;
+		image->rowsPerStrip = src->rowsPerStrip;
+		image->packedWidthBytes = src->packedWidthBytes;
 	}
 
 	/* allocate memory for the per-component information */
@@ -222,6 +224,8 @@ void GrkImage::copyHeader(GrkImage* dest)
 	dest->upsample = upsample;
 	dest->precision = precision;
 	dest->numPrecision = numPrecision;
+	dest->rowsPerStrip = rowsPerStrip;
+	dest->packedWidthBytes = packedWidthBytes;
 }
 
 void GrkImage::createMeta()
@@ -258,12 +262,12 @@ bool GrkImage::canAllocInterleaved(CodingParams *cp){
 	// tile origin and image origin must coincide
 	if (cp->tx0 != x0 || cp->ty0 != y0)
 		return false;
+	// only RGB or MONO in TIFF format is allowed
 	if (precision ||
 		(decompressFormat != GRK_TIF_FMT) ||
 			(color_space != GRK_CLRSPC_SRGB && color_space != GRK_CLRSPC_GRAY))
 		return false;
-
-	// check the all components are equal
+	// check that all components are equal
 	for(uint16_t compno = 1; compno < numcomps; compno++){
 		if (!componentsEqual(comps, comps+compno))
 			return false;
@@ -272,6 +276,63 @@ bool GrkImage::canAllocInterleaved(CodingParams *cp){
 	return true;
 }
 
+bool isSubsampled(grk_image* image)
+{
+	if(!image)
+		return false;
+	for(uint32_t i = 0; i < image->numcomps; ++i)
+	{
+		if(image->comps[i].dx != 1 || image->comps[i].dy != 1)
+			return true;
+	}
+	return false;
+}
+
+void GrkImage::postReadHeader(CodingParams *cp){
+	if(color_space == GRK_CLRSPC_UNKNOWN &&
+		numcomps == 3 &&
+		comps[0].dx == 1 && comps[0].dy == 1 &&
+		comps[1].dx == comps[2].dx &&
+		comps[1].dy == comps[2].dy &&
+	   (comps[1].dx ==2 || comps[1].dy ==2) &&
+	   (comps[2].dx ==2 || comps[2].dy ==2) )
+			color_space = GRK_CLRSPC_SYCC;
+
+	uint32_t width = x1 - x0;
+	uint8_t prec = comps[0].prec;
+	if (precision)
+		prec = precision->prec;
+	uint16_t ncmp = numcomps;
+	if (forceRGB)
+		ncmp = 3;
+	if(decompressFormat == GRK_TIF_FMT && isSubsampled(this) &&
+			(color_space == GRK_CLRSPC_EYCC || color_space ==  GRK_CLRSPC_SYCC)) {
+		uint32_t chroma_subsample_x = comps[1].dx;
+		uint32_t chroma_subsample_y = comps[1].dy;
+		uint32_t units = (width + chroma_subsample_x - 1) / chroma_subsample_x;
+		packedWidthBytes = (uint64_t)((((uint64_t)width * chroma_subsample_y + units * 2U) * prec + 7U) / 8U);
+		rowsPerStrip = (uint32_t)((chroma_subsample_y * 8 * 1024 * 1024) / packedWidthBytes);
+	} else {
+		packedWidthBytes =
+				decompressFormat == GRK_BMP_FMT ?
+							(((uint64_t)ncmp *  width + 3) >> 2) << 2 :
+									grk::PtoI<int32_t>::getPackedBytes(ncmp, x1 - x0, prec);
+		uint32_t baseRows = 16;
+		if (decompressFormat == GRK_BMP_FMT)
+			baseRows = 8;
+		if (canAllocInterleaved(cp))
+			rowsPerStrip = cp->t_height;
+		else
+			rowsPerStrip =	(uint32_t)((baseRows * 1024 * 1024) / packedWidthBytes);
+	}
+
+	if(rowsPerStrip & 1)
+		rowsPerStrip++;
+	if(rowsPerStrip > y1 - y0)
+		rowsPerStrip =y1 - y0;
+
+
+}
 bool GrkImage::allocCompositeData(CodingParams *cp){
 	if (canAllocInterleaved(cp)){
 		uint64_t stride =  grk::PtoI<int32_t>::getPackedBytes(numcomps, comps->w, comps->prec);

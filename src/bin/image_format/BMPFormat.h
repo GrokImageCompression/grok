@@ -67,7 +67,7 @@ class BMPFormat : public ImageFormat
 	bool encodeHeader(grk_image* image, const std::string& filename,
 					  uint32_t compressionParam) override;
 	bool encodeRows(uint32_t rows) override;
-	bool encodeBuffer(uint8_t *data, uint64_t dataLen, uint32_t strip) override;
+	bool encodePixels(uint8_t *data, uint64_t dataLen, uint32_t strip) override;
 	bool encodeFinish(void) override;
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 
@@ -84,7 +84,6 @@ class BMPFormat : public ImageFormat
 	bool read_rle8_data(uint8_t* pData, uint32_t stride, uint32_t width, uint32_t height);
 	bool read_rle4_data(uint8_t* pData, uint32_t stride, uint32_t width, uint32_t height);
 
-	uint32_t getPaddedWidth();
 	uint64_t m_srcIndex;
 	GRK_BITMAPFILEHEADER File_h;
 	GRK_BITMAPINFOHEADER Info_h;

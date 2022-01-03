@@ -22,11 +22,11 @@
 #include <lcms2.h>
 
 ImageFormat::ImageFormat()
-	: m_image(nullptr), m_rowCount(0), m_rowsPerStrip(0), m_numStrips(0),
+	: m_image(nullptr), m_rowCount(0), m_numStrips(0),
 	  m_fileIO(new FileStreamIO()), m_fileStream(nullptr), m_useStdIO(false)
 {}
 ImageFormat::ImageFormat(const ImageFormat& rhs)
-	: m_image(rhs.m_image), m_rowCount(rhs.m_rowCount), m_rowsPerStrip(rhs.m_rowsPerStrip),
+	: m_image(rhs.m_image), m_rowCount(rhs.m_rowCount),
 	  m_numStrips(rhs.m_numStrips), m_fileIO(nullptr), m_fileStream(nullptr),
 	  m_useStdIO(rhs.m_useStdIO)
 {}
@@ -37,7 +37,6 @@ ImageFormat& ImageFormat::operator=(const ImageFormat& rhs)
 	{ // self-assignment check expected
 		m_image = rhs.m_image;
 		m_rowCount = rhs.m_rowCount;
-		m_rowsPerStrip = rhs.m_rowsPerStrip;
 		m_numStrips = rhs.m_numStrips;
 		m_fileIO = nullptr;
 		m_fileStream = nullptr;

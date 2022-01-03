@@ -369,15 +369,6 @@ bool GrkImage::convertToRGB(bool wholeTileDecompress){
 		oddFirstY = false;
 	}
 	bool convert = (decompressFormat != GRK_UNK_FMT && decompressFormat != GRK_TIF_FMT) || forceRGB;
-	if(color_space == GRK_CLRSPC_UNKNOWN &&
-	   numcomps == 3 &&
-	   comps[0].dx == 1 && comps[0].dy == 1 &&
-	   comps[1].dx == comps[2].dx &&
-	   comps[1].dy == comps[2].dy &&
-	   (comps[1].dx ==2 || comps[1].dy ==2) &&
-	   (comps[2].dx ==2 || comps[2].dy ==2) )
-		color_space = GRK_CLRSPC_SYCC;
-
 	switch(color_space)
 	{
 		case GRK_CLRSPC_SYCC:

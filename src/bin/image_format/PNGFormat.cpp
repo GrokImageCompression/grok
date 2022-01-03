@@ -649,7 +649,7 @@ bool PNGFormat::encodeHeader(grk_image* img, const std::string& filename, uint32
 beach:
 	return !fails;
 }
-bool PNGFormat::encodeBuffer(uint8_t *data, uint64_t dataLen, uint32_t strip) {
+bool PNGFormat::encodePixels(uint8_t *data, uint64_t dataLen, uint32_t strip) {
 	(void)data;
 	(void)dataLen;
 	(void)strip;

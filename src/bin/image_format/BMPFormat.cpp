@@ -424,11 +424,6 @@ cleanup:
 	delete[] pixels;
 	return rc;
 }
-uint32_t BMPFormat::getPaddedWidth()
-{
-	assert(m_image);
-	return ((m_image->numcomps * m_image->comps[0].w + 3) >> 2) << 2;
-}
 
 BMPFormat::BMPFormat(void) : m_srcIndex(0)
 {
@@ -440,6 +435,7 @@ BMPFormat::BMPFormat(void) : m_srcIndex(0)
 	memset(&Info_h, 0, sizeof(GRK_BITMAPINFOHEADER));
 }
 
+
 bool BMPFormat::encodeHeader(grk_image* image, const std::string& filename,
 							 uint32_t compressionParam)
 {
@@ -449,21 +445,12 @@ bool BMPFormat::encodeHeader(grk_image* image, const std::string& filename,
 	bool ret = false;
 	uint32_t w = m_image->comps[0].w;
 	uint32_t h = m_image->comps[0].h;
-	uint32_t padW = getPaddedWidth();
+	uint32_t padW = (uint32_t)m_image->packedWidthBytes;
 	uint32_t image_size = padW * h;
 	uint32_t colours_used, lut_size;
 	uint32_t full_header_size, info_header_size, icc_size = 0;
 	uint32_t header_plus_lut = 0;
 	uint8_t *header_buf = nullptr, *header_ptr = nullptr;
-	uint32_t w_dest = getPaddedWidth();
-
-	m_rowsPerStrip = (8 * 1024 * 1024) / w_dest;
-	if(m_rowsPerStrip == 0)
-		m_rowsPerStrip = 2;
-	if(m_rowsPerStrip & 1)
-		m_rowsPerStrip++;
-	if(m_rowsPerStrip > h)
-		m_rowsPerStrip = h;
 
 	if(!allComponentsSanityCheck(m_image, false))
 		goto cleanup;
@@ -552,7 +539,7 @@ cleanup:
 	return ret;
 }
 
-bool BMPFormat::encodeBuffer(uint8_t *data, uint64_t dataLen, uint32_t strip) {
+bool BMPFormat::encodePixels(uint8_t *data, uint64_t dataLen, uint32_t strip) {
 	(void)data;
 	(void)dataLen;
 	(void)strip;
@@ -568,7 +555,7 @@ bool BMPFormat::encodeRows(uint32_t rows)
 	auto numcomps = m_image->numcomps;
 	auto stride_src = m_image->comps[0].stride;
 	m_srcIndex = (uint64_t)stride_src * (h - 1);
-	uint32_t w_dest = getPaddedWidth();
+	uint32_t w_dest = (uint32_t)m_image->packedWidthBytes;
 	uint32_t pad_dest = (4 - (((uint64_t)numcomps * w) & 3)) & 3;
 
 	int32_t scale[4] = {1, 1, 1, 1};
@@ -595,12 +582,12 @@ bool BMPFormat::encodeRows(uint32_t rows)
 		shift[compno] = (m_image->comps[compno].sgnd ? 1 << (m_image->comps[compno].prec - 1) : 0);
 	}
 
-	auto destBuff = new uint8_t[(uint64_t)m_rowsPerStrip * w_dest];
+	auto destBuff = new uint8_t[(uint64_t)m_image->rowsPerStrip * w_dest];
 	// zero out padding at end of line
 	if(pad_dest)
 	{
 		uint8_t* ptr = destBuff + w_dest - pad_dest;
-		for(uint32_t m = 0; m < m_rowsPerStrip; ++m)
+		for(uint32_t m = 0; m < m_image->rowsPerStrip; ++m)
 		{
 			memset(ptr, 0, pad_dest);
 			ptr += w_dest;
@@ -609,7 +596,7 @@ bool BMPFormat::encodeRows(uint32_t rows)
 	while(m_rowCount < h)
 	{
 		uint64_t destInd = 0;
-		uint32_t k_max = std::min<uint32_t>(m_rowsPerStrip, (uint32_t)(h - m_rowCount));
+		uint32_t k_max = std::min<uint32_t>(m_image->rowsPerStrip, (uint32_t)(h - m_rowCount));
 		for(uint32_t k = 0; k < k_max; k++)
 		{
 			for(uint32_t i = 0; i < w; i++)

@@ -43,8 +43,6 @@ TIFFFormat::TIFFFormat(): tif(nullptr),
 							chroma_subsample_y(1),
 							rowsWritten(0),
 							strip(0),
-							rowsPerStrip(0),
-							packedBufStride(0),
 							units(0),
 							bytesToWrite(0)
 {
@@ -182,21 +180,9 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 	}
 	// calculate rows per strip, base on target 8K strip size
 	if(subsampled)
-	{
 		units = (width + chroma_subsample_x - 1) / chroma_subsample_x;
-		packedBufStride = (uint64_t)((((uint64_t)width * chroma_subsample_y + units * 2U) * bps + 7U) / 8U);
-		rowsPerStrip = (uint32_t)((chroma_subsample_y * 8 * 1024 * 1024) / packedBufStride);
-	}
 	else
-	{
 		units = m_image->comps->w;
-		packedBufStride =  grk::PtoI<int32_t>::getPackedBytes(numcomps, width, bps);
-		rowsPerStrip = (uint32_t)((16 * 1024 * 1024) / packedBufStride);
-	}
-	if(rowsPerStrip & 1)
-		rowsPerStrip++;
-	if(rowsPerStrip > height)
-		rowsPerStrip = height;
 
 	TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
 	TIFFSetField(tif, TIFFTAG_IMAGELENGTH, height);
@@ -206,7 +192,7 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 	TIFFSetField(tif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
 	TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
 	TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, tiPhoto);
-	TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, rowsPerStrip);
+	TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, m_image->rowsPerStrip);
 	if(tiPhoto == PHOTOMETRIC_YCBCR)
 	{
 		float refBlackWhite[6] = {0.0, 255.0, 128.0, 255.0, 128.0, 255.0};
@@ -290,12 +276,12 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 		TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, numExtraChannels, out.get());
 	}
 	if (!m_image->interleavedData)
-		packedBuf = new uint8_t[(size_t)TIFFVStripSize(tif, (uint32_t)rowsPerStrip)];
+		packedBuf = new uint8_t[(size_t)TIFFVStripSize(tif, (uint32_t)m_image->rowsPerStrip)];
 	success = true;
 cleanup:
 	return success;
 }
-bool TIFFFormat::encodeBuffer(uint8_t *data, uint64_t dataLen, uint32_t stripId) {
+bool TIFFFormat::encodePixels(uint8_t *data, uint64_t dataLen, uint32_t stripId) {
 
 	tmsize_t written = TIFFWriteEncodedStrip(tif, (tmsize_t)stripId, data, (tmsize_t)dataLen);
 	if(written == -1)
@@ -326,9 +312,9 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 		for(; h < rowsWritten + rowsToWrite; h += chroma_subsample_y)
 		{
 			uint32_t rowsSoFar = h - rowsWritten;
-			if(rowsSoFar > 0 && (rowsSoFar % rowsPerStrip == 0))
+			if(rowsSoFar > 0 && (rowsSoFar % m_image->rowsPerStrip == 0))
 			{
-				if(bytesToWrite && !encodeBuffer(packedBuf, bytesToWrite, strip++))
+				if(bytesToWrite && !encodePixels(packedBuf, bytesToWrite, strip++))
 					goto cleanup;
 				bufptr = (int8_t*)packedBuf;
 				bytesToWrite = 0;
@@ -360,7 +346,7 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 		if (h != rowsWritten)
 			rowsWritten += h - chroma_subsample_y - rowsWritten;
 		// cleanup
-		if(bytesToWrite && !encodeBuffer(packedBuf, bytesToWrite, strip++))
+		if(bytesToWrite && !encodePixels(packedBuf, bytesToWrite, strip++))
 			goto cleanup;
 	}
 	else
@@ -372,17 +358,18 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 		auto bufPtr = m_image->interleavedData ? m_image->interleavedData : packedBuf;
 		while(h < hTarget)
 		{
-			uint32_t stripRows = (std::min)(rowsPerStrip, height - h);
+			uint32_t stripRows = (std::min)(m_image->rowsPerStrip, height - h);
 			if (!m_image->interleavedData)
-				iter->interleave((int32_t**)planes, m_image->numcomps, (uint8_t*)packedBuf, m_image->comps[0].w, m_image->comps[0].stride, packedBufStride, stripRows, 0);
-			if(!encodeBuffer(bufPtr, packedBufStride * stripRows, strip++)) {
+				iter->interleave((int32_t**)planes, m_image->numcomps, (uint8_t*)packedBuf, m_image->comps[0].w, m_image->comps[0].stride,
+						m_image->packedWidthBytes, stripRows, 0);
+			if(!encodePixels(bufPtr, m_image->packedWidthBytes * stripRows, strip++)) {
 				delete iter;
 				goto cleanup;
 			}
 			rowsWritten += stripRows;
 			h += stripRows;
 			if (m_image->interleavedData)
-				bufPtr += packedBufStride * stripRows;
+				bufPtr += m_image->packedWidthBytes * stripRows;
 		}
 		delete iter;
 	}

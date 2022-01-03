@@ -52,7 +52,6 @@ class ImageFormat : public IImageFormat
 
 	grk_image* m_image;
 	uint32_t m_rowCount;
-	uint32_t m_rowsPerStrip;
 	uint32_t m_numStrips;
 
 	IFileIO* m_fileIO;

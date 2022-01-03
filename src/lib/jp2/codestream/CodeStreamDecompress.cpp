@@ -190,9 +190,15 @@ bool CodeStreamDecompress::readHeader(grk_header_info* header_info)
 			m_headerError = true;
 			return false;
 		}
-
-		/* Copy code stream image information to composite image */
-		m_headerImage->copyHeader(getCompositeImage());
+		auto composite = getCompositeImage();
+		m_headerImage->copyHeader(composite);
+		if (header_info) {
+			composite->decompressFormat = header_info->decompressFormat;
+			composite->forceRGB = header_info->forceRGB;
+			composite->upsample = header_info->upsample;
+			composite->precision = header_info->precision;
+			composite->numPrecision = header_info->numPrecision;
+		}
 	}
 
 	if(header_info)
@@ -261,87 +267,88 @@ bool CodeStreamDecompress::setDecompressWindow(grkRectU32 window)
 		decompressor->m_start_tile_y_index = 0;
 		decompressor->m_end_tile_x_index = cp->t_grid_width;
 		decompressor->m_end_tile_y_index = cp->t_grid_height;
-		return true;
-	}
-
-	/* Check if the window provided by the user are correct */
-
-	uint32_t start_x = window.x0 + image->x0;
-	uint32_t start_y = window.y0 + image->y0;
-	uint32_t end_x = window.x1 + image->x0;
-	uint32_t end_y = window.y1 + image->y0;
-	/* Left */
-	if(start_x > image->x1)
-	{
-		GRK_ERROR("Left position of the decompress window (%u)"
-				  " is outside of the image area (Xsiz=%u).",
-				  start_x, image->x1);
-		return false;
-	}
-	else
-	{
-		decompressor->m_start_tile_x_index = (start_x - cp->tx0) / cp->t_width;
-		compositeImage->x0 = start_x;
-	}
-
-	/* Up */
-	if(start_y > image->y1)
-	{
-		GRK_ERROR("Top position of the decompress window (%u)"
-				  " is outside of the image area (Ysiz=%u).",
-				  start_y, image->y1);
-		return false;
-	}
-	else
-	{
-		decompressor->m_start_tile_y_index = (start_y - cp->ty0) / cp->t_height;
-		compositeImage->y0 = start_y;
-	}
-
-	/* Right */
-	assert(end_x > 0);
-	assert(end_y > 0);
-	if(end_x > image->x1)
-	{
-		GRK_WARN("Right position of the decompress window (%u)"
-				 " is outside the image area (Xsiz=%u).",
-				 end_x, image->x1);
-		decompressor->m_end_tile_x_index = cp->t_grid_width;
-		compositeImage->x1 = image->x1;
-	}
-	else
-	{
-		// avoid divide by zero
-		if(cp->t_width == 0)
+		compositeImage->postReadHeader(&m_cp);
+	} else {
+		/* Check if the window provided by the user are correct */
+		uint32_t start_x = window.x0 + image->x0;
+		uint32_t start_y = window.y0 + image->y0;
+		uint32_t end_x = window.x1 + image->x0;
+		uint32_t end_y = window.y1 + image->y0;
+		/* Left */
+		if(start_x > image->x1)
+		{
+			GRK_ERROR("Left position of the decompress window (%u)"
+					  " is outside of the image area (Xsiz=%u).",
+					  start_x, image->x1);
 			return false;
-		decompressor->m_end_tile_x_index = ceildiv<uint32_t>(end_x - cp->tx0, cp->t_width);
-		compositeImage->x1 = end_x;
-	}
+		}
+		else
+		{
+			decompressor->m_start_tile_x_index = (start_x - cp->tx0) / cp->t_width;
+			compositeImage->x0 = start_x;
+		}
 
-	/* Bottom */
-	if(end_y > image->y1)
-	{
-		GRK_WARN("Bottom position of the decompress window (%u)"
-				 " is outside of the image area (Ysiz=%u).",
-				 end_y, image->y1);
-		decompressor->m_end_tile_y_index = cp->t_grid_height;
-		compositeImage->y1 = image->y1;
-	}
-	else
-	{
-		// avoid divide by zero
-		if(cp->t_height == 0)
+		/* Up */
+		if(start_y > image->y1)
+		{
+			GRK_ERROR("Top position of the decompress window (%u)"
+					  " is outside of the image area (Ysiz=%u).",
+					  start_y, image->y1);
 			return false;
-		decompressor->m_end_tile_y_index = ceildiv<uint32_t>(end_y - cp->ty0, cp->t_height);
-		compositeImage->y1 = end_y;
-	}
-	wholeTileDecompress = false;
-	if(!compositeImage->subsampleAndReduce(cp->m_coding_params.m_dec.m_reduce))
-		return false;
+		}
+		else
+		{
+			decompressor->m_start_tile_y_index = (start_y - cp->ty0) / cp->t_height;
+			compositeImage->y0 = start_y;
+		}
 
-	GRK_INFO("Decompress window set to (%d,%d,%d,%d)", compositeImage->x0 - image->x0,
-			 compositeImage->y0 - image->y0, compositeImage->x1 - image->x0,
-			 compositeImage->y1 - image->y0);
+		/* Right */
+		assert(end_x > 0);
+		assert(end_y > 0);
+		if(end_x > image->x1)
+		{
+			GRK_WARN("Right position of the decompress window (%u)"
+					 " is outside the image area (Xsiz=%u).",
+					 end_x, image->x1);
+			decompressor->m_end_tile_x_index = cp->t_grid_width;
+			compositeImage->x1 = image->x1;
+		}
+		else
+		{
+			// avoid divide by zero
+			if(cp->t_width == 0)
+				return false;
+			decompressor->m_end_tile_x_index = ceildiv<uint32_t>(end_x - cp->tx0, cp->t_width);
+			compositeImage->x1 = end_x;
+		}
+
+		/* Bottom */
+		if(end_y > image->y1)
+		{
+			GRK_WARN("Bottom position of the decompress window (%u)"
+					 " is outside of the image area (Ysiz=%u).",
+					 end_y, image->y1);
+			decompressor->m_end_tile_y_index = cp->t_grid_height;
+			compositeImage->y1 = image->y1;
+		}
+		else
+		{
+			// avoid divide by zero
+			if(cp->t_height == 0)
+				return false;
+			decompressor->m_end_tile_y_index = ceildiv<uint32_t>(end_y - cp->ty0, cp->t_height);
+			compositeImage->y1 = end_y;
+		}
+		wholeTileDecompress = false;
+		if(!compositeImage->subsampleAndReduce(cp->m_coding_params.m_dec.m_reduce))
+			return false;
+
+		GRK_INFO("Decompress window set to (%d,%d,%d,%d)", compositeImage->x0 - image->x0,
+				 compositeImage->y0 - image->y0, compositeImage->x1 - image->x0,
+				 compositeImage->y1 - image->y0);
+
+	}
+	compositeImage->postReadHeader(&m_cp);
 
 	return true;
 }
@@ -428,6 +435,7 @@ bool CodeStreamDecompress::decompressTile(uint16_t tileIndex)
 		comp->w = reducedCompBounds.width();
 		comp->h = reducedCompBounds.height();
 	}
+	compositeImage->postReadHeader(&m_cp);
 	m_tile_ind_to_dec = (int32_t)tileIndex;
 
 	// reset tile part numbers, in case we are re-using the same codec object
