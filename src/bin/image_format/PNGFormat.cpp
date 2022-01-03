@@ -649,7 +649,12 @@ bool PNGFormat::encodeHeader(grk_image* img, const std::string& filename, uint32
 beach:
 	return !fails;
 }
-
+bool PNGFormat::encodeBuffer(uint8_t *data, uint64_t dataLen, uint32_t strip) {
+	(void)data;
+	(void)dataLen;
+	(void)strip;
+	return false;
+}
 bool PNGFormat::encodeRows(uint32_t rows)
 {
 	(void)rows;

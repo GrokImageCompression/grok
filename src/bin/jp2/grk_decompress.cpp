@@ -966,6 +966,20 @@ static void cleanUpFile(const char* outfile){
 		free(p);
 }
 
+static bool grk_serialize_buffer(grk_simple_buf* buffer, uint32_t strip, void* user_data){
+	if (!user_data)
+		return false;
+	IImageFormat *imageFormat = (IImageFormat*)user_data;
+
+	return imageFormat->encodeBuffer(buffer->data, buffer->dataLength, strip);
+}
+
+static void grk_reclaim_buffers(grk_simple_buf** reclaimed, uint32_t max_reclaimed, void* user_data){
+	if (!user_data)
+		return;
+	IImageFormat *imageFormat = (IImageFormat*)user_data;
+
+}
 
 // return: 0 for success, non-zero for failure
 int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
@@ -1022,6 +1036,11 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 			goto cleanup;
 			break;
 	}
+
+
+	parameters->core.serialize_data = imageFormat;
+	parameters->core.serializeBufferCallback = grk_serialize_buffer;
+	parameters->core.reclaimCallback = grk_reclaim_buffers;
 
 	// 1. initialize
 	if(!info->stream)

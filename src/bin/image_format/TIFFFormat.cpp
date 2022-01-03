@@ -313,6 +313,12 @@ bool TIFFFormat::writeStrip(void* buf, uint64_t toWrite)
 
 	return true;
 }
+bool TIFFFormat::encodeBuffer(uint8_t *data, uint64_t dataLen, uint32_t strip) {
+	(void)data;
+	(void)dataLen;
+	(void)strip;
+	return false;
+}
 bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 {
 	bool success = false;

@@ -722,6 +722,12 @@ bool PNMFormat::encodeHeader(grk_image* image, const std::string& filename,
 
 	return true;
 }
+bool PNMFormat::encodeBuffer(uint8_t *data, uint64_t dataLen, uint32_t strip) {
+	(void)data;
+	(void)dataLen;
+	(void)strip;
+	return false;
+}
 bool PNMFormat::encodeRows(uint32_t rows)
 {
 	(void)rows;

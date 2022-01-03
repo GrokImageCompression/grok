@@ -552,6 +552,13 @@ cleanup:
 	return ret;
 }
 
+bool BMPFormat::encodeBuffer(uint8_t *data, uint64_t dataLen, uint32_t strip) {
+	(void)data;
+	(void)dataLen;
+	(void)strip;
+	return false;
+}
+
 bool BMPFormat::encodeRows(uint32_t rows)
 {
 	(void)rows;
