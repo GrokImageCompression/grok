@@ -298,8 +298,6 @@ bool GrkImage::allocCompositeData(uint32_t tileWidth){
 							  i, destComp->w, destComp->h);
 					return false;
 				}
-				memset(destComp->data, 0,
-					   (uint64_t)destComp->stride * destComp->h * sizeof(int32_t));
 			}
 		}
 	}
