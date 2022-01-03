@@ -40,7 +40,6 @@ class TIFFFormat : public ImageFormat
 	grk_image* decode(const std::string& filename, grk_cparameters* parameters) override;
 
   private:
-	bool writeStrip(void* buf, uint64_t toWrite);
 	TIFF* tif;
 	uint8_t *packedBuf;
 	uint32_t chroma_subsample_x;

@@ -966,7 +966,7 @@ static void cleanUpFile(const char* outfile){
 		free(p);
 }
 
-static bool grk_serialize_buffer(grk_simple_buf* buffer, uint32_t strip, void* user_data){
+static bool grk_serialize_pixels(grk_simple_buf* buffer, uint32_t strip, void* user_data){
 	if (!user_data)
 		return false;
 	IImageFormat *imageFormat = (IImageFormat*)user_data;
@@ -975,9 +975,12 @@ static bool grk_serialize_buffer(grk_simple_buf* buffer, uint32_t strip, void* u
 }
 
 static void grk_reclaim_buffers(grk_simple_buf** reclaimed, uint32_t max_reclaimed, void* user_data){
+	(void)reclaimed;
+	(void)max_reclaimed;
 	if (!user_data)
 		return;
-	IImageFormat *imageFormat = (IImageFormat*)user_data;
+	auto imageFormat = (IImageFormat*)user_data;
+	(void)imageFormat;
 
 }
 
@@ -1039,7 +1042,7 @@ int GrkDecompress::preProcess(grk_plugin_decompress_callback_info* info)
 
 
 	parameters->core.serialize_data = imageFormat;
-	parameters->core.serializeBufferCallback = grk_serialize_buffer;
+	parameters->core.serializeBufferCallback = grk_serialize_pixels;
 	parameters->core.reclaimCallback = grk_reclaim_buffers;
 
 	// 1. initialize

@@ -295,29 +295,22 @@ bool TIFFFormat::encodeHeader(grk_image* image, const std::string& filename,
 cleanup:
 	return success;
 }
+bool TIFFFormat::encodeBuffer(uint8_t *data, uint64_t dataLen, uint32_t stripId) {
 
-bool TIFFFormat::writeStrip(void* buf, uint64_t toWrite)
-{
-	tmsize_t written = TIFFWriteEncodedStrip(tif, (tmsize_t)strip++, buf, (tmsize_t)toWrite);
+	tmsize_t written = TIFFWriteEncodedStrip(tif, (tmsize_t)stripId, data, (tmsize_t)dataLen);
 	if(written == -1)
 	{
 		spdlog::error("TIFFFormat::encodeRows: error in TIFFWriteEncodedStrip");
 		return false;
 	}
-	if(written != (tmsize_t)toWrite)
+	if(written != (tmsize_t)dataLen)
 	{
 		spdlog::error("TIFFFormat::encodeRows: bytes written {} does not equal bytes to write {}",
-					  written, toWrite);
+					  written, dataLen);
 		return false;
 	}
 
 	return true;
-}
-bool TIFFFormat::encodeBuffer(uint8_t *data, uint64_t dataLen, uint32_t strip) {
-	(void)data;
-	(void)dataLen;
-	(void)strip;
-	return false;
 }
 bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 {
@@ -335,7 +328,7 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 			uint32_t rowsSoFar = h - rowsWritten;
 			if(rowsSoFar > 0 && (rowsSoFar % rowsPerStrip == 0))
 			{
-				if(!writeStrip(packedBuf, bytesToWrite))
+				if(bytesToWrite && !encodeBuffer(packedBuf, bytesToWrite, strip++))
 					goto cleanup;
 				bufptr = (int8_t*)packedBuf;
 				bytesToWrite = 0;
@@ -367,7 +360,7 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 		if (h != rowsWritten)
 			rowsWritten += h - chroma_subsample_y - rowsWritten;
 		// cleanup
-		if(bytesToWrite && !writeStrip(packedBuf, bytesToWrite))
+		if(bytesToWrite && !encodeBuffer(packedBuf, bytesToWrite, strip++))
 			goto cleanup;
 	}
 	else
@@ -382,7 +375,7 @@ bool TIFFFormat::encodeRows(uint32_t rowsToWrite)
 			uint32_t stripRows = (std::min)(rowsPerStrip, height - h);
 			if (!m_image->interleavedData)
 				iter->interleave((int32_t**)planes, m_image->numcomps, (uint8_t*)packedBuf, m_image->comps[0].w, m_image->comps[0].stride, packedBufStride, stripRows, 0);
-			if(!writeStrip(bufPtr, packedBufStride * stripRows)) {
+			if(!encodeBuffer(bufPtr, packedBufStride * stripRows, strip++)) {
 				delete iter;
 				goto cleanup;
 			}

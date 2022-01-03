@@ -741,7 +741,7 @@ typedef struct _grk_simple_buf {
 
 
 typedef void (*grk_reclaim_buffers)(grk_simple_buf** reclaimed, uint32_t max_reclaimed, void* user_data);
-typedef bool (*grk_serialize_buffer)(grk_simple_buf* buffer, uint32_t strip, void* user_data);
+typedef bool (*grk_serialize_pixels)(grk_simple_buf* buffer, uint32_t strip, void* user_data);
 
 /**
  * Core decompress parameters
@@ -766,7 +766,7 @@ typedef struct _grk_decompress_core_params
 	GRK_TILE_CACHE_STRATEGY tileCacheStrategy;
 
 	void* serialize_data;
-	grk_serialize_buffer serializeBufferCallback;
+	grk_serialize_pixels serializeBufferCallback;
 	grk_reclaim_buffers reclaimCallback;
 
 } grk_decompress_core_params;
