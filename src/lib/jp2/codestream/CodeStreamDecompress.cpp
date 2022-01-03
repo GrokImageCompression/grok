@@ -449,7 +449,6 @@ bool CodeStreamDecompress::endOfCodeStream(void)
 bool CodeStreamDecompress::decompressTiles(void)
 {
 	uint16_t numTilesToDecompress = (uint16_t)(m_cp.t_grid_height * m_cp.t_grid_width);
-	m_multiTile = numTilesToDecompress > 1;
 	if(codeStreamInfo)
 	{
 		if(!codeStreamInfo->allocTileInfo(numTilesToDecompress))
@@ -772,7 +771,7 @@ bool CodeStreamDecompress::createOutputImage(void){
 	}
 	// only allocate data if there are multiple tiles. Otherwise, the single tile data
 	// will simply be transferred to the output image
-	if(m_multiTile && !m_outputImage->allocCompositeData(m_cp.t_width))
+	if(m_multiTile && !m_outputImage->allocCompositeData(&m_cp))
 		return false;
 
 	return true;

@@ -48,9 +48,9 @@ public:
 	 *
 	 * @return true if successful
 	 */
-	bool allocCompositeData(uint32_t tileWidth);
+	bool allocCompositeData(CodingParams *cp);
 
-	bool canAllocInterleaved(uint32_t tileWidth);
+	bool canAllocInterleaved(CodingParams *cp);
 
 	/**
 	 * Copy only header of image and its component header (no data are copied)

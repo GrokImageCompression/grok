@@ -251,8 +251,12 @@ bool GrkImage::allocData(grk_image_comp* comp)
 	return true;
 }
 
-bool GrkImage::canAllocInterleaved(uint32_t tileWidth){
-	if ( ((tileWidth * numcomps * comps->prec) & 7) != 0)
+bool GrkImage::canAllocInterleaved(CodingParams *cp){
+	// packed tile width bits must be divisible by 8
+	if ( ((cp->t_width * numcomps * comps->prec) & 7) != 0)
+		return false;
+	// tile origin and image origin must coincide
+	if (cp->tx0 != x0 || cp->ty0 != y0)
 		return false;
 	if (precision ||
 		(decompressFormat != GRK_TIF_FMT) ||
@@ -268,8 +272,8 @@ bool GrkImage::canAllocInterleaved(uint32_t tileWidth){
 	return true;
 }
 
-bool GrkImage::allocCompositeData(uint32_t tileWidth){
-	if (canAllocInterleaved(tileWidth)){
+bool GrkImage::allocCompositeData(CodingParams *cp){
+	if (canAllocInterleaved(cp)){
 		uint64_t stride =  grk::PtoI<int32_t>::getPackedBytes(numcomps, comps->w, comps->prec);
 		uint64_t dataSize = (uint64_t)stride * comps->h;
 
