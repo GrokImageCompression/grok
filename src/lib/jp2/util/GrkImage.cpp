@@ -11,7 +11,7 @@ GrkImage::~GrkImage()
 {
 	if(comps)
 	{
-		grk_image_all_components_data_free(this);
+		all_components_data_free();
 		delete[] comps;
 	}
 	if(meta)
@@ -114,6 +114,15 @@ GrkImage* GrkImage::create(grk_image *src,
 	return image;
 }
 
+void GrkImage::all_components_data_free()
+{
+	uint32_t i;
+	if(!comps)
+		return;
+	for(i = 0; i < numcomps; ++i)
+		grk_image_single_component_data_free(comps + i);
+}
+
 bool GrkImage::subsampleAndReduce(uint32_t reduce)
 {
 	for(uint32_t compno = 0; compno < numcomps; ++compno)
@@ -178,7 +187,7 @@ void GrkImage::copyHeader(GrkImage* dest)
 
 	if(dest->comps)
 	{
-		grk_image_all_components_data_free(dest);
+		all_components_data_free();
 		delete[] dest->comps;
 		dest->comps = nullptr;
 	}

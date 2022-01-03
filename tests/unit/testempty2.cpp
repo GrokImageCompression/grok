@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
   cmptparm.h = image_height;
   strncpy(parameters.outfile, outputfile, sizeof(parameters.outfile) - 1);
 
-  image = grk_image_new(nullptr,numcomps, &cmptparm, color_space, true);
+  image = grk_image_new(numcomps, &cmptparm, color_space);
   assert(image);
 
   for (i = 0; i < image_width * image_height; i++) {

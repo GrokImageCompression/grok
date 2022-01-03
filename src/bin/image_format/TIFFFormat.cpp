@@ -998,7 +998,7 @@ grk_image* TIFFFormat::decode(const std::string& filename, grk_cparameters* para
 		img_comp->w = grk::ceildiv<uint32_t>(w, img_comp->dx);
 		img_comp->h = grk::ceildiv<uint32_t>(h, img_comp->dy);
 	}
-	image = grk_image_new(nullptr,numcomps, &cmptparm[0], color_space, true);
+	image = grk_image_new(numcomps, &cmptparm[0], color_space);
 	if(!image)
 		goto cleanup;
 

@@ -814,8 +814,6 @@ typedef struct _grk_decompress_params
 	GRK_SUPPORTED_FILE_FMT decod_format;
 	/** output file format 0: PGX, 1: PxM, 2: BMP */
 	GRK_SUPPORTED_FILE_FMT cod_format;
-	/** index file name */
-	char indexfilename[GRK_PATH_LEN];
 	/** Decompress window left boundary */
 	uint32_t dw_x0;
 	/** Decompress window right boundary */
@@ -917,31 +915,34 @@ typedef enum GRK_COMPONENT_ASSOC
 typedef struct _grk_image_comp
 {
 	grk_object obj;
-	/** XRsiz: horizontal separation of a sample of with component with respect to the reference
-	 * grid */
-	uint32_t dx;
-	/** YRsiz: vertical separation of a sample of with component with respect to the reference grid
-	 */
-	uint32_t dy;
+
+	/** x component offset compared to the whole image */
+	uint32_t x0;
+	/** y component offset compared to the whole image */
+	uint32_t y0;
 	/** data width */
 	uint32_t w;
 	/** data stride */
 	uint32_t stride;
 	/** data height */
 	uint32_t h;
-	/** x component offset compared to the whole image */
-	uint32_t x0;
-	/** y component offset compared to the whole image */
-	uint32_t y0;
-	// component registration coordinates
-	uint16_t Xcrg, Ycrg;
+	/** XRsiz: horizontal separation of a sample of with component with respect to the reference
+	 * grid */
+	uint32_t dx;
+	/** YRsiz: vertical separation of a sample of with component with respect to the reference grid
+	 */
+	uint32_t dy;
 	/** precision */
 	uint8_t prec;
+	/* signed */
 	bool sgnd;
-	/** image component data */
-	int32_t* data;
+
 	GRK_COMPONENT_TYPE type;
 	GRK_COMPONENT_ASSOC association;
+	// component registration coordinates
+	uint16_t Xcrg, Ycrg;
+	/** image component data */
+	int32_t* data;
 } grk_image_comp;
 
 // Image meta data: colour, IPTC and XMP
@@ -1132,26 +1133,16 @@ GRK_API bool GRK_CALLCONV grk_set_error_handler(grk_msg_callback p_callback, voi
 /**
  * Create image
  *
- * @param src			source image
  * @param numcmpts      number of components
  * @param cmptparms     component parameters
  * @param clrspc        image color space
- * @param allocData		true if data is to be allocated, otherwise false
  *
  * @return returns      a new image if successful, otherwise nullptr
  * */
-GRK_API grk_image* GRK_CALLCONV grk_image_new(grk_image *src,
-												uint16_t numcmpts, grk_image_comp* cmptparms,
-											  GRK_COLOR_SPACE clrspc, bool allocData);
+GRK_API grk_image* GRK_CALLCONV grk_image_new(uint16_t numcmpts, grk_image_comp* cmptparms,
+											  GRK_COLOR_SPACE clrspc);
 
 GRK_API grk_image_meta* GRK_CALLCONV grk_image_meta_new(void);
-
-/**
- * Deallocate all component data for an image
- *
- * @param image         image
- */
-GRK_API void GRK_CALLCONV grk_image_all_components_data_free(grk_image* image);
 
 /**
  * Deallocate data for single image component

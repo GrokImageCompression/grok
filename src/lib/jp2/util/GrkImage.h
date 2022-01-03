@@ -75,6 +75,7 @@ public:
 	void applyColourManagement(void);
 	void convertPrecision(void);
 	bool execUpsample(void);
+	void all_components_data_free(void);
   private:
 	~GrkImage();
 	bool compositePlanar(const GrkImage* srcImg);

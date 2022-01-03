@@ -207,7 +207,7 @@ int main(int argc, char *argv[]) {
   grk_set_warning_handler(grk::warningCallback, nullptr);
   grk_set_error_handler(grk::errorCallback, nullptr);
 
-  image = grk_image_new(nullptr,num_comps, params, GRK_CLRSPC_SRGB, true);
+  image = grk_image_new(num_comps, params, GRK_CLRSPC_SRGB);
   if (!image)
     goto cleanup;
 

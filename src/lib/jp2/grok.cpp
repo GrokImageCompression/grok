@@ -185,24 +185,15 @@ const char* GRK_CALLCONV grk_version(void)
 	return GRK_PACKAGE_VERSION;
 }
 
-grk_image* GRK_CALLCONV grk_image_new(grk_image *src, uint16_t numcmpts, grk_image_comp* cmptparms,
-									  GRK_COLOR_SPACE clrspc, bool allocData)
+grk_image* GRK_CALLCONV grk_image_new(uint16_t numcmpts, grk_image_comp* cmptparms,
+									  GRK_COLOR_SPACE clrspc)
 {
-	return GrkImage::create(src,numcmpts, cmptparms, clrspc, allocData);
+	return GrkImage::create(nullptr,numcmpts, cmptparms, clrspc, true);
 }
 
 grk_image_meta* GRK_CALLCONV grk_image_meta_new(void)
 {
 	return (grk_image_meta*)(new GrkImageMeta());
-}
-
-void GRK_CALLCONV grk_image_all_components_data_free(grk_image* image)
-{
-	uint32_t i;
-	if(!image || !image->comps)
-		return;
-	for(i = 0; i < image->numcomps; ++i)
-		grk_image_single_component_data_free(image->comps + i);
 }
 
 void GRK_CALLCONV grk_image_single_component_data_free(grk_image_comp* comp)

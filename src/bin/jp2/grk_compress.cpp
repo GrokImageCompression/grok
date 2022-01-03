@@ -340,7 +340,6 @@ static GRK_PROG_ORDER getProgression(const char progression[4])
 CompressInitParams::CompressInitParams() : initialized(false), transferExifTags(false)
 {
 	pluginPath[0] = 0;
-	*indexfilename = 0;
 	memset(&inputFolder, 0, sizeof(inputFolder));
 	memset(&outFolder, 0, sizeof(outFolder));
 }

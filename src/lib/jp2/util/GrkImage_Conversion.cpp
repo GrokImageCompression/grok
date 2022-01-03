@@ -447,7 +447,7 @@ grk_image* GrkImage::createRGB(uint16_t numcmpts, uint32_t w, uint32_t h,
 		cmptparms[compno].prec = prec;
 		cmptparms[compno].sgnd = 0U;
 	}
-	auto img = grk_image_new(this,numcmpts, (grk_image_comp*)cmptparms, GRK_CLRSPC_SRGB, true);
+	auto img = GrkImage::create(this,numcmpts, (grk_image_comp*)cmptparms, GRK_CLRSPC_SRGB, true);
 	delete[] cmptparms;
 
 	return img;
@@ -537,7 +537,7 @@ bool GrkImage::sycc444_to_rgb(void)
 		b += dst_stride_diff;
 	}
 
-	grk_image_all_components_data_free(this);
+	all_components_data_free();
 	comps[0].data = d0;
 	comps[1].data = d1;
 	comps[2].data = d2;
@@ -618,7 +618,7 @@ bool GrkImage::sycc422_to_rgb(bool oddFirstX)
 		g += dst_stride_diff;
 		b += dst_stride_diff;
 	}
-	grk_image_all_components_data_free(this);
+	all_components_data_free();
 
 	comps[0].data = d0;
 	comps[1].data = d1;
@@ -742,7 +742,7 @@ bool GrkImage::sycc420_to_rgb(bool oddFirstX, bool oddFirstY)
 						dest_ptr[2]);
 	}
 
-	grk_image_all_components_data_free(this);
+	all_components_data_free();
 	for(uint32_t k = 0; k < 3; ++k)
 	{
 		comps[k].data = dest[k];

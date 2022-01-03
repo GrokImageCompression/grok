@@ -222,8 +222,7 @@ static grk_image *readImageFromFilePPM(const char *filename,
     free(filenameComponentPGX);
   }
 
-  dest = grk_image_new(nullptr,(uint16_t)nbFilenamePGX, src_param, GRK_CLRSPC_UNKNOWN,
-                       true);
+  dest = grk_image_new((uint16_t)nbFilenamePGX, src_param, GRK_CLRSPC_UNKNOWN);
   if (!dest || !dest->comps)
     goto cleanup;
   for (fileno = 0; fileno < nbFilenamePGX; fileno++) {
@@ -410,7 +409,7 @@ static grk_image *readImageFromFilePGX(const char *filename,
     free(filenameComponentPGX);
   }
 
-  dest = grk_image_new(nullptr,nbFilenamePGX, dest_param, GRK_CLRSPC_UNKNOWN, true);
+  dest = grk_image_new(nbFilenamePGX, dest_param, GRK_CLRSPC_UNKNOWN);
   if (!dest || !dest->comps)
     goto cleanup;
   for (fileno = 0; fileno < nbFilenamePGX; fileno++) {
@@ -450,7 +449,7 @@ static int imageToPNG(const grk_image *src, const char *filename,
   dest_param.prec = src_comp->prec;
   dest_param.sgnd = src_comp->sgnd;
 
-  auto dest = grk_image_new(nullptr,1u, &dest_param, GRK_CLRSPC_GRAY, true);
+  auto dest = grk_image_new(1u, &dest_param, GRK_CLRSPC_GRAY);
   auto dest_comp = dest->comps;
   uint32_t src_diff = src_comp->stride - src_comp->w;
   uint32_t dest_diff = dest_comp->stride - dest_comp->w;
@@ -927,8 +926,8 @@ int main(int argc, char **argv) {
     param_image_diff[compno].w = testComp->w;
   }
 
-  imageDiff = grk_image_new(nullptr,imageBase->numcomps, param_image_diff,
-                            GRK_CLRSPC_UNKNOWN, true);
+  imageDiff = grk_image_new(imageBase->numcomps, param_image_diff,
+                            GRK_CLRSPC_UNKNOWN);
   /* Free memory*/
   free(param_image_diff);
   param_image_diff = nullptr;
