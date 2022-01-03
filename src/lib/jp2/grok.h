@@ -914,8 +914,6 @@ typedef enum GRK_COMPONENT_ASSOC
  * */
 typedef struct _grk_image_comp
 {
-	grk_object obj;
-
 	/** x component offset compared to the whole image */
 	uint32_t x0;
 	/** y component offset compared to the whole image */
@@ -926,10 +924,10 @@ typedef struct _grk_image_comp
 	uint32_t stride;
 	/** data height */
 	uint32_t h;
-	/** XRsiz: horizontal separation of a sample of with component with respect to the reference
+	/** XRsiz: horizontal separation of a sample of component with respect to the reference
 	 * grid */
 	uint32_t dx;
-	/** YRsiz: vertical separation of a sample of with component with respect to the reference grid
+	/** YRsiz: vertical separation of a sample of component with respect to the reference grid
 	 */
 	uint32_t dy;
 	/** precision */
