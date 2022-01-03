@@ -1059,7 +1059,7 @@ bool CodeStreamDecompress::read_SPCod_SPCoc(uint32_t compno, uint8_t* headerData
 		GRK_ERROR("Error decoding component %u.\nThe number of resolutions "
 				  " to remove (%d) must be strictly less than the number "
 				  "of resolutions (%d) of this component.\n"
-				  "Please decrease the cp_reduce parameter.",
+				  "Please decrease the reduce parameter.",
 				  compno, cp->m_coding_params.m_dec.m_reduce, tccp->numresolutions);
 		return false;
 	}

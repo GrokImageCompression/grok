@@ -349,8 +349,8 @@ void CodeStreamDecompress::initDecompress(grk_decompress_core_params* parameters
 {
 	if(parameters)
 	{
-		m_cp.m_coding_params.m_dec.m_layer = parameters->cp_layer;
-		m_cp.m_coding_params.m_dec.m_reduce = parameters->cp_reduce;
+		m_cp.m_coding_params.m_dec.m_layer = parameters->max_layers;
+		m_cp.m_coding_params.m_dec.m_reduce = parameters->reduce;
 		m_tileCache->setStrategy(parameters->tileCacheStrategy);
 	}
 }

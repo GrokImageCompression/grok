@@ -47,7 +47,7 @@
 #endif /* _WIN32 */
 
 int main(int argc, char *argv[]) {
-  grk_decompress_core_params param;
+	grk_decompress_parameters param;
   grk_codec *codec = nullptr;
   grk_stream *stream = nullptr;
   uint16_t tile_index = 0;
@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
   }
 
   /* Set the default decoding parameters */
-  grk_decompress_set_default_params(&param);
+  grk_decompress_set_default_params(&param.core);
 
   /* */
   if (!grk::jpeg2000_file_format(input_file, &param.decod_format)) {
@@ -120,10 +120,10 @@ int main(int argc, char *argv[]) {
 
   /** you may here add custom decoding parameters */
   /* do not use layer decoding limitations */
-  param.cp_layer = 0;
+  param.core.max_layers = 0;
 
   /* do not use resolutions reductions */
-  param.cp_reduce = 0;
+  param.core.reduce = 0;
 
   switch (param.decod_format) {
   case GRK_J2K_FMT: { /* JPEG-2000 codestream */
@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
   grk_set_error_handler(grk::errorCallback, nullptr);
 
   /* Set up the decompress parameters using user parameters */
-  if (!grk_decompress_init(codec, &param)) {
+  if (!grk_decompress_init(codec, &param.core)) {
     spdlog::error("test tile decoder: failed to set up decompressor\n");
     goto beach;
   }

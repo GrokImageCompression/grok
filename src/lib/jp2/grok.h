@@ -743,24 +743,16 @@ typedef struct _grk_decompress_core_params
 	 The image resolution is effectively divided by 2 to the power of the number of discarded
 	 levels. The reduce factor is limited by the smallest total number of decomposition levels among
 	 tiles. if greater than zero, then image is decoded to original dimension divided by
-	 2^(cp_reduce); if equal to zero or not used, image is decompressed to full resolution
+	 2^(reduce); if equal to zero or not used, image is decompressed to full resolution
 	 */
-	uint8_t cp_reduce;
+	uint8_t reduce;
 	/**
 	 Set the maximum number of quality layers to decompress.
 	 If there are fewer quality layers than the specified number, all quality layers will be
 	 decompressed. if != 0, then only the first "layer" layers are decompressed; if == 0 or not
 	 used, all the quality layers are decompressed
 	 */
-	uint16_t cp_layer;
-	/** input file name */
-	char infile[GRK_PATH_LEN];
-	/** output file name */
-	char outfile[GRK_PATH_LEN];
-	/** input file format*/
-	GRK_SUPPORTED_FILE_FMT decod_format;
-	/** output file format*/
-	GRK_SUPPORTED_FILE_FMT cod_format;
+	uint16_t max_layers;
 	GRK_TILE_CACHE_STRATEGY tileCacheStrategy;
 } grk_decompress_core_params;
 
@@ -791,6 +783,14 @@ typedef struct _grk_decompress_params
 {
 	/** core library parameters */
 	grk_decompress_core_params core;
+	/** input file name */
+	char infile[GRK_PATH_LEN];
+	/** output file name */
+	char outfile[GRK_PATH_LEN];
+	/** input file format*/
+	GRK_SUPPORTED_FILE_FMT decod_format;
+	/** output file format*/
+	GRK_SUPPORTED_FILE_FMT cod_format;
 	/** Decompress window left boundary */
 	uint32_t dw_x0;
 	/** Decompress window right boundary */

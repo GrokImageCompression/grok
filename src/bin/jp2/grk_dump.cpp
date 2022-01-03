@@ -65,8 +65,8 @@ typedef struct _img_folder
 
 static int loadImages(dircnt* dirptr, char* imgdirpath);
 static char nextFile(size_t imageno, dircnt* dirptr, inputFolder* inputFolder,
-					 grk_decompress_core_params* parameters);
-static int parseCommandLine(int argc, char** argv, grk_decompress_core_params* parameters,
+		grk_decompress_parameters* parameters);
+static int parseCommandLine(int argc, char** argv, grk_decompress_parameters* parameters,
 							inputFolder* inputFolder);
 
 /* -------------------------------------------------------------------------- */
@@ -123,7 +123,7 @@ static int loadImages(dircnt* dirptr, char* imgdirpath)
 }
 /* -------------------------------------------------------------------------- */
 static char nextFile(size_t imageno, dircnt* dirptr, inputFolder* inputFolder,
-					 grk_decompress_core_params* parameters)
+		grk_decompress_parameters* parameters)
 {
 	char inputFile[GRK_PATH_LEN], infilename[3 * GRK_PATH_LEN], temp_ofname[GRK_PATH_LEN];
 	char *temp_p, temp1[GRK_PATH_LEN] = "";
@@ -163,7 +163,7 @@ static char nextFile(size_t imageno, dircnt* dirptr, inputFolder* inputFolder,
  * Parse the command line
  */
 /* -------------------------------------------------------------------------- */
-static int parseCommandLine(int argc, char** argv, grk_decompress_core_params* parameters,
+static int parseCommandLine(int argc, char** argv, grk_decompress_parameters* parameters,
 							inputFolder* inputFolder)
 {
 	try
@@ -302,7 +302,7 @@ int main(int argc, char* argv[])
 {
 	FILE* fout = nullptr;
 
-	grk_decompress_core_params parameters; /* Decompression parameters */
+	grk_decompress_parameters parameters; /* Decompression parameters */
 	grk_image* image = nullptr; /* Image structure */
 	grk_codec* codec = nullptr; /* Handle to a decompressor */
 	grk_stream* stream = nullptr; /* Stream */
@@ -319,7 +319,7 @@ int main(int argc, char* argv[])
 	grk_set_error_handler(errorCallback, nullptr);
 
 	/* Set decoding parameters to default values */
-	grk_decompress_set_default_params(&parameters);
+	grk_decompress_set_default_params(&parameters.core);
 
 	/* Initialize inputFolder */
 	memset(&inputFolder, 0, sizeof(inputFolder));
@@ -423,7 +423,7 @@ int main(int argc, char* argv[])
 		}
 
 		/* Setup the decompressor decoding parameters using user parameters */
-		if(!grk_decompress_init(codec, &parameters))
+		if(!grk_decompress_init(codec, &parameters.core))
 		{
 			spdlog::error("grk_dump: failed to set up the decompressor");
 			rc = EXIT_FAILURE;

@@ -53,7 +53,7 @@ static int32_t test_tile(uint16_t tile_index, grk_image *image,
 }
 
 int32_t main(int argc, char **argv) {
-  grk_decompress_core_params parameters; /* decompression parameters */
+	grk_decompress_parameters parameters; /* decompression parameters */
   int32_t ret = EXIT_FAILURE, rc;
 
   if (argc != 2) {
@@ -65,7 +65,7 @@ int32_t main(int argc, char **argv) {
   grk_set_info_handler(grk::infoCallback, nullptr);
   grk_set_warning_handler(grk::warningCallback, nullptr);
   grk_set_error_handler(grk::errorCallback, nullptr);
-  grk_decompress_set_default_params(&parameters);
+  grk_decompress_set_default_params(&parameters.core);
   strncpy(parameters.infile, argv[1], GRK_PATH_LEN - 1);
 
   if (!grk::jpeg2000_file_format(parameters.infile, &parameters.decod_format)) {
@@ -105,7 +105,7 @@ int32_t main(int argc, char **argv) {
     }
 
     /* Set up the decompress parameters using user parameters */
-    if (!grk_decompress_init(codec, &parameters)) {
+    if (!grk_decompress_init(codec, &parameters.core)) {
       spdlog::error("random tile processor: failed to set up decompressor");
       goto cleanup;
     }
