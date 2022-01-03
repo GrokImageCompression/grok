@@ -330,8 +330,6 @@ grk_decompress -i @INPUT_NR_PATH@/issue226.j2k                   -o @TEMP_PATH@/
 !grk_decompress -i @INPUT_NR_PATH@/issue362-2866.jp2 -o @TEMP_PATH@/issue362-2866.jp2.pgx
 !grk_decompress -i @INPUT_NR_PATH@/issue362-2894.jp2 -o @TEMP_PATH@/issue362-2894.jp2.pgx
 # issue 363  (from pdfium fuzz engine)
-# Invalid Tile part length
-grk_decompress -i @INPUT_NR_PATH@/issue363-4723.jp2 -o @TEMP_PATH@/issue363-4723.jp2.pgx
 # Invalid Marker length
 !grk_decompress -i @INPUT_NR_PATH@/issue363-4740.jp2 -o @TEMP_PATH@/issue363-4740.jp2.pgx
 !grk_decompress -i @INPUT_NR_PATH@/issue363-4792.jp2 -o @TEMP_PATH@/issue363-4792.jp2.pgx
