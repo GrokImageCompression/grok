@@ -23,12 +23,9 @@
 
 ImageFormat::ImageFormat()
 	: m_image(nullptr), m_rowCount(0), m_numStrips(0),
-	  m_fileIO(new FileStreamIO()), m_fileStream(nullptr), m_useStdIO(false)
-{}
-ImageFormat::ImageFormat(const ImageFormat& rhs)
-	: m_image(rhs.m_image), m_rowCount(rhs.m_rowCount),
-	  m_numStrips(rhs.m_numStrips), m_fileIO(nullptr), m_fileStream(nullptr),
-	  m_useStdIO(rhs.m_useStdIO)
+	  m_fileIO(new FileStreamIO()), m_fileStream(nullptr), m_useStdIO(false),
+	  encodeState(IMAGE_FORMAT_ENCODE_UNENCODED),
+	  stripCount(0)
 {}
 
 ImageFormat& ImageFormat::operator=(const ImageFormat& rhs)
@@ -48,6 +45,10 @@ ImageFormat& ImageFormat::operator=(const ImageFormat& rhs)
 ImageFormat::~ImageFormat()
 {
 	delete m_fileIO;
+}
+
+ImageFormatEncodeState ImageFormat::getEncodeState(void){
+	return encodeState;
 }
 
 bool ImageFormat::encodeHeader(grk_image* image, const std::string& filename,

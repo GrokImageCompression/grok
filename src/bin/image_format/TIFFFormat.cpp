@@ -282,17 +282,23 @@ cleanup:
 	return success;
 }
 bool TIFFFormat::encodePixels(uint8_t *data, uint64_t dataLen, uint32_t stripId) {
-
-	tmsize_t written = TIFFWriteEncodedStrip(tif, (tmsize_t)stripId, data, (tmsize_t)dataLen);
+	tmsize_t written = 0;
+	uint32_t totalStrips = ((m_image->y1 - m_image->y0) + m_image->rowsPerStrip - 1) / m_image->rowsPerStrip;
+	{
+		std::unique_lock<std::mutex> lk(encodePixelmutex);
+		if (encodeState != IMAGE_FORMAT_ENCODE_UNENCODED)
+			return true;
+		written = TIFFWriteEncodedStrip(tif, (tmsize_t)stripId, data, (tmsize_t)dataLen);
+		if (written == -1)
+			encodeState = IMAGE_FORMAT_ENCODE_ERROR;
+		else if (++stripCount == totalStrips){
+			encodeFinish();
+			encodeState = IMAGE_FORMAT_ENCODE_ENCODED;
+		}
+	}
 	if(written == -1)
 	{
 		spdlog::error("TIFFFormat::encodeRows: error in TIFFWriteEncodedStrip");
-		return false;
-	}
-	if(written != (tmsize_t)dataLen)
-	{
-		spdlog::error("TIFFFormat::encodeRows: bytes written {} does not equal bytes to write {}",
-					  written, dataLen);
 		return false;
 	}
 

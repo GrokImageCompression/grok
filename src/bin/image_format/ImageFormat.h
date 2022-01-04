@@ -20,16 +20,19 @@
 #include "IImageFormat.h"
 #include "IFileIO.h"
 
+#include <mutex>
+
+
 class ImageFormat : public IImageFormat
 {
   public:
 	ImageFormat();
-	ImageFormat(const ImageFormat& rhs);
 	virtual ~ImageFormat();
 	ImageFormat& operator=(const ImageFormat& rhs);
 	virtual bool encodeHeader(grk_image* image, const std::string& filename,
 							  uint32_t compressionParam) override;
 	virtual bool encodeFinish(void) override;
+	ImageFormatEncodeState getEncodeState(void) override;
 
   protected:
 	bool open(std::string fname, std::string mode);
@@ -59,4 +62,7 @@ class ImageFormat : public IImageFormat
 	std::string m_fileName;
 
 	bool m_useStdIO;
+	ImageFormatEncodeState encodeState;
+	uint32_t stripCount;
+	mutable std::mutex encodePixelmutex;
 };

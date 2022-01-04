@@ -20,6 +20,13 @@
 #include "grok.h"
 #include <string>
 
+enum ImageFormatEncodeState {
+	IMAGE_FORMAT_ENCODE_UNENCODED,
+	IMAGE_FORMAT_ENCODE_ENCODED,
+	IMAGE_FORMAT_ENCODE_ERROR
+};
+
+
 class IImageFormat
 {
   public:
@@ -30,4 +37,5 @@ class IImageFormat
 	virtual bool encodePixels(uint8_t *data, uint64_t dataLen, uint32_t strip) = 0;
 	virtual bool encodeFinish(void) = 0;
 	virtual grk_image* decode(const std::string& filename, grk_cparameters* parameters) = 0;
+	virtual ImageFormatEncodeState getEncodeState(void) = 0;
 };
