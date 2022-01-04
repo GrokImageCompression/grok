@@ -295,8 +295,9 @@ void GrkImage::postReadHeader(CodingParams *cp){
 		comps[1].dx == comps[2].dx &&
 		comps[1].dy == comps[2].dy &&
 	   (comps[1].dx ==2 || comps[1].dy ==2) &&
-	   (comps[2].dx ==2 || comps[2].dy ==2) )
+	   (comps[2].dx ==2 || comps[2].dy ==2) ) {
 			color_space = GRK_CLRSPC_SYCC;
+	}
 
 	uint32_t width = x1 - x0;
 	uint8_t prec = comps[0].prec;
@@ -305,33 +306,31 @@ void GrkImage::postReadHeader(CodingParams *cp){
 	uint16_t ncmp = numcomps;
 	if (forceRGB)
 		ncmp = 3;
-	if(decompressFormat == GRK_TIF_FMT && isSubsampled(this) &&
-			(color_space == GRK_CLRSPC_EYCC || color_space ==  GRK_CLRSPC_SYCC)) {
+	bool tiffSubSampled = decompressFormat ==   GRK_TIF_FMT &&
+							(isSubsampled(this) &&
+								(color_space == GRK_CLRSPC_EYCC || color_space ==  GRK_CLRSPC_SYCC));
+	if (tiffSubSampled){
 		uint32_t chroma_subsample_x = comps[1].dx;
 		uint32_t chroma_subsample_y = comps[1].dy;
 		uint32_t units = (width + chroma_subsample_x - 1) / chroma_subsample_x;
 		packedWidthBytes = (uint64_t)((((uint64_t)width * chroma_subsample_y + units * 2U) * prec + 7U) / 8U);
 		rowsPerStrip = (uint32_t)((chroma_subsample_y * 8 * 1024 * 1024) / packedWidthBytes);
 	} else {
-		packedWidthBytes =
-				decompressFormat == GRK_BMP_FMT ?
-							(((uint64_t)ncmp *  width + 3) >> 2) << 2 :
-									grk::PtoI<int32_t>::getPackedBytes(ncmp, x1 - x0, prec);
-		uint32_t baseRows = 16;
-		if (decompressFormat == GRK_BMP_FMT)
-			baseRows = 8;
+		switch(decompressFormat){
+		case GRK_BMP_FMT:
+			packedWidthBytes =	(((uint64_t)ncmp *  width + 3) >> 2) << 2;
+		   break;
+		default:
+			packedWidthBytes =	grk::PtoI<int32_t>::getPackedBytes(ncmp, x1 - x0, prec);
+			break;
+		}
 		if (canAllocInterleaved(cp))
 			rowsPerStrip = cp->t_height;
 		else
-			rowsPerStrip =	(uint32_t)((baseRows * 1024 * 1024) / packedWidthBytes);
+			rowsPerStrip =	(uint32_t)((16 * 1024 * 1024) / packedWidthBytes);
 	}
-
-	if(rowsPerStrip & 1)
-		rowsPerStrip++;
 	if(rowsPerStrip > y1 - y0)
 		rowsPerStrip =y1 - y0;
-
-
 }
 bool GrkImage::allocCompositeData(CodingParams *cp){
 	if (canAllocInterleaved(cp)){

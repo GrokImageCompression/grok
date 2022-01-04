@@ -19,16 +19,16 @@
 #pragma once
 #include "ImageFormat.h"
 
-typedef struct
+struct GRK_BITMAPFILEHEADER
 {
 	uint16_t bfType; /* 'BM' for Bitmap (19776) */
 	uint32_t bfSize; /* Size of the file        */
 	uint16_t bfReserved1; /* Reserved : 0            */
 	uint16_t bfReserved2; /* Reserved : 0            */
 	uint32_t bfOffBits; /* Offset                  */
-} GRK_BITMAPFILEHEADER;
+};
 
-typedef struct
+struct GRK_BITMAPINFOHEADER
 {
 	uint32_t biSize; /* Size of the structure in bytes */
 	int32_t biWidth; /* Width of the image in pixels */
@@ -58,7 +58,7 @@ typedef struct
 	uint32_t biIccProfileOffset; /* offset to ICC profile data */
 	uint32_t biIccProfileSize; /* ICC profile size */
 	uint32_t biReserved; /* Reserved */
-} GRK_BITMAPINFOHEADER;
+};
 
 class BMPFormat : public ImageFormat
 {
