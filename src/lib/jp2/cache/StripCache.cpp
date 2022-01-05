@@ -29,6 +29,8 @@ StripCache::~StripCache()
 {
 	for (auto iter = bufCache.begin(); iter != bufCache.end(); ++iter)
 		grkAlignedFree(iter->data);
+	for (uint16_t i = 0; i < m_tgrid_h; ++i)
+		delete strips[i];
 	delete[] strips;
 }
 void StripCache::init(uint32_t th,
